@@ -4,7 +4,7 @@ title: Projekt-Überblick
 description: Grunddaten zum Projekt Ausschreibungssoftware (Ort, Status, offene Punkte).
 resource: /home/jsk/Documents/Privates/Ausschreibungssoftware
 tags: [ausschreibungssoftware, status]
-timestamp: 2026-11-09T23:59:00Z
+timestamp: 2026-11-10T00:30:00Z
 ---
 ## Kontext (vom Nutzer, 2026-11-09)
 - Ziel: eine Open-Source-AVA-Software (Ausschreibung, Vergabe, Abrechnung) für einen befreundeten Architekten in Deutschland.
@@ -16,7 +16,8 @@ timestamp: 2026-11-09T23:59:00Z
 - Git-Repo (Branch `main`) mit Remote `origin` = https://github.com/JoSchwause/Ausschreibungssoftware (öffentlich, angelegt 2026-11-09).
 - Enthält bisher kein Code, sondern `okf/` (Wissensbasis, ohne `okf/research/`), Agent-Konfiguration (`AGENTS.md`, `.claude/skills/`, `docs/agents/`), Architektur-Entscheidungen (`docs/adr/`), Domänen-Glossar (`GLOSSARY.md`), lokale Entscheidungen und Plan (`.scratch/`) und `.gitignore`.
 - `.gitignore` schließt `docs/research/nova-ava/` und `okf/research/` aus. Beides nie committen, weil das Repo öffentlich ist.
-- **Repo-Änderung (noch nicht committet, nicht gepusht):** `okf/research/` ist aus dem Git-Index genommen (`git rm --cached`), die lokalen Dateien bleiben. Die Git-Historie enthält den Inhalt weiterhin, bis sie ausdrücklich umgeschrieben wird (G-44, Q2). Auf GitHub ist er bis zum Push noch sichtbar.
+- **Repo-Änderung (gepusht auf Branch `grilling-rueckschreibung`, nicht auf `main`):** `okf/research/` ist aus dem Git-Index genommen (`git rm --cached`), die lokalen Dateien bleiben. Die Git-Historie enthält den Inhalt weiterhin, bis sie ausdrücklich umgeschrieben wird (G-44, Q2). Auf GitHub bleibt er in der Historie von `main` öffentlich sichtbar (Nutzerentscheidung 2026-11-09: Repo bleibt öffentlich, pushen).
+- **Cloud-Sessions:** Lokale, git-ignorierte `.env` im Projektwurzelordner enthält die Umgebungsvariablen für die Claude-Code-Cloud-Umgebung (ohne Geheimnisse; Inhalt ins Umgebungsformular kopieren). `GAEB_XSD_URL` ist leer, bis Strang G die XSD-Quelle festlegt. Umsetzende Cloud-Agenten lesen nur Tickets (C3).
 - Reverse-Engineering-Tooling installiert und verifiziert: Node `v24.22.2` (via `nvm`), Google Chrome (`.deb`) mit dediziertem CDP-Profil (`127.0.0.1:9222`) und `rea-agents@6.8.0` (siehe [`okf/tooling/rea.md`](/okf/tooling/rea.md)).
 - NOVA-AVA-Recherche mit REA abgeschlossen (Rohdaten unter `docs/research/nova-ava/`, git-ignoriert).
 
