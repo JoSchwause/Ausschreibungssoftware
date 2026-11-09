@@ -1,0 +1,298 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Styling des Grids (Ticket 21). Nur Tokens aus @tethys/ui-basis/tokens.css, keine festen Farben (U4). */
+
+.tx-grid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font-family: var(--tx-font-sans);
+  font-size: var(--tx-font-size-md);
+  line-height: var(--tx-line-height);
+}
+
+.tx-grid__scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.tx-grid__scroll:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: -2px;
+}
+
+/* ---------- Kopf ---------- */
+
+.tx-grid__kopf {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--tx-color-surface-sunken);
+  border-bottom: 1px solid var(--tx-color-border-strong);
+}
+
+.tx-grid__kopfzeile,
+.tx-grid__zeile {
+  display: grid;
+}
+
+.tx-grid__kopfzelle {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--tx-space-3);
+  overflow: hidden;
+  border-right: 1px solid var(--tx-color-border);
+  font-weight: var(--tx-weight-bold);
+  font-size: var(--tx-font-size-sm);
+  color: var(--tx-color-text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tx-grid__kopfzelle--menge,
+.tx-grid__kopfzelle--einheitspreis,
+.tx-grid__kopfzelle--gesamtpreis {
+  justify-content: flex-end;
+}
+
+/* ---------- Körper ---------- */
+
+.tx-grid__koerper {
+  position: relative;
+}
+
+.tx-grid__zeile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-bottom: 1px solid var(--tx-color-border);
+  background: var(--tx-color-surface);
+}
+
+.tx-grid__zeile:hover {
+  background: var(--tx-color-surface-hover);
+}
+
+.tx-grid__zeile--titel,
+.tx-grid__zeile--los {
+  background: var(--tx-color-surface-raised);
+  font-weight: var(--tx-weight-bold);
+}
+
+.tx-grid__zeile--hinweis {
+  color: var(--tx-color-text-muted);
+  font-style: italic;
+}
+
+.tx-grid__zeile--ausgewaehlt,
+.tx-grid__zeile--ausgewaehlt:hover {
+  background: var(--tx-color-accent-subtle);
+}
+
+.tx-grid__zelle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+  min-width: 0;
+  padding: 0 var(--tx-space-3);
+  overflow: hidden;
+  border-right: 1px solid var(--tx-color-border);
+  white-space: nowrap;
+}
+
+.tx-grid__zelle:focus {
+  outline: var(--tx-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Aktive Zelle auch ohne Fokus im Grid erkennbar (z. B. nach Klick in ein anderes Feld). */
+.tx-grid__zelle--aktiv:not(:focus) {
+  box-shadow: inset 0 0 0 1px var(--tx-color-border-strong);
+}
+
+.tx-grid__zelle--zahl {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__zelle--ordnungszahl {
+  font-variant-numeric: tabular-nums;
+  color: var(--tx-color-text-muted);
+}
+
+.tx-grid__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-grid__zelle--zahl .tx-grid__text {
+  text-overflow: clip;
+}
+
+.tx-grid__zeile--ohne-summe .tx-grid__zelle--gesamtpreis .tx-grid__text {
+  color: var(--tx-color-text-muted);
+  font-style: italic;
+}
+
+/* ---------- Baum ---------- */
+
+.tx-grid__baum {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.tx-grid__knopf {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--tx-radius-sm);
+  background: transparent;
+  color: var(--tx-color-text-muted);
+  cursor: pointer;
+}
+
+.tx-grid__knopf:hover {
+  background: var(--tx-color-surface-hover);
+  color: var(--tx-color-text);
+}
+
+.tx-grid__platz {
+  display: inline-block;
+  width: 18px;
+}
+
+.tx-grid__pfeil--zu {
+  transform: rotate(-90deg);
+}
+
+/* ---------- Prüfhinweise und abgelehnte Eingaben (nie sperrend, U5) ---------- */
+
+.tx-grid__zelle--warnung {
+  box-shadow: inset 0 -2px 0 var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+}
+
+.tx-grid__zelle--fehler,
+.tx-grid__zelle--ungueltig {
+  box-shadow: inset 0 -2px 0 var(--tx-color-danger);
+  background: var(--tx-color-danger-subtle);
+}
+
+.tx-grid__zelle--ungueltig .tx-grid__text {
+  color: var(--tx-color-danger);
+  text-decoration: underline wavy var(--tx-color-danger);
+  text-underline-offset: 3px;
+}
+
+.tx-grid__marke {
+  flex: 0 0 auto;
+  order: -1;
+  color: var(--tx-color-warning);
+}
+
+.tx-grid__zelle--fehler .tx-grid__marke,
+.tx-grid__zelle--ungueltig .tx-grid__marke {
+  color: var(--tx-color-danger);
+}
+
+.tx-grid__zelle--zahl .tx-grid__marke {
+  order: -1;
+  margin-right: auto;
+}
+
+/* ---------- Eingabefeld ---------- */
+
+.tx-grid__editor {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: calc(var(--tx-grid-zeilenhoehe) - 4px);
+  margin: 0 calc(var(--tx-space-2) * -1);
+  padding: 0 var(--tx-space-2);
+  border: 2px solid var(--tx-color-accent);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font: inherit;
+  font-weight: var(--tx-weight-normal);
+  font-style: normal;
+}
+
+.tx-grid__zelle--zahl .tx-grid__editor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__editor:focus {
+  outline: none;
+}
+
+.tx-grid__editor--hinweis {
+  border-color: var(--tx-color-warning);
+}
+
+/* ---------- Fuß ---------- */
+
+.tx-grid__status {
+  min-height: var(--tx-control-height-sm);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-top: 1px solid var(--tx-color-border);
+  background: var(--tx-color-surface-raised);
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.tx-grid__summen {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tx-space-3) var(--tx-space-6);
+  padding: var(--tx-space-3) var(--tx-space-4);
+  border-top: 1px solid var(--tx-color-border-strong);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__summe {
+  display: flex;
+  gap: var(--tx-space-3);
+  align-items: baseline;
+}
+
+.tx-grid__summe-name {
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.tx-grid__summe-wert {
+  font-weight: var(--tx-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__leer {
+  margin: 0;
+  padding: var(--tx-space-6);
+  color: var(--tx-color-text-muted);
+}
+
+.tx-grid__nur-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
