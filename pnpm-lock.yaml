@@ -64,6 +64,10 @@ importers:
   fixtures: {}
 
   packages/dezimal:
+    dependencies:
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
     devDependencies:
       fast-check:
         specifier: ^4.10.2

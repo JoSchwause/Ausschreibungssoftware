@@ -12,12 +12,15 @@ describe('Leistung (Messung, kein Gate)', () => {
     const eps: Einheitspreis[] = [];
     for (let i = 0; i < 1000; i++) {
       mengen.push(`${String(1 + ((i * 37) % 900))}.${String((i * 7919) % 1000).padStart(3, '0')}` as Menge);
-      eps.push(`${String(1 + ((i * 53) % 500))}.${String((i * 104729) % 1000).padStart(3, '0')}` as Einheitspreis);
+      eps.push(
+        `${String(1 + ((i * 53) % 500))}.${String((i * 104729) % 1000).padStart(3, '0')}` as Einheitspreis,
+      );
     }
-    gesamtpreis(mengen[0]!, eps[0]!); // Warmlauf
+    gesamtpreis(mengen[0] as Menge, eps[0] as Einheitspreis); // Warmlauf
     const start = performance.now();
     let letzter = '';
-    for (let i = 0; i < 100_000; i++) letzter = gesamtpreis(mengen[i % 1000]!, eps[(i * 7) % 1000]!);
+    for (let i = 0; i < 100_000; i++)
+      letzter = gesamtpreis(mengen[i % 1000] as Menge, eps[(i * 7) % 1000] as Einheitspreis);
     const ms = performance.now() - start;
     console.log(`dezimal: 100.000 gesamtpreis in ${ms.toFixed(1)} ms`);
     expect(letzter).toMatch(/^\d+\.\d{2}$/);

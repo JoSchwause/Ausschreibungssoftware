@@ -3,7 +3,8 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Betrag, Einheitspreis, Menge, Prozent } from '@tethys/vertrag';
+import type { Betrag, Einheitspreis, Menge, Prozent, Zahlenart } from '@tethys/vertrag';
+import type { Zahl } from './index';
 import {
   NULL_BETRAG,
   NULL_EINHEITSPREIS,
@@ -44,6 +45,12 @@ const m = (s: string): Menge => ok(alsMenge(s));
 const ep = (s: string): Einheitspreis => ok(alsEinheitspreis(s));
 const b = (s: string): Betrag => ok(alsBetrag(s));
 const p = (s: string): Prozent => ok(alsProzent(s));
+// Die Fixtures schreiben Werte mit weniger Nachkommastellen als die Skala; so liest sie auch `gaeb`.
+const lies = <Z extends Zahlenart>(art: Z, s: string): Zahl<Z> => {
+  const e = leseAustausch(art, s);
+  if (!e.ok) throw new Error(e.fehler.meldung);
+  return e.wert;
+};
 const d = (s: string) => ok(alsDezimal(s));
 
 describe('Golden: Handrechnung', () => {
@@ -76,7 +83,9 @@ describe('Golden: Handrechnung', () => {
   });
 
   it('Handbeispiele aus den Fixtures', () => {
-    const f = JSON.parse(readFileSync(new URL('../../../fixtures/handbeispiele.json', import.meta.url), 'utf8')) as {
+    const f = JSON.parse(
+      readFileSync(new URL('../../../fixtures/handbeispiele.json', import.meta.url), 'utf8'),
+    ) as {
       gesamtpreise: { menge: string; einheitspreis: string; exakt: string; gp: string }[];
       summenketten: {
         netto: string;
@@ -87,17 +96,19 @@ describe('Golden: Handrechnung', () => {
     };
     expect(f.gesamtpreise.length).toBeGreaterThan(0);
     for (const z of f.gesamtpreise) {
-      expect(multipliziere(m(z.menge), ep(z.einheitspreis))).toBe(z.exakt);
-      expect(gesamtpreis(m(z.menge), ep(z.einheitspreis))).toBe(z.gp);
+      const menge = lies('menge', z.menge);
+      const einheitspreis = lies('einheitspreis', z.einheitspreis);
+      expect(multipliziere(menge, einheitspreis)).toBe(z.exakt);
+      expect(gesamtpreis(menge, einheitspreis)).toBe(z.gp);
     }
     expect(f.summenketten.length).toBeGreaterThan(0);
     for (const k of f.summenketten) {
-      const netto = b(k.netto);
-      const nachlass = k.nachlass ? prozentVon(netto, p(k.nachlass.wert)) : NULL_BETRAG;
+      const netto = lies('betrag', k.netto);
+      const nachlass = k.nachlass ? prozentVon(netto, lies('prozent', k.nachlass.wert)) : NULL_BETRAG;
       expect(nachlass).toBe(k.soll.nachlass);
       const nach = subtrahiere(netto, nachlass);
       expect(nach).toBe(k.soll.nettoNachNachlass);
-      const mwst = prozentVon(nach, p(k.mwstSatz));
+      const mwst = prozentVon(nach, lies('prozent', k.mwstSatz));
       expect(mwst).toBe(k.soll.mwst);
       expect(addiere(nach, mwst)).toBe(k.soll.brutto);
     }
@@ -221,15 +232,29 @@ describe('de-DE parsen und formatieren (nur Rand, N4)', () => {
     expect(parseBetragDe(',5')).toEqual({ ok: true, wert: '0.50' });
   });
 
-  it.each(['', '   ', 'abc', '1,2,3', '1.2,3.4', '1..000,00', '12.34', '1.00', '1,', '--1', '1e3', '1 000,00', '+1,00'])(
-    'lehnt %j ab',
-    (s) => {
-      expect(parseBetragDe(s).ok).toBe(false);
-    },
-  );
+  it.each([
+    '',
+    '   ',
+    'abc',
+    '1,2,3',
+    '1.2,3.4',
+    '1..000,00',
+    '12.34',
+    '1.00',
+    '1,',
+    '--1',
+    '1e3',
+    '1 000,00',
+    '+1,00',
+  ])('lehnt %j ab', (s) => {
+    expect(parseBetragDe(s).ok).toBe(false);
+  });
 
   it('lehnt mehr Nachkommastellen als die Skala ab, statt still zu runden', () => {
-    expect(parseBetragDe('1,234')).toMatchObject({ ok: false, fehler: { code: 'zu-viele-nachkommastellen' } });
+    expect(parseBetragDe('1,234')).toMatchObject({
+      ok: false,
+      fehler: { code: 'zu-viele-nachkommastellen' },
+    });
     expect(parseProzentDe('19,001')).toMatchObject({ ok: false });
     expect(parseBetragDe('1,230')).toMatchObject({ ok: false }); // auch mit Nullen: kein Raten
   });
@@ -291,7 +316,20 @@ describe('Toleranter Leser für Austauschformate (Punktnotation)', () => {
   });
 
   it('Unlesbares: Fehlerwert', () => {
-    for (const s of ['', ' ', 'abc', '1.2.3', '1,2,3', '1.000,00', '1,000.00', '1e3', '--1', '.', '-', '0x10']) {
+    for (const s of [
+      '',
+      ' ',
+      'abc',
+      '1.2.3',
+      '1,2,3',
+      '1.000,00',
+      '1,000.00',
+      '1e3',
+      '--1',
+      '.',
+      '-',
+      '0x10',
+    ]) {
       expect(leseAustausch('betrag', s).ok, s).toBe(false);
     }
     expect(leseAustausch('betrag', '')).toMatchObject({ ok: false, fehler: { code: 'leer' } });

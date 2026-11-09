@@ -111,7 +111,12 @@ describe('Eigenschaften der Rundung', () => {
 
 describe('Eigenschaften der Arithmetik', () => {
   it('a + b = b + a', () => {
-    fc.assert(fc.property(betragGen, betragGen, (x, y) => expect(addiere(x, y)).toBe(addiere(y, x))), runs);
+    fc.assert(
+      fc.property(betragGen, betragGen, (x, y) => {
+        expect(addiere(x, y)).toBe(addiere(y, x));
+      }),
+      runs,
+    );
   });
 
   it('(a + b) + c = a + (b + c) und 0 ist neutral', () => {
@@ -148,7 +153,7 @@ describe('Eigenschaften der Arithmetik', () => {
       fc.property(betragGen, betragGen, (x, y) => {
         const erwartet = ziffernwert(x) < ziffernwert(y) ? -1 : ziffernwert(x) > ziffernwert(y) ? 1 : 0;
         expect(vergleiche(x, y)).toBe(erwartet);
-        expect(vergleiche(y, x)).toBe(-erwartet);
+        expect(vergleiche(y, x)).toBe(erwartet === 0 ? 0 : -erwartet);
       }),
       runs,
     );
