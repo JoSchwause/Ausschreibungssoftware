@@ -137,6 +137,7 @@ const style = document.createElement('style');
 style.textContent = `
   body { margin: 0; background: var(--tx-color-surface); color: var(--tx-color-text); font-family: var(--tx-font-sans); }
   .seite { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; padding: var(--tx-space-5); gap: var(--tx-space-3); }
+  .seite > button { align-self: flex-start; }
   .seite__titel { margin: 0; font-size: var(--tx-font-size-lg); }
   .seite__grid { flex: 1 1 auto; min-height: 0; }
 `;
