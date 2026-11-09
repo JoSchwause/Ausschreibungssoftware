@@ -24,6 +24,7 @@ import {
   positionAnlegen,
 } from './knoten-befehle';
 import { leistungsverzeichnisAnlegen } from './lv-anlegen';
+import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
   einheitspreisAendern,
   mengeAendern,
@@ -41,7 +42,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 07: Summen, Nachlass, MwSt). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   GliederungAnlegen: gliederungAnlegen,
@@ -54,6 +55,9 @@ export const BEFEHLS_HANDLER = {
   NachlassSetzen: nachlassSetzen,
   NachlassEntfernen: nachlassEntfernen,
   MwstSatzSetzen: mwstSatzSetzen,
+  OzMaskeSetzen: ozMaskeSetzen,
+  OrdnungszahlSetzen: ordnungszahlSetzen,
+  Umnummerieren: umnummerieren,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -67,9 +71,6 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   EinheitAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   PositionsartAendern: 'K5 (Ticket 08, Positionsarten)',
-  OzMaskeSetzen: 'Ticket 06 (OZ-Maske)',
-  OrdnungszahlSetzen: 'Ticket 06 (OZ-Vergabe)',
-  Umnummerieren: 'Ticket 06 (Umnummerieren)',
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

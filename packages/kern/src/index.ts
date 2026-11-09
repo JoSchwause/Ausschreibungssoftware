@@ -9,6 +9,17 @@ export {
   changeSetUmkehren,
   lvChangeSetAnwenden,
 } from './changeset';
+export {
+  GLIEDERUNG_SCHRITT,
+  OZ_ANNAHMEN,
+  OZ_INDEX_LAENGE,
+  OZ_MAX_LAENGE,
+  POSITION_SCHRITT,
+  doppelteOrdnungszahlen,
+  maskeFehler as ozMaskeFehler,
+  ozFehler,
+} from './ozregeln';
+export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
 export { gesamtsummen, positionsSumme, summenBerechnen } from './summen';
