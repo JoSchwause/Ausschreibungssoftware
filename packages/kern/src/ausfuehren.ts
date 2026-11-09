@@ -24,6 +24,13 @@ import {
   positionAnlegen,
 } from './knoten-befehle';
 import { leistungsverzeichnisAnlegen } from './lv-anlegen';
+import {
+  einheitspreisAendern,
+  mengeAendern,
+  mwstSatzSetzen,
+  nachlassEntfernen,
+  nachlassSetzen,
+} from './summen-befehle';
 
 type Art = LvBefehl['art'];
 type BefehlVon<A extends Art> = Extract<LvBefehl, { art: A }>;
@@ -34,7 +41,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 07: Summen, Nachlass, MwSt). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   GliederungAnlegen: gliederungAnlegen,
@@ -42,6 +49,11 @@ export const BEFEHLS_HANDLER = {
   HinweistextAnlegen: hinweistextAnlegen,
   KnotenLoeschen: knotenLoeschen,
   KnotenVerschieben: knotenVerschieben,
+  MengeAendern: mengeAendern,
+  EinheitspreisAendern: einheitspreisAendern,
+  NachlassSetzen: nachlassSetzen,
+  NachlassEntfernen: nachlassEntfernen,
+  MwstSatzSetzen: mwstSatzSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -52,17 +64,12 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   KurztextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   LangtextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   HinweistextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
-  MengeAendern: 'Ticket 07 (Summen, Menge und Einheitspreis ändern den Gesamtpreis)',
   EinheitAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
-  EinheitspreisAendern: 'Ticket 07 (Summen, Menge und Einheitspreis ändern den Gesamtpreis)',
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   PositionsartAendern: 'K5 (Ticket 08, Positionsarten)',
   OzMaskeSetzen: 'Ticket 06 (OZ-Maske)',
   OrdnungszahlSetzen: 'Ticket 06 (OZ-Vergabe)',
   Umnummerieren: 'Ticket 06 (Umnummerieren)',
-  NachlassSetzen: 'Ticket 07 (Nachlass)',
-  NachlassEntfernen: 'Ticket 07 (Nachlass)',
-  MwstSatzSetzen: 'Ticket 07 (MwSt)',
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

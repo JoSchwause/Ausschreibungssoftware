@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Einstiegspunkt von @tethys/kern. Ticket 05: LV-Baum als Befehle. Weitere Fachtickets (06 OZ, 07 Summen, …) ergänzen
-// ihre Handler in `ausfuehren.ts`.
+// Einstiegspunkt von @tethys/kern. Ticket 05: LV-Baum als Befehle; Ticket 07: Summen, Nachlass, MwSt. Weitere
+// Fachtickets (06 OZ, …) ergänzen ihre Handler in `ausfuehren.ts`.
 
 export { BEFEHLS_HANDLER, ZUSTAENDIGES_TICKET, lvBefehlAusfuehren } from './ausfuehren';
 export {
@@ -11,3 +11,12 @@ export {
 } from './changeset';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
+export { gesamtsummen, positionsSumme, summenBerechnen } from './summen';
+export {
+  SUMMEN_ANNAHMEN,
+  mwstSatzFehler,
+  nachlassBetrag,
+  nachlassFehler,
+  nettoNachNachlass,
+  positionGehtInSumme,
+} from './summenregeln';

@@ -103,7 +103,7 @@ const knotenVon = (z: LvZustand, i: string): Knoten => {
 // --- LeistungsverzeichnisAnlegen ----------------------------------------------------------------------------
 
 describe('LeistungsverzeichnisAnlegen', () => {
-  it('legt ein leeres LV an; ChangeSet mit Kopf, ohne Knoten, ohne Summenänderung', () => {
+  it('legt ein leeres LV an; ChangeSet mit Kopf, ohne Knoten, mit den (null) Gesamtsummen', () => {
     const cs = erwarteOk(
       lvBefehlAusfuehren(null, {
         art: 'LeistungsverzeichnisAnlegen',
@@ -117,7 +117,11 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(cs.kopf?.vorher).toBeNull();
     expect(cs.kopf?.nachher).toMatchObject({ id: LV_ID, projektId: PROJEKT_ID, name: 'Testverzeichnis' });
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual({
+      positionen: [],
+      gliederungen: [],
+      gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+    });
     const z = lvChangeSetAnwenden(null, cs);
     expect(z.leistungsverzeichnis.knoten).toEqual([]);
     expect(pruefeLvInvarianten(z.leistungsverzeichnis)).toEqual([]);
@@ -487,29 +491,16 @@ describe('KnotenLoeschen', () => {
     expect(fehlercode(wende(z, loesche('T3')), loesche('T3'))).toBe('knoten-unbekannt');
   });
 
-  it('SUMMEN: Einträge entfernter Knoten fallen weg, alle anderen bleiben unverändert (Ticket 07 füllt sie)', () => {
+  it('SUMMEN: Einträge entfernter Knoten fallen beim Anwenden weg, alle anderen bleiben unverändert', () => {
     const z = baum();
-    const betrag = (s: string) => s as never;
-    const mitSummen: LvZustand = {
-      ...z,
-      summen: {
-        positionen: [
-          { positionId: id.pos('P1'), gesamtpreis: betrag('1.00'), gehtInSummeEin: true },
-          { positionId: id.pos('P3'), gesamtpreis: betrag('3.00'), gehtInSummeEin: true },
-        ],
-        gliederungen: [
-          { gliederungId: id.titel('T1'), summe: betrag('1.00') },
-          { gliederungId: id.titel('T3'), summe: betrag('3.00') },
-        ],
-        gesamt: z.summen.gesamt,
-      },
-    };
-    const cs = erwarteOk(lvBefehlAusfuehren(mitSummen, loesche('T1')));
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-    const z2 = lvChangeSetAnwenden(mitSummen, cs);
+    const cs = erwarteOk(lvBefehlAusfuehren(z, loesche('T1')));
+    // Die Summen entfernter Knoten stehen nicht im ChangeSet (Vertrag), sie fallen mit dem Knoten weg.
+    expect(cs.summen.positionen).toEqual([]);
+    expect(cs.summen.gliederungen).toEqual([]);
+    const z2 = lvChangeSetAnwenden(z, cs);
     expect(z2.summen.positionen.map((p) => p.positionId)).toEqual(['P3']);
     expect(z2.summen.gliederungen.map((g) => g.gliederungId)).toEqual(['T3']);
-    expect(z2.summen.gesamt).toBe(mitSummen.summen.gesamt);
+    expect(z2.summen.gesamt).toBe(z.summen.gesamt);
   });
 });
 
@@ -612,9 +603,7 @@ describe('Befehle anderer Tickets', () => {
     { art: 'KurztextAendern', knotenId: id.pos('P1'), kurztext: 'x' },
     { art: 'LangtextAendern', positionId: id.pos('P1'), langtext: [] },
     { art: 'HinweistextAendern', knotenId: id.hinweis('H'), text: [] },
-    { art: 'MengeAendern', positionId: id.pos('P1'), menge: null },
     { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null },
-    { art: 'EinheitspreisAendern', positionId: id.pos('P1'), einheitspreis: null },
     { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
     {
       art: 'PositionsartAendern',
@@ -628,9 +617,6 @@ describe('Befehle anderer Tickets', () => {
     { art: 'OzMaskeSetzen', maske: inhalt().ozMaske },
     { art: 'OrdnungszahlSetzen', knotenId: id.titel('T1'), ordnungszahl: null, ozIndex: null },
     { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) },
-    { art: 'NachlassSetzen', nachlass: { art: 'prozent', wert: '3.00' as never } },
-    { art: 'NachlassEntfernen' },
-    { art: 'MwstSatzSetzen', mwstSatz: '7.00' as never },
   ];
 
   it.each(fremde.map((b) => [b.art, b] as const))(
@@ -646,14 +632,14 @@ describe('Befehle anderer Tickets', () => {
     },
   );
 
-  it('06 (OZ) und 07 (Summen) sind namentlich zugeordnet', () => {
+  it('06 (OZ) ist namentlich zugeordnet; die Befehle von Ticket 07 sind umgesetzt', () => {
     const meldung = (b: LvBefehl): string => {
       const e = lvBefehlAusfuehren(z, b);
       return e.ok ? '' : e.fehler.meldung;
     };
     expect(meldung({ art: 'OzMaskeSetzen', maske: inhalt().ozMaske })).toContain('Ticket 06');
-    expect(meldung({ art: 'NachlassEntfernen' })).toContain('Ticket 07');
-    expect(meldung({ art: 'MengeAendern', positionId: id.pos('P1'), menge: null })).toContain('Ticket 07');
+    expect(meldung({ art: 'NachlassEntfernen' })).toBe('');
+    expect(meldung({ art: 'MengeAendern', positionId: id.pos('P1'), menge: null })).toBe('');
   });
 });
 
@@ -672,7 +658,7 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
       const cs = erwarteOk(lvBefehlAusfuehren(z, b));
       const danach = lvChangeSetAnwenden(z, cs);
       expect(danach).not.toEqual(z);
-      expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs))).toEqual(z);
+      expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
     }
   });
 
@@ -680,12 +666,12 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
     const z = basis();
     const cs = erwarteOk(lvBefehlAusfuehren(z, position('PX', nach('P1'))));
     const kopie = structuredClone(cs);
-    const u = changeSetUmkehren(cs);
+    const u = changeSetUmkehren(cs, z);
     expect(cs).toEqual(kopie);
     expect(u.knoten.entfernt).toEqual(cs.knoten.hinzugefuegt);
     expect(u.knoten.hinzugefuegt).toEqual(cs.knoten.entfernt);
     expect(u.knoten.geaendert[0]?.vorher).toEqual(cs.knoten.geaendert[0]?.nachher);
-    expect(changeSetUmkehren(u)).toEqual(cs);
+    expect(changeSetUmkehren(u, lvChangeSetAnwenden(z, cs))).toEqual(cs);
   });
 
   it('ohne Zustand und ohne Kopf lässt sich ein ChangeSet nicht anwenden (Programmfehler)', () => {
