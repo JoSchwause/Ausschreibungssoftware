@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4 # Version aus "packageManager" in package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Lint = ESLint (inkl. Regel N1), Prettier, Paketgrenzen (A3), Lizenzprüfung (C5), Clean-Room (C2)
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - run: pnpm --filter @tethys/web exec playwright install --with-deps chromium
+      - run: pnpm e2e
+
+      - name: REUSE-Lint
+        run: |
+          pip install reuse
+          reuse lint
+
+      - name: DCO (Pull Request)
+        if: github.event_name == 'pull_request'
+        run: node tools/check-dco.mjs "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"

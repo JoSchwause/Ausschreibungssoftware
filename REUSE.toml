@@ -1,0 +1,22 @@
+version = 1
+SPDX-PackageName = "Tethys AVA"
+
+# Ein Eintrag für das ganze Repo (ADR 0008): jede Datei ist AGPL-3.0-or-later, auch ohne Dateikopf.
+# Spätere Einträge schlagen frühere; deshalb stehen Ausnahmen unter diesem Block.
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2026 Tethys AVA contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# ---------------------------------------------------------------------------------------------
+# Ausnahmen je Pfad: HIER eintragen (z. B. Dateien Dritter unter fixtures/extern/, Regel C4).
+# Jeder Eintrag braucht `precedence = "override"`, den Urheber und die Lizenz, und die Lizenz
+# muss mit `reuse download <ID>` unter LICENSES/ liegen und AGPL-3.0-or-later-kompatibel sein.
+# Beispiel:
+#
+# [[annotations]]
+# path = "fixtures/extern/**"
+# precedence = "override"
+# SPDX-FileCopyrightText = "Urheber laut Herkunftsvermerk"
+# SPDX-License-Identifier = "CC-BY-4.0"
+# ---------------------------------------------------------------------------------------------
