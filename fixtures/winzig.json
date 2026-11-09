@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "leistungsverzeichnis",
+  "id": "019b76da-a800-727e-984b-1b9791bc2486",
+  "name": "Winzig: Handrechnung (erfunden)",
+  "ozMaske": "NN.NN.NN.NN.NN.NNNN[I]: je Titelebene zwei Ziffern, Position vier Ziffern, optionaler Index-Buchstabe",
+  "mwstSatz": "19.00",
+  "nachlass": null,
+  "knoten": [
+    {"id":"019b76da-a801-72f5-8596-20c74f02d75c","parentId":"019b76da-a800-727e-984b-1b9791bc2486","art":"titel","ordnungszahl":"01","kurztext":"Kleine Musterarbeiten"},
+    {"id":"019b76da-a802-7bff-9d9e-7e682fb1fa60","parentId":"019b76da-a801-72f5-8596-20c74f02d75c","art":"position","positionsart":"normal","ordnungszahl":"01.0010","kurztext":"Pflaster verlegen","langtext":"Pflasterfläche im Hof herstellen. Erfundener Text für Testzwecke.","menge":"1.235","einheit":"m²","einheitspreis":"10.000"},
+    {"id":"019b76da-a803-7621-97fc-e3fb328735e7","parentId":"019b76da-a801-72f5-8596-20c74f02d75c","art":"position","positionsart":"normal","ordnungszahl":"01.0020","kurztext":"Randstein setzen","langtext":"Randeinfassung entlang des Hofs setzen. Erfundener Text für Testzwecke.","menge":"3.333","einheit":"m","einheitspreis":"4.560"},
+    {"id":"019b76da-a804-7766-aab7-27531c96e5e2","parentId":"019b76da-a801-72f5-8596-20c74f02d75c","art":"position","positionsart":"normal","ordnungszahl":"01.0030","kurztext":"Fläche abdichten","langtext":"Pauschale Abdichtung einer Teilfläche. Erfundener Text für Testzwecke.","menge":"5.000","einheit":"m²","einheitspreis":"507.490"}
+  ],
+  "sollwerte": {
+    "positionen": {
+      "019b76da-a802-7bff-9d9e-7e682fb1fa60": {"gp":"12.35","inSumme":true},
+      "019b76da-a803-7621-97fc-e3fb328735e7": {"gp":"15.20","inSumme":true},
+      "019b76da-a804-7766-aab7-27531c96e5e2": {"gp":"2537.45","inSumme":true}
+    },
+    "titel": {
+      "019b76da-a801-72f5-8596-20c74f02d75c": {"summe":"2565.00"}
+    },
+    "summen": {"netto":"2565.00","nachlass":"0.00","nettoNachNachlass":"2565.00","mwst":"487.35","brutto":"3052.35"},
+    "nichtAngeboten": []
+  }
+}

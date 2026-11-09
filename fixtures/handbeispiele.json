@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "handbeispiele",
+  "regel": "GP = round_half_up(Menge x EP, 2); MwSt auf Netto nach Nachlass, round_half_up auf 2 (N2).",
+  "gesamtpreise": [
+    {"menge":"1.235","einheitspreis":"10.00","exakt":"12.350000","gp":"12.35"},
+    {"menge":"3.333","einheitspreis":"4.56","exakt":"15.198480","gp":"15.20"}
+  ],
+  "summenketten": [
+    {
+      "netto": "27.55",
+      "nachlass": null,
+      "mwstSatz": "19.00",
+      "soll": {"netto":"27.55","nachlass":"0.00","nettoNachNachlass":"27.55","mwst":"5.23","brutto":"32.78"},
+      "exaktMwst": "5.2345"
+    },
+    {
+      "netto": "402.73",
+      "nachlass": {"art":"prozent","wert":"3.00"},
+      "mwstSatz": "19.00",
+      "soll": {"netto":"402.73","nachlass":"12.08","nettoNachNachlass":"390.65","mwst":"74.22","brutto":"464.87"},
+      "exaktNachlass": "12.0819",
+      "exaktMwst": "74.2235"
+    }
+  ]
+}
