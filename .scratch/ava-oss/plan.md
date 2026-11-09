@@ -104,8 +104,8 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 U hängt nur über `vertrag` an K. Deshalb baut U2 gegen Fixtures, bevor K fertig ist.
 
-**Welle-1-Tor:** Die Tickets für Welle 1–2 müssen geschnitten sein (siehe Stand unten). G-06 ist
-beantwortet. Der Prototyp für das Nutzerinterview (G-02) ist kein Tor; er läuft getrennt
+**Welle-1-Tor:** `vertrag` (Ticket 02) ist gemergt und vom Menschen geprüft. Die Tickets für Welle 0 und 1
+sind geschnitten, G-06 ist beantwortet. Der Prototyp für das Nutzerinterview (G-02) ist kein Tor; er läuft getrennt
 (Ticket `.scratch/ava-oss/issues/18-prototyp-interview.md`, siehe `spec.md`, Abschnitt 8).
 
 ## 4. Verifikation
@@ -130,7 +130,7 @@ Stand 2026-11-09:
    Aggregate). ADR 0006 und 0007 haben Statusvermerke. Begriffe im `GLOSSARY.md`.
 3. ✅ Plan angepasst: „braucht G-xx“ entfernt, Entscheidungen eingetragen.
 4. ✅ `docs/regeln.md` aktualisiert. Entschiedene Regeln sind markiert.
-5. ⏳ **Offen:** Tickets für Welle 1–2 nach `.scratch/ava-oss/issues/` schneiden (03–17 wiederverwenden,
-   jedes Ticket nennt Paket, `Blocked by` und Regeln).
+5. ✅ Tickets für **Welle 0 und 1** geschnitten (`.scratch/ava-oss/issues/`, Übersicht in `README.md`;
+   03–10 wiederverwendet, 18–23 neu). ⏳ **Offen:** Tickets für Welle 2, sobald `vertrag` stabil ist.
 6. ✅ G-54 erledigt (`.scratch/ava-mvp/spec.md` geschrieben, ADRs geprüft) und G-06 beantwortet
    (Lücken schließen). OKF aktualisiert (siehe `okf/index.md`).

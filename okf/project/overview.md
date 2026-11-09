@@ -31,7 +31,7 @@ timestamp: 2026-11-10T00:30:00Z
 ## Offen
 - G-27 (Tiefe der Rechnungsprüfung) ist vertagt bis vor Welle 5. Erledigt am 2026-11-09: G-06 (Lücken schließen), G-54 (`.scratch/ava-mvp/spec.md`, ADRs geprüft), G-55 (Fremde Testdateien, Regel C4 erweitert), G-56 (Projektdatei als JSON).
 - Nutzerinterview: erst nach einem Prototyp (G-02, Nachtrag). Ticket: `.scratch/ava-oss/issues/18-prototyp-interview.md` (`ready-for-agent`, vier Fragen, klickbare UI mit Varianten, Wegwerfbranch `proto/interview`).
-- Tickets für Welle 1–2 nach `.scratch/ava-oss/issues/` schneiden.
+- Tickets für Welle 0 und 1 sind geschnitten (`.scratch/ava-oss/issues/README.md`, Nr. 02–07, 10, 19–23, dazu Prototyp 18). Welle 2 folgt, sobald `vertrag` stabil ist.
 - Rechtliche Prüfung der NOVA-AVA-Recherche (G-42). Bis dahin bleibt `okf/research/` aus dem Repo.
 - Verrechnung mehrerer Nachlässe im Preisspiegel (Annahme, G-26) und die zweite Bedeutung von „VOB 80“ (vor A1).
 - Interview mit dem Architekten-Freund steht aus (Leitfaden: `okf/research/synthesis.md`, Abschnitt 8); siehe G-02.

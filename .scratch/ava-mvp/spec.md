@@ -129,4 +129,4 @@ EP mit 3 gespeichert fest. Das Glossar ist beim Schreiben von F2 anzupassen (Reg
 | „VOB 80“, zweite Bedeutung | vor A1 klären | A1 |
 | Rechtliche Prüfung der NOVA-Recherche (G-42) | `okf/research/` bleibt lokal | Veröffentlichung |
 | Prototyp bauen (Ticket 18), danach Interview | `.scratch/ava-oss/issues/18-prototyp-interview.md` | Interview |
-| Tickets für Welle 1–2 schneiden | `plan.md` Abschnitt 5, Schritt 5 | Welle 1 |
+| Tickets für Welle 2 schneiden (Welle 0/1 liegen vor) | `.scratch/ava-oss/issues/README.md` | Welle 2 |
