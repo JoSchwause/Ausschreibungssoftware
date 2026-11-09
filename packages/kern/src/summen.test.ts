@@ -7,7 +7,6 @@ import type {
   Befehlsfehlercode,
   Betrag,
   Einheitspreis,
-  Gesamtsummen,
   Knoten,
   LvBefehl,
   LvZustand,
@@ -73,8 +72,7 @@ function fehlercode(z: LvZustand, b: LvBefehl): Befehlsfehlercode {
   return e.fehler.code;
 }
 
-const gp = (z: LvZustand, positionId: string) =>
-  z.summen.positionen.find((p) => p.positionId === positionId);
+const gp = (z: LvZustand, positionId: string) => z.summen.positionen.find((p) => p.positionId === positionId);
 const titelSumme = (z: LvZustand, titelId: string): string | undefined =>
   z.summen.gliederungen.find((g) => g.gliederungId === titelId)?.summe;
 
@@ -121,7 +119,8 @@ describe('Goldene Zahlen', () => {
       expect(z.summen.gesamt).toEqual(kette.soll);
     }
     for (const g of hb.gesamtpreise) {
-      const ep = g.einheitspreis.length === 5 ? `${g.einheitspreis}0` : g.einheitspreis;
+      const stellen = g.einheitspreis.split('.')[1]?.length ?? 0;
+      const ep = g.einheitspreis + '0'.repeat(3 - stellen); // die Fixture schreibt „10.00“, der EP hat 3 Stellen
       const z = lvMit([posKnoten('P1', LV_ID, 0, g.menge, ep)]);
       expect(gp(z, 'P1')?.gesamtpreis).toBe(g.gp);
     }
@@ -150,7 +149,9 @@ describe('Goldene Zahlen', () => {
     expect(gp(z, 'P2')?.gesamtpreis).toBe('0.03');
     expect(titelSumme(z, 'T1')).toBe('50.00'); // −0,03 + 0,03 + 50,00
     // Reine Abzugssumme: negativer Netto, Nachlass 10 % von −0,13 = −0,013 → −0,01; netto danach −0,12.
-    const abzug = lvMit([posKnoten('P1', LV_ID, 0, '-1.000', '0.125')], { nachlass: prozentNachlass('10.00') });
+    const abzug = lvMit([posKnoten('P1', LV_ID, 0, '-1.000', '0.125')], {
+      nachlass: prozentNachlass('10.00'),
+    });
     expect(abzug.summen.gesamt.netto).toBe('-0.13'); // −0,125 → −0,13
     expect(abzug.summen.gesamt.nachlass).toBe('-0.01'); // −0,0130 → −0,01
     expect(abzug.summen.gesamt.nettoNachNachlass).toBe('-0.12');
@@ -221,7 +222,8 @@ describe('Menge oder Einheitspreis nicht gesetzt', () => {
       posKnoten('C', 'T1', 2, null, null),
       posKnoten('D', 'T1', 3, '2.000', '5.000'),
     ]);
-    for (const i of ['A', 'B', 'C']) expect(gp(z, i)).toEqual({ positionId: i, gesamtpreis: null, gehtInSummeEin: false });
+    for (const i of ['A', 'B', 'C'])
+      expect(gp(z, i)).toEqual({ positionId: i, gesamtpreis: null, gehtInSummeEin: false });
     expect(gp(z, 'D')).toEqual({ positionId: 'D', gesamtpreis: '10.00', gehtInSummeEin: true });
     expect(titelSumme(z, 'T1')).toBe('10.00');
   });
@@ -303,7 +305,12 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
       expect(fehlercode(z, nachlassSetzen(n)), JSON.stringify(n)).toBe('ungueltige-eingabe');
     }
     // Ränder sind zulässig.
-    for (const n of [prozentNachlass('0.00'), prozentNachlass('100.00'), betragNachlass('0.00'), betragNachlass('100.00')]) {
+    for (const n of [
+      prozentNachlass('0.00'),
+      prozentNachlass('100.00'),
+      betragNachlass('0.00'),
+      betragNachlass('100.00'),
+    ]) {
       expect(lvBefehlAusfuehren(z, nachlassSetzen(n)).ok, JSON.stringify(n)).toBe(true);
     }
     expect(wende(z, nachlassSetzen(prozentNachlass('100.00'))).summen.gesamt).toMatchObject({
@@ -324,10 +331,7 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
 // --- Befehle: Fehlerwerte und Form ------------------------------------------------------------------------------
 
 describe('Fehlerwerte', () => {
-  const z = lvMit([
-    titelKnoten('T1', LV_ID, 0),
-    posKnoten('P1', 'T1', 0, '1.000', '10.000'),
-  ]);
+  const z = lvMit([titelKnoten('T1', LV_ID, 0), posKnoten('P1', 'T1', 0, '1.000', '10.000')]);
 
   it('unbekannte Position und Knoten, die keine Position sind', () => {
     expect(fehlercode(z, mengeAendern('gibt-es-nicht', '1.000'))).toBe('knoten-unbekannt');
@@ -340,8 +344,10 @@ describe('Fehlerwerte', () => {
     for (const m of ['1', '1.0', '1,000', '1.0000', '', 'abc', '-0.000']) {
       expect(fehlercode(z, mengeAendern('P1', m)), m).toBe('ungueltige-eingabe');
     }
-    for (const e of ['1.00', '10', '1.0000']) expect(fehlercode(z, epAendern('P1', e)), e).toBe('ungueltige-eingabe');
-    for (const s of ['19', '19.0', '', 'x']) expect(fehlercode(z, mwstSetzen(s)), s).toBe('ungueltige-eingabe');
+    for (const e of ['1.00', '10', '1.0000'])
+      expect(fehlercode(z, epAendern('P1', e)), e).toBe('ungueltige-eingabe');
+    for (const s of ['19', '19.0', '', 'x'])
+      expect(fehlercode(z, mwstSetzen(s)), s).toBe('ungueltige-eingabe');
     expect(fehlercode(z, nachlassSetzen(prozentNachlass('3.0')))).toBe('ungueltige-eingabe');
     expect(fehlercode(z, nachlassSetzen(betragNachlass('3')))).toBe('ungueltige-eingabe');
   });
@@ -411,7 +417,7 @@ describe('ChangeSet einer Mengenänderung', () => {
       nettoNachNachlass: '49.98',
       mwst: '9.50', // 9,4962
       brutto: '59.48',
-    } satisfies Gesamtsummen);
+    });
   });
 
   it('dieselbe Menge noch einmal: leeres ChangeSet, keine unveränderten Summen', () => {
@@ -457,7 +463,6 @@ describe('ChangeSet einer Mengenänderung', () => {
     ]);
     expect(cs.summen.gesamt?.netto).toBe('42.00' as Betrag);
   });
-
 });
 
 describe('Anwenden einer Mengenänderung', () => {
@@ -680,8 +685,8 @@ describe('Nachlass', () => {
     const z = basis();
     const cs = erwarteOk(lvBefehlAusfuehren(z, nachlassSetzen(prozentNachlass('3.00'))));
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
-    expect(cs.kopf?.vorher.nachlass).toBeNull();
-    expect(cs.kopf?.nachher.nachlass).toEqual(prozentNachlass('3.00'));
+    expect(cs.kopf?.vorher?.nachlass).toBeNull();
+    expect(cs.kopf?.nachher?.nachlass).toEqual(prozentNachlass('3.00'));
     expect(cs.summen.positionen).toEqual([]);
     expect(cs.summen.gliederungen).toEqual([]);
     expect(cs.summen.gesamt).toEqual({
@@ -731,13 +736,21 @@ describe('Nachlass', () => {
   it('prozentualer Nachlass bleibt prozentual, wenn sich das Netto ändert', () => {
     const z = wende(basis(), nachlassSetzen(prozentNachlass('10.00')));
     const z2 = wende(z, mengeAendern('P1', '2.000'));
-    expect(z2.summen.gesamt).toMatchObject({ netto: '805.46', nachlass: '80.55', nettoNachNachlass: '724.91' });
+    expect(z2.summen.gesamt).toMatchObject({
+      netto: '805.46',
+      nachlass: '80.55',
+      nettoNachNachlass: '724.91',
+    });
   });
 
   it('ein absoluter Nachlass bleibt bei Nettoänderung stehen; er wird nicht nachträglich verworfen', () => {
     const z = wende(basis(), nachlassSetzen(betragNachlass('400.00')));
     const z2 = wende(z, mengeAendern('P1', '0.500')); // Netto 201,37 < Nachlass: erlaubt (U5), Summen rechnen weiter
-    expect(z2.summen.gesamt).toMatchObject({ netto: '201.37', nachlass: '400.00', nettoNachNachlass: '-198.63' });
+    expect(z2.summen.gesamt).toMatchObject({
+      netto: '201.37',
+      nachlass: '400.00',
+      nettoNachNachlass: '-198.63',
+    });
     expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
   });
 });
@@ -747,8 +760,8 @@ describe('MwSt-Satz', () => {
     const z = lvMit([posKnoten('P1', LV_ID, 0, '1.000', '402.730')], { nachlass: prozentNachlass('3.00') });
     const cs = erwarteOk(lvBefehlAusfuehren(z, mwstSetzen('7.00')));
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
-    expect(cs.kopf?.vorher.mwstSatz).toBe('19.00');
-    expect(cs.kopf?.nachher.mwstSatz).toBe('7.00');
+    expect(cs.kopf?.vorher?.mwstSatz).toBe('19.00');
+    expect(cs.kopf?.nachher?.mwstSatz).toBe('7.00');
     expect(cs.summen.positionen).toEqual([]);
     expect(cs.summen.gliederungen).toEqual([]);
     expect(cs.summen.gesamt).toEqual({
@@ -789,9 +802,12 @@ describe('Umkehrung mit Summen', () => {
     projektId: PROJEKT_ID,
     inhalt: fixtureAlsInhalt(fx),
   });
-  const ersteIds = z0.leistungsverzeichnis.knoten.filter((k): k is Extract<Knoten, { art: 'position' }> => k.art === 'position');
-  const p1 = ersteIds[3]?.id ?? 'x';
-  const p2 = ersteIds[10]?.id ?? 'x';
+  const ersteIds = z0.leistungsverzeichnis.knoten.filter(
+    (k): k is Extract<Knoten, { art: 'position' }> => k.art === 'position',
+  );
+  const inSumme = ersteIds.filter((p) => p.positionsart === 'normal');
+  const p1 = inSumme[3]?.id ?? 'x';
+  const p2 = inSumme[10]?.id ?? 'x';
   const titel1 = z0.leistungsverzeichnis.knoten.find((k) => k.art === 'titel')?.id ?? 'x';
 
   const befehle: LvBefehl[] = [
@@ -804,14 +820,24 @@ describe('Umkehrung mit Summen', () => {
     mwstSetzen('7.00'),
     { art: 'KnotenLoeschen', knotenId: id.knoten(p1) },
     { art: 'KnotenLoeschen', knotenId: id.knoten(titel1) },
-    { art: 'KnotenVerschieben', knotenId: id.knoten(p2), ziel: { art: 'anfang', elternId: id.eltern(titel1) } },
+    {
+      art: 'KnotenVerschieben',
+      knotenId: id.knoten(p2),
+      ziel: { art: 'anfang', elternId: id.eltern(titel1) },
+    },
     {
       art: 'PositionAnlegen',
       id: id.pos('neu'),
       ort: { art: 'nach', knotenId: id.knoten(p1) },
       daten: positionsdaten('neu', { menge: '2.000' as Menge, einheitspreis: '3.333' as Einheitspreis }),
     },
-    { art: 'GliederungAnlegen', id: id.titel('neuT'), gliederungsart: 'titel', ort: { art: 'ende', elternId: id.eltern(titel1) }, kurztext: 'n' },
+    {
+      art: 'GliederungAnlegen',
+      id: id.titel('neuT'),
+      gliederungsart: 'titel',
+      ort: { art: 'ende', elternId: id.eltern(titel1) },
+      kurztext: 'n',
+    },
   ];
 
   it.each(befehle.map((b, i) => [`${String(i)} ${b.art}`, b] as const))(

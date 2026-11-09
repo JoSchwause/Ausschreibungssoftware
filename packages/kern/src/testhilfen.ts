@@ -262,9 +262,9 @@ export interface Sollwerte {
 }
 
 export function sollwerteLesen(name: 'winzig' | 'typisch' | 'gross'): Sollwerte {
-  const fx = JSON.parse(
-    readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8'),
-  ) as { sollwerte: Sollwerte };
+  const fx = JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as {
+    sollwerte: Sollwerte;
+  };
   return fx.sollwerte;
 }
 

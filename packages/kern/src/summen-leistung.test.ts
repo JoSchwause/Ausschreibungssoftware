@@ -30,7 +30,9 @@ describe('Leistungsbudget (Q4)', () => {
         }),
       ),
     );
-    const positionen = inh.knoten.filter((k) => k.art === 'position' && k.einheitspreis !== null && k.einheitspreis !== '0.000');
+    const positionen = inh.knoten.filter(
+      (k) => k.art === 'position' && k.einheitspreis !== null && k.einheitspreis !== '0.000',
+    );
     expect(positionen.length).toBeGreaterThan(4000);
     const ziel = positionen[2500];
     if (ziel?.art !== 'position') throw new Error('Fixture zu klein');

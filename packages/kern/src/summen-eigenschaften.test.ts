@@ -44,9 +44,36 @@ import { LV_ID, id, lvMit, positionsdaten } from './testhilfen';
 
 // --- Wertevorrat: klein, damit Gleichstände, Nullen und negative Werte oft vorkommen -----------------------------------
 
-const MENGEN: readonly (string | null)[] = ['0.000', '0.500', '1.000', '2.500', '-2.500', '3.333', '10.000', '1000.000', null];
-const EPS: readonly (string | null)[] = ['0.000', '0.010', '0.015', '-0.015', '4.560', '507.490', '1.235', null];
-const ARTEN: readonly Positionsart[] = ['normal', 'normal', 'normal', 'bedarf', 'wahl', 'zuschlag', 'stundenlohn'];
+const MENGEN: readonly (string | null)[] = [
+  '0.000',
+  '0.500',
+  '1.000',
+  '2.500',
+  '-2.500',
+  '3.333',
+  '10.000',
+  '1000.000',
+  null,
+];
+const EPS: readonly (string | null)[] = [
+  '0.000',
+  '0.010',
+  '0.015',
+  '-0.015',
+  '4.560',
+  '507.490',
+  '1.235',
+  null,
+];
+const ARTEN: readonly Positionsart[] = [
+  'normal',
+  'normal',
+  'normal',
+  'bedarf',
+  'wahl',
+  'zuschlag',
+  'stundenlohn',
+];
 const NACHLAESSE: readonly Nachlass[] = [
   { art: 'prozent', wert: '0.00' as Prozent },
   { art: 'prozent', wert: '3.00' as Prozent },
@@ -121,7 +148,10 @@ const aktionArb: fc.Arbitrary<Aktion> = fc.oneof(
       wert: fc.nat(EPS.length - 1),
     }),
   },
-  { weight: 2, arbitrary: fc.record({ art: fc.constant('nachlass' as const), wert: fc.nat(NACHLAESSE.length - 1) }) },
+  {
+    weight: 2,
+    arbitrary: fc.record({ art: fc.constant('nachlass' as const), wert: fc.nat(NACHLAESSE.length - 1) }),
+  },
   { weight: 1, arbitrary: fc.constant({ art: 'nachlassWeg' as const }) },
   { weight: 1, arbitrary: fc.record({ art: fc.constant('mwst' as const), wert: fc.nat(SAETZE.length - 1) }) },
 );
@@ -129,7 +159,8 @@ const aktionArb: fc.Arbitrary<Aktion> = fc.oneof(
 function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
   const knoten = z.leistungsverzeichnis.knoten;
   const alle = [LV_ID as string, ...knoten.map((k) => k.id as string)];
-  const knotenId = (n: number): string => (knoten.length === 0 ? 'gibt-es-nicht' : (knoten[n % knoten.length]?.id ?? 'x'));
+  const knotenId = (n: number): string =>
+    knoten.length === 0 ? 'gibt-es-nicht' : (knoten[n % knoten.length]?.id ?? 'x');
   const ort = (o: OrtWahl): Einfuegeort =>
     o.art === 'nach'
       ? { art: 'nach', knotenId: id.knoten(knotenId(o.ziel)) }
@@ -137,7 +168,13 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
   const neu = `n${String(nr)}`;
   switch (a.art) {
     case 'titel':
-      return { art: 'GliederungAnlegen', id: id.titel(neu), gliederungsart: 'titel', ort: ort(a.ort), kurztext: 'T' };
+      return {
+        art: 'GliederungAnlegen',
+        id: id.titel(neu),
+        gliederungsart: 'titel',
+        ort: ort(a.ort),
+        kurztext: 'T',
+      };
     case 'hinweis':
       return { art: 'HinweistextAnlegen', id: id.hinweis(neu), ort: ort(a.ort), text: [] };
     case 'position': {
@@ -159,7 +196,11 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
     case 'verschieben':
       return { art: 'KnotenVerschieben', knotenId: id.knoten(knotenId(a.knoten)), ziel: ort(a.ort) };
     case 'menge':
-      return { art: 'MengeAendern', positionId: id.pos(knotenId(a.knoten)), menge: (MENGEN[a.wert] ?? null) as Menge | null };
+      return {
+        art: 'MengeAendern',
+        positionId: id.pos(knotenId(a.knoten)),
+        menge: (MENGEN[a.wert] ?? null) as Menge | null,
+      };
     case 'ep':
       return {
         art: 'EinheitspreisAendern',
@@ -167,7 +208,10 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
         einheitspreis: (EPS[a.wert] ?? null) as Einheitspreis | null,
       };
     case 'nachlass':
-      return { art: 'NachlassSetzen', nachlass: NACHLAESSE[a.wert] ?? NACHLAESSE[0]! };
+      return {
+        art: 'NachlassSetzen',
+        nachlass: NACHLAESSE[a.wert] ?? { art: 'prozent', wert: '0.00' as Prozent },
+      };
     case 'nachlassWeg':
       return { art: 'NachlassEntfernen' };
     case 'mwst':
@@ -179,7 +223,8 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
 
 function orakel(z: LvZustand) {
   const kinder = new Map<string, Knoten[]>();
-  for (const k of z.leistungsverzeichnis.knoten) kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
+  for (const k of z.leistungsverzeichnis.knoten)
+    kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
   const gliederungen = new Map<string, Betrag>();
   const beitrag = (k: Knoten): Betrag => {
     if (k.art === 'hinweis') return NULL_BETRAG;
@@ -199,7 +244,10 @@ function orakel(z: LvZustand) {
   const nachlass = nl === null ? NULL_BETRAG : nl.art === 'prozent' ? prozentVon(netto, nl.wert) : nl.wert;
   const nettoNachNachlass = subtrahiere(netto, nachlass);
   const mwst = prozentVon(nettoNachNachlass, z.leistungsverzeichnis.mwstSatz);
-  return { gliederungen, gesamt: { netto, nachlass, nettoNachNachlass, mwst, brutto: addiere(nettoNachNachlass, mwst) } };
+  return {
+    gliederungen,
+    gesamt: { netto, nachlass, nettoNachNachlass, mwst, brutto: addiere(nettoNachNachlass, mwst) },
+  };
 }
 
 const ERLAUBTE_FEHLER: readonly Befehlsfehlercode[] = [
@@ -234,22 +282,30 @@ function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string,
   const o = orakel(neu);
   expect(neu.summen.gesamt).toEqual(o.gesamt);
   expect(neu.summen.gliederungen.length).toBe(o.gliederungen.size);
-  for (const g of neu.summen.gliederungen) expect(g.summe, g.gliederungId).toBe(o.gliederungen.get(g.gliederungId));
+  for (const g of neu.summen.gliederungen)
+    expect(g.summe, g.gliederungId).toBe(o.gliederungen.get(g.gliederungId));
 
   // 3. Summe über alle eingehenden Positionen = LV-Summe
-  const eingehend = neu.summen.positionen.flatMap((p) => (p.gehtInSummeEin && p.gesamtpreis !== null ? [p.gesamtpreis] : []));
+  const eingehend = neu.summen.positionen.flatMap((p) =>
+    p.gehtInSummeEin && p.gesamtpreis !== null ? [p.gesamtpreis] : [],
+  );
   expect(summiereBetraege(eingehend)).toBe(neu.summen.gesamt.netto);
 
   // 4. ChangeSet minimal: genau die Einträge, die neu sind oder sich geändert haben
   const altP = new Map(z.summen.positionen.map((p) => [p.positionId as string, p]));
   const altG = new Map(z.summen.gliederungen.map((g) => [g.gliederungId as string, g]));
-  const erwartetP = neu.summen.positionen.filter((p) => JSON.stringify(altP.get(p.positionId)) !== JSON.stringify(p));
-  const erwartetG = neu.summen.gliederungen.filter((g) => JSON.stringify(altG.get(g.gliederungId)) !== JSON.stringify(g));
+  const erwartetP = neu.summen.positionen.filter(
+    (p) => JSON.stringify(altP.get(p.positionId)) !== JSON.stringify(p),
+  );
+  const erwartetG = neu.summen.gliederungen.filter(
+    (g) => JSON.stringify(altG.get(g.gliederungId)) !== JSON.stringify(g),
+  );
   const nachId = <T extends object>(liste: readonly T[], schluessel: keyof T): T[] =>
     [...liste].sort((a, b) => (String(a[schluessel]) < String(b[schluessel]) ? -1 : 1));
   expect(nachId(cs.summen.positionen, 'positionId')).toEqual(nachId(erwartetP, 'positionId'));
   expect(nachId(cs.summen.gliederungen, 'gliederungId')).toEqual(nachId(erwartetG, 'gliederungId'));
-  if (JSON.stringify(z.summen.gesamt) === JSON.stringify(neu.summen.gesamt)) expect(cs.summen.gesamt).toBeNull();
+  if (JSON.stringify(z.summen.gesamt) === JSON.stringify(neu.summen.gesamt))
+    expect(cs.summen.gesamt).toBeNull();
   else expect(cs.summen.gesamt).toEqual(neu.summen.gesamt);
 
   // 5. Undo stellt Zustand und Summen exakt her; die Umkehrung der Umkehrung ist das ChangeSet
@@ -297,7 +353,8 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
           verlauf.push({ cs: e.wert, vorher: z });
           z = lvChangeSetAnwenden(z, e.wert);
         });
-        for (const { cs, vorher } of verlauf.reverse()) z = lvChangeSetAnwenden(z, changeSetUmkehren(cs, vorher));
+        for (const { cs, vorher } of verlauf.reverse())
+          z = lvChangeSetAnwenden(z, changeSetUmkehren(cs, vorher));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },
@@ -317,7 +374,13 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
           art: 'LeistungsverzeichnisAnlegen',
           id: lv.id,
           projektId: lv.projektId,
-          inhalt: { name: lv.name, ozMaske: lv.ozMaske, mwstSatz: lv.mwstSatz, nachlass: lv.nachlass, knoten: lv.knoten },
+          inhalt: {
+            name: lv.name,
+            ozMaske: lv.ozMaske,
+            mwstSatz: lv.mwstSatz,
+            nachlass: lv.nachlass,
+            knoten: lv.knoten,
+          },
         });
         expect(neu.ok).toBe(true);
         if (neu.ok) expect(lvChangeSetAnwenden(null, neu.wert)).toEqual(z);

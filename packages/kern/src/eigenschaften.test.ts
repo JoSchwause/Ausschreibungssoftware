@@ -24,6 +24,7 @@ import {
   lvChangeSetAnwenden,
   changeSetUmkehren,
   pruefeLvInvarianten,
+  summenBerechnen,
 } from './index';
 import { LV_ID, PROJEKT_ID, id, inhalt, neuesLv, positionsdaten } from './testhilfen';
 import type { Menge } from '@tethys/vertrag';
@@ -306,7 +307,22 @@ function pruefeChangeSet(alt: LvZustand, cs: LvChangeSet, neu: LvZustand): void 
       gesehen.add(k.id);
     }
   }
-  expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+  // Summen (Ticket 07): hier haben alle Positionen höchstens eine Menge, nie einen EP; Summen ändern sich nicht.
+  // Neue Positionen und Gliederungen stehen mit ihrem Eintrag im ChangeSet, sonst nichts (Details: `summen-*.test.ts`).
+  expect(cs.summen.gesamt).toBeNull();
+  expect(cs.summen.positionen.map((p) => p.positionId as string).sort()).toEqual(
+    cs.knoten.hinzugefuegt
+      .filter((k) => k.art === 'position')
+      .map((k) => k.id as string)
+      .sort(),
+  );
+  expect(cs.summen.gliederungen.map((g) => g.gliederungId as string).sort()).toEqual(
+    cs.knoten.hinzugefuegt
+      .filter((k) => k.art === 'titel' || k.art === 'los')
+      .map((k) => k.id as string)
+      .sort(),
+  );
+  expect(neu.summen).toEqual(summenBerechnen(neu.leistungsverzeichnis));
   expect(cs.kopf).toBeNull();
 }
 
@@ -341,8 +357,8 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           expect(normal(baumVon(neu))).toEqual(normal(erwarteterBaum(z, befehl)));
           pruefeChangeSet(z, e.wert, neu);
           // Undo: Umkehrung stellt exakt wieder her (auch die Reihenfolge im flachen Array), und umgekehrt noch einmal.
-          expect(lvChangeSetAnwenden(neu, changeSetUmkehren(e.wert))).toEqual(z);
-          expect(changeSetUmkehren(changeSetUmkehren(e.wert))).toEqual(e.wert);
+          expect(lvChangeSetAnwenden(neu, changeSetUmkehren(e.wert, z))).toEqual(z);
+          expect(changeSetUmkehren(changeSetUmkehren(e.wert, z), neu)).toEqual(e.wert);
           z = neu;
         });
       }),
@@ -362,14 +378,15 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
       fc.property(folgeArb, (folge) => {
         let z = neuesLv();
         const start = z;
-        const verlauf: LvChangeSet[] = [];
+        const verlauf: { cs: LvChangeSet; vorher: LvZustand }[] = [];
         folge.forEach((aktion, nr) => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
           if (!e.ok) return;
-          verlauf.push(e.wert);
+          verlauf.push({ cs: e.wert, vorher: z });
           z = lvChangeSetAnwenden(z, e.wert);
         });
-        for (const cs of verlauf.reverse()) z = lvChangeSetAnwenden(z, changeSetUmkehren(cs));
+        for (const { cs, vorher } of verlauf.reverse())
+          z = lvChangeSetAnwenden(z, changeSetUmkehren(cs, vorher));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },
