@@ -99,7 +99,7 @@ Chromium (Playwright, `PW_CHROMIUM_PATH`), headless, OPFS, mehrere Läufe auf de
 | **Laden `gross` (5.000 Positionen) aus OPFS, erster Aufruf nach Neuladen der Seite und Neustart des Workers, einschließlich Worker-Nachricht** | **383 bis 463 ms** (Ziel < 2 s: erreicht) |
 | Laden `gross`, Folgeläufe (Median von 5) | 129 bis 138 ms |
 | Speichern `gross` (Projekt + ein `LeistungsverzeichnisAnlegen` mit 5.000 Positionen, ein `anwenden`) | 1.252 bis 1.427 ms |
-| Einzelbefehl auf `gross` (ein geänderter Knoten, 20 Läufe) | Median 47 ms, Maximum 93 ms (nicht optimiert; enthält Vorherstand-Vergleich und Baumprüfung) |
+| Einzelbefehl auf `gross` (ein geänderter Knoten, 20 Läufe) | Median 47 ms, Maximum 62 bis 93 ms (zwei Läufe; nicht optimiert; enthält Vorherstand-Vergleich und Baumprüfung) |
 | Export `gross` / Import `gross` (OPFS → zweite OPFS-Datenbank) | 283 bis 297 ms / 955 bis 1.303 ms, Datei 10.349.082 Bytes |
 | Node, In-Memory: speichern / laden `gross` | 471 ms / 158 ms |
 
