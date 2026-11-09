@@ -3,13 +3,14 @@
 Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/plan.md`.
 
 - **[ADR]** = entschieden (siehe `docs/adr/`).
-- **[NEU]** = Vorschlag, vorläufig gültig, bis die Grilling-Sitzung ihn bestätigt oder verwirft
-  (`.scratch/ava-oss/grilling.md`). Bei Konflikt mit einer ADR gilt die ADR.
+- **[ENTSCHIEDEN]** = im Grilling vom 2026-11-09 bestätigt (`.scratch/ava-oss/grilling.md`).
+- **[NEU]** = Vorschlag, vorläufig gültig, bis die Grilling-Sitzung ihn bestätigt oder verwirft.
+  Bei Konflikt mit einer ADR gilt die ADR.
 
 ## Architektur
 
 - **A1** [ADR 0001/0002] Lokale Einzelnutzer-PWA, SQLite-WASM im OPFS, Austausch nur über Dateien.
-  (G-01 kann das neu öffnen.)
+  Mehrbenutzer mit Server ist das spätere Ziel (G-01, ENTSCHIEDEN).
 - **A2** [ADR 0003] Alle Fachberechnung liegt in einem reinen TS-Paket: kein DOM, kein Speicher,
   kein I/O, kein `Date.now()`, kein Zufall. Deterministisch.
 - **A3** [NEU] **Abhängigkeiten nur in eine Richtung:** `vertrag` ← `kern` ← Fachpakete
@@ -20,70 +21,88 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   Nebenwirkung von Feature-Arbeit.
 - **A5** [NEU] **Jede Änderung ist ein Befehl:** `(Zustand, Befehl) → ChangeSet`. UI, GAEB-Import,
   Undo und Speicher gehen alle über Befehle. Keine direkten Tabellenschreibzugriffe aus der UI.
+  Jeder Befehl wird im Befehlsprotokoll festgehalten (ADR 0009).
 - **A6** [ADR 0003] ChangeSet = geänderte Knoten + betroffene Summen; Neuberechnung nur im
   betroffenen Teilbaum.
 - **A7** [NEU] Stabile, undurchsichtige IDs (UUIDv7) für jede Entität. Die Ordnungszahl ist
   Anzeigedatum, nie Schlüssel.
 - **A8** [NEU] Schemaänderungen nur über nummerierte, getestete Vorwärts-Migrationen. Die
   Projektdatei trägt eine Schemaversion; alte Dateien müssen sich weiter öffnen lassen.
+- **A9** [ENTSCHIEDEN, ADR 0011] Projekt ist die oberste Ebene (Name, Bauherr). Ausschreibungs-LV,
+  Angebot und Auftrags-LV sind getrennte Aggregate mit gemeinsamer Positionsidentität.
 
 ## Zahlen und Geld
 
 - **N1** [ADR 0003] Nur Dezimalarithmetik. `number` ist für Menge, Preis, Betrag und Prozent
   verboten (Lint-Regel + Branded Types).
 - **N2** [ADR 0003] GP = kaufmännisch gerundet(Menge × EP, 2). Summen sind Summen der gerundeten
-  GPs. MwSt wird auf die Nettosumme nach Nachlass gerechnet, nicht je Position.
-- **N3** [NEU] Nachkommastellen stehen als Konstanten an genau einer Stelle (Menge 3, EP 3
-  gespeichert, Betrag 2) — offen: G-21.
+  GPs. MwSt wird auf die Nettosumme nach Nachlass gerechnet, nicht je Position. Ein MwSt-Satz je LV
+  (G-28).
+- **N3** [ENTSCHIEDEN, G-21] Nachkommastellen stehen als Konstanten an genau einer Stelle: EP 3
+  gespeichert, Menge 3, Prozent 2, Betrag 2.
 - **N4** [NEU] de-DE-Parsen und -Formatieren nur an den Rändern (UI, GAEB, Excel). Der Kern sieht
   nur Dezimalwerte.
+- **N5** [ENTSCHIEDEN, G-23] Nachlass nur auf LV-Ebene, genau einer je LV, prozentual oder als
+  Absolutbetrag. Er ist umkehrbar und wird nicht in die EP umgelegt.
 
 ## Sprache und Benennung
 
 - **L1** [ADR 0005] Deutsche UI. Fachbezeichner im Code exakt wie in `GLOSSARY.md`. Technischer
   Code englisch.
 - **L2** [NEU] Ein neuer Fachbegriff kommt zuerst ins `GLOSSARY.md`, dann in den Code. Keine
-  Synonyme.
+  Synonyme. „Zuschlagsposition“ (GAEB `MarkupItem`) ist der einzige Begriff, „Zulage“ nur Vorbild-Begriff
+  (G-22).
 - **L3** [NEU] Interne Bezeichner der Referenzsoftware (Feld-, Controller- und Aktionsnamen aus
   der Recherche) erscheinen nie in Code, Tests oder Commits.
 
 ## Clean Room und Lizenzen
 
-- **C1** [ADR 0007] AGPL-3.0. Kein fremder Code, keine fremden UI-Assets, keine lizenzierten Texte
-  (STLB-Bau, DIN-Katalogtexte, Handbuchtexte) im Repo.
-- **C2** [ADR 0007] `docs/research/nova-ava/` bleibt git-ignoriert. Die CI schlägt fehl, wenn dort
-  eine Datei versioniert ist.
-- **C3** [NEU] Umsetzende Agenten lesen nur `okf/research/` und Tickets. Nur Sitzungen, die
-  Tickets schreiben, lesen die Rohrecherche, und geben Verhalten in eigenen Worten wieder.
-- **C4** [NEU] Testdaten (GAEB-Dateien, LVs) sind selbst verfasst. Goldene Zahlen müssen aus der
-  Regel herleitbar sein, nicht nur „beobachtet“ — offen: G-41.
-- **C5** [NEU] Jede Abhängigkeit braucht eine AGPL-kompatible Lizenz; Lizenzprüfung in der CI.
-  Keine Enterprise-only-Funktionen (Präzedenz: ADR 0004).
+- **C1** [ADR 0007, 0008] AGPL-3.0-or-later für das gesamte Repo, mit DCO und REUSE. Kein fremder Code,
+  keine fremden UI-Assets, keine lizenzierten Texte (STLB-Bau, DIN-Katalogtexte, Handbuchtexte) im Repo.
+- **C2** [ADR 0007] `docs/research/nova-ava/` und `okf/research/` bleiben git-ignoriert (G-44). Die CI
+  schlägt fehl, wenn dort eine Datei versioniert ist. Das gilt auch für den Repo-Baum.
+- **C3** [ENTSCHIEDEN, G-44] Umsetzende Agenten (auch in Cloud-Sessions) arbeiten nur mit Tickets. Das
+  Verhalten der Referenzsoftware steht in den Tickets in eigenen Worten. `okf/research/` ist lokal
+  und wird von Umsetzungs-Agenten nicht gelesen. Nur Sitzungen, die Tickets schreiben, lesen die
+  Rohrecherche.
+- **C4** [ENTSCHIEDEN, G-41/G-52] Testdaten (GAEB-Dateien, LVs) liegen im Repo. Sie sind selbst verfasst
+  oder anonymisiert. Anonymisierung: Namen, Adressen, Firmennamen, Projektbezeichnung und
+  Aktenzeichen werden entfernt; Mengen und EP bleiben. Goldene Zahlen müssen aus einer VOB- oder
+  GAEB-Regel herleitbar und dort belegt sein, nicht nur „beobachtet“.
+- **C5** [ENTSCHIEDEN, ADR 0008] Jede Abhängigkeit braucht eine AGPL-kompatible Lizenz; Lizenzprüfung
+  in der CI. Keine Enterprise-only-Funktionen (Präzedenz: ADR 0004).
 
 ## Qualität
 
 - **Q1** TDD mit Vitest. Rechenregeln bekommen Golden-Tests und Property-Tests.
 - **Q2** Playwright-E2E für jeden Kernablauf. CI (Lint, Typen, Unit, E2E, Paketgrenzen, Lizenzen)
   ist vor jedem Merge grün.
-- **Q3** [NEU] GAEB: Jeder Export wird im Test gegen das XSD validiert. Jede unterstützte Phase
-  hat einen Roundtrip-Test Import → Export → Import.
-- **Q4** [NEU] Leistungsbudgets sind Tests: LV-Grid flüssig bei 5.000 Zeilen; Neuberechnung einer
-  Einzeländerung < 16 ms bei 5.000 Positionen. (Obergrenze offen: G-33.)
-- **Q5** [NEU] Kein stiller Datenverlust: Unumkehrbare Aktionen brauchen eine ausdrückliche
-  Bestätigung und sind per Undo oder LV-Stand abgesichert.
+- **Q3** [ENTSCHIEDEN, ADR 0010] GAEB: Die App prüft Exporte mit der eigenen Validierung. Die CI prüft
+  jeden Export zusätzlich gegen das XSD, das dort geladen und nie committet wird. Jede unterstützte
+  Phase hat einen Roundtrip-Test Import → Export → Import.
+- **Q4** [ENTSCHIEDEN, G-33] Leistungsbudgets sind Tests: LV-Grid flüssig bei 5.000 Zeilen; Ziel
+  10.000 Positionen, Tests bei 5.000 und 10.000. Neuberechnung einer Einzeländerung < 16 ms bei
+  5.000 Positionen.
+- **Q5** [NEU, G-06 offen] Kein stiller Datenverlust: Unumkehrbare Aktionen brauchen eine
+  ausdrückliche Bestätigung und sind per Undo oder LV-Stand abgesichert. Annahme: Lücken des
+  Vorbilds werden geschlossen (G-06 ist noch nicht gestellt).
 
 ## Oberfläche
 
 - **U1** [ADR 0004] React + TanStack Table (virtualisiert, eigene Baum- und Editierlogik) + TipTap
-  mit eingeschränktem Schema.
+  mit eingeschränktem Schema. Radix-Primitive als Komponentenbasis [ENTSCHIEDEN, G-31].
 - **U2** [NEU] Genau eine gemeinsame Grid-Komponente (`ui-grid`) für LV, Preisspiegel, Aufmaß und
   Kosten. Keine zweite Grid-Implementierung.
 - **U3** [NEU] Tastatur zuerst: Jede Grid-Aktion ist per Tastatur erreichbar; Zellnavigation wie in
   Excel; Einfügen aus Excel über die Zwischenablage.
-- **U4** [NEU] Eigenes Erscheinungsbild über Design-Tokens. Keine Ähnlichkeit mit Layout, Icons
-  oder Namen der Referenzsoftware.
-- **U5** [NEU] Validierung blockiert nie die Eingabe. Probleme erscheinen in der formalen
-  LV-Prüfung mit Sprunglinks.
+- **U4** [ENTSCHIEDEN, G-31] Eigenes Erscheinungsbild über Design-Tokens, dicht und tabellenartig,
+  hell und dunkel. Keine Ähnlichkeit mit Layout, Icons oder Namen der Referenzsoftware.
+- **U5** [ENTSCHIEDEN, G-13] Validierung blockiert nie die Eingabe. Probleme erscheinen in der formalen
+  LV-Prüfung mit Sprunglinks. GAEB-Export mit Fehlern wird gewarnt und als Entwurf gekennzeichnet.
+- **U6** [ENTSCHIEDEN, G-30] Nur Desktop ab 1280 px. Tablet ist ein späterer Plan.
+- **U7** [ENTSCHIEDEN, G-35] Automatisch speichern bei jedem Befehl.
+- **U8** [ENTSCHIEDEN, G-34] Tastatur und Kontrast jetzt. Katalogtexte als Dateien, keine Übersetzung
+  in v1.
 
 ## Agentenprozess
 
@@ -92,7 +111,11 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   oder `vertrag` anfassen muss, braucht dafür ein eigenes Ticket.
 - **P3** [NEU] Jeder parallele Agent arbeitet in eigenem Git-Worktree und Branch. Merge nur bei
   grüner CI.
-- **P4** [NEU] Höchstens etwa 8 Agenten gleichzeitig, mit kleinen Zwischen-Commits.
+- **P4** [ENTSCHIEDEN, G-51] Höchstens 8 Agenten gleichzeitig, mit kleinen Zwischen-Commits. Kein
+  Zieltermin für M3.
 - **P5** Ein Ticket, das an einer offenen G-Frage hängt, ist `needs-info`. Es wird nicht geraten.
+  Offen ist derzeit nur G-06 und G-54.
 - **P6** Sitzungen, die die Realität des Projekts ändern, aktualisieren das OKF und schreiben eine
   Übergabenotiz.
+- **P7** [ENTSCHIEDEN, G-50] Ein Review-Agent prüft jeden PR. Der Nutzer prüft Verträge, ADRs und
+  Meilensteine.

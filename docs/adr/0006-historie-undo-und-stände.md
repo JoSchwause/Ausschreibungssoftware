@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: teilweise ersetzt durch ADR 0009
 ---
 # Historie über Undo/Redo und benannte LV-Stände
 

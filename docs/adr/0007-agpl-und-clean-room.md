@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: Lizenzteil ersetzt durch ADR 0008; Clean-Room-Teil gilt
 ---
 # AGPL-3.0 und Clean-Room-Regel
 
