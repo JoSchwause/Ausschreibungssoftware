@@ -1,6 +1,6 @@
 # 04: Dezimal, Rundung und de-DE-Parsen/-Formatieren (K1)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 1 · Strang: K · Paket: `packages/dezimal` (einziger Schreiber)
 Blocked by: 02

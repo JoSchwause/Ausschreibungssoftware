@@ -1,6 +1,6 @@
 # 10: Speicher mit SQLite-WASM/OPFS, Migrationen, Befehlsprotokoll (S1)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 1 · Strang: S · Paket: `packages/speicher` (einziger Schreiber)
 Blocked by: 02

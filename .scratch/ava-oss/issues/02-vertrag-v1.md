@@ -1,6 +1,6 @@
 # 02: `vertrag` v1: Domänentypen, Befehle, ChangeSet (F2)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10); Prüfung durch den Nutzer steht aus (Gate G-50), siehe next-decisions.md E-01
 Type: task
 Welle: 0 · Strang: F · Paket: `packages/vertrag` (einziger Schreiber, P2)
 Blocked by: 03

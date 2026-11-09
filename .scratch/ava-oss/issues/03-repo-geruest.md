@@ -1,6 +1,6 @@
 # 03: Repo-Gerüst, Tooling und CI (F1)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 0 · Strang: F · Paket: Repo-Wurzel, `.github/`, Konfiguration
 Blocked by: -

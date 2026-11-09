@@ -1,6 +1,6 @@
 # 21: `ui-grid`: virtualisiertes Baum-Grid auf Fixture-Daten (U2)
 
-Status: done (zur Prüfung durch den Orchestrator)
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 1 · Strang: U · Paket: `packages/ui-grid` (einziger Schreiber)
 Blocked by: 02, 03, 19, 20

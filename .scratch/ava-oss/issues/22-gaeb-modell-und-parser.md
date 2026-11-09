@@ -1,6 +1,6 @@
 # 22: GAEB: XML-Modell und Parser X81/X83, Version 3.3 (G1)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10); ein Kriterium offen (BVBS-Zahlen nicht öffentlich), siehe next-decisions.md E-16
 Type: task
 Welle: 1 · Strang: G · Paket: `packages/gaeb` (einziger Schreiber)
 Blocked by: 02, 03, 23

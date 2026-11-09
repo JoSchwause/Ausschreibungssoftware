@@ -1,6 +1,6 @@
 # 19: Fixtures v1: drei selbst verfasste LVs mit Sollwerten (F3)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 0 · Strang: F · Paket: `fixtures/`
 Blocked by: -  (die Ordner dürfen vor 03 als lose Dateien entstehen; Einbindung ins Monorepo nach 03)

@@ -1,6 +1,6 @@
 # 06: OZ-Maske, OZ-Vergabe und Umnummerierung (K3)
 
-Status: ready-for-agent
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 1 · Strang: K · Paket: `packages/kern`
 Blocked by: 05

@@ -134,3 +134,6 @@ Stand 2026-11-09:
    03–10 wiederverwendet, 18–23 neu). ⏳ **Offen:** Tickets für Welle 2, sobald `vertrag` stabil ist.
 6. ✅ G-54 erledigt (`.scratch/ava-mvp/spec.md` geschrieben, ADRs geprüft) und G-06 beantwortet
    (Lücken schließen). OKF aktualisiert (siehe `okf/index.md`).
+7. ✅ **Welle 0 und 1 umgesetzt (2026-11-10)** auf Branch `claude/wave-0-1-orchestration-nkdqfx`: Tickets 02–07, 10,
+   19–22 gemergt, 23 teilweise. ⏳ **Offen:** Prüfung von `vertrag` durch den Nutzer und die Grilling-Runde vor
+   Welle 2, siehe `.scratch/ava-oss/next-decisions.md` (E-01 bis E-20). Tickets für Welle 2 werden danach geschnitten.

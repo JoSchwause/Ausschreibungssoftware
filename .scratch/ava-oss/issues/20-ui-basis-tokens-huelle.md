@@ -1,6 +1,6 @@
 # 20: `ui-basis`: Design-Tokens, App-Hülle, Dialog- und Formularbausteine (U1)
 
-Status: done (zur Prüfung durch den Orchestrator)
+Status: resolved (gemergt 2026-11-10, Branch claude/wave-0-1-orchestration-nkdqfx)
 Type: task
 Welle: 1 · Strang: U · Paket: `packages/ui-basis`, Hülle in `apps/web/src/ui/`
 Blocked by: 03

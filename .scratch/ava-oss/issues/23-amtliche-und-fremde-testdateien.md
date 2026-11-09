@@ -1,6 +1,6 @@
 # 23: Amtliche und fremde Testdateien einbinden (F3b)
 
-Status: ready-for-agent
+Status: needs-info (amtliche Dateien gemergt 2026-11-10; Dateien freier Projekte fehlen, siehe next-decisions.md E-15)
 Type: task
 Welle: 0/1 · Strang: F · Paket: `fixtures/extern/`
 Blocked by: 03
