@@ -78,7 +78,18 @@ importers:
 
   packages/gaeb: {}
 
-  packages/kern: {}
+  packages/kern:
+    dependencies:
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../dezimal
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
+    devDependencies:
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
 
   packages/speicher: {}
 
