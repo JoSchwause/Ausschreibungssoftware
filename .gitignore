@@ -6,3 +6,10 @@ okf/research/
 .env
 .env.*
 !.env.example
+
+# Abhängigkeiten und Build-Ausgaben
+node_modules/
+dist/
+playwright-report/
+test-results/
+*.tsbuildinfo

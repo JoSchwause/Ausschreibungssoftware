@@ -1,0 +1,31 @@
+{
+  "name": "tethys-ava",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @tethys/web dev",
+    "build": "pnpm --filter @tethys/web build",
+    "lint": "eslint . && prettier --check . && node tools/check-boundaries.mjs && node tools/check-licenses.mjs && node tools/check-clean-room.mjs",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck",
+    "test": "vitest run",
+    "e2e": "pnpm --filter @tethys/web e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.19.0",
+    "dependency-cruiser": "^18.7.2",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  }
+}
