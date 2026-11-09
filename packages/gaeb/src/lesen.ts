@@ -63,6 +63,8 @@ export const STANDARD_MAX_BYTES = 100 * 1024 * 1024;
 export const OZ_MAX_LAENGE = 14;
 /** Höchstzahl der Gliederungsstufen einschließlich Los (Fachdokumentation 3.3, Abschnitt 4.2.1/4.2.2). */
 export const MAX_STUFEN = 5;
+/** Höchstzahl einzeln aufgezeichneter Befunde je Phase (Schutz vor Dateien voller Fehler). */
+const MAX_BEFUNDE = 10_000;
 
 /** Elemente mit reinem Textinhalt: ein fehlendes Schließ-Tag wird beim nächsten öffnenden Tag erkannt. */
 const BLATTNAMEN: ReadonlySet<string> = new Set([
@@ -136,6 +138,7 @@ const HINWEIS_TEXT: Readonly<Record<Austauschhinweiscode, string | null>> = {
 class Leser {
   readonly befunde: Pruefbefund[] = [];
   private readonly aggregate = new Map<string, Aggregat>();
+  private begrenzt = false;
   private formatKnoten = 0;
   private readonly formatArten = new Set<string>();
   private formatErst: XmlElement | null = null;
@@ -169,6 +172,19 @@ class Leser {
     el?: XmlElement,
     extra: { knotenId?: PositionId | string; feld?: string } = {},
   ): void {
+    if (this.befunde.length >= MAX_BEFUNDE) {
+      if (!this.begrenzt) {
+        this.begrenzt = true;
+        this.befunde.push({
+          schwere: 'warnung',
+          quelle: 'gaeb-lesen',
+          code: 'befunde-begrenzt',
+          meldung: `Weitere Befunde des Lesers werden nicht mehr aufgezeichnet (Grenze ${String(MAX_BEFUNDE)}).`,
+          ort: {},
+        });
+      }
+      return;
+    }
     this.befunde.push({ schwere, quelle: 'gaeb-lesen', code, meldung, ort: this.ort(el, extra) });
   }
 
@@ -211,7 +227,7 @@ class Leser {
         quelle: 'gaeb-lesen',
         code: 'formatierung-verworfen',
         meldung:
-          `In ${String(this.formatKnoten)} Texten wurde Auszeichnung verworfen, die der Vertrag nicht abbildet ` +
+          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Auszeichnung verworfen, die der Vertrag nicht abbildet ` +
           `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt als reiner Text erhalten.`,
         ort: this.ort(this.formatErst ?? undefined),
       });
@@ -251,7 +267,8 @@ class Leser {
   // --- Zahlen und Aufzählungen ---------------------------------------------------------------------------
 
   zahl<Z extends Zahlenart>(art: Z, el: XmlElement, knotenId: string, feld: string): Zahl<Z> | null {
-    const roh = textInhalt(el);
+    // Leerraum um den Wert ist in GAEB-XML Formatierung (Schema: Leerraum wird zusammengefaltet), kein Befund.
+    const roh = textInhalt(el).trim();
     const r = leseAustausch(art, roh);
     if (!r.ok) {
       this.melde(
@@ -653,10 +670,7 @@ class Aufbau {
         );
     }
     if (ordnungszahl !== null) {
-      const laenge =
-        ordnungszahl.length -
-        (this.trenn === null ? 0 : (teile.length - 1) * this.trenn.length) +
-        (ozIndex?.length ?? 0);
+      const laenge = teile.reduce((summe, t) => summe + t.length, 0) + (ozIndex?.length ?? 0);
       if (laenge > OZ_MAX_LAENGE)
         this.l.melde(
           'fehler',
