@@ -81,7 +81,8 @@ export function speicherUeberTransport(
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('angeboteAuflisten', lvId),
       laden: (id: AngebotId) => aufruf('angebotLaden', id),
     },
-    anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) => aufruf<void>('anwenden', eintrag, changeSet),
+    anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
+      senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),
     persistenzstatus: async (): Promise<Persistenzstatus> => {
       await persistenzAnfragen();
@@ -176,7 +177,11 @@ export function direktTransport(kern: SpeicherKern): Transport {
   return (methode, args) => {
     if (methode === 'oeffnen') return Promise.resolve(fehler('unbekannt', 'Der Kern ist schon geöffnet.'));
     if (methode === 'schliessen') return Promise.resolve(kern.schliessen());
-    const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[methode];
-    return Promise.resolve(f === undefined ? fehler('unbekannt', `Unbekannte Methode ${methode}.`) : f.apply(kern, [...args]));
+    const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[
+      methode
+    ];
+    return Promise.resolve(
+      f === undefined ? fehler('unbekannt', `Unbekannte Methode ${methode}.`) : f.apply(kern, [...args]),
+    );
   };
 }

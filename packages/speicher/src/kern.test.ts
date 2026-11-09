@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Kern auf In-Memory-SQLite-WASM unter Node: Repositories, Einzelweg `anwenden`, Konsistenz und Fehlerwerte.
 
-import type { AngebotChangeSet, Knoten, LvChangeSet, Position, PositionId, Protokolleintrag } from '@tethys/vertrag';
+import type {
+  AngebotChangeSet,
+  Knoten,
+  LvChangeSet,
+  Position,
+  PositionId,
+  Protokolleintrag,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import {
   angebotAnlegenChangeSet,
@@ -19,24 +26,27 @@ const lvId = typisch.lv.leistungsverzeichnis.id;
 const projektId = typisch.projekt.id;
 
 describe('Fixtures speichern und laden', () => {
-  it.each(['winzig', 'typisch'] as const)('%s: LV, Angebote und Projekt kommen unverändert zurück', async (name) => {
-    const f = ladeFixture(name);
-    const { kern } = await neuerKern();
-    speichere(kern, anlegenSchritte(f));
+  it.each(['winzig', 'typisch'] as const)(
+    '%s: LV, Angebote und Projekt kommen unverändert zurück',
+    async (name) => {
+      const f = ladeFixture(name);
+      const { kern } = await neuerKern();
+      speichere(kern, anlegenSchritte(f));
 
-    expect(wert(kern.projektLaden(f.projekt.id))).toEqual(f.projekt);
-    expect(wert(kern.projekteAuflisten())).toEqual([{ id: f.projekt.id, name: f.projekt.name }]);
-    const lv = wert(kern.lvLaden(f.lv.leistungsverzeichnis.id));
-    // Die Knotenreihenfolge der Fixtures ist schon kanonisch (Tiefensuche); nur Summenlisten sortiert der Speicher.
-    expect(lv).toEqual(normalisiere(f.lv));
-    expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([f.lv.leistungsverzeichnis.id]);
-    for (const a of f.angebote) {
-      expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
-    }
-    expect(wert(kern.angeboteAuflisten(f.lv.leistungsverzeichnis.id))).toEqual(
-      f.angebote.map((a) => a.angebot.id).sort(),
-    );
-  });
+      expect(wert(kern.projektLaden(f.projekt.id))).toEqual(f.projekt);
+      expect(wert(kern.projekteAuflisten())).toEqual([{ id: f.projekt.id, name: f.projekt.name }]);
+      const lv = wert(kern.lvLaden(f.lv.leistungsverzeichnis.id));
+      // Die Knotenreihenfolge der Fixtures ist schon kanonisch (Tiefensuche); nur Summenlisten sortiert der Speicher.
+      expect(lv).toEqual(normalisiere(f.lv));
+      expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([f.lv.leistungsverzeichnis.id]);
+      for (const a of f.angebote) {
+        expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
+      }
+      expect(wert(kern.angeboteAuflisten(f.lv.leistungsverzeichnis.id))).toEqual(
+        f.angebote.map((a) => a.angebot.id).sort(),
+      );
+    },
+  );
 
   it('gross (5.000 Positionen): speichern und laden, Dezimalwerte bleiben Zeichenketten', async () => {
     const f = ladeFixture('gross');
@@ -74,7 +84,12 @@ describe('Protokoll und Einzelweg', () => {
     speichere(kern, [projekt as never]);
     const vorher = zaehle(db, 'protokoll');
     // LV mit Eintrag für ein anderes Aggregat
-    const falsch = eintrag(99, projektId, { art: 'leistungsverzeichnis', id: 'anderes-lv' as never }, lv?.eintrag.befehl as never);
+    const falsch = eintrag(
+      99,
+      projektId,
+      { art: 'leistungsverzeichnis', id: 'anderes-lv' as never },
+      lv?.eintrag.befehl as never,
+    );
     const r = kern.anwenden(falsch, lv?.changeSet as never);
     expect(r.ok).toBe(false);
     expect(zaehle(db, 'protokoll')).toBe(vorher);
@@ -100,7 +115,8 @@ describe('Protokoll und Einzelweg', () => {
 
   it('Aggregate ohne Projekt, LV oder Angebot liefern nicht-gefunden', async () => {
     const { kern } = await neuerKern();
-    const fehlt = (r: { ok: boolean; fehler?: { code: string } }): string | undefined => (r.ok ? undefined : r.fehler?.code);
+    const fehlt = (r: { ok: boolean; fehler?: { code: string } }): string | undefined =>
+      r.ok ? undefined : r.fehler?.code;
     expect(fehlt(kern.projektLaden(projektId))).toBe('nicht-gefunden');
     expect(fehlt(kern.lvLaden(lvId))).toBe('nicht-gefunden');
     expect(fehlt(kern.lvAuflisten(projektId))).toBe('nicht-gefunden');
@@ -167,8 +183,16 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       art: 'leistungsverzeichnis',
       leistungsverzeichnisId: lvId,
       kopf: null,
-      knoten: { hinzugefuegt: [], geaendert: [{ vorher: veraltet, nachher: { ...p, menge: '7.000' as never } }], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: { ...typisch.lv.summen.gesamt, netto: '0.01' as never } },
+      knoten: {
+        hinzugefuegt: [],
+        geaendert: [{ vorher: veraltet, nachher: { ...p, menge: '7.000' as never } }],
+        entfernt: [],
+      },
+      summen: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: { ...typisch.lv.summen.gesamt, netto: '0.01' as never },
+      },
     };
     const r = kern.anwenden(lvEintrag(), cs);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
@@ -183,7 +207,9 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     // Letzte Position der Fixtures: ein Blatt, nach dem keine Geschwister nachrücken.
     const p = [...knoten].reverse().find((k): k is Position => k.art === 'position');
     if (p === undefined) throw new Error('keine Position');
-    const geschwisterNachher = knoten.filter((k) => k.elternId === p.elternId && k.reihenfolge > p.reihenfolge);
+    const geschwisterNachher = knoten.filter(
+      (k) => k.elternId === p.elternId && k.reihenfolge > p.reihenfolge,
+    );
     expect(geschwisterNachher).toHaveLength(0);
     const cs = (e: Knoten): LvChangeSet => ({
       art: 'leistungsverzeichnis',
@@ -196,7 +222,10 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     const geladen = wert(kern.lvLaden(lvId));
     expect(geladen.leistungsverzeichnis.knoten.some((k) => k.id === p.id)).toBe(false);
     expect(geladen.summen.positionen.some((s) => s.positionId === p.id)).toBe(false);
-    expect(kern.anwenden(lvEintrag(), cs(p))).toMatchObject({ ok: false, fehler: { code: 'nicht-gefunden' } });
+    expect(kern.anwenden(lvEintrag(), cs(p))).toMatchObject({
+      ok: false,
+      fehler: { code: 'nicht-gefunden' },
+    });
   });
 
   it('hinzugefuegt mit vorhandener Kennung: alles oder nichts, auch die vorangehenden Knoten fehlen danach', async () => {
@@ -227,9 +256,15 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       knoten: { hinzugefuegt: [n], geaendert: [], entfernt: [] },
       summen: { positionen: [], gliederungen: [], gesamt: null },
     });
-    const waise = kern.anwenden(lvEintrag(), mit({ ...vorhanden, id: 'x1' as PositionId, elternId: 'gibt-es-nicht' as never }));
+    const waise = kern.anwenden(
+      lvEintrag(),
+      mit({ ...vorhanden, id: 'x1' as PositionId, elternId: 'gibt-es-nicht' as never }),
+    );
     expect(waise).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
-    const luecke = kern.anwenden(lvEintrag(), mit({ ...vorhanden, id: 'x2' as PositionId, reihenfolge: 500 }));
+    const luecke = kern.anwenden(
+      lvEintrag(),
+      mit({ ...vorhanden, id: 'x2' as PositionId, reihenfolge: 500 }),
+    );
     expect(luecke).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
   });
@@ -254,10 +289,31 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     const geladen = wert(kern.angebotLaden(a.angebot.id));
     expect(geladen.angebot.positionen.find((p) => p.positionId === angeboten.positionId)).toEqual(neuerPreis);
     // zweites Mal mit dem alten Vorherstand: Konflikt
-    expect(kern.anwenden(e(), cs(angeboten, neuerPreis))).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
+    expect(kern.anwenden(e(), cs(angeboten, neuerPreis))).toMatchObject({
+      ok: false,
+      fehler: { code: 'unbekannt' },
+    });
     // auf „nicht angeboten“ stellen
-    wert(kern.anwenden(e(), { ...cs(neuerPreis, neuerPreis), positionen: { hinzugefuegt: [], entfernt: [], geaendert: [{ vorher: neuerPreis, nachher: { positionId: angeboten.positionId, status: 'nicht-angeboten' } as never }] } }));
-    expect(wert(kern.angebotLaden(a.angebot.id)).angebot.positionen.find((p) => p.positionId === angeboten.positionId)?.status).toBe('nicht-angeboten');
+    wert(
+      kern.anwenden(e(), {
+        ...cs(neuerPreis, neuerPreis),
+        positionen: {
+          hinzugefuegt: [],
+          entfernt: [],
+          geaendert: [
+            {
+              vorher: neuerPreis,
+              nachher: { positionId: angeboten.positionId, status: 'nicht-angeboten' } as never,
+            },
+          ],
+        },
+      }),
+    );
+    expect(
+      wert(kern.angebotLaden(a.angebot.id)).angebot.positionen.find(
+        (p) => p.positionId === angeboten.positionId,
+      )?.status,
+    ).toBe('nicht-angeboten');
     // Angebotsposition, die keine Position des LV ist
     const fremd = { positionId: 'keine-position' as PositionId, status: 'nicht-angeboten' as const };
     const neu: AngebotChangeSet = {
@@ -269,8 +325,8 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
 
   it('LV-Kopf ändern: Vorherstand geprüft, Projektwechsel und Löschen abgewiesen', async () => {
     const { kern } = await mitTypisch();
-    const { knoten: _k, ...kopf } = typisch.lv.leistungsverzeichnis;
-    void _k;
+    const kopf = lvAnlegenChangeSet(typisch.lv).kopf?.nachher;
+    if (kopf === undefined || kopf === null) throw new Error('kein Kopf');
     const cs = (vorher: typeof kopf | null, nachher: typeof kopf | null): LvChangeSet => ({
       art: 'leistungsverzeichnis',
       leistungsverzeichnisId: lvId,
@@ -279,30 +335,56 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       summen: { positionen: [], gliederungen: [], gesamt: null },
     });
     wert(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'Umbenannt', nachlass: null })));
-    expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis).toMatchObject({ name: 'Umbenannt', nachlass: null });
+    expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis).toMatchObject({
+      name: 'Umbenannt',
+      nachlass: null,
+    });
     expect(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'x' })).ok).toBe(false); // veralteter Vorherstand
-    expect(kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)).ok).toBe(false);
+    expect(kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)).ok).toBe(
+      false,
+    );
     expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis.name).toBe('Umbenannt');
   });
 
   it('Projekt: Stammdaten und Bieter ändern', async () => {
     const { kern } = await mitTypisch();
     const nachher = { ...typisch.projekt, name: 'Neuer Name', bieter: typisch.projekt.bieter.slice(0, 3) };
-    const e = eintrag(nr++, projektId, { art: 'projekt', id: projektId }, { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr });
+    const e = eintrag(
+      nr++,
+      projektId,
+      { art: 'projekt', id: projektId },
+      { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr },
+    );
     wert(kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher } }));
     expect(wert(kern.projektLaden(projektId)).name).toBe('Neuer Name');
     // Ein Bieter, den ein Angebot braucht, lässt sich nicht entfernen (Fremdschlüssel): Fehlerwert, nichts geändert.
     const ohneBieter = { ...nachher, bieter: [] };
-    const e2 = eintrag(nr++, projektId, { art: 'projekt', id: projektId }, { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr });
-    const r = kern.anwenden(e2, { art: 'projekt', projektId, projekt: { vorher: nachher, nachher: ohneBieter } });
+    const e2 = eintrag(
+      nr++,
+      projektId,
+      { art: 'projekt', id: projektId },
+      { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr },
+    );
+    const r = kern.anwenden(e2, {
+      art: 'projekt',
+      projektId,
+      projekt: { vorher: nachher, nachher: ohneBieter },
+    });
     expect(r.ok).toBe(false);
     expect(wert(kern.projektLaden(projektId)).bieter).toHaveLength(3);
   });
 
   it('ein Projekt zu löschen ist nicht vorgesehen und wird abgewiesen', async () => {
     const { kern } = await mitTypisch();
-    const e = eintrag(nr++, projektId, { art: 'projekt', id: projektId }, { art: 'ProjektStammdatenSetzen', name: 'x', bauherr: typisch.projekt.bauherr });
-    expect(kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher: null } }).ok).toBe(false);
+    const e = eintrag(
+      nr++,
+      projektId,
+      { art: 'projekt', id: projektId },
+      { art: 'ProjektStammdatenSetzen', name: 'x', bauherr: typisch.projekt.bauherr },
+    );
+    expect(
+      kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher: null } }).ok,
+    ).toBe(false);
     expect(wert(kern.projektLaden(projektId))).toEqual(typisch.projekt);
   });
 });
@@ -360,11 +442,27 @@ describe('Quote, Sperre und Schema (Q5)', () => {
     };
 
     const faelle: [string, () => unknown, string][] = [
-      ['Quote (DOMException QuotaExceededError)', () => new DOMException('quota', 'QuotaExceededError'), 'speicher-voll'],
-      ['OPFS gesperrt (NoModificationAllowedError)', () => new DOMException('locked', 'NoModificationAllowedError'), 'gesperrt'],
+      [
+        'Quote (DOMException QuotaExceededError)',
+        () => new DOMException('quota', 'QuotaExceededError'),
+        'speicher-voll',
+      ],
+      [
+        'OPFS gesperrt (NoModificationAllowedError)',
+        () => new DOMException('locked', 'NoModificationAllowedError'),
+        'gesperrt',
+      ],
       ['SQLite BUSY', () => Object.assign(new Error('database is locked'), { resultCode: 5 }), 'gesperrt'],
-      ['SQLite FULL', () => Object.assign(new Error('database or disk is full'), { resultCode: 13 }), 'speicher-voll'],
-      ['SQLite IOERR mit Quota-Hinweis', () => Object.assign(new Error('QuotaExceededError in xWrite'), { resultCode: 778 }), 'speicher-voll'],
+      [
+        'SQLite FULL',
+        () => Object.assign(new Error('database or disk is full'), { resultCode: 13 }),
+        'speicher-voll',
+      ],
+      [
+        'SQLite IOERR mit Quota-Hinweis',
+        () => Object.assign(new Error('QuotaExceededError in xWrite'), { resultCode: 778 }),
+        'speicher-voll',
+      ],
       ['sonstiger Fehler', () => new Error('kaputt'), 'unbekannt'],
     ];
     for (const [name, ausnahme, code] of faelle) {
@@ -391,6 +489,8 @@ describe('Quote, Sperre und Schema (Q5)', () => {
 
   it('LV- und Angebots-ChangeSets lassen sich aus Zuständen ableiten (Hilfsfunktionen stimmen mit anlegenSchritte überein)', () => {
     expect(anlegenSchritte(typisch)[1]?.changeSet).toEqual(lvAnlegenChangeSet(typisch.lv));
-    expect(anlegenSchritte(typisch)[2]?.changeSet).toEqual(angebotAnlegenChangeSet(typisch.angebote[0] as never));
+    expect(anlegenSchritte(typisch)[2]?.changeSet).toEqual(
+      angebotAnlegenChangeSet(typisch.angebote[0] as never),
+    );
   });
 });

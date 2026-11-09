@@ -86,14 +86,15 @@ interface FxAngebotsset {
     bieterId: string;
     nachlass: FxNachlass | null;
     positionen: (
-      { positionId: string; status: 'angeboten'; einheitspreis: string } | { positionId: string; status: 'nicht-angeboten' }
+      | { positionId: string; status: 'angeboten'; einheitspreis: string }
+      | { positionId: string; status: 'nicht-angeboten' }
     )[];
     sollwerte: FxSollwerte;
   }[];
 }
 
-const lesen = <T>(name: string): T =>
-  JSON.parse(readFileSync(new URL(`../../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as T;
+const lesen = (name: string): unknown =>
+  JSON.parse(readFileSync(new URL(`../../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as unknown;
 
 const fixtureMaske: OzMaske = {
   gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
@@ -138,7 +139,13 @@ function abbilden(fx: FxLv, projektId: ProjektId): LvZustand {
     zaehler.set(k.parentId, reihenfolge + 1);
     const lage = { elternId: k.parentId as ElternId, reihenfolge };
     if (k.art === 'titel') {
-      return { ...lage, art: 'titel', id: k.id as TitelId, ordnungszahl: k.ordnungszahl as Ordnungszahl, kurztext: k.kurztext };
+      return {
+        ...lage,
+        art: 'titel',
+        id: k.id as TitelId,
+        ordnungszahl: k.ordnungszahl as Ordnungszahl,
+        kurztext: k.kurztext,
+      };
     }
     if (k.art === 'hinweis') {
       return { ...lage, art: 'hinweis', id: k.id as HinweistextId, text: [{ art: 'text', text: k.text }] };
@@ -183,8 +190,8 @@ export interface FixtureDaten {
 
 export function ladeFixture(name: 'winzig' | 'typisch' | 'gross'): FixtureDaten {
   const projektId = `projekt-${name}` as ProjektId;
-  const lv = abbilden(lesen<FxLv>(name), projektId);
-  const set = name === 'typisch' ? lesen<FxAngebotsset>('typisch-angebote') : null;
+  const lv = abbilden(lesen(name) as FxLv, projektId);
+  const set = name === 'typisch' ? (lesen('typisch-angebote') as FxAngebotsset) : null;
   const projekt: Projekt = {
     id: projektId,
     name: `Fixture ${name}`,
@@ -200,7 +207,12 @@ export function ladeFixture(name: 'winzig' | 'typisch' | 'gross'): FixtureDaten 
       nachlass: nachlass(a.nachlass),
       positionen: a.positionen.map((p): Angebotsposition =>
         p.status === 'angeboten'
-          ? { positionId: p.positionId as PositionId, status: 'angeboten', einheitspreis: p.einheitspreis as Einheitspreis, epa: null }
+          ? {
+              positionId: p.positionId as PositionId,
+              status: 'angeboten',
+              einheitspreis: p.einheitspreis as Einheitspreis,
+              epa: null,
+            }
           : { positionId: p.positionId as PositionId, status: 'nicht-angeboten' },
       ),
     },
@@ -220,8 +232,20 @@ export const NUTZER = 'nutzer-1' as NutzerId;
 export const ZEIT = '2026-11-09T12:00:00.000Z' as Zeitstempel;
 
 /** Protokolleintrag mit laufender Nummer als Kennung; Zeit und Nutzer sind fest (A2: kein Zufall im Test). */
-export function eintrag(nr: number, projektId: ProjektId, aggregat: Protokolleintrag['aggregat'], befehl: Befehl): Protokolleintrag {
-  return { id: `protokoll-${String(nr).padStart(6, '0')}` as ProtokollId, projektId, aggregat, wer: NUTZER, wann: ZEIT, befehl };
+export function eintrag(
+  nr: number,
+  projektId: ProjektId,
+  aggregat: Protokolleintrag['aggregat'],
+  befehl: Befehl,
+): Protokolleintrag {
+  return {
+    id: `protokoll-${String(nr).padStart(6, '0')}` as ProtokollId,
+    projektId,
+    aggregat,
+    wer: NUTZER,
+    wann: ZEIT,
+    befehl,
+  };
 }
 
 export const projektChangeSet = (p: Projekt): ProjektChangeSet => ({
@@ -258,22 +282,43 @@ export function anlegenSchritte(f: FixtureDaten, ab = 1): Schritt[] {
   const p = f.projekt.id;
   const schritte: Schritt[] = [
     {
-      eintrag: eintrag(ab, p, { art: 'projekt', id: p }, { art: 'ProjektAnlegen', id: p, name: f.projekt.name, bauherr: f.projekt.bauherr }),
+      eintrag: eintrag(
+        ab,
+        p,
+        { art: 'projekt', id: p },
+        { art: 'ProjektAnlegen', id: p, name: f.projekt.name, bauherr: f.projekt.bauherr },
+      ),
       changeSet: projektChangeSet(f.projekt),
     },
     {
-      eintrag: eintrag(ab + 1, p, { art: 'leistungsverzeichnis', id: kopf.id }, {
-        art: 'LeistungsverzeichnisAnlegen',
-        id: kopf.id,
-        projektId: p,
-        inhalt: { name: kopf.name, ozMaske: kopf.ozMaske, mwstSatz: kopf.mwstSatz, nachlass: kopf.nachlass, knoten },
-      }),
+      eintrag: eintrag(
+        ab + 1,
+        p,
+        { art: 'leistungsverzeichnis', id: kopf.id },
+        {
+          art: 'LeistungsverzeichnisAnlegen',
+          id: kopf.id,
+          projektId: p,
+          inhalt: {
+            name: kopf.name,
+            ozMaske: kopf.ozMaske,
+            mwstSatz: kopf.mwstSatz,
+            nachlass: kopf.nachlass,
+            knoten,
+          },
+        },
+      ),
       changeSet: lvAnlegenChangeSet(f.lv),
     },
   ];
   f.angebote.forEach((a, i) => {
     schritte.push({
-      eintrag: eintrag(ab + 2 + i, p, { art: 'angebot', id: a.angebot.id }, { art: 'AngebotAnlegen', angebot: a.angebot }),
+      eintrag: eintrag(
+        ab + 2 + i,
+        p,
+        { art: 'angebot', id: a.angebot.id },
+        { art: 'AngebotAnlegen', angebot: a.angebot },
+      ),
       changeSet: angebotAnlegenChangeSet(a),
     });
   });
@@ -281,7 +326,9 @@ export function anlegenSchritte(f: FixtureDaten, ab = 1): Schritt[] {
 }
 
 /** Vergleichsform: Listen, deren Reihenfolge der Speicher kanonisch festlegt (Summen nach Kennung), sortiert. */
-export function normalisiere<T extends LvZustand | AngebotZustand>(z: T): T {
+export function normalisiere(z: LvZustand): LvZustand;
+export function normalisiere(z: AngebotZustand): AngebotZustand;
+export function normalisiere(z: LvZustand | AngebotZustand): LvZustand | AngebotZustand {
   const nachId = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
   const s = z.summen;
   const summenstand: Summenstand = {
@@ -293,7 +340,11 @@ export function normalisiere<T extends LvZustand | AngebotZustand>(z: T): T {
     const positionen = [...z.angebot.positionen].sort((a, b) => nachId(a.positionId, b.positionId));
     return { ...z, angebot: { ...z.angebot, positionen }, summen: summenstand };
   }
-  return { ...z, leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten: tiefensuche(z.leistungsverzeichnis) }, summen: summenstand };
+  return {
+    ...z,
+    leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten: tiefensuche(z.leistungsverzeichnis) },
+    summen: summenstand,
+  };
 }
 
 /** Kanonische Knotenreihenfolge des Speichers: Tiefensuche, Eltern vor Kindern, Geschwister nach `reihenfolge`. */

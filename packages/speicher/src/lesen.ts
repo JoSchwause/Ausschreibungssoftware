@@ -154,8 +154,15 @@ export function leseAngebotKopf(db: Datenbank, id: AngebotId): AngebotKopf | nul
   };
 }
 
-export function leseAngebotposition(db: Datenbank, angebotId: AngebotId, positionId: string): Angebotsposition | null {
-  const z = db.zeilen('SELECT * FROM angebotsposition WHERE angebot_id = ? AND position_id = ?', [angebotId, positionId])[0];
+export function leseAngebotposition(
+  db: Datenbank,
+  angebotId: AngebotId,
+  positionId: string,
+): Angebotsposition | null {
+  const z = db.zeilen('SELECT * FROM angebotsposition WHERE angebot_id = ? AND position_id = ?', [
+    angebotId,
+    positionId,
+  ])[0];
   return z === undefined ? null : angebotspositionAusZeile(z);
 }
 
@@ -225,6 +232,10 @@ export function leseProtokoll(db: Datenbank, id: ProjektId): Protokolleintrag[] 
 }
 
 /** Alle Kennungen eines Projekts je Aggregatart, kanonisch nach Kennung sortiert. */
-export function aggregatIds(db: Datenbank, tabelle: 'leistungsverzeichnis' | 'angebot' | 'auftrags_lv', id: ProjektId): string[] {
+export function aggregatIds(
+  db: Datenbank,
+  tabelle: 'leistungsverzeichnis' | 'angebot' | 'auftrags_lv',
+  id: ProjektId,
+): string[] {
   return listeIds(db, `SELECT id FROM ${tabelle} WHERE projekt_id = ? ORDER BY id`, [id]);
 }

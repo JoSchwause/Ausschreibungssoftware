@@ -57,7 +57,8 @@ export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
   if (nachher === null) {
     return abbruch('unbekannt', 'Ein Projekt zu löschen ist im Vertrag nicht vorgesehen (kein Befehl, Q5).');
   }
-  if (nachher.id !== cs.projektId) return abbruch('unbekannt', 'ChangeSet: projektId und Projekt.id weichen ab.');
+  if (nachher.id !== cs.projektId)
+    return abbruch('unbekannt', 'ChangeSet: projektId und Projekt.id weichen ab.');
   const gespeichert = leseProjekt(db, cs.projektId);
   if (vorher === null) {
     if (gespeichert !== null) return konflikt(`Projekt ${cs.projektId} existiert bereits, das ChangeSet`);
@@ -68,7 +69,8 @@ export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
       nachher.bauherr.anschrift,
     ]);
   } else {
-    if (gespeichert === null) return abbruch('nicht-gefunden', `Projekt ${cs.projektId} ist nicht vorhanden.`);
+    if (gespeichert === null)
+      return abbruch('nicht-gefunden', `Projekt ${cs.projektId} ist nicht vorhanden.`);
     if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
     db.ausfuehren('UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ? WHERE id = ?', [
       nachher.name,
@@ -94,7 +96,8 @@ function wendeKnotenAn(db: Datenbank, aggregatId: string, k: Aenderungen<Knoten>
     if (!gleich(gespeichert, e)) return konflikt(`der entfernte Knoten ${e.id}`);
   }
   for (const { vorher, nachher } of k.geaendert) {
-    if (vorher.id !== nachher.id) return abbruch('unbekannt', `ChangeSet: geänderter Knoten ${vorher.id} wechselt die Kennung.`);
+    if (vorher.id !== nachher.id)
+      return abbruch('unbekannt', `ChangeSet: geänderter Knoten ${vorher.id} wechselt die Kennung.`);
     const gespeichert = leseKnoten1(db, aggregatId, vorher.id);
     if (gespeichert === null) return abbruch('nicht-gefunden', `Knoten ${vorher.id} ist nicht vorhanden.`);
     if (!gleich(gespeichert, vorher)) return konflikt(`der Vorherstand des Knotens ${vorher.id}`);
@@ -137,7 +140,10 @@ function pruefeBaum(db: Datenbank, aggregatId: string): void {
     [aggregatId, aggregatId, aggregatId],
   )[0];
   if (waise !== undefined) {
-    return abbruch('unbekannt', `Konflikt: Knoten ${String(waise['id'])} hat keinen vorhandenen Elternknoten; nichts geschrieben.`);
+    return abbruch(
+      'unbekannt',
+      `Konflikt: Knoten ${String(waise['id'])} hat keinen vorhandenen Elternknoten; nichts geschrieben.`,
+    );
   }
   const luecke = db.zeilen(
     `SELECT eltern_id FROM knoten WHERE aggregat_id = ? GROUP BY eltern_id
@@ -146,7 +152,10 @@ function pruefeBaum(db: Datenbank, aggregatId: string): void {
     [aggregatId],
   )[0];
   if (luecke !== undefined) {
-    return abbruch('unbekannt', `Konflikt: Die Reihenfolge unter ${String(luecke['eltern_id'])} ist nicht dicht; nichts geschrieben.`);
+    return abbruch(
+      'unbekannt',
+      `Konflikt: Die Reihenfolge unter ${String(luecke['eltern_id'])} ist nicht dicht; nichts geschrieben.`,
+    );
   }
 }
 
@@ -182,15 +191,19 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
   const id = cs.leistungsverzeichnisId;
   const gespeichert = leseLvKopf(db, id);
   if (cs.kopf === null) {
-    if (gespeichert === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${id} ist nicht vorhanden.`);
-    if (gespeichert.projektId !== projektId) return abbruch('unbekannt', `LV ${id} gehört zu einem anderen Projekt.`);
+    if (gespeichert === null)
+      return abbruch('nicht-gefunden', `Leistungsverzeichnis ${id} ist nicht vorhanden.`);
+    if (gespeichert.projektId !== projektId)
+      return abbruch('unbekannt', `LV ${id} gehört zu einem anderen Projekt.`);
   } else {
     const { vorher, nachher } = cs.kopf;
     if (nachher === null) {
       return abbruch('unbekannt', 'Ein LV zu löschen ist im Vertrag nicht vorgesehen (kein Befehl, Q5).');
     }
-    if (nachher.id !== id) return abbruch('unbekannt', 'ChangeSet: leistungsverzeichnisId und Kopf.id weichen ab.');
-    if (nachher.projektId !== projektId) return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
+    if (nachher.id !== id)
+      return abbruch('unbekannt', 'ChangeSet: leistungsverzeichnisId und Kopf.id weichen ab.');
+    if (nachher.projektId !== projektId)
+      return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
@@ -203,12 +216,22 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
       db.ausfuehren(
         `INSERT INTO leistungsverzeichnis (id, projekt_id, name, oz_maske, mwst_satz, nachlass_art, nachlass_wert)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, nachher.projektId, nachher.name, kanonischKompakt(nachher.ozMaske), nachher.mwstSatz, nachlassArt, nachlassWert],
+        [
+          id,
+          nachher.projektId,
+          nachher.name,
+          kanonischKompakt(nachher.ozMaske),
+          nachher.mwstSatz,
+          nachlassArt,
+          nachlassWert,
+        ],
       );
     } else {
-      if (gespeichert === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${id} ist nicht vorhanden.`);
+      if (gespeichert === null)
+        return abbruch('nicht-gefunden', `Leistungsverzeichnis ${id} ist nicht vorhanden.`);
       if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des LV-Kopfs');
-      if (vorher.projektId !== nachher.projektId) return abbruch('unbekannt', 'Ein LV wechselt nicht das Projekt.');
+      if (vorher.projektId !== nachher.projektId)
+        return abbruch('unbekannt', 'Ein LV wechselt nicht das Projekt.');
       db.ausfuehren(
         `UPDATE leistungsverzeichnis SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?
          WHERE id = ?`,
@@ -238,19 +261,25 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
   let lvId: string;
   if (cs.kopf === null) {
     if (gespeichert === null) return abbruch('nicht-gefunden', `Angebot ${id} ist nicht vorhanden.`);
-    if (gespeichert.projektId !== projektId) return abbruch('unbekannt', `Angebot ${id} gehört zu einem anderen Projekt.`);
+    if (gespeichert.projektId !== projektId)
+      return abbruch('unbekannt', `Angebot ${id} gehört zu einem anderen Projekt.`);
     lvId = gespeichert.leistungsverzeichnisId;
   } else {
     const { vorher, nachher } = cs.kopf;
     if (nachher === null) {
-      return abbruch('unbekannt', 'Ein Angebot zu löschen ist im Vertrag nicht vorgesehen (kein Befehl, Q5).');
+      return abbruch(
+        'unbekannt',
+        'Ein Angebot zu löschen ist im Vertrag nicht vorgesehen (kein Befehl, Q5).',
+      );
     }
     if (nachher.id !== id) return abbruch('unbekannt', 'ChangeSet: angebotId und Kopf.id weichen ab.');
-    if (nachher.projektId !== projektId) return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
+    if (nachher.projektId !== projektId)
+      return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     lvId = nachher.leistungsverzeichnisId;
     const lv = leseLvKopf(db, nachher.leistungsverzeichnisId);
     if (lv === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
-    if (lv.projektId !== projektId) return abbruch('unbekannt', `LV ${lvId} gehört zu einem anderen Projekt.`);
+    if (lv.projektId !== projektId)
+      return abbruch('unbekannt', `LV ${lvId} gehört zu einem anderen Projekt.`);
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`Angebot ${id} existiert bereits, das ChangeSet`);
@@ -265,31 +294,50 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     } else {
       if (gespeichert === null) return abbruch('nicht-gefunden', `Angebot ${id} ist nicht vorhanden.`);
       if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Angebotskopfs');
-      if (vorher.leistungsverzeichnisId !== nachher.leistungsverzeichnisId || vorher.bieterId !== nachher.bieterId) {
+      if (
+        vorher.leistungsverzeichnisId !== nachher.leistungsverzeichnisId ||
+        vorher.bieterId !== nachher.bieterId
+      ) {
         return abbruch('unbekannt', 'Ein Angebot wechselt weder LV noch Bieter.');
       }
-      db.ausfuehren('UPDATE angebot SET nachlass_art = ?, nachlass_wert = ? WHERE id = ?', [nachlassArt, nachlassWert, id]);
+      db.ausfuehren('UPDATE angebot SET nachlass_art = ?, nachlass_wert = ? WHERE id = ?', [
+        nachlassArt,
+        nachlassWert,
+        id,
+      ]);
     }
   }
 
   const p = cs.positionen;
   for (const e of p.entfernt) {
     const stand = leseAngebotposition(db, id, e.positionId);
-    if (stand === null) return abbruch('nicht-gefunden', `Angebotsposition ${e.positionId} ist nicht vorhanden.`);
+    if (stand === null)
+      return abbruch('nicht-gefunden', `Angebotsposition ${e.positionId} ist nicht vorhanden.`);
     if (!gleich(stand, e)) return konflikt(`die entfernte Angebotsposition ${e.positionId}`);
   }
   for (const { vorher, nachher } of p.geaendert) {
     if (vorher.positionId !== nachher.positionId) {
-      return abbruch('unbekannt', `ChangeSet: geänderte Angebotsposition ${vorher.positionId} wechselt die Kennung.`);
+      return abbruch(
+        'unbekannt',
+        `ChangeSet: geänderte Angebotsposition ${vorher.positionId} wechselt die Kennung.`,
+      );
     }
     const stand = leseAngebotposition(db, id, vorher.positionId);
-    if (stand === null) return abbruch('nicht-gefunden', `Angebotsposition ${vorher.positionId} ist nicht vorhanden.`);
+    if (stand === null)
+      return abbruch('nicht-gefunden', `Angebotsposition ${vorher.positionId} ist nicht vorhanden.`);
     if (!gleich(stand, vorher)) return konflikt(`der Vorherstand der Angebotsposition ${vorher.positionId}`);
   }
-  for (const n of [...p.hinzugefuegt, ...p.geaendert.map((g) => g.nachher)]) pruefeAngebotsposition(db, lvId, n.positionId);
+  for (const n of [...p.hinzugefuegt, ...p.geaendert.map((g) => g.nachher)])
+    pruefeAngebotsposition(db, lvId, n.positionId);
   const schluessel = (positionId: string): SqlWert[] => [id, positionId];
-  db.stapel('DELETE FROM angebotsposition WHERE angebot_id = ? AND position_id = ?', p.entfernt.map((e) => schluessel(e.positionId)));
-  db.stapel('DELETE FROM summe_position WHERE aggregat_id = ? AND position_id = ?', p.entfernt.map((e) => schluessel(e.positionId)));
+  db.stapel(
+    'DELETE FROM angebotsposition WHERE angebot_id = ? AND position_id = ?',
+    p.entfernt.map((e) => schluessel(e.positionId)),
+  );
+  db.stapel(
+    'DELETE FROM summe_position WHERE aggregat_id = ? AND position_id = ?',
+    p.entfernt.map((e) => schluessel(e.positionId)),
+  );
   db.stapel(
     'UPDATE angebotsposition SET status = ?, einheitspreis = ?, epa = ? WHERE angebot_id = ? AND position_id = ?',
     p.geaendert.map(({ nachher }): SqlWert[] => {
@@ -325,7 +373,11 @@ export function schreibeAuftragsLv(db: Datenbank, z: AuftragsLvZustand): void {
     ],
   );
   wendeKnotenAn(db, k.id, { hinzugefuegt: k.knoten, geaendert: [], entfernt: [] });
-  wendeSummenAn(db, k.id, { positionen: z.summen.positionen, gliederungen: z.summen.gliederungen, gesamt: z.summen.gesamt });
+  wendeSummenAn(db, k.id, {
+    positionen: z.summen.positionen,
+    gliederungen: z.summen.gliederungen,
+    gesamt: z.summen.gesamt,
+  });
 }
 
 // --- Protokoll -------------------------------------------------------------------------------------------------

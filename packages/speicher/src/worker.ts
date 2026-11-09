@@ -4,6 +4,6 @@
 // und reicht ihn an `speicherOeffnen` (Hauptthread).
 
 import { oeffneOpfs } from './backends';
-import { betreibeWorker, type WorkerScope } from './worker-host';
+import { betreibeWorker } from './worker-host';
 
-betreibeWorker(self as unknown as WorkerScope, (optionen) => oeffneOpfs(optionen.datenbank));
+betreibeWorker(self, (optionen) => oeffneOpfs(optionen.datenbank));

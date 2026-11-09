@@ -2,7 +2,7 @@
 // Schmale, synchrone Datenbankschnittstelle. Alles darüber (Schema, Migrationen, Repositories) kennt nur sie;
 // dahinter steht entweder SQLite-WASM im OPFS (Worker) oder eine In-Memory-Datenbank (Node-Tests).
 
-import type { BindingSpec, Database } from '@sqlite.org/sqlite-wasm';
+import type { Database } from '@sqlite.org/sqlite-wasm';
 
 export type SqlWert = string | number | null;
 export type SqlZeile = Record<string, SqlWert>;
@@ -25,13 +25,13 @@ export function sqliteDatenbank(db: Database): Datenbank {
     },
     ausfuehren: (sql, bind) => {
       if (bind === undefined) db.exec(sql);
-      else db.exec({ sql, bind: bind as BindingSpec });
+      else db.exec({ sql, bind });
     },
-    zeilen: (sql, bind) => db.selectObjects(sql, bind as BindingSpec | undefined) as SqlZeile[],
+    zeilen: (sql, bind) => db.selectObjects(sql, bind) as SqlZeile[],
     stapel: (sql, bindungen) => {
       const stmt = db.prepare(sql);
       try {
-        for (const bind of bindungen) stmt.bind(bind as BindingSpec).stepReset();
+        for (const bind of bindungen) stmt.bind(bind).stepReset();
       } finally {
         stmt.finalize();
       }

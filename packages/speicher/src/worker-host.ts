@@ -17,9 +17,16 @@ export interface WorkerScope {
 export type Oeffner = (optionen: OeffnenOptionen) => Promise<GeoeffneteDatenbank>;
 
 /** Verteiler der Kernmethoden. Nur Namen aus `RPC_METHODEN` sind erreichbar. */
-function aufrufen(kern: SpeicherKern, methode: string, args: readonly unknown[]): Ergebnis<unknown, Speicherfehler> {
-  if (!(RPC_METHODEN as readonly string[]).includes(methode)) return fehler('unbekannt', `Unbekannte Methode ${methode}.`);
-  const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[methode];
+function aufrufen(
+  kern: SpeicherKern,
+  methode: string,
+  args: readonly unknown[],
+): Ergebnis<unknown, Speicherfehler> {
+  if (!(RPC_METHODEN as readonly string[]).includes(methode))
+    return fehler('unbekannt', `Unbekannte Methode ${methode}.`);
+  const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[
+    methode
+  ];
   if (f === undefined) return fehler('unbekannt', `Unbekannte Methode ${methode}.`);
   return f.apply(kern, [...args]);
 }
@@ -71,7 +78,10 @@ export function betreibeWorker(scope: WorkerScope, oeffner: Oeffner): void {
   scope.addEventListener('message', (e) => {
     const anfrage = e.data as RpcAnfrage;
     void behandle(anfrage)
-      .catch((fehlerWert: unknown): Ergebnis<unknown, Speicherfehler> => ({ ok: false, fehler: fehlerAusAusnahme(fehlerWert) }))
+      .catch((fehlerWert: unknown): Ergebnis<unknown, Speicherfehler> => ({
+        ok: false,
+        fehler: fehlerAusAusnahme(fehlerWert),
+      }))
       .then((ergebnis) => {
         const antwort: RpcAntwort = { id: anfrage.id, ergebnis };
         scope.postMessage(antwort);

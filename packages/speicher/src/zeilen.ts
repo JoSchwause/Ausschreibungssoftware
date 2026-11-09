@@ -71,7 +71,9 @@ export function nachlassAusZeile(z: SqlZeile): Nachlass | null {
   const art = textOderNull(z, 'nachlass_art');
   const wert = textOderNull(z, 'nachlass_wert');
   if (art === null || wert === null) return null;
-  return art === 'prozent' ? { art: 'prozent', wert: wert as Prozent } : { art: 'betrag', wert: wert as Betrag };
+  return art === 'prozent'
+    ? { art: 'prozent', wert: wert as Prozent }
+    : { art: 'betrag', wert: wert as Betrag };
 }
 
 export const maskeAusZeile = (z: SqlZeile): OzMaske => jsonLesen(text(z, 'oz_maske'), 'oz_maske') as OzMaske;
@@ -104,9 +106,39 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   switch (k.art) {
     case 'los':
     case 'titel':
-      return [...kopf, k.ordnungszahl, null, k.kurztext, null, null, null, null, null, null, null, null, null, null];
+      return [
+        ...kopf,
+        k.ordnungszahl,
+        null,
+        k.kurztext,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
     case 'hinweis':
-      return [...kopf, null, null, null, null, null, null, null, null, JSON.stringify(k.text), null, null, null, null];
+      return [
+        ...kopf,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        JSON.stringify(k.text),
+        null,
+        null,
+        null,
+        null,
+      ];
     case 'position':
       return [
         ...kopf,
@@ -136,7 +168,13 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
   const ozOderNull = textOderNull(z, 'ordnungszahl') as Ordnungszahl | null;
   switch (art) {
     case 'los':
-      return { ...lage, art: 'los', id: text(z, 'id') as LosId, ordnungszahl: ozOderNull, kurztext: text(z, 'kurztext') };
+      return {
+        ...lage,
+        art: 'los',
+        id: text(z, 'id') as LosId,
+        ordnungszahl: ozOderNull,
+        kurztext: text(z, 'kurztext'),
+      };
     case 'titel':
       return {
         ...lage,
@@ -213,6 +251,7 @@ export function gesamtAusZeile(z: SqlZeile): Gesamtsummen {
 // --- Kennungen (nur Typmarken) -----------------------------------------------------------------------------
 
 export const projektId = (z: SqlZeile, spalte = 'projekt_id'): ProjektId => text(z, spalte) as ProjektId;
-export const lvId = (z: SqlZeile, spalte: string): LeistungsverzeichnisId => text(z, spalte) as LeistungsverzeichnisId;
+export const lvId = (z: SqlZeile, spalte: string): LeistungsverzeichnisId =>
+  text(z, spalte) as LeistungsverzeichnisId;
 export const bieterId = (z: SqlZeile, spalte: string): BieterId => text(z, spalte) as BieterId;
 export const gliederungId = (z: SqlZeile, spalte: string): GliederungId => text(z, spalte) as GliederungId;

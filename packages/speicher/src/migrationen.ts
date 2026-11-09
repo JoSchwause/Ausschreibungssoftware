@@ -158,7 +158,14 @@ CREATE INDEX protokoll_projekt ON protokoll (projekt_id, seq);
 `;
 
 export const MIGRATIONEN: readonly Migration[] = [
-  { version: 1, name: 'Grundschema', hoch: (db) => { db.skript(SCHEMA_V1); }, datei: null },
+  {
+    version: 1,
+    name: 'Grundschema',
+    hoch: (db) => {
+      db.skript(SCHEMA_V1);
+    },
+    datei: null,
+  },
 ];
 
 /** Aktuelle Schemaversion: die der letzten Migration. */

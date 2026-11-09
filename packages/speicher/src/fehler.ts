@@ -16,13 +16,15 @@ const SQLITE_CANTOPEN = 14;
 const SQLITE_CONSTRAINT = 19;
 const SQLITE_NOTADB = 26;
 
-const GESPERRT_NAMEN = /NoModificationAllowed|InvalidStateError|NotAllowedError|SecurityError|NotSupportedError/i;
+const GESPERRT_NAMEN =
+  /NoModificationAllowed|InvalidStateError|NotAllowedError|SecurityError|NotSupportedError/i;
 const QUOTA = /quota|no space|disk full/i;
 
 function textVon(e: unknown): string {
   if (e instanceof Error) return `${e.name}: ${e.message}`;
   if (typeof e === 'string') return e;
-  if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') return e.message;
+  if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string')
+    return e.message;
   return 'unbekannter Fehler';
 }
 

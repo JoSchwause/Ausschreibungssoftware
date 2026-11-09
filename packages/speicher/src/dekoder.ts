@@ -125,7 +125,10 @@ function nachlass(x: unknown, pfad: string): Nachlass | null {
     const o = objekt(v, pfad, ['art', 'wert']);
     return feld(o, 'art') === 'prozent'
       ? { art: 'prozent', wert: dezimal(feld(o, 'wert'), `${pfad}.wert`, 'prozent') as Prozent }
-      : { art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, ['betrag']), wert: dezimal(feld(o, 'wert'), `${pfad}.wert`, 'betrag') as Betrag };
+      : {
+          art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, ['betrag']),
+          wert: dezimal(feld(o, 'wert'), `${pfad}.wert`, 'betrag') as Betrag,
+        };
   });
 }
 
@@ -140,7 +143,9 @@ function ozStelle(x: unknown, pfad: string): OzStelle {
 function ozMaske(x: unknown, pfad: string): OzMaske {
   const o = objekt(x, pfad, ['gliederung', 'position', 'index', 'trennzeichen']);
   return {
-    gliederung: liste(feld(o, 'gliederung'), `${pfad}.gliederung`).map((s, i) => ozStelle(s, `${pfad}.gliederung[${String(i)}]`)),
+    gliederung: liste(feld(o, 'gliederung'), `${pfad}.gliederung`).map((s, i) =>
+      ozStelle(s, `${pfad}.gliederung[${String(i)}]`),
+    ),
     position: ozStelle(feld(o, 'position'), `${pfad}.position`),
     index: oderNull(feld(o, 'index'), (v) => ozStelle(v, `${pfad}.index`)),
     trennzeichen: oderNull(feld(o, 'trennzeichen'), (v) => zeichenkette(v, `${pfad}.trennzeichen`)),
@@ -171,7 +176,15 @@ type LangtextBildId = Extract<LangtextBaustein, { art: 'bild' }>['bild']['id'];
 
 function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   return oderNull(x, (v) => {
-    const o = objekt(v, pfad, ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei', 'freiBezeichnung']);
+    const o = objekt(v, pfad, [
+      'lohn',
+      'stoffe',
+      'geraete',
+      'nachunternehmer',
+      'sonstiges',
+      'frei',
+      'freiBezeichnung',
+    ]);
     const ep = (n: string): Einheitspreis | null =>
       oderNull(feld(o, n), (w) => dezimal(w, `${pfad}.${n}`, 'einheitspreis') as Einheitspreis);
     return {
@@ -181,7 +194,9 @@ function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
       nachunternehmer: ep('nachunternehmer'),
       sonstiges: ep('sonstiges'),
       frei: ep('frei'),
-      freiBezeichnung: oderNull(feld(o, 'freiBezeichnung'), (w) => zeichenkette(w, `${pfad}.freiBezeichnung`)),
+      freiBezeichnung: oderNull(feld(o, 'freiBezeichnung'), (w) =>
+        zeichenkette(w, `${pfad}.freiBezeichnung`),
+      ),
     };
   });
 }
@@ -200,7 +215,11 @@ function knoten(x: unknown, pfad: string): Knoten {
     case 'los':
     case 'titel': {
       const o = objekt(x, pfad, ['art', 'id', 'elternId', 'reihenfolge', 'ordnungszahl', 'kurztext']);
-      const gemeinsam = { ...lage(o), ordnungszahl: oz(o), kurztext: zeichenkette(feld(o, 'kurztext'), `${pfad}.kurztext`) };
+      const gemeinsam = {
+        ...lage(o),
+        ordnungszahl: oz(o),
+        kurztext: zeichenkette(feld(o, 'kurztext'), `${pfad}.kurztext`),
+      };
       const id = zeichenkette(feld(o, 'id'), `${pfad}.id`);
       return art === 'los'
         ? { ...gemeinsam, art: 'los', id: id as LosId }
@@ -217,9 +236,23 @@ function knoten(x: unknown, pfad: string): Knoten {
     }
     case 'position': {
       const o = objekt(x, pfad, [
-        'art', 'id', 'elternId', 'reihenfolge', 'ordnungszahl', 'ozIndex', 'positionsart', 'pauschal',
-        'bedarfMitGesamtbetrag', 'bezugspositionId', 'grundpositionId', 'kurztext', 'langtext', 'menge',
-        'einheit', 'einheitspreis', 'epa',
+        'art',
+        'id',
+        'elternId',
+        'reihenfolge',
+        'ordnungszahl',
+        'ozIndex',
+        'positionsart',
+        'pauschal',
+        'bedarfMitGesamtbetrag',
+        'bezugspositionId',
+        'grundpositionId',
+        'kurztext',
+        'langtext',
+        'menge',
+        'einheit',
+        'einheitspreis',
+        'epa',
       ]);
       const pid = (n: string): PositionId | null =>
         oderNull(feld(o, n), (v) => zeichenkette(v, `${pfad}.${n}`) as PositionId);
@@ -238,7 +271,10 @@ function knoten(x: unknown, pfad: string): Knoten {
         langtext: langtext(feld(o, 'langtext'), `${pfad}.langtext`),
         menge: oderNull(feld(o, 'menge'), (v) => dezimal(v, `${pfad}.menge`, 'menge') as Menge),
         einheit: oderNull(feld(o, 'einheit'), (v) => zeichenkette(v, `${pfad}.einheit`)),
-        einheitspreis: oderNull(feld(o, 'einheitspreis'), (v) => dezimal(v, `${pfad}.einheitspreis`, 'einheitspreis') as Einheitspreis),
+        einheitspreis: oderNull(
+          feld(o, 'einheitspreis'),
+          (v) => dezimal(v, `${pfad}.einheitspreis`, 'einheitspreis') as Einheitspreis,
+        ),
         epa: epa(feld(o, 'epa'), `${pfad}.epa`),
       };
     }
@@ -249,7 +285,13 @@ function knoten(x: unknown, pfad: string): Knoten {
 
 function summenstand(x: unknown, pfad: string): Summenstand {
   const o = objekt(x, pfad, ['positionen', 'gliederungen', 'gesamt']);
-  const g = objekt(feld(o, 'gesamt'), `${pfad}.gesamt`, ['netto', 'nachlass', 'nettoNachNachlass', 'mwst', 'brutto']);
+  const g = objekt(feld(o, 'gesamt'), `${pfad}.gesamt`, [
+    'netto',
+    'nachlass',
+    'nettoNachNachlass',
+    'mwst',
+    'brutto',
+  ]);
   const b = (n: string): Betrag => dezimal(feld(g, n), `${pfad}.gesamt.${n}`, 'betrag') as Betrag;
   const gesamt: Gesamtsummen = {
     netto: b('netto'),
@@ -264,7 +306,10 @@ function summenstand(x: unknown, pfad: string): Summenstand {
       const po = objekt(p, q, ['positionId', 'gesamtpreis', 'gehtInSummeEin']);
       return {
         positionId: zeichenkette(feld(po, 'positionId'), `${q}.positionId`) as PositionId,
-        gesamtpreis: oderNull(feld(po, 'gesamtpreis'), (v) => dezimal(v, `${q}.gesamtpreis`, 'betrag') as Betrag),
+        gesamtpreis: oderNull(
+          feld(po, 'gesamtpreis'),
+          (v) => dezimal(v, `${q}.gesamtpreis`, 'betrag') as Betrag,
+        ),
         gehtInSummeEin: wahrheit(feld(po, 'gehtInSummeEin'), `${q}.gehtInSummeEin`),
       };
     }),
@@ -295,7 +340,10 @@ function projekt(x: unknown, pfad: string): Projekt {
     bieter: liste(feld(o, 'bieter'), `${pfad}.bieter`).map((b, i): Bieter => {
       const q = `${pfad}.bieter[${String(i)}]`;
       const bo = objekt(b, q, ['id', 'name']);
-      return { id: zeichenkette(feld(bo, 'id'), `${q}.id`) as BieterId, name: zeichenkette(feld(bo, 'name'), `${q}.name`) };
+      return {
+        id: zeichenkette(feld(bo, 'id'), `${q}.id`) as BieterId,
+        name: zeichenkette(feld(bo, 'name'), `${q}.name`),
+      };
     }),
   };
 }
@@ -303,7 +351,15 @@ function projekt(x: unknown, pfad: string): Projekt {
 function lvZustand(x: unknown, pfad: string): LvZustand {
   const z = objekt(x, pfad, ['leistungsverzeichnis', 'summen']);
   const p = `${pfad}.leistungsverzeichnis`;
-  const o = objekt(feld(z, 'leistungsverzeichnis'), p, ['id', 'projektId', 'name', 'ozMaske', 'mwstSatz', 'nachlass', 'knoten']);
+  const o = objekt(feld(z, 'leistungsverzeichnis'), p, [
+    'id',
+    'projektId',
+    'name',
+    'ozMaske',
+    'mwstSatz',
+    'nachlass',
+    'knoten',
+  ]);
   const lv: Leistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as LeistungsverzeichnisId,
     projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
@@ -320,12 +376,23 @@ function auftragsLvZustand(x: unknown, pfad: string): AuftragsLvZustand {
   const z = objekt(x, pfad, ['auftragsLeistungsverzeichnis', 'summen']);
   const p = `${pfad}.auftragsLeistungsverzeichnis`;
   const o = objekt(feld(z, 'auftragsLeistungsverzeichnis'), p, [
-    'id', 'projektId', 'leistungsverzeichnisId', 'angebotId', 'name', 'ozMaske', 'mwstSatz', 'nachlass', 'knoten',
+    'id',
+    'projektId',
+    'leistungsverzeichnisId',
+    'angebotId',
+    'name',
+    'ozMaske',
+    'mwstSatz',
+    'nachlass',
+    'knoten',
   ]);
   const lv: AuftragsLeistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as AuftragsLeistungsverzeichnisId,
     projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
-    leistungsverzeichnisId: zeichenkette(feld(o, 'leistungsverzeichnisId'), `${p}.leistungsverzeichnisId`) as LeistungsverzeichnisId,
+    leistungsverzeichnisId: zeichenkette(
+      feld(o, 'leistungsverzeichnisId'),
+      `${p}.leistungsverzeichnisId`,
+    ) as LeistungsverzeichnisId,
     angebotId: zeichenkette(feld(o, 'angebotId'), `${p}.angebotId`) as AngebotId,
     name: zeichenkette(feld(o, 'name'), `${p}.name`),
     ozMaske: ozMaske(feld(o, 'ozMaske'), `${p}.ozMaske`),
@@ -339,11 +406,21 @@ function auftragsLvZustand(x: unknown, pfad: string): AuftragsLvZustand {
 function angebotZustand(x: unknown, pfad: string): AngebotZustand {
   const z = objekt(x, pfad, ['angebot', 'summen']);
   const p = `${pfad}.angebot`;
-  const o = objekt(feld(z, 'angebot'), p, ['id', 'projektId', 'leistungsverzeichnisId', 'bieterId', 'nachlass', 'positionen']);
+  const o = objekt(feld(z, 'angebot'), p, [
+    'id',
+    'projektId',
+    'leistungsverzeichnisId',
+    'bieterId',
+    'nachlass',
+    'positionen',
+  ]);
   const kopf: AngebotKopf = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as AngebotId,
     projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
-    leistungsverzeichnisId: zeichenkette(feld(o, 'leistungsverzeichnisId'), `${p}.leistungsverzeichnisId`) as LeistungsverzeichnisId,
+    leistungsverzeichnisId: zeichenkette(
+      feld(o, 'leistungsverzeichnisId'),
+      `${p}.leistungsverzeichnisId`,
+    ) as LeistungsverzeichnisId,
     bieterId: zeichenkette(feld(o, 'bieterId'), `${p}.bieterId`) as BieterId,
     nachlass: nachlass(feld(o, 'nachlass'), `${p}.nachlass`),
   };
@@ -352,14 +429,21 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
     const status = typeof a === 'object' && a !== null ? (a as Roh)['status'] : undefined;
     if (status === 'nicht-angeboten') {
       const ao = objekt(a, q, ['positionId', 'status']);
-      return { positionId: zeichenkette(feld(ao, 'positionId'), `${q}.positionId`) as PositionId, status: 'nicht-angeboten' };
+      return {
+        positionId: zeichenkette(feld(ao, 'positionId'), `${q}.positionId`) as PositionId,
+        status: 'nicht-angeboten',
+      };
     }
     const ao = objekt(a, q, ['positionId', 'status', 'einheitspreis', 'epa']);
     aufzaehlung(feld(ao, 'status'), `${q}.status`, ['angeboten']);
     return {
       positionId: zeichenkette(feld(ao, 'positionId'), `${q}.positionId`) as PositionId,
       status: 'angeboten',
-      einheitspreis: dezimal(feld(ao, 'einheitspreis'), `${q}.einheitspreis`, 'einheitspreis') as Einheitspreis,
+      einheitspreis: dezimal(
+        feld(ao, 'einheitspreis'),
+        `${q}.einheitspreis`,
+        'einheitspreis',
+      ) as Einheitspreis,
       epa: epa(feld(ao, 'epa'), `${q}.epa`),
     };
   });
@@ -402,11 +486,14 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
 function jsonWert(x: unknown, pfad: string): void {
   if (x === null || typeof x === 'string' || typeof x === 'boolean') return;
   if (typeof x === 'number') {
-    if (!Number.isSafeInteger(x)) ungueltig(pfad, 'nur ganze Zahlen sind erlaubt (Geld steht als Zeichenkette)');
+    if (!Number.isSafeInteger(x))
+      ungueltig(pfad, 'nur ganze Zahlen sind erlaubt (Geld steht als Zeichenkette)');
     return;
   }
   if (Array.isArray(x)) {
-    (x as unknown[]).forEach((w, i) => { jsonWert(w, `${pfad}[${String(i)}]`); });
+    (x as unknown[]).forEach((w, i) => {
+      jsonWert(w, `${pfad}[${String(i)}]`);
+    });
     return;
   }
   if (typeof x === 'object') {
@@ -420,17 +507,27 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   const o = objekt(x, pfad, ['id', 'projektId', 'aggregat', 'wer', 'wann', 'befehl']);
   const ag = objekt(feld(o, 'aggregat'), `${pfad}.aggregat`, ['art', 'id']);
   const art = aufzaehlung(feld(ag, 'art'), `${pfad}.aggregat.art`, [
-    'projekt', 'leistungsverzeichnis', 'angebot', 'auftrags-leistungsverzeichnis',
+    'projekt',
+    'leistungsverzeichnis',
+    'angebot',
+    'auftrags-leistungsverzeichnis',
   ]);
   const befehl = feld(o, 'befehl');
-  const b = objekt(befehl, `${pfad}.befehl`, Object.keys(befehl !== null && typeof befehl === 'object' ? befehl : {}));
+  const b = objekt(
+    befehl,
+    `${pfad}.befehl`,
+    Object.keys(befehl !== null && typeof befehl === 'object' ? befehl : {}),
+  );
   const bart = zeichenkette(feld(b, 'art'), `${pfad}.befehl.art`);
   if (!Object.hasOwn(BEFEHLSARTEN, bart)) ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
   jsonWert(befehl, `${pfad}.befehl`);
   return {
     id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as ProtokollId,
     projektId: zeichenkette(feld(o, 'projektId'), `${pfad}.projektId`) as ProjektId,
-    aggregat: { art, id: zeichenkette(feld(ag, 'id'), `${pfad}.aggregat.id`) } as Protokolleintrag['aggregat'],
+    aggregat: {
+      art,
+      id: zeichenkette(feld(ag, 'id'), `${pfad}.aggregat.id`),
+    } as Protokolleintrag['aggregat'],
     wer: zeichenkette(feld(o, 'wer'), `${pfad}.wer`) as NutzerId,
     wann: zeichenkette(feld(o, 'wann'), `${pfad}.wann`) as Zeitstempel,
     befehl: befehl as Befehl,
@@ -440,17 +537,31 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
 /** Prüft eine bereits auf die aktuelle Version gehobene Projektdatei und liefert sie typisiert. */
 export function dekodiereProjektdatei(roh: unknown, version: number): Projektdatei {
   const o = objekt(roh, '$', [
-    'schemaVersion', 'projekt', 'leistungsverzeichnisse', 'angebote', 'auftragsLeistungsverzeichnisse', 'protokoll',
+    'schemaVersion',
+    'projekt',
+    'leistungsverzeichnisse',
+    'angebote',
+    'auftragsLeistungsverzeichnisse',
+    'protokoll',
   ]);
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
   const p = projekt(feld(o, 'projekt'), '$.projekt');
   const datei: Projektdatei = {
     schemaVersion: version,
     projekt: p,
-    leistungsverzeichnisse: liste(feld(o, 'leistungsverzeichnisse'), '$.leistungsverzeichnisse').map((x, i) => lvZustand(x, `$.leistungsverzeichnisse[${String(i)}]`)),
-    angebote: liste(feld(o, 'angebote'), '$.angebote').map((x, i) => angebotZustand(x, `$.angebote[${String(i)}]`)),
-    auftragsLeistungsverzeichnisse: liste(feld(o, 'auftragsLeistungsverzeichnisse'), '$.auftragsLeistungsverzeichnisse').map((x, i) => auftragsLvZustand(x, `$.auftragsLeistungsverzeichnisse[${String(i)}]`)),
-    protokoll: liste(feld(o, 'protokoll'), '$.protokoll').map((x, i) => protokolleintrag(x, `$.protokoll[${String(i)}]`)),
+    leistungsverzeichnisse: liste(feld(o, 'leistungsverzeichnisse'), '$.leistungsverzeichnisse').map((x, i) =>
+      lvZustand(x, `$.leistungsverzeichnisse[${String(i)}]`),
+    ),
+    angebote: liste(feld(o, 'angebote'), '$.angebote').map((x, i) =>
+      angebotZustand(x, `$.angebote[${String(i)}]`),
+    ),
+    auftragsLeistungsverzeichnisse: liste(
+      feld(o, 'auftragsLeistungsverzeichnisse'),
+      '$.auftragsLeistungsverzeichnisse',
+    ).map((x, i) => auftragsLvZustand(x, `$.auftragsLeistungsverzeichnisse[${String(i)}]`)),
+    protokoll: liste(feld(o, 'protokoll'), '$.protokoll').map((x, i) =>
+      protokolleintrag(x, `$.protokoll[${String(i)}]`),
+    ),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [
