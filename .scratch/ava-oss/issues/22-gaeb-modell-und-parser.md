@@ -37,7 +37,7 @@ Schreiben X81/X83/X86 und XSD-Gegenprüfung (G2), X84-Import (G3), Version 3.2 u
 ### 2026-11-10 — Umsetzung (Paket `packages/gaeb`, Branch `worktree-agent-af73d593246d4392f`)
 
 Alles unten ist in diesem Branch gelaufen und grün: `pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest 15 Dateien / 318 Tests,
-davon `packages/gaeb` 3 Dateien / 98 Tests; `node --test fixtures/*.test.mjs` 10/10), `reuse lint` (308/308 Dateien).
+davon `packages/gaeb` 3 Dateien / 97 Tests; `node --test fixtures/*.test.mjs` 10/10), `reuse lint` (308/308 Dateien).
 
 #### API
 
