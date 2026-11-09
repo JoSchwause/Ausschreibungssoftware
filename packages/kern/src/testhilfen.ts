@@ -19,10 +19,12 @@ import type {
   Nachlass,
   Ordnungszahl,
   OzMaske,
+  Position,
   PositionId,
   Positionsdaten,
   Positionsart,
   Prozent,
+  Titel,
   TitelId,
   LosId,
   ProjektId,
@@ -196,3 +198,88 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
 }
 
 export const gliederungId = (s: string): GliederungId => s as GliederungId;
+
+// --- Summen (Ticket 07) --------------------------------------------------------------------------------------
+
+/** Position als Knoten (für `LeistungsverzeichnisAnlegen`); Zahlen in kanonischer Schreibweise. */
+export function posKnoten(
+  kennung: string,
+  eltern: string,
+  reihenfolge: number,
+  menge: string | null,
+  einheitspreis: string | null,
+  ueber: Partial<Positionsdaten> = {},
+): Position {
+  return {
+    art: 'position',
+    id: id.pos(kennung),
+    elternId: id.eltern(eltern),
+    reihenfolge,
+    ...positionsdaten(`Position ${kennung}`, {
+      menge: menge as Menge | null,
+      einheitspreis: einheitspreis as Einheitspreis | null,
+      ...ueber,
+    }),
+  };
+}
+
+export function titelKnoten(kennung: string, eltern: string, reihenfolge: number): Titel {
+  return {
+    art: 'titel',
+    id: id.titel(kennung),
+    elternId: id.eltern(eltern),
+    reihenfolge,
+    ordnungszahl: null,
+    kurztext: `Titel ${kennung}`,
+  };
+}
+
+/** LV aus Knoten mit wählbarem Nachlass und MwSt-Satz. */
+export function lvMit(
+  knoten: readonly Knoten[],
+  kopf: { nachlass?: Nachlass | null; mwstSatz?: string } = {},
+): LvZustand {
+  const basis = inhalt(knoten);
+  return wende(null, {
+    art: 'LeistungsverzeichnisAnlegen',
+    id: LV_ID,
+    projektId: PROJEKT_ID,
+    inhalt: {
+      ...basis,
+      nachlass: kopf.nachlass === undefined ? basis.nachlass : kopf.nachlass,
+      mwstSatz: (kopf.mwstSatz ?? basis.mwstSatz) as Prozent,
+    },
+  });
+}
+
+export const prozentNachlass = (wert: string): Nachlass => ({ art: 'prozent', wert: wert as Prozent });
+export const betragNachlass = (wert: string): Nachlass => ({ art: 'betrag', wert: wert as Betrag });
+
+export interface Sollwerte {
+  positionen: Record<string, { gp: string | null; inSumme: boolean }>;
+  titel: Record<string, { summe: string }>;
+  summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
+}
+
+export function sollwerteLesen(name: 'winzig' | 'typisch' | 'gross'): Sollwerte {
+  const fx = JSON.parse(
+    readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8'),
+  ) as { sollwerte: Sollwerte };
+  return fx.sollwerte;
+}
+
+export interface Handbeispiele {
+  gesamtpreise: { menge: string; einheitspreis: string; gp: string }[];
+  summenketten: {
+    netto: string;
+    nachlass: { art: 'prozent' | 'betrag'; wert: string } | null;
+    mwstSatz: string;
+    soll: Sollwerte['summen'];
+  }[];
+}
+
+export function handbeispieleLesen(): Handbeispiele {
+  return JSON.parse(
+    readFileSync(new URL('../../../fixtures/handbeispiele.json', import.meta.url), 'utf8'),
+  ) as Handbeispiele;
+}
