@@ -19,10 +19,8 @@ import {
 import type { ToastArt, Zahlpruefung } from '@tethys/ui-basis';
 import { useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import { texte } from '../ui/texte';
+import { katalog as t } from './texte';
 import './katalog.css';
-
-const t = texte.katalog;
 
 const FARB_TOKENS: Record<string, readonly string[]> = {
   [t.tokens.flaechen]: [

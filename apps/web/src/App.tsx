@@ -26,7 +26,7 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     case '/katalog':
       if (Katalog) {
         return {
-          titel: texte.katalog.titel,
+          titel: texte.huelle.katalogTitel,
           inhalt: (
             <Suspense fallback={null}>
               <Katalog />
