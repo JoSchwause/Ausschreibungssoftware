@@ -1,5 +1,7 @@
 # Arbeitsplan: Eigene AVA-Software (angelehnt an NOVA AVA)
 
+> **Abgelöst am 2026-11-09** durch `.scratch/ava-oss/plan.md` (parallele Stränge und Wellen) und `docs/regeln.md`. Dieses Dokument bleibt als Herkunft der Tickets `issues/01`–`17` stehen, die weiter gelten. Phasenzeilen zu Postgres, REST und Auth sind überholt.
+
 ## 0. Was im Worktree schon steht
 
 | Bestand | Inhalt | Nutzen für die Umsetzung |

@@ -4,7 +4,7 @@ title: Projekt-Überblick
 description: Grunddaten zum Projekt Ausschreibungssoftware (Ort, Status, offene Punkte).
 resource: /home/jsk/Documents/Privates/Ausschreibungssoftware
 tags: [ausschreibungssoftware, status]
-timestamp: 2026-11-09T20:57:00Z
+timestamp: 2026-11-09T23:00:00Z
 ---
 ## Kontext (vom Nutzer, 2026-11-09)
 - Ziel: eine Open-Source-AVA-Software (Ausschreibung, Vergabe, Abrechnung) für einen befreundeten Architekten in Deutschland.
@@ -22,10 +22,12 @@ timestamp: 2026-11-09T20:57:00Z
 
 ## Entschieden (2026-11-09)
 - Lokale PWA ohne Server, React/TS, SQLite-WASM/OPFS, AGPL-3.0: siehe `docs/adr/0001`–`0007`.
-- Arbeitsplan: `.scratch/ava-mvp/map.md`, Tickets P0–P2: `.scratch/ava-mvp/issues/01`–`17`.
+- Zielgruppe (Planer, Architekten, Ingenieurbüros) und MVP (LV-Editor, Berechnung, GAEB, Preisspiegel/Zuschlag): `.scratch/ava-mvp/map.md` §0b.
+- Arbeitsplan: [`.scratch/ava-oss/plan.md`](/.scratch/ava-oss/plan.md) (11 Stränge mit je eigenem Paket, 7 Wellen, Meilensteine M1–M4). Er löst `.scratch/ava-mvp/map.md` ab; die Tickets `.scratch/ava-mvp/issues/01`–`17` (P0–P2) gelten weiter und sind den Strängen zugeordnet.
+- Verbindliche Regeln: [`docs/regeln.md`](/docs/regeln.md). Mit [NEU] markierte Regeln sind vorläufig, bis das Grilling sie bestätigt.
 
 ## Offen
-- Lizenzfrage DIN-276-Texte / GAEB-XSDs (Ticket 01).
-- Zielgruppe/Funktionsumfang der eigenen Software (soll aus der NOVA-Recherche abgeleitet werden).
-- Erster Schnitt: drei Varianten A/B/C als Vorschlag in der [Synthese](/okf/research/synthesis.md), Abschnitt 7; nicht entschieden.
-- Interview mit dem Architekten-Freund steht aus (Leitfaden: Synthese, Abschnitt 8); danach Scoping-Interview und Plan.
+- Alle offenen Ziele und Entscheidungen stehen gesammelt in [`.scratch/ava-oss/grilling.md`](/.scratch/ava-oss/grilling.md) (43 Fragen G-01…G-54, Stufe 1 blockiert den Start von Welle 1). Die Grilling-Sitzung steht aus.
+- Darunter: Lizenzfrage DIN-276-Texte / GAEB-XSDs (G-12, G-16, Ticket 01), erster Schnitt A/B/C (G-04), lokal oder Server (G-01), rechtliche Einordnung der NOVA-Recherche (G-42).
+- Interview mit dem Architekten-Freund steht aus (Leitfaden: [Synthese](/okf/research/synthesis.md), Abschnitt 8); siehe G-02.
+- Noch kein Anwendungscode. Vor dem Grilling dürfen nur F1 (Repo-Gerüst) und F3 (Fixtures) starten.

@@ -1,3 +1,7 @@
+## Regeln und Plan
+
+Vor jeder Arbeit lesen: `docs/regeln.md` (verbindliche Entwurfs- und Umsetzungsregeln). Arbeitsplan mit Strängen und Wellen: `.scratch/ava-oss/plan.md`. Offene Entscheidungen: `.scratch/ava-oss/grilling.md`; ein Ticket, das an einer offenen G-Frage hängt, wird nicht geraten, sondern auf `needs-info` gesetzt.
+
 ## Agent skills
 
 ### Issue tracker

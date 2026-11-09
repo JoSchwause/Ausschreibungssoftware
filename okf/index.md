@@ -3,13 +3,15 @@ type: Index
 title: Ausschreibungssoftware – Knowledge Base
 description: Einstiegspunkt der OKF-Wissensbasis des Projekts Ausschreibungssoftware.
 tags: [ausschreibungssoftware]
-timestamp: 2026-11-09T20:57:00Z
+timestamp: 2026-11-09T23:00:00Z
 ---
 # Ausschreibungssoftware
 
 - [Projekt-Überblick](/okf/project/overview.md) — Status, Ort, Scope
 - [Domänen-Glossar](/GLOSSARY.md) — Allgemeine AVA-Fachbegriffe (LV, OZ, Positionsarten, GAEB, BIM, DIN 276)
 - [Architektur-Entscheidungen](/docs/adr/) — ADRs 0001–0007 (lokale PWA, SQLite-WASM/OPFS, TS-Berechnung, React/TanStack/TipTap, Sprache, Historie, AGPL)
+- [Regeln](/docs/regeln.md) — verbindliche Entwurfs- und Umsetzungsregeln für alle Agenten
+- [Arbeitsplan](/.scratch/ava-oss/plan.md) und [Grilling-Backlog](/.scratch/ava-oss/grilling.md) — Stränge, Wellen, offene Entscheidungen
 - [NOVA-AVA-Recherche](/okf/research/nova-ava.md) — Status und Aufbau der Referenz-Untersuchung (Details git-ignored)
 - [REA Setup & Nutzung](/okf/tooling/rea.md) — Node/nvm, Google Chrome, REA-MCP (`rea-agents@6.8.0`) und CLI-Workflows
 - [Matt Pocock Skills](/okf/tooling/mattpocock-skills.md) — Projektlokale Skills in `.claude/skills`
@@ -25,4 +27,5 @@ timestamp: 2026-11-09T20:57:00Z
 - Web-Recherche zu AVA-Software (nur öffentliche Quellen) abgeschlossen, siehe [Recherche-Index](/okf/research/index.md).
 - NOVA-AVA-Recherche mit REA (Teil A Setup, Teil B Captures und LV-Deep-Dive) abgeschlossen. Rohdaten und Bericht liegen git-ignoriert unter `docs/research/nova-ava/`.
 - Architektur-Entscheidungen getroffen (ADRs 0001–0007, 2026-11-09): lokale PWA ohne Server, React/TS, SQLite-WASM/OPFS, AGPL-3.0.
-- Nächste Schritte: Ticket 01 (Lizenzfrage), Zielgruppe/Funktionsumfang und Interview mit dem Architekten-Freund, siehe [Projekt-Überblick](/okf/project/overview.md).
+- Arbeitsplan mit parallelen Strängen und Regeln angelegt (2026-11-09): [`.scratch/ava-oss/plan.md`](/.scratch/ava-oss/plan.md), [`docs/regeln.md`](/docs/regeln.md).
+- Nächster Schritt: Grilling-Sitzung über [`.scratch/ava-oss/grilling.md`](/.scratch/ava-oss/grilling.md) (43 offene Fragen); ihre Antworten werden in Plan, ADRs und Glossar zurückgeschrieben. Siehe [Projekt-Überblick](/okf/project/overview.md).
