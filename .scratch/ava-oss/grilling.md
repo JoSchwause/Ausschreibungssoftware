@@ -2,8 +2,8 @@
 
 Stand: 2026-11-09. Sitzung in vier Runden geführt. Antworten sind unten je Frage eingetragen
 (`**Antwort:**`). Die Rückschreibung in `plan.md`, `docs/regeln.md`, `GLOSSARY.md` und die ADRs
-0008–0011 ist erledigt. Offen sind **G-06** (nie gestellt) und **G-54** (spec.md und ADR-Prüfung,
-noch nicht erledigt).
+0008–0011 ist erledigt. Alle Fragen sind beantwortet, außer **G-27** (vertagt, eigene Runde vor Welle 5).
+G-06, G-54, G-55 und G-56 sind am 2026-11-09 geschlossen worden.
 
 Status je Frage: **entschieden**, **vertagt**, **Annahme** (Standard übernommen, Nutzer hat nicht
 explizit geantwortet), **offen**.
@@ -14,15 +14,17 @@ explizit geantwortet), **offen**.
   Mehrbenutzer mit Server ist das spätere Ziel. IDs und Befehle bleiben sync-fähig. (2026-11-09)
 - **G-02** Erster echter Nutzer — *entschieden* (Interview-Status: Annahme, es steht noch aus).
   **Antwort:** Das Büro des Freundes ist der erste Nutzer. Das Interview kommt vor Welle 3. Keine
-  öffentliche Community vor M3. (2026-11-09)
+  öffentliche Community vor M3. (2026-11-09) **Nachtrag (2026-11-09):** Erst ein Prototyp, an dem sich
+  die Fragen später klären lassen. Das Interview hat keinen festen Termin mehr („vor Welle 3“ entfällt
+  als Tor); der Prototyp ist der Anlass.
 - **G-03** Schutz vor Datenverlust — *entschieden*. **Antwort:** Export-Erinnerung und optionaler
   Sicherungsordner über die File System Access API (nur Chromium). In anderen Browsern bleibt der
   reine Export. (2026-11-09)
 - **G-04** Erster Schnitt — *entschieden*. **Antwort:** Schnitt A (Vergabe-Kern LPH 6–7). (2026-11-09)
 - **G-05** Module später oder nie — *entschieden*. **Antwort:** X1–X6 später. Auktion nie. Die
   KI-Assistenz (X6) kommt nach M4, nicht in P8 davor. (2026-11-09)
-- **G-06** Verhaltensgleichheit oder Lücken des Vorbilds schließen — *offen, nie gestellt*. Annahme in
-  `docs/regeln.md` (U3, Q5): Lücken werden geschlossen. Vor Welle 1 nachzuholen.
+- **G-06** Verhaltensgleichheit oder Lücken des Vorbilds schließen — *entschieden*. **Antwort:**
+  Lücken schließen. Die Annahme in `docs/regeln.md` (U3, Q5) bleibt. (2026-11-09)
 - **G-07** Projektname — *entschieden (Platzhalter)*. **Antwort:** Arbeitsname **Tethys AVA**. Der
   Endname wird vor Veröffentlichung geprüft. „AVA“ kommt auch im Namen des Vorbilds vor, das ist als
   Platzhalter akzeptiert. (2026-11-09)
@@ -68,7 +70,8 @@ explizit geantwortet), **offen**.
   Mittel, Max. Ausreißer ±20 % und ABC-Klasse A bis 80 % sind Standardwerte und einstellbar. Ein
   Nachlass bleibt umkehrbar und wird nicht in die EP umgelegt. *Annahme:* Wie mehrere Nachlässe
   verrechnet werden (additiv oder multiplikativ), ist offen, bis ein Fall aus der Recherche belegt
-  ist. (2026-11-09)
+  ist. (2026-11-09) **Nachtrag (2026-11-09):** Mehrere Nachlässe werden nicht zugelassen: genau
+  einer je LV und je Angebot, kein Verrechnen. Neu fragen, sobald ein Praxisfall vorliegt.
 - **G-27** Tiefe der Rechnungsprüfung — *vertagt*. **Antwort:** Eigene Grilling-Runde vor Welle 5.
   A3 bleibt bis dahin offen. (2026-11-09)
 - **G-28** MwSt — *entschieden*. **Antwort:** Ein Satz je LV, kein Satzwechsel in v1. (2026-11-09)
@@ -115,8 +118,27 @@ explizit geantwortet), **offen**.
   Namen, Adressen, Firmennamen, Projektbezeichnung und Aktenzeichen werden entfernt. Mengen und EP
   bleiben. (2026-11-09)
 - **G-53** Hosting — *entschieden*. **Antwort:** GitHub Pages. (2026-11-09)
-- **G-54** `spec.md` und ADR-Prüfung — *offen*. **Antwort (Nutzer):** Jetzt miterledigen. Die Datei
-  `.scratch/ava-mvp/spec.md` existiert noch nicht. Die Arbeit steht aus; siehe Stand in `plan.md`.
+- **G-55** Fremde Testdateien im Repo — *entschieden*. Folgt aus der Testdaten-Recherche
+  (`okf/research/standards/test-data-sources.md`, lokal). **Antwort (2026-11-09):**
+  1. **Amtliche Dateien** (BVBS-Prüfdateien, GAEB-Musterdateien 3.1): werden unverändert ins Repo
+     committet, wie es gaebboss tut. *Risiko, vom Nutzer in Kauf genommen:* Weder BVBS noch GAEB
+     nennen eine Lizenz, pyGAEB hält die Dateien für urheberrechtlich geschützt (vgl. G-12, wo das
+     XSD aus demselben Grund nie committet wird). Herkunft je Datei dokumentieren (Quelle, Datum,
+     „unverändert“), damit ein Entfernen auf Anfrage einfach bleibt.
+  2. **Fixtures freier Projekte** (MIT, Apache-2.0, AGPL-3.0): ja, einzelne Dateien mit
+     Herkunftsvermerk und REUSE-Eintrag, nur wenn die Lizenz zu AGPL-3.0-or-later passt.
+  3. **Echte Muster-LVs ohne Lizenz** (DB InfraGO, Vergabeunterlagen): Anonymisieren nach G-52
+     genügt, auch ohne Zustimmung des Urhebers. *Risiko:* Das Urheberrecht an den Texten bleibt
+     ungeklärt. Das Feld der Textquelle (G-17) zeigt auf die Herkunft.
+  Regel C4 ist entsprechend erweitert. Das Ticket „Testdaten-Korpus anlegen“ (Strang F, F3) ist
+  damit nicht mehr durch G-55 blockiert.
+- **G-54** `spec.md` und ADR-Prüfung — *entschieden und erledigt*. **Antwort (Nutzer):** Jetzt
+  miterledigen. `.scratch/ava-mvp/spec.md` geschrieben, ADR 0001–0011 geprüft und angenommen; ADR 0003
+  an G-41 und G-22 angepasst, ADR 0002 an G-56. Ergebnis: `spec.md`, Abschnitt 9. (2026-11-09)
+- **G-56** Format der Projektdatei — *entschieden*. Aus der ADR-Prüfung: ADR 0001 sagte „JSON“, ADR 0002
+  „die Datenbankdatei“. **Antwort:** JSON-Datei zum Sichern und Austauschen. SQLite bleibt der interne
+  Speicher. Export und Import schreibt die Anwendung selbst, mit Schemaversion und Migrationen (A8).
+  ADR 0002 angepasst. (2026-11-09)
 
 ## Widersprüche (Stand nach der Sitzung)
 

@@ -1,3 +1,8 @@
 # NOVA-AVA-Recherchebericht und REA-Captures: lokal, nie committen (Repo ist öffentlich)
 docs/research/nova-ava/
 okf/research/
+
+# Lokale Umgebungsdateien (Cloud-Session-Variablen, Geheimnisse): nie committen
+.env
+.env.*
+!.env.example

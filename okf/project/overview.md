@@ -28,8 +28,8 @@ timestamp: 2026-11-09T23:59:00Z
 - Verbindliche Regeln: [`docs/regeln.md`](/docs/regeln.md).
 
 ## Offen
-- G-06 (Verhaltensgleichheit oder Lücken des Vorbilds schließen) wurde nie gestellt. Annahme: Lücken schließen.
-- G-54: `.scratch/ava-mvp/spec.md` schreiben und die angenommenen ADRs prüfen (Ticket 01). Die Datei existiert noch nicht.
+- G-27 (Tiefe der Rechnungsprüfung) ist vertagt bis vor Welle 5. Erledigt am 2026-11-09: G-06 (Lücken schließen), G-54 (`.scratch/ava-mvp/spec.md`, ADRs geprüft), G-55 (Fremde Testdateien, Regel C4 erweitert), G-56 (Projektdatei als JSON).
+- Nutzerinterview: erst nach einem Prototyp (G-02, Nachtrag). Ticket: `.scratch/ava-oss/issues/18-prototyp-interview.md` (`ready-for-agent`, vier Fragen, klickbare UI mit Varianten, Wegwerfbranch `proto/interview`).
 - Tickets für Welle 1–2 nach `.scratch/ava-oss/issues/` schneiden.
 - Rechtliche Prüfung der NOVA-AVA-Recherche (G-42). Bis dahin bleibt `okf/research/` aus dem Repo.
 - Verrechnung mehrerer Nachlässe im Preisspiegel (Annahme, G-26) und die zweite Bedeutung von „VOB 80“ (vor A1).

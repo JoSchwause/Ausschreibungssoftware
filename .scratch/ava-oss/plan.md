@@ -5,7 +5,7 @@ Stand: 2026-11-09, nach der Grilling-Sitzung. Ersetzt `.scratch/ava-mvp/map.md`.
 Klammern).
 
 - Regeln: `docs/regeln.md` (verbindlich, zuerst lesen).
-- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-06 und G-54).
+- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-27, vertagt bis vor Welle 5).
 - Verhalten der Referenzsoftware: `okf/research/` ist lokal und nicht im Repo (G-44). Umsetzende
   Agenten arbeiten mit den Tickets, die das Verhalten in eigenen Worten enthalten (Regel C3).
 
@@ -94,7 +94,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 | Welle | Parallel laufende Agenten | Tor zur nächsten Welle |
 |---|---|---|
-| 0 | F1 ‖ F3 (Grilling abgeschlossen) | G-06 beantwortet; F2 gemergt |
+| 0 | F1 ‖ F3 (Grilling abgeschlossen) | F2 gemergt |
 | 1 | K1→K4 · S1 · U1+U2 · G1 | `vertrag` stabil; Grid zeigt Fixture |
 | 2 | K5→K7 · S2 · U3 · G2 · O1 (Spike) | **M1: LV anlegen, rechnen, speichern** |
 | 3 | K8+K9 · S3 · U4–U6 · G3 · V1+V2 · M1 | **M2: GAEB rein und raus, XSD-valide** |
@@ -104,8 +104,9 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 U hängt nur über `vertrag` an K. Deshalb baut U2 gegen Fixtures, bevor K fertig ist.
 
-**Welle-1-Tor:** G-06 ist noch offen. Außerdem müssen die Tickets für Welle 1–2 geschnitten sein (siehe
-Stand unten).
+**Welle-1-Tor:** Die Tickets für Welle 1–2 müssen geschnitten sein (siehe Stand unten). G-06 ist
+beantwortet. Der Prototyp für das Nutzerinterview (G-02) ist kein Tor; er läuft getrennt
+(Ticket `.scratch/ava-oss/issues/18-prototyp-interview.md`, siehe `spec.md`, Abschnitt 8).
 
 ## 4. Verifikation
 
@@ -131,5 +132,5 @@ Stand 2026-11-09:
 4. ✅ `docs/regeln.md` aktualisiert. Entschiedene Regeln sind markiert.
 5. ⏳ **Offen:** Tickets für Welle 1–2 nach `.scratch/ava-oss/issues/` schneiden (03–17 wiederverwenden,
    jedes Ticket nennt Paket, `Blocked by` und Regeln).
-6. ⏳ **Offen:** G-54 (`.scratch/ava-mvp/spec.md` schreiben, angenommene ADRs prüfen) und G-06.
-   OKF aktualisiert (siehe `okf/index.md`).
+6. ✅ G-54 erledigt (`.scratch/ava-mvp/spec.md` geschrieben, ADRs geprüft) und G-06 beantwortet
+   (Lücken schließen). OKF aktualisiert (siehe `okf/index.md`).

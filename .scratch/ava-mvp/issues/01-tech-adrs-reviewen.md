@@ -1,6 +1,6 @@
 # 01: ADRs 0001–0007 reviewen und annehmen
 
-Status: ready-for-agent
+Status: resolved (2026-11-09, G-54; Ergebnis in `.scratch/ava-mvp/spec.md`, Abschnitt 9)
 Type: grilling
 Blocked by: -
 

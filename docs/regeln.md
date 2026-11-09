@@ -65,8 +65,10 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   Verhalten der Referenzsoftware steht in den Tickets in eigenen Worten. `okf/research/` ist lokal
   und wird von Umsetzungs-Agenten nicht gelesen. Nur Sitzungen, die Tickets schreiben, lesen die
   Rohrecherche.
-- **C4** [ENTSCHIEDEN, G-41/G-52] Testdaten (GAEB-Dateien, LVs) liegen im Repo. Sie sind selbst verfasst
-  oder anonymisiert. Anonymisierung: Namen, Adressen, Firmennamen, Projektbezeichnung und
+- **C4** [ENTSCHIEDEN, G-41/G-52/G-55] Testdaten (GAEB-Dateien, LVs) liegen im Repo. Sie sind selbst
+  verfasst, anonymisiert oder Dateien Dritter mit Herkunftsvermerk und REUSE-Eintrag: amtliche
+  BVBS-/GAEB-Dateien unverändert, Fixtures freier Projekte nur bei AGPL-3.0-or-later-kompatibler
+  Lizenz. Anonymisierung: Namen, Adressen, Firmennamen, Projektbezeichnung und
   Aktenzeichen werden entfernt; Mengen und EP bleiben. Goldene Zahlen müssen aus einer VOB- oder
   GAEB-Regel herleitbar und dort belegt sein, nicht nur „beobachtet“.
 - **C5** [ENTSCHIEDEN, ADR 0008] Jede Abhängigkeit braucht eine AGPL-kompatible Lizenz; Lizenzprüfung
@@ -83,9 +85,9 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
 - **Q4** [ENTSCHIEDEN, G-33] Leistungsbudgets sind Tests: LV-Grid flüssig bei 5.000 Zeilen; Ziel
   10.000 Positionen, Tests bei 5.000 und 10.000. Neuberechnung einer Einzeländerung < 16 ms bei
   5.000 Positionen.
-- **Q5** [NEU, G-06 offen] Kein stiller Datenverlust: Unumkehrbare Aktionen brauchen eine
-  ausdrückliche Bestätigung und sind per Undo oder LV-Stand abgesichert. Annahme: Lücken des
-  Vorbilds werden geschlossen (G-06 ist noch nicht gestellt).
+- **Q5** [ENTSCHIEDEN, G-06] Kein stiller Datenverlust: Unumkehrbare Aktionen brauchen eine
+  ausdrückliche Bestätigung und sind per Undo oder LV-Stand abgesichert. Lücken des Vorbilds werden
+  geschlossen.
 
 ## Oberfläche
 
@@ -114,7 +116,7 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
 - **P4** [ENTSCHIEDEN, G-51] Höchstens 8 Agenten gleichzeitig, mit kleinen Zwischen-Commits. Kein
   Zieltermin für M3.
 - **P5** Ein Ticket, das an einer offenen G-Frage hängt, ist `needs-info`. Es wird nicht geraten.
-  Offen ist derzeit nur G-06 und G-54.
+  Offen ist derzeit nur G-27 (vertagt bis vor Welle 5).
 - **P6** Sitzungen, die die Realität des Projekts ändern, aktualisieren das OKF und schreiben eine
   Übergabenotiz.
 - **P7** [ENTSCHIEDEN, G-50] Ein Review-Agent prüft jeden PR. Der Nutzer prüft Verträge, ADRs und
