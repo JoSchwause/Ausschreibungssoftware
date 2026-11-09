@@ -15,7 +15,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck",
     "test": "vitest run && node --test \"fixtures/*.test.mjs\"",
-    "e2e": "pnpm --filter @tethys/web e2e"
+    "e2e": "pnpm -r --if-present --workspace-concurrency=1 run e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
