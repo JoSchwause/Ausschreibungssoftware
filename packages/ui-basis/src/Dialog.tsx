@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as RadixDialog from '@radix-ui/react-dialog';
+import { useRef } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Icon } from './Icon';
 import { baustein } from './texte';
@@ -29,6 +30,7 @@ export function Dialog({
   fuss,
   schliessenLabel = baustein.dialogSchliessen,
 }: DialogProps): ReactElement {
+  const ausloeser = useRef<HTMLElement | null>(null);
   return (
     <RadixDialog.Root open={offen} onOpenChange={onOffenChange}>
       <RadixDialog.Portal>
@@ -36,6 +38,15 @@ export function Dialog({
         <RadixDialog.Content
           className="tx-dialog"
           {...(beschreibung === undefined ? { 'aria-describedby': undefined } : {})}
+          onOpenAutoFocus={() => {
+            // Ohne Radix-Trigger merkt sich der Dialog selbst, wohin der Fokus beim Schließen zurückkehrt.
+            const aktiv = document.activeElement;
+            ausloeser.current = aktiv instanceof HTMLElement ? aktiv : null;
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            ausloeser.current?.focus();
+          }}
         >
           <header className="tx-dialog__kopf">
             <RadixDialog.Title className="tx-dialog__titel">{titel}</RadixDialog.Title>

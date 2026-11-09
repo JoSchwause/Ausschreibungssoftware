@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Alle Oberflächentexte der App-Hülle und der Katalogseite (L1, U8): deutsch, in einer Datei,
+// keine Übersetzung in v1. Fachseiten bekommen später eigene Textdateien.
+
+export const texte = {
+  produkt: 'Tethys AVA',
+  huelle: {
+    navigation: 'Hauptnavigation',
+    arbeitsflaeche: 'Arbeitsfläche',
+    eintraege: {
+      projekt: 'Projekt',
+      lv: 'LV',
+      vergabe: 'Vergabe',
+      katalog: 'Katalog',
+    },
+    katalogHinweis: 'Entwicklung',
+    modus: {
+      zuDunkel: 'Zum dunklen Modus wechseln',
+      zuHell: 'Zum hellen Modus wechseln',
+    },
+    status: {
+      bereit: 'Bereit',
+      modusHell: 'Hell',
+      modusDunkel: 'Dunkel',
+    },
+    zuSchmal: {
+      titel: 'Fenster zu schmal.',
+      text: 'Tethys AVA ist für Bildschirme ab 1280 Pixel Breite ausgelegt. Bitte das Fenster vergrößern.',
+    },
+  },
+  seiten: {
+    projekt: {
+      titel: 'Projekt',
+      leer: 'Noch keine Projekte.',
+      hinweis: 'Hier entsteht die Projektübersicht mit Name und Bauherr.',
+    },
+    lv: {
+      titel: 'Leistungsverzeichnis',
+      leer: 'Noch kein Leistungsverzeichnis geöffnet.',
+      hinweis: 'Hier entsteht die Tabelle mit Gliederung und Positionen.',
+    },
+    vergabe: {
+      titel: 'Vergabe',
+      leer: 'Noch keine Angebote erfasst.',
+      hinweis: 'Hier entstehen Angebotserfassung und Preisspiegel.',
+    },
+    unbekannt: {
+      titel: 'Seite nicht gefunden',
+      text: 'Diese Adresse gibt es nicht.',
+      zurueck: 'Zum Projekt',
+    },
+  },
+  katalog: {
+    titel: 'Bausteinkatalog',
+    einleitung:
+      'Jeder bereitgestellte Baustein von @tethys/ui-basis in beiden Modi. Diese Seite gibt es nur im Entwicklungs-Build.',
+    modi: { hell: 'Hell', dunkel: 'Dunkel' },
+    abschnitte: {
+      tokens: 'Design-Tokens',
+      button: 'Schaltflächen',
+      felder: 'Eingabefelder',
+      auswahl: 'Auswahl',
+      dialog: 'Dialog',
+      tabs: 'Reiter',
+      tooltip: 'Tooltip und Tastaturkürzel',
+      toast: 'Meldungen',
+      validierung: 'Validierung blockiert nie',
+    },
+    tokens: { flaechen: 'Flächen', text: 'Text und Akzent', status: 'Status' },
+    button: {
+      primaer: 'Speichern',
+      sekundaer: 'Abbrechen',
+      schlicht: 'Mehr',
+      gefahr: 'Löschen',
+      klein: 'Klein',
+      deaktiviert: 'Gesperrt',
+    },
+    felder: {
+      text: 'Kurztext',
+      textWert: 'Erdarbeiten',
+      textHinweis: 'Wird in der Tabelle als Überschrift der Position gezeigt.',
+      zahl: 'Menge',
+      zahlWert: '1.234,500',
+      zahlEinheit: 'm²',
+      preis: 'Einheitspreis',
+      preisWert: '45,80',
+      preisEinheit: '€',
+    },
+    auswahl: {
+      label: 'Einheit',
+      platzhalter: 'Einheit wählen',
+      optionen: {
+        m: 'm (Meter)',
+        m2: 'm² (Quadratmeter)',
+        m3: 'm³ (Kubikmeter)',
+        st: 'Stk (Stück)',
+        psch: 'psch (pauschal)',
+        gesperrt: 'h (Stunde, nicht verfügbar)',
+      },
+    },
+    dialog: {
+      oeffnen: 'Dialog öffnen',
+      titel: 'Änderungen verwerfen?',
+      beschreibung: 'Die geänderte Menge geht verloren. Mit Strg+Z lässt sich das später rückgängig machen.',
+      bestaetigen: 'Verwerfen',
+      abbrechen: 'Abbrechen',
+    },
+    tabs: {
+      label: 'Beispielreiter',
+      eins: 'Allgemein',
+      zwei: 'Preise',
+      drei: 'Hinweise',
+      inhaltEins: 'Inhalt des Reiters Allgemein.',
+      inhaltZwei: 'Inhalt des Reiters Preise.',
+      inhaltDrei: 'Inhalt des Reiters Hinweise.',
+    },
+    tooltip: {
+      ausloeser: 'Mit Hinweis',
+      text: 'Speichert das Leistungsverzeichnis',
+      kuerzel: 'Strg+S',
+      kuerzelBeschreibung: 'Tastaturkürzel in Fließtext und neben Schaltflächen:',
+    },
+    toast: {
+      info: 'Hinweis zeigen',
+      erfolg: 'Erfolg zeigen',
+      warnung: 'Warnung zeigen',
+      fehler: 'Fehler zeigen',
+      titelInfo: 'Gespeichert',
+      beschreibungInfo: 'Alle Änderungen sind lokal gesichert.',
+      titelErfolg: 'Import abgeschlossen',
+      beschreibungErfolg: '120 Positionen übernommen.',
+      titelWarnung: 'Prüfung mit Hinweisen',
+      beschreibungWarnung: '3 Positionen haben keinen Einheitspreis.',
+      titelFehler: 'Export nicht möglich',
+      beschreibungFehler: 'Die Datei konnte nicht geschrieben werden.',
+    },
+    validierung: {
+      erklaerung:
+        'Tippen Sie beliebigen Text in das Zahlfeld. Das Feld nimmt alles an und zeigt nur einen Hinweis; gesperrt wird nichts (Regel U5).',
+      label: 'Menge (Probe)',
+      startWert: '12a,5',
+      zuletzt: 'Zuletzt gemeldeter Rohtext:',
+      gueltig: 'gültig',
+      ungueltig: 'Hinweis aktiv',
+    },
+  },
+} as const;

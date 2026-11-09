@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as RadixToast from '@radix-ui/react-toast';
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
@@ -33,7 +33,8 @@ const ICONS: Record<ToastArt, IconName> = {
 
 export interface ToastAnbieterProps {
   children: ReactNode;
-  /** Beschriftung des Bereichs für Screenreader. */
+  /** Beschriftung des Bereichs (Radix ersetzt {hotkey} durch F8) und Vorspann der Ansage. */
+  meldungLabel?: string;
   bereichLabel?: string;
   schliessenLabel?: string;
 }
@@ -42,24 +43,22 @@ export interface ToastAnbieterProps {
 export function ToastAnbieter({
   children,
   bereichLabel = 'Meldungen ({hotkey})',
+  meldungLabel = 'Meldung',
   schliessenLabel = baustein.toastSchliessen,
 }: ToastAnbieterProps): ReactElement {
   const [eintraege, setEintraege] = useState<ToastEintrag[]>([]);
-  const [zaehler, setZaehler] = useState(0);
+  const zaehler = useRef(0);
 
-  const zeige = useCallback(
-    (inhalt: ToastInhalt) => {
-      const id = zaehler + 1;
-      setZaehler(id);
-      setEintraege((alt) => [...alt, { ...inhalt, id }]);
-    },
-    [zaehler],
-  );
+  const zeige = useCallback((inhalt: ToastInhalt) => {
+    zaehler.current += 1;
+    const id = zaehler.current;
+    setEintraege((alt) => [...alt, { ...inhalt, id }]);
+  }, []);
   const kontext = useMemo(() => ({ zeige }), [zeige]);
 
   return (
     <Kontext.Provider value={kontext}>
-      <RadixToast.Provider swipeDirection="right" duration={6000} label={bereichLabel}>
+      <RadixToast.Provider swipeDirection="right" duration={6000} label={meldungLabel}>
         {children}
         {eintraege.map((e) => {
           const art = e.art ?? 'info';
@@ -88,7 +87,7 @@ export function ToastAnbieter({
             </RadixToast.Root>
           );
         })}
-        <RadixToast.Viewport className="tx-toast-bereich" />
+        <RadixToast.Viewport className="tx-toast-bereich" label={bereichLabel} />
       </RadixToast.Provider>
     </Kontext.Provider>
   );

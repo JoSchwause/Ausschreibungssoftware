@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Layout der Katalogseite: zwei Rahmen mit je eigenem data-theme, daher gelten die Tokens je Rahmen. */
+
+.katalog__modi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tx-space-5);
+  align-items: start;
+}
+
+.katalog__rahmen {
+  padding: var(--tx-space-5);
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-lg);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+}
+
+.katalog__modus {
+  margin: 0 0 var(--tx-space-4);
+  padding-bottom: var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  font-size: var(--tx-font-size-lg);
+}
+
+.katalog__abschnitt {
+  margin-bottom: var(--tx-space-6);
+}
+
+.katalog__abschnitt h3 {
+  margin: 0 0 var(--tx-space-3);
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+  font-weight: var(--tx-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.katalog__zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+}
+
+.katalog__raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--tx-space-4);
+}
+
+.katalog__leise {
+  color: var(--tx-color-text-muted);
+}
+
+.katalog__farben {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+  margin-bottom: var(--tx-space-3);
+}
+
+.katalog__gruppe {
+  width: 100%;
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-xs);
+}
+
+.katalog__farbe {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+  font-size: var(--tx-font-size-xs);
+}
+
+.katalog__muster {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+}

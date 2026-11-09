@@ -10,9 +10,12 @@ describe('pruefeZahlformatDeDE (reine Formprüfung)', () => {
     },
   );
 
-  it.each(['1,234.56', '12a', '1.23', '1,2,3', 'abc', '--1', '1 234'])('%j wird als Hinweis gemeldet', (text) => {
-    const r = pruefeZahlformatDeDE(text);
-    expect(r.gueltig).toBe(false);
-    if (!r.gueltig) expect(r.meldung.length).toBeGreaterThan(0);
-  });
+  it.each(['1,234.56', '12a', '1.23', '1,2,3', 'abc', '--1', '1 234'])(
+    '%j wird als Hinweis gemeldet',
+    (text) => {
+      const r = pruefeZahlformatDeDE(text);
+      expect(r.gueltig).toBe(false);
+      if (!r.gueltig) expect(r.meldung.length).toBeGreaterThan(0);
+    },
+  );
 });

@@ -67,7 +67,7 @@ const BAUTEILPAARE: [string, string][] = [
   ['border-strong', 'surface'],
 ];
 
-const modi = { hell: farben(":root[data-theme='light']"), dunkel: farben(":root[data-theme='dark']") };
+const modi = { hell: farben("[data-theme='light']"), dunkel: farben("[data-theme='dark']") };
 
 describe('Design-Tokens: Kontrast', () => {
   it('beide Modi definieren dieselben Farb-Tokens', () => {

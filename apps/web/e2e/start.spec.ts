@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test';
 
-test('Startseite ist leer und das PWA-Manifest ist erreichbar', async ({ page, request }) => {
+test('Startseite zeigt die Hülle mit leerem Projekt und das PWA-Manifest ist erreichbar', async ({
+  page,
+  request,
+}) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Tethys AVA');
-  await expect(page.getByRole('heading', { name: 'Tethys AVA' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Projekt' })).toBeVisible();
+  await expect(page.getByText('Noch keine Projekte.')).toBeVisible();
 
   const antwort = await request.get('/manifest.webmanifest');
   expect(antwort.ok()).toBe(true);

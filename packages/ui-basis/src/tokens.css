@@ -2,12 +2,12 @@
 /*
  * Design-Tokens von Tethys AVA (Ticket 20, Regel U4): die einzige Quelle für Farbe, Abstand,
  * Typografie, Radius und Schatten. Hell ist der Standard, dunkel wird über
- * <html data-theme="dark"> geschaltet. Farben stehen als #rrggbb, damit der Kontrasttest
+ * data-theme="dark" geschaltet (am <html>-Element oder an einem Teilbaum). Farben stehen als #rrggbb, damit der Kontrasttest
  * (tokens.test.ts) sie direkt aus dieser Datei lesen kann.
  */
 
 :root,
-:root[data-theme='light'] {
+[data-theme='light'] {
   color-scheme: light;
 
   /* Flächen */
@@ -46,7 +46,7 @@
   --tx-shadow-lg: 0 12px 32px rgb(10 20 25 / 0.28);
 }
 
-:root[data-theme='dark'] {
+[data-theme='dark'] {
   color-scheme: dark;
 
   --tx-color-surface: #12181c;

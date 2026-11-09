@@ -11,7 +11,8 @@ const PFADE = {
   verzeichnis: 'M5 6h14M9 12h10M9 18h10M5 12h1M5 18h1',
   /** Vergabe: zwei Schalen, eine Waagschale */
   vergabe: 'M12 4v16M6 20h12M5 8h14M5 8l-2 6h4zM19 8l-2 6h4z',
-  sonne: 'M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8zM12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4',
+  sonne:
+    'M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8zM12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4',
   mond: 'M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z',
   schliessen: 'M6 6l12 12M18 6L6 18',
   haken: 'M5 12.5l4.5 4.5L19 7.5',
