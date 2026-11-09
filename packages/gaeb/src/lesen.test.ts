@@ -163,6 +163,14 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
       }
     });
 
+    it('stimmt mit den Positionsnummern überein, die die BVBS-Prüfkriterien nennen (Ticket 23)', () => {
+      const oz = (z: string): Position | undefined => positionen(l).find((x) => x.ordnungszahl === z);
+      expect(oz('002.000.0000')?.positionsart).toBe('normal'); // Position „0000“ muss vorhanden sein
+      expect(oz('002.001.0030')?.positionsart).toBe('zuschlag'); // Zuschlagspositionen ab 002.001.0030
+      expect(oz('001.002.0040')).toBeDefined(); // Grundposition
+      expect(oz('001.002.0050')?.positionsart).toBe('wahl'); // Alternativposition
+    });
+
     it('Menge mit 8 Vorkomma- und 3 Nachkommastellen bleibt exakt', () => {
       const p = positionen(l).find((x) => x.ordnungszahl === '001.002.0030' && x.ozIndex === null);
       expect(p?.menge).toBe('12345678.012');
