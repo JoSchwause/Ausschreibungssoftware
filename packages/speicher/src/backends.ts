@@ -41,8 +41,10 @@ export async function oeffneOpfs(name: string): Promise<GeoeffneteDatenbank> {
   const db = new pool.OpfsSAHPoolDb('/projekte.sqlite3');
   return {
     db: sqliteDatenbank(db),
-    freigeben: async () => {
-      await pool.removeVfs();
+    // `pauseVfs` gibt die Zugriffshandles frei und lässt die Daten stehen; `removeVfs` würde sie löschen.
+    freigeben: () => {
+      pool.pauseVfs();
+      return Promise.resolve();
     },
   };
 }
