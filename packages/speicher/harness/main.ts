@@ -76,6 +76,22 @@ const harness = {
     return { ok: true, ms: performance.now() - t0 };
   },
 
+  /** Wendet jedes ChangeSet einzeln an und misst jeden Aufruf (Speichern bei jedem Befehl, G-35). */
+  async anwendenGemessen(
+    name: string,
+    schritte: readonly PruefSchritt[],
+  ): Promise<{ ok: boolean; zeiten: number[] }> {
+    const s = hole(name);
+    const zeiten: number[] = [];
+    for (const x of schritte) {
+      const t0 = performance.now();
+      const r = await s.anwenden(x.eintrag, x.changeSet);
+      zeiten.push(performance.now() - t0);
+      if (!r.ok) return { ok: false, zeiten };
+    }
+    return { ok: true, zeiten };
+  },
+
   async anwendenEinzeln(name: string, eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Kurz> {
     return kurz(await hole(name).anwenden(eintrag, changeSet));
   },

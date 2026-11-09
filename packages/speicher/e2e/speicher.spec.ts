@@ -3,6 +3,7 @@
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
 import { expect, test, type Page } from '@playwright/test';
+import type { Menge, Position } from '@tethys/vertrag';
 import type { Pruefstand, PruefSchritt } from '../harness/main';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
 
@@ -105,6 +106,48 @@ test.describe('Leistung', () => {
     test.info().annotations.push({ type: 'messung', description: meldung });
     expect(erstes).toBeLessThan(2000);
     expect(median).toBeLessThan(2000);
+  });
+});
+
+test.describe('Speichern bei jedem Befehl (G-35)', () => {
+  test('Einzelbefehl auf gross (5.000 Positionen): Zeit je anwenden im OPFS', async ({ page }) => {
+    const f = ladeFixture('gross');
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    await ps(page, 'anwenden', DB, anlegenSchritte(f));
+
+    // 20 Mengenänderungen an verschiedenen Positionen, je ein ChangeSet mit genau einem geänderten Knoten.
+    const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
+    const schritteEinzeln: PruefSchritt[] = Array.from({ length: 20 }, (_, i) => {
+      const vorher = positionen[i * 250];
+      if (vorher === undefined) throw new Error('Position fehlt');
+      const menge = '999.000' as Menge;
+      const lvId = f.lv.leistungsverzeichnis.id;
+      return {
+        eintrag: eintrag(
+          1000 + i,
+          f.projekt.id,
+          { art: 'leistungsverzeichnis', id: lvId },
+          { art: 'MengeAendern', positionId: vorher.id, menge },
+        ),
+        changeSet: {
+          art: 'leistungsverzeichnis',
+          leistungsverzeichnisId: lvId,
+          kopf: null,
+          knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher: { ...vorher, menge } }], entfernt: [] },
+          summen: { positionen: [], gliederungen: [], gesamt: null },
+        },
+      };
+    });
+    const r = await ps(page, 'anwendenGemessen', DB, schritteEinzeln);
+    expect(r.ok).toBe(true);
+    const sortiert = [...r.zeiten].sort((a, b) => a - b);
+    const median = sortiert[Math.floor(sortiert.length / 2)] ?? Number.NaN;
+    const maximum = sortiert[sortiert.length - 1] ?? Number.NaN;
+    const meldung = `[speicher/opfs] gross: Einzelbefehl anwenden (20 Läufe): Median ${ms(median)} ms, Maximum ${ms(maximum)} ms`;
+    console.info(meldung);
+    test.info().annotations.push({ type: 'messung', description: meldung });
+    expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(anlegenSchritte(f).length + 20);
   });
 });
 
