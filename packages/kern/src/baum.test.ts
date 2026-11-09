@@ -614,9 +614,6 @@ describe('Befehle anderer Tickets', () => {
       bezugspositionId: null,
       grundpositionId: null,
     },
-    { art: 'OzMaskeSetzen', maske: inhalt().ozMaske },
-    { art: 'OrdnungszahlSetzen', knotenId: id.titel('T1'), ordnungszahl: null, ozIndex: null },
-    { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) },
   ];
 
   it.each(fremde.map((b) => [b.art, b] as const))(
@@ -632,12 +629,15 @@ describe('Befehle anderer Tickets', () => {
     },
   );
 
-  it('06 (OZ) ist namentlich zugeordnet; die Befehle von Ticket 07 sind umgesetzt', () => {
+  it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {
     const meldung = (b: LvBefehl): string => {
       const e = lvBefehlAusfuehren(z, b);
       return e.ok ? '' : e.fehler.meldung;
     };
-    expect(meldung({ art: 'OzMaskeSetzen', maske: inhalt().ozMaske })).toContain('Ticket 06');
+    expect(meldung({ art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) })).toBe('');
+    expect(
+      meldung({ art: 'OrdnungszahlSetzen', knotenId: id.titel('T1'), ordnungszahl: null, ozIndex: null }),
+    ).toBe('');
     expect(meldung({ art: 'NachlassEntfernen' })).toBe('');
     expect(meldung({ art: 'MengeAendern', positionId: id.pos('P1'), menge: null })).toBe('');
   });
