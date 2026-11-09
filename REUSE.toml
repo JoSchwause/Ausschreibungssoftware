@@ -20,3 +20,11 @@ SPDX-License-Identifier = "AGPL-3.0-or-later"
 # SPDX-FileCopyrightText = "Urheber laut Herkunftsvermerk"
 # SPDX-License-Identifier = "CC-BY-4.0"
 # ---------------------------------------------------------------------------------------------
+
+# Amtliche BVBS-Prüfdateien und GAEB-Musterdateien (Ticket 23, G-55 Nr. 1): keine Lizenz genannt, unverändert
+# übernommen, Text unter LICENSES/. Herkunft je Datei: fixtures/extern/HERKUNFT.md.
+[[annotations]]
+path = ["fixtures/extern/bvbs/**", "fixtures/extern/gaeb/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "BVBS e.V. und GAEB (Herausgeber der amtlichen Prüf- und Musterdateien), keine Lizenz genannt"
+SPDX-License-Identifier = "LicenseRef-BVBS-GAEB-Pruefdatei"
