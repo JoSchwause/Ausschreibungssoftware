@@ -14,7 +14,7 @@
     "lint": "eslint . && prettier --check . && node tools/check-boundaries.mjs && node tools/check-licenses.mjs && node tools/check-clean-room.mjs",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck",
-    "test": "vitest run",
+    "test": "vitest run && node --test \"fixtures/*.test.mjs\"",
     "e2e": "pnpm --filter @tethys/web e2e"
   },
   "devDependencies": {

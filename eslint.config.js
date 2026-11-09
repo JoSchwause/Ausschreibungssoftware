@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/test-results/**',
       'LICENSES/**',
       '.scratch/**',
+      '.claude/**',
     ],
   },
   js.configs.recommended,
@@ -26,7 +27,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tools/**/*.mjs', '*.config.js'],
+    files: ['tools/**/*.mjs', 'fixtures/**/*.mjs', '*.config.js'],
     languageOptions: { globals: globals.node },
   },
   {
