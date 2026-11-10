@@ -75,15 +75,15 @@ Was nicht passt, wird Befund, nichts geht still verloren (Q5). Vorgehen: TDD mit
 
 ## Acceptance criteria
 
-- [ ] `leseAngebot` liefert für beide BVBS-X84 einen `AngebotAnlegen`, dessen Positionen über die OZ zugeordnet sind; Golden-Dateien wie in Punkt 5
-- [ ] `zuschlagssatz` 10,00 an allen Zuschlagspositionen der beiden Dateien
-- [ ] Jeder Befund aus Punkt 2 bis 4 hat einen Code und einen Test (eigene Fehlerdatei)
-- [ ] „Nicht angeboten“ und „angeboten 0,000“ sind verschieden (Test)
-- [ ] Bietername aus `CTR` als Vorschlag
-- [ ] 3.1-Datei: kein Befehl, Befund `version-nicht-unterstuetzt`
-- [ ] E-15 geprüft, Ergebnis in den Comments (und ggf. Datei mit Herkunft und REUSE)
-- [ ] X84 mit 5.000 Positionen (selbst erzeugt im Test) in unter 1 s gelesen (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `leseAngebot` liefert für beide BVBS-X84 einen `AngebotAnlegen`, dessen Positionen über die OZ zugeordnet sind; Golden-Dateien wie in Punkt 5
+- [x] `zuschlagssatz` 10,00 an allen Zuschlagspositionen der beiden Dateien
+- [x] Jeder Befund aus Punkt 2 bis 4 hat einen Code und einen Test (eigene Fehlerdatei)
+- [x] „Nicht angeboten“ und „angeboten 0,000“ sind verschieden (Test)
+- [x] Bietername aus `CTR` als Vorschlag
+- [x] 3.1-Datei: kein Befehl, Befund `version-nicht-unterstuetzt`
+- [x] E-15 geprüft, Ergebnis in den Comments (und ggf. Datei mit Herkunft und REUSE)
+- [x] X84 mit 5.000 Positionen (selbst erzeugt im Test) in unter 1 s gelesen (Messwert im Ticket)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -91,3 +91,67 @@ Bietersummen, Zuschlagsbeträge und Preisspiegel (44), Oberfläche des Imports (
 (V5), Lesen von 3.1 (G4), Schreiben von X84.
 
 ## Comments
+
+### Umsetzung (Branch `ticket/45-gaeb-x84`)
+
+Nichts gestrichen (EPA, 3.2 und Punkt 6 geprüft). Seam (Demo-Modus): `leseAngebot` (`src/angebot.ts`, exportiert aus
+`index.ts`). Der Vorlauf des Lesers (Größe, Kodierung, XML ohne Entitäten, Tiefe, Erkennung, 3.1-Abweisung) ist jetzt
+eine gemeinsame Funktion `vorlauf` in `lesen.ts`; `leseGaeb` nutzt sie unverändert (alle bisherigen Goldens gleich).
+`Leser.ort` trägt `knotenId` jetzt auch ohne XML-Element (bisher kein Aufrufer betroffen). Testdaten:
+`testdaten/x84/lv.x83`, `fehler.x84`, `maske-abweichend-3.2.x84`; Goldens `testdaten/golden/angebot-*.golden.jsonl`
+(ohne Textauszüge der amtlichen Dateien, daher kein eigener REUSE-Eintrag).
+
+Ergebnisse der amtlichen Dateien: AVA-X84 gegen AVA-X81: 74 von 74 Positionen zugeordnet, 68 mit EP, 6 mit Satz 10,00
+(Platzhalter-EP 0,000); `gp-abweichend` genau an 1.10.10.60 (720,00 gegen 800,00) und 1.30.10.30 (855,00 gegen 900,00);
+`nachlass-nicht-abgebildet` (Fehler) an 1.10.10.60, 1.30.10.30 und den Gliederungen 1.10.10 (10 %), 1.10.15 (10 %),
+1.10.20 (−5 %), 1.10 (10.000,00 €); `Angebot.nachlass` `null`. Bauausführung-X84 gegen X83: 28 von 28, 002.001.0030 Satz
+10,00, EP 0010 = 1,000, 0020 = 2,000, vier Bieterergänzungen mit Inhalt (ein Befund). Bieter: „Maler + Lackierer Pinsel
+und Co KG“ bzw. „BVBS“. Musterdatei 3.1: kein Befehl, `version-nicht-unterstuetzt`.
+
+**Messung:** X84 mit 5.000 Positionen (im Test erzeugt): 101 ms (Test-Grenze 1 s).
+
+**Suite (nach Merge von `integration/welle-3`):** `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test`: Vitest 1303
+bestanden, 2 übersprungen; `node --test` 16/16.
+
+### Entscheidungen (Frage – Entscheidung – Grund), zusammengefasst als D-45.1
+
+- EPA-Zuordnung – wie der X86-Leser (D-40.1): Bezeichnung vor `Type`, dann `Type` (Wages/Materials/Plant/Miscellaneous),
+  sonst frei mit Bezeichnung; `Miscellaneous` + „Nachunternehmer“ → `nachunternehmer` ohne Befund; Bezeichnung und Typ
+  widersprechen sich sonst → Warnung `epa-beschriftung-abweichend`, Bezeichnung gilt; zweiter Anteil derselben Art →
+  `epa-nicht-abgebildet` – Abweichung vom Vorschlag des Tickets (Typ zuerst, Wert in `sonstiges`): Der eigene X83-Export
+  schreibt genau „Nachunternehmer“/`Miscellaneous`; ein X84, das diese Beschriftung zurückgibt, muss beim selben Anteil
+  landen wie im X86-Leser.
+- **EPA der beiden BVBS-X84** – keine der beiden Dateien trägt `NoUPComps`/`LblUPComp` (auch die AVA-X81 nicht; nur die
+  AVA-X86). Ohne Beschriftung ist die Art eines `UPComp` unbekannt; die Anteile bleiben `null`, ein Befund
+  `epa-nicht-abgebildet` je Datei (AVA: 20 Werte). Die Stichprobe „Anteile 2,230/23,120/2,560/0,000“ an 1.10.30.20 ist
+  damit nicht abbildbar, ohne eine Reihenfolge zu erfinden (C4); der EP 27,910 stimmt. **Lücke:** Die Beschriftungen
+  definiert das LV (X83); `LvInhalt` hält sie nicht, deshalb kann der Leser sie auch nicht aus dem LV nehmen
+  (Vertragsticket nötig, falls gewünscht).
+- `IT` 0.00 an Alternative oder Bedarf ohne Gesamtbetrag – kein `gp-abweichend` – BVBS Bauausführung 001.002.0050
+  (Alternative) trägt `IT` 0.00; das ist „nicht in der Summe“, kein abweichender Preis.
+- Zeile mit falscher Art (`zuschlag-art-abweichend`, Fehler) – Zeile nicht übernommen, Angebotsposition „nicht
+  angeboten“, Wert in der Meldung, keine zusätzliche Warnung `position-fehlt-im-angebot` – kein stilles Verlieren (Q5),
+  der Platzhalter-EP ist kein Preis (D-12 Nr. 7).
+- Doppelte OZ in der Datei – Fehler `doppelte-ordnungszahl`, erste Zeile gilt – Q5, eindeutige Angebotspositionen (D-36.2).
+- Nicht lesbarer `UP`/`Markup` – Befund des Dezimallesers, Position „nicht angeboten“ – nichts erfinden.
+- Bieterergänzung „mit Inhalt“ – `Kind="Bidder"`, nicht `Empty="Yes"`, Text nicht leer – die AVA-X84 trägt `''` mit
+  `Empty="Yes"` (leer), die Bauausführung trägt echte Werte (`55` …).
+- Übrige Bieterangaben in `CTR` (Adresse, Kontakt, `DPNo`, `AwardNo` mit Inhalt) – `nicht-abgebildet` je Element – der
+  Bieter hat nur einen Namen (Q5); leere Elemente ohne Befund.
+- Nachlass im LV mit Prozent und Betrag zugleich – Prozent gilt, Betrag als `nachlass-nicht-abgebildet` – G-26.
+- `ITMarkup`, `IT` der Zuschlagszeile, `Total`/`TotAfterDisc` – nur gelesen, nicht geprüft – Zuschlagsbeträge und
+  Summen rechnet `vergabe` (Grenze des Tickets).
+- Text der Position in der X84 außer Bieterergänzungen, `Remark`, `PerfDescr`, `SubDescr` mit nur `SubDNo` – ohne Befund –
+  das ist Struktur des LV, keine Angabe des Bieters; maßgeblich bleibt der Text des LV. `SubDescr` mit mehr als `SubDNo`
+  ist `nicht-abgebildet`.
+- Positionsnachlass, Bieterergänzungen – Lücken für ein Vertragsticket (G-32, G-26): `Angebotsposition` hat kein Feld
+  für einen Nachlass je Position/Gliederung und keines für Bieterergänzungen.
+
+### E-15: Testdateien freier Projekte (geprüft 2026-11-11)
+
+- `frameiq/pygaeb` – Lizenz MIT (PyPI und `LICENSE` im sdist, AGPL-kompatibel); erreichbar über das PyPI-sdist 1.21.0
+  (GitHub-API: 403). Der sdist enthält nur `tests/fixtures/gaebxml.x83` und `synthetic_33.X86`, **keine X84** → nichts
+  übernommen.
+- `bambamboole/gaeb-php` – GitHub-API 403 (Sitzung ohne Zugriff), Lizenz nicht geprüft, nicht umgangen → nichts übernommen.
+- `openbimrs/gaeb`, `meindonut/gaeb-parser` – nur über GitHub erreichbar (gleiche Sperre wie Ticket 23) → nicht geprüft,
+  nichts übernommen.
