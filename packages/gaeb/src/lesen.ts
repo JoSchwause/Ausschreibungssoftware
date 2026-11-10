@@ -8,28 +8,31 @@
 import { leseAustausch } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
+  Auftraggeber,
+  Bedarf,
+  Bezugsposition,
   ElternId,
   GaebLesung,
   GaebPhase,
+  Gewaehrleistung,
   Hinweistext,
-  Bedarf,
-  Bezugsposition,
   IdQuelle,
   Knoten,
   LeistungsverzeichnisId,
   Leitbeschreibung,
   Los,
   LvInhalt,
+  Ordnungszahl,
   OzMaske,
   OzStelle,
-  Ordnungszahl,
   Position,
   PositionId,
-  Prozent,
   Positionsmerkmale,
+  Prozent,
   Pruefbefund,
   Titel,
   Unterbeschreibung,
+  Vergabeinformationen,
   Wahlzuordnung,
   Zahlenart,
   Zuschlagsbezug,
@@ -1016,6 +1019,94 @@ class Aufbau {
   }
 }
 
+// --- Kopfdaten (E-11) -------------------------------------------------------------------------------------
+
+const DATUM = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+const UHRZEIT = /^[0-9]{2}:[0-9]{2}:[0-9]{2}$/;
+
+/** Text eines Kindelements; leer oder fehlend ergibt `null`. */
+const textOderNull = (e: XmlElement | undefined, name: string): string | null => wert(kind(e, name)) || null;
+
+/** Datum oder Uhrzeit im erwarteten Format, sonst `null` mit Befund `wert-ungueltig`. */
+function zeitangabe(
+  l: Leser,
+  eltern: XmlElement,
+  name: string,
+  muster: RegExp,
+  beschreibung: string,
+): string | null {
+  const el = kind(eltern, name);
+  const w = textOderNull(eltern, name);
+  if (w === null || muster.test(w)) return w;
+  l.melde(
+    'warnung',
+    'wert-ungueltig',
+    `${name} „${w}“ ist kein ${beschreibung}; der Wert wird nicht übernommen.`,
+    el,
+    { feld: `vergabeinformationen.${name}` },
+  );
+  return null;
+}
+
+/** `OWN` → `Auftraggeber`. Nicht abgebildete Teile (`DPNo`, weitere Adressfelder) sind Befund. */
+function leseAuftraggeber(l: Leser, own: XmlElement): Auftraggeber {
+  const adresse = kind(own, 'Address');
+  l.restMelden(own, new Set(['Address', 'AwardNo']), 'OWN');
+  if (adresse) l.restMelden(adresse, new Set(['Name1', 'Street', 'PCode', 'City']), 'OWN/Address');
+  return {
+    name: textOderNull(adresse, 'Name1'),
+    strasse: textOderNull(adresse, 'Street'),
+    plz: textOderNull(adresse, 'PCode'),
+    ort: textOderNull(adresse, 'City'),
+    vergabenummer: textOderNull(own, 'AwardNo'),
+  };
+}
+
+const VERGABE_BEHANDELT: ReadonlySet<string> = new Set([
+  'OpenDate',
+  'OpenTime',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
+]);
+
+/** `AwardInfo` → `Vergabeinformationen`. Nicht abgebildet (Befund): `Cat`, `EvalEnd`, `Cur`, `CurLbl` u. a. */
+function leseVergabeinformationen(l: Leser, info: XmlElement): Vergabeinformationen {
+  l.restMelden(info, VERGABE_BEHANDELT, 'AwardInfo');
+  const datum = (name: string): string | null => zeitangabe(l, info, name, DATUM, 'Datum (JJJJ-MM-TT)');
+  const dauerText = textOderNull(info, 'WarrDur');
+  const einheit = textOderNull(info, 'WarrUnit');
+  let gewaehrleistung: Gewaehrleistung | null = null;
+  if (dauerText !== null || einheit !== null) {
+    if (dauerText !== null && /^[0-9]+(\.[0-9]+)?$/.test(dauerText) && einheit !== null)
+      gewaehrleistung = { dauer: Number(dauerText), einheit };
+    else
+      l.melde(
+        'warnung',
+        'wert-ungueltig',
+        `Die Gewährleistung (WarrDur „${dauerText ?? ''}“, WarrUnit „${einheit ?? ''}“) braucht eine Zahl und eine Einheit; sie wird nicht übernommen.`,
+        kind(info, 'WarrDur') ?? kind(info, 'WarrUnit'),
+        { feld: 'vergabeinformationen.gewaehrleistung' },
+      );
+  }
+  return {
+    eroeffnungsdatum: datum('OpenDate'),
+    eroeffnungszeit: zeitangabe(l, info, 'OpenTime', UHRZEIT, 'Uhrzeit (HH:MM:SS)'),
+    abgabeort: textOderNull(info, 'SubmLoc'),
+    ausfuehrungsbeginn: datum('CnstStart'),
+    ausfuehrungsende: datum('CnstEnd'),
+    auftragsnummer: textOderNull(info, 'ContrNo'),
+    auftragsdatum: datum('ContrDate'),
+    abnahmeart: textOderNull(info, 'AcceptType'),
+    gewaehrleistung,
+  };
+}
+
 // --- Dokumentkopf ---------------------------------------------------------------------------------------
 
 /** Prüft alle `ID`-Attribute des Dokuments auf Doppelte (GAEB: xs:ID, eindeutig im ganzen Dokument). */
@@ -1048,7 +1139,11 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | n
     if (!['GAEBInfo', 'PrjInfo', 'Award'].includes(k.name)) l.nichtAbgebildet(k, `GAEB/${k.name}`);
   const prj = kind(root, 'PrjInfo');
   if (prj) l.restMelden(prj, new Set(['NamePrj']), 'PrjInfo');
-  l.restMelden(award, new Set(['DP', 'BoQ']), 'Award');
+  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo']), 'Award');
+  const own = kind(award, 'OWN');
+  const info = kind(award, 'AwardInfo');
+  const auftraggeber = own ? leseAuftraggeber(l, own) : undefined;
+  const vergabeinformationen = info ? leseVergabeinformationen(l, info) : undefined;
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
@@ -1086,7 +1181,16 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | n
       { feld: 'mwstSatz' },
     );
   }
-  return { name, ozMaske: maske, mwstSatz, nachlass: null, wurzelId, knoten: aufbau.knoten };
+  return {
+    name,
+    ozMaske: maske,
+    mwstSatz,
+    nachlass: null,
+    ...(auftraggeber === undefined ? {} : { auftraggeber }),
+    ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
+    wurzelId,
+    knoten: aufbau.knoten,
+  };
 }
 
 // --- Einstieg -----------------------------------------------------------------------------------------------

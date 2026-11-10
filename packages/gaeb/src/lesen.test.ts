@@ -320,6 +320,78 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
     });
   });
 
+  describe('Kopfdaten (E-11)', () => {
+    it('AVA X81: OWN wird Auftraggeber, AwardInfo wird Vergabeinformationen', () => {
+      const inhalt = lies(lesePfad(AVA_X81), 'x.X81').inhalt;
+      expect(inhalt?.auftraggeber).toEqual({
+        name: 'BVBS',
+        strasse: 'Budapester Straße 31',
+        plz: '10787',
+        ort: 'Berlin',
+        vergabenummer: 'V-3456789012345',
+      });
+      expect(inhalt?.vergabeinformationen).toEqual({
+        eroeffnungsdatum: '2021-07-06',
+        eroeffnungszeit: '13:32:25',
+        abgabeort: 'Zi. 5 in der OFD Gaebhausen',
+        ausfuehrungsbeginn: '2021-06-15',
+        ausfuehrungsende: '2021-12-23',
+        auftragsnummer: 'Auftrag-Nr. 34567890',
+        auftragsdatum: '2021-10-19',
+        abnahmeart: 'Förmliche Abnahme',
+        gewaehrleistung: { dauer: 2, einheit: 'Years' },
+      });
+    });
+
+    it('Bauausführung X83: nur vorhandene Werte, sonst null; nicht abgebildete Teile sind Befund', () => {
+      const l = lies(lesePfad(BAU_X83), 'x.x83');
+      expect(l.inhalt?.auftraggeber).toEqual({
+        name: null,
+        strasse: null,
+        plz: null,
+        ort: null,
+        vergabenummer: 'BVBS-4711',
+      });
+      expect(l.inhalt?.vergabeinformationen).toEqual({
+        eroeffnungsdatum: '2024-04-04',
+        eroeffnungszeit: '11:11:00',
+        abgabeort: null,
+        ausfuehrungsbeginn: null,
+        ausfuehrungsende: null,
+        auftragsnummer: null,
+        auftragsdatum: null,
+        abnahmeart: null,
+        gewaehrleistung: null,
+      });
+      const nicht = l.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung);
+      expect(nicht.some((m) => m.includes('Award/OWN '))).toBe(false);
+      expect(nicht.some((m) => m.includes('Award/AwardInfo '))).toBe(false);
+      expect(nicht.some((m) => m.includes('OWN/DPNo'))).toBe(true);
+      expect(nicht.some((m) => m.includes('AwardInfo/Cur '))).toBe(true);
+    });
+
+    it('Texterstellung X81: ohne OWN fehlt der Auftraggeber', () => {
+      const inhalt = lies(lesePfad(TEXT_X81), 'x.x81').inhalt;
+      expect(inhalt !== null && 'auftraggeber' in inhalt).toBe(false);
+      expect(inhalt?.vergabeinformationen?.auftragsnummer).toBeNull();
+    });
+  });
+
+  describe('Leitbeschreibung (E-11)', () => {
+    it('AVA X81: SumDescr mit drei Unterbeschreibungen, Menge nur mit QtySpec, Einheit ---- bleibt Text', () => {
+      const ps = positionen(lies(lesePfad(AVA_X81), 'x.X81'));
+      const leit = ps.filter((p) => p.leitbeschreibung !== undefined);
+      expect(leit).toHaveLength(1);
+      const u = leit[0]?.leitbeschreibung?.unterbeschreibungen ?? [];
+      expect(u.map((x) => [x.nummer, x.kurztext, x.menge, x.einheit])).toEqual([
+        ['1', 'Unterkonstruktion verz.Stahlblech', '0.000', '----'],
+        ['2', "Dämmschicht mineralisch '40'", '0.000', '----'],
+        ['3', 'Beplankung,beids. GKF 12,5 mm', '0.000', '----'],
+      ]);
+      expect(u[1]?.langtext.filter((b) => b.art === 'ergaenzung')).toHaveLength(2);
+    });
+  });
+
   it('Eltern stehen vor Kindern, Reihenfolge ist je Eltern dicht 0..n-1', () => {
     for (const { pfad } of AMTLICH) {
       const l = lies(lesePfad(pfad));
