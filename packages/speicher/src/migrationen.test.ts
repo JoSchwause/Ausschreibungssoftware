@@ -48,6 +48,24 @@ const SCHEMA_ABBILD: Record<number, { tabellen: string[]; indizes: string }> = {
     ],
     indizes: 'angebot_lv,knoten_eltern,leistungsverzeichnis_projekt,protokoll_projekt',
   },
+  3: {
+    tabellen: [
+      'angebot: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! bieter_id:TEXT! nachlass_art:TEXT nachlass_wert:TEXT',
+      'angebotsposition: angebot_id:TEXT!* position_id:TEXT!* status:TEXT! einheitspreis:TEXT epa:TEXT zuschlagssatz:TEXT',
+      'auftrags_lv: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! angebot_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT',
+      'bieter: projekt_id:TEXT!* id:TEXT!* name:TEXT! reihenfolge:INTEGER!',
+      'knoten: aggregat_id:TEXT!* id:TEXT!* art:TEXT! eltern_id:TEXT! reihenfolge:INTEGER! ordnungszahl:TEXT oz_index:TEXT kurztext:TEXT merkmale:TEXT zuschlag:TEXT leitbeschreibung:TEXT text_json:TEXT menge:TEXT einheit:TEXT einheitspreis:TEXT epa:TEXT',
+      'leistungsverzeichnis: id:TEXT!* projekt_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT',
+      'lv_stand: seq:INTEGER* id:TEXT! leistungsverzeichnis_id:TEXT! name:TEXT! angelegt:TEXT! zustand:TEXT!',
+      'papierkorb_eintrag: leistungsverzeichnis_id:TEXT!* id:TEXT!* nummer:INTEGER! knoten:TEXT!',
+      'projekt: id:TEXT!* name:TEXT! bauherr_name:TEXT! bauherr_anschrift:TEXT',
+      'protokoll: seq:INTEGER* id:TEXT! projekt_id:TEXT! aggregat_art:TEXT! aggregat_id:TEXT! wer:TEXT! wann:TEXT! befehl:TEXT!',
+      'summe_gesamt: aggregat_id:TEXT!* netto:TEXT! nachlass:TEXT! netto_nach_nachlass:TEXT! mwst:TEXT! brutto:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_gliederung: aggregat_id:TEXT!* gliederung_id:TEXT!* summe:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_position: aggregat_id:TEXT!* position_id:TEXT!* gesamtpreis:TEXT geht_in_summe:INTEGER!',
+    ],
+    indizes: 'angebot_lv,knoten_eltern,leistungsverzeichnis_projekt,lv_stand_lv,protokoll_projekt',
+  },
 };
 
 function schemaAbbild(db: Datenbank): { tabellen: string[]; indizes: string } {
@@ -172,7 +190,7 @@ describe('Migration 2 überführt eine Datenbank der Version 1 ohne Verlust (Q5)
     expect(zaehle(db, 'knoten')).toBe(2 * lv.leistungsverzeichnis.knoten.length); // LV und Auftrags-LV
 
     const kern = kernAufDb(db);
-    expect(aktuelleVersion(db)).toBe(2);
+    expect(aktuelleVersion(db)).toBe(SCHEMA_VERSION);
     expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(normalisiere(lv));
     for (const a of inhalt.angebote) expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
     expect(wert(kern.projektLaden(inhalt.projekt.id))).toEqual(inhalt.projekt);
@@ -219,5 +237,41 @@ describe('Migration 2 überführt eine Datenbank der Version 1 ohne Verlust (Q5)
     ] as const) {
       expect(zaehle(db, `${t} WHERE ${s} IS NOT NULL`), `${t}.${s}`).toBe(0);
     }
+  });
+});
+
+describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)', () => {
+  it('Datenbank der Version 2 mit Inhalt: Modell und Projektdatei bleiben gleich, Papierkorb und Stände leer', async () => {
+    const inhalt = inhaltMitAllenAltenArten(3);
+    const lv = inhalt.leistungsverzeichnisse[0];
+    if (lv === undefined) throw new Error('kein LV');
+    const db = await neueDatenbank();
+    db.ausfuehren('PRAGMA foreign_keys = ON');
+    expect(migriere(db, bis(1)).ok).toBe(true);
+    schreibeInSchema1(db, inhalt);
+    expect(migriere(db, bis(2)).ok).toBe(true);
+    const zeilenV2 = ['knoten', 'angebotsposition', 'protokoll'].map((t) => zaehle(db, t));
+
+    const kern = kernAufDb(db, bis(3));
+    expect(aktuelleVersion(db)).toBe(3);
+    expect(['knoten', 'angebotsposition', 'protokoll'].map((t) => zaehle(db, t))).toEqual(zeilenV2);
+    expect(zaehle(db, 'papierkorb_eintrag') + zaehle(db, 'lv_stand')).toBe(0);
+    expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(normalisiere(lv));
+    expect(wert(kern.lvStaendeAuflisten(lv.leistungsverzeichnis.id))).toEqual([]);
+    const frisch = await neuerKern();
+    wert(frisch.kern.projektdateiImportieren(kanonischesJson(inhalt)));
+    expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
+      wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
+    );
+  });
+
+  it('Dateimigration 2 → 3 lässt den Inhalt gleich und weist die neuen Felder in einer Datei der Version 2 ab', () => {
+    const m = MIGRATIONEN.find((x) => x.version === 3);
+    const datei = m?.datei;
+    if (datei == null) throw new Error('keine Dateimigration 3');
+    const roh = { schemaVersion: 2, leistungsverzeichnisse: [{ summen: 1 }], protokoll: [] };
+    expect(datei(roh)).toEqual(roh);
+    expect(() => datei({ ...roh, lvStaende: [] })).toThrow(/lvStaende/);
+    expect(() => datei({ ...roh, leistungsverzeichnisse: [{ papierkorb: [] }] })).toThrow(/papierkorb/);
   });
 });

@@ -39,8 +39,12 @@ import type {
   Leitbeschreibung,
   LeistungsverzeichnisId,
   LosId,
+  LvStand,
+  LvStandId,
   LvZustand,
   Massenbefehlsart,
+  Papierkorbeintrag,
+  PapierkorbeintragId,
   Menge,
   Nachlass,
   NutzerId,
@@ -632,8 +636,23 @@ function projekt(x: unknown, pfad: string): Projekt {
   };
 }
 
+/** Ein Papierkorbeintrag (Schema 3): Kennung, Nummer ab 1 und die Knoten mit alter Lage. */
+function papierkorbeintrag(x: unknown, pfad: string): Papierkorbeintrag {
+  const o = objekt(x, pfad, ['id', 'nummer', 'knoten']);
+  const nummer = ganz(feld(o, 'nummer'), `${pfad}.nummer`);
+  if (nummer < 1) ungueltig(`${pfad}.nummer`, 'ganze Zahl ab 1 erwartet');
+  const knotenListe = liste(feld(o, 'knoten'), `${pfad}.knoten`);
+  if (knotenListe.length === 0)
+    ungueltig(`${pfad}.knoten`, 'ein Papierkorbeintrag hat mindestens einen Knoten');
+  return {
+    id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as PapierkorbeintragId,
+    nummer,
+    knoten: knotenListe.map((k, i) => knoten(k, `${pfad}.knoten[${String(i)}]`)),
+  };
+}
+
 function lvZustand(x: unknown, pfad: string): LvZustand {
-  const z = objekt(x, pfad, ['leistungsverzeichnis', 'summen']);
+  const z = objekt(x, pfad, ['leistungsverzeichnis', 'summen'], ['papierkorb']);
   const p = `${pfad}.leistungsverzeichnis`;
   const o = objekt(
     feld(z, 'leistungsverzeichnis'),
@@ -651,7 +670,31 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     ...kopfdaten(o, p),
     knoten: liste(feld(o, 'knoten'), `${p}.knoten`).map((k, i) => knoten(k, `${p}.knoten[${String(i)}]`)),
   };
-  return { leistungsverzeichnis: lv, summen: summenstand(feld(z, 'summen'), `${pfad}.summen`) };
+  return {
+    leistungsverzeichnis: lv,
+    summen: summenstand(feld(z, 'summen'), `${pfad}.summen`),
+    ...optional(z, 'papierkorb', (v) =>
+      liste(v, `${pfad}.papierkorb`).map((e, i) => papierkorbeintrag(e, `${pfad}.papierkorb[${String(i)}]`)),
+    ),
+  };
+}
+
+/** Ein LV-Stand (Schema 3): Kopf, `angelegt` und der eingefrorene Zustand des LV, der zum Kopf passt. */
+function lvStand(x: unknown, pfad: string): LvStand {
+  const o = objekt(x, pfad, ['id', 'leistungsverzeichnisId', 'name', 'angelegt', 'zustand']);
+  const s: LvStand = {
+    id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as LvStandId,
+    leistungsverzeichnisId: zeichenkette(
+      feld(o, 'leistungsverzeichnisId'),
+      `${pfad}.leistungsverzeichnisId`,
+    ) as LeistungsverzeichnisId,
+    name: zeichenkette(feld(o, 'name'), `${pfad}.name`),
+    angelegt: zeichenkette(feld(o, 'angelegt'), `${pfad}.angelegt`) as Zeitstempel,
+    zustand: lvZustand(feld(o, 'zustand'), `${pfad}.zustand`),
+  };
+  if (s.zustand.leistungsverzeichnis.id !== s.leistungsverzeichnisId)
+    ungueltig(`${pfad}.zustand`, 'gehört zu einem anderen LV als der Stand');
+  return s;
 }
 
 function auftragsLvZustand(x: unknown, pfad: string): AuftragsLvZustand {
@@ -863,7 +906,11 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   );
   const bart = zeichenkette(feld(b, 'art'), `${pfad}.befehl.art`);
   if (bart === 'Befehlskurzfassung') befehlskurzfassung(b, `${pfad}.befehl`);
-  else if (!Object.hasOwn(BEFEHLSARTEN, bart))
+  else if (bart === 'Rueckgaengig' || bart === 'Wiederholen') {
+    // Historienbefehle (v1.2) haben genau eine Form; ihr Verweis wird in `pruefeHistorienbezuege` geprüft.
+    const h = objekt(b, `${pfad}.befehl`, ['art', 'protokollId']);
+    zeichenkette(feld(h, 'protokollId'), `${pfad}.befehl.protokollId`);
+  } else if (!Object.hasOwn(BEFEHLSARTEN, bart))
     ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
   jsonWert(befehl, `${pfad}.befehl`);
   return {
@@ -879,16 +926,50 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   };
 }
 
+/**
+ * `Rueckgaengig`/`Wiederholen` im Protokoll der Datei (v1.2, S3): `protokollId` zeigt auf einen früheren Eintrag
+ * derselben Datei (also desselben Projekts) mit demselben Aggregat, der kein Historienbefehl ist. Wie `anwenden`, nur
+ * als `datei-ungueltig`. Ausnahme wie dort (D-31.1): Am Projekt darf der Verweis ins Leere zeigen, weil das Löschen des
+ * Projekts sein Protokoll mitnahm, bevor die Umkehrung es wieder anlegte.
+ */
+function pruefeHistorienbezuege(protokoll: readonly Protokolleintrag[]): void {
+  const frueher = new Map<string, Protokolleintrag>();
+  protokoll.forEach((e, i) => {
+    const b = e.befehl;
+    if (b.art === 'Rueckgaengig' || b.art === 'Wiederholen') {
+      const ziel = frueher.get(b.protokollId);
+      const passt =
+        ziel === undefined
+          ? e.aggregat.art === 'projekt' && !protokoll.some((x) => x.id === b.protokollId)
+          : ziel.aggregat.art === e.aggregat.art &&
+            ziel.aggregat.id === e.aggregat.id &&
+            ziel.befehl.art !== 'Rueckgaengig' &&
+            ziel.befehl.art !== 'Wiederholen';
+      if (!passt)
+        ungueltig(
+          `$.protokoll[${String(i)}].befehl.protokollId`,
+          'zeigt auf keinen früheren ursprünglichen Befehl am selben Aggregat',
+        );
+    }
+    frueher.set(e.id, e);
+  });
+}
+
 /** Prüft eine bereits auf die aktuelle Version gehobene Projektdatei und liefert sie typisiert. */
 export function dekodiereProjektdatei(roh: unknown, version: number): Projektdatei {
-  const o = objekt(roh, '$', [
-    'schemaVersion',
-    'projekt',
-    'leistungsverzeichnisse',
-    'angebote',
-    'auftragsLeistungsverzeichnisse',
-    'protokoll',
-  ]);
+  const o = objekt(
+    roh,
+    '$',
+    [
+      'schemaVersion',
+      'projekt',
+      'leistungsverzeichnisse',
+      'angebote',
+      'auftragsLeistungsverzeichnisse',
+      'protokoll',
+    ],
+    ['lvStaende'],
+  );
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
   const p = projekt(feld(o, 'projekt'), '$.projekt');
   const datei: Projektdatei = {
@@ -907,6 +988,9 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     protokoll: liste(feld(o, 'protokoll'), '$.protokoll').map((x, i) =>
       protokolleintrag(x, `$.protokoll[${String(i)}]`),
     ),
+    ...optional(o, 'lvStaende', (v) =>
+      liste(v, '$.lvStaende').map((s, i) => lvStand(s, `$.lvStaende[${String(i)}]`)),
+    ),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [
@@ -914,7 +998,9 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...datei.angebote.map((z) => z.angebot.projektId),
     ...datei.auftragsLeistungsverzeichnisse.map((z) => z.auftragsLeistungsverzeichnis.projektId),
     ...datei.protokoll.map((e) => e.projektId),
+    ...(datei.lvStaende ?? []).map((s) => s.zustand.leistungsverzeichnis.projektId),
   ].find((id) => id !== p.id);
   if (fremd !== undefined) ungueltig('$', `enthält Daten des fremden Projekts ${fremd}`);
+  pruefeHistorienbezuege(datei.protokoll);
   return datei;
 }
