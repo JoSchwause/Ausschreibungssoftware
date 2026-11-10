@@ -24,6 +24,7 @@ export {
 } from './ozregeln';
 export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
+export { FELD_ANNAHMEN, langtextGleich } from './feld-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
 export { gesamtsummen, positionsSumme, summenBerechnen } from './summen';
 export {

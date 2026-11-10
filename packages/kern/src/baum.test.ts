@@ -602,11 +602,6 @@ describe('KnotenVerschieben', () => {
 describe('Befehle anderer Tickets', () => {
   const z = basis();
   const fremde: LvBefehl[] = [
-    { art: 'LeistungsverzeichnisUmbenennen', name: 'x' },
-    { art: 'KurztextAendern', knotenId: id.pos('P1'), kurztext: 'x' },
-    { art: 'LangtextAendern', positionId: id.pos('P1'), langtext: [] },
-    { art: 'HinweistextAendern', knotenId: id.hinweis('H'), text: [] },
-    { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null },
     { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
     {
       art: 'PositionsmerkmaleSetzen',

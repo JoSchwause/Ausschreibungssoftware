@@ -1,0 +1,100 @@
+{
+  "umgebung": {
+    "cpus": 4,
+    "cpuModell": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "arbeitsspeicherMiB": 16086,
+    "node": "v22.23.4",
+    "laeufeJeMessung": 7,
+    "lastVorMessung1Min": 8.5,
+    "hinweis": "Container ohne GPU, Chromium headless (Playwright launch ohne Zusatzparameter). Lauf 1 ist ein Aufwärmlauf und zählt nicht mit.",
+    "lastNachMessung1Min": 10.7
+  },
+  "positionen": 5000,
+  "wegA_pdfmake_node": {
+    "laeufe": 7,
+    "medianMs": 3239.6,
+    "minMs": 3080.4,
+    "maxMs": 3586.9,
+    "alleMs": [3504.2, 3586.9, 3080.4, 3127.1, 3128.1, 3321.4, 3239.6],
+    "bytes": 1314736,
+    "seiten": 270,
+    "verwaisteTitelSeiten": 0,
+    "letzteSeitenzahl": "Seite 270 von 270",
+    "schriftEingebettet": ["/BaseFont /BZZZZZ+NotoSans-Bold", "/BaseFont /CZZZZZ+NotoSans-Regular"],
+    "strukturElemente": {
+      "Root": 5
+    }
+  },
+  "chromium": "153.0.8010.12",
+  "wegA_pdfmake_chromium": {
+    "laeufe": 7,
+    "medianMs": 2855,
+    "minMs": 2382.9,
+    "maxMs": 4060.7,
+    "alleMs": [3804.2, 3316.2, 4060.7, 2855, 2382.9, 2383, 2791.7],
+    "bytes": 1423404,
+    "seiten": 270,
+    "verwaisteTitelSeiten": 0
+  },
+  "wegB_browserdruck_chromium": {
+    "htmlErzeugen": {
+      "laeufe": 7,
+      "medianMs": 29.1,
+      "minMs": 24.1,
+      "maxMs": 75.2,
+      "alleMs": [75.2, 24.1, 29.1, 32.2, 26.3, 26.7, 48.7]
+    },
+    "htmlBytes": 1944977,
+    "mitTags": {
+      "setContentPlusPdf": {
+        "laeufe": 7,
+        "medianMs": 9807.5,
+        "minMs": 9057.2,
+        "maxMs": 10754.4,
+        "alleMs": [9775.5, 9057.2, 9322.8, 10307.1, 9874.1, 9807.5, 10754.4]
+      },
+      "bytes": 14992261,
+      "seiten": 268,
+      "verwaisteTitelSeiten": 0,
+      "letzteSeitenzahl": "Seite 268 von 268",
+      "schriftEingebettet": ["/BaseFont /AAAAAA+NotoSans-Regular", "/BaseFont /BAAAAA+NotoSans-Bold"],
+      "strukturElemente": {
+        "Root": 5,
+        "Document": 5,
+        "Table": 5,
+        "TR": 56110,
+        "TH": 35,
+        "NonStruct": 726,
+        "TD": 184150
+      }
+    },
+    "ohneTags": {
+      "setContentPlusPdf": {
+        "laeufe": 7,
+        "medianMs": 3756.9,
+        "minMs": 3347.4,
+        "maxMs": 5178.7,
+        "alleMs": [4780.3, 5178.7, 3625.9, 3660.4, 3347.4, 4017.9, 3756.9]
+      },
+      "bytes": 1526798,
+      "seiten": 268,
+      "verwaisteTitelSeiten": 0,
+      "letzteSeitenzahl": "Seite 268 von 268",
+      "schriftEingebettet": ["/BaseFont /AAAAAA+NotoSans-Regular", "/BaseFont /BAAAAA+NotoSans-Bold"]
+    }
+  },
+  "buendel": {
+    "wegA_pdfmake_minifiziert": {
+      "bytes": 776852,
+      "gzipBytes": 290289
+    },
+    "wegB_html_erzeugung_minifiziert": {
+      "bytes": 5292,
+      "gzipBytes": 2369
+    },
+    "schriftdateien": {
+      "normal": 16688,
+      "fett": 16956
+    }
+  }
+}

@@ -23,6 +23,13 @@ import {
   knotenVerschieben,
   positionAnlegen,
 } from './knoten-befehle';
+import {
+  einheitAendern,
+  hinweistextAendern,
+  kurztextAendern,
+  langtextAendern,
+  leistungsverzeichnisUmbenennen,
+} from './feld-befehle';
 import { leistungsverzeichnisAnlegen } from './lv-anlegen';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
@@ -42,15 +49,20 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
+  LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
   GliederungAnlegen: gliederungAnlegen,
   PositionAnlegen: positionAnlegen,
   HinweistextAnlegen: hinweistextAnlegen,
   KnotenLoeschen: knotenLoeschen,
   KnotenVerschieben: knotenVerschieben,
+  KurztextAendern: kurztextAendern,
+  LangtextAendern: langtextAendern,
+  HinweistextAendern: hinweistextAendern,
   MengeAendern: mengeAendern,
+  EinheitAendern: einheitAendern,
   EinheitspreisAendern: einheitspreisAendern,
   NachlassSetzen: nachlassSetzen,
   NachlassEntfernen: nachlassEntfernen,
@@ -64,11 +76,6 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
 /** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
 export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
-  LeistungsverzeichnisUmbenennen: 'kein Ticket zugeordnet (Stammdaten des LV; der Vertrag nennt keines)',
-  KurztextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
-  LangtextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
-  HinweistextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
-  EinheitAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
   // v1.1a: mechanisch angepasst, Folgeticket

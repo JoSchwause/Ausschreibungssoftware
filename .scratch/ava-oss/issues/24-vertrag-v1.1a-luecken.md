@@ -108,6 +108,7 @@ Nur Typen, Konstanten und Kommentare in `packages/vertrag/src/`; keine Logik. `p
 | `packages/kern/src/changeset.ts` (`lvChangeSetAnwenden`) | `satisfies LvChangeSetAnwenden` statt Annotation, damit kein Aufrufer `null` behandeln muss; Verhalten unverändert |
 | `packages/kern/src/ausfuehren.ts` (`ZUSTAENDIGES_TICKET`) | Eintrag für `LeistungsverzeichnisLoeschen` |
 | `packages/kern/src/testhilfen.ts` (2 Stellen), `packages/kern/src/summen-eigenschaften.test.ts` (1) | `wurzelId` im `LvInhalt` |
+| `packages/ausgabe/src/testhilfen.ts` (`fixtureAlsInhalt`) | `wurzelId: fx.id` im `LvInhalt` (Paket erst nach dem ersten Stand dieses Tickets auf `main` gekommen) |
 | `packages/gaeb/src/lesen.ts` (Rückgabe des Inhalts) | `wurzelId` im `inhalt`, zusammengeführt mit dem MwSt-Standardsatz aus Ticket 25 (`mwstSatz`) |
 | `packages/ui-grid/e2e/harness/fixture-ansicht.ts` | `wurzelId` in der gebauten `LvAnsicht`, Import `WurzelId` |
 
