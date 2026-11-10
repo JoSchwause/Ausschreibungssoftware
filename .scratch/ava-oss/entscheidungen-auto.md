@@ -126,3 +126,31 @@ Question: Ist v1.2 stabil genug, damit 30–32 und Phase B darauf bauen (statt P
 Decision: Ja. Opus-Reviewer: „yes-with-fixes“, vier Pflichtpunkte und fünf weitere; alle neun umgesetzt (D-12), Suite grün (938 Tests). Den Berater nicht gefragt, weil der Review keine offene Abwägung übrig ließ.
 Reason: Alle Befunde waren eindeutig lösbar; die Lösungen sind enge, umkehrbare Lesarten.
 Reversible: yes  Touches: packages/vertrag
+
+## D-31.1 Projekt löschen nimmt Protokoll und Bieter mit
+Welle 3 · Ticket 31 · decided by: implementer
+Question: `protokoll.projekt_id` verweist in Schema 1 auf `projekt`. Was geschieht beim Löschen des Projekts mit seinem Protokoll und dem Eintrag des Löschbefehls?
+Decision: Vorschlag des Tickets: Bieter und Protokoll des Projekts gehen mit, der Eintrag des Löschbefehls wird nicht geschrieben (einzige Ausnahme von „ein Eintrag je Befehl“, Kommentar an `wendeProjektAn` und `anwenden`). LVs, Angebote, Auftrags-LV verhindern das Löschen (`konflikt`).
+Reason: Keine Migration in Ticket 31; das ChangeSet bleibt allein umkehrbar (`vorher` trägt Projekt und Bieter). Alternative (Fremdschlüssel lösen, Protokoll bleibt) gehört zu Schema 2, Ticket 38.
+Reversible: yes  Touches: packages/speicher
+
+## D-31.2 Löschen verlangt den vollen gespeicherten Stand im ChangeSet
+Welle 3 · Ticket 31 · decided by: implementer
+Question: Wie streng prüft `speicher` ein Lösch-ChangeSet (LV, Angebot), das `kern` noch nicht erzeugt?
+Decision: Kopf in `vorher` gleich dem gespeicherten, alle Knoten bzw. Angebotspositionen in `entfernt` (fehlt einer: `konflikt`), `summen.vorher` falls gesetzt gleich den gespeicherten Summen (sonst `konflikt`); neue Summen, hinzugefügte oder geänderte Knoten im Lösch-ChangeSet sind ein Programmfehler (`unbekannt`).
+Reason: Q5 und Umkehrbarkeit ohne Vorzustand (v1.1a): Nur so stellt die Umkehrung (Anlegen) dasselbe Aggregat wieder her. Ticket 30 muss sein Lösch-ChangeSet in dieser Form liefern (wie im Vertrag beschrieben).
+Reversible: yes  Touches: packages/speicher, Ticket 30 (Form des Lösch-ChangeSets)
+
+## D-32.1 GAEB-Leser auf v1.1a/v1.1b: offene Lesarten
+Welle 3 · Ticket 32 · decided by: implementer
+Question: Was Ticket 32 offen lässt (Überlauf-Codes, Grundausführung, Zuschlagsformen, Langtext-Kanon, Reste, Kopfdaten-Formate).
+Decision: Überlauf-Codes des Lesers bleiben (andere Lage als der Befehlsfehler `oz-ueberlauf`). Variante 0 trägt `wahl` mit `grundpositionId: null`. Zuschlag: alle drei Bezugsformen, `teilmenge` immer `null` (keine Datei zeigt sie), `Markup` → Satz. Langtext: lose `span`/`br` bleiben lose, leere `p` bleiben leere Absätze, Läufe gleicher Auszeichnung verschmelzen, Zeilenwechsel im Dateitext → Leerzeichen; `formatierung-verworfen` meldet zusätzlich Durchgestrichen, Hoch-/Tiefstellung, Rahmen, Einzug, Listenstil. Neue Befunde `ergaenzung-nicht-oben`, `ergaenzung-ungueltig`, `wert-ungueltig`, `leitbeschreibung-ohne-kennzeichen`, `unterbeschreibung-ohne-nummer`. Einzelheiten: Ticket 32, Comments.
+Reason: Kein stiller Verlust (Q5), nichts erfunden (C4), Form passend zum Editor-Kanon (Ticket 34) für den Rundweg G2.
+Reversible: yes  Touches: packages/gaeb
+
+## D-46.1 Tastenbelegung und Lesarten der Zeilenaktionen im Grid
+Welle 3 · Ticket 46 · decided by: implementer
+Question: Tastenbelegung (Vorschlag im Ticket) und was das Ticket bei Einfügen, Verschieben und Löschen offen lässt.
+Decision: Strg+C/X/V, Strg+Minus/Strg+Entf (Rückfrage), Alt+Pfeil hoch/runter, Strg+Plus (`key '+'`), Escape bricht Ausschneiden ab (die Zeilen bleiben als kopiert gemerkt). Eigener Text ohne `onKopieEinfuegen` wird spaltengenau ab der ersten Spalte eingefügt. „Hinter einer Gliederung“ ist im Vertrag „als erstes Kind“: Strg+Plus auf einer Gliederung legt das erste Kind an; Verschieben neben einer Gliederung verschiebt den Nachbarn oder legt eine Teilfolge neu, stets ein Befehl. Die Rückfrage zählt sichtbare Positionen und sagt „mindestens“ bei zugeklappten Knoten. Einzelheiten in Ticket 46, Comments.
+Reason: Excel-nah (U3), keine bestehende Taste geändert außer Alt+Pfeil hoch/runter (vom Ticket verlangt); `Einfuegeort` bleibt unverändert (A4).
+Reversible: yes  Touches: packages/ui-grid

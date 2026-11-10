@@ -6,7 +6,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { oeffneInMemory, type GeoeffneteDatenbank } from './backends';
-import { speicherOeffnen, speicherUeberTransport, type SpeicherVerwaltung } from './client';
+import {
+  speicherOeffnen,
+  speicherUeberTransport,
+  type GeoeffneterSpeicher,
+  type SpeicherVerwaltung,
+} from './client';
 import { SpeicherKern } from './kern';
 import { RPC_METHODEN, type WorkerLike } from './rpc';
 import { betreibeWorker, type Oeffner } from './worker-host';
@@ -37,6 +42,8 @@ function falscherWorker(oeffner: Oeffner): WorkerLike & { abstuerzen(): void; be
   const w = {
     beendet: false,
     postMessage: (m: unknown) => {
+      // Wie ein echter Worker: Nach `terminate` gehen Nachrichten ins Leere, eine Antwort kommt nie.
+      if (w.beendet) return;
       queueMicrotask(() => {
         for (const h of anWorker) h({ data: structuredClone(m) });
       });
@@ -135,6 +142,53 @@ describe('Client über Worker-Host', () => {
     expect(await roh('ausfuehren', 'DELETE FROM projekt')).toMatchObject({ ok: false });
     expect(await roh('constructor')).toMatchObject({ ok: false });
     await speicher.schliessen();
+  });
+});
+
+describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, keine Ausnahme', () => {
+  /** Ruft jede Methode der Speicher-Schnittstelle einmal auf und sammelt die Fehlercodes. */
+  async function alleCodes(s: GeoeffneterSpeicher): Promise<(string | undefined)[]> {
+    const f = ladeFixture('winzig');
+    const [schritt] = anlegenSchritte(f);
+    if (schritt === undefined) throw new Error('kein Schritt');
+    const p = f.projekt.id;
+    const lv = f.lv.leistungsverzeichnis.id;
+    return [
+      fehlercode(await s.projekte.auflisten()),
+      fehlercode(await s.projekte.laden(p)),
+      fehlercode(await s.leistungsverzeichnisse.auflisten(p)),
+      fehlercode(await s.leistungsverzeichnisse.laden(lv)),
+      fehlercode(await s.angebote.auflisten(lv)),
+      fehlercode(await s.angebote.laden('a' as never)),
+      fehlercode(await s.anwenden(schritt.eintrag, schritt.changeSet)),
+      fehlercode(await s.protokoll(p)),
+      fehlercode(await s.projektdateiExportieren(p)),
+      fehlercode(await s.projektdateiImportieren('{}')),
+      fehlercode(await s.schliessen()),
+    ];
+  }
+
+  it('direkter Transport', async () => {
+    const { kern } = await neuerKern();
+    const s = speicherUeberTransport(direktTransport(kern), null);
+    wert(await s.schliessen());
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 11 }, () => 'gesperrt'));
+  });
+
+  it('Kern direkt: auch ohne Client liefert jede Methode gesperrt', async () => {
+    const { kern } = await neuerKern();
+    wert(kern.schliessen());
+    expect(fehlercode(kern.projekteAuflisten())).toBe('gesperrt');
+    expect(fehlercode(kern.projektdateiImportieren('{}'))).toBe('gesperrt');
+    expect(fehlercode(kern.schliessen())).toBe('gesperrt');
+  });
+
+  it('Worker: der beendete Worker wird nicht mehr angesprochen, nichts hängt', async () => {
+    const w = falscherWorker(imSpeicher);
+    const s = wert(await speicherOeffnen({ worker: w, verwaltung: null }));
+    wert(await s.schliessen());
+    expect(w.beendet).toBe(true);
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 11 }, () => 'gesperrt'));
   });
 });
 

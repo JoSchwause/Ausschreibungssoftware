@@ -203,7 +203,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       },
     };
     const r = kern.anwenden(lvEintrag(), cs);
-    expect(r).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
+    expect(r).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     expect(!r.ok && r.fehler.meldung).toContain('Konflikt');
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
     expect(zaehle(db, 'protokoll')).toBe(protokolle);
@@ -268,12 +268,12 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       lvEintrag(),
       mit({ ...vorhanden, id: 'x1' as PositionId, elternId: 'gibt-es-nicht' as never }),
     );
-    expect(waise).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
+    expect(waise).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     const luecke = kern.anwenden(
       lvEintrag(),
       mit({ ...vorhanden, id: 'x2' as PositionId, reihenfolge: 500 }),
     );
-    expect(luecke).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
+    expect(luecke).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
   });
 
@@ -299,7 +299,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     // zweites Mal mit dem alten Vorherstand: Konflikt
     expect(kern.anwenden(e(), cs(angeboten, neuerPreis))).toMatchObject({
       ok: false,
-      fehler: { code: 'unbekannt' },
+      fehler: { code: 'konflikt' },
     });
     // auf „nicht angeboten“ stellen
     wert(
@@ -331,7 +331,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     expect(kern.anwenden(e(), neu)).toMatchObject({ ok: false, fehler: { code: 'nicht-gefunden' } });
   });
 
-  it('LV-Kopf ändern: Vorherstand geprüft, Projektwechsel und Löschen abgewiesen', async () => {
+  it('LV-Kopf ändern: Vorherstand geprüft; Löschen mit Angeboten abgewiesen', async () => {
     const { kern } = await mitTypisch();
     const kopf = lvAnlegenChangeSet(typisch.lv).kopf?.nachher;
     if (kopf === undefined || kopf === null) throw new Error('kein Kopf');
@@ -347,10 +347,13 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       name: 'Umbenannt',
       nachlass: null,
     });
-    expect(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'x' })).ok).toBe(false); // veralteter Vorherstand
-    expect(kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)).ok).toBe(
-      false,
-    );
+    expect(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'x' }))).toMatchObject({
+      ok: false,
+      fehler: { code: 'konflikt' }, // veralteter Vorherstand
+    });
+    expect(
+      kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)),
+    ).toMatchObject({ ok: false, fehler: { code: 'konflikt' } }); // Angebote hängen am LV
     expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis.name).toBe('Umbenannt');
   });
 
@@ -382,17 +385,12 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     expect(wert(kern.projektLaden(projektId)).bieter).toHaveLength(3);
   });
 
-  it('ein Projekt zu löschen ist nicht vorgesehen und wird abgewiesen', async () => {
+  it('ein Projekt mit LV lässt sich nicht löschen (konflikt)', async () => {
     const { kern } = await mitTypisch();
-    const e = eintrag(
-      nr++,
-      projektId,
-      { art: 'projekt', id: projektId },
-      { art: 'ProjektStammdatenSetzen', name: 'x', bauherr: typisch.projekt.bauherr },
-    );
+    const e = eintrag(nr++, projektId, { art: 'projekt', id: projektId }, { art: 'ProjektLoeschen' });
     expect(
-      kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher: null } }).ok,
-    ).toBe(false);
+      kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher: null } }),
+    ).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     expect(wert(kern.projektLaden(projektId))).toEqual(typisch.projekt);
   });
 });

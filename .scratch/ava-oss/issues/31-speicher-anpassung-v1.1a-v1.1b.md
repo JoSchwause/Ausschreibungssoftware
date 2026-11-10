@@ -1,6 +1,6 @@
 # 31: Anpassung `speicher` an v1.1a/v1.1b (`konflikt`, Löschen, Auftrags-LV, `schliessen`, Langtext-Sperre aufheben)
 
-Status: ready-for-agent
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase A) · Strang: S · Paket: `packages/speicher`
 Blocked by: -
@@ -72,16 +72,16 @@ Spalten oder JSON für Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Summenfe
 
 ## Acceptance criteria
 
-- [ ] Je ein Test für `konflikt` (abweichendes `vorher`; Löschen mit abhängigem Aggregat) und `existiert-bereits` (doppelter Import)
-- [ ] LV löschen: danach `laden` → `nicht-gefunden`, keine Zeile des LV in `knoten` und den Summentabellen; Protokolleintrag geschrieben; Umkehr-ChangeSet (Anlegen) stellt es wieder her: `leistungsverzeichnisse.laden` liefert denselben `LvZustand` wie vor dem Löschen
-- [ ] Angebot löschen und Projekt löschen ebenso getestet; Projekt mit LV → `konflikt`
-- [ ] Auftrags-LV anlegen, lesen über die Projektdatei, Export → Import → Export byte-gleich
-- [ ] Nach `schliessen` liefert jeder Aufruf einen Fehlerwert, keine Ausnahme
-- [ ] Position und Hinweistext mit Langtext aus Absatz mit Auszeichnung, Liste, Tabelle (mit `spalten: 2`) und Textergänzung: speichern, laden, Export, Import ergeben denselben Wert
-- [ ] Dekoder weist einen veränderten Langtext (unbekannte Art; `fett: false`; Textergänzung in einer Zelle) mit `datei-ungueltig` und Pfad ab
-- [ ] Eingefrorene Projektdatei Version 1: Byte-Vergleich unverändert grün
-- [ ] Kein `// v1.1a: mechanisch angepasst`-Marker mehr in `packages/speicher`; die verbleibenden `v1.1b`-Marker sind genau die oben Ticket 38 zugewiesenen
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
+- [x] Je ein Test für `konflikt` (abweichendes `vorher`; Löschen mit abhängigem Aggregat) und `existiert-bereits` (doppelter Import)
+- [x] LV löschen: danach `laden` → `nicht-gefunden`, keine Zeile des LV in `knoten` und den Summentabellen; Protokolleintrag geschrieben; Umkehr-ChangeSet (Anlegen) stellt es wieder her: `leistungsverzeichnisse.laden` liefert denselben `LvZustand` wie vor dem Löschen
+- [x] Angebot löschen und Projekt löschen ebenso getestet; Projekt mit LV → `konflikt`
+- [x] Auftrags-LV anlegen, lesen über die Projektdatei, Export → Import → Export byte-gleich
+- [x] Nach `schliessen` liefert jeder Aufruf einen Fehlerwert, keine Ausnahme
+- [x] Position und Hinweistext mit Langtext aus Absatz mit Auszeichnung, Liste, Tabelle (mit `spalten: 2`) und Textergänzung: speichern, laden, Export, Import ergeben denselben Wert
+- [x] Dekoder weist einen veränderten Langtext (unbekannte Art; `fett: false`; Textergänzung in einer Zelle) mit `datei-ungueltig` und Pfad ab
+- [x] Eingefrorene Projektdatei Version 1: Byte-Vergleich unverändert grün
+- [x] Kein `// v1.1a: mechanisch angepasst`-Marker mehr in `packages/speicher`; die verbleibenden `v1.1b`-Marker sind genau die oben Ticket 38 zugewiesenen
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -89,3 +89,56 @@ Schema 2 und alles, was oben Ticket 38 zugewiesen ist (auch die Protokoll-Kurzfa
 Lesezugriff auf Auftrags-LV über ein eigenes Repository (Vertrag hat keins, Offene Typfrage D). Projektliste (Ticket 38).
 
 ## Comments
+
+### Ergebnis (Branch `ticket/31-speicher-v1.1a`)
+
+Alle sechs Punkte umgesetzt, nur `packages/speicher`. Neue Tests: `loeschen.test.ts` (Konflikt, Löschen, Auftrags-LV),
+`langtext.test.ts` (ersetzt `zeilen.test.ts`, dessen Abweisungstests mit der Sperre entfallen), drei Tests in
+`client.test.ts` (nach `schliessen`). `pnpm --filter @tethys/speicher e2e` mit `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`:
+11/11 grün.
+
+### Fehlercodes: alte und neue Stelle
+
+| Stelle | alt | neu |
+|---|---|---|
+| `schreiben.ts` `konflikt(…)`: `vorher` des Projekts, LV-/Angebots-/Auftrags-LV-Kopfs, Knotens, Angebotsposition weicht ab; Aggregat mit `vorher: null` existiert schon | `unbekannt` | `konflikt` |
+| `schreiben.ts` `pruefeBaum`: Waise oder Lücke in `reihenfolge` nach dem Schreiben | `unbekannt` | `konflikt` |
+| `schreiben.ts` Löschen mit abhängigen Aggregaten (`abhaengig`), unvollständige Knoten-/Positionsliste, abweichende `summen.vorher` | (Löschen abgewiesen, `unbekannt`) | `konflikt` |
+| `kern.ts` `projektdateiImportieren`: Projekt existiert | `unbekannt` | `existiert-bereits` |
+| `kern.ts`/`client.ts`: jeder Aufruf nach `schliessen` | Ausnahme der geschlossenen DB bzw. hängende Anfrage am beendeten Worker | `gesperrt` |
+| `pruefeBezug`, abweichende Kennungen im ChangeSet, fremdes Projekt, Auftrags-LV löschen, Lösch-ChangeSet mit neuen Knoten/Summen | `unbekannt` | `unbekannt` (Programmfehler, unverändert) |
+| `projektdatei.ts` Import: `konflikt` aus den Schreibfunktionen | – | `datei-ungueltig` (wie bisher `unbekannt`/`nicht-gefunden`) |
+
+Eine Integritätsverletzung der Datenbank (z. B. doppelte Knotenkennung beim Hinzufügen, Bieter mit Angebot entfernen)
+bleibt `unbekannt` (SQLite-Constraint, nicht vorab geprüft).
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- Projekt löschen und Protokoll? Vorschlag des Tickets übernommen (D-31.1): Bieter und Protokoll gehen mit, kein
+  Eintrag für den Löschbefehl. Grund: keine Migration hier; Alternative gehört zu Ticket 38.
+- Wie streng ist ein Lösch-ChangeSet? Voller gespeicherter Stand verlangt (D-31.2): Kopf, alle Knoten bzw.
+  Angebotspositionen, `summen.vorher` falls gesetzt; sonst `konflikt`. Grund: Umkehrbarkeit ohne Vorzustand, Q5.
+  **Für Ticket 30:** Lösch-ChangeSets in dieser Form erzeugen (`summen` leer, `gesamt: null`, alles unter `vorher`).
+- Auftrags-LV anlegen: Muss das Angebot zum LV gehören? Ja, zusätzlich zu „existiert, gleiches Projekt“ (`unbekannt`
+  sonst). Grund: Ein Auftrags-LV entsteht aus dem Angebot auf genau dieses LV; billige Prüfung, umkehrbar.
+- Import der Projektdatei schreibt Auftrags-LV über `wendeAuftragsLvAn` (wie LV über `wendeLvAn`); `schreibeAuftragsLv`
+  entfällt. Grund: ein Schreibweg je Aggregat.
+- `leseAuftragsLv` ordnet die Summen nach Knotenreihenfolge wie `leseLv`. Grund: gleiche Form wie `LvZustand`; die
+  eingefrorene Datei hat keine Auftrags-LV, ihr Byte-Vergleich bleibt grün.
+- `GeoeffneterSpeicher` ist jetzt `type GeoeffneterSpeicher = Speicher` (Export bleibt für den Prüfstand).
+  `persistenzstatus` antwortet nach `schliessen` weiter, weil er keinen Fehlerwert kennt und die Datenbank nicht braucht.
+- `schliessen` sperrt sofort, nicht erst nach der Antwort: Aufrufe während des Schließens bekommen schon `gesperrt`.
+- Dekoder: Eine bekannte Art an falscher Stelle (Textergänzung in Absatz/Listenpunkt/Zelle, Bild in Textergänzung,
+  Absatz im Absatz) meldet den Pfad bis `.art`. `spalten` muss eine ganze Zahl ≥ 1 sein.
+
+### Hinweis Vorwärtskompatibilität (A8)
+
+Eine Projektdatei der Schemaversion 1 kann ab jetzt Langtext-Bausteine (Auszeichnung, Umbruch, Absatz, Liste, Tabelle,
+Textergänzung) enthalten, die ein älterer Stand der App nicht liest. Rückwärts lesen bleibt garantiert, vorwärts nicht.
+
+### Verbleibende Marker
+
+`v1.1b` nur noch an Ticket-38-Stellen: `projektdateiInAlterForm` (`projektdatei.ts`, Aufruf `kern.ts`), `altSpalten`/
+`neuAusAltSpalten` und Kommentar zu `pruefeKopfdaten`/`pruefeSummenfelder` (`zeilen.ts`), deren Aufrufe in
+`schreiben.ts` (der in `wendeAuftragsLvAn` ist der verschobene aus `schreibeAuftragsLv`), Alt-Leseseite im Dekoder.
+`v1.2`-Marker (Tickets 38/43) unverändert.

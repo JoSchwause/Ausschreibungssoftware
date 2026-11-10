@@ -11,13 +11,19 @@ import type {
   BildId,
   HinweistextId,
   IdQuelle,
+  Langtext,
+  LangtextBaustein,
+  LangtextInline,
+  LangtextInnen,
   LeistungsverzeichnisId,
   LosId,
   Position,
   PositionId,
   ProjektId,
   ProtokollId,
+  Textlauf,
   TitelId,
+  Zeilenumbruch,
 } from '@tethys/vertrag';
 import type { Prozent } from '@tethys/vertrag';
 
@@ -41,7 +47,6 @@ export function testIds(): IdQuelle {
     titel: () => neu('titel') as TitelId,
     position: () => neu('position') as PositionId,
     hinweistext: () => neu('hinweis') as HinweistextId,
-    // v1.2: mechanisch angepasst, Folgeticket (zwei neue Methoden der IdQuelle)
     papierkorbeintrag: () => neu('papierkorb') as ReturnType<IdQuelle['papierkorbeintrag']>,
     lvStand: () => neu('lv-stand') as ReturnType<IdQuelle['lvStand']>,
   };
@@ -62,30 +67,32 @@ export function leseTestdatei(relativ: string): Uint8Array {
   return lesePfad(join('packages/gaeb/testdaten', relativ));
 }
 
-// v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b hat eine Position keine einzelne Positionsart und keinen einzelnen Bezug mehr. Die Tests des
-// Lesers lesen weiter „die Art“ und „den Bezug“ wie vor v1.1b; diese Hilfen leiten sie aus `merkmale` und `zuschlag` ab.
-
-/** Die Art einer Position wie vor v1.1b (`undefined` für `undefined`). */
-export function positionsartVon(p: Position | undefined): string | undefined {
-  if (p === undefined) return undefined;
-  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
-  const gesetzt = [
-    p.zuschlag !== null,
-    p.merkmale.wahl !== null,
-    p.merkmale.bedarf !== null,
-    p.merkmale.stundenlohn,
-  ];
-  if (gesetzt.filter(Boolean).length > 1)
-    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
-  if (p.zuschlag !== null) return 'zuschlag';
-  if (p.merkmale.wahl !== null) return 'wahl';
-  if (p.merkmale.bedarf !== null) return 'bedarf';
-  if (p.merkmale.stundenlohn) return 'stundenlohn';
-  return 'normal';
+/** Eine Position ohne jedes Merkmal und ohne Zuschlag (die „normale“ Position). */
+export function ohneMerkmale(p: Position | undefined): boolean {
+  if (p === undefined) return false;
+  const m = p.merkmale;
+  return (
+    p.zuschlag === null &&
+    m.bedarf === null &&
+    m.wahl === null &&
+    !m.stundenlohn &&
+    !m.pauschal &&
+    !m.zuschlagskennzeichen
+  );
 }
 
-/** Der erste Bezug einer Zuschlagsposition als Positionskennung, sonst `null`. */
-export function bezugVon(p: Position | undefined): string | null {
-  const b = p?.zuschlag?.bezug;
-  return b?.art === 'positionen' ? (b.positionen[0]?.positionId ?? null) : null;
+type Baustein = LangtextBaustein | Textlauf | Zeilenumbruch;
+
+/** Alle Bausteine eines Langtexts in Lesereihenfolge, auch die in Absätzen, Listen, Tabellen und Ergänzungen. */
+export function alleBausteine(l: Langtext | LangtextInnen | readonly LangtextInline[]): Baustein[] {
+  const aus: Baustein[] = [];
+  for (const b of l) {
+    aus.push(b);
+    if (b.art === 'absatz') aus.push(...alleBausteine(b.inhalt));
+    else if (b.art === 'liste') for (const punkt of b.punkte) aus.push(...alleBausteine(punkt));
+    else if (b.art === 'tabelle')
+      for (const z of b.zeilen) for (const zelle of z.zellen) aus.push(...alleBausteine(zelle.inhalt));
+    else if (b.art === 'ergaenzung') aus.push(...b.davor, ...b.inhalt, ...b.danach);
+  }
+  return aus;
 }
