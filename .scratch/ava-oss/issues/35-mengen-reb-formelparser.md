@@ -1,6 +1,6 @@
 # 35: REB-23.003-Formelparser (Formel 91 zuerst)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: M1 · Paket: `packages/mengen` (neu); dazu additiv `packages/dezimal` (Punkt 1; in diesem Lauf hat `dezimal` keinen anderen Schreiber)
 Blocked by: -
