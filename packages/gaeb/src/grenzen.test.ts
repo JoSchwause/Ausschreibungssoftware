@@ -65,6 +65,18 @@ describe('Los als oberste Gliederungsstufe (Fachdokumentation 3.3, 4.2.1)', () =
     expect(codes(lies(lv(sechs, position)))).toContain('gliederung-zu-tief');
   });
 
+  it('Lot an erster Stelle setzt losStufe, ohne Lot fehlt das Feld (F1, v1.1a)', () => {
+    expect(lies(lv(stufe('Lot', 1) + stufe('BoQLevel', 2), position)).inhalt?.ozMaske.losStufe).toBe(true);
+    const ohne = lies(lv(stufe('BoQLevel', 2), position)).inhalt?.ozMaske;
+    expect(ohne).toBeDefined();
+    expect(ohne && 'losStufe' in ohne).toBe(false);
+  });
+
+  it('Lot nicht an erster Stelle setzt keine losStufe', () => {
+    const maske = lies(lv(stufe('BoQLevel', 2) + stufe('Lot', 1), position)).inhalt?.ozMaske;
+    expect(maske && 'losStufe' in maske).toBe(false);
+  });
+
   it('Lot nicht an erster Stelle ist ein Befund', () => {
     expect(codes(lies(lv(stufe('BoQLevel', 2) + stufe('Lot', 1), position)))).toContain(
       'oz-maske-reihenfolge',

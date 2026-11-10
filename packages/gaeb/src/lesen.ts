@@ -443,8 +443,11 @@ function leseMaske(
       index.el,
     );
 
+  // F1 (v1.1a): Nur ein Lot an erster Stelle ist die Los-Stufe; tiefere Lot-Stufen werden Titel (`los-zu-titel`).
+  const losStufe = eintraege[0]?.typ === 'Lot';
   const maske: OzMaske = {
     gliederung: stufen.map(stelle),
+    ...(losStufe ? { losStufe: true } : {}),
     position: item ? stelle(item) : { laenge: 4, zeichen: 'numerisch' },
     index: index ? stelle(index) : null,
     trennzeichen: trenn,
