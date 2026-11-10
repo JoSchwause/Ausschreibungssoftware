@@ -226,6 +226,22 @@ importers:
         specifier: ^8.3.7
         version: 8.3.7(@types/node@22.20.5)
 
+  packages/vergabe:
+    dependencies:
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../dezimal
+      '@tethys/kern':
+        specifier: workspace:*
+        version: link:../kern
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
+    devDependencies:
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/vertrag: {}
 
   proto/interview:

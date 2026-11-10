@@ -82,3 +82,18 @@ Question: Was die Ticketbeschreibung der Ausdruckssprache offen lässt.
 Decision: (1) „Frühere Zeile“ heißt weiter vorn in der Folge, nicht kleinere Nummer. (2) Zusätzliche Fehlercodes `ausdruck-unvollstaendig` („2+“, Spalte hinter dem Text), `variable-ungueltig` (auch leerer Name; kein Name ist `null`) und `zeile-doppelt` (doppelte Zeilennummer, die spätere Zeile ist fehlerhaft). (3) Klammern werden vor dem Abstieg gezählt: `klammer-fehlt` an der Spalte der offenen Klammer, `klammer-zu-viel` an der überzähligen, `zu-tief` an der 51. Klammer. (4) Führende Nullen sind erlaubt; Zahlen stehen normalisiert im Syntaxbaum (`2,50` → `2,5`); eine Zahl, die `dezimal` nicht fasst (≈ 1.000 Ziffern), ist `zahl-ungueltig`. (5) Variablennamen: Unicode-Buchstabe, dann Buchstaben, ASCII-Ziffern, `_`. (6) `FORMELN`: Nummer → `{ parameter, rechne(werte) }`; wie ein Ausdruck mehrere Parameter trennt, entscheidet das erste Ticket mit einer solchen Formel.
 Reason: Paketlokal und umkehrbar; gespeichert wird nur der Ausdruckstext. Alles steht zusätzlich in `MENGEN_ANNAHMEN`.
 Reversible: yes  Touches: packages/mengen
+
+## D-36.1 Annahmen der Preisspiegel-Rechnung
+Welle 3 · Ticket 36 · decided by: implementer
+Question: Die im Ticket als Annahme markierten Punkte der Preisspiegel-Rechnung (V2) und was das Ticket offen lässt.
+Decision: Wie im Ticket: kein Eintrag = nicht angeboten; negativer EP ist `angeboten`, zählt nicht für Min/Mittel/Max, nie Ausreißer; Max nur über EP > 0; Ausreißer vergleicht den EP; Rang 1, 1, 3; virtuelle Netto ohne Nachlass über die laut LV eingehenden Positionen; ABC-Schwelle B 95 %, Bezug Mittel, die überschreitende Position gehört noch zur höheren Klasse. Zusätzlich: Bieter- und Gliederungssummen rechnet der Preisspiegel aus dem übergebenen LV neu (`angebotSummenBerechnen`), nicht aus dem gespeicherten Summenstand des Angebots. Alles steht in `PREISSPIEGEL_ANNAHMEN` (`packages/vergabe/src/preisspiegel.ts`).
+Reason: Ticket-Vorgaben; Neuberechnung hält den Preisspiegel konsistent mit dem LV, auch wenn ein Angebotszustand veraltet ist (Budget: gross mit 5 Angeboten etwa 0,4–0,6 s < 1 s).
+Reversible: yes  Touches: packages/vergabe
+Annahme für Demo, Mensch bestätigt später (G-26, D-05).
+
+## D-36.2 Form der Angebots-ChangeSets
+Welle 3 · Ticket 36 · decided by: implementer
+Question: Reihenfolge der Angebotspositionen, `summen.vorher` bei leeren ChangeSets, Feld bei doppelter Position, EPA-Prüfung.
+Decision: Neue Angebotspositionen werden hinten angehängt, geänderte bleiben am Platz (Umkehrung exakt). `summen.vorher` ist immer gesetzt, auch beim leeren ChangeSet (leere Listen). Doppelte Position beim Anlegen: `ungueltige-eingabe` mit `knotenId` und `feld: 'positionen'`. EPA werden nicht geprüft (nicht im Ticket). Kein Befehlshinweis `netto-nach-nachlass-negativ` am Angebot (nicht im Ticket).
+Reason: kleinste umkehrbare Form; entspricht dem Kern seit v1.1a.
+Reversible: yes  Touches: packages/vergabe

@@ -187,7 +187,19 @@ Tabellarische Gegenüberstellung aller Bieterangebote zu einem LV auf Positions-
 Rechnerischer Vergleichsbieter im Preisspiegel, der nicht selbst angeboten hat: der günstigste Bieter (Min), der Mittelwert, der höchste Bieter (Max) und der Schätzpreis aus dem LV.
 
 ### Ausreißer
-Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %).
+Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %). Das Mittel bilden nur die Bieter mit einem Einheitspreis über 0,00 (D-05); ein Nullpreis und „nicht angeboten“ haben je ein eigenes Kennzeichen und sind nie Ausreißer. Unter zwei Bietern mit Preis über 0,00 wird nichts markiert. Im Code `Ausreisser`.
+
+### Bietersumme
+Die Gesamtsummen eines Angebots (Netto, Nachlass, Netto nach Nachlass, MwSt, Brutto), gerechnet wie die des LV: mit den Einheitspreisen des Angebots, dem Nachlass des Angebots und dem MwSt-Satz des LV. Eine nicht angebotene Position geht nicht ein. Im Code `angebotSummenBerechnen`, `Bietersumme`.
+
+### Rang
+Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
+
+### ABC-Klasse
+Einteilung der Positionen eines Preisspiegels nach ihrem Anteil an der Summe: absteigend nach Gesamtpreis sortiert bilden die Positionen bis zu einer einstellbaren Schwelle (Standard 80 %) die Klasse A, bis zur zweiten Schwelle (Standard 95 %) die Klasse B, der Rest die Klasse C. Bezug ist der GP eines virtuellen Bieters (Standard: Mittel). Im Code `AbcKlasse`.
+
+### Nullpreis
+Ein angebotener Einheitspreis von 0,00. Er ist ein Preis (GP 0,00, geht in die Bietersumme ein), anders als „nicht angeboten“, trägt im Preisspiegel aber ein eigenes Kennzeichen, zählt nicht für Min, Mittel und Max und ist nie Ausreißer (D-05). Im Code `nullpreis`.
 
 ### Nachlass
 Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet. Der Nachlassbetrag wird auf 2 Stellen gerundet und dann abgezogen; ein negatives Netto nach Nachlass ist ein Befund der LV-Prüfung (E-06).
