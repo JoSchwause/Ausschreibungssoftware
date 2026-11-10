@@ -1,6 +1,6 @@
 # 28: O1-Spike: PDF-Druck des LV
 
-Status: ready-for-agent
+Status: resolved (Pull Request je Ticket, 2026-11-10)
 Type: research
 Welle: 2 · Strang: O · Paket: `packages/ausgabe` (neu)
 Blocked by: -
