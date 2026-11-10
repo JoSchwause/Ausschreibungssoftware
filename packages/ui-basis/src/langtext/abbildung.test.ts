@@ -93,12 +93,27 @@ describe('Rundweg Langtext -> Dokument -> Langtext', () => {
   it('erhält Bild, Listen (auch leere Punkte) und Tabellen', () => {
     const l: Langtext = [
       bild,
-      { art: 'liste', geordnet: true, punkte: [[], [{ art: 'text', text: 'x' }, { art: 'absatz', inhalt: [] }]] },
+      {
+        art: 'liste',
+        geordnet: true,
+        punkte: [
+          [],
+          [
+            { art: 'text', text: 'x' },
+            { art: 'absatz', inhalt: [] },
+          ],
+        ],
+      },
       { art: 'liste', geordnet: false, punkte: [[{ art: 'liste', geordnet: true, punkte: [[bild]] }]] },
       {
         art: 'tabelle',
         zeilen: [
-          { zellen: [{ spalten: 1, inhalt: [bild] }, { spalten: 3, inhalt: [] }] },
+          {
+            zellen: [
+              { spalten: 1, inhalt: [bild] },
+              { spalten: 3, inhalt: [] },
+            ],
+          },
           { zellen: [{ spalten: 4, inhalt: [{ art: 'absatz', inhalt: [{ art: 'text', text: 'z\nz' }] }] }] },
         ],
       },

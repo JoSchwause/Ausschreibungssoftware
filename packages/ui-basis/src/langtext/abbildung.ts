@@ -98,7 +98,10 @@ function kanonischInnen(l: LangtextInnen): LangtextInnen {
 }
 
 /** Streicht leere Textläufe und zieht benachbarte gleicher Auszeichnung zusammen; andere Bausteine über `abbilden`. */
-function kanonischeFolge<T extends { readonly art: string }>(folge: readonly T[], abbilden: (b: T) => T): T[] {
+function kanonischeFolge<T extends { readonly art: string }>(
+  folge: readonly T[],
+  abbilden: (b: T) => T,
+): T[] {
   const aus: T[] = [];
   for (const b of folge) {
     if (istTextlauf(b)) {
@@ -125,7 +128,10 @@ function gleicheAuszeichnung(a: Textlauf, b: Textlauf): boolean {
 }
 
 /** Textlauf ohne `undefined`-Felder (nur `true` oder fehlend, wie im Vertrag). */
-function textlauf(text: string, a: { readonly fett?: true; readonly kursiv?: true; readonly unterstrichen?: true }) {
+function textlauf(
+  text: string,
+  a: { readonly fett?: true; readonly kursiv?: true; readonly unterstrichen?: true },
+) {
   return {
     art: 'text',
     text,
