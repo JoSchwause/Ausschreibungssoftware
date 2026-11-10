@@ -202,14 +202,18 @@ const nachSchluessel = <T>(liste: readonly T[], schluessel: (x: T) => string): T
  * `LeistungsverzeichnisAnlegen` liefert sie in Knotenreihenfolge); Hinweise gehen nicht in die Umkehrung ein.
  */
 export function ohneReihenfolge(cs: LvChangeSet): LvChangeSet {
-  const { hinweise: _hinweise, ...rest } = cs;
   const p = <T extends { positionId: string }>(l: readonly T[]): T[] =>
     nachSchluessel(l, (x) => x.positionId);
   const g = <T extends { gliederungId: string }>(l: readonly T[]): T[] =>
     nachSchluessel(l, (x) => x.gliederungId);
   const v: Summenvorher | undefined = cs.summen.vorher;
   return {
-    ...rest,
+    art: cs.art,
+    leistungsverzeichnisId: cs.leistungsverzeichnisId,
+    kopf: cs.kopf,
+    knoten: cs.knoten,
+    ...(cs.papierkorb === undefined ? {} : { papierkorb: cs.papierkorb }),
+    ...(cs.lvStand === undefined ? {} : { lvStand: cs.lvStand }),
     summen: {
       ...cs.summen,
       positionen: p(cs.summen.positionen),

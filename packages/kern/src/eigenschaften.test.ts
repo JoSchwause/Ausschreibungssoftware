@@ -390,14 +390,14 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
       fc.property(folgeArb, (folge) => {
         let z = neuesLv();
         const start = z;
-        const verlauf: { cs: LvChangeSet; vorher: LvZustand }[] = [];
+        const verlauf: LvChangeSet[] = [];
         folge.forEach((aktion, nr) => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
           if (!e.ok) return;
-          verlauf.push({ cs: e.wert, vorher: z });
+          verlauf.push(e.wert);
           z = anwenden(z, e.wert);
         });
-        for (const { cs, vorher } of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
+        for (const cs of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },

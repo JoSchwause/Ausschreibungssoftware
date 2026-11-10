@@ -344,14 +344,14 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
       fc.property(folgeArb, (folge) => {
         const start = lvMit([]);
         let z = start;
-        const verlauf: { cs: ReturnType<typeof changeSetUmkehren>; vorher: LvZustand }[] = [];
+        const verlauf: ReturnType<typeof changeSetUmkehren>[] = [];
         folge.forEach((aktion, nr) => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
           if (!e.ok) return;
-          verlauf.push({ cs: e.wert, vorher: z });
+          verlauf.push(e.wert);
           z = anwenden(z, e.wert);
         });
-        for (const { cs, vorher } of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
+        for (const cs of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },

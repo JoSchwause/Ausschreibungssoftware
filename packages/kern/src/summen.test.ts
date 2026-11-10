@@ -956,7 +956,11 @@ describe('Umkehrung mit Summen', () => {
 
   it('ohne summen.vorher (vor v1.1a erzeugt) ist ein ChangeSet nicht umkehrbar (Programmfehler)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(z0, mengeAendern(p1, '123.456')));
-    const { vorher: _vorher, ...alt } = cs.summen;
+    const alt = {
+      positionen: cs.summen.positionen,
+      gliederungen: cs.summen.gliederungen,
+      gesamt: cs.summen.gesamt,
+    };
     expect(() => changeSetUmkehren({ ...cs, summen: alt })).toThrow();
   });
 });
