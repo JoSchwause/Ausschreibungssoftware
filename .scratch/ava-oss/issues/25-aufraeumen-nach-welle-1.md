@@ -103,7 +103,7 @@ Projekte (E-15: entfällt).
 - `packages/vertrag` unberührt; `fixtures-abbildung.test.ts` bleibt grün (726 Tests gesamt).
 - Der Erzeuger-Test (a) prüft weiter Byte-Gleichheit aller fünf Dateien.
 
-- Review-Nachtrag: Regel `testhilfen-nur-in-tests` in `tools/boundaries.mjs`: Nur Testdateien und andere Testhilfen dürfen `testhilfen.*` / `testhilfe/` importieren (Kette Produktivcode → Testhilfe → Fixtures wird gemeldet). Sie meldet im Bestand `packages/speicher/harness/main.ts -> packages/speicher/src/testhilfe/normalisiere.ts` (außerhalb meines Schreibbereichs, nicht gelockert); `pnpm lint` ist deshalb rot, bis `speicher` das löst.
+- Review-Nachtrag: Regel `testhilfen-nur-in-tests` in `tools/boundaries.mjs`: Nur Testdateien und andere Testhilfen dürfen `testhilfen.*` / `testhilfe/` importieren (Kette Produktivcode → Testhilfe → Fixtures wird gemeldet). Sie meldet im Bestand `packages/speicher/harness/main.ts -> packages/speicher/src/testhilfe/normalisiere.ts` (außerhalb meines Schreibbereichs, nicht gelockert); entschieden: `harness/` (Playwright-Prüfstand) zählt als Testdatei, `speicher` unverändert.
 
 **Prüfungen:** `pnpm lint` grün; `pnpm typecheck` grün; `pnpm test`: vitest 35 Dateien, 726 bestanden, 1 übersprungen; node --test 14 bestanden;
 `reuse lint` konform (398/398).

@@ -116,6 +116,17 @@ describe('Paketgrenzen (A3)', () => {
     expect(verstoesse.some((v) => v.startsWith('testhilfen-nur-in-tests'))).toBe(true);
   });
 
+  it('zählt harness/ zu den Testdateien: darf testhilfe/ importieren, src/ nicht', async () => {
+    paket('packages/speicher');
+    datei('packages/speicher/harness/main.ts', "import '../src/testhilfe/x';\nexport {};\n");
+    datei('packages/speicher/src/testhilfe/x.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/speicher/src/prod.ts', "import './testhilfe/x';\nexport {};\n");
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse).toHaveLength(1);
+    expect(verstoesse[0]).toContain('prod.ts');
+  });
+
   it('erlaubt einer Testdatei, testhilfen zu importieren', async () => {
     paket('packages/kern');
     paket('fixtures');
