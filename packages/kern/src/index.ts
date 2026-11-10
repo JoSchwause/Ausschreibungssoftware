@@ -25,6 +25,12 @@ export {
 export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
 export { FELD_ANNAHMEN, langtextGleich } from './feld-befehle';
+export { HINWEIS_ANNAHMEN } from './hinweise';
+export {
+  projektBefehlAusfuehren,
+  projektChangeSetAnwenden,
+  projektChangeSetUmkehren,
+} from './projekt-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
 export { gesamtsummen, positionsSumme, summenBerechnen } from './summen';
 export {
