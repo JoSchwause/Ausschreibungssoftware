@@ -33,6 +33,7 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { LEERE_SUMMENAENDERUNG, baueChangeSet } from './changeset';
+import { positionMitEinheiten } from './einheit';
 import { nein, ok } from './fehler';
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
@@ -201,23 +202,24 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
       z,
       idx,
       ziel.wert,
-      (t): Position => ({
-        art: 'position',
-        id: b.id,
-        elternId: t.elternId as ElternId,
-        reihenfolge: t.index,
-        ordnungszahl: d.ordnungszahl,
-        ozIndex: d.ozIndex,
-        merkmale: d.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
-        zuschlag: d.zuschlag,
-        ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
-        kurztext: d.kurztext,
-        langtext: d.langtext,
-        menge: d.menge,
-        einheit: d.einheit,
-        einheitspreis: d.einheitspreis,
-        epa: d.epa,
-      }),
+      (t): Position =>
+        positionMitEinheiten({
+          art: 'position',
+          id: b.id,
+          elternId: t.elternId as ElternId,
+          reihenfolge: t.index,
+          ordnungszahl: d.ordnungszahl,
+          ozIndex: d.ozIndex,
+          merkmale: d.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
+          zuschlag: d.zuschlag,
+          ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
+          kurztext: d.kurztext,
+          langtext: d.langtext,
+          menge: d.menge,
+          einheit: d.einheit,
+          einheitspreis: d.einheitspreis,
+          epa: d.epa,
+        }),
       (neu) => {
         const summe = positionsSumme(neu as Position);
         return summenAenderung(z, idx, {

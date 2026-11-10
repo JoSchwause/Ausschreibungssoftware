@@ -23,7 +23,16 @@ import {
   lvBefehlAusfuehren,
   summenBerechnen,
 } from './index';
-import { KEINE_SUMMEN, ohneReihenfolge, anwenden, id, lvMit, posKnoten, titelKnoten } from './testhilfen';
+import {
+  KEINE_SUMMEN,
+  ohneReihenfolge,
+  anwenden,
+  id,
+  lvMit,
+  posKnoten,
+  positionsdaten,
+  titelKnoten,
+} from './testhilfen';
 
 const hinweis = (kennung: string, eltern: string, reihenfolge: number, text: Langtext = []): Hinweistext => ({
   art: 'hinweis',
@@ -96,6 +105,7 @@ describe('Zuständigkeit', () => {
     expect(FELD_ANNAHMEN.status).toBe('vorläufige Annahme, Entscheidung offen');
     expect(FELD_ANNAHMEN.leererKurztextErlaubt).toBe(true);
     expect(FELD_ANNAHMEN.leererLvNameErlaubt).toBe(true);
+    expect(FELD_ANNAHMEN.leereEinheit).toMatch(/^ENTSCHIEDEN/);
   });
 });
 
@@ -247,7 +257,28 @@ describe('EinheitAendern', () => {
     const b = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null }));
     expect((knotenVon(b, 'P1') as Position).einheit).toBeNull();
     const c = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: '' }));
-    expect((knotenVon(c, 'P1') as Position).einheit).toBe(''); // Leerstring bleibt Leerstring, unterscheidet sich von null
+    expect((knotenVon(c, 'P1') as Position).einheit).toBeNull(); // v1.2: '' wird null (D-06)
+    const d = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: ' ' }));
+    expect((knotenVon(d, 'P1') as Position).einheit).toBe(' '); // nur genau '', kein Trimmen (U5)
+  });
+
+  it("'' auf eine Position ohne Einheit (null): leeres ChangeSet", () => {
+    const z2 = lvMit([posKnoten('P2', 'lv-test', 0, null, null)]);
+    expect(leer(ok(z2, { art: 'EinheitAendern', positionId: id.pos('P2'), einheit: '' }))).toBe(true);
+  });
+
+  it("PositionAnlegen mit '' als Einheit legt null ab", () => {
+    const z = basis();
+    const neu = anwenden(
+      z,
+      ok(z, {
+        art: 'PositionAnlegen',
+        id: id.pos('PN'),
+        ort: { art: 'ende', elternId: id.eltern('lv-test') },
+        daten: positionsdaten('neu', { einheit: '' }),
+      }),
+    );
+    expect((knotenVon(neu, 'PN') as Position).einheit).toBeNull();
   });
 
   it('gleicher Wert: leeres ChangeSet (auch null auf null)', () => {
@@ -377,6 +408,9 @@ describe('Eigenschaften der Feldbefehle', () => {
           expect(cs.summen).toEqual(KEINE_SUMMEN);
           expect(neu.summen).toEqual(z.summen);
           expect(neu.summen).toEqual(summenBerechnen(neu.leistungsverzeichnis));
+          // v1.2: im Zustand steht nie '' als Einheit
+          for (const k of neu.leistungsverzeichnis.knoten)
+            if (k.art === 'position') expect(k.einheit).not.toBe('');
           // Undo: Zustand exakt wieder da; Umkehrung der Umkehrung ist das ChangeSet
           const rueck = changeSetUmkehren(cs);
           expect(anwenden(neu, rueck)).toEqual(z);
