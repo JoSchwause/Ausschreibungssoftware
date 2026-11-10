@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Property-Tests (fast-check) für Summen, Nachlass und MwSt (Ticket 07). Zuerst geschrieben (Q1).
+// Property-Tests (fast-check) für Summen, Nachlass und MwSt (Ticket 07), Merkmale, Ausweise und Zuschlagspositionen
+// (Ticket 37). Zuerst geschrieben (Q1).
 //
-// Zufällige Befehlsfolgen aus Baum- und Preisbefehlen. Nach jedem angenommenen Befehl gilt:
+// Zufällige Befehlsfolgen aus Baum-, Preis- und Merkmalbefehlen. Nach jedem angenommenen Befehl gilt:
 //  - `LvZustand.summen` (inkrementell gepflegt) ist gleich der vollständigen Neuberechnung `summenBerechnen`;
 //  - ein unabhängiges Orakel (rekursive Summe, nur über `dezimal`) stimmt mit dem Zustand überein;
 //  - Summe über alle eingehenden Positionen = LV-Summe;
@@ -21,7 +22,11 @@ import type {
   LvZustand,
   Menge,
   Nachlass,
+  Position,
+  Positionsmerkmale,
   Prozent,
+  Wahlzuordnung,
+  Zuschlag,
 } from '@tethys/vertrag';
 import {
   NULL_BETRAG,
@@ -36,10 +41,9 @@ import {
   lvBefehlAusfuehren,
   lvChangeSetAnwenden,
   pruefeLvInvarianten,
-  positionGehtInSumme,
   summenBerechnen,
 } from './index';
-import { ohneReihenfolge, anwenden, LV_ID, id, lvMit, positionsdaten, type Positionsart } from './testhilfen';
+import { ohneReihenfolge, anwenden, LV_ID, id, lvMit, positionsdaten } from './testhilfen';
 
 // --- Wertevorrat: klein, damit Gleichstände, Nullen und negative Werte oft vorkommen -----------------------------------
 
@@ -64,14 +68,57 @@ const EPS: readonly (string | null)[] = [
   '1.235',
   null,
 ];
-const ARTEN: readonly Positionsart[] = [
-  'normal',
-  'normal',
-  'normal',
-  'bedarf',
-  'wahl',
-  'zuschlag',
-  'stundenlohn',
+const OHNE: Positionsmerkmale = {
+  bedarf: null,
+  wahl: null,
+  stundenlohn: false,
+  pauschal: false,
+  zuschlagskennzeichen: false,
+};
+const wahl = (variante: number | null, gruppe: number | null = 1): Wahlzuordnung => ({
+  gruppe,
+  variante,
+  grundpositionId: null,
+});
+/** Merkmalskombinationen (F5), darunter ungültige (Variante 12, Gruppe −1), die abgewiesen werden. */
+const MERKMALE: readonly Positionsmerkmale[] = [
+  OHNE,
+  OHNE,
+  OHNE,
+  { ...OHNE, bedarf: 'ohne-gesamtbetrag' },
+  { ...OHNE, bedarf: 'mit-gesamtbetrag' },
+  { ...OHNE, wahl: wahl(null, null) },
+  { ...OHNE, wahl: wahl(0) },
+  { ...OHNE, wahl: wahl(2), bedarf: 'ohne-gesamtbetrag' },
+  { ...OHNE, stundenlohn: true, bedarf: 'ohne-gesamtbetrag' },
+  { ...OHNE, pauschal: true },
+  { ...OHNE, zuschlagskennzeichen: true },
+  { ...OHNE, zuschlagskennzeichen: true, bedarf: 'mit-gesamtbetrag' },
+  { ...OHNE, wahl: wahl(12) },
+  { ...OHNE, wahl: wahl(1, -1) },
+];
+/** Zuschlagsangaben; die Bezugsposition einer Liste wählt `ref` beim Bau unter den vorhandenen Positionen. */
+type ZuschlagWahl =
+  | null
+  | { readonly satz: string | null; readonly form: 'gliederung' | 'kennzeichnung' }
+  | {
+      readonly satz: string | null;
+      readonly form: 'liste';
+      readonly teilmenge: string | null;
+      readonly doppelt?: true;
+    };
+const ZUSCHLAEGE: readonly ZuschlagWahl[] = [
+  null,
+  null,
+  null,
+  { satz: '10.00', form: 'gliederung' },
+  { satz: '10.00', form: 'gliederung' },
+  { satz: '5.00', form: 'kennzeichnung' },
+  { satz: '10.00', form: 'liste', teilmenge: null },
+  { satz: '3.00', form: 'liste', teilmenge: '0.500' },
+  { satz: null, form: 'gliederung' }, // Altform
+  { satz: '-2.50', form: 'gliederung' },
+  { satz: '10.00', form: 'liste', teilmenge: null, doppelt: true }, // abgewiesen
 ];
 const NACHLAESSE: readonly Nachlass[] = [
   { art: 'prozent', wert: '0.00' as Prozent },
@@ -98,8 +145,16 @@ type Aktion =
       readonly ort: OrtWahl;
       readonly menge: number;
       readonly ep: number;
-      readonly positionsart: number;
-      readonly flag: boolean;
+      readonly merkmale: number;
+      readonly zuschlag: number;
+      readonly ref: number;
+    }
+  | {
+      readonly art: 'merkmale';
+      readonly knoten: number;
+      readonly merkmale: number;
+      readonly zuschlag: number;
+      readonly ref: number;
     }
   | { readonly art: 'loeschen'; readonly knoten: number }
   | { readonly art: 'verschieben'; readonly knoten: number; readonly ort: OrtWahl }
@@ -116,14 +171,25 @@ const aktionArb: fc.Arbitrary<Aktion> = fc.oneof(
   { weight: 4, arbitrary: fc.record({ art: fc.constant('titel' as const), ort: ortArb }) },
   { weight: 1, arbitrary: fc.record({ art: fc.constant('hinweis' as const), ort: ortArb }) },
   {
-    weight: 8,
+    weight: 10,
     arbitrary: fc.record({
       art: fc.constant('position' as const),
       ort: ortArb,
       menge: fc.nat(MENGEN.length - 1),
       ep: fc.nat(EPS.length - 1),
-      positionsart: fc.nat(ARTEN.length - 1),
-      flag: fc.boolean(),
+      merkmale: fc.nat(MERKMALE.length - 1),
+      zuschlag: fc.nat(ZUSCHLAEGE.length - 1),
+      ref: fc.nat(10_000),
+    }),
+  },
+  {
+    weight: 4,
+    arbitrary: fc.record({
+      art: fc.constant('merkmale' as const),
+      knoten: fc.nat(10_000),
+      merkmale: fc.nat(MERKMALE.length - 1),
+      zuschlag: fc.nat(ZUSCHLAEGE.length - 1),
+      ref: fc.nat(10_000),
     }),
   },
   { weight: 2, arbitrary: fc.record({ art: fc.constant('loeschen' as const), knoten: fc.nat(10_000) }) },
@@ -165,6 +231,16 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
       ? { art: 'nach', knotenId: id.knoten(knotenId(o.ziel)) }
       : { art: o.art, elternId: id.eltern(alle[o.ziel % alle.length] ?? LV_ID) };
   const neu = `n${String(nr)}`;
+  const positionen = knoten.filter((k) => k.art === 'position');
+  const zuschlag = (i: number, ref: number): Zuschlag | null => {
+    const w = ZUSCHLAEGE[i] ?? null;
+    if (w === null) return null;
+    const prozentsatz = w.satz as Prozent | null;
+    if (w.form !== 'liste') return { prozentsatz, bezug: { art: w.form } };
+    const ziel = positionen.length === 0 ? 'gibt-es-nicht' : (positionen[ref % positionen.length]?.id ?? 'x');
+    const b = { positionId: id.pos(ziel), teilmenge: w.teilmenge as Menge | null };
+    return { prozentsatz, bezug: { art: 'positionen', positionen: w.doppelt ? [b, b] : [b] } };
+  };
   switch (a.art) {
     case 'titel':
       return {
@@ -176,8 +252,7 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
       };
     case 'hinweis':
       return { art: 'HinweistextAnlegen', id: id.hinweis(neu), ort: ort(a.ort), text: [] };
-    case 'position': {
-      const positionsart = ARTEN[a.positionsart] ?? 'normal';
+    case 'position':
       return {
         art: 'PositionAnlegen',
         id: id.pos(neu),
@@ -185,11 +260,17 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
         daten: positionsdaten('P', {
           menge: (MENGEN[a.menge] ?? null) as Menge | null,
           einheitspreis: (EPS[a.ep] ?? null) as Einheitspreis | null,
-          positionsart,
-          bedarfMitGesamtbetrag: positionsart === 'bedarf' && a.flag,
+          merkmale: MERKMALE[a.merkmale] ?? OHNE,
+          zuschlag: zuschlag(a.zuschlag, a.ref),
         }),
       };
-    }
+    case 'merkmale':
+      return {
+        art: 'PositionsmerkmaleSetzen',
+        positionId: id.pos(knotenId(a.knoten)),
+        merkmale: MERKMALE[a.merkmale] ?? OHNE,
+        zuschlag: zuschlag(a.zuschlag, a.ref),
+      };
     case 'loeschen':
       return { art: 'KnotenLoeschen', knotenId: id.knoten(knotenId(a.knoten)) };
     case 'verschieben':
@@ -220,32 +301,101 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
 
 // --- Unabhängiges Orakel -----------------------------------------------------------------------------------------
 
+/**
+ * Unabhängig vom Kern geschrieben, nur über `dezimal`: Ziel eines Betrags (Ticket 37, Teil 1) und die Zuschlagsregeln
+ * R1 bis R5, R8, hier als Rückwärtssuche formuliert (der Kern läuft vorwärts über die Geschwister).
+ */
 function orakel(z: LvZustand) {
+  const knoten = z.leistungsverzeichnis.knoten;
+  const byId = new Map(knoten.map((k) => [k.id as string, k]));
   const kinder = new Map<string, Knoten[]>();
-  for (const k of z.leistungsverzeichnis.knoten)
-    kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
-  const gliederungen = new Map<string, Betrag>();
-  const beitrag = (k: Knoten): Betrag => {
-    if (k.art === 'hinweis') return NULL_BETRAG;
-    if (k.art === 'position') {
-      if (k.menge === null || k.einheitspreis === null || !positionGehtInSumme(k)) return NULL_BETRAG;
-      return gesamtpreis(k.menge, k.einheitspreis);
-    }
-    return summe(k.id);
+  for (const k of knoten) kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
+  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  const ziel = (p: Position): 'netto' | 'bedarf' | 'wahl' =>
+    p.merkmale.wahl !== null && p.merkmale.wahl.variante !== 0
+      ? 'wahl'
+      : p.merkmale.bedarf === 'ohne-gesamtbetrag'
+        ? 'bedarf'
+        : 'netto';
+  const eigenerGp = (p: Position): Betrag | null => {
+    const menge = p.menge ?? (p.merkmale.pauschal ? ('1.000' as Menge) : null);
+    return menge === null || p.einheitspreis === null ? null : gesamtpreis(menge, p.einheitspreis);
   };
-  const summe = (eltern: string): Betrag => {
-    const s = summiereBetraege((kinder.get(eltern) ?? []).map(beitrag));
+  const basis = (p: Position): boolean => p.zuschlag === null && ziel(p) === 'netto';
+  const istZuschlag = (k: Knoten | undefined): boolean => k?.art === 'position' && k.zuschlag !== null;
+  const gpVon = (p: Position): Betrag | null => {
+    const zu = p.zuschlag;
+    if (zu === null || zu.prozentsatz === null) return eigenerGp(p);
+    const teile: Betrag[] = [];
+    if (zu.bezug.art === 'positionen') {
+      for (const b of zu.bezug.positionen) {
+        const r = byId.get(b.positionId);
+        if (r?.art !== 'position' || !basis(r)) continue;
+        const g =
+          b.teilmenge === null
+            ? eigenerGp(r)
+            : r.einheitspreis === null
+              ? null
+              : gesamtpreis(b.teilmenge, r.einheitspreis);
+        if (g !== null) teile.push(g);
+      }
+    } else {
+      const geschwister = kinder.get(p.elternId) ?? [];
+      let i = geschwister.findIndex((k) => k.id === p.id) - 1;
+      while (i >= 0 && (geschwister[i]?.art !== 'position' || istZuschlag(geschwister[i]))) i--;
+      for (; i >= 0; i--) {
+        const k = geschwister[i];
+        if (k?.art !== 'position') continue;
+        if (k.zuschlag !== null) break;
+        if (!basis(k) || (zu.bezug.art === 'kennzeichnung' && !k.merkmale.zuschlagskennzeichen)) continue;
+        const g = eigenerGp(k);
+        if (g !== null) teile.push(g);
+      }
+    }
+    return prozentVon(summiereBetraege(teile), zu.prozentsatz);
+  };
+  const positionen = new Map<string, { gp: Betrag | null; inSumme: boolean }>();
+  const gliederungen = new Map<string, { summe: Betrag; bedarf: Betrag; wahl: Betrag }>();
+  const summe = (eltern: string): { summe: Betrag; bedarf: Betrag; wahl: Betrag } => {
+    const s = { summe: NULL_BETRAG, bedarf: NULL_BETRAG, wahl: NULL_BETRAG };
+    for (const k of kinder.get(eltern) ?? []) {
+      if (k.art === 'hinweis') continue;
+      if (k.art === 'position') {
+        const g = gpVon(k);
+        const zk = ziel(k);
+        positionen.set(k.id, { gp: g, inSumme: g !== null && zk === 'netto' });
+        if (g === null) continue;
+        if (zk === 'netto') s.summe = addiere(s.summe, g);
+        else if (zk === 'bedarf') s.bedarf = addiere(s.bedarf, g);
+        else s.wahl = addiere(s.wahl, g);
+      } else {
+        const u = summe(k.id);
+        s.summe = addiere(s.summe, u.summe);
+        s.bedarf = addiere(s.bedarf, u.bedarf);
+        s.wahl = addiere(s.wahl, u.wahl);
+      }
+    }
     if (eltern !== LV_ID) gliederungen.set(eltern, s);
     return s;
   };
-  const netto = summe(LV_ID);
+  const lv = summe(LV_ID);
+  const netto = lv.summe;
   const nl = z.leistungsverzeichnis.nachlass;
   const nachlass = nl === null ? NULL_BETRAG : nl.art === 'prozent' ? prozentVon(netto, nl.wert) : nl.wert;
   const nettoNachNachlass = subtrahiere(netto, nachlass);
   const mwst = prozentVon(nettoNachNachlass, z.leistungsverzeichnis.mwstSatz);
   return {
+    positionen,
     gliederungen,
-    gesamt: { netto, nachlass, nettoNachNachlass, mwst, brutto: addiere(nettoNachNachlass, mwst) },
+    gesamt: {
+      netto,
+      nachlass,
+      nettoNachNachlass,
+      mwst,
+      brutto: addiere(nettoNachNachlass, mwst),
+      summeBedarfOhneGesamtbetrag: lv.bedarf,
+      summeWahl: lv.wahl,
+    },
   };
 }
 
@@ -257,6 +407,7 @@ const ERLAUBTE_FEHLER: readonly Befehlsfehlercode[] = [
   'ebene-ueberschritten',
   'knotenart-unzulaessig',
   'ungueltige-eingabe',
+  'bezug-unbekannt', // Liste nennt keinen Positionsknoten (Ticket 37)
 ];
 
 function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string, number>): LvZustand | null {
@@ -281,8 +432,25 @@ function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string,
   const o = orakel(neu);
   expect(neu.summen.gesamt).toEqual(o.gesamt);
   expect(neu.summen.gliederungen.length).toBe(o.gliederungen.size);
-  for (const g of neu.summen.gliederungen)
-    expect(g.summe, g.gliederungId).toBe(o.gliederungen.get(g.gliederungId));
+  for (const g of neu.summen.gliederungen) {
+    const og = o.gliederungen.get(g.gliederungId);
+    expect(g.summe, g.gliederungId).toBe(og?.summe);
+    expect(g.summeBedarfOhneGesamtbetrag, g.gliederungId).toBe(og?.bedarf);
+    expect(g.summeWahl, g.gliederungId).toBe(og?.wahl);
+  }
+  for (const p of neu.summen.positionen) {
+    const op = o.positionen.get(p.positionId);
+    expect(p.gesamtpreis, p.positionId).toBe(op?.gp);
+    expect(p.gehtInSummeEin, p.positionId).toBe(op?.inSumme);
+  }
+
+  const mitBetrag = neu.leistungsverzeichnis.knoten.some(
+    (k) =>
+      k.art === 'position' &&
+      k.zuschlag?.prozentsatz != null &&
+      (o.positionen.get(k.id)?.gp ?? '0.00') !== '0.00',
+  );
+  if (mitBetrag) statistik['zuschlagMitBetrag'] = (statistik['zuschlagMitBetrag'] ?? 0) + 1;
 
   // 3. Summe über alle eingehenden Positionen = LV-Summe
   const eingehend = neu.summen.positionen.flatMap((p) =>
@@ -332,12 +500,14 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
     // Der Test ist nicht leer.
     expect(statistik['MengeAendern']).toBeGreaterThan(200);
     expect(statistik['EinheitspreisAendern']).toBeGreaterThan(200);
-    expect(statistik['PositionAnlegen']).toBeGreaterThan(500);
+    expect(statistik['PositionAnlegen']).toBeGreaterThan(400); // ungültige Merkmale werden abgewiesen (Ticket 37)
     expect(statistik['KnotenLoeschen']).toBeGreaterThan(50);
     expect(statistik['KnotenVerschieben']).toBeGreaterThan(100);
     expect(statistik['NachlassSetzen']).toBeGreaterThan(50);
     expect(statistik['MwstSatzSetzen']).toBeGreaterThan(20);
     expect(statistik['abgewiesen']).toBeGreaterThan(100);
+    expect(statistik['PositionsmerkmaleSetzen']).toBeGreaterThan(50);
+    expect(statistik['zuschlagMitBetrag']).toBeGreaterThan(10); // streut stark je Lauf
     console.info('[kern/07] Property-Statistik', JSON.stringify(statistik));
   });
 

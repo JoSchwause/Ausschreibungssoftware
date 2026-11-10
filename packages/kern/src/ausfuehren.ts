@@ -30,6 +30,7 @@ import {
   langtextAendern,
   leistungsverzeichnisUmbenennen,
 } from './feld-befehle';
+import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
@@ -49,7 +50,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
@@ -71,6 +72,7 @@ export const BEFEHLS_HANDLER = {
   OzMaskeSetzen: ozMaskeSetzen,
   OrdnungszahlSetzen: ordnungszahlSetzen,
   Umnummerieren: umnummerieren,
+  PositionsmerkmaleSetzen: positionsmerkmaleSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -78,7 +80,6 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 /** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
 export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
-  PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
   KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket

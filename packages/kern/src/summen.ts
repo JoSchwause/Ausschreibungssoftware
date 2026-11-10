@@ -1,30 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Summen (Ticket 07): GP je Position, Summen je Los und Titel, Summen des LV (Netto, Nachlass, MwSt, Brutto).
+// Summen (Ticket 07; Ausweise, Zuschlagsposition, Pauschal: Ticket 37): GP je Position, Summen je Los und Titel, Summen
+// des LV (Netto, Nachlass, MwSt, Brutto) und die Ausweise für Bedarf ohne Gesamtbetrag und Wahl (F4).
 //
-// Alle Rechnung läuft über `@tethys/dezimal` (N1). Welche Positionen eingehen und wie der Nachlass rundet, steht in
-// `summenregeln.ts` (vorläufige Annahmen, Entscheidung offen).
+// Alle Rechnung läuft über `@tethys/dezimal` (N1). Wohin ein Betrag geht und wie der Nachlass rundet, steht in
+// `summenregeln.ts`; wie eine Zuschlagsposition rechnet, in `zuschlag.ts`.
 //
 // Zwei Wege zum selben Ergebnis:
-//  - `summenBerechnen`: vollständige Neuberechnung eines LV aus seinen Knoten. Orakel in den Tests und Startwert
-//    bei `LeistungsverzeichnisAnlegen`.
-//  - `summenAenderung`: Neuberechnung nur im betroffenen Teilbaum (A6). Ein Befehl meldet, um welchen Betrag sich der
-//    Beitrag an einem Elternknoten ändert; die Summen der Gliederungen von dort bis zur Wurzel ändern sich um diesen
-//    Betrag, sonst nichts. Kosten: O(Tiefe), nicht O(Knoten).
+//  - `summenBerechnen`: vollständige Neuberechnung eines LV aus seinen Knoten. Orakel in den Tests, Startwert bei
+//    `LeistungsverzeichnisAnlegen` und Rechenweg für ein „gedachtes LV“ (R7: `vergabe` setzt die Preise eines Bieters
+//    ein). Rechnet nur aus den Daten des übergebenen LV; gemerkt wird höchstens ein Index je Knotenarray.
+//  - `summenAenderung`: Neuberechnung nur im betroffenen Teilbaum (A6). Ein Befehl übergibt seine Knotenänderungen; daraus
+//    folgen die geänderten Positionssummen (samt der Zuschlagspositionen, deren Bereich oder Liste betroffen ist) und je
+//    Elternknoten eine Änderung der Anteile (Summe, Bedarf, Wahl), die bis zur Wurzel aufläuft. Kosten: O(Änderungen +
+//    Geschwister der betroffenen Elternknoten + Tiefe), nicht O(Knoten).
 //
 // Darstellung des Summenstands (`LvZustand.summen`): `positionen` in der Reihenfolge der Positionsknoten, `gliederungen`
 // in der Reihenfolge der Gliederungsknoten des Knotenarrays (kanonisch, siehe `struktur.ts`). So ist der Stand eine
 // Funktion des Zustands, und „anwenden, Umkehrung anwenden“ stellt ihn exakt her. Eine Zuordnung `id → Arrayindex` wird
 // einmal je Stand gebaut und gemerkt (`WeakMap`, wie der Baumindex).
 
-import {
-  NULL_BETRAG,
-  addiere,
-  gesamtpreis,
-  negiere,
-  prozentVon,
-  summiereBetraege,
-  vergleiche,
-} from '@tethys/dezimal';
+import { NULL_BETRAG, addiere, negiere, prozentVon, vergleiche } from '@tethys/dezimal';
 import type {
   Betrag,
   Gesamtsummen,
@@ -35,6 +30,7 @@ import type {
   LvZustand,
   Nachlass,
   Position,
+  PositionId,
   Positionssumme,
   Prozent,
   Summenaenderung,
@@ -43,29 +39,97 @@ import type {
 } from '@tethys/vertrag';
 import { indexVon, praeorder } from './struktur';
 import type { Baumindex } from './struktur';
-import { nachlassBetrag, nettoNachNachlass, positionGehtInSumme } from './summenregeln';
+import { betragsziel, eigenerGesamtpreis, nachlassBetrag, nettoNachNachlass } from './summenregeln';
+import { bereichsbasen, bezugsindex, listenzuschlag } from './zuschlag';
+import type { Basisquelle, Zuschlagsbasis } from './zuschlag';
+
+// --- Anteile: was ein Knoten zu Summe, Bedarfs- und Wahlsumme seines Elternknotens beiträgt ------------------------
+
+export interface Anteile {
+  /** Netto bzw. Gliederungssumme. */
+  readonly summe: Betrag;
+  readonly bedarf: Betrag;
+  readonly wahl: Betrag;
+}
+
+export const NULL_ANTEILE: Anteile = { summe: NULL_BETRAG, bedarf: NULL_BETRAG, wahl: NULL_BETRAG };
+
+const plus = (a: Anteile, b: Anteile): Anteile => ({
+  summe: addiere(a.summe, b.summe),
+  bedarf: addiere(a.bedarf, b.bedarf),
+  wahl: addiere(a.wahl, b.wahl),
+});
+const minus = (a: Anteile): Anteile => ({
+  summe: negiere(a.summe),
+  bedarf: negiere(a.bedarf),
+  wahl: negiere(a.wahl),
+});
+const istNull = (a: Anteile): boolean =>
+  vergleiche(a.summe, NULL_BETRAG) === 0 &&
+  vergleiche(a.bedarf, NULL_BETRAG) === 0 &&
+  vergleiche(a.wahl, NULL_BETRAG) === 0;
+
+/** Der Betrag einer Position geht in genau eines der drei Ziele, ohne Betrag nirgends (`betragsziel`, Teil 1). */
+export function anteileDerPosition(gp: Betrag | null, p: Pick<Position, 'merkmale'>): Anteile {
+  if (gp === null) return NULL_ANTEILE;
+  const ziel = betragsziel(p);
+  if (ziel === 'netto') return { ...NULL_ANTEILE, summe: gp };
+  return ziel === 'bedarf' ? { ...NULL_ANTEILE, bedarf: gp } : { ...NULL_ANTEILE, wahl: gp };
+}
+
+function anteileDerGliederung(g: Gliederungssumme | undefined): Anteile {
+  if (g === undefined) return NULL_ANTEILE;
+  return {
+    summe: g.summe,
+    bedarf: g.summeBedarfOhneGesamtbetrag ?? NULL_BETRAG,
+    wahl: g.summeWahl ?? NULL_BETRAG,
+  };
+}
+
+const gliederungssumme = (gliederungId: string, a: Anteile): Gliederungssumme => ({
+  gliederungId: gliederungId as GliederungId,
+  summe: a.summe,
+  summeBedarfOhneGesamtbetrag: a.bedarf,
+  summeWahl: a.wahl,
+});
 
 // --- Eine Position ---------------------------------------------------------------------------------------------
 
 /**
- * GP und Summenzugehörigkeit einer Position. Ist `menge` oder `einheitspreis` nicht gesetzt (`null`), entsteht kein GP
- * (`gesamtpreis: null`, geht nicht ein, trägt nichts bei); das folgt den Typkommentaren in `vertrag/summen.ts` und
- * `modell.ts` („nicht gesetzt“ ist nicht 0).
+ * Positionssumme aus einem GP (oder Zuschlagsbetrag). `gehtInSummeEin` heißt „geht ins Netto ein“: ein Betrag und das
+ * Ziel Netto (`betragsziel`).
  */
-export function positionsSumme(p: Position): Positionssumme {
-  const gp = p.menge !== null && p.einheitspreis !== null ? gesamtpreis(p.menge, p.einheitspreis) : null;
-  return { positionId: p.id, gesamtpreis: gp, gehtInSummeEin: gp !== null && positionGehtInSumme(p) };
+export function positionssummeAus(p: Pick<Position, 'id' | 'merkmale'>, gp: Betrag | null): Positionssumme {
+  return { positionId: p.id, gesamtpreis: gp, gehtInSummeEin: gp !== null && betragsziel(p) === 'netto' };
 }
 
-/** Was die Position zur Summe ihres Elternknotens beiträgt. */
-export function beitragZurSumme(s: Positionssumme): Betrag {
-  return s.gehtInSummeEin && s.gesamtpreis !== null ? s.gesamtpreis : NULL_BETRAG;
+/**
+ * GP und Summenzugehörigkeit einer Position für sich, ohne LV: gerundet(Menge × EP, 2), Pauschal ohne Menge mit Menge 1.
+ * Ist `menge` oder `einheitspreis` nicht gesetzt (`null`), entsteht kein GP. Eine Zuschlagsposition mit Satz rechnet
+ * nur im LV (`summenBerechnen`, `zuschlagsbasen`); hier ergibt sie wie die Altform (R8) Menge × EP.
+ */
+export function positionsSumme(p: Position): Positionssumme {
+  return positionssummeAus(p, eigenerGesamtpreis(p));
 }
 
 // --- Gesamtsummen -----------------------------------------------------------------------------------------------
 
-/** Netto, Nachlass, Netto nach Nachlass, MwSt (einmal auf die Summe, N2) und Brutto. */
-export function gesamtsummen(netto: Betrag, nachlass: Nachlass | null, mwstSatz: Prozent): Gesamtsummen {
+/** Die Ausweise neben den Summen (F4); gehen nicht in Netto, Nachlass, MwSt oder Brutto ein. */
+export interface Ausweise {
+  readonly bedarf: Betrag;
+  readonly wahl: Betrag;
+}
+
+/**
+ * Netto, Nachlass, Netto nach Nachlass, MwSt (einmal auf die Summe, N2) und Brutto. Mit `ausweise` stehen
+ * `summeBedarfOhneGesamtbetrag` und `summeWahl` dabei (das LV setzt sie immer, Ticket 37).
+ */
+export function gesamtsummen(
+  netto: Betrag,
+  nachlass: Nachlass | null,
+  mwstSatz: Prozent,
+  ausweise?: Ausweise,
+): Gesamtsummen {
   const nachNachlass = nettoNachNachlass(netto, nachlass);
   const mwst = prozentVon(nachNachlass, mwstSatz);
   return {
@@ -74,8 +138,14 @@ export function gesamtsummen(netto: Betrag, nachlass: Nachlass | null, mwstSatz:
     nettoNachNachlass: nachNachlass,
     mwst,
     brutto: addiere(nachNachlass, mwst),
+    ...(ausweise === undefined
+      ? {}
+      : { summeBedarfOhneGesamtbetrag: ausweise.bedarf, summeWahl: ausweise.wahl }),
   };
 }
+
+const gleichOptional = (a: Betrag | undefined, b: Betrag | undefined): boolean =>
+  a === undefined || b === undefined ? a === b : vergleiche(a, b) === 0;
 
 export function gleicheGesamtsummen(a: Gesamtsummen, b: Gesamtsummen): boolean {
   return (
@@ -83,7 +153,9 @@ export function gleicheGesamtsummen(a: Gesamtsummen, b: Gesamtsummen): boolean {
     vergleiche(a.nachlass, b.nachlass) === 0 &&
     vergleiche(a.nettoNachNachlass, b.nettoNachNachlass) === 0 &&
     vergleiche(a.mwst, b.mwst) === 0 &&
-    vergleiche(a.brutto, b.brutto) === 0
+    vergleiche(a.brutto, b.brutto) === 0 &&
+    gleichOptional(a.summeBedarfOhneGesamtbetrag, b.summeBedarfOhneGesamtbetrag) &&
+    gleichOptional(a.summeWahl, b.summeWahl)
   );
 }
 
@@ -128,79 +200,100 @@ export function gliederungssummeVon(stand: Summenstand, gliederungId: string): G
   return i === undefined ? undefined : stand.gliederungen[i];
 }
 
-/** Was der Knoten zur Summe seines Elternknotens beiträgt: Position ihren GP, Gliederung ihre Summe, Hinweistext nichts. */
-export function beitragVon(stand: Summenstand, k: Knoten): Betrag {
-  if (k.art === 'position') return beitragZurSumme(positionsSumme(k));
-  if (k.art === 'hinweis') return NULL_BETRAG;
-  return gliederungssummeVon(stand, k.id)?.summe ?? NULL_BETRAG;
-}
-
 // --- Vollständige Neuberechnung ------------------------------------------------------------------------------------
 
-/**
- * Berechnet den vollständigen Summenstand eines LV aus seinen Knoten neu (Orakel; auch Startwert eines neuen LV).
- * Rein und unabhängig von jedem früheren Stand. Die Einträge stehen in Reihenfolge des Knotenarrays. `id` ist die Wurzel
- * (LV oder Auftrags-LV).
- */
-export function summenBerechnen(
-  lv: Pick<Leistungsverzeichnis, 'knoten' | 'nachlass' | 'mwstSatz'> & { readonly id: string },
-): Summenstand {
+type LvDaten = Pick<Leistungsverzeichnis, 'knoten' | 'nachlass' | 'mwstSatz'> & { readonly id: string };
+
+/** GP jeder Position (Zuschlagspositionen nach `zuschlag.ts`) und die Basen der Zuschlagspositionen. */
+function alleBetraege(lv: Pick<LvDaten, 'id' | 'knoten'>): {
+  readonly index: Baumindex;
+  readonly gp: ReadonlyMap<string, Betrag | null>;
+  readonly basen: ReadonlyMap<string, Zuschlagsbasis>;
+} {
   const index = indexVon(lv.id, lv.knoten);
-  const reihe = praeorder(lv.id, index.kinder);
-  const beitraege = new Map<string, Betrag[]>();
-  const ablegen = (eltern: string, b: Betrag): void => {
-    const liste = beitraege.get(eltern);
-    if (liste) liste.push(b);
-    else beitraege.set(eltern, [b]);
+  const gp = new Map<string, Betrag | null>();
+  const zuschlagsEltern = new Set<string>();
+  for (const k of lv.knoten) {
+    if (k.art !== 'position') continue;
+    if (k.zuschlag === null) gp.set(k.id, eigenerGesamtpreis(k));
+    else zuschlagsEltern.add(k.elternId);
+  }
+  const q: Basisquelle = {
+    position: (i) => {
+      const k = index.byId.get(i);
+      return k?.art === 'position' ? k : undefined;
+    },
+    gesamtpreis: (p) => (gp.has(p.id) ? (gp.get(p.id) ?? null) : eigenerGesamtpreis(p)),
   };
-  const summen = new Map<string, Betrag>();
+  const basen = new Map<string, Zuschlagsbasis>();
+  for (const e of zuschlagsEltern) bereichsbasen(index.kinder.get(e) ?? [], q, basen);
+  for (const [i, b] of basen) gp.set(i, b.betrag);
+  return { index, gp, basen };
+}
+
+/**
+ * Berechnet den vollständigen Summenstand eines LV aus seinen Knoten neu (Orakel; Startwert eines neuen LV; gedachtes LV
+ * eines Bieters, R7). Rein und unabhängig von jedem früheren Stand. Die Einträge stehen in Reihenfolge des
+ * Knotenarrays. `id` ist die Wurzel (LV oder Auftrags-LV). Die Ausweise (Bedarf, Wahl) stehen an jeder Gliederung und im
+ * Gesamt, auch als `0.00`.
+ */
+export function summenBerechnen(lv: LvDaten): Summenstand {
+  const { index, gp } = alleBetraege(lv);
+  const reihe = praeorder(lv.id, index.kinder);
+  const anteile = new Map<string, Anteile>();
+  const ablegen = (eltern: string, a: Anteile): void => {
+    anteile.set(eltern, plus(anteile.get(eltern) ?? NULL_ANTEILE, a));
+  };
   // Rückwärts durch die Vorordnung: Kinder vor ihren Eltern.
   for (let i = reihe.length - 1; i >= 0; i--) {
     const k = reihe[i];
     if (!k || k.art === 'hinweis') continue;
-    if (k.art === 'position') {
-      ablegen(k.elternId, beitragZurSumme(positionsSumme(k)));
-    } else {
-      const s = summiereBetraege(beitraege.get(k.id) ?? []);
-      summen.set(k.id, s);
-      ablegen(k.elternId, s);
-    }
+    if (k.art === 'position') ablegen(k.elternId, anteileDerPosition(gp.get(k.id) ?? null, k));
+    else ablegen(k.elternId, anteile.get(k.id) ?? NULL_ANTEILE);
   }
-  const netto = summiereBetraege(beitraege.get(lv.id) ?? []);
+  const lvAnteile = anteile.get(lv.id) ?? NULL_ANTEILE;
 
   const positionen: Positionssumme[] = [];
   const gliederungen: Gliederungssumme[] = [];
   for (const k of lv.knoten) {
-    if (k.art === 'position') positionen.push(positionsSumme(k));
-    else if (k.art !== 'hinweis') {
-      gliederungen.push({ gliederungId: k.id, summe: summen.get(k.id) ?? NULL_BETRAG });
-    }
+    if (k.art === 'position') positionen.push(positionssummeAus(k, gp.get(k.id) ?? null));
+    else if (k.art !== 'hinweis')
+      gliederungen.push(gliederungssumme(k.id, anteile.get(k.id) ?? NULL_ANTEILE));
   }
   const stand: Summenstand = {
     positionen,
     gliederungen,
-    gesamt: gesamtsummen(netto, lv.nachlass, lv.mwstSatz),
+    gesamt: gesamtsummen(lvAnteile.summe, lv.nachlass, lv.mwstSatz, {
+      bedarf: lvAnteile.bedarf,
+      wahl: lvAnteile.wahl,
+    }),
   };
   merkeSummenIndex(stand, baueSummenIndex(stand));
   return stand;
 }
 
+/**
+ * Basis, Betrag und „Bezug ohne Preis“ je Zuschlagsposition eines LV (R7; für `vergabe`, Ticket 44). Rechnet wie
+ * `summenBerechnen` nur aus dem übergebenen LV, also auch aus einem gedachten LV mit den Preisen eines Bieters.
+ */
+export function zuschlagsbasen(
+  lv: Pick<Leistungsverzeichnis, 'knoten'> & { readonly id: string },
+): ReadonlyMap<PositionId, Zuschlagsbasis> {
+  return alleBetraege(lv).basen as ReadonlyMap<PositionId, Zuschlagsbasis>;
+}
+
 // --- Neuberechnung im betroffenen Teilbaum -------------------------------------------------------------------------
 
-/** Der Beitrag an einem Elternknoten ändert sich um `betrag` (mit Vorzeichen). */
-export interface Beitragsaenderung {
-  /** LV-ID oder Gliederungs-ID. */
-  readonly eltern: string;
-  readonly betrag: Betrag;
+/** Knotenänderungen eines Befehls, wie sie ins ChangeSet gehen. */
+export interface Knotenaenderungen {
+  readonly hinzugefuegt?: readonly Knoten[];
+  readonly geaendert?: readonly { readonly vorher: Knoten; readonly nachher: Knoten }[];
+  readonly entfernt?: readonly Knoten[];
 }
 
 export interface SummenEingabe {
-  /** Beitragsänderungen; die Kette von `eltern` bis zur Wurzel ändert sich um `betrag`. */
-  readonly beitraege?: readonly Beitragsaenderung[];
-  /** Neue oder geänderte Summen von Positionen (vom Befehl berechnet, nur wirklich geänderte). */
-  readonly positionen?: readonly Positionssumme[];
-  /** Neue Gliederungen mit ihrer Summe. */
-  readonly neueGliederungen?: readonly Gliederungssumme[];
+  /** Die Knotenänderungen des Befehls; aus ihnen folgen alle Summenänderungen. */
+  readonly knoten?: Knotenaenderungen;
   /** Geänderte Stammdaten, die die Gesamtsummen beeinflussen (Nachlass, MwSt-Satz); sonst die des Zustands. */
   readonly kopf?: { readonly nachlass: Nachlass | null; readonly mwstSatz: Prozent };
 }
@@ -212,59 +305,213 @@ const nachId = <T>(liste: readonly T[], id: (x: T) => string): T[] =>
     return x < y ? -1 : x > y ? 1 : 0;
   });
 
+const gleicheSumme = (a: Positionssumme | undefined, b: Positionssumme): boolean =>
+  a !== undefined && a.gesamtpreis === b.gesamtpreis && a.gehtInSummeEin === b.gehtInSummeEin;
+
+/** Ändert sich etwas, das Betrag, Ziel oder Bezug betrifft? (Die Reihenfolge allein zählt hier nicht.) */
+const rechnetAnders = (a: Position, b: Position): boolean =>
+  a.menge !== b.menge ||
+  a.einheitspreis !== b.einheitspreis ||
+  a.merkmale !== b.merkmale ||
+  a.zuschlag !== b.zuschlag ||
+  a.elternId !== b.elternId;
+
+interface Anteilsaenderung {
+  readonly eltern: string;
+  readonly a: Anteile;
+}
+
 /**
- * Die betroffenen Summen eines Befehls (A6). Walks nur die Elternketten der gemeldeten Beitragsänderungen; was sich
- * nicht ändert (Änderung null, gleiche Summe), steht nicht im Ergebnis. `gesamt` ist `null`, wenn die Gesamtsummen
- * gleich bleiben. Die Listen sind nach Kennung geordnet (deterministisch, auch für die Umkehrung).
+ * Die betroffenen Summen eines Befehls (A6) aus seinen Knotenänderungen. Neu berechnet werden die geänderten und neuen
+ * Positionen, die Zuschlagspositionen unter jedem Elternknoten, dessen Kinder sich ändern (R3, R4), und jede
+ * Zuschlagsposition, deren Liste (R5) eine geänderte Position nennt (Rückwärtsindex, auch in anderen Gliederungen). Je
+ * Elternknoten läuft die Änderung der Anteile bis zur Wurzel (Entfernen im alten Baum, Hinzufügen im neuen). Was sich
+ * nicht ändert, steht nicht im Ergebnis; `gesamt` ist `null`, wenn die Gesamtsummen gleich bleiben. Die Listen sind nach
+ * Kennung geordnet (deterministisch, auch für die Umkehrung).
  */
 export function summenAenderung(z: LvZustand, baum: Baumindex, e: SummenEingabe): Summenaenderung {
-  const aufsummiert = new Map<string, Betrag>();
-  for (const b of e.beitraege ?? []) {
-    if (vergleiche(b.betrag, NULL_BETRAG) === 0) continue;
-    let k = b.eltern;
-    for (let schritt = 0; schritt <= baum.byId.size; schritt++) {
-      aufsummiert.set(k, addiere(aufsummiert.get(k) ?? NULL_BETRAG, b.betrag));
-      if (k === baum.lvId) break;
-      const knoten = baum.byId.get(k);
-      if (!knoten) break;
-      k = knoten.elternId;
-    }
+  const stand = z.summen;
+  const hinzu = e.knoten?.hinzugefuegt ?? [];
+  const geaendert = e.knoten?.geaendert ?? [];
+  const entfernt = e.knoten?.entfernt ?? [];
+
+  const weg = new Set<string>(entfernt.map((k) => k.id));
+  const neu = new Map<string, Knoten>();
+  for (const g of geaendert) neu.set(g.nachher.id, g.nachher);
+  for (const k of hinzu) neu.set(k.id, k);
+  const knotenNeu = (i: string): Knoten | undefined =>
+    weg.has(i) ? undefined : (neu.get(i) ?? baum.byId.get(i));
+
+  // Elternknoten, deren Kinderliste sich ändert, und Positionen, deren Betrag oder Ziel sich ändern kann.
+  const eltern = new Set<string>();
+  const zuzug = new Map<string, Knoten[]>();
+  const geaendertePositionen: string[] = [];
+  const zuziehen = (k: Knoten): void => {
+    const liste = zuzug.get(k.elternId);
+    if (liste) liste.push(k);
+    else zuzug.set(k.elternId, [k]);
+  };
+  for (const k of entfernt) {
+    if (!weg.has(k.elternId)) eltern.add(k.elternId);
+    if (k.art === 'position') geaendertePositionen.push(k.id);
+  }
+  for (const k of hinzu) {
+    eltern.add(k.elternId);
+    zuziehen(k);
+    if (k.art === 'position') geaendertePositionen.push(k.id);
+  }
+  for (const { vorher, nachher } of geaendert) {
+    eltern.add(vorher.elternId);
+    eltern.add(nachher.elternId);
+    if (vorher.elternId !== nachher.elternId) zuziehen(nachher);
+    if (vorher.art === 'position' && nachher.art === 'position' && rechnetAnders(vorher, nachher))
+      geaendertePositionen.push(nachher.id);
   }
 
-  const gliederungen: Gliederungssumme[] = [...(e.neueGliederungen ?? [])];
-  let nettoAenderung = NULL_BETRAG;
-  for (const [k, aenderung] of aufsummiert) {
-    if (k === baum.lvId) {
-      nettoAenderung = aenderung;
-    } else if (vergleiche(aenderung, NULL_BETRAG) !== 0) {
-      const alt = gliederungssummeVon(z.summen, k)?.summe ?? NULL_BETRAG;
-      gliederungen.push({ gliederungId: k as GliederungId, summe: addiere(alt, aenderung) });
+  // Eigener GP: geänderte Knoten neu gerechnet, sonst aus dem Stand (er gehört zum Zustand).
+  const q: Basisquelle = {
+    position: (i) => {
+      const k = knotenNeu(i);
+      return k?.art === 'position' ? k : undefined;
+    },
+    gesamtpreis: (p) => {
+      if (neu.has(p.id)) return eigenerGesamtpreis(p);
+      const s = positionssummeVon(stand, p.id);
+      return s === undefined ? eigenerGesamtpreis(p) : s.gesamtpreis;
+    },
+  };
+  const kinderNeu = (x: string): Knoten[] => {
+    const liste: Knoten[] = [];
+    for (const k of baum.kinder.get(x) ?? []) {
+      if (weg.has(k.id)) continue;
+      const n = neu.get(k.id) ?? k;
+      if (n.elternId === x) liste.push(n);
+    }
+    for (const k of zuzug.get(x) ?? []) liste.push(k);
+    return liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  };
+
+  // Zuschlagspositionen neu berechnen: R3/R4 je betroffenem Elternknoten, R5 über den Rückwärtsindex.
+  const basen = new Map<string, Zuschlagsbasis>();
+  for (const x of eltern) {
+    if (weg.has(x) || (x !== baum.lvId && knotenNeu(x) === undefined)) continue;
+    const kinder = kinderNeu(x);
+    if (kinder.some((k) => k.art === 'position' && k.zuschlag !== null)) bereichsbasen(kinder, q, basen);
+  }
+  const rueck = bezugsindex(z.leistungsverzeichnis.knoten);
+  for (const pid of geaendertePositionen) {
+    for (const zid of rueck.get(pid) ?? []) {
+      if (basen.has(zid)) continue;
+      const k = knotenNeu(zid);
+      if (k?.art !== 'position') continue;
+      const b = listenzuschlag(k, q);
+      if (b !== null) basen.set(zid, b);
+    }
+  }
+  const gpNeu = (p: Position): Betrag | null => {
+    const b = basen.get(p.id);
+    return b !== undefined ? b.betrag : eigenerGesamtpreis(p);
+  };
+  const anteileAlt = (k: Knoten): Anteile => {
+    if (k.art === 'position')
+      return anteileDerPosition(positionssummeVon(stand, k.id)?.gesamtpreis ?? null, k);
+    return k.art === 'hinweis' ? NULL_ANTEILE : anteileDerGliederung(gliederungssummeVon(stand, k.id));
+  };
+
+  // Änderungen der Anteile je Elternknoten, getrennt nach altem und neuem Baum.
+  const imAlten: Anteilsaenderung[] = [];
+  const imNeuen: Anteilsaenderung[] = [];
+  const positionen: Positionssumme[] = [];
+  const erledigt = new Set<string>();
+  const neueGliederungen: string[] = [];
+
+  for (const k of entfernt) {
+    if (!weg.has(k.elternId)) imAlten.push({ eltern: k.elternId, a: minus(anteileAlt(k)) });
+  }
+  for (const k of hinzu) {
+    erledigt.add(k.id);
+    if (k.art === 'position') {
+      const g = gpNeu(k);
+      positionen.push(positionssummeAus(k, g));
+      imNeuen.push({ eltern: k.elternId, a: anteileDerPosition(g, k) });
+    } else if (k.art !== 'hinweis') neueGliederungen.push(k.id);
+  }
+  for (const { vorher, nachher } of geaendert) {
+    erledigt.add(nachher.id);
+    const umgezogen = vorher.elternId !== nachher.elternId;
+    if (nachher.art === 'position' && vorher.art === 'position') {
+      const alt = positionssummeVon(stand, vorher.id);
+      const s = positionssummeAus(nachher, gpNeu(nachher));
+      if (!gleicheSumme(alt, s)) positionen.push(s);
+      const aAlt = anteileDerPosition(alt?.gesamtpreis ?? null, vorher);
+      const aNeu = anteileDerPosition(s.gesamtpreis, nachher);
+      if (umgezogen) {
+        imAlten.push({ eltern: vorher.elternId, a: minus(aAlt) });
+        imNeuen.push({ eltern: nachher.elternId, a: aNeu });
+      } else imNeuen.push({ eltern: nachher.elternId, a: plus(aNeu, minus(aAlt)) });
+    } else if (umgezogen) {
+      const a = anteileAlt(vorher);
+      imAlten.push({ eltern: vorher.elternId, a: minus(a) });
+      imNeuen.push({ eltern: nachher.elternId, a });
+    }
+  }
+  for (const [zid, b] of basen) {
+    if (erledigt.has(zid)) continue;
+    const k = knotenNeu(zid);
+    if (k?.art !== 'position') continue;
+    const alt = positionssummeVon(stand, zid);
+    const s = positionssummeAus(k, b.betrag);
+    if (gleicheSumme(alt, s)) continue;
+    positionen.push(s);
+    imNeuen.push({
+      eltern: k.elternId,
+      a: plus(anteileDerPosition(s.gesamtpreis, k), minus(anteileDerPosition(alt?.gesamtpreis ?? null, k))),
+    });
+  }
+
+  // Aufsummieren entlang der Ketten bis zur Wurzel.
+  const aufsummiert = new Map<string, Anteile>();
+  const grenze = baum.byId.size + neu.size;
+  const hochlaufen = (x: Anteilsaenderung, elternVon: (i: string) => string | undefined): void => {
+    if (istNull(x.a)) return;
+    let k: string | undefined = x.eltern;
+    for (let schritt = 0; k !== undefined && schritt <= grenze; schritt++) {
+      aufsummiert.set(k, plus(aufsummiert.get(k) ?? NULL_ANTEILE, x.a));
+      if (k === baum.lvId) break;
+      k = elternVon(k);
+    }
+  };
+  for (const x of imAlten) hochlaufen(x, (i) => baum.byId.get(i)?.elternId);
+  for (const x of imNeuen) hochlaufen(x, (i) => knotenNeu(i)?.elternId);
+
+  const gliederungen: Gliederungssumme[] = neueGliederungen.map((gid) =>
+    gliederungssumme(gid, aufsummiert.get(gid) ?? NULL_ANTEILE),
+  );
+  const istNeu = new Set(neueGliederungen);
+  let lvAenderung = NULL_ANTEILE;
+  for (const [k, a] of aufsummiert) {
+    if (k === baum.lvId) lvAenderung = a;
+    else if (!istNeu.has(k) && !weg.has(k) && !istNull(a)) {
+      gliederungen.push(gliederungssumme(k, plus(anteileDerGliederung(gliederungssummeVon(stand, k)), a)));
     }
   }
 
   let gesamt: Gesamtsummen | null = null;
-  if (e.kopf !== undefined || vergleiche(nettoAenderung, NULL_BETRAG) !== 0) {
+  if (e.kopf !== undefined || !istNull(lvAenderung)) {
     const kopf = e.kopf ?? z.leistungsverzeichnis;
-    const neu = gesamtsummen(addiere(z.summen.gesamt.netto, nettoAenderung), kopf.nachlass, kopf.mwstSatz);
-    if (!gleicheGesamtsummen(neu, z.summen.gesamt)) gesamt = neu;
+    const alt = stand.gesamt;
+    const neuGesamt = gesamtsummen(addiere(alt.netto, lvAenderung.summe), kopf.nachlass, kopf.mwstSatz, {
+      bedarf: addiere(alt.summeBedarfOhneGesamtbetrag ?? NULL_BETRAG, lvAenderung.bedarf),
+      wahl: addiere(alt.summeWahl ?? NULL_BETRAG, lvAenderung.wahl),
+    });
+    if (!gleicheGesamtsummen(neuGesamt, alt)) gesamt = neuGesamt;
   }
   return {
-    positionen: nachId(e.positionen ?? [], (p) => p.positionId),
+    positionen: nachId(positionen, (p) => p.positionId),
     gliederungen: nachId(gliederungen, (g) => g.gliederungId),
     gesamt,
   };
 }
-
-/** Beitrag, der ein Knoten aus seiner Kette herausnimmt: der negierte Beitrag. */
-export const herausnehmen = (eltern: string, beitrag: Betrag): Beitragsaenderung => ({
-  eltern,
-  betrag: negiere(beitrag),
-});
-
-export const hineinlegen = (eltern: string, beitrag: Betrag): Beitragsaenderung => ({
-  eltern,
-  betrag: beitrag,
-});
 
 export { nachId as ordneNachKennung };
 
