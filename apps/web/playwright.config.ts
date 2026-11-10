@@ -16,7 +16,7 @@ export default defineConfig({
   },
   webServer: {
     // VITE_KATALOG=1 nimmt die Katalogseite (/katalog) in den Test-Build auf; `pnpm build` ohne die Variable lässt sie weg.
-    command: 'VITE_KATALOG=1 pnpm build && pnpm preview',
+    command: 'VITE_KATALOG=1 VITE_TESTPFAD=1 pnpm build && pnpm preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,

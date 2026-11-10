@@ -1,0 +1,60 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* LV-Seite: Kopf, Werkzeugleiste, Grid über die verfügbare Höhe, Nachlass und MwSt darunter (U4, U6). */
+
+.lv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+  height: 100%;
+  min-height: 0;
+}
+
+.lv__kopf {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tx-space-5);
+}
+
+.lv__kopf h1 {
+  margin: 0;
+}
+
+.lv__werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-3);
+}
+
+.lv__werkzeuge .tx-kbd-gruppe {
+  margin-left: var(--tx-space-2);
+}
+
+.lv__grid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 320px;
+}
+
+.lv__grid > .tx-grid {
+  flex: 1;
+  min-height: 0;
+}
+
+.lv__summenfelder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-5);
+  padding: var(--tx-space-3) 0;
+  border-top: 1px solid var(--tx-color-border);
+}
+
+.lv__summenfelder .tx-feld {
+  width: 180px;
+}
+
+.lv__meldung {
+  margin: 20px 0 0;
+  color: var(--tx-color-danger);
+}

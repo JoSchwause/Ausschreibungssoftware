@@ -3,7 +3,7 @@
 // (die App rechnet nie, N1). Auf- und Zuklappen gehört der App: Sie merkt sich die zugeklappten Knoten, neu angelegte
 // Gliederungen sind damit aufgeklappt.
 
-import type { Betrag, Knoten, KnotenId, LvAnsicht, LvZeile, LvZustand } from '@tethys/vertrag';
+import type { Betrag, Knoten, LvAnsicht, LvZeile, LvZustand } from '@tethys/vertrag';
 
 /** Kinder je Elternknoten, nach `reihenfolge`. */
 export function kinderJeEltern(knoten: readonly Knoten[]): ReadonlyMap<string, readonly Knoten[]> {
@@ -17,7 +17,7 @@ export function kinderJeEltern(knoten: readonly Knoten[]): ReadonlyMap<string, r
   return kinder;
 }
 
-export function lvAnsichtBauen(zustand: LvZustand, zugeklappt: ReadonlySet<KnotenId>): LvAnsicht {
+export function lvAnsichtBauen(zustand: LvZustand, zugeklappt: ReadonlySet<string>): LvAnsicht {
   const lv = zustand.leistungsverzeichnis;
   const kinder = kinderJeEltern(lv.knoten);
   const gp = new Map<string, { gesamtpreis: Betrag | null; gehtInSummeEin: boolean }>();
