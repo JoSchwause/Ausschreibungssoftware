@@ -154,3 +154,11 @@ Question: Tastenbelegung (Vorschlag im Ticket) und was das Ticket bei Einfügen,
 Decision: Strg+C/X/V, Strg+Minus/Strg+Entf (Rückfrage), Alt+Pfeil hoch/runter, Strg+Plus (`key '+'`), Escape bricht Ausschneiden ab (die Zeilen bleiben als kopiert gemerkt). Eigener Text ohne `onKopieEinfuegen` wird spaltengenau ab der ersten Spalte eingefügt. „Hinter einer Gliederung“ ist im Vertrag „als erstes Kind“: Strg+Plus auf einer Gliederung legt das erste Kind an; Verschieben neben einer Gliederung verschiebt den Nachbarn oder legt eine Teilfolge neu, stets ein Befehl. Die Rückfrage zählt sichtbare Positionen und sagt „mindestens“ bei zugeklappten Knoten. Einzelheiten in Ticket 46, Comments.
 Reason: Excel-nah (U3), keine bestehende Taste geändert außer Alt+Pfeil hoch/runter (vom Ticket verlangt); `Einfuegeort` bleibt unverändert (A4).
 Reversible: yes  Touches: packages/ui-grid
+
+## D-30.1 Kern v1.1a: Lesarten bei Umkehrung, Hinweisen und F1
+Welle 3 · Ticket 30 · decided by: implementer
+Question: Was Ticket 30 offen lässt (Hinweise in der Umkehrung, ChangeSet ohne `vorher`, Reichweite der F1-Prüfung, Projekt-ChangeSet ohne Änderung, `wurzelId` im Kopf).
+Decision: Die Umkehrung trägt keine Hinweise; ein ChangeSet ohne `summen.vorher` umzukehren wirft. `netto-nach-nachlass-negativ` bei jedem ChangeSet mit negativem neuem Netto nach Nachlass (Annahme des Tickets). F1 (Lose und Titel nicht nebeneinander, Los-Stufe) wird nur geprüft, wenn ein Knoten neu auf die oberste Ebene kommt; der Import (`LeistungsverzeichnisAnlegen`) bleibt offen (U5). Projekt-ChangeSet ohne Änderung: `vorher` gleich `nachher`. Der LV-Kopf trägt kein `wurzelId` mehr. Einzelheiten: Ticket 30, Comments.
+Reason: Hinweise sind flüchtig (Vertrag); kein stilles Falsch (Q5); Validierung blockiert den Import nie (U5); Kopf gleich `LvKopf`, damit `speicher` ihn exakt vergleicht (D-31.2).
+Reversible: yes  Touches: packages/kern (mechanisch: Testhilfen in vergabe und ausgabe)
+

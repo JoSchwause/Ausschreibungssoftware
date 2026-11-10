@@ -33,9 +33,17 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { LEERE_SUMMENAENDERUNG, baueChangeSet } from './changeset';
+import { positionMitEinheiten } from './einheit';
+import { handOzFehler } from './oz-befehle';
 import { nein, ok } from './fehler';
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
-import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
+import {
+  MAX_GLIEDERUNGSEBENEN,
+  darfKinderHaben,
+  ebenenbeitrag,
+  losErlaubtUnter,
+  obersteEbeneFehler,
+} from './regeln';
 import type { ElternArt } from './regeln';
 import { ebenenBis, ebenenHoehe, indexVon, liegtUnter, unterbaum } from './struktur';
 import type { Baumindex } from './struktur';
@@ -100,7 +108,21 @@ function zielAufloesen(idx: Baumindex, ort: Einfuegeort, ausser?: string): Ergeb
   return ok({ elternId: eltern, elternArt, index: ort.art === 'anfang' ? 0 : anzahl });
 }
 
-/** Prüft ID, Ziel und (für Gliederungen) Los-Regel und Ebenentiefe; liefert das Ziel. */
+/** F1 (`obersteEbeneFehler`): kommt ein Knoten neu auf die oberste Ebene, ein Fehlerwert oder `null`. */
+function obersteEbene(
+  z: LvZustand,
+  idx: Baumindex,
+  t: Ziel,
+  art: Knoten['art'],
+  knotenId: string,
+): Ergebnis<never, Befehlsfehler> | null {
+  if (t.elternArt !== 'wurzel') return null;
+  const geschwister = (idx.kinder.get(idx.lvId) ?? []).filter((k) => k.id !== knotenId).map((k) => k.art);
+  const f = obersteEbeneFehler(art, geschwister, z.leistungsverzeichnis.ozMaske.losStufe === true);
+  return f === null ? null : nein('knotenart-unzulaessig', f, knotenId);
+}
+
+/** Prüft ID, Ziel und (für Gliederungen) Los-Regel, oberste Ebene (F1) und Ebenentiefe; liefert das Ziel. */
 function einfuegenPruefen(
   z: LvZustand,
   idx: Baumindex,
@@ -121,6 +143,8 @@ function einfuegenPruefen(
       neueId,
     );
   }
+  const oben = obersteEbene(z, idx, t, art, neueId);
+  if (oben !== null) return oben;
   if (ebenenbeitrag(art) > 0 && ebenenBis(idx, t.elternId) + ebenenbeitrag(art) > MAX_GLIEDERUNGSEBENEN) {
     return nein(
       'ebene-ueberschritten',
@@ -148,7 +172,7 @@ function einfuegenChangeSet(
 }
 
 export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSetErgebnis {
-  const feld = unerlaubtesFeld(b, 'gliederung', ['gliederungsart', 'ort']);
+  const feld = unerlaubtesFeld(b, 'gliederung', ['gliederungsart', 'ort']); // `ordnungszahl` ist erlaubt
   if (feld !== null) {
     return nein('ungueltige-eingabe', `Feld „${feld}“ ist an einer Gliederung nicht zulässig.`, b.id, feld);
   }
@@ -158,6 +182,17 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
   }
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, b.gliederungsart);
   if (!ziel.ok) return ziel;
+  // Ticket 30: eine mitgebrachte OZ wird wie bei `OrdnungszahlSetzen` geprüft (doppelt ist erlaubt, F2).
+  const ordnungszahl = b.ordnungszahl ?? null;
+  const ozFehlerwert = handOzFehler(
+    z.leistungsverzeichnis.ozMaske,
+    b.gliederungsart,
+    ebenenBis(idx, ziel.wert.elternId) + ebenenbeitrag(b.gliederungsart),
+    ordnungszahl,
+    null,
+    b.id,
+  );
+  if (ozFehlerwert !== null) return { ok: false, fehler: ozFehlerwert };
   return ok(
     einfuegenChangeSet(
       z,
@@ -170,7 +205,7 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
               id: b.id as LosId,
               elternId: t.elternId as ElternId,
               reihenfolge: t.index,
-              ordnungszahl: null,
+              ordnungszahl,
               kurztext: b.kurztext,
             }
           : {
@@ -178,7 +213,7 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
               id: b.id as TitelId,
               elternId: t.elternId as ElternId,
               reihenfolge: t.index,
-              ordnungszahl: null,
+              ordnungszahl,
               kurztext: b.kurztext,
             },
       (neu) =>
@@ -201,23 +236,24 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
       z,
       idx,
       ziel.wert,
-      (t): Position => ({
-        art: 'position',
-        id: b.id,
-        elternId: t.elternId as ElternId,
-        reihenfolge: t.index,
-        ordnungszahl: d.ordnungszahl,
-        ozIndex: d.ozIndex,
-        merkmale: d.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
-        zuschlag: d.zuschlag,
-        ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
-        kurztext: d.kurztext,
-        langtext: d.langtext,
-        menge: d.menge,
-        einheit: d.einheit,
-        einheitspreis: d.einheitspreis,
-        epa: d.epa,
-      }),
+      (t): Position =>
+        positionMitEinheiten({
+          art: 'position',
+          id: b.id,
+          elternId: t.elternId as ElternId,
+          reihenfolge: t.index,
+          ordnungszahl: d.ordnungszahl,
+          ozIndex: d.ozIndex,
+          merkmale: d.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
+          zuschlag: d.zuschlag,
+          ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
+          kurztext: d.kurztext,
+          langtext: d.langtext,
+          menge: d.menge,
+          einheit: d.einheit,
+          einheitspreis: d.einheitspreis,
+          epa: d.epa,
+        }),
       (neu) => {
         const summe = positionsSumme(neu as Position);
         return summenAenderung(z, idx, {
@@ -295,6 +331,10 @@ export function knotenVerschieben(z: LvZustand, b: KnotenVerschieben): ChangeSet
       'Ein Los steht nur direkt unter dem LV (vorläufige Annahme).',
       knoten.id,
     );
+  }
+  if (knoten.elternId !== t.elternId) {
+    const oben = obersteEbene(z, idx, t, knoten.art, knoten.id);
+    if (oben !== null) return oben;
   }
   if (istGliederung && ebenenBis(idx, t.elternId) + ebenenHoehe(idx, knoten) > MAX_GLIEDERUNGSEBENEN) {
     return nein(

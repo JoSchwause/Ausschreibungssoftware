@@ -5,8 +5,16 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Knoten, LvBefehl, LvInhalt, LvZustand, Positionsdaten } from '@tethys/vertrag';
-import { lvBefehlAusfuehren, lvChangeSetAnwenden, pruefeLvInvarianten } from './index';
-import { PROJEKT_ID, erwarteOk, fixtureAlsInhalt, fixtureLesen, id, positionsdaten } from './testhilfen';
+import { lvBefehlAusfuehren, pruefeLvInvarianten } from './index';
+import {
+  anwenden,
+  PROJEKT_ID,
+  erwarteOk,
+  fixtureAlsInhalt,
+  fixtureLesen,
+  id,
+  positionsdaten,
+} from './testhilfen';
 import type { LeistungsverzeichnisId } from '@tethys/vertrag';
 
 /** Baum als Abbildung Elternknoten → Kinder-IDs in Reihenfolge, unabhängig von der Array-Reihenfolge. */
@@ -38,7 +46,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
 
   it('LeistungsverzeichnisAnlegen übernimmt den Baum unverändert (Struktur und Knotendaten)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(null, anlegen(fx.id, inh)));
-    const z = lvChangeSetAnwenden(null, cs);
+    const z = anwenden(null, cs);
     const lv = z.leistungsverzeichnis;
     expect(lv.knoten).toHaveLength(inh.knoten.length);
     expect(baumform(lv.knoten)).toEqual(baumform(inh.knoten));
@@ -56,7 +64,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
   });
 
   it.runIf(name !== 'gross')('Knoten für Knoten mit den Baumbefehlen aufgebaut ergibt denselben Baum', () => {
-    let z: LvZustand = lvChangeSetAnwenden(
+    let z: LvZustand = anwenden(
       null,
       erwarteOk(lvBefehlAusfuehren(null, anlegen(fx.id, { ...inh, knoten: [] }))),
     );
@@ -88,7 +96,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
         };
         befehl = { art: 'PositionAnlegen', id: k.id, ort, daten };
       }
-      z = lvChangeSetAnwenden(z, erwarteOk(lvBefehlAusfuehren(z, befehl)));
+      z = anwenden(z, erwarteOk(lvBefehlAusfuehren(z, befehl)));
     }
     expect(baumform(z.leistungsverzeichnis.knoten)).toEqual(baumform(inh.knoten));
     // `GliederungAnlegen` trägt keine Ordnungszahl (Ticket 06); die Fixture-Ordnungszahlen der Titel fehlen daher.
@@ -108,7 +116,7 @@ describe('Messung an fixtures/gross (kein Gate)', () => {
 
     const t0 = performance.now();
     const cs = erwarteOk(lvBefehlAusfuehren(null, befehl));
-    const z = lvChangeSetAnwenden(null, cs);
+    const z = anwenden(null, cs);
     const aufbau = performance.now() - t0;
 
     // Eine Position mitten in den Baum einfügen („nach“ einer Position, die Geschwister dahinter rücken auf).
@@ -124,7 +132,7 @@ describe('Messung an fixtures/gross (kein Gate)', () => {
       const t1 = performance.now();
       const c = erwarteOk(lvBefehlAusfuehren(z0, b));
       const t2 = performance.now();
-      const z1 = lvChangeSetAnwenden(z0, c);
+      const z1 = anwenden(z0, c);
       const t3 = performance.now();
       return { z1, ausfuehren: t2 - t1, anwenden: t3 - t2 };
     };

@@ -16,6 +16,7 @@ import type {
   Knoten,
   LeistungsverzeichnisId,
   LvBefehl,
+  LvChangeSet,
   LvInhalt,
   LvZustand,
   Menge,
@@ -33,6 +34,7 @@ import type {
   LosId,
   ProjektId,
   KnotenId,
+  Summenvorher,
 } from '@tethys/vertrag';
 import { lvBefehlAusfuehren, lvChangeSetAnwenden } from './index';
 
@@ -63,7 +65,7 @@ export function inhalt(knoten: readonly Knoten[] = []): LvInhalt {
     mwstSatz: '19.00' as Prozent,
     nachlass: null,
     knoten,
-    wurzelId: LV_ID, // v1.1a: mechanisch angepasst, Folgeticket
+    wurzelId: LV_ID,
   };
 }
 
@@ -168,9 +170,69 @@ export function erwarteOk<T, F>(e: Ergebnis<T, F>): T {
   return e.wert;
 }
 
+/**
+ * `lvChangeSetAnwenden` für Tests, in denen das LV bestehen bleibt: Ein Ergebnis `null` (das ChangeSet entfernt das LV)
+ * ist dort ein Fehlschlag.
+ */
+export function anwenden(zustand: LvZustand | null, cs: LvChangeSet): LvZustand {
+  const neu = lvChangeSetAnwenden(zustand, cs);
+  if (neu === null) throw new Error('Das ChangeSet entfernt das LV.');
+  return neu;
+}
+
 /** Befehl ausführen und das ChangeSet anwenden; wirft bei Fehlerwert. */
 export function wende(zustand: LvZustand | null, befehl: LvBefehl): LvZustand {
-  return lvChangeSetAnwenden(zustand, erwarteOk(lvBefehlAusfuehren(zustand, befehl)));
+  return anwenden(zustand, erwarteOk(lvBefehlAusfuehren(zustand, befehl)));
+}
+
+/** Summen eines ChangeSets, das keine Summe ändert: auch keine alten Werte (v1.1a). */
+export const KEINE_SUMMEN = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: { positionen: [], gliederungen: [] } },
+} as const;
+
+const nachSchluessel = <T>(liste: readonly T[], schluessel: (x: T) => string): T[] =>
+  [...liste].sort((a, b) => (schluessel(a) < schluessel(b) ? -1 : schluessel(a) > schluessel(b) ? 1 : 0));
+
+/**
+ * Das ChangeSet mit kanonisch (nach Kennung) geordneten Summenlisten und ohne Hinweise, für den Vergleich mit der
+ * Umkehrung der Umkehrung: Die Summen werden als Mengen verglichen, nicht nach ihrer Reihenfolge (Ticket 30, Punkt 2;
+ * `LeistungsverzeichnisAnlegen` liefert sie in Knotenreihenfolge); Hinweise gehen nicht in die Umkehrung ein.
+ */
+export function ohneReihenfolge(cs: LvChangeSet): LvChangeSet {
+  const p = <T extends { positionId: string }>(l: readonly T[]): T[] =>
+    nachSchluessel(l, (x) => x.positionId);
+  const g = <T extends { gliederungId: string }>(l: readonly T[]): T[] =>
+    nachSchluessel(l, (x) => x.gliederungId);
+  const v: Summenvorher | undefined = cs.summen.vorher;
+  return {
+    art: cs.art,
+    leistungsverzeichnisId: cs.leistungsverzeichnisId,
+    kopf: cs.kopf,
+    knoten: cs.knoten,
+    ...(cs.papierkorb === undefined ? {} : { papierkorb: cs.papierkorb }),
+    ...(cs.lvStand === undefined ? {} : { lvStand: cs.lvStand }),
+    summen: {
+      ...cs.summen,
+      positionen: p(cs.summen.positionen),
+      gliederungen: g(cs.summen.gliederungen),
+      ...(v === undefined
+        ? {}
+        : {
+            vorher: {
+              ...v,
+              positionen: p(v.positionen),
+              gliederungen: g(v.gliederungen),
+              entfernt: {
+                positionen: p(v.entfernt.positionen),
+                gliederungen: g(v.entfernt.gliederungen),
+              },
+            },
+          }),
+    },
+  };
 }
 
 export function neuesLv(knoten: readonly Knoten[] = []): LvZustand {
@@ -281,7 +343,7 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
     mwstSatz: fx.mwstSatz as Prozent,
     nachlass,
     knoten,
-    wurzelId: fx.id as LeistungsverzeichnisId, // v1.1a: mechanisch angepasst, Folgeticket
+    wurzelId: fx.id as LeistungsverzeichnisId,
   };
 }
 

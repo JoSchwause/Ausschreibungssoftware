@@ -26,12 +26,13 @@ import {
   changeSetUmkehren,
   doppelteOrdnungszahlen,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   ozFehler,
   ozMaskeFehler,
   zaehlerSchritt,
 } from './index';
 import {
+  KEINE_SUMMEN,
+  anwenden,
   LV_ID,
   PROJEKT_ID,
   erwarteOk,
@@ -123,6 +124,8 @@ describe('Konstanten: Schritte und Längenregel', () => {
     expect(OZ_MAX_LAENGE).toBe(14);
     expect(OZ_ANNAHMEN.status).toBe('vorläufige Annahme, Entscheidung offen');
     expect(OZ_ANNAHMEN.ueberlauf).toMatch(/Schritt 5, dann 2, dann 1/);
+    expect(OZ_ANNAHMEN.ueberlauf).toMatch(/oz-schritt-ausgewichen/);
+    expect(OZ_ANNAHMEN.ueberlauf).toMatch(/oz-ueberlauf/);
   });
 
   it('die drei OZ-Befehle sind umgesetzt (kein Eintrag mehr in ZUSTAENDIGES_TICKET)', () => {
@@ -195,7 +198,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
   it('Gliederung +1, Positionen +10, führende Nullen, Hinweistexte ohne OZ, IDs bleiben', () => {
     const z = mitMaske(MASKE_STANDARD, beispielbaum());
     const cs = nummeriere(z);
-    const danach = lvChangeSetAnwenden(z, cs);
+    const danach = anwenden(z, cs);
     const soll: Record<string, string> = {
       T1: '01',
       T11: '01.01',
@@ -225,7 +228,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
 
   it('ohne Trennzeichen (1122PPPPI): Teile ohne Trenner aneinander', () => {
     const z = mitMaske(MASKE_OHNE_TRENNER, beispielbaum());
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'T1')).toBe('01');
     expect(ozVon(danach, 'T11')).toBe('0101');
     expect(ozVon(danach, 'P111')).toBe('01010010');
@@ -244,7 +247,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
       posKnoten('P', 'E', 0, '1.000', '1.000'),
     ];
     const z = mitMaske(MASKE_FD, kette);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'E')).toBe('01.01.01.01.1');
     expect(ozVon(danach, 'P')).toBe('01.01.01.01.1.0010');
     expect((ozVon(danach, 'P') ?? '').replaceAll('.', '')).toHaveLength(13);
@@ -264,7 +267,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
       { ...titelKnoten('T1', 'L1', 0) },
       posKnoten('P1', 'T1', 0, '1.000', '1.000'),
     ]);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'L1')).toBe('01');
     expect(ozVon(danach, 'T1')).toBe('01.01');
     expect(ozVon(danach, 'P1')).toBe('01.01.0010');
@@ -272,7 +275,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
 
   it('unbelegte untere Stufen (FD 3.3, 4.3.4): Position unter Stufe 1 hat nur zwei Teile, 01.0010', () => {
     const z = mitMaske(MASKE_FD, [titelKnoten('T1', LV_ID, 0), posKnoten('P1', 'T1', 0, '1.000', '1.000')]);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'P1')).toBe('01.0010');
   });
 
@@ -281,7 +284,7 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
       posKnoten('P1', LV_ID, 0, '1.000', '1.000'),
       posKnoten('P2', LV_ID, 1, '1.000', '1.000'),
     ]);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'P1')).toBe('0010');
     expect(ozVon(danach, 'P2')).toBe('0020');
   });
@@ -291,32 +294,32 @@ describe('Umnummerieren: Golden mit der Standardmaske', () => {
       posKnoten('Pb', LV_ID, 1, '1.000', '1.000'),
       posKnoten('Pa', LV_ID, 0, '1.000', '1.000'),
     ]);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'Pa')).toBe('0010');
     expect(ozVon(danach, 'Pb')).toBe('0020');
   });
 
   it('eine bereits kanonische OZ ergibt ein leeres ChangeSet, dasselbe Objekt als Zustand', () => {
     const z = mitMaske(MASKE_STANDARD, beispielbaum());
-    const z1 = lvChangeSetAnwenden(z, nummeriere(z));
+    const z1 = anwenden(z, nummeriere(z));
     const cs = nummeriere(z1);
     expect(keineAenderung(cs)).toBe(true);
-    expect(lvChangeSetAnwenden(z1, cs)).toBe(z1);
+    expect(anwenden(z1, cs)).toBe(z1);
   });
 
   it('Summen bleiben unverändert und das ChangeSet nennt keine Summen (A6)', () => {
     const z = mitMaske(MASKE_STANDARD, beispielbaum());
     const cs = nummeriere(z);
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-    expect(lvChangeSetAnwenden(z, cs).summen).toBe(z.summen);
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(anwenden(z, cs).summen).toBe(z.summen);
   });
 
   it('Anwenden und Umkehrung stellen den Vorzustand exakt her', () => {
     const z = mitMaske(MASKE_STANDARD, beispielbaum());
     const cs = nummeriere(z);
-    const danach = lvChangeSetAnwenden(z, cs);
+    const danach = anwenden(z, cs);
     expect(danach).not.toEqual(z);
-    expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(z);
   });
 });
 
@@ -333,7 +336,7 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
 
   it('eine Position mit ozIndex teilt den Grundteil der vorhergehenden Position und verbraucht keinen Zähler', () => {
     const z = mitMaske(MASKE_STANDARD, mitIndex());
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'P1')).toBe('01.0010');
     expect(ozVon(danach, 'P2')).toBe('01.0020');
     expect(ozVon(danach, 'P2A')).toBe('01.0020');
@@ -352,7 +355,7 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
         ordnungszahl: g.vorher.art === 'hinweis' ? null : g.vorher.ordnungszahl,
       }).toEqual(g.vorher);
     }
-    const danach = lvChangeSetAnwenden(z, cs);
+    const danach = anwenden(z, cs);
     const p = knotenMap(danach).get('P2A') as Position;
     expect(p.ozIndex).toBe('A');
   });
@@ -363,7 +366,7 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
       posKnoten('PA', 'T1', 0, '1.000', '1.000', { ozIndex: 'A' }),
       posKnoten('P2', 'T1', 1, '1.000', '1.000'),
     ]);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'PA')).toBe('01.0010');
     expect(ozVon(danach, 'P2')).toBe('01.0020');
   });
@@ -383,7 +386,7 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
       posKnoten('PA2', 'T1', 2, '1.000', '1.000', { ozIndex: 'A' }),
     ]);
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('oz-ungueltig');
+    expect(f.code).toBe('oz-doppelt');
     expect(f.knotenId).toBe('PA2');
   });
 
@@ -406,12 +409,22 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
 
   it('Überlauf der Positionszähler (E-09): 9 Positionen bei 2 Stellen laufen mit Schritt 10, die 10. weicht auf Schritt 5 aus', () => {
     const z9 = mitMaske(ohneTrenner2, positionen(9));
-    const danach9 = lvChangeSetAnwenden(z9, nummeriere(z9));
+    const danach9 = anwenden(z9, nummeriere(z9));
     expect(ozVon(danach9, 'P0')).toBe('10');
     expect(ozVon(danach9, 'P8')).toBe('90');
+    expect(nummeriere(z9).hinweise).toBeUndefined();
     // 10 × 10 = 100 passt nicht in 2 Stellen: die ganze Gruppe nimmt Schritt 5 (10 × 5 = 50)
     const z10 = mitMaske(ohneTrenner2, positionen(10));
-    const danach = lvChangeSetAnwenden(z10, nummeriere(z10));
+    const cs10 = nummeriere(z10);
+    // F2, E-09: ein Hinweis je ausgewichener Gruppe, an der ersten Position, der Befehl wird ausgeführt
+    expect(cs10.hinweise).toHaveLength(1);
+    expect(cs10.hinweise?.[0]).toMatchObject({
+      code: 'oz-schritt-ausgewichen',
+      knotenId: 'P0',
+      feld: 'ordnungszahl',
+    });
+    expect(cs10.hinweise?.[0]?.meldung).toMatch(/Schritt 5/);
+    const danach = anwenden(z10, cs10);
     expect(ozVon(danach, 'P0')).toBe('05');
     expect(ozVon(danach, 'P1')).toBe('10');
     expect(ozVon(danach, 'P9')).toBe('50');
@@ -420,7 +433,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
   it('Rückfall der Reihe nach 10, 5, 2, 1 (2 Stellen): 9, 19, 49 und 99 Positionen', () => {
     const letzte = (n: number): string | null => {
       const z = mitMaske(ohneTrenner2, positionen(n));
-      return ozVon(lvChangeSetAnwenden(z, nummeriere(z)), `P${String(n - 1)}`);
+      return ozVon(anwenden(z, nummeriere(z)), `P${String(n - 1)}`);
     };
     expect(letzte(9)).toBe('90'); // Schritt 10
     expect(letzte(19)).toBe('95'); // Schritt 5
@@ -437,7 +450,9 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       ...Array.from({ length: 3 }, (_, i) => posKnoten(`B${String(i)}`, 'T2', i, '1.000', '1.000')),
     ];
     const z = mitMaske(maske, knoten);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const cs = nummeriere(z);
+    expect(cs.hinweise?.map((h) => [h.code, h.knotenId])).toEqual([['oz-schritt-ausgewichen', 'A0']]);
+    const danach = anwenden(z, cs);
     expect(ozVon(danach, 'A0')).toBe('1.05'); // 12 × 10 passt nicht: Schritt 5
     expect(ozVon(danach, 'A11')).toBe('1.60');
     expect(ozVon(danach, 'B0')).toBe('2.10'); // 3 × 10 passt: Schritt 10
@@ -453,7 +468,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     // 9 Grundpositionen plus eine Indexposition: 9 Zähler, Schritt 10 genügt
     const n = [...positionen(9), posKnoten('PA', LV_ID, 9, '1.000', '1.000', { ozIndex: 'A' })];
     const z = mitMaske({ ...ohneTrenner2, index: alnum(1) }, n);
-    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    const danach = anwenden(z, nummeriere(z));
     expect(ozVon(danach, 'P8')).toBe('90');
     expect(ozVon(danach, 'PA')).toBe('90');
   });
@@ -461,7 +476,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
   it('Überlauf bei Schritt 1: 99 Positionen bei 2 Stellen passen, die 100. wird abgewiesen und genannt, nichts ändert sich', () => {
     const z = mitMaske(ohneTrenner2, positionen(100));
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P99');
   });
 
@@ -472,12 +487,15 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     const drei: OzMaske = { ...vier, position: num(3) };
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'OzMaskeSetzen', maske: drei }));
     expect(cs.kopf?.nachher?.ozMaske).toEqual(drei);
-    const danach = lvChangeSetAnwenden(z, cs);
+    expect(cs.hinweise).toEqual([
+      expect.objectContaining({ code: 'oz-schritt-ausgewichen', knotenId: 'P0', feld: 'ordnungszahl' }),
+    ]);
+    const danach = anwenden(z, cs);
     expect(ozVon(danach, 'P0')).toBe('005');
     expect(ozVon(danach, 'P149')).toBe('750');
     // Ziel mit 2 Stellen: höchstens 99 Positionen, auch mit Schritt 1
     const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: ohneTrenner2 });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P99');
     expect(z.leistungsverzeichnis.ozMaske).toEqual(vier);
   });
@@ -498,7 +516,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       Array.from({ length: 10 }, (_, i) => titel(i)),
     );
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('T9');
   });
 
@@ -506,10 +524,10 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     const maske: OzMaske = { gliederung: [], position: num(4), index: null, trennzeichen: null };
     const n = positionen(1000);
     const z999 = mitMaske(maske, n.slice(0, 999));
-    const danach999 = lvChangeSetAnwenden(z999, nummeriere(z999));
+    const danach999 = anwenden(z999, nummeriere(z999));
     expect(ozVon(danach999, 'P998')).toBe('9990');
     const z1000 = mitMaske(maske, n);
-    const danach = lvChangeSetAnwenden(z1000, nummeriere(z1000));
+    const danach = anwenden(z1000, nummeriere(z1000));
     expect(ozVon(danach, 'P0')).toBe('0005');
     expect(ozVon(danach, 'P999')).toBe('5000');
     expect(doppelteOrdnungszahlen(danach.leistungsverzeichnis.knoten)).toEqual([]);
@@ -521,7 +539,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       art: 'Umnummerieren',
       teilbaumId: id.eltern(LV_ID),
     });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P9999');
   });
 
@@ -559,7 +577,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     });
     const z = mitMaske(MASKE_STANDARD, knoten);
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern('T1') });
-    expect(f.code).toBe('oz-ungueltig');
+    expect(f.code).toBe('oz-doppelt');
     expect(f.knotenId).toBe('P111');
   });
 });
@@ -567,7 +585,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
 describe('Umnummerieren: Teilbaum', () => {
   it('nur die Nachfahren der Teilbaumwurzel, mit deren OZ als Vorsilbe; die Wurzel selbst bleibt', () => {
     const z0 = mitMaske(MASKE_STANDARD, beispielbaum());
-    const z1 = lvChangeSetAnwenden(z0, nummeriere(z0));
+    const z1 = anwenden(z0, nummeriere(z0));
     // Die Nachfahren von T1 werden verstellt; Umnummerieren(T1) stellt sie wieder her.
     const verstellt = {
       ...z1,
@@ -582,9 +600,7 @@ describe('Umnummerieren: Teilbaum', () => {
     };
     const cs = nummeriere(verstellt, 'T1');
     expect(cs.knoten.geaendert.map((g) => g.nachher.id)).toEqual(['T11', 'P111', 'P112', 'P12']);
-    expect(lvChangeSetAnwenden(verstellt, cs).leistungsverzeichnis.knoten).toEqual(
-      z1.leistungsverzeichnis.knoten,
-    );
+    expect(anwenden(verstellt, cs).leistungsverzeichnis.knoten).toEqual(z1.leistungsverzeichnis.knoten);
   });
 
   it('eine Teilbaumwurzel ohne gültige OZ liefert oz-ungueltig mit dem Knoten', () => {
@@ -611,31 +627,31 @@ describe('OrdnungszahlSetzen: gültige Eingaben', () => {
     const z = z0();
     const cs = setze(z, 'P111', '01.01.0010', 'A');
     expect(cs.knoten.geaendert).toHaveLength(1);
-    const danach = lvChangeSetAnwenden(z, cs);
+    const danach = anwenden(z, cs);
     const p = knotenMap(danach).get('P111') as Position;
     expect(p.ordnungszahl).toBe('01.01.0010');
     expect(p.ozIndex).toBe('A');
-    expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(z);
   });
 
   it('setzt die OZ einer Gliederung (Stufe 1: zwei Ziffern; Stufe 2: zwei Teile)', () => {
     const z = z0();
-    expect(ozVon(lvChangeSetAnwenden(z, setze(z, 'T1', '07')), 'T1')).toBe('07');
-    expect(ozVon(lvChangeSetAnwenden(z, setze(z, 'T11', '07.03')), 'T11')).toBe('07.03');
+    expect(ozVon(anwenden(z, setze(z, 'T1', '07')), 'T1')).toBe('07');
+    expect(ozVon(anwenden(z, setze(z, 'T11', '07.03')), 'T11')).toBe('07.03');
   });
 
   it('eine Position direkt unter Stufe 1 hat zwei Teile (unbelegte Stufe, FD 3.3, 4.3.4)', () => {
     const z = z0();
-    expect(ozVon(lvChangeSetAnwenden(z, setze(z, 'P12', '01.0010')), 'P12')).toBe('01.0010');
+    expect(ozVon(anwenden(z, setze(z, 'P12', '01.0010')), 'P12')).toBe('01.0010');
   });
 
   it('null löscht die OZ', () => {
-    const z = lvChangeSetAnwenden(z0(), nummeriere(z0()));
-    expect(ozVon(lvChangeSetAnwenden(z, setze(z, 'P111', null)), 'P111')).toBeNull();
+    const z = anwenden(z0(), nummeriere(z0()));
+    expect(ozVon(anwenden(z, setze(z, 'P111', null)), 'P111')).toBeNull();
   });
 
   it('derselbe Wert noch einmal: leeres ChangeSet', () => {
-    const z = lvChangeSetAnwenden(z0(), nummeriere(z0()));
+    const z = anwenden(z0(), nummeriere(z0()));
     expect(keineAenderung(setze(z, 'P111', '01.01.0010'))).toBe(true);
   });
 
@@ -643,13 +659,13 @@ describe('OrdnungszahlSetzen: gültige Eingaben', () => {
     const maske: OzMaske = { gliederung: [alnum(3)], position: num(4), index: null, trennzeichen: '-' };
     const z = mitMaske(maske, [titelKnoten('T1', LV_ID, 0)]);
     for (const oz of ['A1b', 'X_9', '001']) {
-      expect(ozVon(lvChangeSetAnwenden(z, setze(z, 'T1', oz)), 'T1')).toBe(oz);
+      expect(ozVon(anwenden(z, setze(z, 'T1', oz)), 'T1')).toBe(oz);
     }
   });
 
   it('Duplikate werden nicht abgewiesen (U5); die Hilfe nennt sie für die formale Prüfung', () => {
-    const z = lvChangeSetAnwenden(z0(), nummeriere(z0()));
-    const dup = lvChangeSetAnwenden(z, setze(z, 'P112', '01.01.0010'));
+    const z = anwenden(z0(), nummeriere(z0()));
+    const dup = anwenden(z, setze(z, 'P112', '01.01.0010'));
     expect(ozVon(dup, 'P112')).toBe('01.01.0010');
     expect(doppelteOrdnungszahlen(dup.leistungsverzeichnis.knoten)).toEqual([
       { ordnungszahl: '01.01.0010', ozIndex: null, knotenIds: ['P111', 'P112'] },
@@ -749,7 +765,7 @@ describe('OrdnungszahlSetzen: Eingaben, die abgewiesen werden', () => {
 describe('OzMaskeSetzen', () => {
   const z0 = (): LvZustand => {
     const z = mitMaske(MASKE_STANDARD, beispielbaum());
-    return lvChangeSetAnwenden(z, nummeriere(z));
+    return anwenden(z, nummeriere(z));
   };
 
   it('ein ChangeSet: neue Maske im Kopf und alle umnummerierten Knoten', () => {
@@ -759,12 +775,12 @@ describe('OzMaskeSetzen', () => {
     expect(cs.kopf?.nachher?.ozMaske).toEqual(MASKE_OHNE_TRENNER);
     // T1 und T2 (Stufe 1, zwei Ziffern) behalten ihre OZ „01“ und „02“: sie stehen nicht im ChangeSet.
     expect(cs.knoten.geaendert.map((g) => g.nachher.id)).toEqual(['T11', 'P111', 'P112', 'P12', 'P21']);
-    const danach = lvChangeSetAnwenden(z, cs);
+    const danach = anwenden(z, cs);
     expect(danach.leistungsverzeichnis.ozMaske).toEqual(MASKE_OHNE_TRENNER);
     expect(ozVon(danach, 'P111')).toBe('01010010');
     expect(ozVon(danach, 'P21')).toBe('020010');
     expect(danach.summen).toBe(z.summen);
-    expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(z);
   });
 
   it('ändert nur das Nötige: die OZ, die schon stimmt, steht nicht im ChangeSet', () => {
@@ -858,5 +874,58 @@ describe('PositionAnlegen und GliederungAnlegen vergeben keine OZ', () => {
       daten: positionsdaten('Neu'),
     });
     expect(ozVon(ohne, 'PO')).toBeNull();
+  });
+});
+
+describe('GliederungAnlegen mit OZ (Ticket 30, Punkt 6)', () => {
+  const z = mitMaske(MASKE_STANDARD, beispielbaum());
+  const anlegen = (oz: string | null | undefined, eltern: string = LV_ID): LvBefehl => ({
+    art: 'GliederungAnlegen',
+    id: id.titel('TN'),
+    gliederungsart: 'titel',
+    ort: { art: 'ende', elternId: id.eltern(eltern) },
+    kurztext: 'Neu',
+    ...(oz === undefined ? {} : { ordnungszahl: oz as Ordnungszahl | null }),
+  });
+
+  it('eine gültige OZ wird übernommen; fehlt sie oder ist sie null: null', () => {
+    expect(ozVon(wende(z, anlegen('03')), 'TN')).toBe('03');
+    expect(ozVon(wende(z, anlegen('01.05', 'T1')), 'TN')).toBe('01.05');
+    expect(ozVon(wende(z, anlegen(null)), 'TN')).toBeNull();
+    expect(ozVon(wende(z, anlegen(undefined)), 'TN')).toBeNull();
+  });
+
+  it('doppelte OZ ist bei der Handeingabe erlaubt (F2, U5)', () => {
+    const z1 = wende(z, {
+      art: 'OrdnungszahlSetzen',
+      knotenId: id.titel('T1') as never,
+      ordnungszahl: '01' as Ordnungszahl,
+      ozIndex: null,
+    });
+    expect(ozVon(wende(z1, anlegen('01')), 'TN')).toBe('01');
+  });
+
+  it.each([
+    ['falsche Stellenzahl', '1', LV_ID],
+    ['Buchstabe in numerischer Stufe', 'a1', LV_ID],
+    ['Stufe nur aus Nullen', '00', LV_ID],
+    ['zu wenige Teile für Stufe 2', '05', 'T1'],
+    ['tiefer als die Maske', '01.01.01', 'T11'],
+  ])('ungültig wie bei OrdnungszahlSetzen (%s): oz-ungueltig, feld ordnungszahl', (_name, oz, eltern) => {
+    const f = fehlerVon(z, anlegen(oz, eltern));
+    expect(f.code).toBe('oz-ungueltig');
+    expect(f.knotenId).toBe('TN');
+    expect(f.feld).toBe('ordnungszahl');
+    if (eltern === 'T11') return; // dort lässt sich kein Titel ohne OZ anlegen und dann setzen (Ebenen der Maske)
+    // Dieselbe OZ am selben Ort von Hand gesetzt: derselbe Code und dieselbe Meldung.
+    const mitTitel = wende(z, anlegen(null, eltern));
+    const g = fehlerVon(mitTitel, {
+      art: 'OrdnungszahlSetzen',
+      knotenId: id.titel('TN') as never,
+      ordnungszahl: oz as Ordnungszahl,
+      ozIndex: null,
+    });
+    expect(g.code).toBe(f.code);
+    expect(g.meldung).toBe(f.meldung);
   });
 });

@@ -73,7 +73,10 @@ export function lvZustandAusInhalt(
       inhalt,
     }),
   );
-  return lvChangeSetAnwenden(null, cs);
+  // Ticket 30: mechanisch angepasst (`lvChangeSetAnwenden` liefert `null`, wenn das ChangeSet das LV entfernt).
+  const zustand = lvChangeSetAnwenden(null, cs);
+  if (zustand === null) throw new Error('Das ChangeSet entfernt das LV.');
+  return zustand;
 }
 
 // --- Kleine LVs von Hand ------------------------------------------------------------------------------------------
