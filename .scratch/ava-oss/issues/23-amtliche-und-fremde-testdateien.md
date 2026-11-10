@@ -1,6 +1,6 @@
 # 23: Amtliche und fremde Testdateien einbinden (F3b)
 
-Status: needs-info (amtliche Dateien gemergt 2026-11-10; Dateien freier Projekte fehlen, siehe next-decisions.md E-15)
+Status: done (amtliche Dateien gemergt 2026-11-10; Teil „freie Projekte“ entfällt nach E-15, eigene Dateien aus Ticket 22 genügen; fremde synthetische X84/X86 werden bei G3 erneut geprüft)
 Type: task
 Welle: 0/1 · Strang: F · Paket: `fixtures/extern/`
 Blocked by: 03

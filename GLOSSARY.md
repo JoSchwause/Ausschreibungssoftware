@@ -37,15 +37,15 @@ Kleinste kalkulierbare und abrechenbare Leistungseinheit im LV. Besteht typische
 Reguläre, verbindlich auszuführende Position, deren Menge und Gesamtpreis (GP = Menge × EP) vollständig in die Titel- und LV-Summe einfließen.
 
 ### Bedarfsposition (Eventualposition)
-Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht feststeht:
+Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht feststeht. Bedarfs- und Wahlsummen werden getrennt ausgewiesen (E-04). Bedarf, Wahl, Stundenlohn und Pauschal sind einzeln kombinierbare Merkmale einer Position (E-05):
 - **Ohne Gesamtbetrag (Standard nach VOB)**: Bieter gibt einen Einheitspreis (EP) an, der Gesamtpreis (GP) wird jedoch **nicht** in die Angebotssumme eingerechnet (oder separat ausgewiesen).
 - **Mit Gesamtbetrag**: Menge × EP fließt in die Wertungssumme ein (nur in begründeten Ausnahmefällen zulässig).
 
 ### Wahlposition (Alternativposition)
-Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
+Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
 ### Zuschlagsposition
-Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09).
+Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Ab v1.1b/K6 gilt GAEB-Semantik: ein Prozentsatz auf die Summe der Bezugspositionen, mit mehreren Bezugsformen (Liste mit Teilmengen, alle Positionen einer Gliederung, markierte Positionen); bis dahin rechnet der Kern sie vorläufig wie eine Normalposition (Entscheidung E-03, 2026-11-10).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -147,10 +147,10 @@ Rechnerischer Vergleichsbieter im Preisspiegel, der nicht selbst angeboten hat: 
 Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %).
 
 ### Nachlass
-Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet.
+Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet. Der Nachlassbetrag wird auf 2 Stellen gerundet und dann abgezogen; ein negatives Netto nach Nachlass ist ein Befund der LV-Prüfung (E-06).
 
 ### Befehlsprotokoll
-Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Quellzustand und in v1 nicht sichtbar (ADR 0009).
+Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Quellzustand und in v1 nicht sichtbar (ADR 0009). Bei Massenbefehlen (z. B. GAEB-Import) werden nur Kopf und Prüfsumme protokolliert (E-13).
 
 ### DIN 276 (Kosten im Bauwesen)
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.

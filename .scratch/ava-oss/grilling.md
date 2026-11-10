@@ -140,6 +140,39 @@ explizit geantwortet), **offen**.
   Speicher. Export und Import schreibt die Anwendung selbst, mit Schemaversion und Migrationen (A8).
   ADR 0002 angepasst. (2026-11-09)
 
+## Stufe 3 — Runde vor Welle 2 (E-01 bis E-20, 2026-11-10)
+
+Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle beantwortet.
+
+- **E-01** Prüfung `vertrag` v1 (G-50) — *entschieden*. Geprüft und bestätigt; Änderungen über E-02.
+- **E-02** `vertrag` v1.1 — *entschieden*. Zwei serielle Tickets: v1.1a „Lücken“ (neun Punkte), v1.1b
+  „Inhaltsmodell“ (E-03, E-04, E-05, E-10, E-11, E-13). Nutzer prüft beide.
+- **E-03** Zuschlagsposition — *entschieden*. GAEB-Semantik: Prozentsatz auf die Summe der Bezugspositionen,
+  mehrere Bezugsformen. Vor K6 die Fachdokumentation wörtlich zitieren. Ändert Fixture `typisch` und Annahme A4.
+- **E-04** Bedarf und Wahl in den Summen — *entschieden*. Vorläufige Regel gilt; getrennte Summenfelder;
+  „Wählen“ erst bei der Vergabe (Welle 4); Gruppe und Variante aus GAEB.
+- **E-05** Positionsart — *entschieden*. Kombinierbare Merkmale (Bedarf, Wahl, Stundenlohn, Pauschal).
+- **E-06** Nachlass-Rundung — *entschieden*. Betrag auf 2 Stellen runden, dann abziehen. Negatives Netto nach
+  Nachlass ist ein Befund (K8), keine Sperre.
+- **E-07** Rundung negativer Werte — *entschieden*. Betrag runden, Vorzeichen wieder davor. Büro bei Gelegenheit fragen.
+- **E-08** Gliederung — *entschieden*. Los oberste Stufe (zählt zu 5); Positionen direkt unter dem LV erlaubt;
+  Lose und Titel nebeneinander verboten.
+- **E-09** Ordnungszahl — *entschieden*. Annahmen 1–5 gelten; bei Überlauf automatisch Schritt 5, 2, 1 mit Hinweis.
+- **E-10** Langtext — *entschieden*. GAEB-abbildbare Teilmenge in v1.1b.
+- **E-11** GAEB-Umfang v1 — *entschieden*. Auftraggeber, Vergabeinformationen, Leit-/Unterbeschreibung; Rest
+  Befund und beim Export mit Warnung verworfen.
+- **E-12** Feldbefehle — *entschieden*. Kern-Ticket am Anfang von Welle 2.
+- **E-13** Befehlsprotokoll — *entschieden*. Bei Massenbefehlen nur Kopf und Prüfsumme (ADR 0009 ergänzt).
+- **E-14** Ein Tab je Datenbank — *entschieden*. Angenommen, Meldung im zweiten Tab.
+- **E-15** Testdateien freier Projekte — *entschieden*. Teil entfällt; Prüfung bei G3.
+- **E-16** BVBS-Prüfkriterien — *entschieden*. Eigene Zählung mit zweitem Zähler; BVBS-Anfrage optional.
+- **E-17** DCO und Prüfweg — *entschieden*. DCO erst für Beiträge von außen; ab Welle 2 ein PR je Ticket mit
+  Review-Agent; dieser Branch als PR mit Review und Merge-Commit nach `main`.
+- **E-18** Grid-Bedienung — *entschieden*. Excel-Abweichungen bleiben bis zum Interview-Prototyp.
+- **E-19** Aufräumen nach Welle 1 — *entschieden*. Ein Ticket, MwSt-Standard 19,00 % mit Befund.
+- **E-20** Schnitt von Welle 2 — *entschieden*. Reihenfolge laut `next-decisions.md` mit v1.1a/v1.1b;
+  Interview-Prototyp jetzt; Preisspiegel-Typen erst nach M1.
+
 ## Widersprüche (Stand nach der Sitzung)
 
 | Widerspruch | Auflösung |
@@ -153,5 +186,6 @@ explizit geantwortet), **offen**.
 | Kein Ereignisprotokoll (ADR 0006), Recherche „Muss“ | G-24: Nebenbuch, ADR 0009 |
 | „VOB 80“ zweimal belegt | Das `vob80`-Flag der Recherche (§ 2 Abs. 3 VOB/B, Schwellen 110 % und 80 %) ist belegt, `map-kosten.md` Zeile 96. Die zweite Bedeutung („80 % bei strittigen Nachträgen“) habe ich nicht gefunden. Vor A1 klären. |
 | Zulage (Vorbild) und Zuschlagsposition (GAEB) | G-22: Zuschlagsposition, GLOSSARY angepasst |
+| Zuschlagsposition als Menge × EP (Kern, Fixtures) und als Prozentzuschlag (GAEB, G-22) | E-03: GAEB-Semantik, Kern und Fixture ändern sich mit K6 |
 | XSD-Validierung nur in CI (Q3/M2) und eigene Prüfung | G-12: ADR 0010 |
 | C3: Umsetzende Agenten lesen `okf/research/` | Mit G-44 entfällt das. Regel C3 angepasst |

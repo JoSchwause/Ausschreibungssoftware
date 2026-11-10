@@ -21,7 +21,7 @@ Lesen von 3.2 und weitere Phasen sind Ticket G4.
 
 - [x] Liest alle X81/X83-Dateien aus `fixtures/extern/` (Ticket 23), die Version 3.3 sind, ohne Absturz; Befunde je Datei als Golden-Datei
 - [x] Liest die zehn Fehlerdateien (ungeschlossenes Tag, Dezimalkomma, ungültiges Enum, doppelte ID, Latin-1 trotz UTF-8, OZ-Überlauf …) mit je der erwarteten Warnung oder dem Fehler und liefert die übrigen Positionen
-- [ ] Ergebnis `Leistungsverzeichnis` stimmt bei der BVBS-Prüfdatei Bauausführung 3.3 (X83) in Positionszahl, Gliederung und OZ-Maske mit den Angaben der BVBS-Prüfkriterien überein; Zahl und Quelle im Ticket
+- [ ] Ergebnis `Leistungsverzeichnis` stimmt bei der BVBS-Prüfdatei Bauausführung 3.3 (X83) in Positionszahl, Gliederung und OZ-Maske mit der eigenen Zählung überein, die ein zweiter unabhängiger Zähler bestätigt hat (geändert nach E-16, 2026-11-10); Zahl und Quelle im Ticket
 - [x] Indexpositionen (`RNoIndex`), Bedarfs-, Wahl- und Zuschlagspositionen (`MarkupItem`) werden erkannt und dem richtigen Typ zugeordnet
 - [x] Eingebettete Bilder im Langtext gehen nicht verloren und gelangen nicht in die Metadaten
 - [x] Sicherheitstests: Billion-Laughs-Datei und Datei mit externer Entität werden abgewiesen

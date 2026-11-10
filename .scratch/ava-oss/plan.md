@@ -137,3 +137,8 @@ Stand 2026-11-09:
 7. ✅ **Welle 0 und 1 umgesetzt (2026-11-10)** auf Branch `claude/wave-0-1-orchestration-nkdqfx`: Tickets 02–07, 10,
    19–22 gemergt, 23 teilweise. ⏳ **Offen:** Prüfung von `vertrag` durch den Nutzer und die Grilling-Runde vor
    Welle 2, siehe `.scratch/ava-oss/next-decisions.md` (E-01 bis E-20). Tickets für Welle 2 werden danach geschnitten.
+8. ✅ **Grilling-Runde vor Welle 2 beantwortet (2026-11-10)**: E-01 bis E-20 in `next-decisions.md`, `grilling.md`
+   (Stufe 3), `docs/regeln.md` (F1–F6, P8, P9, N2, N5), `GLOSSARY.md` und ADR 0009 zurückgeschrieben. Wave-2-Schnitt:
+   `vertrag` v1.1a → v1.1b (seriell, Nutzer prüft) ‖ Aufräumen nach Welle 1 ‖ Interview-Prototyp (Ticket 18);
+   dann Kern-Feldbefehle und Anpassung von `speicher`/`gaeb`/`ui-grid`; dann K5–K7, S2, U3, G2, O1-Spike.
+   ⏳ **Offen:** Tickets für Welle 2 einzeln schneiden (je ein Pull Request, beginnend mit v1.1a).

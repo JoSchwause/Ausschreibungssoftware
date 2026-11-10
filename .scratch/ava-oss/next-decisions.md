@@ -1,13 +1,14 @@
 # Nächste Entscheidungen: Grilling-Runde vor Welle 2
 
 Stand: 2026-11-10, nach Abschluss von Welle 0 und 1 auf dem Branch `claude/wave-0-1-orchestration-nkdqfx`.
+**Alle Fragen E-01 bis E-20 sind am 2026-11-10 beantwortet** (Rückschrift nach `grilling.md`, `docs/regeln.md`, `GLOSSARY.md`, `plan.md` erledigt; Tickets für Welle 2 werden danach einzeln geschnitten).
 Diese Datei eröffnet die nächste Grilling-Runde. Jede Frage hat eine Kennung (E-xx), den Befund aus der
 Umsetzung, die Möglichkeiten, eine Empfehlung und das, was sie blockiert. Antworten bitte je Frage unter
 `**Antwort:**` eintragen; danach werden sie nach `grilling.md`, `docs/regeln.md`, `GLOSSARY.md` und in die
 Tickets für Welle 2 zurückgeschrieben (wie in `plan.md` §5).
 
-Quellen der Befunde: die `## Comments` der Tickets in `.scratch/ava-oss/issues/`. Nichts hiervon ist
-entschieden. Wo der Code schon etwas tut, ist es eine **vorläufige Annahme** an genau einer Stelle
+Quellen der Befunde: die `## Comments` der Tickets in `.scratch/ava-oss/issues/`. Die Befunde und Empfehlungen
+unten sind der Stand vor der Antwort; maßgeblich ist jeweils die Zeile `**Antwort:**`. Wo der Code schon etwas tut, ist es eine **vorläufige Annahme** an genau einer Stelle
 (`packages/kern/src/regeln.ts`, `summenregeln.ts`, `ozregeln.ts`) und leicht umkehrbar.
 
 ## Was vorliegt
@@ -45,7 +46,7 @@ Ticket 02. Die wichtigsten Entwurfsentscheidungen: Bezeichner ASCII-transliterie
 `Dezimal` ist eine kanonische Zeichenkette mit fester Stellenzahl; `Position` ist flach mit Merkmalen statt
 Untertypen; das ChangeSet trägt alten und neuen Stand.
 **Empfehlung:** Prüfen, Änderungen in E-02 sammeln.
-**Antwort:**
+**Antwort:** Geprüft und bestätigt („Looks good now“). Keine Befunde über die neun Lücken aus E-02 hinaus; Änderungen laufen über v1.1a/v1.1b. (2026-11-10)
 
 ### E-02 `vertrag` v1.1 als eigenes Ticket vor Welle 2
 
@@ -64,7 +65,7 @@ Untertypen; das ChangeSet trägt alten und neuen Stand.
 
 **Empfehlung:** Ein Ticket „`vertrag` v1.1“ als erstes Ticket von Welle 2, mit deiner Prüfung, danach
 Anpassung in `kern`, `speicher`, `gaeb`, `ui-grid` je als kleines Folgeticket.
-**Antwort:**
+**Antwort:** Ja, alle neun Lücken plus die Ergebnisse dieser Runde, geschnitten als zwei serielle `vertrag`-Tickets: **v1.1a „Lücken“** (die neun Punkte, dazu Befehlsfehlercode für negatives Netto nach Nachlass) und **v1.1b „Inhaltsmodell“** (Zuschlagsposition, Bedarf/Wahl-Summen, Gruppe/Variante, kombinierbare Positionsmerkmale, formatierter Langtext mit Textergänzungen, Kopfdaten Auftraggeber/Vergabeinformationen, Leit-/Unterbeschreibung, Protokolleintrag für Massenbefehle). Der Nutzer prüft beide (G-50). (2026-11-10)
 
 ### E-03 Zuschlagsposition: eigene Menge × EP oder Prozentsatz auf Bezugspositionen?
 
@@ -79,7 +80,7 @@ Zuschlag auf die Summe der Bezugspositionen; das habe ich nicht gegen die Fachdo
 **Empfehlung:** (a), weil G-22 das schon sagt und X83/X84 sonst nicht verlustfrei laufen. Vorher den
 Abschnitt der Fachdokumentation zitieren lassen. Folge: Fixture `typisch` und Annahme A4 ändern sich.
 **Blockiert:** K6, G2.
-**Antwort:**
+**Antwort:** (a): GAEB-Semantik, Prozentsatz auf die Summe der Bezugspositionen, mehrere Bezugsformen. Bedingung für K6: Vor der Umsetzung wird der Abschnitt der Fachdokumentation wörtlich zitiert, nicht sinngemäß wiedergegeben. Folge: Fixture `typisch` und Annahme A4 ändern sich. (2026-11-10)
 
 ### E-04 Bedarfs- und Wahlpositionen in den Summen
 
@@ -93,7 +94,7 @@ Bei Wahlpositionen gehen Gruppen- und Variantennummer aus GAEB verloren; es gibt
 **Empfehlung:** (1) ja. (2) ja, zwei zusätzliche Summenfelder. (3) erst bei der Vergabe (Welle 4).
 (4) ja, sonst ist X83 nicht verlustfrei.
 **Blockiert:** K5, K6, G2.
-**Antwort:**
+**Antwort:** Ja zu allen vier: (1) vorläufige Regel gilt, (2) Bedarfs- und Wahlsummen getrennt ausweisen (zwei zusätzliche Summenfelder), (3) „Wählen“ einer Wahlposition erst bei der Vergabe (Welle 4), (4) Gruppen- und Variantennummer aus GAEB übernehmen. (2026-11-10)
 
 ### E-05 Positionsart: ein Wert oder kombinierbare Merkmale?
 
@@ -105,7 +106,7 @@ Stundenlohn und Pauschal rechnet der Kern vorläufig wie eine Normalposition.
 **Möglichkeiten:** (a) Merkmale als einzelne Felder, kombinierbar. (b) Ein Wert, Kombinationen gehen verloren.
 **Empfehlung:** (a).
 **Blockiert:** K5, G2.
-**Antwort:**
+**Antwort:** (a): Bedarf, Wahl, Stundenlohn und Pauschal als einzelne, kombinierbare Merkmale. (2026-11-10)
 
 ### E-06 Nachlass: Rundungsreihenfolge und Grenzen
 
@@ -118,7 +119,7 @@ und nichts warnt.
 **Empfehlung:** Betrag runden, dann abziehen (so steht der Nachlass als eigene Zeile auf dem Papier).
 Negatives Netto nach Nachlass als Befund der LV-Prüfung (K8), nicht als Sperre.
 **Blockiert:** K4 ist fertig; betrifft V1 (Angebots-Nachlass) und K8.
-**Antwort:**
+**Antwort:** Ja: Nachlassbetrag auf 2 Stellen runden, dann abziehen. Negatives Netto nach Nachlass ist ein Befund der LV-Prüfung (K8), keine Sperre. (2026-11-10)
 
 ### E-07 Rundung negativer Werte bestätigen
 
@@ -128,7 +129,7 @@ Wikipedia „Rundung“). Der Normtext selbst und eine VOB- oder GAEB-Stelle wur
 Regel (zur größeren Zahl hin, −0,025 → −0,02) unterscheidet sich nur bei exakten Hälften.
 **Empfehlung:** Bestätigen. Das Büro des ersten Nutzers bei Gelegenheit fragen, ob Abzugspositionen dort so
 gerundet werden.
-**Antwort:**
+**Antwort:** Bestätigt: Betrag kaufmännisch runden, Vorzeichen wieder davor. Bei Gelegenheit das Büro des ersten Nutzers fragen, ob Abzugspositionen dort so gerundet werden. (2026-11-10)
 
 ### E-08 Gliederung: Los, Positionen an der Wurzel, Mischung
 
@@ -139,7 +140,7 @@ obersten Stufe.
 **Empfehlung:** Los-Regel als entschieden übernehmen. Positionen direkt unter dem LV erlauben (kleine LVs).
 Lose und Titel nebeneinander verbieten.
 **Blockiert:** K8, G2.
-**Antwort:**
+**Antwort:** Ja zu allen drei: Los ist die oberste Stufe und zählt zu den höchstens 5 Stufen; Positionen direkt unter dem LV sind erlaubt; Lose und Titel nebeneinander auf der obersten Stufe sind verboten. (2026-11-10)
 
 ### E-09 Ordnungszahl: Regeln, die das Ticket offen ließ
 
@@ -159,7 +160,7 @@ Index, ohne Trennzeichen), Index genau 1 Zeichen. Vorläufige Annahmen in `ozreg
 **Fragen:** Gelten 1–5? Bei 2: lieber automatisch auf Schritt 5, 2, 1 ausweichen?
 **Empfehlung:** 1–5 bestätigen; bei 2 ausweichen und einen Hinweis zeigen, statt abzuweisen.
 **Blockiert:** U3.
-**Antwort:**
+**Antwort:** Ja zu 1–5. Bei Überlauf automatisch auf Schritt 5, 2, 1 ausweichen und einen Hinweis zeigen, statt abzuweisen. (2026-11-10)
 
 ### E-10 Langtext: Formatierung
 
@@ -173,7 +174,7 @@ unformatiert und kennzeichnet den Export als Entwurf.
 **Empfehlung:** (a) im Zuge von E-02, sonst ist das Meilenstein-Kriterium M2 („identisches Modell beim
 Re-Import“) nur für unformatierte LVs wahr.
 **Blockiert:** G2, U4.
-**Antwort:**
+**Antwort:** (a): `Langtext` wird in v1.1b auf die GAEB-abbildbare Teilmenge erweitert (fett, kursiv, unterstrichen, Absätze, Listen, Tabellen, Textergänzungen des Bieters). (2026-11-10)
 
 ### E-11 GAEB: Welche nicht abgebildeten Elemente braucht v1?
 
@@ -186,7 +187,7 @@ Losgruppen.
 als Befund belassen und beim Export unverändert verwerfen, mit Warnung. Vor der Entscheidung ein echtes LV
 des Büros daraufhin ansehen.
 **Blockiert:** G2.
-**Antwort:**
+**Antwort:** Ja: Auftraggeber und Vergabeinformationen (Kopf) sowie Leit-/Unterbeschreibung gehören in v1. Der Rest bleibt Befund beim Import und wird beim Export mit Warnung verworfen. Neu bewerten, sobald ein echtes LV des Büros vorliegt. (2026-11-10)
 
 ### E-12 Kern: Feldbefehle ohne Ticket
 
@@ -196,7 +197,7 @@ kein Ticket. Das Grid sendet diese Befehle schon; der Kern antwortet „nicht zu
 noch gar keine Ausführung.
 **Empfehlung:** Ein kleines Kern-Ticket „Feldbefehle“ an den Anfang von Welle 2 (vor U3). EPA bleibt bei K7.
 Angebots-Befehle kommen mit V1 in Welle 3.
-**Antwort:**
+**Antwort:** Ja: kleines Kern-Ticket „Feldbefehle“ am Anfang von Welle 2, vor U3. EPA bleibt bei K7, Angebots-Befehle kommen mit V1 in Welle 3. (2026-11-10)
 
 ## B. Betrieb und Produkt
 
@@ -208,7 +209,7 @@ Angebots-Befehle kommen mit V1 in Welle 3.
 **Möglichkeiten:** (a) So lassen. (b) Bei Massenbefehlen nur Kopf und Prüfsumme protokollieren. (c) Protokoll
 nicht in die Projektdatei exportieren.
 **Empfehlung:** (b).
-**Antwort:**
+**Antwort:** (b): Bei Massenbefehlen werden nur Kopf und Prüfsumme protokolliert (Typ des Protokolleintrags in v1.1b, ADR 0009 ergänzt). (2026-11-10)
 
 ### E-14 Ein Tab je Datenbank
 
@@ -216,7 +217,7 @@ nicht in die Projektdatei exportieren.
 Pages (G-53). Der Preis: Die Datenbank gehört genau einer Verbindung. Ein zweiter Tab bekommt den Fehler
 `gesperrt`. Die Alternative erlaubt mehrere Tabs, braucht aber Kopfzeilen, die GitHub Pages nicht setzen kann.
 **Empfehlung:** Annehmen. Im zweiten Tab die Meldung „Tethys AVA ist in einem anderen Tab geöffnet“ zeigen (S2).
-**Antwort:**
+**Antwort:** Ja: Der zweite Tab erhält `gesperrt` und zeigt „Tethys AVA ist in einem anderen Tab geöffnet“ (S2). (2026-11-10)
 
 ### E-15 Testdateien freier Projekte (Ticket 23)
 
@@ -225,7 +226,7 @@ abgelehnt. Kein fremdes Projekt wurde geprüft. Ticket 22 hat stattdessen zwölf
 Sicherheitsdateien geschrieben.
 **Möglichkeiten:** (a) Den Teil streichen; eigene Dateien genügen. (b) Zugriff freigeben und Ticket 23 fortsetzen.
 **Empfehlung:** (a). Fremde synthetische X84/X86 erst bei G3 wieder prüfen.
-**Antwort:**
+**Antwort:** (a) für beide Teile: Der Teil „Dateien freier Projekte“ in Ticket 23 entfällt, eigene Dateien genügen; fremde synthetische X84/X86 werden bei G3 erneut geprüft. (2026-11-10)
 
 ### E-16 BVBS-Prüfkriterien ohne öffentliche Zahl
 
@@ -236,7 +237,7 @@ Einzelne in den Kriterien genannte Positionen stimmen überein.
 **Möglichkeiten:** (a) Kriterium auf „eigene Zählung, mit zweitem unabhängigen Zähler bestätigt“ ändern.
 (b) Bei BVBS nachfragen (service@bvbs.de), zusammen mit der Lizenzfrage aus G-55.
 **Empfehlung:** (a) jetzt, (b) als Kann.
-**Antwort:**
+**Antwort:** (a): Kriterium in Ticket 22 lautet „eigene Zählung, mit zweitem unabhängigen Zähler bestätigt“. Die Nachfrage bei BVBS (service@bvbs.de) bleibt ein Kann, zusammen mit der Lizenzfrage aus G-55. (2026-11-10)
 
 ### E-17 DCO und Prüfweg
 
@@ -249,7 +250,7 @@ von außen (G-43)? (2) Soll Welle 2 mit einem Pull Request je Ticket und getrenn
 (3) Soll dieser Branch jetzt als Pull Request nach `main`?
 **Empfehlung:** (1) DCO erst für Beiträge von außen; der Prüfschritt bleibt in der CI. (2) Ja, ab Welle 2.
 (3) Ja, nach E-01.
-**Antwort:**
+**Antwort:** (1) Das DCO gilt erst für Beiträge von außen (G-43); der Prüfschritt bleibt in der CI. (2) Ab Welle 2 ein Pull Request je Ticket mit getrenntem Review-Agenten (P7). (3) Dieser Branch geht als Pull Request nach `main`, wird von einem getrennten Review-Agenten geprüft und mit einem Merge-Commit gemergt (Ticketverlauf bleibt sichtbar). Schlägt der DCO-Schritt beim ersten Pull Request fehl, wird das gemeldet und nicht umgangen. (2026-11-10)
 
 ### E-18 Grid-Bedienung
 
@@ -257,7 +258,7 @@ von außen (G-43)? (2) Soll Welle 2 mit einem Pull Request je Ticket und getrenn
 unten); die Leertaste wählt die Zeile aus (Excel beginnt zu schreiben). Einfügen aus der Zwischenablage legt
 immer neue Positionen an und überschreibt nie bestehende Zeilen.
 **Empfehlung:** Am Prototyp mit dem Büro klären (Ticket 18); bis dahin so lassen.
-**Antwort:**
+**Antwort:** Ja: Die zwei Abweichungen von Excel (Enter startet das Bearbeiten, Leertaste wählt die Zeile) und das Einfügen als neue Positionen bleiben bis zur Klärung mit dem Büro am Prototyp (Ticket 18). (2026-11-10)
 
 ### E-19 Kleine Aufräumarbeiten (nur Zustimmung nötig)
 
@@ -268,7 +269,7 @@ immer neue Positionen an und überschreibt nie bestehende Zeilen.
 4. Die MwSt fehlt in X81/X83. Der Leser setzt einen vom Aufrufer gelieferten Satz und meldet das. Standard 19,00 %?
 
 **Empfehlung:** Alle vier als ein Ticket „Aufräumen nach Welle 1“.
-**Antwort:**
+**Antwort:** Ja, ein Ticket „Aufräumen nach Welle 1“ mit allen vier Punkten. MwSt-Standard 19,00 % für X81/X83 ohne Angabe, mit Befund. (2026-11-10)
 
 ## C. Schnitt von Welle 2
 
@@ -295,7 +296,7 @@ den Fixtures gebaut werden, bevor Welle 2 startet? (3) Vor V1/V2 (Welle 3) brauc
 Preisspiegel-Typen; jetzt schon mitschneiden?
 **Empfehlung:** (1) ja. (2) ja, parallel zu Stufe 1, weil E-18 und Teile von E-11 daran hängen. (3) nein,
 erst nach M1.
-**Antwort:**
+**Antwort:** (1) Reihenfolge wie vorgeschlagen, mit `vertrag` v1.1a, dann v1.1b (seriell, Nutzer prüft); Aufräumen parallel dazu. (2) Ja: Der Prototyp für das Interview (Ticket 18) wird jetzt auf `ui-grid` und den Fixtures gebaut, parallel zu Stufe 1. (3) Nein: Preisspiegel-Typen erst nach M1. (2026-11-10)
 
 ## Nicht geprüft in Welle 0 und 1
 

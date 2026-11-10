@@ -11,3 +11,4 @@ Dies ersetzt teilweise ADR 0006, die einen Event-Log ausschloss. Grund: Das Rech
 - Jeder Befehl (Regel A5) schreibt einen Protokolleintrag; kein direkter Tabellenschreibzugriff.
 - Das Protokoll ist nicht in der UI sichtbar und wird nicht von Undo verwendet.
 - Entscheidung getroffen im Grilling vom 2026-11-09 (Frage G-24).
+- Ergänzung E-13 (2026-11-10): Bei Massenbefehlen (z. B. `LeistungsverzeichnisAnlegen` aus einem GAEB-Import) werden nur Kopf und Prüfsumme protokolliert, nicht der vollständige Befehl. Alle anderen Befehle bleiben vollständig im Protokoll.
