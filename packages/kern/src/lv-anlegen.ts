@@ -16,8 +16,7 @@ import type {
 } from '@tethys/vertrag';
 import { positionMitEinheiten } from './einheit';
 import { nein, ok } from './fehler';
-import { befehlshinweis, nettoHinweise } from './hinweise';
-import { maskePruefen } from './ozregeln';
+import { anlegeHinweise } from './hinweise';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
 import { kanonisch, ohneKnoten, ohneWurzel } from './struktur';
 import { LEERES_SUMMENVORHER, summenBerechnen, summenDerKnoten } from './summen';
@@ -51,12 +50,7 @@ export function leistungsverzeichnisAnlegen(
     inhalt.knoten.map((k) => (k.art === 'position' ? positionMitEinheiten(k) : k)),
   );
   const summen = summenBerechnen({ id: b.id, knoten, nachlass: inhalt.nachlass, mwstSatz: inhalt.mwstSatz });
-  const hinweise = [
-    ...maskePruefen(inhalt.ozMaske).map((p) =>
-      befehlshinweis('oz-maske-ungueltig', p.meldung, undefined, 'ozMaske'),
-    ),
-    ...nettoHinweise(summen.gesamt),
-  ];
+  const hinweise = anlegeHinweise(inhalt.ozMaske, summen.gesamt);
   return ok({
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: b.id,

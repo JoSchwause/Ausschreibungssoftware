@@ -4,7 +4,8 @@
 // ChangeSet gleich gelten; die OZ-Hinweise entstehen in `oz-befehle.ts`.
 
 import { NULL_BETRAG, vergleiche } from '@tethys/dezimal';
-import type { Befehlshinweis, Befehlshinweiscode, Gesamtsummen, KnotenId } from '@tethys/vertrag';
+import type { Befehlshinweis, Befehlshinweiscode, Gesamtsummen, KnotenId, OzMaske } from '@tethys/vertrag';
+import { maskePruefen } from './ozregeln';
 
 export function befehlshinweis(
   code: Befehlshinweiscode,
@@ -41,5 +42,16 @@ export function nettoHinweise(gesamt: Gesamtsummen | null): Befehlshinweis[] {
       undefined,
       'nachlass',
     ),
+  ];
+}
+
+/**
+ * Hinweise beim Anlegen eines Aggregats mit vollem Inhalt (LV, Auftrags-LV): der Maskenbefund (`maskePruefen`, U5:
+ * angenommen, nur gemeldet) als `oz-maske-ungueltig` mit `feld: 'ozMaske'`, dann das negative Netto.
+ */
+export function anlegeHinweise(maske: OzMaske, gesamt: Gesamtsummen): Befehlshinweis[] {
+  return [
+    ...maskePruefen(maske).map((p) => befehlshinweis('oz-maske-ungueltig', p.meldung, undefined, 'ozMaske')),
+    ...nettoHinweise(gesamt),
   ];
 }

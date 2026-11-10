@@ -3,6 +3,7 @@
 // Fachtickets (06 OZ, …) ergänzen ihre Handler in `ausfuehren.ts`.
 
 export { BEFEHLS_HANDLER, ZUSTAENDIGES_TICKET, lvBefehlAusfuehren } from './ausfuehren';
+export { auftragsLvBefehlAusfuehren } from './auftrags-lv';
 export {
   LEERE_SUMMENAENDERUNG,
   LEERER_SUMMENSTAND,

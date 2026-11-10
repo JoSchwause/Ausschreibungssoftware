@@ -139,10 +139,11 @@ export function beitragVon(stand: Summenstand, k: Knoten): Betrag {
 
 /**
  * Berechnet den vollständigen Summenstand eines LV aus seinen Knoten neu (Orakel; auch Startwert eines neuen LV).
- * Rein und unabhängig von jedem früheren Stand. Die Einträge stehen in Reihenfolge des Knotenarrays.
+ * Rein und unabhängig von jedem früheren Stand. Die Einträge stehen in Reihenfolge des Knotenarrays. `id` ist die Wurzel
+ * (LV oder Auftrags-LV).
  */
 export function summenBerechnen(
-  lv: Pick<Leistungsverzeichnis, 'id' | 'knoten' | 'nachlass' | 'mwstSatz'>,
+  lv: Pick<Leistungsverzeichnis, 'knoten' | 'nachlass' | 'mwstSatz'> & { readonly id: string },
 ): Summenstand {
   const index = indexVon(lv.id, lv.knoten);
   const reihe = praeorder(lv.id, index.kinder);

@@ -109,7 +109,7 @@ export function positionsdatenFehler(
 }
 
 /** Form der Stammdaten, die `LeistungsverzeichnisAnlegen` mitbringt (Zahlen in kanonischer Schreibweise). */
-export function inhaltKopfFehler(inhalt: LvInhalt): Befehlsfehler | null {
+export function inhaltKopfFehler(inhalt: Pick<LvInhalt, 'mwstSatz' | 'nachlass'>): Befehlsfehler | null {
   const mwst = alsProzent(inhalt.mwstSatz);
   if (!mwst.ok) return befehlsfehler('ungueltige-eingabe', mwst.fehler.meldung, undefined, 'mwstSatz');
   if (inhalt.nachlass !== null) {
