@@ -21,7 +21,8 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   Nebenwirkung von Feature-Arbeit.
 - **A5** [NEU] **Jede Änderung ist ein Befehl:** `(Zustand, Befehl) → ChangeSet`. UI, GAEB-Import,
   Undo und Speicher gehen alle über Befehle. Keine direkten Tabellenschreibzugriffe aus der UI.
-  Jeder Befehl wird im Befehlsprotokoll festgehalten (ADR 0009).
+  Jeder Befehl wird im Befehlsprotokoll festgehalten (ADR 0009); bei Massenbefehlen genügen Kopf und
+  Prüfsumme [ENTSCHIEDEN, E-13].
 - **A6** [ADR 0003] ChangeSet = geänderte Knoten + betroffene Summen; Neuberechnung nur im
   betroffenen Teilbaum.
 - **A7** [NEU] Stabile, undurchsichtige IDs (UUIDv7) für jede Entität. Die Ordnungszahl ist
@@ -37,13 +38,38 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   verboten (Lint-Regel + Branded Types).
 - **N2** [ADR 0003] GP = kaufmännisch gerundet(Menge × EP, 2). Summen sind Summen der gerundeten
   GPs. MwSt wird auf die Nettosumme nach Nachlass gerechnet, nicht je Position. Ein MwSt-Satz je LV
-  (G-28).
+  (G-28). Rundung negativer Werte: Betrag kaufmännisch runden, Vorzeichen wieder davor (−2,5 → −3)
+  [ENTSCHIEDEN, E-07].
 - **N3** [ENTSCHIEDEN, G-21] Nachkommastellen stehen als Konstanten an genau einer Stelle: EP 3
   gespeichert, Menge 3, Prozent 2, Betrag 2.
 - **N4** [NEU] de-DE-Parsen und -Formatieren nur an den Rändern (UI, GAEB, Excel). Der Kern sieht
   nur Dezimalwerte.
 - **N5** [ENTSCHIEDEN, G-23] Nachlass nur auf LV-Ebene, genau einer je LV, prozentual oder als
-  Absolutbetrag. Er ist umkehrbar und wird nicht in die EP umgelegt.
+  Absolutbetrag. Er ist umkehrbar und wird nicht in die EP umgelegt. Der Nachlassbetrag wird auf 2 Stellen
+  gerundet und dann abgezogen; ein negatives Netto nach Nachlass ist ein Befund der LV-Prüfung, keine
+  Sperre [ENTSCHIEDEN, E-06].
+
+## Fachregeln LV
+
+- **F1** [ENTSCHIEDEN, E-08] Gliederung: Das Los ist die oberste Stufe und zählt zu den höchstens 5 Stufen.
+  Positionen und Hinweistexte direkt unter dem LV sind erlaubt. Lose und Titel nebeneinander auf der
+  obersten Stufe sind verboten.
+- **F2** [ENTSCHIEDEN, E-09] OZ höchstens 14 Zeichen, Index genau 1 Zeichen. Unbelegte Stufen werden mit
+  weniger Teilen gespeichert. Indexposition übernimmt die Nummer der vorangehenden Position. Umnummerieren
+  weist doppelte OZ ab, die Handeingabe lässt sie zu (U5). Alphanumerische Stufen erzeugen beim
+  Umnummerieren nur Ziffern. Bei Überlauf weicht die Vergabe automatisch auf Schritt 5, 2, 1 aus und zeigt
+  einen Hinweis.
+- **F3** [ENTSCHIEDEN, E-03] Zuschlagsposition: GAEB-Semantik (`MarkupItem`), Prozentsatz auf die Summe der
+  Bezugspositionen, mehrere Bezugsformen. Vor der Umsetzung (K6) wird die Fachdokumentation wörtlich zitiert.
+- **F4** [ENTSCHIEDEN, E-04] Bedarf ohne Gesamtbetrag wird ausgewiesen und nicht summiert, mit Gesamtbetrag
+  summiert. Wahlposition wird ausgewiesen, nicht summiert und ersetzt die Grundposition nie. Bedarfs- und
+  Wahlsummen werden getrennt ausgewiesen. Gruppe und Variante aus GAEB bleiben erhalten. Das „Wählen“ einer
+  Wahlposition geschieht bei der Vergabe.
+- **F5** [ENTSCHIEDEN, E-05] Bedarf, Wahl, Stundenlohn und Pauschal sind einzeln kombinierbare Merkmale.
+- **F6** [ENTSCHIEDEN, E-10, E-11] `Langtext` trägt die GAEB-abbildbare Teilmenge (fett, kursiv,
+  unterstrichen, Absätze, Listen, Tabellen, Textergänzungen). Auftraggeber, Vergabeinformationen,
+  Leit- und Unterbeschreibung gehören in v1; übrige nicht abgebildete GAEB-Elemente sind Befund beim Import
+  und werden beim Export mit Warnung verworfen.
 
 ## Sprache und Benennung
 
@@ -96,7 +122,9 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
 - **U2** [NEU] Genau eine gemeinsame Grid-Komponente (`ui-grid`) für LV, Preisspiegel, Aufmaß und
   Kosten. Keine zweite Grid-Implementierung.
 - **U3** [NEU] Tastatur zuerst: Jede Grid-Aktion ist per Tastatur erreichbar; Zellnavigation wie in
-  Excel; Einfügen aus Excel über die Zwischenablage.
+  Excel; Einfügen aus Excel über die Zwischenablage. Bekannte Abweichungen (Enter startet das Bearbeiten,
+  Leertaste wählt die Zeile, Einfügen legt neue Positionen an) bleiben bis zum Interview-Prototyp
+  [ENTSCHIEDEN, E-18].
 - **U4** [ENTSCHIEDEN, G-31] Eigenes Erscheinungsbild über Design-Tokens, dicht und tabellenartig,
   hell und dunkel. Keine Ähnlichkeit mit Layout, Icons oder Namen der Referenzsoftware.
 - **U5** [ENTSCHIEDEN, G-13] Validierung blockiert nie die Eingabe. Probleme erscheinen in der formalen
@@ -119,5 +147,8 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   Offen ist derzeit nur G-27 (vertagt bis vor Welle 5).
 - **P6** Sitzungen, die die Realität des Projekts ändern, aktualisieren das OKF und schreiben eine
   Übergabenotiz.
-- **P7** [ENTSCHIEDEN, G-50] Ein Review-Agent prüft jeden PR. Der Nutzer prüft Verträge, ADRs und
-  Meilensteine.
+- **P7** [ENTSCHIEDEN, G-50, E-17] Ein Review-Agent prüft jeden PR. Der Nutzer prüft Verträge, ADRs und
+  Meilensteine. Ab Welle 2 gibt es einen Pull Request je Ticket, gemergt mit Merge-Commit.
+- **P8** [ENTSCHIEDEN, E-17] Das DCO gilt für Beiträge von außen (G-43); der Prüfschritt bleibt in der CI.
+- **P9** [ENTSCHIEDEN, E-02] Änderungen am `vertrag` laufen in eigenen, seriellen Tickets, die der Nutzer
+  prüft (v1.1a, v1.1b).

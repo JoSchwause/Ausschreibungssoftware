@@ -37,15 +37,15 @@ Kleinste kalkulierbare und abrechenbare Leistungseinheit im LV. Besteht typische
 Reguläre, verbindlich auszuführende Position, deren Menge und Gesamtpreis (GP = Menge × EP) vollständig in die Titel- und LV-Summe einfließen.
 
 ### Bedarfsposition (Eventualposition)
-Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht feststeht:
+Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht feststeht. Bedarfs- und Wahlsummen werden getrennt ausgewiesen (E-04). Bedarf, Wahl, Stundenlohn und Pauschal sind einzeln kombinierbare Merkmale einer Position (E-05):
 - **Ohne Gesamtbetrag (Standard nach VOB)**: Bieter gibt einen Einheitspreis (EP) an, der Gesamtpreis (GP) wird jedoch **nicht** in die Angebotssumme eingerechnet (oder separat ausgewiesen).
 - **Mit Gesamtbetrag**: Menge × EP fließt in die Wertungssumme ein (nur in begründeten Ausnahmefällen zulässig).
 
 ### Wahlposition (Alternativposition)
-Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
+Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
 ### Zuschlagsposition
-Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09).
+Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Ab v1.1b/K6 gilt GAEB-Semantik: ein Prozentsatz auf die Summe der Bezugspositionen, mit mehreren Bezugsformen (Liste mit Teilmengen, alle Positionen einer Gliederung, markierte Positionen); bis dahin rechnet der Kern sie vorläufig wie eine Normalposition (Entscheidung E-03, 2026-11-10).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -58,10 +58,59 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
 - **Langtext**: Vollständige, eindeutige und erschöpfende Beschreibung der geforderten Leistung (oft formatiert als Rich-Text/HTML oder GAEB-Textstruktur, ggf. aus Standardleistungsbüchern wie STLB-Bau abgeleitet).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
-- **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position (typischerweise mit bis zu 3 Nachkommastellen).
+- **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
 - **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`).
-- **Einheitspreis (EP)**: Netto-Preis pro Einheit (typischerweise mit 2, optional 3 Nachkommastellen).
+- **Einheitspreis (EP)**: Netto-Preis pro Einheit, mit 3 Nachkommastellen gespeichert (Entscheidung G-21).
 - **Gesamtpreis (GP)**: Produkt aus Menge × EP, kaufmännisch auf 2 Nachkommastellen (Cent) gerundet.
+
+---
+
+## Datenmodell, Befehle und Prüfung (Paket `vertrag`)
+
+### Nachkommastellen (Dezimalwert)
+Menge und Einheitspreis haben 3, Prozentwerte und Beträge 2 Nachkommastellen (G-21). Zahlen sind Dezimalwerte, nie Gleitkommazahlen; sie stehen im Speicher und in der Projektdatei als Zeichenkette in Punktnotation (`"12.35"`). Das deutsche Format (Dezimalkomma) gibt es nur an den Rändern der Anwendung.
+
+### Kaufmännische Rundung
+Rundung auf die Skala des Zahlentyps (Paket `dezimal`): Ist die erste wegfallende Ziffer 5 bis 9, wird aufgerundet, sonst abgerundet (half-up, DIN-1333-Regel für Beträge: 2,5 → 3 und 2,4 → 2). **Negative Werte** (Abzugspositionen, Nachlass-Beträge) werden nach ihrem Betrag gerundet, danach wird das Vorzeichen wieder gesetzt: Die Hälfte rundet also von Null weg (−2,5 → −3; −13,3750 → −13,38). Das Ergebnis ist nie „−0,00“. Beispiel: Menge −2,500 × EP 0,010 = −0,025 ergibt GP −0,03 (nicht −0,02).
+
+### Gliederung
+Oberbegriff für Los und Titel im LV-Baum. Eine Gliederung hat Ordnungszahl und Kurztext, aber keine Menge und keinen Preis; ihre Summe verdichtet die darunterliegenden Positionen.
+
+### Angebot
+Die Preise eines Bieters zu den Positionen eines Ausschreibungs-LV. Ein Angebot trägt höchstens einen eigenen Nachlass und verweist auf die Positionen über deren Positionsidentität. Der MwSt-Satz ist der des LV.
+
+### Bieter
+Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels.
+
+### Auftrags-Leistungsverzeichnis
+Das nach dem Zuschlag aus Ausschreibungs-LV und beauftragtem Angebot entstehende LV mit den Vertragspreisen. Eigenes Aggregat mit den Positions-IDs der Ausschreibung (ADR 0011).
+
+### Positionsidentität
+Die unveränderliche, undurchsichtige Kennung (UUIDv7) einer Position. Sie ist im Ausschreibungs-LV, in jedem Angebot und im Auftrags-LV dieselbe und der einzige gemeinsame Schlüssel der Aggregate. Die Ordnungszahl ist nie ein Schlüssel.
+
+### Nicht angeboten
+Zustand einer Angebotsposition, zu der der Bieter keinen Preis abgegeben hat. Er ist verschieden von einem angebotenen Preis von 0,00.
+
+### Befehl
+Jede Änderung am Projekt ist ein Befehl, reine Daten ohne Funktionen und Zeitangaben (z. B. `MengeAendern`, `KnotenLoeschen`). Aus Zustand und Befehl entsteht ein ChangeSet oder ein Fehlerwert.
+
+### ChangeSet
+Ergebnis eines Befehls: die hinzugefügten, geänderten (mit altem und neuem Stand) und entfernten Knoten sowie die betroffenen Summen. UI, Speicher und Undo wenden ChangeSets an.
+
+### Protokolleintrag
+Ein Eintrag des Befehlsprotokolls: wer hat wann welchen Befehl ausgeführt. Genau ein Eintrag je Befehl.
+
+### Projektdatei
+Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
+
+### Prüfbefund
+Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
+
+### Entwurfskennzeichen
+Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.
+
+### Schreibweise im Code
+Bezeichner und Befehlsnamen im Code folgen dem Glossar, aber ASCII-transliteriert: ä = ae, ö = oe, ü = ue, ß = ss (z. B. `KnotenLoeschen`, `Ausreisser`). Technische Begriffe ohne Fachbezug bleiben englisch.
 
 ---
 
@@ -98,10 +147,10 @@ Rechnerischer Vergleichsbieter im Preisspiegel, der nicht selbst angeboten hat: 
 Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %).
 
 ### Nachlass
-Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet.
+Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet. Der Nachlassbetrag wird auf 2 Stellen gerundet und dann abgezogen; ein negatives Netto nach Nachlass ist ein Befund der LV-Prüfung (E-06).
 
 ### Befehlsprotokoll
-Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Quellzustand und in v1 nicht sichtbar (ADR 0009).
+Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Quellzustand und in v1 nicht sichtbar (ADR 0009). Bei Massenbefehlen (z. B. GAEB-Import) werden nur Kopf und Prüfsumme protokolliert (E-13).
 
 ### DIN 276 (Kosten im Bauwesen)
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.

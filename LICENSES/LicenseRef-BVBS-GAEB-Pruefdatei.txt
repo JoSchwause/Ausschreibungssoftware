@@ -1,0 +1,16 @@
+Official BVBS / GAEB test files (GAEB DA XML)
+
+No licence is stated by the publisher. The files named in fixtures/extern/HERKUNFT.md are
+official conformance test files published by BVBS and GAEB for free download (pages
+https://www.bvbs.de/en/zertifizierungen/ and
+https://www.gaeb.de/de/service/downloads/gaeb-datenaustausch/). Neither page grants or
+excludes any right to copy, modify or redistribute them.
+
+They are included here byte-identical and unmodified, only as conformance test data for
+reading and writing GAEB DA XML, under decision G-55 of this project. The project does not
+claim any right in these files. They are NOT licensed under AGPL-3.0-or-later or under any
+other open licence, and nothing in this repository's licence applies to them.
+
+Each file is listed with its source URL, retrieval date and SHA-256 checksum in
+fixtures/extern/HERKUNFT.md. On request of the rights holder, or whenever the rights
+situation turns out to be unsuitable, the files are removed (see fixtures/extern/README.md).

@@ -1,0 +1,14 @@
+node_modules
+dist
+pnpm-lock.yaml
+LICENSE
+LICENSES
+.scratch
+okf
+docs
+fixtures
+playwright-report
+test-results
+.claude
+GLOSSARY.md
+AGENTS.md

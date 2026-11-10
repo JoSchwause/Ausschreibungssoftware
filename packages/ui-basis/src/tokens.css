@@ -1,0 +1,116 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/*
+ * Design-Tokens von Tethys AVA (Ticket 20, Regel U4): die einzige Quelle für Farbe, Abstand,
+ * Typografie, Radius und Schatten. Hell ist der Standard, dunkel wird über
+ * data-theme="dark" geschaltet (am <html>-Element oder an einem Teilbaum). Farben stehen als #rrggbb, damit der Kontrasttest
+ * (tokens.test.ts) sie direkt aus dieser Datei lesen kann.
+ */
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* Flächen */
+  --tx-color-surface: #ffffff;
+  --tx-color-surface-raised: #f4f7f8;
+  --tx-color-surface-sunken: #e9eef0;
+  --tx-color-surface-hover: #dfe6e9;
+  --tx-color-border: #c3ccd1;
+  --tx-color-border-strong: #7d8c94;
+
+  /* Text */
+  --tx-color-text: #172026;
+  --tx-color-text-muted: #4a5963;
+
+  /* Akzent (Tiefseegrün) */
+  --tx-color-accent: #0b6670;
+  --tx-color-accent-hover: #09525a;
+  --tx-color-accent-contrast: #ffffff;
+  --tx-color-accent-text: #0b6670;
+  --tx-color-accent-subtle: #d8eef0;
+
+  /* Status */
+  --tx-color-danger: #b3261e;
+  --tx-color-danger-subtle: #fbe4e2;
+  --tx-color-warning: #7a4b00;
+  --tx-color-warning-subtle: #fcefd0;
+  --tx-color-success: #1b6b3a;
+  --tx-color-success-subtle: #dcf2e3;
+
+  --tx-color-focus: #1d5fd1;
+  --tx-color-overlay: rgb(10 20 25 / 0.45);
+
+  /* Schatten */
+  --tx-shadow-sm: 0 1px 2px rgb(10 20 25 / 0.12);
+  --tx-shadow-md: 0 4px 12px rgb(10 20 25 / 0.18);
+  --tx-shadow-lg: 0 12px 32px rgb(10 20 25 / 0.28);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --tx-color-surface: #12181c;
+  --tx-color-surface-raised: #192126;
+  --tx-color-surface-sunken: #0d1215;
+  --tx-color-surface-hover: #243139;
+  --tx-color-border: #33434c;
+  --tx-color-border-strong: #7d8f99;
+
+  --tx-color-text: #e6ecef;
+  --tx-color-text-muted: #a3b1b9;
+
+  --tx-color-accent: #4cc0c8;
+  --tx-color-accent-hover: #6ed0d7;
+  --tx-color-accent-contrast: #06242a;
+  --tx-color-accent-text: #62cdd4;
+  --tx-color-accent-subtle: #12353a;
+
+  --tx-color-danger: #ff8f86;
+  --tx-color-danger-subtle: #3b1b19;
+  --tx-color-warning: #ffc861;
+  --tx-color-warning-subtle: #382a0c;
+  --tx-color-success: #7bd99a;
+  --tx-color-success-subtle: #133420;
+
+  --tx-color-focus: #7fb0ff;
+  --tx-color-overlay: rgb(0 0 0 / 0.6);
+
+  --tx-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --tx-shadow-md: 0 4px 12px rgb(0 0 0 / 0.55);
+  --tx-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.65);
+}
+
+/* Modusunabhängige Tokens */
+:root {
+  /* Abstand */
+  --tx-space-1: 2px;
+  --tx-space-2: 4px;
+  --tx-space-3: 8px;
+  --tx-space-4: 12px;
+  --tx-space-5: 16px;
+  --tx-space-6: 24px;
+  --tx-space-7: 32px;
+
+  /* Typografie: Systemschriften, damit die PWA offline ohne Webfonts auskommt */
+  --tx-font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --tx-font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+  --tx-font-size-xs: 11px;
+  --tx-font-size-sm: 12px;
+  --tx-font-size-md: 13px;
+  --tx-font-size-lg: 15px;
+  --tx-font-size-xl: 18px;
+  --tx-line-height: 1.4;
+  --tx-weight-normal: 400;
+  --tx-weight-medium: 560;
+  --tx-weight-bold: 680;
+
+  /* Radius */
+  --tx-radius-sm: 2px;
+  --tx-radius-md: 4px;
+  --tx-radius-lg: 6px;
+
+  /* Dichte */
+  --tx-control-height: 28px;
+  --tx-control-height-sm: 22px;
+  --tx-focus-ring: 2px solid var(--tx-color-focus);
+}
