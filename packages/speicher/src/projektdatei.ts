@@ -5,12 +5,14 @@ import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
   Ergebnis,
+  Knoten,
   LeistungsverzeichnisId,
   Projektdatei,
   ProjektId,
   Speicherfehler,
 } from '@tethys/vertrag';
 import { dekodiereProjektdatei } from './dekoder';
+import { altSpalten } from './zeilen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { aggregatIds, leseAngebot, leseAuftragsLv, leseLv, leseProjekt, leseProtokoll } from './lesen';
@@ -43,6 +45,46 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
       holen(leseAuftragsLv(db, a as AuftragsLeistungsverzeichnisId), `Auftrags-LV ${a}`),
     ),
     protokoll: leseProtokoll(db, id),
+  };
+}
+
+/**
+ * // v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 trägt Positionen noch in der Form vor v1.1b (`positionsart`,
+ * `pauschal`, `bedarfMitGesamtbetrag`, `bezugspositionId`, `grundpositionId`); der Export in Version 1 ist byte-gleich der
+ * eingefrorenen Datei und bleibt es. Diese Funktion schreibt die Positionen der LV und Auftrags-LV in diese Form
+ * zurück; eine Position, die sich darin nicht verlustfrei ablegen lässt, weist `altSpalten` ab (Q5). Das Folgeticket
+ * `speicher` hebt die Datei mit einer Migration auf die neue Form (A8) und löscht diese Funktion. Befehle im Protokoll
+ * gehen unverändert durch (undurchsichtiges JSON).
+ */
+export function projektdateiInAlterForm(d: Projektdatei): unknown {
+  const knoten = (ks: readonly Knoten[]): unknown[] =>
+    ks.map((k) => {
+      if (k.art !== 'position') return k;
+      const rest: Record<string, unknown> = { ...k };
+      for (const feld of ['merkmale', 'zuschlag', 'leitbeschreibung']) Reflect.deleteProperty(rest, feld);
+      const [art, pauschal, mit, bezug, grund] = altSpalten(k);
+      return {
+        ...rest,
+        positionsart: art,
+        pauschal: pauschal === 1,
+        bedarfMitGesamtbetrag: mit === 1,
+        bezugspositionId: bezug,
+        grundpositionId: grund,
+      };
+    });
+  return {
+    ...d,
+    leistungsverzeichnisse: d.leistungsverzeichnisse.map((z) => ({
+      ...z,
+      leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten: knoten(z.leistungsverzeichnis.knoten) },
+    })),
+    auftragsLeistungsverzeichnisse: d.auftragsLeistungsverzeichnisse.map((z) => ({
+      ...z,
+      auftragsLeistungsverzeichnis: {
+        ...z.auftragsLeistungsverzeichnis,
+        knoten: knoten(z.auftragsLeistungsverzeichnis.knoten),
+      },
+    })),
   };
 }
 

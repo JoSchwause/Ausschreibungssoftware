@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Deutsche Texte des Grids (L1, U8) an einer Stelle. Keine Übersetzung in v1.
 
-import type { LvSpalte, Positionsart } from '@tethys/vertrag';
+import type { LvSpalte, Position } from '@tethys/vertrag';
 
 export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
   ordnungszahl: 'Ordnungszahl',
@@ -13,7 +13,21 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
   gesamtpreis: 'Gesamtpreis',
 };
 
-export const ARTTEXT: Readonly<Record<Positionsart, string>> = {
+/**
+ * // v1.1b: mechanisch angepasst, Folgeticket: `vertrag` hat seit v1.1b keine einzelne Positionsart mehr. Die Spalte „Art“ zeigt weiter genau eine Art, die
+ * sich aus den Merkmalen ergibt (Zuschlag vor Wahl vor Bedarf vor Stundenlohn). Das Folgeticket `ui-grid` zeigt alle Merkmale.
+ */
+export type Anzeigeart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
+
+export function anzeigeart(p: Pick<Position, 'merkmale' | 'zuschlag'>): Anzeigeart {
+  if (p.zuschlag !== null) return 'zuschlag';
+  if (p.merkmale.wahl !== null) return 'wahl';
+  if (p.merkmale.bedarf !== null) return 'bedarf';
+  if (p.merkmale.stundenlohn) return 'stundenlohn';
+  return 'normal';
+}
+
+export const ARTTEXT: Readonly<Record<Anzeigeart, string>> = {
   normal: 'Normal',
   bedarf: 'Bedarf',
   wahl: 'Wahl',

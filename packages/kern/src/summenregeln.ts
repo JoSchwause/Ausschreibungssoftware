@@ -20,7 +20,7 @@ export const SUMMEN_ANNAHMEN: {
     'vorläufige Annahme, Entscheidung offen (Positionsarten, MwSt-Grenzen); entschieden: Nachlass (N5, E-06, 2026-11-10)',
   /** (1) `positionGehtInSumme`: Fixture-Annahmen A1 bis A4; `stundenlohn` und `pauschal` sind von keiner abgedeckt. */
   positionsarten:
-    'normal, zuschlag (eigene Menge × EP) und stundenlohn gehen ein; bedarf nur mit bedarfMitGesamtbetrag; wahl nie; ' +
+    'normal, zuschlag (eigene Menge × EP) und stundenlohn gehen ein; bedarf nur mit Gesamtbetrag (Bedarf mit-gesamtbetrag); wahl nie; ' +
     'das Merkmal pauschal ändert nichts (Menge × EP)',
   /** (2) `nachlassBetrag` und `nettoNachNachlass`: Nachlassbetrag auf 2 Stellen runden, dann abziehen (N5, E-06; Fixture A6). */
   nachlassRundung:
@@ -44,17 +44,12 @@ const HUNDERT_PROZENT: Prozent = (() => {
  * `stundenlohn` und das Merkmal `pauschal` kommen in keiner Fixture-Annahme vor; sie werden wie eine
  * Normalposition (Menge × EP) behandelt. Das ist gesondert zu entscheiden.
  */
-export function positionGehtInSumme(p: Pick<Position, 'positionsart' | 'bedarfMitGesamtbetrag'>): boolean {
-  switch (p.positionsart) {
-    case 'normal':
-    case 'zuschlag':
-    case 'stundenlohn':
-      return true;
-    case 'bedarf':
-      return p.bedarfMitGesamtbetrag;
-    case 'wahl':
-      return false;
-  }
+export function positionGehtInSumme(p: Pick<Position, 'merkmale'>): boolean {
+  // v1.1b: mechanisch angepasst, Folgeticket. gleiche Wirkung wie vor v1.1b (Wahl nie; Bedarf nur mit Gesamtbetrag; sonst ja); die Kombinationen
+  // der neuen Merkmale entscheidet K5, hier gilt die Reihenfolge Wahl vor Bedarf.
+  if (p.merkmale.wahl !== null) return false;
+  if (p.merkmale.bedarf !== null) return p.merkmale.bedarf === 'mit-gesamtbetrag';
+  return true;
 }
 
 /**

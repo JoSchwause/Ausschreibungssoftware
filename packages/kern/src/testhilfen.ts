@@ -25,7 +25,8 @@ import type {
   Position,
   PositionId,
   Positionsdaten,
-  Positionsart,
+  Positionsmerkmale,
+  Zuschlag,
   Prozent,
   Titel,
   TitelId,
@@ -66,22 +67,98 @@ export function inhalt(knoten: readonly Knoten[] = []): LvInhalt {
   };
 }
 
-export function positionsdaten(kurztext: string, ueber: Partial<Positionsdaten> = {}): Positionsdaten {
+// v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b hat eine Position keine einzelne Positionsart mehr. Die Tests des Kerns schreiben ihre Fälle
+// weiter in der alten Kurzform (`positionsart: 'wahl'`, `bedarfMitGesamtbetrag`, `bezugspositionId` …); `positionsfelder`
+// übersetzt sie in `merkmale` und `zuschlag`. Nur Testhilfe, kein Kern-Verhalten. Gruppe und Variante bleiben `null`.
+
+/** Alte Positionsart, nur als Kurzform der Tests. */
+export type Positionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
+
+export interface PositionsKurzform {
+  positionsart?: Positionsart;
+  pauschal?: boolean;
+  bedarfMitGesamtbetrag?: boolean;
+  bezugspositionId?: string | null;
+  grundpositionId?: string | null;
+}
+
+/** Wandelt die Kurzform in Felder des Vertrags; alle anderen Felder bleiben, wie sie sind. */
+export function positionsfelder<T extends PositionsKurzform>(
+  ueber: T,
+): Partial<Position> & Omit<T, keyof PositionsKurzform> {
+  const { positionsart, pauschal, bedarfMitGesamtbetrag, bezugspositionId, grundpositionId, ...rest } = ueber;
+  const aus: Record<string, unknown> = { ...rest };
+  if (
+    positionsart !== undefined ||
+    pauschal !== undefined ||
+    bedarfMitGesamtbetrag !== undefined ||
+    grundpositionId !== undefined
+  ) {
+    const merkmale: Positionsmerkmale = {
+      bedarf:
+        positionsart === 'bedarf'
+          ? bedarfMitGesamtbetrag === true
+            ? 'mit-gesamtbetrag'
+            : 'ohne-gesamtbetrag'
+          : null,
+      wahl:
+        positionsart === 'wahl'
+          ? { gruppe: null, variante: null, grundpositionId: (grundpositionId ?? null) as PositionId | null }
+          : null,
+      stundenlohn: positionsart === 'stundenlohn',
+      pauschal: pauschal ?? false,
+      zuschlagskennzeichen: false,
+    };
+    aus['merkmale'] = merkmale;
+  }
+  if (positionsart === 'zuschlag') {
+    const z: Zuschlag = {
+      prozentsatz: null,
+      bezug: {
+        art: 'positionen',
+        positionen:
+          bezugspositionId == null ? [] : [{ positionId: bezugspositionId as PositionId, teilmenge: null }],
+      },
+    };
+    aus['zuschlag'] = z;
+  }
+  return aus as Partial<Position> & Omit<T, keyof PositionsKurzform>;
+}
+
+/** Die alte Positionsart einer Position, für Zählungen in Tests. */
+export function positionsartVon(p: Pick<Position, 'merkmale' | 'zuschlag'>): Positionsart {
+  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
+  const gesetzt = [
+    p.zuschlag !== null,
+    p.merkmale.wahl !== null,
+    p.merkmale.bedarf !== null,
+    p.merkmale.stundenlohn,
+  ];
+  if (gesetzt.filter(Boolean).length > 1)
+    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
+  if (p.zuschlag !== null) return 'zuschlag';
+  if (p.merkmale.wahl !== null) return 'wahl';
+  if (p.merkmale.bedarf !== null) return 'bedarf';
+  if (p.merkmale.stundenlohn) return 'stundenlohn';
+  return 'normal';
+}
+
+export function positionsdaten(
+  kurztext: string,
+  ueber: Partial<Positionsdaten> & PositionsKurzform = {},
+): Positionsdaten {
   return {
     ordnungszahl: null,
     ozIndex: null,
-    positionsart: 'normal',
-    pauschal: false,
-    bedarfMitGesamtbetrag: false,
-    bezugspositionId: null,
-    grundpositionId: null,
+    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
+    zuschlag: null,
     kurztext,
     langtext: [],
     menge: null,
     einheit: null,
     einheitspreis: null,
     epa: null,
-    ...ueber,
+    ...positionsfelder(ueber),
   };
 }
 
@@ -176,11 +253,14 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       id: k.id as PositionId,
       ordnungszahl: (k.ordnungszahl ?? null) as Ordnungszahl | null,
       ozIndex: k.ozIndex ?? null,
-      positionsart: k.positionsart ?? 'normal',
-      pauschal: false,
-      bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-      bezugspositionId: (k.bezugspositionId as PositionId | undefined) ?? null,
-      grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+      ...(({ merkmale, zuschlag }) => ({ merkmale, zuschlag }))(
+        positionsdaten('', {
+          positionsart: k.positionsart ?? 'normal',
+          bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
+          bezugspositionId: k.bezugspositionId ?? null,
+          grundpositionId: k.grundpositionId ?? null,
+        }),
+      ),
       kurztext: k.kurztext ?? '',
       langtext: [{ art: 'text', text: k.langtext ?? '' }],
       menge: (k.menge ?? null) as Menge | null,
@@ -216,7 +296,7 @@ export function posKnoten(
   reihenfolge: number,
   menge: string | null,
   einheitspreis: string | null,
-  ueber: Partial<Positionsdaten> = {},
+  ueber: Partial<Positionsdaten> & PositionsKurzform = {},
 ): Position {
   return {
     art: 'position',

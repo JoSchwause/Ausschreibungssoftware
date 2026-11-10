@@ -22,7 +22,6 @@ import type {
   Ordnungszahl,
   Position,
   PositionId,
-  Positionsart,
   Prozent,
   Pruefbefund,
   Titel,
@@ -112,6 +111,9 @@ const BLATTNAMEN: ReadonlySet<string> = new Set([
 ]);
 
 type Veraenderlich<T> = { -readonly [K in keyof T]: T[K] };
+
+/** v1.1b: mechanisch angepasst, Folgeticket. Rangfolge der Merkmale (wahl vor bedarf vor stundenlohn), wie der Leser sie vor v1.1b als einzelne Art ansetzte. */
+type Merkmalsrang = 'wahl' | 'bedarf' | 'stundenlohn' | 'normal';
 
 const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
   e ? elementKinder(e).find((k) => k.name === name) : undefined;
@@ -750,11 +752,11 @@ class Aufbau {
         serie = Number(s);
       }
     }
-    const merkmale: Positionsart[] = [];
+    const merkmale: Merkmalsrang[] = [];
     if (serie !== null && serie > 0) merkmale.push('wahl');
     if (provis !== null) merkmale.push('bedarf');
     if (stundenlohn) merkmale.push('stundenlohn');
-    const positionsart: Positionsart = merkmale[0] ?? 'normal';
+    const positionsart: Merkmalsrang = merkmale[0] ?? 'normal';
     if (merkmale.length > 1)
       this.l.melde(
         'warnung',
@@ -806,11 +808,22 @@ class Aufbau {
       reihenfolge: this.reihenfolge(eltern.id),
       ordnungszahl,
       ozIndex,
-      positionsart,
-      pauschal,
-      bedarfMitGesamtbetrag: positionsart === 'bedarf' && provis === 'WithTotal',
-      bezugspositionId: null,
-      grundpositionId: null,
+      // v1.1b: mechanisch angepasst, Folgeticket. Nur das Merkmal, das vor v1.1b als Art galt (Befund
+      // `positionsart-kombination` bleibt). Gruppe und Variante bleiben wie bisher ungespeichert (`null`, Befund
+      // `wahl-variante-nicht-abgebildet`); sie zu setzen ist Sache des Folgetickets gaeb.
+      merkmale: {
+        bedarf:
+          positionsart === 'bedarf'
+            ? provis === 'WithTotal'
+              ? 'mit-gesamtbetrag'
+              : 'ohne-gesamtbetrag'
+            : null,
+        wahl: positionsart === 'wahl' ? { gruppe: null, variante: null, grundpositionId: null } : null,
+        stundenlohn: positionsart === 'stundenlohn',
+        pauschal,
+        zuschlagskennzeichen: false,
+      },
+      zuschlag: null,
       kurztext,
       langtext,
       menge,
@@ -828,7 +841,8 @@ class Aufbau {
         if (!this.grundpositionen.has(schluessel)) this.grundpositionen.set(schluessel, id);
       } else {
         const grund = this.grundpositionen.get(schluessel);
-        if (grund && positionsart === 'wahl') pos.grundpositionId = grund;
+        if (grund && positionsart === 'wahl' && pos.merkmale.wahl !== null)
+          pos.merkmale = { ...pos.merkmale, wahl: { ...pos.merkmale.wahl, grundpositionId: grund } }; // v1.1b: mechanisch angepasst, Folgeticket
         else if (positionsart === 'wahl')
           this.l.melde(
             'warnung',
@@ -863,11 +877,16 @@ class Aufbau {
       reihenfolge: this.reihenfolge(eltern.id),
       ordnungszahl,
       ozIndex,
-      positionsart: 'zuschlag',
-      pauschal: false,
-      bedarfMitGesamtbetrag: false,
-      bezugspositionId: null,
-      grundpositionId: null,
+      // v1.1b: mechanisch angepasst, Folgeticket. Zuschlag mit leerer Bezugsliste, wie vor v1.1b ohne Bezug; die Bezugsformen `gliederung` und
+      // `kennzeichnung`, der Prozentsatz (`Markup`) und das Kennzeichen (`MarkupIt`) folgen mit dem Folgeticket gaeb.
+      merkmale: {
+        bedarf: null,
+        wahl: null,
+        stundenlohn: false,
+        pauschal: false,
+        zuschlagskennzeichen: false,
+      },
+      zuschlag: { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } },
       kurztext,
       langtext,
       menge: null,
@@ -925,7 +944,11 @@ class Aufbau {
             r.el,
             { knotenId: z.pos.id, feld: 'bezugspositionId' },
           );
-        else if (ziel) z.pos.bezugspositionId = ziel;
+        else if (ziel)
+          z.pos.zuschlag = {
+            prozentsatz: null,
+            bezug: { art: 'positionen', positionen: [{ positionId: ziel, teilmenge: null }] },
+          }; // v1.1b: mechanisch angepasst, Folgeticket
         else
           this.l.melde(
             'warnung',

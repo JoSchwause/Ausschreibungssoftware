@@ -3,7 +3,7 @@
 // Text an die eingesteckten Parser und vergleicht Werte höchstens als Zeichenketten auf Gleichheit.
 
 import type { Einheitspreis, LvBefehl, LvSpalte, LvZeile, Menge } from '@tethys/vertrag';
-import { ARTTEXT, texte } from './texte';
+import { ARTTEXT, anzeigeart, texte } from './texte';
 import type { GridZahlen } from './typen';
 
 /** Spalten, die sich bearbeiten lassen (nur bei den passenden Knotenarten). */
@@ -57,7 +57,9 @@ export function anzeigeText(zeile: LvZeile, spalte: LvSpalte, zahlen: GridZahlen
         case 'hinweis':
           return texte.hinweis;
         case 'position':
-          return k.pauschal ? `${ARTTEXT[k.positionsart]}, ${texte.pauschal}` : ARTTEXT[k.positionsart];
+          return k.merkmale.pauschal
+            ? `${ARTTEXT[anzeigeart(k)]}, ${texte.pauschal}`
+            : ARTTEXT[anzeigeart(k)]; // // v1.1b: mechanisch angepasst, Folgeticket
       }
     // eslint-disable-next-line no-fallthrough -- der innere switch ist erschöpfend
     case 'kurztext':

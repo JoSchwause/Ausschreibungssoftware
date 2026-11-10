@@ -19,15 +19,34 @@ export interface Positionssumme {
 export interface Gliederungssumme {
   readonly gliederungId: GliederungId;
   readonly summe: Betrag;
+  /** Siehe `Gesamtsummen.summeBedarfOhneGesamtbetrag`, für die Positionen unter dieser Gliederung (v1.1b, Punkt 4). */
+  readonly summeBedarfOhneGesamtbetrag?: Betrag;
+  /** Siehe `Gesamtsummen.summeWahl`, für die Positionen unter dieser Gliederung (v1.1b, Punkt 4). */
+  readonly summeWahl?: Betrag;
 }
 
-/** Summen des LV bzw. Angebots. MwSt auf `nettoNachNachlass`, nicht je Position (N2). */
+/**
+ * Summen des LV bzw. Angebots. MwSt auf `nettoNachNachlass`, nicht je Position (N2).
+ *
+ * v1.1b, Punkt 4 (F4, E-04): Bedarf ohne Gesamtbetrag und Wahl werden getrennt ausgewiesen. Beide Summen gehen nicht
+ * ins `netto` ein (damit auch nicht in Nachlass, MwSt und Brutto); sie sind Ausweise neben den Summen. Beide Felder sind
+ * optional, damit `kern` und `speicher` ohne Änderung übersetzen: Fehlt ein Feld, berechnet der Kern es noch nicht
+ * (bis K5/K6); `0.00` heißt „berechnet, keine solchen Positionen“. Alternative: Pflichtfelder in einem späteren
+ * Vertragsstand (Offene Typfrage, Ticket 26).
+ */
 export interface Gesamtsummen {
   readonly netto: Betrag;
   readonly nachlass: Betrag;
   readonly nettoNachNachlass: Betrag;
   readonly mwst: Betrag;
   readonly brutto: Betrag;
+  /**
+   * Summe der Gesamtpreise der Bedarfspositionen ohne Gesamtbetrag (`Bedarf` = `ohne-gesamtbetrag`). Bedarf mit
+   * Gesamtbetrag steht im `netto`, nicht hier (E-04). Ob Positionen ohne Menge oder EP zählen, legt K5 fest.
+   */
+  readonly summeBedarfOhneGesamtbetrag?: Betrag;
+  /** Summe der Gesamtpreise der Wahlpositionen (E-04). Welche Varianten zählen, legt K6 fest. */
+  readonly summeWahl?: Betrag;
 }
 
 /** Vollständiger Stand aller berechneten Werte eines Aggregats. */

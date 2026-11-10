@@ -28,8 +28,9 @@ import type {
   LvInhalt,
   Nachlass,
   OzMaske,
-  Positionsart,
   Positionsdaten,
+  Positionsmerkmale,
+  Zuschlag,
 } from './modell';
 import type { Einheitspreis, Menge, Prozent } from './zahlen';
 
@@ -196,15 +197,17 @@ export interface EinheitspreisanteileSetzen {
   readonly epa: Einheitspreisanteile | null;
 }
 
-/** Setzt Positionsart und die davon abhängigen Merkmale gemeinsam, damit nie ein halber Zustand entsteht. */
-export interface PositionsartAendern {
-  readonly art: 'PositionsartAendern';
+/**
+ * Setzt die Positionsmerkmale und die Zuschlagsangaben gemeinsam, damit nie ein halber Zustand entsteht
+ * (v1.1b, Punkt 1; ersetzt `PositionsartAendern`). Die Wahlzuordnung, der Bedarf und der Zuschlagsbezug stehen als
+ * Werte in `merkmale` und `zuschlag`, die Verweise darin gehören zum selben Befehl.
+ */
+export interface PositionsmerkmaleSetzen {
+  readonly art: 'PositionsmerkmaleSetzen';
   readonly positionId: PositionId;
-  readonly positionsart: Positionsart;
-  readonly pauschal: boolean;
-  readonly bedarfMitGesamtbetrag: boolean;
-  readonly bezugspositionId: PositionId | null;
-  readonly grundpositionId: PositionId | null;
+  readonly merkmale: Positionsmerkmale;
+  /** `null`: keine Zuschlagsposition. */
+  readonly zuschlag: Zuschlag | null;
 }
 
 // --- Ordnungszahl (Ticket 06) -----------------------------------------------------------------------------
@@ -261,7 +264,7 @@ export type LvBefehl =
   | EinheitAendern
   | EinheitspreisAendern
   | EinheitspreisanteileSetzen
-  | PositionsartAendern
+  | PositionsmerkmaleSetzen
   | OzMaskeSetzen
   | OrdnungszahlSetzen
   | Umnummerieren
@@ -331,3 +334,22 @@ export type Befehl = ProjektBefehl | LvBefehl | AngebotBefehl | AuftragsLvBefehl
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
+
+// --- Massenbefehle (v1.1b, Punkt 7; A5, E-13) ---------------------------------------------------------------
+
+/**
+ * Die Befehle, die ein ganzes Aggregat mit einer langen Liste von Knoten oder Zeilen anlegen (GAEB-Import, Laden
+ * einer Fixture, X84-Import). Für sie genügen im Befehlsprotokoll Kopf und Prüfsumme (E-13, ADR 0009):
+ * `Befehlskurzfassung` in `speicher.ts`. Alle anderen Befehle bleiben vollständig im Protokoll.
+ *
+ * Eine Liste, kein Merkmal am Befehl, damit der Typ `Befehl` und seine Handler unverändert bleiben. Ein neuer
+ * Massenbefehl braucht ein Vertragsticket.
+ */
+export const MASSENBEFEHLSARTEN = [
+  'LeistungsverzeichnisAnlegen',
+  'AngebotAnlegen',
+  'AuftragsLeistungsverzeichnisAnlegen',
+] as const;
+
+/** Name eines Massenbefehls. */
+export type Massenbefehlsart = (typeof MASSENBEFEHLSARTEN)[number];
