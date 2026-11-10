@@ -85,7 +85,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
         const daten: Positionsdaten = {
           ordnungszahl: k.ordnungszahl,
           ozIndex: k.ozIndex,
-          merkmale: k.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
+          merkmale: k.merkmale,
           zuschlag: k.zuschlag,
           kurztext: k.kurztext,
           langtext: k.langtext,

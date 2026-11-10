@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "leistungsverzeichnis",
+  "id": "019b780b-d500-76be-b1f7-750d03363a4a",
+  "name": "Zuschlag: Bezugsformen und Anteile (erfunden)",
+  "ozMaske": "NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe",
+  "mwstSatz": "19.00",
+  "nachlass": null,
+  "knoten": [
+    {"id":"019b780b-d501-715f-95da-79ad1778bfb1","parentId":"019b780b-d500-76be-b1f7-750d03363a4a","art":"titel","ordnungszahl":"01","kurztext":"Zuschläge"},
+    {"id":"019b780b-d502-712e-a48b-9ca68fb97997","parentId":"019b780b-d501-715f-95da-79ad1778bfb1","art":"titel","ordnungszahl":"01.01","kurztext":"Zuschlag auf gekennzeichnete Positionen"},
+    {"id":"019b780b-d503-754e-b52e-1339da261ee3","parentId":"019b780b-d502-712e-a48b-9ca68fb97997","art":"position","positionsart":"normal","ordnungszahl":"01.01.0010","kurztext":"Leitung verlegen, gekennzeichnet","langtext":"Leitung verlegen, gekennzeichnet. Erfundener Text für Testzwecke.","menge":"10.000","einheit":"m","einheitspreis":"10.000","zuschlagskennzeichen":true},
+    {"id":"019b780b-d504-7f08-ba7a-53025e743e9e","parentId":"019b780b-d502-712e-a48b-9ca68fb97997","art":"position","positionsart":"normal","ordnungszahl":"01.01.0020","kurztext":"Leitung verlegen, ohne Kennzeichen","langtext":"Leitung verlegen, ohne Kennzeichen. Erfundener Text für Testzwecke.","menge":"20.000","einheit":"m","einheitspreis":"20.000"},
+    {"id":"019b780b-d505-758d-bb38-0ee56ffae7f7","parentId":"019b780b-d502-712e-a48b-9ca68fb97997","art":"position","positionsart":"normal","ordnungszahl":"01.01.0030","kurztext":"Schutzrohr verlegen, gekennzeichnet","langtext":"Schutzrohr verlegen, gekennzeichnet. Erfundener Text für Testzwecke.","menge":"30.000","einheit":"m","einheitspreis":"28.500","zuschlagskennzeichen":true},
+    {
+      "id": "019b780b-d506-7ad8-8ec7-bd770dca2f91",
+      "parentId": "019b780b-d502-712e-a48b-9ca68fb97997",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.01.0040",
+      "kurztext": "Zuschlag für Erschwernis auf gekennzeichnete Positionen",
+      "langtext": "Zuschlag für Erschwernis auf gekennzeichnete Positionen. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {"art":"kennzeichnung"}
+      }
+    },
+    {"id":"019b780b-d507-7ff6-bc21-1dfc0202c223","parentId":"019b780b-d501-715f-95da-79ad1778bfb1","art":"titel","ordnungszahl":"01.02","kurztext":"Zuschläge auf davorstehende Positionen"},
+    {"id":"019b780b-d508-7784-9512-860cd1453767","parentId":"019b780b-d507-7ff6-bc21-1dfc0202c223","art":"position","positionsart":"normal","ordnungszahl":"01.02.0010","kurztext":"Graben ausheben","langtext":"Graben ausheben. Erfundener Text für Testzwecke.","menge":"10.000","einheit":"m","einheitspreis":"10.000"},
+    {"id":"019b780b-d509-780d-92b0-115056695a28","parentId":"019b780b-d507-7ff6-bc21-1dfc0202c223","art":"position","positionsart":"normal","ordnungszahl":"01.02.0020","kurztext":"Graben verfüllen","langtext":"Graben verfüllen. Erfundener Text für Testzwecke.","menge":"20.000","einheit":"m","einheitspreis":"20.000"},
+    {"id":"019b780b-d50a-7e20-9187-743f61f0939b","parentId":"019b780b-d507-7ff6-bc21-1dfc0202c223","art":"position","positionsart":"normal","ordnungszahl":"01.02.0030","kurztext":"Oberfläche wiederherstellen","langtext":"Oberfläche wiederherstellen. Erfundener Text für Testzwecke.","menge":"30.000","einheit":"m","einheitspreis":"30.000"},
+    {
+      "id": "019b780b-d50b-767c-b0ca-57ff2080dd96",
+      "parentId": "019b780b-d507-7ff6-bc21-1dfc0202c223",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.02.0040",
+      "kurztext": "Zuschlag Nachtarbeit auf die Positionen davor",
+      "langtext": "Zuschlag Nachtarbeit auf die Positionen davor. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {"art":"gliederung"}
+      }
+    },
+    {
+      "id": "019b780b-d50c-7255-9019-e7635a5d108f",
+      "parentId": "019b780b-d507-7ff6-bc21-1dfc0202c223",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.02.0050",
+      "kurztext": "Zuschlag Verkehrssicherung auf dieselbe Basis",
+      "langtext": "Zuschlag Verkehrssicherung auf dieselbe Basis. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {"art":"gliederung"}
+      }
+    },
+    {"id":"019b780b-d50d-77d5-9b87-001adacf11d8","parentId":"019b780b-d507-7ff6-bc21-1dfc0202c223","art":"position","positionsart":"normal","ordnungszahl":"01.02.0060","kurztext":"Schacht setzen","langtext":"Schacht setzen. Erfundener Text für Testzwecke.","menge":"10.000","einheit":"m","einheitspreis":"10.000"},
+    {
+      "id": "019b780b-d50e-70db-9e36-593d65f20659",
+      "parentId": "019b780b-d507-7ff6-bc21-1dfc0202c223",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.02.0070",
+      "kurztext": "Zuschlag Nachtarbeit auf die Position seit dem letzten Zuschlag",
+      "langtext": "Zuschlag Nachtarbeit auf die Position seit dem letzten Zuschlag. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {"art":"gliederung"}
+      }
+    },
+    {"id":"019b780b-d50f-7e2f-8062-a21dd3983e9e","parentId":"019b780b-d501-715f-95da-79ad1778bfb1","art":"titel","ordnungszahl":"01.03","kurztext":"Zuschläge auf genannte Positionen"},
+    {"id":"019b780b-d510-7ec2-905c-2ae110fedf5f","parentId":"019b780b-d50f-7e2f-8062-a21dd3983e9e","art":"position","positionsart":"normal","ordnungszahl":"01.03.0010","kurztext":"Kabel einziehen","langtext":"Kabel einziehen. Erfundener Text für Testzwecke.","menge":"10.000","einheit":"m","einheitspreis":"10.000"},
+    {"id":"019b780b-d511-7e16-8f1e-7fe8d1c54b40","parentId":"019b780b-d50f-7e2f-8062-a21dd3983e9e","art":"position","positionsart":"normal","ordnungszahl":"01.03.0020","kurztext":"Kabel anschließen","langtext":"Kabel anschließen. Erfundener Text für Testzwecke.","menge":"20.000","einheit":"m","einheitspreis":"20.000"},
+    {
+      "id": "019b780b-d512-7afc-a38a-16292f4694cd",
+      "parentId": "019b780b-d50f-7e2f-8062-a21dd3983e9e",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.03.0030",
+      "kurztext": "Zuschlag auf Position 01.03.0020",
+      "langtext": "Zuschlag auf Position 01.03.0020. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {
+          "art": "positionen",
+          "positionen": [
+            {"positionId":"019b780b-d511-7e16-8f1e-7fe8d1c54b40","teilmenge":null}
+          ]
+        }
+      }
+    },
+    {
+      "id": "019b780b-d513-7043-b093-fef8dbae4df2",
+      "parentId": "019b780b-d50f-7e2f-8062-a21dd3983e9e",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "01.03.0040",
+      "kurztext": "Zuschlag auf Position 02.0010",
+      "langtext": "Zuschlag auf Position 02.0010. Erfundener Text für Testzwecke.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "10.00",
+        "bezug": {
+          "art": "positionen",
+          "positionen": [
+            {"positionId":"019b780b-d515-7da4-9fc3-e7864f6c3de5","teilmenge":null}
+          ]
+        }
+      }
+    },
+    {"id":"019b780b-d514-7f32-a418-38d3a9a3b3b9","parentId":"019b780b-d500-76be-b1f7-750d03363a4a","art":"titel","ordnungszahl":"02","kurztext":"Leitungsbau"},
+    {
+      "id": "019b780b-d515-7da4-9fc3-e7864f6c3de5",
+      "parentId": "019b780b-d514-7f32-a418-38d3a9a3b3b9",
+      "art": "position",
+      "positionsart": "normal",
+      "ordnungszahl": "02.0010",
+      "kurztext": "Druckleitung herstellen, mit Anteilen",
+      "langtext": "Druckleitung herstellen, mit Anteilen. Erfundener Text für Testzwecke.",
+      "menge": "100.000",
+      "einheit": "m",
+      "einheitspreis": "27.910",
+      "epa": {"sonstiges":null,"frei":null,"freiBezeichnung":null,"lohn":"2.230","stoffe":"23.120","geraete":"2.560","nachunternehmer":"0.000"}
+    }
+  ],
+  "sollwerte": {
+    "positionen": {
+      "019b780b-d503-754e-b52e-1339da261ee3": {"gp":"100.00","inSumme":true},
+      "019b780b-d504-7f08-ba7a-53025e743e9e": {"gp":"400.00","inSumme":true},
+      "019b780b-d505-758d-bb38-0ee56ffae7f7": {"gp":"855.00","inSumme":true},
+      "019b780b-d506-7ad8-8ec7-bd770dca2f91": {"gp":"95.50","inSumme":true},
+      "019b780b-d508-7784-9512-860cd1453767": {"gp":"100.00","inSumme":true},
+      "019b780b-d509-780d-92b0-115056695a28": {"gp":"400.00","inSumme":true},
+      "019b780b-d50a-7e20-9187-743f61f0939b": {"gp":"900.00","inSumme":true},
+      "019b780b-d50b-767c-b0ca-57ff2080dd96": {"gp":"140.00","inSumme":true},
+      "019b780b-d50c-7255-9019-e7635a5d108f": {"gp":"140.00","inSumme":true},
+      "019b780b-d50d-77d5-9b87-001adacf11d8": {"gp":"100.00","inSumme":true},
+      "019b780b-d50e-70db-9e36-593d65f20659": {"gp":"10.00","inSumme":true},
+      "019b780b-d510-7ec2-905c-2ae110fedf5f": {"gp":"100.00","inSumme":true},
+      "019b780b-d511-7e16-8f1e-7fe8d1c54b40": {"gp":"400.00","inSumme":true},
+      "019b780b-d512-7afc-a38a-16292f4694cd": {"gp":"40.00","inSumme":true},
+      "019b780b-d513-7043-b093-fef8dbae4df2": {"gp":"279.10","inSumme":true},
+      "019b780b-d515-7da4-9fc3-e7864f6c3de5": {"gp":"2791.00","inSumme":true}
+    },
+    "zuschlaege": {
+      "019b780b-d506-7ad8-8ec7-bd770dca2f91": {"basis":"955.00","betrag":"95.50"},
+      "019b780b-d50b-767c-b0ca-57ff2080dd96": {"basis":"1400.00","betrag":"140.00"},
+      "019b780b-d50c-7255-9019-e7635a5d108f": {"basis":"1400.00","betrag":"140.00"},
+      "019b780b-d50e-70db-9e36-593d65f20659": {"basis":"100.00","betrag":"10.00"},
+      "019b780b-d512-7afc-a38a-16292f4694cd": {"basis":"400.00","betrag":"40.00"},
+      "019b780b-d513-7043-b093-fef8dbae4df2": {"basis":"2791.00","betrag":"279.10"}
+    },
+    "titel": {
+      "019b780b-d501-715f-95da-79ad1778bfb1": {"summe":"4059.60"},
+      "019b780b-d502-712e-a48b-9ca68fb97997": {"summe":"1450.50"},
+      "019b780b-d507-7ff6-bc21-1dfc0202c223": {"summe":"1790.00"},
+      "019b780b-d50f-7e2f-8062-a21dd3983e9e": {"summe":"819.10"},
+      "019b780b-d514-7f32-a418-38d3a9a3b3b9": {"summe":"2791.00"}
+    },
+    "summen": {"netto":"6850.60","nachlass":"0.00","nettoNachNachlass":"6850.60","mwst":"1301.61","brutto":"8152.21"},
+    "epa": {
+      "gesamt": {"lohn":"223.00","stoffe":"2312.00","geraete":"256.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"},
+      "titel": {
+        "019b780b-d501-715f-95da-79ad1778bfb1": {"lohn":"0.00","stoffe":"0.00","geraete":"0.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"},
+        "019b780b-d502-712e-a48b-9ca68fb97997": {"lohn":"0.00","stoffe":"0.00","geraete":"0.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"},
+        "019b780b-d507-7ff6-bc21-1dfc0202c223": {"lohn":"0.00","stoffe":"0.00","geraete":"0.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"},
+        "019b780b-d50f-7e2f-8062-a21dd3983e9e": {"lohn":"0.00","stoffe":"0.00","geraete":"0.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"},
+        "019b780b-d514-7f32-a418-38d3a9a3b3b9": {"lohn":"223.00","stoffe":"2312.00","geraete":"256.00","nachunternehmer":"0.00","sonstiges":"0.00","frei":"0.00"}
+      }
+    }
+  }
+}

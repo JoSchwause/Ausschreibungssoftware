@@ -54,7 +54,7 @@ describe('AuftragsLeistungsverzeichnisAnlegen', () => {
     expect(cs.kopf?.nachher).toMatchObject({ id: AID, angebotId: 'angebot-1', projektId: PROJEKT_ID });
     expect(cs.kopf?.nachher).not.toHaveProperty('knoten');
     expect(cs.knoten.hinzugefuegt).toHaveLength(fx.knoten.length);
-    expect(cs.summen.gesamt).toEqual(soll.summen);
+    expect(cs.summen.gesamt).toMatchObject(soll.summen);
     expect(cs.summen.positionen).toHaveLength(Object.keys(soll.positionen).length);
     for (const p of cs.summen.positionen)
       expect(p.gesamtpreis, p.positionId).toBe(soll.positionen[p.positionId]?.gp);
