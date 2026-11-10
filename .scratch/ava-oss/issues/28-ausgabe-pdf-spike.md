@@ -33,6 +33,9 @@ Der Spike rechnet nichts selbst: Summen kommen aus dem `LvZustand`.
 - [ ] Empfehlung mit Begründung als Vorschlag für eine ADR (Text im Ticket; die ADR selbst schreibt und prüft der Nutzer-Weg, nicht dieser Spike)
 - [ ] `pnpm lint` (einschließlich Lizenzprüfung und Paketgrenzen), `pnpm typecheck`, `pnpm test`, `reuse lint` grün
 
+Ticket 25 schreibt `fixtures/gross.json` zur selben Zeit in Dokumentreihenfolge um. Für die Messung ist jede der
+beiden Reihenfolgen recht; das Ticket nennt den Stand (Commit), an dem gemessen wurde.
+
 ## Nicht-Ziele
 
 Druckprofile (O3), Excel (O2), formatierter Langtext (nach Ticket 26), Anbindung an `apps/web`, Layout-Feinschliff.

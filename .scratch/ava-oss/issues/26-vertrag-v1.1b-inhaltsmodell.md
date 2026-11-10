@@ -46,6 +46,7 @@ nachgezogen werden (`// v1.1b: mechanisch angepasst, Folgeticket`), aufgelistet 
 - [ ] Jede der sieben Nummern ist abgebildet; die Comments nennen je Nummer Datei und Typ
 - [ ] Beispielwerte: Bedarfsposition im Stundenlohn; Zuschlagsposition je Bezugsform; Wahlposition mit Gruppe und Variante; Langtext mit Liste, Tabelle und Textergänzung; Protokolleintrag eines Massenbefehls
 - [ ] Typtest: Eine Position kann zugleich Bedarf und Stundenlohn sein; eine Zuschlagsposition hat keinen EP-Zwang
+- [ ] ADR 0009 nennt den Protokolleintrag für Massenbefehle so, wie der Typ ihn festlegt (E-13); wo der Text abweicht, ist er ergänzt
 - [ ] `GLOSSARY.md` enthält jeden neuen Fachbegriff (L2); „Zulage“ erscheint nirgends (L2)
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün auf dem ganzen Baum
 - [ ] Je Folgepaket eine Liste in den Comments: was anzupassen ist
