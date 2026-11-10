@@ -1,6 +1,6 @@
 # 33: Anpassung `ui-grid` an v1.1a (`GridZahlen`, `wurzelId`, Hinweise)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: U · Paket: `packages/ui-grid`
 Blocked by: -
@@ -56,15 +56,15 @@ Das Grid nimmt die Randtypen und die Wurzel aus dem Vertrag, zeigt Befehlshinwei
 
 ## Acceptance criteria
 
-- [ ] `GridZahlen`/`GridIdQuelle` gibt es nur noch in `vertrag`; `LvGridProps` hat keine Eigenschaft `wurzelId`
-- [ ] E2E: In ein leeres LV wird per Zwischenablage eine Position eingefügt; der Befehl trägt `ort: { art: 'ende', elternId: ansicht.wurzelId }`
-- [ ] E2E: Hinweise werden angezeigt, per Tastatur erreichbar; der Sprungknopf setzt den Fokus auf die genannte Zeile
-- [ ] Unit-Test: Text je Hinweiscode; unbekannter Code ergibt den allgemeinen Text
-- [ ] Unit-Test: Spalte „Art“ für Bedarf im Stundenlohn, Wahl mit Gruppe/Variante, Zuschlag, Bedarf mit Gesamtbetrag, ohne Merkmal
-- [ ] Unit-Test: `hinweisKlartext` für einen Hinweistext mit Absatz, Liste, Tabelle, Textergänzung und Bild
-- [ ] Summenzeile zeigt Bedarfs- und Wahlsumme nur, wenn gesetzt (E2E oder Komponententest auf der Testseite)
-- [ ] Kein Marker `mechanisch angepasst` mehr in `packages/ui-grid`
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter @tethys/ui-grid e2e` grün
+- [x] `GridZahlen`/`GridIdQuelle` gibt es nur noch in `vertrag`; `LvGridProps` hat keine Eigenschaft `wurzelId`
+- [x] E2E: In ein leeres LV wird per Zwischenablage eine Position eingefügt; der Befehl trägt `ort: { art: 'ende', elternId: ansicht.wurzelId }`
+- [x] E2E: Hinweise werden angezeigt, per Tastatur erreichbar; der Sprungknopf setzt den Fokus auf die genannte Zeile
+- [x] Unit-Test: Text je Hinweiscode; unbekannter Code ergibt den allgemeinen Text
+- [x] Unit-Test: Spalte „Art“ für Bedarf im Stundenlohn, Wahl mit Gruppe/Variante, Zuschlag, Bedarf mit Gesamtbetrag, ohne Merkmal
+- [x] Unit-Test: `hinweisKlartext` für einen Hinweistext mit Absatz, Liste, Tabelle, Textergänzung und Bild
+- [x] Summenzeile zeigt Bedarfs- und Wahlsumme nur, wenn gesetzt (E2E oder Komponententest auf der Testseite)
+- [x] Kein Marker `mechanisch angepasst` mehr in `packages/ui-grid`
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter @tethys/ui-grid e2e` grün
 
 ## Nicht-Ziele
 
@@ -72,3 +72,15 @@ Merkmale bearbeiten (Ticket 47). Kopieren, Verschieben, Löschen im Grid (Ticket
 (Ticket 39). Prüfbefunde der LV-Prüfung (Ticket 41/47; `LvZeile.befunde` bleibt wie heute).
 
 ## Comments
+
+- Umsetzung (Ticket 33): Entscheidungen des Umsetzers (paketlokal, umkehrbar):
+  - Spalte „Art“, Wahl ohne volle Nummer: nur Gruppe bekannt → „Wahl 1“, keine Gruppe → „Wahl“. Grund: keine Nummer erfinden (W-02).
+  - Spalte „Art“, Zuschlagskennzeichen: kein eigener Eintrag. Grund: Es ist eine Bezugsangabe, keine Art; die Liste im Ticket nennt es nicht.
+  - `hinweisKlartext` nimmt jetzt den `Langtext` statt der Zeile. Grund: reine Funktion über den Text, auch für Listenpunkte und Zellen.
+  - `hinweisKlartext`: Tabellenzeilen durch Leerzeichen getrennt, geordnete Listen ebenfalls mit „• “, Leerraum zusammengefasst; „leer“ bei der Textergänzung heißt „Inhalt ohne Text“, nicht das Attribut `leer`. Grund: einzeilige Zelle; die Bedeutung von `leer` ist nur aus Dateien belegt.
+  - Hinweis mit `knotenId`, deren Zeile nicht sichtbar ist (zugeklappt): Statusmeldung „Die Zeile ist nicht sichtbar …“, kein automatisches Aufklappen. Grund: Das Grid kennt die Vorfahren nicht; der Aufklappzustand gehört dem Aufrufer.
+  - Sprung behält die aktive Spalte. Grund: wie jede andere Zeilennavigation.
+  - Hinweisleiste: `role="region"`, Name „Hinweise“, `aria-live="polite"`, immer im DOM (leer ohne Platz), zwischen Grid und Statuszeile; allgemeiner Text für unbekannte Codes „Der Befehl wurde mit einem Hinweis ausgeführt.“
+  - Text `keinEinfuegeort` entfällt: Ein leeres LV hat immer `ansicht.wurzelId`.
+  - Testseite: Parameter `leer=1`, `hinweise=1`, `ausweis=1` (erfundene Werte 48,90/61,25).
+- Folge für `proto/interview` (nicht in diesem Paket): importiert `GridZahlen`/`GridIdQuelle` aus `@tethys/ui-grid` und reicht `wurzelId` an `LvGrid`; das bricht dort weitere Typprüfungen (Typprüfung schlug dort schon vorher fehl). Abhilfe: Import aus `@tethys/vertrag`, `wurzelId` in die Ansicht.

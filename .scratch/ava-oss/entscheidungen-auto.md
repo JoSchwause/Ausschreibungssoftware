@@ -68,6 +68,14 @@ Decision: 29 läuft zuerst (parallel nur mit 33–36, die diese Pakete nicht ber
 Reason: P2 (ein Schreiber je Paket) und der Rat des Beraters zu W-03 (b).
 Reversible: yes  Touches: Reihenfolge
 
+## D-10 Schnittdetails der Tickets 37–49
+Welle 3 · Ticket 37, 38, 39, 44, 46 · decided by: orchestrator
+Question: Offene Punkte der Ticket-Schreiber.
+Decision: (1) Ticket 37 behält für Zuschlagspositionen ohne Satz die alte Rechnung Menge × EP („Altform“); die Umstellung der Fixtures `typisch`, `gross`, `typisch-angebote` (E-03) geht mit Ticket 44. (2) `AllInCat`: unmittelbar aufeinanderfolgende Zuschlagspositionen teilen eine Basis; Teilmengen (`ListInSubQty`) sind Annahme. (3) Nachlässe des Bieters je Position/Titel aus X84 sind nicht abbildbar (G-26: einer je Angebot) und werden in 44/45 als Befund gemeldet. (4) `GridIdQuelle` wird in Ticket 29 um `papierkorbEintrag` erweitert; Kopieren im Grid über einen Rückruf, den Befehl baut die App. (5) 38 hängt zusätzlich an 29 (`zuschlagssatz`-Spalte). (6) Kommt 39 vor 37, wandert der Merkmal-Teil des M1-E2E nach 47.
+Reason: Hält die Fixture-Helfer in fünf Paketen grün; P2 (ui-grid importiert kern nicht).
+Reversible: yes  Touches: packages/kern, packages/vergabe, packages/ui-grid, fixtures/
+Annahme für Demo, Mensch bestätigt später (E-03: Teilmengen, `AllInCat`).
+
 ## D-T34 Langtext-Editor: Tabellen-Plugins aus, leere Listen/Tabellen offen
 Welle 3 · Ticket 34 · decided by: implementer
 Question: prosemirror-tables füllt beim Bearbeiten ungleich lange Zeilen auf (`fixTables`); leere Listen/Tabellen sind im Typ erlaubt, im Schema nicht.

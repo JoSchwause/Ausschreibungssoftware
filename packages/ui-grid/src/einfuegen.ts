@@ -16,6 +16,8 @@ import type {
   ElternId,
   Einheit,
   Einheitspreis,
+  GridIdQuelle,
+  GridZahlen,
   KnotenId,
   LvBefehl,
   LvSpalte,
@@ -24,7 +26,6 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { istBearbeitbareSpalte, leseEinheitspreis, leseMenge } from './eingabe';
-import type { GridIdQuelle, GridZahlen } from './typen';
 
 export interface UngueltigeZelle {
   readonly knotenId: PositionId;
@@ -94,6 +95,7 @@ export function planeEinfuegen(
         }
       }
     });
+    // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog.
     const daten: Positionsdaten = {
       ordnungszahl: null,
       ozIndex: null,
@@ -103,7 +105,7 @@ export function planeEinfuegen(
         stundenlohn: false,
         pauschal: false,
         zuschlagskennzeichen: false,
-      }, // // v1.1b: mechanisch angepasst, Folgeticket
+      },
       zuschlag: null,
       kurztext,
       langtext: [],
