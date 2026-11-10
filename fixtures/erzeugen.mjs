@@ -14,6 +14,17 @@ import {
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
+
+// OZ-Maske als Text: vor dem ersten ":" stehen die Stellen (N = Ziffer, I = Index), das Trennzeichen "." zaehlt nicht.
+// Regel F2 / E-09: hoechstens 14 Stellen einschliesslich des einstelligen Index. Der Fixture-Test prueft das.
+// VORLAEUFIGE ANNAHME, ENTSCHEIDUNG OFFEN: Die Masken sind so gekuerzt, dass die vorhandenen OZ unveraendert passen
+// (Ticket 25). winzig/typisch haben eine Titelebene und Indexpositionen; gross hat fuenf Titelebenen und keinen Index.
+// Alternative: eine einzige Maske fuer alle (5 x 2 + Position 3 + Index 1 = 14), dann muessten alle Positionsnummern
+// dreistellig werden.
+const MASKE_KLEIN =
+  'NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe';
+const MASKE_GROSS =
+  'NN.NN.NN.NN.NN.NNNN: fünf Titelebenen zu je zwei Ziffern, Position vier Ziffern, kein Index';
 const AUSREISSER_SCHWELLE = 20; // Prozent, Glossar "Ausreisser" (Standard +-20 %)
 
 // ---------------------------------------------------------------- PRNG und IDs
@@ -90,8 +101,27 @@ const P = (k, parent, oz, kurztext, langtext, menge, einheit, ep, extra = {}) =>
   art: 'position', positionsart: 'normal', k, parent, oz, kurztext, langtext, menge, einheit, ep, ...extra,
 });
 
+/** Tiefensuche ueber parentId; Geschwister behalten ihre Reihenfolge im Eingabearray. */
+function dokumentreihenfolge(wurzelId, knoten) {
+  const kinder = new Map();
+  for (const k of knoten) {
+    if (!kinder.has(k.parentId)) kinder.set(k.parentId, []);
+    kinder.get(k.parentId).push(k);
+  }
+  const aus = [];
+  const besuche = (id) => {
+    for (const k of kinder.get(id) ?? []) {
+      aus.push(k);
+      besuche(k.id);
+    }
+  };
+  besuche(wurzelId);
+  if (aus.length !== knoten.length) throw new Error('Knoten ohne Verbindung zum LV');
+  return aus;
+}
+
 /** Baut den LV samt Sollwerten. `eintraege` stehen in Dokumentreihenfolge; Eltern per Schluessel `k`. */
-function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege }) {
+function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske }) {
   const neueId = idFabrik(seed, startMs);
   const lvId = neueId();
   const idVon = new Map();
@@ -125,12 +155,14 @@ function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege }) {
     art: 'leistungsverzeichnis',
     id: lvId,
     name,
-    ozMaske: 'NN.NN.NN.NN.NN.NNNN[I]: je Titelebene zwei Ziffern, Position vier Ziffern, optionaler Index-Buchstabe',
+    ozMaske,
     mwstSatz,
     nachlass,
     knoten,
   };
-  lv.sollwerte = berechneSollwerte(knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
+  // Dokumentreihenfolge: Eltern vor Kindern, Geschwister in Arrayreihenfolge. IDs und Werte bleiben, nur die Lage aendert sich.
+  lv.knoten = dokumentreihenfolge(lvId, knoten);
+  lv.sollwerte = berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
   return lv;
 }
 
@@ -143,6 +175,7 @@ function erzeugeWinzig() {
     startMs: 1767225600000,
     mwstSatz: '19.00',
     nachlass: null,
+    ozMaske: MASKE_KLEIN,
     eintraege: [
       T('t1', null, '01', 'Kleine Musterarbeiten'),
       P('p1', 't1', '01.0010', 'Pflaster verlegen', 'Pflasterfläche im Hof herstellen. Erfundener Text für Testzwecke.',
@@ -208,6 +241,7 @@ function erzeugeTypisch() {
     startMs: 1767225600000 + 1_000_000,
     mwstSatz: '19.00',
     nachlass: { art: 'prozent', wert: '2.00' },
+    ozMaske: MASKE_KLEIN,
     eintraege: e.map(kanonisch),
   });
 }
@@ -323,6 +357,7 @@ function erzeugeGross() {
     startMs: 1767225600000 + 10_000_000,
     mwstSatz: '19.00',
     nachlass: { art: 'prozent', wert: '1.50' },
+    ozMaske: MASKE_GROSS,
     eintraege: e,
   });
 }
@@ -343,7 +378,7 @@ function erzeugeHandbeispiele() {
     schemaVersion: SCHEMA,
     art: 'handbeispiele',
     regel: 'GP = round_half_up(Menge x EP, 2); MwSt auf Netto nach Nachlass, round_half_up auf 2 (N2).',
-    gesamtpreise: [gp('1.235', '10.00'), gp('3.333', '4.56')],
+    gesamtpreise: [gp('1.235', '10.000'), gp('3.333', '4.560')],
     summenketten: [
       { ...kette('27.55', null, '19.00'), exaktMwst: '5.2345' },
       { ...kette('402.73', { art: 'prozent', wert: '3.00' }, '19.00'), exaktNachlass: '12.0819', exaktMwst: '74.2235' },

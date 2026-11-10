@@ -3,8 +3,8 @@
   "art": "handbeispiele",
   "regel": "GP = round_half_up(Menge x EP, 2); MwSt auf Netto nach Nachlass, round_half_up auf 2 (N2).",
   "gesamtpreise": [
-    {"menge":"1.235","einheitspreis":"10.00","exakt":"12.350000","gp":"12.35"},
-    {"menge":"3.333","einheitspreis":"4.56","exakt":"15.198480","gp":"15.20"}
+    {"menge":"1.235","einheitspreis":"10.000","exakt":"12.350000","gp":"12.35"},
+    {"menge":"3.333","einheitspreis":"4.560","exakt":"15.198480","gp":"15.20"}
   ],
   "summenketten": [
     {

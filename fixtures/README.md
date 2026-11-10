@@ -52,6 +52,13 @@ Angebotsset: { schemaVersion, art:"angebotsset", lvId, lvName, bieter[{id,name}]
                ausreisserAnnahmeA7 }
 ```
 
+`ozMaske` ist ein Text: vor dem ersten `:` stehen die Stellen (`N` Ziffer, `I` Index, `.` Trennzeichen zählt nicht),
+danach eine Erläuterung. Höchstens 14 Stellen einschließlich des einstelligen Index (F2); der Fixture-Test prüft das.
+`winzig` und `typisch`: `NN.NN.NNNN[I]` (9 Stellen, zwei Titelebenen, genutzt wird eine); `gross`: `NN.NN.NN.NN.NN.NNNN`
+(14 Stellen, fünf Titelebenen, kein Index).
+Die Knoten stehen in Dokumentreihenfolge (Eltern vor Kindern, Geschwister in Arrayreihenfolge); der Erzeuger sortiert so
+und lässt IDs und Werte unverändert.
+
 IDs sind UUIDv7-förmig (fester Zeitstempel, je ID +1 ms, Rest aus dem Seed-PRNG) und über alle Dateien eindeutig.
 Die Ordnungszahl ist Anzeigedatum, kein Schlüssel; Bezüge laufen über IDs. Der EP im LV ist ein Schätzpreis
 (Kostenansatz), er speist den „Schätzpreis“ des virtuellen Bieters.
@@ -116,5 +123,9 @@ Sollwerte der betroffenen Fälle gelten nur unter der jeweiligen Annahme.
 - **A10 Indexposition:** `ozIndex` ist ein Buchstabe neben der Ordnungszahl; in `typisch` tragen die Wahl- und die
   Zuschlagsposition den Index „A“ zur Ordnungszahl ihrer Bezugsposition. Eine Bedeutung über die Anzeige hinaus ist nicht festgelegt.
 - **A11 `winzig`** hat Netto 2.565,00 (siehe oben), nicht 27,55.
+- **A13 Maskentext (vorläufige Annahme, Entscheidung offen):** Die frühere Maske `NN.NN.NN.NN.NN.NNNN[I]` hatte 15 Stellen
+  und verletzte F2. Gekürzt ist so, dass die vorhandenen OZ unverändert passen (je Datei eine Maske, siehe oben).
+  Alternative: eine Maske für alle mit Position dreistellig (5 × 2 + 3 + 1 = 14); dann müssten alle Positionsnummern
+  dreistellig werden.
 - **A12 `gross`** enthält Normal- (etwa 90 %), Bedarfs-, Wahl- und Zuschlagspositionen sowie 5 Hinweistexte (nicht
   als Positionen gezählt) und einen Nachlass von 1,50 %.

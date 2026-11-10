@@ -3,7 +3,7 @@
   "art": "leistungsverzeichnis",
   "id": "019b76da-a800-727e-984b-1b9791bc2486",
   "name": "Winzig: Handrechnung (erfunden)",
-  "ozMaske": "NN.NN.NN.NN.NN.NNNN[I]: je Titelebene zwei Ziffern, Position vier Ziffern, optionaler Index-Buchstabe",
+  "ozMaske": "NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe",
   "mwstSatz": "19.00",
   "nachlass": null,
   "knoten": [
