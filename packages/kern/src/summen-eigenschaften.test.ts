@@ -34,12 +34,11 @@ import {
 import {
   changeSetUmkehren,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   pruefeLvInvarianten,
   positionGehtInSumme,
   summenBerechnen,
 } from './index';
-import { LV_ID, id, lvMit, positionsdaten, type Positionsart } from './testhilfen';
+import { ohneReihenfolge, anwenden, LV_ID, id, lvMit, positionsdaten, type Positionsart } from './testhilfen';
 
 // --- Wertevorrat: klein, damit Gleichstände, Nullen und negative Werte oft vorkommen -----------------------------------
 
@@ -271,7 +270,7 @@ function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string,
   }
   const cs = e.wert;
   statistik[befehl.art] = (statistik[befehl.art] ?? 0) + 1;
-  const neu = lvChangeSetAnwenden(z, cs);
+  const neu = anwenden(z, cs);
 
   // 1. inkrementell gepflegte Summen = vollständige Neuberechnung (einschließlich Reihenfolge der Einträge)
   expect(neu.summen).toEqual(summenBerechnen(neu.leistungsverzeichnis));
@@ -308,9 +307,9 @@ function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string,
   else expect(cs.summen.gesamt).toEqual(neu.summen.gesamt);
 
   // 5. Undo stellt Zustand und Summen exakt her; die Umkehrung der Umkehrung ist das ChangeSet
-  const rueck = changeSetUmkehren(cs, z);
-  expect(lvChangeSetAnwenden(neu, rueck)).toEqual(z);
-  expect(changeSetUmkehren(rueck, neu)).toEqual(cs);
+  const rueck = changeSetUmkehren(cs);
+  expect(anwenden(neu, rueck)).toEqual(z);
+  expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(cs));
   return neu;
 }
 
@@ -350,10 +349,9 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
           if (!e.ok) return;
           verlauf.push({ cs: e.wert, vorher: z });
-          z = lvChangeSetAnwenden(z, e.wert);
+          z = anwenden(z, e.wert);
         });
-        for (const { cs, vorher } of verlauf.reverse())
-          z = lvChangeSetAnwenden(z, changeSetUmkehren(cs, vorher));
+        for (const { cs, vorher } of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },
@@ -366,7 +364,7 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
         let z = lvMit([]);
         folge.forEach((aktion, nr) => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
-          if (e.ok) z = lvChangeSetAnwenden(z, e.wert);
+          if (e.ok) z = anwenden(z, e.wert);
         });
         const lv = z.leistungsverzeichnis;
         const neu = lvBefehlAusfuehren(null, {
@@ -379,11 +377,11 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
             mwstSatz: lv.mwstSatz,
             nachlass: lv.nachlass,
             knoten: lv.knoten,
-            wurzelId: lv.id, // v1.1a: mechanisch angepasst, Folgeticket
+            wurzelId: lv.id,
           },
         });
         expect(neu.ok).toBe(true);
-        if (neu.ok) expect(lvChangeSetAnwenden(null, neu.wert)).toEqual(z);
+        if (neu.ok) expect(anwenden(null, neu.wert)).toEqual(z);
       }),
       { numRuns: 100 },
     );

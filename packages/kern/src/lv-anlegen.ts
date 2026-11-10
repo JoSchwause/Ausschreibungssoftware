@@ -8,7 +8,7 @@ import type { Befehlsfehler, Ergebnis, LeistungsverzeichnisAnlegen, LvChangeSet 
 import { ok } from './fehler';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
 import { kanonisch, ohneKnoten } from './struktur';
-import { summenBerechnen } from './summen';
+import { LEERES_SUMMENVORHER, summenBerechnen } from './summen';
 
 export function leistungsverzeichnisAnlegen(
   b: LeistungsverzeichnisAnlegen,
@@ -26,6 +26,11 @@ export function leistungsverzeichnisAnlegen(
     leistungsverzeichnisId: b.id,
     kopf: { vorher: null, nachher: { ...stamm, id: b.id, projektId: b.projektId } },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-    summen: { positionen: summen.positionen, gliederungen: summen.gliederungen, gesamt: summen.gesamt },
+    summen: {
+      positionen: summen.positionen,
+      gliederungen: summen.gliederungen,
+      gesamt: summen.gesamt,
+      vorher: LEERES_SUMMENVORHER,
+    },
   });
 }

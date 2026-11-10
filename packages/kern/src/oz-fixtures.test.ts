@@ -9,14 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Knoten, LvZustand, OzMaske } from '@tethys/vertrag';
-import {
-  changeSetUmkehren,
-  doppelteOrdnungszahlen,
-  lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
-  ozMaskeFehler,
-} from './index';
-import { PROJEKT_ID, erwarteOk, fixtureAlsInhalt, fixtureLesen, id } from './testhilfen';
+import { changeSetUmkehren, doppelteOrdnungszahlen, lvBefehlAusfuehren, ozMaskeFehler } from './index';
+import { anwenden, PROJEKT_ID, erwarteOk, fixtureAlsInhalt, fixtureLesen, id } from './testhilfen';
 import type { LeistungsverzeichnisId } from '@tethys/vertrag';
 
 const num = (laenge: number) => ({ laenge, zeichen: 'numerisch' as const });
@@ -53,7 +47,7 @@ function anlegen(
   const knoten = ohneOz
     ? inh.knoten.map((k): Knoten => (k.art === 'hinweis' ? k : { ...k, ordnungszahl: null }))
     : inh.knoten;
-  const z = lvChangeSetAnwenden(
+  const z = anwenden(
     null,
     erwarteOk(
       lvBefehlAusfuehren(null, {
@@ -78,13 +72,13 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
     const { z } = anlegen(name, false);
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'Umnummerieren', teilbaumId: wurzel(z) }));
     expect(cs.knoten.geaendert).toEqual([]);
-    expect(lvChangeSetAnwenden(z, cs)).toBe(z);
+    expect(anwenden(z, cs)).toBe(z);
   });
 
   it('ohne OZ umnummeriert entsteht für jeden Knoten genau die OZ der Fixture', () => {
     const { z, soll } = anlegen(name, true);
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'Umnummerieren', teilbaumId: wurzel(z) }));
-    const neu = lvChangeSetAnwenden(z, cs);
+    const neu = anwenden(z, cs);
     let verglichen = 0;
     for (const k of neu.leistungsverzeichnis.knoten) {
       if (k.art === 'hinweis') continue;
@@ -95,7 +89,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
     expect(cs.knoten.geaendert).toHaveLength(verglichen);
     expect(doppelteOrdnungszahlen(neu.leistungsverzeichnis.knoten)).toEqual([]);
     expect(neu.summen).toBe(z.summen);
-    expect(lvChangeSetAnwenden(neu, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
   });
 });
 
@@ -114,17 +108,17 @@ describe('Maskenwechsel an den Fixtures', () => {
     const { z } = anlegen('typisch', false);
     const ohneTrenner: OzMaske = { ...MASKE_ZWEI_STUFEN, trennzeichen: null };
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'OzMaskeSetzen', maske: ohneTrenner }));
-    const neu = lvChangeSetAnwenden(z, cs);
+    const neu = anwenden(z, cs);
     expect(neu.leistungsverzeichnis.ozMaske).toEqual(ohneTrenner);
     const positionen = neu.leistungsverzeichnis.knoten.filter((k) => k.art === 'position');
     expect(positionen.every((p) => p.ordnungszahl !== null && !p.ordnungszahl.includes('.'))).toBe(true);
     expect(positionen[0]?.ordnungszahl).toBe('010010');
-    const zurueck = lvChangeSetAnwenden(
+    const zurueck = anwenden(
       neu,
       erwarteOk(lvBefehlAusfuehren(neu, { art: 'OzMaskeSetzen', maske: MASKE_ZWEI_STUFEN })),
     );
     expect(zurueck).toEqual(z);
-    expect(lvChangeSetAnwenden(neu, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
   });
 });
 
@@ -141,7 +135,7 @@ describe('Messung (kein Gate)', () => {
       const t0 = performance.now();
       const cs = erwarteOk(lvBefehlAusfuehren(z, befehl));
       const t1 = performance.now();
-      lvChangeSetAnwenden(z, cs);
+      anwenden(z, cs);
       const t2 = performance.now();
       if (i >= 2) {
         laeufe.push(t2 - t0);
@@ -155,7 +149,7 @@ describe('Messung (kein Gate)', () => {
     for (let i = 0; i < 5; i++) {
       const t0 = performance.now();
       const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'OzMaskeSetzen', maske: ohneTrenner }));
-      lvChangeSetAnwenden(z, cs);
+      anwenden(z, cs);
       wechsel.push(performance.now() - t0);
     }
     console.info(

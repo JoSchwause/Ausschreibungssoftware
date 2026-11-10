@@ -21,12 +21,20 @@ import {
   LOS_ANNAHME,
   MAX_GLIEDERUNGSEBENEN,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   changeSetUmkehren,
   pruefeLvInvarianten,
   summenBerechnen,
 } from './index';
-import { LV_ID, PROJEKT_ID, id, inhalt, neuesLv, positionsdaten } from './testhilfen';
+import {
+  ohneReihenfolge,
+  anwenden,
+  LV_ID,
+  PROJEKT_ID,
+  id,
+  inhalt,
+  neuesLv,
+  positionsdaten,
+} from './testhilfen';
 import type { Menge } from '@tethys/vertrag';
 
 // --- Zufällige Aktionen -----------------------------------------------------------------------------------------
@@ -351,14 +359,18 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           if (befehl.art === 'KnotenVerschieben') statistik.verschoben++;
           if (befehl.art === 'KnotenLoeschen') statistik.geloescht++;
           if (befehl.art === 'GliederungAnlegen' && befehl.gliederungsart === 'los') statistik.los++;
-          const neu = lvChangeSetAnwenden(z, e.wert);
+          const neu = anwenden(z, e.wert);
           expect(unabhaengigePruefung(neu)).toEqual([]);
           expect(pruefeLvInvarianten(neu.leistungsverzeichnis)).toEqual([]);
           expect(normal(baumVon(neu))).toEqual(normal(erwarteterBaum(z, befehl)));
           pruefeChangeSet(z, e.wert, neu);
+          // v1.1a: jedes ChangeSet trägt die alten Summen; die Umkehrung kennt den Vorzustand nicht.
+          expect(e.wert.summen.vorher).toBeDefined();
           // Undo: Umkehrung stellt exakt wieder her (auch die Reihenfolge im flachen Array), und umgekehrt noch einmal.
-          expect(lvChangeSetAnwenden(neu, changeSetUmkehren(e.wert, z))).toEqual(z);
-          expect(changeSetUmkehren(changeSetUmkehren(e.wert, z), neu)).toEqual(e.wert);
+          expect(anwenden(neu, changeSetUmkehren(e.wert))).toEqual(z);
+          expect(ohneReihenfolge(changeSetUmkehren(changeSetUmkehren(e.wert)))).toEqual(
+            ohneReihenfolge(e.wert),
+          );
           z = neu;
         });
       }),
@@ -383,10 +395,9 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
           if (!e.ok) return;
           verlauf.push({ cs: e.wert, vorher: z });
-          z = lvChangeSetAnwenden(z, e.wert);
+          z = anwenden(z, e.wert);
         });
-        for (const { cs, vorher } of verlauf.reverse())
-          z = lvChangeSetAnwenden(z, changeSetUmkehren(cs, vorher));
+        for (const { cs, vorher } of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
         expect(z).toEqual(start);
       }),
       { numRuns: 150 },
@@ -417,7 +428,7 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
         let z = neuesLv();
         folge.forEach((aktion, nr) => {
           const e = lvBefehlAusfuehren(z, befehlAus(z, aktion, nr));
-          if (e.ok) z = lvChangeSetAnwenden(z, e.wert);
+          if (e.ok) z = anwenden(z, e.wert);
         });
         // Fisher-Yates mit den vom Property gelieferten Zahlen
         const mischung = [...z.leistungsverzeichnis.knoten];
@@ -433,7 +444,7 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           inhalt: inhalt(mischung),
         });
         expect(neu.ok).toBe(true);
-        if (neu.ok) expect(lvChangeSetAnwenden(null, neu.wert)).toEqual(z);
+        if (neu.ok) expect(anwenden(null, neu.wert)).toEqual(z);
       }),
       { numRuns: 150 },
     );

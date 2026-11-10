@@ -39,6 +39,7 @@ import type {
   Prozent,
   Summenaenderung,
   Summenstand,
+  Summenvorher,
 } from '@tethys/vertrag';
 import { indexVon, praeorder } from './struktur';
 import type { Baumindex } from './struktur';
@@ -265,3 +266,62 @@ export const hineinlegen = (eltern: string, beitrag: Betrag): Beitragsaenderung 
 });
 
 export { nachId as ordneNachKennung };
+
+// --- Alte Werte (v1.1a, Ticket 30) ---------------------------------------------------------------------------------
+
+/** Keine alten Werte: das ChangeSet ändert keine Summe (oder das LV entsteht erst). */
+export const LEERES_SUMMENVORHER: Summenvorher = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  entfernt: { positionen: [], gliederungen: [] },
+};
+
+/** Die Summen der Knoten im Stand `alt`, nach Kennung geordnet; Hinweistexte und Knoten ohne Eintrag fallen weg. */
+export function summenDerKnoten(alt: Summenstand, knoten: readonly Knoten[]): Summenvorher['entfernt'] {
+  const positionen: Positionssumme[] = [];
+  const gliederungen: Gliederungssumme[] = [];
+  for (const k of knoten) {
+    if (k.art === 'position') {
+      const p = positionssummeVon(alt, k.id);
+      if (p) positionen.push(p);
+    } else if (k.art !== 'hinweis') {
+      const g = gliederungssummeVon(alt, k.id);
+      if (g) gliederungen.push(g);
+    }
+  }
+  return {
+    positionen: nachId(positionen, (p) => p.positionId),
+    gliederungen: nachId(gliederungen, (g) => g.gliederungId),
+  };
+}
+
+/**
+ * Die alten Werte zu einer Summenänderung (`Summenaenderung.vorher`, v1.1a): für jede genannte Positions- und
+ * Gliederungssumme, die es im Stand `alt` schon gab, deren alter Wert; `gesamt`, wenn die Änderung es setzt; die vollen
+ * Summen der entfernten Knoten. Kosten: O(genannte Summen + entfernte Knoten), Nachschlagen über den Index des Stands.
+ */
+export function summenVorher(
+  alt: Summenstand,
+  s: Pick<Summenaenderung, 'positionen' | 'gliederungen' | 'gesamt'>,
+  entfernt: readonly Knoten[],
+): Summenvorher {
+  if (s.positionen.length === 0 && s.gliederungen.length === 0 && s.gesamt === null && entfernt.length === 0)
+    return LEERES_SUMMENVORHER;
+  const positionen: Positionssumme[] = [];
+  const gliederungen: Gliederungssumme[] = [];
+  for (const p of s.positionen) {
+    const a = positionssummeVon(alt, p.positionId);
+    if (a) positionen.push(a);
+  }
+  for (const g of s.gliederungen) {
+    const a = gliederungssummeVon(alt, g.gliederungId);
+    if (a) gliederungen.push(a);
+  }
+  return {
+    positionen: nachId(positionen, (p) => p.positionId),
+    gliederungen: nachId(gliederungen, (g) => g.gliederungId),
+    gesamt: s.gesamt === null ? null : alt.gesamt,
+    entfernt: summenDerKnoten(alt, entfernt),
+  };
+}

@@ -21,10 +21,9 @@ import {
   changeSetUmkehren,
   langtextGleich,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   summenBerechnen,
 } from './index';
-import { id, lvMit, posKnoten, titelKnoten } from './testhilfen';
+import { KEINE_SUMMEN, ohneReihenfolge, anwenden, id, lvMit, posKnoten, titelKnoten } from './testhilfen';
 
 const hinweis = (kennung: string, eltern: string, reihenfolge: number, text: Langtext = []): Hinweistext => ({
   art: 'hinweis',
@@ -115,8 +114,8 @@ describe('KurztextAendern', () => {
     const g = cs.knoten.geaendert[0];
     expect(g?.vorher).toEqual(knotenVon(z, kennung));
     expect(g?.nachher).toEqual({ ...knotenVon(z, kennung), kurztext: '  Neu  ' }); // unverändert, nicht getrimmt
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-    expect(lvChangeSetAnwenden(z, cs).summen).toBe(z.summen);
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(anwenden(z, cs).summen).toBe(z.summen);
   });
 
   it('gleicher Wert: leeres ChangeSet', () => {
@@ -128,10 +127,7 @@ describe('KurztextAendern', () => {
 
   it('leerer Kurztext ist erlaubt (vorläufige Annahme)', () => {
     const z = basis();
-    const neu = lvChangeSetAnwenden(
-      z,
-      ok(z, { art: 'KurztextAendern', knotenId: id.pos('P1'), kurztext: '' }),
-    );
+    const neu = anwenden(z, ok(z, { art: 'KurztextAendern', knotenId: id.pos('P1'), kurztext: '' }));
     expect((knotenVon(neu, 'P1') as Position).kurztext).toBe('');
   });
 
@@ -172,7 +168,7 @@ describe('LangtextAendern', () => {
   it('Reihenfolge und Bildinhalt zählen als Unterschied', () => {
     const z = basis();
     const a = ok(z, { art: 'LangtextAendern', positionId: id.pos('P1'), langtext: neuText });
-    const z2 = lvChangeSetAnwenden(z, a);
+    const z2 = anwenden(z, a);
     const geaendert: Langtext = [
       an(neuText, 0),
       { art: 'bild', bild: { id: 'b1' as BildId, medientyp: 'image/png', daten: 'AAAB' } },
@@ -246,17 +242,11 @@ describe('HinweistextAendern', () => {
 describe('EinheitAendern', () => {
   it('setzt, leert (null) und übernimmt Text unverändert', () => {
     const z = basis();
-    const a = lvChangeSetAnwenden(
-      z,
-      ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: ' m² ' }),
-    );
+    const a = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: ' m² ' }));
     expect((knotenVon(a, 'P1') as Position).einheit).toBe(' m² ');
-    const b = lvChangeSetAnwenden(
-      z,
-      ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null }),
-    );
+    const b = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null }));
     expect((knotenVon(b, 'P1') as Position).einheit).toBeNull();
-    const c = lvChangeSetAnwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: '' }));
+    const c = anwenden(z, ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: '' }));
     expect((knotenVon(c, 'P1') as Position).einheit).toBe(''); // Leerstring bleibt Leerstring, unterscheidet sich von null
   });
 
@@ -270,7 +260,7 @@ describe('EinheitAendern', () => {
   it('ChangeSet ohne Summen', () => {
     const z = basis();
     const cs = ok(z, { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: 'kg' });
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('Fehlerfälle', () => {
@@ -292,11 +282,11 @@ describe('LeistungsverzeichnisUmbenennen', () => {
     const z = basis();
     const cs = ok(z, { art: 'LeistungsverzeichnisUmbenennen', name: ' Neuer Name ' });
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
     expect(cs.kopf?.vorher?.name).toBe('Testverzeichnis');
     expect(cs.kopf?.nachher?.name).toBe(' Neuer Name ');
     expect(cs.kopf?.nachher).toEqual({ ...cs.kopf?.vorher, name: ' Neuer Name ' });
-    expect(lvChangeSetAnwenden(z, cs).leistungsverzeichnis.name).toBe(' Neuer Name ');
+    expect(anwenden(z, cs).leistungsverzeichnis.name).toBe(' Neuer Name ');
   });
 
   it('gleicher Name: leer; leerer Name erlaubt; kein String: ungueltige-eingabe', () => {
@@ -382,15 +372,15 @@ describe('Eigenschaften der Feldbefehle', () => {
             continue;
           }
           const cs = e.wert;
-          const neu = lvChangeSetAnwenden(z, cs);
+          const neu = anwenden(z, cs);
           // Summen unverändert und gleich der Neuberechnung
-          expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+          expect(cs.summen).toEqual(KEINE_SUMMEN);
           expect(neu.summen).toEqual(z.summen);
           expect(neu.summen).toEqual(summenBerechnen(neu.leistungsverzeichnis));
           // Undo: Zustand exakt wieder da; Umkehrung der Umkehrung ist das ChangeSet
-          const rueck = changeSetUmkehren(cs, z);
-          expect(lvChangeSetAnwenden(neu, rueck)).toEqual(z);
-          expect(changeSetUmkehren(rueck, neu)).toEqual(cs);
+          const rueck = changeSetUmkehren(cs);
+          expect(anwenden(neu, rueck)).toEqual(z);
+          expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(cs));
           // Wiederholen ergibt ein leeres ChangeSet
           expect(leer(ok(neu, befehlAus(z, x)))).toBe(true);
           z = neu;
