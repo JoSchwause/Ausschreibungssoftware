@@ -15,7 +15,7 @@
 //    (Los eingeschlossen).
 // Nicht belegt, sondern Annahme: alles in `OZ_ANNAHMEN`.
 
-import type { Knoten, Ordnungszahl, OzMaske, OzStelle, OzZeichenart } from '@tethys/vertrag';
+import type { Knoten, Ordnungszahl, OzMaske, OzStelle, OzZeichenart, Pruefbefund } from '@tethys/vertrag';
 import { MAX_GLIEDERUNGSEBENEN } from './regeln';
 
 /** FD 3.3, 4.2.1 und 11.2.3 (BoQInfo, Regel 2): Summe aller Stellen der Maske (Stufen, Position, Index). */
@@ -143,6 +143,27 @@ export function maskeFehler(maske: OzMaske): string | null {
     return `Das Trennzeichen muss null oder ein einzelnes Zeichen sein, das in keinem Teil vorkommt (nicht „${t}“).`;
   }
   return null;
+}
+
+/**
+ * Prüfbefunde zu einer Maske beim Anlegen eines LV. Rein und ohne Wirkung auf den Befehl: `LeistungsverzeichnisAnlegen`
+ * nimmt auch eine ungültige Maske an (ein GAEB-Import darf daran nicht scheitern, U5). Der Vertrag v1 hat für einen
+ * angenommenen Befehl noch keinen Ort für Befunde; ab v1.1a (Ticket 24) liefert der Befehl diese Befunde mit.
+ * Regeln: allein `maskeFehler`. Schwere und Code sind eine vorläufige Annahme, Entscheidung offen: eine Warnung,
+ * Code `oz-maske-ungueltig`, ein Befund je Maske (der erste Fehler).
+ */
+export function maskePruefen(maske: OzMaske): readonly Pruefbefund[] {
+  const fehler = maskeFehler(maske);
+  if (fehler === null) return [];
+  return [
+    {
+      schwere: 'warnung',
+      quelle: 'lv-pruefung',
+      code: 'oz-maske-ungueltig',
+      meldung: fehler,
+      ort: { feld: 'ozMaske' },
+    },
+  ];
 }
 
 /** Summe aller Stellen der Maske (Stufen, Position, Index); ohne Trennzeichen. */

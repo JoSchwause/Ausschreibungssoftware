@@ -2,10 +2,10 @@
 // Umnummerieren gegen die Fixtures (Ticket 06): Die Fixtures tragen die OZ, die ein Mensch nach +1/+10 vergeben hat.
 // Wird die OZ entfernt und der Baum umnummeriert, muss genau diese OZ wieder entstehen. Dazu eine Messung (kein Gate).
 //
-// Die Fixtures beschreiben ihre Maske als Text (`NN.NN.NN.NN.NN.NNNN[I]`, fünf Stufen, Position, Index = 15 Stellen);
-// die GAEB-Regel erlaubt höchstens 14 (FD 3.3, 11.2.3 BoQInfo Regel 2). Die Tests nehmen daher für `winzig` und
-// `typisch` (nur eine Titelstufe) eine zulässige Maske mit zwei Stufen, für `gross` (fünf Stufen, ohne Index) die
-// Fixture-Maske ohne Index.
+// Die Fixtures beschreiben ihre Maske als Text mit höchstens 14 Stellen (F2; Ticket 25): `winzig` und `typisch`
+// `NN.NN.NNNN[I]`, `gross` `NN.NN.NN.NN.NN.NNNN`. Der frühere Text mit 15 Stellen (fünf Stufen, Position, Index) verletzte
+// die GAEB-Regel (FD 3.3, 11.2.3 BoQInfo Regel 2); die Tests nehmen für `winzig` und `typisch` die Maske mit zwei Stufen,
+// für `gross` die mit fünf Stufen ohne Index.
 
 import { describe, expect, it } from 'vitest';
 import type { Knoten, LvZustand, OzMaske } from '@tethys/vertrag';
@@ -32,7 +32,7 @@ const MASKE_FUENF_OHNE_INDEX: OzMaske = {
   index: null,
   trennzeichen: '.',
 };
-/** Die Maske, wie der Text der Fixtures sie beschreibt: 15 Stellen. */
+/** Der frühere, zu lange Maskentext der Fixtures: 15 Stellen, zur Probe der Abweisung. */
 const MASKE_FIXTURE_TEXT: OzMaske = {
   ...MASKE_FUENF_OHNE_INDEX,
   index: { laenge: 1, zeichen: 'alphanumerisch' },
@@ -99,7 +99,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s', (name) => {
   });
 });
 
-describe('Fixture-Maske laut Text der Fixtures', () => {
+describe('Früherer Maskentext der Fixtures (15 Stellen)', () => {
   it('hat 15 Stellen und wird abgewiesen (FD 3.3, 11.2.3 BoQInfo Regel 2: höchstens 14)', () => {
     expect(ozMaskeFehler(MASKE_FIXTURE_TEXT)).toMatch(/15/);
     const { z } = anlegen('typisch', false);

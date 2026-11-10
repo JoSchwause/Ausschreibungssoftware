@@ -39,10 +39,11 @@ export interface LeseOptionen {
   /** Quelle für alle neuen Kennungen (A2: der Leser erzeugt keine). */
   readonly ids: IdQuelle;
   /**
-   * MwSt-Satz des LV. X81 und X83 tragen keinen Steuersatz; `LvInhalt.mwstSatz` ist Pflicht. Der Aufrufer liefert
-   * den Satz, der Leser setzt ihn ein und meldet das als Befund `mwst-ersatzwert`.
+   * MwSt-Satz des LV. X81 und X83 tragen keinen Steuersatz; `LvInhalt.mwstSatz` ist Pflicht. Liefert der Aufrufer
+   * einen, setzt der Leser ihn ein und meldet das als Befund `mwst-ersatzwert`. Liefert er keinen, gilt
+   * `STANDARD_MWST_SATZ` (19,00 %, E-19) mit der Warnung `mwst-standardsatz`.
    */
-  readonly standardMwstSatz: Prozent;
+  readonly standardMwstSatz?: Prozent;
   /** Dateiname, nur für die Erkennung über die Endung (`.X83`) und als Ersatzname des LV. */
   readonly dateiname?: string;
   /** Größte erlaubte Eingabe in Bytes (bzw. Zeichen bei Text). Voreinstellung 100 MiB. */
@@ -58,6 +59,8 @@ export interface GaebLesungErgebnis extends GaebLesung {
   readonly wurzelId: LeistungsverzeichnisId | null;
 }
 
+/** E-19: MwSt-Satz, wenn der Aufrufer keinen liefert (X81/X83 tragen keinen). */
+export const STANDARD_MWST_SATZ = '19.00' as Prozent;
 export const STANDARD_MAX_BYTES = 100 * 1024 * 1024;
 /** Obergrenze der OZ-Länge (Fachdokumentation 3.3, Abschnitt 4.2.1 und 11.2.3 BoQInfo 2). */
 export const OZ_MAX_LAENGE = 14;
@@ -1000,23 +1003,27 @@ function baueInhalt(
   for (const b of bodies) aufbau.koerper(b, wurzelEbene);
   aufbau.loeseVerweise();
 
-  l.melde(
-    'warnung',
-    'mwst-ersatzwert',
-    `X81/X83 tragen keinen Steuersatz; der vom Aufrufer gelieferte Satz ${opt.standardMwstSatz} % wird eingesetzt.`,
-    undefined,
-    { feld: 'mwstSatz' },
-  );
+  const mwstSatz = opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
+  if (opt.standardMwstSatz === undefined) {
+    l.melde(
+      'warnung',
+      'mwst-standardsatz',
+      `X81/X83 tragen keinen Steuersatz und der Aufrufer lieferte keinen; der Standardsatz ${STANDARD_MWST_SATZ} % wird eingesetzt.`,
+      undefined,
+      { feld: 'mwstSatz' },
+    );
+  } else {
+    l.melde(
+      'warnung',
+      'mwst-ersatzwert',
+      `X81/X83 tragen keinen Steuersatz; der vom Aufrufer gelieferte Satz ${opt.standardMwstSatz} % wird eingesetzt.`,
+      undefined,
+      { feld: 'mwstSatz' },
+    );
+  }
   return {
     // v1.1a: mechanisch angepasst, Folgeticket (gaeb: `wurzelId` nur noch in `inhalt`)
-    inhalt: {
-      name,
-      ozMaske: maske,
-      mwstSatz: opt.standardMwstSatz,
-      nachlass: null,
-      knoten: aufbau.knoten,
-      wurzelId,
-    },
+    inhalt: { name, ozMaske: maske, mwstSatz, nachlass: null, knoten: aufbau.knoten, wurzelId },
     wurzelId,
   };
 }

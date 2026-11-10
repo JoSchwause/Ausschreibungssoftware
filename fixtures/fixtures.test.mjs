@@ -9,7 +9,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { erzeugeAlle } from './erzeugen.mjs';
-import { parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp } from './rechnen.mjs';
+import { parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp, berechneSollwerte } from './rechnen.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
 const datei = (name) => join(hier, name);
@@ -182,4 +182,70 @@ test('Dezimalwerte in JSON sind nie Zahlen', () => {
     if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`);
   };
   for (const name of [...LVS, 'typisch-angebote.json', 'handbeispiele.json']) pruefe(laden(name), name);
+});
+
+// ---------------------------------------------------------------- Ticket 25
+
+test('OZ-Maske: höchstens 14 Stellen einschließlich Index, Index genau 1 Zeichen (F2)', () => {
+  for (const name of LVS) {
+    const maske = laden(name).ozMaske.split(':')[0];
+    assert.match(maske, /^[N.]+(\[I\])?$/, `${name}: Maske nicht lesbar: ${maske}`);
+    const stellen = (maske.match(/N/g) ?? []).length + (maske.includes('[I]') ? 1 : 0);
+    assert.ok(stellen <= 14, `${name}: Maske hat ${stellen} Stellen`);
+  }
+});
+
+test('OZ-Maske: die vorhandenen Ordnungszahlen passen zur Maske der Datei', () => {
+  for (const name of LVS) {
+    const lv = laden(name);
+    const maske = lv.ozMaske.split(':')[0];
+    const teile = maske.replace('[I]', '').split('.');
+    const mitIndex = maske.includes('[I]');
+    for (const k of lv.knoten) {
+      if (k.art === 'hinweis') continue;
+      const oz = k.ordnungszahl.split('.');
+      const soll = k.art === 'position' ? [...teile.slice(0, oz.length - 1), teile.at(-1)] : teile.slice(0, oz.length);
+      assert.deepEqual(oz.map((t) => t.length), soll.map((t) => t.length), `${name}: ${k.ordnungszahl}`);
+      if (k.ozIndex) assert.ok(mitIndex && k.ozIndex.length === 1, `${name}: Index ${k.ozIndex}`);
+    }
+  }
+});
+
+test('handbeispiele: jeder Dezimalwert in kanonischer Stellenzahl (N3)', () => {
+  const hand = laden('handbeispiele.json');
+  const stellen = (wert, n, pfad) => {
+    assert.match(wert, DEZIMAL, pfad);
+    assert.equal(wert.split('.')[1].length, n, `${pfad}: ${wert} hat nicht ${n} Nachkommastellen`);
+  };
+  for (const [i, g] of hand.gesamtpreise.entries()) {
+    stellen(g.menge, 3, `gesamtpreise[${i}].menge`);
+    stellen(g.einheitspreis, 3, `gesamtpreise[${i}].einheitspreis`);
+    stellen(g.exakt, 6, `gesamtpreise[${i}].exakt`); // exaktes Zwischenergebnis Menge x EP, keine N3-Größe
+    stellen(g.gp, 2, `gesamtpreise[${i}].gp`);
+  }
+  for (const [i, k] of hand.summenketten.entries()) {
+    stellen(k.netto, 2, `summenketten[${i}].netto`);
+    stellen(k.mwstSatz, 2, `summenketten[${i}].mwstSatz`);
+    if (k.nachlass) stellen(k.nachlass.wert, 2, `summenketten[${i}].nachlass.wert`);
+    for (const [feld, v] of Object.entries(k.soll)) stellen(v, 2, `summenketten[${i}].soll.${feld}`);
+  }
+});
+
+test('gross: Dokumentreihenfolge (Eltern vor Kindern, Geschwister in Arrayreihenfolge), Sollwerte unverändert', () => {
+  const lv = laden('gross.json');
+  const kinder = new Map();
+  for (const k of lv.knoten) {
+    if (!kinder.has(k.parentId)) kinder.set(k.parentId, []);
+    kinder.get(k.parentId).push(k.id);
+  }
+  const lauf = [];
+  const besuche = (id) => { for (const kind of kinder.get(id) ?? []) { lauf.push(kind); besuche(kind); } };
+  besuche(lv.id);
+  assert.deepEqual(lv.knoten.map((k) => k.id), lauf);
+  // Summen vor Ticket 25 (Stand 4396721) eingefroren; Einzelwerte neu aus den Knoten gerechnet.
+  assert.deepEqual(lv.sollwerte.summen, {
+    netto: '147417712.57', nachlass: '2211265.69', nettoNachNachlass: '145206446.88', mwst: '27589224.91', brutto: '172795671.79',
+  });
+  const neu = berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, 3), lv.nachlass, lv.mwstSatz);
+  assert.deepEqual(neu, lv.sollwerte);
 });
