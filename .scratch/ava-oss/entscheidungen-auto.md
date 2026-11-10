@@ -126,3 +126,10 @@ Question: Ist v1.2 stabil genug, damit 30–32 und Phase B darauf bauen (statt P
 Decision: Ja. Opus-Reviewer: „yes-with-fixes“, vier Pflichtpunkte und fünf weitere; alle neun umgesetzt (D-12), Suite grün (938 Tests). Den Berater nicht gefragt, weil der Review keine offene Abwägung übrig ließ.
 Reason: Alle Befunde waren eindeutig lösbar; die Lösungen sind enge, umkehrbare Lesarten.
 Reversible: yes  Touches: packages/vertrag
+
+## D-46.1 Tastenbelegung und Lesarten der Zeilenaktionen im Grid
+Welle 3 · Ticket 46 · decided by: implementer
+Question: Tastenbelegung (Vorschlag im Ticket) und was das Ticket bei Einfügen, Verschieben und Löschen offen lässt.
+Decision: Strg+C/X/V, Strg+Minus/Strg+Entf (Rückfrage), Alt+Pfeil hoch/runter, Strg+Plus (`key '+'`), Escape bricht Ausschneiden ab (die Zeilen bleiben als kopiert gemerkt). Eigener Text ohne `onKopieEinfuegen` wird spaltengenau ab der ersten Spalte eingefügt. „Hinter einer Gliederung“ ist im Vertrag „als erstes Kind“: Strg+Plus auf einer Gliederung legt das erste Kind an; Verschieben neben einer Gliederung verschiebt den Nachbarn oder legt eine Teilfolge neu, stets ein Befehl. Die Rückfrage zählt sichtbare Positionen und sagt „mindestens“ bei zugeklappten Knoten. Einzelheiten in Ticket 46, Comments.
+Reason: Excel-nah (U3), keine bestehende Taste geändert außer Alt+Pfeil hoch/runter (vom Ticket verlangt); `Einfuegeort` bleibt unverändert (A4).
+Reversible: yes  Touches: packages/ui-grid
