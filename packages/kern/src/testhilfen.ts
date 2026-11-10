@@ -38,10 +38,11 @@ import { lvBefehlAusfuehren, lvChangeSetAnwenden } from './index';
 export const LV_ID = 'lv-test' as LeistungsverzeichnisId;
 export const PROJEKT_ID = 'projekt-test' as ProjektId;
 
+/** 14 Stellen (F2): fünf Stufen zu 2, Position 4, kein Index (mit Index wären es 15). */
 export const standardMaske: OzMaske = {
   gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
   position: { laenge: 4, zeichen: 'numerisch' },
-  index: { laenge: 1, zeichen: 'alphanumerisch' },
+  index: null,
   trennzeichen: '.',
 };
 

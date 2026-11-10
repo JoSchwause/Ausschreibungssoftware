@@ -21,7 +21,7 @@ Lesen von 3.2 und weitere Phasen sind Ticket G4.
 
 - [x] Liest alle X81/X83-Dateien aus `fixtures/extern/` (Ticket 23), die Version 3.3 sind, ohne Absturz; Befunde je Datei als Golden-Datei
 - [x] Liest die zehn Fehlerdateien (ungeschlossenes Tag, Dezimalkomma, ungültiges Enum, doppelte ID, Latin-1 trotz UTF-8, OZ-Überlauf …) mit je der erwarteten Warnung oder dem Fehler und liefert die übrigen Positionen
-- [ ] Ergebnis `Leistungsverzeichnis` stimmt bei der BVBS-Prüfdatei Bauausführung 3.3 (X83) in Positionszahl, Gliederung und OZ-Maske mit der eigenen Zählung überein, die ein zweiter unabhängiger Zähler bestätigt hat (geändert nach E-16, 2026-11-10); Zahl und Quelle im Ticket
+- [x] Ergebnis `Leistungsverzeichnis` stimmt bei der BVBS-Prüfdatei Bauausführung 3.3 (X83) in Positionszahl, Gliederung und OZ-Maske mit der eigenen Zählung überein, die ein zweiter unabhängiger Zähler bestätigt hat (geändert nach E-16, 2026-11-10); Zahl und Quelle im Ticket
 - [x] Indexpositionen (`RNoIndex`), Bedarfs-, Wahl- und Zuschlagspositionen (`MarkupItem`) werden erkannt und dem richtigen Typ zugeordnet
 - [x] Eingebettete Bilder im Langtext gehen nicht verloren und gelangen nicht in die Metadaten
 - [x] Sicherheitstests: Billion-Laughs-Datei und Datei mit externer Entität werden abgewiesen
@@ -288,4 +288,4 @@ Der zweite Zähler steht in `packages/gaeb/src/zaehlung-bvbs.test.ts`: ein einfa
 `fixtures/extern/bvbs/3.3-bauausfuehrung/Pruefdatei_3.3_Bauausfuehrung_V-04-04-2024.x83`: **12 Titel** (`BoQCtgy`),
 **28 Positionen** (27 `Item` + 1 `MarkupItem`), **4 Hinweistexte** (`Remark`). Das stimmt mit der eigenen Zählung oben überein, und der Leser
 liefert dieselben Zahlen (Test im selben File). Nicht in diesem Zähler: OZ-Maske und Gliederungstiefe; dafür gilt weiter die Tabelle oben.
-Deshalb bleibt das Kästchen für den Lead offen. Die Nachfrage bei BVBS (service@bvbs.de) bleibt ein Kann (E-16, G-55).
+Das Kriterium ist damit erfüllt und abgehakt (Zählung 12/28/4 bestätigt). Die Nachfrage bei BVBS (service@bvbs.de) bleibt ein Kann (E-16, G-55).

@@ -77,7 +77,7 @@ Projekte (E-15: entfällt).
 4. `gaeb`: `LeseOptionen.standardMwstSatz` ist jetzt optional; `STANDARD_MWST_SATZ = '19.00'` ist exportiert. Ohne Satz: 19,00 %
    und genau ein Befund (`warnung`, `gaeb-lesen`, Code `mwst-standardsatz`, `ort.feld: 'mwstSatz'`). Mit Satz: dessen Wert und
    der bisherige Befund `mwst-ersatzwert` (Goldens unverändert).
-5. Ticket 22: Kriterium war schon umformuliert; Kommentar zum zweiten Zähler ergänzt. Der Zähler
+5. Ticket 22: Kriterium nicht umformuliert (stand schon so), abgehakt; Kommentar zum zweiten Zähler ergänzt. Der Zähler
    (`packages/gaeb/src/zaehlung-bvbs.test.ts`, Durchlauf über die Start-Tags des Rohtexts) bestätigt **12 Titel, 28 Positionen
    (27 Item + 1 MarkupItem), 4 Hinweistexte**; der Leser liefert dieselben Zahlen. Kein Unterschied.
 
@@ -95,9 +95,11 @@ Projekte (E-15: entfällt).
 
 **Lücken und Hinweise**
 
-- `packages/kern/src/oz-fixtures.test.ts` (Kopfkommentar, `MASKE_FIXTURE_TEXT`, Test „hat 15 Stellen und wird abgewiesen“) nennt noch
-  den alten 15-Stellen-Text. Das Test-Objekt ist selbst gebaut und liest den Fixture-Text nicht, der Test bleibt grün; der Kommentar ist
-  veraltet. Außerhalb des Schreibbereichs dieses Tickets, nicht geändert. Ebenso die Befunde-Zeile in Ticket 06 (Comments).
+- Kern-Testhilfen: `standardMaske` in `testhilfen.ts` hatte 15 Stellen (fünf Stufen, Position 4, Index); jetzt 14 ohne Index
+  (Alternative: Position dreistellig mit Index; vorläufige Annahme, Entscheidung offen). Kopfkommentar und Namen in
+  `oz-fixtures.test.ts` nachgezogen; der Test, der eine 15-stellige Maske abweist, bleibt als Regelprobe. Ticket 06 (Comments,
+  historisch) unverändert. `packages/vertrag` (`beispiele.ts` u. a.) bleibt unberührt; Ticket 24 korrigiert es, das Kriterium
+  „kein Maskentext mit mehr als 14 Stellen“ gilt daher für `fixtures/` und `kern`.
 - `packages/vertrag` unberührt; `fixtures-abbildung.test.ts` bleibt grün (726 Tests gesamt).
 - Der Erzeuger-Test (a) prüft weiter Byte-Gleichheit aller fünf Dateien.
 
