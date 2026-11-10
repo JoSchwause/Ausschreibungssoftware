@@ -1,6 +1,6 @@
 # 45: GAEB: Import X84 → Angebot (G3)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: G (G3) · Paket: `packages/gaeb` (benannte Ausnahme: `fixtures/extern/`, nur falls Punkt 6 eine Datei aufnimmt)
 Blocked by: 40, 29
