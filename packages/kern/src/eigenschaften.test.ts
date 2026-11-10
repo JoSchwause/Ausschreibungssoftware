@@ -268,6 +268,10 @@ function unabhaengigePruefung(z: LvZustand): string[] {
       fehler.push(`Tiefe bei ${k.id}`);
     if (k.art === 'los' && k.elternId !== LV_ID) fehler.push(`Los ${k.id} nicht unter der Wurzel`);
   }
+  // F1: Lose und Titel nicht nebeneinander auf der obersten Ebene
+  const oben = new Set(knoten.filter((k) => k.elternId === LV_ID).map((k) => k.art));
+  if (oben.has('los') && oben.has('titel'))
+    fehler.push('Lose und Titel nebeneinander auf der obersten Ebene');
   // dichte Reihenfolge je Elternknoten
   const gruppen = new Map<string, number[]>();
   for (const k of knoten) gruppen.set(k.elternId, [...(gruppen.get(k.elternId) ?? []), k.reihenfolge]);

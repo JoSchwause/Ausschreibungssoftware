@@ -173,7 +173,7 @@ export function maskenLaenge(maske: OzMaske): number {
   return summe;
 }
 
-/** Gleiche Masken (Wert, nicht Objektidentität). */
+/** Gleiche Masken (Wert, nicht Objektidentität). `losStufe`: fehlt gilt wie `false`. */
 export function maskenGleich(a: OzMaske, b: OzMaske): boolean {
   const gleich = (x: OzStelle | null, y: OzStelle | null): boolean =>
     x === null || y === null ? x === y : x.laenge === y.laenge && x.zeichen === y.zeichen;
@@ -182,7 +182,8 @@ export function maskenGleich(a: OzMaske, b: OzMaske): boolean {
     a.gliederung.every((s, i) => gleich(s, b.gliederung[i] ?? null)) &&
     gleich(a.position, b.position) &&
     gleich(a.index, b.index) &&
-    a.trennzeichen === b.trennzeichen
+    a.trennzeichen === b.trennzeichen &&
+    (a.losStufe === true) === (b.losStufe === true)
   );
 }
 

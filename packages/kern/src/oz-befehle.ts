@@ -24,7 +24,7 @@ import type {
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
 import { befehlshinweis } from './hinweise';
-import { ebenenbeitrag } from './regeln';
+import { ebenenbeitrag, obersteEbeneFehler } from './regeln';
 import { ebenenBis, indexVon, ohneKnoten } from './struktur';
 import type { Baumindex } from './struktur';
 import {
@@ -271,6 +271,17 @@ export function ozMaskeSetzen(z: LvZustand, b: OzMaskeSetzen): Antwort {
   const lv = z.leistungsverzeichnis;
   if (maskenGleich(lv.ozMaske, b.maske)) return ok(baueChangeSet(z, {}));
   const idx = indexVon(lv.id, lv.knoten);
+  if (b.maske.losStufe === true) {
+    // F1, E-08: mit Los-Stufe stehen auf der obersten Ebene nur Lose (`obersteEbeneFehler`).
+    const titel = (idx.kinder.get(lv.id) ?? []).find((k) => k.art === 'titel');
+    if (titel !== undefined) {
+      return nein(
+        'knotenart-unzulaessig',
+        obersteEbeneFehler('titel', [], true) ?? 'Titel auf der Los-Stufe.',
+        titel.id,
+      );
+    }
+  }
   const r = nummeriereAlles(idx, b.maske);
   if (!r.ok) return r;
   const vorher = ohneKnoten(lv);

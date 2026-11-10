@@ -502,7 +502,7 @@ describe('Gliederungsebenen', () => {
 
   it('VORLÄUFIGE ANNAHME (Entscheidung offen): ein Los steht nur direkt unter der Wurzel', () => {
     expect(LOS_ANNAHME.nurUnterWurzel).toBe(true);
-    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende(LV_ID)));
+    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende('L'))); // F1: Titel im Los, nicht daneben
     expect(lvBefehlAusfuehren(z, los('L2', ende(LV_ID))).ok).toBe(true);
     expect(fehlercode(z, los('X', ende('L')))).toBe('knotenart-unzulaessig');
     expect(fehlercode(z, los('X', ende('T')))).toBe('knotenart-unzulaessig');
@@ -644,12 +644,21 @@ describe('KnotenVerschieben', () => {
   });
 
   it('Fehlerwerte: unbekannter Knoten, unbekanntes Ziel, Ziel ist eine Position, Los unter einen Titel', () => {
-    const z = reihe(baum(), los('L', anfang(LV_ID)));
+    // F1: Lose und Titel nicht nebeneinander auf der obersten Ebene; das Los steht neben einem LV mit Titeln im Los.
+    const z = reihe(
+      null,
+      los('L', ende(LV_ID)),
+      titel('T1', ende('L')),
+      position('P1', ende('T1')),
+      position('P2', ende('T1')),
+      los('L0', ende(LV_ID)),
+      titel('T0', ende('L0')),
+    );
     expect(fehlercode(z, verschiebe('gibt-es-nicht', ende('T1')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('gibt-es-nicht')))).toBe('eltern-unbekannt');
     expect(fehlercode(z, verschiebe('P1', nach('gibt-es-nicht')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('P2')))).toBe('knotenart-unzulaessig');
-    expect(fehlercode(z, verschiebe('L', ende('T1')))).toBe('knotenart-unzulaessig');
+    expect(fehlercode(z, verschiebe('L', ende('T0')))).toBe('knotenart-unzulaessig');
     expect(lvBefehlAusfuehren(z, verschiebe('L', ende(LV_ID))).ok).toBe(true);
   });
 
