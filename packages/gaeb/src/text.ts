@@ -5,7 +5,7 @@
 // - `span` → Textlauf; `font-weight` bold, `font-style` italic, `text-decoration` underline im `style` (auch an
 //   umgebenden Elementen, vererbt; `normal`/`none` heben auf) → `fett`, `kursiv`, `unterstrichen`.
 // - `br` → `umbruch`; `p` → `absatz`; `ul`/`ol`/`li` → `liste`; `table`/`tr`/`td` (mit `colspan`) → `tabelle`;
-//   `image` → `bild`, an seiner Stelle.
+//   `image` (in `p`) und `Image` (auf Textebene, so das Schema) → `bild`, an seiner Stelle.
 // - `TextComplement` (`Kind`, `MarkLbl`, `Empty`, `ComplCaption`/`ComplBody`/`ComplTail`) → `ergaenzung`, nur auf
 //   oberster Ebene (Geschwister von `Text` in `DetailTxt`). Steht eine tiefer, bleibt ihr Text im Fluss und es gibt
 //   den Befund `ergaenzung-nicht-oben`.
@@ -221,7 +221,8 @@ class Sammler {
           this.stil(k, a);
           aus.push({ art: 'umbruch' });
           break;
-        case 'image': {
+        case 'image':
+        case 'Image': {
           const b = this.bild(k);
           if (b) aus.push(b);
           break;
