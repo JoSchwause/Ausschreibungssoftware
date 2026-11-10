@@ -6,9 +6,11 @@ import gross from '../../../fixtures/gross.json';
 import handbeispiele from '../../../fixtures/handbeispiele.json';
 import typisch from '../../../fixtures/typisch.json';
 import winzig from '../../../fixtures/winzig.json';
+import zuschlag from '../../../fixtures/zuschlag.json';
 import type {
   Betrag,
   Einheitspreis,
+  Einheitspreisanteile,
   Ergebnis,
   ElternId,
   GliederungId,
@@ -223,17 +225,24 @@ interface FxKnoten {
   positionsart?: FxPositionsart;
   ozIndex?: string;
   langtext?: string;
-  menge?: string;
-  einheit?: string;
-  einheitspreis?: string;
+  menge?: string | null;
+  einheit?: string | null;
+  einheitspreis?: string | null;
   bedarfMitGesamtbetrag?: boolean;
   bezugspositionId?: string;
   grundpositionId?: string;
+  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  zuschlag?: Zuschlag;
+  zuschlagskennzeichen?: boolean;
+  epa?: Einheitspreisanteile;
 }
 /** Positionsart des Fixture-Formats (`fixtures/README.md`, Annahmen A1 bis A4); Ticket 44 stellt das Format um. */
 export type FxPositionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
 
-/** Merkmale und Zuschlag aus dem Fixture-Format; eine Zuschlagsposition der Fixtures ist die Altform (R8, D-10). */
+/**
+ * Merkmale und Zuschlag aus dem Fixture-Format. Eine Zuschlagsposition mit `bezugspositionId` ist die Altform (R8,
+ * D-10); `zuschlag.json` trägt den Zuschlag in Vertragsform (Ticket 37).
+ */
 function fixtureMerkmale(k: FxKnoten): Pick<Position, 'merkmale' | 'zuschlag'> {
   const art = k.positionsart ?? 'normal';
   return {
@@ -245,11 +254,13 @@ function fixtureMerkmale(k: FxKnoten): Pick<Position, 'merkmale' | 'zuschlag'> {
             : 'ohne-gesamtbetrag'
           : null,
       wahl: art === 'wahl' ? wahlzuordnung(null, null, k.grundpositionId ?? null) : null,
+      zuschlagskennzeichen: k.zuschlagskennzeichen === true,
     }),
     zuschlag:
-      art === 'zuschlag'
+      k.zuschlag ??
+      (art === 'zuschlag'
         ? zuschlagsliste(k.bezugspositionId === undefined ? [] : [k.bezugspositionId])
-        : null,
+        : null),
   };
 }
 
@@ -261,9 +272,10 @@ interface FxLv {
   knoten: FxKnoten[];
 }
 
-const FIXTURES = { winzig, typisch, gross };
+const FIXTURES = { winzig, typisch, gross, zuschlag };
+export type FixtureName = keyof typeof FIXTURES;
 
-export function fixtureLesen(name: 'winzig' | 'typisch' | 'gross'): FxLv {
+export function fixtureLesen(name: FixtureName): FxLv {
   return FIXTURES[name] as unknown as FxLv;
 }
 
@@ -303,7 +315,7 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       menge: (k.menge ?? null) as Menge | null,
       einheit: k.einheit ?? null,
       einheitspreis: (k.einheitspreis ?? null) as Einheitspreis | null,
-      epa: null,
+      epa: k.epa ?? null,
     };
   });
   const nachlass: Nachlass | null =
@@ -386,7 +398,7 @@ export interface Sollwerte {
   summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
 }
 
-export function sollwerteLesen(name: 'winzig' | 'typisch' | 'gross'): Sollwerte {
+export function sollwerteLesen(name: FixtureName): Sollwerte {
   return (FIXTURES[name] as unknown as { sollwerte: Sollwerte }).sollwerte;
 }
 
