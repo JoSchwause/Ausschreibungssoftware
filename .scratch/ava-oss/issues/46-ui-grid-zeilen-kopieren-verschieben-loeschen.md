@@ -86,14 +86,14 @@ eine Zelle, Alt+Pfeil links/rechts klappt, Leertaste wählt die Zeile, E-18):
 
 ## Acceptance criteria
 
-- [ ] Strg+C schreibt TSV, das Excel als Tabelle liest (Unit-Test der Serialisierung mit Anführung und Zahlen in de-DE)
-- [ ] Strg+V mit eigenem Text: nach Strg+X ein `KnotenlisteVerschieben`, nach Strg+C ein Aufruf von `onKopieEinfuegen` mit Knoten und Ort; mit fremdem Text `PositionAnlegen` je Zeile wie bisher, als eine Folge über `onBefehlsfolge`
-- [ ] Löschen nur nach Bestätigung, als ein `KnotenInPapierkorbLegen`; Escape bricht ohne Befehl ab (Playwright)
-- [ ] Alt+Pfeil hoch/runter verschiebt unter Geschwistern, am Rand nichts (Playwright)
-- [ ] Strg+Plus legt eine leere Position an und fokussiert den Kurztext
-- [ ] `sprungziel` scrollt bei 5.000 Zeilen zur Zeile und fokussiert die Zelle (Playwright)
-- [ ] Keine bestehende Taste geändert (Tests aus 21/33 grün); die neuen Tasten sind dokumentiert
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] Strg+C schreibt TSV, das Excel als Tabelle liest (Unit-Test der Serialisierung mit Anführung und Zahlen in de-DE)
+- [x] Strg+V mit eigenem Text: nach Strg+X ein `KnotenlisteVerschieben`, nach Strg+C ein Aufruf von `onKopieEinfuegen` mit Knoten und Ort; mit fremdem Text `PositionAnlegen` je Zeile wie bisher, als eine Folge über `onBefehlsfolge`
+- [x] Löschen nur nach Bestätigung, als ein `KnotenInPapierkorbLegen`; Escape bricht ohne Befehl ab (Playwright)
+- [x] Alt+Pfeil hoch/runter verschiebt unter Geschwistern, am Rand nichts (Playwright)
+- [x] Strg+Plus legt eine leere Position an und fokussiert den Kurztext
+- [x] `sprungziel` scrollt bei 5.000 Zeilen zur Zeile und fokussiert die Zelle (Playwright)
+- [x] Keine bestehende Taste geändert (Tests aus 21/33 grün); die neuen Tasten sind dokumentiert
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
