@@ -496,7 +496,7 @@ const bildId = '019b76e9-0000-7000-8000-000000000040' as BildId;
 
 /**
  * Punkt 5: Langtext mit Auszeichnung, Liste, Tabelle, Textergänzung des Bieters und einem Bild. Die Textergänzung
- * steht im Absatz, das Bild am Ende auf oberster Ebene.
+ * steht auf oberster Ebene, ebenso das Bild am Ende auf oberster Ebene.
  */
 export const beispielLangtext: Langtext = [
   {
@@ -529,18 +529,13 @@ export const beispielLangtext: Langtext = [
     ],
   },
   {
-    art: 'absatz',
-    inhalt: [
-      {
-        art: 'ergaenzung',
-        herkunft: 'bieter',
-        kennung: '60',
-        leer: true,
-        davor: [{ art: 'text', text: 'Breite von ' }],
-        inhalt: [{ art: 'text', text: '...........' }],
-        danach: [{ art: 'text', text: ' cm.' }],
-      },
-    ],
+    art: 'ergaenzung',
+    herkunft: 'bieter',
+    kennung: '60',
+    leer: true,
+    davor: [{ art: 'text', text: 'Breite von ' }],
+    inhalt: [{ art: 'text', text: '...........' }],
+    danach: [{ art: 'text', text: ' cm.' }],
   },
   { art: 'bild', bild: { id: bildId, medientyp: 'image/png', daten: 'iVBORw0KGgo=' } },
 ];

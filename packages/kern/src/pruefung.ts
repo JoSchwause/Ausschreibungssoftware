@@ -52,6 +52,42 @@ export function positionsdatenFehler(
     const e = alsEinheitspreis(daten.einheitspreis);
     if (!e.ok) return feld('einheitspreis', e.fehler.meldung);
   }
+  // v1.1b: mechanisch angepasst, Folgeticket. Nur Formprüfung der neuen Felder (wie vorher die Art und die Zahlen),
+  // keine Fachregel: jede Kombination der Merkmale bleibt zulässig (K5 entscheidet).
+  const roh: unknown = daten.merkmale;
+  if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
+    return feld('merkmale', 'Die Merkmale fehlen oder sind kein Objekt.');
+  const bedarf: unknown = daten.merkmale.bedarf;
+  if (bedarf !== null && bedarf !== 'ohne-gesamtbetrag' && bedarf !== 'mit-gesamtbetrag')
+    return feld('merkmale.bedarf', 'Bedarf muss null, „ohne-gesamtbetrag“ oder „mit-gesamtbetrag“ sein.');
+  const zuschlagRoh: unknown = daten.zuschlag;
+  if (zuschlagRoh !== null && (typeof zuschlagRoh !== 'object' || Array.isArray(zuschlagRoh)))
+    return feld('zuschlag', 'Der Zuschlag muss null oder ein Objekt sein.');
+  if (daten.zuschlag !== null) {
+    const bezugRoh: unknown = daten.zuschlag.bezug;
+    const art =
+      typeof bezugRoh === 'object' && bezugRoh !== null ? (bezugRoh as { art?: unknown }).art : undefined;
+    if (art !== 'positionen' && art !== 'gliederung' && art !== 'kennzeichnung')
+      return feld(
+        'zuschlag.bezug.art',
+        'Der Zuschlagsbezug muss „positionen“, „gliederung“ oder „kennzeichnung“ sein.',
+      );
+    if (daten.zuschlag.prozentsatz !== null) {
+      const e = alsProzent(daten.zuschlag.prozentsatz);
+      if (!e.ok) return feld('zuschlag.prozentsatz', e.fehler.meldung);
+    }
+    if (daten.zuschlag.bezug.art === 'positionen') {
+      const liste: unknown = daten.zuschlag.bezug.positionen;
+      if (!Array.isArray(liste))
+        return feld('zuschlag.bezug.positionen', 'Die Bezugspositionen müssen eine Liste sein.');
+      for (const b of daten.zuschlag.bezug.positionen) {
+        if (b.teilmenge !== null) {
+          const e = alsMenge(b.teilmenge);
+          if (!e.ok) return feld('zuschlag.bezug.positionen.teilmenge', e.fehler.meldung);
+        }
+      }
+    }
+  }
   const bezug = daten.zuschlag?.bezug;
   const ziele: (readonly [string, string | null])[] = [
     ['merkmale.wahl.grundpositionId', daten.merkmale.wahl?.grundpositionId ?? null],

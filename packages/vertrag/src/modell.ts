@@ -91,8 +91,8 @@ export interface Textergaenzung {
   readonly danach: Textfluss;
 }
 
-/** Baustein innerhalb eines Absatzes. */
-export type LangtextInline = Textlauf | Zeilenumbruch | Textbild | Textergaenzung;
+/** Baustein innerhalb eines Absatzes. Eine Textergänzung steht nicht darin (siehe `LangtextBaustein`). */
+export type LangtextInline = Textlauf | Zeilenumbruch | Textbild;
 
 /** Absatz (GAEB `p`, ProseMirror `paragraph`). */
 export interface Absatz {
@@ -104,13 +104,13 @@ export interface Absatz {
 export interface Liste {
   readonly art: 'liste';
   readonly geordnet: boolean;
-  readonly punkte: readonly Langtext[];
+  readonly punkte: readonly LangtextInnen[];
 }
 
 /** Zelle einer Tabelle; `spalten` ist die Zahl der überspannten Spalten (GAEB `colspan`, mindestens 1). */
 export interface Tabellenzelle {
   readonly spalten: number;
-  readonly inhalt: Langtext;
+  readonly inhalt: LangtextInnen;
 }
 
 export interface Tabellenzeile {
@@ -124,11 +124,22 @@ export interface Tabelle {
 }
 
 /**
- * Baustein eines Langtexts, in Lesereihenfolge. Wie in GAEB dürfen Textläufe, Bilder und Textergänzungen auch
- * ohne Absatz direkt im Langtext stehen; aufeinanderfolgende solche Bausteine sind ein Absatz (siehe „Offene Typfragen“,
- * Ticket 26). Die beiden Formen vor v1.1b (`text` ohne Auszeichnung und `bild`) bleiben unverändert gültig.
+ * Baustein eines Langtexts innerhalb eines Listenpunkts oder einer Tabellenzelle: alles außer der Textergänzung. Wie
+ * in GAEB dürfen Textläufe und Bilder auch ohne Absatz direkt stehen; aufeinanderfolgende solche Bausteine sind ein
+ * Absatz (siehe „Offene Typfragen“, Ticket 26).
  */
-export type LangtextBaustein = LangtextInline | Absatz | Liste | Tabelle;
+export type LangtextInnenBaustein = LangtextInline | Absatz | Liste | Tabelle;
+
+/** Inhalt eines Listenpunkts oder einer Tabellenzelle: wie `Langtext`, aber ohne Textergänzung. */
+export type LangtextInnen = readonly LangtextInnenBaustein[];
+
+/**
+ * Baustein eines Langtexts, in Lesereihenfolge. Die Textergänzung steht nur auf oberster Ebene, nie in einem Absatz,
+ * Listenpunkt oder einer Tabellenzelle: GAEB hält `TextComplement` nur als Geschwister der Textblöcke (geöffnet:
+ * BVBS 3.3 Bauausführung X83, neben `Text` in `DetailTxt`), G2 könnte sie sonst nicht ohne Zerteilen schreiben. Die
+ * Formen vor v1.1b (`text` ohne Auszeichnung und `bild`) bleiben unverändert gültig.
+ */
+export type LangtextBaustein = LangtextInnenBaustein | Textergaenzung;
 
 /**
  * Langtext einer Position und Text eines Hinweistexts: geordnete Bausteine, damit Bilder an ihrer Stelle

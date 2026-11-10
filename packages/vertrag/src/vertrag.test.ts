@@ -8,6 +8,8 @@ import {
   type Angebotsposition,
   type Befehl,
   type Befehlskurzfassung,
+  type Langtext,
+  type Textergaenzung,
   type Befehlsart,
   type Befehlsfehler,
   type BefehlsEmpfaenger,
@@ -86,8 +88,9 @@ import {
  * Die Teile von T, die keine Daten sind (Funktion, Date …); `never`, wenn T nur aus Daten besteht. Seit v1.1b ist
  * `Langtext` rekursiv (Liste in Tabelle in Liste): Die frühere Fassung über einen abgebildeten Typ meldete dafür einen
  * Zirkelfehler (TS2615), eine unbegrenzte Rekursion über die Werte ebenso (TS2589). Darum läuft die Prüfung bis zur
- * Tiefe `D` (Zahl der Glieder in `Tiefe`) und nimmt darunter „Daten“ an. 14 Ebenen decken jeden Pfad bis in die
- * dritte Schachtelung eines Langtexts ab.
+ * Tiefe 14 und nimmt darunter „Daten“ an. **Grenze:** Was tiefer als 14 Ebenen unter der Wurzel liegt, wird nicht
+ * geprüft; von `Protokolleintrag` oder `ChangeSet` aus erreicht diese Tiefe schon ein Textlauf in einer Tabellenzelle.
+ * Darum gibt es zusätzlich Sonden, die an `Langtext` und an `Knoten` ansetzen (siehe unten), und eine Gegenprobe.
  */
 type KeineDaten<T, Tiefe extends unknown[] = []> = Tiefe['length'] extends 14
   ? never
@@ -105,6 +108,34 @@ type KeineDaten<T, Tiefe extends unknown[] = []> = Tiefe['length'] extends 14
 
 /** `true`, wenn T nur aus Daten besteht: keine Funktion, kein Date, alles verschachtelt gleich. */
 type NurDaten<T> = [KeineDaten<T>] extends [never] ? true : false;
+
+// Sonden ab `Langtext` und `Knoten`: Jedes Langtext-Konstrukt liegt hier flach genug, um geprüft zu werden.
+describe('reine Daten bis in den Langtext (v1.1b)', () => {
+  it('Langtext und Knoten bestehen nur aus Daten', () => {
+    expectTypeOf<NurDaten<Langtext>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Knoten>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Textergaenzung>>().toEqualTypeOf<true>();
+  });
+
+  it('Gegenprobe: eine Funktion an einem Textlauf in einer Tabellenzelle wird erkannt', () => {
+    type Schlecht = readonly [
+      {
+        readonly art: 'tabelle';
+        readonly zeilen: readonly {
+          readonly zellen: readonly {
+            readonly spalten: number;
+            readonly inhalt: readonly {
+              readonly art: 'text';
+              readonly text: string;
+              readonly f: () => void;
+            }[];
+          }[];
+        }[];
+      },
+    ];
+    expectTypeOf<NurDaten<Schlecht>>().toEqualTypeOf<false>();
+  });
+});
 
 describe('Zahlen (N1)', () => {
   it('number und string sind für Menge, EP, Betrag und Prozent nicht zuweisbar', () => {

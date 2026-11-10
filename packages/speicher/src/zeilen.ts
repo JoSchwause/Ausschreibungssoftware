@@ -108,6 +108,22 @@ export const KNOTEN_SPALTEN = [
 // Sie werden abgewiesen statt still verworfen (Q5), bis das Folgeticket `speicher` sie aufnimmt. Der Kern setzt sie
 // heute nie, kein Paket erzeugt sie.
 
+/**
+ * // v1.1b: mechanisch angepasst, Folgeticket. Die Datenbank legt den Langtext als JSON ab, die Projektdatei-Prüfung kennt aber nur `text` ohne
+ * Auszeichnung und `bild`. Wer neue Bausteine (Auszeichnung, Absatz, Liste, Tabelle, Textergänzung) schreibt, könnte
+ * das Projekt speichern, aber nicht aus seinem eigenen Export wiederherstellen; darum wird hier abgewiesen.
+ */
+export function pruefeLangtext(knotenId: string, lt: Langtext): void {
+  const alt = lt.every((b) =>
+    b.art === 'bild' ? true : b.art === 'text' && Object.keys(b).every((k) => k === 'art' || k === 'text'),
+  );
+  if (!alt)
+    abbruch(
+      'unbekannt',
+      `Knoten ${knotenId}: Langtext mit Auszeichnung, Absatz, Liste, Tabelle oder Textergänzung lässt sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
+    );
+}
+
 export function pruefeKopfdaten(k: {
   id: string;
   auftraggeber?: unknown;
@@ -248,7 +264,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
-        JSON.stringify(k.text),
+        (pruefeLangtext(k.id, k.text), JSON.stringify(k.text)),
         null,
         null,
         null,
@@ -261,7 +277,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ozIndex,
         k.kurztext,
         ...altSpalten(k),
-        JSON.stringify(k.langtext),
+        (pruefeLangtext(k.id, k.langtext), JSON.stringify(k.langtext)),
         k.menge,
         k.einheit,
         k.einheitspreis,

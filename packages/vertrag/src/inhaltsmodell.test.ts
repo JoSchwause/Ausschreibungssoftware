@@ -9,6 +9,9 @@ import {
   type Befehlskurzfassung,
   type Gesamtsummen,
   type Langtext,
+  type LangtextInline,
+  type LangtextInnen,
+  type Textergaenzung,
   type LangtextBaustein,
   type Massenbefehlsart,
   type Position,
@@ -109,8 +112,14 @@ describe('Punkt 4: Summen (F4)', () => {
 describe('Punkt 5: Langtext (F6, E-10)', () => {
   it('trägt Liste, Tabelle, Textergänzung und Auszeichnung als reine Daten', () => {
     const arten = (t: Langtext): string[] => t.map((b: LangtextBaustein) => b.art);
-    expect(arten(beispielLangtext)).toEqual(['absatz', 'liste', 'tabelle', 'absatz', 'bild']);
+    expect(arten(beispielLangtext)).toEqual(['absatz', 'liste', 'tabelle', 'ergaenzung', 'bild']);
     expect(jsonRund(beispielLangtext)).toEqual(beispielLangtext);
+  });
+
+  it('die Textergänzung steht nur auf oberster Ebene, nicht in Absatz, Listenpunkt oder Zelle', () => {
+    expectTypeOf<Textergaenzung>().not.toExtend<LangtextInline>();
+    expectTypeOf<Textergaenzung>().not.toExtend<LangtextInnen[number]>();
+    expectTypeOf<Textergaenzung>().toExtend<LangtextBaustein>();
   });
 
   it('ein leerer Text ist []; ein alter Wert mit nur Text und Bild bleibt gültig', () => {

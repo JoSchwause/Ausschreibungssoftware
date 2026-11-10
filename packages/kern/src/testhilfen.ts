@@ -127,6 +127,15 @@ export function positionsfelder<T extends PositionsKurzform>(
 
 /** Die alte Positionsart einer Position, für Zählungen in Tests. */
 export function positionsartVon(p: Pick<Position, 'merkmale' | 'zuschlag'>): Positionsart {
+  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
+  const gesetzt = [
+    p.zuschlag !== null,
+    p.merkmale.wahl !== null,
+    p.merkmale.bedarf !== null,
+    p.merkmale.stundenlohn,
+  ];
+  if (gesetzt.filter(Boolean).length > 1)
+    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
   if (p.zuschlag !== null) return 'zuschlag';
   if (p.merkmale.wahl !== null) return 'wahl';
   if (p.merkmale.bedarf !== null) return 'bedarf';

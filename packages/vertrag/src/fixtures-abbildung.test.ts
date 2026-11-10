@@ -180,6 +180,15 @@ function zuschlag(k: Extract<FxKnoten, { art: 'position' }>): Zuschlag | null {
 
 /** Rückweg: die Fixture-Positionsart aus den Merkmalen (nur für die Gegenprobe). */
 function positionsart(k: Position): FxPositionsart {
+  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
+  const gesetzt = [
+    k.zuschlag !== null,
+    k.merkmale.wahl !== null,
+    k.merkmale.bedarf !== null,
+    k.merkmale.stundenlohn,
+  ];
+  if (gesetzt.filter(Boolean).length > 1)
+    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
   if (k.zuschlag !== null) return 'zuschlag';
   if (k.merkmale.wahl !== null) return 'wahl';
   if (k.merkmale.bedarf !== null) return 'bedarf';

@@ -202,7 +202,7 @@ function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   });
 }
 
-// // v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 kennt noch die Positionsart vor v1.1b (siehe `projektdateiInAlterForm`).
+// v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 kennt noch die Positionsart vor v1.1b (siehe `projektdateiInAlterForm`).
 const POSITIONSARTEN = ['normal', 'bedarf', 'wahl', 'zuschlag', 'stundenlohn'] as const;
 
 function knoten(x: unknown, pfad: string): Knoten {
@@ -265,11 +265,22 @@ function knoten(x: unknown, pfad: string): Knoten {
         ordnungszahl: oz(o),
         ozIndex: oderNull(feld(o, 'ozIndex'), (v) => zeichenkette(v, `${pfad}.ozIndex`)),
         ...(() => {
-          // // v1.1b: mechanisch angepasst, Folgeticket: Datei der Version 1 (alte Form) → Merkmale und Zuschlag von `vertrag` v1.1b.
+          // v1.1b: mechanisch angepasst, Folgeticket: Datei der Version 1 (alte Form) → Merkmale und Zuschlag von `vertrag` v1.1b.
           const art = aufzaehlung(feld(o, 'positionsart'), `${pfad}.positionsart`, POSITIONSARTEN);
           const mit = wahrheit(feld(o, 'bedarfMitGesamtbetrag'), `${pfad}.bedarfMitGesamtbetrag`);
           const bezug = pid('bezugspositionId');
           const grund = pid('grundpositionId');
+          // Vor v1.1b wurden diese Felder wörtlich gelesen; ein Wert außerhalb seiner Art darf nicht still verschwinden (Q5).
+          const fremd = (name: string, gesetzt: boolean, nur: string): void => {
+            if (gesetzt && art !== nur)
+              ungueltig(
+                `${pfad}.${name}`,
+                `Position ${String(o['id'])}: ${name} ist nur bei positionsart „${nur}“ zulässig.`,
+              );
+          };
+          fremd('bedarfMitGesamtbetrag', mit, 'bedarf');
+          fremd('bezugspositionId', bezug !== null, 'zuschlag');
+          fremd('grundpositionId', grund !== null, 'wahl');
           const merkmale: Positionsmerkmale = {
             bedarf: art === 'bedarf' ? (mit ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
             wahl: art === 'wahl' ? { gruppe: null, variante: null, grundpositionId: grund } : null,
@@ -492,7 +503,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   EinheitAendern: true,
   EinheitspreisAendern: true,
   EinheitspreisanteileSetzen: true,
-  PositionsmerkmaleSetzen: true, // // v1.1b: mechanisch angepasst, Folgeticket
+  PositionsmerkmaleSetzen: true, // v1.1b: mechanisch angepasst, Folgeticket
   OzMaskeSetzen: true,
   OrdnungszahlSetzen: true,
   Umnummerieren: true,
