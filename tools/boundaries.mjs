@@ -49,8 +49,10 @@ export const ERLAUBT = {
 const ALLE = Object.keys(ERLAUBT);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 const alt = (ordner) => ordner.map(esc).join('|');
-// Testdateien: *.test.*, *.spec.*, e2e/ und die Hilfsdateien nur für Tests (testhilfen.ts, testhilfe/).
-const TESTDATEI = String.raw`(\.test\.|\.spec\.|(^|/)e2e/|(^|/)testhilfen?(\.|/))`;
+// Testdateien: *.test.*, *.spec.*, e2e/, harness/ (Playwright-Prüfstand eines Pakets, nur vom e2e-Vite bedient, nie
+// ausgeliefert) und die Hilfsdateien nur für Tests (testhilfen.ts, testhilfe/).
+const TESTHILFE = String.raw`(^|/)testhilfen?(\.|/)`;
+const TESTDATEI = String.raw`(\.test\.|\.spec\.|(^|/)e2e/|(^|/)harness/|${TESTHILFE})`;
 
 /** Verbotsregeln für dependency-cruiser, abgeleitet aus der Tabelle. */
 export function regeln() {
@@ -77,6 +79,13 @@ export function regeln() {
     severity: 'error',
     from: { pathNot: `^fixtures/|${TESTDATEI}` },
     to: { path: '^fixtures/' },
+  });
+  forbidden.push({
+    name: 'testhilfen-nur-in-tests',
+    comment: 'Testhilfen (testhilfen.*, testhilfe/) importieren nur Testdateien und andere Testhilfen.',
+    severity: 'error',
+    from: { pathNot: TESTDATEI },
+    to: { path: TESTHILFE },
   });
   return forbidden;
 }
