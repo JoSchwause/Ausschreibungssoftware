@@ -1,6 +1,6 @@
 # 33: Anpassung `ui-grid` an v1.1a (`GridZahlen`, `wurzelId`, Hinweise)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: U · Paket: `packages/ui-grid`
 Blocked by: -
