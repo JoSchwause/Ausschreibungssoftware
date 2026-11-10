@@ -18,17 +18,23 @@
 // kaskadiert, sondern mit `konflikt` abgewiesen.
 
 import type {
+  Aenderung,
   Aenderungen,
   AngebotChangeSet,
   AuftragsLvChangeSet,
   Gesamtsummen,
   Knoten,
+  LeistungsverzeichnisId,
   LvChangeSet,
+  LvStand,
+  LvStandKopf,
+  Papierkorbeintrag,
   Projekt,
   ProjektChangeSet,
   ProjektId,
   Protokolleintrag,
   Summenaenderung,
+  Zeitstempel,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import { kanonischKompakt } from './kanonisch';
@@ -37,7 +43,10 @@ import {
   leseAngebotposition,
   leseAuftragsLvKopf,
   leseKnoten1,
+  leseLv,
   leseLvKopf,
+  leseLvStand,
+  lesePapierkorbeintrag,
   leseProjekt,
   leseSummen,
 } from './lesen';
@@ -309,12 +318,12 @@ function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): v
 
 // --- Leistungsverzeichnis ------------------------------------------------------------------------------------
 
-export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
+/**
+ * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `wann` ist der Zeitpunkt des
+ * Protokolleintrags; ein LV-Stand bekommt ihn als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
+ */
+export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, wann?: Zeitstempel): void {
   const id = cs.leistungsverzeichnisId;
-  // v1.2: mechanisch angepasst, Folgeticket (Papierkorb und LV-Stand ablegen: Ticket 43; laut abweisen, Q5)
-  if (cs.papierkorb !== undefined || cs.lvStand !== undefined) {
-    return abbruch('unbekannt', 'Papierkorb und LV-Stand legt speicher noch nicht ab (Ticket 43).');
-  }
   const gespeichert = leseLvKopf(db, id);
   if (cs.kopf === null) {
     if (gespeichert === null)
@@ -382,6 +391,151 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
   }
   wendeKnotenAn(db, id, cs.knoten);
   wendeSummenAn(db, id, cs.summen);
+  if (cs.papierkorb !== undefined) wendePapierkorbAn(db, id, cs.papierkorb);
+  if (cs.papierkorb !== undefined || cs.knoten.hinzugefuegt.length > 0) pruefePapierkorb(db, id, cs);
+  if (cs.lvStand !== undefined) wendeLvStandAn(db, id, cs.lvStand, wann);
+}
+
+// --- Papierkorb (Schema 3) ---------------------------------------------------------------------------------------
+
+const PAPIERKORB_SCHREIBEN = `INSERT INTO papierkorb_eintrag (leistungsverzeichnis_id, id, nummer, knoten) VALUES (?, ?, ?, ?)`;
+
+/**
+ * Papierkorbeinträge wie Knoten: `entfernt` und `geaendert[].vorher` müssen dem gespeicherten Eintrag gleichen
+ * (sonst `konflikt`), ein hinzugefügter darf noch nicht da sein. Ein Eintrag wird als Ganzes geschrieben.
+ */
+function wendePapierkorbAn(db: Datenbank, lvId: string, p: Aenderungen<Papierkorbeintrag>): void {
+  for (const e of p.entfernt) {
+    const gespeichert = lesePapierkorbeintrag(db, lvId, e.id);
+    if (gespeichert === null) return abbruch('nicht-gefunden', `Papierkorbeintrag ${e.id} ist nicht vorhanden.`);
+    if (!gleich(gespeichert, e)) return konflikt(`der entfernte Papierkorbeintrag ${e.id}`);
+  }
+  for (const { vorher, nachher } of p.geaendert) {
+    if (vorher.id !== nachher.id)
+      return abbruch('unbekannt', `ChangeSet: Papierkorbeintrag ${vorher.id} wechselt die Kennung.`);
+    const gespeichert = lesePapierkorbeintrag(db, lvId, vorher.id);
+    if (gespeichert === null)
+      return abbruch('nicht-gefunden', `Papierkorbeintrag ${vorher.id} ist nicht vorhanden.`);
+    if (!gleich(gespeichert, vorher)) return konflikt(`der Vorherstand des Papierkorbeintrags ${vorher.id}`);
+  }
+  db.stapel(
+    'DELETE FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? AND id = ?',
+    p.entfernt.map((e): SqlWert[] => [lvId, e.id]),
+  );
+  db.stapel(
+    'DELETE FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? AND id = ?',
+    p.geaendert.map(({ vorher }): SqlWert[] => [lvId, vorher.id]),
+  );
+  for (const e of [...p.geaendert.map((g) => g.nachher), ...p.hinzugefuegt]) {
+    if (lesePapierkorbeintrag(db, lvId, e.id) !== null)
+      return konflikt(`Papierkorbeintrag ${e.id} existiert bereits, das ChangeSet`);
+    const nummer = db.zeilen(
+      'SELECT id FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? AND nummer = ?',
+      [lvId, e.nummer],
+    )[0];
+    if (nummer !== undefined)
+      return konflikt(`die Nummer ${String(e.nummer)} des Papierkorbeintrags ${e.id} (vergeben), das ChangeSet`);
+    db.ausfuehren(PAPIERKORB_SCHREIBEN, [lvId, e.id, e.nummer, kanonischKompakt(e.knoten)]);
+  }
+}
+
+/** Kennungen der Knoten (bzw. nur der Positionen) in Papierkorbeinträgen, als SQL-Teilabfrage. */
+const PAPIERKORB_KNOTEN = `SELECT p.id AS eintrag, json_extract(j.value, '$.id') AS knoten_id,
+    json_extract(j.value, '$.art') AS art
+  FROM papierkorb_eintrag p, json_each(p.knoten) j WHERE p.leistungsverzeichnis_id = ?`;
+
+/**
+ * Nach dem Schreiben: (1) Kein Knoten liegt zugleich im Baum und im Papierkorb (Positionsidentität, ADR 0011).
+ * (2) Q5, D-12: Eine Position aus einem entfernten Eintrag, die weder in den Baum zurückkam noch in einem anderen
+ * Eintrag liegt, darf von keinem Angebot des LV mehr gebraucht werden; sonst `konflikt` (Entfernen und Leeren
+ * des Papierkorbs, solange ein Angebot auf eine Position im Eintrag verweist).
+ */
+function pruefePapierkorb(db: Datenbank, lvId: string, cs: LvChangeSet): void {
+  const doppelt = db.zeilen(
+    `SELECT pk.knoten_id AS id FROM (${PAPIERKORB_KNOTEN}) pk
+     JOIN knoten k ON k.aggregat_id = ? AND k.id = pk.knoten_id LIMIT 1`,
+    [lvId, lvId],
+  )[0];
+  if (doppelt !== undefined) {
+    return abbruch(
+      'konflikt',
+      `Konflikt: Knoten ${String(doppelt['id'])} läge zugleich im Baum und im Papierkorb; nichts geschrieben.`,
+    );
+  }
+  const weg = (cs.papierkorb?.entfernt ?? [])
+    .flatMap((e) => e.knoten)
+    .filter((k) => k.art === 'position')
+    .map((k) => k.id as string);
+  for (const positionId of weg) {
+    if (leseKnoten1(db, lvId, positionId) !== null) continue;
+    const imKorb = db.zeilen(`SELECT 1 AS da FROM (${PAPIERKORB_KNOTEN}) WHERE knoten_id = ?`, [lvId, positionId]);
+    if (imKorb.length > 0) continue;
+    const angebot = db.zeilen(
+      `SELECT a.id FROM angebot a JOIN angebotsposition ap ON ap.angebot_id = a.id
+       WHERE a.leistungsverzeichnis_id = ? AND ap.position_id = ? ORDER BY a.id LIMIT 1`,
+      [lvId, positionId],
+    )[0];
+    if (angebot !== undefined) {
+      return abbruch(
+        'konflikt',
+        `Konflikt: Angebot ${String(angebot['id'])} verweist auf Position ${positionId} im Papierkorbeintrag; ` +
+          'der Eintrag lässt sich nicht endgültig entfernen (Q5). Es wurde nichts geschrieben.',
+      );
+    }
+  }
+}
+
+/** Liegt `positionId` als Position im Papierkorb des LV? (Angebote verweisen weiter auf sie, D-12.) */
+function imPapierkorb(db: Datenbank, lvId: string, positionId: string): boolean {
+  return (
+    db.zeilen(`SELECT 1 AS da FROM (${PAPIERKORB_KNOTEN}) WHERE knoten_id = ? AND art = 'position'`, [
+      lvId,
+      positionId,
+    ]).length > 0
+  );
+}
+
+// --- LV-Stand (Schema 3, ADR 0006) ---------------------------------------------------------------------------------
+
+const LV_STAND_SCHREIBEN = `INSERT INTO lv_stand (id, leistungsverzeichnis_id, name, angelegt, zustand) VALUES (?, ?, ?, ?, ?)`;
+
+/**
+ * `vorher: null`: friert den gespeicherten Stand des LV ein (nach den übrigen Teilen dieses ChangeSets, in derselben
+ * Transaktion), `angelegt` = `wann`. `nachher: null` (nur als Umkehrung): Der Stand muss genau so gespeichert sein
+ * und entfällt. Ein Stand wird nie geändert; beide Seiten gesetzt ist ein Programmfehler.
+ */
+function wendeLvStandAn(
+  db: Datenbank,
+  lvId: LeistungsverzeichnisId,
+  s: Aenderung<LvStandKopf>,
+  wann: Zeitstempel | undefined,
+): void {
+  const { vorher, nachher } = s;
+  if (vorher !== null && nachher !== null)
+    return abbruch('unbekannt', 'ChangeSet: Ein LV-Stand wird nie geändert (ADR 0006).');
+  if (nachher !== null) {
+    if (nachher.leistungsverzeichnisId !== lvId)
+      return abbruch('unbekannt', 'ChangeSet: Der LV-Stand gehört zu einem anderen LV.');
+    if (wann === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
+    if (leseLvStand(db, nachher.id) !== null) return konflikt(`LV-Stand ${nachher.id} existiert bereits, das ChangeSet`);
+    const zustand = leseLv(db, lvId);
+    if (zustand === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
+    db.ausfuehren(LV_STAND_SCHREIBEN, [nachher.id, lvId, nachher.name, wann, kanonischKompakt(zustand)]);
+    return;
+  }
+  if (vorher === null) return abbruch('unbekannt', 'ChangeSet: LV-Stand ohne vorher und nachher.');
+  const gespeichert = leseLvStand(db, vorher.id);
+  if (gespeichert === null) return abbruch('nicht-gefunden', `LV-Stand ${vorher.id} ist nicht vorhanden.`);
+  const { id, leistungsverzeichnisId, name } = gespeichert;
+  if (!gleich({ id, leistungsverzeichnisId, name }, vorher) || leistungsverzeichnisId !== lvId)
+    return konflikt(`der LV-Stand ${vorher.id}`);
+  db.ausfuehren('DELETE FROM lv_stand WHERE id = ?', [vorher.id]);
+}
+
+/** Schreibt einen LV-Stand aus der Projektdatei unverändert (Import; der Stand ist schon eingefroren). */
+export function schreibeLvStand(db: Datenbank, s: LvStand): void {
+  if (leseLvStand(db, s.id) !== null) return konflikt(`LV-Stand ${s.id} existiert bereits, die Datei`);
+  db.ausfuehren(LV_STAND_SCHREIBEN, [s.id, s.leistungsverzeichnisId, s.name, s.angelegt, kanonischKompakt(s.zustand)]);
 }
 
 /**
@@ -417,14 +571,25 @@ function loescheLv(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
   if (gespeichert.projektId !== projektId)
     return abbruch('unbekannt', `LV ${id} gehört zu einem anderen Projekt.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des LV-Kopfs');
+  // LV-Stände verhindern das Löschen wie Angebote (D-12): Ein Stand ist unveränderlich und geht nicht still verloren.
   abhaengig(
     db,
     `LV ${id}`,
     `SELECT 'Angebot' AS art, id FROM angebot WHERE leistungsverzeichnis_id = ?1
      UNION ALL SELECT 'Auftrags-LV', id FROM auftrags_lv WHERE leistungsverzeichnis_id = ?1
+     UNION ALL SELECT 'LV-Stand', id FROM lv_stand WHERE leistungsverzeichnis_id = ?1
      ORDER BY 1, 2`,
     id,
   );
+  if (cs.lvStand !== undefined) return abbruch('unbekannt', `ChangeSet: Das Löschen von LV ${id} legt einen Stand an.`);
+  // Der Papierkorb geht im ChangeSet mit (`papierkorb.entfernt`, Vertrag `LeistungsverzeichnisLoeschen`); fehlt ein
+  // Eintrag darin, ist das ChangeSet unvollständig (`konflikt`), nie still verworfen.
+  const p = cs.papierkorb;
+  if (p !== undefined && (p.hinzugefuegt.length > 0 || p.geaendert.length > 0))
+    return abbruch('unbekannt', `ChangeSet: Das Löschen von LV ${id} legt Papierkorbeinträge an oder ändert sie.`);
+  if (p !== undefined) wendePapierkorbAn(db, id, p);
+  const rest = anzahl(db, 'SELECT COUNT(*) AS n FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ?', id);
+  if (rest > 0) konflikt(`der Papierkorb zum Löschen von LV ${id} (${String(rest)} Einträge fehlen darin)`);
   loescheKnotenUndSummen(db, id, cs.knoten, cs.summen, `LV ${id}`);
   db.ausfuehren('DELETE FROM leistungsverzeichnis WHERE id = ?', [id]);
 }
@@ -436,7 +601,8 @@ function pruefeAngebotsposition(db: Datenbank, lvId: string, positionId: string)
     lvId,
     positionId,
   ])[0];
-  if (z === undefined) {
+  // Eine Position im Papierkorb behält ihre Angebotspositionen (D-12); sie kommt mit derselben Kennung zurück.
+  if (z === undefined && !imPapierkorb(db, lvId, positionId)) {
     return abbruch('nicht-gefunden', `Angebotsposition ${positionId}: keine Position im LV ${lvId}.`);
   }
 }
@@ -582,8 +748,8 @@ function loescheAngebot(db: Datenbank, cs: AngebotChangeSet, projektId: ProjektI
 
 /**
  * Wie `wendeLvAn`, Aggregat `auftrags_lv`. Beim Anlegen müssen LV und Angebot existieren, zum Projekt gehören und
- * zueinander passen (das Angebot gilt für dieses LV). Ein Auftrags-LV zu löschen sieht der Vertrag nicht vor (Offene
- * Typfrage D, Ticket 24): `unbekannt`, nie still verworfen (Q5). Auch der Import der Projektdatei schreibt hierüber.
+ * zueinander passen (das Angebot gilt für dieses LV). Gelöscht wird ein Auftrags-LV (Ticket 43) als Umkehrung seines
+ * Anlegens, mit vollem Stand wie beim LV (D-31.2); daran hängt nichts. Auch der Import der Projektdatei schreibt hierüber.
  */
 export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projektId: ProjektId): void {
   const id = cs.auftragsLeistungsverzeichnisId;
@@ -595,7 +761,8 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
   } else {
     const { vorher, nachher } = cs.kopf;
     if (nachher === null) {
-      return abbruch('unbekannt', 'Ein Auftrags-LV zu löschen ist im Vertrag nicht vorgesehen (Q5).');
+      loescheAuftragsLv(db, cs, projektId);
+      return;
     }
     if (nachher.id !== id)
       return abbruch('unbekannt', 'ChangeSet: auftragsLeistungsverzeichnisId und Kopf.id weichen ab.');
@@ -670,6 +837,21 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
   }
   wendeKnotenAn(db, id, cs.knoten);
   wendeSummenAn(db, id, cs.summen);
+}
+
+function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: ProjektId): void {
+  const id = cs.auftragsLeistungsverzeichnisId;
+  const vorher = cs.kopf?.vorher ?? null;
+  if (vorher === null) return abbruch('unbekannt', 'ChangeSet: Auftrags-LV-Kopf ohne vorher und nachher.');
+  if (vorher.id !== id)
+    return abbruch('unbekannt', 'ChangeSet: auftragsLeistungsverzeichnisId und Kopf.id weichen ab.');
+  const gespeichert = leseAuftragsLvKopf(db, id);
+  if (gespeichert === null) return abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`);
+  if (gespeichert.projektId !== projektId)
+    return abbruch('unbekannt', `Auftrags-LV ${id} gehört zu einem anderen Projekt.`);
+  if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Auftrags-LV-Kopfs');
+  loescheKnotenUndSummen(db, id, cs.knoten, cs.summen, `Auftrags-LV ${id}`);
+  db.ausfuehren('DELETE FROM auftrags_lv WHERE id = ?', [id]);
 }
 
 // --- Protokoll -------------------------------------------------------------------------------------------------

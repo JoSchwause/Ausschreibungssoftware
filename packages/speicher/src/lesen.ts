@@ -19,21 +19,29 @@ import type {
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
   LvKopf,
+  LvStand,
+  LvStandId,
+  LvStandUebersicht,
   LvZustand,
+  Papierkorbeintrag,
+  PapierkorbeintragId,
   PositionId,
   Projekt,
   ProjektId,
   Protokolleintrag,
   Summenstand,
+  Zeitstempel,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
-import type { Datenbank } from './sql';
+import type { Datenbank, SqlZeile } from './sql';
 import {
   angebotspositionAusZeile,
   ausweisAusZeile,
   bieterId,
+  ganzzahl,
   gesamtAusZeile,
   gliederungId,
+  jsonSpalte,
   knotenAusZeile,
   kopfdatenAusZeile,
   lvId,
@@ -152,7 +160,73 @@ export function leseLv(db: Datenbank, id: LeistungsverzeichnisId): LvZustand | n
     return abbruch('datei-ungueltig', `LV ${id}: Es fehlen die gespeicherten Gesamtsummen.`);
   }
   const lv: Leistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
-  return { leistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
+  const papierkorb = lesePapierkorb(db, id);
+  return {
+    leistungsverzeichnis: lv,
+    summen: inKnotenreihenfolge(summen, lv.knoten),
+    // Fehlt: leer (Vertrag). Ein leerer Papierkorb steht deshalb nie im Zustand, auch nicht in der Projektdatei.
+    ...(papierkorb.length > 0 ? { papierkorb } : {}),
+  };
+}
+
+// --- Papierkorb und LV-Stände (Schema 3, Ticket 43) ------------------------------------------------------------------
+
+function papierkorbeintragAusZeile(z: SqlZeile): Papierkorbeintrag {
+  return {
+    id: text(z, 'id') as PapierkorbeintragId,
+    nummer: ganzzahl(z, 'nummer'),
+    knoten: jsonSpalte(z, 'knoten') as Knoten[],
+  };
+}
+
+/** Der Papierkorb eines LV nach `nummer` (Reihenfolge des Hineinlegens, D-12). */
+export function lesePapierkorb(db: Datenbank, lvId: string): Papierkorbeintrag[] {
+  return db
+    .zeilen('SELECT * FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? ORDER BY nummer', [lvId])
+    .map(papierkorbeintragAusZeile);
+}
+
+export function lesePapierkorbeintrag(db: Datenbank, lvId: string, id: string): Papierkorbeintrag | null {
+  const z = db.zeilen('SELECT * FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? AND id = ?', [
+    lvId,
+    id,
+  ])[0];
+  return z === undefined ? null : papierkorbeintragAusZeile(z);
+}
+
+function lvStandUebersichtAusZeile(z: SqlZeile): LvStandUebersicht {
+  return {
+    id: text(z, 'id') as LvStandId,
+    leistungsverzeichnisId: lvId(z, 'leistungsverzeichnis_id'),
+    name: text(z, 'name'),
+    angelegt: text(z, 'angelegt') as Zeitstempel,
+  };
+}
+
+/** Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst). */
+export function leseLvStaende(db: Datenbank, lv: string): LvStandUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ? ORDER BY seq',
+      [lv],
+    )
+    .map(lvStandUebersichtAusZeile);
+}
+
+export function leseLvStand(db: Datenbank, id: string): LvStand | null {
+  const z = db.zeilen('SELECT * FROM lv_stand WHERE id = ?', [id])[0];
+  return z === undefined ? null : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
+}
+
+/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei). */
+export function leseLvStaendeDesProjekts(db: Datenbank, projektId: ProjektId): LvStand[] {
+  return db
+    .zeilen(
+      `SELECT s.* FROM lv_stand s JOIN leistungsverzeichnis l ON l.id = s.leistungsverzeichnis_id
+       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.seq`,
+      [projektId],
+    )
+    .map((z) => ({ ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand }));
 }
 
 /**
