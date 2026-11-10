@@ -3,24 +3,36 @@
 
 import type { AngebotZustand, Knoten, Leistungsverzeichnis, LvZustand, Summenstand } from '@tethys/vertrag';
 
-/** Vergleichsform: Listen, deren Reihenfolge der Speicher kanonisch festlegt (Summen nach Kennung), sortiert. */
+/**
+ * Vergleichsform: Listen, deren Reihenfolge der Speicher kanonisch festlegt, sortiert. Beim LV folgen die Summen
+ * der Knotenreihenfolge (wie `kern`), beim Angebot sind sie nach Kennung sortiert.
+ */
 export function normalisiere(z: LvZustand): LvZustand;
 export function normalisiere(z: AngebotZustand): AngebotZustand;
 export function normalisiere(z: LvZustand | AngebotZustand): LvZustand | AngebotZustand {
   const nachId = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
   const s = z.summen;
-  const summenstand: Summenstand = {
-    positionen: [...s.positionen].sort((a, b) => nachId(a.positionId, b.positionId)),
-    gliederungen: [...s.gliederungen].sort((a, b) => nachId(a.gliederungId, b.gliederungId)),
-    gesamt: s.gesamt,
-  };
   if ('angebot' in z) {
+    const summenstand: Summenstand = {
+      positionen: [...s.positionen].sort((a, b) => nachId(a.positionId, b.positionId)),
+      gliederungen: [...s.gliederungen].sort((a, b) => nachId(a.gliederungId, b.gliederungId)),
+      gesamt: s.gesamt,
+    };
     const positionen = [...z.angebot.positionen].sort((a, b) => nachId(a.positionId, b.positionId));
     return { ...z, angebot: { ...z.angebot, positionen }, summen: summenstand };
   }
+  const knoten = tiefensuche(z.leistungsverzeichnis);
+  const platz = new Map<string, number>();
+  knoten.forEach((k, i) => platz.set(k.id, i));
+  const nachPlatz = (a: string, b: string): number => (platz.get(a) ?? Infinity) - (platz.get(b) ?? Infinity);
+  const summenstand: Summenstand = {
+    positionen: [...s.positionen].sort((a, b) => nachPlatz(a.positionId, b.positionId)),
+    gliederungen: [...s.gliederungen].sort((a, b) => nachPlatz(a.gliederungId, b.gliederungId)),
+    gesamt: s.gesamt,
+  };
   return {
     ...z,
-    leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten: tiefensuche(z.leistungsverzeichnis) },
+    leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten },
     summen: summenstand,
   };
 }

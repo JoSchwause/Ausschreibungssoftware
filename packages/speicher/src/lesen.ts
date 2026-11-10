@@ -137,7 +137,25 @@ export function leseLv(db: Datenbank, id: LeistungsverzeichnisId): LvZustand | n
     return abbruch('datei-ungueltig', `LV ${id}: Es fehlen die gespeicherten Gesamtsummen.`);
   }
   const lv: Leistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
-  return { leistungsverzeichnis: lv, summen };
+  return { leistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
+}
+
+/**
+ * Bringt die Summenlisten in die Reihenfolge des Knotenarrays, wie `kern` sie definiert (`summenBerechnen`:
+ * Positionen in der Reihenfolge der Positionsknoten, Gliederungen in der der Gliederungsknoten). Die Tabellen
+ * liefern sie nach Kennung; so ist ein geladener Stand gleich dem frisch berechneten. Einträge ohne Knoten
+ * (kommt bei einem gültigen Stand nicht vor) bleiben hinten, nach Kennung geordnet.
+ */
+function inKnotenreihenfolge(summen: Summenstand, knoten: readonly Knoten[]): Summenstand {
+  const platz = new Map<string, number>();
+  knoten.forEach((k, i) => platz.set(k.id, i));
+  const nach = <T>(liste: readonly T[], idVon: (e: T) => string): T[] =>
+    [...liste].sort((a, b) => (platz.get(idVon(a)) ?? Infinity) - (platz.get(idVon(b)) ?? Infinity));
+  return {
+    positionen: nach(summen.positionen, (e) => e.positionId),
+    gliederungen: nach(summen.gliederungen, (e) => e.gliederungId),
+    gesamt: summen.gesamt,
+  };
 }
 
 // --- Angebot -------------------------------------------------------------------------------------------------

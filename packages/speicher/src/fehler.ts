@@ -35,6 +35,15 @@ function resultCode(e: unknown): number | null {
   return null;
 }
 
+/**
+ * Ist die Ausnahme ein Ein-/Ausgabefehler des Speichers (SQLITE_IOERR)? Solche Fehler sagen nichts über den
+ * Inhalt einer Datei; wer Dateiinhalt prüft, darf sie nicht als „Datei ungültig“ melden.
+ */
+export function istAusgabefehler(e: unknown): boolean {
+  const rc = resultCode(e);
+  return rc !== null && (rc & 0xff) === SQLITE_IOERR;
+}
+
 /** Ordnet eine geworfene Ausnahme einem Speicherfehlercode zu. Nie stiller Datenverlust (Q5). */
 export function fehlerAusAusnahme(e: unknown): Speicherfehler {
   if (e instanceof SpeicherAbbruch) return e.fehler;

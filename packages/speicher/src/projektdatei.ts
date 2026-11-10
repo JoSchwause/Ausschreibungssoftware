@@ -12,7 +12,7 @@ import type {
 } from '@tethys/vertrag';
 import { dekodiereProjektdatei } from './dekoder';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
-import { fange, fehlerAusAusnahme } from './fehler';
+import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { aggregatIds, leseAngebot, leseAuftragsLv, leseLv, leseProjekt, leseProtokoll } from './lesen';
 import type { Migration } from './migrationen';
 import {
@@ -135,9 +135,10 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
     for (const z of d.auftragsLeistungsverzeichnisse) schreibeAuftragsLv(db, z);
     for (const e of d.protokoll) schreibeProtokolleintrag(db, e);
   } catch (e) {
-    // Jede Verletzung von Integritätsregeln beim Import heißt: Die Datei passt nicht zum Schema.
+    // Jede Verletzung von Integritätsregeln beim Import heißt: Die Datei passt nicht zum Schema. Ein
+    // Ein-/Ausgabefehler des Speichers sagt nichts über die Datei und bleibt, was er ist.
     const f = fehlerAusAusnahme(e);
-    if (f.code === 'unbekannt' || f.code === 'nicht-gefunden')
+    if ((f.code === 'unbekannt' || f.code === 'nicht-gefunden') && !istAusgabefehler(e))
       throw new SpeicherAbbruch('datei-ungueltig', f.meldung);
     throw e;
   }

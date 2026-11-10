@@ -6,7 +6,7 @@
 //  1. Eintrag am Ende von `MIGRATIONEN` anfügen (lückenlos nummeriert). Bestehende Einträge nie ändern.
 //  2. `hoch` verändert das Schema und überführt vorhandene Zeilen; kein Datenverlust (Q5).
 //  3. `datei` hebt eine Projektdatei der Version N auf N+1 (reine Funktion über das geparste JSON).
-//  4. Die eingefrorene Datei `fixtures/projektdatei-v1.json` bleibt unverändert und wird weiter geöffnet;
+//  4. Die eingefrorene Datei `packages/speicher/fixtures/projektdatei-v1.json` bleibt unverändert und wird weiter geöffnet;
 //     für N+1 kommt eine weitere eingefrorene Datei dazu.
 
 import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';

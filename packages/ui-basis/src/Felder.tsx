@@ -108,7 +108,12 @@ export type Zahlpruefung = { gueltig: true } | { gueltig: false; meldung: string
 /** Prüfer für den Rohtext eines Zahlfelds. Der echte de-DE-Parser kommt aus `packages/dezimal`. */
 export type ZahlPruefer = (rohtext: string) => Zahlpruefung;
 
-const DE_FORM = /^-?(\d+|\d{1,3}(\.\d{3})+)(,\d*)?$/;
+/**
+ * Dieselbe Form wie `parseDe` in `packages/dezimal` (ui-basis darf dezimal nicht importieren, A3): optionales `-` oder
+ * `−`, Ganzzahlteil als Ziffernfolge oder gruppiert (`1.234`), Nachkommateil mit mindestens einer Ziffer; mindestens
+ * einer der beiden Teile ist da (`,5` gilt, `12,` nicht). Ändert sich `parseDe`, ändert sich diese Zeile mit.
+ */
+const DE_FORM = /^[-−]?(?:(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?|,\d+)$/;
 
 /**
  * Reine Formprüfung für deutsche Zahlen (Tausenderpunkt, Dezimalkomma). Sie wandelt nichts um und

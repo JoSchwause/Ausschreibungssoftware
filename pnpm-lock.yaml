@@ -47,6 +47,9 @@ importers:
       '@playwright/test':
         specifier: ^1.65.0
         version: 1.65.0
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../../packages/dezimal
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0

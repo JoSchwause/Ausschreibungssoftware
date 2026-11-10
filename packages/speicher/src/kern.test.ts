@@ -38,6 +38,14 @@ describe('Fixtures speichern und laden', () => {
       const lv = wert(kern.lvLaden(f.lv.leistungsverzeichnis.id));
       // Die Knotenreihenfolge der Fixtures ist schon kanonisch (Tiefensuche); nur Summenlisten sortiert der Speicher.
       expect(lv).toEqual(normalisiere(f.lv));
+      // Die Summenlisten folgen der Knotenreihenfolge wie bei `summenBerechnen` in `kern`, nicht der Kennung.
+      const knoten = lv.leistungsverzeichnis.knoten;
+      expect(lv.summen.positionen.map((p) => p.positionId)).toEqual(
+        knoten.filter((k) => k.art === 'position').map((k) => k.id),
+      );
+      expect(lv.summen.gliederungen.map((g) => g.gliederungId)).toEqual(
+        knoten.filter((k) => k.art === 'titel' || k.art === 'los').map((k) => k.id),
+      );
       expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([f.lv.leistungsverzeichnis.id]);
       for (const a of f.angebote) {
         expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
@@ -477,6 +485,47 @@ describe('Quote, Sperre und Schema (Q5)', () => {
       expect(zaehle(echt, 'protokoll'), name).toBe(1);
       // Aufräumen für den nächsten Fall
       echt.skript('DELETE FROM protokoll; DELETE FROM bieter; DELETE FROM projekt;');
+    }
+  });
+
+  it('Ein-/Ausgabefehler beim Import der Projektdatei heißt nicht „datei-ungueltig“', async () => {
+    const f = ladeFixture('typisch');
+    const quelle = kernAufDb(await neueDatenbank());
+    speichere(quelle, anlegenSchritte(f));
+    const text = wert(quelle.projektdateiExportieren(f.projekt.id));
+
+    const echt = await neueDatenbank();
+    const faelle: [string, () => unknown, string][] = [
+      [
+        'Ein-/Ausgabefehler',
+        () => Object.assign(new Error('disk I/O error'), { resultCode: 10 }),
+        'unbekannt',
+      ],
+      [
+        'Integritätsverletzung',
+        () => Object.assign(new Error('UNIQUE constraint failed'), { resultCode: 19 }),
+        'datei-ungueltig',
+      ],
+    ];
+    for (const [name, ausnahme, code] of faelle) {
+      let zaehler = 0;
+      const pruefen = (sql: string): void => {
+        if (/^\s*INSERT/i.test(sql) && ++zaehler > 3) throw ausnahme();
+      };
+      const kern = kernAufDb({
+        ...echt,
+        ausfuehren: (sql, bind) => {
+          pruefen(sql);
+          echt.ausfuehren(sql, bind);
+        },
+        stapel: (sql, bind) => {
+          pruefen(sql);
+          echt.stapel(sql, bind);
+        },
+      });
+      const r = kern.projektdateiImportieren(text);
+      expect(r, name).toMatchObject({ ok: false, fehler: { code } });
+      expect(zaehle(echt, 'knoten'), name).toBe(0); // Der Import rollt vollständig zurück.
     }
   });
 
