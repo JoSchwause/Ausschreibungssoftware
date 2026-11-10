@@ -10,6 +10,7 @@ import {
   dividiere,
   gesamtpreis,
   multipliziere,
+  negiere,
   runden,
   subtrahiere,
   summiereBetraege,
@@ -191,10 +192,10 @@ function mittel(menge: Menge | null, bepreist: readonly Bepreist[], summe: Dezim
 /** G-26, D-05: n ≥ 2 Bieter mit EP > 0 und Σ > 0; strikt größer als die Schwelle, genau per Multiplikation. */
 function ausreisser(e: Einheitspreis, n: number, summe: Dezimal, schwelle: Prozent): Ausreisser | null {
   const grenze = multipliziere(schwelle, summe);
-  const abweichung = subtrahiere(multipliziere(anzahl(n), e), summe);
-  if (vergleiche(multipliziere(abweichung, HUNDERT), grenze) > 0) return 'hoch';
-  if (vergleiche(multipliziere(subtrahiere(summe, multipliziere(anzahl(n), e)), HUNDERT), grenze) > 0)
-    return 'niedrig';
+  // (n · EP − Σ) · 100; „hoch“, wenn größer als Schwelle · Σ, „niedrig“, wenn (Σ − n · EP) · 100 größer ist.
+  const abweichung = multipliziere(subtrahiere(multipliziere(anzahl(n), e), summe), HUNDERT);
+  if (vergleiche(abweichung, grenze) > 0) return 'hoch';
+  if (vergleiche(negiere(abweichung), grenze) > 0) return 'niedrig';
   return null;
 }
 
