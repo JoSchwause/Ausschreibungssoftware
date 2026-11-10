@@ -1,6 +1,6 @@
 # 37: Kern: Positionsmerkmale, Wahl- und Zuschlagspositionen, EPA (K5–K7)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: K (K5–K7) · Paket: `packages/kern` (benannte Ausnahmen: `GLOSSARY.md`, eine neue Datei unter `fixtures/`, siehe Grenzen)
 Blocked by: 30
