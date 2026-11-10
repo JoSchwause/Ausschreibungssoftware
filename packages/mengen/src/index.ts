@@ -12,3 +12,5 @@ export {
 export type { Ausdruck, Operator, Punktoperator, Strichoperator } from './ausdruck';
 export { ausdruckFormatieren, ausdruckLesen } from './ausdruck';
 export type { Formelfehler, Formelfehlercode } from './fehler';
+export type { Ansatzzeile, Formel, Mengenansatzergebnis, Zeilenergebnis } from './mengenansatz';
+export { FORMELN, mengenansatzBerechnen } from './mengenansatz';
