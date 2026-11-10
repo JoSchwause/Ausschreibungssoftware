@@ -21,6 +21,7 @@ import {
   LOS_ANNAHME,
   MAX_GLIEDERUNGSEBENEN,
   lvBefehlAusfuehren,
+  lvChangeSetAnwenden,
   changeSetUmkehren,
   pruefeLvInvarianten,
   summenBerechnen,
@@ -397,6 +398,11 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           verlauf.push(e.wert);
           z = anwenden(z, e.wert);
         });
+        // Löschen des ganzen LV (v1.1a): Anwenden ergibt null, die Umkehrung auf null das LV samt Summen.
+        const loeschen = lvBefehlAusfuehren(z, { art: 'LeistungsverzeichnisLoeschen' });
+        if (!loeschen.ok) throw new Error('LeistungsverzeichnisLoeschen abgewiesen');
+        expect(lvChangeSetAnwenden(z, loeschen.wert)).toBeNull();
+        expect(lvChangeSetAnwenden(null, changeSetUmkehren(loeschen.wert))).toEqual(z);
         for (const cs of verlauf.reverse()) z = anwenden(z, changeSetUmkehren(cs));
         expect(z).toEqual(start);
       }),
