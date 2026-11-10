@@ -41,7 +41,7 @@ import type {
   OzMaske,
   OzStelle,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
   Projekt,
   ProjektId,
   Projektdatei,
@@ -52,6 +52,7 @@ import type {
   TitelId,
   Zahlenart,
   Zeitstempel,
+  Zuschlag,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 
@@ -201,7 +202,8 @@ function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   });
 }
 
-const POSITIONSARTEN: readonly Positionsart[] = ['normal', 'bedarf', 'wahl', 'zuschlag', 'stundenlohn'];
+// // v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 kennt noch die Positionsart vor v1.1b (siehe `projektdateiInAlterForm`).
+const POSITIONSARTEN = ['normal', 'bedarf', 'wahl', 'zuschlag', 'stundenlohn'] as const;
 
 function knoten(x: unknown, pfad: string): Knoten {
   const art = typeof x === 'object' && x !== null ? (x as Roh)['art'] : undefined;
@@ -262,11 +264,31 @@ function knoten(x: unknown, pfad: string): Knoten {
         id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as PositionId,
         ordnungszahl: oz(o),
         ozIndex: oderNull(feld(o, 'ozIndex'), (v) => zeichenkette(v, `${pfad}.ozIndex`)),
-        positionsart: aufzaehlung(feld(o, 'positionsart'), `${pfad}.positionsart`, POSITIONSARTEN),
-        pauschal: wahrheit(feld(o, 'pauschal'), `${pfad}.pauschal`),
-        bedarfMitGesamtbetrag: wahrheit(feld(o, 'bedarfMitGesamtbetrag'), `${pfad}.bedarfMitGesamtbetrag`),
-        bezugspositionId: pid('bezugspositionId'),
-        grundpositionId: pid('grundpositionId'),
+        ...(() => {
+          // // v1.1b: mechanisch angepasst, Folgeticket: Datei der Version 1 (alte Form) → Merkmale und Zuschlag von `vertrag` v1.1b.
+          const art = aufzaehlung(feld(o, 'positionsart'), `${pfad}.positionsart`, POSITIONSARTEN);
+          const mit = wahrheit(feld(o, 'bedarfMitGesamtbetrag'), `${pfad}.bedarfMitGesamtbetrag`);
+          const bezug = pid('bezugspositionId');
+          const grund = pid('grundpositionId');
+          const merkmale: Positionsmerkmale = {
+            bedarf: art === 'bedarf' ? (mit ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
+            wahl: art === 'wahl' ? { gruppe: null, variante: null, grundpositionId: grund } : null,
+            stundenlohn: art === 'stundenlohn',
+            pauschal: wahrheit(feld(o, 'pauschal'), `${pfad}.pauschal`),
+            zuschlagskennzeichen: false,
+          };
+          const zuschlag: Zuschlag | null =
+            art === 'zuschlag'
+              ? {
+                  prozentsatz: null,
+                  bezug: {
+                    art: 'positionen',
+                    positionen: bezug === null ? [] : [{ positionId: bezug, teilmenge: null }],
+                  },
+                }
+              : null;
+          return { merkmale, zuschlag };
+        })(),
         kurztext: zeichenkette(feld(o, 'kurztext'), `${pfad}.kurztext`),
         langtext: langtext(feld(o, 'langtext'), `${pfad}.langtext`),
         menge: oderNull(feld(o, 'menge'), (v) => dezimal(v, `${pfad}.menge`, 'menge') as Menge),
@@ -470,7 +492,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   EinheitAendern: true,
   EinheitspreisAendern: true,
   EinheitspreisanteileSetzen: true,
-  PositionsartAendern: true,
+  PositionsmerkmaleSetzen: true, // // v1.1b: mechanisch angepasst, Folgeticket
   OzMaskeSetzen: true,
   OrdnungszahlSetzen: true,
   Umnummerieren: true,

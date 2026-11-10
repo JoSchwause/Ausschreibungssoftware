@@ -13,16 +13,27 @@ import type {
   ProjektLoeschen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
+import type { Protokolleintrag } from './speicher';
 import type { LvAnsicht } from './ansicht';
-import type { AngebotId, AuftragsLeistungsverzeichnisId } from './marken';
+import type {
+  AngebotId,
+  AuftragsLeistungsverzeichnisId,
+  BildId,
+  NutzerId,
+  ProtokollId,
+  Zeitstempel,
+} from './marken';
 import type {
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Leistungsverzeichnis,
   LvInhalt,
   LvKopf,
+  Langtext,
   OzMaske,
   Position,
+  Positionsmerkmale,
+  Zuschlag,
 } from './modell';
 import type { LeistungsverzeichnisId, Ordnungszahl, PositionId, ProjektId, TitelId } from './marken';
 import type { Gesamtsummen } from './summen';
@@ -50,6 +61,11 @@ export const beispielBefehl: LvBefehl = {
   menge: '1.235' as Menge,
 };
 
+/** Position ohne jedes Merkmal (Normalposition). Eine Funktion, damit kein Beispiel das Objekt eines anderen teilt. */
+function keineMerkmale(): Positionsmerkmale {
+  return { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false };
+}
+
 const position: Position = {
   art: 'position',
   id: posId,
@@ -57,11 +73,8 @@ const position: Position = {
   reihenfolge: 0,
   ordnungszahl: '01.0010' as Ordnungszahl,
   ozIndex: null,
-  positionsart: 'normal',
-  pauschal: false,
-  bedarfMitGesamtbetrag: false,
-  bezugspositionId: null,
-  grundpositionId: null,
+  merkmale: keineMerkmale(),
+  zuschlag: null,
   kurztext: 'Beispielposition',
   langtext: [{ art: 'text', text: 'Beispieltext (erfunden).' }],
   menge: '1.235' as Menge,
@@ -411,5 +424,188 @@ export const beispielChangeSetMwst: LvChangeSet = {
     gliederungen: [],
     gesamt: gesamtsummen('12.35', '0.00', '12.35', '0.86', '13.21'),
     vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
+};
+
+// --- v1.1b: Inhaltsmodell (Ticket 26) -----------------------------------------------------------------------------
+
+/** Punkt 1: Bedarfsposition im Stundenlohn, ohne Gesamtbetrag. Zwei Merkmale zugleich, kein einzelner Wert. */
+export const beispielBedarfImStundenlohn: Position = {
+  ...position,
+  id: '019b76e9-0000-7000-8000-000000000020' as PositionId,
+  reihenfolge: 2,
+  ordnungszahl: '01.0030' as Ordnungszahl,
+  merkmale: { ...keineMerkmale(), bedarf: 'ohne-gesamtbetrag', stundenlohn: true },
+  kurztext: 'Facharbeiter, Stundenlohn, nach Bedarf',
+  einheit: 'h',
+};
+
+const zuschlagId = (n: number): PositionId =>
+  `019b76e9-0000-7000-8000-0000000001${String(n).padStart(2, '0')}` as PositionId;
+
+/** Zuschlagsposition ohne Menge und Einheitspreis; nur Bezug und Prozentsatz unterscheiden die Beispiele. */
+const zuschlagsposition = (n: number, zuschlag: Zuschlag): Position => ({
+  ...position,
+  id: zuschlagId(n),
+  reihenfolge: n,
+  ordnungszahl: null,
+  kurztext: 'Zuschlag (erfunden)',
+  menge: null,
+  einheit: null,
+  einheitspreis: null,
+  zuschlag,
+});
+
+/**
+ * Punkt 2: eine Zuschlagsposition je Bezugsform, wie die amtlichen Dateien sie zeigen: Liste einzelner Positionen
+ * (eine mit Teilmenge), alle Positionen der Gliederung, Kennzeichnung an den Positionen.
+ */
+export const beispielZuschlagsbezuege: readonly [Position, Position, Position] = [
+  zuschlagsposition(1, {
+    prozentsatz: '10.00' as Prozent,
+    bezug: {
+      art: 'positionen',
+      positionen: [
+        { positionId: posId, teilmenge: '0.500' as Menge },
+        { positionId: pos2Id, teilmenge: null },
+      ],
+    },
+  }),
+  zuschlagsposition(2, { prozentsatz: '10.00' as Prozent, bezug: { art: 'gliederung' } }),
+  zuschlagsposition(3, { prozentsatz: null, bezug: { art: 'kennzeichnung' } }),
+];
+
+/** Punkt 3: Wahlposition, Gruppe 1, Variante 1, mit Verweis auf die Grundposition. Kein Zustand „gewählt“. */
+export const beispielWahlposition: Position = {
+  ...position,
+  id: '019b76e9-0000-7000-8000-000000000030' as PositionId,
+  reihenfolge: 3,
+  ordnungszahl: '01.0040' as Ordnungszahl,
+  merkmale: { ...keineMerkmale(), wahl: { gruppe: 1, variante: 1, grundpositionId: posId } },
+  kurztext: 'Alternative Ausführung',
+};
+
+/** Punkt 4: Summen mit getrennt ausgewiesenem Bedarf ohne Gesamtbetrag und Wahl; beide stehen nicht im Netto. */
+export const beispielSummenMitBedarfUndWahl: Gesamtsummen = {
+  ...gesamtsummen('12.35', '0.00', '12.35', '2.35', '14.70'),
+  summeBedarfOhneGesamtbetrag: '48.90' as Betrag,
+  summeWahl: '61.25' as Betrag,
+};
+
+const bildId = '019b76e9-0000-7000-8000-000000000040' as BildId;
+
+/**
+ * Punkt 5: Langtext mit Auszeichnung, Liste, Tabelle, Textergänzung des Bieters und einem Bild. Die Textergänzung
+ * steht im Absatz, das Bild am Ende auf oberster Ebene.
+ */
+export const beispielLangtext: Langtext = [
+  {
+    art: 'absatz',
+    inhalt: [
+      { art: 'text', text: 'Wand ' },
+      { art: 'text', text: 'tragend', fett: true },
+      { art: 'umbruch' },
+      { art: 'text', text: 'nach Plan', kursiv: true, unterstrichen: true },
+    ],
+  },
+  {
+    art: 'liste',
+    geordnet: true,
+    punkte: [
+      [{ art: 'text', text: 'Untergrund prüfen' }],
+      [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Anschlüsse herstellen' }] }],
+    ],
+  },
+  {
+    art: 'tabelle',
+    zeilen: [
+      { zellen: [{ spalten: 2, inhalt: [{ art: 'text', text: 'Kennwerte' }] }] },
+      {
+        zellen: [
+          { spalten: 1, inhalt: [{ art: 'text', text: 'Dicke' }] },
+          { spalten: 1, inhalt: [{ art: 'text', text: '100 mm' }] },
+        ],
+      },
+    ],
+  },
+  {
+    art: 'absatz',
+    inhalt: [
+      {
+        art: 'ergaenzung',
+        herkunft: 'bieter',
+        kennung: '60',
+        leer: true,
+        davor: [{ art: 'text', text: 'Breite von ' }],
+        inhalt: [{ art: 'text', text: '...........' }],
+        danach: [{ art: 'text', text: ' cm.' }],
+      },
+    ],
+  },
+  { art: 'bild', bild: { id: bildId, medientyp: 'image/png', daten: 'iVBORw0KGgo=' } },
+];
+
+/** Punkt 6: Kopfdaten am LV und eine Leitbeschreibung an der Position (Werte erfunden). */
+export const beispielKopfdaten: LvInhalt & { readonly leitposition: Position } = {
+  name: 'Beispiel',
+  ozMaske: beispielMaske,
+  mwstSatz: '19.00' as Prozent,
+  nachlass: null,
+  auftraggeber: {
+    name: 'Beispiel-Auftraggeber',
+    strasse: 'Beispielstraße 1',
+    plz: '10000',
+    ort: 'Beispielstadt',
+    vergabenummer: 'V-0001',
+  },
+  vergabeinformationen: {
+    eroeffnungsdatum: '2026-01-15',
+    eroeffnungszeit: '10:00:00',
+    abgabeort: null,
+    ausfuehrungsbeginn: '2026-03-01',
+    ausfuehrungsende: '2026-09-30',
+    auftragsnummer: 'A-0001',
+    auftragsdatum: null,
+    abnahmeart: 'Förmliche Abnahme',
+    gewaehrleistung: { dauer: 2, einheit: 'Years' },
+  },
+  wurzelId: lvId,
+  knoten: [],
+  leitposition: {
+    ...position,
+    leitbeschreibung: {
+      unterbeschreibungen: [
+        { nummer: '01', kurztext: 'Heizgerät', langtext: [], menge: '2.000' as Menge, einheit: 'Stck' },
+        { nummer: '02', kurztext: 'Ausdehnungsgefäß', langtext: [], menge: null, einheit: null },
+      ],
+    },
+  },
+};
+
+/** Punkt 7: Protokolleintrag eines Massenbefehls (`LeistungsverzeichnisAnlegen`): Kopf und Prüfsumme statt des ganzen Befehls. */
+export const beispielMassenprotokoll: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000050' as ProtokollId,
+  projektId: '019b76e9-0000-7000-8000-000000000000' as ProjektId,
+  aggregat: { art: 'leistungsverzeichnis', id: lvId },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-10T12:00:00.000Z' as Zeitstempel,
+  befehl: {
+    art: 'Befehlskurzfassung',
+    kopf: {
+      art: 'LeistungsverzeichnisAnlegen',
+      id: lvId,
+      projektId: '019b76e9-0000-7000-8000-000000000000' as ProjektId,
+      inhalt: {
+        name: 'Beispiel',
+        ozMaske: beispielMaske,
+        mwstSatz: '19.00' as Prozent,
+        nachlass: null,
+        wurzelId: lvId,
+      },
+    },
+    pruefsumme: {
+      algorithmus: 'sha-256',
+      wert: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+    },
   },
 };

@@ -7,6 +7,7 @@ import {
   NACHKOMMASTELLEN,
   type Angebotsposition,
   type Befehl,
+  type Befehlskurzfassung,
   type Befehlsart,
   type Befehlsfehler,
   type BefehlsEmpfaenger,
@@ -81,18 +82,29 @@ import {
   beispielLv,
 } from './beispiele';
 
+/**
+ * Die Teile von T, die keine Daten sind (Funktion, Date …); `never`, wenn T nur aus Daten besteht. Seit v1.1b ist
+ * `Langtext` rekursiv (Liste in Tabelle in Liste): Die frühere Fassung über einen abgebildeten Typ meldete dafür einen
+ * Zirkelfehler (TS2615), eine unbegrenzte Rekursion über die Werte ebenso (TS2589). Darum läuft die Prüfung bis zur
+ * Tiefe `D` (Zahl der Glieder in `Tiefe`) und nimmt darunter „Daten“ an. 14 Ebenen decken jeden Pfad bis in die
+ * dritte Schachtelung eines Langtexts ab.
+ */
+type KeineDaten<T, Tiefe extends unknown[] = []> = Tiefe['length'] extends 14
+  ? never
+  : T extends string | number | boolean | null | undefined
+    ? never
+    : T extends (...args: never[]) => unknown
+      ? T
+      : T extends Date
+        ? T
+        : T extends readonly (infer U)[]
+          ? KeineDaten<U, [...Tiefe, unknown]>
+          : T extends object
+            ? KeineDaten<T[keyof T], [...Tiefe, unknown]>
+            : T;
+
 /** `true`, wenn T nur aus Daten besteht: keine Funktion, kein Date, alles verschachtelt gleich. */
-type NurDaten<T> = T extends string | number | boolean | null | undefined
-  ? true
-  : T extends (...args: never[]) => unknown
-    ? false
-    : T extends Date
-      ? false
-      : T extends readonly (infer U)[]
-        ? NurDaten<U>
-        : T extends object
-          ? { [K in keyof T]-?: NurDaten<T[K]> }[keyof T]
-          : false;
+type NurDaten<T> = [KeineDaten<T>] extends [never] ? true : false;
 
 describe('Zahlen (N1)', () => {
   it('number und string sind für Menge, EP, Betrag und Prozent nicht zuweisbar', () => {
@@ -215,7 +227,7 @@ describe('Befehle (A5)', () => {
 
   it('der Protokolleintrag hält wer, was, wann fest (ADR 0009)', () => {
     expectTypeOf<Protokolleintrag>().toHaveProperty('wer');
-    expectTypeOf<Protokolleintrag['befehl']>().toEqualTypeOf<Befehl>();
+    expectTypeOf<Protokolleintrag['befehl']>().toEqualTypeOf<Befehl | Befehlskurzfassung>();
     expectTypeOf<Protokolleintrag['wann']>().toEqualTypeOf<Zeitstempel>();
   });
 

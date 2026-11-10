@@ -12,7 +12,7 @@ import type {
   ProtokollId,
   Zeitstempel,
 } from './marken';
-import type { Projekt } from './modell';
+import type { AngebotKopf, AuftragsLvKopf, LvInhalt, Projekt } from './modell';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -24,8 +24,64 @@ export type AggregatBezug =
   | { readonly art: 'auftrags-leistungsverzeichnis'; readonly id: AuftragsLeistungsverzeichnisId };
 
 /**
+ * Prüfsumme über einen vollständigen Befehl (v1.1b, Punkt 7; E-13). Der Algorithmus ist ein Feld, damit er
+ * wechselbar bleibt, ohne dass alte Einträge ungültig werden.
+ *
+ * Die zwei Werte sind die Hashverfahren, die jede Laufzeit von `speicher` ohne Abhängigkeit liefert (Web Crypto
+ * `SubtleCrypto.digest`: Browser und Node); SHA-1 ist ausgeschlossen (Kollisionen bekannt). Die Wahl ist vorläufig
+ * (Entscheidung offen); neue Werte brauchen ein Vertragsticket.
+ */
+export type Pruefsummenalgorithmus = 'sha-256' | 'sha-512';
+
+export interface Pruefsumme {
+  readonly algorithmus: Pruefsummenalgorithmus;
+  /**
+   * Hexadezimal, Kleinbuchstaben. Vorläufige Annahme, Entscheidung offen (enge Lesart): gebildet über die UTF-8-Bytes
+   * der kanonischen JSON-Darstellung des vollständigen Befehls (Schlüsselreihenfolge wie in der Projektdatei, G-56).
+   * Wer die Summe bildet, ist `speicher`; der Vertrag nennt nur, worüber sie gilt.
+   */
+  readonly wert: string;
+}
+
+/**
+ * Kopf eines Massenbefehls: der Befehl ohne seine lange Liste (v1.1b, Punkt 7). Genau die Teile, die ein Mensch
+ * im Protokoll lesen will (wer legt was in welchem Projekt an), und nichts, was mit der Zahl der Positionen wächst.
+ */
+export type Massenbefehlskopf =
+  | {
+      readonly art: 'LeistungsverzeichnisAnlegen';
+      readonly id: LeistungsverzeichnisId;
+      readonly projektId: ProjektId;
+      /** Der Inhalt ohne `knoten`: Name, Maske, MwSt, Nachlass, Wurzel und Kopfdaten. */
+      readonly inhalt: Omit<LvInhalt, 'knoten'>;
+    }
+  | {
+      readonly art: 'AngebotAnlegen';
+      /** Das Angebot ohne `positionen`. */
+      readonly angebot: AngebotKopf;
+    }
+  | {
+      readonly art: 'AuftragsLeistungsverzeichnisAnlegen';
+      /** Das Auftrags-LV ohne `knoten`. */
+      readonly auftragsLeistungsverzeichnis: AuftragsLvKopf;
+    };
+
+/**
+ * Kurzfassung eines Massenbefehls im Protokoll (v1.1b, Punkt 7; E-13, ADR 0009): Kopf und Prüfsumme statt des
+ * ganzen Befehls. Der Kopf nennt die Befehlsart (`kopf.art`, immer eine `Massenbefehlsart`).
+ */
+export interface Befehlskurzfassung {
+  readonly art: 'Befehlskurzfassung';
+  readonly kopf: Massenbefehlskopf;
+  readonly pruefsumme: Pruefsumme;
+}
+
+/**
  * Ein Eintrag des Befehlsprotokolls: wer, was, wann. Nebenbuch, kein Quellzustand (ADR 0009). Genau ein Eintrag
  * je Befehl; `wann` liefert der Aufrufer (A2).
+ *
+ * `befehl` ist der vollständige Befehl, bei einem Massenbefehl (`MASSENBEFEHLSARTEN`) die Kurzfassung (E-13). Der Typ
+ * erzwingt das nicht; wer protokolliert (`speicher`), wählt die Kurzfassung für jeden Massenbefehl.
  */
 export interface Protokolleintrag {
   readonly id: ProtokollId;
@@ -33,7 +89,7 @@ export interface Protokolleintrag {
   readonly aggregat: AggregatBezug;
   readonly wer: NutzerId;
   readonly wann: Zeitstempel;
-  readonly befehl: Befehl;
+  readonly befehl: Befehl | Befehlskurzfassung;
 }
 
 // --- Fehler ----------------------------------------------------------------------------------------------------

@@ -70,7 +70,7 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   HinweistextAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   EinheitAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
-  PositionsartAendern: 'K5 (Ticket 08, Positionsarten)',
+  PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
   // v1.1a: mechanisch angepasst, Folgeticket
   LeistungsverzeichnisLoeschen: 'Folgeticket kern (Löschen, Vertrag v1.1a)',
 };

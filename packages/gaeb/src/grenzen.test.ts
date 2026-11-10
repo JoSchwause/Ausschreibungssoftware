@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { Knoten, Position, Pruefbefund } from '@tethys/vertrag';
 import { MAX_STUFEN, leseGaeb } from './index';
 import type { GaebLesungErgebnis } from './index';
-import { TEST_MWST, lesePfad, testIds } from './testhilfen';
+import { TEST_MWST, bezugVon, lesePfad, positionsartVon, testIds } from './testhilfen';
 
 const lies = (eingabe: Uint8Array | string, dateiname?: string): GaebLesungErgebnis =>
   leseGaeb(eingabe, {
@@ -146,9 +146,9 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
     for (const k of alle) {
       expect(k.elternId === l.wurzelId || ids.has(k.elternId)).toBe(true);
       if (k.art === 'los') expect(k.elternId).toBe(l.wurzelId);
-      if (k.art === 'position' && k.bezugspositionId !== null) {
-        expect(k.bezugspositionId).not.toBe(k.id);
-        expect(ids.has(k.bezugspositionId)).toBe(true);
+      if (k.art === 'position' && bezugVon(k) !== null) {
+        expect(bezugVon(k)).not.toBe(k.id);
+        expect(ids.has(bezugVon(k) ?? '')).toBe(true);
       }
     }
     expect(gliederungstiefe(l)).toBeLessThanOrEqual(MAX_STUFEN);
@@ -156,9 +156,9 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
 
   it('Zuschlagsposition, deren RefItem auf die eigene ID zeigt: kein Bezug, Warnung', () => {
     const l = lies(lv('', `<Itemlist>${position('a', '0010')}${zuschlag('z', '0020', 'z')}</Itemlist>`));
-    const z = positionen(l).find((p) => p.positionsart === 'zuschlag');
+    const z = positionen(l).find((p) => positionsartVon(p) === 'zuschlag');
     expect(z).toBeDefined();
-    expect(z?.bezugspositionId).toBeNull();
+    expect(bezugVon(z)).toBeNull();
     const b = l.befunde.find((x) => x.code === 'verweis-auf-sich');
     expect(b?.schwere).toBe('warnung');
     expect(b?.ort.knotenId).toBe(z?.id);
@@ -168,7 +168,7 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
   it('Zuschlagsposition mit gültigem Bezug behält ihn', () => {
     const l = lies(lv('', `<Itemlist>${position('a', '0010')}${zuschlag('z', '0020', 'a')}</Itemlist>`));
     const [pos, z] = positionen(l);
-    expect(z?.bezugspositionId).toBe(pos?.id);
+    expect(bezugVon(z)).toBe(pos?.id);
     expect(codes(l)).not.toContain('verweis-auf-sich');
   });
 
@@ -183,7 +183,7 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
         ),
       ),
     );
-    expect(positionen(l).map((p) => p.bezugspositionId)).toEqual([null, null]);
+    expect(positionen(l).map((p) => bezugVon(p))).toEqual([null, null]);
     expect(codes(l).filter((c) => c === 'verweis-unbekannt')).toHaveLength(2);
     pruefeKernInvarianten(l);
   });

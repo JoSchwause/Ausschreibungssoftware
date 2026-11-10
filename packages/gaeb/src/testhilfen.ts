@@ -13,6 +13,7 @@ import type {
   IdQuelle,
   LeistungsverzeichnisId,
   LosId,
+  Position,
   PositionId,
   ProjektId,
   ProtokollId,
@@ -56,4 +57,23 @@ export function lesePfad(relativ: string): Uint8Array {
 /** Liest eine Datei unter `packages/gaeb/testdaten/`. */
 export function leseTestdatei(relativ: string): Uint8Array {
   return lesePfad(join('packages/gaeb/testdaten', relativ));
+}
+
+// v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b hat eine Position keine einzelne Positionsart und keinen einzelnen Bezug mehr. Die Tests des
+// Lesers lesen weiter „die Art“ und „den Bezug“ wie vor v1.1b; diese Hilfen leiten sie aus `merkmale` und `zuschlag` ab.
+
+/** Die Art einer Position wie vor v1.1b (`undefined` für `undefined`). */
+export function positionsartVon(p: Position | undefined): string | undefined {
+  if (p === undefined) return undefined;
+  if (p.zuschlag !== null) return 'zuschlag';
+  if (p.merkmale.wahl !== null) return 'wahl';
+  if (p.merkmale.bedarf !== null) return 'bedarf';
+  if (p.merkmale.stundenlohn) return 'stundenlohn';
+  return 'normal';
+}
+
+/** Der erste Bezug einer Zuschlagsposition als Positionskennung, sonst `null`. */
+export function bezugVon(p: Position | undefined): string | null {
+  const b = p?.zuschlag?.bezug;
+  return b?.art === 'positionen' ? (b.positionen[0]?.positionId ?? null) : null;
 }

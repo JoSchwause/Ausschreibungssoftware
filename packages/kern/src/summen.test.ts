@@ -12,7 +12,6 @@ import type {
   LvZustand,
   Menge,
   Nachlass,
-  Positionsart,
   Prozent,
 } from '@tethys/vertrag';
 import { prozentVon } from '@tethys/dezimal';
@@ -30,6 +29,7 @@ import {
 import {
   LV_ID,
   PROJEKT_ID,
+  type Positionsart,
   betragNachlass,
   erwarteOk,
   fixtureAlsInhalt,
@@ -39,6 +39,7 @@ import {
   inhalt,
   lvMit,
   posKnoten,
+  positionsartVon,
   positionsdaten,
   prozentNachlass,
   sollwerteLesen,
@@ -252,7 +253,9 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
 
   it('(1) welche Positionsarten in die Summen eingehen (Fixture-Annahmen A1–A4)', () => {
     const p = (positionsart: Positionsart, mit = false) =>
-      positionGehtInSumme({ positionsart, bedarfMitGesamtbetrag: mit });
+      positionGehtInSumme({
+        merkmale: positionsdaten('x', { positionsart, bedarfMitGesamtbetrag: mit }).merkmale,
+      }); // v1.1b: mechanisch angepasst, Folgeticket
     expect(p('normal')).toBe(true);
     expect(p('bedarf', false)).toBe(false);
     expect(p('bedarf', true)).toBe(true);
@@ -884,7 +887,7 @@ describe('Umkehrung mit Summen', () => {
   const ersteIds = z0.leistungsverzeichnis.knoten.filter(
     (k): k is Extract<Knoten, { art: 'position' }> => k.art === 'position',
   );
-  const inSumme = ersteIds.filter((p) => p.positionsart === 'normal');
+  const inSumme = ersteIds.filter((p) => positionsartVon(p) === 'normal');
   const p1 = inSumme[3]?.id ?? 'x';
   const p2 = inSumme[10]?.id ?? 'x';
   const titel1 = z0.leistungsverzeichnis.knoten.find((k) => k.art === 'titel')?.id ?? 'x';

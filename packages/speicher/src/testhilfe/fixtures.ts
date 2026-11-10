@@ -12,7 +12,6 @@ import type {
   Angebotsposition,
   Betrag,
   BieterId,
-  Befehl,
   ChangeSet,
   ElternId,
   Einheitspreis,
@@ -30,7 +29,8 @@ import type {
   Ordnungszahl,
   OzMaske,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
+  Zuschlag,
   Projekt,
   ProjektChangeSet,
   ProjektId,
@@ -58,7 +58,7 @@ type FxKnoten =
       id: string;
       parentId: string;
       art: 'position';
-      positionsart: Positionsart;
+      positionsart: 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
       ordnungszahl: string;
       ozIndex?: string;
       kurztext: string;
@@ -156,11 +156,8 @@ function abbilden(fx: FxLv, projektId: ProjektId): LvZustand {
       id: k.id as PositionId,
       ordnungszahl: k.ordnungszahl as Ordnungszahl,
       ozIndex: k.ozIndex ?? null,
-      positionsart: k.positionsart,
-      pauschal: false,
-      bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-      bezugspositionId: (k.bezugspositionId as PositionId | undefined) ?? null,
-      grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+      merkmale: fixtureMerkmale(k), // // v1.1b: mechanisch angepasst, Folgeticket
+      zuschlag: fixtureZuschlag(k),
       kurztext: k.kurztext,
       langtext: [{ art: 'text', text: k.langtext }],
       menge: k.menge as Menge,
@@ -186,6 +183,44 @@ export interface FixtureDaten {
   readonly projekt: Projekt;
   readonly lv: LvZustand;
   readonly angebote: readonly AngebotZustand[];
+}
+
+// // v1.1b: mechanisch angepasst, Folgeticket: Die Fixtures kennen noch die einzelne Positionsart; die Abbildung setzt sie in die Merkmale von `vertrag`
+// v1.1b um (Gruppe und Variante der Wahl `null`: die Fixtures haben keine, nichts erfunden).
+type FxPosition = Extract<FxKnoten, { art: 'position' }>;
+
+function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
+  return {
+    bedarf:
+      k.positionsart === 'bedarf'
+        ? k.bedarfMitGesamtbetrag === true
+          ? 'mit-gesamtbetrag'
+          : 'ohne-gesamtbetrag'
+        : null,
+    wahl:
+      k.positionsart === 'wahl'
+        ? {
+            gruppe: null,
+            variante: null,
+            grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+          }
+        : null,
+    stundenlohn: k.positionsart === 'stundenlohn',
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+}
+
+function fixtureZuschlag(k: FxPosition): Zuschlag | null {
+  if (k.positionsart !== 'zuschlag') return null;
+  const bezug = k.bezugspositionId as PositionId | undefined;
+  return {
+    prozentsatz: null,
+    bezug: {
+      art: 'positionen',
+      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
+    },
+  };
 }
 
 export function ladeFixture(name: 'winzig' | 'typisch' | 'gross'): FixtureDaten {
@@ -236,7 +271,7 @@ export function eintrag(
   nr: number,
   projektId: ProjektId,
   aggregat: Protokolleintrag['aggregat'],
-  befehl: Befehl,
+  befehl: Protokolleintrag['befehl'], // // v1.1b: mechanisch angepasst, Folgeticket
 ): Protokolleintrag {
   return {
     id: `protokoll-${String(nr).padStart(6, '0')}` as ProtokollId,

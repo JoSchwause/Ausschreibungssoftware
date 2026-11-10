@@ -30,7 +30,9 @@ import {
   kinderIds,
   neuesLv,
   positionsdaten,
+  positionsfelder,
   wende,
+  type PositionsKurzform,
 } from './testhilfen';
 
 // --- Kurzschreibweisen für Befehle ---------------------------------------------------------------------------
@@ -182,13 +184,18 @@ describe('LeistungsverzeichnisAnlegen', () => {
     ordnungszahl: null,
     kurztext: i,
   });
-  const p = (i: string, eltern: string, r = 0, ueber: Partial<Position> = {}): Position => ({
+  const p = (
+    i: string,
+    eltern: string,
+    r = 0,
+    ueber: Partial<Position> & PositionsKurzform = {},
+  ): Position => ({
     art: 'position',
     id: id.pos(i),
     elternId: id.eltern(eltern),
     reihenfolge: r,
     ...positionsdaten(i),
-    ...ueber,
+    ...positionsfelder(ueber),
   });
 
   it('weist Zyklen, unbekannte Eltern, doppelte IDs und Lücken in der Reihenfolge ab', () => {
@@ -217,9 +224,7 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { menge: '1.5' as Menge })]))).toBe(
       'ungueltige-eingabe',
     );
-    expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { bedarfMitGesamtbetrag: true })]))).toBe(
-      'ungueltige-eingabe',
-    ); // Merkmal nur bei Art `bedarf`
+    // v1.1b: mechanisch angepasst, Folgeticket. „Merkmal nur bei Art `bedarf`“ entfällt, die Merkmale sind kombinierbar (F5); `bedarfMitGesamtbetrag` ohne Bedarf ist nicht mehr darstellbar.
     expect(
       fehlercode(
         null,
@@ -378,9 +383,7 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       daten,
     });
     expect(fehlercode(z, mit(positionsdaten('x', { menge: '1' as Menge })))).toBe('ungueltige-eingabe');
-    expect(fehlercode(z, mit(positionsdaten('x', { bezugspositionId: id.pos('P1') })))).toBe(
-      'ungueltige-eingabe',
-    );
+    // v1.1b: mechanisch angepasst, Folgeticket. „Bezug nur bei Art `zuschlag`“ entfällt (der Bezug steht jetzt in `Positionsdaten.zuschlag`).
     expect(
       fehlercode(
         z,
@@ -606,13 +609,10 @@ describe('Befehle anderer Tickets', () => {
     { art: 'EinheitAendern', positionId: id.pos('P1'), einheit: null },
     { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
     {
-      art: 'PositionsartAendern',
+      art: 'PositionsmerkmaleSetzen',
       positionId: id.pos('P1'),
-      positionsart: 'normal',
-      pauschal: false,
-      bedarfMitGesamtbetrag: false,
-      bezugspositionId: null,
-      grundpositionId: null,
+      merkmale: positionsdaten('x').merkmale,
+      zuschlag: null,
     },
   ];
 
