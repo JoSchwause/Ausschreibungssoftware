@@ -109,7 +109,7 @@ de-DE-Schreibweise (`2.565,00`, `3.052,35`, …; erwartet mit `formatiereBetragD
 auf jeder Seite; Umlaute (`Größe Ärger Übung ß ö`), `m²`, `€` und `½` stehen im Text; Schrift eingebettet (`/FontFile`,
 `/BaseFont /XXXXXX+NotoSans…`, keine Standardschrift); Titel nicht vom ersten Kind getrennt (300 Titel, verschieden lange
 Langtexte, mit Gegenprobe). `src/druck.test.ts`: HTML enthält Sollsummen, Randbox und Umbruchregel, Text wird maskiert.
-`messung/messung.messung.ts` prüft zusätzlich an `gross`, dass die vier Sollsummen in allen Ergebnissen (A Node, A Chromium,
+`messung/messung.spec.ts` prüft zusätzlich an `gross`, dass die vier Sollsummen in allen Ergebnissen (A Node, A Chromium,
 B mit und ohne Tags) stehen. **Nicht geprüft:** Aussehen (Layout nur über Textpositionen, nie als Bild angesehen);
 Firefox/Safari; Speicherverbrauch; Worker; deterministische Bytes (pdfkit schreibt Datum/ID, nicht untersucht); Langtext
 mit Bildern oder Auszeichnung.

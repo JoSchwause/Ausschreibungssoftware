@@ -4,6 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { include: ['messung/**/*.messung.ts'], testTimeout: 600_000 },
+  test: { include: ['messung/**/*.spec.ts'], testTimeout: 600_000 },
   root: fileURLToPath(new URL('..', import.meta.url)),
 });
