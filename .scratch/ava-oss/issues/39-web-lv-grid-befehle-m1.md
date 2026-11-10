@@ -1,6 +1,6 @@
 # 39: App: LV-Grid an Befehle angebunden, Projektliste, E2E für Tor M1 (U3)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: U (U3) · Paket: `apps/web`
 Blocked by: 30, 33, 38
