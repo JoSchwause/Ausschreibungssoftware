@@ -35,6 +35,7 @@ import type {
   Summenstand,
 } from '@tethys/vertrag';
 import { angebotSummenBerechnen, angebotspositionenNachId } from './summen';
+import type { Preiskennzeichen } from './summen';
 
 // --- Annahmen und Einstellungen -------------------------------------------------------------------------------------
 
@@ -78,8 +79,7 @@ export const PREISSPIEGEL_STANDARD: PreisspiegelEinstellungen = {
 
 // --- Ergebnistypen --------------------------------------------------------------------------------------------------
 
-/** D-05: `nullpreis` ist ein angebotener EP von 0,00; `nicht-angeboten` auch ohne Eintrag im Angebot. */
-export type Preiskennzeichen = 'angeboten' | 'nullpreis' | 'nicht-angeboten';
+export type { Preiskennzeichen };
 export type Ausreisser = 'hoch' | 'niedrig';
 export type AbcKlasse = 'A' | 'B' | 'C';
 
