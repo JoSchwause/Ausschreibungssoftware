@@ -67,3 +67,11 @@ Question: Ticket 29 (Vertrag plus Anpassung) zieht Zeilen in `kern`, `speicher`,
 Decision: 29 läuft zuerst (parallel nur mit 33–36, die diese Pakete nicht berühren); 30–32 starten nach dem Merge von 29.
 Reason: P2 (ein Schreiber je Paket) und der Rat des Beraters zu W-03 (b).
 Reversible: yes  Touches: Reihenfolge
+
+## D-T34 Langtext-Editor: Tabellen-Plugins aus, leere Listen/Tabellen offen
+Welle 3 · Ticket 34 · decided by: implementer
+Question: prosemirror-tables füllt beim Bearbeiten ungleich lange Zeilen auf (`fixTables`); leere Listen/Tabellen sind im Typ erlaubt, im Schema nicht.
+Decision: Tabellen-Plugins abgeschaltet (Tab wechselt nur die Zelle). Leere Liste/Tabelle/Zeile wird nicht erzeugt und als offene Typfrage für `vertrag`/G2 gemeldet, nicht geändert. Übrige Kleinentscheidungen in Ticket 34, Comments.
+Reason: Kein stilles Ändern des Langtexts (Q5); `vertrag` ändert nur ein eigenes Ticket (A4).
+Reversible: yes  Touches: packages/ui-basis
+

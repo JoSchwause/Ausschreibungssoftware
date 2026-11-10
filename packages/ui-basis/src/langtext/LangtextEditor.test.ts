@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Komponententest des Langtext-Editors (Ticket 34): meldet genau einmal beim Bestätigen, Esc verwirft.
 
-import type { Langtext } from '@tethys/vertrag';
+import type { BildId, Langtext } from '@tethys/vertrag';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -97,6 +97,45 @@ describe('LangtextEditor', () => {
       { art: 'text', text: '' },
       { art: 'text', text: 'C25/30' },
     ]);
+    fokus(feld);
+    taste(feld, 'Enter', { ctrlKey: true });
+    verlassen(feld);
+    expect(onBestaetigen).not.toHaveBeenCalled();
+  });
+
+  it('erhält Tabelle, Liste, Bild und Textergänzung unverändert und meldet ohne Änderung nichts', () => {
+    const reich: Langtext = [
+      { art: 'text', text: 'Vorbemerkung', unterstrichen: true },
+      {
+        art: 'ergaenzung',
+        herkunft: 'bieter',
+        kennung: '1',
+        leer: true,
+        davor: [{ art: 'text', text: 'Fabrikat:' }],
+        inhalt: [],
+        danach: [],
+      },
+      { art: 'liste', geordnet: true, punkte: [[{ art: 'text', text: 'eins' }], []] },
+      {
+        art: 'tabelle',
+        zeilen: [
+          {
+            zellen: [
+              {
+                spalten: 2,
+                inhalt: [{ art: 'bild', bild: { id: 'b' as BildId, medientyp: 'image/png', daten: 'AA==' } }],
+              },
+            ],
+          },
+          { zellen: [{ spalten: 1, inhalt: [] }] },
+        ],
+      },
+    ];
+    const { onBestaetigen, feld } = zeige(reich);
+    expect(feld.querySelector('td[colspan="2"] img.tx-langtext-bild')?.getAttribute('src')).toBe(
+      'data:image/png;base64,AA==',
+    );
+    expect(feld.textContent).toContain('Fabrikat:');
     fokus(feld);
     taste(feld, 'Enter', { ctrlKey: true });
     verlassen(feld);
