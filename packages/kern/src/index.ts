@@ -18,6 +18,7 @@ export {
   POSITION_SCHRITT,
   doppelteOrdnungszahlen,
   maskeFehler as ozMaskeFehler,
+  maskePruefen as ozMaskePruefen,
   ozFehler,
   zaehlerSchritt,
 } from './ozregeln';
