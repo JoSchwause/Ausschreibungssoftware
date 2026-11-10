@@ -5,13 +5,12 @@
 import { memo, useMemo } from 'react';
 import type { ReactElement } from 'react';
 import type { Row } from '@tanstack/react-table';
-import type { LvSpalte, LvZeile, Pruefbefund } from '@tethys/vertrag';
+import type { GridZahlen, LvSpalte, LvZeile, Pruefbefund } from '@tethys/vertrag';
 import { Icon } from '@tethys/ui-basis';
 import { Editor } from './Editor';
 import type { EditorAktionen } from './Editor';
 import { anzeigeText, istBearbeitbar } from './eingabe';
 import { texte } from './texte';
-import type { GridZahlen } from './typen';
 import type { features } from './tabelle';
 
 /** Eingabe, die das Grid nicht in einen Befehl übersetzen konnte. Sichtbar markiert, nie verworfen (U5). */
