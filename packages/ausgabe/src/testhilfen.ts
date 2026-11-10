@@ -19,11 +19,44 @@ import type {
   Ordnungszahl,
   OzMaske,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
+  Zuschlag,
   ProjektId,
   Prozent,
   TitelId,
 } from '@tethys/vertrag';
+
+// // v1.1b: mechanisch angepasst, Folgeticket: Die Fixture kennt noch die einzelne Positionsart; hier wird sie in die Merkmale von `vertrag` v1.1b umgesetzt.
+function fixtureMerkmale(k: FxKnoten): Positionsmerkmale {
+  const art = k.positionsart ?? 'normal';
+  return {
+    bedarf:
+      art === 'bedarf' ? (k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
+    wahl:
+      art === 'wahl'
+        ? {
+            gruppe: null,
+            variante: null,
+            grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+          }
+        : null,
+    stundenlohn: art === 'stundenlohn',
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+}
+
+function fixtureZuschlag(k: FxKnoten): Zuschlag | null {
+  if (k.positionsart !== 'zuschlag') return null;
+  const bezug = k.bezugspositionId as PositionId | undefined;
+  return {
+    prozentsatz: null,
+    bezug: {
+      art: 'positionen',
+      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
+    },
+  };
+}
 
 interface FxKnoten {
   id: string;
@@ -32,7 +65,7 @@ interface FxKnoten {
   ordnungszahl?: string;
   kurztext?: string;
   text?: string;
-  positionsart?: Positionsart;
+  positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn'; // v1.1b: mechanisch angepasst, Folgeticket
   ozIndex?: string;
   langtext?: string;
   menge?: string;
@@ -95,11 +128,8 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       id: k.id as PositionId,
       ordnungszahl: (k.ordnungszahl ?? null) as Ordnungszahl | null,
       ozIndex: k.ozIndex ?? null,
-      positionsart: k.positionsart ?? 'normal',
-      pauschal: false,
-      bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-      bezugspositionId: (k.bezugspositionId as PositionId | undefined) ?? null,
-      grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+      merkmale: fixtureMerkmale(k), // // v1.1b: mechanisch angepasst, Folgeticket
+      zuschlag: fixtureZuschlag(k),
       kurztext: k.kurztext ?? '',
       langtext: [{ art: 'text', text: k.langtext ?? '' }],
       menge: (k.menge ?? null) as Menge | null,
