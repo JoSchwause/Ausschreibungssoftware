@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import type { Knoten, Position, Pruefbefund } from '@tethys/vertrag';
 import { leseGaeb } from './index';
 import type { GaebLesungErgebnis } from './index';
-import { TEST_MWST, leseTestdatei, lesePfad, positionsartVon, testIds } from './testhilfen';
+import { TEST_MWST, alleBausteine, leseTestdatei, lesePfad, ohneMerkmale, testIds } from './testhilfen';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HIER, '..', 'testdaten', 'golden');
@@ -39,13 +39,20 @@ const zaehle = (l: GaebLesungErgebnis, art: Knoten['art']): number =>
 
 /** Kurzbeschreibung des Ergebnisses: Köpfe und Zählung, damit Golden auch Strukturänderungen zeigt. */
 function zusammenfassung(datei: string, l: GaebLesungErgebnis): Record<string, unknown> {
-  const arten: Record<string, number> = {};
+  const ps = positionen(l);
+  const zaehleWenn = (f: (p: Position) => boolean): number => ps.filter(f).length;
+  const bausteine: Record<string, number> = {};
   let bilder = 0;
-  for (const p of positionen(l)) {
-    const art = positionsartVon(p) ?? 'normal';
-    arten[art] = (arten[art] ?? 0) + 1;
-    bilder += p.langtext.filter((b) => b.art === 'bild').length;
+  for (const k of knoten(l)) {
+    const text = k.art === 'position' ? k.langtext : k.art === 'hinweis' ? k.text : [];
+    for (const b of alleBausteine(text)) {
+      bausteine[b.art] = (bausteine[b.art] ?? 0) + 1;
+      if (k.art === 'position' && b.art === 'bild') bilder += 1;
+    }
   }
+  const zuschlaege: Record<string, number> = {};
+  for (const p of ps)
+    if (p.zuschlag !== null) zuschlaege[p.zuschlag.bezug.art] = (zuschlaege[p.zuschlag.bezug.art] ?? 0) + 1;
   return {
     datei,
     phase: l.phase,
@@ -53,6 +60,8 @@ function zusammenfassung(datei: string, l: GaebLesungErgebnis): Record<string, u
     name: l.inhalt?.name ?? null,
     ozMaske: l.inhalt?.ozMaske ?? null,
     mwstSatz: l.inhalt?.mwstSatz ?? null,
+    auftraggeber: l.inhalt?.auftraggeber ?? null,
+    vergabeinformationen: l.inhalt?.vergabeinformationen ?? null,
     anzahl: {
       los: zaehle(l, 'los'),
       titel: zaehle(l, 'titel'),
@@ -60,8 +69,17 @@ function zusammenfassung(datei: string, l: GaebLesungErgebnis): Record<string, u
       hinweise: zaehle(l, 'hinweis'),
       bilderInPositionen: bilder,
     },
-    positionsarten: arten,
-    pauschal: positionen(l).filter((p) => p.merkmale.pauschal).length,
+    merkmale: {
+      ohne: zaehleWenn(ohneMerkmale),
+      bedarf: zaehleWenn((p) => p.merkmale.bedarf !== null),
+      wahl: zaehleWenn((p) => p.merkmale.wahl !== null),
+      stundenlohn: zaehleWenn((p) => p.merkmale.stundenlohn),
+      zuschlagskennzeichen: zaehleWenn((p) => p.merkmale.zuschlagskennzeichen),
+      leitbeschreibung: zaehleWenn((p) => p.leitbeschreibung !== undefined),
+    },
+    zuschlaege,
+    pauschal: zaehleWenn((p) => p.merkmale.pauschal),
+    langtextBausteine: bausteine,
     befunde: l.befunde.length,
   };
 }
@@ -143,21 +161,19 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('Bedarfsposition mit Gesamtbetrag (Provis WithTotal)', () => {
       const p = positionen(l).find((x) => x.ordnungszahl === '001.001.0010' && x.ozIndex === '1');
-      expect(positionsartVon(p)).toBe('bedarf');
-      expect(p?.merkmale.bedarf === 'mit-gesamtbetrag').toBe(true);
+      expect(p?.merkmale.bedarf).toBe('mit-gesamtbetrag');
     });
 
     it('Grund- und Wahlposition (ALNGroupNo/ALNSerNo) verweisen aufeinander', () => {
       const grund = positionen(l).find((x) => x.ordnungszahl === '001.002.0040');
       const wahl = positionen(l).find((x) => x.ordnungszahl === '001.002.0050');
-      expect(positionsartVon(grund)).toBe('normal');
-      expect(positionsartVon(wahl)).toBe('wahl');
-      expect(wahl?.merkmale.wahl?.grundpositionId).toBe(grund?.id);
+      expect(grund?.merkmale.wahl).toEqual({ gruppe: 1, variante: 0, grundpositionId: null });
+      expect(wahl?.merkmale.wahl).toEqual({ gruppe: 1, variante: 1, grundpositionId: grund?.id });
     });
 
-    it('Zuschlagsposition (MarkupItem) hat Art zuschlag, keine Menge, keinen Preis', () => {
-      const z = positionen(l).filter((x) => positionsartVon(x) === 'zuschlag');
-      expect(z.length).toBeGreaterThanOrEqual(1);
+    it('Zuschlagsposition (MarkupItem, AllInCat) hat Bezug gliederung, keine Menge, keinen Preis', () => {
+      const z = positionen(l).filter((x) => x.zuschlag !== null);
+      expect(z.map((p) => p.zuschlag)).toEqual([{ prozentsatz: null, bezug: { art: 'gliederung' } }]);
       for (const p of z) {
         expect(p.menge).toBeNull();
         expect(p.einheitspreis).toBeNull();
@@ -166,10 +182,10 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('stimmt mit den Positionsnummern überein, die die BVBS-Prüfkriterien nennen (Ticket 23)', () => {
       const oz = (z: string): Position | undefined => positionen(l).find((x) => x.ordnungszahl === z);
-      expect(positionsartVon(oz('002.000.0000'))).toBe('normal'); // Position „0000“ muss vorhanden sein
-      expect(positionsartVon(oz('002.001.0030'))).toBe('zuschlag'); // Zuschlagspositionen ab 002.001.0030
-      expect(oz('001.002.0040')).toBeDefined(); // Grundposition
-      expect(positionsartVon(oz('001.002.0050'))).toBe('wahl'); // Alternativposition
+      expect(ohneMerkmale(oz('002.000.0000'))).toBe(true); // Position „0000“ muss vorhanden sein
+      expect(oz('002.001.0030')?.zuschlag).not.toBeNull(); // Zuschlagspositionen ab 002.001.0030
+      expect(oz('001.002.0040')?.merkmale.wahl?.variante).toBe(0); // Grundposition
+      expect(oz('001.002.0050')?.merkmale.wahl?.variante).toBe(1); // Alternativposition
     });
 
     it('Menge mit 8 Vorkomma- und 3 Nachkommastellen bleibt exakt', () => {
@@ -178,7 +194,7 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
     });
 
     it('Bild im Langtext bleibt als Baustein erhalten, nicht in Kurztext oder Namen', () => {
-      const bilder = positionen(l).flatMap((p) => p.langtext.filter((b) => b.art === 'bild'));
+      const bilder = positionen(l).flatMap((p) => alleBausteine(p.langtext).filter((b) => b.art === 'bild'));
       expect(bilder).toHaveLength(1);
       const b = bilder[0];
       expect(b?.art === 'bild' && b.bild.medientyp).toBe('image/jpeg');
@@ -213,14 +229,71 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
     it('Pauschal-, Stundenlohn-, Bedarfs-, Wahl- und Zuschlagspositionen werden unterschieden', () => {
       const ps = positionen(l);
       expect(ps.filter((p) => p.merkmale.pauschal)).toHaveLength(3);
-      expect(ps.filter((p) => positionsartVon(p) === 'zuschlag')).toHaveLength(6);
-      expect(ps.filter((p) => positionsartVon(p) === 'wahl').length).toBeGreaterThan(0);
-      expect(ps.filter((p) => positionsartVon(p) === 'bedarf').length).toBeGreaterThan(0);
-      expect(ps.filter((p) => positionsartVon(p) === 'stundenlohn').length).toBeGreaterThan(0);
+      expect(ps.filter((p) => p.zuschlag !== null)).toHaveLength(6);
+      expect(ps.filter((p) => p.merkmale.wahl !== null)).toHaveLength(12);
+      expect(ps.filter((p) => p.merkmale.bedarf !== null)).toHaveLength(5);
+      expect(ps.filter((p) => p.merkmale.stundenlohn)).toHaveLength(5);
+      expect(ps.filter((p) => p.merkmale.zuschlagskennzeichen)).toHaveLength(2);
+      expect(codes(l)).not.toContain('positionsart-kombination');
+    });
+
+    it('Bedarf und Stundenlohn zugleich (Hilfskraft): beide Merkmale, kein Befund (F5)', () => {
+      const p = positionen(l).find((x) => x.kurztext === 'Hilfskraft');
+      expect(p?.merkmale).toEqual({
+        bedarf: 'mit-gesamtbetrag',
+        wahl: null,
+        stundenlohn: true,
+        pauschal: false,
+        zuschlagskennzeichen: false,
+      });
+    });
+
+    it('Wahl: Gruppe und Variante wie in der Datei (0, 1, 2), Alternativen verweisen auf die erste Grundposition', () => {
+      const ps = positionen(l).filter((p) => p.merkmale.wahl !== null);
+      expect(
+        ps.map((p) => `${String(p.merkmale.wahl?.gruppe)}/${String(p.merkmale.wahl?.variante)}`),
+      ).toEqual([
+        ...Array<string>(4).fill('1/0'),
+        ...Array<string>(3).fill('1/1'),
+        ...Array<string>(5).fill('1/2'),
+      ]);
+      const erste = ps[0];
+      for (const p of ps)
+        expect(p.merkmale.wahl?.grundpositionId).toBe(p.merkmale.wahl?.variante === 0 ? null : erste?.id);
+      expect(codes(l)).not.toContain('wahl-variante-nicht-abgebildet');
+    });
+
+    it('Zuschlagskennzeichen (MarkupIt) an den Bezugspositionen, nicht mehr als nicht abgebildet gemeldet', () => {
+      const markiert = positionen(l).filter((p) => p.merkmale.zuschlagskennzeichen);
+      expect(markiert.map((p) => p.kurztext)).toEqual(['Ist zu bezuschlagen', 'Ist zu bezuschlagen']);
+      expect(l.befunde.some((b) => b.meldung.includes('Item/MarkupIt'))).toBe(false);
+    });
+
+    it('Zuschlagspositionen: je Bezugsform aus der Datei (IdentAsMark, AllInCat, ListInSubQty), ohne Satz', () => {
+      const ps = positionen(l);
+      const z = ps.filter((p) => p.zuschlag !== null);
+      expect(z.map((p) => p.zuschlag?.bezug.art)).toEqual([
+        'kennzeichnung',
+        'gliederung',
+        'gliederung',
+        'gliederung',
+        'positionen',
+        'positionen',
+      ]);
+      expect(z.every((p) => p.zuschlag?.prozentsatz === null)).toBe(true);
+      const ziele = z.flatMap((p) =>
+        p.zuschlag?.bezug.art === 'positionen' ? p.zuschlag.bezug.positionen : [],
+      );
+      expect(ziele.map((b) => b.teilmenge)).toEqual([null, null]);
+      const ziel = (id: string): Position | undefined => ps.find((p) => p.id === id);
+      expect(
+        ziele.map((b) => `${ziel(b.positionId)?.kurztext ?? '?'}|${ziel(b.positionId)?.menge ?? '?'}`),
+      ).toEqual(['Position .......|20.000', 'Position mit Mengensplit|100.000']);
+      expect(codes(l)).not.toContain('zuschlag-bezug-nicht-abbildbar');
     });
 
     it('QtyTBD: Menge bleibt null statt 0', () => {
-      const ohne = positionen(l).filter((p) => p.menge === null && positionsartVon(p) !== 'zuschlag');
+      const ohne = positionen(l).filter((p) => p.menge === null && p.zuschlag === null);
       expect(ohne.length).toBeGreaterThanOrEqual(3);
     });
 
@@ -232,23 +305,97 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
     });
 
     it('Bilder im Langtext bleiben erhalten (an ihrer Stelle zwischen Textbausteinen)', () => {
-      const bilder = positionen(l).flatMap((p) => p.langtext.filter((b) => b.art === 'bild'));
+      const bilder = positionen(l).flatMap((p) => alleBausteine(p.langtext).filter((b) => b.art === 'bild'));
       expect(bilder.length).toBeGreaterThan(0);
     });
 
     it('jede Position hat eine Ordnungszahl, Wurzel-Eltern sind die Wurzel-ID', () => {
       expect(positionen(l).every((p) => p.ordnungszahl !== null)).toBe(true);
+      expect('wurzelId' in l).toBe(false);
+      expect(l.inhalt?.wurzelId).toBe('lv-0001');
       const ids = new Set(knoten(l).map((k) => k.id as string));
       const lose = knoten(l).filter((k) => !ids.has(k.elternId));
       expect(lose.length).toBeGreaterThan(0);
-      expect(lose.every((k) => k.elternId === l.wurzelId)).toBe(true);
+      expect(lose.every((k) => k.elternId === l.inhalt?.wurzelId)).toBe(true);
+    });
+  });
+
+  describe('Kopfdaten (E-11)', () => {
+    it('AVA X81: OWN wird Auftraggeber, AwardInfo wird Vergabeinformationen', () => {
+      const inhalt = lies(lesePfad(AVA_X81), 'x.X81').inhalt;
+      expect(inhalt?.auftraggeber).toEqual({
+        name: 'BVBS',
+        strasse: 'Budapester Straße 31',
+        plz: '10787',
+        ort: 'Berlin',
+        vergabenummer: 'V-3456789012345',
+      });
+      expect(inhalt?.vergabeinformationen).toEqual({
+        eroeffnungsdatum: '2021-07-06',
+        eroeffnungszeit: '13:32:25',
+        abgabeort: 'Zi. 5 in der OFD Gaebhausen',
+        ausfuehrungsbeginn: '2021-06-15',
+        ausfuehrungsende: '2021-12-23',
+        auftragsnummer: 'Auftrag-Nr. 34567890',
+        auftragsdatum: '2021-10-19',
+        abnahmeart: 'Förmliche Abnahme',
+        gewaehrleistung: { dauer: 2, einheit: 'Years' },
+      });
+    });
+
+    it('Bauausführung X83: nur vorhandene Werte, sonst null; nicht abgebildete Teile sind Befund', () => {
+      const l = lies(lesePfad(BAU_X83), 'x.x83');
+      expect(l.inhalt?.auftraggeber).toEqual({
+        name: null,
+        strasse: null,
+        plz: null,
+        ort: null,
+        vergabenummer: 'BVBS-4711',
+      });
+      expect(l.inhalt?.vergabeinformationen).toEqual({
+        eroeffnungsdatum: '2024-04-04',
+        eroeffnungszeit: '11:11:00',
+        abgabeort: null,
+        ausfuehrungsbeginn: null,
+        ausfuehrungsende: null,
+        auftragsnummer: null,
+        auftragsdatum: null,
+        abnahmeart: null,
+        gewaehrleistung: null,
+      });
+      const nicht = l.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung);
+      expect(nicht.some((m) => m.includes('Award/OWN '))).toBe(false);
+      expect(nicht.some((m) => m.includes('Award/AwardInfo '))).toBe(false);
+      expect(nicht.some((m) => m.includes('OWN/DPNo'))).toBe(true);
+      expect(nicht.some((m) => m.includes('AwardInfo/Cur '))).toBe(true);
+    });
+
+    it('Texterstellung X81: ohne OWN fehlt der Auftraggeber', () => {
+      const inhalt = lies(lesePfad(TEXT_X81), 'x.x81').inhalt;
+      expect(inhalt !== null && 'auftraggeber' in inhalt).toBe(false);
+      expect(inhalt?.vergabeinformationen?.auftragsnummer).toBeNull();
+    });
+  });
+
+  describe('Leitbeschreibung (E-11)', () => {
+    it('AVA X81: SumDescr mit drei Unterbeschreibungen, Menge nur mit QtySpec, Einheit ---- bleibt Text', () => {
+      const ps = positionen(lies(lesePfad(AVA_X81), 'x.X81'));
+      const leit = ps.filter((p) => p.leitbeschreibung !== undefined);
+      expect(leit).toHaveLength(1);
+      const u = leit[0]?.leitbeschreibung?.unterbeschreibungen ?? [];
+      expect(u.map((x) => [x.nummer, x.kurztext, x.menge, x.einheit])).toEqual([
+        ['1', 'Unterkonstruktion verz.Stahlblech', '0.000', '----'],
+        ['2', "Dämmschicht mineralisch '40'", '0.000', '----'],
+        ['3', 'Beplankung,beids. GKF 12,5 mm', '0.000', '----'],
+      ]);
+      expect(u[1]?.langtext.filter((b) => b.art === 'ergaenzung')).toHaveLength(2);
     });
   });
 
   it('Eltern stehen vor Kindern, Reihenfolge ist je Eltern dicht 0..n-1', () => {
     for (const { pfad } of AMTLICH) {
       const l = lies(lesePfad(pfad));
-      const gesehen = new Set<string>([l.wurzelId as string]);
+      const gesehen = new Set<string>([l.inhalt?.wurzelId as string]);
       const proEltern = new Map<string, number[]>();
       for (const k of knoten(l)) {
         expect(gesehen.has(k.elternId)).toBe(true);
@@ -265,9 +412,9 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 describe('Version 3.1 und andere Phasen', () => {
   const dateien31 = readdirSync(join(HIER, '..', '..', '..', 'fixtures/extern/gaeb/3.1-musterdateien'));
   for (const d of dateien31) {
-    it(`3.1 ${d}: kein Absturz, Version nicht unterstützt, kein Inhalt`, () => {
+    it(`3.1 ${d}: kein Absturz, Version 3.1 nicht unterstützt, kein Inhalt`, () => {
       const l = lies(lesePfad(`fixtures/extern/gaeb/3.1-musterdateien/${d}`), d);
-      expect(l.version).toBeNull();
+      expect(l.version).toBe('3.1');
       expect(l.inhalt).toBeNull();
       const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
       expect(b?.schwere).toBe('fehler');
@@ -325,7 +472,7 @@ const FEHLER: readonly Fehlerfall[] = [
     schwere: 'warnung',
     positionen: 4,
     pruefe: (l) => {
-      expect(positionsartVon(positionen(l)[0])).toBe('normal');
+      expect(ohneMerkmale(positionen(l)[0])).toBe(true);
     },
   },
   { datei: '04-doppelte-id.x83', code: 'doppelte-id', schwere: 'fehler', positionen: 4 },
@@ -569,6 +716,14 @@ describe('Dezimalwerte und Pflichtangaben', () => {
     expect(positionen(lies(item('<Qty>1</Qty><QU>St</QU>')))[0]?.menge).toBe('1.000');
   });
 
+  it('leere Einheit (QU) ergibt null, nie leeren Text; ---- bleibt Text (Vertrag v1.2)', () => {
+    const leer = lies(item('<Qty>1.000</Qty><QU></QU>'));
+    expect(positionen(leer)[0]?.einheit).toBeNull();
+    expect(codes(leer)).toContain('einheit-fehlt');
+    expect(positionen(lies(item('<Qty>1.000</Qty><QU> </QU>')))[0]?.einheit).toBeNull();
+    expect(positionen(lies(item('<Qty>1.000</Qty><QU>----</QU>')))[0]?.einheit).toBe('----');
+  });
+
   it('fehlende Menge ohne QtyTBD oder LumpSumItem ist ein Befund, mit ihnen nicht', () => {
     expect(codes(lies(item('<QU>St</QU>')))).toContain('menge-fehlt');
     expect(codes(lies(item('<QtyTBD>Yes</QtyTBD><QU>St</QU>')))).not.toContain('menge-fehlt');
@@ -578,15 +733,15 @@ describe('Dezimalwerte und Pflichtangaben', () => {
     expect(positionen(l)[0]?.menge).toBeNull();
   });
 
-  it('Merkmalskombination wahl und bedarf: Wahl gewinnt, der Verlust wird gemeldet', () => {
+  it('Merkmalskombination wahl und bedarf: beide bleiben (F5), kein Kombinationsbefund', () => {
     const l = lies(
       item(
-        '<Provis>WithTotal</Provis><ALNGroupNo>1</ALNGroupNo><ALNSerNo>1</ALNSerNo><Qty>1.000</Qty><QU>St</QU>',
+        '<Provis>WithoutTotal</Provis><ALNGroupNo>1</ALNGroupNo><ALNSerNo>1</ALNSerNo><Qty>1.000</Qty><QU>St</QU>',
       ),
     );
-    expect(positionsartVon(positionen(l)[0])).toBe('wahl');
-    expect(positionen(l)[0]?.merkmale.bedarf === 'mit-gesamtbetrag').toBe(false);
-    expect(codes(l)).toContain('positionsart-kombination');
+    expect(positionen(l)[0]?.merkmale.wahl).toEqual({ gruppe: 1, variante: 1, grundpositionId: null });
+    expect(positionen(l)[0]?.merkmale.bedarf).toBe('ohne-gesamtbetrag');
+    expect(codes(l)).not.toContain('positionsart-kombination');
     expect(codes(l)).toContain('wahl-ohne-grundposition');
   });
 });

@@ -2,34 +2,46 @@
 // GAEB DA XML 3.3, Phasen X81 und X83 → `LvInhalt` (Ticket 22). Tolerant lesen: Fehler sind Prüfbefunde, nie ein
 // Abbruch. Rein (A2): Eingabe sind Bytes oder Text, Kennungen kommen aus der `IdQuelle`, kein I/O, keine Uhr.
 //
-// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments. Was `vertrag` nicht halten kann, wird nicht
+// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments; seit v1.1b (Ticket 32) zusätzlich alle
+// Positionsmerkmale unabhängig (F5), Wahl mit Gruppe und Variante, Zuschlag in allen drei Bezugsformen, Langtext
+// (`text.ts`), Kopfdaten (`OWN`, `AwardInfo`) und Leitbeschreibung (`SumDescr`/`SubDescr`). Was `vertrag` nicht halten kann, wird nicht
 // still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …).
 
 import { leseAustausch } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
+  Auftraggeber,
+  Bedarf,
+  Bezugsposition,
   ElternId,
   GaebLesung,
   GaebPhase,
+  Gewaehrleistung,
   Hinweistext,
   IdQuelle,
   Knoten,
   LeistungsverzeichnisId,
+  Leitbeschreibung,
   Los,
   LvInhalt,
+  Ordnungszahl,
   OzMaske,
   OzStelle,
-  Ordnungszahl,
   Position,
   PositionId,
+  Positionsmerkmale,
   Prozent,
   Pruefbefund,
   Titel,
+  Unterbeschreibung,
+  Vergabeinformationen,
+  Wahlzuordnung,
   Zahlenart,
+  Zuschlagsbezug,
 } from '@tethys/vertrag';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
-import { leseKurztext, leseLangtext } from './text';
+import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
 import type { XmlElement, XmlErgebnis } from './xml';
@@ -53,10 +65,11 @@ export interface LeseOptionen {
   readonly trennzeichen?: string | null;
 }
 
-/** `GaebLesung` plus die Wurzelkennung, unter der die obersten Knoten hängen (`elternId` der Ebene 1). */
-export interface GaebLesungErgebnis extends GaebLesung {
-  readonly wurzelId: LeistungsverzeichnisId | null;
-}
+/**
+ * Ergebnis des Lesers. Die Wurzelkennung, unter der die obersten Knoten hängen, steht seit v1.1a nur noch in
+ * `inhalt.wurzelId`.
+ */
+export type GaebLesungErgebnis = GaebLesung;
 
 /** E-19: MwSt-Satz, wenn der Aufrufer keinen liefert (X81/X83 tragen keinen). */
 export const STANDARD_MWST_SATZ = '19.00' as Prozent;
@@ -108,12 +121,27 @@ const BLATTNAMEN: ReadonlySet<string> = new Set([
   'RefDescr',
   'CtlgID',
   'CtlgCode',
+  'Markup',
+  'Name1',
+  'Street',
+  'PCode',
+  'City',
+  'AwardNo',
+  'DPNo',
+  'OpenDate',
+  'OpenTime',
+  'EvalEnd',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
 ]);
 
 type Veraenderlich<T> = { -readonly [K in keyof T]: T[K] };
-
-/** v1.1b: mechanisch angepasst, Folgeticket. Rangfolge der Merkmale (wahl vor bedarf vor stundenlohn), wie der Leser sie vor v1.1b als einzelne Art ansetzte. */
-type Merkmalsrang = 'wahl' | 'bedarf' | 'stundenlohn' | 'normal';
 
 const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
   e ? elementKinder(e).find((k) => k.name === name) : undefined;
@@ -232,8 +260,8 @@ class Leser {
         quelle: 'gaeb-lesen',
         code: 'formatierung-verworfen',
         meldung:
-          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Auszeichnung verworfen, die der Vertrag nicht abbildet ` +
-          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt als reiner Text erhalten.`,
+          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Formatierung verworfen, die der Vertrag nicht abbildet ` +
+          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt ohne diese Formatierung erhalten.`,
         ort: this.ort(this.formatErst ?? undefined),
       });
     for (const a of this.aggregate.values())
@@ -442,8 +470,11 @@ function leseMaske(
       index.el,
     );
 
+  // F1 (v1.1a): Nur ein Lot an erster Stelle ist die Los-Stufe; tiefere Lot-Stufen werden Titel (`los-zu-titel`).
+  const losStufe = eintraege[0]?.typ === 'Lot';
   const maske: OzMaske = {
     gliederung: stufen.map(stelle),
+    ...(losStufe ? { losStufe: true } : {}),
     position: item ? stelle(item) : { laenge: 4, zeichen: 'numerisch' },
     index: index ? stelle(index) : null,
     trennzeichen: trenn,
@@ -463,8 +494,32 @@ const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'Provis',
   'ALNGroupNo',
   'ALNSerNo',
+  'MarkupIt',
+  'SumDescr',
+  'SubDescr',
 ]);
-const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set(['MarkupType', 'MarkupSubQty', 'Description']);
+/** Eine Zuschlagsposition trägt dieselben Merkmale wie eine Position (F5) plus Bezugsform und Satz. */
+const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
+  'MarkupType',
+  'MarkupSubQty',
+  'Markup',
+  'Description',
+  'LumpSumItem',
+  'HourIt',
+  'Provis',
+  'ALNGroupNo',
+  'ALNSerNo',
+  'MarkupIt',
+]);
+const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
+  'SubDNo',
+  'Description',
+  'QtySpec',
+  'Qty',
+  'QU',
+]);
+const BESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set(['CompleteText']);
+const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'OutlineText']);
 const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody']);
 const TEILE_ERLAUBT = /^[0-9A-Za-z_ ]*$/;
 
@@ -485,14 +540,11 @@ class Aufbau {
   private readonly gaebIds = new Map<string, PositionId>();
   private readonly ozGesehen = new Set<string>();
   private readonly grundpositionen = new Map<string, PositionId>();
-  private wahlGefunden = 0;
   private bereichszaehler = 0;
   private readonly zuschlaege: {
     pos: Veraenderlich<Position>;
     refs: { id: string; el: XmlElement }[];
-    el: XmlElement;
   }[] = [];
-  private readonly wahlOhneBezug: Veraenderlich<Position>[] = [];
 
   constructor(
     private readonly l: Leser,
@@ -632,7 +684,8 @@ class Aufbau {
     const detail = kind(ct, 'DetailTxt');
     const outline = kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt');
     let text = this.l.langtext(detail);
-    if (text.length === 0) text = this.l.langtext(outline);
+    // Ein Detailtext ohne Inhalt (auch nur leere Absätze) gilt als fehlend; dann trägt der Kurztext den Hinweis.
+    if (langtextLeer(text)) text = this.l.langtext(outline);
     else if (outline && textInhalt(outline).trim() !== '')
       this.l.nichtAbgebildet(outline, 'Remark/OutlineText', 'Kurztext des Hinweistexts ohne Entsprechung');
     const h: Hinweistext = {
@@ -653,7 +706,7 @@ class Aufbau {
           this.position(k, eltern, bereich);
           break;
         case 'MarkupItem':
-          this.zuschlagsposition(k, eltern);
+          this.zuschlagsposition(k, eltern, bereich);
           break;
         case 'Remark':
           this.hinweis(k, eltern);
@@ -722,20 +775,23 @@ class Aufbau {
     return { ordnungszahl, ozIndex };
   }
 
-  private position(el: XmlElement, eltern: Ebene, bereich: number): void {
-    const id = this.ids.position();
-    this.registriereId(el, id);
-    const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
-
-    // Positionsmerkmale
+  /**
+   * Liest die Positionsmerkmale (F5): Bedarf (`Provis`), Wahl (`ALNGroupNo`/`ALNSerNo`), Stundenlohn (`HourIt`),
+   * Pauschal (`LumpSumItem`) und Zuschlagskennzeichen (`MarkupIt`), jedes unabhängig von den anderen. Für eine
+   * Alternative (Variante > 0) setzt `grundpositionId` die erste Grundausführung (Variante 0) derselben Gruppe im
+   * selben LV-Bereich davor; die Grundausführung selbst verweist auf keine (Vertragskommentar `Positionsmerkmale.wahl`).
+   */
+  private merkmale(el: XmlElement, id: PositionId, bereich: number): Positionsmerkmale {
     const pauschal = this.l.merkmal(el, 'LumpSumItem', id);
     const stundenlohn = this.l.merkmal(el, 'HourIt', id);
+    const zuschlagskennzeichen = this.l.merkmal(el, 'MarkupIt', id);
     const provis = this.l.aufzaehlung(kind(el, 'Provis'), ['WithTotal', 'WithoutTotal'] as const, id);
-    const qtyTbd = kind(el, 'QtyTBD') !== undefined;
+    const bedarf: Bedarf | null =
+      provis === null ? null : provis === 'WithTotal' ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag';
+
+    let wahl: Wahlzuordnung | null = null;
     const gruppeEl = kind(el, 'ALNGroupNo');
     const serieEl = kind(el, 'ALNSerNo');
-    let gruppe: string | null = null;
-    let serie: number | null = null;
     if (gruppeEl || serieEl) {
       const g = wert(gruppeEl);
       const s = wert(serieEl);
@@ -743,33 +799,60 @@ class Aufbau {
         this.l.melde(
           'warnung',
           'wahl-angabe-unvollstaendig',
-          'ALNGroupNo und ALNSerNo müssen beide als Zahl vorhanden sein; die Zuordnung zu einer Grundposition entfällt.',
+          'ALNGroupNo und ALNSerNo müssen beide als Zahl vorhanden sein; die Position wird ohne Wahl übernommen.',
           gruppeEl ?? serieEl,
           { knotenId: id },
         );
       else {
-        gruppe = String(Number(g));
-        serie = Number(s);
+        const gruppe = Number(g);
+        const variante = Number(s);
+        const schluessel = `${String(bereich)}|${String(gruppe)}`;
+        let grundpositionId: PositionId | null = null;
+        if (variante === 0) {
+          if (!this.grundpositionen.has(schluessel)) this.grundpositionen.set(schluessel, id);
+        } else {
+          grundpositionId = this.grundpositionen.get(schluessel) ?? null;
+          if (grundpositionId === null)
+            this.l.melde(
+              'warnung',
+              'wahl-ohne-grundposition',
+              `Zur Wahlposition (Gruppe ${String(gruppe)}, Variante ${String(variante)}) gibt es im selben LV-Bereich davor keine Grundposition.`,
+              el,
+              { knotenId: id, feld: 'grundpositionId' },
+            );
+        }
+        wahl = { gruppe, variante, grundpositionId };
       }
     }
-    const merkmale: Merkmalsrang[] = [];
-    if (serie !== null && serie > 0) merkmale.push('wahl');
-    if (provis !== null) merkmale.push('bedarf');
-    if (stundenlohn) merkmale.push('stundenlohn');
-    const positionsart: Merkmalsrang = merkmale[0] ?? 'normal';
-    if (merkmale.length > 1)
-      this.l.melde(
-        'warnung',
-        'positionsart-kombination',
-        `Die Position trägt mehrere Arten (${merkmale.join(', ')}); der Vertrag kennt nur eine: ${positionsart} gilt, ${merkmale.slice(1).join(', ')} geht verloren.`,
-        el,
-        { knotenId: id, feld: 'positionsart' },
-      );
+    return { bedarf, wahl, stundenlohn, pauschal, zuschlagskennzeichen };
+  }
+
+  /** Kurz- und Langtext aus `Description/CompleteText`. */
+  private texte(desc: XmlElement | undefined): Pick<Position, 'kurztext' | 'langtext'> {
+    const ct = kind(desc, 'CompleteText');
+    return {
+      kurztext: this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt')),
+      langtext: this.l.langtext(kind(ct, 'DetailTxt')),
+    };
+  }
+
+  /** Einheit (`QU`): leer ergibt `null`, nie `''` (Vertrag v1.2); `----` bleibt Text. */
+  private einheit(el: XmlElement): string | null {
+    const w = wert(kind(el, 'QU'));
+    return w === null || w === '' ? null : w;
+  }
+
+  private position(el: XmlElement, eltern: Ebene, bereich: number): void {
+    const id = this.ids.position();
+    this.registriereId(el, id);
+    const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
+    const merkmale = this.merkmale(el, id, bereich);
+    const qtyTbd = kind(el, 'QtyTBD') !== undefined;
 
     // Menge, Einheit, Preis
     const qtyEl = kind(el, 'Qty');
     const menge = qtyEl ? this.l.zahl('menge', qtyEl, id, 'menge') : null;
-    if (!qtyEl && !qtyTbd && !pauschal)
+    if (!qtyEl && !qtyTbd && !merkmale.pauschal)
       this.l.melde(
         'warnung',
         'menge-fehlt',
@@ -777,17 +860,18 @@ class Aufbau {
         el,
         { knotenId: id, feld: 'menge' },
       );
-    const quEl = kind(el, 'QU');
-    const einheit = wert(quEl);
-    if (einheit === null || einheit === '')
-      this.l.melde('warnung', 'einheit-fehlt', 'Die Position hat keine Mengeneinheit (QU).', quEl ?? el, {
-        knotenId: id,
-        feld: 'einheit',
-      });
+    const einheit = this.einheit(el);
+    if (einheit === null)
+      this.l.melde(
+        'warnung',
+        'einheit-fehlt',
+        'Die Position hat keine Mengeneinheit (QU).',
+        kind(el, 'QU') ?? el,
+        { knotenId: id, feld: 'einheit' },
+      );
     const upEl = kind(el, 'UP');
     const einheitspreis = upEl ? this.l.zahl('einheitspreis', upEl, id, 'einheitspreis') : null;
 
-    // Texte
     const desc = kind(el, 'Description');
     if (!desc)
       this.l.melde(
@@ -797,142 +881,136 @@ class Aufbau {
         el,
         { knotenId: id },
       );
-    const ct = kind(desc, 'CompleteText');
-    const kurztext = this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt'));
-    const langtext = this.l.langtext(kind(ct, 'DetailTxt'));
+    const texte = this.texte(desc);
+    const leitbeschreibung = this.leitbeschreibung(el, id);
 
-    const pos: Veraenderlich<Position> = {
+    const pos: Position = {
       art: 'position',
       id,
       elternId: eltern.id as ElternId,
       reihenfolge: this.reihenfolge(eltern.id),
       ordnungszahl,
       ozIndex,
-      // v1.1b: mechanisch angepasst, Folgeticket. Nur das Merkmal, das vor v1.1b als Art galt (Befund
-      // `positionsart-kombination` bleibt). Gruppe und Variante bleiben wie bisher ungespeichert (`null`, Befund
-      // `wahl-variante-nicht-abgebildet`); sie zu setzen ist Sache des Folgetickets gaeb.
-      merkmale: {
-        bedarf:
-          positionsart === 'bedarf'
-            ? provis === 'WithTotal'
-              ? 'mit-gesamtbetrag'
-              : 'ohne-gesamtbetrag'
-            : null,
-        wahl: positionsart === 'wahl' ? { gruppe: null, variante: null, grundpositionId: null } : null,
-        stundenlohn: positionsart === 'stundenlohn',
-        pauschal,
-        zuschlagskennzeichen: false,
-      },
+      merkmale,
       zuschlag: null,
-      kurztext,
-      langtext,
+      ...(leitbeschreibung === undefined ? {} : { leitbeschreibung }),
+      ...texte,
       menge,
-      einheit: einheit === '' ? null : einheit,
+      einheit,
       einheitspreis,
       epa: null,
     };
     this.knoten.push(pos);
-
-    // Wahl- und Grundpositionen (ALNGroupNo/ALNSerNo, Fachdokumentation 3.3, 4.5.2)
-    if (gruppe !== null && serie !== null) {
-      this.wahlGefunden += 1;
-      const schluessel = `${String(bereich)}|${gruppe}`;
-      if (serie === 0) {
-        if (!this.grundpositionen.has(schluessel)) this.grundpositionen.set(schluessel, id);
-      } else {
-        const grund = this.grundpositionen.get(schluessel);
-        if (grund && positionsart === 'wahl' && pos.merkmale.wahl !== null)
-          pos.merkmale = { ...pos.merkmale, wahl: { ...pos.merkmale.wahl, grundpositionId: grund } }; // v1.1b: mechanisch angepasst, Folgeticket
-        else if (positionsart === 'wahl')
-          this.l.melde(
-            'warnung',
-            'wahl-ohne-grundposition',
-            `Zur Wahlposition (Gruppe ${gruppe}, Variante ${String(serie)}) gibt es im selben LV-Bereich davor keine Grundposition.`,
-            el,
-            { knotenId: id, feld: 'grundpositionId' },
-          );
-      }
-    }
-
     this.l.restMelden(el, POSITION_BEHANDELT, 'Item');
   }
 
-  private zuschlagsposition(el: XmlElement, eltern: Ebene): void {
+  /**
+   * Leitbeschreibung (E-11): `SumDescr` = Yes und die `SubDescr` darunter. `undefined`: keine. Unterbeschreibungen
+   * ohne `SumDescr` werden trotzdem übernommen (kein stiller Verlust), mit Befund.
+   */
+  private leitbeschreibung(el: XmlElement, id: PositionId): Leitbeschreibung | undefined {
+    const sum = this.l.merkmal(el, 'SumDescr', id);
+    const subs = kinder(el, 'SubDescr');
+    if (!sum && subs.length === 0) return undefined;
+    if (!sum)
+      this.l.melde(
+        'warnung',
+        'leitbeschreibung-ohne-kennzeichen',
+        'Die Position hat Unterbeschreibungen (SubDescr), aber SumDescr ist nicht Yes; sie werden als Leitbeschreibung übernommen.',
+        subs[0],
+        { knotenId: id, feld: 'leitbeschreibung' },
+      );
+    const unterbeschreibungen = subs.map((sub): Unterbeschreibung => {
+      const nummer = wert(kind(sub, 'SubDNo')) ?? '';
+      if (nummer === '')
+        this.l.melde(
+          'warnung',
+          'unterbeschreibung-ohne-nummer',
+          'Die Unterbeschreibung hat keine Nummer (SubDNo).',
+          sub,
+          { knotenId: id, feld: 'leitbeschreibung' },
+        );
+      const mitMenge = this.l.merkmal(sub, 'QtySpec', id);
+      const qtyEl = kind(sub, 'Qty');
+      const menge = mitMenge && qtyEl ? this.l.zahl('menge', qtyEl, id, 'leitbeschreibung') : null;
+      if (!mitMenge && qtyEl) this.l.nichtAbgebildet(qtyEl, 'SubDescr/Qty', 'Menge ohne QtySpec Yes');
+      const desc = kind(sub, 'Description');
+      if (desc) {
+        this.l.restMelden(desc, BESCHREIBUNG_BEHANDELT, 'SubDescr/Description');
+        const ct = kind(desc, 'CompleteText');
+        if (ct) this.l.restMelden(ct, KOMPLETTTEXT_BEHANDELT, 'SubDescr/CompleteText');
+      }
+      this.l.restMelden(sub, UNTERBESCHREIBUNG_BEHANDELT, 'SubDescr');
+      return { nummer, ...this.texte(desc), menge, einheit: this.einheit(sub) };
+    });
+    return { unterbeschreibungen };
+  }
+
+  private zuschlagsposition(el: XmlElement, eltern: Ebene, bereich: number): void {
     const id = this.ids.position();
     this.registriereId(el, id);
     const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
-    const typ = this.l.aufzaehlung(
-      kind(el, 'MarkupType'),
-      ['IdentAsMark', 'AllInCat', 'ListInSubQty'] as const,
-      id,
-    );
-    const desc = kind(el, 'Description');
-    const ct = kind(desc, 'CompleteText');
-    const kurztext = this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt'));
-    const langtext = this.l.langtext(kind(ct, 'DetailTxt'));
-    const pos: Veraenderlich<Position> = {
-      art: 'position',
-      id,
-      elternId: eltern.id as ElternId,
-      reihenfolge: this.reihenfolge(eltern.id),
-      ordnungszahl,
-      ozIndex,
-      // v1.1b: mechanisch angepasst, Folgeticket. Zuschlag mit leerer Bezugsliste, wie vor v1.1b ohne Bezug; die Bezugsformen `gliederung` und
-      // `kennzeichnung`, der Prozentsatz (`Markup`) und das Kennzeichen (`MarkupIt`) folgen mit dem Folgeticket gaeb.
-      merkmale: {
-        bedarf: null,
-        wahl: null,
-        stundenlohn: false,
-        pauschal: false,
-        zuschlagskennzeichen: false,
-      },
-      zuschlag: { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } },
-      kurztext,
-      langtext,
-      menge: null,
-      einheit: null,
-      einheitspreis: null,
-      epa: null,
-    };
-    this.knoten.push(pos);
+    const merkmale = this.merkmale(el, id, bereich);
+    const typEl = kind(el, 'MarkupType');
+    const typ = this.l.aufzaehlung(typEl, ['IdentAsMark', 'AllInCat', 'ListInSubQty'] as const, id);
+    const markupEl = kind(el, 'Markup');
+    const prozentsatz = markupEl ? this.l.zahl('prozent', markupEl, id, 'zuschlag.prozentsatz') : null;
 
     const refs: { id: string; el: XmlElement }[] = [];
     for (const sub of kinder(el, 'MarkupSubQty')) {
       const r = kind(sub, 'RefItem');
       const ref = r?.attrs.get('IDRef');
       if (r && ref !== undefined) refs.push({ id: ref, el: r });
-      if (kind(sub, 'SubQty'))
-        this.l.nichtAbgebildet(
-          kind(sub, 'SubQty') ?? sub,
-          'MarkupSubQty/SubQty',
-          'Teilmenge der Bezugsposition',
-        );
+      // Eine Teilmenge zeigt keine amtliche Datei; sie wird nicht geraten (`teilmenge: null`), sondern gemeldet.
+      const subQty = kind(sub, 'SubQty');
+      if (subQty) this.l.nichtAbgebildet(subQty, 'MarkupSubQty/SubQty', 'Teilmenge der Bezugsposition');
     }
-    if (typ === 'IdentAsMark' || typ === 'AllInCat')
+
+    let bezug: Zuschlagsbezug;
+    if (typ === 'IdentAsMark') bezug = { art: 'kennzeichnung' };
+    else if (typ === 'AllInCat') bezug = { art: 'gliederung' };
+    else bezug = { art: 'positionen', positionen: [] };
+    if (typ === null)
       this.l.melde(
         'warnung',
         'zuschlag-bezug-nicht-abbildbar',
-        typ === 'AllInCat'
-          ? 'Der Zuschlag bezieht sich auf alle davorstehenden Positionen des LV-Bereichs (AllInCat); der Vertrag hält nur eine einzelne Bezugsposition.'
-          : 'Der Zuschlag bezieht sich auf die mit MarkupIt gekennzeichneten davorstehenden Positionen (IdentAsMark); der Vertrag hält nur eine einzelne Bezugsposition.',
-        el,
-        { knotenId: id, feld: 'bezugspositionId' },
+        `Die Zuschlagsposition hat keine gültige Bezugsform (MarkupType); ${refs.length > 0 ? 'die RefItem werden als Liste von Bezugspositionen übernommen' : 'der Bezug bleibt leer'}.`,
+        typEl ?? el,
+        { knotenId: id, feld: 'zuschlag.bezug' },
       );
-    else if (typ === 'ListInSubQty' && refs.length > 1)
+    else if (typ !== 'ListInSubQty' && refs.length > 0)
       this.l.melde(
         'warnung',
         'zuschlag-bezug-nicht-abbildbar',
-        `Der Zuschlag bezieht sich auf ${String(refs.length)} Positionen (ListInSubQty); der Vertrag hält nur eine, die erste.`,
-        el,
-        { knotenId: id, feld: 'bezugspositionId' },
+        `Die Bezugsform ${typ} hat keine Liste von Bezugspositionen; ${String(refs.length)} RefItem werden nicht übernommen.`,
+        refs[0]?.el,
+        { knotenId: id, feld: 'zuschlag.bezug' },
       );
-    if (typ === 'ListInSubQty' && refs.length > 0) this.zuschlaege.push({ pos, refs: refs.slice(0, 1), el });
+
+    const pos: Veraenderlich<Position> = {
+      art: 'position',
+      id,
+      elternId: eltern.id as ElternId,
+      reihenfolge: this.reihenfolge(eltern.id),
+      ordnungszahl,
+      ozIndex,
+      merkmale,
+      zuschlag: { prozentsatz, bezug },
+      ...this.texte(kind(el, 'Description')),
+      menge: null,
+      einheit: null,
+      einheitspreis: null,
+      epa: null,
+    };
+    this.knoten.push(pos);
+    if (bezug.art === 'positionen' && refs.length > 0) this.zuschlaege.push({ pos, refs });
     this.l.restMelden(el, ZUSCHLAG_BEHANDELT, 'MarkupItem');
   }
 
-  /** Löst die Verweise der Zuschlagspositionen auf, nachdem alle Positionen gelesen sind. */
+  /** Löst die Verweise der Zuschlagspositionen (`ListInSubQty`) auf, nachdem alle Positionen gelesen sind. */
   loeseVerweise(): void {
     for (const z of this.zuschlaege) {
+      const positionen: Bezugsposition[] = [];
       for (const r of z.refs) {
         const ziel = this.gaebIds.get(r.id);
         if (ziel === z.pos.id)
@@ -942,32 +1020,112 @@ class Aufbau {
             'verweis-auf-sich',
             `RefItem der Zuschlagsposition verweist auf deren eigene ID „${r.id}“; der Bezug entfällt.`,
             r.el,
-            { knotenId: z.pos.id, feld: 'bezugspositionId' },
+            { knotenId: z.pos.id, feld: 'zuschlag.bezug' },
           );
-        else if (ziel)
-          z.pos.zuschlag = {
-            prozentsatz: null,
-            bezug: { art: 'positionen', positionen: [{ positionId: ziel, teilmenge: null }] },
-          }; // v1.1b: mechanisch angepasst, Folgeticket
+        else if (ziel) positionen.push({ positionId: ziel, teilmenge: null });
         else
           this.l.melde(
             'warnung',
             'verweis-unbekannt',
             `RefItem verweist auf die unbekannte ID „${r.id}“.`,
             r.el,
-            { knotenId: z.pos.id, feld: 'bezugspositionId' },
+            { knotenId: z.pos.id, feld: 'zuschlag.bezug' },
           );
       }
+      z.pos.zuschlag = {
+        prozentsatz: z.pos.zuschlag?.prozentsatz ?? null,
+        bezug: { art: 'positionen', positionen },
+      };
     }
-    if (this.wahlGefunden > 0 && this.knoten.length > 0)
-      this.l.aggregiere(
-        'wahl-variante',
-        'wahl-variante-nicht-abgebildet',
-        null,
-        () =>
-          `Alternativpositionen: Verwiesen wird nur auf die erste Grundposition; Gruppen- und Variantennummer (ALNGroupNo, ALNSerNo) und weitere Grundpositionen einer Gruppe speichert der Vertrag nicht (${String(this.wahlGefunden)} Positionen mit ALN-Angaben).`,
+  }
+}
+
+// --- Kopfdaten (E-11) -------------------------------------------------------------------------------------
+
+const DATUM = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+const UHRZEIT = /^[0-9]{2}:[0-9]{2}:[0-9]{2}$/;
+
+/** Text eines Kindelements; leer oder fehlend ergibt `null`. */
+const textOderNull = (e: XmlElement | undefined, name: string): string | null => wert(kind(e, name)) || null;
+
+/** Datum oder Uhrzeit im erwarteten Format, sonst `null` mit Befund `wert-ungueltig`. */
+function zeitangabe(
+  l: Leser,
+  eltern: XmlElement,
+  name: string,
+  muster: RegExp,
+  beschreibung: string,
+): string | null {
+  const el = kind(eltern, name);
+  const w = textOderNull(eltern, name);
+  if (w === null || muster.test(w)) return w;
+  l.melde(
+    'warnung',
+    'wert-ungueltig',
+    `${name} „${w}“ ist kein ${beschreibung}; der Wert wird nicht übernommen.`,
+    el,
+    { feld: `vergabeinformationen.${name}` },
+  );
+  return null;
+}
+
+/** `OWN` → `Auftraggeber`. Nicht abgebildete Teile (`DPNo`, weitere Adressfelder) sind Befund. */
+function leseAuftraggeber(l: Leser, own: XmlElement): Auftraggeber {
+  const adresse = kind(own, 'Address');
+  l.restMelden(own, new Set(['Address', 'AwardNo']), 'OWN');
+  if (adresse) l.restMelden(adresse, new Set(['Name1', 'Street', 'PCode', 'City']), 'OWN/Address');
+  return {
+    name: textOderNull(adresse, 'Name1'),
+    strasse: textOderNull(adresse, 'Street'),
+    plz: textOderNull(adresse, 'PCode'),
+    ort: textOderNull(adresse, 'City'),
+    vergabenummer: textOderNull(own, 'AwardNo'),
+  };
+}
+
+const VERGABE_BEHANDELT: ReadonlySet<string> = new Set([
+  'OpenDate',
+  'OpenTime',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
+]);
+
+/** `AwardInfo` → `Vergabeinformationen`. Nicht abgebildet (Befund): `Cat`, `EvalEnd`, `Cur`, `CurLbl` u. a. */
+function leseVergabeinformationen(l: Leser, info: XmlElement): Vergabeinformationen {
+  l.restMelden(info, VERGABE_BEHANDELT, 'AwardInfo');
+  const datum = (name: string): string | null => zeitangabe(l, info, name, DATUM, 'Datum (JJJJ-MM-TT)');
+  const dauerText = textOderNull(info, 'WarrDur');
+  const einheit = textOderNull(info, 'WarrUnit');
+  let gewaehrleistung: Gewaehrleistung | null = null;
+  if (dauerText !== null || einheit !== null) {
+    if (dauerText !== null && /^[0-9]+(\.[0-9]+)?$/.test(dauerText) && einheit !== null)
+      gewaehrleistung = { dauer: Number(dauerText), einheit };
+    else
+      l.melde(
+        'warnung',
+        'wert-ungueltig',
+        `Die Gewährleistung (WarrDur „${dauerText ?? ''}“, WarrUnit „${einheit ?? ''}“) braucht eine Zahl und eine Einheit; sie wird nicht übernommen.`,
+        kind(info, 'WarrDur') ?? kind(info, 'WarrUnit'),
+        { feld: 'vergabeinformationen.gewaehrleistung' },
       );
   }
+  return {
+    eroeffnungsdatum: datum('OpenDate'),
+    eroeffnungszeit: zeitangabe(l, info, 'OpenTime', UHRZEIT, 'Uhrzeit (HH:MM:SS)'),
+    abgabeort: textOderNull(info, 'SubmLoc'),
+    ausfuehrungsbeginn: datum('CnstStart'),
+    ausfuehrungsende: datum('CnstEnd'),
+    auftragsnummer: textOderNull(info, 'ContrNo'),
+    auftragsdatum: datum('ContrDate'),
+    abnahmeart: textOderNull(info, 'AcceptType'),
+    gewaehrleistung,
+  };
 }
 
 // --- Dokumentkopf ---------------------------------------------------------------------------------------
@@ -988,11 +1146,7 @@ function pruefeIds(l: Leser, wurzel: XmlElement): void {
   }
 }
 
-function baueInhalt(
-  root: XmlElement,
-  opt: LeseOptionen,
-  l: Leser,
-): { inhalt: LvInhalt; wurzelId: LeistungsverzeichnisId } | null {
+function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | null {
   const award = kind(root, 'Award');
   const boq = kind(award, 'BoQ');
   if (!award || !boq) {
@@ -1006,7 +1160,11 @@ function baueInhalt(
     if (!['GAEBInfo', 'PrjInfo', 'Award'].includes(k.name)) l.nichtAbgebildet(k, `GAEB/${k.name}`);
   const prj = kind(root, 'PrjInfo');
   if (prj) l.restMelden(prj, new Set(['NamePrj']), 'PrjInfo');
-  l.restMelden(award, new Set(['DP', 'BoQ']), 'Award');
+  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo']), 'Award');
+  const own = kind(award, 'OWN');
+  const info = kind(award, 'AwardInfo');
+  const auftraggeber = own ? leseAuftraggeber(l, own) : undefined;
+  const vergabeinformationen = info ? leseVergabeinformationen(l, info) : undefined;
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
@@ -1045,9 +1203,14 @@ function baueInhalt(
     );
   }
   return {
-    // v1.1a: mechanisch angepasst, Folgeticket (gaeb: `wurzelId` nur noch in `inhalt`)
-    inhalt: { name, ozMaske: maske, mwstSatz, nachlass: null, knoten: aufbau.knoten, wurzelId },
+    name,
+    ozMaske: maske,
+    mwstSatz,
+    nachlass: null,
+    ...(auftraggeber === undefined ? {} : { auftraggeber }),
+    ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
     wurzelId,
+    knoten: aufbau.knoten,
   };
 }
 
@@ -1066,8 +1229,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
     version: GaebLesung['version'],
     befunde: readonly Pruefbefund[],
     inhalt: LvInhalt | null = null,
-    wurzelId: LeistungsverzeichnisId | null = null,
-  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde], wurzelId });
+  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde] });
 
   const groesse = eingabe.length;
   const maxBytes = opt.maxBytes ?? STANDARD_MAX_BYTES;
@@ -1137,5 +1299,5 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
 
   const gebaut = baueInhalt(root, opt, l);
   l.abschliessen();
-  return ergebnis(erk.phase, erk.version, l.befunde, gebaut?.inhalt ?? null, gebaut?.wurzelId ?? null);
+  return ergebnis(erk.phase, erk.version, l.befunde, gebaut);
 }

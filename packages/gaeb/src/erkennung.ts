@@ -16,7 +16,7 @@ export type Versionsstand =
   | 'unbekannt';
 
 export interface Erkennung {
-  /** Das Ergebnis für `GaebLesung.version`: nur 3.2 und 3.3 sind darstellbar, sonst `null`. */
+  /** Das Ergebnis für `GaebLesung.version`: nur 3.1, 3.2 und 3.3 sind darstellbar, sonst `null`. */
   readonly version: GaebVersion | null;
   /** Die erkannte Version im Wortlaut (z. B. `3.1`), `null`: keine Angabe. */
   readonly versionText: string | null;
@@ -139,6 +139,7 @@ export function erkenne(wurzel: XmlElement, dateiname: string | undefined): Erke
   const stand = versionText === null ? 'unbekannt' : klassifiziere(versionText);
   let version: GaebVersion | null = null;
   if (stand === 'unterstuetzt') version = '3.3';
-  else if (stand === 'bekannt-nicht-unterstuetzt' && versionText === '3.2') version = '3.2';
+  else if (stand === 'bekannt-nicht-unterstuetzt' && (versionText === '3.1' || versionText === '3.2'))
+    version = versionText;
   return { version, versionText, stand, phase: phase as GaebPhase | null, befunde };
 }

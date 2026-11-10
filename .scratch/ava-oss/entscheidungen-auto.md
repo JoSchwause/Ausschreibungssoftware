@@ -140,3 +140,10 @@ Question: Wie streng prüft `speicher` ein Lösch-ChangeSet (LV, Angebot), das `
 Decision: Kopf in `vorher` gleich dem gespeicherten, alle Knoten bzw. Angebotspositionen in `entfernt` (fehlt einer: `konflikt`), `summen.vorher` falls gesetzt gleich den gespeicherten Summen (sonst `konflikt`); neue Summen, hinzugefügte oder geänderte Knoten im Lösch-ChangeSet sind ein Programmfehler (`unbekannt`).
 Reason: Q5 und Umkehrbarkeit ohne Vorzustand (v1.1a): Nur so stellt die Umkehrung (Anlegen) dasselbe Aggregat wieder her. Ticket 30 muss sein Lösch-ChangeSet in dieser Form liefern (wie im Vertrag beschrieben).
 Reversible: yes  Touches: packages/speicher, Ticket 30 (Form des Lösch-ChangeSets)
+
+## D-32.1 GAEB-Leser auf v1.1a/v1.1b: offene Lesarten
+Welle 3 · Ticket 32 · decided by: implementer
+Question: Was Ticket 32 offen lässt (Überlauf-Codes, Grundausführung, Zuschlagsformen, Langtext-Kanon, Reste, Kopfdaten-Formate).
+Decision: Überlauf-Codes des Lesers bleiben (andere Lage als der Befehlsfehler `oz-ueberlauf`). Variante 0 trägt `wahl` mit `grundpositionId: null`. Zuschlag: alle drei Bezugsformen, `teilmenge` immer `null` (keine Datei zeigt sie), `Markup` → Satz. Langtext: lose `span`/`br` bleiben lose, leere `p` bleiben leere Absätze, Läufe gleicher Auszeichnung verschmelzen, Zeilenwechsel im Dateitext → Leerzeichen; `formatierung-verworfen` meldet zusätzlich Durchgestrichen, Hoch-/Tiefstellung, Rahmen, Einzug, Listenstil. Neue Befunde `ergaenzung-nicht-oben`, `ergaenzung-ungueltig`, `wert-ungueltig`, `leitbeschreibung-ohne-kennzeichen`, `unterbeschreibung-ohne-nummer`. Einzelheiten: Ticket 32, Comments.
+Reason: Kein stiller Verlust (Q5), nichts erfunden (C4), Form passend zum Editor-Kanon (Ticket 34) für den Rundweg G2.
+Reversible: yes  Touches: packages/gaeb
