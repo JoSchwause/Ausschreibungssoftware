@@ -227,3 +227,9 @@ Fixtures `typisch`, `gross`, `typisch-angebote` (44), GAEB-Abbildung von `Markup
 45), Zeitansatz (kein Vertragsfeld), Positionsnachlass (G-23), das Wählen einer Wahlposition (Welle 4), Änderungen an `vertrag`.
 
 ## Comments
+
+### Orchestrator (vor Start)
+
+- Ticket 32 (gaeb-Leser) setzt `wahl` auch an Variante 0 einer Wahlgruppe (`grundpositionId: null`). Der Kern lässt heute
+  jede Position mit `wahl` aus den Summen. Hier klären und festlegen (F4): Variante 0 ist die Grundposition und zählt
+  in die Summe; nur Varianten ≥ 1 sind Wahlpositionen. Steht in den amtlichen Dateien etwas anderes, gilt der Beleg.
