@@ -114,7 +114,14 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       : fx.nachlass.art === 'prozent'
         ? { art: 'prozent', wert: fx.nachlass.wert as Prozent }
         : { art: 'betrag', wert: fx.nachlass.wert as Betrag };
-  return { name: fx.name, ozMaske: maske, mwstSatz: fx.mwstSatz as Prozent, nachlass, knoten };
+  return {
+    name: fx.name,
+    ozMaske: maske,
+    mwstSatz: fx.mwstSatz as Prozent,
+    nachlass,
+    knoten,
+    wurzelId: fx.id as LeistungsverzeichnisId, // v1.1a: mechanisch angepasst, Folgeticket
+  };
 }
 
 /** Legt das LV über den Kern an; die Summen im Zustand sind die des Kerns. */
