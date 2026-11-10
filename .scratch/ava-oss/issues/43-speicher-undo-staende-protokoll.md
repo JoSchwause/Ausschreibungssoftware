@@ -67,15 +67,15 @@ entfallen hier.
 
 ## Acceptance criteria
 
-- [ ] Für jede ChangeSet-Art (Feld ändern, Knoten anlegen/löschen/einfügen/verschieben, Papierkorb hinein/zurück/entfernen, Nachlass, MwSt, LV anlegen/löschen, Angebot anlegen/löschen, Projekt anlegen/löschen) gilt: anwenden, Umkehrung anwenden → Export byte-gleich dem Stand davor
-- [ ] Eine Umkehrung, deren `vorher` nicht zum gespeicherten Stand passt, wird mit `konflikt` abgewiesen und ändert nichts
-- [ ] `Rueckgaengig` und `Wiederholen` erzeugen je genau einen Protokolleintrag mit Verweis; der Dekoder liest sie
-- [ ] LV-Stand: Anlegen friert den gespeicherten Stand ein; spätere Befehle am LV ändern ihn nicht; `auflisten` und `laden` über `Speicher.lvStaende`; Umkehrung entfernt ihn
-- [ ] Migration 3 mit `hoch` und `datei`; `projektdatei-v1.json` und `-v2.json` öffnen, `-v3.json` (mit Stand und Papierkorb) ist Export-Golden
-- [ ] Papierkorb: Speichern, Laden, Export, Import; Wiederherstellen per ChangeSet; Entfernen eines Eintrags mit einer Position, auf die ein Angebot verweist, ergibt `konflikt`
-- [ ] `LeistungsverzeichnisLoeschen` mit bestehendem LV-Stand ergibt `konflikt`
-- [ ] Playwright im Harness: Stand anlegen, Seite neu laden, Stand laden
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] Für jede ChangeSet-Art (Feld ändern, Knoten anlegen/löschen/einfügen/verschieben, Papierkorb hinein/zurück/entfernen, Nachlass, MwSt, LV anlegen/löschen, Angebot anlegen/löschen, Projekt anlegen/löschen) gilt: anwenden, Umkehrung anwenden → Export byte-gleich dem Stand davor
+- [x] Eine Umkehrung, deren `vorher` nicht zum gespeicherten Stand passt, wird mit `konflikt` abgewiesen und ändert nichts
+- [x] `Rueckgaengig` und `Wiederholen` erzeugen je genau einen Protokolleintrag mit Verweis; der Dekoder liest sie
+- [x] LV-Stand: Anlegen friert den gespeicherten Stand ein; spätere Befehle am LV ändern ihn nicht; `auflisten` und `laden` über `Speicher.lvStaende`; Umkehrung entfernt ihn
+- [x] Migration 3 mit `hoch` und `datei`; `projektdatei-v1.json` und `-v2.json` öffnen, `-v3.json` (mit Stand und Papierkorb) ist Export-Golden
+- [x] Papierkorb: Speichern, Laden, Export, Import; Wiederherstellen per ChangeSet; Entfernen eines Eintrags mit einer Position, auf die ein Angebot verweist, ergibt `konflikt`
+- [x] `LeistungsverzeichnisLoeschen` mit bestehendem LV-Stand ergibt `konflikt`
+- [x] Playwright im Harness: Stand anlegen, Seite neu laden, Stand laden
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -83,3 +83,62 @@ Undo-Stapel und Bedienung (48), Kern-Logik von Papierkorb und Stand (42), sichtb
 in v1), Stand als neues LV übernehmen (48, falls Zeit), Datensicherung (S4).
 
 ## Comments
+
+### Ergebnis (Branch `ticket/43-speicher-s3`)
+
+Nur `packages/speicher`. Migration 3 (`SCHEMA_V3` in `migrationen.ts`, `dateimigration3.ts`), Papierkorb und LV-Stände
+in `schreiben.ts`/`lesen.ts`, Historienbezug in `kern.ts`, Dekoder (`papierkorb`, `lvStaende`, Form und Verweis von
+`Rueckgaengig`/`Wiederholen`), `Speicher.lvStaende` über RPC und Client, eingefrorene `fixtures/projektdatei-v3.json`.
+Testhilfe `testhilfe/umkehrung.ts` (Umkehrung jeder ChangeSet-Art aus dem ChangeSet allein, Bauhilfen für ChangeSets
+am LV), Tests `umkehrung.test.ts`, `historie.test.ts`, `protokoll.test.ts`, `projektdatei-v3.test.ts`, E2E „LV-Stand im
+OPFS“. Die Guards aus Ticket 29 (`papierkorb`/`lvStand` → `unbekannt`) sind entfernt.
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- Papierkorb-Tabelle? Eigene Tabelle `papierkorb_eintrag (leistungsverzeichnis_id, id, nummer, knoten)`, die Knoten als
+  kanonisches JSON je Eintrag (Vorschlag „JSON je Eintrag“), `UNIQUE (lv, nummer)`; Grund: Baum, Baumprüfung und Summen
+  in `knoten` bleiben unberührt, ein Eintrag wird nur als Ganzes bewegt.
+- LV-Stand-Tabelle? `lv_stand (seq, id, leistungsverzeichnis_id, name, angelegt, zustand)`, `seq` = Reihenfolge des
+  Anlegens, Fremdschlüssel auf das LV; eingefroren wird `leseLv` nach den übrigen Teilen des ChangeSets in derselben
+  Transaktion; Grund: Ticket.
+- „Export byte-gleich“ bei Umkehrungen? Die Projektdatei ohne Protokoll ist byte-gleich, das Protokoll ist genau um die
+  zwei Einträge (Befehl, `Rueckgaengig`) länger; Grund: jeder Befehl schreibt einen Eintrag (ADR 0009), das Nebenbuch
+  kann nicht gleich bleiben.
+- Verweis von `Rueckgaengig`/`Wiederholen`? Muss auf einen gespeicherten Eintrag desselben Projekts **und desselben
+  Aggregats** zeigen, der selbst kein Historienbefehl ist, sonst `konflikt` (Datei: früherer Eintrag, sonst
+  `datei-ungueltig`); Grund: Vertrag („`aggregat` ist das des ursprünglichen Befehls“, Wiederholen nennt das Original).
+- Ausnahme D-31.1: Ein ChangeSet, das das Projekt anlegt (Undo von `ProjektLoeschen`, Redo von `ProjektAnlegen`),
+  findet seinen Eintrag nicht mehr, weil das Löschen das Protokoll mitnahm; der Verweis wird dann nicht geprüft (in der
+  Datei: am Projekt darf er ins Leere zeigen). Das wiederhergestellte Projekt beginnt mit einem leeren Protokoll plus
+  dem `Rueckgaengig`. Grund: D-31.1 ist bindend; eine Alternative (Fremdschlüssel `protokoll.projekt_id` lösen, Protokoll
+  bleibt) wäre eine eigene Entscheidung, siehe Folgefrage unten.
+- Auftrags-LV löschen? Jetzt erlaubt, aber nur mit vollem Stand wie beim LV (D-31.2), weil die Umkehrung seines Anlegens
+  es löschen muss (Punkt 1); ein unvollständiges Lösch-ChangeSet gibt `konflikt` (Test in `loeschen.test.ts` angepasst,
+  vorher `unbekannt`).
+- Leerer Papierkorb und keine Stände? Fehlen im Zustand und in der Datei (Vertrag „Fehlt: leer/keine“); damit ist die
+  Dateimigration 2 → 3 die Identität (weist aber `papierkorb`/`lvStaende` in einer Datei der Version 2 ab) und
+  `lvLaden` bleibt für Bestände ohne Papierkorb unverändert.
+- Angebotsverweis auf den Papierkorb (Q5, D-12)? Nach dem Schreiben: Jede Position aus `papierkorb.entfernt`, die weder
+  im Baum noch in einem anderen Eintrag liegt und auf die eine Angebotsposition eines Angebots dieses LV zeigt →
+  `konflikt`. Damit sind `PapierkorbeintragEntfernen` und `PapierkorbLeeren` gesperrt, `Wiederherstellen` nicht.
+  Angebotspositionen auf Positionen im Papierkorb bleiben schreibbar (Import, Undo von `AngebotLoeschen`).
+- Weitere Prüfungen nach dem Schreiben: Kein Knoten liegt zweimal im LV (Baum und Papierkorb oder zwei Einträge),
+  vergebene `nummer` oder vorhandene Kennung → `konflikt`; `LeistungsverzeichnisLoeschen` braucht alle Einträge in
+  `papierkorb.entfernt` (sonst `konflikt`) und scheitert an LV-Ständen (`konflikt`, D-12).
+- `summen.vorher` wird wie bisher nur beim Löschen eines Aggregats geprüft (Ticket: „prüft wie heute“).
+
+### Messung (Punkt 5)
+
+`gross` (5.000 Positionen), Node, kanonische Projektdatei: nach Anlegen 5.817.238 Bytes; nach 1.000 Einzeländerungen
+(`MengeAendern`) 6.230.426; nach 100 Undo 6.267.368; nach einem LV-Stand 12.418.818 Bytes. Der Stand kostet
+6.151.450 Bytes, also etwa ein zweites LV (der eingefrorene Zustand samt Summen steht vollständig in der Datei). Ein
+Protokolleintrag einer Einzeländerung kostet rund 410 Bytes, ein `Rueckgaengig` rund 370 Bytes.
+
+### Lücken und Folgefragen
+
+- Vertrag (Offene Typfrage 3, Ticket 29): `Speicher.lvStaende` liefert `speicher` jetzt immer; es kann im Vertrag
+  Pflicht werden (eigenes Vertragsticket, P9).
+- D-31.1: Nach Undo eines `ProjektLoeschen` ist das alte Protokoll weg. Wer das nicht will, löst in einer späteren
+  Migration den Fremdschlüssel `protokoll.projekt_id` (Protokoll bleibt beim Löschen stehen); nicht hier entschieden.
+- `KnotenLoeschen` (endgültig) einer Position, auf die ein Angebot verweist, prüft `speicher` weiter nicht (nicht im
+  Ticket); die Sperre gilt nur für den Papierkorb.
