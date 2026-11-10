@@ -82,7 +82,7 @@ Langtext-Sperre).
 - [x] Projektliste sortiert, Test
 - [x] Playwright im Harness: OPFS-Datenbank Version 1 wird auf 2 migriert
 - [x] Größe der Projektdatei mit `gross` im Ticket festgehalten
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
