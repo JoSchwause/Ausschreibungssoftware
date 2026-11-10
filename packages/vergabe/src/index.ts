@@ -2,3 +2,5 @@
 // Einstiegspunkt von @tethys/vergabe (Ticket 36): Angebotsbefehle, Bietersummen, Preisspiegel-Rechnung.
 
 export { angebotSummenBerechnen } from './summen';
+export { angebotBefehlAusfuehrer } from './befehle';
+export { angebotChangeSetAnwenden, angebotChangeSetUmkehren } from './changeset';

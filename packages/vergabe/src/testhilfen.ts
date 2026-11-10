@@ -60,7 +60,11 @@ export function erwarteOk<T, F>(e: Ergebnis<T, F>): T {
 }
 
 /** Legt das LV über den Kern an. */
-export function lvZustandAusInhalt(id: string, inhalt: LvInhalt, projektId: ProjektId = PROJEKT_ID): LvZustand {
+export function lvZustandAusInhalt(
+  id: string,
+  inhalt: LvInhalt,
+  projektId: ProjektId = PROJEKT_ID,
+): LvZustand {
   const cs = erwarteOk(
     lvBefehlAusfuehren(null, {
       art: 'LeistungsverzeichnisAnlegen',
@@ -241,8 +245,8 @@ export interface FxAngebotsset {
   angebote: FxAngebot[];
 }
 
-function lies<T>(name: string): T {
-  return JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as T;
+function lies(name: string): unknown {
+  return JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8'));
 }
 
 function fxNachlass(n: FxLv['nachlass']): Nachlass | null {
@@ -291,7 +295,12 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       };
     }
     if (k.art === 'hinweis') {
-      return { ...lage, art: 'hinweis', id: k.id as HinweistextId, text: [{ art: 'text', text: k.text ?? '' }] };
+      return {
+        ...lage,
+        art: 'hinweis',
+        id: k.id as HinweistextId,
+        text: [{ art: 'text', text: k.text ?? '' }],
+      };
     }
     return {
       ...lage,
@@ -320,12 +329,12 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
 }
 
 export function lvAusFixture(name: 'typisch' | 'gross'): { fx: FxLv; zustand: LvZustand } {
-  const fx = lies<FxLv>(name);
+  const fx = lies(name) as FxLv;
   return { fx, zustand: lvZustandAusInhalt(fx.id, fixtureAlsInhalt(fx)) };
 }
 
 export function angebotsset(): FxAngebotsset {
-  return lies<FxAngebotsset>('typisch-angebote');
+  return lies('typisch-angebote') as FxAngebotsset;
 }
 
 export function angebotAusFixture(fx: FxAngebot, z: LvZustand): Angebot {

@@ -27,7 +27,13 @@ const golden = lv('lv-g', [
 
 describe('angebotSummenBerechnen', () => {
   it('Golden A: GP 100,00 / 0,00 / 100,00; Netto 200,00; 5 % Nachlass = 10,00; MwSt 36,10; Brutto 226,10', () => {
-    const a = angebot('a', golden, 'b-a', [ep('p1', '10.000'), ep('p2', '0.000'), ep('p3', '50.000')], prozent('5.00'));
+    const a = angebot(
+      'a',
+      golden,
+      'b-a',
+      [ep('p1', '10.000'), ep('p2', '0.000'), ep('p3', '50.000')],
+      prozent('5.00'),
+    );
     const s = angebotSummenBerechnen(golden, a);
     expect(s.positionen.map((p) => p.gesamtpreis)).toEqual(['100.00', '0.00', '100.00']);
     expect(s.gesamt).toEqual({
@@ -50,7 +56,13 @@ describe('angebotSummenBerechnen', () => {
   });
 
   it('Golden C: Nachlass als Betrag 40,00; Netto 340,00 → 300,00; Brutto 357,00', () => {
-    const c = angebot('c', golden, 'b-c', [ep('p1', '15.000'), ep('p2', '10.000'), ep('p3', '70.000')], betrag('40.00'));
+    const c = angebot(
+      'c',
+      golden,
+      'b-c',
+      [ep('p1', '15.000'), ep('p2', '10.000'), ep('p3', '70.000')],
+      betrag('40.00'),
+    );
     const s = angebotSummenBerechnen(golden, c);
     expect(s.gesamt).toEqual({
       netto: '340.00',
@@ -71,10 +83,15 @@ describe('angebotSummenBerechnen', () => {
   it('Wahl- und Bedarfspositionen ohne Gesamtbetrag gehen wie im Kern nicht ein', () => {
     const z = lv('lv-w', [
       position('p1', 'lv-w', 0, '1.000', null),
-      position('p2', 'lv-w', 1, '1.000', null, { wahl: { gruppe: null, variante: null, grundpositionId: null } }),
+      position('p2', 'lv-w', 1, '1.000', null, {
+        wahl: { gruppe: null, variante: null, grundpositionId: null },
+      }),
       position('p3', 'lv-w', 2, '1.000', null, { bedarf: 'ohne-gesamtbetrag' }),
     ]);
-    const s = angebotSummenBerechnen(z, angebot('a', z, 'b', [ep('p1', '1.000'), ep('p2', '2.000'), ep('p3', '4.000')]));
+    const s = angebotSummenBerechnen(
+      z,
+      angebot('a', z, 'b', [ep('p1', '1.000'), ep('p2', '2.000'), ep('p3', '4.000')]),
+    );
     expect(s.positionen.map((p) => [p.gesamtpreis, p.gehtInSummeEin])).toEqual([
       ['1.00', true],
       ['2.00', false],

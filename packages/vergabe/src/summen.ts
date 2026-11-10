@@ -5,7 +5,14 @@
 // einmal auf die Summe und die Regeln, welche Positionen eingehen, ohne eigene Kopie.
 
 import { summenBerechnen } from '@tethys/kern';
-import type { Angebot, Angebotsposition, Einheitspreis, Knoten, LvZustand, Summenstand } from '@tethys/vertrag';
+import type {
+  Angebot,
+  Angebotsposition,
+  Einheitspreis,
+  Knoten,
+  LvZustand,
+  Summenstand,
+} from '@tethys/vertrag';
 
 /** Der EP, mit dem eine Angebotsposition rechnet; `null` heißt: nicht angeboten (kein GP, geht nicht ein). */
 export function angebotsEinheitspreis(p: Angebotsposition | undefined): Einheitspreis | null {
@@ -34,7 +41,10 @@ export function angebotsKnoten(lv: LvZustand, angebot: Pick<Angebot, 'positionen
 }
 
 /** Vollständiger Summenstand eines Angebots (Orakel, Startwert beim Anlegen, Preisspiegel). */
-export function angebotSummenBerechnen(lv: LvZustand, angebot: Pick<Angebot, 'positionen' | 'nachlass'>): Summenstand {
+export function angebotSummenBerechnen(
+  lv: LvZustand,
+  angebot: Pick<Angebot, 'positionen' | 'nachlass'>,
+): Summenstand {
   const l = lv.leistungsverzeichnis;
   return summenBerechnen({
     id: l.id,
