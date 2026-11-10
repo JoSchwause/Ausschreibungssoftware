@@ -166,11 +166,13 @@ function ozStelle(x: unknown, pfad: string): OzStelle {
 }
 
 function ozMaske(x: unknown, pfad: string): OzMaske {
-  const o = objekt(x, pfad, ['gliederung', 'position', 'index', 'trennzeichen']);
+  // `losStufe` ist optional (v1.1a, F1); fehlt es, ist die oberste Stufe Titel.
+  const o = objekt(x, pfad, ['gliederung', 'position', 'index', 'trennzeichen'], ['losStufe']);
   return {
     gliederung: liste(feld(o, 'gliederung'), `${pfad}.gliederung`).map((s, i) =>
       ozStelle(s, `${pfad}.gliederung[${String(i)}]`),
     ),
+    ...optional(o, 'losStufe', (v) => wahrheit(v, `${pfad}.losStufe`)),
     position: ozStelle(feld(o, 'position'), `${pfad}.position`),
     index: oderNull(feld(o, 'index'), (v) => ozStelle(v, `${pfad}.index`)),
     trennzeichen: oderNull(feld(o, 'trennzeichen'), (v) => zeichenkette(v, `${pfad}.trennzeichen`)),
