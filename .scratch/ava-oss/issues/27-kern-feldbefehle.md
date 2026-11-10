@@ -1,6 +1,6 @@
 # 27: Kern: Feldbefehle
 
-Status: ready-for-agent
+Status: resolved (Pull Request je Ticket, 2026-11-10)
 Type: task
 Welle: 2 · Strang: K · Paket: `packages/kern`
 Blocked by: 25
