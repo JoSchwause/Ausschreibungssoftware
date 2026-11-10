@@ -56,10 +56,18 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
   };
 }
 
+/** Deutscher Namensvergleich für die Projektliste (Umlaute beim Grundbuchstaben, Groß/klein nachrangig). */
+const NAMENSVERGLEICH = new Intl.Collator('de-DE');
+
+/**
+ * Projektliste nach Name, deutsch verglichen (`Intl.Collator('de-DE')`; SQLite sortiert nur nach Bytes); gleiche Namen
+ * nach Kennung, damit die Reihenfolge stabil ist (Ticket 38, Punkt 6).
+ */
 export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] {
   return db
-    .zeilen('SELECT id, name FROM projekt ORDER BY name, id')
-    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }));
+    .zeilen('SELECT id, name FROM projekt ORDER BY id')
+    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }))
+    .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 export function listeIds(db: Datenbank, sql: string, bind: readonly string[]): string[] {

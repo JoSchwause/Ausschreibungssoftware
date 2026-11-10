@@ -90,3 +90,6 @@ Undo/Redo, LV-Stände, Papierkorb und die Protokolleinträge dafür (43); Oberfl
 Export-Erinnerung, Sicherungsordner (S4); neue Repository-Schnittstellen im Vertrag.
 
 ## Comments
+
+- Sortierung der Projektliste? `Intl.Collator('de-DE')` über den Namen, gleiche Namen nach Kennung; Grund: Vorschlag des Tickets, SQLite sortiert nur nach Bytes (Ä hinter Z), Kennung macht die Reihenfolge stabil.
+- Lücke für ein Vertragsticket (A4): `leistungsverzeichnisse.auflisten(projektId)` liefert nur Kennungen. Eine Projektliste mit LV-Namen muss heute jedes LV ganz laden (`laden`, bei `gross` 5.000 Positionen). Vorschlag: `LvRepository.auflisten` liefert `LvUebersicht { id, name }` (wie `Projektuebersicht`), nach Name sortiert. Nicht im Vertrag ergänzt.
