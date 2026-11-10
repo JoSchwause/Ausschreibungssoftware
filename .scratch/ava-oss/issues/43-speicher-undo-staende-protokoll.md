@@ -1,6 +1,6 @@
 # 43: Speicher: Undo/Redo, LV-Stände, Papierkorb und Befehlsprotokoll (S3)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: S (S3) · Paket: `packages/speicher`
 Blocked by: 38, 29
