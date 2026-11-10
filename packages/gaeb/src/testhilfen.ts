@@ -35,6 +35,7 @@ import type {
   Ordnungszahl,
   OzMaske,
   OzStelle,
+  Positionsmerkmale,
   Prozent,
   Summenstand,
 } from '@tethys/vertrag';
@@ -389,6 +390,273 @@ export function normiereKennungen(
   };
 }
 
+// --- Kleine LVs von Hand (Writer-Tests, XSD-Gegenprüfung) ---------------------------------------------------------
+
+export const LV = 'lv-1' as LeistungsverzeichnisId;
+
+export const KEINE_MERKMALE: Positionsmerkmale = {
+  bedarf: null,
+  wahl: null,
+  stundenlohn: false,
+  pauschal: false,
+  zuschlagskennzeichen: false,
+};
+
+export const titel = (id: string, oz: string | null, reihenfolge = 0, eltern: string = LV): Knoten => ({
+  art: 'titel',
+  id: id as TitelId,
+  elternId: eltern as ElternId,
+  reihenfolge,
+  ordnungszahl: oz as Ordnungszahl | null,
+  kurztext: `Titel ${id}`,
+});
+
+export function position(
+  id: string,
+  oz: string | null,
+  reihenfolge: number,
+  ueber: Partial<Position> = {},
+): Position {
+  return {
+    art: 'position',
+    id: id as PositionId,
+    elternId: 't1' as ElternId,
+    reihenfolge,
+    ordnungszahl: oz as Ordnungszahl | null,
+    ozIndex: null,
+    merkmale: KEINE_MERKMALE,
+    zuschlag: null,
+    kurztext: `Position ${id}`,
+    langtext: [],
+    menge: '1.000' as Menge,
+    einheit: 'm',
+    einheitspreis: null,
+    epa: null,
+    ...ueber,
+  };
+}
+
+/** Ein LV mit allem, was der Vertrag trägt: Los, Merkmale, Wahl, Zuschläge, Leitbeschreibung, EPA, Langtext, Kopf. */
+export function reichesLv(): {
+  inhalt: LvInhalt;
+  summen: Summenstand;
+  basen: ReadonlyMap<PositionId, Betrag>;
+} {
+  const maske: LvInhalt['ozMaske'] = {
+    gliederung: [
+      { laenge: 1, zeichen: 'numerisch' },
+      { laenge: 2, zeichen: 'alphanumerisch' },
+    ],
+    losStufe: true,
+    position: { laenge: 4, zeichen: 'numerisch' },
+    index: { laenge: 1, zeichen: 'alphanumerisch' },
+    trennzeichen: '.',
+  };
+  const los: Knoten = {
+    art: 'los',
+    id: 'los1' as LosId,
+    elternId: LV as ElternId,
+    reihenfolge: 0,
+    ordnungszahl: '1' as Ordnungszahl,
+    kurztext: 'Los 1',
+  };
+  const t = { ...titel('t1', '1.A1', 0, 'los1'), kurztext: 'Rohbau & Ausbau <innen>' };
+  const hinweis: Knoten = {
+    art: 'hinweis',
+    id: 'h1' as HinweistextId,
+    elternId: 't1' as ElternId,
+    reihenfolge: 0,
+    text: [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Vorbemerkung', fett: true }] }],
+  };
+  const pos = (id: string, oz: string, r: number, ueber: Partial<Position> = {}): Position =>
+    position(id, oz, r, { einheitspreis: '10.000' as Einheitspreis, ...ueber });
+  const keine = KEINE_MERKMALE;
+  const knoten: Knoten[] = [
+    los,
+    t,
+    hinweis,
+    pos('a', '1.A1.0010', 1, {
+      merkmale: { ...keine, zuschlagskennzeichen: true, pauschal: true },
+      langtext: [
+        {
+          art: 'absatz',
+          inhalt: [
+            { art: 'text', text: 'Normal, ' },
+            { art: 'text', text: 'fett', fett: true },
+            { art: 'umbruch' },
+            { art: 'text', text: 'kursiv unterstrichen', kursiv: true, unterstrichen: true },
+          ],
+        },
+        {
+          art: 'liste',
+          geordnet: true,
+          punkte: [
+            [{ art: 'absatz', inhalt: [{ art: 'text', text: 'eins' }] }],
+            [{ art: 'text', text: 'zwei' }],
+          ],
+        },
+        {
+          art: 'tabelle',
+          zeilen: [
+            {
+              zellen: [{ spalten: 2, inhalt: [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Kopf' }] }] }],
+            },
+            {
+              zellen: [
+                { spalten: 1, inhalt: [{ art: 'text', text: 'A' }] },
+                { spalten: 1, inhalt: [] },
+              ],
+            },
+          ],
+        },
+        {
+          art: 'absatz',
+          inhalt: [
+            { art: 'bild', bild: { id: 'bild-x' as never, medientyp: 'image/png', daten: 'iVBORw0KGgo=' } },
+          ],
+        },
+        { art: 'bild', bild: { id: 'bild-y' as never, medientyp: 'image/gif', daten: 'R0lGODlh' } },
+        {
+          art: 'ergaenzung',
+          herkunft: 'bieter',
+          kennung: '1',
+          leer: true,
+          davor: [{ art: 'text', text: 'Fabrikat: ' }],
+          inhalt: [],
+          danach: [{ art: 'text', text: ' o. glw.' }],
+        },
+        {
+          art: 'ergaenzung',
+          herkunft: 'ausschreibender',
+          kennung: '2',
+          leer: false,
+          davor: [],
+          inhalt: [{ art: 'text', text: 'B25' }],
+          danach: [],
+        },
+      ],
+      epa: {
+        lohn: '4.000' as Einheitspreis,
+        stoffe: '3.000' as Einheitspreis,
+        geraete: null,
+        nachunternehmer: '1.000' as Einheitspreis,
+        sonstiges: null,
+        frei: '2.000' as Einheitspreis,
+        freiBezeichnung: 'Entsorgung',
+      },
+    }),
+    pos('b', '1.A1.0020', 2, {
+      merkmale: { ...keine, bedarf: 'ohne-gesamtbetrag', stundenlohn: true, zuschlagskennzeichen: true },
+      menge: '12.500' as Menge,
+      einheit: 'h',
+    }),
+    pos('c', '1.A1.0030', 3, {
+      merkmale: { ...keine, wahl: { gruppe: 1, variante: 0, grundpositionId: null } },
+    }),
+    pos('d', '1.A1.0030', 4, {
+      ozIndex: 'A',
+      merkmale: {
+        ...keine,
+        bedarf: 'mit-gesamtbetrag',
+        wahl: { gruppe: 1, variante: 1, grundpositionId: 'c' as PositionId },
+      },
+    }),
+    pos('e', '1.A1.0040', 5, {
+      leitbeschreibung: {
+        unterbeschreibungen: [
+          {
+            nummer: '01',
+            kurztext: 'Teil 1',
+            langtext: [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Text 1' }] }],
+            menge: '2.000' as Menge,
+            einheit: 'St',
+          },
+          { nummer: '2', kurztext: 'Teil 2', langtext: [], menge: null, einheit: null },
+        ],
+      },
+    }),
+    pos('z1', '1.A1.0050', 6, {
+      menge: null,
+      einheit: null,
+      einheitspreis: null,
+      zuschlag: {
+        prozentsatz: '10.00' as Prozent,
+        bezug: {
+          art: 'positionen',
+          positionen: [
+            { positionId: 'a' as PositionId, teilmenge: null },
+            { positionId: 'e' as PositionId, teilmenge: '0.500' as Menge },
+          ],
+        },
+      },
+    }),
+    pos('z2', '1.A1.0060', 7, {
+      menge: null,
+      einheit: null,
+      einheitspreis: null,
+      zuschlag: { prozentsatz: '5.50' as Prozent, bezug: { art: 'gliederung' } },
+    }),
+    pos('z3', '1.A1.0070', 8, {
+      menge: null,
+      einheit: null,
+      einheitspreis: null,
+      merkmale: { ...keine, bedarf: 'mit-gesamtbetrag' },
+      zuschlag: { prozentsatz: '3.00' as Prozent, bezug: { art: 'kennzeichnung' } },
+    }),
+  ].map((k) => (k.art === 'position' ? { ...k, elternId: 't1' as ElternId } : k));
+  const inhalt: LvInhalt = {
+    name: 'Reiches LV (erfunden), mit allem, was der Vertrag trägt',
+    ozMaske: maske,
+    mwstSatz: '7.00' as Prozent,
+    nachlass: { art: 'betrag', wert: '12.34' as Betrag },
+    auftraggeber: {
+      name: 'Gemeinde Musterstadt',
+      strasse: 'Am Markt 1',
+      plz: '12345',
+      ort: 'Musterstadt',
+      vergabenummer: 'V-1',
+    },
+    vergabeinformationen: {
+      eroeffnungsdatum: null,
+      eroeffnungszeit: null,
+      abgabeort: null,
+      ausfuehrungsbeginn: '2027-03-01',
+      ausfuehrungsende: '2027-09-30',
+      auftragsnummer: 'A-17',
+      auftragsdatum: '2027-02-01',
+      abnahmeart: 'förmlich',
+      gewaehrleistung: { dauer: 5, einheit: 'Years' },
+    },
+    wurzelId: LV,
+    knoten,
+  };
+  const b = (s: string): Betrag => s as Betrag;
+  const summen: Summenstand = {
+    positionen: ['a', 'b', 'c', 'd', 'e', 'z1', 'z2', 'z3'].map((id) => ({
+      positionId: id as PositionId,
+      gesamtpreis: b('10.00'),
+      gehtInSummeEin: true,
+    })),
+    gliederungen: [
+      { gliederungId: 'los1' as LosId, summe: b('80.00') },
+      { gliederungId: 't1' as TitelId, summe: b('80.00') },
+    ],
+    gesamt: {
+      netto: b('80.00'),
+      nachlass: b('12.34'),
+      nettoNachNachlass: b('67.66'),
+      mwst: b('4.74'),
+      brutto: b('72.40'),
+    },
+  };
+  const basen = new Map<PositionId, Betrag>([
+    ['z1' as PositionId, b('15.00')],
+    ['z2' as PositionId, b('50.00')],
+    ['z3' as PositionId, b('20.00')],
+  ]);
+  return { inhalt, summen, basen };
+}
+
 // --- Exportfälle (Roundtrip, Golden, XSD-Gegenprüfung) ------------------------------------------------------------
 
 /** Fester Zeitpunkt der Test-Exporte (A2: die Uhr liefert der Aufrufer). */
@@ -436,7 +704,7 @@ export interface Exportfall {
 }
 
 /**
- * Alle Exporte der XSD-Gegenprüfung: jede Fixture × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
+ * Alle Exporte der XSD-Gegenprüfung: jede Fixture und das LV `reichesLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
  * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
  */
 export function exportfaelle(): Exportfall[] {
@@ -454,6 +722,10 @@ export function exportfaelle(): Exportfall[] {
     for (const phase of ['X81', 'X83', 'X86'] as const)
       for (const version of versionen) faelle.push(fall(name, n, phase, version));
   }
+  const r = reichesLv();
+  const reich = normiereKennungen(r.inhalt, r.summen, r.basen);
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('reich', reich, phase, version));
   for (const a of AMTLICH_LESBAR) {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)

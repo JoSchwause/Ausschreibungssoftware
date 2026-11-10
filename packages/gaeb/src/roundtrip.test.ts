@@ -77,13 +77,14 @@ const PHASEN: readonly ExportPhase[] = ['X81', 'X83', 'X86'];
 describe('Roundtrip der Fixtures', () => {
   for (const name of FIXTURES)
     for (const phase of PHASEN)
-      it(`${name} als ${phase} 3.3: Modell gleich bis auf die erwarteten Unterschiede, zweiter Export byte-gleich`, () => {
-        const { inhalt, summen } = fixtureLv(name);
-        const n = normiereKennungen(inhalt, summen);
-        const r = rundweg(n, phase, '3.3');
-        expect(r.gelesen).toEqual(erwartet(n.inhalt, phase));
-        expect(r.zweiter).toBe(r.erster);
-      });
+      for (const version of ['3.3', '3.2'] as const)
+        it(`${name} als ${phase} ${version}: Modell gleich bis auf die erwarteten Unterschiede, zweiter Export byte-gleich`, () => {
+          const { inhalt, summen } = fixtureLv(name);
+          const n = normiereKennungen(inhalt, summen);
+          const r = rundweg(n, phase, version);
+          expect(r.gelesen).toEqual(erwartet(n.inhalt, phase));
+          expect(r.zweiter).toBe(r.erster);
+        });
 });
 
 describe('Roundtrip der amtlichen Dateien (Inhalt des Lesers)', () => {

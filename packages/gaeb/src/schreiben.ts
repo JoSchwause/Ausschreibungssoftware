@@ -416,7 +416,7 @@ class Schreiber {
       );
     this.pruefeMaske();
     a.element('BoQInfo', [], () => {
-      a.blatt('Name', kuerze(name, GRENZEN.name));
+      a.blatt('Name', kuerze(name, GRENZEN.name).trimEnd());
       a.blatt('LblBoQ', kuerze(name, GRENZEN.bezeichnung));
       a.blatt('OutlCompl', 'AllTxt');
       const stufe = (typ: string, s: OzStelle): void => {
