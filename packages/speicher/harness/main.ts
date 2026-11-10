@@ -11,10 +11,12 @@ import type {
   AngebotZustand,
   Persistenzstatus,
   ProjektId,
+  Projektdatei,
   Protokolleintrag,
   Speicherfehler,
 } from '@tethys/vertrag';
 import SpeicherWorker from '@tethys/speicher/worker?worker';
+import Schema1Worker from './schema1-worker?worker';
 import { kanonischKompakt } from '../src/kanonisch';
 import { speicherOeffnen, type GeoeffneterSpeicher } from '../src/index';
 import { normalisiere } from '../src/testhilfe/normalisiere';
@@ -163,6 +165,39 @@ const harness = {
       exportMs: t1 - t0,
       importMs: t2 - t1,
     };
+  },
+
+  /** Legt im OPFS eine Datenbank der Schemaversion 1 mit dem Inhalt `datei` an (eigener Worker, danach freigegeben). */
+  async schema1Anlegen(
+    name: string,
+    datei: Projektdatei,
+  ): Promise<{ ok: boolean; version?: number; meldung?: string }> {
+    const w = new Schema1Worker();
+    try {
+      return await new Promise((fertig) => {
+        w.addEventListener(
+          'message',
+          (e: MessageEvent<{ ok: boolean; version?: number; meldung?: string }>) => {
+            fertig(e.data);
+          },
+        );
+        w.addEventListener('error', (e) => {
+          fertig({ ok: false, meldung: e.message });
+        });
+        w.postMessage({ name, datei });
+      });
+    } finally {
+      w.terminate();
+    }
+  },
+
+  async exportieren(name: string, projektId: ProjektId): Promise<Kurz & { text?: string }> {
+    const r = await hole(name).projektdateiExportieren(projektId);
+    return r.ok ? { ok: true, text: r.wert } : kurz(r);
+  },
+
+  async importieren(name: string, text: string): Promise<Kurz> {
+    return kurz(await hole(name).projektdateiImportieren(text));
   },
 
   async persistenz(name: string): Promise<Persistenzstatus> {

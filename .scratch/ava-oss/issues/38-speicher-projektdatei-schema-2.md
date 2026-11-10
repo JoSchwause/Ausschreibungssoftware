@@ -1,6 +1,6 @@
 # 38: Speicher: Projektliste und Projektdatei, Migration auf Schema 2 (S2)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: S (S2) · Paket: `packages/speicher`
 Blocked by: 31, 29
@@ -73,16 +73,16 @@ Langtext-Sperre).
 
 ## Acceptance criteria
 
-- [ ] Migration 2 mit `hoch` und `datei`; Test: Datenbank der Version 1 mit jeder alten Positionsart → Version 2, Modell vorher = nachher
-- [ ] `projektdatei-v1.json` öffnet weiter (unverändert auf der Platte); `projektdatei-v2.json` deckt jede Neuerung aus Punkt 3 ab und ist Export-Golden (byte-gleich)
-- [ ] Rundlauf: jede Position und Angebotsposition aus `projektdatei-v2.json` → speichern → laden → exportieren ist identisch; keine Abweisung mehr mit `unbekannt` für Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Ausweise oder `zuschlagssatz`
-- [ ] `projektdateiInAlterForm`, `altSpalten`, `neuAusAltSpalten`, `pruefeKopfdaten`, `pruefeSummenfelder` sind gelöscht
-- [ ] Massenbefehle stehen als `Befehlskurzfassung` mit SHA-256 im Protokoll; alle anderen Befehle vollständig; genau ein Eintrag je Befehl; Test für jede der drei Massenbefehlsarten
-- [ ] Dekoder liest `Befehlskurzfassung` und weist eine ungültige Prüfsumme der Form nach (nicht hexadezimal, falsche Länge) mit `datei-ungueltig` ab
-- [ ] Projektliste sortiert, Test
-- [ ] Playwright im Harness: OPFS-Datenbank Version 1 wird auf 2 migriert
-- [ ] Größe der Projektdatei mit `gross` im Ticket festgehalten
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] Migration 2 mit `hoch` und `datei`; Test: Datenbank der Version 1 mit jeder alten Positionsart → Version 2, Modell vorher = nachher
+- [x] `projektdatei-v1.json` öffnet weiter (unverändert auf der Platte); `projektdatei-v2.json` deckt jede Neuerung aus Punkt 3 ab und ist Export-Golden (byte-gleich)
+- [x] Rundlauf: jede Position und Angebotsposition aus `projektdatei-v2.json` → speichern → laden → exportieren ist identisch; keine Abweisung mehr mit `unbekannt` für Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Ausweise oder `zuschlagssatz`
+- [x] `projektdateiInAlterForm`, `altSpalten`, `neuAusAltSpalten`, `pruefeKopfdaten`, `pruefeSummenfelder` sind gelöscht
+- [x] Massenbefehle stehen als `Befehlskurzfassung` mit SHA-256 im Protokoll; alle anderen Befehle vollständig; genau ein Eintrag je Befehl; Test für jede der drei Massenbefehlsarten
+- [x] Dekoder liest `Befehlskurzfassung` und weist eine ungültige Prüfsumme der Form nach (nicht hexadezimal, falsche Länge) mit `datei-ungueltig` ab
+- [x] Projektliste sortiert, Test
+- [x] Playwright im Harness: OPFS-Datenbank Version 1 wird auf 2 migriert
+- [x] Größe der Projektdatei mit `gross` im Ticket festgehalten
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -90,3 +90,17 @@ Undo/Redo, LV-Stände, Papierkorb und die Protokolleinträge dafür (43); Oberfl
 Export-Erinnerung, Sicherungsordner (S4); neue Repository-Schnittstellen im Vertrag.
 
 ## Comments
+
+- Sortierung der Projektliste? `Intl.Collator('de-DE')` über den Namen, gleiche Namen nach Kennung; Grund: Vorschlag des Tickets, SQLite sortiert nur nach Bytes (Ä hinter Z), Kennung macht die Reihenfolge stabil.
+- Lücke für ein Vertragsticket (A4): `leistungsverzeichnisse.auflisten(projektId)` liefert nur Kennungen. Eine Projektliste mit LV-Namen muss heute jedes LV ganz laden (`laden`, bei `gross` 5.000 Positionen). Vorschlag: `LvRepository.auflisten` liefert `LvUebersicht { id, name }` (wie `Projektuebersicht`), nach Name sortiert. Nicht im Vertrag ergänzt.
+- `anwenden` und die asynchrone Prüfsumme? `SpeicherKern.anwenden` liefert jetzt ein Promise: Prüfsumme über Web Crypto vor der Transaktion, Transaktion synchron; Aufrufe laufen in der Reihenfolge ihres Eintreffens (Kette im Kern), der Worker beantwortet Anfragen nacheinander (Kette im Worker-Host). Grund: Ticket (Summe vor der Transaktion), und ein Ändern direkt nach einem Massenbefehl darf ihn nicht überholen. Vertrag unverändert (`Speicher.anwenden` war schon asynchron).
+- Worüber die Summe? Über die UTF-8-Bytes von `kanonischesJson(befehl)` (Form der Projektdatei: sortiert, Einrückung 2, Zeilenumbruch am Ende), wie im Ticket, nicht über die kompakte Form. Exportiert: `pruefsummeBilden`, `befehlskurzfassung`, `massenbefehlskopf`, damit der Ausführende vergleichen kann.
+- Eine schon gekürzte Fassung an `anwenden`? Geht unverändert ins Protokoll (der Typ erlaubt sie; ohne den Befehl kann `speicher` die Summe nicht prüfen). Grund: kleinste Lesart, umkehrbar.
+- Was prüft der Dekoder an der Kurzfassung? Genau die Felder `art`, `kopf`, `pruefsumme`; `kopf.art` ist eine Massenbefehlsart; die lange Liste (`inhalt.knoten`, `angebot.positionen`, `auftragsLeistungsverzeichnis.knoten`) fehlt; Algorithmus `sha-256` (64) oder `sha-512` (128 Stellen), nur `[0-9a-f]`. Den übrigen Kopf prüft er wie jeden Befehl nur als JSON (A3: Befehlsform ist Sache des Kerns).
+- Migration 2 und die alten Spalten? `knoten` wird neu angelegt und umkopiert, weil SQLite Spalten aus einer CHECK-Regel nicht löschen kann; danach gibt es `positionsart` usw. nicht mehr. Merkmale und Zuschlag entstehen in SQL (`json_object`, Schlüssel alphabetisch, also kanonisch). Neue CHECKs: `merkmale` genau bei Positionen, `zuschlag`/`leitbeschreibung` nur bei Positionen, `zuschlagssatz` nur bei `angeboten`. Das SQL steht in `migrationen.ts` (A5-Test), die Dateimigration in `dateimigration2.ts`.
+- Ungültige alte Felder in einer Datei der Version 1 (z. B. `bezugspositionId` ohne Zuschlag)? `datei-ungueltig` wie bisher, nicht `migration-fehlgeschlagen`: `leseProjektdatei` reicht ein `datei-ungueltig` aus einer Dateimigration durch. Grund: Die Datei ist kaputt, nicht die Migration; die bestehenden Prüffälle bleiben gleich.
+- Protokoll alter Dateien und Datenbanken? Wird von der Migration nicht umgeschrieben (Nebenbuch, ADR 0009): Massenbefehle der Version 1 bleiben vollständig, neue werden gekürzt.
+- Fremdschlüssel `protokoll.projekt_id` (D-31.1)? Bleibt in Schema 2; die Ausnahme beim Projektlöschen bleibt. Grund: nicht Teil dieses Tickets, eigene Entscheidung.
+- Fund: Der Dekoder wies `ozMaske.losStufe` (v1.1a) als unbekanntes Feld ab; eine Datei mit Los-Stufe ließ sich nicht importieren. Jetzt optional gelesen (`projektdatei-v2.json` hat eine Los-Stufe).
+- Testhilfen: `testhilfe/schema1.ts` schreibt eine Projektdatei in eine Datenbank der Version 1 (wie vor Migration 2), `testhilfe/inhalt-v1.ts` liefert ein Projekt mit jeder alten Positionsart, `testhilfe/inhalt-v2.ts` die Befehlsfolge der eingefrorenen Datei v2; der Prüfstand hat dafür einen eigenen Worker (`harness/schema1-worker.ts`). Der Mechanismustest der Dateimigrationen läuft jetzt über die echten Versionen 1–2 und künstliche 3–4.
+- Messung (Punkt 5), `gross` (5.610 Knoten, davon 5.000 Positionen) als LV angelegt (Projekt anlegen, LV anlegen), Node, kanonische Projektdatei: nachher 5.817.238 Bytes, 2 Protokolleinträge (Protokoll 1.229 Bytes; Kurzfassung statt 5.610 Knoten). Vorher (derselbe Inhalt, Massenbefehl vollständig im Protokoll) 11.012.858 Bytes, ebenfalls 2 Einträge. Ersparnis rund 47 %. Zum Vergleich Ticket 10 (Schema 1, alter Langtext): 10.349.082 Bytes. Im Browser (OPFS) misst der E2E denselben Export mit 5.817.238 Bytes.

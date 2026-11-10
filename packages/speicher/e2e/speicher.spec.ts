@@ -5,7 +5,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Menge, Position } from '@tethys/vertrag';
 import type { Pruefstand, PruefSchritt } from '../harness/main';
+import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
+import { inhaltMitAllenAltenArten } from '../src/testhilfe/inhalt-v1';
 
 const DB = 'e2e';
 const ms = (x: number): string => String(Math.round(x));
@@ -214,6 +216,38 @@ test.describe('Fehlerwerte statt stillem Verlust (Q5)', () => {
     const geladen: { gleich: boolean } = await ps(page, 'lvPruefen', DB, f.lv.leistungsverzeichnis.id, f.lv);
     expect(geladen.gleich).toBe(true);
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(folge.length);
+  });
+});
+
+test.describe('Migration im OPFS (A8, Ticket 38)', () => {
+  test('eine Datenbank der Version 1 wird beim Öffnen auf Version 2 migriert; Export und erneutes Öffnen liefern dieselben Daten', async ({
+    page,
+  }) => {
+    const inhalt = inhaltMitAllenAltenArten(2);
+    const lv = inhalt.leistungsverzeichnisse[0];
+    if (lv === undefined) throw new Error('kein LV');
+    await start(page);
+    expect(await ps(page, 'schema1Anlegen', DB, inhalt)).toEqual({ ok: true, version: 1 });
+
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true }); // migriert auf Version 2
+    expect((await ps(page, 'lvPruefen', DB, lv.leistungsverzeichnis.id, lv)).gleich).toBe(true);
+    for (const a of inhalt.angebote) expect(await ps(page, 'angebotPruefen', DB, a.angebot.id, a)).toBe(true);
+    const erster = await ps(page, 'exportieren', DB, inhalt.projekt.id);
+    if (erster.text === undefined) throw new Error(`Export fehlgeschlagen: ${JSON.stringify(erster)}`);
+    expect((JSON.parse(erster.text) as { schemaVersion: number }).schemaVersion).toBe(2);
+
+    // Derselbe Inhalt, frisch in Version 2 importiert, ergibt dieselbe Datei: nichts ging bei der Migration verloren.
+    await ps(page, 'oeffnen', 'vergleich');
+    expect(await ps(page, 'importieren', 'vergleich', kanonischesJson(inhalt))).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', 'vergleich', inhalt.projekt.id)).text === erster.text).toBe(true);
+    await ps(page, 'schliessen', 'vergleich');
+
+    await ps(page, 'schliessen', DB);
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', DB, inhalt.projekt.id)).text === erster.text).toBe(true);
+    expect((await ps(page, 'lvPruefen', DB, lv.leistungsverzeichnis.id, lv)).gleich).toBe(true);
   });
 });
 
