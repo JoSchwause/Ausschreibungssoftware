@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Hilfen nur für Tests dieses Pakets (nicht exportiert über index.ts). Liest die Fixtures per Dateizugriff, nicht per
-// Import: Produktivcode importiert keine Fixtures (A3); der Dateizugriff ist hier ein Test-Rand.
+// Hilfen nur für Tests dieses Pakets (nicht exportiert über index.ts). Importiert die Fixtures direkt: Testdateien
+// dürfen das (A3, Ticket 25); Produktivcode nicht.
 
-import { readFileSync } from 'node:fs';
+import gross from '../../../fixtures/gross.json';
+import handbeispiele from '../../../fixtures/handbeispiele.json';
+import typisch from '../../../fixtures/typisch.json';
+import winzig from '../../../fixtures/winzig.json';
 import type {
   Betrag,
   Einheitspreis,
@@ -35,10 +38,11 @@ import { lvBefehlAusfuehren, lvChangeSetAnwenden } from './index';
 export const LV_ID = 'lv-test' as LeistungsverzeichnisId;
 export const PROJEKT_ID = 'projekt-test' as ProjektId;
 
+/** 14 Stellen (F2): fünf Stufen zu 2, Position 4, kein Index (mit Index wären es 15). */
 export const standardMaske: OzMaske = {
   gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
   position: { laenge: 4, zeichen: 'numerisch' },
-  index: { laenge: 1, zeichen: 'alphanumerisch' },
+  index: null,
   trennzeichen: '.',
 };
 
@@ -135,8 +139,10 @@ interface FxLv {
   knoten: FxKnoten[];
 }
 
+const FIXTURES = { winzig, typisch, gross };
+
 export function fixtureLesen(name: 'winzig' | 'typisch' | 'gross'): FxLv {
-  return JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as FxLv;
+  return FIXTURES[name] as unknown as FxLv;
 }
 
 /** Fixture → `LvInhalt` (wie `fixtures-abbildung.test.ts` in `vertrag`; Lage aus Array-Reihenfolge). */
@@ -262,10 +268,7 @@ export interface Sollwerte {
 }
 
 export function sollwerteLesen(name: 'winzig' | 'typisch' | 'gross'): Sollwerte {
-  const fx = JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as {
-    sollwerte: Sollwerte;
-  };
-  return fx.sollwerte;
+  return (FIXTURES[name] as unknown as { sollwerte: Sollwerte }).sollwerte;
 }
 
 export interface Handbeispiele {
@@ -279,7 +282,5 @@ export interface Handbeispiele {
 }
 
 export function handbeispieleLesen(): Handbeispiele {
-  return JSON.parse(
-    readFileSync(new URL('../../../fixtures/handbeispiele.json', import.meta.url), 'utf8'),
-  ) as Handbeispiele;
+  return handbeispiele as unknown as Handbeispiele;
 }

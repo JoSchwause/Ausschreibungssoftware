@@ -27,13 +27,18 @@ Vor dem Entwurf lesen: „Offene Typfragen“ in Ticket 02 und die `## Comments`
 6. **Wurzel-ID.** `LvInhalt` und `LvAnsicht` kennen die Wurzel-ID; `gaeb` und `ui-grid` reichen sie heute getrennt durch.
 7. **Grid-Ränder.** Die Zahlen-Randfunktionen des Grids (heute `GridZahlen` in `ui-grid`) und die ID-Quelle für das
    Einfügen stehen als Schnittstellen im Vertrag (`gaeb` nennt schon eine `IdQuelle`; es gibt danach genau eine).
-8. **Codes.** `GaebVersion` kennt `3.1`. `Befehlsfehlercode` kennt „OZ doppelt“ und „Überlauf der Ordnungszahl“.
+8. **Codes.** `GaebVersion` kennt `3.1`. `Befehlsfehlercode` kennt „OZ doppelt“ (Umnummerieren weist Doppelte ab, F2)
+   und „Überlauf der Ordnungszahl“ (nur wenn auch Schritt 1 nicht reicht; das Ausweichen auf 5, 2, 1 ist kein
+   Fehler, sondern ein Hinweis, siehe Nummer 10).
 9. **OZ.** `OzMaske` hat ein Feld für die Los-Stufe (F1: das Los ist die oberste Stufe und zählt zu den 5).
    `GliederungAnlegen` hat ein OZ-Feld.
 10. **Hinweise und Befunde aus Befehlen.** Ein angenommener Befehl kann Hinweise mitliefern (F2: bei Überlauf weicht
     die Vergabe auf Schritt 5, 2, 1 aus „und zeigt einen Hinweis“; N5: negatives Netto nach Nachlass ist „ein Befund,
     keine Sperre“). Der Vertrag braucht dafür einen Ort im Ergebnis eines Befehls und einen stabilen Code für
-    „Netto nach Nachlass negativ“. Kein Fehlercode, der den Befehl abweist.
+    „Netto nach Nachlass negativ“. Kein Fehlercode, der den Befehl abweist. **Abweichung vom Wortlaut von E-02**
+    („Befehlsfehlercode für negatives Netto“): E-06 und N5 sagen „Befund, keine Sperre“; deshalb ein Befundcode.
+11. **Maskentext im Test.** Der Maskentext mit 15 Stellen in `fixtures-abbildung.test.ts` wird auf 14 Stellen
+    korrigiert, passend zu Ticket 25 (das `vertrag` nicht anfassen darf).
 
 ## Grenzen
 
@@ -49,7 +54,7 @@ Vor dem Entwurf lesen: „Offene Typfragen“ in Ticket 02 und die `## Comments`
 
 ## Acceptance criteria
 
-- [ ] Jede der zehn Nummern oben ist im Vertrag abgebildet; die Comments nennen je Nummer Datei und Typ
+- [ ] Jede der elf Nummern oben ist im Vertrag abgebildet; die Comments nennen je Nummer Datei und Typ
 - [ ] `beispiele.ts` und `vertrag.test.ts` zeigen je Nummer ein Beispiel (Typtest oder Beispielwert); `fixtures-abbildung.test.ts` bleibt grün
 - [ ] Ein Typtest belegt: Aus einem `LvChangeSet` allein (ohne Zustand) sind alle Angaben für die Umkehrung ablesbar, auch für Summen und entfernte Knoten
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün auf dem ganzen Baum

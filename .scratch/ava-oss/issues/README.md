@@ -53,13 +53,17 @@ die genannten Blocker gemergt sind (die Typnamen aus v1.1a/v1.1b stehen erst dan
 | 28 | O1 | PDF-Spike | `packages/ausgabe` | – | 1 |
 | 26 | F | `vertrag` v1.1b „Inhaltsmodell“ (**Mensch prüft**) | `packages/vertrag` | 24 | 1 |
 | 27 | K | Kern: Feldbefehle | `packages/kern` | 25 | 2 |
-| offen | K | Anpassung `kern` an v1.1a | `packages/kern` | 24, 27 | 2 |
+| offen | K | Anpassung `kern` an v1.1a (mit Maskenbefund am Befehl, Rest von E-19 Nr. 3) | `packages/kern` | 24, 27 | 2 |
 | offen | S | Anpassung `speicher` an v1.1a | `packages/speicher` | 24 | 2 |
 | offen | G | Anpassung `gaeb` an v1.1a | `packages/gaeb` | 24, 25 | 2 |
 | offen | U | Anpassung `ui-grid` an v1.1a | `packages/ui-grid` | 24 | 2 |
 | offen | K5–K7 | Positionsmerkmale, Wahl-/Zuschlagspositionen, EPA | `packages/kern` | 26, Anpassung `kern` | 3 |
-| offen | S2 | Projektliste und Projektdatei | `packages/speicher`, `apps/web` | Anpassung `speicher` | 3 |
+| offen | S2 | Projektliste und Projektdatei | `packages/speicher`, `apps/web` | 26 (Protokolleintrag, E-13), Anpassung `speicher` | 3 |
 | offen | U3 | LV-Grid an Befehle angebunden | `apps/web` | 27, Anpassung `ui-grid` | 3 |
 | offen | G2 | Writer X81/X83/X86, XSD in der CI | `packages/gaeb` | 26, Anpassung `gaeb` | 3 |
+
+**Ausnahme von P2 in 24 und 26:** Ein Vertragsticket darf andere Pakete rein mechanisch nachziehen, damit sein Pull
+Request für sich grün ist. Weil 25 und 27 zur selben Zeit in `kern` und `gaeb` schreiben, gilt die Reihenfolge beim
+Mergen: 25 und 27 zuerst; der Branch von 24 (und später 26) nimmt danach `main` auf, Konflikte löst der Orchestrator.
 
 Tor der Welle: **M1 „LV anlegen, rechnen, speichern“** (`plan.md` §4).
