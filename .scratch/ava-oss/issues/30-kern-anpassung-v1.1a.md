@@ -1,6 +1,6 @@
 # 30: Anpassung `kern` an v1.1a (füllt `summen.vorher`, Löschen, Hinweise, Maskenbefund am Befehl)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase A) · Strang: K · Paket: `packages/kern`
 Blocked by: - (Punkt 9 braucht den Hinweiscode aus Ticket 29; diesen Punkt zuletzt, nach dem Merge von 29)
