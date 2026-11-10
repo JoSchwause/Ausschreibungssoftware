@@ -31,6 +31,7 @@ import {
   leistungsverzeichnisUmbenennen,
 } from './feld-befehle';
 import { einheitspreisanteileSetzen } from './epa';
+import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen } from './kopfdaten-befehle';
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
@@ -51,7 +52,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
@@ -75,6 +76,9 @@ export const BEFEHLS_HANDLER = {
   Umnummerieren: umnummerieren,
   PositionsmerkmaleSetzen: positionsmerkmaleSetzen,
   EinheitspreisanteileSetzen: einheitspreisanteileSetzen,
+  AuftraggeberSetzen: auftraggeberSetzen,
+  VergabeinformationenSetzen: vergabeinformationenSetzen,
+  LeitbeschreibungSetzen: leitbeschreibungSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -88,9 +92,6 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   PapierkorbeintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   PapierkorbLeeren: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   LvStandAnlegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  AuftraggeberSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
-  VergabeinformationenSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
-  LeitbeschreibungSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
