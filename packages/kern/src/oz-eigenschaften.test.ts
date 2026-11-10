@@ -365,7 +365,7 @@ describe('OzMaskeSetzen (Property)', () => {
           const e = lvBefehlAusfuehren(z1, { art: 'OzMaskeSetzen', maske: ziel });
           if (!e.ok) {
             // alles oder nichts: nur ein Fehlerwert, der Zustand bleibt, der Fehler nennt den Knoten
-            expect(e.fehler.code).toBe('maske-ungueltig');
+            expect(['maske-ungueltig', 'oz-ueberlauf']).toContain(e.fehler.code);
             expect(e.fehler.knotenId).toBeDefined();
             expect(ziel).toBe(MASKE_C);
             continue;

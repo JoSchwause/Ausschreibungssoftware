@@ -124,6 +124,8 @@ describe('Konstanten: Schritte und Längenregel', () => {
     expect(OZ_MAX_LAENGE).toBe(14);
     expect(OZ_ANNAHMEN.status).toBe('vorläufige Annahme, Entscheidung offen');
     expect(OZ_ANNAHMEN.ueberlauf).toMatch(/Schritt 5, dann 2, dann 1/);
+    expect(OZ_ANNAHMEN.ueberlauf).toMatch(/oz-schritt-ausgewichen/);
+    expect(OZ_ANNAHMEN.ueberlauf).toMatch(/oz-ueberlauf/);
   });
 
   it('die drei OZ-Befehle sind umgesetzt (kein Eintrag mehr in ZUSTAENDIGES_TICKET)', () => {
@@ -384,7 +386,7 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
       posKnoten('PA2', 'T1', 2, '1.000', '1.000', { ozIndex: 'A' }),
     ]);
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('oz-ungueltig');
+    expect(f.code).toBe('oz-doppelt');
     expect(f.knotenId).toBe('PA2');
   });
 
@@ -410,9 +412,19 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     const danach9 = anwenden(z9, nummeriere(z9));
     expect(ozVon(danach9, 'P0')).toBe('10');
     expect(ozVon(danach9, 'P8')).toBe('90');
+    expect(nummeriere(z9).hinweise).toBeUndefined();
     // 10 × 10 = 100 passt nicht in 2 Stellen: die ganze Gruppe nimmt Schritt 5 (10 × 5 = 50)
     const z10 = mitMaske(ohneTrenner2, positionen(10));
-    const danach = anwenden(z10, nummeriere(z10));
+    const cs10 = nummeriere(z10);
+    // F2, E-09: ein Hinweis je ausgewichener Gruppe, an der ersten Position, der Befehl wird ausgeführt
+    expect(cs10.hinweise).toHaveLength(1);
+    expect(cs10.hinweise?.[0]).toMatchObject({
+      code: 'oz-schritt-ausgewichen',
+      knotenId: 'P0',
+      feld: 'ordnungszahl',
+    });
+    expect(cs10.hinweise?.[0]?.meldung).toMatch(/Schritt 5/);
+    const danach = anwenden(z10, cs10);
     expect(ozVon(danach, 'P0')).toBe('05');
     expect(ozVon(danach, 'P1')).toBe('10');
     expect(ozVon(danach, 'P9')).toBe('50');
@@ -438,7 +450,9 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       ...Array.from({ length: 3 }, (_, i) => posKnoten(`B${String(i)}`, 'T2', i, '1.000', '1.000')),
     ];
     const z = mitMaske(maske, knoten);
-    const danach = anwenden(z, nummeriere(z));
+    const cs = nummeriere(z);
+    expect(cs.hinweise?.map((h) => [h.code, h.knotenId])).toEqual([['oz-schritt-ausgewichen', 'A0']]);
+    const danach = anwenden(z, cs);
     expect(ozVon(danach, 'A0')).toBe('1.05'); // 12 × 10 passt nicht: Schritt 5
     expect(ozVon(danach, 'A11')).toBe('1.60');
     expect(ozVon(danach, 'B0')).toBe('2.10'); // 3 × 10 passt: Schritt 10
@@ -462,7 +476,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
   it('Überlauf bei Schritt 1: 99 Positionen bei 2 Stellen passen, die 100. wird abgewiesen und genannt, nichts ändert sich', () => {
     const z = mitMaske(ohneTrenner2, positionen(100));
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P99');
   });
 
@@ -473,12 +487,15 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     const drei: OzMaske = { ...vier, position: num(3) };
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'OzMaskeSetzen', maske: drei }));
     expect(cs.kopf?.nachher?.ozMaske).toEqual(drei);
+    expect(cs.hinweise).toEqual([
+      expect.objectContaining({ code: 'oz-schritt-ausgewichen', knotenId: 'P0', feld: 'ordnungszahl' }),
+    ]);
     const danach = anwenden(z, cs);
     expect(ozVon(danach, 'P0')).toBe('005');
     expect(ozVon(danach, 'P149')).toBe('750');
     // Ziel mit 2 Stellen: höchstens 99 Positionen, auch mit Schritt 1
     const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: ohneTrenner2 });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P99');
     expect(z.leistungsverzeichnis.ozMaske).toEqual(vier);
   });
@@ -499,7 +516,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       Array.from({ length: 10 }, (_, i) => titel(i)),
     );
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('T9');
   });
 
@@ -522,7 +539,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
       art: 'Umnummerieren',
       teilbaumId: id.eltern(LV_ID),
     });
-    expect(f.code).toBe('maske-ungueltig');
+    expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P9999');
   });
 
@@ -560,7 +577,7 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     });
     const z = mitMaske(MASKE_STANDARD, knoten);
     const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern('T1') });
-    expect(f.code).toBe('oz-ungueltig');
+    expect(f.code).toBe('oz-doppelt');
     expect(f.knotenId).toBe('P111');
   });
 });
