@@ -165,7 +165,9 @@ Warnung: `kodierung-ungueltig`, `kodierung-unbekannt`, `xml-doctype-ignoriert`, 
 Fehler, weil sich der Wert ändert; weniger Stellen sind zulässig und kein Befund), `einheit-fehlt`, `menge-fehlt`, `beschreibung-fehlt`,
 `positionsart-kombination`, `wahl-angabe-unvollstaendig`, `wahl-ohne-grundposition`, `wahl-variante-nicht-abgebildet`,
 `zuschlag-bezug-nicht-abbildbar`, `formatierung-verworfen`, `bild-ungueltig`, `bild-medientyp-fehlt`, `bild-in-kurztext-verworfen`,
-`mwst-ersatzwert`, `lv-leer`, `nicht-abgebildet`.
+`mwst-ersatzwert`, `lv-leer`, `nicht-abgebildet`; nach der Prüfung von PR 1 (2026-11-10) dazu `verweis-auf-sich`
+(Zuschlagsposition mit Bezug auf sich selbst: Bezug entfällt), `los-zu-titel` (Los nicht an oberster Stufe: wird ein Titel, F1) und
+`gliederung-ebene-entfallen` (tiefer als 5 Stufen: die Ebene wird nicht gebaut, die Kinder hängen eine Ebene höher).
 
 `nicht-abgebildet` und `formatierung-verworfen` sind **je Datei zusammengefasst** (Zahl der Vorkommen, Ort des ersten), damit eine Datei
 nicht Tausende gleichartige Befunde hat; alle anderen Befunde sind einzeln mit `ort.pfad`, `ort.zeile`, `ort.spalte` und, wo es einen Knoten

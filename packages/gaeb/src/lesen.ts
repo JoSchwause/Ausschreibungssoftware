@@ -574,8 +574,32 @@ class Aufbau {
     const t = this.teil(el, st ? stelle(st) : undefined, 'LV-Bereich');
     const teile = t === null ? eltern.teile : [...eltern.teile, t];
     const ozOk = eltern.ozOk && t !== null;
-    const istLos = st?.typ === 'Lot';
     const kurz = this.l.kurztext(kind(el, 'LblTx'));
+    if (tiefe > MAX_STUFEN) {
+      // Der Kern lässt höchstens 5 Gliederungsebenen zu (F1) und wies sonst das ganze LV ab. Die Ebene entfällt
+      // als Knoten; Unterbereiche, Positionen und Hinweise hängen unter dem Knoten darüber (Befund, kein Verlust).
+      this.l.melde(
+        'warnung',
+        'gliederung-ebene-entfallen',
+        `Gliederungsebene ${String(tiefe)}${kurz === '' ? '' : ` („${kurz}“)`} liegt unter der ${String(MAX_STUFEN)}. Stufe; ` +
+          'sie wird nicht als Titel übernommen, ihr Inhalt hängt unter der Ebene darüber.',
+        el,
+      );
+      this.l.restMelden(el, KATEGORIE_BEHANDELT, 'BoQCtgy');
+      const flach: Ebene = { id: eltern.id, teile, ozOk, tiefe };
+      for (const b of kinder(el, 'BoQBody')) this.koerper(b, flach);
+      return;
+    }
+    // F1: Das Los ist nur als oberste Stufe erlaubt. Steht `Lot` weiter unten in der Gliederung, wird die Ebene ein
+    // Titel (sonst wies der Kern das ganze LV ab).
+    const istLos = st?.typ === 'Lot' && tiefe === 1;
+    if (st?.typ === 'Lot' && !istLos)
+      this.l.melde(
+        'warnung',
+        'los-zu-titel',
+        `Gliederungsebene ${String(tiefe)} ist als Los (Lot) angelegt, ein Los ist aber nur als oberste Stufe erlaubt; die Ebene wird als Titel übernommen.`,
+        el,
+      );
     const gemeinsam = {
       elternId: eltern.id as ElternId,
       reihenfolge: this.reihenfolge(eltern.id),
@@ -889,7 +913,16 @@ class Aufbau {
     for (const z of this.zuschlaege) {
       for (const r of z.refs) {
         const ziel = this.gaebIds.get(r.id);
-        if (ziel) z.pos.bezugspositionId = ziel;
+        if (ziel === z.pos.id)
+          // Der Kern weist eine Zuschlagsposition, die auf sich selbst zeigt, samt LV ab (bezug-unbekannt).
+          this.l.melde(
+            'warnung',
+            'verweis-auf-sich',
+            `RefItem der Zuschlagsposition verweist auf deren eigene ID „${r.id}“; der Bezug entfällt.`,
+            r.el,
+            { knotenId: z.pos.id, feld: 'bezugspositionId' },
+          );
+        else if (ziel) z.pos.bezugspositionId = ziel;
         else
           this.l.melde(
             'warnung',
