@@ -49,7 +49,8 @@ export const ERLAUBT = {
 const ALLE = Object.keys(ERLAUBT);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 const alt = (ordner) => ordner.map(esc).join('|');
-const TESTDATEI = String.raw`(\.test\.|\.spec\.|(^|/)e2e/)`;
+// Testdateien: *.test.*, *.spec.*, e2e/ und die Hilfsdateien nur für Tests (testhilfen.ts, testhilfe/).
+const TESTDATEI = String.raw`(\.test\.|\.spec\.|(^|/)e2e/|(^|/)testhilfen?(\.|/))`;
 
 /** Verbotsregeln für dependency-cruiser, abgeleitet aus der Tabelle. */
 export function regeln() {
@@ -71,7 +72,8 @@ export function regeln() {
   }
   forbidden.push({
     name: 'fixtures-nur-in-tests',
-    comment: 'Produktivcode importiert keine Fixtures; Testdateien (*.test.*, *.spec.*, e2e/) dürfen es (A3, Ticket 25).',
+    comment:
+      'Produktivcode importiert keine Fixtures; Testdateien (*.test.*, *.spec.*, e2e/) dürfen es (A3, Ticket 25).',
     severity: 'error',
     from: { pathNot: `^fixtures/|${TESTDATEI}` },
     to: { path: '^fixtures/' },

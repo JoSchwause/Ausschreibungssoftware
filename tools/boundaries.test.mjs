@@ -96,6 +96,13 @@ describe('Paketgrenzen (A3)', () => {
     expect(verstoesse[0]).toContain('rechnen.ts');
   });
 
+  it('zählt Testhilfen (testhilfen.ts) zu den Testdateien', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/testhilfen.ts', "import '@tethys/fixtures';\nexport {};\n");
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+  });
+
   it('erlaubt einer Testdatei Fixtures auch aus e2e-Ordnern und per relativem Pfad', async () => {
     paket('packages/ui-grid');
     paket('fixtures');
