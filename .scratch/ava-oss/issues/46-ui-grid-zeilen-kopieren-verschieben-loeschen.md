@@ -1,6 +1,6 @@
 # 46: Grid: Zeilen kopieren und einfügen, per Tastatur verschieben, löschen, neue Zeile; Sprungziel (U5a)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5a) · Paket: `packages/ui-grid`
 Blocked by: 33, 29
