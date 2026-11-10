@@ -18,9 +18,9 @@ import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { aggregatIds, leseAngebot, leseAuftragsLv, leseLv, leseProjekt, leseProtokoll } from './lesen';
 import type { Migration } from './migrationen';
 import {
-  schreibeAuftragsLv,
   schreibeProtokolleintrag,
   wendeAngebotAn,
+  wendeAuftragsLvAn,
   wendeLvAn,
   wendeProjektAn,
 } from './schreiben';
@@ -174,13 +174,29 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
         projektId,
       );
     }
-    for (const z of d.auftragsLeistungsverzeichnisse) schreibeAuftragsLv(db, z);
+    for (const z of d.auftragsLeistungsverzeichnisse) {
+      const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
+      wendeAuftragsLvAn(
+        db,
+        {
+          art: 'auftrags-leistungsverzeichnis',
+          auftragsLeistungsverzeichnisId: kopf.id,
+          kopf: { vorher: null, nachher: kopf },
+          knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
+          summen: z.summen,
+        },
+        projektId,
+      );
+    }
     for (const e of d.protokoll) schreibeProtokolleintrag(db, e);
   } catch (e) {
     // Jede Verletzung von Integritätsregeln beim Import heißt: Die Datei passt nicht zum Schema. Ein
     // Ein-/Ausgabefehler des Speichers sagt nichts über die Datei und bleibt, was er ist.
     const f = fehlerAusAusnahme(e);
-    if ((f.code === 'unbekannt' || f.code === 'nicht-gefunden') && !istAusgabefehler(e))
+    if (
+      (f.code === 'unbekannt' || f.code === 'nicht-gefunden' || f.code === 'konflikt') &&
+      !istAusgabefehler(e)
+    )
       throw new SpeicherAbbruch('datei-ungueltig', f.meldung);
     throw e;
   }
