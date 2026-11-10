@@ -140,3 +140,25 @@ Question: Wie streng prüft `speicher` ein Lösch-ChangeSet (LV, Angebot), das `
 Decision: Kopf in `vorher` gleich dem gespeicherten, alle Knoten bzw. Angebotspositionen in `entfernt` (fehlt einer: `konflikt`), `summen.vorher` falls gesetzt gleich den gespeicherten Summen (sonst `konflikt`); neue Summen, hinzugefügte oder geänderte Knoten im Lösch-ChangeSet sind ein Programmfehler (`unbekannt`).
 Reason: Q5 und Umkehrbarkeit ohne Vorzustand (v1.1a): Nur so stellt die Umkehrung (Anlegen) dasselbe Aggregat wieder her. Ticket 30 muss sein Lösch-ChangeSet in dieser Form liefern (wie im Vertrag beschrieben).
 Reversible: yes  Touches: packages/speicher, Ticket 30 (Form des Lösch-ChangeSets)
+
+## D-32.1 GAEB-Leser auf v1.1a/v1.1b: offene Lesarten
+Welle 3 · Ticket 32 · decided by: implementer
+Question: Was Ticket 32 offen lässt (Überlauf-Codes, Grundausführung, Zuschlagsformen, Langtext-Kanon, Reste, Kopfdaten-Formate).
+Decision: Überlauf-Codes des Lesers bleiben (andere Lage als der Befehlsfehler `oz-ueberlauf`). Variante 0 trägt `wahl` mit `grundpositionId: null`. Zuschlag: alle drei Bezugsformen, `teilmenge` immer `null` (keine Datei zeigt sie), `Markup` → Satz. Langtext: lose `span`/`br` bleiben lose, leere `p` bleiben leere Absätze, Läufe gleicher Auszeichnung verschmelzen, Zeilenwechsel im Dateitext → Leerzeichen; `formatierung-verworfen` meldet zusätzlich Durchgestrichen, Hoch-/Tiefstellung, Rahmen, Einzug, Listenstil. Neue Befunde `ergaenzung-nicht-oben`, `ergaenzung-ungueltig`, `wert-ungueltig`, `leitbeschreibung-ohne-kennzeichen`, `unterbeschreibung-ohne-nummer`. Einzelheiten: Ticket 32, Comments.
+Reason: Kein stiller Verlust (Q5), nichts erfunden (C4), Form passend zum Editor-Kanon (Ticket 34) für den Rundweg G2.
+Reversible: yes  Touches: packages/gaeb
+
+## D-46.1 Tastenbelegung und Lesarten der Zeilenaktionen im Grid
+Welle 3 · Ticket 46 · decided by: implementer
+Question: Tastenbelegung (Vorschlag im Ticket) und was das Ticket bei Einfügen, Verschieben und Löschen offen lässt.
+Decision: Strg+C/X/V, Strg+Minus/Strg+Entf (Rückfrage), Alt+Pfeil hoch/runter, Strg+Plus (`key '+'`), Escape bricht Ausschneiden ab (die Zeilen bleiben als kopiert gemerkt). Eigener Text ohne `onKopieEinfuegen` wird spaltengenau ab der ersten Spalte eingefügt. „Hinter einer Gliederung“ ist im Vertrag „als erstes Kind“: Strg+Plus auf einer Gliederung legt das erste Kind an; Verschieben neben einer Gliederung verschiebt den Nachbarn oder legt eine Teilfolge neu, stets ein Befehl. Die Rückfrage zählt sichtbare Positionen und sagt „mindestens“ bei zugeklappten Knoten. Einzelheiten in Ticket 46, Comments.
+Reason: Excel-nah (U3), keine bestehende Taste geändert außer Alt+Pfeil hoch/runter (vom Ticket verlangt); `Einfuegeort` bleibt unverändert (A4).
+Reversible: yes  Touches: packages/ui-grid
+
+## D-30.1 Kern v1.1a: Lesarten bei Umkehrung, Hinweisen und F1
+Welle 3 · Ticket 30 · decided by: implementer
+Question: Was Ticket 30 offen lässt (Hinweise in der Umkehrung, ChangeSet ohne `vorher`, Reichweite der F1-Prüfung, Projekt-ChangeSet ohne Änderung, `wurzelId` im Kopf).
+Decision: Die Umkehrung trägt keine Hinweise; ein ChangeSet ohne `summen.vorher` umzukehren wirft. `netto-nach-nachlass-negativ` bei jedem ChangeSet mit negativem neuem Netto nach Nachlass (Annahme des Tickets). F1 (Lose und Titel nicht nebeneinander, Los-Stufe) wird nur geprüft, wenn ein Knoten neu auf die oberste Ebene kommt; der Import (`LeistungsverzeichnisAnlegen`) bleibt offen (U5). Projekt-ChangeSet ohne Änderung: `vorher` gleich `nachher`. Der LV-Kopf trägt kein `wurzelId` mehr. Einzelheiten: Ticket 30, Comments.
+Reason: Hinweise sind flüchtig (Vertrag); kein stilles Falsch (Q5); Validierung blockiert den Import nie (U5); Kopf gleich `LvKopf`, damit `speicher` ihn exakt vergleicht (D-31.2).
+Reversible: yes  Touches: packages/kern (mechanisch: Testhilfen in vergabe und ausgabe)
+

@@ -3,7 +3,61 @@
 // Browser Bearbeiten und Einfügen von Anfang bis Ende ausprobieren lassen. Das ist kein Ersatz für `kern`:
 // Summen und Gesamtpreise werden nicht neu berechnet. Nur Test- und Harness-Code.
 
-import type { Knoten, LvBefehl, Position } from '@tethys/vertrag';
+import type { Einfuegeort, Knoten, KnotenId, LvBefehl, Position } from '@tethys/vertrag';
+
+const istGliederung = (k: Knoten | undefined): boolean => k?.art === 'titel' || k?.art === 'los';
+
+/**
+ * Verschiebt Knoten samt Unterbäumen in Listenreihenfolge an `ziel` (wie `KnotenlisteVerschieben`) bzw. nimmt sie
+ * heraus (`ziel` null, Papierkorb). Arbeitet auf der Kinderfolge je Elternknoten und legt die Liste danach wieder flach.
+ */
+function umhaengen(liste: readonly Knoten[], ids: readonly KnotenId[], ziel: Einfuegeort | null): Knoten[] {
+  const byId = new Map(liste.map((k) => [k.id as string, k]));
+  const kinder = new Map<string, Knoten[]>();
+  const wurzeln: string[] = [];
+  for (const k of liste) {
+    if (!byId.has(k.elternId) && !wurzeln.includes(k.elternId)) wurzeln.push(k.elternId);
+    kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
+  }
+  const bewegt = ids.flatMap((id) => byId.get(id) ?? []);
+  for (const k of bewegt) {
+    kinder.set(
+      k.elternId,
+      (kinder.get(k.elternId) ?? []).filter((x) => x.id !== k.id),
+    );
+  }
+  if (ziel !== null) {
+    let eltern: string;
+    let index: number;
+    if (ziel.art === 'nach') {
+      const x = byId.get(ziel.knotenId);
+      if (!x) return [...liste];
+      if (istGliederung(x)) {
+        eltern = x.id;
+        index = 0;
+      } else {
+        eltern = x.elternId;
+        index = (kinder.get(eltern) ?? []).findIndex((k) => k.id === x.id) + 1;
+      }
+    } else {
+      eltern = ziel.elternId;
+      index = ziel.art === 'anfang' ? 0 : (kinder.get(eltern) ?? []).length;
+    }
+    const neu = bewegt.map((k) => ({ ...k, elternId: eltern }) as Knoten);
+    const folge = [...(kinder.get(eltern) ?? [])];
+    folge.splice(index, 0, ...neu);
+    kinder.set(eltern, folge);
+  }
+  const ergebnis: Knoten[] = [];
+  const besuche = (eltern: string): void => {
+    for (const k of kinder.get(eltern) ?? []) {
+      ergebnis.push(k);
+      besuche(k.id);
+    }
+  };
+  for (const w of wurzeln) besuche(w);
+  return ergebnis;
+}
 
 export function wendeAn(knoten: readonly Knoten[], befehle: readonly LvBefehl[]): Knoten[] {
   let liste = [...knoten];
@@ -59,6 +113,15 @@ export function wendeAn(knoten: readonly Knoten[], befehle: readonly LvBefehl[])
         liste.splice(index, 0, neu);
         break;
       }
+      case 'KnotenVerschieben':
+        liste = umhaengen(liste, [b.knotenId], b.ziel);
+        break;
+      case 'KnotenlisteVerschieben':
+        liste = umhaengen(liste, b.knotenIds, b.ziel);
+        break;
+      case 'KnotenInPapierkorbLegen':
+        liste = umhaengen(liste, b.knotenIds, null);
+        break;
       default:
         break;
     }

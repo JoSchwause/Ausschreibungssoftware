@@ -37,6 +37,8 @@ export interface ZeileProps {
   readonly tabbar: LvSpalte | null;
   readonly aktiv: LvSpalte | null;
   readonly ausgewaehlt: boolean;
+  /** Mit Strg+X ausgeschnitten und noch nicht eingefügt. */
+  readonly ausgeschnitten: boolean;
   readonly bearbeitung: Bearbeitungszeile | null;
   readonly abgelehnt: ReadonlyMap<LvSpalte, Abgelehnt> | undefined;
   readonly baumspalte: LvSpalte;
@@ -63,7 +65,19 @@ function befundeJeSpalte(
 }
 
 function ZeileKomponente(props: ZeileProps): ReactElement {
-  const { row, index, versatz, hoehe, vorlage, breite, tabbar, aktiv, ausgewaehlt, bearbeitung } = props;
+  const {
+    row,
+    index,
+    versatz,
+    hoehe,
+    vorlage,
+    breite,
+    tabbar,
+    aktiv,
+    ausgewaehlt,
+    ausgeschnitten,
+    bearbeitung,
+  } = props;
   const { abgelehnt, baumspalte, zahlen, editor } = props;
   const zeile = row.original;
   const k = zeile.knoten;
@@ -73,6 +87,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
 
   const klassen = ['tx-grid__zeile', `tx-grid__zeile--${k.art}`];
   if (ausgewaehlt) klassen.push('tx-grid__zeile--ausgewaehlt');
+  if (ausgeschnitten) klassen.push('tx-grid__zeile--ausgeschnitten');
   if (zeile.gehtInSummeEin === false) klassen.push('tx-grid__zeile--ohne-summe');
 
   return (

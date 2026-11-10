@@ -49,3 +49,28 @@ export function ebenenbeitrag(art: Knoten['art']): 0 | 1 {
 export function darfKinderHaben(eltern: ElternArt): boolean {
   return eltern === 'wurzel' || eltern === 'los' || eltern === 'titel';
 }
+
+/**
+ * F1, E-08 (Ticket 30): Darf eine Gliederung der Art `art` neu auf die oberste Ebene (direkt unter das LV), wo schon
+ * Knoten der Arten `geschwister` stehen? Fehlertext oder `null`. Positionen und Hinweistexte sind dort immer erlaubt.
+ *  - `losStufe === true` (Maske): die oberste Stufe ist die Los-Stufe, ein Titel steht dort nie.
+ *  - In jedem Fall: Lose und Titel stehen nicht nebeneinander auf der obersten Ebene.
+ * Ist `losStufe` nicht `true`, gilt sonst `LOS_ANNAHME` unverändert. Gefragt wird nur, wenn ein Knoten neu auf die
+ * oberste Ebene kommt (Anlegen, Verschieben von anderswo); `LeistungsverzeichnisAnlegen` (Import) prüft es nicht (U5),
+ * das meldet die LV-Prüfung.
+ */
+export function obersteEbeneFehler(
+  art: Knoten['art'],
+  geschwister: Iterable<Knoten['art']>,
+  losStufe: boolean,
+): string | null {
+  if (art !== 'los' && art !== 'titel') return null;
+  if (losStufe && art === 'titel') {
+    return 'Die Maske hat eine Los-Stufe: auf der obersten Ebene stehen nur Lose, keine Titel (F1).';
+  }
+  const andere = art === 'los' ? 'titel' : 'los';
+  for (const g of geschwister) {
+    if (g === andere) return 'Lose und Titel stehen nicht nebeneinander auf der obersten Ebene (F1).';
+  }
+  return null;
+}

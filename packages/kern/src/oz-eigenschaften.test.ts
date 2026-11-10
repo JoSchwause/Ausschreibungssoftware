@@ -14,14 +14,18 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Einfuegeort, Knoten, LvBefehl, LvChangeSet, LvZustand, OzMaske } from '@tethys/vertrag';
+import { changeSetUmkehren, doppelteOrdnungszahlen, lvBefehlAusfuehren, pruefeLvInvarianten } from './index';
 import {
-  changeSetUmkehren,
-  doppelteOrdnungszahlen,
-  lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
-  pruefeLvInvarianten,
-} from './index';
-import { LV_ID, PROJEKT_ID, erwarteOk, id, inhalt, positionsdaten } from './testhilfen';
+  KEINE_SUMMEN,
+  ohneReihenfolge,
+  anwenden,
+  LV_ID,
+  PROJEKT_ID,
+  erwarteOk,
+  id,
+  inhalt,
+  positionsdaten,
+} from './testhilfen';
 
 const num = (laenge: number) => ({ laenge, zeichen: 'numerisch' as const });
 const alnum = (laenge: number) => ({ laenge, zeichen: 'alphanumerisch' as const });
@@ -135,7 +139,7 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
 }
 
 function bauen(maske: OzMaske, folge: readonly Aktion[]): LvZustand {
-  let z = lvChangeSetAnwenden(
+  let z = anwenden(
     null,
     erwarteOk(
       lvBefehlAusfuehren(null, {
@@ -148,7 +152,7 @@ function bauen(maske: OzMaske, folge: readonly Aktion[]): LvZustand {
   );
   folge.forEach((a, nr) => {
     const e = lvBefehlAusfuehren(z, befehlAus(z, a, nr));
-    if (e.ok) z = lvChangeSetAnwenden(z, e.wert);
+    if (e.ok) z = anwenden(z, e.wert);
   });
   return z;
 }
@@ -222,12 +226,12 @@ describe('Umnummerieren des ganzen LV (Property)', () => {
         const cs = umnummerieren(z);
         expect(z).toEqual(vorher); // reine Funktion
         expect(umnummerieren(z)).toEqual(cs); // deterministisch
-        const neu = lvChangeSetAnwenden(z, cs);
+        const neu = anwenden(z, cs);
 
         // IDs, Struktur, Reihenfolge, Summen
         expect(lage(neu)).toEqual(lage(z));
         expect(neu.summen).toBe(z.summen);
-        expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+        expect(cs.summen).toEqual(KEINE_SUMMEN);
         expect(cs.kopf).toBeNull();
         expect(cs.knoten.hinzugefuegt).toEqual([]);
         expect(cs.knoten.entfernt).toEqual([]);
@@ -283,13 +287,14 @@ describe('Umnummerieren des ganzen LV (Property)', () => {
         geaendert += cs.knoten.geaendert.length;
 
         // Undo
-        expect(lvChangeSetAnwenden(neu, changeSetUmkehren(cs, z))).toEqual(z);
-        expect(changeSetUmkehren(changeSetUmkehren(cs, z), neu)).toEqual(cs);
+        expect(cs.summen.vorher).toBeDefined(); // v1.1a
+        expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
+        expect(ohneReihenfolge(changeSetUmkehren(changeSetUmkehren(cs)))).toEqual(ohneReihenfolge(cs));
 
         // Idempotenz
         const wieder = umnummerieren(neu);
         expect(wieder.knoten.geaendert).toEqual([]);
-        expect(lvChangeSetAnwenden(neu, wieder)).toBe(neu);
+        expect(anwenden(neu, wieder)).toBe(neu);
       }),
       { numRuns: 300 },
     );
@@ -305,7 +310,7 @@ describe('Umnummerieren eines Teilbaums (Property)', () => {
     fc.assert(
       fc.property(fc.constantFrom(...MASKEN), folgeArb, fc.nat(10_000), (maske, folge, wahl) => {
         const z0 = bauen(maske, folge);
-        const z1 = lvChangeSetAnwenden(z0, umnummerieren(z0));
+        const z1 = anwenden(z0, umnummerieren(z0));
         const gliederungen = z1.leistungsverzeichnis.knoten.filter(
           (k) => k.art === 'titel' || k.art === 'los',
         );
@@ -332,11 +337,11 @@ describe('Umnummerieren eines Teilbaums (Property)', () => {
           },
         };
         const cs = umnummerieren(verstellt, wurzel.id);
-        const danach = lvChangeSetAnwenden(verstellt, cs);
+        const danach = anwenden(verstellt, cs);
         expect(danach.leistungsverzeichnis.knoten).toEqual(z1.leistungsverzeichnis.knoten);
         for (const g of cs.knoten.geaendert) expect(nachfahren.has(g.nachher.id)).toBe(true);
-        expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-        expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, verstellt))).toEqual(verstellt);
+        expect(cs.summen).toEqual(KEINE_SUMMEN);
+        expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(verstellt);
         // die Wurzel selbst und alles außerhalb bleibt unberührt
         const o = ozMap(verstellt);
         for (const k of danach.leistungsverzeichnis.knoten)
@@ -355,13 +360,13 @@ describe('OzMaskeSetzen (Property)', () => {
     fc.assert(
       fc.property(folgeArb, (folge) => {
         const z0 = bauen(MASKE_A, folge);
-        const z1 = lvChangeSetAnwenden(z0, umnummerieren(z0));
+        const z1 = anwenden(z0, umnummerieren(z0));
         // Zielmaske B: gleiche Stufenzahl; C hat mit 3, 2, 1, 1, 1 Stellen oft zu wenig Platz (Überlauf bei Schritt 1 wird abgewiesen).
         for (const ziel of [MASKE_B, MASKE_C]) {
           const e = lvBefehlAusfuehren(z1, { art: 'OzMaskeSetzen', maske: ziel });
           if (!e.ok) {
             // alles oder nichts: nur ein Fehlerwert, der Zustand bleibt, der Fehler nennt den Knoten
-            expect(e.fehler.code).toBe('maske-ungueltig');
+            expect(['maske-ungueltig', 'oz-ueberlauf']).toContain(e.fehler.code);
             expect(e.fehler.knotenId).toBeDefined();
             expect(ziel).toBe(MASKE_C);
             continue;
@@ -369,8 +374,8 @@ describe('OzMaskeSetzen (Property)', () => {
           const cs = e.wert;
           expect(cs.kopf?.vorher?.ozMaske).toEqual(MASKE_A);
           expect(cs.kopf?.nachher?.ozMaske).toEqual(ziel);
-          expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-          const z2 = lvChangeSetAnwenden(z1, cs);
+          expect(cs.summen).toEqual(KEINE_SUMMEN);
+          const z2 = anwenden(z1, cs);
           expect(z2.leistungsverzeichnis.ozMaske).toEqual(ziel);
           expect(lage(z2)).toEqual(lage(z1));
           expect(z2.summen).toBe(z1.summen);
@@ -382,9 +387,9 @@ describe('OzMaskeSetzen (Property)', () => {
           expect(cs.knoten.geaendert.map((g) => g.nachher.id)).toEqual(
             z1.leistungsverzeichnis.knoten.filter((k) => o1.get(k.id) !== o2.get(k.id)).map((k) => k.id),
           );
-          expect(lvChangeSetAnwenden(z2, changeSetUmkehren(cs, z1))).toEqual(z1);
+          expect(anwenden(z2, changeSetUmkehren(cs))).toEqual(z1);
           // Rückweg über den Befehl: wieder Maske A, dieselbe OZ wie zuvor
-          const z3 = lvChangeSetAnwenden(
+          const z3 = anwenden(
             z2,
             erwarteOk(lvBefehlAusfuehren(z2, { art: 'OzMaskeSetzen', maske: MASKE_A })),
           );

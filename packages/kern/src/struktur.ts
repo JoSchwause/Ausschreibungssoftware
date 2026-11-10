@@ -32,6 +32,13 @@ export function ohneKnoten<T extends { readonly knoten: unknown }>(aggregat: T):
   return kopie as Omit<T, 'knoten'>;
 }
 
+/** Die Stammdaten ohne `wurzelId` (die Wurzel ist die Kennung des Aggregats, kein Feld des Kopfs). */
+export function ohneWurzel<T extends { readonly wurzelId: unknown }>(inhalt: T): Omit<T, 'wurzelId'> {
+  const kopie: { -readonly [K in keyof T]?: T[K] } = { ...inhalt };
+  delete kopie.wurzelId;
+  return kopie as Omit<T, 'wurzelId'>;
+}
+
 const nachReihenfolge = (a: Knoten, b: Knoten): number => a.reihenfolge - b.reihenfolge;
 
 /** Gruppiert nach Elternknoten, je Gruppe nach `reihenfolge` (stabil) sortiert. */

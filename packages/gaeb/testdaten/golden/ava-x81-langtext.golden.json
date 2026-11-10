@@ -1,0 +1,1036 @@
+{
+  "formatierungen": {
+    "ordnungszahl": "2.1.4.20",
+    "kurztext": "Formatierungen",
+    "langtext": [
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Nachfolgende Texte sind mit den verschiedenen Textattributen "
+          },
+          {
+            "art": "text",
+            "text": "fett",
+            "fett": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "kursiv",
+            "kursiv": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "unterstrichen",
+            "unterstrichen": true
+          },
+          {
+            "art": "text",
+            "text": ", durchgestrichen, hochgestellt und tiefgestellt dargestellt. "
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "fettfettfettfettfettfett",
+            "fett": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "kursivkursivkursivkursivkursivkursivkursiv",
+            "kursiv": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "unterstrichenunterstrichenunterstrichenunterstrichenunterstrichen",
+            "unterstrichen": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "durchgestrichendurchgestrichendurchgestrichendurchgestrichen"
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "HochgestelltNormalTiefgestellt"
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Die Zeichenattribute können beliebig kombiniert werden:"
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "fett und kursiv",
+            "fett": true,
+            "kursiv": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "fett und unterstrichen",
+            "fett": true,
+            "unterstrichen": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "fett und durchgestrichen",
+            "fett": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "kursiv und unterstrichen",
+            "kursiv": true,
+            "unterstrichen": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "Kursiv und durchgestrichen",
+            "kursiv": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "unterstrichen und durchgestrichen.",
+            "unterstrichen": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "fett und kursiv und unterstrichen",
+            "fett": true,
+            "kursiv": true,
+            "unterstrichen": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "fett und kursiv und durchgestrichen",
+            "fett": true,
+            "kursiv": true
+          },
+          {
+            "art": "text",
+            "text": ", "
+          },
+          {
+            "art": "text",
+            "text": "kursiv und unterstrichen und durchgestrichen",
+            "kursiv": true,
+            "unterstrichen": true
+          },
+          {
+            "art": "text",
+            "text": "."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "fett und kursiv und unterstrichen und durchgestrichen. ",
+            "fett": true,
+            "kursiv": true,
+            "unterstrichen": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Text ist in der Schriftart Arial in Größe 10 dargestellt. Dieser Text ist der Schriftart Arial in Größe 10 dargestellt. "
+          },
+          {
+            "art": "text",
+            "text": "Beispielhaft ist dieser Text in Arial in Größe 14 und fett dargestellt",
+            "fett": true
+          },
+          {
+            "art": "text",
+            "text": ". "
+          },
+          {
+            "art": "text",
+            "text": "Jederzeit ist es möglich auch andere Schriftarten wie z.B. Courier New zu wählen, hier mit Größe 10 und Kursiv",
+            "kursiv": true
+          },
+          {
+            "art": "text",
+            "text": ". Als 3. Beispiel wird dieser Satz mit Times New Roman und in Schriftgröße 20 dargestellt."
+          }
+        ]
+      }
+    ]
+  },
+  "liste": {
+    "ordnungszahl": "2.1.4.10",
+    "kurztext": "Textausrichtung",
+    "langtext": [
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Textbereiche in verschiedenen Formatierungen",
+            "fett": true
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Die Überschrift und dieser Absatz ist zentriert dargestellt. Die Überschrift und dieser Absatz ist zentriert dargestellt."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Absatz hat eine linksbündige Formatierung. Dieser Absatz hat eine linksbündige Formatierung. Dieser Absatz hat eine linksbündige Formatierung. Dieser Absatz hat eine linksbündige Formatierung. Dieser Absatz hat eine linksbündige Formatierung."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Absatz hat eine rechtsbündige Formatierung. Dieser Absatz hat eine rechtsbündige Formatierung. Dieser Absatz hat eine rechtsbündige Formatierung. Dieser Absatz hat eine linksbündige Formatierung. Dieser Absatz hat eine rechtsbündige Formatierung."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. Dieser Absatz ist in Blocksatz formatiert. "
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Absatz ist in Blocksatz formatiert und hat einen linken und rechten Rand von 1 cm. Dieser Absatz ist in Blocksatz formatiert und hat einen linken und rechten Rand von 1 cm. Dieser Absatz ist in Blocksatz formatiert und hat einen linken und rechten Rand von 1 cm."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Dieser Absatz hat einen eingezogenen Rand (linker Rand 1 cm zum Textanfang der Position). Dieser Absatz hat einen eingezogenen Rand (linker Rand 1 cm zum Textanfang der Position). Dieser Absatz hat einen eingezogenen Rand (linker Rand 1 cm zum Textanfang der Position)."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "In diesem Absatz ist der Zeilenabstand auf 1,5 Zeilen gesetzt. In diesem Absatz ist der Zeilenabstand auf 1,5 Zeilen gesetzt. In diesem Absatz ist der Zeilenabstand auf 1,5 Zeilen gesetzt. In diesem Absatz ist der Zeilenabstand auf 1,5 Zeilen gesetzt. In diesem Absatz ist der Zeilenabstand auf 1,5 Zeilen gesetzt."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Vor diesem Abschnitt ist ein manueller Seitenumbruch angegeben."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "liste",
+        "geordnet": false,
+        "punkte": [
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Aufzählungen dargestellt. Als Aufzählungszeichen ist der dicke Punkt (unter Zeichensatz Symbol Code 173) gewählt. Hier ist zu beachten, dass über eine Zeilenschaltung noch eine Leerzeile angefügt ist, bevor der nächste Absatz beginnt."
+            },
+            {
+              "art": "umbruch"
+            }
+          ],
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Aufzählungen dargestellt. Als Aufzählungszeichen ist der dicke Punkt (unter Zeichensatz Symbol Code 173) gewählt. Hier ist zu beachten, dass über eine Zeilenschaltung noch eine Leerzeile angefügt ist, bevor der nächste Absatz beginnt."
+            },
+            {
+              "art": "umbruch"
+            }
+          ],
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Aufzählungen dargestellt. Als Aufzählungszeichen ist der dicke Punkt (unter Zeichensatz Symbol Code 173) gewählt. Hier ist zu beachten, dass über eine Zeilenschaltung noch eine Leerzeile angefügt ist, bevor der nächste Absatz beginnt."
+            },
+            {
+              "art": "umbruch"
+            }
+          ]
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": []
+      },
+      {
+        "art": "liste",
+        "geordnet": true,
+        "punkte": [
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Nummerierungen dargestellt, auch hier Zeilenschaltung beachten."
+            },
+            {
+              "art": "umbruch"
+            }
+          ],
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Nummerierungen dargestellt, auch hier Zeilenschaltung beachten."
+            },
+            {
+              "art": "umbruch"
+            }
+          ],
+          [
+            {
+              "art": "text",
+              "text": "Diese Texte sind als Nummerierungen dargestellt, auch hier Zeilenschaltung beachten."
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  "tabelleMitColspan": {
+    "ordnungszahl": "1.10.30.10",
+    "kurztext": "Position mit Katalogzuordnungen",
+    "langtext": [
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Position mit Kennzeichen \"freie Menge\". Zusätzlich ist die Position  "
+          }
+        ]
+      },
+      {
+        "art": "tabelle",
+        "zeilen": [
+          {
+            "zellen": [
+              {
+                "spalten": 1,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": []
+                  }
+                ]
+              },
+              {
+                "spalten": 4,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": [
+                      {
+                        "art": "text",
+                        "text": "dem Leistungsbereich 012"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "zellen": [
+              {
+                "spalten": 1,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": []
+                  }
+                ]
+              },
+              {
+                "spalten": 3,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": [
+                      {
+                        "art": "text",
+                        "text": "der Kostengruppe 310"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "zellen": [
+              {
+                "spalten": 1,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": []
+                  }
+                ]
+              },
+              {
+                "spalten": 3,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": [
+                      {
+                        "art": "text",
+                        "text": "dem Gebäude H1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "zellen": [
+              {
+                "spalten": 1,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": []
+                  }
+                ]
+              },
+              {
+                "spalten": 4,
+                "inhalt": [
+                  {
+                    "art": "absatz",
+                    "inhalt": [
+                      {
+                        "art": "text",
+                        "text": "und dem Kostenträger Bund"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "zugeordnet. "
+          }
+        ]
+      }
+    ]
+  },
+  "textergaenzungBieter": {
+    "ordnungszahl": "2.1.1.9999",
+    "kurztext": "Position mit 3 TE Bieter",
+    "langtext": [
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Freie Position mit 3 Textergänzungen des Bieters"
+          }
+        ]
+      },
+      {
+        "art": "umbruch"
+      },
+      {
+        "art": "ergaenzung",
+        "herkunft": "bieter",
+        "kennung": "61",
+        "leer": true,
+        "davor": [
+          {
+            "art": "text",
+            "text": "Erzeugnis"
+          }
+        ],
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "'"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "....................................................'"
+          }
+        ],
+        "danach": [
+          {
+            "art": "text",
+            "text": "."
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Ansonsten sind noch folgende Angaben zu machen:"
+          }
+        ]
+      },
+      {
+        "art": "umbruch"
+      },
+      {
+        "art": "ergaenzung",
+        "herkunft": "bieter",
+        "kennung": "62",
+        "leer": true,
+        "davor": [
+          {
+            "art": "text",
+            "text": "Farbe"
+          }
+        ],
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "'"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "....................................................'"
+          }
+        ],
+        "danach": [
+          {
+            "art": "text",
+            "text": ","
+          }
+        ]
+      },
+      {
+        "art": "text",
+        "text": "und"
+      },
+      {
+        "art": "umbruch"
+      },
+      {
+        "art": "ergaenzung",
+        "herkunft": "bieter",
+        "kennung": "63",
+        "leer": true,
+        "davor": [
+          {
+            "art": "text",
+            "text": "Gewicht"
+          }
+        ],
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "'"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "....................................................'"
+          }
+        ],
+        "danach": [
+          {
+            "art": "text",
+            "text": "."
+          }
+        ]
+      }
+    ]
+  },
+  "leitbeschreibung": {
+    "ordnungszahl": "1.10.15.10",
+    "kurztext": "Trennwand bis 3,5 m 100 mm F 30",
+    "langtext": [
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Nichttragende innere Trennwand DIN 4103-1"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "als Montagewand, Einbaubereich 1,"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "Höhe bis 3,5 m,"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "Dicke 100 mm,"
+          }
+        ]
+      },
+      {
+        "art": "ergaenzung",
+        "herkunft": "ausschreibender",
+        "kennung": "22",
+        "leer": false,
+        "davor": [
+          {
+            "art": "text",
+            "text": "bewertetes Schalldämmaß DIN 4109 Rw,R in dB "
+          }
+        ],
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "'45'"
+          }
+        ],
+        "danach": [
+          {
+            "art": "text",
+            "text": ","
+          }
+        ]
+      },
+      {
+        "art": "absatz",
+        "inhalt": [
+          {
+            "art": "text",
+            "text": "Feuerwiderstandsklasse DIN 4102-2 F 30"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "- A,"
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "umlaufende Anschlüsse starr."
+          },
+          {
+            "art": "umbruch"
+          },
+          {
+            "art": "text",
+            "text": "Ausführung wie folgt:"
+          }
+        ]
+      }
+    ],
+    "leitbeschreibung": {
+      "unterbeschreibungen": [
+        {
+          "nummer": "1",
+          "kurztext": "Unterkonstruktion verz.Stahlblech",
+          "langtext": [
+            {
+              "art": "absatz",
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "Unterkonstruktion"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "aus verzinkten Stahlblechprofilen DIN 18182-1/"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "DIN 18183,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "als Einfachständerwerk."
+                }
+              ]
+            }
+          ],
+          "menge": "0.000",
+          "einheit": "----"
+        },
+        {
+          "nummer": "2",
+          "kurztext": "Dämmschicht mineralisch '40'",
+          "langtext": [
+            {
+              "art": "absatz",
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "Dämmschicht"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "aus mineralischem Faserdämmstoff DIN 18165-1"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "in Platten,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "einlagig, dicht stoßen,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "abrutschsicher verlegen,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "längenspezifischer Strömungswiderstand größer"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "5 kN x s/m4,"
+                }
+              ]
+            },
+            {
+              "art": "ergaenzung",
+              "herkunft": "ausschreibender",
+              "kennung": "51",
+              "leer": false,
+              "davor": [
+                {
+                  "art": "text",
+                  "text": "Mindestrohdichte in kg/m3 "
+                }
+              ],
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "'40'"
+                }
+              ],
+              "danach": [
+                {
+                  "art": "text",
+                  "text": ","
+                }
+              ]
+            },
+            {
+              "art": "absatz",
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "Schmelzpunkt mind. 1000 K,"
+                }
+              ]
+            },
+            {
+              "art": "ergaenzung",
+              "herkunft": "ausschreibender",
+              "kennung": "52",
+              "leer": false,
+              "davor": [
+                {
+                  "art": "text",
+                  "text": "Dicke in mm "
+                }
+              ],
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "'40'"
+                }
+              ],
+              "danach": [
+                {
+                  "art": "text",
+                  "text": "."
+                }
+              ]
+            }
+          ],
+          "menge": "0.000",
+          "einheit": "----"
+        },
+        {
+          "nummer": "3",
+          "kurztext": "Beplankung,beids. GKF 12,5 mm",
+          "langtext": [
+            {
+              "art": "absatz",
+              "inhalt": [
+                {
+                  "art": "text",
+                  "text": "Beplankung, beidseitig,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "Verarbeitung DIN 18181, einlagig,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "aus Gipskarton-Feuerschutzplatten GKF DIN 18180,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "Plattendicke 12,5 mm,"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "befestigen mit Schnellbauschrauben DIN 18182-2."
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "Fugen füllen, sichtbare Befestigungsmittel und Fugen"
+                },
+                {
+                  "art": "umbruch"
+                },
+                {
+                  "art": "text",
+                  "text": "spachteln."
+                }
+              ]
+            }
+          ],
+          "menge": "0.000",
+          "einheit": "----"
+        }
+      ]
+    }
+  }
+}

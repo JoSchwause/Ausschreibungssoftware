@@ -1,6 +1,6 @@
 # 30: Anpassung `kern` an v1.1a (füllt `summen.vorher`, Löschen, Hinweise, Maskenbefund am Befehl)
 
-Status: ready-for-agent
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase A) · Strang: K · Paket: `packages/kern`
 Blocked by: - (Punkt 9 braucht den Hinweiscode aus Ticket 29; diesen Punkt zuletzt, nach dem Merge von 29)
@@ -84,20 +84,20 @@ markierten Stellen ab. Jeder Befehl bleibt rein und deterministisch (A2); Fehler
 
 ## Acceptance criteria
 
-- [ ] Property-Test: Für zufällige Befehlsfolgen (wie `eigenschaften.test.ts`) stellt `lvChangeSetAnwenden(nach, changeSetUmkehren(cs))` den Vorzustand samt Summen exakt her, ohne dass die Umkehrung den Vorzustand kennt; `changeSetUmkehren(changeSetUmkehren(cs))` ist gleich `cs` (Listen ohne Reihenfolge verglichen)
-- [ ] Jedes vom Kern erzeugte `LvChangeSet` hat `summen.vorher` (Property-Test über alle Befehlsarten)
-- [ ] `LeistungsverzeichnisLoeschen`: Anwenden liefert `null`; die Umkehrung, auf `null` angewendet, ergibt das LV samt Summen
-- [ ] `inhalt.wurzelId ≠ id` → `ungueltige-eingabe`, `feld: 'inhalt.wurzelId'`
-- [ ] `GliederungAnlegen` mit OZ: übernommen, ungültige OZ abgewiesen wie bei `OrdnungszahlSetzen`
-- [ ] Tests für `oz-doppelt`, `oz-ueberlauf` und den Hinweis `oz-schritt-ausgewichen` (eine Gruppe mit so vielen Positionen, dass Schritt 10 nicht passt, Schritt 5 aber schon)
-- [ ] `losStufe: true`: Titel auf oberster Ebene abgewiesen; Lose und Titel nebeneinander auf oberster Ebene abgewiesen; ohne `losStufe` unverändert (bestehende Tests grün)
-- [ ] Hinweis `netto-nach-nachlass-negativ` bei `NachlassSetzen` mit Betrag über dem Netto; ChangeSet trotzdem geliefert
-- [ ] Hinweis `oz-maske-ungueltig` bei `LeistungsverzeichnisAnlegen` mit einer Maske, die `maskeFehler` beanstandet
-- [ ] `''` als Einheit landet als `null` (drei Befehle getestet); `''` auf `null` ergibt ein leeres ChangeSet
-- [ ] `projektBefehlAusfuehren`: vier Befehle mit Wirkung, Fehlern und Umkehrbarkeit getestet
-- [ ] `auftragsLvBefehlAusfuehren`: Anlegen mit den Fixture-Knoten von `typisch` ergibt die Summen der Fixture
-- [ ] Kein `// v1.1a: mechanisch angepasst`-Marker mehr in `packages/kern`
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
+- [x] Property-Test: Für zufällige Befehlsfolgen (wie `eigenschaften.test.ts`) stellt `lvChangeSetAnwenden(nach, changeSetUmkehren(cs))` den Vorzustand samt Summen exakt her, ohne dass die Umkehrung den Vorzustand kennt; `changeSetUmkehren(changeSetUmkehren(cs))` ist gleich `cs` (Listen ohne Reihenfolge verglichen)
+- [x] Jedes vom Kern erzeugte `LvChangeSet` hat `summen.vorher` (Property-Test über alle Befehlsarten)
+- [x] `LeistungsverzeichnisLoeschen`: Anwenden liefert `null`; die Umkehrung, auf `null` angewendet, ergibt das LV samt Summen
+- [x] `inhalt.wurzelId ≠ id` → `ungueltige-eingabe`, `feld: 'inhalt.wurzelId'`
+- [x] `GliederungAnlegen` mit OZ: übernommen, ungültige OZ abgewiesen wie bei `OrdnungszahlSetzen`
+- [x] Tests für `oz-doppelt`, `oz-ueberlauf` und den Hinweis `oz-schritt-ausgewichen` (eine Gruppe mit so vielen Positionen, dass Schritt 10 nicht passt, Schritt 5 aber schon)
+- [x] `losStufe: true`: Titel auf oberster Ebene abgewiesen; Lose und Titel nebeneinander auf oberster Ebene abgewiesen; ohne `losStufe` unverändert (bestehende Tests grün)
+- [x] Hinweis `netto-nach-nachlass-negativ` bei `NachlassSetzen` mit Betrag über dem Netto; ChangeSet trotzdem geliefert
+- [x] Hinweis `oz-maske-ungueltig` bei `LeistungsverzeichnisAnlegen` mit einer Maske, die `maskeFehler` beanstandet
+- [x] `''` als Einheit landet als `null` (drei Befehle getestet); `''` auf `null` ergibt ein leeres ChangeSet
+- [x] `projektBefehlAusfuehren`: vier Befehle mit Wirkung, Fehlern und Umkehrbarkeit getestet
+- [x] `auftragsLvBefehlAusfuehren`: Anlegen mit den Fixture-Knoten von `typisch` ergibt die Summen der Fixture
+- [x] Kein `// v1.1a: mechanisch angepasst`-Marker mehr in `packages/kern`
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -106,3 +106,45 @@ Kopieren, Papierkorb, `LvStandAnlegen` (Ticket 42). Angebotsbefehle (Ticket 36, 
 zur Pflicht machen (späteres Vertragsticket, sobald dieses Ticket gemergt ist).
 
 ## Comments
+
+### Ergebnis (Branch `ticket/30-kern-v1.1a`)
+
+Alle 13 Punkte umgesetzt, nichts abgegeben (auch Punkt 12 und `losStufe`). Neue Dateien in `packages/kern/src`:
+`hinweise.ts` (Konstruktor, `nettoHinweise`, `anlegeHinweise`, `HINWEIS_ANNAHMEN`), `einheit.ts` (`''` → `null`),
+`projekt-befehle.ts`, `auftrags-lv.ts`; Tests `lv-aggregat`, `hinweise`, `los-stufe`, `projekt-befehle`, `auftrags-lv`.
+`summen.vorher` entsteht zentral in `baueChangeSet` (`summenVorher` in `summen.ts`); `LEERE_SUMMENAENDERUNG` trägt ein
+leeres `vorher`. Das Lösch-ChangeSet hat genau die Form, die `speicher` seit D-31.2 verlangt.
+
+Außerhalb von `kern` nur mechanisch (Rückgabetyp `LvZustand | null` von `lvChangeSetAnwenden`):
+`packages/vergabe/src/testhilfen.ts` und `packages/ausgabe/src/testhilfen.ts` (je drei Zeilen, markiert „Ticket 30“).
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- Umkehrung und `hinweise`: Die Umkehrung trägt keine Hinweise; der Vergleich der doppelten Umkehrung (`ohneReihenfolge`
+  in `testhilfen.ts`) lässt sie und die Reihenfolge der Summenlisten weg. Grund: Hinweise sind flüchtig und gehören zur
+  Antwort auf den Befehl (Vertrag `Befehlshinweis`).
+- ChangeSet ohne `summen.vorher` umkehren: wirft (Programmfehler), statt still falsche Summen zu liefern (Q5).
+- `changeSetUmkehren` vertauscht `papierkorb` und `lvStand` schon mit (generisch, keine Logik); Anwenden davon bleibt
+  Ticket 42. Grund: sonst fiele beides bei der Umkehrung still weg.
+- `LeistungsverzeichnisLoeschen` legt einen vorhandenen Papierkorb unter `papierkorb.entfernt` (Vertragskommentar v1.2).
+- `LeistungsverzeichnisAnlegen` übernimmt `wurzelId` nicht mehr in den Kopf (bisher landete das Feld per Spread im
+  `LvKopf`, den der Vertrag ohne `wurzelId` beschreibt). Grund: `speicher` vergleicht den Kopf beim Löschen exakt.
+- Hinweis `netto-nach-nachlass-negativ`: `feld: 'nachlass'`, ohne `knotenId`; bei jedem ChangeSet mit gesetztem,
+  negativem `summen.gesamt` (vorläufige Annahme des Tickets, in `HINWEIS_ANNAHMEN`), auch bei `LeistungsverzeichnisAnlegen`
+  und `AuftragsLeistungsverzeichnisAnlegen`.
+- Hinweis `oz-schritt-ausgewichen`: auch dann, wenn sich keine OZ ändert (erneutes Umnummerieren); Grund: der Befund
+  „die Gruppe läuft mit Schritt 5“ gilt weiter.
+- `GliederungAnlegen.ordnungszahl`: geprüft über die neue gemeinsame Funktion `handOzFehler` (`oz-befehle.ts`), die auch
+  `OrdnungszahlSetzen` nutzt; gleicher Code und gleiche Meldung.
+- F1 „Lose und Titel nicht nebeneinander“ (`obersteEbeneFehler`, `regeln.ts`): geprüft nur, wenn ein Knoten neu auf die
+  oberste Ebene kommt (`GliederungAnlegen`, `KnotenVerschieben` von anderswo); Umordnen auf der obersten Ebene und
+  `LeistungsverzeichnisAnlegen` (Import, U5) prüfen es nicht; das meldet die LV-Prüfung (Ticket 41).
+- `OzMaskeSetzen` mit `losStufe: true` und einem Titel auf der obersten Ebene: `knotenart-unzulaessig` am ersten Titel.
+  Dabei gefunden und behoben: `maskenGleich` verglich `losStufe` nicht (fehlt = `false`).
+- `ProjektStammdatenSetzen` mit denselben Werten: `vorher` gleich `nachher` (der Vertrag kennt kein leeres
+  Projekt-ChangeSet). Zusätzlich exportiert: `projektChangeSetAnwenden` (wirft, wenn `vorher` nicht zum Zustand passt)
+  und `projektChangeSetUmkehren`.
+- `AuftragsLeistungsverzeichnisAnlegen`: dieselben Prüfungen und Hinweise wie `LeistungsverzeichnisAnlegen`, `''` → `null`.
+  `summenBerechnen` nimmt dafür eine beliebige Wurzelkennung (`id: string`).
+- Offen für ein Folgeticket `kern`/Vertrag: `KnotenEinfuegen` (Ticket 42) soll `positionMitEinheiten` aus `einheit.ts`
+  nutzen; `Summenaenderung.vorher` kann jetzt Pflicht werden (Vertragsticket).
