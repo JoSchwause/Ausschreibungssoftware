@@ -28,17 +28,20 @@ import type {
 
 /** Marke eines Textknotens im Editor-Dokument. */
 export interface DokumentMarke {
-  readonly type: string;
-  readonly attrs?: Readonly<Record<string, unknown>>;
+  type: string;
+  attrs?: Record<string, unknown>;
 }
 
-/** Knoten des Editor-Dokuments (JSON wie `editor.getJSON()` / `Node.toJSON()`). */
+/**
+ * Knoten des Editor-Dokuments (JSON wie `editor.getJSON()` / `Node.toJSON()`). Veränderliche Felder, damit der Typ
+ * zu TipTaps `JSONContent` passt; die Abbildung verändert keinen Knoten.
+ */
 export interface DokumentKnoten {
-  readonly type?: string;
-  readonly attrs?: Readonly<Record<string, unknown>>;
-  readonly content?: readonly DokumentKnoten[];
-  readonly marks?: readonly DokumentMarke[];
-  readonly text?: string;
+  type?: string;
+  attrs?: Record<string, unknown> | undefined;
+  content?: DokumentKnoten[];
+  marks?: DokumentMarke[];
+  text?: string;
 }
 
 /** Knotennamen des Schemas (siehe `schema.ts`). */
@@ -337,4 +340,27 @@ function ergaenzungAus(k: DokumentKnoten): Textergaenzung {
     inhalt: a['inhalt'] as Textfluss,
     danach: a['danach'] as Textfluss,
   };
+}
+
+// --- Vergleich -------------------------------------------------------------------------------------
+
+/** Tiefer Vergleich zweier Langtexte (Reihenfolge der Schlüssel egal), z. B. ob der Editor etwas geändert hat. */
+export function langtextGleich(a: Langtext, b: Langtext): boolean {
+  return tiefGleich(a, b);
+}
+
+function tiefGleich(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((x, i) => tiefGleich(x, b[i]));
+  }
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every(
+    (k) =>
+      Object.hasOwn(b, k) && tiefGleich((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+  );
 }
