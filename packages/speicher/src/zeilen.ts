@@ -108,22 +108,6 @@ export const KNOTEN_SPALTEN = [
 // Sie werden abgewiesen statt still verworfen (Q5), bis das Folgeticket `speicher` sie aufnimmt. Der Kern setzt sie
 // heute nie, kein Paket erzeugt sie.
 
-/**
- * // v1.1b: mechanisch angepasst, Folgeticket. Die Datenbank legt den Langtext als JSON ab, die Projektdatei-Prüfung kennt aber nur `text` ohne
- * Auszeichnung und `bild`. Wer neue Bausteine (Auszeichnung, Absatz, Liste, Tabelle, Textergänzung) schreibt, könnte
- * das Projekt speichern, aber nicht aus seinem eigenen Export wiederherstellen; darum wird hier abgewiesen.
- */
-export function pruefeLangtext(knotenId: string, lt: Langtext): void {
-  const alt = lt.every((b) =>
-    b.art === 'bild' ? true : b.art === 'text' && Object.keys(b).every((k) => k === 'art' || k === 'text'),
-  );
-  if (!alt)
-    abbruch(
-      'unbekannt',
-      `Knoten ${knotenId}: Langtext mit Auszeichnung, Absatz, Liste, Tabelle oder Textergänzung lässt sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
-    );
-}
-
 export function pruefeKopfdaten(k: {
   id: string;
   auftraggeber?: unknown;
@@ -154,8 +138,8 @@ export function pruefeSummenfelder(
 
 // // v1.1b: mechanisch angepasst, Folgeticket: Die Tabelle `knoten` hat noch die Spalten vor v1.1b (eine Positionsart, ein Bezug, eine Grundposition).
 // Eine Position, die sich darin nicht verlustfrei ablegen lässt, wird abgewiesen (Q5: nie still verwerfen), bis das
-// Folgeticket `speicher` Spalten oder JSON für Merkmale, Zuschlag, Leitbeschreibung und die neuen Langtext-Bausteine
-// einführt (Migration, A8). Heute erzeugt kein Paket solche Positionen.
+// Folgeticket `speicher` (Ticket 38) Spalten oder JSON für Merkmale, Zuschlag und Leitbeschreibung einführt
+// (Migration, A8). Der Langtext liegt schon vollständig als JSON in `text_json` (v1.1b, Ticket 31).
 export function altSpalten(k: Position): [string, number, number, PositionId | null, PositionId | null] {
   const m = k.merkmale;
   const arten = [k.zuschlag !== null, m.wahl !== null, m.bedarf !== null, m.stundenlohn].filter(
@@ -264,7 +248,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
-        (pruefeLangtext(k.id, k.text), JSON.stringify(k.text)),
+        JSON.stringify(k.text),
         null,
         null,
         null,
@@ -277,7 +261,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ozIndex,
         k.kurztext,
         ...altSpalten(k),
-        (pruefeLangtext(k.id, k.langtext), JSON.stringify(k.langtext)),
+        JSON.stringify(k.langtext),
         k.menge,
         k.einheit,
         k.einheitspreis,

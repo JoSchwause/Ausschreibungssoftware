@@ -198,7 +198,7 @@ export function leseAngebot(db: Datenbank, id: AngebotId): AngebotZustand | null
   return { angebot, summen };
 }
 
-// --- Auftrags-LV (nur über Projektdatei, siehe Ticket) ----------------------------------------------------------
+// --- Auftrags-LV (gelesen nur über die Projektdatei: der Vertrag hat kein Repository dafür, Offene Typfrage D) ------
 
 export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichnisId): AuftragsLvKopf | null {
   const z = db.zeilen('SELECT * FROM auftrags_lv WHERE id = ?', [id])[0];
@@ -223,7 +223,7 @@ export function leseAuftragsLv(db: Datenbank, id: AuftragsLeistungsverzeichnisId
     return abbruch('datei-ungueltig', `Auftrags-LV ${id}: Es fehlen die gespeicherten Gesamtsummen.`);
   }
   const lv: AuftragsLeistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
-  return { auftragsLeistungsverzeichnis: lv, summen };
+  return { auftragsLeistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------
