@@ -519,7 +519,8 @@ describe('v1.1a Punkt 7: Ränder des Grids', () => {
     expectTypeOf<GridZahlen['parseMenge']>().returns.toEqualTypeOf<Ergebnis<Menge, string>>();
     expectTypeOf<GridZahlen['parseEinheitspreis']>().returns.toEqualTypeOf<Ergebnis<Einheitspreis, string>>();
     expectTypeOf<GridZahlen['formatBetrag']>().parameter(0).toEqualTypeOf<Betrag>();
-    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position'>>();
+    // v1.2 (D-10 (4)): das Grid legt auch Papierkorbeinträge an (`KnotenInPapierkorbLegen`, Ticket 46).
+    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position' | 'papierkorbEintrag'>>();
     expectTypeOf<IdQuelle>().toExtend<GridIdQuelle>();
   });
 });
@@ -701,9 +702,9 @@ describe('v1.2 Nr. 6: Kennungen', () => {
 
 describe('v1.2 Nr. 8: Kopfdaten bearbeiten', () => {
   it('je ein Befehl mit dem ganzen neuen Wert, null entfernt', () => {
-    expectTypeOf<
-      'AuftraggeberSetzen' | 'VergabeinformationenSetzen' | 'LeitbeschreibungSetzen'
-    >().toExtend<LvBefehl['art']>();
+    expectTypeOf<'AuftraggeberSetzen' | 'VergabeinformationenSetzen' | 'LeitbeschreibungSetzen'>().toExtend<
+      LvBefehl['art']
+    >();
     expectTypeOf<AuftraggeberSetzen['auftraggeber']>().toEqualTypeOf<Auftraggeber | null>();
     expectTypeOf<
       VergabeinformationenSetzen['vergabeinformationen']

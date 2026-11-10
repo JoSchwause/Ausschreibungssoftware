@@ -197,6 +197,10 @@ function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): v
 
 export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
   const id = cs.leistungsverzeichnisId;
+  // v1.2: mechanisch angepasst, Folgeticket (Papierkorb und LV-Stand ablegen: Ticket 43; laut abweisen, Q5)
+  if (cs.papierkorb !== undefined || cs.lvStand !== undefined) {
+    return abbruch('unbekannt', 'Papierkorb und LV-Stand legt speicher noch nicht ab (Ticket 43).');
+  }
   const gespeichert = leseLvKopf(db, id);
   if (cs.kopf === null) {
     if (gespeichert === null)
@@ -266,6 +270,11 @@ function pruefeAngebotsposition(db: Datenbank, lvId: string, positionId: string)
 
 export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: ProjektId): void {
   const id = cs.angebotId;
+  // v1.2: mechanisch angepasst, Folgeticket (Zuschlagssatz des Bieters ablegen: Ticket 38; laut abweisen, Q5)
+  const neueZeilen = [...cs.positionen.hinzugefuegt, ...cs.positionen.geaendert.map((g) => g.nachher)];
+  if (neueZeilen.some((z) => z.status === 'angeboten' && z.zuschlagssatz !== undefined)) {
+    return abbruch('unbekannt', 'Den Zuschlagssatz des Bieters legt speicher noch nicht ab (Ticket 38).');
+  }
   const gespeichert = leseAngebotKopf(db, id);
   let lvId: string;
   if (cs.kopf === null) {

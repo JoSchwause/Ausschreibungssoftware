@@ -519,6 +519,19 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   LeistungsverzeichnisLoeschen: true,
   AngebotLoeschen: true,
   AuftragsLeistungsverzeichnisAnlegen: true,
+  // v1.2: mechanisch angepasst, Folgeticket (speicher: Papierkorb, LV-Stände und Undo umsetzen, Ticket 43)
+  KnotenEinfuegen: true,
+  KnotenlisteVerschieben: true,
+  KnotenInPapierkorbLegen: true,
+  PapierkorbEintragWiederherstellen: true,
+  PapierkorbEintragEntfernen: true,
+  PapierkorbLeeren: true,
+  LvStandAnlegen: true,
+  AuftraggeberSetzen: true,
+  VergabeinformationenSetzen: true,
+  LeitbeschreibungSetzen: true,
+  Rueckgaengig: true,
+  Wiederholen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {
