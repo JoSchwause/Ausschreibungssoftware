@@ -126,3 +126,10 @@ Question: Ist v1.2 stabil genug, damit 30–32 und Phase B darauf bauen (statt P
 Decision: Ja. Opus-Reviewer: „yes-with-fixes“, vier Pflichtpunkte und fünf weitere; alle neun umgesetzt (D-12), Suite grün (938 Tests). Den Berater nicht gefragt, weil der Review keine offene Abwägung übrig ließ.
 Reason: Alle Befunde waren eindeutig lösbar; die Lösungen sind enge, umkehrbare Lesarten.
 Reversible: yes  Touches: packages/vertrag
+
+## D-32.1 GAEB-Leser auf v1.1a/v1.1b: offene Lesarten
+Welle 3 · Ticket 32 · decided by: implementer
+Question: Was Ticket 32 offen lässt (Überlauf-Codes, Grundausführung, Zuschlagsformen, Langtext-Kanon, Reste, Kopfdaten-Formate).
+Decision: Überlauf-Codes des Lesers bleiben (andere Lage als der Befehlsfehler `oz-ueberlauf`). Variante 0 trägt `wahl` mit `grundpositionId: null`. Zuschlag: alle drei Bezugsformen, `teilmenge` immer `null` (keine Datei zeigt sie), `Markup` → Satz. Langtext: lose `span`/`br` bleiben lose, leere `p` bleiben leere Absätze, Läufe gleicher Auszeichnung verschmelzen, Zeilenwechsel im Dateitext → Leerzeichen; `formatierung-verworfen` meldet zusätzlich Durchgestrichen, Hoch-/Tiefstellung, Rahmen, Einzug, Listenstil. Neue Befunde `ergaenzung-nicht-oben`, `ergaenzung-ungueltig`, `wert-ungueltig`, `leitbeschreibung-ohne-kennzeichen`, `unterbeschreibung-ohne-nummer`. Einzelheiten: Ticket 32, Comments.
+Reason: Kein stiller Verlust (Q5), nichts erfunden (C4), Form passend zum Editor-Kanon (Ticket 34) für den Rundweg G2.
+Reversible: yes  Touches: packages/gaeb
