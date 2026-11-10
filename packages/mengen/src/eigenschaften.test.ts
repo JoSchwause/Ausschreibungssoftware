@@ -113,7 +113,12 @@ describe('Eigenschaft: ganze Zahlen mit +, -, * wie über bigint gerechnet', () 
 });
 
 describe('Eigenschaft: beliebiger Text wirft nie', () => {
-  const zeichen = fc.constantFrom(...'0123456789,.+-*/:()Zza_ä#\t ', '×', '÷', '−', ' ', '\u{1f600}');
+  // Zeichen der Sprache, Ersatzzeichen (×, ÷, −), geschütztes Leerzeichen, ein Emoji und Störzeichen.
+  const zeichen = fc.constantFrom(
+    ...Array.from({ length: 10 }, (_, n) => String(n)),
+    ...[',', '.', '+', '-', '*', '/', ':', '(', ')', 'Z', 'z', 'a', '_', 'ä', '#', '\t', ' '],
+    ...[0xd7, 0xf7, 0x2212, 0xa0, 0x1f600].map((c) => String.fromCodePoint(c)),
+  );
   const texte = fc.oneof(
     fc.string({ unit: zeichen, maxLength: 1000 }),
     fc.string({ unit: 'grapheme', maxLength: 1000 }),
