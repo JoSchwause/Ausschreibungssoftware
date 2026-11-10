@@ -145,3 +145,6 @@ Stand 2026-11-09:
 9. ✅ **Welle 2 gestartet (2026-11-10)**: Tickets 24–28 geschnitten (`issues/README.md`, Abschnitt „Tickets Welle 2“),
    Ticket 18 um E-20 ergänzt. ⏳ **Offen:** Prüfung von v1.1a (24) und v1.1b (26) durch den Nutzer; die Folgetickets
    werden geschnitten, sobald ihre Blocker gemergt sind.
+10. ✅ **Welle 2, Stufe 1 (2026-11-10)**: Tickets 25, 27, 28 gemergt (PR #3, #5, #6), Prototyp (18) auf Branch
+    `proto/interview`. ⏳ **Offen:** Prüfung von v1.1a (PR #4) und v1.1b (PR #7) durch den Nutzer; Entscheidungen
+    W-01 bis W-06 in `.scratch/ava-oss/next-decisions-welle-2.md`. Danach Stufe 2 und 3 (Schnitt dort, Abschnitt C).

@@ -1,6 +1,6 @@
 # 24: `vertrag` v1.1a „Lücken“ (**Mensch prüft vor Merge**)
 
-Status: ready-for-agent
+Status: ready-for-human (umgesetzt, PR #4; wartet auf die Prüfung des Nutzers, P9)
 Type: task
 Welle: 2 · Strang: F · Paket: `packages/vertrag`
 Blocked by: -
