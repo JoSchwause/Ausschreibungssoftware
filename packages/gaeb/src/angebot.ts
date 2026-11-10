@@ -244,8 +244,8 @@ class Angebotsaufbau {
             'bieterergaenzung-nicht-abgebildet',
             e,
             (n) =>
-              `${String(n)} ${n === 1 ? 'Textergänzung' : 'Textergänzungen'} des Bieters (TextComplement Kind="Bidder") ` +
-              'werden nicht übernommen; das Angebot hat dafür kein Feld.',
+              `${String(n)} ${n === 1 ? 'Textergänzung' : 'Textergänzungen'} des Bieters (TextComplement Kind="Bidder") ${n === 1 ? 'wird' : 'werden'} ` +
+              'nicht übernommen; das Angebot hat dafür kein Feld.',
           );
         continue;
       }
@@ -382,7 +382,8 @@ class Angebotsaufbau {
     // Eine Position, die nicht in die Summe eingeht (Alternative, Bedarf ohne Gesamtbetrag), trägt in der Datei
     // `IT` 0.00 (BVBS Bauausführung, 001.002.0050); das ist kein abweichender Gesamtpreis (D-45.1).
     const wahl = p.merkmale.wahl;
-    const alternative = wahl !== null && (wahl.variante === null ? wahl.grundpositionId !== null : wahl.variante > 0);
+    const alternative =
+      wahl !== null && (wahl.variante === null ? wahl.grundpositionId !== null : wahl.variante > 0);
     const ohneSumme = alternative || p.merkmale.bedarf === 'ohne-gesamtbetrag';
     if (ohneSumme && vergleiche(it, '0.00' as typeof it) === 0) return;
     const soll = gesamtpreis(p.menge, ep);
@@ -397,12 +398,14 @@ class Angebotsaufbau {
   }
 
   abschliessen(): void {
-    if (this.epaOhneZuordnung > 0)
+    const n = this.epaOhneZuordnung;
+    if (n > 0)
       this.l.melde(
         'warnung',
         'epa-nicht-abgebildet',
-        `${String(this.epaOhneZuordnung)} Werte der Einheitspreisanteile (UPComp) lassen sich keinem Anteil zuordnen ` +
-          `(${[...this.epaGruende].sort().join('; ')}) und werden nicht übernommen; der Einheitspreis bleibt.`,
+        `${n === 1 ? '1 Wert' : `${String(n)} Werte`} der Einheitspreisanteile (UPComp) ${n === 1 ? 'lässt' : 'lassen'} ` +
+          `sich keinem Anteil zuordnen (${[...this.epaGruende].sort().join('; ')}) und ${n === 1 ? 'wird' : 'werden'} ` +
+          'nicht übernommen; der Einheitspreis bleibt.',
         this.epaErst ?? undefined,
       );
   }
@@ -469,7 +472,12 @@ function leseBieter(l: Leser, award: XmlElement): { readonly name: string } | nu
     .filter((n) => n !== '')
     .join(' ');
   if (name !== '') return { name };
-  l.melde('warnung', 'bieter-name-fehlt', 'Die Angebotsdatei nennt keinen Bieternamen (CTR/Address/Name1…4).', ctr ?? award);
+  l.melde(
+    'warnung',
+    'bieter-name-fehlt',
+    'Die Angebotsdatei nennt keinen Bieternamen (CTR/Address/Name1…4).',
+    ctr ?? award,
+  );
   return null;
 }
 
@@ -480,7 +488,8 @@ function leseBieter(l: Leser, award: XmlElement): { readonly name: string } | nu
  */
 export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOptionen): AngebotLesung {
   const v = vorlauf(eingabe, opt, null);
-  if (!v.bereit) return { befehl: null, bieter: null, phase: v.phase, version: v.version, befunde: v.befunde };
+  if (!v.bereit)
+    return { befehl: null, bieter: null, phase: v.phase, version: v.version, befunde: v.befunde };
   const l = v.leser;
   const ergebnis = (befehl: AngebotAnlegen | null, bieter: AngebotLesung['bieter']): AngebotLesung => ({
     befehl,
@@ -501,7 +510,12 @@ export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOption
   const award = kind(v.wurzel, 'Award');
   const boq = kind(award, 'BoQ');
   if (!award || !boq) {
-    l.melde('fehler', 'lv-fehlt', 'Die Datei enthält kein Leistungsverzeichnis (Award/BoQ).', award ?? v.wurzel);
+    l.melde(
+      'fehler',
+      'lv-fehlt',
+      'Die Datei enthält kein Leistungsverzeichnis (Award/BoQ).',
+      award ?? v.wurzel,
+    );
     return ergebnis(null, null);
   }
   for (const k of elementKinder(award))
@@ -513,7 +527,14 @@ export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOption
   if (boqInfo)
     l.restMelden(
       boqInfo,
-      new Set(['Name', 'LblBoQ', 'BoQBkdn', 'Totals', 'NoUPComps', ...ANTEILE.map((a) => a.replace('UPComp', 'LblUPComp'))]),
+      new Set([
+        'Name',
+        'LblBoQ',
+        'BoQBkdn',
+        'Totals',
+        'NoUPComps',
+        ...ANTEILE.map((a) => a.replace('UPComp', 'LblUPComp')),
+      ]),
       'BoQInfo',
     );
   const { maske } = leseMaske(l, boqInfo, lv.ozMaske.trennzeichen);

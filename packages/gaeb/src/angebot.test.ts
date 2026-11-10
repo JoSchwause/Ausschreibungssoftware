@@ -49,7 +49,12 @@ const codes = (l: { befunde: readonly Pruefbefund[] }): string[] => l.befunde.ma
 const mitCode = (l: AngebotLesung, code: string): Pruefbefund[] => l.befunde.filter((b) => b.code === code);
 
 /** Angebotsposition zur OZ (mit Index ohne Trenner dahinter, wie `Position.ozIndex`). */
-function zeile(l: AngebotLesung, lv: Leistungsverzeichnis, oz: string, index: string | null = null): Angebotsposition {
+function zeile(
+  l: AngebotLesung,
+  lv: Leistungsverzeichnis,
+  oz: string,
+  index: string | null = null,
+): Angebotsposition {
   const p = lv.knoten.find(
     (k): k is Position => k.art === 'position' && k.ordnungszahl === oz && k.ozIndex === index,
   );
@@ -62,7 +67,9 @@ function zeile(l: AngebotLesung, lv: Leistungsverzeichnis, oz: string, index: st
 /** OZ des Knotens, an dem ein Befund hängt. */
 function ozVon(lv: Leistungsverzeichnis, b: Pruefbefund): string | null {
   const k = lv.knoten.find((x) => x.id === b.ort.knotenId);
-  return k && k.art !== 'hinweis' ? `${k.ordnungszahl ?? ''}${k.art === 'position' ? (k.ozIndex ?? '') : ''}` : null;
+  return k && k.art !== 'hinweis'
+    ? `${k.ordnungszahl ?? ''}${k.art === 'position' ? (k.ozIndex ?? '') : ''}`
+    : null;
 }
 
 // --- Golden ----------------------------------------------------------------------------------------------
@@ -129,7 +136,11 @@ describe('BVBS AVA X84 gegen das LV aus der X81', () => {
     const mitSatz = ps.filter((p) => p.status === 'angeboten' && p.zuschlagssatz !== undefined);
     expect(mitSatz).toHaveLength(6);
     for (const oz of ['1.30.10.40', '1.30.20.40', '1.30.20.50', '1.30.20.70', '1.30.30.30', '1.30.30.40'])
-      expect(zeile(l, lv, oz)).toMatchObject({ status: 'angeboten', zuschlagssatz: '10.00', einheitspreis: '0.000' });
+      expect(zeile(l, lv, oz)).toMatchObject({
+        status: 'angeboten',
+        zuschlagssatz: '10.00',
+        einheitspreis: '0.000',
+      });
     expect(codes(l)).not.toContain('position-unbekannt');
     expect(codes(l)).not.toContain('position-fehlt-im-angebot');
     expect(codes(l)).not.toContain('maske-abweichend');
@@ -157,7 +168,14 @@ describe('BVBS AVA X84 gegen das LV aus der X81', () => {
   it('nachlass-nicht-abgebildet an 1.10.10.60, 1.30.10.30 und den Gliederungen 1.10.10, 1.10.15, 1.10.20, 1.10', () => {
     const b = mitCode(l, 'nachlass-nicht-abgebildet');
     expect(b.every((x) => x.schwere === 'fehler')).toBe(true);
-    expect(b.map((x) => ozVon(lv, x))).toEqual(['1.10.10.60', '1.10.10', '1.10.15', '1.10.20', '1.10', '1.30.10.30']);
+    expect(b.map((x) => ozVon(lv, x))).toEqual([
+      '1.10.10.60',
+      '1.10.10',
+      '1.10.15',
+      '1.10.20',
+      '1.10',
+      '1.30.10.30',
+    ]);
     expect(b[1]?.meldung).toContain('10.00 %');
     expect(b[3]?.meldung).toContain('-5.00 %');
     expect(b[4]?.meldung).toContain('10000.00');
@@ -241,5 +259,226 @@ describe('was leseAngebot nicht liest', () => {
     expect(l.befehl).toBeNull();
     expect(l.phase).toBe('X81');
     expect(mitCode(l, 'phase-nicht-unterstuetzt')[0]?.schwere).toBe('fehler');
+  });
+});
+
+// --- Selbst verfasste Fehlerdateien (testdaten/x84) ------------------------------------------------------------
+
+describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
+  const lv = lvAus(leseTestdatei('x84/lv.x83'));
+  const l = lies(leseTestdatei('x84/fehler.x84'), lv, 'fehler.x84');
+  const an = (oz: string): string[] => l.befunde.filter((b) => ozVon(lv, b) === oz).map((b) => b.code);
+
+  it('eine Angebotsposition je Position des LV, in LV-Reihenfolge', () => {
+    const ids = lv.knoten.filter((k) => k.art === 'position').map((k) => k.id);
+    expect(l.befehl?.angebot.positionen.map((p) => p.positionId)).toEqual(ids);
+  });
+
+  it('„nicht angeboten“ (UP fehlt) und „angeboten 0,000“ sind verschieden', () => {
+    expect(zeile(l, lv, '01.0020')).toMatchObject({ status: 'angeboten', einheitspreis: '0.000' });
+    const z = zeile(l, lv, '01.0030');
+    expect(z).toEqual({ positionId: z.positionId, status: 'nicht-angeboten' });
+    expect(an('01.0030')).toEqual([]);
+  });
+
+  it('OZ der Datei nicht im LV: Fehler position-unbekannt, die Zeile entfällt', () => {
+    const b = mitCode(l, 'position-unbekannt');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.schwere).toBe('fehler');
+    expect(b[0]?.meldung).toContain('99.0010');
+  });
+
+  it('Position des LV ohne Zeile: nicht angeboten mit Warnung position-fehlt-im-angebot', () => {
+    expect(zeile(l, lv, '02.0030').status).toBe('nicht-angeboten');
+    expect(an('02.0030')).toEqual(['position-fehlt-im-angebot']);
+    expect(mitCode(l, 'position-fehlt-im-angebot')).toHaveLength(1);
+  });
+
+  it('Zuschlagsposition mit Markup: Satz und Platzhalter-EP 0,000', () => {
+    const z = zeile(l, lv, '01.0040');
+    expect(z).toEqual({
+      positionId: z.positionId,
+      status: 'angeboten',
+      einheitspreis: '0.000',
+      epa: null,
+      zuschlagssatz: '7.50',
+    });
+  });
+
+  it('MarkupItem ohne Markup: nicht angeboten', () => {
+    expect(zeile(l, lv, '02.0060').status).toBe('nicht-angeboten');
+    expect(an('02.0060')).toEqual([]);
+  });
+
+  it('Satz an einer Normalposition und EP an einer Zuschlagsposition: Fehler zuschlag-art-abweichend', () => {
+    expect(an('02.0050')).toEqual(['zuschlag-art-abweichend']);
+    expect(an('02.0040')).toEqual(['zuschlag-art-abweichend']);
+    expect(zeile(l, lv, '02.0050').status).toBe('nicht-angeboten');
+    expect(zeile(l, lv, '02.0040').status).toBe('nicht-angeboten');
+    expect(mitCode(l, 'zuschlag-art-abweichend').every((b) => b.schwere === 'fehler')).toBe(true);
+    expect(
+      mitCode(l, 'zuschlag-art-abweichend')
+        .map((b) => b.meldung)
+        .join(' '),
+    ).toMatch(/3\.000.*5\.00/);
+  });
+
+  it('EP mit mehr als 3 Stellen: gerundet als Fehler, Wert 20,123', () => {
+    expect(zeile(l, lv, '02.0010')).toMatchObject({ status: 'angeboten', einheitspreis: '20.123' });
+    expect(an('02.0010')).toEqual(['gerundet']);
+  });
+
+  it('EPA über LblUPComp: Bezeichnung vor Typ, Nachunternehmer unter Miscellaneous, ein freier Anteil', () => {
+    expect(zeile(l, lv, '01.0010')).toMatchObject({
+      status: 'angeboten',
+      einheitspreis: '12.500',
+      epa: {
+        lohn: '5.000',
+        stoffe: '4.000',
+        geraete: '1.000',
+        nachunternehmer: '1.500',
+        sonstiges: null,
+        frei: '0.500',
+        freiBezeichnung: 'Wagnis',
+      },
+    });
+    const abw = mitCode(l, 'epa-beschriftung-abweichend');
+    expect(abw).toHaveLength(1);
+    expect(abw[0]?.meldung).toContain('LblUPComp3');
+    const nicht = mitCode(l, 'epa-nicht-abgebildet');
+    expect(nicht).toHaveLength(1);
+    expect(nicht[0]?.meldung).toContain('Gewinn');
+  });
+
+  it('Positionsnachlass und Nachlass einer Gliederung: Fehler nachlass-nicht-abgebildet; Preis ohne Nachlass', () => {
+    expect(an('02.0020')).toEqual(['nachlass-nicht-abgebildet', 'gp-abweichend']);
+    expect(an('02')).toEqual(['nachlass-nicht-abgebildet']);
+    expect(zeile(l, lv, '02.0020')).toMatchObject({ einheitspreis: '100.000' });
+  });
+
+  it('gp-abweichend nennt beide Werte', () => {
+    const b = mitCode(l, 'gp-abweichend');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toContain('95.00');
+    expect(b[0]?.meldung).toContain('100.00');
+  });
+
+  it('Nachlass in den Totals des LV wird Angebot.nachlass', () => {
+    expect(l.befehl?.angebot.nachlass).toEqual({ art: 'prozent', wert: '3.00' });
+  });
+
+  it('Bieterergänzung mit Inhalt: Warnung bieterergaenzung-nicht-abgebildet', () => {
+    expect(mitCode(l, 'bieterergaenzung-nicht-abgebildet')).toHaveLength(1);
+  });
+
+  it('Bietername aus Name1 und Name2', () => {
+    expect(l.bieter).toEqual({ name: 'Muster Bau GmbH' });
+  });
+
+  it('Golden', () => {
+    vergleicheGolden('angebot-fehler-x84', 'fehler.x84', l);
+  });
+});
+
+describe('Fehlerdatei maske-abweichend-3.2.x84 (GAEB 3.2)', () => {
+  const lv = lvAus(leseTestdatei('x84/lv.x83'));
+  const l = lies(leseTestdatei('x84/maske-abweichend-3.2.x84'), lv);
+
+  it('liest 3.2; Maske abweichend ist Warnung, die Zuordnung geht über die Teile', () => {
+    expect(l.version).toBe('3.2');
+    const b = mitCode(l, 'maske-abweichend');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.schwere).toBe('warnung');
+    expect(zeile(l, lv, '01.0010')).toMatchObject({ status: 'angeboten', einheitspreis: '11.000' });
+    expect(zeile(l, lv, '01.0040')).toMatchObject({ status: 'angeboten', zuschlagssatz: '6.00' });
+    expect(codes(l)).not.toContain('position-unbekannt');
+  });
+
+  it('Golden', () => {
+    vergleicheGolden('angebot-maske-abweichend-x84', 'maske-abweichend-3.2.x84', l);
+  });
+});
+
+// --- Leistung ----------------------------------------------------------------------------------------------
+
+/** LV mit `n` Positionen (n/100 Titel) und die passende X84 als Text. */
+function grossesAngebot(n: number): { lv: Leistungsverzeichnis; x84: string } {
+  const knoten: Leistungsverzeichnis['knoten'][number][] = [];
+  const zeilen: string[] = [];
+  const lvId = 'lv-gross' as Leistungsverzeichnis['id'];
+  for (let t = 0; t < n / 100; t++) {
+    const tOz = String(t + 1).padStart(3, '0');
+    const titelId = `titel-${tOz}` as Extract<Leistungsverzeichnis['knoten'][number], { art: 'titel' }>['id'];
+    knoten.push({
+      art: 'titel',
+      id: titelId,
+      elternId: lvId,
+      reihenfolge: t,
+      ordnungszahl: tOz as never,
+      kurztext: '',
+    });
+    zeilen.push(`<BoQCtgy ID="C${tOz}" RNoPart="${tOz}"><BoQBody><Itemlist>`);
+    for (let i = 0; i < 100; i++) {
+      const pOz = String((i + 1) * 10).padStart(4, '0');
+      knoten.push({
+        art: 'position',
+        id: `p-${tOz}-${pOz}` as Position['id'],
+        elternId: titelId,
+        reihenfolge: i,
+        ordnungszahl: `${tOz}.${pOz}` as never,
+        ozIndex: null,
+        merkmale: {
+          bedarf: null,
+          wahl: null,
+          stundenlohn: false,
+          pauschal: false,
+          zuschlagskennzeichen: false,
+        },
+        zuschlag: null,
+        kurztext: '',
+        langtext: [],
+        menge: '2.000' as never,
+        einheit: 'm',
+        einheitspreis: null,
+        epa: null,
+      });
+      zeilen.push(`<Item ID="I${tOz}${pOz}" RNoPart="${pOz}"><UP>12.345</UP><IT>24.69</IT></Item>`);
+    }
+    zeilen.push('</Itemlist></BoQBody></BoQCtgy>');
+  }
+  const lv: Leistungsverzeichnis = {
+    id: lvId,
+    projektId: PROJEKT,
+    name: 'gross',
+    ozMaske: {
+      gliederung: [{ laenge: 3, zeichen: 'numerisch' }],
+      position: { laenge: 4, zeichen: 'numerisch' },
+      index: null,
+      trennzeichen: '.',
+    },
+    mwstSatz: TEST_MWST,
+    nachlass: null,
+    knoten,
+  };
+  const x84 =
+    '<?xml version="1.0" encoding="UTF-8"?><GAEB xmlns="http://www.gaeb.de/GAEB_DA_XML/DA84/3.3">' +
+    '<GAEBInfo><Version>3.3</Version></GAEBInfo><Award><DP>84</DP><CTR><Address><Name1>B</Name1></Address></CTR>' +
+    '<BoQ ID="B"><BoQInfo><Name>gross</Name><BoQBkdn><Type>BoQLevel</Type><Length>3</Length><Num>Yes</Num></BoQBkdn>' +
+    '<BoQBkdn><Type>Item</Type><Length>4</Length><Num>Yes</Num></BoQBkdn></BoQInfo><BoQBody>' +
+    zeilen.join('') +
+    '</BoQBody></BoQ></Award></GAEB>';
+  return { lv, x84 };
+}
+
+describe('Leistung', () => {
+  it('X84 mit 5.000 Positionen in unter 1 s', () => {
+    const { lv, x84 } = grossesAngebot(5000);
+    const start = performance.now();
+    const l = lies(x84, lv);
+    const dauer = performance.now() - start;
+    console.info(`leseAngebot, 5.000 Positionen: ${dauer.toFixed(0)} ms`);
+    expect(l.befunde).toEqual([]);
+    expect(l.befehl?.angebot.positionen.filter((p) => p.status === 'angeboten')).toHaveLength(5000);
+    expect(dauer).toBeLessThan(1000);
   });
 });

@@ -197,7 +197,11 @@ export class Leser {
     el: XmlElement | undefined,
     extra: { knotenId?: PositionId | string; feld?: string } = {},
   ): Pruefbefund['ort'] {
-    if (!el) return { ...(extra.feld ? { feld: extra.feld } : {}) };
+    if (!el)
+      return {
+        ...(extra.knotenId ? { knotenId: extra.knotenId as PositionId } : {}),
+        ...(extra.feld ? { feld: extra.feld } : {}),
+      };
     const { zeile, spalte } = this.xml.ortVon(el.offset);
     return {
       pfad: this.xml.pfadVon(el),
