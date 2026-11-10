@@ -143,7 +143,7 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   grüner CI.
 - **P4** [ENTSCHIEDEN, G-51] Höchstens 8 Agenten gleichzeitig, mit kleinen Zwischen-Commits. Kein
   Zieltermin für M3.
-- **P5** Ein Ticket, das an einer offenen G-Frage hängt, ist `needs-info`. Es wird nicht geraten.
+- **P5** Ein Ticket, das an einer offenen G-Frage hängt, ist `needs-info`. Es wird nicht geraten (im Demo-Modus `/implement-welle` entscheiden stattdessen die Agenten und protokollieren, siehe `.claude/skills/implement-welle/SKILL.md`).
   Offen ist derzeit nur G-27 (vertagt bis vor Welle 5).
 - **P6** Sitzungen, die die Realität des Projekts ändern, aktualisieren das OKF und schreiben eine
   Übergabenotiz.

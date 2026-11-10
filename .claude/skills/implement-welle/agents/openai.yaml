@@ -1,0 +1,5 @@
+interface:
+  display_name: "Implement Welle"
+  short_description: "Run one AVA wave autonomously (demo mode)"
+policy:
+  allow_implicit_invocation: false
