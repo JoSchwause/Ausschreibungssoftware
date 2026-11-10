@@ -10,13 +10,16 @@
 //   modus=attrappe|live     attrappe: Befehle nur aufzeichnen (Standard), neue Eigenschaften erst über
 //                           window.__harness.uebernehmen(); live: Befehle sofort anwenden
 //   befunde=1               Beispiel-Prüfhinweise an einigen Zellen
+//   leer=1                  leeres LV (keine Knoten; die Wurzel bleibt die der Fixture)
+//   hinweise=1              Beispiel-Befehlshinweise (einer nennt die letzte Position, einer hat einen unbekannten Code)
+//   ausweis=1               Summenzeile mit Bedarfs- und Wahlsumme (erfundene Werte)
 
 import '@tethys/ui-basis/tokens.css';
 import '@tethys/ui-basis/bausteine.css';
 import '../../src/grid.css';
 import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { Knoten, KnotenId, LvBefehl, Pruefbefund } from '@tethys/vertrag';
+import type { Befehlshinweis, Betrag, Knoten, KnotenId, LvBefehl, Pruefbefund } from '@tethys/vertrag';
 import { LvGrid } from '../../src/index';
 import { idQuelleAttrappe, zahlenAttrappe } from './attrappen';
 import { wendeAn } from './befehle-anwenden';
@@ -73,8 +76,35 @@ function beispielBefunde(knoten: readonly Knoten[]): ReadonlyMap<string, readonl
   return m;
 }
 
+/**
+ * Beispiel-Befehlshinweise. Der dritte trägt einen Code, den der Vertrag (noch) nicht kennt: Das Grid zeigt dafür
+ * den allgemeinen Text.
+ */
+function beispielHinweise(knoten: readonly Knoten[]): readonly Befehlshinweis[] {
+  const letzte = knoten.filter((k) => k.art === 'position').at(-1);
+  const unbekannt = {
+    code: 'kuenftiger-code',
+    meldung: 'Code aus einem späteren Vertragsstand',
+  } as unknown as Befehlshinweis;
+  return [
+    {
+      code: 'oz-schritt-ausgewichen',
+      meldung: 'Schritt 10 lief über, Schritt 5 genommen',
+      ...(letzte ? { knotenId: letzte.id, feld: 'ordnungszahl' } : {}),
+    },
+    { code: 'netto-nach-nachlass-negativ', meldung: 'nettoNachNachlass < 0' },
+    unbekannt,
+  ];
+}
+
+const gesamt =
+  params.get('ausweis') === '1'
+    ? { ...modell0.gesamt, summeBedarfOhneGesamtbetrag: '48.90' as Betrag, summeWahl: '61.25' as Betrag }
+    : modell0.gesamt;
+const hinweise = params.get('hinweise') === '1' ? beispielHinweise(modell0.knoten) : [];
+
 function Seite() {
-  const [knoten, setKnoten] = useState<readonly Knoten[]>(modell0.knoten);
+  const [knoten, setKnoten] = useState<readonly Knoten[]>(params.get('leer') === '1' ? [] : modell0.knoten);
   const [offen, setOffen] = useState<ReadonlySet<string>>(() =>
     params.get('auf') === 'keine' ? new Set<string>() : alleGliederungen(modell0),
   );
@@ -85,7 +115,7 @@ function Seite() {
     [],
   );
 
-  const modell = useMemo(() => ({ ...modell0, knoten }), [knoten]);
+  const modell = useMemo(() => ({ ...modell0, knoten, gesamt }), [knoten]);
   const ansicht = useMemo(() => baueAnsicht(modell, offen, befunde), [modell, offen, befunde]);
 
   window.__harness = {
@@ -109,6 +139,7 @@ function Seite() {
           ansicht={ansicht}
           zahlen={zahlenAttrappe}
           ids={ids}
+          hinweise={hinweise}
           onBefehl={(b) => {
             window.__harness.befehle.push(b);
             if (live) setKnoten((k) => wendeAn(k, [b]));

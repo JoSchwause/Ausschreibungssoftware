@@ -3,6 +3,7 @@
 // kommen als Eigenschaften herein, jede Änderung geht als Befehl hinaus (A5). Es rechnet nie (N1, A5).
 
 import type {
+  Befehlshinweis,
   BefehlsEmpfaenger,
   GridIdQuelle,
   GridZahlen,
@@ -29,6 +30,11 @@ export interface LvGridProps {
   readonly onAufklappen?: (knotenId: KnotenId, aufgeklappt: boolean) => void;
   /** Die Mehrfachauswahl (Zeilen) hat sich geändert, in Anzeigereihenfolge. */
   readonly onAuswahlChange?: (knotenIds: readonly KnotenId[]) => void;
+  /**
+   * Hinweise zum zuletzt angenommenen Befehl (v1.1a, Punkt 10). Der Aufrufer setzt und leert sie; das Grid zeigt sie
+   * in einer Hinweisleiste an, mit Sprungknopf, wenn ein Hinweis einen Knoten nennt. Sie sperren nie (U5).
+   */
+  readonly hinweise?: readonly Befehlshinweis[];
   /** Zugänglicher Name des Grids. */
   readonly beschriftung?: string;
   /** Spalte mit Einzug und Auf-/Zuklappknopf; Standard `kurztext`. */

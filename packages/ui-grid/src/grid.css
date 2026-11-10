@@ -296,3 +296,52 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---------- Hinweise zum zuletzt angenommenen Befehl (nie sperrend, U5) ---------- */
+
+.tx-grid__hinweise {
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-top: 1px solid var(--tx-color-border);
+  border-left: 3px solid var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+  color: var(--tx-color-text);
+  font-size: var(--tx-font-size-sm);
+}
+
+/* Leer bleibt die Live-Region im DOM, nimmt aber keinen Platz ein. */
+.tx-grid__hinweise--leer {
+  padding: 0;
+  border: 0;
+}
+
+.tx-grid__hinweisliste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tx-grid__hinweis {
+  display: flex;
+  gap: var(--tx-space-3);
+  align-items: center;
+}
+
+/* ---------- Bedarfs- und Wahlsumme: Ausweis neben den Summen, nicht im Netto (F4, E-04) ---------- */
+
+.tx-grid__summe--ausweis {
+  padding-left: var(--tx-space-4);
+  border-left: 1px dashed var(--tx-color-border-strong);
+}
+
+.tx-grid__summe--ausweis .tx-grid__summe-wert {
+  font-weight: var(--tx-weight-normal);
+  font-style: italic;
+}
+
+.tx-grid__summe-vermerk {
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
