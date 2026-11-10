@@ -155,7 +155,6 @@ function Baum() {
           spalten={['ordnungszahl', 'kurztext', 'menge', 'einheit', 'einheitspreis', 'gesamtpreis']}
           zahlen={zahlen}
           ids={s.ids}
-          wurzelId={s.lvId as never}
           onBefehl={s.befehl}
           onAufklappen={s.aufklappen}
           beschriftung="Leistungsverzeichnis"
