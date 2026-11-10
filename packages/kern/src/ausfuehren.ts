@@ -83,8 +83,8 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  PapierkorbEintragWiederherstellen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  PapierkorbEintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  PapierkorbeintragWiederherstellen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  PapierkorbeintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   PapierkorbLeeren: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   LvStandAnlegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   AuftraggeberSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket

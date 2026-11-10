@@ -72,6 +72,7 @@ import {
   type KnotenInPapierkorbLegen,
   type KnotenlisteVerschieben,
   type Leistungsverzeichnis,
+  type LvKopf,
   type Leitbeschreibung,
   type LeitbeschreibungSetzen,
   type LvStand,
@@ -80,9 +81,9 @@ import {
   type LvStandKopf,
   type LvStandRepository,
   type LvStandUebersicht,
-  type PapierkorbEintrag,
-  type PapierkorbEintragId,
-  type PapierkorbEintragWiederherstellen,
+  type Papierkorbeintrag,
+  type PapierkorbeintragId,
+  type PapierkorbeintragWiederherstellen,
   type Projektdatei,
   type ProtokollId,
   type Rueckgaengig,
@@ -110,6 +111,8 @@ import {
   beispielLv,
   beispielAngebotspositionMitZuschlagssatz,
   beispielChangeSetHineinlegen,
+  beispielChangeSetPapierkorbeintragEntfernen,
+  beispielSummenMitBedarfUndWahl,
   beispielChangeSetWiederherstellen,
   beispielKnotenEinfuegen,
   beispielLvStandChangeSet,
@@ -520,7 +523,7 @@ describe('v1.1a Punkt 7: Ränder des Grids', () => {
     expectTypeOf<GridZahlen['parseEinheitspreis']>().returns.toEqualTypeOf<Ergebnis<Einheitspreis, string>>();
     expectTypeOf<GridZahlen['formatBetrag']>().parameter(0).toEqualTypeOf<Betrag>();
     // v1.2 (D-10 (4)): das Grid legt auch Papierkorbeinträge an (`KnotenInPapierkorbLegen`, Ticket 46).
-    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position' | 'papierkorbEintrag'>>();
+    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position' | 'papierkorbeintrag'>>();
     expectTypeOf<IdQuelle>().toExtend<GridIdQuelle>();
   });
 });
@@ -603,14 +606,14 @@ describe('v1.2 Nr. 4: Kopieren, Verschieben, Papierkorb (K9)', () => {
       | 'KnotenEinfuegen'
       | 'KnotenlisteVerschieben'
       | 'KnotenInPapierkorbLegen'
-      | 'PapierkorbEintragWiederherstellen'
-      | 'PapierkorbEintragEntfernen'
+      | 'PapierkorbeintragWiederherstellen'
+      | 'PapierkorbeintragEntfernen'
       | 'PapierkorbLeeren';
     expectTypeOf<Neu>().toExtend<LvBefehl['art']>();
     expectTypeOf<KnotenEinfuegen['knoten']>().toEqualTypeOf<readonly Knoten[]>();
     expectTypeOf<KnotenlisteVerschieben['knotenIds']>().toEqualTypeOf<readonly KnotenId[]>();
-    expectTypeOf<KnotenInPapierkorbLegen['eintragId']>().toEqualTypeOf<PapierkorbEintragId>();
-    expectTypeOf<PapierkorbEintragWiederherstellen['ort']>().toEqualTypeOf<Einfuegeort | null>();
+    expectTypeOf<KnotenInPapierkorbLegen['eintragId']>().toEqualTypeOf<PapierkorbeintragId>();
+    expectTypeOf<PapierkorbeintragWiederherstellen['ort']>().toEqualTypeOf<Einfuegeort | null>();
   });
 
   it('KnotenEinfuegen: ein Titel mit zwei Positionen, Eltern vor Kindern', () => {
@@ -622,12 +625,34 @@ describe('v1.2 Nr. 4: Kopieren, Verschieben, Papierkorb (K9)', () => {
     expect(b.knoten.slice(1).every((k) => k.elternId === b.knoten[0]?.id)).toBe(true);
   });
 
-  it('der Papierkorb liegt am LV und ist ohne Feld leer', () => {
-    expectTypeOf<Leistungsverzeichnis['papierkorb']>().toEqualTypeOf<
-      readonly PapierkorbEintrag[] | undefined
+  it('der Papierkorb liegt am Zustand, nicht am LV oder Kopf, und ist ohne Feld leer (D-12)', () => {
+    expectTypeOf<LvZustand['papierkorb']>().toEqualTypeOf<readonly Papierkorbeintrag[] | undefined>();
+    expectTypeOf<Leistungsverzeichnis>().not.toHaveProperty('papierkorb');
+    expectTypeOf<LvKopf>().not.toHaveProperty('papierkorb');
+    expectTypeOf<LvStand['zustand']['papierkorb']>().toEqualTypeOf<
+      readonly Papierkorbeintrag[] | undefined
     >();
-    expectTypeOf<PapierkorbEintrag['knoten']>().toEqualTypeOf<readonly Knoten[]>();
-    expectTypeOf<LvChangeSet['papierkorb']>().toEqualTypeOf<Aenderungen<PapierkorbEintrag> | undefined>();
+    expectTypeOf<Papierkorbeintrag['knoten']>().toEqualTypeOf<readonly Knoten[]>();
+    expectTypeOf<Papierkorbeintrag['nummer']>().toEqualTypeOf<number>();
+    expectTypeOf<LvChangeSet['papierkorb']>().toEqualTypeOf<Aenderungen<Papierkorbeintrag> | undefined>();
+  });
+
+  it('Entfernen eines Eintrags nimmt hängende Bezüge mit; die Umkehrung stellt Eintrag (mit Nummer) und Bezug her', () => {
+    const e = beispielChangeSetPapierkorbeintragEntfernen;
+    expect(e.papierkorb?.entfernt.map((p) => p.nummer)).toEqual([1]);
+    expect(e.knoten.entfernt).toHaveLength(0);
+    const bezugVorher = e.knoten.geaendert[0]?.vorher;
+    const bezugNachher = e.knoten.geaendert[0]?.nachher;
+    const bezuege = (k: Knoten | undefined): unknown =>
+      k?.art === 'position' && k.zuschlag?.bezug.art === 'positionen'
+        ? k.zuschlag.bezug.positionen.map((b) => b.positionId)
+        : null;
+    expect(bezuege(bezugVorher)).toContain(e.papierkorb?.entfernt[0]?.knoten[0]?.id);
+    expect(bezuege(bezugNachher)).not.toContain(e.papierkorb?.entfernt[0]?.knoten[0]?.id);
+    const zurueck = umkehrenV12(e);
+    expect(zurueck.papierkorb?.hinzugefuegt).toEqual(e.papierkorb?.entfernt);
+    expect(zurueck.knoten.geaendert[0]?.nachher).toEqual(bezugVorher);
+    expect(umkehrenV12(zurueck)).toEqual(e);
   });
 
   it('Hineinlegen und Wiederherstellen sind Umkehrungen voneinander, allein aus dem ChangeSet', () => {
@@ -692,9 +717,9 @@ describe('v1.2 Nr. 5: Rückgängig, Wiederholen, LV-Stand (S3)', () => {
 
 describe('v1.2 Nr. 6: Kennungen', () => {
   it('IdQuelle liefert Papierkorbeinträge und LV-Stände; die Marken sind nicht austauschbar', () => {
-    expectTypeOf<ReturnType<IdQuelle['papierkorbEintrag']>>().toEqualTypeOf<PapierkorbEintragId>();
+    expectTypeOf<ReturnType<IdQuelle['papierkorbeintrag']>>().toEqualTypeOf<PapierkorbeintragId>();
     expectTypeOf<ReturnType<IdQuelle['lvStand']>>().toEqualTypeOf<LvStandId>();
-    expectTypeOf<PapierkorbEintragId>().not.toExtend<KnotenId>();
+    expectTypeOf<PapierkorbeintragId>().not.toExtend<KnotenId>();
     expectTypeOf<LvStandId>().not.toExtend<LeistungsverzeichnisId>();
     expectTypeOf<string>().not.toExtend<LvStandId>();
   });
@@ -720,22 +745,25 @@ describe('v1.2: reine Daten und Werte vor v1.2', () => {
     expectTypeOf<NurDaten<KnotenEinfuegen>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<LvChangeSet>>().toEqualTypeOf<true>();
-    expectTypeOf<NurDaten<PapierkorbEintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Papierkorbeintrag>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<LvStand>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
   });
 
-  it('Angebotsposition ohne Zuschlagssatz, LV ohne Papierkorb, ChangeSet ohne Papierkorb und LV-Stand bleiben gültig', () => {
+  it('Angebotsposition ohne Zuschlagssatz, Zustand ohne Papierkorb, ChangeSet ohne Papierkorb und LV-Stand bleiben gültig', () => {
     const alt: Angebotsposition = {
       positionId: '019b76e9-0000-7000-8000-000000000003' as PositionId,
       status: 'angeboten',
       einheitspreis: '10.000' as Einheitspreis,
       epa: null,
     };
-    const lv: Leistungsverzeichnis = beispielLv;
+    const zustand: LvZustand = {
+      leistungsverzeichnis: beispielLv,
+      summen: { positionen: [], gliederungen: [], gesamt: beispielSummenMitBedarfUndWahl },
+    };
     const cs: LvChangeSet = beispielChangeSet;
     expect('zuschlagssatz' in alt).toBe(false);
-    expect(lv.papierkorb).toBeUndefined();
+    expect(zustand.papierkorb).toBeUndefined();
     expect(cs.papierkorb).toBeUndefined();
     expect(cs.lvStand).toBeUndefined();
     // die Umkehrung ab v1.2 erfindet keine Felder

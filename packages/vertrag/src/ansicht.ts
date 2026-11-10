@@ -67,6 +67,6 @@ export interface GridZahlen {
  * Kennungen für neue Positionen beim Einfügen aus der Zwischenablage (A2: das Grid erzeugt nie selbst Kennungen).
  * Ein Zuschnitt der einen `IdQuelle`, keine zweite Schnittstelle.
  *
- * v1.2 (D-10 (4)): dazu `papierkorbEintrag`, damit das Grid `KnotenInPapierkorbLegen` aussenden kann (Ticket 46).
+ * v1.2 (D-10 (4)): dazu `papierkorbeintrag`, damit das Grid `KnotenInPapierkorbLegen` aussenden kann (Ticket 46).
  */
-export type GridIdQuelle = Pick<IdQuelle, 'position' | 'papierkorbEintrag'>;
+export type GridIdQuelle = Pick<IdQuelle, 'position' | 'papierkorbeintrag'>;

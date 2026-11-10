@@ -138,7 +138,7 @@ Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit 
 Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, das Netto nach Nachlass ist negativ, oder ein GAEB-Import brachte eine OZ-Maske mit, die die Prüfung beanstandet). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
 
 ### Papierkorb, Papierkorbeintrag
-Ablage gelöschter Knoten eines LV, aus der sie sich wiederherstellen lassen. Ein Papierkorbeintrag hält die Knoten eines Löschvorgangs samt Unterbäumen und ihrer alten Lage; beim Wiederherstellen behalten sie ihre Kennungen (Positionsidentität). Positionen im Papierkorb gehen in keine Summe ein. Endgültig entfernt wird ein Eintrag nur ausdrücklich (Q5). Im Code `PapierkorbEintrag`, `Leistungsverzeichnis.papierkorb`, `KnotenInPapierkorbLegen`.
+Ablage gelöschter Knoten eines LV, aus der sie sich wiederherstellen lassen. Ein Papierkorbeintrag hält die Knoten eines Löschvorgangs samt Unterbäumen und ihrer alten Lage; beim Wiederherstellen behalten sie ihre Kennungen (Positionsidentität). Positionen im Papierkorb gehen in keine Summe ein. Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, bis die Position zurückkommt; erst das endgültige Entfernen löst sie. Endgültig entfernt wird ein Eintrag nur ausdrücklich und nicht, solange ein Angebot auf eine seiner Positionen verweist (Q5). Im Code `Papierkorbeintrag`, `LvZustand.papierkorb`, `KnotenInPapierkorbLegen`.
 
 ### LV-Stand
 Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`.
@@ -146,8 +146,8 @@ Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (A
 ### Rückgängig / Wiederholen (Undo/Redo)
 Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
 
-### Zuschlagssatz (des Bieters)
-Der Prozentsatz, den ein Bieter in seinem Angebot für eine Zuschlagsposition anbietet (GAEB `Markup` in X84). Ist er gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis. Im Code `Angebotsposition.zuschlagssatz`.
+### Zuschlagssatz
+Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis.
 
 ### Auftraggeber (Kopfdaten)
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.

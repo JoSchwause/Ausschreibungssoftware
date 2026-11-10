@@ -42,7 +42,7 @@ export function testIds(): IdQuelle {
     position: () => neu('position') as PositionId,
     hinweistext: () => neu('hinweis') as HinweistextId,
     // v1.2: mechanisch angepasst, Folgeticket (zwei neue Methoden der IdQuelle)
-    papierkorbEintrag: () => neu('papierkorb') as ReturnType<IdQuelle['papierkorbEintrag']>,
+    papierkorbeintrag: () => neu('papierkorb') as ReturnType<IdQuelle['papierkorbeintrag']>,
     lvStand: () => neu('lv-stand') as ReturnType<IdQuelle['lvStand']>,
   };
 }

@@ -14,7 +14,7 @@ import type {
   LeistungsverzeichnisId,
   LvStandId,
   Ordnungszahl,
-  PapierkorbEintragId,
+  PapierkorbeintragId,
   PositionId,
   ProjektId,
   ProtokollId,
@@ -116,7 +116,7 @@ export interface LeistungsverzeichnisUmbenennen {
  * Angebote und Auftrags-LV zu diesem LV löscht der Befehl nicht; `speicher` weist mit `konflikt` ab, solange sie bestehen.
  *
  * v1.2: Hat das LV einen Papierkorb, stehen dessen Einträge unter `papierkorb.entfernt` (voller Stand, wie die
- * Knoten). Was mit den LV-Ständen des LV geschieht (Sperre mit `konflikt` oder Mitlöschen), ist offen (Ticket 43).
+ * Knoten). Bestehen LV-Stände des LV, weist `speicher` mit `konflikt` ab wie bei Angeboten (D-12).
  */
 export interface LeistungsverzeichnisLoeschen {
   readonly art: 'LeistungsverzeichnisLoeschen';
@@ -202,12 +202,13 @@ export interface KnotenlisteVerschieben {
 
 /**
  * Nimmt die Knoten samt Unterbäumen aus dem Baum und legt sie als **einen** Papierkorbeintrag ab (v1.2, K9). Die
- * Kennung des Eintrags bringt der Aufrufer mit (`IdQuelle.papierkorbEintrag`). ChangeSet: `knoten.entfernt` und
+ * Kennung des Eintrags bringt der Aufrufer mit (`IdQuelle.papierkorbeintrag`), die `nummer` vergibt der Kern
+ * (Höchstwert + 1, D-12). Bezüge anderer Knoten auf die Positionen bleiben stehen (siehe `Papierkorbeintrag`). ChangeSet: `knoten.entfernt` und
  * `papierkorb.hinzugefuegt`; die Summen der Knoten stehen in `summen.vorher.entfernt`.
  */
 export interface KnotenInPapierkorbLegen {
   readonly art: 'KnotenInPapierkorbLegen';
-  readonly eintragId: PapierkorbEintragId;
+  readonly eintragId: PapierkorbeintragId;
   readonly knotenIds: readonly KnotenId[];
 }
 
@@ -216,22 +217,29 @@ export interface KnotenInPapierkorbLegen {
  * Knoten im Eintrag tragen); sonst wie bei `KnotenEinfuegen` hintereinander am `ort`. Die Kennungen bleiben
  * (Positionsidentität, ADR 0011). ChangeSet: `knoten.hinzugefuegt` und `papierkorb.entfernt`.
  */
-export interface PapierkorbEintragWiederherstellen {
-  readonly art: 'PapierkorbEintragWiederherstellen';
-  readonly eintragId: PapierkorbEintragId;
+export interface PapierkorbeintragWiederherstellen {
+  readonly art: 'PapierkorbeintragWiederherstellen';
+  readonly eintragId: PapierkorbeintragId;
   readonly ort: Einfuegeort | null;
 }
 
 /**
  * Entfernt einen Papierkorbeintrag endgültig (v1.2, K9). Unumkehrbar im Sinne von Q5: Bestätigung in der Oberfläche,
- * abgesichert durch Undo und LV-Stand. ChangeSet: nur `papierkorb.entfernt`.
+ * abgesichert durch Undo und LV-Stand. ChangeSet: `papierkorb.entfernt`, dazu die Knoten im Baum, deren Bezüge auf
+ * eine Position des Eintrags nun entfernt werden, unter `knoten.geaendert` (D-12, siehe `Papierkorbeintrag`).
+ *
+ * Verweist noch eine Angebotsposition auf eine Position des Eintrags, weist `speicher` mit `konflikt` ab (Q5, D-12):
+ * Die Angebotsposition würde sonst still ihre Position verlieren.
  */
-export interface PapierkorbEintragEntfernen {
-  readonly art: 'PapierkorbEintragEntfernen';
-  readonly eintragId: PapierkorbEintragId;
+export interface PapierkorbeintragEntfernen {
+  readonly art: 'PapierkorbeintragEntfernen';
+  readonly eintragId: PapierkorbeintragId;
 }
 
-/** Entfernt alle Papierkorbeinträge endgültig (v1.2, K9; Q5 wie `PapierkorbEintragEntfernen`). */
+/**
+ * Entfernt alle Papierkorbeinträge endgültig (v1.2, K9). ChangeSet, Q5 und `konflikt` bei Angebotspositionen wie
+ * `PapierkorbeintragEntfernen`, für alle Einträge zugleich.
+ */
 export interface PapierkorbLeeren {
   readonly art: 'PapierkorbLeeren';
 }
@@ -243,7 +251,8 @@ export interface PapierkorbLeeren {
  * `lvStand: { vorher: null, nachher: LvStandKopf }`; den Zustand selbst kopiert `speicher` in derselben Transaktion,
  * `angelegt` ist `Protokolleintrag.wann`. Kein Umbenennen, kein Zurückschreiben in das bestehende LV (Offene
  * Typfrage, Ticket 29); ein LV aus einem Stand zurückholen geht über `LeistungsverzeichnisAnlegen` mit dessen Inhalt.
- * Den Handler liefert Ticket 42 (K9), das Einfrieren Ticket 43 (S3).
+ * Den Handler liefert Ticket 42 (K9), das Einfrieren Ticket 43 (S3). Ein `Wiederholen` nach dem Rückgängigmachen
+ * friert neu ein (der dann gespeicherte Stand, neues `angelegt`; D-12).
  */
 export interface LvStandAnlegen {
   readonly art: 'LvStandAnlegen';
@@ -398,8 +407,8 @@ export type LvBefehl =
   | KnotenEinfuegen
   | KnotenlisteVerschieben
   | KnotenInPapierkorbLegen
-  | PapierkorbEintragWiederherstellen
-  | PapierkorbEintragEntfernen
+  | PapierkorbeintragWiederherstellen
+  | PapierkorbeintragEntfernen
   | PapierkorbLeeren
   | LvStandAnlegen
   | AuftraggeberSetzen
@@ -469,6 +478,9 @@ export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen;
  * ChangeSet ist die Umkehrung des ChangeSets aus dem Undo-Stapel der Sitzung (ADR 0006; umkehrbar ohne Vorzustand
  * seit v1.1a). `speicher` schreibt ihn wie jeden Befehl, ein Eintrag je Befehl (A5); `Protokolleintrag.aggregat` ist
  * das Aggregat des ursprünglichen Befehls.
+ *
+ * Eine Befehlsfolge (mehrere Befehle aus einer Nutzeraktion) wird mit je einem `Rueckgaengig` je Befehl der Folge
+ * zurückgenommen, in umgekehrter Reihenfolge (D-12); es gibt keinen Sammelbefehl.
  */
 export interface Rueckgaengig {
   readonly art: 'Rueckgaengig';

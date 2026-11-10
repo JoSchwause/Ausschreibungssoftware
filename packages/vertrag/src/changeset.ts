@@ -20,7 +20,7 @@ import type {
   Knoten,
   Leistungsverzeichnis,
   LvKopf,
-  PapierkorbEintrag,
+  Papierkorbeintrag,
   Projekt,
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
@@ -100,6 +100,12 @@ export interface Befehlshinweis {
 export interface LvZustand {
   readonly leistungsverzeichnis: Leistungsverzeichnis;
   readonly summen: Summenstand;
+  /**
+   * Papierkorb des LV (v1.2, D-12), nach `Papierkorbeintrag.nummer` aufsteigend (Reihenfolge des Hineinlegens). Fehlt:
+   * leer. Er liegt am Zustand, nicht am LV oder `LvKopf`: Ein Kopf-ChangeSet trägt ihn nie, und ein GAEB-Import oder
+   * `LeistungsverzeichnisAnlegen` bringt keinen mit. `LvStand` und `Projektdatei` tragen ihn über `LvZustand`.
+   */
+  readonly papierkorb?: readonly Papierkorbeintrag[];
 }
 
 export interface AngebotZustand {
@@ -188,13 +194,17 @@ export interface LvChangeSet {
   /**
    * Geänderte Papierkorbeinträge (v1.2, K9); fehlt: keine Änderung. Hineinlegen (`KnotenInPapierkorbLegen`) =
    * `knoten.entfernt` + `papierkorb.hinzugefuegt`; Wiederherstellen = `knoten.hinzugefuegt` + `papierkorb.entfernt`;
-   * Entfernen und Leeren = nur `papierkorb.entfernt`. Umkehrbar ohne Vorzustand wie seit v1.1a.
+   * Entfernen und Leeren = `papierkorb.entfernt`, dazu unter `knoten.geaendert` die Knoten im Baum, deren Bezüge
+   * (Zuschlags-`Bezugsposition`, `wahl.grundpositionId`) auf eine Position des entfernten Eintrags zeigten und nun
+   * entfernt werden (D-12; siehe `Papierkorbeintrag`). Umkehrbar ohne Vorzustand wie seit v1.1a; die Umkehrung des
+   * Entfernens legt den Eintrag mit seiner `nummer` zurück.
    */
-  readonly papierkorb?: Aenderungen<PapierkorbEintrag>;
+  readonly papierkorb?: Aenderungen<Papierkorbeintrag>;
   /**
    * LV-Stand (v1.2, S3); fehlt: keine Änderung. `vorher: null`: `LvStandAnlegen`, `speicher` friert den gespeicherten
    * Stand des LV in derselben Transaktion ein. `nachher: null` kommt nur als Umkehrung vor: der Stand entfällt.
-   * Ein Stand wird nie geändert (beide Seiten gesetzt kommt nicht vor).
+   * Ein `Wiederholen` danach friert den dann gespeicherten Stand neu ein, mit neuem `angelegt` (D-12). Ein Stand wird
+   * nie geändert (beide Seiten gesetzt kommt nicht vor).
    */
   readonly lvStand?: Aenderung<LvStandKopf>;
 }

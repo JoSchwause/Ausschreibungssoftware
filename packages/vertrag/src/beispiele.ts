@@ -22,7 +22,7 @@ import type {
   BildId,
   LvStandId,
   NutzerId,
-  PapierkorbEintragId,
+  PapierkorbeintragId,
   ProtokollId,
   Zeitstempel,
 } from './marken';
@@ -35,7 +35,7 @@ import type {
   LvKopf,
   Langtext,
   OzMaske,
-  PapierkorbEintrag,
+  Papierkorbeintrag,
   Position,
   Positionsmerkmale,
   Zuschlag,
@@ -660,8 +660,9 @@ export const beispielKnotenEinfuegen: KnotenEinfuegen = {
 };
 
 /** Nr. 4: der Papierkorbeintrag mit der zweiten Position; sie trägt ihre alte Lage (Titel, Reihenfolge 1). */
-const papierkorbEintrag: PapierkorbEintrag = {
-  id: '019b76e9-0000-7000-8000-000000000070' as PapierkorbEintragId,
+const papierkorbeintrag: Papierkorbeintrag = {
+  id: '019b76e9-0000-7000-8000-000000000070' as PapierkorbeintragId,
+  nummer: 1,
   knoten: [pos2],
 };
 
@@ -671,13 +672,48 @@ const papierkorbEintrag: PapierkorbEintrag = {
  */
 export const beispielChangeSetHineinlegen: LvChangeSet = {
   ...beispielChangeSetEntfernen,
-  papierkorb: { hinzugefuegt: [papierkorbEintrag], geaendert: [], entfernt: [] },
+  papierkorb: { hinzugefuegt: [papierkorbeintrag], geaendert: [], entfernt: [] },
 };
 
 /** Nr. 4: Wiederherstellen an die alte Stelle. Knoten und Summen wie beim Hinzufügen, der Eintrag entfällt. */
 export const beispielChangeSetWiederherstellen: LvChangeSet = {
   ...beispielChangeSetHinzufuegen,
-  papierkorb: { hinzugefuegt: [], geaendert: [], entfernt: [papierkorbEintrag] },
+  papierkorb: { hinzugefuegt: [], geaendert: [], entfernt: [papierkorbeintrag] },
+};
+
+const zuschlagMitBezug = beispielZuschlagsbezuege[0];
+
+/**
+ * Nr. 4 (D-12): Entfernen des Eintrags, während die erste Zuschlagsposition aus `beispielZuschlagsbezuege` noch auf
+ * die zweite Position (im Eintrag) verweist. Der hängende Bezug fällt im selben ChangeSet weg (`knoten.geaendert`);
+ * Summen ändern sich nicht, weil der Bezug auf den Papierkorb schon nichts zählte.
+ */
+export const beispielChangeSetPapierkorbeintragEntfernen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      {
+        vorher: zuschlagMitBezug,
+        nachher: {
+          ...zuschlagMitBezug,
+          zuschlag: {
+            prozentsatz: '10.00' as Prozent,
+            bezug: { art: 'positionen', positionen: [{ positionId: posId, teilmenge: '0.500' as Menge }] },
+          },
+        },
+      },
+    ],
+    entfernt: [],
+  },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+  papierkorb: { hinzugefuegt: [], geaendert: [], entfernt: [papierkorbeintrag] },
 };
 
 /** Nr. 5: ChangeSet von `LvStandAnlegen`: nur der Kopf des neuen Stands; Knoten und Summen bleiben. */
