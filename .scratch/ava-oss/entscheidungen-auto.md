@@ -75,3 +75,10 @@ Decision: (1) Ticket 37 behält für Zuschlagspositionen ohne Satz die alte Rech
 Reason: Hält die Fixture-Helfer in fünf Paketen grün; P2 (ui-grid importiert kern nicht).
 Reversible: yes  Touches: packages/kern, packages/vergabe, packages/ui-grid, fixtures/
 Annahme für Demo, Mensch bestätigt später (E-03: Teilmengen, `AllInCat`).
+
+## D-35a Sprachdetails des freien Rechenansatzes (Formel 91)
+Welle 3 · Ticket 35 · decided by: implementer
+Question: Was die Ticketbeschreibung der Ausdruckssprache offen lässt.
+Decision: (1) „Frühere Zeile“ heißt weiter vorn in der Folge, nicht kleinere Nummer. (2) Zusätzliche Fehlercodes `ausdruck-unvollstaendig` („2+“, Spalte hinter dem Text), `variable-ungueltig` (auch leerer Name; kein Name ist `null`) und `zeile-doppelt` (doppelte Zeilennummer, die spätere Zeile ist fehlerhaft). (3) Klammern werden vor dem Abstieg gezählt: `klammer-fehlt` an der Spalte der offenen Klammer, `klammer-zu-viel` an der überzähligen, `zu-tief` an der 51. Klammer. (4) Führende Nullen sind erlaubt; Zahlen stehen normalisiert im Syntaxbaum (`2,50` → `2,5`); eine Zahl, die `dezimal` nicht fasst (≈ 1.000 Ziffern), ist `zahl-ungueltig`. (5) Variablennamen: Unicode-Buchstabe, dann Buchstaben, ASCII-Ziffern, `_`. (6) `FORMELN`: Nummer → `{ parameter, rechne(werte) }`; wie ein Ausdruck mehrere Parameter trennt, entscheidet das erste Ticket mit einer solchen Formel.
+Reason: Paketlokal und umkehrbar; gespeichert wird nur der Ausdruckstext. Alles steht zusätzlich in `MENGEN_ANNAHMEN`.
+Reversible: yes  Touches: packages/mengen

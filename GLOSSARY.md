@@ -201,6 +201,15 @@ Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **
 ### Aufmaß & Mengenermittlung (REB 23.003)
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
 
+### Mengenansatz
+Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Im Code `Mengenansatz`, `mengenansatzBerechnen`.
+
+### Ansatzzeile
+Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile`, `Zeilenergebnis`.
+
+### REB-Formel
+Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
+
 ### Nachtrag
 Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt.
 
