@@ -1,6 +1,6 @@
 # 34: Langtext-Editor (TipTap, eingeschränktes Schema, verlustfreie Abbildung `Langtext` ↔ TipTap)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase A) · Strang: U4a · Paket: `packages/ui-basis` (dazu eine Zeile in `tools/boundaries.mjs`)
 Blocked by: -
