@@ -39,7 +39,7 @@ import type {
 } from '@tethys/vertrag';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
-import { leseKurztext, leseLangtext } from './text';
+import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
 import type { XmlElement, XmlErgebnis } from './xml';
@@ -240,8 +240,8 @@ class Leser {
         quelle: 'gaeb-lesen',
         code: 'formatierung-verworfen',
         meldung:
-          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Auszeichnung verworfen, die der Vertrag nicht abbildet ` +
-          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt als reiner Text erhalten.`,
+          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Formatierung verworfen, die der Vertrag nicht abbildet ` +
+          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt ohne diese Formatierung erhalten.`,
         ort: this.ort(this.formatErst ?? undefined),
       });
     for (const a of this.aggregate.values())
@@ -664,7 +664,8 @@ class Aufbau {
     const detail = kind(ct, 'DetailTxt');
     const outline = kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt');
     let text = this.l.langtext(detail);
-    if (text.length === 0) text = this.l.langtext(outline);
+    // Ein Detailtext ohne Inhalt (auch nur leere Absätze) gilt als fehlend; dann trägt der Kurztext den Hinweis.
+    if (langtextLeer(text)) text = this.l.langtext(outline);
     else if (outline && textInhalt(outline).trim() !== '')
       this.l.nichtAbgebildet(outline, 'Remark/OutlineText', 'Kurztext des Hinweistexts ohne Entsprechung');
     const h: Hinweistext = {
