@@ -122,16 +122,16 @@ Angebote: A mit Nachlass 5,00 %, B ohne, C mit Nachlass 40,00 (Betrag).
 
 ## Acceptance criteria
 
-- [ ] `packages/vergabe` baut, ist von den Paketgrenzen erfasst und in `pnpm typecheck` enthalten
-- [ ] Bietersummen von `typisch-angebote.json` gleich den Sollwerten der Datei (GP, Titel, Netto bis Brutto, nicht angebotene Positionen)
-- [ ] Je Angebotsbefehl Wirkung, minimales ChangeSet, gleicher Wert → leer, Fehlerfälle aus Punkt 3 getestet
-- [ ] Property-Test: zufällige Folgen von Angebotsbefehlen; nach jedem Befehl ist der Summenstand gleich `angebotSummenBerechnen`; `angebotChangeSetUmkehren` stellt den Vorzustand ohne dessen Kenntnis her; doppelte Umkehrung = ChangeSet
-- [ ] Golden-Test: das Beispiel oben vollständig (Kennzeichen, EP/GP, Min/Mittel/Max, Ausreißer, Summen, Rang, virtuelle Netto, ABC), mit der Herleitung als Kommentar
-- [ ] Test: Schwelle 25 % ändert die Ausreißer wie oben; nur ein Bieter mit EP > 0 → keine Ausreißer; alle 0,00 → Min/Mittel/Max `null`
-- [ ] Test: Nachlass entfernen ändert keinen EP und keinen Positions-GP, nur die Bietersumme
-- [ ] Leistung: `AngebotspositionSetzen` auf einem Angebot zu `gross` (5.000 Positionen) < 16 ms (Q4, wie im Kern); `preisspiegelBerechnen` für `gross` mit 5 erzeugten Angeboten mit festgehaltenem Budget (Vorschlag < 1 s)
-- [ ] `GLOSSARY.md` enthält „Bietersumme“, „Rang“, „ABC-Klasse“, „Nullpreis“; „Ausreißer“ nennt D-05
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
+- [x] `packages/vergabe` baut, ist von den Paketgrenzen erfasst und in `pnpm typecheck` enthalten
+- [x] Bietersummen von `typisch-angebote.json` gleich den Sollwerten der Datei (GP, Titel, Netto bis Brutto, nicht angebotene Positionen)
+- [x] Je Angebotsbefehl Wirkung, minimales ChangeSet, gleicher Wert → leer, Fehlerfälle aus Punkt 3 getestet
+- [x] Property-Test: zufällige Folgen von Angebotsbefehlen; nach jedem Befehl ist der Summenstand gleich `angebotSummenBerechnen`; `angebotChangeSetUmkehren` stellt den Vorzustand ohne dessen Kenntnis her; doppelte Umkehrung = ChangeSet
+- [x] Golden-Test: das Beispiel oben vollständig (Kennzeichen, EP/GP, Min/Mittel/Max, Ausreißer, Summen, Rang, virtuelle Netto, ABC), mit der Herleitung als Kommentar
+- [x] Test: Schwelle 25 % ändert die Ausreißer wie oben; nur ein Bieter mit EP > 0 → keine Ausreißer; alle 0,00 → Min/Mittel/Max `null`
+- [x] Test: Nachlass entfernen ändert keinen EP und keinen Positions-GP, nur die Bietersumme
+- [x] Leistung: `AngebotspositionSetzen` auf einem Angebot zu `gross` (5.000 Positionen) < 16 ms (Q4, wie im Kern); `preisspiegelBerechnen` für `gross` mit 5 erzeugten Angeboten mit festgehaltenem Budget (Vorschlag < 1 s)
+- [x] `GLOSSARY.md` enthält „Bietersumme“, „Rang“, „ABC-Klasse“, „Nullpreis“; „Ausreißer“ nennt D-05
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -140,3 +140,20 @@ Mehrere Nachlässe je Angebot (G-26: genau einer). Preisspiegel-Typen in `vertra
 sie braucht).
 
 ## Comments
+
+- Umsetzung (Branch `ticket/36-vergabe`): `packages/vergabe` mit `angebotSummenBerechnen`, `angebotBefehlAusfuehrer`,
+  `angebotChangeSetAnwenden`/`angebotChangeSetUmkehren`, `preisspiegelBerechnen`, `PREISSPIEGEL_ANNAHMEN`. Mittel über
+  `dividiere` aus Ticket 35 (D-08). Messwerte: `AngebotspositionSetzen` auf `gross` Median etwa 1,6 ms (< 16 ms);
+  `preisspiegelBerechnen` `gross` mit 5 Angeboten etwa 0,4–0,6 s (Budget < 1 s festgehalten).
+- Entscheidungen: D-36.1 (Annahmen der Preisspiegel-Rechnung; dazu: Bieter- und Gliederungssummen werden aus dem
+  übergebenen LV neu gerechnet) und D-36.2 (Form der ChangeSets: neue Angebotspositionen hinten, `summen.vorher` immer
+  gesetzt, doppelte Position → `feld: 'positionen'`, keine EPA-Prüfung, kein Befehlshinweis am Angebot) in
+  `entscheidungen-auto.md`.
+- Für Ticket 37/44: `AngebotspositionSetzen` rechnet inkrementell (GP der einen Position über `positionsSumme` des Kerns,
+  Differenz die Elternkette hinauf, `gesamtsummen` des Kerns). Das gilt, solange der GP einer Position nur von ihrem
+  eigenen EP abhängt. Rechnet Ticket 37 Zuschlagspositionen nach GAEB (Satz auf die Bezugspositionen) oder befüllt der
+  Kern `summeBedarfOhneGesamtbetrag`/`summeWahl`, muss Ticket 44 den inkrementellen Weg erweitern (oder bei LVs mit
+  Zuschlagsposition auf `angebotSummenBerechnen` zurückfallen); der Property-Test vergleicht mit der Neuberechnung und
+  zeigt die Abweichung, sobald sein LV eine Zuschlagsposition bekommt.
+- `pnpm typecheck` scheitert weiter nur an `proto/interview` (vor diesem Lauf, nicht von hier); alle anderen Pakete
+  einschließlich `vergabe` sind grün.
