@@ -642,6 +642,10 @@ describe('Der Leser nimmt X86 an (amtliche AVA-X86)', () => {
     expect(ps.filter((p) => p.zuschlag?.prozentsatz === '10.00')).toHaveLength(6);
     expect(l.befunde.map((b) => b.code)).not.toContain('phase-nicht-unterstuetzt');
     expect(l.befunde.map((b) => b.code)).not.toContain('mwst-standardsatz');
-    expect(l.inhalt?.mwstSatz).toMatch(/^[0-9]+\.[0-9]{2}$/);
+    expect(l.inhalt?.mwstSatz).toBe('19.00');
+    // Positionsnachlass (Item/DiscountPcnt) kennt der Vertrag nicht (G-23): IT weicht dann von Menge × EP ab.
+    const abweichend = l.befunde.filter((b) => b.code === 'gesamtpreis-abweichend');
+    expect(abweichend.length).toBeGreaterThan(0);
+    expect(abweichend[0]?.schwere).toBe('warnung');
   });
 });
