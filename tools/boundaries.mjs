@@ -3,7 +3,7 @@
 //
 // Richtung: vertrag <- dezimal/kern <- Fachpakete <- apps/web. Fachpakete importieren einander nie.
 // Jeder Eintrag nennt die Ordner (relativ zur Repo-Wurzel), die ein Paket importieren darf.
-// Ein Paket kann sich selbst immer importieren. Ein neues Paket muss hier eingetragen werden,
+// Ein Paket kann sich selbst immer importieren. Fixtures dürfen Testdateien aller Pakete lesen, Produktivdateien nie. Ein neues Paket muss hier eingetragen werden,
 // sonst schlägt die Prüfung fehl.
 
 import { existsSync, readdirSync } from 'node:fs';
@@ -61,15 +61,17 @@ export function regeln() {
       comment: `${von} darf nur ${darf.length ? darf.join(', ') : 'sich selbst'} importieren (A3).`,
       severity: 'error',
       from: { path: `^${esc(von)}/` },
+      // Fixtures regelt `fixtures-nur-in-tests`: Testdateien jedes Pakets dürfen sie lesen, Produktivcode nie.
+      // Aus fixtures heraus gilt weiter die Tabelle (fixtures importiert keine Pakete).
       to: {
-        path: `^(packages|apps|fixtures)(/|$)`,
+        path: von === 'fixtures' ? `^(packages|apps|fixtures)(/|$)` : `^(packages|apps)(/|$)`,
         pathNot: `^(${alt(erlaubt)})(/|$)`,
       },
     });
   }
   forbidden.push({
     name: 'fixtures-nur-in-tests',
-    comment: 'Produktivcode importiert keine Fixtures.',
+    comment: 'Produktivcode importiert keine Fixtures; Testdateien (*.test.*, *.spec.*, e2e/) dürfen es (A3, Ticket 25).',
     severity: 'error',
     from: { pathNot: `^fixtures/|${TESTDATEI}` },
     to: { path: '^fixtures/' },

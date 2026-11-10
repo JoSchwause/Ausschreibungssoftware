@@ -91,5 +91,16 @@ describe('Paketgrenzen (A3)', () => {
     datei('packages/kern/src/rechnen.test.ts', "import '@tethys/fixtures';\nexport {};\n");
     const verstoesse = await pruefeGrenzen(wurzel);
     expect(verstoesse.filter((v) => v.startsWith('fixtures-nur-in-tests'))).toHaveLength(1);
+    // Die Testdatei darf Fixtures lesen, die Produktivdatei nicht: genau ein Verstoß, und nur gegen die Fixture-Regel.
+    expect(verstoesse).toHaveLength(1);
+    expect(verstoesse[0]).toContain('rechnen.ts');
+  });
+
+  it('erlaubt einer Testdatei Fixtures auch aus e2e-Ordnern und per relativem Pfad', async () => {
+    paket('packages/ui-grid');
+    paket('fixtures');
+    datei('packages/ui-grid/e2e/grid.spec.ts', "import '../../../fixtures/index';\nexport {};\n");
+    datei('fixtures/index.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
   });
 });
