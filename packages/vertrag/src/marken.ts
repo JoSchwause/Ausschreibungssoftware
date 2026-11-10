@@ -20,6 +20,10 @@ export type AngebotId = string & Marke<'AngebotId'>;
 export type BieterId = string & Marke<'BieterId'>;
 export type ProtokollId = string & Marke<'ProtokollId'>;
 export type BildId = string & Marke<'BildId'>;
+/** Kennung eines Papierkorbeintrags (v1.2): eine Ablage aus `KnotenInPapierkorbLegen`, eindeutig je LV. */
+export type PapierkorbEintragId = string & Marke<'PapierkorbEintragId'>;
+/** Kennung eines LV-Stands (v1.2; ADR 0006): ein eingefrorener, unveränderlicher Stand eines LV. */
+export type LvStandId = string & Marke<'LvStandId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;
@@ -74,4 +78,8 @@ export interface IdQuelle {
   titel(): TitelId;
   position(): PositionId;
   hinweistext(): HinweistextId;
+  /** v1.2: für `KnotenInPapierkorbLegen`. */
+  papierkorbEintrag(): PapierkorbEintragId;
+  /** v1.2: für `LvStandAnlegen`. */
+  lvStand(): LvStandId;
 }

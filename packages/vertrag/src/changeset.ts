@@ -7,7 +7,9 @@ import type {
   AuftragsLeistungsverzeichnisId,
   KnotenId,
   LeistungsverzeichnisId,
+  LvStandId,
   ProjektId,
+  Zeitstempel,
 } from './marken';
 import type {
   Angebot,
@@ -18,6 +20,7 @@ import type {
   Knoten,
   Leistungsverzeichnis,
   LvKopf,
+  PapierkorbEintrag,
   Projekt,
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
@@ -69,7 +72,12 @@ export type Befehlshinweiscode =
   /** F2: Bei Überlauf wich die OZ-Vergabe automatisch auf Schritt 5, 2 oder 1 aus. */
   | 'oz-schritt-ausgewichen'
   /** N5, E-06: Das Netto nach Nachlass ist negativ. Ein Befund, keine Sperre. */
-  | 'netto-nach-nachlass-negativ';
+  | 'netto-nach-nachlass-negativ'
+  /**
+   * v1.2, U5: `LeistungsverzeichnisAnlegen` (GAEB-Import) nahm eine OZ-Maske an, die der Kern beanstandet
+   * (`maskePruefen`). Der Befehl wird ausgeführt; der Befund kommt als Hinweis mit (Ticket 30).
+   */
+  | 'oz-maske-ungueltig';
 
 /**
  * Hinweis zu einem angenommenen Befehl. Der Befehl wird trotzdem ausgeführt und liefert sein ChangeSet; ein Hinweis
@@ -104,6 +112,29 @@ export interface AuftragsLvZustand {
   readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
   readonly summen: Summenstand;
 }
+
+// --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
+
+/** Kopf eines LV-Stands: was das ChangeSet von `LvStandAnlegen` trägt (`LvChangeSet.lvStand`). */
+export interface LvStandKopf {
+  readonly id: LvStandId;
+  readonly leistungsverzeichnisId: LeistungsverzeichnisId;
+  readonly name: string;
+}
+
+/**
+ * LV-Stand (v1.2, ADR 0006): ein eingefrorener, unveränderlicher Stand eines LV samt Summen. `speicher` legt ihn in
+ * derselben Transaktion an wie das ChangeSet von `LvStandAnlegen`, aus dem gespeicherten Stand des LV; `angelegt` ist
+ * `Protokolleintrag.wann` dieses Befehls. Er wird nie geändert; ein LV aus einem Stand zurückholen geht über
+ * `LeistungsverzeichnisAnlegen` mit dem Inhalt des Stands (kein Zurückschreiben in das bestehende LV).
+ */
+export interface LvStand extends LvStandKopf {
+  readonly angelegt: Zeitstempel;
+  readonly zustand: LvZustand;
+}
+
+/** LV-Stand ohne den Zustand, für Listen (`LvStandRepository.auflisten`). */
+export type LvStandUebersicht = Omit<LvStand, 'zustand'>;
 
 // --- ChangeSet -----------------------------------------------------------------------------------------------
 
@@ -154,6 +185,18 @@ export interface LvChangeSet {
   readonly summen: Summenaenderung;
   /** Hinweise zum Befehl (v1.1a); fehlt: keine. */
   readonly hinweise?: readonly Befehlshinweis[];
+  /**
+   * Geänderte Papierkorbeinträge (v1.2, K9); fehlt: keine Änderung. Hineinlegen (`KnotenInPapierkorbLegen`) =
+   * `knoten.entfernt` + `papierkorb.hinzugefuegt`; Wiederherstellen = `knoten.hinzugefuegt` + `papierkorb.entfernt`;
+   * Entfernen und Leeren = nur `papierkorb.entfernt`. Umkehrbar ohne Vorzustand wie seit v1.1a.
+   */
+  readonly papierkorb?: Aenderungen<PapierkorbEintrag>;
+  /**
+   * LV-Stand (v1.2, S3); fehlt: keine Änderung. `vorher: null`: `LvStandAnlegen`, `speicher` friert den gespeicherten
+   * Stand des LV in derselben Transaktion ein. `nachher: null` kommt nur als Umkehrung vor: der Stand entfällt.
+   * Ein Stand wird nie geändert (beide Seiten gesetzt kommt nicht vor).
+   */
+  readonly lvStand?: Aenderung<LvStandKopf>;
 }
 
 export interface AngebotChangeSet {
