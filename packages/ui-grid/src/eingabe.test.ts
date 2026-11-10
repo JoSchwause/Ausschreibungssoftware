@@ -83,7 +83,10 @@ describe('Spalte „Art“', () => {
   };
   const art = (merkmale: Partial<Positionsmerkmale>, zuschlag: Zuschlag | null = null): string => {
     const knoten = position.knoten as Position;
-    const zeile: LvZeile = { ...position, knoten: { ...knoten, merkmale: { ...ohne, ...merkmale }, zuschlag } };
+    const zeile: LvZeile = {
+      ...position,
+      knoten: { ...knoten, merkmale: { ...ohne, ...merkmale }, zuschlag },
+    };
     return anzeigeText(zeile, 'positionsart', zahlenAttrappe);
   };
 
@@ -139,7 +142,10 @@ describe('hinweisKlartext', () => {
       {
         art: 'liste',
         geordnet: false,
-        punkte: [[{ art: 'text', text: 'Zufahrt' }], [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Lager' }] }]],
+        punkte: [
+          [{ art: 'text', text: 'Zufahrt' }],
+          [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Lager' }] }],
+        ],
       },
       {
         art: 'tabelle',
@@ -186,9 +192,9 @@ describe('hinweisKlartext', () => {
   });
 
   it('die Formen vor v1.1b: Textläufe und Bilder direkt, Zeilenumbruch im Text als Leerzeichen', () => {
-    expect(hinweisKlartext([{ art: 'text', text: 'Zeile 1\nZeile 2' }, bild, { art: 'text', text: 'Schluss' }])).toBe(
-      'Zeile 1 Zeile 2 [Bild] Schluss',
-    );
+    expect(
+      hinweisKlartext([{ art: 'text', text: 'Zeile 1\nZeile 2' }, bild, { art: 'text', text: 'Schluss' }]),
+    ).toBe('Zeile 1 Zeile 2 [Bild] Schluss');
     expect(hinweisKlartext([])).toBe('');
   });
 });
