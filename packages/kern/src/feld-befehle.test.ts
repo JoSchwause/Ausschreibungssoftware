@@ -29,6 +29,7 @@ import {
   anwenden,
   id,
   lvMit,
+  merkmale,
   posKnoten,
   positionsdaten,
   titelKnoten,
@@ -97,8 +98,8 @@ const FUENF = [
 describe('Zuständigkeit', () => {
   it('die fünf Feldbefehle haben keinen Eintrag mehr in ZUSTAENDIGES_TICKET', () => {
     for (const art of FUENF) expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain(art);
-    expect(Object.keys(ZUSTAENDIGES_TICKET)).toContain('EinheitspreisanteileSetzen');
-    expect(Object.keys(ZUSTAENDIGES_TICKET)).toContain('PositionsmerkmaleSetzen'); // // v1.1b: mechanisch angepasst, Folgeticket: umbenannt
+    expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain('PositionsmerkmaleSetzen'); // Ticket 37 (K5)
+    expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain('EinheitspreisanteileSetzen'); // Ticket 37 (K7)
   });
 
   it('die Annahme zu leeren Texten steht an einer benannten Stelle', () => {
@@ -385,7 +386,7 @@ function eigenschaftsBasis(): LvZustand {
     los('L1', 0),
     titelKnoten('T1', 'L1', 0),
     posKnoten('P1', 'T1', 0, '2.000', '10.000', { einheit: 'm', langtext: [{ art: 'text', text: 'alt' }] }),
-    posKnoten('P2', 'T1', 1, '3.500', '1.235', { positionsart: 'bedarf' }),
+    posKnoten('P2', 'T1', 1, '3.500', '1.235', { merkmale: merkmale({ bedarf: 'ohne-gesamtbetrag' }) }),
     hinweis('H1', 'T1', 2, [{ art: 'text', text: 'Hinweis' }]),
     posKnoten('P3', 'L1', 1, null, null),
   ]);

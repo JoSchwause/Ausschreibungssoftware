@@ -42,8 +42,12 @@ describe('angebotSummenBerechnen', () => {
       nettoNachNachlass: '190.00',
       mwst: '36.10',
       brutto: '226.10',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
-    expect(s.gliederungen).toEqual([{ gliederungId: 't1', summe: '200.00' }]);
+    expect(s.gliederungen).toEqual([
+      { gliederungId: 't1', summe: '200.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
+    ]);
   });
 
   it('Golden B: nicht angeboten ist kein Preis 0,00 (kein GP, geht nicht ein); Brutto 190,40', () => {
@@ -70,6 +74,8 @@ describe('angebotSummenBerechnen', () => {
       nettoNachNachlass: '300.00',
       mwst: '57.00',
       brutto: '357.00',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 

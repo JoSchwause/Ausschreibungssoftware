@@ -1,6 +1,6 @@
 # 37: Kern: Positionsmerkmale, Wahl- und Zuschlagspositionen, EPA (K5–K7)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: K (K5–K7) · Paket: `packages/kern` (benannte Ausnahmen: `GLOSSARY.md`, eine neue Datei unter `fixtures/`, siehe Grenzen)
 Blocked by: 30
@@ -205,20 +205,20 @@ Kern und Generator zwei getrennte Zähler sind. Alle anderen Fixture-Dateien ble
 
 ## Acceptance criteria
 
-- [ ] `PositionsmerkmaleSetzen` und `EinheitspreisanteileSetzen` sind zuständig; `ZUSTAENDIGES_TICKET` nennt sie nicht mehr
-- [ ] Je Merkmalskombination ein Test für das Ziel des Betrags (Netto, Bedarfssumme, Wahlsumme, nirgends), darunter Bedarf im Stundenlohn, Wahl mit Bedarf, Grundausführung Variante 0, Pauschal ohne Menge
-- [ ] `summeBedarfOhneGesamtbetrag` und `summeWahl` sind in `Gesamtsummen` und jeder `Gliederungssumme` gesetzt; für `typisch` 586,80 und 5.880,00 (aus den Fixture-Sollwerten von 01.0040 und 02.0070 A), Netto unverändert 55.463,41
-- [ ] Die fünf Formprüfungen aus Teil 1 weisen mit `ungueltige-eingabe` und dem genannten `feld` ab, je ein Test
-- [ ] Golden-Tests mit den Zahlen der Tabelle in Teil 2: alle sechs Zuschlagspositionen aus 1.30 und 002.001.0030, Gliederungssummen 1.450,50, 1.790,00, 819,10, 4.059,60 und 935.111,00; der Test nennt Datei und Element (`ID`) wie oben
-- [ ] Je Bezugsform ein Test, dass eine Änderung an einer Bezugsposition den Zuschlagsbetrag im ChangeSet aktualisiert (auch Bezug in anderer Gliederung); Löschen einer Bezugsposition entfernt den Verweis und ist umkehrbar
-- [ ] Gedachtes LV (R7): ein Test ersetzt in einem LV alle EP und Sätze durch die eines Bieters und bekommt mit `summenBerechnen` die nachgerechneten Bieterzahlen; `zuschlagsbasen` liefert Basis, Betrag und das Kennzeichen „Bezug ohne Preis“
-- [ ] Altform (R8): `typisch` und `gross` rechnen unverändert; die vorhandenen Fixture-Tests des Kerns bleiben grün
-- [ ] Property-Test: nach jeder Befehlsfolge (inkl. Merkmale, Zuschläge, EPA) ist der Summenstand gleich `summenBerechnen`, und `changeSetUmkehren` stellt den Zustand exakt her
-- [ ] EPA: EP folgt den Anteilen; `epaSummen` ergibt den Golden aus Teil 3
-- [ ] Leistung (Q4): Mengenänderung an einer Bezugsposition in einem LV mit 5.000 Positionen und Zuschlagspositionen aller drei Formen < 16 ms (Messwert im Ticket)
-- [ ] `fixtures/zuschlag.json` mit unabhängig berechneten Sollwerten; Kern-Test vergleicht dagegen; andere Fixtures byte-gleich
-- [ ] `GLOSSARY.md` angepasst; jede Demo-Entscheidung steht als `D-xx` in `entscheidungen-auto.md`
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `PositionsmerkmaleSetzen` und `EinheitspreisanteileSetzen` sind zuständig; `ZUSTAENDIGES_TICKET` nennt sie nicht mehr
+- [x] Je Merkmalskombination ein Test für das Ziel des Betrags (Netto, Bedarfssumme, Wahlsumme, nirgends), darunter Bedarf im Stundenlohn, Wahl mit Bedarf, Grundausführung Variante 0, Pauschal ohne Menge
+- [x] `summeBedarfOhneGesamtbetrag` und `summeWahl` sind in `Gesamtsummen` und jeder `Gliederungssumme` gesetzt; für `typisch` 586,80 und 5.880,00 (aus den Fixture-Sollwerten von 01.0040 und 02.0070 A), Netto unverändert 55.463,41
+- [x] Die fünf Formprüfungen aus Teil 1 weisen mit `ungueltige-eingabe` und dem genannten `feld` ab, je ein Test
+- [x] Golden-Tests mit den Zahlen der Tabelle in Teil 2: alle sechs Zuschlagspositionen aus 1.30 und 002.001.0030, Gliederungssummen 1.450,50, 1.790,00, 819,10, 4.059,60 und 935.111,00; der Test nennt Datei und Element (`ID`) wie oben
+- [x] Je Bezugsform ein Test, dass eine Änderung an einer Bezugsposition den Zuschlagsbetrag im ChangeSet aktualisiert (auch Bezug in anderer Gliederung); Löschen einer Bezugsposition entfernt den Verweis und ist umkehrbar
+- [x] Gedachtes LV (R7): ein Test ersetzt in einem LV alle EP und Sätze durch die eines Bieters und bekommt mit `summenBerechnen` die nachgerechneten Bieterzahlen; `zuschlagsbasen` liefert Basis, Betrag und das Kennzeichen „Bezug ohne Preis“
+- [x] Altform (R8): `typisch` und `gross` rechnen unverändert; die vorhandenen Fixture-Tests des Kerns bleiben grün
+- [x] Property-Test: nach jeder Befehlsfolge (inkl. Merkmale, Zuschläge, EPA) ist der Summenstand gleich `summenBerechnen`, und `changeSetUmkehren` stellt den Zustand exakt her
+- [x] EPA: EP folgt den Anteilen; `epaSummen` ergibt den Golden aus Teil 3
+- [x] Leistung (Q4): Mengenänderung an einer Bezugsposition in einem LV mit 5.000 Positionen und Zuschlagspositionen aller drei Formen < 16 ms (Messwert im Ticket: Median 1,82 ms, schlechtester 3,61 ms, 40 Läufe warm; `gross` 2,05 ms)
+- [x] `fixtures/zuschlag.json` mit unabhängig berechneten Sollwerten; Kern-Test vergleicht dagegen; andere Fixtures byte-gleich
+- [x] `GLOSSARY.md` angepasst; jede Demo-Entscheidung steht als `D-xx` in `entscheidungen-auto.md`
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -233,3 +233,14 @@ Fixtures `typisch`, `gross`, `typisch-angebote` (44), GAEB-Abbildung von `Markup
 - Ticket 32 (gaeb-Leser) setzt `wahl` auch an Variante 0 einer Wahlgruppe (`grundpositionId: null`). Der Kern lässt heute
   jede Position mit `wahl` aus den Summen. Hier klären und festlegen (F4): Variante 0 ist die Grundposition und zählt
   in die Summe; nur Varianten ≥ 1 sind Wahlpositionen. Steht in den amtlichen Dateien etwas anderes, gilt der Beleg.
+
+### Umsetzer
+
+- Betragsziel und Ausweise: Vorschläge übernommen (Wahl vor Bedarf, Variante 0 zählt normal, Variante `null` ist Wahl, Pauschal ohne Menge = Menge 1); D-37.1.
+- Summen: `summenAenderung` leitet sie jetzt aus den Knotenänderungen jedes Befehls ab (Elternknoten mit geänderten Kindern → deren Zuschlagspositionen R3/R4; Rückwärtsindex `bezugsindex` je Knotenarray → Listen R5); umkehrbar und minimal (Property-Test mit unabhängigem Orakel).
+- Zusätzliche Abweisung: eine Bezugsposition kann nicht zur Zuschlagsposition werden (`feld: 'zuschlag'`), sonst bräche Prüfung 3 als Invariante; D-37.1.
+- R2/R3/R5/R7/R8 wie vorgeschlagen, keine eigene „Preisquelle“-Schnittstelle (`summenBerechnen` + `zuschlagsbasen`); D-37.2.
+- EPA: Anteile ganz ohne Wert lassen den EP stehen; die Altform darf Anteile tragen; D-37.3.
+- Fixture `zuschlag.json`: zusätzlich additives Feld `epa` und Sollwerte `zuschlaege`, `epa` (Generator, BigInt); übrige Fixtures byte-gleich.
+- Paketgrenze: `vergabe` brauchte eine mechanische Anpassung (der inkrementelle Angebotsstand trägt die Ausweise, Ziel über `betragsziel` aus dem Kern), sonst wäre der Angebots-Property-Test rot; eigener Commit „Carry kern ausweise through vergabe offer sums“ zur Prüfung durch den Orchestrator.
+- Leistung: 5.000 Positionen mit Zuschlägen aller drei Formen, MengeAendern an einer Bezugsposition: Median 1,82 ms (schlechtester 3,61 ms); `gross` 2,05 ms.

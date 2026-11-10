@@ -6,9 +6,11 @@ import gross from '../../../fixtures/gross.json';
 import handbeispiele from '../../../fixtures/handbeispiele.json';
 import typisch from '../../../fixtures/typisch.json';
 import winzig from '../../../fixtures/winzig.json';
+import zuschlag from '../../../fixtures/zuschlag.json';
 import type {
   Betrag,
   Einheitspreis,
+  Einheitspreisanteile,
   Ergebnis,
   ElternId,
   GliederungId,
@@ -27,6 +29,7 @@ import type {
   PositionId,
   Positionsdaten,
   Positionsmerkmale,
+  Wahlzuordnung,
   Zuschlag,
   Prozent,
   Titel,
@@ -69,86 +72,44 @@ export function inhalt(knoten: readonly Knoten[] = []): LvInhalt {
   };
 }
 
-// v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b hat eine Position keine einzelne Positionsart mehr. Die Tests des Kerns schreiben ihre Fälle
-// weiter in der alten Kurzform (`positionsart: 'wahl'`, `bedarfMitGesamtbetrag`, `bezugspositionId` …); `positionsfelder`
-// übersetzt sie in `merkmale` und `zuschlag`. Nur Testhilfe, kein Kern-Verhalten. Gruppe und Variante bleiben `null`.
+/** Keine Merkmale gesetzt: eine Normalposition (F5). */
+export const OHNE_MERKMALE: Positionsmerkmale = {
+  bedarf: null,
+  wahl: null,
+  stundenlohn: false,
+  pauschal: false,
+  zuschlagskennzeichen: false,
+};
 
-/** Alte Positionsart, nur als Kurzform der Tests. */
-export type Positionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
+/** Merkmale; was fehlt, ist nicht gesetzt. */
+export const merkmale = (ueber: Partial<Positionsmerkmale> = {}): Positionsmerkmale => ({
+  ...OHNE_MERKMALE,
+  ...ueber,
+});
 
-export interface PositionsKurzform {
-  positionsart?: Positionsart;
-  pauschal?: boolean;
-  bedarfMitGesamtbetrag?: boolean;
-  bezugspositionId?: string | null;
-  grundpositionId?: string | null;
-}
+/** Wahlzuordnung; Gruppe und Variante `null` wie in Daten vor v1.1b. */
+export const wahlzuordnung = (
+  variante: number | null = null,
+  gruppe: number | null = null,
+  grundpositionId: string | null = null,
+): Wahlzuordnung => ({ gruppe, variante, grundpositionId: grundpositionId as PositionId | null });
 
-/** Wandelt die Kurzform in Felder des Vertrags; alle anderen Felder bleiben, wie sie sind. */
-export function positionsfelder<T extends PositionsKurzform>(
-  ueber: T,
-): Partial<Position> & Omit<T, keyof PositionsKurzform> {
-  const { positionsart, pauschal, bedarfMitGesamtbetrag, bezugspositionId, grundpositionId, ...rest } = ueber;
-  const aus: Record<string, unknown> = { ...rest };
-  if (
-    positionsart !== undefined ||
-    pauschal !== undefined ||
-    bedarfMitGesamtbetrag !== undefined ||
-    grundpositionId !== undefined
-  ) {
-    const merkmale: Positionsmerkmale = {
-      bedarf:
-        positionsart === 'bedarf'
-          ? bedarfMitGesamtbetrag === true
-            ? 'mit-gesamtbetrag'
-            : 'ohne-gesamtbetrag'
-          : null,
-      wahl:
-        positionsart === 'wahl'
-          ? { gruppe: null, variante: null, grundpositionId: (grundpositionId ?? null) as PositionId | null }
-          : null,
-      stundenlohn: positionsart === 'stundenlohn',
-      pauschal: pauschal ?? false,
-      zuschlagskennzeichen: false,
-    };
-    aus['merkmale'] = merkmale;
-  }
-  if (positionsart === 'zuschlag') {
-    const z: Zuschlag = {
-      prozentsatz: null,
-      bezug: {
-        art: 'positionen',
-        positionen:
-          bezugspositionId == null ? [] : [{ positionId: bezugspositionId as PositionId, teilmenge: null }],
-      },
-    };
-    aus['zuschlag'] = z;
-  }
-  return aus as Partial<Position> & Omit<T, keyof PositionsKurzform>;
-}
+/** Zuschlag mit Bezugsform `positionen` (R5); ohne Satz ist es die Altform (R8). */
+export const zuschlagsliste = (bezug: readonly string[], prozentsatz: string | null = null): Zuschlag => ({
+  prozentsatz: prozentsatz as Prozent | null,
+  bezug: {
+    art: 'positionen',
+    positionen: bezug.map((b) => ({ positionId: b as PositionId, teilmenge: null })),
+  },
+});
 
-/** Die alte Positionsart einer Position, für Zählungen in Tests. */
-export function positionsartVon(p: Pick<Position, 'merkmale' | 'zuschlag'>): Positionsart {
-  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
-  const gesetzt = [
-    p.zuschlag !== null,
-    p.merkmale.wahl !== null,
-    p.merkmale.bedarf !== null,
-    p.merkmale.stundenlohn,
-  ];
-  if (gesetzt.filter(Boolean).length > 1)
-    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
-  if (p.zuschlag !== null) return 'zuschlag';
-  if (p.merkmale.wahl !== null) return 'wahl';
-  if (p.merkmale.bedarf !== null) return 'bedarf';
-  if (p.merkmale.stundenlohn) return 'stundenlohn';
-  return 'normal';
-}
+/** Zuschlag mit Bezugsform `gliederung` (R3) oder `kennzeichnung` (R4). */
+export const zuschlagAuf = (art: 'gliederung' | 'kennzeichnung', prozentsatz: string | null): Zuschlag => ({
+  prozentsatz: prozentsatz as Prozent | null,
+  bezug: { art },
+});
 
-export function positionsdaten(
-  kurztext: string,
-  ueber: Partial<Positionsdaten> & PositionsKurzform = {},
-): Positionsdaten {
+export function positionsdaten(kurztext: string, ueber: Partial<Positionsdaten> = {}): Positionsdaten {
   return {
     ordnungszahl: null,
     ozIndex: null,
@@ -160,7 +121,7 @@ export function positionsdaten(
     einheit: null,
     einheitspreis: null,
     epa: null,
-    ...positionsfelder(ueber),
+    ...ueber,
   };
 }
 
@@ -261,16 +222,48 @@ interface FxKnoten {
   ordnungszahl?: string;
   kurztext?: string;
   text?: string;
-  positionsart?: Positionsart;
+  positionsart?: FxPositionsart;
   ozIndex?: string;
   langtext?: string;
-  menge?: string;
-  einheit?: string;
-  einheitspreis?: string;
+  menge?: string | null;
+  einheit?: string | null;
+  einheitspreis?: string | null;
   bedarfMitGesamtbetrag?: boolean;
   bezugspositionId?: string;
   grundpositionId?: string;
+  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  zuschlag?: Zuschlag;
+  zuschlagskennzeichen?: boolean;
+  epa?: Einheitspreisanteile;
 }
+/** Positionsart des Fixture-Formats (`fixtures/README.md`, Annahmen A1 bis A4); Ticket 44 stellt das Format um. */
+export type FxPositionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
+
+/**
+ * Merkmale und Zuschlag aus dem Fixture-Format. Eine Zuschlagsposition mit `bezugspositionId` ist die Altform (R8,
+ * D-10); `zuschlag.json` trägt den Zuschlag in Vertragsform (Ticket 37).
+ */
+function fixtureMerkmale(k: FxKnoten): Pick<Position, 'merkmale' | 'zuschlag'> {
+  const art = k.positionsart ?? 'normal';
+  return {
+    merkmale: merkmale({
+      bedarf:
+        art === 'bedarf'
+          ? k.bedarfMitGesamtbetrag === true
+            ? 'mit-gesamtbetrag'
+            : 'ohne-gesamtbetrag'
+          : null,
+      wahl: art === 'wahl' ? wahlzuordnung(null, null, k.grundpositionId ?? null) : null,
+      zuschlagskennzeichen: k.zuschlagskennzeichen === true,
+    }),
+    zuschlag:
+      k.zuschlag ??
+      (art === 'zuschlag'
+        ? zuschlagsliste(k.bezugspositionId === undefined ? [] : [k.bezugspositionId])
+        : null),
+  };
+}
+
 interface FxLv {
   id: string;
   name: string;
@@ -279,9 +272,10 @@ interface FxLv {
   knoten: FxKnoten[];
 }
 
-const FIXTURES = { winzig, typisch, gross };
+const FIXTURES = { winzig, typisch, gross, zuschlag };
+export type FixtureName = keyof typeof FIXTURES;
 
-export function fixtureLesen(name: 'winzig' | 'typisch' | 'gross'): FxLv {
+export function fixtureLesen(name: FixtureName): FxLv {
   return FIXTURES[name] as unknown as FxLv;
 }
 
@@ -315,20 +309,13 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
       id: k.id as PositionId,
       ordnungszahl: (k.ordnungszahl ?? null) as Ordnungszahl | null,
       ozIndex: k.ozIndex ?? null,
-      ...(({ merkmale, zuschlag }) => ({ merkmale, zuschlag }))(
-        positionsdaten('', {
-          positionsart: k.positionsart ?? 'normal',
-          bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-          bezugspositionId: k.bezugspositionId ?? null,
-          grundpositionId: k.grundpositionId ?? null,
-        }),
-      ),
+      ...fixtureMerkmale(k),
       kurztext: k.kurztext ?? '',
       langtext: [{ art: 'text', text: k.langtext ?? '' }],
       menge: (k.menge ?? null) as Menge | null,
       einheit: k.einheit ?? null,
       einheitspreis: (k.einheitspreis ?? null) as Einheitspreis | null,
-      epa: null,
+      epa: k.epa ?? null,
     };
   });
   const nachlass: Nachlass | null =
@@ -358,7 +345,7 @@ export function posKnoten(
   reihenfolge: number,
   menge: string | null,
   einheitspreis: string | null,
-  ueber: Partial<Positionsdaten> & PositionsKurzform = {},
+  ueber: Partial<Positionsdaten> = {},
 ): Position {
   return {
     art: 'position',
@@ -411,7 +398,7 @@ export interface Sollwerte {
   summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
 }
 
-export function sollwerteLesen(name: 'winzig' | 'typisch' | 'gross'): Sollwerte {
+export function sollwerteLesen(name: FixtureName): Sollwerte {
   return (FIXTURES[name] as unknown as { sollwerte: Sollwerte }).sollwerte;
 }
 

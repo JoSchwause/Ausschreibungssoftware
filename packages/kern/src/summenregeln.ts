@@ -1,27 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Fachliche Summenregeln, die nicht entschieden sind (Ticket 07). Jede steht als EINE benannte Funktion an genau
+// Fachliche Summenregeln (Ticket 07; Betragsziel und Pauschal: Ticket 37). Jede steht als EINE benannte Funktion an genau
 // dieser Stelle; Befehle und Neuberechnung fragen nur diese Funktionen. Wer eine Frage entscheidet, ändert nur
 // die Funktion und den Eintrag in `SUMMEN_ANNAHMEN`.
 //
 // Die übrigen Annahmen folgen den Fixtures (`fixtures/README.md`, Annahmen A1 bis A6), damit deren Sollwerte stimmen. Sie
 // sind restriktiv und lassen sich ohne Datenmigration lockern. Der Nachlass ist entschieden (N5, E-06, 2026-11-10).
 
-import { NULL_BETRAG, alsProzent, prozentVon, subtrahiere, vergleiche, vorzeichen } from '@tethys/dezimal';
-import type { Betrag, Nachlass, Position, Prozent } from '@tethys/vertrag';
+import {
+  NULL_BETRAG,
+  alsMenge,
+  alsProzent,
+  gesamtpreis,
+  prozentVon,
+  subtrahiere,
+  vergleiche,
+  vorzeichen,
+} from '@tethys/dezimal';
+import type { Betrag, Menge, Nachlass, Position, Prozent } from '@tethys/vertrag';
 
 export const SUMMEN_ANNAHMEN: {
   readonly status: string;
   readonly positionsarten: string;
+  readonly pauschal: string;
   readonly nachlassRundung: string;
   readonly nachlassGrenzen: string;
   readonly mwstGrenzen: string;
 } = {
   status:
-    'vorläufige Annahme, Entscheidung offen (Positionsarten, MwSt-Grenzen); entschieden: Nachlass (N5, E-06, 2026-11-10)',
-  /** (1) `positionGehtInSumme`: Fixture-Annahmen A1 bis A4; `stundenlohn` und `pauschal` sind von keiner abgedeckt. */
+    'vorläufige Annahme, Entscheidung offen (MwSt-Grenzen); entschieden: Nachlass (N5, E-06, 2026-11-10), Betragsziel (E-04, E-05, Demo D-37.1)',
+  /** (1) `betragsziel`: wohin ein Betrag (GP oder Zuschlagsbetrag) geht. */
   positionsarten:
-    'normal, zuschlag (eigene Menge × EP) und stundenlohn gehen ein; bedarf nur mit Gesamtbetrag (Bedarf mit-gesamtbetrag); wahl nie; ' +
-    'das Merkmal pauschal ändert nichts (Menge × EP)',
+    'ENTSCHIEDEN (E-04, E-05, Demo D-37.1): Wahl mit Variante ≠ 0 (auch ohne Nummer) → Wahlsumme; sonst Bedarf ohne Gesamtbetrag → ' +
+    'Bedarfssumme; sonst (normal, Bedarf mit Gesamtbetrag, Grundausführung Variante 0, Stundenlohn, Pauschal, Zuschlag) → Netto und ' +
+    'Gliederungssumme; Wahl vor Bedarf. Ausweise gehen nicht in Netto, Nachlass, MwSt, Brutto ein',
+  /** (1a) `eigenerGesamtpreis`: Pauschal ohne Menge. */
+  pauschal:
+    'Demo D-37.1: Pauschal ohne Menge → GP = EP auf 2 Stellen gerundet (Menge 1 angenommen); mit Menge Menge × EP. Stundenlohn ändert die Rechnung nicht',
   /** (2) `nachlassBetrag` und `nettoNachNachlass`: Nachlassbetrag auf 2 Stellen runden, dann abziehen (N5, E-06; Fixture A6). */
   nachlassRundung:
     'ENTSCHIEDEN (N5, E-06): Nachlassbetrag kaufmännisch auf 2 Stellen runden (Betrag, Vorzeichen danach), dann vom Netto abziehen (nicht das Ergebnis runden)',
@@ -38,18 +52,49 @@ const HUNDERT_PROZENT: Prozent = (() => {
   return e.wert;
 })();
 
+/** Eines der drei Ziele eines Betrags (Netto mit Gliederungssumme, Bedarfssumme, Wahlsumme). */
+export type Betragsziel = 'netto' | 'bedarf' | 'wahl';
+
 /**
- * (1) Geht der GP dieser Position in Titel-, Los- und LV-Summe ein?
- * VORLÄUFIGE ANNAHME, ENTSCHEIDUNG OFFEN (K5/K6 entscheiden): Fixture-Annahmen A1 bis A4.
- * `stundenlohn` und das Merkmal `pauschal` kommen in keiner Fixture-Annahme vor; sie werden wie eine
- * Normalposition (Menge × EP) behandelt. Das ist gesondert zu entscheiden.
+ * (1) Wohin der Betrag einer Position geht (GP oder Zuschlagsbetrag; ohne Betrag: nirgends).
+ * ENTSCHIEDEN (E-04, E-05; Demo D-37.1): Wahl vor Bedarf. Eine Wahlposition, die zugleich Bedarf ist, steht nur in der
+ * Wahlsumme. Variante 0 ist die Grundausführung (Glossar „Wahlzuordnung“) und zählt wie eine Normalposition; eine
+ * Wahlzuordnung ohne Variantennummer (`null`, Daten vor v1.1b) ist eine Alternative.
  */
+export function betragsziel(p: Pick<Position, 'merkmale'>): Betragsziel {
+  const wahl = p.merkmale.wahl;
+  if (wahl !== null && wahl.variante !== 0) return 'wahl';
+  if (p.merkmale.bedarf === 'ohne-gesamtbetrag') return 'bedarf';
+  return 'netto';
+}
+
+/** Geht ein Betrag dieser Position ins Netto und in die Gliederungssumme ein? (Siehe `betragsziel`.) */
 export function positionGehtInSumme(p: Pick<Position, 'merkmale'>): boolean {
-  // v1.1b: mechanisch angepasst, Folgeticket. gleiche Wirkung wie vor v1.1b (Wahl nie; Bedarf nur mit Gesamtbetrag; sonst ja); die Kombinationen
-  // der neuen Merkmale entscheidet K5, hier gilt die Reihenfolge Wahl vor Bedarf.
-  if (p.merkmale.wahl !== null) return false;
-  if (p.merkmale.bedarf !== null) return p.merkmale.bedarf === 'mit-gesamtbetrag';
-  return true;
+  return betragsziel(p) === 'netto';
+}
+
+const EINE_MENGE: Menge = (() => {
+  const e = alsMenge('1.000');
+  if (!e.ok) throw new Error('Konstante 1.000 ist keine Menge');
+  return e.wert;
+})();
+
+/**
+ * (1a) Die Menge, mit der eine Position rechnet: ihre Menge; ohne Menge bei Pauschal 1 (Demo D-37.1; GAEB lässt bei
+ * Pauschalpositionen die Menge weg oder setzt 1), sonst keine.
+ */
+export function rechenmenge(p: Pick<Position, 'menge' | 'merkmale'>): Menge | null {
+  if (p.menge !== null) return p.menge;
+  return p.merkmale.pauschal ? EINE_MENGE : null;
+}
+
+/**
+ * Der eigene GP einer Position: gerundet(Menge × EP, 2) (N2), mit der Rechenmenge (Pauschal); ohne Menge oder EP keiner.
+ * Für eine Zuschlagsposition mit Satz gilt stattdessen die Zuschlagsregel (`zuschlag.ts`); ohne Satz ist das die Altform.
+ */
+export function eigenerGesamtpreis(p: Pick<Position, 'menge' | 'einheitspreis' | 'merkmale'>): Betrag | null {
+  const menge = rechenmenge(p);
+  return menge !== null && p.einheitspreis !== null ? gesamtpreis(menge, p.einheitspreis) : null;
 }
 
 /**
