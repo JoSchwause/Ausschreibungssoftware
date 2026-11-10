@@ -1,0 +1,2045 @@
+{
+  "angebote": [
+    {
+      "angebot": {
+        "bieterId": "bieter-1",
+        "id": "019b7700-0000-7000-8000-000000000002",
+        "leistungsverzeichnisId": "019b7700-0000-7000-8000-000000000001",
+        "nachlass": null,
+        "positionen": [
+          {
+            "einheitspreis": "12.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000101",
+            "status": "angeboten"
+          },
+          {
+            "positionId": "019b7700-0000-7000-8000-000000000102",
+            "status": "nicht-angeboten"
+          },
+          {
+            "einheitspreis": "14.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000103",
+            "status": "angeboten"
+          },
+          {
+            "einheitspreis": "280.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000104",
+            "status": "angeboten"
+          },
+          {
+            "einheitspreis": "0.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000105",
+            "status": "angeboten",
+            "zuschlagssatz": "4.00"
+          },
+          {
+            "einheitspreis": "0.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000106",
+            "status": "angeboten",
+            "zuschlagssatz": "8.00"
+          },
+          {
+            "einheitspreis": "90.000",
+            "epa": {
+              "frei": null,
+              "freiBezeichnung": null,
+              "geraete": null,
+              "lohn": "30.000",
+              "nachunternehmer": null,
+              "sonstiges": null,
+              "stoffe": "60.000"
+            },
+            "positionId": "019b7700-0000-7000-8000-000000000107",
+            "status": "angeboten"
+          },
+          {
+            "positionId": "019b7700-0000-7000-8000-000000000108",
+            "status": "nicht-angeboten"
+          },
+          {
+            "einheitspreis": "45.000",
+            "epa": null,
+            "positionId": "019b7700-0000-7000-8000-000000000109",
+            "status": "angeboten"
+          }
+        ],
+        "projektId": "projekt-v2"
+      },
+      "summen": {
+        "gesamt": {
+          "brutto": "794.02",
+          "mwst": "126.78",
+          "nachlass": "0.00",
+          "netto": "667.24",
+          "nettoNachNachlass": "667.24",
+          "summeBedarfOhneGesamtbetrag": "0.00",
+          "summeWahl": "140.00"
+        },
+        "gliederungen": [
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000010",
+            "summe": "667.24",
+            "summeBedarfOhneGesamtbetrag": "0.00",
+            "summeWahl": "140.00"
+          },
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000011",
+            "summe": "667.24",
+            "summeBedarfOhneGesamtbetrag": "0.00",
+            "summeWahl": "140.00"
+          }
+        ],
+        "positionen": [
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "120.00",
+            "positionId": "019b7700-0000-7000-8000-000000000101"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": null,
+            "positionId": "019b7700-0000-7000-8000-000000000102"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": "140.00",
+            "positionId": "019b7700-0000-7000-8000-000000000103"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "280.00",
+            "positionId": "019b7700-0000-7000-8000-000000000104"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "16.00",
+            "positionId": "019b7700-0000-7000-8000-000000000105"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "26.24",
+            "positionId": "019b7700-0000-7000-8000-000000000106"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "180.00",
+            "positionId": "019b7700-0000-7000-8000-000000000107"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": null,
+            "positionId": "019b7700-0000-7000-8000-000000000108"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "45.00",
+            "positionId": "019b7700-0000-7000-8000-000000000109"
+          }
+        ]
+      }
+    }
+  ],
+  "auftragsLeistungsverzeichnisse": [
+    {
+      "auftragsLeistungsverzeichnis": {
+        "angebotId": "019b7700-0000-7000-8000-000000000002",
+        "auftraggeber": {
+          "name": "Gemeinde Musterstadt (erfunden)",
+          "ort": "Musterstadt",
+          "plz": "12345",
+          "strasse": "Am Markt 1",
+          "vergabenummer": "V-2026-001"
+        },
+        "id": "019b7700-0000-7000-8000-000000000003",
+        "knoten": [
+          {
+            "art": "los",
+            "elternId": "019b7700-0000-7000-8000-000000000003",
+            "id": "019b7700-0000-7000-8000-000000000010",
+            "kurztext": "Los Rohbau",
+            "ordnungszahl": "1",
+            "reihenfolge": 0
+          },
+          {
+            "art": "titel",
+            "elternId": "019b7700-0000-7000-8000-000000000010",
+            "id": "019b7700-0000-7000-8000-000000000011",
+            "kurztext": "Mauerarbeiten",
+            "ordnungszahl": "1.01",
+            "reihenfolge": 0
+          },
+          {
+            "art": "hinweis",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "id": "019b7700-0000-7000-8000-000000000012",
+            "reihenfolge": 0,
+            "text": [
+              {
+                "art": "absatz",
+                "inhalt": [
+                  {
+                    "art": "text",
+                    "text": "Vorbemerkung: "
+                  },
+                  {
+                    "art": "text",
+                    "fett": true,
+                    "text": "alle Maße"
+                  },
+                  {
+                    "art": "umbruch"
+                  },
+                  {
+                    "art": "text",
+                    "kursiv": true,
+                    "text": "am Bau prüfen",
+                    "unterstrichen": true
+                  }
+                ]
+              },
+              {
+                "art": "liste",
+                "geordnet": false,
+                "punkte": [
+                  [
+                    {
+                      "art": "text",
+                      "text": "Baustelle sauber halten"
+                    }
+                  ],
+                  [
+                    {
+                      "art": "absatz",
+                      "inhalt": [
+                        {
+                          "art": "text",
+                          "fett": true,
+                          "text": "Abfälle trennen"
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "art": "liste",
+                "geordnet": true,
+                "punkte": [
+                  [
+                    {
+                      "art": "text",
+                      "text": "erstens"
+                    }
+                  ],
+                  [
+                    {
+                      "art": "text",
+                      "text": "zweitens"
+                    }
+                  ]
+                ]
+              },
+              {
+                "art": "tabelle",
+                "zeilen": [
+                  {
+                    "zellen": [
+                      {
+                        "inhalt": [
+                          {
+                            "art": "text",
+                            "text": "Bauteil"
+                          }
+                        ],
+                        "spalten": 1
+                      },
+                      {
+                        "inhalt": [
+                          {
+                            "art": "text",
+                            "fett": true,
+                            "text": "Güte"
+                          }
+                        ],
+                        "spalten": 1
+                      }
+                    ]
+                  },
+                  {
+                    "zellen": [
+                      {
+                        "inhalt": [
+                          {
+                            "art": "absatz",
+                            "inhalt": [
+                              {
+                                "art": "text",
+                                "text": "über zwei Spalten"
+                              }
+                            ]
+                          }
+                        ],
+                        "spalten": 2
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "art": "position",
+            "einheit": "m2",
+            "einheitspreis": "12.500",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": {
+              "frei": null,
+              "freiBezeichnung": null,
+              "geraete": null,
+              "lohn": "7.500",
+              "nachunternehmer": null,
+              "sonstiges": null,
+              "stoffe": "5.000"
+            },
+            "id": "019b7700-0000-7000-8000-000000000101",
+            "kurztext": "Mauerwerk",
+            "langtext": [
+              {
+                "art": "absatz",
+                "inhalt": [
+                  {
+                    "art": "text",
+                    "text": "Mauerwerk aus Kalksandstein, erfundener Text."
+                  }
+                ]
+              },
+              {
+                "art": "bild",
+                "bild": {
+                  "daten": "iVBORw0KGgo=",
+                  "id": "bild-1",
+                  "medientyp": "image/png"
+                }
+              },
+              {
+                "art": "ergaenzung",
+                "danach": [
+                  {
+                    "art": "text",
+                    "text": " oder gleichwertig"
+                  }
+                ],
+                "davor": [
+                  {
+                    "art": "text",
+                    "text": "Fabrikat: "
+                  }
+                ],
+                "herkunft": "bieter",
+                "inhalt": [
+                  {
+                    "art": "text",
+                    "text": "Muster"
+                  },
+                  {
+                    "art": "umbruch"
+                  }
+                ],
+                "kennung": "1",
+                "leer": false
+              },
+              {
+                "art": "ergaenzung",
+                "danach": [],
+                "davor": [],
+                "herkunft": "ausschreibender",
+                "inhalt": [],
+                "kennung": "2",
+                "leer": true
+              }
+            ],
+            "menge": "10.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0010",
+            "ozIndex": null,
+            "reihenfolge": 1,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "h",
+            "einheitspreis": "40.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000102",
+            "kurztext": "Stundenlohn Maurer (Bedarf)",
+            "langtext": [],
+            "menge": "5.000",
+            "merkmale": {
+              "bedarf": "ohne-gesamtbetrag",
+              "pauschal": false,
+              "stundenlohn": true,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0020",
+            "ozIndex": null,
+            "reihenfolge": 2,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "m2",
+            "einheitspreis": "15.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000103",
+            "kurztext": "Mauerwerk als Wahl",
+            "langtext": [],
+            "menge": "10.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": {
+                "grundpositionId": "019b7700-0000-7000-8000-000000000101",
+                "gruppe": 1,
+                "variante": 1
+              },
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0030",
+            "ozIndex": null,
+            "reihenfolge": 3,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "psch",
+            "einheitspreis": "300.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000104",
+            "kurztext": "Gerüst pauschal (Bedarf mit Gesamtbetrag)",
+            "langtext": [],
+            "menge": "1.000",
+            "merkmale": {
+              "bedarf": "mit-gesamtbetrag",
+              "pauschal": true,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0040",
+            "ozIndex": "a",
+            "reihenfolge": 4,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000105",
+            "kurztext": "Zuschlag Baustelleneinrichtung",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0050",
+            "ozIndex": null,
+            "reihenfolge": 5,
+            "zuschlag": {
+              "bezug": {
+                "art": "gliederung"
+              },
+              "prozentsatz": "5.00"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000106",
+            "kurztext": "Zuschlag Erschwernis",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0060",
+            "ozIndex": null,
+            "reihenfolge": 6,
+            "zuschlag": {
+              "bezug": {
+                "art": "positionen",
+                "positionen": [
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000101",
+                    "teilmenge": "4.000"
+                  },
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000104",
+                    "teilmenge": null
+                  }
+                ]
+              },
+              "prozentsatz": "10.00"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": "Stck",
+            "einheitspreis": "100.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000107",
+            "kurztext": "Heizungsanlage",
+            "langtext": [],
+            "leitbeschreibung": {
+              "unterbeschreibungen": [
+                {
+                  "einheit": "Stck",
+                  "kurztext": "Heizgerät",
+                  "langtext": [
+                    {
+                      "art": "text",
+                      "text": "erfunden"
+                    }
+                  ],
+                  "menge": "2.000",
+                  "nummer": "01"
+                },
+                {
+                  "einheit": null,
+                  "kurztext": "Ausdehnungsgefäß",
+                  "langtext": [],
+                  "menge": null,
+                  "nummer": "02"
+                }
+              ]
+            },
+            "menge": "2.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": true
+            },
+            "ordnungszahl": "1.01.0070",
+            "ozIndex": null,
+            "reihenfolge": 7,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000108",
+            "kurztext": "Zuschlag Kleinteile",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0080",
+            "ozIndex": null,
+            "reihenfolge": 8,
+            "zuschlag": {
+              "bezug": {
+                "art": "kennzeichnung"
+              },
+              "prozentsatz": "2.50"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": "psch",
+            "einheitspreis": "50.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000109",
+            "kurztext": "Zuschlag in Altform",
+            "langtext": [],
+            "menge": "1.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0090",
+            "ozIndex": null,
+            "reihenfolge": 9,
+            "zuschlag": {
+              "bezug": {
+                "art": "positionen",
+                "positionen": [
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000101",
+                    "teilmenge": null
+                  }
+                ]
+              },
+              "prozentsatz": null
+            }
+          }
+        ],
+        "leistungsverzeichnisId": "019b7700-0000-7000-8000-000000000001",
+        "mwstSatz": "19.00",
+        "nachlass": {
+          "art": "prozent",
+          "wert": "2.00"
+        },
+        "name": "Auftrag Eingefroren v2 (erfunden)",
+        "ozMaske": {
+          "gliederung": [
+            {
+              "laenge": 1,
+              "zeichen": "numerisch"
+            },
+            {
+              "laenge": 2,
+              "zeichen": "numerisch"
+            }
+          ],
+          "index": {
+            "laenge": 1,
+            "zeichen": "alphanumerisch"
+          },
+          "losStufe": true,
+          "position": {
+            "laenge": 4,
+            "zeichen": "numerisch"
+          },
+          "trennzeichen": "."
+        },
+        "projektId": "projekt-v2",
+        "vergabeinformationen": {
+          "abgabeort": "Rathaus, Zimmer 1",
+          "abnahmeart": "förmlich",
+          "auftragsdatum": "2027-01-15",
+          "auftragsnummer": "A-17",
+          "ausfuehrungsbeginn": "2027-03-01",
+          "ausfuehrungsende": "2027-09-30",
+          "eroeffnungsdatum": "2026-12-01",
+          "eroeffnungszeit": "10:00:00",
+          "gewaehrleistung": {
+            "dauer": 5,
+            "einheit": "Years"
+          }
+        }
+      },
+      "summen": {
+        "gesamt": {
+          "brutto": "858.61",
+          "mwst": "137.09",
+          "nachlass": "14.73",
+          "netto": "736.25",
+          "nettoNachNachlass": "721.52",
+          "summeBedarfOhneGesamtbetrag": "200.00",
+          "summeWahl": "150.00"
+        },
+        "gliederungen": [
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000010",
+            "summe": "736.25",
+            "summeBedarfOhneGesamtbetrag": "200.00",
+            "summeWahl": "150.00"
+          },
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000011",
+            "summe": "736.25",
+            "summeBedarfOhneGesamtbetrag": "200.00",
+            "summeWahl": "150.00"
+          }
+        ],
+        "positionen": [
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "125.00",
+            "positionId": "019b7700-0000-7000-8000-000000000101"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": "200.00",
+            "positionId": "019b7700-0000-7000-8000-000000000102"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": "150.00",
+            "positionId": "019b7700-0000-7000-8000-000000000103"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "300.00",
+            "positionId": "019b7700-0000-7000-8000-000000000104"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "21.25",
+            "positionId": "019b7700-0000-7000-8000-000000000105"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "35.00",
+            "positionId": "019b7700-0000-7000-8000-000000000106"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "200.00",
+            "positionId": "019b7700-0000-7000-8000-000000000107"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "5.00",
+            "positionId": "019b7700-0000-7000-8000-000000000108"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "50.00",
+            "positionId": "019b7700-0000-7000-8000-000000000109"
+          }
+        ]
+      }
+    }
+  ],
+  "leistungsverzeichnisse": [
+    {
+      "leistungsverzeichnis": {
+        "auftraggeber": {
+          "name": "Gemeinde Musterstadt (erfunden)",
+          "ort": "Musterstadt",
+          "plz": "12345",
+          "strasse": "Am Markt 1",
+          "vergabenummer": "V-2026-001"
+        },
+        "id": "019b7700-0000-7000-8000-000000000001",
+        "knoten": [
+          {
+            "art": "los",
+            "elternId": "019b7700-0000-7000-8000-000000000001",
+            "id": "019b7700-0000-7000-8000-000000000010",
+            "kurztext": "Los Rohbau",
+            "ordnungszahl": "1",
+            "reihenfolge": 0
+          },
+          {
+            "art": "titel",
+            "elternId": "019b7700-0000-7000-8000-000000000010",
+            "id": "019b7700-0000-7000-8000-000000000011",
+            "kurztext": "Mauerarbeiten",
+            "ordnungszahl": "1.01",
+            "reihenfolge": 0
+          },
+          {
+            "art": "position",
+            "einheit": "m2",
+            "einheitspreis": "12.500",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": {
+              "frei": null,
+              "freiBezeichnung": null,
+              "geraete": null,
+              "lohn": "7.500",
+              "nachunternehmer": null,
+              "sonstiges": null,
+              "stoffe": "5.000"
+            },
+            "id": "019b7700-0000-7000-8000-000000000101",
+            "kurztext": "Mauerwerk",
+            "langtext": [
+              {
+                "art": "absatz",
+                "inhalt": [
+                  {
+                    "art": "text",
+                    "text": "Mauerwerk aus Kalksandstein, erfundener Text."
+                  }
+                ]
+              },
+              {
+                "art": "bild",
+                "bild": {
+                  "daten": "iVBORw0KGgo=",
+                  "id": "bild-1",
+                  "medientyp": "image/png"
+                }
+              },
+              {
+                "art": "ergaenzung",
+                "danach": [
+                  {
+                    "art": "text",
+                    "text": " oder gleichwertig"
+                  }
+                ],
+                "davor": [
+                  {
+                    "art": "text",
+                    "text": "Fabrikat: "
+                  }
+                ],
+                "herkunft": "bieter",
+                "inhalt": [
+                  {
+                    "art": "text",
+                    "text": "Muster"
+                  },
+                  {
+                    "art": "umbruch"
+                  }
+                ],
+                "kennung": "1",
+                "leer": false
+              },
+              {
+                "art": "ergaenzung",
+                "danach": [],
+                "davor": [],
+                "herkunft": "ausschreibender",
+                "inhalt": [],
+                "kennung": "2",
+                "leer": true
+              }
+            ],
+            "menge": "12.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0010",
+            "ozIndex": null,
+            "reihenfolge": 0,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "h",
+            "einheitspreis": "40.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000102",
+            "kurztext": "Stundenlohn Maurer (Bedarf)",
+            "langtext": [],
+            "menge": "3.000",
+            "merkmale": {
+              "bedarf": "ohne-gesamtbetrag",
+              "pauschal": false,
+              "stundenlohn": true,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0020",
+            "ozIndex": null,
+            "reihenfolge": 1,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "m2",
+            "einheitspreis": "15.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000103",
+            "kurztext": "Mauerwerk als Wahl",
+            "langtext": [],
+            "menge": "10.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": {
+                "grundpositionId": "019b7700-0000-7000-8000-000000000101",
+                "gruppe": 1,
+                "variante": 1
+              },
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0030",
+            "ozIndex": null,
+            "reihenfolge": 2,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": "psch",
+            "einheitspreis": "300.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000104",
+            "kurztext": "Gerüst pauschal (Bedarf mit Gesamtbetrag)",
+            "langtext": [],
+            "menge": "1.000",
+            "merkmale": {
+              "bedarf": "mit-gesamtbetrag",
+              "pauschal": true,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0040",
+            "ozIndex": "a",
+            "reihenfolge": 3,
+            "zuschlag": null
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000105",
+            "kurztext": "Zuschlag Baustelleneinrichtung",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0050",
+            "ozIndex": null,
+            "reihenfolge": 4,
+            "zuschlag": {
+              "bezug": {
+                "art": "gliederung"
+              },
+              "prozentsatz": "5.00"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000106",
+            "kurztext": "Zuschlag Erschwernis",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0060",
+            "ozIndex": null,
+            "reihenfolge": 5,
+            "zuschlag": {
+              "bezug": {
+                "art": "positionen",
+                "positionen": [
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000101",
+                    "teilmenge": "4.000"
+                  },
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000104",
+                    "teilmenge": null
+                  }
+                ]
+              },
+              "prozentsatz": "10.00"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": null,
+            "einheitspreis": null,
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000108",
+            "kurztext": "Zuschlag Kleinteile",
+            "langtext": [],
+            "menge": null,
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0080",
+            "ozIndex": null,
+            "reihenfolge": 6,
+            "zuschlag": {
+              "bezug": {
+                "art": "kennzeichnung"
+              },
+              "prozentsatz": "2.50"
+            }
+          },
+          {
+            "art": "position",
+            "einheit": "psch",
+            "einheitspreis": "50.000",
+            "elternId": "019b7700-0000-7000-8000-000000000011",
+            "epa": null,
+            "id": "019b7700-0000-7000-8000-000000000109",
+            "kurztext": "Zuschlag in Altform",
+            "langtext": [],
+            "menge": "1.000",
+            "merkmale": {
+              "bedarf": null,
+              "pauschal": false,
+              "stundenlohn": false,
+              "wahl": null,
+              "zuschlagskennzeichen": false
+            },
+            "ordnungszahl": "1.01.0090",
+            "ozIndex": null,
+            "reihenfolge": 7,
+            "zuschlag": {
+              "bezug": {
+                "art": "positionen",
+                "positionen": [
+                  {
+                    "positionId": "019b7700-0000-7000-8000-000000000101",
+                    "teilmenge": null
+                  }
+                ]
+              },
+              "prozentsatz": null
+            }
+          }
+        ],
+        "mwstSatz": "19.00",
+        "nachlass": {
+          "art": "prozent",
+          "wert": "2.00"
+        },
+        "name": "Eingefroren v2 (erfunden)",
+        "ozMaske": {
+          "gliederung": [
+            {
+              "laenge": 1,
+              "zeichen": "numerisch"
+            },
+            {
+              "laenge": 2,
+              "zeichen": "numerisch"
+            }
+          ],
+          "index": {
+            "laenge": 1,
+            "zeichen": "alphanumerisch"
+          },
+          "losStufe": true,
+          "position": {
+            "laenge": 4,
+            "zeichen": "numerisch"
+          },
+          "trennzeichen": "."
+        },
+        "projektId": "projekt-v2",
+        "vergabeinformationen": {
+          "abgabeort": "Rathaus, Zimmer 1",
+          "abnahmeart": "förmlich",
+          "auftragsdatum": null,
+          "auftragsnummer": null,
+          "ausfuehrungsbeginn": "2027-03-01",
+          "ausfuehrungsende": "2027-09-30",
+          "eroeffnungsdatum": "2026-12-01",
+          "eroeffnungszeit": "10:00:00",
+          "gewaehrleistung": {
+            "dauer": 5,
+            "einheit": "Years"
+          }
+        }
+      },
+      "papierkorb": [
+        {
+          "id": "019b7700-0000-7000-8000-000000000201",
+          "knoten": [
+            {
+              "art": "position",
+              "einheit": "Stck",
+              "einheitspreis": "100.000",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000107",
+              "kurztext": "Heizungsanlage",
+              "langtext": [],
+              "leitbeschreibung": {
+                "unterbeschreibungen": [
+                  {
+                    "einheit": "Stck",
+                    "kurztext": "Heizgerät",
+                    "langtext": [
+                      {
+                        "art": "text",
+                        "text": "erfunden"
+                      }
+                    ],
+                    "menge": "2.000",
+                    "nummer": "01"
+                  },
+                  {
+                    "einheit": null,
+                    "kurztext": "Ausdehnungsgefäß",
+                    "langtext": [],
+                    "menge": null,
+                    "nummer": "02"
+                  }
+                ]
+              },
+              "menge": "2.000",
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": true
+              },
+              "ordnungszahl": "1.01.0070",
+              "ozIndex": null,
+              "reihenfolge": 7,
+              "zuschlag": null
+            }
+          ],
+          "nummer": 1
+        }
+      ],
+      "summen": {
+        "gesamt": {
+          "brutto": "858.61",
+          "mwst": "137.09",
+          "nachlass": "14.73",
+          "netto": "150.00",
+          "nettoNachNachlass": "721.52",
+          "summeBedarfOhneGesamtbetrag": "200.00",
+          "summeWahl": "150.00"
+        },
+        "gliederungen": [
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000010",
+            "summe": "736.25",
+            "summeBedarfOhneGesamtbetrag": "200.00",
+            "summeWahl": "150.00"
+          },
+          {
+            "gliederungId": "019b7700-0000-7000-8000-000000000011",
+            "summe": "736.25",
+            "summeBedarfOhneGesamtbetrag": "200.00",
+            "summeWahl": "150.00"
+          }
+        ],
+        "positionen": [
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "540.00",
+            "positionId": "019b7700-0000-7000-8000-000000000101"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": "150.00",
+            "positionId": "019b7700-0000-7000-8000-000000000102"
+          },
+          {
+            "gehtInSummeEin": false,
+            "gesamtpreis": "150.00",
+            "positionId": "019b7700-0000-7000-8000-000000000103"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "300.00",
+            "positionId": "019b7700-0000-7000-8000-000000000104"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "21.25",
+            "positionId": "019b7700-0000-7000-8000-000000000105"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "35.00",
+            "positionId": "019b7700-0000-7000-8000-000000000106"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "5.00",
+            "positionId": "019b7700-0000-7000-8000-000000000108"
+          },
+          {
+            "gehtInSummeEin": true,
+            "gesamtpreis": "50.00",
+            "positionId": "019b7700-0000-7000-8000-000000000109"
+          }
+        ]
+      }
+    }
+  ],
+  "lvStaende": [
+    {
+      "angelegt": "2026-11-09T12:00:00.000Z",
+      "id": "019b7700-0000-7000-8000-000000000301",
+      "leistungsverzeichnisId": "019b7700-0000-7000-8000-000000000001",
+      "name": "Versand",
+      "zustand": {
+        "leistungsverzeichnis": {
+          "auftraggeber": {
+            "name": "Gemeinde Musterstadt (erfunden)",
+            "ort": "Musterstadt",
+            "plz": "12345",
+            "strasse": "Am Markt 1",
+            "vergabenummer": "V-2026-001"
+          },
+          "id": "019b7700-0000-7000-8000-000000000001",
+          "knoten": [
+            {
+              "art": "los",
+              "elternId": "019b7700-0000-7000-8000-000000000001",
+              "id": "019b7700-0000-7000-8000-000000000010",
+              "kurztext": "Los Rohbau",
+              "ordnungszahl": "1",
+              "reihenfolge": 0
+            },
+            {
+              "art": "titel",
+              "elternId": "019b7700-0000-7000-8000-000000000010",
+              "id": "019b7700-0000-7000-8000-000000000011",
+              "kurztext": "Mauerarbeiten",
+              "ordnungszahl": "1.01",
+              "reihenfolge": 0
+            },
+            {
+              "art": "position",
+              "einheit": "m2",
+              "einheitspreis": "12.500",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": {
+                "frei": null,
+                "freiBezeichnung": null,
+                "geraete": null,
+                "lohn": "7.500",
+                "nachunternehmer": null,
+                "sonstiges": null,
+                "stoffe": "5.000"
+              },
+              "id": "019b7700-0000-7000-8000-000000000101",
+              "kurztext": "Mauerwerk",
+              "langtext": [
+                {
+                  "art": "absatz",
+                  "inhalt": [
+                    {
+                      "art": "text",
+                      "text": "Mauerwerk aus Kalksandstein, erfundener Text."
+                    }
+                  ]
+                },
+                {
+                  "art": "bild",
+                  "bild": {
+                    "daten": "iVBORw0KGgo=",
+                    "id": "bild-1",
+                    "medientyp": "image/png"
+                  }
+                },
+                {
+                  "art": "ergaenzung",
+                  "danach": [
+                    {
+                      "art": "text",
+                      "text": " oder gleichwertig"
+                    }
+                  ],
+                  "davor": [
+                    {
+                      "art": "text",
+                      "text": "Fabrikat: "
+                    }
+                  ],
+                  "herkunft": "bieter",
+                  "inhalt": [
+                    {
+                      "art": "text",
+                      "text": "Muster"
+                    },
+                    {
+                      "art": "umbruch"
+                    }
+                  ],
+                  "kennung": "1",
+                  "leer": false
+                },
+                {
+                  "art": "ergaenzung",
+                  "danach": [],
+                  "davor": [],
+                  "herkunft": "ausschreibender",
+                  "inhalt": [],
+                  "kennung": "2",
+                  "leer": true
+                }
+              ],
+              "menge": "12.000",
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0010",
+              "ozIndex": null,
+              "reihenfolge": 0,
+              "zuschlag": null
+            },
+            {
+              "art": "position",
+              "einheit": "h",
+              "einheitspreis": "40.000",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000102",
+              "kurztext": "Stundenlohn Maurer (Bedarf)",
+              "langtext": [],
+              "menge": "5.000",
+              "merkmale": {
+                "bedarf": "ohne-gesamtbetrag",
+                "pauschal": false,
+                "stundenlohn": true,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0020",
+              "ozIndex": null,
+              "reihenfolge": 1,
+              "zuschlag": null
+            },
+            {
+              "art": "position",
+              "einheit": "m2",
+              "einheitspreis": "15.000",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000103",
+              "kurztext": "Mauerwerk als Wahl",
+              "langtext": [],
+              "menge": "10.000",
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": {
+                  "grundpositionId": "019b7700-0000-7000-8000-000000000101",
+                  "gruppe": 1,
+                  "variante": 1
+                },
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0030",
+              "ozIndex": null,
+              "reihenfolge": 2,
+              "zuschlag": null
+            },
+            {
+              "art": "position",
+              "einheit": "psch",
+              "einheitspreis": "300.000",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000104",
+              "kurztext": "Gerüst pauschal (Bedarf mit Gesamtbetrag)",
+              "langtext": [],
+              "menge": "1.000",
+              "merkmale": {
+                "bedarf": "mit-gesamtbetrag",
+                "pauschal": true,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0040",
+              "ozIndex": "a",
+              "reihenfolge": 3,
+              "zuschlag": null
+            },
+            {
+              "art": "position",
+              "einheit": null,
+              "einheitspreis": null,
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000105",
+              "kurztext": "Zuschlag Baustelleneinrichtung",
+              "langtext": [],
+              "menge": null,
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0050",
+              "ozIndex": null,
+              "reihenfolge": 4,
+              "zuschlag": {
+                "bezug": {
+                  "art": "gliederung"
+                },
+                "prozentsatz": "5.00"
+              }
+            },
+            {
+              "art": "position",
+              "einheit": null,
+              "einheitspreis": null,
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000106",
+              "kurztext": "Zuschlag Erschwernis",
+              "langtext": [],
+              "menge": null,
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0060",
+              "ozIndex": null,
+              "reihenfolge": 5,
+              "zuschlag": {
+                "bezug": {
+                  "art": "positionen",
+                  "positionen": [
+                    {
+                      "positionId": "019b7700-0000-7000-8000-000000000101",
+                      "teilmenge": "4.000"
+                    },
+                    {
+                      "positionId": "019b7700-0000-7000-8000-000000000104",
+                      "teilmenge": null
+                    }
+                  ]
+                },
+                "prozentsatz": "10.00"
+              }
+            },
+            {
+              "art": "position",
+              "einheit": null,
+              "einheitspreis": null,
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000108",
+              "kurztext": "Zuschlag Kleinteile",
+              "langtext": [],
+              "menge": null,
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0080",
+              "ozIndex": null,
+              "reihenfolge": 6,
+              "zuschlag": {
+                "bezug": {
+                  "art": "kennzeichnung"
+                },
+                "prozentsatz": "2.50"
+              }
+            },
+            {
+              "art": "position",
+              "einheit": "psch",
+              "einheitspreis": "50.000",
+              "elternId": "019b7700-0000-7000-8000-000000000011",
+              "epa": null,
+              "id": "019b7700-0000-7000-8000-000000000109",
+              "kurztext": "Zuschlag in Altform",
+              "langtext": [],
+              "menge": "1.000",
+              "merkmale": {
+                "bedarf": null,
+                "pauschal": false,
+                "stundenlohn": false,
+                "wahl": null,
+                "zuschlagskennzeichen": false
+              },
+              "ordnungszahl": "1.01.0090",
+              "ozIndex": null,
+              "reihenfolge": 7,
+              "zuschlag": {
+                "bezug": {
+                  "art": "positionen",
+                  "positionen": [
+                    {
+                      "positionId": "019b7700-0000-7000-8000-000000000101",
+                      "teilmenge": null
+                    }
+                  ]
+                },
+                "prozentsatz": null
+              }
+            }
+          ],
+          "mwstSatz": "19.00",
+          "nachlass": {
+            "art": "prozent",
+            "wert": "2.00"
+          },
+          "name": "Eingefroren v2 (erfunden)",
+          "ozMaske": {
+            "gliederung": [
+              {
+                "laenge": 1,
+                "zeichen": "numerisch"
+              },
+              {
+                "laenge": 2,
+                "zeichen": "numerisch"
+              }
+            ],
+            "index": {
+              "laenge": 1,
+              "zeichen": "alphanumerisch"
+            },
+            "losStufe": true,
+            "position": {
+              "laenge": 4,
+              "zeichen": "numerisch"
+            },
+            "trennzeichen": "."
+          },
+          "projektId": "projekt-v2",
+          "vergabeinformationen": {
+            "abgabeort": "Rathaus, Zimmer 1",
+            "abnahmeart": "förmlich",
+            "auftragsdatum": null,
+            "auftragsnummer": null,
+            "ausfuehrungsbeginn": "2027-03-01",
+            "ausfuehrungsende": "2027-09-30",
+            "eroeffnungsdatum": "2026-12-01",
+            "eroeffnungszeit": "10:00:00",
+            "gewaehrleistung": {
+              "dauer": 5,
+              "einheit": "Years"
+            }
+          }
+        },
+        "papierkorb": [
+          {
+            "id": "019b7700-0000-7000-8000-000000000201",
+            "knoten": [
+              {
+                "art": "position",
+                "einheit": "Stck",
+                "einheitspreis": "100.000",
+                "elternId": "019b7700-0000-7000-8000-000000000011",
+                "epa": null,
+                "id": "019b7700-0000-7000-8000-000000000107",
+                "kurztext": "Heizungsanlage",
+                "langtext": [],
+                "leitbeschreibung": {
+                  "unterbeschreibungen": [
+                    {
+                      "einheit": "Stck",
+                      "kurztext": "Heizgerät",
+                      "langtext": [
+                        {
+                          "art": "text",
+                          "text": "erfunden"
+                        }
+                      ],
+                      "menge": "2.000",
+                      "nummer": "01"
+                    },
+                    {
+                      "einheit": null,
+                      "kurztext": "Ausdehnungsgefäß",
+                      "langtext": [],
+                      "menge": null,
+                      "nummer": "02"
+                    }
+                  ]
+                },
+                "menge": "2.000",
+                "merkmale": {
+                  "bedarf": null,
+                  "pauschal": false,
+                  "stundenlohn": false,
+                  "wahl": null,
+                  "zuschlagskennzeichen": true
+                },
+                "ordnungszahl": "1.01.0070",
+                "ozIndex": null,
+                "reihenfolge": 7,
+                "zuschlag": null
+              }
+            ],
+            "nummer": 1
+          }
+        ],
+        "summen": {
+          "gesamt": {
+            "brutto": "858.61",
+            "mwst": "137.09",
+            "nachlass": "14.73",
+            "netto": "2.00",
+            "nettoNachNachlass": "721.52",
+            "summeBedarfOhneGesamtbetrag": "200.00",
+            "summeWahl": "150.00"
+          },
+          "gliederungen": [
+            {
+              "gliederungId": "019b7700-0000-7000-8000-000000000010",
+              "summe": "736.25",
+              "summeBedarfOhneGesamtbetrag": "200.00",
+              "summeWahl": "150.00"
+            },
+            {
+              "gliederungId": "019b7700-0000-7000-8000-000000000011",
+              "summe": "736.25",
+              "summeBedarfOhneGesamtbetrag": "200.00",
+              "summeWahl": "150.00"
+            }
+          ],
+          "positionen": [
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "540.00",
+              "positionId": "019b7700-0000-7000-8000-000000000101"
+            },
+            {
+              "gehtInSummeEin": false,
+              "gesamtpreis": "200.00",
+              "positionId": "019b7700-0000-7000-8000-000000000102"
+            },
+            {
+              "gehtInSummeEin": false,
+              "gesamtpreis": "150.00",
+              "positionId": "019b7700-0000-7000-8000-000000000103"
+            },
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "300.00",
+              "positionId": "019b7700-0000-7000-8000-000000000104"
+            },
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "21.25",
+              "positionId": "019b7700-0000-7000-8000-000000000105"
+            },
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "35.00",
+              "positionId": "019b7700-0000-7000-8000-000000000106"
+            },
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "5.00",
+              "positionId": "019b7700-0000-7000-8000-000000000108"
+            },
+            {
+              "gehtInSummeEin": true,
+              "gesamtpreis": "50.00",
+              "positionId": "019b7700-0000-7000-8000-000000000109"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "projekt": {
+    "bauherr": {
+      "anschrift": null,
+      "name": "Bauherr (erfunden)"
+    },
+    "bieter": [
+      {
+        "id": "bieter-1",
+        "name": "Musterbau GmbH (erfunden)"
+      },
+      {
+        "id": "bieter-2",
+        "name": "Beispiel AG (erfunden)"
+      }
+    ],
+    "id": "projekt-v2",
+    "name": "Eingefroren v2"
+  },
+  "protokoll": [
+    {
+      "aggregat": {
+        "art": "projekt",
+        "id": "projekt-v2"
+      },
+      "befehl": {
+        "art": "ProjektAnlegen",
+        "bauherr": {
+          "anschrift": "Musterweg 2, 12345 Musterstadt",
+          "name": "Bauherr (erfunden)"
+        },
+        "id": "projekt-v2",
+        "name": "Eingefroren v2"
+      },
+      "id": "protokoll-000001",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "Befehlskurzfassung",
+        "kopf": {
+          "art": "LeistungsverzeichnisAnlegen",
+          "id": "019b7700-0000-7000-8000-000000000001",
+          "inhalt": {
+            "auftraggeber": {
+              "name": "Gemeinde Musterstadt (erfunden)",
+              "ort": "Musterstadt",
+              "plz": "12345",
+              "strasse": "Am Markt 1",
+              "vergabenummer": "V-2026-001"
+            },
+            "mwstSatz": "19.00",
+            "nachlass": {
+              "art": "prozent",
+              "wert": "2.00"
+            },
+            "name": "Eingefroren v2 (erfunden)",
+            "ozMaske": {
+              "gliederung": [
+                {
+                  "laenge": 1,
+                  "zeichen": "numerisch"
+                },
+                {
+                  "laenge": 2,
+                  "zeichen": "numerisch"
+                }
+              ],
+              "index": {
+                "laenge": 1,
+                "zeichen": "alphanumerisch"
+              },
+              "losStufe": true,
+              "position": {
+                "laenge": 4,
+                "zeichen": "numerisch"
+              },
+              "trennzeichen": "."
+            },
+            "vergabeinformationen": {
+              "abgabeort": "Rathaus, Zimmer 1",
+              "abnahmeart": "förmlich",
+              "auftragsdatum": null,
+              "auftragsnummer": null,
+              "ausfuehrungsbeginn": "2027-03-01",
+              "ausfuehrungsende": "2027-09-30",
+              "eroeffnungsdatum": "2026-12-01",
+              "eroeffnungszeit": "10:00:00",
+              "gewaehrleistung": {
+                "dauer": 5,
+                "einheit": "Years"
+              }
+            },
+            "wurzelId": "019b7700-0000-7000-8000-000000000001"
+          },
+          "projektId": "projekt-v2"
+        },
+        "pruefsumme": {
+          "algorithmus": "sha-256",
+          "wert": "21f3c4204787a28716f521f68339f80479b3231700df7be1c1d0fdafa561103a"
+        }
+      },
+      "id": "protokoll-000002",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "angebot",
+        "id": "019b7700-0000-7000-8000-000000000002"
+      },
+      "befehl": {
+        "art": "Befehlskurzfassung",
+        "kopf": {
+          "angebot": {
+            "bieterId": "bieter-1",
+            "id": "019b7700-0000-7000-8000-000000000002",
+            "leistungsverzeichnisId": "019b7700-0000-7000-8000-000000000001",
+            "nachlass": null,
+            "projektId": "projekt-v2"
+          },
+          "art": "AngebotAnlegen"
+        },
+        "pruefsumme": {
+          "algorithmus": "sha-256",
+          "wert": "7e646ed5bff2856cce3657e0f00a635c8cf5a16df08dd7beca06e17700bc7b06"
+        }
+      },
+      "id": "protokoll-000003",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "auftrags-leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000003"
+      },
+      "befehl": {
+        "art": "Befehlskurzfassung",
+        "kopf": {
+          "art": "AuftragsLeistungsverzeichnisAnlegen",
+          "auftragsLeistungsverzeichnis": {
+            "angebotId": "019b7700-0000-7000-8000-000000000002",
+            "auftraggeber": {
+              "name": "Gemeinde Musterstadt (erfunden)",
+              "ort": "Musterstadt",
+              "plz": "12345",
+              "strasse": "Am Markt 1",
+              "vergabenummer": "V-2026-001"
+            },
+            "id": "019b7700-0000-7000-8000-000000000003",
+            "leistungsverzeichnisId": "019b7700-0000-7000-8000-000000000001",
+            "mwstSatz": "19.00",
+            "nachlass": {
+              "art": "prozent",
+              "wert": "2.00"
+            },
+            "name": "Auftrag Eingefroren v2 (erfunden)",
+            "ozMaske": {
+              "gliederung": [
+                {
+                  "laenge": 1,
+                  "zeichen": "numerisch"
+                },
+                {
+                  "laenge": 2,
+                  "zeichen": "numerisch"
+                }
+              ],
+              "index": {
+                "laenge": 1,
+                "zeichen": "alphanumerisch"
+              },
+              "losStufe": true,
+              "position": {
+                "laenge": 4,
+                "zeichen": "numerisch"
+              },
+              "trennzeichen": "."
+            },
+            "projektId": "projekt-v2",
+            "vergabeinformationen": {
+              "abgabeort": "Rathaus, Zimmer 1",
+              "abnahmeart": "förmlich",
+              "auftragsdatum": "2027-01-15",
+              "auftragsnummer": "A-17",
+              "ausfuehrungsbeginn": "2027-03-01",
+              "ausfuehrungsende": "2027-09-30",
+              "eroeffnungsdatum": "2026-12-01",
+              "eroeffnungszeit": "10:00:00",
+              "gewaehrleistung": {
+                "dauer": 5,
+                "einheit": "Years"
+              }
+            }
+          }
+        },
+        "pruefsumme": {
+          "algorithmus": "sha-256",
+          "wert": "5e5f68afe29bbd1a0169e490103e5de8f094dcce8f5cfae0eaca26126ac772ff"
+        }
+      },
+      "id": "protokoll-000004",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "projekt",
+        "id": "projekt-v2"
+      },
+      "befehl": {
+        "art": "ProjektStammdatenSetzen",
+        "bauherr": {
+          "anschrift": null,
+          "name": "Bauherr (erfunden)"
+        },
+        "name": "Eingefroren v2"
+      },
+      "id": "protokoll-000005",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "MengeAendern",
+        "menge": "12.000",
+        "positionId": "019b7700-0000-7000-8000-000000000101"
+      },
+      "id": "protokoll-000006",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "Rueckgaengig",
+        "protokollId": "protokoll-000006"
+      },
+      "id": "protokoll-000007",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "Wiederholen",
+        "protokollId": "protokoll-000006"
+      },
+      "id": "protokoll-000008",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "KnotenInPapierkorbLegen",
+        "eintragId": "019b7700-0000-7000-8000-000000000201",
+        "knotenIds": [
+          "019b7700-0000-7000-8000-000000000107"
+        ]
+      },
+      "id": "protokoll-000009",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "KnotenInPapierkorbLegen",
+        "eintragId": "019b7700-0000-7000-8000-000000000202",
+        "knotenIds": [
+          "019b7700-0000-7000-8000-000000000012"
+        ]
+      },
+      "id": "protokoll-000010",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "PapierkorbeintragEntfernen",
+        "eintragId": "019b7700-0000-7000-8000-000000000202"
+      },
+      "id": "protokoll-000011",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "LvStandAnlegen",
+        "id": "019b7700-0000-7000-8000-000000000301",
+        "name": "Versand"
+      },
+      "id": "protokoll-000012",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    },
+    {
+      "aggregat": {
+        "art": "leistungsverzeichnis",
+        "id": "019b7700-0000-7000-8000-000000000001"
+      },
+      "befehl": {
+        "art": "MengeAendern",
+        "menge": "3.000",
+        "positionId": "019b7700-0000-7000-8000-000000000102"
+      },
+      "id": "protokoll-000013",
+      "projektId": "projekt-v2",
+      "wann": "2026-11-09T12:00:00.000Z",
+      "wer": "nutzer-1"
+    }
+  ],
+  "schemaVersion": 3
+}
