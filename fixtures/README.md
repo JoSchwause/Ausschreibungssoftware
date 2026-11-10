@@ -112,7 +112,11 @@ Sollwerte der betroffenen Fälle gelten nur unter der jeweiligen Annahme.
   bei einer Normalposition in die Summen ein; `bezugspositionId` ist nur ein Verweis. Seit Ticket 37 ist das die „Altform der
   Zuschlagsposition“ (Glossar): Der Kern rechnet sie weiter als Menge × EP (R8). `zuschlag.json` zeigt die GAEB-Form mit
   Satz und Bezugsform; die Rechenregel steht in `rechnen.mjs` (`berechneZuschlagSollwerte`) und ist aus den amtlichen
-  Prüfdateien belegt (D-03). Die Umstellung von `typisch`, `gross` und `typisch-angebote` macht Ticket 44.
+  Prüfdateien belegt (D-03). Die Umstellung von `typisch`, `gross` und `typisch-angebote` war Punkt 5 von Ticket 44 und
+  ist ein eigenes Folgeticket (Ticket 44, Comments; D-44.2): Sie berührt die Fixture-Testhelfer von `kern`, `vertrag`,
+  `speicher`, `ausgabe`, `ui-grid`, `apps/web` und die GAEB-Export-Goldens aus `typisch`/`gross`. Bis dahin bleiben die
+  drei Dateien in der Altform. `vergabe` rechnet Angebote zu einer Zuschlagsposition in GAEB-Form schon mit dem Satz des
+  Bieters (`Angebotsposition.zuschlagssatz`); ein Angebot ohne Satz zu einer Altform-Position rechnet weiter Menge × EP.
 - **A5 Nicht angebotene Position:** Eintrag mit `status: "nicht-angeboten"`, ohne Feld `einheitspreis`; `gp` ist
   `null`, `inSumme: false`, die ID steht in `nichtAngeboten`. Ein angebotener Preis von `0.000` (`status: "angeboten"`)
   ist davon verschieden und ergibt GP `0.00`. Wie ein Preisspiegel nicht angebotene Positionen bewertet

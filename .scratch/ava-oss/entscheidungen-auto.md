@@ -199,3 +199,18 @@ Question: Wie folgen EP und Anteile einander, und was zählt in den Anteilsummen
 Decision: Wie vorgeschlagen: gesetzte Anteile (mindestens einer nicht `null`) setzen den EP im selben ChangeSet auf ihre Summe; `epa: null` entfernt nur die Anteile; `EinheitspreisAendern` lässt Anteile stehen. Zusätzlich: Anteile ganz ohne Wert lassen den EP stehen; die Altform einer Zuschlagsposition darf Anteile tragen, eine mit Satz nicht (`knotenart-unzulaessig`). `epaSummen` zählt Positionen mit GP, deren Betrag ins Netto geht (Pauschal ohne Menge mit Menge 1), und nennt jede Gliederung (0,00 ohne Anteile).
 Reason: Beleg X86 1.10.30.10/20 (UP = Summe der UPComp); kein EP aus dem Nichts.
 Reversible: yes  Touches: packages/kern
+
+## D-44.1 Zuschlagspositionen im Angebot und im Preisspiegel: Lesarten
+Welle 3 · Ticket 44 · decided by: implementer
+Question: Was Ticket 44 bei Lücken des Bieters, beim Satz an falscher Stelle und im Preisspiegel offen lässt.
+Decision: Wie vorgeschlagen: Satz fehlt → kein Betrag, Kennzeichen `zuschlagssatz-fehlt`; nicht angebotene Bezugsposition trägt nichts bei, Kennzeichen `basis-unvollstaendig` (aus `zuschlagsbasen`, „Bezug ohne Preis“); Satz 0,00 → Betrag 0,00, Kennzeichen `nullpreis`. Zusätzlich: (1) `zuschlagssatz-fehlt` nur bei einer angebotenen Position ohne Satz und ohne Betrag aus der Altform; kein Eintrag oder `nicht-angeboten` bleibt `nicht-angeboten`; beide zählen in `Bietersumme.nichtAngeboten`. (2) Im gedachten LV steht an jeder Zuschlagsposition der Satz des Bieters oder `null`, nie der Satz des LV; ohne Satz trägt sie den EP des Bieters, den nur die Altform (R8) rechnet. (3) Satz an einer Position ohne Zuschlag oder nicht kanonisch (2 Stellen) → `ungueltige-eingabe`, `feld: 'zuschlagssatz'`; ein negativer Satz ist erlaubt (U5) und zählt wie ein negativer EP nicht für Min/Mittel/Max. (4) Preisspiegel: Eine Zeile mit `zuschlag` im LV (auch Altform) vergleicht Beträge; Mittel = Σ / n auf 2 Stellen; EP der Bieterspalte nur bei einem Betrag aus der Altform, EP der virtuellen Bieter `null`; Schätzpreis mit Satz, Basis und Betrag des LV (Altform: Menge × EP). (5) `AngebotspositionSetzen` rechnet die betroffenen Zuschlagspositionen inkrementell mit `summenBerechnen` des Kerns auf einem Teil-LV (Wurzel = Elternknoten der Zuschlagsposition, dessen Kinder und die Positionen, die eine Liste darunter nennt); keine eigene Zuschlagsregel in `vergabe`.
+Reason: „wie nicht angeboten“ (Ticket) ohne die Unterscheidung „nicht angeboten“ zu verlieren; kein Satz des LV im Angebot (G-26: Angebot ist eigenständig); Fehler statt Befund, weil der Satz an einer normalen Position keine Bedeutung hat (Vertrag v1.2 überlässt das der Rechnung); A6 und Q4 (gross < 16 ms).
+Reversible: yes  Touches: packages/vergabe
+Annahme für Demo, Mensch bestätigt später (G-26, D-05).
+
+## D-44.2 Punkt 5 von Ticket 44 (Fixtures in GAEB-Form) als Folgeticket
+Welle 3 · Ticket 44 · decided by: implementer
+Question: Ticket 44 erlaubt, Punkt 5 abzuspalten, wenn es zu groß wird. Wird es abgespalten?
+Decision: Ja. `typisch`, `gross` und `typisch-angebote` bleiben in der Altform; Vermerk in `fixtures/README.md` und in Ticket 44, Comments (Liste der Verbraucher).
+Reason: Punkt 5 berührt die Fixture-Testhelfer und Sollwert-Tests in `kern` (in dieser Phase schreibt Ticket 41 dort), dazu die GAEB-Export-Goldens aus `typisch`/`gross` in `gaeb` (nicht im Ticket genannt; Ticket 45 schreibt dort) und `speicher`, `ausgabe`, `ui-grid`, `apps/web`; das sprengt P1 und kollidiert mit P2.
+Reversible: yes  Touches: fixtures/README.md, Folgeticket
