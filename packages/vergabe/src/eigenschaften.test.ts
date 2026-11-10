@@ -116,7 +116,7 @@ describe('Eigenschaften der Angebotsbefehle', () => {
             expect(neu.summen).toEqual(angebotSummenBerechnen(z, neu.angebot));
             // Minimal (A6, Ticket 44): jede Positionssumme im ChangeSet hat sich wirklich geändert.
             cs.summen.positionen.forEach((p, i) => {
-              expect(p).not.toEqual(cs.summen.vorher.positionen[i]);
+              expect(p).not.toEqual(cs.summen.vorher?.positionen[i]);
             });
             const umkehrung = angebotChangeSetUmkehren(cs);
             expect(angebotChangeSetAnwenden(neu, umkehrung)).toEqual(zustand);

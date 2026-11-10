@@ -18,4 +18,5 @@ export type {
   Preisspiegelgliederung,
   Preisspiegelzeile,
   VirtuellerPreis,
+  Zuschlagsangabe,
 } from './preisspiegel';
