@@ -1,6 +1,6 @@
 # 40: GAEB: Writer X81/X83/X86, eigene Prüfung, XSD-Gegenprüfung in der CI, Roundtrip (G2, Tor M2)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: G (G2) · Paket: `packages/gaeb` (benannte Ausnahme: `.github/workflows/ci.yml`, nur der neue XSD-Schritt)
 Blocked by: 32
@@ -98,15 +98,15 @@ mit dem Skill `tdd`; am Ende `pnpm lint && pnpm typecheck && pnpm test` grün. `
 
 ## Acceptance criteria
 
-- [ ] `schreibeGaeb` erzeugt X81, X83 und X86 in 3.3 und 3.2; Golden-Datei je Fixture und Phase (deterministisch)
-- [ ] Eigene Prüfung: jede Regel aus Punkt 3 mit Code und Test; ein Export mit Fehler hat `entwurf: true` und den Entwurf-Kommentar, ein Export ohne Fehler nicht
-- [ ] Verwerfen mit Warnung: je Fall aus Punkt 4 ein Test, der die Warnung erwartet
-- [ ] Roundtrip Export → Import → Modell gleich für jede Fixture und Phase, auch für die aus den amtlichen X81/X83 gelesenen Inhalte; zweiter Export byte-gleich
-- [ ] Der Leser nimmt X86 und 3.2 an; X84 weiter `phase-nicht-unterstuetzt` (bis 45)
-- [ ] CI-Schritt: lädt das XSD zur Laufzeit, prüft die SHA-256, validiert jede Fixture-Ausgabe mit `xmllint`, schlägt bei einem Schemafehler oder einem versionierten `*.xsd` fehl; lokal sichtbarer Hinweis beim Überspringen
-- [ ] Lokaler Lauf der Gegenprüfung in der Sitzung: Ergebnis (bestanden/Fehler je Datei) im Ticket
-- [ ] Export von `gross` (5.000 Positionen) als X86 unter 1 s (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `schreibeGaeb` erzeugt X81, X83 und X86 in 3.3 und 3.2; Golden-Datei je Fixture und Phase (deterministisch)
+- [x] Eigene Prüfung: jede Regel aus Punkt 3 mit Code und Test; ein Export mit Fehler hat `entwurf: true` und den Entwurf-Kommentar, ein Export ohne Fehler nicht
+- [x] Verwerfen mit Warnung: je Fall aus Punkt 4 ein Test, der die Warnung erwartet
+- [x] Roundtrip Export → Import → Modell gleich für jede Fixture und Phase, auch für die aus den amtlichen X81/X83 gelesenen Inhalte; zweiter Export byte-gleich
+- [x] Der Leser nimmt X86 und 3.2 an; X84 weiter `phase-nicht-unterstuetzt` (bis 45)
+- [x] CI-Schritt: lädt das XSD zur Laufzeit, prüft die SHA-256, validiert jede Fixture-Ausgabe mit `xmllint`, schlägt bei einem Schemafehler oder einem versionierten `*.xsd` fehl; lokal sichtbarer Hinweis beim Überspringen
+- [x] Lokaler Lauf der Gegenprüfung in der Sitzung: Ergebnis (bestanden/Fehler je Datei) im Ticket
+- [x] Export von `gross` (5.000 Positionen) als X86 unter 1 s (Messwert im Ticket)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -114,3 +114,85 @@ X84-Import (45), X82/X85/X89, GAEB 90/2000 und Lesen von 3.1 (G4), Oberfläche f
 eines LV (K8, Ticket 41), Rechnen im Writer.
 
 ## Comments
+
+### Umsetzung (Branch `ticket/40-gaeb-writer`)
+
+Nichts gestrichen: X81/X83/X86 in 3.3 und 3.2, Listen/Tabellen im Langtext und Kopfdaten sind drin. Seams (Demo-Modus,
+aus dem Ticket): `schreibeGaeb` und `leseGaeb`, dazu der Rundweg durch beide. Neue Dateien: `src/schreiben.ts`
+(Writer und eigene Prüfung), `src/text-schreiben.ts` (Langtext → GAEB), `src/ausgabe.ts` (XML-Ausgabe),
+`werkzeuge/xsd-gegenpruefung.mjs`, `src/xsd-ausgabe.test.ts` (schreibt die Exporte nur für das Skript),
+`packages/gaeb/.gitignore` (`*.xsd`), Goldens unter `testdaten/golden/export/` (winzig, typisch je X81/X83/X86 3.3;
+`gross` nur SHA-256, 6 MB je Datei). CI: ein Schritt „GAEB XSD-Gegenprüfung“ in `.github/workflows/ci.yml`.
+
+**Tor M2 (Stand 2026-11-10, lokal, `www.gaeb.de` erreichbar, xmllint 2.9):**
+
+| Inhalt | Phasen × Versionen | Export | eigene Prüfung | XSD | Rundweg (Modell gleich, 2. Export byte-gleich) |
+|---|---|---|---|---|---|
+| `winzig`, `typisch`, `gross` | X81, X83, X86 × 3.3, 3.2 | 18 | 18 ohne Fehler | 18 bestanden | 18 (Unterschiede siehe unten) |
+| `reichesLv` (Testhilfe: Los, alle Merkmale, Wahl mit Nummern, 3 Zuschlagsformen mit Satz und Teilmenge, Leitbeschreibung, EPA, Langtext mit Liste/Tabelle/colspan/Bildern/Textergänzung, Kopfdaten, Nachlass) | X81, X83, X86 × 3.3, 3.2 | 6 | 6 ohne Fehler | 6 bestanden | X86 3.3/3.2 verlustfrei; X81/X83 3.3 bis auf Preise |
+| gelesene amtliche BVBS AVA-X81, Bauausführung-X83, Texterstellung-X81 | X81, X83 × 3.3, 3.2 | 12 | 12 ohne Fehler | 12 bestanden | 6 (3.3) |
+
+`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`: **36 von 36 Dateien bestanden** (Ausgabe je Datei
+„bestanden“). Gegenprobe: eine Einheit `meter` lässt xmllint mit Zeile und `maxLength` scheitern; `XMLLINT=/nicht/da`
+ohne `CI` → „XSD-Gegenprüfung übersprungen: xmllint ist nicht installiert“, Exit 0; mit `CI=true` Exit 1.
+SHA-256: 3.3-ZIP `d4f19a79…e203`, 3.2-ZIP `b655e955…fe76` (voll im Skript). X86 in der Gegenprüfung nur für Fixtures
+und `reichesLv` (die amtlichen Inhalte hätten keinen Summenstand; der kommt vom Kern).
+
+**Erwartete Unterschiede im Rundweg** (vollständige Liste, `roundtrip.test.ts`, `erwartet`): X81/X83 ohne EP, EPA,
+Zuschlagssatz, Nachlass; Altform einer Zuschlagsposition verliert in X81/X83 Menge, Einheit, EP, in X86 den
+Zuschlagsbezug; Wahl ohne Gruppe/Variante verliert die Wahl; X86 ohne Auftraggeber liest einen leeren Auftraggeber.
+
+**Messung:** `gross` als X86 (5.000 Positionen, 6,9 Mio. Zeichen): 272 ms (Test-Grenze 1 s).
+
+**Suite:** `pnpm lint` grün; `pnpm typecheck` grün; `pnpm test`: Vitest 1125 bestanden, 2 übersprungen (eins davon
+`xsd-ausgabe.test.ts` ohne `GAEB_EXPORT_VERZEICHNIS`), `node --test` 14/14.
+
+### Entscheidungen (Frage – Entscheidung – Grund)
+
+- API – `schreibeGaeb(inhalt, { phase, version, erstellt, programm, summen?, zuschlagsbasen?, auftragnehmer? })` →
+  `GaebExport` – wie vorgeschlagen; `zuschlagsbasen` (Basis je Zuschlagsposition, vom Kern `zuschlagsbasen`, Ticket
+  37) und `auftragnehmer` (Name für `CTR`) sind zusätzlich, weil X86 `ITMarkup` und `CTR` verlangt und der Writer
+  nicht rechnet (A3).
+- X86 ohne Auftraggeber/Auftragnehmer – `OWN`/`CTR` mit leerer Adresse (Schema erlaubt leere Felder), Warnung
+  `angabe-leer`, kein Fehler – das Modell kennt keinen Auftragnehmer; ein Fehler machte jede Fixture-X86 zum Entwurf.
+- Altform der Zuschlagsposition in X86 – als `Item` mit Menge, EP, IT, Bezug verworfen (Warnung) – `MarkupItem`
+  verlangt in X86 `Markup`; einen Satz zu erfinden verbietet C4. X81/X83 wie im Ticket (MarkupItem ohne Menge/EP).
+- X83 ohne Menge – `QtyTBD` mit Warnung `menge-offen` – das Ticket lässt „Menge oder QtyTBD“ zu; `null` heißt „nicht
+  gesetzt“. Der Leser übernimmt `QtyTBD` ohne Menge jetzt still (Golden ava-x81: Zeile entfällt), mit Menge bleibt
+  es Befund.
+- Pflichtwerte X86 – fehlender Summenstand, Bereichssumme, Zuschlagssatz oder -basis sind Fehler
+  `pflichtelement-fehlt` (Entwurf); das Element fehlt dann, die Datei ist schemawidrig – Entwurf ist gekennzeichnet (U5).
+- Gliederung und Positionen unter einem Knoten – Fehler `gliederung-gemischt`, beides wird geschrieben (Positionen
+  in einem `Itemlist` hinter den Bereichen) – `BoQBody` erlaubt nur eines; nichts geht verloren, der Entwurf ist markiert.
+- Weitere Prüfcodes über die Ticketliste hinaus (je Fehler): `oz-fehlt`, `maske-ungueltig`, `gliederung-zu-tief`,
+  `wahl-nummer-ungueltig` (0–999/0–9), `unterbeschreibung-nummer-ungueltig` (1–99), `ergaenzung-kennung-ungueltig`
+  (MarkLbl ist im Schema eine ganze Zahl), `wert-zu-lang`/`wert-ungueltig` (Kopfdaten, Erstellungsdatum) – alles
+  Schemagrenzen, die xmllint sonst erst in der CI fände.
+- Langtext an Stellen, die das Schema nicht erlaubt – Tabelle im Listenpunkt: Zellinhalt ohne Tabellenform (Warnung);
+  loses Bild in `li`/`td`: in eigenem `p` (kein Verlust, ohne Warnung); leere Liste/Tabelle und Bild außer PNG/JPEG/GIF:
+  verworfen (Warnung) – Text bleibt immer. Bild auf Textebene heißt im Schema `Image`, in `p` `image`; der Leser
+  nimmt jetzt beide.
+- EPA – `NoUPComps` 6, feste Bezeichnungen Lohn/Stoffe/Geräte/Nachunternehmer/Sonstiges, der sechste `Unknown` mit
+  der `freiBezeichnung` (eine je LV; abweichende werden mit Warnung verworfen). Der Leser ordnet nach Bezeichnung,
+  sonst nach `Type` – passt zur amtlichen AVA-X86 (Material/Lohn/Geräte/Nachunternehmer).
+- LV-Name – `Name` gekürzt (20, ohne Leerraum am Ende), `LblBoQ` voll (bis 60). Der Leser nimmt `LblBoQ`, wenn
+  `Name` dessen Anfang ist, sonst wie bisher `Name` – Rundweg; Golden texterstellung-x81: Name jetzt „GAEB
+  Zertifizierung 3.3 Textersteller“ statt „GAEB Zer“, AVA und Bauausführung unverändert.
+- Leser X86 – übernimmt `UP`, `UPComp`, `Markup`, `Totals/VAT` (statt Ersatz-MwSt) und den LV-Nachlass; `IT`,
+  `ITMarkup`, Bereichs- und LV-Beträge sind abgeleitet und werden nicht übernommen; ein `IT` ≠ gerundet(Menge × EP) ist
+  Warnung `gesamtpreis-abweichend` (amtliche X86: Positionsnachlass, G-23). Totals der Bereiche gegen eigene Summen
+  zu prüfen bräuchte den Kern; das bleibt der App. `CTR` bleibt `nicht-abgebildet`.
+- Leser 3.2 – wie 3.3 (Schemata für unsere Elemente gleich bis auf Namensraum, Version, VersDate); 3.1 weiter
+  `version-nicht-unterstuetzt`. `OutlCompl` gilt als behandelt (Golden: drei Zeilen entfallen).
+- Teilmenge (`SubQty`) – geschrieben und gelesen (3.2 trägt sie wie 3.3, nichts zu verwerfen); vorher war sie Befund.
+- XSD-Skript – lädt per `curl`, entpackt mit `node:zlib` (kein `unzip` nötig), schreibt die Exporte über einen
+  Vitest-Lauf (TS ohne Build), Temp-Verzeichnis unter `$RUNNER_TEMP`/`os.tmpdir()`, danach gelöscht; `XMLLINT`
+  überschreibt das Programm (zum Prüfen des Überspringens).
+
+### Offen / Hinweise
+
+- Fixture `zuschlag` (Ticket 37) gibt es auf `integration/welle-3` noch nicht; `FIXTURES` in `testhilfen.ts` ist die
+  eine Stelle, an der sie dazukommt (Zuschläge mit Satz deckt bis dahin `reichesLv` ab).
+- Ticket 49 (Oberfläche): der Aufrufer muss für X86 `summen` und `zuschlagsbasen` vom Kern mitgeben, `erstellt` aus
+  der Uhr der App.
+
