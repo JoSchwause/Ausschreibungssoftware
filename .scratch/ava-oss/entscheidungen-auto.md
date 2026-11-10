@@ -46,3 +46,24 @@ Question: Gilt W-03 (b) „Vertrag plus Anpassung als ein Ticket“, gelten die 
 Decision: W-03 (b) ja (Liste nicht mechanischer Änderungen im Ticket). W-05 Nr. 1–6 als Annahmen für die Demo bestätigt; Nr. 3 geht in Ticket 29.
 Reason: Entspricht den Empfehlungen in `next-decisions-welle-2.md`.
 Reversible: yes  Touches: docs/regeln.md (P2, nur Vermerk), Ticket 29
+
+## D-07 Befehle für Kopfdaten in Ticket 29, Kern-Handler in Ticket 41
+Welle 3 · Ticket 29, 41, 47 · decided by: orchestrator
+Question: Befehle zum Bearbeiten von Auftraggeber, Vergabeinformationen, Leitbeschreibung (W-02 Frage 4, „mit U4“) hatten kein Ticket.
+Decision: Typen in Ticket 29 (Punkt 8), Kern-Handler in Ticket 41, Oberfläche in Ticket 47.
+Reason: U4 (47) braucht sie; 29 ist ohnehin der Vertragsstand dieses Laufs; 41 ist der kleinste Kern-Schritt vor 47.
+Reversible: yes  Touches: packages/vertrag, packages/kern
+
+## D-08 Division in `dezimal` kommt mit Ticket 35
+Welle 3 · Ticket 35, 36 · decided by: orchestrator
+Question: `dezimal` hat keine Division; `mengen` (REB) und `vergabe` (Mittelwert) brauchen sie. `dezimal` hat in diesem Lauf keinen anderen Schreiber.
+Decision: Ticket 35 fügt `dividiere` als ersten Commit hinzu (benannte Ausnahme von P2); der Orchestrator übernimmt den Commit früh in den Integrationsbranch; Ticket 36 baut zuerst V1 und holt sich die Division danach.
+Reason: Ein Schreiber für `dezimal`, kein Warten der ganzen Phase.
+Reversible: yes  Touches: packages/dezimal
+
+## D-09 Reihenfolge: 29 vor 30, 31, 32
+Welle 3 · Ticket 29–32 · decided by: orchestrator
+Question: Ticket 29 (Vertrag plus Anpassung) zieht Zeilen in `kern`, `speicher`, `gaeb` nach; 30–32 schreiben dort ebenfalls.
+Decision: 29 läuft zuerst (parallel nur mit 33–36, die diese Pakete nicht berühren); 30–32 starten nach dem Merge von 29.
+Reason: P2 (ein Schreiber je Paket) und der Rat des Beraters zu W-03 (b).
+Reversible: yes  Touches: Reihenfolge
