@@ -16,27 +16,40 @@ import {
   betrag,
   ep,
   erwarteOk,
+  liste,
   lv,
   nichtAngeboten,
   position,
   projekt,
   prozent,
+  satz,
   titel,
+  zuschlagsposition,
 } from './testhilfen';
 
 const z = lv('lv-e', [
   titel('t1', 'lv-e', 0),
   titel('t11', 't1', 0),
-  position('p1', 't11', 0, '3.500'),
+  position('p1', 't11', 0, '3.500', null, { zuschlagskennzeichen: true }),
   position('p2', 't11', 1, '0.125', null, { bedarf: 'ohne-gesamtbetrag' }),
+  position('p8', 't11', 2, '2.000'),
+  // Ticket 44: Zuschlagspositionen aller drei Bezugsformen, z1/z2 als Block mit derselben Basis.
+  zuschlagsposition('z1', 't11', 3, { art: 'gliederung' }, '3.00'),
+  zuschlagsposition('z2', 't11', 4, { art: 'kennzeichnung' }),
   position('p3', 't1', 1, '12.000'),
   titel('t2', 'lv-e', 1),
   position('p4', 't2', 0, '1.000', null, { wahl: { gruppe: 1, variante: 1, grundpositionId: null } }),
   position('p5', 't2', 1, null),
   position('p6', 't2', 2, '7.777', null, { bedarf: 'mit-gesamtbetrag' }),
+  zuschlagsposition('z3', 't2', 3, liste('p1', 'p3', 'p6')),
   position('p7', 'lv-e', 2, '-2.500'),
+  {
+    ...zuschlagsposition('z4', 'lv-e', 3, { art: 'gliederung' }),
+    merkmale: { ...position('x', 'x', 0, null).merkmale, bedarf: 'ohne-gesamtbetrag' },
+  },
 ]);
-const POSITIONEN = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
+const POSITIONEN = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'z1', 'z2', 'z3', 'z4'];
+const ZUSCHLAEGE = ['z1', 'z2', 'z3', 'z4'];
 const ausfuehren = angebotBefehlAusfuehrer(projekt(['b']), z);
 
 const epText = fc.bigInt({ min: -50_000n, max: 2_000_000n }).map((n) => {
@@ -45,10 +58,17 @@ const epText = fc.bigInt({ min: -50_000n, max: 2_000_000n }).map((n) => {
   return `${neg ? '-' : ''}${s.slice(0, -3)}.${s.slice(-3)}`;
 });
 
+const satzText = fc.bigInt({ min: -500n, max: 2_500n }).map((n) => {
+  const neg = n < 0n;
+  const s = (neg ? -n : n).toString().padStart(3, '0');
+  return `${neg ? '-' : ''}${s.slice(0, -2)}.${s.slice(-2)}`;
+});
+
 const angebotsposition: fc.Arbitrary<Angebotsposition> = fc.oneof(
   fc.tuple(fc.constantFrom(...POSITIONEN), epText).map(([p, e]) => ep(p, e)),
   fc.constantFrom(...POSITIONEN).map((p) => nichtAngeboten(p)),
-  fc.constantFrom(ep('p1', '0.000'), ep('p3', '1.000')),
+  fc.constantFrom(ep('p1', '0.000'), ep('p3', '1.000'), satz('z1', '0.00')),
+  fc.tuple(fc.constantFrom(...ZUSCHLAEGE), satzText).map(([p, s]) => satz(p, s)),
 );
 
 const zahl2 = fc.bigInt({ min: 0n, max: 10_000n }).map((n) => {
@@ -75,7 +95,7 @@ const befehl: fc.Arbitrary<AngebotBefehl> = fc.oneof(
   { weight: 1, arbitrary: fc.constant<AngebotBefehl>({ art: 'AngebotsNachlassEntfernen' }) },
 );
 
-const startpositionen = fc.uniqueArray(angebotsposition, { selector: (p) => p.positionId, maxLength: 7 });
+const startpositionen = fc.uniqueArray(angebotsposition, { selector: (p) => p.positionId, maxLength: 12 });
 
 describe('Eigenschaften der Angebotsbefehle', () => {
   it('Summenstand = Neuberechnung; Umkehrung stellt den Vorzustand her; doppelte Umkehrung = ChangeSet', () => {
@@ -94,6 +114,10 @@ describe('Eigenschaften der Angebotsbefehle', () => {
             const cs = erwarteOk(ausfuehren(zustand, b));
             const neu = angebotChangeSetAnwenden(zustand, cs) as AngebotZustand;
             expect(neu.summen).toEqual(angebotSummenBerechnen(z, neu.angebot));
+            // Minimal (A6, Ticket 44): jede Positionssumme im ChangeSet hat sich wirklich geändert.
+            cs.summen.positionen.forEach((p, i) => {
+              expect(p).not.toEqual(cs.summen.vorher.positionen[i]);
+            });
             const umkehrung = angebotChangeSetUmkehren(cs);
             expect(angebotChangeSetAnwenden(neu, umkehrung)).toEqual(zustand);
             expect(angebotChangeSetUmkehren(umkehrung)).toEqual(cs);

@@ -176,7 +176,11 @@ export const ep = (positionId: string, einheitspreis: string): Angebotsposition 
 });
 
 /** Angebotener Zuschlagssatz des Bieters; der EP ist der Platzhalter `0.000` (Vertrag v1.2), nie gerechnet. */
-export const satz = (positionId: string, zuschlagssatz: string, einheitspreis = '0.000'): Angebotsposition => ({
+export const satz = (
+  positionId: string,
+  zuschlagssatz: string,
+  einheitspreis = '0.000',
+): Angebotsposition => ({
   positionId: positionId as PositionId,
   status: 'angeboten',
   einheitspreis: einheitspreis as Einheitspreis,

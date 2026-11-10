@@ -2,12 +2,13 @@
 // Angebotsbefehle ausführen (Ticket 36, Punkt 3). Die Vertragssignatur `AngebotBefehlAusfuehren` kennt weder Projekt
 // noch LV; die Fabrik `angebotBefehlAusfuehrer` schließt beide ein und baut den Index des LV einmal.
 //
-// Neuberechnung nur im betroffenen Teilbaum (A6): `AngebotspositionSetzen` rechnet den GP der einen Position neu und
-// ändert die Summen ihrer Gliederungen bis zur Wurzel um die Differenz, dazu die Gesamtsummen. Kosten O(Tiefe) plus
-// einmal je Positionsarray der Aufbau eines Index (Positions-ID → Eintrag).
+// Neuberechnung nur im betroffenen Teilbaum (A6): `AngebotspositionSetzen` rechnet den GP der einen Position neu, dazu
+// die Beträge der Zuschlagspositionen, deren Basis sie berührt (Ticket 44, über den Kern), und ändert die Summen ihrer
+// Gliederungen bis zur Wurzel um die Differenzen, dazu die Gesamtsummen. Kosten O(Tiefe) plus die Geschwister der
+// betroffenen Zuschlagspositionen, plus einmal je Positionsarray der Aufbau eines Index (Positions-ID → Eintrag).
 
-import { NULL_BETRAG, alsEinheitspreis, addiere, subtrahiere, vorzeichen } from '@tethys/dezimal';
-import { betragsziel, gesamtsummen, nachlassFehler, positionsSumme } from '@tethys/kern';
+import { NULL_BETRAG, alsEinheitspreis, alsProzent, addiere, subtrahiere, vorzeichen } from '@tethys/dezimal';
+import { betragsziel, gesamtsummen, nachlassFehler, positionsSumme, summenBerechnen } from '@tethys/kern';
 import type {
   Aenderung,
   Angebot,
@@ -30,10 +31,11 @@ import type {
   Position,
   Positionssumme,
   Projekt,
+  Prozent,
   Summenaenderung,
 } from '@tethys/vertrag';
 import { angebotKopf } from './changeset';
-import { angebotSummenBerechnen, angebotsEinheitspreis, angebotspositionenNachId } from './summen';
+import { angebotSummenBerechnen, angebotsPosition, angebotspositionenNachId } from './summen';
 
 type Antwort = Ergebnis<AngebotChangeSet, Befehlsfehler>;
 
@@ -128,12 +130,50 @@ function changeSet(
 interface LvIndex {
   readonly lvId: string;
   readonly byId: ReadonlyMap<string, Knoten>;
+  /** Kinder je Elternknoten in Geschwisterreihenfolge, nur für Elternknoten mit einer Zuschlagsposition darunter. */
+  readonly zuschlagsEltern: ReadonlyMap<string, readonly Knoten[]>;
+  /** Je Bezugsposition die Elternknoten der Zuschlagspositionen, deren Liste (R5) sie nennt. */
+  readonly listenEltern: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 function lvIndex(lv: LvZustand): LvIndex {
   const byId = new Map<string, Knoten>();
-  for (const k of lv.leistungsverzeichnis.knoten) byId.set(k.id, k);
-  return { lvId: lv.leistungsverzeichnis.id, byId };
+  const kinder = new Map<string, Knoten[]>();
+  const listenEltern = new Map<string, Set<string>>();
+  const mitZuschlag = new Set<string>();
+  for (const k of lv.leistungsverzeichnis.knoten) {
+    byId.set(k.id, k);
+    const liste = kinder.get(k.elternId);
+    if (liste) liste.push(k);
+    else kinder.set(k.elternId, [k]);
+    if (k.art !== 'position' || k.zuschlag === null) continue;
+    mitZuschlag.add(k.elternId);
+    if (k.zuschlag.bezug.art !== 'positionen') continue;
+    for (const b of k.zuschlag.bezug.positionen) {
+      const eltern = listenEltern.get(b.positionId) ?? new Set<string>();
+      eltern.add(k.elternId);
+      listenEltern.set(b.positionId, eltern);
+    }
+  }
+  const zuschlagsEltern = new Map<string, readonly Knoten[]>();
+  for (const e of mitZuschlag)
+    zuschlagsEltern.set(
+      e,
+      [...(kinder.get(e) ?? [])].sort((a, b) => a.reihenfolge - b.reihenfolge),
+    );
+  return { lvId: lv.leistungsverzeichnis.id, byId, zuschlagsEltern, listenEltern };
+}
+
+/**
+ * Die Elternknoten, deren Zuschlagspositionen neu zu rechnen sind, wenn sich der Preis der Position `p` ändert: ihr
+ * eigener Elternknoten, wenn dort eine Zuschlagsposition steht (R3/R4, oder `p` ist selbst eine), und die Elternknoten
+ * jeder Zuschlagsposition, deren Liste `p` nennt (R5).
+ */
+function betroffeneEltern(index: LvIndex, p: Position): readonly string[] {
+  const aus = new Set<string>();
+  if (index.zuschlagsEltern.has(p.elternId)) aus.add(p.elternId);
+  for (const e of index.listenEltern.get(p.id) ?? []) aus.add(e);
+  return [...aus];
 }
 
 /** Summenstand-Eintrag einer Gliederung nach Kennung (Index je Array einmal). */
@@ -158,6 +198,42 @@ function positionssumme(liste: readonly Positionssumme[], id: string): Positions
     positionsIndexCache.set(liste, m);
   }
   return m.get(id);
+}
+
+/**
+ * Positionssummen der Zuschlagspositionen unter dem Elternknoten `e` mit den Preisen des Angebots, gerechnet vom Kern
+ * (`summenBerechnen`, R7) auf einem Teil-LV mit Wurzel `e`: alle Kinder von `e` (Bereiche R3/R4) und die Positionen,
+ * die eine Liste darunter nennt (R5). Mehr hängt ein Zuschlagsbetrag nach R1 bis R5 nicht ab; eine Zuschlagsposition
+ * ist nie Basis (Prüfung 3 des Kerns), also gibt es keine Ketten.
+ */
+function zuschlagssummenUnter(
+  index: LvIndex,
+  e: string,
+  eintrag: (id: string) => Angebotsposition | undefined,
+  mwstSatz: Prozent,
+): Positionssumme[] {
+  const kinder = index.zuschlagsEltern.get(e) ?? [];
+  const drin = new Set<string>(kinder.map((k) => k.id));
+  const teil: Knoten[] = [];
+  const dazu = (k: Knoten): void => {
+    teil.push(k.art === 'position' ? angebotsPosition(k, eintrag(k.id)) : k);
+  };
+  kinder.forEach(dazu);
+  for (const k of kinder) {
+    if (k.art !== 'position' || k.zuschlag?.bezug.art !== 'positionen') continue;
+    for (const b of k.zuschlag.bezug.positionen) {
+      const ref = index.byId.get(b.positionId);
+      if (ref === undefined || drin.has(ref.id)) continue;
+      drin.add(ref.id);
+      dazu(ref);
+    }
+  }
+  const zuschlaege = new Set<string>(
+    kinder.flatMap((k) => (k.art === 'position' && k.zuschlag !== null ? [k.id] : [])),
+  );
+  return summenBerechnen({ id: e, knoten: teil, nachlass: null, mwstSatz }).positionen.filter((s) =>
+    zuschlaege.has(s.positionId),
+  );
 }
 
 // --- Prüfungen ------------------------------------------------------------------------------------------------------
@@ -204,6 +280,23 @@ function positionFehler(index: LvIndex, p: Angebotsposition): Antwort | null {
       p.positionId,
       'einheitspreis',
     );
+  if (p.status === 'angeboten' && p.zuschlagssatz !== undefined) {
+    // Ticket 44 (Ticket 29, Folgeliste): ein Satz an einer Position ohne Zuschlag ist ein Fehler, kein Befund.
+    if (k.zuschlag === null)
+      return nein(
+        'ungueltige-eingabe',
+        `Position ${p.positionId} ist keine Zuschlagsposition und trägt keinen Zuschlagssatz.`,
+        p.positionId,
+        'zuschlagssatz',
+      );
+    if (!alsProzent(p.zuschlagssatz).ok)
+      return nein(
+        'ungueltige-eingabe',
+        `Kein kanonischer Zuschlagssatz mit 2 Stellen: ${JSON.stringify(p.zuschlagssatz)}`,
+        p.positionId,
+        'zuschlagssatz',
+      );
+  }
   return null;
 }
 
@@ -274,28 +367,57 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
 
     const positionsaenderung =
       alt === undefined ? { hinzugefuegt: [neu] } : { geaendert: [{ vorher: alt, nachher: neu }] };
-    const altSumme =
-      positionssumme(z.summen.positionen, neu.positionId) ??
-      positionsSumme({ ...lvPos, einheitspreis: angebotsEinheitspreis(alt) });
-    const neuSumme = positionsSumme({ ...lvPos, einheitspreis: angebotsEinheitspreis(neu) });
-    if (altSumme.gesamtpreis === neuSumme.gesamtpreis && altSumme.gehtInSummeEin === neuSumme.gehtInSummeEin)
-      return changeSet(z, positionsaenderung);
+    const altSumme = (p: Position): Positionssumme =>
+      positionssumme(z.summen.positionen, p.id) ??
+      positionsSumme(angebotsPosition(p, angebotspositionenNachId(z.angebot.positionen).get(p.id)));
 
-    const differenz = subtrahiere(betrag(neuSumme), betrag(altSumme));
-    const ziel = betragsziel(lvPos);
-    const feld = FELD[ziel];
-    const gliederungen: Gliederungssumme[] = [];
+    // Jede Positionssumme, die sich ändern kann: die Position selbst (ohne Zuschlag: nur aus ihrem eigenen Preis) und
+    // die Zuschlagspositionen, deren Basis sie berührt (Ticket 44). Deren Beträge rechnet der Kern (R7) auf einem
+    // Teil-LV, das alles enthält, wovon sie abhängen.
+    const kandidaten: { lvPos: Position; vorher: Positionssumme; nachher: Positionssumme }[] = [];
+    if (lvPos.zuschlag === null)
+      kandidaten.push({
+        lvPos,
+        vorher: altSumme(lvPos),
+        nachher: positionsSumme(angebotsPosition(lvPos, neu)),
+      });
+    const eltern = betroffeneEltern(index, lvPos);
+    if (eltern.length > 0) {
+      const alteEintraege = angebotspositionenNachId(z.angebot.positionen);
+      const eintrag = (id: string): Angebotsposition | undefined =>
+        id === neu.positionId ? neu : alteEintraege.get(id);
+      for (const e of eltern) {
+        for (const s of zuschlagssummenUnter(index, e, eintrag, l.mwstSatz)) {
+          const zPos = index.byId.get(s.positionId) as Position;
+          kandidaten.push({ lvPos: zPos, vorher: altSumme(zPos), nachher: s });
+        }
+      }
+    }
+    const geaendert = kandidaten.filter(
+      (c) =>
+        c.vorher.gesamtpreis !== c.nachher.gesamtpreis ||
+        c.vorher.gehtInSummeEin !== c.nachher.gehtInSummeEin,
+    );
+    if (geaendert.length === 0) return changeSet(z, positionsaenderung);
+
+    // Differenzen je Betragsziel die Elternketten hinauf (A6), dann einmal die Gesamtsummen.
+    const gliederungen = new Map<string, Gliederungssumme>();
     const gliederungenVorher: Gliederungssumme[] = [];
-    let gesamt: Gesamtsummen | null = null;
-    if (vorzeichen(differenz) !== 0) {
-      let k: string = lvPos.elternId;
+    const delta = { netto: NULL_BETRAG, bedarf: NULL_BETRAG, wahl: NULL_BETRAG };
+    for (const c of geaendert) {
+      const differenz = subtrahiere(betrag(c.nachher), betrag(c.vorher));
+      if (vorzeichen(differenz) === 0) continue;
+      const ziel = betragsziel(c.lvPos);
+      const feld = FELD[ziel];
+      delta[ziel] = addiere(delta[ziel], differenz);
+      let k: string = c.lvPos.elternId;
       while (k !== index.lvId) {
         const g = index.byId.get(k);
         if (!g) break;
-        const vorher = gliederungssumme(z.summen.gliederungen, k);
+        const vorher = gliederungen.get(k) ?? gliederungssumme(z.summen.gliederungen, k);
         if (vorher) {
-          gliederungenVorher.push(vorher);
-          gliederungen.push({
+          if (!gliederungen.has(k)) gliederungenVorher.push(vorher);
+          gliederungen.set(k, {
             summeBedarfOhneGesamtbetrag: NULL_BETRAG,
             summeWahl: NULL_BETRAG,
             ...vorher,
@@ -305,29 +427,25 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
         }
         k = g.elternId;
       }
-      const alt = z.summen.gesamt;
-      const a = ausweiseVon(alt);
-      const neuGesamt = gesamtsummen(
-        ziel === 'netto' ? addiere(alt.netto, differenz) : alt.netto,
-        z.angebot.nachlass,
-        l.mwstSatz,
-        {
-          bedarf: ziel === 'bedarf' ? addiere(a.bedarf, differenz) : a.bedarf,
-          wahl: ziel === 'wahl' ? addiere(a.wahl, differenz) : a.wahl,
-        },
-      );
-      if (!gleicheGesamtsummen(neuGesamt, z.summen.gesamt)) gesamt = neuGesamt;
     }
+    let gesamt: Gesamtsummen | null = null;
+    const altGesamt = z.summen.gesamt;
+    const a = ausweiseVon(altGesamt);
+    const neuGesamt = gesamtsummen(addiere(altGesamt.netto, delta.netto), z.angebot.nachlass, l.mwstSatz, {
+      bedarf: addiere(a.bedarf, delta.bedarf),
+      wahl: addiere(a.wahl, delta.wahl),
+    });
+    if (!gleicheGesamtsummen(neuGesamt, altGesamt)) gesamt = neuGesamt;
     return changeSet(z, {
       ...positionsaenderung,
       summen: {
-        positionen: [neuSumme],
-        gliederungen,
+        positionen: geaendert.map((c) => c.nachher),
+        gliederungen: [...gliederungen.values()],
         gesamt,
         vorher: {
-          positionen: [altSumme],
+          positionen: geaendert.map((c) => c.vorher),
           gliederungen: gliederungenVorher,
-          gesamt: gesamt === null ? null : z.summen.gesamt,
+          gesamt: gesamt === null ? null : altGesamt,
           entfernt: { positionen: [], gliederungen: [] },
         },
       },

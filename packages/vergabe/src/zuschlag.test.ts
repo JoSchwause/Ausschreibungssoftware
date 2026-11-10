@@ -3,17 +3,20 @@
 // Zuschlagssatz; Basis, Betrag und Summen kommen aus dem Kern (gedachtes LV, R7), nicht aus einer eigenen Rechnung.
 
 import { describe, expect, it } from 'vitest';
-import type { PositionId } from '@tethys/vertrag';
-import { angebotSummenBerechnen, angebotZuschlaegeBerechnen } from './index';
+import type { AngebotZustand, PositionId } from '@tethys/vertrag';
+import { angebotBefehlAusfuehrer, angebotSummenBerechnen, angebotZuschlaegeBerechnen } from './index';
 import {
   angebot,
   ep,
+  erwarteOk,
   liste,
   lv,
   nichtAngeboten,
   position,
+  projekt,
   satz,
   titel,
+  wende,
   zuschlagsposition,
 } from './testhilfen';
 
@@ -48,6 +51,52 @@ describe('Bietersummen mit Zuschlagssatz des Bieters', () => {
     // Netto 580,00; MwSt 110,20; Brutto 690,20.
     expect(s.gesamt.netto).toBe('580.00');
     expect(s.gesamt.brutto).toBe('690.20');
+  });
+});
+
+describe('AngebotspositionSetzen an Zuschlagspositionen', () => {
+  const ausfuehren = angebotBefehlAusfuehrer(projekt(['b-a']), lvZ);
+  const start = wende(ausfuehren, null, {
+    art: 'AngebotAnlegen',
+    angebot: angebot('a', lvZ, 'b-a', [
+      ep('p1', '10.000'),
+      ep('p2', '20.000'),
+      satz('z1', '10.00'),
+      satz('z2', '7.50'),
+    ]),
+  }) as AngebotZustand;
+
+  it('EP einer Bezugsposition ändern: die Beträge beider Zuschlagspositionen ziehen im ChangeSet nach', () => {
+    // p2 20 × 21,000 = 420,00 (+20,00). z1: 10 % auf 520,00 = 52,00 (+2,00); z2 (in t2): 7,5 % auf 420,00 = 31,50.
+    const cs = erwarteOk(ausfuehren(start, { art: 'AngebotspositionSetzen', position: ep('p2', '21.000') }));
+    expect(cs.summen.positionen.map((p) => [p.positionId, p.gesamtpreis])).toEqual([
+      ['p2', '420.00'],
+      ['z1', '52.00'],
+      ['z2', '31.50'],
+    ]);
+    expect(cs.summen.gliederungen.map((g) => [g.gliederungId, g.summe])).toEqual([
+      ['t1', '572.00'],
+      ['t2', '31.50'],
+    ]);
+    expect(cs.summen.gesamt?.netto).toBe('603.50');
+  });
+
+  it('Satz ändern: nur die Zuschlagsposition, ihre Gliederung und die Gesamtsummen', () => {
+    const cs = erwarteOk(ausfuehren(start, { art: 'AngebotspositionSetzen', position: satz('z1', '12.00') }));
+    expect(cs.summen.positionen).toEqual([{ positionId: 'z1', gesamtpreis: '60.00', gehtInSummeEin: true }]);
+    expect(cs.summen.gliederungen.map((g) => g.gliederungId)).toEqual(['t1']);
+  });
+
+  it('Satz an einer Position ohne Zuschlag oder nicht kanonisch → ungueltige-eingabe, feld zuschlagssatz', () => {
+    for (const position of [satz('p1', '10.00'), satz('z1', '10.0'), satz('z1', '10,00')]) {
+      const e = ausfuehren(start, { art: 'AngebotspositionSetzen', position });
+      expect(e.ok ? null : e.fehler).toMatchObject({ code: 'ungueltige-eingabe', feld: 'zuschlagssatz' });
+    }
+    const anlegen = ausfuehren(null, {
+      art: 'AngebotAnlegen',
+      angebot: angebot('b', lvZ, 'b-a', [satz('p2', '1.00')]),
+    });
+    expect(anlegen.ok ? null : anlegen.fehler).toMatchObject({ feld: 'zuschlagssatz', knotenId: 'p2' });
   });
 });
 
