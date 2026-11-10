@@ -57,7 +57,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Export → Import → Ex
     const text = wert(kern.projektdateiExportieren(f.projekt.id));
     const vorher = zaehle(db, 'knoten');
     const r = kern.projektdateiImportieren(text);
-    expect(r).toMatchObject({ ok: false, fehler: { code: 'unbekannt' } });
+    expect(r).toMatchObject({ ok: false, fehler: { code: 'existiert-bereits' } });
     expect(!r.ok && r.fehler.meldung).toContain('existiert bereits');
     expect(zaehle(db, 'knoten')).toBe(vorher);
     expect(wert(kern.projekteAuflisten())).toHaveLength(1);

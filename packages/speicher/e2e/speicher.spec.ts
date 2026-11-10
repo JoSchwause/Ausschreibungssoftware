@@ -205,7 +205,7 @@ test.describe('Fehlerwerte statt stillem Verlust (Q5)', () => {
       lv.eintrag.befehl,
     );
     const r = await ps(page, 'anwendenEinzeln', DB, doppelt, lv.changeSet);
-    expect(r).toMatchObject({ ok: false, code: 'unbekannt' });
+    expect(r).toMatchObject({ ok: false, code: 'konflikt' });
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(folge.length);
 
     await ps(page, 'schliessen', DB);
