@@ -84,17 +84,17 @@ da, an genau einer benannten Stelle im Code (`MENGEN_ANNAHMEN`), damit sie sich 
 
 ## Acceptance criteria
 
-- [ ] `dividiere` in `dezimal` mit Tests (Rundung, Vorzeichen, `division-durch-null`, Property-Test wie in Punkt 1); kein bestehender Test von `dezimal` geändert
-- [ ] `packages/mengen` baut, ist von den Paketgrenzen erfasst und in `pnpm typecheck` enthalten
-- [ ] Golden-Tests mit Herleitung: `2,5*4+3` → `13.000`; `(1,25+0,75)*3/4` → 2 × 3 / 4 = `1.500`; `10/3` → 3,3333333333 → `3.333`; `2/3` → 0,6666666667 → `0.667`; `10/3*3` → 9,9999999999 → `10.000`; `-2,5*1,2` → `-3.000`; `0,0005` → `0.001`, `-0,0005` → `-0.001` (E-07); `1/0` → `division-durch-null`
-- [ ] Golden-Test Mengenansatz: Zeile 1 `3,5*2` = `7.000`, Zeile 2 `Z1*0,5` = `3.500`, Summe `10.500`; Zeile 2 mit `Z3` → `bezug-vorwaerts`, Summe `null`
-- [ ] Fehler mit Spalte: `2*(3+` → `klammer-fehlt`; `1.5` → `punkt-statt-komma` an Spalte 1; `2 # 3` → `zeichen-unerwartet` an Spalte 2
-- [ ] Property-Test: für zufällige Syntaxbäume gilt `ausdruckLesen(ausdruckFormatieren(a))` = `a` (bis auf überflüssige Klammern)
-- [ ] Property-Test: für zufällige Ausdrücke aus ganzen Zahlen mit `+`, `-`, `*` stimmt das Ergebnis mit einer unabhängigen Rechnung über `bigint` überein
-- [ ] Property-Test: beliebiger Text bis 1.000 Zeichen wirft nie, sondern liefert Wert oder Fehlerwert; 50-fach geschachtelte Klammern gehen, 51-fach ergibt `zu-tief`
-- [ ] `MENGEN_ANNAHMEN` nennt jede vorläufige Annahme dieses Tickets; `FORMELN` enthält nur 91
-- [ ] `GLOSSARY.md` enthält „Mengenansatz“, „Ansatzzeile“, „REB-Formel“
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
+- [x] `dividiere` in `dezimal` mit Tests (Rundung, Vorzeichen, `division-durch-null`, Property-Test wie in Punkt 1); kein bestehender Test von `dezimal` geändert
+- [x] `packages/mengen` baut, ist von den Paketgrenzen erfasst und in `pnpm typecheck` enthalten
+- [x] Golden-Tests mit Herleitung: `2,5*4+3` → `13.000`; `(1,25+0,75)*3/4` → 2 × 3 / 4 = `1.500`; `10/3` → 3,3333333333 → `3.333`; `2/3` → 0,6666666667 → `0.667`; `10/3*3` → 9,9999999999 → `10.000`; `-2,5*1,2` → `-3.000`; `0,0005` → `0.001`, `-0,0005` → `-0.001` (E-07); `1/0` → `division-durch-null`
+- [x] Golden-Test Mengenansatz: Zeile 1 `3,5*2` = `7.000`, Zeile 2 `Z1*0,5` = `3.500`, Summe `10.500`; Zeile 2 mit `Z3` → `bezug-vorwaerts`, Summe `null`
+- [x] Fehler mit Spalte: `2*(3+` → `klammer-fehlt`; `1.5` → `punkt-statt-komma` an Spalte 1; `2 # 3` → `zeichen-unerwartet` an Spalte 2
+- [x] Property-Test: für zufällige Syntaxbäume gilt `ausdruckLesen(ausdruckFormatieren(a))` = `a` (bis auf überflüssige Klammern)
+- [x] Property-Test: für zufällige Ausdrücke aus ganzen Zahlen mit `+`, `-`, `*` stimmt das Ergebnis mit einer unabhängigen Rechnung über `bigint` überein
+- [x] Property-Test: beliebiger Text bis 1.000 Zeichen wirft nie, sondern liefert Wert oder Fehlerwert; 50-fach geschachtelte Klammern gehen, 51-fach ergibt `zu-tief`
+- [x] `MENGEN_ANNAHMEN` nennt jede vorläufige Annahme dieses Tickets; `FORMELN` enthält nur 91
+- [x] `GLOSSARY.md` enthält „Mengenansatz“, „Ansatzzeile“, „REB-Formel“
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -103,3 +103,10 @@ X31/DA11 (M3). Aufmaßblätter und Soll/Ist (A2). Vordersatz einer Position aus 
 Vertragstyp fehlen; späteres Vertragsticket).
 
 ## Comments
+
+- Frühere Zeile: Position in der Folge oder Zeilennummer? → Position in der Folge; die Folge ist das, was der Nutzer sieht (D-35a).
+- Fehlercodes über die Mindestliste hinaus? → `ausdruck-unvollstaendig`, `variable-ungueltig`, `zeile-doppelt`; sonst hätte „2+“, ein ungültiger Name oder eine doppelte Nummer keinen ehrlichen Code.
+- Spalte bei `klammer-fehlt`? → die offene Klammer ohne Partner; dort muss der Nutzer hinsehen.
+- Zahlen im Syntaxbaum? → normalisiert (`2,50` = `2,5`, `007` = `7`), damit Lesen ∘ Formatieren stabil ist; sehr lange Zahlen (über `dezimal`-Grenze) sind `zahl-ungueltig`.
+- Leerer Variablenname? → `variable-ungueltig`; „kein Name“ ist `null`.
+- Zwischenrundung bei Division: `dividiere` auf `ZWISCHENSTELLEN` = 10, wie im Ticket; Bezüge nutzen das auf 3 Stellen gerundete Zeilenergebnis.
