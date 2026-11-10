@@ -1,6 +1,6 @@
 # 46: Grid: Zeilen kopieren und einfügen, per Tastatur verschieben, löschen, neue Zeile; Sprungziel (U5a)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5a) · Paket: `packages/ui-grid`
 Blocked by: 33, 29
@@ -86,14 +86,14 @@ eine Zelle, Alt+Pfeil links/rechts klappt, Leertaste wählt die Zeile, E-18):
 
 ## Acceptance criteria
 
-- [ ] Strg+C schreibt TSV, das Excel als Tabelle liest (Unit-Test der Serialisierung mit Anführung und Zahlen in de-DE)
-- [ ] Strg+V mit eigenem Text: nach Strg+X ein `KnotenlisteVerschieben`, nach Strg+C ein Aufruf von `onKopieEinfuegen` mit Knoten und Ort; mit fremdem Text `PositionAnlegen` je Zeile wie bisher, als eine Folge über `onBefehlsfolge`
-- [ ] Löschen nur nach Bestätigung, als ein `KnotenInPapierkorbLegen`; Escape bricht ohne Befehl ab (Playwright)
-- [ ] Alt+Pfeil hoch/runter verschiebt unter Geschwistern, am Rand nichts (Playwright)
-- [ ] Strg+Plus legt eine leere Position an und fokussiert den Kurztext
-- [ ] `sprungziel` scrollt bei 5.000 Zeilen zur Zeile und fokussiert die Zelle (Playwright)
-- [ ] Keine bestehende Taste geändert (Tests aus 21/33 grün); die neuen Tasten sind dokumentiert
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] Strg+C schreibt TSV, das Excel als Tabelle liest (Unit-Test der Serialisierung mit Anführung und Zahlen in de-DE)
+- [x] Strg+V mit eigenem Text: nach Strg+X ein `KnotenlisteVerschieben`, nach Strg+C ein Aufruf von `onKopieEinfuegen` mit Knoten und Ort; mit fremdem Text `PositionAnlegen` je Zeile wie bisher, als eine Folge über `onBefehlsfolge`
+- [x] Löschen nur nach Bestätigung, als ein `KnotenInPapierkorbLegen`; Escape bricht ohne Befehl ab (Playwright)
+- [x] Alt+Pfeil hoch/runter verschiebt unter Geschwistern, am Rand nichts (Playwright)
+- [x] Strg+Plus legt eine leere Position an und fokussiert den Kurztext
+- [x] `sprungziel` scrollt bei 5.000 Zeilen zur Zeile und fokussiert die Zelle (Playwright)
+- [x] Keine bestehende Taste geändert (Tests aus 21/33 grün); die neuen Tasten sind dokumentiert
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -101,3 +101,20 @@ Kopie bauen (42, App 48), Undo und Papierkorb-Ansicht (48), OZ-Vergabe (42/48), 
 Kopieren zwischen LVs, Änderungen an Spalten oder Summenzeile.
 
 ## Comments
+
+Umsetzung (Implementierer, Demo-Modus; Kleinentscheidungen paketlokal, zusammengefasst als D-46.1):
+
+- Seams: reine Planung in `src/zeilenaktionen.ts` und `schreibeTsv` (Vitest), Texte der Rückfrage (Vitest); Tastatur, Zwischenablage, Dialog, Fokus und Sprungziel über die Testseite (Playwright, `e2e/zeilenaktionen.spec.ts`).
+- Tastenbelegung wie im Vorschlag. Strg+Plus reagiert auf `key === '+'` (Strg+Umschalt+= auf US-Tastatur, Ziffernblock +); Strg+= ohne Umschalt bleibt frei. Alt+Pfeil hoch/runter navigierte vorher wie Pfeil hoch/runter; das ist die einzige geänderte Belegung (vom Ticket verlangt).
+- Zwischenablage schreiben: `navigator.clipboard.writeText` aus dem Tastenereignis, nicht über das `copy`-Ereignis. Grund: Chromium löst `copy` ohne Textauswahl nicht verlässlich aus.
+- Eigener Text: Vergleich mit vereinheitlichten Zeilenumbrüchen (`\r\n` = `\n`). Grund: Das System darf sie beim Kopieren tauschen.
+- Eigener Text ohne `onKopieEinfuegen`: neue Positionen spaltengenau ab der ersten Spalte (nicht ab der aktiven). Grund: Der Text trägt alle sichtbaren Spalten.
+- Nach Strg+X immer `KnotenlisteVerschieben` (auch bei einer Zeile, wie im Kriterium); Alt+Pfeil bei einem Knoten `KnotenVerschieben`. Liegt die aktive Zeile in den ausgeschnittenen Knoten: kein Befehl, Ansage.
+- Escape nach Strg+X: Markierung weg, die Zeilen bleiben als kopiert gemerkt (Strg+V gibt dann eine verlustfreie Kopie); erst ein weiteres Escape verkleinert die Auswahl wie bisher. Grund: kein verlustbehaftetes Einfügen aus Versehen.
+- Verschieben nur bei zusammenhängenden Geschwistern. „Hinter einer Gliederung“ lässt sich als `Einfuegeort` nicht ausdrücken (`nach` heißt dort „als erstes Kind“): dann wandert der Nachbar auf die andere Seite oder eine Teilfolge der Geschwister wird in neuer Reihenfolge gelegt, immer ein Befehl, gleiches Ergebnis.
+- Strg+Plus auf einer Gliederung: immer als erstes Kind (auch zugeklappt, dann `onAufklappen(id, true)`), aus demselben Grund. Im leeren LV legt Strg+Plus am Ende der Wurzel an.
+- `onBefehlsfolge` gilt für jedes Einfügen aus der Zwischenablage (auch eine Zeile); alle anderen Aktionen sind ein Befehl über `onBefehl`. `vorPositionAnlegen` gilt nur für Strg+Plus, nicht für das Einfügen.
+- Rückfrage beim Löschen zählt aus den sichtbaren Zeilen; liegt ein zugeklappter Knoten mit Unterknoten in der Auswahl, steht „mindestens“ vor der Zahl. Lücke: Die genaue Zahl bräuchte eine Angabe der App (z. B. optionale Eigenschaft, Ticket 48).
+- Lücke `ui-basis`: `Dialog` lässt keinen Startfokus wählen (Radix fokussiert das Schließen-Kreuz). Enter bestätigt deshalb über einen Tastenhandler im React-Baum um den Dialog (außer auf „Abbrechen“); nach dem Bestätigen holt das Grid den Fokus selbst zurück, weil die fokussierte Zeile verschwunden ist.
+- Sprungziel: wird auch beim ersten Rendern ausgeführt und ersetzt die Auswahl durch die Zielzeile.
+- Nebenbei: `e2e/hinweise-und-summen.spec.ts` las `allTextContents` vor dem Laden der Testseite (gelegentlich rot); wartet jetzt.

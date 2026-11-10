@@ -99,6 +99,8 @@ test.describe('Bedarfs- und Wahlsumme', () => {
   test('gesetzt: nach dem Brutto, getrennt und als „nicht im Netto“ gekennzeichnet', async ({ page }) => {
     await page.goto('/?fixture=typisch&ausweis=1');
     const posten = summen(page).locator('.tx-grid__summe');
+    // erst warten, bis die Testseite die Fixture geladen hat; allTextContents wartet nicht
+    await expect(posten.last()).toContainText('Wahlsumme');
     const namen = await posten.locator('.tx-grid__summe-name').allTextContents();
     expect(namen.slice(-3)).toEqual(['Brutto', 'Bedarfssumme', 'Wahlsumme']);
     const bedarf = posten.filter({ hasText: 'Bedarfssumme' });

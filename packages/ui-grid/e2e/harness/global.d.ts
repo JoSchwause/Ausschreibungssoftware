@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { LvBefehl } from '@tethys/vertrag';
+import type { Einfuegeort, KnotenId, LvBefehl, LvSpalte } from '@tethys/vertrag';
 
 declare global {
   interface Window {
@@ -12,6 +12,12 @@ declare global {
       /** Wendet die aufgezeichneten Befehle an und gibt dem Grid damit neue Eigenschaften (Modus attrappe). */
       uebernehmen: () => void;
       ausstehend: () => number;
+      /** Befehlsfolgen über `onBefehlsfolge` (nur mit `folge=1`); ihre Befehle stehen zusätzlich in `befehle`. */
+      folgen: LvBefehl[][];
+      /** Aufrufe von `onKopieEinfuegen` (nur mit `kopie=1`). */
+      kopien: { knotenIds: KnotenId[]; ort: Einfuegeort }[];
+      /** Setzt das Sprungziel (neue `nr` je Aufruf). */
+      springe: (knotenId: string, spalte?: LvSpalte) => void;
     };
   }
 }

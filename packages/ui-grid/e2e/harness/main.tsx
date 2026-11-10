@@ -13,13 +13,26 @@
 //   leer=1                  leeres LV (keine Knoten; die Wurzel bleibt die der Fixture)
 //   hinweise=1              Beispiel-Befehlshinweise (einer nennt die letzte Position, einer hat einen unbekannten Code)
 //   ausweis=1               Summenzeile mit Bedarfs- und Wahlsumme (erfundene Werte)
+//   folge=1                 onBefehlsfolge gesetzt (Folgen in window.__harness.folgen)
+//   kopie=1                 onKopieEinfuegen gesetzt (Aufrufe in window.__harness.kopien)
+//   oz=1                    vorPositionAnlegen setzt die OZ „NEU“ (statt der OZ-Vergabe der App)
 
 import '@tethys/ui-basis/tokens.css';
 import '@tethys/ui-basis/bausteine.css';
 import '../../src/grid.css';
 import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { Befehlshinweis, Betrag, Knoten, KnotenId, LvBefehl, Pruefbefund } from '@tethys/vertrag';
+import type {
+  Befehlshinweis,
+  Betrag,
+  Knoten,
+  KnotenId,
+  LvBefehl,
+  LvSpalte,
+  Ordnungszahl,
+  Pruefbefund,
+} from '@tethys/vertrag';
+import type { Sprungziel } from '../../src/index';
 import { LvGrid } from '../../src/index';
 import { idQuelleAttrappe, zahlenAttrappe } from './attrappen';
 import { wendeAn } from './befehle-anwenden';
@@ -110,6 +123,7 @@ function Seite() {
   );
   const [ausstehend, setAusstehend] = useState<LvBefehl[]>([]);
   const [auswahl, setAuswahl] = useState<readonly KnotenId[]>([]);
+  const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
   const befunde = useMemo(
     () => (params.get('befunde') === '1' ? beispielBefunde(modell0.knoten) : undefined),
     [],
@@ -126,6 +140,20 @@ function Seite() {
       setAusstehend([]);
     },
     ausstehend: () => ausstehend.length,
+    folgen: window.__harness.folgen,
+    kopien: window.__harness.kopien,
+    springe: (knotenId: string, spalte?: LvSpalte) => {
+      setSprungziel((alt) => ({
+        knotenId: knotenId as KnotenId,
+        ...(spalte ? { spalte } : {}),
+        nr: (alt?.nr ?? 0) + 1,
+      }));
+    },
+  };
+  const nimm = (neu: readonly LvBefehl[]): void => {
+    window.__harness.befehle.push(...neu);
+    if (live) setKnoten((k) => wendeAn(k, neu));
+    else setAusstehend((a) => [...a, ...neu]);
   };
 
   return (
@@ -141,10 +169,32 @@ function Seite() {
           ids={ids}
           hinweise={hinweise}
           onBefehl={(b) => {
-            window.__harness.befehle.push(b);
-            if (live) setKnoten((k) => wendeAn(k, [b]));
-            else setAusstehend((a) => [...a, b]);
+            nimm([b]);
           }}
+          {...(params.get('folge') === '1'
+            ? {
+                onBefehlsfolge: (folge: readonly LvBefehl[]) => {
+                  window.__harness.folgen.push([...folge]);
+                  nimm(folge);
+                },
+              }
+            : {})}
+          {...(params.get('kopie') === '1'
+            ? {
+                onKopieEinfuegen: (knotenIds, ort) => {
+                  window.__harness.kopien.push({ knotenIds: [...knotenIds], ort });
+                },
+              }
+            : {})}
+          {...(params.get('oz') === '1'
+            ? {
+                vorPositionAnlegen: (b) => ({
+                  ...b,
+                  daten: { ...b.daten, ordnungszahl: 'NEU' as Ordnungszahl },
+                }),
+              }
+            : {})}
+          {...(sprungziel ? { sprungziel } : {})}
           onAufklappen={(id, auf) => {
             setOffen((alt) => {
               const neu = new Set(alt);
@@ -172,7 +222,15 @@ style.textContent = `
   .seite__grid { flex: 1 1 auto; min-height: 0; }
 `;
 document.head.append(style);
-window.__harness = { befehle: [], auswahl: [], uebernehmen: () => undefined, ausstehend: () => 0 };
+window.__harness = {
+  befehle: [],
+  auswahl: [],
+  uebernehmen: () => undefined,
+  ausstehend: () => 0,
+  folgen: [],
+  kopien: [],
+  springe: () => undefined,
+};
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Wurzelelement #root fehlt');

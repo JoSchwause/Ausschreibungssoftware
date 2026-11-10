@@ -44,6 +44,22 @@ export type Einfuegeanker =
   | { readonly art: 'nach'; readonly knotenId: KnotenId }
   | { readonly art: 'ende'; readonly elternId: ElternId };
 
+/** Daten einer leeren Position ohne Merkmale und ohne OZ (die OZ ergänzt die App, Ticket 46 Punkt 5). */
+export function leerePositionsdaten(): Positionsdaten {
+  return {
+    ordnungszahl: null,
+    ozIndex: null,
+    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
+    zuschlag: null,
+    kurztext: '',
+    langtext: [],
+    menge: null,
+    einheit: null,
+    einheitspreis: null,
+    epa: null,
+  };
+}
+
 export function planeEinfuegen(
   matrix: readonly (readonly string[])[],
   ersteSpalte: number,
@@ -96,24 +112,7 @@ export function planeEinfuegen(
       }
     });
     // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog.
-    const daten: Positionsdaten = {
-      ordnungszahl: null,
-      ozIndex: null,
-      merkmale: {
-        bedarf: null,
-        wahl: null,
-        stundenlohn: false,
-        pauschal: false,
-        zuschlagskennzeichen: false,
-      },
-      zuschlag: null,
-      kurztext,
-      langtext: [],
-      menge,
-      einheit,
-      einheitspreis,
-      epa: null,
-    };
+    const daten: Positionsdaten = { ...leerePositionsdaten(), kurztext, menge, einheit, einheitspreis };
     befehle.push({ art: 'PositionAnlegen', id, ort, daten });
     ort = { art: 'nach', knotenId: id };
   }
