@@ -109,7 +109,6 @@ function Seite() {
           ansicht={ansicht}
           zahlen={zahlenAttrappe}
           ids={ids}
-          wurzelId={modell0.lvId}
           onBefehl={(b) => {
             window.__harness.befehle.push(b);
             if (live) setKnoten((k) => wendeAn(k, [b]));

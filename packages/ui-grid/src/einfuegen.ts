@@ -16,6 +16,8 @@ import type {
   ElternId,
   Einheit,
   Einheitspreis,
+  GridIdQuelle,
+  GridZahlen,
   KnotenId,
   LvBefehl,
   LvSpalte,
@@ -24,7 +26,6 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { istBearbeitbareSpalte, leseEinheitspreis, leseMenge } from './eingabe';
-import type { GridIdQuelle, GridZahlen } from './typen';
 
 export interface UngueltigeZelle {
   readonly knotenId: PositionId;

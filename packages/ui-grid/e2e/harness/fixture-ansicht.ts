@@ -206,7 +206,6 @@ export function baueAnsicht(
     }
   };
   besuche(modell.lvId, 0);
-  // v1.1a: mechanisch angepasst, Folgeticket (ui-grid: wurzelId aus der Ansicht statt als eigene Eigenschaft)
   return { wurzelId: modell.lvId as WurzelId, zeilen, gesamt: modell.gesamt };
 }
 

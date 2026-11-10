@@ -57,7 +57,6 @@ export const texte = {
   warnung: 'Warnung',
   eingabeUngueltig: 'Eingabe nicht übernommen',
   bild: '[Bild]',
-  keinEinfuegeort: 'Einfügen nicht möglich: Es ist keine Zeile aktiv.',
   leereZwischenablage: 'Die Zwischenablage enthält keinen Text.',
 } as const;
 

@@ -2,9 +2,8 @@
 // Reine Logik zwischen Zellentext und Befehl. Kein React, kein DOM. Das Grid rechnet nie (A5, N1): Es reicht
 // Text an die eingesteckten Parser und vergleicht Werte höchstens als Zeichenketten auf Gleichheit.
 
-import type { Einheitspreis, LvBefehl, LvSpalte, LvZeile, Menge } from '@tethys/vertrag';
+import type { Einheitspreis, GridZahlen, LvBefehl, LvSpalte, LvZeile, Menge } from '@tethys/vertrag';
 import { ARTTEXT, anzeigeart, texte } from './texte';
-import type { GridZahlen } from './typen';
 
 /** Spalten, die sich bearbeiten lassen (nur bei den passenden Knotenarten). */
 export type BearbeitbareSpalte = 'kurztext' | 'menge' | 'einheit' | 'einheitspreis';

@@ -42,7 +42,7 @@ function istSpalte(wert: string | undefined, spalten: readonly LvSpalte[]): LvSp
 }
 
 export function LvGrid(props: LvGridProps): ReactElement {
-  const { ansicht, zahlen, ids, onBefehl, onAufklappen, onAuswahlChange, wurzelId } = props;
+  const { ansicht, zahlen, ids, onBefehl, onAufklappen, onAuswahlChange } = props;
   const spalten = props.spalten ?? STANDARDSPALTEN;
   const baumspalte = props.baumspalte ?? 'kurztext';
   const zh = props.zeilenhoehe ?? 28;
@@ -512,15 +512,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
       uebernimmText(aktivIndex, aktivSpalte, matrix[0]?.[0] ?? '');
       return;
     }
-    const einfuegeanker: Einfuegeanker | null = aktiveZeile
+    // In ein leeres LV (keine aktive Zeile) wird am Ende der Wurzel eingefügt.
+    const einfuegeanker: Einfuegeanker = aktiveZeile
       ? { art: 'nach', knotenId: aktiveZeile.knoten.id }
-      : wurzelId !== undefined
-        ? { art: 'ende', elternId: wurzelId }
-        : null;
-    if (einfuegeanker === null) {
-      setStatus(texte.keinEinfuegeort);
-      return;
-    }
+      : { art: 'ende', elternId: ansicht.wurzelId };
     const plan = planeEinfuegen(matrix, aktivSpaltenIndex, spalten, einfuegeanker, zahlen, ids);
     for (const befehl of plan.befehle) onBefehl(befehl);
     if (plan.ungueltig.length > 0) {
