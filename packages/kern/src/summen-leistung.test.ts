@@ -5,8 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { LvBefehl, LvZustand, Menge } from '@tethys/vertrag';
-import { lvBefehlAusfuehren, lvChangeSetAnwenden, summenBerechnen } from './index';
-import { PROJEKT_ID, erwarteOk, fixtureAlsInhalt, fixtureLesen, id } from './testhilfen';
+import { lvBefehlAusfuehren, summenBerechnen } from './index';
+import { anwenden, PROJEKT_ID, erwarteOk, fixtureAlsInhalt, fixtureLesen, id } from './testhilfen';
 import type { LeistungsverzeichnisId } from '@tethys/vertrag';
 
 const BUDGET_MS = 16;
@@ -19,7 +19,7 @@ describe('Leistungsbudget (Q4)', () => {
   it(`MengeAendern in fixtures/gross: ausführen + anwenden, warm, Median unter ${String(BUDGET_MS)} ms`, () => {
     const fx = fixtureLesen('gross');
     const inh = fixtureAlsInhalt(fx);
-    let z: LvZustand = lvChangeSetAnwenden(
+    let z: LvZustand = anwenden(
       null,
       erwarteOk(
         lvBefehlAusfuehren(null, {
@@ -49,7 +49,7 @@ describe('Leistungsbudget (Q4)', () => {
       const t0 = performance.now();
       const cs = erwarteOk(lvBefehlAusfuehren(z, befehl));
       const t1 = performance.now();
-      z = lvChangeSetAnwenden(z, cs);
+      z = anwenden(z, cs);
       const t2 = performance.now();
       if (i >= WARMLAUF) {
         werte.push(t2 - t0);

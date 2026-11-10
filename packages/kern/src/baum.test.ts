@@ -17,11 +17,12 @@ import {
   LOS_ANNAHME,
   MAX_GLIEDERUNGSEBENEN,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   changeSetUmkehren,
   pruefeLvInvarianten,
 } from './index';
 import {
+  ohneReihenfolge,
+  anwenden,
   LV_ID,
   PROJEKT_ID,
   erwarteOk,
@@ -123,8 +124,14 @@ describe('LeistungsverzeichnisAnlegen', () => {
       positionen: [],
       gliederungen: [],
       gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+      vorher: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: null,
+        entfernt: { positionen: [], gliederungen: [] },
+      },
     });
-    const z = lvChangeSetAnwenden(null, cs);
+    const z = anwenden(null, cs);
     expect(z.leistungsverzeichnis.knoten).toEqual([]);
     expect(pruefeLvInvarianten(z.leistungsverzeichnis)).toEqual([]);
   });
@@ -276,7 +283,7 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       ['P3', 2, 3],
     ]);
     expect(cs.knoten.entfernt).toEqual([]);
-    expect(kinderIds(lvChangeSetAnwenden(z, cs), 'T1')).toEqual(['P1', 'PX', 'P2', 'P3']);
+    expect(kinderIds(anwenden(z, cs), 'T1')).toEqual(['P1', 'PX', 'P2', 'P3']);
   });
 
   it('„nach“ dem letzten Geschwister hängt an, ohne Änderung der Geschwister', () => {
@@ -495,7 +502,7 @@ describe('Gliederungsebenen', () => {
 
   it('VORLÄUFIGE ANNAHME (Entscheidung offen): ein Los steht nur direkt unter der Wurzel', () => {
     expect(LOS_ANNAHME.nurUnterWurzel).toBe(true);
-    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende(LV_ID)));
+    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende('L'))); // F1: Titel im Los, nicht daneben
     expect(lvBefehlAusfuehren(z, los('L2', ende(LV_ID))).ok).toBe(true);
     expect(fehlercode(z, los('X', ende('L')))).toBe('knotenart-unzulaessig');
     expect(fehlercode(z, los('X', ende('T')))).toBe('knotenart-unzulaessig');
@@ -524,7 +531,7 @@ describe('KnotenLoeschen', () => {
     expect(cs.knoten.entfernt.map((k) => k.id)).toEqual(['T1', 'T2', 'P1', 'H1', 'P2']);
     expect(cs.knoten.entfernt[0]).toEqual(knotenVon(z, 'T1'));
     expect(cs.knoten.hinzugefuegt).toEqual([]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.knoten.map((k) => k.id)).toEqual(['T3', 'P3']);
   });
 
@@ -534,7 +541,7 @@ describe('KnotenLoeschen', () => {
     expect(
       cs.knoten.geaendert.map((g) => [g.vorher.id, g.vorher.reihenfolge, g.nachher.reihenfolge]),
     ).toEqual([['T3', 1, 0]]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(kinderIds(z2, LV_ID)).toEqual(['T3']);
     expect(pruefeLvInvarianten(z2.leistungsverzeichnis)).toEqual([]);
   });
@@ -558,7 +565,7 @@ describe('KnotenLoeschen', () => {
     // Die Summen entfernter Knoten stehen nicht im ChangeSet (Vertrag), sie fallen mit dem Knoten weg.
     expect(cs.summen.positionen).toEqual([]);
     expect(cs.summen.gliederungen).toEqual([]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.summen.positionen.map((p) => p.positionId)).toEqual(['P3']);
     expect(z2.summen.gliederungen.map((g) => g.gliederungId)).toEqual(['T3']);
     expect(z2.summen.gesamt).toBe(z.summen.gesamt);
@@ -637,12 +644,21 @@ describe('KnotenVerschieben', () => {
   });
 
   it('Fehlerwerte: unbekannter Knoten, unbekanntes Ziel, Ziel ist eine Position, Los unter einen Titel', () => {
-    const z = reihe(baum(), los('L', anfang(LV_ID)));
+    // F1: Lose und Titel nicht nebeneinander auf der obersten Ebene; das Los steht neben einem LV mit Titeln im Los.
+    const z = reihe(
+      null,
+      los('L', ende(LV_ID)),
+      titel('T1', ende('L')),
+      position('P1', ende('T1')),
+      position('P2', ende('T1')),
+      los('L0', ende(LV_ID)),
+      titel('T0', ende('L0')),
+    );
     expect(fehlercode(z, verschiebe('gibt-es-nicht', ende('T1')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('gibt-es-nicht')))).toBe('eltern-unbekannt');
     expect(fehlercode(z, verschiebe('P1', nach('gibt-es-nicht')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('P2')))).toBe('knotenart-unzulaessig');
-    expect(fehlercode(z, verschiebe('L', ende('T1')))).toBe('knotenart-unzulaessig');
+    expect(fehlercode(z, verschiebe('L', ende('T0')))).toBe('knotenart-unzulaessig');
     expect(lvBefehlAusfuehren(z, verschiebe('L', ende(LV_ID))).ok).toBe(true);
   });
 
@@ -709,9 +725,9 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
       titel('TX', nach('T1')),
     ]) {
       const cs = erwarteOk(lvBefehlAusfuehren(z, b));
-      const danach = lvChangeSetAnwenden(z, cs);
+      const danach = anwenden(z, cs);
       expect(danach).not.toEqual(z);
-      expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
+      expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(z);
     }
   });
 
@@ -719,16 +735,16 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
     const z = basis();
     const cs = erwarteOk(lvBefehlAusfuehren(z, position('PX', nach('P1'))));
     const kopie = structuredClone(cs);
-    const u = changeSetUmkehren(cs, z);
+    const u = changeSetUmkehren(cs);
     expect(cs).toEqual(kopie);
     expect(u.knoten.entfernt).toEqual(cs.knoten.hinzugefuegt);
     expect(u.knoten.hinzugefuegt).toEqual(cs.knoten.entfernt);
     expect(u.knoten.geaendert[0]?.vorher).toEqual(cs.knoten.geaendert[0]?.nachher);
-    expect(changeSetUmkehren(u, lvChangeSetAnwenden(z, cs))).toEqual(cs);
+    expect(ohneReihenfolge(changeSetUmkehren(u))).toEqual(ohneReihenfolge(cs));
   });
 
   it('ohne Zustand und ohne Kopf lässt sich ein ChangeSet nicht anwenden (Programmfehler)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(basis(), position('PX', nach('P1'))));
-    expect(() => lvChangeSetAnwenden(null, cs)).toThrow();
+    expect(() => anwenden(null, cs)).toThrow();
   });
 });

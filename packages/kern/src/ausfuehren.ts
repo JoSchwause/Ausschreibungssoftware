@@ -30,7 +30,7 @@ import {
   langtextAendern,
   leistungsverzeichnisUmbenennen,
 } from './feld-befehle';
-import { leistungsverzeichnisAnlegen } from './lv-anlegen';
+import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
   einheitspreisAendern,
@@ -53,6 +53,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
+  LeistungsverzeichnisLoeschen: leistungsverzeichnisLoeschen,
   GliederungAnlegen: gliederungAnlegen,
   PositionAnlegen: positionAnlegen,
   HinweistextAnlegen: hinweistextAnlegen,
@@ -78,8 +79,6 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
-  // v1.1a: mechanisch angepasst, Folgeticket
-  LeistungsverzeichnisLoeschen: 'Folgeticket kern (Löschen, Vertrag v1.1a)',
   KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket

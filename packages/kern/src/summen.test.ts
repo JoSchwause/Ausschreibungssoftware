@@ -20,13 +20,15 @@ import {
   changeSetUmkehren,
   gesamtsummen,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   nachlassBetrag,
   positionGehtInSumme,
   summenBerechnen,
   ZUSTAENDIGES_TICKET,
 } from './index';
 import {
+  KEINE_SUMMEN,
+  ohneReihenfolge,
+  anwenden,
   LV_ID,
   PROJEKT_ID,
   type Positionsart,
@@ -330,7 +332,7 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
     const z = lvMit([posKnoten('P1', LV_ID, 0, '1.000', '100.000')]);
     const cs = erwarteOk(lvBefehlAusfuehren(z, nachlassSetzen(betragNachlass('100.01'))));
     expect(cs.kopf?.nachher?.nachlass).toEqual(betragNachlass('100.01'));
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.summen.gesamt).toEqual({
       netto: '100.00',
       nachlass: '100.01',
@@ -506,21 +508,21 @@ describe('ChangeSet einer Mengenänderung', () => {
     const z = baum();
     const cs = erwarteOk(lvBefehlAusfuehren(z, mengeAendern('P1', '2.000')));
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
-    expect(lvChangeSetAnwenden(z, cs)).toBe(z);
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(anwenden(z, cs)).toBe(z);
   });
 
   it('Menge ändert sich, GP nicht (EP 0,000): Position geändert, aber keine Summe', () => {
     const z = lvMit([titelKnoten('T1', LV_ID, 0), posKnoten('P1', 'T1', 0, '2.000', '0.000')]);
     const cs = erwarteOk(lvBefehlAusfuehren(z, mengeAendern('P1', '5.000')));
     expect(cs.knoten.geaendert).toHaveLength(1);
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('Menge ändert sich, EP nicht gesetzt: GP bleibt null, keine Summe im ChangeSet', () => {
     const z = lvMit([titelKnoten('T1', LV_ID, 0), posKnoten('P1', 'T1', 0, '2.000', null)]);
     const cs = erwarteOk(lvBefehlAusfuehren(z, mengeAendern('P1', '5.000')));
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('Position, die nicht in die Summe eingeht (Wahl): nur ihr eigener GP, keine Gliederung, keine Gesamtsumme', () => {
@@ -613,9 +615,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
       { gliederungId: 'T1b', summe: '30.00' },
     ]);
     expect(cs.summen.gesamt?.netto).toBe('80.00');
-    expect(summenBerechnen(lvChangeSetAnwenden(z, cs).leistungsverzeichnis)).toEqual(
-      lvChangeSetAnwenden(z, cs).summen,
-    );
+    expect(summenBerechnen(anwenden(z, cs).leistungsverzeichnis)).toEqual(anwenden(z, cs).summen);
   });
 
   it('PositionAnlegen ohne Menge: Eintrag mit gesamtpreis null, sonst keine Summe', () => {
@@ -631,6 +631,12 @@ describe('Strukturbefehle sind summenbewusst', () => {
       positionen: [{ positionId: 'P9', gesamtpreis: null, gehtInSummeEin: false }],
       gliederungen: [],
       gesamt: null,
+      vorher: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: null,
+        entfernt: { positionen: [], gliederungen: [] },
+      },
     });
   });
 
@@ -643,7 +649,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
         text: [],
       }),
     );
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('GliederungAnlegen: neue Gliederung mit Summe 0,00, Vorfahren unverändert', () => {
@@ -660,6 +666,12 @@ describe('Strukturbefehle sind summenbewusst', () => {
       positionen: [],
       gliederungen: [{ gliederungId: 'T3', summe: '0.00' }],
       gesamt: null,
+      vorher: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: null,
+        entfernt: { positionen: [], gliederungen: [] },
+      },
     });
   });
 
@@ -672,7 +684,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
       { gliederungId: 'T1b', summe: '0.00' },
     ]);
     expect(cs.summen.gesamt?.netto).toBe('50.00');
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(gp(z2, 'P2')).toBeUndefined();
     expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
   });
@@ -718,7 +730,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
       { gliederungId: 'T2', summe: '60.00' },
     ]);
     expect(cs.summen.gesamt).toBeNull();
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
   });
 
@@ -746,7 +758,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
         ziel: { art: 'ende', elternId: id.eltern('T1') },
       }),
     );
-    expect(cs.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('Positionen und Hinweistexte direkt unter der Wurzel zählen zum Netto', () => {
@@ -778,7 +790,7 @@ describe('Nachlass', () => {
       mwst: '74.22',
       brutto: '464.87',
     });
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.nachlass).toEqual(prozentNachlass('3.00'));
     expect(z2.leistungsverzeichnis.knoten).toBe(z.leistungsverzeichnis.knoten);
   });
@@ -806,7 +818,7 @@ describe('Nachlass', () => {
     expect(z2.summen.gesamt.nettoNachNachlass).toBe('392.73');
     const leer = erwarteOk(lvBefehlAusfuehren(z2, nachlassSetzen(betragNachlass('10.00'))));
     expect(leer.kopf).toBeNull();
-    expect(leer.summen).toEqual({ positionen: [], gliederungen: [], gesamt: null });
+    expect(leer.summen).toEqual(KEINE_SUMMEN);
   });
 
   it('NachlassEntfernen ohne Nachlass: leeres ChangeSet', () => {
@@ -853,9 +865,9 @@ describe('MwSt-Satz', () => {
       mwst: '27.35', // 27,3455
       brutto: '418.00',
     });
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.mwstSatz).toBe('7.00');
-    expect(lvChangeSetAnwenden(z2, changeSetUmkehren(cs, z))).toEqual(z);
+    expect(anwenden(z2, changeSetUmkehren(cs))).toEqual(z);
   });
 
   it('derselbe Satz noch einmal: leeres ChangeSet', () => {
@@ -926,18 +938,30 @@ describe('Umkehrung mit Summen', () => {
     '%s: anwenden und Umkehrung anwenden ergibt exakt den Vorzustand einschließlich der Summen',
     (_name, b) => {
       const cs = erwarteOk(lvBefehlAusfuehren(z0, b));
-      const z1 = lvChangeSetAnwenden(z0, cs);
-      const rueck = changeSetUmkehren(cs, z0);
-      expect(lvChangeSetAnwenden(z1, rueck)).toEqual(z0);
-      expect(changeSetUmkehren(rueck, z1)).toEqual(cs);
+      const z1 = anwenden(z0, cs);
+      const rueck = changeSetUmkehren(cs);
+      expect(anwenden(z1, rueck)).toEqual(z0);
+      expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(cs));
     },
   );
 
-  it('die Umkehrung ist an den Vorzustand gebunden: ohne ihn lassen sich Summen nicht herstellen', () => {
+  it('die Umkehrung liest die alten Summen allein aus dem ChangeSet (summen.vorher, v1.1a)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(z0, mengeAendern(p1, '123.456')));
-    const rueck = changeSetUmkehren(cs, z0);
+    expect(cs.summen.vorher?.gesamt).toEqual(z0.summen.gesamt);
+    expect(cs.summen.vorher?.positionen).toEqual(z0.summen.positionen.filter((p) => p.positionId === p1));
+    const rueck = changeSetUmkehren(cs);
     expect(rueck.summen.positionen.length).toBeGreaterThan(0);
     expect(rueck.summen.gesamt).toEqual(z0.summen.gesamt);
+  });
+
+  it('ohne summen.vorher (vor v1.1a erzeugt) ist ein ChangeSet nicht umkehrbar (Programmfehler)', () => {
+    const cs = erwarteOk(lvBefehlAusfuehren(z0, mengeAendern(p1, '123.456')));
+    const alt = {
+      positionen: cs.summen.positionen,
+      gliederungen: cs.summen.gliederungen,
+      gesamt: cs.summen.gesamt,
+    };
+    expect(() => changeSetUmkehren({ ...cs, summen: alt })).toThrow();
   });
 });
 
