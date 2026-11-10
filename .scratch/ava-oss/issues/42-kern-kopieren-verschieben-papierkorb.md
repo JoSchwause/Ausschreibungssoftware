@@ -17,9 +17,9 @@ Skill `tdd`; am Ende `pnpm lint && pnpm typecheck && pnpm test` grün. `okf/rese
 **Typen aus Ticket 29.** Der Umsetzer liest zuerst `packages/vertrag/src/befehle.ts`, `modell.ts`, `changeset.ts` und
 die Comments von Ticket 29 und folgt dem, was dort steht. Laut Ticket 29: `KnotenEinfuegen { ort; knoten }`,
 `KnotenlisteVerschieben { knotenIds; ziel }`, `KnotenInPapierkorbLegen { eintragId; knotenIds }`,
-`PapierkorbEintragWiederherstellen { eintragId; ort | null }`, `PapierkorbEintragEntfernen { eintragId }`,
-`PapierkorbLeeren {}`, `LvStandAnlegen { id; name }`; Zustand `Leistungsverzeichnis.papierkorb?`, ChangeSet-Felder
-`LvChangeSet.papierkorb?` und `LvChangeSet.lvStand?`. `KnotenLoeschen` bleibt endgültig. Fehlt im Vertrag etwas, was dieses
+`PapierkorbeintragWiederherstellen { eintragId; ort | null }`, `PapierkorbeintragEntfernen { eintragId }`,
+`PapierkorbLeeren {}`, `LvStandAnlegen { id; name }`; Zustand `LvZustand.papierkorb?` (nicht am LV oder Kopf, D-12),
+Eintrag `Papierkorbeintrag { id; nummer; knoten }`, ChangeSet-Felder `LvChangeSet.papierkorb?` und `LvChangeSet.lvStand?`. `KnotenLoeschen` bleibt endgültig. Fehlt im Vertrag etwas, was dieses
 Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
 
 1. **Kopie bauen** (reine Hilfsfunktion, Vorschlag `kopieBauen(zustand, knotenIds, ids: Pick<IdQuelle, …>) → Knoten[]`):
@@ -45,15 +45,19 @@ Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
      eine OZ nach derselben Regel, ihr Unterbaum wird darunter neu nummeriert (wie `Umnummerieren`, nur für diese
      Teilbäume), im selben ChangeSet. Verschieben innerhalb desselben Elternknotens behält die OZ (Anzeigedatum, A7).
 5. **Papierkorb** (Ticket 29, Punkt 4): Hineinlegen nimmt die Knoten samt Unterbäumen aus dem Baum (ihre Summen fallen
-   weg, Zuschlagsbasen ändern sich) und legt sie als **einen** Eintrag ab; Bezüge anderer Zuschlagspositionen auf
-   hineingelegte Positionen entfallen im selben ChangeSet wie beim Löschen (Ticket 37) und kehren beim Wiederherstellen
-   zurück. Wiederherstellen mit `ort: null` an die alte Stelle, wenn der alte Elternknoten besteht, sonst ans Ende der
-   Wurzel (Vorschlag, protokollieren); Kennungen bleiben (Positionsidentität, ADR 0011), OZ bleibt (Doppelte meldet K8).
-   Entfernen eines Eintrags und Leeren sind endgültig; das ChangeSet trägt den vollen Stand (`papierkorb.entfernt`), so
-   dass Undo ihn zurückholt.
+   weg, Zuschlagsbasen ändern sich) und legt sie als **einen** Eintrag ab; die `nummer` des Eintrags ist der Höchstwert
+   der vorhandenen + 1 (1 im leeren Papierkorb, keine Uhr; D-12). Bezüge anderer Knoten (Zuschlags-`Bezugsposition`,
+   `wahl.grundpositionId`) auf hineingelegte Positionen **bleiben stehen** und zählen nichts, solange das Ziel im
+   Papierkorb liegt (D-12); nach dem Wiederherstellen gelten sie wieder. Wiederherstellen mit `ort: null` an die alte
+   Stelle, wenn der alte Elternknoten besteht, sonst ans Ende der Wurzel (Vorschlag, protokollieren); Kennungen bleiben
+   (Positionsidentität, ADR 0011), OZ bleibt (Doppelte meldet K8). Entfernen eines Eintrags und Leeren sind endgültig;
+   das ChangeSet trägt den vollen Stand (`papierkorb.entfernt`, mit `nummer`) und entfernt die dann hängenden Bezüge
+   über `knoten.geaendert`, so dass Undo beides zurückholt. Ob eine Angebotsposition auf eine Position im Eintrag
+   verweist, prüft `speicher` (`konflikt`, Ticket 43), nicht der Kern.
 6. **`LvStandAnlegen`** (Ticket 29, Punkt 5; Handler gehört laut 29 hierher): ChangeSet mit `lvStand: { vorher: null,
    nachher: { id, leistungsverzeichnisId, name } }`, sonst leer; den Zustand friert `speicher` ein (Ticket 43). Prüfung: Name
-   nicht leer → sonst `ungueltige-eingabe` (Vorschlag), Kennung frei.
+   nicht leer → sonst `ungueltige-eingabe` (Vorschlag), Kennung frei. Ein `Wiederholen` friert neu ein (neues
+   `angelegt`, D-12).
 7. **Umkehrbarkeit.** Jedes ChangeSet dieser Befehle ist mit `changeSetUmkehren` allein umkehrbar; `lvChangeSetAnwenden`
    wendet `papierkorb` an (ein Stand verändert den LV-Zustand nicht).
 
@@ -65,15 +69,15 @@ Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
 - Glossar: „Papierkorb“ und „LV-Stand“ trägt Ticket 29 ein; fehlen sie, dieses Ticket (L2). „OZ-Vorschlag“ nur, wenn
   der Begriff in der Oberfläche erscheint.
 - **Zu groß?** Zuerst streichen: Umnummerieren der Teilbäume beim Einfügen in einen anderen Elternknoten (dann OZ der
-  Kopien leer, K8 meldet `oz-fehlt`), danach `PapierkorbEintragEntfernen` (Leeren bleibt).
+  Kopien leer, K8 meldet `oz-fehlt`), danach `PapierkorbeintragEntfernen` (Leeren bleibt).
 
 ## Acceptance criteria
 
-- [ ] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbEintragWiederherstellen`, `PapierkorbEintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
+- [ ] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
 - [ ] `kopieBauen`: Kopie mit internen Bezügen (Zuschlag auf kopierte Position, Wahl auf kopierte Grundposition) zeigt auf die Kopien; Bezug nach außen bleibt; ruft die ID-Quelle in Präorder
 - [ ] Summen nach Verschieben in Quelle und Ziel korrekt (Test gegen `summenBerechnen`), Zuschläge beider Elternknoten aktualisiert
 - [ ] `ozVorschlag`: Schritt 10 bzw. 1 im Normalfall, Ausweichen auf 5, 2, 1 mit Hinweis, `null` bei Überlauf; Tests mit `typisch` und einer Maske nahe dem Überlauf
-- [ ] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge kehren zurück; Positionen im Papierkorb gehen in keine Summe ein
+- [ ] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie in `knoten.geaendert`; `nummer` = Höchstwert + 1; Positionen im Papierkorb gehen in keine Summe ein
 - [ ] Property-Test: beliebige Folgen aus Einfügen, Verschieben, Papierkorb, Wiederherstellen, Leeren; Summenstand gleich `summenBerechnen`, `pruefeLvInvarianten` hält, `changeSetUmkehren` stellt jeden Zustand her
 - [ ] Leistung: Verschieben eines Titels mit rund 300 Positionen in `gross` < 16 ms (Messwert im Ticket)
 - [ ] `pnpm lint && pnpm typecheck && pnpm test` grün

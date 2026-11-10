@@ -17,8 +17,9 @@ Projekte und LVs löschen (Q5). Vorgehen: TDD mit dem Skill `tdd`; am Ende
 1. **Undo/Redo je Sitzung** (ADR 0006): Ein Stapel in der App; ein Eintrag je Benutzeraktion (eine Befehlsfolge aus dem
    Grid über `onBefehlsfolge` oder das Übernehmen im Positionsdialog ist **ein** Schritt). Rückgängig: Kern kehrt die
    ChangeSets der Aktion um (`changeSetUmkehren`, in umgekehrter Reihenfolge), Speicher schreibt sie mit dem Protokoll-
-   befehl `Rueckgaengig { protokollId }` (Ticket 29, Verweis auf den Eintrag des ursprünglichen Befehls); Wiederholen
-   entsprechend mit `Wiederholen`. Weist der Speicher eine Umkehrung
+   befehl `Rueckgaengig { protokollId }` (Ticket 29, Verweis auf den Eintrag des ursprünglichen Befehls), bei einer
+   Befehlsfolge je ein `Rueckgaengig` je Befehl in umgekehrter Reihenfolge (D-12); Wiederholen entsprechend mit
+   `Wiederholen` (ein wiederholtes `LvStandAnlegen` friert neu ein). Weist der Speicher eine Umkehrung
    mit `konflikt` ab, bleibt der Stand, eine Meldung erklärt es, der Stapel wird nicht beschädigt. Strg+Z,
    Strg+Y und Strg+Umschalt+Z, dazu Schaltflächen; im Grid-Bearbeitungsmodus gilt Strg+Z dem Eingabefeld, nicht dem LV.
    Mindestens 100 Schritte. Der Stapel gilt für das Projekt; Wechsel des LV leert ihn nicht. Neuladen leert ihn (je
@@ -29,17 +30,20 @@ Projekte und LVs löschen (Q5). Vorgehen: TDD mit dem Skill `tdd`; am Ende
    42). Neue Positionen und Titel (Schaltflächen aus 39 und Strg+Plus aus 46, dort über `vorPositionAnlegen`) bekommen
    ihre OZ über `ozVorschlag` (42) im Befehl; die Schaltfläche „Umnummerieren“ bleibt. Hinweise des Kerns (z. B.
    `oz-schritt-ausgewichen`) erscheinen als Hinweis.
-3. **Papierkorb-Ansicht** je LV (`Leistungsverzeichnis.papierkorb`): Einträge mit OZ, Kurztext und Zahl der
-   Positionen, Wiederherstellen an die alte Stelle (`PapierkorbEintragWiederherstellen`, `ort: null`), Eintrag endgültig
-   entfernen (`PapierkorbEintragEntfernen`) und Papierkorb leeren (`PapierkorbLeeren`), beides nur mit ausdrücklicher
-   Bestätigung (Q5; Undo bleibt in der Sitzung möglich).
+3. **Papierkorb-Ansicht** je LV (`LvZustand.papierkorb`, nach `Papierkorbeintrag.nummer`; D-12): Einträge mit OZ,
+   Kurztext und Zahl der Positionen, Wiederherstellen an die alte Stelle (`PapierkorbeintragWiederherstellen`,
+   `ort: null`), Eintrag endgültig entfernen (`PapierkorbeintragEntfernen`) und Papierkorb leeren (`PapierkorbLeeren`),
+   beides nur mit ausdrücklicher Bestätigung (Q5; Undo bleibt in der Sitzung möglich). Verweist ein Angebot auf eine
+   Position im Eintrag, weist `speicher` mit `konflikt` ab; die App zeigt das als Meldung (D-12). Bezüge auf Positionen
+   im Papierkorb bleiben bis zum Entfernen stehen und zählen nichts.
 4. **LV-Stände:** Stand anlegen (`LvStandAnlegen` mit Name, z. B. „Versand“), Liste der Stände mit Zeitpunkt
    (`Speicher.lvStaende.auflisten`), Stand schreibgeschützt öffnen (`laden`)
    (Grid ohne Befehlsausgang; jede Bearbeitungstaste meldet „Stand ist schreibgeschützt“). Vorschlag, falls Zeit: Stand als
    neues LV übernehmen (`LeistungsverzeichnisAnlegen` mit dem Inhalt des Stands, neue LV-Kennung, Name „<LV> (Stand
    <Name>)“).
 5. **Löschen von Projekt und LV** (aus Ticket 39 vertagt): mit ausdrücklicher Bestätigung, die nennt, was mitgeht
-   (Angebote, Auftrags-LV); `konflikt` des Speichers (abhängige Aggregate) erscheint als verständliche Meldung; Undo holt
+   (Angebote, Auftrags-LV); `konflikt` des Speichers (abhängige Aggregate, auch LV-Stände des LV, D-12) erscheint als
+   verständliche Meldung; Undo holt
    es in derselben Sitzung zurück.
 6. **Sprung aus dem Prüf-Panel** in die Zelle über `sprungziel` (46), falls 47 noch den Rückfall über den Dialog nutzt.
 

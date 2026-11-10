@@ -44,17 +44,17 @@ umkehrbare Lesart im Typ, Alternative als Offene Typfrage“, die hier weiter gi
      Papierkorb); sie folgen ausdrücklich diesem Ticket. Weicht der Entwurf hier davon ab, steht der Grund in den Comments.
    - `KnotenlisteVerschieben { knotenIds: readonly KnotenId[]; ziel: Einfuegeort }`: eine Mehrfachauswahl als
      **ein** Befehl (ein Undo-Schritt), in Listenreihenfolge hintereinander am Ziel. `KnotenVerschieben` bleibt.
-   - `KnotenInPapierkorbLegen { eintragId: PapierkorbEintragId; knotenIds: readonly KnotenId[] }`: nimmt die Knoten
+   - `KnotenInPapierkorbLegen { eintragId: PapierkorbeintragId; knotenIds: readonly KnotenId[] }`: nimmt die Knoten
      samt Unterbäumen aus dem Baum und legt sie als **einen** Papierkorbeintrag ab.
-   - `PapierkorbEintragWiederherstellen { eintragId; ort: Einfuegeort | null }`: `null` heißt an die alte Stelle.
+   - `PapierkorbeintragWiederherstellen { eintragId; ort: Einfuegeort | null }`: `null` heißt an die alte Stelle.
      Die Kennungen bleiben (Positionsidentität, ADR 0011: Angebote finden ihre Positionen wieder).
-   - `PapierkorbEintragEntfernen { eintragId }` und `PapierkorbLeeren {}`: endgültig; unumkehrbar im Sinne von Q5
+   - `PapierkorbeintragEntfernen { eintragId }` und `PapierkorbLeeren {}`: endgültig; unumkehrbar im Sinne von Q5
      (Bestätigung in der Oberfläche, abgesichert durch Undo und LV-Stand).
-   - Zustand: `PapierkorbEintrag { id: PapierkorbEintragId; knoten: readonly Knoten[] }`; die Knoten tragen ihre alte
-     Lage (`elternId`, `reihenfolge`). `Leistungsverzeichnis.papierkorb?: readonly PapierkorbEintrag[]` (fehlt =
+   - Zustand: `Papierkorbeintrag { id: PapierkorbeintragId; knoten: readonly Knoten[] }`; die Knoten tragen ihre alte
+     Lage (`elternId`, `reihenfolge`). `Leistungsverzeichnis.papierkorb?: readonly Papierkorbeintrag[]` (fehlt =
      leer), in der Reihenfolge des Hineinlegens. Positionen im Papierkorb gehen in keine Summe ein und haben keine
      `Positionssumme`.
-   - ChangeSet: `LvChangeSet.papierkorb?: Aenderungen<PapierkorbEintrag>` (fehlt = keine Änderung). Hineinlegen =
+   - ChangeSet: `LvChangeSet.papierkorb?: Aenderungen<Papierkorbeintrag>` (fehlt = keine Änderung). Hineinlegen =
      `knoten.entfernt` + `papierkorb.hinzugefuegt`; Wiederherstellen = `knoten.hinzugefuegt` + `papierkorb.entfernt`;
      Entfernen = nur `papierkorb.entfernt`. Umkehrbar ohne Vorzustand wie seit v1.1a.
    - `KnotenLoeschen` bleibt endgültig (Umkehrung des Einfügens, Undo). Die Oberfläche löscht über den Papierkorb (U5).
@@ -76,7 +76,7 @@ umkehrbare Lesart im Typ, Alternative als Offene Typfrage“, die hier weiter gi
      liefert, Offene Typfrage); `Projektdatei.lvStaende?: readonly LvStand[]`.
    - Befehlsprotokoll: kein neuer Typ nötig; `Protokolleintrag.befehl` deckt die neuen Befehle über `Befehl` ab.
      `KnotenEinfuegen` ist **kein** Massenbefehl (Offene Typfrage: lange Kopien verkürzt protokollieren).
-6. **Kennungen.** `PapierkorbEintragId`, `LvStandId` in `marken.ts`; `IdQuelle` bekommt `papierkorbEintrag()` und
+6. **Kennungen.** `PapierkorbeintragId`, `LvStandId` in `marken.ts`; `IdQuelle` bekommt `papierkorbeintrag()` und
    `lvStand()` (es gibt genau eine `IdQuelle`, v1.1a Punkt 7).
 8. **Kopfdaten bearbeiten (D-02, D-07).** Befehle in `LvBefehl` zum Setzen von Auftraggeber, Vergabeinformationen
    (am LV) und Leitbeschreibung (an der Position), je ein Befehl mit dem ganzen neuen Wert (`null` = entfernen), Formen
@@ -114,7 +114,7 @@ umkehrbare Lesart im Typ, Alternative als Offene Typfrage“, die hier weiter gi
 - [x] `NurDaten` (Typtest) deckt die neuen Befehle, ChangeSets und `LvStand` ab
 - [x] `GLOSSARY.md` enthält die Einträge aus Nummer 7
 - [x] Comments: Liste der mechanischen Anpassungen außerhalb von `vertrag` (Datei, Zeile, was), je Folgeticket (30, 38, 42, 43, 44, 45) eine kurze Liste, was dort anzupassen ist, und die Offenen Typfragen
-- [ ] Ein Opus-Reviewer hat den Vertrag geprüft (D-04 statt P9); Befund und Antwort in den Comments
+- [x] Ein Opus-Reviewer hat den Vertrag geprüft (D-04 statt P9); Befund und Antwort in den Comments
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün auf dem ganzen Baum
 
 ## Nicht-Ziele
@@ -142,30 +142,33 @@ Fixture, kein Golden geändert.
 3. **Maskenbefund.** `changeset.ts`: `Befehlshinweiscode` + `'oz-maske-ungueltig'`; Vermerk an
    `LeistungsverzeichnisAnlegen` (`befehle.ts`).
 4. **K9.** `befehle.ts`: `KnotenEinfuegen { ort; knoten }`, `KnotenlisteVerschieben { knotenIds; ziel }`,
-   `KnotenInPapierkorbLegen { eintragId; knotenIds }`, `PapierkorbEintragWiederherstellen { eintragId; ort: Einfuegeort | null }`,
-   `PapierkorbEintragEntfernen { eintragId }`, `PapierkorbLeeren {}`, alle in `LvBefehl`; Vermerk an `KnotenLoeschen`
+   `KnotenInPapierkorbLegen { eintragId; knotenIds }`, `PapierkorbeintragWiederherstellen { eintragId; ort: Einfuegeort | null }`,
+   `PapierkorbeintragEntfernen { eintragId }`, `PapierkorbLeeren {}`, alle in `LvBefehl`; Vermerk an `KnotenLoeschen`
    (endgültig, UI löscht über den Papierkorb) und `LeistungsverzeichnisLoeschen` (Papierkorb unter `papierkorb.entfernt`).
-   `modell.ts`: `PapierkorbEintrag { id; knoten }`, `Leistungsverzeichnis.papierkorb?` (nicht an `LvKopf`/`LvInhalt`).
-   `changeset.ts`: `LvChangeSet.papierkorb?: Aenderungen<PapierkorbEintrag>`. Abweichung von 42/43 wie vom Ticket
+   `modell.ts`: `Papierkorbeintrag { id; nummer; knoten }` (Kommentar: Bezüge auf den Papierkorb, D-12).
+   `changeset.ts`: `LvZustand.papierkorb?` (nach Review am Zustand statt am LV, D-12),
+   `LvChangeSet.papierkorb?: Aenderungen<Papierkorbeintrag>`. Abweichung von 42/43 wie vom Ticket
    verlangt (kein `KnotenKopieren`, `KnotenLoeschen` bleibt endgültig); sonst keine Abweichung vom Ticket.
 5. **S3.** `befehle.ts`: `Rueckgaengig { protokollId }`, `Wiederholen { protokollId }`, `HistorienBefehl` in `Befehl`
    (nicht in `LvBefehl`); `LvStandAnlegen { id; name }` in `LvBefehl`. `changeset.ts`: `LvStandKopf`, `LvStand`,
    `LvStandUebersicht`, `LvChangeSet.lvStand?: Aenderung<LvStandKopf>` (dort, weil `LvStand` `LvZustand` braucht).
    `speicher.ts`: `LvStandRepository { auflisten; laden }`, `Speicher.lvStaende?`, `Projektdatei.lvStaende?`; Vermerk an
    `Protokolleintrag` (Historienbefehle mit dem Aggregat des ursprünglichen Befehls).
-6. **Kennungen.** `marken.ts`: `PapierkorbEintragId`, `LvStandId`; `IdQuelle.papierkorbEintrag()`, `IdQuelle.lvStand()`.
-   Dazu D-10 (4): `ansicht.ts` `GridIdQuelle = Pick<IdQuelle, 'position' | 'papierkorbEintrag'>`.
+6. **Kennungen.** `marken.ts`: `PapierkorbeintragId`, `LvStandId`; `IdQuelle.papierkorbeintrag()`, `IdQuelle.lvStand()`.
+   Dazu D-10 (4): `ansicht.ts` `GridIdQuelle = Pick<IdQuelle, 'position' | 'papierkorbeintrag'>`.
 7. **Glossar.** `GLOSSARY.md`: neu „Papierkorb, Papierkorbeintrag“, „LV-Stand“, „Rückgängig / Wiederholen
-   (Undo/Redo)“, „Zuschlagssatz (des Bieters)“; ergänzt „Einheit“ (leer = `null`) und „Befehlshinweis“ (dritter Fall).
+   (Undo/Redo)“, „Zuschlagssatz“ (nach Review ein Eintrag für LV und Angebot, D-12); ergänzt „Einheit“ (leer =
+   `null`) und „Befehlshinweis“ (dritter Fall).
 8. **Kopfdaten.** `befehle.ts`: `AuftraggeberSetzen { auftraggeber: Auftraggeber | null }`,
    `VergabeinformationenSetzen { vergabeinformationen: Vergabeinformationen | null }`,
    `LeitbeschreibungSetzen { positionId; leitbeschreibung: Leitbeschreibung | null }`, alle in `LvBefehl`; `null`
    entfernt (das optionale Feld fehlt danach).
 
 Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-Stand über `umkehrenV12`, Werte vor v1.2,
-`NurDaten` für `HistorienBefehl`, `KnotenEinfuegen`, `Befehl`, `LvChangeSet`, `PapierkorbEintrag`, `LvStand`,
+`NurDaten` für `HistorienBefehl`, `KnotenEinfuegen`, `Befehl`, `LvChangeSet`, `Papierkorbeintrag`, `LvStand`,
 `Projektdatei`). Beispiele in `beispiele.ts`: `beispielAngebotspositionMitZuschlagssatz`, `beispielKnotenEinfuegen`,
-`beispielChangeSetHineinlegen`/`beispielChangeSetWiederherstellen`, `beispielLvStandChangeSet`, `beispielProtokollRueckgaengig`.
+`beispielChangeSetHineinlegen`/`beispielChangeSetWiederherstellen`, `beispielChangeSetPapierkorbeintragEntfernen`
+(mit hängendem Bezug, D-12), `beispielLvStandChangeSet`, `beispielProtokollRueckgaengig`.
 
 ### Mechanische Anpassungen außerhalb von `vertrag` (markiert `// v1.2: mechanisch angepasst, Folgeticket`)
 
@@ -175,12 +178,11 @@ Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-St
 | `packages/speicher/src/dekoder.ts` | 522–534 | `BEFEHLSARTEN`: die zwölf neuen Befehlsnamen (auch `Rueckgaengig`, `Wiederholen`) |
 | `packages/speicher/src/schreiben.ts` | 200–203 | `wendeLvAn`: ChangeSet mit `papierkorb` oder `lvStand` → `unbekannt` (laut, vor jedem Schreiben) |
 | `packages/speicher/src/schreiben.ts` | 273–277 | `wendeAngebotAn`: neue/geänderte Angebotsposition mit `zuschlagssatz` → `unbekannt` |
-| `packages/gaeb/src/testhilfen.ts` | 44–46 | `testIds()`: `papierkorbEintrag()`, `lvStand()` |
+| `packages/gaeb/src/testhilfen.ts` | 44–46 | `testIds()`: `papierkorbeintrag()`, `lvStand()` |
+| `packages/ui-grid/e2e/harness/attrappen.ts` | 62–64 | `idQuelleAttrappe()`: `papierkorbeintrag()` (seit Ticket 33 nutzt `ui-grid` den `GridIdQuelle` des Vertrags; D-10 (4)) |
 
-`GridIdQuelle` (D-10 (4)) brach keine Aufrufstelle: `ui-grid` führt bis Ticket 33 noch eine eigene `GridIdQuelle`
-(`packages/ui-grid/src/typen.ts`). **Ticket 33** muss beim Umstieg auf den Vertragstyp die Attrappe
-`packages/ui-grid/e2e/harness/attrappen.ts` (`idQuelleAttrappe`) und jede `GridIdQuelle`-Erzeugung (auch
-`proto/interview/src/store.tsx`, heute ohnehin rot) um `papierkorbEintrag()` ergänzen. Der Projektdatei-Dekoder in
+`proto/interview/src/store.tsx` erzeugt ebenfalls eine `GridIdQuelle` ohne `papierkorbeintrag()`; der Prototyp ist schon
+vorher rot und bleibt unberührt. Der Projektdatei-Dekoder in
 `speicher` weist `zuschlagssatz`, `papierkorb` und `lvStaende` schon heute laut ab (strikte Feldliste, `datei-ungueltig`).
 
 ### Folgetickets: was anzupassen ist
@@ -195,11 +197,14 @@ Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-St
 - **42 (K9):** Handler `KnotenEinfuegen` (Wurzeln der Teilbäume am `ort`, `''` → `null`, OZ-Regel), Hilfsfunktion
   „Kopie mit neuen Kennungen und umgebogenen Bezügen“, `KnotenlisteVerschieben` (ein ChangeSet), Papierkorb-Befehle
   (ChangeSet-Formen wie in `LvChangeSet.papierkorb`), `LvStandAnlegen` (nur `lvStand`), `LvChangeSetAnwenden` für
-  `papierkorb`, Umkehrung (`changeSetUmkehren`) für `papierkorb` und `lvStand`; Positionen im Papierkorb ohne Summe.
+  `papierkorb`, Umkehrung (`changeSetUmkehren`) für `papierkorb` und `lvStand`; Positionen im Papierkorb ohne Summe;
+  `nummer` = Höchstwert + 1; Bezüge auf den Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie
+  über `knoten.geaendert` (D-12).
 - **43 (S3):** Tabellen für Papierkorb und LV-Stände (Migration), Guard in `wendeLvAn` löschen, `LvStand` in derselben
   Transaktion einfrieren (`angelegt` = `wann`), `Speicher.lvStaende` liefern (dann Pflichtfeld, Vertragsticket),
-  `Projektdatei.lvStaende` lesen/schreiben, `Rueckgaengig`/`Wiederholen` protokollieren; Verhalten beim
-  `LeistungsverzeichnisLoeschen` mit Ständen und Papierkorb festlegen.
+  `Projektdatei.lvStaende` lesen/schreiben, `Rueckgaengig`/`Wiederholen` protokollieren; `konflikt` für
+  `LeistungsverzeichnisLoeschen` mit Ständen und für Entfernen/Leeren eines Eintrags, auf dessen Position ein Angebot
+  verweist (D-12).
 - **44 (Angebot rechnen):** bei gesetztem `zuschlagssatz` nur den Satz rechnen, `einheitspreis` ignorieren; Satz an
   einer Nicht-Zuschlagsposition als Befund oder Fehler festlegen.
 - **45 (X84-Import):** `Markup` → `zuschlagssatz`; EP aus der Datei oder `0.000` (vorläufige Annahme).
@@ -212,9 +217,9 @@ Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-St
 2. **`KnotenEinfuegen` kein Massenbefehl.** Lange Kopien stehen voll im Protokoll. Alternative: in
    `MASSENBEFEHLSARTEN` aufnehmen (dann Kopf ohne `knoten` in `Massenbefehlskopf`).
 3. **`Speicher.lvStaende` optional.** Pflicht, sobald Ticket 43 es liefert (eigenes Vertragsticket).
-4. **LV-Stand nur anlegen.** Kein Umbenennen, kein Löschen eines Stands, kein Zurückschreiben in das bestehende LV.
-   Offen, ob ein `LeistungsverzeichnisLoeschen` an vorhandenen Ständen scheitert (`konflikt`) oder sie mitlöscht
-   (dann nicht aus dem ChangeSet umkehrbar).
+4. **LV-Stand nur anlegen.** Kein Umbenennen, kein Löschen eines Stands, kein Zurückschreiben in das bestehende LV;
+   `LeistungsverzeichnisLoeschen` scheitert an vorhandenen Ständen mit `konflikt` (D-12). Alternative: Stände mit dem
+   LV löschen und dafür `LvChangeSet.lvStaende?: Aenderungen<LvStand>` (voller Stand im ChangeSet, umkehrbar).
 5. **`KnotenEinfuegen`: Lage der Wurzeln.** Die mitgebrachte `elternId`/`reihenfolge` der Wurzeln zählt nicht (der
    Kern setzt sie). Alternative: Wurzeln mit `elternId` = Ziel-Eltern verlangen (prüfbar, aber doppelt zu `ort`).
 6. **Papierkorb nicht in `LvInhalt`.** Ein LV aus einem LV-Stand zurückgeholt (über `LeistungsverzeichnisAnlegen`)
@@ -235,4 +240,14 @@ Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-St
 
 ### Review (D-04 statt P9)
 
-Steht aus; der Orchestrator lässt den Opus-Review nach der Übergabe laufen.
+Befund des Opus-Reviewers: „ja mit Korrekturen“, neun Punkte, vom Orchestrator als D-12 entschieden. Antwort, alle
+umgesetzt: (1) Papierkorb an `LvZustand.papierkorb?` statt am LV (Kopf-ChangeSets tragen ihn nie); (2) Bezüge auf
+Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie über `knoten.geaendert`
+(Kommentar `LvChangeSet.papierkorb`, `Papierkorbeintrag`, Beispiel und Typtest); (3) `Papierkorbeintrag.nummer`;
+(4) `LeistungsverzeichnisLoeschen` mit Ständen → `konflikt`, Wiederholen von `LvStandAnlegen` friert neu ein,
+`lvStaende?: Aenderungen<LvStand>` als Offene Typfrage 4; (5) Schreibweise `Papierkorbeintrag…` in einem Wort, auch
+`IdQuelle.papierkorbeintrag()`, `GridIdQuelle` und die mechanischen Zeilen; (6) ein Glossareintrag „Zuschlagssatz“;
+(7) Kommentar zum Platzhalter-EP; (8) `konflikt` bei Entfernen/Leeren, solange ein Angebot auf eine Position im
+Eintrag verweist (Kommentar an den Befehlen; Prüfung in `speicher`, Ticket 43); (9) Kommentar an `Rueckgaengig` zu
+Befehlsfolgen. Ticket-Texte 42, 43, 46, 48, 49 nachgezogen (49 hängt zusätzlich an 44). Mein Eintrag im
+Entscheidungsprotokoll heißt jetzt D-29.1 (vorher D-11), weil die fortlaufenden Nummern dem Orchestrator gehören.

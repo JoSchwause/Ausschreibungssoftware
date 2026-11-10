@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Type: task
 Welle: 3 (Phase B) · Strang: G (App-Teil) · Paket: `apps/web`
-Blocked by: 48, 40, 45
+Blocked by: 48, 40, 45, 44
 Regeln: A2, A5, A7, U5, U7, U8, Q2, Q3, Q5, C3, G-10, G-11, G-13, G-14, E-11, E-13, E-19, ADR 0010
 Herkunft: `plan.md` §2 G2/G3 (App-Teil) und §4 (M2: „zusätzlich von Hand: Export in einem freien GAEB-Betrachter öffnen“), Ticket 18 (GAEB-Dialog im Prototyp, Teilfrage 4), Tickets 40, 45, 44
 

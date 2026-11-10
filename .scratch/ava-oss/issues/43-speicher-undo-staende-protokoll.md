@@ -20,7 +20,9 @@ Vorgänge (ADR 0009: genau ein Eintrag je Befehl). Vorgehen: TDD mit dem Skill `
 **Typen aus Ticket 29** (der Umsetzer liest zuerst `packages/vertrag/src/` und die Comments von 29): `Rueckgaengig {
 protokollId }` und `Wiederholen { protokollId }` als `HistorienBefehl` in `Befehl`; `LvStandAnlegen { id, name }` mit
 `LvChangeSet.lvStand?: Aenderung<LvStandKopf>`; `LvStand`, `LvStandUebersicht`, `LvStandRepository`,
-`Speicher.lvStaende?`, `Projektdatei.lvStaende?`; `Leistungsverzeichnis.papierkorb?` und `LvChangeSet.papierkorb?`. Die
+`Speicher.lvStaende?`, `Projektdatei.lvStaende?`; `LvZustand.papierkorb?` (nicht am LV oder Kopf; `LvStand` und
+`Projektdatei` tragen ihn über `LvZustand`), `Papierkorbeintrag { id; nummer; knoten }` und `LvChangeSet.papierkorb?`
+(D-12). Die
 Abweisungen mit `unbekannt`, die Ticket 29 in `schreiben.ts` als Platzhalter gesetzt hat (`papierkorb`, `lvStand`),
 entfallen hier.
 
@@ -34,16 +36,20 @@ entfallen hier.
 2. **Protokoll für Undo/Redo.** Die App schreibt eine Umkehrung mit dem Befehl `Rueckgaengig` (bzw. `Wiederholen`), der
    auf den Eintrag des ursprünglichen Befehls verweist; `speicher` protokolliert ihn wie jeden Befehl und prüft, dass der
    Verweis auf einen Eintrag desselben Projekts zeigt (sonst `datei-ungueltig` bzw. `konflikt`, Vorschlag). Das Protokoll
-   bleibt Nebenbuch und wird von Undo nicht gelesen (ADR 0009). Der Dekoder kennt die beiden Befehle.
+   bleibt Nebenbuch und wird von Undo nicht gelesen (ADR 0009). Der Dekoder kennt die beiden Befehle. Eine Befehlsfolge
+   wird mit je einem `Rueckgaengig` je Befehl in umgekehrter Reihenfolge zurückgenommen (D-12).
 3. **LV-Stände** (ADR 0006): Migration 3 (A8) mit einer Tabelle für Stände (Kennung, LV, Name, `angelegt` =
    `Protokolleintrag.wann`, eingefrorener `LvZustand` als kanonisches JSON). Ein ChangeSet mit `lvStand.vorher: null`
    friert in **derselben Transaktion** den gespeicherten Stand des LV ein; `lvStand.nachher: null` (nur als Umkehrung)
-   entfernt den Stand. Sonst gibt es keinen Weg, einen Stand zu ändern; er fällt mit dem Löschen des LV weg (und kehrt mit
-   dessen Umkehrung zurück). `Speicher.lvStaende` liefert `LvStandRepository` (`auflisten` ohne Zustand, `laden` mit).
+   entfernt den Stand; ein `Wiederholen` friert neu ein (neues `angelegt`). Sonst gibt es keinen Weg, einen Stand zu
+   ändern. `LeistungsverzeichnisLoeschen` wird mit `konflikt` abgewiesen, solange Stände des LV bestehen (wie bei
+   Angeboten; D-12). `Speicher.lvStaende` liefert `LvStandRepository` (`auflisten` ohne Zustand, `laden` mit).
    Die Projektdatei (Version 3) trägt `lvStaende`; `datei`-Migration von 2 auf 3; eingefrorene `projektdatei-v3.json`.
-4. **Papierkorb** in derselben Migration 3: Einträge je LV in Reihenfolge des Hineinlegens, Knoten mit alter Lage
-   (Vorschlag: eigene Tabelle `papierkorb_eintrag` plus Knoten mit Eintragskennung in `knoten`, oder JSON je Eintrag;
-   protokollieren). Rundlauf Speichern, Laden, Export, Import; `lvLaden` liefert `papierkorb`.
+4. **Papierkorb** in derselben Migration 3: Einträge je LV mit `nummer` (Reihenfolge des Hineinlegens), Knoten mit
+   alter Lage (Vorschlag: eigene Tabelle `papierkorb_eintrag` plus Knoten mit Eintragskennung in `knoten`, oder JSON je
+   Eintrag; protokollieren). Rundlauf Speichern, Laden, Export, Import; `lvLaden` liefert `LvZustand.papierkorb`.
+   `PapierkorbeintragEntfernen`/`PapierkorbLeeren` (ChangeSet mit `papierkorb.entfernt`) werden mit `konflikt`
+   abgewiesen, solange eine Angebotsposition auf eine Position im Eintrag verweist (Q5, D-12).
 5. **Protokoll prüfen (ADR 0009).** Test über eine Folge gemischter Befehle (Massenbefehl, Feldänderungen, Papierkorb,
    Stand, Undo, Redo): genau ein Eintrag je Befehl, in Reihenfolge, `wer` und `wann` wie übergeben, Massenbefehle als
    Kurzfassung (Ticket 38). Größe der Projektdatei mit `gross` nach 1.000 Einzeländerungen, 100 Undo und einem Stand im
@@ -66,7 +72,8 @@ entfallen hier.
 - [ ] `Rueckgaengig` und `Wiederholen` erzeugen je genau einen Protokolleintrag mit Verweis; der Dekoder liest sie
 - [ ] LV-Stand: Anlegen friert den gespeicherten Stand ein; spätere Befehle am LV ändern ihn nicht; `auflisten` und `laden` über `Speicher.lvStaende`; Umkehrung entfernt ihn
 - [ ] Migration 3 mit `hoch` und `datei`; `projektdatei-v1.json` und `-v2.json` öffnen, `-v3.json` (mit Stand und Papierkorb) ist Export-Golden
-- [ ] Papierkorb: Speichern, Laden, Export, Import; Wiederherstellen per ChangeSet
+- [ ] Papierkorb: Speichern, Laden, Export, Import; Wiederherstellen per ChangeSet; Entfernen eines Eintrags mit einer Position, auf die ein Angebot verweist, ergibt `konflikt`
+- [ ] `LeistungsverzeichnisLoeschen` mit bestehendem LV-Stand ergibt `konflikt`
 - [ ] Playwright im Harness: Stand anlegen, Seite neu laden, Stand laden
 - [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
