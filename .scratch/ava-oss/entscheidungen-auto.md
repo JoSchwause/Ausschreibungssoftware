@@ -169,3 +169,10 @@ Question: Pflichtteile von X86 ohne Gegenstück im Modell (Auftragnehmer, Satz d
 Decision: `CTR`/`OWN` in X86 mit leerer Adresse und Warnung; Altform-Zuschlag in X86 als Position ohne Bezug (Warnung), in X81/X83 wie im Ticket; X83 ohne Menge schreibt `QtyTBD`; zusätzliche Optionen `zuschlagsbasen` und `auftragnehmer`; Leser nimmt `LblBoQ`, wenn `Name` dessen Anfang ist. Einzelheiten und M2-Tabelle: Ticket 40, Comments.
 Reason: Nichts erfinden (C4), nichts still verlieren (Q5), Exporte der Fixtures bleiben schemagültig und ohne Entwurf.
 Reversible: yes  Touches: packages/gaeb
+
+## D-14 Ticket 37 darf `vergabe` mitziehen
+Welle 3 · Ticket 37, 44 · decided by: orchestrator
+Question: K5–K7 füllt `summeBedarfOhneGesamtbetrag` und `summeWahl` immer; die inkrementellen Angebotssummen in `vergabe` stimmten danach nicht mehr (7 Tests rot). Ticket 37 hat das in `vergabe` mitgezogen (Commit 32837be), obwohl das Ticket nur `kern` nennt.
+Decision: Behalten, als benannte Ausnahme von P2. `vergabe` hatte zu der Zeit keinen Schreiber; Ticket 44 baut darauf auf.
+Reason: Hält den Integrationsbranch grün, ohne Arbeit doppelt zu machen.
+Reversible: yes  Touches: packages/vergabe
