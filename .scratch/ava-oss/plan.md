@@ -142,3 +142,6 @@ Stand 2026-11-09:
    `vertrag` v1.1a → v1.1b (seriell, Nutzer prüft) ‖ Aufräumen nach Welle 1 ‖ Interview-Prototyp (Ticket 18);
    dann Kern-Feldbefehle und Anpassung von `speicher`/`gaeb`/`ui-grid`; dann K5–K7, S2, U3, G2, O1-Spike.
    ⏳ **Offen:** Tickets für Welle 2 einzeln schneiden (je ein Pull Request, beginnend mit v1.1a).
+9. ✅ **Welle 2 gestartet (2026-11-10)**: Tickets 24–28 geschnitten (`issues/README.md`, Abschnitt „Tickets Welle 2“),
+   Ticket 18 um E-20 ergänzt. ⏳ **Offen:** Prüfung von v1.1a (24) und v1.1b (26) durch den Nutzer; die Folgetickets
+   werden geschnitten, sobald ihre Blocker gemergt sind.

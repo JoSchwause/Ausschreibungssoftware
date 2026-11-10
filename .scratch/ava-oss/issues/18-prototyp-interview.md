@@ -53,9 +53,15 @@ Prototyps festhalten. Keine echten Firmen-, Projekt- oder Personennamen.
 
 ## Grenzen
 
-- **Wegwerfcode.** Eigener Branch `proto/interview`, **nicht in `main`**. Kein Bestandteil des Monorepos, keine
-  Pakete aus `packages/`, keine Tests, keine Abstraktionen. Ein README sagt, wie man startet und was
-  gespielt ist.
+- **Wegwerfcode.** Eigener Branch `proto/interview`, **nicht in `main`**, Ordner `proto/interview/`. Keine Tests,
+  keine Abstraktionen. Ein README sagt, wie man startet und was gespielt ist.
+- **Nachtrag E-20 (2026-11-10):** Der Prototyp wird auf `packages/ui-grid`, `packages/ui-basis`, `packages/dezimal`
+  und den Fixtures gebaut. `fixtures/typisch.json` und `fixtures/typisch-angebote.json` dürfen die selbst verfassten
+  Daten unten ersetzen; fehlen darin Ausreißer, Nachlass oder „nicht angeboten“, werden sie in einer **Kopie unter
+  `proto/interview/`** ergänzt. `packages/` und `fixtures/` werden nur benutzt, nie geändert. Positionsarten, die
+  `typisch` enthält, zeigt das Grid an; die Zeile „Nicht vorhanden“ oben gilt für das Rechnen und Bearbeiten. Die Variante „dichte Tabelle mit Baum“ ist das echte Grid; an ihr
+  werden die Fragen aus E-18 gestellt (Enter startet das Bearbeiten, Leertaste wählt die Zeile, Einfügen legt neue
+  Positionen an).
 - **Clean Room (C1, L3, U4).** Kein Layout, Icon, Name oder Feldname der Referenzsoftware. Wer das Vorbild
   kennt, soll im Prototyp nichts wiedererkennen. Eigenes Erscheinungsbild.
 - **Kein Recherchebestand lesen** (C3). Alle Angaben stehen in diesem Ticket, `GLOSSARY.md`, `spec.md` und

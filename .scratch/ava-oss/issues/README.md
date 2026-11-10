@@ -38,3 +38,32 @@ Grid die Fixture zeigt. Bis dahin steht ihr Umfang in `plan.md` §2.
 - Ticket 04 klärt die Rundung negativer Werte; lässt sie sich nicht belegen, geht es auf `needs-info` (P5).
 - Ticket 23 nimmt amtliche Dateien ohne Lizenzangabe auf (G-55, Risiko vermerkt). Es blockiert Ticket 22 nur für die Golden-Dateien, nicht für die Fehlerdateien.
 - Cloud-Agenten lesen nur Tickets (C3). Die Tickets nennen deshalb Quellen und Regeln selbst und verweisen nicht auf `okf/research/`.
+
+# Tickets Welle 2
+
+Stand: 2026-11-10. Schnitt nach E-20. Ab Welle 2: ein Pull Request je Ticket, Review-Agent, Merge-Commit (P7);
+`vertrag`-Tickets prüft der Nutzer (P9). Tickets werden einzeln geschnitten; „offen“ heißt: wird geschnitten, sobald
+die genannten Blocker gemergt sind (die Typnamen aus v1.1a/v1.1b stehen erst dann fest).
+
+| Nr | Strang | Titel | Paket (ein Schreiber) | Blocked by | Stufe |
+|---|---|---|---|---|---|
+| 24 | F | `vertrag` v1.1a „Lücken“ (**Mensch prüft**) | `packages/vertrag` | – | 1 |
+| 25 | – | Aufräumen nach Welle 1 | `fixtures/`, `tools/`, je eine Stelle in `kern`, `gaeb` | – | 1 |
+| 18 | – | Prototyp für das Nutzerinterview | `proto/interview` (eigener Branch) | – | 1 |
+| 28 | O1 | PDF-Spike | `packages/ausgabe` | – | 1 |
+| 26 | F | `vertrag` v1.1b „Inhaltsmodell“ (**Mensch prüft**) | `packages/vertrag` | 24 | 1 |
+| 27 | K | Kern: Feldbefehle | `packages/kern` | 25 | 2 |
+| offen | K | Anpassung `kern` an v1.1a (mit Maskenbefund am Befehl, Rest von E-19 Nr. 3) | `packages/kern` | 24, 27 | 2 |
+| offen | S | Anpassung `speicher` an v1.1a | `packages/speicher` | 24 | 2 |
+| offen | G | Anpassung `gaeb` an v1.1a | `packages/gaeb` | 24, 25 | 2 |
+| offen | U | Anpassung `ui-grid` an v1.1a | `packages/ui-grid` | 24 | 2 |
+| offen | K5–K7 | Positionsmerkmale, Wahl-/Zuschlagspositionen, EPA | `packages/kern` | 26, Anpassung `kern` | 3 |
+| offen | S2 | Projektliste und Projektdatei | `packages/speicher`, `apps/web` | 26 (Protokolleintrag, E-13), Anpassung `speicher` | 3 |
+| offen | U3 | LV-Grid an Befehle angebunden | `apps/web` | 27, Anpassung `ui-grid` | 3 |
+| offen | G2 | Writer X81/X83/X86, XSD in der CI | `packages/gaeb` | 26, Anpassung `gaeb` | 3 |
+
+**Ausnahme von P2 in 24 und 26:** Ein Vertragsticket darf andere Pakete rein mechanisch nachziehen, damit sein Pull
+Request für sich grün ist. Weil 25 und 27 zur selben Zeit in `kern` und `gaeb` schreiben, gilt die Reihenfolge beim
+Mergen: 25 und 27 zuerst; der Branch von 24 (und später 26) nimmt danach `main` auf, Konflikte löst der Orchestrator.
+
+Tor der Welle: **M1 „LV anlegen, rechnen, speichern“** (`plan.md` §4).
