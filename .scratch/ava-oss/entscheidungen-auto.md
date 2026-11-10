@@ -176,3 +176,26 @@ Question: K5–K7 füllt `summeBedarfOhneGesamtbetrag` und `summeWahl` immer; di
 Decision: Behalten, als benannte Ausnahme von P2. `vergabe` hatte zu der Zeit keinen Schreiber; Ticket 44 baut darauf auf.
 Reason: Hält den Integrationsbranch grün, ohne Arbeit doppelt zu machen.
 Reversible: yes  Touches: packages/vergabe
+
+## D-37.1 Betragsziel, Ausweise, Pauschal und Formprüfungen (K5)
+Welle 3 · Ticket 37 · decided by: implementer
+Question: Welche Vorschläge des Tickets zu Merkmalen gelten, und was lässt das Ticket offen?
+Decision: Wie vorgeschlagen: Wahl vor Bedarf; Variante 0 ist Grundausführung und zählt wie eine Normalposition (mit Bedarf ohne Gesamtbetrag also in die Bedarfssumme); eine Wahlzuordnung mit Variante `null` (Daten vor v1.1b) ist Alternative; Pauschal ohne Menge rechnet mit Menge 1; Ausweise an jeder Gliederung und im Gesamt, `0.00` ohne solche Positionen (Orchestrator-Hinweis zu Variante 0: die Daten der Prüfdateien widersprechen nicht). Zusätzlich: `wahl.gruppe`/`variante` müssen ganzzahlig sein (Prüfung 4); eine Position, die eine Bezugsliste nennt, kann nicht per `PositionsmerkmaleSetzen` zur Zuschlagsposition werden (`ungueltige-eingabe`, `feld: 'zuschlag'`), sonst verletzte das LV Prüfung 3. Die Summen leitet der Kern jetzt für jeden Befehl aus dessen Knotenänderungen ab (`summenAenderung(z, idx, { knoten })`), nicht mehr aus Beiträgen je Befehl.
+Reason: E-04/E-05 und F4; Prüfung 3 muss als Invariante halten (`pruefeLvInvarianten`); eine Ableitung statt fünf Handrechnungen hält Zuschläge in jedem Befehl richtig (Property-Test mit unabhängigem Orakel).
+Reversible: yes  Touches: packages/kern, packages/vergabe (mechanisch, eigener Commit: Ausweise im inkrementellen Angebotsstand), GLOSSARY.md
+Annahme für Demo, Mensch bestätigt später (E-04, E-05).
+
+## D-37.2 Zuschlagsposition: Lesarten der Rechenregel (K6)
+Welle 3 · Ticket 37 · decided by: implementer
+Question: Die mit „Vorschlag“ markierten Regeln R2, R3, R5, R7, R8 und was das Ticket offen lässt.
+Decision: R2 nur Bezugspositionen, deren Betrag ins Netto geht. R3 Hinweistexte und Untergliederungen werden übersprungen (beenden weder Block noch Bereich). R5 Teilmenge → gerundet(Teilmenge × EP, 2) (Lücke, nicht aus Daten belegt). R7 keine eigene Schnittstelle „Preisquelle“: `summenBerechnen` rechnet jedes gedachte LV, `zuschlagsbasen(lv)` liefert `{ basis, betrag, bezugOhnePreis }`; „Bezug ohne Preis“ heißt: eine Position, die zur Basis gehören würde, hat keinen GP. R8 Altform wie vorgeschlagen. Eine leere Liste oder ein leerer Bereich ergibt Basis 0,00 und Betrag 0,00 (Befund für K8). Die Fixture `zuschlag.json` trägt additiv auch `epa` (Ticket: „mit ihren Anteilen“) und in den Sollwerten `zuschlaege` und `epa`.
+Reason: D-03/D-10 und die Golden-Zahlen der X86/X84; eine gemeinsame Rechenstelle für LV und Angebot (Ticket 44).
+Reversible: yes  Touches: packages/kern, fixtures/ (nur neue Datei und Generator, andere Dateien byte-gleich)
+Annahme für Demo, Mensch bestätigt später (F3/E-03: Teilmengen, Untergliederungen im Bereich).
+
+## D-37.3 Einheitspreisanteile (K7)
+Welle 3 · Ticket 37 · decided by: implementer
+Question: Wie folgen EP und Anteile einander, und was zählt in den Anteilsummen?
+Decision: Wie vorgeschlagen: gesetzte Anteile (mindestens einer nicht `null`) setzen den EP im selben ChangeSet auf ihre Summe; `epa: null` entfernt nur die Anteile; `EinheitspreisAendern` lässt Anteile stehen. Zusätzlich: Anteile ganz ohne Wert lassen den EP stehen; die Altform einer Zuschlagsposition darf Anteile tragen, eine mit Satz nicht (`knotenart-unzulaessig`). `epaSummen` zählt Positionen mit GP, deren Betrag ins Netto geht (Pauschal ohne Menge mit Menge 1), und nennt jede Gliederung (0,00 ohne Anteile).
+Reason: Beleg X86 1.10.30.10/20 (UP = Summe der UPComp); kein EP aus dem Nichts.
+Reversible: yes  Touches: packages/kern

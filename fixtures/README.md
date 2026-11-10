@@ -29,6 +29,7 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 | `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch` | selbst verfasst, Preise per Seed gestreut |
 | `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
+| `zuschlag.json` | Zuschlagspositionen in GAEB-Form, alle drei Bezugsformen, Einheitspreisanteile; Netto 6.850,60, Brutto 8.152,21 (Ticket 37) | selbst verfasste Texte, Zahlen aus BVBS 3.3 AVA X86 Bereich 1.30 und 1.10.30.20 (D-03), Sollwerte vom Skript berechnet |
 | `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs` | Generator, Dezimalrechnung, Selbsttest | selbst verfasst |
 
 Lizenz: AGPL-3.0-or-later (REUSE-Abdeckung über den Repo-weiten Glob für `fixtures/**`).
@@ -47,6 +48,11 @@ Knoten:  flach, in Dokumentreihenfolge; parentId = LV-ID oder Titel-ID; Reihenfo
   hinweis:  { id, parentId, art:"hinweis", text }
 Nachlass: { art:"prozent"|"betrag", wert }
 Sollwerte: { positionen:{id:{gp, inSumme}}, titel:{id:{summe}}, summen:{netto, nachlass, nettoNachNachlass, mwst, brutto}, nichtAngeboten:[id] }
+  zuschlag.json (Ticket 37, additiv; die übrigen Dateien tragen diese Felder nicht):
+  position: [zuschlagskennzeichen: true], [epa: { lohn, stoffe, geraete, nachunternehmer, sonstiges, frei, freiBezeichnung }]
+  Zuschlagsposition: positionsart:"zuschlag", menge/einheit/einheitspreis: null,
+              zuschlag: { prozentsatz, bezug: {art:"gliederung"} | {art:"kennzeichnung"} | {art:"positionen", positionen:[{positionId, teilmenge}]} }
+  Sollwerte zusätzlich: zuschlaege:{id:{basis, betrag}}, epa:{gesamt:{lohn,…,frei}, titel:{id:{lohn,…,frei}}}
 Angebotsset: { schemaVersion, art:"angebotsset", lvId, lvName, bieter[{id,name}],
                angebote[{id, bieterId, nachlass|null, positionen[{positionId, status, [einheitspreis]}], sollwerte}],
                ausreisserAnnahmeA7 }
@@ -103,7 +109,10 @@ Sollwerte der betroffenen Fälle gelten nur unter der jeweiligen Annahme.
 - **A3 Wahlposition:** GP wird berechnet und ausgewiesen, geht nicht in die Summen ein. Es findet kein Ersetzen der
   Grundposition statt (`grundpositionId` ist nur ein Verweis). Der Zustand „Auftraggeber hat gewählt“ ist nicht abgebildet.
 - **A4 Zuschlagsposition:** hat eigene Menge, Einheit und EP, kein Prozentsatz auf die Bezugsposition. Ihr GP geht wie
-  bei einer Normalposition in die Summen ein; `bezugspositionId` ist nur ein Verweis.
+  bei einer Normalposition in die Summen ein; `bezugspositionId` ist nur ein Verweis. Seit Ticket 37 ist das die „Altform der
+  Zuschlagsposition“ (Glossar): Der Kern rechnet sie weiter als Menge × EP (R8). `zuschlag.json` zeigt die GAEB-Form mit
+  Satz und Bezugsform; die Rechenregel steht in `rechnen.mjs` (`berechneZuschlagSollwerte`) und ist aus den amtlichen
+  Prüfdateien belegt (D-03). Die Umstellung von `typisch`, `gross` und `typisch-angebote` macht Ticket 44.
 - **A5 Nicht angebotene Position:** Eintrag mit `status: "nicht-angeboten"`, ohne Feld `einheitspreis`; `gp` ist
   `null`, `inSumme: false`, die ID steht in `nichtAngeboten`. Ein angebotener Preis von `0.000` (`status: "angeboten"`)
   ist davon verschieden und ergibt GP `0.00`. Wie ein Preisspiegel nicht angebotene Positionen bewertet

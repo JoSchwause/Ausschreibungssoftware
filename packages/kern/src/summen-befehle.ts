@@ -4,7 +4,7 @@
 // Uhr (A2). Das ChangeSet nennt die geänderte Position (oder den geänderten Kopf), die betroffenen Summen (nur Werte, die
 // sich ändern) und sonst nichts (A6). Ein Befehl, der nichts ändert (gleicher Wert), liefert ein leeres ChangeSet.
 
-import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent, subtrahiere } from '@tethys/dezimal';
+import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
 import type {
   Befehlsfehler,
   Ergebnis,
@@ -22,12 +22,12 @@ import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
 import { ohneKnoten, indexVon } from './struktur';
 import type { Baumindex } from './struktur';
-import { beitragZurSumme, hineinlegen, positionsSumme, summenAenderung } from './summen';
+import { summenAenderung } from './summen';
 import { mwstSatzFehler, nachlassFehler } from './summenregeln';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 
-function positionFinden(
+export function positionFinden(
   z: LvZustand,
   positionId: PositionId,
 ): Ergebnis<{ idx: Baumindex; position: Position }, Befehlsfehler> {
@@ -44,16 +44,14 @@ function positionFinden(
   return ok({ idx, position: k });
 }
 
-/** Position ändern; die Summen ändern sich nur, wenn sich GP oder Summenzugehörigkeit ändern. */
-function positionAendern(z: LvZustand, idx: Baumindex, alt: Position, neu: Position): LvChangeSet {
-  const sAlt = positionsSumme(alt);
-  const sNeu = positionsSumme(neu);
-  const gleich = sAlt.gesamtpreis === sNeu.gesamtpreis && sAlt.gehtInSummeEin === sNeu.gehtInSummeEin;
-  const summen = summenAenderung(z, idx, {
-    positionen: gleich ? [] : [sNeu],
-    beitraege: [hineinlegen(alt.elternId, subtrahiere(beitragZurSumme(sNeu), beitragZurSumme(sAlt)))],
-  });
-  return baueChangeSet(z, { geaendert: [{ vorher: alt, nachher: neu }], summen });
+/**
+ * Position ändern; die Summen folgen aus der Knotenänderung (GP, Ziel, und die Zuschlagspositionen, deren Bereich oder
+ * Liste die Position enthält). `summenAenderung` nennt nur Werte, die sich ändern.
+ */
+export function positionAendern(z: LvZustand, idx: Baumindex, alt: Position, neu: Position): LvChangeSet {
+  const geaendert = [{ vorher: alt, nachher: neu }];
+  const summen = summenAenderung(z, idx, { knoten: { geaendert } });
+  return baueChangeSet(z, { geaendert, summen });
 }
 
 /** `null` ist „nicht gesetzt“ und erlaubt; sonst kanonische Schreibweise mit der Skala der Zahlenart. */

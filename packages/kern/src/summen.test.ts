@@ -31,7 +31,6 @@ import {
   anwenden,
   LV_ID,
   PROJEKT_ID,
-  type Positionsart,
   betragNachlass,
   erwarteOk,
   fixtureAlsInhalt,
@@ -41,7 +40,8 @@ import {
   inhalt,
   lvMit,
   posKnoten,
-  positionsartVon,
+  merkmale,
+  wahlzuordnung,
   positionsdaten,
   prozentNachlass,
   sollwerteLesen,
@@ -75,6 +75,14 @@ function fehlercode(z: LvZustand, b: LvBefehl): Befehlsfehlercode {
   return e.fehler.code;
 }
 
+/** Gliederungssumme ohne Bedarfs- und Wahlpositionen (Ausweise 0,00). */
+const gs = (gliederungId: string, summe: string) => ({
+  gliederungId,
+  summe,
+  summeBedarfOhneGesamtbetrag: '0.00',
+  summeWahl: '0.00',
+});
+
 const gp = (z: LvZustand, positionId: string) => z.summen.positionen.find((p) => p.positionId === positionId);
 const titelSumme = (z: LvZustand, titelId: string): string | undefined =>
   z.summen.gliederungen.find((g) => g.gliederungId === titelId)?.summe;
@@ -97,6 +105,8 @@ describe('Goldene Zahlen', () => {
       nettoNachNachlass: '27.55',
       mwst: '5.23',
       brutto: '32.78',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -108,6 +118,8 @@ describe('Goldene Zahlen', () => {
       nettoNachNachlass: '390.65',
       mwst: '74.22',
       brutto: '464.87',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -119,7 +131,7 @@ describe('Goldene Zahlen', () => {
         nachlass: kette.nachlass as Nachlass | null,
         mwstSatz: kette.mwstSatz,
       });
-      expect(z.summen.gesamt).toEqual(kette.soll);
+      expect(z.summen.gesamt).toMatchObject(kette.soll);
     }
     for (const g of hb.gesamtpreise) {
       const stellen = g.einheitspreis.split('.')[1]?.length ?? 0;
@@ -137,6 +149,8 @@ describe('Goldene Zahlen', () => {
       nettoNachNachlass: '70.00',
       mwst: '13.30',
       brutto: '83.30',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -176,7 +190,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s: Sollwerte', 
   });
 
   it('alle Gesamtsummen stimmen exakt', () => {
-    expect(z.summen.gesamt).toEqual(soll.summen);
+    expect(z.summen.gesamt).toMatchObject(soll.summen);
   });
 
   it('alle Titelsummen stimmen exakt', () => {
@@ -247,37 +261,41 @@ describe('Menge oder Einheitspreis nicht gesetzt', () => {
 // --- Vorläufige Annahmen -----------------------------------------------------------------------------------------
 
 describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebündelt', () => {
-  it('sind als offen gekennzeichnet; der Nachlass ist als entschieden vermerkt (N5, E-06)', () => {
+  it('sind als offen gekennzeichnet; Nachlass und Betragsziel sind als entschieden vermerkt (N5, E-06; E-04, E-05)', () => {
     expect(SUMMEN_ANNAHMEN.status).toMatch(/vorläufige Annahme, Entscheidung offen/);
+    expect(SUMMEN_ANNAHMEN.status).toMatch(/Betragsziel/);
     expect(SUMMEN_ANNAHMEN.status).toMatch(/entschieden: Nachlass/);
     expect(SUMMEN_ANNAHMEN.nachlassGrenzen).toMatch(/ENTSCHIEDEN/);
   });
 
-  it('(1) welche Positionsarten in die Summen eingehen (Fixture-Annahmen A1–A4)', () => {
-    const p = (positionsart: Positionsart, mit = false) =>
-      positionGehtInSumme({
-        merkmale: positionsdaten('x', { positionsart, bedarfMitGesamtbetrag: mit }).merkmale,
-      }); // v1.1b: mechanisch angepasst, Folgeticket
-    expect(p('normal')).toBe(true);
-    expect(p('bedarf', false)).toBe(false);
-    expect(p('bedarf', true)).toBe(true);
-    expect(p('wahl')).toBe(false);
-    expect(p('zuschlag')).toBe(true);
-    // Von keiner Fixture-Annahme abgedeckt: wie eine Normalposition behandelt, gesondert gekennzeichnet.
-    expect(p('stundenlohn')).toBe(true);
+  it('(1) welche Merkmale ins Netto führen (E-04, E-05; Einzelfälle in merkmale.test.ts)', () => {
+    const p = (ueber: Partial<Parameters<typeof merkmale>[0]>) =>
+      positionGehtInSumme({ merkmale: merkmale(ueber) });
+    expect(p({})).toBe(true);
+    expect(p({ bedarf: 'ohne-gesamtbetrag' })).toBe(false);
+    expect(p({ bedarf: 'mit-gesamtbetrag' })).toBe(true);
+    expect(p({ wahl: wahlzuordnung() })).toBe(false);
+    expect(p({ wahl: wahlzuordnung(0, 1) })).toBe(true); // Grundausführung
+    expect(p({ stundenlohn: true })).toBe(true);
+    expect(p({ pauschal: true })).toBe(true);
   });
 
-  it('das Merkmal „pauschal“ ändert nichts an der Summe (Menge × EP)', () => {
-    const z = lvMit([posKnoten('A', LV_ID, 0, '1.000', '250.000', { pauschal: true, einheit: 'psch' })]);
+  it('das Merkmal „pauschal“ ändert mit Menge nichts an der Summe (Menge × EP)', () => {
+    const z = lvMit([
+      posKnoten('A', LV_ID, 0, '1.000', '250.000', {
+        merkmale: merkmale({ pauschal: true }),
+        einheit: 'psch',
+      }),
+    ]);
     expect(gp(z, 'A')).toEqual({ positionId: 'A', gesamtpreis: '250.00', gehtInSummeEin: true });
   });
 
   it('Bedarf ohne Gesamtbetrag: GP ausgewiesen, nicht in der Summe; mit Gesamtbetrag: in der Summe', () => {
     const z = lvMit([
       posKnoten('N', LV_ID, 0, '1.000', '10.000'),
-      posKnoten('B1', LV_ID, 1, '1.000', '20.000', { positionsart: 'bedarf' }),
-      posKnoten('B2', LV_ID, 2, '1.000', '40.000', { positionsart: 'bedarf', bedarfMitGesamtbetrag: true }),
-      posKnoten('W', LV_ID, 3, '1.000', '80.000', { positionsart: 'wahl' }),
+      posKnoten('B1', LV_ID, 1, '1.000', '20.000', { merkmale: merkmale({ bedarf: 'ohne-gesamtbetrag' }) }),
+      posKnoten('B2', LV_ID, 2, '1.000', '40.000', { merkmale: merkmale({ bedarf: 'mit-gesamtbetrag' }) }),
+      posKnoten('W', LV_ID, 3, '1.000', '80.000', { merkmale: merkmale({ wahl: wahlzuordnung() }) }),
     ]);
     expect(gp(z, 'B1')).toEqual({ positionId: 'B1', gesamtpreis: '20.00', gehtInSummeEin: false });
     expect(gp(z, 'W')).toEqual({ positionId: 'W', gesamtpreis: '80.00', gehtInSummeEin: false });
@@ -325,6 +343,8 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
       nettoNachNachlass: '0.00',
       mwst: '0.00',
       brutto: '0.00',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -339,6 +359,8 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
       nettoNachNachlass: '-0.01',
       mwst: '0.00', // −0,0019 → 0,00, nie „−0.00“
       brutto: '-0.01',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
     // deutlich größer, MwSt auf das negative Netto: −400,00 × 19 % = −76,00
@@ -349,6 +371,8 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
       nettoNachNachlass: '-400.00',
       mwst: '-76.00',
       brutto: '-476.00',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     expect(z3.summen).toEqual(summenBerechnen(z3.leistungsverzeichnis));
   });
@@ -489,10 +513,7 @@ describe('ChangeSet einer Mengenänderung', () => {
     expect(cs.knoten.entfernt).toEqual([]);
     expect(cs.knoten.geaendert.map((g) => g.nachher.id)).toEqual(['P1']);
     expect(cs.summen.positionen).toEqual([{ positionId: 'P1', gesamtpreis: '30.00', gehtInSummeEin: true }]);
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '42.00' },
-      { gliederungId: 'T1a', summe: '35.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '42.00'), gs('T1a', '35.00')]);
     expect(cs.summen.gliederungen.map((g) => g.gliederungId)).not.toContain('T1b');
     expect(cs.summen.gliederungen.map((g) => g.gliederungId)).not.toContain('T2');
     expect(cs.summen.gesamt).toEqual({
@@ -501,6 +522,8 @@ describe('ChangeSet einer Mengenänderung', () => {
       nettoNachNachlass: '49.98',
       mwst: '9.50', // 9,4962
       brutto: '59.48',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -525,15 +548,15 @@ describe('ChangeSet einer Mengenänderung', () => {
     expect(cs.summen).toEqual(KEINE_SUMMEN);
   });
 
-  it('Position, die nicht in die Summe eingeht (Wahl): nur ihr eigener GP, keine Gliederung, keine Gesamtsumme', () => {
+  it('Position, die nicht in die Summe eingeht (Wahl): eigener GP und nur die Wahlsummen ändern sich', () => {
     const z = lvMit([
       titelKnoten('T1', LV_ID, 0),
-      posKnoten('W', 'T1', 0, '1.000', '10.000', { positionsart: 'wahl' }),
+      posKnoten('W', 'T1', 0, '1.000', '10.000', { merkmale: merkmale({ wahl: wahlzuordnung() }) }),
     ]);
     const cs = erwarteOk(lvBefehlAusfuehren(z, mengeAendern('W', '4.000')));
     expect(cs.summen.positionen).toEqual([{ positionId: 'W', gesamtpreis: '40.00', gehtInSummeEin: false }]);
-    expect(cs.summen.gliederungen).toEqual([]);
-    expect(cs.summen.gesamt).toBeNull();
+    expect(cs.summen.gliederungen).toEqual([{ ...gs('T1', '0.00'), summeWahl: '40.00' }]);
+    expect(cs.summen.gesamt).toMatchObject({ netto: '0.00', brutto: '0.00', summeWahl: '40.00' });
   });
 
   it('Einheitspreis ändern: gleiche Form', () => {
@@ -541,10 +564,7 @@ describe('ChangeSet einer Mengenänderung', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(z, epAendern('P3', '8.000')));
     expect(cs.knoten.geaendert.map((g) => g.nachher.id)).toEqual(['P3']);
     expect(cs.summen.positionen.map((p) => p.positionId)).toEqual(['P3']);
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '33.00' },
-      { gliederungId: 'T1b', summe: '8.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '33.00'), gs('T1b', '8.00')]);
     expect(cs.summen.gesamt?.netto).toBe('42.00' as Betrag);
   });
 });
@@ -596,6 +616,8 @@ describe('Strukturbefehle sind summenbewusst', () => {
       nettoNachNachlass: '70.00',
       mwst: '13.30',
       brutto: '83.30',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
   });
 
@@ -610,10 +632,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
       }),
     );
     expect(cs.summen.positionen).toEqual([{ positionId: 'P9', gesamtpreis: '10.00', gehtInSummeEin: true }]);
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '40.00' },
-      { gliederungId: 'T1b', summe: '30.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '40.00'), gs('T1b', '30.00')]);
     expect(cs.summen.gesamt?.netto).toBe('80.00');
     expect(summenBerechnen(anwenden(z, cs).leistungsverzeichnis)).toEqual(anwenden(z, cs).summen);
   });
@@ -664,7 +683,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
     );
     expect(cs.summen).toEqual({
       positionen: [],
-      gliederungen: [{ gliederungId: 'T3', summe: '0.00' }],
+      gliederungen: [gs('T3', '0.00')],
       gesamt: null,
       vorher: {
         positionen: [],
@@ -679,10 +698,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
     const z = baum();
     const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'KnotenLoeschen', knotenId: id.knoten('P2') }));
     expect(cs.summen.positionen).toEqual([]);
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '10.00' },
-      { gliederungId: 'T1b', summe: '0.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '10.00'), gs('T1b', '0.00')]);
     expect(cs.summen.gesamt?.netto).toBe('50.00');
     const z2 = anwenden(z, cs);
     expect(gp(z2, 'P2')).toBeUndefined();
@@ -708,10 +724,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
       }),
     );
     expect(cs.summen.positionen).toEqual([]);
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1a', summe: '30.00' },
-      { gliederungId: 'T1b', summe: '0.00' },
-    ]); // T1 und die LV-Summe ändern sich nicht
+    expect(cs.summen.gliederungen).toEqual([gs('T1a', '30.00'), gs('T1b', '0.00')]); // T1 und die LV-Summe ändern sich nicht
     expect(cs.summen.gesamt).toBeNull();
   });
 
@@ -724,11 +737,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
         ziel: { art: 'ende', elternId: id.eltern('T2') },
       }),
     );
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '10.00' },
-      { gliederungId: 'T1b', summe: '0.00' },
-      { gliederungId: 'T2', summe: '60.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '10.00'), gs('T1b', '0.00'), gs('T2', '60.00')]);
     expect(cs.summen.gesamt).toBeNull();
     const z2 = anwenden(z, cs);
     expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
@@ -743,10 +752,7 @@ describe('Strukturbefehle sind summenbewusst', () => {
         ziel: { art: 'ende', elternId: id.eltern('T2') },
       }),
     );
-    expect(cs.summen.gliederungen).toEqual([
-      { gliederungId: 'T1', summe: '10.00' },
-      { gliederungId: 'T2', summe: '60.00' },
-    ]);
+    expect(cs.summen.gliederungen).toEqual([gs('T1', '10.00'), gs('T2', '60.00')]);
   });
 
   it('Verschieben innerhalb desselben Elternknotens ändert keine Summe', () => {
@@ -789,6 +795,8 @@ describe('Nachlass', () => {
       nettoNachNachlass: '390.65',
       mwst: '74.22',
       brutto: '464.87',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.nachlass).toEqual(prozentNachlass('3.00'));
@@ -864,6 +872,8 @@ describe('MwSt-Satz', () => {
       nettoNachNachlass: '390.65',
       mwst: '27.35', // 27,3455
       brutto: '418.00',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.mwstSatz).toBe('7.00');
@@ -899,7 +909,9 @@ describe('Umkehrung mit Summen', () => {
   const ersteIds = z0.leistungsverzeichnis.knoten.filter(
     (k): k is Extract<Knoten, { art: 'position' }> => k.art === 'position',
   );
-  const inSumme = ersteIds.filter((p) => positionsartVon(p) === 'normal');
+  const inSumme = ersteIds.filter(
+    (p) => p.zuschlag === null && p.merkmale.wahl === null && p.merkmale.bedarf === null,
+  );
   const p1 = inSumme[3]?.id ?? 'x';
   const p2 = inSumme[10]?.id ?? 'x';
   const titel1 = z0.leistungsverzeichnis.knoten.find((k) => k.art === 'titel')?.id ?? 'x';
@@ -973,7 +985,15 @@ describe('summenBerechnen (vollständige Neuberechnung)', () => {
     expect(z.summen).toEqual({
       positionen: [],
       gliederungen: [],
-      gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+      gesamt: {
+        netto: '0.00',
+        nachlass: '0.00',
+        nettoNachNachlass: '0.00',
+        mwst: '0.00',
+        brutto: '0.00',
+        summeBedarfOhneGesamtbetrag: '0.00',
+        summeWahl: '0.00',
+      },
     });
   });
 
@@ -985,5 +1005,8 @@ describe('summenBerechnen (vollständige Neuberechnung)', () => {
       mwst: '5.23',
       brutto: '32.78',
     });
+    expect(
+      gesamtsummen(betrag('27.55'), null, prozent('19.00'), { bedarf: betrag('1.00'), wahl: betrag('2.00') }),
+    ).toMatchObject({ netto: '27.55', summeBedarfOhneGesamtbetrag: '1.00', summeWahl: '2.00' });
   });
 });

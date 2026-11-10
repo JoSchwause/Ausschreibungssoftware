@@ -8,9 +8,9 @@
 //  - X ist eine Gliederung (Los oder Titel): Elternknoten ist X selbst, an erster Stelle (erster Unterknoten).
 // Beim Verschieben gilt „nach X“ nachdem der bewegte Knoten aus seiner alten Lage herausgenommen wurde.
 //
-// Summen (Ticket 07): Jeder Befehl liefert die betroffenen Summen mit. Er meldet, um welchen Betrag sich der Beitrag an
-// einem Elternknoten ändert (Einfügen: plus, Löschen: minus, Verschieben: minus an der alten, plus an der neuen
-// Kette); `summenAenderung` rechnet nur die Ketten bis zur Wurzel nach (A6).
+// Summen (Ticket 07, Ticket 37): Jeder Befehl liefert die betroffenen Summen mit. `summenAenderung` leitet sie aus den
+// Knotenänderungen ab: Beiträge an den alten und neuen Elternketten und die Zuschlagspositionen, deren Bereich oder
+// Liste sich ändert (A6).
 
 import type {
   Befehlsfehler,
@@ -18,7 +18,6 @@ import type {
   ElternId,
   Ergebnis,
   GliederungAnlegen,
-  GliederungId,
   Hinweistext,
   HinweistextAnlegen,
   Knoten,
@@ -29,10 +28,9 @@ import type {
   LvZustand,
   Position,
   PositionAnlegen,
-  Summenaenderung,
   TitelId,
 } from '@tethys/vertrag';
-import { LEERE_SUMMENAENDERUNG, baueChangeSet } from './changeset';
+import { baueChangeSet } from './changeset';
 import { positionMitEinheiten } from './einheit';
 import { handOzFehler } from './oz-befehle';
 import { nein, ok } from './fehler';
@@ -47,15 +45,8 @@ import {
 import type { ElternArt } from './regeln';
 import { ebenenBis, ebenenHoehe, indexVon, liegtUnter, unterbaum } from './struktur';
 import type { Baumindex } from './struktur';
-import { NULL_BETRAG } from '@tethys/dezimal';
-import {
-  beitragVon,
-  beitragZurSumme,
-  herausnehmen,
-  hineinlegen,
-  positionsSumme,
-  summenAenderung,
-} from './summen';
+import { summenAenderung } from './summen';
+import { bezugsindex } from './zuschlag';
 
 type Aenderung = { readonly vorher: Knoten; readonly nachher: Knoten };
 type ChangeSetErgebnis = Ergebnis<LvChangeSet, Befehlsfehler>;
@@ -67,16 +58,17 @@ interface Ziel {
   readonly index: number;
 }
 
+/** ChangeSet aus Knotenänderungen; die Summen folgen daraus (`summenAenderung`, A6). */
 function knotenChangeSet(
   z: LvZustand,
+  idx: Baumindex,
   teile: {
     hinzugefuegt?: readonly Knoten[];
     geaendert?: readonly Aenderung[];
     entfernt?: readonly Knoten[];
-    summen?: Summenaenderung;
   },
 ): LvChangeSet {
-  return baueChangeSet(z, teile);
+  return baueChangeSet(z, { ...teile, summen: summenAenderung(z, idx, { knoten: teile }) });
 }
 
 /** Löst einen Einfügeort in Elternknoten und Index auf. `ausser`: ein Knoten, der bei der Zählung fehlt (Verschieben). */
@@ -161,14 +153,13 @@ function einfuegenChangeSet(
   idx: Baumindex,
   t: Ziel,
   build: (lage: Ziel) => Knoten,
-  summen: (neu: Knoten) => Summenaenderung,
 ): LvChangeSet {
   const geschwister = idx.kinder.get(t.elternId) ?? [];
   const geaendert: Aenderung[] = geschwister
     .slice(t.index)
     .map((k, i) => ({ vorher: k, nachher: { ...k, reihenfolge: t.index + i + 1 } }));
   const neu = build(t);
-  return knotenChangeSet(z, { hinzugefuegt: [neu], geaendert, summen: summen(neu) });
+  return knotenChangeSet(z, idx, { hinzugefuegt: [neu], geaendert });
 }
 
 export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSetErgebnis {
@@ -194,32 +185,24 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
   );
   if (ozFehlerwert !== null) return { ok: false, fehler: ozFehlerwert };
   return ok(
-    einfuegenChangeSet(
-      z,
-      idx,
-      ziel.wert,
-      (t) =>
-        b.gliederungsart === 'los'
-          ? {
-              art: 'los',
-              id: b.id as LosId,
-              elternId: t.elternId as ElternId,
-              reihenfolge: t.index,
-              ordnungszahl,
-              kurztext: b.kurztext,
-            }
-          : {
-              art: 'titel',
-              id: b.id as TitelId,
-              elternId: t.elternId as ElternId,
-              reihenfolge: t.index,
-              ordnungszahl,
-              kurztext: b.kurztext,
-            },
-      (neu) =>
-        summenAenderung(z, idx, {
-          neueGliederungen: [{ gliederungId: neu.id as GliederungId, summe: NULL_BETRAG }],
-        }),
+    einfuegenChangeSet(z, idx, ziel.wert, (t) =>
+      b.gliederungsart === 'los'
+        ? {
+            art: 'los',
+            id: b.id as LosId,
+            elternId: t.elternId as ElternId,
+            reihenfolge: t.index,
+            ordnungszahl,
+            kurztext: b.kurztext,
+          }
+        : {
+            art: 'titel',
+            id: b.id as TitelId,
+            elternId: t.elternId as ElternId,
+            reihenfolge: t.index,
+            ordnungszahl,
+            kurztext: b.kurztext,
+          },
     ),
   );
 }
@@ -228,39 +211,28 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const idx = indexVon(z.leistungsverzeichnis.id, z.leistungsverzeichnis.knoten);
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, 'position');
   if (!ziel.ok) return ziel;
-  const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i)?.art === 'position');
+  const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   const d = b.daten;
   return ok(
-    einfuegenChangeSet(
-      z,
-      idx,
-      ziel.wert,
-      (t): Position =>
-        positionMitEinheiten({
-          art: 'position',
-          id: b.id,
-          elternId: t.elternId as ElternId,
-          reihenfolge: t.index,
-          ordnungszahl: d.ordnungszahl,
-          ozIndex: d.ozIndex,
-          merkmale: d.merkmale, // v1.1b: mechanisch angepasst, Folgeticket
-          zuschlag: d.zuschlag,
-          ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
-          kurztext: d.kurztext,
-          langtext: d.langtext,
-          menge: d.menge,
-          einheit: d.einheit,
-          einheitspreis: d.einheitspreis,
-          epa: d.epa,
-        }),
-      (neu) => {
-        const summe = positionsSumme(neu as Position);
-        return summenAenderung(z, idx, {
-          positionen: [summe],
-          beitraege: [hineinlegen(ziel.wert.elternId, beitragZurSumme(summe))],
-        });
-      },
+    einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
+      positionMitEinheiten({
+        art: 'position',
+        id: b.id,
+        elternId: t.elternId as ElternId,
+        reihenfolge: t.index,
+        ordnungszahl: d.ordnungszahl,
+        ozIndex: d.ozIndex,
+        merkmale: d.merkmale,
+        zuschlag: d.zuschlag,
+        ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
+        kurztext: d.kurztext,
+        langtext: d.langtext,
+        menge: d.menge,
+        einheit: d.einheit,
+        einheitspreis: d.einheitspreis,
+        epa: d.epa,
+      }),
     ),
   );
 }
@@ -276,37 +248,48 @@ export function hinweistextAnlegen(z: LvZustand, b: HinweistextAnlegen): ChangeS
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, 'hinweis');
   if (!ziel.ok) return ziel;
   return ok(
-    einfuegenChangeSet(
-      z,
-      idx,
-      ziel.wert,
-      (t): Hinweistext => ({
-        art: 'hinweis',
-        id: b.id,
-        elternId: t.elternId as ElternId,
-        reihenfolge: t.index,
-        text: b.text,
-      }),
-      () => LEERE_SUMMENAENDERUNG,
-    ),
+    einfuegenChangeSet(z, idx, ziel.wert, (t): Hinweistext => ({
+      art: 'hinweis',
+      id: b.id,
+      elternId: t.elternId as ElternId,
+      reihenfolge: t.index,
+      text: b.text,
+    })),
   );
 }
 
+/**
+ * Löscht einen Knoten samt Unterbaum. Nennt eine Zuschlagsposition außerhalb des Unterbaums eine der gelöschten
+ * Positionen in ihrer Liste (R5), verschwindet der Verweis im selben ChangeSet (die Zuschlagsposition steht unter
+ * `knoten.geaendert`); die Umkehrung bringt ihn zurück (kein stiller Verlust, Q5).
+ */
 export function knotenLoeschen(z: LvZustand, b: KnotenLoeschen): ChangeSetErgebnis {
   const idx = indexVon(z.leistungsverzeichnis.id, z.leistungsverzeichnis.knoten);
   const knoten = idx.byId.get(b.knotenId);
   if (!knoten) return nein('knoten-unbekannt', `Knoten unbekannt: ${b.knotenId}`, b.knotenId);
+  const entfernt = unterbaum(idx, knoten);
+  const weg = new Set<string>(entfernt.map((k) => k.id));
   const geschwister = idx.kinder.get(knoten.elternId) ?? [];
   const pos = geschwister.findIndex((k) => k.id === knoten.id);
-  const geaendert: Aenderung[] = geschwister
-    .slice(pos + 1)
-    .map((k, i) => ({ vorher: k, nachher: { ...k, reihenfolge: pos + i } }));
-  // Summen: der Beitrag des Knotens verschwindet aus der Kette seines Elternknotens; die Einträge der entfernten Knoten
-  // fallen beim Anwenden weg.
-  const summen = summenAenderung(z, idx, {
-    beitraege: [herausnehmen(knoten.elternId, beitragVon(z.summen, knoten))],
-  });
-  return ok(knotenChangeSet(z, { entfernt: unterbaum(idx, knoten), geaendert, summen }));
+  const nachher = new Map<string, Knoten>();
+  geschwister.slice(pos + 1).forEach((k, i) => nachher.set(k.id, { ...k, reihenfolge: pos + i }));
+  // Verweise auf gelöschte Positionen aus den Bezugslisten anderer Zuschlagspositionen nehmen.
+  const rueck = bezugsindex(z.leistungsverzeichnis.knoten);
+  for (const k of entfernt) {
+    for (const zid of rueck.get(k.id) ?? []) {
+      if (weg.has(zid)) continue;
+      const alt = nachher.get(zid) ?? idx.byId.get(zid);
+      if (alt?.art !== 'position' || alt.zuschlag?.bezug.art !== 'positionen') continue;
+      const bleibt = alt.zuschlag.bezug.positionen.filter((p) => !weg.has(p.positionId));
+      if (bleibt.length === alt.zuschlag.bezug.positionen.length) continue;
+      nachher.set(zid, {
+        ...alt,
+        zuschlag: { ...alt.zuschlag, bezug: { art: 'positionen', positionen: bleibt } },
+      });
+    }
+  }
+  const geaendert: Aenderung[] = [...nachher].map(([i, n]) => ({ vorher: idx.byId.get(i) ?? n, nachher: n }));
+  return ok(knotenChangeSet(z, idx, { entfernt, geaendert }));
 }
 
 export function knotenVerschieben(z: LvZustand, b: KnotenVerschieben): ChangeSetErgebnis {
@@ -317,7 +300,7 @@ export function knotenVerschieben(z: LvZustand, b: KnotenVerschieben): ChangeSet
 
   // „nach sich selbst“: bei einer Position/einem Hinweistext eine Nullbewegung, bei einer Gliederung ein Zyklus.
   if (b.ziel.art === 'nach' && b.ziel.knotenId === knoten.id && !istGliederung) {
-    return ok(knotenChangeSet(z, {}));
+    return ok(knotenChangeSet(z, idx, {}));
   }
   const ziel = zielAufloesen(idx, b.ziel, knoten.id);
   if (!ziel.ok) return ziel;
@@ -367,16 +350,5 @@ export function knotenVerschieben(z: LvZustand, b: KnotenVerschieben): ChangeSet
         if (k.reihenfolge !== i) geaendert.push({ vorher: k, nachher: { ...k, reihenfolge: i } });
       });
   }
-  // Summen: der Knoten nimmt seinen Beitrag aus der alten Kette und legt ihn in die neue. Gemeinsame Vorfahren
-  // ändern sich netto nicht und bleiben ungenannt.
-  const summen =
-    knoten.elternId === t.elternId
-      ? LEERE_SUMMENAENDERUNG
-      : summenAenderung(z, idx, {
-          beitraege: [
-            herausnehmen(knoten.elternId, beitragVon(z.summen, knoten)),
-            hineinlegen(t.elternId, beitragVon(z.summen, knoten)),
-          ],
-        });
-  return ok(knotenChangeSet(z, { geaendert, summen }));
+  return ok(knotenChangeSet(z, idx, { geaendert }));
 }

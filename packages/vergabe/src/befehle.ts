@@ -7,7 +7,7 @@
 // einmal je Positionsarray der Aufbau eines Index (Positions-ID → Eintrag).
 
 import { NULL_BETRAG, alsEinheitspreis, addiere, subtrahiere, vorzeichen } from '@tethys/dezimal';
-import { gesamtsummen, nachlassFehler, positionsSumme } from '@tethys/kern';
+import { betragsziel, gesamtsummen, nachlassFehler, positionsSumme } from '@tethys/kern';
 import type {
   Aenderung,
   Angebot,
@@ -63,11 +63,25 @@ const gleicheGesamtsummen = (a: Gesamtsummen, b: Gesamtsummen): boolean =>
   a.nachlass === b.nachlass &&
   a.nettoNachNachlass === b.nettoNachNachlass &&
   a.mwst === b.mwst &&
-  a.brutto === b.brutto;
+  a.brutto === b.brutto &&
+  a.summeBedarfOhneGesamtbetrag === b.summeBedarfOhneGesamtbetrag &&
+  a.summeWahl === b.summeWahl;
 
-/** Was die Position zur Summe beiträgt (wie im Kern): ihr GP, wenn sie eingeht, sonst 0,00. */
-const beitrag = (s: Positionssumme): Betrag =>
-  s.gehtInSummeEin && s.gesamtpreis !== null ? s.gesamtpreis : NULL_BETRAG;
+/** Der GP der Position oder 0,00; in welche Summe er geht, sagt `betragsziel` (Kern, Ticket 37). */
+const betrag = (s: Positionssumme): Betrag => s.gesamtpreis ?? NULL_BETRAG;
+
+/** Feld einer Gliederungssumme je Betragsziel (Kern, Ticket 37: Netto, Bedarfs- oder Wahlsumme). */
+const FELD = {
+  netto: 'summe',
+  bedarf: 'summeBedarfOhneGesamtbetrag',
+  wahl: 'summeWahl',
+} as const;
+
+/** Die Ausweise der Gesamtsummen (Kern, Ticket 37); fehlen sie in einem alten Stand, gelten sie als 0,00. */
+const ausweiseVon = (g: Gesamtsummen): { bedarf: Betrag; wahl: Betrag } => ({
+  bedarf: g.summeBedarfOhneGesamtbetrag ?? NULL_BETRAG,
+  wahl: g.summeWahl ?? NULL_BETRAG,
+});
 
 const LEERES_VORHER = {
   positionen: [],
@@ -267,7 +281,9 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
     if (altSumme.gesamtpreis === neuSumme.gesamtpreis && altSumme.gehtInSummeEin === neuSumme.gehtInSummeEin)
       return changeSet(z, positionsaenderung);
 
-    const differenz = subtrahiere(beitrag(neuSumme), beitrag(altSumme));
+    const differenz = subtrahiere(betrag(neuSumme), betrag(altSumme));
+    const ziel = betragsziel(lvPos);
+    const feld = FELD[ziel];
     const gliederungen: Gliederungssumme[] = [];
     const gliederungenVorher: Gliederungssumme[] = [];
     let gesamt: Gesamtsummen | null = null;
@@ -280,17 +296,25 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
         if (vorher) {
           gliederungenVorher.push(vorher);
           gliederungen.push({
+            summeBedarfOhneGesamtbetrag: NULL_BETRAG,
+            summeWahl: NULL_BETRAG,
             ...vorher,
             gliederungId: k as GliederungId,
-            summe: addiere(vorher.summe, differenz),
+            [feld]: addiere(vorher[feld] ?? NULL_BETRAG, differenz),
           });
         }
         k = g.elternId;
       }
+      const alt = z.summen.gesamt;
+      const a = ausweiseVon(alt);
       const neuGesamt = gesamtsummen(
-        addiere(z.summen.gesamt.netto, differenz),
+        ziel === 'netto' ? addiere(alt.netto, differenz) : alt.netto,
         z.angebot.nachlass,
         l.mwstSatz,
+        {
+          bedarf: ziel === 'bedarf' ? addiere(a.bedarf, differenz) : a.bedarf,
+          wahl: ziel === 'wahl' ? addiere(a.wahl, differenz) : a.wahl,
+        },
       );
       if (!gleicheGesamtsummen(neuGesamt, z.summen.gesamt)) gesamt = neuGesamt;
     }
@@ -315,7 +339,7 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
     if (nf) return nf;
     if (gleich(z.angebot.nachlass, nachlass)) return changeSet(z, {});
     const vorher = angebotKopf(z.angebot);
-    const neuGesamt = gesamtsummen(z.summen.gesamt.netto, nachlass, l.mwstSatz);
+    const neuGesamt = gesamtsummen(z.summen.gesamt.netto, nachlass, l.mwstSatz, ausweiseVon(z.summen.gesamt));
     const gesamt = gleicheGesamtsummen(neuGesamt, z.summen.gesamt) ? null : neuGesamt;
     return changeSet(z, {
       kopf: { vorher, nachher: { ...vorher, nachlass } },

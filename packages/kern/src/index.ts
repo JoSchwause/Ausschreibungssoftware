@@ -27,18 +27,26 @@ export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
 export { FELD_ANNAHMEN, langtextGleich } from './feld-befehle';
 export { HINWEIS_ANNAHMEN } from './hinweise';
+export { ANTEILE, EPA_ANNAHMEN, anteilsumme, epaSummen } from './epa';
+export type { Anteil, Anteilsummen, EpaSummen } from './epa';
 export {
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
 } from './projekt-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
-export { gesamtsummen, positionsSumme, summenBerechnen } from './summen';
+export { gesamtsummen, positionsSumme, summenBerechnen, zuschlagsbasen } from './summen';
+export type { Ausweise } from './summen';
+export { ZUSCHLAG_REGELN } from './zuschlag';
+export type { Zuschlagsbasis } from './zuschlag';
 export {
   SUMMEN_ANNAHMEN,
+  betragsziel,
+  eigenerGesamtpreis,
   mwstSatzFehler,
   nachlassBetrag,
   nachlassFehler,
   nettoNachNachlass,
   positionGehtInSumme,
 } from './summenregeln';
+export type { Betragsziel } from './summenregeln';

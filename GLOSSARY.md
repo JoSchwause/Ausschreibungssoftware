@@ -45,7 +45,13 @@ Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht 
 Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
 ### Zuschlagsposition
-Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Ab v1.1b/K6 gilt GAEB-Semantik: ein Prozentsatz auf die Summe der Bezugspositionen, mit mehreren Bezugsformen (Liste mit Teilmengen, alle Positionen einer Gliederung, markierte Positionen); bis dahin rechnet der Kern sie vorläufig wie eine Normalposition (Entscheidung E-03, 2026-11-10).
+Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. B. erschwerte Bedingungen) und zusätzlich vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Seit K6 gilt GAEB-Semantik (E-03, D-03): Ihr Betrag ist der Zuschlagssatz auf die Zuschlagsbasis, kaufmännisch auf 2 Stellen gerundet, und geht wie ein GP in die Gliederungssumme und, nach ihren Merkmalen, in Netto, Bedarfs- oder Wahlsumme. Drei Bezugsformen (siehe Zuschlagsbezug): Gliederung, Kennzeichnung, Liste. Eine Zuschlagsposition ist nie Bezugsposition einer anderen. Ohne Satz hat sie keinen Betrag, außer in der Altform. Im Code `Positionsdaten.zuschlag`.
+
+### Zuschlagsbasis
+Die Summe der GP der Bezugspositionen einer Zuschlagsposition, auf die der Zuschlagssatz gerechnet wird. Es zählen nur Bezugspositionen mit GP, deren Betrag ins Netto geht (keine Wahl mit Variante ungleich 0, kein Bedarf ohne Gesamtbetrag) und die selbst keine Zuschlagsposition sind; bei einer Teilmenge zählt Teilmenge × EP. Im Code `Zuschlagsbasis.basis` (`zuschlagsbasen`).
+
+### Altform der Zuschlagsposition
+Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 44 stellt die Fixtures auf die GAEB-Form um.
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -57,7 +63,7 @@ Eigenschaft einer Position, die sich mit anderen kombinieren lässt (E-05): Beda
 Die Zuordnung einer Position zu einer Wahl mit Gruppennummer und Variantennummer aus GAEB (Variante 0: Grundausführung, 1 bis 9: Alternativen). Im Ausschreibungs-LV gibt es keinen Zustand „gewählt“; gewählt wird bei der Vergabe (E-04). Im Code `Wahlzuordnung`.
 
 ### Zuschlagsbezug (Bezugsposition)
-Die Positionen, auf die sich eine Zuschlagsposition bezieht. Drei Formen wie in GAEB: eine Liste einzelner Positionen (je mit optionaler Teilmenge), alle Positionen der Gliederung, unter der die Zuschlagsposition steht, oder alle Positionen mit Zuschlagskennzeichen. Im Code `Zuschlagsbezug`, `Bezugsposition`.
+Die Positionen, auf die sich eine Zuschlagsposition bezieht. Drei Formen wie in GAEB: eine Liste einzelner Positionen, wo immer sie im LV stehen, je mit optionaler Teilmenge (`ListInSubQty`); „Gliederung“: die Positionen vor der Zuschlagsposition unter demselben Elternknoten bis zur vorigen Zuschlagsposition oder zum Anfang, wobei unmittelbar aufeinanderfolgende Zuschlagspositionen dieselbe Basis teilen (`AllInCat`); „Kennzeichnung“: derselbe Bereich, davon nur die Positionen mit Zuschlagskennzeichen (`IdentAsMark`). Im Code `Zuschlagsbezug`, `Bezugsposition`.
 
 ### Zuschlagskennzeichen
 Markierung an einer Position, die sie zum Bezug einer Zuschlagsposition der Form „Kennzeichnung“ macht (GAEB `MarkupIt`). Im Code `Positionsmerkmale.zuschlagskennzeichen`.
