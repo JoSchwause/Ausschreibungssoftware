@@ -379,6 +379,12 @@ class Angebotsaufbau {
     if (!itEl || p.menge === null) return;
     const it = this.l.zahl('betrag', itEl, p.id, 'gesamtpreis');
     if (it === null) return;
+    // Eine Position, die nicht in die Summe eingeht (Alternative, Bedarf ohne Gesamtbetrag), trägt in der Datei
+    // `IT` 0.00 (BVBS Bauausführung, 001.002.0050); das ist kein abweichender Gesamtpreis (D-45.1).
+    const wahl = p.merkmale.wahl;
+    const alternative = wahl !== null && (wahl.variante === null ? wahl.grundpositionId !== null : wahl.variante > 0);
+    const ohneSumme = alternative || p.merkmale.bedarf === 'ohne-gesamtbetrag';
+    if (ohneSumme && vergleiche(it, '0.00' as typeof it) === 0) return;
     const soll = gesamtpreis(p.menge, ep);
     if (vergleiche(it, soll) !== 0)
       this.l.melde(

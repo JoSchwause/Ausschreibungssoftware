@@ -179,3 +179,67 @@ describe('BVBS AVA X84 gegen das LV aus der X81', () => {
     expect(lies(lesePfad(AVA_X84), lv)).toEqual(lies(lesePfad(AVA_X84), lv));
   });
 });
+
+// --- Amtliche Prüfdatei Bauausführung ------------------------------------------------------------------------
+
+const BAU_X83 = 'fixtures/extern/bvbs/3.3-bauausfuehrung/Pruefdatei_3.3_Bauausfuehrung_V-04-04-2024.x83';
+const BAU_X84 = 'fixtures/extern/bvbs/3.3-bauausfuehrung/BVBS_Pruefdatei_3.3_Bauausfuehrung_V-11-06-2021.x84';
+
+describe('BVBS Bauausführung X84 gegen das LV aus der X83', () => {
+  const lv = lvAus(lesePfad(BAU_X83));
+  const l = lies(lesePfad(BAU_X84), lv, 'b.x84');
+  const ps = l.befehl?.angebot.positionen ?? [];
+
+  it('ordnet alle 28 Positionen über die OZ (mit Index) zu', () => {
+    expect(ps).toHaveLength(28);
+    expect(ps.every((p) => p.status === 'angeboten')).toBe(true);
+    expect(codes(l)).not.toContain('position-unbekannt');
+    expect(codes(l)).not.toContain('position-fehlt-im-angebot');
+    expect(zeile(l, lv, '001.001.0010', 'A')).toMatchObject({ einheitspreis: '600.000' });
+  });
+
+  it('002.001.0030 mit Satz 10,00; EP 002.001.0010 = 1,000 und 0020 = 2,000', () => {
+    expect(zeile(l, lv, '002.001.0030')).toMatchObject({ status: 'angeboten', zuschlagssatz: '10.00' });
+    expect(zeile(l, lv, '002.001.0010')).toMatchObject({ status: 'angeboten', einheitspreis: '1.000' });
+    expect(zeile(l, lv, '002.001.0020')).toMatchObject({ status: 'angeboten', einheitspreis: '2.000' });
+  });
+
+  it('Bietername aus CTR', () => {
+    expect(l.bieter).toEqual({ name: 'BVBS' });
+  });
+
+  it('IT 0.00 an der Alternativposition 001.002.0050 ist kein gp-abweichend', () => {
+    expect(zeile(l, lv, '001.002.0050')).toMatchObject({ status: 'angeboten', einheitspreis: '12.000' });
+    expect(codes(l)).not.toContain('gp-abweichend');
+  });
+
+  it('vier Bieterergänzungen mit Inhalt: ein zusammengefasster Befund', () => {
+    const b = mitCode(l, 'bieterergaenzung-nicht-abgebildet');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toMatch(/^4 Textergänzungen/);
+  });
+
+  it('Golden', () => {
+    vergleicheGolden('angebot-bauausfuehrung-x84', 'BVBS_Pruefdatei_3.3_Bauausfuehrung_V-11-06-2021.x84', l);
+  });
+});
+
+// --- Andere Version, andere Phase ----------------------------------------------------------------------------
+
+describe('was leseAngebot nicht liest', () => {
+  const lv = lvAus(lesePfad(AVA_X81));
+
+  it('Musterdatei 3.1 (X84): kein Befehl, Befund version-nicht-unterstuetzt (G4)', () => {
+    const l = lies(lesePfad('fixtures/extern/gaeb/3.1-musterdateien/Musterdatei_3.1_2008-001.X84'), lv);
+    expect(l.befehl).toBeNull();
+    expect(l.version).toBe('3.1');
+    expect(codes(l)).toContain('version-nicht-unterstuetzt');
+  });
+
+  it('eine X81 ist kein Angebot: Fehler phase-nicht-unterstuetzt, kein Befehl', () => {
+    const l = lies(lesePfad(AVA_X81), lv);
+    expect(l.befehl).toBeNull();
+    expect(l.phase).toBe('X81');
+    expect(mitCode(l, 'phase-nicht-unterstuetzt')[0]?.schwere).toBe('fehler');
+  });
+});
