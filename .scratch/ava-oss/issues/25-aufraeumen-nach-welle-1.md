@@ -1,6 +1,6 @@
 # 25: Aufräumen nach Welle 1
 
-Status: ready-for-agent
+Status: resolved (Pull Request je Ticket, 2026-11-10)
 Type: task
 Welle: 2 · Paket: `fixtures/`, `tools/`; je eine benannte Stelle in `packages/kern` und `packages/gaeb`
 Blocked by: -
@@ -13,34 +13,38 @@ Vier kleine Korrekturen, als ein Ticket entschieden (E-19). Solange dieses Ticke
 Agent in `kern` und `gaeb` (P2).
 
 1. **Fixtures.** (a) Der Maskentext in `fixtures/` (`NN.NN.NN.NN.NN.NNNN[I]`, 15 Stellen) verletzt die Regel
-   „OZ höchstens 14 Zeichen einschließlich Index“ (F2); auf 14 Stellen korrigieren, überall wo er steht
-   (Daten, README, Erzeuger). (b) `handbeispiele.json` auf die kanonische Stellenzahl bringen (N3: EP 3, Menge 3,
+   „OZ höchstens 14 Zeichen einschließlich Index“ (F2); auf 14 Stellen korrigieren, überall wo er in `fixtures/`
+   steht (Daten, README, Erzeuger), dazu in den Testhilfen von `kern`. Die Stelle in `packages/vertrag` korrigiert
+   Ticket 24. (b) `handbeispiele.json` auf die kanonische Stellenzahl bringen (N3: EP 3, Menge 3,
    Prozent 2, Betrag 2, alle Nullen). (c) `gross.json` in Dokumentreihenfolge schreiben (Eltern vor Kindern,
    Geschwister nach `reihenfolge`); der Erzeuger `erzeugen.mjs` erzeugt die Datei so, byte-stabil.
    Die Sollwerte (Summen) ändern sich dadurch nicht; ein Test belegt das.
 2. **Paketgrenzen.** Testdateien eines Pakets dürfen `fixtures/` lesen (`tools/boundaries.mjs`); heute geht das nur
    über einen Umweg. Produktivcode darf es weiterhin nicht. Den Umweg in den Tests, die ihn nutzen, **nicht** in
    diesem Ticket entfernen, außer in `kern` und `gaeb`.
-3. **`kern`: Maske beim Anlegen.** `LeistungsverzeichnisAnlegen` prüft die OZ-Maske nicht. Eine ungültige Maske
-   (Regeln aus `ozregeln.ts`) darf nicht still durchgehen. U5 gilt: Ein GAEB-Import darf daran nicht scheitern.
+3. **`kern`: Maske beim Anlegen.** `LeistungsverzeichnisAnlegen` prüft die OZ-Maske nicht (E-19: „ein Befund statt
+   Stille“). U5 gilt: Ein GAEB-Import darf daran nicht scheitern. Dieses Ticket liefert nur die erste Hälfte; den
+   Befund am Befehl liefert das Folgeticket „Anpassung `kern` an v1.1a“.
    Der Vertrag v1 kennt für einen angenommenen Befehl noch keinen Ort für Befunde (kommt mit Ticket 24). Deshalb
    hier: eine reine, exportierte Prüffunktion im Kern (`Pruefbefund[]` für eine `OzMaske`), getestet, und im
    Ticket vermerkt, dass der Befehl sie ab der Anpassung an v1.1a mitliefert. Das Verhalten des Befehls bleibt.
 4. **`gaeb`: MwSt-Standard.** X81/X83 tragen keinen MwSt-Satz. Liefert der Aufrufer keinen, setzt der Leser
    19,00 % und meldet das als Befund (Warnung, stabiler Code). Liefert der Aufrufer einen, bleibt es wie heute.
-5. **Ticket 22, Kriterium BVBS (E-16).** Das Kriterium lautet neu „eigene Zählung, mit zweitem unabhängigen Zähler
-   bestätigt“. Einen zweiten, vom Leser unabhängigen Zähler (einfacher Durchlauf über das XML im Test, nicht über
-   das Modell) für die Prüfdatei Bauausführung X83 schreiben: 12 Titel, 28 Positionen, 4 Hinweistexte. Stimmen die
-   Zahlen nicht, wird das gemeldet und nichts angepasst.
+5. **Ticket 22, Kriterium BVBS (E-16).** Das Kriterium in Ticket 22 lautet schon „eigene Zählung, mit zweitem
+   unabhängigen Zähler bestätigt“; die Zählung dort stammt aus einem einmaligen Skript. Hier wird daraus ein
+   bleibender Test in `packages/gaeb`: ein zweiter, vom Leser unabhängiger Zähler (einfacher Durchlauf über das XML,
+   nicht über das Modell) für die Prüfdatei Bauausführung X83: 12 Titel, 28 Positionen (27 `Item` + 1 `MarkupItem`),
+   4 Hinweistexte. Danach das Kriterium in Ticket 22 abhaken. Stimmen die Zahlen nicht, wird das gemeldet und nichts
+   angepasst.
 
 ## Acceptance criteria
 
-- [x] Kein Maskentext mit mehr als 14 Stellen mehr im Repo; ein Fixture-Test prüft die 14er-Regel
+- [x] Kein Maskentext mit mehr als 14 Stellen mehr in `fixtures/` und in den Testhilfen von `kern`; ein Fixture-Test prüft die 14er-Regel
 - [x] `handbeispiele.json`: jeder Dezimalwert in kanonischer Stellenzahl; Test prüft das
 - [x] `gross.json` in Dokumentreihenfolge; `erzeugen.mjs` erzeugt sie byte-gleich; Sollwerte unverändert
 - [x] `tools/boundaries.test.mjs`: Testdatei darf `fixtures/` lesen, Produktivdatei nicht
 - [x] Kern: Prüffunktion für die Maske mit Tests (gültig, zu lang, Index ≠ 1 Zeichen)
-- [x] GAEB: Lesen ohne Satz ergibt 19,00 % und genau einen Befund; mit Satz keinen
+- [x] GAEB: Lesen ohne Satz ergibt 19,00 % und genau einen Befund; mit Satz keinen `mwst-standardsatz` (der bisherige Befund `mwst-ersatzwert` bleibt)
 - [x] Zweiter Zähler bestätigt 12/28/4 (oder der Unterschied steht in den Comments)
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `reuse lint` grün
 
