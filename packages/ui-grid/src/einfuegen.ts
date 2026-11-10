@@ -95,6 +95,7 @@ export function planeEinfuegen(
         }
       }
     });
+    // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog.
     const daten: Positionsdaten = {
       ordnungszahl: null,
       ozIndex: null,
@@ -104,7 +105,7 @@ export function planeEinfuegen(
         stundenlohn: false,
         pauschal: false,
         zuschlagskennzeichen: false,
-      }, // // v1.1b: mechanisch angepasst, Folgeticket
+      },
       zuschlag: null,
       kurztext,
       langtext: [],

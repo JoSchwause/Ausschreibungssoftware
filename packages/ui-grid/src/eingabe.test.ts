@@ -8,7 +8,10 @@ import type {
   LvZeile,
   Menge,
   Ordnungszahl,
+  Position,
   PositionId,
+  Positionsmerkmale,
+  Zuschlag,
   TitelId,
 } from '@tethys/vertrag';
 import { idQuelleAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
@@ -24,7 +27,7 @@ const position: LvZeile = {
     reihenfolge: 0,
     ordnungszahl: '01.0010' as Ordnungszahl,
     ozIndex: null,
-    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false }, // // v1.1b: mechanisch angepasst, Folgeticket
+    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
     zuschlag: null,
     kurztext: 'Bauzaun stellen',
     langtext: [],
@@ -65,6 +68,55 @@ describe('anzeigeText', () => {
     expect(anzeigeText(position, 'gesamtpreis', zahlenAttrappe)).toBe('644,43');
     expect(anzeigeText(titel, 'gesamtpreis', zahlenAttrappe)).toBe('1.000,00');
     expect(anzeigeText(titel, 'menge', zahlenAttrappe)).toBe('');
+  });
+});
+
+describe('Spalte „Art“', () => {
+  const ohne: Positionsmerkmale = {
+    bedarf: null,
+    wahl: null,
+    stundenlohn: false,
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+  const art = (merkmale: Partial<Positionsmerkmale>, zuschlag: Zuschlag | null = null): string => {
+    const knoten = position.knoten as Position;
+    const zeile: LvZeile = { ...position, knoten: { ...knoten, merkmale: { ...ohne, ...merkmale }, zuschlag } };
+    return anzeigeText(zeile, 'positionsart', zahlenAttrappe);
+  };
+
+  it('ohne Merkmal: Normal', () => {
+    expect(art({})).toBe('Normal');
+  });
+
+  it('Bedarf im Stundenlohn nennt beide Merkmale', () => {
+    expect(art({ bedarf: 'ohne-gesamtbetrag', stundenlohn: true })).toBe('Bedarf, Stundenlohn');
+  });
+
+  it('Bedarf mit Gesamtbetrag', () => {
+    expect(art({ bedarf: 'mit-gesamtbetrag' })).toBe('Bedarf m. GB');
+  });
+
+  it('Wahl mit Gruppe und Variante, nur Gruppe, ohne Nummern', () => {
+    expect(art({ wahl: { gruppe: 1, variante: 2, grundpositionId: null } })).toBe('Wahl 1.2');
+    expect(art({ wahl: { gruppe: 3, variante: null, grundpositionId: null } })).toBe('Wahl 3');
+    expect(art({ wahl: { gruppe: null, variante: null, grundpositionId: null } })).toBe('Wahl');
+  });
+
+  it('Zuschlag steht vorn; alle Merkmale in fester Reihenfolge, pauschal zuletzt', () => {
+    const zuschlag: Zuschlag = { prozentsatz: null, bezug: { art: 'gliederung' } };
+    expect(art({}, zuschlag)).toBe('Zuschlag');
+    expect(
+      art(
+        {
+          pauschal: true,
+          stundenlohn: true,
+          bedarf: 'mit-gesamtbetrag',
+          wahl: { gruppe: 2, variante: 0, grundpositionId: null },
+        },
+        zuschlag,
+      ),
+    ).toBe('Zuschlag, Wahl 2.0, Bedarf m. GB, Stundenlohn, pauschal');
   });
 });
 

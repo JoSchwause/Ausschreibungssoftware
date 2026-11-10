@@ -14,33 +14,36 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
 };
 
 /**
- * // v1.1b: mechanisch angepasst, Folgeticket: `vertrag` hat seit v1.1b keine einzelne Positionsart mehr. Die Spalte „Art“ zeigt weiter genau eine Art, die
- * sich aus den Merkmalen ergibt (Zuschlag vor Wahl vor Bedarf vor Stundenlohn). Das Folgeticket `ui-grid` zeigt alle Merkmale.
+ * Text der Spalte „Art“: alle gesetzten Merkmale einer Position in fester Reihenfolge (Zuschlag, Wahl, Bedarf,
+ * Stundenlohn, pauschal), getrennt durch „, “; ohne Merkmal „Normal“ (F5, E-05). Die Wahl nennt Gruppe und Variante,
+ * soweit bekannt (`Wahl 1.2`, nur Gruppe: `Wahl 1`). Das Zuschlagskennzeichen ist kein eigener Eintrag: Es ist eine
+ * Bezugsangabe, keine Art.
  */
-export type Anzeigeart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
-
-export function anzeigeart(p: Pick<Position, 'merkmale' | 'zuschlag'>): Anzeigeart {
-  if (p.zuschlag !== null) return 'zuschlag';
-  if (p.merkmale.wahl !== null) return 'wahl';
-  if (p.merkmale.bedarf !== null) return 'bedarf';
-  if (p.merkmale.stundenlohn) return 'stundenlohn';
-  return 'normal';
+export function artText(p: Pick<Position, 'merkmale' | 'zuschlag'>): string {
+  const { bedarf, wahl, stundenlohn, pauschal } = p.merkmale;
+  const teile: string[] = [];
+  if (p.zuschlag !== null) teile.push('Zuschlag');
+  if (wahl !== null) {
+    const nummer =
+      wahl.gruppe === null
+        ? ''
+        : wahl.variante === null
+          ? ` ${String(wahl.gruppe)}`
+          : ` ${String(wahl.gruppe)}.${String(wahl.variante)}`;
+    teile.push(`Wahl${nummer}`);
+  }
+  if (bedarf === 'ohne-gesamtbetrag') teile.push('Bedarf');
+  if (bedarf === 'mit-gesamtbetrag') teile.push('Bedarf m. GB');
+  if (stundenlohn) teile.push('Stundenlohn');
+  if (pauschal) teile.push('pauschal');
+  return teile.length === 0 ? 'Normal' : teile.join(', ');
 }
-
-export const ARTTEXT: Readonly<Record<Anzeigeart, string>> = {
-  normal: 'Normal',
-  bedarf: 'Bedarf',
-  wahl: 'Wahl',
-  zuschlag: 'Zuschlag',
-  stundenlohn: 'Stundenlohn',
-};
 
 export const texte = {
   standardBeschriftung: 'Leistungsverzeichnis',
   los: 'Los',
   titel: 'Titel',
   hinweis: 'Hinweis',
-  pauschal: 'pauschal',
   aufklappen: 'Aufklappen',
   zuklappen: 'Zuklappen',
   nichtInSumme: 'Geht nicht in die Summe ein',
@@ -75,4 +78,22 @@ export function meldungEingefuegt(positionen: number, ungueltig: number, uebersp
     );
   }
   return teile.join(', ') + '.';
+}
+
+/**
+ * Texte der Befehlshinweise (v1.1a, Punkt 10) je `Befehlshinweiscode`. Bewusst keine erschöpfende Tabelle über den
+ * Code-Typ: Ein neuer Code im Vertrag zeigt den allgemeinen Text, statt das Grid zu brechen. `oz-maske-ungueltig`
+ * kommt mit Vertrag v1.2.
+ */
+const BEFEHLSHINWEISTEXT: ReadonlyMap<string, string> = new Map([
+  ['oz-schritt-ausgewichen', 'Die Ordnungszahlen wurden mit kleinerem Schritt vergeben.'],
+  ['netto-nach-nachlass-negativ', 'Das Netto nach Nachlass ist negativ.'],
+  ['oz-maske-ungueltig', 'Die OZ-Maske ist ungültig.'],
+]);
+
+const BEFEHLSHINWEIS_ALLGEMEIN = 'Der Befehl wurde mit einem Hinweis ausgeführt.';
+
+/** Anzeigetext eines Befehlshinweises; `meldung` des Hinweises ist für Entwickler und wird nicht angezeigt. */
+export function befehlshinweisText(code: string): string {
+  return BEFEHLSHINWEISTEXT.get(code) ?? BEFEHLSHINWEIS_ALLGEMEIN;
 }
