@@ -96,6 +96,35 @@ describe('Paketgrenzen (A3)', () => {
     expect(verstoesse[0]).toContain('rechnen.ts');
   });
 
+  it('weist Produktivcode ab, der über eine Testhilfe zu Fixtures gelangt', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/prod.ts', "import './testhilfen';\nexport {};\n");
+    datei('packages/kern/src/testhilfen.ts', "import '../../../fixtures/a';\nexport {};\n");
+    datei('fixtures/a.ts', 'export {};\n');
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse.some((v) => v.startsWith('testhilfen-nur-in-tests') && v.includes('prod.ts'))).toBe(
+      true,
+    );
+  });
+
+  it('weist Produktivcode ab, der ein Verzeichnis testhilfe/ importiert', async () => {
+    paket('packages/speicher');
+    datei('packages/speicher/src/prod.ts', "import './testhilfe/x';\nexport {};\n");
+    datei('packages/speicher/src/testhilfe/x.ts', 'export {};\n');
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse.some((v) => v.startsWith('testhilfen-nur-in-tests'))).toBe(true);
+  });
+
+  it('erlaubt einer Testdatei, testhilfen zu importieren', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/a.test.ts', "import './testhilfen';\nexport {};\n");
+    datei('packages/kern/src/testhilfen.ts', "import '../../../fixtures/a';\nexport {};\n");
+    datei('fixtures/a.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+  });
+
   it('zählt Testhilfen (testhilfen.ts) zu den Testdateien', async () => {
     paket('packages/kern');
     paket('fixtures');
