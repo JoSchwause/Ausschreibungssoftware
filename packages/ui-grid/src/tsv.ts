@@ -67,3 +67,21 @@ export function parseTsv(text: string): string[][] {
   if (offen || zitiert || zelle !== '' || zeile.length > 0) zeilenEnde();
   return zeilen;
 }
+
+const BRAUCHT_ANFUEHRUNG = /[\t\r\n"]/;
+
+/**
+ * Schreibt eine Textmatrix so, wie Excel sie in die Zwischenablage legt: Zellen mit Tabulator, Zeilen mit `\r\n`,
+ * auch hinter der letzten Zeile. Zellen mit Tabulator, Zeilenumbruch oder `"` stehen in Anführung (`"` doppelt), damit
+ * Excel und `parseTsv` sie als eine Zelle lesen. Reine Funktion; Zahlen formatiert der Aufrufer (N4).
+ */
+export function schreibeTsv(matrix: readonly (readonly string[])[]): string {
+  return matrix
+    .map(
+      (zeile) =>
+        zeile
+          .map((zelle) => (BRAUCHT_ANFUEHRUNG.test(zelle) ? `"${zelle.replaceAll('"', '""')}"` : zelle))
+          .join('\t') + '\r\n',
+    )
+    .join('');
+}
