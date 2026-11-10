@@ -80,6 +80,16 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
   // v1.1a: mechanisch angepasst, Folgeticket
   LeistungsverzeichnisLoeschen: 'Folgeticket kern (Löschen, Vertrag v1.1a)',
+  KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  PapierkorbeintragWiederherstellen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  PapierkorbeintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  PapierkorbLeeren: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  LvStandAnlegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
+  AuftraggeberSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
+  VergabeinformationenSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
+  LeitbeschreibungSetzen: 'K8 (Ticket 41)', // v1.2: mechanisch angepasst, Folgeticket
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

@@ -59,5 +59,8 @@ export function idQuelleAttrappe(): GridIdQuelle {
       n += 1;
       return `neu-${String(n)}` as PositionId;
     },
+    // v1.2: mechanisch angepasst, Folgeticket (Ticket 46)
+    papierkorbeintrag: () =>
+      `papierkorb-${String((n += 1))}` as ReturnType<GridIdQuelle['papierkorbeintrag']>,
   };
 }

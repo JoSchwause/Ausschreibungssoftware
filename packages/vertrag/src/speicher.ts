@@ -2,11 +2,20 @@
 // Repository-Schnittstellen für `speicher` (S1), Befehlsprotokoll und Projektdatei. Nur Typen.
 
 import type { Befehl } from './befehle';
-import type { AngebotZustand, AuftragsLvZustand, ChangeSet, Ergebnis, LvZustand } from './changeset';
+import type {
+  AngebotZustand,
+  AuftragsLvZustand,
+  ChangeSet,
+  Ergebnis,
+  LvStand,
+  LvStandUebersicht,
+  LvZustand,
+} from './changeset';
 import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
   LeistungsverzeichnisId,
+  LvStandId,
   NutzerId,
   ProjektId,
   ProtokollId,
@@ -82,6 +91,9 @@ export interface Befehlskurzfassung {
  *
  * `befehl` ist der vollständige Befehl, bei einem Massenbefehl (`MASSENBEFEHLSARTEN`) die Kurzfassung (E-13). Der Typ
  * erzwingt das nicht; wer protokolliert (`speicher`), wählt die Kurzfassung für jeden Massenbefehl.
+ *
+ * v1.2: Auch `Rueckgaengig` und `Wiederholen` (`HistorienBefehl`) stehen hier, je ein eigener Eintrag (A5); ihr
+ * `aggregat` ist das des ursprünglichen Befehls. Kein neuer Typ für das Befehlsprotokoll nötig.
  */
 export interface Protokolleintrag {
   readonly id: ProtokollId;
@@ -135,6 +147,15 @@ export interface AngebotRepository {
   laden(id: AngebotId): Promise<Ergebnis<AngebotZustand, Speicherfehler>>;
 }
 
+/** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
+export interface LvStandRepository {
+  /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
+  auflisten(
+    leistungsverzeichnisId: LeistungsverzeichnisId,
+  ): Promise<Ergebnis<readonly LvStandUebersicht[], Speicherfehler>>;
+  laden(id: LvStandId): Promise<Ergebnis<LvStand, Speicherfehler>>;
+}
+
 /** Zustand der Persistenz des Browser-Speichers (Spec §9). */
 export interface Persistenzstatus {
   readonly angefragt: boolean;
@@ -155,6 +176,11 @@ export interface Speicher {
   readonly projekte: ProjektRepository;
   readonly leistungsverzeichnisse: LvRepository;
   readonly angebote: AngebotRepository;
+  /**
+   * LV-Stände (v1.2). Optional, damit `speicher` ohne Änderung übersetzt; Pflicht, sobald Ticket 43 es liefert
+   * (Offene Typfrage, Ticket 29). Fehlt es, weist `anwenden` ein ChangeSet mit `lvStand` mit `unbekannt` ab.
+   */
+  readonly lvStaende?: LvStandRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -186,4 +212,6 @@ export interface Projektdatei {
   readonly angebote: readonly AngebotZustand[];
   readonly auftragsLeistungsverzeichnisse: readonly AuftragsLvZustand[];
   readonly protokoll: readonly Protokolleintrag[];
+  /** LV-Stände aller LVs des Projekts (v1.2, S3). Fehlt: keine. Das Schema dafür liefert Ticket 43 (A8). */
+  readonly lvStaende?: readonly LvStand[];
 }

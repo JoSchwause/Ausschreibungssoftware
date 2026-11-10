@@ -76,6 +76,14 @@ Reason: Hält die Fixture-Helfer in fünf Paketen grün; P2 (ui-grid importiert 
 Reversible: yes  Touches: packages/kern, packages/vergabe, packages/ui-grid, fixtures/
 Annahme für Demo, Mensch bestätigt später (E-03: Teilmengen, `AllInCat`).
 
+## D-29.1 Enge Lesarten im Vertrag v1.2
+Welle 3 · Ticket 29 · decided by: implementer
+Question: Wo lässt Ticket 29 die Typform offen?
+Decision: Angebotsposition mit `zuschlagssatz` behält einen Pflicht-EP (Platzhalter `0.000`, nie gerechnet); `KnotenEinfuegen` ist kein Massenbefehl; `Speicher.lvStaende` optional; LV-Stand nur anlegen (kein Umbenennen, Löschen, Zurückschreiben); die Lage der Wurzeln in `KnotenEinfuegen` setzt der Kern; der Papierkorb steht nicht in `LvInhalt`; `Rueckgaengig`/`Wiederholen` nennen den ursprünglichen Befehl; Kopfdaten-Befehle setzen den ganzen Wert. Alternativen als Offene Typfragen 1–8 in Ticket 29.
+Reason: Additiv, umkehrbar, kein stiller Datenverlust in `speicher` (Leitlinie aus Ticket 24/26).
+Reversible: yes  Touches: packages/vertrag
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-04).
+
 ## D-35a Sprachdetails des freien Rechenansatzes (Formel 91)
 Welle 3 · Ticket 35 · decided by: implementer
 Question: Was die Ticketbeschreibung der Ausdruckssprache offen lässt.
@@ -98,10 +106,16 @@ Decision: Neue Angebotspositionen werden hinten angehängt, geänderte bleiben a
 Reason: kleinste umkehrbare Form; entspricht dem Kern seit v1.1a.
 Reversible: yes  Touches: packages/vergabe
 
+## D-12 Review-Korrekturen am Vertrag v1.2
+Welle 3 · Ticket 29 (Folge: 42, 43, 46, 48, 49) · decided by: orchestrator
+Question: Der Opus-Review von Ticket 29 (D-04 statt P9) ergab „ja mit Korrekturen“.
+Decision: (1) Der Papierkorb liegt am Zustand (`LvZustand.papierkorb?`), nicht am LV oder LV-Kopf; `LvStand` und `Projektdatei` tragen ihn über `LvZustand`. (2) Bezüge (Zuschlags-`Bezugsposition`, `wahl.grundpositionId`) auf Positionen im Papierkorb bleiben stehen und zählen nichts, solange das Ziel im Papierkorb liegt; `PapierkorbeintragEntfernen`/`PapierkorbLeeren` entfernen die dann hängenden Bezüge über `knoten.geaendert` im selben ChangeSet. (3) `Papierkorbeintrag.nummer: number` (der Kern vergibt Höchstwert + 1, keine Uhr; Reihenfolge des Hineinlegens), damit die Umkehrung des Entfernens den Platz aus dem ChangeSet allein kennt. (4) `LeistungsverzeichnisLoeschen` wird mit `konflikt` abgewiesen, solange LV-Stände bestehen; ein Wiederholen von `LvStandAnlegen` friert neu ein (neues `angelegt`). (5) Schreibweise nach Glossar in einem Wort: `Papierkorbeintrag`, `PapierkorbeintragId`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `IdQuelle.papierkorbeintrag()`. (6) Glossar: ein Eintrag „Zuschlagssatz“ für LV (`Zuschlag.prozentsatz`) und Angebot (`Angebotsposition.zuschlagssatz`). (7) Platzhalter-EP: wer `zuschlagssatz` nicht auswertet, darf die Position nicht rechnen. (8) `PapierkorbeintragEntfernen`/`PapierkorbLeeren` geben `konflikt`, solange eine Angebotsposition auf eine Position im Eintrag verweist (Q5). (9) Eine Befehlsfolge wird mit je einem `Rueckgaengig` je Befehl in umgekehrter Reihenfolge zurückgenommen.
+Reason: Kopf-ChangeSets bleiben frei vom Papierkorb; kein stiller Datenverlust (Q5); Umkehrbarkeit allein aus dem ChangeSet; L1/L2.
+Reversible: yes  Touches: packages/vertrag, packages/kern, packages/speicher, packages/gaeb, packages/ui-grid (eine Zeile), GLOSSARY.md, Tickets 42, 43, 46, 48, 49
+
 ## D-T34 Langtext-Editor: Tabellen-Plugins aus, leere Listen/Tabellen offen
 Welle 3 · Ticket 34 · decided by: implementer
 Question: prosemirror-tables füllt beim Bearbeiten ungleich lange Zeilen auf (`fixTables`); leere Listen/Tabellen sind im Typ erlaubt, im Schema nicht.
 Decision: Tabellen-Plugins abgeschaltet (Tab wechselt nur die Zelle). Leere Liste/Tabelle/Zeile wird nicht erzeugt und als offene Typfrage für `vertrag`/G2 gemeldet, nicht geändert. Übrige Kleinentscheidungen in Ticket 34, Comments.
 Reason: Kein stilles Ändern des Langtexts (Q5); `vertrag` ändert nur ein eigenes Ticket (A4).
 Reversible: yes  Touches: packages/ui-basis
-

@@ -63,9 +63,9 @@ eine Zelle, Alt+Pfeil links/rechts klappt, Leertaste wählt die Zeile, E-18):
    readonly LvBefehl[]) => void`: Einfügen mehrerer Zeilen aus Excel geht als **eine** Folge hinaus, damit die App sie als
    einen Undo-Schritt führt (48). Fehlt die Eigenschaft, gehen die Befehle einzeln über `onBefehl`, wie heute.
 7. **Kennungen.** Für `KnotenInPapierkorbLegen` braucht das Grid eine Papierkorb-Eintragskennung (Ticket 29:
-   `IdQuelle.papierkorbEintrag()`). Ist `GridIdQuelle` im Vertrag nach Ticket 29/33 noch `Pick<IdQuelle, 'position'>`,
-   nimmt die Eigenschaft `ids` den nötigen Ausschnitt der vertraglichen `IdQuelle` (`Pick<IdQuelle, 'position' |
-   'papierkorbEintrag'>`); keine zweite ID-Quelle. Die Abweichung vom Vertragstyp steht als Lücke in den Comments.
+   `IdQuelle.papierkorbeintrag()`). Seit Ticket 29 (D-10 (4), D-12) ist `GridIdQuelle` im Vertrag
+   `Pick<IdQuelle, 'position' | 'papierkorbeintrag'>`; die Eigenschaft `ids` nimmt genau diesen Typ, keine zweite
+   ID-Quelle.
 8. **Sprungziel für Prüf-Links** (U6, für Ticket 47/48): Eigenschaft (Vorschlag) `sprungziel?: { knotenId: KnotenId;
    spalte?: LvSpalte; nr: number }`; ändert sich `nr`, scrollt das Grid die Zeile in den sichtbaren Bereich (virtualisiert)
    und setzt den Fokus auf die Zelle. Ist die Zeile nicht sichtbar, weil ein Vorfahr zugeklappt ist, tut das Grid nichts;

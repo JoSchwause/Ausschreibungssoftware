@@ -63,6 +63,33 @@ import {
   type Speicherfehlercode,
   type Summenaenderung,
   type WurzelId,
+  type Aenderungen,
+  type Auftraggeber,
+  type AuftraggeberSetzen,
+  type Einfuegeort,
+  type HistorienBefehl,
+  type KnotenEinfuegen,
+  type KnotenInPapierkorbLegen,
+  type KnotenlisteVerschieben,
+  type Leistungsverzeichnis,
+  type LvKopf,
+  type Leitbeschreibung,
+  type LeitbeschreibungSetzen,
+  type LvStand,
+  type LvStandAnlegen,
+  type LvStandId,
+  type LvStandKopf,
+  type LvStandRepository,
+  type LvStandUebersicht,
+  type Papierkorbeintrag,
+  type PapierkorbeintragId,
+  type PapierkorbeintragWiederherstellen,
+  type Projektdatei,
+  type ProtokollId,
+  type Rueckgaengig,
+  type Vergabeinformationen,
+  type VergabeinformationenSetzen,
+  type Wiederholen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -82,6 +109,14 @@ import {
   beispielLoeschbefehle,
   beispielLoeschChangeSet,
   beispielLv,
+  beispielAngebotspositionMitZuschlagssatz,
+  beispielChangeSetHineinlegen,
+  beispielChangeSetPapierkorbeintragEntfernen,
+  beispielSummenMitBedarfUndWahl,
+  beispielChangeSetWiederherstellen,
+  beispielKnotenEinfuegen,
+  beispielLvStandChangeSet,
+  beispielProtokollRueckgaengig,
 } from './beispiele';
 
 /**
@@ -487,7 +522,8 @@ describe('v1.1a Punkt 7: Ränder des Grids', () => {
     expectTypeOf<GridZahlen['parseMenge']>().returns.toEqualTypeOf<Ergebnis<Menge, string>>();
     expectTypeOf<GridZahlen['parseEinheitspreis']>().returns.toEqualTypeOf<Ergebnis<Einheitspreis, string>>();
     expectTypeOf<GridZahlen['formatBetrag']>().parameter(0).toEqualTypeOf<Betrag>();
-    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position'>>();
+    // v1.2 (D-10 (4)): das Grid legt auch Papierkorbeinträge an (`KnotenInPapierkorbLegen`, Ticket 46).
+    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position' | 'papierkorbeintrag'>>();
     expectTypeOf<IdQuelle>().toExtend<GridIdQuelle>();
   });
 });
@@ -516,5 +552,222 @@ describe('v1.1a Punkt 10: Hinweise aus Befehlen', () => {
     expectTypeOf<'netto-nach-nachlass-negativ'>().not.toExtend<Befehlsfehlercode>();
     expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
     expect(beispielChangeSetMitHinweis.hinweise?.[0]?.code).toBe('netto-nach-nachlass-negativ');
+  });
+});
+
+// --- v1.2 (Ticket 29) ---------------------------------------------------------------------------------------------
+
+/**
+ * Umkehrung ab v1.2: wie `umkehren`, dazu der Papierkorb und der LV-Stand. Fehlt ein Feld im ChangeSet, fehlt es auch
+ * in der Umkehrung (Werte vor v1.2 bleiben unverändert).
+ */
+function umkehrenV12(cs: LvChangeSet): LvChangeSet {
+  const basis = umkehren(cs);
+  const p = cs.papierkorb;
+  const s = cs.lvStand;
+  return {
+    ...basis,
+    ...(p === undefined
+      ? {}
+      : {
+          papierkorb: {
+            hinzugefuegt: p.entfernt,
+            geaendert: p.geaendert.map((g) => ({ vorher: g.nachher, nachher: g.vorher })),
+            entfernt: p.hinzugefuegt,
+          },
+        }),
+    ...(s === undefined ? {} : { lvStand: { vorher: s.nachher, nachher: s.vorher } }),
+  };
+}
+
+describe('v1.2 Nr. 1: Zuschlagssatz des Bieters', () => {
+  it('nur die Variante `angeboten` trägt einen optionalen Zuschlagssatz', () => {
+    type Angeboten = Extract<Angebotsposition, { status: 'angeboten' }>;
+    expectTypeOf<Angeboten['zuschlagssatz']>().toEqualTypeOf<Prozent | undefined>();
+    expectTypeOf<Angeboten['einheitspreis']>().toEqualTypeOf<Einheitspreis>();
+    expectTypeOf<Extract<Angebotsposition, { status: 'nicht-angeboten' }>>().not.toHaveProperty(
+      'zuschlagssatz',
+    );
+    const p = beispielAngebotspositionMitZuschlagssatz;
+    expect(p.status === 'angeboten' ? p.zuschlagssatz : null).toBe('5.00');
+  });
+});
+
+describe('v1.2 Nr. 3: Maskenbefund am Befehl', () => {
+  it('der Hinweiscode oz-maske-ungueltig ist ein Hinweis, kein Fehler', () => {
+    expectTypeOf<'oz-maske-ungueltig'>().toExtend<Befehlshinweiscode>();
+    expectTypeOf<'oz-maske-ungueltig'>().not.toExtend<Befehlsfehlercode>();
+  });
+});
+
+describe('v1.2 Nr. 4: Kopieren, Verschieben, Papierkorb (K9)', () => {
+  it('die neuen LV-Befehle stehen in LvBefehl', () => {
+    type Neu =
+      | 'KnotenEinfuegen'
+      | 'KnotenlisteVerschieben'
+      | 'KnotenInPapierkorbLegen'
+      | 'PapierkorbeintragWiederherstellen'
+      | 'PapierkorbeintragEntfernen'
+      | 'PapierkorbLeeren';
+    expectTypeOf<Neu>().toExtend<LvBefehl['art']>();
+    expectTypeOf<KnotenEinfuegen['knoten']>().toEqualTypeOf<readonly Knoten[]>();
+    expectTypeOf<KnotenlisteVerschieben['knotenIds']>().toEqualTypeOf<readonly KnotenId[]>();
+    expectTypeOf<KnotenInPapierkorbLegen['eintragId']>().toEqualTypeOf<PapierkorbeintragId>();
+    expectTypeOf<PapierkorbeintragWiederherstellen['ort']>().toEqualTypeOf<Einfuegeort | null>();
+  });
+
+  it('KnotenEinfuegen: ein Titel mit zwei Positionen, Eltern vor Kindern', () => {
+    const b = beispielKnotenEinfuegen;
+    expect(b.knoten.map((k) => k.art)).toEqual(['titel', 'position', 'position']);
+    const ids = new Set<string>(b.knoten.map((k) => k.id));
+    // genau eine Wurzel des Teilbaums: der Titel; die Positionen hängen an ihm
+    expect(b.knoten.filter((k) => !ids.has(k.elternId))).toHaveLength(1);
+    expect(b.knoten.slice(1).every((k) => k.elternId === b.knoten[0]?.id)).toBe(true);
+  });
+
+  it('der Papierkorb liegt am Zustand, nicht am LV oder Kopf, und ist ohne Feld leer (D-12)', () => {
+    expectTypeOf<LvZustand['papierkorb']>().toEqualTypeOf<readonly Papierkorbeintrag[] | undefined>();
+    expectTypeOf<Leistungsverzeichnis>().not.toHaveProperty('papierkorb');
+    expectTypeOf<LvKopf>().not.toHaveProperty('papierkorb');
+    expectTypeOf<LvStand['zustand']['papierkorb']>().toEqualTypeOf<
+      readonly Papierkorbeintrag[] | undefined
+    >();
+    expectTypeOf<Papierkorbeintrag['knoten']>().toEqualTypeOf<readonly Knoten[]>();
+    expectTypeOf<Papierkorbeintrag['nummer']>().toEqualTypeOf<number>();
+    expectTypeOf<LvChangeSet['papierkorb']>().toEqualTypeOf<Aenderungen<Papierkorbeintrag> | undefined>();
+  });
+
+  it('Entfernen eines Eintrags nimmt hängende Bezüge mit; die Umkehrung stellt Eintrag (mit Nummer) und Bezug her', () => {
+    const e = beispielChangeSetPapierkorbeintragEntfernen;
+    expect(e.papierkorb?.entfernt.map((p) => p.nummer)).toEqual([1]);
+    expect(e.knoten.entfernt).toHaveLength(0);
+    const bezugVorher = e.knoten.geaendert[0]?.vorher;
+    const bezugNachher = e.knoten.geaendert[0]?.nachher;
+    const bezuege = (k: Knoten | undefined): unknown =>
+      k?.art === 'position' && k.zuschlag?.bezug.art === 'positionen'
+        ? k.zuschlag.bezug.positionen.map((b) => b.positionId)
+        : null;
+    expect(bezuege(bezugVorher)).toContain(e.papierkorb?.entfernt[0]?.knoten[0]?.id);
+    expect(bezuege(bezugNachher)).not.toContain(e.papierkorb?.entfernt[0]?.knoten[0]?.id);
+    const zurueck = umkehrenV12(e);
+    expect(zurueck.papierkorb?.hinzugefuegt).toEqual(e.papierkorb?.entfernt);
+    expect(zurueck.knoten.geaendert[0]?.nachher).toEqual(bezugVorher);
+    expect(umkehrenV12(zurueck)).toEqual(e);
+  });
+
+  it('Hineinlegen und Wiederherstellen sind Umkehrungen voneinander, allein aus dem ChangeSet', () => {
+    expect(umkehrenV12(beispielChangeSetHineinlegen)).toEqual(beispielChangeSetWiederherstellen);
+    expect(umkehrenV12(beispielChangeSetWiederherstellen)).toEqual(beispielChangeSetHineinlegen);
+    expect(umkehrenV12(umkehrenV12(beispielChangeSetHineinlegen))).toEqual(beispielChangeSetHineinlegen);
+  });
+
+  it('Hineinlegen: Knoten aus dem Baum, ein Eintrag mit alter Lage; die Summe der Position fällt weg', () => {
+    const h = beispielChangeSetHineinlegen;
+    const eintrag = h.papierkorb?.hinzugefuegt[0];
+    expect(h.knoten.entfernt).toEqual(eintrag?.knoten);
+    expect(eintrag?.knoten[0]?.reihenfolge).toBe(1);
+    expect(h.summen.positionen).toHaveLength(0);
+    expect(h.summen.vorher?.entfernt.positionen).toHaveLength(1);
+    const w = beispielChangeSetWiederherstellen;
+    expect(w.knoten.hinzugefuegt).toEqual(eintrag?.knoten);
+    expect(w.papierkorb?.entfernt).toEqual([eintrag]);
+  });
+});
+
+describe('v1.2 Nr. 5: Rückgängig, Wiederholen, LV-Stand (S3)', () => {
+  it('Rückgängig und Wiederholen sind Befehle, aber keine LV-Befehle', () => {
+    expectTypeOf<HistorienBefehl>().toExtend<Befehl>();
+    expectTypeOf<HistorienBefehl['art']>().toEqualTypeOf<'Rueckgaengig' | 'Wiederholen'>();
+    expectTypeOf<'Rueckgaengig' | 'Wiederholen'>().not.toExtend<LvBefehl['art']>();
+    expectTypeOf<Rueckgaengig['protokollId']>().toEqualTypeOf<ProtokollId>();
+    expectTypeOf<Wiederholen['protokollId']>().toEqualTypeOf<ProtokollId>();
+    expect(beispielProtokollRueckgaengig.befehl.art).toBe('Rueckgaengig');
+  });
+
+  it('LV-Stand: Kopf, unveränderlicher Stand, Übersicht ohne Zustand', () => {
+    expectTypeOf<LvStand['zustand']>().toEqualTypeOf<LvZustand>();
+    expectTypeOf<LvStand['angelegt']>().toEqualTypeOf<Zeitstempel>();
+    expectTypeOf<LvStand>().toExtend<LvStandKopf>();
+    expectTypeOf<LvStandUebersicht>().not.toHaveProperty('zustand');
+    expectTypeOf<LvStandAnlegen['id']>().toEqualTypeOf<LvStandId>();
+    expectTypeOf<'LvStandAnlegen'>().toExtend<LvBefehl['art']>();
+    expectTypeOf<LvChangeSet['lvStand']>().toEqualTypeOf<Aenderung<LvStandKopf> | undefined>();
+  });
+
+  it('ChangeSet von LvStandAnlegen: nur der neue Kopf, umkehrbar zum Entfallen des Stands', () => {
+    const cs = beispielLvStandChangeSet;
+    expect(cs.lvStand?.vorher).toBeNull();
+    expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
+    const zurueck = umkehrenV12(cs);
+    expect(zurueck.lvStand?.nachher).toBeNull();
+    expect(umkehrenV12(zurueck)).toEqual(cs);
+  });
+
+  it('Speicher und Projektdatei kennen LV-Stände (optional bis Ticket 43)', () => {
+    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository | undefined>();
+    expectTypeOf<Projektdatei['lvStaende']>().toEqualTypeOf<readonly LvStand[] | undefined>();
+    expectTypeOf<ReturnType<LvStandRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<LvStand, Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<LvStandRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly LvStandUebersicht[], Speicherfehler>>
+    >();
+  });
+});
+
+describe('v1.2 Nr. 6: Kennungen', () => {
+  it('IdQuelle liefert Papierkorbeinträge und LV-Stände; die Marken sind nicht austauschbar', () => {
+    expectTypeOf<ReturnType<IdQuelle['papierkorbeintrag']>>().toEqualTypeOf<PapierkorbeintragId>();
+    expectTypeOf<ReturnType<IdQuelle['lvStand']>>().toEqualTypeOf<LvStandId>();
+    expectTypeOf<PapierkorbeintragId>().not.toExtend<KnotenId>();
+    expectTypeOf<LvStandId>().not.toExtend<LeistungsverzeichnisId>();
+    expectTypeOf<string>().not.toExtend<LvStandId>();
+  });
+});
+
+describe('v1.2 Nr. 8: Kopfdaten bearbeiten', () => {
+  it('je ein Befehl mit dem ganzen neuen Wert, null entfernt', () => {
+    expectTypeOf<'AuftraggeberSetzen' | 'VergabeinformationenSetzen' | 'LeitbeschreibungSetzen'>().toExtend<
+      LvBefehl['art']
+    >();
+    expectTypeOf<AuftraggeberSetzen['auftraggeber']>().toEqualTypeOf<Auftraggeber | null>();
+    expectTypeOf<
+      VergabeinformationenSetzen['vergabeinformationen']
+    >().toEqualTypeOf<Vergabeinformationen | null>();
+    expectTypeOf<LeitbeschreibungSetzen['leitbeschreibung']>().toEqualTypeOf<Leitbeschreibung | null>();
+    expectTypeOf<LeitbeschreibungSetzen['positionId']>().toEqualTypeOf<PositionId>();
+  });
+});
+
+describe('v1.2: reine Daten und Werte vor v1.2', () => {
+  it('NurDaten deckt die neuen Befehle, ChangeSets, LV-Stände und den Papierkorb ab', () => {
+    expectTypeOf<NurDaten<HistorienBefehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<KnotenEinfuegen>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Papierkorbeintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvStand>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
+  });
+
+  it('Angebotsposition ohne Zuschlagssatz, Zustand ohne Papierkorb, ChangeSet ohne Papierkorb und LV-Stand bleiben gültig', () => {
+    const alt: Angebotsposition = {
+      positionId: '019b76e9-0000-7000-8000-000000000003' as PositionId,
+      status: 'angeboten',
+      einheitspreis: '10.000' as Einheitspreis,
+      epa: null,
+    };
+    const zustand: LvZustand = {
+      leistungsverzeichnis: beispielLv,
+      summen: { positionen: [], gliederungen: [], gesamt: beispielSummenMitBedarfUndWahl },
+    };
+    const cs: LvChangeSet = beispielChangeSet;
+    expect('zuschlagssatz' in alt).toBe(false);
+    expect(zustand.papierkorb).toBeUndefined();
+    expect(cs.papierkorb).toBeUndefined();
+    expect(cs.lvStand).toBeUndefined();
+    // die Umkehrung ab v1.2 erfindet keine Felder
+    expect(Object.keys(umkehrenV12(cs))).not.toContain('papierkorb');
+    expect(Object.keys(umkehrenV12(cs))).not.toContain('lvStand');
   });
 });

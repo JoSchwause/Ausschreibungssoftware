@@ -12,24 +12,31 @@ import type {
   HinweistextId,
   KnotenId,
   LeistungsverzeichnisId,
+  LvStandId,
   Ordnungszahl,
+  PapierkorbeintragId,
   PositionId,
   ProjektId,
+  ProtokollId,
 } from './marken';
 import type {
   Angebot,
   Angebotsposition,
+  Auftraggeber,
   AuftragsLeistungsverzeichnis,
   Bauherr,
   Bieter,
   Einheit,
   Einheitspreisanteile,
+  Knoten,
   Langtext,
+  Leitbeschreibung,
   LvInhalt,
   Nachlass,
   OzMaske,
   Positionsdaten,
   Positionsmerkmale,
+  Vergabeinformationen,
   Zuschlag,
 } from './modell';
 import type { Einheitspreis, Menge, Prozent } from './zahlen';
@@ -85,6 +92,10 @@ export type ProjektBefehl = ProjektAnlegen | ProjektStammdatenSetzen | BieterAnl
  * Vorläufige Annahme, Entscheidung offen (enge Lesart): `id` ist maßgeblich. Weicht `inhalt.wurzelId` davon ab, weist
  * der Kern den Befehl mit `ungueltige-eingabe` und `feld: 'inhalt.wurzelId'` ab; ebenso Knoten der obersten Ebene, deren
  * `elternId` nicht `id` ist. Alternative (Offene Typfrage H, Ticket 24): `id` aus dem Befehl streichen.
+ *
+ * v1.2: Eine Maske, die der Kern beanstandet, weist den Befehl nicht ab (U5, GAEB-Import); der Kern nimmt sie an und
+ * meldet den Befund als Hinweis `oz-maske-ungueltig` (`Befehlshinweis`, Ticket 30). Eine leere Einheit (`''`) in den
+ * Knoten legt der Kern als `null` ab (siehe `Einheit`).
  */
 export interface LeistungsverzeichnisAnlegen {
   readonly art: 'LeistungsverzeichnisAnlegen';
@@ -103,6 +114,9 @@ export interface LeistungsverzeichnisUmbenennen {
  * Wiederherstellung per Undo oder LV-Stand regelt S3). Das ChangeSet trägt den vollen Stand: `kopf.vorher`, alle
  * Knoten unter `knoten.entfernt`, alle Summen unter `summen.vorher.entfernt`; `kopf.nachher` ist `null`.
  * Angebote und Auftrags-LV zu diesem LV löscht der Befehl nicht; `speicher` weist mit `konflikt` ab, solange sie bestehen.
+ *
+ * v1.2: Hat das LV einen Papierkorb, stehen dessen Einträge unter `papierkorb.entfernt` (voller Stand, wie die
+ * Knoten). Bestehen LV-Stände des LV, weist `speicher` mit `konflikt` ab wie bei Angeboten (D-12).
  */
 export interface LeistungsverzeichnisLoeschen {
   readonly art: 'LeistungsverzeichnisLoeschen';
@@ -138,7 +152,10 @@ export interface HinweistextAnlegen {
   readonly text: Langtext;
 }
 
-/** Löscht den Knoten und rekursiv alle Unterknoten. */
+/**
+ * Löscht den Knoten und rekursiv alle Unterknoten, endgültig (Umkehrung des Einfügens, Undo). v1.2: Die Oberfläche
+ * löscht nicht hierüber, sondern über den Papierkorb (`KnotenInPapierkorbLegen`, U5).
+ */
 export interface KnotenLoeschen {
   readonly art: 'KnotenLoeschen';
   readonly knotenId: KnotenId;
@@ -149,6 +166,98 @@ export interface KnotenVerschieben {
   readonly art: 'KnotenVerschieben';
   readonly knotenId: KnotenId;
   readonly ziel: Einfuegeort;
+}
+
+// --- Kopieren, Verschieben, Papierkorb (v1.2, K9) -----------------------------------------------------------
+
+/**
+ * Fügt einen oder mehrere Teilbäume ein (v1.2, K9): Kopieren im LV, Einfügen aus einem anderen LV oder aus der
+ * Zwischenablage. Alle Kennungen bringt der Aufrufer neu mit (A2, A7).
+ *
+ * `knoten` ist flach, Eltern vor Kindern. Knoten, deren `elternId` nicht in der Liste vorkommt, sind die Wurzeln der
+ * Teilbäume: Sie landen in Listenreihenfolge hintereinander am `ort`; ihre `elternId` und `reihenfolge` setzt der Kern
+ * (die mitgebrachten Werte zählen dort nicht). Innerhalb eines Teilbaums gelten `elternId` und `reihenfolge` wie
+ * mitgebracht. Ob Ordnungszahlen übernommen oder neu vergeben werden, entscheidet K9 (Ticket 42). Eine leere
+ * Einheit (`''`) legt der Kern als `null` ab (siehe `Einheit`).
+ *
+ * Die Kopie samt umgebogener Bezüge innerhalb der kopierten Menge (Zuschlagsbezug, `wahl.grundpositionId`) baut eine
+ * reine Hilfsfunktion des Kerns aus Quellknoten und neuen Kennungen (Ticket 42); der Befehl trägt nur das Ergebnis.
+ * Kein Massenbefehl (Offene Typfrage, Ticket 29: lange Kopien verkürzt protokollieren).
+ */
+export interface KnotenEinfuegen {
+  readonly art: 'KnotenEinfuegen';
+  readonly ort: Einfuegeort;
+  readonly knoten: readonly Knoten[];
+}
+
+/**
+ * Verschiebt eine Mehrfachauswahl als **ein** Befehl (ein Undo-Schritt; v1.2, K9): die Knoten samt Unterbäumen in
+ * Listenreihenfolge hintereinander am `ziel`. `KnotenVerschieben` bleibt für den einzelnen Knoten.
+ */
+export interface KnotenlisteVerschieben {
+  readonly art: 'KnotenlisteVerschieben';
+  readonly knotenIds: readonly KnotenId[];
+  readonly ziel: Einfuegeort;
+}
+
+/**
+ * Nimmt die Knoten samt Unterbäumen aus dem Baum und legt sie als **einen** Papierkorbeintrag ab (v1.2, K9). Die
+ * Kennung des Eintrags bringt der Aufrufer mit (`IdQuelle.papierkorbeintrag`), die `nummer` vergibt der Kern
+ * (Höchstwert + 1, D-12). Bezüge anderer Knoten auf die Positionen bleiben stehen (siehe `Papierkorbeintrag`). ChangeSet: `knoten.entfernt` und
+ * `papierkorb.hinzugefuegt`; die Summen der Knoten stehen in `summen.vorher.entfernt`.
+ */
+export interface KnotenInPapierkorbLegen {
+  readonly art: 'KnotenInPapierkorbLegen';
+  readonly eintragId: PapierkorbeintragId;
+  readonly knotenIds: readonly KnotenId[];
+}
+
+/**
+ * Holt einen Papierkorbeintrag zurück in den Baum (v1.2, K9). `ort: null` heißt an die alte Stelle (die Lage, die die
+ * Knoten im Eintrag tragen); sonst wie bei `KnotenEinfuegen` hintereinander am `ort`. Die Kennungen bleiben
+ * (Positionsidentität, ADR 0011). ChangeSet: `knoten.hinzugefuegt` und `papierkorb.entfernt`.
+ */
+export interface PapierkorbeintragWiederherstellen {
+  readonly art: 'PapierkorbeintragWiederherstellen';
+  readonly eintragId: PapierkorbeintragId;
+  readonly ort: Einfuegeort | null;
+}
+
+/**
+ * Entfernt einen Papierkorbeintrag endgültig (v1.2, K9). Unumkehrbar im Sinne von Q5: Bestätigung in der Oberfläche,
+ * abgesichert durch Undo und LV-Stand. ChangeSet: `papierkorb.entfernt`, dazu die Knoten im Baum, deren Bezüge auf
+ * eine Position des Eintrags nun entfernt werden, unter `knoten.geaendert` (D-12, siehe `Papierkorbeintrag`).
+ *
+ * Verweist noch eine Angebotsposition auf eine Position des Eintrags, weist `speicher` mit `konflikt` ab (Q5, D-12):
+ * Die Angebotsposition würde sonst still ihre Position verlieren.
+ */
+export interface PapierkorbeintragEntfernen {
+  readonly art: 'PapierkorbeintragEntfernen';
+  readonly eintragId: PapierkorbeintragId;
+}
+
+/**
+ * Entfernt alle Papierkorbeinträge endgültig (v1.2, K9). ChangeSet, Q5 und `konflikt` bei Angebotspositionen wie
+ * `PapierkorbeintragEntfernen`, für alle Einträge zugleich.
+ */
+export interface PapierkorbLeeren {
+  readonly art: 'PapierkorbLeeren';
+}
+
+// --- LV-Stand (v1.2, S3; ADR 0006) ---------------------------------------------------------------------------
+
+/**
+ * Friert den gespeicherten Stand des LV als unveränderlichen LV-Stand ein (v1.2, S3). ChangeSet: nur
+ * `lvStand: { vorher: null, nachher: LvStandKopf }`; den Zustand selbst kopiert `speicher` in derselben Transaktion,
+ * `angelegt` ist `Protokolleintrag.wann`. Kein Umbenennen, kein Zurückschreiben in das bestehende LV (Offene
+ * Typfrage, Ticket 29); ein LV aus einem Stand zurückholen geht über `LeistungsverzeichnisAnlegen` mit dessen Inhalt.
+ * Den Handler liefert Ticket 42 (K9), das Einfrieren Ticket 43 (S3). Ein `Wiederholen` nach dem Rückgängigmachen
+ * friert neu ein (der dann gespeicherte Stand, neues `angelegt`; D-12).
+ */
+export interface LvStandAnlegen {
+  readonly art: 'LvStandAnlegen';
+  readonly id: LvStandId;
+  readonly name: string;
 }
 
 // --- Felder ändern (Tickets 07, 21) -----------------------------------------------------------------------
@@ -181,6 +290,7 @@ export interface MengeAendern {
 export interface EinheitAendern {
   readonly art: 'EinheitAendern';
   readonly positionId: PositionId;
+  /** `null`: Einheit leeren. `''` ist erlaubt (Grid-Eingabe); der Kern legt dafür `null` ab (v1.2, siehe `Einheit`). */
   readonly einheit: Einheit | null;
 }
 
@@ -208,6 +318,27 @@ export interface PositionsmerkmaleSetzen {
   readonly merkmale: Positionsmerkmale;
   /** `null`: keine Zuschlagsposition. */
   readonly zuschlag: Zuschlag | null;
+}
+
+// --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
+
+/** Setzt den Auftraggeber des LV als ganzen Wert; `null` entfernt ihn (das Feld fehlt danach am LV). */
+export interface AuftraggeberSetzen {
+  readonly art: 'AuftraggeberSetzen';
+  readonly auftraggeber: Auftraggeber | null;
+}
+
+/** Setzt die Vergabeinformationen des LV als ganzen Wert; `null` entfernt sie (das Feld fehlt danach am LV). */
+export interface VergabeinformationenSetzen {
+  readonly art: 'VergabeinformationenSetzen';
+  readonly vergabeinformationen: Vergabeinformationen | null;
+}
+
+/** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
+export interface LeitbeschreibungSetzen {
+  readonly art: 'LeitbeschreibungSetzen';
+  readonly positionId: PositionId;
+  readonly leitbeschreibung: Leitbeschreibung | null;
 }
 
 // --- Ordnungszahl (Ticket 06) -----------------------------------------------------------------------------
@@ -271,7 +402,18 @@ export type LvBefehl =
   | NachlassSetzen
   | NachlassEntfernen
   | MwstSatzSetzen
-  | LeistungsverzeichnisLoeschen;
+  | LeistungsverzeichnisLoeschen
+  // v1.2
+  | KnotenEinfuegen
+  | KnotenlisteVerschieben
+  | KnotenInPapierkorbLegen
+  | PapierkorbeintragWiederherstellen
+  | PapierkorbeintragEntfernen
+  | PapierkorbLeeren
+  | LvStandAnlegen
+  | AuftraggeberSetzen
+  | VergabeinformationenSetzen
+  | LeitbeschreibungSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -329,8 +471,36 @@ export interface AuftragsLeistungsverzeichnisAnlegen {
 /** Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). Bis zur Vergabe nur das Anlegen. */
 export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen;
 
+// --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
+
+/**
+ * Macht den Befehl rückgängig, dessen Protokolleintrag `protokollId` ist (v1.2, S3). Kein Kern führt ihn aus: Sein
+ * ChangeSet ist die Umkehrung des ChangeSets aus dem Undo-Stapel der Sitzung (ADR 0006; umkehrbar ohne Vorzustand
+ * seit v1.1a). `speicher` schreibt ihn wie jeden Befehl, ein Eintrag je Befehl (A5); `Protokolleintrag.aggregat` ist
+ * das Aggregat des ursprünglichen Befehls.
+ *
+ * Eine Befehlsfolge (mehrere Befehle aus einer Nutzeraktion) wird mit je einem `Rueckgaengig` je Befehl der Folge
+ * zurückgenommen, in umgekehrter Reihenfolge (D-12); es gibt keinen Sammelbefehl.
+ */
+export interface Rueckgaengig {
+  readonly art: 'Rueckgaengig';
+  readonly protokollId: ProtokollId;
+}
+
+/**
+ * Wiederholt einen rückgängig gemachten Befehl (v1.2, S3). `protokollId` nennt den Eintrag des **ursprünglichen**
+ * Befehls (nicht den des `Rueckgaengig`); sein ChangeSet ist wieder das Original. Sonst wie `Rueckgaengig`.
+ */
+export interface Wiederholen {
+  readonly art: 'Wiederholen';
+  readonly protokollId: ProtokollId;
+}
+
+/** Befehle auf der Historie der Sitzung (v1.2). Nicht in `LvBefehl`: kein Kern führt sie aus. */
+export type HistorienBefehl = Rueckgaengig | Wiederholen;
+
 /** Jeder Befehl, den das Befehlsprotokoll aufnimmt. */
-export type Befehl = ProjektBefehl | LvBefehl | AngebotBefehl | AuftragsLvBefehl;
+export type Befehl = ProjektBefehl | LvBefehl | AngebotBefehl | AuftragsLvBefehl | HistorienBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
