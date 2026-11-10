@@ -30,17 +30,22 @@ export function unerlaubtesFeld(
 }
 
 /**
- * Form einer Position: Zahlen in kanonischer Schreibweise, Bezüge zeigen auf vorhandene Positionen. `istPosition`
- * sagt, ob eine ID eine (künftige) Position im LV ist.
+ * Form einer Position: Zahlen in kanonischer Schreibweise, Bezüge zeigen auf vorhandene Positionen. `knotenVon`
+ * liefert den Knoten zu einer ID im LV (für Bezüge).
  *
- * v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b gibt es keine Positionsart mehr und damit keine Prüfung „Merkmal nur bei passender Art“; die
- * Merkmale sind kombinierbar (F5). Welche Kombinationen ungültig sind, entscheidet K5/K6; bis dahin weist der Kern
- * keine Kombination ab. Geprüft werden weiter die Bezüge: die Positionen einer Zuschlagsliste und die Grundposition.
+ * Die Merkmale sind kombinierbar (F5, E-05). Abgewiesen werden nur Formfehler (Ticket 37, `ungueltige-eingabe`):
+ *  1. Zuschlagsposition mit `pauschal` oder `stundenlohn` (`merkmale`): ein Prozentzuschlag hat weder Menge noch Zeit;
+ *  2. Zuschlagsposition mit `zuschlagskennzeichen` (`merkmale.zuschlagskennzeichen`): sie ist nie Basis;
+ *  3. Bezugsliste nennt eine Zuschlagsposition (`zuschlag.bezug.positionen`; D-03: nie Basis einer anderen);
+ *  4. `wahl.variante` nicht ganzzahlig 0 bis 9 oder `wahl.gruppe` negativ oder nicht ganzzahlig (`merkmale.wahl`);
+ *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`).
+ * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
+ * LV-Prüfung (K8, Ticket 41).
  */
 export function positionsdatenFehler(
   daten: Positionsdaten,
   positionsId: string,
-  istPosition: (id: string) => boolean,
+  knotenVon: (id: string) => Knoten | undefined,
 ): Befehlsfehler | null {
   const feld = (f: string, text: string): Befehlsfehler =>
     befehlsfehler('ungueltige-eingabe', text, positionsId, f);
@@ -52,8 +57,6 @@ export function positionsdatenFehler(
     const e = alsEinheitspreis(daten.einheitspreis);
     if (!e.ok) return feld('einheitspreis', e.fehler.meldung);
   }
-  // v1.1b: mechanisch angepasst, Folgeticket. Nur Formprüfung der neuen Felder (wie vorher die Art und die Zahlen),
-  // keine Fachregel: jede Kombination der Merkmale bleibt zulässig (K5 entscheidet).
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
     return feld('merkmale', 'Die Merkmale fehlen oder sind kein Objekt.');
@@ -80,13 +83,35 @@ export function positionsdatenFehler(
       const liste: unknown = daten.zuschlag.bezug.positionen;
       if (!Array.isArray(liste))
         return feld('zuschlag.bezug.positionen', 'Die Bezugspositionen müssen eine Liste sein.');
+      const gesehen = new Set<string>();
       for (const b of daten.zuschlag.bezug.positionen) {
         if (b.teilmenge !== null) {
           const e = alsMenge(b.teilmenge);
           if (!e.ok) return feld('zuschlag.bezug.positionen.teilmenge', e.fehler.meldung);
         }
+        if (gesehen.has(b.positionId))
+          return feld('zuschlag.bezug.positionen', `Bezugsposition doppelt genannt: ${b.positionId}`);
+        gesehen.add(b.positionId);
       }
     }
+    if (daten.merkmale.pauschal || daten.merkmale.stundenlohn)
+      return feld('merkmale', 'Eine Zuschlagsposition ist weder pauschal noch Stundenlohn.');
+    if (daten.merkmale.zuschlagskennzeichen)
+      return feld('merkmale.zuschlagskennzeichen', 'Eine Zuschlagsposition ist nie Basis eines Zuschlags.');
+  }
+  const wahl = daten.merkmale.wahl;
+  if (wahl !== null) {
+    const nummer = (n: unknown, max: number): boolean =>
+      n === null || (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= max);
+    if (
+      typeof wahl !== 'object' ||
+      !nummer(wahl.variante, 9) ||
+      !nummer(wahl.gruppe, Number.MAX_SAFE_INTEGER)
+    )
+      return feld(
+        'merkmale.wahl',
+        'Die Variante ist 0 bis 9, die Gruppe nicht negativ (jeweils ganzzahlig oder null).',
+      );
   }
   const bezug = daten.zuschlag?.bezug;
   const ziele: (readonly [string, string | null])[] = [
@@ -96,13 +121,23 @@ export function positionsdatenFehler(
       : []),
   ];
   for (const [name, ziel] of ziele) {
-    if (ziel !== null && (ziel === positionsId || !istPosition(ziel))) {
+    if (ziel !== null && (ziel === positionsId || knotenVon(ziel)?.art !== 'position')) {
       return befehlsfehler(
         'bezug-unbekannt',
         `${name} verweist nicht auf eine andere vorhandene Position: ${ziel}`,
         positionsId,
         name,
       );
+    }
+  }
+  if (bezug?.art === 'positionen') {
+    for (const b of bezug.positionen) {
+      const k = knotenVon(b.positionId);
+      if (k?.art === 'position' && k.zuschlag !== null)
+        return feld(
+          'zuschlag.bezug.positionen',
+          `Bezugsposition ist selbst eine Zuschlagsposition: ${b.positionId}`,
+        );
     }
   }
   return null;
@@ -242,10 +277,10 @@ export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehl
   }
 
   // Positionen
-  const istPosition = (id: string): boolean => byId.get(id)?.art === 'position';
+  const knotenVon = (id: string): Knoten | undefined => byId.get(id);
   for (const k of knoten) {
     if (k.art !== 'position') continue;
-    const f = positionsdatenFehler(k, k.id, istPosition);
+    const f = positionsdatenFehler(k, k.id, knotenVon);
     if (f) fehler.push(f);
   }
   return fehler;

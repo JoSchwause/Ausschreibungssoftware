@@ -134,3 +134,99 @@ export function ausreisser(gpJeAngebot, schwelleProzent) {
   }
   return ergebnis;
 }
+
+/**
+ * Sollwerte eines LV mit Zuschlagspositionen in GAEB-Form (Ticket 37, `zuschlag.json`). Unabhaengig vom Kern
+ * geschrieben, nur BigInt. Regeln (amtliche Pruefdateien, D-03): Betrag = round_half_up(Basis x Satz / 100, 2);
+ * Basis = Summe der GP der Bezugspositionen, die selbst in die Summe eingehen und keine Zuschlagsposition sind.
+ * `gliederung`: rueckwaerts ab der Zuschlagsposition erst unmittelbar davorstehende Zuschlagspositionen (und
+ * Hinweise) ueberspringen, dann Positionen sammeln bis zur naechsten Zuschlagsposition oder zum Anfang des
+ * Elternknotens; `kennzeichnung`: davon nur `zuschlagskennzeichen`; `positionen`: die genannten Positionen (Teilmenge
+ * x EP, falls gesetzt). Der Betrag geht wie ein GP in Titelsummen und Netto.
+ * Dazu je Titel und fuer das LV die Summen der Einheitspreisanteile: Summe von round_half_up(Menge x Anteil, 2).
+ */
+export function berechneZuschlagSollwerte(knoten, nachlass, mwstSatz) {
+  const byId = new Map(knoten.map((k) => [k.id, k]));
+  const geschwister = new Map();
+  for (const k of knoten) {
+    if (!geschwister.has(k.parentId)) geschwister.set(k.parentId, []);
+    geschwister.get(k.parentId).push(k);
+  }
+  const eigenerGp = (k) =>
+    k.menge == null || k.einheitspreis == null
+      ? null
+      : gesamtpreis(parse(k.menge, STELLEN.menge), parse(k.einheitspreis, STELLEN.ep));
+  const istZuschlag = (k) => k.art === 'position' && k.zuschlag != null;
+  const istBasis = (k) => k?.art === 'position' && !istZuschlag(k) && inSumme(k);
+  const basisVon = (z) => {
+    const bezug = z.zuschlag.bezug;
+    let basis = 0n;
+    if (bezug.art === 'positionen') {
+      for (const b of bezug.positionen) {
+        const r = byId.get(b.positionId);
+        if (!istBasis(r)) continue;
+        const gp = b.teilmenge == null ? eigenerGp(r)
+          : r.einheitspreis == null ? null
+            : gesamtpreis(parse(b.teilmenge, STELLEN.menge), parse(r.einheitspreis, STELLEN.ep));
+        if (gp !== null) basis += gp;
+      }
+      return basis;
+    }
+    const g = geschwister.get(z.parentId);
+    let i = g.indexOf(z) - 1;
+    while (i >= 0 && (g[i].art !== 'position' || istZuschlag(g[i]))) i--;
+    for (; i >= 0; i--) {
+      const k = g[i];
+      if (k.art !== 'position') continue;
+      if (istZuschlag(k)) break;
+      if (!istBasis(k) || (bezug.art === 'kennzeichnung' && k.zuschlagskennzeichen !== true)) continue;
+      const gp = eigenerGp(k);
+      if (gp !== null) basis += gp;
+    }
+    return basis;
+  };
+  const eltern = new Map(knoten.map((k) => [k.id, k.parentId]));
+  const titelSumme = new Map(knoten.filter((k) => k.art === 'titel').map((k) => [k.id, 0n]));
+  const ANTEILE = ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei'];
+  const leer = () => Object.fromEntries(ANTEILE.map((a) => [a, 0n]));
+  const epaTitel = new Map(knoten.filter((k) => k.art === 'titel').map((k) => [k.id, leer()]));
+  const epaGesamt = leer();
+  const positionen = {};
+  const zuschlaege = {};
+  let netto = 0n;
+  for (const k of knoten) {
+    if (k.art !== 'position') continue;
+    let gp;
+    if (istZuschlag(k) && k.zuschlag.prozentsatz != null) {
+      const basis = basisVon(k);
+      gp = prozentVon(basis, parse(k.zuschlag.prozentsatz, STELLEN.prozent));
+      zuschlaege[k.id] = { basis: format(basis, 2), betrag: format(gp, 2) };
+    } else gp = eigenerGp(k);
+    const zaehlt = gp !== null && inSumme(k);
+    positionen[k.id] = { gp: gp === null ? null : format(gp, 2), inSumme: zaehlt };
+    if (!zaehlt) continue;
+    netto += gp;
+    const anteile = k.epa
+      ? ANTEILE.map((a) => [a, k.epa[a] == null ? 0n
+        : gesamtpreis(parse(k.menge, STELLEN.menge), parse(k.epa[a], STELLEN.ep))])
+      : [];
+    for (const [a, w] of anteile) epaGesamt[a] += w;
+    for (let t = eltern.get(k.id); titelSumme.has(t); t = eltern.get(t)) {
+      titelSumme.set(t, titelSumme.get(t) + gp);
+      for (const [a, w] of anteile) epaTitel.get(t)[a] += w;
+    }
+  }
+  const alsText = (o) => Object.fromEntries(Object.entries(o).map(([a, w]) => [a, format(w, 2)]));
+  const titel = {};
+  for (const [id, s] of titelSumme) titel[id] = { summe: format(s, 2) };
+  return {
+    positionen,
+    zuschlaege,
+    titel,
+    summen: summen(netto, nachlass, mwstSatz),
+    epa: {
+      gesamt: alsText(epaGesamt),
+      titel: Object.fromEntries([...epaTitel].map(([id, o]) => [id, alsText(o)])),
+    },
+  };
+}

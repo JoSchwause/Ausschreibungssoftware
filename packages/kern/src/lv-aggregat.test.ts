@@ -69,6 +69,8 @@ describe('LeistungsverzeichnisLoeschen', () => {
       nettoNachNachlass: '38.25',
       mwst: '7.27',
       brutto: '45.52',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     expect(cs.summen.vorher?.positionen).toEqual([]);
     expect(cs.summen.vorher?.gliederungen).toEqual([]);
@@ -79,8 +81,8 @@ describe('LeistungsverzeichnisLoeschen', () => {
         { positionId: 'P3', gesamtpreis: '7.50', gehtInSummeEin: true },
       ],
       gliederungen: [
-        { gliederungId: 'T1', summe: '35.00' },
-        { gliederungId: 'T1a', summe: '15.00' },
+        { gliederungId: 'T1', summe: '35.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
+        { gliederungId: 'T1a', summe: '15.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
       ],
     });
   });

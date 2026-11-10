@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Tethys AVA contributors
 //
-// Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele.
+// Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele; zuschlag (Ticket 37).
 // Aufruf: node fixtures/erzeugen.mjs
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
@@ -10,7 +10,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser,
+  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser, berechneZuschlagSollwerte,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -386,6 +386,82 @@ function erzeugeHandbeispiele() {
   };
 }
 
+// ---------------------------------------------------------------- zuschlag (Ticket 37)
+
+/**
+ * LV mit Zuschlagspositionen in GAEB-Form (alle drei Bezugsformen) und Einheitspreisanteilen. Texte selbst verfasst,
+ * Mengen, EP und Saetze aus den amtlichen Pruefdateien (BVBS 3.3 AVA X86, Bereich 1.30 und 1.10.30.20; D-03, C4).
+ * Sollwerte rechnet `berechneZuschlagSollwerte` (rechnen.mjs, BigInt), unabhaengig vom Kern.
+ */
+function erzeugeZuschlag() {
+  const neueId = idFabrik('fixtures-v1/zuschlag', 1767225600000 + 20_000_000);
+  const lvId = neueId();
+  const N = (k, parent, oz, kurztext, menge, einheit, ep, extra = {}) => ({
+    art: 'position', k, parent, oz, kurztext, menge, einheit, ep, ...extra,
+  });
+  const Z = (k, parent, oz, kurztext, satz, bezug) => ({ art: 'zuschlag', k, parent, oz, kurztext, satz, bezug });
+  const e = [
+    T('t01', null, '01', 'Zuschläge'),
+    T('t0101', 't01', '01.01', 'Zuschlag auf gekennzeichnete Positionen'),
+    N('p010110', 't0101', '01.01.0010', 'Leitung verlegen, gekennzeichnet', '10.000', 'm', '10.000', { kennz: true }),
+    N('p010120', 't0101', '01.01.0020', 'Leitung verlegen, ohne Kennzeichen', '20.000', 'm', '20.000'),
+    N('p010130', 't0101', '01.01.0030', 'Schutzrohr verlegen, gekennzeichnet', '30.000', 'm', '28.500', { kennz: true }),
+    Z('z010140', 't0101', '01.01.0040', 'Zuschlag für Erschwernis auf gekennzeichnete Positionen', '10.00', 'kennzeichnung'),
+    T('t0102', 't01', '01.02', 'Zuschläge auf davorstehende Positionen'),
+    N('p010210', 't0102', '01.02.0010', 'Graben ausheben', '10.000', 'm', '10.000'),
+    N('p010220', 't0102', '01.02.0020', 'Graben verfüllen', '20.000', 'm', '20.000'),
+    N('p010230', 't0102', '01.02.0030', 'Oberfläche wiederherstellen', '30.000', 'm', '30.000'),
+    Z('z010240', 't0102', '01.02.0040', 'Zuschlag Nachtarbeit auf die Positionen davor', '10.00', 'gliederung'),
+    Z('z010250', 't0102', '01.02.0050', 'Zuschlag Verkehrssicherung auf dieselbe Basis', '10.00', 'gliederung'),
+    N('p010260', 't0102', '01.02.0060', 'Schacht setzen', '10.000', 'm', '10.000'),
+    Z('z010270', 't0102', '01.02.0070', 'Zuschlag Nachtarbeit auf die Position seit dem letzten Zuschlag', '10.00', 'gliederung'),
+    T('t0103', 't01', '01.03', 'Zuschläge auf genannte Positionen'),
+    N('p010310', 't0103', '01.03.0010', 'Kabel einziehen', '10.000', 'm', '10.000'),
+    N('p010320', 't0103', '01.03.0020', 'Kabel anschließen', '20.000', 'm', '20.000'),
+    Z('z010330', 't0103', '01.03.0030', 'Zuschlag auf Position 01.03.0020', '10.00', ['p010320']),
+    Z('z010340', 't0103', '01.03.0040', 'Zuschlag auf Position 02.0010', '10.00', ['p0210']),
+    T('t02', null, '02', 'Leitungsbau'),
+    N('p0210', 't02', '02.0010', 'Druckleitung herstellen, mit Anteilen', '100.000', 'm', '27.910', {
+      epa: { lohn: '2.230', stoffe: '23.120', geraete: '2.560', nachunternehmer: '0.000' },
+    }),
+  ];
+  const idVon = new Map(e.map((x) => [x.k, neueId()]));
+  const knoten = e.map((x) => {
+    const id = idVon.get(x.k);
+    const parentId = x.parent ? idVon.get(x.parent) : lvId;
+    if (x.art === 'titel') return { id, parentId, art: 'titel', ordnungszahl: x.oz, kurztext: x.kurztext };
+    const langtext = `${x.kurztext}. Erfundener Text für Testzwecke.`;
+    if (x.art === 'zuschlag') {
+      const bezug = Array.isArray(x.bezug)
+        ? { art: 'positionen', positionen: x.bezug.map((b) => ({ positionId: idVon.get(b), teilmenge: null })) }
+        : { art: x.bezug };
+      return {
+        id, parentId, art: 'position', positionsart: 'zuschlag', ordnungszahl: x.oz, kurztext: x.kurztext, langtext,
+        menge: null, einheit: null, einheitspreis: null, zuschlag: { prozentsatz: x.satz, bezug },
+      };
+    }
+    const k = {
+      id, parentId, art: 'position', positionsart: 'normal', ordnungszahl: x.oz, kurztext: x.kurztext, langtext,
+      menge: x.menge, einheit: x.einheit, einheitspreis: x.ep,
+    };
+    if (x.kennz) k.zuschlagskennzeichen = true;
+    if (x.epa) k.epa = { sonstiges: null, frei: null, freiBezeichnung: null, ...x.epa };
+    return k;
+  });
+  const lv = {
+    schemaVersion: SCHEMA,
+    art: 'leistungsverzeichnis',
+    id: lvId,
+    name: 'Zuschlag: Bezugsformen und Anteile (erfunden)',
+    ozMaske: MASKE_KLEIN,
+    mwstSatz: '19.00',
+    nachlass: null,
+    knoten: dokumentreihenfolge(lvId, knoten),
+  };
+  lv.sollwerte = berechneZuschlagSollwerte(lv.knoten, lv.nachlass, lv.mwstSatz);
+  return lv;
+}
+
 // ---------------------------------------------------------------- Ausgabe
 
 /** Liefert Dateiname -> Dateiinhalt. */
@@ -397,6 +473,7 @@ export function erzeugeAlle() {
     'typisch-angebote.json': alsDatei(erzeugeAngebote(typisch)),
     'gross.json': alsDatei(erzeugeGross()),
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
+    'zuschlag.json': alsDatei(erzeugeZuschlag()),
   };
 }
 

@@ -31,9 +31,10 @@ import {
   kinderIds,
   neuesLv,
   positionsdaten,
-  positionsfelder,
   wende,
-  type PositionsKurzform,
+  merkmale,
+  wahlzuordnung,
+  zuschlagsliste,
 } from './testhilfen';
 
 // --- Kurzschreibweisen für Befehle ---------------------------------------------------------------------------
@@ -123,7 +124,15 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(cs.summen).toEqual({
       positionen: [],
       gliederungen: [],
-      gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+      gesamt: {
+        netto: '0.00',
+        nachlass: '0.00',
+        nettoNachNachlass: '0.00',
+        mwst: '0.00',
+        brutto: '0.00',
+        summeBedarfOhneGesamtbetrag: '0.00',
+        summeWahl: '0.00',
+      },
       vorher: {
         positionen: [],
         gliederungen: [],
@@ -191,18 +200,13 @@ describe('LeistungsverzeichnisAnlegen', () => {
     ordnungszahl: null,
     kurztext: i,
   });
-  const p = (
-    i: string,
-    eltern: string,
-    r = 0,
-    ueber: Partial<Position> & PositionsKurzform = {},
-  ): Position => ({
+  const p = (i: string, eltern: string, r = 0, ueber: Partial<Position> = {}): Position => ({
     art: 'position',
     id: id.pos(i),
     elternId: id.eltern(eltern),
     reihenfolge: r,
     ...positionsdaten(i),
-    ...positionsfelder(ueber),
+    ...ueber,
   });
 
   it('weist Zyklen, unbekannte Eltern, doppelte IDs und Lücken in der Reihenfolge ab', () => {
@@ -231,20 +235,14 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { menge: '1.5' as Menge })]))).toBe(
       'ungueltige-eingabe',
     );
-    // v1.1b: mechanisch angepasst, Folgeticket. „Merkmal nur bei Art `bedarf`“ entfällt, die Merkmale sind kombinierbar (F5); `bedarfMitGesamtbetrag` ohne Bedarf ist nicht mehr darstellbar.
+    // Die Merkmale sind kombinierbar (F5); welche Formen der Kern abweist, prüft `merkmale.test.ts` (Ticket 37).
     expect(
-      fehlercode(
-        null,
-        anlegen([
-          t('T', LV_ID),
-          p('Z', 'T', 0, { positionsart: 'zuschlag', bezugspositionId: id.pos('fehlt') }),
-        ]),
-      ),
+      fehlercode(null, anlegen([t('T', LV_ID), p('Z', 'T', 0, { zuschlag: zuschlagsliste(['fehlt']) })])),
     ).toBe('bezug-unbekannt');
     const ok = anlegen([
       t('T', LV_ID),
       p('P', 'T', 0, { menge: '1.500' as Menge }),
-      p('Z', 'T', 1, { positionsart: 'zuschlag', bezugspositionId: id.pos('P') }),
+      p('Z', 'T', 1, { zuschlag: zuschlagsliste(['P']) }),
     ]);
     expect(lvBefehlAusfuehren(null, ok).ok).toBe(true);
   });
@@ -415,7 +413,8 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
         rohdaten(zus({ art: 'positionen', positionen: [{ positionId: id.pos('P1'), teilmenge: '1.5' }] })),
       ),
     ).toBe('ungueltige-eingabe:zuschlag.bezug.positionen.teilmenge');
-    // Gültig und zulässig: jede Kombination der Merkmale, alle Bezugsformen, kanonische Zahlen.
+    // Gültig und zulässig: jede Kombination der Merkmale (F5), alle Bezugsformen, kanonische Zahlen. Die fünf
+    // Formprüfungen der Zuschlagsposition und der Wahl (Ticket 37) stehen in `merkmale.test.ts`.
     expect(
       feldVon(
         rohdaten({
@@ -425,6 +424,20 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
             stundenlohn: true,
             pauschal: true,
             zuschlagskennzeichen: true,
+          },
+          zuschlag: null,
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      feldVon(
+        rohdaten({
+          merkmale: {
+            bedarf: 'ohne-gesamtbetrag',
+            wahl: { gruppe: 2, variante: 1, grundpositionId: null },
+            stundenlohn: false,
+            pauschal: false,
+            zuschlagskennzeichen: false,
           },
           zuschlag: { prozentsatz: '10.00', bezug: { art: 'kennzeichnung' } },
         }),
@@ -448,22 +461,19 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       daten,
     });
     expect(fehlercode(z, mit(positionsdaten('x', { menge: '1' as Menge })))).toBe('ungueltige-eingabe');
-    // v1.1b: mechanisch angepasst, Folgeticket. „Bezug nur bei Art `zuschlag`“ entfällt (der Bezug steht jetzt in `Positionsdaten.zuschlag`).
+    // Der Bezug steht in `Positionsdaten.zuschlag` (v1.1b); er muss auf eine andere vorhandene Position zeigen.
+    expect(fehlercode(z, mit(positionsdaten('x', { zuschlag: zuschlagsliste(['fehlt']) })))).toBe(
+      'bezug-unbekannt',
+    );
     expect(
       fehlercode(
         z,
-        mit(positionsdaten('x', { positionsart: 'zuschlag', bezugspositionId: id.pos('fehlt') })),
+        mit(positionsdaten('x', { merkmale: merkmale({ wahl: wahlzuordnung(null, null, 'T1') }) })),
       ),
-    ).toBe('bezug-unbekannt');
-    expect(
-      fehlercode(z, mit(positionsdaten('x', { positionsart: 'wahl', grundpositionId: id.pos('T1') }))),
     ).toBe('bezug-unbekannt'); // verweist auf einen Titel, nicht auf eine Position
-    expect(
-      lvBefehlAusfuehren(
-        z,
-        mit(positionsdaten('x', { positionsart: 'zuschlag', bezugspositionId: id.pos('P1') })),
-      ).ok,
-    ).toBe(true);
+    expect(lvBefehlAusfuehren(z, mit(positionsdaten('x', { zuschlag: zuschlagsliste(['P1']) }))).ok).toBe(
+      true,
+    );
   });
 });
 
@@ -675,15 +685,7 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  const fremde: LvBefehl[] = [
-    { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
-    {
-      art: 'PositionsmerkmaleSetzen',
-      positionId: id.pos('P1'),
-      merkmale: positionsdaten('x').merkmale,
-      zuschlag: null,
-    },
-  ];
+  const fremde: LvBefehl[] = [{ art: 'PapierkorbLeeren' }, { art: 'AuftraggeberSetzen', auftraggeber: null }];
 
   it.each(fremde.map((b) => [b.art, b] as const))(
     '%s: befehl-nicht-zustaendig, Meldung nennt das Ticket',
