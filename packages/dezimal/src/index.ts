@@ -9,6 +9,7 @@ export {
   NULL_MENGE,
   NULL_PROZENT,
   addiere,
+  dividiere,
   alsBetrag,
   alsDezimal,
   alsEinheitspreis,
