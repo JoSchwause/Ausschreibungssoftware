@@ -35,6 +35,9 @@ export {
   projektChangeSetUmkehren,
 } from './projekt-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
+export { lvPruefen } from './lv-pruefung';
+export { KNOTEN_REGELN, LV_REGELN, PRUEF_ANNAHMEN, PRUEF_GRENZEN } from './pruefregeln';
+export type { Knotenregel, LvRegel } from './pruefregeln';
 export { gesamtsummen, positionsSumme, summenBerechnen, zuschlagsbasen } from './summen';
 export type { Ausweise } from './summen';
 export { ZUSCHLAG_REGELN } from './zuschlag';
