@@ -1,6 +1,6 @@
 # 29: `vertrag` v1.2: Ergänzungen für Welle 3 (Vertrag plus Anpassung)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: F · Paket: `packages/vertrag` (dazu nur die unten gelisteten mechanischen Zeilen in `kern`, `speicher`, `gaeb`, W-03 (b))
 Blocked by: -
