@@ -39,4 +39,6 @@ jobs:
 
       - name: DCO (Pull Request)
         if: github.event_name == 'pull_request'
-        run: node tools/check-dco.mjs "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+        env:
+          PR_AUTOR: ${{ github.event.pull_request.user.login }}
+        run: node tools/check-dco.mjs "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" "$PR_AUTOR"

@@ -1,0 +1,4 @@
+# GitHub-Logins der Betreuer:innen. Pull Requests von diesen Konten sind von der DCO-Prüfung ausgenommen
+# (E-17, Regel P8): Das DCO gilt für Beiträge von außen (G-43). Eine Zeile je Login, Kommentare mit #.
+# Maßgeblich ist der Autor des Pull Requests, nicht die Commit-Metadaten; die lassen sich fälschen.
+JoSchwause

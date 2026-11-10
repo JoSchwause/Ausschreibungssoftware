@@ -10,6 +10,10 @@ Jeder Commit trägt eine `Signed-off-by`-Zeile. Damit bestätigst du das
 der Projektlizenz einzureichen. Commit mit `git commit -s`. Die CI prüft bei jedem Pull Request, ob alle Commits
 signiert sind (`node tools/check-dco.mjs <Bereich>`).
 
+Ausgenommen sind Pull Requests der Betreuer:innen: Das DCO gilt für Beiträge von außen (E-17, Regel P8). Wer dazu
+gehört, steht in `.github/dco-betreuer.txt` (GitHub-Logins). Maßgeblich ist der Autor des Pull Requests, nicht die
+Commit-Metadaten.
+
 ## Lizenzen (REUSE)
 
 Jede Datei ist durch `REUSE.toml` als AGPL-3.0-or-later gekennzeichnet; `reuse lint` muss grün sein. Dateien
