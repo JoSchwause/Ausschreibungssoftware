@@ -33,8 +33,10 @@ import {
   ozSchluessel,
   ozZerlegen,
   ozZusammensetzen,
+  POSITION_SCHRITT,
   positionsTeil,
   stellenFuer,
+  zaehlerSchritt,
 } from './ozregeln';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
@@ -43,7 +45,8 @@ type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 type NeueOz = Map<string, Ordnungszahl>;
 
 /**
- * Vergibt die OZ aller Nachfahren von `elternId` (Gliederung +1, Positionen +10, führende Nullen). `ebene` ist die Zahl
+ * Vergibt die OZ aller Nachfahren von `elternId` (Gliederung +1, Positionen +10, führende Nullen; passt ein Zähler nicht,
+ * weicht die Geschwistergruppe auf Schritt 5, 2, 1 aus, E-09). `ebene` ist die Zahl
  * der Stufen bis einschließlich `elternId` (0 für die LV-Wurzel), `praefix` die Teile von dessen OZ. Gibt den ersten
  * Fehler zurück (Knoten nennend) oder `null`. Die Rekursion ist durch die Stufenzahl der Maske (höchstens 5) begrenzt.
  */
@@ -64,10 +67,19 @@ function nummeriere(
     if (e.ok) throw new Error('unerreichbar');
     return e.fehler;
   };
+  const kinder = idx.kinder.get(elternId) ?? [];
+  // Zähler der Geschwistergruppe vorab zählen, damit der Schritt für die ganze Gruppe feststeht.
+  // (Gliederungen haben Standardschritt 1 und damit keinen Rückfall.)
+  let anzahlPositionen = 0;
+  for (const k of kinder) {
+    if (k.art === 'position' && !(k.ozIndex !== null && anzahlPositionen > 0)) anzahlPositionen++;
+  }
+  // Ohne passenden Schritt gilt Schritt 1; der erste Knoten ohne Platz wird dann unten abgewiesen.
+  const positionsSchritt = zaehlerSchritt(maske.position, anzahlPositionen, POSITION_SCHRITT) ?? 1;
   let gliederungen = 0;
   let positionen = 0;
   let grundteil: string | null = null;
-  for (const k of idx.kinder.get(elternId) ?? []) {
+  for (const k of kinder) {
     if (k.art === 'hinweis') continue;
     if (k.art === 'position') {
       const f = indexFehler(maske, 'position', k.ozIndex);
@@ -84,11 +96,11 @@ function nummeriere(
         teil = grundteil;
       } else {
         positionen++;
-        teil = positionsTeil(maske.position, positionen);
+        teil = positionsTeil(maske.position, positionen, positionsSchritt);
         if (teil === null) {
           return befehlsfehler(
             'maske-ungueltig',
-            `Position ${k.id} ist die ${String(positionen)}. Position unter ${elternId}; ihre Nummer passt nicht in ${String(maske.position.laenge)} Stellen.`,
+            `Position ${k.id} ist die ${String(positionen)}. Position unter ${elternId}; ihre Nummer passt auch mit Schritt 1 nicht in ${String(maske.position.laenge)} Stellen.`,
             k,
           );
         }

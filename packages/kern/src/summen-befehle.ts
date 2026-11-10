@@ -99,7 +99,7 @@ export function nachlassSetzen(z: LvZustand, b: NachlassSetzen): Antwort {
   const n = b.nachlass;
   const form = n.art === 'prozent' ? alsProzent(n.wert) : alsBetrag(n.wert);
   if (!form.ok) return nein('ungueltige-eingabe', form.fehler.meldung, undefined, 'nachlass');
-  const meldung = nachlassFehler(n, z.summen.gesamt.netto);
+  const meldung = nachlassFehler(n);
   if (meldung !== null) return nein('ungueltige-eingabe', meldung, undefined, 'nachlass');
   return ok(nachlassUmsetzen(z, n));
 }

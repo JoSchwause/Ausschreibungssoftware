@@ -20,6 +20,7 @@ import {
   GLIEDERUNG_SCHRITT,
   OZ_ANNAHMEN,
   OZ_MAX_LAENGE,
+  OZ_RUECKFALL_SCHRITTE,
   POSITION_SCHRITT,
   ZUSTAENDIGES_TICKET,
   changeSetUmkehren,
@@ -28,6 +29,7 @@ import {
   lvChangeSetAnwenden,
   ozFehler,
   ozMaskeFehler,
+  zaehlerSchritt,
 } from './index';
 import {
   LV_ID,
@@ -120,6 +122,7 @@ describe('Konstanten: Schritte und Längenregel', () => {
     expect(POSITION_SCHRITT).toBe(10);
     expect(OZ_MAX_LAENGE).toBe(14);
     expect(OZ_ANNAHMEN.status).toBe('vorläufige Annahme, Entscheidung offen');
+    expect(OZ_ANNAHMEN.ueberlauf).toMatch(/Schritt 5, dann 2, dann 1/);
   });
 
   it('die drei OZ-Befehle sind umgesetzt (kein Eintrag mehr in ZUSTAENDIGES_TICKET)', () => {
@@ -397,16 +400,94 @@ describe('Umnummerieren: Indexpositionen (vorläufige Annahme d)', () => {
 });
 
 describe('Umnummerieren: Grenzen und Fehler', () => {
-  it('Überlauf der Positionszähler (vorläufige Annahme c): 9 Positionen bei 2 Stellen, die 10. wird abgewiesen', () => {
-    const maske: OzMaske = { gliederung: [], position: num(2), index: null, trennzeichen: null };
-    const neun = Array.from({ length: 9 }, (_, i) => posKnoten(`P${String(i)}`, LV_ID, i, '1.000', '1.000'));
-    const z9 = mitMaske(maske, neun);
-    const danach = lvChangeSetAnwenden(z9, nummeriere(z9));
+  const positionen = (n: number): Knoten[] =>
+    Array.from({ length: n }, (_, i) => posKnoten(`P${String(i)}`, LV_ID, i, '1.000', '1.000'));
+  const ohneTrenner2: OzMaske = { gliederung: [], position: num(2), index: null, trennzeichen: null };
+
+  it('Überlauf der Positionszähler (E-09): 9 Positionen bei 2 Stellen laufen mit Schritt 10, die 10. weicht auf Schritt 5 aus', () => {
+    const z9 = mitMaske(ohneTrenner2, positionen(9));
+    const danach9 = lvChangeSetAnwenden(z9, nummeriere(z9));
+    expect(ozVon(danach9, 'P0')).toBe('10');
+    expect(ozVon(danach9, 'P8')).toBe('90');
+    // 10 × 10 = 100 passt nicht in 2 Stellen: die ganze Gruppe nimmt Schritt 5 (10 × 5 = 50)
+    const z10 = mitMaske(ohneTrenner2, positionen(10));
+    const danach = lvChangeSetAnwenden(z10, nummeriere(z10));
+    expect(ozVon(danach, 'P0')).toBe('05');
+    expect(ozVon(danach, 'P1')).toBe('10');
+    expect(ozVon(danach, 'P9')).toBe('50');
+  });
+
+  it('Rückfall der Reihe nach 10, 5, 2, 1 (2 Stellen): 9, 19, 49 und 99 Positionen', () => {
+    const letzte = (n: number): string | null => {
+      const z = mitMaske(ohneTrenner2, positionen(n));
+      return ozVon(lvChangeSetAnwenden(z, nummeriere(z)), `P${String(n - 1)}`);
+    };
+    expect(letzte(9)).toBe('90'); // Schritt 10
+    expect(letzte(19)).toBe('95'); // Schritt 5
+    expect(letzte(49)).toBe('98'); // Schritt 2
+    expect(letzte(99)).toBe('99'); // Schritt 1
+  });
+
+  it('der Rückfall gilt je Geschwistergruppe und hält OZ eindeutig, ohne Abschneiden', () => {
+    const maske: OzMaske = { gliederung: [num(1)], position: num(2), index: null, trennzeichen: '.' };
+    const knoten: Knoten[] = [
+      titelKnoten('T1', LV_ID, 0),
+      titelKnoten('T2', LV_ID, 1),
+      ...Array.from({ length: 12 }, (_, i) => posKnoten(`A${String(i)}`, 'T1', i, '1.000', '1.000')),
+      ...Array.from({ length: 3 }, (_, i) => posKnoten(`B${String(i)}`, 'T2', i, '1.000', '1.000')),
+    ];
+    const z = mitMaske(maske, knoten);
+    const danach = lvChangeSetAnwenden(z, nummeriere(z));
+    expect(ozVon(danach, 'A0')).toBe('1.05'); // 12 × 10 passt nicht: Schritt 5
+    expect(ozVon(danach, 'A11')).toBe('1.60');
+    expect(ozVon(danach, 'B0')).toBe('2.10'); // 3 × 10 passt: Schritt 10
+    expect(ozVon(danach, 'B2')).toBe('2.30');
+    expect(doppelteOrdnungszahlen(danach.leistungsverzeichnis.knoten)).toEqual([]);
+    for (const k of danach.leistungsverzeichnis.knoten) {
+      if (k.art === 'position')
+        expect(ozFehler(maske, k.ordnungszahl ?? '', null, 'position', 1), k.id).toBeNull();
+    }
+  });
+
+  it('Indexpositionen verbrauchen keinen Zähler und zählen für den Rückfall nicht mit', () => {
+    // 9 Grundpositionen plus eine Indexposition: 9 Zähler, Schritt 10 genügt
+    const n = [...positionen(9), posKnoten('PA', LV_ID, 9, '1.000', '1.000', { ozIndex: 'A' })];
+    const z = mitMaske({ ...ohneTrenner2, index: alnum(1) }, n);
+    const danach = lvChangeSetAnwenden(z, nummeriere(z));
     expect(ozVon(danach, 'P8')).toBe('90');
-    const z10 = mitMaske(maske, [...neun, posKnoten('P9', LV_ID, 9, '1.000', '1.000')]);
-    const f = fehlerVon(z10, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
+    expect(ozVon(danach, 'PA')).toBe('90');
+  });
+
+  it('Überlauf bei Schritt 1: 99 Positionen bei 2 Stellen passen, die 100. wird abgewiesen und genannt, nichts ändert sich', () => {
+    const z = mitMaske(ohneTrenner2, positionen(100));
+    const f = fehlerVon(z, { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
     expect(f.code).toBe('maske-ungueltig');
-    expect(f.knotenId).toBe('P9');
+    expect(f.knotenId).toBe('P99');
+  });
+
+  it('OzMaskeSetzen weicht ebenfalls aus; nur wenn auch Schritt 1 nicht reicht, wird abgewiesen', () => {
+    const vier: OzMaske = { gliederung: [], position: num(4), index: null, trennzeichen: null };
+    const z = mitMaske(vier, positionen(150));
+    // Ziel mit 3 Stellen: 150 × 10 passt nicht, 150 × 5 = 750 passt
+    const drei: OzMaske = { ...vier, position: num(3) };
+    const cs = erwarteOk(lvBefehlAusfuehren(z, { art: 'OzMaskeSetzen', maske: drei }));
+    expect(cs.kopf?.nachher?.ozMaske).toEqual(drei);
+    const danach = lvChangeSetAnwenden(z, cs);
+    expect(ozVon(danach, 'P0')).toBe('005');
+    expect(ozVon(danach, 'P149')).toBe('750');
+    // Ziel mit 2 Stellen: höchstens 99 Positionen, auch mit Schritt 1
+    const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: ohneTrenner2 });
+    expect(f.code).toBe('maske-ungueltig');
+    expect(f.knotenId).toBe('P99');
+    expect(z.leistungsverzeichnis.ozMaske).toEqual(vier);
+  });
+
+  it('Der Rückfall ändert die Konstanten nicht (Standardschritte 1 und 10)', () => {
+    expect(OZ_RUECKFALL_SCHRITTE).toEqual([5, 2, 1]);
+    expect(zaehlerSchritt(num(2), 9, POSITION_SCHRITT)).toBe(10);
+    expect(zaehlerSchritt(num(2), 10, POSITION_SCHRITT)).toBe(5);
+    expect(zaehlerSchritt(num(2), 100, POSITION_SCHRITT)).toBeNull();
+    expect(zaehlerSchritt(num(1), 10, GLIEDERUNG_SCHRITT)).toBeNull(); // Gliederung: kein Rückfall unter Schritt 1
   });
 
   it('Überlauf der Gliederungszähler: 9 Titel bei 1 Stelle, der 10. wird abgewiesen', () => {
@@ -421,15 +502,27 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     expect(f.knotenId).toBe('T9');
   });
 
-  it('999 Positionen passen bei 4 Stellen nicht: ab der 1000. Position (Schritt 10, höchstens 999) abgewiesen', () => {
+  it('999 Positionen passen bei 4 Stellen mit Schritt 10; ab der 1000. weicht die Vergabe auf Schritt 5 aus (E-09)', () => {
     const maske: OzMaske = { gliederung: [], position: num(4), index: null, trennzeichen: null };
-    const n = Array.from({ length: 1000 }, (_, i) => posKnoten(`P${String(i)}`, LV_ID, i, '1.000', '1.000'));
-    const f = fehlerVon(mitMaske(maske, n), { art: 'Umnummerieren', teilbaumId: id.eltern(LV_ID) });
-    expect(f.code).toBe('maske-ungueltig');
-    expect(f.knotenId).toBe('P999');
+    const n = positionen(1000);
     const z999 = mitMaske(maske, n.slice(0, 999));
-    const danach = lvChangeSetAnwenden(z999, nummeriere(z999));
-    expect(ozVon(danach, 'P998')).toBe('9990');
+    const danach999 = lvChangeSetAnwenden(z999, nummeriere(z999));
+    expect(ozVon(danach999, 'P998')).toBe('9990');
+    const z1000 = mitMaske(maske, n);
+    const danach = lvChangeSetAnwenden(z1000, nummeriere(z1000));
+    expect(ozVon(danach, 'P0')).toBe('0005');
+    expect(ozVon(danach, 'P999')).toBe('5000');
+    expect(doppelteOrdnungszahlen(danach.leistungsverzeichnis.knoten)).toEqual([]);
+  });
+
+  it('auch Schritt 1 passt bei 4 Stellen nur bis 9999 Positionen: die 10000. wird abgewiesen', () => {
+    const maske: OzMaske = { gliederung: [], position: num(4), index: null, trennzeichen: null };
+    const f = fehlerVon(mitMaske(maske, positionen(10000)), {
+      art: 'Umnummerieren',
+      teilbaumId: id.eltern(LV_ID),
+    });
+    expect(f.code).toBe('maske-ungueltig');
+    expect(f.knotenId).toBe('P9999');
   });
 
   it('ein Knoten tiefer als die Maske Stufen hat: abgewiesen, der Fehler nennt den Knoten', () => {

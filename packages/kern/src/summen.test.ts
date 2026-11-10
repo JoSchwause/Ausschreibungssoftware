@@ -244,8 +244,10 @@ describe('Menge oder Einheitspreis nicht gesetzt', () => {
 // --- Vorläufige Annahmen -----------------------------------------------------------------------------------------
 
 describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebündelt', () => {
-  it('sind als offen gekennzeichnet', () => {
-    expect(SUMMEN_ANNAHMEN.status).toBe('vorläufige Annahme, Entscheidung offen');
+  it('sind als offen gekennzeichnet; der Nachlass ist als entschieden vermerkt (N5, E-06)', () => {
+    expect(SUMMEN_ANNAHMEN.status).toMatch(/vorläufige Annahme, Entscheidung offen/);
+    expect(SUMMEN_ANNAHMEN.status).toMatch(/entschieden: Nachlass/);
+    expect(SUMMEN_ANNAHMEN.nachlassGrenzen).toMatch(/ENTSCHIEDEN/);
   });
 
   it('(1) welche Positionsarten in die Summen eingehen (Fixture-Annahmen A1–A4)', () => {
@@ -293,14 +295,14 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
     expect(prozentVon(netto, prozent('97.00'))).toBe('390.65');
   });
 
-  it('(3) Nachlass-Grenzen: Prozent 0–100, Betrag 0 bis Netto; sonst ungueltige-eingabe', () => {
+  it('(3) Nachlass-Grenzen: Prozent 0–100, Betrag nicht negativ; sonst ungueltige-eingabe', () => {
     const z = lvMit([posKnoten('P1', LV_ID, 0, '1.000', '100.000')]);
     for (const n of [
       prozentNachlass('100.01'),
       prozentNachlass('-0.01'),
       prozentNachlass('250.00'),
-      betragNachlass('100.01'),
       betragNachlass('-1.00'),
+      betragNachlass('-0.01'),
     ]) {
       expect(fehlercode(z, nachlassSetzen(n)), JSON.stringify(n)).toBe('ungueltige-eingabe');
     }
@@ -321,9 +323,86 @@ describe('Vorläufige Annahmen (Entscheidung offen), je an einer Stelle gebünde
     });
   });
 
-  it('(3) Ein absoluter Nachlass bei negativem Netto ist nur 0,00', () => {
+  it('(3) E-06: ein absoluter Nachlass über dem Netto wird angenommen; das Netto danach ist negativ', () => {
+    const z = lvMit([posKnoten('P1', LV_ID, 0, '1.000', '100.000')]);
+    const cs = erwarteOk(lvBefehlAusfuehren(z, nachlassSetzen(betragNachlass('100.01'))));
+    expect(cs.kopf?.nachher?.nachlass).toEqual(betragNachlass('100.01'));
+    const z2 = lvChangeSetAnwenden(z, cs);
+    expect(z2.summen.gesamt).toEqual({
+      netto: '100.00',
+      nachlass: '100.01',
+      nettoNachNachlass: '-0.01',
+      mwst: '0.00', // −0,0019 → 0,00, nie „−0.00“
+      brutto: '-0.01',
+    });
+    expect(z2.summen).toEqual(summenBerechnen(z2.leistungsverzeichnis));
+    // deutlich größer, MwSt auf das negative Netto: −400,00 × 19 % = −76,00
+    const z3 = wende(z, nachlassSetzen(betragNachlass('500.00')));
+    expect(z3.summen.gesamt).toEqual({
+      netto: '100.00',
+      nachlass: '500.00',
+      nettoNachNachlass: '-400.00',
+      mwst: '-76.00',
+      brutto: '-476.00',
+    });
+    expect(z3.summen).toEqual(summenBerechnen(z3.leistungsverzeichnis));
+  });
+
+  it('(3) E-06: ein absoluter Nachlass bei Netto 0 oder negativem Netto wird angenommen', () => {
+    const leer = lvMit([]);
+    expect(wende(leer, nachlassSetzen(betragNachlass('5.00'))).summen.gesamt).toMatchObject({
+      netto: '0.00',
+      nachlass: '5.00',
+      nettoNachNachlass: '-5.00',
+    });
     const z = lvMit([posKnoten('P1', LV_ID, 0, '-1.000', '10.000')]);
-    expect(fehlercode(z, nachlassSetzen(betragNachlass('0.01')))).toBe('ungueltige-eingabe');
+    expect(lvBefehlAusfuehren(z, nachlassSetzen(betragNachlass('0.01'))).ok).toBe(true);
+    expect(wende(z, nachlassSetzen(betragNachlass('0.01'))).summen.gesamt).toMatchObject({
+      netto: '-10.00',
+      nettoNachNachlass: '-10.01',
+    });
+  });
+
+  it('(3) E-06: eine spätere Änderung des Netto bei negativem Netto nach Nachlass bleibt konsistent', () => {
+    let z = lvMit([
+      titelKnoten('T1', LV_ID, 0),
+      posKnoten('P1', 'T1', 0, '1.000', '10.000'),
+      posKnoten('P2', 'T1', 1, '2.000', '5.000'),
+    ]);
+    z = wende(z, nachlassSetzen(betragNachlass('50.00'))); // Netto 20,00 → −30,00
+    expect(z.summen.gesamt.nettoNachNachlass).toBe('-30.00');
+    const schritte: LvBefehl[] = [
+      mengeAendern('P1', '3.000'), // Netto 40,00 → −10,00
+      epAendern('P2', '10.000'), // Netto 50,00 → 0,00, nie „−0.00“
+      mengeAendern('P2', '2.500'), // Netto 55,00 → 5,00
+      mengeAendern('P2', null), // Netto 30,00 → −20,00
+      mengeAendern('P1', '0.000'), // Netto 0,00 → −50,00
+    ];
+    const erwartet = ['-10.00', '0.00', '5.00', '-20.00', '-50.00'];
+    schritte.forEach((b, i) => {
+      z = wende(z, b);
+      expect(z.summen, b.art).toEqual(summenBerechnen(z.leistungsverzeichnis));
+      expect(z.summen.gesamt.nettoNachNachlass).toBe(erwartet[i]);
+      expect(JSON.stringify(z.summen)).not.toContain('-0.00');
+    });
+    // Nachlass wieder entfernen: umkehrbar (N5)
+    z = wende(z, { art: 'NachlassEntfernen' });
+    expect(z.summen.gesamt).toMatchObject({ netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00' });
+    expect(z.summen).toEqual(summenBerechnen(z.leistungsverzeichnis));
+  });
+
+  it('(3) E-06: Nachlassbetrag zuerst auf 2 Stellen runden, dann abziehen, auch bei negativem Netto nach Nachlass', () => {
+    // Netto 0,25, Nachlass als Betrag 0,30: Netto danach −0,05
+    const z = lvMit([posKnoten('P1', LV_ID, 0, '1.000', '0.250')], { nachlass: betragNachlass('0.30') });
+    expect(z.summen.gesamt).toMatchObject({ nachlass: '0.30', nettoNachNachlass: '-0.05' });
+    // Prozent bei negativem Netto: Nachlass −0,0130 → −0,01 (Betrag runden), Netto danach −0,12 (siehe oben); hier Gleichstand
+    const g = lvMit([posKnoten('P1', LV_ID, 0, '-1.000', '0.250')], { nachlass: prozentNachlass('10.00') });
+    expect(g.summen.gesamt).toMatchObject({ netto: '-0.25', nachlass: '-0.03', nettoNachNachlass: '-0.22' });
+  });
+
+  it('(3) Ein absoluter Nachlass bei negativem Netto: nur ein negativer Betrag wird abgewiesen', () => {
+    const z = lvMit([posKnoten('P1', LV_ID, 0, '-1.000', '10.000')]);
+    expect(fehlercode(z, nachlassSetzen(betragNachlass('-0.01')))).toBe('ungueltige-eingabe');
     expect(lvBefehlAusfuehren(z, nachlassSetzen(betragNachlass('0.00'))).ok).toBe(true);
   });
 });

@@ -14,10 +14,12 @@ export {
   OZ_ANNAHMEN,
   OZ_INDEX_LAENGE,
   OZ_MAX_LAENGE,
+  OZ_RUECKFALL_SCHRITTE,
   POSITION_SCHRITT,
   doppelteOrdnungszahlen,
   maskeFehler as ozMaskeFehler,
   ozFehler,
+  zaehlerSchritt,
 } from './ozregeln';
 export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';

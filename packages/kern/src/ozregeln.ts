@@ -30,6 +30,9 @@ export const GLIEDERUNG_SCHRITT = 1;
 /** Ticket 06: Positionen +10 je Geschwister (Positionen ohne eigenen Zähler siehe `OZ_ANNAHMEN.indexpositionen`). */
 export const POSITION_SCHRITT = 10;
 
+/** E-09, F2: Bei Überlauf weicht die Vergabe der Reihe nach auf diese Schritte aus (nur die, die kleiner als der Standard sind). */
+export const OZ_RUECKFALL_SCHRITTE: readonly number[] = [5, 2, 1];
+
 /**
  * VORLÄUFIGE ANNAHMEN, ENTSCHEIDUNG OFFEN (P5). Was das Ticket und die FD 3.3 nicht festlegen, ist hier gesammelt und
  * restriktiv gelesen. Jede Lesart lässt sich ohne Datenmigration lockern: Eine nach der engen Regel gültige OZ bleibt nach
@@ -61,7 +64,7 @@ export const OZ_ANNAHMEN: {
     'Ein Knoten in einer Stufe, die die Maske nicht hat, wird nicht nummeriert; der Befehl wird mit maske-ungueltig (OzMaskeSetzen, Umnummerieren) oder oz-ungueltig (OrdnungszahlSetzen) abgewiesen und nennt den Knoten',
   /** (c) `nummerAls`: Überlauf. */
   ueberlauf:
-    'Passt ein Zähler (Geschwisterzahl mal Schritt) nicht in die Stellen, wird abgewiesen (maske-ungueltig, nennt den Knoten); es gibt keinen Rückfall auf kleinere Schritte und nie eine abgeschnittene oder doppelte OZ',
+    'Passt ein Zähler (Geschwisterzahl mal Schritt) nicht in die Stellen, weicht die Vergabe für diese Geschwistergruppe automatisch auf Schritt 5, dann 2, dann 1 aus (E-09, F2; nur auf Schritte unter dem Standardschritt, Gliederungen haben also keinen Rückfall). Passt auch Schritt 1 nicht, wird abgewiesen (maske-ungueltig, nennt den ersten Knoten ohne Platz); nie eine abgeschnittene oder doppelte OZ. Ein Hinweis an die Nutzerin wird noch nicht geliefert: Befehlsergebnis und ChangeSet des Vertrags haben keinen Kanal dafür (Ticket vertrag v1.1a)',
   /** (d) Indexpositionen. */
   indexpositionen:
     'ozIndex wird nie verändert. Eine Position mit ozIndex teilt den Grundteil der nächsten vorhergehenden Position unter demselben Elternknoten (Muster in fixtures/typisch: 0050 und 0050 A) und verbraucht keinen Zähler; ohne vorhergehende Position bekommt sie einen eigenen Grundteil. Passt der Index nicht zur Maske oder entstehen gleiche OZ mit Index, wird abgewiesen',
@@ -285,13 +288,28 @@ export function nummerAls(stelle: OzStelle, wert: number): string | null {
   return text.padStart(stelle.laenge, '0');
 }
 
-/** Teil der n-ten Gliederung unter demselben Elternknoten (n ab 1): `n × GLIEDERUNG_SCHRITT`. */
-export const gliederungsTeil = (stelle: OzStelle, n: number): string | null =>
-  nummerAls(stelle, n * GLIEDERUNG_SCHRITT);
+/**
+ * Der Schritt, mit dem `anzahl` Geschwister in `stelle` passen: zuerst `standard`, dann die kleineren Schritte aus
+ * `OZ_RUECKFALL_SCHRITTE` (E-09, `OZ_ANNAHMEN.ueberlauf`). `null`, wenn auch Schritt 1 nicht reicht.
+ */
+export function zaehlerSchritt(stelle: OzStelle, anzahl: number, standard: number): number | null {
+  const kandidaten = [standard, ...OZ_RUECKFALL_SCHRITTE.filter((s) => s < standard)];
+  return kandidaten.find((schritt) => nummerAls(stelle, anzahl * schritt) !== null) ?? null;
+}
 
-/** Teil der n-ten Position unter demselben Elternknoten (n ab 1): `n × POSITION_SCHRITT`. */
-export const positionsTeil = (stelle: OzStelle, n: number): string | null =>
-  nummerAls(stelle, n * POSITION_SCHRITT);
+/** Teil der n-ten Gliederung unter demselben Elternknoten (n ab 1): `n × schritt` (Standard `GLIEDERUNG_SCHRITT`). */
+export const gliederungsTeil = (
+  stelle: OzStelle,
+  n: number,
+  schritt: number = GLIEDERUNG_SCHRITT,
+): string | null => nummerAls(stelle, n * schritt);
+
+/** Teil der n-ten Position unter demselben Elternknoten (n ab 1): `n × schritt` (Standard `POSITION_SCHRITT`). */
+export const positionsTeil = (
+  stelle: OzStelle,
+  n: number,
+  schritt: number = POSITION_SCHRITT,
+): string | null => nummerAls(stelle, n * schritt);
 
 /** Eine OZ (mit Index), die mehrfach vorkommt. */
 export interface DoppelteOrdnungszahl {

@@ -171,6 +171,11 @@ function orakel(
     let g = 0;
     let p = 0;
     let grund: string | null = null;
+    // Rückfall (E-09): größter Schritt aus 10, 5, 2, 1, mit dem die Grundpositionen in die Stellen passen
+    let grundzahl = 0;
+    for (const k of geschwister)
+      if (k.art === 'position' && !(k.ozIndex !== null && grundzahl > 0)) grundzahl++;
+    const schritt = [10, 5, 2, 1].find((s) => grundzahl * s < 10 ** maske.position.laenge) ?? 1;
     for (const k of geschwister) {
       if (k.art === 'hinweis') continue;
       if (k.art === 'position') {
@@ -178,7 +183,7 @@ function orakel(
           // Indexposition teilt den Grundteil der vorigen Position
         } else {
           p++;
-          grund = String(p * 10).padStart(maske.position.laenge, '0');
+          grund = String(p * schritt).padStart(maske.position.laenge, '0');
         }
         aus.set(k.id, [...teile, grund].join(maske.trennzeichen ?? ''));
       } else {
@@ -351,7 +356,7 @@ describe('OzMaskeSetzen (Property)', () => {
       fc.property(folgeArb, (folge) => {
         const z0 = bauen(MASKE_A, folge);
         const z1 = lvChangeSetAnwenden(z0, umnummerieren(z0));
-        // Zielmaske B: gleiche Stufenzahl; C hat mit 3, 2, 1, 1, 1 Stellen oft zu wenig Platz (Überlauf ist erlaubt).
+        // Zielmaske B: gleiche Stufenzahl; C hat mit 3, 2, 1, 1, 1 Stellen oft zu wenig Platz (Überlauf bei Schritt 1 wird abgewiesen).
         for (const ziel of [MASKE_B, MASKE_C]) {
           const e = lvBefehlAusfuehren(z1, { art: 'OzMaskeSetzen', maske: ziel });
           if (!e.ok) {
