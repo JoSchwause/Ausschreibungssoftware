@@ -105,7 +105,7 @@ function istHistorienbefehl(json: string): boolean {
   return art === 'Rueckgaengig' || art === 'Wiederholen';
 }
 
-const GESCHLOSSEN =(): Ergebnis<never, Speicherfehler> =>
+const GESCHLOSSEN = (): Ergebnis<never, Speicherfehler> =>
   fehler('gesperrt', 'Der Speicher ist geschlossen; für weitere Aufrufe muss er neu geöffnet werden.');
 
 export class SpeicherKern {

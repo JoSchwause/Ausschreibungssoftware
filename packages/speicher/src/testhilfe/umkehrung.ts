@@ -15,6 +15,7 @@ import type {
   Gesamtsummen,
   Knoten,
   LvChangeSet,
+  LvKopf,
   LvZustand,
   Papierkorbeintrag,
   PapierkorbeintragId,
@@ -99,7 +100,12 @@ export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
     ...cs,
     summen: {
       ...cs.summen,
-      vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: { positionen: [], gliederungen: [] } },
+      vorher: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: null,
+        entfernt: { positionen: [], gliederungen: [] },
+      },
     },
   };
 }
@@ -109,7 +115,10 @@ export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
 const LEER: Aenderungen<Knoten> = { hinzugefuegt: [], geaendert: [], entfernt: [] };
 
 /** Neue Gesamtsummen (Speicherbeispiel): das Netto ist um einen Cent-Schritt verändert, sonst wie vorher. */
-export const andereGesamt = (g: Gesamtsummen, netto: string): Gesamtsummen => ({ ...g, netto: netto as Betrag });
+export const andereGesamt = (g: Gesamtsummen, netto: string): Gesamtsummen => ({
+  ...g,
+  netto: netto as Betrag,
+});
 
 /** Rahmen eines LV-ChangeSets ohne Kopf. */
 function rahmen(z: LvZustand): Pick<LvChangeSet, 'art' | 'leistungsverzeichnisId' | 'kopf'> {
@@ -144,7 +153,8 @@ export function kopfAendern(
   nachher: Partial<Omit<LvZustand['leistungsverzeichnis'], 'knoten' | 'id' | 'projektId'>>,
   netto: string,
 ): LvChangeSet {
-  const { knoten: _k, ...kopf } = z.leistungsverzeichnis;
+  const kopf: LvKopf & { knoten?: unknown } = { ...z.leistungsverzeichnis };
+  Reflect.deleteProperty(kopf, 'knoten');
   return {
     ...rahmen(z),
     kopf: { vorher: kopf, nachher: { ...kopf, ...nachher } },
@@ -173,7 +183,12 @@ const kinder = (z: LvZustand, elternId: string): Knoten[] =>
  * Fügt die Teilbäume `neu` (Wurzeln zuerst, Eltern vor Kindern) am Ende von `elternId` ein (`PositionAnlegen`,
  * `KnotenEinfuegen`). Die Wurzeln bekommen die Lage am Ende; neue Positionen bekommen eine Summe.
  */
-export function einfuegen(z: LvZustand, elternId: ElternId, neu: readonly Knoten[], gp = '1.00'): LvChangeSet {
+export function einfuegen(
+  z: LvZustand,
+  elternId: ElternId,
+  neu: readonly Knoten[],
+  gp = '1.00',
+): LvChangeSet {
   const ids = new Set(neu.map((k) => k.id as string));
   let platz = kinder(z, elternId).length;
   const knoten = neu.map((k) => (ids.has(k.elternId) ? k : { ...k, elternId, reihenfolge: platz++ }));
@@ -183,7 +198,7 @@ export function einfuegen(z: LvZustand, elternId: ElternId, neu: readonly Knoten
     summen: {
       positionen: knoten
         .filter((k) => k.art === 'position')
-        .map((k): Positionssumme => ({ positionId: k.id as never, gesamtpreis: gp as Betrag, gehtInSummeEin: true })),
+        .map((k): Positionssumme => ({ positionId: k.id, gesamtpreis: gp as Betrag, gehtInSummeEin: true })),
       gliederungen: [],
       gesamt: andereGesamt(z.summen.gesamt, gp),
       vorher: {
@@ -245,7 +260,9 @@ export function ausBaumNehmen(
         },
       },
     },
-    ...(papierkorb === null ? {} : { papierkorb: { hinzugefuegt: [papierkorb], geaendert: [], entfernt: [] } }),
+    ...(papierkorb === null
+      ? {}
+      : { papierkorb: { hinzugefuegt: [papierkorb], geaendert: [], entfernt: [] } }),
   };
 }
 

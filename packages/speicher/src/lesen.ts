@@ -215,7 +215,9 @@ export function leseLvStaende(db: Datenbank, lv: string): LvStandUebersicht[] {
 
 export function leseLvStand(db: Datenbank, id: string): LvStand | null {
   const z = db.zeilen('SELECT * FROM lv_stand WHERE id = ?', [id])[0];
-  return z === undefined ? null : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
+  return z === undefined
+    ? null
+    : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
 }
 
 /** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei). */
