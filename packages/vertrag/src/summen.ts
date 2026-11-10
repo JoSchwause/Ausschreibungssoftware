@@ -53,7 +53,8 @@ export interface Summenvorher {
   /**
    * Gesamtsummen vor dem ChangeSet. Gesetzt, wenn das ChangeSet sie ändert (`Summenaenderung.gesamt` ist gesetzt)
    * oder das Aggregat gelöscht wird (dann ist `Summenaenderung.gesamt` `null`). `null`: es gab keine, weil das
-   * Aggregat neu entsteht (`kopf.vorher` ist `null`), oder sie ändern sich nicht.
+   * Aggregat neu entsteht oder sie ändern sich nicht. Wer beides unterscheiden muss, liest `kopf.vorher` des ChangeSets:
+   * `null` heißt „war neu“, sonst „unverändert“ (`Summenaenderung.gesamt` ist dann `null`).
    */
   readonly gesamt: Gesamtsummen | null;
   /**

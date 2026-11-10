@@ -71,6 +71,7 @@ type FxKnoten =
     };
 interface FxLv {
   id: string;
+  ozMaske: string;
   name: string;
   mwstSatz: string;
   nachlass: FxNachlass | null;
@@ -100,22 +101,22 @@ const lesenAngebotsset = (name: string): FxAngebotsset => rohdaten(name) as FxAn
 // --- Abbildung JSON → vertrag ---------------------------------------------------------------------------------
 
 /**
- * Die Fixtures beschreiben ihre Maske nur als Text (`NN.NN.NN.NN.NN.NNNN[I]`, 15 Stellen) und verletzen damit die
- * Grenze von 14 Zeichen einschließlich Index (F2, E-09). Hier steht die Maske als strukturierter Wert und wird aus den
- * Ordnungszahlen der Fixture abgeleitet, damit alle vorhandenen Werte hineinpassen: je Gliederungsstufe zwei Ziffern,
- * die Position vier Ziffern, ein Indexbuchstabe nur, wenn die Fixture einen verwendet. `gross` hat fünf Stufen und
- * keinen Index (5 × 2 + 4 = 14 Stellen), `typisch` hat Indexpositionen bei einer Stufe (2 + 4 + 1 = 7 Stellen).
- * Fünf Stufen und ein Index zusammen (15 Stellen) kommen in keiner Fixture vor und wären nicht zulässig.
+ * Die Fixtures beschreiben ihre Maske als Text vor dem Doppelpunkt (`NN.NN.NNNN[I]`: je `N` eine Ziffer, `[I]` ein
+ * Indexbuchstabe, die letzte Gruppe ist die Position, die davor sind die Gliederungsstufen). Hier wird genau dieser
+ * Text in einen `OzMaske` abgebildet, nichts wird aus den Ordnungszahlen abgeleitet.
  */
-function fixtureMaske(fx: FxLv): OzMaske {
-  const stufen = Math.max(
-    1,
-    ...fx.knoten.flatMap((k) => (k.art === 'position' ? [k.ordnungszahl.split('.').length - 1] : [])),
-  );
-  const mitIndex = fx.knoten.some((k) => k.art === 'position' && k.ozIndex !== undefined);
+function fixtureMaske(text: string): OzMaske {
+  const muster = text.split(':')[0]?.trim() ?? '';
+  const mitIndex = muster.endsWith('[I]');
+  const gruppen = (mitIndex ? muster.slice(0, -3) : muster).split('.');
+  const stellen = gruppen.map((g) => ({ laenge: g.length, zeichen: 'numerisch' as const }));
+  const position = stellen.pop();
+  if (position === undefined || gruppen.some((g) => !/^N+$/.test(g))) {
+    throw new Error(`Maskentext nicht lesbar: ${text}`);
+  }
   return {
-    gliederung: Array.from({ length: stufen }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
-    position: { laenge: 4, zeichen: 'numerisch' },
+    gliederung: stellen,
+    position,
     index: mitIndex ? { laenge: 1, zeichen: 'alphanumerisch' } : null,
     trennzeichen: '.',
   };
@@ -169,7 +170,7 @@ function abbilden(fx: FxLv): Leistungsverzeichnis {
     id: fx.id as LeistungsverzeichnisId,
     projektId: 'projekt-der-fixture' as ProjektId,
     name: fx.name,
-    ozMaske: fixtureMaske(fx),
+    ozMaske: fixtureMaske(fx.ozMaske),
     mwstSatz: fx.mwstSatz as Prozent,
     nachlass: nachlass(fx.nachlass),
     knoten,
@@ -246,15 +247,30 @@ describe.each(['winzig', 'typisch', 'gross'])(
     const fx = lesenLv(name);
     const lv = abbilden(fx);
 
-    it('die Maske hat höchstens 14 Stellen einschließlich Index, und jede Ordnungszahl passt hinein (F2)', () => {
+    it('die Maske der Fixture hat höchstens 14 Stellen einschließlich Index, und jede Ordnungszahl passt Stufe für Stufe hinein (F2)', () => {
       const m = lv.ozMaske;
       const stellen =
         m.gliederung.reduce((n, g) => n + g.laenge, 0) + m.position.laenge + (m.index?.laenge ?? 0);
       expect(stellen).toBeLessThanOrEqual(14);
       for (const k of lv.knoten) {
-        if (k.art !== 'position' || k.ordnungszahl === null) continue;
-        expect(k.ordnungszahl.split('.').length - 1).toBeLessThanOrEqual(m.gliederung.length);
-        if (k.ozIndex !== null) expect(m.index).not.toBeNull();
+        if (k.art === 'hinweis' || k.ordnungszahl === null) continue;
+        const teile = k.ordnungszahl.split('.');
+        if (k.art === 'position') {
+          expect(teile.length - 1).toBeLessThanOrEqual(m.gliederung.length);
+          expect(teile.at(-1)?.length).toBe(m.position.laenge);
+          teile.slice(0, -1).forEach((t, n) => {
+            expect(t.length).toBe(m.gliederung[n]?.laenge);
+          });
+          if (k.ozIndex !== null) {
+            expect(m.index).not.toBeNull();
+            expect(k.ozIndex).toHaveLength(m.index?.laenge ?? -1);
+          }
+        } else {
+          expect(teile.length).toBeLessThanOrEqual(m.gliederung.length);
+          teile.forEach((t, n) => {
+            expect(t.length).toBe(m.gliederung[n]?.laenge);
+          });
+        }
       }
     });
 

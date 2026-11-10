@@ -25,6 +25,7 @@ import type {
   Position,
 } from './modell';
 import type { LeistungsverzeichnisId, Ordnungszahl, PositionId, ProjektId, TitelId } from './marken';
+import type { Gesamtsummen } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
@@ -273,4 +274,142 @@ export const beispielChangeSetMitHinweis: LvChangeSet = {
   knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
   summen: { positionen: [], gliederungen: [], gesamt: null },
   hinweise: [{ code: 'netto-nach-nachlass-negativ', meldung: 'Netto nach Nachlass ist negativ.' }],
+};
+
+// --- v1.1a: Umkehrbarkeit je Art der Änderung (Typtest in `vertrag.test.ts`) --------------------------------------
+
+const gesamtsummen = (
+  netto: string,
+  nachlass: string,
+  nnn: string,
+  mwst: string,
+  brutto: string,
+): Gesamtsummen => ({
+  netto: netto as Betrag,
+  nachlass: nachlass as Betrag,
+  nettoNachNachlass: nnn as Betrag,
+  mwst: mwst as Betrag,
+  brutto: brutto as Betrag,
+});
+const g1235 = gesamtsummen('12.35', '0.00', '12.35', '2.35', '14.70');
+const g2235 = gesamtsummen('22.35', '0.00', '22.35', '4.25', '26.60');
+const keinGesamt = { positionen: [], gliederungen: [] } as const;
+
+const pos2Id = '019b76e9-0000-7000-8000-000000000004' as PositionId;
+const titel2Id = '019b76e9-0000-7000-8000-000000000005' as TitelId;
+const pos2: Position = {
+  ...position,
+  id: pos2Id,
+  reihenfolge: 1,
+  ordnungszahl: '01.0020' as Ordnungszahl,
+  menge: '2.000' as Menge,
+  einheitspreis: '5.000' as Einheitspreis,
+  kurztext: 'Zweite Position',
+};
+const lvRahmen = { art: 'leistungsverzeichnis', leistungsverzeichnisId: lvId } as const;
+
+/** Knoten hinzufügen: neue Position, Summe des Titels und Gesamtsummen ändern sich. */
+export const beispielChangeSetHinzufuegen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [pos2], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [{ positionId: pos2Id, gesamtpreis: '10.00' as Betrag, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: titelId, summe: '22.35' as Betrag }],
+    gesamt: g2235,
+    vorher: {
+      positionen: [],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: g1235,
+      entfernt: keinGesamt,
+    },
+  },
+};
+
+/** Knoten entfernen: das Gegenstück; die Summe der entfernten Position steht in `vorher.entfernt`. */
+export const beispielChangeSetEntfernen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [pos2] },
+  summen: {
+    positionen: [],
+    gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+    gesamt: g1235,
+    vorher: {
+      positionen: [],
+      gliederungen: [{ gliederungId: titelId, summe: '22.35' as Betrag }],
+      gesamt: g2235,
+      entfernt: {
+        positionen: [{ positionId: pos2Id, gesamtpreis: '10.00' as Betrag, gehtInSummeEin: true }],
+        gliederungen: [],
+      },
+    },
+  },
+};
+
+/** Verschieben: Die alte Lage (`elternId`, `reihenfolge`) steht in `geaendert[].vorher`; beide Titelsummen ändern sich. */
+export const beispielChangeSetVerschieben: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [{ vorher: pos2, nachher: { ...pos2, elternId: titel2Id, reihenfolge: 0 } }],
+    entfernt: [],
+  },
+  summen: {
+    positionen: [],
+    gliederungen: [
+      { gliederungId: titelId, summe: '12.35' as Betrag },
+      { gliederungId: titel2Id, summe: '10.00' as Betrag },
+    ],
+    gesamt: null,
+    vorher: {
+      positionen: [],
+      gliederungen: [
+        { gliederungId: titelId, summe: '22.35' as Betrag },
+        { gliederungId: titel2Id, summe: '0.00' as Betrag },
+      ],
+      gesamt: null,
+      entfernt: keinGesamt,
+    },
+  },
+};
+
+/** LV anlegen: `kopf.vorher: null`; die Umkehrung ist `beispielLoeschChangeSet`. */
+export const beispielAnlegenChangeSet: LvChangeSet = {
+  ...lvRahmen,
+  kopf: { vorher: null, nachher: lvKopf },
+  knoten: { hinzugefuegt: beispielLv.knoten, geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+    gesamt: g1235,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+};
+
+/** Nachlass setzen: nur der Kopf und die Gesamtsummen ändern sich. */
+export const beispielChangeSetNachlass: LvChangeSet = {
+  ...lvRahmen,
+  kopf: { vorher: lvKopf, nachher: { ...lvKopf, nachlass: { art: 'prozent', wert: '10.00' as Prozent } } },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: gesamtsummen('12.35', '1.24', '11.11', '2.11', '13.22'),
+    vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
+};
+
+/** MwSt-Satz ändern: Kopf und Gesamtsummen. */
+export const beispielChangeSetMwst: LvChangeSet = {
+  ...lvRahmen,
+  kopf: { vorher: lvKopf, nachher: { ...lvKopf, mwstSatz: '7.00' as Prozent } },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: gesamtsummen('12.35', '0.00', '12.35', '0.86', '13.21'),
+    vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
 };

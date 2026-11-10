@@ -78,7 +78,12 @@ export type ProjektBefehl = ProjektAnlegen | ProjektStammdatenSetzen | BieterAnl
 
 /**
  * Legt ein LV an, leer oder mit vollem Inhalt (GAEB-Import, Laden einer Fixture). Der Kern berechnet die Summen
- * und liefert sie im ChangeSet. `id` und `inhalt.wurzelId` sind dieselbe Kennung (v1.1a); die Prüfung liegt im Kern.
+ * und liefert sie im ChangeSet.
+ *
+ * Die Kennung des LV steht dreimal: in `id`, in `inhalt.wurzelId` und als `elternId` der Knoten der obersten Ebene.
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): `id` ist maßgeblich. Weicht `inhalt.wurzelId` davon ab, weist
+ * der Kern den Befehl mit `ungueltige-eingabe` und `feld: 'inhalt.wurzelId'` ab; ebenso Knoten der obersten Ebene, deren
+ * `elternId` nicht `id` ist. Alternative (Offene Typfrage H, Ticket 24): `id` aus dem Befehl streichen.
  */
 export interface LeistungsverzeichnisAnlegen {
   readonly art: 'LeistungsverzeichnisAnlegen';

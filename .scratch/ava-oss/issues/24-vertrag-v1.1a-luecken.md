@@ -84,7 +84,7 @@ Nur Typen, Konstanten und Kommentare in `packages/vertrag/src/`; keine Logik. `p
 8. **Codes.** `gaeb.ts`: `GaebVersion` + `'3.1'` (nur erkennbar, kein Export-Ziel). `changeset.ts`: `Befehlsfehlercode` + `'oz-doppelt'`, `'oz-ueberlauf'`. **`oz-ueberlauf` gilt nur, wenn auch Schritt 1 überläuft;** das Ausweichen auf Schritt 5, 2, 1 ist ein Hinweis (Punkt 10), kein Fehler; im Typkommentar festgehalten.
 9. **OZ.** `modell.ts`: `OzMaske.losStufe?: boolean` (`true`: `gliederung[0]` ist die Los-Stufe und zählt zu den 5; fehlt = `false`). `befehle.ts`: `GliederungAnlegen.ordnungszahl?: Ordnungszahl | null`.
 10. **Hinweise.** `changeset.ts`: `Befehlshinweiscode` (`'oz-schritt-ausgewichen' | 'netto-nach-nachlass-negativ'`), `Befehlshinweis { code, meldung, knotenId?, feld? }`, `hinweise?: readonly Befehlshinweis[]` an `ProjektChangeSet`, `LvChangeSet`, `AngebotChangeSet`, `AuftragsLvChangeSet`. **Abweichung vom Wortlaut von E-02:** E-02 spricht von einem „Befehlsfehlercode für negatives Netto nach Nachlass“. Ich habe bewusst einen Hinweis-/Befundcode gewählt, weil E-06 und N5 es als „Befund, keine Sperre“ festlegen und ein Fehlercode den Befehl abwiese. Derselbe Code ist als `Pruefbefund.code` der LV-Prüfung (K8) vorgesehen.
-11. **Fixture-Maske (nachträglich ergänzt).** `fixtures-abbildung.test.ts`: Die 15-stellige Maske (`NN.NN.NN.NN.NN.NNNN[I]`) ist ersetzt durch `fixtureMaske(fx)`, aus den Ordnungszahlen der Fixture abgeleitet (je Stufe 2 Ziffern, Position 4 Ziffern, Index nur, wenn die Fixture einen verwendet). Gewählt: `gross` 5 × 2 + 4 = **14 Stellen ohne Index** (kein Index in `gross`); `typisch` 1 × 2 + 4 + Index 1 = 7; `winzig` 1 × 2 + 4 = 6. Alle vorhandenen OZ-Werte passen hinein; ein neuer Test prüft höchstens 14 Stellen und dass jede OZ passt. Die Maskentexte in `fixtures/*.json` und `fixtures/README.md` habe ich nicht angefasst (außerhalb des Schreibbereichs, E-19).
+11. **Fixture-Maske (nachträglich ergänzt, nach dem Review überarbeitet).** `fixtures-abbildung.test.ts`: Nach dem Merge von Ticket 25 tragen die Fixtures ihren echten Maskentext (`NN.NN.NN.NN.NN.NNNN` für `gross`, `NN.NN.NNNN[I]` für `typisch` und `winzig`). `fixtureMaske(text)` bildet genau diesen Text in `OzMaske` ab (nichts wird aus den Ordnungszahlen abgeleitet); der Test prüft höchstens 14 Stellen einschließlich Index und, dass jede OZ Stufe für Stufe passt (Länge je Gliederungsstufe, Position, Index). `gross`: 5 × 2 + 4 = 14 Stellen ohne Index; `typisch`/`winzig`: 2 × 2 + 4 + 1 = 9 Stellen.
 
 ### Offene Typfragen (die enge Lesart steht im Typ; die Alternative ist hier festgehalten)
 
@@ -95,7 +95,7 @@ Nur Typen, Konstanten und Kommentare in `packages/vertrag/src/`; keine Logik. `p
 - **E. `AuftragsLeistungsverzeichnisAnlegen` trägt das ganze Aggregat** (wie `AngebotAnlegen`). Alternative: Ids + `LvInhalt` wie `LeistungsverzeichnisAnlegen`. Die Frage der Massenbefehle im Protokoll (E-13) gehört in Ticket 26.
 - **F. Los-Stufe als `losStufe?: boolean`.** Alternative: eigene Stelle `los: OzStelle | null` vor `gliederung` (verschiebt die Zählung der Stufen). Gewählt, weil `gliederung[0]` im Kern und in `gaeb` schon so gelesen wird.
 - **G. `GliederungAnlegen.ordnungszahl` optional mit `| null`** (zwei Arten von „keine“). Alternative: Pflichtfeld.
-- **H. `LvInhalt.wurzelId` neben `LeistungsverzeichnisAnlegen.id`:** dieselbe Kennung zweimal. Alternative: `id` aus dem Befehl streichen; hier nicht, weil es den Befehl bricht.
+- **H. `LvInhalt.wurzelId` neben `LeistungsverzeichnisAnlegen.id` und `elternId` der obersten Knoten:** dieselbe Kennung dreimal. **Vorläufige Annahme, Entscheidung offen (enge Lesart, im Typkommentar):** `id` ist maßgeblich; weicht `inhalt.wurzelId` ab, weist der Kern mit `ungueltige-eingabe`, `feld: 'inhalt.wurzelId'` ab. Alternative: `id` aus dem Befehl streichen; hier nicht, weil es den Befehl bricht.
 - **I. `GaebExport.version` darf nun `3.1` sein**, obwohl 3.1 kein Export-Ziel ist; nur im Kommentar festgehalten. Alternative: `GaebExportVersion = Exclude<GaebVersion, '3.1'>`.
 
 ### Mechanische Anpassungen außerhalb von `vertrag` (jede mit `// v1.1a: mechanisch angepasst, Folgeticket` markiert)
@@ -108,7 +108,7 @@ Nur Typen, Konstanten und Kommentare in `packages/vertrag/src/`; keine Logik. `p
 | `packages/kern/src/changeset.ts` (`lvChangeSetAnwenden`) | `satisfies LvChangeSetAnwenden` statt Annotation, damit kein Aufrufer `null` behandeln muss; Verhalten unverändert |
 | `packages/kern/src/ausfuehren.ts` (`ZUSTAENDIGES_TICKET`) | Eintrag für `LeistungsverzeichnisLoeschen` |
 | `packages/kern/src/testhilfen.ts` (2 Stellen), `packages/kern/src/summen-eigenschaften.test.ts` (1) | `wurzelId` im `LvInhalt` |
-| `packages/gaeb/src/lesen.ts` (Rückgabe des Inhalts) | `wurzelId` im `inhalt`; Prettier hat die Zeile umbrochen (Konfliktgefahr mit der MwSt-Änderung im selben Ausdruck, leicht aufzulösen) |
+| `packages/gaeb/src/lesen.ts` (Rückgabe des Inhalts) | `wurzelId` im `inhalt`, zusammengeführt mit dem MwSt-Standardsatz aus Ticket 25 (`mwstSatz`) |
 | `packages/ui-grid/e2e/harness/fixture-ansicht.ts` | `wurzelId` in der gebauten `LvAnsicht`, Import `WurzelId` |
 
 ### Folgetickets: was je Paket anzupassen ist
@@ -118,3 +118,10 @@ Nur Typen, Konstanten und Kommentare in `packages/vertrag/src/`; keine Logik. `p
 - **gaeb:** `wurzelId` nur noch aus `LvInhalt`, `GaebLesungErgebnis.wurzelId` entfällt; 3.1 über `GaebVersion` melden; `losStufe` in der Maske; Überlauf-Codes.
 - **ui-grid:** `GridZahlen` und `GridIdQuelle` aus dem Vertrag importieren, eigene Typen löschen; `wurzelId` aus `LvAnsicht` statt Eigenschaft `wurzelId`; Hinweise anzeigen.
 - **Protokoll (Ticket 26, S3):** Massenbefehle im Protokoll; Löschen bestätigen und per Undo/LV-Stand zurückholen.
+
+### Nachbesserung nach dem Review
+
+- **Umkehrbarkeit je Art** (`vertrag.test.ts`, Beispiele in `beispiele.ts`): Menge ändern, Knoten hinzufügen, Knoten entfernen (Summe in `vorher.entfernt`), Verschieben (alte Lage in `geaendert[].vorher`), LV anlegen, LV löschen, Nachlass ändern, MwSt ändern. Für jede Art gilt `umkehren(umkehren(cs))` gleich `cs`; Hinzufügen/Entfernen und Anlegen/Löschen sind Umkehrungen voneinander. **Ergebnis: Die Typen tragen alles; es fehlt nichts.** Einschränkung, die der Test nicht verdeckt: Die Gleichheit der doppelten Umkehrung gilt nur, wenn in `summen.positionen`/`gliederungen` die geänderten Einträge vor den neuen stehen (die Umkehrung teilt in „hatte vorher eine Summe“ und „neu“ und setzt in dieser Reihenfolge zusammen). Der Vertrag legt die Reihenfolge der Listen nicht fest; wer umkehrt, soll sie nicht für Identität voraussetzen.
+- `Summenvorher.gesamt`: der Kommentar nennt jetzt, dass man „war neu“ von „unverändert“ an `kopf.vorher` (`null` = neu) unterscheidet.
+- Punkt 11 und Typfrage H siehe oben. Merge: `lesen.ts` (MwSt-Standardsatz plus `wurzelId`) zusammengeführt; `testhilfen.ts` im Kern ohne Konflikt (Maske von Ticket 25, `wurzelId` von hier).
+

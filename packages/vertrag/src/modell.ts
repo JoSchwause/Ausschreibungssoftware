@@ -206,9 +206,12 @@ export interface LvInhaltKopf {
 /** Inhalt eines LV ohne Kennung und Projekt, z. B. das Ergebnis eines GAEB-Imports. */
 export interface LvInhalt extends LvInhaltKopf {
   /**
-   * Die Wurzel des Baums (v1.1a): die Kennung, die die Knoten der obersten Ebene als `elternId` tragen. Das LV, das
-   * aus dem Inhalt entsteht, bekommt diese Kennung (`LeistungsverzeichnisAnlegen.id` ist dieselbe). Der Aufrufer
+   * Die Wurzel des Baums (v1.1a): die Kennung, die die Knoten der obersten Ebene als `elternId` tragen. Der Aufrufer
    * (GAEB-Leser, Fixture) setzt sie aus seiner `IdQuelle`; die App muss die Wurzel nicht mehr umhängen.
+   *
+   * Vorläufige Annahme, Entscheidung offen (enge Lesart): Beim Anlegen ist `LeistungsverzeichnisAnlegen.id`
+   * maßgeblich; weicht `wurzelId` davon ab, weist der Kern mit `ungueltige-eingabe` und `feld: 'inhalt.wurzelId'` ab
+   * (Offene Typfrage H, Ticket 24).
    */
   readonly wurzelId: LeistungsverzeichnisId;
   /** Flach, in Dokumentreihenfolge; Eltern vor Kindern. Lage über `elternId` und `reihenfolge`. */

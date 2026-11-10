@@ -62,6 +62,12 @@ import {
   type WurzelId,
 } from './index';
 import {
+  beispielAnlegenChangeSet,
+  beispielChangeSetEntfernen,
+  beispielChangeSetHinzufuegen,
+  beispielChangeSetMwst,
+  beispielChangeSetNachlass,
+  beispielChangeSetVerschieben,
   beispielAuftragsBefehl,
   beispielAuftragsChangeSet,
   beispielBefehl,
@@ -312,6 +318,48 @@ describe('v1.1a Punkt 1: Summen umkehrbar', () => {
     expect(neu.summen.positionen).toHaveLength(1);
     expect(neu.summen.gliederungen).toHaveLength(1);
     expect(neu.summen.gesamt).toEqual(beispielChangeSet.summen.gesamt);
+  });
+
+  it.each([
+    ['Menge ändern', beispielChangeSet],
+    ['Knoten hinzufügen', beispielChangeSetHinzufuegen],
+    ['Knoten entfernen', beispielChangeSetEntfernen],
+    ['Knoten verschieben', beispielChangeSetVerschieben],
+    ['LV anlegen', beispielAnlegenChangeSet],
+    ['LV löschen', beispielLoeschChangeSet],
+    ['Nachlass ändern', beispielChangeSetNachlass],
+    ['MwSt-Satz ändern', beispielChangeSetMwst],
+  ])('%s: zweimal umkehren ergibt das ChangeSet', (_name, cs) => {
+    expect(umkehren(umkehren(cs))).toEqual(cs);
+  });
+
+  it('Hinzufügen und Entfernen, Anlegen und Löschen sind Umkehrungen voneinander', () => {
+    expect(umkehren(beispielChangeSetHinzufuegen)).toEqual(beispielChangeSetEntfernen);
+    expect(umkehren(beispielAnlegenChangeSet)).toEqual(beispielLoeschChangeSet);
+  });
+
+  it('Entfernen stellt Knoten und deren Summen aus dem ChangeSet allein wieder her', () => {
+    const neu = umkehren(beispielChangeSetEntfernen);
+    expect(neu.knoten.hinzugefuegt).toHaveLength(1);
+    expect(neu.summen.positionen).toEqual(beispielChangeSetEntfernen.summen.vorher?.entfernt.positionen);
+    expect(neu.summen.gliederungen[0]?.summe).toBe('22.35');
+  });
+
+  it('Verschieben: die alte Lage steht in `geaendert[].vorher`', () => {
+    const zurueck = umkehren(beispielChangeSetVerschieben);
+    const k = zurueck.knoten.geaendert[0]?.nachher;
+    expect(k?.elternId).toBe(beispielChangeSetVerschieben.knoten.geaendert[0]?.vorher.elternId);
+    expect(k?.reihenfolge).toBe(1);
+    expect(zurueck.summen.gliederungen.map((g) => g.summe)).toEqual(['22.35', '0.00']);
+  });
+
+  it('Nachlass und MwSt: alter Kopf und alte Gesamtsummen kommen zurück', () => {
+    const n = umkehren(beispielChangeSetNachlass);
+    expect(n.kopf?.nachher?.nachlass).toBeNull();
+    expect(n.summen.gesamt?.nachlass).toBe('0.00');
+    const m = umkehren(beispielChangeSetMwst);
+    expect(m.kopf?.nachher?.mwstSatz).toBe('19.00');
+    expect(m.summen.gesamt?.brutto).toBe('14.70');
   });
 
   it('ein ChangeSet ohne `vorher` ist nicht ohne Zustand umkehrbar', () => {
