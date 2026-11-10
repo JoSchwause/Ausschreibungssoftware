@@ -1008,7 +1008,15 @@ function baueInhalt(
     { feld: 'mwstSatz' },
   );
   return {
-    inhalt: { name, ozMaske: maske, mwstSatz: opt.standardMwstSatz, nachlass: null, knoten: aufbau.knoten },
+    // v1.1a: mechanisch angepasst, Folgeticket (gaeb: `wurzelId` nur noch in `inhalt`)
+    inhalt: {
+      name,
+      ozMaske: maske,
+      mwstSatz: opt.standardMwstSatz,
+      nachlass: null,
+      knoten: aufbau.knoten,
+      wurzelId,
+    },
     wurzelId,
   };
 }

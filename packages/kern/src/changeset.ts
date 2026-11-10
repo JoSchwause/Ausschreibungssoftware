@@ -145,7 +145,9 @@ export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet 
  * entfernt), ist ein Programmfehler, kein erwartbarer Fehler: die Funktion wirft. Der Kern selbst erzeugt solche
  * ChangeSets nicht.
  */
-export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
+// v1.1a: mechanisch angepasst, Folgeticket (kern: `null` als Ergebnis, wenn das ChangeSet das LV entfernt). `satisfies`
+// statt Annotation, damit die Funktion weiter `LvZustand` liefert und kein Aufrufer `null` behandeln muss.
+export const lvChangeSetAnwenden = ((zustand, cs) => {
   let kopf: Omit<Leistungsverzeichnis, 'knoten'>;
   if (cs.kopf !== null) {
     if (cs.kopf.nachher === null)
@@ -187,7 +189,7 @@ export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
   }
   const summen = summenAnwenden(zustand?.summen ?? LEERER_SUMMENSTAND, cs, knoten);
   return { leistungsverzeichnis: { ...kopf, knoten }, summen } satisfies LvZustand;
-};
+}) satisfies LvChangeSetAnwenden;
 
 /** Die Summen, die die Umkehrung herstellen muss: die Werte vor dem ChangeSet (siehe `changeSetUmkehren`). */
 function summenUmkehren(cs: LvChangeSet, vorher: LvZustand | null): Summenaenderung {

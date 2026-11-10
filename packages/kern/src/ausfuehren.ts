@@ -71,6 +71,8 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   EinheitAendern: 'kein Ticket zugeordnet (Felder ändern; Vertragskommentar nennt „Tickets 07, 21“)',
   EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   PositionsartAendern: 'K5 (Ticket 08, Positionsarten)',
+  // v1.1a: mechanisch angepasst, Folgeticket
+  LeistungsverzeichnisLoeschen: 'Folgeticket kern (Löschen, Vertrag v1.1a)',
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

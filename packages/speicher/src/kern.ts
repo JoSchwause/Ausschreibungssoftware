@@ -40,7 +40,10 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
       ? { art: 'projekt', id: cs.projektId as string }
       : cs.art === 'leistungsverzeichnis'
         ? { art: 'leistungsverzeichnis', id: cs.leistungsverzeichnisId as string }
-        : { art: 'angebot', id: cs.angebotId as string };
+        : cs.art === 'angebot'
+          ? { art: 'angebot', id: cs.angebotId as string }
+          : // v1.1a: mechanisch angepasst, Folgeticket
+            { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string };
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',
@@ -146,6 +149,11 @@ export class SpeicherKern {
             break;
           case 'angebot':
             wendeAngebotAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'auftrags-leistungsverzeichnis':
+            // v1.1a: mechanisch angepasst, Folgeticket (speicher schreibt das Auftrags-LV). Bis dahin wird es abgewiesen
+            // wie schon vor v1.1a, nie still verworfen (Q5).
+            abbruch('unbekannt', 'ChangeSets des Auftrags-LV werden noch nicht gespeichert.');
             break;
         }
         schreibeProtokolleintrag(this.#db, eintrag);

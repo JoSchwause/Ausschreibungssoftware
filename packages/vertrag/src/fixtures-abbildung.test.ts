@@ -99,13 +99,27 @@ const lesenAngebotsset = (name: string): FxAngebotsset => rohdaten(name) as FxAn
 
 // --- Abbildung JSON → vertrag ---------------------------------------------------------------------------------
 
-/** Die Fixtures beschreiben ihre Maske nur als Text; hier steht sie als strukturierter Wert (fünf Titelebenen). */
-const fixtureMaske: OzMaske = {
-  gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
-  position: { laenge: 4, zeichen: 'numerisch' },
-  index: { laenge: 1, zeichen: 'alphanumerisch' },
-  trennzeichen: '.',
-};
+/**
+ * Die Fixtures beschreiben ihre Maske nur als Text (`NN.NN.NN.NN.NN.NNNN[I]`, 15 Stellen) und verletzen damit die
+ * Grenze von 14 Zeichen einschließlich Index (F2, E-09). Hier steht die Maske als strukturierter Wert und wird aus den
+ * Ordnungszahlen der Fixture abgeleitet, damit alle vorhandenen Werte hineinpassen: je Gliederungsstufe zwei Ziffern,
+ * die Position vier Ziffern, ein Indexbuchstabe nur, wenn die Fixture einen verwendet. `gross` hat fünf Stufen und
+ * keinen Index (5 × 2 + 4 = 14 Stellen), `typisch` hat Indexpositionen bei einer Stufe (2 + 4 + 1 = 7 Stellen).
+ * Fünf Stufen und ein Index zusammen (15 Stellen) kommen in keiner Fixture vor und wären nicht zulässig.
+ */
+function fixtureMaske(fx: FxLv): OzMaske {
+  const stufen = Math.max(
+    1,
+    ...fx.knoten.flatMap((k) => (k.art === 'position' ? [k.ordnungszahl.split('.').length - 1] : [])),
+  );
+  const mitIndex = fx.knoten.some((k) => k.art === 'position' && k.ozIndex !== undefined);
+  return {
+    gliederung: Array.from({ length: stufen }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
+    position: { laenge: 4, zeichen: 'numerisch' },
+    index: mitIndex ? { laenge: 1, zeichen: 'alphanumerisch' } : null,
+    trennzeichen: '.',
+  };
+}
 
 const nachlass = (n: FxNachlass | null): Nachlass | null =>
   n === null
@@ -155,7 +169,7 @@ function abbilden(fx: FxLv): Leistungsverzeichnis {
     id: fx.id as LeistungsverzeichnisId,
     projektId: 'projekt-der-fixture' as ProjektId,
     name: fx.name,
-    ozMaske: fixtureMaske,
+    ozMaske: fixtureMaske(fx),
     mwstSatz: fx.mwstSatz as Prozent,
     nachlass: nachlass(fx.nachlass),
     knoten,
@@ -231,6 +245,18 @@ describe.each(['winzig', 'typisch', 'gross'])(
   (name) => {
     const fx = lesenLv(name);
     const lv = abbilden(fx);
+
+    it('die Maske hat höchstens 14 Stellen einschließlich Index, und jede Ordnungszahl passt hinein (F2)', () => {
+      const m = lv.ozMaske;
+      const stellen =
+        m.gliederung.reduce((n, g) => n + g.laenge, 0) + m.position.laenge + (m.index?.laenge ?? 0);
+      expect(stellen).toBeLessThanOrEqual(14);
+      for (const k of lv.knoten) {
+        if (k.art !== 'position' || k.ordnungszahl === null) continue;
+        expect(k.ordnungszahl.split('.').length - 1).toBeLessThanOrEqual(m.gliederung.length);
+        if (k.ozIndex !== null) expect(m.index).not.toBeNull();
+      }
+    });
 
     it('verliert kein Feld: JSON → vertrag → JSON ist die Identität', () => {
       expect(lv.knoten.map(zurueck)).toEqual(fx.knoten);

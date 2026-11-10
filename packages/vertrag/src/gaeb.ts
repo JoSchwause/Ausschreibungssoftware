@@ -7,8 +7,11 @@ import type { LvInhalt } from './modell';
 /** Austauschphase (Glossar „GAEB-Austauschphasen“). v1 unterstützt davon X81, X83, X84, X86. */
 export type GaebPhase = 'X81' | 'X82' | 'X83' | 'X84' | 'X85' | 'X86' | 'X89' | 'X31';
 
-/** GAEB DA XML Version. GAEB 90 und 2000 sind kein Ziel von v1. */
-export type GaebVersion = '3.2' | '3.3';
+/**
+ * GAEB DA XML Version. GAEB 90 und 2000 sind kein Ziel von v1. `3.1` ist nur erkennbar (v1.1a): Eine 3.1-Datei
+ * liefert einen Befund und keinen Inhalt (Ticket 22, G4); als Export-Version ist `3.1` kein Ziel.
+ */
+export type GaebVersion = '3.1' | '3.2' | '3.3';
 
 export type Befundschwere = 'warnung' | 'fehler';
 

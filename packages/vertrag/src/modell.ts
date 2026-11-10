@@ -58,11 +58,19 @@ export interface OzStelle {
 /**
  * Maske der Ordnungszahl, je LV frei definierbar. `gliederung` hat eine Stelle je Gliederungsstufe (Stufe 1
  * zuerst); `position` ist die Positionsstelle, `index` die optionale Indexstelle. `trennzeichen` steht in der
- * Anzeige zwischen den Gruppen (`null`: keines). Ob ein Los eine eigene Stufe belegt, ist offen
- * (Ticket 02, „Offene Typfragen“).
+ * Anzeige zwischen den Gruppen (`null`: keines).
+ *
+ * Los (F1, E-08; v1.1a): Das Los ist die oberste Stufe und zählt zu den höchstens 5 Stufen. Es hat keine eigene
+ * Liste, sondern belegt `gliederung[0]`; `losStufe` sagt, ob diese Stufe die Los-Stufe ist.
  */
 export interface OzMaske {
   readonly gliederung: readonly OzStelle[];
+  /**
+   * `true`: Die oberste Gliederungsstufe (`gliederung[0]`) ist die Los-Stufe, alle Knoten der obersten Ebene sind
+   * Lose (nie Lose und Titel nebeneinander, F1). `gliederung.length` zählt das Los mit. Fehlt das Feld oder ist es
+   * `false`: Die oberste Stufe sind Titel. Das Feld ist optional, damit bestehende Masken gültig bleiben.
+   */
+  readonly losStufe?: boolean;
   readonly position: OzStelle;
   readonly index: OzStelle | null;
   readonly trennzeichen: string | null;
@@ -197,6 +205,12 @@ export interface LvInhaltKopf {
 
 /** Inhalt eines LV ohne Kennung und Projekt, z. B. das Ergebnis eines GAEB-Imports. */
 export interface LvInhalt extends LvInhaltKopf {
+  /**
+   * Die Wurzel des Baums (v1.1a): die Kennung, die die Knoten der obersten Ebene als `elternId` tragen. Das LV, das
+   * aus dem Inhalt entsteht, bekommt diese Kennung (`LeistungsverzeichnisAnlegen.id` ist dieselbe). Der Aufrufer
+   * (GAEB-Leser, Fixture) setzt sie aus seiner `IdQuelle`; die App muss die Wurzel nicht mehr umhängen.
+   */
+  readonly wurzelId: LeistungsverzeichnisId;
   /** Flach, in Dokumentreihenfolge; Eltern vor Kindern. Lage über `elternId` und `reihenfolge`. */
   readonly knoten: readonly Knoten[];
 }

@@ -34,8 +34,46 @@ import {
   type Protokolleintrag,
   type TitelId,
   type Zeitstempel,
+  type Aenderung,
+  type AngebotChangeSet,
+  type AngebotKopf,
+  type AuftragsLvBefehl,
+  type AuftragsLvChangeSet,
+  type AuftragsLvZustand,
+  type Befehlsfehlercode,
+  type Befehlshinweis,
+  type Befehlshinweiscode,
+  type GaebVersion,
+  type GliederungAnlegen,
+  type GridIdQuelle,
+  type GridZahlen,
+  type IdQuelle,
+  type LvAnsicht,
+  type LvChangeSetAnwenden,
+  type LvInhalt,
+  type LvZustand,
+  type OzMaske,
+  type Projekt,
+  type ProjektChangeSet,
+  type Speicher,
+  type Speicherfehler,
+  type Speicherfehlercode,
+  type Summenaenderung,
+  type WurzelId,
 } from './index';
-import { beispielBefehl, beispielChangeSet, beispielLv } from './beispiele';
+import {
+  beispielAuftragsBefehl,
+  beispielAuftragsChangeSet,
+  beispielBefehl,
+  beispielChangeSet,
+  beispielChangeSetMitHinweis,
+  beispielGliederungMitOz,
+  beispielInhaltMitLos,
+  beispielLeereAnsicht,
+  beispielLoeschbefehle,
+  beispielLoeschChangeSet,
+  beispielLv,
+} from './beispiele';
 
 /** `true`, wenn T nur aus Daten besteht: keine Funktion, kein Date, alles verschachtelt gleich. */
 type NurDaten<T> = T extends string | number | boolean | null | undefined
@@ -207,5 +245,185 @@ describe('Beispiele kompilieren', () => {
     expect(beispielBefehl.art).toBe('MengeAendern');
     expect(beispielChangeSet.knoten.geaendert).toHaveLength(1);
     expect(beispielLv.knoten).toHaveLength(2);
+  });
+});
+
+// --- v1.1a --------------------------------------------------------------------------------------------------------
+
+/**
+ * Umkehrung eines LV-ChangeSets, nur aus dem ChangeSet gelesen (kein Zustand, kein Kern). Der Test belegt, dass der
+ * Vertrag dafür alles trägt; die Umsetzung im Kern ist Sache des Folgetickets. Fehlt `summen.vorher`, ist das
+ * ChangeSet nicht ohne Zustand umkehrbar: die Funktion wirft.
+ */
+function umkehren(cs: LvChangeSet): LvChangeSet {
+  const v = cs.summen.vorher;
+  if (v === undefined) throw new Error('keine alten Summen im ChangeSet');
+  const alteP = new Set<string>(v.positionen.map((p) => p.positionId));
+  const alteG = new Set<string>(v.gliederungen.map((g) => g.gliederungId));
+  const summen: Summenaenderung = {
+    // wiederherstellen: alte Werte der geänderten Einträge und die Summen entfernter Knoten
+    positionen: [...v.positionen, ...v.entfernt.positionen],
+    gliederungen: [...v.gliederungen, ...v.entfernt.gliederungen],
+    gesamt: v.gesamt,
+    vorher: {
+      positionen: cs.summen.positionen.filter((p) => alteP.has(p.positionId)),
+      gliederungen: cs.summen.gliederungen.filter((g) => alteG.has(g.gliederungId)),
+      gesamt: cs.summen.gesamt,
+      entfernt: {
+        // neu entstandene Summen fallen bei der Umkehrung weg
+        positionen: cs.summen.positionen.filter((p) => !alteP.has(p.positionId)),
+        gliederungen: cs.summen.gliederungen.filter((g) => !alteG.has(g.gliederungId)),
+      },
+    },
+  };
+  return {
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: cs.leistungsverzeichnisId,
+    kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
+    knoten: {
+      hinzugefuegt: cs.knoten.entfernt,
+      geaendert: cs.knoten.geaendert.map((g) => ({ vorher: g.nachher, nachher: g.vorher })),
+      entfernt: cs.knoten.hinzugefuegt,
+    },
+    summen,
+  };
+}
+
+describe('v1.1a Punkt 1: Summen umkehrbar', () => {
+  it('Summenaenderung nennt alte Werte, Vorwert der Gesamtsummen und die Summen entfernter Knoten', () => {
+    expectTypeOf<NonNullable<Summenaenderung['vorher']>>().toHaveProperty('positionen');
+    expectTypeOf<NonNullable<Summenaenderung['vorher']>>().toHaveProperty('gliederungen');
+    expectTypeOf<NonNullable<Summenaenderung['vorher']>>().toHaveProperty('gesamt');
+    expectTypeOf<NonNullable<Summenaenderung['vorher']>>().toHaveProperty('entfernt');
+  });
+
+  it('aus einem ChangeSet allein ist die Umkehrung ablesbar, auch für Summen und entfernte Knoten', () => {
+    // Änderung: neue Menge → alte Menge und alte Summen kommen zurück.
+    const zurueck = umkehren(beispielChangeSet);
+    expect(zurueck.knoten.geaendert[0]?.nachher).toEqual(beispielChangeSet.knoten.geaendert[0]?.vorher);
+    expect(zurueck.summen.positionen[0]?.gesamtpreis).toBe('10.00');
+    expect(zurueck.summen.gliederungen[0]?.summe).toBe('10.00');
+    expect(zurueck.summen.gesamt?.brutto).toBe('11.90');
+    // Löschen: Die Umkehrung ist das Anlegen mit allen Knoten und allen Summen.
+    const neu = umkehren(beispielLoeschChangeSet);
+    expect(neu.kopf?.vorher).toBeNull();
+    expect(neu.kopf?.nachher).toEqual(beispielLoeschChangeSet.kopf?.vorher);
+    expect(neu.knoten.hinzugefuegt).toEqual(beispielLv.knoten);
+    expect(neu.summen.positionen).toHaveLength(1);
+    expect(neu.summen.gliederungen).toHaveLength(1);
+    expect(neu.summen.gesamt).toEqual(beispielChangeSet.summen.gesamt);
+  });
+
+  it('ein ChangeSet ohne `vorher` ist nicht ohne Zustand umkehrbar', () => {
+    const { positionen, gliederungen, gesamt } = beispielChangeSet.summen;
+    const ohne: LvChangeSet = { ...beispielChangeSet, summen: { positionen, gliederungen, gesamt } };
+    expect(() => umkehren(ohne)).toThrow();
+  });
+});
+
+describe('v1.1a Punkt 2: LV-Anlegen umkehrbar', () => {
+  it('LvChangeSetAnwenden darf null liefern', () => {
+    expectTypeOf<ReturnType<LvChangeSetAnwenden>>().toEqualTypeOf<LvZustand | null>();
+    expectTypeOf<Parameters<LvChangeSetAnwenden>[0]>().toEqualTypeOf<LvZustand | null>();
+  });
+
+  it('das Anlegen (kopf.vorher: null) und das Löschen (kopf.nachher: null) sind Gegenstücke', () => {
+    expect(umkehren(beispielLoeschChangeSet).kopf?.vorher).toBeNull();
+    expect(beispielLoeschChangeSet.kopf?.nachher).toBeNull();
+  });
+});
+
+describe('v1.1a Punkt 3: Speicher', () => {
+  it('Speicherfehlercode kennt konflikt und existiert-bereits', () => {
+    expectTypeOf<'konflikt'>().toExtend<Speicherfehlercode>();
+    expectTypeOf<'existiert-bereits'>().toExtend<Speicherfehlercode>();
+  });
+
+  it('Speicher hat schliessen()', () => {
+    expectTypeOf<Speicher['schliessen']>().toBeFunction();
+    expectTypeOf<ReturnType<Speicher['schliessen']>>().toEqualTypeOf<
+      Promise<Ergebnis<void, Speicherfehler>>
+    >();
+  });
+});
+
+describe('v1.1a Punkt 4: Löschen', () => {
+  it('Projekt, LV und Angebot haben je einen Löschbefehl, reine Daten', () => {
+    expectTypeOf<
+      'ProjektLoeschen' | 'LeistungsverzeichnisLoeschen' | 'AngebotLoeschen'
+    >().toExtend<Befehlsart>();
+    expectTypeOf<Extract<LvBefehl, { art: 'LeistungsverzeichnisLoeschen' }>>().toHaveProperty('art');
+    expect(beispielLoeschbefehle.map((b) => b.art)).toEqual([
+      'ProjektLoeschen',
+      'LeistungsverzeichnisLoeschen',
+      'AngebotLoeschen',
+    ]);
+  });
+
+  it('die ChangeSets stellen das Löschen als nachher: null dar und tragen den vollen Stand', () => {
+    expectTypeOf<ProjektChangeSet['projekt']['nachher']>().toEqualTypeOf<Projekt | null>();
+    expectTypeOf<AngebotChangeSet['kopf']>().toEqualTypeOf<Aenderung<AngebotKopf> | null>();
+    expect(beispielLoeschChangeSet.knoten.entfernt).toEqual(beispielLv.knoten);
+    expect(beispielLoeschChangeSet.summen.vorher?.entfernt.positionen).toHaveLength(1);
+  });
+});
+
+describe('v1.1a Punkt 5: Auftrags-LV', () => {
+  it('Befehl und ChangeSet legen das Auftrags-LV als Aggregat an', () => {
+    expectTypeOf(beispielAuftragsBefehl).toExtend<Befehl>();
+    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<'AuftragsLeistungsverzeichnisAnlegen'>();
+    expectTypeOf(beispielAuftragsChangeSet).toEqualTypeOf<AuftragsLvChangeSet>();
+    expectTypeOf<AuftragsLvChangeSet>().toExtend<ChangeSet>();
+    expectTypeOf<AuftragsLvZustand>().toHaveProperty('auftragsLeistungsverzeichnis');
+    expect(beispielAuftragsChangeSet.kopf?.vorher).toBeNull();
+    expect(beispielAuftragsChangeSet.knoten.hinzugefuegt).toHaveLength(2);
+  });
+});
+
+describe('v1.1a Punkt 6: Wurzel-ID', () => {
+  it('LvInhalt und LvAnsicht kennen die Wurzel', () => {
+    expectTypeOf<LvInhalt['wurzelId']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<LvAnsicht['wurzelId']>().toEqualTypeOf<WurzelId>();
+    expectTypeOf<WurzelId>().toExtend<ElternId>();
+    expectTypeOf<GliederungId>().not.toExtend<WurzelId>();
+    expect(beispielLeereAnsicht.zeilen).toHaveLength(0);
+    expect(beispielInhaltMitLos.wurzelId).toBe(beispielLv.id);
+  });
+});
+
+describe('v1.1a Punkt 7: Ränder des Grids', () => {
+  it('GridZahlen und GridIdQuelle stehen im Vertrag; es gibt eine IdQuelle', () => {
+    expectTypeOf<GridZahlen['parseMenge']>().returns.toEqualTypeOf<Ergebnis<Menge, string>>();
+    expectTypeOf<GridZahlen['parseEinheitspreis']>().returns.toEqualTypeOf<Ergebnis<Einheitspreis, string>>();
+    expectTypeOf<GridZahlen['formatBetrag']>().parameter(0).toEqualTypeOf<Betrag>();
+    expectTypeOf<GridIdQuelle>().toEqualTypeOf<Pick<IdQuelle, 'position'>>();
+    expectTypeOf<IdQuelle>().toExtend<GridIdQuelle>();
+  });
+});
+
+describe('v1.1a Punkt 8: Codes', () => {
+  it('GaebVersion kennt 3.1, Befehlsfehlercode kennt OZ doppelt und Überlauf', () => {
+    expectTypeOf<'3.1'>().toExtend<GaebVersion>();
+    expectTypeOf<'oz-doppelt' | 'oz-ueberlauf'>().toExtend<Befehlsfehlercode>();
+  });
+});
+
+describe('v1.1a Punkt 9: OZ', () => {
+  it('OzMaske hat ein Feld für die Los-Stufe, GliederungAnlegen ein OZ-Feld', () => {
+    expectTypeOf<OzMaske>().toHaveProperty('losStufe');
+    expectTypeOf<GliederungAnlegen>().toHaveProperty('ordnungszahl');
+    expect(beispielInhaltMitLos.ozMaske.losStufe).toBe(true);
+    expect(beispielInhaltMitLos.ozMaske.gliederung.length).toBeLessThanOrEqual(5);
+    expect(beispielGliederungMitOz.ordnungszahl).toBe('01');
+  });
+});
+
+describe('v1.1a Punkt 10: Hinweise aus Befehlen', () => {
+  it('ein ChangeSet trägt Hinweise; kein Fehlercode weist den Befehl wegen negativen Nettos ab', () => {
+    expectTypeOf<LvChangeSet['hinweise']>().toEqualTypeOf<readonly Befehlshinweis[] | undefined>();
+    expectTypeOf<'oz-schritt-ausgewichen' | 'netto-nach-nachlass-negativ'>().toExtend<Befehlshinweiscode>();
+    expectTypeOf<'netto-nach-nachlass-negativ'>().not.toExtend<Befehlsfehlercode>();
+    expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
+    expect(beispielChangeSetMitHinweis.hinweise?.[0]?.code).toBe('netto-nach-nachlass-negativ');
   });
 });

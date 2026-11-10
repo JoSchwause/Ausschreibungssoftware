@@ -481,6 +481,11 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   AngebotspositionSetzen: true,
   AngebotsNachlassSetzen: true,
   AngebotsNachlassEntfernen: true,
+  // v1.1a: mechanisch angepasst, Folgeticket (speicher: Löschen und Auftrags-LV umsetzen)
+  ProjektLoeschen: true,
+  LeistungsverzeichnisLoeschen: true,
+  AngebotLoeschen: true,
+  AuftragsLeistungsverzeichnisAnlegen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

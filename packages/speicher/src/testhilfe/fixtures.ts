@@ -305,6 +305,7 @@ export function anlegenSchritte(f: FixtureDaten, ab = 1): Schritt[] {
             mwstSatz: kopf.mwstSatz,
             nachlass: kopf.nachlass,
             knoten,
+            wurzelId: kopf.id, // v1.1a: mechanisch angepasst, Folgeticket
           },
         },
       ),

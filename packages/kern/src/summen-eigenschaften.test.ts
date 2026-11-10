@@ -380,6 +380,7 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
             mwstSatz: lv.mwstSatz,
             nachlass: lv.nachlass,
             knoten: lv.knoten,
+            wurzelId: lv.id, // v1.1a: mechanisch angepasst, Folgeticket
           },
         });
         expect(neu.ok).toBe(true);

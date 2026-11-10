@@ -58,6 +58,7 @@ export function inhalt(knoten: readonly Knoten[] = []): LvInhalt {
     mwstSatz: '19.00' as Prozent,
     nachlass: null,
     knoten,
+    wurzelId: LV_ID, // v1.1a: mechanisch angepasst, Folgeticket
   };
 }
 
@@ -194,6 +195,7 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
     mwstSatz: fx.mwstSatz as Prozent,
     nachlass,
     knoten,
+    wurzelId: fx.id as LeistungsverzeichnisId, // v1.1a: mechanisch angepasst, Folgeticket
   };
 }
 

@@ -19,6 +19,7 @@ import type {
   Positionsart,
   Pruefbefund,
   TitelId,
+  WurzelId,
 } from '@tethys/vertrag';
 
 type FxKnoten =
@@ -170,7 +171,8 @@ export function baueAnsicht(
     }
   };
   besuche(modell.lvId, 0);
-  return { zeilen, gesamt: modell.gesamt };
+  // v1.1a: mechanisch angepasst, Folgeticket (ui-grid: wurzelId aus der Ansicht statt als eigene Eigenschaft)
+  return { wurzelId: modell.lvId as WurzelId, zeilen, gesamt: modell.gesamt };
 }
 
 /** Alle Gliederungsknoten (zum Aufklappen aller Ebenen). */

@@ -106,6 +106,15 @@ Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ä
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
 
+### Befehlshinweis
+Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, oder das Netto nach Nachlass ist negativ). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
+
+### Wurzel (des LV-Baums)
+Die Kennung des LV (oder Auftrags-LV) selbst, die die Knoten der obersten Ebene als Elternknoten tragen. Im Code `WurzelId`, `LvInhalt.wurzelId`, `LvAnsicht.wurzelId`.
+
+### Los-Stufe
+Die oberste Stufe der OZ-Maske, wenn das LV Lose hat. Das Los ist die oberste Gliederungsstufe und zählt zu den höchstens 5 Stufen (F1); Lose und Titel stehen nie nebeneinander auf der obersten Stufe.
+
 ### Entwurfskennzeichen
 Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.
 

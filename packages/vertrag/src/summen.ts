@@ -38,12 +38,48 @@ export interface Summenstand {
 }
 
 /**
+ * Alte Werte zu einer `Summenaenderung` (v1.1a, Punkt 1): alles, was man braucht, um die Summen eines ChangeSets ohne
+ * Vorzustand zurückzusetzen. Zusammen mit `Aenderungen.entfernt` und `Aenderung.vorher` ist ein ChangeSet damit
+ * allein umkehrbar (Undo, LV-Stand; S3).
+ */
+export interface Summenvorher {
+  /**
+   * Alter Wert jeder Position aus `Summenaenderung.positionen`, die vorher schon eine Summe hatte. Eine Position
+   * ohne Gegenstück hier ist durch das ChangeSet neu; bei der Umkehrung fällt ihre Summe weg.
+   */
+  readonly positionen: readonly Positionssumme[];
+  /** Wie `positionen`, für Gliederungen. */
+  readonly gliederungen: readonly Gliederungssumme[];
+  /**
+   * Gesamtsummen vor dem ChangeSet. Gesetzt, wenn das ChangeSet sie ändert (`Summenaenderung.gesamt` ist gesetzt)
+   * oder das Aggregat gelöscht wird (dann ist `Summenaenderung.gesamt` `null`). `null`: es gab keine, weil das
+   * Aggregat neu entsteht (`kopf.vorher` ist `null`), oder sie ändern sich nicht.
+   */
+  readonly gesamt: Gesamtsummen | null;
+  /**
+   * Die vollständigen Summen der Knoten, die das ChangeSet entfernt (`knoten.entfernt`, `positionen.entfernt`),
+   * auch beim Löschen eines ganzen Aggregats. Die Umkehrung stellt sie wieder her.
+   */
+  readonly entfernt: {
+    readonly positionen: readonly Positionssumme[];
+    readonly gliederungen: readonly Gliederungssumme[];
+  };
+}
+
+/**
  * Betroffene Summen eines ChangeSets (A6): nur neue oder geänderte Werte, neu berechnet im betroffenen Teilbaum.
- * Summen entfernter Knoten fallen mit dem Knoten weg (`knoten.entfernt` im ChangeSet); sie werden hier nicht gelistet.
- * `gesamt` ist `null`, wenn sich die Gesamtsummen nicht geändert haben.
+ * Summen entfernter Knoten fallen mit dem Knoten weg (`knoten.entfernt` im ChangeSet); sie stehen nicht in
+ * `positionen`/`gliederungen`, sondern in `vorher.entfernt`.
+ * `gesamt` ist `null`, wenn sich die Gesamtsummen nicht geändert haben (oder das Aggregat gelöscht wird).
+ *
+ * `vorher` (v1.1a) trägt die alten Werte. Es ist optional, damit `kern` und `speicher` ohne Änderung weiter
+ * übersetzen; fehlt es, ist das ChangeSet nur mit dem Vorzustand umkehrbar (heute `changeSetUmkehren(cs,
+ * zustandVorher)` im Kern). Jedes ChangeSet, das der Kern nach dem Folgeticket erzeugt, setzt `vorher`
+ * (siehe „Offene Typfragen“, Ticket 24).
  */
 export interface Summenaenderung {
   readonly positionen: readonly Positionssumme[];
   readonly gliederungen: readonly Gliederungssumme[];
   readonly gesamt: Gesamtsummen | null;
+  readonly vorher?: Summenvorher;
 }
