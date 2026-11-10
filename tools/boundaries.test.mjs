@@ -91,5 +91,63 @@ describe('Paketgrenzen (A3)', () => {
     datei('packages/kern/src/rechnen.test.ts', "import '@tethys/fixtures';\nexport {};\n");
     const verstoesse = await pruefeGrenzen(wurzel);
     expect(verstoesse.filter((v) => v.startsWith('fixtures-nur-in-tests'))).toHaveLength(1);
+    // Die Testdatei darf Fixtures lesen, die Produktivdatei nicht: genau ein Verstoß, und nur gegen die Fixture-Regel.
+    expect(verstoesse).toHaveLength(1);
+    expect(verstoesse[0]).toContain('rechnen.ts');
+  });
+
+  it('weist Produktivcode ab, der über eine Testhilfe zu Fixtures gelangt', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/prod.ts', "import './testhilfen';\nexport {};\n");
+    datei('packages/kern/src/testhilfen.ts', "import '../../../fixtures/a';\nexport {};\n");
+    datei('fixtures/a.ts', 'export {};\n');
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse.some((v) => v.startsWith('testhilfen-nur-in-tests') && v.includes('prod.ts'))).toBe(
+      true,
+    );
+  });
+
+  it('weist Produktivcode ab, der ein Verzeichnis testhilfe/ importiert', async () => {
+    paket('packages/speicher');
+    datei('packages/speicher/src/prod.ts', "import './testhilfe/x';\nexport {};\n");
+    datei('packages/speicher/src/testhilfe/x.ts', 'export {};\n');
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse.some((v) => v.startsWith('testhilfen-nur-in-tests'))).toBe(true);
+  });
+
+  it('zählt harness/ zu den Testdateien: darf testhilfe/ importieren, src/ nicht', async () => {
+    paket('packages/speicher');
+    datei('packages/speicher/harness/main.ts', "import '../src/testhilfe/x';\nexport {};\n");
+    datei('packages/speicher/src/testhilfe/x.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/speicher/src/prod.ts', "import './testhilfe/x';\nexport {};\n");
+    const verstoesse = await pruefeGrenzen(wurzel);
+    expect(verstoesse).toHaveLength(1);
+    expect(verstoesse[0]).toContain('prod.ts');
+  });
+
+  it('erlaubt einer Testdatei, testhilfen zu importieren', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/a.test.ts', "import './testhilfen';\nexport {};\n");
+    datei('packages/kern/src/testhilfen.ts', "import '../../../fixtures/a';\nexport {};\n");
+    datei('fixtures/a.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+  });
+
+  it('zählt Testhilfen (testhilfen.ts) zu den Testdateien', async () => {
+    paket('packages/kern');
+    paket('fixtures');
+    datei('packages/kern/src/testhilfen.ts', "import '@tethys/fixtures';\nexport {};\n");
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+  });
+
+  it('erlaubt einer Testdatei Fixtures auch aus e2e-Ordnern und per relativem Pfad', async () => {
+    paket('packages/ui-grid');
+    paket('fixtures');
+    datei('packages/ui-grid/e2e/grid.spec.ts', "import '../../../fixtures/index';\nexport {};\n");
+    datei('fixtures/index.ts', 'export {};\n');
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
   });
 });

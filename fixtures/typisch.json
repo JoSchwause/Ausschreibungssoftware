@@ -3,7 +3,7 @@
   "art": "leistungsverzeichnis",
   "id": "019b76e9-ea40-7f8c-a8f8-da06db622e5d",
   "name": "Typisch: Musterhaus (erfunden)",
-  "ozMaske": "NN.NN.NN.NN.NN.NNNN[I]: je Titelebene zwei Ziffern, Position vier Ziffern, optionaler Index-Buchstabe",
+  "ozMaske": "NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe",
   "mwstSatz": "19.00",
   "nachlass": {"art":"prozent","wert":"2.00"},
   "knoten": [
