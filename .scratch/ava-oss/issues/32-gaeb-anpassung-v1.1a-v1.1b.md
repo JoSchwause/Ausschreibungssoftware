@@ -1,6 +1,6 @@
 # 32: Anpassung `gaeb` an v1.1a/v1.1b (`wurzelId`, 3.1, `losStufe`, Merkmale, Langtext, Kopfdaten lesen)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: G · Paket: `packages/gaeb`
 Blocked by: -
