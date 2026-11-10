@@ -70,7 +70,42 @@ export const texte = {
   zellentrenner: ' | ',
   leereErgaenzung: '…',
   leereZwischenablage: 'Die Zwischenablage enthält keinen Text.',
+  loeschenTitel: 'In den Papierkorb legen',
+  loeschenBestaetigen: 'In den Papierkorb legen',
+  abbrechen: 'Abbrechen',
+  loeschenAbgebrochen: 'Löschen abgebrochen.',
+  inPapierkorb: 'In den Papierkorb gelegt.',
+  ausschneidenAbgebrochen: 'Ausschneiden abgebrochen.',
+  verschiebenRand: 'Die Zeile steht schon am Rand.',
+  verschiebenNichtMoeglich: 'Nur zusammenhängende Zeilen unter demselben Elternknoten lassen sich verschieben.',
+  verschoben: 'Verschoben.',
+  zielAusgeschnitten: 'Das Ziel liegt in den ausgeschnittenen Zeilen.',
+  positionAngelegt: 'Neue Position angelegt.',
 } as const;
+
+export function meldungZeilen(anzahl: number, was: 'kopiert' | 'ausgeschnitten' | 'eingefügt'): string {
+  return `${anzahl === 1 ? '1 Zeile' : `${String(anzahl)} Zeilen`} ${was}.`;
+}
+
+/** Rückfrage vor dem Löschen (Q5), z. B. „3 Zeilen in den Papierkorb legen, darunter 2 Titel mit 41 Positionen?“. */
+export function frageLoeschen(u: {
+  readonly knoten: number;
+  readonly lose: number;
+  readonly titel: number;
+  readonly positionen: number;
+  readonly mindestens: boolean;
+}): string {
+  const zeilen = u.knoten === 1 ? '1 Zeile' : `${String(u.knoten)} Zeilen`;
+  const gliederungen = u.lose + u.titel;
+  if (gliederungen === 0) return `${zeilen} in den Papierkorb legen?`;
+  const name =
+    u.lose === 0 ? 'Titel' : u.titel === 0 ? (u.lose === 1 ? 'Los' : 'Lose') : 'Gliederungen';
+  const positionen =
+    u.positionen === 0 && !u.mindestens
+      ? 'ohne Positionen'
+      : `mit ${u.mindestens ? 'mindestens ' : ''}${String(u.positionen)} ${u.positionen === 1 ? 'Position' : 'Positionen'}`;
+  return `${zeilen} in den Papierkorb legen, darunter ${String(gliederungen)} ${name} ${positionen}?`;
+}
 
 export function meldungEingefuegt(positionen: number, ungueltig: number, uebersprungen: number): string {
   const teile = [positionen === 1 ? '1 Position eingefügt' : `${String(positionen)} Positionen eingefügt`];

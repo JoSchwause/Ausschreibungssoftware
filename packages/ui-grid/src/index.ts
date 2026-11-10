@@ -3,4 +3,4 @@
 // bindet es zusammen mit den Tokens aus @tethys/ui-basis ein.
 
 export { LvGrid } from './LvGrid';
-export type { LvGridProps } from './typen';
+export type { LvGridProps, Sprungziel } from './typen';
