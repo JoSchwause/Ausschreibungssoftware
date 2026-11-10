@@ -1,6 +1,6 @@
 # 18: Klickbarer Prototyp für das Nutzerinterview
 
-Status: ready-for-agent
+Status: ready-for-human (Prototyp gebaut 2026-11-10 auf Branch `proto/interview`; Interview steht aus, siehe W-06)
 Type: prototype
 Blocked by: -
 Regeln: `docs/regeln.md` C1, C4, L1, L3, U3, U4, U5 (Architekturregeln A/P gelten nicht, siehe Grenzen)
@@ -86,3 +86,8 @@ in `vertrag` (F2), Grid (U2/U3) und Preisspiegel (V3) und, wenn sie eine G-Frage
 Prototyp als primäre Quelle auf dem Branch lassen und im Ticket verlinken.
 
 ## Comments
+
+### Stand 2026-11-10
+
+Der Prototyp liegt auf dem Branch `proto/interview` unter `proto/interview/` (Start, Handrechnung, Lücken des Grids und
+leere Notizen-Tabelle im README dort). Die Ergebnisnotiz des Agenten steht in dieser Datei auf jenem Branch.
