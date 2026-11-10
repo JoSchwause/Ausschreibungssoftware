@@ -97,3 +97,11 @@ Question: Reihenfolge der Angebotspositionen, `summen.vorher` bei leeren ChangeS
 Decision: Neue Angebotspositionen werden hinten angehängt, geänderte bleiben am Platz (Umkehrung exakt). `summen.vorher` ist immer gesetzt, auch beim leeren ChangeSet (leere Listen). Doppelte Position beim Anlegen: `ungueltige-eingabe` mit `knotenId` und `feld: 'positionen'`. EPA werden nicht geprüft (nicht im Ticket). Kein Befehlshinweis `netto-nach-nachlass-negativ` am Angebot (nicht im Ticket).
 Reason: kleinste umkehrbare Form; entspricht dem Kern seit v1.1a.
 Reversible: yes  Touches: packages/vergabe
+
+## D-T34 Langtext-Editor: Tabellen-Plugins aus, leere Listen/Tabellen offen
+Welle 3 · Ticket 34 · decided by: implementer
+Question: prosemirror-tables füllt beim Bearbeiten ungleich lange Zeilen auf (`fixTables`); leere Listen/Tabellen sind im Typ erlaubt, im Schema nicht.
+Decision: Tabellen-Plugins abgeschaltet (Tab wechselt nur die Zelle). Leere Liste/Tabelle/Zeile wird nicht erzeugt und als offene Typfrage für `vertrag`/G2 gemeldet, nicht geändert. Übrige Kleinentscheidungen in Ticket 34, Comments.
+Reason: Kein stilles Ändern des Langtexts (Q5); `vertrag` ändert nur ein eigenes Ticket (A4).
+Reversible: yes  Touches: packages/ui-basis
+

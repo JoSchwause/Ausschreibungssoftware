@@ -503,3 +503,108 @@
     transform: translate(-50%, -48%);
   }
 }
+
+/* Langtext-Editor (Ticket 34) */
+.tx-langtext {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface);
+}
+
+.tx-langtext:focus-within {
+  outline: var(--tx-focus-ring);
+}
+
+.tx-langtext__werkzeuge {
+  display: flex;
+  gap: var(--tx-space-1);
+  padding: var(--tx-space-1) var(--tx-space-2);
+  border-bottom: 1px solid var(--tx-color-border);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-langtext__werkzeuge .tx-button[aria-pressed='true'] {
+  background: var(--tx-color-accent-subtle);
+  color: var(--tx-color-accent-text);
+}
+
+.tx-langtext__zeichen {
+  font-family: var(--tx-font-sans);
+  min-width: 1ch;
+}
+
+.tx-langtext__zeichen--fett {
+  font-weight: var(--tx-weight-bold);
+}
+
+.tx-langtext__zeichen--kursiv {
+  font-style: italic;
+}
+
+.tx-langtext__zeichen--unterstrichen {
+  text-decoration: underline;
+}
+
+.tx-langtext__feld {
+  min-height: 6em;
+  padding: var(--tx-space-3);
+  color: var(--tx-color-text);
+  font-size: var(--tx-font-size-md);
+  line-height: var(--tx-line-height);
+  white-space: pre-wrap;
+  outline: none;
+}
+
+.tx-langtext__feld p {
+  margin: 0 0 var(--tx-space-2);
+}
+
+.tx-langtext__feld ul,
+.tx-langtext__feld ol {
+  margin: 0 0 var(--tx-space-2);
+  padding-left: var(--tx-space-6);
+}
+
+.tx-langtext__feld table {
+  border-collapse: collapse;
+  margin: 0 0 var(--tx-space-2);
+}
+
+.tx-langtext__feld td {
+  min-width: 4em;
+  padding: var(--tx-space-1) var(--tx-space-2);
+  border: 1px solid var(--tx-color-border);
+  vertical-align: top;
+}
+
+.tx-langtext-bild {
+  max-width: 100%;
+  vertical-align: text-bottom;
+}
+
+.tx-langtext-ergaenzung {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-2);
+  margin: 0 0 var(--tx-space-2);
+  padding: var(--tx-space-1) var(--tx-space-2);
+  border: 1px dashed var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-langtext-ergaenzung.ProseMirror-selectednode {
+  outline: var(--tx-focus-ring);
+}
+
+.tx-langtext-ergaenzung__art {
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.tx-langtext-ergaenzung__inhalt {
+  padding: 0 var(--tx-space-1);
+  border-bottom: 1px solid var(--tx-color-accent);
+}

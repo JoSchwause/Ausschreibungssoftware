@@ -1,6 +1,6 @@
 # 34: Langtext-Editor (TipTap, eingeschränktes Schema, verlustfreie Abbildung `Langtext` ↔ TipTap)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: U4a · Paket: `packages/ui-basis` (dazu eine Zeile in `tools/boundaries.mjs`)
 Blocked by: -
@@ -74,14 +74,14 @@ Abbildung `Langtext` → Editor-Dokument → `Langtext`. Der Positionsdialog (Ti
 
 ## Acceptance criteria
 
-- [ ] Property-Test (fast-check, mindestens 500 Läufe, Tiefe bis 4): für jeden erzeugten gültigen `Langtext` `l` gilt `dokumentZuLangtext(langtextZuDokument(l))` tief gleich `langtextKanonisch(l)`; für kanonisches `l` gleich `l`. Der Erzeuger deckt alle Bausteine ab, auch leere Listenpunkte, leere Zellen, `spalten > 1`, Textergänzung zwischen losen Läufen, Bild auf oberster Ebene und in einer Zelle
-- [ ] Property-Test: Das erzeugte Dokument ist im Schema gültig (Knoten aus dem JSON bauen und mit der Schemaprüfung von ProseMirror prüfen, ohne DOM)
-- [ ] Property-Test: `langtextKanonisch` ist idempotent und ändert keinen sichtbaren Text (Klartext vorher = nachher)
-- [ ] Test: Eine Textergänzung kommt mit allen sechs Feldern unverändert zurück; eine Textergänzung in einer Zelle ist im Schema nicht darstellbar
-- [ ] Test: Zwei lose Absätze nacheinander (wie nach Enter) ergeben zurück einen losen Lauf und einen `absatz`
-- [ ] Komponententest: Strg+B auf markiertem Text und Bestätigen liefern genau einmal den erwarteten `Langtext`; Esc liefert nichts; ohne Änderung kommt nichts
-- [ ] `tools/boundaries.mjs` erlaubt `ui-basis` → `vertrag`; `pnpm lint` (Paketgrenzen, Lizenzen) grün
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
+- [x] Property-Test (fast-check, mindestens 500 Läufe, Tiefe bis 4): für jeden erzeugten gültigen `Langtext` `l` gilt `dokumentZuLangtext(langtextZuDokument(l))` tief gleich `langtextKanonisch(l)`; für kanonisches `l` gleich `l`. Der Erzeuger deckt alle Bausteine ab, auch leere Listenpunkte, leere Zellen, `spalten > 1`, Textergänzung zwischen losen Läufen, Bild auf oberster Ebene und in einer Zelle
+- [x] Property-Test: Das erzeugte Dokument ist im Schema gültig (Knoten aus dem JSON bauen und mit der Schemaprüfung von ProseMirror prüfen, ohne DOM)
+- [x] Property-Test: `langtextKanonisch` ist idempotent und ändert keinen sichtbaren Text (Klartext vorher = nachher)
+- [x] Test: Eine Textergänzung kommt mit allen sechs Feldern unverändert zurück; eine Textergänzung in einer Zelle ist im Schema nicht darstellbar
+- [x] Test: Zwei lose Absätze nacheinander (wie nach Enter) ergeben zurück einen losen Lauf und einen `absatz`
+- [x] Komponententest: Strg+B auf markiertem Text und Bestätigen liefern genau einmal den erwarteten `Langtext`; Esc liefert nichts; ohne Änderung kommt nichts
+- [x] `tools/boundaries.mjs` erlaubt `ui-basis` → `vertrag`; `pnpm lint` (Paketgrenzen, Lizenzen) grün
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -90,3 +90,16 @@ Positionsdialog und Einbindung in die App (Ticket 47). Neue Textergänzungen und
 Bieter füllt Textergänzungen aus (X84, später).
 
 ## Comments
+
+Umsetzer (Welle 3, Demo-Modus), je Zeile Frage – Entscheidung – Grund:
+
+- Leere Liste (`punkte: []`), Tabelle ohne Zeilen, Zeile ohne Zellen? – Im Schema nicht darstellbar (ProseMirror verlangt mindestens einen Punkt, eine Zeile, eine Zelle); der Erzeuger erzeugt sie nicht, die Abbildung bildet sie trotzdem ab (TipTap baut ungeprüft, der Rundweg bleibt gleich). – Offene Typfrage für `vertrag`/G2: verbietet GAEB leere `ul`/`table`, sollte der Typ es auch (nicht geraten, nicht geändert).
+- `fixTables` und die übrigen Plugins von prosemirror-tables? – Abgeschaltet; Tab/Umschalt+Tab wechseln nur die Zelle, Tab in der letzten Zelle legt keine Zeile an. – `fixTables` füllt ungleich lange Zeilen beim Bearbeiten auf und änderte so den Langtext; Struktur bearbeiten ist Nicht-Ziel.
+- Strg+Enter belegt TipTap für den harten Umbruch? – Umbruch nur mit Umschalt+Enter, Strg+Enter bestätigt. – Ticket (U3).
+- Bestätigen beim Verlassen: auch beim Klick in die eigene Werkzeugleiste? – Nein, nur wenn der Fokus die Komponente verlässt; Werkzeug-Buttons halten den Fokus im Text (mousedown). Nach dem Melden ist der gemeldete Stand die neue Basis, ein zweites Verlassen meldet nichts. – „genau einmal“.
+- Werkzeugleiste: Symbole? – Fett/Kursiv/Unterstrichen als Buchstaben F/K/U, für die Listen zwei neue, selbst gezeichnete Icons `aufzaehlung`, `nummeriert` in `Icon.tsx`. – U4, deutsche Konvention.
+- Rückgängig im Editor und Cursor neben einer Textergänzung? – `UndoRedo` und `Gapcursor` aus `@tiptap/extensions` (keine Schemaelemente). – Sonst ist ein Langtext, der nur aus einer Textergänzung besteht, nicht bearbeitbar.
+- Bild und Textergänzung beim Kopieren/Ausschneiden innerhalb des Editors? – Fallen beim Einfügen weg (kein `parseHTML`), Strg+Z stellt sie wieder her. – Ticket: eingefügte Bilder fallen weg (A2); neue Textergänzungen anlegen ist Nicht-Ziel.
+- Export? – `LangtextEditor`, `langtextZuDokument`, `dokumentZuLangtext`, `langtextKanonisch`, `langtextGleich`, `langtextTexte` über `src/index.ts`. – Ticket 47 braucht Vergleich und Abbildung.
+- Versionen: TipTap 3.32.0 fest (13.10.2026), transitive ProseMirror-Pakete mit `--config.resolution-mode=time-based` aufgelöst, damit keines jünger als zwei Wochen ist. – Wer `pnpm install` nach einem Lockfile-Konflikt neu laufen lässt, nutzt am besten dieselbe Option.
+
