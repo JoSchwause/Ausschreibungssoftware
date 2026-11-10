@@ -119,3 +119,10 @@ Question: prosemirror-tables füllt beim Bearbeiten ungleich lange Zeilen auf (`
 Decision: Tabellen-Plugins abgeschaltet (Tab wechselt nur die Zelle). Leere Liste/Tabelle/Zeile wird nicht erzeugt und als offene Typfrage für `vertrag`/G2 gemeldet, nicht geändert. Übrige Kleinentscheidungen in Ticket 34, Comments.
 Reason: Kein stilles Ändern des Langtexts (Q5); `vertrag` ändert nur ein eigenes Ticket (A4).
 Reversible: yes  Touches: packages/ui-basis
+
+## D-13 Tor für `vertrag` v1.2
+Welle 3 · Ticket 29 · decided by: orchestrator
+Question: Ist v1.2 stabil genug, damit 30–32 und Phase B darauf bauen (statt Prüfung durch den Nutzer, P9)?
+Decision: Ja. Opus-Reviewer: „yes-with-fixes“, vier Pflichtpunkte und fünf weitere; alle neun umgesetzt (D-12), Suite grün (938 Tests). Den Berater nicht gefragt, weil der Review keine offene Abwägung übrig ließ.
+Reason: Alle Befunde waren eindeutig lösbar; die Lösungen sind enge, umkehrbare Lesarten.
+Reversible: yes  Touches: packages/vertrag

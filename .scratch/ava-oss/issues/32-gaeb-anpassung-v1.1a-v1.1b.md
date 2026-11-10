@@ -66,7 +66,7 @@ herunterzubrechen, und räumt die Marker `// v1.1a/v1.1b: mechanisch angepasst, 
 - Nur Lesen. Schreiben (X81/X83/X86) ist Ticket 40, X84 und der Bieter-Zuschlagssatz sind Ticket 45.
 - Jede geänderte Golden-Datei (`testdaten/golden`) bekommt in den Comments eine Zeile: welcher Befund oder Wert sich
   warum ändert. Die BVBS-Zählung (`zaehlung-bvbs.test.ts`, 12/28/4) bleibt grün oder die Abweichung ist begründet.
-- Ticket 29 ergänzt `testIds()` in `testhilfen.ts` um zwei markierte Methoden (`papierkorbEintrag`, `lvStand`);
+- Ticket 29 ergänzt `testIds()` in `testhilfen.ts` um zwei markierte Methoden (`papierkorbeintrag`, `lvStand`);
   beim Zusammenführen übernehmen.
 - Keine Änderung an `vertrag`. `okf/research/` wird nicht gelesen (C3). Offene Punkte entscheidet der Umsetzer und
   protokolliert sie in `.scratch/ava-oss/entscheidungen-auto.md` (Demo-Modus).
