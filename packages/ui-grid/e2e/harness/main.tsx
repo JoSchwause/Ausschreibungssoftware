@@ -187,7 +187,12 @@ function Seite() {
               }
             : {})}
           {...(params.get('oz') === '1'
-            ? { vorPositionAnlegen: (b) => ({ ...b, daten: { ...b.daten, ordnungszahl: 'NEU' as Ordnungszahl } }) }
+            ? {
+                vorPositionAnlegen: (b) => ({
+                  ...b,
+                  daten: { ...b.daten, ordnungszahl: 'NEU' as Ordnungszahl },
+                }),
+              }
             : {})}
           {...(sprungziel ? { sprungziel } : {})}
           onAufklappen={(id, auf) => {

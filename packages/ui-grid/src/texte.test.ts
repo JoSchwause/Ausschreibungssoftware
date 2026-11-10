@@ -6,7 +6,9 @@ describe('Rückfrage beim Löschen', () => {
   const umfang = { knoten: 3, lose: 0, titel: 2, positionen: 41, mindestens: false };
 
   it('nennt Zeilen, Gliederungen und Positionen', () => {
-    expect(frageLoeschen(umfang)).toBe('3 Zeilen in den Papierkorb legen, darunter 2 Titel mit 41 Positionen?');
+    expect(frageLoeschen(umfang)).toBe(
+      '3 Zeilen in den Papierkorb legen, darunter 2 Titel mit 41 Positionen?',
+    );
     expect(frageLoeschen({ ...umfang, knoten: 1, titel: 1, positionen: 1 })).toBe(
       '1 Zeile in den Papierkorb legen, darunter 1 Titel mit 1 Position?',
     );

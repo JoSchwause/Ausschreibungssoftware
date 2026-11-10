@@ -76,8 +76,9 @@ export const texte = {
   loeschenAbgebrochen: 'Löschen abgebrochen.',
   inPapierkorb: 'In den Papierkorb gelegt.',
   ausschneidenAbgebrochen: 'Ausschneiden abgebrochen.',
-  verschiebenRand: 'Die Zeile steht schon am Rand.',
-  verschiebenNichtMoeglich: 'Nur zusammenhängende Zeilen unter demselben Elternknoten lassen sich verschieben.',
+  verschiebenNichtMoeglich:
+    'Nicht verschoben: Die Zeilen stehen am Rand oder hängen unter ihren Geschwistern nicht zusammen.',
+  zwischenablageGesperrt: 'Die Zwischenablage ist nicht verfügbar.',
   verschoben: 'Verschoben.',
   zielAusgeschnitten: 'Das Ziel liegt in den ausgeschnittenen Zeilen.',
   positionAngelegt: 'Neue Position angelegt.',
@@ -98,8 +99,7 @@ export function frageLoeschen(u: {
   const zeilen = u.knoten === 1 ? '1 Zeile' : `${String(u.knoten)} Zeilen`;
   const gliederungen = u.lose + u.titel;
   if (gliederungen === 0) return `${zeilen} in den Papierkorb legen?`;
-  const name =
-    u.lose === 0 ? 'Titel' : u.titel === 0 ? (u.lose === 1 ? 'Los' : 'Lose') : 'Gliederungen';
+  const name = u.lose === 0 ? 'Titel' : u.titel === 0 ? (u.lose === 1 ? 'Los' : 'Lose') : 'Gliederungen';
   const positionen =
     u.positionen === 0 && !u.mindestens
       ? 'ohne Positionen'
