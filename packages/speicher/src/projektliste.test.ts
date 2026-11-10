@@ -17,18 +17,18 @@ const projekt = (id: string, name: string): Projekt => ({
   bauherr: { name: 'Bauherr (erfunden)', anschrift: null },
   bieter: [],
 });
-const anlegen = (kern: SpeicherKern, p: Projekt): void => {
+const anlegen = async (kern: SpeicherKern, p: Projekt): Promise<void> => {
   const e: Protokolleintrag = eintrag(
     nr++,
     p.id,
     { art: 'projekt', id: p.id },
     { art: 'ProjektAnlegen', id: p.id, name: p.name, bauherr: p.bauherr },
   );
-  wert(kern.anwenden(e, projektChangeSet(p)));
+  wert(await kern.anwenden(e, projektChangeSet(p)));
 };
-const loeschen = (kern: SpeicherKern, p: Projekt): void => {
+const loeschen = async (kern: SpeicherKern, p: Projekt): Promise<void> => {
   const e = eintrag(nr++, p.id, { art: 'projekt', id: p.id }, { art: 'ProjektLoeschen' });
-  wert(kern.anwenden(e, { art: 'projekt', projektId: p.id, projekt: { vorher: p, nachher: null } }));
+  wert(await kern.anwenden(e, { art: 'projekt', projektId: p.id, projekt: { vorher: p, nachher: null } }));
 };
 const namen = (kern: SpeicherKern): string[] => wert(kern.projekteAuflisten()).map((p) => p.name);
 
@@ -37,16 +37,14 @@ describe('Projektliste', () => {
     const { kern } = await neuerKern();
     // Kennungen absichtlich gegenläufig zum Namen: Die Sortierung folgt dem Namen, nicht der Kennung.
     const liste = ['zebra', 'Öl', 'Bad', 'Ofen', 'Ärztehaus', 'Zahn', 'Anbau'];
-    liste.forEach((n, i) => {
-      anlegen(kern, projekt(`p-${String(liste.length - i)}`, n));
-    });
+    for (const [i, n] of liste.entries()) await anlegen(kern, projekt(`p-${String(liste.length - i)}`, n));
     expect(namen(kern)).toEqual(['Anbau', 'Ärztehaus', 'Bad', 'Ofen', 'Öl', 'Zahn', 'zebra']);
   });
 
   it('gleiche Namen stehen nach Kennung geordnet (stabil)', async () => {
     const { kern } = await neuerKern();
-    anlegen(kern, projekt('p-b', 'Schule'));
-    anlegen(kern, projekt('p-a', 'Schule'));
+    await anlegen(kern, projekt('p-b', 'Schule'));
+    await anlegen(kern, projekt('p-a', 'Schule'));
     expect(wert(kern.projekteAuflisten()).map((p) => p.id)).toEqual(['p-a', 'p-b']);
   });
 
@@ -55,11 +53,11 @@ describe('Projektliste', () => {
     expect(wert(kern.projekteAuflisten())).toEqual([]);
     const a = projekt('p-1', 'Kita Nord');
     const b = projekt('p-2', 'Halle');
-    anlegen(kern, a);
+    await anlegen(kern, a);
     expect(wert(kern.projekteAuflisten())).toEqual([{ id: a.id, name: a.name }]);
-    anlegen(kern, b);
+    await anlegen(kern, b);
     expect(namen(kern)).toEqual(['Halle', 'Kita Nord']);
-    loeschen(kern, a);
+    await loeschen(kern, a);
     expect(wert(kern.projekteAuflisten())).toEqual([{ id: b.id, name: b.name }]);
   });
 
@@ -67,7 +65,7 @@ describe('Projektliste', () => {
     const { kern } = await neuerKern();
     const speicher = speicherUeberTransport(direktTransport(kern), null);
     const f = ladeFixture('typisch');
-    anlegen(kern, projekt('p-0', 'Zahnarztpraxis'));
+    await anlegen(kern, projekt('p-0', 'Zahnarztpraxis'));
     for (const s of anlegenSchritte(f)) wert(await speicher.anwenden(s.eintrag, s.changeSet));
     expect(wert(await speicher.projekte.auflisten())).toEqual([
       { id: f.projekt.id, name: f.projekt.name },

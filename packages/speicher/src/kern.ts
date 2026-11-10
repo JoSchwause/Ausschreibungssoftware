@@ -17,8 +17,9 @@ import type {
   Speicherfehler,
 } from '@tethys/vertrag';
 import { abbruch, fehler, ok } from './ergebnis';
-import { fange } from './fehler';
+import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
+import { protokollform } from './kurzfassung';
 import {
   aggregatIds,
   leseAngebot,
@@ -68,6 +69,8 @@ export class SpeicherKern {
   readonly #db: Datenbank;
   readonly #migrationen: readonly Migration[];
   #geschlossen = false;
+  /** Letzter `anwenden`-Lauf: der nächste wartet auf ihn (Reihenfolge der Aufrufe, ein Schreiber). */
+  #reihe: Promise<unknown> = Promise.resolve();
 
   /**
    * Führt `f` aus und macht aus jeder Ausnahme einen Fehlerwert. Nach `schliessen` liefert jeder Aufruf `gesperrt`
@@ -152,8 +155,25 @@ export class SpeicherKern {
   /**
    * ChangeSet und Protokolleintrag in einer Transaktion. Schlägt irgendein Schritt fehl (Konflikt mit dem
    * gespeicherten Stand, Quote, Sperre), wird alles zurückgerollt und der Fehler als Wert geliefert (Q5).
+   *
+   * Ein Massenbefehl geht als `Befehlskurzfassung` ins Protokoll (E-13). Die Prüfsumme entsteht asynchron (Web Crypto)
+   * vor der Transaktion; die Transaktion selbst bleibt synchron. Aufrufe laufen in der Reihenfolge ihres Eintreffens,
+   * auch wenn der Aufrufer nicht auf den vorigen wartet.
    */
-  anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Ergebnis<void, Speicherfehler> {
+  anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#anwendenDann(eintrag, changeSet));
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  async #anwendenDann(e: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
+    if (this.#geschlossen) return GESCHLOSSEN();
+    let eintrag: Protokolleintrag;
+    try {
+      eintrag = await protokollform(e);
+    } catch (x) {
+      return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);

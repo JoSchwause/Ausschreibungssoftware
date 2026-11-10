@@ -18,7 +18,7 @@ import {
   lvAnlegenChangeSet,
   normalisiere,
 } from './testhilfe/fixtures';
-import { kernAufDb, neueDatenbank, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
+import { imProtokoll, kernAufDb, neueDatenbank, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
 import { SpeicherKern } from './kern';
 
 const typisch = ladeFixture('typisch');
@@ -31,7 +31,7 @@ describe('Fixtures speichern und laden', () => {
     async (name) => {
       const f = ladeFixture(name);
       const { kern } = await neuerKern();
-      speichere(kern, anlegenSchritte(f));
+      await speichere(kern, anlegenSchritte(f));
 
       expect(wert(kern.projektLaden(f.projekt.id))).toEqual(f.projekt);
       expect(wert(kern.projekteAuflisten())).toEqual([{ id: f.projekt.id, name: f.projekt.name }]);
@@ -60,7 +60,7 @@ describe('Fixtures speichern und laden', () => {
     const f = ladeFixture('gross');
     const { kern } = await neuerKern();
     const t0 = performance.now();
-    speichere(kern, anlegenSchritte(f));
+    await speichere(kern, anlegenSchritte(f));
     const t1 = performance.now();
     const lv = wert(kern.lvLaden(f.lv.leistungsverzeichnis.id));
     const t2 = performance.now();
@@ -78,18 +78,18 @@ describe('Protokoll und Einzelweg', () => {
     const schritte = anlegenSchritte(typisch);
     for (const [i, s] of schritte.entries()) {
       expect(zaehle(db, 'protokoll')).toBe(i);
-      wert(kern.anwenden(s.eintrag, s.changeSet));
+      wert(await kern.anwenden(s.eintrag, s.changeSet));
       expect(zaehle(db, 'protokoll')).toBe(i + 1);
     }
     const p = wert(kern.protokoll(projektId));
     expect(p.map((e) => e.id)).toEqual(schritte.map((s) => s.eintrag.id));
-    expect(p).toEqual(schritte.map((s) => s.eintrag));
+    expect(p).toEqual(schritte.map((s) => imProtokoll(s.eintrag)));
   });
 
   it('ein abgewiesenes ChangeSet schreibt weder Daten noch Protokoll', async () => {
     const { kern, db } = await neuerKern();
     const [projekt, lv] = anlegenSchritte(typisch);
-    speichere(kern, [projekt as never]);
+    await speichere(kern, [projekt as never]);
     const vorher = zaehle(db, 'protokoll');
     // LV mit Eintrag für ein anderes Aggregat
     const falsch = eintrag(
@@ -98,7 +98,7 @@ describe('Protokoll und Einzelweg', () => {
       { art: 'leistungsverzeichnis', id: 'anderes-lv' as never },
       lv?.eintrag.befehl as never,
     );
-    const r = kern.anwenden(falsch, lv?.changeSet as never);
+    const r = await kern.anwenden(falsch, lv?.changeSet as never);
     expect(r.ok).toBe(false);
     expect(zaehle(db, 'protokoll')).toBe(vorher);
     expect(zaehle(db, 'knoten')).toBe(0);
@@ -108,12 +108,12 @@ describe('Protokoll und Einzelweg', () => {
   it('ChangeSet und Protokolleintrag liegen in einer Transaktion: scheitert der Eintrag, ist auch das ChangeSet weg', async () => {
     const { kern, db } = await neuerKern();
     const schritte = anlegenSchritte(typisch);
-    speichere(kern, schritte.slice(0, 1));
+    await speichere(kern, schritte.slice(0, 1));
     const lv = schritte[1];
     if (lv === undefined) throw new Error('Schritt fehlt');
     // Protokoll-ID des ersten Eintrags wiederverwenden: der Eintrag verletzt UNIQUE, nachdem das LV schon geschrieben ist.
     const doppelt: Protokolleintrag = { ...lv.eintrag, id: schritte[0]?.eintrag.id as never };
-    const r = kern.anwenden(doppelt, lv.changeSet);
+    const r = await kern.anwenden(doppelt, lv.changeSet);
     expect(r.ok).toBe(false);
     expect(zaehle(db, 'leistungsverzeichnis')).toBe(0);
     expect(zaehle(db, 'knoten')).toBe(0);
@@ -136,7 +136,7 @@ describe('Protokoll und Einzelweg', () => {
   it('ein LV für ein unbekanntes Projekt wird mit nicht-gefunden abgewiesen', async () => {
     const { kern, db } = await neuerKern();
     const lv = anlegenSchritte(typisch)[1];
-    const r = kern.anwenden(lv?.eintrag as never, lv?.changeSet as never);
+    const r = await kern.anwenden(lv?.eintrag as never, lv?.changeSet as never);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'nicht-gefunden' } });
     expect(zaehle(db, 'protokoll')).toBe(0);
   });
@@ -151,7 +151,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
 
   async function mitTypisch(): Promise<ReturnType<typeof neuerKern> extends Promise<infer T> ? T : never> {
     const env = await neuerKern();
-    speichere(env.kern, anlegenSchritte(typisch));
+    await speichere(env.kern, anlegenSchritte(typisch));
     return env;
   }
   let nr = 100;
@@ -173,7 +173,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
         gesamt: { ...typisch.lv.summen.gesamt, netto: '1.00' as never },
       },
     };
-    wert(kern.anwenden(lvEintrag(), cs));
+    wert(await kern.anwenden(lvEintrag(), cs));
     const geladen = wert(kern.lvLaden(lvId));
     expect(position(geladen.leistungsverzeichnis.knoten)).toEqual(nachher);
     expect(geladen.summen.gesamt.netto).toBe('1.00');
@@ -202,7 +202,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
         gesamt: { ...typisch.lv.summen.gesamt, netto: '0.01' as never },
       },
     };
-    const r = kern.anwenden(lvEintrag(), cs);
+    const r = await kern.anwenden(lvEintrag(), cs);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     expect(!r.ok && r.fehler.meldung).toContain('Konflikt');
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
@@ -226,11 +226,11 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       knoten: { hinzugefuegt: [], geaendert: [], entfernt: [e] },
       summen: { positionen: [], gliederungen: [], gesamt: null },
     });
-    wert(kern.anwenden(lvEintrag(), cs(p)));
+    wert(await kern.anwenden(lvEintrag(), cs(p)));
     const geladen = wert(kern.lvLaden(lvId));
     expect(geladen.leistungsverzeichnis.knoten.some((k) => k.id === p.id)).toBe(false);
     expect(geladen.summen.positionen.some((s) => s.positionId === p.id)).toBe(false);
-    expect(kern.anwenden(lvEintrag(), cs(p))).toMatchObject({
+    expect(await kern.anwenden(lvEintrag(), cs(p))).toMatchObject({
       ok: false,
       fehler: { code: 'nicht-gefunden' },
     });
@@ -249,7 +249,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       knoten: { hinzugefuegt: [neu, vorhanden], geaendert: [], entfernt: [] },
       summen: { positionen: [], gliederungen: [], gesamt: null },
     };
-    expect(kern.anwenden(lvEintrag(), cs).ok).toBe(false);
+    expect((await kern.anwenden(lvEintrag(), cs)).ok).toBe(false);
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
   });
 
@@ -264,12 +264,12 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       knoten: { hinzugefuegt: [n], geaendert: [], entfernt: [] },
       summen: { positionen: [], gliederungen: [], gesamt: null },
     });
-    const waise = kern.anwenden(
+    const waise = await kern.anwenden(
       lvEintrag(),
       mit({ ...vorhanden, id: 'x1' as PositionId, elternId: 'gibt-es-nicht' as never }),
     );
     expect(waise).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
-    const luecke = kern.anwenden(
+    const luecke = await kern.anwenden(
       lvEintrag(),
       mit({ ...vorhanden, id: 'x2' as PositionId, reihenfolge: 500 }),
     );
@@ -293,17 +293,17 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     const e = (): Protokolleintrag =>
       eintrag(nr++, projektId, { art: 'angebot', id: a.angebot.id }, { art: 'AngebotsNachlassEntfernen' });
     const neuerPreis = { ...angeboten, einheitspreis: '1.234' as never };
-    wert(kern.anwenden(e(), cs(angeboten, neuerPreis)));
+    wert(await kern.anwenden(e(), cs(angeboten, neuerPreis)));
     const geladen = wert(kern.angebotLaden(a.angebot.id));
     expect(geladen.angebot.positionen.find((p) => p.positionId === angeboten.positionId)).toEqual(neuerPreis);
     // zweites Mal mit dem alten Vorherstand: Konflikt
-    expect(kern.anwenden(e(), cs(angeboten, neuerPreis))).toMatchObject({
+    expect(await kern.anwenden(e(), cs(angeboten, neuerPreis))).toMatchObject({
       ok: false,
       fehler: { code: 'konflikt' },
     });
     // auf „nicht angeboten“ stellen
     wert(
-      kern.anwenden(e(), {
+      await kern.anwenden(e(), {
         ...cs(neuerPreis, neuerPreis),
         positionen: {
           hinzugefuegt: [],
@@ -328,7 +328,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       ...cs(angeboten, angeboten),
       positionen: { hinzugefuegt: [fremd], geaendert: [], entfernt: [] },
     };
-    expect(kern.anwenden(e(), neu)).toMatchObject({ ok: false, fehler: { code: 'nicht-gefunden' } });
+    expect(await kern.anwenden(e(), neu)).toMatchObject({ ok: false, fehler: { code: 'nicht-gefunden' } });
   });
 
   it('LV-Kopf ändern: Vorherstand geprüft; Löschen mit Angeboten abgewiesen', async () => {
@@ -342,17 +342,17 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
       summen: { positionen: [], gliederungen: [], gesamt: null },
     });
-    wert(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'Umbenannt', nachlass: null })));
+    wert(await kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'Umbenannt', nachlass: null })));
     expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis).toMatchObject({
       name: 'Umbenannt',
       nachlass: null,
     });
-    expect(kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'x' }))).toMatchObject({
+    expect(await kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'x' }))).toMatchObject({
       ok: false,
       fehler: { code: 'konflikt' }, // veralteter Vorherstand
     });
     expect(
-      kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)),
+      await kern.anwenden(lvEintrag(), cs({ ...kopf, name: 'Umbenannt', nachlass: null }, null)),
     ).toMatchObject({ ok: false, fehler: { code: 'konflikt' } }); // Angebote hängen am LV
     expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis.name).toBe('Umbenannt');
   });
@@ -366,7 +366,9 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       { art: 'projekt', id: projektId },
       { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr },
     );
-    wert(kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher } }));
+    wert(
+      await kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher } }),
+    );
     expect(wert(kern.projektLaden(projektId)).name).toBe('Neuer Name');
     // Ein Bieter, den ein Angebot braucht, lässt sich nicht entfernen (Fremdschlüssel): Fehlerwert, nichts geändert.
     const ohneBieter = { ...nachher, bieter: [] };
@@ -376,7 +378,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       { art: 'projekt', id: projektId },
       { art: 'ProjektStammdatenSetzen', name: 'Neuer Name', bauherr: typisch.projekt.bauherr },
     );
-    const r = kern.anwenden(e2, {
+    const r = await kern.anwenden(e2, {
       art: 'projekt',
       projektId,
       projekt: { vorher: nachher, nachher: ohneBieter },
@@ -389,7 +391,11 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
     const { kern } = await mitTypisch();
     const e = eintrag(nr++, projektId, { art: 'projekt', id: projektId }, { art: 'ProjektLoeschen' });
     expect(
-      kern.anwenden(e, { art: 'projekt', projektId, projekt: { vorher: typisch.projekt, nachher: null } }),
+      await kern.anwenden(e, {
+        art: 'projekt',
+        projektId,
+        projekt: { vorher: typisch.projekt, nachher: null },
+      }),
     ).toMatchObject({ ok: false, fehler: { code: 'konflikt' } });
     expect(wert(kern.projektLaden(projektId))).toEqual(typisch.projekt);
   });
@@ -403,16 +409,16 @@ describe('Quote, Sperre und Schema (Q5)', () => {
     const schritte = anlegenSchritte(gross);
     const [projekt, lv] = schritte;
     if (projekt === undefined || lv === undefined) throw new Error('Schritte fehlen');
-    wert(kern.anwenden(projekt.eintrag, projekt.changeSet));
+    wert(await kern.anwenden(projekt.eintrag, projekt.changeSet));
     const seiten = db.zeilen('PRAGMA page_count')[0]?.['page_count'];
     db.skript(`PRAGMA max_page_count = ${String(Number(seiten) + 20)}`);
-    const r = kern.anwenden(lv.eintrag, lv.changeSet);
+    const r = await kern.anwenden(lv.eintrag, lv.changeSet);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'speicher-voll' } });
     expect(zaehle(db, 'knoten')).toBe(0);
     expect(zaehle(db, 'leistungsverzeichnis')).toBe(0);
     expect(zaehle(db, 'protokoll')).toBe(1);
     db.skript('PRAGMA max_page_count = 1000000');
-    wert(kern.anwenden(lv.eintrag, lv.changeSet));
+    wert(await kern.anwenden(lv.eintrag, lv.changeSet));
     expect(zaehle(db, 'protokoll')).toBe(2);
   });
 
@@ -474,9 +480,9 @@ describe('Quote, Sperre und Schema (Q5)', () => {
     for (const [name, ausnahme, code] of faelle) {
       const { db, scharf } = ausfall(ausnahme, 3);
       const kern = kernAufDb(db);
-      wert(kern.anwenden(projekt.eintrag, projekt.changeSet)); // noch nicht scharf
+      wert(await kern.anwenden(projekt.eintrag, projekt.changeSet)); // noch nicht scharf
       scharf();
-      const r = kern.anwenden(lv.eintrag, lv.changeSet);
+      const r = await kern.anwenden(lv.eintrag, lv.changeSet);
       expect(r, name).toMatchObject({ ok: false, fehler: { code } });
       // Nach der Ausnahme steht die Datenbank wieder auf dem Stand vor dem Befehl.
       expect(zaehle(echt, 'knoten'), name).toBe(0);
@@ -489,7 +495,7 @@ describe('Quote, Sperre und Schema (Q5)', () => {
   it('Ein-/Ausgabefehler beim Import der Projektdatei heißt nicht „datei-ungueltig“', async () => {
     const f = ladeFixture('typisch');
     const quelle = kernAufDb(await neueDatenbank());
-    speichere(quelle, anlegenSchritte(f));
+    await speichere(quelle, anlegenSchritte(f));
     const text = wert(quelle.projektdateiExportieren(f.projekt.id));
 
     const echt = await neueDatenbank();

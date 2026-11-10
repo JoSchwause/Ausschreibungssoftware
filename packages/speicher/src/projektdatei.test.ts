@@ -10,7 +10,7 @@ import { kanonischesJson } from './kanonisch';
 import { MIGRATIONEN, SCHEMA_VERSION, type Migration } from './migrationen';
 import { leseProjektdatei } from './projektdatei';
 import { anlegenSchritte, ladeFixture, normalisiere } from './testhilfe/fixtures';
-import { neuerKern, speichere, wert, zaehle } from './testhilfe/node';
+import { imProtokoll, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
 
 describe('kanonisches JSON', () => {
   it('sortiert Schlüssel rekursiv, behält die Arrayreihenfolge und hängt einen Zeilenumbruch an', () => {
@@ -35,7 +35,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Export → Import → Ex
 
   it('ist byte-identisch, in kanonischer Form und lädt denselben Zustand', async () => {
     const a = await neuerKern();
-    speichere(a.kern, anlegenSchritte(f));
+    await speichere(a.kern, anlegenSchritte(f));
     const text1 = wert(a.kern.projektdateiExportieren(f.projekt.id));
     expect(text1.endsWith('\n')).toBe(true);
     expect(kanonischesJson(JSON.parse(text1))).toBe(text1);
@@ -47,12 +47,14 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Export → Import → Ex
     expect(text2 === text1).toBe(true); // `toBe` auf große Texte würde bei Abweichung riesige Diffs drucken
     expect(wert(b.kern.lvLaden(f.lv.leistungsverzeichnis.id))).toEqual(normalisiere(f.lv));
     for (const x of f.angebote) expect(wert(b.kern.angebotLaden(x.angebot.id))).toEqual(normalisiere(x));
-    expect(wert(b.kern.protokoll(f.projekt.id))).toEqual(anlegenSchritte(f).map((s) => s.eintrag));
+    expect(wert(b.kern.protokoll(f.projekt.id))).toEqual(
+      anlegenSchritte(f).map((s) => imProtokoll(s.eintrag)),
+    );
   });
 
   it('überschreibt kein vorhandenes Projekt (Q5)', async () => {
     const { kern, db } = await neuerKern();
-    speichere(kern, anlegenSchritte(f));
+    await speichere(kern, anlegenSchritte(f));
     const text = wert(kern.projektdateiExportieren(f.projekt.id));
     const vorher = zaehle(db, 'knoten');
     const r = kern.projektdateiImportieren(text);
@@ -291,7 +293,7 @@ describe('Projekt-Kennung', () => {
   it('der Import liefert die Kennung des Projekts der Datei', async () => {
     const f = ladeFixture('winzig');
     const a = await neuerKern();
-    speichere(a.kern, anlegenSchritte(f));
+    await speichere(a.kern, anlegenSchritte(f));
     const b = await neuerKern();
     const id: ProjektId = wert(
       b.kern.projektdateiImportieren(wert(a.kern.projektdateiExportieren(f.projekt.id))),

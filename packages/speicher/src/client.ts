@@ -183,14 +183,17 @@ export async function speicherOeffnen(
   return { ok: true, wert: speicher };
 }
 
-/** Transport ohne Worker: ruft den synchronen Kern direkt auf (Tests, Skripte). */
+/** Transport ohne Worker: ruft den Kern direkt auf (Tests, Skripte). */
 export function direktTransport(kern: SpeicherKern): Transport {
   return (methode, args) => {
     if (methode === 'oeffnen') return Promise.resolve(fehler('unbekannt', 'Der Kern ist schon geöffnet.'));
     if (methode === 'schliessen') return Promise.resolve(kern.schliessen());
-    const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[
-      methode
-    ];
+    const f = (
+      kern as unknown as Record<
+        string,
+        (...a: unknown[]) => Ergebnis<unknown, Speicherfehler> | Promise<Ergebnis<unknown, Speicherfehler>>
+      >
+    )[methode];
     return Promise.resolve(
       f === undefined ? fehler('unbekannt', `Unbekannte Methode ${methode}.`) : f.apply(kern, [...args]),
     );

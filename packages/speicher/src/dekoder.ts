@@ -6,7 +6,7 @@
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
 // Sache des Kerns, den `speicher` nicht importieren darf (A3).
 
-import { NACHKOMMASTELLEN } from '@tethys/vertrag';
+import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   Angebot,
   AngebotId,
@@ -19,6 +19,7 @@ import type {
   AuftragsLvZustand,
   Befehl,
   Befehlsart,
+  Befehlskurzfassung,
   Betrag,
   Bezugsposition,
   Bieter,
@@ -39,6 +40,7 @@ import type {
   LeistungsverzeichnisId,
   LosId,
   LvZustand,
+  Massenbefehlsart,
   Menge,
   Nachlass,
   NutzerId,
@@ -53,6 +55,7 @@ import type {
   Protokolleintrag,
   ProtokollId,
   Prozent,
+  Pruefsummenalgorithmus,
   Summenstand,
   Tabellenzeile,
   Tabellenzelle,
@@ -804,6 +807,43 @@ function jsonWert(x: unknown, pfad: string): void {
   ungueltig(pfad, 'kein JSON-Wert');
 }
 
+/** Hexadezimale Stellen je Prüfsummenalgorithmus (256 bzw. 512 Bit). */
+const PRUEFSUMMENLAENGE: Record<Pruefsummenalgorithmus, number> = { 'sha-256': 64, 'sha-512': 128 };
+
+/** Die lange Liste, die ein Massenbefehlskopf nicht trägt (E-13), je Befehlsart: Feld und Feld darin. */
+const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
+  LeistungsverzeichnisAnlegen: ['inhalt', 'knoten'],
+  AngebotAnlegen: ['angebot', 'positionen'],
+  AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
+};
+
+/**
+ * Kurzfassung eines Massenbefehls (E-13): Kopf eines Massenbefehls ohne seine lange Liste und eine Prüfsumme in
+ * gültiger Form (bekannter Algorithmus, hexadezimal klein, passende Länge). Den Kopf selbst prüft der Dekoder wie
+ * jeden Befehl nur auf seine Art (siehe Dateikopf); ob die Summe zum Befehl passt, kann ohne den Befehl niemand prüfen.
+ */
+function befehlskurzfassung(b: Roh, pfad: string): void {
+  objekt(b, pfad, ['art', 'kopf', 'pruefsumme']);
+  const kopf = objekt(feld(b, 'kopf'), `${pfad}.kopf`, Object.keys(feld(b, 'kopf') ?? {}));
+  const art = aufzaehlung(feld(kopf, 'art'), `${pfad}.kopf.art`, MASSENBEFEHLSARTEN);
+  const [aussen, liste] = LANGE_LISTE[art];
+  const teil = feld(kopf, aussen);
+  if (typeof teil !== 'object' || teil === null || Array.isArray(teil))
+    ungueltig(`${pfad}.kopf.${aussen}`, 'Objekt erwartet');
+  else if (Object.hasOwn(teil, liste))
+    ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
+  const q = `${pfad}.pruefsumme`;
+  const ps = objekt(feld(b, 'pruefsumme'), q, ['algorithmus', 'wert']);
+  const algorithmus = aufzaehlung(feld(ps, 'algorithmus'), `${q}.algorithmus`, [
+    'sha-256',
+    'sha-512',
+  ] as const);
+  const wert = zeichenkette(feld(ps, 'wert'), `${q}.wert`);
+  const laenge = PRUEFSUMMENLAENGE[algorithmus];
+  if (!new RegExp(`^[0-9a-f]{${String(laenge)}}$`).test(wert))
+    ungueltig(`${q}.wert`, `${String(laenge)} hexadezimale Stellen (klein) erwartet für ${algorithmus}`);
+}
+
 function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   const o = objekt(x, pfad, ['id', 'projektId', 'aggregat', 'wer', 'wann', 'befehl']);
   const ag = objekt(feld(o, 'aggregat'), `${pfad}.aggregat`, ['art', 'id']);
@@ -820,7 +860,9 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     Object.keys(befehl !== null && typeof befehl === 'object' ? befehl : {}),
   );
   const bart = zeichenkette(feld(b, 'art'), `${pfad}.befehl.art`);
-  if (!Object.hasOwn(BEFEHLSARTEN, bart)) ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
+  if (bart === 'Befehlskurzfassung') befehlskurzfassung(b, `${pfad}.befehl`);
+  else if (!Object.hasOwn(BEFEHLSARTEN, bart))
+    ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
   jsonWert(befehl, `${pfad}.befehl`);
   return {
     id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as ProtokollId,
@@ -831,7 +873,7 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     } as Protokolleintrag['aggregat'],
     wer: zeichenkette(feld(o, 'wer'), `${pfad}.wer`) as NutzerId,
     wann: zeichenkette(feld(o, 'wann'), `${pfad}.wann`) as Zeitstempel,
-    befehl: befehl as Befehl,
+    befehl: befehl as Befehl | Befehlskurzfassung,
   };
 }
 
