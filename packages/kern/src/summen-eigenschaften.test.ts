@@ -308,6 +308,7 @@ function pruefeSchritt(z: LvZustand, befehl: LvBefehl, statistik: Record<string,
   else expect(cs.summen.gesamt).toEqual(neu.summen.gesamt);
 
   // 5. Undo stellt Zustand und Summen exakt her; die Umkehrung der Umkehrung ist das ChangeSet
+  expect(cs.summen.vorher).toBeDefined(); // v1.1a: jedes ChangeSet trägt die alten Summen
   const rueck = changeSetUmkehren(cs);
   expect(anwenden(neu, rueck)).toEqual(z);
   expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(cs));

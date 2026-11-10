@@ -412,6 +412,7 @@ describe('Eigenschaften der Feldbefehle', () => {
           for (const k of neu.leistungsverzeichnis.knoten)
             if (k.art === 'position') expect(k.einheit).not.toBe('');
           // Undo: Zustand exakt wieder da; Umkehrung der Umkehrung ist das ChangeSet
+          expect(cs.summen.vorher).toBeDefined(); // v1.1a
           const rueck = changeSetUmkehren(cs);
           expect(anwenden(neu, rueck)).toEqual(z);
           expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(cs));

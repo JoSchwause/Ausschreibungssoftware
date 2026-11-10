@@ -287,6 +287,7 @@ describe('Umnummerieren des ganzen LV (Property)', () => {
         geaendert += cs.knoten.geaendert.length;
 
         // Undo
+        expect(cs.summen.vorher).toBeDefined(); // v1.1a
         expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
         expect(ohneReihenfolge(changeSetUmkehren(changeSetUmkehren(cs)))).toEqual(ohneReihenfolge(cs));
 
