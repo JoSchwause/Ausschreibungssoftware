@@ -1,0 +1,19 @@
+{
+  "hinweis": "Erfunden: Diese beiden Warnungen sind nicht aus dem LV berechnet, sondern vorbereitet.",
+  "datei": "musterhaus-lv-entwurf.x83",
+  "phase": "X83 Angebotsaufforderung",
+  "pruefliste": [
+    {
+      "id": "w1",
+      "art": "warnung",
+      "text": "Die Position 02.0050A trägt einen Index, hat aber keine Bezugsposition im Export. Im Prototyp wird nichts davon in die Datei geschrieben.",
+      "ort": "02.0050A"
+    },
+    {
+      "id": "w2",
+      "art": "warnung",
+      "text": "Die Vergabeinformation „Ausführungsfrist“ ist nicht gepflegt. Das Feld bleibt in der Datei leer.",
+      "ort": null
+    }
+  ]
+}

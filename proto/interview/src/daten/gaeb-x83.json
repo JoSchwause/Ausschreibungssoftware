@@ -1,0 +1,15 @@
+{
+  "hinweis": "Gespielt: Das ist keine GAEB-Datei, sondern eine vorbereitete JSON-Datei, die der Prototyp so behandelt.",
+  "datei": "musterhaus-lv.x83",
+  "phase": "X83 Angebotsaufforderung",
+  "gaebVersion": "3.3",
+  "groesse": "48 KB",
+  "inhalt": [
+    "1 Leistungsverzeichnis „Rohbau und Ausbau (erfunden)“",
+    "3 Titel, 25 Positionen, 2 Hinweistexte",
+    "Mehrwertsteuer: 19,00 % (in X83 nicht enthalten, Standardwert gesetzt)"
+  ],
+  "befunde": [
+    { "art": "info", "text": "Die MwSt fehlt in der Datei. Der Standardsatz 19,00 % wurde gesetzt." }
+  ]
+}
