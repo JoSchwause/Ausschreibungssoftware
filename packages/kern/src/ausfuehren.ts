@@ -30,6 +30,7 @@ import {
   langtextAendern,
   leistungsverzeichnisUmbenennen,
 } from './feld-befehle';
+import { einheitspreisanteileSetzen } from './epa';
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
@@ -73,13 +74,13 @@ export const BEFEHLS_HANDLER = {
   OrdnungszahlSetzen: ordnungszahlSetzen,
   Umnummerieren: umnummerieren,
   PositionsmerkmaleSetzen: positionsmerkmaleSetzen,
+  EinheitspreisanteileSetzen: einheitspreisanteileSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
 /** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
 export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
-  EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
   KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket

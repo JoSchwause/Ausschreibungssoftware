@@ -99,6 +99,7 @@ describe('Zuständigkeit', () => {
   it('die fünf Feldbefehle haben keinen Eintrag mehr in ZUSTAENDIGES_TICKET', () => {
     for (const art of FUENF) expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain(art);
     expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain('PositionsmerkmaleSetzen'); // Ticket 37 (K5)
+    expect(Object.keys(ZUSTAENDIGES_TICKET)).not.toContain('EinheitspreisanteileSetzen'); // Ticket 37 (K7)
   });
 
   it('die Annahme zu leeren Texten steht an einer benannten Stelle', () => {

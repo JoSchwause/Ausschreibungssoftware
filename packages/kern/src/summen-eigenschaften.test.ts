@@ -2,7 +2,7 @@
 // Property-Tests (fast-check) für Summen, Nachlass und MwSt (Ticket 07), Merkmale, Ausweise und Zuschlagspositionen
 // (Ticket 37). Zuerst geschrieben (Q1).
 //
-// Zufällige Befehlsfolgen aus Baum-, Preis- und Merkmalbefehlen. Nach jedem angenommenen Befehl gilt:
+// Zufällige Befehlsfolgen aus Baum-, Preis-, Merkmal- und Anteilsbefehlen. Nach jedem angenommenen Befehl gilt:
 //  - `LvZustand.summen` (inkrementell gepflegt) ist gleich der vollständigen Neuberechnung `summenBerechnen`;
 //  - ein unabhängiges Orakel (rekursive Summe, nur über `dezimal`) stimmt mit dem Zustand überein;
 //  - Summe über alle eingehenden Positionen = LV-Summe;
@@ -17,6 +17,7 @@ import type {
   Betrag,
   Einfuegeort,
   Einheitspreis,
+  Einheitspreisanteile,
   Knoten,
   LvBefehl,
   LvZustand,
@@ -120,6 +121,24 @@ const ZUSCHLAEGE: readonly ZuschlagWahl[] = [
   { satz: '-2.50', form: 'gliederung' },
   { satz: '10.00', form: 'liste', teilmenge: null, doppelt: true }, // abgewiesen
 ];
+const epa = (lohn: string | null, stoffe: string | null): Einheitspreisanteile => ({
+  lohn: lohn as Einheitspreis | null,
+  stoffe: stoffe as Einheitspreis | null,
+  geraete: null,
+  nachunternehmer: null,
+  sonstiges: null,
+  frei: null,
+  freiBezeichnung: null,
+});
+/** Einheitspreisanteile (K7); `1.5` ist keine kanonische Schreibweise und wird abgewiesen. */
+const EPAS: readonly (Einheitspreisanteile | null)[] = [
+  null,
+  epa('1.000', '0.235'),
+  epa('-0.500', '2.000'),
+  epa(null, '507.490'),
+  epa(null, null),
+  epa('1.5', null),
+];
 const NACHLAESSE: readonly Nachlass[] = [
   { art: 'prozent', wert: '0.00' as Prozent },
   { art: 'prozent', wert: '3.00' as Prozent },
@@ -159,6 +178,7 @@ type Aktion =
   | { readonly art: 'loeschen'; readonly knoten: number }
   | { readonly art: 'verschieben'; readonly knoten: number; readonly ort: OrtWahl }
   | { readonly art: 'menge' | 'ep'; readonly knoten: number; readonly wert: number }
+  | { readonly art: 'epa'; readonly knoten: number; readonly wert: number }
   | { readonly art: 'nachlass'; readonly wert: number }
   | { readonly art: 'nachlassWeg' }
   | { readonly art: 'mwst'; readonly wert: number };
@@ -211,6 +231,14 @@ const aktionArb: fc.Arbitrary<Aktion> = fc.oneof(
       art: fc.constant('ep' as const),
       knoten: fc.nat(10_000),
       wert: fc.nat(EPS.length - 1),
+    }),
+  },
+  {
+    weight: 3,
+    arbitrary: fc.record({
+      art: fc.constant('epa' as const),
+      knoten: fc.nat(10_000),
+      wert: fc.nat(EPAS.length - 1),
     }),
   },
   {
@@ -286,6 +314,12 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
         art: 'EinheitspreisAendern',
         positionId: id.pos(knotenId(a.knoten)),
         einheitspreis: (EPS[a.wert] ?? null) as Einheitspreis | null,
+      };
+    case 'epa':
+      return {
+        art: 'EinheitspreisanteileSetzen',
+        positionId: id.pos(knotenId(a.knoten)),
+        epa: EPAS[a.wert] ?? null,
       };
     case 'nachlass':
       return {
@@ -507,6 +541,7 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
     expect(statistik['MwstSatzSetzen']).toBeGreaterThan(20);
     expect(statistik['abgewiesen']).toBeGreaterThan(100);
     expect(statistik['PositionsmerkmaleSetzen']).toBeGreaterThan(50);
+    expect(statistik['EinheitspreisanteileSetzen']).toBeGreaterThan(50);
     expect(statistik['zuschlagMitBetrag']).toBeGreaterThan(10); // streut stark je Lauf
     console.info('[kern/07] Property-Statistik', JSON.stringify(statistik));
   });
