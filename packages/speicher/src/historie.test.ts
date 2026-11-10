@@ -452,6 +452,13 @@ describe('Papierkorb (S3, Punkt 4)', () => {
     expect(
       code(await kern.anwenden(eintrag(naechste(), P, lvAggregat, { art: 'PapierkorbLeeren' }), doppelt)),
     ).toBe('konflikt');
+    const zweimal: LvChangeSet = {
+      ...eintragEntfernen(lv(kern), e1),
+      papierkorb: { hinzugefuegt: [{ ...e1, id: 'e3' as never, nummer: 3 }], geaendert: [], entfernt: [] },
+    };
+    expect(
+      code(await kern.anwenden(eintrag(naechste(), P, lvAggregat, { art: 'PapierkorbLeeren' }), zweimal)),
+    ).toBe('konflikt');
     const nummer = ausBaumNehmen(lv(kern), [pos(5).id], { id: 'e3', nummer: 2 });
     expect(
       code(

@@ -448,21 +448,27 @@ const PAPIERKORB_KNOTEN = `SELECT p.id AS eintrag, json_extract(j.value, '$.id')
   FROM papierkorb_eintrag p, json_each(p.knoten) j WHERE p.leistungsverzeichnis_id = ?`;
 
 /**
- * Nach dem Schreiben: (1) Kein Knoten liegt zugleich im Baum und im Papierkorb (Positionsidentität, ADR 0011).
+ * Nach dem Schreiben: (1) Kein Knoten liegt zweimal im LV, im Baum und im Papierkorb oder in zwei Einträgen
+ * (Positionsidentität, ADR 0011).
  * (2) Q5, D-12: Eine Position aus einem entfernten Eintrag, die weder in den Baum zurückkam noch in einem anderen
  * Eintrag liegt, darf von keinem Angebot des LV mehr gebraucht werden; sonst `konflikt` (Entfernen und Leeren
  * des Papierkorbs, solange ein Angebot auf eine Position im Eintrag verweist).
  */
 function pruefePapierkorb(db: Datenbank, lvId: string, cs: LvChangeSet): void {
-  const doppelt = db.zeilen(
-    `SELECT pk.knoten_id AS id FROM (${PAPIERKORB_KNOTEN}) pk
-     JOIN knoten k ON k.aggregat_id = ? AND k.id = pk.knoten_id LIMIT 1`,
-    [lvId, lvId],
-  )[0];
+  const doppelt =
+    db.zeilen(
+      `SELECT pk.knoten_id AS id FROM (${PAPIERKORB_KNOTEN}) pk
+       JOIN knoten k ON k.aggregat_id = ? AND k.id = pk.knoten_id LIMIT 1`,
+      [lvId, lvId],
+    )[0] ??
+    db.zeilen(
+      `SELECT knoten_id AS id FROM (${PAPIERKORB_KNOTEN}) GROUP BY knoten_id HAVING COUNT(*) > 1 LIMIT 1`,
+      [lvId],
+    )[0];
   if (doppelt !== undefined) {
     return abbruch(
       'konflikt',
-      `Konflikt: Knoten ${String(doppelt['id'])} läge zugleich im Baum und im Papierkorb; nichts geschrieben.`,
+      `Konflikt: Knoten ${String(doppelt['id'])} läge zweimal im LV (Baum und Papierkorb oder zwei Einträge); nichts geschrieben.`,
     );
   }
   const weg = (cs.papierkorb?.entfernt ?? [])
