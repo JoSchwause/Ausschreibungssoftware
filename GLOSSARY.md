@@ -50,12 +50,34 @@ Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
 
+### Positionsmerkmal
+Eigenschaft einer Position, die sich mit anderen kombinieren lässt (E-05): Bedarf (mit oder ohne Gesamtbetrag), Wahl, Stundenlohn, Pauschal und das Zuschlagskennzeichen. Eine Bedarfsposition im Stundenlohn ist deshalb darstellbar. Es gibt keine einzelne „Positionsart“ mehr; im Code `Positionsmerkmale`. Welche Kombinationen fachlich ungültig sind, legt der Kern fest.
+
+### Wahlzuordnung (Gruppe und Variante)
+Die Zuordnung einer Position zu einer Wahl mit Gruppennummer und Variantennummer aus GAEB (Variante 0: Grundausführung, 1 bis 9: Alternativen). Im Ausschreibungs-LV gibt es keinen Zustand „gewählt“; gewählt wird bei der Vergabe (E-04). Im Code `Wahlzuordnung`.
+
+### Zuschlagsbezug (Bezugsposition)
+Die Positionen, auf die sich eine Zuschlagsposition bezieht. Drei Formen wie in GAEB: eine Liste einzelner Positionen (je mit optionaler Teilmenge), alle Positionen der Gliederung, unter der die Zuschlagsposition steht, oder alle Positionen mit Zuschlagskennzeichen. Im Code `Zuschlagsbezug`, `Bezugsposition`.
+
+### Zuschlagskennzeichen
+Markierung an einer Position, die sie zum Bezug einer Zuschlagsposition der Form „Kennzeichnung“ macht (GAEB `MarkupIt`). Im Code `Positionsmerkmale.zuschlagskennzeichen`.
+
+### Leitbeschreibung / Unterbeschreibung
+Eine Position mit Leitbeschreibung fasst mehrere Unterbeschreibungen zusammen; jede Unterbeschreibung ist eine Teilleistung mit Nummer, eigenem Text und optionaler Menge und Einheit (E-11). Im Code `Leitbeschreibung`, `Unterbeschreibung`.
+
+### Bedarfssumme / Wahlsumme
+Getrennt ausgewiesene Summen neben dem Netto (E-04): die Summe der Bedarfspositionen ohne Gesamtbetrag und die Summe der Wahlpositionen. Beide gehen nicht ins Netto ein. Im Code `summeBedarfOhneGesamtbetrag`, `summeWahl`.
+
 ### Hinweistext / Vorbemerkung / Texthinweis
 Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis), der Vertrags-, Ausführungs- oder technische Rahmenbedingungen für das gesamte LV, einen Titel oder nachfolgende Positionen erläutert.
 
 ### Kurztext & Langtext
 - **Kurztext**: Prägnante einzeilige Bezeichnung der Position für Tabellenübersichten, Preisspiegel und Rechnungsdruck.
 - **Langtext**: Vollständige, eindeutige und erschöpfende Beschreibung der geforderten Leistung (oft formatiert als Rich-Text/HTML oder GAEB-Textstruktur, ggf. aus Standardleistungsbüchern wie STLB-Bau abgeleitet).
+  Ab `vertrag` v1.1b trägt der Langtext die GAEB-abbildbare Teilmenge: Auszeichnung (fett, kursiv, unterstrichen), Absätze, Listen, Tabellen, Bilder und Textergänzungen (E-10).
+
+### Textergänzung
+Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`.
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
 - **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
@@ -98,13 +120,34 @@ Jede Änderung am Projekt ist ein Befehl, reine Daten ohne Funktionen und Zeitan
 Ergebnis eines Befehls: die hinzugefügten, geänderten (mit altem und neuem Stand) und entfernten Knoten sowie die betroffenen Summen. UI, Speicher und Undo wenden ChangeSets an.
 
 ### Protokolleintrag
-Ein Eintrag des Befehlsprotokolls: wer hat wann welchen Befehl ausgeführt. Genau ein Eintrag je Befehl.
+Ein Eintrag des Befehlsprotokolls: wer hat wann welchen Befehl ausgeführt. Genau ein Eintrag je Befehl. Bei einem Massenbefehl steht statt des ganzen Befehls seine Befehlskurzfassung (E-13).
+
+### Massenbefehl
+Befehl, der ein ganzes Aggregat mit langer Liste anlegt (`LeistungsverzeichnisAnlegen`, `AngebotAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`; Konstante `MASSENBEFEHLSARTEN`). Im Protokoll genügen Kopf und Prüfsumme (E-13, ADR 0009).
+
+### Befehlskurzfassung
+Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der Befehl ohne seine lange Liste) und eine Prüfsumme über den vollständigen Befehl, mit dem Algorithmus als Feld. Im Code `Befehlskurzfassung`, `Massenbefehlskopf`, `Pruefsumme`.
 
 ### Projektdatei
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
 
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
+
+### Befehlshinweis
+Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, oder das Netto nach Nachlass ist negativ). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
+
+### Auftraggeber (Kopfdaten)
+Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
+
+### Vergabeinformationen (Kopfdaten)
+Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
+
+### Wurzel (des LV-Baums)
+Die Kennung des LV (oder Auftrags-LV) selbst, die die Knoten der obersten Ebene als Elternknoten tragen. Im Code `WurzelId`, `LvInhalt.wurzelId`, `LvAnsicht.wurzelId`.
+
+### Los-Stufe
+Die oberste Stufe der OZ-Maske, wenn das LV Lose hat. Das Los ist die oberste Gliederungsstufe und zählt zu den höchstens 5 Stufen (F1); Lose und Titel stehen nie nebeneinander auf der obersten Stufe.
 
 ### Entwurfskennzeichen
 Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.

@@ -28,7 +28,14 @@ import { abbruch } from './ergebnis';
 import { kanonischKompakt } from './kanonisch';
 import { leseAngebotKopf, leseAngebotposition, leseKnoten1, leseLvKopf, leseProjekt } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
-import { angebotspositionZuBindung, KNOTEN_SPALTEN, knotenZuBindung, nachlassSpalten } from './zeilen';
+import {
+  angebotspositionZuBindung,
+  KNOTEN_SPALTEN,
+  knotenZuBindung,
+  nachlassSpalten,
+  pruefeKopfdaten,
+  pruefeSummenfelder,
+} from './zeilen';
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
 
@@ -171,6 +178,7 @@ function schreibeGesamt(db: Datenbank, aggregatId: string, g: Gesamtsummen): voi
 
 /** Überschreibt die gelisteten Summen. Es wird nichts berechnet oder geprüft. */
 function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): void {
+  pruefeSummenfelder(aggregatId, s); // // v1.1b: mechanisch angepasst, Folgeticket
   db.stapel(
     `INSERT INTO summe_position (aggregat_id, position_id, gesamtpreis, geht_in_summe) VALUES (?, ?, ?, ?)
      ON CONFLICT (aggregat_id, position_id) DO UPDATE SET gesamtpreis = excluded.gesamtpreis,
@@ -204,6 +212,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
       return abbruch('unbekannt', 'ChangeSet: leistungsverzeichnisId und Kopf.id weichen ab.');
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
+    pruefeKopfdaten(nachher); // // v1.1b: mechanisch angepasst, Folgeticket
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
@@ -280,6 +289,7 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     if (lv === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
     if (lv.projektId !== projektId)
       return abbruch('unbekannt', `LV ${lvId} gehört zu einem anderen Projekt.`);
+    pruefeKopfdaten(nachher); // // v1.1b: mechanisch angepasst, Folgeticket
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`Angebot ${id} existiert bereits, das ChangeSet`);
@@ -356,6 +366,7 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
 
 export function schreibeAuftragsLv(db: Datenbank, z: AuftragsLvZustand): void {
   const k = z.auftragsLeistungsverzeichnis;
+  pruefeKopfdaten(k); // // v1.1b: mechanisch angepasst, Folgeticket
   const [nachlassArt, nachlassWert] = nachlassSpalten(k.nachlass);
   db.ausfuehren(
     `INSERT INTO auftrags_lv (id, projekt_id, leistungsverzeichnis_id, angebot_id, name, oz_maske, mwst_satz,

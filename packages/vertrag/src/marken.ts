@@ -34,8 +34,14 @@ export type TitelId = string & Marke<'KnotenId' | 'GliederungId' | 'TitelId'>;
 export type PositionId = string & Marke<'KnotenId' | 'PositionId'>;
 export type HinweistextId = string & Marke<'KnotenId' | 'HinweistextId'>;
 
+/**
+ * Wurzel des LV-Baums (v1.1a): die Kennung des LV selbst bzw. des Auftrags-LV. Knoten der obersten Ebene tragen sie
+ * als `elternId`. `LvInhalt.wurzelId` und `LvAnsicht.wurzelId` nennen sie, damit niemand sie getrennt durchreichen muss.
+ */
+export type WurzelId = LeistungsverzeichnisId | AuftragsLeistungsverzeichnisId;
+
 /** Elternknoten im LV-Baum: die Wurzel (die Kennung des LV selbst) oder eine Gliederung. */
-export type ElternId = LeistungsverzeichnisId | AuftragsLeistungsverzeichnisId | GliederungId;
+export type ElternId = WurzelId | GliederungId;
 
 /** Kennung des handelnden Nutzers im Befehlsprotokoll (ADR 0009). In v1 genau ein Wert. */
 export type NutzerId = string & Marke<'NutzerId'>;
@@ -52,6 +58,9 @@ export type Ordnungszahl = string & Marke<'Ordnungszahl'>;
 /**
  * Quelle für neue Kennungen. Wird von außen in Kern, Parser und Oberfläche gereicht (A2: kein Zufall,
  * keine Uhr im reinen Code). Die Umsetzung (UUIDv7) liegt in der App.
+ *
+ * Es gibt genau diese eine Schnittstelle (v1.1a). Wer nur einen Teil braucht, schneidet sie mit `Pick` zu, z. B.
+ * `GridIdQuelle` in `ansicht.ts`; eine zweite, eigene ID-Quelle in einem Paket ist nicht vorgesehen.
  */
 export interface IdQuelle {
   projekt(): ProjektId;

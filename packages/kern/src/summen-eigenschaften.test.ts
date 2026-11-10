@@ -21,7 +21,6 @@ import type {
   LvZustand,
   Menge,
   Nachlass,
-  Positionsart,
   Prozent,
 } from '@tethys/vertrag';
 import {
@@ -40,7 +39,7 @@ import {
   positionGehtInSumme,
   summenBerechnen,
 } from './index';
-import { LV_ID, id, lvMit, positionsdaten } from './testhilfen';
+import { LV_ID, id, lvMit, positionsdaten, type Positionsart } from './testhilfen';
 
 // --- Wertevorrat: klein, damit Gleichstände, Nullen und negative Werte oft vorkommen -----------------------------------
 
@@ -380,6 +379,7 @@ describe('Befehlsfolgen mit Preisen, Nachlass und MwSt', () => {
             mwstSatz: lv.mwstSatz,
             nachlass: lv.nachlass,
             knoten: lv.knoten,
+            wurzelId: lv.id, // v1.1a: mechanisch angepasst, Folgeticket
           },
         });
         expect(neu.ok).toBe(true);

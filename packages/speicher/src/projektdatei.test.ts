@@ -174,6 +174,14 @@ describe('Prüfung beim Import: nichts wird halb übernommen (Q5)', () => {
     ],
     ['unbekannte Knotenart', aendere(knoten(0, 'art'), 'ordner'), 'datei-ungueltig'],
     ['unbekannte Positionsart', aendere(knoten(1, 'positionsart'), 'sonder'), 'datei-ungueltig'],
+    // v1.1b: Werte außerhalb ihrer Art dürfen nicht still verworfen werden (Q5).
+    [
+      'bedarfMitGesamtbetrag ohne Bedarf',
+      aendere(knoten(1, 'bedarfMitGesamtbetrag'), true),
+      'datei-ungueltig',
+    ],
+    ['bezugspositionId ohne Zuschlag', aendere(knoten(1, 'bezugspositionId'), idVon(2)), 'datei-ungueltig'],
+    ['grundpositionId ohne Wahl', aendere(knoten(1, 'grundpositionId'), idVon(2)), 'datei-ungueltig'],
     [
       'unbekannter Befehl im Protokoll',
       aendere(['protokoll', 0, 'befehl', 'art'], 'Zaubern'),

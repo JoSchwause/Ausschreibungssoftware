@@ -16,9 +16,11 @@ import type {
   Menge,
   Ordnungszahl,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
   Pruefbefund,
+  Zuschlag,
   TitelId,
+  WurzelId,
 } from '@tethys/vertrag';
 
 type FxKnoten =
@@ -28,7 +30,7 @@ type FxKnoten =
       id: string;
       parentId: string;
       art: 'position';
-      positionsart: Positionsart;
+      positionsart: 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
       ordnungszahl: string;
       ozIndex?: string;
       kurztext: string;
@@ -39,6 +41,43 @@ type FxKnoten =
       bezugspositionId?: string;
       grundpositionId?: string;
     };
+
+// // v1.1b: mechanisch angepasst, Folgeticket: Die Fixture kennt noch die einzelne Positionsart; hier wird sie in die Merkmale von `vertrag` v1.1b umgesetzt.
+type FxPosition = Extract<FxKnoten, { art: 'position' }>;
+
+function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
+  return {
+    bedarf:
+      k.positionsart === 'bedarf'
+        ? k.bedarfMitGesamtbetrag === true
+          ? 'mit-gesamtbetrag'
+          : 'ohne-gesamtbetrag'
+        : null,
+    wahl:
+      k.positionsart === 'wahl'
+        ? {
+            gruppe: null,
+            variante: null,
+            grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+          }
+        : null,
+    stundenlohn: k.positionsart === 'stundenlohn',
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+}
+
+function fixtureZuschlag(k: FxPosition): Zuschlag | null {
+  if (k.positionsart !== 'zuschlag') return null;
+  const bezug = k.bezugspositionId as PositionId | undefined;
+  return {
+    prozentsatz: null,
+    bezug: {
+      art: 'positionen',
+      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
+    },
+  };
+}
 
 interface FxLv {
   id: string;
@@ -104,11 +143,8 @@ export async function ladeFixture(name: FixtureName, kopien = 1): Promise<Modell
           id: id(k.id) as PositionId,
           ordnungszahl: k.ordnungszahl as Ordnungszahl,
           ozIndex: k.ozIndex ?? null,
-          positionsart: k.positionsart,
-          pauschal: false,
-          bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-          bezugspositionId: (k.bezugspositionId as PositionId | undefined) ?? null,
-          grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+          merkmale: fixtureMerkmale(k), // // v1.1b: mechanisch angepasst, Folgeticket
+          zuschlag: fixtureZuschlag(k),
           kurztext: k.kurztext,
           langtext: [],
           menge: k.menge as Menge,
@@ -170,7 +206,8 @@ export function baueAnsicht(
     }
   };
   besuche(modell.lvId, 0);
-  return { zeilen, gesamt: modell.gesamt };
+  // v1.1a: mechanisch angepasst, Folgeticket (ui-grid: wurzelId aus der Ansicht statt als eigene Eigenschaft)
+  return { wurzelId: modell.lvId as WurzelId, zeilen, gesamt: modell.gesamt };
 }
 
 /** Alle Gliederungsknoten (zum Aufklappen aller Ebenen). */

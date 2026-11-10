@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import type { Knoten, Position, Pruefbefund } from '@tethys/vertrag';
 import { leseGaeb } from './index';
 import type { GaebLesungErgebnis } from './index';
-import { TEST_MWST, leseTestdatei, lesePfad, testIds } from './testhilfen';
+import { TEST_MWST, leseTestdatei, lesePfad, positionsartVon, testIds } from './testhilfen';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HIER, '..', 'testdaten', 'golden');
@@ -42,7 +42,8 @@ function zusammenfassung(datei: string, l: GaebLesungErgebnis): Record<string, u
   const arten: Record<string, number> = {};
   let bilder = 0;
   for (const p of positionen(l)) {
-    arten[p.positionsart] = (arten[p.positionsart] ?? 0) + 1;
+    const art = positionsartVon(p) ?? 'normal';
+    arten[art] = (arten[art] ?? 0) + 1;
     bilder += p.langtext.filter((b) => b.art === 'bild').length;
   }
   return {
@@ -60,7 +61,7 @@ function zusammenfassung(datei: string, l: GaebLesungErgebnis): Record<string, u
       bilderInPositionen: bilder,
     },
     positionsarten: arten,
-    pauschal: positionen(l).filter((p) => p.pauschal).length,
+    pauschal: positionen(l).filter((p) => p.merkmale.pauschal).length,
     befunde: l.befunde.length,
   };
 }
@@ -142,20 +143,20 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('Bedarfsposition mit Gesamtbetrag (Provis WithTotal)', () => {
       const p = positionen(l).find((x) => x.ordnungszahl === '001.001.0010' && x.ozIndex === '1');
-      expect(p?.positionsart).toBe('bedarf');
-      expect(p?.bedarfMitGesamtbetrag).toBe(true);
+      expect(positionsartVon(p)).toBe('bedarf');
+      expect(p?.merkmale.bedarf === 'mit-gesamtbetrag').toBe(true);
     });
 
     it('Grund- und Wahlposition (ALNGroupNo/ALNSerNo) verweisen aufeinander', () => {
       const grund = positionen(l).find((x) => x.ordnungszahl === '001.002.0040');
       const wahl = positionen(l).find((x) => x.ordnungszahl === '001.002.0050');
-      expect(grund?.positionsart).toBe('normal');
-      expect(wahl?.positionsart).toBe('wahl');
-      expect(wahl?.grundpositionId).toBe(grund?.id);
+      expect(positionsartVon(grund)).toBe('normal');
+      expect(positionsartVon(wahl)).toBe('wahl');
+      expect(wahl?.merkmale.wahl?.grundpositionId).toBe(grund?.id);
     });
 
     it('Zuschlagsposition (MarkupItem) hat Art zuschlag, keine Menge, keinen Preis', () => {
-      const z = positionen(l).filter((x) => x.positionsart === 'zuschlag');
+      const z = positionen(l).filter((x) => positionsartVon(x) === 'zuschlag');
       expect(z.length).toBeGreaterThanOrEqual(1);
       for (const p of z) {
         expect(p.menge).toBeNull();
@@ -165,10 +166,10 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('stimmt mit den Positionsnummern überein, die die BVBS-Prüfkriterien nennen (Ticket 23)', () => {
       const oz = (z: string): Position | undefined => positionen(l).find((x) => x.ordnungszahl === z);
-      expect(oz('002.000.0000')?.positionsart).toBe('normal'); // Position „0000“ muss vorhanden sein
-      expect(oz('002.001.0030')?.positionsart).toBe('zuschlag'); // Zuschlagspositionen ab 002.001.0030
+      expect(positionsartVon(oz('002.000.0000'))).toBe('normal'); // Position „0000“ muss vorhanden sein
+      expect(positionsartVon(oz('002.001.0030'))).toBe('zuschlag'); // Zuschlagspositionen ab 002.001.0030
       expect(oz('001.002.0040')).toBeDefined(); // Grundposition
-      expect(oz('001.002.0050')?.positionsart).toBe('wahl'); // Alternativposition
+      expect(positionsartVon(oz('001.002.0050'))).toBe('wahl'); // Alternativposition
     });
 
     it('Menge mit 8 Vorkomma- und 3 Nachkommastellen bleibt exakt', () => {
@@ -211,15 +212,15 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('Pauschal-, Stundenlohn-, Bedarfs-, Wahl- und Zuschlagspositionen werden unterschieden', () => {
       const ps = positionen(l);
-      expect(ps.filter((p) => p.pauschal)).toHaveLength(3);
-      expect(ps.filter((p) => p.positionsart === 'zuschlag')).toHaveLength(6);
-      expect(ps.filter((p) => p.positionsart === 'wahl').length).toBeGreaterThan(0);
-      expect(ps.filter((p) => p.positionsart === 'bedarf').length).toBeGreaterThan(0);
-      expect(ps.filter((p) => p.positionsart === 'stundenlohn').length).toBeGreaterThan(0);
+      expect(ps.filter((p) => p.merkmale.pauschal)).toHaveLength(3);
+      expect(ps.filter((p) => positionsartVon(p) === 'zuschlag')).toHaveLength(6);
+      expect(ps.filter((p) => positionsartVon(p) === 'wahl').length).toBeGreaterThan(0);
+      expect(ps.filter((p) => positionsartVon(p) === 'bedarf').length).toBeGreaterThan(0);
+      expect(ps.filter((p) => positionsartVon(p) === 'stundenlohn').length).toBeGreaterThan(0);
     });
 
     it('QtyTBD: Menge bleibt null statt 0', () => {
-      const ohne = positionen(l).filter((p) => p.menge === null && p.positionsart !== 'zuschlag');
+      const ohne = positionen(l).filter((p) => p.menge === null && positionsartVon(p) !== 'zuschlag');
       expect(ohne.length).toBeGreaterThanOrEqual(3);
     });
 
@@ -324,7 +325,7 @@ const FEHLER: readonly Fehlerfall[] = [
     schwere: 'warnung',
     positionen: 4,
     pruefe: (l) => {
-      expect(positionen(l)[0]?.positionsart).toBe('normal');
+      expect(positionsartVon(positionen(l)[0])).toBe('normal');
     },
   },
   { datei: '04-doppelte-id.x83', code: 'doppelte-id', schwere: 'fehler', positionen: 4 },
@@ -573,7 +574,7 @@ describe('Dezimalwerte und Pflichtangaben', () => {
     expect(codes(lies(item('<QtyTBD>Yes</QtyTBD><QU>St</QU>')))).not.toContain('menge-fehlt');
     const l = lies(item('<LumpSumItem>Yes</LumpSumItem><QU>psch</QU>'));
     expect(codes(l)).not.toContain('menge-fehlt');
-    expect(positionen(l)[0]?.pauschal).toBe(true);
+    expect(positionen(l)[0]?.merkmale.pauschal).toBe(true);
     expect(positionen(l)[0]?.menge).toBeNull();
   });
 
@@ -583,8 +584,8 @@ describe('Dezimalwerte und Pflichtangaben', () => {
         '<Provis>WithTotal</Provis><ALNGroupNo>1</ALNGroupNo><ALNSerNo>1</ALNSerNo><Qty>1.000</Qty><QU>St</QU>',
       ),
     );
-    expect(positionen(l)[0]?.positionsart).toBe('wahl');
-    expect(positionen(l)[0]?.bedarfMitGesamtbetrag).toBe(false);
+    expect(positionsartVon(positionen(l)[0])).toBe('wahl');
+    expect(positionen(l)[0]?.merkmale.bedarf === 'mit-gesamtbetrag').toBe(false);
     expect(codes(l)).toContain('positionsart-kombination');
     expect(codes(l)).toContain('wahl-ohne-grundposition');
   });

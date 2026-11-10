@@ -3,9 +3,11 @@
 // kommen als Werte von außen, Änderungen gehen als Befehle hinaus (A5).
 
 import type { LvBefehl } from './befehle';
+import type { Ergebnis } from './changeset';
 import type { Pruefbefund } from './gaeb';
+import type { IdQuelle, WurzelId } from './marken';
 import type { Knoten } from './modell';
-import type { Betrag } from './zahlen';
+import type { Betrag, Einheitspreis, Menge } from './zahlen';
 import type { Gesamtsummen } from './summen';
 
 /** Spalten des LV-Grids. */
@@ -29,6 +31,11 @@ export interface LvZeile {
 
 /** Alles, was das Grid zum Anzeigen bekommt. */
 export interface LvAnsicht {
+  /**
+   * Die Wurzel des angezeigten Baums (v1.1a): Elternknoten für das Einfügen in ein leeres LV und für Knoten der
+   * obersten Ebene. Auch ein leeres LV kennt sie, deshalb steht sie hier und nicht an einer Zeile.
+   */
+  readonly wurzelId: WurzelId;
   readonly zeilen: readonly LvZeile[];
   /** Summenzeile; `null`, solange keine Summen vorliegen. */
   readonly gesamt: Gesamtsummen | null;
@@ -36,3 +43,28 @@ export interface LvAnsicht {
 
 /** Das Grid gibt Änderungen so aus: ein Befehl je Änderung, auch beim Einfügen aus der Zwischenablage. */
 export type BefehlsEmpfaenger = (befehl: LvBefehl) => void;
+
+// --- Ränder des Grids (v1.1a, Punkt 7) -----------------------------------------------------------------------------
+
+/**
+ * Zahlenränder des Grids (N4): de-DE-Text ↔ Dezimalwert. Die App schließt sie an `dezimal` an; das Grid rechnet nie
+ * selbst und vergleicht Werte nur als Zeichenketten auf Gleichheit. Funktionen, keine Daten: Das ist eine
+ * Schnittstelle des Rands, kein Teil von Befehl oder ChangeSet.
+ *
+ * - `parse*` bekommt getrimmten, nicht leeren Text; der Fehler ist eine deutsche Meldung für die Zelle.
+ * - `format*` liefert Anzeige und Startwert des Eingabefelds; das Ergebnis muss sich wieder parsen lassen.
+ */
+export interface GridZahlen {
+  parseMenge(text: string): Ergebnis<Menge, string>;
+  parseEinheitspreis(text: string): Ergebnis<Einheitspreis, string>;
+  formatMenge(wert: Menge): string;
+  formatEinheitspreis(wert: Einheitspreis): string;
+  /** GP, Gliederungssummen und Summenzeile. */
+  formatBetrag(wert: Betrag): string;
+}
+
+/**
+ * Kennungen für neue Positionen beim Einfügen aus der Zwischenablage (A2: das Grid erzeugt nie selbst Kennungen).
+ * Ein Zuschnitt der einen `IdQuelle`, keine zweite Schnittstelle.
+ */
+export type GridIdQuelle = Pick<IdQuelle, 'position'>;

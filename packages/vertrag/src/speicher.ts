@@ -2,7 +2,7 @@
 // Repository-Schnittstellen für `speicher` (S1), Befehlsprotokoll und Projektdatei. Nur Typen.
 
 import type { Befehl } from './befehle';
-import type { AngebotZustand, ChangeSet, Ergebnis, LvZustand } from './changeset';
+import type { AngebotZustand, AuftragsLvZustand, ChangeSet, Ergebnis, LvZustand } from './changeset';
 import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
@@ -12,8 +12,7 @@ import type {
   ProtokollId,
   Zeitstempel,
 } from './marken';
-import type { AuftragsLeistungsverzeichnis, Projekt } from './modell';
-import type { Summenstand } from './summen';
+import type { AngebotKopf, AuftragsLvKopf, LvInhalt, Projekt } from './modell';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -25,8 +24,64 @@ export type AggregatBezug =
   | { readonly art: 'auftrags-leistungsverzeichnis'; readonly id: AuftragsLeistungsverzeichnisId };
 
 /**
+ * Prüfsumme über einen vollständigen Befehl (v1.1b, Punkt 7; E-13). Der Algorithmus ist ein Feld, damit er
+ * wechselbar bleibt, ohne dass alte Einträge ungültig werden.
+ *
+ * Die zwei Werte sind die Hashverfahren, die jede Laufzeit von `speicher` ohne Abhängigkeit liefert (Web Crypto
+ * `SubtleCrypto.digest`: Browser und Node); SHA-1 ist ausgeschlossen (Kollisionen bekannt). Die Wahl ist vorläufig
+ * (Entscheidung offen); neue Werte brauchen ein Vertragsticket.
+ */
+export type Pruefsummenalgorithmus = 'sha-256' | 'sha-512';
+
+export interface Pruefsumme {
+  readonly algorithmus: Pruefsummenalgorithmus;
+  /**
+   * Hexadezimal, Kleinbuchstaben. Vorläufige Annahme, Entscheidung offen (enge Lesart): gebildet über die UTF-8-Bytes
+   * der kanonischen JSON-Darstellung des vollständigen Befehls (Schlüsselreihenfolge wie in der Projektdatei, G-56).
+   * Wer die Summe bildet, ist `speicher`; der Vertrag nennt nur, worüber sie gilt.
+   */
+  readonly wert: string;
+}
+
+/**
+ * Kopf eines Massenbefehls: der Befehl ohne seine lange Liste (v1.1b, Punkt 7). Genau die Teile, die ein Mensch
+ * im Protokoll lesen will (wer legt was in welchem Projekt an), und nichts, was mit der Zahl der Positionen wächst.
+ */
+export type Massenbefehlskopf =
+  | {
+      readonly art: 'LeistungsverzeichnisAnlegen';
+      readonly id: LeistungsverzeichnisId;
+      readonly projektId: ProjektId;
+      /** Der Inhalt ohne `knoten`: Name, Maske, MwSt, Nachlass, Wurzel und Kopfdaten. */
+      readonly inhalt: Omit<LvInhalt, 'knoten'>;
+    }
+  | {
+      readonly art: 'AngebotAnlegen';
+      /** Das Angebot ohne `positionen`. */
+      readonly angebot: AngebotKopf;
+    }
+  | {
+      readonly art: 'AuftragsLeistungsverzeichnisAnlegen';
+      /** Das Auftrags-LV ohne `knoten`. */
+      readonly auftragsLeistungsverzeichnis: AuftragsLvKopf;
+    };
+
+/**
+ * Kurzfassung eines Massenbefehls im Protokoll (v1.1b, Punkt 7; E-13, ADR 0009): Kopf und Prüfsumme statt des
+ * ganzen Befehls. Der Kopf nennt die Befehlsart (`kopf.art`, immer eine `Massenbefehlsart`).
+ */
+export interface Befehlskurzfassung {
+  readonly art: 'Befehlskurzfassung';
+  readonly kopf: Massenbefehlskopf;
+  readonly pruefsumme: Pruefsumme;
+}
+
+/**
  * Ein Eintrag des Befehlsprotokolls: wer, was, wann. Nebenbuch, kein Quellzustand (ADR 0009). Genau ein Eintrag
  * je Befehl; `wann` liefert der Aufrufer (A2).
+ *
+ * `befehl` ist der vollständige Befehl, bei einem Massenbefehl (`MASSENBEFEHLSARTEN`) die Kurzfassung (E-13). Der Typ
+ * erzwingt das nicht; wer protokolliert (`speicher`), wählt die Kurzfassung für jeden Massenbefehl.
  */
 export interface Protokolleintrag {
   readonly id: ProtokollId;
@@ -34,13 +89,15 @@ export interface Protokolleintrag {
   readonly aggregat: AggregatBezug;
   readonly wer: NutzerId;
   readonly wann: Zeitstempel;
-  readonly befehl: Befehl;
+  readonly befehl: Befehl | Befehlskurzfassung;
 }
 
 // --- Fehler ----------------------------------------------------------------------------------------------------
 
 export type Speicherfehlercode =
   | 'nicht-gefunden'
+  | 'konflikt' // v1.1a: ChangeSet passt nicht zum gespeicherten Stand (`vorher` weicht ab, abhängige Aggregate bestehen noch)
+  | 'existiert-bereits' // v1.1a: z. B. Projektdatei-Import eines Projekts, das schon vorhanden ist
   | 'speicher-voll' // Quote erschöpft (Q5)
   | 'gesperrt' // z. B. OPFS nicht verfügbar
   | 'datei-ungueltig' // Projektdatei nicht lesbar oder nicht schemakonform
@@ -89,6 +146,10 @@ export interface Persistenzstatus {
  * Einziger Schreibweg (A5): ChangeSet und Protokolleintrag werden in einer Transaktion gespeichert, genau ein
  * Eintrag je Befehl. Schreibt der Aufrufer nur über `anwenden`, gibt es keinen direkten Tabellenzugriff.
  * Speichern bei jedem Befehl (G-35).
+ *
+ * v1.1a: `anwenden` nimmt auch ChangeSets, die ein Aggregat anlegen (`kopf.vorher: null`) oder löschen
+ * (`nachher: null`), und ChangeSets des Auftrags-LV. Löschen verlangt, dass nichts mehr am Aggregat hängt (Angebote
+ * und Auftrags-LV am LV, LVs am Projekt); sonst `konflikt`.
  */
 export interface Speicher {
   readonly projekte: ProjektRepository;
@@ -101,18 +162,18 @@ export interface Speicher {
   projektdateiExportieren(projektId: ProjektId): Promise<Ergebnis<string, Speicherfehler>>;
   /** Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. */
   projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>>;
+  /**
+   * Schließt den Speicher und gibt seine Betriebsmittel frei (v1.1a), z. B. die OPFS-Handles des Workers. Danach
+   * sind keine weiteren Aufrufe zulässig; ein neuer Speicher wird mit einem neuen Öffnen erzeugt (das Öffnen liegt
+   * bei `speicher`, nicht im Vertrag).
+   */
+  schliessen(): Promise<Ergebnis<void, Speicherfehler>>;
 }
 
 // --- Projektdatei (G-56, A8) -----------------------------------------------------------------------------------
 
 /** Schemaversion der Projektdatei: positive ganze Zahl, bei jeder Migration erhöht (liegt bei `speicher`). */
 export type Schemaversion = number;
-
-/** Auftrags-LV samt Summen. */
-export interface AuftragsLvZustand {
-  readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
-  readonly summen: Summenstand;
-}
 
 /**
  * Inhalt der JSON-Projektdatei in der aktuellen Schemaversion. Dezimalwerte stehen als Zeichenketten

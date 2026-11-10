@@ -30,7 +30,9 @@ import {
   kinderIds,
   neuesLv,
   positionsdaten,
+  positionsfelder,
   wende,
+  type PositionsKurzform,
 } from './testhilfen';
 
 // --- Kurzschreibweisen für Befehle ---------------------------------------------------------------------------
@@ -182,13 +184,18 @@ describe('LeistungsverzeichnisAnlegen', () => {
     ordnungszahl: null,
     kurztext: i,
   });
-  const p = (i: string, eltern: string, r = 0, ueber: Partial<Position> = {}): Position => ({
+  const p = (
+    i: string,
+    eltern: string,
+    r = 0,
+    ueber: Partial<Position> & PositionsKurzform = {},
+  ): Position => ({
     art: 'position',
     id: id.pos(i),
     elternId: id.eltern(eltern),
     reihenfolge: r,
     ...positionsdaten(i),
-    ...ueber,
+    ...positionsfelder(ueber),
   });
 
   it('weist Zyklen, unbekannte Eltern, doppelte IDs und Lücken in der Reihenfolge ab', () => {
@@ -217,9 +224,7 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { menge: '1.5' as Menge })]))).toBe(
       'ungueltige-eingabe',
     );
-    expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { bedarfMitGesamtbetrag: true })]))).toBe(
-      'ungueltige-eingabe',
-    ); // Merkmal nur bei Art `bedarf`
+    // v1.1b: mechanisch angepasst, Folgeticket. „Merkmal nur bei Art `bedarf`“ entfällt, die Merkmale sind kombinierbar (F5); `bedarfMitGesamtbetrag` ohne Bedarf ist nicht mehr darstellbar.
     expect(
       fehlercode(
         null,
@@ -369,6 +374,64 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
     expect(knotenVon(z2, 'PM')).toMatchObject({ art: 'position', menge: '2.000', einheit: 'm' });
   });
 
+  it('prüft die Form der Merkmale und des Zuschlags (v1.1b), lässt aber jede Kombination zu', () => {
+    const z = basis();
+    const rohdaten = (ueber: Record<string, unknown>): LvBefehl => ({
+      art: 'PositionAnlegen',
+      id: id.pos('X'),
+      ort: ende('T1'),
+      daten: { ...positionsdaten('x'), ...ueber },
+    });
+    const feldVon = (b: LvBefehl): string | undefined => {
+      const e = lvBefehlAusfuehren(z, b);
+      return e.ok ? undefined : `${e.fehler.code}:${e.fehler.feld ?? ''}`;
+    };
+    const merk = (m: Record<string, unknown>): Record<string, unknown> => ({
+      merkmale: { ...positionsdaten('x').merkmale, ...m },
+    });
+    const zus = (bezug: unknown, prozentsatz: unknown = null): Record<string, unknown> => ({
+      zuschlag: { prozentsatz, bezug },
+    });
+    expect(feldVon(rohdaten({ merkmale: undefined }))).toBe('ungueltige-eingabe:merkmale');
+    expect(feldVon(rohdaten({ merkmale: null }))).toBe('ungueltige-eingabe:merkmale');
+    expect(feldVon(rohdaten(merk({ bedarf: 'vielleicht' })))).toBe('ungueltige-eingabe:merkmale.bedarf');
+    expect(feldVon(rohdaten(zus({ art: 'alle' })))).toBe('ungueltige-eingabe:zuschlag.bezug.art');
+    expect(feldVon(rohdaten(zus(undefined)))).toBe('ungueltige-eingabe:zuschlag.bezug.art');
+    expect(feldVon(rohdaten(zus({ art: 'gliederung' }, '10.0')))).toBe(
+      'ungueltige-eingabe:zuschlag.prozentsatz',
+    );
+    expect(feldVon(rohdaten(zus({ art: 'gliederung' }, '10,00')))).toBe(
+      'ungueltige-eingabe:zuschlag.prozentsatz',
+    );
+    expect(
+      feldVon(
+        rohdaten(zus({ art: 'positionen', positionen: [{ positionId: id.pos('P1'), teilmenge: '1.5' }] })),
+      ),
+    ).toBe('ungueltige-eingabe:zuschlag.bezug.positionen.teilmenge');
+    // Gültig und zulässig: jede Kombination der Merkmale, alle Bezugsformen, kanonische Zahlen.
+    expect(
+      feldVon(
+        rohdaten({
+          merkmale: {
+            bedarf: 'ohne-gesamtbetrag',
+            wahl: { gruppe: null, variante: null, grundpositionId: null },
+            stundenlohn: true,
+            pauschal: true,
+            zuschlagskennzeichen: true,
+          },
+          zuschlag: { prozentsatz: '10.00', bezug: { art: 'kennzeichnung' } },
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      feldVon(
+        rohdaten(
+          zus({ art: 'positionen', positionen: [{ positionId: id.pos('P1'), teilmenge: '0.500' }] }, '10.00'),
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
   it('weist Positionsdaten ab, die die Form verletzen', () => {
     const z = basis();
     const mit = (daten: ReturnType<typeof positionsdaten>): LvBefehl => ({
@@ -378,9 +441,7 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       daten,
     });
     expect(fehlercode(z, mit(positionsdaten('x', { menge: '1' as Menge })))).toBe('ungueltige-eingabe');
-    expect(fehlercode(z, mit(positionsdaten('x', { bezugspositionId: id.pos('P1') })))).toBe(
-      'ungueltige-eingabe',
-    );
+    // v1.1b: mechanisch angepasst, Folgeticket. „Bezug nur bei Art `zuschlag`“ entfällt (der Bezug steht jetzt in `Positionsdaten.zuschlag`).
     expect(
       fehlercode(
         z,
@@ -601,13 +662,10 @@ describe('Befehle anderer Tickets', () => {
   const fremde: LvBefehl[] = [
     { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
     {
-      art: 'PositionsartAendern',
+      art: 'PositionsmerkmaleSetzen',
       positionId: id.pos('P1'),
-      positionsart: 'normal',
-      pauschal: false,
-      bedarfMitGesamtbetrag: false,
-      bezugspositionId: null,
-      grundpositionId: null,
+      merkmale: positionsdaten('x').merkmale,
+      zuschlag: null,
     },
   ];
 

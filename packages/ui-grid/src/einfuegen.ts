@@ -97,11 +97,14 @@ export function planeEinfuegen(
     const daten: Positionsdaten = {
       ordnungszahl: null,
       ozIndex: null,
-      positionsart: 'normal',
-      pauschal: false,
-      bedarfMitGesamtbetrag: false,
-      bezugspositionId: null,
-      grundpositionId: null,
+      merkmale: {
+        bedarf: null,
+        wahl: null,
+        stundenlohn: false,
+        pauschal: false,
+        zuschlagskennzeichen: false,
+      }, // // v1.1b: mechanisch angepasst, Folgeticket
+      zuschlag: null,
       kurztext,
       langtext: [],
       menge,

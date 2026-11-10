@@ -21,11 +21,13 @@ import type {
   Nachlass,
   Ordnungszahl,
   OzMaske,
+  Position,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
   Prozent,
   Summenstand,
   TitelId,
+  Zuschlag,
   AngebotId,
   BieterId,
   ProjektId,
@@ -50,6 +52,11 @@ interface FxSollwerte {
   summen: FxSummen;
   nichtAngeboten?: string[];
 }
+/**
+ * Positionsart in der Fixture-Datei (Ticket 19). `vertrag` kennt seit v1.1b keinen einzelnen Wert mehr; die Abbildung
+ * unten setzt sie in `Positionsmerkmale` und `Zuschlag` um und wieder zurück.
+ */
+type FxPositionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn';
 type FxKnoten =
   | { id: string; parentId: string; art: 'titel'; ordnungszahl: string; kurztext: string }
   | { id: string; parentId: string; art: 'hinweis'; text: string }
@@ -57,7 +64,7 @@ type FxKnoten =
       id: string;
       parentId: string;
       art: 'position';
-      positionsart: Positionsart;
+      positionsart: FxPositionsart;
       ordnungszahl: string;
       ozIndex?: string;
       kurztext: string;
@@ -71,6 +78,7 @@ type FxKnoten =
     };
 interface FxLv {
   id: string;
+  ozMaske: string;
   name: string;
   mwstSatz: string;
   nachlass: FxNachlass | null;
@@ -99,13 +107,27 @@ const lesenAngebotsset = (name: string): FxAngebotsset => rohdaten(name) as FxAn
 
 // --- Abbildung JSON → vertrag ---------------------------------------------------------------------------------
 
-/** Die Fixtures beschreiben ihre Maske nur als Text; hier steht sie als strukturierter Wert (fünf Titelebenen). */
-const fixtureMaske: OzMaske = {
-  gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
-  position: { laenge: 4, zeichen: 'numerisch' },
-  index: { laenge: 1, zeichen: 'alphanumerisch' },
-  trennzeichen: '.',
-};
+/**
+ * Die Fixtures beschreiben ihre Maske als Text vor dem Doppelpunkt (`NN.NN.NNNN[I]`: je `N` eine Ziffer, `[I]` ein
+ * Indexbuchstabe, die letzte Gruppe ist die Position, die davor sind die Gliederungsstufen). Hier wird genau dieser
+ * Text in einen `OzMaske` abgebildet, nichts wird aus den Ordnungszahlen abgeleitet.
+ */
+function fixtureMaske(text: string): OzMaske {
+  const muster = text.split(':')[0]?.trim() ?? '';
+  const mitIndex = muster.endsWith('[I]');
+  const gruppen = (mitIndex ? muster.slice(0, -3) : muster).split('.');
+  const stellen = gruppen.map((g) => ({ laenge: g.length, zeichen: 'numerisch' as const }));
+  const position = stellen.pop();
+  if (position === undefined || gruppen.some((g) => !/^N+$/.test(g))) {
+    throw new Error(`Maskentext nicht lesbar: ${text}`);
+  }
+  return {
+    gliederung: stellen,
+    position,
+    index: mitIndex ? { laenge: 1, zeichen: 'alphanumerisch' } : null,
+    trennzeichen: '.',
+  };
+}
 
 const nachlass = (n: FxNachlass | null): Nachlass | null =>
   n === null
@@ -113,6 +135,66 @@ const nachlass = (n: FxNachlass | null): Nachlass | null =>
     : n.art === 'prozent'
       ? { art: 'prozent', wert: n.wert as Prozent }
       : { art: 'betrag', wert: n.wert as Betrag };
+
+function merkmale(k: Extract<FxKnoten, { art: 'position' }>): Positionsmerkmale {
+  const m: Positionsmerkmale = {
+    bedarf: null,
+    wahl: null,
+    stundenlohn: k.positionsart === 'stundenlohn',
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+  if (k.positionsart === 'bedarf') {
+    return { ...m, bedarf: k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag' };
+  }
+  if (k.positionsart === 'wahl') {
+    // Die Fixtures kennen keine Gruppen- und Variantennummern (README A3): `null`, nichts erfunden.
+    return {
+      ...m,
+      wahl: {
+        gruppe: null,
+        variante: null,
+        grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+      },
+    };
+  }
+  return m;
+}
+
+/**
+ * Die Zuschlagsposition der Fixture: ein einzelner Bezug als Liste mit einer Position, ohne Teilmenge, ohne
+ * Prozentsatz (die Fixture hat keinen). Vermerk: Die Fixture `typisch` rechnet die Zuschlagsposition bis K6 weiter wie
+ * bisher mit eigener Menge × EP (README A4); Menge, Einheit und EP stehen deshalb unverändert an der Position.
+ */
+function zuschlag(k: Extract<FxKnoten, { art: 'position' }>): Zuschlag | null {
+  if (k.positionsart !== 'zuschlag') return null;
+  const bezug = k.bezugspositionId as PositionId | undefined;
+  return {
+    prozentsatz: null,
+    bezug: {
+      art: 'positionen',
+      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
+    },
+  };
+}
+
+/** Rückweg: die Fixture-Positionsart aus den Merkmalen (nur für die Gegenprobe). */
+function positionsart(k: Position): FxPositionsart {
+  // Die alte Ausschließlichkeit der Art bleibt hier behauptet: mehr als ein Merkmal in diesem Test ist ein Fehler.
+  const gesetzt = [
+    k.zuschlag !== null,
+    k.merkmale.wahl !== null,
+    k.merkmale.bedarf !== null,
+    k.merkmale.stundenlohn,
+  ];
+  if (gesetzt.filter(Boolean).length > 1)
+    throw new Error('Mehrere Positionsmerkmale zugleich gesetzt (Art nicht eindeutig).');
+  if (k.zuschlag !== null) return 'zuschlag';
+  if (k.merkmale.wahl !== null) return 'wahl';
+  if (k.merkmale.bedarf !== null) return 'bedarf';
+  if (k.merkmale.stundenlohn) return 'stundenlohn';
+  return 'normal';
+}
 
 function abbilden(fx: FxLv): Leistungsverzeichnis {
   const zaehler = new Map<string, number>();
@@ -138,11 +220,8 @@ function abbilden(fx: FxLv): Leistungsverzeichnis {
       id: k.id as PositionId,
       ordnungszahl: k.ordnungszahl as Ordnungszahl,
       ozIndex: k.ozIndex ?? null,
-      positionsart: k.positionsart,
-      pauschal: false,
-      bedarfMitGesamtbetrag: k.bedarfMitGesamtbetrag ?? false,
-      bezugspositionId: (k.bezugspositionId as PositionId | undefined) ?? null,
-      grundpositionId: (k.grundpositionId as PositionId | undefined) ?? null,
+      merkmale: merkmale(k),
+      zuschlag: zuschlag(k),
       kurztext: k.kurztext,
       langtext: [{ art: 'text', text: k.langtext }],
       menge: k.menge as Menge,
@@ -155,7 +234,7 @@ function abbilden(fx: FxLv): Leistungsverzeichnis {
     id: fx.id as LeistungsverzeichnisId,
     projektId: 'projekt-der-fixture' as ProjektId,
     name: fx.name,
-    ozMaske: fixtureMaske,
+    ozMaske: fixtureMaske(fx.ozMaske),
     mwstSatz: fx.mwstSatz as Prozent,
     nachlass: nachlass(fx.nachlass),
     knoten,
@@ -205,7 +284,7 @@ function zurueck(k: Knoten): FxKnoten {
         id: k.id,
         parentId: k.elternId,
         art: 'position',
-        positionsart: k.positionsart,
+        positionsart: positionsart(k),
         ordnungszahl: k.ordnungszahl ?? '',
         kurztext: k.kurztext,
         langtext: text(k.langtext),
@@ -214,9 +293,12 @@ function zurueck(k: Knoten): FxKnoten {
         einheitspreis: k.einheitspreis ?? '',
       };
       if (k.ozIndex !== null) fx.ozIndex = k.ozIndex;
-      if (k.positionsart === 'bedarf') fx.bedarfMitGesamtbetrag = k.bedarfMitGesamtbetrag;
-      if (k.bezugspositionId !== null) fx.bezugspositionId = k.bezugspositionId;
-      if (k.grundpositionId !== null) fx.grundpositionId = k.grundpositionId;
+      if (k.merkmale.bedarf !== null) fx.bedarfMitGesamtbetrag = k.merkmale.bedarf === 'mit-gesamtbetrag';
+      const bezug = k.zuschlag?.bezug;
+      if (bezug?.art === 'positionen' && bezug.positionen[0] !== undefined) {
+        fx.bezugspositionId = bezug.positionen[0].positionId;
+      }
+      if (k.merkmale.wahl?.grundpositionId != null) fx.grundpositionId = k.merkmale.wahl.grundpositionId;
       return fx;
     }
     case 'los':
@@ -231,6 +313,33 @@ describe.each(['winzig', 'typisch', 'gross'])(
   (name) => {
     const fx = lesenLv(name);
     const lv = abbilden(fx);
+
+    it('die Maske der Fixture hat höchstens 14 Stellen einschließlich Index, und jede Ordnungszahl passt Stufe für Stufe hinein (F2)', () => {
+      const m = lv.ozMaske;
+      const stellen =
+        m.gliederung.reduce((n, g) => n + g.laenge, 0) + m.position.laenge + (m.index?.laenge ?? 0);
+      expect(stellen).toBeLessThanOrEqual(14);
+      for (const k of lv.knoten) {
+        if (k.art === 'hinweis' || k.ordnungszahl === null) continue;
+        const teile = k.ordnungszahl.split('.');
+        if (k.art === 'position') {
+          expect(teile.length - 1).toBeLessThanOrEqual(m.gliederung.length);
+          expect(teile.at(-1)?.length).toBe(m.position.laenge);
+          teile.slice(0, -1).forEach((t, n) => {
+            expect(t.length).toBe(m.gliederung[n]?.laenge);
+          });
+          if (k.ozIndex !== null) {
+            expect(m.index).not.toBeNull();
+            expect(k.ozIndex).toHaveLength(m.index?.laenge ?? -1);
+          }
+        } else {
+          expect(teile.length).toBeLessThanOrEqual(m.gliederung.length);
+          teile.forEach((t, n) => {
+            expect(t.length).toBe(m.gliederung[n]?.laenge);
+          });
+        }
+      }
+    });
 
     it('verliert kein Feld: JSON → vertrag → JSON ist die Identität', () => {
       expect(lv.knoten.map(zurueck)).toEqual(fx.knoten);
@@ -249,8 +358,11 @@ describe.each(['winzig', 'typisch', 'gross'])(
       const positionen = new Set(lv.knoten.filter((k) => k.art === 'position').map((k) => k.id as string));
       for (const k of lv.knoten) {
         if (k.art !== 'position') continue;
-        if (k.bezugspositionId !== null) expect(positionen.has(k.bezugspositionId)).toBe(true);
-        if (k.grundpositionId !== null) expect(positionen.has(k.grundpositionId)).toBe(true);
+        for (const b of k.zuschlag?.bezug.art === 'positionen' ? k.zuschlag.bezug.positionen : []) {
+          expect(positionen.has(b.positionId)).toBe(true);
+        }
+        const grund = k.merkmale.wahl?.grundpositionId ?? null;
+        if (grund !== null) expect(positionen.has(grund)).toBe(true);
       }
     });
 

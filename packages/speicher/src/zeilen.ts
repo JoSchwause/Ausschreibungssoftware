@@ -21,12 +21,15 @@ import type {
   Nachlass,
   Ordnungszahl,
   OzMaske,
+  Position,
   PositionId,
-  Positionsart,
+  Positionsmerkmale,
   ProjektId,
   Prozent,
   Gesamtsummen,
+  Gliederungssumme,
   TitelId,
+  Zuschlag,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import { kanonischKompakt } from './kanonisch';
@@ -101,6 +104,134 @@ export const KNOTEN_SPALTEN = [
   'epa',
 ] as const;
 
+// // v1.1b: mechanisch angepasst, Folgeticket: Felder, für die `speicher` noch keine Spalten hat (Kopfdaten des LV, getrennte Bedarfs- und Wahlsummen).
+// Sie werden abgewiesen statt still verworfen (Q5), bis das Folgeticket `speicher` sie aufnimmt. Der Kern setzt sie
+// heute nie, kein Paket erzeugt sie.
+
+/**
+ * // v1.1b: mechanisch angepasst, Folgeticket. Die Datenbank legt den Langtext als JSON ab, die Projektdatei-Prüfung kennt aber nur `text` ohne
+ * Auszeichnung und `bild`. Wer neue Bausteine (Auszeichnung, Absatz, Liste, Tabelle, Textergänzung) schreibt, könnte
+ * das Projekt speichern, aber nicht aus seinem eigenen Export wiederherstellen; darum wird hier abgewiesen.
+ */
+export function pruefeLangtext(knotenId: string, lt: Langtext): void {
+  const alt = lt.every((b) =>
+    b.art === 'bild' ? true : b.art === 'text' && Object.keys(b).every((k) => k === 'art' || k === 'text'),
+  );
+  if (!alt)
+    abbruch(
+      'unbekannt',
+      `Knoten ${knotenId}: Langtext mit Auszeichnung, Absatz, Liste, Tabelle oder Textergänzung lässt sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
+    );
+}
+
+export function pruefeKopfdaten(k: {
+  id: string;
+  auftraggeber?: unknown;
+  vergabeinformationen?: unknown;
+}): void {
+  if (k.auftraggeber !== undefined || k.vergabeinformationen !== undefined)
+    abbruch(
+      'unbekannt',
+      `LV ${k.id}: Auftraggeber und Vergabeinformationen lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
+    );
+}
+
+export function pruefeSummenfelder(
+  aggregatId: string,
+  s: { gesamt: Gesamtsummen | null; gliederungen: readonly Gliederungssumme[] },
+): void {
+  const g = s.gesamt;
+  if (
+    g?.summeBedarfOhneGesamtbetrag !== undefined ||
+    g?.summeWahl !== undefined ||
+    s.gliederungen.some((x) => x.summeBedarfOhneGesamtbetrag !== undefined || x.summeWahl !== undefined)
+  )
+    abbruch(
+      'unbekannt',
+      `${aggregatId}: Die Bedarfs- und Wahlsummen lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
+    );
+}
+
+// // v1.1b: mechanisch angepasst, Folgeticket: Die Tabelle `knoten` hat noch die Spalten vor v1.1b (eine Positionsart, ein Bezug, eine Grundposition).
+// Eine Position, die sich darin nicht verlustfrei ablegen lässt, wird abgewiesen (Q5: nie still verwerfen), bis das
+// Folgeticket `speicher` Spalten oder JSON für Merkmale, Zuschlag, Leitbeschreibung und die neuen Langtext-Bausteine
+// einführt (Migration, A8). Heute erzeugt kein Paket solche Positionen.
+export function altSpalten(k: Position): [string, number, number, PositionId | null, PositionId | null] {
+  const m = k.merkmale;
+  const arten = [k.zuschlag !== null, m.wahl !== null, m.bedarf !== null, m.stundenlohn].filter(
+    Boolean,
+  ).length;
+  const bezug = k.zuschlag?.bezug;
+  const nichtSpeicherbar =
+    arten > 1 ||
+    m.zuschlagskennzeichen ||
+    k.leitbeschreibung !== undefined ||
+    (m.wahl !== null && (m.wahl.gruppe !== null || m.wahl.variante !== null)) ||
+    (k.zuschlag !== null &&
+      (k.zuschlag.prozentsatz !== null ||
+        bezug?.art !== 'positionen' ||
+        bezug.positionen.length > 1 ||
+        bezug.positionen.some((b) => b.teilmenge !== null)));
+  if (nichtSpeicherbar)
+    return abbruch(
+      'unbekannt',
+      `Position ${k.id}: Die Merkmale, der Zuschlag oder die Leitbeschreibung lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
+    );
+  const art =
+    k.zuschlag !== null
+      ? 'zuschlag'
+      : m.wahl !== null
+        ? 'wahl'
+        : m.bedarf !== null
+          ? 'bedarf'
+          : m.stundenlohn
+            ? 'stundenlohn'
+            : 'normal';
+  return [
+    art,
+    m.pauschal ? 1 : 0,
+    m.bedarf === 'mit-gesamtbetrag' ? 1 : 0,
+    bezug?.art === 'positionen' ? (bezug.positionen[0]?.positionId ?? null) : null,
+    m.wahl?.grundpositionId ?? null,
+  ];
+}
+
+function neuAusAltSpalten(z: SqlZeile): { merkmale: Positionsmerkmale; zuschlag: Zuschlag | null } {
+  const art = text(z, 'positionsart');
+  const bezug = textOderNull(z, 'bezugsposition_id') as PositionId | null;
+  return {
+    merkmale: {
+      bedarf:
+        art === 'bedarf'
+          ? ganzzahl(z, 'bedarf_mit_gesamtbetrag') === 1
+            ? 'mit-gesamtbetrag'
+            : 'ohne-gesamtbetrag'
+          : null,
+      wahl:
+        art === 'wahl'
+          ? {
+              gruppe: null,
+              variante: null,
+              grundpositionId: textOderNull(z, 'grundposition_id') as PositionId | null,
+            }
+          : null,
+      stundenlohn: art === 'stundenlohn',
+      pauschal: ganzzahl(z, 'pauschal') === 1,
+      zuschlagskennzeichen: false,
+    },
+    zuschlag:
+      art === 'zuschlag'
+        ? {
+            prozentsatz: null,
+            bezug: {
+              art: 'positionen',
+              positionen: bezug === null ? [] : [{ positionId: bezug, teilmenge: null }],
+            },
+          }
+        : null,
+  };
+}
+
 export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   const kopf: SqlWert[] = [aggregatId, k.id, k.art, k.elternId, k.reihenfolge];
   switch (k.art) {
@@ -133,7 +264,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
-        JSON.stringify(k.text),
+        (pruefeLangtext(k.id, k.text), JSON.stringify(k.text)),
         null,
         null,
         null,
@@ -145,12 +276,8 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ordnungszahl,
         k.ozIndex,
         k.kurztext,
-        k.positionsart,
-        k.pauschal ? 1 : 0,
-        k.bedarfMitGesamtbetrag ? 1 : 0,
-        k.bezugspositionId,
-        k.grundpositionId,
-        JSON.stringify(k.langtext),
+        ...altSpalten(k),
+        (pruefeLangtext(k.id, k.langtext), JSON.stringify(k.langtext)),
         k.menge,
         k.einheit,
         k.einheitspreis,
@@ -198,11 +325,7 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         id: text(z, 'id') as PositionId,
         ordnungszahl: ozOderNull,
         ozIndex: textOderNull(z, 'oz_index'),
-        positionsart: text(z, 'positionsart') as Positionsart,
-        pauschal: ganzzahl(z, 'pauschal') === 1,
-        bedarfMitGesamtbetrag: ganzzahl(z, 'bedarf_mit_gesamtbetrag') === 1,
-        bezugspositionId: textOderNull(z, 'bezugsposition_id') as PositionId | null,
-        grundpositionId: textOderNull(z, 'grundposition_id') as PositionId | null,
+        ...neuAusAltSpalten(z), // // v1.1b: mechanisch angepasst, Folgeticket
         kurztext: text(z, 'kurztext'),
         langtext: jsonLesen(text(z, 'text_json'), 'text_json') as Langtext,
         menge: textOderNull(z, 'menge') as Menge | null,
