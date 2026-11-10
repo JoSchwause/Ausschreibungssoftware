@@ -30,10 +30,12 @@ import { abbruch } from './ergebnis';
 import type { Datenbank } from './sql';
 import {
   angebotspositionAusZeile,
+  ausweisAusZeile,
   bieterId,
   gesamtAusZeile,
   gliederungId,
   knotenAusZeile,
+  kopfdatenAusZeile,
   lvId,
   maskeAusZeile,
   nachlassAusZeile,
@@ -56,10 +58,18 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
   };
 }
 
+/** Deutscher Namensvergleich für die Projektliste (Umlaute beim Grundbuchstaben, Groß/klein nachrangig). */
+const NAMENSVERGLEICH = new Intl.Collator('de-DE');
+
+/**
+ * Projektliste nach Name, deutsch verglichen (`Intl.Collator('de-DE')`; SQLite sortiert nur nach Bytes); gleiche Namen
+ * nach Kennung, damit die Reihenfolge stabil ist (Ticket 38, Punkt 6).
+ */
 export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] {
   return db
-    .zeilen('SELECT id, name FROM projekt ORDER BY name, id')
-    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }));
+    .zeilen('SELECT id, name FROM projekt ORDER BY id')
+    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }))
+    .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 export function listeIds(db: Datenbank, sql: string, bind: readonly string[]): string[] {
@@ -78,6 +88,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as LvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 
@@ -124,7 +135,11 @@ export function leseSummen(db: Datenbank, aggregatId: string): Summenstand | nul
       })),
     gliederungen: db
       .zeilen('SELECT * FROM summe_gliederung WHERE aggregat_id = ? ORDER BY gliederung_id', [aggregatId])
-      .map((z) => ({ gliederungId: gliederungId(z, 'gliederung_id'), summe: text(z, 'summe') as Betrag })),
+      .map((z) => ({
+        gliederungId: gliederungId(z, 'gliederung_id'),
+        summe: text(z, 'summe') as Betrag,
+        ...ausweisAusZeile(z),
+      })),
     gesamt: gesamtAusZeile(gesamt),
   };
 }
@@ -212,6 +227,7 @@ export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichn
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as AuftragsLvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 

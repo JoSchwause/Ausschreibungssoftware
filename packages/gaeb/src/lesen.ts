@@ -7,12 +7,14 @@
 // (`text.ts`), Kopfdaten (`OWN`, `AwardInfo`) und Leitbeschreibung (`SumDescr`/`SubDescr`). Was `vertrag` nicht halten kann, wird nicht
 // still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …).
 
-import { leseAustausch } from '@tethys/dezimal';
+import { gesamtpreis, leseAustausch, vergleiche } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
   Auftraggeber,
   Bedarf,
   Bezugsposition,
+  Einheitspreis,
+  Einheitspreisanteile,
   ElternId,
   GaebLesung,
   GaebPhase,
@@ -24,6 +26,8 @@ import type {
   Leitbeschreibung,
   Los,
   LvInhalt,
+  Menge,
+  Nachlass,
   Ordnungszahl,
   OzMaske,
   OzStelle,
@@ -486,6 +490,7 @@ function leseMaske(
 
 const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'Qty',
+  'QtyTBD',
   'QU',
   'UP',
   'Description',
@@ -521,7 +526,69 @@ const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
 const BESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set(['CompleteText']);
 const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'OutlineText']);
 const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody']);
+/** X86: `Totals` der Bereiche sind abgeleitete Werte; der Kern rechnet sie neu (Ticket 40). */
+const KATEGORIE_BEHANDELT_X86: ReadonlySet<string> = new Set([...KATEGORIE_BEHANDELT, 'Totals']);
+const ANTEILE = ['UPComp1', 'UPComp2', 'UPComp3', 'UPComp4', 'UPComp5', 'UPComp6'] as const;
+/** X86: Preise einer Position, die der Leser übernimmt (`UP`, `UPComp…`) oder als abgeleitet übergeht (`IT`). */
+const POSITION_BEHANDELT_X86: ReadonlySet<string> = new Set([...POSITION_BEHANDELT, 'IT', ...ANTEILE]);
+const ZUSCHLAG_BEHANDELT_X86: ReadonlySet<string> = new Set([...ZUSCHLAG_BEHANDELT, 'IT', 'ITMarkup']);
 const TEILE_ERLAUBT = /^[0-9A-Za-z_ ]*$/;
+
+/** Ein Feld der Einheitspreisanteile ohne die Bezeichnung des freien Anteils. */
+type Anteil = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+
+/** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus `LblUPComp<n>`), und die Bezeichnung des freien Anteils. */
+interface Preisangaben {
+  readonly anteile: readonly (Anteil | null)[];
+  readonly freiBezeichnung: string | null;
+}
+
+const ANTEIL_NACH_BEZEICHNUNG: Readonly<Record<string, Anteil>> = {
+  lohn: 'lohn',
+  stoffe: 'stoffe',
+  material: 'stoffe',
+  geräte: 'geraete',
+  geraete: 'geraete',
+  nachunternehmer: 'nachunternehmer',
+  sonstiges: 'sonstiges',
+};
+const ANTEIL_NACH_TYP: Readonly<Record<string, Anteil>> = {
+  Wages: 'lohn',
+  Materials: 'stoffe',
+  Plant: 'geraete',
+  Miscellaneous: 'sonstiges',
+  Unknown: 'frei',
+};
+
+/**
+ * Ordnet `LblUPComp1…6` den Anteilen zu (Ticket 40): zuerst nach der Bezeichnung (Lohn, Stoffe/Material, Geräte,
+ * Nachunternehmer, Sonstiges; so schreibt der Export), sonst nach `Type` (Wages, Materials, Plant, Miscellaneous;
+ * Unknown ist der freie Anteil mit der Bezeichnung als `freiBezeichnung`). Ein zweiter Anteil derselben Art ist Befund.
+ */
+function lesePreisangaben(l: Leser, boqInfo: XmlElement | undefined): Preisangaben {
+  const anteile: (Anteil | null)[] = [];
+  const belegt = new Set<Anteil>();
+  let freiBezeichnung: string | null = null;
+  for (let n = 1; n <= 6; n++) {
+    const el = kind(boqInfo, `LblUPComp${String(n)}`);
+    if (!el) {
+      anteile.push(null);
+      continue;
+    }
+    const bez = wert(el) ?? '';
+    const typ = el.attrs.get('Type') ?? '';
+    const anteil = ANTEIL_NACH_BEZEICHNUNG[bez.toLowerCase()] ?? ANTEIL_NACH_TYP[typ] ?? 'frei';
+    if (belegt.has(anteil)) {
+      l.nichtAbgebildet(el, `BoQInfo/LblUPComp${String(n)}`, 'zweiter Einheitspreisanteil derselben Art');
+      anteile.push(null);
+      continue;
+    }
+    belegt.add(anteil);
+    anteile.push(anteil);
+    if (anteil === 'frei') freiBezeichnung = bez === '' ? null : bez;
+  }
+  return { anteile, freiBezeichnung };
+}
 
 interface Ebene {
   /** Kennung des Elternknotens im Ergebnis. */
@@ -543,7 +610,7 @@ class Aufbau {
   private bereichszaehler = 0;
   private readonly zuschlaege: {
     pos: Veraenderlich<Position>;
-    refs: { id: string; el: XmlElement }[];
+    refs: { id: string; el: XmlElement; teilmenge: Menge | null }[];
   }[] = [];
 
   constructor(
@@ -553,6 +620,7 @@ class Aufbau {
     private readonly stufen: readonly Bkdn[],
     private readonly trenn: string | null,
     readonly wurzelId: LeistungsverzeichnisId,
+    private readonly preise: Preisangaben | null = null,
   ) {}
 
   private reihenfolge(elternId: string): number {
@@ -673,7 +741,7 @@ class Aufbau {
       this.knoten.push(titel);
       id = titel.id;
     }
-    this.l.restMelden(el, KATEGORIE_BEHANDELT, 'BoQCtgy');
+    this.l.restMelden(el, this.preise ? KATEGORIE_BEHANDELT_X86 : KATEGORIE_BEHANDELT, 'BoQCtgy');
     const naechste: Ebene = { id, teile, ozOk, tiefe };
     for (const b of kinder(el, 'BoQBody')) this.koerper(b, naechste);
   }
@@ -871,6 +939,11 @@ class Aufbau {
       );
     const upEl = kind(el, 'UP');
     const einheitspreis = upEl ? this.l.zahl('einheitspreis', upEl, id, 'einheitspreis') : null;
+    const epa = this.preise ? this.anteile(el, id, this.preise) : null;
+    if (this.preise && menge !== null && einheitspreis !== null)
+      this.pruefeGesamtpreis(el, id, menge, einheitspreis);
+    const tbd = kind(el, 'QtyTBD');
+    if (tbd && qtyEl) this.l.nichtAbgebildet(tbd, 'Item/QtyTBD', 'Menge noch festzulegen neben einer Menge');
 
     const desc = kind(el, 'Description');
     if (!desc)
@@ -898,10 +971,10 @@ class Aufbau {
       menge,
       einheit,
       einheitspreis,
-      epa: null,
+      epa,
     };
     this.knoten.push(pos);
-    this.l.restMelden(el, POSITION_BEHANDELT, 'Item');
+    this.l.restMelden(el, this.preise ? POSITION_BEHANDELT_X86 : POSITION_BEHANDELT, 'Item');
   }
 
   /**
@@ -956,14 +1029,16 @@ class Aufbau {
     const markupEl = kind(el, 'Markup');
     const prozentsatz = markupEl ? this.l.zahl('prozent', markupEl, id, 'zuschlag.prozentsatz') : null;
 
-    const refs: { id: string; el: XmlElement }[] = [];
+    const refs: { id: string; el: XmlElement; teilmenge: Menge | null }[] = [];
     for (const sub of kinder(el, 'MarkupSubQty')) {
       const r = kind(sub, 'RefItem');
       const ref = r?.attrs.get('IDRef');
-      if (r && ref !== undefined) refs.push({ id: ref, el: r });
-      // Eine Teilmenge zeigt keine amtliche Datei; sie wird nicht geraten (`teilmenge: null`), sondern gemeldet.
+      // Teilmenge (`SubQty`): keine amtliche Datei zeigt sie; seit Ticket 40 schreibt der Export sie, also liest der
+      // Leser sie auch (Rundweg).
       const subQty = kind(sub, 'SubQty');
-      if (subQty) this.l.nichtAbgebildet(subQty, 'MarkupSubQty/SubQty', 'Teilmenge der Bezugsposition');
+      const teilmenge = subQty ? this.l.zahl('menge', subQty, id, 'zuschlag.bezug') : null;
+      if (r && ref !== undefined) refs.push({ id: ref, el: r, teilmenge });
+      else if (subQty) this.l.nichtAbgebildet(subQty, 'MarkupSubQty/SubQty', 'Teilmenge ohne Bezugsposition');
     }
 
     let bezug: Zuschlagsbezug;
@@ -1004,7 +1079,54 @@ class Aufbau {
     };
     this.knoten.push(pos);
     if (bezug.art === 'positionen' && refs.length > 0) this.zuschlaege.push({ pos, refs });
-    this.l.restMelden(el, ZUSCHLAG_BEHANDELT, 'MarkupItem');
+    this.l.restMelden(el, this.preise ? ZUSCHLAG_BEHANDELT_X86 : ZUSCHLAG_BEHANDELT, 'MarkupItem');
+  }
+
+  /** X86: `UPComp1…6` → Einheitspreisanteile; `null`, wenn die Position keinen Anteil trägt. */
+  private anteile(el: XmlElement, id: PositionId, preise: Preisangaben): Einheitspreisanteile | null {
+    const epa: Veraenderlich<Einheitspreisanteile> = {
+      lohn: null,
+      stoffe: null,
+      geraete: null,
+      nachunternehmer: null,
+      sonstiges: null,
+      frei: null,
+      freiBezeichnung: null,
+    };
+    let gesetzt = false;
+    for (const [i, name] of ANTEILE.entries()) {
+      const komp = kind(el, name);
+      if (!komp) continue;
+      const anteil = preise.anteile[i] ?? null;
+      if (anteil === null) {
+        this.l.nichtAbgebildet(komp, `Item/${name}`, 'Einheitspreisanteil ohne Bezeichnung im BoQInfo');
+        continue;
+      }
+      const w = this.l.zahl('einheitspreis', komp, id, 'epa');
+      if (w === null) continue;
+      epa[anteil] = w;
+      gesetzt = true;
+      if (anteil === 'frei') epa.freiBezeichnung = preise.freiBezeichnung;
+    }
+    return gesetzt ? epa : null;
+  }
+
+  /** X86: `IT` ist abgeleitet; weicht er vom gerundeten Menge × EP ab, ist das ein Befund (Totals siehe Ticket 40). */
+  private pruefeGesamtpreis(el: XmlElement, id: PositionId, menge: Menge, ep: Einheitspreis): void {
+    const itEl = kind(el, 'IT');
+    if (!itEl) return;
+    const roh = wert(itEl) ?? '';
+    const it = leseAustausch('betrag', roh);
+    if (!it.ok) return;
+    const soll = gesamtpreis(menge, ep);
+    if (vergleiche(it.wert, soll) !== 0)
+      this.l.melde(
+        'warnung',
+        'gesamtpreis-abweichend',
+        `Der Gesamtpreis (IT) ${roh} weicht von Menge × EP = ${soll} ab; die Summen rechnet die App selbst.`,
+        itEl,
+        { knotenId: id, feld: 'gesamtpreis' },
+      );
   }
 
   /** Löst die Verweise der Zuschlagspositionen (`ListInSubQty`) auf, nachdem alle Positionen gelesen sind. */
@@ -1022,7 +1144,7 @@ class Aufbau {
             r.el,
             { knotenId: z.pos.id, feld: 'zuschlag.bezug' },
           );
-        else if (ziel) positionen.push({ positionId: ziel, teilmenge: null });
+        else if (ziel) positionen.push({ positionId: ziel, teilmenge: r.teilmenge });
         else
           this.l.melde(
             'warnung',
@@ -1128,6 +1250,50 @@ function leseVergabeinformationen(l: Leser, info: XmlElement): Vergabeinformatio
   };
 }
 
+// --- Summen des LV (X86) ------------------------------------------------------------------------------------
+
+/**
+ * X86, `BoQInfo/Totals`: Steuersatz (`VAT`) und Nachlass (`DiscountPcnt` bzw. `DiscountAmt`) gehören zum LV und
+ * werden übernommen. Die Beträge (`Total`, `TotAfterDisc`, `VATAmount`, `TotalGross` …) sind abgeleitet; die App
+ * rechnet sie selbst und übernimmt sie nicht (Ticket 40).
+ */
+function leseLvSummen(
+  l: Leser,
+  totals: XmlElement | undefined,
+): { mwstAusDatei: Prozent | null; nachlass: Nachlass | null } {
+  if (!totals) return { mwstAusDatei: null, nachlass: null };
+  l.restMelden(
+    totals,
+    new Set([
+      'Total',
+      'DiscountPcnt',
+      'DiscountAmt',
+      'TotAfterDisc',
+      'VAT',
+      'TotalNet',
+      'VATAmount',
+      'TotalGross',
+      'TotalLSUM',
+      'VATPart',
+      'TotalNetUpComp',
+    ]),
+    'Totals',
+  );
+  const vat = kind(totals, 'VAT');
+  const mwstAusDatei = vat ? l.zahl('prozent', vat, '', 'mwstSatz') : null;
+  const dp = kind(totals, 'DiscountPcnt');
+  const da = kind(totals, 'DiscountAmt');
+  let nachlass: Nachlass | null = null;
+  if (dp) {
+    const w = l.zahl('prozent', dp, '', 'nachlass');
+    if (w !== null) nachlass = { art: 'prozent', wert: w };
+  } else if (da) {
+    const w = l.zahl('betrag', da, '', 'nachlass');
+    if (w !== null) nachlass = { art: 'betrag', wert: w };
+  }
+  return { mwstAusDatei, nachlass };
+}
+
 // --- Dokumentkopf ---------------------------------------------------------------------------------------
 
 /** Prüft alle `ID`-Attribute des Dokuments auf Doppelte (GAEB: xs:ID, eindeutig im ganzen Dokument). */
@@ -1146,7 +1312,7 @@ function pruefeIds(l: Leser, wurzel: XmlElement): void {
   }
 }
 
-function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | null {
+function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPhase | null): LvInhalt | null {
   const award = kind(root, 'Award');
   const boq = kind(award, 'BoQ');
   if (!award || !boq) {
@@ -1169,23 +1335,48 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | n
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
   const boqInfo = kind(boq, 'BoQInfo');
-  if (boqInfo) l.restMelden(boqInfo, new Set(['Name', 'BoQBkdn']), 'BoQInfo');
+  const x86 = phase === 'X86';
+  // Name: Ist `Name` der Anfang von `LblBoQ`, ist er dessen gekürzte Form (so schreibt der Export einen Namen über
+  // 20 Zeichen, Ticket 40); dann gilt `LblBoQ`. Sonst bleibt es bei `Name`, und `LblBoQ` ist nicht abgebildet.
+  const kurzName = wert(kind(boqInfo, 'Name'));
+  const lblBoQ = wert(kind(boqInfo, 'LblBoQ'));
+  const langName = lblBoQ && kurzName && lblBoQ.startsWith(kurzName) ? lblBoQ : null;
+  const infoBehandelt = new Set(['Name', 'BoQBkdn', 'OutlCompl']);
+  if (langName !== null) infoBehandelt.add('LblBoQ');
+  if (x86)
+    for (const n of [
+      'NoUPComps',
+      'LblUPComp1',
+      'LblUPComp2',
+      'LblUPComp3',
+      'LblUPComp4',
+      'LblUPComp5',
+      'LblUPComp6',
+      'Totals',
+    ])
+      infoBehandelt.add(n);
+  if (boqInfo) l.restMelden(boqInfo, infoBehandelt, 'BoQInfo');
   else l.melde('warnung', 'oz-maske-ohne-position', 'BoQInfo fehlt; die Gliederung ist unbekannt.', boq);
   const trenn = opt.trennzeichen === undefined ? '.' : opt.trennzeichen;
   const { maske, stufen } = leseMaske(l, boqInfo, trenn);
 
-  const name =
-    wert(kind(boqInfo, 'Name')) || wert(kind(prj, 'NamePrj')) || opt.dateiname || 'Leistungsverzeichnis';
+  const name = langName || kurzName || wert(kind(prj, 'NamePrj')) || opt.dateiname || 'Leistungsverzeichnis';
+  const { mwstAusDatei, nachlass } = x86
+    ? leseLvSummen(l, kind(boqInfo, 'Totals'))
+    : { mwstAusDatei: null, nachlass: null };
   const wurzelId = opt.ids.leistungsverzeichnis();
-  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId);
+  const preise = x86 ? lesePreisangaben(l, boqInfo) : null;
+  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise);
   const wurzelEbene: Ebene = { id: wurzelId, teile: [], ozOk: true, tiefe: 0 };
   const bodies = kinder(boq, 'BoQBody');
   if (bodies.length === 0) l.melde('warnung', 'lv-leer', 'Das Leistungsverzeichnis hat keinen BoQBody.', boq);
   for (const b of bodies) aufbau.koerper(b, wurzelEbene);
   aufbau.loeseVerweise();
 
-  const mwstSatz = opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
-  if (opt.standardMwstSatz === undefined) {
+  const mwstSatz = mwstAusDatei ?? opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
+  if (mwstAusDatei !== null) {
+    // X86 trägt den Satz in BoQInfo/Totals/VAT.
+  } else if (opt.standardMwstSatz === undefined) {
     l.melde(
       'warnung',
       'mwst-standardsatz',
@@ -1206,7 +1397,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | n
     name,
     ozMaske: maske,
     mwstSatz,
-    nachlass: null,
+    nachlass,
     ...(auftraggeber === undefined ? {} : { auftraggeber }),
     ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
     wurzelId,
@@ -1216,7 +1407,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser): LvInhalt | n
 
 // --- Einstieg -----------------------------------------------------------------------------------------------
 
-const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83']);
+const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83', 'X86']);
 
 /**
  * Liest eine GAEB-DA-XML-3.3-Datei der Phase X81 oder X83. Wirft nie bei Dateiinhalt: Probleme sind Befunde;
@@ -1275,7 +1466,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
     l.melde(
       'fehler',
       'version-nicht-unterstuetzt',
-      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen wird nur 3.3 (3.2 folgt mit Ticket G4).`,
+      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden 3.3 und 3.2 (3.1 folgt mit Ticket G4).`,
       root,
     );
     return ergebnis(erk.phase, erk.version, l.befunde);
@@ -1291,13 +1482,13 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
     l.melde(
       'fehler',
       'phase-nicht-unterstuetzt',
-      `Die Phase ${erk.phase} wird in diesem Leser nicht gelesen (nur X81 und X83).`,
+      `Die Phase ${erk.phase} wird in diesem Leser nicht gelesen (nur X81, X83 und X86).`,
       root,
     );
     return ergebnis(erk.phase, erk.version, l.befunde);
   }
 
-  const gebaut = baueInhalt(root, opt, l);
+  const gebaut = baueInhalt(root, opt, l, erk.phase);
   l.abschliessen();
   return ergebnis(erk.phase, erk.version, l.befunde, gebaut);
 }

@@ -21,12 +21,15 @@ function aufrufen(
   kern: SpeicherKern,
   methode: string,
   args: readonly unknown[],
-): Ergebnis<unknown, Speicherfehler> {
+): Ergebnis<unknown, Speicherfehler> | Promise<Ergebnis<unknown, Speicherfehler>> {
   if (!(RPC_METHODEN as readonly string[]).includes(methode))
     return fehler('unbekannt', `Unbekannte Methode ${methode}.`);
-  const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[
-    methode
-  ];
+  const f = (
+    kern as unknown as Record<
+      string,
+      (...a: unknown[]) => Ergebnis<unknown, Speicherfehler> | Promise<Ergebnis<unknown, Speicherfehler>>
+    >
+  )[methode];
   if (f === undefined) return fehler('unbekannt', `Unbekannte Methode ${methode}.`);
   return f.apply(kern, [...args]);
 }
@@ -75,16 +78,21 @@ export function betreibeWorker(scope: WorkerScope, oeffner: Oeffner): void {
     return aufrufen(kern, a.methode, a.args);
   };
 
+  // Anfragen nacheinander: Eine Anfrage beginnt erst, wenn die vorige beantwortet ist (auch wenn `anwenden` auf die
+  // Prüfsumme wartet). So sieht ein Lesen nach einem Schreiben immer dessen Ergebnis.
+  let kette: Promise<void> = Promise.resolve();
   scope.addEventListener('message', (e) => {
     const anfrage = e.data as RpcAnfrage;
-    void behandle(anfrage)
-      .catch((fehlerWert: unknown): Ergebnis<unknown, Speicherfehler> => ({
-        ok: false,
-        fehler: fehlerAusAusnahme(fehlerWert),
-      }))
-      .then((ergebnis) => {
-        const antwort: RpcAntwort = { id: anfrage.id, ergebnis };
-        scope.postMessage(antwort);
-      });
+    kette = kette.then(() =>
+      behandle(anfrage)
+        .catch((fehlerWert: unknown): Ergebnis<unknown, Speicherfehler> => ({
+          ok: false,
+          fehler: fehlerAusAusnahme(fehlerWert),
+        }))
+        .then((ergebnis) => {
+          const antwort: RpcAntwort = { id: anfrage.id, ergebnis };
+          scope.postMessage(antwort);
+        }),
+    );
   });
 }

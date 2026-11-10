@@ -100,11 +100,11 @@ function aendern(paare: readonly [Knoten, Knoten][]): LvChangeSet {
 describe('Langtext speichern, laden, exportieren, importieren (v1.1b)', () => {
   it('Position und Hinweistext: jeder Baustein kommt unverändert zurück, die Datei bleibt byte-stabil', async () => {
     const { kern } = await neuerKern();
-    speichere(kern, anlegenSchritte(typisch));
+    await speichere(kern, anlegenSchritte(typisch));
     const p2: Position = { ...position, langtext: reich };
     const h2: Hinweistext = { ...hinweis, text: reich };
     wert(
-      kern.anwenden(
+      await kern.anwenden(
         lvEintrag(),
         aendern([
           [position, p2],
@@ -134,8 +134,8 @@ describe('Langtext speichern, laden, exportieren, importieren (v1.1b)', () => {
 describe('Projektdatei-Dekoder liest Langtext streng (datei-ungueltig mit Pfad)', () => {
   async function exportMitReich(): Promise<{ text: string; index: number }> {
     const { kern } = await neuerKern();
-    speichere(kern, anlegenSchritte(typisch));
-    wert(kern.anwenden(lvEintrag(), aendern([[position, { ...position, langtext: reich }]])));
+    await speichere(kern, anlegenSchritte(typisch));
+    wert(await kern.anwenden(lvEintrag(), aendern([[position, { ...position, langtext: reich }]])));
     const text = wert(kern.projektdateiExportieren(projektId));
     const d = JSON.parse(text) as {
       leistungsverzeichnisse: { leistungsverzeichnis: { knoten: { id: string }[] } }[];

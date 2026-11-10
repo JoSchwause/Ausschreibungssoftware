@@ -6,12 +6,14 @@
 //  1. Eintrag am Ende von `MIGRATIONEN` anfügen (lückenlos nummeriert). Bestehende Einträge nie ändern.
 //  2. `hoch` verändert das Schema und überführt vorhandene Zeilen; kein Datenverlust (Q5).
 //  3. `datei` hebt eine Projektdatei der Version N auf N+1 (reine Funktion über das geparste JSON).
-//  4. Die eingefrorene Datei `packages/speicher/fixtures/projektdatei-v1.json` bleibt unverändert und wird weiter geöffnet;
-//     für N+1 kommt eine weitere eingefrorene Datei dazu.
+//  4. Die eingefrorenen Dateien `packages/speicher/fixtures/projektdatei-v<N>.json` bleiben unverändert und werden
+//     weiter geöffnet; für N+1 kommt eine weitere eingefrorene Datei dazu.
+//  5. Das SQL steht hier (A5: Schema nur in dieser Datei), die Dateimigration ab Version 2 in `dateimigration<N>.ts`.
 
 import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';
 import { fehlerAusAusnahme } from './fehler';
 import { fehler, ok } from './ergebnis';
+import { dateiAuf2 } from './dateimigration2';
 import type { Datenbank } from './sql';
 
 export interface Migration {
@@ -157,6 +159,81 @@ CREATE TABLE protokoll (
 CREATE INDEX protokoll_projekt ON protokoll (projekt_id, seq);
 `;
 
+// --- Version 2 (Ticket 38) ------------------------------------------------------------------------------------------
+//
+// Das Inhaltsmodell von `vertrag` v1.1b/v1.2 verlustfrei ablegen. Die Tabelle `knoten` verliert die Spalten der alten
+// Positionsform (`positionsart`, `pauschal`, `bedarf_mit_gesamtbetrag`, `bezugsposition_id`, `grundposition_id`) und
+// bekommt `merkmale`, `zuschlag` und `leitbeschreibung` als kanonisches JSON (Dezimalwerte darin als Zeichenketten,
+// N1). SQLite kann Spalten, die in einer CHECK-Regel stehen, nicht löschen; die Tabelle wird deshalb neu angelegt und
+// umkopiert (keine Fremdschlüssel zeigen auf sie). Die übrigen Tabellen bekommen nur Spalten dazu (`NULL` = fehlt bzw.
+// nicht berechnet). Vorhandene Positionen werden überführt wie in `dateimigration2.ts` (Altform, nichts erfunden).
+
+// Schlüssel in `json_object` alphabetisch: so ist das Ergebnis schon kanonisch (wie `kanonischKompakt`).
+const MERKMALE_AUS_V1 = `CASE WHEN art = 'position' THEN json_object(
+    'bedarf', CASE WHEN positionsart = 'bedarf'
+                   THEN CASE WHEN bedarf_mit_gesamtbetrag = 1 THEN 'mit-gesamtbetrag' ELSE 'ohne-gesamtbetrag' END
+              END,
+    'pauschal', json(CASE WHEN pauschal = 1 THEN 'true' ELSE 'false' END),
+    'stundenlohn', json(CASE WHEN positionsart = 'stundenlohn' THEN 'true' ELSE 'false' END),
+    'wahl', CASE WHEN positionsart = 'wahl'
+                 THEN json_object('grundpositionId', grundposition_id, 'gruppe', NULL, 'variante', NULL) END,
+    'zuschlagskennzeichen', json('false')) END`;
+
+const ZUSCHLAG_AUS_V1 = `CASE WHEN art = 'position' AND positionsart = 'zuschlag' THEN json_object(
+    'bezug', json_object('art', 'positionen', 'positionen',
+      CASE WHEN bezugsposition_id IS NULL THEN json_array()
+           ELSE json_array(json_object('positionId', bezugsposition_id, 'teilmenge', NULL)) END),
+    'prozentsatz', NULL) END`;
+
+/** Schema von Version 1 auf 2. Läuft in der Transaktion von `migriere`. */
+const SCHEMA_V2 = `
+CREATE TABLE knoten_v2 (
+  aggregat_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  art TEXT NOT NULL CHECK (art IN ('los', 'titel', 'position', 'hinweis')),
+  eltern_id TEXT NOT NULL,
+  reihenfolge INTEGER NOT NULL CHECK (reihenfolge >= 0),
+  ordnungszahl TEXT,
+  oz_index TEXT,
+  kurztext TEXT,
+  merkmale TEXT,
+  zuschlag TEXT,
+  leitbeschreibung TEXT,
+  text_json TEXT,
+  menge TEXT,
+  einheit TEXT,
+  einheitspreis TEXT,
+  epa TEXT,
+  PRIMARY KEY (aggregat_id, id),
+  CHECK (art NOT IN ('los', 'titel', 'position') OR kurztext IS NOT NULL),
+  CHECK (art NOT IN ('hinweis', 'position') OR text_json IS NOT NULL),
+  CHECK ((art = 'position') = (merkmale IS NOT NULL)),
+  CHECK (art = 'position' OR (zuschlag IS NULL AND leitbeschreibung IS NULL))
+) STRICT;
+
+INSERT INTO knoten_v2 (aggregat_id, id, art, eltern_id, reihenfolge, ordnungszahl, oz_index, kurztext, merkmale,
+                       zuschlag, leitbeschreibung, text_json, menge, einheit, einheitspreis, epa)
+SELECT aggregat_id, id, art, eltern_id, reihenfolge, ordnungszahl, oz_index, kurztext, ${MERKMALE_AUS_V1},
+       ${ZUSCHLAG_AUS_V1}, NULL, text_json, menge, einheit, einheitspreis, epa
+FROM knoten;
+
+DROP TABLE knoten;
+ALTER TABLE knoten_v2 RENAME TO knoten;
+CREATE INDEX knoten_eltern ON knoten (aggregat_id, eltern_id, reihenfolge);
+
+ALTER TABLE leistungsverzeichnis ADD COLUMN auftraggeber TEXT;
+ALTER TABLE leistungsverzeichnis ADD COLUMN vergabeinformationen TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN auftraggeber TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN vergabeinformationen TEXT;
+
+ALTER TABLE summe_gesamt ADD COLUMN summe_bedarf_ohne_gb TEXT;
+ALTER TABLE summe_gesamt ADD COLUMN summe_wahl TEXT;
+ALTER TABLE summe_gliederung ADD COLUMN summe_bedarf_ohne_gb TEXT;
+ALTER TABLE summe_gliederung ADD COLUMN summe_wahl TEXT;
+
+ALTER TABLE angebotsposition ADD COLUMN zuschlagssatz TEXT CHECK (zuschlagssatz IS NULL OR status = 'angeboten');
+`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -165,6 +242,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V1);
     },
     datei: null,
+  },
+  {
+    version: 2,
+    name: 'Inhaltsmodell v1.1b/v1.2: Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Ausweise, Zuschlagssatz',
+    hoch: (db) => {
+      db.skript(SCHEMA_V2);
+    },
+    datei: dateiAuf2,
   },
 ];
 

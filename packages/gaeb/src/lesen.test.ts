@@ -642,9 +642,17 @@ describe('Version und Phase: Reihenfolge Namensraum, GAEBInfo/Version, Award/DP,
     expect(codes(l)).toEqual(expect.arrayContaining(['version-widerspruch', 'phase-widerspruch']));
   });
 
-  it('3.2 wird erkannt, aber nicht gelesen (Ticket G4)', () => {
+  it('3.2 wird gelesen wie 3.3 (Ticket 40)', () => {
     const l = lies(mini('http://www.gaeb.de/GAEB_DA_XML/DA83/3.2', '3.2', '83'));
     expect(l.version).toBe('3.2');
+    expect(l.phase).toBe('X83');
+    expect(positionen(l)).toHaveLength(1);
+    expect(codes(l)).not.toContain('version-nicht-unterstuetzt');
+  });
+
+  it('3.1 wird erkannt, aber nicht gelesen (G4)', () => {
+    const l = lies(mini(null, '3.1', '83'));
+    expect(l.version).toBe('3.1');
     expect(l.inhalt).toBeNull();
     expect(codes(l)).toContain('version-nicht-unterstuetzt');
   });

@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "xsd-gegenpruefung": "node werkzeuge/xsd-gegenpruefung.mjs"
   },
   "dependencies": {
     "@tethys/dezimal": "workspace:*",
