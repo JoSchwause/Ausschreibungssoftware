@@ -60,6 +60,9 @@ export const texte = {
   warnung: 'Warnung',
   eingabeUngueltig: 'Eingabe nicht übernommen',
   bild: '[Bild]',
+  listenpunkt: '• ',
+  zellentrenner: ' | ',
+  leereErgaenzung: '…',
   leereZwischenablage: 'Die Zwischenablage enthält keinen Text.',
 } as const;
 

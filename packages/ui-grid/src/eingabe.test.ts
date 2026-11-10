@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type {
   Betrag,
   Einheitspreis,
+  BildId,
   ElternId,
+  Langtext,
   LvSpalte,
   LvZeile,
   Menge,
@@ -15,7 +17,7 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { idQuelleAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
-import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
+import { anzeigeText, befehlAusEingabe, hinweisKlartext, istBearbeitbar } from './eingabe';
 import { planeEinfuegen } from './einfuegen';
 import { parseTsv } from './tsv';
 
@@ -117,6 +119,77 @@ describe('Spalte „Art“', () => {
         zuschlag,
       ),
     ).toBe('Zuschlag, Wahl 2.0, Bedarf m. GB, Stundenlohn, pauschal');
+  });
+});
+
+describe('hinweisKlartext', () => {
+  const bild = { art: 'bild', bild: { id: 'b1' as BildId, medientyp: 'image/png', daten: '' } } as const;
+
+  it('Absatz, Liste, Tabelle, Textergänzung und Bild werden einzeilig, Auszeichnung entfällt', () => {
+    const text: Langtext = [
+      {
+        art: 'absatz',
+        inhalt: [
+          { art: 'text', text: 'Vorbemerkung' },
+          { art: 'text', text: ' zur', fett: true },
+          { art: 'umbruch' },
+          { art: 'text', text: 'Baustelle' },
+        ],
+      },
+      {
+        art: 'liste',
+        geordnet: false,
+        punkte: [[{ art: 'text', text: 'Zufahrt' }], [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Lager' }] }]],
+      },
+      {
+        art: 'tabelle',
+        zeilen: [
+          {
+            zellen: [
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Stoff' }] },
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Menge' }] },
+            ],
+          },
+          {
+            zellen: [
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Kies' }] },
+              { spalten: 1, inhalt: [{ art: 'text', text: '3 t' }] },
+            ],
+          },
+        ],
+      },
+      {
+        art: 'ergaenzung',
+        herkunft: 'bieter',
+        kennung: '1',
+        leer: true,
+        davor: [{ art: 'text', text: 'Fabrikat:' }],
+        inhalt: [],
+        danach: [{ art: 'text', text: 'oder gleichwertig' }],
+      },
+      {
+        art: 'ergaenzung',
+        herkunft: 'ausschreibender',
+        kennung: '2',
+        leer: false,
+        davor: [{ art: 'text', text: 'Farbe' }],
+        inhalt: [{ art: 'text', text: 'RAL 7016', kursiv: true }],
+        danach: [],
+      },
+      bild,
+      { art: 'text', text: 'Ende' },
+    ];
+    expect(hinweisKlartext(text)).toBe(
+      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff | Menge Kies | 3 t ' +
+        'Fabrikat: … oder gleichwertig Farbe RAL 7016 [Bild] Ende',
+    );
+  });
+
+  it('die Formen vor v1.1b: Textläufe und Bilder direkt, Zeilenumbruch im Text als Leerzeichen', () => {
+    expect(hinweisKlartext([{ art: 'text', text: 'Zeile 1\nZeile 2' }, bild, { art: 'text', text: 'Schluss' }])).toBe(
+      'Zeile 1 Zeile 2 [Bild] Schluss',
+    );
+    expect(hinweisKlartext([])).toBe('');
   });
 });
 
