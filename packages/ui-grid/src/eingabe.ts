@@ -2,9 +2,19 @@
 // Reine Logik zwischen Zellentext und Befehl. Kein React, kein DOM. Das Grid rechnet nie (A5, N1): Es reicht
 // Text an die eingesteckten Parser und vergleicht Werte höchstens als Zeichenketten auf Gleichheit.
 
-import type { Einheitspreis, LvBefehl, LvSpalte, LvZeile, Menge } from '@tethys/vertrag';
-import { ARTTEXT, anzeigeart, texte } from './texte';
-import type { GridZahlen } from './typen';
+import type {
+  Einheitspreis,
+  GridZahlen,
+  Langtext,
+  LangtextBaustein,
+  LangtextInline,
+  LvBefehl,
+  LvSpalte,
+  LvZeile,
+  Menge,
+  Textfluss,
+} from '@tethys/vertrag';
+import { artText, texte } from './texte';
 
 /** Spalten, die sich bearbeiten lassen (nur bei den passenden Knotenarten). */
 export type BearbeitbareSpalte = 'kurztext' | 'menge' | 'einheit' | 'einheitspreis';
@@ -35,10 +45,51 @@ export function istBearbeitbar(zeile: LvZeile, spalte: LvSpalte): spalte is Bear
   }
 }
 
-/** Klartext eines Hinweistexts: Textbausteine aneinandergehängt, Bilder als Marke. */
-export function hinweisKlartext(zeile: LvZeile): string {
-  if (zeile.knoten.art !== 'hinweis') return '';
-  return zeile.knoten.text.map((b) => (b.art === 'text' ? b.text : texte.bild)).join(' ');
+/** Mehrfache Leerräume (auch `\n` aus Textläufen vor v1.1b) werden zu einem Leerzeichen. */
+const einzeilig = (text: string): string => text.replace(/\s+/g, ' ').trim();
+
+function inlineKlartext(b: LangtextInline): string {
+  switch (b.art) {
+    case 'text':
+      return b.text;
+    case 'umbruch':
+      return ' ';
+    case 'bild':
+      return ` ${texte.bild} `;
+  }
+}
+
+const flussKlartext = (fluss: Textfluss): string => einzeilig(fluss.map(inlineKlartext).join(''));
+
+function bausteinKlartext(b: LangtextBaustein): string {
+  switch (b.art) {
+    case 'text':
+    case 'umbruch':
+    case 'bild':
+      // Inline-Bausteine ohne Absatz bilden zusammen einen Absatz: direkt aneinander, ohne Trenner.
+      return inlineKlartext(b);
+    case 'absatz':
+      return ` ${b.inhalt.map(inlineKlartext).join('')} `;
+    case 'liste':
+      return ` ${b.punkte.map((p) => `${texte.listenpunkt}${hinweisKlartext(p)}`).join(' ')} `;
+    case 'tabelle':
+      return ` ${b.zeilen
+        .map((z) => z.zellen.map((c) => hinweisKlartext(c.inhalt)).join(texte.zellentrenner))
+        .join(' ')} `;
+    case 'ergaenzung': {
+      const inhalt = flussKlartext(b.inhalt);
+      return ` ${flussKlartext(b.davor)} ${inhalt === '' ? texte.leereErgaenzung : inhalt} ${flussKlartext(b.danach)} `;
+    }
+  }
+}
+
+/**
+ * Klartext eines Hinweistexts für die einzeilige Zelle: Textläufe ohne Auszeichnung, Zeilenumbrüche und
+ * Absatzgrenzen als Leerzeichen, Listenpunkte mit „• “, Tabellenzellen mit „ | “ (Zeilen durch Leerzeichen getrennt),
+ * Textergänzung als davor, Stelle (leer: „…“) und danach, Bild als „[Bild]“. Rein und deterministisch.
+ */
+export function hinweisKlartext(text: Langtext): string {
+  return einzeilig(text.map(bausteinKlartext).join(''));
 }
 
 /** Anzeigetext einer Zelle. Derselbe Text steht beim Bearbeiten im Eingabefeld. */
@@ -57,13 +108,11 @@ export function anzeigeText(zeile: LvZeile, spalte: LvSpalte, zahlen: GridZahlen
         case 'hinweis':
           return texte.hinweis;
         case 'position':
-          return k.merkmale.pauschal
-            ? `${ARTTEXT[anzeigeart(k)]}, ${texte.pauschal}`
-            : ARTTEXT[anzeigeart(k)]; // // v1.1b: mechanisch angepasst, Folgeticket
+          return artText(k);
       }
     // eslint-disable-next-line no-fallthrough -- der innere switch ist erschöpfend
     case 'kurztext':
-      return k.art === 'hinweis' ? hinweisKlartext(zeile) : k.kurztext;
+      return k.art === 'hinweis' ? hinweisKlartext(k.text) : k.kurztext;
     case 'menge':
       return k.art === 'position' && k.menge !== null ? zahlen.formatMenge(k.menge) : '';
     case 'einheit':

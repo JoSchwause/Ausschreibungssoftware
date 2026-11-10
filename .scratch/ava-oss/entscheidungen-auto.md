@@ -76,10 +76,39 @@ Reason: Hält die Fixture-Helfer in fünf Paketen grün; P2 (ui-grid importiert 
 Reversible: yes  Touches: packages/kern, packages/vergabe, packages/ui-grid, fixtures/
 Annahme für Demo, Mensch bestätigt später (E-03: Teilmengen, `AllInCat`).
 
-## D-11 Enge Lesarten im Vertrag v1.2
+## D-29.1 Enge Lesarten im Vertrag v1.2
 Welle 3 · Ticket 29 · decided by: implementer
 Question: Wo lässt Ticket 29 die Typform offen?
 Decision: Angebotsposition mit `zuschlagssatz` behält einen Pflicht-EP (Platzhalter `0.000`, nie gerechnet); `KnotenEinfuegen` ist kein Massenbefehl; `Speicher.lvStaende` optional; LV-Stand nur anlegen (kein Umbenennen, Löschen, Zurückschreiben); die Lage der Wurzeln in `KnotenEinfuegen` setzt der Kern; der Papierkorb steht nicht in `LvInhalt`; `Rueckgaengig`/`Wiederholen` nennen den ursprünglichen Befehl; Kopfdaten-Befehle setzen den ganzen Wert. Alternativen als Offene Typfragen 1–8 in Ticket 29.
 Reason: Additiv, umkehrbar, kein stiller Datenverlust in `speicher` (Leitlinie aus Ticket 24/26).
 Reversible: yes  Touches: packages/vertrag
 Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-04).
+
+## D-35a Sprachdetails des freien Rechenansatzes (Formel 91)
+Welle 3 · Ticket 35 · decided by: implementer
+Question: Was die Ticketbeschreibung der Ausdruckssprache offen lässt.
+Decision: (1) „Frühere Zeile“ heißt weiter vorn in der Folge, nicht kleinere Nummer. (2) Zusätzliche Fehlercodes `ausdruck-unvollstaendig` („2+“, Spalte hinter dem Text), `variable-ungueltig` (auch leerer Name; kein Name ist `null`) und `zeile-doppelt` (doppelte Zeilennummer, die spätere Zeile ist fehlerhaft). (3) Klammern werden vor dem Abstieg gezählt: `klammer-fehlt` an der Spalte der offenen Klammer, `klammer-zu-viel` an der überzähligen, `zu-tief` an der 51. Klammer. (4) Führende Nullen sind erlaubt; Zahlen stehen normalisiert im Syntaxbaum (`2,50` → `2,5`); eine Zahl, die `dezimal` nicht fasst (≈ 1.000 Ziffern), ist `zahl-ungueltig`. (5) Variablennamen: Unicode-Buchstabe, dann Buchstaben, ASCII-Ziffern, `_`. (6) `FORMELN`: Nummer → `{ parameter, rechne(werte) }`; wie ein Ausdruck mehrere Parameter trennt, entscheidet das erste Ticket mit einer solchen Formel.
+Reason: Paketlokal und umkehrbar; gespeichert wird nur der Ausdruckstext. Alles steht zusätzlich in `MENGEN_ANNAHMEN`.
+Reversible: yes  Touches: packages/mengen
+
+## D-36.1 Annahmen der Preisspiegel-Rechnung
+Welle 3 · Ticket 36 · decided by: implementer
+Question: Die im Ticket als Annahme markierten Punkte der Preisspiegel-Rechnung (V2) und was das Ticket offen lässt.
+Decision: Wie im Ticket: kein Eintrag = nicht angeboten; negativer EP ist `angeboten`, zählt nicht für Min/Mittel/Max, nie Ausreißer; Max nur über EP > 0; Ausreißer vergleicht den EP; Rang 1, 1, 3; virtuelle Netto ohne Nachlass über die laut LV eingehenden Positionen; ABC-Schwelle B 95 %, Bezug Mittel, die überschreitende Position gehört noch zur höheren Klasse. Zusätzlich: Bieter- und Gliederungssummen rechnet der Preisspiegel aus dem übergebenen LV neu (`angebotSummenBerechnen`), nicht aus dem gespeicherten Summenstand des Angebots. Alles steht in `PREISSPIEGEL_ANNAHMEN` (`packages/vergabe/src/preisspiegel.ts`).
+Reason: Ticket-Vorgaben; Neuberechnung hält den Preisspiegel konsistent mit dem LV, auch wenn ein Angebotszustand veraltet ist (Budget: gross mit 5 Angeboten etwa 0,4–0,6 s < 1 s).
+Reversible: yes  Touches: packages/vergabe
+Annahme für Demo, Mensch bestätigt später (G-26, D-05).
+
+## D-36.2 Form der Angebots-ChangeSets
+Welle 3 · Ticket 36 · decided by: implementer
+Question: Reihenfolge der Angebotspositionen, `summen.vorher` bei leeren ChangeSets, Feld bei doppelter Position, EPA-Prüfung.
+Decision: Neue Angebotspositionen werden hinten angehängt, geänderte bleiben am Platz (Umkehrung exakt). `summen.vorher` ist immer gesetzt, auch beim leeren ChangeSet (leere Listen). Doppelte Position beim Anlegen: `ungueltige-eingabe` mit `knotenId` und `feld: 'positionen'`. EPA werden nicht geprüft (nicht im Ticket). Kein Befehlshinweis `netto-nach-nachlass-negativ` am Angebot (nicht im Ticket).
+Reason: kleinste umkehrbare Form; entspricht dem Kern seit v1.1a.
+Reversible: yes  Touches: packages/vergabe
+
+## D-12 Review-Korrekturen am Vertrag v1.2
+Welle 3 · Ticket 29 (Folge: 42, 43, 46, 48, 49) · decided by: orchestrator
+Question: Der Opus-Review von Ticket 29 (D-04 statt P9) ergab „ja mit Korrekturen“.
+Decision: (1) Der Papierkorb liegt am Zustand (`LvZustand.papierkorb?`), nicht am LV oder LV-Kopf; `LvStand` und `Projektdatei` tragen ihn über `LvZustand`. (2) Bezüge (Zuschlags-`Bezugsposition`, `wahl.grundpositionId`) auf Positionen im Papierkorb bleiben stehen und zählen nichts, solange das Ziel im Papierkorb liegt; `PapierkorbeintragEntfernen`/`PapierkorbLeeren` entfernen die dann hängenden Bezüge über `knoten.geaendert` im selben ChangeSet. (3) `Papierkorbeintrag.nummer: number` (der Kern vergibt Höchstwert + 1, keine Uhr; Reihenfolge des Hineinlegens), damit die Umkehrung des Entfernens den Platz aus dem ChangeSet allein kennt. (4) `LeistungsverzeichnisLoeschen` wird mit `konflikt` abgewiesen, solange LV-Stände bestehen; ein Wiederholen von `LvStandAnlegen` friert neu ein (neues `angelegt`). (5) Schreibweise nach Glossar in einem Wort: `Papierkorbeintrag`, `PapierkorbeintragId`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `IdQuelle.papierkorbeintrag()`. (6) Glossar: ein Eintrag „Zuschlagssatz“ für LV (`Zuschlag.prozentsatz`) und Angebot (`Angebotsposition.zuschlagssatz`). (7) Platzhalter-EP: wer `zuschlagssatz` nicht auswertet, darf die Position nicht rechnen. (8) `PapierkorbeintragEntfernen`/`PapierkorbLeeren` geben `konflikt`, solange eine Angebotsposition auf eine Position im Eintrag verweist (Q5). (9) Eine Befehlsfolge wird mit je einem `Rueckgaengig` je Befehl in umgekehrter Reihenfolge zurückgenommen.
+Reason: Kopf-ChangeSets bleiben frei vom Papierkorb; kein stiller Datenverlust (Q5); Umkehrbarkeit allein aus dem ChangeSet; L1/L2.
+Reversible: yes  Touches: packages/vertrag, packages/kern, packages/speicher, packages/gaeb, packages/ui-grid (eine Zeile), GLOSSARY.md, Tickets 42, 43, 46, 48, 49

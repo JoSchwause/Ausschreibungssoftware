@@ -11,6 +11,7 @@ import type { ClipboardEvent, FocusEvent, KeyboardEvent, MouseEvent, ReactElemen
 import type { KnotenId, LvSpalte } from '@tethys/vertrag';
 import type { EditorAktionen, Richtung } from './Editor';
 import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
+import { Hinweisleiste } from './Hinweisleiste';
 import { planeEinfuegen } from './einfuegen';
 import type { Einfuegeanker } from './einfuegen';
 import { tabZiel, zielZelle } from './navigation';
@@ -42,7 +43,7 @@ function istSpalte(wert: string | undefined, spalten: readonly LvSpalte[]): LvSp
 }
 
 export function LvGrid(props: LvGridProps): ReactElement {
-  const { ansicht, zahlen, ids, onBefehl, onAufklappen, onAuswahlChange, wurzelId } = props;
+  const { ansicht, zahlen, ids, onBefehl, onAufklappen, onAuswahlChange } = props;
   const spalten = props.spalten ?? STANDARDSPALTEN;
   const baumspalte = props.baumspalte ?? 'kurztext';
   const zh = props.zeilenhoehe ?? 28;
@@ -512,15 +513,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
       uebernimmText(aktivIndex, aktivSpalte, matrix[0]?.[0] ?? '');
       return;
     }
-    const einfuegeanker: Einfuegeanker | null = aktiveZeile
+    // In ein leeres LV (keine aktive Zeile) wird am Ende der Wurzel eingefügt.
+    const einfuegeanker: Einfuegeanker = aktiveZeile
       ? { art: 'nach', knotenId: aktiveZeile.knoten.id }
-      : wurzelId !== undefined
-        ? { art: 'ende', elternId: wurzelId }
-        : null;
-    if (einfuegeanker === null) {
-      setStatus(texte.keinEinfuegeort);
-      return;
-    }
+      : { art: 'ende', elternId: ansicht.wurzelId };
     const plan = planeEinfuegen(matrix, aktivSpaltenIndex, spalten, einfuegeanker, zahlen, ids);
     for (const befehl of plan.befehle) onBefehl(befehl);
     if (plan.ungueltig.length > 0) {
@@ -550,16 +546,34 @@ export function LvGrid(props: LvGridProps): ReactElement {
     return m;
   }, [abgelehnt, spalten]);
 
+  // --- Sprung aus einem Befehlshinweis ----------------------------------------------------------------------
+  const springeZu = (knotenId: KnotenId): void => {
+    const zi = indexVonId.get(knotenId);
+    if (zi === undefined) {
+      setStatus(texte.zeileNichtSichtbar);
+      return;
+    }
+    aktiviere({ zeile: zi, spalte: aktivSpaltenIndex }, 'ersetzen', true);
+  };
+
   const gesamt = ansicht.gesamt;
-  const summen: [string, string][] = gesamt
-    ? [
-        [texte.summeNetto, zahlen.formatBetrag(gesamt.netto)],
-        [texte.summeNachlass, zahlen.formatBetrag(gesamt.nachlass)],
-        [texte.summeNettoNachNachlass, zahlen.formatBetrag(gesamt.nettoNachNachlass)],
-        [texte.summeMwst, zahlen.formatBetrag(gesamt.mwst)],
-        [texte.summeBrutto, zahlen.formatBetrag(gesamt.brutto)],
-      ]
-    : [];
+  // [Name, Wert, nicht im Netto]. Bedarfs- und Wahlsumme (F4, E-04) nur, wenn gesetzt, nach dem Brutto.
+  const summen: [string, string, boolean][] = [];
+  if (gesamt) {
+    summen.push(
+      [texte.summeNetto, zahlen.formatBetrag(gesamt.netto), false],
+      [texte.summeNachlass, zahlen.formatBetrag(gesamt.nachlass), false],
+      [texte.summeNettoNachNachlass, zahlen.formatBetrag(gesamt.nettoNachNachlass), false],
+      [texte.summeMwst, zahlen.formatBetrag(gesamt.mwst), false],
+      [texte.summeBrutto, zahlen.formatBetrag(gesamt.brutto), false],
+    );
+    if (gesamt.summeBedarfOhneGesamtbetrag !== undefined) {
+      summen.push([texte.summeBedarf, zahlen.formatBetrag(gesamt.summeBedarfOhneGesamtbetrag), true]);
+    }
+    if (gesamt.summeWahl !== undefined) {
+      summen.push([texte.summeWahl, zahlen.formatBetrag(gesamt.summeWahl), true]);
+    }
+  }
 
   return (
     <div className="tx-grid" ref={wurzel}>
@@ -633,15 +647,17 @@ export function LvGrid(props: LvGridProps): ReactElement {
         </div>
         {zeilen.length === 0 ? <p className="tx-grid__leer">{texte.leer}</p> : null}
       </div>
+      <Hinweisleiste hinweise={props.hinweise ?? []} onSprung={springeZu} />
       <div className="tx-grid__status" role="status" aria-live="polite">
         {status}
       </div>
       <div className="tx-grid__summen" role="group" aria-label={texte.summen}>
         {gesamt ? (
-          summen.map(([name, wert]) => (
-            <div key={name} className="tx-grid__summe">
+          summen.map(([name, wert, ausweis]) => (
+            <div key={name} className={ausweis ? 'tx-grid__summe tx-grid__summe--ausweis' : 'tx-grid__summe'}>
               <span className="tx-grid__summe-name">{name}</span>
               <span className="tx-grid__summe-wert">{wert}</span>
+              {ausweis ? <span className="tx-grid__summe-vermerk">({texte.nichtImNetto})</span> : null}
             </div>
           ))
         ) : (

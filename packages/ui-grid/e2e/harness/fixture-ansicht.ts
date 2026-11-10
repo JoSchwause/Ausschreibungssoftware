@@ -42,7 +42,8 @@ type FxKnoten =
       grundpositionId?: string;
     };
 
-// // v1.1b: mechanisch angepasst, Folgeticket: Die Fixture kennt noch die einzelne Positionsart; hier wird sie in die Merkmale von `vertrag` v1.1b umgesetzt.
+// Die Fixtures behalten dauerhaft ihr Format mit einer einzelnen Positionsart (Ticket 19); diese Abbildung setzt sie
+// in die kombinierbaren Merkmale von `vertrag` um. Gruppe und Variante einer Wahl kennt die Fixture nicht (`null`).
 type FxPosition = Extract<FxKnoten, { art: 'position' }>;
 
 function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
@@ -143,7 +144,7 @@ export async function ladeFixture(name: FixtureName, kopien = 1): Promise<Modell
           id: id(k.id) as PositionId,
           ordnungszahl: k.ordnungszahl as Ordnungszahl,
           ozIndex: k.ozIndex ?? null,
-          merkmale: fixtureMerkmale(k), // // v1.1b: mechanisch angepasst, Folgeticket
+          merkmale: fixtureMerkmale(k),
           zuschlag: fixtureZuschlag(k),
           kurztext: k.kurztext,
           langtext: [],
@@ -206,7 +207,6 @@ export function baueAnsicht(
     }
   };
   besuche(modell.lvId, 0);
-  // v1.1a: mechanisch angepasst, Folgeticket (ui-grid: wurzelId aus der Ansicht statt als eigene Eigenschaft)
   return { wurzelId: modell.lvId as WurzelId, zeilen, gesamt: modell.gesamt };
 }
 

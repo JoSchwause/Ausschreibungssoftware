@@ -3,16 +3,21 @@ import { describe, expect, it } from 'vitest';
 import type {
   Betrag,
   Einheitspreis,
+  BildId,
   ElternId,
+  Langtext,
   LvSpalte,
   LvZeile,
   Menge,
   Ordnungszahl,
+  Position,
   PositionId,
+  Positionsmerkmale,
+  Zuschlag,
   TitelId,
 } from '@tethys/vertrag';
 import { idQuelleAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
-import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
+import { anzeigeText, befehlAusEingabe, hinweisKlartext, istBearbeitbar } from './eingabe';
 import { planeEinfuegen } from './einfuegen';
 import { parseTsv } from './tsv';
 
@@ -24,7 +29,7 @@ const position: LvZeile = {
     reihenfolge: 0,
     ordnungszahl: '01.0010' as Ordnungszahl,
     ozIndex: null,
-    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false }, // // v1.1b: mechanisch angepasst, Folgeticket
+    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
     zuschlag: null,
     kurztext: 'Bauzaun stellen',
     langtext: [],
@@ -65,6 +70,132 @@ describe('anzeigeText', () => {
     expect(anzeigeText(position, 'gesamtpreis', zahlenAttrappe)).toBe('644,43');
     expect(anzeigeText(titel, 'gesamtpreis', zahlenAttrappe)).toBe('1.000,00');
     expect(anzeigeText(titel, 'menge', zahlenAttrappe)).toBe('');
+  });
+});
+
+describe('Spalte „Art“', () => {
+  const ohne: Positionsmerkmale = {
+    bedarf: null,
+    wahl: null,
+    stundenlohn: false,
+    pauschal: false,
+    zuschlagskennzeichen: false,
+  };
+  const art = (merkmale: Partial<Positionsmerkmale>, zuschlag: Zuschlag | null = null): string => {
+    const knoten = position.knoten as Position;
+    const zeile: LvZeile = {
+      ...position,
+      knoten: { ...knoten, merkmale: { ...ohne, ...merkmale }, zuschlag },
+    };
+    return anzeigeText(zeile, 'positionsart', zahlenAttrappe);
+  };
+
+  it('ohne Merkmal: Normal', () => {
+    expect(art({})).toBe('Normal');
+  });
+
+  it('Bedarf im Stundenlohn nennt beide Merkmale', () => {
+    expect(art({ bedarf: 'ohne-gesamtbetrag', stundenlohn: true })).toBe('Bedarf, Stundenlohn');
+  });
+
+  it('Bedarf mit Gesamtbetrag', () => {
+    expect(art({ bedarf: 'mit-gesamtbetrag' })).toBe('Bedarf m. GB');
+  });
+
+  it('Wahl mit Gruppe und Variante, nur Gruppe, ohne Nummern', () => {
+    expect(art({ wahl: { gruppe: 1, variante: 2, grundpositionId: null } })).toBe('Wahl 1.2');
+    expect(art({ wahl: { gruppe: 3, variante: null, grundpositionId: null } })).toBe('Wahl 3');
+    expect(art({ wahl: { gruppe: null, variante: null, grundpositionId: null } })).toBe('Wahl');
+  });
+
+  it('Zuschlag steht vorn; alle Merkmale in fester Reihenfolge, pauschal zuletzt', () => {
+    const zuschlag: Zuschlag = { prozentsatz: null, bezug: { art: 'gliederung' } };
+    expect(art({}, zuschlag)).toBe('Zuschlag');
+    expect(
+      art(
+        {
+          pauschal: true,
+          stundenlohn: true,
+          bedarf: 'mit-gesamtbetrag',
+          wahl: { gruppe: 2, variante: 0, grundpositionId: null },
+        },
+        zuschlag,
+      ),
+    ).toBe('Zuschlag, Wahl 2.0, Bedarf m. GB, Stundenlohn, pauschal');
+  });
+});
+
+describe('hinweisKlartext', () => {
+  const bild = { art: 'bild', bild: { id: 'b1' as BildId, medientyp: 'image/png', daten: '' } } as const;
+
+  it('Absatz, Liste, Tabelle, Textergänzung und Bild werden einzeilig, Auszeichnung entfällt', () => {
+    const text: Langtext = [
+      {
+        art: 'absatz',
+        inhalt: [
+          { art: 'text', text: 'Vorbemerkung' },
+          { art: 'text', text: ' zur', fett: true },
+          { art: 'umbruch' },
+          { art: 'text', text: 'Baustelle' },
+        ],
+      },
+      {
+        art: 'liste',
+        geordnet: false,
+        punkte: [
+          [{ art: 'text', text: 'Zufahrt' }],
+          [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Lager' }] }],
+        ],
+      },
+      {
+        art: 'tabelle',
+        zeilen: [
+          {
+            zellen: [
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Stoff' }] },
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Menge' }] },
+            ],
+          },
+          {
+            zellen: [
+              { spalten: 1, inhalt: [{ art: 'text', text: 'Kies' }] },
+              { spalten: 1, inhalt: [{ art: 'text', text: '3 t' }] },
+            ],
+          },
+        ],
+      },
+      {
+        art: 'ergaenzung',
+        herkunft: 'bieter',
+        kennung: '1',
+        leer: true,
+        davor: [{ art: 'text', text: 'Fabrikat:' }],
+        inhalt: [],
+        danach: [{ art: 'text', text: 'oder gleichwertig' }],
+      },
+      {
+        art: 'ergaenzung',
+        herkunft: 'ausschreibender',
+        kennung: '2',
+        leer: false,
+        davor: [{ art: 'text', text: 'Farbe' }],
+        inhalt: [{ art: 'text', text: 'RAL 7016', kursiv: true }],
+        danach: [],
+      },
+      bild,
+      { art: 'text', text: 'Ende' },
+    ];
+    expect(hinweisKlartext(text)).toBe(
+      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff | Menge Kies | 3 t ' +
+        'Fabrikat: … oder gleichwertig Farbe RAL 7016 [Bild] Ende',
+    );
+  });
+
+  it('die Formen vor v1.1b: Textläufe und Bilder direkt, Zeilenumbruch im Text als Leerzeichen', () => {
+    expect(
+      hinweisKlartext([{ art: 'text', text: 'Zeile 1\nZeile 2' }, bild, { art: 'text', text: 'Schluss' }]),
+    ).toBe('Zeile 1 Zeile 2 [Bild] Schluss');
+    expect(hinweisKlartext([])).toBe('');
   });
 });
 
