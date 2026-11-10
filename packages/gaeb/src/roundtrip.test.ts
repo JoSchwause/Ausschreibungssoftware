@@ -9,23 +9,17 @@
 import { describe, expect, it } from 'vitest';
 import type { LvInhalt, Position } from '@tethys/vertrag';
 import { leseGaeb, schreibeGaeb } from './index';
-import type { ExportPhase, ExportVersion, SchreibOptionen } from './index';
-import { FIXTURES, TEST_MWST, fixtureLv, lesePfad, normiereKennungen, testIds } from './testhilfen';
+import type { ExportPhase, ExportVersion } from './index';
+import {
+  AMTLICH_LESBAR,
+  FIXTURES,
+  amtlichLv,
+  exportOptionen,
+  fixtureLv,
+  normiereKennungen,
+  testIds,
+} from './testhilfen';
 import type { Normiert } from './testhilfen';
-
-const ERSTELLT = { datum: '2026-11-10', zeit: '12:00:00' } as const;
-
-function optionen(phase: ExportPhase, version: ExportVersion, n: Normiert): SchreibOptionen {
-  return {
-    phase,
-    version,
-    erstellt: ERSTELLT,
-    programm: 'Tethys AVA (Test)',
-    ...(n.summen === undefined ? {} : { summen: n.summen }),
-    ...(n.basen === undefined ? {} : { zuschlagsbasen: n.basen }),
-    ...(phase === 'X86' ? { auftragnehmer: 'Auftragnehmer (erfunden)' } : {}),
-  };
-}
 
 /**
  * Die festgeschriebenen Unterschiede je Phase (Ticket 40, Punkt 4 und 6):
@@ -67,7 +61,7 @@ function rundweg(
   phase: ExportPhase,
   version: ExportVersion,
 ): { erster: string; zweiter: string; gelesen: LvInhalt | null } {
-  const opt = optionen(phase, version, n);
+  const opt = exportOptionen(phase, version, n);
   const erster = schreibeGaeb(n.inhalt, opt);
   const l = leseGaeb(erster.xml, { ids: testIds(), standardMwstSatz: n.inhalt.mwstSatz });
   expect(l.phase).toBe(phase);
@@ -93,17 +87,10 @@ describe('Roundtrip der Fixtures', () => {
 });
 
 describe('Roundtrip der amtlichen Dateien (Inhalt des Lesers)', () => {
-  const DATEIEN = [
-    'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X81',
-    'fixtures/extern/bvbs/3.3-bauausfuehrung/Pruefdatei_3.3_Bauausfuehrung_V-04-04-2024.x83',
-    'fixtures/extern/bvbs/3.3-texterstellung/Pruefdatei_3.3_Texterstellung_V-11-06-2021.x81',
-  ];
-  for (const datei of DATEIEN)
+  for (const a of AMTLICH_LESBAR)
     for (const phase of ['X81', 'X83'] as const)
-      it(`${datei.split('/').at(-1) ?? datei} als ${phase}`, () => {
-        const l = leseGaeb(lesePfad(datei), { ids: testIds(), standardMwstSatz: TEST_MWST });
-        if (l.inhalt === null) throw new Error('kein Inhalt');
-        const n = normiereKennungen(l.inhalt);
+      it(`${a.name} als ${phase} 3.3`, () => {
+        const n = amtlichLv(a.pfad);
         const r = rundweg(n, phase, '3.3');
         expect(r.gelesen).toEqual(erwartet(n.inhalt, phase));
         expect(r.zweiter).toBe(r.erster);

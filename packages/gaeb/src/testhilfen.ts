@@ -39,6 +39,9 @@ import type {
   Summenstand,
 } from '@tethys/vertrag';
 
+import { leseGaeb } from './lesen';
+import type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
+
 /** Zählende IdQuelle: `position-0001`, `titel-0001` … Gleiche Eingabe ergibt gleiche Kennungen. */
 export function testIds(): IdQuelle {
   const zaehler = new Map<string, number>();
@@ -384,4 +387,77 @@ export function normiereKennungen(
         }),
     ...(basen === undefined ? {} : { basen: new Map([...basen].map(([k, v]) => [n(k), v])) }),
   };
+}
+
+// --- Exportfälle (Roundtrip, Golden, XSD-Gegenprüfung) ------------------------------------------------------------
+
+/** Fester Zeitpunkt der Test-Exporte (A2: die Uhr liefert der Aufrufer). */
+export const TEST_ERSTELLT = { datum: '2026-11-10', zeit: '12:00:00' } as const;
+
+/** Exportoptionen der Tests; X86 bekommt Summen, Zuschlagsbasen und einen erfundenen Auftragnehmer. */
+export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: Normiert): SchreibOptionen {
+  return {
+    phase,
+    version,
+    erstellt: TEST_ERSTELLT,
+    programm: 'Tethys AVA (Test)',
+    ...(n.summen === undefined ? {} : { summen: n.summen }),
+    ...(n.basen === undefined ? {} : { zuschlagsbasen: n.basen }),
+    ...(phase === 'X86' ? { auftragnehmer: 'Auftragnehmer (erfunden)' } : {}),
+  };
+}
+
+/** Amtliche 3.3-Dateien, deren gelesener Inhalt als X81/X83 wieder geschrieben wird. */
+export const AMTLICH_LESBAR = [
+  { name: 'bvbs-ava', pfad: 'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X81' },
+  {
+    name: 'bvbs-bauausfuehrung',
+    pfad: 'fixtures/extern/bvbs/3.3-bauausfuehrung/Pruefdatei_3.3_Bauausfuehrung_V-04-04-2024.x83',
+  },
+  {
+    name: 'bvbs-texterstellung',
+    pfad: 'fixtures/extern/bvbs/3.3-texterstellung/Pruefdatei_3.3_Texterstellung_V-11-06-2021.x81',
+  },
+] as const;
+
+/** Inhalt einer amtlichen Datei, wie der Leser ihn liefert, mit normierten Kennungen. */
+export function amtlichLv(pfad: string): Normiert {
+  const l = leseGaeb(lesePfad(pfad), { ids: testIds(), standardMwstSatz: TEST_MWST });
+  if (l.inhalt === null) throw new Error(`${pfad}: kein Inhalt`);
+  return normiereKennungen(l.inhalt);
+}
+
+export interface Exportfall {
+  /** Dateiname ohne Verzeichnis, z. B. `typisch-X86-3.3.x86`. */
+  readonly datei: string;
+  readonly n: Normiert;
+  readonly phase: ExportPhase;
+  readonly version: ExportVersion;
+}
+
+/**
+ * Alle Exporte der XSD-Gegenprüfung: jede Fixture × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
+ * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
+ */
+export function exportfaelle(): Exportfall[] {
+  const faelle: Exportfall[] = [];
+  const versionen: readonly ExportVersion[] = ['3.3', '3.2'];
+  const fall = (name: string, n: Normiert, phase: ExportPhase, version: ExportVersion): Exportfall => ({
+    datei: `${name}-${phase}-${version}.${phase.toLowerCase()}`,
+    n,
+    phase,
+    version,
+  });
+  for (const name of FIXTURES) {
+    const { inhalt, summen } = fixtureLv(name);
+    const n = normiereKennungen(inhalt, summen);
+    for (const phase of ['X81', 'X83', 'X86'] as const)
+      for (const version of versionen) faelle.push(fall(name, n, phase, version));
+  }
+  for (const a of AMTLICH_LESBAR) {
+    const n = amtlichLv(a.pfad);
+    for (const phase of ['X81', 'X83'] as const)
+      for (const version of versionen) faelle.push(fall(a.name, n, phase, version));
+  }
+  return faelle;
 }
