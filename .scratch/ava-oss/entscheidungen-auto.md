@@ -200,6 +200,13 @@ Decision: Wie vorgeschlagen: gesetzte Anteile (mindestens einer nicht `null`) se
 Reason: Beleg X86 1.10.30.10/20 (UP = Summe der UPComp); kein EP aus dem Nichts.
 Reversible: yes  Touches: packages/kern
 
+## D-45.1 X84-Import: Lesarten des Angebotslesers
+Welle 3 · Ticket 45 · decided by: implementer
+Question: Was Ticket 45 als Vorschlag offen lässt (EPA-Zuordnung, EPA ohne Beschriftung, IT 0,00 an Alternativen, Zeilen falscher Art, Bieterergänzung „mit Inhalt“).
+Decision: EPA wie der X86-Leser (D-40.1): Bezeichnung vor `Type`, `Miscellaneous` + „Nachunternehmer“ → `nachunternehmer` (statt Typ zuerst/`sonstiges` aus dem Ticket); Widerspruch Bezeichnung/Typ → `epa-beschriftung-abweichend`. Ohne `LblUPComp` in der X84 (beide BVBS-X84) bleiben die Anteile `null` mit `epa-nicht-abgebildet` (die Beschriftungen definiert das LV, `LvInhalt` hält sie nicht: Vertragslücke). `IT` 0,00 an Alternative/Bedarf ohne GB ist kein `gp-abweichend`. Zeile mit falscher Art (`zuschlag-art-abweichend`) wird „nicht angeboten“. Bieterergänzung zählt nur mit `Kind="Bidder"`, ohne `Empty="Yes"` und mit Text. Nachlässe je Position/Gliederung: Fehler `nachlass-nicht-abgebildet` (D-10 Nr. 3). Einzelheiten: Ticket 45, Comments.
+Reason: Gleiche Beschriftung landet im X84 und X86 beim selben Anteil (Rundweg mit dem eigenen X83-Export); nichts erfinden (C4), nichts still verlieren (Q5).
+Reversible: yes  Touches: packages/gaeb
+
 ## D-44.1 Zuschlagspositionen im Angebot und im Preisspiegel: Lesarten
 Welle 3 · Ticket 44 · decided by: implementer
 Question: Was Ticket 44 bei Lücken des Bieters, beim Satz an falscher Stelle und im Preisspiegel offen lässt.
