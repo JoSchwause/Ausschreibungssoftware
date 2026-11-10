@@ -1,0 +1,15 @@
+{
+  "hinweis": "Gespielt: Das ist keine GAEB-Datei, sondern eine vorbereitete JSON-Datei, die der Prototyp so behandelt.",
+  "datei": "angebot-bieter-b.x84",
+  "phase": "X84 Angebotsabgabe",
+  "bieter": "Bieter B",
+  "groesse": "52 KB",
+  "inhalt": [
+    "Angebot zu „Rohbau und Ausbau (erfunden)“",
+    "24 von 25 Positionen mit Einheitspreis",
+    "Nachlass 3,00 % auf die Angebotssumme"
+  ],
+  "befunde": [
+    { "art": "warnung", "ort": "03.0070", "text": "Position 03.0070 hat keinen Preis. Sie wird als „nicht angeboten“ übernommen, nicht als 0,00." }
+  ]
+}

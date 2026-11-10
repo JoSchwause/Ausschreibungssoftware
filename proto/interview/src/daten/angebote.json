@@ -1,0 +1,416 @@
+{
+ "bieter": [
+  {
+   "id": "019b76f9-2c80-737e-8c4e-d0e9e835d68a",
+   "name": "Bieter A"
+  },
+  {
+   "id": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+   "name": "Bieter B"
+  },
+  {
+   "id": "019b76f9-2c82-7655-b780-32b7f3b813d5",
+   "name": "Bieter C"
+  }
+ ],
+ "angebote": [
+  {
+   "id": "019b76f9-2c83-7dd1-8cb8-4edeaf573f4d",
+   "bieterId": "019b76f9-2c80-737e-8c4e-d0e9e835d68a",
+   "nachlass": null,
+   "positionen": [
+    {
+     "positionId": "019b76e9-ea42-7a6c-9180-36c38b8c3b9e",
+     "status": "angeboten",
+     "einheitspreis": "1814.850"
+    },
+    {
+     "positionId": "019b76e9-ea43-79e5-a71b-20f7abf907b0",
+     "status": "angeboten",
+     "einheitspreis": "7.227"
+    },
+    {
+     "positionId": "019b76e9-ea44-7a84-a6a6-36868f616703",
+     "status": "angeboten",
+     "einheitspreis": "218.302"
+    },
+    {
+     "positionId": "019b76e9-ea45-74f6-8e75-27856918c88c",
+     "status": "angeboten",
+     "einheitspreis": "50.123"
+    },
+    {
+     "positionId": "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200",
+     "status": "angeboten",
+     "einheitspreis": "379.460"
+    },
+    {
+     "positionId": "019b76e9-ea47-7e66-80d3-97961e44c237",
+     "status": "angeboten",
+     "einheitspreis": "2.366"
+    },
+    {
+     "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+     "status": "angeboten",
+     "einheitspreis": "6.163"
+    },
+    {
+     "positionId": "019b76e9-ea4a-78de-9cba-20fdd5149cc1",
+     "status": "angeboten",
+     "einheitspreis": "9.825"
+    },
+    {
+     "positionId": "019b76e9-ea4b-7446-af25-e138598df2b7",
+     "status": "angeboten",
+     "einheitspreis": "5.161"
+    },
+    {
+     "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+     "status": "angeboten",
+     "einheitspreis": "11.239"
+    },
+    {
+     "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+     "status": "angeboten",
+     "einheitspreis": "165.184"
+    },
+    {
+     "positionId": "019b76e9-ea4e-72e6-aa2e-a1ad93edf894",
+     "status": "angeboten",
+     "einheitspreis": "14.314"
+    },
+    {
+     "positionId": "019b76e9-ea4f-70a0-a8ef-5392c22227fc",
+     "status": "angeboten",
+     "einheitspreis": "1.627"
+    },
+    {
+     "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+     "status": "angeboten",
+     "einheitspreis": "53.701"
+    },
+    {
+     "positionId": "019b76e9-ea51-78b8-8588-e3dc3a1f7da6",
+     "status": "angeboten",
+     "einheitspreis": "60.148"
+    },
+    {
+     "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+     "status": "angeboten",
+     "einheitspreis": "18.441"
+    },
+    {
+     "positionId": "019b76e9-ea53-7f9f-bacb-47d207700e3e",
+     "status": "angeboten",
+     "einheitspreis": "23.767"
+    },
+    {
+     "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+     "status": "angeboten",
+     "einheitspreis": "48.799"
+    },
+    {
+     "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+     "status": "angeboten",
+     "einheitspreis": "19.941"
+    },
+    {
+     "positionId": "019b76e9-ea57-75e5-a1d0-370693d7b6c3",
+     "status": "angeboten",
+     "einheitspreis": "21.647"
+    },
+    {
+     "positionId": "019b76e9-ea58-7f8a-870d-926d78ec765a",
+     "status": "angeboten",
+     "einheitspreis": "5.114"
+    },
+    {
+     "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+     "status": "angeboten",
+     "einheitspreis": "138.266"
+    },
+    {
+     "positionId": "019b76e9-ea5a-752f-8a06-76e4507c0c26",
+     "status": "angeboten",
+     "einheitspreis": "6.724"
+    },
+    {
+     "positionId": "019b76e9-ea5b-73f9-9221-62a34eba45ec",
+     "status": "angeboten",
+     "einheitspreis": "4.101"
+    },
+    {
+     "positionId": "019b76e9-ea5c-792b-9c81-2db5b428a9bc",
+     "status": "angeboten",
+     "einheitspreis": "2.107"
+    }
+   ]
+  },
+  {
+   "id": "019b76f9-2c84-7df5-8da4-f13927bb3331",
+   "bieterId": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+   "nachlass": {
+    "art": "prozent",
+    "wert": "3.00"
+   },
+   "positionen": [
+    {
+     "positionId": "019b76e9-ea42-7a6c-9180-36c38b8c3b9e",
+     "status": "angeboten",
+     "einheitspreis": "1951.750"
+    },
+    {
+     "positionId": "019b76e9-ea43-79e5-a71b-20f7abf907b0",
+     "status": "angeboten",
+     "einheitspreis": "7.726"
+    },
+    {
+     "positionId": "019b76e9-ea44-7a84-a6a6-36868f616703",
+     "status": "angeboten",
+     "einheitspreis": "232.740"
+    },
+    {
+     "positionId": "019b76e9-ea45-74f6-8e75-27856918c88c",
+     "status": "angeboten",
+     "einheitspreis": "50.709"
+    },
+    {
+     "positionId": "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200",
+     "status": "angeboten",
+     "einheitspreis": "402.860"
+    },
+    {
+     "positionId": "019b76e9-ea47-7e66-80d3-97961e44c237",
+     "status": "angeboten",
+     "einheitspreis": "2.461"
+    },
+    {
+     "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+     "status": "angeboten",
+     "einheitspreis": "6.506"
+    },
+    {
+     "positionId": "019b76e9-ea4a-78de-9cba-20fdd5149cc1",
+     "status": "angeboten",
+     "einheitspreis": "10.228"
+    },
+    {
+     "positionId": "019b76e9-ea4b-7446-af25-e138598df2b7",
+     "status": "angeboten",
+     "einheitspreis": "5.644"
+    },
+    {
+     "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+     "status": "angeboten",
+     "einheitspreis": "12.502"
+    },
+    {
+     "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+     "status": "angeboten",
+     "einheitspreis": "174.980"
+    },
+    {
+     "positionId": "019b76e9-ea4e-72e6-aa2e-a1ad93edf894",
+     "status": "angeboten",
+     "einheitspreis": "15.301"
+    },
+    {
+     "positionId": "019b76e9-ea4f-70a0-a8ef-5392c22227fc",
+     "status": "angeboten",
+     "einheitspreis": "1.709"
+    },
+    {
+     "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+     "status": "angeboten",
+     "einheitspreis": "54.755"
+    },
+    {
+     "positionId": "019b76e9-ea51-78b8-8588-e3dc3a1f7da6",
+     "status": "angeboten",
+     "einheitspreis": "65.599"
+    },
+    {
+     "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+     "status": "angeboten",
+     "einheitspreis": "20.054"
+    },
+    {
+     "positionId": "019b76e9-ea53-7f9f-bacb-47d207700e3e",
+     "status": "angeboten",
+     "einheitspreis": "25.918"
+    },
+    {
+     "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+     "status": "angeboten",
+     "einheitspreis": "52.699"
+    },
+    {
+     "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+     "status": "angeboten",
+     "einheitspreis": "20.173"
+    },
+    {
+     "positionId": "019b76e9-ea57-75e5-a1d0-370693d7b6c3",
+     "status": "angeboten",
+     "einheitspreis": "23.609"
+    },
+    {
+     "positionId": "019b76e9-ea58-7f8a-870d-926d78ec765a",
+     "status": "angeboten",
+     "einheitspreis": "5.469"
+    },
+    {
+     "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+     "status": "angeboten",
+     "einheitspreis": "140.015"
+    },
+    {
+     "positionId": "019b76e9-ea5a-752f-8a06-76e4507c0c26",
+     "status": "angeboten",
+     "einheitspreis": "7.102"
+    },
+    {
+     "positionId": "019b76e9-ea5b-73f9-9221-62a34eba45ec",
+     "status": "nicht-angeboten"
+    },
+    {
+     "positionId": "019b76e9-ea5c-792b-9c81-2db5b428a9bc",
+     "status": "angeboten",
+     "einheitspreis": "2.261"
+    }
+   ]
+  },
+  {
+   "id": "019b76f9-2c85-7763-bbaa-ed3faaf4719a",
+   "bieterId": "019b76f9-2c82-7655-b780-32b7f3b813d5",
+   "nachlass": null,
+   "positionen": [
+    {
+     "positionId": "019b76e9-ea42-7a6c-9180-36c38b8c3b9e",
+     "status": "angeboten",
+     "einheitspreis": "1683.500"
+    },
+    {
+     "positionId": "019b76e9-ea43-79e5-a71b-20f7abf907b0",
+     "status": "angeboten",
+     "einheitspreis": "6.839"
+    },
+    {
+     "positionId": "019b76e9-ea44-7a84-a6a6-36868f616703",
+     "status": "angeboten",
+     "einheitspreis": "199.984"
+    },
+    {
+     "positionId": "019b76e9-ea45-74f6-8e75-27856918c88c",
+     "status": "angeboten",
+     "einheitspreis": "44.890"
+    },
+    {
+     "positionId": "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200",
+     "status": "angeboten",
+     "einheitspreis": "372.050"
+    },
+    {
+     "positionId": "019b76e9-ea47-7e66-80d3-97961e44c237",
+     "status": "angeboten",
+     "einheitspreis": "2.199"
+    },
+    {
+     "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+     "status": "angeboten",
+     "einheitspreis": "5.790"
+    },
+    {
+     "positionId": "019b76e9-ea4a-78de-9cba-20fdd5149cc1",
+     "status": "angeboten",
+     "einheitspreis": "9.058"
+    },
+    {
+     "positionId": "019b76e9-ea4b-7446-af25-e138598df2b7",
+     "status": "angeboten",
+     "einheitspreis": "5.019"
+    },
+    {
+     "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+     "status": "angeboten",
+     "einheitspreis": "10.389"
+    },
+    {
+     "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+     "status": "angeboten",
+     "einheitspreis": "253.350"
+    },
+    {
+     "positionId": "019b76e9-ea4e-72e6-aa2e-a1ad93edf894",
+     "status": "angeboten",
+     "einheitspreis": "13.242"
+    },
+    {
+     "positionId": "019b76e9-ea4f-70a0-a8ef-5392c22227fc",
+     "status": "angeboten",
+     "einheitspreis": "1.538"
+    },
+    {
+     "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+     "status": "angeboten",
+     "einheitspreis": "49.116"
+    },
+    {
+     "positionId": "019b76e9-ea51-78b8-8588-e3dc3a1f7da6",
+     "status": "angeboten",
+     "einheitspreis": "56.534"
+    },
+    {
+     "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+     "status": "angeboten",
+     "einheitspreis": "16.940"
+    },
+    {
+     "positionId": "019b76e9-ea53-7f9f-bacb-47d207700e3e",
+     "status": "angeboten",
+     "einheitspreis": "22.260"
+    },
+    {
+     "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+     "status": "angeboten",
+     "einheitspreis": "45.484"
+    },
+    {
+     "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+     "status": "angeboten",
+     "einheitspreis": "18.508"
+    },
+    {
+     "positionId": "019b76e9-ea57-75e5-a1d0-370693d7b6c3",
+     "status": "angeboten",
+     "einheitspreis": "32.700"
+    },
+    {
+     "positionId": "019b76e9-ea58-7f8a-870d-926d78ec765a",
+     "status": "angeboten",
+     "einheitspreis": "4.760"
+    },
+    {
+     "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+     "status": "angeboten",
+     "einheitspreis": "127.103"
+    },
+    {
+     "positionId": "019b76e9-ea5a-752f-8a06-76e4507c0c26",
+     "status": "angeboten",
+     "einheitspreis": "6.277"
+    },
+    {
+     "positionId": "019b76e9-ea5b-73f9-9221-62a34eba45ec",
+     "status": "angeboten",
+     "einheitspreis": "3.844"
+    },
+    {
+     "positionId": "019b76e9-ea5c-792b-9c81-2db5b428a9bc",
+     "status": "angeboten",
+     "einheitspreis": "0.000"
+    }
+   ]
+  }
+ ]
+}

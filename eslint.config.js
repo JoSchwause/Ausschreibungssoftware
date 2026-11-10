@@ -13,6 +13,8 @@ export default tseslint.config(
       'LICENSES/**',
       '.scratch/**',
       '.claude/**',
+      // Wegwerf-Prototyp fuer das Nutzerinterview (Ticket 18), kein Teil der Architektur- und Lint-Regeln
+      'proto/**',
     ],
   },
   js.configs.recommended,

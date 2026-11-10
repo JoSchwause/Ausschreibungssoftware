@@ -1,0 +1,559 @@
+{
+ "lv": {
+  "summen": {
+   "netto": "61930.21",
+   "nachlass": "1238.60",
+   "nach": "60691.61",
+   "mwst": "11531.41",
+   "brutto": "72223.02"
+  },
+  "titel": {
+   "01": "6090.79",
+   "02": "31100.24",
+   "03": "24739.18"
+  }
+ },
+ "angebote": [
+  {
+   "name": "Bieter A",
+   "nachlassProzent": null,
+   "nichtAngeboten": [],
+   "summen": {
+    "netto": "61867.49",
+    "nachlass": "0.00",
+    "nach": "61867.49",
+    "mwst": "11754.82",
+    "brutto": "73622.31"
+   },
+   "titel": {
+    "01": "6024.89",
+    "02": "30850.34",
+    "03": "24992.26"
+   }
+  },
+  {
+   "name": "Bieter B",
+   "nachlassProzent": "3.00",
+   "nichtAngeboten": [
+    "03.0070"
+   ],
+   "summen": {
+    "netto": "65240.43",
+    "nachlass": "1957.21",
+    "nach": "63283.22",
+    "mwst": "12023.81",
+    "brutto": "75307.03"
+   },
+   "titel": {
+    "01": "6378.96",
+    "02": "32689.73",
+    "03": "26171.74"
+   }
+  },
+  {
+   "name": "Bieter C",
+   "nachlassProzent": null,
+   "nichtAngeboten": [],
+   "summen": {
+    "netto": "62427.54",
+    "nachlass": "0.00",
+    "nach": "62427.54",
+    "mwst": "11861.23",
+    "brutto": "74288.77"
+   },
+   "titel": {
+    "01": "5633.08",
+    "02": "32618.67",
+    "03": "24175.79"
+   }
+  }
+ ],
+ "rangfolge": [
+  {
+   "rang": 1,
+   "name": "Bieter A",
+   "nettoNachNachlass": "61867.49"
+  },
+  {
+   "rang": 2,
+   "name": "Bieter C",
+   "nettoNachNachlass": "62427.54"
+  },
+  {
+   "rang": 3,
+   "name": "Bieter B",
+   "nettoNachNachlass": "63283.22"
+  }
+ ],
+ "virtuelleBieter": {
+  "netto": {
+   "min": "61867.49",
+   "mittel": "63178.49",
+   "max": "65240.43"
+  },
+  "nettoNachNachlass": {
+   "min": "61867.49",
+   "mittel": "62526.08",
+   "max": "63283.22"
+  }
+ },
+ "preisspiegel": [
+  {
+   "oz": "01.0010",
+   "kurztext": "Baustelle einrichten",
+   "min": "1683.50",
+   "mittel": "1816.70",
+   "max": "1951.75",
+   "schaetzpreis": "1850.00",
+   "werte": [
+    "1814.85",
+    "1951.75",
+    "1683.50"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "01.0020",
+   "kurztext": "Bauzaun stellen",
+   "min": "591.57",
+   "mittel": "628.34",
+   "max": "668.30",
+   "schaetzpreis": "644.43",
+   "werte": [
+    "625.14",
+    "668.30",
+    "591.57"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "01.0030",
+   "kurztext": "Baustrom und Bauwasser",
+   "min": "799.94",
+   "mittel": "868.04",
+   "max": "930.96",
+   "schaetzpreis": "862.00",
+   "werte": [
+    "873.21",
+    "930.96",
+    "799.94"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "01.0040",
+   "kurztext": "Verkehrssicherung Zufahrt",
+   "min": "538.68",
+   "mittel": "582.89",
+   "max": "608.51",
+   "schaetzpreis": "586.80",
+   "werte": [
+    "601.48",
+    "608.51",
+    "538.68"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "01.0050",
+   "kurztext": "Bauschutt entsorgen",
+   "min": "1116.15",
+   "mittel": "1154.37",
+   "max": "1208.58",
+   "schaetzpreis": "1169.97",
+   "werte": [
+    "1138.38",
+    "1208.58",
+    "1116.15"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "01.0060",
+   "kurztext": "Grundstück räumen",
+   "min": "903.24",
+   "mittel": "961.98",
+   "max": "1010.86",
+   "schaetzpreis": "977.59",
+   "werte": [
+    "971.83",
+    "1010.86",
+    "903.24"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0010",
+   "kurztext": "Oberboden abtragen",
+   "min": "714.78",
+   "mittel": "759.59",
+   "max": "803.17",
+   "schaetzpreis": "755.51",
+   "werte": [
+    "760.82",
+    "803.17",
+    "714.78"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0020",
+   "kurztext": "Baugrube ausheben",
+   "min": "2882.26",
+   "mittel": "3087.71",
+   "max": "3254.55",
+   "schaetzpreis": "3129.50",
+   "werte": [
+    "3126.32",
+    "3254.55",
+    "2882.26"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0030",
+   "kurztext": "Baugrube verfüllen",
+   "min": "702.66",
+   "mittel": "738.45",
+   "max": "790.16",
+   "schaetzpreis": "735.00",
+   "werte": [
+    "722.54",
+    "790.16",
+    "702.66"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0040",
+   "kurztext": "Sauberkeitsschicht",
+   "min": "997.34",
+   "mittel": "1092.16",
+   "max": "1200.19",
+   "schaetzpreis": "1102.08",
+   "werte": [
+    "1078.94",
+    "1200.19",
+    "997.34"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0050",
+   "kurztext": "Fundamente betonieren",
+   "min": "6400.88",
+   "mittel": "7666.22",
+   "max": "9817.31",
+   "schaetzpreis": "6544.88",
+   "werte": [
+    "6400.88",
+    "6780.48",
+    "9817.31"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    true
+   ]
+  },
+  {
+   "oz": "02.0050A",
+   "kurztext": "Frostschutz beim Einbau",
+   "min": "513.13",
+   "mittel": "553.57",
+   "max": "592.91",
+   "schaetzpreis": "554.13",
+   "werte": [
+    "554.67",
+    "592.91",
+    "513.13"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0060",
+   "kurztext": "Betonstahl verlegen",
+   "min": "5152.30",
+   "mittel": "5442.63",
+   "max": "5725.15",
+   "schaetzpreis": "5494.00",
+   "werte": [
+    "5450.45",
+    "5725.15",
+    "5152.30"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0070",
+   "kurztext": "Bodenplatte herstellen",
+   "min": "4715.14",
+   "mittel": "5042.31",
+   "max": "5256.48",
+   "schaetzpreis": "5059.20",
+   "werte": [
+    "5155.30",
+    "5256.48",
+    "4715.14"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0070A",
+   "kurztext": "Bodenplatte wasserundurchlässig",
+   "min": "5427.26",
+   "mittel": "5832.99",
+   "max": "6297.50",
+   "schaetzpreis": "5880.00",
+   "werte": [
+    "5774.21",
+    "6297.50",
+    "5427.26"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0080",
+   "kurztext": "Sockel abdichten",
+   "min": "711.48",
+   "mittel": "776.09",
+   "max": "842.27",
+   "schaetzpreis": "787.92",
+   "werte": [
+    "774.52",
+    "842.27",
+    "711.48"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "02.0090",
+   "kurztext": "Drainage verlegen",
+   "min": "985.01",
+   "mittel": "1061.19",
+   "max": "1146.87",
+   "schaetzpreis": "1058.02",
+   "werte": [
+    "1051.69",
+    "1146.87",
+    "985.01"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0010",
+   "kurztext": "Innenwände mauern",
+   "min": "9660.80",
+   "mittel": "10406.33",
+   "max": "11193.27",
+   "schaetzpreis": "10354.50",
+   "werte": [
+    "10364.91",
+    "11193.27",
+    "9660.80"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0020",
+   "kurztext": "Innenputz",
+   "min": "7862.20",
+   "mittel": "8300.88",
+   "max": "8569.49",
+   "schaetzpreis": "8224.13",
+   "werte": [
+    "8470.94",
+    "8569.49",
+    "7862.20"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0030",
+   "kurztext": "Estrich einbringen",
+   "min": "1910.35",
+   "mittel": "2293.21",
+   "max": "2885.78",
+   "schaetzpreis": "1923.85",
+   "werte": [
+    "1910.35",
+    "2083.49",
+    "2885.78"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    true
+   ]
+  },
+  {
+   "oz": "03.0040",
+   "kurztext": "Wandanstrich",
+   "min": "2022.05",
+   "mittel": "2172.57",
+   "max": "2323.23",
+   "schaetzpreis": "2183.47",
+   "werte": [
+    "2172.43",
+    "2323.23",
+    "2022.05"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0050",
+   "kurztext": "Türzargen einbauen",
+   "min": "1143.93",
+   "mittel": "1216.15",
+   "max": "1260.14",
+   "schaetzpreis": "1210.50",
+   "werte": [
+    "1244.39",
+    "1260.14",
+    "1143.93"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0060",
+   "kurztext": "Sockelleiste",
+   "min": "479.56",
+   "mittel": "511.95",
+   "max": "542.59",
+   "schaetzpreis": "525.25",
+   "werte": [
+    "513.71",
+    "542.59",
+    "479.56"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0070",
+   "kurztext": "Silikonfuge",
+   "min": "121.47",
+   "mittel": "125.53",
+   "max": "129.59",
+   "schaetzpreis": "133.04",
+   "werte": [
+    "129.59",
+    null,
+    "121.47"
+   ],
+   "ausreisser": [
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "oz": "03.0080",
+   "kurztext": "Endreinigung",
+   "min": "0.00",
+   "mittel": "128.49",
+   "max": "199.53",
+   "schaetzpreis": "184.44",
+   "werte": [
+    "185.94",
+    "199.53",
+    "0.00"
+   ],
+   "ausreisser": [
+    true,
+    true,
+    true
+   ]
+  }
+ ],
+ "ausreisser": [
+  "02.0050 Bieter C",
+  "03.0030 Bieter C",
+  "03.0080 Bieter A",
+  "03.0080 Bieter B",
+  "03.0080 Bieter C"
+ ]
+}
