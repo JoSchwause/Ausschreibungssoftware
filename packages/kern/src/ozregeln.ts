@@ -146,10 +146,10 @@ export function maskeFehler(maske: OzMaske): string | null {
 }
 
 /**
- * Prüfbefunde zu einer Maske beim Anlegen eines LV. Rein und ohne Wirkung auf den Befehl: `LeistungsverzeichnisAnlegen`
- * nimmt auch eine ungültige Maske an (ein GAEB-Import darf daran nicht scheitern, U5). Der Vertrag v1 hat für einen
- * angenommenen Befehl noch keinen Ort für Befunde; ab v1.1a (Ticket 24) liefert der Befehl diese Befunde mit.
- * Regeln: allein `maskeFehler`. Schwere und Code sind eine vorläufige Annahme, Entscheidung offen: eine Warnung,
+ * Prüfbefunde zu einer Maske beim Anlegen eines LV. Rein: `LeistungsverzeichnisAnlegen` nimmt auch eine beanstandete
+ * Maske an (ein GAEB-Import darf daran nicht scheitern, U5) und liefert jeden Befund als `Befehlshinweis`
+ * `oz-maske-ungueltig` mit `feld: 'ozMaske'` (Vertrag v1.2, Ticket 30). `OzMaskeSetzen` (Handeingabe) weist eine
+ * solche Maske dagegen mit `maske-ungueltig` ab. Regeln: allein `maskeFehler`. Schwere und Code sind eine vorläufige Annahme, Entscheidung offen: eine Warnung,
  * Code `oz-maske-ungueltig`, ein Befund je Maske (der erste Fehler).
  */
 export function maskePruefen(maske: OzMaske): readonly Pruefbefund[] {

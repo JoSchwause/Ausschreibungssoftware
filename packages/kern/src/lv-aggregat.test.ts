@@ -3,8 +3,21 @@
 // ist das andere, allein aus dem ChangeSet.
 
 import { describe, expect, it } from 'vitest';
-import type { LvChangeSet, LvZustand } from '@tethys/vertrag';
-import { ZUSTAENDIGES_TICKET, changeSetUmkehren, lvBefehlAusfuehren, lvChangeSetAnwenden } from './index';
+import type {
+  LeistungsverzeichnisId,
+  LvChangeSet,
+  LvInhalt,
+  LvZustand,
+  OzMaske,
+  Position,
+} from '@tethys/vertrag';
+import {
+  ZUSTAENDIGES_TICKET,
+  changeSetUmkehren,
+  lvBefehlAusfuehren,
+  lvChangeSetAnwenden,
+  ozMaskeFehler,
+} from './index';
 import {
   LV_ID,
   PROJEKT_ID,
@@ -112,5 +125,84 @@ describe('LeistungsverzeichnisAnlegen und seine Umkehrung', () => {
     expect(lvChangeSetAnwenden(z, rueck)).toBeNull();
     expect(ohneReihenfolge(rueck)).toEqual(ohneReihenfolge(loeschen(z)));
     expect(ohneReihenfolge(changeSetUmkehren(rueck))).toEqual(ohneReihenfolge(anlegen));
+  });
+});
+
+const anlegen = (z: Partial<LvInhalt> = {}, lvId: string = LV_ID) =>
+  lvBefehlAusfuehren(null, {
+    art: 'LeistungsverzeichnisAnlegen',
+    id: lvId as LeistungsverzeichnisId,
+    projektId: PROJEKT_ID,
+    inhalt: { ...inhalt([]), ...z },
+  });
+
+describe('LeistungsverzeichnisAnlegen: Wurzel (Punkt 5)', () => {
+  it('inhalt.wurzelId weicht von id ab: ungueltige-eingabe, feld inhalt.wurzelId', () => {
+    const e = anlegen({}, 'lv-anders');
+    expect(e.ok).toBe(false);
+    if (!e.ok) {
+      expect(e.fehler.code).toBe('ungueltige-eingabe');
+      expect(e.fehler.feld).toBe('inhalt.wurzelId');
+    }
+  });
+
+  it('ein Knoten der obersten Ebene mit anderer elternId wird von den Baumregeln abgewiesen', () => {
+    const e = anlegen({ knoten: [posKnoten('P1', 'lv-anders', 0, null, null)] });
+    expect(e.ok).toBe(false);
+    if (!e.ok) {
+      expect(e.fehler.code).toBe('eltern-unbekannt');
+      expect(e.fehler.knotenId).toBe('P1');
+    }
+  });
+});
+
+describe('LeistungsverzeichnisAnlegen: Maskenbefund (Punkt 9)', () => {
+  const zuLang: OzMaske = {
+    gliederung: Array.from({ length: 5 }, () => ({ laenge: 2, zeichen: 'numerisch' as const })),
+    position: { laenge: 4, zeichen: 'numerisch' },
+    index: { laenge: 1, zeichen: 'alphanumerisch' },
+    trennzeichen: '.',
+  };
+
+  it('eine beanstandete Maske wird angenommen; der Befund kommt als Hinweis oz-maske-ungueltig', () => {
+    const cs = erwarteOk(anlegen({ ozMaske: zuLang }));
+    expect(cs.kopf?.nachher?.ozMaske).toEqual(zuLang);
+    expect(cs.hinweise).toEqual([
+      { code: 'oz-maske-ungueltig', meldung: ozMaskeFehler(zuLang), feld: 'ozMaske' },
+    ]);
+    expect(cs.hinweise?.[0]?.meldung).toMatch(/15/);
+  });
+
+  it('eine gültige Maske: kein Hinweis', () => {
+    expect(erwarteOk(anlegen()).hinweise).toBeUndefined();
+  });
+
+  it('OzMaskeSetzen weist dieselbe Maske weiter ab (Handeingabe)', () => {
+    const e = lvBefehlAusfuehren(lvMit([]), { art: 'OzMaskeSetzen', maske: zuLang });
+    expect(e.ok).toBe(false);
+    if (!e.ok) expect(e.fehler.code).toBe('maske-ungueltig');
+  });
+});
+
+describe('LeistungsverzeichnisAnlegen: leere Einheit (Punkt 10)', () => {
+  it("'' als Einheit an Position und Unterbeschreibung landet als null; Leerzeichen bleiben Text", () => {
+    const p1 = posKnoten('P1', LV_ID, 0, '1.000', '2.000', { einheit: '' });
+    const p2: Position = {
+      ...posKnoten('P2', LV_ID, 1, null, null, { einheit: ' ' }),
+      leitbeschreibung: {
+        unterbeschreibungen: [
+          { nummer: '01', kurztext: 'a', langtext: [], menge: null, einheit: '' },
+          { nummer: '02', kurztext: 'b', langtext: [], menge: null, einheit: 'm' },
+        ],
+      },
+    };
+    const z = anwenden(null, erwarteOk(anlegen({ knoten: [p1, p2] })));
+    const [k1, k2] = z.leistungsverzeichnis.knoten;
+    expect(k1?.art === 'position' && k1.einheit).toBeNull();
+    expect(k2?.art === 'position' && k2.einheit).toBe(' ');
+    expect(k2?.art === 'position' && k2.leitbeschreibung?.unterbeschreibungen.map((u) => u.einheit)).toEqual([
+      null,
+      'm',
+    ]);
   });
 });

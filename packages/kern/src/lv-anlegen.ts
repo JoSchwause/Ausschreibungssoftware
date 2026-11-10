@@ -5,7 +5,7 @@
 // LeistungsverzeichnisAnlegen: leeres LV oder LV mit vollem Inhalt (GAEB-Import, Fixture).
 // Der Inhalt wird vollständig gegen die Baumregeln geprüft; das ChangeSet trägt den Kopf und alle Knoten in
 // kanonischer Reihenfolge (Eltern vor Kindern) und die vollständigen Summen des neuen LV (Ticket 07).
-// Ein Nachlass, der größer als das Netto ist, wird hier nicht abgewiesen (Import blockiert nie, U5); `NachlassSetzen` prüft ihn.
+// Ein Nachlass, der größer als das Netto ist, wird nie abgewiesen (U5, N5); das negative Netto kommt als Hinweis mit.
 
 import type {
   Befehlsfehler,
@@ -14,22 +14,49 @@ import type {
   LvChangeSet,
   LvZustand,
 } from '@tethys/vertrag';
-import { ok } from './fehler';
+import { positionMitEinheiten } from './einheit';
+import { nein, ok } from './fehler';
+import { befehlshinweis, nettoHinweise } from './hinweise';
+import { maskePruefen } from './ozregeln';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
-import { kanonisch, ohneKnoten } from './struktur';
+import { kanonisch, ohneKnoten, ohneWurzel } from './struktur';
 import { LEERES_SUMMENVORHER, summenBerechnen, summenDerKnoten } from './summen';
 
+/**
+ * Prüft und legt an. Ticket 30: `inhalt.wurzelId` muss `id` sein (`ungueltige-eingabe`, `feld: 'inhalt.wurzelId'`);
+ * Knoten der obersten Ebene mit anderer `elternId` weisen die Baumregeln ab. `''` als Einheit wird `null` (v1.2). Eine
+ * Maske, die `maskeFehler` beanstandet, wird angenommen (U5, GAEB-Import) und als Hinweis `oz-maske-ungueltig`
+ * gemeldet; ein negatives Netto nach Nachlass als Hinweis `netto-nach-nachlass-negativ`.
+ */
 export function leistungsverzeichnisAnlegen(
   b: LeistungsverzeichnisAnlegen,
 ): Ergebnis<LvChangeSet, Befehlsfehler> {
   const { inhalt } = b;
+  if (inhalt.wurzelId !== b.id) {
+    return nein(
+      'ungueltige-eingabe',
+      `inhalt.wurzelId (${String(inhalt.wurzelId)}) weicht von der Kennung des LV (${b.id}) ab.`,
+      undefined,
+      'inhalt.wurzelId',
+    );
+  }
   const kopfFehler = inhaltKopfFehler(inhalt);
   if (kopfFehler) return { ok: false, fehler: kopfFehler };
   const [erster] = baumfehler(b.id, inhalt.knoten);
   if (erster) return { ok: false, fehler: erster };
-  const stamm = ohneKnoten(inhalt);
-  const knoten = kanonisch(b.id, inhalt.knoten);
+  // Die Wurzel ist die Kennung des LV und kein Feld des Kopfs (`LvKopf` hat keine `wurzelId`).
+  const stamm = ohneWurzel(ohneKnoten(inhalt));
+  const knoten = kanonisch(
+    b.id,
+    inhalt.knoten.map((k) => (k.art === 'position' ? positionMitEinheiten(k) : k)),
+  );
   const summen = summenBerechnen({ id: b.id, knoten, nachlass: inhalt.nachlass, mwstSatz: inhalt.mwstSatz });
+  const hinweise = [
+    ...maskePruefen(inhalt.ozMaske).map((p) =>
+      befehlshinweis('oz-maske-ungueltig', p.meldung, undefined, 'ozMaske'),
+    ),
+    ...nettoHinweise(summen.gesamt),
+  ];
   return ok({
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: b.id,
@@ -41,6 +68,7 @@ export function leistungsverzeichnisAnlegen(
       gesamt: summen.gesamt,
       vorher: LEERES_SUMMENVORHER,
     },
+    ...(hinweise.length === 0 ? {} : { hinweise }),
   });
 }
 

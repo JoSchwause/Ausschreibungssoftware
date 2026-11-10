@@ -19,6 +19,7 @@ import type {
   Summenaenderung,
   Summenstand,
 } from '@tethys/vertrag';
+import { nettoHinweise } from './hinweise';
 import { kanonisch, ohneKnoten } from './struktur';
 import {
   LEERES_SUMMENVORHER,
@@ -133,7 +134,7 @@ export interface ChangeSetTeile {
 export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet {
   const entfernt = teile.entfernt ?? [];
   const s = teile.summen ?? LEERE_SUMMENAENDERUNG;
-  const hinweise = teile.hinweise ?? [];
+  const hinweise = [...(teile.hinweise ?? []), ...nettoHinweise(s.gesamt)];
   return {
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: z.leistungsverzeichnis.id,
