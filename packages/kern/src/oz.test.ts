@@ -859,3 +859,56 @@ describe('PositionAnlegen und GliederungAnlegen vergeben keine OZ', () => {
     expect(ozVon(ohne, 'PO')).toBeNull();
   });
 });
+
+describe('GliederungAnlegen mit OZ (Ticket 30, Punkt 6)', () => {
+  const z = mitMaske(MASKE_STANDARD, beispielbaum());
+  const anlegen = (oz: string | null | undefined, eltern: string = LV_ID): LvBefehl => ({
+    art: 'GliederungAnlegen',
+    id: id.titel('TN'),
+    gliederungsart: 'titel',
+    ort: { art: 'ende', elternId: id.eltern(eltern) },
+    kurztext: 'Neu',
+    ...(oz === undefined ? {} : { ordnungszahl: oz as Ordnungszahl | null }),
+  });
+
+  it('eine gültige OZ wird übernommen; fehlt sie oder ist sie null: null', () => {
+    expect(ozVon(wende(z, anlegen('03')), 'TN')).toBe('03');
+    expect(ozVon(wende(z, anlegen('01.05', 'T1')), 'TN')).toBe('01.05');
+    expect(ozVon(wende(z, anlegen(null)), 'TN')).toBeNull();
+    expect(ozVon(wende(z, anlegen(undefined)), 'TN')).toBeNull();
+  });
+
+  it('doppelte OZ ist bei der Handeingabe erlaubt (F2, U5)', () => {
+    const z1 = wende(z, {
+      art: 'OrdnungszahlSetzen',
+      knotenId: id.titel('T1') as never,
+      ordnungszahl: '01' as Ordnungszahl,
+      ozIndex: null,
+    });
+    expect(ozVon(wende(z1, anlegen('01')), 'TN')).toBe('01');
+  });
+
+  it.each([
+    ['falsche Stellenzahl', '1', LV_ID],
+    ['Buchstabe in numerischer Stufe', 'a1', LV_ID],
+    ['Stufe nur aus Nullen', '00', LV_ID],
+    ['zu wenige Teile für Stufe 2', '05', 'T1'],
+    ['tiefer als die Maske', '01.01.01', 'T11'],
+  ])('ungültig wie bei OrdnungszahlSetzen (%s): oz-ungueltig, feld ordnungszahl', (_name, oz, eltern) => {
+    const f = fehlerVon(z, anlegen(oz, eltern));
+    expect(f.code).toBe('oz-ungueltig');
+    expect(f.knotenId).toBe('TN');
+    expect(f.feld).toBe('ordnungszahl');
+    if (eltern === 'T11') return; // dort lässt sich kein Titel ohne OZ anlegen und dann setzen (Ebenen der Maske)
+    // Dieselbe OZ am selben Ort von Hand gesetzt: derselbe Code und dieselbe Meldung.
+    const mitTitel = wende(z, anlegen(null, eltern));
+    const g = fehlerVon(mitTitel, {
+      art: 'OrdnungszahlSetzen',
+      knotenId: id.titel('TN') as never,
+      ordnungszahl: oz as Ordnungszahl,
+      ozIndex: null,
+    });
+    expect(g.code).toBe(f.code);
+    expect(g.meldung).toBe(f.meldung);
+  });
+});

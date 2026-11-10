@@ -251,6 +251,37 @@ export function ozMaskeSetzen(z: LvZustand, b: OzMaskeSetzen): Antwort {
 }
 
 /**
+ * Prüft eine von Hand eingegebene OZ samt Index an einem Knoten der Art `art` in Stufe `stufe` gegen die Maske
+ * (`OrdnungszahlSetzen`, `GliederungAnlegen`): Fehlerwert `oz-ungueltig` mit dem Feld (`ordnungszahl` oder `ozIndex`)
+ * oder `null`. Eindeutigkeit wird nicht geprüft (U5, F2). `stufe`: bei einer Gliederung ihre eigene Stufe, bei einer
+ * Position die Zahl der Stufen darüber.
+ */
+export function handOzFehler(
+  maske: OzMaske,
+  art: 'los' | 'titel' | 'position',
+  stufe: number,
+  ordnungszahl: Ordnungszahl | null,
+  ozIndex: string | null,
+  knotenId: string,
+): Befehlsfehler | null {
+  const fehler = (meldung: string, feld: string): Befehlsfehler => {
+    const e = nein('oz-ungueltig', meldung, knotenId, feld);
+    if (e.ok) throw new Error('unerreichbar');
+    return e.fehler;
+  };
+  const gliederung = art !== 'position';
+  const ozArt = gliederung ? 'gliederung' : 'position';
+  const index = gliederung ? null : ozIndex;
+  if (ozIndex !== null && gliederung) return fehler('Eine Gliederung hat keinen Index.', 'ozIndex');
+  if (ordnungszahl === null) {
+    return ozIndex === null ? null : fehler('Ein Index braucht eine OZ.', 'ozIndex');
+  }
+  const f = ozFehler(maske, ordnungszahl, index, ozArt, stufe);
+  if (f === null) return null;
+  return fehler(f, indexFehler(maske, ozArt, index) === null ? 'ordnungszahl' : 'ozIndex');
+}
+
+/**
  * `OrdnungszahlSetzen`: Handeingabe von OZ und Index an einer Gliederung oder Position, geprüft gegen die Maske
  * (Zeichen, Teilzahl, Teillängen, Gesamtlänge, Index). Eindeutigkeit wird NICHT erzwungen (U5, `doppelteOrdnungszahlen`),
  * ebenso nicht der Zusammenhang mit der OZ der Eltern. `null` löscht die OZ (dann ohne Index).
@@ -264,21 +295,9 @@ export function ordnungszahlSetzen(z: LvZustand, b: OrdnungszahlSetzen): Antwort
     return nein('knotenart-unzulaessig', 'Ein Hinweistext trägt keine Ordnungszahl.', k.id);
   }
   const gliederung = k.art !== 'position';
-  const art = gliederung ? 'gliederung' : 'position';
   const stufe = ebenenBis(idx, k.elternId) + (gliederung ? ebenenbeitrag(k.art) : 0);
-  const index = gliederung ? null : b.ozIndex;
-  if (b.ozIndex !== null && gliederung) {
-    return nein('oz-ungueltig', 'Eine Gliederung hat keinen Index.', k.id, 'ozIndex');
-  }
-  if (b.ordnungszahl === null) {
-    if (b.ozIndex !== null) return nein('oz-ungueltig', 'Ein Index braucht eine OZ.', k.id, 'ozIndex');
-  } else {
-    const f = ozFehler(lv.ozMaske, b.ordnungszahl, index, art, stufe);
-    if (f !== null) {
-      const feld = indexFehler(lv.ozMaske, art, index) === null ? 'ordnungszahl' : 'ozIndex';
-      return nein('oz-ungueltig', f, k.id, feld);
-    }
-  }
+  const f = handOzFehler(lv.ozMaske, k.art, stufe, b.ordnungszahl, b.ozIndex, k.id);
+  if (f !== null) return { ok: false, fehler: f };
   const nachher: Knoten =
     k.art === 'position'
       ? { ...k, ordnungszahl: b.ordnungszahl, ozIndex: b.ozIndex }

@@ -34,6 +34,7 @@ import type {
 } from '@tethys/vertrag';
 import { LEERE_SUMMENAENDERUNG, baueChangeSet } from './changeset';
 import { positionMitEinheiten } from './einheit';
+import { handOzFehler } from './oz-befehle';
 import { nein, ok } from './fehler';
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
@@ -149,7 +150,7 @@ function einfuegenChangeSet(
 }
 
 export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSetErgebnis {
-  const feld = unerlaubtesFeld(b, 'gliederung', ['gliederungsart', 'ort']);
+  const feld = unerlaubtesFeld(b, 'gliederung', ['gliederungsart', 'ort']); // `ordnungszahl` ist erlaubt
   if (feld !== null) {
     return nein('ungueltige-eingabe', `Feld „${feld}“ ist an einer Gliederung nicht zulässig.`, b.id, feld);
   }
@@ -159,6 +160,17 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
   }
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, b.gliederungsart);
   if (!ziel.ok) return ziel;
+  // Ticket 30: eine mitgebrachte OZ wird wie bei `OrdnungszahlSetzen` geprüft (doppelt ist erlaubt, F2).
+  const ordnungszahl = b.ordnungszahl ?? null;
+  const ozFehlerwert = handOzFehler(
+    z.leistungsverzeichnis.ozMaske,
+    b.gliederungsart,
+    ebenenBis(idx, ziel.wert.elternId) + ebenenbeitrag(b.gliederungsart),
+    ordnungszahl,
+    null,
+    b.id,
+  );
+  if (ozFehlerwert !== null) return { ok: false, fehler: ozFehlerwert };
   return ok(
     einfuegenChangeSet(
       z,
@@ -171,7 +183,7 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
               id: b.id as LosId,
               elternId: t.elternId as ElternId,
               reihenfolge: t.index,
-              ordnungszahl: null,
+              ordnungszahl,
               kurztext: b.kurztext,
             }
           : {
@@ -179,7 +191,7 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
               id: b.id as TitelId,
               elternId: t.elternId as ElternId,
               reihenfolge: t.index,
-              ordnungszahl: null,
+              ordnungszahl,
               kurztext: b.kurztext,
             },
       (neu) =>
