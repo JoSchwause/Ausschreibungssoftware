@@ -238,17 +238,19 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 
     it('jede Position hat eine Ordnungszahl, Wurzel-Eltern sind die Wurzel-ID', () => {
       expect(positionen(l).every((p) => p.ordnungszahl !== null)).toBe(true);
+      expect('wurzelId' in l).toBe(false);
+      expect(l.inhalt?.wurzelId).toBe('lv-0001');
       const ids = new Set(knoten(l).map((k) => k.id as string));
       const lose = knoten(l).filter((k) => !ids.has(k.elternId));
       expect(lose.length).toBeGreaterThan(0);
-      expect(lose.every((k) => k.elternId === l.wurzelId)).toBe(true);
+      expect(lose.every((k) => k.elternId === l.inhalt?.wurzelId)).toBe(true);
     });
   });
 
   it('Eltern stehen vor Kindern, Reihenfolge ist je Eltern dicht 0..n-1', () => {
     for (const { pfad } of AMTLICH) {
       const l = lies(lesePfad(pfad));
-      const gesehen = new Set<string>([l.wurzelId as string]);
+      const gesehen = new Set<string>([l.inhalt?.wurzelId as string]);
       const proEltern = new Map<string, number[]>();
       for (const k of knoten(l)) {
         expect(gesehen.has(k.elternId)).toBe(true);
@@ -265,9 +267,9 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 describe('Version 3.1 und andere Phasen', () => {
   const dateien31 = readdirSync(join(HIER, '..', '..', '..', 'fixtures/extern/gaeb/3.1-musterdateien'));
   for (const d of dateien31) {
-    it(`3.1 ${d}: kein Absturz, Version nicht unterstützt, kein Inhalt`, () => {
+    it(`3.1 ${d}: kein Absturz, Version 3.1 nicht unterstützt, kein Inhalt`, () => {
       const l = lies(lesePfad(`fixtures/extern/gaeb/3.1-musterdateien/${d}`), d);
-      expect(l.version).toBeNull();
+      expect(l.version).toBe('3.1');
       expect(l.inhalt).toBeNull();
       const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
       expect(b?.schwere).toBe('fehler');

@@ -54,7 +54,7 @@ describe('Los als oberste Gliederungsstufe (Fachdokumentation 3.3, 4.2.1)', () =
       '1.01',
       '1.01.0010',
     ]);
-    expect(knoten(l)[0]?.elternId).toBe(l.wurzelId);
+    expect(knoten(l)[0]?.elternId).toBe(l.inhalt?.wurzelId);
     expect(codes(l)).not.toContain('gliederung-zu-tief');
   });
 
@@ -144,8 +144,8 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
     const ids = new Set(alle.map((k) => k.id as string));
     expect(ids.size).toBe(alle.length);
     for (const k of alle) {
-      expect(k.elternId === l.wurzelId || ids.has(k.elternId)).toBe(true);
-      if (k.art === 'los') expect(k.elternId).toBe(l.wurzelId);
+      expect(k.elternId === l.inhalt?.wurzelId || ids.has(k.elternId)).toBe(true);
+      if (k.art === 'los') expect(k.elternId).toBe(l.inhalt?.wurzelId);
       if (k.art === 'position' && bezugVon(k) !== null) {
         expect(bezugVon(k)).not.toBe(k.id);
         expect(ids.has(bezugVon(k) ?? '')).toBe(true);

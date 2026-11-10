@@ -53,10 +53,11 @@ export interface LeseOptionen {
   readonly trennzeichen?: string | null;
 }
 
-/** `GaebLesung` plus die Wurzelkennung, unter der die obersten Knoten hängen (`elternId` der Ebene 1). */
-export interface GaebLesungErgebnis extends GaebLesung {
-  readonly wurzelId: LeistungsverzeichnisId | null;
-}
+/**
+ * Ergebnis des Lesers. Die Wurzelkennung, unter der die obersten Knoten hängen, steht seit v1.1a nur noch in
+ * `inhalt.wurzelId`.
+ */
+export type GaebLesungErgebnis = GaebLesung;
 
 /** E-19: MwSt-Satz, wenn der Aufrufer keinen liefert (X81/X83 tragen keinen). */
 export const STANDARD_MWST_SATZ = '19.00' as Prozent;
@@ -992,7 +993,7 @@ function baueInhalt(
   root: XmlElement,
   opt: LeseOptionen,
   l: Leser,
-): { inhalt: LvInhalt; wurzelId: LeistungsverzeichnisId } | null {
+): LvInhalt | null {
   const award = kind(root, 'Award');
   const boq = kind(award, 'BoQ');
   if (!award || !boq) {
@@ -1044,11 +1045,7 @@ function baueInhalt(
       { feld: 'mwstSatz' },
     );
   }
-  return {
-    // v1.1a: mechanisch angepasst, Folgeticket (gaeb: `wurzelId` nur noch in `inhalt`)
-    inhalt: { name, ozMaske: maske, mwstSatz, nachlass: null, knoten: aufbau.knoten, wurzelId },
-    wurzelId,
-  };
+  return { name, ozMaske: maske, mwstSatz, nachlass: null, wurzelId, knoten: aufbau.knoten };
 }
 
 // --- Einstieg -----------------------------------------------------------------------------------------------
@@ -1066,8 +1063,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
     version: GaebLesung['version'],
     befunde: readonly Pruefbefund[],
     inhalt: LvInhalt | null = null,
-    wurzelId: LeistungsverzeichnisId | null = null,
-  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde], wurzelId });
+  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde] });
 
   const groesse = eingabe.length;
   const maxBytes = opt.maxBytes ?? STANDARD_MAX_BYTES;
@@ -1137,5 +1133,5 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
 
   const gebaut = baueInhalt(root, opt, l);
   l.abschliessen();
-  return ergebnis(erk.phase, erk.version, l.befunde, gebaut?.inhalt ?? null, gebaut?.wurzelId ?? null);
+  return ergebnis(erk.phase, erk.version, l.befunde, gebaut);
 }
