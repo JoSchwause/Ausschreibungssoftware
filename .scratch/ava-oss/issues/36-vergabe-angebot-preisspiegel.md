@@ -1,6 +1,6 @@
 # 36: Bieter, Angebot (Angebotsbefehle ausführen), Bietersummen, Preisspiegel-Rechnung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: V1+V2 · Paket: `packages/vergabe` (neu)
 Blocked by: - (der Mittelwert braucht `dividiere` aus Ticket 35, Punkt 1; bis dieser Commit im Integrationsbranch ist, zuerst Punkt 1–4)
