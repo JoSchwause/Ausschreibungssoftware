@@ -29,12 +29,7 @@ import {
   listeProjekte,
 } from './lesen';
 import { migriere, MIGRATIONEN, type Migration } from './migrationen';
-import {
-  baueProjektdatei,
-  leseProjektdatei,
-  projektdateiInAlterForm,
-  schreibeProjektdatei,
-} from './projektdatei';
+import { baueProjektdatei, leseProjektdatei, schreibeProjektdatei } from './projektdatei';
 import {
   schreibeProtokolleintrag,
   wendeAngebotAn,
@@ -189,13 +184,7 @@ export class SpeicherKern {
   projektdateiExportieren(projektId: ProjektId): Ergebnis<string, Speicherfehler> {
     return this.#fange(() =>
       kanonischesJson(
-        projektdateiInAlterForm(
-          baueProjektdatei(
-            this.#db,
-            projektId,
-            this.#migrationen[this.#migrationen.length - 1]?.version ?? 0,
-          ),
-        ), // // v1.1b: mechanisch angepasst, Folgeticket
+        baueProjektdatei(this.#db, projektId, this.#migrationen[this.#migrationen.length - 1]?.version ?? 0),
       ),
     );
   }

@@ -30,10 +30,12 @@ import { abbruch } from './ergebnis';
 import type { Datenbank } from './sql';
 import {
   angebotspositionAusZeile,
+  ausweisAusZeile,
   bieterId,
   gesamtAusZeile,
   gliederungId,
   knotenAusZeile,
+  kopfdatenAusZeile,
   lvId,
   maskeAusZeile,
   nachlassAusZeile,
@@ -86,6 +88,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as LvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 
@@ -132,7 +135,11 @@ export function leseSummen(db: Datenbank, aggregatId: string): Summenstand | nul
       })),
     gliederungen: db
       .zeilen('SELECT * FROM summe_gliederung WHERE aggregat_id = ? ORDER BY gliederung_id', [aggregatId])
-      .map((z) => ({ gliederungId: gliederungId(z, 'gliederung_id'), summe: text(z, 'summe') as Betrag })),
+      .map((z) => ({
+        gliederungId: gliederungId(z, 'gliederung_id'),
+        summe: text(z, 'summe') as Betrag,
+        ...ausweisAusZeile(z),
+      })),
     gesamt: gesamtAusZeile(gesamt),
   };
 }
@@ -220,6 +227,7 @@ export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichn
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as AuftragsLvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 

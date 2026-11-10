@@ -7,8 +7,7 @@ import { readFileSync } from 'node:fs';
 import type { ProjektId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { kanonischesJson } from './kanonisch';
-import type { Migration } from './migrationen';
-import { SCHEMA_VERSION } from './migrationen';
+import { MIGRATIONEN, SCHEMA_VERSION, type Migration } from './migrationen';
 import { leseProjektdatei } from './projektdatei';
 import { anlegenSchritte, ladeFixture, normalisiere } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert, zaehle } from './testhilfe/node';
@@ -225,10 +224,11 @@ describe('Prüfung beim Import: nichts wird halb übernommen (Q5)', () => {
   });
 });
 
-describe('Dateimigrationen (Mechanismus, mit künstlichen Versionen 2 und 3)', () => {
+describe('Dateimigrationen (Mechanismus, mit den echten Versionen 1 und 2 und künstlichen 3 und 4)', () => {
   const original = readFileSync(new URL('../fixtures/projektdatei-v1.json', import.meta.url), 'utf8');
   const aufgerufen: number[] = [];
-  const v1: Migration = { version: 1, name: 'eins', hoch: () => undefined, datei: null };
+  // Die echten Migrationen bis 2 heben die eingefrorene Datei der Version 1 in die Form, die der Dekoder liest.
+  const echt = MIGRATIONEN.filter((m) => m.version <= 2);
   const stufe = (
     version: number,
     f?: (r: Record<string, unknown>) => Record<string, unknown>,
@@ -244,29 +244,34 @@ describe('Dateimigrationen (Mechanismus, mit künstlichen Versionen 2 und 3)', (
 
   it('hebt eine Datei Version für Version auf die aktuelle und setzt die Schemaversion', () => {
     aufgerufen.length = 0;
-    const r = leseProjektdatei(original, [v1, stufe(2), stufe(3)]);
-    expect(r).toMatchObject({ ok: true, wert: { schemaVersion: 3 } });
-    expect(aufgerufen).toEqual([2, 3]);
+    const r = leseProjektdatei(original, [...echt, stufe(3), stufe(4)]);
+    expect(r).toMatchObject({ ok: true, wert: { schemaVersion: 4 } });
+    expect(aufgerufen).toEqual([3, 4]);
     aufgerufen.length = 0;
-    const schonZwei = original.replace('"schemaVersion": 1', '"schemaVersion": 2');
-    expect(leseProjektdatei(schonZwei, [v1, stufe(2), stufe(3)]).ok).toBe(true);
-    expect(aufgerufen).toEqual([3]);
+    const heben = echt[1]?.datei;
+    if (heben === undefined || heben === null) throw new Error('Dateimigration 2 fehlt');
+    const schonDrei = JSON.stringify({
+      ...heben(JSON.parse(original) as Record<string, unknown>),
+      schemaVersion: 3,
+    });
+    expect(leseProjektdatei(schonDrei, [...echt, stufe(3), stufe(4)]).ok).toBe(true);
+    expect(aufgerufen).toEqual([4]);
   });
 
   it('eine Migration darf den Inhalt umformen; das Ergebnis wird streng gegen die aktuelle Form geprüft', () => {
     const r = leseProjektdatei(original, [
-      v1,
-      stufe(2, (roh) => ({ ...roh, projekt: { ...(roh['projekt'] as object), name: 'Hochgestuft' } })),
+      ...echt,
+      stufe(3, (roh) => ({ ...roh, projekt: { ...(roh['projekt'] as object), name: 'Hochgestuft' } })),
     ]);
     expect(r).toMatchObject({ ok: true, wert: { projekt: { name: 'Hochgestuft' } } });
-    const kaputt = leseProjektdatei(original, [v1, stufe(2, (roh) => ({ ...roh, zusatz: true }))]);
+    const kaputt = leseProjektdatei(original, [...echt, stufe(3, (roh) => ({ ...roh, zusatz: true }))]);
     expect(kaputt).toMatchObject({ ok: false, fehler: { code: 'datei-ungueltig' } });
   });
 
   it('eine fehlschlagende Dateimigration ergibt migration-fehlgeschlagen', () => {
     const r = leseProjektdatei(original, [
-      v1,
-      stufe(2, () => {
+      ...echt,
+      stufe(3, () => {
         throw new Error('nein');
       }),
     ]);
@@ -274,7 +279,10 @@ describe('Dateimigrationen (Mechanismus, mit künstlichen Versionen 2 und 3)', (
   });
 
   it('eine Datei neuer als die bekannte Reihe ergibt schema-zu-neu', () => {
-    const r = leseProjektdatei(original.replace('"schemaVersion": 1', '"schemaVersion": 5'), [v1, stufe(2)]);
+    const r = leseProjektdatei(original.replace('"schemaVersion": 1', '"schemaVersion": 5'), [
+      ...echt,
+      stufe(3),
+    ]);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'schema-zu-neu' } });
   });
 });

@@ -43,12 +43,11 @@ import {
 } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
 import {
-  angebotspositionZuBindung,
+  angebotspositionWerte,
   KNOTEN_SPALTEN,
   knotenZuBindung,
+  kopfdatenSpalten,
   nachlassSpalten,
-  pruefeKopfdaten,
-  pruefeSummenfelder,
 } from './zeilen';
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
@@ -128,9 +127,9 @@ function schreibeBieter(db: Datenbank, p: Projekt): void {
 
 /**
  * Projekt anlegen, ändern oder löschen. Beim Löschen (v1.1a) gehen die Bieter und das Befehlsprotokoll des Projekts
- * mit: `protokoll.projekt_id` verweist auf das Projekt (Schema 1). Der Eintrag des Löschbefehls selbst wird deshalb
- * nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt, dem er gehört. Das ist die einzige
- * Ausnahme von „ein Eintrag je Befehl“ (D-31.1); löst Schema 2 den Fremdschlüssel (Ticket 38), kann sie entfallen.
+ * mit: `protokoll.projekt_id` verweist auf das Projekt (seit Schema 1; Schema 2 lässt das so, Ticket 38). Der Eintrag
+ * des Löschbefehls selbst wird deshalb nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt,
+ * dem er gehört. Das ist die einzige Ausnahme von „ein Eintrag je Befehl“ (D-31.1).
  * LVs, Angebote und Auftrags-LV verhindern das Löschen (`konflikt`).
  */
 export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
@@ -265,17 +264,27 @@ function pruefeBaum(db: Datenbank, aggregatId: string): void {
 
 function schreibeGesamt(db: Datenbank, aggregatId: string, g: Gesamtsummen): void {
   db.ausfuehren(
-    `INSERT INTO summe_gesamt (aggregat_id, netto, nachlass, netto_nach_nachlass, mwst, brutto)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO summe_gesamt (aggregat_id, netto, nachlass, netto_nach_nachlass, mwst, brutto, summe_bedarf_ohne_gb,
+       summe_wahl)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (aggregat_id) DO UPDATE SET netto = excluded.netto, nachlass = excluded.nachlass,
-       netto_nach_nachlass = excluded.netto_nach_nachlass, mwst = excluded.mwst, brutto = excluded.brutto`,
-    [aggregatId, g.netto, g.nachlass, g.nettoNachNachlass, g.mwst, g.brutto],
+       netto_nach_nachlass = excluded.netto_nach_nachlass, mwst = excluded.mwst, brutto = excluded.brutto,
+       summe_bedarf_ohne_gb = excluded.summe_bedarf_ohne_gb, summe_wahl = excluded.summe_wahl`,
+    [
+      aggregatId,
+      g.netto,
+      g.nachlass,
+      g.nettoNachNachlass,
+      g.mwst,
+      g.brutto,
+      g.summeBedarfOhneGesamtbetrag ?? null,
+      g.summeWahl ?? null,
+    ],
   );
 }
 
 /** Überschreibt die gelisteten Summen. Es wird nichts berechnet oder geprüft. */
 function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): void {
-  pruefeSummenfelder(aggregatId, s); // // v1.1b: mechanisch angepasst, Folgeticket
   db.stapel(
     `INSERT INTO summe_position (aggregat_id, position_id, gesamtpreis, geht_in_summe) VALUES (?, ?, ?, ?)
      ON CONFLICT (aggregat_id, position_id) DO UPDATE SET gesamtpreis = excluded.gesamtpreis,
@@ -283,9 +292,17 @@ function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): v
     s.positionen.map((p): SqlWert[] => [aggregatId, p.positionId, p.gesamtpreis, p.gehtInSummeEin ? 1 : 0]),
   );
   db.stapel(
-    `INSERT INTO summe_gliederung (aggregat_id, gliederung_id, summe) VALUES (?, ?, ?)
-     ON CONFLICT (aggregat_id, gliederung_id) DO UPDATE SET summe = excluded.summe`,
-    s.gliederungen.map((g): SqlWert[] => [aggregatId, g.gliederungId, g.summe]),
+    `INSERT INTO summe_gliederung (aggregat_id, gliederung_id, summe, summe_bedarf_ohne_gb, summe_wahl)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (aggregat_id, gliederung_id) DO UPDATE SET summe = excluded.summe,
+       summe_bedarf_ohne_gb = excluded.summe_bedarf_ohne_gb, summe_wahl = excluded.summe_wahl`,
+    s.gliederungen.map((g): SqlWert[] => [
+      aggregatId,
+      g.gliederungId,
+      g.summe,
+      g.summeBedarfOhneGesamtbetrag ?? null,
+      g.summeWahl ?? null,
+    ]),
   );
   if (s.gesamt !== null) schreibeGesamt(db, aggregatId, s.gesamt);
 }
@@ -314,8 +331,8 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
       return abbruch('unbekannt', 'ChangeSet: leistungsverzeichnisId und Kopf.id weichen ab.');
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
-    pruefeKopfdaten(nachher); // // v1.1b: mechanisch angepasst, Folgeticket
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
+    const [auftraggeber, vergabeinformationen] = kopfdatenSpalten(nachher);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {
@@ -325,8 +342,9 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
         return abbruch('unbekannt', `ChangeSet für das neue LV ${id} enthält keine Gesamtsummen.`);
       }
       db.ausfuehren(
-        `INSERT INTO leistungsverzeichnis (id, projekt_id, name, oz_maske, mwst_satz, nachlass_art, nachlass_wert)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO leistungsverzeichnis (id, projekt_id, name, oz_maske, mwst_satz, nachlass_art, nachlass_wert,
+           auftraggeber, vergabeinformationen)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           nachher.projektId,
@@ -335,6 +353,8 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
           nachher.mwstSatz,
           nachlassArt,
           nachlassWert,
+          auftraggeber,
+          vergabeinformationen,
         ],
       );
     } else {
@@ -344,9 +364,19 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId):
       if (vorher.projektId !== nachher.projektId)
         return abbruch('unbekannt', 'Ein LV wechselt nicht das Projekt.');
       db.ausfuehren(
-        `UPDATE leistungsverzeichnis SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?
+        `UPDATE leistungsverzeichnis SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?,
+           auftraggeber = ?, vergabeinformationen = ?
          WHERE id = ?`,
-        [nachher.name, kanonischKompakt(nachher.ozMaske), nachher.mwstSatz, nachlassArt, nachlassWert, id],
+        [
+          nachher.name,
+          kanonischKompakt(nachher.ozMaske),
+          nachher.mwstSatz,
+          nachlassArt,
+          nachlassWert,
+          auftraggeber,
+          vergabeinformationen,
+          id,
+        ],
       );
     }
   }
@@ -413,11 +443,6 @@ function pruefeAngebotsposition(db: Datenbank, lvId: string, positionId: string)
 
 export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: ProjektId): void {
   const id = cs.angebotId;
-  // v1.2: mechanisch angepasst, Folgeticket (Zuschlagssatz des Bieters ablegen: Ticket 38; laut abweisen, Q5)
-  const neueZeilen = [...cs.positionen.hinzugefuegt, ...cs.positionen.geaendert.map((g) => g.nachher)];
-  if (neueZeilen.some((z) => z.status === 'angeboten' && z.zuschlagssatz !== undefined)) {
-    return abbruch('unbekannt', 'Den Zuschlagssatz des Bieters legt speicher noch nicht ab (Ticket 38).');
-  }
   const gespeichert = leseAngebotKopf(db, id);
   let lvId: string;
   if (cs.kopf === null) {
@@ -439,7 +464,6 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     if (lv === null) return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
     if (lv.projektId !== projektId)
       return abbruch('unbekannt', `LV ${lvId} gehört zu einem anderen Projekt.`);
-    pruefeKopfdaten(nachher); // // v1.1b: mechanisch angepasst, Folgeticket
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`Angebot ${id} existiert bereits, das ChangeSet`);
@@ -499,15 +523,14 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     p.entfernt.map((e) => schluessel(e.positionId)),
   );
   db.stapel(
-    'UPDATE angebotsposition SET status = ?, einheitspreis = ?, epa = ? WHERE angebot_id = ? AND position_id = ?',
-    p.geaendert.map(({ nachher }): SqlWert[] => {
-      const b = angebotspositionZuBindung(id, nachher);
-      return [b[2] ?? null, b[3] ?? null, b[4] ?? null, id, nachher.positionId];
-    }),
+    `UPDATE angebotsposition SET status = ?, einheitspreis = ?, epa = ?, zuschlagssatz = ?
+     WHERE angebot_id = ? AND position_id = ?`,
+    p.geaendert.map(({ nachher }): SqlWert[] => [...angebotspositionWerte(nachher), id, nachher.positionId]),
   );
   db.stapel(
-    'INSERT INTO angebotsposition (angebot_id, position_id, status, einheitspreis, epa) VALUES (?, ?, ?, ?, ?)',
-    p.hinzugefuegt.map((n) => angebotspositionZuBindung(id, n)),
+    `INSERT INTO angebotsposition (angebot_id, position_id, status, einheitspreis, epa, zuschlagssatz)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    p.hinzugefuegt.map((n): SqlWert[] => [id, n.positionId, ...angebotspositionWerte(n)]),
   );
   wendeSummenAn(db, id, cs.summen);
 }
@@ -578,8 +601,8 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
       return abbruch('unbekannt', 'ChangeSet: auftragsLeistungsverzeichnisId und Kopf.id weichen ab.');
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
-    pruefeKopfdaten(nachher); // // v1.1b: mechanisch angepasst, Folgeticket
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
+    const [auftraggeber, vergabeinformationen] = kopfdatenSpalten(nachher);
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`Auftrags-LV ${id} existiert bereits, das ChangeSet`);
       const lv = leseLvKopf(db, nachher.leistungsverzeichnisId);
@@ -603,7 +626,7 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
       }
       db.ausfuehren(
         `INSERT INTO auftrags_lv (id, projekt_id, leistungsverzeichnis_id, angebot_id, name, oz_maske, mwst_satz,
-           nachlass_art, nachlass_wert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           nachlass_art, nachlass_wert, auftraggeber, vergabeinformationen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           projektId,
@@ -614,6 +637,8 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
           nachher.mwstSatz,
           nachlassArt,
           nachlassWert,
+          auftraggeber,
+          vergabeinformationen,
         ],
       );
     } else {
@@ -627,9 +652,19 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
         return abbruch('unbekannt', 'Ein Auftrags-LV wechselt weder Projekt noch LV noch Angebot.');
       }
       db.ausfuehren(
-        `UPDATE auftrags_lv SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?
+        `UPDATE auftrags_lv SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?,
+           auftraggeber = ?, vergabeinformationen = ?
          WHERE id = ?`,
-        [nachher.name, kanonischKompakt(nachher.ozMaske), nachher.mwstSatz, nachlassArt, nachlassWert, id],
+        [
+          nachher.name,
+          kanonischKompakt(nachher.ozMaske),
+          nachher.mwstSatz,
+          nachlassArt,
+          nachlassWert,
+          auftraggeber,
+          vergabeinformationen,
+          id,
+        ],
       );
     }
   }
