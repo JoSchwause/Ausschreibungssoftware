@@ -1,6 +1,6 @@
 # 38: Speicher: Projektliste und Projektdatei, Migration auf Schema 2 (S2)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: S (S2) · Paket: `packages/speicher`
 Blocked by: 31, 29
