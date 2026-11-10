@@ -162,3 +162,10 @@ Decision: Die Umkehrung trägt keine Hinweise; ein ChangeSet ohne `summen.vorher
 Reason: Hinweise sind flüchtig (Vertrag); kein stilles Falsch (Q5); Validierung blockiert den Import nie (U5); Kopf gleich `LvKopf`, damit `speicher` ihn exakt vergleicht (D-31.2).
 Reversible: yes  Touches: packages/kern (mechanisch: Testhilfen in vergabe und ausgabe)
 
+
+## D-40.1 GAEB-Writer: was das Ticket offen lässt
+Welle 3 · Ticket 40 · decided by: implementer
+Question: Pflichtteile von X86 ohne Gegenstück im Modell (Auftragnehmer, Satz der Altform), Form des X83 ohne Menge, Schemastellen ohne Platz für einen Langtext-Baustein, Lesen von `LblBoQ`.
+Decision: `CTR`/`OWN` in X86 mit leerer Adresse und Warnung; Altform-Zuschlag in X86 als Position ohne Bezug (Warnung), in X81/X83 wie im Ticket; X83 ohne Menge schreibt `QtyTBD`; zusätzliche Optionen `zuschlagsbasen` und `auftragnehmer`; Leser nimmt `LblBoQ`, wenn `Name` dessen Anfang ist. Einzelheiten und M2-Tabelle: Ticket 40, Comments.
+Reason: Nichts erfinden (C4), nichts still verlieren (Q5), Exporte der Fixtures bleiben schemagültig und ohne Entwurf.
+Reversible: yes  Touches: packages/gaeb
