@@ -126,3 +126,17 @@ Question: Ist v1.2 stabil genug, damit 30–32 und Phase B darauf bauen (statt P
 Decision: Ja. Opus-Reviewer: „yes-with-fixes“, vier Pflichtpunkte und fünf weitere; alle neun umgesetzt (D-12), Suite grün (938 Tests). Den Berater nicht gefragt, weil der Review keine offene Abwägung übrig ließ.
 Reason: Alle Befunde waren eindeutig lösbar; die Lösungen sind enge, umkehrbare Lesarten.
 Reversible: yes  Touches: packages/vertrag
+
+## D-31.1 Projekt löschen nimmt Protokoll und Bieter mit
+Welle 3 · Ticket 31 · decided by: implementer
+Question: `protokoll.projekt_id` verweist in Schema 1 auf `projekt`. Was geschieht beim Löschen des Projekts mit seinem Protokoll und dem Eintrag des Löschbefehls?
+Decision: Vorschlag des Tickets: Bieter und Protokoll des Projekts gehen mit, der Eintrag des Löschbefehls wird nicht geschrieben (einzige Ausnahme von „ein Eintrag je Befehl“, Kommentar an `wendeProjektAn` und `anwenden`). LVs, Angebote, Auftrags-LV verhindern das Löschen (`konflikt`).
+Reason: Keine Migration in Ticket 31; das ChangeSet bleibt allein umkehrbar (`vorher` trägt Projekt und Bieter). Alternative (Fremdschlüssel lösen, Protokoll bleibt) gehört zu Schema 2, Ticket 38.
+Reversible: yes  Touches: packages/speicher
+
+## D-31.2 Löschen verlangt den vollen gespeicherten Stand im ChangeSet
+Welle 3 · Ticket 31 · decided by: implementer
+Question: Wie streng prüft `speicher` ein Lösch-ChangeSet (LV, Angebot), das `kern` noch nicht erzeugt?
+Decision: Kopf in `vorher` gleich dem gespeicherten, alle Knoten bzw. Angebotspositionen in `entfernt` (fehlt einer: `konflikt`), `summen.vorher` falls gesetzt gleich den gespeicherten Summen (sonst `konflikt`); neue Summen, hinzugefügte oder geänderte Knoten im Lösch-ChangeSet sind ein Programmfehler (`unbekannt`).
+Reason: Q5 und Umkehrbarkeit ohne Vorzustand (v1.1a): Nur so stellt die Umkehrung (Anlegen) dasselbe Aggregat wieder her. Ticket 30 muss sein Lösch-ChangeSet in dieser Form liefern (wie im Vertrag beschrieben).
+Reversible: yes  Touches: packages/speicher, Ticket 30 (Form des Lösch-ChangeSets)

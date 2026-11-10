@@ -30,6 +30,8 @@ import type {
   Knoten,
   Langtext,
   LangtextBaustein,
+  LangtextInline,
+  LangtextInnen,
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
   LosId,
@@ -49,6 +51,11 @@ import type {
   ProtokollId,
   Prozent,
   Summenstand,
+  Tabellenzeile,
+  Tabellenzelle,
+  Textbild,
+  Textfluss,
+  Textlauf,
   TitelId,
   Zahlenart,
   Zeitstempel,
@@ -153,27 +160,132 @@ function ozMaske(x: unknown, pfad: string): OzMaske {
   };
 }
 
-function langtext(x: unknown, pfad: string): Langtext {
-  return liste(x, pfad).map((b, i): LangtextBaustein => {
-    const p = `${pfad}[${String(i)}]`;
-    if (typeof b === 'object' && b !== null && (b as Roh)['art'] === 'bild') {
-      const o = objekt(b, p, ['art', 'bild']);
-      const bild = objekt(feld(o, 'bild'), `${p}.bild`, ['id', 'medientyp', 'daten']);
+// --- Langtext (v1.1b, F6, E-10) -----------------------------------------------------------------------------------
+//
+// Gelesen wird genau die Form des Vertrags (`LangtextBaustein`), streng wie der Rest der Datei: unbekannte `art`,
+// fehlende oder fremde Felder, eine Auszeichnung mit `false` (der Vertrag kennt nur `true` oder fehlend), `spalten`
+// unter 1 und eine Textergänzung unterhalb der obersten Ebene sind `datei-ungueltig` mit Pfad. Eine Datei der
+// Schemaversion 1 kann damit Bausteine enthalten, die ein älterer Stand der App nicht liest (rückwärts lesen bleibt
+// garantiert, vorwärts nicht; A8).
+
+/** Wo ein Baustein steht; jede Ebene erlaubt eine Teilmenge der Arten (Vertrag `modell.ts`). */
+type Ebene = 'langtext' | 'innen' | 'absatz' | 'textfluss';
+
+const ARTEN_JE_EBENE: Record<Ebene, readonly string[]> = {
+  langtext: ['text', 'umbruch', 'bild', 'absatz', 'liste', 'tabelle', 'ergaenzung'],
+  innen: ['text', 'umbruch', 'bild', 'absatz', 'liste', 'tabelle'],
+  absatz: ['text', 'umbruch', 'bild'],
+  textfluss: ['text', 'umbruch'],
+};
+const ORT: Record<Ebene, string> = {
+  langtext: 'im Langtext',
+  innen: 'in einem Listenpunkt oder einer Tabellenzelle',
+  absatz: 'in einem Absatz',
+  textfluss: 'in einer Textergänzung',
+};
+
+const AUSZEICHNUNGEN = ['fett', 'kursiv', 'unterstrichen'] as const;
+
+function textlauf(x: unknown, pfad: string): Textlauf {
+  const o = objekt(x, pfad, ['art', 'text', ...AUSZEICHNUNGEN.filter((a) => Object.hasOwn(x as Roh, a))]);
+  const t: { -readonly [K in keyof Textlauf]: Textlauf[K] } = {
+    art: 'text',
+    text: zeichenkette(feld(o, 'text'), `${pfad}.text`),
+  };
+  for (const a of AUSZEICHNUNGEN) {
+    if (!Object.hasOwn(o, a)) continue;
+    if (feld(o, a) !== true) ungueltig(`${pfad}.${a}`, 'nur true erlaubt; ohne Auszeichnung fehlt das Feld');
+    t[a] = true;
+  }
+  return t;
+}
+
+function textbild(x: unknown, pfad: string): Textbild {
+  const o = objekt(x, pfad, ['art', 'bild']);
+  const b = objekt(feld(o, 'bild'), `${pfad}.bild`, ['id', 'medientyp', 'daten']);
+  return {
+    art: 'bild',
+    bild: {
+      id: zeichenkette(feld(b, 'id'), `${pfad}.bild.id`) as LangtextBildId,
+      medientyp: zeichenkette(feld(b, 'medientyp'), `${pfad}.bild.medientyp`),
+      daten: zeichenkette(feld(b, 'daten'), `${pfad}.bild.daten`),
+    },
+  };
+}
+type LangtextBildId = Textbild['bild']['id'];
+
+const bausteine = (x: unknown, pfad: string, ebene: Ebene): LangtextBaustein[] =>
+  liste(x, pfad).map((b, i) => baustein(b, `${pfad}[${String(i)}]`, ebene));
+
+function baustein(x: unknown, pfad: string, ebene: Ebene): LangtextBaustein {
+  if (typeof x !== 'object' || x === null || Array.isArray(x)) return ungueltig(pfad, 'Objekt erwartet');
+  const art = aufzaehlung((x as Roh)['art'], `${pfad}.art`, ARTEN_JE_EBENE.langtext);
+  if (!ARTEN_JE_EBENE[ebene].includes(art))
+    return ungueltig(`${pfad}.art`, `„${art}“ steht nicht ${ORT[ebene]}`);
+  switch (art) {
+    case 'text':
+      return textlauf(x, pfad);
+    case 'umbruch':
+      objekt(x, pfad, ['art']);
+      return { art: 'umbruch' };
+    case 'bild':
+      return textbild(x, pfad);
+    case 'absatz': {
+      const o = objekt(x, pfad, ['art', 'inhalt']);
       return {
-        art: 'bild',
-        bild: {
-          id: zeichenkette(feld(bild, 'id'), `${p}.bild.id`) as LangtextBildId,
-          medientyp: zeichenkette(feld(bild, 'medientyp'), `${p}.bild.medientyp`),
-          daten: zeichenkette(feld(bild, 'daten'), `${p}.bild.daten`),
-        },
+        art: 'absatz',
+        inhalt: bausteine(feld(o, 'inhalt'), `${pfad}.inhalt`, 'absatz') as LangtextInline[],
       };
     }
-    const o = objekt(b, p, ['art', 'text']);
-    aufzaehlung(feld(o, 'art'), `${p}.art`, ['text']);
-    return { art: 'text', text: zeichenkette(feld(o, 'text'), `${p}.text`) };
-  });
+    case 'liste': {
+      const o = objekt(x, pfad, ['art', 'geordnet', 'punkte']);
+      return {
+        art: 'liste',
+        geordnet: wahrheit(feld(o, 'geordnet'), `${pfad}.geordnet`),
+        punkte: liste(feld(o, 'punkte'), `${pfad}.punkte`).map(
+          (p, i) => bausteine(p, `${pfad}.punkte[${String(i)}]`, 'innen') as LangtextInnen,
+        ),
+      };
+    }
+    case 'tabelle': {
+      const o = objekt(x, pfad, ['art', 'zeilen']);
+      return {
+        art: 'tabelle',
+        zeilen: liste(feld(o, 'zeilen'), `${pfad}.zeilen`).map((z, i): Tabellenzeile => {
+          const q = `${pfad}.zeilen[${String(i)}]`;
+          const zo = objekt(z, q, ['zellen']);
+          return {
+            zellen: liste(feld(zo, 'zellen'), `${q}.zellen`).map((c, j): Tabellenzelle => {
+              const r = `${q}.zellen[${String(j)}]`;
+              const co = objekt(c, r, ['spalten', 'inhalt']);
+              const spalten = ganz(feld(co, 'spalten'), `${r}.spalten`);
+              if (spalten < 1) ungueltig(`${r}.spalten`, 'mindestens 1 erwartet');
+              return {
+                spalten,
+                inhalt: bausteine(feld(co, 'inhalt'), `${r}.inhalt`, 'innen') as LangtextInnen,
+              };
+            }),
+          };
+        }),
+      };
+    }
+    default: {
+      const o = objekt(x, pfad, ['art', 'herkunft', 'kennung', 'leer', 'davor', 'inhalt', 'danach']);
+      const fluss = (n: string): Textfluss => bausteine(feld(o, n), `${pfad}.${n}`, 'textfluss') as Textfluss;
+      return {
+        art: 'ergaenzung',
+        herkunft: aufzaehlung(feld(o, 'herkunft'), `${pfad}.herkunft`, ['bieter', 'ausschreibender']),
+        kennung: zeichenkette(feld(o, 'kennung'), `${pfad}.kennung`),
+        leer: wahrheit(feld(o, 'leer'), `${pfad}.leer`),
+        davor: fluss('davor'),
+        inhalt: fluss('inhalt'),
+        danach: fluss('danach'),
+      };
+    }
+  }
 }
-type LangtextBildId = Extract<LangtextBaustein, { art: 'bild' }>['bild']['id'];
+
+const langtext = (x: unknown, pfad: string): Langtext => bausteine(x, pfad, 'langtext');
 
 function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   return oderNull(x, (v) => {
@@ -503,7 +615,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   EinheitAendern: true,
   EinheitspreisAendern: true,
   EinheitspreisanteileSetzen: true,
-  PositionsmerkmaleSetzen: true, // v1.1b: mechanisch angepasst, Folgeticket
+  PositionsmerkmaleSetzen: true,
   OzMaskeSetzen: true,
   OrdnungszahlSetzen: true,
   Umnummerieren: true,
@@ -514,7 +626,6 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   AngebotspositionSetzen: true,
   AngebotsNachlassSetzen: true,
   AngebotsNachlassEntfernen: true,
-  // v1.1a: mechanisch angepasst, Folgeticket (speicher: Löschen und Auftrags-LV umsetzen)
   ProjektLoeschen: true,
   LeistungsverzeichnisLoeschen: true,
   AngebotLoeschen: true,
