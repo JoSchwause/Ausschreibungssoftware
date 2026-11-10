@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { Knoten, Position, Pruefbefund } from '@tethys/vertrag';
 import { MAX_STUFEN, leseGaeb } from './index';
 import type { GaebLesungErgebnis } from './index';
-import { TEST_MWST, bezugVon, lesePfad, positionsartVon, testIds } from './testhilfen';
+import { TEST_MWST, lesePfad, testIds } from './testhilfen';
 
 const lies = (eingabe: Uint8Array | string, dateiname?: string): GaebLesungErgebnis =>
   leseGaeb(eingabe, {
@@ -19,6 +19,10 @@ const codes = (l: { befunde: readonly Pruefbefund[] }): string[] => l.befunde.ma
 const knoten = (l: GaebLesungErgebnis): readonly Knoten[] => l.inhalt?.knoten ?? [];
 const positionen = (l: GaebLesungErgebnis): Position[] =>
   knoten(l).filter((k): k is Position => k.art === 'position');
+
+/** Die Bezugspositionen einer Zuschlagsposition der Form `positionen` (sonst leer). */
+const bezuege = (p: Position | undefined): string[] =>
+  p?.zuschlag?.bezug.art === 'positionen' ? p.zuschlag.bezug.positionen.map((b) => b.positionId) : [];
 
 const zaehle = (l: GaebLesungErgebnis, art: Knoten['art']): number =>
   knoten(l).filter((k) => k.art === art).length;
@@ -158,19 +162,20 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
     for (const k of alle) {
       expect(k.elternId === l.inhalt?.wurzelId || ids.has(k.elternId)).toBe(true);
       if (k.art === 'los') expect(k.elternId).toBe(l.inhalt?.wurzelId);
-      if (k.art === 'position' && bezugVon(k) !== null) {
-        expect(bezugVon(k)).not.toBe(k.id);
-        expect(ids.has(bezugVon(k) ?? '')).toBe(true);
-      }
+      if (k.art === 'position')
+        for (const b of bezuege(k)) {
+          expect(b).not.toBe(k.id);
+          expect(ids.has(b)).toBe(true);
+        }
     }
     expect(gliederungstiefe(l)).toBeLessThanOrEqual(MAX_STUFEN);
   }
 
   it('Zuschlagsposition, deren RefItem auf die eigene ID zeigt: kein Bezug, Warnung', () => {
     const l = lies(lv('', `<Itemlist>${position('a', '0010')}${zuschlag('z', '0020', 'z')}</Itemlist>`));
-    const z = positionen(l).find((p) => positionsartVon(p) === 'zuschlag');
+    const z = positionen(l).find((p) => p.zuschlag !== null);
     expect(z).toBeDefined();
-    expect(bezugVon(z)).toBeNull();
+    expect(z?.zuschlag?.bezug).toEqual({ art: 'positionen', positionen: [] });
     const b = l.befunde.find((x) => x.code === 'verweis-auf-sich');
     expect(b?.schwere).toBe('warnung');
     expect(b?.ort.knotenId).toBe(z?.id);
@@ -180,8 +185,38 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
   it('Zuschlagsposition mit gültigem Bezug behält ihn', () => {
     const l = lies(lv('', `<Itemlist>${position('a', '0010')}${zuschlag('z', '0020', 'a')}</Itemlist>`));
     const [pos, z] = positionen(l);
-    expect(bezugVon(z)).toBe(pos?.id);
+    expect(z?.zuschlag?.bezug).toEqual({
+      art: 'positionen',
+      positionen: [{ positionId: pos?.id, teilmenge: null }],
+    });
     expect(codes(l)).not.toContain('verweis-auf-sich');
+  });
+
+  it('ListInSubQty mit mehreren RefItem: alle Bezüge in Dateireihenfolge, kein Befund', () => {
+    const z =
+      '<MarkupItem ID="z" RNoPart="0030"><MarkupType>ListInSubQty</MarkupType>' +
+      '<MarkupSubQty><RefItem IDRef="b"/></MarkupSubQty><MarkupSubQty><RefItem IDRef="a"/></MarkupSubQty></MarkupItem>';
+    const l = lies(lv('', `<Itemlist>${position('a', '0010')}${position('b', '0020')}${z}</Itemlist>`));
+    const [a, b, zp] = positionen(l);
+    expect(bezuege(zp)).toEqual([b?.id, a?.id]);
+    expect(codes(l)).not.toContain('zuschlag-bezug-nicht-abbildbar');
+    pruefeKernInvarianten(l);
+  });
+
+  it('Zuschlagssatz (Markup) wird gelesen, falls vorhanden', () => {
+    const z =
+      '<MarkupItem ID="z" RNoPart="0020"><MarkupType>AllInCat</MarkupType><Markup>12.50</Markup></MarkupItem>';
+    const l = lies(lv('', `<Itemlist>${position('a', '0010')}${z}</Itemlist>`));
+    expect(positionen(l)[1]?.zuschlag).toEqual({ prozentsatz: '12.50', bezug: { art: 'gliederung' } });
+    expect(codes(l)).not.toContain('nicht-abgebildet');
+  });
+
+  it('RefItem bei AllInCat passt nicht zur Bezugsform: Befund, Bezug gliederung', () => {
+    const z =
+      '<MarkupItem ID="z" RNoPart="0020"><MarkupType>AllInCat</MarkupType><MarkupSubQty><RefItem IDRef="a"/></MarkupSubQty></MarkupItem>';
+    const l = lies(lv('', `<Itemlist>${position('a', '0010')}${z}</Itemlist>`));
+    expect(positionen(l)[1]?.zuschlag?.bezug).toEqual({ art: 'gliederung' });
+    expect(codes(l)).toContain('zuschlag-bezug-nicht-abbildbar');
   });
 
   it('Zuschlagsposition mit Verweis auf einen Titel oder eine unbekannte ID: kein Bezug, Befund', () => {
@@ -195,7 +230,7 @@ describe('Der Leser liefert nichts, was der Kern als Ganzes abweist (U5: Import 
         ),
       ),
     );
-    expect(positionen(l).map((p) => bezugVon(p))).toEqual([null, null]);
+    expect(positionen(l).map((p) => bezuege(p))).toEqual([[], []]);
     expect(codes(l).filter((c) => c === 'verweis-unbekannt')).toHaveLength(2);
     pruefeKernInvarianten(l);
   });
