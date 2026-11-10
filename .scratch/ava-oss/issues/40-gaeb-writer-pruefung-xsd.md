@@ -1,6 +1,6 @@
 # 40: GAEB: Writer X81/X83/X86, eigene Prüfung, XSD-Gegenprüfung in der CI, Roundtrip (G2, Tor M2)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase A) · Strang: G (G2) · Paket: `packages/gaeb` (benannte Ausnahme: `.github/workflows/ci.yml`, nur der neue XSD-Schritt)
 Blocked by: 32
