@@ -3,8 +3,15 @@
 // später die echten Parser ein. Diese Attrappen arbeiten nur mit Zeichenketten und kennen keine Gleitkommazahl;
 // sie sind keine Fachlogik und kommen nie in Produktivcode.
 
-import type { Betrag, Einheitspreis, Ergebnis, Menge, PositionId } from '@tethys/vertrag';
-import type { GridIdQuelle, GridZahlen } from '../../src/typen';
+import type {
+  Betrag,
+  Einheitspreis,
+  Ergebnis,
+  GridIdQuelle,
+  GridZahlen,
+  Menge,
+  PositionId,
+} from '@tethys/vertrag';
 
 const DE_ZAHL = /^(-?)(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d+))?$/;
 
