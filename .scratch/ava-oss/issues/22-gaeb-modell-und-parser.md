@@ -279,3 +279,13 @@ Alle ändern den Vertrag und brauchen je ein eigenes Vertragsticket (A4). Nichts
 - Die Fehlerdateien sind selbst verfasst statt aus freien Projekten (Ticket 23 hat sie nicht erhalten); zwölf statt zehn.
 - Akzeptanzkriterium „stimmt mit den Angaben der BVBS-Prüfkriterien überein“ nicht abgehakt (keine öffentliche Zahl).
 - Es gibt keine eigene `Leistungsverzeichnis`-Rückgabe (das ist ein Aggregat mit Kennung und Projekt), sondern `LvInhalt` wie in `GaebLesung`.
+
+### 2026-11-10 — Zweiter Zähler (Ticket 25, E-16)
+
+Das Kriterium zur BVBS-Prüfdatei Bauausführung X83 lautet nach E-16 „eigene Zählung, mit zweitem unabhängigen Zähler bestätigt“.
+Der zweite Zähler steht in `packages/gaeb/src/zaehlung-bvbs.test.ts`: ein einfacher Durchlauf über die Start-Tags des Rohtexts
+(Kommentare und CDATA entfernt), ohne `parseXml`, ohne Leser, ohne Modell. Ergebnis, gemessen an
+`fixtures/extern/bvbs/3.3-bauausfuehrung/Pruefdatei_3.3_Bauausfuehrung_V-04-04-2024.x83`: **12 Titel** (`BoQCtgy`),
+**28 Positionen** (27 `Item` + 1 `MarkupItem`), **4 Hinweistexte** (`Remark`). Das stimmt mit der eigenen Zählung oben überein, und der Leser
+liefert dieselben Zahlen (Test im selben File). Nicht in diesem Zähler: OZ-Maske und Gliederungstiefe; dafür gilt weiter die Tabelle oben.
+Deshalb bleibt das Kästchen für den Lead offen. Die Nachfrage bei BVBS (service@bvbs.de) bleibt ein Kann (E-16, G-55).
