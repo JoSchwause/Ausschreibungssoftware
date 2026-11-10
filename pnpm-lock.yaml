@@ -38,9 +38,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../../packages/dezimal
+      '@tethys/kern':
+        specifier: workspace:*
+        version: link:../../packages/kern
+      '@tethys/speicher':
+        specifier: workspace:*
+        version: link:../../packages/speicher
       '@tethys/ui-basis':
         specifier: workspace:*
         version: link:../../packages/ui-basis
+      '@tethys/ui-grid':
+        specifier: workspace:*
+        version: link:../../packages/ui-grid
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../../packages/vertrag
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -51,9 +66,6 @@ importers:
       '@playwright/test':
         specifier: ^1.65.0
         version: 1.65.0
-      '@tethys/dezimal':
-        specifier: workspace:*
-        version: link:../../packages/dezimal
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
