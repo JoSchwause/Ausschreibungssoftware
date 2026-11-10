@@ -5,7 +5,7 @@ import pdfMake from 'pdfmake';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { LvZustand } from '@tethys/vertrag';
 import { baueAusgabemodell } from './modell';
-import type { AusgabeZeile, Ausgabemodell, PositionZeile } from './modell';
+import type { AusgabeZeile, Ausgabemodell } from './modell';
 import type { Schriften } from './schriften';
 
 // Spaltenbreiten in pt (A4 hoch, 40 pt Rand links/rechts = 515 pt Satzbreite). Wegwerf-Layout, kein Feinschliff.
@@ -25,34 +25,46 @@ function zeile(zellen: readonly (string | { text: string; [schluessel: string]: 
   };
 }
 
-function positionKnoten(z: PositionZeile): Content {
-  const kopf = zeile([
-    z.ordnungszahl,
-    z.kurztext,
-    z.menge,
-    z.einheit,
-    z.einheitspreis,
-    z.gehtInSummeEin ? z.gesamtpreis : { text: `(${z.gesamtpreis})`, color: GRAU },
-  ]);
-  if (z.langtext === '') return { stack: [kopf], margin: [0, 2, 0, 0] };
-  const lang: Content = { text: z.langtext, fontSize: 7, color: GRAU, margin: [62, 1, 0, 0] };
-  return { stack: [kopf, lang], margin: [0, 2, 0, 0] };
-}
-
-/** Knoten für eine Zeile; Titelzeilen gibt es hier nicht, sie hängen sich an den nächsten Knoten (Kopfgruppe). */
-function inhaltsKnoten(z: Exclude<AusgabeZeile, { art: 'titel' }>): Content {
+/**
+ * Knoten einer Zeile als Anfang und Rest. Nur der Anfang (Kopfzeile einer Position, erste Zeile eines Hinweises) bleibt
+ * bei Titeln in der unteilbaren Kopfgruppe; der Rest darf umbrechen. Sonst würde pdfmake ein erstes Kind, das höher als
+ * eine Seite ist, abschneiden (stiller Datenverlust, Q5). Titelzeilen gibt es hier nicht: Sie hängen sich an den Anfang
+ * des nächsten Knotens.
+ */
+function inhaltsKnoten(z: Exclude<AusgabeZeile, { art: 'titel' }>): {
+  anfang: Content;
+  rest: Content | null;
+} {
   switch (z.art) {
-    case 'position':
-      return positionKnoten(z);
-    case 'hinweis':
-      return { text: z.text, italics: false, fontSize: 8, color: GRAU, margin: [62, 3, 0, 3] };
+    case 'position': {
+      // Klammern nur, wenn es einen GP gibt; ohne GP bleibt die Zelle leer.
+      const gp =
+        z.gehtInSummeEin || z.gesamtpreis === ''
+          ? z.gesamtpreis
+          : { text: `(${z.gesamtpreis})`, color: GRAU };
+      const kopf = zeile([z.ordnungszahl, z.kurztext, z.menge, z.einheit, z.einheitspreis, gp]);
+      const rest: Content | null =
+        z.langtext === '' ? null : { text: z.langtext, fontSize: 7, color: GRAU, margin: [62, 1, 0, 0] };
+      return { anfang: { stack: [kopf], margin: [0, 2, 0, 0] }, rest };
+    }
+    case 'hinweis': {
+      const [erste = '', ...weitere] = z.text.split('\n');
+      const stil = { fontSize: 8, color: GRAU } as const;
+      return {
+        anfang: { text: erste, ...stil, margin: [62, 3, 0, weitere.length === 0 ? 3 : 0] },
+        rest: weitere.length === 0 ? null : { text: weitere.join('\n'), ...stil, margin: [62, 0, 0, 3] },
+      };
+    }
     case 'titelsumme':
       return {
-        columns: [
-          { text: `Summe ${z.ordnungszahl} ${z.kurztext}`, bold: true, width: '*' },
-          { text: z.summe, bold: true, alignment: 'right', width: 80 },
-        ],
-        margin: [0, 2, 0, 6],
+        anfang: {
+          columns: [
+            { text: `Summe ${z.ordnungszahl} ${z.kurztext}`, bold: true, width: '*' },
+            { text: z.summe, bold: true, alignment: 'right', width: 80 },
+          ],
+          margin: [0, 2, 0, 6],
+        },
+        rest: null,
       };
   }
 }
@@ -79,7 +91,7 @@ function summenKnoten(m: Ausgabemodell['summen']): Content {
   };
 }
 
-/** Baut die Dokumentdefinition. Titel und ihr erstes Kind stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */
+/** Baut die Dokumentdefinition. Titel und der Anfang ihres ersten Kindes stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */
 function dokument(modell: Ausgabemodell, tagged: boolean): TDocumentDefinitions {
   const inhalt: Content[] = [];
   let kopfgruppe: Content[] = [];
@@ -93,11 +105,12 @@ function dokument(modell: Ausgabemodell, tagged: boolean): TDocumentDefinitions 
       });
       continue;
     }
-    const knoten = inhaltsKnoten(z);
+    const { anfang, rest } = inhaltsKnoten(z);
     if (kopfgruppe.length > 0) {
-      inhalt.push({ unbreakable: true, stack: [...kopfgruppe, knoten] });
+      inhalt.push({ unbreakable: true, stack: [...kopfgruppe, anfang] });
       kopfgruppe = [];
-    } else inhalt.push(knoten);
+    } else inhalt.push(anfang);
+    if (rest) inhalt.push(rest);
   }
   inhalt.push(summenKnoten(modell.summen));
   return {
@@ -135,6 +148,8 @@ function dokument(modell: Ausgabemodell, tagged: boolean): TDocumentDefinitions 
 export async function erzeugePdf(
   zustand: LvZustand,
   schriften: Schriften,
+  // `tagged` steht standardmäßig aus: pdfmake setzt dann zwar /MarkInfo, schreibt aber keinen Strukturbaum. Ein
+  // „getaggtes“ PDF ohne Struktur täuscht Barrierefreiheit nur vor (Messung: Ticket 28).
   optionen: { readonly tagged?: boolean } = {},
 ): Promise<Uint8Array> {
   // Das Dokument braucht weder Netz noch Dateisystem: Zugriffe sperren (pdfmake warnt sonst unter Node, und ein
@@ -151,7 +166,7 @@ export async function erzeugePdf(
     },
   });
   const puffer = await pdfMake
-    .createPdf(dokument(baueAusgabemodell(zustand), optionen.tagged ?? true))
+    .createPdf(dokument(baueAusgabemodell(zustand), optionen.tagged ?? false))
     .getBuffer();
   return new Uint8Array(puffer);
 }

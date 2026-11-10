@@ -78,7 +78,7 @@ importers:
         specifier: workspace:*
         version: link:../vertrag
       pdfmake:
-        specifier: ^0.3.14
+        specifier: 0.3.14
         version: 0.3.14
     devDependencies:
       '@playwright/test':

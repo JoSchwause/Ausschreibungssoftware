@@ -35,7 +35,7 @@ SPDX-License-Identifier = "LicenseRef-BVBS-GAEB-Pruefdatei"
 # wie das Paket sie liefert (Fontsource hat die Latin-Teilmenge aus den Noto-Quellen erzeugt; wir ändern nichts
 # daran). Das npm-Paket selbst ist keine Abhängigkeit; die Lizenzprüfung (tools/licenses.mjs) sieht nur Pakete.
 [[annotations]]
-path = "packages/ausgabe/schriften/**"
+path = "packages/ausgabe/schriften/*.woff"
 precedence = "override"
 SPDX-FileCopyrightText = "2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)"
 SPDX-License-Identifier = "OFL-1.1"

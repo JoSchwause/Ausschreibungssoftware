@@ -99,9 +99,9 @@ Chromium 2,47 s; Weg B mit Tags 8,56 s, ohne Tags 3,90 s). Es gibt kein Budget (
 | Ergebnis | PDF-Bytes in der App (speichern, ablegen, später an die Vergabe hängen) | keine Bytes in der App: Der Nutzer wählt im Druckdialog „Als PDF speichern“ |
 | Seitenumbruch Titel/erstes Kind | `unbreakable`-Block aus Titel(n) und erstem Kind; der Test schlägt ohne den Block fehl (Gegenprobe gemacht); `gross`: 0 von 270 Seiten enden mit einem Titel | CSS `break-after: avoid` auf der Titelzeile; Gegenprobe: ohne die Regel enden 20 von 267 Seiten mit einem Titel, mit der Regel 0 von 268 (Chromium) |
 | Kopf-/Fußzeile | `header`/`footer`-Funktionen mit Seite und Seitenzahl; letzte Seite „Seite 270 von 270“; Spaltenkopf wiederholt sich je Seite | `thead` wiederholt sich; `@page`-Randbox mit `counter(page)`/`counter(pages)` funktioniert in Chromium 153 („Seite 268 von 268“); andere Browser nicht geprüft |
-| Barrierefreiheit (Tags) | `tagged: true` setzt `/MarkInfo` und `/Lang`, erzeugt aber **keine Strukturelemente** (`getStructTree` liefert nur einen leeren `Root`): kein PDF/UA, Tabelle nicht als Tabelle ausgezeichnet | `tagged: true` liefert echte Struktur (`Document`, `Table`, `TR`, `TH`, `TD`), kostet aber das Zehnfache an Größe und das 2,6-Fache an Zeit; ob der Druckdialog getaggt ausgibt, nicht geprüft |
+| Barrierefreiheit (Tags) | `tagged: true` (in `erzeugePdf` standardmäßig aus, um keine Barrierefreiheit vorzutäuschen) setzt `/MarkInfo` und `/Lang`, erzeugt aber **keine Strukturelemente** (`getStructTree` liefert nur einen leeren `Root`): kein PDF/UA, Tabelle nicht als Tabelle ausgezeichnet | `tagged: true` liefert echte Struktur (`Document`, `Table`, `TR`, `TH`, `TD`), kostet aber das Zehnfache an Größe und das 2,6-Fache an Zeit; ob der Druckdialog getaggt ausgibt, nicht geprüft |
 | Schrift | eingebettet als Teilmenge (`/BaseFont /…+NotoSans-Regular`, `-Bold`) | eingebettet als Teilmenge (gleiche Namen), sofern die Webschrift vor dem Druck geladen ist (`document.fonts.ready`) |
-| Was nicht geht / Risiko | Hauptthread belegt (2,5–3 s bei 5.000 Zeilen; Worker nicht versucht); `tagged` ohne Struktur; pdfmake mit sehr junger Version; globaler Zustand (`setFonts` je Aufruf) | Umbruch und Seitenzahl gehören dem Browser; Ergebnis hängt von Browser, Dialogeinstellungen (Ränder, Kopf-/Fußzeile des Browsers) und Papier ab; ohne Dialog nicht automatisierbar (E2E nur über `page.pdf`); 2 MB HTML mit 5.000 Tabellenzeilen im DOM (Vorschauzeit nicht gemessen) |
+| Was nicht geht / Risiko | Ein Erstkind, das höher als eine Seite ist, wird von `unbreakable` abgeschnitten (Review-Fund, behoben: nur der Anfang des Kindes, also Kopfzeile bzw. erste Hinweiszeile, steht in der unteilbaren Kopfgruppe, der Rest bricht frei um; Test mit 400 Zeilen Langtext unter einem Titel, alle 400 im PDF); Hauptthread belegt (2,5–3 s bei 5.000 Zeilen; Worker nicht versucht); `tagged` ohne Struktur; pdfmake mit sehr junger Version; globaler Zustand (`setFonts` je Aufruf) | Umbruch und Seitenzahl gehören dem Browser; Ergebnis hängt von Browser, Dialogeinstellungen (Ränder, Kopf-/Fußzeile des Browsers) und Papier ab; ohne Dialog nicht automatisierbar (E2E nur über `page.pdf`); 2 MB HTML mit 5.000 Tabellenzeilen im DOM (Vorschauzeit nicht gemessen) |
 
 **Geprüft (Tests, grün).** `src/ausgabe.test.ts`: `winzig` und `typisch` ergeben je ein PDF; pdf.js liest den Text zurück
 und findet Name, Netto, Nachlass, Netto nach Nachlass, MwSt, Brutto und alle Titelsummen der Sollwerte in
@@ -110,7 +110,7 @@ auf jeder Seite; Umlaute (`Größe Ärger Übung ß ö`), `m²`, `€` und `½` 
 `/BaseFont /XXXXXX+NotoSans…`, keine Standardschrift); Titel nicht vom ersten Kind getrennt (300 Titel, verschieden lange
 Langtexte, mit Gegenprobe). `src/druck.test.ts`: HTML enthält Sollsummen, Randbox und Umbruchregel, Text wird maskiert.
 `messung/messung.spec.ts` prüft zusätzlich an `gross`, dass die vier Sollsummen in allen Ergebnissen (A Node, A Chromium,
-B mit und ohne Tags) stehen. **Nicht geprüft:** Aussehen (Layout nur über Textpositionen, nie als Bild angesehen);
+B mit und ohne Tags) stehen. **Nicht geprüft:** Aussehen außer den Seiten 1 und letzte von `typisch` (als Bild angesehen, nicht committet); Weg B mit einem Erstkind über mehrere Seiten: geprüft, `page.pdf()` ergibt 6 Seiten mit allen 400 Zeilen;
 Firefox/Safari; Speicherverbrauch; Worker; deterministische Bytes (pdfkit schreibt Datum/ID, nicht untersucht); Langtext
 mit Bildern oder Auszeichnung.
 
@@ -139,6 +139,8 @@ Bibliothek. Weg B kann als „Drucken“-Knopf zusätzlich bestehen (5 KB). Nich
 **Lücken in eingefrorenen Paketen.** Keine blockierend. `kern/src/testhilfen.ts` ist nicht exportiert, daher hat `ausgabe`
 eine eigene kleine Fixture-Laderoutine (`src/testhilfen.ts`, nach dem Muster des Kerns). `Positionssumme.gesamtpreis` kann
 `null` sein; der Spike druckt dann eine leere Zelle.
+
+**Nachbesserung nach Review.** (1) Abschneiden von Erstkindern behoben, Test `src/vollstaendig.test.ts`. (2) Position ohne GP, die nicht in die Summen eingeht, zeigt keine leeren Klammern mehr (beide Wege, Test). (3) `schriften/README.md` angelegt; REUSE-Eintrag auf `*.woff` verengt. (4) `tagged` standardmäßig `false`. (5) pdfmake exakt `0.3.14`, Lockfile aktualisiert.
 
 **Abweichungen vom Ticket.** Weg B bleibt (anders als „der andere nur als Messwert“) als kleiner Code im Paket, weil
 `messen` ihn zum Nachmessen braucht; bei einer Entscheidung für A löschen. Wurzeldateien angefasst: `pnpm-lock.yaml`,

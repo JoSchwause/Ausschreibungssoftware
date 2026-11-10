@@ -54,7 +54,7 @@ function zeilenHtml(z: AusgabeZeile): string {
     case 'hinweis':
       return `<tr class="hinweis"><td></td><td colspan="5">${e(z.text)}</td></tr>`;
     case 'position': {
-      const gp = z.gehtInSummeEin ? e(z.gesamtpreis) : `(${e(z.gesamtpreis)})`;
+      const gp = z.gehtInSummeEin || z.gesamtpreis === '' ? e(z.gesamtpreis) : `(${e(z.gesamtpreis)})`;
       // Mit Langtext: Kopfzeile und Langtext zusammenhalten (break-after:avoid auf der Kopfzeile).
       const halten = z.langtext === '' ? '' : ' style="break-after:avoid"';
       const kopf = `<tr class="position"${halten}><td>${e(z.ordnungszahl)}</td><td>${e(z.kurztext)}</td><td class="r">${e(z.menge)}</td><td>${e(z.einheit)}</td><td class="r">${e(z.einheitspreis)}</td><td class="r">${gp}</td></tr>`;
