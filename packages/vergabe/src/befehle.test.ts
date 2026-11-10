@@ -176,11 +176,15 @@ describe('AngebotspositionSetzen', () => {
     expect(cs.kopf).toBeNull();
     expect(cs.positionen).toEqual({ hinzugefuegt: [ep('p3', '50.000')], geaendert: [], entfernt: [] });
     expect(cs.summen.positionen).toEqual([{ positionId: 'p3', gesamtpreis: '100.00', gehtInSummeEin: true }]);
-    expect(cs.summen.gliederungen).toEqual([{ gliederungId: 't2', summe: '100.00' }]);
+    expect(cs.summen.gliederungen).toEqual([
+      { gliederungId: 't2', summe: '100.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
+    ]);
     expect(cs.summen.gesamt?.netto).toBe('240.00');
     expect(cs.summen.vorher).toEqual({
       positionen: [{ positionId: 'p3', gesamtpreis: null, gehtInSummeEin: false }],
-      gliederungen: [{ gliederungId: 't2', summe: '0.00' }],
+      gliederungen: [
+        { gliederungId: 't2', summe: '0.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
+      ],
       gesamt: s.summen.gesamt,
       entfernt: { positionen: [], gliederungen: [] },
     });
@@ -193,7 +197,9 @@ describe('AngebotspositionSetzen', () => {
     const s = start();
     const cs = erwarteOk(ausfuehren(s, { art: 'AngebotspositionSetzen', position: ep('p1', '11.000') }));
     expect(cs.positionen.geaendert).toEqual([{ vorher: ep('p1', '10.000'), nachher: ep('p1', '11.000') }]);
-    expect(cs.summen.gliederungen).toEqual([{ gliederungId: 't1', summe: '150.00' }]);
+    expect(cs.summen.gliederungen).toEqual([
+      { gliederungId: 't1', summe: '150.00', summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' },
+    ]);
   });
 
   it('nicht angeboten statt Preis: GP entfällt, Summen sinken', () => {
