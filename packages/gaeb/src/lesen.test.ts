@@ -716,6 +716,14 @@ describe('Dezimalwerte und Pflichtangaben', () => {
     expect(positionen(lies(item('<Qty>1</Qty><QU>St</QU>')))[0]?.menge).toBe('1.000');
   });
 
+  it('leere Einheit (QU) ergibt null, nie leeren Text; ---- bleibt Text (Vertrag v1.2)', () => {
+    const leer = lies(item('<Qty>1.000</Qty><QU></QU>'));
+    expect(positionen(leer)[0]?.einheit).toBeNull();
+    expect(codes(leer)).toContain('einheit-fehlt');
+    expect(positionen(lies(item('<Qty>1.000</Qty><QU> </QU>')))[0]?.einheit).toBeNull();
+    expect(positionen(lies(item('<Qty>1.000</Qty><QU>----</QU>')))[0]?.einheit).toBe('----');
+  });
+
   it('fehlende Menge ohne QtyTBD oder LumpSumItem ist ein Befund, mit ihnen nicht', () => {
     expect(codes(lies(item('<QU>St</QU>')))).toContain('menge-fehlt');
     expect(codes(lies(item('<QtyTBD>Yes</QtyTBD><QU>St</QU>')))).not.toContain('menge-fehlt');

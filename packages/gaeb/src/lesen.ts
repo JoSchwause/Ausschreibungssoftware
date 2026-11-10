@@ -2,7 +2,9 @@
 // GAEB DA XML 3.3, Phasen X81 und X83 → `LvInhalt` (Ticket 22). Tolerant lesen: Fehler sind Prüfbefunde, nie ein
 // Abbruch. Rein (A2): Eingabe sind Bytes oder Text, Kennungen kommen aus der `IdQuelle`, kein I/O, keine Uhr.
 //
-// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments. Was `vertrag` nicht halten kann, wird nicht
+// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments; seit v1.1b (Ticket 32) zusätzlich alle
+// Positionsmerkmale unabhängig (F5), Wahl mit Gruppe und Variante, Zuschlag in allen drei Bezugsformen, Langtext
+// (`text.ts`), Kopfdaten (`OWN`, `AwardInfo`) und Leitbeschreibung (`SumDescr`/`SubDescr`). Was `vertrag` nicht halten kann, wird nicht
 // still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …).
 
 import { leseAustausch } from '@tethys/dezimal';
@@ -119,6 +121,24 @@ const BLATTNAMEN: ReadonlySet<string> = new Set([
   'RefDescr',
   'CtlgID',
   'CtlgCode',
+  'Markup',
+  'Name1',
+  'Street',
+  'PCode',
+  'City',
+  'AwardNo',
+  'DPNo',
+  'OpenDate',
+  'OpenTime',
+  'EvalEnd',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
 ]);
 
 type Veraenderlich<T> = { -readonly [K in keyof T]: T[K] };
