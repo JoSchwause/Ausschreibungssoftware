@@ -75,3 +75,11 @@ Decision: (1) Ticket 37 behält für Zuschlagspositionen ohne Satz die alte Rech
 Reason: Hält die Fixture-Helfer in fünf Paketen grün; P2 (ui-grid importiert kern nicht).
 Reversible: yes  Touches: packages/kern, packages/vergabe, packages/ui-grid, fixtures/
 Annahme für Demo, Mensch bestätigt später (E-03: Teilmengen, `AllInCat`).
+
+## D-11 Enge Lesarten im Vertrag v1.2
+Welle 3 · Ticket 29 · decided by: implementer
+Question: Wo lässt Ticket 29 die Typform offen?
+Decision: Angebotsposition mit `zuschlagssatz` behält einen Pflicht-EP (Platzhalter `0.000`, nie gerechnet); `KnotenEinfuegen` ist kein Massenbefehl; `Speicher.lvStaende` optional; LV-Stand nur anlegen (kein Umbenennen, Löschen, Zurückschreiben); die Lage der Wurzeln in `KnotenEinfuegen` setzt der Kern; der Papierkorb steht nicht in `LvInhalt`; `Rueckgaengig`/`Wiederholen` nennen den ursprünglichen Befehl; Kopfdaten-Befehle setzen den ganzen Wert. Alternativen als Offene Typfragen 1–8 in Ticket 29.
+Reason: Additiv, umkehrbar, kein stiller Datenverlust in `speicher` (Leitlinie aus Ticket 24/26).
+Reversible: yes  Touches: packages/vertrag
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-04).
