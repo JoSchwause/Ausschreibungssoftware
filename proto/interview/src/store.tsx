@@ -124,6 +124,9 @@ export function StoreAnbieter({ children, navigiere }: { children: ReactNode; na
         zaehler.current += 1;
         return `neu-${String(zaehler.current)}` as PositionId;
       },
+      // v1.2: mechanisch angepasst, Folgeticket (GridIdQuelle, D-10 (4))
+      papierkorbeintrag: () =>
+        `papierkorb-${String((zaehler.current += 1))}` as ReturnType<GridIdQuelle['papierkorbeintrag']>,
     }),
     [],
   );

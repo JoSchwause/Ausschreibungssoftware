@@ -181,8 +181,8 @@ Tests: `vertrag.test.ts`, Abschnitt „v1.2“ (Umkehrung inkl. Papierkorb/LV-St
 | `packages/gaeb/src/testhilfen.ts` | 44–46 | `testIds()`: `papierkorbeintrag()`, `lvStand()` |
 | `packages/ui-grid/e2e/harness/attrappen.ts` | 62–64 | `idQuelleAttrappe()`: `papierkorbeintrag()` (seit Ticket 33 nutzt `ui-grid` den `GridIdQuelle` des Vertrags; D-10 (4)) |
 
-`proto/interview/src/store.tsx` erzeugt ebenfalls eine `GridIdQuelle` ohne `papierkorbeintrag()`; der Prototyp ist schon
-vorher rot und bleibt unberührt. Der Projektdatei-Dekoder in
+Ebenso `proto/interview/src/store.tsx` (Zeilen 128–130): Seit `27c84e6` übersetzt der Prototyp wieder; ohne die eine
+markierte Methode `papierkorbeintrag()` hätte die Erweiterung von `GridIdQuelle` ihn wieder rot gemacht. Der Projektdatei-Dekoder in
 `speicher` weist `zuschlagssatz`, `papierkorb` und `lvStaende` schon heute laut ab (strikte Feldliste, `datei-ungueltig`).
 
 ### Folgetickets: was anzupassen ist
