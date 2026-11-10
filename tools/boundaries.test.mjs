@@ -39,7 +39,7 @@ describe('Paketgrenzen (A3)', () => {
     paket('packages/dezimal', ['@tethys/vertrag']);
     paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
     paket('packages/speicher', ['@tethys/vertrag']);
-    paket('packages/ui-basis');
+    paket('packages/ui-basis', ['@tethys/vertrag']);
     paket('packages/ui-grid', ['@tethys/vertrag', '@tethys/ui-basis']);
     paket('apps/web', ['@tethys/kern', '@tethys/speicher', '@tethys/ui-grid']);
     expect(await pruefeGrenzen(wurzel)).toEqual([]);
@@ -62,11 +62,11 @@ describe('Paketgrenzen (A3)', () => {
     expect(verstoesse.some((v) => v.startsWith('grenze-packages-vertrag'))).toBe(true);
   });
 
-  it('weist kern -> speicher, ui-grid -> kern und ui-basis -> vertrag ab', async () => {
+  it('weist kern -> speicher, ui-grid -> kern und ui-basis -> kern ab', async () => {
     paket('packages/vertrag');
     paket('packages/kern', ['@tethys/speicher']);
     paket('packages/speicher');
-    paket('packages/ui-basis', ['@tethys/vertrag']);
+    paket('packages/ui-basis', ['@tethys/kern']);
     paket('packages/ui-grid', ['@tethys/kern']);
     const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]).sort();
     expect(regeln).toEqual(['grenze-packages-kern', 'grenze-packages-ui-basis', 'grenze-packages-ui-grid']);

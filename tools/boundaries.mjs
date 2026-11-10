@@ -19,7 +19,8 @@ export const ERLAUBT = {
   'packages/kern': ['packages/vertrag', 'packages/dezimal'],
   'packages/speicher': ['packages/vertrag'],
   'packages/gaeb': ['packages/vertrag', 'packages/dezimal'],
-  'packages/ui-basis': [],
+  // Der Langtext-Editor (Ticket 34) braucht die Langtext-Typen; sonst bleibt ui-basis ohne Fachwissen.
+  'packages/ui-basis': ['packages/vertrag'],
   'packages/ui-grid': ['packages/vertrag', 'packages/ui-basis'],
   // Weitere Fachpakete aus plan.md §1: noch nicht angelegt, Grenzen stehen schon fest.
   'packages/vergabe': FACH,

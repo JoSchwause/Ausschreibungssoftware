@@ -9,3 +9,17 @@ export const baustein = {
   zahlfeldFormat: 'Das Zahlenformat ist ungewöhnlich. Erwartet wird z. B. 1.234,50.',
   pflichtfeld: 'Pflichtfeld',
 } as const;
+
+/** Texte des Langtext-Editors (Ticket 34). */
+export const langtextTexte = {
+  bild: 'Bild',
+  ergaenzung: { bieter: 'Textergänzung Bieter', ausschreibender: 'Textergänzung Ausschreibender' },
+  ergaenzungLeer: '…',
+  werkzeugleiste: 'Formatierung',
+  fett: 'Fett',
+  kursiv: 'Kursiv',
+  unterstrichen: 'Unterstrichen',
+  aufzaehlung: 'Aufzählung',
+  nummerierteListe: 'Nummerierte Liste',
+  hinweis: 'Strg+Enter oder Verlassen übernimmt, Esc verwirft.',
+} as const;
