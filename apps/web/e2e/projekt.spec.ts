@@ -4,7 +4,15 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { lvAnlegen, neueZeile, positionTippen, projektAnlegen, summen, fixture, type FxPosition } from './hilfen';
+import {
+  lvAnlegen,
+  neueZeile,
+  positionTippen,
+  projektAnlegen,
+  summen,
+  fixture,
+  type FxPosition,
+} from './hilfen';
 
 const typisch = fixture('typisch');
 const p0020 = typisch.knoten.find((k) => k.ordnungszahl === '01.0020') as FxPosition;

@@ -18,6 +18,8 @@ export interface Testpfad {
   lvAnlegen(projektId: ProjektId, inhalt: LvInhalt): Promise<{ ok: boolean; id: LeistungsverzeichnisId }>;
   /** Ab jetzt weist `anwenden` mit diesem Code ab, ohne zu schreiben; `null` hebt das auf. */
   speicherFehler(code: Speicherfehlercode | null): void;
+  /** Dauer jedes `anwenden` (Worker, OPFS) in ms, in Aufrufreihenfolge: trennt in Messungen Speicher und App. */
+  readonly anwendenMs: number[];
 }
 
 declare global {
@@ -29,14 +31,18 @@ declare global {
 const AKTIV = import.meta.env.VITE_TESTPFAD === '1';
 
 let fehlercode: Speicherfehlercode | null = null;
+const anwendenMs: number[] = [];
 
 function umhuellen(speicher: Speicher): Speicher {
   return {
     ...speicher,
-    anwenden: (eintrag, changeSet) =>
-      fehlercode === null
-        ? speicher.anwenden(eintrag, changeSet)
-        : Promise.resolve({ ok: false, fehler: { code: fehlercode, meldung: 'Testpfad' } }),
+    anwenden: async (eintrag, changeSet) => {
+      if (fehlercode !== null) return { ok: false, fehler: { code: fehlercode, meldung: 'Testpfad' } };
+      const t0 = performance.now();
+      const r = await speicher.anwenden(eintrag, changeSet);
+      anwendenMs.push(performance.now() - t0);
+      return r;
+    },
   };
 }
 
@@ -54,6 +60,7 @@ function onBereit(u: Umgebung): void {
     speicherFehler(code) {
       fehlercode = code;
     },
+    anwendenMs,
   };
 }
 

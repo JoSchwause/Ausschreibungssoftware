@@ -53,7 +53,13 @@ const ERWARTET_SUMMEN = {
 
 test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben Werte da', async ({ page }) => {
   // Die GP der Fixture stimmen mit der Tabelle im Ticket überein (zweiter Abgleich).
-  expect([...unter0101, ...unter0102].map(gp)).toEqual(['1.850,00', '644,43', '862,00', '1.169,97', '977,59']);
+  expect([...unter0101, ...unter0102].map(gp)).toEqual([
+    '1.850,00',
+    '644,43',
+    '862,00',
+    '1.169,97',
+    '977,59',
+  ]);
 
   await projektAnlegen(page, 'Kita Sonnenhang', 'Gemeinde Musterdorf');
   await lvAnlegen(page, 'Rohbau');

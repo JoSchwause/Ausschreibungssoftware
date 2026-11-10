@@ -17,7 +17,9 @@ export interface FxPosition {
 export interface FxLv {
   readonly id: string;
   readonly name: string;
-  readonly knoten: readonly ({ readonly art: string; readonly id: string } & Partial<FxPosition>)[];
+  readonly knoten: readonly ({ readonly art: string; readonly id: string } & Partial<
+    Omit<FxPosition, 'art' | 'id'>
+  >)[];
   readonly sollwerte: { readonly positionen: Readonly<Record<string, { readonly gp: string | null }>> };
 }
 
@@ -84,7 +86,9 @@ export async function neueZeile(page: Page, aktion: () => Promise<void>): Promis
   await expect
     .poll(async () => {
       const f = await fokuslage(page);
-      return f.zeilen === vorher.zeilen + 1 && f.zeile !== vorher.zeile && f.spalte === 'kurztext' && f.text === '';
+      return (
+        f.zeilen === vorher.zeilen + 1 && f.zeile !== vorher.zeile && f.spalte === 'kurztext' && f.text === ''
+      );
     })
     .toBe(true);
 }

@@ -3,7 +3,15 @@
 // Summenzeile, Speicherfehler (Anzeige bleibt beim alten Stand, Q5), zweiter Tab (E-14).
 
 import { expect, test, type Page } from '@playwright/test';
-import { fixture, lvAnlegen, neueZeile, positionTippen, projektAnlegen, summen, type FxPosition } from './hilfen';
+import {
+  fixture,
+  lvAnlegen,
+  neueZeile,
+  positionTippen,
+  projektAnlegen,
+  summen,
+  type FxPosition,
+} from './hilfen';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -23,7 +31,9 @@ async function lvMitZweiPositionen(page: Page): Promise<void> {
   await expect.poll(async () => (await summen(page))['Netto']).toBe('977,59');
 }
 
-test('Position und Titel über die Schaltflächen; Nachlass als Betrag, entfernen; MwSt ändern', async ({ page }) => {
+test('Position und Titel über die Schaltflächen; Nachlass als Betrag, entfernen; MwSt ändern', async ({
+  page,
+}) => {
   await lvMitZweiPositionen(page);
   const nachlass = page.getByRole('textbox', { name: 'Nachlass', exact: true });
   const mwst = page.getByRole('textbox', { name: 'MwSt-Satz' });
@@ -57,7 +67,9 @@ test('Position und Titel über die Schaltflächen; Nachlass als Betrag, entferne
   await expect(mwst).toHaveValue('7,00');
 });
 
-test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt den Grund', async ({ page }) => {
+test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt den Grund', async ({
+  page,
+}) => {
   await lvMitZweiPositionen(page);
   const vorher = await summen(page);
   await page.evaluate(() => {
@@ -67,7 +79,11 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   const mwst = page.getByRole('textbox', { name: 'MwSt-Satz' });
   await mwst.fill('7');
   await mwst.press('Enter');
-  await expect(page.getByText('Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.', {
+      exact: true,
+    }),
+  ).toBeVisible();
   expect(await summen(page)).toEqual(vorher);
 
   // Auch eine Änderung im Grid bleibt beim alten Stand.
