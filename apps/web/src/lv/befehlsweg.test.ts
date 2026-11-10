@@ -41,7 +41,13 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
       daten: {
         ordnungszahl: null,
         ozIndex: null,
-        merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
+        merkmale: {
+          bedarf: null,
+          wahl: null,
+          stundenlohn: false,
+          pauschal: false,
+          zuschlagskennzeichen: false,
+        },
         zuschlag: null,
         kurztext: 'Bauzaun',
         langtext: [],
@@ -64,7 +70,9 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
       expect(s.eintrag.projektId).toBe(projekt.id);
     }
     // Der Zustand der App ist der gespeicherte.
-    const gespeichert = await speicher.leistungsverzeichnisse.laden(zustand(lv.zustand).leistungsverzeichnis.id);
+    const gespeichert = await speicher.leistungsverzeichnisse.laden(
+      zustand(lv.zustand).leistungsverzeichnis.id,
+    );
     expect(gespeichert.ok && gespeichert.wert.summen.gesamt.netto).toBe('644.43');
     expect(zustand(lv.zustand).summen.gesamt.netto).toBe('644.43');
   });
@@ -83,9 +91,9 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
     });
     const b = lv.befehl({ art: 'KurztextAendern', knotenId: titel, kurztext: 'Erdarbeiten' });
     expect((await a).ok && (await b).ok).toBe(true);
-    expect(zustand(lv.zustand).leistungsverzeichnis.knoten.map((k) => k.art === 'titel' && k.kurztext)).toEqual([
-      'Erdarbeiten',
-    ]);
+    expect(
+      zustand(lv.zustand).leistungsverzeichnis.knoten.map((k) => k.art === 'titel' && k.kurztext),
+    ).toEqual(['Erdarbeiten']);
   });
 
   it('Speicherfehler: der Zustand bleibt beim alten Stand, der Grund kommt als Wert zurück', async () => {
@@ -99,7 +107,10 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
 
     const r = await lv.befehl({ art: 'MwstSatzSetzen', mwstSatz: '7.00' as Prozent });
 
-    expect(r).toEqual({ ok: false, abweisung: { art: 'speicher', fehler: { code: 'speicher-voll', meldung: 'Attrappe' } } });
+    expect(r).toEqual({
+      ok: false,
+      abweisung: { art: 'speicher', fehler: { code: 'speicher-voll', meldung: 'Attrappe' } },
+    });
     expect(lv.zustand).toBe(vorher);
     expect(benachrichtigt).toBe(0);
     // Der nächste Befehl läuft wieder, sobald der Speicher schreibt.
@@ -113,8 +124,12 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
     const u = testUmgebung(speicher);
     const { lv } = await mitProjektUndLv(u);
     const vorher = speicher.geschrieben.length;
-    const r = await lv.befehl({ art: 'MengeAendern', positionId: 'gibt-es-nicht' as PositionId, menge: null });
-    expect(r.ok === false && r.abweisung.art).toBe('befehl');
+    const r = await lv.befehl({
+      art: 'MengeAendern',
+      positionId: 'gibt-es-nicht' as PositionId,
+      menge: null,
+    });
+    expect(!r.ok && r.abweisung.art).toBe('befehl');
     expect(speicher.geschrieben.length).toBe(vorher);
   });
 

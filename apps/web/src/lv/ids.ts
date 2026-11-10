@@ -56,21 +56,22 @@ export function uuidV7Quelle(optionen: IdQuelleOptionen = {}): () => string {
 /** Die `IdQuelle` des Vertrags über einer UUIDv7-Quelle; alle Kennungsarten teilen dieselbe Folge. */
 export function appIdQuelle(optionen: IdQuelleOptionen = {}): IdQuelle {
   const neu = uuidV7Quelle(optionen);
-  const k = <T>(): (() => T) => () => neu() as T;
+  // Alle Kennungen sind dieselbe Art Zeichenkette; die Marken unterscheidet nur der Typ (A7).
+  const k = neu as () => never;
   return {
-    projekt: k(),
-    leistungsverzeichnis: k(),
-    auftragsLeistungsverzeichnis: k(),
-    angebot: k(),
-    bieter: k(),
-    protokoll: k(),
-    bild: k(),
-    los: k(),
-    titel: k(),
-    position: k(),
-    hinweistext: k(),
-    papierkorbeintrag: k(),
-    lvStand: k(),
+    projekt: k,
+    leistungsverzeichnis: k,
+    auftragsLeistungsverzeichnis: k,
+    angebot: k,
+    bieter: k,
+    protokoll: k,
+    bild: k,
+    los: k,
+    titel: k,
+    position: k,
+    hinweistext: k,
+    papierkorbeintrag: k,
+    lvStand: k,
   };
 }
 

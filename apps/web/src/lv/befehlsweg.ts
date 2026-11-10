@@ -37,7 +37,8 @@ export interface Umgebung {
 
 /** Warum ein Befehl nicht angekommen ist: der Kern hat ihn abgewiesen oder der Speicher hat ihn nicht geschrieben. */
 export type Abweisung =
-  { readonly art: 'befehl'; readonly fehler: Befehlsfehler } | { readonly art: 'speicher'; readonly fehler: Speicherfehler };
+  | { readonly art: 'befehl'; readonly fehler: Befehlsfehler }
+  | { readonly art: 'speicher'; readonly fehler: Speicherfehler };
 
 export type Ausgang<Z> =
   | { readonly ok: true; readonly zustand: Z; readonly hinweise: readonly Befehlshinweis[] }

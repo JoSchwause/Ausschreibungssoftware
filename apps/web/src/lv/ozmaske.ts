@@ -22,7 +22,8 @@ export function ozMaskeLesen(text: string): Ergebnis<OzMaske, string> {
   if (gruppen.some((g) => !GRUPPE.test(g))) {
     return {
       ok: false,
-      fehler: 'Die Maske besteht aus Gruppen von N (Ziffer) oder A (Zeichen), getrennt durch Punkte, z. B. NN.NN.NNNN[I].',
+      fehler:
+        'Die Maske besteht aus Gruppen von N (Ziffer) oder A (Zeichen), getrennt durch Punkte, z. B. NN.NN.NNNN[I].',
     };
   }
   const position = gruppen.at(-1) ?? '';

@@ -57,7 +57,12 @@ async function m1Lv() {
   };
   const position = async (aktiv: KnotenId, d: Positionsdaten) => {
     const id = u.ids.position();
-    await s.befehl({ art: 'PositionAnlegen', id, ort: positionOrt(lv(s).leistungsverzeichnis, aktiv), daten: d });
+    await s.befehl({
+      art: 'PositionAnlegen',
+      id,
+      ort: positionOrt(lv(s).leistungsverzeichnis, aktiv),
+      daten: d,
+    });
     return id;
   };
   const t01 = await titel('titel', null, 'Baustelle');
@@ -94,7 +99,9 @@ describe('LV-Ansicht aus dem Zustand', () => {
     ]);
     expect(ansicht.wurzelId).toBe(lv(s).leistungsverzeichnis.id);
     expect(ansicht.gesamt?.netto).toBe('5503.99');
-    expect(ansicht.zeilen.filter((z) => z.knoten.art === 'position').every((z) => z.gehtInSummeEin)).toBe(true);
+    expect(ansicht.zeilen.filter((z) => z.knoten.art === 'position').every((z) => z.gehtInSummeEin)).toBe(
+      true,
+    );
   });
 
   it('zugeklappte Gliederungen verbergen ihren Unterbaum und bleiben selbst sichtbar', async () => {
