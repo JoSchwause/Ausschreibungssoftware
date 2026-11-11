@@ -49,6 +49,8 @@ import type {
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
+import { KEINE_KATALOGE, katalogeLesen, kostengruppeLesen } from './kostengruppe';
+import type { Kataloge } from './kostengruppe';
 import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
@@ -516,6 +518,7 @@ const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'MarkupIt',
   'SumDescr',
   'SubDescr',
+  'CtlgAssign',
 ]);
 /** Eine Zuschlagsposition trägt dieselben Merkmale wie eine Position (F5) plus Bezugsform und Satz. */
 const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
@@ -529,6 +532,7 @@ const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
   'ALNGroupNo',
   'ALNSerNo',
   'MarkupIt',
+  'CtlgAssign',
 ]);
 const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
   'SubDNo',
@@ -631,6 +635,7 @@ class Aufbau {
     private readonly trenn: string | null,
     readonly wurzelId: LeistungsverzeichnisId,
     private readonly preise: Preisangaben | null = null,
+    private readonly kataloge: Kataloge = KEINE_KATALOGE,
   ) {}
 
   private reihenfolge(elternId: string): number {
@@ -966,6 +971,7 @@ class Aufbau {
       );
     const texte = this.texte(desc);
     const leitbeschreibung = this.leitbeschreibung(el, id);
+    const kostengruppe = kostengruppeLesen(this.l, el, this.kataloge, id);
 
     const pos: Position = {
       art: 'position',
@@ -982,6 +988,7 @@ class Aufbau {
       einheit,
       einheitspreis,
       epa,
+      ...(kostengruppe === undefined ? {} : { kostengruppe }),
     };
     this.knoten.push(pos);
     this.l.restMelden(el, this.preise ? POSITION_BEHANDELT_X86 : POSITION_BEHANDELT, 'Item');
@@ -1087,6 +1094,8 @@ class Aufbau {
       einheitspreis: null,
       epa: null,
     };
+    const kostengruppe = kostengruppeLesen(this.l, el, this.kataloge, id);
+    if (kostengruppe !== undefined) pos.kostengruppe = kostengruppe;
     this.knoten.push(pos);
     if (bezug.art === 'positionen' && refs.length > 0) this.zuschlaege.push({ pos, refs });
     this.l.restMelden(el, this.preise ? ZUSCHLAG_BEHANDELT_X86 : ZUSCHLAG_BEHANDELT, 'MarkupItem');
@@ -1374,6 +1383,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
   if (langName !== null) infoBehandelt.add('LblBoQ');
   for (const n of ['NoUPComps', ...EPA_NUMMERN.map((i) => `LblUPComp${String(i)}`)]) infoBehandelt.add(n);
   if (x86) infoBehandelt.add('Totals');
+  infoBehandelt.add('Ctlg');
   if (boqInfo) l.restMelden(boqInfo, infoBehandelt, 'BoQInfo');
   else l.melde('warnung', 'oz-maske-ohne-position', 'BoQInfo fehlt; die Gliederung ist unbekannt.', boq);
   const trenn = opt.trennzeichen === undefined ? '.' : opt.trennzeichen;
@@ -1386,7 +1396,8 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
   const wurzelId = opt.ids.leistungsverzeichnis();
   const epaBezeichnungen = leseEpaBezeichnungen(l, boqInfo);
   const preise = x86 ? { anteile: anteileNachNummer(epaBezeichnungen) } : null;
-  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise);
+  const kataloge = katalogeLesen(l, boqInfo);
+  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise, kataloge);
   const wurzelEbene: Ebene = { id: wurzelId, teile: [], ozOk: true, tiefe: 0 };
   const bodies = kinder(boq, 'BoQBody');
   if (bodies.length === 0) l.melde('warnung', 'lv-leer', 'Das Leistungsverzeichnis hat keinen BoQBody.', boq);
