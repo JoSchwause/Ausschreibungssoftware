@@ -35,6 +35,7 @@ import type {
   Einheitspreisanteile,
   ElternId,
   Knoten,
+  Kostengruppennummer,
   LvInhalt,
   Menge,
   Ordnungszahl,
@@ -168,6 +169,25 @@ interface FxLv {
 
 /** Die Fixtures, die Export, eigene Prüfung, Roundtrip und XSD-Gegenprüfung abdecken (Ticket 40 §6, D-18). */
 export const FIXTURES = ['winzig', 'typisch', 'gross', 'zuschlag'] as const;
+
+/** Kostengruppen, die `mitKostengruppen` reihum vergibt (Ebene 1 bis 3, Ticket 84). */
+export const TEST_KOSTENGRUPPEN = ['300', '330', '341', '420'] as const;
+
+/**
+ * Das LV mit einer Kostengruppe an jeder zweiten Position, reihum aus `TEST_KOSTENGRUPPEN` (Ticket 84). Die Fixtures
+ * tragen keine; die übrigen Positionen bleiben ohne, damit der Rundweg auch „fehlt“ prüft.
+ */
+export function mitKostengruppen(inhalt: LvInhalt): LvInhalt {
+  let n = 0;
+  const knoten = inhalt.knoten.map((k): Knoten => {
+    if (k.art !== 'position') return k;
+    n += 1;
+    if (n % 2 === 0) return k;
+    const kg = TEST_KOSTENGRUPPEN[Math.floor(n / 2) % TEST_KOSTENGRUPPEN.length] ?? '300';
+    return { ...k, kostengruppe: kg as Kostengruppennummer };
+  });
+  return { ...inhalt, knoten };
+}
 export type FixtureName = (typeof FIXTURES)[number];
 
 /** Maske aus der Fixture-Schreibweise `NN.NN.NNNN[I]: Erläuterung`. */
@@ -852,6 +872,11 @@ export function exportfaelle(): Exportfall[] {
   const reich = normiereKennungen(r.inhalt, r.summen, r.basen);
   for (const phase of ['X81', 'X83', 'X86'] as const)
     for (const version of versionen) faelle.push(fall('reich', reich, phase, version));
+  // Ticket 84: Kostengruppen als Katalogzuordnung (Ctlg im BoQInfo, CtlgAssign an Item und MarkupItem).
+  const t = fixtureLv('typisch');
+  const mitKg = normiereKennungen(mitKostengruppen(t.inhalt), t.summen, t.basen);
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('typisch-kg', mitKg, phase, version));
   const leer = leereStrukturenLv();
   for (const phase of ['X81', 'X83', 'X86'] as const)
     for (const version of versionen) faelle.push(fall('leer', leer, phase, version));
