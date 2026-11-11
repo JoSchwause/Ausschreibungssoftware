@@ -29,6 +29,10 @@ import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
+import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
+import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
+import { ansatzKennzeichen, befundeZusammen } from '../mengen/rueckfrage'; // Ticket 65
+import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
@@ -148,6 +152,8 @@ function LvBearbeiten({
   const aktiv = useRef<KnotenId | null>(null);
   const [merkmale, setMerkmale] = useState<Position | null>(null);
   const [dialog, setDialog] = useState<PositionId | null>(null);
+  const [mengenPanel, setMengenPanel] = useState<PositionId | null>(null); // Ticket 65
+  const ansatzFrage = useAnsatzFrage(); // Ticket 65
   const [kopfdaten, setKopfdaten] = useState(false);
   const [papierkorbOffen, setPapierkorbOffen] = useState(false);
   const [staendeOffen, setStaendeOffen] = useState(false);
@@ -164,7 +170,11 @@ function LvBearbeiten({
       }),
     [zustand],
   );
-  const jeKnoten = useMemo(() => befundeJeKnoten(befunde ?? []), [befunde]);
+  // Ticket 65: Positionen mit Mengenansatz tragen an der Mengenzelle einen Hinweis (D-65.2).
+  const jeKnoten = useMemo(
+    () => befundeZusammen(befundeJeKnoten(befunde ?? []), ansatzKennzeichen(lv.knoten)),
+    [befunde, lv.knoten],
+  );
   const gruppen = useMemo(() => pruefgruppen(befunde ?? [], lv.knoten), [befunde, lv.knoten]);
 
   const ansicht = useMemo(
@@ -259,6 +269,17 @@ function LvBearbeiten({
     }
   };
 
+  // Ticket 65: Eine direkte Mengenänderung entfernt den Mengenansatz (D-22 (a)); vorher fragt die App (Q5).
+  const befehlMitFrage = (befehle: readonly LvBefehl[], weiter: () => void): void => {
+    ansatzFrage.vor(sitzung.zustand?.leistungsverzeichnis.knoten ?? [], befehle, weiter);
+  };
+
+  const mengenPanelOeffnen = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'position') setMengenPanel(k.id);
+    else zeige({ titel: mtexte.keinePosition, beschreibung: mtexte.keinePositionText });
+  };
+
   const dialogOeffnen = (): void => {
     const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
     if (k?.art === 'position') setDialog(k.id);
@@ -328,6 +349,7 @@ function LvBearbeiten({
       },
       KeyP: positionAnlegen,
       KeyM: merkmaleOeffnen,
+      KeyE: mengenPanelOeffnen, // Ticket 65
     }[e.code];
     if (aktion === undefined) return;
     e.preventDefault();
@@ -380,6 +402,9 @@ function LvBearbeiten({
         <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
           {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
         </Button>
+        <Button onClick={mengenPanelOeffnen} aria-keyshortcuts="Control+Alt+E">
+          {mtexte.oeffnen} <Tastenkuerzel tasten={mtexte.tasten} />
+        </Button>
         <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
           {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
         </Button>
@@ -427,8 +452,12 @@ function LvBearbeiten({
             beschriftung={texte.seite.grid}
             hinweise={hinweise}
             {...(sprungziel ? { sprungziel } : {})}
-            onBefehl={(b) => void senden(b)}
-            onBefehlsfolge={(bs) => void sendenFolge(bs)}
+            onBefehl={(b) => {
+              befehlMitFrage([b], () => void senden(b)); // Ticket 65
+            }}
+            onBefehlsfolge={(bs) => {
+              befehlMitFrage(bs, () => void sendenFolge(bs)); // Ticket 65
+            }}
             onKopieEinfuegen={kopieEinfuegen}
             positionenZaehlen={(ids) => positionenImTeilbaum(lv.knoten, ids)}
             onAktiveZeileChange={(knotenId) => {
@@ -475,6 +504,20 @@ function LvBearbeiten({
           pruefe(a);
         }}
       />
+      {/* Ticket 65 */}
+      <MengenPanel
+        position={
+          mengenPanel === null
+            ? null
+            : ((lv.knoten.find((x) => x.id === mengenPanel && x.art === 'position') as
+                Position | undefined) ?? null)
+        }
+        onSchliessen={() => {
+          setMengenPanel(null);
+        }}
+        senden={senden}
+      />
+      {ansatzFrage.dialog}
       <PapierkorbDialog
         offen={papierkorbOffen}
         onSchliessen={() => {
