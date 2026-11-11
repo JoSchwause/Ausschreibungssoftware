@@ -1,7 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
+import type { LvZustand } from '@tethys/vertrag';
 import { excelRuecklaufLesen, lvAlsExcel } from './index';
+import type { ExcelRuecklauf } from './index';
+import { SPALTENBUCHSTABE, text, typischAngebote, zahl, zeileVon, zellenSetzen } from './testhilfe/excel';
+import type { Eintrag } from './testhilfe/excel';
 import { lvZustandAusFixture } from './testhilfen';
+
+/** Gleitkommatext, wie Excel ihn für eine eingetippte Dezimalzahl meist schreibt: ohne Nachkommanullen. */
+const excelText = (dezimal: string): string => dezimal.replace(/\.?0+$/, '');
+/** de-DE-Text, wie ein Bieter ihn in eine Textzelle tippt (`1814.850` → `1.814,85`). */
+const deText = (dezimal: string): string => {
+  const [ganz = '', nach = ''] = dezimal.split('.');
+  const rest = nach.replace(/0+$/, '');
+  return ganz.replace(/\B(?=(?:[0-9]{3})+$)/g, '.') + (rest === '' ? '' : `,${rest}`);
+};
+
+function ausfuellen(
+  bytes: Uint8Array,
+  angebot: ReturnType<typeof typischAngebote>[number],
+  zelle: (dezimal: string) => string,
+): Uint8Array {
+  const eintraege: Eintrag[] = [];
+  for (const p of angebot.roh) {
+    if (p.status === 'nicht-angeboten') continue;
+    const n = String(zeileVon(bytes, p.positionId));
+    if ('zuschlagssatz' in p)
+      eintraege.push({ ref: `${SPALTENBUCHSTABE.satz}${n}`, xml: zelle(p.zuschlagssatz) });
+    else eintraege.push({ ref: `${SPALTENBUCHSTABE.ep}${n}`, xml: zelle(p.einheitspreis) });
+  }
+  return zellenSetzen(bytes, eintraege);
+}
 
 describe('Excel-Rundlauf: Blankett ohne Eingaben', () => {
   it('winzig: ein unberührtes Blankett liefert jede Position als „nicht angeboten“, ohne Befund', () => {
@@ -16,5 +45,106 @@ describe('Excel-Rundlauf: Blankett ohne Eingaben', () => {
         .filter((k) => k.art === 'position')
         .map((k) => ({ positionId: k.id, status: 'nicht-angeboten' })),
     );
+  });
+});
+
+describe('Excel-Rundlauf: typisch mit den Preisen der drei Bieter', () => {
+  const { zustand } = lvZustandAusFixture('typisch');
+  const blankett = lvAlsExcel(zustand).bytes;
+
+  describe.each(typischAngebote().map((a) => [a.bieter, a] as const))('%s', (_, angebot) => {
+    it('Zahlzellen: die Angebotspositionen sind gleich der Fixture', () => {
+      const r = excelRuecklaufLesen(
+        ausfuellen(blankett, angebot, (d) => zahl(excelText(d))),
+        zustand,
+      );
+      expect(r.befunde).toEqual([]);
+      expect(r.positionen).toEqual(angebot.positionen);
+    });
+
+    it('Textzellen in de-DE-Schreibweise: gleiches Ergebnis', () => {
+      const r = excelRuecklaufLesen(
+        ausfuellen(blankett, angebot, (d) => text(deText(d))),
+        zustand,
+      );
+      expect(r.befunde).toEqual([]);
+      expect(r.positionen).toEqual(angebot.positionen);
+    });
+  });
+});
+
+/** Ein Eintrag in das Blankett von `typisch`, zurückgelesen. */
+function mitEintrag(
+  zustand: LvZustand,
+  knotenId: string,
+  spalte: 'ep' | 'satz' | 'id' | 'oz',
+  xml: string | null,
+): ExcelRuecklauf {
+  const bytes = lvAlsExcel(zustand).bytes;
+  const ref = `${SPALTENBUCHSTABE[spalte]}${String(zeileVon(bytes, knotenId))}`;
+  return excelRuecklaufLesen(zellenSetzen(bytes, [{ ref, xml }]), zustand);
+}
+
+describe('Excel-Rundlauf: Zahlen aus der Zelle', () => {
+  const { zustand } = lvZustandAusFixture('typisch');
+  const position = '019b76e9-ea43-79e5-a71b-20f7abf907b0'; // 01.0020
+  const zuschlag = '019b76e9-ea4e-72e6-aa2e-a1ad93edf894'; // 02.0050A
+  const epVon = (r: ExcelRuecklauf, id: string): unknown => r.positionen.find((p) => p.positionId === id);
+
+  it.each([
+    ['18.440999999999999', '18.441'], // Gleitkomma-Abbild mit 17 Ziffern, wie Excel es schreibt
+    ['1E-3', '0.001'],
+    ['1.2345E3', '1234.500'],
+    ['7', '7.000'],
+    ['-12.5', '-12.500'],
+  ])('Zahlzelle %s → EP %s', (v, ep) => {
+    const r = mitEintrag(zustand, position, 'ep', zahl(v));
+    expect(r.befunde).toEqual([]);
+    expect(epVon(r, position)).toEqual({
+      positionId: position,
+      status: 'angeboten',
+      einheitspreis: ep,
+      epa: null,
+    });
+  });
+
+  it('0 ist ein angebotener Preis von 0,000, nicht „nicht angeboten“', () => {
+    const r = mitEintrag(zustand, position, 'ep', zahl('0'));
+    expect(epVon(r, position)).toEqual({
+      positionId: position,
+      status: 'angeboten',
+      einheitspreis: '0.000',
+      epa: null,
+    });
+  });
+
+  it('eine leere Textzelle (nur Leerraum) ist „nicht angeboten“', () => {
+    const r = mitEintrag(zustand, position, 'ep', text('  '));
+    expect(r.befunde).toEqual([]);
+    expect(epVon(r, position)).toEqual({ positionId: position, status: 'nicht-angeboten' });
+  });
+
+  it.each([['8,51'], ['8,51 %'], ['8,51%']])('Satz als Text „%s“ → 8.51', (t) => {
+    const r = mitEintrag(zustand, zuschlag, 'satz', text(t));
+    expect(r.befunde).toEqual([]);
+    expect(epVon(r, zuschlag)).toEqual({
+      positionId: zuschlag,
+      status: 'angeboten',
+      einheitspreis: '0.000',
+      epa: null,
+      zuschlagssatz: '8.51',
+    });
+  });
+
+  it('Satz als Gleitkommazahl 8.5099999999999998 → 8.51', () => {
+    const r = mitEintrag(zustand, zuschlag, 'satz', zahl('8.5099999999999998'));
+    expect(r.befunde).toEqual([]);
+    expect(epVon(r, zuschlag)).toMatchObject({ zuschlagssatz: '8.51' });
+  });
+
+  it('eine Formel zählt mit ihrem gespeicherten Ergebnis', () => {
+    const r = mitEintrag(zustand, position, 'ep', '<c><f>7+0.5</f><v>7.5</v></c>');
+    expect(r.befunde).toEqual([]);
+    expect(epVon(r, position)).toMatchObject({ einheitspreis: '7.500' });
   });
 });
