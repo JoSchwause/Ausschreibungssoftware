@@ -31,6 +31,7 @@ import type {
   Ergebnis,
   HinweistextId,
   Knoten,
+  Leistungsstand,
   LeistungsverzeichnisId,
   LosId,
   LvInhalt,
@@ -46,9 +47,11 @@ import type {
   Positionsmerkmale,
   ProjektId,
   Prozent,
+  Rechnung,
   TitelId,
   Zuschlag,
 } from '@tethys/vertrag';
+import { nachtragUebernehmen } from './nachtrag-uebernehmen';
 
 export function erwarteOk<T, F>(e: Ergebnis<T, F>): T {
   if (!e.ok) throw new Error(`Unerwarteter Fehlerwert: ${JSON.stringify(e.fehler)}`);
@@ -367,6 +370,77 @@ export interface FxAbrechnung {
     aufmassId: string;
     befehl: { art: 'AufmasspositionSetzen'; position: FxAufmass['positionen'][number] };
     aufmassNachher: FxAufmass;
+  };
+  rechnungen: (Omit<Rechnung, 'nummer'> & { nummer: string })[];
+  pruefungen: Record<'ar1' | 'ar2VorKorrektur' | 'ar2NachKorrektur', FxPruefung>;
+  gegenprobeOhneEinfrieren: { ar1Zahlbetrag: string; ar2Zahlbetrag: string };
+  sollIst: Record<'nachBlatt1' | 'nachBlatt2' | 'nachKorrektur', FxSollIst>;
+}
+
+/** Sollwerte der Prüfung einer Rechnung (Ticket 85, Feldnamen der Fixture). */
+export interface FxPruefung {
+  rechnungId: string;
+  korrigiert: boolean;
+  leistungsstand: Leistungsstand;
+  kette: {
+    leistung: string;
+    nachlass: string;
+    nettoNachNachlass: string;
+    mwst: string;
+    bruttoKumuliert: string;
+    umlagen: { bezeichnung: string; satz: string; betrag: string }[];
+    einbehalt: string;
+    fruehereZahlbetraege: string;
+    zahlbetrag: string;
+  };
+}
+
+/** Sollwerte von Soll/Ist (Ticket 85, D-85.5: Zeilen nur für Positionen mit Aufmaß). */
+export interface FxSollIst {
+  aufmassIds: string[];
+  korrigiert: boolean;
+  zeilen: { positionId: string; soll: string; ist: string; anteil: string }[];
+  befunde: { positionId: string; art: string; anteil: string }[];
+}
+
+/** Eine Rechnung im Fixture-Format als Vertragstyp (Nummer als Text, D-85.4). */
+export function fxRechnung(r: FxAbrechnung['rechnungen'][number]): Rechnung {
+  return { ...r, nummer: Number(r.nummer) };
+}
+
+/**
+ * Der Stand des Tors M4 für Rechnung und Soll/Ist: das Auftrags-LV nach der Übernahme von N01 (über `nachtragUebernehmen`
+ * und den Kern), Blatt 1, Blatt 2, Blatt 1 nach der Korrektur, AR 1 (freigegeben) und AR 2.
+ */
+export function m4Stand(): {
+  auftrag: AuftragsLvZustand;
+  blatt1: Aufmass;
+  blatt2: Aufmass;
+  blatt1Korrigiert: Aufmass;
+  ar1: Rechnung;
+  ar2: Rechnung;
+} {
+  const fx = abrechnungsFixture();
+  const vorher = m4AuftragsLv();
+  const n = m4Nachtrag();
+  const a = vorher.auftragsLeistungsverzeichnis;
+  const ids = {
+    los: () => fx.nachtrag.uebernahme.knoten[0]?.id as LosId,
+    titel: () => fx.nachtrag.uebernahme.knoten[0]?.id as TitelId,
+  };
+  const { befehl } = erwarteOk(
+    nachtragUebernehmen(vorher, n.lv, n.angebot, { id: a.angebotId, bieterId: n.angebot.bieterId }, ids),
+  );
+  const [b1, b2] = fx.aufmasse.map((x) => fxAufmass(x.aufmass));
+  const [ar1, ar2] = fx.rechnungen.map(fxRechnung);
+  if (!b1 || !b2 || !ar1 || !ar2) throw new Error('M4-Fixture ohne zwei Blätter oder zwei Rechnungen');
+  return {
+    auftrag: imKernUebernehmen(vorher, befehl).danach,
+    blatt1: b1,
+    blatt2: b2,
+    blatt1Korrigiert: fxAufmass(fx.korrektur.aufmassNachher),
+    ar1,
+    ar2,
   };
 }
 
