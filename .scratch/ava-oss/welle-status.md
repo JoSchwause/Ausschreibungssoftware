@@ -4,5 +4,6 @@
 |---|---|---|
 | 0 | done | Tickets 02, 03, 19, 23 (teilweise) |
 | 1 | done | Tickets 04–07, 10, 20–22 |
-| 2 | partial | Stufe 1 (24–28) gemergt; Stufen 2 und 3 laufen als Phase A im Lauf „Welle 3“ (D-01) |
-| 3 | in-progress | Integrationsbranch `integration/welle-3`, Tickets 29–49 |
+| 2 | done | Stufe 1 (24–28) auf `main`; Stufen 2 und 3 als Phase A im Lauf „Welle 3“ (Tickets 29–40), Tor M1 erreicht |
+| 3 | done | Branch `integration/welle-3` (lokal, nicht auf `main`), Tickets 29–50 resolved, Tor M2 „erfüllt mit gelisteten Unterschieden“ (D-18), Bericht `welle-3-bericht.md` |
+| 4 | open | Eintritt: siehe `welle-3-bericht.md`, Abschnitt „Eintritt Welle 4“; Folgetickets 51–54 |

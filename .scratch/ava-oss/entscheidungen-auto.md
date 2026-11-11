@@ -279,3 +279,10 @@ Question: Roundtrip ergibt ein identisches Modell nur bis auf eine Liste erwarte
 Decision: `zuschlag` jetzt in die Export-/XSD-/Roundtrip-Liste; die Unterschiedsliste ist je Fixture und Position ausdrücklich, der Test schlägt bei jedem ungelisteten Unterschied fehl. M2 gilt als „erfüllt mit gelisteten Unterschieden“. Fixture-Umstellung auf die GAEB-Form als Folgeticket 51 (`ready-for-agent`, blockiert M3).
 Reason: D-44.2 hat die Umstellung aus P1/P2-Gründen abgespalten; sie jetzt zu machen öffnet fünf Pakete beim Wellenabschluss.
 Reversible: yes  Touches: packages/gaeb, Ticket 51
+
+## D-19 Paketgrenzen: `speicher → kern` und `gaeb → kern` freigegeben
+Welle 3 · Review C1, S4, S6 · decided by: orchestrator
+Question: Die Behebung von C1 (D-17) und S4/S6 (D-16) braucht Kern-Funktionen in `speicher` und `gaeb`; `tools/boundaries.mjs` erlaubte beides nicht.
+Decision: Beide Kanten in `tools/boundaries.mjs` freigegeben, mit Grund im Kommentar. Kein Aufweichen der Prüfung: A3 sieht `vertrag ← kern ← Fachpakete` vor; Fachpakete untereinander bleiben verboten.
+Reason: Die Liste war enger als Regel A3; die Alternative wären doppelte Fachregeln (genau der Review-Befund).
+Reversible: yes  Touches: tools/boundaries.mjs
