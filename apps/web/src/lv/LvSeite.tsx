@@ -311,6 +311,9 @@ function LvBearbeiten({
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     if (e.key === 'F8' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
+      // Auf der LV-Seite gehört F8 dem Prüf-Panel. Der Meldungsbereich (Radix Toast) hört am `document` ebenfalls auf F8
+      // und nähme dem Panel den Fokus gleich wieder weg; das Ereignis endet deshalb hier.
+      e.stopPropagation();
       panel.current?.fokussieren();
       return;
     }

@@ -225,6 +225,30 @@ test('Prüf-Panel: Befunde gruppiert, Sprung zur Zelle und in den Dialog; behobe
   await expect(zelle(page, 2, 'einheit')).not.toHaveClass(/tx-grid__zelle--warnung/);
 });
 
+test('F8 setzt den Fokus sofort ins Prüf-Panel; ein Wechsel gleich danach bleibt bestehen', async ({
+  page,
+}) => {
+  await lvMitZweiPositionen(page);
+  const panel = page.getByRole('complementary', { name: 'Prüfung des LV' });
+  // Die Prüfung läuft im Leerlauf nach; erst wenn das Panel ihren Endstand zeigt (nur die zwei fehlenden Langtexte,
+  // kein Befund mehr aus dem Tippen), baut sie die Liste nicht mehr um.
+  await expect(panel.locator('[data-pruefeintrag]')).toHaveText([/keinen Langtext/, /keinen Langtext/]);
+  await zelle(page, 1, 'kurztext').focus();
+  // F8 und der Wechsel zum zweiten Eintrag in derselben Aufgabe, also schneller als ein Bild: Der Fokus muss mit F8
+  // selbst im Panel stehen (nicht im Meldungsbereich, der ebenfalls auf F8 hört) und darf danach nicht zurückspringen.
+  const fokus = await page.evaluate(async () => {
+    const eintraege = () => [...document.querySelectorAll<HTMLElement>('[data-pruefeintrag]')];
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'F8', bubbles: true, cancelable: true }),
+    );
+    const nachF8 = eintraege().indexOf(document.activeElement as HTMLElement);
+    eintraege()[1]?.focus();
+    await new Promise((fertig) => requestAnimationFrame(() => requestAnimationFrame(fertig)));
+    return { nachF8, danach: eintraege().indexOf(document.activeElement as HTMLElement) };
+  });
+  expect(fokus).toEqual({ nachF8: 0, danach: 1 });
+});
+
 test('Zuschlagsposition mit Bezugsliste: Bezugsposition über die Suche, Betrag aus dem Kern', async ({
   page,
 }) => {

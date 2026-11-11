@@ -42,7 +42,10 @@ type Auswahlart = 'ersetzen' | 'erweitern';
 
 /** Was das Grid zuletzt in die Zwischenablage geschrieben hat (Bedienzustand, Ticket 46). */
 interface Merkliste {
-  /** Der geschriebene Text; nur wenn die Zwischenablage genau ihn enthält, gilt das Einfügen als eigenes. */
+  /**
+   * Der geschriebene Text; nur wenn die Zwischenablage genau ihn enthält (oder das Schreiben noch läuft), gilt das
+   * Einfügen als eigenes.
+   */
   readonly text: string;
   /** Die obersten kopierten Knoten in Anzeigereihenfolge. */
   readonly knotenIds: readonly KnotenId[];
@@ -97,6 +100,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const [abgelehnt, setAbgelehnt] = useState<ReadonlyMap<string, Abgelehnt>>(KEINE_ABLEHNUNGEN);
   const [status, setStatus] = useState('');
   const [merkliste, setMerkliste] = useState<Merkliste | null>(null);
+  /** Text, den das Grid gerade in die System-Zwischenablage schreibt; `null`, sobald `writeText` fertig ist. */
+  const schreibtNoch = useRef<string | null>(null);
   const [rueckfrage, setRueckfrage] = useState<Rueckfrage | null>(null);
   /** Nur ein Anstoß zum Neuzeichnen, damit eine Fokusanfrage außerhalb eines Ereignisses ausgeführt wird. */
   const [, setFokusRunde] = useState(0);
@@ -406,8 +411,14 @@ export function LvGrid(props: LvGridProps): ReactElement {
       zeilen: menge,
     });
     setStatus(meldungZeilen(menge.size, ausschneiden ? 'ausgeschnitten' : 'kopiert'));
-    // Die System-Zwischenablage ist asynchron; die Merkliste gilt sofort.
-    navigator.clipboard.writeText(text).catch(() => {
+    // Die System-Zwischenablage ist asynchron (Chrome ist erst nach dem nächsten Bild fertig); die Merkliste gilt
+    // sofort, auch für ein Einfügen, bevor das Schreiben fertig ist (siehe `onPaste`).
+    schreibtNoch.current = text;
+    const geschrieben = (): void => {
+      if (schreibtNoch.current === text) schreibtNoch.current = null;
+    };
+    navigator.clipboard.writeText(text).then(geschrieben, () => {
+      geschrieben();
       setStatus(texte.zwischenablageGesperrt);
     });
   };
@@ -685,13 +696,18 @@ export function LvGrid(props: LvGridProps): ReactElement {
 
   const onPaste = (e: ClipboardEvent<HTMLDivElement>): void => {
     if (imEditor(e.target)) return; // im Eingabefeld gilt das übliche Einfügen von Text
-    const text = e.clipboardData.getData('text/plain');
+    const inhalt = e.clipboardData.getData('text/plain');
     e.preventDefault();
     // Eigener Text (zuletzt vom Grid geschrieben): verlustfrei verschieben bzw. kopieren (Ticket 46, Punkt 2).
+    // Läuft das Schreiben noch, liefert die Zwischenablage ihren alten Inhalt; gemeint sind aber die eben kopierten
+    // bzw. ausgeschnittenen Zeilen, nicht dieser alte Text.
     const eigen =
-      merkliste !== null && zeilenumbruchNormal(text) === zeilenumbruchNormal(merkliste.text)
+      merkliste !== null &&
+      (schreibtNoch.current === merkliste.text ||
+        zeilenumbruchNormal(inhalt) === zeilenumbruchNormal(merkliste.text))
         ? merkliste
         : null;
+    const text = eigen ? eigen.text : inhalt;
     if (eigen?.art === 'ausgeschnitten') {
       if (aktivIndex >= 0 && liegtInMenge(zeilen, aktivIndex, new Set(eigen.knotenIds))) {
         setStatus(texte.zielAusgeschnitten);
