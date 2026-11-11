@@ -49,3 +49,16 @@ In dieser Reihenfolge, je Befund ein Commit (Befundnummer in der Nachricht). Ers
       `projekt`, `rechnung`, `kosten`, `aufmass`, `vorlage`, `druckprofil`, `undo`, `m3` grün
 
 ## Comments
+
+### Umsetzung (Branch `welle-5/92-review-fix`, Basis `integration/welle-5`)
+
+Befund → Commit (Pflicht):
+- P6 → `48e1e1c` (`nachtragsmaske` + Warnung `maske-zu-tief` in `abrechnung`, App legt das Nachtrags-LV mit der verkürzten
+  Maske an, Hinweis bei Maske ohne Gliederungsstufe; Glossar „Nachtrag übernehmen“)
+- S1, S2 → `8771547` (`Kalkulationszeile`, `spalteKalkulationszuschlag`; Glossar-Notiz am Kalkulationsansatz)
+- S11 → `de32709` (`Forderungsdifferenz`; Glossar Rechnungsprüfung)
+- P2 → `d819eec` (Preisspiegel eines Nachtrags-LV ohne „Zuschlag erteilen“, mit Hinweis; E2E in `nachtrag.spec.ts`)
+- P3 → `6e1035e` (Projektseite aus `auflisten`; Netto je sichtbarer Zeile nachgeladen, `LvNetto.tsx`; E2E in `projekt.spec.ts`)
+- P5 → `367911c` (Infozeilen nicht beauftragter Nachträge in der Prüfansicht, `nachtragsinfo`)
+- P7 → `237a096` (`ablageLesen`/`ablageAlsText`: Zurückgehaltenes bleibt in der Ablage, Hinweis im Druckdialog; E2E)
+- S12 → `0582354` (`kosten/useLvKosten.tsx`, Einhängestellen in `LvSeite.tsx`)
