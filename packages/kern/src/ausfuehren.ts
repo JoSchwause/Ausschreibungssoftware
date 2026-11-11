@@ -34,6 +34,7 @@ import { einheitspreisanteileSetzen } from './epa';
 import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen } from './kopfdaten-befehle';
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
+import { lvStandAnlegen } from './lv-stand';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
   einheitspreisAendern,
@@ -79,6 +80,7 @@ export const BEFEHLS_HANDLER = {
   AuftraggeberSetzen: auftraggeberSetzen,
   VergabeinformationenSetzen: vergabeinformationenSetzen,
   LeitbeschreibungSetzen: leitbeschreibungSetzen,
+  LvStandAnlegen: lvStandAnlegen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -91,7 +93,6 @@ export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   PapierkorbeintragWiederherstellen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   PapierkorbeintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   PapierkorbLeeren: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  LvStandAnlegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

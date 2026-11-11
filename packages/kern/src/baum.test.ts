@@ -8,7 +8,6 @@ import type {
   Einfuegeort,
   Knoten,
   LvBefehl,
-  LvStandId,
   LvZustand,
   Menge,
   Position,
@@ -688,7 +687,6 @@ describe('Befehle anderer Tickets', () => {
   const z = basis();
   const fremde: LvBefehl[] = [
     { art: 'PapierkorbLeeren' },
-    { art: 'LvStandAnlegen', id: 'stand-1' as LvStandId, name: 'Stand' },
   ];
 
   it.each(fremde.map((b) => [b.art, b] as const))(
