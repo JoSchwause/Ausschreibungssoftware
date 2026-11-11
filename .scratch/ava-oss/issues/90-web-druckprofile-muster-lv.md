@@ -1,6 +1,6 @@
 # 90: O3+C5 in der App: Druckprofile, Muster-LV, Textquelle
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: O3, C5 · Ordner: `apps/web/src/ausgabe/`, `apps/web/src/vorlage/` (neu); Einhängestellen in
 `lv/LvSeite.tsx`, `lv/PositionsDialog.tsx`, `lv/KopfdatenDialog.tsx`, `auftrag/AuftragAusgeben.tsx` (markiert `// Ticket 90`,
@@ -50,6 +50,9 @@ Decision: ein Feld im Positionsdialog; Übernehmen hängt `TextquelleSetzen` an 
 Decision: `lvInhalt` (`lv/inhalt.ts`, `// Ticket 90`) reicht `vorlage` und `nachtrag` an `schreibeGaeb` weiter (nur wenn gesetzt); der Export zeigt die Warnung `export-verworfen` („Kennzeichen Muster-LV“, „Nachtragsangaben des LV“) im Befunddialog. Test in `lv/inhalt.test.ts` und E2E.
 
 ## Answer
+
+Merged: fd4a72f in integration/welle-5 (Konflikt an der Einhängestelle der Projektseite vom Orchestrator gelöst; danach App-Unit-Tests 249/249, E2E vorlage, druckprofil, projekt, nachtrag, kosten, gaeb 16/16)
+
 
 Alle drei Teile in der App.
 1. Druckprofile: im Dialog „Als PDF“ (LV und, über `PdfAusgabe` in `auftrag/AuftragAusgeben.tsx`, Auftrags-LV) Profil wählen, Felder ändern, als eigenes Profil speichern/ändern/löschen, JSON exportieren/importieren (Befunde sichtbar); Ablage als Einstellung des Nutzers (D-90.1). `ausgabe/profile.ts` (+ Test), `ausgabe/DruckProfilFeld.tsx`.
