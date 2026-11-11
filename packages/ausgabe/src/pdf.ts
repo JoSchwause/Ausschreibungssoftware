@@ -21,15 +21,15 @@ type Zelle =
   string | { text: string; [schluessel: string]: unknown } | { canvas: unknown[]; [k: string]: unknown };
 
 /** Eine Zeile aus sechs Zellen; Menge, EP und GP stehen rechtsbündig. */
-function zeile(zellen: readonly Zelle[]): Content {
+function zeile(zellen: readonly Zelle[]): { columns: Content[]; columnGap: number } {
   return {
     columns: zellen.map((z, i) => ({
       ...(typeof z === 'string' ? { text: z } : z),
       width: BREITEN[i],
       ...(i === 2 || i >= 4 ? { alignment: 'right' as const } : {}),
-    })),
+    })) as Content[],
     columnGap: 4,
-  } as Content;
+  };
 }
 
 /** Leeres Eingabefeld mit Linie (Blankett: Der Bieter trägt EP und GP ein). */
@@ -94,10 +94,23 @@ function blockInhalt(b: DruckBlock): Content {
   }
 }
 
-const langtextKasten = (bloecke: readonly DruckBlock[], links = EINRUECKUNG): Content | null =>
-  bloecke.length === 0
-    ? null
-    : { stack: bloecke.map(blockInhalt), fontSize: 7, color: GRAU, margin: [links, 1, 0, 2] };
+/**
+ * Langtext einer Position oder Unterbeschreibung, eingerückt und klein. Ein einzelner Absatz ohne Auszeichnung (der Normalfall
+ * bei 5.000 Positionen) wird zu einem einzigen Textknoten; das hält pdfmake schnell.
+ */
+function langtextKasten(bloecke: readonly DruckBlock[], links = EINRUECKUNG): Content | null {
+  const stil = { fontSize: 7, color: GRAU } as const;
+  const [einziger] = bloecke;
+  if (bloecke.length === 1 && einziger?.art === 'absatz') {
+    const schlicht = einziger.laeufe.every((l) => !l.fett && !l.kursiv && !l.unterstrichen);
+    return {
+      text: schlicht ? einziger.laeufe.map((l) => l.text).join('') : einziger.laeufe.map(laufInhalt),
+      ...stil,
+      margin: [links, 1, 0, 3],
+    };
+  }
+  return bloecke.length === 0 ? null : { stack: bloecke.map(blockInhalt), ...stil, margin: [links, 1, 0, 2] };
+}
 
 // --- Zeilen -------------------------------------------------------------------------------------
 
@@ -166,6 +179,7 @@ function positionsKnoten(z: PositionZeile, mitPreisen: boolean): { anfang: Conte
   const zusatz: string[] = [...z.merkmale];
   if (z.zuschlag !== null) zusatz.push(`Zuschlag ${z.zuschlag.bezug}`);
   const stack: Content[] = [kopf];
+  const nurKopf = zusatz.length === 0;
   if (zusatz.length > 0)
     stack.push({
       text: zusatz.join(' · '),
@@ -180,6 +194,7 @@ function positionsKnoten(z: PositionZeile, mitPreisen: boolean): { anfang: Conte
   if (text) rest.push(text);
   for (const u of z.unterbeschreibungen) {
     const menge = [u.menge, u.einheit].filter((t) => t !== '').join(' ');
+    const unterText = langtextKasten(u.langtext, 8);
     rest.push({
       stack: [
         {
@@ -190,13 +205,14 @@ function positionsKnoten(z: PositionZeile, mitPreisen: boolean): { anfang: Conte
           ],
           margin: [0, 1, 0, 0],
         },
-        ...(langtextKasten(u.langtext, 8) ? [langtextKasten(u.langtext, 8) as Content] : []),
+        ...(unterText ? [unterText] : []),
       ],
       fontSize: 7,
       margin: [EINRUECKUNG + 6, 1, 0, 1],
     });
   }
-  return { anfang: { stack, margin: [0, 2, 0, 0] }, rest: rest.length === 0 ? null : { stack: rest } };
+  const anfang: Content = nurKopf ? { ...kopf, margin: [0, 2, 0, 0] } : { stack, margin: [0, 2, 0, 0] };
+  return { anfang, rest: rest.length === 0 ? null : rest.length === 1 ? (rest[0] ?? null) : { stack: rest } };
 }
 
 function summenKnoten(m: NonNullable<Ausgabemodell['summen']>): Content {
