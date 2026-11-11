@@ -76,7 +76,10 @@ function saetzeAus(saetze: Partial<Record<EpaArt, bigint>>): Kalkulationszuschla
 }
 
 /** Orakel: Anteil je Kostenart in Tausendsteln, aus den Zeilen mit beiden Werten. */
-function erwarteteAnteile(zeilen: readonly Zeile[], saetze: Partial<Record<EpaArt, bigint>>): Map<EpaArt, bigint> {
+function erwarteteAnteile(
+  zeilen: readonly Zeile[],
+  saetze: Partial<Record<EpaArt, bigint>>,
+): Map<EpaArt, bigint> {
   const ek = new Map<EpaArt, bigint>(); // Millionstel
   for (const { art, m, k } of zeilen) if (m !== null && k !== null) ek.set(art, (ek.get(art) ?? 0n) + m * k);
   const aus = new Map<EpaArt, bigint>();
@@ -110,7 +113,13 @@ describe('Eigenschaften der Einzelpreiskalkulation', () => {
         const r = einzelpreiskalkulationBerechnen(ansaetze(zeilen), saetzeAus(saetze));
         const gesetzt = ARTEN.map((a) => anteilVon(r, a)).filter((a): a is string => a !== null);
         if (gesetzt.length === 0) expect(r.einheitspreis).toBeNull();
-        else expect(r.einheitspreis).toBe(text(gesetzt.reduce((s, a) => s + ganz(a, 3), 0n), 3));
+        else
+          expect(r.einheitspreis).toBe(
+            text(
+              gesetzt.reduce((s, a) => s + ganz(a, 3), 0n),
+              3,
+            ),
+          );
       }),
       runs,
     );
@@ -162,7 +171,9 @@ describe('Eigenschaften der Einzelpreiskalkulation', () => {
     fc.assert(
       fc.property(zeilenGen, (zeilen) => {
         const r = einzelpreiskalkulationBerechnen(ansaetze(zeilen), {});
-        const fehlt = r.befunde.filter((b) => b.code === 'wert-fehlt').map((b) => `${String(b.zeile)} ${b.feld}`);
+        const fehlt = r.befunde
+          .filter((b) => b.code === 'wert-fehlt')
+          .map((b) => `${String(b.zeile)} ${b.feld}`);
         const erwartet = zeilen.flatMap((z, i) => [
           ...(z.m === null ? [`${String(i)} ansatzmenge`] : []),
           ...(z.k === null ? [`${String(i)} kostensatz`] : []),

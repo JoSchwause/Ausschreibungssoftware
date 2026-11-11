@@ -80,12 +80,17 @@ describe('einzelpreiskalkulationBerechnen: Rechenweg', () => {
       ['stoffe', '21.485', '12.00', '2.5782', '24.063'],
       ['geraete', '0.62', '15.00', '0.093', '0.713'],
     ]);
+    expect(r.lohnstundenJeEinheit).toBe('0.450');
     expect(r.befunde).toEqual([]);
   });
 
   // Frei: 1,000 × 7,250 = 7,250 (0 %) = EP; die Bezeichnung des freien Anteils kommt vom Aufrufer
   it('übernimmt die Bezeichnung des freien Anteils in die Einheitspreisanteile', () => {
-    const r = einzelpreiskalkulationBerechnen([z('frei', 'Container', '1.000', '7.250')], SAETZE, 'Entsorgung');
+    const r = einzelpreiskalkulationBerechnen(
+      [z('frei', 'Container', '1.000', '7.250')],
+      SAETZE,
+      'Entsorgung',
+    );
     expect(r.anteile.frei).toBe('7.250');
     expect(r.anteile.freiBezeichnung).toBe('Entsorgung');
     expect(r.einheitspreis).toBe('7.250');
@@ -195,6 +200,7 @@ describe('einzelpreiskalkulationBerechnen: Befunde, nie Sperre (U5)', () => {
       },
       einheitspreis: null,
       kostenarten: [],
+      lohnstundenJeEinheit: '0.000',
       befunde: [],
     });
   });

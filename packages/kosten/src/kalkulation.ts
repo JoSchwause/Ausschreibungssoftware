@@ -4,7 +4,16 @@
 // Einzelkosten ungerundet, Anteil kaufmännisch auf 3 Stellen (EP 3, N3), EP = Σ der gerundeten Anteile. Rein (A2), nur
 // Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes. Nicht gespeichert (D-36 (5)).
 
-import { NULL_PROZENT, addiere, alsDezimal, multipliziere, runden, vergleiche, vorzeichen } from '@tethys/dezimal';
+import {
+  NULL_MENGE,
+  NULL_PROZENT,
+  addiere,
+  alsDezimal,
+  multipliziere,
+  runden,
+  vergleiche,
+  vorzeichen,
+} from '@tethys/dezimal';
 import type { Dezimal, Einheitspreis, Einheitspreisanteile, EpaArt, Menge, Prozent } from '@tethys/vertrag';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
@@ -41,6 +50,8 @@ export interface Einzelpreiskalkulation {
   readonly einheitspreis: Einheitspreis | null;
   /** Je Kostenart mit Anteil, in der Reihenfolge der Einheitspreisanteile. */
   readonly kostenarten: readonly Kostenartnachweis[];
+  /** Σ Ansatzmenge der zählenden Lohnzeilen: Lohnstunden je Einheit der Position (Mittellohn-Nachweis). */
+  readonly lohnstundenJeEinheit: Menge;
   /** Erst die Befunde je Zeile in Eingabereihenfolge, dann je Kostenart, dann zum EP. */
   readonly befunde: readonly Kalkulationsbefund[];
 }
@@ -51,11 +62,7 @@ export type Kalkulationsbefundcode =
   | 'kalkulationszuschlagssatz-unter-minus-100'; // Anteil hat das umgekehrte Vorzeichen der Einzelkosten; zählt mit
 
 export type Kalkulationsfeld =
-  | 'ansatzmenge'
-  | 'kostensatz'
-  | 'kalkulationszuschlagssatz'
-  | 'anteil'
-  | 'einheitspreis';
+  'ansatzmenge' | 'kostensatz' | 'kalkulationszuschlagssatz' | 'anteil' | 'einheitspreis';
 
 export interface Kalkulationsbefund {
   readonly code: Kalkulationsbefundcode;
@@ -79,7 +86,9 @@ const REIHENFOLGE: Readonly<Record<EpaArt, number>> = {
   sonstiges: 4,
   frei: 5,
 };
-const KOSTENARTEN = (Object.keys(REIHENFOLGE) as EpaArt[]).sort((a, b) => REIHENFOLGE[a] - REIHENFOLGE[b]);
+export const KOSTENARTEN: readonly EpaArt[] = (Object.keys(REIHENFOLGE) as EpaArt[]).sort(
+  (a, b) => REIHENFOLGE[a] - REIHENFOLGE[b],
+);
 
 function konstante(text: string): Dezimal {
   const e = alsDezimal(text);
@@ -114,14 +123,18 @@ export function einzelpreiskalkulationBerechnen(
   };
 
   const einzelkosten = new Map<EpaArt, Dezimal>();
+  let lohnstundenJeEinheit = NULL_MENGE;
   ansaetze.forEach(({ art, ansatzmenge, kostensatz }, index) => {
-    if (ansatzmenge === null) befund('wert-fehlt', 'ansatzmenge', index, art, 'Zeile ohne Ansatzmenge zählt nicht');
+    if (ansatzmenge === null)
+      befund('wert-fehlt', 'ansatzmenge', index, art, 'Zeile ohne Ansatzmenge zählt nicht');
     else if (negativ(ansatzmenge))
       befund('wert-negativ', 'ansatzmenge', index, art, `Negative Ansatzmenge ${ansatzmenge}`);
-    if (kostensatz === null) befund('wert-fehlt', 'kostensatz', index, art, 'Zeile ohne Kostensatz zählt nicht');
+    if (kostensatz === null)
+      befund('wert-fehlt', 'kostensatz', index, art, 'Zeile ohne Kostensatz zählt nicht');
     else if (negativ(kostensatz))
       befund('wert-negativ', 'kostensatz', index, art, `Negativer Kostensatz ${kostensatz}`);
     if (ansatzmenge === null || kostensatz === null) return;
+    if (art === 'lohn') lohnstundenJeEinheit = addiere(lohnstundenJeEinheit, ansatzmenge);
     const zeile = multipliziere(ansatzmenge, kostensatz);
     const bisher = einzelkosten.get(art);
     einzelkosten.set(art, bisher === undefined ? zeile : addiere(bisher, zeile));
@@ -147,7 +160,13 @@ export function einzelpreiskalkulationBerechnen(
     if (negativ(a)) befund('wert-negativ', 'anteil', null, art, `Negativer Anteil ${a}`);
     anteil[art] = a;
     einheitspreis = einheitspreis === null ? a : addiere(einheitspreis, a);
-    kostenarten.push({ art, einzelkosten: ek, kalkulationszuschlagssatz: satz, kalkulationszuschlag, anteil: a });
+    kostenarten.push({
+      art,
+      einzelkosten: ek,
+      kalkulationszuschlagssatz: satz,
+      kalkulationszuschlag,
+      anteil: a,
+    });
   }
   if (einheitspreis !== null && negativ(einheitspreis))
     befund('wert-negativ', 'einheitspreis', null, null, `Negativer Einheitspreis ${einheitspreis}`);
@@ -164,6 +183,7 @@ export function einzelpreiskalkulationBerechnen(
     },
     einheitspreis,
     kostenarten,
+    lohnstundenJeEinheit,
     befunde,
   };
 }
