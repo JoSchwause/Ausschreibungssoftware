@@ -9,7 +9,7 @@ import type {
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import type { Teil } from '../historie/historie';
-import { zielNach } from '../historie/HistorieAnbieter';
+import { zielNach } from '../historie/arten';
 import { abrechnungsseite, aufmassPfad, blattPfad, sollIstPfad } from './pfad';
 
 const p = 'p1' as ProjektId;

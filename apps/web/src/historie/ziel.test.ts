@@ -9,7 +9,7 @@ import { ozMaskeLesen } from '../lv/ozmaske';
 import { eintragZeile } from '../lv/PapierkorbDialog';
 import { standAlsLvBefehl } from '../lv/stand';
 import type { Teil } from './historie';
-import { zielNach } from './HistorieAnbieter';
+import { zielNach } from './arten';
 
 const maske = (() => {
   const r = ozMaskeLesen('NN.NNNN');
