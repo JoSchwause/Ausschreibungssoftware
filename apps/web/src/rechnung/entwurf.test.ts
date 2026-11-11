@@ -85,7 +85,7 @@ describe('entwurfLesen', () => {
     const r = entwurfLesen({
       ...leer,
       art: 'schluss',
-      eingang: '2026-10-01',
+      eingang: '1.10.2026',
       rechnungsnummerAuftragnehmer: '  SR-7 ',
       aufmassIds: ['b1' as AufmassId],
       umlagen: [
@@ -121,7 +121,7 @@ describe('entwurfLesen', () => {
   it('meldet unlesbare Felder mit deutscher Meldung, ohne etwas zu verwerfen', () => {
     const r = entwurfLesen({
       ...leer,
-      eingang: '2026-02-30',
+      eingang: '30.02.2026',
       gefordertNetto: '12.34',
       sicherheitSatz: '5,123',
       umlagen: [{ bezeichnung: 'Baustrom', satz: '' }],
@@ -165,6 +165,7 @@ describe('Befehle', () => {
 
   it('Bearbeiten: nur die geänderten Teile als Befehle, unverändert keiner', () => {
     const offen = { ...ar1, freigabe: null };
+    expect(entwurfAus(offen).eingang).toBe('16.09.2026');
     const gleich = entwurfLesen(entwurfAus(offen));
     if (!gleich.ok) throw new Error('unlesbar');
     expect(aenderungsbefehle(offen, gleich.wert)).toEqual([]);

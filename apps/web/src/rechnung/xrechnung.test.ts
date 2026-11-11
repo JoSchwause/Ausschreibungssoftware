@@ -61,7 +61,7 @@ describe('entwurfMitXRechnung', () => {
     expect(e).toEqual({
       ...vorher,
       art: 'abschlag',
-      eingang: '2026-09-15',
+      eingang: '15.09.2026',
       rechnungsnummerAuftragnehmer: 'AR-2026-001',
       gefordertNetto: '10.185,99',
       gefordertBrutto: '12.121,33',
@@ -76,9 +76,9 @@ describe('entwurfMitXRechnung', () => {
   });
 
   it('ohne Nummer oder Datum in der Datei bleibt das Feld, wie es war', () => {
-    const vorher = { ...neuerEntwurf([], []), eingang: '2026-09-20', rechnungsnummerAuftragnehmer: 'X' };
+    const vorher = { ...neuerEntwurf([], []), eingang: '20.09.2026', rechnungsnummerAuftragnehmer: 'X' };
     const u = { ...xrechnungUebernahme(gelesen('bau-abschlag-875.xml')), rechnungsnummer: null, datum: null };
     const e = entwurfMitXRechnung(vorher, u, 'schluss');
-    expect([e.eingang, e.rechnungsnummerAuftragnehmer, e.art]).toEqual(['2026-09-20', 'X', 'schluss']);
+    expect([e.eingang, e.rechnungsnummerAuftragnehmer, e.art]).toEqual(['20.09.2026', 'X', 'schluss']);
   });
 });

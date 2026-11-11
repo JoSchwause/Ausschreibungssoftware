@@ -29,7 +29,7 @@ export const texte = {
     gewaehrleistungSatz: 'Gewährleistungseinbehalt in %',
   },
   formular: {
-    datumUngueltig: 'Kein gültiges Datum. Erwartet wird z. B. 16.09.2026.',
+    datumHinweis: 'TT.MM.JJJJ',
     satzFehlt: 'Bitte einen Satz angeben oder die Umlage entfernen.',
     umlageHinzufuegen: 'Umlage hinzufügen',
     umlageEntfernen: (i: number) => `Umlage ${String(i + 1)} entfernen`,

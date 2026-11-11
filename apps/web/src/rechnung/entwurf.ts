@@ -21,6 +21,7 @@ import type {
   Rechnungsart,
   Umlage,
 } from '@tethys/vertrag';
+import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { formatiereBetragDe, formatiereProzentDe, zahlLesen } from '../lv/zahlen';
 import { texte } from './texte';
 
@@ -30,7 +31,7 @@ export interface Umlageentwurf {
   readonly satz: string;
 }
 
-/** Das Formular einer Rechnung. Zahlen und Sätze als de-DE-Text, das Eingangsdatum als `JJJJ-MM-TT` oder leer. */
+/** Das Formular einer Rechnung. Zahlen, Sätze und das Eingangsdatum (`TT.MM.JJJJ`) als de-DE-Text; leer: keine Angabe. */
 export interface Rechnungsentwurf {
   readonly art: Rechnungsart;
   readonly eingang: string;
@@ -114,7 +115,7 @@ export function neuerEntwurf(
 export function entwurfAus(r: Rechnung, blaetter: readonly AufmassKopf[] = []): Rechnungsentwurf {
   return {
     art: r.art,
-    eingang: r.eingang ?? '',
+    eingang: r.eingang === null ? '' : datumDe(r.eingang),
     rechnungsnummerAuftragnehmer: r.rechnungsnummerAuftragnehmer ?? '',
     gefordertNetto: text(r.gefordert?.netto ?? null, formatiereBetragDe),
     gefordertBrutto: text(r.gefordert?.brutto ?? null, formatiereBetragDe),
@@ -124,15 +125,6 @@ export function entwurfAus(r: Rechnung, blaetter: readonly AufmassKopf[] = []): 
     sicherheitSatz: text(r.sicherheitSatz, formatiereProzentDe),
     gewaehrleistungSatz: text(r.gewaehrleistungSatz, formatiereProzentDe),
   };
-}
-
-/** `JJJJ-MM-TT` eines Tags, den es gibt. */
-function istDatum(t: string): boolean {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
-  if (m === null) return false;
-  const [j, mo, ta] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const d = new Date(Date.UTC(j, mo - 1, ta));
-  return d.getUTCFullYear() === j && d.getUTCMonth() === mo - 1 && d.getUTCDate() === ta;
 }
 
 /**
@@ -153,9 +145,12 @@ export function entwurfLesen(e: Rechnungsentwurf): Ergebnis<Rechnungswerte, read
     return null;
   };
 
-  const eingang = e.eingang.trim();
-  if (eingang !== '' && !istDatum(eingang))
-    fehler.push({ feld: 'eingang', meldung: texte.formular.datumUngueltig });
+  let eingang: string | null = null;
+  if (e.eingang.trim() !== '') {
+    const d = datumLesen(e.eingang);
+    if (d.ok) eingang = d.wert;
+    else fehler.push({ feld: 'eingang', meldung: d.fehler });
+  }
   const netto = zahl('betrag', 'gefordertNetto', e.gefordertNetto);
   const brutto = zahl('betrag', 'gefordertBrutto', e.gefordertBrutto);
   const zahlbetrag = zahl('betrag', 'gefordertZahlbetrag', e.gefordertZahlbetrag);
@@ -181,7 +176,7 @@ export function entwurfLesen(e: Rechnungsentwurf): Ergebnis<Rechnungswerte, read
     wert: {
       angaben: {
         rechnungsart: e.art,
-        eingang: eingang === '' ? null : eingang,
+        eingang,
         rechnungsnummerAuftragnehmer: rnr === '' ? null : rnr,
         gefordert:
           netto === null && brutto === null && zahlbetrag === null ? null : { netto, brutto, zahlbetrag },

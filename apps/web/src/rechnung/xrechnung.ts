@@ -6,6 +6,7 @@
 
 import type { Eingangsrechnung } from '@tethys/erechnung';
 import type { Betrag, Rechnung, Rechnungsart } from '@tethys/vertrag';
+import { datumDe } from '../lv/kopfdaten';
 import { formatiereBetragDe } from '../lv/zahlen';
 import type { Rechnungsentwurf } from './entwurf';
 
@@ -47,7 +48,7 @@ export function entwurfMitXRechnung(
   return {
     ...e,
     art,
-    eingang: u.datum ?? e.eingang,
+    eingang: u.datum === null ? e.eingang : datumDe(u.datum),
     rechnungsnummerAuftragnehmer: u.rechnungsnummer ?? e.rechnungsnummerAuftragnehmer,
     gefordertNetto: betrag(u.gefordert?.netto),
     gefordertBrutto: betrag(u.gefordert?.brutto),
