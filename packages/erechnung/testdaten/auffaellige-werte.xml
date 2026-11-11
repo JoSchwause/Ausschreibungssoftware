@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Selbst verfasst (Ticket 76): lesbare, aber auffällige Werte; jeder ergibt einen Befund, keiner einen Rechenfehler. -->
+<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+             xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+             xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+    <cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>
+    <cbc:ID>R-4711</cbc:ID>
+    <cbc:IssueDate>2026-02-30</cbc:IssueDate>
+    <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+    <cbc:DocumentCurrencyCode>USD</cbc:DocumentCurrencyCode>
+    <cac:AccountingSupplierParty>
+        <cac:Party>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Beispielbau GmbH</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingSupplierParty>
+    <cac:AccountingCustomerParty>
+        <cac:Party>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Gemeinde Beispielstadt</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingCustomerParty>
+    <cac:TaxTotal>
+        <cbc:TaxAmount currencyID="USD">25.80</cbc:TaxAmount>
+        <cac:TaxSubtotal>
+            <cbc:TaxableAmount currencyID="USD">135.80</cbc:TaxableAmount>
+            <cbc:TaxAmount currencyID="USD">25.80</cbc:TaxAmount>
+            <cac:TaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:TaxCategory>
+        </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:LegalMonetaryTotal>
+        <cbc:LineExtensionAmount currencyID="USD">135.80</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="USD">135.80</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="USD">161.60</cbc:TaxInclusiveAmount>
+        <cbc:PrepaidAmount currencyID="USD">1.000,00</cbc:PrepaidAmount>
+        <cbc:PayableAmount currencyID="USD">161.60</cbc:PayableAmount>
+    </cac:LegalMonetaryTotal>
+    <cac:InvoiceLine>
+        <cbc:ID>1</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="KGM">10</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="USD">123.456</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Name>Bewehrungsstahl</cbc:Name>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="USD">12.3456</cbc:PriceAmount>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>2</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="TNE">0.1234</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="USD">12.34</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Name>Bewehrungsstahl, Tonnenpreis</cbc:Name>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="USD">100</cbc:PriceAmount>
+        </cac:Price>
+    </cac:InvoiceLine>
+</ubl:Invoice>
