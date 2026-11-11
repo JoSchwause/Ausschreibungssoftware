@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Selbst verfasst (Ticket 76): CII ohne BT-1, BT-2, BT-5, BT-109, BT-115 und ohne BT-131 in Position 2. -->
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
+    <rsm:ExchangedDocumentContext>
+        <ram:GuidelineSpecifiedDocumentContextParameter>
+            <ram:ID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</ram:ID>
+        </ram:GuidelineSpecifiedDocumentContextParameter>
+    </rsm:ExchangedDocumentContext>
+    <rsm:ExchangedDocument>
+        <ram:TypeCode>380</ram:TypeCode>
+    </rsm:ExchangedDocument>
+    <rsm:SupplyChainTradeTransaction>
+        <ram:IncludedSupplyChainTradeLineItem>
+            <ram:AssociatedDocumentLineDocument>
+                <ram:LineID>1</ram:LineID>
+            </ram:AssociatedDocumentLineDocument>
+            <ram:SpecifiedTradeProduct>
+                <ram:Name>Stundenlohnarbeiten</ram:Name>
+            </ram:SpecifiedTradeProduct>
+            <ram:SpecifiedLineTradeAgreement>
+                <ram:NetPriceProductTradePrice>
+                    <ram:ChargeAmount>50.00</ram:ChargeAmount>
+                </ram:NetPriceProductTradePrice>
+            </ram:SpecifiedLineTradeAgreement>
+            <ram:SpecifiedLineTradeDelivery>
+                <ram:BilledQuantity unitCode="HUR">2</ram:BilledQuantity>
+            </ram:SpecifiedLineTradeDelivery>
+            <ram:SpecifiedLineTradeSettlement>
+                <ram:SpecifiedTradeSettlementLineMonetarySummation>
+                    <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
+                </ram:SpecifiedTradeSettlementLineMonetarySummation>
+            </ram:SpecifiedLineTradeSettlement>
+        </ram:IncludedSupplyChainTradeLineItem>
+        <ram:IncludedSupplyChainTradeLineItem>
+            <ram:AssociatedDocumentLineDocument>
+                <ram:LineID>2</ram:LineID>
+            </ram:AssociatedDocumentLineDocument>
+            <ram:SpecifiedTradeProduct>
+                <ram:Name>Material</ram:Name>
+            </ram:SpecifiedTradeProduct>
+            <ram:SpecifiedLineTradeAgreement>
+                <ram:NetPriceProductTradePrice>
+                    <ram:ChargeAmount>50.00</ram:ChargeAmount>
+                </ram:NetPriceProductTradePrice>
+            </ram:SpecifiedLineTradeAgreement>
+            <ram:SpecifiedLineTradeDelivery>
+                <ram:BilledQuantity unitCode="H87">1</ram:BilledQuantity>
+            </ram:SpecifiedLineTradeDelivery>
+            <ram:SpecifiedLineTradeSettlement/>
+        </ram:IncludedSupplyChainTradeLineItem>
+        <ram:ApplicableHeaderTradeAgreement>
+            <ram:SellerTradeParty>
+                <ram:Name>Beispielbau GmbH</ram:Name>
+            </ram:SellerTradeParty>
+            <ram:BuyerTradeParty>
+                <ram:Name>Gemeinde Beispielstadt</ram:Name>
+            </ram:BuyerTradeParty>
+        </ram:ApplicableHeaderTradeAgreement>
+        <ram:ApplicableHeaderTradeDelivery/>
+        <ram:ApplicableHeaderTradeSettlement>
+            <ram:ApplicableTradeTax>
+                <ram:CalculatedAmount>28.50</ram:CalculatedAmount>
+                <ram:TypeCode>VAT</ram:TypeCode>
+                <ram:BasisAmount>150.00</ram:BasisAmount>
+                <ram:CategoryCode>S</ram:CategoryCode>
+                <ram:RateApplicablePercent>19</ram:RateApplicablePercent>
+            </ram:ApplicableTradeTax>
+            <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+                <ram:LineTotalAmount>150.00</ram:LineTotalAmount>
+                <ram:TaxTotalAmount>28.50</ram:TaxTotalAmount>
+                <ram:GrandTotalAmount>178.50</ram:GrandTotalAmount>
+            </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+        </ram:ApplicableHeaderTradeSettlement>
+    </rsm:SupplyChainTradeTransaction>
+</rsm:CrossIndustryInvoice>

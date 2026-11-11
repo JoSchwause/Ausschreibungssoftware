@@ -37,8 +37,11 @@ const NS = {
 /** Kennzeichen einer XRechnung 3.x in BT-24. */
 const XRECHNUNG_3 = 'urn:xeinkauf.de:kosit:xrechnung_3.';
 
-/** Pflichtangaben laut Ticket 76 (Abschnitt 4) und BT-106, ohne den die Rechenprüfung nicht beginnen kann (D-76.6). */
-type Pflichtfeld = 'BT-1' | 'BT-2' | 'BT-5' | 'BT-106' | 'BT-109' | 'BT-112' | 'BT-115';
+/**
+ * Pflichtangaben laut Ticket 76 (Abschnitt 4), dazu BT-106, BT-117 und BT-131: Ohne sie sagt eine Rechenregel nichts
+ * aus (D-76.6). Alle sind auch in der EN 16931 Pflicht.
+ */
+type Pflichtfeld = 'BT-1' | 'BT-2' | 'BT-5' | 'BT-106' | 'BT-109' | 'BT-112' | 'BT-115' | 'BT-117' | 'BT-131';
 
 type Roh = XmlElement | undefined;
 
@@ -55,6 +58,7 @@ interface RohePosition {
 }
 
 interface RoheSteuer {
+  readonly el: XmlElement;
   readonly kategorie: Roh;
   readonly satz: Roh;
   readonly basis: Roh;
@@ -205,6 +209,7 @@ function ausUbl(w: XmlElement, gutschrift: boolean): RoheRechnung {
     steuer: kinder(steuersumme, NS.cac, 'TaxSubtotal').map((s) => {
       const kategorie = cac(s, 'TaxCategory');
       return {
+        el: s,
         kategorie: cbc(kategorie, 'ID'),
         satz: cbc(kategorie, 'Percent'),
         basis: cbc(s, 'TaxableAmount'),
@@ -291,6 +296,7 @@ function ausCii(w: XmlElement): RoheRechnung {
     bt114: ram(summen, 'RoundingAmount'),
     bt115: ram(summen, 'DuePayableAmount'),
     steuer: kinder(abrechnung, NS.ram, 'ApplicableTradeTax').map((s) => ({
+      el: s,
       kategorie: ram(s, 'CategoryCode'),
       satz: ram(s, 'RateApplicablePercent'),
       basis: ram(s, 'BasisAmount'),
@@ -421,24 +427,31 @@ function uebernehmen(roh: RoheRechnung): { rechnung: Eingangsrechnung; befunde: 
   pflicht(roh.bt112, 'BT-112', 'Rechnungsgesamtbetrag einschließlich Umsatzsteuer');
   pflicht(roh.bt115, 'BT-115', 'Fälliger Zahlbetrag');
 
-  const umsatzsteueraufschluesselung = roh.steuer.map((s): Umsatzsteueraufschluesselung => ({
-    kategorie: wert(s.kategorie),
-    satz: zahl(s.satz, 'BT-119', 'prozent', 'satz-zu-viele-stellen'),
-    basis: betrag(s.basis, 'BT-116'),
-    betrag: betrag(s.betrag, 'BT-117'),
-  }));
-
-  const position = (p: RohePosition): Rechnungsposition => ({
-    kennung: wert(p.kennung),
-    menge: zahl(p.menge, 'BT-129', 'menge', 'menge-zu-viele-stellen'),
-    einheit: p.menge?.attrs.get('unitCode')?.trim() ?? null,
-    nettobetrag: betrag(p.nettobetrag, 'BT-131'),
-    nettopreis: zahl(p.nettopreis, 'BT-146', 'einheitspreis', 'preis-zu-viele-stellen'),
-    bezeichnung: wert(p.bezeichnung),
-    artikelnummerVerkaeufer: wert(p.artikelnummerVerkaeufer),
-    artikelnummerKaeufer: wert(p.artikelnummerKaeufer),
-    unterpositionen: p.unterpositionen.map(position),
+  const umsatzsteueraufschluesselung = roh.steuer.map((s): Umsatzsteueraufschluesselung => {
+    const u = {
+      kategorie: wert(s.kategorie),
+      satz: zahl(s.satz, 'BT-119', 'prozent', 'satz-zu-viele-stellen'),
+      basis: betrag(s.basis, 'BT-116'),
+      betrag: betrag(s.betrag, 'BT-117'),
+    };
+    pflicht(s.betrag, 'BT-117', 'Steuerbetrag der Kategorie', s.el);
+    return u;
   });
+
+  const position = (p: RohePosition): Rechnungsposition => {
+    const kopf = {
+      kennung: wert(p.kennung),
+      menge: zahl(p.menge, 'BT-129', 'menge', 'menge-zu-viele-stellen'),
+      einheit: p.menge?.attrs.get('unitCode')?.trim() ?? null,
+      nettobetrag: betrag(p.nettobetrag, 'BT-131'),
+      nettopreis: zahl(p.nettopreis, 'BT-146', 'einheitspreis', 'preis-zu-viele-stellen'),
+      bezeichnung: wert(p.bezeichnung),
+      artikelnummerVerkaeufer: wert(p.artikelnummerVerkaeufer),
+      artikelnummerKaeufer: wert(p.artikelnummerKaeufer),
+    };
+    pflicht(p.nettobetrag, 'BT-131', 'Nettobetrag der Position', p.el);
+    return { ...kopf, unterpositionen: p.unterpositionen.map(position) };
+  };
   const positionen = roh.positionen.map(position);
   for (const el of roh.verwaisteUnterpositionen) {
     melde(

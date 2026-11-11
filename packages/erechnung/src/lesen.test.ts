@@ -386,3 +386,112 @@ describe('Rechenprüfung (rechenfehler.xml)', () => {
     expect(b?.meldung).toContain('10.185,99');
   });
 });
+
+describe('Pflichtangaben (pflichtangaben-fehlen.xml)', () => {
+  const lesung = xrechnungLesen(testdatei('pflichtangaben-fehlen.xml'));
+
+  it('liest, was da ist, und meldet jede fehlende Pflichtangabe mit ihrem Business Term', () => {
+    expect(lesung.syntax).toBe('cii');
+    expect(lesung.rechnung?.rechnungsnummer).toBeNull();
+    expect(lesung.rechnung?.rechnungsdatum).toBeNull();
+    expect(lesung.rechnung?.waehrung).toBeNull();
+    expect(lesung.rechnung?.summen.brutto).toBe('178.50');
+    expect(lesung.rechnung?.positionen.map((p) => p.nettobetrag)).toEqual(['100.00', null]);
+    expect(kern(lesung.befunde)).toEqual([
+      { code: 'pflichtangabe-fehlt', feld: 'BT-1', schwere: 'fehler' },
+      { code: 'pflichtangabe-fehlt', feld: 'BT-2', schwere: 'fehler' },
+      { code: 'pflichtangabe-fehlt', feld: 'BT-5', schwere: 'fehler' },
+      { code: 'pflichtangabe-fehlt', feld: 'BT-109', schwere: 'fehler' },
+      { code: 'pflichtangabe-fehlt', feld: 'BT-115', schwere: 'fehler' },
+      { code: 'pflichtangabe-fehlt', feld: 'BT-131', schwere: 'fehler' },
+    ]);
+  });
+
+  it('verortet eine fehlende Positionsangabe an ihrer Position', () => {
+    const b = lesung.befunde.find((x) => x.ort.feld === 'BT-131');
+    expect(b?.ort.pfad).toBe(
+      '/CrossIndustryInvoice/SupplyChainTradeTransaction/IncludedSupplyChainTradeLineItem[2]',
+    );
+  });
+});
+
+describe('Auffällige Werte (auffaellige-werte.xml)', () => {
+  const lesung = xrechnungLesen(testdatei('auffaellige-werte.xml'));
+
+  it('meldet Spezifikation, Datum, Währung, unlesbare Zahl und zu viele Stellen, ohne Rechenfehler', () => {
+    expect(kern(lesung.befunde)).toEqual([
+      { code: 'spezifikation-unbekannt', feld: 'BT-24', schwere: 'warnung' },
+      { code: 'datum-ungueltig', feld: 'BT-2', schwere: 'fehler' },
+      { code: 'waehrung-nicht-eur', feld: 'BT-5', schwere: 'warnung' },
+      { code: 'zahl-ungueltig', feld: 'BT-113', schwere: 'fehler' },
+      { code: 'betrag-nicht-kanonisch', feld: 'BT-131', schwere: 'warnung' },
+      { code: 'preis-zu-viele-stellen', feld: 'BT-146', schwere: 'warnung' },
+      { code: 'menge-zu-viele-stellen', feld: 'BT-129', schwere: 'warnung' },
+    ]);
+  });
+
+  it('rundet Beträge kaufmännisch, lässt Mengen und Preise exakt (nie still gekürzt)', () => {
+    const r = lesung.rechnung;
+    expect(r?.rechnungsdatum).toBeNull();
+    expect(r?.waehrung).toBe('USD');
+    expect(r?.summen.bereitsGezahlt).toBeNull();
+    expect(r?.positionen.map((p) => [p.menge, p.nettopreis, p.nettobetrag])).toEqual([
+      ['10.000', '12.3456', '123.46'],
+      ['0.1234', '100.000', '12.34'],
+    ]);
+  });
+});
+
+describe('Gutschrift und Namensräume', () => {
+  it('liest eine UBL-Gutschrift (CreditNote, 381) mit Standard-Namensraum und fremdem Präfix', () => {
+    const lesung = xrechnungLesen(testdatei('gutschrift-381.xml'));
+    expect(lesung.syntax).toBe('ubl');
+    expect(lesung.befunde).toEqual([]);
+    expect(lesung.rechnung).toMatchObject({
+      rechnungsnummer: 'GS-2026-001',
+      rechnungsdatum: '2026-11-05',
+      rechnungsart: '381',
+      summen: {
+        summePositionen: '50.00',
+        netto: '50.00',
+        umsatzsteuer: '9.50',
+        brutto: '59.50',
+        zahlbetrag: '59.50',
+      },
+      positionen: [
+        position({
+          kennung: '1',
+          menge: '2.000',
+          einheit: 'H87',
+          nettobetrag: '50.00',
+          nettopreis: '25.000',
+          bezeichnung: 'Rücknahme Gerüstteile',
+        }),
+      ],
+    });
+  });
+
+  it('erkennt CII über die Namensraum-URI, nicht über das Präfix', () => {
+    const original = kosit('01.01a-INVOICE_uncefact.xml');
+    const umbenannt = original
+      .replaceAll('rsm:', 'r:')
+      .replaceAll('ram:', 'a:')
+      .replaceAll('udt:', 'u:')
+      .replaceAll('xmlns:rsm=', 'xmlns:r=')
+      .replaceAll('xmlns:ram=', 'xmlns:a=')
+      .replaceAll('xmlns:udt=', 'xmlns:u=');
+    expect(umbenannt).not.toContain('ram:');
+    expect(xrechnungLesen(umbenannt)).toEqual(xrechnungLesen(original));
+  });
+
+  it('weist eine Wurzel mit UBL-Namen, aber fremdem Namensraum ab', () => {
+    const fremd = kosit('01.01a-INVOICE_ubl.xml').replace(
+      'xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"',
+      'xmlns:ubl="urn:example:invoice"',
+    );
+    const lesung = xrechnungLesen(fremd);
+    expect(lesung.syntax).toBeNull();
+    expect(lesung.rechnung).toBeNull();
+    expect(kern(lesung.befunde)).toEqual([{ code: 'keine-xrechnung', feld: undefined, schwere: 'fehler' }]);
+  });
+});
