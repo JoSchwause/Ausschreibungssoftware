@@ -73,14 +73,14 @@ Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
 
 ## Acceptance criteria
 
-- [ ] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
-- [ ] `kopieBauen`: Kopie mit internen Bezügen (Zuschlag auf kopierte Position, Wahl auf kopierte Grundposition) zeigt auf die Kopien; Bezug nach außen bleibt; ruft die ID-Quelle in Präorder
-- [ ] Summen nach Verschieben in Quelle und Ziel korrekt (Test gegen `summenBerechnen`), Zuschläge beider Elternknoten aktualisiert
-- [ ] `ozVorschlag`: Schritt 10 bzw. 1 im Normalfall, Ausweichen auf 5, 2, 1 mit Hinweis, `null` bei Überlauf; Tests mit `typisch` und einer Maske nahe dem Überlauf
-- [ ] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie in `knoten.geaendert`; `nummer` = Höchstwert + 1; Positionen im Papierkorb gehen in keine Summe ein
-- [ ] Property-Test: beliebige Folgen aus Einfügen, Verschieben, Papierkorb, Wiederherstellen, Leeren; Summenstand gleich `summenBerechnen`, `pruefeLvInvarianten` hält, `changeSetUmkehren` stellt jeden Zustand her
-- [ ] Leistung: Verschieben eines Titels mit rund 300 Positionen in `gross` < 16 ms (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
+- [x] `kopieBauen`: Kopie mit internen Bezügen (Zuschlag auf kopierte Position, Wahl auf kopierte Grundposition) zeigt auf die Kopien; Bezug nach außen bleibt; ruft die ID-Quelle in Präorder
+- [x] Summen nach Verschieben in Quelle und Ziel korrekt (Test gegen `summenBerechnen`), Zuschläge beider Elternknoten aktualisiert
+- [x] `ozVorschlag`: Schritt 10 bzw. 1 im Normalfall, Ausweichen auf 5, 2, 1 mit Hinweis, `null` bei Überlauf; Tests mit `typisch` und einer Maske nahe dem Überlauf
+- [x] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie in `knoten.geaendert`; `nummer` = Höchstwert + 1; Positionen im Papierkorb gehen in keine Summe ein
+- [x] Property-Test: beliebige Folgen aus Einfügen, Verschieben, Papierkorb, Wiederherstellen, Leeren; Summenstand gleich `summenBerechnen`, `pruefeLvInvarianten` hält, `changeSetUmkehren` stellt jeden Zustand her
+- [x] Leistung: Verschieben eines Titels mit rund 300 Positionen in `gross` < 16 ms (Messwert im Ticket: Median 7,5 ms bei 351 Positionen)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
