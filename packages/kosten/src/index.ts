@@ -17,3 +17,10 @@ export type {
   Kostengruppensumme,
 } from './kostenermittlung';
 export { kostenermittlungBerechnen } from './kostenermittlung';
+export type {
+  Bezeichnungsbefund,
+  Bezeichnungsbefundcode,
+  Bezeichnungsergebnis,
+  Trenner,
+} from './bezeichnungen';
+export { bezeichnungenLesen } from './bezeichnungen';

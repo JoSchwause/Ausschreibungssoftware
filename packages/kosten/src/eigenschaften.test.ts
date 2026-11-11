@@ -6,6 +6,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Betrag } from '@tethys/vertrag';
 import {
+  bezeichnungenLesen,
   kgEbene,
   kgElternteil,
   kgLesen,
@@ -159,6 +160,46 @@ describe('Eigenschaften der Kostenermittlung', () => {
         const nummern = kostenermittlungBerechnen(alsEintraege(liste)).gruppen.map((g) => g.nummer);
         expect(nummern).toEqual([...new Set(nummern)].sort());
       }),
+      runs,
+    );
+  });
+});
+
+describe('Eigenschaften des CSV-Lesers', () => {
+  /** Bezeichnung ohne Leerraum am Rand, mit Trennern, `"` und Zeilenumbrüchen im Text. */
+  const bezeichnungGen = fc
+    .string({
+      unit: fc.constantFrom('a', 'Z', 'ä', 'ß', ' ', ';', ',', '"', '\n', '\r\n', '-', '1'),
+      minLength: 1,
+    })
+    .map((s) => s.trim())
+    .filter((s) => s !== '');
+  const tabelleGen = fc.uniqueArray(fc.tuple(nummerGen, bezeichnungGen), {
+    selector: ([n]) => n,
+    maxLength: 30,
+  });
+
+  const zelle = (s: string): string => `"${s.replaceAll('"', '""')}"`;
+
+  it('eine nach RFC 4180 geschriebene Tabelle kommt unverändert zurück', () => {
+    fc.assert(
+      fc.property(
+        tabelleGen,
+        fc.constantFrom(';' as const, ',' as const),
+        fc.constantFrom('\r\n', '\n'),
+        fc.boolean(),
+        fc.boolean(),
+        (tabelle, trenner, ende, bom, kopf) => {
+          const zeilen = tabelle.map(([n, b]) => `${n}${trenner}${zelle(b)}`);
+          if (kopf) zeilen.unshift(`Nummer${trenner}Bezeichnung`);
+          const text = `${bom ? '﻿' : ''}${zeilen.join(ende)}${ende}`;
+          const r = bezeichnungenLesen(text);
+          expect([...r.bezeichnungen]).toEqual(tabelle);
+          expect(r.befunde).toEqual([]);
+          if (zeilen.length > 0) expect(r.trenner).toBe(trenner);
+          expect(r.kopfzeile).toBe(kopf);
+        },
+      ),
       runs,
     );
   });
