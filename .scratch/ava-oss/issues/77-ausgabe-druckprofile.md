@@ -1,6 +1,6 @@
 # 77: O3: Druckprofile und Spike „getaggtes PDF“
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: O3 · Paket: `packages/ausgabe`
 Blocked by: –
@@ -32,8 +32,35 @@ Herkunft: `plan.md` §2 O3 („Druckprofile“), D-23 („Vor O3 ein Spike mit e
 
 ## Acceptance criteria
 
-- [ ] je Profileinstellung ein Test über den Seitentext; Standardprofile getestet; JSON-Rundweg mit Befunden
-- [ ] Spike-Ergebnis in ADR 0012 und im Ticket (Empfehlung für v1.x)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] je Profileinstellung ein Test über den Seitentext; Standardprofile getestet; JSON-Rundweg mit Befunden
+- [x] Spike-Ergebnis in ADR 0012 und im Ticket (Empfehlung für v1.x)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### D-77.1 Deckblatt ist der Kopfblock
+Question: Ist das „Deckblatt“ eine eigene Seite? Decision: Nein, der Kopfblock am Anfang des Drucks (wie in Ticket 58); „aus“ lässt Projekt, Bauherr, Auftraggeber, Vergabeinformationen weg, der LV-Name bleibt als Überschrift. Reason: Standardwerte bleiben das heutige Verhalten; eine eigene Seite braucht Umbruchlogik ohne Nutzen für die Demo. Reversible: yes.
+
+### D-77.2 Langtext „nur Kurztext“ und Kürzung
+Decision: „kein“ entfernt den Langtext von Positionen und Unterbeschreibungen, Hinweistexte bleiben (eigene Knoten). Gekürzt wird auf n Zeilen (Absatz, Listenpunkt, Tabellenzeile, jeder Zeilenumbruch im Absatz); der Schnitt ist durch den Absatz „[…]“ sichtbar (Q5); passt alles, bleibt der Text unverändert. Das ist eine logische, keine gesetzte Zeile.
+
+### D-77.3 Kopf-/Fußzeile
+Decision: `kopfzeile`/`fusszeile` ersetzen die Vorgabe vollständig, Platzhalter `{seite}`, `{seiten}`, `{datum}`, `{lv}` (ein Durchgang, unbekannte bleiben, fehlendes Datum leer). Ohne Angabe bleibt die Vorgabe („Stand“, „Seite x von y“). Seitenrand „eng“ = 28 pt links/rechts, 56 oben, 40 unten; „normal“ wie bisher.
+
+### D-77.4 Profil-JSON
+Decision: `schemaversion: 1` im Objekt; fehlende Felder = Standardwert ohne Befund; unbekanntes Feld, ungültiger Wert (Feld behält Standardwert), fehlende/neuere Version sind Befunde; kein JSON-Objekt ergibt `profil: null` und Befund `kein-profil`. Nichts wirft. Standardprofile: die drei genannten (Kostenanschlag mit engem Rand).
+
+### D-77.5 Zusatzpunkt des Orchestrators (Ticket 75, Wellen-Review 4 P1)
+`FxLv.sollwerte.ausweise?` in `testhilfen.ts` ergänzt; `modell.test.ts` (Gesamt und je Titel) und `lv-druck.test.ts` prüfen Bedarfs- und Wahlsumme gegen `sollwerte.ausweise` der Fixture statt gegen `zustand.summen.gesamt`; ohne `ausweise` (winzig, zuschlag) darf keine Bedarfs-/Wahlsumme gedruckt werden.
+
+## Answer
+
+Druckprofile in `packages/ausgabe`: Typ, drei Standardprofile, JSON mit Befunden, neue Optionen. Je Einstellung ein Test über den Seitentext (`src/druckprofil.test.ts`), vorhandene Tests unverändert grün.
+
+Öffentliche API (`index.ts`):
+- `Druckprofil`, `neuesDruckprofil(name)`, `STANDARD_DRUCKPROFILE` (Ausschreibung ohne Preise; Kostenanschlag nur Kurztext; Auftrags-LV).
+- `profilAlsOptionen(profil, { datum?, projekt? }): PdfOptionen` → `erzeugePdf` / `baueAusgabemodell`.
+- `druckprofilAlsJson(profil)`, `druckprofilAusJson(text): { profil | null, befunde }`, `DRUCKPROFIL_SCHEMAVERSION`.
+- Neue Optionen (Vorgabe = bisheriges Verhalten): `langtext` (`voll | kein | zeilen`), `titelsummen`, `schlussblock`, `deckblatt`; nur PDF: `seitenrand`, `kopfzeile`, `fusszeile`; dazu `ersetzePlatzhalter`, `kuerzeBloecke`.
+
+Spike getaggtes PDF (ADR 0012, Abschnitt „Spike: getaggtes PDF“; Code `messung/spike-tags.spec.ts`, `pnpm --dir packages/ausgabe messen`): pdfkit 0.20.2 (MIT, schon unter pdfmake, keine neue Abhängigkeit) schreibt mit `tagged: true` und `struct()` einen echten Strukturbaum; `gross` als Gerüst etwa 1,7 s, 6,6 MB (pdfmake 1,4 MB), Bündel unverändert 68 KiB gzip; im Browser nicht gemessen. Empfehlung v1.x: pdfmake bleibt; bei Tag-Pflicht ein zweiter Renderer direkt auf pdfkit (eigener Umbruch nötig), eigenes Ticket. Nicht geprüft: pdf-lib, jsPDF, @react-pdf.
