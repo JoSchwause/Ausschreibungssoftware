@@ -15,6 +15,7 @@ import type {
   LvZustand,
   PositionId,
   Projekt,
+  WurzelId,
 } from '@tethys/vertrag';
 import { angebotspositionenNachId, gedachtesLv } from './summen';
 import { wahlgruppenBilden } from './wahlgruppen';
@@ -225,7 +226,7 @@ function auftragsKnoten(
   lv: LvZustand,
   a: Angebot,
   wahl: readonly AufgeloesteWahl[],
-  neueId: AuftragsLeistungsverzeichnisId,
+  wurzel: WurzelId,
 ): { knoten: Knoten[]; warnungen: Zuschlagswarnung[] } {
   const lvId = lv.leistungsverzeichnis.id;
   const entfallen = new Set<string>();
@@ -267,7 +268,7 @@ function auftragsKnoten(
 
   const knoten = bleibt.map((k): Knoten => {
     const lage = {
-      elternId: k.elternId === lvId ? neueId : k.elternId,
+      elternId: k.elternId === lvId ? wurzel : k.elternId,
       reihenfolge: reihenfolge.get(k.id) ?? k.reihenfolge,
     };
     if (k.art !== 'position') return { ...k, ...lage };
