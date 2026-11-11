@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { schreibeGaeb } from './index';
-import { exportOptionen, exportfaelle } from './testhilfen';
+import { exportInhalt, exportOptionen, exportfaelle } from './testhilfen';
 
 const ZIEL = process.env['GAEB_EXPORT_VERZEICHNIS'];
 
@@ -17,7 +17,7 @@ describe.runIf(ZIEL !== undefined)('Exporte für die XSD-Gegenprüfung', () => {
     mkdirSync(ziel, { recursive: true });
     const faelle = exportfaelle();
     for (const f of faelle) {
-      const e = schreibeGaeb(f.n.inhalt, exportOptionen(f.phase, f.version, f.n));
+      const e = schreibeGaeb(exportInhalt(f.phase, f.n), exportOptionen(f.phase, f.version, f.n));
       writeFileSync(join(ziel, f.datei), e.xml);
     }
     expect(faelle.length).toBeGreaterThan(0);

@@ -11,6 +11,7 @@ import { gesamtpreis, leseAustausch, vergleiche } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
   Auftraggeber,
+  Auftragnehmer,
   Bedarf,
   Bezugsposition,
   Einheitspreis,
@@ -1215,6 +1216,22 @@ function leseAuftraggeber(l: Leser, own: XmlElement): Auftraggeber {
   };
 }
 
+/**
+ * X86 `CTR` → `Auftragnehmer` (v1.3, Ticket 68): die Felder der Adresse wie beim Auftraggeber. Nicht abgebildet (Befund):
+ * `DPNo`, `AwardNo`, `BidderNo`, weitere Adressfelder und Kontaktangaben.
+ */
+function leseAuftragnehmer(l: Leser, ctr: XmlElement): Auftragnehmer {
+  const adresse = kind(ctr, 'Address');
+  l.restMelden(ctr, new Set(['Address']), 'CTR');
+  if (adresse) l.restMelden(adresse, new Set(['Name1', 'Street', 'PCode', 'City']), 'CTR/Address');
+  return {
+    name: textOderNull(adresse, 'Name1'),
+    strasse: textOderNull(adresse, 'Street'),
+    plz: textOderNull(adresse, 'PCode'),
+    ort: textOderNull(adresse, 'City'),
+  };
+}
+
 const VERGABE_BEHANDELT: ReadonlySet<string> = new Set([
   'OpenDate',
   'OpenTime',
@@ -1336,16 +1353,19 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     if (!['GAEBInfo', 'PrjInfo', 'Award'].includes(k.name)) l.nichtAbgebildet(k, `GAEB/${k.name}`);
   const prj = kind(root, 'PrjInfo');
   if (prj) l.restMelden(prj, new Set(['NamePrj']), 'PrjInfo');
-  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo']), 'Award');
+  const x86 = phase === 'X86';
+  // CTR (Auftragnehmer) gibt es nur in X86 (v1.3, Ticket 68); in anderen Phasen bleibt es Befund `nicht-abgebildet`.
+  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo', ...(x86 ? ['CTR'] : [])]), 'Award');
   const own = kind(award, 'OWN');
+  const ctr = x86 ? kind(award, 'CTR') : undefined;
   const info = kind(award, 'AwardInfo');
   const auftraggeber = own ? leseAuftraggeber(l, own) : undefined;
+  const auftragnehmer = ctr ? leseAuftragnehmer(l, ctr) : undefined;
   const vergabeinformationen = info ? leseVergabeinformationen(l, info) : undefined;
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
   const boqInfo = kind(boq, 'BoQInfo');
-  const x86 = phase === 'X86';
   // Name: Ist `Name` der Anfang von `LblBoQ`, ist er dessen gekürzte Form (so schreibt der Export einen Namen über
   // 20 Zeichen, Ticket 40); dann gilt `LblBoQ`. Sonst bleibt es bei `Name`, und `LblBoQ` ist nicht abgebildet.
   const kurzName = wert(kind(boqInfo, 'Name'));
@@ -1410,6 +1430,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     nachlass,
     ...(auftraggeber === undefined ? {} : { auftraggeber }),
     ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
+    ...(auftragnehmer === undefined ? {} : { auftragnehmer }),
     wurzelId,
     knoten: aufbau.knoten,
   };

@@ -26,6 +26,7 @@ import type {
   Zeilenumbruch,
 } from '@tethys/vertrag';
 import type {
+  Auftragnehmer,
   Betrag,
   Einheitspreis,
   Einheitspreisanteile,
@@ -625,6 +626,12 @@ export function reichesLv(): {
       ort: 'Musterstadt',
       vergabenummer: 'V-1',
     },
+    auftragnehmer: {
+      name: 'Beispielbau (erfunden)',
+      strasse: 'Werkstraße 2',
+      plz: '54321',
+      ort: 'Beispielhausen',
+    },
     vergabeinformationen: {
       eroeffnungsdatum: null,
       eroeffnungszeit: null,
@@ -671,7 +678,7 @@ export function reichesLv(): {
 /** Fester Zeitpunkt der Test-Exporte (A2: die Uhr liefert der Aufrufer). */
 export const TEST_ERSTELLT = { datum: '2026-11-10', zeit: '12:00:00' } as const;
 
-/** Exportoptionen der Tests; X86 bekommt Summen, Zuschlagsbasen und einen erfundenen Auftragnehmer. */
+/** Exportoptionen der Tests; X86 bekommt Summen und Zuschlagsbasen. */
 export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: Normiert): SchreibOptionen {
   return {
     phase,
@@ -680,8 +687,32 @@ export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: No
     programm: 'Tethys AVA (Test)',
     ...(n.summen === undefined ? {} : { summen: n.summen }),
     ...(n.basen === undefined ? {} : { zuschlagsbasen: n.basen }),
-    ...(phase === 'X86' ? { auftragnehmer: 'Auftragnehmer (erfunden)' } : {}),
   };
+}
+
+/** Erfundener Auftragnehmer der X86-Exporte (C4: kein echter Name). */
+export const ERFUNDENER_AUFTRAGNEHMER: Auftragnehmer = {
+  name: 'Auftragnehmer (erfunden)',
+  strasse: null,
+  plz: null,
+  ort: null,
+};
+
+/** Der Inhalt ohne Auftragnehmer: so liest ihn eine X81/X83 wieder (CTR gibt es nur in X86). */
+export function ohneAuftragnehmer(inhalt: LvInhalt): LvInhalt {
+  const kopie = { ...inhalt };
+  Reflect.deleteProperty(kopie, 'auftragnehmer');
+  return kopie;
+}
+
+/**
+ * Der Inhalt, den die Tests in eine Phase schreiben: X86 ist die Auftragserteilung und bekommt den erfundenen
+ * Auftragnehmer, wenn das LV keinen hat (v1.3, Ticket 68: der Auftragnehmer kommt aus dem Modell, nicht aus einer Option).
+ */
+export function exportInhalt(phase: ExportPhase, n: Normiert): LvInhalt {
+  return phase === 'X86' && n.inhalt.auftragnehmer === undefined
+    ? { ...n.inhalt, auftragnehmer: ERFUNDENER_AUFTRAGNEHMER }
+    : n.inhalt;
 }
 
 /** Amtliche 3.3-Dateien, deren gelesener Inhalt als X81/X83 wieder geschrieben wird. */

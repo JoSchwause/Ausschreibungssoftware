@@ -34,9 +34,11 @@ import {
   FIXTURES,
   LV,
   TEST_ERSTELLT,
+  exportInhalt,
   exportOptionen,
   fixtureLv,
   normiereKennungen,
+  ohneAuftragnehmer,
   position,
   reichesLv,
   testIds,
@@ -50,6 +52,8 @@ const AKTUALISIEREN = process.env['GOLDEN_UPDATE'] === '1';
 const codes = (e: GaebExport): string[] => e.befunde.map((b) => b.code);
 const befund = (e: GaebExport, code: string): Pruefbefund | undefined =>
   e.befunde.find((b) => b.code === code);
+/** XML ohne die Einrückung zwischen Elementen, für Vergleiche über mehrere Zeilen. */
+const kompakt = (xml: string): string => xml.replace(/>\s+</g, '><');
 const verworfen = (e: GaebExport): string[] =>
   e.befunde.filter((b) => b.code === 'export-verworfen').map((b) => b.meldung);
 
@@ -96,7 +100,7 @@ function schreibe(
     version: '3.3',
     erstellt: TEST_ERSTELLT,
     programm: 'Test',
-    ...(phase === 'X86' ? { summen: SUMMEN_LEER, auftragnehmer: 'AN' } : {}),
+    ...(phase === 'X86' ? { summen: SUMMEN_LEER } : {}),
     ...extra,
   });
 }
@@ -154,8 +158,8 @@ describe('Grundform des Exports', () => {
     const { inhalt, summen } = fixtureLv('typisch');
     const n = normiereKennungen(inhalt, summen);
     for (const phase of ['X81', 'X83', 'X86'] as const) {
-      const a = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n)).xml;
-      const b = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.2', n)).xml;
+      const a = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n)).xml;
+      const b = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.2', n)).xml;
       expect(
         b
           .replace(/\/3\.2"/, '/3.3"')
@@ -175,10 +179,10 @@ describe('Golden-Dateien je Fixture und Phase (deterministisch)', () => {
       it(`${name} ${phase} 3.3`, () => {
         const { inhalt, summen, basen } = fixtureLv(name);
         const n = normiereKennungen(inhalt, summen, basen);
-        const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
+        const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
         expect(e.entwurf).toBe(false);
         expect(e.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
-        expect(schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n)).xml).toBe(e.xml);
+        expect(schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n)).xml).toBe(e.xml);
         if (name === 'gross') {
           // 6 MB je Datei: nur die Prüfsumme ist Golden.
           const datei = join(GOLDEN, 'gross.sha256.json');
@@ -685,6 +689,60 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
   });
 });
 
+// --- v1.3 (Ticket 68) ----------------------------------------------------------------------------------------------
+
+describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
+  const an = { name: 'Beispielbau (erfunden)', strasse: 'Weg 1', plz: '12345', ort: 'Musterstadt' };
+
+  it('X86 schreibt CTR/Address aus LvInhalt.auftragnehmer, ohne Warnung; der Leser liest ihn zurück', () => {
+    const e = schreibe(lv([p1()], { auftragnehmer: an }), 'X86');
+    expect(kompakt(e.xml)).toContain(
+      '<CTR><Address><Name1>Beispielbau (erfunden)</Name1><Street>Weg 1</Street><PCode>12345</PCode>' +
+        '<City>Musterstadt</City></Address></CTR>',
+    );
+    expect(e.befunde.filter((b) => b.ort.feld === 'auftragnehmer')).toEqual([]);
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.auftragnehmer).toEqual(an);
+    expect(l.befunde.filter((b) => b.code === 'nicht-abgebildet')).toEqual([]);
+  });
+
+  it('X86 ohne Auftragnehmer: leere Adresse und Warnung angabe-leer (nur dann)', () => {
+    const e = schreibe(lv([p1()]), 'X86');
+    expect(kompakt(e.xml)).toContain('<CTR><Address><Name1/><Street/><PCode/><City/></Address></CTR>');
+    expect(e.befunde.filter((b) => b.code === 'angabe-leer').map((b) => b.ort.feld)).toEqual([
+      'auftraggeber',
+      'auftragnehmer',
+    ]);
+  });
+
+  it('die Option auftragnehmer gibt es nicht mehr (das Modell gewinnt)', () => {
+    // @ts-expect-error: SchreibOptionen kennt seit v1.3 keinen Auftragnehmer
+    const opt: SchreibOptionen = {
+      phase: 'X86',
+      version: '3.3',
+      erstellt: TEST_ERSTELLT,
+      programm: 'T',
+      auftragnehmer: 'x',
+    };
+    expect(opt.phase).toBe('X86');
+  });
+
+  it('X81 und X83 kennen kein CTR: Auftragnehmer verworfen mit Warnung', () => {
+    for (const phase of ['X81', 'X83'] as const) {
+      const e = schreibe(lv([p1()], { auftragnehmer: an }), phase);
+      expect(e.xml).not.toContain('<CTR>');
+      expect(verworfen(e)).toEqual(expect.arrayContaining([expect.stringMatching(/^Auftragnehmer/)]));
+    }
+  });
+
+  it('Name über 40 Zeichen ist ein Fehler am Feld auftragnehmer.name', () => {
+    const e = schreibe(lv([p1()], { auftragnehmer: { ...an, name: 'x'.repeat(41) } }), 'X86');
+    expect(e.befunde.filter((b) => b.schwere === 'fehler').map((b) => [b.code, b.ort.feld])).toEqual([
+      ['wert-zu-lang', 'auftragnehmer.name'],
+    ]);
+  });
+});
+
 describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
   for (const version of ['3.3', '3.2'] as const)
     it(`X86 ${version}: Export → Import gleich, ohne Fehler und ohne Verwerfen; zweiter Export byte-gleich`, () => {
@@ -699,11 +757,11 @@ describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
       expect(schreibeGaeb(l.inhalt ?? n.inhalt, opt).xml).toBe(e.xml);
     });
 
-  it('X81 und X83: gleich bis auf Preise, Sätze und Nachlass', () => {
+  it('X81 und X83: gleich bis auf Preise, Sätze, Nachlass und Auftragnehmer', () => {
     const r = reichesLv();
     const n = normiereKennungen(r.inhalt);
     for (const phase of ['X81', 'X83'] as const) {
-      const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
+      const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
       expect(e.entwurf).toBe(false);
       const l = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '7.00' as Prozent });
       const ohnePreise = n.inhalt.knoten.map((k) =>
@@ -717,7 +775,7 @@ describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
               zuschlag: k.zuschlag === null ? null : { ...k.zuschlag, prozentsatz: null },
             },
       );
-      expect(l.inhalt).toEqual({ ...n.inhalt, nachlass: null, knoten: ohnePreise });
+      expect(l.inhalt).toEqual({ ...ohneAuftragnehmer(n.inhalt), nachlass: null, knoten: ohnePreise });
     }
   });
 });

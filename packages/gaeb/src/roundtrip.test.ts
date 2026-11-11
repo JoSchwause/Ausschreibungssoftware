@@ -19,9 +19,11 @@ import {
   AMTLICH_LESBAR,
   FIXTURES,
   amtlichLv,
+  exportInhalt,
   exportOptionen,
   fixtureLv,
   normiereKennungen,
+  ohneAuftragnehmer,
   testIds,
 } from './testhilfen';
 import type { FixtureName, Normiert } from './testhilfen';
@@ -48,7 +50,8 @@ const ozVon = (p: Position): string => `${p.ordnungszahl ?? ''}${p.ozIndex ?? ''
 
 /**
  * Was die Phase überhaupt trägt (kein Unterschied des Modells, sondern die Form der Phase): X81/X83 haben keine Preise
- * (EP, Anteile, Zuschlagssatz, Nachlass); X86 schreibt einen fehlenden Auftraggeber leer (OWN ist Pflicht).
+ * (EP, Anteile, Zuschlagssatz, Nachlass) und keinen Auftragnehmer; X86 schreibt einen fehlenden Auftraggeber leer (OWN ist
+ * Pflicht).
  */
 function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   const x86 = phase === 'X86';
@@ -57,8 +60,9 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
     const p: Position = { ...k, einheitspreis: null, epa: null };
     return p.zuschlag === null ? p : { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
   });
+  // X81/X83 kennen kein CTR: Der Auftragnehmer wird mit Warnung verworfen (v1.3, Ticket 68).
   return {
-    ...inhalt,
+    ...(x86 ? inhalt : ohneAuftragnehmer(inhalt)),
     knoten,
     ...(x86 ? {} : { nachlass: null }),
     ...(x86 && inhalt.auftraggeber === undefined
@@ -101,7 +105,7 @@ function rundweg(
   version: ExportVersion,
 ): { erster: string; zweiter: string; gelesen: LvInhalt | null } {
   const opt = exportOptionen(phase, version, n);
-  const erster = schreibeGaeb(n.inhalt, opt);
+  const erster = schreibeGaeb(exportInhalt(phase, n), opt);
   const l = leseGaeb(erster.xml, { ids: testIds(), standardMwstSatz: n.inhalt.mwstSatz });
   expect(l.phase).toBe(phase);
   expect(l.version).toBe(version);
@@ -125,7 +129,7 @@ describe('Roundtrip der Fixtures', () => {
           const { inhalt, summen, basen } = fixtureLv(name);
           const n = normiereKennungen(inhalt, summen, basen);
           const r = rundweg(n, phase, version);
-          expect(r.gelesen).toEqual(erwartet(n.inhalt, phase, UNTERSCHIEDE[name]));
+          expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, UNTERSCHIEDE[name]));
           expect(r.zweiter).toBe(r.erster);
         });
 });
@@ -136,7 +140,7 @@ describe('Roundtrip der amtlichen Dateien (Inhalt des Lesers)', () => {
       it(`${a.name} als ${phase} 3.3`, () => {
         const n = amtlichLv(a.pfad);
         const r = rundweg(n, phase, '3.3');
-        expect(r.gelesen).toEqual(erwartet(n.inhalt, phase, []));
+        expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, []));
         expect(r.zweiter).toBe(r.erster);
       });
 });

@@ -49,8 +49,8 @@ export interface SchreibOptionen {
   readonly summen?: Summenstand;
   /** Basis je Zuschlagsposition (Summe der GP ihrer Bezugspositionen, vom Kern). Für `ITMarkup` in X86. */
   readonly zuschlagsbasen?: ReadonlyMap<PositionId, Betrag>;
-  /** Name des Auftragnehmers für `CTR` in X86 (der Bieter des beauftragten Angebots). */
-  readonly auftragnehmer?: string;
+  // v1.3 (Ticket 68): Der Auftragnehmer für `CTR` kommt aus dem Modell (`LvInhaltKopf.auftragnehmer`), nicht mehr aus
+  // einer Option (Review von Ticket 53: das Modell gewinnt).
 }
 
 /** `GAEBInfo/VersDate` je Version (Schemastand). */
@@ -357,22 +357,20 @@ class Schreiber {
         );
       this.auftraggeber(ag);
     }
+    const an = this.inhalt.auftragnehmer;
     if (this.x86) {
-      if (this.opt.auftragnehmer === undefined)
+      if (an === undefined)
         this.melde(
           'warnung',
           'angabe-leer',
-          'X86 verlangt einen Auftragnehmer (CTR); der Aufrufer hat keinen genannt, die Adresse wird leer geschrieben.',
+          'X86 verlangt einen Auftragnehmer (CTR); das LV hat keinen, die Adresse wird leer geschrieben.',
           undefined,
           'auftragnehmer',
         );
       this.aus.element('CTR', [], () => {
-        this.adresse(
-          { name: this.opt.auftragnehmer ?? null, strasse: null, plz: null, ort: null },
-          'auftragnehmer',
-        );
+        this.adresse(an ?? { name: null, strasse: null, plz: null, ort: null }, 'auftragnehmer');
       });
-    }
+    } else if (an !== undefined) this.verwirf('Auftragnehmer (CTR gibt es nur in X86)');
   }
 
   private adresse(ag: Pick<Auftraggeber, 'name' | 'strasse' | 'plz' | 'ort'>, feld: string): void {
