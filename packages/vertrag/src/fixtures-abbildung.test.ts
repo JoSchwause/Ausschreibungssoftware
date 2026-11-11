@@ -261,7 +261,10 @@ function summenstand(s: FxSollwerte): Summenstand {
   const ausweis = (a: FxAusweis | undefined) =>
     a === undefined
       ? {}
-      : { summeBedarfOhneGesamtbetrag: a.summeBedarfOhneGesamtbetrag as Betrag, summeWahl: a.summeWahl as Betrag };
+      : {
+          summeBedarfOhneGesamtbetrag: a.summeBedarfOhneGesamtbetrag as Betrag,
+          summeWahl: a.summeWahl as Betrag,
+        };
   const gesamt: Gesamtsummen = {
     netto: s.summen.netto as Betrag,
     nachlass: s.summen.nachlass as Betrag,
