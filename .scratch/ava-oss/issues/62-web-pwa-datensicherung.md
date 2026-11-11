@@ -1,6 +1,6 @@
 # 62: S4: PWA-Installation, offline, Datensicherung (Export-Erinnerung, Sicherungsordner)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: S4 · Paket: `apps/web` (Ordner `src/sicherung/`, dazu `vite.config.ts`, `index.html`, `public/`; in
 gemeinsamen Dateien wie `App.tsx`, `main.tsx`, `ui/Huelle.tsx` nur je eine markierte Einhängestelle, D-20)
