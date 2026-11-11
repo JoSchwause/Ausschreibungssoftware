@@ -298,3 +298,66 @@
   flex-direction: column;
   gap: var(--tx-space-3);
 }
+
+/* Papierkorb und LV-Stände (Ticket 48). */
+.lv-papierkorb {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lv-papierkorb th,
+.lv-papierkorb td {
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+}
+
+.lv-papierkorb__zahl {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lv-papierkorb__aktionen {
+  display: flex;
+  gap: var(--tx-space-2);
+  justify-content: flex-end;
+}
+
+.lv-staende__formular {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--tx-space-3);
+  margin-bottom: var(--tx-space-4);
+}
+
+.lv-staende {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lv-staende li {
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-4);
+}
+
+.lv-staende__name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.lv-staende__zeit,
+.lv__leise {
+  color: var(--tx-color-text-muted);
+}
+
+.lv__kennzeichen {
+  padding: 0 var(--tx-space-2);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-sm);
+  color: var(--tx-color-text-muted);
+}

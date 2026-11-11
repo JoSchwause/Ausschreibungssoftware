@@ -55,9 +55,19 @@ export interface SpeicherAnbieterProps {
   /** Für den Testpfad: Hülle um den geöffneten Speicher (z. B. ein Speicher, der Fehler liefert). */
   readonly umhuellen?: (speicher: Speicher) => Speicher;
   readonly onBereit?: (umgebung: Umgebung) => void;
+  /**
+   * `false`: Die Seite braucht den Speicher nicht und erscheint sofort, ohne Warte- oder Fehlermeldung. Der Speicher
+   * bleibt trotzdem offen, damit der Undo-Stapel der Sitzung einen Abstecher auf eine solche Seite übersteht.
+   */
+  readonly mussOffen?: boolean;
 }
 
-export function SpeicherAnbieter({ children, umhuellen, onBereit }: SpeicherAnbieterProps): ReactElement {
+export function SpeicherAnbieter({
+  children,
+  umhuellen,
+  onBereit,
+  mussOffen = true,
+}: SpeicherAnbieterProps): ReactElement {
   const [lage, setLage] = useState<Lage>({ art: 'oeffnet' });
   const [runde, setRunde] = useState(0);
 
@@ -101,7 +111,12 @@ export function SpeicherAnbieter({ children, umhuellen, onBereit }: SpeicherAnbi
     setRunde((n) => n + 1);
   }, []);
 
-  if (lage.art === 'bereit') return <Kontext.Provider value={lage.umgebung}>{children}</Kontext.Provider>;
+  // Gleicher Baum vor und nach dem Öffnen: Eine Seite ohne Speicher wird beim Öffnen nicht neu aufgebaut.
+  if (lage.art === 'bereit' || !mussOffen) {
+    return (
+      <Kontext.Provider value={lage.art === 'bereit' ? lage.umgebung : null}>{children}</Kontext.Provider>
+    );
+  }
   if (lage.art === 'oeffnet') {
     return (
       <div className="seite" aria-busy="true">

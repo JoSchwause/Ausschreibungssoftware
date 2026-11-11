@@ -72,8 +72,8 @@ export interface PositionsDialogProps {
   /** Offen, solange eine Position gewählt ist. */
   positionId: PositionId | null;
   onSchliessen: () => void;
-  /** Ein Befehl durch Kern und Speicher; die Folge des Übernehmens läuft nacheinander. */
-  befehl: (b: LvBefehl) => Promise<Ausgang<unknown>>;
+  /** Die Befehle des Übernehmens durch Kern und Speicher, nacheinander und als ein Undo-Schritt (Ticket 48). */
+  folge: (befehle: readonly LvBefehl[]) => Promise<Ausgang<unknown>[]>;
   /** Abweisung durch den Speicher (nicht am Feld darstellbar): Meldung wie überall in der App. */
   speicherAbweisung: (a: Ausgang<unknown>) => void;
 }
@@ -100,7 +100,7 @@ export function PositionsDialog(props: PositionsDialogProps): ReactElement {
 }
 
 function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElement {
-  const { zustand, position, onSchliessen, befehl, speicherAbweisung } = props;
+  const { zustand, position, onSchliessen, folge, speicherAbweisung } = props;
   const formId = useId();
   const [e, setE] = useState<Positionsentwurf>(() => entwurfVon(position));
   /** Immer der neueste Entwurf: der Langtext-Editor meldet beim Verlassen, kurz vor dem Klick auf Übernehmen. */
@@ -145,8 +145,7 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
     setLaeuft(true);
     const r = entwurfBefehle(position, aktuell.current);
     const neu: Record<string, string> = {};
-    for (const b of r.befehle) {
-      const a = await befehl(b);
+    for (const a of await folge(r.befehle)) {
       if (a.ok) continue;
       if (a.abweisung.art === 'befehl') {
         const feld = kernFehlerFeld(a.abweisung.fehler.feld);

@@ -167,6 +167,7 @@ export const texte = {
   meldungen: {
     befehlAbgewiesen: 'Änderung nicht übernommen',
     nichtGespeichert: 'Nicht gespeichert',
+    kopieFehlt: 'Die kopierten Zeilen gibt es nicht mehr.',
   },
   befehlsfehler: {
     'ungueltige-eingabe': 'Die Eingabe ist hier nicht zulässig.',

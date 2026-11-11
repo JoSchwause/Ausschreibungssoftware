@@ -1,6 +1,6 @@
 # 48: App: Zwischenablage, Verschieben, Papierkorb, Undo/Redo und LV-Stände (U5)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5) · Paket: `apps/web`
 Blocked by: 47, 42, 43, 46
@@ -57,15 +57,15 @@ Projekte und LVs löschen (Q5). Vorgehen: TDD mit dem Skill `tdd`; am Ende
 
 ## Acceptance criteria
 
-- [ ] E2E: 50 gemischte Änderungen (Felder, Einfügen aus Excel-TSV, Kopieren, Verschieben, Löschen, Nachlass), dann 50× Undo → Summen und Export der Projektdatei gleich dem Anfang; 50× Redo → gleich dem Ende
-- [ ] Eine Mehrzeilen-Aktion ist ein Undo-Schritt (E2E: 3 Zeilen einfügen, einmal Strg+Z, alle drei weg)
-- [ ] Strg+Z im Eingabefeld der Zelle wirkt auf das Feld, nicht auf das LV (E2E)
-- [ ] Kopieren und Einfügen einer Gliederung mit Unterknoten: neue OZ nach dem Vorschlag, Summen stimmen; Ausschneiden/Einfügen verschiebt (E2E)
-- [ ] Gelöschte Zeilen erscheinen im Papierkorb und lassen sich wiederherstellen; Leeren nur nach Bestätigung (E2E)
-- [ ] LV-Stand anlegen, neu laden, Stand schreibgeschützt öffnen; Änderungen am LV ändern den Stand nicht (E2E)
-- [ ] Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück (E2E)
-- [ ] Undo eines Befehls bei 5.000 Positionen bis zur aktualisierten Summenzeile < 100 ms (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] E2E: 50 gemischte Änderungen (Felder, Einfügen aus Excel-TSV, Kopieren, Verschieben, Löschen, Nachlass), dann 50× Undo → Summen und Export der Projektdatei gleich dem Anfang; 50× Redo → gleich dem Ende
+- [x] Eine Mehrzeilen-Aktion ist ein Undo-Schritt (E2E: 3 Zeilen einfügen, einmal Strg+Z, alle drei weg)
+- [x] Strg+Z im Eingabefeld der Zelle wirkt auf das Feld, nicht auf das LV (E2E)
+- [x] Kopieren und Einfügen einer Gliederung mit Unterknoten: neue OZ nach dem Vorschlag, Summen stimmen; Ausschneiden/Einfügen verschiebt (E2E)
+- [x] Gelöschte Zeilen erscheinen im Papierkorb und lassen sich wiederherstellen; Leeren nur nach Bestätigung (E2E)
+- [x] LV-Stand anlegen, neu laden, Stand schreibgeschützt öffnen; Änderungen am LV ändern den Stand nicht (E2E)
+- [x] Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück (E2E)
+- [x] Undo eines Befehls bei 5.000 Positionen bis zur aktualisierten Summenzeile < 100 ms (Messwert im Ticket)
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -73,3 +73,67 @@ Sichtbares Befehlsprotokoll (ADR 0009), Undo über Sitzungen hinweg, Vergleich z
 GAEB (49), Datensicherung (S4).
 
 ## Comments
+
+### Umsetzer
+
+Nur `apps/web` (Ausnahme laut Auftrag: `e2e/dialog.spec.ts` ohne `fixme`, D-15; Ticket 50 ist gemergt, der Test ist grün).
+
+Seams: `src/historie/historie.ts` (Stapel, rein), `Befehlsweg` in `src/lv/befehlsweg.ts` (eine Schreibkette für Befehle,
+Folgen, Rückgängig und Wiederholen; Vitest gegen den echten Speicher auf In-Memory-SQLite), `HistorieAnbieter` (Tasten,
+Schaltflächen, Seitenwechsel), Papierkorb-Dialog, LV-Stände-Dialog, `LvStandSeite`, Löschen auf der Projektseite;
+E2E `e2e/undo.spec.ts`, Messung in `e2e/leistung.spec.ts`.
+
+Entscheidungen (paketlokal, umkehrbar; Frage → Entscheidung → Grund):
+
+- Reichweite des Stapels → einer je Sitzung der App (alle Projekte), nicht je Projekt; Neuladen leert ihn → „Projekt
+  löschen“ geschieht auf der Projektseite und wird auf der Liste zurückgeholt; Wechsel von LV und Projekt leert nichts.
+  Liegt der Schritt in einem anderen LV/Projekt als dem angezeigten, wechselt die App dorthin (`zielNach`).
+- Seitenwechsel → `SpeicherAnbieter` steht jetzt auch um Seiten ohne Speicher (`mussOffen={false}`, sofort sichtbar), damit
+  ein Abstecher auf „Vergabe“ oder den Katalog Speicher und Stapel nicht schließt.
+- Schreibreihenfolge → alle Befehle und Umkehrungen laufen über eine Kette (`Befehlsweg.reihe`), nicht je Sitzung;
+  eine Folge hält die Kette, bis alle ihre Befehle durch sind (keine fremden Befehle dazwischen).
+- Ein Schritt → `onBefehlsfolge` des Grids, Übernehmen im Positionsdialog und im Dialog „LV-Angaben“ (`Sitzung.folge`);
+  sonst ein Befehl. Abgewiesene Befehle einer Folge zählen nicht; ist nichts geschrieben, entsteht kein Schritt.
+- Abweisung mitten in einer Umkehrung → der Schritt wird geteilt: Geschriebenes wandert auf den anderen Stapel, der Rest
+  bleibt; Meldung „Rückgängig nicht möglich“ (bei `konflikt` mit Erklärung). So passt jeder Stapel zum gespeicherten Stand.
+- Grenze → 200 Schritte (Ticket: mindestens 100), ältere fallen heraus.
+- Strg+Z/Strg+Y/Strg+Umschalt+Z → `keydown` am Fenster; nicht in `input`, `textarea`, `select`, editierbaren Elementen,
+  `[data-editor]` (Zelleditor) und in Dialogen (dort gehört die Taste dem Feld). Schaltflächen in den Werkzeugleisten
+  von LV, Projekt, Projektliste und Stand.
+- OZ neuer Knoten → `ozVorschlag` im Befehlsweg für jedes `PositionAnlegen`/`GliederungAnlegen` ohne OZ (Schaltflächen,
+  Strg+Plus, Einfügen aus Excel), erst wenn der Befehl an der Reihe ist (Stand nach allen früheren); eine mitgebrachte OZ
+  bleibt; `oz-schritt-ausgewichen` erscheint in der Hinweisleiste. `vorPositionAnlegen` wird deshalb nicht gebraucht.
+- Kopieren → `onKopieEinfuegen` → `kopieBauen` mit der `IdQuelle` der App → `KnotenEinfuegen`; gibt es die kopierten Zeilen
+  nicht mehr: Meldung. Ausschneiden, Alt+Pfeil und Löschen sendet das Grid selbst (46).
+- Papierkorb → Dialog „Papierkorb (n)“ in der Werkzeugleiste; Tabelle nach `nummer` mit OZ und Kurztext des ersten obersten
+  Knotens („(+n)“ für weitere), Zahl der Positionen; Bestätigung im selben Dialog (kein zweiter Dialog darüber). `konflikt`
+  beim Entfernen/Leeren → Meldung „Ein Angebot verweist …“ (D-12).
+- LV-Stände → Dialog „LV-Stände“ (Name, Liste mit Zeitpunkt in de-DE); Öffnen unter `/lv/<id>/stand/<standId>`. Das Grid
+  des Stands bekommt Befehlsempfänger, die nur „Stand ist schreibgeschützt“ melden (das Grid hat keinen Nur-Lese-Modus;
+  der Zelleditor öffnet sich noch, die Meldung kommt beim Übernehmen). „Als neues LV übernehmen“ umgesetzt: neue Kennungen
+  über `kopieBauen`, Papierkorb des Stands kommt nicht mit.
+- Löschen von LV und Projekt → ohne Kaskade: Die Bestätigung nennt Positionen und Papierkorbeinträge (LV) bzw. Bieter und
+  Protokoll (Projekt) und sagt, dass Angebote, Auftrags-LV, LV-Stände bzw. LVs das Löschen verhindern; `konflikt` → eigene
+  Meldung. Grund: Ein Projekt samt LVs in einer Folge zu löschen ließe sich wegen D-31.1 nicht zurückholen (das Protokoll
+  geht mit dem Projekt, die `Rueckgaengig` der LV-Löschungen fänden ihren Eintrag nicht), und Angebote kann die App ohne
+  `vergabe` nicht löschen.
+- Testpfad → zusätzlich `projektdatei` (Export ohne Protokoll), `historie` (Stapeltiefe) und `leerlauf` (Kette leer); nur im
+  Test-Build. `dialog.spec.ts` wartet nach „Umnummerieren“ auf `leerlauf`, weil neue Positionen ihre OZ jetzt schon haben
+  und die alte Bedingung zu früh erfüllt war (mechanisch, keine Prüfung geschwächt).
+- E2E-Fenster 1440 × 2000 in `undo.spec.ts` → das Grid ist virtualisiert; so stehen alle Zeilen von `typisch` im DOM.
+
+Lücken (nicht hier geändert):
+
+- **Speicher (D-31.1, 43):** Nach Undo eines `ProjektLoeschen` ist das alte Protokoll weg; ein danach zurückgenommener
+  Schritt am selben Projekt (z. B. ein früheres „LV löschen“) wird mit `konflikt` abgewiesen und bleibt im Stapel.
+- **Grid (46):** kein Nur-Lese-Modus (Stand); die Rückfrage beim Löschen zählt weiter nur sichtbare Zeilen.
+- Kein Undo über Dateiimport (Projektdatei importieren ist kein Befehl der Sitzung).
+
+Messwert (`e2e/leistung.spec.ts`, `gross`, Mengenänderung, dann Strg+Z bis zur Summenzeile, 9 Messungen nach 2 zum
+Aufwärmen): Undo Median gesamt 69 ms, davon `speicher.anwenden` 54 ms, **App-Schicht ohne Speicher 15 ms**; hart geprüft
+wie in Ticket 39 die App-Schicht (< 100 ms) und die Gesamtzeit mit grober Schranke (< 400 ms).
+
+Suite (Umsetzer, nach Merge von `integration/welle-3` mit Ticket 50): `pnpm lint`, `pnpm typecheck` grün; `pnpm test`
+1593 bestanden, 2 übersprungen (nicht aus diesem Ticket), `fixtures` 16/16; `pnpm --filter @tethys/web e2e` 34 bestanden,
+kein `fixme` mehr.
+
