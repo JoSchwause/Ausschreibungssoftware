@@ -303,7 +303,6 @@ export const SUMMENZEILEN = [
   'brutto',
   'bedarf',
   'wahl',
-  'nichtAngeboten',
   'rang',
 ] as const;
 export type Summenzeile = (typeof SUMMENZEILEN)[number];
@@ -319,13 +318,11 @@ function summenBauen(e: AnsichtEingang): VergleichsSummenzeile[] {
       const text =
         s === 'rang'
           ? String(b.rang)
-          : s === 'nichtAngeboten'
-            ? String(b.nichtAngeboten)
-            : s === 'bedarf'
-              ? betrag(g.summeBedarfOhneGesamtbetrag)
-              : s === 'wahl'
-                ? betrag(g.summeWahl)
-                : betrag(g[s]);
+          : s === 'bedarf'
+            ? betrag(g.summeBedarfOhneGesamtbetrag)
+            : s === 'wahl'
+              ? betrag(g.summeWahl)
+              : betrag(g[s]);
       zellen[spaltenId(b.angebotId, spalte)] = zelle(text);
     }
     if (s === 'netto') {

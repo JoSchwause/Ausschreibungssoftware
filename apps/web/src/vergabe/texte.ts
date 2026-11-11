@@ -11,6 +11,7 @@ export const texte = {
     keineAngebote:
       'Zu diesem Leistungsverzeichnis gibt es noch keine Angebote. Angebote lassen sich auf der LV-Seite einlesen (X84).',
     oeffnen: 'Preisspiegel',
+    werkzeuge: 'Werkzeuge des Preisspiegels',
   },
   spalten: {
     oz: 'OZ',
@@ -78,8 +79,8 @@ export const texte = {
   einstellungen: {
     gruppe: 'Einstellungen des Preisspiegels',
     hinweis: 'Gilt nur für diese Sitzung; wird nicht gespeichert.',
-    ausreisser: 'Ausreißer-Schwelle',
-    abcA: 'ABC-Schwelle A',
+    ausreisser: 'Ausreißer-Schwelle in %',
+    abcA: 'ABC-Schwelle A in %',
     abcBezug: 'Bezug der ABC-Klasse',
     bezugMittel: 'Mittel',
     bezugSchaetzpreis: 'Schätzpreis',
@@ -95,6 +96,8 @@ export const texte = {
   },
   bieter: {
     liste: 'Bieter des Preisspiegels',
+    bieter: 'Bieter',
+    aktion: 'Aktion',
     rang: (r: number) => `Rang ${String(r)}`,
   },
 } as const;

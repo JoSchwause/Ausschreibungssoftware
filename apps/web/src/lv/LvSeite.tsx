@@ -27,6 +27,7 @@ import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
+import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
@@ -413,6 +414,7 @@ function LvBearbeiten({
         </Button>
         <GaebAusgeben zustand={zustand} />
         <Angebote zustand={zustand} />
+        <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">
