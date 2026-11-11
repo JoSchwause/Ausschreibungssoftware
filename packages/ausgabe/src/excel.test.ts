@@ -3,34 +3,18 @@ import { describe, expect, it } from 'vitest';
 import type { LvZustand } from '@tethys/vertrag';
 import { excelRuecklaufLesen, lvAlsExcel } from './index';
 import type { ExcelRuecklauf } from './index';
-import { SPALTENBUCHSTABE, text, typischAngebote, zahl, zeileVon, zellenSetzen } from './testhilfe/excel';
-import type { Eintrag } from './testhilfe/excel';
+import {
+  SPALTENBUCHSTABE,
+  ausfuellen,
+  deText,
+  excelText,
+  text,
+  typischAngebote,
+  zahl,
+  zeileVon,
+  zellenSetzen,
+} from './testhilfe/excel';
 import { lvZustandAusFixture } from './testhilfen';
-
-/** Gleitkommatext, wie Excel ihn für eine eingetippte Dezimalzahl meist schreibt: ohne Nachkommanullen. */
-const excelText = (dezimal: string): string => dezimal.replace(/\.?0+$/, '');
-/** de-DE-Text, wie ein Bieter ihn in eine Textzelle tippt (`1814.850` → `1.814,85`). */
-const deText = (dezimal: string): string => {
-  const [ganz = '', nach = ''] = dezimal.split('.');
-  const rest = nach.replace(/0+$/, '');
-  return ganz.replace(/\B(?=(?:[0-9]{3})+$)/g, '.') + (rest === '' ? '' : `,${rest}`);
-};
-
-function ausfuellen(
-  bytes: Uint8Array,
-  angebot: ReturnType<typeof typischAngebote>[number],
-  zelle: (dezimal: string) => string,
-): Uint8Array {
-  const eintraege: Eintrag[] = [];
-  for (const p of angebot.roh) {
-    if (p.status === 'nicht-angeboten') continue;
-    const n = String(zeileVon(bytes, p.positionId));
-    if ('zuschlagssatz' in p)
-      eintraege.push({ ref: `${SPALTENBUCHSTABE.satz}${n}`, xml: zelle(p.zuschlagssatz) });
-    else eintraege.push({ ref: `${SPALTENBUCHSTABE.ep}${n}`, xml: zelle(p.einheitspreis) });
-  }
-  return zellenSetzen(bytes, eintraege);
-}
 
 describe('Excel-Rundlauf: Blankett ohne Eingaben', () => {
   it('winzig: ein unberührtes Blankett liefert jede Position als „nicht angeboten“, ohne Befund', () => {

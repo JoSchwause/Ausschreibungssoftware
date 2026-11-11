@@ -16,7 +16,12 @@ type FxAngebotsposition =
 interface FxAngebotsset {
   lvId: string;
   bieter: { id: string; name: string }[];
-  angebote: { id: string; bieterId: string; positionen: FxAngebotsposition[] }[];
+  angebote: {
+    id: string;
+    bieterId: string;
+    positionen: FxAngebotsposition[];
+    sollwerte: { positionen: Record<string, { gp: string | null }> };
+  }[];
 }
 
 export interface FixtureAngebot {
@@ -25,6 +30,8 @@ export interface FixtureAngebot {
   readonly positionen: readonly Angebotsposition[];
   /** Roh aus der Fixture (Punktnotation). */
   readonly roh: readonly FxAngebotsposition[];
+  /** Sollwerte der Fixture: GP je Position (Punktnotation, 2 Stellen). */
+  readonly sollGp: ReadonlyMap<string, string | null>;
 }
 
 export function typischAngebote(): FixtureAngebot[] {
@@ -35,6 +42,7 @@ export function typischAngebote(): FixtureAngebot[] {
   return set.angebote.map((a) => ({
     bieter: namen.get(a.bieterId) ?? a.bieterId,
     roh: a.positionen,
+    sollGp: new Map(Object.entries(a.sollwerte.positionen).map(([id, w]) => [id, w.gp])),
     positionen: a.positionen.map((p): Angebotsposition => {
       const positionId = p.positionId as PositionId;
       if (p.status === 'nicht-angeboten') return { positionId, status: 'nicht-angeboten' };
@@ -114,4 +122,30 @@ export function teilLesen(bytes: Uint8Array, pfad: string): string {
 
 export function teile(bytes: Uint8Array): string[] {
   return Object.keys(unzipSync(bytes)).sort();
+}
+
+/** Gleitkommatext, wie Excel ihn für eine eingetippte Dezimalzahl meist schreibt: ohne Nachkommanullen. */
+export const excelText = (dezimal: string): string => dezimal.replace(/\.?0+$/, '');
+/** de-DE-Text, wie ein Bieter ihn in eine Textzelle tippt (`1814.850` → `1.814,85`). */
+export const deText = (dezimal: string): string => {
+  const [ganz = '', nach = ''] = dezimal.split('.');
+  const rest = nach.replace(/0+$/, '');
+  return ganz.replace(/\B(?=(?:[0-9]{3})+$)/g, '.') + (rest === '' ? '' : `,${rest}`);
+};
+
+/** Trägt die Preise eines Fixture-Angebots ein: EP in Spalte F, Satz in Spalte H; „nicht angeboten“ bleibt leer. */
+export function ausfuellen(
+  bytes: Uint8Array,
+  angebot: FixtureAngebot,
+  zelle: (dezimal: string) => string,
+): Uint8Array {
+  const eintraege: Eintrag[] = [];
+  for (const p of angebot.roh) {
+    if (p.status === 'nicht-angeboten') continue;
+    const n = String(zeileVon(bytes, p.positionId));
+    if ('zuschlagssatz' in p)
+      eintraege.push({ ref: `${SPALTENBUCHSTABE.satz}${n}`, xml: zelle(p.zuschlagssatz) });
+    else eintraege.push({ ref: `${SPALTENBUCHSTABE.ep}${n}`, xml: zelle(p.einheitspreis) });
+  }
+  return zellenSetzen(bytes, eintraege);
 }
