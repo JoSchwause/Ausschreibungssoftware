@@ -13,6 +13,7 @@ export const texte = {
   blattFehltText:
     'Das Blatt gibt es nicht (mehr). Rückgängig oder Wiederholen kann es zurückholen; die Liste zeigt alle Blätter.',
   zumAuftrag: 'Zum Auftrags-LV',
+  zumProjekt: 'Zum Projekt',
   zurListe: 'Zu den Aufmaßblättern',
   werkzeuge: 'Werkzeuge des Aufmaßes',
   liste: {

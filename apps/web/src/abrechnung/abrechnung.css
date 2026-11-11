@@ -1,0 +1,80 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Abrechnung (Ticket 87): Liste der Aufmaßblätter, Blatt, Soll/Ist, Dialoge. Nur Design-Tokens (U4). */
+
+a.tx-button {
+  text-decoration: none;
+}
+
+.abrechnung__liste {
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.abrechnung__liste th,
+.abrechnung__liste td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+}
+
+.abrechnung__liste thead th {
+  color: var(--tx-color-text-muted);
+  font-weight: var(--tx-weight-bold);
+}
+
+.abrechnung__zahl {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.abrechnung__datei {
+  display: none;
+}
+
+.abrechnung__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.abrechnung__grid {
+  min-height: 360px;
+}
+
+.abrechnung__befunde h2 {
+  margin: 0 0 var(--tx-space-1);
+  font-size: var(--tx-font-size-md);
+}
+
+.abrechnung__befunde ul {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.abrechnung__kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+  min-width: 420px;
+}
+
+.abrechnung__kopf p {
+  margin: 0;
+}
+
+.abrechnung__summen {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: var(--tx-space-1) var(--tx-space-4);
+  margin: 0;
+}
+
+.abrechnung__summen dt {
+  color: var(--tx-color-text-muted);
+}
+
+.abrechnung__summen dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
