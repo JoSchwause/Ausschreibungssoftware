@@ -12,6 +12,7 @@
 
 import type {
   AngebotChangeSet,
+  AufmassChangeSet, // Ticket 87
   AuftragsLvChangeSet, // Ticket 64
   LvChangeSet,
   ProjektChangeSet,
@@ -26,7 +27,12 @@ export interface Teil {
   readonly protokollId: ProtokollId;
   readonly projektId: ProjektId;
   readonly aggregat: Protokolleintrag['aggregat'];
-  readonly changeSet: LvChangeSet | ProjektChangeSet | AngebotChangeSet | AuftragsLvChangeSet; // Ticket 64: Zuschlag
+  readonly changeSet:
+    | LvChangeSet
+    | ProjektChangeSet
+    | AngebotChangeSet
+    | AuftragsLvChangeSet // Ticket 64: Zuschlag
+    | AufmassChangeSet; // Ticket 87: Aufmaßblatt
 }
 
 /** Ein Undo-Schritt: die Teile in der Reihenfolge, in der sie geschrieben wurden. */

@@ -12,6 +12,7 @@ import {
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
 } from '@tethys/kern';
+import { aufmassChangeSetUmkehren } from '@tethys/abrechnung'; // Ticket 87
 import { angebotBefehlAusfuehrer, angebotChangeSetUmkehren } from '@tethys/vergabe';
 import type {
   Angebot,
@@ -102,7 +103,7 @@ async function speichern<Z>(
   e: Protokolleintrag,
   cs: Teil['changeSet'],
   neu: () => Z,
-  hinweise: readonly Befehlshinweis[] = cs.hinweise ?? [],
+  hinweise: readonly Befehlshinweis[] = ('hinweise' in cs ? cs.hinweise : undefined) ?? [], // Ticket 87
 ): Promise<Lauf<Z>> {
   const r = await eintragSchreiben(u, e, cs);
   if (!r.ok) return { ok: false, abweisung: { art: 'speicher', fehler: r.fehler } };
@@ -229,7 +230,9 @@ const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
       ? angebotChangeSetUmkehren(cs)
       : cs.art === 'auftrags-leistungsverzeichnis'
         ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag
-        : projektChangeSetUmkehren(cs);
+        : cs.art === 'aufmass'
+          ? aufmassChangeSetUmkehren(cs) // Ticket 87: Aufmaßblatt
+          : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie
