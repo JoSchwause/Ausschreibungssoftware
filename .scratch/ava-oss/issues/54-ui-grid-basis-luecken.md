@@ -1,6 +1,6 @@
 # 54: `ui-grid` und `ui-basis`: Lücken aus Welle 3
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: U · Paket: `packages/ui-grid`, `packages/ui-basis` (zwei Schreiber nacheinander, je Paket ein Pull Request; die Anbindung in `apps/web` folgt als eigenes Ticket)
 Blocked by: –
