@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 66: Web Worker für den LV-Druck (Ticket 28 maß 2,5–3 s bei 5.000 Zeilen; der Hauptthread bleibt bedienbar).
-// `@tethys/ausgabe` (pdfmake) wird erst hier per `import()` geladen und kommt nie ins Hauptbündel.
+// `@tethys/ausgabe` (pdfmake) wird erst hier per `import()` geladen und kommt nie ins Hauptbündel. Die Schriften kommen
+// über den Export `./schriften/*.woff` des Pakets (S9), nicht über einen Pfad in dessen Ordner.
 
 import type { PdfOptionen } from '@tethys/ausgabe';
 import type { LvZustand } from '@tethys/vertrag';
-import fettKursivUrl from '../../../../packages/ausgabe/schriften/noto-sans-latin-700-italic.woff?url';
-import fettUrl from '../../../../packages/ausgabe/schriften/noto-sans-latin-700-normal.woff?url';
-import kursivUrl from '../../../../packages/ausgabe/schriften/noto-sans-latin-400-italic.woff?url';
-import normalUrl from '../../../../packages/ausgabe/schriften/noto-sans-latin-400-normal.woff?url';
+import fettKursivUrl from '@tethys/ausgabe/schriften/noto-sans-latin-700-italic.woff?url';
+import fettUrl from '@tethys/ausgabe/schriften/noto-sans-latin-700-normal.woff?url';
+import kursivUrl from '@tethys/ausgabe/schriften/noto-sans-latin-400-italic.woff?url';
+import normalUrl from '@tethys/ausgabe/schriften/noto-sans-latin-400-normal.woff?url';
 
 export interface PdfAuftrag {
   readonly zustand: LvZustand;
