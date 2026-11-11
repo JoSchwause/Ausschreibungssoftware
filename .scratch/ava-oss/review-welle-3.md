@@ -64,3 +64,24 @@ Befunde (schwerster: C1/C2, Geldwerte nach Migration).
 
 Ein Opus-Umsetzer behebt S1–S8, P1, C1, C2 (Branch `fix/welle-3-review`). P2: Folgeticket 51. P3, P4: im Bericht als
 offen. S9: freiwillig.
+
+## Behebung (Ergebnis)
+
+Branch `fix/welle-3-review`, Stand 2026-11-11. Je Befund: Ergebnis, wie, Commit.
+
+- **C1** behoben: Migration 2 trägt `summenNeuRechnen`; `speicher` rechnet danach alle Summen (LV, Angebot, Auftrags-LV) mit `summenBerechnen` neu, Datenbankweg in der Migrationstransaktion, Dateiweg vor der Importtransaktion (`summenmigration.ts`). Weist der Kern Altdaten ab: Daten und Summen bleiben, `Migrationsbefund` über `migrationsbefunde()`, kein Abbruch. Tests: eingefrorene v1-Datei und v1-Datenbank gleich `summenBerechnen`, auch nach einer Änderung. Grenze `speicher → kern` in `tools/boundaries.mjs` freigegeben. `0886e5f`
+- **C2** behoben: Writer vergibt künstliche Wahlgruppen nach D-16 (je Grundposition eine Gruppe, Varianten 1..n, oberhalb der höchsten belegten Gruppe), Warnung `wahl-nummer-vergeben`, über 9/999 Fehler `wahl-nummer-ungueltig`, kein `Item` mehr. `64550ae`
+- **S4** behoben: `angebot.ts` fragt `betragsziel` aus dem Kern statt der eigenen Kopie; Grenze `gaeb → kern` freigegeben. `64550ae`
+- **P1** behoben: `zuschlag` in `FIXTURES` (Export, eigene Prüfung mit Golden, Roundtrip, XSD). Unterschiedsliste je Fixture und Position in `packages/gaeb/testdaten/roundtrip-unterschiede.json`; ungelistete und nicht mehr eintretende Unterschiede lassen den Test scheitern. XSD-Gegenprüfung (ohne `CI`): 42 von 42 Dateien bestanden. `1f21783`
+- **P2** offen wie geplant: Folgeticket 51; M2 „erfüllt mit gelisteten Unterschieden“ (D-18).
+- **P3** offen: braucht Vertrag (Ticket 53, Punkt 2).
+- **P4** offen: Ticket 52.
+- **S5** behoben: `dekoder.ts` liest den Langtext mit `langtextFormFehler` aus dem Kern (Export ergänzt); Code `datei-ungueltig` mit Pfad bleibt. `8f01802`
+- **S6** behoben: `GRENZEN` im Writer verweist auf `PRUEF_GRENZEN`, `vorkommastellen` (Export ergänzt), `OZ_MAX_LAENGE`, `MAX_GLIEDERUNGSEBENEN`; eigene Kopie entfernt. `8f01802`
+- **S3** behoben mit S6: Schlüssel `zuschlagssatz` (aus dem Kern); MwSt-Satz und Nachlass in Prozent über `PROZENTFORMAT`. `8f01802`
+- **S1**, **S7** behoben: Mittel rundet auf `NACHKOMMASTELLEN[mittelArt]`, `mittelStellen` entfernt. `7a9b7ad`
+- **S2** behoben: Glossar „Gedachtes LV“, „Preiskennzeichen“, „Bieterzuschlag“ (kein vorhandener Begriff passt; „Nullpreis“ und „Nicht angeboten“ sind Werte des Preiskennzeichens); dazu „Migrationsbefund“ (C1) und Altform → Ticket 51. `7a9b7ad`, `0886e5f`
+- **S8** behoben: `dateiBytes` meldet Lesefehler des Browsers als `DateiNichtLesbar` (weiter „nicht lesbar“); jeder andere Fehler schließt den Dialog und wird weitergeworfen. `7a9b7ad`
+- **S9** nicht behoben (freiwillig): braucht einen Ganzzahl-Konstruktor in `dezimal`, außerhalb dieses Laufs.
+
+Prüfung nach Merge von `integration/welle-3`: Lint grün, Typen grün, `pnpm test` 1625 bestanden / 2 übersprungen (Vitest) und 16/16 (Fixtures), E2E `@tethys/web` 40/40, E2E `@tethys/speicher` 13/13.
