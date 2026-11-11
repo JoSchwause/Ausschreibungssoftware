@@ -6,14 +6,20 @@
 // aktive Zelle, Zellauswahl und eine Statusmeldung.
 
 import { useTable } from '@tanstack/react-table';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { features, vergleichsSpaltenDefinitionen } from './tabelle';
 import { meldungZellenKopiert, texte } from './texte';
-import { STANDARDBREITE, bereichAlsTsv, fixierteVersaetze, normiereBereich } from './vergleich';
+import {
+  STANDARDBREITE,
+  bereichAlsTsv,
+  festeZellklassen,
+  fixierteVersaetze,
+  normiereBereich,
+} from './vergleich';
 import type { Bereich } from './vergleich';
 import type {
   VergleichsGridProps,
@@ -41,7 +47,6 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   const spaltenIds = useMemo(() => spalten.map((s) => s.id), [spalten]);
   const baumspalte = props.baumspalte ?? spaltenIds[0];
   const kopfzeilen = spalten.some((s) => s.gruppe !== undefined) ? 2 : 1;
-  const idPraefix = useId();
 
   // --- TanStack Table: Spalten- und Kopfmodell (Gruppen); die Zeilen rendert das Grid selbst -------------------
   const columns = useMemo(() => vergleichsSpaltenDefinitionen(spalten), [spalten]);
@@ -58,6 +63,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   );
   const fixiert = Math.min(props.fixierteSpalten ?? 0, spalten.length);
   const versaetze = useMemo(() => fixierteVersaetze(spalten, fixiert), [spalten, fixiert]);
+  const zellklassen = useMemo(() => festeZellklassen(spalten, versaetze), [spalten, versaetze]);
 
   // --- gemeinsamer Kern: aktive Zelle, Virtualisierung, Fokus (U2) -----------------------------------------
   const zeilenIds = useMemo(() => [...zeilen.map((z) => z.id), ...summen.map((s) => s.id)], [zeilen, summen]);
@@ -292,10 +298,10 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
     breite: mindestbreite,
     spalten,
     versaetze,
+    zellklassen,
     sichtbar,
     baumspalte,
     kennzeichenTexte,
-    idPraefix,
   };
 
   return (

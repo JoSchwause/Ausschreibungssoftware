@@ -179,8 +179,9 @@
   color: var(--tx-color-text);
 }
 
-.tx-grid__platz {
-  display: inline-block;
+/* Zeile ohne Unterknoten: Einzug und Platz des Knopfs in einem Element (Ticket 74). */
+.tx-grid__baum--blatt {
+  box-sizing: content-box;
   width: 18px;
 }
 
@@ -226,7 +227,6 @@
 /* Mengenansatz (Ticket 74, D-65.2): kein Befund, deshalb kein Warnstil. Die neutrale Marke der Kennzeichen (Fläche und
    Farbe aus `.tx-grid__kennzeichen`, Kontrast geprüft) steht links neben der Zahl, ein Warnzeichen davor. */
 .tx-grid__kennzeichen--mengenansatz {
-  flex: 0 0 auto;
   order: -1;
 }
 
@@ -392,7 +392,10 @@
   justify-content: center;
 }
 
+/* Zahlen werden abgeschnitten, nicht mit „…“ gekürzt; das Abschneiden übernimmt die Zelle (`overflow: hidden`). Ohne
+   eigenen Clip am Text sparen Vorzeichnen und Zeichnen beim schnellen Scrollen je Zelle einen Clip (Ticket 74). */
 .tx-grid__zelle--rechts .tx-grid__text {
+  overflow: visible;
   text-overflow: clip;
 }
 
@@ -452,20 +455,16 @@
   font-style: italic;
 }
 
-/* Marken der Kennzeichen: Symbol als Text auf eigener Fläche; jedes Paar ist ein geprüftes Token-Paar (Kontrast). */
-.tx-grid__kennzeichenliste {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 2px;
-  order: -1;
-}
-
-.tx-grid__zelle--rechts .tx-grid__kennzeichenliste {
-  margin-right: auto;
+/* Marken der Kennzeichen: Symbol als Text auf eigener Fläche; jedes Paar ist ein geprüftes Token-Paar (Kontrast). Die
+   Marken stehen ohne Hülle direkt in der Zelle vor dem Text (Ticket 74); in rechtsbündigen Zellen schiebt der Text sie
+   an den linken Rand. */
+.tx-grid__zelle--rechts > .tx-grid__text {
+  margin-left: auto;
 }
 
 .tx-grid__kennzeichen {
   display: inline-block;
+  flex: 0 0 auto;
   min-width: 1.4em;
   padding: 0 3px;
   border-radius: var(--tx-radius-sm);
@@ -476,6 +475,10 @@
   text-align: center;
   color: var(--tx-color-text-muted);
   background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__kennzeichen + .tx-grid__kennzeichen {
+  margin-left: calc(2px - var(--tx-space-2));
 }
 
 .tx-grid__kennzeichen--hoch {
