@@ -366,12 +366,14 @@
 /* ---------- Vergleichsgrid (Ticket 60): zweizeiliger Kopf, fixierte Spalten, Kennzeichen, Summenzeilen ---------- */
 
 /* Zeilen erben Raster und Mindestbreite von Körper bzw. Fuß und die Höhe vom Scrollbereich: Eine neue Zeile trägt beim
-   Scrollen nur ihren Versatz als eigenen Stil (Ticket 74). */
+   Scrollen nur ihren Versatz als eigenen Stil (Ticket 74). Die Rasterzeile hat eine feste Höhe, damit das Layout die
+   Zellen nicht erst nach ihrem Inhalt vermisst. */
 .tx-grid--vergleich .tx-grid__zeile {
   width: 100%;
   height: var(--tx-grid-zeilenhoehe);
   min-width: inherit;
   grid-template-columns: inherit;
+  grid-template-rows: 100%;
 }
 
 /* Kopf als ein Raster über alle Kopfzeilen, damit Gruppen- und Spaltenköpfe sich Zeilen und Spalten teilen können. */
