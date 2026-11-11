@@ -57,7 +57,9 @@ function lvZustand(inhalt: LvInhalt): LvZustand {
     inhalt,
   });
   if (!r.ok) throw new Error(r.fehler.meldung);
-  return lvChangeSetAnwenden(null, r.wert);
+  const z = lvChangeSetAnwenden(null, r.wert);
+  if (z === null) throw new Error('LV');
+  return z;
 }
 
 const gliederungSumme = (s: Summenstand, id: string): string | undefined =>

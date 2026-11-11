@@ -10,6 +10,7 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { befehlswegFuer, type Ausgang } from '../lv/befehlsweg';
@@ -255,6 +256,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           {htexte.loeschen.projektKnopf}
         </Button>
         <Button onClick={() => void exportieren()}>{texte.projekt.exportieren}</Button>
+        <GaebEinlesen projekt={projekt} onAngelegt={() => void laden()} />
         <a
           className="tx-button tx-button--schlicht"
           href={hrefFuer('/')}
