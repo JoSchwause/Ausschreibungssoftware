@@ -24,8 +24,14 @@ import {
 
 const P = 'p1' as ProjektId;
 const A = 'a1' as AuftragsLeistungsverzeichnisId;
-const blatt = (id: string, nummer: number): AufmassKopf =>
-  ({ id: id as AufmassId, projektId: P, auftragsLvId: A, nummer, bezeichnung: '', datum: null }) as AufmassKopf;
+const blatt = (id: string, nummer: number): AufmassKopf => ({
+  id: id as AufmassId,
+  projektId: P,
+  auftragsLvId: A,
+  nummer,
+  bezeichnung: '',
+  datum: null,
+});
 
 const ar1: Rechnung = {
   id: 'r1' as RechnungId,
@@ -91,7 +97,12 @@ describe('entwurfLesen', () => {
     expect(r).toEqual({
       ok: true,
       wert: {
-        angaben: { rechnungsart: 'schluss', eingang: '2026-10-01', rechnungsnummerAuftragnehmer: 'SR-7', gefordert: null },
+        angaben: {
+          rechnungsart: 'schluss',
+          eingang: '2026-10-01',
+          rechnungsnummerAuftragnehmer: 'SR-7',
+          gefordert: null,
+        },
         aufmassIds: ['b1'],
         abzuege: {
           umlagen: [{ bezeichnung: 'Baustrom', satz: '0.50' }],
@@ -117,7 +128,12 @@ describe('entwurfLesen', () => {
     });
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.fehler.map((f) => f.feld)).toEqual(['eingang', 'gefordertNetto', 'umlagen.0.satz', 'sicherheitSatz']);
+    expect(r.fehler.map((f) => f.feld)).toEqual([
+      'eingang',
+      'gefordertNetto',
+      'umlagen.0.satz',
+      'sicherheitSatz',
+    ]);
     for (const f of r.fehler) expect(f.meldung).toMatch(/\S/);
   });
 });
@@ -153,7 +169,11 @@ describe('Befehle', () => {
     if (!gleich.ok) throw new Error('unlesbar');
     expect(aenderungsbefehle(offen, gleich.wert)).toEqual([]);
 
-    const r = entwurfLesen({ ...entwurfAus(offen), gefordertZahlbetrag: '8.874,40', aufmassIds: ['b1', 'b2'] as AufmassId[] });
+    const r = entwurfLesen({
+      ...entwurfAus(offen),
+      gefordertZahlbetrag: '8.874,40',
+      aufmassIds: ['b1', 'b2'] as AufmassId[],
+    });
     if (!r.ok) throw new Error('unlesbar');
     expect(aenderungsbefehle(offen, r.wert)).toEqual([
       {

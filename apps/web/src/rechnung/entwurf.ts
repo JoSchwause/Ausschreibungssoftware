@@ -63,12 +63,17 @@ const text = <T extends string>(wert: T | null, format: (w: T) => string): strin
 /** Die Blätter in der Reihenfolge ihrer Nummern (die App ordnet nach Blattnummer, siehe `Rechnung.aufmassIds`). */
 function nachNummer(ids: readonly AufmassId[], blaetter: readonly AufmassKopf[]): AufmassId[] {
   const nr = new Map(blaetter.map((b) => [b.id, b.nummer]));
-  return [...ids].sort((a, b) => (nr.get(a) ?? Number.MAX_SAFE_INTEGER) - (nr.get(b) ?? Number.MAX_SAFE_INTEGER));
+  return [...ids].sort(
+    (a, b) => (nr.get(a) ?? Number.MAX_SAFE_INTEGER) - (nr.get(b) ?? Number.MAX_SAFE_INTEGER),
+  );
 }
 
 /** Die Rechnung mit der höchsten Nummer, `undefined` ohne Rechnungen. */
 export function letzteRechnung(rechnungen: readonly Rechnung[]): Rechnung | undefined {
-  return rechnungen.reduce<Rechnung | undefined>((m, r) => (m === undefined || r.nummer > m.nummer ? r : m), undefined);
+  return rechnungen.reduce<Rechnung | undefined>(
+    (m, r) => (m === undefined || r.nummer > m.nummer ? r : m),
+    undefined,
+  );
 }
 
 /** Nummer der nächsten Rechnung des Auftrags-LV: höchste Nummer + 1, die erste ist 1. */
@@ -80,7 +85,10 @@ export function naechsteRechnungsnummer(rechnungen: readonly Rechnung[]): number
  * Vorschlag für eine neue Rechnung: Abschlagsrechnung, alle Aufmaßblätter des Auftrags-LV (kumuliert, D-34), Umlagen und
  * beide Einbehaltssätze aus der vorigen Rechnung (siehe `Rechnung.sicherheitSatz`); Angaben und Forderungen leer.
  */
-export function neuerEntwurf(rechnungen: readonly Rechnung[], blaetter: readonly AufmassKopf[]): Rechnungsentwurf {
+export function neuerEntwurf(
+  rechnungen: readonly Rechnung[],
+  blaetter: readonly AufmassKopf[],
+): Rechnungsentwurf {
   const vorige = letzteRechnung(rechnungen);
   return {
     art: 'abschlag',
@@ -93,7 +101,10 @@ export function neuerEntwurf(rechnungen: readonly Rechnung[], blaetter: readonly
       blaetter.map((b) => b.id),
       blaetter,
     ),
-    umlagen: (vorige?.umlagen ?? []).map((u) => ({ bezeichnung: u.bezeichnung, satz: formatiereProzentDe(u.satz) })),
+    umlagen: (vorige?.umlagen ?? []).map((u) => ({
+      bezeichnung: u.bezeichnung,
+      satz: formatiereProzentDe(u.satz),
+    })),
     sicherheitSatz: text(vorige?.sicherheitSatz ?? null, formatiereProzentDe),
     gewaehrleistungSatz: text(vorige?.gewaehrleistungSatz ?? null, formatiereProzentDe),
   };
@@ -143,7 +154,8 @@ export function entwurfLesen(e: Rechnungsentwurf): Ergebnis<Rechnungswerte, read
   };
 
   const eingang = e.eingang.trim();
-  if (eingang !== '' && !istDatum(eingang)) fehler.push({ feld: 'eingang', meldung: texte.formular.datumUngueltig });
+  if (eingang !== '' && !istDatum(eingang))
+    fehler.push({ feld: 'eingang', meldung: texte.formular.datumUngueltig });
   const netto = zahl('betrag', 'gefordertNetto', e.gefordertNetto);
   const brutto = zahl('betrag', 'gefordertBrutto', e.gefordertBrutto);
   const zahlbetrag = zahl('betrag', 'gefordertZahlbetrag', e.gefordertZahlbetrag);
@@ -171,7 +183,8 @@ export function entwurfLesen(e: Rechnungsentwurf): Ergebnis<Rechnungswerte, read
         rechnungsart: e.art,
         eingang: eingang === '' ? null : eingang,
         rechnungsnummerAuftragnehmer: rnr === '' ? null : rnr,
-        gefordert: netto === null && brutto === null && zahlbetrag === null ? null : { netto, brutto, zahlbetrag },
+        gefordert:
+          netto === null && brutto === null && zahlbetrag === null ? null : { netto, brutto, zahlbetrag },
       },
       aufmassIds: [...e.aufmassIds],
       abzuege: { umlagen, sicherheitSatz, gewaehrleistungSatz },
@@ -224,7 +237,11 @@ export function aenderungsbefehle(r: Rechnung, w: Rechnungswerte): RechnungBefeh
   if (!gleich(angaben, w.angaben)) befehle.push({ art: 'RechnungsangabenSetzen', ...w.angaben });
   if (!gleich([...r.aufmassIds].sort(), [...w.aufmassIds].sort()))
     befehle.push({ art: 'RechnungsaufmasseSetzen', aufmassIds: w.aufmassIds });
-  const abzuege = { umlagen: r.umlagen, sicherheitSatz: r.sicherheitSatz, gewaehrleistungSatz: r.gewaehrleistungSatz };
+  const abzuege = {
+    umlagen: r.umlagen,
+    sicherheitSatz: r.sicherheitSatz,
+    gewaehrleistungSatz: r.gewaehrleistungSatz,
+  };
   if (!gleich(abzuege, w.abzuege)) befehle.push({ art: 'RechnungsabzuegeSetzen', ...w.abzuege });
   return befehle;
 }

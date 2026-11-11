@@ -18,6 +18,7 @@ import type {
   ProjektId,
   Protokolleintrag,
   ProtokollId,
+  RechnungChangeSet, // Ticket 88
 } from '@tethys/vertrag';
 
 /** Ein geschriebener Befehl, wie ihn Undo und Redo brauchen. */
@@ -26,7 +27,12 @@ export interface Teil {
   readonly protokollId: ProtokollId;
   readonly projektId: ProjektId;
   readonly aggregat: Protokolleintrag['aggregat'];
-  readonly changeSet: LvChangeSet | ProjektChangeSet | AngebotChangeSet | AuftragsLvChangeSet; // Ticket 64: Zuschlag
+  readonly changeSet:
+    | LvChangeSet
+    | ProjektChangeSet
+    | AngebotChangeSet
+    | AuftragsLvChangeSet // Ticket 64: Zuschlag
+    | RechnungChangeSet; // Ticket 88
 }
 
 /** Ein Undo-Schritt: die Teile in der Reihenfolge, in der sie geschrieben wurden. */

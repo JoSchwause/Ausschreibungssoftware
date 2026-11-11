@@ -2,7 +2,13 @@
 // Ticket 88: Adressen der Rechnungen an einer Stelle: bauen (Links, Ziel nach Undo) und lesen (Routing der App). Ohne
 // Abhängigkeit auf Kern oder Speicher, damit `App.tsx` und die Historie sie billig importieren.
 
-import type { Aenderung, AuftragsLeistungsverzeichnisId, ProjektId, Rechnung, RechnungId } from '@tethys/vertrag';
+import type {
+  Aenderung,
+  AuftragsLeistungsverzeichnisId,
+  ProjektId,
+  Rechnung,
+  RechnungId,
+} from '@tethys/vertrag';
 import { auftragPfad } from '../auftrag/ziel';
 
 /** Rechnungsliste eines Auftrags-LV. */

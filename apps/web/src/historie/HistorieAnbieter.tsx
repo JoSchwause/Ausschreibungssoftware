@@ -11,6 +11,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { auftragZiel } from '../auftrag/ziel'; // Ticket 64
 import { befehlswegFuer, type Historienausgang } from '../lv/befehlsweg';
 import { texte as lvTexte } from '../lv/texte';
+import { rechnungZiel } from '../rechnung/pfad'; // Ticket 88
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { useRoute } from '../ui/route';
 import type { Teil } from './historie';
@@ -57,6 +58,7 @@ export function zielNach(teil: Teil, rueckwaerts: boolean, pfad: string): string
     return lvId === undefined || pfad === `/lv/${lvId}` ? null : `/lv/${lvId}`;
   }
   if (cs.art === 'auftrags-leistungsverzeichnis') return auftragZiel(teil.projektId, cs, rueckwaerts, pfad); // Ticket 64
+  if (cs.art === 'rechnung') return rechnungZiel(teil.projektId, cs, rueckwaerts, pfad); // Ticket 88
   const geschrieben = rueckwaerts ? changeSetUmkehren(cs) : cs;
   const lvPfad = `/lv/${cs.leistungsverzeichnisId}`;
   const kopf = geschrieben.kopf;
