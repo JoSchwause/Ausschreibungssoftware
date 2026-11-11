@@ -1,6 +1,6 @@
 # 73: `gaeb`: Wahlgruppe verliert die Grundposition im Rundweg X83
 
-Status: done-by-agent
+Status: resolved
 Type: bug
 Welle: 5 · Strang: G · Paket: `packages/gaeb`
 Blocked by: –
@@ -73,3 +73,5 @@ Variante 0) und 02.0070 A (Gruppe 1, Variante 1, Verweis auf 02.0070) ohne `wahl
 ein Eintrag `grundposition-nummer-kuenstlich` (D-73.2). Goldens `typisch-X8{1,3,6}` und `gross.sha256.json` neu.
 `m3.spec.ts` unverändert; die E2E-Umstellung auf X83 übernimmt Ticket 91 (D-73.4). Commits 067d4d9, 83ac0b3 auf
 `welle-5/73-wahlgruppe-x83`, Merge von `integration/welle-5` in 67ee388.
+
+Merged: 579aa9977ab0fd0acbf5bac502b4cea35dcea4f6 in integration/welle-5

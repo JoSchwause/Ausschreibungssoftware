@@ -165,14 +165,22 @@ describe('Variante ohne Preise (Blankett)', () => {
 
 describe('Schlussblock', () => {
   it('trennt Bedarfssumme und Wahlsumme von der Netto-Summe (F4), wenn es solche Positionen gibt', () => {
-    const { zustand } = fixtureZustand('typisch');
+    const { fx, zustand } = fixtureZustand('typisch');
     const m = baueAusgabemodell(zustand);
-    const g = zustand.summen.gesamt;
-    expect(g.summeBedarfOhneGesamtbetrag).toBeDefined();
-    expect(g.summeWahl).toBeDefined();
-    expect(m.summen?.bedarf).toBe(formatiereBetragDe(g.summeBedarfOhneGesamtbetrag as Betrag));
-    expect(m.summen?.wahl).toBe(formatiereBetragDe(g.summeWahl as Betrag));
-    expect(m.summen?.netto).toBe(formatiereBetragDe(g.netto));
+    const soll = fx.sollwerte.ausweise;
+    if (soll === undefined) throw new Error('Fixture typisch trägt keine Ausweise');
+    expect(m.summen?.bedarf).toBe(formatiereBetragDe(soll.gesamt.summeBedarfOhneGesamtbetrag as Betrag));
+    expect(m.summen?.wahl).toBe(formatiereBetragDe(soll.gesamt.summeWahl as Betrag));
+    expect(m.summen?.netto).toBe(formatiereBetragDe(fx.sollwerte.summen.netto as Betrag));
+    // Je Titel: null, wenn der Sollwert 0,00 ist.
+    const ausweis = (wert: string): string | null =>
+      Number(wert) === 0 ? null : formatiereBetragDe(wert as Betrag);
+    const sollTitel = Object.values(soll.titel);
+    const zeilen = m.zeilen.filter((r) => r.art === 'titelsumme');
+    expect(zeilen.map((r) => r.bedarf).sort()).toEqual(
+      sollTitel.map((t) => ausweis(t.summeBedarfOhneGesamtbetrag)).sort(),
+    );
+    expect(zeilen.map((r) => r.wahl).sort()).toEqual(sollTitel.map((t) => ausweis(t.summeWahl)).sort());
   });
 
   it('lässt Bedarfs- und Wahlsumme weg, wenn das LV keine solchen Positionen hat', () => {
