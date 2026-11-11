@@ -1,6 +1,6 @@
 # 77: O3: Druckprofile und Spike „getaggtes PDF“
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: O3 · Paket: `packages/ausgabe`
 Blocked by: –
