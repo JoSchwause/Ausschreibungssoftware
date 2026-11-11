@@ -13,7 +13,6 @@ import type {
   Ergebnis,
   LeistungsverzeichnisId,
   LvChangeSet,
-  LvInhaltKopf,
   LvZustand,
   Projektdatei,
   ProjektId,
@@ -22,6 +21,7 @@ import type {
 } from '@tethys/vertrag';
 import type { Teil } from '../historie/historie';
 import type { Abweisung, Befehlsweg } from '../lv/befehlsweg';
+import { inhaltKopf } from '../lv/inhalt';
 
 /** Die Auftrags-LVs eines Projekts, aus der Projektdatei des Speichers (D-64.2). */
 export async function auftragsLvsLaden(
@@ -108,20 +108,6 @@ export function auftragsLvChangeSetUmkehren(cs: AuftragsLvChangeSet): AuftragsLv
     kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
     knoten: u.knoten,
     summen: u.summen,
-  };
-}
-
-/** Die Stammdaten ohne Kennungen und Knoten (Name, Maske, MwSt, Nachlass, Kopfdaten); fehlende Felder bleiben weg. */
-export function inhaltKopf(k: LvInhaltKopf): LvInhaltKopf {
-  return {
-    name: k.name,
-    ozMaske: k.ozMaske,
-    mwstSatz: k.mwstSatz,
-    nachlass: k.nachlass,
-    ...(k.auftraggeber === undefined ? {} : { auftraggeber: k.auftraggeber }),
-    ...(k.vergabeinformationen === undefined ? {} : { vergabeinformationen: k.vergabeinformationen }),
-    ...(k.auftragnehmer === undefined ? {} : { auftragnehmer: k.auftragnehmer }),
-    ...(k.epaBezeichnungen === undefined ? {} : { epaBezeichnungen: k.epaBezeichnungen }),
   };
 }
 

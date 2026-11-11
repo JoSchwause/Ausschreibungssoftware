@@ -232,4 +232,17 @@ describe('Ausgabe', () => {
     expect(aus.xml).toContain('<Time>09:30:15</Time>');
     expect(aus.xml).toContain('ITMarkup');
   });
+
+  it('X86 behält EPA-Bezeichnungen und Auftragnehmer des LV (Q5, S5): lesen, ausgeben, wieder lesen', () => {
+    const v = lvLesen(datei(`${AVA}.X86`), 'ava.X86', appIdQuelle());
+    if (v.inhalt === null) throw new Error('Inhalt');
+    // Vorbedingung: die Prüfdatei trägt beides, sonst prüfte der Test nichts.
+    expect(v.inhalt.epaBezeichnungen?.length ?? 0).toBeGreaterThan(0);
+    expect(v.inhalt.auftragnehmer?.name ?? '').not.toBe('');
+    const zustand = lvZustand(v.inhalt);
+    const aus = lvAusgeben(zustand, 'X86', '3.3', jetzt);
+    const zurueck = lvLesen(new TextEncoder().encode(aus.xml), aus.dateiname, appIdQuelle());
+    expect(zurueck.inhalt?.epaBezeichnungen).toEqual(v.inhalt.epaBezeichnungen);
+    expect(zurueck.inhalt?.auftragnehmer).toEqual(v.inhalt.auftragnehmer);
+  });
 });
