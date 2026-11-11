@@ -88,6 +88,146 @@ describe('KoSIT 01.01a', () => {
   });
 });
 
+describe('KoSIT 04.04a (UBL, Schlussrechnung Bau mit Unterpositionen der Extension)', () => {
+  const lesung = xrechnungLesen(kosit('04.04a-INVOICE_ubl.xml'));
+  /** Unterposition ohne Artikelnummern; Mengen und Preise auf die Skala des Vertrags aufgefüllt. */
+  const unter = (
+    kennung: string,
+    menge: string,
+    einheit: string,
+    nettobetrag: string,
+    nettopreis: string,
+    bezeichnung: string,
+  ) => position({ kennung, menge, einheit, nettobetrag, nettopreis, bezeichnung });
+
+  it('liest Kopf und Summen; BT-106 zählt nur die oberste Ebene', () => {
+    expect(lesung.syntax).toBe('ubl');
+    expect(lesung.befunde).toEqual([]);
+    expect({ ...lesung.rechnung, positionen: undefined }).toEqual({
+      spezifikation:
+        'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0',
+      rechnungsnummer: '17794',
+      rechnungsdatum: '2021-07-14',
+      rechnungsart: '877',
+      waehrung: 'EUR',
+      kaeuferreferenz: '992-90009-96',
+      vertragsnummer: null,
+      bestellnummer: null,
+      verkaeufer: { name: 'Test Gerüstbau GmbH', umsatzsteuerId: 'DE814060619' },
+      kaeufer: { name: 'Bau Auftraggeber' },
+      summen: {
+        summePositionen: '3508.77',
+        summeAbschlaege: null,
+        summeZuschlaege: null,
+        netto: '3508.77',
+        umsatzsteuer: '666.67',
+        brutto: '4175.44',
+        bereitsGezahlt: null,
+        rundungsbetrag: null,
+        zahlbetrag: '4175.44',
+      },
+      umsatzsteueraufschluesselung: [{ kategorie: 'S', satz: '19.00', basis: '3508.77', betrag: '666.67' }],
+      positionen: undefined,
+    });
+  });
+
+  it('liest die Unterpositionen als Baum, ohne Wert zu verlieren', () => {
+    expect(lesung.rechnung?.positionen).toEqual([
+      position({
+        kennung: '1',
+        menge: '1.000',
+        einheit: 'EA',
+        nettobetrag: '3508.77',
+        nettopreis: '3508.770',
+        bezeichnung: 'Arbeitsgerüst',
+        unterpositionen: [
+          position({
+            kennung: '1.02',
+            menge: '1.000',
+            einheit: 'EA',
+            nettobetrag: '3508.77',
+            bezeichnung: 'Zwischensumme',
+            unterpositionen: [
+              unter('1.02.005', '277.290', 'MTK', '2024.22', '7.300', 'Fassadengerüst, Gr.3'),
+              unter('1.02.006', '3882.083', 'MKW', '465.85', '0.120', 'Fassadengerüst, Gebrauchsüberlassung'),
+              unter('1.02.007', '5.210', 'MTR', '119.57', '22.950', 'Gerüstträger für Durchfahrt einbauen'),
+              unter(
+                '1.02.008',
+                '72.932',
+                'MRW',
+                '32.09',
+                '0.440',
+                'Gerüstträger für Durchf., Gebrauchsüberl.',
+              ),
+              unter('1.02.009', '1.000', 'EA', '216.00', '216.000', 'Treppenturm/Geschoss, Außengerüst'),
+              unter('1.02.010', '18.000', 'HWE', '72.00', '4.000', 'Treppenturm Gebrauchsüberl.'),
+              unter('1.02.011', '112.000', 'MTR', '453.60', '4.050', 'Systemkonsolbelag 0,30 m'),
+              unter('1.02.012', '1568.000', 'MRW', '125.44', '0.080', 'Vorhaltung Konsolbelag 0,30'),
+            ],
+          }),
+        ],
+      }),
+    ]);
+  });
+});
+
+describe('KoSIT 01.01 comprehensive (CII)', () => {
+  const lesung = xrechnungLesen(kosit('01.01_comprehensive_test_uncefact.xml'));
+
+  it('liest alle Felder: Verträge, Abschläge/Zuschläge, BT-110 in Rechnungswährung, zwei Steuerkategorien', () => {
+    expect(lesung.syntax).toBe('cii');
+    expect(lesung.befunde).toEqual([]);
+    expect(lesung.rechnung).toEqual({
+      spezifikation: 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
+      rechnungsnummer: '1234567',
+      rechnungsdatum: '2018-04-13',
+      rechnungsart: '380',
+      waehrung: 'EUR',
+      kaeuferreferenz: '90000000-03083-72',
+      vertragsnummer: '0000000752',
+      bestellnummer: '65002278',
+      verkaeufer: { name: '[Seller name]', umsatzsteuerId: 'ATU123456789' },
+      kaeufer: { name: '[Buyer name]' },
+      summen: {
+        summePositionen: '10781.25',
+        summeAbschlaege: '20.00',
+        summeZuschlaege: '20.00',
+        netto: '10781.25',
+        umsatzsteuer: '2048.44',
+        brutto: '12829.69',
+        bereitsGezahlt: '0.00',
+        rundungsbetrag: '0.00',
+        zahlbetrag: '12829.69',
+      },
+      umsatzsteueraufschluesselung: [
+        { kategorie: 'S', satz: '19.00', basis: '10781.25', betrag: '2048.44' },
+        { kategorie: 'E', satz: '0.00', basis: '0.00', betrag: '0.00' },
+      ],
+      positionen: [
+        // Datei: Menge `30.00000000000`, Preis `158.1250000000`: nur Nullen über die Skala hinaus, also verlustfrei.
+        position({
+          kennung: '1',
+          menge: '30.000',
+          einheit: 'XPP',
+          nettobetrag: '4743.75',
+          nettopreis: '158.125',
+          bezeichnung: 'Beratung',
+          artikelnummerVerkaeufer: '1034',
+          artikelnummerKaeufer: '5034',
+        }),
+        position({
+          kennung: '2',
+          menge: '42.000',
+          einheit: 'XPP',
+          nettobetrag: '6037.50',
+          nettopreis: '143.750',
+          bezeichnung: 'Beratung',
+        }),
+      ],
+    });
+  });
+});
+
 /** Kopf der beiden Bau-Rechnungen (selbst verfasst). */
 const BAU_KOPF = {
   spezifikation: 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
