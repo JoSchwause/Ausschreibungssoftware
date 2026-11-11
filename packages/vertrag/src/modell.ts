@@ -12,6 +12,7 @@ import type {
   BildId,
   ElternId,
   HinweistextId,
+  KostenermittlungId,
   Kostengruppennummer,
   LeistungsverzeichnisId,
   LosId,
@@ -880,4 +881,49 @@ export interface Rechnung {
    * Negativ heißt Überzahlung (ein Befund, keine Sperre).
    */
   readonly freigabe: { readonly zahlbetrag: Betrag } | null;
+}
+
+// --- Kostenermittlung (v1.4, C3; D-36 (3)) ------------------------------------------------------------------------
+
+/**
+ * Stufe einer Kostenermittlung nach DIN 276 (v1.4, Ticket 70 Punkt 9; Glossar „Kostenermittlungsstufe“), nur als Name;
+ * die Stufe rechnet nichts. Welche Kostenermittlung die Kostenkontrolle als Budget nimmt, wählt der Nutzer in der App
+ * (D-37, D-38: die Kostenberechnung).
+ */
+export type Kostenermittlungsstufe =
+  'kostenrahmen' | 'kostenschaetzung' | 'kostenberechnung' | 'kostenanschlag' | 'kostenfeststellung';
+
+/**
+ * Ein gespeicherter Eintrag einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (3); Glossar „Kostenermittlung“):
+ * Nettobetrag auf einer Kostengruppe. Kanonisch: `betrag` ist ein `Betrag` mit 2 Stellen. Der ungeprüfte Text einer
+ * Eingabe (Grid, CSV) bleibt eine Funktion in `kosten` (dort heißt der Eingabetyp heute ebenfalls
+ * `Kostenermittlungseintrag`, mit `betrag: string`; Ticket 82 benennt ihn um, damit es einen Namen je Begriff gibt).
+ * Negative Beträge sind zulässig (ein Befund in `kosten`, keine Sperre, U5).
+ */
+export interface Kostenermittlungseintrag {
+  readonly nummer: Kostengruppennummer;
+  readonly betrag: Betrag;
+  /** Freier Text; fehlt: keine Bemerkung. Nie `''` (der Ausführer lässt das Feld weg). */
+  readonly bemerkung?: string;
+}
+
+/**
+ * Kostenermittlung des Projekts (v1.4, Ticket 70 Punkt 9; C3, D-36 (3)): eigenes Aggregat, Befehle führt `kosten` aus
+ * (Ticket 82). Summen je Kostengruppe und Gesamtsumme rechnet `kosten` (`kostenermittlungBerechnen`, D-24); gespeichert
+ * werden nur die Einträge.
+ */
+export interface Kostenermittlung {
+  readonly id: KostenermittlungId;
+  readonly projektId: ProjektId;
+  readonly stufe: Kostenermittlungsstufe;
+  /** Name, wie der Nutzer ihn vergibt (z. B. „Kostenberechnung Entwurf“); die Liste des Projekts ordnet danach. */
+  readonly name: string;
+  /**
+   * Die Einträge, nach `nummer` aufsteigend (wie `kgSortieren`), jede Nummer höchstens einmal. Vorläufige Annahme,
+   * Entscheidung offen (enge Lesart): eindeutig im gespeicherten Stand. Doppelte Nummern einer Eingabe (CSV) bleiben ein
+   * Befund der Rechnung in `kosten` (D-55.4, U5); die App löst sie vor `KostenermittlungAnlegen` auf (wie, legt Ticket 82
+   * fest), der Ausführer weist sie sonst mit `ungueltige-eingabe` ab. Ein eigener Betrag neben Beträgen der Kinder ist
+   * zulässig (Befund in `kosten`). Alternative: doppelte Nummern speichern (Offene Typfrage, Ticket 70).
+   */
+  readonly eintraege: readonly Kostenermittlungseintrag[];
 }

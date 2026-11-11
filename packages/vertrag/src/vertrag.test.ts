@@ -137,6 +137,13 @@ import {
   type RechnungZustand,
   type Umlage,
   type Leistungsstand,
+  type Kostenermittlung,
+  type KostenermittlungBefehl,
+  type KostenermittlungChangeSet,
+  type KostenermittlungId,
+  type Kostenermittlungseintrag,
+  type Kostenermittlungsstufe,
+  type KostenermittlungZustand,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -197,6 +204,9 @@ import {
   beispielRechnungsfreigabeAufheben,
   beispielAuftragsLvMitNachtrag,
   beispielLeistungsstand,
+  beispielChangeSetKostenermittlungseintrag,
+  beispielKostenermittlung,
+  beispielKostenermittlungseintragSetzen,
 } from './beispiele';
 
 /**
@@ -1337,5 +1347,47 @@ describe('v1.4 Punkt 8: Leistungsstand (D-34, D-37)', () => {
     expect(l.positionen.reduce((s, p) => s + cent(p.gp), 0n)).toBe(cent(l.leistung));
     expect(cent(l.leistung) - cent(l.nachlass)).toBe(cent(l.nettoNachNachlass));
     expect(l.positionen.find((p) => p.menge === null)?.gp).toBe('0.00');
+  });
+});
+
+describe('v1.4 Punkt 9: Kostenermittlung (C3, D-36 (3))', () => {
+  it('Kennung, Stufe, Eintrag (kanonischer Betrag) und Aggregat', () => {
+    expectTypeOf<string>().not.toExtend<KostenermittlungId>();
+    expectTypeOf<KostenermittlungId>().not.toExtend<ProjektId>();
+    expectTypeOf<Kostenermittlungsstufe>().toEqualTypeOf<
+      'kostenrahmen' | 'kostenschaetzung' | 'kostenberechnung' | 'kostenanschlag' | 'kostenfeststellung'
+    >();
+    expectTypeOf<Kostenermittlungseintrag['nummer']>().toEqualTypeOf<Kostengruppennummer>();
+    expectTypeOf<Kostenermittlungseintrag['betrag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Kostenermittlungseintrag['bemerkung']>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<Kostenermittlung['projektId']>().toEqualTypeOf<ProjektId>();
+    expectTypeOf<Kostenermittlung['stufe']>().toEqualTypeOf<Kostenermittlungsstufe>();
+    expectTypeOf<Kostenermittlung['eintraege']>().toEqualTypeOf<readonly Kostenermittlungseintrag[]>();
+    expectTypeOf<KostenermittlungZustand['kostenermittlung']>().toEqualTypeOf<Kostenermittlung>();
+  });
+
+  it('Befehle und ChangeSet als ganzes Aggregat', () => {
+    expectTypeOf<KostenermittlungBefehl['art']>().toEqualTypeOf<
+      | 'KostenermittlungAnlegen'
+      | 'KostenermittlungskopfSetzen'
+      | 'KostenermittlungseintragSetzen'
+      | 'KostenermittlungseintragEntfernen'
+      | 'KostenermittlungLoeschen'
+    >();
+    expectTypeOf<KostenermittlungChangeSet['kostenermittlung']>().toEqualTypeOf<
+      Aenderung<Kostenermittlung>
+    >();
+  });
+
+  it('enge Lesart: Nummern eindeutig und aufsteigend; Eintrag setzen fügt an seiner Stelle ein', () => {
+    const nummern = (k: Kostenermittlung | null | undefined): string[] =>
+      (k?.eintraege ?? []).map((e) => e.nummer);
+    const aufsteigend = (n: readonly string[]): boolean => n.every((x, i) => i === 0 || (n[i - 1] ?? '') < x);
+    expect(aufsteigend(nummern(beispielKostenermittlung))).toBe(true);
+    const cs = beispielChangeSetKostenermittlungseintrag;
+    expect(nummern(cs.kostenermittlung.nachher)).toEqual(['330', '340', '350', '410']);
+    expect(aufsteigend(nummern(cs.kostenermittlung.nachher))).toBe(true);
+    expect(tauschen(tauschen(cs.kostenermittlung))).toEqual(cs.kostenermittlung);
+    expect(beispielKostenermittlungseintragSetzen.eintrag).not.toHaveProperty('bemerkung');
   });
 });

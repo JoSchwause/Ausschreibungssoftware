@@ -7,6 +7,7 @@ import type {
   AufmassId,
   AuftragsLeistungsverzeichnisId,
   KnotenId,
+  KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
   ProjektId,
@@ -21,6 +22,7 @@ import type {
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Knoten,
+  Kostenermittlung,
   Leistungsverzeichnis,
   LvKopf,
   Papierkorbeintrag,
@@ -147,6 +149,11 @@ export interface AufmassZustand {
  */
 export interface RechnungZustand {
   readonly rechnung: Rechnung;
+}
+
+/** Kostenermittlung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 9). Ihre Summen rechnet `kosten` bei Bedarf (D-24). */
+export interface KostenermittlungZustand {
+  readonly kostenermittlung: Kostenermittlung;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -294,6 +301,16 @@ export interface RechnungChangeSet {
   readonly art: 'rechnung';
   readonly rechnungId: RechnungId;
   readonly rechnung: Aenderung<Rechnung>;
+}
+
+/**
+ * ChangeSet an einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (8)): die ganze Kostenermittlung vorher und nachher,
+ * Lesart wie `AufmassChangeSet`.
+ */
+export interface KostenermittlungChangeSet {
+  readonly art: 'kostenermittlung';
+  readonly kostenermittlungId: KostenermittlungId;
+  readonly kostenermittlung: Aenderung<Kostenermittlung>;
 }
 
 export type ChangeSet = ProjektChangeSet | LvChangeSet | AngebotChangeSet | AuftragsLvChangeSet;

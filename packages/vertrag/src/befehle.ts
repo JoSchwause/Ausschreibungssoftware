@@ -34,6 +34,9 @@ import type {
   Einheit,
   Einheitspreisanteile,
   Knoten,
+  Kostenermittlung,
+  Kostenermittlungseintrag,
+  Kostenermittlungsstufe,
   Langtext,
   Leitbeschreibung,
   LvInhalt,
@@ -745,6 +748,57 @@ export type RechnungBefehl =
   | RechnungFreigeben
   | RechnungsfreigabeAufheben
   | RechnungLoeschen;
+
+// --- Kostenermittlung (v1.4, C3; D-36 (3); Ausführer in `kosten`, Ticket 82) ------------------------------------
+//
+// ChangeSet aller Befehle: `KostenermittlungChangeSet` mit der ganzen Kostenermittlung vorher und nachher (D-36 (8)). Der
+// Ausführer prüft die Form der Nummern (Regel von `kgLesen`, D-24) und hält die Einträge nach Nummer geordnet und
+// eindeutig (siehe `Kostenermittlung.eintraege`).
+
+/**
+ * Legt eine Kostenermittlung an (Zustand `null`), leer, von Hand oder aus einer CSV des Nutzers. Der Ausführer ordnet die
+ * Einträge nach Nummer und weist doppelte Nummern mit `ungueltige-eingabe` ab. Kein Massenbefehl (D-70.5): höchstens ein
+ * Eintrag je Kostengruppennummer, also höchstens 900 kurze Einträge.
+ */
+export interface KostenermittlungAnlegen {
+  readonly art: 'KostenermittlungAnlegen';
+  readonly kostenermittlung: Kostenermittlung;
+}
+
+/** Setzt Name und Stufe der Kostenermittlung. */
+export interface KostenermittlungskopfSetzen {
+  readonly art: 'KostenermittlungskopfSetzen';
+  readonly name: string;
+  readonly stufe: Kostenermittlungsstufe;
+}
+
+/** Setzt den Eintrag seiner Nummer: ersetzt einen vorhandenen, sonst kommt er an seine Stelle in der Ordnung nach Nummer. */
+export interface KostenermittlungseintragSetzen {
+  readonly art: 'KostenermittlungseintragSetzen';
+  readonly eintrag: Kostenermittlungseintrag;
+}
+
+/** Entfernt den Eintrag der Nummer; gibt es keinen, `ungueltige-eingabe` (`feld: 'nummer'`). */
+export interface KostenermittlungseintragEntfernen {
+  readonly art: 'KostenermittlungseintragEntfernen';
+  readonly nummer: Kostengruppennummer;
+}
+
+/**
+ * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein anderes
+ * Aggregat verweist auf sie (das Budget der Kostenkontrolle wählt die App), also kein `konflikt`.
+ */
+export interface KostenermittlungLoeschen {
+  readonly art: 'KostenermittlungLoeschen';
+}
+
+/** Befehle gegen eine Kostenermittlung (Zustand: `KostenermittlungZustand`; v1.4, Ticket 70 Punkt 9). */
+export type KostenermittlungBefehl =
+  | KostenermittlungAnlegen
+  | KostenermittlungskopfSetzen
+  | KostenermittlungseintragSetzen
+  | KostenermittlungseintragEntfernen
+  | KostenermittlungLoeschen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

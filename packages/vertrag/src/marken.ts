@@ -28,6 +28,8 @@ export type LvStandId = string & Marke<'LvStandId'>;
 export type AufmassId = string & Marke<'AufmassId'>;
 /** Kennung einer Rechnung (v1.4, Ticket 70 Punkt 7): eigenes Aggregat, eindeutig im Projekt. */
 export type RechnungId = string & Marke<'RechnungId'>;
+/** Kennung einer Kostenermittlung (v1.4, Ticket 70 Punkt 9): eigenes Aggregat, eindeutig im Projekt. */
+export type KostenermittlungId = string & Marke<'KostenermittlungId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;

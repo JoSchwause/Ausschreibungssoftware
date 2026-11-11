@@ -12,6 +12,7 @@ import type {
   GliederungAnlegen,
   KnotenEinfuegen,
   KnotenVerschieben,
+  KostenermittlungseintragSetzen,
   KostengruppeSetzen,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
@@ -25,7 +26,13 @@ import type {
   TextquelleSetzen,
   VorlageSetzen,
 } from './befehle';
-import type { AufmassChangeSet, AuftragsLvChangeSet, LvChangeSet, RechnungChangeSet } from './changeset';
+import type {
+  AufmassChangeSet,
+  AuftragsLvChangeSet,
+  KostenermittlungChangeSet,
+  LvChangeSet,
+  RechnungChangeSet,
+} from './changeset';
 import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
@@ -33,6 +40,7 @@ import type {
   AufmassId,
   AuftragsLeistungsverzeichnisId,
   BildId,
+  KostenermittlungId,
   LvStandId,
   NutzerId,
   PapierkorbeintragId,
@@ -46,6 +54,7 @@ import type {
   Aufmass,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
+  Kostenermittlung,
   Leistungsverzeichnis,
   LvInhalt,
   LvKopf,
@@ -1206,6 +1215,48 @@ export const beispielLeistungsstand: Leistungsstand = {
   leistung: '49.85' as Betrag,
   nachlass: '0.00' as Betrag,
   nettoNachNachlass: '49.85' as Betrag,
+};
+
+const kostenermittlungId = '019b76e9-0000-7000-8000-000000000130' as KostenermittlungId;
+const kg = (n: string): Kostengruppennummer => n as Kostengruppennummer;
+
+/**
+ * Punkt 9 (D-36 (3)): Kostenberechnung des Beispielprojekts als Budget der Kostenkontrolle (D-38). Nur Nummern, keine
+ * Bezeichnungen der Norm (G-16); Beträge erfunden. Nach Nummer geordnet, jede Nummer einmal.
+ */
+export const beispielKostenermittlung: Kostenermittlung = {
+  id: kostenermittlungId,
+  projektId: beispielLv.projektId,
+  stufe: 'kostenberechnung',
+  name: 'Kostenberechnung (erfunden)',
+  eintraege: [
+    { nummer: kg330, betrag: '15.00' as Betrag, bemerkung: 'Außenwände (erfunden)' },
+    { nummer: kg('340'), betrag: '10.00' as Betrag },
+    { nummer: kg('410'), betrag: '25.00' as Betrag },
+  ],
+};
+
+/** Punkt 9: Ein neuer Eintrag 350; er kommt an seine Stelle zwischen 340 und 410. */
+export const beispielKostenermittlungseintragSetzen: KostenermittlungseintragSetzen = {
+  art: 'KostenermittlungseintragSetzen',
+  eintrag: { nummer: kg('350'), betrag: '5.00' as Betrag },
+};
+
+/** Punkt 9: ChangeSet zu `beispielKostenermittlungseintragSetzen`: die ganze Kostenermittlung vorher und nachher. */
+export const beispielChangeSetKostenermittlungseintrag: KostenermittlungChangeSet = {
+  art: 'kostenermittlung',
+  kostenermittlungId,
+  kostenermittlung: {
+    vorher: beispielKostenermittlung,
+    nachher: {
+      ...beispielKostenermittlung,
+      eintraege: [
+        ...beispielKostenermittlung.eintraege.slice(0, 2),
+        beispielKostenermittlungseintragSetzen.eintrag,
+        ...beispielKostenermittlung.eintraege.slice(2),
+      ],
+    },
+  },
 };
 
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */
