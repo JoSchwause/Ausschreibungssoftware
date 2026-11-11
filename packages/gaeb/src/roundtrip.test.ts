@@ -26,7 +26,8 @@ import type { Normiert } from './testhilfen';
  * - X81/X83: keine Preise (EP, Anteile, Zuschlagssatz, Nachlass); die Altform einer Zuschlagsposition (Menge × EP
  *   ohne Satz) verliert Menge, Einheit und EP.
  * - X86: die Altform wird eine Position ohne Zuschlagsbezug; ein fehlender Auftraggeber wird leer (OWN ist Pflicht).
- * - Alle Phasen: eine Wahlposition ohne Gruppen- und Variantennummer verliert die Wahl (GAEB kennt nur die Nummern).
+ * - Alle Phasen: eine Wahlposition ohne Gruppen- und Variantennummer bekommt künstliche Nummern (D-16) und bleibt Wahl;
+ *   ihre Grundposition kennt sie danach nicht mehr (GAEB kennt nur die Nummern, eine Variante 0 gibt es nicht).
  */
 function erwartet(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   const x86 = phase === 'X86';
@@ -35,7 +36,17 @@ function erwartet(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
     let p: Position = k;
     const wahl = p.merkmale.wahl;
     if (wahl !== null && (wahl.gruppe === null || wahl.variante === null))
-      p = { ...p, merkmale: { ...p.merkmale, wahl: null } };
+      p = {
+        ...p,
+        merkmale: {
+          ...p.merkmale,
+          wahl: {
+            gruppe: expect.any(Number) as number,
+            variante: expect.any(Number) as number,
+            grundpositionId: null,
+          },
+        },
+      };
     const z = p.zuschlag;
     const altform = z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null);
     if (altform && x86) p = { ...p, zuschlag: null };

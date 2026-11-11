@@ -8,6 +8,7 @@
 // (G-26, D-10 Nr. 3): Fehler `nachlass-nicht-abgebildet`, der Preis bleibt ohne Nachlass.
 
 import { gesamtpreis, vergleiche } from '@tethys/dezimal';
+import { betragsziel } from '@tethys/kern';
 import type {
   AngebotAnlegen,
   AngebotId,
@@ -379,12 +380,10 @@ class Angebotsaufbau {
     if (!itEl || p.menge === null) return;
     const it = this.l.zahl('betrag', itEl, p.id, 'gesamtpreis');
     if (it === null) return;
-    // Eine Position, die nicht in die Summe eingeht (Alternative, Bedarf ohne Gesamtbetrag), trägt in der Datei
-    // `IT` 0.00 (BVBS Bauausführung, 001.002.0050); das ist kein abweichender Gesamtpreis (D-45.1).
-    const wahl = p.merkmale.wahl;
-    const alternative =
-      wahl !== null && (wahl.variante === null ? wahl.grundpositionId !== null : wahl.variante > 0);
-    const ohneSumme = alternative || p.merkmale.bedarf === 'ohne-gesamtbetrag';
+    // Eine Position, die nicht ins Netto eingeht (Wahl, Bedarf ohne Gesamtbetrag), trägt in der Datei `IT` 0.00 (BVBS
+    // Bauausführung, 001.002.0050); das ist kein abweichender Gesamtpreis (D-45.1). Wohin ein Betrag geht, sagt allein
+    // der Kern (`betragsziel`, D-16): auch eine Wahl ohne Gruppe und Variante ist Wahl (D-37.1).
+    const ohneSumme = betragsziel(p) !== 'netto';
     if (ohneSumme && vergleiche(it, '0.00' as typeof it) === 0) return;
     const soll = gesamtpreis(p.menge, ep);
     if (vergleiche(it, soll) !== 0)

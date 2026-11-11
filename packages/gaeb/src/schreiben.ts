@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // `LvInhalt` → GAEB DA XML 3.3/3.2, Phasen X81, X83, X86 (Ticket 40). „Tolerant lesen, streng schreiben“.
-// Rein (A2): Datum, Uhrzeit und Summen liefert der Aufrufer; der Writer rechnet nicht (A3: kein `kern`).
+// Rein (A2): Datum, Uhrzeit und Summen liefert der Aufrufer; der Writer rechnet nicht (Summen und Basen kommen vom Kern
+// über den Aufrufer).
 //
 // Die Abbildung ist die Umkehrung des Lesers (`lesen.ts`, Ticket 22/32). Jeder Export geht durch die eigene
 // Prüfung (Befundquelle `gaeb-pruefung`, ADR 0010): Fehler setzen `entwurf` und einen Kommentar „Entwurf: …“ an den
@@ -94,6 +95,51 @@ export function gaebKennung(praefix: string, id: string): string {
 
 type Zahlart = keyof typeof GRENZEN.vorkomma;
 
+interface Wahlnummer {
+  readonly gruppe: number;
+  readonly variante: number;
+}
+
+/**
+ * Künstliche Wahlnummern (D-16) für Wahlpositionen ohne Gruppen- oder Variantennummer (aus v1 migriert, D-37.1: Wahl).
+ * GAEB kennt eine Wahl nur über `ALNGroupNo`/`ALNSerNo`; als gewöhnliches `Item` ginge ihr Betrag beim Wiederlesen ins
+ * Netto. Deterministisch: eine Gruppe je Grundposition, eine eigene Gruppe je Wahl ohne Grundposition, nummeriert in
+ * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Die Grundposition selbst
+ * bleibt, wie sie ist (die Migration erfindet keine Fachdaten). Über 9 Varianten oder 999 Gruppen prüft `merkmale`.
+ */
+function kuenstlicheWahlnummern(
+  wurzelId: string,
+  knoten: readonly Knoten[],
+  kinder: ReadonlyMap<string, readonly Knoten[]>,
+): ReadonlyMap<string, Wahlnummer> {
+  let hoechste = 0;
+  for (const k of knoten) {
+    const g = k.art === 'position' ? k.merkmale.wahl?.gruppe : null;
+    if (typeof g === 'number' && Number.isInteger(g) && g > hoechste) hoechste = g;
+  }
+  const aus = new Map<string, Wahlnummer>();
+  const gruppeJeGrund = new Map<string, { readonly gruppe: number; varianten: number }>();
+  const besuche = (eltern: string): void => {
+    for (const k of kinder.get(eltern) ?? []) {
+      const w = k.art === 'position' ? k.merkmale.wahl : null;
+      if (w !== null && (w.gruppe === null || w.variante === null)) {
+        const grund = w.grundpositionId;
+        let g = grund === null ? undefined : gruppeJeGrund.get(grund);
+        if (g === undefined) {
+          hoechste += 1;
+          g = { gruppe: hoechste, varianten: 0 };
+          if (grund !== null) gruppeJeGrund.set(grund, g);
+        }
+        g.varianten += 1;
+        aus.set(k.id, { gruppe: g.gruppe, variante: g.varianten });
+      }
+      besuche(k.id);
+    }
+  };
+  besuche(wurzelId);
+  return aus;
+}
+
 interface Verworfen {
   anzahl: number;
   readonly knotenId: string | undefined;
@@ -110,6 +156,7 @@ class Schreiber {
   private readonly positionssummen = new Map<string, Betrag | null>();
   private readonly gliederungssummen = new Map<string, Betrag>();
   private readonly mitAnteilen: boolean;
+  private readonly kuenstlicheWahl: ReadonlyMap<string, Wahlnummer>;
   private freiBezeichnung: string | null = null;
 
   constructor(
@@ -122,6 +169,7 @@ class Schreiber {
       this.kinder.set(k.elternId, liste);
     }
     for (const liste of this.kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+    this.kuenstlicheWahl = kuenstlicheWahlnummern(inhalt.wurzelId, inhalt.knoten, this.kinder);
     if (opt.summen) {
       for (const p of opt.summen.positionen) this.positionssummen.set(p.positionId, p.gesamtpreis);
       for (const g of opt.summen.gliederungen) this.gliederungssummen.set(g.gliederungId, g.summe);
@@ -697,14 +745,20 @@ class Schreiber {
   private merkmale(p: Position, zuschlag: boolean): void {
     const a = this.aus;
     const m = p.merkmale;
-    if (m.wahl !== null) {
-      const { gruppe, variante } = m.wahl;
-      if (gruppe === null || variante === null)
-        this.verwirf(
-          'Wahlposition ohne Gruppen- und Variantennummer (als Position ohne Wahl geschrieben)',
+    const w = m.wahl;
+    if (w !== null) {
+      const kuenstlich = this.kuenstlicheWahl.get(p.id);
+      const { gruppe, variante } = kuenstlich ?? w;
+      if (kuenstlich !== undefined)
+        this.melde(
+          'warnung',
+          'wahl-nummer-vergeben',
+          `Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als Gruppe ${String(kuenstlich.gruppe)}, ` +
+            `Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
           p.id,
+          'merkmale.wahl',
         );
-      else {
+      if (gruppe !== null && variante !== null) {
         if (
           !Number.isInteger(gruppe) ||
           gruppe < 0 ||
