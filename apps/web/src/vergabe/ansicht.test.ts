@@ -30,6 +30,7 @@ interface FxPreisspiegel {
     readonly name: string;
     readonly datei: string;
     readonly summen: Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
+    readonly ausweise: Readonly<Record<'summeBedarfOhneGesamtbetrag' | 'summeWahl', string>>;
     readonly titel: Readonly<Record<string, string>>;
   }[];
   readonly vergleiche: readonly {
@@ -117,6 +118,16 @@ describe('Preisspiegel-Ansicht mit typisch und drei X84-Angeboten', () => {
     }
     expect(zelle(a.summen, 'summe:netto', 'kurztext')?.text).toBe('Netto');
     expect(zelle(a.summen, 'summe:rang', 'kurztext')?.text).toBe('Rang');
+  });
+
+  it('Summenzeilen: Bedarfs- und Wahlsumme je Bieter wie die Fixture (F4, Review Welle 4 P1)', () => {
+    for (const e of eingelesen) {
+      const gp = `${e.zustand.angebot.id}:gp`;
+      expect(zelle(a.summen, 'summe:bedarf', gp)?.text).toBe(
+        betragDe(e.fx.ausweise.summeBedarfOhneGesamtbetrag),
+      );
+      expect(zelle(a.summen, 'summe:wahl', gp)?.text).toBe(betragDe(e.fx.ausweise.summeWahl));
+    }
   });
 
   it('virtuelle Bieter und Schätzpreis: Netto in der Summenzeile wie die Fixture', () => {

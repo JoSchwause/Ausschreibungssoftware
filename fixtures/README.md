@@ -127,6 +127,7 @@ Der Selbsttest liest jede Datei mit einem strengen Wohlgeformtheits-Prüfer und 
 | Sollwert | Regel |
 |---|---|
 | Bieter: `summen`, `titel` | die Sollwerte des Angebots (`berechneSollwerteGaeb`, R7), Titel über die OZ |
+| Bieter: `ausweise` | Bedarfssumme ohne Gesamtbetrag und Wahlsumme des Angebots (`ausweise.gesamt` aus `berechneSollwerteGaeb`): Summe der GP mit den EP des Bieters, ausgewiesen und nicht im Netto (F4, E-04; Review Welle 4, P1) |
 | `rang` | 1 + Anzahl der Angebote mit kleinerem Netto nach Nachlass (gleiche Werte gleicher Rang: 1, 1, 3) |
 | Min, Mittel, Max je Position | nur Positionen, die laut LV ins Netto gehen; verglichen werden Werte > 0 (0,000 und „nicht angeboten“ zählen nicht, D-05); an einer Normalposition der EP, an einer Zuschlagsposition der Betrag des Bieters (D-44.1) |
 | Mittel | `round_half_up(Summe / Anzahl)` auf die Stellen des Werts: EP 3, Betrag 2 |
@@ -141,6 +142,9 @@ Herleitung an drei Positionen (alle drei Angebote):
 - 03.0080 (88,250 m²; C 0,000): nur A 2,107 und B 2,261 zählen. Mittel 4,368 / 2 = 2,184 → 192,738 → **192,74**;
   Min 185,94; Max 199,53.
 - 02.0050 A (Zuschlag, Beträge): A 544,71, B 617,02, C 772,62; Mittel 1.934,35 / 3 = 644,7833 → **644,78**.
+- Bedarf 01.0040 (12,000 h, ohne Gesamtbetrag) und Wahl 02.0070 A (96,000) sind die einzigen ihrer Art: Bieter A
+  12,000 × 50,123 = 601,476 → **601,48** Bedarfssumme, 96,000 × 60,148 = 5.774,208 → **5.774,21** Wahlsumme;
+  B 608,51 / 6.297,50; C 538,68 / 5.427,26.
 
 Rang: A 55.481,84 < B 56.607,77 (58.358,53 − 3 % = 1.750,76) < C 56.721,09 → 1, 2, 3; in jedem Paar entsprechend 1, 2.
 Der Selbsttest rechnet die virtuellen Summen ein zweites Mal unmittelbar aus den Angebotszeilen nach.

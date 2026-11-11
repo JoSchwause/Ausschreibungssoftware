@@ -265,6 +265,7 @@
         "name": "Bieter A",
         "datei": "angebote/typisch-bieter-a.x84",
         "summen": {"netto":"55481.84","nachlass":"0.00","nettoNachNachlass":"55481.84","mwst":"10541.55","brutto":"66023.39"},
+        "ausweise": {"summeBedarfOhneGesamtbetrag":"601.48","summeWahl":"5774.21"},
         "titel": {"01":"5423.41","02":"25066.17","03":"24992.26"}
       },
       {
@@ -273,6 +274,7 @@
         "name": "Bieter B",
         "datei": "angebote/typisch-bieter-b.x84",
         "summen": {"netto":"58358.53","nachlass":"1750.76","nettoNachNachlass":"56607.77","mwst":"10755.48","brutto":"67363.25"},
+        "ausweise": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"6297.50"},
         "titel": {"01":"5770.45","02":"26416.34","03":"26171.74"}
       },
       {
@@ -281,6 +283,7 @@
         "name": "Bieter C",
         "datei": "angebote/typisch-bieter-c.x84",
         "summen": {"netto":"56721.09","nachlass":"0.00","nettoNachNachlass":"56721.09","mwst":"10777.01","brutto":"67498.10"},
+        "ausweise": {"summeBedarfOhneGesamtbetrag":"538.68","summeWahl":"5427.26"},
         "titel": {"01":"5094.40","02":"27450.90","03":"24175.79"}
       }
     ],
