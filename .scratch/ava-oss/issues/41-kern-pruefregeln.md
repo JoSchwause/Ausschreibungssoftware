@@ -1,6 +1,6 @@
 # 41: Kern: Prüfregeln, formale LV-Prüfung (K8, Logikteil); Befehle für Kopfdaten (D-07)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: K (K8) · Paket: `packages/kern`
 Blocked by: 37, 29
@@ -99,6 +99,12 @@ in `.scratch/ava-oss/entscheidungen-auto.md` ein.
 
 Prüf-Panel und Sprunglinks (47), Prüfung von Angeboten (Welle 4), GAEB-Exportprüfung (40), Korrekturvorschläge oder
 Autokorrektur, inkrementelle Prüfung.
+
+## Answer
+
+- Gebaut: `kern` K8 (`packages/kern/src`): `lvPruefen(zustand)` mit allen Prüfregeln, Befehle für Kopfdaten (Auftraggeber, Vergabeinformationen, Leitbeschreibung); Golden-Dateien in `packages/kern/testdaten/golden/`; `lvPruefen(gross)` Median 11–13 ms; D-41.1.
+- Merge: `4a5404a` (integration/welle-3).
+- Offen: Offen: Langtext der Unterbeschreibung nur als Liste geprüft, weil der Feldbefehl-Prüfer die v1.1b-Bausteine nicht kannte (danach durch Ticket 50 behoben).
 
 ## Comments
 

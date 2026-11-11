@@ -1,6 +1,6 @@
 # 30: Anpassung `kern` an v1.1a (füllt `summen.vorher`, Löschen, Hinweise, Maskenbefund am Befehl)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: K · Paket: `packages/kern`
 Blocked by: - (Punkt 9 braucht den Hinweiscode aus Ticket 29; diesen Punkt zuletzt, nach dem Merge von 29)
@@ -104,6 +104,12 @@ markierten Stellen ab. Jeder Befehl bleibt rein und deterministisch (A2); Fehler
 Positionsmerkmale, Wahl- und Zuschlagspositionen, EPA und alle `v1.1b`-Marker (Ticket 37). Prüfregeln (Ticket 41).
 Kopieren, Papierkorb, `LvStandAnlegen` (Ticket 42). Angebotsbefehle (Ticket 36, `vergabe`). `Summenaenderung.vorher`
 zur Pflicht machen (späteres Vertragsticket, sobald dieses Ticket gemergt ist).
+
+## Answer
+
+- Gebaut: `kern` an v1.1a angepasst (`packages/kern/src`: `hinweise.ts`, `einheit.ts`, `projekt-befehle.ts`, `auftrags-lv.ts`): `summen.vorher` zentral in `baueChangeSet`, Löschen, Hinweise, Maskenbefund am Befehl, `losStufe`; alle 13 Punkte umgesetzt.
+- Merge: `66b6992` (integration/welle-3).
+- Offen: Offen: `Summenaenderung.vorher` kann im Vertrag Pflicht werden (Ticket 53); `KnotenEinfuegen` soll `positionMitEinheiten` aus `einheit.ts` nutzen (Kern-Folgeidee, bei Ticket 42 nicht aufgegriffen).
 
 ## Comments
 

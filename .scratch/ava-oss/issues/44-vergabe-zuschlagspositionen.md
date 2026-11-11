@@ -1,6 +1,6 @@
 # 44: Vergabe: Zuschlagspositionen im Angebot und im Preisspiegel; Fixture `typisch` auf GAEB-Form
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: V · Paket: `packages/vergabe` (benannte Ausnahmen: `fixtures/` und die Fixture-Testhelfer, siehe Grenzen)
 Blocked by: 36, 37, 29
@@ -89,6 +89,12 @@ Bietersummen und Preisspiegel heute rechnen), Ticket 29 (Punkt 1 und Comments: F
 
 Preisspiegel-Ansicht (V3, Welle 4), Zuschlag und Auftrags-LV (V4), X84-Import (45), Positions- oder Titelnachlass,
 Excel-Rundlauf (V5), Änderungen an `vertrag`.
+
+## Answer
+
+- Gebaut: `vergabe` (`packages/vergabe/src`): Zuschlagspositionen im Angebot (`angebotZuschlaegeBerechnen`, inkrementelles `AngebotspositionSetzen`), Lücken des Bieters mit Kennzeichen, Preisspiegel-Zuschlagszeile, Goldens aus der BVBS-Prüfdatei (1.790,00; 819,10; 1.500,00 statt 1.450,50 wegen Positionsnachlass); D-44.1.
+- Merge: `7291c04` (integration/welle-3).
+- Offen: Offen: Punkt 5 (Fixtures `typisch`, `gross`, `typisch-angebote` auf GAEB-Form, D-44.2) wanderte nach Ticket 51; die Altform bleibt dort bis dahin.
 
 ## Comments
 

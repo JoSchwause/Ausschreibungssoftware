@@ -1,6 +1,6 @@
 # 43: Speicher: Undo/Redo, LV-Stände, Papierkorb und Befehlsprotokoll (S3)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: S (S3) · Paket: `packages/speicher`
 Blocked by: 38, 29
@@ -81,6 +81,12 @@ entfallen hier.
 
 Undo-Stapel und Bedienung (48), Kern-Logik von Papierkorb und Stand (42), sichtbares Protokoll (ADR 0009: keine Ansicht
 in v1), Stand als neues LV übernehmen (48, falls Zeit), Datensicherung (S4).
+
+## Answer
+
+- Gebaut: `speicher` S3 (`packages/speicher/src`: Migration 3, `dateimigration3.ts`, `schreiben.ts`, `lesen.ts`, `testhilfe/umkehrung.ts`): Papierkorb, LV-Stände, Rückgängig/Wiederholen, `Speicher.lvStaende`, Protokoll mit Verweisprüfung, eingefrorene `projektdatei-v3.json`.
+- Merge: `a2b2bbd` (integration/welle-3).
+- Offen: Offen: `Speicher.lvStaende` im Vertrag als Pflicht (Ticket 53); D-31.1 (Protokoll nach Undo von `ProjektLoeschen` weg) nicht entschieden; `KnotenLoeschen` einer von Angeboten bezogenen Position prüft `speicher` weiter nicht.
 
 ## Comments
 

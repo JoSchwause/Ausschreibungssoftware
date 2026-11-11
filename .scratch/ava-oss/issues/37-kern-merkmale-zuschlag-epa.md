@@ -1,6 +1,6 @@
 # 37: Kern: Positionsmerkmale, Wahl- und Zuschlagspositionen, EPA (K5–K7)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: K (K5–K7) · Paket: `packages/kern` (benannte Ausnahmen: `GLOSSARY.md`, eine neue Datei unter `fixtures/`, siehe Grenzen)
 Blocked by: 30
@@ -225,6 +225,12 @@ Kern und Generator zwei getrennte Zähler sind. Alle anderen Fixture-Dateien ble
 Prüfregeln und Befunde (41), Kopieren/Verschieben/Papierkorb (42), Preise und Satz eines Bieters (44), Umstellung der
 Fixtures `typisch`, `gross`, `typisch-angebote` (44), GAEB-Abbildung von `MarkupType`, `UPComp` und Teilmengen (32, 40,
 45), Zeitansatz (kein Vertragsfeld), Positionsnachlass (G-23), das Wählen einer Wahlposition (Welle 4), Änderungen an `vertrag`.
+
+## Answer
+
+- Gebaut: `kern` K5–K7 (`packages/kern/src`): Positionsmerkmale, Wahl-/Zuschlagspositionen nach R1–R8, EPA, `summenAenderung` aus Knotenänderungen, neue Fixture `zuschlag.json` (additive Felder `epa`, Zuschlagssollwerte); D-37.1 bis D-37.3.
+- Merge: `9ac716f` (integration/welle-3).
+- Offen: Nichts offen im Ticket; Kern-Messung: 5.000 Positionen mit Zuschlägen, `MengeAendern` Median 1,82 ms. Eigener Commit für die mechanische Anpassung in `vergabe` zur Prüfung.
 
 ## Comments
 

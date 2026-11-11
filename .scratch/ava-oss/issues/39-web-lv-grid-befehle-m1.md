@@ -1,6 +1,6 @@
 # 39: App: LV-Grid an Befehle angebunden, Projektliste, E2E für Tor M1 (U3)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: U (U3) · Paket: `apps/web`
 Blocked by: 30, 33, 38
@@ -104,6 +104,12 @@ Neuladen. Zuschlagspositionen deckt der E2E von Ticket 47 ab (sie brauchen den P
 
 Positionsdialog und Langtext (47), Prüf-Panel (47), Zwischenablage für Zeilen, Verschieben, Löschen, Papierkorb, Undo,
 LV-Stände (46, 48), GAEB (49), Preisspiegel (Welle 4), Löschen von Projekt und LV (48), Datensicherung (S4).
+
+## Answer
+
+- Gebaut: `apps/web`: LV-Grid an Befehle angebunden, Projektliste, Tastenkürzel für Titel/Untertitel/Position/Merkmale, Speicher-Sperre mit Wiederholung, Testpfad `VITE_TESTPFAD`; E2E `m1.spec.ts` für Tor M1.
+- Merge: `be53631` (integration/welle-3).
+- Offen: Offen: Kriterium „Mengenänderung < 100 ms bis zur Summenzeile“ nicht hart erfüllt (Median gesamt 78–86 ms, unter Last 101–133 ms; `speicher.anwenden` 68–111 ms) → Ticket 52. Lücken: Vertrag/Kern (`Einfuegeort` nach Gliederung, `auflisten`) → 53, aktive Zeile im Grid → 54.
 
 ## Comments
 

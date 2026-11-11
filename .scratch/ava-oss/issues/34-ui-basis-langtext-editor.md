@@ -1,6 +1,6 @@
 # 34: Langtext-Editor (TipTap, eingeschränktes Schema, verlustfreie Abbildung `Langtext` ↔ TipTap)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: U4a · Paket: `packages/ui-basis` (dazu eine Zeile in `tools/boundaries.mjs`)
 Blocked by: -
@@ -88,6 +88,12 @@ Abbildung `Langtext` → Editor-Dokument → `Langtext`. Der Positionsdialog (Ti
 Positionsdialog und Einbindung in die App (Ticket 47). Neue Textergänzungen und Bilder anlegen (später, braucht eine
 `IdQuelle` und Regeln für Kennungen). Tabellenstruktur bearbeiten. GAEB-Abbildung (Ticket 32 liest, Ticket 40 schreibt).
 Bieter füllt Textergänzungen aus (X84, später).
+
+## Answer
+
+- Gebaut: Langtext-Editor in `packages/ui-basis` (TipTap, eingeschränktes Schema, verlustfreie Abbildung `Langtext` ↔ TipTap), dazu eine Zeile in `tools/boundaries.mjs`.
+- Merge: `cfe16d9` (integration/welle-3).
+- Offen: Offen: Werkzeug „Tabelle einfügen“ fehlt (Tabellen nur über die Zwischenablage, Ticket 54); Typfrage, ob leere Liste/Tabelle im Vertrag verboten sein soll (Ticket 53).
 
 ## Comments
 

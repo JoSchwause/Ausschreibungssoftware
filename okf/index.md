@@ -3,7 +3,7 @@ type: Index
 title: Ausschreibungssoftware – Knowledge Base
 description: Einstiegspunkt der OKF-Wissensbasis des Projekts Ausschreibungssoftware.
 tags: [ausschreibungssoftware]
-timestamp: 2026-11-10T06:00:00Z
+timestamp: 2026-11-11T12:00:00Z
 ---
 # Ausschreibungssoftware
 
@@ -32,3 +32,4 @@ timestamp: 2026-11-10T06:00:00Z
 - G-06, G-54, G-55, G-56 geschlossen (2026-11-09); `.scratch/ava-mvp/spec.md` liegt vor. Noch offen: G-27 (vertagt), Tickets für Welle 1–2, Repo-Baum-Änderung für `okf/research/` ist auf Branch `grilling-rueckschreibung` gepusht (2026-11-09), aber noch nicht auf `main` gemergt.
 - Welle 0 und 1 umgesetzt (2026-11-10) auf Branch `claude/wave-0-1-orchestration-nkdqfx`, noch nicht auf `main`: pnpm-Monorepo mit CI, `vertrag`, `dezimal`, `kern` (Baum, OZ, Summen), `speicher`, `gaeb` (Leser X81/X83 3.3), `ui-basis`, `ui-grid`, Fixtures und amtliche Testdateien. Übergabe und nächste Entscheidungen: [`.scratch/ava-oss/next-decisions.md`](/.scratch/ava-oss/next-decisions.md). `vertrag` v1 ist vom Nutzer geprüft; die Grilling-Runde E-01 bis E-20 ist beantwortet (2026-11-10), Welle 2 beginnt mit `vertrag` v1.1a/v1.1b.
 - Welle 0 und 1 sind auf `main` (PR #1). Welle 2, Stufe 1 (2026-11-10): Aufräumen, Kern-Feldbefehle und PDF-Spike (Paket `ausgabe`, pdfmake) auf `main`; Interview-Prototyp auf Branch `proto/interview`; `vertrag` v1.1a (PR #4) und v1.1b (PR #7) warten auf die Prüfung des Nutzers. Übergabe: [`.scratch/ava-oss/next-decisions-welle-2.md`](/.scratch/ava-oss/next-decisions-welle-2.md).
+- Welle 3 umgesetzt (2026-11-10/11) auf Branch `integration/welle-3`, lokal, nicht auf `main`: Tickets 29–50 gemergt und `resolved`. Es läuft jetzt eine Web-App (`apps/web`) mit Projektliste, LV-Grid an den Befehlen, Positionsdialog mit Langtext-Editor, Prüf-Panel, Zwischenablage, Papierkorb, Undo/Redo, LV-Ständen sowie GAEB-Import und -Export (X81/X83/X86, 3.3 und 3.2, X84-Import); dazu `mengen` (REB-Formel 91), `vergabe` (Bieter, Angebot, Zuschlag, Preisspiegel-Rechnung), `speicher` Schema 3 und der `gaeb`-Writer mit XSD-Gegenprüfung. **M1 erreicht**, **M2 erfüllt** bis auf die Liste erwarteter Unterschiede im Rundweg; Handprüfung im freien GAEB-Betrachter steht aus. Offen: Einzeländerung < 100 ms (Ticket 52), Fixtures in GAEB-Zuschlagsform (51), `vertrag` v1.3 (53), UI-Lücken (54). Bericht: [`.scratch/ava-oss/welle-3-bericht.md`](/.scratch/ava-oss/welle-3-bericht.md); Tickets: [`.scratch/ava-oss/issues/README.md`](/.scratch/ava-oss/issues/README.md).

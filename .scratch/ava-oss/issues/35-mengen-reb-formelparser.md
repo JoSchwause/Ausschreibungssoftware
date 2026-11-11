@@ -1,6 +1,6 @@
 # 35: REB-23.003-Formelparser (Formel 91 zuerst)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: M1 · Paket: `packages/mengen` (neu); dazu additiv `packages/dezimal` (Punkt 1; in diesem Lauf hat `dezimal` keinen anderen Schreiber)
 Blocked by: -
@@ -101,6 +101,12 @@ da, an genau einer benannten Stelle im Code (`MENGEN_ANNAHMEN`), damit sie sich 
 Weitere nummerierte Formeln (eigene Tickets, sobald Nummer und Parameter belegt sind). Mengenermittlungs-Panel (M2).
 X31/DA11 (M3). Aufmaßblätter und Soll/Ist (A2). Vordersatz einer Position aus dem Mengenansatz setzen (Befehl und
 Vertragstyp fehlen; späteres Vertragsticket).
+
+## Answer
+
+- Gebaut: Neues Paket `packages/mengen`: REB-23.003-Formelparser, Formel 91 zuerst, mit Fehlern samt Spalte; dazu additiv `packages/dezimal` (Punkt 1).
+- Merge: `b43a569` (integration/welle-3).
+- Offen: Nichts offen im Ticket; weitere REB-Formeln bleiben spätere Tickets (Strang M1).
 
 ## Comments
 

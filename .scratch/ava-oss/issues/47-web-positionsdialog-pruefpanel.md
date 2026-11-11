@@ -1,6 +1,6 @@
 # 47: App: Positionsdialog mit Langtext-Editor, Prüf-Panel mit Sprunglinks (U4 + U6)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: U (U4, U6) · Paket: `apps/web`
 Blocked by: 39, 34, 41
@@ -79,6 +79,12 @@ Einträge zur betroffenen Stelle springen. Vorgehen: TDD mit dem Skill `tdd`; am
 ## Nicht-Ziele
 
 Katalog- und Einheitenvorschläge, Zwischenablage, Undo, Papierkorb (48), GAEB (49).
+
+## Answer
+
+- Gebaut: `apps/web` U4/U6: Positionsdialog (Strg+Enter) mit Langtext-Editor, Merkmale, Wahl, Zuschlag, EPA, Leitbeschreibung, Dialog „LV-Angaben“ und Prüf-Panel mit Sprunglinks (F8); E2E `dialog.spec.ts`.
+- Merge: `94abbee` (integration/welle-3).
+- Offen: Offen: E2E „Langtext mit Auszeichnung, Liste und Tabelle“ war zunächst `test.fixme` und wurde mit Ticket 48 nach Ticket 50 grün; Lücken „Zeile öffnen“ und „Tabelle einfügen“ → Ticket 54.
 
 ## Comments
 

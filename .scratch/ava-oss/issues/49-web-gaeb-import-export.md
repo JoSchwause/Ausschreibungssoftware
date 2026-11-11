@@ -1,6 +1,6 @@
 # 49: App: GAEB-Import und -Export, X84-Import (optional, wenn Zeit)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: G (App-Teil) · Paket: `apps/web`
 Blocked by: 48, 40, 45, 44
@@ -55,6 +55,12 @@ am Ende `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün. `okf/resea
 ## Nicht-Ziele
 
 Preisspiegel-Ansicht (V3), Zuschlag und Auftrags-LV (V4), Excel (O2, V5), GAEB 90/2000 und 3.1 (G4), X82/X85/X89.
+
+## Answer
+
+- Gebaut: `apps/web/src/gaeb/` (`gaeb.ts`, `GaebEinlesen`, `GaebAusgeben`, `Angebote`, `Befundliste`): GAEB-Import und -Export in X81/X83/X86, 3.3 und 3.2, X84-Import mit Bieter und Angebot als ein Undo-Schritt; E2E `gaeb.spec.ts`.
+- Merge: `73d4d01` (integration/welle-3).
+- Offen: Offen: Handprüfung für M2 im freien GAEB-Betrachter (Ergebnis „offen“); Messung mit 100 MiB und Web Worker fehlen; kein Auftragnehmer im Modell (Ticket 53).
 
 ## Comments
 

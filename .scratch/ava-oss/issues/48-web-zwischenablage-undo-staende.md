@@ -1,6 +1,6 @@
 # 48: App: Zwischenablage, Verschieben, Papierkorb, Undo/Redo und LV-Stände (U5)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5) · Paket: `apps/web`
 Blocked by: 47, 42, 43, 46
@@ -71,6 +71,12 @@ Projekte und LVs löschen (Q5). Vorgehen: TDD mit dem Skill `tdd`; am Ende
 
 Sichtbares Befehlsprotokoll (ADR 0009), Undo über Sitzungen hinweg, Vergleich zweier Stände, Kopieren zwischen LVs,
 GAEB (49), Datensicherung (S4).
+
+## Answer
+
+- Gebaut: `apps/web` U5 (`apps/web/src/historie/historie.ts`, `src/lv/befehlsweg.ts`, Papierkorb- und LV-Stände-Dialog): Undo/Redo, Zwischenablage über `kopieBauen`, OZ-Vorschlag, Papierkorb, LV-Stände mit „Als neues LV übernehmen“, Löschen mit Bestätigung; `dialog.spec.ts` ohne `fixme`; E2E `undo.spec.ts`.
+- Merge: `086f4e1` (integration/welle-3).
+- Offen: Offen: Nur-Lese-Modus im Grid (Stand) → Ticket 54; nach Undo von `ProjektLoeschen` ist das Protokoll weg (D-31.1, `speicher`); kein Undo für den Dateiimport.
 
 ## Comments
 

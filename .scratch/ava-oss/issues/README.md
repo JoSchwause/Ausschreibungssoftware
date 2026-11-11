@@ -67,3 +67,36 @@ Request für sich grün ist. Weil 25 und 27 zur selben Zeit in `kern` und `gaeb`
 Mergen: 25 und 27 zuerst; der Branch von 24 (und später 26) nimmt danach `main` auf, Konflikte löst der Orchestrator.
 
 Tor der Welle: **M1 „LV anlegen, rechnen, speichern“** (`plan.md` §4).
+
+# Tickets Welle 3 (Lauf, 2026-11-10/11)
+
+Schnitt und Reihenfolge: [`../schnitt-welle-3.md`](../schnitt-welle-3.md). Alle Tickets 29–50 sind auf `integration/welle-3` gemergt und `resolved` (Merge-Commit je Ticket im Abschnitt „Answer“); 51–54 sind Folgetickets für Welle 4.
+
+| Nr | Strang | Titel | Paket | Status |
+|---|---|---|---|---|
+| 29 | F | `vertrag` v1.2: Ergänzungen für Welle 3 | `packages/vertrag` | resolved |
+| 30 | K | Anpassung `kern` an v1.1a | `packages/kern` | resolved |
+| 31 | S | Anpassung `speicher` an v1.1a/v1.1b | `packages/speicher` | resolved |
+| 32 | G | Anpassung `gaeb` an v1.1a/v1.1b | `packages/gaeb` | resolved |
+| 33 | U | Anpassung `ui-grid` an v1.1a | `packages/ui-grid` | resolved |
+| 34 | U4a | Langtext-Editor (TipTap) | `packages/ui-basis` | resolved |
+| 35 | M1 | REB-23.003-Formelparser (Formel 91) | `packages/mengen` (neu) | resolved |
+| 36 | V1+V2 | Bieter, Angebot, Bietersummen, Preisspiegel-Rechnung | `packages/vergabe` (neu) | resolved |
+| 37 | K5–K7 | Positionsmerkmale, Wahl-/Zuschlagspositionen, EPA | `packages/kern` | resolved |
+| 38 | S2 | Projektliste und Projektdatei, Schema 2 | `packages/speicher` | resolved |
+| 39 | U3 | LV-Grid an Befehle angebunden, E2E M1 | `apps/web` | resolved |
+| 40 | G2 | Writer X81/X83/X86, Prüfung, XSD in der CI (Tor M2) | `packages/gaeb`, CI | resolved |
+| 41 | K8 | Prüfregeln, Kopfdaten-Befehle | `packages/kern` | resolved |
+| 42 | K9 | Kopieren, Verschieben, Papierkorb, OZ-Vorschlag | `packages/kern` | resolved |
+| 43 | S3 | Undo/Redo, LV-Stände, Papierkorb, Protokoll | `packages/speicher` | resolved |
+| 44 | V | Zuschlagspositionen im Angebot und Preisspiegel | `packages/vergabe` | resolved |
+| 45 | G3 | Import X84 → Angebot | `packages/gaeb` | resolved |
+| 46 | U5a | Grid: Zeilen kopieren, verschieben, löschen | `packages/ui-grid` | resolved |
+| 47 | U4+U6 | Positionsdialog, Prüf-Panel | `apps/web` | resolved |
+| 48 | U5 | Zwischenablage, Papierkorb, Undo/Redo, LV-Stände | `apps/web` | resolved |
+| 49 | G | GAEB-Import/-Export in der App | `apps/web` | resolved |
+| 50 | K | Kern nimmt den vollen Langtext an | `packages/kern` | resolved |
+| 51 | F | Fixtures `typisch`, `gross`, `typisch-angebote` auf GAEB-Zuschlagsform | `fixtures/` | ready-for-agent (Welle 4) |
+| 52 | S | Einzeländerung bei 5.000 Positionen < 100 ms | `packages/speicher` | ready-for-agent (Welle 4) |
+| 53 | F | `vertrag` v1.3 (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 4) |
+| 54 | U | `ui-grid`/`ui-basis`: Lücken aus Welle 3 | `packages/ui-grid`, `packages/ui-basis` | ready-for-agent (Welle 4) |

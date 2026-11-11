@@ -1,6 +1,6 @@
 # 45: GAEB: Import X84 → Angebot (G3)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: G (G3) · Paket: `packages/gaeb` (benannte Ausnahme: `fixtures/extern/`, nur falls Punkt 6 eine Datei aufnimmt)
 Blocked by: 40, 29
@@ -89,6 +89,12 @@ Was nicht passt, wird Befund, nichts geht still verloren (Q5). Vorgehen: TDD mit
 
 Bietersummen, Zuschlagsbeträge und Preisspiegel (44), Oberfläche des Imports (49), X85 Nebenangebot, Excel-Rundlauf
 (V5), Lesen von 3.1 (G4), Schreiben von X84.
+
+## Answer
+
+- Gebaut: `gaeb` G3 (`packages/gaeb/src/angebot.ts`): `leseAngebot` für X84 gegen das LV (AVA 74 von 74, Bauausführung 28 von 28 Positionen), gemeinsamer `vorlauf` in `lesen.ts`, Goldens `angebot-*.golden.jsonl`; D-45.1; E-15 geprüft, keine Datei übernommen.
+- Merge: `476193f` (integration/welle-3).
+- Offen: Offen: EPA-Bezeichnungen hält `LvInhalt` nicht, deshalb bleiben die EPA-Anteile der BVBS-X84 `null` (Befund `epa-nicht-abgebildet`) → Ticket 53; kein Positionsnachlass und keine Bieterergänzungen in `Angebotsposition` (→ 53).
 
 ## Comments
 

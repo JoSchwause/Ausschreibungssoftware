@@ -1,6 +1,6 @@
 # 36: Bieter, Angebot (Angebotsbefehle ausführen), Bietersummen, Preisspiegel-Rechnung
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: V1+V2 · Paket: `packages/vergabe` (neu)
 Blocked by: - (der Mittelwert braucht `dividiere` aus Ticket 35, Punkt 1; bis dieser Commit im Integrationsbranch ist, zuerst Punkt 1–4)
@@ -138,6 +138,12 @@ Angebote: A mit Nachlass 5,00 %, B ohne, C mit Nachlass 40,00 (Betrag).
 Preisspiegel-Ansicht (V3). Zuschlag → Auftrags-LV (V4, Welle 4). Zuschlagspositionen (Ticket 44). Excel-Rundlauf (V5).
 Mehrere Nachlässe je Angebot (G-26: genau einer). Preisspiegel-Typen in `vertrag` (D-04: erst, wenn ein anderes Paket
 sie braucht).
+
+## Answer
+
+- Gebaut: Neues Paket `packages/vergabe`: Bieter, Angebotsbefehle (`AngebotspositionSetzen` inkrementell), Bietersummen über das gedachte LV, Preisspiegel-Rechnung mit Golden-Beispiel; Entscheidungen D-36.1 und D-36.2.
+- Merge: `5087885` (integration/welle-3).
+- Offen: Offen: Zuschlagspositionen im Angebot (Ticket 44, gemergt); Preisspiegel-Ansicht (V3) ist Welle 4.
 
 ## Comments
 

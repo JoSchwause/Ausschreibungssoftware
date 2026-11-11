@@ -1,6 +1,6 @@
 # 32: Anpassung `gaeb` an v1.1a/v1.1b (`wurzelId`, 3.1, `losStufe`, Merkmale, Langtext, Kopfdaten lesen)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: G · Paket: `packages/gaeb`
 Blocked by: -
@@ -90,6 +90,12 @@ herunterzubrechen, und räumt die Marker `// v1.1a/v1.1b: mechanisch angepasst, 
 
 Writer und eigene Prüfung (Ticket 40). X84 → Angebot (Ticket 45). GAEB 3.2 und 90/2000 (G4). Rechenregeln für Wahl,
 Bedarf und Zuschlag (Ticket 37). Befehle zum Bearbeiten der Kopfdaten (D-02, mit U4).
+
+## Answer
+
+- Gebaut: `gaeb`-Leser an v1.1a/v1.1b angepasst (`packages/gaeb/src`): `wurzelId` nur im Inhalt, 3.1 abgewiesen, `losStufe`, Merkmale, Wahl mit Gruppe/Variante, Zuschlagsformen, Langtext mit Liste/Tabelle/Textergänzung, `OWN`, `AwardInfo`, Leitbeschreibung; Goldens begründet.
+- Merge: `f666f2f` (integration/welle-3).
+- Offen: Offen für den Orchestrator: REUSE-Override für `ava-x81-langtext.golden.json` (längere Textauszüge der amtlichen Datei, Datei außerhalb des Pakets).
 
 ## Comments
 

@@ -1,6 +1,6 @@
 # 40: GAEB: Writer X81/X83/X86, eigene Prüfung, XSD-Gegenprüfung in der CI, Roundtrip (G2, Tor M2)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: G (G2) · Paket: `packages/gaeb` (benannte Ausnahme: `.github/workflows/ci.yml`, nur der neue XSD-Schritt)
 Blocked by: 32
@@ -112,6 +112,12 @@ mit dem Skill `tdd`; am Ende `pnpm lint && pnpm typecheck && pnpm test` grün. `
 
 X84-Import (45), X82/X85/X89, GAEB 90/2000 und Lesen von 3.1 (G4), Oberfläche für Export (49), Prüfung der Fachinhalte
 eines LV (K8, Ticket 41), Rechnen im Writer.
+
+## Answer
+
+- Gebaut: `gaeb`-Writer (`packages/gaeb/src/schreiben.ts`, `text-schreiben.ts`, `ausgabe.ts`, `werkzeuge/xsd-gegenpruefung.mjs`): X81/X83/X86 in 3.3 und 3.2, eigene Prüfung, XSD-Gegenprüfung als CI-Schritt (36 von 36 Dateien bestanden), Rundweg mit Liste erwarteter Unterschiede; Tor M2 erreicht.
+- Merge: `7596161` (integration/welle-3).
+- Offen: Offen: Fixture `zuschlag` in `FIXTURES` (`testhilfen.ts`) ergänzen; X86 ohne Auftragnehmer (leere Adresse, Warnung `angabe-leer`; Auftragnehmer im GAEB-Modell → Ticket 53).
 
 ## Comments
 

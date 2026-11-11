@@ -1,6 +1,6 @@
 # 42: Kern: Kopieren, Verschieben, Papierkorb, LV-Stand als Befehle; OZ-Vorschlag (K9, Logikteil)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: K (K9) · Paket: `packages/kern`
 Blocked by: 41, 29
@@ -86,6 +86,12 @@ Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
 
 Zwischenablage und Tastatur (46), Bedienung in der App (48), Speicherung (43), Undo-Stapel (48), Stand in ein bestehendes
 LV zurückschreiben (Ticket 29: nicht vorgesehen), Änderungen an `vertrag`.
+
+## Answer
+
+- Gebaut: `kern` K9 (`packages/kern/src`): sieben Befehle für Kopieren, Verschieben, Papierkorb und `LvStandAnlegen`, `kopieBauen`, `ozVorschlag`, `pruefeLvInvarianten(lv, papierkorb?)`; Verschieben eines Titels mit 351 Positionen Median 7,5 ms; D-42.1 bis D-42.3.
+- Merge: `76553c3` (integration/welle-3).
+- Offen: Nichts offen im Ticket; `ZUSTAENDIGES_TICKET` ist leer. Lücke „Einfügen hinter einer Gliederung“ im `Einfuegeort` (Ticket 53).
 
 ## Comments
 

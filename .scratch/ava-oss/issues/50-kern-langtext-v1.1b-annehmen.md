@@ -1,6 +1,6 @@
 # 50: Kern nimmt den vollen Langtext (v1.1b) an
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: K · Paket: `packages/kern`
 Blocked by: 41 (gemergt)
@@ -27,6 +27,12 @@ der obersten Ebene. Inhalt (Längen, leere Zellen) prüft weiter K8 (`lvPruefen`
 ## Nicht-Ziele
 
 Oberfläche (Ticket 48 nimmt danach `test.fixme` in `apps/web/e2e/dialog.spec.ts` heraus), Werkzeug „Tabelle einfügen“ im Editor.
+
+## Answer
+
+- Gebaut: `kern` (`packages/kern/src/langtext.ts`, `feld-befehle.ts`): `LangtextAendern` und `HinweistextAendern` nehmen jeden formgültigen v1.1b-Langtext an (Form wie `speicher` liest); `langtextGleich` vergleicht den ganzen Baum; Property-Test.
+- Merge: `558e9f3` (integration/welle-3).
+- Offen: Nichts offen; Folgeidee: dieselbe Formprüfung als dauerhafter Test gegen die amtlichen Langtexte in `gaeb`.
 
 ## Comments
 
