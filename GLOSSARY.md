@@ -293,6 +293,9 @@ Prozentualer Einbehalt vom kumulierten Bruttobetrag einer Rechnung als Sicherhei
 ### Leistungsstand
 Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Im Code `Leistungsstand`.
 
+### Kostenkontrolle
+Vergleich der Kosten eines Projekts je Kostengruppe in vier Spalten, durchgehend netto (D-37): **Budget** (die Kostenermittlung, die der Nutzer wählt, als Baumsummen nach D-24), **Vergabe** (Summe der Gesamtpreise der Positionen der Auftrags-LVs, die ins Netto eingehen, je Kostengruppe der Position), **Abrechnung** (Summe der Gesamtpreise des Leistungsstands der jeweils letzten Rechnung je Auftrags-LV) und **Abweichung** (Vergabe − Budget). Zeilen: die Kostengruppen als Baum (eigener Wert plus Kinder), „ohne Kostengruppe“, „Nachlass“ (negativ, ohne Budget) und Gesamt (Netto nach Nachlass); die Ebene-1-Zeilen, „ohne Kostengruppe“ und „Nachlass“ ergeben auf den Cent das Gesamt. Mehrere Auftrags-LVs werden addiert; Umlagen, Einbehalt und MwSt gehören nicht dazu. Eine Kostengruppe außerhalb der Gliederung des Budgets zählt trotzdem und ist ein Befund. Gerechnet, nie gespeichert. Im Code `kostenkontrolleBerechnen`, `Kostenkontrolle` (Paket `kosten`).
+
 ### Mengenansatz
 Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Eine Position kann ihren Mengenansatz tragen; dann ist ihre Menge die Summe, die die App gerechnet hat, und beide werden zusammen gesetzt. Wer die Menge von Hand ändert, entfernt den Ansatz. Im Code `mengenansatzBerechnen`, `Positionsdaten.mengenansatz`, Befehl `MengenansatzSetzen`.
 

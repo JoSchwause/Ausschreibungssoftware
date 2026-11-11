@@ -42,3 +42,12 @@ export {
   kostenermittlungChangeSetAnwenden,
   kostenermittlungChangeSetUmkehren,
 } from './kostenermittlung-befehle';
+export type {
+  Kostenkontrollbefund,
+  Kostenkontrollbefundcode,
+  Kostenkontrolle,
+  Kostenkontrolleingabe,
+  Kostenkontrollwerte,
+  Kostenkontrollzeile,
+} from './kostenkontrolle';
+export { kostenkontrolleBerechnen } from './kostenkontrolle';
