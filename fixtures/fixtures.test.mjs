@@ -951,7 +951,7 @@ test('typisch-abrechnung: Nachtrag N01, Knoten nach der Übernahme und Summen da
   const [titel, p1, p2] = n.lv.knoten;
   assert.deepEqual([titel.art, titel.ordnungszahl, titel.parentId], ['titel', '01', n.lv.id]);
   assert.deepEqual([p1, p2].map((p) => [p.ordnungszahl, p.menge, p.einheit, p.einheitspreis]), [
-    ['01.0010', '24.000', 'm³', null], ['01.0020', '6.000', 'St', null], // Nachtrags-LV ohne Schätzpreis (D-85.7)
+    ['01.0010', '24.000', 'm³', null], ['01.0020', '6.000', 'St', null], // Nachtrags-LV ohne Schätzpreis (D-85.6)
   ]);
   assert.deepEqual(n.angebot.positionen.map((z) => [z.positionId, z.status, z.einheitspreis]), [
     [p1.id, 'angeboten', '38.437'], [p2.id, 'angeboten', '87.125'],
