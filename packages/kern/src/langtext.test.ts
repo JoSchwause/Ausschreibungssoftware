@@ -5,21 +5,22 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import {
-  beispielLangtext,
-  type BildId,
-  type Hinweistext,
-  type Langtext,
-  type LangtextInline,
-  type LangtextInnen,
-  type LangtextInnenBaustein,
-  type LvBefehl,
-  type LvZustand,
-  type Position,
-  type Textergaenzung,
-  type Textfluss,
-  type Textlauf,
+import type {
+  BildId,
+  Hinweistext,
+  Langtext,
+  LangtextInline,
+  LangtextInnen,
+  LangtextInnenBaustein,
+  LvBefehl,
+  LvZustand,
+  Position,
+  Textergaenzung,
+  Textfluss,
+  Textlauf,
 } from '@tethys/vertrag';
+// Das Beispiel steht nicht im Paketindex (nur kompilierbare Doku); A3 erlaubt kern den Ordner `packages/vertrag`.
+import { beispielLangtext } from '../../vertrag/src/beispiele';
 import { changeSetUmkehren, langtextGleich, lvBefehlAusfuehren, summenBerechnen } from './index';
 import { KEINE_SUMMEN, anwenden, id, lvMit, ohneReihenfolge, posKnoten, titelKnoten } from './testhilfen';
 
@@ -328,11 +329,11 @@ describe('langtextGleich vergleicht den ganzen Baum', () => {
         },
       ],
     ];
-    varianten.forEach((a, i) =>
+    varianten.forEach((a, i) => {
       varianten.forEach((b, j) => {
         expect(langtextGleich(a, b)).toBe(i === j);
-      }),
-    );
+      });
+    });
   });
 });
 
