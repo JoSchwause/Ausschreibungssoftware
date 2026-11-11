@@ -1,6 +1,6 @@
 # 89: C2+C3+C4 in der App: Kostenermittlung, Kostengruppen zuordnen, Kostenkontrolle, EP-Kalkulation
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: C2, C3, C4 · Ordner: `apps/web/src/kosten/` (neu); Einhängestellen in `App.tsx`,
 `projekt/ProjektSeite.tsx`, `lv/LvSeite.tsx` (Spalte/Feld KG, Aktion „Kalkulieren“), `auftrag/AuftragsLvSeite.tsx`,

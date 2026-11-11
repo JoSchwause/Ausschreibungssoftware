@@ -16,6 +16,7 @@
     "@tethys/dezimal": "workspace:*",
     "@tethys/gaeb": "workspace:*",
     "@tethys/kern": "workspace:*",
+    "@tethys/kosten": "workspace:*",
     "@tethys/mengen": "workspace:*",
     "@tethys/speicher": "workspace:*",
     "@tethys/ui-basis": "workspace:*",
