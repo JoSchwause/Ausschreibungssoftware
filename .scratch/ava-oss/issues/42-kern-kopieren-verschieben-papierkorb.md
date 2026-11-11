@@ -1,6 +1,6 @@
 # 42: Kern: Kopieren, Verschieben, Papierkorb, LV-Stand als Befehle; OZ-Vorschlag (K9, Logikteil)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: K (K9) · Paket: `packages/kern`
 Blocked by: 41, 29
