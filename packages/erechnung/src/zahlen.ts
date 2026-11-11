@@ -51,7 +51,10 @@ export function vertragszahlLesen(
 
 const TAGE = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 
-/** Prüft ein Kalenderdatum ohne `Date` (A2) und liefert es als `JJJJ-MM-TT`. */
+/**
+ * Prüft ein Kalenderdatum ohne `Date` (A2) und liefert es als `JJJJ-MM-TT`. Dieselbe Regel steht in `abrechnung`
+ * (`datumFehler` in `form.ts`); Fachpakete importieren einander nicht (A3), darum bleibt sie doppelt (Review Welle 5, S4).
+ */
 function kalenderdatum(jahr: string, monat: string, tag: string): string | null {
   const j = Number.parseInt(jahr, 10);
   const m = Number.parseInt(monat, 10);

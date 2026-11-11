@@ -12,6 +12,7 @@
 // - Das Blatt im ChangeSet ist kanonisch: genau die Felder des Vertrags, in Vertragsreihenfolge (kanonische Datei, A8).
 
 import { alsMenge } from '@tethys/dezimal';
+import { mengenansatzFehler } from '@tethys/kern';
 import type {
   Ansatzzeile,
   Aufmass,
@@ -22,7 +23,7 @@ import type {
   Ergebnis,
   Menge,
 } from '@tethys/vertrag';
-import { ansatzFehler, datumFehler, istObjekt, kennungFehler, nein, nummerFehler } from './form';
+import { datumFehler, istObjekt, kennungFehler, nein, nummerFehler } from './form';
 
 type Antwort = Ergebnis<AufmassChangeSet, Befehlsfehler>;
 type Geprueft<T> = Ergebnis<T, Befehlsfehler>;
@@ -48,7 +49,7 @@ function zeilePruefen(roh: unknown): Geprueft<Aufmassposition> {
   }
   const ansatz: unknown = p.mengenansatz;
   if (ansatz !== null) {
-    const af = ansatzFehler(ansatz);
+    const af = mengenansatzFehler(ansatz);
     if (af !== null) return ungueltig(af, 'mengenansatz', p.positionId);
   }
   const zeilen = p.mengenansatz;
