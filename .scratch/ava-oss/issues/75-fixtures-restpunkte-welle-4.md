@@ -1,6 +1,6 @@
 # 75: Fixtures: Restpunkte aus Welle 4
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: F · Paket: `fixtures/`
 Blocked by: –
@@ -81,3 +81,5 @@ unverändert, kein Verbraucher-Code geändert. Punkt 2: Die Sollwerte stehen in 
 werden jetzt im Selbsttest eigens aus den Knoten nachgezählt; der Drucktest (Ticket 58) soll
 `fx.sollwerte.ausweise.gesamt.summeBedarfOhneGesamtbetrag`/`.summeWahl` und `fx.sollwerte.ausweise.titel[<Titel-ID>]`
 lesen (Änderung in `packages/ausgabe`, siehe Hinweis 1). README A7 und neuer Abschnitt „Bedarfs- und Wahlsumme der LV“.
+
+Merged: 579aa9977ab0fd0acbf5bac502b4cea35dcea4f6 in integration/welle-5
