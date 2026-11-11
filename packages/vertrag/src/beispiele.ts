@@ -7,12 +7,19 @@
 import type {
   AngebotLoeschen,
   AufmassAnlegen,
+  AufmasskopfSetzen,
+  AufmassLoeschen,
+  AufmasspositionEntfernen,
   AufmasspositionSetzen,
   AuftragsLeistungsverzeichnisAnlegen,
   GliederungAnlegen,
   KnotenEinfuegen,
   KnotenVerschieben,
+  KostenermittlungAnlegen,
+  KostenermittlungLoeschen,
+  KostenermittlungseintragEntfernen,
   KostenermittlungseintragSetzen,
+  KostenermittlungskopfSetzen,
   KostengruppeSetzen,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
@@ -21,7 +28,12 @@ import type {
   NachtragUebernehmen,
   NachtragsangabenSetzen,
   ProjektLoeschen,
+  RechnungAnlegen,
   RechnungFreigeben,
+  RechnungLoeschen,
+  RechnungsabzuegeSetzen,
+  RechnungsangabenSetzen,
+  RechnungsaufmasseSetzen,
   RechnungsfreigabeAufheben,
   TextquelleSetzen,
   VorlageSetzen,
@@ -33,7 +45,12 @@ import type {
   LvChangeSet,
   RechnungChangeSet,
 } from './changeset';
-import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
+import type {
+  AuftragsLvUebersicht,
+  KostenermittlungUebersicht,
+  Projektdatei,
+  Protokolleintrag,
+} from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
   AngebotId,
@@ -1284,6 +1301,86 @@ export const beispielMassenprotokollAufmass: Protokolleintrag = {
     },
     pruefsumme: { algorithmus: 'sha-256', wert: '0'.repeat(64) },
   },
+};
+
+/** Punkt 11: die übrigen Befehle am Aufmaßblatt (Kopf setzen, Zeile entfernen, Löschen). */
+export const beispielAufmassBefehle: readonly [AufmasskopfSetzen, AufmasspositionEntfernen, AufmassLoeschen] =
+  [
+    { art: 'AufmasskopfSetzen', bezeichnung: 'Blatt 1, Erdarbeiten (erfunden)', datum: '2026-11-03' },
+    { art: 'AufmasspositionEntfernen', positionId: nachtragPos1Id },
+    { art: 'AufmassLoeschen' },
+  ];
+
+/** Punkt 11: Rechnung 2 anlegen (noch nicht freigegeben, sonst `ungueltige-eingabe`). */
+export const beispielRechnungAnlegen: RechnungAnlegen = {
+  art: 'RechnungAnlegen',
+  rechnung: beispielRechnung2,
+};
+
+/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaße, Abzüge, Löschen). */
+export const beispielRechnungsbefehle: readonly [
+  RechnungsangabenSetzen,
+  RechnungsaufmasseSetzen,
+  RechnungsabzuegeSetzen,
+  RechnungLoeschen,
+] = [
+  {
+    art: 'RechnungsangabenSetzen',
+    rechnungsart: 'abschlag',
+    eingang: '2026-11-10',
+    rechnungsnummerAuftragnehmer: 'AR-2026-002',
+    gefordert: { netto: '49.85' as Betrag, brutto: '59.32' as Betrag },
+  },
+  { art: 'RechnungsaufmasseSetzen', aufmassIds: [aufmass1Id, aufmass2Id] },
+  {
+    art: 'RechnungsabzuegeSetzen',
+    umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' as Prozent }],
+    sicherheitSatz: '5.00' as Prozent,
+    gewaehrleistungSatz: '3.00' as Prozent,
+  },
+  { art: 'RechnungLoeschen' },
+];
+
+/** Punkt 11: die übrigen Befehle an der Kostenermittlung (Anlegen, Kopf setzen, Eintrag entfernen, Löschen). */
+export const beispielKostenermittlungsbefehle: readonly [
+  KostenermittlungAnlegen,
+  KostenermittlungskopfSetzen,
+  KostenermittlungseintragEntfernen,
+  KostenermittlungLoeschen,
+] = [
+  { art: 'KostenermittlungAnlegen', kostenermittlung: beispielKostenermittlung },
+  { art: 'KostenermittlungskopfSetzen', name: 'Kostenanschlag (erfunden)', stufe: 'kostenanschlag' },
+  { art: 'KostenermittlungseintragEntfernen', nummer: kg('410') },
+  { art: 'KostenermittlungLoeschen' },
+];
+
+/** Punkt 10: die Kostenermittlung in der Liste des Projekts (ohne Einträge). */
+export const beispielKostenermittlungUebersicht: KostenermittlungUebersicht = {
+  id: beispielKostenermittlung.id,
+  projektId: beispielKostenermittlung.projektId,
+  stufe: beispielKostenermittlung.stufe,
+  name: beispielKostenermittlung.name,
+};
+
+/**
+ * Punkt 10: eine Projektdatei mit den drei neuen Listen (Zustände der Aggregate); LVs, Angebote und Auftrags-LVs sind
+ * hier weggelassen. Fehlt eine der Listen, gilt sie als leer.
+ */
+export const beispielProjektdateiV14: Projektdatei = {
+  schemaVersion: 5,
+  projekt: {
+    id: beispielLv.projektId,
+    name: 'Beispiel',
+    bauherr: { name: 'Beispiel', anschrift: null },
+    bieter: [],
+  },
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [],
+  aufmasse: [{ aufmass: beispielAufmass1 }, { aufmass: beispielAufmass2 }],
+  rechnungen: [{ rechnung: beispielRechnung1 }, { rechnung: beispielRechnung2 }],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenermittlung }],
 };
 
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */

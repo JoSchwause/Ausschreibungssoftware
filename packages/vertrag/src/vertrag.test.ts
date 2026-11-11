@@ -226,6 +226,12 @@ import {
   beispielKostenermittlung,
   beispielKostenermittlungseintragSetzen,
   beispielMassenprotokollAufmass,
+  beispielAufmassBefehle,
+  beispielKostenermittlungsbefehle,
+  beispielKostenermittlungUebersicht,
+  beispielProjektdateiV14,
+  beispielRechnungAnlegen,
+  beispielRechnungsbefehle,
 } from './beispiele';
 
 /**
@@ -1549,6 +1555,75 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     expectTypeOf<ReturnType<IdQuelle['aufmass']>>().toEqualTypeOf<AufmassId>();
     expectTypeOf<ReturnType<IdQuelle['rechnung']>>().toEqualTypeOf<RechnungId>();
     expectTypeOf<ReturnType<IdQuelle['kostenermittlung']>>().toEqualTypeOf<KostenermittlungId>();
+  });
+});
+
+describe('v1.4 Punkt 11: Beispiele für jeden neuen Befehl und die Zustände', () => {
+  it('jeder neue Befehl hat ein Beispiel, und jedes Beispiel ist ein Befehl', () => {
+    const beispiele: readonly Befehl[] = [
+      beispielNachtragUebernehmen,
+      beispielNachtragsangabenSetzen,
+      beispielKostengruppeSetzen,
+      beispielVorlageSetzen,
+      beispielTextquelleSetzen,
+      beispielAufmassAnlegen,
+      beispielAufmasspositionSetzen,
+      ...beispielAufmassBefehle,
+      beispielRechnungAnlegen,
+      ...beispielRechnungsbefehle,
+      beispielRechnungFreigeben,
+      beispielRechnungsfreigabeAufheben,
+      beispielKostenermittlungseintragSetzen,
+      ...beispielKostenermittlungsbefehle,
+    ];
+    type Neu =
+      | AufmassBefehl['art']
+      | RechnungBefehl['art']
+      | KostenermittlungBefehl['art']
+      | 'NachtragUebernehmen'
+      | 'NachtragsangabenSetzen'
+      | 'KostengruppeSetzen'
+      | 'VorlageSetzen'
+      | 'TextquelleSetzen';
+    const alle: Record<Neu, true> = {
+      AufmassAnlegen: true,
+      AufmasskopfSetzen: true,
+      AufmasspositionSetzen: true,
+      AufmasspositionEntfernen: true,
+      AufmassLoeschen: true,
+      RechnungAnlegen: true,
+      RechnungsangabenSetzen: true,
+      RechnungsaufmasseSetzen: true,
+      RechnungsabzuegeSetzen: true,
+      RechnungFreigeben: true,
+      RechnungsfreigabeAufheben: true,
+      RechnungLoeschen: true,
+      KostenermittlungAnlegen: true,
+      KostenermittlungskopfSetzen: true,
+      KostenermittlungseintragSetzen: true,
+      KostenermittlungseintragEntfernen: true,
+      KostenermittlungLoeschen: true,
+      NachtragUebernehmen: true,
+      NachtragsangabenSetzen: true,
+      KostengruppeSetzen: true,
+      VorlageSetzen: true,
+      TextquelleSetzen: true,
+    };
+    expect(new Set(beispiele.map((b) => b.art))).toEqual(new Set(Object.keys(alle)));
+    expect(beispielRechnungAnlegen.rechnung.freigabe).toBeNull();
+  });
+
+  it('Projektdatei mit Aufmaßen, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
+    const d = beispielProjektdateiV14;
+    expect(d.aufmasse?.map((a) => a.aufmass.nummer)).toEqual([1, 2]);
+    expect(d.rechnungen?.map((r) => r.rechnung.nummer)).toEqual([1, 2]);
+    expect(d.kostenermittlungen).toHaveLength(1);
+    expect(beispielKostenermittlungUebersicht).not.toHaveProperty('eintraege');
+    // Jede Rechnung verweist nur auf Blätter derselben Datei und desselben Auftrags-LV.
+    const blaetter = new Map(d.aufmasse?.map((a) => [a.aufmass.id, a.aufmass.auftragsLvId]));
+    for (const { rechnung } of d.rechnungen ?? []) {
+      for (const id of rechnung.aufmassIds) expect(blaetter.get(id)).toBe(rechnung.auftragsLvId);
+    }
   });
 });
 
