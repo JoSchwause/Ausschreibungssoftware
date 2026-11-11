@@ -1,0 +1,226 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Integrationstest ohne Oberfläche (Ticket 49, Punkte 4 und 5): GAEB-Wege der App mit echtem Kern, Speicher und
+// vergabe. Alle Pakete dürfen hier eingebunden werden.
+
+import { readFileSync } from 'node:fs';
+import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
+import { angebotSummenBerechnen } from '@tethys/vergabe';
+import type { LvInhalt, LvZustand, Projekt, ProjektId, Summenstand } from '@tethys/vertrag';
+import { describe, expect, it } from 'vitest';
+import { fixtureInhalt } from '../../e2e/fixture-inhalt';
+import { befehlswegFuer } from '../lv/befehlsweg';
+import { appIdQuelle } from '../lv/ids';
+import { speicherImSpeicher, testUmgebung } from '../testhilfen';
+import {
+  angebotAnlegenPlan,
+  type Ausgabe,
+  angebotLesen,
+  befundeNachSchwere,
+  bietersummen,
+  dateinameAusgabe,
+  lvAusgeben,
+  lvLesen,
+} from './gaeb';
+
+const wurzel = new URL('../../../../', import.meta.url);
+const datei = (pfad: string): Uint8Array => new Uint8Array(readFileSync(new URL(pfad, wurzel)));
+const AVA = 'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021';
+const jetzt = new Date(Date.UTC(2026, 10, 11, 9, 30, 15));
+
+async function projektUndLv(inhalt: LvInhalt) {
+  const u = testUmgebung(await speicherImSpeicher());
+  const weg = befehlswegFuer(u);
+  const p = await weg.projekt(null).befehl({
+    art: 'ProjektAnlegen',
+    id: u.ids.projekt(),
+    name: 'Test',
+    bauherr: { name: 'Kreis', anschrift: null },
+  });
+  if (!p.ok || p.zustand === null) throw new Error('Projekt');
+  const projekt: Projekt = p.zustand;
+  const s = weg.lv(projekt.id, null);
+  const a = await s.befehl({
+    art: 'LeistungsverzeichnisAnlegen',
+    id: inhalt.wurzelId,
+    projektId: projekt.id,
+    inhalt,
+  });
+  if (!a.ok || s.zustand === null) throw new Error('LV');
+  return { u, weg, projekt, lv: s.zustand };
+}
+
+function lvZustand(inhalt: LvInhalt): LvZustand {
+  const r = lvBefehlAusfuehren(null, {
+    art: 'LeistungsverzeichnisAnlegen',
+    id: inhalt.wurzelId,
+    projektId: 'p' as ProjektId,
+    inhalt,
+  });
+  if (!r.ok) throw new Error(r.fehler.meldung);
+  return lvChangeSetAnwenden(null, r.wert);
+}
+
+const gliederungSumme = (s: Summenstand, id: string): string | undefined =>
+  s.gliederungen.find((g) => g.gliederungId === id)?.summe;
+
+describe('LV einlesen (X81)', () => {
+  const v = lvLesen(datei(`${AVA}.X81`), 'BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X81', appIdQuelle());
+
+  it('zählt Gliederungen, Positionen und Hinweistexte (Ticket 22) und liefert Befunde', () => {
+    expect(v.phase).toBe('X81');
+    expect(v.version).toBe('3.3');
+    expect(v.anzahl).toEqual({ gliederungen: 22, positionen: 74, hinweistexte: 14 });
+    expect(v.uebernehmbar).toBe(true);
+    expect(v.befunde.length).toBeGreaterThan(0);
+  });
+
+  it('gruppiert die Befunde nach Schwere, nichts geht verloren (Q5)', () => {
+    const g = befundeNachSchwere(v.befunde);
+    expect(g.fehler.length + g.warnungen.length).toBe(v.befunde.length);
+  });
+
+  it('eine Datei ohne Inhalt zeigt Befunde und ist nicht übernehmbar', () => {
+    const leer = lvLesen(new TextEncoder().encode('kein xml'), 'x.x83', appIdQuelle());
+    expect(leer.uebernehmbar).toBe(false);
+    expect(leer.befunde.length).toBeGreaterThan(0);
+  });
+});
+
+describe('BVBS AVA: X81 und X84 einlesen, Bietersummen mit vergabe', () => {
+  it('1.30.20 = 1.790,00, 1.30.30 = 819,10, 1.30.10 = 1.500,00, Hauptgruppe 3 = 12.000,00', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, projekt, lv } = await projektUndLv(gelesen.inhalt);
+    const x84 = angebotLesen(datei(`${AVA}.X84`), 'ava.X84', lv, u.ids);
+    expect(x84.uebernehmbar).toBe(true);
+    expect(x84.bieterName).toBe('Maler + Lackierer Pinsel und Co KG');
+    const plan = angebotAnlegenPlan(x84, x84.bieterName, projekt, u.ids);
+    if (plan === null) throw new Error('Plan');
+    expect(plan.neuerBieter).not.toBeNull();
+    const s = angebotSummenBerechnen(lv, plan.angebot);
+    const id = (oz: string): string => {
+      const k = lv.leistungsverzeichnis.knoten.find((n) => 'ordnungszahl' in n && n.ordnungszahl === oz);
+      if (k === undefined) throw new Error(`OZ ${oz}`);
+      return k.id;
+    };
+    expect(gliederungSumme(s, id('1.30.20'))).toBe('1790.00');
+    expect(gliederungSumme(s, id('1.30.30'))).toBe('819.10');
+    expect(gliederungSumme(s, id('1.30.10'))).toBe('1500.00');
+    expect(gliederungSumme(s, id('3'))).toBe('12000.00');
+    expect(bietersummen(lv, plan.angebot).netto).toBe(s.gesamt.netto);
+  });
+
+  it('ein vorhandener Bieter gleichen Namens wird wiederverwendet, kein neuer angelegt', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, projekt, lv } = await projektUndLv(gelesen.inhalt);
+    const x84 = angebotLesen(datei(`${AVA}.X84`), 'ava.X84', lv, u.ids);
+    const mit: Projekt = {
+      ...projekt,
+      bieter: [{ id: u.ids.bieter(), name: ' maler + lackierer pinsel und co kg ' }],
+    };
+    const plan = angebotAnlegenPlan(x84, 'Maler + Lackierer Pinsel und Co KG', mit, u.ids);
+    expect(plan?.neuerBieter).toBeNull();
+    expect(plan?.angebot.bieterId).toBe(mit.bieter[0]?.id);
+  });
+
+  it('Angebot anlegen: Bieter und Angebot sind ein Undo-Schritt', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, weg, projekt, lv } = await projektUndLv(gelesen.inhalt);
+    const x84 = angebotLesen(datei(`${AVA}.X84`), 'ava.X84', lv, u.ids);
+    const plan = angebotAnlegenPlan(x84, x84.bieterName, projekt, u.ids);
+    if (plan === null) throw new Error('Plan');
+    const tiefe = weg.historie.tiefe.rueck;
+    const a = await weg.angebotAnlegen(projekt, lv, plan.neuerBieter, plan.angebot);
+    expect(a.ok).toBe(true);
+    expect(weg.historie.tiefe.rueck).toBe(tiefe + 1);
+    expect((await u.speicher.angebote.auflisten(lv.leistungsverzeichnis.id)).ok).toBe(true);
+    const liste = await u.speicher.angebote.auflisten(lv.leistungsverzeichnis.id);
+    expect(liste.ok && liste.wert.length).toBe(1);
+    expect((await weg.rueckgaengig()).ok).toBe(true);
+    const leer = await u.speicher.angebote.auflisten(lv.leistungsverzeichnis.id);
+    expect(leer.ok && leer.wert.length).toBe(0);
+    const p = await u.speicher.projekte.laden(projekt.id);
+    expect(p.ok && p.wert.bieter.length).toBe(0);
+  });
+});
+
+describe('Ausgabe', () => {
+  it('Dateiname trägt _Entwurf nur bei Entwurf', () => {
+    expect(dateinameAusgabe('Rohbau / 1', 'X83', false)).toBe('Rohbau 1.x83');
+    expect(dateinameAusgabe('Rohbau', 'X86', true)).toBe('Rohbau_Entwurf.x86');
+  });
+
+  /**
+   * `typisch` ohne die Zuschlagspositionen in Altform (Menge × EP ohne Satz), die im Rundweg Menge und EP verlieren,
+   * und ohne die Wahlkennzeichnung ohne Gruppe und Variante, die der Writer nicht schreiben kann (Warnung
+   * `export-verworfen`, E-11); beides sind erwartete Unterschiede aus Ticket 40. Die Geschwister rücken nach.
+   */
+  function typischOhneAltform(): LvInhalt {
+    const inhalt = fixtureInhalt('typisch');
+    const rest = inhalt.knoten.filter((k) => !(k.art === 'position' && k.zuschlag !== null));
+    const zaehler = new Map<string, number>();
+    const knoten = rest.map((k) => {
+      const n = zaehler.get(k.elternId) ?? 0;
+      zaehler.set(k.elternId, n + 1);
+      if (k.art === 'position' && k.merkmale.wahl !== null)
+        return { ...k, reihenfolge: n, merkmale: { ...k.merkmale, wahl: null } };
+      return { ...k, reihenfolge: n };
+    });
+    return { ...inhalt, knoten };
+  }
+
+  /** Schreiben, lesen, wieder anlegen: der Kern rechnet die Summen des gelesenen LV neu. */
+  function rundweg(zustand: LvZustand, phase: 'X83' | 'X86'): { aus: Ausgabe; z2: LvZustand } {
+    const aus = lvAusgeben(zustand, phase, '3.3', jetzt);
+    expect(aus.entwurf).toBe(false);
+    expect(aus.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
+    const zurueck = lvLesen(new TextEncoder().encode(aus.xml), aus.dateiname, appIdQuelle());
+    if (zurueck.inhalt === null) throw new Error('Inhalt');
+    return { aus, z2: lvZustand(zurueck.inhalt) };
+  }
+
+  it('Roundtrip: typisch als X83 3.3 ausgeben, wieder einlesen, gleiche Struktur, Mengen und Texte', () => {
+    const zustand = lvZustand(typischOhneAltform());
+    const { aus, z2 } = rundweg(zustand, 'X83');
+    expect(aus.dateiname).toBe('Typisch Musterhaus erfunden.x83');
+    const form = (z: LvZustand) =>
+      z.leistungsverzeichnis.knoten.map((k) =>
+        k.art === 'position'
+          ? [k.ordnungszahl, k.kurztext, k.menge, k.einheit]
+          : [k.art, 'ordnungszahl' in k ? k.ordnungszahl : null],
+      );
+    expect(form(z2)).toEqual(form(zustand));
+    // X83 trägt keine Preise: die Summen des gelesenen LV sind null.
+    expect(z2.summen.gesamt.netto).toBe('0.00');
+  });
+
+  it('Roundtrip: typisch als X86 3.3 ausgeben (mit Preisen), wieder einlesen, gleiche Summen', () => {
+    const zustand = lvZustand(typischOhneAltform());
+    const { z2 } = rundweg(zustand, 'X86');
+    expect(z2.summen.gesamt.netto).toBe(zustand.summen.gesamt.netto);
+    expect(z2.summen.gesamt.brutto).toBe(zustand.summen.gesamt.brutto);
+    expect(z2.summen.gliederungen.map((g) => g.summe)).toEqual(
+      zustand.summen.gliederungen.map((g) => g.summe),
+    );
+  });
+
+  it('eine Einheit über 4 Zeichen macht den Export zum Entwurf, er geschieht trotzdem (G-13)', () => {
+    const inhalt = fixtureInhalt('typisch');
+    const knoten = inhalt.knoten.map((k) => (k.art === 'position' ? { ...k, einheit: 'Stunden' } : k));
+    const aus = lvAusgeben(lvZustand({ ...inhalt, knoten }), 'X83', '3.3', jetzt);
+    expect(aus.entwurf).toBe(true);
+    expect(aus.dateiname).toMatch(/_Entwurf\.x83$/);
+    expect(aus.xml.length).toBeGreaterThan(100);
+  });
+
+  it('X86 trägt Datum, Uhrzeit der App, Summenstand und Zuschlagsbasen des Kerns', () => {
+    const v = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (v.inhalt === null) throw new Error('Inhalt');
+    const aus = lvAusgeben(lvZustand(v.inhalt), 'X86', '3.3', jetzt);
+    expect(aus.xml).toContain('<Date>2026-11-11</Date>');
+    expect(aus.xml).toContain('<Time>09:30:15</Time>');
+    expect(aus.xml).toContain('ITMarkup');
+  });
+});
