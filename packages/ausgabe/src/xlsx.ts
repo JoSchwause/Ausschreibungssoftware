@@ -72,7 +72,7 @@ export function spaltenname(index: number): string {
 /** Ungültige XML-Zeichen und das Escape-Muster `_xHHHH_` selbst schreibt SpreadsheetML als `_xHHHH_`. */
 function textKodieren(text: string): string {
   return text
-    .replace(/_x[0-9A-Fa-f]{4}_/g, (m) => `_x005F${m.slice(1)}`)
+    .replace(/_x[0-9A-Fa-f]{4}_/g, (m) => `_x005F_${m.slice(1)}`)
     .replace(
       // eslint-disable-next-line no-control-regex
       /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g,
