@@ -64,6 +64,62 @@ export interface RebZeile {
   readonly randBelegt: boolean;
 }
 
+// --- Schreiben ----------------------------------------------------------------------------------------------------
+
+/** Buchstaben der Zeilennummern, wie in der Prüfdatei ab `B`. */
+const BUCHSTABEN = 'BCDEFGHIJKLMNOPQRSTUVWXYZ';
+/** Höchste Blattnummer (vier Ziffern). */
+const MAX_BLATT = 9999;
+/** Zahl der Zeilennummern, die `zeilennummer` vergeben kann. */
+export const MAX_ZEILEN = MAX_BLATT * BUCHSTABEN.length;
+
+/**
+ * Die `j`-te Zeilennummer einer geschriebenen Datei (ab 0): Blatt 0001 mit den Buchstaben B bis Z und der Ziffer 0, dann
+ * Blatt 0002 usw. Eindeutig über die ganze Datei, damit Verweise zwischen Zeilen eindeutig sind.
+ */
+export function zeilennummer(j: number): string {
+  const blatt = 1 + Math.floor(j / BUCHSTABEN.length);
+  return `${String(blatt).padStart(4, '0')}${BUCHSTABEN[j % BUCHSTABEN.length] ?? 'B'}0`;
+}
+
+const WORTZEICHEN = /[\p{L}0-9_,]/u;
+
+/**
+ * Teilt einen Ausdruck der Formel 91 auf Zeilen auf: jede Zeile höchstens 38 Zeichen, die letzte höchstens 37 und dahinter
+ * das `=`. Geteilt wird bevorzugt vor einem Leerzeichen, sonst an einer Grenze zwischen Zahl und Operator, nie hinter einem
+ * Leerzeichen: Der Leser hängt die Teile rechts ohne Leerraum aneinander und erhält so genau den Ausdruck zurück.
+ */
+export function aufteilen(ausdruck: string): string[] {
+  const z = Array.from(ausdruck);
+  const teile: string[] = [];
+  let start = 0;
+  while (z.length - start > INHALT_ZEICHEN - 1) {
+    let schnitt = -1;
+    let hart = -1;
+    for (let i = Math.min(start + INHALT_ZEICHEN, z.length - 1); i > start; i--) {
+      const vor = z[i - 1] ?? ' ';
+      const nach = z[i] ?? ' ';
+      if (vor === ' ') continue;
+      if (hart < 0) hart = i;
+      if (nach === ' ' || !WORTZEICHEN.test(vor) || !WORTZEICHEN.test(nach)) {
+        schnitt = i;
+        break;
+      }
+    }
+    if (schnitt < 0) schnitt = hart < 0 ? start + INHALT_ZEICHEN : hart;
+    teile.push(z.slice(start, schnitt).join(''));
+    start = schnitt;
+  }
+  teile.push(`${z.slice(start).join('')}=`);
+  return teile;
+}
+
+/** Eine Rechenzeile der Formel 91 ohne Kennung, Text, Vorzeichen und Faktor; `inhalt` hat höchstens 38 Zeichen. */
+export function rechenzeile91(inhalt: string, nummer: string): string {
+  const rest = INHALT_ZEICHEN - Array.from(inhalt).length;
+  return `${' '.repeat(SP.formel[0] - 1)}${String(FORMEL_91)}${inhalt}${' '.repeat(Math.max(0, rest))}${nummer}${' '.repeat(ZEILENLAENGE - SP.nummer[1])}`;
+}
+
 export function rebZeileZerlegen(row: string): RebZeile {
   const z = Array.from(row);
   const laengeAbweichend = z.length !== ZEILENLAENGE;

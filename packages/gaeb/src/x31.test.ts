@@ -7,15 +7,21 @@
 import { describe, expect, it } from 'vitest';
 import type {
   AngebotId,
+  Ansatzzeile,
+  Aufmass,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
   Betrag,
   LeistungsverzeichnisId,
+  Menge,
   Position,
+  PositionId,
   ProjektId,
 } from '@tethys/vertrag';
-import { leseGaeb, x31Lesen } from './index';
-import { TEST_MWST, lesePfad, testIds } from './testhilfen';
+import { aufmassAlsX31, leseGaeb, x31Lesen } from './index';
+import type { X31Aufmass } from './index';
+import { TEST_ERSTELLT, TEST_MWST, lesePfad, testIds } from './testhilfen';
 
 const BVBS = 'fixtures/extern/bvbs/3.3-mengenermittlung/Pruefdatei_3.3_Mengenermittlung_V-11-06-2021';
 const NULL = '0.00' as Betrag;
@@ -45,7 +51,7 @@ function auftragsLvAus(bytes: Uint8Array): AuftragsLvZustand {
 const BVBS_LV = auftragsLvAus(lesePfad(`${BVBS}.x86`));
 
 /** Kennung der Position mit dieser OZ (mit Index) im Auftrags-LV. */
-function positionId(lv: AuftragsLvZustand, oz: string): string {
+function positionId(lv: AuftragsLvZustand, oz: string): PositionId {
   const p = lv.auftragsLeistungsverzeichnis.knoten.find(
     (k): k is Position => k.art === 'position' && `${k.ordnungszahl ?? ''}${k.ozIndex ?? ''}` === oz,
   );
@@ -371,5 +377,187 @@ describe('X31 lesen: BVBS-Prüfdatei Mengenermittlung 3.3', () => {
       ],
       menge: null,
     });
+  });
+});
+
+// --- X31 schreiben ------------------------------------------------------------------------------------------------
+
+const OPT = { erstellt: TEST_ERSTELLT, programm: 'Tethys AVA (Test)' } as const;
+const z91 = (zeile: number, ausdruck: string, variable: string | null = null): Ansatzzeile => ({
+  zeile,
+  formel: 91,
+  ausdruck,
+  variable,
+});
+
+/** Ein eigenes Aufmaßblatt zum Auftrags-LV der Prüfdatei. */
+function blatt(positionen: Aufmass['positionen'], kopf: Partial<Aufmass> = {}): Aufmass {
+  return {
+    id: 'aufmass-1' as AufmassId,
+    projektId: 'projekt-1' as ProjektId,
+    auftragsLvId: BVBS_LV.auftragsLeistungsverzeichnis.id,
+    nummer: 1,
+    bezeichnung: '',
+    datum: null,
+    positionen,
+    ...kopf,
+  };
+}
+
+/** Was ein Rundweg zurückbringen kann: neben einem Ansatz rechnet die App die Menge (D-22), die Datei trägt keine. */
+const ohneMengeNebenAnsatz = (a: X31Aufmass): X31Aufmass => ({
+  ...a,
+  positionen: a.positionen.map((p) => (p.mengenansatz === null ? p : { ...p, menge: null })),
+});
+
+describe('X31 schreiben', () => {
+  const P10 = positionId(BVBS_LV, '001.001.0010');
+  const P3_10 = positionId(BVBS_LV, '001.003.0010');
+  const P2_20 = positionId(BVBS_LV, '002.001.0020');
+  const lang = '(12,345 + 23,456 + 34,567 + 45,678) * (1,5 + 2,25) - 7,125 / 3';
+
+  it('Rundweg eigenes Aufmaß → X31 → Aufmaß: gleich (Q3)', () => {
+    const eigen = blatt([
+      { positionId: P10, mengenansatz: [z91(1, '2,5'), z91(2, 'Z1 * 2')], menge: '7.500' as Menge },
+      { positionId: P3_10, mengenansatz: null, menge: '12.500' as Menge },
+      { positionId: P2_20, mengenansatz: [z91(1, lang), z91(2, ' Z1 + 1 ')], menge: null },
+    ]);
+    const e = aufmassAlsX31(eigen, BVBS_LV, '3.3', OPT);
+    expect(e.phase).toBe('X31');
+    expect(e.entwurf).toBe(false);
+    expect(e.befunde).toEqual([]);
+    const l = x31Lesen(e.xml, BVBS_LV);
+    expect(l.befunde).toEqual([]);
+    const inhalt: X31Aufmass = {
+      bezeichnung: eigen.bezeichnung,
+      datum: eigen.datum,
+      positionen: eigen.positionen,
+    };
+    expect(l.aufmass).toEqual(ohneMengeNebenAnsatz(inhalt));
+    // Der zweite Export des gelesenen Blatts ist byte-gleich.
+    expect(aufmassAlsX31({ ...eigen, ...l.aufmass }, BVBS_LV, '3.3', OPT).xml).toBe(e.xml);
+  });
+
+  it('Zeilen im Spaltenformat: 80 Zeichen, Formel 91 in 30–31, Ausdruck ab 32 mit „=“, Zeilennummern fortlaufend', () => {
+    const e = aufmassAlsX31(
+      blatt([{ positionId: P10, mengenansatz: [z91(1, '2,5'), z91(2, 'Z1 * 2')], menge: null }]),
+      BVBS_LV,
+      '3.3',
+      OPT,
+    );
+    const zeilen = [...e.xml.matchAll(/Row="([^"]*)"/g)].map((m) => m[1]);
+    expect(zeilen).toEqual([
+      `${' '.repeat(29)}912,5=${' '.repeat(34)}0001B0     `,
+      `${' '.repeat(29)}910001B0 * 2=${' '.repeat(27)}0001C0     `,
+    ]);
+    expect(e.xml).toContain('<MethodDescription>REB23003-2009</MethodDescription>');
+    expect(e.xml).toContain('xmlns="http://www.gaeb.de/GAEB_DA_XML/DA31/3.3"');
+  });
+
+  it('ein langer Ausdruck geht über mehrere Zeilen, geteilt vor einem Leerzeichen', () => {
+    const e = aufmassAlsX31(
+      blatt([{ positionId: P2_20, mengenansatz: [z91(1, lang)], menge: null }]),
+      BVBS_LV,
+      '3.3',
+      OPT,
+    );
+    const inhalte = [...e.xml.matchAll(/Row="([^"]*)"/g)].map((m) => (m[1] ?? '').slice(29, 69));
+    expect(inhalte).toEqual([
+      '91(12,345 + 23,456 + 34,567 + 45,678) *'.padEnd(40),
+      '91 (1,5 + 2,25) - 7,125 / 3='.padEnd(40),
+    ]);
+  });
+
+  it('Variablennamen werden zu Verweisen auf die Zeilennummer; der Name selbst entfällt mit Warnung', () => {
+    const eigen = blatt([
+      { positionId: P10, mengenansatz: [z91(1, '2,5', 'breite'), z91(2, 'breite * 3')], menge: null },
+    ]);
+    const e = aufmassAlsX31(eigen, BVBS_LV, '3.3', OPT);
+    expect(e.befunde.map((b) => [b.schwere, b.code])).toEqual([['warnung', 'export-verworfen']]);
+    expect(x31Lesen(e.xml, BVBS_LV).aufmass?.positionen[0]?.mengenansatz).toEqual([
+      z91(1, '2,5'),
+      z91(2, 'Z1 * 3'),
+    ]);
+  });
+
+  it('eine Position mit einer Zeile, die X31 nicht abbildet, entfällt ganz, mit Warnung (keine Teilmenge)', () => {
+    const faelle: Ansatzzeile[][] = [
+      [z91(1, '1'), { zeile: 2, formel: 5, ausdruck: '2,5', variable: null }],
+      [z91(1, '1'), z91(2, '*                 913=')],
+      [z91(1, 'Z2 + 1'), z91(2, '1')],
+      [z91(1, 'hoehe * 2')],
+      [z91(1, '1 = 1')],
+    ];
+    for (const mengenansatz of faelle) {
+      const e = aufmassAlsX31(blatt([{ positionId: P10, mengenansatz, menge: null }]), BVBS_LV, '3.3', OPT);
+      expect(e.xml, JSON.stringify(mengenansatz)).not.toContain('QTakeoff');
+      expect(e.befunde.map((b) => [b.schwere, b.code])).toEqual([['warnung', 'export-verworfen']]);
+      expect(e.entwurf).toBe(false);
+    }
+  });
+
+  it('Bezeichnung und Datum des Blatts hat X31 nicht: Warnung; eine Zeile ohne Menge und Ansatz entfällt', () => {
+    const e = aufmassAlsX31(
+      blatt([{ positionId: P10, mengenansatz: null, menge: null }], {
+        bezeichnung: 'Erdarbeiten',
+        datum: '2026-11-11',
+      }),
+      BVBS_LV,
+      '3.3',
+      OPT,
+    );
+    expect(e.befunde.map((b) => b.meldung.split(':')[0])).toEqual([
+      'Bezeichnung des Aufmaßblatts',
+      'Datum des Aufmaßblatts',
+      'Aufmaßzeile ohne Menge und ohne Mengenansatz',
+    ]);
+  });
+
+  it('eine Position, die es im Auftrags-LV nicht gibt: Fehler, Entwurf', () => {
+    const fremd = 'fremd' as PositionId;
+    const e = aufmassAlsX31(
+      blatt([{ positionId: fremd, mengenansatz: null, menge: '1.000' as Menge }]),
+      BVBS_LV,
+      '3.3',
+      OPT,
+    );
+    expect(e.befunde.map((b) => [b.schwere, b.code])).toEqual([['fehler', 'position-unbekannt']]);
+    expect(e.entwurf).toBe(true);
+  });
+
+  it('3.2: Namensraum und Versionsdatum der Version, gelesen gleich', () => {
+    const eigen = blatt([{ positionId: P10, mengenansatz: [z91(1, '4')], menge: null }]);
+    const e = aufmassAlsX31(eigen, BVBS_LV, '3.2', OPT);
+    expect(e.version).toBe('3.2');
+    expect(e.xml).toContain('xmlns="http://www.gaeb.de/GAEB_DA_XML/DA31/3.2"');
+    expect(e.xml).toContain('<VersDate>2013-10</VersDate>');
+    expect(x31Lesen(e.xml, BVBS_LV).aufmass?.positionen).toEqual(eigen.positionen);
+  });
+
+  it('Rundweg BVBS-X31 → Aufmaß → X31 → Aufmaß: gleich, soweit Formel 91 (Positionen mit Textform entfallen)', () => {
+    const erst = x31Lesen(lesePfad(`${BVBS}.x31`), BVBS_LV).aufmass;
+    if (erst === null) throw new Error('kein Aufmaß');
+    const e = aufmassAlsX31(blatt(erst.positionen), BVBS_LV, '3.3', OPT);
+    const zweit = x31Lesen(e.xml, BVBS_LV);
+    expect(zweit.befunde).toEqual([]);
+    const nurFormel91 = erst.positionen.filter((p) =>
+      (p.mengenansatz ?? []).every((z) => z.formel === 91 && !z.ausdruck.startsWith('*')),
+    );
+    // Aus der Datei: genau diese sieben Positionen haben nur Formel 91 ohne Kennung, Faktor oder fremden Verweis.
+    expect(nurFormel91.map((p) => p.positionId)).toEqual(
+      [
+        '001.001.0010',
+        '001.001.00101',
+        '001.003.0010',
+        '002.001.0020',
+        '999.999.9999',
+        '999.999.9999y',
+        '999.999.9999z',
+      ].map((oz) => positionId(BVBS_LV, oz)),
+    );
+    expect(zweit.aufmass?.positionen).toEqual(nurFormel91);
+    const verworfen = e.befunde.filter((b) => b.code === 'export-verworfen');
+    expect(verworfen).toHaveLength(1);
+    expect(verworfen[0]?.meldung).toContain('(7 Vorkommen)');
   });
 });
