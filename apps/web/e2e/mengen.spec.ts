@@ -94,8 +94,9 @@ test('Ansatz mit drei Zeilen: Menge und GP, Neuladen, Undo, Rückfrage bei direk
   await expect(text(page, 'menge')).toHaveText('13,500');
   await expect(text(page, 'gesamtpreis')).toHaveText('135,00');
   await expect.poll(async () => (await summen(page))['Netto']).toBe('135,00');
-  // Die Position trägt ein Kennzeichen.
-  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--warnung/);
+  // Die Position trägt ein neutrales Kennzeichen des Grids, keinen Warnstil (Ticket 74, D-65.2).
+  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--mengenansatz/);
+  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--warnung/);
   await expect(zelle(page, 'menge')).toHaveAttribute('title', /Mengenansatz/);
 
   // Neuladen: der Ansatz ist noch da, samt Variable und Ergebnissen.
@@ -137,7 +138,7 @@ test('Ansatz mit drei Zeilen: Menge und GP, Neuladen, Undo, Rückfrage bei direk
   await leerlauf(page);
   await expect(text(page, 'menge')).toHaveText('5,000');
   await expect(text(page, 'gesamtpreis')).toHaveText('50,00');
-  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--warnung/);
+  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--mengenansatz/);
   // Ohne Ansatz fragt die App nicht mehr.
   await zelle(page, 'menge').click();
   await page.keyboard.type('6');
@@ -151,7 +152,7 @@ test('Ansatz mit drei Zeilen: Menge und GP, Neuladen, Undo, Rückfrage bei direk
   await expect(text(page, 'menge')).toHaveText('5,000');
   await page.keyboard.press('Control+Z');
   await expect(text(page, 'menge')).toHaveText('13,500');
-  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--warnung/);
+  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--mengenansatz/);
 });
 
 test('Undo nimmt den Ansatz in einem Schritt zurück; ein Ansatz mit Fehler lässt die Menge leer', async ({
@@ -170,7 +171,7 @@ test('Undo nimmt den Ansatz in einem Schritt zurück; ein Ansatz mit Fehler läs
   await page.keyboard.press('Control+Z');
   await expect(text(page, 'menge')).toHaveText('4,000');
   await expect(text(page, 'gesamtpreis')).toHaveText('40,00');
-  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--warnung/);
+  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--mengenansatz/);
   await page.keyboard.press('Control+Y');
   await expect(text(page, 'menge')).toHaveText('13,500');
 
@@ -184,7 +185,7 @@ test('Undo nimmt den Ansatz in einem Schritt zurück; ein Ansatz mit Fehler läs
   await expect(panel(page)).toHaveCount(0);
   await leerlauf(page);
   await expect(text(page, 'menge')).toHaveText('');
-  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--warnung/);
+  await expect(zelle(page, 'menge')).toHaveClass(/tx-grid__zelle--mengenansatz/);
   await page.reload();
   await expect(page.getByRole('treegrid', { name: 'Positionen' })).toBeVisible();
   await expect(text(page, 'menge')).toHaveText('');
@@ -243,5 +244,5 @@ test('Zeilen per Tastatur löschen und verschieben; Positionsdialog: Panel und R
   await leerlauf(page);
   await expect(text(page, 'menge')).toHaveText('7,000');
   await expect(text(page, 'gesamtpreis')).toHaveText('70,00');
-  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--warnung/);
+  await expect(zelle(page, 'menge')).not.toHaveClass(/tx-grid__zelle--mengenansatz/);
 });
