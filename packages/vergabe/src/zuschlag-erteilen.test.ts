@@ -10,6 +10,7 @@ import type {
   AuftragsLvChangeSet,
   Einheitspreis,
   Einheitspreisanteile,
+  Knoten,
   LeistungsverzeichnisId,
   PositionId,
   Projekt,
@@ -319,5 +320,180 @@ describe('zuschlagErteilen: Wahl', () => {
     // t1: g1 100,00 + g2 100,00 + z1 10,00 = 210,00; t2: d1 90,00.
     expect(titelsummen(cs)).toEqual({ t1: '210.00', t2: '90.00' });
     expect(cs.summen.gesamt?.netto).toBe('300.00');
+  });
+});
+
+describe('zuschlagErteilen: Lücken des Bieters und Merkmale', () => {
+  it('nicht angebotene Positionen (auch gewählte) und fehlende Sätze: Preis `null`, je eine Warnung', () => {
+    // g1 nicht angeboten (entfällt, keine Warnung), a2 ohne Eintrag (gewählt), z1 angeboten ohne Satz.
+    const a = angebot('a-l', lvW, 'w1', [
+      nichtAngeboten('g1'),
+      ep('a1', '12.000'),
+      ep('g2', '20.000'),
+      ep('b1', '22.000'),
+      ep('b2', '21.000'),
+      ep('n1', '100.000'),
+      ep('z1', '5.000'),
+      ep('c1', '50.000'),
+      ep('d1', '90.000'),
+    ]);
+    const { befehl, warnungen } = erwarteOk(zuschlagErteilen(lvW, a, projektW, gewaehlt('a2'), NEUE_ID));
+    expect(warnungen).toEqual([
+      { code: 'positionen-entfallen', anzahl: 5, positionIds: ['g1', 'a1', 'b1', 'b2', 'd1'] },
+      { code: 'nicht-angeboten', positionId: 'a2' },
+      { code: 'zuschlagssatz-fehlt', positionId: 'z1' },
+      { code: 'bezug-entfernt', positionId: 'z1', feld: 'zuschlag.bezug.positionen', zielId: 'g1' },
+    ]);
+    const nachId = new Map<string, Knoten>(befehl.auftragsLeistungsverzeichnis.knoten.map((k) => [k.id, k]));
+    expect(nachId.get('a2')).toMatchObject({ einheitspreis: null, epa: null, merkmale: { wahl: null } });
+    expect(nachId.get('z1')).toMatchObject({ zuschlag: { prozentsatz: null } });
+    // Bedarf bleibt Bedarf.
+    expect(nachId.get('c1')).toMatchObject({ merkmale: { bedarf: 'ohne-gesamtbetrag' } });
+    // g2 100,00 + n1 100,00; a2 ohne GP, z1 ohne Satz ohne Betrag; c1 100,00 getrennt ausgewiesen.
+    expect(imKern(befehl).summen.gesamt).toMatchObject({
+      netto: '200.00',
+      summeBedarfOhneGesamtbetrag: '100.00',
+    });
+  });
+
+  it('eine gewählte Alternative bleibt Bedarf mit Gesamtbetrag und zählt ins Netto', () => {
+    const z = lv('lv-b', [
+      titel('t1', 'lv-b', 0),
+      position('g1', 't1', 0, '1.000', '10.000'),
+      position('a1', 't1', 1, '2.000', '30.000', {
+        bedarf: 'mit-gesamtbetrag',
+        ...wahl(null, null, 'g1'),
+      }),
+    ]);
+    const a = angebot('a-b', z, 'w1', [ep('g1', '10.000'), ep('a1', '30.000')]);
+    const { befehl } = erwarteOk(zuschlagErteilen(z, a, projektW, gewaehlt('a1'), NEUE_ID));
+    expect(befehl.auftragsLeistungsverzeichnis.knoten[1]).toMatchObject({
+      id: 'a1',
+      merkmale: { bedarf: 'mit-gesamtbetrag', wahl: null },
+    });
+    expect(imKern(befehl).summen.gesamt?.netto).toBe('60.00');
+  });
+
+  it('eine gewählte Alternative ohne Grundposition (etwa nach einem X83-Rundweg) ersetzt nichts, mit Warnung', () => {
+    const z = lv('lv-o', [
+      titel('t1', 'lv-o', 0),
+      position('n0', 't1', 0, '1.000', '10.000'),
+      position('e1', 't1', 1, '1.000', '12.000', wahl(7, 1, null)),
+    ]);
+    const a = angebot('a-o', z, 'w1', [ep('n0', '10.000'), ep('e1', '12.000')]);
+    const { befehl, warnungen } = erwarteOk(zuschlagErteilen(z, a, projektW, gewaehlt('e1'), NEUE_ID));
+    expect(warnungen).toEqual([{ code: 'wahl-ohne-grundposition', positionId: 'e1' }]);
+    expect(imKern(befehl).summen.gesamt?.netto).toBe('22.00');
+  });
+});
+
+describe('zuschlagErteilen: Goldens aus den Fixtures', () => {
+  const { fx: fxTypisch } = lvAusFixture('typisch');
+  const wahlIds = fxTypisch.knoten.filter((k) => k.positionsart === 'wahl').map((k) => k.id);
+
+  it('typisch-angebote: Warnungen nennen die entfallene Alternative und die Lücken des Bieters', () => {
+    for (const fx of set.angebote) {
+      const { warnungen } = erwarteOk(
+        zuschlagErteilen(typisch, angebotAusFixture(fx, typisch), fxProjekt, OHNE_WAHL, NEUE_ID),
+      );
+      expect(warnungen, fx.id).toEqual([
+        { code: 'positionen-entfallen', anzahl: wahlIds.length, positionIds: wahlIds },
+        ...fx.sollwerte.nichtAngeboten.map((positionId) => ({ code: 'nicht-angeboten', positionId })),
+      ]);
+    }
+  });
+
+  it('typisch-angebote, Bieter A, 02.0070 A gewählt: ersetzt 02.0070', () => {
+    const [fxA] = set.angebote;
+    if (fxA === undefined) throw new Error('Fixture ohne Angebote.');
+    const [alternative] = wahlIds;
+    const grund = fxTypisch.knoten.find((k) => k.id === alternative)?.grundpositionId;
+    const { befehl, warnungen } = erwarteOk(
+      zuschlagErteilen(
+        typisch,
+        angebotAusFixture(fxA, typisch),
+        fxProjekt,
+        gewaehlt(alternative ?? ''),
+        NEUE_ID,
+      ),
+    );
+    expect(warnungen).toEqual([{ code: 'positionen-entfallen', anzahl: 1, positionIds: [grund] }]);
+    // Sollwerte Bieter A: Netto 55.481,84, Titel 02 25.066,17; GP 02.0070 = 5.155,30, GP 02.0070 A = 5.774,21.
+    // Netto 55.481,84 − 5.155,30 + 5.774,21 = 56.100,75; MwSt 19 % = 10.659,14; Brutto 66.759,89.
+    // Titel 02: 25.066,17 − 5.155,30 + 5.774,21 = 25.685,08.
+    expect(fxA.sollwerte.positionen[grund ?? '']?.gp).toBe('5155.30');
+    expect(fxA.sollwerte.positionen[alternative ?? '']?.gp).toBe('5774.21');
+    const cs = imKern(befehl);
+    expect(cs.summen.gesamt).toMatchObject({
+      netto: '56100.75',
+      nettoNachNachlass: '56100.75',
+      mwst: '10659.14',
+      brutto: '66759.89',
+      summeWahl: '0.00',
+    });
+    const titel02 = fxTypisch.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === '02')?.id ?? '';
+    expect(titelsummen(cs)[titel02]).toBe('25685.08');
+  });
+
+  describe('zuschlag.json: ein Angebot mit den Preisen des LV', () => {
+    const { fx, zustand } = lvAusFixture('zuschlag');
+    const soll = (
+      fx as typeof fx & {
+        sollwerte: { summen: Record<string, string>; titel: Record<string, { summe: string }> };
+      }
+    ).sollwerte;
+    const positionen = zustand.leistungsverzeichnis.knoten.filter((k) => k.art === 'position');
+    const a = angebot(
+      'a-z',
+      zustand,
+      'w1',
+      positionen.map((p) =>
+        p.zuschlag === null ? ep(p.id, p.einheitspreis ?? '') : satz(p.id, p.zuschlag.prozentsatz ?? ''),
+      ),
+    );
+
+    it('alle drei Bezugsformen: Summen und Titelsummen wie die Sollwerte', () => {
+      const { befehl, warnungen } = erwarteOk(zuschlagErteilen(zustand, a, projektW, OHNE_WAHL, NEUE_ID));
+      expect(warnungen).toEqual([]);
+      const cs = imKern(befehl);
+      expect(cs.summen.gesamt).toMatchObject(soll.summen);
+      expect(titelsummen(cs)).toEqual(
+        Object.fromEntries(Object.entries(soll.titel).map(([id, t]) => [id, t.summe])),
+      );
+    });
+
+    it('eine Liste verliert den Bezug auf eine entfallene Grundposition: Basis leer, Betrag 0,00', () => {
+      // 02.0010 (100 m × 27,910 = 2.791,00) bekommt eine Alternative 02.0010 A (100 m × 25,000 = 2.500,00), gewählt.
+      // 01.03.0040 nennt nur 02.0010: Bezug entfernt, Betrag 0,00 statt 279,10.
+      // Netto 6.850,60 − 2.791,00 − 279,10 + 2.500,00 = 6.280,50; Titel 01 4.059,60 − 279,10 = 3.780,50; Titel 02 2.500,00.
+      const grund = positionen.find((p) => p.ordnungszahl === '02.0010');
+      const zu = positionen.find((p) => p.ordnungszahl === '01.03.0040');
+      if (grund === undefined || zu === undefined) throw new Error('zuschlag.json hat sich geändert.');
+      const alt = {
+        ...position('alt', grund.elternId, 1, '100.000', '25.000', wahl(null, null, grund.id)),
+        ordnungszahl: grund.ordnungszahl,
+        ozIndex: 'A',
+      };
+      const mitAlt = lvZustandAusInhalt(fx.id, {
+        ...zustand.leistungsverzeichnis,
+        wurzelId: zustand.leistungsverzeichnis.id,
+        knoten: [...zustand.leistungsverzeichnis.knoten, alt],
+      });
+      const aMitAlt = { ...a, positionen: [...a.positionen, ep('alt', '25.000')] };
+      const { befehl, warnungen } = erwarteOk(
+        zuschlagErteilen(mitAlt, aMitAlt, projektW, gewaehlt('alt'), NEUE_ID),
+      );
+      expect(warnungen).toEqual([
+        { code: 'positionen-entfallen', anzahl: 1, positionIds: [grund.id] },
+        { code: 'bezug-entfernt', positionId: zu.id, feld: 'zuschlag.bezug.positionen', zielId: grund.id },
+      ]);
+      const cs = imKern(befehl);
+      expect(cs.summen.positionen.find((p) => p.positionId === zu.id)?.gesamtpreis).toBe('0.00');
+      expect(cs.summen.gesamt?.netto).toBe('6280.50');
+      const titel = titelsummen(cs);
+      expect(titel[grund.elternId]).toBe('2500.00');
+      const titel01 = fx.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === '01')?.id ?? '';
+      expect(titel[titel01]).toBe('3780.50');
+    });
   });
 });

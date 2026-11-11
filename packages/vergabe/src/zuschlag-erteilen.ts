@@ -27,8 +27,17 @@ import type { Wahlgruppe } from './wahlgruppen';
  * - `bezug-entfernt`: ein Listenbezug einer Zuschlagsposition (`zuschlag.bezug.positionen`) oder ein
  *   `merkmale.wahl.grundpositionId` zeigte auf eine Position, die im Auftrags-LV nicht steht (entfallen oder im
  *   Papierkorb des LV); er ist entfernt, nicht umgelenkt.
+ * - `nicht-angeboten`: Der Bieter hat die Position nicht angeboten (oder keinen Eintrag); EP `null`, auch an einer
+ *   gewählten Alternative und an einer Zuschlagsposition (dort auch Satz `null`).
+ * - `zuschlagssatz-fehlt`: Eine Zuschlagsposition ist angeboten, aber ohne Satz des Bieters; Satz `null` (D-44.1).
+ * - `wahl-ohne-grundposition`: Eine gewählte Alternative hat in den Daten keine Grundposition und ersetzt nichts
+ *   (etwa ein LV nach einem X83-Rundweg, D-59.2).
+ * Je Position stehen die Preiswarnungen vor `wahl-ohne-grundposition` und den Bezügen.
  */
 export type Zuschlagswarnung =
+  | { readonly code: 'nicht-angeboten'; readonly positionId: PositionId }
+  | { readonly code: 'zuschlagssatz-fehlt'; readonly positionId: PositionId }
+  | { readonly code: 'wahl-ohne-grundposition'; readonly positionId: PositionId }
   | {
       readonly code: 'positionen-entfallen';
       readonly anzahl: number;
@@ -147,10 +156,12 @@ function auftragsKnoten(
   const lvId = lv.leistungsverzeichnis.id;
   const entfallen = new Set<string>();
   const normal = new Set<string>();
+  const ohneGrund = new Set<string>();
   for (const { gruppe, gewaehlt } of wahl) {
     if (gewaehlt === null) for (const id of gruppe.alternativen) entfallen.add(id);
     else {
       normal.add(gewaehlt);
+      if (gruppe.grundpositionen.length === 0) ohneGrund.add(gewaehlt);
       for (const id of [...gruppe.grundpositionen, ...gruppe.alternativen])
         if (id !== gewaehlt) entfallen.add(id);
     }
@@ -187,8 +198,13 @@ function auftragsKnoten(
     };
     if (k.art !== 'position') return { ...k, ...lage };
     const eintrag = nachId.get(k.id);
+    const angeboten = eintrag?.status === 'angeboten';
     const mitSatz = k.zuschlag !== null && k.zuschlag.prozentsatz !== null;
     const epa = eintrag?.status === 'angeboten' && !mitSatz ? eintrag.epa : null;
+    if (!angeboten) warnungen.push({ code: 'nicht-angeboten', positionId: k.id });
+    else if (k.zuschlag !== null && !mitSatz)
+      warnungen.push({ code: 'zuschlagssatz-fehlt', positionId: k.id });
+    if (ohneGrund.has(k.id)) warnungen.push({ code: 'wahl-ohne-grundposition', positionId: k.id });
     let { merkmale, zuschlag } = k;
     if (normal.has(k.id)) merkmale = { ...merkmale, wahl: null };
     const grund = merkmale.wahl?.grundpositionId ?? null;
