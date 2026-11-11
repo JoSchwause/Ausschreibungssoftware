@@ -72,13 +72,19 @@ function kopfFehler(k: Pick<Kostenermittlung, 'name' | 'stufe'>): Antwort | null
   return null;
 }
 
-function changeSet(vorher: Kostenermittlung | null, nachher: Kostenermittlung): Antwort {
+function changeSet(vorher: Kostenermittlung | null, nachher: Kostenermittlung | null): Antwort {
+  const id = (nachher ?? vorher)?.id;
+  if (id === undefined) throw new Error('ChangeSet ohne Kostenermittlung');
   return {
     ok: true,
-    wert: { art: 'kostenermittlung', kostenermittlungId: nachher.id, kostenermittlung: { vorher, nachher } },
+    wert: { art: 'kostenermittlung', kostenermittlungId: id, kostenermittlung: { vorher, nachher } },
   };
 }
 
+/**
+ * Führt einen Befehl an der Kostenermittlung aus. `KostenermittlungAnlegen` braucht `zustand === null`, jeder andere Befehl
+ * einen Zustand; sonst `befehl-nicht-zustaendig` (wie der Kern).
+ */
 export const kostenermittlungBefehlAusfuehren: KostenermittlungBefehlAusfuehren = (zustand, befehl) => {
   if (befehl.art === 'KostenermittlungAnlegen') {
     if (zustand !== null)
@@ -90,5 +96,29 @@ export const kostenermittlungBefehlAusfuehren: KostenermittlungBefehlAusfuehren 
     if (!Array.isArray(eintraege)) return eintraege;
     return changeSet(null, { ...k, eintraege });
   }
-  throw new Error(`noch nicht umgesetzt: ${befehl.art}`);
+  if (zustand === null)
+    return nein('befehl-nicht-zustaendig', `${befehl.art}: keine Kostenermittlung übergeben.`);
+  const k = zustand.kostenermittlung;
+  switch (befehl.art) {
+    case 'KostenermittlungskopfSetzen': {
+      const f = kopfFehler(befehl);
+      if (f) return f;
+      return changeSet(k, { ...k, name: befehl.name, stufe: befehl.stufe });
+    }
+    case 'KostenermittlungseintragSetzen': {
+      const f = eintragFehler(befehl.eintrag);
+      if (f) return f;
+      const neu = normal(befehl.eintrag);
+      const uebrige = k.eintraege.filter((e) => e.nummer !== neu.nummer);
+      const eintraege = [...uebrige, neu].sort((a, b) => kgVergleichen(a.nummer, b.nummer));
+      return changeSet(k, { ...k, eintraege });
+    }
+    case 'KostenermittlungseintragEntfernen': {
+      if (!k.eintraege.some((e) => e.nummer === befehl.nummer))
+        return nein('ungueltige-eingabe', `Kein Eintrag zur Nummer ${befehl.nummer}`, 'nummer');
+      return changeSet(k, { ...k, eintraege: k.eintraege.filter((e) => e.nummer !== befehl.nummer) });
+    }
+    case 'KostenermittlungLoeschen':
+      return changeSet(k, null);
+  }
 };

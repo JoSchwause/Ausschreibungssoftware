@@ -96,3 +96,89 @@ describe('kostenermittlungBefehlAusfuehren: KostenermittlungAnlegen', () => {
     expect(r.ok).toBe(true);
   });
 });
+
+/** Die Kostenermittlung nach einem angenommenen Befehl; ein Fehler bricht den Test ab. */
+function nachher(befehl: Parameters<typeof kostenermittlungBefehlAusfuehren>[1]): Kostenermittlung | null {
+  const r = kostenermittlungBefehlAusfuehren(ZUSTAND, befehl);
+  if (!r.ok) throw new Error(r.fehler.meldung);
+  expect(r.wert.kostenermittlung.vorher).toEqual(KB);
+  expect(r.wert.kostenermittlungId).toBe(ID);
+  return r.wert.kostenermittlung.nachher;
+}
+
+describe('kostenermittlungBefehlAusfuehren: Befehle an einer bestehenden Kostenermittlung', () => {
+  it('KostenermittlungskopfSetzen setzt Name und Stufe, die Einträge bleiben', () => {
+    expect(nachher({ art: 'KostenermittlungskopfSetzen', name: 'KA 2', stufe: 'kostenanschlag' })).toEqual({
+      ...KB,
+      name: 'KA 2',
+      stufe: 'kostenanschlag',
+    });
+  });
+
+  it('KostenermittlungseintragSetzen fügt einen neuen Eintrag an seiner Stelle ein', () => {
+    expect(
+      nachher({ art: 'KostenermittlungseintragSetzen', eintrag: eintrag('350', '5.00') })?.eintraege,
+    ).toEqual([
+      eintrag('330', '15.00', 'Außenwände'),
+      eintrag('340', '10.00'),
+      eintrag('350', '5.00'),
+      eintrag('410', '25.00'),
+    ]);
+  });
+
+  it('KostenermittlungseintragSetzen ersetzt den Eintrag derselben Nummer; leere Bemerkung fällt weg', () => {
+    expect(
+      nachher({ art: 'KostenermittlungseintragSetzen', eintrag: eintrag('330', '17.50', '') })?.eintraege,
+    ).toEqual([eintrag('330', '17.50'), eintrag('340', '10.00'), eintrag('410', '25.00')]);
+  });
+
+  it('KostenermittlungseintragEntfernen entfernt den Eintrag der Nummer', () => {
+    expect(nachher({ art: 'KostenermittlungseintragEntfernen', nummer: kg('340') })?.eintraege).toEqual([
+      eintrag('330', '15.00', 'Außenwände'),
+      eintrag('410', '25.00'),
+    ]);
+  });
+
+  it('KostenermittlungLoeschen: nachher null, vorher der volle Stand', () => {
+    expect(nachher({ art: 'KostenermittlungLoeschen' })).toBeNull();
+  });
+
+  it.each([
+    [
+      'Eintrag mit ungültiger Nummer',
+      { art: 'KostenermittlungseintragSetzen', eintrag: eintrag('33', '1.00') },
+      'nummer',
+    ],
+    [
+      'Eintrag mit ungültigem Betrag',
+      { art: 'KostenermittlungseintragSetzen', eintrag: eintrag('330', '1') },
+      'betrag',
+    ],
+    [
+      'Entfernen einer fehlenden Nummer',
+      { art: 'KostenermittlungseintragEntfernen', nummer: kg('350') },
+      'nummer',
+    ],
+    [
+      'Kopf mit unbekannter Stufe',
+      { art: 'KostenermittlungskopfSetzen', name: 'x', stufe: 'kosten' },
+      'stufe',
+    ],
+  ] as const)('weist ab: %s', (_, befehl, feld) => {
+    const r = kostenermittlungBefehlAusfuehren(
+      ZUSTAND,
+      befehl as Parameters<typeof kostenermittlungBefehlAusfuehren>[1],
+    );
+    expect(r.ok ? null : [r.fehler.code, r.fehler.feld]).toEqual(['ungueltige-eingabe', feld]);
+  });
+
+  it.each([
+    { art: 'KostenermittlungskopfSetzen', name: 'x', stufe: 'kostenrahmen' },
+    { art: 'KostenermittlungseintragSetzen', eintrag: eintrag('330', '1.00') },
+    { art: 'KostenermittlungseintragEntfernen', nummer: kg('330') },
+    { art: 'KostenermittlungLoeschen' },
+  ] as const)('ohne Kostenermittlung: befehl-nicht-zustaendig ($art)', (befehl) => {
+    const r = kostenermittlungBefehlAusfuehren(null, befehl);
+    expect(r.ok ? null : r.fehler.code).toBe('befehl-nicht-zustaendig');
+  });
+});
