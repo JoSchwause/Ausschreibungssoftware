@@ -2,8 +2,8 @@
 // Property-Test `nachtragUebernehmen` (Ticket 80, Q1): Für beliebige kleine Auftrags-LVs und Nachtrags-LVs (Titel oder Lose,
 // Hinweistexte, Alternativen, Zuschlagspositionen, Preise angeboten, nicht angeboten oder ohne Eintrag) ist das Ergebnis ein
 // Befehl, den der Kern annimmt: die Baumregeln (`baumfehler`) gelten für den Baum danach, F1 auf der obersten Ebene, jede
-// Kennung des Nachtrags außer den Alternativen genau einmal, unter genau einer neuen Gliederung am Ende. Sobald Ticket 71
-// gemergt ist, führt der Kern den Befehl zusätzlich aus (`kernAusfuehrung`).
+// Kennung des Nachtrags außer den Alternativen genau einmal, unter genau einer neuen Gliederung am Ende; der Kern führt den
+// Befehl aus (Ticket 71), und seine Summen danach sind die einer vollen Neuberechnung.
 
 import fc from 'fast-check';
 import { baumfehler, summenBerechnen } from '@tethys/kern';
@@ -27,7 +27,7 @@ import {
   ep,
   erwarteOk,
   hinweis,
-  kernAusfuehrung,
+  imKernUebernehmen,
   los,
   lvZustand,
   nichtAngeboten,
@@ -159,9 +159,15 @@ describe('nachtragUebernehmen: Eigenschaften', () => {
           const drin = new Set<string>(befehl.knoten.map((k) => k.id));
           for (const k of rest) expect(drin.has(k.elternId)).toBe(true);
 
-          summenBerechnen({ id: a.id, knoten: danach, nachlass: a.nachlass, mwstSatz: a.mwstSatz });
-          const cs = kernAusfuehrung(al, befehl);
-          if (cs !== null) expect(cs.knoten.hinzugefuegt).toHaveLength(befehl.knoten.length);
+          const voll = summenBerechnen({
+            id: a.id,
+            knoten: danach,
+            nachlass: a.nachlass,
+            mwstSatz: a.mwstSatz,
+          });
+          const imKern = imKernUebernehmen(al, befehl).danach;
+          expect(imKern.auftragsLeistungsverzeichnis.knoten).toHaveLength(danach.length);
+          expect(imKern.summen.gesamt).toEqual(voll.gesamt);
         },
       ),
       { numRuns: 150 },

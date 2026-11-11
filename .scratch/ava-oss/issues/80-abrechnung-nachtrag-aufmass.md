@@ -77,12 +77,13 @@ OZ); Property-Test über zufällige Auftrags- und Nachtrags-LVs (Baumregeln des 
 anwenden ∘ umkehren = Identität für jeden Befehl (500 Läufe), `aufmassPruefen` (die M4-Blätter ohne Befund; jeder
 Befundcode), `naechsteAufmassnummer`.
 
-**Ticket 71:** Der Test „der Kern führt den Befehl aus“ und der Property-Test rufen `auftragsLvBefehlAusfuehren` über
-`kernAusfuehrung` (`testhilfen.ts`). Solange der Kern mit `befehl-nicht-zustaendig` und dem Vermerk „Ticket 71“ abweist
-(mechanische Zeile aus Ticket 70), prüfen sie nur Baumregeln und Summen; nach dem Merge von 71 prüfen sie die Annahme und die
-Summen des ChangeSets (jede andere Abweisung lässt sie scheitern). Kein `skip`, kein `todo`. Probe: Mit
-`welle-5/71-kern-v1.4` (Stand `e984e9a`, nur zur Probe gemergt und verworfen) sind alle 57 Tests grün, der Kern nimmt den
-M4-Nachtrag an und kommt auf die Summen der Fixture.
+**Ticket 71:** Bis zum Merge von 71 rief eine Hilfe `auftragsLvBefehlAusfuehren` und nahm die Abweisung „zuständig: Ticket
+71“ (mechanische Zeile aus Ticket 70) hin, geprüft wurden dann nur Baumregeln und Summen; eine Probe mit
+`welle-5/71-kern-v1.4` (`e984e9a`, nur zur Probe gemergt und verworfen) war grün. 71 ist inzwischen in `integration/welle-5`
+(`c17de09`); nach dem Merge führen die Tests den Befehl im Kern aus und wenden ihn an (`imKernUebernehmen` in
+`testhilfen.ts`, jede Abweisung lässt den Test scheitern): Golden (Summen des ChangeSets und des Zustands danach = Fixture),
+zweite Übernahme, Property-Test (Summen des Kerns danach = volle Neuberechnung), die Auftrags-LVs „nach der Übernahme“ in
+den Tests von `aufmassPruefen` und `nachtragsbefunde`. Kein `skip`, kein `todo`.
 
 ### Entscheidungen (Frage, Entscheidung, Grund)
 
@@ -135,7 +136,7 @@ M4-Nachtrag an und kommt auf die Summen der Fixture.
 
 ### Prüfung
 
-Nach dem Merge von `integration/welle-5` (`938ea1d`): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck
+Nach dem Merge von `integration/welle-5` (`938ea1d`, vor Ticket 71): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck
 && pnpm test` grün: Vitest 166 Dateien, 2271 Tests bestanden, 2 übersprungen wie zuvor; Fixtures 29/29. Ein erster Lauf
 der Suite (Last 17 auf 4 Kernen) scheiterte nur am Leistungsbudget `packages/vergabe/src/leistung.test.ts`
 „preisspiegelBerechnen für gross mit 5 Angeboten unter 1000 ms“ (3.738 ms); die Datei allein grün (1.390 ms gemeldet), der

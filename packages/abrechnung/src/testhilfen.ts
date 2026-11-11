@@ -8,7 +8,12 @@
 // Bieters, Nachlass des Angebots. Der Test vergleicht seine Summen mit den Sollwerten der Fixture.
 
 import { readFileSync } from 'node:fs';
-import { auftragsLvBefehlAusfuehren, lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
+import {
+  auftragsLvBefehlAusfuehren,
+  auftragsLvChangeSetAnwenden,
+  lvBefehlAusfuehren,
+  lvChangeSetAnwenden,
+} from '@tethys/kern';
 import type {
   Angebot,
   AngebotId,
@@ -107,29 +112,20 @@ export function lvZustand(
 }
 
 /**
- * Führt `NachtragUebernehmen` im Kern aus (`auftragsLvBefehlAusfuehren`, Ticket 71). Solange Ticket 71 nicht gemergt ist,
- * weist der Kern den Befehl mit `befehl-nicht-zustaendig` und dem Vermerk „Ticket 71“ ab (mechanische Zeile aus Ticket 70);
- * dann liefert die Hilfe `null`, und die Tests prüfen nur die Baumregeln (`baumfehler`) und die Summen (`summenBerechnen`).
- * Danach liefert sie das ChangeSet; jede andere Abweisung lässt den Test scheitern.
+ * Führt `NachtragUebernehmen` im Kern aus (`auftragsLvBefehlAusfuehren`, Ticket 71) und wendet das ChangeSet an. Jede
+ * Abweisung lässt den Test scheitern: Das Ergebnis von `nachtragUebernehmen` muss der Kern annehmen.
  */
-export function kernAusfuehrung(
+export function imKernUebernehmen(
   z: AuftragsLvZustand,
   befehl: NachtragUebernehmen,
-): AuftragsLvChangeSet | null {
-  const antwort = auftragsLvBefehlAusfuehren(z, befehl);
-  if (
-    !antwort.ok &&
-    antwort.fehler.code === 'befehl-nicht-zustaendig' &&
-    /Ticket 71/.test(antwort.fehler.meldung)
-  )
-    return null;
-  return erwarteOk(antwort);
+): { cs: AuftragsLvChangeSet; danach: AuftragsLvZustand } {
+  const cs = erwarteOk(auftragsLvBefehlAusfuehren(z, befehl));
+  const danach = auftragsLvChangeSetAnwenden(z, cs);
+  if (danach === null) throw new Error('Das ChangeSet entfernt das Auftrags-LV.');
+  return { cs, danach };
 }
 
-/**
- * Legt ein Auftrags-LV über den Kern an. Den Zustand baut die Hilfe aus dem ChangeSet des Anlegens (Kopf, Knoten, Summen),
- * weil `auftragsLvChangeSetAnwenden` erst mit Ticket 71 kommt.
- */
+/** Legt ein Auftrags-LV über den Kern an und wendet das ChangeSet an. */
 export function auftragsLvZustand(a: AuftragsLeistungsverzeichnis): AuftragsLvZustand {
   const cs = erwarteOk(
     auftragsLvBefehlAusfuehren(null, {
@@ -137,13 +133,9 @@ export function auftragsLvZustand(a: AuftragsLeistungsverzeichnis): AuftragsLvZu
       auftragsLeistungsverzeichnis: a,
     }),
   );
-  const kopf = cs.kopf?.nachher;
-  const gesamt = cs.summen.gesamt;
-  if (!kopf || gesamt === null) throw new Error('Anlegen ohne Kopf oder Gesamtsummen');
-  return {
-    auftragsLeistungsverzeichnis: { ...kopf, knoten: cs.knoten.hinzugefuegt },
-    summen: { positionen: cs.summen.positionen, gliederungen: cs.summen.gliederungen, gesamt },
-  };
+  const z = auftragsLvChangeSetAnwenden(null, cs);
+  if (z === null) throw new Error('Das ChangeSet entfernt das Auftrags-LV.');
+  return z;
 }
 
 // --- Kleine Bäume von Hand -------------------------------------------------------------------------------------------

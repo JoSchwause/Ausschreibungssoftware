@@ -11,6 +11,7 @@ import {
   PROJEKT,
   auftragsLvZustand,
   erwarteOk,
+  imKernUebernehmen,
   lvZustand,
   m4AuftragsLv,
   m4Nachtrag,
@@ -33,7 +34,7 @@ describe('nachtragsbefunde', () => {
     ),
   );
   const a = vorher.auftragsLeistungsverzeichnis;
-  const nachher = auftragsLvZustand({ ...a, knoten: [...a.knoten, ...befehl.knoten] });
+  const nachher = imKernUebernehmen(vorher, befehl).danach;
   const positionen = nachtrag.lv.leistungsverzeichnis.knoten
     .filter((k) => k.art === 'position')
     .map((k) => k.id);

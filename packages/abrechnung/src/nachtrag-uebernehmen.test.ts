@@ -27,12 +27,11 @@ import {
   abrechnungsFixture,
   angebot,
   auftragsLv,
-  auftragsLvZustand,
   ep,
   erwarteFehler,
   erwarteOk,
   fxKnoten,
-  kernAusfuehrung,
+  imKernUebernehmen,
   lvZustand,
   m4AuftragsLv,
   m4Nachtrag,
@@ -131,14 +130,14 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
       expect(summen.gliederungen.find((g) => g.gliederungId === id)?.summe).toBe(summe);
   });
 
-  it('der Kern führt den Befehl aus und kommt auf die Summen der Fixture (aktiv, sobald Ticket 71 gemergt ist)', () => {
+  it('der Kern führt den Befehl aus (Ticket 71) und kommt auf die Summen der Fixture', () => {
     const { befehl } = erwarteOk(
       nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids),
     );
-    const cs = kernAusfuehrung(auftrag, befehl);
-    if (cs === null) return; // Ticket 71 fehlt noch: Baumregeln und Summen prüft der Test darüber.
+    const { cs, danach } = imKernUebernehmen(auftrag, befehl);
     expect(cs.knoten.hinzugefuegt.map((k) => k.id)).toEqual(befehl.knoten.map((k) => k.id));
     expect(cs.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
+    expect(danach.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
   });
 });
 
@@ -238,8 +237,7 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
     const { befehl } = erwarteOk(
       nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids),
     );
-    const a = auftrag.auftragsLeistungsverzeichnis;
-    const danach = auftragsLvZustand({ ...a, knoten: [...a.knoten, ...befehl.knoten] });
+    const { danach } = imKernUebernehmen(auftrag, befehl);
     const [, ersterNachtragsknoten] = befehl.knoten;
     expect(fehlerVon(nachtrag.lv, nachtrag.angebot, auftragsangebot, danach)).toMatchObject({
       code: 'id-vergeben',

@@ -16,7 +16,7 @@ import { aufmassPruefen, naechsteAufmassnummer } from './aufmass-pruefen';
 import { nachtragUebernehmen } from './nachtrag-uebernehmen';
 import {
   abrechnungsFixture,
-  auftragsLvZustand,
+  imKernUebernehmen,
   erwarteOk,
   fxAufmass,
   m4AuftragsLv,
@@ -33,7 +33,7 @@ function m4MitNachtrag(): ReturnType<typeof m4AuftragsLv> {
   const { befehl } = erwarteOk(
     nachtragUebernehmen(auftrag, n.lv, n.angebot, { id: a.angebotId, bieterId: n.angebot.bieterId }, ids),
   );
-  return auftragsLvZustand({ ...a, knoten: [...a.knoten, ...befehl.knoten] });
+  return imKernUebernehmen(auftrag, befehl).danach;
 }
 
 const zeile = (positionId: string, menge: string | null): Aufmassposition => ({
