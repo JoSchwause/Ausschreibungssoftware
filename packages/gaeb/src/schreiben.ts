@@ -13,8 +13,10 @@
 
 import type {
   Auftraggeber,
+  AuftragsLeistungsverzeichnis,
   Betrag,
   Einheitspreisanteile,
+  EpaBezeichnung,
   GaebExport,
   GaebVersion,
   Hinweistext,
@@ -28,9 +30,11 @@ import type {
   Pruefbefund,
   Summenstand,
   Vergabeinformationen,
+  WurzelId,
 } from '@tethys/vertrag';
 import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
+import { EPA_ARTEN, TYP_DER_ART, deuteBeschriftung } from './epa';
 import type { Attribute } from './ausgabe';
 import { schreibeDetailtext, schreibeEinzeiler, schreibeKurztext } from './text-schreiben';
 import type { TextMelder } from './text-schreiben';
@@ -49,8 +53,8 @@ export interface SchreibOptionen {
   readonly summen?: Summenstand;
   /** Basis je Zuschlagsposition (Summe der GP ihrer Bezugspositionen, vom Kern). Für `ITMarkup` in X86. */
   readonly zuschlagsbasen?: ReadonlyMap<PositionId, Betrag>;
-  /** Name des Auftragnehmers für `CTR` in X86 (der Bieter des beauftragten Angebots). */
-  readonly auftragnehmer?: string;
+  // v1.3 (Ticket 68): Der Auftragnehmer für `CTR` kommt aus dem Modell (`LvInhaltKopf.auftragnehmer`), nicht mehr aus
+  // einer Option (Review von Ticket 53: das Modell gewinnt).
 }
 
 /** `GAEBInfo/VersDate` je Version (Schemastand). */
@@ -145,6 +149,16 @@ function kuenstlicheWahlnummern(
   return aus;
 }
 
+/**
+ * Was der Writer schreibt: der Inhalt eines LV oder ein Auftrags-LV (v1.3, Ticket 68). Beide tragen denselben Kopf
+ * (`LvInhaltKopf`) und Knoten; die Wurzel des Auftrags-LV ist seine Kennung (`WurzelId`).
+ */
+type Inhalt = Omit<LvInhalt, 'wurzelId'> & { readonly wurzelId: WurzelId };
+
+function alsInhalt(q: LvInhalt | AuftragsLeistungsverzeichnis): Inhalt {
+  return 'wurzelId' in q ? q : { ...q, wurzelId: q.id };
+}
+
 interface Verworfen {
   anzahl: number;
   readonly knotenId: string | undefined;
@@ -160,12 +174,15 @@ class Schreiber {
   private readonly ozGesehen = new Set<string>();
   private readonly positionssummen = new Map<string, Betrag | null>();
   private readonly gliederungssummen = new Map<string, Betrag>();
+  /** `true`: BoQInfo trägt `NoUPComps`/`LblUPComp` (aus dem LV, sonst in X86 mit Anteilen die feste Belegung). */
   private readonly mitAnteilen: boolean;
+  /** EPA-Bezeichnungen des LV nach Nummer (v1.3, D-28); `null`: feste Belegung des Writers. */
+  private readonly bezeichnungen: readonly EpaBezeichnung[] | null;
   private readonly kuenstlicheWahl: ReadonlyMap<string, Wahlnummer>;
   private freiBezeichnung: string | null = null;
 
   constructor(
-    private readonly inhalt: LvInhalt,
+    private readonly inhalt: Inhalt,
     private readonly opt: SchreibOptionen,
   ) {
     for (const k of inhalt.knoten) {
@@ -179,8 +196,12 @@ class Schreiber {
       for (const p of opt.summen.positionen) this.positionssummen.set(p.positionId, p.gesamtpreis);
       for (const g of opt.summen.gliederungen) this.gliederungssummen.set(g.gliederungId, g.summe);
     }
+    const b = inhalt.epaBezeichnungen;
+    this.bezeichnungen =
+      b === undefined || b.length === 0 ? null : [...b].sort((x, y) => x.nummer - y.nummer);
     this.mitAnteilen =
-      opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null);
+      this.bezeichnungen !== null ||
+      (opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null));
   }
 
   get x86(): boolean {
@@ -357,22 +378,20 @@ class Schreiber {
         );
       this.auftraggeber(ag);
     }
+    const an = this.inhalt.auftragnehmer;
     if (this.x86) {
-      if (this.opt.auftragnehmer === undefined)
+      if (an === undefined)
         this.melde(
           'warnung',
           'angabe-leer',
-          'X86 verlangt einen Auftragnehmer (CTR); der Aufrufer hat keinen genannt, die Adresse wird leer geschrieben.',
+          'X86 verlangt einen Auftragnehmer (CTR); das LV hat keinen, die Adresse wird leer geschrieben.',
           undefined,
           'auftragnehmer',
         );
       this.aus.element('CTR', [], () => {
-        this.adresse(
-          { name: this.opt.auftragnehmer ?? null, strasse: null, plz: null, ort: null },
-          'auftragnehmer',
-        );
+        this.adresse(an ?? { name: null, strasse: null, plz: null, ort: null }, 'auftragnehmer');
       });
-    }
+    } else if (an !== undefined) this.verwirf('Auftragnehmer (CTR gibt es nur in X86)');
   }
 
   private adresse(ag: Pick<Auftraggeber, 'name' | 'strasse' | 'plz' | 'ort'>, feld: string): void {
@@ -511,7 +530,16 @@ class Schreiber {
 
   // --- Preise (X86) -----------------------------------------------------------------------------------------
 
+  /**
+   * `NoUPComps` und `LblUPComp<n>` (v1.3, Ticket 68, D-28). Mit EPA-Bezeichnungen im LV (X81, X83, X86): genau deren
+   * Nummern, nie umnummeriert; eine Lücke bleibt eine Lücke (das XSD lässt jedes `LblUPComp<n>` weg), `NoUPComps` ist
+   * die höchste Nummer, mindestens 2 (das XSD kennt 1 nicht). Ohne das Feld: die feste Belegung (nur X86 mit Anteilen).
+   */
   private anteilsbezeichnungen(): void {
+    if (this.bezeichnungen !== null) {
+      this.bezeichnungenAusLv(this.bezeichnungen);
+      return;
+    }
     const a = this.aus;
     a.blatt('NoUPComps', '6');
     for (const k of this.inhalt.knoten)
@@ -531,7 +559,53 @@ class Schreiber {
     );
   }
 
+  private bezeichnungenAusLv(liste: readonly EpaBezeichnung[]): void {
+    const a = this.aus;
+    const nummern = new Set(liste.map((e) => e.nummer));
+    const arten = new Set(liste.map((e) => e.anteil));
+    if (nummern.size !== liste.length || arten.size !== liste.length)
+      this.fehler(
+        'wert-ungueltig',
+        'Die EPA-Bezeichnungen nennen eine Nummer oder einen Anteil mehrfach.',
+        undefined,
+        'epaBezeichnungen',
+      );
+    const hoechste = Math.max(2, ...liste.map((e) => e.nummer));
+    a.blatt('NoUPComps', String(hoechste));
+    for (const e of liste) {
+      const name = `LblUPComp${String(e.nummer)}`;
+      const typ = TYP_DER_ART[e.anteil];
+      const text = this.text(e.bezeichnung ?? '', 20, `Die Bezeichnung ${name}`, 'epaBezeichnungen');
+      const gelesen = deuteBeschriftung(text, typ).anteil;
+      if (gelesen !== e.anteil)
+        this.melde(
+          'warnung',
+          'epa-beschriftung-mehrdeutig',
+          `${name} „${text}“ (Type ${typ}) steht für den Anteil ${e.anteil}, wird beim Lesen aber als ${gelesen} ` +
+            'gedeutet: die Bezeichnung nennt eine andere Art, oder GAEB hat für die Art keinen eigenen Typ.',
+          undefined,
+          'epaBezeichnungen',
+        );
+      a.blatt(name, text, [['Type', typ]]);
+    }
+  }
+
   private anteile(epa: Einheitspreisanteile, id: string): void {
+    if (this.bezeichnungen !== null) {
+      const liste = this.bezeichnungen;
+      for (const e of liste) {
+        const w = epa[e.anteil];
+        if (w !== null)
+          this.aus.blatt(
+            `UPComp${String(e.nummer)}`,
+            this.zahl(w, 'einheitspreis', 'Der EP-Anteil', id, 'epa'),
+          );
+      }
+      for (const art of EPA_ARTEN)
+        if (epa[art] !== null && !liste.some((e) => e.anteil === art))
+          this.verwirf('EP-Anteil ohne Nummer in den EPA-Bezeichnungen des LV', id);
+      return;
+    }
     if (epa.freiBezeichnung !== null && epa.freiBezeichnung !== this.freiBezeichnung)
       this.verwirf('Abweichende Bezeichnung des freien EP-Anteils (GAEB kennt eine je LV)', id);
     const werte = [epa.lohn, epa.stoffe, epa.geraete, epa.nachunternehmer, epa.sonstiges, epa.frei];
@@ -964,10 +1038,14 @@ function kommentar(s: string): string {
 
 /**
  * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
- * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5).
+ * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
+ * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
  */
-export function schreibeGaeb(inhalt: LvInhalt, optionen: SchreibOptionen): GaebExport {
-  const s = new Schreiber(inhalt, optionen);
+export function schreibeGaeb(
+  inhalt: LvInhalt | AuftragsLeistungsverzeichnis,
+  optionen: SchreibOptionen,
+): GaebExport {
+  const s = new Schreiber(alsInhalt(inhalt), optionen);
   s.schreibe();
   s.abschliessen();
   const fehler = s.befunde.filter((b) => b.schwere === 'fehler');
