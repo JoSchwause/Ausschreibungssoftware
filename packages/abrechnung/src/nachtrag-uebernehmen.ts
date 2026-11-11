@@ -96,7 +96,7 @@ function nein(code: Befehlsfehlercode, meldung: string, feld?: string, knotenId?
 }
 
 /** Eine Alternative: Wahl mit Variante ≠ 0 (Variante `null` eingeschlossen, D-37.1, wie `vergabe`). */
-export const istAlternative = (k: Knoten): k is Position =>
+export const istAlternative = (k: Knoten): boolean =>
   k.art === 'position' && k.merkmale.wahl !== null && k.merkmale.wahl.variante !== 0;
 
 /** Kinder je Elternknoten in Geschwisterreihenfolge. */
@@ -329,7 +329,7 @@ export function nachtragUebernehmen(
   const nachId = new Map<string, Angebotsposition>(an.positionen.map((p) => [p.positionId, p]));
   const warnungen: Nachtragswarnung[] = [];
   if (an.nachlass !== null) warnungen.push({ code: 'nachlass-ignoriert', nachlass: an.nachlass });
-  const alternativen = l.knoten.filter(istAlternative).map((p) => p.id);
+  const alternativen = l.knoten.filter(istAlternative).map((p) => p.id as PositionId);
   if (alternativen.length > 0)
     warnungen.push({
       code: 'alternativen-entfallen',
