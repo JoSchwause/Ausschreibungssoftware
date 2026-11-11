@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Ticket 64: das Auftrags-LV in der App. Anlegen nur über den Befehlsweg (A5, U7: ein Befehl, ein Undo-Schritt), lesen
-// über die Projektdatei, weil `Speicher` (Vertrag v1.3) kein Repository für Auftrags-LVs hat (D-64.2). Keine Rechnung
-// hier: Summen kommen aus dem Kern (`auftragsLvBefehlAusfuehren`), die Umkehrung ist die des Kerns für LV-ChangeSets,
-// auf das gleich gebaute ChangeSet des Auftrags-LV übertragen.
+// Ticket 64: das Auftrags-LV in der App. Anlegen nur über den Befehlsweg (A5, U7: ein Befehl, ein Undo-Schritt). Keine
+// Rechnung hier: Summen kommen aus dem Kern (`auftragsLvBefehlAusfuehren`). Ticket 86: gelesen wird über das Repository
+// `speicher.auftragsLeistungsverzeichnisse` (Vertrag v1.4) statt über den Export der Projektdatei (D-64.2), die Umkehrung
+// ist `auftragsLvChangeSetUmkehren` des Kerns (D-64.4 entfällt).
 
-import { auftragsLvBefehlAusfuehren, changeSetUmkehren } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
 import type {
   AuftragsLeistungsverzeichnisAnlegen,
   AuftragsLeistungsverzeichnisId,
-  AuftragsLvChangeSet,
+  AuftragsLvUebersicht,
   AuftragsLvZustand,
   Ergebnis,
   LeistungsverzeichnisId,
-  LvChangeSet,
   LvZustand,
-  Projektdatei,
   ProjektId,
   Speicher,
   Speicherfehler,
@@ -23,16 +21,33 @@ import type { Teil } from '../historie/historie';
 import { eintragSchreiben, type Abweisung, type Befehlsweg } from '../lv/befehlsweg';
 import { inhaltKopf } from '../lv/inhalt';
 
-/** Die Auftrags-LVs eines Projekts, aus der Projektdatei des Speichers (D-64.2). */
+/** Die Auftrags-LVs eines Projekts, ganz (mit Knoten und Summen), in der Reihenfolge des Repositorys (Name). */
 export async function auftragsLvsLaden(
   speicher: Speicher,
   projektId: ProjektId,
 ): Promise<Ergebnis<readonly AuftragsLvZustand[], Speicherfehler>> {
-  const r = await speicher.projektdateiExportieren(projektId);
-  if (!r.ok) return r;
-  // Dezimalwerte stehen in der Datei als Zeichenketten, also in der Form des Vertrags (G-56).
-  const datei = JSON.parse(r.wert) as Pick<Projektdatei, 'auftragsLeistungsverzeichnisse'>;
-  return { ok: true, wert: datei.auftragsLeistungsverzeichnisse };
+  const liste = await speicher.auftragsLeistungsverzeichnisse.auflisten(projektId);
+  if (!liste.ok) return liste;
+  const auftraege: AuftragsLvZustand[] = [];
+  for (const { id } of liste.wert) {
+    const a = await speicher.auftragsLeistungsverzeichnisse.laden(id);
+    if (!a.ok) return a;
+    auftraege.push(a.wert);
+  }
+  return { ok: true, wert: auftraege };
+}
+
+/** Das Auftrags-LV zu einem Ausschreibungs-LV aus der Übersicht, ohne die übrigen zu laden; `null`: keines (D-21). */
+export async function auftragZumLvLaden(
+  speicher: Speicher,
+  projektId: ProjektId,
+  lvId: LeistungsverzeichnisId,
+): Promise<Ergebnis<AuftragsLvZustand | null, Speicherfehler>> {
+  const liste = await speicher.auftragsLeistungsverzeichnisse.auflisten(projektId);
+  if (!liste.ok) return liste;
+  const u: AuftragsLvUebersicht | undefined = liste.wert.find((a) => a.leistungsverzeichnisId === lvId);
+  if (u === undefined) return { ok: true, wert: null };
+  return speicher.auftragsLeistungsverzeichnisse.laden(u.id);
 }
 
 /** Das Auftrags-LV zu einem Ausschreibungs-LV; es gibt höchstens eines (D-21). */
@@ -61,11 +76,10 @@ export function zuschlagserteilungSpeichern(
   const u = weg.umgebung;
   const a = befehl.auftragsLeistungsverzeichnis;
   return weg.reihe(async (): Promise<Zuschlagserteilungsausgang> => {
-    const vorhanden = await auftragsLvsLaden(u.speicher, a.projektId);
+    const vorhanden = await auftragZumLvLaden(u.speicher, a.projektId, a.leistungsverzeichnisId);
     if (!vorhanden.ok)
       return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: vorhanden.fehler } };
-    const auftrag = auftragZumLv(vorhanden.wert, a.leistungsverzeichnisId);
-    if (auftrag !== null) return { ok: false, art: 'schon-vergeben', auftrag };
+    if (vorhanden.wert !== null) return { ok: false, art: 'schon-vergeben', auftrag: vorhanden.wert };
     const r = auftragsLvBefehlAusfuehren(null, befehl);
     if (!r.ok) return { ok: false, art: 'abweisung', abweisung: { art: 'befehl', fehler: r.fehler } };
     const eintrag = {
@@ -87,28 +101,6 @@ export function zuschlagserteilungSpeichern(
     weg.historie.aufnehmen([teil]);
     return { ok: true, id: a.id };
   });
-}
-
-/**
- * Umkehrung eines ChangeSets am Auftrags-LV (Undo/Redo). Das ChangeSet ist gleich gebaut wie das des LV (Vertrag); die
- * Knoten und Summen kehrt deshalb `changeSetUmkehren` des Kerns um, Kennung und Kopf werden nur vertauscht.
- */
-export function auftragsLvChangeSetUmkehren(cs: AuftragsLvChangeSet): AuftragsLvChangeSet {
-  const alsLv: LvChangeSet = {
-    art: 'leistungsverzeichnis',
-    leistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId as string as LeistungsverzeichnisId,
-    kopf: null,
-    knoten: cs.knoten,
-    summen: cs.summen,
-  };
-  const u = changeSetUmkehren(alsLv);
-  return {
-    art: cs.art,
-    auftragsLeistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId,
-    kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
-    knoten: u.knoten,
-    summen: u.summen,
-  };
 }
 
 /**

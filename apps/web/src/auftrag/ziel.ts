@@ -5,7 +5,10 @@
 import type { Aenderung, AuftragsLeistungsverzeichnisId, AuftragsLvKopf, ProjektId } from '@tethys/vertrag';
 import { preisspiegelPfad } from '../vergabe/pfad';
 
-/** Seite eines Auftrags-LV. Mit Projekt, weil das Auftrags-LV nur über die Projektdatei zu laden ist (D-64.2). */
+/**
+ * Seite eines Auftrags-LV. Mit Projekt (D-64.3): Seit Ticket 86 lädt die Seite über das Repository, die Adresse bleibt, damit
+ * Lesezeichen weiter gelten.
+ */
 export function auftragPfad(projektId: ProjektId, id: AuftragsLeistungsverzeichnisId): string {
   return `/projekt/${projektId}/auftrag/${id}`;
 }

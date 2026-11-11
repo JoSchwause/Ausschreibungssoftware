@@ -99,12 +99,14 @@ export function zuschlagserteilungPlanen(e: Zuschlagserteilungseingang): Zuschla
   }));
   const r = zuschlagErteilen(e.lv, e.angebot, e.projekt, e.gewaehlt, e.neueId);
   if (!r.ok) {
+    // Ticket 86 (D-42): Ein Nachtrags-LV weist `zuschlagErteilen` ab; der Dialog nennt den Weg dafür.
+    const nachtrag = e.lv.leistungsverzeichnis.nachtrag;
     return {
       entfallend: v.entfallend,
       unbepreist: v.unbepreist,
       wahlgruppen,
       warnungen: [],
-      fehler: r.fehler.meldung,
+      fehler: nachtrag === undefined ? r.fehler.meldung : texte.nachtragOhneZuschlag(nachtrag.nummer),
       befehl: null,
     };
   }
