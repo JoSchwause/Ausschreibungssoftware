@@ -42,11 +42,11 @@ Wahlgruppen mit ihren Varianten (für den Dialog in Ticket 64).
 
 ## Acceptance criteria
 
-- [ ] Golden-Tests gegen `typisch-angebote` (alle Bieter) und `zuschlag.json`; Fälle Wahl gewählt/nicht gewählt, Bedarf,
+- [x] Golden-Tests gegen `typisch-angebote` (alle Bieter) und `zuschlag.json`; Fälle Wahl gewählt/nicht gewählt, Bedarf,
       nicht angeboten, Bezug entfernt
-- [ ] Property-Test: Positionen des Auftrags-LV ⊆ Positionen des LV, IDs unverändert; ohne Wahlgruppen und ohne Lücken
+- [x] Property-Test: Positionen des Auftrags-LV ⊆ Positionen des LV, IDs unverändert; ohne Wahlgruppen und ohne Lücken
       Netto des Auftrags-LV = Netto des Angebots
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -135,3 +135,6 @@ Das Speichern braucht Ticket 57 (Auftragnehmer, siehe oben).
   des Auftrags-LV gleich denen des Angebots, `summeWahl` 0,00: Alternativen gehen weder ins Netto noch in eine
   Zuschlagsbasis (R2), Lücken sind in beiden `null`. Mit Wahl: keine Alternative mehr im Auftrags-LV, gewählte stehen
   ohne Wahl darin, Knoten ⊆ LV mit gleichen Kennungen, `positionen-entfallen.anzahl` = Differenz.
+- Suite nach Merge von `integration/welle-4` (a4e7da0): Lint und Typecheck grün; `pnpm test` unter Last (Load ~15) mit
+  drei Leistungsbudgets rot (`kern` K9-Verschieben und `lvPruefen(gross)`, `vergabe` `preisspiegelBerechnen`, keines
+  von diesem Ticket berührt), einzeln wiederholt grün; Fixture-Selbsttests 20/20 grün. Budgets nicht gelockert.
