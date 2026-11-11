@@ -128,6 +128,27 @@ export function position(
   };
 }
 
+/** Zuschlagsposition in GAEB-Form (Ticket 37): Satz und Bezugsform, ohne Menge, Einheit und EP. */
+export function zuschlagsposition(
+  id: string,
+  eltern: string,
+  reihenfolge: number,
+  bezug: Zuschlag['bezug'],
+  prozentsatz: string | null = null,
+): Position {
+  return {
+    ...position(id, eltern, reihenfolge, null),
+    einheit: null,
+    zuschlag: { prozentsatz: prozentsatz as Prozent | null, bezug },
+  };
+}
+
+/** Bezugsform Liste (R5) ohne Teilmengen. */
+export const liste = (...ids: string[]): Zuschlag['bezug'] => ({
+  art: 'positionen',
+  positionen: ids.map((i) => ({ positionId: i as PositionId, teilmenge: null })),
+});
+
 export function lv(
   id: string,
   knoten: readonly Knoten[],
@@ -152,6 +173,19 @@ export const ep = (positionId: string, einheitspreis: string): Angebotsposition 
   status: 'angeboten',
   einheitspreis: einheitspreis as Einheitspreis,
   epa: null,
+});
+
+/** Angebotener Zuschlagssatz des Bieters; der EP ist der Platzhalter `0.000` (Vertrag v1.2), nie gerechnet. */
+export const satz = (
+  positionId: string,
+  zuschlagssatz: string,
+  einheitspreis = '0.000',
+): Angebotsposition => ({
+  positionId: positionId as PositionId,
+  status: 'angeboten',
+  einheitspreis: einheitspreis as Einheitspreis,
+  epa: null,
+  zuschlagssatz: zuschlagssatz as Prozent,
 });
 
 export const nichtAngeboten = (positionId: string): Angebotsposition => ({

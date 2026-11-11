@@ -67,9 +67,9 @@ describe('preisspiegelBerechnen: Golden-Beispiel', () => {
       ['2.000', true],
     ]);
     expect(ps.zeilen.map((z) => z.schaetzpreis)).toEqual([
-      { einheitspreis: '11.000', gesamtpreis: '110.00' },
-      { einheitspreis: '9.000', gesamtpreis: '45.00' },
-      { einheitspreis: '55.000', gesamtpreis: '110.00' },
+      { einheitspreis: '11.000', gesamtpreis: '110.00', zuschlag: null },
+      { einheitspreis: '9.000', gesamtpreis: '45.00', zuschlag: null },
+      { einheitspreis: '55.000', gesamtpreis: '110.00', zuschlag: null },
     ]);
   });
 
@@ -82,6 +82,7 @@ describe('preisspiegelBerechnen: Golden-Beispiel', () => {
         einheitspreis: '10.000',
         gesamtpreis: '100.00',
         ausreisser: null,
+        zuschlag: null,
       },
       {
         angebotId: 'b',
@@ -89,6 +90,7 @@ describe('preisspiegelBerechnen: Golden-Beispiel', () => {
         einheitspreis: '12.000',
         gesamtpreis: '120.00',
         ausreisser: null,
+        zuschlag: null,
       },
       {
         angebotId: 'c',
@@ -96,6 +98,7 @@ describe('preisspiegelBerechnen: Golden-Beispiel', () => {
         einheitspreis: '15.000',
         gesamtpreis: '150.00',
         ausreisser: 'hoch',
+        zuschlag: null,
       },
     ]);
     expect(p1?.min).toEqual({ einheitspreis: '10.000', gesamtpreis: '100.00', angebotIds: ['a'] });
@@ -127,6 +130,7 @@ describe('preisspiegelBerechnen: Golden-Beispiel', () => {
       einheitspreis: null,
       gesamtpreis: null,
       ausreisser: null,
+      zuschlag: null,
     });
     expect(p3?.bieter.map((b) => b.ausreisser)).toEqual([null, null, null]);
     expect(p3?.min).toEqual({ einheitspreis: '50.000', gesamtpreis: '100.00', angebotIds: ['a'] });

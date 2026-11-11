@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Einstiegspunkt von @tethys/vergabe (Ticket 36): Angebotsbefehle, Bietersummen, Preisspiegel-Rechnung.
 
-export { angebotSummenBerechnen } from './summen';
+export { angebotSummenBerechnen, angebotZuschlaegeBerechnen } from './summen';
+export type { Bieterzuschlag } from './summen';
 export { angebotBefehlAusfuehrer } from './befehle';
 export { angebotChangeSetAnwenden, angebotChangeSetUmkehren } from './changeset';
 export { PREISSPIEGEL_ANNAHMEN, PREISSPIEGEL_STANDARD, preisspiegelBerechnen } from './preisspiegel';
@@ -17,4 +18,5 @@ export type {
   Preisspiegelgliederung,
   Preisspiegelzeile,
   VirtuellerPreis,
+  Zuschlagsangabe,
 } from './preisspiegel';

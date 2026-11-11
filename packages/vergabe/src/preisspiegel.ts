@@ -17,7 +17,7 @@ import {
   vergleiche,
   vorzeichen,
 } from '@tethys/dezimal';
-import { positionGehtInSumme, positionsSumme } from '@tethys/kern';
+import { positionGehtInSumme, positionsSumme, summenBerechnen, zuschlagsbasen } from '@tethys/kern';
 import type {
   AngebotId,
   AngebotZustand,
@@ -34,7 +34,8 @@ import type {
   Prozent,
   Summenstand,
 } from '@tethys/vertrag';
-import { angebotSummenBerechnen, angebotspositionenNachId } from './summen';
+import { angebotsEinheitspreis, angebotspositionenNachId, bieterzuschlaege, gedachtesLv } from './summen';
+import type { Bieterzuschlag, Preiskennzeichen } from './summen';
 
 // --- Annahmen und Einstellungen -------------------------------------------------------------------------------------
 
@@ -57,6 +58,10 @@ export const PREISSPIEGEL_ANNAHMEN = {
     'Die Position, die eine ABC-Schwelle überschreitet, gehört noch zur höheren Klasse (Klasse A, solange davor · 100 < A · gesamt).',
   gliederungssummen:
     'Bietersummen und Gliederungssummen werden aus dem übergebenen LV neu gerechnet (`angebotSummenBerechnen`), nicht aus dem gespeicherten Summenstand des Angebots.',
+  zuschlagszeile:
+    'Ticket 44 (Demo D-44.1): Eine Zuschlagsposition (im LV `zuschlag` gesetzt, auch Altform) vergleicht die Beträge statt der EP: Min, Mittel (Σ / n auf 2 Stellen), Max und Ausreißer über Beträge > 0 (D-05); der EP der Bieterspalte steht nur bei einem Betrag aus der Altform (R8).',
+  zuschlagssatzFehlt:
+    'Ticket 44 (Demo D-44.1): Eine angebotene Zuschlagsposition ohne Satz (und ohne Betrag aus der Altform) hat das Kennzeichen `zuschlagssatz-fehlt` und zählt in der Bietersumme wie eine nicht angebotene Position.',
 } as const;
 
 export type AbcBezug = 'mittel' | 'schaetzpreis';
@@ -78,20 +83,33 @@ export const PREISSPIEGEL_STANDARD: PreisspiegelEinstellungen = {
 
 // --- Ergebnistypen --------------------------------------------------------------------------------------------------
 
-/** D-05: `nullpreis` ist ein angebotener EP von 0,00; `nicht-angeboten` auch ohne Eintrag im Angebot. */
-export type Preiskennzeichen = 'angeboten' | 'nullpreis' | 'nicht-angeboten';
+export type { Preiskennzeichen };
 export type Ausreisser = 'hoch' | 'niedrig';
 export type AbcKlasse = 'A' | 'B' | 'C';
+
+/** Satz und Basis einer Zuschlagsposition; der Betrag steht als `gesamtpreis` daneben. */
+export interface Zuschlagsangabe {
+  /** Der Satz (des Bieters bzw. beim Schätzpreis des LV); `null`: kein Satz. */
+  readonly satz: Prozent | null;
+  readonly basis: Betrag;
+  /** `basis-unvollstaendig`: eine Bezugsposition hat keinen Preis und trägt nichts zur Basis bei. */
+  readonly basisUnvollstaendig: boolean;
+}
 
 export interface Bieterpreis {
   readonly angebotId: AngebotId;
   readonly kennzeichen: Preiskennzeichen;
+  /** Bei einer Zuschlagsposition nur bei einem Betrag aus der Altform (R8), sonst `null`. */
   readonly einheitspreis: Einheitspreis | null;
+  /** GP; bei einer Zuschlagsposition der Zuschlagsbetrag. */
   readonly gesamtpreis: Betrag | null;
   readonly ausreisser: Ausreisser | null;
+  /** Nur an einer Zuschlagsposition: Satz und Basis des Bieters (Ticket 44). */
+  readonly zuschlag: Zuschlagsangabe | null;
 }
 
 export interface VirtuellerPreis {
+  /** Bei einer Zuschlagsposition immer `null` (verglichen werden die Beträge). */
   readonly einheitspreis: Einheitspreis | null;
   /** `gesamtpreis(Menge, EP)` (N2); `null` ohne Menge oder ohne EP. */
   readonly gesamtpreis: Betrag | null;
@@ -104,10 +122,16 @@ export interface Preisspiegelzeile {
   readonly menge: Menge | null;
   /** Geht die Position laut LV in die Summe ein (Bedarf, Wahl; Regel des Kerns)? */
   readonly gehtInSummeEin: boolean;
-  /** Virtueller Bieter Schätzpreis: EP und GP aus dem LV. */
+  /** Zuschlagsposition im LV (Ticket 44): Min, Mittel, Max und Ausreißer vergleichen die Beträge. */
+  readonly zuschlagsposition: boolean;
+  /**
+   * Virtueller Bieter Schätzpreis: EP und GP aus dem LV; an einer Zuschlagsposition Satz, Basis und Betrag des LV
+   * (ohne Satz im LV: „kein Satz“, `satz` und Betrag `null`, außer in der Altform).
+   */
   readonly schaetzpreis: {
     readonly einheitspreis: Einheitspreis | null;
     readonly gesamtpreis: Betrag | null;
+    readonly zuschlag: Zuschlagsangabe | null;
   };
   /** Je Angebot, in der Reihenfolge der übergebenen Angebote. */
   readonly bieter: readonly Bieterpreis[];
@@ -161,36 +185,54 @@ const KEIN_PREIS: VirtuellerPreis = { einheitspreis: null, gesamtpreis: null, an
 const gp = (menge: Menge | null, e: Einheitspreis | null): Betrag | null =>
   menge === null || e === null ? null : gesamtpreis(menge, e);
 
+/** Ein verglichener Wert > 0: der EP, bei einer Zuschlagsposition der Betrag (Ticket 44). */
 interface Bepreist {
   readonly angebotId: AngebotId;
-  readonly einheitspreis: Einheitspreis;
+  readonly wert: Dezimal;
 }
 
-function extrem(menge: Menge | null, bepreist: readonly Bepreist[], richtung: 1 | -1): VirtuellerPreis {
-  let best: Einheitspreis | null = null;
+/** Wie aus einem verglichenen Wert ein virtueller Preis wird: EP-Zeile oder Betragszeile (Zuschlagsposition). */
+interface Vergleichsart {
+  readonly mittelArt: 'einheitspreis' | 'betrag';
+  readonly mittelStellen: number;
+  preis(wert: Dezimal): Pick<VirtuellerPreis, 'einheitspreis' | 'gesamtpreis'>;
+}
+
+const epZeile = (menge: Menge | null): Vergleichsart => ({
+  mittelArt: 'einheitspreis',
+  mittelStellen: 3,
+  preis: (wert) => ({ einheitspreis: wert as Einheitspreis, gesamtpreis: gp(menge, wert as Einheitspreis) }),
+});
+
+const BETRAGSZEILE: Vergleichsart = {
+  mittelArt: 'betrag',
+  mittelStellen: 2,
+  preis: (wert) => ({ einheitspreis: null, gesamtpreis: wert as Betrag }),
+};
+
+function extrem(art: Vergleichsart, bepreist: readonly Bepreist[], richtung: 1 | -1): VirtuellerPreis {
+  let best: Dezimal | null = null;
   for (const b of bepreist) {
-    if (best === null || vergleiche(b.einheitspreis, best) === richtung) best = b.einheitspreis;
+    if (best === null || vergleiche(b.wert, best) === richtung) best = b.wert;
   }
   if (best === null) return KEIN_PREIS;
   const wert = best;
   return {
-    einheitspreis: wert,
-    gesamtpreis: gp(menge, wert),
-    angebotIds: bepreist.filter((b) => vergleiche(b.einheitspreis, wert) === 0).map((b) => b.angebotId),
+    ...art.preis(wert),
+    angebotIds: bepreist.filter((b) => vergleiche(b.wert, wert) === 0).map((b) => b.angebotId),
   };
 }
 
-/** Mittel-EP = Σ EP / n, kaufmännisch auf 3 Stellen (N3, `dividiere`). */
-function mittel(menge: Menge | null, bepreist: readonly Bepreist[], summe: Dezimal): VirtuellerPreis {
+/** Mittel = Σ / n, kaufmännisch auf 3 Stellen (EP) bzw. 2 Stellen (Betrag) (N3, `dividiere`). */
+function mittel(art: Vergleichsart, bepreist: readonly Bepreist[], summe: Dezimal): VirtuellerPreis {
   if (bepreist.length === 0) return KEIN_PREIS;
-  const q = dividiere(summe, anzahl(bepreist.length), 3);
+  const q = dividiere(summe, anzahl(bepreist.length), art.mittelStellen);
   if (!q.ok) throw new Error(`Mittel nicht berechenbar: ${q.fehler.meldung}`);
-  const e = runden(q.wert, 'einheitspreis');
-  return { einheitspreis: e, gesamtpreis: gp(menge, e), angebotIds: bepreist.map((b) => b.angebotId) };
+  return { ...art.preis(runden(q.wert, art.mittelArt)), angebotIds: bepreist.map((b) => b.angebotId) };
 }
 
-/** G-26, D-05: n ≥ 2 Bieter mit EP > 0 und Σ > 0; strikt größer als die Schwelle, genau per Multiplikation. */
-function ausreisser(e: Einheitspreis, n: number, summe: Dezimal, schwelle: Prozent): Ausreisser | null {
+/** G-26, D-05: n ≥ 2 Bieter mit Wert > 0 und Σ > 0; strikt größer als die Schwelle, genau per Multiplikation. */
+function ausreisser(e: Dezimal, n: number, summe: Dezimal, schwelle: Prozent): Ausreisser | null {
   const grenze = multipliziere(schwelle, summe);
   // (n · EP − Σ) · 100; „hoch“, wenn größer als Schwelle · Σ, „niedrig“, wenn (Σ − n · EP) · 100 größer ist.
   const abweichung = multipliziere(subtrahiere(multipliziere(anzahl(n), e), summe), HUNDERT);
@@ -254,62 +296,92 @@ export function preisspiegelBerechnen(
   const e: PreisspiegelEinstellungen = { ...PREISSPIEGEL_STANDARD, ...einstellungen };
   const knoten = lv.leistungsverzeichnis.knoten;
   const positionen = knoten.filter((k): k is Position => k.art === 'position');
-  const summen: Summenstand[] = angebote.map((a) => angebotSummenBerechnen(lv, a.angebot));
+  const gedacht = angebote.map((a) => gedachtesLv(lv, a.angebot));
+  const summen: Summenstand[] = gedacht.map((g) => summenBerechnen(g));
+  const zuschlaege = gedacht.map((g, i) => bieterzuschlaege(g, (angebote[i] as AngebotZustand).angebot));
+  const lvZuschlaege = zuschlagsbasen(lv.leistungsverzeichnis);
   const eintraege = angebote.map((a) => angebotspositionenNachId(a.angebot.positionen));
   const gpIndex = summen.map(
     (s) => new Map(s.positionen.map((p) => [p.positionId as string, p.gesamtpreis])),
   );
 
+  /** Kennzeichen, EP, verglichener Wert und Zuschlagsangabe eines Angebots an einer Position. */
+  const bieterwert = (
+    p: Position,
+    i: number,
+  ): Pick<Bieterpreis, 'kennzeichen' | 'einheitspreis' | 'zuschlag'> & { wert: Dezimal | null } => {
+    const eintrag = eintraege[i]?.get(p.id);
+    if (p.zuschlag === null) {
+      const ep = angebotsEinheitspreis(eintrag);
+      return { kennzeichen: kennzeichenVon(ep), einheitspreis: ep, zuschlag: null, wert: ep };
+    }
+    const z = zuschlaege[i]?.get(p.id) as Bieterzuschlag;
+    return {
+      kennzeichen: z.kennzeichen,
+      einheitspreis: z.satz === null && z.betrag !== null ? angebotsEinheitspreis(eintrag) : null,
+      zuschlag: { satz: z.satz, basis: z.basis, basisUnvollstaendig: z.basisUnvollstaendig },
+      wert: z.betrag,
+    };
+  };
+
   const ohneAbc = positionen.map((p): Omit<Preisspiegelzeile, 'abcKlasse'> => {
-    const preise = angebote.map((a, i) => {
-      const eintrag = eintraege[i]?.get(p.id);
-      return {
-        angebotId: a.angebot.id,
-        einheitspreis: eintrag?.status === 'angeboten' ? eintrag.einheitspreis : null,
-      };
-    });
+    const art = p.zuschlag === null ? epZeile(p.menge) : BETRAGSZEILE;
+    const preise = angebote.map((a, i) => ({ angebotId: a.angebot.id, ...bieterwert(p, i) }));
     const bepreist: Bepreist[] = preise.flatMap((x) =>
-      x.einheitspreis !== null && vorzeichen(x.einheitspreis) > 0
-        ? [{ angebotId: x.angebotId, einheitspreis: x.einheitspreis }]
-        : [],
+      x.wert !== null && vorzeichen(x.wert) > 0 ? [{ angebotId: x.angebotId, wert: x.wert }] : [],
     );
     let summe: Dezimal = zahl('0.000');
-    for (const b of bepreist) summe = addiere<Dezimal>(summe, b.einheitspreis);
+    for (const b of bepreist) summe = addiere<Dezimal>(summe, b.wert);
     const pruefen = bepreist.length >= 2 && vorzeichen(summe) > 0;
     const bieter = preise.map((x, i): Bieterpreis => {
-      const kennzeichen = kennzeichenVon(x.einheitspreis);
-      const positiv = x.einheitspreis !== null && vorzeichen(x.einheitspreis) > 0;
+      const positiv = x.wert !== null && vorzeichen(x.wert) > 0;
       return {
         angebotId: x.angebotId,
-        kennzeichen,
+        kennzeichen: x.kennzeichen,
         einheitspreis: x.einheitspreis,
         gesamtpreis: gpIndex[i]?.get(p.id) ?? null,
         ausreisser:
-          pruefen && positiv && x.einheitspreis !== null
-            ? ausreisser(x.einheitspreis, bepreist.length, summe, e.ausreisserSchwelle)
+          pruefen && positiv && x.wert !== null
+            ? ausreisser(x.wert, bepreist.length, summe, e.ausreisserSchwelle)
             : null,
+        zuschlag: x.zuschlag,
       };
     });
-    const schaetzpreis = { einheitspreis: p.einheitspreis, gesamtpreis: positionsSumme(p).gesamtpreis };
+    const lvZuschlag = lvZuschlaege.get(p.id);
+    const schaetzpreis =
+      p.zuschlag === null || lvZuschlag === undefined
+        ? { einheitspreis: p.einheitspreis, gesamtpreis: positionsSumme(p).gesamtpreis, zuschlag: null }
+        : {
+            einheitspreis: p.zuschlag.prozentsatz === null ? p.einheitspreis : null,
+            gesamtpreis: lvZuschlag.betrag,
+            zuschlag: {
+              satz: p.zuschlag.prozentsatz,
+              basis: lvZuschlag.basis,
+              basisUnvollstaendig: lvZuschlag.bezugOhnePreis,
+            },
+          };
     return {
       positionId: p.id,
       menge: p.menge,
       gehtInSummeEin: positionGehtInSumme(p),
+      zuschlagsposition: p.zuschlag !== null,
       schaetzpreis,
       bieter,
-      min: extrem(p.menge, bepreist, -1),
-      mittel: mittel(p.menge, bepreist, summe),
-      max: extrem(p.menge, bepreist, 1),
+      min: extrem(art, bepreist, -1),
+      mittel: mittel(art, bepreist, summe),
+      max: extrem(art, bepreist, 1),
     };
   });
   const abc = abcKlassen(ohneAbc, e);
   const zeilen = ohneAbc.map((z, i): Preisspiegelzeile => ({ ...z, abcKlasse: abc[i] ?? null }));
 
-  const eingehend = positionen.filter((p) => positionGehtInSumme(p));
+  // Nicht angeboten zählt auch eine Zuschlagsposition ohne Satz (D-44.1).
+  const ohnePreis = (k: Preiskennzeichen): boolean => k === 'nicht-angeboten' || k === 'zuschlagssatz-fehlt';
   const bietersummenOhneRang = angebote.map((a, i) => {
     const s = summen[i] as Summenstand;
-    const nachId = eintraege[i];
-    const nichtAngeboten = eingehend.filter((p) => nachId?.get(p.id)?.status !== 'angeboten').length;
+    const nichtAngeboten = zeilen.filter(
+      (z) => z.gehtInSummeEin && ohnePreis(z.bieter[i]?.kennzeichen ?? 'angeboten'),
+    ).length;
     return { angebotId: a.angebot.id, bieterId: a.angebot.bieterId, gesamt: s.gesamt, nichtAngeboten };
   });
   const bietersummen = bietersummenOhneRang.map((b): Bietersumme => ({

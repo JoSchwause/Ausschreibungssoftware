@@ -1,6 +1,6 @@
 # 44: Vergabe: Zuschlagspositionen im Angebot und im Preisspiegel; Fixture `typisch` auf GAEB-Form
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: V · Paket: `packages/vergabe` (benannte Ausnahmen: `fixtures/` und die Fixture-Testhelfer, siehe Grenzen)
 Blocked by: 36, 37, 29
@@ -77,13 +77,13 @@ Bietersummen und Preisspiegel heute rechnen), Ticket 29 (Punkt 1 und Comments: F
 
 ## Acceptance criteria
 
-- [ ] Bietersummen einschließlich Zuschlagsbeträgen, Bedarfs- und Wahlsumme kommen aus `summenBerechnen` über das gedachte LV mit dem Satz des Bieters; keine zweite Implementierung der Zuschlagsregel in `vergabe`
-- [ ] Goldens aus Punkt 4: 1.790,00 und 819,10 wie in der Datei; 1.500,00 statt 1.450,50 mit festgehaltenem Grund
-- [ ] Lücken des Bieters (Satz fehlt, Satz 0,00, Bezugsposition nicht angeboten) je mit Test und Kennzeichen
-- [ ] Preisspiegel: Zuschlagszeile mit Satz, Basis, Betrag je Bieter; Min/Mittel/Max und Ausreißer nach D-05 über die Beträge; Test mit einem Bieter mit Satz 0,00
-- [ ] `typisch`, `typisch-angebote`, `gross` in GAEB-Form; Sollwerte unabhängig berechnet; `typisch` ergibt die Zahlen aus Punkt 5; alle Fixture-Verbraucher grün
-- [ ] Jede Demo-Entscheidung als `D-xx` in `entscheidungen-auto.md`
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün (und `pnpm e2e`, weil Grid- und App-Testhelfer betroffen sind)
+- [x] Bietersummen einschließlich Zuschlagsbeträgen, Bedarfs- und Wahlsumme kommen aus `summenBerechnen` über das gedachte LV mit dem Satz des Bieters; keine zweite Implementierung der Zuschlagsregel in `vergabe`
+- [x] Goldens aus Punkt 4: 1.790,00 und 819,10 wie in der Datei; 1.500,00 statt 1.450,50 mit festgehaltenem Grund
+- [x] Lücken des Bieters (Satz fehlt, Satz 0,00, Bezugsposition nicht angeboten) je mit Test und Kennzeichen
+- [x] Preisspiegel: Zuschlagszeile mit Satz, Basis, Betrag je Bieter; Min/Mittel/Max und Ausreißer nach D-05 über die Beträge; Test mit einem Bieter mit Satz 0,00
+- [ ] (abgespalten, D-44.2) `typisch`, `typisch-angebote`, `gross` in GAEB-Form; Sollwerte unabhängig berechnet; `typisch` ergibt die Zahlen aus Punkt 5; alle Fixture-Verbraucher grün
+- [x] Jede Demo-Entscheidung als `D-xx` in `entscheidungen-auto.md`
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün (und `pnpm e2e`, weil Grid- und App-Testhelfer betroffen sind)
 
 ## Nicht-Ziele
 
@@ -91,3 +91,30 @@ Preisspiegel-Ansicht (V3, Welle 4), Zuschlag und Auftrags-LV (V4), X84-Import (4
 Excel-Rundlauf (V5), Änderungen an `vertrag`.
 
 ## Comments
+
+### Umsetzer
+
+- Seams (Demo-Modus, nicht mit dem Nutzer abgestimmt): `angebotSummenBerechnen`, neu `angebotZuschlaegeBerechnen`
+  (Satz, Basis, Betrag, Kennzeichen je Zuschlagsposition), `angebotBefehlAusfuehrer` (`AngebotspositionSetzen`),
+  `preisspiegelBerechnen`. Tests: `zuschlag.test.ts`, `bvbs.test.ts`, `preisspiegel-zuschlag.test.ts`, Property-Test in
+  `eigenschaften.test.ts` um Zuschlagspositionen aller drei Bezugsformen und Sätze erweitert (dazu Minimalität).
+- Gedachtes LV: an jeder Zuschlagsposition der Satz des Bieters (nie der des LV), EP dann `null`; ohne Satz der EP des
+  Bieters (rechnet nur die Altform). Basis, Betrag, „Bezug ohne Preis“ aus `zuschlagsbasen`, Summen aus `summenBerechnen`.
+- `AngebotspositionSetzen` inkrementell: betroffene Zuschlagspositionen (Elternknoten R3/R4, Listen R5 über einen
+  Rückwärtsindex je Fabrik) rechnet `summenBerechnen` des Kerns auf einem Teil-LV; Differenzen je Betragsziel die
+  Elternketten hinauf. `gross` (Altform-Listen) bleibt unter 16 ms.
+- Lücken des Bieters, Satz an falscher Stelle, Preisspiegel-Zuschlagszeile: D-44.1 (auch in `PREISSPIEGEL_ANNAHMEN`).
+- Goldens (BVBS 3.3 AVA X81/X84): 1.30.20 = 1.790,00, 1.30.30 = 819,10 wie in der Datei; 1.30.10 = 1.500,00 statt
+  1.450,50 (Positionsnachlass 5 % an `CBHMEALA` nicht abbildbar, G-23/G-26); Grund steht im Test.
+- **Punkt 5 abgespalten (D-44.2).** `typisch`, `gross`, `typisch-angebote` bleiben in der Altform (Vermerk in
+  `fixtures/README.md`). Grund: Kern-Testhelfer und -Sollwerttests (Ticket 41 schreibt parallel in `kern`), dazu die
+  GAEB-Export-Goldens. Verbraucher für das Folgeticket (alle Testcode): `fixtures/` (Generator, `rechnen.mjs`,
+  Selbsttest, README A4); `packages/kern/src/testhilfen.ts`, `fixtures.test.ts`, `summen.test.ts`, `merkmale.test.ts`,
+  `summen-leistung.test.ts`, `auftrags-lv.test.ts`, `oz-fixtures.test.ts`; `packages/vertrag/src/fixtures-abbildung.test.ts`;
+  `packages/speicher/src/testhilfe/fixtures.ts` (und `fixtures/projektdatei-v2.json`, falls aus `typisch` erzeugt);
+  `packages/ausgabe/src/testhilfen.ts`, `ausgabe.test.ts`, `druck.test.ts`; `packages/ui-grid/e2e/harness/fixture-ansicht.ts`
+  und E2E mit festen Summen; `packages/gaeb/src/testhilfen.ts`, `schreiben.test.ts` mit
+  `testdaten/golden/export/typisch-X8?-3.3.*` und `gross.sha256.json` (nicht in Ticket 44 genannt); `apps/web`
+  Testhelfer; `packages/vergabe/src/testhilfen.ts` (`fxZuschlag`) und `summen.test.ts`. `GLOSSARY.md` „Altform der
+  Zuschlagsposition“ nennt noch Ticket 44 als Umsteller.
+
