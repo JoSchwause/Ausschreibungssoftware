@@ -6,6 +6,8 @@
 
 import type {
   AngebotLoeschen,
+  AufmassAnlegen,
+  AufmasspositionSetzen,
   AuftragsLeistungsverzeichnisAnlegen,
   GliederungAnlegen,
   KnotenEinfuegen,
@@ -21,11 +23,12 @@ import type {
   TextquelleSetzen,
   VorlageSetzen,
 } from './befehle';
-import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
+import type { AufmassChangeSet, AuftragsLvChangeSet, LvChangeSet } from './changeset';
 import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   BildId,
   LvStandId,
@@ -37,6 +40,7 @@ import type {
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Aufmass,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Leistungsverzeichnis,
@@ -1037,6 +1041,78 @@ export const beispielTextquelleSetzen: TextquelleSetzen = {
   art: 'TextquelleSetzen',
   positionId: posId,
   textquelle: 'Muster-LV Rohbau (erfunden)',
+};
+
+const aufmass1Id = '019b76e9-0000-7000-8000-000000000110' as AufmassId;
+const aufmass2Id = '019b76e9-0000-7000-8000-000000000111' as AufmassId;
+
+/**
+ * Punkt 6: Aufmaßblatt 1 zum Beispiel-Auftrags-LV nach der Übernahme von N01. Die Position `01.0010` mit Ansatz
+ * (0,5 × 2 = 1,000), die Nachtragsposition `02.01.0010` von Hand mit 2,500 (mehr als 110 % der LV-Menge 2,000: ein
+ * Soll/Ist-Befund, D-35). `02.01.0020` ist noch nicht aufgemessen.
+ */
+export const beispielAufmass1: Aufmass = {
+  id: aufmass1Id,
+  projektId: beispielAuftragsLv.projektId,
+  auftragsLvId: auftragsId,
+  nummer: 1,
+  bezeichnung: 'Blatt 1 (erfunden)',
+  datum: '2026-11-02',
+  positionen: [
+    {
+      positionId: posId,
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '0,5*2', variable: null }],
+      menge: '1.000' as Menge,
+    },
+    { positionId: nachtragPos1Id, mengenansatz: null, menge: '2.500' as Menge },
+  ],
+};
+
+/** Punkt 6: Aufmaßblatt 2 misst den Rest der Position `01.0010` auf (0,235); zusammen mit Blatt 1 also 1,235. */
+export const beispielAufmass2: Aufmass = {
+  ...beispielAufmass1,
+  id: aufmass2Id,
+  nummer: 2,
+  bezeichnung: 'Blatt 2 (erfunden)',
+  datum: '2026-11-09',
+  positionen: [
+    {
+      positionId: posId,
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '0,235', variable: null }],
+      menge: '0.235' as Menge,
+    },
+  ],
+};
+
+/** Punkt 6: Blatt 1 anlegen (von Hand oder aus X31; Massenbefehl). */
+export const beispielAufmassAnlegen: AufmassAnlegen = { art: 'AufmassAnlegen', aufmass: beispielAufmass1 };
+
+/** Punkt 6: ChangeSet zu `beispielAufmassAnlegen`: das ganze Blatt, vorher keines. */
+export const beispielChangeSetAufmassAnlegen: AufmassChangeSet = {
+  art: 'aufmass',
+  aufmassId: aufmass1Id,
+  aufmass: { vorher: null, nachher: beispielAufmass1 },
+};
+
+/** Punkt 6: Korrektur auf Blatt 1: die Nachtragsposition hat 2,400 statt 2,500 (von Hand). */
+export const beispielAufmasspositionSetzen: AufmasspositionSetzen = {
+  art: 'AufmasspositionSetzen',
+  position: { positionId: nachtragPos1Id, mengenansatz: null, menge: '2.400' as Menge },
+};
+
+/** Punkt 6: ChangeSet zur Korrektur: das ganze Blatt vorher und nachher; die Zeile bleibt an ihrer Stelle. */
+export const beispielChangeSetAufmasspositionSetzen: AufmassChangeSet = {
+  art: 'aufmass',
+  aufmassId: aufmass1Id,
+  aufmass: {
+    vorher: beispielAufmass1,
+    nachher: {
+      ...beispielAufmass1,
+      positionen: beispielAufmass1.positionen.map((p) =>
+        p.positionId === nachtragPos1Id ? beispielAufmasspositionSetzen.position : p,
+      ),
+    },
+  },
 };
 
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */

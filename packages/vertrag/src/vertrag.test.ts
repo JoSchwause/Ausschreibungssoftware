@@ -119,6 +119,15 @@ import {
   type KostengruppeSetzen,
   type TextquelleSetzen,
   type VorlageSetzen,
+  type Aufmass,
+  type AufmassAnlegen,
+  type AufmassBefehl,
+  type AufmassChangeSet,
+  type AufmassId,
+  type AufmassKopf,
+  type Aufmassposition,
+  type AufmasspositionSetzen,
+  type AufmassZustand,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -166,6 +175,11 @@ import {
   beispielChangeSetVorlage,
   beispielTextquelleSetzen,
   beispielVorlageSetzen,
+  beispielAufmass1,
+  beispielAufmassAnlegen,
+  beispielAufmasspositionSetzen,
+  beispielChangeSetAufmassAnlegen,
+  beispielChangeSetAufmasspositionSetzen,
 } from './beispiele';
 
 /**
@@ -1163,5 +1177,67 @@ describe('v1.4 Punkt 5: Muster-LV und Textquelle (C5, G-17, D-40)', () => {
     const t = beispielChangeSetTextquelle;
     expect(alsPosition(t.knoten.geaendert[0]?.nachher)?.textquelle).toBe(beispielTextquelleSetzen.textquelle);
     expect(alsPosition(umkehren(t).knoten.geaendert[0]?.nachher)).not.toHaveProperty('textquelle');
+  });
+});
+
+/** Umkehrung eines ChangeSets, das ein ganzes Aggregat trägt (v1.4, D-36 (8)): `vorher` und `nachher` tauschen. */
+const tauschen = <T>(a: Aenderung<T>): Aenderung<T> => ({ vorher: a.nachher, nachher: a.vorher });
+
+describe('v1.4 Punkt 6: Aufmaßblatt (A2, D-36 (1))', () => {
+  it('Kennung, Kopf und Zeile; die Kennung ist mit keiner anderen austauschbar', () => {
+    expectTypeOf<string>().not.toExtend<AufmassId>();
+    expectTypeOf<AufmassId>().not.toExtend<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AufmassKopf['id']>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<AufmassKopf['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AufmassKopf['nummer']>().toEqualTypeOf<number>();
+    expectTypeOf<AufmassKopf['datum']>().toEqualTypeOf<string | null>();
+    expectTypeOf<Aufmassposition>().toEqualTypeOf<{
+      readonly positionId: PositionId;
+      readonly mengenansatz: readonly Ansatzzeile[] | null;
+      readonly menge: Menge | null;
+    }>();
+    expectTypeOf<Aufmass>().toExtend<AufmassKopf>();
+    expectTypeOf<Aufmass['positionen']>().toEqualTypeOf<readonly Aufmassposition[]>();
+    expectTypeOf<AufmassZustand['aufmass']>().toEqualTypeOf<Aufmass>();
+  });
+
+  it('Befehle und ChangeSet als ganzes Aggregat', () => {
+    expectTypeOf<AufmassBefehl['art']>().toEqualTypeOf<
+      | 'AufmassAnlegen'
+      | 'AufmasskopfSetzen'
+      | 'AufmasspositionSetzen'
+      | 'AufmasspositionEntfernen'
+      | 'AufmassLoeschen'
+    >();
+    expectTypeOf<AufmassAnlegen['aufmass']>().toEqualTypeOf<Aufmass>();
+    expectTypeOf<AufmasspositionSetzen['position']>().toEqualTypeOf<Aufmassposition>();
+    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
+    expectTypeOf<AufmassChangeSet['art']>().toEqualTypeOf<'aufmass'>();
+  });
+
+  it('Beispiel: Nummer ab 1, je Position höchstens eine Zeile, Ansatz mit gerechneter Menge oder Menge von Hand', () => {
+    const a = beispielAufmass1;
+    expect(a.nummer).toBeGreaterThanOrEqual(1);
+    expect(new Set(a.positionen.map((p) => p.positionId)).size).toBe(a.positionen.length);
+    expect(a.positionen[0]?.mengenansatz).toHaveLength(1);
+    expect(a.positionen[1]?.mengenansatz).toBeNull();
+    expect(a.auftragsLvId).toBe(beispielAuftragsLv.id);
+    expect(beispielAufmassAnlegen.aufmass).toBe(a);
+  });
+
+  it('Anlegen, Zeile setzen und Löschen: Umkehrung durch Tausch, ohne Vorzustand', () => {
+    const anlegen = beispielChangeSetAufmassAnlegen;
+    expect(anlegen.aufmass.vorher).toBeNull();
+    expect(tauschen(anlegen.aufmass)).toEqual({ vorher: beispielAufmass1, nachher: null });
+    const setzen = beispielChangeSetAufmasspositionSetzen;
+    const neu = setzen.aufmass.nachher?.positionen.find(
+      (p) => p.positionId === beispielAufmasspositionSetzen.position.positionId,
+    );
+    expect(neu).toEqual(beispielAufmasspositionSetzen.position);
+    // ersetzt an ihrer Stelle: Reihenfolge der Zeilen bleibt
+    expect(setzen.aufmass.nachher?.positionen.map((p) => p.positionId)).toEqual(
+      setzen.aufmass.vorher?.positionen.map((p) => p.positionId),
+    );
+    expect(tauschen(tauschen(setzen.aufmass))).toEqual(setzen.aufmass);
   });
 });

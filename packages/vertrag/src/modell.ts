@@ -6,6 +6,7 @@
 
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   BieterId,
   BildId,
@@ -733,4 +734,67 @@ export interface AuftragsLvKopf extends LvInhaltKopf {
 /** Auftrags-LV: eigenes Aggregat, Knoten mit den Positions-IDs der Ausschreibung. */
 export interface AuftragsLeistungsverzeichnis extends AuftragsLvKopf {
   readonly knoten: readonly Knoten[];
+}
+
+// --- Aufmaß (v1.4, A2; D-36 (1)) ----------------------------------------------------------------------------------
+//
+// Aufmaßblatt, Rechnung und Kostenermittlung sind eigene Aggregate (wie Angebot und Auftrags-LV, ADR 0011). Ihre
+// ChangeSets tragen das ganze Aggregat vorher und nachher, ohne Summen (D-36 (8)); was aus ihnen gerechnet wird (Menge
+// aus dem Ansatz, Prüfergebnis der Rechnung, Summen der Kostenermittlung), wird nie gespeichert.
+
+/**
+ * Kopf eines Aufmaßblatts (v1.4, Ticket 70 Punkt 6; D-36 (1); Glossar „Aufmaßblatt“): das Blatt ohne seine Zeilen. Es
+ * misst die Positionen genau eines Auftrags-LV auf; Befehle führt `abrechnung` aus (Ticket 80), gespeichert wird es von
+ * `speicher` (Ticket 79), ein GAEB-X31-Import legt es an (D-33, Ticket 84).
+ */
+export interface AufmassKopf {
+  readonly id: AufmassId;
+  readonly projektId: ProjektId;
+  /** Das Auftrags-LV desselben Projekts, dessen Positionen das Blatt aufmisst; bleibt nach dem Anlegen fest. */
+  readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
+  /**
+   * Blattnummer, ganze Zahl ≥ 1, je Auftrags-LV eindeutig; Listen ordnen nach ihr. Der Befehl bringt sie mit (die App
+   * schlägt die höchste vorhandene + 1 vor). Der Ausführer prüft Form und Eindeutigkeit mit den übrigen Blättern des
+   * Auftrags-LV als Kontext (`ungueltige-eingabe`, `feld: 'nummer'`), `speicher` hält sie als eindeutigen Schlüssel
+   * (`konflikt`). Vorläufige Annahme, Entscheidung offen (enge Lesart): Sie bleibt nach dem Anlegen fest
+   * (`AufmasskopfSetzen` setzt nur Bezeichnung und Datum; Offene Typfrage, Ticket 70).
+   */
+  readonly nummer: number;
+  /** Bezeichnung des Blatts, freier Text (z. B. „Erdarbeiten Achse 1–4“); `''` ist zulässig. */
+  readonly bezeichnung: string;
+  /** Tag des Aufmaßes als `JJJJ-MM-TT`, vom Nutzer eingegeben (keine Uhr, A2; wie `Vergabeinformationen`); `null`: keine Angabe. */
+  readonly datum: string | null;
+}
+
+/**
+ * Eine Zeile eines Aufmaßblatts (v1.4, Ticket 70 Punkt 6; Glossar „Aufmaßposition“): die Menge, die dieses Blatt für eine
+ * Position des Auftrags-LV aufmisst, mit dem Mengenansatz, aus dem sie stammt. Lesarten wie bei `MengenansatzSetzen`
+ * (D-22): Die App rechnet die Menge mit `mengen`, der Ausführer legt beides unausgewertet ab und rechnet nie nach.
+ *
+ * - Höchstens eine Zeile je Position und Blatt; mehrere Blätter ergeben zusammen die kumulierte Menge einer Rechnung.
+ * - Nur Positionen des Auftrags-LV (auch aus einem übernommenen Nachtrag; sonst `knoten-unbekannt`), keine
+ *   Zuschlagspositionen: Ihr Betrag folgt aus den Bezugspositionen (D-34 (1)); eine Zeile dafür weist der Ausführer mit
+ *   `ungueltige-eingabe` ab.
+ */
+export interface Aufmassposition {
+  readonly positionId: PositionId;
+  /**
+   * Die Zeilen, aus denen die App die `menge` gerechnet hat (eigene Zeilennummern je Aufmaßposition); `null`: kein Ansatz,
+   * die Menge ist von Hand gesetzt. Nie `[]` im Zustand: ein leerer Ansatz ist keiner, der Ausführer legt `null` ab.
+   */
+  readonly mengenansatz: readonly Ansatzzeile[] | null;
+  /**
+   * Menge dieses Blatts (nicht kumuliert), 3 Stellen; negativ ist zulässig (Abzug). `null`: keine Menge, etwa ein Ansatz
+   * mit Fehler (Lesart (b) aus D-22); zählt in Soll/Ist und Rechnung nicht (Befund dort, keine Sperre, U5).
+   */
+  readonly menge: Menge | null;
+}
+
+/**
+ * Aufmaßblatt (v1.4, Ticket 70 Punkt 6): Kopf und Zeilen. Die Zeilen stehen in der Reihenfolge, in der sie dazukamen
+ * (`AufmasspositionSetzen` ersetzt eine vorhandene Zeile an ihrer Stelle und hängt eine neue ans Ende); die Anzeige
+ * ordnet nach dem Baum des Auftrags-LV.
+ */
+export interface Aufmass extends AufmassKopf {
+  readonly positionen: readonly Aufmassposition[];
 }

@@ -24,6 +24,8 @@ export type BildId = string & Marke<'BildId'>;
 export type PapierkorbeintragId = string & Marke<'PapierkorbeintragId'>;
 /** Kennung eines LV-Stands (v1.2; ADR 0006): ein eingefrorener, unveränderlicher Stand eines LV. */
 export type LvStandId = string & Marke<'LvStandId'>;
+/** Kennung eines Aufmaßblatts (v1.4, Ticket 70 Punkt 6): eigenes Aggregat, eindeutig im Projekt. */
+export type AufmassId = string & Marke<'AufmassId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;

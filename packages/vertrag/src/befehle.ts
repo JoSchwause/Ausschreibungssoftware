@@ -25,6 +25,8 @@ import type {
   Angebotsposition,
   Ansatzzeile,
   Auftraggeber,
+  Aufmass,
+  Aufmassposition,
   AuftragsLeistungsverzeichnis,
   Bauherr,
   Bieter,
@@ -604,6 +606,59 @@ export interface NachtragUebernehmen {
  * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
  */
 export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen | KostengruppeSetzen;
+
+// --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
+//
+// Der Ausführer bekommt Auftrags-LV und die übrigen Blätter desselben Auftrags-LV als Kontext (wie
+// `angebotBefehlAusfuehrer(projekt, lv)` in `vergabe`); der Zustand ist nur das Blatt selbst. ChangeSet aller Befehle:
+// `AufmassChangeSet` mit dem ganzen Blatt vorher und nachher (D-36 (8)).
+
+/**
+ * Legt ein Aufmaßblatt an, leer oder mit Zeilen (Erfassung, GAEB-X31-Import; D-33). Zustand `null`. Der Ausführer prüft:
+ * Projekt und Auftrags-LV passen zueinander, `nummer` ≥ 1 und im Auftrags-LV frei (siehe `AufmassKopf.nummer`), jede Zeile
+ * nennt eine Position des Auftrags-LV höchstens einmal (siehe `Aufmassposition`); einen Ansatz `[]` legt er als `null` ab.
+ * Massenbefehl (siehe `MASSENBEFEHLSARTEN`): Ein X31-Import trägt eine Zeile je Position mit ihren Ansatzzeilen.
+ */
+export interface AufmassAnlegen {
+  readonly art: 'AufmassAnlegen';
+  readonly aufmass: Aufmass;
+}
+
+/** Setzt Bezeichnung und Datum des Blatts; die Nummer bleibt (siehe `AufmassKopf.nummer`). */
+export interface AufmasskopfSetzen {
+  readonly art: 'AufmasskopfSetzen';
+  readonly bezeichnung: string;
+  readonly datum: string | null;
+}
+
+/**
+ * Setzt die Zeile einer Position: ersetzt eine vorhandene Zeile derselben Position an ihrer Stelle, sonst kommt sie ans
+ * Ende. Ansatz und Menge kommen zusammen (die App rechnet die Menge mit `mengen`; Lesarten wie `MengenansatzSetzen`, D-22,
+ * siehe `Aufmassposition`).
+ */
+export interface AufmasspositionSetzen {
+  readonly art: 'AufmasspositionSetzen';
+  readonly position: Aufmassposition;
+}
+
+/** Entfernt die Zeile der Position aus dem Blatt; hat das Blatt keine, `ungueltige-eingabe` (`feld: 'positionId'`). */
+export interface AufmasspositionEntfernen {
+  readonly art: 'AufmasspositionEntfernen';
+  readonly positionId: PositionId;
+}
+
+/**
+ * Löscht das Blatt samt Zeilen. Unumkehrbar im Sinne von Q5 (Bestätigung in der Oberfläche, Undo); das ChangeSet trägt
+ * den vollen Stand (`aufmass.vorher`). Steht das Blatt in einer Rechnung (`Rechnung.aufmassIds`), weist `speicher` mit
+ * `konflikt` ab: Die Rechnung verlöre still einen Teil ihrer Menge.
+ */
+export interface AufmassLoeschen {
+  readonly art: 'AufmassLoeschen';
+}
+
+/** Befehle gegen ein Aufmaßblatt (Zustand: `AufmassZustand`; v1.4, Ticket 70 Punkt 6). */
+export type AufmassBefehl =
+  AufmassAnlegen | AufmasskopfSetzen | AufmasspositionSetzen | AufmasspositionEntfernen | AufmassLoeschen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

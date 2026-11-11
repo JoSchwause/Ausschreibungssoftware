@@ -4,6 +4,7 @@
 import type { AngebotBefehl, AuftragsLvBefehl, LvBefehl, ProjektBefehl } from './befehle';
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   KnotenId,
   LeistungsverzeichnisId,
@@ -15,6 +16,7 @@ import type {
   Angebot,
   AngebotKopf,
   Angebotsposition,
+  Aufmass,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Knoten,
@@ -117,6 +119,14 @@ export interface AngebotZustand {
 export interface AuftragsLvZustand {
   readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
   readonly summen: Summenstand;
+}
+
+/**
+ * Aufmaßblatt als Zustand seiner Befehle (v1.4, Ticket 70 Punkt 6). Ohne Summen: Die Mengen rechnet die App, Summen
+ * entstehen erst in der Rechnungsprüfung (`abrechnung`) und werden nie gespeichert.
+ */
+export interface AufmassZustand {
+  readonly aufmass: Aufmass;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -237,6 +247,18 @@ export interface AuftragsLvChangeSet {
   readonly summen: Summenaenderung;
   /** Hinweise zum Befehl (v1.1a); fehlt: keine. */
   readonly hinweise?: readonly Befehlshinweis[];
+}
+
+/**
+ * ChangeSet an einem Aufmaßblatt (v1.4, Ticket 70 Punkt 6; D-36 (8)): das ganze Blatt vorher und nachher, ohne Summen.
+ * `aufmass.vorher: null` legt an, `nachher: null` löscht (der volle Stand steht dann in `vorher`), beide gesetzt ändern.
+ * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` (Undo, ADR 0006). Bewusst grob: Auch eine einzelne
+ * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70).
+ */
+export interface AufmassChangeSet {
+  readonly art: 'aufmass';
+  readonly aufmassId: AufmassId;
+  readonly aufmass: Aenderung<Aufmass>;
 }
 
 export type ChangeSet = ProjektChangeSet | LvChangeSet | AngebotChangeSet | AuftragsLvChangeSet;
