@@ -10,7 +10,7 @@ import type {
   Speicher,
   Speicherfehlercode,
 } from '@tethys/vertrag';
-import { lvBefehlAnwenden, type Umgebung } from './lv/befehlsweg';
+import { befehlswegFuer, lvBefehlAnwenden, type Umgebung } from './lv/befehlsweg';
 import type { SpeicherAnbieterProps } from './speicher/SpeicherAnbieter';
 
 export interface Testpfad {
@@ -20,6 +20,12 @@ export interface Testpfad {
   speicherFehler(code: Speicherfehlercode | null): void;
   /** Dauer jedes `anwenden` (Worker, OPFS) in ms, in Aufrufreihenfolge: trennt in Messungen Speicher und App. */
   readonly anwendenMs: number[];
+  /** Die Projektdatei ohne Befehlsprotokoll (das wächst mit jedem Befehl, auch mit Undo; ADR 0009); `null` bei Fehler. */
+  projektdatei(projektId: ProjektId): Promise<string | null>;
+  /** Tiefe des Undo- und des Redo-Stapels der Sitzung (Ticket 48), damit ein Test auf das Ende einer Aktion wartet. */
+  historie(): { readonly rueck: number; readonly vor: number };
+  /** Wartet, bis alle eingereihten Befehle (auch Undo/Redo) durch Kern und Speicher sind. */
+  leerlauf(): Promise<void>;
 }
 
 declare global {
@@ -61,6 +67,19 @@ function onBereit(u: Umgebung): void {
       fehlercode = code;
     },
     anwendenMs,
+    async projektdatei(projektId) {
+      const r = await u.speicher.projektdateiExportieren(projektId);
+      if (!r.ok) return null;
+      const d = JSON.parse(r.wert) as Record<string, unknown>;
+      delete d['protokoll'];
+      return JSON.stringify(d);
+    },
+    historie() {
+      return befehlswegFuer(u).historie.tiefe;
+    },
+    leerlauf() {
+      return befehlswegFuer(u).reihe(() => Promise.resolve());
+    },
   };
 }
 

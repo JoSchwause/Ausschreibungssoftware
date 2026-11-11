@@ -111,8 +111,12 @@ export function SpeicherAnbieter({
     setRunde((n) => n + 1);
   }, []);
 
-  if (lage.art === 'bereit') return <Kontext.Provider value={lage.umgebung}>{children}</Kontext.Provider>;
-  if (!mussOffen) return <>{children}</>;
+  // Gleicher Baum vor und nach dem Öffnen: Eine Seite ohne Speicher wird beim Öffnen nicht neu aufgebaut.
+  if (lage.art === 'bereit' || !mussOffen) {
+    return (
+      <Kontext.Provider value={lage.art === 'bereit' ? lage.umgebung : null}>{children}</Kontext.Provider>
+    );
+  }
   if (lage.art === 'oeffnet') {
     return (
       <div className="seite" aria-busy="true">

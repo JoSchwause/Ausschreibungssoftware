@@ -4,7 +4,15 @@
 // Sprung zur Zelle bzw. in den Dialog, und sie verschwinden, sobald der Mangel behoben ist.
 
 import { expect, test, type Page } from '@playwright/test';
-import { fixture, lvAnlegen, neueZeile, positionTippen, projektAnlegen, type FxPosition } from './hilfen';
+import {
+  fixture,
+  leerlauf,
+  lvAnlegen,
+  neueZeile,
+  positionTippen,
+  projektAnlegen,
+  type FxPosition,
+} from './hilfen';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -27,6 +35,8 @@ async function lvMitZweiPositionen(page: Page): Promise<void> {
   await positionTippen(page, p('01.0010'));
   await positionTippen(page, p('01.0020'));
   await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  // Neue Positionen haben ihre OZ schon aus dem Vorschlag (Ticket 48); erst nach allen Befehlen ist der Stand ruhig.
+  await leerlauf(page);
   await expect(text(page, 2, 'ordnungszahl')).toHaveText('01.0020');
 }
 

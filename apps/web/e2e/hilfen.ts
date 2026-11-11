@@ -133,3 +133,8 @@ export function summen(page: Page): Promise<Record<string, string>> {
     ),
   );
 }
+
+/** Wartet, bis alle eingereihten Befehle durch Kern und Speicher sind (Testpfad; die Befehle laufen nacheinander). */
+export async function leerlauf(page: Page): Promise<void> {
+  await page.evaluate(() => window.tethysTest?.leerlauf());
+}
