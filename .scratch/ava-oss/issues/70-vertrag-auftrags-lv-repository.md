@@ -184,19 +184,19 @@ geändert. Je Punkt ein Commit (1–11), dazu Glossar und eine Angleichung an di
 1. **`nachtrag` und `vorlage` nur am `LvKopf`** (D-70.2). Alternative: am `LvInhaltKopf`, damit `LeistungsverzeichnisAnlegen`
    sie mitbringt (dann auch am Auftrags-LV möglich und im GAEB-Leser zu bedenken).
 2. **`vorlage?: true`.** Alternative: `vorlage?: boolean` (Wortlaut des Tickets; zwei Schreibweisen für „kein Muster-LV“).
-3. **`LvUebersicht` ohne `nachtrag`/`vorlage`.** Die Projektseite (Ticket 86: Kennzeichen „Nachtrag N01“) und der Dialog
-   „Aus Vorlage übernehmen“ über alle Projekte (Ticket 90) laden dafür jedes LV. Alternative: `LvUebersicht.nachtrag?`,
-   `.vorlage?` (additiv; `speicher` füllt sie aus dem Kopf), dazu ggf. eine projektübergreifende Liste der Vorlagen.
+3. ~~`LvUebersicht` ohne `nachtrag`/`vorlage`.~~ **Beantwortet (D-43, Review):** additiv `LvUebersicht.nachtrag?` und
+   `.vorlage?: true` in der Schreibweise des Kopfs; die projektübergreifende Vorlagenliste baut die App aus den Listen.
 4. **Textquelle nur an Positionen.** Ein Textbaustein kann auch ein Hinweistext sein (D-36 (6)). Alternative:
    `Hinweistext.textquelle?` mit `TextquelleSetzen { knotenId: PositionId | HinweistextId }`.
 5. **Kostengruppe nur an Positionen** (D-36 (4)). Alternative: an Gliederungen, an Positionen vererbt (bequemer bei großen
    LVs, aber zwei Quellen für denselben Wert).
 6. **Ganze Aggregate im ChangeSet** (D-36 (8)), auch für eine einzelne Aufmaßzeile. Alternative für große X31-Blätter:
-   `Aenderungen<Aufmassposition>` wie bei `AngebotChangeSet.positionen`.
+   `Aenderungen<Aufmassposition>` wie bei `AngebotChangeSet.positionen`. Vorerst entschieden (D-45): bleibt; Ticket 87 misst.
 7. **Blatt- und Rechnungsnummer fest** (D-70.9). Alternative: Nummer in `AufmasskopfSetzen`/`RechnungsangabenSetzen`
    (Eindeutigkeit dann nur in `speicher`).
-8. **`Rechnung.gefordert` ohne Angabe, ob kumuliert.** Übernommen wird, was die Rechnung nennt (XRechnung BT-109/BT-112).
-   Alternative: `gefordert: { netto; brutto; kumuliert: boolean }` oder getrennte Felder „diese Rechnung“ und „kumuliert“.
+8. ~~`Rechnung.gefordert` nur Netto und Brutto, beide Pflicht.~~ **Beantwortet (D-44, Review):** `{ netto | null; brutto |
+   null; zahlbetrag | null } | null`, äußeres `null` als einzige Schreibweise für „nichts erfasst“. Offen bleibt nur, ob
+   Netto und Brutto kumuliert sind (Alternative: Kennzeichen `kumuliert` oder getrennte Felder).
 9. **`sicherheitSatz` und `gewaehrleistungSatz` als zwei Felder an jeder Rechnung**, je Art wird nur eines gelesen.
    Alternative: Union nach `art` (`{ art: 'abschlag'; sicherheitSatz } | { art: 'schluss'; gewaehrleistungSatz }`).
 10. **`Aufmassposition` ohne Bemerkung.** Ticket 83 soll für Textzeilen (`*`) einer X31 zwischen „Bemerkung“ und „Befund“
@@ -240,8 +240,10 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.4: mechanisch angepasst"` f
 | `packages/gaeb/src/testhilfen.ts` | 71–74 | Test-`IdQuelle`: `aufmass`, `rechnung`, `kostenermittlung` | 83 |
 | `apps/web/src/lv/ids.ts` | 75–78 | `appIdQuelle`: `aufmass`, `rechnung`, `kostenermittlung` (UUIDv7 wie die übrigen) | App |
 | `apps/web/src/lv/texte.ts` | 187–188 | Text für `rechnung-freigegeben` | 88 |
+| `packages/vergabe/src/zuschlag-erteilen.ts` | 68–76, 187–193 | Review, D-42 (markiert `// v1.4: D-42`): Nachtrags-LV → `ungueltige-eingabe` (`feld: 'leistungsverzeichnis.nachtrag'`); `vorlage`/`nachtrag` nicht in den Kopf des Auftrags-LV (`ohneLvKennzeichen`) | 71, 86 |
+| `packages/vergabe/src/zuschlag-erteilen.test.ts` | 156–162, 223–236 | je ein Test zu D-42 | – |
 
-`vergabe`, `mengen`, `ausgabe`, `ui-grid`, `ui-basis`, `erechnung` und `proto` brauchten nichts. Die App braucht keinen
+`mengen`, `ausgabe`, `ui-grid`, `ui-basis`, `erechnung` und `proto` brauchten nichts; `vergabe` nur die Review-Zeilen (D-42). Die App braucht keinen
 Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bisherigen ChangeSet-Arten.
 
 ### Folgetickets: was sie liefern müssen
@@ -277,9 +279,8 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
   kein Bemerkungsfeld gibt (Offene Typfrage 10); `testIds` hat die neuen Kennungen schon.
 - **84 (GAEB v1.4):** `kostengruppe` als `CtlgAssign`; `textquelle` (Position) und `vorlage`/`nachtrag` (nur am `LvKopf`,
   nicht in `LvInhalt`: der Writer bekommt sie nur, wenn die App sie weiterreicht) beim Export mit Warnung verwerfen.
-- **Vergabe (ohne Ticket, Hinweis an 86):** `zuschlagErteilen` übernimmt den LV-Kopf per `...l`; `vorlage` und `nachtrag`
-  landen so zur Laufzeit im Kopf des Auftrags-LV (der Typ hat sie nicht). Vor dem Zuschlag weglassen, oder die App bietet
-  den Zuschlag an einem Muster- oder Nachtrags-LV nicht an.
+- **Vergabe:** erledigt im Review (D-42, siehe unten); der Kern legt am Auftrags-LV nur `AuftragsLvKopf`-Felder ab (71), die
+  App bietet den Zuschlag an einem Nachtrags-LV nicht an (86).
 - **App (86–90):** 86: `speicher.auftragsLeistungsverzeichnisse` statt Projektdatei-Export, `auftragsLvChangeSetUmkehren` aus
   dem Kern, Umweg in `auftrag/auftrag.ts` entfernen; `Teil.changeSet` und die Umkehrung in `lv/befehlsweg.ts` um die drei
   neuen Arten erweitern, sobald 87–89 sie schreiben (Tausch). 88: Text für `rechnung-freigegeben` prüfen,
@@ -287,9 +288,28 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
   (`leistungsverzeichnis` bzw. `auftrags-leistungsverzeichnis`). 90: `VorlageSetzen`, `TextquelleSetzen`; Liste der Vorlagen
   (Offene Typfrage 3).
 
+### Review-Fixes (Opus-Reviewer „yes-with-fixes“, D-42 bis D-45; Befund → Commit)
+
+1. Freigabe-Reihenfolge (major): Invariante „Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten
+   Nummern“ an `Rechnung`, `RechnungChangeSet`, `Speicher` und `RechnungAnlegen`; `konflikt` auch für das Anlegen einer
+   Rechnung unterhalb einer freigegebenen Nummer (sonst Doppelzahlung) → `edf6974`. Umsetzung 79, Befund 81.
+2. `LvUebersicht.nachtrag?`, `.vorlage?: true` additiv (D-43), Beispiel und Typtest → `7a5cfbb`. Offene Typfrage 3 erledigt.
+3. Leck im Zuschlag (major, D-42, benannte Ausnahme von P2): `zuschlagErteilen` weist ein Nachtrags-LV ab und lässt
+   `vorlage` weg; je ein Test in `vergabe`; Hinweis am `LvKopf.nachtrag` → `8b20f1e`.
+4. Prozentsätze als „× Satz / 100“ in `Umlage`, `Rechnung.sicherheitSatz`, `Leistungsstand`; Zuschlagsposition ohne Satz:
+   `gp` 0.00 mit Befund → `d42374c`.
+5. `Rechnung.gefordert` mit nullbaren `netto`, `brutto`, `zahlbetrag` (BT-115), Lesart „äußeres `null` = nichts erfasst,
+   Objekt mit drei `null` → `ungueltige-eingabe`“ (D-44); Beispiele und Typtests → `4801204`. Offene Typfrage 8 erledigt
+   (bis auf „kumuliert“).
+6. Glossar „Aufmaßblatt“ ohne Synonym („Aufmaß“ ist die Tätigkeit), Kommentare und Testtitel durchgehend „Aufmaßblatt/
+   Aufmaßblätter“ → `23f6369`.
+
+Danach `integration/welle-5` gemergt (`6f99294`, mit D-42 bis D-45 und den Nachträgen an 71, 79–89).
+
 ## Answer
 
-`vertrag` v1.4 auf Branch `welle-5/70-vertrag-v1.4` (enthält `integration/welle-5` bis `f2cc53d`). Neue Typen:
+`vertrag` v1.4 auf Branch `welle-5/70-vertrag-v1.4` (enthält `integration/welle-5` bis `de01bde`, mit den Review-Fixes
+D-42 bis D-45, siehe Comments). Neue Typen:
 
 - **Auftrags-LV:** `AuftragsLvUebersicht`, `AuftragsLvRepository` (`Speicher.auftragsLeistungsverzeichnisse`);
   `AuftragsLvBefehl` = Anlegen | `NachtragUebernehmen` | `KostengruppeSetzen`; `AuftragsLvChangeSetAnwenden`/`…Umkehren`.
@@ -301,7 +321,8 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
 - **Aufmaß (A2):** `AufmassId`, `AufmassKopf`, `Aufmassposition`, `Aufmass`, `AufmassZustand`, `AufmassBefehl` (5 Befehle,
   `AufmassAnlegen` ist Massenbefehl), `AufmassChangeSet` (ganzes Aggregat), `AufmassRepository`.
 - **Rechnung (A3, D-34):** `RechnungId`, `Rechnungsart`, `Umlage`, `Rechnung` (eingefrorener `freigabe.zahlbetrag`),
-  `RechnungZustand`, `RechnungBefehl` (7 Befehle samt `RechnungsfreigabeAufheben`), `RechnungChangeSet`,
+  `gefordert` mit Netto, Brutto, Zahlbetrag (D-44), `RechnungZustand`, `RechnungBefehl` (7 Befehle samt
+  `RechnungsfreigabeAufheben`), `RechnungChangeSet`,
   `RechnungRepository`, Fehlercode `rechnung-freigegeben`.
 - **Leistungsstand (D-37):** `Leistungsstand` (`abrechnung` erzeugt, `kosten` liest, nie gespeichert).
 - **Kostenermittlung (C3):** `KostenermittlungId`, `Kostenermittlungsstufe`, `Kostenermittlungseintrag`, `Kostenermittlung`,
@@ -313,6 +334,6 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
 
 Lesarten stehen am Typ; Entscheidungen D-70.1 bis D-70.11, 15 Offene Typfragen, die Liste der mechanischen Anpassungen und
 die Folgearbeit je Ticket (71, 79–84, Vergabe, App) unter Comments; Glossar ergänzt. Prüfung nach dem Merge:
-`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Vitest 154 Dateien, 2172 Tests
-bestanden, 2 übersprungen wie zuvor; Fixtures 22/22). Ausstehend: Opus-Review von v1.4 gegen alle Verbraucher vor Stufe 2
-(D-36, Schnitt Welle 5).
+`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Vitest 154 Dateien, 2175 Tests
+bestanden, 2 übersprungen wie zuvor; Fixtures 22/22), zuletzt nach den Review-Fixes und dem Merge `6f99294`. Opus-Review:
+„yes-with-fixes“, Fixes umgesetzt (Tor D-42).
