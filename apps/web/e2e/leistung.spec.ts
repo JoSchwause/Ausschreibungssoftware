@@ -22,20 +22,29 @@ const liste = (werte: readonly number[]): string => werte.map((z) => z.toFixed(0
 /** Eine Mengenänderung in der fokussierten Zelle: Zeit von Enter bis zur geänderten Netto-Summe. */
 async function messe(page: Page, text: string): Promise<{ gesamt: number; speicher: number }> {
   await page.keyboard.type(text);
-  await page.evaluate(() => {
+  return messeTaste(page, 'Enter', 'Enter');
+}
+
+/** Zeit vom Drücken von `taste` (Ereignis `key`) bis zur geänderten Netto-Summe, dazu der Anteil von `anwenden`. */
+async function messeTaste(
+  page: Page,
+  taste: string,
+  key: string,
+): Promise<{ gesamt: number; speicher: number }> {
+  await page.evaluate((k) => {
     const w = window as unknown as { messung?: Promise<number> };
     w.messung = new Promise<number>((fertig) => {
       const summenzeile = document.querySelector('.tx-grid__summen');
       const netto = (): string => summenzeile?.querySelector('.tx-grid__summe-wert')?.textContent ?? '';
       const alt = netto();
       let t0 = 0;
-      document.addEventListener(
-        'keydown',
-        (e) => {
-          if (e.key === 'Enter') t0 = performance.now();
-        },
-        { capture: true, once: true },
-      );
+      // Nicht `once`: Bei Strg+Z kommt zuerst das Ereignis der Strg-Taste.
+      const start = (e: KeyboardEvent): void => {
+        if (e.key.toLowerCase() !== k.toLowerCase()) return;
+        t0 = performance.now();
+        document.removeEventListener('keydown', start, { capture: true });
+      };
+      document.addEventListener('keydown', start, { capture: true });
       const beobachter = new MutationObserver(() => {
         if (netto() === alt) return;
         beobachter.disconnect();
@@ -44,8 +53,8 @@ async function messe(page: Page, text: string): Promise<{ gesamt: number; speich
       if (summenzeile)
         beobachter.observe(summenzeile, { subtree: true, childList: true, characterData: true });
     });
-  });
-  await page.keyboard.press('Enter');
+  }, key);
+  await page.keyboard.press(taste);
   return page.evaluate(async () => ({
     gesamt: await (window as unknown as { messung: Promise<number> }).messung,
     speicher: window.tethysTest?.anwendenMs.at(-1) ?? Number.NaN,
@@ -102,6 +111,49 @@ test('Mengenänderung bei 5.000 Positionen: App-Schicht bis zur Summenzeile unte
   // Der Speicher im Worker ist in Ticket 10/31 gemessen und schwankt mit der Last der Maschine (Median 47 ms allein,
   // unter Last über 100 ms); die Gesamtzeit hat deshalb nur eine grobe Schranke gegen Rückschritte wie ein blockierendes
   // Neuzeichnen. Messwerte: Ticket 39, Comments.
+  expect(median(ohneSpeicher)).toBeLessThan(BUDGET_MS);
+  expect(median(gesamt)).toBeLessThan(GROBE_SCHRANKE_MS);
+});
+
+test('Undo eines Befehls bei 5.000 Positionen: bis zur aktualisierten Summenzeile unter 100 ms (App-Schicht)', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const inhalt = fixtureInhalt('gross');
+  await projektAnlegen(page, 'Großprojekt', 'Bund');
+  const projektId = decodeURIComponent(new URL(page.url()).pathname.split('/').at(-1) ?? '');
+  const r = await page.evaluate(([id, lv]) => window.tethysTest?.lvAnlegen(id as never, lv as never), [
+    projektId,
+    inhalt,
+  ] as const);
+  expect(r?.ok).toBe(true);
+  await page.goto(`/lv/${inhalt.wurzelId}`);
+  await expect(page.getByRole('heading', { level: 1, name: inhalt.name })).toBeVisible({ timeout: 30_000 });
+  const pruefzahl = page.locator('.lv-pruefung__zahl');
+  await expect(pruefzahl).not.toHaveText('…', { timeout: 30_000 });
+
+  const zeile = page.locator('[role="row"].tx-grid__zeile--position').filter({ hasText: 'Normal' }).first();
+  const menge = zeile.locator('[data-spalte="menge"]');
+  const gesamt: number[] = [];
+  const speicher: number[] = [];
+  for (let i = 0; i < AUFWAERMEN + MESSUNGEN; i++) {
+    // Eine Mengenänderung, dann Strg+Z: gemessen wird das Rückgängig bis zur Summenzeile.
+    await menge.focus();
+    await messe(page, String(i + 2));
+    await menge.focus();
+    const m = await messeTaste(page, 'Control+Z', 'z');
+    if (i < AUFWAERMEN) continue;
+    gesamt.push(m.gesamt);
+    speicher.push(m.speicher);
+  }
+  const ohneSpeicher = gesamt.map((g, i) => g - (speicher[i] ?? 0));
+  const meldung =
+    `Undo einer Mengenänderung → Summenzeile, ${String(MESSUNGEN)} Messungen nach ${String(AUFWAERMEN)} zum Aufwärmen (ms): ` +
+    `${liste(gesamt)}; Median ${median(gesamt).toFixed(0)}, davon speicher.anwenden Median ${median(speicher).toFixed(0)}, ` +
+    `App ohne Speicher Median ${median(ohneSpeicher).toFixed(0)}`;
+  console.info(`[web] ${meldung}`);
+  test.info().annotations.push({ type: 'Messwert', description: meldung });
+  // Wie bei der Mengenänderung (Ticket 39): hart die App-Schicht, grob die Gesamtzeit (Speicheranteil schwankt mit Last).
   expect(median(ohneSpeicher)).toBeLessThan(BUDGET_MS);
   expect(median(gesamt)).toBeLessThan(GROBE_SCHRANKE_MS);
 });
