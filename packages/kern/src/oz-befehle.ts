@@ -48,7 +48,7 @@ type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 type NeueOz = Map<string, Ordnungszahl>;
 
 /** Ergebnis der Vergabe: neue OZ und Hinweise (Ausweichen auf einen kleineren Schritt, F2). */
-interface Vergabe {
+export interface Vergabe {
   readonly oz: NeueOz;
   readonly hinweise: Befehlshinweis[];
 }
@@ -61,7 +61,7 @@ interface Vergabe {
  * auch Schritt 1 (Position) bzw. die Gliederungsnummer nicht in die Stellen passt; `maske-ungueltig`, wenn die Maske den
  * Knoten nicht fasst (Stufe, Index). Die Rekursion ist durch die Stufenzahl der Maske (höchstens 5) begrenzt.
  */
-function nummeriere(
+export function nummeriere(
   idx: Baumindex,
   maske: OzMaske,
   elternId: string,

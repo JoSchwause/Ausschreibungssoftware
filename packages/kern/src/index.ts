@@ -42,6 +42,8 @@ export { gesamtsummen, positionsSumme, summenBerechnen, zuschlagsbasen } from '.
 export type { Ausweise } from './summen';
 export { ZUSCHLAG_REGELN } from './zuschlag';
 export { kopieBauen } from './kopie';
+export { ozVorschlag } from './oz-vorschlag';
+export type { OzVorschlag } from './oz-vorschlag';
 export type { KopieIdQuelle } from './kopie';
 export type { Zuschlagsbasis } from './zuschlag';
 export {
