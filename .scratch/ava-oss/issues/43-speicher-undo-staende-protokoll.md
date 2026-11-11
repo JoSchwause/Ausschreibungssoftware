@@ -1,6 +1,6 @@
 # 43: Speicher: Undo/Redo, LV-Stände, Papierkorb und Befehlsprotokoll (S3)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: S (S3) · Paket: `packages/speicher`
 Blocked by: 38, 29
