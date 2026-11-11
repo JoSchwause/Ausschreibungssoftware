@@ -2,7 +2,10 @@
 // Browser-Tests des Speichers: echter Worker, SQLite-WASM im OPFS (VFS opfs-sahpool), ohne COOP/COEP-Header.
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
-import { expect, test, type Page } from '@playwright/test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { chromium, devices, expect, test, type Page } from '@playwright/test';
 import { lvBefehlAusfuehren } from '@tethys/kern';
 import type { Menge, Position } from '@tethys/vertrag';
 import type { Phasenmessung, Pruefstand, PruefSchritt } from '../harness/main';
@@ -164,8 +167,7 @@ function phasen(m: Phasenmessung): Record<string, number> {
   for (const [anweisung, t] of Object.entries(m.sql)) {
     sql += t;
     if (anweisung.startsWith('BEGIN') || anweisung.startsWith('COMMIT')) p.transaktion += t;
-    else if (anweisung.startsWith('SELECT k.id FROM knoten k') || anweisung.startsWith('SELECT eltern_id'))
-      p.baumpruefung += t;
+    else if (/^SELECT (k\.id|k\.eltern_id|eltern_id) FROM knoten/.test(anweisung)) p.baumpruefung += t;
     else if (anweisung.startsWith('SELECT')) p.vorherstand += t;
     else p.schreiben += t;
   }
@@ -177,67 +179,98 @@ function phasen(m: Phasenmessung): Record<string, number> {
 const medianVon = (werte: readonly number[]): number =>
   [...werte].sort((a, b) => a - b)[Math.floor(werte.length / 2)] ?? Number.NaN;
 
+/**
+ * Misst `MengeAendern` auf `gross` mit den ChangeSets des Kerns in Phasen (Ticket 52) und gibt die Mediane aus.
+ * `wo` nennt den Browser-Kontext in der Meldung.
+ */
+async function phasenMessen(page: Page, wo: string): Promise<Record<string, number>> {
+  const f = ladeFixture('gross');
+  await start(page);
+  await ps(page, 'oeffnenMessend', DB);
+  // Schreibmodus (D-52.1): WAL mit exklusiver Sperre, Haltbarkeit unverändert (synchronous = FULL).
+  expect(await ps(page, 'schreibmodus', DB)).toEqual({
+    journalMode: 'wal',
+    lockingMode: 'exclusive',
+    synchronous: 2,
+    journalSizeLimit: 4 * 1024 * 1024,
+  });
+  await ps(page, 'anwenden', DB, anlegenSchritte(f));
+
+  // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
+  // und des LV). Jede Änderung trifft eine andere Position, ihr Vorherstand ist also der gespeicherte.
+  const lvId = f.lv.leistungsverzeichnis.id;
+  const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
+  const AUFWAERMEN = 5;
+  const MESSUNGEN = 21;
+  const folge: PruefSchritt[] = Array.from({ length: AUFWAERMEN + MESSUNGEN }, (_, i) => {
+    const p = positionen[i * 190];
+    if (p === undefined) throw new Error('Position fehlt');
+    const befehl = { art: 'MengeAendern', positionId: p.id, menge: '7.000' as Menge } as const;
+    const cs = lvBefehlAusfuehren(f.lv, befehl);
+    if (!cs.ok) throw new Error(cs.fehler.meldung);
+    return {
+      eintrag: eintrag(2000 + i, f.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, befehl),
+      changeSet: cs.wert,
+    };
+  });
+  const r = await ps(page, 'anwendenPhasen', DB, folge);
+  expect(r.ok).toBe(true);
+  const gemessen = r.messungen.slice(AUFWAERMEN).map(phasen);
+  const median: Record<string, number> = {};
+  for (const k of Object.keys(gemessen[0] ?? {})) median[k] = medianVon(gemessen.map((g) => g[k] ?? 0));
+  const meldung =
+    `[speicher/opfs] gross, ${wo}: MengeAendern anwenden in Phasen (${String(MESSUNGEN)} Läufe, Median ms): ` +
+    Object.entries(median)
+      .map(([k, v]) => `${k} ${v.toFixed(1)}`)
+      .join(', ');
+  console.info(meldung);
+  test.info().annotations.push({ type: 'messung', description: meldung });
+  // Je Anweisung (Median ms), die teuersten zuerst: zeigt, wo in einer Phase die Zeit steht.
+  const anweisungen = Object.keys(r.messungen[0]?.sql ?? {})
+    .map((a): [string, number] => [a, medianVon(r.messungen.slice(AUFWAERMEN).map((m) => m.sql[a] ?? 0))])
+    .sort((a, b) => b[1] - a[1]);
+  console.info(anweisungen.map(([a, t]) => `  ${t.toFixed(1).padStart(6)}  ${a}`).join('\n'));
+  // Dateizugriffe im OPFS je Aufruf (Median Anzahl und ms je Methode des Zugriffshandles).
+  const gemesseneLaeufe = r.messungen.slice(AUFWAERMEN);
+  const opfs = [...new Set(gemesseneLaeufe.flatMap((m) => Object.keys(m.opfs)))].map((k) => {
+    const anzahl = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.anzahl ?? 0));
+    const zeit = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.ms ?? 0));
+    return `${k} ${String(anzahl)}× ${zeit.toFixed(1)} ms`;
+  });
+  console.info(`[speicher/opfs] Zugriffshandle je anwenden (Median): ${opfs.join(', ')}`);
+  expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(
+    anlegenSchritte(f).length + AUFWAERMEN + MESSUNGEN,
+  );
+  return median;
+}
+
 test.describe('Einzeländerung in Phasen (Ticket 52)', () => {
   test('MengeAendern auf gross (5.000 Positionen) mit den ChangeSets des Kerns: Phasen von anwenden im OPFS', async ({
     page,
   }) => {
-    const f = ladeFixture('gross');
-    await start(page);
-    await ps(page, 'oeffnenMessend', DB);
-    // Schreibmodus (D-52.1): WAL mit exklusiver Sperre, Haltbarkeit unverändert (synchronous = FULL).
-    expect(await ps(page, 'schreibmodus', DB)).toEqual({
-      journalMode: 'wal',
-      lockingMode: 'exclusive',
-      synchronous: 2,
-      journalSizeLimit: 4 * 1024 * 1024,
-    });
-    await ps(page, 'anwenden', DB, anlegenSchritte(f));
+    await phasenMessen(page, 'Testkontext');
+  });
 
-    // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
-    // und des LV). Jede Änderung trifft eine andere Position, ihr Vorherstand ist also der gespeicherte.
-    const lvId = f.lv.leistungsverzeichnis.id;
-    const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
-    const AUFWAERMEN = 5;
-    const MESSUNGEN = 21;
-    const folge: PruefSchritt[] = Array.from({ length: AUFWAERMEN + MESSUNGEN }, (_, i) => {
-      const p = positionen[i * 190];
-      if (p === undefined) throw new Error('Position fehlt');
-      const befehl = { art: 'MengeAendern', positionId: p.id, menge: '7.000' as Menge } as const;
-      const cs = lvBefehlAusfuehren(f.lv, befehl);
-      if (!cs.ok) throw new Error(cs.fehler.meldung);
-      return {
-        eintrag: eintrag(2000 + i, f.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, befehl),
-        changeSet: cs.wert,
-      };
+  // Playwright gibt jedem Test einen flüchtigen Kontext wie ein Inkognito-Fenster; dort liegt das OPFS im Speicher des
+  // Browser-Prozesses, und jeder Zugriff des Zugriffshandles ist ein eigener Aufruf über Prozessgrenzen. Ein echtes
+  // Profil (installierte App, normales Fenster) schreibt direkt in die Datei. Zum Vergleich dieselbe Messung dort.
+  test('dieselbe Messung in einem dauerhaften Browser-Profil (wie beim Nutzer)', async ({
+    browserName,
+  }, info) => {
+    const verzeichnis = mkdtempSync(join(tmpdir(), 'tethys-profil-'));
+    const executablePath = process.env['PW_CHROMIUM_PATH'] || undefined;
+    const kontext = await chromium.launchPersistentContext(verzeichnis, {
+      ...devices['Desktop Chrome'],
+      baseURL: String(info.project.use.baseURL),
+      ...(executablePath ? { executablePath } : {}),
     });
-    const r = await ps(page, 'anwendenPhasen', DB, folge);
-    expect(r.ok).toBe(true);
-    const gemessen = r.messungen.slice(AUFWAERMEN).map(phasen);
-    const median: Record<string, number> = {};
-    for (const k of Object.keys(gemessen[0] ?? {})) median[k] = medianVon(gemessen.map((g) => g[k] ?? 0));
-    const meldung =
-      `[speicher/opfs] gross: MengeAendern anwenden in Phasen (${String(MESSUNGEN)} Läufe, Median ms): ` +
-      Object.entries(median)
-        .map(([k, v]) => `${k} ${v.toFixed(1)}`)
-        .join(', ');
-    console.info(meldung);
-    test.info().annotations.push({ type: 'messung', description: meldung });
-    // Je Anweisung (Median ms), die teuersten zuerst: zeigt, wo in einer Phase die Zeit steht.
-    const anweisungen = Object.keys(r.messungen[0]?.sql ?? {})
-      .map((a): [string, number] => [a, medianVon(r.messungen.slice(AUFWAERMEN).map((m) => m.sql[a] ?? 0))])
-      .sort((a, b) => b[1] - a[1]);
-    console.info(anweisungen.map(([a, t]) => `  ${t.toFixed(1).padStart(6)}  ${a}`).join('\n'));
-    // Dateizugriffe im OPFS je Aufruf (Median Anzahl und ms je Methode des Zugriffshandles).
-    const gemesseneLaeufe = r.messungen.slice(AUFWAERMEN);
-    const opfs = [...new Set(gemesseneLaeufe.flatMap((m) => Object.keys(m.opfs)))].map((k) => {
-      const anzahl = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.anzahl ?? 0));
-      const zeit = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.ms ?? 0));
-      return `${k} ${String(anzahl)}× ${zeit.toFixed(1)} ms`;
-    });
-    console.info(`[speicher/opfs] Zugriffshandle je anwenden (Median): ${opfs.join(', ')}`);
-    expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(
-      anlegenSchritte(f).length + AUFWAERMEN + MESSUNGEN,
-    );
+    try {
+      expect(browserName).toBe('chromium');
+      await phasenMessen(kontext.pages()[0] ?? (await kontext.newPage()), 'dauerhaftes Profil');
+    } finally {
+      await kontext.close();
+      rmSync(verzeichnis, { recursive: true, force: true });
+    }
   });
 });
 

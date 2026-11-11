@@ -243,33 +243,41 @@ function wendeKnotenAn(db: Datenbank, aggregatId: string, k: Aenderungen<Knoten>
   if (k.entfernt.length + k.geaendert.length + k.hinzugefuegt.length > 0) pruefeBaum(db, aggregatId);
 }
 
-/** Struktur des Baums nach dem Schreiben: keine Waisen, `reihenfolge` je Elternknoten dicht 0..n-1. */
+/**
+ * Beide Bedingungen der Baumprüfung in einem Durchlauf über den Index `knoten_eltern` (Ticket 52): je Elternknoten die
+ * Reihenfolge (dicht 0..n-1) und, außer an der Wurzel, ob es den Elternknoten gibt (Index des Primärschlüssels). Leer
+ * genau dann, wenn es weder eine Waise noch eine Lücke gibt; dann reicht dieser eine Durchlauf.
+ */
+const BAUM_BEFUND = `SELECT k.eltern_id FROM knoten k WHERE k.aggregat_id = ?1 GROUP BY k.eltern_id
+  HAVING COUNT(*) <> COUNT(DISTINCT k.reihenfolge) OR MIN(k.reihenfolge) <> 0 OR MAX(k.reihenfolge) <> COUNT(*) - 1
+    OR (k.eltern_id <> ?1 AND NOT EXISTS (SELECT 1 FROM knoten p WHERE p.aggregat_id = ?1 AND p.id = k.eltern_id))
+  LIMIT 1`;
+
+/** Ein Knoten, dessen Elternknoten fehlt (für die Meldung; nur nach einem Befund). */
+const BAUM_WAISE = `SELECT k.id FROM knoten k
+  WHERE k.aggregat_id = ?1 AND k.eltern_id <> ?1
+    AND NOT EXISTS (SELECT 1 FROM knoten p WHERE p.aggregat_id = ?1 AND p.id = k.eltern_id)
+  LIMIT 1`;
+
+/**
+ * Struktur des Baums nach dem Schreiben: keine Waisen, `reihenfolge` je Elternknoten dicht 0..n-1. Geprüft wird immer
+ * der ganze Baum des Aggregats. Gibt es einen Befund, nennt die Meldung zuerst eine Waise, sonst den ersten
+ * Elternknoten (nach Kennung) mit Lücke; ohne Waise ist das genau die Zeile des Befunds.
+ */
 function pruefeBaum(db: Datenbank, aggregatId: string): void {
-  const waise = db.zeilen(
-    `SELECT k.id FROM knoten k
-     WHERE k.aggregat_id = ? AND k.eltern_id <> ?
-       AND NOT EXISTS (SELECT 1 FROM knoten p WHERE p.aggregat_id = ? AND p.id = k.eltern_id)
-     LIMIT 1`,
-    [aggregatId, aggregatId, aggregatId],
-  )[0];
+  const befund = db.zeilen(BAUM_BEFUND, [aggregatId])[0];
+  if (befund === undefined) return;
+  const waise = db.zeilen(BAUM_WAISE, [aggregatId])[0];
   if (waise !== undefined) {
     return abbruch(
       'konflikt',
       `Konflikt: Knoten ${String(waise['id'])} hat keinen vorhandenen Elternknoten; nichts geschrieben.`,
     );
   }
-  const luecke = db.zeilen(
-    `SELECT eltern_id FROM knoten WHERE aggregat_id = ? GROUP BY eltern_id
-     HAVING COUNT(*) <> COUNT(DISTINCT reihenfolge) OR MIN(reihenfolge) <> 0 OR MAX(reihenfolge) <> COUNT(*) - 1
-     LIMIT 1`,
-    [aggregatId],
-  )[0];
-  if (luecke !== undefined) {
-    return abbruch(
-      'konflikt',
-      `Konflikt: Die Reihenfolge unter ${String(luecke['eltern_id'])} ist nicht dicht; nichts geschrieben.`,
-    );
-  }
+  return abbruch(
+    'konflikt',
+    `Konflikt: Die Reihenfolge unter ${String(befund['eltern_id'])} ist nicht dicht; nichts geschrieben.`,
+  );
 }
 
 function schreibeGesamt(db: Datenbank, aggregatId: string, g: Gesamtsummen): void {
