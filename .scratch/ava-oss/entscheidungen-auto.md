@@ -492,3 +492,17 @@ Question: Gegen 19:30 traf der Lauf das 5-Stunden-Limit; alle Agenten standen bi
 Decision: Unterbrochene Agenten aus ihrem gespeicherten Stand fortsetzen (nichts verloren). Zuerst der M4-Weg (71, 79, 80 → 81 → 86, 87, 88, 89 → 91); Ticket 90 (Muster-LV, Kürzungsreihenfolge D-36) erst danach; Ticket 89 auf Sonnet statt Opus (Oberfläche und Anbindung, die Rechnung liegt in `kosten`). Gemergte Branches, die den Integrationsstand schon enthalten, merged der Orchestrator selbst (der Baum ist dann der getestete); zusammengeführte Stände aus getrennten Paketen prüft eine volle Suite im Hintergrund.
 Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem zweiten Limit fertig ist.
 Reversible: yes  Touches: Ablauf, Modellwahl
+
+## D-47 Umfang der Review-Behebung Welle 5
+Welle 5 · Review · decided by: orchestrator
+Question: Welche Befunde des Wellen-Reviews (`review-welle-5.md`, Standards 12, Spec 7) werden in dieser Welle behoben?
+Decision: Ein Fix-Ticket 92 (Opus): Pflicht P6, S1, S2, S11, P2, P3, P5, P7, S12; Soll S7, S8, S6, S5, S3, S9, S4 (ohne Kalenderlogik), S10, D-86.7. Folgetickets statt Behebung: P1 (echte KG-Spalte im Grid: `ui-grid` braucht eine editierbare Spalte), P4 (Undo am Aufmaßblatt mit 5.000 Zeilen über 100 ms: v1.5 `Aenderungen<Aufmassposition>` oder Vergleich über den gespeicherten Text in `speicher`).
+Reason: Pflichtpunkte sind fachlich falsch, Glossarverstöße (L2) oder Q5; die Sollpunkte sind Aufräumen in Dateien, die jetzt nur noch ein Schreiber hat. P1 und P4 brauchen Vertrags- oder Grid-Arbeit.
+Reversible: yes  Touches: apps/web, packages/abrechnung, kern, gaeb, speicher
+
+## D-48 Maske des Nachtrags-LV ohne oberste Stufe
+Welle 5 · Ticket 92 (Review P6) · decided by: orchestrator
+Question: Ein Nachtrags-LV mit der vollen Maske des Auftrags-LV landet nach der Übernahme eine Stufe zu tief (`04.01.01.0010` gegen `NN.NN.NNNN`), weil die Gliederung „Nachtrag <nummer>“ eine Stufe davorsetzt (D-35, D-80.1).
+Decision: Das Nachtrags-LV bekommt beim Anlegen die Maske des Auftrags-LV ohne deren oberste Gliederungsstufe; `nachtragUebernehmen` warnt, wenn die Tiefe dennoch nicht passt. Hat die Maske keine Gliederungsstufe, bleibt sie gleich, und die Übernahme ergibt einen Maskenbefund (U5). Kein Umnummerieren bei der Übernahme (OZ des Nachtrags bleiben, wie sie mit dem AN vereinbart sind).
+Reason: Die OZ des Nachtrags passen dann mit dem Präfix genau in die Maske; das Nachtragsangebot (X84) referenziert die OZ des Nachtrags-LV, die erhalten bleiben.
+Reversible: yes  Touches: apps/web/src/nachtrag, packages/abrechnung

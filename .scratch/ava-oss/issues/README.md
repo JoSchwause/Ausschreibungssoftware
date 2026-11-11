@@ -163,3 +163,4 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 89 | C2–C4 | Kosten in der App | `apps/web/src/kosten/` | resolved |
 | 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | resolved |
 | 91 | – | Tor M4 | `apps/web/e2e/` | ready-for-agent |
+| 92 | – | Behebung des Wellen-Reviews | mehrere (D-47) | ready-for-agent |
