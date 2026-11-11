@@ -117,7 +117,11 @@ function hatSteuerzeichen(text: string): boolean {
 }
 
 /** Vorkommastellen eines kanonischen Dezimalwerts (ohne Vorzeichen). */
-export const vorkommastellen = (wert: string): number => (wert.split('.')[0] ?? '').replace('-', '').length;
+export function vorkommastellen(wert: string): number {
+  const punkt = wert.indexOf('.');
+  const stellen = punkt < 0 ? wert.length : punkt;
+  return wert.startsWith('-') ? stellen - 1 : stellen;
+}
 
 const istGliederung = (k: Knoten): k is Gliederung => k.art === 'los' || k.art === 'titel';
 const NAMEN: Readonly<Record<Knoten['art'], string>> = {
@@ -150,8 +154,10 @@ function innenLeer(inhalt: LangtextInnen): boolean {
 export const langtextLeer = (l: Langtext): boolean =>
   l.every((b) => b.art !== 'ergaenzung' && innenLeer([b]));
 
+/** Kein Befund (eine geteilte, eingefrorene Liste: die meisten Regeln treffen nicht, Q4). */
+const KEINE: readonly Pruefbefund[] = Object.freeze([]);
 const nurWenn = (bedingung: boolean, b: () => Pruefbefund): readonly Pruefbefund[] =>
-  bedingung ? [b()] : [];
+  bedingung ? [b()] : KEINE;
 
 // --- LV-weite Regeln ---------------------------------------------------------------------------------------------
 
@@ -408,7 +414,8 @@ export const mengeNull: Knotenregel = {
   pruefe: (k) => {
     const p = position(k);
     return nurWenn(
-      p !== null && p.zuschlag === null && p.menge !== null && vergleiche(p.menge, NULL_MENGE) === 0,
+      // Kanonische Schreibweise (N3): die Null ist genau `0.000`, nie `-0.000`.
+      p !== null && p.zuschlag === null && p.menge === NULL_MENGE,
       () => befund('menge-null', 'warnung', 'Die Menge der Position ist 0,000.', am(k, 'menge')),
     );
   },
@@ -425,15 +432,13 @@ export const pauschalMenge: Knotenregel = {
   schwere: 'warnung',
   pruefe: (k) => {
     const p = position(k);
-    return nurWenn(
-      p !== null && p.merkmale.pauschal && p.menge !== null && vergleiche(p.menge, EINS) !== 0,
-      () =>
-        befund(
-          'pauschal-menge',
-          'warnung',
-          `Die Pauschalposition hat die Menge ${p?.menge ?? ''} statt 1,000.`,
-          am(k, 'menge'),
-        ),
+    return nurWenn(p !== null && p.merkmale.pauschal && p.menge !== null && p.menge !== EINS, () =>
+      befund(
+        'pauschal-menge',
+        'warnung',
+        `Die Pauschalposition hat die Menge ${p?.menge ?? ''} statt 1,000.`,
+        am(k, 'menge'),
+      ),
     );
   },
 };
@@ -444,18 +449,19 @@ export const zahlZuGross: Knotenregel = {
   schwere: 'fehler',
   pruefe: (k, ctx) => {
     const v = PRUEF_GRENZEN.vorkommastellen;
-    const pruefe = (was: string, wert: string | null, grenze: number, feld: string): readonly Pruefbefund[] =>
-      nurWenn(wert !== null && vorkommastellen(wert) > grenze, () =>
-        befund('zahl-zu-gross', 'fehler', zuGrossMeldung(was, wert ?? '', grenze), am(k, feld)),
-      );
-    if (istGliederung(k)) return pruefe('Die Summe', ctx.gliederungssumme(k.id), v.betrag, 'gesamtpreis');
-    if (k.art !== 'position') return [];
-    return [
-      ...pruefe('Die Menge', k.menge, v.menge, 'menge'),
-      ...pruefe('Der Einheitspreis', k.einheitspreis, v.einheitspreis, 'einheitspreis'),
-      ...pruefe('Der Gesamtpreis', ctx.gesamtpreis(k.id), v.betrag, 'gesamtpreis'),
-      ...pruefe('Der Zuschlagssatz', k.zuschlag?.prozentsatz ?? null, v.zuschlagssatz, 'zuschlag'),
-    ];
+    const aus: Pruefbefund[] = [];
+    const pruefe = (was: string, wert: string | null, grenze: number, feld: string): void => {
+      if (wert !== null && vorkommastellen(wert) > grenze)
+        aus.push(befund('zahl-zu-gross', 'fehler', zuGrossMeldung(was, wert, grenze), am(k, feld)));
+    };
+    if (istGliederung(k)) pruefe('Die Summe', ctx.gliederungssumme(k.id), v.betrag, 'gesamtpreis');
+    if (k.art === 'position') {
+      pruefe('Die Menge', k.menge, v.menge, 'menge');
+      pruefe('Der Einheitspreis', k.einheitspreis, v.einheitspreis, 'einheitspreis');
+      pruefe('Der Gesamtpreis', ctx.gesamtpreis(k.id), v.betrag, 'gesamtpreis');
+      pruefe('Der Zuschlagssatz', k.zuschlag?.prozentsatz ?? null, v.zuschlagssatz, 'zuschlag');
+    }
+    return aus;
   },
 };
 
@@ -538,7 +544,7 @@ export const teilmengeZuGross: Knotenregel = {
   schwere: 'warnung',
   pruefe: (k, ctx) => {
     const bezug = position(k)?.zuschlag?.bezug;
-    if (bezug?.art !== 'positionen') return [];
+    if (bezug?.art !== 'positionen') return KEINE;
     return bezug.positionen.flatMap((b) => {
       const ziel = ctx.baum.byId.get(b.positionId);
       const menge = ziel?.art === 'position' ? rechenmenge(ziel) : null;

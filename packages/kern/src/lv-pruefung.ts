@@ -3,13 +3,13 @@
 // Die Regeln stehen in `pruefregeln.ts`; hier entsteht einmal je Prüfung der Kontext (Stufen, doppelte OZ, Bereiche der
 // Zuschlagspositionen), dann laufen die Regeln über das LV und die Knoten in Dokumentreihenfolge.
 
-import type { Knoten, LvZustand, Pruefbefund } from '@tethys/vertrag';
+import type { Knoten, LvZustand, OzMaske, OzZeichenart, Pruefbefund } from '@tethys/vertrag';
 import {
   doppelteOrdnungszahlen,
+  indexFehler,
   maskeFehler,
   maskePruefen,
   ozFehler,
-  ozZerlegen,
   stellenFuer,
 } from './ozregeln';
 import { KNOTEN_REGELN, LV_REGELN } from './pruefregeln';
@@ -32,7 +32,42 @@ function stufen(lvId: string, knoten: readonly Knoten[]): Map<string, number> {
 
 const ozArt = (k: Knoten): 'gliederung' | 'position' => (k.art === 'position' ? 'position' : 'gliederung');
 
-/** OZ gegen die Maske: Fehlertext je Knoten, und je Knoten die Teile der gültigen OZ (für den Vergleich mit den Eltern). */
+const ZEICHENKLASSE: Readonly<Record<OzZeichenart, string>> = {
+  numerisch: '[0-9]',
+  alphanumerisch: '[0-9A-Za-z_]',
+};
+
+/**
+ * Schneller Weg für die übliche, gültige OZ: ein Muster je Art und Stufe (Teile fester Länge mit Trennzeichen, kein Teil
+ * nur aus Füllzeichen). Trifft es nicht, entscheidet `ozFehler` (die einzige Quelle der Regeln und der Meldung). Nur eine
+ * Abkürzung: was das Muster annimmt, nimmt auch `ozFehler` an (Index prüft der Aufrufer mit `indexFehler`; die
+ * Gesamtlänge ist bei gültiger Maske höchstens `OZ_MAX_LAENGE`).
+ */
+function musterFuer(maske: OzMaske): (oz: string, art: 'gliederung' | 'position', stufe: number) => boolean {
+  const cache = new Map<string, RegExp | null>();
+  const trenn = (maske.trennzeichen ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (oz, art, stufe) => {
+    const schluessel = `${art}${String(stufe)}`;
+    let muster = cache.get(schluessel);
+    if (muster === undefined) {
+      const stellen = stellenFuer(maske, art, stufe);
+      muster =
+        stellen === null
+          ? null
+          : new RegExp(
+              `^${stellen.map((s) => `(?![0_]{${String(s.laenge)}})${ZEICHENKLASSE[s.zeichen]}{${String(s.laenge)}}`).join(trenn)}$`,
+            );
+      cache.set(schluessel, muster);
+    }
+    return muster?.test(oz) ?? false;
+  };
+}
+
+/**
+ * OZ gegen die Maske: Fehlertext je Knoten, dessen OZ die Maske verletzt, und die Knoten, deren vordere Teile von der OZ
+ * der Elterngliederung abweichen. Weil jeder Teil eine feste Länge hat, sind die vorderen Teile gleich, genau wenn die OZ
+ * der Eltern samt Trennzeichen der Anfang der eigenen OZ ist.
+ */
 function ozAnalyse(
   z: LvZustand,
   stufe: ReadonlyMap<string, number>,
@@ -40,27 +75,29 @@ function ozAnalyse(
 ): { fehler: Map<string, string>; abweichend: Set<string> } {
   const lv = z.leistungsverzeichnis;
   const maske = lv.ozMaske;
+  const muster = musterFuer(maske);
   const fehler = new Map<string, string>();
-  const teile = new Map<string, readonly string[]>();
+  const gueltig = new Set<string>();
   for (const k of lv.knoten) {
     if (k.art === 'hinweis' || k.ordnungszahl === null) continue;
     const s = stufe.get(k.id) ?? 0;
-    const f = ozFehler(maske, k.ordnungszahl, k.art === 'position' ? k.ozIndex : null, ozArt(k), s);
-    if (f !== null) {
-      fehler.set(k.id, f);
-      continue;
-    }
-    const stellen = stellenFuer(maske, ozArt(k), s);
-    const t = stellen === null ? null : ozZerlegen(maske, k.ordnungszahl, stellen);
-    if (t !== null) teile.set(k.id, t);
+    const art = ozArt(k);
+    const index = k.art === 'position' ? k.ozIndex : null;
+    const f =
+      muster(k.ordnungszahl, art, s) && indexFehler(maske, art, index) === null
+        ? null
+        : ozFehler(maske, k.ordnungszahl, index, art, s);
+    if (f === null) gueltig.add(k.id);
+    else fehler.set(k.id, f);
   }
+  const trenn = maske.trennzeichen ?? '';
   const abweichend = new Set<string>();
   for (const k of lv.knoten) {
-    const eigene = teile.get(k.id);
+    if (k.art === 'hinweis' || k.ordnungszahl === null || !gueltig.has(k.id) || !gueltig.has(k.elternId))
+      continue;
     const eltern = baum.byId.get(k.elternId);
-    const vorne = eltern === undefined ? undefined : teile.get(eltern.id);
-    if (eigene === undefined || vorne === undefined) continue;
-    if (vorne.some((t, i) => eigene[i] !== t)) abweichend.add(k.id);
+    if (eltern === undefined || eltern.art === 'hinweis' || eltern.ordnungszahl === null) continue;
+    if (!k.ordnungszahl.startsWith(`${eltern.ordnungszahl}${trenn}`)) abweichend.add(k.id);
   }
   return { fehler, abweichend };
 }

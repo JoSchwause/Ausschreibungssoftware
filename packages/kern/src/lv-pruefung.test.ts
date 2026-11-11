@@ -2,6 +2,7 @@
 // Tests der formalen LV-Prüfung (K8, Ticket 41): je Regel ein positiver und ein negativer Fall. Zuerst geschrieben (Q1).
 // Die Erwartungen stehen als Literale (Code, Schwere, Ort), nicht aus dem Code abgeleitet.
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type {
   Einheitspreis,
@@ -18,13 +19,14 @@ import type {
   Pruefbefund,
   Titel,
 } from '@tethys/vertrag';
-import { PRUEF_GRENZEN, lvPruefen } from './index';
+import { PRUEF_GRENZEN, lvPruefen, ozFehler } from './index';
 import {
   betragNachlass,
   id,
   lvMit,
   merkmale,
   posKnoten,
+  standardMaske,
   wahlzuordnung,
   zuschlagAuf,
   zuschlagsliste,
@@ -474,5 +476,22 @@ describe('Reihenfolge', () => {
       ['P1', 'langtext-leer'],
       ['P1', 'menge-fehlt'],
     ]);
+  });
+});
+
+describe('Eigenschaft: oz-maske-verletzt folgt genau ozFehler', () => {
+  it('für beliebige OZ an Titel und Position meldet die Prüfung genau dann, wenn ozFehler einen Fehler nennt', () => {
+    const ozArb = fc.string({ unit: fc.constantFrom('0', '1', '9', 'A', '_', '.', ' '), maxLength: 12 });
+    fc.assert(
+      fc.property(ozArb, ozArb, fc.constantFrom(null, 'A', '1'), (tOz, pOz, index) => {
+        const z = lv([pos('P1', 0, { ordnungszahl: oz(pOz), ozIndex: index })], {
+          titel: { ordnungszahl: oz(tOz) },
+        });
+        const gemeldet = new Set<string | undefined>(mit(z, 'oz-maske-verletzt').map((b) => b.ort.knotenId));
+        expect(gemeldet.has('T1')).toBe(ozFehler(standardMaske, tOz, null, 'gliederung', 1) !== null);
+        expect(gemeldet.has('P1')).toBe(ozFehler(standardMaske, pOz, index, 'position', 1) !== null);
+      }),
+      { numRuns: 300 },
+    );
   });
 });
