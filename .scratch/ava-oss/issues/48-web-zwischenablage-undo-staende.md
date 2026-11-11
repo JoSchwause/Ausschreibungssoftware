@@ -65,7 +65,7 @@ Projekte und LVs löschen (Q5). Vorgehen: TDD mit dem Skill `tdd`; am Ende
 - [x] LV-Stand anlegen, neu laden, Stand schreibgeschützt öffnen; Änderungen am LV ändern den Stand nicht (E2E)
 - [x] Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück (E2E)
 - [x] Undo eines Befehls bei 5.000 Positionen bis zur aktualisierten Summenzeile < 100 ms (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -132,4 +132,8 @@ Lücken (nicht hier geändert):
 Messwert (`e2e/leistung.spec.ts`, `gross`, Mengenänderung, dann Strg+Z bis zur Summenzeile, 9 Messungen nach 2 zum
 Aufwärmen): Undo Median gesamt 69 ms, davon `speicher.anwenden` 54 ms, **App-Schicht ohne Speicher 15 ms**; hart geprüft
 wie in Ticket 39 die App-Schicht (< 100 ms) und die Gesamtzeit mit grober Schranke (< 400 ms).
+
+Suite (Umsetzer, nach Merge von `integration/welle-3` mit Ticket 50): `pnpm lint`, `pnpm typecheck` grün; `pnpm test`
+1593 bestanden, 2 übersprungen (nicht aus diesem Ticket), `fixtures` 16/16; `pnpm --filter @tethys/web e2e` 34 bestanden,
+kein `fixme` mehr.
 
