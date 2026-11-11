@@ -1,6 +1,6 @@
 # 72: `vergabe`: `summen.vorher` für eine nach dem Angebot hinzugekommene LV-Position
 
-Status: ready-for-agent
+Status: claimed
 Type: bug
 Welle: 5 · Strang: V · Paket: `packages/vergabe`
 Blocked by: –

@@ -55,11 +55,58 @@ function ersetze<T>(alt: readonly T[], neu: readonly T[], id: (x: T) => string):
   return aus;
 }
 
+/**
+ * Summen einer Art anwenden (Ticket 72): Einträge mit altem Wert in `alt` werden am selben Index ersetzt; Einträge ohne
+ * alten Wert sind neu (eine LV-Position, die nach dem Anlegen des Angebots ins LV kam) und kommen hinten dazu; Einträge
+ * aus `weg` (`vorher.entfernt`) fallen weg. Ein neuer Eintrag, den es schon gibt, oder ein wegfallender, den es nicht
+ * gibt, ist ein Programmfehler.
+ */
+function summenArtAnwenden<T>(
+  stand: readonly T[],
+  neu: readonly T[],
+  alt: readonly T[],
+  weg: readonly T[],
+  id: (x: T) => string,
+): readonly T[] {
+  const hatAlt = new Set(alt.map(id));
+  const zuErsetzen = neu.filter((n) => hatAlt.has(id(n)));
+  const dazu = neu.filter((n) => !hatAlt.has(id(n)));
+  let aus = ersetze(stand, zuErsetzen, id);
+  if (dazu.length === 0 && weg.length === 0) return aus;
+  const index = indexVon(stand, id);
+  for (const n of dazu)
+    if (index.has(id(n))) throw new Error(`ChangeSet passt nicht zum Zustand: ${id(n)} gibt es schon`);
+  const wegIds = new Set(weg.map(id));
+  for (const w of wegIds) if (!index.has(w)) throw new Error(`ChangeSet passt nicht zum Zustand: ${w} fehlt`);
+  if (wegIds.size > 0) aus = aus.filter((x) => !wegIds.has(id(x)));
+  return [...aus, ...dazu];
+}
+
 function summenAnwenden(alt: Summenstand, s: Summenaenderung): Summenstand {
-  if (s.positionen.length === 0 && s.gliederungen.length === 0 && s.gesamt === null) return alt;
+  const v = s.vorher;
+  if (
+    s.positionen.length === 0 &&
+    s.gliederungen.length === 0 &&
+    s.gesamt === null &&
+    v.entfernt.positionen.length === 0 &&
+    v.entfernt.gliederungen.length === 0
+  )
+    return alt;
   return {
-    positionen: ersetze(alt.positionen, s.positionen, positionsKennung),
-    gliederungen: ersetze(alt.gliederungen, s.gliederungen, gliederungsKennung),
+    positionen: summenArtAnwenden(
+      alt.positionen,
+      s.positionen,
+      v.positionen,
+      v.entfernt.positionen,
+      positionsKennung,
+    ),
+    gliederungen: summenArtAnwenden(
+      alt.gliederungen,
+      s.gliederungen,
+      v.gliederungen,
+      v.entfernt.gliederungen,
+      gliederungsKennung,
+    ),
     gesamt: s.gesamt ?? alt.gesamt,
   };
 }

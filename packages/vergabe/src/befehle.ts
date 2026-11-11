@@ -367,14 +367,15 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
 
     const positionsaenderung =
       alt === undefined ? { hinzugefuegt: [neu] } : { geaendert: [{ vorher: alt, nachher: neu }] };
-    const altSumme = (p: Position): Positionssumme =>
-      positionssumme(z.summen.positionen, p.id) ??
-      positionsSumme(angebotsPosition(p, angebotspositionenNachId(z.angebot.positionen).get(p.id)));
+    // Der alte Wert ist der gespeicherte (Ticket 72, D-57.2). Eine LV-Position, die nach dem Anlegen des Angebots ins LV
+    // kam, hat im Angebot keine Summe (`undefined`) und steckt mit 0,00 in den gespeicherten Gliederungs- und
+    // Gesamtsummen.
+    const altSumme = (p: Position): Positionssumme | undefined => positionssumme(z.summen.positionen, p.id);
 
     // Jede Positionssumme, die sich ändern kann: die Position selbst (ohne Zuschlag: nur aus ihrem eigenen Preis) und
     // die Zuschlagspositionen, deren Basis sie berührt (Ticket 44). Deren Beträge rechnet der Kern (R7) auf einem
     // Teil-LV, das alles enthält, wovon sie abhängen.
-    const kandidaten: { lvPos: Position; vorher: Positionssumme; nachher: Positionssumme }[] = [];
+    const kandidaten: { lvPos: Position; vorher: Positionssumme | undefined; nachher: Positionssumme }[] = [];
     if (lvPos.zuschlag === null)
       kandidaten.push({
         lvPos,
@@ -393,19 +394,27 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
         }
       }
     }
-    const geaendert = kandidaten.filter(
-      (c) =>
-        c.vorher.gesamtpreis !== c.nachher.gesamtpreis ||
-        c.vorher.gehtInSummeEin !== c.nachher.gehtInSummeEin,
+    // Geschrieben wird eine Summe, die sich ändert. Ohne gespeicherte Summe nur zusammen mit der neuen Angebotsposition:
+    // `speicher` entfernt Angebotssummen nur mit ihrer Angebotsposition, so nimmt die Umkehrung beides wieder weg (D-72.2).
+    const geschrieben = kandidaten.filter((c) =>
+      c.vorher === undefined
+        ? alt === undefined && c.lvPos.id === neu.positionId
+        : c.vorher.gesamtpreis !== c.nachher.gesamtpreis ||
+          c.vorher.gehtInSummeEin !== c.nachher.gehtInSummeEin,
     );
-    if (geaendert.length === 0) return changeSet(z, positionsaenderung);
+    const altBetrag = (c: (typeof kandidaten)[number]): Betrag =>
+      c.vorher === undefined ? NULL_BETRAG : betrag(c.vorher);
+    const verschoben = kandidaten.filter(
+      (c) => vorzeichen(subtrahiere(betrag(c.nachher), altBetrag(c))) !== 0,
+    );
+    if (geschrieben.length === 0 && verschoben.length === 0) return changeSet(z, positionsaenderung);
 
     // Differenzen je Betragsziel die Elternketten hinauf (A6), dann einmal die Gesamtsummen.
     const gliederungen = new Map<string, Gliederungssumme>();
     const gliederungenVorher: Gliederungssumme[] = [];
     const delta = { netto: NULL_BETRAG, bedarf: NULL_BETRAG, wahl: NULL_BETRAG };
-    for (const c of geaendert) {
-      const differenz = subtrahiere(betrag(c.nachher), betrag(c.vorher));
+    for (const c of verschoben) {
+      const differenz = subtrahiere(betrag(c.nachher), altBetrag(c));
       if (vorzeichen(differenz) === 0) continue;
       const ziel = betragsziel(c.lvPos);
       const feld = FELD[ziel];
@@ -439,11 +448,11 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
     return changeSet(z, {
       ...positionsaenderung,
       summen: {
-        positionen: geaendert.map((c) => c.nachher),
+        positionen: geschrieben.map((c) => c.nachher),
         gliederungen: [...gliederungen.values()],
         gesamt,
         vorher: {
-          positionen: geaendert.map((c) => c.vorher),
+          positionen: geschrieben.flatMap((c) => (c.vorher === undefined ? [] : [c.vorher])),
           gliederungen: gliederungenVorher,
           gesamt: gesamt === null ? null : altGesamt,
           entfernt: { positionen: [], gliederungen: [] },
