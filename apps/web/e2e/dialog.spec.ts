@@ -110,11 +110,8 @@ test('Langtext mit Auszeichnung und die LV-Angaben bleiben nach dem Neuladen gle
   await expect(dialog.getByRole('textbox', { name: 'Eröffnungszeit' })).toHaveValue('10:30');
 });
 
-// Blockiert durch eine Lücke im Kern (Ticket 47, Comments): `LangtextAendern` nimmt nur Textläufe und Bilder auf oberster
-// Ebene an (`langtextFehler` in packages/kern/src/feld-befehle.ts) und weist Absatz, Liste, Tabelle, Umbruch und
-// Textergänzung (Vertrag v1.1b) mit `ungueltige-eingabe` ab. Der Dialog zeigt die Abweisung am Langtext an (U5). Sobald der
-// Kern sie annimmt, `fixme` entfernen.
-test.fixme('Langtext mit Liste und Tabelle bleibt nach dem Neuladen gleich', async ({ page }) => {
+// Seit Ticket 50 nimmt der Kern den vollen Langtext (v1.1b) an: Absatz, Liste, Tabelle (D-15).
+test('Langtext mit Liste und Tabelle bleibt nach dem Neuladen gleich', async ({ page }) => {
   await lvMitZweiPositionen(page);
   const dialog = await dialogAuf(page, 1);
   const editor = dialog.getByRole('textbox', { name: 'Langtext', exact: true });
