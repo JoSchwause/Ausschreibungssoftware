@@ -52,6 +52,8 @@ export type ExcelBefundcode =
   | 'satz-ohne-zuschlagsposition'
   /** Rücklauf: In einer Zahlzelle steht etwas, das keine Zahl ist. */
   | 'text-in-zahlzelle'
+  /** Rücklauf: Eine Formel in einer Zahlzelle hat kein gespeichertes Ergebnis (Datei wurde nie berechnet). */
+  | 'formel-ohne-ergebnis'
   /** Rücklauf: mehr Nachkommastellen als EP (3) bzw. Satz (2) fassen; es wird nicht gerundet. */
   | 'zu-viele-nachkommastellen';
 
@@ -264,7 +266,7 @@ type Zahlzelle<T> =
   | { readonly art: 'wert'; readonly wert: T }
   | {
       readonly art: 'befund';
-      readonly code: 'text-in-zahlzelle' | 'zu-viele-nachkommastellen';
+      readonly code: 'text-in-zahlzelle' | 'zu-viele-nachkommastellen' | 'formel-ohne-ergebnis';
       readonly inhalt: string;
     };
 
@@ -277,7 +279,8 @@ function zahlzelle<A extends 'einheitspreis' | 'prozent'>(
   art: A,
 ): Zahlzelle<A extends 'einheitspreis' ? Einheitspreis : Prozent> {
   type W = A extends 'einheitspreis' ? Einheitspreis : Prozent;
-  if (z === undefined || z.wert.art === 'leer') return { art: 'leer' };
+  if (z === undefined) return { art: 'leer' };
+  if (z.wert.art === 'leer') return { art: 'befund', code: 'formel-ohne-ergebnis', inhalt: '' };
   const w = z.wert;
   if (w.art === 'zahl') {
     const dezimal = excelZahl(w.text);
@@ -442,7 +445,9 @@ export function excelRuecklaufLesen(bytes: Uint8Array, zustand: LvZustand): Exce
         z.code,
         z.code === 'text-in-zahlzelle'
           ? `${zelle(s)}: „${z.inhalt}“ ist keine Zahl.`
-          : `${zelle(s)}: ${z.inhalt} hat mehr Nachkommastellen als erlaubt (${feld === 'einheitspreis' ? '3' : '2'}); es wird nicht gerundet.`,
+          : z.code === 'formel-ohne-ergebnis'
+            ? `${zelle(s)}: Die Formel hat kein gespeichertes Ergebnis (Datei in Excel oder LibreOffice neu berechnen und speichern).`
+            : `${zelle(s)}: ${z.inhalt} hat mehr Nachkommastellen als erlaubt (${feld === 'einheitspreis' ? '3' : '2'}); es wird nicht gerundet.`,
         ort(s, k, feld),
       );
     }
