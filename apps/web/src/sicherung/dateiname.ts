@@ -9,6 +9,6 @@ export function dateinameSauber(name: string): string {
 }
 
 export function sicherungsdateiname(projektname: string, datum: Date): string {
-  const tag = `${datum.getFullYear()}-${zweistellig(datum.getMonth() + 1)}-${zweistellig(datum.getDate())}`;
+  const tag = `${String(datum.getFullYear())}-${zweistellig(datum.getMonth() + 1)}-${zweistellig(datum.getDate())}`;
   return `${dateinameSauber(projektname)}-${tag}.tethys.json`;
 }

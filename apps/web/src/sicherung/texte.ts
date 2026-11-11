@@ -11,7 +11,7 @@ export const texte = {
   erinnerung: {
     bereich: 'Datensicherung',
     text: (name: string, tage: number): string =>
-      `Projekt „${name}“: Die letzte Sicherung ist ${tage} Tage her, seitdem gab es Änderungen.`,
+      `Projekt „${name}“: Die letzte Sicherung ist ${String(tage)} Tage her, seitdem gab es Änderungen.`,
     jetztSichern: 'Jetzt sichern',
     jetztSichernFuer: (name: string): string => `Jetzt sichern: ${name}`,
   },

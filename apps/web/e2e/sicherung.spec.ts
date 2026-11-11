@@ -6,7 +6,7 @@ import { projektAnlegen } from './hilfen';
 
 const TAG_MS = 24 * 60 * 60 * 1000;
 
-async function projektId(page: Page): Promise<string> {
+function projektId(page: Page): string {
   const id = new URL(page.url()).pathname.split('/').pop();
   if (!id) throw new Error('keine Projektkennung in der Adresse');
   return id;
@@ -44,7 +44,7 @@ test('Erinnerung: nach mehr als 7 Tagen ohne Export und mit Befehlen seitdem; �
   page,
 }) => {
   await projektAnlegen(page, 'Erinnerungsprojekt', 'Bauherr');
-  const id = await projektId(page);
+  const id = projektId(page);
   await page.getByRole('link', { name: 'Zur Projektliste' }).click();
   // Frisch angelegt: der erste Befehl ist von jetzt, nichts ist fällig.
   await expect(page.getByRole('status').filter({ hasText: 'Erinnerungsprojekt' })).toHaveCount(0);
@@ -52,7 +52,10 @@ test('Erinnerung: nach mehr als 7 Tagen ohne Export und mit Befehlen seitdem; �
   // Letzter Export vor 10 Tagen (vorgestellter Zeitstempel); der Befehl „Projekt anlegen“ ist jünger.
   await page.evaluate(
     ([k, t]) => {
-      window.localStorage.setItem(`tethys.sicherung.letzterExport.${k}`, new Date(Number(t)).toISOString());
+      window.localStorage.setItem(
+        'tethys.sicherung.letzterExport.' + String(k),
+        new Date(Number(t)).toISOString(),
+      );
     },
     [id, String(Date.now() - 10 * TAG_MS)],
   );
@@ -62,7 +65,9 @@ test('Erinnerung: nach mehr als 7 Tagen ohne Export und mit Befehlen seitdem; �
 
   const download = page.waitForEvent('download');
   await hinweis.getByRole('button', { name: 'Jetzt sichern' }).click();
-  expect((await download).suggestedFilename()).toMatch(/^Erinnerungsprojekt-\d{4}-\d{2}-\d{2}\.tethys\.json$/);
+  expect((await download).suggestedFilename()).toMatch(
+    /^Erinnerungsprojekt-\d{4}-\d{2}-\d{2}\.tethys\.json$/,
+  );
   await expect(hinweis).toHaveCount(0);
 
   // Der Zeitpunkt ist neu gesetzt: auch nach dem Neuladen keine Erinnerung.
@@ -93,7 +98,7 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
     };
   });
   await projektAnlegen(page, 'Ordnerprojekt', 'Bauherr');
-  const id = await projektId(page);
+  const id = projektId(page);
   await page.getByRole('link', { name: 'Zur Projektliste' }).click();
 
   await page.getByRole('button', { name: 'Datensicherung' }).click();
@@ -108,7 +113,10 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
   // Letzter Export vor 9 Tagen; die Liste wertet beim Öffnen der Seite aus: Projekt öffnen und zurück.
   await page.evaluate(
     ([k, t]) => {
-      window.localStorage.setItem(`tethys.sicherung.letzterExport.${k}`, new Date(Number(t)).toISOString());
+      window.localStorage.setItem(
+        'tethys.sicherung.letzterExport.' + String(k),
+        new Date(Number(t)).toISOString(),
+      );
     },
     [id, String(Date.now() - 9 * TAG_MS)],
   );

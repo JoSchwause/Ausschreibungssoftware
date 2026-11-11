@@ -28,7 +28,7 @@ function useFaellige(): readonly Faellig[] {
   const [faellig, setFaellig] = useState<readonly Faellig[]>([]);
 
   useEffect(() => {
-    let aktiv = true;
+    const lauf = { aktiv: true };
     void (async () => {
       const liste = await u.speicher.projekte.auflisten();
       if (!liste.ok) return;
@@ -47,17 +47,23 @@ function useFaellige(): readonly Faellig[] {
         if (r.faellig) treffer.push({ id: p.id, name: p.name, tage: r.tage });
       }
       treffer.sort((a, b) => a.name.localeCompare(b.name, 'de'));
-      if (aktiv) setFaellig(treffer);
+      if (lauf.aktiv) setFaellig(treffer);
     })();
     return () => {
-      aktiv = false;
+      lauf.aktiv = false;
     };
   }, [u, stand]);
 
   return faellig;
 }
 
-function SicherungsDialog({ offen, onSchliessen }: { offen: boolean; onSchliessen: () => void }): ReactElement {
+function SicherungsDialog({
+  offen,
+  onSchliessen,
+}: {
+  offen: boolean;
+  onSchliessen: () => void;
+}): ReactElement {
   const s = useSicherung();
   const t = texte.dialog;
   return (

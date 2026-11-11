@@ -19,7 +19,10 @@ export interface OrdnerHandle {
 
 /** Gibt es die Funktion in diesem Browser? Sonst zeigt die App nichts davon an (G-03). */
 export function ordnerWahlUnterstuetzt(): boolean {
-  return typeof window !== 'undefined' && typeof (window as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function';
+  return (
+    typeof window !== 'undefined' &&
+    typeof (window as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
+  );
 }
 
 /**

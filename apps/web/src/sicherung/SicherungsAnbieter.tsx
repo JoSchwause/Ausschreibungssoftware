@@ -9,11 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactElement, ReactNode } from 'react';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import {
-  einstellungenLesen,
-  einstellungenSchreiben,
-  letzterExportMerken,
-} from './ablage';
+import { einstellungenLesen, einstellungenSchreiben, letzterExportMerken } from './ablage';
 import { sicherungsdateiname } from './dateiname';
 import {
   berechtigungSichern,
@@ -105,12 +101,20 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
       if (o === null) return 'download';
       if (!(await berechtigungSichern(o, fuerNutzer))) {
         if (fuerNutzer) {
-          zeige({ titel: texte.meldung.ordnerFehler, beschreibung: texte.meldung.ordnerRecht, art: 'warnung' });
+          zeige({
+            titel: texte.meldung.ordnerFehler,
+            beschreibung: texte.meldung.ordnerRecht,
+            art: 'warnung',
+          });
           return 'download';
         }
         if (!hinweisPausiert.current) {
           hinweisPausiert.current = true;
-          zeige({ titel: texte.meldung.ordnerFehler, beschreibung: texte.meldung.ordnerRecht, art: 'warnung' });
+          zeige({
+            titel: texte.meldung.ordnerFehler,
+            beschreibung: texte.meldung.ordnerRecht,
+            art: 'warnung',
+          });
         }
         return false;
       }
@@ -244,7 +248,17 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
       ordnerEntfernen,
       automatischSetzen,
     }),
-    [ordnerMoeglich, ordner, automatisch, stand, sichern, vermerken, ordnerAuswaehlen, ordnerEntfernen, automatischSetzen],
+    [
+      ordnerMoeglich,
+      ordner,
+      automatisch,
+      stand,
+      sichern,
+      vermerken,
+      ordnerAuswaehlen,
+      ordnerEntfernen,
+      automatischSetzen,
+    ],
   );
 
   return <Kontext.Provider value={wert}>{children}</Kontext.Provider>;

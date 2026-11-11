@@ -30,7 +30,8 @@ const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
 function mitSpeicher(inhalt: ReactElement): ReactElement {
   return (
     <SpeicherAnbieter {...testpfad}>
-      <SicherungsAnbieter>{/* Ticket 62 */}
+      <SicherungsAnbieter>
+        {/* Ticket 62 */}
         <HistorieAnbieter>{inhalt}</HistorieAnbieter>
       </SicherungsAnbieter>
     </SpeicherAnbieter>
