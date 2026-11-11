@@ -104,6 +104,9 @@ importers:
       '@tethys/vertrag':
         specifier: workspace:*
         version: link:../vertrag
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       pdfmake:
         specifier: 0.3.14
         version: 0.3.14
