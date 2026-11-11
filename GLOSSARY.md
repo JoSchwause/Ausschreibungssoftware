@@ -275,6 +275,9 @@ Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je 
 ### Aufmaßposition
 Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (oder keiner) und die Menge dieses Blatts. Die Menge rechnet die App aus dem Mengenansatz (Paket `mengen`); gespeichert werden beide. Im Code `Aufmassposition`.
 
+### Aufmaßbefund
+Befund zu einem Aufmaßblatt gegen sein Auftrags-LV: eine Zeile ohne Position im Auftrags-LV, zu einer Gliederung oder einem Hinweistext, zu einer Zuschlagsposition (wird nicht aufgemessen), zu einer Position ohne Einheitspreis oder ohne Menge, oder ein Blatt eines anderen Auftrags-LV. Ein Aufmaßbefund sperrt nie (U5); Soll/Ist und Rechnung lassen solche Zeilen weg. Im Code `Aufmassbefund`, `aufmassPruefen` (Paket `abrechnung`).
+
 ### Rechnung
 Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
 
@@ -291,7 +294,13 @@ Prozentualer Einbehalt vom kumulierten Bruttobetrag einer Rechnung als Sicherhei
 **Zahlbetrag**: was der Auftraggeber auf eine Rechnung zahlt, kumuliertes Brutto minus Umlagen, Einbehalt und alle früheren Zahlbeträge; negativ heißt Überzahlung (ein Befund). **Freigabe**: Der Prüfer gibt eine Rechnung mit ihrem Zahlbetrag frei; der Betrag wird dabei eingefroren, damit eine spätere Aufmaßkorrektur eine bezahlte Rechnung nicht still ändert. Freigegeben wird in der Reihenfolge der Rechnungsnummern; eine freigegebene Rechnung ändert sich nur, wenn ihre Freigabe ausdrücklich aufgehoben wird. Im Code `Rechnung.freigabe`, `RechnungFreigeben`, `RechnungsfreigabeAufheben`.
 
 ### Leistungsstand
-Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Im Code `Leistungsstand`.
+Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Was dabei auffällt (eine Zeile, die nicht zählt, eine aufgemessene Position ohne Einheitspreis, eine Zuschlagsposition ohne Satz, ein negatives Netto nach Nachlass), ist ein **Leistungsbefund**. Im Code `Leistungsstand`, `leistungsstandBerechnen`, `Leistungsbefund`.
+
+### Rechnungsprüfung / Abzugskette
+Die Prüfung einer Rechnung gegen Auftrags-LV und Aufmaßblätter (D-34): die **Abzugskette** Leistung → Nachlass → Netto nach Nachlass → MwSt → Brutto kumuliert → Umlagen → Einbehalt → frühere Zahlbeträge → Zahlbetrag, jeder Schritt auf 2 Stellen gerundet, dazu der Vergleich mit der Forderung des Auftragnehmers und **Rechnungsbefunde** (etwa Überzahlung, frühere Rechnung nicht freigegeben, Blatt einer früheren Rechnung fehlt, Schlussrechnung nicht die letzte). Das Ergebnis wird nie gespeichert. Im Code `rechnungPruefen`, `Rechnungspruefung`, `Abzugskette`, `Rechnungsbefund`, `freigabeMoeglich` (Paket `abrechnung`).
+
+### Soll/Ist
+Vergleich der Menge einer Position im Auftrags-LV (Soll) mit der Summe ihrer Aufmaßblätter (Ist), mit Anteil in Prozent und den Gesamtpreisen beider Seiten, je Gliederung und gesamt summiert. Überschreitet das Ist 110 % der Soll-Menge streng, ist das ein Befund; unter 90 % erst, wenn die Schlussrechnung vorliegt (VOB/B § 2 Abs. 3, D-35; beide Schwellen einstellbar). Im Code `sollIstBerechnen`, `SollIst`, `SollIstBefund` (Paket `abrechnung`).
 
 ### Kostenkontrolle
 Vergleich der Kosten eines Projekts je Kostengruppe in vier Spalten, durchgehend netto (D-37): **Budget** (die Kostenermittlung, die der Nutzer wählt, als Baumsummen nach D-24), **Vergabe** (Summe der Gesamtpreise der Positionen der Auftrags-LVs, die ins Netto eingehen, je Kostengruppe der Position), **Abrechnung** (Summe der Gesamtpreise des Leistungsstands der jeweils letzten Rechnung je Auftrags-LV) und **Abweichung** (Vergabe − Budget). Zeilen: die Kostengruppen als Baum (eigener Wert plus Kinder), „ohne Kostengruppe“, „Nachlass“ (negativ, ohne Budget) und Gesamt (Netto nach Nachlass); die Ebene-1-Zeilen, „ohne Kostengruppe“ und „Nachlass“ ergeben auf den Cent das Gesamt. Mehrere Auftrags-LVs werden addiert; Umlagen, Einbehalt und MwSt gehören nicht dazu. Eine Kostengruppe außerhalb der Gliederung des Budgets zählt trotzdem und ist ein Befund. Gerechnet, nie gespeichert. Im Code `kostenkontrolleBerechnen`, `Kostenkontrolle` (Paket `kosten`).
@@ -301,6 +310,9 @@ Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen
 
 ### Ansatzzeile
 Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile` (Typ in `vertrag`), `Zeilenergebnis`.
+
+### Textform (einer Ansatzzeile)
+Die Form, in der eine Zeile aus einer GAEB-Mengenermittlung (X31) im Mengenansatz steht, wenn der freie Rechenansatz sie nicht genau abbildet (andere REB-Formel als 91, Kennung wie Hilfswert oder Zwischensumme, Vorzeichen oder Faktor, Verweis außerhalb der Position): Die Formelnummer bleibt, der Ausdruck ist `*` und dahinter die Zeile der Datei im Wortlaut. `mengen` rechnet eine solche Zeile nie (die Menge der Position bleibt leer), sie bleibt aber lesbar erhalten (Q5; D-83.2). Beim X31-Export entfällt eine Position mit einer Zeile in der Textform ganz, mit Warnung (D-83.10). Im Code `x31Lesen` (Paket `gaeb`).
 
 ### REB-Formel
 Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
@@ -313,6 +325,9 @@ Die Angaben, die ein LV zum Nachtrags-LV machen: das Auftrags-LV, zu dem der Nac
 
 ### Nachtragsstatus
 Stand eines Nachtrags: **angemeldet** (der Auftragnehmer hat die geänderte oder zusätzliche Leistung angezeigt), **angeboten** (das Nachtragsangebot liegt vor), **beauftragt** (vom Auftraggeber beauftragt und ins Auftrags-LV übernommen) oder **abgelehnt**. Nur ein beauftragter Nachtrag geht in eine Rechnung. Im Code `Nachtragsstatus`.
+
+### Nachtrag übernehmen
+Die Übernahme eines beauftragten Nachtrags ins Auftrags-LV: eine neue Gliederung „Nachtrag <Nummer>“ am Ende der obersten Ebene (Los oder Titel wie die Gliederungen dort) mit der nächsten freien Ordnungszahl, darunter der Baum des Nachtrags-LV mit seinen Kennungen und seinen Ordnungszahlen, vor die die Ordnungszahl der neuen Gliederung tritt (`01.0010` → `04.01.0010`), und den Preisen des Nachtragsangebots. Wahl-Alternativen entfallen, ein Los des Nachtrags-LV wird Titel. Was dabei auffällt (nicht angeboten, entfallene Alternativen, ignorierter Nachlass, Ordnungszahl außerhalb der Maske), ist eine **Nachtragswarnung**; der Befehl entsteht trotzdem. Passen Nachtragsstatus und Übernahme nicht zusammen (beauftragt, aber nicht übernommen, oder umgekehrt), ist das ein **Nachtragsbefund**. Im Code `nachtragUebernehmen`, `Nachtragswarnung`, `nachtragsbefunde`, `Nachtragsbefund` (Paket `abrechnung`), Befehl `NachtragUebernehmen`.
 
 ---
 

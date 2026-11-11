@@ -5,6 +5,10 @@
 export { leseGaeb, MAX_STUFEN, OZ_MAX_LAENGE, STANDARD_MAX_BYTES, STANDARD_MWST_SATZ } from './lesen';
 export type { GaebLesungErgebnis, LeseOptionen } from './lesen';
 export { GRENZEN, VERSIONSDATUM, gaebKennung, schreibeGaeb } from './schreiben';
-export type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
+export type { ExportPhase, ExportVersion, SchreibInhalt, SchreibOptionen } from './schreiben';
 export { leseAngebot } from './angebot';
 export type { AngebotLeseOptionen, AngebotLesung } from './angebot';
+export { x31Lesen } from './x31';
+export type { X31Aufmass, X31Lesung } from './x31';
+export { aufmassAlsX31 } from './x31-schreiben';
+export type { X31SchreibOptionen } from './x31-schreiben';

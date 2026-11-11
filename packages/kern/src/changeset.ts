@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ChangeSet anwenden und umkehren (Ticket 05, Summen: Ticket 07, ohne Vorzustand: Ticket 30). Beides sind reine
 // Funktionen; die App nutzt sie für den Zustand, der Kern in Tests, `changeSetUmkehren` für Undo (S3).
+//
+// Auftrags-LV (Ticket 71, Vertrag v1.4): `auftragsLvChangeSetAnwenden` und `auftragsLvChangeSetUmkehren` teilen Knoten- und
+// Summenlogik mit dem LV (`knotenAnwenden`, `summenAnwenden`, `summenUmkehren` arbeiten nur auf `knoten` und `summen`, die
+// beide ChangeSets gleich tragen); die Kennung des Auftrags-LV wird nie als LV-Kennung umgedeutet (D-64.4).
 
 import { NULL_BETRAG } from '@tethys/dezimal';
 import type {
   Aenderung,
   Aenderungen,
+  AuftragsLvChangeSet,
+  AuftragsLvChangeSetAnwenden,
+  AuftragsLvChangeSetUmkehren,
+  AuftragsLvKopf,
   Befehlshinweis,
   Gesamtsummen,
   Gliederungssumme,
@@ -50,6 +58,40 @@ const NULL_GESAMT: Gesamtsummen = {
 
 export const LEERER_SUMMENSTAND: Summenstand = { positionen: [], gliederungen: [], gesamt: NULL_GESAMT };
 
+/** Was LV- und Auftrags-LV-ChangeSet gleich tragen: Knoten und Summen (Vertrag: „gleich gebaut wie `LvChangeSet`“). */
+type BaumChangeSet = Pick<LvChangeSet, 'knoten' | 'summen'>;
+
+const knotenGeaendert = (k: Aenderungen<Knoten>): boolean =>
+  k.hinzugefuegt.length > 0 || k.geaendert.length > 0 || k.entfernt.length > 0;
+
+/** Keine Knoten-, Summen- oder Gesamtänderung (Kopf und weitere Teile prüft der Aufrufer). */
+const ohneBaumaenderung = (cs: BaumChangeSet): boolean =>
+  !knotenGeaendert(cs.knoten) &&
+  cs.summen.positionen.length === 0 &&
+  cs.summen.gliederungen.length === 0 &&
+  cs.summen.gesamt === null;
+
+/**
+ * Die Knoten nach dem ChangeSet: entfernen, ersetzen (`geaendert`), hinzufügen; das Ergebnis in kanonischer Reihenfolge
+ * (Vorordnung von der Wurzel `wurzelId`, siehe `struktur.ts`). Ohne Knotenänderung bleibt das Array, wie es ist.
+ */
+function knotenAnwenden(
+  wurzelId: string,
+  alt: readonly Knoten[] | undefined,
+  k: Aenderungen<Knoten>,
+): readonly Knoten[] {
+  if (alt !== undefined && !knotenGeaendert(k)) return alt;
+  const weg = new Set<string>(k.entfernt.map((n) => n.id));
+  const ersatz = new Map<string, Knoten>(k.geaendert.map((g) => [g.nachher.id, g.nachher]));
+  const rest: Knoten[] = [];
+  for (const n of alt ?? []) {
+    if (weg.has(n.id)) continue;
+    rest.push(ersatz.get(n.id) ?? n);
+  }
+  for (const n of k.hinzugefuegt) rest.push(n);
+  return kanonisch(wurzelId, rest);
+}
+
 /**
  * Wendet die Summen eines ChangeSets an. Der Stand ist eine Funktion des Zustands: `positionen` und `gliederungen` stehen
  * in der Reihenfolge der Knoten (siehe `summen.ts`).
@@ -58,7 +100,7 @@ export const LEERER_SUMMENSTAND: Summenstand = { positionen: [], gliederungen: [
  *  - Ändert sich die Struktur (Knoten hinzugefügt, entfernt oder verschoben), wird der Stand in Knotenreihenfolge neu
  *    zusammengesetzt: Einträge entfernter Knoten fallen weg, neue kommen aus `cs.summen`, alle anderen bleiben.
  */
-function summenAnwenden(alt: Summenstand, cs: LvChangeSet, knoten: readonly Knoten[]): Summenstand {
+function summenAnwenden(alt: Summenstand, cs: BaumChangeSet, knoten: readonly Knoten[]): Summenstand {
   const s = cs.summen;
   const gesamt = s.gesamt ?? alt.gesamt;
   const k = cs.knoten;
@@ -183,35 +225,11 @@ export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
     throw new Error('ChangeSet ohne Kopf lässt sich nicht auf „kein LV“ anwenden.');
   }
 
-  const k = cs.knoten;
-  const knotenGeaendert = k.hinzugefuegt.length > 0 || k.geaendert.length > 0 || k.entfernt.length > 0;
-  const s = cs.summen;
-  if (
-    zustand !== null &&
-    cs.kopf === null &&
-    !knotenGeaendert &&
-    s.positionen.length === 0 &&
-    s.gliederungen.length === 0 &&
-    s.gesamt === null &&
-    cs.papierkorb === undefined
-  ) {
+  if (zustand !== null && cs.kopf === null && ohneBaumaenderung(cs) && cs.papierkorb === undefined) {
     return zustand;
   }
 
-  let knoten: readonly Knoten[];
-  if (zustand !== null && !knotenGeaendert) {
-    knoten = zustand.leistungsverzeichnis.knoten;
-  } else {
-    const weg = new Set<string>(k.entfernt.map((n) => n.id));
-    const ersatz = new Map<string, Knoten>(k.geaendert.map((g) => [g.nachher.id, g.nachher]));
-    const rest: Knoten[] = [];
-    for (const n of zustand?.leistungsverzeichnis.knoten ?? []) {
-      if (weg.has(n.id)) continue;
-      rest.push(ersatz.get(n.id) ?? n);
-    }
-    for (const n of k.hinzugefuegt) rest.push(n);
-    knoten = kanonisch(kopf.id, rest);
-  }
+  const knoten = knotenAnwenden(kopf.id, zustand?.leistungsverzeichnis.knoten, cs.knoten);
   const summen = summenAnwenden(zustand?.summen ?? LEERER_SUMMENSTAND, cs, knoten);
   const papierkorb = papierkorbAnwenden(zustand?.papierkorb, cs.papierkorb);
   return {
@@ -255,7 +273,7 @@ function aenderungenUmkehren<T>(a: Aenderungen<T>): Aenderungen<T> {
  * die Umkehrung entfernt (`knoten.hinzugefuegt` des ChangeSets). `gesamt` und `vorher.gesamt` tauschen die Plätze;
  * das deckt auch Anlegen und Löschen ab (das eine ist die Umkehrung des anderen).
  */
-function summenUmkehren(cs: LvChangeSet): Summenaenderung {
+function summenUmkehren(cs: BaumChangeSet): Summenaenderung {
   const s = cs.summen;
   const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3, keine Prüfung auf undefined mehr)
   const neu = new Set<string>(cs.knoten.hinzugefuegt.map((k) => k.id));
@@ -302,3 +320,41 @@ export function changeSetUmkehren(cs: LvChangeSet): LvChangeSet {
       : { lvStand: { vorher: cs.lvStand.nachher, nachher: cs.lvStand.vorher } }),
   };
 }
+
+/**
+ * Wendet ein ChangeSet des Auftrags-LV an (Ticket 71, Vertrag v1.4 `AuftragsLvChangeSetAnwenden`), Lesart wie
+ * `lvChangeSetAnwenden`: `zustand: null` heißt „entsteht erst“ (`kopf.nachher` gesetzt), `kopf.nachher: null` liefert
+ * `null` (die Umkehrung des Anlegens). Knoten kanonisch, Summen wie beim LV (Property-Test: gleich `summenBerechnen`);
+ * ein ChangeSet ohne Änderung liefert denselben Zustand. Ohne Kopf auf „kein Auftrags-LV“: Programmfehler, wirft.
+ */
+export const auftragsLvChangeSetAnwenden: AuftragsLvChangeSetAnwenden = (zustand, cs) => {
+  let kopf: AuftragsLvKopf;
+  if (cs.kopf !== null) {
+    if (cs.kopf.nachher === null) return null;
+    kopf = cs.kopf.nachher;
+  } else if (zustand !== null) {
+    kopf = ohneKnoten(zustand.auftragsLeistungsverzeichnis);
+  } else {
+    throw new Error('ChangeSet ohne Kopf lässt sich nicht auf „kein Auftrags-LV“ anwenden.');
+  }
+  if (zustand !== null && cs.kopf === null && ohneBaumaenderung(cs)) return zustand;
+  const knoten = knotenAnwenden(kopf.id, zustand?.auftragsLeistungsverzeichnis.knoten, cs.knoten);
+  const summen = summenAnwenden(zustand?.summen ?? LEERER_SUMMENSTAND, cs, knoten);
+  return { auftragsLeistungsverzeichnis: { ...kopf, knoten }, summen };
+};
+
+/**
+ * Die Umkehrung eines ChangeSets des Auftrags-LV (Ticket 71, Vertrag v1.4 `AuftragsLvChangeSetUmkehren`; Undo, ADR 0006),
+ * allein aus dem ChangeSet und ohne Umweg über ein LV-ChangeSet (D-64.4): Kopf und Knoten vertauscht, Summen aus
+ * `summen.vorher` wie bei `changeSetUmkehren`. Die Umkehrung des Anlegens löscht das Auftrags-LV, die einer
+ * Nachtragsübernahme entfernt die Knoten wieder. Hinweise gehen nicht in die Umkehrung ein.
+ */
+export const auftragsLvChangeSetUmkehren: AuftragsLvChangeSetUmkehren = (
+  cs: AuftragsLvChangeSet,
+): AuftragsLvChangeSet => ({
+  art: cs.art,
+  auftragsLeistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId,
+  kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
+  knoten: aenderungenUmkehren(cs.knoten),
+  summen: summenUmkehren(cs),
+});

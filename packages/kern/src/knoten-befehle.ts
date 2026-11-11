@@ -229,17 +229,9 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const korb = papierkorbKnoten(z.papierkorb);
   const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
-  // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 übernimmt die Felder; bis dahin laut statt still verworfen, Q5)
-  if (b.daten.kostengruppe !== undefined || b.daten.textquelle !== undefined)
-    return nein(
-      'befehl-nicht-zustaendig',
-      'PositionAnlegen mit Kostengruppe oder Textquelle: erst Ticket 71.',
-      b.id,
-      'daten',
-    );
   const d = b.daten;
   // Ein mitgebrachter Mengenansatz bleibt stehen (Ticket 56, D-56.1; Form geprüft in `positionsdatenFehler`, `[]` fällt
-  // in `positionNormal` weg).
+  // in `positionNormal` weg). Ebenso Kostengruppe und Textquelle (v1.4, Ticket 71; `''` als Textquelle fällt weg).
   return ok(
     einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
       positionNormal({
@@ -259,6 +251,8 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
         einheit: d.einheit,
         einheitspreis: d.einheitspreis,
         epa: d.epa,
+        ...(d.kostengruppe === undefined ? {} : { kostengruppe: d.kostengruppe }),
+        ...(d.textquelle === undefined ? {} : { textquelle: d.textquelle }),
       }),
     ),
   );

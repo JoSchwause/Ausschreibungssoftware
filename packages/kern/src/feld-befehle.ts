@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Feldbefehle (Ticket 27, E-12): KurztextAendern, LangtextAendern, HinweistextAendern, EinheitAendern,
-// LeistungsverzeichnisUmbenennen. Jeder Befehl ist `(LvZustand, Befehl) → Ergebnis<LvChangeSet, Befehlsfehler>`: rein (A2).
+// LeistungsverzeichnisUmbenennen; seit Vertrag v1.4 TextquelleSetzen (Ticket 71, D-40). Jeder Befehl ist `(LvZustand, Befehl) → Ergebnis<LvChangeSet, Befehlsfehler>`: rein (A2).
 // Das ChangeSet nennt genau den geänderten Knoten (oder den Kopf) und keine Summen: diese Felder gehen in keine Summe ein
 // (A6). Derselbe Wert noch einmal liefert ein leeres ChangeSet. Text wird unverändert übernommen (U5): kein Trimmen, keine
 // Längen- oder Zeichenregel, keine Einheitenliste; ein Langtext wird nur auf seine Form geprüft (`langtext.ts`, Ticket 50).
-// Prüfungen sind Sache der LV-Prüfung (K8). Einzige Ausnahme: eine leere Einheit (`''`) legt der Kern als `null` ab
-// (Vertrag v1.2, D-06).
+// Prüfungen sind Sache der LV-Prüfung (K8). Ausnahmen: eine leere Einheit (`''`) legt der Kern als `null` ab
+// (Vertrag v1.2, D-06), eine leere Textquelle ebenso (Vertrag v1.4, `TextquelleSetzen`).
 
 import type {
   Befehlsfehler,
@@ -21,12 +21,14 @@ import type {
   LvChangeSet,
   LvZustand,
   Position,
+  TextquelleSetzen,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { einheitNormal } from './einheit';
 import { nein, ok } from './fehler';
 import { langtextFormFehler, langtextGleich } from './langtext';
-import { ohneKnoten } from './struktur';
+import { textquelleFehler, textquelleNormal } from './positionsfelder';
+import { indexVon, mitFeld, ohneKnoten } from './struktur';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 
@@ -141,4 +143,28 @@ export function leistungsverzeichnisUmbenennen(z: LvZustand, b: Leistungsverzeic
   const kopfAlt = ohneKnoten(z.leistungsverzeichnis);
   if (kopfAlt.name === b.name) return ok(baueChangeSet(z, {}));
   return ok(baueChangeSet(z, { kopf: { vorher: kopfAlt, nachher: { ...kopfAlt, name: b.name } } }));
+}
+
+/**
+ * `TextquelleSetzen` (D-40): setzt die Textquelle einer Position; `null` und `''` entfernen sie. Fehler wie bei den
+ * Feldbefehlen: `knoten-unbekannt`, `knotenart-unzulaessig` (nur eine Position trägt eine Textquelle; Hinweistexte nicht,
+ * Offene Typfrage 4 in Ticket 70), `ungueltige-eingabe` mit `feld: 'textquelle'` für einen Wert, der kein Text ist.
+ */
+export function textquelleSetzen(z: LvZustand, b: TextquelleSetzen): Antwort {
+  const lv = z.leistungsverzeichnis;
+  const k = indexVon(lv.id, lv.knoten).byId.get(b.positionId);
+  if (!k) return nein('knoten-unbekannt', `Knoten unbekannt: ${b.positionId}`, b.positionId);
+  if (k.art !== 'position')
+    return nein(
+      'knotenart-unzulaessig',
+      `Nur eine Position trägt eine Textquelle, nicht „${k.art}“.`,
+      b.positionId,
+    );
+  if (b.textquelle !== null) {
+    const f = textquelleFehler(b.textquelle);
+    if (f !== null) return nein('ungueltige-eingabe', f, b.positionId, 'textquelle');
+  }
+  const wert = textquelleNormal(b.textquelle);
+  if ((k.textquelle ?? null) === wert) return ok(baueChangeSet(z, {}));
+  return ok(baueChangeSet(z, { geaendert: [{ vorher: k, nachher: mitFeld(k, 'textquelle', wert) }] }));
 }

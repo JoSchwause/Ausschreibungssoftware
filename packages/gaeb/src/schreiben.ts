@@ -23,6 +23,7 @@ import type {
   Knoten,
   KnotenId,
   LvInhalt,
+  LvKopf,
   Ordnungszahl,
   OzStelle,
   Position,
@@ -35,11 +36,19 @@ import type {
 import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
 import { EPA_ARTEN, TYP_DER_ART, deuteBeschriftung } from './epa';
+import { KG_KATALOGART, KG_KATALOG_ID, KG_KATALOG_NAME, istKostengruppe } from './kostengruppe';
 import type { Attribute } from './ausgabe';
 import { schreibeDetailtext, schreibeEinzeiler, schreibeKurztext } from './text-schreiben';
 import type { TextMelder } from './text-schreiben';
 
 export type ExportPhase = 'X81' | 'X83' | 'X86';
+
+/**
+ * Was der Writer nimmt: den Inhalt eines LV, auch mit den Kopffeldern `nachtrag` und `vorlage` des `LvKopf` (v1.4; GAEB
+ * hat dafür nichts, sie werden mit Warnung verworfen, Ticket 84), oder ein Auftrags-LV (v1.3, Ticket 68).
+ */
+export type SchreibInhalt =
+  (LvInhalt & Partial<Pick<LvKopf, 'nachtrag' | 'vorlage'>>) | AuftragsLeistungsverzeichnis;
 export type ExportVersion = Extract<GaebVersion, '3.2' | '3.3'>;
 
 export interface SchreibOptionen {
@@ -87,8 +96,9 @@ export const GRENZEN = {
 } as const;
 
 const RNO_ZEICHEN = /^[0-9A-Za-z_]+$/;
-const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
-const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+/** `GAEBInfo/Date` und `Time` (tgDate, tgTime); auch für X31. */
+export const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+export const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
 
 /** Zahl der Zeichen (Codepunkte), wie das XSD `maxLength` zählt. */
 const zeichen = (s: string): number => Array.from(s).length;
@@ -529,6 +539,12 @@ class Schreiber {
       if (m.index) stufe('Index', m.index);
       if (this.mitAnteilen) this.anteilsbezeichnungen();
       if (this.x86 && this.opt.summen) this.lvSummen(this.opt.summen);
+      if (this.inhalt.knoten.some((k) => k.art === 'position' && k.kostengruppe !== undefined))
+        a.element('Ctlg', [], () => {
+          a.blatt('CtlgID', KG_KATALOG_ID);
+          a.blatt('CtlgType', KG_KATALOGART[this.opt.version]);
+          a.blatt('CtlgName', KG_KATALOG_NAME);
+        });
     });
   }
 
@@ -905,6 +921,7 @@ class Schreiber {
   }
 
   private position(p: Position, ozEltern: string | null, stellen: number): void {
+    if (p.textquelle !== undefined) this.verwirf('Textquelle der Position', p.id);
     const z = p.zuschlag;
     const altform = z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null);
     if (z !== null && !(altform && this.x86)) {
@@ -931,9 +948,27 @@ class Schreiber {
         );
       }
       this.einheit(p.einheit, p.id, 'einheit', this.opt.phase === 'X83');
+      this.kostengruppe(p);
       this.preise(p);
       this.beschreibung(p);
       this.leitbeschreibung(p);
+    });
+  }
+
+  /** Kostengruppe als Zuordnung zum Katalog DIN 276 (Ticket 84); in `Item` hinter `QU`, in `MarkupItem` am Ende. */
+  private kostengruppe(p: Position): void {
+    const kg = p.kostengruppe;
+    if (kg === undefined) return;
+    if (!istKostengruppe(String(kg)))
+      this.fehler(
+        'wert-ungueltig',
+        `Die Kostengruppe „${kg}“ ist keine dreistellige Kostengruppennummer.`,
+        p.id,
+        'kostengruppe',
+      );
+    this.aus.element('CtlgAssign', [], () => {
+      this.aus.blatt('CtlgID', KG_KATALOG_ID);
+      this.aus.blatt('CtlgCode', kg);
     });
   }
 
@@ -1054,6 +1089,7 @@ class Schreiber {
         if (gp != null) a.blatt('IT', this.zahl(gp, 'betrag', 'Der Zuschlagsbetrag', p.id, 'gesamtpreis'));
       } else if (z.prozentsatz !== null) this.verwirf('Zuschlagssätze', p.id);
       this.beschreibung(p);
+      this.kostengruppe(p);
     });
   }
 }
@@ -1063,18 +1099,14 @@ function kommentar(s: string): string {
 }
 
 /**
- * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
- * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
- * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
+ * XML-Deklaration und, wenn die eigene Prüfung Fehler fand, der Kommentar „Entwurf: …“ (U5, G-13); auch für X31
+ * (`x31-schreiben.ts`).
  */
-export function schreibeGaeb(
-  inhalt: LvInhalt | AuftragsLeistungsverzeichnis,
-  optionen: SchreibOptionen,
-): GaebExport {
-  const s = new Schreiber(alsInhalt(inhalt), optionen);
-  s.schreibe();
-  s.abschliessen();
-  const fehler = s.befunde.filter((b) => b.schwere === 'fehler');
+export function exportKopf(befunde: readonly Pruefbefund[]): {
+  readonly kopf: string;
+  readonly entwurf: boolean;
+} {
+  const fehler = befunde.filter((b) => b.schwere === 'fehler');
   const entwurf = fehler.length > 0;
   let kopf = '<?xml version="1.0" encoding="UTF-8"?>\n';
   if (entwurf) {
@@ -1085,6 +1117,22 @@ export function schreibeGaeb(
         ' Die Datei ist nicht zur Weitergabe bestimmt.',
     )} -->\n`;
   }
+  return { kopf, entwurf };
+}
+
+/**
+ * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
+ * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
+ * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
+ */
+export function schreibeGaeb(inhalt: SchreibInhalt, optionen: SchreibOptionen): GaebExport {
+  const s = new Schreiber(alsInhalt(inhalt), optionen);
+  // v1.4 (Ticket 84): Kopffelder ohne GAEB-Gegenstück, wenn die App sie mitgibt; nie still verworfen (E-11, Q5).
+  if ('nachtrag' in inhalt) s.verwirf('Nachtragsangaben des LV');
+  if ('vorlage' in inhalt) s.verwirf('Kennzeichen Muster-LV');
+  s.schreibe();
+  s.abschliessen();
+  const { kopf, entwurf } = exportKopf(s.befunde);
   return {
     phase: optionen.phase,
     version: optionen.version,
