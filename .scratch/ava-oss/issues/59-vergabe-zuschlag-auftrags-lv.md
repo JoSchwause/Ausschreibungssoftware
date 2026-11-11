@@ -1,6 +1,6 @@
 # 59: V4: Zuschlag → Auftrags-LV (Rechnung)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: V4 · Paket: `packages/vergabe`
 Blocked by: 53 (`vertrag` v1.3: Auftragnehmer), 51 (Fixtures in GAEB-Form); für das Speichern des Ergebnisses 57
