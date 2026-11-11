@@ -2,6 +2,7 @@
 // Seite `/lv/<id>`: das LV im Grid. Jede Änderung, aus dem Grid wie von den Schaltflächen, geht als genau ein Befehl
 // über die Sitzung durch Kern und Speicher (A5, U7); angezeigt wird erst der gespeicherte Stand (Q5).
 
+import { lvPruefen } from '@tethys/kern';
 import { Button, Tastenkuerzel, useToast } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
@@ -10,20 +11,27 @@ import type {
   KnotenId,
   LeistungsverzeichnisId,
   LvBefehl,
+  LvSpalte,
   LvZustand,
   Position,
+  PositionId,
   Positionsdaten,
+  Pruefbefund,
 } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { KeyboardEvent, ReactElement } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { lvAnsichtBauen } from './ansicht';
-import { lvSitzung, type LvSitzung } from './befehlsweg';
+import { lvSitzung, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
+import { KopfdatenDialog } from './KopfdatenDialog';
 import { MerkmaleDialog } from './MerkmaleDialog';
 import { useMeldungen } from './meldungen';
+import { PositionsDialog } from './PositionsDialog';
+import { PruefPanel, type PruefPanelSteuerung } from './PruefPanel';
+import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from './pruefung';
 import { SummenFelder } from './SummenFelder';
 import { texte } from './texte';
 import { gridZahlen } from './zahlen';
@@ -42,6 +50,9 @@ const LEERE_DATEN: Positionsdaten = {
   einheitspreis: null,
   epa: null,
 };
+
+/** Spalten ohne eigene Eingabe im Grid: Ein Doppelklick dort öffnet den Positionsdialog. */
+const OHNE_EINGABE: ReadonlySet<string> = new Set<LvSpalte>(['ordnungszahl', 'positionsart', 'gesamtpreis']);
 
 type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; sitzung: LvSitzung };
 
@@ -99,9 +110,28 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   /** Die aktive Zeile des Grids, wie sie zuletzt über die Auswahl gemeldet wurde. */
   const aktiv = useRef<KnotenId | null>(null);
   const [merkmale, setMerkmale] = useState<Position | null>(null);
+  const [dialog, setDialog] = useState<PositionId | null>(null);
+  const [kopfdaten, setKopfdaten] = useState(false);
+  const [panelOffen, setPanelOffen] = useState(true);
+  const panel = useRef<PruefPanelSteuerung>(null);
   const { zeige } = useToast();
 
-  const ansicht = useMemo(() => lvAnsichtBauen(zustand, zugeklappt), [zustand, zugeklappt]);
+  // Formale LV-Prüfung (U5): nach jedem angenommenen Befehl neu, entkoppelt im nächsten Leerlauf, nie im Tastendruck.
+  const [befunde, setBefunde] = useState<readonly Pruefbefund[] | null>(null);
+  useEffect(
+    () =>
+      imLeerlauf(() => {
+        setBefunde(lvPruefen(zustand));
+      }),
+    [zustand],
+  );
+  const jeKnoten = useMemo(() => befundeJeKnoten(befunde ?? []), [befunde]);
+  const gruppen = useMemo(() => pruefgruppen(befunde ?? [], lv.knoten), [befunde, lv.knoten]);
+
+  const ansicht = useMemo(
+    () => lvAnsichtBauen(zustand, zugeklappt, jeKnoten),
+    [zustand, zugeklappt, jeKnoten],
+  );
 
   const senden = useCallback(
     async (befehl: LvBefehl): Promise<boolean> => {
@@ -113,10 +143,48 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
     [sitzung, pruefe],
   );
 
-  const springe = (knotenId: KnotenId): void => {
+  /** Ein Befehl mit seinem Ausgang (für die Dialoge, die Formfehler am Feld zeigen). */
+  const befehl = useCallback(
+    async (b: LvBefehl): Promise<Ausgang<unknown>> => {
+      const a = await sitzung.befehl(b);
+      if (a.ok) setHinweise(a.hinweise);
+      return a;
+    },
+    [sitzung],
+  );
+
+  const springe = (knotenId: KnotenId, spalte: LvSpalte | undefined = 'kurztext'): void => {
     aktiv.current = knotenId;
     sprungNr.current += 1;
-    setSprungziel({ knotenId, spalte: 'kurztext', nr: sprungNr.current });
+    setSprungziel(
+      spalte === undefined ? { knotenId, nr: sprungNr.current } : { knotenId, spalte, nr: sprungNr.current },
+    );
+  };
+
+  /** Sprunglink aus dem Prüf-Panel: Vorfahren aufklappen, dann zur Zelle bzw. in den Positionsdialog. */
+  const pruefSprung = (b: Pruefbefund): void => {
+    const s = sprungZu(b, lv.knoten);
+    if (s.aufklappen.some((id) => zugeklappt.has(id))) {
+      setZugeklappt((alt) => {
+        const neu = new Set(alt);
+        for (const id of s.aufklappen) neu.delete(id);
+        return neu;
+      });
+    }
+    const z = s.ziel;
+    if (z.art === 'zelle') springe(z.knotenId, z.spalte);
+    else if (z.art === 'dialog') {
+      springe(z.positionId, undefined);
+      setDialog(z.positionId);
+    } else if (z.feld === 'nachlass') {
+      document.querySelector<HTMLElement>('.lv__summenfelder input')?.focus();
+    }
+  };
+
+  const dialogOeffnen = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'position') setDialog(k.id);
+    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
   };
 
   /** Legt einen Knoten an und setzt die aktive Zelle auf seinen Kurztext. */
@@ -162,6 +230,11 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   // Tastenkürzel der App (Strg+Alt+…): kollidieren nicht mit dem Grid (dort Strg ohne Alt) und nicht mit den
   // reservierten Kürzeln des Browsers (Strg+Umschalt+T öffnet in Chrome den letzten Tab wieder).
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key === 'F8' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      panel.current?.fokussieren();
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || !e.altKey || e.shiftKey) return;
     const aktion = {
       KeyT: () => {
@@ -178,9 +251,44 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
     aktion();
   };
 
+  /** Zeile im Grid (nicht im Zelleditor) unter dem Ereignisziel, mit ihrem Knoten. */
+  const gridZeile = (ziel: EventTarget): { knotenId: KnotenId; spalte: string | undefined } | null => {
+    if (!(ziel instanceof Element) || ziel.closest('[data-editor]') || !ziel.closest('[role="treegrid"]'))
+      return null;
+    const i = Number(ziel.closest('[data-i]')?.getAttribute('data-i'));
+    const zeile = Number.isNaN(i) ? undefined : ansicht.zeilen[i];
+    if (zeile === undefined) return null;
+    return {
+      knotenId: zeile.knoten.id,
+      spalte: ziel.closest<HTMLElement>('[data-spalte]')?.dataset['spalte'],
+    };
+  };
+  // Strg+Enter auf einer Zeile öffnet den Positionsdialog. Vor dem Grid abgefangen: Das Grid nähme es als Enter.
+  const onKeyDownCapture = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    const z = gridZeile(e.target);
+    if (z === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    aktiv.current = z.knotenId;
+    dialogOeffnen();
+  };
+  // Doppelklick auf eine Zelle ohne eigene Eingabe (OZ, Art, GP) öffnet den Dialog; die übrigen bearbeitet das Grid.
+  const onDoubleClick = (e: MouseEvent<HTMLDivElement>): void => {
+    const z = gridZeile(e.target);
+    if (z === null || !OHNE_EINGABE.has(z.spalte ?? '')) return;
+    const k = lv.knoten.find((x) => x.id === z.knotenId);
+    if (k?.art === 'position') setDialog(k.id);
+  };
+
   const projektPfad = `/projekt/${lv.projektId}`;
   return (
-    <div className="seite lv" onKeyDown={onKeyDown}>
+    <div
+      className="seite lv"
+      onKeyDown={onKeyDown}
+      onKeyDownCapture={onKeyDownCapture}
+      onDoubleClick={onDoubleClick}
+    >
       <div className="lv__kopf">
         <h1>{lv.name}</h1>
         <a
@@ -216,32 +324,60 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
           {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
         </Button>
+        <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
+          {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
+        </Button>
         <Button onClick={umnummerieren}>{texte.werkzeuge.umnummerieren}</Button>
+        <Button
+          onClick={() => {
+            setKopfdaten(true);
+          }}
+        >
+          {texte.kopfdaten.oeffnen}
+        </Button>
+        <Button
+          onClick={() => {
+            panel.current?.fokussieren();
+          }}
+          aria-keyshortcuts="F8"
+        >
+          {texte.pruefung.titel} <Tastenkuerzel tasten={texte.pruefung.tasten} />
+        </Button>
       </div>
-      <div className="lv__grid">
-        <LvGrid
-          ansicht={ansicht}
-          zahlen={gridZahlen}
-          ids={u.ids}
-          beschriftung={texte.seite.grid}
-          hinweise={hinweise}
-          {...(sprungziel ? { sprungziel } : {})}
-          onBefehl={(b) => void senden(b)}
-          onBefehlsfolge={(folge) => {
-            for (const b of folge) void senden(b);
-          }}
-          onAuswahlChange={(ids) => {
-            const letzte = ids.at(-1);
-            if (letzte !== undefined) aktiv.current = letzte;
-          }}
-          onAufklappen={(knotenId, auf) => {
-            setZugeklappt((alt) => {
-              const neu = new Set(alt);
-              if (auf) neu.delete(knotenId);
-              else neu.add(knotenId);
-              return neu;
-            });
-          }}
+      <div className="lv__haupt">
+        <div className="lv__grid">
+          <LvGrid
+            ansicht={ansicht}
+            zahlen={gridZahlen}
+            ids={u.ids}
+            beschriftung={texte.seite.grid}
+            hinweise={hinweise}
+            {...(sprungziel ? { sprungziel } : {})}
+            onBefehl={(b) => void senden(b)}
+            onBefehlsfolge={(folge) => {
+              for (const b of folge) void senden(b);
+            }}
+            onAuswahlChange={(ids) => {
+              const letzte = ids.at(-1);
+              if (letzte !== undefined) aktiv.current = letzte;
+            }}
+            onAufklappen={(knotenId, auf) => {
+              setZugeklappt((alt) => {
+                const neu = new Set(alt);
+                if (auf) neu.delete(knotenId);
+                else neu.add(knotenId);
+                return neu;
+              });
+            }}
+          />
+        </div>
+        <PruefPanel
+          ref={panel}
+          gruppen={gruppen}
+          geprueft={befunde !== null}
+          offen={panelOffen}
+          onOffenChange={setPanelOffen}
+          onSprung={pruefSprung}
         />
       </div>
       <SummenFelder lv={lv} senden={senden} />
@@ -251,6 +387,28 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
           setMerkmale(null);
         }}
         onUebernehmen={merkmaleUebernehmen}
+      />
+      <PositionsDialog
+        zustand={zustand}
+        positionId={dialog}
+        onSchliessen={() => {
+          setDialog(null);
+        }}
+        befehl={befehl}
+        speicherAbweisung={(a) => {
+          pruefe(a);
+        }}
+      />
+      <KopfdatenDialog
+        lv={lv}
+        offen={kopfdaten}
+        onSchliessen={() => {
+          setKopfdaten(false);
+        }}
+        befehl={befehl}
+        abweisung={(a) => {
+          pruefe(a);
+        }}
       />
     </div>
   );

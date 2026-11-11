@@ -102,6 +102,14 @@ export const texte = {
       epa: 'Eine Zuschlagsposition mit Satz hat keine Einheitspreisanteile.',
     } as Readonly<Record<string, string>>,
   },
+  pruefung: {
+    panel: 'Prüfung des LV',
+    titel: 'Prüfung',
+    tasten: ['F8'],
+    keineBefunde: 'Keine Befunde.',
+    lvWeit: 'LV',
+    schwere: { fehler: 'Fehler', warnung: 'Warnungen' },
+  },
   kopfdaten: {
     oeffnen: 'LV-Angaben',
     titel: 'LV-Angaben',
