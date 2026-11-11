@@ -102,7 +102,7 @@ describe('Client über Worker-Host', () => {
       },
     );
     wert(await speicher.anwenden(e, standAnlegen(z, 'stand-1', 'Versand')));
-    const staende = speicher.lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
+    const staende = speicher.lvStaende;
     expect(wert(await staende.auflisten(lv))).toEqual([
       { id: 'stand-1', leistungsverzeichnisId: lv, name: 'Versand', angelegt: e.wann },
     ]);
@@ -182,7 +182,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     if (schritt === undefined) throw new Error('kein Schritt');
     const p = f.projekt.id;
     const lv = f.lv.leistungsverzeichnis.id;
-    const staende = s.lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
+    const staende = s.lvStaende;
     return [
       fehlercode(await staende.auflisten(lv)),
       fehlercode(await staende.laden('s' as never)),

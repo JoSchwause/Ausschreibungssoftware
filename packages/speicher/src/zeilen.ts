@@ -5,6 +5,7 @@
 
 import type {
   Angebotsposition,
+  Ansatzzeile,
   Betrag,
   BieterId,
   ElternId,
@@ -99,6 +100,7 @@ export const KNOTEN_SPALTEN = [
   'einheit',
   'einheitspreis',
   'epa',
+  'mengenansatz', // Schema 4 (v1.3)
 ] as const;
 
 // --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
@@ -119,16 +121,29 @@ function optionalesFeld(z: SqlZeile, spalte: string, name: string): Record<strin
   return w === null ? {} : { [name]: w };
 }
 
-/** Kopfdaten von LV und Auftrags-LV (v1.1b, Punkt 6) als Spaltenwerte `auftraggeber`, `vergabeinformationen`. */
-export function kopfdatenSpalten(k: LvInhaltKopf): [SqlWert, SqlWert] {
-  return [jsonOderNull(k.auftraggeber), jsonOderNull(k.vergabeinformationen)];
+/** Die optionalen Kopfdaten von LV und Auftrags-LV: Spalte und Feld (v1.1b, Punkt 6; Schema 4: v1.3, Punkte 2 und 6). */
+const KOPFDATEN = [
+  ['auftraggeber', 'auftraggeber'],
+  ['vergabeinformationen', 'vergabeinformationen'],
+  ['auftragnehmer', 'auftragnehmer'],
+  ['epa_bezeichnungen', 'epaBezeichnungen'],
+] as const;
+
+type Kopfdaten = Pick<LvInhaltKopf, (typeof KOPFDATEN)[number][1]>;
+
+/** Die Spalten der Kopfdaten, in der Reihenfolge von `kopfdatenSpalten` (für INSERT und UPDATE). */
+export const KOPFDATEN_SPALTEN: readonly string[] = KOPFDATEN.map(([spalte]) => spalte);
+
+/** Kopfdaten als Spaltenwerte (kanonisches JSON, `NULL` = fehlt), in der Reihenfolge von `KOPFDATEN_SPALTEN`. */
+export function kopfdatenSpalten(k: LvInhaltKopf): SqlWert[] {
+  return KOPFDATEN.map(([, feld]) => jsonOderNull(k[feld]));
 }
 
-export function kopfdatenAusZeile(z: SqlZeile): Pick<LvInhaltKopf, 'auftraggeber' | 'vergabeinformationen'> {
-  return {
-    ...optionalesFeld(z, 'auftraggeber', 'auftraggeber'),
-    ...optionalesFeld(z, 'vergabeinformationen', 'vergabeinformationen'),
-  };
+export function kopfdatenAusZeile(z: SqlZeile): Kopfdaten {
+  return Object.assign(
+    {},
+    ...KOPFDATEN.map(([spalte, feld]) => optionalesFeld(z, spalte, feld)),
+  ) as Kopfdaten;
 }
 
 /** Getrennte Ausweise (v1.1b, Punkt 4): Betrag als TEXT, `NULL` = nicht berechnet (Feld fehlt). */
@@ -148,9 +163,37 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   switch (k.art) {
     case 'los':
     case 'titel':
-      return [...kopf, k.ordnungszahl, null, k.kurztext, null, null, null, null, null, null, null, null];
+      return [
+        ...kopf,
+        k.ordnungszahl,
+        null,
+        k.kurztext,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
     case 'hinweis':
-      return [...kopf, null, null, null, null, null, null, JSON.stringify(k.text), null, null, null, null];
+      return [
+        ...kopf,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        JSON.stringify(k.text),
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
     case 'position':
       return [
         ...kopf,
@@ -165,6 +208,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.einheit,
         k.einheitspreis,
         k.epa === null ? null : kanonischKompakt(k.epa),
+        jsonOderNull(k.mengenansatz),
       ];
   }
 }
@@ -219,6 +263,7 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         einheit: textOderNull(z, 'einheit'),
         einheitspreis: textOderNull(z, 'einheitspreis') as Einheitspreis | null,
         epa: epa === null ? null : (jsonLesen(epa, 'epa') as Einheitspreisanteile),
+        ...(optionalesFeld(z, 'mengenansatz', 'mengenansatz') as { mengenansatz?: readonly Ansatzzeile[] }),
       };
     }
     default:

@@ -14,7 +14,9 @@ import type {
   AngebotKopf,
   AngebotZustand,
   Angebotsposition,
+  Ansatzzeile,
   Auftraggeber,
+  Auftragnehmer,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
@@ -28,6 +30,9 @@ import type {
   ElternId,
   Einheitspreis,
   Einheitspreisanteile,
+  EpaArt,
+  EpaBezeichnung,
+  EpaNummer,
   Gesamtsummen,
   GliederungId,
   HinweistextId,
@@ -349,15 +354,69 @@ function vergabeinformationen(x: unknown, pfad: string): Vergabeinformationen {
   };
 }
 
-const KOPFDATEN = ['auftraggeber', 'vergabeinformationen'] as const;
+// --- Auftragnehmer und EPA-Bezeichnungen (v1.3, Ticket 53 Punkte 2 und 6, D-28; Schemaversion 4) --------------------
 
-function kopfdaten(
-  o: Roh,
-  pfad: string,
-): Pick<Leistungsverzeichnis, 'auftraggeber' | 'vergabeinformationen'> {
+function auftragnehmer(x: unknown, pfad: string): Auftragnehmer {
+  const o = objekt(x, pfad, ['name', 'strasse', 'plz', 'ort']);
+  const t = (n: string): string | null => textOderNull(feld(o, n), `${pfad}.${n}`);
+  return { name: t('name'), strasse: t('strasse'), plz: t('plz'), ort: t('ort') };
+}
+
+const EPA_ARTEN: readonly EpaArt[] = ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei'];
+const EPA_NUMMERN: readonly EpaNummer[] = [1, 2, 3, 4, 5, 6];
+
+/**
+ * EPA-Bezeichnungen (D-28): nicht leer, nach `nummer` aufsteigend (damit je Nummer höchstens ein Eintrag), jede Art
+ * höchstens einmal. Lücken sind erlaubt (Platz nicht belegt).
+ */
+function epaBezeichnungen(x: unknown, pfad: string): EpaBezeichnung[] {
+  const eintraege = liste(x, pfad).map((e, i): EpaBezeichnung => {
+    const q = `${pfad}[${String(i)}]`;
+    const o = objekt(e, q, ['nummer', 'anteil', 'bezeichnung']);
+    const nummer = feld(o, 'nummer');
+    if (!EPA_NUMMERN.includes(nummer as EpaNummer))
+      ungueltig(`${q}.nummer`, 'ganze Zahl von 1 bis 6 erwartet');
+    return {
+      nummer: nummer as EpaNummer,
+      anteil: aufzaehlung(feld(o, 'anteil'), `${q}.anteil`, EPA_ARTEN),
+      bezeichnung: textOderNull(feld(o, 'bezeichnung'), `${q}.bezeichnung`),
+    };
+  });
+  if (eintraege.length === 0) ungueltig(pfad, 'leere Liste (das Feld fehlt dann)');
+  eintraege.forEach((e, i) => {
+    const vorige = eintraege[i - 1];
+    if (vorige !== undefined && vorige.nummer >= e.nummer)
+      ungueltig(`${pfad}[${String(i)}].nummer`, 'aufsteigend und eindeutig erwartet');
+    if (eintraege.findIndex((a) => a.anteil === e.anteil) !== i)
+      ungueltig(`${pfad}[${String(i)}].anteil`, 'jede Art höchstens einmal');
+  });
+  return eintraege;
+}
+
+/** Mengenansatz einer Position (v1.3, D-22): nicht leer; die Zeilen werden nicht ausgewertet (A3). */
+function mengenansatz(x: unknown, pfad: string): Ansatzzeile[] {
+  const zeilen = liste(x, pfad).map((z, i): Ansatzzeile => {
+    const q = `${pfad}[${String(i)}]`;
+    const o = objekt(z, q, ['zeile', 'formel', 'ausdruck', 'variable']);
+    return {
+      zeile: ganz(feld(o, 'zeile'), `${q}.zeile`),
+      formel: ganz(feld(o, 'formel'), `${q}.formel`),
+      ausdruck: zeichenkette(feld(o, 'ausdruck'), `${q}.ausdruck`),
+      variable: textOderNull(feld(o, 'variable'), `${q}.variable`),
+    };
+  });
+  if (zeilen.length === 0) ungueltig(pfad, 'leere Liste (das Feld fehlt dann)');
+  return zeilen;
+}
+
+const KOPFDATEN = ['auftraggeber', 'vergabeinformationen', 'auftragnehmer', 'epaBezeichnungen'] as const;
+
+function kopfdaten(o: Roh, pfad: string): Pick<Leistungsverzeichnis, (typeof KOPFDATEN)[number]> {
   return {
     ...optional(o, 'auftraggeber', (v) => auftraggeber(v, `${pfad}.auftraggeber`)),
     ...optional(o, 'vergabeinformationen', (v) => vergabeinformationen(v, `${pfad}.vergabeinformationen`)),
+    ...optional(o, 'auftragnehmer', (v) => auftragnehmer(v, `${pfad}.auftragnehmer`)),
+    ...optional(o, 'epaBezeichnungen', (v) => epaBezeichnungen(v, `${pfad}.epaBezeichnungen`)),
   };
 }
 
@@ -412,7 +471,7 @@ function knoten(x: unknown, pfad: string): Knoten {
           'einheitspreis',
           'epa',
         ],
-        ['leitbeschreibung'],
+        ['leitbeschreibung', 'mengenansatz'],
       );
       return {
         ...lage(o),
@@ -432,6 +491,7 @@ function knoten(x: unknown, pfad: string): Knoten {
           (v) => dezimal(v, `${pfad}.einheitspreis`, 'einheitspreis') as Einheitspreis,
         ),
         epa: epa(feld(o, 'epa'), `${pfad}.epa`),
+        ...optional(o, 'mengenansatz', (v) => mengenansatz(v, `${pfad}.mengenansatz`)),
       };
     }
     default:
@@ -710,7 +770,6 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   LeitbeschreibungSetzen: true,
   Rueckgaengig: true,
   Wiederholen: true,
-  // v1.3: mechanisch angepasst, Folgeticket (speicher: Mengenansatz speichern, Ticket 57)
   MengenansatzSetzen: true,
 };
 
