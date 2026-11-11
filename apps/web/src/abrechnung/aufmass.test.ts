@@ -82,9 +82,7 @@ describe('Aufmaßblatt über den Befehlsweg', () => {
     // Undo und Redo stehen im Protokoll mit dem Aggregat des Blatts.
     const p = await u.speicher.protokoll(projekt.id);
     if (!p.ok) throw new Error(p.fehler.meldung);
-    const arten = p.wert
-      .filter((e) => e.aggregat.art === 'aufmass')
-      .map((e) => e.befehl.art);
+    const arten = p.wert.filter((e) => e.aggregat.art === 'aufmass').map((e) => e.befehl.art);
     expect(arten).toEqual([
       'Befehlskurzfassung', // AufmassAnlegen ist ein Massenbefehl (D-70.5)
       'AufmasspositionSetzen',

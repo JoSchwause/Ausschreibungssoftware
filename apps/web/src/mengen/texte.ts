@@ -61,6 +61,16 @@ export const texte = {
   untenLabel: (z: number): string => `Zeile ${String(z)} nach unten`,
   fehlerZu: (z: number): string => `Fehler in Zeile ${String(z)}`,
   summe: 'Summe',
+  // Ticket 87: Zeilen in der Textform aus GAEB X31 (D-83.2) und die Menge ohne Ansatz auf einem Aufmaßblatt.
+  textform:
+    'Zeile aus einer GAEB-X31-Datei, die der freie Rechenansatz nicht abbildet. Sie wird nicht gerechnet; löschen Sie sie oder ersetzen Sie sie durch eigene Zeilen.',
+  textformKurz: 'Textform aus X31, nicht gerechnet',
+  direkt: {
+    label: 'Menge ohne Ansatz',
+    beschreibung: 'Ohne Zeilen gilt die Menge ohne Ansatz.',
+    hinweis: 'Gilt nur ohne Zeilen. Leer: keine Menge.',
+    ausAnsatz: 'Die Menge kommt aus dem Mengenansatz.',
+  },
   summeFehler: 'keine Summe, solange eine Zeile einen Fehler hat',
   einheit: 'Einheit',
   tastenHinweis:

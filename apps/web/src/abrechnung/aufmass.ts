@@ -3,11 +3,7 @@
 // (Ticket 80), geschrieben über den einen Schreibweg der App (`eintragSchreiben`, U7) und als Undo-Schritt geführt
 // (ADR 0006). Gelesen wird über die Repositories aus `vertrag` v1.4 (Ticket 79): das Auftrags-LV und alle Blätter.
 
-import {
-  aufmassBefehlAusfuehren,
-  aufmassChangeSetAnwenden,
-  naechsteAufmassnummer,
-} from '@tethys/abrechnung';
+import { aufmassBefehlAusfuehren, aufmassChangeSetAnwenden, naechsteAufmassnummer } from '@tethys/abrechnung';
 import type {
   Aufmass,
   AufmassAnlegen,
