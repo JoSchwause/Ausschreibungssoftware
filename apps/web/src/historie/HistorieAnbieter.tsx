@@ -41,6 +41,11 @@ export function zielNach(teil: Teil, rueckwaerts: boolean, pfad: string): string
     if (ganz && pfad === '/') return null;
     return pfad === projektPfad ? null : projektPfad;
   }
+  if (cs.art === 'angebot') {
+    // Angebot angelegt oder zurückgenommen: sichtbar in der Angebotsliste des LV.
+    const lvId = (cs.kopf?.nachher ?? cs.kopf?.vorher)?.leistungsverzeichnisId;
+    return lvId === undefined || pfad === `/lv/${lvId}` ? null : `/lv/${lvId}`;
+  }
   const geschrieben = rueckwaerts ? changeSetUmkehren(cs) : cs;
   const lvPfad = `/lv/${cs.leistungsverzeichnisId}`;
   const kopf = geschrieben.kopf;

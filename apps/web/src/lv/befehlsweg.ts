@@ -12,7 +12,11 @@ import {
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
 } from '@tethys/kern';
+import { angebotBefehlAusfuehrer, angebotChangeSetUmkehren } from '@tethys/vergabe';
 import type {
+  Angebot,
+  AngebotBefehl,
+  Bieter,
   Befehlsfehler,
   Befehlshinweis,
   IdQuelle,
@@ -70,7 +74,7 @@ function eintrag(
 async function speichern<Z>(
   u: Umgebung,
   e: Protokolleintrag,
-  cs: LvChangeSet | ProjektChangeSet,
+  cs: Teil['changeSet'],
   neu: () => Z,
   hinweise: readonly Befehlshinweis[] = cs.hinweise ?? [],
 ): Promise<Lauf<Z>> {
@@ -192,8 +196,12 @@ export type Historienausgang =
       readonly teile: readonly Teil[];
     };
 
-const umkehren = (cs: LvChangeSet | ProjektChangeSet): LvChangeSet | ProjektChangeSet =>
-  cs.art === 'leistungsverzeichnis' ? changeSetUmkehren(cs) : projektChangeSetUmkehren(cs);
+const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
+  cs.art === 'leistungsverzeichnis'
+    ? changeSetUmkehren(cs)
+    : cs.art === 'angebot'
+      ? angebotChangeSetUmkehren(cs)
+      : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie
@@ -224,6 +232,42 @@ export class Befehlsweg {
 
   lv(projektId: ProjektId, zustand: LvZustand | null): LvSitzung {
     return new Sitzung(this, zustand, (z, b) => lvBefehlAnwenden(this.umgebung, projektId, z, b));
+  }
+
+  /**
+   * Ein Angebot anlegen (GAEB-Import X84), bei Bedarf mit dem neuen Bieter davor: `BieterAnlegen` und `AngebotAnlegen`
+   * sind **ein** Undo-Schritt. Rückgabe: das Projekt nach dem Anlegen oder der Grund der Abweisung. Wird der Bieter
+   * geschrieben und das Angebot abgewiesen, bleibt der Bieter und ist einzeln rückgängig zu machen.
+   */
+  angebotAnlegen(
+    projekt: Projekt,
+    lv: LvZustand,
+    bieter: Bieter | null,
+    angebot: Angebot,
+  ): Promise<Ausgang<Projekt>> {
+    return this.reihe(async () => {
+      const teile: Teil[] = [];
+      let stand = projekt;
+      try {
+        if (bieter !== null) {
+          const a = await projektBefehlAnwenden(this.umgebung, stand, { art: 'BieterAnlegen', bieter });
+          if (!a.ok) return a;
+          teile.push(a.teil);
+          if (a.zustand === null) throw new Error('angebotAnlegen: Projekt fehlt');
+          stand = a.zustand;
+        }
+        const befehl: AngebotBefehl = { art: 'AngebotAnlegen', angebot };
+        const r = angebotBefehlAusfuehrer(stand, lv)(null, befehl);
+        if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
+        const e = eintrag(this.umgebung, stand.id, { art: 'angebot', id: r.wert.angebotId }, befehl);
+        const a = await speichern(this.umgebung, e, r.wert, () => stand);
+        if (!a.ok) return a;
+        teile.push(a.teil);
+        return { ok: true, zustand: stand, hinweise: a.hinweise };
+      } finally {
+        this.historie.aufnehmen(teile);
+      }
+    });
   }
 
   projekt(zustand: Projekt | null): ProjektSitzung {
@@ -290,7 +334,7 @@ export class Befehlsweg {
   /** Schreibt ein ChangeSet als Historienbefehl und führt offene Sitzungen nach; `null` heißt geschrieben. */
   async #schreibe(
     t: Teil,
-    cs: LvChangeSet | ProjektChangeSet,
+    cs: Teil['changeSet'],
     befehl: Protokolleintrag['befehl'],
   ): Promise<Speicherfehler | null> {
     const e = eintrag(this.umgebung, t.projektId, t.aggregat, befehl);
