@@ -3,7 +3,11 @@
 // Befehl am Auftrags-LV. Es gelten dieselben Baumregeln wie beim LV; die Wurzel ist die Kennung des Auftrags-LV. Das
 // ChangeSet trägt Kopf, alle Knoten (kanonisch) und die vollständigen Summen (`kopf.vorher: null`).
 
-import type { AuftragsLeistungsverzeichnis, AuftragsLvBefehlAusfuehren, AuftragsLvKopf } from '@tethys/vertrag';
+import type {
+  AuftragsLeistungsverzeichnis,
+  AuftragsLvBefehlAusfuehren,
+  AuftragsLvKopf,
+} from '@tethys/vertrag';
 import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { anlegeHinweise } from './hinweise';
@@ -37,7 +41,8 @@ const KOPF_FELDER: { readonly [F in keyof Required<AuftragsLvKopf>]: true } = {
  */
 function auftragsLvKopfVon(a: AuftragsLeistungsverzeichnis): AuftragsLvKopf {
   const kopf: Partial<Record<keyof AuftragsLvKopf, unknown>> = {};
-  for (const f of Object.keys(KOPF_FELDER) as (keyof AuftragsLvKopf)[]) if (a[f] !== undefined) kopf[f] = a[f];
+  for (const f of Object.keys(KOPF_FELDER) as (keyof AuftragsLvKopf)[])
+    if (a[f] !== undefined) kopf[f] = a[f];
   return kopf as AuftragsLvKopf;
 }
 

@@ -32,6 +32,13 @@ export function ohneKnoten<T extends { readonly knoten: unknown }>(aggregat: T):
   return kopie as Omit<T, 'knoten'>;
 }
 
+/** Ein Objekt mit gesetztem (`wert`) oder entferntem (`null`) Feld; ein entferntes Feld fehlt danach ganz. */
+export function mitFeld<T extends object>(objekt: T, feld: string, wert: unknown): T {
+  const eintraege: [string, unknown][] = Object.entries(objekt).filter(([k]) => k !== feld);
+  if (wert !== null) eintraege.push([feld, wert]);
+  return Object.fromEntries(eintraege) as T;
+}
+
 /** Die Stammdaten ohne `wurzelId` (die Wurzel ist die Kennung des Aggregats, kein Feld des Kopfs). */
 export function ohneWurzel<T extends { readonly wurzelId: unknown }>(inhalt: T): Omit<T, 'wurzelId'> {
   const kopie: { -readonly [K in keyof T]?: T[K] } = { ...inhalt };

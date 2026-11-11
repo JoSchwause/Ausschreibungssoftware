@@ -86,7 +86,16 @@ describe('AuftragsLeistungsverzeichnisAnlegen: nur Felder von AuftragsLvKopf im 
     } as AuftragsLeistungsverzeichnis;
     const kopf = anlegeCs(mitLvKennzeichen).kopf?.nachher;
     expect(Object.keys(kopf ?? {}).sort()).toEqual(
-      ['angebotId', 'id', 'leistungsverzeichnisId', 'mwstSatz', 'nachlass', 'name', 'ozMaske', 'projektId'].sort(),
+      [
+        'angebotId',
+        'id',
+        'leistungsverzeichnisId',
+        'mwstSatz',
+        'nachlass',
+        'name',
+        'ozMaske',
+        'projektId',
+      ].sort(),
     );
   });
 

@@ -29,6 +29,7 @@ import {
   kurztextAendern,
   langtextAendern,
   leistungsverzeichnisUmbenennen,
+  textquelleSetzen,
 } from './feld-befehle';
 import { einheitspreisanteileSetzen } from './epa';
 import {
@@ -51,7 +52,6 @@ import {
   papierkorbeintragWiederherstellen,
 } from './papierkorb-befehle';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
-import { textquelleSetzen } from './textquelle';
 import {
   einheitspreisAendern,
   mengeAendern,

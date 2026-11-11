@@ -29,7 +29,7 @@ import { baueChangeSet } from './changeset';
 import { einheitNormal } from './einheit';
 import { nein, ok } from './fehler';
 import { gleicherWert } from './merkmal-befehle';
-import { ohneKnoten } from './struktur';
+import { mitFeld, ohneKnoten } from './struktur';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 
@@ -169,13 +169,6 @@ const leitbeschreibungNormal = (l: Leitbeschreibung): Leitbeschreibung =>
         unterbeschreibungen: l.unterbeschreibungen.map((u) => ({ ...u, einheit: einheitNormal(u.einheit) })),
       }
     : l;
-
-/** Ein Objekt mit gesetztem (`wert`) oder entferntem (`null`) Feld; ein entferntes Feld fehlt danach ganz. */
-export function mitFeld<T extends object>(objekt: T, feld: string, wert: unknown): T {
-  const eintraege: [string, unknown][] = Object.entries(objekt).filter(([k]) => k !== feld);
-  if (wert !== null) eintraege.push([feld, wert]);
-  return Object.fromEntries(eintraege) as T;
-}
 
 /**
  * Gemeinsamer Ablauf der Kopf-Befehle: Form prüfen, in die Normalform bringen, gleich → leer, sonst Kopf vorher/nachher.

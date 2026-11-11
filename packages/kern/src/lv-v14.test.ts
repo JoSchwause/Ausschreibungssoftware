@@ -5,20 +5,29 @@
 import { describe, expect, it } from 'vitest';
 import type {
   AuftragsLeistungsverzeichnisId,
+  HinweistextId,
+  Knoten,
   Kostengruppennummer,
+  LosId,
   LvBefehl,
   LvZustand,
   Nachtragsangaben,
+  PositionId,
+  Positionsdaten,
+  TitelId,
 } from '@tethys/vertrag';
-import { changeSetUmkehren, lvBefehlAusfuehren } from './index';
+import { changeSetUmkehren, kopieBauen, lvBefehlAusfuehren, pruefeLvInvarianten } from './index';
 import {
   KEINE_SUMMEN,
   LV_ID,
+  PROJEKT_ID,
   anwenden,
   erwarteOk,
   id,
+  inhalt,
   lvMit,
   posKnoten,
+  positionsdaten,
   titelKnoten,
 } from './testhilfen';
 
@@ -97,7 +106,8 @@ describe('KostengruppeSetzen im LV', () => {
       kostengruppe: 330 as unknown as Kostengruppennummer,
     });
     expect(keinText.code).toBe('ungueltige-eingabe');
-    for (const gut of ['100', '330', '999']) expect(lvBefehlAusfuehren(z, setze('P1', gut)).ok, gut).toBe(true);
+    for (const gut of ['100', '330', '999'])
+      expect(lvBefehlAusfuehren(z, setze('P1', gut)).ok, gut).toBe(true);
   });
 
   it('nur an einer Position: Gliederung, Hinweistext und unbekannte Kennung werden mit knoten-unbekannt abgewiesen', () => {
@@ -165,7 +175,10 @@ describe('NachtragsangabenSetzen (D-35)', () => {
     status: 'angemeldet',
     ...ueber,
   });
-  const setze = (nachtrag: Nachtragsangaben | null): LvBefehl => ({ art: 'NachtragsangabenSetzen', nachtrag });
+  const setze = (nachtrag: Nachtragsangaben | null): LvBefehl => ({
+    art: 'NachtragsangabenSetzen',
+    nachtrag,
+  });
 
   it('setzt die Angaben am Kopf (nur Kopf, keine Knoten, keine Summen); null entfernt das Feld', () => {
     const z = basis();
@@ -239,5 +252,119 @@ describe('VorlageSetzen (D-40)', () => {
     const f = fehler(basis(), { art: 'VorlageSetzen', vorlage: 'ja' as unknown as boolean });
     expect(f.code).toBe('ungueltige-eingabe');
     expect(f.feld).toBe('vorlage');
+  });
+});
+
+describe('Kostengruppe und Textquelle an mitgebrachten Knoten (Nachtrag D-42 an Ticket 71)', () => {
+  const mitFeldern = { kostengruppe: kg('330'), textquelle: 'Muster-LV Hochbau' };
+
+  it('PositionAnlegen übernimmt beide Felder; textquelle "" fällt weg; die Umkehrung entfernt die Position', () => {
+    const z = basis();
+    const anlegen = (daten: Partial<Positionsdaten>): LvBefehl => ({
+      art: 'PositionAnlegen',
+      id: id.pos('P2'),
+      ort: { art: 'ende', elternId: id.eltern('T1') },
+      daten: positionsdaten('neu', daten),
+    });
+    const z1 = wendeMitUmkehr(z, anlegen(mitFeldern));
+    expect(position(z1, 'P2')).toMatchObject(mitFeldern);
+    const z2 = wendeMitUmkehr(z, anlegen({ textquelle: '' }));
+    expect(position(z2, 'P2')).not.toHaveProperty('textquelle');
+    expect(position(z2, 'P2')).not.toHaveProperty('kostengruppe');
+  });
+
+  it('PositionAnlegen weist eine Kostengruppe in falscher Form und eine Textquelle, die kein Text ist, ab', () => {
+    const z = basis();
+    const anlegen = (daten: Partial<Record<keyof Positionsdaten, unknown>>): LvBefehl => ({
+      art: 'PositionAnlegen',
+      id: id.pos('P2'),
+      ort: { art: 'ende', elternId: id.eltern('T1') },
+      daten: positionsdaten('neu', daten as Partial<Positionsdaten>),
+    });
+    const kgFalsch = fehler(z, anlegen({ kostengruppe: '33' }));
+    expect([kgFalsch.code, kgFalsch.feld, kgFalsch.knotenId]).toEqual([
+      'ungueltige-eingabe',
+      'kostengruppe',
+      'P2',
+    ]);
+    const tqFalsch = fehler(z, anlegen({ textquelle: 5 }));
+    expect([tqFalsch.code, tqFalsch.feld]).toEqual(['ungueltige-eingabe', 'textquelle']);
+  });
+
+  it('LeistungsverzeichnisAnlegen und KnotenEinfuegen: Felder bleiben, "" fällt weg, falsche Form wird abgewiesen', () => {
+    const knoten = [
+      titelKnoten('T1', LV_ID, 0),
+      posKnoten('P1', 'T1', 0, '1.000', '1.000', mitFeldern),
+      posKnoten('P2', 'T1', 1, '1.000', '1.000', { textquelle: '' }),
+    ];
+    const z = lvMit(knoten);
+    expect(position(z, 'P1')).toMatchObject(mitFeldern);
+    expect(position(z, 'P2')).not.toHaveProperty('textquelle');
+    const anlegen = (k: readonly Knoten[]): LvBefehl => ({
+      art: 'LeistungsverzeichnisAnlegen',
+      id: LV_ID,
+      projektId: PROJEKT_ID,
+      inhalt: inhalt(k),
+    });
+    const falsch = lvBefehlAusfuehren(
+      null,
+      anlegen([posKnoten('P1', LV_ID, 0, null, null, { kostengruppe: kg('1') })]),
+    );
+    expect(!falsch.ok && [falsch.fehler.code, falsch.fehler.feld]).toEqual([
+      'ungueltige-eingabe',
+      'kostengruppe',
+    ]);
+
+    const einfuegen = (k: readonly Knoten[]): LvBefehl => ({
+      art: 'KnotenEinfuegen',
+      ort: { art: 'ende', elternId: id.eltern(LV_ID) },
+      knoten: k,
+    });
+    const z1 = wendeMitUmkehr(
+      basis(),
+      einfuegen([
+        posKnoten('E1', 'x', 0, null, null, mitFeldern),
+        posKnoten('E2', 'x', 0, null, null, { textquelle: '' }),
+      ]),
+    );
+    expect(position(z1, 'E1')).toMatchObject(mitFeldern);
+    expect(position(z1, 'E2')).not.toHaveProperty('textquelle');
+    const f = fehler(basis(), einfuegen([posKnoten('E1', 'x', 0, null, null, { kostengruppe: kg('abc') })]));
+    expect([f.code, f.feld]).toEqual(['ungueltige-eingabe', 'kostengruppe']);
+  });
+
+  it('pruefeLvInvarianten meldet eine Kostengruppe in falscher Form', () => {
+    const lv = {
+      id: LV_ID,
+      knoten: [posKnoten('P1', LV_ID, 0, null, null, { kostengruppe: kg('0') })],
+    };
+    expect(pruefeLvInvarianten(lv).join('\n')).toContain('ungueltige-eingabe');
+  });
+
+  it('kopieBauen (K9): Kostengruppe und Textquelle bleiben an der Kopie erhalten (Muster-LV als Quelle, C5)', () => {
+    const z = wendeMitUmkehr(
+      wendeMitUmkehr(basis(), {
+        art: 'KostengruppeSetzen',
+        positionId: id.pos('P1'),
+        kostengruppe: kg('330'),
+      }),
+      { art: 'TextquelleSetzen', positionId: id.pos('P1'), textquelle: 'Muster-LV Hochbau' },
+    );
+    let n = 0;
+    const ids = {
+      los: () => `kopie-L${String(++n)}` as LosId,
+      titel: () => `kopie-T${String(++n)}` as TitelId,
+      position: () => `kopie-P${String(++n)}` as PositionId,
+      hinweistext: () => `kopie-H${String(++n)}` as HinweistextId,
+    };
+    const kopie = kopieBauen(z, [id.knoten('T1')], ids);
+    const p = kopie.find((k) => k.art === 'position');
+    expect(p).toMatchObject(mitFeldern);
+    const z1 = wendeMitUmkehr(z, {
+      art: 'KnotenEinfuegen',
+      ort: { art: 'ende', elternId: id.eltern(LV_ID) },
+      knoten: kopie,
+    });
+    expect(position(z1, p?.id ?? '')).toMatchObject(mitFeldern);
   });
 });

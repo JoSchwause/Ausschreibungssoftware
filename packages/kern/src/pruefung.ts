@@ -16,6 +16,7 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { befehlsfehler } from './fehler';
+import { kostengruppeFehler, textquelleFehler } from './positionsfelder';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
 import type { ElternArt } from './regeln';
 
@@ -50,7 +51,9 @@ export function unerlaubtesFeld(
  *  3. Bezugsliste nennt eine Zuschlagsposition (`zuschlag.bezug.positionen`; D-03: nie Basis einer anderen);
  *  4. `wahl.variante` nicht ganzzahlig 0 bis 9 oder `wahl.gruppe` negativ oder nicht ganzzahlig (`merkmale.wahl`);
  *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`);
- *  6. Mengenansatz in falscher Form (`mengenansatz`, `mengenansatzFehler`; Ticket 56).
+ *  6. Mengenansatz in falscher Form (`mengenansatz`, `mengenansatzFehler`; Ticket 56);
+ *  7. Kostengruppe nicht `100` bis `999` (`kostengruppe`) und Textquelle, die kein Text ist (`textquelle`; Vertrag v1.4,
+ *     Ticket 71). Eine leere Textquelle ist kein Fehler: `positionNormal` lässt sie weg (D-71.4).
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -72,6 +75,14 @@ export function positionsdatenFehler(
   if (daten.mengenansatz !== undefined) {
     const m = mengenansatzFehler(daten.mengenansatz);
     if (m !== null) return feld('mengenansatz', m);
+  }
+  if (daten.kostengruppe !== undefined) {
+    const k = kostengruppeFehler(daten.kostengruppe);
+    if (k !== null) return feld('kostengruppe', k);
+  }
+  if (daten.textquelle !== undefined) {
+    const t = textquelleFehler(daten.textquelle);
+    if (t !== null) return feld('textquelle', t);
   }
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
