@@ -11,6 +11,7 @@
 // gespeicherten Stand (der Stapel wird nicht beschädigt).
 
 import type {
+  AngebotChangeSet,
   LvChangeSet,
   ProjektChangeSet,
   ProjektId,
@@ -24,7 +25,7 @@ export interface Teil {
   readonly protokollId: ProtokollId;
   readonly projektId: ProjektId;
   readonly aggregat: Protokolleintrag['aggregat'];
-  readonly changeSet: LvChangeSet | ProjektChangeSet;
+  readonly changeSet: LvChangeSet | ProjektChangeSet | AngebotChangeSet;
 }
 
 /** Ein Undo-Schritt: die Teile in der Reihenfolge, in der sie geschrieben wurden. */

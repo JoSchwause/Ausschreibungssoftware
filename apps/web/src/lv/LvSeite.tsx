@@ -23,6 +23,8 @@ import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { lvAnsichtBauen } from './ansicht';
+import { Angebote } from '../gaeb/Angebote';
+import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
@@ -435,6 +437,8 @@ function LvBearbeiten({
         >
           {htexte.staende.knopf}
         </Button>
+        <GaebAusgeben zustand={zustand} />
+        <Angebote zustand={zustand} />
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">

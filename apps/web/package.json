@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@tethys/dezimal": "workspace:*",
+    "@tethys/gaeb": "workspace:*",
     "@tethys/kern": "workspace:*",
     "@tethys/speicher": "workspace:*",
     "@tethys/ui-basis": "workspace:*",
     "@tethys/ui-grid": "workspace:*",
+    "@tethys/vergabe": "workspace:*",
     "@tethys/vertrag": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
