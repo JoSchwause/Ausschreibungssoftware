@@ -295,6 +295,10 @@ export interface FxAngebotsset {
   lvId: string;
   bieter: { id: string; name: string }[];
   angebote: FxAngebot[];
+  /** Ticket 69: Bietersummen je Angebot, Titelsummen nach OZ. */
+  preisspiegel: {
+    bieter: { angebotId: string; name: string; summen: FxSummen; titel: Record<string, string> }[];
+  };
 }
 
 function lies(name: string): unknown {

@@ -12,7 +12,10 @@ import type {
   Einheitspreisanteile,
   Knoten,
   LeistungsverzeichnisId,
+  LvZustand,
+  PapierkorbeintragId,
   PositionId,
+  ProjektId,
   Projekt,
   Prozent,
 } from '@tethys/vertrag';
@@ -495,5 +498,78 @@ describe('zuschlagErteilen: Goldens aus den Fixtures', () => {
       const titel01 = fx.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === '01')?.id ?? '';
       expect(titel[titel01]).toBe('3780.50');
     });
+  });
+});
+
+describe('zuschlagErteilen: Bezüge und Zugehörigkeit', () => {
+  it('entfernt Bezüge auf Positionen im Papierkorb des LV und auf entfallene Positionen an Grundpositionen', () => {
+    // x1 liegt im Papierkorb; z1 nennt x1, die Grundposition g2 (Variante 0) verweist auf die Alternative a1.
+    const z = lv('lv-p', [
+      titel('t1', 'lv-p', 0),
+      position('g1', 't1', 0, '1.000', '10.000'),
+      position('a1', 't1', 1, '1.000', '11.000', wahl(null, null, 'g1')),
+      position('g2', 't1', 2, '1.000', '20.000', wahl(3, 0, 'a1')),
+      position('b1', 't1', 3, '1.000', '21.000', wahl(3, 1, 'g2')),
+      zuschlagsposition('z1', 't1', 4, liste('g1', 'x1'), '10.00'),
+      position('x1', 't1', 5, '1.000', '30.000'),
+    ]);
+    const l = z.leistungsverzeichnis;
+    const x1 = l.knoten.find((k) => k.id === 'x1');
+    if (x1 === undefined) throw new Error('x1 fehlt');
+    const mitKorb: LvZustand = {
+      ...z,
+      leistungsverzeichnis: { ...l, knoten: l.knoten.filter((k) => k.id !== 'x1') },
+      papierkorb: [{ id: 'korb-1' as PapierkorbeintragId, nummer: 1, knoten: [x1] }],
+    };
+    const a = angebot('a-p', z, 'w1', [
+      ep('g1', '10.000'),
+      ep('a1', '11.000'),
+      ep('g2', '20.000'),
+      ep('b1', '21.000'),
+      satz('z1', '10.00'),
+      ep('x1', '30.000'),
+    ]);
+    const { befehl, warnungen } = erwarteOk(zuschlagErteilen(mitKorb, a, projektW, OHNE_WAHL, NEUE_ID));
+    expect(warnungen).toEqual([
+      { code: 'positionen-entfallen', anzahl: 2, positionIds: ['a1', 'b1'] },
+      { code: 'bezug-entfernt', positionId: 'g2', feld: 'merkmale.wahl.grundpositionId', zielId: 'a1' },
+      { code: 'bezug-entfernt', positionId: 'z1', feld: 'zuschlag.bezug.positionen', zielId: 'x1' },
+    ]);
+    // g1 10,00 + g2 20,00 + z1 10 % von 10,00 = 1,00 → 31,00.
+    expect(imKern(befehl).summen.gesamt?.netto).toBe('31.00');
+  });
+
+  it('weist ein Angebot oder ein Projekt eines anderen Projekts ab', () => {
+    const fremdesAngebot = { ...angebotW, projektId: 'anderes' as ProjektId };
+    expect(zuschlagErteilen(lvW, fremdesAngebot, projektW, OHNE_WAHL, NEUE_ID)).toMatchObject({
+      ok: false,
+      fehler: { code: 'ungueltige-eingabe', feld: 'angebot.projektId' },
+    });
+    expect(
+      zuschlagErteilen(lvW, angebotW, projekt(['w1'], 'anderes' as ProjektId), OHNE_WAHL, NEUE_ID),
+    ).toMatchObject({ ok: false, fehler: { code: 'ungueltige-eingabe', feld: 'projekt.id' } });
+  });
+
+  it('preisspiegel-Block von typisch-angebote: Bietersummen und Titel je OZ wie das Auftrags-LV', () => {
+    const ozVon = new Map(
+      typisch.leistungsverzeichnis.knoten.map((k) => [
+        k.id as string,
+        k.art === 'titel' ? k.ordnungszahl : null,
+      ]),
+    );
+    for (const b of set.preisspiegel.bieter) {
+      const fx = set.angebote.find((x) => x.id === b.angebotId);
+      if (fx === undefined) throw new Error(`Angebot fehlt: ${b.angebotId}`);
+      const { befehl } = erwarteOk(
+        zuschlagErteilen(typisch, angebotAusFixture(fx, typisch), fxProjekt, OHNE_WAHL, NEUE_ID),
+      );
+      expect(befehl.auftragsLeistungsverzeichnis.auftragnehmer?.name).toBe(b.name);
+      const cs = imKern(befehl);
+      expect(cs.summen.gesamt, b.name).toMatchObject(b.summen);
+      expect(
+        Object.fromEntries(cs.summen.gliederungen.map((t) => [ozVon.get(t.gliederungId), t.summe])),
+        b.name,
+      ).toEqual(b.titel);
+    }
   });
 });
