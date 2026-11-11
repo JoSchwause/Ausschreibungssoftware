@@ -82,6 +82,16 @@ describe('einzelpreiskalkulationBerechnen: Rechenweg', () => {
     ]);
     expect(r.befunde).toEqual([]);
   });
+
+  // Nachunternehmer ohne Satz (0 %): 0,500 × 4,157 = 2,0785 → kaufmännisch 2,079 (halbe Einheit aufwärts; nicht 2,078)
+  it('rundet den Anteil kaufmännisch auf 3 Stellen', () => {
+    const r = einzelpreiskalkulationBerechnen([z('nachunternehmer', 'Abbruch', '0.500', '4.157')], SAETZE);
+    expect(r.anteile.nachunternehmer).toBe('2.079');
+    expect(r.einheitspreis).toBe('2.079');
+    expect(r.kostenarten.map((k) => [ohneNullen(k.einzelkosten), k.kalkulationszuschlagssatz])).toEqual([
+      ['2.0785', '0.00'],
+    ]);
+  });
 });
 
 describe('einzelpreiskalkulationBerechnen: Befunde, nie Sperre (U5)', () => {
@@ -108,6 +118,58 @@ describe('einzelpreiskalkulationBerechnen: Befunde, nie Sperre (U5)', () => {
       ['wert-fehlt', 'kostensatz', 1, 'stoffe'],
       ['wert-fehlt', 'ansatzmenge', 3, 'sonstiges'],
       ['wert-fehlt', 'kostensatz', 3, 'sonstiges'],
+    ]);
+  });
+
+  // Lohn: 1,000 × 10,000 = 10,000; × (1 + 0,285) = 12,850
+  // Sonstiges (kein Satz, 0 %): 0,010 × −0,050 = −0,0005 → Betrag 0,0005 kaufmännisch 0,001, Vorzeichen davor: −0,001 (E-07)
+  // EP = 12,850 − 0,001 = 12,849
+  it('negativer Kostensatz zählt mit, wird kaufmännisch gerundet und gemeldet', () => {
+    const r = einzelpreiskalkulationBerechnen(
+      [z('lohn', 'Maurer', '1.000', '10.000'), z('sonstiges', 'Gutschrift', '0.010', '-0.050')],
+      SAETZE,
+    );
+    expect(r.anteile.lohn).toBe('12.850');
+    expect(r.anteile.sonstiges).toBe('-0.001');
+    expect(r.einheitspreis).toBe('12.849');
+    expect(r.befunde.map((b) => [b.code, b.feld, b.zeile, b.art])).toEqual([
+      ['wert-negativ', 'kostensatz', 1, 'sonstiges'],
+      ['wert-negativ', 'anteil', null, 'sonstiges'],
+    ]);
+  });
+
+  // Stoffe: −1,000 × 2,000 = −2,000; × (1 + 0,12) = −2,240 = EP
+  it('negative Ansatzmenge: Zeile, Anteil und EP werden gemeldet', () => {
+    const r = einzelpreiskalkulationBerechnen([z('stoffe', 'Rücknahme', '-1.000', '2.000')], SAETZE);
+    expect(r.einheitspreis).toBe('-2.240');
+    expect(r.befunde.map((b) => [b.code, b.feld, b.zeile, b.art])).toEqual([
+      ['wert-negativ', 'ansatzmenge', 0, 'stoffe'],
+      ['wert-negativ', 'anteil', null, 'stoffe'],
+      ['wert-negativ', 'einheitspreis', null, null],
+    ]);
+  });
+
+  // Lohn:   1,000 × 10,000 = 10,000; Satz −150 %: Zuschlag −15,000; Anteil 10,000 − 15,000 = −5,000
+  // Stoffe: 2,000 × 3,000 = 6,000; Satz −100 %: Zuschlag −6,000; Anteil 0,000 (genau −100 % ist kein Befund)
+  // Geräte: Satz −200 %, aber keine Zeile: kein Anteil, kein Befund
+  // EP = −5,000 + 0,000 = −5,000
+  it('Satz unter −100 % kehrt das Vorzeichen um: Befund an der Kostenart, gerechnet wird trotzdem', () => {
+    const r = einzelpreiskalkulationBerechnen(
+      [z('lohn', 'Maurer', '1.000', '10.000'), z('stoffe', 'Stein', '2.000', '3.000')],
+      { lohn: prozent('-150.00'), stoffe: prozent('-100.00'), geraete: prozent('-200.00') },
+    );
+    expect(r.anteile.lohn).toBe('-5.000');
+    expect(r.anteile.stoffe).toBe('0.000');
+    expect(r.anteile.geraete).toBeNull();
+    expect(r.einheitspreis).toBe('-5.000');
+    expect(r.kostenarten.map((k) => [k.art, ohneNullen(k.kalkulationszuschlag)])).toEqual([
+      ['lohn', '-15.0'],
+      ['stoffe', '-6.0'],
+    ]);
+    expect(r.befunde.map((b) => [b.code, b.feld, b.zeile, b.art])).toEqual([
+      ['kalkulationszuschlagssatz-unter-minus-100', 'kalkulationszuschlagssatz', null, 'lohn'],
+      ['wert-negativ', 'anteil', null, 'lohn'],
+      ['wert-negativ', 'einheitspreis', null, null],
     ]);
   });
 

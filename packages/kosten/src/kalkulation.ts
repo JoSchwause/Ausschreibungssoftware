@@ -4,7 +4,7 @@
 // Einzelkosten ungerundet, Anteil kaufmännisch auf 3 Stellen (EP 3, N3), EP = Σ der gerundeten Anteile. Rein (A2), nur
 // Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes. Nicht gespeichert (D-36 (5)).
 
-import { NULL_PROZENT, addiere, alsDezimal, multipliziere, runden } from '@tethys/dezimal';
+import { NULL_PROZENT, addiere, alsDezimal, multipliziere, runden, vergleiche, vorzeichen } from '@tethys/dezimal';
 import type { Dezimal, Einheitspreis, Einheitspreisanteile, EpaArt, Menge, Prozent } from '@tethys/vertrag';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
@@ -46,9 +46,16 @@ export interface Einzelpreiskalkulation {
 }
 
 export type Kalkulationsbefundcode =
-  | 'wert-fehlt'; // Zeile ohne Ansatzmenge oder Kostensatz; die Zeile zählt nicht
+  | 'wert-fehlt' // Zeile ohne Ansatzmenge oder Kostensatz; die Zeile zählt nicht
+  | 'wert-negativ' // Ansatzmenge, Kostensatz, Anteil oder EP unter 0; zählt mit
+  | 'kalkulationszuschlagssatz-unter-minus-100'; // Anteil hat das umgekehrte Vorzeichen der Einzelkosten; zählt mit
 
-export type Kalkulationsfeld = 'ansatzmenge' | 'kostensatz';
+export type Kalkulationsfeld =
+  | 'ansatzmenge'
+  | 'kostensatz'
+  | 'kalkulationszuschlagssatz'
+  | 'anteil'
+  | 'einheitspreis';
 
 export interface Kalkulationsbefund {
   readonly code: Kalkulationsbefundcode;
@@ -81,23 +88,38 @@ function konstante(text: string): Dezimal {
 }
 /** 1 % als Faktor: Prozent × 0.01 ist exakt (Multiplikation statt Division). */
 const EIN_PROZENT = konstante('0.01');
+/** −100 %: Ein Satz darunter macht aus positiven Einzelkosten einen negativen Anteil. */
+const MINUS_HUNDERT = konstante('-100.0');
+
+const negativ = (wert: Dezimal): boolean => vorzeichen(wert) < 0;
 
 export function einzelpreiskalkulationBerechnen(
   ansaetze: readonly Kalkulationsansatz[],
   saetze: Kalkulationszuschlagssaetze,
 ): Einzelpreiskalkulation {
   const befunde: Kalkulationsbefund[] = [];
+  const befund = (
+    code: Kalkulationsbefundcode,
+    feld: Kalkulationsfeld,
+    zeile: number | null,
+    art: EpaArt | null,
+    meldung: string,
+  ): void => {
+    befunde.push({ code, feld, zeile, art, meldung });
+  };
+
   const einzelkosten = new Map<EpaArt, Dezimal>();
-  ansaetze.forEach((a, index) => {
-    const befund = (code: Kalkulationsbefundcode, feld: Kalkulationsfeld, meldung: string): void => {
-      befunde.push({ code, feld, zeile: index, art: a.art, meldung });
-    };
-    if (a.ansatzmenge === null) befund('wert-fehlt', 'ansatzmenge', 'Zeile ohne Ansatzmenge zählt nicht');
-    if (a.kostensatz === null) befund('wert-fehlt', 'kostensatz', 'Zeile ohne Kostensatz zählt nicht');
-    if (a.ansatzmenge === null || a.kostensatz === null) return;
-    const zeile = multipliziere(a.ansatzmenge, a.kostensatz);
-    const bisher = einzelkosten.get(a.art);
-    einzelkosten.set(a.art, bisher === undefined ? zeile : addiere(bisher, zeile));
+  ansaetze.forEach(({ art, ansatzmenge, kostensatz }, index) => {
+    if (ansatzmenge === null) befund('wert-fehlt', 'ansatzmenge', index, art, 'Zeile ohne Ansatzmenge zählt nicht');
+    else if (negativ(ansatzmenge))
+      befund('wert-negativ', 'ansatzmenge', index, art, `Negative Ansatzmenge ${ansatzmenge}`);
+    if (kostensatz === null) befund('wert-fehlt', 'kostensatz', index, art, 'Zeile ohne Kostensatz zählt nicht');
+    else if (negativ(kostensatz))
+      befund('wert-negativ', 'kostensatz', index, art, `Negativer Kostensatz ${kostensatz}`);
+    if (ansatzmenge === null || kostensatz === null) return;
+    const zeile = multipliziere(ansatzmenge, kostensatz);
+    const bisher = einzelkosten.get(art);
+    einzelkosten.set(art, bisher === undefined ? zeile : addiere(bisher, zeile));
   });
 
   const kostenarten: Kostenartnachweis[] = [];
@@ -109,10 +131,21 @@ export function einzelpreiskalkulationBerechnen(
     const satz = saetze[art] ?? NULL_PROZENT;
     const kalkulationszuschlag = multipliziere(multipliziere(ek, satz), EIN_PROZENT);
     const a = runden(addiere(ek, kalkulationszuschlag), 'einheitspreis');
+    if (vergleiche(satz, MINUS_HUNDERT) < 0)
+      befund(
+        'kalkulationszuschlagssatz-unter-minus-100',
+        'kalkulationszuschlagssatz',
+        null,
+        art,
+        `Zuschlagssatz der Kalkulation ${satz} % liegt unter −100 %`,
+      );
+    if (negativ(a)) befund('wert-negativ', 'anteil', null, art, `Negativer Anteil ${a}`);
     anteil[art] = a;
     einheitspreis = einheitspreis === null ? a : addiere(einheitspreis, a);
     kostenarten.push({ art, einzelkosten: ek, kalkulationszuschlagssatz: satz, kalkulationszuschlag, anteil: a });
   }
+  if (einheitspreis !== null && negativ(einheitspreis))
+    befund('wert-negativ', 'einheitspreis', null, null, `Negativer Einheitspreis ${einheitspreis}`);
 
   return {
     anteile: {
