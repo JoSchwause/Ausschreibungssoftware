@@ -225,3 +225,35 @@ describe('Vertrag v1.4: Kostengruppe und Textquelle an der Position', () => {
     expect(wert(await s.auftragsLeistungsverzeichnisse.laden(AUFTRAG))).toEqual(auftrag);
   });
 });
+
+describe('AuftragsLvRepository (v1.4, D-64.2)', () => {
+  it('auflisten: ohne Knoten, nach Name deutsch verglichen, gleiche Namen nach Kennung; unbekannt: nicht-gefunden', async () => {
+    const kern = await mitAuftrag();
+    const s = speicherUeberTransport(direktTransport(kern), null);
+    const zwei = (id: string, name: string, angebotIndex: number): AuftragsLvZustand => {
+      const a = auftragsLvAus(f.lv, f.angebote[angebotIndex]?.angebot.id ?? angebot, id);
+      return { ...a, auftragsLeistungsverzeichnis: { ...a.auftragsLeistungsverzeichnis, name } };
+    };
+    // „Ärger“ steht deutsch bei A (Bytes würden es hinter „Zuschlag“ stellen); zweimal „Zuschlag“: nach Kennung.
+    await schreibe(kern, auftragsLvAnlegenChangeSet(zwei('auftrag-c', 'Ärger', 1)));
+    await schreibe(kern, auftragsLvAnlegenChangeSet(zwei('auftrag-b', 'Zuschlag', 2)));
+    await schreibe(kern, auftragsLvAnlegenChangeSet(zwei('auftrag-a', 'Zuschlag', 2)));
+    const liste = wert(await s.auftragsLeistungsverzeichnisse.auflisten(P));
+    expect(liste.map((u) => [u.id, u.name])).toEqual([
+      ['auftrag-c', 'Ärger'],
+      [AUFTRAG, auftrag.auftragsLeistungsverzeichnis.name],
+      ['auftrag-a', 'Zuschlag'],
+      ['auftrag-b', 'Zuschlag'],
+    ]);
+    expect(liste[1]).toEqual({
+      id: AUFTRAG,
+      name: auftrag.auftragsLeistungsverzeichnis.name,
+      leistungsverzeichnisId: lv.id,
+      angebotId: angebot,
+    });
+    const nicht = await s.auftragsLeistungsverzeichnisse.auflisten('unbekannt' as never);
+    expect(!nicht.ok && nicht.fehler.code).toBe('nicht-gefunden');
+    const laden = await s.auftragsLeistungsverzeichnisse.laden('unbekannt' as never);
+    expect(!laden.ok && laden.fehler.code).toBe('nicht-gefunden');
+  });
+});
