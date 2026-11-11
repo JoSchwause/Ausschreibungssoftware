@@ -587,6 +587,37 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
     ]);
   });
 
+  it('Wahl ohne Nummer zu einer Grundposition, die schon Variante 0 einer Gruppe ist: nächste Variante dieser Gruppe (Ticket 73)', () => {
+    const wahl = (gruppe: number | null, variante: number | null, grund: string | null) => ({
+      ...p1().merkmale,
+      wahl: { gruppe, variante, grundpositionId: grund as PositionId | null },
+    });
+    // Etwa aus GAEB gelesen (Gruppe 7) und in der App um eine Alternative ohne Nummer ergänzt.
+    const inhalt = lv([
+      position('g', '01.0010', 0, { merkmale: wahl(7, 0, null) }),
+      position('a', '01.0020', 1, { merkmale: wahl(7, 1, 'g') }),
+      position('w', '01.0030', 2, { merkmale: wahl(null, null, 'g') }),
+      position('b', '01.0040', 3, { merkmale: wahl(7, 2, 'g') }),
+    ]);
+    const e = schreibe(inhalt);
+    const nummern = [
+      ...e.xml.matchAll(/<Item ID="P(\w+)"[^>]*>\s*<ALNGroupNo>(\d+)<\/ALNGroupNo>\s*<ALNSerNo>(\d+)</g),
+    ].map((m) => `${m[1] ?? ''}:${m[2] ?? ''}/${m[3] ?? ''}`);
+    // Die höchste Variante der Gruppe unter demselben Elternknoten ist 2 (auch wenn sie erst danach steht).
+    expect(nummern).toEqual(['g:7/0', 'a:7/1', 'w:7/3', 'b:7/2']);
+    expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => b.ort.knotenId)).toEqual([
+      'w',
+    ]);
+    const l = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent });
+    expect(l.befunde.map((b) => b.code)).not.toContain('wahl-ohne-grundposition');
+    const gelesen = (l.inhalt?.knoten ?? []).filter((k): k is Position => k.art === 'position');
+    expect(gelesen.find((k) => k.ordnungszahl === '01.0030')?.merkmale.wahl).toEqual({
+      gruppe: 7,
+      variante: 3,
+      grundpositionId: gelesen.find((k) => k.ordnungszahl === '01.0010')?.id,
+    });
+  });
+
   it('künstliche Wahlnummern über 9 Varianten oder 999 Gruppen: Fehler wahl-nummer-ungueltig, kein Rückfall auf eine Position ohne Wahl', () => {
     const wahl = (gruppe: number | null, grund: string | null) => ({
       ...p1().merkmale,

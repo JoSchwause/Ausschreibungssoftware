@@ -116,10 +116,14 @@ interface Wahlnummer {
  * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Über 9 Varianten oder 999
  * Gruppen prüft `merkmale`.
  *
- * Die Grundposition (ohne eigene Wahl) bekommt Variante 0 derselben Gruppe, wenn mindestens eine ihrer Alternativen unter
- * demselben Elternknoten steht (Ticket 73). Der Leser ordnet eine Alternative nur über die Gruppennummer einer
- * Grundausführung (Variante 0) im selben LV-Bereich zu (FD 4.5.2, Ticket 22); ohne sie verlöre der Rundweg die
- * Grundposition. Die Summen ändern sich nicht: Variante 0 geht ins Netto (`betragsziel`). Das Modell bleibt, wie es ist.
+ * Der Leser ordnet eine Alternative nur über die Gruppennummer einer Grundausführung (Variante 0) im selben LV-Bereich
+ * zu (FD 4.5.2, Ticket 22). Damit der Rundweg die Grundposition nicht verliert (Ticket 73), gilt, wenn die Grundposition
+ * unter demselben Elternknoten steht wie die Alternative:
+ * - Hat sie keine eigene Wahl, bekommt sie Variante 0 der neuen Gruppe. Die Summen ändern sich nicht: Variante 0 geht
+ *   ins Netto (`betragsziel`).
+ * - Ist sie schon Variante 0 einer Gruppe, kommt die Alternative in diese Gruppe, mit den Varianten nach der höchsten
+ *   dort belegten.
+ * Das Modell bleibt, wie es ist.
  */
 function kuenstlicheWahlnummern(
   wurzelId: string,
@@ -133,6 +137,11 @@ function kuenstlicheWahlnummern(
     const g = k.art === 'position' ? k.merkmale.wahl?.gruppe : null;
     if (typeof g === 'number' && Number.isInteger(g) && g > hoechste) hoechste = g;
   }
+  const hoechsteVariante = (eltern: string, gruppe: number): number =>
+    (kinder.get(eltern) ?? []).reduce((h, s) => {
+      const v = s.art === 'position' && s.merkmale.wahl?.gruppe === gruppe ? s.merkmale.wahl.variante : null;
+      return v !== null && v > h ? v : h;
+    }, 0);
   const aus = new Map<string, Wahlnummer>();
   const gruppeJeGrund = new Map<string, { readonly gruppe: number; varianten: number }>();
   const besuche = (eltern: string): void => {
@@ -140,17 +149,22 @@ function kuenstlicheWahlnummern(
       const w = k.art === 'position' ? k.merkmale.wahl : null;
       if (w !== null && (w.gruppe === null || w.variante === null)) {
         const grund = w.grundpositionId;
+        const gp = grund === null ? undefined : nachId.get(grund);
+        // `undefined`: keine Grundposition, die GAEB dieser Alternative zuordnen kann; `null`: ohne eigene Wahl.
+        const gpWahl = gp?.art === 'position' && gp.elternId === k.elternId ? gp.merkmale.wahl : undefined;
         let g = grund === null ? undefined : gruppeJeGrund.get(grund);
         if (g === undefined) {
-          hoechste += 1;
-          g = { gruppe: hoechste, varianten: 0 };
+          if (gpWahl?.variante === 0 && gpWahl.gruppe !== null)
+            g = { gruppe: gpWahl.gruppe, varianten: hoechsteVariante(k.elternId, gpWahl.gruppe) };
+          else {
+            hoechste += 1;
+            g = { gruppe: hoechste, varianten: 0 };
+          }
           if (grund !== null) gruppeJeGrund.set(grund, g);
         }
         g.varianten += 1;
         aus.set(k.id, { gruppe: g.gruppe, variante: g.varianten });
-        const gp = grund === null ? undefined : nachId.get(grund);
-        if (gp?.art === 'position' && gp.merkmale.wahl === null && gp.elternId === k.elternId)
-          aus.set(gp.id, { gruppe: g.gruppe, variante: 0 });
+        if (gpWahl === null && grund !== null) aus.set(grund, { gruppe: g.gruppe, variante: 0 });
       }
       besuche(k.id);
     }
