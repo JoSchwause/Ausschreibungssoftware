@@ -1,6 +1,6 @@
 # 78: C4: EP-Kalkulation (Zuschlagskalkulation je Kostenart)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: C4 · Paket: `packages/kosten`
 Blocked by: –
