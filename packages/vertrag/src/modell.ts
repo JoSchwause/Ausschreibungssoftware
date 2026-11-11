@@ -426,6 +426,14 @@ export interface Positionsdaten {
    * auf keine Summe des Kerns.
    */
   readonly kostengruppe?: Kostengruppennummer;
+  /**
+   * Woher der Text der Position stammt (v1.4, Ticket 70 Punkt 5; G-17, D-36 (6), D-40; Glossar „Textquelle“), freier Text,
+   * z. B. ein Katalog, ein Muster-LV oder „eigener Text“. Fehlt: keine Angabe; nie `''` im Zustand (ein leerer Text ist
+   * keine Quelle, siehe `TextquelleSetzen`). Nur Herkunft: Kurz- und Langtext bleiben die einzige Quelle des Texts, ein
+   * Katalog wie STLB-Bau wird nicht angebunden (G-17). Geändert nur über `TextquelleSetzen`; Anlege- und Kopierbefehle
+   * bringen sie mit. Hinweistexte tragen keine (Offene Typfrage, Ticket 70).
+   */
+  readonly textquelle?: string;
 }
 
 /**
@@ -631,6 +639,18 @@ export interface LvKopf extends LvInhaltKopf {
    * LV-Stand zurückgeholt wird, ist kein Nachtrag mehr. Alternative: am `LvInhaltKopf` (Offene Typfrage, Ticket 70).
    */
   readonly nachtrag?: Nachtragsangaben;
+  /**
+   * Kennzeichen „Muster-LV“ (v1.4, Ticket 70 Punkt 5; C5, G-17, D-36 (6), D-40; Glossar „Muster-LV“). Fehlt: ein
+   * gewöhnliches LV. `true`: ein Muster-LV, dessen Positionen und Hinweistexte die Textbausteine sind, die man in andere
+   * LVs kopiert (`KnotenEinfuegen`, K9); einen eigenen Typ für Textbausteine gibt es nicht. Das Kennzeichen rechnet und
+   * sperrt nichts; ob ein Muster-LV Angebote, einen Zuschlag oder Nachtragsangaben haben darf, prüft der Typ nicht.
+   * Geändert nur über `VorlageSetzen`.
+   *
+   * Vorläufige Annahme, Entscheidung offen (enge Lesart): nur `true` oder fehlt, eine Schreibweise für „kein Muster-LV“
+   * (wie bei `Auszeichnung`; kanonische Datei); am `LvKopf` wie `nachtrag`, also nie aus einem Import und nie am
+   * Auftrags-LV. Alternative: `vorlage?: boolean` (Offene Typfrage, Ticket 70).
+   */
+  readonly vorlage?: true;
 }
 
 /**

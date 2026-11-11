@@ -690,7 +690,12 @@ describe('Befehle anderer Tickets', () => {
   // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 leert ZUSTAENDIGES_TICKET wieder)
   it('jeder LV-Befehl bis v1.3 hat einen Handler; offen sind nur die LV-Befehle aus Vertrag v1.4 (Ticket 71)', () => {
     expect(Object.values(ZUSTAENDIGES_TICKET).every((t) => t.endsWith('(Ticket 71)'))).toBe(true);
-    expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual(['KostengruppeSetzen', 'NachtragsangabenSetzen']);
+    expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual([
+      'KostengruppeSetzen',
+      'NachtragsangabenSetzen',
+      'TextquelleSetzen',
+      'VorlageSetzen',
+    ]);
   });
 
   // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 ersetzt die Abweisung durch die Handler)
@@ -703,6 +708,14 @@ describe('Befehle anderer Tickets', () => {
         id: id.pos('V14'),
         ort: ende('T1'),
         daten: { ...positionsdaten('v1.4'), kostengruppe: '330' as Kostengruppennummer },
+      },
+      { art: 'VorlageSetzen', vorlage: true },
+      { art: 'TextquelleSetzen', positionId: id.pos('P1'), textquelle: 'eigener Text' },
+      {
+        art: 'PositionAnlegen',
+        id: id.pos('V14'),
+        ort: ende('T1'),
+        daten: { ...positionsdaten('v1.4'), textquelle: 'eigener Text' },
       },
     ];
     for (const b of v14) {

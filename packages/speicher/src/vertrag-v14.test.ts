@@ -47,6 +47,20 @@ describe('Vertrag v1.4 bis Ticket 79: unbekannt statt still verworfen (Q5)', () 
     expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
   });
 
+  it('Vorlage am LV-Kopf und Textquelle an einer Position', async () => {
+    const kern = await mitLv();
+    const p = f.lv.leistungsverzeichnis.knoten.find((k) => k.art === 'position');
+    if (p === undefined) throw new Error('keine Position');
+    const aggregat = { art: 'leistungsverzeichnis', id: lv.id } as const;
+    const vorlage = kopfAendern(f.lv, { vorlage: true }, f.lv.summen.gesamt.netto);
+    const textquelle = feldAendern(f.lv, p.id, { ...p, textquelle: 'eigener Text' }, '0.00');
+    for (const cs of [vorlage, textquelle]) {
+      const r = await versuche(kern, cs, aggregat);
+      expect(!r.ok && r.fehler.code).toBe('unbekannt');
+    }
+    expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
+  });
+
   it('Kostengruppe an einer Position, im LV und im Auftrags-LV', async () => {
     const kern = await mitLv();
     const p = f.lv.leistungsverzeichnis.knoten.find((k) => k.art === 'position');

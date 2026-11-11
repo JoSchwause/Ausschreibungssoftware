@@ -775,6 +775,8 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   NachtragUebernehmen: true,
   NachtragsangabenSetzen: true,
   KostengruppeSetzen: true,
+  VorlageSetzen: true,
+  TextquelleSetzen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

@@ -111,6 +111,8 @@ export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<P
     // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 liefert die Handler und leert die Liste wieder)
     NachtragsangabenSetzen: 'A1 (Ticket 71)',
     KostengruppeSetzen: 'C2 (Ticket 71)',
+    VorlageSetzen: 'C5 (Ticket 71)',
+    TextquelleSetzen: 'C5 (Ticket 71)',
   };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

@@ -117,6 +117,8 @@ import {
   type Nachtragsstatus,
   type Kostengruppennummer,
   type KostengruppeSetzen,
+  type TextquelleSetzen,
+  type VorlageSetzen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -160,6 +162,10 @@ import {
   beispielNachtragsangabenSetzen,
   beispielChangeSetKostengruppe,
   beispielKostengruppeSetzen,
+  beispielChangeSetTextquelle,
+  beispielChangeSetVorlage,
+  beispielTextquelleSetzen,
+  beispielVorlageSetzen,
 } from './beispiele';
 
 /**
@@ -1127,5 +1133,35 @@ describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
     const zurueck = umkehrenAuftragsLv(cs);
     expect(alsPosition(zurueck.knoten.geaendert[0]?.nachher)).not.toHaveProperty('kostengruppe');
     expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 5: Muster-LV und Textquelle (C5, G-17, D-40)', () => {
+  it('Vorlage: am LvKopf, nur true oder fehlt; Textquelle: optional an der Position', () => {
+    expectTypeOf<LvKopf['vorlage']>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<LvInhaltKopf>().not.toHaveProperty('vorlage');
+    expectTypeOf<AuftragsLvKopf>().not.toHaveProperty('vorlage');
+    expectTypeOf<Positionsdaten['textquelle']>().toEqualTypeOf<string | undefined>();
+  });
+
+  it('VorlageSetzen und TextquelleSetzen sind LV-Befehle, nicht am Auftrags-LV', () => {
+    expectTypeOf<VorlageSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<TextquelleSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<VorlageSetzen['vorlage']>().toEqualTypeOf<boolean>();
+    expectTypeOf<TextquelleSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<TextquelleSetzen['textquelle']>().toEqualTypeOf<string | null>();
+    expectTypeOf<'VorlageSetzen' | 'TextquelleSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+    expect(beispielVorlageSetzen.vorlage).toBe(true);
+    expect(beispielTextquelleSetzen.textquelle).toBe('Muster-LV Rohbau (erfunden)');
+  });
+
+  it('ChangeSets: Vorlage im Kopf, Textquelle an der Position; beide umkehrbar', () => {
+    const v = beispielChangeSetVorlage;
+    expect(v.kopf?.vorher).not.toHaveProperty('vorlage');
+    expect(v.kopf?.nachher?.vorlage).toBe(true);
+    expect(umkehren(umkehren(v))).toEqual(v);
+    const t = beispielChangeSetTextquelle;
+    expect(alsPosition(t.knoten.geaendert[0]?.nachher)?.textquelle).toBe(beispielTextquelleSetzen.textquelle);
+    expect(alsPosition(umkehren(t).knoten.geaendert[0]?.nachher)).not.toHaveProperty('textquelle');
   });
 });

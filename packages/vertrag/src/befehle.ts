@@ -375,6 +375,18 @@ export interface KostengruppeSetzen {
   readonly kostengruppe: Kostengruppennummer | null;
 }
 
+/**
+ * Setzt die Textquelle einer Position; `null` entfernt sie (das Feld fehlt danach) (v1.4, Ticket 70 Punkt 5; G-17,
+ * D-40). Ein leerer Text `''` ist keine Quelle: Der Kern legt dafür kein Feld ab wie bei `null` (Normalisierung beim
+ * Befehl wie `''` bei der Einheit). ChangeSet: die Knotenänderung der Position, Summen unverändert. Kern-Handler
+ * Ticket 71, ein Feldbefehl wie `KurztextAendern`.
+ */
+export interface TextquelleSetzen {
+  readonly art: 'TextquelleSetzen';
+  readonly positionId: PositionId;
+  readonly textquelle: string | null;
+}
+
 // --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
 
 /** Setzt den Auftraggeber des LV als ganzen Wert; `null` entfernt ihn (das Feld fehlt danach am LV). */
@@ -398,6 +410,15 @@ export interface VergabeinformationenSetzen {
 export interface NachtragsangabenSetzen {
   readonly art: 'NachtragsangabenSetzen';
   readonly nachtrag: Nachtragsangaben | null;
+}
+
+/**
+ * Kennzeichnet das LV als Muster-LV (`true`) oder nimmt das Kennzeichen weg (`false`: das Feld `LvKopf.vorlage` fehlt
+ * danach) (v1.4, Ticket 70 Punkt 5; C5, D-40). ChangeSet: nur der Kopf, keine Summen. Kern-Handler Ticket 71.
+ */
+export interface VorlageSetzen {
+  readonly art: 'VorlageSetzen';
+  readonly vorlage: boolean;
 }
 
 /** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
@@ -484,7 +505,9 @@ export type LvBefehl =
   | MengenansatzSetzen
   // v1.4
   | NachtragsangabenSetzen
-  | KostengruppeSetzen;
+  | KostengruppeSetzen
+  | VorlageSetzen
+  | TextquelleSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 

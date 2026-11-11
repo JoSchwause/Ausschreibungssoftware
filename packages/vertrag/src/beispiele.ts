@@ -18,6 +18,8 @@ import type {
   NachtragUebernehmen,
   NachtragsangabenSetzen,
   ProjektLoeschen,
+  TextquelleSetzen,
+  VorlageSetzen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
 import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
@@ -1009,4 +1011,42 @@ export const beispielChangeSetKostengruppe: AuftragsLvChangeSet = {
     gesamt: null,
     vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
   },
+};
+
+/** Summen eines ChangeSets, das keine Summe berührt (Kopf- und Textfelder). */
+const keineSummen = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+} as const;
+
+/** Punkt 5 (D-40): Das Beispiel-LV wird Muster-LV; seine Positionen sind dann Textbausteine. */
+export const beispielVorlageSetzen: VorlageSetzen = { art: 'VorlageSetzen', vorlage: true };
+
+/** Punkt 5: ChangeSet zu `beispielVorlageSetzen`; nur der Kopf. `vorlage: false` wäre die Umkehrung (Feld fehlt). */
+export const beispielChangeSetVorlage: LvChangeSet = {
+  ...lvRahmen,
+  kopf: { vorher: lvKopf, nachher: { ...lvKopf, vorlage: true } },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: keineSummen,
+};
+
+/** Punkt 5 (G-17): Der Text der Position stammt aus einem Muster-LV (Name erfunden). */
+export const beispielTextquelleSetzen: TextquelleSetzen = {
+  art: 'TextquelleSetzen',
+  positionId: posId,
+  textquelle: 'Muster-LV Rohbau (erfunden)',
+};
+
+/** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */
+export const beispielChangeSetTextquelle: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [{ vorher: position, nachher: { ...position, textquelle: 'Muster-LV Rohbau (erfunden)' } }],
+    entfernt: [],
+  },
+  summen: keineSummen,
 };

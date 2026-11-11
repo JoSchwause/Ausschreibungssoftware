@@ -10,6 +10,7 @@ import { abbruch } from './ergebnis';
 /** Das erste Feld aus Vertrag v1.4 am LV-Kopf, das `speicher` noch nicht ablegt; `null`: keines. */
 function kopfFeldV14(k: LvKopf | null): string | null {
   if (k?.nachtrag !== undefined) return 'nachtrag';
+  if (k?.vorlage !== undefined) return 'vorlage';
   return null;
 }
 
@@ -17,6 +18,7 @@ function kopfFeldV14(k: LvKopf | null): string | null {
 function knotenFeldV14(k: Knoten): string | null {
   if (k.art !== 'position') return null;
   if (k.kostengruppe !== undefined) return 'kostengruppe';
+  if (k.textquelle !== undefined) return 'textquelle';
   return null;
 }
 
