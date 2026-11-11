@@ -12,6 +12,8 @@ export const RPC_METHODEN = [
   'lvLaden',
   'angeboteAuflisten',
   'angebotLaden',
+  'lvStaendeAuflisten',
+  'lvStandLaden',
   'anwenden',
   'protokoll',
   'projektdateiExportieren',

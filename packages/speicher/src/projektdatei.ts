@@ -13,9 +13,18 @@ import type {
 import { dekodiereProjektdatei } from './dekoder';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
-import { aggregatIds, leseAngebot, leseAuftragsLv, leseLv, leseProjekt, leseProtokoll } from './lesen';
+import {
+  aggregatIds,
+  leseAngebot,
+  leseAuftragsLv,
+  leseLv,
+  leseLvStaendeDesProjekts,
+  leseProjekt,
+  leseProtokoll,
+} from './lesen';
 import type { Migration } from './migrationen';
 import {
+  schreibeLvStand,
   schreibeProtokolleintrag,
   wendeAngebotAn,
   wendeAuftragsLvAn,
@@ -30,6 +39,7 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
   if (projekt === null) return abbruch('nicht-gefunden', `Projekt ${id} ist nicht vorhanden.`);
   const holen = <T>(wert: T | null, was: string): T =>
     wert === null ? abbruch('datei-ungueltig', `${was} verschwand während des Exports.`) : wert;
+  const staende = leseLvStaendeDesProjekts(db, id);
   return {
     schemaVersion,
     projekt,
@@ -43,6 +53,8 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
       holen(leseAuftragsLv(db, a as AuftragsLeistungsverzeichnisId), `Auftrags-LV ${a}`),
     ),
     protokoll: leseProtokoll(db, id),
+    // Schema 3: fehlt, wenn es keine Stände gibt (Vertrag: „Fehlt: keine“); so bleibt eine Datei ohne Stände gleich.
+    ...(staende.length > 0 ? { lvStaende: staende } : {}),
   };
 }
 
@@ -117,10 +129,14 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           kopf: { vorher: null, nachher: kopf },
           knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
           summen: z.summen,
+          ...(z.papierkorb === undefined
+            ? {}
+            : { papierkorb: { hinzugefuegt: z.papierkorb, geaendert: [], entfernt: [] } }),
         },
         projektId,
       );
     }
+    for (const s of d.lvStaende ?? []) schreibeLvStand(db, s);
     for (const z of d.angebote) {
       const { positionen, ...kopf } = z.angebot;
       wendeAngebotAn(

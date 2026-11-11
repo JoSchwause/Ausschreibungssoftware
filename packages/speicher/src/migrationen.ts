@@ -14,6 +14,7 @@ import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';
 import { fehlerAusAusnahme } from './fehler';
 import { fehler, ok } from './ergebnis';
 import { dateiAuf2 } from './dateimigration2';
+import { dateiAuf3 } from './dateimigration3';
 import type { Datenbank } from './sql';
 
 export interface Migration {
@@ -234,6 +235,39 @@ ALTER TABLE summe_gliederung ADD COLUMN summe_wahl TEXT;
 ALTER TABLE angebotsposition ADD COLUMN zuschlagssatz TEXT CHECK (zuschlagssatz IS NULL OR status = 'angeboten');
 `;
 
+// --- Version 3 (Ticket 43, S3) ---------------------------------------------------------------------------------------
+//
+// Papierkorb und LV-Stände (ADR 0006, `vertrag` v1.2). Beide hängen am LV (Fremdschlüssel): Ein LV mit Ständen lässt
+// sich nicht löschen (D-12), sein Papierkorb geht beim Löschen im ChangeSet mit (`papierkorb.entfernt`).
+//
+// `papierkorb_eintrag`: ein Eintrag je Löschvorgang, `nummer` ist die Reihenfolge des Hineinlegens (D-12). Die Knoten
+// stehen als kanonisches JSON im Eintrag (flach, Eltern vor Kindern, mit alter Lage), nicht in `knoten`: Der Baum, seine
+// Prüfungen und Summen bleiben unberührt, und ein Eintrag wird nur als Ganzes hineingelegt, wiederhergestellt oder
+// entfernt.
+//
+// `lv_stand`: eingefrorener `LvZustand` (samt Summen und Papierkorb) als kanonisches JSON, `angelegt` ist
+// `Protokolleintrag.wann` des Befehls. `seq` hält die Reihenfolge des Anlegens (ältester zuerst).
+const SCHEMA_V3 = `
+CREATE TABLE papierkorb_eintrag (
+  leistungsverzeichnis_id TEXT NOT NULL REFERENCES leistungsverzeichnis (id),
+  id TEXT NOT NULL,
+  nummer INTEGER NOT NULL CHECK (nummer >= 1),
+  knoten TEXT NOT NULL,
+  PRIMARY KEY (leistungsverzeichnis_id, id),
+  UNIQUE (leistungsverzeichnis_id, nummer)
+) STRICT;
+
+CREATE TABLE lv_stand (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  leistungsverzeichnis_id TEXT NOT NULL REFERENCES leistungsverzeichnis (id),
+  name TEXT NOT NULL,
+  angelegt TEXT NOT NULL,
+  zustand TEXT NOT NULL
+) STRICT;
+CREATE INDEX lv_stand_lv ON lv_stand (leistungsverzeichnis_id, seq);
+`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -250,6 +284,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V2);
     },
     datei: dateiAuf2,
+  },
+  {
+    version: 3,
+    name: 'Papierkorb und LV-Stände',
+    hoch: (db) => {
+      db.skript(SCHEMA_V3);
+    },
+    datei: dateiAuf3,
   },
 ];
 

@@ -7,6 +7,7 @@ import type {
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
+  LvStandId,
   Persistenzstatus,
   ProjektId,
   Protokolleintrag,
@@ -93,6 +94,10 @@ export function speicherUeberTransport(
     angebote: {
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('angeboteAuflisten', lvId),
       laden: (id: AngebotId) => aufruf('angebotLaden', id),
+    },
+    lvStaende: {
+      auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
+      laden: (id: LvStandId) => aufruf('lvStandLaden', id),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,

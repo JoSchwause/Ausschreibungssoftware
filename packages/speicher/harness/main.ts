@@ -7,6 +7,8 @@ import type {
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
+  LvStandId,
+  LvStandUebersicht,
   LvZustand,
   AngebotZustand,
   Persistenzstatus,
@@ -136,6 +138,30 @@ const harness = {
       if (!r.ok) throw new Error(r.fehler.meldung);
     }
     return zeiten;
+  },
+
+  /** LV-Stände des LV ohne Zustand (`Speicher.lvStaende.auflisten`). */
+  async lvStaende(name: string, id: LeistungsverzeichnisId): Promise<LvStandUebersicht[] | Kurz> {
+    const repo = hole(name).lvStaende;
+    if (repo === undefined) return { ok: false, code: 'unbekannt', meldung: 'lvStaende fehlt' };
+    const r = await repo.auflisten(id);
+    return r.ok ? [...r.wert] : kurz(r);
+  },
+
+  /** Lädt einen LV-Stand und vergleicht seinen eingefrorenen Zustand kanonisch mit dem Erwarteten. */
+  async lvStandPruefen(
+    name: string,
+    id: LvStandId,
+    erwartet: LvZustand,
+  ): Promise<Kurz & { gleich?: boolean }> {
+    const repo = hole(name).lvStaende;
+    if (repo === undefined) return { ok: false, code: 'unbekannt', meldung: 'lvStaende fehlt' };
+    const r = await repo.laden(id);
+    if (!r.ok) return kurz(r);
+    return {
+      ok: true,
+      gleich: kanonischKompakt(r.wert.zustand) === kanonischKompakt(normalisiere(erwartet)),
+    };
   },
 
   async angebotPruefen(name: string, id: AngebotId, erwartet: AngebotZustand): Promise<boolean> {

@@ -358,8 +358,8 @@ describe('Auftrags-LV (v1.1a, Punkt 5)', () => {
     expect(wert(b.projektdateiExportieren(projektId)) === text1).toBe(true);
   });
 
-  it('ändern wie beim LV: vorher wird geprüft (konflikt), Löschen gibt es nicht (unbekannt)', async () => {
-    const { kern } = await mitTypisch();
+  it('ändern wie beim LV: vorher wird geprüft (konflikt); Löschen nur mit vollem Stand (Ticket 43), sonst konflikt', async () => {
+    const { kern, db } = await mitTypisch();
     wert(await kern.anwenden(auftragEintrag(auftrag), auftragsLvAnlegenChangeSet(auftrag)));
     const p = auftrag.auftragsLeistungsverzeichnis.knoten.find((k): k is Position => k.art === 'position');
     if (p === undefined) throw new Error('keine Position');
@@ -392,7 +392,9 @@ describe('Auftrags-LV (v1.1a, Punkt 5)', () => {
       knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
       kopf: { vorher: umbenannt, nachher: null },
     };
-    expect(code(await kern.anwenden(auftragEintrag(auftrag), loeschen))).toBe('unbekannt');
+    // Ohne Knoten und Summen im ChangeSet fehlt der volle Stand: konflikt, nichts gelöscht (D-31.2).
+    expect(code(await kern.anwenden(auftragEintrag(auftrag), loeschen))).toBe('konflikt');
+    expect(zaehle(db, 'auftrags_lv')).toBe(1);
   });
 
   it('LV und Angebot müssen existieren und zum Projekt gehören', async () => {
