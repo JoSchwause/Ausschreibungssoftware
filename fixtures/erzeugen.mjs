@@ -7,12 +7,12 @@
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser, berechneZuschlagSollwerte,
-  berechneSollwerteGaeb, preiseDesLv,
+  berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -333,7 +333,138 @@ function erzeugeAngebote(lv) {
     bieter,
     angebote,
     ausreisserAnnahmeA7,
+    preisspiegel: preisspiegelDerAngebote(lv, bieter, angebote),
   };
+}
+
+/** Dateiname der X84 eines Bieters relativ zu `fixtures/` (Ticket 69): „Bieter A“ -> `angebote/typisch-bieter-a.x84`. */
+const x84Datei = (name) => `angebote/typisch-${name.toLowerCase().replace(/\s+/g, '-')}.x84`;
+
+/**
+ * Preisspiegel-Sollwerte (Ticket 69, additiv): je Bieter Datei, Summen und Titelsummen (Titel über die OZ, weil ein
+ * per X83 eingelesenes LV andere IDs hat), dazu Rang und virtuelle Bieter fuer alle drei Angebote und jedes Paar
+ * (das Tor M3 liest zwei Dateien ein). Gerechnet in `rechnen.mjs` (`preisspiegelSollwerte`), nie aus `vergabe`.
+ */
+function preisspiegelDerAngebote(lv, bieter, angebote) {
+  const titelOz = new Map(lv.knoten.filter((k) => k.art === 'titel').map((k) => [k.id, k.ordnungszahl]));
+  const auswahlen = [[0, 1, 2], [0, 1], [0, 2], [1, 2]];
+  return {
+    regel: 'Ticket 69, README „Preisspiegel-Sollwerte“: Rang nach Netto nach Nachlass (1, 1, 3); virtuelle Bieter je '
+      + 'eingehender Position über Werte > 0 (EP, an Zuschlagspositionen der Betrag), Mittel = Summe / Anzahl '
+      + 'kaufmännisch auf 3 (EP) bzw. 2 Stellen (Betrag), Netto ohne Nachlass (D-05, D-36.1, D-44.1).',
+    bieter: angebote.map((a, i) => ({
+      angebotId: a.id,
+      bieterId: a.bieterId,
+      name: bieter[i].name,
+      datei: x84Datei(bieter[i].name),
+      summen: a.sollwerte.summen,
+      titel: Object.fromEntries(Object.entries(a.sollwerte.titel).map(([id, t]) => [titelOz.get(id), t.summe])),
+    })),
+    vergleiche: auswahlen.map((ix) => preisspiegelSollwerte(lv.knoten, ix.map((i) => angebote[i]), lv.sollwerte)),
+  };
+}
+
+// ---------------------------------------------------------------- X84 der Angebote (Ticket 69)
+
+// Eigener, kleiner XML-Baustein, unabhaengig vom Writer in `packages/gaeb`. Form nach den amtlichen X84
+// (fixtures/extern/bvbs/3.3-*) und dem X84-Leser (Ticket 45): je Position nur `UP` und `IT`, an der Zuschlagsposition
+// `ITMarkup`, `Markup`, `IT`; „nicht angeboten“ ist eine Zeile ohne `UP` (Ticket 45); der Nachlass des Angebots steht
+// in `BoQInfo/Totals`. Feste Zeitangaben (deterministisch).
+
+const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Element: `inhalt` ist ein Text, eine Liste von Elementen oder fehlt (leeres Element). */
+const xe = (name, inhalt, attrs = {}) => ({ name, inhalt, attrs });
+
+function xmlZeilen(e, einzug = '') {
+  const a = Object.entries(e.attrs).map(([k, v]) => ` ${k}="${xmlEsc(v)}"`).join('');
+  if (e.inhalt === undefined) return [`${einzug}<${e.name}${a}/>`];
+  if (!Array.isArray(e.inhalt)) return [`${einzug}<${e.name}${a}>${xmlEsc(e.inhalt)}</${e.name}>`];
+  return [`${einzug}<${e.name}${a}>`, ...e.inhalt.flatMap((k) => xmlZeilen(k, `${einzug}  `)), `${einzug}</${e.name}>`];
+}
+
+/** BoQBkdn aus der Fixture-Maske `NN.NN.NNNN[I]: …` (wie der X83-Export von `typisch`: Index alphanumerisch). */
+function boqBkdn(ozMaske) {
+  const muster = ozMaske.split(':')[0];
+  const teile = muster.replace('[I]', '').split('.');
+  const stufe = (typ, laenge, num) => xe('BoQBkdn', [xe('Type', typ), xe('Length', String(laenge)), xe('Num', num)]);
+  return [
+    ...teile.slice(0, -1).map((t) => stufe('BoQLevel', t.length, 'Yes')),
+    stufe('Item', teile.at(-1).length, 'Yes'),
+    ...(muster.includes('[I]') ? [stufe('Index', 1, 'No')] : []),
+  ];
+}
+
+/** Eine Angebotsdatei X84 (GAEB DA XML 3.3) zu einem Angebot aus `typisch-angebote.json`. */
+function schreibeX84(lv, angebot, bieterName) {
+  const s = angebot.sollwerte;
+  const zeilen = new Map(angebot.positionen.map((z) => [z.positionId, z]));
+  const kinder = new Map();
+  for (const k of lv.knoten) {
+    if (!kinder.has(k.parentId)) kinder.set(k.parentId, []);
+    kinder.get(k.parentId).push(k);
+  }
+  let nr = 0;
+  const gaebId = (praefix) => `${praefix}${String(++nr).padStart(4, '0')}`;
+  const letzterTeil = (oz) => oz.split('.').at(-1);
+
+  const zeile = (p) => {
+    const attrs = { ID: gaebId('P'), RNoPart: letzterTeil(p.ordnungszahl), ...(p.ozIndex ? { RNoIndex: p.ozIndex } : {}) };
+    const z = zeilen.get(p.id);
+    if (z.status !== 'angeboten') return xe('Item', undefined, attrs);
+    const soll = s.positionen[p.id];
+    if (p.zuschlag) {
+      return xe('MarkupItem', [
+        xe('ITMarkup', s.zuschlaege[p.id].basis), xe('Markup', z.zuschlagssatz), xe('IT', soll.gp),
+      ], attrs);
+    }
+    return xe('Item', [xe('UP', z.einheitspreis), xe('IT', soll.gp)], attrs);
+  };
+  const koerper = (elternId) => {
+    const k = (kinder.get(elternId) ?? []).filter((x) => x.art !== 'hinweis'); // Hinweise traegt das LV, nicht das Angebot
+    const titel = k.filter((x) => x.art === 'titel');
+    if (titel.length > 0 && titel.length < k.length) throw new Error('Titel und Positionen auf einer Ebene');
+    if (titel.length > 0) {
+      return titel.map((t) => {
+        const attrs = { ID: gaebId('G'), RNoPart: letzterTeil(t.ordnungszahl) }; // IDs in Dokumentreihenfolge
+        return xe('BoQCtgy', [xe('BoQBody', koerper(t.id)), xe('Totals', [xe('Total', s.titel[t.id].summe)])], attrs);
+      });
+    }
+    return [xe('Itemlist', k.map(zeile))];
+  };
+
+  const totals = [xe('Total', s.summen.netto)];
+  if (angebot.nachlass) {
+    totals.push(xe(angebot.nachlass.art === 'prozent' ? 'DiscountPcnt' : 'DiscountAmt', angebot.nachlass.wert));
+    totals.push(xe('TotAfterDisc', s.summen.nettoNachNachlass));
+  }
+  totals.push(xe('VAT', lv.mwstSatz), xe('VATAmount', s.summen.mwst), xe('TotalGross', s.summen.brutto));
+
+  const gaeb = xe('GAEB', [
+    xe('GAEBInfo', [
+      xe('Version', '3.3'), xe('VersDate', '2021-05'), xe('Date', '2026-01-01'), xe('Time', '12:00:00'),
+      xe('ProgSystem', 'Tethys AVA Fixtures (fixtures/erzeugen.mjs)'),
+    ]),
+    xe('PrjInfo', [xe('NamePrj', lv.name)]),
+    xe('Award', [
+      xe('DP', '84'),
+      xe('AwardInfo', [xe('Cur', 'EUR'), xe('CurLbl', 'Euro')]),
+      xe('CTR', [xe('Address', [xe('Name1', bieterName)])]),
+      xe('BoQ', [
+        xe('BoQInfo', [xe('Name', lv.name), ...boqBkdn(lv.ozMaske), xe('Totals', totals)]),
+        xe('BoQBody', koerper(lv.id)),
+      ], { ID: 'Q0001' }),
+    ]),
+  ], { xmlns: 'http://www.gaeb.de/GAEB_DA_XML/DA84/3.3' });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${xmlZeilen(gaeb).join('\n')}\n`;
+}
+
+/** Je Bieter eine X84 (Dateiname -> Inhalt). */
+function erzeugeX84(lv, set) {
+  return Object.fromEntries(set.preisspiegel.bieter.map((b) => {
+    const angebot = set.angebote.find((a) => a.id === b.angebotId);
+    return [b.datei, schreibeX84(lv, angebot, b.name)];
+  }));
 }
 
 // ---------------------------------------------------------------- gross
@@ -511,19 +642,22 @@ function erzeugeZuschlag() {
 /** Liefert Dateiname -> Dateiinhalt. */
 export function erzeugeAlle() {
   const typisch = erzeugeTypisch();
+  const angebote = erzeugeAngebote(typisch);
   return {
     'winzig.json': alsDatei(erzeugeWinzig()),
     'typisch.json': alsDatei(typisch),
-    'typisch-angebote.json': alsDatei(erzeugeAngebote(typisch)),
+    'typisch-angebote.json': alsDatei(angebote),
     'gross.json': alsDatei(erzeugeGross()),
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),
+    ...erzeugeX84(typisch, angebote),
   };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const ziel = dirname(fileURLToPath(import.meta.url));
   for (const [name, inhalt] of Object.entries(erzeugeAlle())) {
+    mkdirSync(dirname(join(ziel, name)), { recursive: true });
     writeFileSync(join(ziel, name), inhalt, 'utf8');
     console.log(`${name}: ${Buffer.byteLength(inhalt)} Bytes`);
   }

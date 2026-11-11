@@ -24,7 +24,10 @@ const LVS = ['winzig.json', 'typisch.json', 'gross.json'];
 test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten Dateien', () => {
   const erste = erzeugeAlle();
   const zweite = erzeugeAlle();
-  assert.deepEqual(Object.keys(erste).sort(), ['gross.json', 'handbeispiele.json', 'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json']);
+  assert.deepEqual(Object.keys(erste).sort(), [
+    'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
+    'gross.json', 'handbeispiele.json', 'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
+  ]);
   for (const [name, inhalt] of Object.entries(erste)) {
     assert.equal(inhalt, zweite[name], `${name}: zweite Erzeugung weicht ab`);
     assert.equal(readFileSync(datei(name), 'utf8'), inhalt, `${name}: weicht von der eingecheckten Datei ab (node fixtures/erzeugen.mjs ausfuehren)`);
@@ -413,4 +416,203 @@ test('zuschlag: Struktur (IDs, Bezüge, alle drei Bezugsformen)', () => {
     }
   }
   assert.deepEqual([...formen].sort(), ['gliederung', 'kennzeichnung', 'positionen']);
+});
+
+// ---------------------------------------------------------------- Ticket 69: X84 der Angebote, Preisspiegel-Sollwerte
+
+/**
+ * Kleiner Prüfer für Wohlgeformtheit (XML 1.0, nur was die Fixtures brauchen: Deklaration, Elemente, Attribute, Text,
+ * die fünf vordefinierten Entitäten). Liefert den Baum `{ name, attrs, kinder, text }`; wirft bei jedem Verstoß.
+ */
+function parseXmlStreng(text) {
+  assert.ok(text.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n'), 'XML-Deklaration fehlt');
+  const rest = text.slice(text.indexOf('\n') + 1);
+  const NAME = '[A-Za-z_][A-Za-z0-9_.-]*';
+  const TEXT_OK = /^(?:[^<>&]|&(?:amp|lt|gt|quot|apos);)*$/;
+  const ATTR = new RegExp(`\\s+(${NAME})="((?:[^"<&]|&(?:amp|lt|gt|quot|apos);)*)"`, 'gy');
+  const stapel = [];
+  let wurzel = null;
+  for (const m of rest.matchAll(/<[^>]*>|[^<]+/g)) {
+    const t = m[0];
+    if (!t.startsWith('<')) {
+      assert.match(t, TEXT_OK, `ungültiger Text: ${t}`);
+      if (stapel.length === 0) assert.equal(t.trim(), '', 'Text außerhalb des Wurzelelements');
+      else stapel.at(-1).text += t;
+      continue;
+    }
+    const ende = new RegExp(`^</(${NAME})\\s*>$`).exec(t);
+    if (ende) {
+      const offen = stapel.pop();
+      assert.ok(offen, `schließendes Tag ohne öffnendes: ${t}`);
+      assert.equal(ende[1], offen.name, `Tag ${offen.name} mit ${t} geschlossen`);
+      continue;
+    }
+    const kopf = new RegExp(`^<(${NAME})`).exec(t);
+    assert.ok(kopf, `ungültiges Tag: ${t}`);
+    const leer = t.endsWith('/>');
+    const attrText = t.slice(kopf[0].length, leer ? -2 : -1);
+    const attrs = {};
+    ATTR.lastIndex = 0;
+    let pos = 0;
+    for (let a = ATTR.exec(attrText); a; a = ATTR.exec(attrText)) {
+      assert.equal(a[1] in attrs, false, `doppeltes Attribut ${a[1]}`);
+      attrs[a[1]] = a[2];
+      pos = ATTR.lastIndex;
+    }
+    assert.equal(attrText.slice(pos).trim(), '', `ungültige Attribute in ${t}`);
+    const el = { name: kopf[1], attrs, kinder: [], text: '' };
+    if (stapel.length === 0) {
+      assert.equal(wurzel, null, 'mehr als ein Wurzelelement');
+      wurzel = el;
+    } else stapel.at(-1).kinder.push(el);
+    if (!leer) stapel.push(el);
+  }
+  assert.equal(stapel.length, 0, 'nicht geschlossene Elemente');
+  assert.ok(wurzel, 'kein Wurzelelement');
+  return wurzel;
+}
+
+const kindEl = (el, name) => el?.kinder.find((k) => k.name === name);
+const wertVon = (el, name) => kindEl(el, name)?.text;
+
+test('typisch-angebote: X84 je Bieter wohlgeformt, Inhalt gleich dem Angebot (Ticket 69)', () => {
+  const lv = laden('typisch.json');
+  const set = laden('typisch-angebote.json');
+  const ps = set.preisspiegel;
+  assert.equal(ps.bieter.length, 3);
+  const titelOz = new Map(lv.knoten.filter((k) => k.art === 'titel').map((k) => [k.id, k.ordnungszahl]));
+  for (const [i, a] of set.angebote.entries()) {
+    const b = ps.bieter[i];
+    assert.equal(b.angebotId, a.id);
+    assert.equal(b.bieterId, a.bieterId);
+    assert.equal(b.name, set.bieter[i].name);
+    assert.match(b.datei, /^angebote\/typisch-bieter-[a-c]\.x84$/);
+    const text = readFileSync(datei(b.datei), 'utf8');
+    const gaeb = parseXmlStreng(text);
+    assert.equal(gaeb.name, 'GAEB');
+    assert.equal(gaeb.attrs.xmlns, 'http://www.gaeb.de/GAEB_DA_XML/DA84/3.3');
+    assert.equal(wertVon(kindEl(gaeb, 'GAEBInfo'), 'Version'), '3.3');
+    const award = kindEl(gaeb, 'Award');
+    assert.equal(wertVon(award, 'DP'), '84');
+    assert.equal(wertVon(kindEl(kindEl(award, 'CTR'), 'Address'), 'Name1'), set.bieter[i].name);
+    // C4: kein echter Firmenname, keine Adresse
+    assert.deepEqual(kindEl(kindEl(award, 'CTR'), 'Address').kinder.map((k) => k.name), ['Name1']);
+    const boq = kindEl(award, 'BoQ');
+    const info = kindEl(boq, 'BoQInfo');
+    // Maske wie der X83-Export von typisch: zwei Titelebenen je 2, Position 4, Index 1 (alphanumerisch)
+    assert.deepEqual(
+      info.kinder.filter((k) => k.name === 'BoQBkdn')
+        .map((k) => `${wertVon(k, 'Type')}:${wertVon(k, 'Length')}:${wertVon(k, 'Num')}`),
+      ['BoQLevel:2:Yes', 'BoQLevel:2:Yes', 'Item:4:Yes', 'Index:1:No'],
+    );
+    // Summen und Nachlass des Angebots in BoQInfo/Totals (Nachlass G-26: genau einer, auf LV-Ebene)
+    const tot = kindEl(info, 'Totals');
+    const s = a.sollwerte.summen;
+    assert.equal(wertVon(tot, 'Total'), s.netto);
+    assert.equal(wertVon(tot, 'DiscountPcnt'), a.nachlass?.wert);
+    assert.equal(wertVon(tot, 'TotAfterDisc'), a.nachlass ? s.nettoNachNachlass : undefined);
+    assert.equal(wertVon(tot, 'VAT'), lv.mwstSatz);
+    assert.equal(wertVon(tot, 'VATAmount'), s.mwst);
+    assert.equal(wertVon(tot, 'TotalGross'), s.brutto);
+    // Zeilen: je Position genau eine, über OZ (Titel-RNoPart + Item-RNoPart + RNoIndex) zugeordnet
+    const zeilen = new Map();
+    for (const ctgy of kindEl(boq, 'BoQBody').kinder) {
+      assert.equal(ctgy.name, 'BoQCtgy');
+      const titel = lv.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === ctgy.attrs.RNoPart);
+      assert.ok(titel, `Titel ${ctgy.attrs.RNoPart}`);
+      assert.equal(wertVon(kindEl(ctgy, 'Totals'), 'Total'), a.sollwerte.titel[titel.id].summe);
+      for (const z of kindEl(kindEl(ctgy, 'BoQBody'), 'Itemlist').kinder) {
+        const oz = `${ctgy.attrs.RNoPart}.${z.attrs.RNoPart}${z.attrs.RNoIndex ?? ''}`;
+        assert.equal(zeilen.has(oz), false, `doppelte OZ ${oz}`);
+        zeilen.set(oz, z);
+      }
+    }
+    const ids = [...text.matchAll(/ ID="([^"]+)"/g)].map((m) => m[1]);
+    assert.equal(new Set(ids).size, ids.length, 'GAEB-IDs nicht eindeutig');
+    for (const id of ids) assert.match(id, /^[A-Za-z][A-Za-z0-9]*$/);
+    const positionen = lv.knoten.filter((k) => k.art === 'position');
+    assert.equal(zeilen.size, positionen.length);
+    for (const p of positionen) {
+      const z = zeilen.get(p.ordnungszahl + (p.ozIndex ?? ''));
+      assert.ok(z, `Zeile ${p.ordnungszahl}${p.ozIndex ?? ''} fehlt`);
+      assert.equal(titelOz.get(p.parentId), p.ordnungszahl.split('.')[0]);
+      const ap = a.positionen.find((x) => x.positionId === p.id);
+      const soll = a.sollwerte.positionen[p.id];
+      if (ap.status === 'nicht-angeboten') {
+        // „nicht angeboten“: Zeile ohne UP und ohne IT (Ticket 45: UP fehlt -> nicht angeboten)
+        assert.deepEqual([z.name, z.kinder.length], ['Item', 0]);
+      } else if (p.zuschlag) {
+        assert.equal(z.name, 'MarkupItem');
+        assert.deepEqual(z.kinder.map((k) => k.name), ['ITMarkup', 'Markup', 'IT']);
+        assert.equal(wertVon(z, 'ITMarkup'), a.sollwerte.zuschlaege[p.id].basis);
+        assert.equal(wertVon(z, 'Markup'), ap.zuschlagssatz);
+        assert.equal(wertVon(z, 'IT'), soll.gp);
+      } else {
+        assert.equal(z.name, 'Item');
+        assert.deepEqual(z.kinder.map((k) => k.name), ['UP', 'IT']);
+        assert.equal(wertVon(z, 'UP'), ap.einheitspreis);
+        assert.equal(wertVon(z, 'IT'), soll.gp);
+      }
+    }
+  }
+});
+
+test('typisch-angebote: Preisspiegel-Sollwerte, Rang und virtuelle Bieter (Ticket 69, D-05, D-36.1)', () => {
+  const lv = laden('typisch.json');
+  const set = laden('typisch-angebote.json');
+  const ps = set.preisspiegel;
+  const titelOz = new Map(lv.knoten.filter((k) => k.art === 'titel').map((k) => [k.id, k.ordnungszahl]));
+  for (const [i, a] of set.angebote.entries()) {
+    assert.deepEqual(ps.bieter[i].summen, a.sollwerte.summen);
+    assert.deepEqual(
+      ps.bieter[i].titel,
+      Object.fromEntries(Object.entries(a.sollwerte.titel).map(([id, t]) => [titelOz.get(id), t.summe])),
+    );
+  }
+  const [A, B, C] = set.angebote.map((a) => a.id);
+  assert.deepEqual(ps.vergleiche.map((v) => v.angebotIds), [[A, B, C], [A, B], [A, C], [B, C]]);
+  // Rang nach Netto nach Nachlass: A 55.481,84 < B 56.607,77 < C 56.721,09
+  assert.deepEqual(ps.vergleiche.map((v) => v.rang), [
+    { [A]: '1', [B]: '2', [C]: '3' }, { [A]: '1', [B]: '2' }, { [A]: '1', [C]: '2' }, { [B]: '1', [C]: '2' },
+  ]);
+
+  // Gegenrechnung der virtuellen Bieter, hier eigens aus den Zeilen der Angebote (nicht über rechnen.mjs):
+  // je eingehender Position des LV Werte > 0 (EP; an der Zuschlagsposition der Betrag); Min, Max; Mittel = Σ / n
+  // kaufmännisch auf 3 (EP) bzw. 2 Stellen (Betrag); GP = round_half_up(Menge x EP, 2); Netto = Summe der GP.
+  const eingehend = lv.knoten.filter((k) => k.art === 'position'
+    && (k.positionsart === 'normal' || k.positionsart === 'zuschlag' || k.bedarfMitGesamtbetrag === true));
+  const virtuell = (angebote) => {
+    const sum = { min: 0n, mittel: 0n, max: 0n };
+    for (const p of eingehend) {
+      const werte = angebote.flatMap((a) => {
+        if (p.zuschlag) {
+          const betrag = a.sollwerte.zuschlaege[p.id]?.betrag;
+          return betrag == null ? [] : [parse(betrag, 2)];
+        }
+        const z = a.positionen.find((x) => x.positionId === p.id);
+        return z.status === 'angeboten' ? [parse(z.einheitspreis, 3)] : [];
+      }).filter((w) => w > 0n);
+      if (werte.length === 0) continue;
+      const n = BigInt(werte.length);
+      const summe = werte.reduce((x, y) => x + y, 0n);
+      const mittel = (summe * 2n + n) / (2n * n); // round_half_up(summe / n), Werte >= 0
+      const gp = (w) => (p.zuschlag ? w : gesamtpreis(parse(p.menge, 3), w));
+      sum.min += gp(werte.reduce((x, y) => (y < x ? y : x)));
+      sum.max += gp(werte.reduce((x, y) => (y > x ? y : x)));
+      sum.mittel += gp(mittel);
+    }
+    return {
+      min: format(sum.min, 2), mittel: format(sum.mittel, 2), max: format(sum.max, 2),
+      schaetzpreis: lv.sollwerte.summen.netto,
+    };
+  };
+  for (const v of ps.vergleiche) {
+    const angebote = v.angebotIds.map((id) => set.angebote.find((a) => a.id === id));
+    assert.deepEqual(v.virtuelleSummen, virtuell(angebote));
+    const w = [v.virtuelleSummen.min, v.virtuelleSummen.mittel, v.virtuelleSummen.max].map((x) => parse(x, 2));
+    assert.ok(w[0] <= w[1] && w[1] <= w[2], 'Min <= Mittel <= Max');
+  }
+  // Von Hand: 02.0050 A vergleicht Beträge 544,71 / 617,02 / 772,62; Mittel 1.934,35 / 3 = 644,7833 -> 644,78.
+  // 03.0070 (B nicht angeboten): Mittel über A und C. 03.0080 (C 0,000): Mittel nur über A und B (D-05).
+  assert.equal(ps.vergleiche[0].virtuelleSummen.schaetzpreis, '55465.59');
 });

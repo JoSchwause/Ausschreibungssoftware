@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GAEB xmlns="http://www.gaeb.de/GAEB_DA_XML/DA84/3.3">
+  <GAEBInfo>
+    <Version>3.3</Version>
+    <VersDate>2021-05</VersDate>
+    <Date>2026-01-01</Date>
+    <Time>12:00:00</Time>
+    <ProgSystem>Tethys AVA Fixtures (fixtures/erzeugen.mjs)</ProgSystem>
+  </GAEBInfo>
+  <PrjInfo>
+    <NamePrj>Typisch: Musterhaus (erfunden)</NamePrj>
+  </PrjInfo>
+  <Award>
+    <DP>84</DP>
+    <AwardInfo>
+      <Cur>EUR</Cur>
+      <CurLbl>Euro</CurLbl>
+    </AwardInfo>
+    <CTR>
+      <Address>
+        <Name1>Bieter A</Name1>
+      </Address>
+    </CTR>
+    <BoQ ID="Q0001">
+      <BoQInfo>
+        <Name>Typisch: Musterhaus (erfunden)</Name>
+        <BoQBkdn>
+          <Type>BoQLevel</Type>
+          <Length>2</Length>
+          <Num>Yes</Num>
+        </BoQBkdn>
+        <BoQBkdn>
+          <Type>BoQLevel</Type>
+          <Length>2</Length>
+          <Num>Yes</Num>
+        </BoQBkdn>
+        <BoQBkdn>
+          <Type>Item</Type>
+          <Length>4</Length>
+          <Num>Yes</Num>
+        </BoQBkdn>
+        <BoQBkdn>
+          <Type>Index</Type>
+          <Length>1</Length>
+          <Num>No</Num>
+        </BoQBkdn>
+        <Totals>
+          <Total>55481.84</Total>
+          <VAT>19.00</VAT>
+          <VATAmount>10541.55</VATAmount>
+          <TotalGross>66023.39</TotalGross>
+        </Totals>
+      </BoQInfo>
+      <BoQBody>
+        <BoQCtgy ID="G0001" RNoPart="01">
+          <BoQBody>
+            <Itemlist>
+              <Item ID="P0002" RNoPart="0010">
+                <UP>1814.850</UP>
+                <IT>1814.85</IT>
+              </Item>
+              <Item ID="P0003" RNoPart="0020">
+                <UP>7.227</UP>
+                <IT>625.14</IT>
+              </Item>
+              <Item ID="P0004" RNoPart="0030">
+                <UP>218.302</UP>
+                <IT>873.21</IT>
+              </Item>
+              <Item ID="P0005" RNoPart="0040">
+                <UP>50.123</UP>
+                <IT>601.48</IT>
+              </Item>
+              <Item ID="P0006" RNoPart="0050">
+                <UP>379.460</UP>
+                <IT>1138.38</IT>
+              </Item>
+              <Item ID="P0007" RNoPart="0060">
+                <UP>2.366</UP>
+                <IT>971.83</IT>
+              </Item>
+            </Itemlist>
+          </BoQBody>
+          <Totals>
+            <Total>5423.41</Total>
+          </Totals>
+        </BoQCtgy>
+        <BoQCtgy ID="G0008" RNoPart="02">
+          <BoQBody>
+            <Itemlist>
+              <Item ID="P0009" RNoPart="0010">
+                <UP>6.163</UP>
+                <IT>760.82</IT>
+              </Item>
+              <Item ID="P0010" RNoPart="0020">
+                <UP>9.825</UP>
+                <IT>3126.32</IT>
+              </Item>
+              <Item ID="P0011" RNoPart="0030">
+                <UP>5.161</UP>
+                <IT>722.54</IT>
+              </Item>
+              <Item ID="P0012" RNoPart="0040">
+                <UP>11.239</UP>
+                <IT>1078.94</IT>
+              </Item>
+              <Item ID="P0013" RNoPart="0050">
+                <UP>165.184</UP>
+                <IT>6400.88</IT>
+              </Item>
+              <MarkupItem ID="P0014" RNoPart="0050" RNoIndex="A">
+                <ITMarkup>6400.88</ITMarkup>
+                <Markup>8.51</Markup>
+                <IT>544.71</IT>
+              </MarkupItem>
+              <Item ID="P0015" RNoPart="0060">
+                <UP>1.627</UP>
+                <IT>5450.45</IT>
+              </Item>
+              <Item ID="P0016" RNoPart="0070">
+                <UP>53.701</UP>
+                <IT>5155.30</IT>
+              </Item>
+              <Item ID="P0017" RNoPart="0070" RNoIndex="A">
+                <UP>60.148</UP>
+                <IT>5774.21</IT>
+              </Item>
+              <Item ID="P0018" RNoPart="0080">
+                <UP>18.441</UP>
+                <IT>774.52</IT>
+              </Item>
+              <Item ID="P0019" RNoPart="0090">
+                <UP>23.767</UP>
+                <IT>1051.69</IT>
+              </Item>
+            </Itemlist>
+          </BoQBody>
+          <Totals>
+            <Total>25066.17</Total>
+          </Totals>
+        </BoQCtgy>
+        <BoQCtgy ID="G0020" RNoPart="03">
+          <BoQBody>
+            <Itemlist>
+              <Item ID="P0021" RNoPart="0010">
+                <UP>48.799</UP>
+                <IT>10364.91</IT>
+              </Item>
+              <Item ID="P0022" RNoPart="0020">
+                <UP>19.941</UP>
+                <IT>8470.94</IT>
+              </Item>
+              <Item ID="P0023" RNoPart="0030">
+                <UP>21.647</UP>
+                <IT>1910.35</IT>
+              </Item>
+              <Item ID="P0024" RNoPart="0040">
+                <UP>5.114</UP>
+                <IT>2172.43</IT>
+              </Item>
+              <Item ID="P0025" RNoPart="0050">
+                <UP>138.266</UP>
+                <IT>1244.39</IT>
+              </Item>
+              <Item ID="P0026" RNoPart="0060">
+                <UP>6.724</UP>
+                <IT>513.71</IT>
+              </Item>
+              <Item ID="P0027" RNoPart="0070">
+                <UP>4.101</UP>
+                <IT>129.59</IT>
+              </Item>
+              <Item ID="P0028" RNoPart="0080">
+                <UP>2.107</UP>
+                <IT>185.94</IT>
+              </Item>
+            </Itemlist>
+          </BoQBody>
+          <Totals>
+            <Total>24992.26</Total>
+          </Totals>
+        </BoQCtgy>
+      </BoQBody>
+    </BoQ>
+  </Award>
+</GAEB>
