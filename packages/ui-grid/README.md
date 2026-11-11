@@ -51,14 +51,14 @@ Tastatur zuerst (U3, U8). Strg steht auf dem Mac für Cmd.
 
 ### Zeilen (Ticket 46)
 
-| Taste                                    | Wirkung                                                                              |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Strg+C                                   | ausgewählte Zeilen (sonst die aktive) als Tabelle (TSV) kopieren, Zahlen in de-DE    |
-| Strg+X                                   | wie Strg+C, die Zeilen sind bis zum Einfügen als „ausgeschnitten“ markiert           |
-| Strg+V                                   | einfügen hinter der aktiven Zeile, siehe unten                                       |
-| Strg+Minus, Strg+Entf                    | Zeilen nach Rückfrage in den Papierkorb legen (Enter bestätigt, Escape bricht ab)    |
-| Alt+Pfeil hoch / runter                  | Zeilen um eine Stelle unter ihren Geschwistern verschieben; am Rand geschieht nichts |
-| Strg+Plus (US-Tastatur: Strg+Umschalt+=) | leere Position hinter der aktiven Zeile anlegen und ihren Kurztext fokussieren       |
+| Taste                                    | Wirkung                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Strg+C                                   | ausgewählte Zeilen (sonst die aktive) als Tabelle (TSV) kopieren, Zahlen in de-DE                                  |
+| Strg+X                                   | wie Strg+C, die Zeilen sind bis zum Einfügen als „ausgeschnitten“ markiert                                         |
+| Strg+V                                   | einfügen hinter der aktiven Zeile, siehe unten                                                                     |
+| Strg+Minus, Strg+Entf                    | Zeilen nach Rückfrage in den Papierkorb legen (Fokus auf der Bestätigung: Enter legt sie hinein, Escape bricht ab) |
+| Alt+Pfeil hoch / runter                  | Zeilen um eine Stelle unter ihren Geschwistern verschieben; am Rand geschieht nichts                               |
+| Strg+Plus (US-Tastatur: Strg+Umschalt+=) | leere Position hinter der aktiven Zeile anlegen und ihren Kurztext fokussieren                                     |
 
 „Hinter der aktiven Zeile“ heißt bei einer Gliederung: als erstes Kind (wie überall im Vertrag, `Einfuegeort`).
 
@@ -91,6 +91,10 @@ Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` 
 - `vorPositionAnlegen`: ergänzt den Befehl von Strg+Plus (z. B. die OZ), bevor er hinausgeht.
 - `sprungziel`: `{ knotenId, spalte?, nr }`; jeder neue Wert von `nr` scrollt zur Zeile und fokussiert die Zelle. Liegt
   die Zeile unter einer zugeklappten Gliederung, tut das Grid nichts (das Aufklappen gehört der App).
+
+Kennzeichen ohne eigene Eigenschaft (Ticket 74): Trägt eine Position einen Mengenansatz (`knoten.mengenansatz`, nicht
+leer), zeigt die Mengenzelle die neutrale Marke Σ mit der Beschreibung „Menge aus Mengenansatz …“ (`title`, Screenreader).
+Das ist kein Befund: kein Warnstil, kein `aria-invalid`. Befunde an derselben Zelle erscheinen daneben wie sonst.
 
 ## VergleichsGrid (Ticket 60)
 
@@ -134,8 +138,13 @@ Eingebaute Kennzeichen (offene Vereinigung `Kennzeichen`, jedes andere ist erlau
 `niedrig` ▼ „Ausreißer nach unten“, `min` „niedrigster Preis“, `max` „höchster Preis“, `nicht-angeboten` – „nicht
 angeboten“, `nullpreis` 0 „Nullpreis“, `hinweis` ! „Hinweis“. Ein unbekanntes Kennzeichen ohne Text erscheint als •
 mit sich selbst als Beschreibung. Die Marke zeigt das Symbol auf eigener Token-Fläche (Kontrast in hell und dunkel
-geprüft, `src/kennzeichen.test.ts`); die Beschreibung in Worten steht im `title` und als `aria-describedby` an der
-Zelle (U8, nicht nur Farbe). Ausreißer `hoch`/`niedrig` unterstreichen die Zelle zusätzlich.
+geprüft, `src/kennzeichen.test.ts`); die Beschreibung in Worten steht im `title` der Zelle, der zugleich ihre
+zugängliche Beschreibung ist (U8, nicht nur Farbe). Ausreißer `hoch`/`niedrig` unterstreichen die Zelle zusätzlich.
+
+Leistung (Ticket 74): Eine Zelle besteht nur aus sich, ihrem Text (`.tx-grid__text`) und je Kennzeichen einer Marke,
+ohne Hülle und ohne verstecktes Beschreibungselement; `aria-readonly` steht nur am Grid. Neue Zeilen tragen nur ihren
+Versatz als eigenen Stil (Raster, Höhe und Mindestbreite erben sie). `e2e/leistung.spec.ts` prüft die Zahl der Elemente
+je Zelle und misst das Scrollen.
 
 Tastatur: Navigation wie im `LvGrid` (Pfeile, Strg+Pfeil, Pos1/Ende, Strg+Pos1/Ende, Bild auf/ab, Tab, Enter /
 Umschalt+Enter eine Zeile weiter / zurück), Auf-/Zuklappen wie im `LvGrid`. Zellauswahl: Umschalt+Pfeil und

@@ -6,14 +6,20 @@
 // aktive Zelle, Zellauswahl und eine Statusmeldung.
 
 import { useTable } from '@tanstack/react-table';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { features, vergleichsSpaltenDefinitionen } from './tabelle';
 import { meldungZellenKopiert, texte } from './texte';
-import { STANDARDBREITE, bereichAlsTsv, fixierteVersaetze, normiereBereich } from './vergleich';
+import {
+  STANDARDBREITE,
+  bereichAlsTsv,
+  festeZellklassen,
+  fixierteVersaetze,
+  normiereBereich,
+} from './vergleich';
 import type { Bereich } from './vergleich';
 import type {
   VergleichsGridProps,
@@ -41,7 +47,6 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   const spaltenIds = useMemo(() => spalten.map((s) => s.id), [spalten]);
   const baumspalte = props.baumspalte ?? spaltenIds[0];
   const kopfzeilen = spalten.some((s) => s.gruppe !== undefined) ? 2 : 1;
-  const idPraefix = useId();
 
   // --- TanStack Table: Spalten- und Kopfmodell (Gruppen); die Zeilen rendert das Grid selbst -------------------
   const columns = useMemo(() => vergleichsSpaltenDefinitionen(spalten), [spalten]);
@@ -58,6 +63,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   );
   const fixiert = Math.min(props.fixierteSpalten ?? 0, spalten.length);
   const versaetze = useMemo(() => fixierteVersaetze(spalten, fixiert), [spalten, fixiert]);
+  const zellklassen = useMemo(() => festeZellklassen(spalten, versaetze), [spalten, versaetze]);
 
   // --- gemeinsamer Kern: aktive Zelle, Virtualisierung, Fokus (U2) -----------------------------------------
   const zeilenIds = useMemo(() => [...zeilen.map((z) => z.id), ...summen.map((s) => s.id)], [zeilen, summen]);
@@ -287,16 +293,76 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   const aktivIn = (i: number): string | null =>
     i === aktivIndex && aktivSpalte !== undefined ? aktivSpalte : null;
   const gemeinsam = {
-    hoehe: zh,
-    vorlage,
-    breite: mindestbreite,
     spalten,
     versaetze,
+    zellklassen,
     sichtbar,
     baumspalte,
     kennzeichenTexte,
-    idPraefix,
   };
+
+  // Der Kopf hängt nicht an der Scrollposition: einmal gebaut, beim Scrollen nicht neu verglichen (Ticket 74).
+  const kopf = useMemo(
+    () => (
+      <div
+        role="rowgroup"
+        className="tx-grid__kopf tx-grid__kopf--raster"
+        style={{
+          gridTemplateColumns: vorlage,
+          gridTemplateRows: `repeat(${String(kopfzeilen)}, ${String(zh)}px)`,
+          minWidth: mindestbreite,
+        }}
+      >
+        {kopfgruppen.map((gruppe, tiefe) => {
+          let start = 0;
+          return (
+            <div
+              key={gruppe.id}
+              role="row"
+              aria-rowindex={tiefe + 1}
+              className="tx-grid__kopfzeile tx-grid__kopfzeile--rolle"
+            >
+              {gruppe.headers.map((h) => {
+                const erste = start;
+                start += h.colSpan;
+                if (h.rowSpan === 0) return null;
+                const istGruppe = !h.isPlaceholder && h.subHeaders.length > 0;
+                const spalte = istGruppe ? undefined : spalten[erste];
+                const titel = istGruppe ? (spalten[erste]?.gruppe?.kopf ?? '') : (spalte?.kopf ?? '');
+                const links = versaetze[erste] ?? null;
+                const k = ['tx-grid__kopfzelle'];
+                if (istGruppe) k.push('tx-grid__kopfzelle--gruppe');
+                else if (spalte?.ausrichtung === 'rechts' || spalte?.ausrichtung === 'mitte') {
+                  k.push(`tx-grid__kopfzelle--${spalte.ausrichtung}`);
+                }
+                if (links !== null) k.push('tx-grid__kopfzelle--fixiert');
+                if (erste + h.colSpan === fixiert) k.push('tx-grid__kopfzelle--fixiert-letzte');
+                return (
+                  <div
+                    key={h.id}
+                    role="columnheader"
+                    aria-colindex={erste + 1}
+                    aria-colspan={h.colSpan > 1 ? h.colSpan : undefined}
+                    aria-rowspan={h.rowSpan > 1 ? h.rowSpan : undefined}
+                    data-spalte-kopf={istGruppe ? undefined : spalte?.id}
+                    className={k.join(' ')}
+                    style={{
+                      gridColumn: `${String(erste + 1)} / span ${String(h.colSpan)}`,
+                      gridRow: `${String(tiefe + 1)} / span ${String(Math.max(1, h.rowSpan))}`,
+                      ...(links === null ? {} : { left: links }),
+                    }}
+                  >
+                    {titel}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    ),
+    [kopfgruppen, kopfzeilen, mindestbreite, spalten, versaetze, fixiert, vorlage, zh],
+  );
 
   return (
     <div className="tx-grid tx-grid--vergleich" ref={wurzel}>
@@ -316,66 +382,15 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
         onFocus={onFocus}
         style={{ ['--tx-grid-zeilenhoehe' as string]: `${String(zh)}px` }}
       >
-        <div
-          role="rowgroup"
-          className="tx-grid__kopf tx-grid__kopf--raster"
-          style={{
-            gridTemplateColumns: vorlage,
-            gridTemplateRows: `repeat(${String(kopfzeilen)}, ${String(zh)}px)`,
-            minWidth: mindestbreite,
-          }}
-        >
-          {kopfgruppen.map((gruppe, tiefe) => {
-            let start = 0;
-            return (
-              <div
-                key={gruppe.id}
-                role="row"
-                aria-rowindex={tiefe + 1}
-                className="tx-grid__kopfzeile tx-grid__kopfzeile--rolle"
-              >
-                {gruppe.headers.map((h) => {
-                  const erste = start;
-                  start += h.colSpan;
-                  if (h.rowSpan === 0) return null;
-                  const istGruppe = !h.isPlaceholder && h.subHeaders.length > 0;
-                  const spalte = istGruppe ? undefined : spalten[erste];
-                  const titel = istGruppe ? (spalten[erste]?.gruppe?.kopf ?? '') : (spalte?.kopf ?? '');
-                  const links = versaetze[erste] ?? null;
-                  const k = ['tx-grid__kopfzelle'];
-                  if (istGruppe) k.push('tx-grid__kopfzelle--gruppe');
-                  else if (spalte?.ausrichtung === 'rechts' || spalte?.ausrichtung === 'mitte') {
-                    k.push(`tx-grid__kopfzelle--${spalte.ausrichtung}`);
-                  }
-                  if (links !== null) k.push('tx-grid__kopfzelle--fixiert');
-                  if (erste + h.colSpan === fixiert) k.push('tx-grid__kopfzelle--fixiert-letzte');
-                  return (
-                    <div
-                      key={h.id}
-                      role="columnheader"
-                      aria-colindex={erste + 1}
-                      aria-colspan={h.colSpan > 1 ? h.colSpan : undefined}
-                      aria-rowspan={h.rowSpan > 1 ? h.rowSpan : undefined}
-                      data-spalte-kopf={istGruppe ? undefined : spalte?.id}
-                      className={k.join(' ')}
-                      style={{
-                        gridColumn: `${String(erste + 1)} / span ${String(h.colSpan)}`,
-                        gridRow: `${String(tiefe + 1)} / span ${String(Math.max(1, h.rowSpan))}`,
-                        ...(links === null ? {} : { left: links }),
-                      }}
-                    >
-                      {titel}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+        {kopf}
         <div
           role="rowgroup"
           className="tx-grid__koerper"
-          style={{ height: virtualizer.getTotalSize(), minWidth: mindestbreite }}
+          style={{
+            height: virtualizer.getTotalSize(),
+            minWidth: mindestbreite,
+            gridTemplateColumns: vorlage,
+          }}
         >
           {virtualizer.getVirtualItems().map((item) => {
             const z = zeilen[item.index];
@@ -396,7 +411,11 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
           })}
         </div>
         {summen.length > 0 ? (
-          <div role="rowgroup" className="tx-grid__fuss" style={{ minWidth: mindestbreite }}>
+          <div
+            role="rowgroup"
+            className="tx-grid__fuss"
+            style={{ minWidth: mindestbreite, gridTemplateColumns: vorlage }}
+          >
             {summen.map((s, j) => {
               const i = zeilen.length + j;
               return (

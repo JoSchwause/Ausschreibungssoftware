@@ -119,7 +119,10 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);
         const ungueltig = a !== undefined && a.basis === text ? a : undefined;
+        // Neutrales Kennzeichen (Ticket 74, D-65.2): Die Menge stammt aus einem Mengenansatz. Kein Befund, kein Warnstil.
+        const ansatz = spalte === 'menge' && k.art === 'position' && (k.mengenansatz?.length ?? 0) > 0;
         const beschreibung = [
+          ...(ansatz ? [texte.mengenansatz] : []),
           ...hinweise.map((b) => `${b.schwere === 'fehler' ? texte.fehler : texte.warnung}: ${b.meldung}`),
           ...(ungueltig ? [`${texte.eingabeUngueltig}: ${ungueltig.meldung}`] : []),
         ];
@@ -130,6 +133,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         if (aktiv === spalte) z.push('tx-grid__zelle--aktiv');
         if (hinweise.length > 0) z.push(hatFehler ? 'tx-grid__zelle--fehler' : 'tx-grid__zelle--warnung');
         if (ungueltig) z.push('tx-grid__zelle--ungueltig');
+        if (ansatz) z.push('tx-grid__zelle--mengenansatz');
         if (spalte === 'gesamtpreis' && zeile.gehtInSummeEin === false) z.push('tx-grid__zelle--ohne-summe');
 
         return (
@@ -171,6 +175,15 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
                 aria-hidden="true"
                 focusable="false"
               />
+            ) : null}
+            {ansatz && bearbeitung?.spalte !== spalte ? (
+              <span
+                className="tx-grid__kennzeichen tx-grid__kennzeichen--mengenansatz"
+                data-kennzeichen="mengenansatz"
+                aria-hidden="true"
+              >
+                {texte.mengenansatzSymbol}
+              </span>
             ) : null}
             {beschreibung.length > 0 ? (
               <span id={beschreibungsId} className="tx-grid__nur-sr">
