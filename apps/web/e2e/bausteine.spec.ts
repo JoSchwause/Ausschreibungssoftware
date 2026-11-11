@@ -116,6 +116,28 @@ test('Tooltip erscheint bei Tastaturfokus und Escape schließt ihn', async ({ pa
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
+test('Tooltip bleibt offen, wenn der Fokus seinen Knopf erst ins Bild scrollt', async ({ page }) => {
+  const knopf = hell(page).getByRole('button', { name: 'Mit Hinweis' });
+  const tooltip = page.getByRole('tooltip').first();
+  await expect(knopf).not.toBeInViewport();
+  await knopf.focus();
+  await expect(tooltip).toContainText('Speichert das Leistungsverzeichnis');
+  // Der Fokus hat den Knopf ins Bild gescrollt; das Scroll-Ereignis dazu kommt erst mit dem nächsten Bild und darf
+  // den Tooltip nicht schließen, solange der Knopf den Fokus hat.
+  await expect(knopf).toBeInViewport();
+  await page.evaluate(
+    () =>
+      new Promise<void>((fertig) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            fertig();
+          });
+        });
+      }),
+  );
+  await expect(tooltip).toContainText('Speichert das Leistungsverzeichnis');
+});
+
 test('Meldung (Toast) erscheint per Tastatur und lässt sich schließen', async ({ page }) => {
   const knopf = hell(page).getByRole('button', { name: 'Hinweis zeigen' });
   await knopf.focus();

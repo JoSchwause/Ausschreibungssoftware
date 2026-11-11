@@ -172,7 +172,9 @@ test.describe('Löschen mit Rückfrage', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     expect(await befehle(page)).toEqual([]);
-    expect(await fokusZeile(page)).toBe('Baustrom und Bauwasser');
+    // Der Dialog gibt den Fokus erst nach seinem Abbau zurück (Radix, eigene Aufgabe nach dem nächsten Bild); bis dahin
+    // steht er auf <body>. Deshalb warten, bis er wieder auf der Zeile steht, statt einmal nachzusehen.
+    await expect.poll(() => fokusZeile(page)).toBe('Baustrom und Bauwasser');
 
     await page.keyboard.press('Control+Minus');
     await expect(dialog).toBeVisible();
