@@ -18,7 +18,7 @@ Tor **M4** „durchgehende Kette LPH 6–8“: Definition in `plan.md` §4 (erg�
 | 76 | A4 | XRechnung lesen (UBL, CII) | `packages/erechnung` (neu), `fixtures/extern/xrechnung/` | – | opus |
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | – | sonnet |
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | – | opus |
-| 70 | F | `vertrag` v1.4 (Repository Auftrags-LV und alle Typen der Welle 5) | `packages/vertrag` + markierte mechanische Zeilen | Berater D-34 ff. | opus |
+| 70 | F | `vertrag` v1.4 (Auftrags-LV, Nachtrag, Aufmaß, Rechnung, Kostenermittlung; D-34 bis D-40) | `packages/vertrag` + markierte mechanische Zeilen | – | opus |
 
 Stufen 2 und 3 folgen unten, sobald `vertrag` v1.4 geschnitten ist.
 
