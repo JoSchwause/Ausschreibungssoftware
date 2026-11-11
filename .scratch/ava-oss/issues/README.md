@@ -151,7 +151,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
-| 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | ready-for-agent |
+| 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | resolved |
 | 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
 | 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
 | 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |

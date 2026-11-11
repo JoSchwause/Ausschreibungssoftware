@@ -1,6 +1,6 @@
 # 80: A1+A2: Paket `abrechnung`: Nachtrag übernehmen, Aufmaß-Befehle
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A1, A2 · Paket: `packages/abrechnung` (neu; Workspace-Dateien; `tools/boundaries.mjs` kennt es schon)
 Blocked by: 70
@@ -143,6 +143,9 @@ lint && pnpm typecheck && pnpm test` grün: Vitest 169 Dateien, 2305 Tests besta
 Datei allein grün (1.390 ms gemeldet), der zweite volle Lauf grün. Kein Budget gelockert.
 
 ## Answer
+
+Merged: c40ca38 in integration/welle-5
+
 
 Paket `@tethys/abrechnung` (Branch `welle-5/80-abrechnung`), öffentliche API:
 
