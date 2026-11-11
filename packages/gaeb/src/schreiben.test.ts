@@ -12,6 +12,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type {
+  AngebotId,
+  AuftragsLeistungsverzeichnis,
+  AuftragsLeistungsverzeichnisId,
   Betrag,
   Einheitspreis,
   ElternId,
@@ -22,6 +25,7 @@ import type {
   Ordnungszahl,
   Position,
   PositionId,
+  ProjektId,
   Prozent,
   Pruefbefund,
   Summenstand,
@@ -91,7 +95,7 @@ const SUMMEN_LEER: Summenstand = {
 };
 
 function schreibe(
-  inhalt: LvInhalt,
+  inhalt: LvInhalt | AuftragsLeistungsverzeichnis,
   phase: ExportPhase = 'X81',
   extra: Partial<SchreibOptionen> = {},
 ): GaebExport {
@@ -716,15 +720,8 @@ describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
   });
 
   it('die Option auftragnehmer gibt es nicht mehr (das Modell gewinnt)', () => {
-    // @ts-expect-error: SchreibOptionen kennt seit v1.3 keinen Auftragnehmer
-    const opt: SchreibOptionen = {
-      phase: 'X86',
-      version: '3.3',
-      erstellt: TEST_ERSTELLT,
-      programm: 'T',
-      auftragnehmer: 'x',
-    };
-    expect(opt.phase).toBe('X86');
+    const hatOption: 'auftragnehmer' extends keyof SchreibOptionen ? true : false = false;
+    expect(hatOption).toBe(false);
   });
 
   it('X81 und X83 kennen kein CTR: Auftragnehmer verworfen mit Warnung', () => {
@@ -733,6 +730,29 @@ describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
       expect(e.xml).not.toContain('<CTR>');
       expect(verworfen(e)).toEqual(expect.arrayContaining([expect.stringMatching(/^Auftragnehmer/)]));
     }
+  });
+
+  it('ein Auftrags-LV wird direkt als X86 geschrieben: Wurzel ist seine Kennung, Auftragnehmer aus seinem Kopf', () => {
+    const alv = 'alv-1' as AuftragsLeistungsverzeichnisId;
+    const auftrag: AuftragsLeistungsverzeichnis = {
+      id: alv,
+      projektId: 'projekt-1' as ProjektId,
+      leistungsverzeichnisId: LV,
+      angebotId: 'angebot-1' as AngebotId,
+      name: 'Auftrag',
+      ozMaske: MASKE,
+      mwstSatz: '19.00' as Prozent,
+      nachlass: null,
+      auftragnehmer: an,
+      knoten: [{ ...titel('t1', '01'), elternId: alv }, p1()],
+    };
+    const e = schreibe(auftrag, 'X86');
+    expect(e.entwurf).toBe(false);
+    expect(e.xml).toContain('<BoQ ID="Lalv1">');
+    expect(e.xml).toContain('<Item ID="Pp1" RNoPart="0010">');
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.auftragnehmer).toEqual(an);
+    expect(l.inhalt?.knoten.map((k) => k.art)).toEqual(['titel', 'position']);
   });
 
   it('Name über 40 Zeichen ist ein Fehler am Feld auftragnehmer.name', () => {

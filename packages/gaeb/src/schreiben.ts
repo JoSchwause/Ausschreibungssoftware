@@ -13,6 +13,7 @@
 
 import type {
   Auftraggeber,
+  AuftragsLeistungsverzeichnis,
   Betrag,
   Einheitspreisanteile,
   GaebExport,
@@ -28,6 +29,7 @@ import type {
   Pruefbefund,
   Summenstand,
   Vergabeinformationen,
+  WurzelId,
 } from '@tethys/vertrag';
 import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
@@ -145,6 +147,16 @@ function kuenstlicheWahlnummern(
   return aus;
 }
 
+/**
+ * Was der Writer schreibt: der Inhalt eines LV oder ein Auftrags-LV (v1.3, Ticket 68). Beide tragen denselben Kopf
+ * (`LvInhaltKopf`) und Knoten; die Wurzel des Auftrags-LV ist seine Kennung (`WurzelId`).
+ */
+type Inhalt = Omit<LvInhalt, 'wurzelId'> & { readonly wurzelId: WurzelId };
+
+function alsInhalt(q: LvInhalt | AuftragsLeistungsverzeichnis): Inhalt {
+  return 'wurzelId' in q ? q : { ...q, wurzelId: q.id };
+}
+
 interface Verworfen {
   anzahl: number;
   readonly knotenId: string | undefined;
@@ -165,7 +177,7 @@ class Schreiber {
   private freiBezeichnung: string | null = null;
 
   constructor(
-    private readonly inhalt: LvInhalt,
+    private readonly inhalt: Inhalt,
     private readonly opt: SchreibOptionen,
   ) {
     for (const k of inhalt.knoten) {
@@ -962,10 +974,14 @@ function kommentar(s: string): string {
 
 /**
  * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
- * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5).
+ * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
+ * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
  */
-export function schreibeGaeb(inhalt: LvInhalt, optionen: SchreibOptionen): GaebExport {
-  const s = new Schreiber(inhalt, optionen);
+export function schreibeGaeb(
+  inhalt: LvInhalt | AuftragsLeistungsverzeichnis,
+  optionen: SchreibOptionen,
+): GaebExport {
+  const s = new Schreiber(alsInhalt(inhalt), optionen);
   s.schreibe();
   s.abschliessen();
   const fehler = s.befunde.filter((b) => b.schwere === 'fehler');
