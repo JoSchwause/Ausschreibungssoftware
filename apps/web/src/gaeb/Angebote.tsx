@@ -7,6 +7,7 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { AngebotZustand, LvZustand, Projekt } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { ExcelEinlesen } from '../ausgabe/ExcelEinlesen'; // Ticket 66
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { formatiereBetragDe } from '../lv/zahlen';
@@ -136,6 +137,14 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
         }}
       />
       <Button onClick={() => datei.current?.click()}>{texte.angebot.knopf}</Button>
+      {/* Ticket 66 */}
+      <ExcelEinlesen
+        zustand={zustand}
+        onAngelegt={() => {
+          setLauf((n) => n + 1);
+          setListeOffen(true);
+        }}
+      />
       <Button
         onClick={() => {
           setListeOffen(true);

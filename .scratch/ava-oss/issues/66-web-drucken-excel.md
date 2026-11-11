@@ -1,6 +1,6 @@
 # 66: O1/O2: Drucken und Excel-Rundlauf in der App
 
-Status: ready-for-agent
+Status: done
 Type: task
 Welle: 4 · Strang: O1/O2 · Paket: `apps/web` (Ordner `src/ausgabe/`; Einhängestellen in `lv/LvSeite.tsx` und der Angebotsliste, D-20)
 Blocked by: 58 (PDF), 61 (Excel)
@@ -26,9 +26,9 @@ Herkunft: `plan.md` §2 O1, O2, V5
 
 ## Acceptance criteria
 
-- [ ] E2E: PDF-Download von `typisch` (Datei > 0 Bytes, beginnt mit `%PDF`, enthält Netto-Summe per Textauszug); Excel-
+- [x] E2E: PDF-Download von `typisch` (Datei > 0 Bytes, beginnt mit `%PDF`, enthält Netto-Summe per Textauszug); Excel-
       Download und Rücklauf einer per Test erzeugten Datei → Angebot in der Liste mit Bietersumme gleich dem Sollwert
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
@@ -41,3 +41,18 @@ Druckprofile (O3), Preisspiegel-Druck.
 - `lvAlsExcel` liefert `{ bytes, befunde }`; Befunde des Exports (zu lange Texte, > 15 Stellen) vor dem Download zeigen. `ExcelBefund` lebt in `ausgabe` (nicht `Befundquelle` im Vertrag): die App zeigt sie in der Import-/Export-Vorschau selbst, nicht im Prüf-Panel.
 - Eine Zeile mit Befund in einer Zahlzelle ergibt keine Angebotsposition (weder angeboten noch „nicht angeboten“); eine Datei für ein anderes LV übernimmt nichts.
 - „Excel-Rundlauf“ und „Blankett“ ins `GLOSSARY.md` (L2), falls die Oberfläche die Begriffe zeigt.
+
+### D-66.1 Fortschritt ohne Prozentanzeige
+Frage: `erzeugePdf` meldet keinen Fortschritt; was zeigt die App? Entscheidung: Schritte „Schriften werden geladen“ und „Seiten werden gesetzt“ aus dem Worker (Status-Region), dazu „Abbrechen“, das den Worker sofort beendet (kein Download, nichts bleibt zurück). Grund: Das Paket bleibt unverändert (P2); Prozente gäbe es nur mit einem Rückruf im Paket.
+
+### D-66.2 Datum als TT.MM.JJJJ-Textfeld
+Frage: Eingabefeld des Datums? `Eingabefeld` aus `ui-basis` kennt nur `type="text"`. Entscheidung: Textfeld in deutscher Schreibweise, mit „heute“ aus `u.uhr()` (Ortszeit) vorbelegt; ungültig → Hinweis und „PDF erzeugen“ gesperrt (nur diese Aktion, U5 gilt für Fachdaten). Intern `JJJJ-MM-TT`. Grund: N4 (de-DE nur am Rand), keine Änderung an `ui-basis`.
+
+### D-66.3 Bietername aus dem Dateinamen, Übernehmbarkeit
+Frage: Die Excel-Datei trägt keinen Bieternamen. Entscheidung: Vorschlag ist der Dateiname ohne `.xlsx`, in der Vorschau änderbar; leer → Hinweis, kein Anlegen. Übernehmbar ist nur eine Datei mit mindestens einer angebotenen Position (leeres Blankett, falsches LV, unlesbare Datei: Befunde sichtbar, kein „Übernehmen“). Bieter (falls neu) und Angebot gehen über `angebotAnlegenPlan` und `befehlswegFuer(u).angebotAnlegen` aus Ticket 49: ein Undo-Schritt. Der Nachlass bleibt leer (steht nicht in der Datei).
+
+### D-66.4 Ablageort und Nachladen
+`ausgabe` kommt nur per `import()` (Excel im Hauptthread beim Öffnen des Dialogs bzw. Lesen der Datei; PDF im Worker). Das Hauptbündel enthält kein pdfmake; Worker und Nachlade-Chunk bündeln `ausgabe` je einmal (zwei Chunks `src-*.js`, je rund 0,8 MB). Die vier Noto-Sans-Dateien werden im Worker über `?url` aus `packages/ausgabe/schriften/` geladen und vom Service Worker vorgehalten (offen nutzbar). Hakenstellen: `lv/LvSeite.tsx` (`<LvDrucken>`) und `gaeb/Angebote.tsx` (`<ExcelEinlesen>`), je mit `// Ticket 66`. `ExcelBefund` ist kein `Pruefbefund`, daher eigene `ExcelBefunde`-Liste mit den Klassen aus `gaeb.css`; `gaeb/` sonst unverändert.
+
+### D-66.5 Glossar
+„Blankett“ und „Excel-Rundlauf“ sind im `GLOSSARY.md` (L2), weil die Oberfläche sie zeigt.

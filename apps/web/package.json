@@ -12,6 +12,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@tethys/ausgabe": "workspace:*",
     "@tethys/dezimal": "workspace:*",
     "@tethys/gaeb": "workspace:*",
     "@tethys/kern": "workspace:*",
