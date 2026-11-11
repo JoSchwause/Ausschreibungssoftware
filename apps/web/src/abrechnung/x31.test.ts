@@ -44,7 +44,7 @@ describe('X31 ausgeben und wieder einlesen', () => {
       { positionId: zaun, mengenansatz: null, menge: '42.500' as Menge },
     ]);
     const aus = blattAlsX31(b, auf.auftrag, '3.3', new Date(Date.UTC(2026, 10, 11, 9, 30, 0)));
-    expect(aus.dateiname).toBe('Typisch Musterhaus erfunden Aufmaßblatt 3.x31');
+    expect(aus.dateiname).toBe('Typisch Musterhaus erfunden Aufmass 3.x31');
     expect(aus.xml).toContain('<Date>2026-11-11</Date>');
     expect(aus.entwurf).toBe(false);
 

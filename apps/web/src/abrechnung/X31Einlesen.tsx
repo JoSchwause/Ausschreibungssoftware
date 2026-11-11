@@ -58,7 +58,8 @@ export function X31Einlesen({
         type="file"
         accept=".x31,.X31,.xml"
         aria-label={t.dateiWaehlen}
-        className="abrechnung__datei"
+        className="gaeb__datei"
+        tabIndex={-1}
         onChange={(e) => {
           const f = e.target.files?.[0];
           e.target.value = '';

@@ -56,7 +56,7 @@ export function blattAlsX31(
     programm: PROGRAMMNAME,
   });
   const name = dateinameSauber(
-    `${auftrag.auftragsLeistungsverzeichnis.name} Aufmaßblatt ${String(blatt.nummer)}`,
+    `${auftrag.auftragsLeistungsverzeichnis.name} Aufmass ${String(blatt.nummer)}`,
     ERSATZ_LV,
   );
   return {
