@@ -194,7 +194,7 @@ const harness = {
 
   /** LV-Stände des LV ohne Zustand (`Speicher.lvStaende.auflisten`). */
   async lvStaende(name: string, id: LeistungsverzeichnisId): Promise<LvStandUebersicht[] | Kurz> {
-    const repo = hole(name).lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
+    const repo = hole(name).lvStaende;
     const r = await repo.auflisten(id);
     return r.ok ? [...r.wert] : kurz(r);
   },
@@ -205,7 +205,7 @@ const harness = {
     id: LvStandId,
     erwartet: LvZustand,
   ): Promise<Kurz & { gleich?: boolean }> {
-    const repo = hole(name).lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
+    const repo = hole(name).lvStaende;
     const r = await repo.laden(id);
     if (!r.ok) return kurz(r);
     return {

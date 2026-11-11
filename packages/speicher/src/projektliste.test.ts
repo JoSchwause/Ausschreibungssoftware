@@ -77,14 +77,12 @@ describe('Projektliste', () => {
       { id: f.projekt.id, name: f.projekt.name },
       { id: 'p-0', name: 'Zahnarztpraxis' },
     ]);
-    // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3: LvUebersicht)
     expect(wert(await speicher.leistungsverzeichnisse.auflisten(f.projekt.id))).toEqual([
       { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
     ]);
     expect(wert(await speicher.leistungsverzeichnisse.auflisten('p-0' as ProjektId))).toEqual([]);
   });
 
-  // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3, Ticket 53 Punkt 1; Ticket 57 übernimmt)
   it('LV-Übersicht: Kennung und Name, nach Name deutsch sortiert, gleiche Namen nach Kennung', async () => {
     const { kern } = await neuerKern();
     const f = ladeFixture('winzig');

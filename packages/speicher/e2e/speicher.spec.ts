@@ -15,7 +15,7 @@ import { inhaltMitAllenAltenArten, mitKernSummen } from '../src/testhilfe/inhalt
 import { SCHEMA_VERSION } from '../src/migrationen';
 import { normalisiere } from '../src/testhilfe/normalisiere';
 import { feldAendern, standAnlegen } from '../src/testhilfe/umkehrung';
-import { LEERES_SUMMENVORHER } from '../src/vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket
+import { LEERES_SUMMENVORHER } from '../src/summenvorher';
 
 const DB = 'e2e';
 const ms = (x: number): string => String(Math.round(x));
@@ -215,7 +215,7 @@ test.describe('Speichern bei jedem Befehl (G-35)', () => {
           leistungsverzeichnisId: lvId,
           kopf: null,
           knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher: { ...vorher, menge } }], entfernt: [] },
-          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
+          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
         },
       };
     });

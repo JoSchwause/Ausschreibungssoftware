@@ -169,7 +169,6 @@ export class SpeicherKern {
     );
   }
 
-  // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3: `LvUebersicht` statt Kennungen; Ticket 57)
   lvAuflisten(projektId: ProjektId): Ergebnis<readonly LvUebersicht[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)

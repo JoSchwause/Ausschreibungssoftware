@@ -770,7 +770,6 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   LeitbeschreibungSetzen: true,
   Rueckgaengig: true,
   Wiederholen: true,
-  // v1.3: mechanisch angepasst, Folgeticket (speicher: Mengenansatz speichern, Ticket 57)
   MengenansatzSetzen: true,
 };
 

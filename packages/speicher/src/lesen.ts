@@ -15,6 +15,7 @@ import type {
   AuftragsLvZustand,
   Bieter,
   Betrag,
+  Gliederungssumme,
   Knoten,
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
@@ -27,6 +28,7 @@ import type {
   Papierkorbeintrag,
   PapierkorbeintragId,
   PositionId,
+  Positionssumme,
   Projekt,
   ProjektId,
   Protokolleintrag,
@@ -81,7 +83,6 @@ export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] 
     .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-// v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3, `LvUebersicht`; Ticket 57)
 /** LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. */
 export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
   return db
@@ -140,24 +141,28 @@ export function leseKnoten1(db: Datenbank, aggregatId: string, id: string): Knot
   return z === undefined ? null : knotenAusZeile(z);
 }
 
+export const positionssummeAusZeile = (z: SqlZeile): Positionssumme => ({
+  positionId: text(z, 'position_id') as PositionId,
+  gesamtpreis: textOderNull(z, 'gesamtpreis') as Betrag | null,
+  gehtInSummeEin: z['geht_in_summe'] === 1,
+});
+
+export const gliederungssummeAusZeile = (z: SqlZeile): Gliederungssumme => ({
+  gliederungId: gliederungId(z, 'gliederung_id'),
+  summe: text(z, 'summe') as Betrag,
+  ...ausweisAusZeile(z),
+});
+
 export function leseSummen(db: Datenbank, aggregatId: string): Summenstand | null {
   const gesamt = db.zeilen('SELECT * FROM summe_gesamt WHERE aggregat_id = ?', [aggregatId])[0];
   if (gesamt === undefined) return null;
   return {
     positionen: db
       .zeilen('SELECT * FROM summe_position WHERE aggregat_id = ? ORDER BY position_id', [aggregatId])
-      .map((z) => ({
-        positionId: text(z, 'position_id') as PositionId,
-        gesamtpreis: textOderNull(z, 'gesamtpreis') as Betrag | null,
-        gehtInSummeEin: z['geht_in_summe'] === 1,
-      })),
+      .map(positionssummeAusZeile),
     gliederungen: db
       .zeilen('SELECT * FROM summe_gliederung WHERE aggregat_id = ? ORDER BY gliederung_id', [aggregatId])
-      .map((z) => ({
-        gliederungId: gliederungId(z, 'gliederung_id'),
-        summe: text(z, 'summe') as Betrag,
-        ...ausweisAusZeile(z),
-      })),
+      .map(gliederungssummeAusZeile),
     gesamt: gesamtAusZeile(gesamt),
   };
 }
