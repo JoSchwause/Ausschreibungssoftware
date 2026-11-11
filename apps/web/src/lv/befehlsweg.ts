@@ -36,6 +36,7 @@ import type {
 } from '@tethys/vertrag';
 import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten'; // Ticket 89
 import { Historie, type Teil } from '../historie/historie';
+import { rechnungChangeSetUmkehren } from '../rechnung/ausfuehrer'; // Ticket 88
 import { ozErgaenzen } from './ozergaenzen';
 
 /** Alles, was der Befehlsweg von außen braucht. Zufall und Uhr gibt es nur hier, nie im Kern (A2). */
@@ -105,7 +106,7 @@ export async function speichern<Z>(
   e: Protokolleintrag,
   cs: Teil['changeSet'],
   neu: () => Z,
-  hinweise: readonly Befehlshinweis[] = 'hinweise' in cs ? (cs.hinweise ?? []) : [], // Ticket 87/89: Aufmaß, Kostenermittlung haben keine
+  hinweise: readonly Befehlshinweis[] = 'hinweise' in cs ? (cs.hinweise ?? []) : [], // Ticket 87–89: Aufmaß, Rechnung, Kostenermittlung haben keine
 ): Promise<Lauf<Z>> {
   const r = await eintragSchreiben(u, e, cs);
   if (!r.ok) return { ok: false, abweisung: { art: 'speicher', fehler: r.fehler } };
@@ -234,9 +235,11 @@ const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
         ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag; Ticket 86: Nachtrag übernehmen
         : cs.art === 'aufmass'
           ? aufmassChangeSetUmkehren(cs) // Ticket 87: Aufmaßblatt
-          : cs.art === 'kostenermittlung'
-            ? kostenermittlungChangeSetUmkehren(cs) // Ticket 89
-            : projektChangeSetUmkehren(cs);
+          : cs.art === 'rechnung'
+            ? rechnungChangeSetUmkehren(cs) // Ticket 88
+            : cs.art === 'kostenermittlung'
+              ? kostenermittlungChangeSetUmkehren(cs) // Ticket 89
+              : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie

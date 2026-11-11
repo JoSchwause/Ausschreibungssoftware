@@ -28,6 +28,8 @@ import { NachtragAnlegen } from '../nachtrag/NachtragAnlegen';
 import { Nachtragsliste } from '../nachtrag/Nachtragsliste';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { preisspiegelPfad } from '../vergabe/pfad';
+import { rechnungenPfad } from '../rechnung/pfad'; // Ticket 88
+import { texte as rechnungTexte } from '../rechnung/texte'; // Ticket 88
 import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
@@ -222,6 +224,8 @@ function Ansicht({
         <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
         {/* Ticket 87–89: Abrechnung */}
         <AbrechnungVerweise projektId={kopf.projektId} auftragsLvId={kopf.id} gehe={gehe} /> {/* Ticket 87 */}
+        {/* Ticket 88 */}
+        <Verweis pfad={rechnungenPfad(kopf.projektId, kopf.id)} text={rechnungTexte.liste.link} gehe={gehe} />
         <button
           type="button"
           className="tx-button tx-button--sekundaer"

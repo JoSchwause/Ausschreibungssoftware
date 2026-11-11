@@ -20,6 +20,7 @@ import type {
   ProjektId,
   Protokolleintrag,
   ProtokollId,
+  RechnungChangeSet, // Ticket 88
 } from '@tethys/vertrag';
 
 /** Ein geschriebener Befehl, wie ihn Undo und Redo brauchen. */
@@ -34,6 +35,7 @@ export interface Teil {
     | AngebotChangeSet
     | AuftragsLvChangeSet // Ticket 64: Zuschlag
     | AufmassChangeSet // Ticket 87: Aufmaßblatt
+    | RechnungChangeSet // Ticket 88
     | KostenermittlungChangeSet; // Ticket 89
 }
 

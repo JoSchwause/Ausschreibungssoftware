@@ -47,6 +47,9 @@ importers:
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
+      '@tethys/erechnung':
+        specifier: workspace:*
+        version: link:../../packages/erechnung
       '@tethys/gaeb':
         specifier: workspace:*
         version: link:../../packages/gaeb
