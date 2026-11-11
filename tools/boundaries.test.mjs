@@ -72,6 +72,17 @@ describe('Paketgrenzen (A3)', () => {
     expect(regeln).toEqual(['grenze-packages-kern', 'grenze-packages-ui-basis', 'grenze-packages-ui-grid']);
   });
 
+  it('kosten darf vertrag und dezimal importieren, kern nicht (Ticket 55, D-24)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/kosten', ['@tethys/vertrag', '@tethys/dezimal']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/kosten/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-kosten']);
+  });
+
   it('weist Import der App durch ein Paket ab', async () => {
     paket('packages/vertrag', ['@tethys/web']);
     paket('apps/web');
