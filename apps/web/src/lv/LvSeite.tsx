@@ -19,10 +19,10 @@ import type {
   Pruefbefund,
 } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
+import type { KeyboardEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { lvAnsichtBauen } from './ansicht';
+import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
 import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
@@ -56,9 +56,6 @@ const LEERE_DATEN: Positionsdaten = {
   einheitspreis: null,
   epa: null,
 };
-
-/** Spalten ohne eigene Eingabe im Grid: Ein Doppelklick dort öffnet den Positionsdialog. */
-const OHNE_EINGABE: ReadonlySet<string> = new Set<LvSpalte>(['ordnungszahl', 'positionsart', 'gesamtpreis']);
 
 type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; sitzung: LvSitzung };
 
@@ -145,7 +142,7 @@ function LvBearbeiten({
   const [hinweise, setHinweise] = useState<readonly Befehlshinweis[]>([]);
   const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
   const sprungNr = useRef(0);
-  /** Die aktive Zeile des Grids, wie sie zuletzt über die Auswahl gemeldet wurde. */
+  /** Die aktive Zeile des Grids, wie das Grid sie meldet (`onAktiveZeileChange`). */
   const aktiv = useRef<KnotenId | null>(null);
   const [merkmale, setMerkmale] = useState<Position | null>(null);
   const [dialog, setDialog] = useState<PositionId | null>(null);
@@ -335,44 +332,16 @@ function LvBearbeiten({
     aktion();
   };
 
-  /** Zeile im Grid (nicht im Zelleditor) unter dem Ereignisziel, mit ihrem Knoten. */
-  const gridZeile = (ziel: EventTarget): { knotenId: KnotenId; spalte: string | undefined } | null => {
-    if (!(ziel instanceof Element) || ziel.closest('[data-editor]') || !ziel.closest('[role="treegrid"]'))
-      return null;
-    const i = Number(ziel.closest('[data-i]')?.getAttribute('data-i'));
-    const zeile = Number.isNaN(i) ? undefined : ansicht.zeilen[i];
-    if (zeile === undefined) return null;
-    return {
-      knotenId: zeile.knoten.id,
-      spalte: ziel.closest<HTMLElement>('[data-spalte]')?.dataset['spalte'],
-    };
-  };
-  // Strg+Enter auf einer Zeile öffnet den Positionsdialog. Vor dem Grid abgefangen: Das Grid nähme es als Enter.
-  const onKeyDownCapture = (e: KeyboardEvent<HTMLDivElement>): void => {
-    if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-    const z = gridZeile(e.target);
-    if (z === null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    aktiv.current = z.knotenId;
-    dialogOeffnen();
-  };
-  // Doppelklick auf eine Zelle ohne eigene Eingabe (OZ, Art, GP) öffnet den Dialog; die übrigen bearbeitet das Grid.
-  const onDoubleClick = (e: MouseEvent<HTMLDivElement>): void => {
-    const z = gridZeile(e.target);
-    if (z === null || !OHNE_EINGABE.has(z.spalte ?? '')) return;
-    const k = lv.knoten.find((x) => x.id === z.knotenId);
+  // „Zeile öffnen“ des Grids (Strg+Enter, Doppelklick auf eine Zelle ohne Eingabe): nur Positionen haben einen Dialog.
+  const zeileOeffnen = (knotenId: KnotenId): void => {
+    const k = lv.knoten.find((x) => x.id === knotenId);
     if (k?.art === 'position') setDialog(k.id);
+    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
   };
 
   const projektPfad = `/projekt/${lv.projektId}`;
   return (
-    <div
-      className="seite lv"
-      onKeyDown={onKeyDown}
-      onKeyDownCapture={onKeyDownCapture}
-      onDoubleClick={onDoubleClick}
-    >
+    <div className="seite lv" onKeyDown={onKeyDown}>
       <div className="lv__kopf">
         <h1>{lv.name}</h1>
         <a
@@ -457,9 +426,12 @@ function LvBearbeiten({
             onBefehl={(b) => void senden(b)}
             onBefehlsfolge={(bs) => void sendenFolge(bs)}
             onKopieEinfuegen={kopieEinfuegen}
-            onAuswahlChange={(ids) => {
-              const letzte = ids.at(-1);
-              if (letzte !== undefined) aktiv.current = letzte;
+            positionenZaehlen={(ids) => positionenImTeilbaum(lv.knoten, ids)}
+            onAktiveZeileChange={(knotenId) => {
+              aktiv.current = knotenId;
+            }}
+            onZeileOeffnen={(knotenId) => {
+              zeileOeffnen(knotenId);
             }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {

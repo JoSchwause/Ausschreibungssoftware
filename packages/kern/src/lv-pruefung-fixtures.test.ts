@@ -156,16 +156,15 @@ describe('Golden: lvPruefen über die Fixtures', () => {
     expect(ist).toBe(readFileSync(pfad, 'utf8'));
   });
 
-  it('typisch meldet die Altform-Zuschlagsposition', () => {
-    const z = zustand('typisch');
-    const altform = z.leistungsverzeichnis.knoten.filter(
+  // Ticket 51: Fixture-Format, mechanisch. Die Fixtures tragen keine Altform mehr (GAEB-Form); die Regel selbst prüft
+  // `lv-pruefung.test.ts` („zuschlag-altform: ohne Satz, mit Menge und EP; mit Satz nicht“).
+  it.each(FIXTURES)('%s: jede Zuschlagsposition trägt einen Satz, keine meldet die Altform', (name) => {
+    const z = zustand(name);
+    const ohneSatz = z.leistungsverzeichnis.knoten.filter(
       (k): k is Position => k.art === 'position' && k.zuschlag !== null && k.zuschlag.prozentsatz === null,
     );
-    expect(altform.length).toBeGreaterThan(0);
-    const gemeldet = lvPruefen(z)
-      .filter((b) => b.code === 'zuschlag-altform')
-      .map((b) => b.ort.knotenId);
-    expect(gemeldet).toEqual(altform.map((p) => p.id));
+    expect(ohneSatz).toEqual([]);
+    expect(lvPruefen(z).filter((b) => b.code === 'zuschlag-altform')).toEqual([]);
   });
 });
 

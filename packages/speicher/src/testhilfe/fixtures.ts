@@ -55,6 +55,17 @@ interface FxSollwerte {
   positionen: Record<string, { gp: string | null; inSumme: boolean }>;
   titel: Record<string, { summe: string }>;
   summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
+  // Ticket 51: Fixture-Format, mechanisch: Bedarfs- und Wahlsumme (nur GAEB-Form)
+  ausweise?: { gesamt: FxAusweis; titel: Record<string, FxAusweis> };
+}
+interface FxAusweis {
+  summeBedarfOhneGesamtbetrag: string;
+  summeWahl: string;
+}
+/** Ticket 51: Fixture-Format, mechanisch: Zuschlagsposition in GAEB-Form (Satz, Bezugsform Liste ohne Teilmenge). */
+interface FxZuschlag {
+  prozentsatz: string;
+  bezug: { art: 'positionen'; positionen: { positionId: string; teilmenge: null }[] };
 }
 type FxKnoten =
   | { id: string; parentId: string; art: 'titel'; ordnungszahl: string; kurztext: string }
@@ -68,12 +79,13 @@ type FxKnoten =
       ozIndex?: string;
       kurztext: string;
       langtext: string;
-      menge: string;
-      einheit: string;
-      einheitspreis: string;
+      // Ticket 51: Fixture-Format, mechanisch: an der Zuschlagsposition `null`, der Bezug steht in `zuschlag`
+      menge: string | null;
+      einheit: string | null;
+      einheitspreis: string | null;
       bedarfMitGesamtbetrag?: boolean;
-      bezugspositionId?: string;
       grundpositionId?: string;
+      zuschlag?: FxZuschlag;
     };
 interface FxLv {
   id: string;
@@ -92,6 +104,7 @@ interface FxAngebotsset {
     nachlass: FxNachlass | null;
     positionen: (
       | { positionId: string; status: 'angeboten'; einheitspreis: string }
+      | { positionId: string; status: 'angeboten'; zuschlagssatz: string } // Ticket 51: Fixture-Format, mechanisch
       | { positionId: string; status: 'nicht-angeboten' }
     )[];
     sollwerte: FxSollwerte;
@@ -116,12 +129,21 @@ const nachlass = (n: FxNachlass | null): Nachlass | null =>
       : { art: 'betrag', wert: n.wert as Betrag };
 
 function summen(s: FxSollwerte): Summenstand {
+  // Ticket 51: Fixture-Format, mechanisch: Ausweise, wo die Fixture sie trägt
+  const ausweis = (a: FxAusweis | undefined) =>
+    a === undefined
+      ? {}
+      : {
+          summeBedarfOhneGesamtbetrag: a.summeBedarfOhneGesamtbetrag as Betrag,
+          summeWahl: a.summeWahl as Betrag,
+        };
   const gesamt: Gesamtsummen = {
     netto: s.summen.netto as Betrag,
     nachlass: s.summen.nachlass as Betrag,
     nettoNachNachlass: s.summen.nettoNachNachlass as Betrag,
     mwst: s.summen.mwst as Betrag,
     brutto: s.summen.brutto as Betrag,
+    ...ausweis(s.ausweise?.gesamt),
   };
   return {
     positionen: Object.entries(s.positionen).map(([id, w]) => ({
@@ -132,6 +154,7 @@ function summen(s: FxSollwerte): Summenstand {
     gliederungen: Object.entries(s.titel).map(([id, w]) => ({
       gliederungId: id as GliederungId,
       summe: w.summe as Betrag,
+      ...ausweis(s.ausweise?.titel[id]),
     })),
     gesamt,
   };
@@ -165,9 +188,9 @@ function abbilden(fx: FxLv, projektId: ProjektId): LvZustand {
       zuschlag: fixtureZuschlag(k),
       kurztext: k.kurztext,
       langtext: [{ art: 'text', text: k.langtext }],
-      menge: k.menge as Menge,
+      menge: k.menge as Menge | null, // Ticket 51: Fixture-Format, mechanisch
       einheit: k.einheit,
-      einheitspreis: k.einheitspreis as Einheitspreis,
+      einheitspreis: k.einheitspreis as Einheitspreis | null,
       epa: null,
     };
   });
@@ -217,14 +240,17 @@ function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
   };
 }
 
+/** Ticket 51: Fixture-Format, mechanisch: Zuschlag in GAEB-Form (Satz und Liste), keine Altform mehr. */
 function fixtureZuschlag(k: FxPosition): Zuschlag | null {
-  if (k.positionsart !== 'zuschlag') return null;
-  const bezug = k.bezugspositionId as PositionId | undefined;
+  if (k.zuschlag === undefined) return null;
   return {
-    prozentsatz: null,
+    prozentsatz: k.zuschlag.prozentsatz as Prozent,
     bezug: {
       art: 'positionen',
-      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
+      positionen: k.zuschlag.bezug.positionen.map((b) => ({
+        positionId: b.positionId as PositionId,
+        teilmenge: null,
+      })),
     },
   };
 }
@@ -247,14 +273,23 @@ export function ladeFixture(name: 'winzig' | 'typisch' | 'gross'): FixtureDaten 
       bieterId: a.bieterId as BieterId,
       nachlass: nachlass(a.nachlass),
       positionen: a.positionen.map((p): Angebotsposition =>
-        p.status === 'angeboten'
-          ? {
-              positionId: p.positionId as PositionId,
-              status: 'angeboten',
-              einheitspreis: p.einheitspreis as Einheitspreis,
-              epa: null,
-            }
-          : { positionId: p.positionId as PositionId, status: 'nicht-angeboten' },
+        p.status === 'nicht-angeboten'
+          ? { positionId: p.positionId as PositionId, status: 'nicht-angeboten' }
+          : 'zuschlagssatz' in p
+            ? // Ticket 51: Fixture-Format, mechanisch: Satz des Bieters, EP ist der Platzhalter `0.000` (Vertrag v1.2)
+              {
+                positionId: p.positionId as PositionId,
+                status: 'angeboten',
+                einheitspreis: '0.000' as Einheitspreis,
+                epa: null,
+                zuschlagssatz: p.zuschlagssatz as Prozent,
+              }
+            : {
+                positionId: p.positionId as PositionId,
+                status: 'angeboten',
+                einheitspreis: p.einheitspreis as Einheitspreis,
+                epa: null,
+              },
       ),
     },
     summen: summen(a.sollwerte),

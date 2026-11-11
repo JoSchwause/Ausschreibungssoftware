@@ -23,6 +23,7 @@ import {
   nachlassBetrag,
   positionGehtInSumme,
   summenBerechnen,
+  zuschlagsbasen,
   ZUSTAENDIGES_TICKET,
 } from './index';
 import {
@@ -211,6 +212,25 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Fixture %s: Sollwerte', 
 
   it('die vollständige Neuberechnung (Orakel) liefert denselben Summenstand', () => {
     expect(summenBerechnen(z.leistungsverzeichnis)).toEqual(z.summen);
+  });
+
+  // Ticket 51: Fixture-Format, mechanisch. `typisch` und `gross` tragen Ausweise und Zuschlagsbasen als Sollwerte
+  // (unabhängig in `fixtures/rechnen.mjs` gerechnet); `winzig` hat weder Bedarf, Wahl noch Zuschlag.
+  it('Bedarfs- und Wahlsumme je Titel und gesamt, Basis und Betrag je Zuschlagsposition stimmen exakt', () => {
+    if (name === 'winzig') {
+      expect(soll.ausweise).toBeUndefined();
+      return;
+    }
+    expect(z.summen.gesamt).toMatchObject(soll.ausweise?.gesamt ?? { fehlt: true });
+    for (const g of z.summen.gliederungen) {
+      expect(g, g.gliederungId).toMatchObject(soll.ausweise?.titel[g.gliederungId] ?? { fehlt: true });
+    }
+    const basen = zuschlagsbasen(z.leistungsverzeichnis);
+    expect(basen.size).toBe(Object.keys(soll.zuschlaege ?? {}).length);
+    expect(basen.size).toBeGreaterThan(0);
+    for (const [id, b] of basen) {
+      expect({ basis: b.basis, betrag: b.betrag }, id).toEqual(soll.zuschlaege?.[id]);
+    }
   });
 });
 

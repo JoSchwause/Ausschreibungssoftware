@@ -59,3 +59,26 @@ export function lvAnsichtBauen(
   besuche(lv.id, 0);
   return { wurzelId: lv.id, zeilen, gesamt: zustand.summen.gesamt };
 }
+
+/**
+ * Die genaue Zahl der Positionen in den Teilbäumen der Knoten `ids` (auch unter zugeklappten Gliederungen), jede
+ * Position einmal, auch wenn ein Knoten und sein Vorfahr zugleich in `ids` stehen. Für die Rückfrage beim Löschen im
+ * Grid (`positionenZaehlen`).
+ */
+export function positionenImTeilbaum(knoten: readonly Knoten[], ids: readonly string[]): number {
+  const gewaehlt = new Set<string>(ids);
+  const elternVon = new Map<string, string>(knoten.map((k) => [k.id, k.elternId]));
+  let n = 0;
+  for (const k of knoten) {
+    if (k.art !== 'position') continue;
+    let id: string | undefined = k.id;
+    while (id !== undefined) {
+      if (gewaehlt.has(id)) {
+        n++;
+        break;
+      }
+      id = elternVon.get(id);
+    }
+  }
+  return n;
+}

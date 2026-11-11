@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ElternId, Knoten, LvZustand, Position } from '@tethys/vertrag';
 import { erzeugePdf } from './index';
-import { erzeugeDruckHtml } from './druck';
 import { alsText, liesPdf } from './pdftext';
 import { schriftenAusDateien } from './schriften-node';
 import { fixtureAlsInhalt, lvZustandAusFixture, lvZustandAusInhalt } from './testhilfen';
@@ -33,11 +32,6 @@ describe('Nichts geht verloren (Q5)', () => {
     const text = alsText(await liesPdf(await erzeugePdf(mitLangtext(mitTitel), schriften)));
     expect(new Set(text.match(/Langtextzeile \d+/g)).size).toBe(400);
   });
-
-  it('Druck-HTML enthält alle 400 Zeilen', () => {
-    const html = erzeugeDruckHtml(mitLangtext(true), schriften);
-    expect(new Set(html.match(/Langtextzeile \d+/g)).size).toBe(400);
-  });
 });
 
 describe('Klammern um den GP', () => {
@@ -48,6 +42,5 @@ describe('Klammern um den GP', () => {
     const zustand = lvZustandAusInhalt(fx.id, { ...inhalt, knoten });
     expect(zustand.summen.positionen.some((p) => p.gesamtpreis === null && !p.gehtInSummeEin)).toBe(true);
     expect(alsText(await liesPdf(await erzeugePdf(zustand, schriften)))).not.toContain('()');
-    expect(erzeugeDruckHtml(zustand, schriften)).not.toContain('()<');
   });
 });

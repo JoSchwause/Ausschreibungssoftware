@@ -213,7 +213,7 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.3: mechanisch angepasst"` f
   Grund: nur ein Typ ändert sich; `baueChangeSet` setzt `vorher` wie bisher.
 - **D-53.5** `LvUebersicht` sortiert wie die Projektliste (Name de-DE, dann Kennung). Grund: Wortlaut des Tickets und
   dieselbe Regel wie `Projektuebersicht`.
-- **D-53.6** (Berater, nach dem Opus-Review) Form der EPA-Bezeichnungen? `EpaBezeichnung { nummer: 1|…|6; anteil:
+- **D-53.6** (= D-28 im Entscheidungsprotokoll; Berater, nach dem Opus-Review) Form der EPA-Bezeichnungen? `EpaBezeichnung { nummer: 1|…|6; anteil:
   EpaArt; bezeichnung: string | null }`, Liste nach `nummer` sortiert, `nummer` und `anteil` je eindeutig, Feld
   optional. Fehlende `nummer` = Platz nicht zugeordnet (keine Beschriftung oder zweiter Anteil derselben Art);
   `bezeichnung: null` = Art aus GAEB `Type` bekannt, Beschriftung leer; Feld fehlt = heutige feste Belegung des

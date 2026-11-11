@@ -169,7 +169,8 @@ describe('Wohin ein Betrag geht (Teil 1, je Merkmalskombination)', () => {
     });
   });
 
-  it('Fixture typisch: Bedarf 586,80 (01.0040), Wahl 5.880,00 (02.0070 A), Netto unverändert 55.463,41', () => {
+  // Ticket 51: Fixture-Format, mechanisch. Netto 55.465,59 seit der GAEB-Form von 02.0050 A (vorher 55.463,41).
+  it('Fixture typisch: Bedarf 586,80 (01.0040), Wahl 5.880,00 (02.0070 A), Netto 55.465,59, je Titel wie die Sollwerte', () => {
     const fx = fixtureLesen('typisch');
     const z = wende(null, {
       art: 'LeistungsverzeichnisAnlegen',
@@ -177,10 +178,16 @@ describe('Wohin ein Betrag geht (Teil 1, je Merkmalskombination)', () => {
       projektId: PROJEKT_ID,
       inhalt: fixtureAlsInhalt(fx),
     });
-    expect(z.summen.gesamt.netto).toBe('55463.41');
-    expect(z.summen.gesamt).toMatchObject(sollwerteLesen('typisch').summen);
+    const soll = sollwerteLesen('typisch');
+    expect(z.summen.gesamt.netto).toBe('55465.59');
+    expect(z.summen.gesamt).toMatchObject(soll.summen);
     expect(z.summen.gesamt.summeBedarfOhneGesamtbetrag).toBe('586.80');
     expect(z.summen.gesamt.summeWahl).toBe('5880.00');
+    expect(z.summen.gesamt).toMatchObject(soll.ausweise?.gesamt ?? {});
+    for (const [id, ausweis] of Object.entries(soll.ausweise?.titel ?? {})) {
+      expect(z.summen.gliederungen.find((g) => g.gliederungId === id)).toMatchObject(ausweis);
+    }
+    expect(Object.keys(soll.ausweise?.titel ?? {})).toHaveLength(3);
   });
 
   it('die Regel steht an einer Stelle und ist als entschieden vermerkt', () => {

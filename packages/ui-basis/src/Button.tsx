@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ButtonHTMLAttributes, ReactElement } from 'react';
+import type { ComponentPropsWithRef, ReactElement } from 'react';
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+/** React 19: `ref` ist eine normale Eigenschaft und geht an das button-Element (D-26). */
+export interface ButtonProps extends ComponentPropsWithRef<'button'> {
   variante?: 'primaer' | 'sekundaer' | 'schlicht' | 'gefahr';
   groesse?: 'md' | 'sm';
 }

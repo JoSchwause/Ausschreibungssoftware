@@ -21,7 +21,28 @@
     {"id":"019b76e9-ea4b-7446-af25-e138598df2b7","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"normal","ordnungszahl":"02.0030","kurztext":"Baugrube verfüllen","langtext":"Arbeitsraum mit gelagertem Aushub verfüllen und verdichten.","menge":"140.000","einheit":"m³","einheitspreis":"5.250"},
     {"id":"019b76e9-ea4c-76c8-85b1-626b44c884e5","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"normal","ordnungszahl":"02.0040","kurztext":"Sauberkeitsschicht","langtext":"Sauberkeitsschicht aus Magerbeton herstellen.","menge":"96.000","einheit":"m²","einheitspreis":"11.480"},
     {"id":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"normal","ordnungszahl":"02.0050","kurztext":"Fundamente betonieren","langtext":"Streifenfundamente aus Ortbeton herstellen.","menge":"38.750","einheit":"m³","einheitspreis":"168.900"},
-    {"id":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"zuschlag","ordnungszahl":"02.0050","ozIndex":"A","kurztext":"Zuschlag Frosteinbau","langtext":"Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.","menge":"38.750","einheit":"m³","einheitspreis":"14.300","bezugspositionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df"},
+    {
+      "id": "019b76e9-ea4e-72e6-aa2e-a1ad93edf894",
+      "parentId": "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf",
+      "art": "position",
+      "positionsart": "zuschlag",
+      "ordnungszahl": "02.0050",
+      "ozIndex": "A",
+      "kurztext": "Zuschlag Frosteinbau",
+      "langtext": "Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.",
+      "menge": null,
+      "einheit": null,
+      "einheitspreis": null,
+      "zuschlag": {
+        "prozentsatz": "8.50",
+        "bezug": {
+          "art": "positionen",
+          "positionen": [
+            {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","teilmenge":null}
+          ]
+        }
+      }
+    },
     {"id":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"normal","ordnungszahl":"02.0060","kurztext":"Betonstahl verlegen","langtext":"Betonstahl liefern, schneiden, biegen und verlegen.","menge":"3350.000","einheit":"kg","einheitspreis":"1.640"},
     {"id":"019b76e9-ea50-7801-8694-72bbf397eaf3","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"normal","ordnungszahl":"02.0070","kurztext":"Bodenplatte herstellen","langtext":"Bodenplatte aus Ortbeton herstellen.","menge":"96.000","einheit":"m²","einheitspreis":"52.700"},
     {"id":"019b76e9-ea51-78b8-8588-e3dc3a1f7da6","parentId":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","art":"position","positionsart":"wahl","ordnungszahl":"02.0070","ozIndex":"A","kurztext":"Bodenplatte wasserundurchlässig","langtext":"Alternative zur Position 02.0070: Bodenplatte in wasserundurchlässiger Ausführung.","menge":"96.000","einheit":"m²","einheitspreis":"61.250","grundpositionId":"019b76e9-ea50-7801-8694-72bbf397eaf3"},
@@ -51,7 +72,7 @@
       "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"735.00","inSumme":true},
       "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1102.08","inSumme":true},
       "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6544.88","inSumme":true},
-      "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"554.13","inSumme":true},
+      "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"556.31","inSumme":true},
       "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5494.00","inSumme":true},
       "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5059.20","inSumme":true},
       "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5880.00","inSumme":false},
@@ -68,10 +89,21 @@
     },
     "titel": {
       "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5503.99"},
-      "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"25220.24"},
+      "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"25222.42"},
       "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"24739.18"}
     },
-    "summen": {"netto":"55463.41","nachlass":"1109.27","nettoNachNachlass":"54354.14","mwst":"10327.29","brutto":"64681.43"},
-    "nichtAngeboten": []
+    "summen": {"netto":"55465.59","nachlass":"1109.31","nettoNachNachlass":"54356.28","mwst":"10327.69","brutto":"64683.97"},
+    "nichtAngeboten": [],
+    "zuschlaege": {
+      "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6544.88","betrag":"556.31"}
+    },
+    "ausweise": {
+      "gesamt": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"5880.00"},
+      "titel": {
+        "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"0.00"},
+        "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5880.00"},
+        "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+      }
+    }
   }
 }
