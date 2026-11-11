@@ -38,6 +38,16 @@ type Textfeld = {
   [K in keyof Positionsentwurf]: Positionsentwurf[K] extends string ? K : never;
 }[keyof Positionsentwurf];
 const MAX_TREFFER = 8;
+/** Bereiche, an denen ein Formfehler des Kerns direkt steht; andere erscheinen in der Zeile über den Knöpfen. */
+const AM_FELD: ReadonlySet<string> = new Set([
+  'merkmale',
+  'wahlGruppe',
+  'bezug',
+  'zuschlag',
+  'epa',
+  'leitbeschreibung',
+  'langtext',
+]);
 
 const positionsname = (p: Position): string => [p.ordnungszahl, p.kurztext].filter(Boolean).join(' ');
 
@@ -202,6 +212,11 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
                   setze('langtext', l);
                 }}
               />
+              {fehler['langtext'] ? (
+                <p className="lv__meldung" role="alert">
+                  {fehler['langtext']}
+                </p>
+              ) : null}
             </div>
           </Bereich>
           <Bereich titel={t.mengeUndPreis}>
@@ -335,7 +350,10 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
       </div>
       <p className="lv__meldung" role="status">
         {gesendet && Object.keys(fehler).length > 0 ? t.nichtUebernommen : ''}
-        {fehler['allgemein'] ?? ''}
+        {Object.entries(kernfehler)
+          .filter(([k]) => !AM_FELD.has(k))
+          .map(([, m]) => ` ${m}`)
+          .join('')}
       </p>
       <footer className="tx-dialog__fuss">
         <Button onClick={onSchliessen}>{t.abbrechen}</Button>
