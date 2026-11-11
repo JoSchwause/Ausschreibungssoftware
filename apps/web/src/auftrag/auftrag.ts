@@ -20,7 +20,7 @@ import type {
   Speicherfehler,
 } from '@tethys/vertrag';
 import type { Teil } from '../historie/historie';
-import type { Abweisung, Befehlsweg } from '../lv/befehlsweg';
+import { eintragSchreiben, type Abweisung, type Befehlsweg } from '../lv/befehlsweg';
 import { inhaltKopf } from '../lv/inhalt';
 
 /** Die Auftrags-LVs eines Projekts, aus der Projektdatei des Speichers (D-64.2). */
@@ -76,7 +76,7 @@ export function zuschlagserteilungSpeichern(
       wann: u.uhr(),
       befehl,
     } as const;
-    const s = await u.speicher.anwenden(eintrag, r.wert);
+    const s = await eintragSchreiben(u, eintrag, r.wert);
     if (!s.ok) return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: s.fehler } };
     const teil: Teil = {
       protokollId: eintrag.id,
