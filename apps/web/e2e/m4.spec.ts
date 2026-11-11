@@ -116,8 +116,14 @@ const fx = JSON.parse(readFileSync(new URL('typisch-abrechnung.json', wurzel), '
       readonly bemerkung?: string;
     }[];
   };
-  readonly aufmasse: readonly { readonly aufmass: Blatt }[];
-  readonly korrektur: { readonly befehl: { readonly position: Blattzeile } };
+  readonly aufmasse: readonly {
+    readonly aufmass: Blatt;
+    readonly zeilenergebnisse: Readonly<Record<string, readonly string[]>>;
+  }[];
+  readonly korrektur: {
+    readonly befehl: { readonly position: Blattzeile };
+    readonly zeilenergebnisse: readonly string[];
+  };
   readonly rechnungen: readonly {
     readonly nummer: string;
     readonly eingang: string;
@@ -218,6 +224,162 @@ async function kostenkontrollePruefen(page: Page, mitAbrechnung: boolean): Promi
   await expect(zelle(k, 'nummer', 'Gesamt', 'abrechnung')).toHaveText(abrechnung(kk.gesamt));
   await expect(page.getByText('Keine Hinweise.')).toBeVisible();
 }
+
+// --- Aufmaß und Soll/Ist (Ticket 87) --------------------------------------------------------------------------------
+
+const blattGrid = (page: Page): Locator =>
+  page.getByRole('treegrid', { name: 'Positionen des Aufmaßblatts' });
+const sollIstGrid = (page: Page): Locator => page.getByRole('treegrid', { name: 'Soll/Ist je Position' });
+const panel = (page: Page): Locator => page.getByRole('dialog', { name: /^Mengenermittlung/ });
+const wert = (grid: Locator, ozText: string, spalte: string): Locator => zelle(grid, 'oz', ozText, spalte);
+const kurztextZelle = (grid: Locator, ozText: string): Locator =>
+  grid
+    .locator('[role="row"]')
+    .filter({
+      has: grid.page().locator('[data-spalte="oz"] .tx-grid__text', {
+        hasText: new RegExp(`^${ozText.replace(/\./g, '\\.')}$`),
+      }),
+    })
+    .locator('[data-spalte="kurztext"]');
+
+/** Datum der Fixture (`JJJJ-MM-TT`) wie die Eingabe der App (`TT.MM.JJJJ`). */
+const datumDe = (d: string): string => d.split('-').reverse().join('.');
+
+/** Zeilenergebnisse der Fixture (Formel 91, 3 Stellen) für eine Zeile des Blatts, `null` ohne Ansatz. */
+const zeilenergebnisse = (blatt: number, positionId: string): readonly string[] | null =>
+  fx.aufmasse[blatt]?.zeilenergebnisse[positionId] ?? null;
+
+/**
+ * Eine Zeile des Blatts über die Mengenermittlung setzen (Enter auf der Zeile, je Ansatzzeile ein Ausdruck, Strg+Enter
+ * übernimmt) oder, ohne Ansatz, als Menge (Strg+Alt+E). Panel und Grid zeigen die Werte der Fixture.
+ */
+async function zeileSetzen(page: Page, z: Blattzeile, ergebnisse: readonly string[] | null): Promise<void> {
+  const g = blattGrid(page);
+  const o = oz(z.positionId);
+  await kurztextZelle(g, o).click();
+  const p = panel(page);
+  if (z.mengenansatz === null) {
+    await page.keyboard.press('Control+Alt+KeyE');
+    await expect(p).toBeVisible();
+    await p.getByLabel('Menge ohne Ansatz').fill(eingabeDe(z.menge));
+    await p.getByLabel('Menge ohne Ansatz').press('Enter');
+  } else {
+    await page.keyboard.press('Enter');
+    await expect(p.getByLabel('Ausdruck Zeile 1')).toBeFocused();
+    for (const [i, a] of z.mengenansatz.entries()) {
+      if (i > 0) await page.keyboard.press('Enter'); // neue Zeile
+      await page.keyboard.type(a.ausdruck);
+    }
+    await expect(p.locator('[data-wert="zeilenergebnis"]')).toHaveText((ergebnisse ?? []).map(betragDe));
+    await expect(p.locator('[data-wert="summe"]')).toHaveText(betragDe(z.menge));
+    await page.keyboard.press('Control+Enter');
+  }
+  await expect(p).toHaveCount(0);
+  await expect(wert(g, o, 'blattmenge')).toHaveText(betragDe(z.menge));
+}
+
+/** Ein Blatt der Fixture anlegen (auf der Liste der Aufmaßblätter) und alle Zeilen setzen. */
+async function blattErfassen(page: Page, index: number): Promise<string> {
+  const blatt = fx.aufmasse[index]?.aufmass;
+  if (blatt === undefined) throw new Error(`Fixture ohne Blatt ${String(index + 1)}`);
+  await page.getByRole('button', { name: 'Neues Aufmaßblatt' }).click();
+  const neu = page.getByRole('dialog', { name: 'Neues Aufmaßblatt' });
+  await neu.getByLabel('Bezeichnung').fill(blatt.bezeichnung);
+  await neu.getByLabel('Datum (TT.MM.JJJJ)').fill(datumDe(blatt.datum));
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('heading', { level: 1, name: `Aufmaßblatt ${blatt.nummer} – ${blatt.bezeichnung}` }),
+  ).toBeVisible();
+  const pfad = new URL(page.url()).pathname;
+  for (const z of blatt.positionen) await zeileSetzen(page, z, zeilenergebnisse(index, z.positionId));
+  return pfad;
+}
+
+/** Soll/Ist wie die Fixture: Soll, Ist, Anteil je aufgemessener Position; genau die Befunde über 110 % (D-85.5). */
+async function sollIstPruefen(page: Page, stand: SollIstStand): Promise<void> {
+  const g = sollIstGrid(page);
+  const befund = new Set(stand.befunde.map((b) => b.positionId));
+  for (const z of stand.zeilen) {
+    const o = oz(z.positionId);
+    await expect(wert(g, o, 'soll')).toHaveText(betragDe(z.soll));
+    await expect(wert(g, o, 'ist')).toHaveText(betragDe(z.ist));
+    await expect(wert(g, o, 'anteil')).toHaveText(`${betragDe(z.anteil)} %`);
+    await expect(wert(g, o, 'befund')).toHaveText(befund.has(z.positionId) ? 'über 110,00 %' : '');
+  }
+  await expect(page.getByRole('region', { name: 'Befunde', exact: true }).getByRole('button')).toHaveText(
+    stand.befunde.map(
+      (b) =>
+        `${oz(b.positionId)} ${POSITION.get(b.positionId)?.kurztext ?? ''}: Ist ${betragDe(b.anteil)} % der Auftragsmenge (über 110,00 %)`,
+    ),
+  );
+}
+
+// --- Rechnungen (Ticket 88) -----------------------------------------------------------------------------------------
+
+const rechnungsWerkzeuge = (page: Page): Locator =>
+  page.getByRole('toolbar', { name: 'Werkzeuge der Rechnungen' });
+
+/** Neue Abschlagsrechnung wie die Fixture: Blätter vorgewählt, Umlage und Sicherheitseinbehalt (bei AR 2 vorgeschlagen). */
+async function rechnungAnlegen(page: Page, index: number, blaetter: number): Promise<void> {
+  const r = fx.rechnungen[index];
+  const umlage = r?.umlagen[0];
+  if (r === undefined || umlage === undefined) throw new Error(`Fixture ohne Rechnung ${String(index + 1)}`);
+  await rechnungsWerkzeuge(page).getByRole('button', { name: 'Neue Rechnung' }).click();
+  const dialog = page.getByRole('dialog', { name: `Neue Rechnung ${r.nummer}` });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Eingangsdatum').fill(datumDe(r.eingang));
+  await dialog.getByLabel('Rechnungsnummer des Auftragnehmers').fill(r.rechnungsnummerAuftragnehmer);
+  await expect(dialog.getByRole('radio', { name: 'Abschlagsrechnung' })).toBeChecked();
+  for (let n = 1; n <= blaetter; n++)
+    await expect(dialog.getByRole('checkbox', { name: new RegExp(`^Blatt ${String(n)}`) })).toBeChecked();
+  if (index === 0) {
+    await dialog.getByRole('button', { name: 'Umlage hinzufügen' }).click();
+    await dialog.getByLabel('Bezeichnung der Umlage 1').fill(umlage.bezeichnung);
+    await dialog.getByLabel('Satz der Umlage 1').fill(eingabeDe(umlage.satz));
+    await dialog.getByLabel('Sicherheitseinbehalt').fill(eingabeDe(r.sicherheitSatz));
+  } else {
+    await expect(dialog.getByLabel('Bezeichnung der Umlage 1')).toHaveValue(umlage.bezeichnung);
+    await expect(dialog.getByLabel('Satz der Umlage 1')).toHaveValue(eingabeDe(umlage.satz));
+    await expect(dialog.getByLabel('Sicherheitseinbehalt')).toHaveValue(eingabeDe(r.sicherheitSatz));
+  }
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole('heading', { level: 1, name: new RegExp(`^Abschlagsrechnung ${r.nummer} – `) }),
+  ).toBeVisible();
+}
+
+/** Die Abzugskette der Prüfansicht wie die Fixture (D-34); `frueher`: Nummern der abgezogenen früheren Rechnungen. */
+async function kettePruefen(page: Page, k: Kette, frueher: readonly number[]): Promise<void> {
+  const soll: [string, string][] = [
+    ['leistung', k.leistung],
+    ['nachlass', k.nachlass],
+    ['nettoNachNachlass', k.nettoNachNachlass],
+    ['mwst', k.mwst],
+    ['bruttoKumuliert', k.bruttoKumuliert],
+    ...k.umlagen.map((u, i): [string, string] => [`umlage-${String(i)}`, u.betrag]),
+    ['einbehalt', k.einbehalt],
+    ...(frueher.length === 0
+      ? [['fruehere', k.fruehereZahlbetraege] as [string, string]]
+      : frueher.map((n): [string, string] => [`frueher-${String(n)}`, k.fruehereZahlbetraege])),
+    ['zahlbetrag', k.zahlbetrag],
+  ];
+  for (const [schluessel, betrag] of soll)
+    await expect(page.getByTestId(`kette-${schluessel}`)).toHaveText(betragDe(betrag));
+}
+
+/** Die Prüfansicht einer Rechnung über die Liste öffnen (in der App, ohne Neuladen). */
+async function rechnungOeffnen(page: Page, nummer: number): Promise<void> {
+  if (await page.getByRole('link', { name: 'Zur Rechnungsliste' }).isVisible())
+    await page.getByRole('link', { name: 'Zur Rechnungsliste' }).click();
+  await page.getByRole('link', { name: `Rechnung ${String(nummer)} öffnen` }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: new RegExp(`rechnung ${String(nummer)} – `) }),
+  ).toBeVisible();
+}
+
+const toolbarLink = (page: Page, name: string): Locator =>
+  page.getByRole('toolbar').getByRole('link', { name, exact: true });
 
 // Das Grid ist virtualisiert: Ein hohes Fenster hält alle Zeilen des Auftrags-LV samt Nachtrag sichtbar.
 test.use({ viewport: { width: 1440, height: 2000 } });
@@ -389,5 +551,111 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   await kostenkontrollePruefen(page, false);
   await expect(page.getByText('Noch keine Rechnung: Die Spalte Abrechnung bleibt leer.')).toBeVisible();
 
-  // TODO(Ticket 87/88): Aufmaß, Soll/Ist, Rechnungen, Korrektur, Kostenkontrolle mit Abrechnung, Neuladen.
+  // --- Aufmaßblatt 1 (Formel 91): eine Nachtragsposition, 02.0040 über 110 % ------------------------------------------
+  const ar1 = fx.pruefungen.ar1;
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Aufmaß').click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Aufmaß – / })).toBeVisible();
+  const blatt1Pfad = await blattErfassen(page, 0);
+
+  // --- Soll/Ist: genau ein Befund über 110 % (02.0040, 112,50 %), keiner unter 90 % (VOB/B § 2 Abs. 3, D-35) --------
+  await toolbarLink(page, 'Soll/Ist').click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Soll\/Ist – / })).toBeVisible();
+  await sollIstPruefen(page, fx.sollIst.nachBlatt1);
+
+  // --- Abschlagsrechnung 1: Kette wie die Fixture, Zahlbetrag 8.874,40; freigeben friert ihn ein -------------------
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Rechnungen').click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
+  await rechnungAnlegen(page, 0, 1);
+  await kettePruefen(page, ar1.kette, []);
+  await page.getByRole('button', { name: 'Freigeben', exact: true }).click();
+  const freigabe = page.getByRole('dialog', { name: 'Rechnung 1 freigeben' });
+  await expect(freigabe).toContainText(`${betragDe(ar1.kette.zahlbetrag)} €`);
+  await freigabe.getByRole('button', { name: 'Freigeben', exact: true }).click();
+  await expect(freigabe).toBeHidden();
+  await expect(page.getByTestId('freigabe')).toHaveText(
+    `Freigegeben mit ${betragDe(ar1.kette.zahlbetrag)} €`,
+  );
+
+  // --- Aufmaßblatt 2 und Abschlagsrechnung 2: kumuliert minus eingefrorener Zahlbetrag von AR 1 --------------------
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Aufmaß').click();
+  await blattErfassen(page, 1);
+  await toolbarLink(page, 'Soll/Ist').click();
+  await sollIstPruefen(page, fx.sollIst.nachBlatt2);
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Rechnungen').click();
+  await rechnungAnlegen(page, 1, 2);
+  await kettePruefen(page, fx.pruefungen.ar2VorKorrektur.kette, [1]);
+  await expect(page.getByTestId('freigabe')).toHaveText('Offen (nicht freigegeben)');
+
+  // --- Korrektur an Blatt 1 nach der Freigabe: AR 2 wird 10.070,67, AR 1 bleibt bei 8.874,40 (D-38) ---------------
+  const korrektur = fx.korrektur.befehl.position;
+  await page.goto(blatt1Pfad);
+  await expect(page.getByRole('heading', { level: 1, name: /^Aufmaßblatt 1 – / })).toBeVisible();
+  await kurztextZelle(blattGrid(page), oz(korrektur.positionId)).click();
+  await page.keyboard.press('F2');
+  const p = panel(page);
+  await p.getByLabel('Ausdruck Zeile 1').fill(korrektur.mengenansatz?.[0]?.ausdruck ?? '');
+  await expect(p.locator('[data-wert="zeilenergebnis"]')).toHaveText(
+    fx.korrektur.zeilenergebnisse.map(betragDe),
+  );
+  await expect(p.locator('[data-wert="summe"]')).toHaveText(betragDe(korrektur.menge));
+  await page.keyboard.press('Control+Enter');
+  await expect(p).toHaveCount(0);
+  await expect(wert(blattGrid(page), oz(korrektur.positionId), 'blattmenge')).toHaveText(
+    betragDe(korrektur.menge),
+  );
+  await toolbarLink(page, 'Soll/Ist').click();
+  await sollIstPruefen(page, fx.sollIst.nachKorrektur);
+
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Rechnungen').click();
+  await rechnungOeffnen(page, 2);
+  await kettePruefen(page, fx.pruefungen.ar2NachKorrektur.kette, [1]);
+  await rechnungOeffnen(page, 1);
+  await expect(page.getByTestId('freigabe')).toHaveText(
+    `Freigegeben mit ${betragDe(ar1.kette.zahlbetrag)} €`,
+  );
+  await expect(page.getByTestId('kette-eingefroren')).toHaveText(betragDe(ar1.kette.zahlbetrag));
+  await expect(page.getByTestId('kette-zahlbetrag')).toHaveText(
+    betragDe(fx.gegenprobeOhneEinfrieren.ar1Zahlbetrag),
+  );
+  await expect(page.getByTestId('befunde')).toContainText(
+    `Freigegeben wurden ${betragDe(ar1.kette.zahlbetrag)} €; heute ergibt die Prüfung ${betragDe(fx.gegenprobeOhneEinfrieren.ar1Zahlbetrag)} €`,
+  );
+
+  // --- Kostenkontrolle mit Abrechnung (Leistungsstand von AR 2 nach der Korrektur, D-37) -----------------------------
+  await page.goto(projektPfad);
+  await page.getByRole('link', { name: 'Kosten', exact: true }).click();
+  await page.getByRole('link', { name: 'Kostenkontrolle' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kostenkontrolle – Musterhaus' })).toBeVisible();
+  await kostenkontrollePruefen(page, true);
+
+  // --- Neuladen: alles gespeichert (U7) -----------------------------------------------------------------------------
+  await page.reload();
+  await kostenkontrollePruefen(page, true);
+  await page.goto(auftragPfad);
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await toolbarLink(page, 'Rechnungen').click();
+  await rechnungOeffnen(page, 2);
+  await page.reload();
+  await kettePruefen(page, fx.pruefungen.ar2NachKorrektur.kette, [1]);
+  await rechnungOeffnen(page, 1);
+  await expect(page.getByTestId('freigabe')).toHaveText(
+    `Freigegeben mit ${betragDe(ar1.kette.zahlbetrag)} €`,
+  );
+  await page.goto(blatt1Pfad);
+  await expect(wert(blattGrid(page), oz(korrektur.positionId), 'blattmenge')).toHaveText(
+    betragDe(korrektur.menge),
+  );
+  await toolbarLink(page, 'Soll/Ist').click();
+  await page.reload();
+  await sollIstPruefen(page, fx.sollIst.nachKorrektur);
 });
