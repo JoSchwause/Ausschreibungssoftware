@@ -1,6 +1,6 @@
 # 46: Grid: Zeilen kopieren und einfügen, per Tastatur verschieben, löschen, neue Zeile; Sprungziel (U5a)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5a) · Paket: `packages/ui-grid`
 Blocked by: 33, 29
@@ -99,6 +99,12 @@ eine Zelle, Alt+Pfeil links/rechts klappt, Leertaste wählt die Zeile, E-18):
 
 Kopie bauen (42, App 48), Undo und Papierkorb-Ansicht (48), OZ-Vergabe (42/48), Ein- und Ausrücken, Ziehen mit der Maus,
 Kopieren zwischen LVs, Änderungen an Spalten oder Summenzeile.
+
+## Answer
+
+- Gebaut: `ui-grid` U5a (`packages/ui-grid/src/zeilenaktionen.ts`, `e2e/zeilenaktionen.spec.ts`): Strg+C/X/V, Strg+Plus, Alt+Pfeil, Löschen mit Rückfrage, Sprungziel; D-46.1.
+- Merge: `64990e3` (integration/welle-3).
+- Offen: Offen: genaue Zahl im Löschdialog bei zugeklappten Knoten, Startfokus im `Dialog` von `ui-basis` (Ticket 54); Verschieben „hinter einer Gliederung“ nicht als `Einfuegeort` ausdrückbar (Ticket 53).
 
 ## Comments
 

@@ -1,6 +1,6 @@
 # 29: `vertrag` v1.2: Ergänzungen für Welle 3 (Vertrag plus Anpassung)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: F · Paket: `packages/vertrag` (dazu nur die unten gelisteten mechanischen Zeilen in `kern`, `speicher`, `gaeb`, W-03 (b))
 Blocked by: -
@@ -122,6 +122,12 @@ umkehrbare Lesart im Typ, Alternative als Offene Typfrage“, die hier weiter gi
 Logik in `kern`, `speicher`, `vergabe`, `gaeb` (Tickets 30, 37, 38, 42–45). `Summenaenderung.vorher` als Pflichtfeld
 (erst wenn Ticket 30 es überall füllt; eigenes Vertragsticket). Preisspiegel-Typen. Ein
 Stand, der das bestehende LV überschreibt.
+
+## Answer
+
+- Gebaut: `vertrag` v1.2 in `packages/vertrag/src/`: nur Typen und Kommentare (Zuschlagssatz im Angebot, `''` → `null` bei der Einheit, Befehle und ChangeSets für Papierkorb, LV-Stand, Rückgängig/Wiederholen, Kopfdaten-Befehle); dazu die markierten mechanischen Zeilen in `kern`, `speicher`, `gaeb` und `GLOSSARY.md`.
+- Merge: `cbf37a4` (integration/welle-3).
+- Offen: Offene Typfragen 1–5 blieben als enge Lesart im Typ (u. a. `Speicher.lvStaende` optional, Pflicht-EP mit Platzhalter bei Zuschlagssatz, Lage der Wurzeln bei `KnotenEinfuegen`); gesammelt in Ticket 53.
 
 ## Comments
 

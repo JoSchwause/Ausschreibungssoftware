@@ -1,6 +1,6 @@
 # 38: Speicher: Projektliste und Projektdatei, Migration auf Schema 2 (S2)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: S (S2) · Paket: `packages/speicher`
 Blocked by: 31, 29
@@ -88,6 +88,12 @@ Langtext-Sperre).
 
 Undo/Redo, LV-Stände, Papierkorb und die Protokolleinträge dafür (43); Oberfläche der Projektliste (39); Datensicherung,
 Export-Erinnerung, Sicherungsordner (S4); neue Repository-Schnittstellen im Vertrag.
+
+## Answer
+
+- Gebaut: `speicher` Schema 2 (`packages/speicher/src`: `migrationen.ts`, `dateimigration2.ts`): Projektliste, Projektdatei Version 2, Merkmale und Zuschlag, Prüfsumme und Kurzfassung für Massenbefehle im Protokoll; Messung `gross`: 5,8 MB statt 11,0 MB.
+- Merge: `2fc4ea1` (integration/welle-3).
+- Offen: Offen: `LvRepository.auflisten` liefert nur Kennungen; `LvUebersicht { id, name }` gehört in den Vertrag (Ticket 53). Fremdschlüssel `protokoll.projekt_id` (D-31.1) unverändert.
 
 ## Comments
 

@@ -1,6 +1,6 @@
 # 31: Anpassung `speicher` an v1.1a/v1.1b (`konflikt`, Löschen, Auftrags-LV, `schliessen`, Langtext-Sperre aufheben)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: S · Paket: `packages/speicher`
 Blocked by: -
@@ -87,6 +87,12 @@ Spalten oder JSON für Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Summenfe
 
 Schema 2 und alles, was oben Ticket 38 zugewiesen ist (auch die Protokoll-Kurzfassung). Undo, LV-Stände, Papierkorb (Ticket 43).
 Lesezugriff auf Auftrags-LV über ein eigenes Repository (Vertrag hat keins, Offene Typfrage D). Projektliste (Ticket 38).
+
+## Answer
+
+- Gebaut: `speicher` an v1.1a/v1.1b angepasst (`packages/speicher/src`): `konflikt` statt `unbekannt` bei Baumverletzung, Löschen mit Abhängigkeitsprüfung, Auftrags-LV, `schliessen`, Langtext-Sperre aufgehoben, strenges Lesen des v1.1b-Langtexts.
+- Merge: `2b5d1e7` (integration/welle-3).
+- Offen: Nichts offen im Ticket; Folgefragen (Projektliste, Protokoll beim Projektlöschen D-31.1) wanderten nach 38 und 43.
 
 ## Comments
 

@@ -1,6 +1,6 @@
 # 33: Anpassung `ui-grid` an v1.1a (`GridZahlen`, `wurzelId`, Hinweise)
 
-Status: merged (integration/welle-3)
+Status: resolved
 Type: task
 Welle: 3 (Phase A) · Strang: U · Paket: `packages/ui-grid`
 Blocked by: -
@@ -70,6 +70,12 @@ Das Grid nimmt die Randtypen und die Wurzel aus dem Vertrag, zeigt Befehlshinwei
 
 Merkmale bearbeiten (Ticket 47). Kopieren, Verschieben, Löschen im Grid (Ticket 46). Anbindung an Kern und Speicher
 (Ticket 39). Prüfbefunde der LV-Prüfung (Ticket 41/47; `LvZeile.befunde` bleibt wie heute).
+
+## Answer
+
+- Gebaut: `ui-grid` an v1.1a angepasst (`packages/ui-grid`): `GridZahlen`/`wurzelId`, Hinweise aus dem Kern; rechnet weiter nie (A5, N1).
+- Merge: `fd85790` (integration/welle-3).
+- Offen: Offen: `proto/interview` importiert noch `GridZahlen`/`GridIdQuelle` aus `ui-grid` und braucht `wurzelId` (nicht in diesem Paket; die Typprüfung dort schlug schon vorher fehl).
 
 ## Comments
 
