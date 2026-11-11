@@ -109,5 +109,7 @@ Lücken (nicht hier geändert):
 - **Editor (Ticket 34):** keine Schaltfläche „Tabelle einfügen“; Tabellen kommen nur über die Zwischenablage (der fixme-E2E fügt HTML ein).
 - **Grid (Ticket 46/48):** Doppelklick auf eine bearbeitbare Zelle startet immer das Bearbeiten; ein eigener Rückruf „Zeile öffnen“ fehlt. Aktive Zeile weiter nur über `onAuswahlChange` (Ticket 39).
 
-Messwert (Punkt 9, `e2e/leistung.spec.ts`, 5.000 Positionen, Prüfung läuft mit): Median gesamt 77 ms und 94 ms in zwei Läufen, App ohne Speicher Median 19 / 20 ms.
+Messwert (Punkt 9, `e2e/leistung.spec.ts`, 5.000 Positionen, Prüfung läuft mit): Median gesamt 77 / 94 / 67 ms in drei Läufen, App ohne Speicher Median 19 / 20 / 18 ms.
+
+Suite (Umsetzer): `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 1503 bestanden, 2 übersprungen (nicht aus diesem Ticket); `pnpm --filter @tethys/web e2e` 26 bestanden, 1 `fixme` (Langtext mit Liste und Tabelle, siehe Lücken).
 
