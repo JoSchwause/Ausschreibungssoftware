@@ -3,8 +3,9 @@
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
 import { expect, test, type Page } from '@playwright/test';
+import { lvBefehlAusfuehren } from '@tethys/kern';
 import type { Menge, Position } from '@tethys/vertrag';
-import type { Pruefstand, PruefSchritt } from '../harness/main';
+import type { Phasenmessung, Pruefstand, PruefSchritt } from '../harness/main';
 import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
 import { inhaltMitAllenAltenArten, mitKernSummen } from '../src/testhilfe/inhalt-v1';
@@ -153,6 +154,84 @@ test.describe('Speichern bei jedem Befehl (G-35)', () => {
     console.info(meldung);
     test.info().annotations.push({ type: 'messung', description: meldung });
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(anlegenSchritte(f).length + 20);
+  });
+});
+
+/** Phasen eines `anwenden` aus der Messung des Mess-Workers (Ticket 52). */
+function phasen(m: Phasenmessung): Record<string, number> {
+  const p = { transaktion: 0, baumpruefung: 0, vorherstand: 0, schreiben: 0, js: 0, antwort: 0 };
+  let sql = 0;
+  for (const [anweisung, t] of Object.entries(m.sql)) {
+    sql += t;
+    if (anweisung.startsWith('BEGIN') || anweisung.startsWith('COMMIT')) p.transaktion += t;
+    else if (anweisung.startsWith('SELECT k.id FROM knoten k') || anweisung.startsWith('SELECT eltern_id'))
+      p.baumpruefung += t;
+    else if (anweisung.startsWith('SELECT')) p.vorherstand += t;
+    else p.schreiben += t;
+  }
+  p.js = m.workerMs - sql;
+  p.antwort = m.gesamtMs - m.workerMs;
+  return { gesamt: m.gesamtMs, worker: m.workerMs, ...p };
+}
+
+const medianVon = (werte: readonly number[]): number =>
+  [...werte].sort((a, b) => a - b)[Math.floor(werte.length / 2)] ?? Number.NaN;
+
+test.describe('Einzeländerung in Phasen (Ticket 52)', () => {
+  test('MengeAendern auf gross (5.000 Positionen) mit den ChangeSets des Kerns: Phasen von anwenden im OPFS', async ({
+    page,
+  }) => {
+    const f = ladeFixture('gross');
+    await start(page);
+    await ps(page, 'oeffnenMessend', DB);
+    console.info(`[speicher/opfs] Schreibmodus: ${JSON.stringify(await ps(page, 'schreibmodus', DB))}`);
+    await ps(page, 'anwenden', DB, anlegenSchritte(f));
+
+    // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
+    // und des LV). Jede Änderung trifft eine andere Position, ihr Vorherstand ist also der gespeicherte.
+    const lvId = f.lv.leistungsverzeichnis.id;
+    const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
+    const AUFWAERMEN = 5;
+    const MESSUNGEN = 21;
+    const folge: PruefSchritt[] = Array.from({ length: AUFWAERMEN + MESSUNGEN }, (_, i) => {
+      const p = positionen[i * 190];
+      if (p === undefined) throw new Error('Position fehlt');
+      const befehl = { art: 'MengeAendern', positionId: p.id, menge: '7.000' as Menge } as const;
+      const cs = lvBefehlAusfuehren(f.lv, befehl);
+      if (!cs.ok) throw new Error(cs.fehler.meldung);
+      return {
+        eintrag: eintrag(2000 + i, f.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, befehl),
+        changeSet: cs.wert,
+      };
+    });
+    const r = await ps(page, 'anwendenPhasen', DB, folge);
+    expect(r.ok).toBe(true);
+    const gemessen = r.messungen.slice(AUFWAERMEN).map(phasen);
+    const median: Record<string, number> = {};
+    for (const k of Object.keys(gemessen[0] ?? {})) median[k] = medianVon(gemessen.map((g) => g[k] ?? 0));
+    const meldung =
+      `[speicher/opfs] gross: MengeAendern anwenden in Phasen (${String(MESSUNGEN)} Läufe, Median ms): ` +
+      Object.entries(median)
+        .map(([k, v]) => `${k} ${v.toFixed(1)}`)
+        .join(', ');
+    console.info(meldung);
+    test.info().annotations.push({ type: 'messung', description: meldung });
+    // Je Anweisung (Median ms), die teuersten zuerst: zeigt, wo in einer Phase die Zeit steht.
+    const anweisungen = Object.keys(r.messungen[0]?.sql ?? {})
+      .map((a): [string, number] => [a, medianVon(r.messungen.slice(AUFWAERMEN).map((m) => m.sql[a] ?? 0))])
+      .sort((a, b) => b[1] - a[1]);
+    console.info(anweisungen.map(([a, t]) => `  ${t.toFixed(1).padStart(6)}  ${a}`).join('\n'));
+    // Dateizugriffe im OPFS je Aufruf (Median Anzahl und ms je Methode des Zugriffshandles).
+    const gemesseneLaeufe = r.messungen.slice(AUFWAERMEN);
+    const opfs = [...new Set(gemesseneLaeufe.flatMap((m) => Object.keys(m.opfs)))].map((k) => {
+      const anzahl = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.anzahl ?? 0));
+      const zeit = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.ms ?? 0));
+      return `${k} ${String(anzahl)}× ${zeit.toFixed(1)} ms`;
+    });
+    console.info(`[speicher/opfs] Zugriffshandle je anwenden (Median): ${opfs.join(', ')}`);
+    expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(
+      anlegenSchritte(f).length + AUFWAERMEN + MESSUNGEN,
+    );
   });
 });
 

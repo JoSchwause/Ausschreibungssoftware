@@ -19,6 +19,8 @@ import type {
 } from '@tethys/vertrag';
 import SpeicherWorker from '@tethys/speicher/worker?worker';
 import Schema1Worker from './schema1-worker?worker';
+import MessWorker from './mess-worker?worker';
+import type { Schreibmodus, Workermessung } from './mess-worker';
 import { kanonischKompakt } from '../src/kanonisch';
 import { speicherOeffnen, type GeoeffneterSpeicher } from '../src/index';
 import { normalisiere } from '../src/testhilfe/normalisiere';
@@ -34,6 +36,14 @@ const kurz = <T>(r: Ergebnis<T, Speicherfehler>): Kurz =>
   r.ok ? { ok: true } : { ok: false, code: r.fehler.code, meldung: r.fehler.meldung };
 
 const offen = new Map<string, GeoeffneterSpeicher>();
+/** Letzte Messung des Mess-Workers je Datenbank (Ticket 52). */
+const messungen = new Map<string, Workermessung | null>();
+const schreibmodi = new Map<string, Schreibmodus>();
+
+/** Ein `anwenden` in Phasen: Zeit im Client (gesamt), im Worker und je SQL-Anweisung. */
+export interface Phasenmessung extends Workermessung {
+  readonly gesamtMs: number;
+}
 
 function neuerWorker(): Worker {
   return new SpeicherWorker();
@@ -78,6 +88,48 @@ const harness = {
       if (!r.ok) return { ...r, ms: performance.now() - t0 };
     }
     return { ok: true, ms: performance.now() - t0 };
+  },
+
+  /**
+   * Öffnet die Datenbank über den Mess-Worker (Ticket 52): Jede Antwort trägt die Zeit im Worker und je SQL-Anweisung.
+   * Der eigene Empfänger steht vor dem des Clients, die Messung liegt also vor, wenn `anwenden` zurückkommt.
+   */
+  async oeffnenMessend(name: string): Promise<Kurz> {
+    const worker = new MessWorker();
+    worker.addEventListener(
+      'message',
+      (e: MessageEvent<{ messung?: Workermessung; schreibmodus?: Schreibmodus }>) => {
+        if (e.data.schreibmodus !== undefined) schreibmodi.set(name, e.data.schreibmodus);
+        else messungen.set(name, e.data.messung ?? null);
+      },
+    );
+    const r = await speicherOeffnen({ worker, datenbank: name });
+    if (r.ok) offen.set(name, r.wert);
+    return kurz(r);
+  },
+
+  /** Schreibmodus der über den Mess-Worker geöffneten Datenbank (PRAGMA-Werte). */
+  schreibmodus(name: string): Schreibmodus | null {
+    return schreibmodi.get(name) ?? null;
+  },
+
+  /** Wie `anwendenGemessen`, dazu die Phasen aus dem Mess-Worker je Aufruf. */
+  async anwendenPhasen(
+    name: string,
+    schritte: readonly PruefSchritt[],
+  ): Promise<{ ok: boolean; messungen: Phasenmessung[] }> {
+    const s = hole(name);
+    const liste: Phasenmessung[] = [];
+    for (const x of schritte) {
+      messungen.set(name, null);
+      const t0 = performance.now();
+      const r = await s.anwenden(x.eintrag, x.changeSet);
+      const gesamtMs = performance.now() - t0;
+      const m = messungen.get(name);
+      if (!r.ok || m === null || m === undefined) return { ok: false, messungen: liste };
+      liste.push({ gesamtMs, ...m });
+    }
+    return { ok: true, messungen: liste };
   },
 
   /** Wendet jedes ChangeSet einzeln an und misst jeden Aufruf (Speichern bei jedem Befehl, G-35). */

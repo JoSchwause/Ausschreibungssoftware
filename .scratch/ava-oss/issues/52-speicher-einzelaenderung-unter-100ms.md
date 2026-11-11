@@ -1,6 +1,6 @@
 # 52: Speicher: Einzeländerung bei 5.000 Positionen unter 100 ms bis zur Summenzeile
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: S · Paket: `packages/speicher` (dazu Messung in `apps/web/e2e/leistung.spec.ts`)
 Blocked by: –
