@@ -69,7 +69,8 @@ allein: Median 1,4 bis 1,6 ms (Budget 16).
 
 ## Answer
 
-Behoben auf `welle-5/72-summenvorher` (58d0d8c, 078d604, 4ec59cf; Merge von `integration/welle-5` bis 579aa99). `vorher`
-nennt nur gespeicherte Summen; Rückgängig stellt den Summenstand rein und im Zeilenmodell von `speicher` exakt her. Suite:
-`pnpm lint`, `pnpm typecheck` grün; `pnpm test` 2034 bestanden, 2 übersprungen, 1 Leistungsbudget nur unter Parallellast
-(siehe oben, allein grün); `node --test` 22 bestanden. `speicher` braucht keine Änderung.
+Behoben auf `welle-5/72-summenvorher` (58d0d8c, 078d604, 4ec59cf; Merge von `integration/welle-5` bis 3923136). `vorher`
+nennt nur gespeicherte Summen; Rückgängig stellt den Summenstand rein und im Zeilenmodell von `speicher` exakt her. Suite
+nach dem letzten Merge: `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 2080 bestanden, 2 übersprungen; `node --test` 22
+bestanden (in früheren Läufen fiel nur das Preisspiegel-Budget unter Parallellast, siehe oben). `speicher` braucht keine
+Änderung.
