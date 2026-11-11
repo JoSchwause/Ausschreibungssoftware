@@ -26,7 +26,7 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 |---|---|---|
 | `winzig.json` | 1 Titel, 3 Positionen, Netto 2.565,00 | selbst verfasst, vom Skript erzeugt |
 | `typisch.json` | 3 Titel, 25 Positionen, 2 Hinweistexte, MwSt 19 %, Nachlass 2,00 %; Netto 55.465,59, Brutto 64.683,97 | selbst verfasst, Daten im Skript, Sollwerte berechnet |
-| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A; Preisspiegel-Sollwerte (Ticket 69) | selbst verfasst, Preise und Sätze per Seed gestreut |
+| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A; Ausreißer nach D-05 (Ticket 75); Preisspiegel-Sollwerte (Ticket 69) | selbst verfasst, Preise und Sätze per Seed gestreut |
 | `angebote/typisch-bieter-{a,b,c}.x84` | die drei Angebote als GAEB DA XML 3.3, Phase 84 (Ticket 69) | vom Skript aus `typisch-angebote.json` erzeugt, eigener XML-Baustein |
 | `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross`, Zuschlagssätze aus Seed `fixtures-v1/gross/zuschlagssatz` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
@@ -61,6 +61,8 @@ Sollwerte: { positionen:{id:{gp, inSumme}}, titel:{id:{summe}}, summen:{netto, n
 Angebotsset: { schemaVersion, art:"angebotsset", lvId, lvName, bieter[{id,name}],
                angebote[{id, bieterId, nachlass|null, positionen[{positionId, status, [einheitspreis], [zuschlagssatz]}], sollwerte}],
                ausreisserAnnahmeA7, preisspiegel }
+ausreisserAnnahmeA7 (Ticket 75, nach D-05): { schwellePromille:"200", regel, jeAngebot:{angebotId:[positionId]} }
+  Positions-IDs je Angebot in Dokumentreihenfolge, alle drei Angebote zusammen verglichen (siehe A7).
 Preisspiegel (Ticket 69, additiv): { regel,
                bieter[{angebotId, bieterId, name, datei, summen:{netto, nachlass, nettoNachNachlass, mwst, brutto}, titel:{OZ: summe}}],
                vergleiche[{angebotIds[], rang:{angebotId: "1"}, virtuelleSummen:{min, mittel, max, schaetzpreis}}] }
@@ -93,7 +95,7 @@ Die Ordnungszahl ist Anzeigedatum, kein Schlüssel; Bezüge laufen über IDs. De
 | `mwst` | `round_half_up(nettoNachNachlass × Satz / 100, 2)`, einmal auf die Summe, nicht je Position (N2) |
 | `brutto` | `nettoNachNachlass + mwst` |
 | Zuschlagsbetrag (`gp` der Zuschlagsposition, `zuschlaege`) | R1: `round_half_up(Basis × Satz / 100, 2)`; Basis nach R2 bis R5 (siehe Annahme A4) |
-| `ausweise` | Summe der Beträge der Wahlpositionen (`summeWahl`) bzw. der Bedarfspositionen ohne Gesamtbetrag (`summeBedarfOhneGesamtbetrag`), je Titel einschließlich Untertitel und für das LV (F4, Ticket 37 Teil 1) |
+| `ausweise` | Summe der Beträge der Wahlpositionen (`summeWahl`) bzw. der Bedarfspositionen ohne Gesamtbetrag (`summeBedarfOhneGesamtbetrag`), je Titel einschließlich Untertitel und für das LV (F4, Ticket 37 Teil 1); Herleitung siehe „Bedarfs- und Wahlsumme der LV“ |
 
 Negative Werte kommen nicht vor; das Skript lehnt sie ab, bis Ticket 04 die Rundung negativer Beträge entscheidet.
 Ein Angebot rechnet mit denselben Regeln, nur mit den EP und Sätzen des Bieters (R7, „gedachtes LV“).
@@ -153,6 +155,25 @@ Hinweis für Verbraucher: Der Schätzpreis setzt ein LV mit den EP aus `typisch.
 LV trägt keine EP (X83 ist die Angebotsaufforderung); dort ist der Schätzpreis 0,00. Alle übrigen Werte hängen nur an
 Mengen, Bezügen und den Preisen der Bieter.
 
+## Bedarfs- und Wahlsumme der LV (Ticket 75)
+
+Unabhängige Sollwerte für den LV-Druck (Ticket 58, D-58.4) und jeden anderen Verbraucher: `sollwerte.ausweise.gesamt`
+und `sollwerte.ausweise.titel[<Titel-ID>]` mit `summeBedarfOhneGesamtbetrag` und `summeWahl` (dieselben Namen wie in den
+Gesamt- und Gliederungssummen des Vertrags). Regel: GP je Position = `round_half_up(Menge × EP, 2)` (N2); eine
+Bedarfsposition ohne Gesamtbetrag (GAEB `Provis` = `WithoutTotal`) und eine Wahlposition (GAEB `ALNGroupNo`/`ALNSerNo`)
+gehen nicht in Netto und Titelsumme ein, ihre GP werden getrennt summiert und ausgewiesen (F4, E-04), je Titel
+einschließlich Untertitel. Der Selbsttest zählt beide Summen ein zweites Mal unmittelbar aus den Knoten nach (nicht über
+`berechneSollwerteGaeb`).
+
+| Datei | `ausweise` | Bedarfssumme ohne GB | Wahlsumme |
+|---|---|---|---|
+| `typisch` | ja | 586,80 (Titel 01) | 5.880,00 (Titel 02) |
+| `gross` | ja | 5.442.164,43 | 3.600.459,51 |
+| `winzig`, `zuschlag` | nein: keine Bedarfs- und keine Wahlposition, beide Summen 0,00 (im Druck keine Zeile, D-58.4) | – | – |
+
+Handrechnung `typisch`: 01.0040 (Bedarf ohne Gesamtbetrag) 12,000 h × 48,900 = **586,80**; 02.0070 A (Wahl)
+96,000 m² × 61,250 = **5.880,00**; Titel 03 trägt beide Summen mit 0,00. Netto (55.465,59) enthält keine der beiden.
+
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
 - 01.0010: 1,235 × 10,000 = 12,35 (exakt 12,35000)
@@ -204,12 +225,24 @@ Sollwerte der betroffenen Fälle gelten nur unter der jeweiligen Annahme.
   „402,73 − 3 % = 390,6481 → 390,65“, das rundet das Ergebnis. Beide Wege stimmen überein, außer bei einem
   Rundungsgleichstand; der Selbsttest prüft für jede Fixture, dass beide Wege dasselbe liefern. Welcher Weg gilt, ist offen.
   Ein Angebot trägt seinen eigenen Nachlass; es erbt den des LV nicht. MwSt-Satz des Angebots ist der des LV (19,00).
-- **A7 Ausreißer** (nur in `typisch-angebote.json`, Schlüssel `ausreisserAnnahmeA7`): Das Glossar nennt ±20 % vom Mittelwert
-  oder Referenzpreis, ohne Bezugsgröße. Hier: je Position der GP; Mittel = arithmetisches Mittel der GP aller Angebote, die
-  die Position angeboten haben (einschließlich des geprüften), mindestens 3 Werte, Mittel > 0; Ausreißer, wenn die
-  Abweichung strikt größer als 20 % ist, exakt per Ganzzahlvergleich. Folgen: Bieter C hat zwei absichtliche Ausreißer
-  (150 % des Basispreises) und einen 0,000-Preis; der 0,000-Preis zieht das Mittel so weit herunter, dass auch A und B
-  an dieser Position als Ausreißer erscheinen. Das ist eine Folge der Annahme, kein Sollwert für V2.
+- **A7 Ausreißer** (nur in `typisch-angebote.json`, Schlüssel `ausreisserAnnahmeA7`; seit Ticket 75 nach D-05, D-36.1 und
+  D-44.1, Annahmen für die Demo; der Schlüssel heißt weiter so, damit Verbraucher ihn finden): Das Glossar nennt ±20 % vom
+  Mittelwert. Je Position (alle Zeilen des Preisspiegels) ist der verglichene Wert eines Angebots sein EP, an einer
+  Zuschlagsposition sein Betrag. Gezählt werden nur Werte > 0: Ein Nullpreis (0,000) und „nicht angeboten“ haben eigene
+  Kennzeichen und sind nie Ausreißer. Ab zwei Werten > 0 mit Summe > 0 ist ein Wert Ausreißer, wenn er strikt mehr als
+  20 % vom Mittel abweicht, exakt ganzzahlig: |n × Wert − Summe| × 100 > 20 × Summe. Verglichen werden alle drei Angebote
+  zusammen. Ergebnis (`rechnen.mjs`, `ausreisserSollwerte`; der Selbsttest rechnet es eigens aus den Angebotszeilen nach):
+  nur Bieter C, an 02.0050 und 03.0030, beide nach oben (absichtlich 150 % des Basispreises):
+  - 02.0050: EP 165,184 / 174,980 / 253,350, Summe 593,514, Mittel 197,838; C: 3 × 253,350 − 593,514 = 166,536 >
+    0,20 × 593,514 = 118,7028 (+28,1 %). A (−16,5 %) und B (−11,6 %) nicht.
+  - 03.0030: EP 21,647 / 23,609 / 32,700, Summe 77,956; C: 98,100 − 77,956 = 20,144 > 15,5912 (+25,8 %).
+  - 03.0080: C bietet 0,000 (Nullpreis, zählt nicht); A 2,107 und B 2,261 weichen je 0,077 (3,5 %) vom Mittel 2,184 ab.
+    Vor Ticket 75 verglich A7 den GP und zählte den Nullpreis mit; dann waren hier alle drei Bieter Ausreißer.
+  - 02.0050 A (Beträge 544,71 / 617,02 / 772,62, Summe 1.934,35): C 3 × 772,62 − 1.934,35 = 383,51 < 386,87
+    (+19,8 %), knapp kein Ausreißer.
+  - 03.0070 (B nicht angeboten): A 4,101 und C 3,844, zwei Werte, je 3,2 % vom Mittel, kein Ausreißer.
+  Bei einer Schwelle von 200 % gibt es keinen Ausreißer (D-63.9: bei drei Werten > 0 liegt keiner mehr als 200 % über
+  oder 100 % unter dem Mittel). Für die Paare in `preisspiegel.vergleiche` trägt die Fixture keine Ausreißer.
 - **A8 Titelsummen** enthalten nur Positionen mit `inSumme: true`. Hinweistexte tragen keine Beträge.
 - **A9 „Gliederungsebenen“** zählt Titelebenen (`gross`: 5). Lose werden in v1 nicht verwendet.
 - **A10 Indexposition:** `ozIndex` ist ein Buchstabe neben der Ordnungszahl; in `typisch` tragen die Wahl- und die
