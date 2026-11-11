@@ -1,6 +1,6 @@
 # 83: M3: GAEB X31 (Mengenermittlung) lesen und schreiben
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: M3 · Paket: `packages/gaeb` (dazu `werkzeuge/xsd-gegenpruefung.mjs` im Paket)
 Blocked by: 70, 73
@@ -30,10 +30,10 @@ Herkunft: `plan.md` §2 M3; D-33 (nur X31, DA11 später)
 
 ## Acceptance criteria
 
-- [ ] BVBS-X31 gelesen: alle Items zugeordnet oder mit Befund; Golden-Test der Ansatzzeilen einer Position mit mehrzeiliger
+- [x] BVBS-X31 gelesen: alle Items zugeordnet oder mit Befund; Golden-Test der Ansatzzeilen einer Position mit mehrzeiliger
       Formel 91
-- [ ] Rundweg-Tests (Q3), XSD-Gegenprüfung grün (`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Rundweg-Tests (Q3), XSD-Gegenprüfung grün (`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nachträge aus dem Review von v1.4 (D-42)
 
@@ -103,3 +103,29 @@ und Faktor, 30–31 Formel, 32–69 Werte bzw. Ausdruck (`=` am Ende schließt a
   gaeb.de mit SHA-256 im Skript, zur Laufzeit geladen, nie committet; geprüft werden das gelesene BVBS-Blatt und ein eigenes
   Blatt × 3.3/3.2. Das XSD schreibt für `Row` genau 80 Zeichen mit 11 führenden Leerzeichen vor. (Ein Paket
   `2023-01_Mengenermittlung.zip` gibt es auch; gewählt ist 2021-05 wie bei den LV-Schemas.)
+- Prüfung nach Merge von `integration/welle-5` (ecc98ac, Merge a537073): `pnpm lint`, `pnpm typecheck` grün; `pnpm test`
+  grün (Vitest 160 Dateien, 2240 Tests bestanden, 3 übersprungen; Fixtures 29/29); XSD-Gegenprüfung 52 von 52 (davon 4 X31).
+- Für Folgetickets: Ticket 87 (App) zeigt Ansatzzeilen in der Textform (`ausdruck` beginnt mit `*`) als Text an, nicht als
+  bearbeitbaren Ausdruck; `mengen` weist sie ab, die Menge der Position bleibt leer. Bezeichnung und Datum des Blatts fragt
+  die App ab (D-83.6). Der Begriff „Textform (einer Ansatzzeile)“ fehlt im `GLOSSARY.md` (außerhalb von `packages/gaeb`,
+  P2): Vorschlag für den Orchestrator.
+
+## Answer
+
+Umgesetzt in `packages/gaeb` (Branch `welle-5/83-x31`, letzter Commit vor dem Merge e93c7ba, Merge a537073). Öffentliche API
+(`@tethys/gaeb`):
+
+- `x31Lesen(eingabe: Uint8Array | string, auftragsLv: AuftragsLvZustand, opt?: VorlaufOptionen): X31Lesung` mit
+  `X31Lesung { aufmass: X31Aufmass | null; phase; version; befunde }` und
+  `X31Aufmass = Omit<Aufmass, 'id' | 'projektId' | 'auftragsLvId' | 'nummer'>` (D-42). Formel 91 → Ansatzzeilen (`Z<n>` für
+  Verweise in der Position), Menge `null`; alles andere in der Textform (D-83.2) mit Befund; Textzeilen sind Befund.
+  Befundcodes: `position-unbekannt`, `formel-nicht-unterstuetzt`, `zeile-nicht-abbildbar`, `zeile-ohne-formel`,
+  `menge-mehrfach` (Fehler); `bemerkung-nicht-abgebildet`, `formel-ohne-abschluss`, `menge-nicht-uebernommen`,
+  `zeile-laenge`, `verfahren-abweichend`, `maske-abweichend`, `nicht-abgebildet` (Warnungen).
+- `aufmassAlsX31(aufmass: Aufmass, auftragsLv: AuftragsLvZustand, version: '3.3' | '3.2', opt: X31SchreibOptionen):
+  GaebExport` mit `X31SchreibOptionen { erstellt: { datum; zeit }; programm }` (D-83.8); Befundquelle `gaeb-pruefung`,
+  Fehler → Entwurf.
+- Zeilenformat in eigenen Worten: `packages/gaeb/src/reb.ts`. Tests: `packages/gaeb/src/x31.test.ts` (26 Tests: BVBS-Datei
+  mit Golden der mehrzeiligen Formel 91 an 002.001.0020, Regeln, beide Rundwege). XSD: `werkzeuge/xsd-gegenpruefung.mjs`
+  lädt die amtlichen X31-Schemas 3.3/3.2 mit SHA-256.
+- Entscheidungen D-83.1 bis D-83.12 unter Comments. Offen: Glossarbegriff „Textform“ (außerhalb des Pakets).
