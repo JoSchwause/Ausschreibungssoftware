@@ -4,7 +4,7 @@
 
 import { formatiereBetragDe } from '@tethys/dezimal';
 import type { Befundort, Befundschwere, Betrag, Dezimal, Zahlenart } from '@tethys/vertrag';
-import { rechnungPruefen } from './pruefen';
+import { summenregelnPruefen } from './pruefen';
 import type {
   Eingangsrechnung,
   Rechnungsposition,
@@ -147,7 +147,7 @@ export function xrechnungLesen(text: string, optionen: XRechnungOptionen = {}): 
     return { syntax: null, rechnung: null, befunde: [befund] };
   }
   const { rechnung, befunde } = uebernehmen(roh);
-  return { syntax, rechnung, befunde: [...befunde, ...rechnungPruefen(rechnung)] };
+  return { syntax, rechnung, befunde: [...befunde, ...summenregelnPruefen(rechnung)] };
 }
 
 // --- UBL 2.1 -----------------------------------------------------------------------------------------------------

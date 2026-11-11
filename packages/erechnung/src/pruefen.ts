@@ -21,7 +21,7 @@ function alle(werte: readonly (Betrag | null)[]): Betrag[] | null {
   return ohne.length === werte.length ? ohne : null;
 }
 
-export function rechnungPruefen(rechnung: Eingangsrechnung): XRechnungBefund[] {
+export function summenregelnPruefen(rechnung: Eingangsrechnung): XRechnungBefund[] {
   const befunde: XRechnungBefund[] = [];
   const s = rechnung.summen;
   const oderNull = (b: Betrag | null): Betrag => b ?? NULL_BETRAG;
