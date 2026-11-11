@@ -9,3 +9,11 @@ export type {
   Kostengruppennummer,
 } from './kostengruppe';
 export { kgEbene, kgElternteil, kgLesen, kgSortieren, kgVergleichen, kgVorfahren } from './kostengruppe';
+export type {
+  Kostenbefund,
+  Kostenbefundcode,
+  Kostenermittlungseintrag,
+  Kostenermittlungsergebnis,
+  Kostengruppensumme,
+} from './kostenermittlung';
+export { kostenermittlungBerechnen } from './kostenermittlung';
