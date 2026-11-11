@@ -1,6 +1,6 @@
 # 81: A2+A3: Soll/Ist, Leistungsstand, Rechnungsprüfung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A2, A3 · Paket: `packages/abrechnung`
 Blocked by: 70, 80
