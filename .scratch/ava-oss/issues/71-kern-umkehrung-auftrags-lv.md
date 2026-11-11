@@ -1,6 +1,6 @@
 # 71: Kern v1.4: Befehle am Auftrags-LV, Umkehrung, neue LV-Befehle
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: K · Paket: `packages/kern`
 Blocked by: 70
