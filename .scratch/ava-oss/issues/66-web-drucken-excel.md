@@ -35,3 +35,9 @@ Herkunft: `plan.md` §2 O1, O2, V5
 Druckprofile (O3), Preisspiegel-Druck.
 
 ## Comments
+
+### Aus Tickets 58 und 61 (Orchestrator)
+- `baueAusgabemodell(zustand, { mitPreisen, datum, projekt })`: `LvZustand` trägt weder Projektname noch Bauherr; die App übergibt `projekt`. Alle vier Schriftdateien (Noto Sans normal/fett/kursiv/fett-kursiv) laden.
+- `lvAlsExcel` liefert `{ bytes, befunde }`; Befunde des Exports (zu lange Texte, > 15 Stellen) vor dem Download zeigen. `ExcelBefund` lebt in `ausgabe` (nicht `Befundquelle` im Vertrag): die App zeigt sie in der Import-/Export-Vorschau selbst, nicht im Prüf-Panel.
+- Eine Zeile mit Befund in einer Zahlzelle ergibt keine Angebotsposition (weder angeboten noch „nicht angeboten“); eine Datei für ein anderes LV übernimmt nichts.
+- „Excel-Rundlauf“ und „Blankett“ ins `GLOSSARY.md` (L2), falls die Oberfläche die Begriffe zeigt.
