@@ -1,6 +1,6 @@
 # 72: `vergabe`: `summen.vorher` für eine nach dem Angebot hinzugekommene LV-Position
 
-Status: done-by-agent
+Status: resolved
 Type: bug
 Welle: 5 · Strang: V · Paket: `packages/vergabe`
 Blocked by: –
@@ -74,3 +74,5 @@ nennt nur gespeicherte Summen; Rückgängig stellt den Summenstand rein und im Z
 nach dem letzten Merge: `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 2080 bestanden, 2 übersprungen; `node --test` 22
 bestanden (in früheren Läufen fiel nur das Preisspiegel-Budget unter Parallellast, siehe oben). `speicher` braucht keine
 Änderung.
+
+Merged: 352a880de8215b70ca95121b134d17d2f9795d9d in integration/welle-5
