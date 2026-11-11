@@ -28,6 +28,12 @@ import {
   lvBefehlAusfuehren,
   lvChangeSetAnwenden,
 } from '@tethys/kern';
+import {
+  kostenermittlungBefehlAusfuehren,
+  kostenermittlungChangeSetAnwenden,
+  kostenkontrolleBerechnen,
+} from '@tethys/kosten';
+import type { Kostenkontrollwerte } from '@tethys/kosten';
 import { mengenansatzBerechnen } from '@tethys/mengen';
 import { zuschlagErteilen } from '@tethys/vergabe';
 import type {
@@ -69,12 +75,6 @@ import {
   satz,
 } from '../../../packages/abrechnung/src/testhilfen';
 import type { FxKnoten, FxPruefung, FxSollIst } from '../../../packages/abrechnung/src/testhilfen';
-import {
-  kostenermittlungBefehlAusfuehren,
-  kostenermittlungChangeSetAnwenden,
-  kostenkontrolleBerechnen,
-} from '../../../packages/kosten/src/index';
-import type { Kostenkontrollwerte } from '../../../packages/kosten/src/index';
 
 // --- Fixtures ------------------------------------------------------------------------------------------------------
 
