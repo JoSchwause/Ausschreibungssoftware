@@ -63,7 +63,8 @@ describe('LeistungsverzeichnisLoeschen', () => {
     expect(cs.summen.positionen).toEqual([]);
     expect(cs.summen.gliederungen).toEqual([]);
     expect(cs.summen.gesamt).toBeNull();
-    expect(cs.summen.vorher?.gesamt).toEqual({
+    // v1.3: mechanisch angepasst, Folgeticket (`summen.vorher` Pflicht: kein `?.`)
+    expect(cs.summen.vorher.gesamt).toEqual({
       netto: '42.50',
       nachlass: '4.25',
       nettoNachNachlass: '38.25',
@@ -72,9 +73,9 @@ describe('LeistungsverzeichnisLoeschen', () => {
       summeBedarfOhneGesamtbetrag: '0.00',
       summeWahl: '0.00',
     });
-    expect(cs.summen.vorher?.positionen).toEqual([]);
-    expect(cs.summen.vorher?.gliederungen).toEqual([]);
-    expect(cs.summen.vorher?.entfernt).toEqual({
+    expect(cs.summen.vorher.positionen).toEqual([]);
+    expect(cs.summen.vorher.gliederungen).toEqual([]);
+    expect(cs.summen.vorher.entfernt).toEqual({
       positionen: [
         { positionId: 'P1', gesamtpreis: '20.00', gehtInSummeEin: true },
         { positionId: 'P2', gesamtpreis: '15.00', gehtInSummeEin: true },

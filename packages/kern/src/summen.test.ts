@@ -979,8 +979,9 @@ describe('Umkehrung mit Summen', () => {
 
   it('die Umkehrung liest die alten Summen allein aus dem ChangeSet (summen.vorher, v1.1a)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(z0, mengeAendern(p1, '123.456')));
-    expect(cs.summen.vorher?.gesamt).toEqual(z0.summen.gesamt);
-    expect(cs.summen.vorher?.positionen).toEqual(z0.summen.positionen.filter((p) => p.positionId === p1));
+    // v1.3: mechanisch angepasst, Folgeticket (`summen.vorher` Pflicht: kein `?.`)
+    expect(cs.summen.vorher.gesamt).toEqual(z0.summen.gesamt);
+    expect(cs.summen.vorher.positionen).toEqual(z0.summen.positionen.filter((p) => p.positionId === p1));
     const rueck = changeSetUmkehren(cs);
     expect(rueck.summen.positionen.length).toBeGreaterThan(0);
     expect(rueck.summen.gesamt).toEqual(z0.summen.gesamt);
@@ -993,6 +994,8 @@ describe('Umkehrung mit Summen', () => {
       gliederungen: cs.summen.gliederungen,
       gesamt: cs.summen.gesamt,
     };
+    // v1.3: mechanisch angepasst, Folgeticket (seit v1.3 ist `vorher` Pflicht, der Wert ist kein gültiges ChangeSet mehr)
+    // @ts-expect-error -- Summenaenderung ohne vorher
     expect(() => changeSetUmkehren({ ...cs, summen: alt })).toThrow();
   });
 });

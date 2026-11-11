@@ -354,3 +354,11 @@ Question: `epaBezeichnungen` als dichte Liste (Eintrag i = `UPComp<i+1>`) kann k
 Decision: `EpaBezeichnung { nummer: 1..6; anteil: EpaArt; bezeichnung: string | null }`, nach `nummer` sortiert, `nummer` und `anteil` je eindeutig, Feld optional. Fehlende Nummer = Platz nicht belegt; `bezeichnung: null` = Art aus `Type` bekannt, Beschriftung leer; Feld fehlt = heutige feste Belegung des Writers. Writer nummerieren nie um; ob das XSD Lücken in `LblUPComp` zulässt, prüft Ticket 68 (sonst Platzhalter-Beschriftung, keine Umnummerierung).
 Reason: Die Platznummer ist der einzige Schlüssel, der `UPComp<n>` eines Bieters (X84 ohne `LblUPComp`) einer Art zuordnet; eine dichte Liste verschöbe Preise still in eine falsche Art (Q5).
 Reversible: yes (noch nicht gespeichert)  Touches: packages/vertrag, Tickets 57, 68
+
+## D-53.1 Enge Lesarten im Vertrag v1.3
+Welle 4 · Ticket 53 · decided by: implementer
+Question: Wo lässt Ticket 53 (mit D-22) die Typform offen?
+Decision: `LvUebersicht` nur `{ id, name }`, sortiert wie die Projektliste; `Projektdatei.lvStaende` bleibt optional (nur `Speicher.lvStaende` wird Pflicht); neue Ortsform `{ art: 'hinter-gliederung'; gliederungId }` nur für Gliederungen, `nach` unverändert, der Kern weist sie bis Ticket 56 mit `befehl-nicht-zustaendig` ab; `auftragnehmer?` und `epaBezeichnungen?` (geordnet nach `UPComp<n>`) am gemeinsamen `LvInhaltKopf`; `MengenansatzSetzen` setzt die Menge auch beim Entfernen des Ansatzes, `[]` gilt wie `null`; `speicher` weist die neuen Felder bis Ticket 57 mit `unbekannt` ab (Q5). Alternativen als Offene Typfragen 1–8 in Ticket 53.
+Reason: Additiv, wo möglich; nicht Additives (Punkte 3, 4, 5, 9 und die Rückgabe von `auflisten`) nur mit markierter mechanischer Anpassung (W-03 (b)); kein stiller Datenverlust.
+Reversible: yes  Touches: packages/vertrag, mechanische Zeilen in kern, mengen, speicher, vergabe, ui-grid (E2E), apps/web, proto
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-22).

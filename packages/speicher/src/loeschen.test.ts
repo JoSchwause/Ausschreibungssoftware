@@ -31,6 +31,7 @@ import {
 import { imProtokoll, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
 import type { SpeicherKern } from './kern';
 import type { Datenbank } from './sql';
+import { LEERES_SUMMENVORHER } from './vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket
 
 const typisch = ladeFixture('typisch');
 const winzig = ladeFixture('winzig');
@@ -67,7 +68,7 @@ function zeilenVon(db: Datenbank, aggregatId: string): number {
 /** Die Umkehrung eines LV-Löschens ist das Anlegen (Vertrag, `LvChangeSet`): ohne Kern gebaut, nur aus dem ChangeSet. */
 function umkehrLv(cs: LvChangeSet): LvChangeSet {
   const vorher = cs.summen.vorher;
-  if (cs.kopf === null || vorher === undefined) throw new Error('kein Löschen');
+  if (cs.kopf === null) throw new Error('kein Löschen'); // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   return {
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: cs.leistungsverzeichnisId,
@@ -77,13 +78,14 @@ function umkehrLv(cs: LvChangeSet): LvChangeSet {
       positionen: vorher.entfernt.positionen,
       gliederungen: vorher.entfernt.gliederungen,
       gesamt: vorher.gesamt,
+      vorher: LEERES_SUMMENVORHER, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     },
   };
 }
 
 function umkehrAngebot(cs: AngebotChangeSet): AngebotChangeSet {
   const vorher = cs.summen.vorher;
-  if (cs.kopf === null || vorher === undefined) throw new Error('kein Löschen');
+  if (cs.kopf === null) throw new Error('kein Löschen'); // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   return {
     art: 'angebot',
     angebotId: cs.angebotId,
@@ -93,6 +95,7 @@ function umkehrAngebot(cs: AngebotChangeSet): AngebotChangeSet {
       positionen: vorher.entfernt.positionen,
       gliederungen: vorher.entfernt.gliederungen,
       gesamt: vorher.gesamt,
+      vorher: LEERES_SUMMENVORHER, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     },
   };
 }
@@ -119,7 +122,7 @@ describe('konflikt (v1.1a, Punkt 3)', () => {
         geaendert: [{ vorher: { ...p, kurztext: 'veraltet' }, nachher: { ...p, kurztext: 'neu' } }],
         entfernt: [],
       },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     };
     expect(code(await kern.anwenden(lvEintrag(), cs))).toBe('konflikt');
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
@@ -368,7 +371,7 @@ describe('Auftrags-LV (v1.1a, Punkt 5)', () => {
       auftragsLeistungsverzeichnisId: auftragId,
       kopf: null,
       knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher }], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     });
     const neu = { ...p, kurztext: 'Im Auftrag geändert' };
     wert(await kern.anwenden(auftragEintrag(auftrag), aendern(p, neu)));

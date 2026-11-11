@@ -39,8 +39,8 @@ export function StaendeDialog(props: {
   const [liste, setListe] = useState<readonly LvStandUebersicht[] | null>(null);
 
   const laden = useCallback(async () => {
-    const r = await u.speicher.lvStaende?.auflisten(lvId);
-    setListe(r?.ok ? r.wert : []);
+    const r = await u.speicher.lvStaende.auflisten(lvId); // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
+    setListe(r.ok ? r.wert : []);
   }, [u, lvId]);
 
   useEffect(() => {
@@ -70,9 +70,9 @@ export function StaendeDialog(props: {
       titel={t.titel}
       fuss={<Button onClick={onSchliessen}>{t.schliessen}</Button>}
     >
-      {u.speicher.lvStaende === undefined ? (
-        <p>{t.nichtVerfuegbar}</p>
-      ) : (
+      {/* v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht): kein Zweig „nicht verfügbar“ mehr;
+          die Klammer bleibt, damit der Block nicht neu eingerückt wird (Ticket 67 räumt auf) */}
+      {
         <>
           <form
             id={formId}
@@ -123,7 +123,7 @@ export function StaendeDialog(props: {
             </ul>
           )}
         </>
-      )}
+      }
     </Dialog>
   );
 }
