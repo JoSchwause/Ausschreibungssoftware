@@ -1,6 +1,6 @@
 # 74: `ui-grid`: Restpunkte aus Welle 4
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: U · Paket: `packages/ui-grid`
 Blocked by: –
