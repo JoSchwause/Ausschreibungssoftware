@@ -75,3 +75,31 @@ describe('auftragsLvChangeSetAnwenden und auftragsLvChangeSetUmkehren (Ticket 71
     expect(() => auftragsLvChangeSetAnwenden(null, { ...cs, kopf: null })).toThrow();
   });
 });
+
+describe('AuftragsLeistungsverzeichnisAnlegen: nur Felder von AuftragsLvKopf im Kopf (D-42)', () => {
+  it('nachtrag und vorlage eines LV (zur Laufzeit mitgebracht) landen nicht im Kopf des Auftrags-LV', () => {
+    const mitLvKennzeichen = {
+      ...auftragsLv(),
+      nachtrag: { auftragsLvId: AID, nummer: 'N01', status: 'beauftragt' },
+      vorlage: true,
+      wurzelId: AID,
+    } as AuftragsLeistungsverzeichnis;
+    const kopf = anlegeCs(mitLvKennzeichen).kopf?.nachher;
+    expect(Object.keys(kopf ?? {}).sort()).toEqual(
+      ['angebotId', 'id', 'leistungsverzeichnisId', 'mwstSatz', 'nachlass', 'name', 'ozMaske', 'projektId'].sort(),
+    );
+  });
+
+  it('die optionalen Felder des Kopfs (Auftraggeber, Vergabeinformationen, Auftragnehmer, EPA-Bezeichnungen) bleiben', () => {
+    const a = auftragsLv({
+      auftraggeber: { name: 'AG', strasse: null, plz: null, ort: null, vergabenummer: null },
+      auftragnehmer: { name: 'AN', strasse: null, plz: null, ort: null },
+      epaBezeichnungen: [{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }],
+    });
+    const kopf = anlegeCs(a).kopf?.nachher;
+    expect(kopf?.auftraggeber).toEqual(a.auftraggeber);
+    expect(kopf?.auftragnehmer).toEqual(a.auftragnehmer);
+    expect(kopf?.epaBezeichnungen).toEqual(a.epaBezeichnungen);
+    expect(kopf).not.toHaveProperty('vergabeinformationen');
+  });
+});

@@ -3,13 +3,43 @@
 // Befehl am Auftrags-LV. Es gelten dieselben Baumregeln wie beim LV; die Wurzel ist die Kennung des Auftrags-LV. Das
 // ChangeSet trägt Kopf, alle Knoten (kanonisch) und die vollständigen Summen (`kopf.vorher: null`).
 
-import type { AuftragsLvBefehlAusfuehren } from '@tethys/vertrag';
+import type { AuftragsLeistungsverzeichnis, AuftragsLvBefehlAusfuehren, AuftragsLvKopf } from '@tethys/vertrag';
 import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { anlegeHinweise } from './hinweise';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
-import { kanonisch, ohneKnoten } from './struktur';
+import { kanonisch } from './struktur';
 import { LEERES_SUMMENVORHER, summenBerechnen } from './summen';
+
+/** Die Felder von `AuftragsLvKopf`; der Typprüfer verlangt jedes (ein neues Vertragsfeld fällt hier auf, statt still zu fehlen). */
+const KOPF_FELDER = [
+  'id',
+  'projektId',
+  'leistungsverzeichnisId',
+  'angebotId',
+  'name',
+  'ozMaske',
+  'mwstSatz',
+  'nachlass',
+  'auftraggeber',
+  'vergabeinformationen',
+  'auftragnehmer',
+  'epaBezeichnungen',
+] as const satisfies readonly (keyof AuftragsLvKopf)[];
+const KOPF_VOLLSTAENDIG: [Exclude<keyof AuftragsLvKopf, (typeof KOPF_FELDER)[number]>] extends [never]
+  ? true
+  : never = true;
+
+/**
+ * Der Kopf des Auftrags-LV mit genau den Feldern von `AuftragsLvKopf` (D-42): Was ein Aufrufer zur Laufzeit mehr
+ * mitbringt (`nachtrag`, `vorlage` eines LV, `wurzelId`, `knoten`), landet nicht im ChangeSet. Fehlende optionale Felder
+ * fehlen auch im Ergebnis.
+ */
+function auftragsLvKopfVon(a: AuftragsLeistungsverzeichnis): AuftragsLvKopf {
+  const kopf: Partial<Record<keyof AuftragsLvKopf, unknown>> = {};
+  if (KOPF_VOLLSTAENDIG) for (const f of KOPF_FELDER) if (a[f] !== undefined) kopf[f] = a[f];
+  return kopf as AuftragsLvKopf;
+}
 
 /**
  * Führt einen Befehl am Auftrags-LV aus. `AuftragsLeistungsverzeichnisAnlegen` braucht `zustand === null`, sonst
@@ -41,7 +71,7 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
   return ok({
     art: 'auftrags-leistungsverzeichnis',
     auftragsLeistungsverzeichnisId: a.id,
-    kopf: { vorher: null, nachher: ohneKnoten(a) },
+    kopf: { vorher: null, nachher: auftragsLvKopfVon(a) },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
     summen: {
       positionen: summen.positionen,
