@@ -4,7 +4,7 @@
 // Rückgängig oder Wiederholen lädt die Seite neu. Weist der Speicher ab (`konflikt`), steht der Grund als Meldung da und
 // nichts ändert sich (Q5).
 
-import { useToast } from '@tethys/ui-basis';
+import { Button, useToast } from '@tethys/ui-basis';
 import type { ProjektId, Rechnung, RechnungBefehl, Rechnungsart } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
@@ -13,7 +13,6 @@ import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer, type Abweisung, type Ausgang } from '../lv/befehlsweg';
 import { abweisungText } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
 import {
   aenderungsbefehle,
   entwurfAus,
@@ -27,6 +26,7 @@ import {
 import { rechnungenPfad, rechnungPfad, type Rechnungsadresse } from './pfad';
 import { Pruefansicht } from './Pruefansicht';
 import { RechnungDialog } from './RechnungDialog';
+import { Verweis } from './Verweis';
 import { Rechnungsliste } from './Rechnungsliste';
 import {
   rechnungenSitzung,
@@ -94,32 +94,6 @@ export function RechnungenSeite({
     );
   }
   return <Ansicht key={lauf} stand={lage.stand} adresse={adresse} gehe={gehe} />;
-}
-
-export function Verweis({
-  pfad,
-  text,
-  gehe,
-  ...rest
-}: {
-  pfad: string;
-  text: string;
-  gehe: (pfad: string) => void;
-  'aria-label'?: string;
-}): ReactElement {
-  return (
-    <a
-      href={hrefFuer(pfad)}
-      {...rest}
-      onClick={(e) => {
-        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        gehe(pfad);
-      }}
-    >
-      {text}
-    </a>
-  );
 }
 
 /** Abweisung eines Rechnungsbefehls als Meldung; ein `konflikt` des Speichers mit eigenem Text (Freigabe-Reihenfolge). */
@@ -223,15 +197,13 @@ function Ansicht({
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
         <HistorieKnoepfe />
-        <button
-          type="button"
-          className="tx-button tx-button--sekundaer"
+        <Button
           onClick={() => {
             setDialog({ art: 'neu', entwurf: neuerEntwurf(sitzung.zustand, stand.blaetter) });
           }}
         >
           {t.neu}
-        </button>
+        </Button>
         <XRechnungEinlesen
           rechnungen={rechnungen}
           ziel={gewaehlt?.id ?? null}
