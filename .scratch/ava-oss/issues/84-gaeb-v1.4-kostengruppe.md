@@ -1,6 +1,6 @@
 # 84: `gaeb` v1.4: Kostengruppe als Katalogzuordnung, neue Felder beim Export
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: G, C2 · Paket: `packages/gaeb`
 Blocked by: 70, 83
