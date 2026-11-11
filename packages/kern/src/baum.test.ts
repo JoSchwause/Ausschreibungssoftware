@@ -8,6 +8,7 @@ import type {
   Einfuegeort,
   Knoten,
   LvBefehl,
+  LvStandId,
   LvZustand,
   Menge,
   Position,
@@ -685,7 +686,10 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  const fremde: LvBefehl[] = [{ art: 'PapierkorbLeeren' }, { art: 'AuftraggeberSetzen', auftraggeber: null }];
+  const fremde: LvBefehl[] = [
+    { art: 'PapierkorbLeeren' },
+    { art: 'LvStandAnlegen', id: 'stand-1' as LvStandId, name: 'Stand' },
+  ];
 
   it.each(fremde.map((b) => [b.art, b] as const))(
     '%s: befehl-nicht-zustaendig, Meldung nennt das Ticket',

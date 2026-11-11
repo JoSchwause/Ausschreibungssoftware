@@ -200,6 +200,13 @@ Decision: Wie vorgeschlagen: gesetzte Anteile (mindestens einer nicht `null`) se
 Reason: Beleg X86 1.10.30.10/20 (UP = Summe der UPComp); kein EP aus dem Nichts.
 Reversible: yes  Touches: packages/kern
 
+## D-41.1 Formale LV-Prüfung (K8): offene Schwellen und Lesarten
+Welle 3 · Ticket 41 · decided by: implementer
+Question: Was Ticket 41 offen lässt (Schwere von `menge-null`, was „leer“ heißt, Maske ungültig, Quelle der Summen, Reihenfolge, Form der Kopfdaten-Befehle).
+Decision: `menge-null` ist Warnung und gilt nur für Positionen ohne Zuschlag. „Leer“ heißt nur Leerraum (Name, Kurztext, Einheit); ein Langtext ist leer ohne sichtbaren Text, Bild oder Textergänzung. Zeichen zählen als Unicode-Codepunkte; Steuerzeichen U+0000–001F, U+007F–009F, U+2028/2029. Bei ungültiger OZ-Maske meldet die Prüfung `oz-maske-ungueltig` (aus `maskePruefen`, Warnung) und prüft die OZ nicht gegen die Maske. `zuschlag-ohne-bezug`: keine Position im Bezug, die Basis sein kann (R2); Papierkorb zählt nicht. GP und Summen aus `LvZustand.summen` (keine Neuberechnung). Reihenfolge: LV-weite Befunde zuerst, dann Knoten in Dokumentreihenfolge, je Ort nach Code und Feld. Kopfdaten-Befehle prüfen nur die Form (Typ jedes Felds, Menge der Unterbeschreibung in der Skala), nie Inhalte. Alles in `PRUEF_ANNAHMEN` (`packages/kern/src/pruefregeln.ts`).
+Reason: Engste Lesart des Tickets, paketlokal und umkehrbar; U5 (Validierung blockiert nie).
+Reversible: yes  Touches: packages/kern, GLOSSARY.md
+
 ## D-45.1 X84-Import: Lesarten des Angebotslesers
 Welle 3 · Ticket 45 · decided by: implementer
 Question: Was Ticket 45 als Vorschlag offen lässt (EPA-Zuordnung, EPA ohne Beschriftung, IT 0,00 an Alternativen, Zeilen falscher Art, Bieterergänzung „mit Inhalt“).
