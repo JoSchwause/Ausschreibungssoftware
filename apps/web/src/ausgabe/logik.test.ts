@@ -13,11 +13,8 @@ import {
   dateinameExcel,
   dateinamePdf,
   datumAusUhr,
-  datumDeZuIso,
-  datumIsoZuDe,
   excelAngebotPlan,
   excelAngebotLesen,
-  istDatumIso,
 } from './logik';
 
 describe('Dateinamen', () => {
@@ -38,23 +35,9 @@ describe('Dateinamen', () => {
 });
 
 describe('Datum', () => {
-  it('Eingabe TT.MM.JJJJ wird JJJJ-MM-TT, schlechte Eingabe null', () => {
-    expect(datumDeZuIso('11.11.2026')).toBe('2026-11-11');
-    expect(datumDeZuIso(' 1.2.2027 ')).toBe('2027-02-01');
-    expect(datumDeZuIso('30.02.2026')).toBeNull();
-    expect(datumDeZuIso('2026-11-11')).toBeNull();
-    expect(datumIsoZuDe('2026-11-11')).toBe('11.11.2026');
-  });
   it('kommt aus der Uhr der App, als JJJJ-MM-TT (Ortszeit)', () => {
     const t = new Date(2026, 10, 11, 23, 30).toISOString() as Zeitstempel;
     expect(datumAusUhr(t)).toBe('2026-11-11');
-  });
-  it('prüft die Eingabe', () => {
-    expect(istDatumIso('2026-11-11')).toBe(true);
-    expect(istDatumIso('2026-13-01')).toBe(false);
-    expect(istDatumIso('2026-02-30')).toBe(false);
-    expect(istDatumIso('11.11.2026')).toBe(false);
-    expect(istDatumIso('')).toBe(false);
   });
 });
 
