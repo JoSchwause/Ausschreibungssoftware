@@ -10,8 +10,8 @@ import { baueAusgabemodell, erzeugePdf } from './index';
 import type { PositionZeile } from './index';
 import { alsText, liesPdf } from './pdftext';
 import { schriftenAusDateien } from './schriften-node';
-import { fixtureZustand, mitInhalt, positionenAendern } from './testbau';
-import type { FixtureName } from './testbau';
+import { fixtureZustand, mitInhalt, positionenAendern } from './testhilfe/bau';
+import type { FixtureName } from './testhilfe/bau';
 
 const schriften = schriftenAusDateien();
 const normal = (t: string): string => t.replace(/\s+/g, ' ').trim();

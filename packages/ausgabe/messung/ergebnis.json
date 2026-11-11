@@ -5,27 +5,21 @@
     "arbeitsspeicherMiB": 16086,
     "node": "v22.23.4",
     "laeufeJeMessung": 5,
-    "lastVorMessung1Min": 16.6,
+    "lastVorMessung1Min": 14.4,
     "hinweis": "Container ohne GPU, Chromium headless (Playwright launch ohne Zusatzparameter). Lauf 1 ist ein Aufwärmlauf und zählt nicht mit.",
-    "lastNachMessung1Min": 20.7
+    "lastNachMessung1Min": 21.4
   },
   "positionen": 5000,
   "pdfmake_node": {
     "laeufe": 5,
-    "medianMs": 7847.2,
-    "minMs": 5232,
-    "maxMs": 9267.5,
-    "alleMs": [
-      7847.2,
-      6621.6,
-      9267.5,
-      8656.3,
-      5232
-    ],
-    "bytes": 1429736,
-    "seiten": 307,
+    "medianMs": 6355,
+    "minMs": 5864.2,
+    "maxMs": 7072.1,
+    "alleMs": [6108.6, 6573.1, 5864.2, 6355, 7072.1],
+    "bytes": 1421886,
+    "seiten": 300,
     "verwaisteTitelSeiten": 0,
-    "letzteSeitenzahl": "Seite 307 von 307",
+    "letzteSeitenzahl": "Seite 300 von 300",
     "schriftEingebettet": [
       "/BaseFont /BZZZZZ+NotoSans-Bold",
       "/BaseFont /CZZZZZ+NotoSans-Regular",
@@ -36,24 +30,18 @@
   "chromium": "153.0.8010.12",
   "pdfmake_chromium": {
     "laeufe": 5,
-    "medianMs": 5449.5,
-    "minMs": 3979.6,
-    "maxMs": 6557.8,
-    "alleMs": [
-      6108.8,
-      5449.5,
-      6557.8,
-      4508.6,
-      3979.6
-    ],
-    "bytes": 1539391,
-    "seiten": 307,
+    "medianMs": 4884.2,
+    "minMs": 4081.7,
+    "maxMs": 5657.9,
+    "alleMs": [4884.2, 4081.7, 4587.7, 5657.9, 5448.5],
+    "bytes": 1531952,
+    "seiten": 300,
     "verwaisteTitelSeiten": 0
   },
   "buendel": {
     "pdfmake_minifiziert": {
-      "bytes": 784185,
-      "gzipBytes": 292992
+      "bytes": 784435,
+      "gzipBytes": 293074
     },
     "schriftdateien": {
       "normal": 16688,

@@ -5,7 +5,7 @@ import type { Betrag, Bauherr, Einheitspreis, Menge, Prozent } from '@tethys/ver
 import { baueAusgabemodell } from './modell';
 import type { PositionZeile } from './modell';
 import { bloeckeAlsText } from './langtext';
-import { fixtureZustand, mitInhalt, positionenAendern, zuschlagFixture } from './testbau';
+import { fixtureZustand, mitInhalt, positionenAendern, zuschlagFixture } from './testhilfe/bau';
 
 const positionen = (m: ReturnType<typeof baueAusgabemodell>): PositionZeile[] =>
   m.zeilen.filter((z): z is PositionZeile => z.art === 'position');

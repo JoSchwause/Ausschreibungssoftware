@@ -14,8 +14,8 @@ import type {
   Prozent,
   Zuschlagsbezug,
 } from '@tethys/vertrag';
-import { fixtureAlsInhalt, lvZustandAusFixture, lvZustandAusInhalt } from './testhilfen';
-import type { FxLv } from './testhilfen';
+import { fixtureAlsInhalt, lvZustandAusFixture, lvZustandAusInhalt } from '../testhilfen';
+import type { FxLv } from '../testhilfen';
 
 interface RohZuschlag {
   readonly prozentsatz: string | null;
@@ -43,7 +43,7 @@ export interface FxZuschlagLv extends FxLv {
 
 /** Fixture `zuschlag` (Zuschlagspositionen in GAEB-Form), vom Kern gerechnet. */
 export function zuschlagFixture(): { fx: FxZuschlagLv; zustand: LvZustand } {
-  const text = readFileSync(new URL('../../../fixtures/zuschlag.json', import.meta.url), 'utf8');
+  const text = readFileSync(new URL('../../../../fixtures/zuschlag.json', import.meta.url), 'utf8');
   const fx = JSON.parse(text) as FxZuschlagLv;
   const roh = new Map((JSON.parse(text) as { knoten: RohKnoten[] }).knoten.map((k) => [k.id, k]));
   const inhalt = fixtureAlsInhalt(fx);
