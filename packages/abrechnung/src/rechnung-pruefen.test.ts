@@ -10,7 +10,6 @@ import type {
   Betrag,
   Menge,
   PositionId,
-  ProjektId,
   Prozent,
   Rechnung,
   RechnungId,
