@@ -96,3 +96,193 @@ Grundlage sind D-34 (Rechnungsprüfung), D-35 (Nachtrag), D-36 (Umfang), D-37 (K
 ## Comments
 
 (Alt: Ticket 70 „Repository und Befehle für das Auftrags-LV“, Punkt 1 und 2 oben. Erweitert zu v1.4 durch D-36.)
+
+### Ergebnis (Branch `welle-5/70-vertrag-v1.4`, Basis `integration/welle-5`)
+
+Typen, Kommentare, Beispiele und Typtests in `packages/vertrag/src/` (`marken.ts`, `modell.ts`, `befehle.ts`,
+`changeset.ts`, `summen.ts`, `speicher.ts`, `beispiele.ts`, `vertrag.test.ts`, `inhaltsmodell.test.ts`), `GLOSSARY.md`,
+dazu die markierten mechanischen Zeilen (Liste unten). Leitlinie wie in Ticket 29/53: enge Lesart im Typ, neue Felder
+optional mit natürlicher Leerbedeutung, Alternativen als Offene Typfragen. Kein Rechenwert, keine Fixture, kein Golden
+geändert. Je Punkt ein Commit (1–11), dazu Glossar und eine Angleichung an die Tickets 80/81 (D-70.3).
+
+### Je Punkt: Datei und Typ
+
+1. `speicher.ts`: `AuftragsLvUebersicht { id, name, leistungsverzeichnisId, angebotId }`, `AuftragsLvRepository`
+   (`auflisten(projektId)` sortiert wie die LV-Liste, `laden(id)` → `AuftragsLvZustand`),
+   `Speicher.auftragsLeistungsverzeichnisse` (Pflicht).
+2. `befehle.ts`: `NachtragUebernehmen { nachtragLvId, knoten }` (Lesart D-35 am Typ, D-70.6); `AuftragsLvBefehl` = Anlegen |
+   `NachtragUebernehmen` | `KostengruppeSetzen`. `changeset.ts`: `AuftragsLvChangeSetAnwenden`, `AuftragsLvChangeSetUmkehren`.
+3. `modell.ts`: `Nachtragsstatus`, `Nachtragsangaben { auftragsLvId, nummer, status }`, `LvKopf.nachtrag?` (nicht am
+   `LvInhaltKopf`, D-70.2); `befehle.ts`: LvBefehl `NachtragsangabenSetzen { nachtrag | null }`.
+4. `marken.ts`: Marke `Kostengruppennummer` (aus `kosten`); `Positionsdaten.kostengruppe?`; `KostengruppeSetzen { positionId,
+   kostengruppe | null }` als **ein** Typ in `LvBefehl` und `AuftragsLvBefehl` (D-70.1).
+5. `LvKopf.vorlage?: true` (D-70.2), `Positionsdaten.textquelle?: string`; LvBefehle `VorlageSetzen { vorlage: boolean }`,
+   `TextquelleSetzen { positionId, textquelle | null }` (D-40).
+6. `AufmassId`; `AufmassKopf`, `Aufmassposition { positionId, mengenansatz | null, menge | null }`, `Aufmass`,
+   `AufmassZustand`; `AufmassBefehl` = `AufmassAnlegen` | `AufmasskopfSetzen` | `AufmasspositionSetzen` |
+   `AufmasspositionEntfernen` | `AufmassLoeschen`; `AufmassChangeSet { art: 'aufmass', aufmassId, aufmass: Aenderung<Aufmass> }`.
+7. `RechnungId`; `Rechnungsart`, `Umlage`, `Rechnung` (Felder wie im Ticket), `RechnungZustand`; `RechnungBefehl` =
+   `RechnungAnlegen` | `RechnungsangabenSetzen` | `RechnungsaufmasseSetzen` | `RechnungsabzuegeSetzen` | `RechnungFreigeben` |
+   `RechnungsfreigabeAufheben` | `RechnungLoeschen`; `RechnungChangeSet`; neuer `Befehlsfehlercode` `rechnung-freigegeben`.
+8. `summen.ts`: `Leistungsstand { positionen: { positionId, menge, gp }[], leistung, nachlass, nettoNachNachlass }` (D-70.7).
+9. `KostenermittlungId`; `Kostenermittlungsstufe`, `Kostenermittlungseintrag { nummer, betrag: Betrag, bemerkung? }`,
+   `Kostenermittlung`, `KostenermittlungZustand`; `KostenermittlungBefehl` (Anlegen, `KostenermittlungskopfSetzen`,
+   `KostenermittlungseintragSetzen`, `KostenermittlungseintragEntfernen`, `KostenermittlungLoeschen`);
+   `KostenermittlungChangeSet`.
+10. `AggregatBezug` um `aufmass`, `rechnung`, `kostenermittlung` (gleich `ChangeSet.art`); `Befehl` und `ChangeSet`
+    erweitert; je Aggregat `…BefehlAusfuehren`, `…ChangeSetAnwenden`, `…ChangeSetUmkehren`; `AufmassRepository`
+    (`auflisten(auftragsLvId)` → `AufmassKopf[]` nach `nummer`), `RechnungRepository` (`auflisten(auftragsLvId)` → ganze
+    `Rechnung[]` nach `nummer`), `KostenermittlungRepository` (`auflisten(projektId)` → `KostenermittlungUebersicht[]`);
+    `Speicher.aufmasse`, `.rechnungen`, `.kostenermittlungen` (Pflicht); `Projektdatei.aufmasse?`, `.rechnungen?`,
+    `.kostenermittlungen?` (optional, fehlt = leer); `MASSENBEFEHLSARTEN` + `AufmassAnlegen`, `Massenbefehlskopf` mit
+    `aufmass: AufmassKopf` (D-70.5); `IdQuelle.aufmass()`, `.rechnung()`, `.kostenermittlung()`; Löschregeln am
+    `Speicher`, an `AuftragsLvChangeSet`, `RechnungChangeSet`, `AufmassLoeschen`, `RechnungLoeschen`, `ProjektLoeschen`.
+11. Beispiele (`beispiele.ts`, Abschnitt v1.4) für jeden neuen Befehl und Typ, mit hergeleiteten Zahlen (Nachtrag N01,
+    Blatt 1/2, AR 1 mit eingefrorenem Zahlbetrag 53,42, AR 2, Leistungsstand 49,85, Kostenberechnung, Projektdatei);
+    Typtests `vertrag.test.ts`, Abschnitte „v1.4 Punkt 1…11“ und „v1.4: reine Daten und Werte vor v1.4“.
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-70.1** `KostengruppeSetzen` im LV und im Auftrags-LV: ein Typ oder zwei Namen? **Ein Typ in beiden Unions.** Grund: eine
+  Handlung, ein Name (L2); das Protokoll unterscheidet über `AggregatBezug`, der Ausführer über den Zustand. `Befehl` enthält
+  ihn einmal; jeder andere Befehlsname gehört zu genau einem Aggregat (Typtest).
+- **D-70.2** Wo stehen `nachtrag` und `vorlage`? **Am `LvKopf`, nicht am `LvInhaltKopf`; `vorlage?: true`.** Grund: Das
+  Auftrags-LV trägt beides nie, GAEB-Leser und `LeistungsverzeichnisAnlegen` brauchen es nicht (die App setzt es im selben
+  Undo-Schritt nach dem Anlegen); `true`/fehlt ist eine Schreibweise für „nein“ (wie `Auszeichnung`, kanonische Datei).
+- **D-70.3** Was prüfen die Ausführer der neuen Aggregate? **Nur die Form ihres Aggregats** (Signaturen ohne Kontext);
+  Regeln über mehrere Aggregate prüfen reine Funktionen als Befund (`aufmassPruefen`, `rechnungPruefen`) bzw. die App vorher
+  (`freigabeMoeglich`), was nie verletzt sein darf `speicher` (`konflikt`). Grund: U5, Q5 und die Zuschnitte der Tickets
+  80/81 (während der Arbeit gelesen; eine erste Fassung hatte Ausführer mit Kontext und einen zweiten Fehlercode
+  `freigabe-reihenfolge`, den ein Ausführer ohne Kontext nie erzeugen kann: verworfen).
+- **D-70.4** Freigabe aufheben nur als Umkehrung oder ausdrücklich? **Ausdrücklich** (`RechnungsfreigabeAufheben`), nur ohne
+  spätere freigegebene Rechnung; an einer freigegebenen Rechnung gilt nur dieser Befehl (neuer Code `rechnung-freigegeben`).
+  Grund: Die Undo-Historie endet mit der Sitzung (ADR 0006); ohne Befehl bliebe eine falsche Freigabe für immer. Q5: Die
+  Oberfläche fragt ausdrücklich, `speicher` hält die Reihenfolge.
+- **D-70.5** Massenbefehle? **`AufmassAnlegen` ja** (X31: eine Zeile je Position samt Ansatzzeilen, wächst mit dem LV wie
+  `AngebotAnlegen`); `KostenermittlungAnlegen` **nein** (höchstens ein Eintrag je Nummer, höchstens 900 kurze Einträge);
+  `RechnungAnlegen` und `NachtragUebernehmen` nein (kurz).
+- **D-70.6** `NachtragUebernehmen`: Wer vergibt Lage und OZ? **`nachtragUebernehmen` (Ticket 80)**; der Kern übernimmt die
+  Knoten wie mitgebracht (wie `AuftragsLeistungsverzeichnisAnlegen`, nicht wie `KnotenEinfuegen`) und prüft Baumregeln und
+  Kennungen; Gliederungen und Hinweistexte des Nachtrags behalten ihre Kennung. Grund: ein Ort für die Regel (D-35); der
+  Befehl im Protokoll ist das Ergebnis.
+- **D-70.7** `Leistungsstand.positionen`: welche Positionen? **Genau eine Zeile je Position des Auftrags-LV** in
+  Dokumentreihenfolge, auch ohne Aufmaß (`menge: null`, `gp: 0.00`); `nachlass` ≥ 0 wie `Gesamtsummen.nachlass`. Grund:
+  vollständig und eindeutig für die Kostenkontrolle (D-37), Σ `gp` = `leistung`.
+- **D-70.8** Neue Felder in `kern` und `speicher` vor 71/79? **Laut abweisen statt still verwerfen** (Q5, wie D-53.3): Der Kern
+  weist `PositionAnlegen` mit `kostengruppe`/`textquelle` und alle neuen Befehle mit `befehl-nicht-zustaendig` ab;
+  `speicher` (`pruefeV14`) weist ChangeSets mit `nachtrag`, `vorlage`, `kostengruppe`, `textquelle` und die neuen
+  ChangeSet-Arten mit `unbekannt` ab; die neuen Repositories antworten `unbekannt`.
+- **D-70.9** Blatt- und Rechnungsnummer änderbar? **Nein, fest nach dem Anlegen** (Kopf- und Angabenbefehle tragen sie
+  nicht). Grund: Rechnungen ordnen danach („frühere Rechnungen“, D-34 (7)); eine Korrektur geht über Löschen und Neuanlegen.
+- **D-70.10** `RechnungRepository.auflisten` liefert ganze Rechnungen statt einer Übersicht. Grund: Rechnungen sind klein,
+  die Prüfung einer Rechnung braucht alle früheren (D-34 (7)).
+- **D-70.11** `IdQuelle` um `aufmass()`, `rechnung()`, `kostenermittlung()` (Pflicht). Grund: Kennungen kommen von außen
+  (A2), es gibt genau eine `IdQuelle`; mechanisch in der App und in der Test-`IdQuelle` von `gaeb`.
+
+### Offene Typfragen (enge Lesart im Typ; Alternative hier)
+
+1. **`nachtrag` und `vorlage` nur am `LvKopf`** (D-70.2). Alternative: am `LvInhaltKopf`, damit `LeistungsverzeichnisAnlegen`
+   sie mitbringt (dann auch am Auftrags-LV möglich und im GAEB-Leser zu bedenken).
+2. **`vorlage?: true`.** Alternative: `vorlage?: boolean` (Wortlaut des Tickets; zwei Schreibweisen für „kein Muster-LV“).
+3. **`LvUebersicht` ohne `nachtrag`/`vorlage`.** Die Projektseite (Ticket 86: Kennzeichen „Nachtrag N01“) und der Dialog
+   „Aus Vorlage übernehmen“ über alle Projekte (Ticket 90) laden dafür jedes LV. Alternative: `LvUebersicht.nachtrag?`,
+   `.vorlage?` (additiv; `speicher` füllt sie aus dem Kopf), dazu ggf. eine projektübergreifende Liste der Vorlagen.
+4. **Textquelle nur an Positionen.** Ein Textbaustein kann auch ein Hinweistext sein (D-36 (6)). Alternative:
+   `Hinweistext.textquelle?` mit `TextquelleSetzen { knotenId: PositionId | HinweistextId }`.
+5. **Kostengruppe nur an Positionen** (D-36 (4)). Alternative: an Gliederungen, an Positionen vererbt (bequemer bei großen
+   LVs, aber zwei Quellen für denselben Wert).
+6. **Ganze Aggregate im ChangeSet** (D-36 (8)), auch für eine einzelne Aufmaßzeile. Alternative für große X31-Blätter:
+   `Aenderungen<Aufmassposition>` wie bei `AngebotChangeSet.positionen`.
+7. **Blatt- und Rechnungsnummer fest** (D-70.9). Alternative: Nummer in `AufmasskopfSetzen`/`RechnungsangabenSetzen`
+   (Eindeutigkeit dann nur in `speicher`).
+8. **`Rechnung.gefordert` ohne Angabe, ob kumuliert.** Übernommen wird, was die Rechnung nennt (XRechnung BT-109/BT-112).
+   Alternative: `gefordert: { netto; brutto; kumuliert: boolean }` oder getrennte Felder „diese Rechnung“ und „kumuliert“.
+9. **`sicherheitSatz` und `gewaehrleistungSatz` als zwei Felder an jeder Rechnung**, je Art wird nur eines gelesen.
+   Alternative: Union nach `art` (`{ art: 'abschlag'; sicherheitSatz } | { art: 'schluss'; gewaehrleistungSatz }`).
+10. **`Aufmassposition` ohne Bemerkung.** Ticket 83 soll für Textzeilen (`*`) einer X31 zwischen „Bemerkung“ und „Befund“
+    entscheiden; der Vertrag hat kein Feld dafür, also bis auf Weiteres Befund. Alternative: `Ansatzzeile.bemerkung?` oder
+    `Aufmassposition.bemerkung?`.
+11. **Kostenermittlung: Nummern im gespeicherten Stand eindeutig.** Alternative: Duplikate speichern (wie die ungeprüfte
+    Eingabe, Befund `nummer-doppelt`, D-55.4).
+12. **Zwei Typen namens `Kostenermittlungseintrag`** (Vertrag: `betrag: Betrag`; `kosten`: ungeprüfter Text
+    `betrag: string`). Der Vertragstyp ist dem von `kosten` zuweisbar. Vorschlag für Ticket 82: den Eingabetyp in `kosten`
+    umbenennen (z. B. `Kostenermittlungseingabe`).
+13. **Keine Herkunft am übernommenen Nachtragsknoten.** Welche Gliederung des Auftrags-LV zu welchem Nachtrags-LV gehört,
+    steht nur im Protokoll (`NachtragUebernehmen.nachtragLvId`) und folgt aus den PositionIds. Alternative:
+    `Titel.nachtragLvId?` bzw. `Los.nachtragLvId?` an der Gliederung „Nachtrag <nummer>“.
+14. **`Leistungsstand` ohne Kennung der Rechnung oder des Auftrags-LV.** Ticket 82 trägt sie daneben
+    (`{ auftragsLvId; leistungsstand }`). Alternative: `Leistungsstand.auftragsLvId`, `.rechnungId`.
+15. **Kein Rechnungsdatum an der `Rechnung`**, nur `eingang` (Eingangsdatum beim Auftraggeber). Die XRechnung nennt das
+    Rechnungsdatum (BT-2); Ticket 88 übernimmt laut Text das „Eingangsdatum“. Alternative: `Rechnung.rechnungsdatum:
+    string | null` neben `eingang` (Zahlungsfristen nach VOB/B § 16 laufen ab Zugang, darum ist `eingang` das Datum, das
+    der Vertrag führt).
+
+### Mechanische Anpassungen außerhalb von `vertrag` (markiert `// v1.4: mechanisch angepasst, Folgeticket`)
+
+Zeilen nach dem Stand dieses Branches; `grep -rn "v1.4: mechanisch angepasst"` findet alle.
+
+| Datei | Zeile | Was | Folgeticket |
+|---|---|---|---|
+| `packages/kern/src/ausfuehren.ts` | 111–116 | `ZUSTAENDIGES_TICKET`: `NachtragsangabenSetzen`, `KostengruppeSetzen`, `VorlageSetzen`, `TextquelleSetzen` → „(Ticket 71)“ | 71 |
+| `packages/kern/src/auftrags-lv.ts` | 20–26 | `auftragsLvBefehlAusfuehren`: jeder Befehl außer Anlegen → `befehl-nicht-zustaendig` | 71 |
+| `packages/kern/src/knoten-befehle.ts` | 232–239 | `positionAnlegen` mit `kostengruppe`/`textquelle` → `befehl-nicht-zustaendig` (sonst still verworfen, Q5) | 71 |
+| `packages/kern/src/baum.test.ts` | 690–726 | `ZUSTAENDIGES_TICKET` nennt die vier v1.4-Befehle; Test: alle v1.4-LV-Befehle und `PositionAnlegen` mit neuen Feldern werden abgewiesen | 71 |
+| `packages/kern/src/auftrags-lv.test.ts` | 99–111 | Test: `NachtragUebernehmen` wird abgewiesen | 71 |
+| `packages/speicher/src/client.ts` | 88–90, 109–122 | `erstV14`; Repositories `auftragsLeistungsverzeichnisse`, `aufmasse`, `rechnungen`, `kostenermittlungen` antworten `unbekannt` | 79 |
+| `packages/speicher/src/kern.ts` | 50, 61–64, 259 | Import und Aufruf `pruefeV14`; `pruefeBezug`: neue ChangeSet-Arten → `unbekannt` | 79 |
+| `packages/speicher/src/vertrag-v14.ts` | neu | `pruefeV14`: Kopf mit `nachtrag`/`vorlage`, Positionen mit `kostengruppe`/`textquelle` (Baum und Papierkorb), neue ChangeSet-Arten → `unbekannt` | 79 |
+| `packages/speicher/src/vertrag-v14.test.ts` | neu | die `unbekannt`-Fälle und die Repositories | 79 |
+| `packages/speicher/src/dekoder.ts` | 774–796, 827 | `BEFEHLSARTEN` um die 22 neuen Befehle; `LANGE_LISTE.AufmassAnlegen` | 79 |
+| `packages/speicher/src/kurzfassung.ts` | 43–44 | `massenbefehlskopf` für `AufmassAnlegen` (Blatt ohne `positionen`) | 79 |
+| `packages/speicher/src/testhilfe/umkehrung.ts` | 92–96, 102–104 | `umkehren`: neue Arten werfen; `mitLeeremVorher`: Aggregate ohne Summen bleiben unverändert | 79 |
+| `packages/speicher/src/client.test.ts` | 291–306 | erwartete Schlüssel des Speichers um die vier Repositories | 79 |
+| `packages/kosten/src/kostengruppe.ts` | 5–9 | `Kostengruppennummer` aus `vertrag` importiert und weiter exportiert | 82 |
+| `packages/gaeb/src/testhilfen.ts` | 71–74 | Test-`IdQuelle`: `aufmass`, `rechnung`, `kostenermittlung` | 83 |
+| `apps/web/src/lv/ids.ts` | 75–78 | `appIdQuelle`: `aufmass`, `rechnung`, `kostenermittlung` (UUIDv7 wie die übrigen) | App |
+| `apps/web/src/lv/texte.ts` | 187–188 | Text für `rechnung-freigegeben` | 88 |
+
+`vergabe`, `mengen`, `ausgabe`, `ui-grid`, `ui-basis`, `erechnung` und `proto` brauchten nichts. Die App braucht keinen
+Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bisherigen ChangeSet-Arten.
+
+### Folgetickets: was sie liefern müssen
+
+- **71 (Kern):** Handler `NachtragUebernehmen` (Lesart D-35/D-70.6 am Typ: genau eine Wurzel auf oberster Ebene mit
+  `elternId` = Auftrags-LV und `reihenfolge` = Zahl der Knoten dort; F1, höchstens 5 Ebenen, Eltern vor Kindern, dichte
+  Reihenfolge, Kennungen frei, sonst `id-vergeben`; Knoten wie mitgebracht, `''`-Einheit → `null`; Summen);
+  `KostengruppeSetzen` im LV **und** im Auftrags-LV (nur Position, Form `^[1-9][0-9]{2}$` nachprüfen, kein Import aus
+  `kosten`); `NachtragsangabenSetzen` (`nummer` nicht leer, Status); `VorlageSetzen` (`false` → Feld weg);
+  `TextquelleSetzen` (`''` wie `null`); `positionAnlegen`, `KnotenEinfuegen` und Kopie übernehmen `kostengruppe` und
+  `textquelle`; `auftragsLvChangeSetAnwenden`/`…Umkehren` nach den neuen Signaturen; alle Marker in `kern` entfernen,
+  `ZUSTAENDIGES_TICKET` wieder leer.
+- **79 (Speicher):** Migration 5 (Spalten `kostengruppe`, `textquelle`, `nachtrag`, `vorlage`; Tabellen `aufmass`,
+  `rechnung`, `kostenermittlung`; `protokoll.aggregat_art` mit drei neuen Arten); die vier Repositories (Sortierungen am
+  Typ); `anwenden` für die drei ganzen Aggregate und für Auftrags-LV-Änderungen; alle `konflikt`-Regeln aus dem Kommentar an
+  `Speicher` (Auftrags-LV mit Aufmaß, Rechnung oder Nachtragsangaben; Position mit Aufmaßzeile; Blatt in einer Rechnung;
+  Reihenfolge der Freigaben; fremde Kennungen; doppelte Nummern; Projekt mit Kostenermittlung); Projektdatei mit drei
+  optionalen Listen (leer = weggelassen); Kurzfassung für `AufmassAnlegen`; Dekoder für die neuen Befehle und
+  Aggregatarten; alle Marker in `speicher` sowie `vertrag-v14.ts` samt Test löschen.
+- **80 (Abrechnung, Nachtrag und Aufmaß):** `nachtragUebernehmen` liefert die Knoten genau in der Lesart von
+  `NachtragUebernehmen` (Lage, OZ, Kennungen; MwSt-, Angebots- und Bieterprüfung vor dem Befehl);
+  `aufmassBefehlAusfuehren` (Form: Nummer ≥ 1, eine Zeile je Position, Menge kanonisch, `[]` → `null`; Zeile an ihrer Stelle
+  ersetzen, neue ans Ende; Entfernen einer fehlenden Zeile → `ungueltige-eingabe`), `…Anwenden`/`…Umkehren` (Tausch);
+  `aufmassPruefen` auch für Zuschlagspositionen (zählen nicht).
+- **81 (Abrechnung, Soll/Ist und Rechnung):** `leistungsstandBerechnen` nach D-70.7 (eine Zeile je Position);
+  Rechnungs-Ausführer nur mit Form und `rechnung-freigegeben` (D-70.3, D-70.4: Anlegen mit `freigabe` → `ungueltige-eingabe`,
+  Aufheben einer nicht freigegebenen → `ungueltige-eingabe`, doppelte `aufmassIds` → `ungueltige-eingabe`);
+  `freigabeMoeglich` deckt die Reihenfolge ab; Befunde „Schlussrechnung nicht die letzte“ und fehlende frühere Blätter.
+- **82 (Kosten):** Ausführer und `…Anwenden`/`…Umkehren` für `Kostenermittlung` (Einträge nach Nummer geordnet und
+  eindeutig, `bemerkung: ''` → weg); den Eingabetyp `Kostenermittlungseintrag` in `kosten` umbenennen (Offene Typfrage 12);
+  `kostenkontrolleBerechnen` liest `Positionsdaten.kostengruppe` und `Leistungsstand`; die Marke kommt schon aus `vertrag`.
+- **83 (GAEB X31):** `x31Lesen` liefert `Aufmass` mit Zeilen ohne Menge (die App rechnet); Textzeilen sind Befund, solange es
+  kein Bemerkungsfeld gibt (Offene Typfrage 10); `testIds` hat die neuen Kennungen schon.
+- **84 (GAEB v1.4):** `kostengruppe` als `CtlgAssign`; `textquelle` (Position) und `vorlage`/`nachtrag` (nur am `LvKopf`,
+  nicht in `LvInhalt`: der Writer bekommt sie nur, wenn die App sie weiterreicht) beim Export mit Warnung verwerfen.
+- **Vergabe (ohne Ticket, Hinweis an 86):** `zuschlagErteilen` übernimmt den LV-Kopf per `...l`; `vorlage` und `nachtrag`
+  landen so zur Laufzeit im Kopf des Auftrags-LV (der Typ hat sie nicht). Vor dem Zuschlag weglassen, oder die App bietet
+  den Zuschlag an einem Muster- oder Nachtrags-LV nicht an.
+- **App (86–90):** 86: `speicher.auftragsLeistungsverzeichnisse` statt Projektdatei-Export, `auftragsLvChangeSetUmkehren` aus
+  dem Kern, Umweg in `auftrag/auftrag.ts` entfernen; `Teil.changeSet` und die Umkehrung in `lv/befehlsweg.ts` um die drei
+  neuen Arten erweitern, sobald 87–89 sie schreiben (Tausch). 88: Text für `rechnung-freigegeben` prüfen,
+  `freigabeMoeglich` vor `RechnungFreigeben`. 89: `KostengruppeSetzen` mit dem richtigen Aggregat im Protokolleintrag
+  (`leistungsverzeichnis` bzw. `auftrags-leistungsverzeichnis`). 90: `VorlageSetzen`, `TextquelleSetzen`; Liste der Vorlagen
+  (Offene Typfrage 3).

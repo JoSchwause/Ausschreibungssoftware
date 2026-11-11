@@ -68,7 +68,7 @@ export function testIds(): IdQuelle {
     hinweistext: () => neu('hinweis') as HinweistextId,
     papierkorbeintrag: () => neu('papierkorb') as ReturnType<IdQuelle['papierkorbeintrag']>,
     lvStand: () => neu('lv-stand') as ReturnType<IdQuelle['lvStand']>,
-    // v1.4: mechanisch angepasst, Folgeticket (Ticket 84: X31 legt Aufmaßblätter an)
+    // v1.4: mechanisch angepasst, Folgeticket (Ticket 83: X31 legt Aufmaßblätter an)
     aufmass: () => neu('aufmass') as ReturnType<IdQuelle['aufmass']>,
     rechnung: () => neu('rechnung') as ReturnType<IdQuelle['rechnung']>,
     kostenermittlung: () => neu('kostenermittlung') as ReturnType<IdQuelle['kostenermittlung']>,

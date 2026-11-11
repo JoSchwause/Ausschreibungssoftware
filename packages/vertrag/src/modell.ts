@@ -851,7 +851,10 @@ export interface Rechnung {
    */
   readonly nummer: number;
   readonly art: Rechnungsart;
-  /** Eingangsdatum beim Auftraggeber, `JJJJ-MM-TT`, vom Nutzer (oder aus der XRechnung, BT-2); `null`: keine Angabe. */
+  /**
+   * Eingangsdatum beim Auftraggeber, `JJJJ-MM-TT`, vom Nutzer; `null`: keine Angabe. Nicht das Rechnungsdatum der XRechnung
+   * (BT-2), das die App höchstens vorschlägt (ein eigenes Feld dafür: Offene Typfrage, Ticket 70).
+   */
   readonly eingang: string | null;
   /** Rechnungsnummer, die der Auftragnehmer vergeben hat (XRechnung BT-1), freier Text; `null`: keine. Nie `''`. */
   readonly rechnungsnummerAuftragnehmer: string | null;
