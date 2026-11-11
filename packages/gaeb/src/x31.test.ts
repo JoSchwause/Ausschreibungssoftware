@@ -5,59 +5,13 @@
 // Zeilen ohne `=` am Ende setzen sich in der nächsten fort), nicht aus dem Leser erzeugt.
 
 import { describe, expect, it } from 'vitest';
-import type {
-  AngebotId,
-  Ansatzzeile,
-  Aufmass,
-  AufmassId,
-  AuftragsLeistungsverzeichnisId,
-  AuftragsLvZustand,
-  Betrag,
-  LeistungsverzeichnisId,
-  Menge,
-  Position,
-  PositionId,
-  ProjektId,
-} from '@tethys/vertrag';
-import { aufmassAlsX31, leseGaeb, x31Lesen } from './index';
+import type { Ansatzzeile, Aufmass, AufmassId, Menge, PositionId, ProjektId } from '@tethys/vertrag';
+import { aufmassAlsX31, x31Lesen } from './index';
 import type { X31Aufmass } from './index';
-import { TEST_ERSTELLT, TEST_MWST, lesePfad, testIds } from './testhilfen';
+import { BVBS_MENGENERMITTLUNG, TEST_ERSTELLT, auftragsLvAus, lesePfad, positionId } from './testhilfen';
 
-const BVBS = 'fixtures/extern/bvbs/3.3-mengenermittlung/Pruefdatei_3.3_Mengenermittlung_V-11-06-2021';
-const NULL = '0.00' as Betrag;
-
-/** Das Auftrags-LV aus der X86 neben der Prüfdatei, wie die App es nach dem Zuschlag hält. */
-function auftragsLvAus(bytes: Uint8Array): AuftragsLvZustand {
-  const l = leseGaeb(bytes, { ids: testIds(), standardMwstSatz: TEST_MWST });
-  if (l.inhalt === null) throw new Error('Auftrags-LV nicht lesbar');
-  const { wurzelId, knoten, ...kopf } = l.inhalt;
-  return {
-    auftragsLeistungsverzeichnis: {
-      ...kopf,
-      id: wurzelId as string as AuftragsLeistungsverzeichnisId,
-      projektId: 'projekt-1' as ProjektId,
-      leistungsverzeichnisId: 'lv-1' as LeistungsverzeichnisId,
-      angebotId: 'angebot-1' as AngebotId,
-      knoten,
-    },
-    summen: {
-      positionen: [],
-      gliederungen: [],
-      gesamt: { netto: NULL, nachlass: NULL, nettoNachNachlass: NULL, mwst: NULL, brutto: NULL },
-    },
-  };
-}
-
+const BVBS = BVBS_MENGENERMITTLUNG;
 const BVBS_LV = auftragsLvAus(lesePfad(`${BVBS}.x86`));
-
-/** Kennung der Position mit dieser OZ (mit Index) im Auftrags-LV. */
-function positionId(lv: AuftragsLvZustand, oz: string): PositionId {
-  const p = lv.auftragsLeistungsverzeichnis.knoten.find(
-    (k): k is Position => k.art === 'position' && `${k.ordnungszahl ?? ''}${k.ozIndex ?? ''}` === oz,
-  );
-  if (!p) throw new Error(`keine Position ${oz}`);
-  return p.id;
-}
 
 // --- Kleine Dateien gegen dasselbe Auftrags-LV ------------------------------------------------------------------
 
