@@ -1,6 +1,6 @@
 # 86: A1 in der App: Auftrags-LV lesen und umkehren über den Vertrag, Nachträge
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A1 · Ordner: `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (neu); Einhängestellen in `App.tsx`,
 `lv/LvSeite.tsx`, `lv/befehlsweg.ts`, `projekt/ProjektSeite.tsx` (markiert `// Ticket 86`, D-20)
