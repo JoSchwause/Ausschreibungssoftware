@@ -44,6 +44,9 @@ Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht 
 ### Wahlposition (Alternativposition)
 Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
+### Wahlgruppe
+Die Alternativen, unter denen bei der Vergabe höchstens eine gewählt wird, mit den Grundpositionen, die eine gewählte Alternative ersetzt (D-21, D-59.1). Zusammengehörig sind Positionen mit derselben GAEB-Gruppennummer unter demselben Elternknoten und Alternativen mit ihrem Verweis auf die Grundposition; Grundposition ist jedes Mitglied, das keine Alternative ist (Variante 0 oder Ziel des Verweises). Im Code `wahlgruppenBilden` (`packages/vergabe`).
+
 ### Zuschlagsposition
 Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. B. erschwerte Bedingungen) und zusätzlich vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Seit K6 gilt GAEB-Semantik (E-03, D-03): Ihr Betrag ist der Zuschlagssatz auf die Zuschlagsbasis, kaufmännisch auf 2 Stellen gerundet, und geht wie ein GP in die Gliederungssumme und, nach ihren Merkmalen, in Netto, Bedarfs- oder Wahlsumme. Drei Bezugsformen (siehe Zuschlagsbezug): Gliederung, Kennzeichnung, Liste. Eine Zuschlagsposition ist nie Bezugsposition einer anderen. Ohne Satz hat sie keinen Betrag, außer in der Altform. Im Code `Positionsdaten.zuschlag`.
 
