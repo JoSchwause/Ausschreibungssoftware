@@ -86,10 +86,58 @@ describe('Vertrag v1.4 bis Ticket 79: unbekannt statt still verworfen (Q5)', () 
     expect(!ra.ok && ra.fehler.code).toBe('unbekannt');
   });
 
-  it('das Repository der Auftrags-LVs antwortet mit unbekannt', async () => {
+  it('die Repositories aus v1.4 antworten mit unbekannt', async () => {
     const s = speicherUeberTransport(direktTransport((await neuerKern()).kern), null);
-    const a = await s.auftragsLeistungsverzeichnisse.auflisten(P);
-    const l = await s.auftragsLeistungsverzeichnisse.laden('auftrags-lv-1' as never);
-    expect([a, l].map((r) => !r.ok && r.fehler.code)).toEqual(['unbekannt', 'unbekannt']);
+    const x = 'x' as never;
+    const antworten = [
+      await s.auftragsLeistungsverzeichnisse.auflisten(P),
+      await s.auftragsLeistungsverzeichnisse.laden(x),
+      await s.aufmasse.auflisten(x),
+      await s.aufmasse.laden(x),
+      await s.rechnungen.auflisten(x),
+      await s.rechnungen.laden(x),
+      await s.kostenermittlungen.auflisten(P),
+      await s.kostenermittlungen.laden(x),
+    ];
+    expect(new Set(antworten.map((r) => !r.ok && r.fehler.code))).toEqual(new Set(['unbekannt']));
+  });
+
+  it('ChangeSets von Aufmaßblatt, Rechnung und Kostenermittlung; der Massenbefehl AufmassAnlegen geht nicht ins Protokoll', async () => {
+    const kern = await mitLv();
+    const aufmass = {
+      id: 'aufmass-1',
+      projektId: P,
+      auftragsLvId: 'auftrags-lv-1',
+      nummer: 1,
+      bezeichnung: '',
+      datum: null,
+      positionen: [],
+    } as never;
+    const faelle: [ChangeSet, Protokolleintrag['aggregat'], Protokolleintrag['befehl']][] = [
+      [
+        { art: 'aufmass', aufmassId: 'aufmass-1' as never, aufmass: { vorher: null, nachher: aufmass } },
+        { art: 'aufmass', id: 'aufmass-1' as never },
+        { art: 'AufmassAnlegen', aufmass },
+      ],
+      [
+        { art: 'rechnung', rechnungId: 'rechnung-1' as never, rechnung: { vorher: null, nachher: null } },
+        { art: 'rechnung', id: 'rechnung-1' as never },
+        { art: 'RechnungLoeschen' },
+      ],
+      [
+        {
+          art: 'kostenermittlung',
+          kostenermittlungId: 'ke-1' as never,
+          kostenermittlung: { vorher: null, nachher: null },
+        },
+        { art: 'kostenermittlung', id: 'ke-1' as never },
+        { art: 'KostenermittlungLoeschen' },
+      ],
+    ];
+    for (const [cs, aggregat, b] of faelle) {
+      const r = await kern.anwenden(eintrag(901, P, aggregat, b), cs);
+      expect(!r.ok && r.fehler.code).toBe('unbekannt');
+    }
+    expect(wert(kern.protokoll(P)).map((e) => e.aggregat.art)).not.toContain('aufmass');
   });
 });

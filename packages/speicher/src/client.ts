@@ -111,6 +111,15 @@ export function speicherUeberTransport(
       auflisten: () => erstV14('Auftrags-LVs auflisten'),
       laden: () => erstV14('Auftrags-LV laden'),
     },
+    aufmasse: {
+      auflisten: () => erstV14('Aufmaßblätter auflisten'),
+      laden: () => erstV14('Aufmaßblatt laden'),
+    },
+    rechnungen: { auflisten: () => erstV14('Rechnungen auflisten'), laden: () => erstV14('Rechnung laden') },
+    kostenermittlungen: {
+      auflisten: () => erstV14('Kostenermittlungen auflisten'),
+      laden: () => erstV14('Kostenermittlung laden'),
+    },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),

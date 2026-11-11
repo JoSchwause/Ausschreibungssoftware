@@ -94,7 +94,8 @@ export interface BieterAnlegen {
  * vollen Stand (`ProjektChangeSet.projekt.vorher`).
  *
  * Gelöscht wird nur das Projekt selbst. Hängen noch LVs, Angebote oder Auftrags-LVs daran, weist `speicher` das
- * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“).
+ * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“). v1.4:
+ * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts.
  */
 export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';
@@ -828,8 +829,21 @@ export interface Wiederholen {
 /** Befehle auf der Historie der Sitzung (v1.2). Nicht in `LvBefehl`: kein Kern führt sie aus. */
 export type HistorienBefehl = Rueckgaengig | Wiederholen;
 
-/** Jeder Befehl, den das Befehlsprotokoll aufnimmt. */
-export type Befehl = ProjektBefehl | LvBefehl | AngebotBefehl | AuftragsLvBefehl | HistorienBefehl;
+/**
+ * Jeder Befehl, den das Befehlsprotokoll aufnimmt. v1.4 (Ticket 70 Punkt 10): dazu die Befehle an Aufmaßblatt, Rechnung
+ * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` (LV und Auftrags-LV;
+ * `Protokolleintrag.aggregat` unterscheidet).
+ */
+export type Befehl =
+  | ProjektBefehl
+  | LvBefehl
+  | AngebotBefehl
+  | AuftragsLvBefehl
+  | HistorienBefehl
+  // v1.4
+  | AufmassBefehl
+  | RechnungBefehl
+  | KostenermittlungBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
@@ -843,11 +857,17 @@ export type Befehlsart = Befehl['art'];
  *
  * Eine Liste, kein Merkmal am Befehl, damit der Typ `Befehl` und seine Handler unverändert bleiben. Ein neuer
  * Massenbefehl braucht ein Vertragsticket.
+ *
+ * v1.4 (Ticket 70 Punkt 10, D-70.5): dazu `AufmassAnlegen` (ein X31-Import trägt eine Zeile je Position des Auftrags-LV
+ * samt Ansatzzeilen, wächst also mit dem LV wie `AngebotAnlegen`). Nicht: `NachtragUebernehmen` (ein Nachtrag ist kurz),
+ * `RechnungAnlegen` (keine lange Liste), `KostenermittlungAnlegen` (höchstens ein Eintrag je Kostengruppennummer).
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
   'AngebotAnlegen',
   'AuftragsLeistungsverzeichnisAnlegen',
+  // v1.4
+  'AufmassAnlegen',
 ] as const;
 
 /** Name eines Massenbefehls. */

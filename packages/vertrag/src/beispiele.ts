@@ -1259,6 +1259,33 @@ export const beispielChangeSetKostenermittlungseintrag: KostenermittlungChangeSe
   },
 };
 
+/**
+ * Punkt 10 (D-70.5): Protokolleintrag von `beispielAufmassAnlegen`, einem Massenbefehl: Kopf (das Blatt ohne Zeilen) und
+ * Prüfsumme (hier ein Platzhalterwert in gültiger Form).
+ */
+export const beispielMassenprotokollAufmass: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000140' as ProtokollId,
+  projektId: beispielAufmass1.projektId,
+  aggregat: { art: 'aufmass', id: aufmass1Id },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-11T09:00:00.000Z' as Zeitstempel,
+  befehl: {
+    art: 'Befehlskurzfassung',
+    kopf: {
+      art: 'AufmassAnlegen',
+      aufmass: {
+        id: beispielAufmass1.id,
+        projektId: beispielAufmass1.projektId,
+        auftragsLvId: beispielAufmass1.auftragsLvId,
+        nummer: beispielAufmass1.nummer,
+        bezeichnung: beispielAufmass1.bezeichnung,
+        datum: beispielAufmass1.datum,
+      },
+    },
+    pruefsumme: { algorithmus: 'sha-256', wert: '0'.repeat(64) },
+  },
+};
+
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */
 export const beispielChangeSetTextquelle: LvChangeSet = {
   ...lvRahmen,

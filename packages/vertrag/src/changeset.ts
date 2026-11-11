@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ChangeSet (A6), Ergebniswerte und Fehler abgewiesener Befehle. Nur Typen.
 
-import type { AngebotBefehl, AuftragsLvBefehl, LvBefehl, ProjektBefehl } from './befehle';
+import type {
+  AngebotBefehl,
+  AufmassBefehl,
+  AuftragsLvBefehl,
+  KostenermittlungBefehl,
+  LvBefehl,
+  ProjektBefehl,
+  RechnungBefehl,
+} from './befehle';
 import type {
   AngebotId,
   AufmassId,
@@ -313,7 +321,16 @@ export interface KostenermittlungChangeSet {
   readonly kostenermittlung: Aenderung<Kostenermittlung>;
 }
 
-export type ChangeSet = ProjektChangeSet | LvChangeSet | AngebotChangeSet | AuftragsLvChangeSet;
+/** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */
+export type ChangeSet =
+  | ProjektChangeSet
+  | LvChangeSet
+  | AngebotChangeSet
+  | AuftragsLvChangeSet
+  // v1.4
+  | AufmassChangeSet
+  | RechnungChangeSet
+  | KostenermittlungChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -362,3 +379,49 @@ export type AuftragsLvChangeSetAnwenden = (
  * Umkehrung eines LV-ChangeSets auf (D-64.4).
  */
 export type AuftragsLvChangeSetUmkehren = (changeSet: AuftragsLvChangeSet) => AuftragsLvChangeSet;
+
+// --- Signaturen der Aggregate aus v1.4 (Ticket 70 Punkt 10) ------------------------------------------------------
+//
+// Wie bei LV und Angebot: Ausführen ist rein und deterministisch (A2); der Kontext, den ein Ausführer braucht (Auftrags-LV,
+// übrige Blätter oder Rechnungen), steckt in einer Fabrik des liefernden Pakets, wie `angebotBefehlAusfuehrer(projekt, lv)`
+// in `vergabe`. Anwenden: `null` als Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“. Umkehren: Tausch
+// von `vorher` und `nachher` (ganze Aggregate, D-36 (8)). Liefern: `abrechnung` (Aufmaß Ticket 80, Rechnung Ticket 81),
+// `kosten` (Kostenermittlung Ticket 82).
+
+export type AufmassBefehlAusfuehren = (
+  zustand: AufmassZustand | null,
+  befehl: AufmassBefehl,
+) => Ergebnis<AufmassChangeSet, Befehlsfehler>;
+
+export type AufmassChangeSetAnwenden = (
+  zustand: AufmassZustand | null,
+  changeSet: AufmassChangeSet,
+) => AufmassZustand | null;
+
+export type AufmassChangeSetUmkehren = (changeSet: AufmassChangeSet) => AufmassChangeSet;
+
+export type RechnungBefehlAusfuehren = (
+  zustand: RechnungZustand | null,
+  befehl: RechnungBefehl,
+) => Ergebnis<RechnungChangeSet, Befehlsfehler>;
+
+export type RechnungChangeSetAnwenden = (
+  zustand: RechnungZustand | null,
+  changeSet: RechnungChangeSet,
+) => RechnungZustand | null;
+
+export type RechnungChangeSetUmkehren = (changeSet: RechnungChangeSet) => RechnungChangeSet;
+
+export type KostenermittlungBefehlAusfuehren = (
+  zustand: KostenermittlungZustand | null,
+  befehl: KostenermittlungBefehl,
+) => Ergebnis<KostenermittlungChangeSet, Befehlsfehler>;
+
+export type KostenermittlungChangeSetAnwenden = (
+  zustand: KostenermittlungZustand | null,
+  changeSet: KostenermittlungChangeSet,
+) => KostenermittlungZustand | null;
+
+export type KostenermittlungChangeSetUmkehren = (
+  changeSet: KostenermittlungChangeSet,
+) => KostenermittlungChangeSet;

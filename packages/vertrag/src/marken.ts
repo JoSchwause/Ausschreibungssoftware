@@ -97,4 +97,10 @@ export interface IdQuelle {
   papierkorbeintrag(): PapierkorbeintragId;
   /** v1.2: für `LvStandAnlegen`. */
   lvStand(): LvStandId;
+  /** v1.4: für `AufmassAnlegen`. */
+  aufmass(): AufmassId;
+  /** v1.4: für `RechnungAnlegen`. */
+  rechnung(): RechnungId;
+  /** v1.4: für `KostenermittlungAnlegen`. */
+  kostenermittlung(): KostenermittlungId;
 }

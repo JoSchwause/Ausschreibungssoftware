@@ -4,33 +4,55 @@
 import type { Befehl } from './befehle';
 import type {
   AngebotZustand,
+  AufmassZustand,
   AuftragsLvZustand,
   ChangeSet,
   Ergebnis,
+  KostenermittlungZustand,
   LvStand,
   LvStandUebersicht,
   LvZustand,
+  RechnungZustand,
 } from './changeset';
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
+  KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
   NutzerId,
   ProjektId,
   ProtokollId,
+  RechnungId,
   Zeitstempel,
 } from './marken';
-import type { AngebotKopf, AuftragsLvKopf, LvInhalt, Projekt } from './modell';
+import type {
+  AngebotKopf,
+  AufmassKopf,
+  AuftragsLvKopf,
+  Kostenermittlung,
+  LvInhalt,
+  Projekt,
+  Rechnung,
+} from './modell';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
-/** Aggregat, auf das ein Befehl wirkt. */
+/**
+ * Aggregat, auf das ein Befehl wirkt. `art` ist dieselbe wie `ChangeSet.art` des Aggregats. v1.4 (Ticket 70 Punkt 10):
+ * dazu Aufmaßblatt, Rechnung und Kostenermittlung; `KostengruppeSetzen` steht mit `leistungsverzeichnis` oder
+ * `auftrags-leistungsverzeichnis` im Protokoll.
+ */
 export type AggregatBezug =
   | { readonly art: 'projekt'; readonly id: ProjektId }
   | { readonly art: 'leistungsverzeichnis'; readonly id: LeistungsverzeichnisId }
   | { readonly art: 'angebot'; readonly id: AngebotId }
-  | { readonly art: 'auftrags-leistungsverzeichnis'; readonly id: AuftragsLeistungsverzeichnisId };
+  | { readonly art: 'auftrags-leistungsverzeichnis'; readonly id: AuftragsLeistungsverzeichnisId }
+  // v1.4
+  | { readonly art: 'aufmass'; readonly id: AufmassId }
+  | { readonly art: 'rechnung'; readonly id: RechnungId }
+  | { readonly art: 'kostenermittlung'; readonly id: KostenermittlungId };
 
 /**
  * Prüfsumme über einen vollständigen Befehl (v1.1b, Punkt 7; E-13). Der Algorithmus ist ein Feld, damit er
@@ -73,6 +95,11 @@ export type Massenbefehlskopf =
       readonly art: 'AuftragsLeistungsverzeichnisAnlegen';
       /** Das Auftrags-LV ohne `knoten`. */
       readonly auftragsLeistungsverzeichnis: AuftragsLvKopf;
+    }
+  | {
+      readonly art: 'AufmassAnlegen';
+      /** Das Aufmaßblatt ohne `positionen` (v1.4, Ticket 70 Punkt 10). */
+      readonly aufmass: AufmassKopf;
     };
 
 /**
@@ -187,6 +214,48 @@ export interface AuftragsLvRepository {
   laden(id: AuftragsLeistungsverzeichnisId): Promise<Ergebnis<AuftragsLvZustand, Speicherfehler>>;
 }
 
+/**
+ * Aufmaßblätter (v1.4, Ticket 70 Punkt 10). Nur lesend (A5); bis Ticket 79 antwortet `speicher` mit `unbekannt`.
+ */
+export interface AufmassRepository {
+  /** Die Blätter des Auftrags-LV ohne Zeilen, nach `nummer` aufsteigend. Unbekanntes Auftrags-LV: `nicht-gefunden`. */
+  auflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Promise<Ergebnis<readonly AufmassKopf[], Speicherfehler>>;
+  laden(id: AufmassId): Promise<Ergebnis<AufmassZustand, Speicherfehler>>;
+}
+
+/**
+ * Rechnungen (v1.4, Ticket 70 Punkt 10). Nur lesend (A5); bis Ticket 79 antwortet `speicher` mit `unbekannt`.
+ */
+export interface RechnungRepository {
+  /**
+   * Die Rechnungen des Auftrags-LV, ganz, nach `nummer` aufsteigend. Vorläufige Annahme, Entscheidung offen: ganze
+   * Rechnungen statt einer Übersicht, weil sie klein sind und die Prüfung einer Rechnung alle früheren braucht (D-34 (7)).
+   * Unbekanntes Auftrags-LV: `nicht-gefunden`.
+   */
+  auflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Promise<Ergebnis<readonly Rechnung[], Speicherfehler>>;
+  laden(id: RechnungId): Promise<Ergebnis<RechnungZustand, Speicherfehler>>;
+}
+
+/** Eine Kostenermittlung in der Liste des Projekts (v1.4, Ticket 70 Punkt 10): ohne Einträge. */
+export type KostenermittlungUebersicht = Omit<Kostenermittlung, 'eintraege'>;
+
+/**
+ * Kostenermittlungen des Projekts (v1.4, Ticket 70 Punkt 10). Nur lesend (A5); bis Ticket 79 antwortet `speicher` mit
+ * `unbekannt`.
+ */
+export interface KostenermittlungRepository {
+  /**
+   * Die Kostenermittlungen des Projekts ohne Einträge, sortiert wie die LV-Liste (Name de-DE, gleiche Namen nach
+   * Kennung). Unbekanntes Projekt: `nicht-gefunden`.
+   */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly KostenermittlungUebersicht[], Speicherfehler>>;
+  laden(id: KostenermittlungId): Promise<Ergebnis<KostenermittlungZustand, Speicherfehler>>;
+}
+
 /** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
 export interface LvStandRepository {
   /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
@@ -211,6 +280,16 @@ export interface Persistenzstatus {
  * v1.1a: `anwenden` nimmt auch ChangeSets, die ein Aggregat anlegen (`kopf.vorher: null`) oder löschen
  * (`nachher: null`), und ChangeSets des Auftrags-LV. Löschen verlangt, dass nichts mehr am Aggregat hängt (Angebote
  * und Auftrags-LV am LV, LVs am Projekt); sonst `konflikt`.
+ *
+ * v1.4 (Ticket 70 Punkt 10; Q5): dazu die ChangeSets von Aufmaßblatt, Rechnung und Kostenermittlung (ganze Aggregate,
+ * D-36 (8); bis Ticket 79 `unbekannt`). `konflikt` auch, wenn ein ChangeSet (auch ohne Ausführer, als Undo)
+ * - das Auftrags-LV löscht, solange ein Aufmaßblatt, eine Rechnung oder die Nachtragsangaben eines LV darauf verweisen;
+ * - eine Position aus dem Auftrags-LV entfernt, auf die eine Aufmaßposition verweist (Umkehrung von `NachtragUebernehmen`);
+ * - ein Aufmaßblatt löscht, das in einer Rechnung steht (`Rechnung.aufmassIds`);
+ * - eine Rechnung löscht oder ihre Freigabe entfernt, solange eine spätere Rechnung desselben Auftrags-LV freigegeben ist;
+ * - auf ein Auftrags-LV, Aufmaßblatt oder eine Kennung verweist, die es im Projekt nicht gibt (Nachtragsangaben,
+ *   `auftragsLvId`, `aufmassIds`);
+ * - eine Blatt- oder Rechnungsnummer doppelt vergäbe (je Auftrags-LV eindeutig).
  */
 export interface Speicher {
   readonly projekte: ProjektRepository;
@@ -223,6 +302,12 @@ export interface Speicher {
    * Projektdatei (D-64.2); `speicher` liefert es mit Ticket 79, bis dahin `unbekannt`.
    */
   readonly auftragsLeistungsverzeichnisse: AuftragsLvRepository;
+  /** Aufmaßblätter (v1.4, Ticket 70 Punkt 10; Pflicht). `speicher` liefert sie mit Ticket 79, bis dahin `unbekannt`. */
+  readonly aufmasse: AufmassRepository;
+  /** Rechnungen (v1.4, Ticket 70 Punkt 10; Pflicht). `speicher` liefert sie mit Ticket 79, bis dahin `unbekannt`. */
+  readonly rechnungen: RechnungRepository;
+  /** Kostenermittlungen (v1.4, Ticket 70 Punkt 10; Pflicht). `speicher` liefert sie mit Ticket 79, bis dahin `unbekannt`. */
+  readonly kostenermittlungen: KostenermittlungRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -260,4 +345,12 @@ export interface Projektdatei {
    * hieße `lvStaende: []` in jeder Datei, also eine neue Schemaversion (A8; Offene Typfrage, Ticket 53).
    */
   readonly lvStaende?: readonly LvStand[];
+  /**
+   * Aufmaßblätter, Rechnungen und Kostenermittlungen des Projekts (v1.4, Ticket 70 Punkt 10). Vorläufige Annahme,
+   * Entscheidung offen (enge Lesart, wie `lvStaende`): optional, fehlt = keine; `speicher` lässt ein leeres Feld weg, so
+   * bleibt die kanonische Datei der bisherigen Schemaversion gleich (A8). Die Migration liefert Ticket 79.
+   */
+  readonly aufmasse?: readonly AufmassZustand[];
+  readonly rechnungen?: readonly RechnungZustand[];
+  readonly kostenermittlungen?: readonly KostenermittlungZustand[];
 }

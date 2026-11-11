@@ -33,6 +33,8 @@ const alleKnoten = (a: Aenderungen<Knoten>): Knoten[] => [
 export function pruefeV14(cs: ChangeSet): void {
   const nein = (was: string): never =>
     abbruch('unbekannt', `${was} (Vertrag v1.4) speichert erst Ticket 79; es wurde nichts geschrieben.`);
+  if (cs.art === 'aufmass' || cs.art === 'rechnung' || cs.art === 'kostenermittlung')
+    nein(`Das ChangeSet ${cs.art}`);
   if (cs.art !== 'leistungsverzeichnis' && cs.art !== 'auftrags-leistungsverzeichnis') return;
   if (cs.art === 'leistungsverzeichnis' && cs.kopf !== null) {
     const feld = kopfFeldV14(cs.kopf.nachher) ?? kopfFeldV14(cs.kopf.vorher);

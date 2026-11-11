@@ -58,7 +58,10 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
         ? { art: 'leistungsverzeichnis', id: cs.leistungsverzeichnisId as string }
         : cs.art === 'angebot'
           ? { art: 'angebot', id: cs.angebotId as string }
-          : { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string };
+          : cs.art === 'auftrags-leistungsverzeichnis'
+            ? { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string }
+            : // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 speichert Aufmaß, Rechnung, Kostenermittlung)
+              abbruch('unbekannt', `ChangeSet ${cs.art} (Vertrag v1.4) speichert erst Ticket 79.`);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',

@@ -144,6 +144,24 @@ import {
   type Kostenermittlungseintrag,
   type Kostenermittlungsstufe,
   type KostenermittlungZustand,
+  MASSENBEFEHLSARTEN,
+  type AggregatBezug,
+  type AngebotBefehl,
+  type AufmassBefehlAusfuehren,
+  type AufmassChangeSetAnwenden,
+  type AufmassChangeSetUmkehren,
+  type AufmassRepository,
+  type KostenermittlungBefehlAusfuehren,
+  type KostenermittlungChangeSetAnwenden,
+  type KostenermittlungChangeSetUmkehren,
+  type KostenermittlungRepository,
+  type KostenermittlungUebersicht,
+  type Massenbefehlskopf,
+  type ProjektBefehl,
+  type RechnungBefehlAusfuehren,
+  type RechnungChangeSetAnwenden,
+  type RechnungChangeSetUmkehren,
+  type RechnungRepository,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -207,6 +225,7 @@ import {
   beispielChangeSetKostenermittlungseintrag,
   beispielKostenermittlung,
   beispielKostenermittlungseintragSetzen,
+  beispielMassenprotokollAufmass,
 } from './beispiele';
 
 /**
@@ -1389,5 +1408,181 @@ describe('v1.4 Punkt 9: Kostenermittlung (C3, D-36 (3))', () => {
     expect(aufsteigend(nummern(cs.kostenermittlung.nachher))).toBe(true);
     expect(tauschen(tauschen(cs.kostenermittlung))).toEqual(cs.kostenermittlung);
     expect(beispielKostenermittlungseintragSetzen.eintrag).not.toHaveProperty('bemerkung');
+  });
+});
+
+describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektdatei)', () => {
+  type Aggregatarten =
+    | 'projekt'
+    | 'leistungsverzeichnis'
+    | 'angebot'
+    | 'auftrags-leistungsverzeichnis'
+    | 'aufmass'
+    | 'rechnung'
+    | 'kostenermittlung';
+
+  it('AggregatBezug und ChangeSet kennen Aufmaß, Rechnung und Kostenermittlung', () => {
+    expectTypeOf<AggregatBezug['art']>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<ChangeSet['art']>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'aufmass' }>['id']>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'rechnung' }>['id']>().toEqualTypeOf<RechnungId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'kostenermittlung' }>['id']
+    >().toEqualTypeOf<KostenermittlungId>();
+    expectTypeOf<AufmassChangeSet | RechnungChangeSet | KostenermittlungChangeSet>().toExtend<ChangeSet>();
+  });
+
+  it('Befehl umfasst die neuen Befehle; jeder Name gehört zu genau einem Aggregat, außer KostengruppeSetzen', () => {
+    expectTypeOf<AufmassBefehl | RechnungBefehl | KostenermittlungBefehl>().toExtend<Befehl>();
+    expectTypeOf<
+      Extract<
+        AufmassBefehl['art'] | RechnungBefehl['art'] | KostenermittlungBefehl['art'],
+        LvBefehl['art'] | AuftragsLvBefehl['art'] | AngebotBefehl['art'] | ProjektBefehl['art']
+      >
+    >().toEqualTypeOf<never>();
+    expectTypeOf<
+      Extract<AufmassBefehl['art'], RechnungBefehl['art'] | KostenermittlungBefehl['art']>
+    >().toEqualTypeOf<never>();
+    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<'KostengruppeSetzen'>();
+  });
+
+  it('Signaturen für Ausführen, Anwenden und Umkehren je neuem Aggregat', () => {
+    expectTypeOf<AufmassBefehlAusfuehren>().toEqualTypeOf<
+      (zustand: AufmassZustand | null, befehl: AufmassBefehl) => Ergebnis<AufmassChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<AufmassChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: AufmassZustand | null, changeSet: AufmassChangeSet) => AufmassZustand | null
+    >();
+    expectTypeOf<AufmassChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: AufmassChangeSet) => AufmassChangeSet
+    >();
+    expectTypeOf<RechnungBefehlAusfuehren>().toEqualTypeOf<
+      (zustand: RechnungZustand | null, befehl: RechnungBefehl) => Ergebnis<RechnungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<RechnungChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: RechnungZustand | null, changeSet: RechnungChangeSet) => RechnungZustand | null
+    >();
+    expectTypeOf<RechnungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: RechnungChangeSet) => RechnungChangeSet
+    >();
+    expectTypeOf<KostenermittlungBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: KostenermittlungZustand | null,
+        befehl: KostenermittlungBefehl,
+      ) => Ergebnis<KostenermittlungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<KostenermittlungChangeSetAnwenden>().toEqualTypeOf<
+      (
+        zustand: KostenermittlungZustand | null,
+        changeSet: KostenermittlungChangeSet,
+      ) => KostenermittlungZustand | null
+    >();
+    expectTypeOf<KostenermittlungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: KostenermittlungChangeSet) => KostenermittlungChangeSet
+    >();
+  });
+
+  it('Repositories am Speicher (Pflicht): Aufmaße und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
+    expectTypeOf<Speicher['aufmasse']>().toEqualTypeOf<AufmassRepository>();
+    expectTypeOf<Speicher['rechnungen']>().toEqualTypeOf<RechnungRepository>();
+    expectTypeOf<Speicher['kostenermittlungen']>().toEqualTypeOf<KostenermittlungRepository>();
+    expectTypeOf<AufmassRepository['auflisten']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<AufmassRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly AufmassKopf[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<AufmassRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<AufmassZustand, Speicherfehler>>
+    >();
+    expectTypeOf<RechnungRepository['auflisten']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<RechnungRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Rechnung[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<RechnungRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<RechnungZustand, Speicherfehler>>
+    >();
+    expectTypeOf<KostenermittlungRepository['auflisten']>().parameter(0).toEqualTypeOf<ProjektId>();
+    expectTypeOf<ReturnType<KostenermittlungRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly KostenermittlungUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<KostenermittlungUebersicht>().toEqualTypeOf<Omit<Kostenermittlung, 'eintraege'>>();
+    expectTypeOf<ReturnType<KostenermittlungRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<KostenermittlungZustand, Speicherfehler>>
+    >();
+  });
+
+  it('Projektdatei: drei optionale Listen, fehlt = leer (wie lvStaende)', () => {
+    expectTypeOf<Projektdatei['aufmasse']>().toEqualTypeOf<readonly AufmassZustand[] | undefined>();
+    expectTypeOf<Projektdatei['rechnungen']>().toEqualTypeOf<readonly RechnungZustand[] | undefined>();
+    expectTypeOf<Projektdatei['kostenermittlungen']>().toEqualTypeOf<
+      readonly KostenermittlungZustand[] | undefined
+    >();
+  });
+
+  it('Massenbefehle: AufmassAnlegen ja (X31), RechnungAnlegen und KostenermittlungAnlegen nein', () => {
+    expect(MASSENBEFEHLSARTEN).toContain('AufmassAnlegen');
+    expect(MASSENBEFEHLSARTEN).not.toContain('KostenermittlungAnlegen');
+    expect(MASSENBEFEHLSARTEN).not.toContain('RechnungAnlegen');
+    expectTypeOf<'KostenermittlungAnlegen' | 'RechnungAnlegen'>().not.toExtend<Massenbefehlsart>();
+    expectTypeOf<
+      Extract<Massenbefehlskopf, { art: 'AufmassAnlegen' }>['aufmass']
+    >().toEqualTypeOf<AufmassKopf>();
+    const b = beispielMassenprotokollAufmass.befehl;
+    expect(b.art === 'Befehlskurzfassung' && b.kopf).toEqual({
+      art: 'AufmassAnlegen',
+      aufmass: {
+        id: beispielAufmass1.id,
+        projektId: beispielAufmass1.projektId,
+        auftragsLvId: beispielAufmass1.auftragsLvId,
+        nummer: 1,
+        bezeichnung: beispielAufmass1.bezeichnung,
+        datum: beispielAufmass1.datum,
+      },
+    });
+    expect(beispielMassenprotokollAufmass.aggregat).toEqual({ art: 'aufmass', id: beispielAufmass1.id });
+  });
+
+  it('IdQuelle liefert die Kennungen der neuen Aggregate', () => {
+    expectTypeOf<ReturnType<IdQuelle['aufmass']>>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<ReturnType<IdQuelle['rechnung']>>().toEqualTypeOf<RechnungId>();
+    expectTypeOf<ReturnType<IdQuelle['kostenermittlung']>>().toEqualTypeOf<KostenermittlungId>();
+  });
+});
+
+describe('v1.4: reine Daten und Werte vor v1.4', () => {
+  it('NurDaten deckt die neuen Typen ab', () => {
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Protokolleintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Aufmass>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Rechnung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Kostenermittlung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<NachtragUebernehmen>>().toEqualTypeOf<true>();
+  });
+
+  it('LV, Position, Projektdatei und Auftrags-LV ohne die neuen Felder bleiben gültig', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).not.toHaveProperty('kostengruppe');
+    expect(p).not.toHaveProperty('textquelle');
+    expect(beispielLv).not.toHaveProperty('nachtrag');
+    expect(beispielLv).not.toHaveProperty('vorlage');
+    const datei: Projektdatei = {
+      schemaVersion: 4,
+      projekt: {
+        id: beispielLv.projektId,
+        name: 'Beispiel',
+        bauherr: { name: 'B', anschrift: null },
+        bieter: [],
+      },
+      leistungsverzeichnisse: [],
+      angebote: [],
+      auftragsLeistungsverzeichnisse: [],
+      protokoll: [],
+    };
+    expect(datei).not.toHaveProperty('aufmasse');
   });
 });
