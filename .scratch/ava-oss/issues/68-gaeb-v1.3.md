@@ -1,6 +1,6 @@
 # 68: `gaeb` v1.3: Auftragnehmer in X86, EPA-Bezeichnungen, leere Langtext-Strukturen, Import der X84 aus Ticket 69
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: G · Paket: `packages/gaeb`
 Blocked by: 53 (`vertrag` v1.3), 51 (Goldens), 57 (Speicherung der neuen Felder), 69 (X84-Dateien)
