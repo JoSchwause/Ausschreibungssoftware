@@ -25,7 +25,8 @@ export {
 } from './ozregeln';
 export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
-export { FELD_ANNAHMEN, langtextGleich } from './feld-befehle';
+export { FELD_ANNAHMEN } from './feld-befehle';
+export { langtextGleich } from './langtext';
 export { HINWEIS_ANNAHMEN } from './hinweise';
 export { ANTEILE, EPA_ANNAHMEN, anteilsumme, epaSummen } from './epa';
 export type { Anteil, Anteilsummen, EpaSummen } from './epa';
