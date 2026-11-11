@@ -2,11 +2,8 @@
 // Kostengruppennummer (Ticket 55, D-24): dreistellige Nummer nach Art der DIN 276. Ebene, Elternteil und Vorfahren
 // folgen allein aus den Ziffern; im Repo steht keine Liste der Gruppen und keine Bezeichnung (G-16, C1). Rein (A2).
 
+// Die Marke `Kostengruppennummer` liegt seit v1.4 in `vertrag` (Ticket 70 Punkt 4); nur {@link kgLesen} erzeugt sie.
 import type { Ergebnis, Kostengruppennummer } from '@tethys/vertrag';
-
-// v1.4: mechanisch angepasst, Folgeticket (Vertrag v1.4, Ticket 70 Punkt 4: die Marke liegt in `vertrag`; weiter
-// exportiert für die Verbraucher von `kosten`). Dreistellig `100` bis `999`; nur {@link kgLesen} erzeugt sie.
-export type { Kostengruppennummer };
 
 /** Ebene einer Kostengruppe: `X00` ist 1, `XY0` (Y ≠ 0) ist 2, `XYZ` (Z ≠ 0) ist 3. */
 export type Kostengruppenebene = 1 | 2 | 3;
