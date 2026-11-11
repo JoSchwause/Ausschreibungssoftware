@@ -31,9 +31,9 @@ Herkunft: `plan.md` §2 V4, §4 Tor M3
 
 ## Acceptance criteria
 
-- [ ] `m3.spec.ts` grün, dreimal hintereinander
-- [ ] E2E: zweiter Zuschlag nicht möglich; Undo nimmt den Zuschlag zurück
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] `m3.spec.ts` grün, dreimal hintereinander
+- [x] E2E: zweiter Zuschlag nicht möglich; Undo nimmt den Zuschlag zurück
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
@@ -98,3 +98,5 @@ In-Memory-Speicher (`auftrag.test.ts`), `auftragZiel`, `auftragAusgeben` (X86 mi
   Reversible: yes.
 - Nach Merge von `integration/welle-4` (2bfb344, Tickets 57 und 68): `auftrag.test.ts` grün, `m3.spec.ts` dreimal
   hintereinander grün (`--repeat-each=3`).
+- Nach Merge von `integration/welle-4` (b60ca0b, Ticket 65): Lint, Typecheck, `pnpm test` (2017 Tests) grün; Web-E2E
+  64/64 grün; `m3.spec.ts` erneut dreimal hintereinander grün.
