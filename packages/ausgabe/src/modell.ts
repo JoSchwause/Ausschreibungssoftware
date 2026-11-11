@@ -18,11 +18,13 @@ import type {
   GliederungId,
   HinweistextId,
   Knoten,
+  Langtext,
   LvZustand,
   Position,
   PositionId,
   Zuschlag,
 } from '@tethys/vertrag';
+import { kuerzeBloecke } from './kuerzen';
 import { langtextAlsBloecke } from './langtext';
 import type { DruckBlock } from './langtext';
 
@@ -126,9 +128,16 @@ export interface Ausgabemodell {
   /** `false`: Blankett für Bieter, es steht kein Preis im Modell. */
   readonly mitPreisen: boolean;
   readonly zeilen: readonly AusgabeZeile[];
-  /** `null` ohne Preise. */
+  /** `null` ohne Preise oder ohne Schlussblock. */
   readonly summen: SummenBlock | null;
 }
+
+/** Wie viel vom Langtext ins Modell kommt (Druckprofil, Ticket 77). */
+export type LangtextUmfang =
+  | { readonly art: 'voll' }
+  | { readonly art: 'kein' }
+  /** Die ersten `anzahl` Zeilen (Absatz, Listenpunkt, Tabellenzeile; ein Zeilenumbruch im Absatz zählt mit). */
+  | { readonly art: 'zeilen'; readonly anzahl: number };
 
 export interface ModellOptionen {
   /** Vorgabe `true`. `false`: Blankett, EP, GP, Titelsummen und Schlussblock entfallen. */
@@ -137,6 +146,14 @@ export interface ModellOptionen {
   readonly datum?: string;
   /** Projekt des LV (der `LvZustand` kennt nur die `projektId`). */
   readonly projekt?: { readonly name: string; readonly bauherr: Bauherr };
+  /** Vorgabe `{ art: 'voll' }`. Gilt für Positionen und Unterbeschreibungen; Hinweistexte bleiben stehen. */
+  readonly langtext?: LangtextUmfang;
+  /** Vorgabe `true`. `false`: keine Titelsummen (ohne Preise ohnehin keine). */
+  readonly titelsummen?: boolean;
+  /** Vorgabe `true`. `false`: kein Schlussblock (Netto bis Brutto, Bedarfs- und Wahlsumme); `summen` ist dann `null`. */
+  readonly schlussblock?: boolean;
+  /** Vorgabe `true`. `false`: der Kopf trägt nur den LV-Namen, keine Angaben zu Projekt, Bauherr, Auftraggeber, Vergabe. */
+  readonly deckblatt?: boolean;
 }
 
 // --- Formatieren von Kopfangaben ----------------------------------------------------------------
@@ -240,6 +257,17 @@ export function kinderNachReihenfolge(knoten: readonly Knoten[]): Map<string, Kn
 
 export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen = {}): Ausgabemodell {
   const mitPreisen = optionen.mitPreisen ?? true;
+  const umfang = optionen.langtext ?? { art: 'voll' };
+  const mitTitelsummen = mitPreisen && (optionen.titelsummen ?? true);
+  const mitSchlussblock = mitPreisen && (optionen.schlussblock ?? true);
+  const fuerPosition = (l: Langtext): readonly DruckBlock[] => {
+    const bloecke = langtextAlsBloecke(l);
+    return umfang.art === 'voll'
+      ? bloecke
+      : umfang.art === 'kein'
+        ? []
+        : kuerzeBloecke(bloecke, umfang.anzahl);
+  };
   const { leistungsverzeichnis: lv, summen } = zustand;
   const kinder = kinderNachReihenfolge(lv.knoten);
   const positionssumme = new Map(summen.positionen.map((s) => [s.positionId as string, s]));
@@ -291,11 +319,11 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
                   : '',
               bezug: zuschlagBezug(p.zuschlag, p.elternId),
             },
-      langtext: langtextAlsBloecke(p.langtext),
+      langtext: fuerPosition(p.langtext),
       unterbeschreibungen: (p.leitbeschreibung?.unterbeschreibungen ?? []).map((u) => ({
         nummer: u.nummer,
         kurztext: u.kurztext,
-        langtext: langtextAlsBloecke(u.langtext),
+        langtext: fuerPosition(u.langtext),
         menge: u.menge === null ? '' : formatiereMengeDe(u.menge),
         einheit: u.einheit ?? '',
       })),
@@ -317,7 +345,7 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
           const o = oz(k.ordnungszahl);
           zeilen.push({ art: 'titel', knotenId: k.id, ebene, ordnungszahl: o, kurztext: k.kurztext });
           besuche(k.id, ebene + 1);
-          if (mitPreisen) {
+          if (mitTitelsummen) {
             const s = gliederungssumme.get(k.id);
             zeilen.push({
               art: 'titelsumme',
@@ -369,10 +397,10 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
   };
   return {
     name: lv.name,
-    kopf: baueKopf(zustand, optionen),
+    kopf: optionen.deckblatt === false ? { lvName: lv.name, felder: [] } : baueKopf(zustand, optionen),
     datum: optionen.datum === undefined ? null : datumDe(optionen.datum),
     mitPreisen,
     zeilen,
-    summen: mitPreisen ? summenBlock : null,
+    summen: mitSchlussblock ? summenBlock : null,
   };
 }
