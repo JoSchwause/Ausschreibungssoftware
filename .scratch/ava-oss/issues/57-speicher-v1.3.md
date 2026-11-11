@@ -1,6 +1,6 @@
 # 57: Speicher v1.3: Migration 4 (Mengenansatz, Auftragnehmer, EPA-Bezeichnungen), LV-Übersicht
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: S · Paket: `packages/speicher`
 Blocked by: 53 (`vertrag` v1.3), 52 (gleiches Paket)
