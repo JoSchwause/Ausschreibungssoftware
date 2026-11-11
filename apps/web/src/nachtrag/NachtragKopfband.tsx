@@ -7,7 +7,7 @@ import { Auswahl, Button } from '@tethys/ui-basis';
 import type { LvZustand, Nachtragsangaben, Nachtragsstatus } from '@tethys/vertrag';
 import { useEffect, useId, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Verweis } from '../auftrag/Verweis';
+import { Verweis } from '../ui/Verweis';
 import { auftragPfad } from '../auftrag/ziel';
 import type { LvSitzung } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';

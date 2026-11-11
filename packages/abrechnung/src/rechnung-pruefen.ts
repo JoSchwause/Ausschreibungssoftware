@@ -65,8 +65,11 @@ export interface Abzugskette {
   readonly zahlbetrag: Betrag;
 }
 
-/** Gefordert gegen geprüft (D-44): `differenz` = gefordert − geprüft. */
-export interface Abweichung {
+/**
+ * Gefordert gegen geprüft (D-44): `differenz` = gefordert − geprüft. Nicht die Abweichung der Kostenkontrolle
+ * (Vergabe − Budget, Glossar).
+ */
+export interface Forderungsdifferenz {
   readonly gefordert: Betrag;
   readonly geprueft: Betrag;
   readonly differenz: Betrag;
@@ -78,9 +81,9 @@ export interface Abweichung {
  * Forderung kumuliert ist, sagt der Vertrag nicht, Offene Typfrage 8 zu Ticket 70).
  */
 export interface Forderungsvergleich {
-  readonly netto: Abweichung | null;
-  readonly brutto: Abweichung | null;
-  readonly zahlbetrag: Abweichung | null;
+  readonly netto: Forderungsdifferenz | null;
+  readonly brutto: Forderungsdifferenz | null;
+  readonly zahlbetrag: Forderungsdifferenz | null;
 }
 
 /**
@@ -120,7 +123,10 @@ export type Rechnungsbefund =
       readonly rechnungId: RechnungId;
       readonly nummer: number;
     }
-  | ({ readonly code: 'gefordert-abweichend'; readonly feld: 'zahlbetrag' | 'brutto' | 'netto' } & Abweichung)
+  | ({
+      readonly code: 'gefordert-abweichend';
+      readonly feld: 'zahlbetrag' | 'brutto' | 'netto';
+    } & Forderungsdifferenz)
   | { readonly code: 'ueberzahlung'; readonly zahlbetrag: Betrag }
   | {
       readonly code: 'freigabe-abweichend';
@@ -150,7 +156,7 @@ function rechnungenDesAuftrags(rechnung: Rechnung, rechnungen: readonly Rechnung
 const anteil = (basis: Betrag, satz: Prozent | null): Betrag =>
   satz === null ? NULL_BETRAG : prozentVon(basis, satz);
 
-function abweichung(gefordert: Betrag | null, geprueft: Betrag): Abweichung | null {
+function forderungsdifferenz(gefordert: Betrag | null, geprueft: Betrag): Forderungsdifferenz | null {
   return gefordert === null ? null : { gefordert, geprueft, differenz: subtrahiere(gefordert, geprueft) };
 }
 
@@ -259,9 +265,9 @@ export function rechnungPruefen(
     g === null
       ? null
       : {
-          netto: abweichung(g.netto, nettoNachNachlass),
-          brutto: abweichung(g.brutto, bruttoKumuliert),
-          zahlbetrag: abweichung(g.zahlbetrag, zahlbetrag),
+          netto: forderungsdifferenz(g.netto, nettoNachNachlass),
+          brutto: forderungsdifferenz(g.brutto, bruttoKumuliert),
+          zahlbetrag: forderungsdifferenz(g.zahlbetrag, zahlbetrag),
         };
   if (forderung !== null) {
     const feld = (['zahlbetrag', 'brutto', 'netto'] as const).find((f) => forderung[f] !== null);

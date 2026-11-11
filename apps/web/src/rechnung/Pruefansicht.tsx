@@ -10,7 +10,8 @@ import { useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { datumDe } from '../lv/kopfdaten';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
-import { befundtext, freigabelage, kettenzeilen, pruefen, vergleichszeilen } from './pruefung';
+import { texte as ntexte } from '../nachtrag/texte';
+import { befundtext, freigabelage, kettenzeilen, nachtragsinfo, pruefen, vergleichszeilen } from './pruefung';
 import type { Rechnungsstand } from './rechnungen';
 import { texte } from './texte';
 
@@ -41,6 +42,7 @@ export function Pruefansicht({
   const lage = useMemo(() => freigabelage(rechnung, rechnungen), [rechnung, rechnungen]);
   const kette = useMemo(() => kettenzeilen(pruefung.kette), [pruefung]);
   const vergleich = useMemo(() => vergleichszeilen(pruefung), [pruefung]);
+  const nachtraege = useMemo(() => nachtragsinfo(stand.nachtraege), [stand]);
   const blattname = useMemo(() => {
     const m = new Map(
       stand.blaetter.map((b) => [b.id as string, texte.formular.blatt(b.nummer, b.bezeichnung)]),
@@ -237,6 +239,20 @@ export function Pruefansicht({
               </ul>
             )}
           </section>
+
+          {nachtraege.length === 0 ? null : (
+            <section aria-label={t.nachtraege}>
+              <h2 className="auftrag__unterkopf">{t.nachtraege}</h2>
+              <ul className="auftrag__warnungen" data-testid="nachtraege">
+                {nachtraege.map((n) => (
+                  <li key={n.lvId}>
+                    {t.nachtragZeile(n.nummer, ntexte.status[n.status], formatiereBetragDe(n.angebotsnetto))}
+                  </li>
+                ))}
+              </ul>
+              <p className="rechnung__hinweis">{t.nachtraegeHinweis}</p>
+            </section>
+          )}
 
           <section aria-label={texte.feld.umlagen}>
             <h2 className="auftrag__unterkopf">{t.angaben}</h2>

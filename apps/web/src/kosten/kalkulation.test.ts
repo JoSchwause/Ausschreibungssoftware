@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 89, C4: Formular → Kalkulation → Befehle. Erwartungen von Hand (D-39: Einzelkosten ungerundet, Anteil kaufmännisch
 // auf 3 Stellen, EP = Σ der Anteile).
-//   Lohn:   0,450 h × 48,500 €/h = 21,825; Zuschlag 10 %  → 24,0075 → 24,008
-//   Stoffe: 2,000 × 6,250        = 12,500; Zuschlag 5 %   → 13,125
+//   Lohn:   0,450 h × 48,500 €/h = 21,825; Kalkulationszuschlagssatz 10 % → 24,0075 → 24,008
+//   Stoffe: 2,000 × 6,250        = 12,500; Kalkulationszuschlagssatz 5 %  → 13,125
 //   EP = 24,008 + 13,125 = 37,133
 
 import type { PositionId } from '@tethys/vertrag';

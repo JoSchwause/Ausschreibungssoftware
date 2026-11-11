@@ -26,7 +26,7 @@ import { LEISTUNGSSTAND_RECHNER } from './leistungsstand';
 import { kostenPfad } from './pfad';
 import { auftraegeLaden, kostenermittlungenLaden } from './schreiben';
 import { texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './kosten.css';

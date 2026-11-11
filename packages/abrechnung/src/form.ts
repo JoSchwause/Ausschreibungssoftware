@@ -43,7 +43,9 @@ const schaltjahr = (j: number): boolean => (j % 4 === 0 && j % 100 !== 0) || j %
 
 /**
  * Ein Datum, wie der Nutzer es eingibt (`AufmassKopf.datum`, `Rechnung.eingang`): `null` oder `JJJJ-MM-TT` mit einem Tag,
- * den der Kalender hat (D-80.4). Keine Uhr, kein `Date` (A2): der Kalender ist hier ausgeschrieben.
+ * den der Kalender hat (D-80.4). Keine Uhr, kein `Date` (A2): der Kalender ist hier ausgeschrieben. Dieselbe Regel steht
+ * in `erechnung` (`kalenderdatum` in `zahlen.ts`); Fachpakete importieren einander nicht (A3), darum bleibt sie doppelt
+ * (Review Welle 5, S4).
  */
 export function datumFehler(datum: unknown): string | null {
   if (datum === null) return null;
@@ -53,22 +55,4 @@ export function datumFehler(datum: unknown): string | null {
   const [jahr, monat, tag] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const tage = monat === 2 && schaltjahr(jahr) ? 29 : (TAGE[monat - 1] ?? 0);
   return tag >= 1 && tag <= tage ? null : `Den Tag ${m[0]} gibt es im Kalender nicht.`;
-}
-
-/**
- * Form eines Mengenansatzes wie im Kern (Ticket 56, D-22; `mengenansatzFehler`, dort nicht ausgeführt): eine Liste von
- * Ansatzzeilen mit ganzzahliger Zeilen- und Formelnummer, dem Ausdruck als Text und dem Variablennamen als Text oder `null`.
- * Ausgewertet wird nie (die Menge rechnet die App mit `mengen`, A3).
- */
-export function ansatzFehler(ansatz: unknown): string | null {
-  if (!Array.isArray(ansatz)) return 'Der Mengenansatz muss null oder eine Liste von Ansatzzeilen sein.';
-  for (const z of ansatz as readonly unknown[]) {
-    if (!istObjekt(z)) return 'Eine Ansatzzeile muss ein Objekt sein.';
-    if (!Number.isSafeInteger(z['zeile'])) return 'Die Zeilennummer einer Ansatzzeile ist ganzzahlig.';
-    if (!Number.isSafeInteger(z['formel'])) return 'Die Formelnummer einer Ansatzzeile ist ganzzahlig.';
-    if (typeof z['ausdruck'] !== 'string') return 'Der Ausdruck einer Ansatzzeile ist ein Text.';
-    if (z['variable'] !== null && typeof z['variable'] !== 'string')
-      return 'Der Variablenname einer Ansatzzeile ist ein Text oder null.';
-  }
-  return null;
 }

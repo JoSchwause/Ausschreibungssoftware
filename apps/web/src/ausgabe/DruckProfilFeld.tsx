@@ -12,10 +12,10 @@ import { texte } from './texte';
 import {
   PROFILE_SCHLUESSEL,
   PROFIL_GEWAEHLT_SCHLUESSEL,
+  ablageAlsText,
+  ablageLesen,
   alleProfile,
   dateinameProfil,
-  eigeneAlsText,
-  eigeneAusText,
   profilAendern,
   profilAnlegen,
   profilGleich,
@@ -23,6 +23,7 @@ import {
   profilLoeschen,
   zeilenLesen,
   type Werkzeug,
+  type Zurueckgehalten,
 } from './profile';
 
 const t = texte.pdf.profil;
@@ -44,18 +45,20 @@ function schreiben(schluessel: string, wert: string): void {
 
 export interface ProfilAnfang {
   readonly eigene: Druckprofil[];
+  /** Gespeicherte Einträge, die nicht gelten; sie bleiben beim Schreiben erhalten (Q5). */
+  readonly zurueck: readonly Zurueckgehalten[];
   readonly name: string;
   readonly arbeit: Druckprofil;
 }
 
 /** Anfangsstand: die zuletzt gewählte Profilauswahl, sonst „Auftrags-LV mit Preisen“ (= Druck wie bisher). */
 export function profilAnfang(w: Werkzeug): ProfilAnfang {
-  const eigene = eigeneAusText(w, lesen(PROFILE_SCHLUESSEL));
+  const { eigene, zurueck } = ablageLesen(w, lesen(PROFILE_SCHLUESSEL));
   const alle = alleProfile(w, eigene);
   const name = lesen(PROFIL_GEWAEHLT_SCHLUESSEL);
   const wahl = alle.find((p) => p.name === name) ?? w.STANDARD_DRUCKPROFILE[2] ?? alle[0];
   if (wahl === undefined) throw new Error('Kein Standardprofil vorhanden.');
-  return { eigene, name: wahl.name, arbeit: wahl };
+  return { eigene, zurueck, name: wahl.name, arbeit: wahl };
 }
 
 export interface DruckProfilFeldProps {
@@ -92,7 +95,7 @@ export function DruckProfilFeld({
 
   const merke = (neu: Druckprofil[]): void => {
     setEigene(neu);
-    schreiben(PROFILE_SCHLUESSEL, eigeneAlsText(neu));
+    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(neu, anfang.zurueck));
   };
   const uebernehme = (p: Druckprofil): void => {
     setGewaehlt(p.name);
@@ -293,6 +296,20 @@ export function DruckProfilFeld({
         <Button onClick={() => datei.current?.click()}>{t.importieren}</Button>
       </div>
       {fehler !== null ? <p role="alert">{fehler}</p> : null}
+      {anfang.zurueck.length > 0 ? (
+        <div role="region" aria-label={t.zurueckgehalten}>
+          <ul>
+            {anfang.zurueck.map((z, i) => (
+              <li key={`${z.grund}-${String(i)}`}>
+                {z.name === null || z.grund === 'unlesbar'
+                  ? t.zurueckGrund.unlesbar
+                  : t.zurueckGrund[z.grund](z.name)}
+              </li>
+            ))}
+          </ul>
+          <p>{t.zurueckHinweis}</p>
+        </div>
+      ) : null}
       {befunde.length > 0 ? (
         <div role="region" aria-label={t.befunde}>
           <ul>

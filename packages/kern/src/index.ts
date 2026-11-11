@@ -37,7 +37,10 @@ export {
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
 } from './projekt-befehle';
-export { baumfehler, pruefeLvInvarianten } from './pruefung';
+export { baumfehler, mengenansatzFehler, pruefeLvInvarianten } from './pruefung';
+// Baumhilfen für Fachpakete und App (Review Welle 5, S9): Kinder je Elternknoten nach `reihenfolge`, Dokumentreihenfolge.
+export { gruppiere as kinderJeEltern, praeorder as dokumentreihenfolge } from './struktur';
+export type { KinderMap } from './struktur';
 export { KOSTENGRUPPE_FORM, kostengruppeFehler } from './positionsfelder';
 export { lvPruefen } from './lv-pruefung';
 export { KNOTEN_REGELN, LV_REGELN, PRUEF_ANNAHMEN, PRUEF_GRENZEN, vorkommastellen } from './pruefregeln';

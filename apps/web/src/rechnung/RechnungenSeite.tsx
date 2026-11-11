@@ -26,7 +26,7 @@ import {
 import { rechnungenPfad, rechnungPfad, type Rechnungsadresse } from './pfad';
 import { Pruefansicht } from './Pruefansicht';
 import { RechnungDialog } from './RechnungDialog';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import { Rechnungsliste } from './Rechnungsliste';
 import {
   rechnungenSitzung,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// EP-Kalkulation in der App (Ticket 89, C4, Ticket 78): Formularzeilen (Text) → Kalkulationsansätze und Zuschlagssätze
-// (de-DE-Rand, N4) → `einzelpreiskalkulationBerechnen` → Befehle. Die Ansätze werden nicht gespeichert (D-36 (5)); der
+// EP-Kalkulation in der App (Ticket 89, C4, Ticket 78): Kalkulationszeilen (Text) → Kalkulationsansätze und Zuschlagssätze
+// der Kalkulation (de-DE-Rand, N4) → `einzelpreiskalkulationBerechnen` → Befehle. Die Ansätze werden nicht gespeichert (D-36 (5)); der
 // Befehlsweg bekommt nur Einheitspreisanteile und EP, als **ein** Undo-Schritt (zwei Befehle über `Sitzung.folge`).
 
 import { einzelpreiskalkulationBerechnen } from '@tethys/kosten';
@@ -21,8 +21,8 @@ export type { Kalkulationszuschlagssaetze };
 /** Die Kostenarten in der Reihenfolge der Einheitspreisanteile; der Typ der Texte erzwingt Vollständigkeit. */
 export const ARTEN = Object.keys(texte.kalkulation.kostenart) as readonly EpaArt[];
 
-/** Eine Zeile des Formulars, alle Felder als Text. */
-export interface Ansatzzeile {
+/** Eine Zeile des Formulars: ein Kalkulationsansatz, alle Felder als Text (nicht die Ansatzzeile eines Mengenansatzes). */
+export interface Kalkulationszeile {
   readonly art: EpaArt;
   readonly bezeichnung: string;
   readonly ansatzmenge: string;
@@ -30,14 +30,19 @@ export interface Ansatzzeile {
 }
 
 export interface Kalkulationsformular {
-  readonly zeilen: readonly Ansatzzeile[];
-  /** Zuschlagssatz je Kostenart als Text; fehlt oder leer: 0 %. */
+  readonly zeilen: readonly Kalkulationszeile[];
+  /** Zuschlagssatz der Kalkulation je Kostenart als Text; fehlt oder leer: 0 %. */
   readonly saetze: Readonly<Partial<Record<EpaArt, string>>>;
   /** Bezeichnung der freien Kostenart; leer: keine. */
   readonly freiBezeichnung: string;
 }
 
-export const LEERE_ZEILE: Ansatzzeile = { art: 'lohn', bezeichnung: '', ansatzmenge: '', kostensatz: '' };
+export const LEERE_ZEILE: Kalkulationszeile = {
+  art: 'lohn',
+  bezeichnung: '',
+  ansatzmenge: '',
+  kostensatz: '',
+};
 
 export const LEERES_FORMULAR: Kalkulationsformular = {
   zeilen: [LEERE_ZEILE],

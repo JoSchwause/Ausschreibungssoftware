@@ -162,6 +162,14 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(angebote).toBeHidden();
 
+  // Der Preisspiegel des Nachtrags-LV vergleicht die Angebote, erteilt aber keinen Zuschlag (D-42, Review P2).
+  await page.goto(`${nachtragPfad}/preisspiegel`);
+  const bieter = page.getByRole('table', { name: 'Bieter des Preisspiegels' });
+  await expect(bieter.getByRole('row', { name: new RegExp(BIETER) })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Zuschlag erteilen/ })).toHaveCount(0);
+  await expect(page.getByText(/Nachtrag N01 ist ein Nachtrags-LV und bekommt keinen Zuschlag/)).toBeVisible();
+  await page.goto(nachtragPfad);
+
   // Status „angeboten“ über die Statuswahl des Kopfbands; „beauftragt“ ist dort nicht wählbar.
   await band.getByRole('combobox', { name: 'Status' }).click();
   await expect(page.getByRole('option', { name: /^beauftragt/ })).toHaveAttribute('aria-disabled', 'true');
@@ -194,9 +202,12 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await expect(nachtragsliste(page).getByTestId('nachtrag-status')).toHaveText('angeboten');
   expect((await zeilen(page)).map((z) => z[1])).not.toContain('Nachtrag N01');
 
-  // Wiederholen schreibt beides wieder; die App zeigt den Nachtrag, dessen Status sich zuletzt geändert hat.
+  // Wiederholen schreibt beides wieder und bleibt auf dem Auftrags-LV; die Nachtragsliste zeigt den Status (D-86.7).
   await page.getByRole('button', { name: /^Wiederholen/ }).click();
-  await expect(page).toHaveURL(new RegExp(`${nachtragPfad}$`));
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await expect(page).toHaveURL(new RegExp(`${auftragPfad}$`));
+  await expect(nachtragsliste(page).getByTestId('nachtrag-status')).toHaveText('beauftragt');
+  await page.goto(nachtragPfad);
   await expect(band.getByTestId('nachtrag-status')).toHaveText('beauftragt');
   await expect(band.getByRole('button', { name: 'Beauftragen' })).toBeDisabled();
   await band.getByRole('link').click();

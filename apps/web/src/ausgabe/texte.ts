@@ -42,6 +42,14 @@ export const texte = {
       umbenannt: (n: string) => `Der Name war vergeben; das Profil heißt jetzt „${n}“.`,
       nichtLesbar: 'Die Datei konnte nicht gelesen werden.',
       befunde: 'Befunde beim Lesen des Profils',
+      zurueckgehalten: 'Nicht verwendete gespeicherte Profile',
+      zurueckHinweis:
+        'Diese gespeicherten Einträge erscheinen nicht in der Auswahl. Sie bleiben unverändert gespeichert; nichts wird verworfen.',
+      zurueckGrund: {
+        unlesbar: 'Ein gespeicherter Eintrag lässt sich nicht als Druckprofil lesen.',
+        standardname: (n: string) => `Ein gespeichertes Profil heißt wie das Standardprofil „${n}“.`,
+        doppelt: (n: string) => `Ein weiteres gespeichertes Profil heißt „${n}“.`,
+      },
       fehler: {
         'name-leer': 'Bitte einen Namen angeben.',
         'name-standard': 'Der Name gehört einem Standardprofil.',

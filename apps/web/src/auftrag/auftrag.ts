@@ -17,8 +17,7 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import type { Teil } from '../historie/historie';
-import { eintragSchreiben, type Abweisung, type Befehlsweg } from '../lv/befehlsweg';
+import { eintrag, speichern, type Abweisung, type Befehlsweg } from '../lv/befehlsweg';
 import { inhaltKopf } from '../lv/inhalt';
 
 /** Die Auftrags-LVs eines Projekts, ganz (mit Knoten und Summen), in der Reihenfolge des Repositorys (Name). */
@@ -82,23 +81,10 @@ export function zuschlagserteilungSpeichern(
     if (vorhanden.wert !== null) return { ok: false, art: 'schon-vergeben', auftrag: vorhanden.wert };
     const r = auftragsLvBefehlAusfuehren(null, befehl);
     if (!r.ok) return { ok: false, art: 'abweisung', abweisung: { art: 'befehl', fehler: r.fehler } };
-    const eintrag = {
-      id: u.ids.protokoll(),
-      projektId: a.projektId,
-      aggregat: { art: 'auftrags-leistungsverzeichnis', id: a.id },
-      wer: u.nutzer,
-      wann: u.uhr(),
-      befehl,
-    } as const;
-    const s = await eintragSchreiben(u, eintrag, r.wert);
-    if (!s.ok) return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: s.fehler } };
-    const teil: Teil = {
-      protokollId: eintrag.id,
-      projektId: eintrag.projektId,
-      aggregat: eintrag.aggregat,
-      changeSet: r.wert,
-    };
-    weg.historie.aufnehmen([teil]);
+    const e = eintrag(u, a.projektId, { art: 'auftrags-leistungsverzeichnis', id: a.id }, befehl);
+    const s = await speichern(u, e, r.wert, () => null);
+    if (!s.ok) return { ok: false, art: 'abweisung', abweisung: s.abweisung };
+    weg.historie.aufnehmen([s.teil]);
     return { ok: true, id: a.id };
   });
 }

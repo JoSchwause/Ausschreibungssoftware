@@ -79,6 +79,8 @@ test('Projektdatei exportieren und in einem frischen Speicher importieren: gleic
   const vorher = await summen(page);
 
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
+  // Die Liste kommt aus der Übersicht; das Netto lädt die Seite für die sichtbare Zeile nach (Review Welle 5, P3).
+  await expect(page.getByLabel('Netto Zaun')).toHaveText('644,43 €');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Projektdatei exportieren' }).click(),

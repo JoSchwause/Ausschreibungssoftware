@@ -28,7 +28,9 @@ export const texte = {
     knopf: 'Nachtrag anlegen',
     titel: 'Nachtrag anlegen',
     einleitung:
-      'Es entsteht ein leeres Nachtrags-LV mit der OZ-Maske und dem MwSt-Satz des Auftrags-LV und der nächsten freien Nummer (Status „angemeldet“).',
+      'Es entsteht ein leeres Nachtrags-LV mit der nächsten freien Nummer (Status „angemeldet“), dem MwSt-Satz des Auftrags-LV und dessen OZ-Maske ohne die oberste Stufe; die belegt bei der Beauftragung die Gliederung „Nachtrag <Nummer>“.',
+    maskeOhneGliederung:
+      'Die OZ-Maske des Auftrags-LV hat keine Gliederungsstufe. Das Nachtrags-LV bekommt sie unverändert; die Gliederung „Nachtrag <Nummer>“ passt bei der Beauftragung nicht zur Maske und erscheint als Befund der Prüfung.',
     bezeichnung: 'Bezeichnung',
     hinweis: 'Der Name des LV wird „Nachtrag <Nummer> – <Bezeichnung>“.',
     abbrechen: 'Abbrechen',
@@ -97,6 +99,8 @@ export const texte = {
     satzFehlt: (p: string) => `${p}: Zuschlagsposition ohne Satz des Auftragnehmers; der Satz bleibt leer.`,
     bezugEntfernt: (p: string, ziel: string) =>
       `${p}: Der Bezug auf ${ziel} entfällt, weil ${ziel} nicht ins Auftrags-LV kommt.`,
+    maskeZuTief: (tiefe: number, stufen: number) =>
+      `Der Nachtrag braucht samt der Gliederung „Nachtrag“ ${String(tiefe)} Gliederungsstufen, die OZ-Maske des Auftrags-LV hat ${String(stufen)}; seine Ordnungszahlen liegen zu tief.`,
     ozUnpassend: (welche: readonly string[]) =>
       `Ordnungszahl passt nicht zur Maske des Auftrags-LV (übernommen wie sie ist): ${liste(welche)}.`,
   },

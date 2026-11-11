@@ -5,16 +5,12 @@
 // Redo (Ticket 48) schreiben hier.
 
 import {
-  auftragsLvChangeSetUmkehren, // Ticket 86: Umkehrung des Auftrags-LV aus dem Kern (statt D-64.4)
-  changeSetUmkehren,
   lvBefehlAusfuehren,
   lvChangeSetAnwenden,
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
-  projektChangeSetUmkehren,
 } from '@tethys/kern';
-import { aufmassChangeSetUmkehren } from '@tethys/abrechnung'; // Ticket 87
-import { angebotBefehlAusfuehrer, angebotChangeSetUmkehren } from '@tethys/vergabe';
+import { angebotBefehlAusfuehrer } from '@tethys/vergabe';
 import type {
   Angebot,
   AngebotBefehl,
@@ -34,9 +30,8 @@ import type {
   Speicherfehler,
   Zeitstempel,
 } from '@tethys/vertrag';
-import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten'; // Ticket 89
+import { umkehren } from '../historie/arten';
 import { Historie, type Teil } from '../historie/historie';
-import { rechnungChangeSetUmkehren } from '../rechnung/ausfuehrer'; // Ticket 88
 import { ozErgaenzen } from './ozergaenzen';
 
 /** Alles, was der Befehlsweg von außen braucht. Zufall und Uhr gibt es nur hier, nie im Kern (A2). */
@@ -225,21 +220,6 @@ export type Historienausgang =
       readonly fehler: Speicherfehler;
       readonly teile: readonly Teil[];
     };
-
-const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
-  cs.art === 'leistungsverzeichnis'
-    ? changeSetUmkehren(cs)
-    : cs.art === 'angebot'
-      ? angebotChangeSetUmkehren(cs)
-      : cs.art === 'auftrags-leistungsverzeichnis'
-        ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag; Ticket 86: Nachtrag übernehmen
-        : cs.art === 'aufmass'
-          ? aufmassChangeSetUmkehren(cs) // Ticket 87: Aufmaßblatt
-          : cs.art === 'rechnung'
-            ? rechnungChangeSetUmkehren(cs) // Ticket 88
-            : cs.art === 'kostenermittlung'
-              ? kostenermittlungChangeSetUmkehren(cs) // Ticket 89
-              : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie

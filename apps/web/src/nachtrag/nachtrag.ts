@@ -4,7 +4,12 @@
 // Beauftragung. Fachliches rechnen Kern (`auftragsLvBefehlAusfuehren`) und `abrechnung` (`nachtragUebernehmen`); geschrieben
 // wird über den Befehlsweg (`speichern.ts`, A5).
 
-import { nachtragUebernehmen, type NachtragIdQuelle, type Nachtragswarnung } from '@tethys/abrechnung';
+import {
+  nachtragsmaske,
+  nachtragUebernehmen,
+  type NachtragIdQuelle,
+  type Nachtragswarnung,
+} from '@tethys/abrechnung';
 import { auftragsLvBefehlAusfuehren, auftragsLvChangeSetAnwenden } from '@tethys/kern';
 import type {
   Angebot,
@@ -56,9 +61,10 @@ export interface Nachtragsanlage {
 }
 
 /**
- * „Nachtrag anlegen“ auf der Seite eines Auftrags-LV: ein leeres Ausschreibungs-LV mit OZ-Maske und MwSt-Satz des Auftrags-LV,
- * ohne Nachlass, Name „Nachtrag <Nummer> – <Bezeichnung>“, dazu die Nachtragsangaben mit der nächsten freien Nummer und dem
- * Status `angemeldet`.
+ * „Nachtrag anlegen“ auf der Seite eines Auftrags-LV: ein leeres Ausschreibungs-LV mit der OZ-Maske des Auftrags-LV ohne
+ * deren oberste Gliederungsstufe (die belegt bei der Übernahme die Gliederung „Nachtrag <Nummer>“, D-48) und seinem
+ * MwSt-Satz, ohne Nachlass, Name „Nachtrag <Nummer> – <Bezeichnung>“, dazu die Nachtragsangaben mit der nächsten freien
+ * Nummer und dem Status `angemeldet`.
  */
 export function nachtragAnlegenPlanen(
   auftrag: Pick<AuftragsLvKopf, 'id' | 'projektId' | 'ozMaske' | 'mwstSatz'>,
@@ -74,7 +80,7 @@ export function nachtragAnlegenPlanen(
     projektId: auftrag.projektId,
     inhalt: {
       name: texte.lvName(nummer, bezeichnung.trim()),
-      ozMaske: auftrag.ozMaske,
+      ozMaske: nachtragsmaske(auftrag.ozMaske),
       mwstSatz: auftrag.mwstSatz,
       nachlass: null,
       wurzelId: lvId,
@@ -159,6 +165,8 @@ function warnungText(w: Nachtragswarnung, knoten: ReadonlyMap<string, Knoten>): 
       return t.satzFehlt(p(w.positionId));
     case 'bezug-entfernt':
       return t.bezugEntfernt(p(w.positionId), p(w.zielId));
+    case 'maske-zu-tief':
+      return t.maskeZuTief(w.tiefe, w.stufen);
     case 'oz-unpassend':
       return t.ozUnpassend(w.knotenIds.map(p));
   }

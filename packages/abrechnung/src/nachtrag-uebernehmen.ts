@@ -14,9 +14,12 @@
 // - Ein Los des Nachtrags-LV wird Titel mit derselben Kennung (D-80.2).
 // - Positionen: EP und EPA des Angebots, an einer Zuschlagsposition der Zuschlagssatz des Angebots (wie D-21); nicht
 //   angeboten oder ohne Eintrag: EP `null`. Bezüge auf Positionen, die nicht mitkommen, werden entfernt (wie D-21).
+// - Maske (D-48): Die neue Gliederung belegt die oberste Stufe der Maske des Auftrags-LV; ein Nachtrags-LV bekommt darum
+//   beim Anlegen die Maske ohne diese Stufe (`nachtragsmaske`). Nutzt der Nachtrag dennoch mehr Stufen, warnt die Übernahme
+//   (`maske-zu-tief`); umnummeriert wird nie (die OZ sind mit dem Auftragnehmer vereinbart).
 
 import { vergleiche } from '@tethys/dezimal';
-import { MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, ozFehler, ozVorschlag } from '@tethys/kern';
+import { MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, kinderJeEltern, ozFehler, ozVorschlag } from '@tethys/kern';
 import type {
   Angebot,
   AngebotKopf,
@@ -37,6 +40,7 @@ import type {
   Nachlass,
   NachtragUebernehmen,
   Ordnungszahl,
+  OzMaske,
   Position,
   PositionId,
   TitelId,
@@ -46,8 +50,25 @@ import type {
 export type NachtragIdQuelle = Pick<IdQuelle, 'los' | 'titel'>;
 
 /**
+ * Die OZ-Maske eines neuen Nachtrags-LV zu einem Auftrags-LV mit der Maske `auftragsmaske` (D-48): ohne deren oberste
+ * Gliederungsstufe, denn die belegt bei der Übernahme die Gliederung „Nachtrag <nummer>“. Eine Los-Stufe entfällt mit ihr
+ * (ein Los steht nur ganz oben, F1). Hat die Maske keine Gliederungsstufe, bleibt sie gleich; die Übernahme warnt dann
+ * (`maske-zu-tief`).
+ */
+export function nachtragsmaske(auftragsmaske: OzMaske): OzMaske {
+  if (auftragsmaske.gliederung.length === 0) return auftragsmaske;
+  return {
+    gliederung: auftragsmaske.gliederung.slice(1),
+    position: auftragsmaske.position,
+    index: auftragsmaske.index,
+    trennzeichen: auftragsmaske.trennzeichen,
+  };
+}
+
+/**
  * Ein Hinweis zur Übernahme (U5): Der Befehl entsteht trotzdem. Reihenfolge: `nachlass-ignoriert`, `alternativen-entfallen`,
- * dann je übernommenem Knoten in Dokumentreihenfolge (`los-wird-titel`, Preiswarnung, Bezüge), zuletzt `oz-unpassend`.
+ * dann je übernommenem Knoten in Dokumentreihenfolge (`los-wird-titel`, Preiswarnung, Bezüge), dann `maske-zu-tief`, zuletzt
+ * `oz-unpassend`.
  * - `nachlass-ignoriert`: Das Nachtragsangebot hat einen Nachlass; er gilt nicht, das Auftrags-LV behält seinen (D-35).
  * - `alternativen-entfallen`: Wahl-Alternativen des Nachtrags-LV kommen nicht ins Auftrags-LV, ihre Grundposition bleibt.
  * - `los-wird-titel`: Ein Los des Nachtrags-LV steht unter der neuen Gliederung als Titel derselben Kennung (D-80.2).
@@ -55,6 +76,8 @@ export type NachtragIdQuelle = Pick<IdQuelle, 'los' | 'titel'>;
  * - `zuschlagssatz-fehlt`: Eine Zuschlagsposition ist angeboten, aber ohne Satz; Satz `null` (wie D-21).
  * - `bezug-entfernt`: Ein Listenbezug einer Zuschlagsposition oder ein `wahl.grundpositionId` zeigte auf eine Position,
  *   die nicht mitkommt (Alternative, Papierkorb); entfernt, nicht umgelenkt.
+ * - `maske-zu-tief`: Der Nachtrag hat samt der neuen Gliederung `tiefe` Gliederungsstufen, die Maske des Auftrags-LV nur
+ *   `stufen` (D-48); seine OZ liegen dann eine oder mehr Stufen zu tief und stehen in `oz-unpassend`.
  * - `oz-unpassend`: Diese Knoten haben keine OZ oder eine, die nicht zur Maske des Auftrags-LV passt (`ozFehler` des Kerns);
  *   sie kommen trotzdem so ins Auftrags-LV (U5), Dokumentreihenfolge.
  */
@@ -74,6 +97,7 @@ export type Nachtragswarnung =
       readonly feld: 'zuschlag.bezug.positionen' | 'merkmale.wahl.grundpositionId';
       readonly zielId: PositionId;
     }
+  | { readonly code: 'maske-zu-tief'; readonly tiefe: number; readonly stufen: number }
   | { readonly code: 'oz-unpassend'; readonly knotenIds: readonly KnotenId[] };
 
 export interface Nachtragsergebnis {
@@ -99,18 +123,6 @@ function nein(code: Befehlsfehlercode, meldung: string, feld?: string, knotenId?
 export const istAlternative = (k: Knoten): boolean =>
   k.art === 'position' && k.merkmale.wahl !== null && k.merkmale.wahl.variante !== 0;
 
-/** Kinder je Elternknoten in Geschwisterreihenfolge. */
-function kinderVon(knoten: readonly Knoten[]): Map<string, Knoten[]> {
-  const kinder = new Map<string, Knoten[]>();
-  for (const k of knoten) {
-    const liste = kinder.get(k.elternId);
-    if (liste) liste.push(k);
-    else kinder.set(k.elternId, [k]);
-  }
-  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
-  return kinder;
-}
-
 /** Ein übernommener Knoten mit seiner Stufe im Auftrags-LV (Gliederung: eigene; sonst die Stufen darüber). */
 interface Eintrag {
   readonly knoten: Knoten;
@@ -124,7 +136,7 @@ interface Eintrag {
  * dicht je Elternknoten, `stufe` mit der neuen Gliederung als Stufe 1.
  */
 function uebernommeneKnoten(l: Leistungsverzeichnis): Eintrag[] {
-  const kinder = kinderVon(l.knoten.filter((k) => !istAlternative(k)));
+  const kinder = kinderJeEltern(l.knoten.filter((k) => !istAlternative(k)));
   const aus: Eintrag[] = [];
   const besuche = (eltern: string, stufeEltern: number): void => {
     (kinder.get(eltern) ?? []).forEach((k, reihenfolge) => {
@@ -372,6 +384,13 @@ export function nachtragUebernehmen(
     pruefeOz(neu, e.stufe);
     knoten.push(neu);
   }
+  // D-48: Gliederungsstufen samt der neuen Gliederung (Stufe 1) gegen die Stufen der Maske des Auftrags-LV.
+  const tiefe = eintraege.reduce(
+    (t, e) => (e.knoten.art === 'los' || e.knoten.art === 'titel' ? Math.max(t, e.stufe) : t),
+    1,
+  );
+  const stufen = a.ozMaske.gliederung.length;
+  if (tiefe > stufen) warnungen.push({ code: 'maske-zu-tief', tiefe, stufen });
   if (unpassend.length > 0) warnungen.push({ code: 'oz-unpassend', knotenIds: unpassend });
   return {
     ok: true,

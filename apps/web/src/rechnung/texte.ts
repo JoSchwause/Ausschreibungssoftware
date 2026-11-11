@@ -104,6 +104,11 @@ export const texte = {
     befunde: 'Befunde',
     keineBefunde: 'Keine Befunde.',
     leistungsstand: 'Leistungsstand je Position',
+    nachtraege: 'Nicht beauftragte Nachträge',
+    nachtraegeHinweis:
+      'Nur zur Information: Ein Nachtrag geht erst in die Rechnung, wenn er beauftragt und ins Auftrags-LV übernommen ist.',
+    nachtragZeile: (nummer: string, status: string, netto: string) =>
+      `Nachtrag ${nummer} (${status}): Angebot ${netto} € netto, nicht in dieser Rechnung.`,
   },
   befund: {
     'aufmass-unbekannt': 'Ein abgerechnetes Aufmaßblatt gibt es nicht (mehr); es zählt nichts.',

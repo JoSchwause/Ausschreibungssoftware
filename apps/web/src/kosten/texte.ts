@@ -172,7 +172,7 @@ export const texte = {
     nachweisTabelle: 'Nachweis der Kalkulation',
     spalteArt: 'Kostenart',
     spalteEinzelkosten: 'Einzelkosten',
-    spalteZuschlag: 'Zuschlag',
+    spalteKalkulationszuschlag: 'Kalkulationszuschlag',
     spalteAnteil: 'Anteil',
     ep: 'Einheitspreis',
     epLeer: '–',

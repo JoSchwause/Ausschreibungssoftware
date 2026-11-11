@@ -4,7 +4,8 @@
 
 import type { LeistungsverzeichnisId } from '@tethys/vertrag';
 import type { ReactElement } from 'react';
-import { hrefFuer, useRoute } from '../ui/route';
+import { useRoute } from '../ui/route';
+import { Verweis } from '../ui/Verweis';
 import { preisspiegelPfad } from './pfad';
 import { texte } from './texte';
 
@@ -12,16 +13,6 @@ export function PreisspiegelLink({ lvId }: { lvId: LeistungsverzeichnisId }): Re
   const { gehe } = useRoute();
   const pfad = preisspiegelPfad(lvId);
   return (
-    <a
-      className="tx-button tx-button--sekundaer"
-      href={hrefFuer(pfad)}
-      onClick={(e) => {
-        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        gehe(pfad);
-      }}
-    >
-      {texte.seite.oeffnen}
-    </a>
+    <Verweis pfad={pfad} text={texte.seite.oeffnen} gehe={gehe} className="tx-button tx-button--sekundaer" />
   );
 }

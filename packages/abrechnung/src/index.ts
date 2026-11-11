@@ -3,7 +3,7 @@
 // Leistungsstand, Rechnungsprüfung und Rechnungsbefehle (D-34, D-35) aus Ticket 81. Rein (A2); importiert nur `vertrag`,
 // `dezimal` und `kern` (A3).
 
-export { istAlternative, nachtragUebernehmen } from './nachtrag-uebernehmen';
+export { istAlternative, nachtragsmaske, nachtragUebernehmen } from './nachtrag-uebernehmen';
 export type { NachtragIdQuelle, Nachtragsergebnis, Nachtragswarnung } from './nachtrag-uebernehmen';
 export { nachtragsbefunde } from './nachtragsbefunde';
 export type { Nachtragsbefund } from './nachtragsbefunde';
@@ -18,8 +18,8 @@ export { leistungsstandBerechnen } from './leistungsstand';
 export type { Leistungsbefund, Leistungsergebnis } from './leistungsstand';
 export { freigabeMoeglich, rechnungPruefen } from './rechnung-pruefen';
 export type {
-  Abweichung,
   Abzugskette,
+  Forderungsdifferenz,
   Forderungsvergleich,
   Freigabehindernis,
   FruehereZahlung,

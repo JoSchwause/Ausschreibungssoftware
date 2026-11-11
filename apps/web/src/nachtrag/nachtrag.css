@@ -41,3 +41,8 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.nachtrag__hinweis {
+  margin: 0 0 var(--tx-space-2);
+  color: var(--tx-color-warning);
+}

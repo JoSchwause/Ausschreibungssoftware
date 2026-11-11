@@ -23,7 +23,7 @@ import type {
   PositionId,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { vorkommastellen } from '@tethys/kern';
+import { kinderJeEltern, vorkommastellen, type KinderMap } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
 import { FORMEL_91, MAX_ZEILEN, VERWEIS, aufteilen, rechenzeile91, zeilennummer } from './reb';
 import { DATUM, GRENZEN, UHRZEIT, VERSIONSDATUM, exportKopf, gaebKennung } from './schreiben';
@@ -57,7 +57,7 @@ class X31Schreiber {
   readonly aus = new XmlAusgabe();
   readonly befunde: Pruefbefund[] = [];
   private readonly verworfen = new Map<string, { anzahl: number; readonly knotenId: string | undefined }>();
-  private readonly kinder = new Map<string, Knoten[]>();
+  private readonly kinder: KinderMap;
   private readonly aufgemessen = new Map<PositionId, Aufmassposition>();
   private readonly geschrieben = new Map<PositionId, Positionszeilen>();
   private zaehler = 0;
@@ -68,12 +68,7 @@ class X31Schreiber {
     private readonly version: ExportVersion,
     private readonly opt: X31SchreibOptionen,
   ) {
-    for (const k of lv.knoten) {
-      const liste = this.kinder.get(k.elternId) ?? [];
-      liste.push(k);
-      this.kinder.set(k.elternId, liste);
-    }
-    for (const liste of this.kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+    this.kinder = kinderJeEltern(lv.knoten); // Kinder je Elternknoten nach `reihenfolge` (Kern, S9)
     const imLv = new Set(lv.knoten.filter((k) => k.art === 'position').map((k) => k.id as string));
     for (const a of aufmass.positionen) {
       if (!imLv.has(a.positionId))

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 87 (A2): Aufmaßblätter in der App. Jede Änderung ist ein Befehl am Blatt (A5), ausgeführt von `abrechnung`
-// (Ticket 80), geschrieben über den einen Schreibweg der App (`eintragSchreiben`, U7) und als Undo-Schritt geführt
+// (Ticket 80), geschrieben über den einen Schreibweg der App (`eintrag`, `speichern`, U7) und als Undo-Schritt geführt
 // (ADR 0006). Gelesen wird über die Repositories aus `vertrag` v1.4 (Ticket 79): das Auftrags-LV und alle Blätter.
 
 import { aufmassBefehlAusfuehren, aufmassChangeSetAnwenden, naechsteAufmassnummer } from '@tethys/abrechnung';
@@ -16,19 +16,12 @@ import type {
   Ergebnis,
   IdQuelle,
   ProjektId,
-  Protokolleintrag,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import type { Teil } from '../historie/historie';
-import { Sitzung, eintragSchreiben, type Ausgang, type Befehlsweg, type Umgebung } from '../lv/befehlsweg';
+import { Sitzung, eintrag, speichern, type Befehlsweg, type Lauf, type Umgebung } from '../lv/befehlsweg';
 
 export type AufmassSitzung = Sitzung<AufmassZustand | null, AufmassBefehl>;
-
-/** Ein Befehl samt dem Teil für den Undo-Stapel (wie `Lauf` im Befehlsweg). */
-type Lauf =
-  | (Extract<Ausgang<AufmassZustand | null>, { ok: true }> & { readonly teil: Teil })
-  | Extract<Ausgang<AufmassZustand | null>, { ok: false }>;
 
 /** Ein Befehl am Aufmaßblatt durch `abrechnung` und den Speicher; `zustand` ist `null` nur für `AufmassAnlegen`. */
 export async function aufmassBefehlAnwenden(
@@ -36,22 +29,12 @@ export async function aufmassBefehlAnwenden(
   projektId: ProjektId,
   zustand: AufmassZustand | null,
   befehl: AufmassBefehl,
-): Promise<Lauf> {
+): Promise<Lauf<AufmassZustand | null>> {
   const r = aufmassBefehlAusfuehren(zustand, befehl);
   if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
   const cs = r.wert;
-  const e: Protokolleintrag = {
-    id: u.ids.protokoll(),
-    projektId,
-    aggregat: { art: 'aufmass', id: cs.aufmassId },
-    wer: u.nutzer,
-    wann: u.uhr(),
-    befehl,
-  };
-  const s = await eintragSchreiben(u, e, cs);
-  if (!s.ok) return { ok: false, abweisung: { art: 'speicher', fehler: s.fehler } };
-  const teil: Teil = { protokollId: e.id, projektId, aggregat: e.aggregat, changeSet: cs };
-  return { ok: true, zustand: aufmassChangeSetAnwenden(zustand, cs), hinweise: [], teil };
+  const e = eintrag(u, projektId, { art: 'aufmass', id: cs.aufmassId }, befehl);
+  return speichern(u, e, cs, () => aufmassChangeSetAnwenden(zustand, cs));
 }
 
 /** Eine Sitzung an einem Blatt: Befehle laufen über die gemeinsame Kette des Befehlswegs und sind Undo-Schritte. */

@@ -19,7 +19,7 @@ import { KopfDialog } from './KopfDialog';
 import type { Kopfangaben } from './kopf';
 import { blattPfad, sollIstPfad } from './pfad';
 import { texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import { X31Einlesen } from './X31Einlesen';
 
 const t = texte.liste;

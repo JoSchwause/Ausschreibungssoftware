@@ -6,7 +6,7 @@
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
 // Sache des Kerns.
 
-import { langtextFormFehler } from '@tethys/kern';
+import { KOSTENGRUPPE_FORM, langtextFormFehler } from '@tethys/kern';
 import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   Angebot,
@@ -745,10 +745,13 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
 
 // --- Vertrag v1.4 (Schemaversion 5, Ticket 79; Strenge D-79.4) ---------------------------------------------------------
 
-/** Kostengruppennummer `100` bis `999` (Marke in `vertrag`: Wer sie aus einer Datei liest, prüft die Form nach). */
+/**
+ * Kostengruppennummer `100` bis `999` (Marke in `vertrag`: Wer sie aus einer Datei liest, prüft die Form nach); die
+ * Formregel ist die des Kerns (`KOSTENGRUPPE_FORM`, S3).
+ */
 function kostengruppe(x: unknown, pfad: string): Kostengruppennummer {
   const s = zeichenkette(x, pfad);
-  if (!/^[1-9][0-9]{2}$/.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
+  if (!KOSTENGRUPPE_FORM.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
   return s as Kostengruppennummer;
 }
 
