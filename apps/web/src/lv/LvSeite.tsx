@@ -2,7 +2,7 @@
 // Seite `/lv/<id>`: das LV im Grid. Jede Änderung, aus dem Grid wie von den Schaltflächen, geht als genau ein Befehl
 // über die Sitzung durch Kern und Speicher (A5, U7); angezeigt wird erst der gespeicherte Stand (Q5).
 
-import { Button, Tastenkuerzel } from '@tethys/ui-basis';
+import { Button, Tastenkuerzel, useToast } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
   Befehlshinweis,
@@ -11,6 +11,7 @@ import type {
   LeistungsverzeichnisId,
   LvBefehl,
   LvZustand,
+  Position,
   Positionsdaten,
 } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -20,6 +21,8 @@ import { hrefFuer } from '../ui/route';
 import { lvAnsichtBauen } from './ansicht';
 import { lvSitzung, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
+import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
+import { MerkmaleDialog } from './MerkmaleDialog';
 import { useMeldungen } from './meldungen';
 import { SummenFelder } from './SummenFelder';
 import { texte } from './texte';
@@ -95,6 +98,8 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   const sprungNr = useRef(0);
   /** Die aktive Zeile des Grids, wie sie zuletzt über die Auswahl gemeldet wurde. */
   const aktiv = useRef<KnotenId | null>(null);
+  const [merkmale, setMerkmale] = useState<Position | null>(null);
+  const { zeige } = useToast();
 
   const ansicht = useMemo(() => lvAnsichtBauen(zustand, zugeklappt), [zustand, zugeklappt]);
 
@@ -143,6 +148,16 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   const umnummerieren = (): void => {
     void senden({ art: 'Umnummerieren', teilbaumId: lv.id });
   };
+  const merkmaleOeffnen = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'position') setMerkmale(k);
+    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
+  };
+  const merkmaleUebernehmen = (p: Position, w: Merkmalwahl): void => {
+    setMerkmale(null);
+    const b = merkmaleBefehl(p, w);
+    if (b !== null) void senden(b);
+  };
 
   // Tastenkürzel der App (Strg+Alt+…): kollidieren nicht mit dem Grid (dort Strg ohne Alt) und nicht mit den
   // reservierten Kürzeln des Browsers (Strg+Umschalt+T öffnet in Chrome den letzten Tab wieder).
@@ -156,6 +171,7 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         titelAnlegen(true);
       },
       KeyP: positionAnlegen,
+      KeyM: merkmaleOeffnen,
     }[e.code];
     if (aktion === undefined) return;
     e.preventDefault();
@@ -197,6 +213,9 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         <Button onClick={positionAnlegen} aria-keyshortcuts="Control+Alt+P">
           {texte.werkzeuge.positionAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenPosition} />
         </Button>
+        <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
+          {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
+        </Button>
         <Button onClick={umnummerieren}>{texte.werkzeuge.umnummerieren}</Button>
       </div>
       <div className="lv__grid">
@@ -226,6 +245,13 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         />
       </div>
       <SummenFelder lv={lv} senden={senden} />
+      <MerkmaleDialog
+        position={merkmale}
+        onSchliessen={() => {
+          setMerkmale(null);
+        }}
+        onUebernehmen={merkmaleUebernehmen}
+      />
     </div>
   );
 }

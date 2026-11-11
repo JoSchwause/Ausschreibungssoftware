@@ -58,3 +58,29 @@
   margin: 20px 0 0;
   color: var(--tx-color-danger);
 }
+
+.lv__merkmale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+}
+
+.lv__merkmale fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.lv__option {
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-3);
+}
+
+.lv__option input {
+  accent-color: var(--tx-color-accent);
+}
