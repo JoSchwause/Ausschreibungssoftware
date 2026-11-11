@@ -32,6 +32,7 @@ import {
   erwarteFehler,
   erwarteOk,
   fxKnoten,
+  kernAusfuehrung,
   lvZustand,
   m4AuftragsLv,
   m4Nachtrag,
@@ -128,6 +129,16 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
     expect(summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
     for (const [id, { summe }] of Object.entries(fx.nachtrag.sollwerte.titel))
       expect(summen.gliederungen.find((g) => g.gliederungId === id)?.summe).toBe(summe);
+  });
+
+  it('der Kern führt den Befehl aus und kommt auf die Summen der Fixture (aktiv, sobald Ticket 71 gemergt ist)', () => {
+    const { befehl } = erwarteOk(
+      nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids),
+    );
+    const cs = kernAusfuehrung(auftrag, befehl);
+    if (cs === null) return; // Ticket 71 fehlt noch: Baumregeln und Summen prüft der Test darüber.
+    expect(cs.knoten.hinzugefuegt.map((k) => k.id)).toEqual(befehl.knoten.map((k) => k.id));
+    expect(cs.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
   });
 });
 

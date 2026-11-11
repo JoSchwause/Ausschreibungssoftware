@@ -18,6 +18,7 @@ import type {
   AufmassId,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
+  AuftragsLvChangeSet,
   AuftragsLvZustand,
   BieterId,
   ElternId,
@@ -31,6 +32,7 @@ import type {
   LvZustand,
   Menge,
   Nachlass,
+  NachtragUebernehmen,
   Nachtragsangaben,
   Ordnungszahl,
   OzMaske,
@@ -102,6 +104,26 @@ export function lvZustand(
   if (z === null) throw new Error('Das ChangeSet entfernt das LV.');
   if (nachtrag === undefined) return z;
   return { ...z, leistungsverzeichnis: { ...z.leistungsverzeichnis, nachtrag } };
+}
+
+/**
+ * Führt `NachtragUebernehmen` im Kern aus (`auftragsLvBefehlAusfuehren`, Ticket 71). Solange Ticket 71 nicht gemergt ist,
+ * weist der Kern den Befehl mit `befehl-nicht-zustaendig` und dem Vermerk „Ticket 71“ ab (mechanische Zeile aus Ticket 70);
+ * dann liefert die Hilfe `null`, und die Tests prüfen nur die Baumregeln (`baumfehler`) und die Summen (`summenBerechnen`).
+ * Danach liefert sie das ChangeSet; jede andere Abweisung lässt den Test scheitern.
+ */
+export function kernAusfuehrung(
+  z: AuftragsLvZustand,
+  befehl: NachtragUebernehmen,
+): AuftragsLvChangeSet | null {
+  const antwort = auftragsLvBefehlAusfuehren(z, befehl);
+  if (
+    !antwort.ok &&
+    antwort.fehler.code === 'befehl-nicht-zustaendig' &&
+    /Ticket 71/.test(antwort.fehler.meldung)
+  )
+    return null;
+  return erwarteOk(antwort);
 }
 
 /**
