@@ -202,9 +202,12 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await expect(nachtragsliste(page).getByTestId('nachtrag-status')).toHaveText('angeboten');
   expect((await zeilen(page)).map((z) => z[1])).not.toContain('Nachtrag N01');
 
-  // Wiederholen schreibt beides wieder; die App zeigt den Nachtrag, dessen Status sich zuletzt geändert hat.
+  // Wiederholen schreibt beides wieder und bleibt auf dem Auftrags-LV; die Nachtragsliste zeigt den Status (D-86.7).
   await page.getByRole('button', { name: /^Wiederholen/ }).click();
-  await expect(page).toHaveURL(new RegExp(`${nachtragPfad}$`));
+  await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
+  await expect(page).toHaveURL(new RegExp(`${auftragPfad}$`));
+  await expect(nachtragsliste(page).getByTestId('nachtrag-status')).toHaveText('beauftragt');
+  await page.goto(nachtragPfad);
   await expect(band.getByTestId('nachtrag-status')).toHaveText('beauftragt');
   await expect(band.getByRole('button', { name: 'Beauftragen' })).toBeDisabled();
   await band.getByRole('link').click();

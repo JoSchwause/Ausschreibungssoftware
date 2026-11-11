@@ -9,7 +9,7 @@ import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten';
 import { angebotChangeSetUmkehren } from '@tethys/vergabe';
 import type { AngebotChangeSet, ChangeSet, LvChangeSet, ProjektChangeSet, ProjektId } from '@tethys/vertrag';
 import { aufmassZiel } from '../abrechnung/pfad'; // Ticket 87
-import { auftragZiel } from '../auftrag/ziel'; // Ticket 64, 86
+import { auftragPfad, auftragZiel } from '../auftrag/ziel'; // Ticket 64, 86
 import { kostenZiel } from '../kosten/pfad'; // Ticket 89
 import { rechnungZiel } from '../rechnung/pfad'; // Ticket 88
 import type { Teil } from './historie';
@@ -73,6 +73,11 @@ function lvZiel(projektId: ProjektId, cs: LvChangeSet, rueckwaerts: boolean, pfa
       geschrieben.knoten.entfernt.length ===
       0;
   if (nurKopf && pfad === projektPfad) return null;
+  // Nur Nachtragsangaben (Status, Nummer): auch in der Nachtragsliste des Auftrags-LV sichtbar; dort bleiben (D-86.7,
+  // Review Welle 5: Wiederholen einer Beauftragung bleibt auf dem Auftrags-LV).
+  const nachtrag = kopf?.nachher?.nachtrag ?? kopf?.vorher?.nachtrag;
+  if (nurKopf && nachtrag !== undefined && pfad === auftragPfad(projektId, nachtrag.auftragsLvId))
+    return null;
   return pfad === lvPfad ? null : lvPfad;
 }
 

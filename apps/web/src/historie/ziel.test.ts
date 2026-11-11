@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Wohin die App nach Undo/Redo wechselt, Zeilen des Papierkorbs und „Stand als neues LV übernehmen“ (Ticket 48).
-import type { LvStand, LvStandId, Projekt, Zeitstempel } from '@tethys/vertrag';
+import type {
+  AuftragsLeistungsverzeichnisId,
+  LvStand,
+  LvStandId,
+  Projekt,
+  Zeitstempel,
+} from '@tethys/vertrag';
+import { lvBefehlAusfuehren } from '@tethys/kern';
 import { describe, expect, it } from 'vitest';
+import { auftragPfad } from '../auftrag/ziel';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
 import { Befehlsweg, type LvSitzung } from '../lv/befehlsweg';
@@ -93,6 +101,31 @@ describe('zielNach', () => {
     expect(zielNach(oben(weg), true, '/')).toBeNull();
     // Redo löscht es: von der Projektseite zurück auf die Liste.
     expect(zielNach(oben(weg), false, projektPfad)).toBe('/');
+  });
+});
+
+// D-86.7 (Review Welle 5, Punkt 14): Der Status eines Nachtrags steht auch in der Nachtragsliste seines Auftrags-LV.
+describe('Nachtragsangaben', () => {
+  it('nur der Nachtragsstatus geändert: auf der Seite des Auftrags-LV sichtbar, also bleiben', async () => {
+    const { weg, projekt, lv } = await aufbau();
+    const z = lv.zustand;
+    if (z === null) throw new Error('LV');
+    // Der Teil wie ihn der Befehlsweg aufnimmt (der Speicher verlangt ein echtes Auftrags-LV; hier zählt nur das ChangeSet).
+    const auftragsLvId = 'auftrag-1' as AuftragsLeistungsverzeichnisId;
+    const cs = lvBefehlAusfuehren(z, {
+      art: 'NachtragsangabenSetzen',
+      nachtrag: { auftragsLvId, nummer: 'N01', status: 'beauftragt' },
+    });
+    if (!cs.ok) throw new Error(cs.fehler.meldung);
+    const t: Teil = { ...oben(weg), changeSet: cs.wert };
+    const auftragSeite = auftragPfad(projekt.id, auftragsLvId);
+    const lvPfad = `/lv/${z.leistungsverzeichnis.id}`;
+    // Wiederholen (und Rückgängig) einer Beauftragung auf der Seite des Auftrags-LV: bleiben.
+    expect(zielNach(t, false, auftragSeite)).toBeNull();
+    expect(zielNach(t, true, auftragSeite)).toBeNull();
+    // Anderswo wie bisher: die LV-Seite des Nachtrags.
+    expect(zielNach(t, false, '/')).toBe(lvPfad);
+    expect(zielNach(t, false, lvPfad)).toBeNull();
   });
 });
 
