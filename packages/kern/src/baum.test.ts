@@ -8,7 +8,6 @@ import type {
   Einfuegeort,
   Knoten,
   LvBefehl,
-  LvStandId,
   LvZustand,
   Menge,
   Position,
@@ -17,6 +16,7 @@ import type {
 import {
   LOS_ANNAHME,
   MAX_GLIEDERUNGSEBENEN,
+  ZUSTAENDIGES_TICKET,
   lvBefehlAusfuehren,
   changeSetUmkehren,
   pruefeLvInvarianten,
@@ -686,23 +686,9 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  const fremde: LvBefehl[] = [
-    { art: 'PapierkorbLeeren' },
-    { art: 'LvStandAnlegen', id: 'stand-1' as LvStandId, name: 'Stand' },
-  ];
-
-  it.each(fremde.map((b) => [b.art, b] as const))(
-    '%s: befehl-nicht-zustaendig, Meldung nennt das Ticket',
-    (_art, b) => {
-      const e = lvBefehlAusfuehren(z, b);
-      expect(e.ok).toBe(false);
-      if (!e.ok) {
-        expect(e.fehler.code).toBe('befehl-nicht-zustaendig');
-        expect(e.fehler.meldung).toMatch(/Ticket|K\d/);
-        expect(e.fehler.meldung).toContain(b.art);
-      }
-    },
-  );
+  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9): ZUSTAENDIGES_TICKET ist leer', () => {
+    expect(ZUSTAENDIGES_TICKET).toEqual({});
+  });
 
   it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {
     const meldung = (b: LvBefehl): string => {

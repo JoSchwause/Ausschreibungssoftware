@@ -3,7 +3,14 @@
 // Einzelbefehle und die Invariantenprüfung `pruefeLvInvarianten`.
 
 import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
-import type { Befehlsfehler, Knoten, Leistungsverzeichnis, LvInhalt, Positionsdaten } from '@tethys/vertrag';
+import type {
+  Befehlsfehler,
+  Knoten,
+  Leistungsverzeichnis,
+  LvInhalt,
+  Papierkorbeintrag,
+  Positionsdaten,
+} from '@tethys/vertrag';
 import { befehlsfehler } from './fehler';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
 import type { ElternArt } from './regeln';
@@ -159,9 +166,14 @@ export function inhaltKopfFehler(inhalt: Pick<LvInhalt, 'mwstSatz' | 'nachlass'>
  * Sammelt alle Verstöße gegen die Baumregeln: IDs eindeutig, jeder Knoten hat genau einen vorhandenen Elternknoten
  * (die Wurzel oder ein Los/Titel), Los nur an der erlaubten Stelle, keine Menge/kein Preis an Hinweistext und
  * Gliederung, `reihenfolge` je Elternknoten dicht 0..n-1, zyklenfrei, höchstens 5 Gliederungsebenen, Form der
- * Positionen. Unabhängig von der Array-Reihenfolge.
+ * Positionen. Unabhängig von der Array-Reihenfolge. `extern` (v1.2, K9): weitere Knoten, auf die ein Bezug zeigen darf
+ * (die Positionen im Papierkorb, D-12).
  */
-export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehler[] {
+export function baumfehler(
+  lvId: string,
+  knoten: readonly Knoten[],
+  extern?: (id: string) => Knoten | undefined,
+): Befehlsfehler[] {
   const fehler: Befehlsfehler[] = [];
   const byId = new Map<string, Knoten>();
   for (const k of knoten) {
@@ -277,7 +289,7 @@ export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehl
   }
 
   // Positionen
-  const knotenVon = (id: string): Knoten | undefined => byId.get(id);
+  const knotenVon = (id: string): Knoten | undefined => byId.get(id) ?? extern?.(id);
   for (const k of knoten) {
     if (k.art !== 'position') continue;
     const f = positionsdatenFehler(k, k.id, knotenVon);
@@ -287,9 +299,63 @@ export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehl
 }
 
 /**
- * Alle Verstöße des LV gegen die Invarianten des Baums als Meldungstexte; leer heißt gültig. Für Tests und
- * Folgetickets (z. B. nach jedem Befehl in Property-Tests).
+ * Verstöße des Papierkorbs (v1.2, K9): Eintragskennungen und Nummern eindeutig, Nummern ganzzahlig ab 1, kein Eintrag
+ * leer, kein Knoten zugleich im Baum oder in zwei Einträgen.
  */
-export function pruefeLvInvarianten(lv: Pick<Leistungsverzeichnis, 'id' | 'knoten'>): string[] {
-  return baumfehler(lv.id, lv.knoten).map((f) => `${f.code}: ${f.meldung}`);
+function papierkorbfehler(
+  lvId: string,
+  knoten: readonly Knoten[],
+  korb: readonly Papierkorbeintrag[],
+): Befehlsfehler[] {
+  const fehler: Befehlsfehler[] = [];
+  const belegt = new Set<string>([lvId, ...knoten.map((k) => k.id)]);
+  const eintraege = new Set<string>();
+  const nummern = new Set<number>();
+  for (const e of korb) {
+    if (eintraege.has(e.id))
+      fehler.push(
+        befehlsfehler('id-vergeben', `Papierkorbeintrag doppelt: ${e.id}`, undefined, 'papierkorb'),
+      );
+    eintraege.add(e.id);
+    if (!Number.isInteger(e.nummer) || e.nummer < 1 || nummern.has(e.nummer))
+      fehler.push(
+        befehlsfehler(
+          'ungueltige-eingabe',
+          `Nummer ${String(e.nummer)} des Eintrags ${e.id} ist ungültig oder doppelt.`,
+          undefined,
+          'nummer',
+        ),
+      );
+    nummern.add(e.nummer);
+    if (e.knoten.length === 0)
+      fehler.push(
+        befehlsfehler('ungueltige-eingabe', `Papierkorbeintrag ${e.id} ist leer.`, undefined, 'papierkorb'),
+      );
+    for (const k of e.knoten) {
+      if (belegt.has(k.id))
+        fehler.push(
+          befehlsfehler('id-vergeben', `Knoten ${k.id} liegt zweimal im LV (Baum oder Papierkorb).`, k.id),
+        );
+      belegt.add(k.id);
+    }
+  }
+  return fehler;
+}
+
+/**
+ * Alle Verstöße des LV gegen die Invarianten des Baums als Meldungstexte; leer heißt gültig. Für Tests und
+ * Folgetickets (z. B. nach jedem Befehl in Property-Tests). Mit `papierkorb` (v1.2, `LvZustand.papierkorb`): Bezüge auf
+ * Positionen im Papierkorb sind gültig (D-12), und der Papierkorb selbst wird geprüft (`papierkorbfehler`).
+ */
+export function pruefeLvInvarianten(
+  lv: Pick<Leistungsverzeichnis, 'id' | 'knoten'>,
+  papierkorb?: readonly Papierkorbeintrag[],
+): string[] {
+  const korb = papierkorb ?? [];
+  const imKorb = new Map<string, Knoten>();
+  for (const e of korb) for (const k of e.knoten) imKorb.set(k.id, k);
+  return [
+    ...baumfehler(lv.id, lv.knoten, korb.length === 0 ? undefined : (i) => imKorb.get(i)),
+    ...papierkorbfehler(lv.id, lv.knoten, korb),
+  ].map((f) => `${f.code}: ${f.meldung}`);
 }

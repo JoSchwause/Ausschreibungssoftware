@@ -1,6 +1,6 @@
 # 42: Kern: Kopieren, Verschieben, Papierkorb, LV-Stand als Befehle; OZ-Vorschlag (K9, Logikteil)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: K (K9) · Paket: `packages/kern`
 Blocked by: 41, 29
@@ -73,14 +73,14 @@ Ticket braucht: nicht ändern (P9), Teil auslassen, Lücke in die Comments.
 
 ## Acceptance criteria
 
-- [ ] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
-- [ ] `kopieBauen`: Kopie mit internen Bezügen (Zuschlag auf kopierte Position, Wahl auf kopierte Grundposition) zeigt auf die Kopien; Bezug nach außen bleibt; ruft die ID-Quelle in Präorder
-- [ ] Summen nach Verschieben in Quelle und Ziel korrekt (Test gegen `summenBerechnen`), Zuschläge beider Elternknoten aktualisiert
-- [ ] `ozVorschlag`: Schritt 10 bzw. 1 im Normalfall, Ausweichen auf 5, 2, 1 mit Hinweis, `null` bei Überlauf; Tests mit `typisch` und einer Maske nahe dem Überlauf
-- [ ] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie in `knoten.geaendert`; `nummer` = Höchstwert + 1; Positionen im Papierkorb gehen in keine Summe ein
-- [ ] Property-Test: beliebige Folgen aus Einfügen, Verschieben, Papierkorb, Wiederherstellen, Leeren; Summenstand gleich `summenBerechnen`, `pruefeLvInvarianten` hält, `changeSetUmkehren` stellt jeden Zustand her
-- [ ] Leistung: Verschieben eines Titels mit rund 300 Positionen in `gross` < 16 ms (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `KnotenEinfuegen`, `KnotenlisteVerschieben`, `KnotenInPapierkorbLegen`, `PapierkorbeintragWiederherstellen`, `PapierkorbeintragEntfernen`, `PapierkorbLeeren`, `LvStandAnlegen` sind zuständig (aus `ZUSTAENDIGES_TICKET` entfernt); je Wirkung, minimales ChangeSet, Fehlerfälle getestet
+- [x] `kopieBauen`: Kopie mit internen Bezügen (Zuschlag auf kopierte Position, Wahl auf kopierte Grundposition) zeigt auf die Kopien; Bezug nach außen bleibt; ruft die ID-Quelle in Präorder
+- [x] Summen nach Verschieben in Quelle und Ziel korrekt (Test gegen `summenBerechnen`), Zuschläge beider Elternknoten aktualisiert
+- [x] `ozVorschlag`: Schritt 10 bzw. 1 im Normalfall, Ausweichen auf 5, 2, 1 mit Hinweis, `null` bei Überlauf; Tests mit `typisch` und einer Maske nahe dem Überlauf
+- [x] Papierkorb: Hineinlegen und Wiederherstellen sind Umkehrungen voneinander; Wiederherstellen an die alte Stelle bzw. ans Ende, wenn der Elternknoten fehlt; Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, Entfernen/Leeren entfernt sie in `knoten.geaendert`; `nummer` = Höchstwert + 1; Positionen im Papierkorb gehen in keine Summe ein
+- [x] Property-Test: beliebige Folgen aus Einfügen, Verschieben, Papierkorb, Wiederherstellen, Leeren; Summenstand gleich `summenBerechnen`, `pruefeLvInvarianten` hält, `changeSetUmkehren` stellt jeden Zustand her
+- [x] Leistung: Verschieben eines Titels mit rund 300 Positionen in `gross` < 16 ms (Messwert im Ticket: Median 7,5 ms bei 351 Positionen)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -88,3 +88,20 @@ Zwischenablage und Tastatur (46), Bedienung in der App (48), Speicherung (43), U
 LV zurückschreiben (Ticket 29: nicht vorgesehen), Änderungen an `vertrag`.
 
 ## Comments
+
+- Seams (Demo-Modus, ohne Rückfrage festgelegt): `lvBefehlAusfuehren` + `lvChangeSetAnwenden` + `changeSetUmkehren` für die sieben Befehle, die reinen Funktionen `kopieBauen` und `ozVorschlag`, `pruefeLvInvarianten(lv, papierkorb?)`.
+- Messwert: `KnotenlisteVerschieben` eines Titels mit 351 Positionen in `gross` in einen anderen Elternknoten (mit OZ-Neuvergabe des Unterbaums), ausführen + anwenden, warm, Median 7,5 ms (schlechtester Lauf etwa 20 ms; Budget 16 ms für den Median), `k9-leistung.test.ts`.
+- Frage: Nachfahren eines genannten Knotens und Doppelte in `knotenIds`? Entscheidung: zählen nicht eigens, gehen mit dem Vorfahren (Kopie, Verschieben, Papierkorb gleich). Grund: Mehrfachauswahl im Grid enthält oft Titel samt Kindern (D-42.1).
+- Frage: `nach X`, wenn X selbst mitbewegt wird? Entscheidung: die Liste landet an der Stelle von X. Grund: keine Abweisung für eine sinnvolle Auswahl (D-42.1).
+- Frage: Leere Liste? Entscheidung: `ungueltige-eingabe` (`feld: 'knoten'` bzw. `'knotenIds'`). Grund: ein leerer Befehl hat keine Bedeutung.
+- Frage: Unbekannter Papierkorbeintrag (kein passender Fehlercode)? Entscheidung: `ungueltige-eingabe`, `feld: 'eintragId'`; vergebene Eintragskennung `id-vergeben`, `feld: 'eintragId'`. Grund: Codes sind eine geschlossene Liste (A4).
+- Frage: Reihenfolge im Eintrag? Entscheidung: Dokumentreihenfolge (Eltern vor Kindern), nicht Auswahlreihenfolge. Grund: Wiederherstellen an die alte Stelle legt die Wurzeln je Elternknoten in aufsteigender alter Reihenfolge zurück und kehrt das Hineinlegen damit exakt um.
+- Frage: Wiederherstellen mit `ort: null`? Entscheidung: wie vorgeschlagen (alte Stelle, `reihenfolge` höchstens ans Ende; fehlt der Elternknoten, ans Ende der Wurzel); Prüfungen am Ziel wie beim Einfügen (Los, Ebenen, F1); eine Kennung des Eintrags, die inzwischen im Baum steht: `id-vergeben` (D-42.1).
+- Frage: Bezüge aus anderen Papierkorbeinträgen auf einen entfernten Eintrag? Entscheidung: Entfernen/Leeren lösen sie mit, über `papierkorb.geaendert`. Grund: sonst brächte ein späteres Wiederherstellen hängende Bezüge in den Baum (D-42.1).
+- Frage: Bezüge in den Papierkorb in anderen Befehlen? Entscheidung: gültig auch bei `PositionAnlegen`, `PositionsmerkmaleSetzen`, `KnotenEinfuegen` (zählen nichts); Kennungen im Papierkorb gelten beim Anlegen und Einfügen als vergeben. `pruefeLvInvarianten` nimmt den Papierkorb optional mit und prüft ihn (Kennungen, Nummern, kein Knoten doppelt). Grund: D-12; sonst würde ein `PositionsmerkmaleSetzen` an einer Wahl, deren Grundposition im Papierkorb liegt, abgewiesen.
+- Frage: OZ beim Einfügen (Ticket: „in einen anderen Elternknoten“)? Entscheidung: `KnotenEinfuegen` vergibt den Wurzeln immer eine neue OZ, der Unterbaum wird darunter neu nummeriert; `kopieBauen` lässt die OZ stehen. Grund: Nach dem Vertrag zählt die mitgebrachte Lage der Wurzeln nicht, ein „gleicher Elternknoten“ ist also nicht erkennbar; eine Kopie ist ein neuer Knoten (W-06). `ozIndex` bleibt unverändert (D-42.2).
+- Frage: Regel des OZ-Vorschlags im Einzelnen? Entscheidung: neuer Teil = Teil des Vorgängers + 10 (Position) bzw. + 1 (Gliederung); Vorgänger/Nachfolger ist das nächste Geschwister derselben Art mit rein numerischem Teil (ohne einen: 0 bzw. kein Nachfolger); Ausweichen auf 5, 2, 1 (nur kleiner als der Standard, Gliederung also nie), wenn der Teil nicht vor den Nachfolger, nicht in die Stellen passt oder unter den Geschwistern belegt ist; `null` auch bei ungültigem Ort, ungültiger Maske, Elternknoten ohne lesbare OZ oder Stufe außerhalb der Maske (D-42.3).
+- Frage: Teilbaum passt beim Umnummerieren nicht in die Maske, oder die Wurzel bekommt keinen Vorschlag? Entscheidung: die OZ dieser Knoten wird leer (`null`, K8 meldet `oz-fehlt`), der Befehl wird nicht abgewiesen. Grund: U5; dieselbe Folge wie `ozVorschlag` → `null` (D-42.3).
+- Frage: `LvStandAnlegen` „Kennung frei“? Entscheidung: der Kern prüft nur gegen LV- und Knotenkennungen (`id-vergeben`, `feld: 'id'`), bestehende Stände kennt nur `speicher` (`konflikt`). Name nur aus Leerraum zählt als leer (`ungueltige-eingabe`, `feld: 'name'`).
+- `ZUSTAENDIGES_TICKET` ist leer; der Typ verlangt weiter einen Eintrag für jeden künftigen LV-Befehl ohne Handler. `baum.test.ts` „Befehle anderer Tickets“ prüft jetzt, dass die Liste leer ist (mechanisch).
+- Glossar: „Papierkorb“ und „LV-Stand“ stehen schon (Ticket 29); „OZ-Vorschlag“ nicht eingetragen (kein Begriff der Oberfläche).
