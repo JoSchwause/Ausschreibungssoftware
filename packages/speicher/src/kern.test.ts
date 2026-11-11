@@ -20,6 +20,7 @@ import {
 } from './testhilfe/fixtures';
 import { imProtokoll, kernAufDb, neueDatenbank, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
 import { SpeicherKern } from './kern';
+import { LEERES_SUMMENVORHER } from './vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket
 
 const typisch = ladeFixture('typisch');
 const lvId = typisch.lv.leistungsverzeichnis.id;
@@ -46,7 +47,10 @@ describe('Fixtures speichern und laden', () => {
       expect(lv.summen.gliederungen.map((g) => g.gliederungId)).toEqual(
         knoten.filter((k) => k.art === 'titel' || k.art === 'los').map((k) => k.id),
       );
-      expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([f.lv.leistungsverzeichnis.id]);
+      // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3: LvUebersicht)
+      expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
+        { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
+      ]);
       for (const a of f.angebote) {
         expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
       }
@@ -171,6 +175,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
         positionen: [{ positionId: p.id, gesamtpreis: '1.00' as never, gehtInSummeEin: true }],
         gliederungen: [],
         gesamt: { ...typisch.lv.summen.gesamt, netto: '1.00' as never },
+        vorher: LEERES_SUMMENVORHER, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
       },
     };
     wert(await kern.anwenden(lvEintrag(), cs));
@@ -200,6 +205,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
         positionen: [],
         gliederungen: [],
         gesamt: { ...typisch.lv.summen.gesamt, netto: '0.01' as never },
+        vorher: LEERES_SUMMENVORHER, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
       },
     };
     const r = await kern.anwenden(lvEintrag(), cs);
@@ -224,7 +230,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       leistungsverzeichnisId: lvId,
       kopf: null,
       knoten: { hinzugefuegt: [], geaendert: [], entfernt: [e] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     });
     wert(await kern.anwenden(lvEintrag(), cs(p)));
     const geladen = wert(kern.lvLaden(lvId));
@@ -247,7 +253,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       leistungsverzeichnisId: lvId,
       kopf: null,
       knoten: { hinzugefuegt: [neu, vorhanden], geaendert: [], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     };
     expect((await kern.anwenden(lvEintrag(), cs)).ok).toBe(false);
     expect(wert(kern.lvLaden(lvId))).toEqual(vorherStand);
@@ -262,7 +268,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       leistungsverzeichnisId: lvId,
       kopf: null,
       knoten: { hinzugefuegt: [n], geaendert: [], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     });
     const waise = await kern.anwenden(
       lvEintrag(),
@@ -288,7 +294,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       angebotId: a.angebot.id,
       kopf: null,
       positionen: { hinzugefuegt: [], geaendert: [{ vorher, nachher }], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     });
     const e = (): Protokolleintrag =>
       eintrag(nr++, projektId, { art: 'angebot', id: a.angebot.id }, { art: 'AngebotsNachlassEntfernen' });
@@ -340,7 +346,7 @@ describe('ChangeSets auf dem gespeicherten Stand', () => {
       leistungsverzeichnisId: lvId,
       kopf: { vorher, nachher },
       knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
-      summen: { positionen: [], gliederungen: [], gesamt: null },
+      summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
     });
     wert(await kern.anwenden(lvEintrag(), cs(kopf, { ...kopf, name: 'Umbenannt', nachlass: null })));
     expect(wert(kern.lvLaden(lvId)).leistungsverzeichnis).toMatchObject({
