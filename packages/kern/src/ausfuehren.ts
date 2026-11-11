@@ -45,6 +45,7 @@ import {
   papierkorbeintragWiederherstellen,
 } from './papierkorb-befehle';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
+import { textquelleSetzen } from './textquelle';
 import {
   einheitspreisAendern,
   mengeAendern,
@@ -98,6 +99,7 @@ export const BEFEHLS_HANDLER = {
   KnotenlisteVerschieben: knotenlisteVerschieben,
   MengenansatzSetzen: mengenansatzSetzen,
   KostengruppeSetzen: kostengruppeSetzen,
+  TextquelleSetzen: textquelleSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -113,7 +115,6 @@ export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<P
     // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 liefert die Handler und leert die Liste wieder)
     NachtragsangabenSetzen: 'A1 (Ticket 71)',
     VorlageSetzen: 'C5 (Ticket 71)',
-    TextquelleSetzen: 'C5 (Ticket 71)',
   };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);

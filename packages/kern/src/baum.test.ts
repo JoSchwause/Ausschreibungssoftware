@@ -692,7 +692,6 @@ describe('Befehle anderer Tickets', () => {
     expect(Object.values(ZUSTAENDIGES_TICKET).every((t) => t.endsWith('(Ticket 71)'))).toBe(true);
     expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual([
       'NachtragsangabenSetzen',
-      'TextquelleSetzen',
       'VorlageSetzen',
     ]);
   });
@@ -708,7 +707,6 @@ describe('Befehle anderer Tickets', () => {
         daten: { ...positionsdaten('v1.4'), kostengruppe: '330' as Kostengruppennummer },
       },
       { art: 'VorlageSetzen', vorlage: true },
-      { art: 'TextquelleSetzen', positionId: id.pos('P1'), textquelle: 'eigener Text' },
       {
         art: 'PositionAnlegen',
         id: id.pos('V14'),

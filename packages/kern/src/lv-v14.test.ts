@@ -103,3 +103,51 @@ describe('KostengruppeSetzen im LV', () => {
     }
   });
 });
+
+describe('TextquelleSetzen (D-40)', () => {
+  const setze = (positionId: string, textquelle: string | null): LvBefehl => ({
+    art: 'TextquelleSetzen',
+    positionId: id.pos(positionId),
+    textquelle,
+  });
+
+  it('setzt die Textquelle: eine Knotenänderung, keine Summen; null entfernt das Feld', () => {
+    const z = basis();
+    const cs = erwarteOk(lvBefehlAusfuehren(z, setze('P1', 'Muster-LV Hochbau')));
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(cs.knoten.geaendert).toEqual([
+      { vorher: position(z, 'P1'), nachher: { ...position(z, 'P1'), textquelle: 'Muster-LV Hochbau' } },
+    ]);
+    const z1 = wendeMitUmkehr(z, setze('P1', 'Muster-LV Hochbau'));
+    expect(position(z1, 'P1').textquelle).toBe('Muster-LV Hochbau');
+    const z2 = wendeMitUmkehr(z1, setze('P1', null));
+    expect(position(z2, 'P1')).not.toHaveProperty('textquelle');
+    expect(z2).toEqual(z);
+  });
+
+  it("'' ist keine Quelle: wie null (das Feld fehlt danach, nie '' im Zustand); Leerzeichen bleiben Text (kein Trimmen)", () => {
+    const z1 = wendeMitUmkehr(basis(), setze('P1', 'eigener Text'));
+    const z2 = wendeMitUmkehr(z1, setze('P1', ''));
+    expect(position(z2, 'P1')).not.toHaveProperty('textquelle');
+    const leer = erwarteOk(lvBefehlAusfuehren(basis(), setze('P1', '')));
+    expect(leer.knoten.geaendert).toEqual([]);
+    const z3 = wendeMitUmkehr(basis(), setze('P1', ' '));
+    expect(position(z3, 'P1').textquelle).toBe(' ');
+    const gleich = erwarteOk(lvBefehlAusfuehren(z1, setze('P1', 'eigener Text')));
+    expect(gleich.knoten.geaendert).toEqual([]);
+  });
+
+  it('Fehler: kein Text, keine Position, unbekannte Kennung', () => {
+    const z = basis();
+    const keinText = fehler(z, {
+      art: 'TextquelleSetzen',
+      positionId: id.pos('P1'),
+      textquelle: 7 as unknown as string,
+    });
+    expect(keinText.code).toBe('ungueltige-eingabe');
+    expect(keinText.feld).toBe('textquelle');
+    expect(fehler(z, setze('T1', 'x')).code).toBe('knotenart-unzulaessig');
+    expect(fehler(z, setze('H1', 'x')).code).toBe('knotenart-unzulaessig');
+    expect(fehler(z, setze('gibt-es-nicht', 'x')).code).toBe('knoten-unbekannt');
+  });
+});
