@@ -198,10 +198,6 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
 // --- Knoten und Summen (LV und Auftrags-LV) --------------------------------------------------------------------
 
 const KNOTEN_EINFUEGEN = `INSERT INTO knoten (${KNOTEN_SPALTEN.join(', ')}) VALUES (${KNOTEN_SPALTEN.map(() => '?').join(', ')})`;
-const KNOTEN_AENDERN = `UPDATE knoten SET ${KNOTEN_SPALTEN.slice(2)
-  .map((s) => `${s} = ?`)
-  .join(', ')} WHERE aggregat_id = ? AND id = ?`;
-
 function wendeKnotenAn(db: Datenbank, aggregatId: string, k: Aenderungen<Knoten>): void {
   for (const e of k.entfernt) {
     const gespeichert = leseKnoten1(db, aggregatId, e.id);
@@ -228,14 +224,22 @@ function wendeKnotenAn(db: Datenbank, aggregatId: string, k: Aenderungen<Knoten>
     'DELETE FROM summe_gliederung WHERE aggregat_id = ? AND gliederung_id = ?',
     k.entfernt.map((e): SqlWert[] => [aggregatId, e.id]),
   );
-  db.stapel(
-    KNOTEN_AENDERN,
-    k.geaendert.map(({ nachher }): SqlWert[] => [
-      ...knotenZuBindung(aggregatId, nachher).slice(2),
-      aggregatId,
-      nachher.id,
-    ]),
-  );
+  // Nur die Spalten, in denen sich `nachher` von `vorher` unterscheidet (Ticket 52): Bleiben Elternknoten und
+  // Reihenfolge, fasst SQLite den Index `knoten_eltern` nicht an, und das WAL schreibt eine Seite weniger. `vorher` gleicht
+  // dem gespeicherten Stand (oben geprüft); die Zeile ist danach dieselbe wie beim Ersetzen aller Spalten. Änderungen
+  // mit denselben Spalten gehen in einer vorbereiteten Anweisung (Umnummerieren: eine für alle).
+  const nachSpalten = new Map<string, SqlWert[][]>();
+  for (const { vorher, nachher } of k.geaendert) {
+    const alt = knotenZuBindung(aggregatId, vorher);
+    const neu = knotenZuBindung(aggregatId, nachher);
+    const stellen = KNOTEN_SPALTEN.flatMap((_, i) => (i >= 2 && alt[i] !== neu[i] ? [i] : []));
+    if (stellen.length === 0) continue;
+    const sql = `UPDATE knoten SET ${stellen.map((i) => `${KNOTEN_SPALTEN[i] ?? ''} = ?`).join(', ')} WHERE aggregat_id = ? AND id = ?`;
+    const liste = nachSpalten.get(sql) ?? [];
+    liste.push([...stellen.map((i) => neu[i] ?? null), aggregatId, nachher.id]);
+    nachSpalten.set(sql, liste);
+  }
+  for (const [sql, bindungen] of nachSpalten) db.stapel(sql, bindungen);
   db.stapel(
     KNOTEN_EINFUEGEN,
     k.hinzugefuegt.map((n) => knotenZuBindung(aggregatId, n)),
