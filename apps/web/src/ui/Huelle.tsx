@@ -25,6 +25,13 @@ const EINTRAEGE: readonly Eintrag[] = [
 
 const KATALOG_EINTRAG: Eintrag = { pfad: '/katalog', label: texte.huelle.eintraege.katalog, icon: 'info' };
 
+/** Der Eintrag, zu dem eine Seite gehört: Projektseiten zu „Projekt“, LV-Seiten zu „LV“. */
+function bereich(pfad: string): string {
+  if (pfad.startsWith('/projekt/')) return '/';
+  if (pfad.startsWith('/lv/')) return '/lv';
+  return pfad;
+}
+
 /** Eigene Wortmarke: drei Wellenlinien, die an die Titanin der Meere erinnern. */
 function Wortmarke(): ReactElement {
   return (
@@ -81,7 +88,7 @@ export function Huelle({ pfad, gehe, mitKatalog, seitenTitel, children }: Huelle
           <nav aria-label={texte.huelle.navigation}>
             <ul className="huelle__liste">
               {eintraege.map((e) => {
-                const aktiv = e.pfad === pfad;
+                const aktiv = e.pfad === bereich(pfad);
                 const istKatalog = e === KATALOG_EINTRAG;
                 return (
                   <li key={e.pfad} className={istKatalog ? 'huelle__trenner' : undefined}>
