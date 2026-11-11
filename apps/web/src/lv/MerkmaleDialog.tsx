@@ -5,7 +5,7 @@
 
 import { Button, Dialog } from '@tethys/ui-basis';
 import type { Bedarf, Position } from '@tethys/vertrag';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { merkmalwahlVon, type Merkmalwahl } from './merkmale';
 import { texte } from './texte';
@@ -23,6 +23,8 @@ export function MerkmaleDialog(props: {
 }): ReactElement {
   const { position, onSchliessen, onUebernehmen } = props;
   const formId = useId();
+  // Anfangsfokus auf „Übernehmen“: Enter bestätigt sofort, ohne vorher ins Formular zu müssen (Ticket 54, Punkt 6).
+  const uebernehmenKnopf = useRef<HTMLButtonElement>(null);
   const [w, setW] = useState<Merkmalwahl | null>(null);
   useEffect(() => {
     setW(position ? merkmalwahlVon(position) : null);
@@ -51,10 +53,11 @@ export function MerkmaleDialog(props: {
         if (!o) onSchliessen();
       }}
       titel={titel}
+      anfangsfokus={uebernehmenKnopf}
       fuss={
         <>
           <Button onClick={onSchliessen}>{texte.merkmale.abbrechen}</Button>
-          <Button type="submit" form={formId} variante="primaer">
+          <Button ref={uebernehmenKnopf} type="submit" form={formId} variante="primaer">
             {texte.merkmale.uebernehmen}
           </Button>
         </>

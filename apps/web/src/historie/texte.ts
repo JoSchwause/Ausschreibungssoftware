@@ -53,8 +53,6 @@ export const texte = {
     nichtVerfuegbar: 'LV-Stände sind in diesem Speicher nicht verfügbar.',
     seiteLaden: 'Der LV-Stand wird geladen …',
     nichtGefunden: 'Diesen LV-Stand gibt es nicht (mehr).',
-    schreibgeschuetzt: 'Stand ist schreibgeschützt',
-    schreibgeschuetztText: 'Ein LV-Stand lässt sich nicht ändern. Änderungen gehen im LV selbst.',
     kennzeichen: 'schreibgeschützt',
     zumLv: 'Zum LV',
     alsNeuesLv: 'Als neues LV übernehmen',
