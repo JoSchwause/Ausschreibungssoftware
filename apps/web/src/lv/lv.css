@@ -84,3 +84,217 @@
 .lv__option input {
   accent-color: var(--tx-color-accent);
 }
+
+/* Grid und Prüf-Panel nebeneinander (ab 1280 px, U6). */
+.lv__haupt {
+  display: flex;
+  flex: 1;
+  gap: var(--tx-space-4);
+  min-height: 0;
+}
+
+.lv__haupt > .lv__grid {
+  flex: 1;
+  min-width: 0;
+}
+
+.lv-pruefung {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 300px;
+  min-height: 0;
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-raised);
+}
+
+.lv-pruefung--zu {
+  flex-basis: auto;
+}
+
+.lv-pruefung__kopf {
+  padding: var(--tx-space-2);
+  border-bottom: 1px solid var(--tx-color-border);
+}
+
+.lv-pruefung__titel {
+  font-weight: var(--tx-weight-bold);
+}
+
+.lv-pruefung__zahl {
+  margin-left: var(--tx-space-2);
+  padding: 0 var(--tx-space-3);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-sunken);
+}
+
+.lv-pruefung__liste {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--tx-space-3);
+}
+
+.lv-pruefung__leer {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}
+
+.lv-pruefung__gruppe h2 {
+  margin: var(--tx-space-3) 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-md);
+}
+
+.lv-pruefung__gruppe--fehler h2 {
+  color: var(--tx-color-danger);
+}
+
+.lv-pruefung__gruppe--warnung h2 {
+  color: var(--tx-color-warning);
+}
+
+.lv-pruefung__gruppe ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lv-pruefung__eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-1);
+  width: 100%;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 0;
+  border-radius: var(--tx-radius-md);
+  background: transparent;
+  color: var(--tx-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lv-pruefung__eintrag:hover {
+  background: var(--tx-color-surface-hover);
+}
+
+.lv-pruefung__eintrag:focus-visible {
+  outline: 2px solid var(--tx-color-focus);
+  outline-offset: -2px;
+}
+
+.lv-pruefung__ort {
+  font-weight: var(--tx-weight-bold);
+}
+
+.lv-pruefung__meldung {
+  color: var(--tx-color-text-muted);
+}
+
+/* Positionsdialog und LV-Angaben: breiter als der Standarddialog. */
+.tx-dialog:has(.lv-dialog) {
+  width: min(1040px, calc(100vw - 32px));
+}
+
+.tx-dialog:has(.lv-dialog--schmal) {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.lv-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-4);
+}
+
+.lv-dialog__spalten {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--tx-space-5);
+}
+
+.lv-dialog__spalte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-4);
+  min-width: 0;
+}
+
+.lv-dialog__bereich,
+.lv-dialog__gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+  margin: 0;
+  padding: var(--tx-space-3) var(--tx-space-4);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.lv-dialog__bereich > legend {
+  font-weight: var(--tx-weight-bold);
+}
+
+.lv-dialog__zeile {
+  display: flex;
+  gap: var(--tx-space-3);
+}
+
+.lv-dialog__zeile > * {
+  flex: 1;
+}
+
+.lv-dialog__raster {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--tx-space-3);
+}
+
+.lv-dialog__langtext {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+}
+
+.lv-dialog__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}
+
+.lv-dialog__liste,
+.lv-dialog__treffer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lv-dialog__liste li {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--tx-space-3);
+}
+
+.lv-dialog__name {
+  flex: 1;
+  padding-bottom: var(--tx-space-3);
+}
+
+.lv-dialog__vorschau {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--tx-space-2) var(--tx-space-4);
+  margin: 0;
+}
+
+.lv-dialog__vorschau dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-dialog__unter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+}

@@ -92,7 +92,8 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   await page.keyboard.type('5');
   await page.keyboard.press('Enter');
   await expect(page.getByText('Nicht gespeichert', { exact: true }).first()).toBeVisible();
-  await expect(menge).toHaveText('');
+  // Nur der angezeigte Wert; die Zelle trägt dazu die Beschreibung ihres Prüfbefunds (Menge fehlt).
+  await expect(menge.locator('.tx-grid__text')).toHaveText('');
   expect(await summen(page)).toEqual(vorher);
 
   // Nach dem Neuladen steht der gespeicherte Stand da.

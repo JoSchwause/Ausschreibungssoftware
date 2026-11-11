@@ -3,10 +3,12 @@ import type { Einheitspreis, KnotenId, LvZustand, Menge, Positionsdaten, Projekt
 import { describe, expect, it } from 'vitest';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
+import { lvPruefen } from '@tethys/kern';
 import { lvAnsichtBauen } from './ansicht';
 import { lvSitzung, projektSitzung, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { ozMaskeLesen } from './ozmaske';
+import { befundeJeKnoten } from './pruefung';
 import { gridZahlen } from './zahlen';
 
 const maske = (() => {
@@ -116,6 +118,20 @@ describe('LV-Ansicht aus dem Zustand', () => {
     ]);
     const zeile = ansicht.zeilen[1];
     expect(zeile?.hatUnterknoten && !zeile.aufgeklappt).toBe(true);
+  });
+
+  it('die Zeilen tragen die Befunde aus lvPruefen (dieselben wie im Prüf-Panel)', async () => {
+    const { s } = await m1Lv();
+    const ohneEinheit = lv(s).leistungsverzeichnis.knoten.find((k) => k.art === 'position');
+    if (ohneEinheit?.art !== 'position') throw new Error('keine Position');
+    await s.befehl({ art: 'EinheitAendern', positionId: ohneEinheit.id, einheit: null });
+    const befunde = lvPruefen(lv(s));
+    const ansicht = lvAnsichtBauen(lv(s), new Set(), befundeJeKnoten(befunde));
+    const zeile = ansicht.zeilen.find((z) => z.knoten.id === ohneEinheit.id);
+    expect(zeile?.befunde.map((b) => [b.code, b.ort.feld])).toContainEqual(['einheit-fehlt', 'einheit']);
+    expect(ansicht.zeilen.flatMap((z) => z.befunde)).toEqual(
+      befunde.filter((b) => b.ort.knotenId !== undefined),
+    );
   });
 
   it('Untertitel am Ende der Gliederung, Titel auf derselben Ebene, leeres LV an der Wurzel', async () => {

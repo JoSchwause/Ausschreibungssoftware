@@ -3,7 +3,9 @@
 // (die App rechnet nie, N1). Auf- und Zuklappen gehört der App: Sie merkt sich die zugeklappten Knoten, neu angelegte
 // Gliederungen sind damit aufgeklappt.
 
-import type { Betrag, Knoten, LvAnsicht, LvZeile, LvZustand } from '@tethys/vertrag';
+import type { Betrag, Knoten, LvAnsicht, LvZeile, LvZustand, Pruefbefund } from '@tethys/vertrag';
+
+const KEINE: readonly Pruefbefund[] = [];
 
 /** Kinder je Elternknoten, nach `reihenfolge`. */
 export function kinderJeEltern(knoten: readonly Knoten[]): ReadonlyMap<string, readonly Knoten[]> {
@@ -17,7 +19,12 @@ export function kinderJeEltern(knoten: readonly Knoten[]): ReadonlyMap<string, r
   return kinder;
 }
 
-export function lvAnsichtBauen(zustand: LvZustand, zugeklappt: ReadonlySet<string>): LvAnsicht {
+/** `befunde`: die Befunde der LV-Prüfung je Knoten (`befundeJeKnoten`); sie stehen an den Zellen (`ort.feld`). */
+export function lvAnsichtBauen(
+  zustand: LvZustand,
+  zugeklappt: ReadonlySet<string>,
+  befunde: ReadonlyMap<string, readonly Pruefbefund[]> = new Map(),
+): LvAnsicht {
   const lv = zustand.leistungsverzeichnis;
   const kinder = kinderJeEltern(lv.knoten);
   const gp = new Map<string, { gesamtpreis: Betrag | null; gehtInSummeEin: boolean }>();
@@ -44,7 +51,7 @@ export function lvAnsichtBauen(zustand: LvZustand, zugeklappt: ReadonlySet<strin
               ? null
               : (gliederung.get(knoten.id) ?? null),
         gehtInSummeEin: knoten.art === 'position' ? (s?.gehtInSummeEin ?? null) : null,
-        befunde: [],
+        befunde: befunde.get(knoten.id) ?? KEINE,
       });
       if (aufgeklappt) besuche(knoten.id, tiefe + 1);
     }
