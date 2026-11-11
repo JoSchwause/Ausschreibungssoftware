@@ -99,7 +99,7 @@ test('Kopieren einer Gliederung mit Unterknoten: neue OZ, Summen stimmen; Aussch
   page,
 }) => {
   await typischOeffnen(page);
-  const netto = '55.463,41';
+  const netto = '55.465,59'; // Ticket 51: Fixture-Format, mechanisch (typisch in GAEB-Form, fixtures/typisch.json)
   await expect.poll(async () => (await summen(page))['Netto']).toBe(netto);
   const titel3 = (await zeilen(page)).find((z) => z[1] === 'Ausbau und Oberflächen');
   const summe3 = titel3?.[2] ?? '';
@@ -149,7 +149,7 @@ test('Gelöschte Zeilen liegen im Papierkorb und lassen sich wiederherstellen; L
   page,
 }) => {
   await typischOeffnen(page);
-  const netto = '55.463,41';
+  const netto = '55.465,59'; // Ticket 51: Fixture-Format, mechanisch (typisch in GAEB-Form, fixtures/typisch.json)
   await zelle(page, 'Bauzaun stellen', 'kurztext').click();
   await page.keyboard.press('Shift+ArrowDown');
   await page.keyboard.press('Control+Delete');
@@ -209,7 +209,7 @@ test('LV-Stand anlegen, neu laden, schreibgeschützt öffnen; Änderungen am LV 
   await zelle(page, 'Baustelle einrichten', 'menge').click();
   await page.keyboard.type('2');
   await page.keyboard.press('Enter');
-  await expect.poll(async () => (await summen(page))['Netto']).not.toBe('55.463,41');
+  await expect.poll(async () => (await summen(page))['Netto']).not.toBe('55.465,59');
 
   await page.reload();
   await expect(grid(page)).toBeVisible();
@@ -219,18 +219,18 @@ test('LV-Stand anlegen, neu laden, schreibgeschützt öffnen; Änderungen am LV 
   await expect(page).toHaveURL(new RegExp(`/lv/${lvId}/stand/`));
   await expect(page.getByText('schreibgeschützt', { exact: true })).toBeVisible();
   // Der Stand hat die alten Werte.
-  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.463,41');
+  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.465,59');
   // Jede Bearbeitung meldet „Stand ist schreibgeschützt“ und ändert nichts.
   await zelle(page, 'Baustelle einrichten', 'menge').click();
   await page.keyboard.type('5');
   await page.keyboard.press('Enter');
   await expect(page.getByText('Stand ist schreibgeschützt').first()).toBeVisible();
-  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.463,41');
+  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.465,59');
 
   // Stand als neues LV übernehmen.
   await page.getByRole('button', { name: 'Als neues LV übernehmen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /\(Stand Versand\)$/ })).toBeVisible();
-  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.463,41');
+  await expect.poll(async () => (await summen(page))['Netto']).toBe('55.465,59');
 });
 
 test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', async ({ page }) => {

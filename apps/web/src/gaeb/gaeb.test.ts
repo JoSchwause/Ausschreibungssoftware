@@ -162,21 +162,17 @@ describe('Ausgabe', () => {
   });
 
   /**
-   * `typisch` ohne die Zuschlagspositionen in Altform (Menge × EP ohne Satz), die im Rundweg Menge und EP verlieren,
-   * und ohne die Wahlkennzeichnung ohne Gruppe und Variante, die der Writer nicht schreiben kann (Warnung
-   * `export-verworfen`, E-11); beides sind erwartete Unterschiede aus Ticket 40. Die Geschwister rücken nach.
+   * `typisch` ohne die Wahlkennzeichnung ohne Gruppe und Variante, die der Writer nicht schreiben kann (Warnung
+   * `export-verworfen`, E-11; erwarteter Unterschied aus Ticket 40). Die Zuschlagsposition 02.0050 A steht seit
+   * Ticket 51 in GAEB-Form (Satz 8,50 %, Liste) und läuft mit durch den Rundweg (Fixture-Format, mechanisch).
    */
-  function typischOhneAltform(): LvInhalt {
+  function typischOhneWahlnummer(): LvInhalt {
     const inhalt = fixtureInhalt('typisch');
-    const rest = inhalt.knoten.filter((k) => !(k.art === 'position' && k.zuschlag !== null));
-    const zaehler = new Map<string, number>();
-    const knoten = rest.map((k) => {
-      const n = zaehler.get(k.elternId) ?? 0;
-      zaehler.set(k.elternId, n + 1);
-      if (k.art === 'position' && k.merkmale.wahl !== null)
-        return { ...k, reihenfolge: n, merkmale: { ...k.merkmale, wahl: null } };
-      return { ...k, reihenfolge: n };
-    });
+    const knoten = inhalt.knoten.map((k) =>
+      k.art === 'position' && k.merkmale.wahl !== null
+        ? { ...k, merkmale: { ...k.merkmale, wahl: null } }
+        : k,
+    );
     return { ...inhalt, knoten };
   }
 
@@ -191,7 +187,7 @@ describe('Ausgabe', () => {
   }
 
   it('Roundtrip: typisch als X83 3.3 ausgeben, wieder einlesen, gleiche Struktur, Mengen und Texte', () => {
-    const zustand = lvZustand(typischOhneAltform());
+    const zustand = lvZustand(typischOhneWahlnummer());
     const { aus, z2 } = rundweg(zustand, 'X83');
     expect(aus.dateiname).toBe('Typisch Musterhaus erfunden.x83');
     const form = (z: LvZustand) =>
@@ -206,13 +202,17 @@ describe('Ausgabe', () => {
   });
 
   it('Roundtrip: typisch als X86 3.3 ausgeben (mit Preisen), wieder einlesen, gleiche Summen', () => {
-    const zustand = lvZustand(typischOhneAltform());
+    const zustand = lvZustand(typischOhneWahlnummer());
     const { z2 } = rundweg(zustand, 'X86');
     expect(z2.summen.gesamt.netto).toBe(zustand.summen.gesamt.netto);
     expect(z2.summen.gesamt.brutto).toBe(zustand.summen.gesamt.brutto);
     expect(z2.summen.gliederungen.map((g) => g.summe)).toEqual(
       zustand.summen.gliederungen.map((g) => g.summe),
     );
+    // Ticket 51: 02.0050 A kommt mit Satz 8,50 % zurück, Betrag 6.544,88 × 8,50 % = 556,31 (fixtures/typisch.json)
+    const zuschlag = z2.leistungsverzeichnis.knoten.find((k) => k.art === 'position' && k.zuschlag !== null);
+    expect(zuschlag?.art === 'position' && zuschlag.zuschlag?.prozentsatz).toBe('8.50');
+    expect(z2.summen.positionen.find((p) => p.positionId === zuschlag?.id)?.gesamtpreis).toBe('556.31');
   });
 
   it('eine Einheit über 4 Zeichen macht den Export zum Entwurf, er geschieht trotzdem (G-13)', () => {

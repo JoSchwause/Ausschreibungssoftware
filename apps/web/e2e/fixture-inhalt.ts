@@ -19,6 +19,7 @@ import type {
   PositionId,
   Prozent,
   TitelId,
+  Zuschlag,
 } from '@tethys/vertrag';
 
 interface FxKnoten {
@@ -30,12 +31,13 @@ interface FxKnoten {
   readonly kurztext?: string;
   readonly text?: string;
   readonly positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
-  readonly menge?: string;
-  readonly einheit?: string;
-  readonly einheitspreis?: string;
+  // Ticket 51: Fixture-Format, mechanisch: an der Zuschlagsposition `null`, Satz und Bezug stehen in `zuschlag` (Vertragsform)
+  readonly menge?: string | null;
+  readonly einheit?: string | null;
+  readonly einheitspreis?: string | null;
   readonly bedarfMitGesamtbetrag?: boolean;
-  readonly bezugspositionId?: string;
   readonly grundpositionId?: string;
+  readonly zuschlag?: Zuschlag;
 }
 
 interface FxLv {
@@ -64,10 +66,6 @@ function knoten(k: FxKnoten, reihenfolge: number): Knoten {
   const art = k.positionsart ?? 'normal';
   const bedarf = k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag';
   const grundpositionId = (k.grundpositionId ?? null) as PositionId | null;
-  const bezug =
-    k.bezugspositionId === undefined
-      ? []
-      : [{ positionId: k.bezugspositionId as PositionId, teilmenge: null }];
   return {
     ...lage,
     art: 'position',
@@ -81,8 +79,7 @@ function knoten(k: FxKnoten, reihenfolge: number): Knoten {
       pauschal: false,
       zuschlagskennzeichen: false,
     },
-    zuschlag:
-      art === 'zuschlag' ? { prozentsatz: null, bezug: { art: 'positionen', positionen: bezug } } : null,
+    zuschlag: k.zuschlag ?? null, // Ticket 51: Fixture-Format, mechanisch
     kurztext: k.kurztext ?? '',
     langtext: [],
     menge: (k.menge ?? null) as Menge | null,
