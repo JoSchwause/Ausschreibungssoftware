@@ -7,7 +7,8 @@
 // (`phasenform`), und die ausdrücklich gelisteten Unterschiede je Fixture und Position
 // (`testdaten/roundtrip-unterschiede.json`). Jeder andere Unterschied lässt den Test scheitern, ebenso ein gelisteter, der
 // nicht (mehr) eintritt. Der zweite Export des wieder gelesenen Modells ist byte-gleich dem ersten. M2 gilt damit als
-// „erfüllt mit gelisteten Unterschieden“ (D-18); die Fixture-Umstellung auf die GAEB-Form leert die Liste (Ticket 51).
+// „erfüllt mit gelisteten Unterschieden“ (D-18). Seit Ticket 51 tragen die Fixtures ihre Zuschlagspositionen in GAEB-Form;
+// die Einträge der Altform sind aus der Liste verschwunden, übrig sind die Wahlpositionen ohne Gruppe und Variante.
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -27,19 +28,17 @@ import type { FixtureName, Normiert } from './testhilfen';
 
 /**
  * Ein erwarteter Unterschied an einer Position, benannt über ihre OZ mit Index:
- * - `altform-zuschlag`: Zuschlagsposition in der Altform (Menge × EP ohne Satz, D-10). X81/X83 schreiben sie als
- *   `MarkupItem` ohne Menge, Einheit und EP; X86 als Position ohne Zuschlagsbezug (Ticket 40, Punkt 4).
  * - `wahl-nummer-kuenstlich`: Wahlposition ohne Gruppe und Variante (aus v1). Der Writer vergibt diese Nummern (D-16);
  *   die Grundposition kennt sie danach nicht mehr (GAEB kennt nur die Nummern, eine Variante 0 gibt es nicht).
+ * Die Altform der Zuschlagsposition (`altform-zuschlag`) steht seit Ticket 51 in keiner Fixture mehr (Fixture-Format,
+ * mechanisch); ihren Export prüft `schreiben.test.ts` an einem eigenen LV.
  */
-type Unterschied =
-  | { readonly oz: string; readonly art: 'altform-zuschlag' }
-  | {
-      readonly oz: string;
-      readonly art: 'wahl-nummer-kuenstlich';
-      readonly gruppe: number;
-      readonly variante: number;
-    };
+interface Unterschied {
+  readonly oz: string;
+  readonly art: 'wahl-nummer-kuenstlich';
+  readonly gruppe: number;
+  readonly variante: number;
+}
 
 const UNTERSCHIEDE = JSON.parse(
   readFileSync(new URL('../testdaten/roundtrip-unterschiede.json', import.meta.url), 'utf8'),
@@ -69,17 +68,8 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
 }
 
 /** Wendet einen gelisteten Unterschied an; passt er nicht zur Position, ist die Liste falsch. */
-function wende(p: Position, u: Unterschied, phase: ExportPhase): Position {
-  if (u.art === 'altform-zuschlag') {
-    const z = p.zuschlag;
-    expect(
-      z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null),
-      `${u.oz}: keine Altform`,
-    ).toBe(true);
-    return phase === 'X86'
-      ? { ...p, zuschlag: null }
-      : { ...p, menge: null, einheit: null, einheitspreis: null, epa: null };
-  }
+function wende(p: Position, u: Unterschied): Position {
+  expect(u.art, `${u.oz}: unbekannte Art`).toBe('wahl-nummer-kuenstlich');
   const w = p.merkmale.wahl;
   expect(w !== null && (w.gruppe === null || w.variante === null), `${u.oz}: keine Wahl ohne Nummer`).toBe(
     true,
@@ -99,7 +89,7 @@ function erwartet(inhalt: LvInhalt, phase: ExportPhase, liste: readonly Untersch
     const u = k.art === 'position' ? nachOz.get(ozVon(k)) : undefined;
     if (k.art !== 'position' || u === undefined) return k;
     getroffen.push(u.oz);
-    return wende(k, u, phase);
+    return wende(k, u);
   });
   expect(getroffen.sort(), 'jede gelistete OZ gibt es im LV').toEqual([...nachOz.keys()].sort());
   return phasenform({ ...inhalt, knoten }, phase);

@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tethys AVA contributors
 //
 // Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele; zuschlag (Ticket 37).
+// Seit Ticket 51 tragen typisch, typisch-angebote und gross ihre Zuschlagspositionen in GAEB-Form (Satz und Bezug).
 // Aufruf: node fixtures/erzeugen.mjs
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
@@ -11,6 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser, berechneZuschlagSollwerte,
+  berechneSollwerteGaeb, preiseDesLv,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -120,8 +122,13 @@ function dokumentreihenfolge(wurzelId, knoten) {
   return aus;
 }
 
-/** Baut den LV samt Sollwerten. `eintraege` stehen in Dokumentreihenfolge; Eltern per Schluessel `k`. */
-function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske }) {
+/**
+ * Baut den LV samt Sollwerten. `eintraege` stehen in Dokumentreihenfolge; Eltern per Schluessel `k`. Eine
+ * Zuschlagsposition traegt `zuschlag: { satz, bezug: [Schluessel] }` (GAEB-Form, Bezugsform Liste, Ticket 51) und
+ * keine Menge, Einheit, EP. `gaebForm`: Sollwerte mit `berechneSollwerteGaeb` (Zuschlagsbetraege, Ausweise); sonst
+ * die Sollwerte von Ticket 19 (`winzig`, byte-gleich).
+ */
+function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske, gaebForm = false }) {
   const neueId = idFabrik(seed, startMs);
   const lvId = neueId();
   const idVon = new Map();
@@ -146,8 +153,19 @@ function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske })
       kurztext: e.kurztext, langtext: e.langtext, menge: e.menge, einheit: e.einheit, einheitspreis: e.ep,
     });
     if (e.positionsart === 'bedarf') k.bedarfMitGesamtbetrag = e.bedarfMitGesamtbetrag === true;
-    if (e.bezug) k.bezugspositionId = idVon.get(e.bezug);
     if (e.grund) k.grundpositionId = idVon.get(e.grund);
+    if (e.zuschlag) {
+      k.zuschlag = {
+        prozentsatz: e.zuschlag.satz,
+        bezug: {
+          art: 'positionen',
+          positionen: e.zuschlag.bezug.map((b) => {
+            if (!idVon.has(b)) throw new Error(`Unbekannte Bezugsposition ${b}`);
+            return { positionId: idVon.get(b), teilmenge: null };
+          }),
+        },
+      };
+    }
     return k;
   });
   const lv = {
@@ -162,7 +180,9 @@ function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske })
   };
   // Dokumentreihenfolge: Eltern vor Kindern, Geschwister in Arrayreihenfolge. IDs und Werte bleiben, nur die Lage aendert sich.
   lv.knoten = dokumentreihenfolge(lvId, knoten);
-  lv.sollwerte = berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
+  lv.sollwerte = gaebForm
+    ? berechneSollwerteGaeb(lv.knoten, preiseDesLv, nachlass, mwstSatz)
+    : berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
   return lv;
 }
 
@@ -189,10 +209,11 @@ function erzeugeWinzig() {
   return lv;
 }
 
-/** EP in kanonischer Schreibweise (3 Stellen) und Menge (3 Stellen). */
+/** EP in kanonischer Schreibweise (3 Stellen) und Menge (3 Stellen); `null` bleibt `null` (Zuschlagsposition). */
 function kanonisch(e) {
   if (e.art !== 'position') return e;
-  return { ...e, menge: format(parse(e.menge, STELLEN.menge), STELLEN.menge), ep: format(parse(e.ep, STELLEN.ep), STELLEN.ep) };
+  const k = (v, n) => (v === null ? null : format(parse(v, n), n));
+  return { ...e, menge: k(e.menge, STELLEN.menge), ep: k(e.ep, STELLEN.ep) };
 }
 
 // ---------------------------------------------------------------- typisch
@@ -215,8 +236,10 @@ function erzeugeTypisch() {
   e.push(P('p0230', 't2', '02.0030', 'Baugrube verfüllen', 'Arbeitsraum mit gelagertem Aushub verfüllen und verdichten.', '140.000', 'm³', '5.25'));
   e.push(P('p0240', 't2', '02.0040', 'Sauberkeitsschicht', 'Sauberkeitsschicht aus Magerbeton herstellen.', '96.000', 'm²', '11.48'));
   e.push(P('p0250', 't2', '02.0050', 'Fundamente betonieren', 'Streifenfundamente aus Ortbeton herstellen.', '38.750', 'm³', '168.90'));
-  e.push(P('p0250a', 't2', '02.0050', 'Zuschlag Frosteinbau', 'Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.', '38.750', 'm³', '14.30',
-    { positionsart: 'zuschlag', ozIndex: 'A', bezug: 'p0250' }));
+  // GAEB-Form (Ticket 51, E-03): Satz 8,50 % auf die Liste mit 02.0050; Menge, Einheit und EP entfallen.
+  // Betrag = round_half_up(6.544,88 x 8,50 / 100, 2) = 556,31 (vorher Altform 38,750 x 14,30 = 554,13).
+  e.push(P('p0250a', 't2', '02.0050', 'Zuschlag Frosteinbau', 'Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.', null, null, null,
+    { positionsart: 'zuschlag', ozIndex: 'A', zuschlag: { satz: '8.50', bezug: ['p0250'] } }));
   e.push(P('p0260', 't2', '02.0060', 'Betonstahl verlegen', 'Betonstahl liefern, schneiden, biegen und verlegen.', '3350.000', 'kg', '1.64'));
   e.push(P('p0270', 't2', '02.0070', 'Bodenplatte herstellen', 'Bodenplatte aus Ortbeton herstellen.', '96.000', 'm²', '52.70'));
   e.push(P('p0270a', 't2', '02.0070', 'Bodenplatte wasserundurchlässig', 'Alternative zur Position 02.0070: Bodenplatte in wasserundurchlässiger Ausführung.', '96.000', 'm²', '61.25',
@@ -243,6 +266,7 @@ function erzeugeTypisch() {
     nachlass: { art: 'prozent', wert: '2.00' },
     ozMaske: MASKE_KLEIN,
     eintraege: e.map(kanonisch),
+    gaebForm: true,
   });
 }
 
@@ -274,14 +298,24 @@ function erzeugeAngebote(lv) {
       // Zufallsstreuung immer ziehen, damit die Folge nicht von Sonderfaellen abhaengt: -30..+30 Promille
       const streuung = rng.int(61) - 30;
       if (nicht.has(p.id)) return { positionId: p.id, status: 'nicht-angeboten' };
-      if (nullEp.has(p.id)) return { positionId: p.id, status: 'angeboten', einheitspreis: format(0n, STELLEN.ep) };
       const f = BigInt(faktor.get(p.id) ?? b.basis + streuung);
+      if (p.zuschlag) {
+        // Zuschlagsposition (Ticket 51): der Bieter bietet einen Satz statt eines EP (Vertrag v1.2 `zuschlagssatz`),
+        // Satz des LV x Promille / 1000, auf 2 Stellen gerundet. Kein EP in der Fixture (der Platzhalter `0.000`
+        // des Vertrags ist kein Preis; ihn setzt der Testhelfer beim Abbilden).
+        const satz = rundeHalfUp(parse(p.zuschlag.prozentsatz, STELLEN.prozent) * f, STELLEN.prozent + 3, STELLEN.prozent);
+        return { positionId: p.id, status: 'angeboten', zuschlagssatz: format(satz, STELLEN.prozent) };
+      }
+      if (nullEp.has(p.id)) return { positionId: p.id, status: 'angeboten', einheitspreis: format(0n, STELLEN.ep) };
       const ep = rundeHalfUp(parse(p.einheitspreis, STELLEN.ep) * f, STELLEN.ep + 3, STELLEN.ep); // EP x Promille / 1000
       return { positionId: p.id, status: 'angeboten', einheitspreis: format(ep, STELLEN.ep) };
     });
-    const epVon = new Map(zeilen.map((z) => [z.positionId, z.status === 'angeboten' ? parse(z.einheitspreis, STELLEN.ep) : null]));
+    const preisVon = new Map(zeilen.map((z) => [z.positionId, z.status !== 'angeboten' ? null : {
+      ep: z.einheitspreis === undefined ? null : parse(z.einheitspreis, STELLEN.ep),
+      satz: z.zuschlagssatz === undefined ? null : parse(z.zuschlagssatz, STELLEN.prozent),
+    }]));
     const gpMap = new Map();
-    const soll = berechneSollwerte(lv.knoten, (k) => epVon.get(k.id), b.nachlass, lv.mwstSatz, gpMap);
+    const soll = berechneSollwerteGaeb(lv.knoten, (k) => preisVon.get(k.id), b.nachlass, lv.mwstSatz, gpMap);
     gpMaps.push(gpMap);
     return { id: neueId(), bieterId: bieter[i].id, nachlass: b.nachlass, positionen: zeilen, sollwerte: soll };
   });
@@ -314,6 +348,8 @@ const EINHEITEN = ['m', 'm²', 'm³', 'St', 'kg', 'h', 'psch'];
 
 function erzeugeGross() {
   const rng = prng('fixtures-v1/gross');
+  // Eigener Strom fuer die Zuschlagssaetze (Ticket 51), damit alle uebrigen Werte gleich bleiben: 1,00 bis 15,00 %.
+  const satzRng = prng('fixtures-v1/gross/zuschlagssatz');
   const wahl = (liste) => liste[rng.int(liste.length)];
   const e = [];
   const ebenen = [5, 3, 3, 3, 3]; // Titel je Ebene: 5 * 3 * 3 * 3 * 3 = 405 Titel der 5. Ebene
@@ -346,8 +382,15 @@ function erzeugeGross() {
       if (art === 'bedarf-ohne') Object.assign(extra, { positionsart: 'bedarf', bedarfMitGesamtbetrag: false });
       else if (art === 'bedarf-mit') Object.assign(extra, { positionsart: 'bedarf', bedarfMitGesamtbetrag: true });
       else if (art === 'wahl') Object.assign(extra, { positionsart: 'wahl', grund: letzteNormal });
-      else if (art === 'zuschlag') Object.assign(extra, { positionsart: 'zuschlag', bezug: letzteNormal });
-      e.push(P(pk, key, `${teile.join('.')}.${String((i + 1) * 10).padStart(4, '0')}`, kurz, lang, menge, wahl(EINHEITEN), ep, extra));
+      else if (art === 'zuschlag') {
+        const satz = format(BigInt(100 + satzRng.int(1401)), STELLEN.prozent);
+        Object.assign(extra, { positionsart: 'zuschlag', zuschlag: { satz, bezug: [letzteNormal] } });
+      }
+      const einheit = wahl(EINHEITEN); // immer ziehen, damit die Folge gleich bleibt
+      const oz = `${teile.join('.')}.${String((i + 1) * 10).padStart(4, '0')}`;
+      // Zuschlagsposition in GAEB-Form (Ticket 51): Menge, Einheit und EP gezogen, aber nicht gesetzt.
+      if (art === 'zuschlag') e.push(P(pk, key, oz, kurz, lang, null, null, null, extra));
+      else e.push(P(pk, key, oz, kurz, lang, menge, einheit, ep, extra));
       if (art === 'normal') letzteNormal = pk;
     }
   });
@@ -359,6 +402,7 @@ function erzeugeGross() {
     nachlass: { art: 'prozent', wert: '1.50' },
     ozMaske: MASKE_GROSS,
     eintraege: e,
+    gaebForm: true,
   });
 }
 

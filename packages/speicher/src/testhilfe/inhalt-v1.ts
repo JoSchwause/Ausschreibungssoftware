@@ -8,13 +8,15 @@ import { summenBerechnen } from '@tethys/kern';
 import type {
   Einheitspreis,
   Knoten,
+  Menge,
   Position,
   PositionId,
   Positionsmerkmale,
   Projektdatei,
+  Summenstand,
   Zuschlag,
 } from '@tethys/vertrag';
-import { anlegenSchritte, auftragsLvAus, eintrag, ladeFixture } from './fixtures';
+import { anlegenSchritte, auftragsLvAus, eintrag, ladeFixture, type FixtureDaten } from './fixtures';
 import { normalisiere } from './normalisiere';
 
 const OHNE: Positionsmerkmale = {
@@ -25,9 +27,74 @@ const OHNE: Positionsmerkmale = {
   zuschlagskennzeichen: false,
 };
 
+/** Summen ohne Ausweise (Version 1 hatte keine). */
+function ohneAusweise(s: Summenstand): Summenstand {
+  const g = s.gesamt;
+  return {
+    ...s,
+    gliederungen: s.gliederungen.map(({ gliederungId, summe }) => ({ gliederungId, summe })),
+    gesamt: {
+      netto: g.netto,
+      nachlass: g.nachlass,
+      nettoNachNachlass: g.nettoNachNachlass,
+      mwst: g.mwst,
+      brutto: g.brutto,
+    },
+  };
+}
+
+/**
+ * Ticket 51: Fixture-Format, mechanisch. `typisch` trägt seit Ticket 51 die Zuschlagsposition 02.0050 A in GAEB-Form
+ * (Satz 8,50 %, ohne Menge und EP), die Angebote einen Satz des Bieters, die Summen Ausweise. Version 1 fasste nur die
+ * Altform (Menge × EP ohne Satz) und keine Ausweise. Für den Inhalt der Version 1 steht die Zuschlagsposition deshalb
+ * wieder in der Altform mit den Werten von `typisch` vor Ticket 51 (38,750 m³ × 14,300), jedes Angebot nennt dort den
+ * EP des LV statt eines Satzes; die gespeicherten Summen verlieren die Ausweise. Die erwarteten Summen nach der
+ * Migration rechnet `mitKernSummen` neu.
+ */
+function alsVersion1(f: FixtureDaten): FixtureDaten {
+  const altform = (k: Knoten): Knoten =>
+    k.art === 'position' && k.zuschlag !== null
+      ? {
+          ...k,
+          zuschlag: { ...k.zuschlag, prozentsatz: null },
+          menge: '38.750' as Menge,
+          einheit: 'm³',
+          einheitspreis: '14.300' as Einheitspreis,
+        }
+      : k;
+  const lv = f.lv.leistungsverzeichnis;
+  const zuschlaege = new Set(
+    lv.knoten.filter((k) => k.art === 'position' && k.zuschlag !== null).map((k) => k.id as string),
+  );
+  if (zuschlaege.size !== 1) throw new Error('typisch hat genau eine Zuschlagsposition (02.0050 A)');
+  return {
+    ...f,
+    lv: {
+      leistungsverzeichnis: { ...lv, knoten: lv.knoten.map(altform) },
+      summen: ohneAusweise(f.lv.summen),
+    },
+    angebote: f.angebote.map((z) => ({
+      angebot: {
+        ...z.angebot,
+        positionen: z.angebot.positionen.map((p) =>
+          p.status === 'angeboten' && zuschlaege.has(p.positionId)
+            ? {
+                positionId: p.positionId,
+                status: 'angeboten',
+                einheitspreis: '14.300' as Einheitspreis,
+                epa: null,
+              }
+            : p,
+        ),
+      },
+      summen: ohneAusweise(z.summen),
+    })),
+  };
+}
+
 /** Jede Positionsart der Version 1 (siehe Kopf); `schemaVersion` ist die aktuelle Form des Modells. */
 export function inhaltMitAllenAltenArten(schemaVersion: number): Projektdatei {
-  const f = ladeFixture('typisch');
+  const f = alsVersion1(ladeFixture('typisch'));
   const lv = f.lv.leistungsverzeichnis;
   const vorlage = lv.knoten.find(
     (k): k is Position => k.art === 'position' && k.zuschlag === null && k.merkmale.wahl === null,

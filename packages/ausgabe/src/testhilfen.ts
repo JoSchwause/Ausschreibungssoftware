@@ -46,16 +46,9 @@ function fixtureMerkmale(k: FxKnoten): Positionsmerkmale {
   };
 }
 
+// Ticket 51: Fixture-Format, mechanisch: der Zuschlag steht in Vertragsform an der Position (GAEB-Form, Satz und Liste).
 function fixtureZuschlag(k: FxKnoten): Zuschlag | null {
-  if (k.positionsart !== 'zuschlag') return null;
-  const bezug = k.bezugspositionId as PositionId | undefined;
-  return {
-    prozentsatz: null,
-    bezug: {
-      art: 'positionen',
-      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
-    },
-  };
+  return k.zuschlag ?? null;
 }
 
 interface FxKnoten {
@@ -68,12 +61,12 @@ interface FxKnoten {
   positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag' | 'stundenlohn'; // v1.1b: mechanisch angepasst, Folgeticket
   ozIndex?: string;
   langtext?: string;
-  menge?: string;
-  einheit?: string;
-  einheitspreis?: string;
+  menge?: string | null; // Ticket 51: Fixture-Format, mechanisch (Zuschlagsposition ohne Menge, Einheit, EP)
+  einheit?: string | null;
+  einheitspreis?: string | null;
   bedarfMitGesamtbetrag?: boolean;
-  bezugspositionId?: string;
   grundpositionId?: string;
+  zuschlag?: Zuschlag; // Ticket 51: Fixture-Format, mechanisch
 }
 
 export interface FxLv {
