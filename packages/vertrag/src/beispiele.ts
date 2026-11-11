@@ -48,6 +48,7 @@ import type {
 import type {
   AuftragsLvUebersicht,
   KostenermittlungUebersicht,
+  LvUebersicht,
   Projektdatei,
   Protokolleintrag,
 } from './speicher';
@@ -1017,6 +1018,13 @@ export const beispielChangeSetNachtragBeauftragt: LvChangeSet = {
     gesamt: null,
     vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
   },
+};
+
+/** Review (D-43): das Nachtrags-LV N01 in der LV-Liste des Projekts; kein Muster-LV, also ohne `vorlage`. */
+export const beispielLvUebersichtNachtrag: LvUebersicht = {
+  id: nachtragsLvId,
+  name: 'Nachtrag N01 (erfunden)',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'angeboten' },
 };
 
 /** Kostengruppe 330 (erfunden; nur die Nummer, keine Bezeichnung der Norm, G-16). */

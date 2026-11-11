@@ -232,6 +232,7 @@ import {
   beispielProjektdateiV14,
   beispielRechnungAnlegen,
   beispielRechnungsbefehle,
+  beispielLvUebersichtNachtrag,
 } from './beispiele';
 
 /**
@@ -1219,6 +1220,16 @@ describe('v1.4 Punkt 5: Muster-LV und Textquelle (C5, G-17, D-40)', () => {
     expectTypeOf<'VorlageSetzen' | 'TextquelleSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
     expect(beispielVorlageSetzen.vorlage).toBe(true);
     expect(beispielTextquelleSetzen.textquelle).toBe('Muster-LV Rohbau (erfunden)');
+  });
+
+  it('Review (D-43): die LV-Übersicht trägt Nachtrag und Vorlage additiv, in der Schreibweise des Kopfs', () => {
+    expectTypeOf<LvUebersicht['nachtrag']>().toEqualTypeOf<Nachtragsangaben | undefined>();
+    expectTypeOf<LvUebersicht['vorlage']>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('knoten');
+    const alt: LvUebersicht = { id: beispielLv.id, name: beispielLv.name };
+    expect(alt).not.toHaveProperty('vorlage');
+    expect(beispielLvUebersichtNachtrag.nachtrag?.nummer).toBe('N01');
+    expect(beispielLvUebersichtNachtrag).not.toHaveProperty('vorlage');
   });
 
   it('ChangeSets: Vorlage im Kopf, Textquelle an der Position; beide umkehrbar', () => {

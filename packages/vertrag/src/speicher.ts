@@ -33,6 +33,7 @@ import type {
   AuftragsLvKopf,
   Kostenermittlung,
   LvInhalt,
+  Nachtragsangaben,
   Projekt,
   Rechnung,
 } from './modell';
@@ -164,11 +165,22 @@ export interface ProjektRepository {
 
 /**
  * Ein LV in der Liste des Projekts (v1.3, Ticket 53 Punkt 1): Kennung und Name, ohne Knoten, wie `Projektuebersicht`.
- * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53).
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53). v1.4 (Review D-43): dazu
+ * `nachtrag?` und `vorlage?` aus dem Kopf.
  */
 export interface LvUebersicht {
   readonly id: LeistungsverzeichnisId;
   readonly name: string;
+  /**
+   * Nachtragsangaben des LV, wie am `LvKopf` (v1.4, Review D-43, additiv). Fehlt: kein Nachtrags-LV; nie `null`. So zeigt die
+   * Projektseite „Nachtrag N01“, ohne jedes LV zu laden (Ticket 86). `speicher` füllt es aus dem Kopf (Ticket 79).
+   */
+  readonly nachtrag?: Nachtragsangaben;
+  /**
+   * Kennzeichen „Muster-LV“, wie am `LvKopf` (v1.4, Review D-43, additiv): nur `true` oder fehlt, nie `false`. So findet die
+   * App die Vorlagen eines Projekts, ohne jedes LV zu laden (Ticket 90). `speicher` füllt es aus dem Kopf (Ticket 79).
+   */
+  readonly vorlage?: true;
 }
 
 export interface LvRepository {
