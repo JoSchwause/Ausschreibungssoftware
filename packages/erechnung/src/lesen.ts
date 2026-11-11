@@ -248,7 +248,10 @@ function ausCii(w: XmlElement): RoheRechnung {
         ram(ram(el, 'SpecifiedLineTradeSettlement'), 'SpecifiedTradeSettlementLineMonetarySummation'),
         'LineTotalAmount',
       ),
-      nettopreis: ram(ram(ram(el, 'SpecifiedLineTradeAgreement'), 'NetPriceProductTradePrice'), 'ChargeAmount'),
+      nettopreis: ram(
+        ram(ram(el, 'SpecifiedLineTradeAgreement'), 'NetPriceProductTradePrice'),
+        'ChargeAmount',
+      ),
       bezeichnung: ram(produkt, 'Name'),
       artikelnummerVerkaeufer: ram(produkt, 'SellerAssignedID'),
       artikelnummerKaeufer: ram(produkt, 'BuyerAssignedID'),
@@ -302,7 +305,12 @@ function ausCii(w: XmlElement): RoheRechnung {
 
 function uebernehmen(roh: RoheRechnung): { rechnung: Eingangsrechnung; befunde: XRechnungBefund[] } {
   const befunde: XRechnungBefund[] = [];
-  const melde = (schwere: Befundschwere, code: XRechnungBefundcode, meldung: string, ort: Befundort): void => {
+  const melde = (
+    schwere: Befundschwere,
+    code: XRechnungBefundcode,
+    meldung: string,
+    ort: Befundort,
+  ): void => {
     befunde.push({ schwere, code, meldung, ort });
   };
   const ort = (el: XmlElement, feld: string): Befundort => ({ feld, pfad: pfadVon(el) });

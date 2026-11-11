@@ -25,7 +25,9 @@ export function dezimalLesen(text: string): { readonly exakt: Dezimal; readonly 
  * Betrag: kaufmännisch auf 2 Stellen gerundet (Ticket 76, Abschnitt 3). `nichtKanonisch` heißt: Die Datei hatte mehr
  * als 2 Nachkommastellen (EN 16931 erlaubt höchstens 2); der Aufrufer meldet `betrag-nicht-kanonisch`.
  */
-export function betragLesen(text: string): { readonly wert: Betrag; readonly nichtKanonisch: boolean } | null {
+export function betragLesen(
+  text: string,
+): { readonly wert: Betrag; readonly nichtKanonisch: boolean } | null {
   const d = dezimalLesen(text);
   if (d === null) return null;
   return { wert: runden(d.exakt, 'betrag'), nichtKanonisch: d.stellen > NACHKOMMASTELLEN.betrag };
@@ -42,7 +44,9 @@ export function vertragszahlLesen(
   const d = dezimalLesen(text);
   if (d === null) return null;
   const gerundet = runden(d.exakt, art);
-  return vergleiche(gerundet, d.exakt) === 0 ? { wert: gerundet, passt: true } : { wert: d.exakt, passt: false };
+  return vergleiche(gerundet, d.exakt) === 0
+    ? { wert: gerundet, passt: true }
+    : { wert: d.exakt, passt: false };
 }
 
 const TAGE = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;

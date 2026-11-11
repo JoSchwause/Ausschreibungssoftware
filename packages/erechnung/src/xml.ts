@@ -22,7 +22,8 @@ export interface XmlElement {
   readonly parent: XmlElement | null;
 }
 
-export type XmlFehlercode = 'eingabe-zu-gross' | 'xml-doctype' | 'xml-entitaet' | 'xml-zu-tief' | 'xml-ungueltig';
+export type XmlFehlercode =
+  'eingabe-zu-gross' | 'xml-doctype' | 'xml-entitaet' | 'xml-zu-tief' | 'xml-ungueltig';
 
 export type XmlErgebnis =
   | { readonly ok: true; readonly wurzel: XmlElement }
@@ -274,12 +275,14 @@ function lies(text: string, maxTiefe: number): XmlElement {
         j++;
         while (j < n && istLeerraum(text.charCodeAt(j))) j++;
         const q = text.charCodeAt(j);
-        if (q !== 0x22 && q !== 0x27) fehler('xml-ungueltig', `Attribut „${aname}“ ohne Anführungszeichen.`, an);
+        if (q !== 0x22 && q !== 0x27)
+          fehler('xml-ungueltig', `Attribut „${aname}“ ohne Anführungszeichen.`, an);
         const e = text.indexOf(String.fromCharCode(q), j + 1);
         if (e < 0) fehler('xml-ungueltig', `Attribut „${aname}“ ohne schließendes Anführungszeichen.`, an);
         const roh = text.slice(j + 1, e);
         if (roh.includes('<')) fehler('xml-ungueltig', `„<“ im Wert des Attributs „${aname}“.`, an);
-        if (roheAttrs.some((a) => a.qname === aname)) fehler('xml-ungueltig', `Attribut „${aname}“ ist doppelt.`, an);
+        if (roheAttrs.some((a) => a.qname === aname))
+          fehler('xml-ungueltig', `Attribut „${aname}“ ist doppelt.`, an);
         roheAttrs.push({ qname: aname, wert: dekodiere(roh, j + 1), offset: an });
         j = e + 1;
       }
@@ -288,7 +291,8 @@ function lies(text: string, maxTiefe: number): XmlElement {
       for (const a of roheAttrs) {
         if (a.qname === 'xmlns') bereich.set('', a.wert);
         else if (a.qname.startsWith('xmlns:')) {
-          if (a.wert === '') fehler('xml-ungueltig', `Präfix „${a.qname.slice(6)}“ an leeren Namensraum.`, a.offset);
+          if (a.wert === '')
+            fehler('xml-ungueltig', `Präfix „${a.qname.slice(6)}“ an leeren Namensraum.`, a.offset);
           bereich.set(a.qname.slice(6), a.wert);
         }
       }
@@ -301,7 +305,11 @@ function lies(text: string, maxTiefe: number): XmlElement {
       }
       const { ns, name } = loese(qname, bereich, tagStart, false);
       if (stapel.length >= maxTiefe) {
-        fehler('xml-zu-tief', `Verschachtelungstiefe über ${String(maxTiefe)}; die Datei wird nicht gelesen.`, tagStart);
+        fehler(
+          'xml-zu-tief',
+          `Verschachtelungstiefe über ${String(maxTiefe)}; die Datei wird nicht gelesen.`,
+          tagStart,
+        );
       }
       const parent = stapel.at(-1) ?? null;
       const el: Baumelement = { ns, name, qname, attrs, kinder: [], text: '', parent };
