@@ -1,6 +1,6 @@
 # 48: App: Zwischenablage, Verschieben, Papierkorb, Undo/Redo und LV-Stände (U5)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: U (U5) · Paket: `apps/web`
 Blocked by: 47, 42, 43, 46
