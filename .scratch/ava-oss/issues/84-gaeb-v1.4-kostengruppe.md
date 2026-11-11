@@ -1,6 +1,6 @@
 # 84: `gaeb` v1.4: Kostengruppe als Katalogzuordnung, neue Felder beim Export
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: G, C2 · Paket: `packages/gaeb`
 Blocked by: 70, 83
@@ -22,8 +22,8 @@ Herkunft: `vertrag` v1.4 (Ticket 70, Comments „Folgearbeit GAEB“)
 
 ## Acceptance criteria
 
-- [ ] Rundweg mit Kostengruppen, XSD-Gegenprüfung grün, Warnungen getestet
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Rundweg mit Kostengruppen, XSD-Gegenprüfung grün, Warnungen getestet
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -58,4 +58,17 @@ XSD 3.3 (2021-05) und 3.2 (2013-10): `BoQInfo/Ctlg` (`CtlgID`, `CtlgType`, `Ctlg
   zweite Export ist byte-gleich. Die Textquelle steht als bekannte Ausnahme in `phasenform` (`roundtrip.test.ts`). Die
   amtliche BVBS-AVA-Datei behält im Rundweg ihre sechs Kostengruppen. XSD-Gegenprüfung um `typisch-kg` (6 Dateien)
   erweitert. Reversible: yes.
+- Prüfung nach Merge von `integration/welle-5` (5ae18ec, mit 79 und 83): `pnpm lint`, `pnpm typecheck` grün; `pnpm test`
+  2418 grün, 1 rot: Leistungsbudget `packages/kern/src/k9-leistung.test.ts` („KnotenlisteVerschieben … Median unter 16 ms“)
+  in der vollen Suite Median 19,88 ms (schlechtester 50,55 ms) unter Last; die Datei allein grün, Median 7,66 ms
+  (schlechtester 20,63 ms). `kern` hängt nicht von `gaeb` ab, Budget nicht gelockert. Fixtures 29/29. XSD-Gegenprüfung
+  58 von 58 (davon 6 `typisch-kg`).
 
+## Answer
+
+Umgesetzt in `packages/gaeb` (Branch `welle-5/84-gaeb-kostengruppe`). Die Kostengruppe einer Position wird in X81, X83 und X86
+(3.3 und 3.2) als Zuordnung zum Katalog DIN 276 geschrieben und gelesen (`kostengruppe.ts`; D-84.1, D-84.2); X84 kennt keine
+Kataloge (D-84.3). `textquelle`, `vorlage` und `nachtrag` verwirft der Writer mit Warnung; dafür nimmt `schreibeGaeb` neu den
+exportierten Typ `SchreibInhalt` (D-84.4, die App muss die Kopffelder noch weiterreichen). Rundweg `typisch` mit
+Kostengruppen in allen Phasen und Versionen, Textquelle als gelistete Ausnahme, BVBS-AVA mit ihren sechs Kostengruppen;
+Tests `kostengruppe.test.ts` und `roundtrip.test.ts`; Golden `ava-x81` angepasst (Befunde der übrigen Kataloge je Art).
