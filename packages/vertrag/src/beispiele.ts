@@ -17,7 +17,7 @@ import type {
   ProjektLoeschen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
-import type { Protokolleintrag } from './speicher';
+import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
   AngebotId,
@@ -848,4 +848,14 @@ export const beispielChangeSetMengeOhneAnsatz: LvChangeSet = {
       entfernt: keinGesamt,
     },
   },
+};
+
+// --- v1.4 (Ticket 70) -------------------------------------------------------------------------------------------
+
+/** Punkt 1: das Beispiel-Auftrags-LV in der Liste des Projekts (ohne Knoten). */
+export const beispielAuftragsLvUebersicht: AuftragsLvUebersicht = {
+  id: beispielAuftragsLv.id,
+  name: beispielAuftragsLv.name,
+  leistungsverzeichnisId: beispielAuftragsLv.leistungsverzeichnisId,
+  angebotId: beispielAuftragsLv.angebotId,
 };

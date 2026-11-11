@@ -1,6 +1,6 @@
 # 70: `vertrag` v1.4: Auftrags-LV, Nachtrag, Aufmaß, Rechnung, Kostenermittlung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: –

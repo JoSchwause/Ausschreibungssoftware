@@ -85,6 +85,9 @@ export function speicherUeberTransport(
 
   const aufruf = <T>(methode: RpcMethode, ...args: unknown[]): Promise<Ergebnis<T, Speicherfehler>> =>
     senden(methode, args) as Promise<Ergebnis<T, Speicherfehler>>;
+  // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 liefert die Repositories der v1.4-Aggregate; bis dahin `unbekannt`)
+  const erstV14 = (was: string): Promise<Ergebnis<never, Speicherfehler>> =>
+    Promise.resolve(fehler('unbekannt', `${was}: im Speicher erst mit Ticket 79 (Vertrag v1.4).`));
 
   return {
     projekte: {
@@ -102,6 +105,11 @@ export function speicherUeberTransport(
     lvStaende: {
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
       laden: (id: LvStandId) => aufruf('lvStandLaden', id),
+    },
+    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
+    auftragsLeistungsverzeichnisse: {
+      auflisten: () => erstV14('Auftrags-LVs auflisten'),
+      laden: () => erstV14('Auftrags-LV laden'),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,

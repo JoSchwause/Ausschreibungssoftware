@@ -160,6 +160,33 @@ export interface AngebotRepository {
   laden(id: AngebotId): Promise<Ergebnis<AngebotZustand, Speicherfehler>>;
 }
 
+/**
+ * Ein Auftrags-LV in der Liste des Projekts (v1.4, Ticket 70 Punkt 1; D-64.2): Kennung, Name und die zwei Aggregate, aus
+ * denen es entstand, ohne Knoten. Damit findet die App das Auftrags-LV zu einem LV (höchstens eines, D-21), ohne die ganze
+ * Projektdatei zu exportieren. Keine Summen (wie `LvUebersicht`).
+ */
+export interface AuftragsLvUebersicht {
+  readonly id: AuftragsLeistungsverzeichnisId;
+  readonly name: string;
+  /** Das Ausschreibungs-LV, aus dem es entstand (`AuftragsLvKopf.leistungsverzeichnisId`). */
+  readonly leistungsverzeichnisId: LeistungsverzeichnisId;
+  /** Das beauftragte Angebot (`AuftragsLvKopf.angebotId`). */
+  readonly angebotId: AngebotId;
+}
+
+/**
+ * Auftrags-LVs des Projekts (v1.4, Ticket 70 Punkt 1). Nur lesend: geschrieben wird über `Speicher.anwenden` (A5). Bis
+ * Ticket 79 antwortet `speicher` auf beide Aufrufe mit `unbekannt`.
+ */
+export interface AuftragsLvRepository {
+  /**
+   * Die Auftrags-LVs des Projekts ohne Knoten, sortiert wie die LV-Liste: nach Name deutsch verglichen
+   * (`Intl.Collator('de-DE')`), gleiche Namen nach Kennung. Unbekanntes Projekt: `nicht-gefunden`.
+   */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly AuftragsLvUebersicht[], Speicherfehler>>;
+  laden(id: AuftragsLeistungsverzeichnisId): Promise<Ergebnis<AuftragsLvZustand, Speicherfehler>>;
+}
+
 /** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
 export interface LvStandRepository {
   /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
@@ -191,6 +218,11 @@ export interface Speicher {
   readonly angebote: AngebotRepository;
   /** LV-Stände (v1.2; seit v1.3 Pflicht, Ticket 53 Punkt 4: `speicher` liefert sie seit Ticket 43). */
   readonly lvStaende: LvStandRepository;
+  /**
+   * Auftrags-LVs (v1.4, Ticket 70 Punkt 1; Pflicht wie `lvStaende`). Ersetzt den Umweg der App über den Export der
+   * Projektdatei (D-64.2); `speicher` liefert es mit Ticket 79, bis dahin `unbekannt`.
+   */
+  readonly auftragsLeistungsverzeichnisse: AuftragsLvRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;

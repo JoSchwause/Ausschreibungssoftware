@@ -103,6 +103,12 @@ import {
   type Massenbefehlsart,
   type Positionsdaten,
   type Summenvorher,
+  // v1.4
+  type ProjektId,
+  type AngebotId,
+  type AuftragsLeistungsverzeichnisId,
+  type AuftragsLvRepository,
+  type AuftragsLvUebersicht,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -137,6 +143,9 @@ import {
   beispielMengenansatzSetzen,
   beispielMengeAendernMitAnsatz,
   beispielVerschiebenHinterGliederung,
+  // v1.4
+  beispielAuftragsLv,
+  beispielAuftragsLvUebersicht,
 } from './beispiele';
 
 /**
@@ -932,5 +941,37 @@ describe('v1.3: reine Daten und Werte vor v1.3', () => {
     expect(p).not.toHaveProperty('mengenansatz');
     expect(beispielLv).not.toHaveProperty('auftragnehmer');
     expect(beispielLv).not.toHaveProperty('epaBezeichnungen');
+  });
+});
+
+// --- v1.4 (Ticket 70) -------------------------------------------------------------------------------------------
+
+describe('v1.4 Punkt 1: Auftrags-LV lesen', () => {
+  it('die Übersicht trägt Kennung, Name, LV und Angebot, keine Knoten', () => {
+    expectTypeOf<AuftragsLvUebersicht['id']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AuftragsLvUebersicht['name']>().toEqualTypeOf<string>();
+    expectTypeOf<AuftragsLvUebersicht['leistungsverzeichnisId']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<AuftragsLvUebersicht['angebotId']>().toEqualTypeOf<AngebotId>();
+    expectTypeOf<AuftragsLvUebersicht>().not.toHaveProperty('knoten');
+    expect(beispielAuftragsLvUebersicht).toEqual({
+      id: beispielAuftragsLv.id,
+      name: 'Beispiel',
+      leistungsverzeichnisId: beispielLv.id,
+      angebotId: beispielAuftragsLv.angebotId,
+    });
+  });
+
+  it('das Repository listet je Projekt und lädt den Zustand; am Speicher Pflicht', () => {
+    expectTypeOf<AuftragsLvRepository['auflisten']>().parameter(0).toEqualTypeOf<ProjektId>();
+    expectTypeOf<ReturnType<AuftragsLvRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly AuftragsLvUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<AuftragsLvRepository['laden']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<AuftragsLvRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<AuftragsLvZustand, Speicherfehler>>
+    >();
+    expectTypeOf<Speicher['auftragsLeistungsverzeichnisse']>().toEqualTypeOf<AuftragsLvRepository>();
   });
 });
