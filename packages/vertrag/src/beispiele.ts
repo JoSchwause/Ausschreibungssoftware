@@ -1325,7 +1325,7 @@ export const beispielRechnungAnlegen: RechnungAnlegen = {
   rechnung: beispielRechnung2,
 };
 
-/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaße, Abzüge, Löschen). */
+/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaßblätter, Abzüge, Löschen). */
 export const beispielRechnungsbefehle: readonly [
   RechnungsangabenSetzen,
   RechnungsaufmasseSetzen,

@@ -770,7 +770,10 @@ export interface AufmassKopf {
   readonly nummer: number;
   /** Bezeichnung des Blatts, freier Text (z. B. „Erdarbeiten Achse 1–4“); `''` ist zulässig. */
   readonly bezeichnung: string;
-  /** Tag des Aufmaßes als `JJJJ-MM-TT`, vom Nutzer eingegeben (keine Uhr, A2; wie `Vergabeinformationen`); `null`: keine Angabe. */
+  /**
+   * Tag, an dem das Blatt aufgemessen wurde, als `JJJJ-MM-TT`, vom Nutzer eingegeben (keine Uhr, A2; wie
+   * `Vergabeinformationen`); `null`: keine Angabe.
+   */
   readonly datum: string | null;
 }
 

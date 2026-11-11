@@ -1509,7 +1509,7 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     >();
   });
 
-  it('Repositories am Speicher (Pflicht): Aufmaße und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
+  it('Repositories am Speicher (Pflicht): Aufmaßblätter und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
     expectTypeOf<Speicher['aufmasse']>().toEqualTypeOf<AufmassRepository>();
     expectTypeOf<Speicher['rechnungen']>().toEqualTypeOf<RechnungRepository>();
     expectTypeOf<Speicher['kostenermittlungen']>().toEqualTypeOf<KostenermittlungRepository>();
@@ -1634,7 +1634,7 @@ describe('v1.4 Punkt 11: Beispiele für jeden neuen Befehl und die Zustände', (
     expect(beispielRechnungAnlegen.rechnung.freigabe).toBeNull();
   });
 
-  it('Projektdatei mit Aufmaßen, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
+  it('Projektdatei mit Aufmaßblättern, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
     const d = beispielProjektdateiV14;
     expect(d.aufmasse?.map((a) => a.aufmass.nummer)).toEqual([1, 2]);
     expect(d.rechnungen?.map((r) => r.rechnung.nummer)).toEqual([1, 2]);

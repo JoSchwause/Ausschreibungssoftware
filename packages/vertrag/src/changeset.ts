@@ -148,7 +148,7 @@ export interface AufmassZustand {
 
 /**
  * Rechnung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 7). Ohne Prüfergebnis: Das rechnet `abrechnung` bei Bedarf
- * aus Auftrags-LV, Aufmaßen und früheren Rechnungen (D-36 (2)).
+ * aus Auftrags-LV, Aufmaßblättern und früheren Rechnungen (D-36 (2)).
  */
 export interface RechnungZustand {
   readonly rechnung: Rechnung;
@@ -265,7 +265,7 @@ export interface AngebotChangeSet {
  *
  * v1.4 (Ticket 70 Punkt 2): `NachtragUebernehmen` liefert `kopf: null`, neue Knoten unter `knoten.hinzugefuegt` und die
  * betroffenen Summen; `KostengruppeSetzen` eine Knotenänderung ohne Summen. Entfernt ein ChangeSet eine Position, auf die
- * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaße,
+ * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaßblätter,
  * Rechnungen oder Nachtragsangaben eines LV darauf verweisen, weist `speicher` mit `konflikt` ab (Q5, wie beim
  * Papierkorb und Angeboten).
  */
