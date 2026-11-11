@@ -27,6 +27,7 @@ import type {
 } from '@tethys/ui-grid';
 import type { AngebotZustand, Betrag, Einheitspreis, Knoten, LvZustand, Prozent } from '@tethys/vertrag';
 import { kinderJeEltern } from '../lv/ansicht';
+import { ozText } from '../lv/oztext';
 import { texte } from './texte';
 
 /** Ein Angebot mit dem Namen seines Bieters (aus dem Projekt). */
@@ -189,7 +190,7 @@ function positionszellen(
 ): Record<string, VergleichsZelle> {
   const z = zeile.zuschlagsposition;
   const zellen: Record<string, VergleichsZelle> = {
-    oz: zelle((knoten.ordnungszahl ?? '') + (knoten.ozIndex ?? '')),
+    oz: zelle(ozText(knoten)),
     kurztext: zelle(knoten.kurztext, zeile.gehtInSummeEin ? [] : ['nicht-in-summe']),
     menge: zelle(knoten.menge === null ? '' : formatiereMengeDe(knoten.menge)),
     einheit: zelle(knoten.einheit ?? ''),
@@ -260,7 +261,7 @@ function gliederungszellen(
   e: AnsichtEingang,
 ): Record<string, VergleichsZelle> {
   const zellen: Record<string, VergleichsZelle> = {
-    oz: zelle(k.ordnungszahl ?? ''),
+    oz: zelle(ozText(k)),
     kurztext: zelle(k.kurztext),
   };
   const spalte = wertspalte(e.wahl);
@@ -386,8 +387,7 @@ function zeilenText(e: AnsichtEingang, zeilenId: string): { position: string; kn
   if (summe !== undefined) return { position: texte.summen[summe], knoten: undefined };
   const k = e.lv.leistungsverzeichnis.knoten.find((x) => x.id === zeilenId);
   if (k === undefined || k.art === 'hinweis') return { position: '', knoten: k };
-  const oz = (k.ordnungszahl ?? '') + (k.art === 'position' ? (k.ozIndex ?? '') : '');
-  return { position: [oz, k.kurztext].filter((t) => t !== '').join(' '), knoten: k };
+  return { position: [ozText(k), k.kurztext].filter((t) => t !== '').join(' '), knoten: k };
 }
 
 function bieterErklaerungen(e: AnsichtEingang, zeile: Preisspiegelzeile, b: Bieterpreis): string[] {

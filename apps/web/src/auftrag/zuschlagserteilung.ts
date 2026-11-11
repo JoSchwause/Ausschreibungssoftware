@@ -14,6 +14,7 @@ import type {
   PositionId,
   Projekt,
 } from '@tethys/vertrag';
+import { ozText } from '../lv/oztext';
 import { texte } from './texte';
 
 /** Eine Alternative zum Ankreuzen. */
@@ -57,8 +58,7 @@ export interface Zuschlagserteilungseingang {
 function positionText(knoten: ReadonlyMap<string, Knoten>, id: PositionId): string {
   const k = knoten.get(id);
   if (k?.art !== 'position') return id;
-  const oz = (k.ordnungszahl ?? '') + (k.ozIndex ?? '');
-  return [oz, k.kurztext].filter((s) => s !== '').join(' ');
+  return [ozText(k), k.kurztext].filter((s) => s !== '').join(' ');
 }
 
 function warnungText(w: Zuschlagswarnung, knoten: ReadonlyMap<string, Knoten>): string {

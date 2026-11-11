@@ -18,7 +18,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { bloeckeAlsText } from './langtext';
-import { baueAusgabemodell } from './modell';
+import { baueAusgabemodell, kinderNachReihenfolge } from './modell';
 import { sha256Hex } from './pruefsumme';
 import { STIL, excelZahl, leseXlsx, schreibeXlsx, spaltenname } from './xlsx';
 import type { Blatt, GeleseneZelle, Zelle } from './xlsx';
@@ -101,13 +101,7 @@ export interface ExcelDatei {
 
 /** Knoten in Dokumentreihenfolge (Tiefensuche nach `reihenfolge`). */
 function dokumentreihenfolge(lv: Leistungsverzeichnis): Knoten[] {
-  const kinder = new Map<string, Knoten[]>();
-  for (const k of lv.knoten) {
-    const liste = kinder.get(k.elternId);
-    if (liste) liste.push(k);
-    else kinder.set(k.elternId, [k]);
-  }
-  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  const kinder = kinderNachReihenfolge(lv.knoten);
   const folge: Knoten[] = [];
   const besuche = (id: string): void => {
     for (const k of kinder.get(id) ?? []) {
