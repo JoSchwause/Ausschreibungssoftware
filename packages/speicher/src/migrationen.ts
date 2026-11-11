@@ -18,6 +18,7 @@ import { fehler, ok } from './ergebnis';
 import { dateiAuf2 } from './dateimigration2';
 import { dateiAuf3 } from './dateimigration3';
 import { dateiAuf4 } from './dateimigration4';
+import { dateiAuf5 } from './dateimigration5';
 import type { Datenbank } from './sql';
 import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
@@ -292,6 +293,90 @@ ALTER TABLE auftrags_lv ADD COLUMN epa_bezeichnungen TEXT;
 ALTER TABLE knoten ADD COLUMN mengenansatz TEXT CHECK (mengenansatz IS NULL OR art = 'position');
 `;
 
+// --- Version 5 (Ticket 79, `vertrag` v1.4) ----------------------------------------------------------------------------
+//
+// (1) Neue optionale Felder, `NULL` = fehlt: `kostengruppe` und `textquelle` an der Position (Text; CHECK wie
+// `mengenansatz`), `nachtrag` (kanonisches JSON) und `vorlage` (nur `1`, D-70.2: `true` oder fehlt) am Kopf des
+// Ausschreibungs-LV. Das Auftrags-LV trägt beide Kopffelder nie (D-42). Papierkorb und LV-Stände halten Knoten und Kopf
+// schon als JSON. Keines der Felder ändert eine Summe: keine Neuberechnung (D-17).
+//
+// (2) Drei Aggregate (D-36 (8): ganze Aggregate im ChangeSet): Aufmaßblatt, Rechnung, Kostenermittlung. Je Tabelle die
+// Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel (`projekt_id`, `auftrags_lv_id`, `nummer` mit
+// `UNIQUE (auftrags_lv_id, nummer)`), der Rest als kanonisches JSON (D-79.1): beim Aufmaßblatt die Zeilen
+// (`positionen`, bis zu einer je Position des Auftrags-LV; `auflisten` liefert die Köpfe ohne sie zu lesen), bei der
+// Kostenermittlung die Einträge, bei der Rechnung alle übrigen Angaben (`angaben`; klein, nur als Ganzes gelesen).
+// Eigene Tabellen für Zeilen, Einträge oder `aufmassIds` braucht keine Abfrage: Die Bezüge (Position mit Aufmaßzeile,
+// Blatt in einer Rechnung) prüft `speicher` über `json_each` nur beim Entfernen bzw. Löschen.
+//
+// (3) `protokoll.aggregat_art` kennt die drei neuen Arten. SQLite ändert keine CHECK-Regel: Die Tabelle wird neu angelegt
+// und umkopiert wie `knoten` in Version 2; `seq` (Reihenfolge der Einträge) und der Zähler in `sqlite_sequence` bleiben,
+// damit ein neuer Eintrag nie eine schon vergebene Nummer bekommt (AUTOINCREMENT). Keine Tabelle verweist auf `protokoll`.
+const PROTOKOLL_V5 = `
+CREATE TABLE protokoll_v5 (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  aggregat_art TEXT NOT NULL CHECK (aggregat_art IN
+    ('projekt', 'leistungsverzeichnis', 'angebot', 'auftrags-leistungsverzeichnis', 'aufmass', 'rechnung',
+     'kostenermittlung')),
+  aggregat_id TEXT NOT NULL,
+  wer TEXT NOT NULL,
+  wann TEXT NOT NULL,
+  befehl TEXT NOT NULL
+) STRICT;
+
+INSERT INTO protokoll_v5 (seq, id, projekt_id, aggregat_art, aggregat_id, wer, wann, befehl)
+SELECT seq, id, projekt_id, aggregat_art, aggregat_id, wer, wann, befehl FROM protokoll ORDER BY seq;
+
+INSERT INTO sqlite_sequence (name, seq)
+SELECT 'protokoll_v5', seq FROM sqlite_sequence
+WHERE name = 'protokoll' AND NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'protokoll_v5');
+UPDATE sqlite_sequence
+SET seq = (SELECT MAX(seq) FROM sqlite_sequence WHERE name IN ('protokoll', 'protokoll_v5'))
+WHERE name = 'protokoll_v5';
+
+DROP TABLE protokoll;
+ALTER TABLE protokoll_v5 RENAME TO protokoll;
+CREATE INDEX protokoll_projekt ON protokoll (projekt_id, seq);
+`;
+
+const SCHEMA_V5 = `
+ALTER TABLE leistungsverzeichnis ADD COLUMN nachtrag TEXT;
+ALTER TABLE leistungsverzeichnis ADD COLUMN vorlage INTEGER CHECK (vorlage IS NULL OR vorlage = 1);
+ALTER TABLE knoten ADD COLUMN kostengruppe TEXT CHECK (kostengruppe IS NULL OR art = 'position');
+ALTER TABLE knoten ADD COLUMN textquelle TEXT CHECK (textquelle IS NULL OR art = 'position');
+
+CREATE TABLE aufmass (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  auftrags_lv_id TEXT NOT NULL REFERENCES auftrags_lv (id),
+  nummer INTEGER NOT NULL CHECK (nummer >= 1),
+  bezeichnung TEXT NOT NULL,
+  datum TEXT,
+  positionen TEXT NOT NULL,
+  UNIQUE (auftrags_lv_id, nummer)
+) STRICT;
+
+CREATE TABLE rechnung (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  auftrags_lv_id TEXT NOT NULL REFERENCES auftrags_lv (id),
+  nummer INTEGER NOT NULL CHECK (nummer >= 1),
+  angaben TEXT NOT NULL,
+  UNIQUE (auftrags_lv_id, nummer)
+) STRICT;
+
+CREATE TABLE kostenermittlung (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  stufe TEXT NOT NULL CHECK (stufe IN
+    ('kostenrahmen', 'kostenschaetzung', 'kostenberechnung', 'kostenanschlag', 'kostenfeststellung')),
+  name TEXT NOT NULL,
+  eintraege TEXT NOT NULL
+) STRICT;
+CREATE INDEX kostenermittlung_projekt ON kostenermittlung (projekt_id);
+${PROTOKOLL_V5}`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -326,6 +411,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V4);
     },
     datei: dateiAuf4,
+  },
+  {
+    version: 5,
+    name: 'Vertrag v1.4: Nachtrag, Vorlage, Kostengruppe, Textquelle, Aufmaßblatt, Rechnung, Kostenermittlung',
+    hoch: (db) => {
+      db.skript(SCHEMA_V5);
+    },
+    datei: dateiAuf5,
   },
 ];
 

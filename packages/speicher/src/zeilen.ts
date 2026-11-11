@@ -6,6 +6,11 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Aufmass,
+  AufmassId,
+  AufmassKopf,
+  Aufmassposition,
+  AuftragsLeistungsverzeichnisId,
   Betrag,
   BieterId,
   ElternId,
@@ -14,19 +19,28 @@ import type {
   GliederungId,
   HinweistextId,
   Knoten,
+  Kostenermittlung,
+  KostenermittlungId,
+  Kostenermittlungseintrag,
+  Kostenermittlungsstufe,
+  KostenermittlungUebersicht,
   Langtext,
   Leitbeschreibung,
   LeistungsverzeichnisId,
   LosId,
   LvInhaltKopf,
+  LvKopf,
   Menge,
   Nachlass,
+  Nachtragsangaben,
   Ordnungszahl,
   OzMaske,
   PositionId,
   Positionsmerkmale,
   ProjektId,
   Prozent,
+  Rechnung,
+  RechnungId,
   Gesamtsummen,
   TitelId,
   Zuschlag,
@@ -101,6 +115,8 @@ export const KNOTEN_SPALTEN = [
   'einheitspreis',
   'epa',
   'mengenansatz', // Schema 4 (v1.3)
+  'kostengruppe', // Schema 5 (v1.4)
+  'textquelle', // Schema 5 (v1.4)
 ] as const;
 
 // --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
@@ -119,6 +135,12 @@ export function jsonSpalte(z: SqlZeile, spalte: string): unknown {
 function optionalesFeld(z: SqlZeile, spalte: string, name: string): Record<string, unknown> {
   const w = jsonSpalte(z, spalte);
   return w === null ? {} : { [name]: w };
+}
+
+/** Das Feld `spalte` mit dem Text der Spalte, oder gar kein Feld bei `NULL` (Schema 5: Kostengruppe, Textquelle). */
+function optionalerText<K extends string>(z: SqlZeile, spalte: K): { [P in K]?: never } {
+  const w = textOderNull(z, spalte);
+  return (w === null ? {} : { [spalte]: w }) as unknown as { [P in K]?: never };
 }
 
 /** Die optionalen Kopfdaten von LV und Auftrags-LV: Spalte und Feld (v1.1b, Punkt 6; Schema 4: v1.3, Punkte 2 und 6). */
@@ -144,6 +166,31 @@ export function kopfdatenAusZeile(z: SqlZeile): Kopfdaten {
     {},
     ...KOPFDATEN.map(([spalte, feld]) => optionalesFeld(z, spalte, feld)),
   ) as Kopfdaten;
+}
+
+/**
+ * Nachtragsangaben und Kennzeichen „Muster-LV“ (Schema 5, v1.4): nur am Kopf des Ausschreibungs-LV (D-70.2). `nachtrag`
+ * als kanonisches JSON, `vorlage` als `1`; `NULL` = fehlt. Eine andere Schreibweise als `true` für `vorlage` gibt es im
+ * Vertrag nicht: Sie würde beim Speichern still zu „fehlt“ (Q5), also `unbekannt` (D-79.3).
+ */
+export const LV_KENNZEICHEN_SPALTEN = ['nachtrag', 'vorlage'] as const;
+
+export function lvKennzeichenSpalten(k: LvKopf): [SqlWert, SqlWert] {
+  const v: unknown = k.vorlage;
+  if (v !== undefined && v !== true)
+    abbruch(
+      'unbekannt',
+      `LV ${k.id}: vorlage ist nur true oder fehlt (Vertrag v1.4), nicht ${JSON.stringify(v)}.`,
+    );
+  return [jsonOderNull(k.nachtrag), v === true ? 1 : null];
+}
+
+export function lvKennzeichenAusZeile(z: SqlZeile): Pick<LvKopf, 'nachtrag' | 'vorlage'> {
+  const nachtrag = jsonSpalte(z, 'nachtrag') as Nachtragsangaben | null;
+  return {
+    ...(nachtrag === null ? {} : { nachtrag }),
+    ...(z['vorlage'] === 1 ? { vorlage: true } : {}),
+  };
 }
 
 /** Getrennte Ausweise (v1.1b, Punkt 4): Betrag als TEXT, `NULL` = nicht berechnet (Feld fehlt). */
@@ -177,6 +224,8 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
+        null,
+        null,
       ];
     case 'hinweis':
       return [
@@ -188,6 +237,8 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         JSON.stringify(k.text),
+        null,
+        null,
         null,
         null,
         null,
@@ -209,6 +260,8 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.einheitspreis,
         k.epa === null ? null : kanonischKompakt(k.epa),
         jsonOderNull(k.mengenansatz),
+        k.kostengruppe ?? null,
+        k.textquelle ?? null,
       ];
   }
 }
@@ -264,6 +317,8 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         einheitspreis: textOderNull(z, 'einheitspreis') as Einheitspreis | null,
         epa: epa === null ? null : (jsonLesen(epa, 'epa') as Einheitspreisanteile),
         ...(optionalesFeld(z, 'mengenansatz', 'mengenansatz') as { mengenansatz?: readonly Ansatzzeile[] }),
+        ...optionalerText(z, 'kostengruppe'),
+        ...optionalerText(z, 'textquelle'),
       };
     }
     default:
@@ -293,6 +348,81 @@ export function angebotspositionAusZeile(z: SqlZeile): Angebotsposition {
     ...(satz === null ? {} : { zuschlagssatz: satz }),
   };
 }
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4; D-79.1) ------------------------------------------------
+//
+// Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel, der Rest als kanonisches JSON. Gelesen wird das Aggregat aus
+// beiden zusammengesetzt; es ist dann kanonisch gleich dem geschriebenen (`gleich` in `schreiben.ts`).
+
+/** Kopf eines Aufmaßblatts aus seinen Spalten (ohne `positionen`). */
+export function aufmasskopfAusZeile(z: SqlZeile): AufmassKopf {
+  return {
+    id: text(z, 'id') as AufmassId,
+    projektId: projektId(z),
+    auftragsLvId: text(z, 'auftrags_lv_id') as AuftragsLeistungsverzeichnisId,
+    nummer: ganzzahl(z, 'nummer'),
+    bezeichnung: text(z, 'bezeichnung'),
+    datum: textOderNull(z, 'datum'),
+  };
+}
+
+export const aufmassAusZeile = (z: SqlZeile): Aufmass => ({
+  ...aufmasskopfAusZeile(z),
+  positionen: jsonLesen(text(z, 'positionen'), 'positionen') as Aufmassposition[],
+});
+
+/** Spalten `id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen`. */
+export const aufmassWerte = (a: Aufmass): SqlWert[] => [
+  a.id,
+  a.projektId,
+  a.auftragsLvId,
+  a.nummer,
+  a.bezeichnung,
+  a.datum,
+  kanonischKompakt(a.positionen),
+];
+
+/** Die Angaben einer Rechnung: alles außer den Kopfspalten (`id`, `projektId`, `auftragsLvId`, `nummer`). */
+type Rechnungsangaben = Omit<Rechnung, 'id' | 'projektId' | 'auftragsLvId' | 'nummer'>;
+
+export function rechnungAusZeile(z: SqlZeile): Rechnung {
+  return {
+    ...(jsonLesen(text(z, 'angaben'), 'angaben') as Rechnungsangaben),
+    id: text(z, 'id') as RechnungId,
+    projektId: projektId(z),
+    auftragsLvId: text(z, 'auftrags_lv_id') as AuftragsLeistungsverzeichnisId,
+    nummer: ganzzahl(z, 'nummer'),
+  };
+}
+
+/** Spalten `id, projekt_id, auftrags_lv_id, nummer, angaben`. */
+export function rechnungWerte(r: Rechnung): SqlWert[] {
+  const { id, projektId: projekt, auftragsLvId, nummer, ...angaben } = r;
+  return [id, projekt, auftragsLvId, nummer, kanonischKompakt(angaben)];
+}
+
+export function kostenermittlungUebersichtAusZeile(z: SqlZeile): KostenermittlungUebersicht {
+  return {
+    id: text(z, 'id') as KostenermittlungId,
+    projektId: projektId(z),
+    stufe: text(z, 'stufe') as Kostenermittlungsstufe,
+    name: text(z, 'name'),
+  };
+}
+
+export const kostenermittlungAusZeile = (z: SqlZeile): Kostenermittlung => ({
+  ...kostenermittlungUebersichtAusZeile(z),
+  eintraege: jsonLesen(text(z, 'eintraege'), 'eintraege') as Kostenermittlungseintrag[],
+});
+
+/** Spalten `id, projekt_id, stufe, name, eintraege`. */
+export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
+  k.id,
+  k.projektId,
+  k.stufe,
+  k.name,
+  kanonischKompakt(k.eintraege),
+];
 
 // --- Summen ---------------------------------------------------------------------------------------------------
 

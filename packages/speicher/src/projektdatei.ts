@@ -14,6 +14,7 @@ import { dekodiereProjektdatei } from './dekoder';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import {
+  aggregateDesProjekts,
   aggregatIds,
   leseAngebot,
   leseAuftragsLv,
@@ -27,10 +28,14 @@ import {
   schreibeLvStand,
   schreibeProtokolleintrag,
   wendeAngebotAn,
+  wendeAufmassAn,
   wendeAuftragsLvAn,
+  wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
+  wendeRechnungAn,
 } from './schreiben';
+import { pruefeNachtragsbezuege } from './bezuege';
 import type { Datenbank } from './sql';
 import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
 import { LEERES_SUMMENVORHER } from './summenvorher';
@@ -42,6 +47,7 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
   const holen = <T>(wert: T | null, was: string): T =>
     wert === null ? abbruch('datei-ungueltig', `${was} verschwand während des Exports.`) : wert;
   const staende = leseLvStaendeDesProjekts(db, id);
+  const { aufmasse, rechnungen, kostenermittlungen } = aggregateDesProjekts(db, id);
   return {
     schemaVersion,
     projekt,
@@ -57,6 +63,12 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
     protokoll: leseProtokoll(db, id),
     // Schema 3: fehlt, wenn es keine Stände gibt (Vertrag: „Fehlt: keine“); so bleibt eine Datei ohne Stände gleich.
     ...(staende.length > 0 ? { lvStaende: staende } : {}),
+    // Schema 5 (v1.4): wie `lvStaende` nur, wenn es welche gibt; nach Kennung wie die übrigen Listen.
+    ...(aufmasse.length > 0 ? { aufmasse: aufmasse.map((aufmass) => ({ aufmass })) } : {}),
+    ...(rechnungen.length > 0 ? { rechnungen: rechnungen.map((rechnung) => ({ rechnung })) } : {}),
+    ...(kostenermittlungen.length > 0
+      ? { kostenermittlungen: kostenermittlungen.map((kostenermittlung) => ({ kostenermittlung })) }
+      : {}),
   };
 }
 
@@ -144,6 +156,8 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
             : { papierkorb: { hinzugefuegt: z.papierkorb, geaendert: [], entfernt: [] } }),
         },
         projektId,
+        undefined,
+        false, // Nachtragsangaben: Das Auftrags-LV kommt erst unten (siehe `pruefeNachtragsbezuege`).
       );
     }
     for (const s of d.lvStaende ?? []) schreibeLvStand(db, s);
@@ -175,6 +189,32 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
         projektId,
       );
     }
+    // Schema 5 (v1.4): Blätter vor Rechnungen (`aufmassIds`), Rechnungen nach Nummer (Invariante der Freigaben, D-34 (7):
+    // in der Datei stehen sie nach Kennung).
+    for (const z of d.aufmasse ?? [])
+      wendeAufmassAn(
+        db,
+        { art: 'aufmass', aufmassId: z.aufmass.id, aufmass: { vorher: null, nachher: z.aufmass } },
+        projektId,
+      );
+    const rechnungen = [...(d.rechnungen ?? [])].sort((a, b) => a.rechnung.nummer - b.rechnung.nummer);
+    for (const z of rechnungen)
+      wendeRechnungAn(
+        db,
+        { art: 'rechnung', rechnungId: z.rechnung.id, rechnung: { vorher: null, nachher: z.rechnung } },
+        projektId,
+      );
+    for (const z of d.kostenermittlungen ?? [])
+      wendeKostenermittlungAn(
+        db,
+        {
+          art: 'kostenermittlung',
+          kostenermittlungId: z.kostenermittlung.id,
+          kostenermittlung: { vorher: null, nachher: z.kostenermittlung },
+        },
+        projektId,
+      );
+    pruefeNachtragsbezuege(db, projektId);
     for (const e of d.protokoll) schreibeProtokolleintrag(db, e);
   } catch (e) {
     // Jede Verletzung von Integritätsregeln beim Import heißt: Die Datei passt nicht zum Schema. Ein

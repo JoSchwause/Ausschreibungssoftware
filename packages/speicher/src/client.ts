@@ -4,13 +4,17 @@
 
 import type {
   AngebotId,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
   ChangeSet,
+  KostenermittlungId,
   Ergebnis,
   LeistungsverzeichnisId,
   LvStandId,
   Persistenzstatus,
   ProjektId,
   Protokolleintrag,
+  RechnungId,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
@@ -85,9 +89,6 @@ export function speicherUeberTransport(
 
   const aufruf = <T>(methode: RpcMethode, ...args: unknown[]): Promise<Ergebnis<T, Speicherfehler>> =>
     senden(methode, args) as Promise<Ergebnis<T, Speicherfehler>>;
-  // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 liefert die Repositories der v1.4-Aggregate; bis dahin `unbekannt`)
-  const erstV14 = (was: string): Promise<Ergebnis<never, Speicherfehler>> =>
-    Promise.resolve(fehler('unbekannt', `${was}: im Speicher erst mit Ticket 79 (Vertrag v1.4).`));
 
   return {
     projekte: {
@@ -106,19 +107,22 @@ export function speicherUeberTransport(
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
       laden: (id: LvStandId) => aufruf('lvStandLaden', id),
     },
-    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
     auftragsLeistungsverzeichnisse: {
-      auflisten: () => erstV14('Auftrags-LVs auflisten'),
-      laden: () => erstV14('Auftrags-LV laden'),
+      auflisten: (projektId: ProjektId) => aufruf('auftragsLvAuflisten', projektId),
+      laden: (id: AuftragsLeistungsverzeichnisId) => aufruf('auftragsLvLaden', id),
     },
     aufmasse: {
-      auflisten: () => erstV14('Aufmaßblätter auflisten'),
-      laden: () => erstV14('Aufmaßblatt laden'),
+      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) => aufruf('aufmasseAuflisten', auftragsLvId),
+      laden: (id: AufmassId) => aufruf('aufmassLaden', id),
     },
-    rechnungen: { auflisten: () => erstV14('Rechnungen auflisten'), laden: () => erstV14('Rechnung laden') },
+    rechnungen: {
+      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) =>
+        aufruf('rechnungenAuflisten', auftragsLvId),
+      laden: (id: RechnungId) => aufruf('rechnungLaden', id),
+    },
     kostenermittlungen: {
-      auflisten: () => erstV14('Kostenermittlungen auflisten'),
-      laden: () => erstV14('Kostenermittlung laden'),
+      auflisten: (projektId: ProjektId) => aufruf('kostenermittlungenAuflisten', projektId),
+      laden: (id: KostenermittlungId) => aufruf('kostenermittlungLaden', id),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
