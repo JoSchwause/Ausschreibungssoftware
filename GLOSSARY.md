@@ -51,7 +51,7 @@ Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. 
 Die Summe der GP der Bezugspositionen einer Zuschlagsposition, auf die der Zuschlagssatz gerechnet wird. Es zählen nur Bezugspositionen mit GP, deren Betrag ins Netto geht (keine Wahl mit Variante ungleich 0, kein Bedarf ohne Gesamtbetrag) und die selbst keine Zuschlagsposition sind; bei einer Teilmenge zählt Teilmenge × EP. Im Code `Zuschlagsbasis.basis` (`zuschlagsbasen`).
 
 ### Altform der Zuschlagsposition
-Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 51 stellt die Fixtures auf die GAEB-Form um (aus Ticket 44 abgespalten, D-44.2).
+Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8). Die Fixtures `typisch`, `gross` und `typisch-angebote` trugen sie bis Ticket 51 und stehen seitdem in der GAEB-Form (Satz und Bezugsform Liste; aus Ticket 44 abgespalten, D-44.2).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
