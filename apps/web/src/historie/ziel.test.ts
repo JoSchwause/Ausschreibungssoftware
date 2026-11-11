@@ -96,6 +96,18 @@ describe('zielNach', () => {
   });
 });
 
+describe('Bieter und Angebot (Ticket 49)', () => {
+  it('ein neuer Bieter allein ändert nichts Sichtbares: Rückgängig und Wiederholen bleiben auf der Seite', async () => {
+    const { u, weg, projekt } = await aufbau();
+    await weg
+      .projekt(projekt)
+      .befehl({ art: 'BieterAnlegen', bieter: { id: u.ids.bieter(), name: 'Muster GmbH' } });
+    expect(zielNach(oben(weg), true, `/lv/x`)).toBeNull();
+    expect(zielNach(oben(weg), false, `/lv/x`)).toBeNull();
+    expect(zielNach(oben(weg), true, `/projekt/${projekt.id}`)).toBeNull();
+  });
+});
+
 describe('Papierkorb und Stand', () => {
   it('ein Eintrag zeigt OZ und Kurztext des ersten Knotens, weitere oberste Knoten und die Zahl der Positionen', async () => {
     const { u, lv } = await aufbau();

@@ -109,7 +109,14 @@ describe('BVBS AVA: X81 und X84 einlesen, Bietersummen mit vergabe', () => {
     expect(gliederungSumme(s, id('1.30.30'))).toBe('819.10');
     expect(gliederungSumme(s, id('1.30.10'))).toBe('1500.00');
     expect(gliederungSumme(s, id('3'))).toBe('12000.00');
-    expect(bietersummen(lv, plan.angebot).netto).toBe(s.gesamt.netto);
+    const b = bietersummen(lv, plan.angebot);
+    expect(b.netto).toBe(s.gesamt.netto);
+    // Gesamtsumme der amtlichen Prüfdatei mit den Preisen des Bieters (Messwert, siehe Comments von Ticket 49).
+    expect({ netto: b.netto, nettoNachNachlass: b.nettoNachNachlass, brutto: b.brutto }).toEqual({
+      netto: '1421024428.85',
+      nettoNachNachlass: '1421024428.85',
+      brutto: '1691019070.33',
+    });
   });
 
   it('ein vorhandener Bieter gleichen Namens wird wiederverwendet, kein neuer angelegt', async () => {

@@ -37,6 +37,15 @@ export function zielNach(teil: Teil, rueckwaerts: boolean, pfad: string): string
   if (cs.art === 'projekt') {
     const geschrieben = rueckwaerts ? projektChangeSetUmkehren(cs) : cs;
     const ganz = geschrieben.projekt.vorher === null || geschrieben.projekt.nachher === null;
+    const { vorher, nachher } = geschrieben.projekt;
+    // Nur die Bieter haben sich geändert (X84-Import): Weder Liste noch Projektseite zeigen sie, also bleiben.
+    if (
+      vorher !== null &&
+      nachher !== null &&
+      vorher.name === nachher.name &&
+      JSON.stringify(vorher.bauherr) === JSON.stringify(nachher.bauherr)
+    )
+      return null;
     if (geschrieben.projekt.nachher === null) return pfad === '/' ? null : '/';
     if (ganz && pfad === '/') return null;
     return pfad === projektPfad ? null : projektPfad;
