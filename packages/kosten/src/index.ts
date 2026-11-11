@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Einstiegspunkt von @tethys/kosten (Ticket 55, D-24): Kostengliederung nur über Nummern, Bezeichnungen aus einer CSV
 // des Nutzers, Kostenermittlung mit Summen je Kostengruppe; Einzelpreiskalkulation und Kalkulationsübersicht (Ticket 78,
-// D-39). Rein (A2); importiert nur `vertrag` und `dezimal` (A3).
+// D-39); Befehle an der Kostenermittlung und Kostenkontrolle (Ticket 82, D-37). Rein (A2); importiert nur `vertrag` und
+// `dezimal` (A3).
 
-export type {
-  Kostengruppenebene,
-  Kostengruppenfehler,
-  Kostengruppenfehlercode,
-  Kostengruppennummer,
-} from './kostengruppe';
+export type { Kostengruppenebene, Kostengruppenfehler, Kostengruppenfehlercode } from './kostengruppe';
 export { kgEbene, kgElternteil, kgLesen, kgSortieren, kgVergleichen, kgVorfahren } from './kostengruppe';
 export type {
   Kostenbefund,
   Kostenbefundcode,
-  Kostenermittlungseintrag,
+  Kostenermittlungseingabe,
   Kostenermittlungsergebnis,
   Kostengruppensumme,
 } from './kostenermittlung';
@@ -42,3 +38,17 @@ export type {
   Kostenartsumme,
 } from './kalkulationsuebersicht';
 export { kalkulationsuebersichtBerechnen } from './kalkulationsuebersicht';
+export {
+  kostenermittlungBefehlAusfuehren,
+  kostenermittlungChangeSetAnwenden,
+  kostenermittlungChangeSetUmkehren,
+} from './kostenermittlung-befehle';
+export type {
+  Kostenkontrollbefund,
+  Kostenkontrollbefundcode,
+  Kostenkontrolle,
+  Kostenkontrolleingabe,
+  Kostenkontrollwerte,
+  Kostenkontrollzeile,
+} from './kostenkontrolle';
+export { kostenkontrolleBerechnen } from './kostenkontrolle';

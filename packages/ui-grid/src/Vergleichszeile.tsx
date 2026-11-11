@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Eine Zeile des Vergleichsgrids (Körper oder Summenzeile). Reine Darstellung: Zustand und Ereignisse gehören dem
 // Grid (Delegation am Wurzelelement). Memoisiert, damit beim Scrollen nur neue Zeilen gerendert werden.
+//
+// Schnelles Wischen montiert je Bild viele neue Zeilen; die Kosten wachsen mit den Elementen und Attributen je Zelle
+// (Ticket 74, D-60.10). Deshalb trägt eine Zelle nur sich, ihren Text und je Kennzeichen eine Marke; die Beschreibung
+// der Kennzeichen steht im `title` (Tooltip und zugängliche Beschreibung), `aria-readonly` steht nur am Grid.
 
 import { Fragment, memo } from 'react';
 import type { ReactElement } from 'react';
@@ -17,14 +21,17 @@ export interface VergleichszeileProps {
   readonly baum: Pick<VergleichsZeile, 'art' | 'tiefe' | 'hatUnterknoten' | 'aufgeklappt'> | null;
   readonly index: number;
   readonly ariaZeile: number;
-  /** Abstand vom Anfang des Körpers; `null` für eine Summenzeile (sie steht im Fluss des Fußes). */
+  /**
+   * Abstand vom Anfang des Körpers; `null` für eine Summenzeile (sie steht im Fluss des Fußes). Raster, Höhe und
+   * Mindestbreite erbt die Zeile von Körper bzw. Fuß (`grid.css`), damit eine neue Zeile nur ihren Versatz als eigenen
+   * Stil trägt (Ticket 74).
+   */
   readonly versatz: number | null;
-  readonly hoehe: number;
-  readonly vorlage: string;
-  readonly breite: number;
   readonly spalten: readonly VergleichsSpalte[];
   /** Linker Versatz der fixierten Spalten, `null` für mitscrollende. */
   readonly versaetze: readonly (number | null)[];
+  /** Feste Klassen je Spalte (Ausrichtung, fixiert), einmal je Grid berechnet. */
+  readonly zellklassen: readonly string[];
   /** Indizes der gerenderten Spalten, aufsteigend (waagerechte Virtualisierung); Lücken füllt ein Platzhalter. */
   readonly sichtbar: readonly number[];
   readonly baumspalte: string | undefined;
@@ -33,34 +40,21 @@ export interface VergleichszeileProps {
   /** Ausgewählte Spalten dieser Zeile als Index-Spanne, sonst `null`. */
   readonly auswahl: readonly [number, number] | null;
   readonly kennzeichenTexte: Readonly<Record<string, KennzeichenText>> | undefined;
-  /** Präfix für die Kennungen der Zellbeschreibungen. */
-  readonly idPraefix: string;
 }
 
 function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
-  const { zellen, baum, index, ariaZeile, versatz, hoehe, vorlage, breite, spalten, versaetze } = props;
-  const { sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte, idPraefix } = props;
-  const letzteFixierte = versaetze.reduce<number>((l, v, i) => (v === null ? l : i), -1);
-
-  const klassen = ['tx-grid__zeile'];
-  if (baum) klassen.push(`tx-grid__zeile--${baum.art}`);
-  else klassen.push('tx-grid__zeile--summe');
+  const { zellen, baum, index, ariaZeile, versatz, spalten, versaetze } = props;
+  const { zellklassen, sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte } = props;
 
   return (
     <div
       role="row"
-      className={klassen.join(' ')}
+      className={baum ? `tx-grid__zeile tx-grid__zeile--${baum.art}` : 'tx-grid__zeile tx-grid__zeile--summe'}
       data-i={index}
       aria-rowindex={ariaZeile}
       aria-level={baum ? baum.tiefe + 1 : undefined}
       aria-expanded={baum?.hatUnterknoten ? baum.aufgeklappt : undefined}
-      style={{
-        height: hoehe,
-        width: '100%',
-        minWidth: breite,
-        gridTemplateColumns: vorlage,
-        ...(versatz === null ? {} : { transform: `translateY(${String(versatz)}px)` }),
-      }}
+      style={versatz === null ? undefined : { transform: `translateY(${String(versatz)}px)` }}
     >
       {sichtbar.map((si, k) => {
         const spalte = spalten[si];
@@ -78,32 +72,24 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
         const zelle = Object.hasOwn(zellen, spalte.id) ? zellen[spalte.id] : undefined;
         const kennzeichen = zelle?.kennzeichen ?? [];
         const beschreibung = zelle ? zellbeschreibung(zelle, kennzeichenTexte) : '';
-        const beschreibungsId = `${idPraefix}-${String(index)}-${String(si)}`;
         const links = versaetze[si] ?? null;
         const ausgewaehlt = auswahl !== null && si >= auswahl[0] && si <= auswahl[1];
 
-        const z = ['tx-grid__zelle'];
-        if (spalte.ausrichtung === 'rechts' || spalte.ausrichtung === 'mitte') {
-          z.push(`tx-grid__zelle--${spalte.ausrichtung}`);
-        }
-        if (links !== null) z.push('tx-grid__zelle--fixiert');
-        if (si === letzteFixierte) z.push('tx-grid__zelle--fixiert-letzte');
-        if (aktiv === spalte.id) z.push('tx-grid__zelle--aktiv');
-        if (ausgewaehlt) z.push('tx-grid__zelle--ausgewaehlt');
-        for (const k of kennzeichen) if (KLASSENTAUGLICH.test(k)) z.push(`tx-grid__zelle--${k}`);
+        let klassen = zellklassen[si] ?? 'tx-grid__zelle';
+        if (aktiv === spalte.id) klassen += ' tx-grid__zelle--aktiv';
+        if (ausgewaehlt) klassen += ' tx-grid__zelle--ausgewaehlt';
+        for (const kz of kennzeichen) if (KLASSENTAUGLICH.test(kz)) klassen += ` tx-grid__zelle--${kz}`;
 
         return (
           <Fragment key={spalte.id}>
             {luecke}
             <div
               role="gridcell"
-              className={z.join(' ')}
+              className={klassen}
               data-spalte={spalte.id}
               aria-colindex={si + 1}
-              aria-readonly
               aria-selected={ausgewaehlt}
               tabIndex={aktiv === spalte.id ? 0 : -1}
-              aria-describedby={beschreibung === '' ? undefined : beschreibungsId}
               title={beschreibung === '' ? undefined : beschreibung}
               style={links === null ? undefined : { left: links }}
             >
@@ -114,29 +100,21 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
                   aufgeklappt={baum.aufgeklappt}
                 />
               ) : null}
-              {kennzeichen.length > 0 ? (
-                <span className="tx-grid__kennzeichenliste" aria-hidden="true">
-                  {kennzeichen.map((k) => (
-                    <span
-                      key={k}
-                      className={
-                        KLASSENTAUGLICH.test(k)
-                          ? `tx-grid__kennzeichen tx-grid__kennzeichen--${k}`
-                          : 'tx-grid__kennzeichen'
-                      }
-                      data-kennzeichen={k}
-                    >
-                      {kennzeichenText(k, kennzeichenTexte).symbol}
-                    </span>
-                  ))}
+              {kennzeichen.map((kz) => (
+                <span
+                  key={kz}
+                  className={
+                    KLASSENTAUGLICH.test(kz)
+                      ? `tx-grid__kennzeichen tx-grid__kennzeichen--${kz}`
+                      : 'tx-grid__kennzeichen'
+                  }
+                  data-kennzeichen={kz}
+                  aria-hidden="true"
+                >
+                  {kennzeichenText(kz, kennzeichenTexte).symbol}
                 </span>
-              ) : null}
+              ))}
               <span className="tx-grid__text">{zelle?.text ?? ''}</span>
-              {beschreibung === '' ? null : (
-                <span id={beschreibungsId} className="tx-grid__nur-sr">
-                  {beschreibung}
-                </span>
-              )}
             </div>
           </Fragment>
         );
