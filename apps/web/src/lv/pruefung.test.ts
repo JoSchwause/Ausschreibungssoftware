@@ -92,10 +92,14 @@ describe('Sprunglink', () => {
 describe('Prüfung im Leerlauf', () => {
   it('läuft nicht sofort, sondern im nächsten Leerlauf; ein neuer Auftrag ersetzt den alten', () => {
     vi.useFakeTimers();
-    const lauf = vi.fn();
-    const abbrechen1 = imLeerlauf(() => lauf('alt'));
+    const lauf = vi.fn<(wer: string) => void>();
+    const abbrechen1 = imLeerlauf(() => {
+      lauf('alt');
+    });
     abbrechen1();
-    imLeerlauf(() => lauf('neu'));
+    imLeerlauf(() => {
+      lauf('neu');
+    });
     expect(lauf).not.toHaveBeenCalled();
     vi.runAllTimers();
     expect(lauf.mock.calls).toEqual([['neu']]);

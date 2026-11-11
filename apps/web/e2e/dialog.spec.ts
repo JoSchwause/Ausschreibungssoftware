@@ -106,7 +106,7 @@ test('Langtext mit Auszeichnung und die LV-Angaben bleiben nach dem Neuladen gle
 // Kern sie annimmt, `fixme` entfernen.
 test.fixme('Langtext mit Liste und Tabelle bleibt nach dem Neuladen gleich', async ({ page }) => {
   await lvMitZweiPositionen(page);
-  let dialog = await dialogAuf(page, 1);
+  const dialog = await dialogAuf(page, 1);
   const editor = dialog.getByRole('textbox', { name: 'Langtext', exact: true });
   await editor.focus();
   await auszeichnungTippen(page);
@@ -134,7 +134,7 @@ test.fixme('Langtext mit Liste und Tabelle bleibt nach dem Neuladen gleich', asy
   await expect(dialog).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('treegrid', { name: 'Positionen' })).toBeVisible();
-  dialog = await dialogAuf(page, 1);
+  await dialogAuf(page, 1);
   await expect.poll(() => langtextHtml(page)).toBe(vorher);
 });
 

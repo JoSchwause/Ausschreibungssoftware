@@ -153,11 +153,12 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
     [sitzung],
   );
 
-  const springe = (knotenId: KnotenId, spalte: LvSpalte | undefined = 'kurztext'): void => {
+  /** Springt im Grid zur Zelle; `spalte: null` behält die aktive Spalte. */
+  const springe = (knotenId: KnotenId, spalte: LvSpalte | null = 'kurztext'): void => {
     aktiv.current = knotenId;
     sprungNr.current += 1;
     setSprungziel(
-      spalte === undefined ? { knotenId, nr: sprungNr.current } : { knotenId, spalte, nr: sprungNr.current },
+      spalte === null ? { knotenId, nr: sprungNr.current } : { knotenId, spalte, nr: sprungNr.current },
     );
   };
 
@@ -172,9 +173,9 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
       });
     }
     const z = s.ziel;
-    if (z.art === 'zelle') springe(z.knotenId, z.spalte);
+    if (z.art === 'zelle') springe(z.knotenId, z.spalte ?? null);
     else if (z.art === 'dialog') {
-      springe(z.positionId, undefined);
+      springe(z.positionId, null);
       setDialog(z.positionId);
     } else if (z.feld === 'nachlass') {
       document.querySelector<HTMLElement>('.lv__summenfelder input')?.focus();
