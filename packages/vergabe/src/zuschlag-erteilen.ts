@@ -10,11 +10,12 @@ import type {
   AuftragsLeistungsverzeichnisId,
   Befehlsfehler,
   Ergebnis,
+  Knoten,
   LvZustand,
   PositionId,
   Projekt,
 } from '@tethys/vertrag';
-import { gedachtesLv } from './summen';
+import { angebotspositionenNachId, gedachtesLv } from './summen';
 
 /** Ein Hinweis zum Zuschlag (U5): Der Befehl entsteht trotzdem. */
 export type Zuschlagswarnung = never;
@@ -31,26 +32,32 @@ export function zuschlagErteilen(
   gewaehlt: ReadonlySet<PositionId>,
   neueId: AuftragsLeistungsverzeichnisId,
 ): Ergebnis<Zuschlagsergebnis, Befehlsfehler> {
-  void projekt;
   void gewaehlt;
   const a = 'angebot' in angebot ? angebot.angebot : angebot;
-  const l = lv.leistungsverzeichnis;
-  const g = gedachtesLv(lv, a);
-  const knoten = g.knoten.map((k) => (k.elternId === l.id ? { ...k, elternId: neueId } : k));
+  const { id: lvId, projektId, knoten: _lvKnoten, auftragnehmer: _keiner, ...kopf } = lv.leistungsverzeichnis;
+  const bieter = projekt.bieter.find((b) => b.id === a.bieterId);
+  const nachId = angebotspositionenNachId(a.positionen);
+  const knoten = gedachtesLv(lv, a).knoten.map((k): Knoten => {
+    const lage = k.elternId === lvId ? { elternId: neueId } : {};
+    if (k.art !== 'position') return { ...k, ...lage };
+    const eintrag = nachId.get(k.id);
+    const mitSatz = k.zuschlag !== null && k.zuschlag.prozentsatz !== null;
+    const epa = eintrag?.status === 'angeboten' && !mitSatz ? eintrag.epa : null;
+    return { ...k, ...lage, epa };
+  });
   return {
     ok: true,
     wert: {
       befehl: {
         art: 'AuftragsLeistungsverzeichnisAnlegen',
         auftragsLeistungsverzeichnis: {
+          ...kopf,
           id: neueId,
-          projektId: l.projektId,
-          leistungsverzeichnisId: l.id,
+          projektId,
+          leistungsverzeichnisId: lvId,
           angebotId: a.id,
-          name: l.name,
-          ozMaske: l.ozMaske,
-          mwstSatz: l.mwstSatz,
           nachlass: a.nachlass,
+          auftragnehmer: { name: bieter?.name ?? null, strasse: null, plz: null, ort: null },
           knoten,
         },
       },
