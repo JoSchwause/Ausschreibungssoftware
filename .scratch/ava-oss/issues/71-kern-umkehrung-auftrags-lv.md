@@ -1,6 +1,6 @@
 # 71: Kern v1.4: Befehle am Auftrags-LV, Umkehrung, neue LV-Befehle
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: K · Paket: `packages/kern`
 Blocked by: 70
@@ -117,6 +117,9 @@ einem Lauf nur des Pakets `kern` einmal `eigenschaften.test.ts` (Zeitlimit, 5.44
 beide allein und in der vollen Suite danach grün, kein Budget gelockert.
 
 ## Answer
+
+Merged: c17de09 in integration/welle-5
+
 
 Branch `welle-5/71-kern-v1.4` (enthält `integration/welle-5` bis `ecc98ac`). Öffentliche API von `@tethys/kern`:
 

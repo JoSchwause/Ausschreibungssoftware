@@ -128,7 +128,7 @@ gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgeti
 | 68 | G | `gaeb` v1.3 | `packages/gaeb` | resolved |
 | 69 | F | X84-Dateien und Preisspiegel-Sollwerte | `fixtures/` | resolved |
 | 70 | F | `vertrag` v1.4: Repository Auftrags-LV (**Mensch prüft**) | `packages/vertrag` | resolved (Welle 5) |
-| 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | ready-for-agent (Welle 5) |
+| 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | resolved (Welle 5) |
 | 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved (Welle 5) |
 | 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | resolved (Welle 5) |
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved (Welle 5) |
@@ -142,7 +142,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | Nr | Strang | Titel | Paket | Status |
 |---|---|---|---|---|
 | 70 | F | `vertrag` v1.4 | `packages/vertrag` | resolved |
-| 71 | K | Kern v1.4 | `packages/kern` | ready-for-agent |
+| 71 | K | Kern v1.4 | `packages/kern` | resolved |
 | 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved |
 | 73 | G | Wahlgruppe im X83-Rundweg | `packages/gaeb` | resolved |
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved |
