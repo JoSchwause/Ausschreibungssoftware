@@ -1,6 +1,6 @@
 # 88: A3+A4 in der App: Rechnungen prüfen und freigeben, XRechnung einlesen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A3, A4 · Ordner: `apps/web/src/rechnung/` (neu); Einhängestellen in `App.tsx`,
 `auftrag/AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (markiert `// Ticket 88`, D-20)
@@ -100,6 +100,9 @@ auch `nachtrag.spec.ts` und `m3.spec.ts` grün. Hinweis: mit `PW_WEB_PORT=4388`,
 `reuseExistingServer` den Vorschau-Server eines anderen Worktrees auf 4173 nutzen könnte.
 
 ## Answer
+
+Merged: 5e83638 in integration/welle-5
+
 
 Rechnungen prüfen und freigeben in der App (`apps/web/src/rechnung/`):
 
