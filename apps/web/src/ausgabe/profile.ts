@@ -27,27 +27,54 @@ export const alleProfile = (w: Werkzeug, eigene: readonly Druckprofil[]): readon
   ...eigene,
 ];
 
-/** Liest die abgelegte Liste; Unlesbares fällt weg, Namen von Standardprofilen und doppelte Namen ebenso. */
-export function eigeneAusText(w: Werkzeug, text: string | null): Druckprofil[] {
-  if (text === null) return [];
+/**
+ * Ein Eintrag der Ablage, der nicht als eigenes Profil gilt: unlesbar (auch ohne Namen), mit dem Namen eines
+ * Standardprofils oder mit einem Namen, den ein früherer Eintrag schon trägt. Er bleibt unverändert (`roh`) in der Ablage,
+ * damit das nächste Schreiben ihn nicht still verwirft (Q5, Review Welle 5, P7).
+ */
+export interface Zurueckgehalten {
+  readonly roh: unknown;
+  readonly grund: 'unlesbar' | 'standardname' | 'doppelt';
+  readonly name: string | null;
+}
+
+export interface Ablage {
+  /** Die eigenen Profile in Ablagereihenfolge. */
+  readonly eigene: Druckprofil[];
+  readonly zurueck: readonly Zurueckgehalten[];
+}
+
+/**
+ * Liest die abgelegte Liste. Was nicht als eigenes Profil gilt, steht mit Grund in `zurueck`; ist der ganze Text keine
+ * JSON-Liste, ist er selbst ein unlesbarer Eintrag. Nichts wirft (U5).
+ */
+export function ablageLesen(w: Werkzeug, text: string | null): Ablage {
+  if (text === null) return { eigene: [], zurueck: [] };
   let roh: unknown;
   try {
     roh = JSON.parse(text);
   } catch {
-    return [];
+    roh = undefined;
   }
-  if (!Array.isArray(roh)) return [];
-  const aus: Druckprofil[] = [];
+  if (!Array.isArray(roh)) return { eigene: [], zurueck: [{ roh: text, grund: 'unlesbar', name: null }] };
+  const eigene: Druckprofil[] = [];
+  const zurueck: Zurueckgehalten[] = [];
   for (const eintrag of roh as unknown[]) {
     const { profil } = w.druckprofilAusJson(JSON.stringify(eintrag));
-    if (profil === null || profil.name.trim() === '') continue;
-    if (istStandardName(w, profil.name) || aus.some((p) => p.name === profil.name)) continue;
-    aus.push(profil);
+    if (profil === null || profil.name.trim() === '')
+      zurueck.push({ roh: eintrag, grund: 'unlesbar', name: null });
+    else if (istStandardName(w, profil.name))
+      zurueck.push({ roh: eintrag, grund: 'standardname', name: profil.name });
+    else if (eigene.some((p) => p.name === profil.name))
+      zurueck.push({ roh: eintrag, grund: 'doppelt', name: profil.name });
+    else eigene.push(profil);
   }
-  return aus;
+  return { eigene, zurueck };
 }
 
-export const eigeneAlsText = (eigene: readonly Druckprofil[]): string => JSON.stringify(eigene);
+/** Der Text der Ablage: die eigenen Profile, dahinter die zurückgehaltenen Einträge unverändert. */
+export const ablageAlsText = (eigene: readonly Druckprofil[], zurueck: readonly Zurueckgehalten[]): string =>
+  JSON.stringify([...eigene, ...zurueck.map((z) => z.roh)]);
 
 export type ProfilFehler = 'name-leer' | 'name-standard' | 'name-vergeben';
 

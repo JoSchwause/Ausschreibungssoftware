@@ -128,3 +128,50 @@ test('Eigenes Profil: anlegen, bleibt nach dem Neuladen, exportieren, löschen, 
     'kein Druckprofil',
   );
 });
+
+// Q5 (Review Welle 5, P7): Unlesbare und doppelte gespeicherte Profile fallen nicht still weg.
+test('Unlesbare und doppelte gespeicherte Profile: Hinweis im Dialog, beim Speichern bleiben sie erhalten', async ({
+  page,
+}) => {
+  await typischOeffnen(page);
+  const ablage = (): Promise<unknown[]> =>
+    page.evaluate(() => JSON.parse(window.localStorage.getItem('tethys-druckprofile') ?? '[]') as unknown[]);
+  await page.evaluate(() => {
+    window.localStorage.setItem('tethys-druckprofile', '[42]');
+  });
+
+  // Ein gültiges eigenes Profil über die Oberfläche; der unlesbare Eintrag 42 bleibt dahinter stehen.
+  await page.getByRole('button', { name: 'Als PDF' }).click();
+  const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
+  await dialog.getByLabel('Name des Profils').fill('Mein Profil');
+  await dialog.getByRole('button', { name: 'Als neues Profil speichern' }).click();
+  await expect(dialog.getByRole('combobox', { name: 'Druckprofil' })).toContainText('Mein Profil');
+  const liste = await ablage();
+  expect(liste.slice(1)).toEqual([42]);
+  // Dasselbe Profil noch einmal unter demselben Namen ablegen (wie aus einer älteren Fassung der App).
+  await page.evaluate(
+    (text) => {
+      window.localStorage.setItem('tethys-druckprofile', text);
+    },
+    JSON.stringify([liste[0], { ...(liste[0] as object), titelsummen: false }, 42]),
+  );
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Als PDF' }).click();
+  const hinweis = dialog.getByRole('region', { name: 'Nicht verwendete gespeicherte Profile' });
+  await expect(hinweis).toContainText('Ein weiteres gespeichertes Profil heißt „Mein Profil“.');
+  await expect(hinweis).toContainText('lässt sich nicht als Druckprofil lesen');
+
+  // Ein weiteres Profil speichern: Die zurückgehaltenen Einträge stehen danach unverändert in der Ablage.
+  await dialog.getByLabel('Name des Profils').fill('Noch eins');
+  await dialog.getByRole('button', { name: 'Als neues Profil speichern' }).click();
+  await expect(dialog.getByRole('combobox', { name: 'Druckprofil' })).toContainText('Noch eins');
+  const danach = (await ablage()) as ({ name: string; titelsummen: boolean } | number)[];
+  expect(danach.map((p) => (typeof p === 'number' ? p : p.name))).toEqual([
+    'Mein Profil',
+    'Noch eins',
+    'Mein Profil',
+    42,
+  ]);
+  expect(danach[2]).toMatchObject({ titelsummen: false });
+});

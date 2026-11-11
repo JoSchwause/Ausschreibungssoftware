@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 import {
   alleProfile,
   dateinameProfil,
-  eigeneAlsText,
-  eigeneAusText,
+  ablageAlsText,
+  ablageLesen,
   freierName,
   profilAendern,
   profilAnlegen,
@@ -24,17 +24,44 @@ const stdName = (i: number): string => ausgabe.STANDARD_DRUCKPROFILE[i]?.name ??
 describe('Ablage', () => {
   it('Rundweg; Standardprofile stehen vor den eigenen', () => {
     const eigene = [mein('Bieter eng'), { ...mein('Kurz'), langtext: { art: 'zeilen' as const, anzahl: 3 } }];
-    expect(eigeneAusText(w, eigeneAlsText(eigene))).toEqual(eigene);
+    const ablage = ablageLesen(w, ablageAlsText(eigene, []));
+    expect(ablage).toEqual({ eigene, zurueck: [] });
     const alle = alleProfile(w, eigene);
     expect(alle.slice(0, 3).map((p) => p.name)).toEqual(ausgabe.STANDARD_DRUCKPROFILE.map((p) => p.name));
     expect(alle.slice(3)).toEqual(eigene);
   });
-  it('Kaputtes, doppelte und Standardnamen fallen weg, nichts wirft', () => {
-    expect(eigeneAusText(w, null)).toEqual([]);
-    expect(eigeneAusText(w, 'kein json')).toEqual([]);
-    expect(eigeneAusText(w, '{"a":1}')).toEqual([]);
+
+  // Q5 (Review Welle 5, P7): Was nicht als eigenes Profil gilt, fällt aus der Auswahl, bleibt aber in der Ablage.
+  it('Unlesbares, doppelte und Standardnamen gelten nicht, bleiben aber mit Grund erhalten; nichts wirft', () => {
+    expect(ablageLesen(w, null)).toEqual({ eigene: [], zurueck: [] });
     const text = JSON.stringify([mein('A'), mein('A'), mein(stdName(0)), 42, mein('B')]);
-    expect(eigeneAusText(w, text).map((p) => p.name)).toEqual(['A', 'B']);
+    const ablage = ablageLesen(w, text);
+    expect(ablage.eigene.map((p) => p.name)).toEqual(['A', 'B']);
+    expect(ablage.zurueck.map((z) => [z.grund, z.name])).toEqual([
+      ['doppelt', 'A'],
+      ['standardname', stdName(0)],
+      ['unlesbar', null],
+    ]);
+    expect(ablage.zurueck.map((z) => z.roh)).toEqual([mein('A'), mein(stdName(0)), 42]);
+  });
+
+  it('Kein JSON oder keine Liste: der ganze Text bleibt als ein unlesbarer Eintrag erhalten', () => {
+    for (const roh of ['kein json', '{"a":1}']) {
+      const ablage = ablageLesen(w, roh);
+      expect(ablage).toEqual({ eigene: [], zurueck: [{ roh, grund: 'unlesbar', name: null }] });
+    }
+  });
+
+  it('Schreiben hängt die zurückgehaltenen Einträge unverändert an; wieder gelesen ist alles da', () => {
+    const vorher = ablageLesen(w, 'kaputt{');
+    const text = ablageAlsText([mein('Neu')], vorher.zurueck);
+    const nachher = ablageLesen(w, text);
+    expect(nachher.eigene.map((p) => p.name)).toEqual(['Neu']);
+    expect(nachher.zurueck).toEqual(vorher.zurueck);
+
+    const doppelt = ablageLesen(w, JSON.stringify([mein('A'), { ...mein('A'), titelsummen: false }]));
+    const wieder = ablageLesen(w, ablageAlsText(doppelt.eigene, doppelt.zurueck));
+    expect(wieder).toEqual(doppelt);
   });
 });
 
