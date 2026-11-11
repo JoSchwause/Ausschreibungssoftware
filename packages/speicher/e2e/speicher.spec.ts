@@ -92,6 +92,75 @@ test.describe('Daten überleben ein Neuladen', () => {
   });
 });
 
+test.describe('Neuladen während des Schließens (Ticket 52)', () => {
+  // Wie die App bei `pagehide`: `schliessen` anstoßen, nicht abwarten, sofort neu laden. Der alte Worker schließt
+  // (im WAL mit Checkpoint) und gibt die Dateien frei, während der neue sie schon öffnen will und `gesperrt` bekommt.
+  // Vor `preserveOnInitFailure` löschte der gescheiterte Versuch das Verzeichnis des Pools; gab der alte Worker die
+  // Dateien in diesem Moment frei, war das ganze Projekt weg (im Prüfstand etwa jeder dritte Lauf über 25 Runden).
+  test('25 Runden schreiben, Schließen anstoßen, neu laden: jeder Befehl ist noch da', async ({ page }) => {
+    test.setTimeout(240_000);
+    const f = ladeFixture('typisch');
+    const folge = anlegenSchritte(f);
+    const lvId = f.lv.leistungsverzeichnis.id;
+    const positionen = f.lv.leistungsverzeichnis.knoten
+      .filter((k): k is Position => k.art === 'position')
+      .slice(0, 30);
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect((await ps(page, 'anwenden', DB, folge)).ok).toBe(true);
+    let erwartet = folge.length;
+    const menge = (runde: number): Menge => `${String(runde)}.000` as Menge;
+    for (let runde = 1; runde <= 25; runde++) {
+      // 30 Einzeländerungen, damit das WAL beim Schließen etwas zu übertragen hat.
+      const schritte = positionen.map((p, j): PruefSchritt => ({
+        eintrag: eintrag(
+          10_000 + runde * 100 + j,
+          f.projekt.id,
+          { art: 'leistungsverzeichnis', id: lvId },
+          {
+            art: 'MengeAendern',
+            positionId: p.id,
+            menge: menge(runde),
+          },
+        ),
+        changeSet: {
+          art: 'leistungsverzeichnis',
+          leistungsverzeichnisId: lvId,
+          kopf: null,
+          knoten: {
+            hinzugefuegt: [],
+            geaendert: [
+              {
+                vorher: runde === 1 ? p : { ...p, menge: menge(runde - 1) },
+                nachher: { ...p, menge: menge(runde) },
+              },
+            ],
+            entfernt: [],
+          },
+          summen: { positionen: [], gliederungen: [], gesamt: null },
+        },
+      }));
+      expect(await ps(page, 'anwenden', DB, schritte)).toMatchObject({ ok: true });
+      erwartet += schritte.length;
+      await page.evaluate((name) => {
+        void (window as unknown as { pruefstand: Pruefstand }).pruefstand.schliessen(name);
+      }, DB);
+      await page.reload();
+      await expect(page.locator('#status')).toBeVisible();
+      // Wie die App (E-14): bei `gesperrt` erneut versuchen, jedes Mal mit einem neuen Worker; in kurzem Abstand, damit
+      // ein Versuch in die Freigabe durch den alten Worker fällt.
+      let offen = await ps(page, 'oeffnen', DB);
+      for (let versuch = 0; !offen.ok && versuch < 200; versuch++) {
+        expect(offen).toMatchObject({ code: 'gesperrt' });
+        await page.waitForTimeout(20);
+        offen = await ps(page, 'oeffnen', DB);
+      }
+      expect(offen).toEqual({ ok: true });
+      expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(erwartet);
+    }
+  });
+});
+
 test.describe('Leistung', () => {
   test('Laden von gross (5.000 Positionen) aus OPFS unter 2 s', async ({ page }) => {
     const f = ladeFixture('gross');

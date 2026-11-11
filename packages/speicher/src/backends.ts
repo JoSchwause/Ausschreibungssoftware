@@ -64,6 +64,10 @@ export async function oeffneOpfs(name: string): Promise<GeoeffneteDatenbank> {
     name: `tethys-${name}`,
     directory: `.tethys-${name}`,
     initialCapacity: POOLGROESSE,
+    // Scheitert das Einrichten (meist `gesperrt`: der Worker der vorigen Seite hält die Dateien noch), löscht der VFS
+    // sonst sein ganzes Verzeichnis (`removeVfs`). Gibt der alte Worker die Dateien gerade in diesem Moment frei, gehen
+    // dabei Datenbank oder WAL verloren (Ticket 52, im Prüfstand nachgestellt). Mit dieser Option bleiben sie liegen.
+    preserveOnInitFailure: true,
   });
   const db = new pool.OpfsSAHPoolDb('/projekte.sqlite3');
   try {
