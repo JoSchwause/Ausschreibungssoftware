@@ -634,7 +634,9 @@ export interface LvKopf extends LvInhaltKopf {
   readonly projektId: ProjektId;
   /**
    * Fehlt: kein Nachtrag (v1.4, Ticket 70 Punkt 3; D-35). Gesetzt: das LV ist ein Nachtrags-LV, siehe `Nachtragsangaben`.
-   * Geändert nur über `NachtragsangabenSetzen`.
+   * Geändert nur über `NachtragsangabenSetzen`. Ein Nachtrags-LV bekommt keinen Zuschlag (`zuschlagErteilen` weist es ab,
+   * D-42); seine Positionen kommen über `NachtragUebernehmen` ins Auftrags-LV. Der Zuschlag eines Muster-LV lässt `vorlage`
+   * weg: Beide Felder gibt es am `AuftragsLvKopf` nicht.
    *
    * Vorläufige Annahme, Entscheidung offen (enge Lesart): am `LvKopf`, nicht am gemeinsamen `LvInhaltKopf`. So trägt das
    * Auftrags-LV es nie, und weder `LeistungsverzeichnisAnlegen` noch der GAEB-Leser bringen es mit: Die App legt das
@@ -768,7 +770,10 @@ export interface AufmassKopf {
   readonly nummer: number;
   /** Bezeichnung des Blatts, freier Text (z. B. „Erdarbeiten Achse 1–4“); `''` ist zulässig. */
   readonly bezeichnung: string;
-  /** Tag des Aufmaßes als `JJJJ-MM-TT`, vom Nutzer eingegeben (keine Uhr, A2; wie `Vergabeinformationen`); `null`: keine Angabe. */
+  /**
+   * Tag, an dem das Blatt aufgemessen wurde, als `JJJJ-MM-TT`, vom Nutzer eingegeben (keine Uhr, A2; wie
+   * `Vergabeinformationen`); `null`: keine Angabe.
+   */
   readonly datum: string | null;
 }
 
@@ -819,8 +824,8 @@ export type Rechnungsart = 'abschlag' | 'schluss';
 
 /**
  * Umlage (v1.4, Ticket 70 Punkt 7; D-34 (5); Glossar „Umlage“): ein Abzug des Auftraggebers für eine gemeinsam genutzte
- * Leistung. Die Prüfung rechnet je Umlage round(Brutto kumuliert × `satz`, 2), alle auf derselben Basis, nicht aufeinander;
- * sie mindern die Steuerbasis nicht (Gegenforderung des Auftraggebers nach der MwSt).
+ * Leistung. Die Prüfung rechnet je Umlage round(Brutto kumuliert × `satz` / 100, 2) (`'0.50'` heißt 0,5 %), alle auf
+ * derselben Basis, nicht aufeinander; sie mindern die Steuerbasis nicht (Gegenforderung des Auftraggebers nach der MwSt).
  */
 export interface Umlage {
   /** Bezeichnung, wie die Beteiligten sie führen (z. B. „Bauwesenversicherung“), freier Text. */
@@ -838,6 +843,10 @@ export interface Umlage {
  * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändert nur
  * `RechnungsfreigabeAufheben` (Q5); jeden anderen Befehl, auch `RechnungLoeschen`, weist der Ausführer mit
  * `rechnung-freigegeben` ab.
+ *
+ * Invariante (D-34 (7), Q5): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.**
+ * Nur so ist „Σ frühere Zahlbeträge“ eindeutig; `speicher` hält sie (`konflikt`, siehe `RechnungChangeSet`), auch gegen das
+ * Anlegen einer Rechnung unterhalb einer schon freigegebenen.
  */
 export interface Rechnung {
   readonly id: RechnungId;
@@ -859,12 +868,18 @@ export interface Rechnung {
   /** Rechnungsnummer, die der Auftragnehmer vergeben hat (XRechnung BT-1), freier Text; `null`: keine. Nie `''`. */
   readonly rechnungsnummerAuftragnehmer: string | null;
   /**
-   * Was die Rechnung des Auftragnehmers als ihre Summe nennt, Netto ohne und Brutto mit Umsatzsteuer (XRechnung BT-109 und
-   * BT-112, Ticket 76), ungeprüft übernommen. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
-   * rechnet aus den Aufmaßen). `null`: nicht erfasst. Ob die Beträge kumuliert sind, sagt der Typ nicht (Offene Typfrage,
-   * Ticket 70).
+   * Was die Rechnung des Auftragnehmers fordert, wie sie es nennt (v1.4, Review D-44): Netto ohne und Brutto mit
+   * Umsatzsteuer (XRechnung BT-109, BT-112) und der Zahlbetrag (BT-115; Ticket 76), ungeprüft übernommen; jeder Wert
+   * `null`, wenn die Rechnung ihn nicht nennt. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
+   * rechnet aus den Aufmaßblättern). „Nichts erfasst“ hat genau eine Schreibweise, das äußere `null`: Ein Objekt mit allen
+   * drei Werten `null` weist der Ausführer mit `ungueltige-eingabe` ab. Ob Netto und Brutto kumuliert sind, sagt der Typ
+   * nicht (Offene Typfrage, Ticket 70).
    */
-  readonly gefordert: { readonly netto: Betrag; readonly brutto: Betrag } | null;
+  readonly gefordert: {
+    readonly netto: Betrag | null;
+    readonly brutto: Betrag | null;
+    readonly zahlbetrag: Betrag | null;
+  } | null;
   /**
    * Die Aufmaßblätter, deren Mengen die Rechnung abrechnet, und zwar **alle** bis dahin, auch die schon in früheren
    * Rechnungen (kumulierte Abschlagsrechnung, D-34 (1)): die vollständige kumulierte Menge. Jedes Blatt höchstens einmal
@@ -877,8 +892,8 @@ export interface Rechnung {
   /** Umlagen in Anzeigereihenfolge; `[]`: keine. */
   readonly umlagen: readonly Umlage[];
   /**
-   * Satz des Sicherheitseinbehalts (D-34 (6)): round(Brutto kumuliert × Satz, 2), nur bei `art: 'abschlag'` gelesen.
-   * `null`: kein Einbehalt. Bei `schluss` bleibt er stehen, wird aber nicht gelesen (die App übernimmt beide Sätze als
+   * Satz des Sicherheitseinbehalts (D-34 (6)): round(Brutto kumuliert × Satz / 100, 2), nur bei `art: 'abschlag'`
+   * gelesen. `null`: kein Einbehalt. Bei `schluss` bleibt er stehen, wird aber nicht gelesen (die App übernimmt beide Sätze als
    * Vorschlag aus der vorigen Rechnung).
    */
   readonly sicherheitSatz: Prozent | null;

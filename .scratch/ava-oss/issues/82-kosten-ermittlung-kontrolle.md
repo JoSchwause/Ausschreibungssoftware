@@ -37,4 +37,10 @@ Herkunft: `plan.md` §2 C2, C3; `vertrag` v1.4 (Ticket 70, Comments „Folgearbe
 - [ ] anwenden ∘ umkehren = Identität für jeden Kostenermittlung-Befehl
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Pflichtpunkt: den Eingabetyp `Kostenermittlungseintrag` in `kosten` umbenennen (Vorschlag `Kostenermittlungseingabe`),
+  damit es nicht zwei Typen gleichen Namens gibt (L1/L2; Offene Typfrage 12 aus Ticket 70). Verbraucher im Repo mitziehen
+  (nur `kosten` selbst; die App nutzt den Typ noch nicht).
+
 ## Comments

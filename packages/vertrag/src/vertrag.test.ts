@@ -135,6 +135,7 @@ import {
   type RechnungFreigeben,
   type RechnungId,
   type RechnungZustand,
+  type RechnungsangabenSetzen,
   type Umlage,
   type Leistungsstand,
   type Kostenermittlung,
@@ -232,6 +233,7 @@ import {
   beispielProjektdateiV14,
   beispielRechnungAnlegen,
   beispielRechnungsbefehle,
+  beispielLvUebersichtNachtrag,
 } from './beispiele';
 
 /**
@@ -1221,6 +1223,16 @@ describe('v1.4 Punkt 5: Muster-LV und Textquelle (C5, G-17, D-40)', () => {
     expect(beispielTextquelleSetzen.textquelle).toBe('Muster-LV Rohbau (erfunden)');
   });
 
+  it('Review (D-43): die LV-Übersicht trägt Nachtrag und Vorlage additiv, in der Schreibweise des Kopfs', () => {
+    expectTypeOf<LvUebersicht['nachtrag']>().toEqualTypeOf<Nachtragsangaben | undefined>();
+    expectTypeOf<LvUebersicht['vorlage']>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('knoten');
+    const alt: LvUebersicht = { id: beispielLv.id, name: beispielLv.name };
+    expect(alt).not.toHaveProperty('vorlage');
+    expect(beispielLvUebersichtNachtrag.nachtrag?.nummer).toBe('N01');
+    expect(beispielLvUebersichtNachtrag).not.toHaveProperty('vorlage');
+  });
+
   it('ChangeSets: Vorlage im Kopf, Textquelle an der Position; beide umkehrbar', () => {
     const v = beispielChangeSetVorlage;
     expect(v.kopf?.vorher).not.toHaveProperty('vorlage');
@@ -1302,10 +1314,13 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     expectTypeOf<Umlage>().toEqualTypeOf<{ readonly bezeichnung: string; readonly satz: Prozent }>();
     expectTypeOf<Rechnung['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
     expectTypeOf<Rechnung['art']>().toEqualTypeOf<Rechnungsart>();
+    // Review (D-44): dazu der geforderte Zahlbetrag (XRechnung BT-115); jeder Wert einzeln nullbar
     expectTypeOf<Rechnung['gefordert']>().toEqualTypeOf<{
-      readonly netto: Betrag;
-      readonly brutto: Betrag;
+      readonly netto: Betrag | null;
+      readonly brutto: Betrag | null;
+      readonly zahlbetrag: Betrag | null;
     } | null>();
+    expectTypeOf<RechnungsangabenSetzen['gefordert']>().toEqualTypeOf<Rechnung['gefordert']>();
     expectTypeOf<Rechnung['aufmassIds']>().toEqualTypeOf<readonly AufmassId[]>();
     expectTypeOf<Rechnung['umlagen']>().toEqualTypeOf<readonly Umlage[]>();
     expectTypeOf<Rechnung['sicherheitSatz']>().toEqualTypeOf<Prozent | null>();
@@ -1335,6 +1350,12 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     expect([r1.nummer, r2.nummer]).toEqual([1, 2]);
     expect(r1.aufmassIds.every((a) => r2.aufmassIds.includes(a))).toBe(true);
     expect(r1.freigabe?.zahlbetrag).toBe('53.42');
+    // gefordert: „nichts erfasst“ nur als äußeres null, sonst mindestens ein Wert (D-44)
+    expect(r1.gefordert?.zahlbetrag).toBe('53.42');
+    expect(r2.gefordert).toBeNull();
+    const angaben = beispielRechnungsbefehle[0].gefordert;
+    expect(angaben?.zahlbetrag).toBeNull();
+    expect(angaben?.netto).toBe('49.85');
     expect(r2.freigabe).toBeNull();
     expect(r1.gewaehrleistungSatz).toBeNull();
   });
@@ -1488,7 +1509,7 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     >();
   });
 
-  it('Repositories am Speicher (Pflicht): Aufmaße und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
+  it('Repositories am Speicher (Pflicht): Aufmaßblätter und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
     expectTypeOf<Speicher['aufmasse']>().toEqualTypeOf<AufmassRepository>();
     expectTypeOf<Speicher['rechnungen']>().toEqualTypeOf<RechnungRepository>();
     expectTypeOf<Speicher['kostenermittlungen']>().toEqualTypeOf<KostenermittlungRepository>();
@@ -1613,7 +1634,7 @@ describe('v1.4 Punkt 11: Beispiele für jeden neuen Befehl und die Zustände', (
     expect(beispielRechnungAnlegen.rechnung.freigabe).toBeNull();
   });
 
-  it('Projektdatei mit Aufmaßen, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
+  it('Projektdatei mit Aufmaßblättern, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
     const d = beispielProjektdateiV14;
     expect(d.aufmasse?.map((a) => a.aufmass.nummer)).toEqual([1, 2]);
     expect(d.rechnungen?.map((r) => r.rechnung.nummer)).toEqual([1, 2]);

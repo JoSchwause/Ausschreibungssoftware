@@ -41,4 +41,11 @@ Herkunft: Tickets 70/71 (App-Teil), `plan.md` §2 A1
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün,
       `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test e2e/nachtrag.spec.ts e2e/m3.spec.ts`
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- D-42: Auf der LV-Seite eines Nachtrags-LV keinen „Zuschlag erteilen“ anbieten (der Weg ist „Beauftragen“, Punkt 3);
+  `zuschlagErteilen` weist ein Nachtrags-LV ohnehin ab.
+- LV-Liste und Nachtragsliste lesen `LvUebersicht.nachtrag`/`vorlage` (D-43) statt ganze LVs zu laden.
+- Die neue ChangeSet-Art des Auftrags-LV (`NachtragUebernehmen`) über `auftragsLvChangeSetUmkehren` umkehren.
+
 ## Comments

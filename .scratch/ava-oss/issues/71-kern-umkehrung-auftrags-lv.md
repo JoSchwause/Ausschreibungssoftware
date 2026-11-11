@@ -39,6 +39,15 @@ Die Handler für alles, was `vertrag` v1.4 dem Kern zuweist; bis dahin weist der
 - [ ] Fehlerfälle: zweite Übernahme, sechste Ebene, Los neben Titel (F1), Kostengruppe an Gliederung
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Form von `kostengruppe` prüfen (die Marke und `KostengruppeSetzen` legen das fest; Fehler `ungueltige-eingabe`) und
+  `textquelle: ''` entfernen bzw. abweisen – auch an mitgebrachten Knoten (`LeistungsverzeichnisAnlegen`,
+  `AuftragsLeistungsverzeichnisAnlegen`, `KnotenEinfuegen`, `NachtragUebernehmen`; über `positionsdatenFehler` bzw.
+  `positionNormal`), damit „nie `''` im Zustand“ gilt. Punkt 3 oben ist damit entschieden.
+- D-42 (Kern-Teil): `AuftragsLeistungsverzeichnisAnlegen` legt im ChangeSet-Kopf nur Felder von `AuftragsLvKopf` ab (heute
+  `ohneKnoten(a)` trägt zur Laufzeit `nachtrag`/`vorlage` eines LV mit); Test.
+
 ## Comments
 
 (Alt: „Kern: Umkehrung für ChangeSets des Auftrags-LV“, Punkt 1 oben; der App-Teil liegt jetzt in Ticket 86.)

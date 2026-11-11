@@ -33,6 +33,7 @@ import type {
   AuftragsLvKopf,
   Kostenermittlung,
   LvInhalt,
+  Nachtragsangaben,
   Projekt,
   Rechnung,
 } from './modell';
@@ -164,11 +165,22 @@ export interface ProjektRepository {
 
 /**
  * Ein LV in der Liste des Projekts (v1.3, Ticket 53 Punkt 1): Kennung und Name, ohne Knoten, wie `Projektuebersicht`.
- * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53).
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53). v1.4 (Review D-43): dazu
+ * `nachtrag?` und `vorlage?` aus dem Kopf.
  */
 export interface LvUebersicht {
   readonly id: LeistungsverzeichnisId;
   readonly name: string;
+  /**
+   * Nachtragsangaben des LV, wie am `LvKopf` (v1.4, Review D-43, additiv). Fehlt: kein Nachtrags-LV; nie `null`. So zeigt die
+   * Projektseite „Nachtrag N01“, ohne jedes LV zu laden (Ticket 86). `speicher` füllt es aus dem Kopf (Ticket 79).
+   */
+  readonly nachtrag?: Nachtragsangaben;
+  /**
+   * Kennzeichen „Muster-LV“, wie am `LvKopf` (v1.4, Review D-43, additiv): nur `true` oder fehlt, nie `false`. So findet die
+   * App die Vorlagen eines Projekts, ohne jedes LV zu laden (Ticket 90). `speicher` füllt es aus dem Kopf (Ticket 79).
+   */
+  readonly vorlage?: true;
 }
 
 export interface LvRepository {
@@ -286,8 +298,11 @@ export interface Persistenzstatus {
  * - das Auftrags-LV löscht, solange ein Aufmaßblatt, eine Rechnung oder die Nachtragsangaben eines LV darauf verweisen;
  * - eine Position aus dem Auftrags-LV entfernt, auf die eine Aufmaßposition verweist (Umkehrung von `NachtragUebernehmen`);
  * - ein Aufmaßblatt löscht, das in einer Rechnung steht (`Rechnung.aufmassIds`);
- * - eine Rechnung freigibt, solange eine frühere desselben Auftrags-LV nicht freigegeben ist, oder eine Rechnung löscht
- *   oder ihre Freigabe entfernt, solange eine spätere freigegeben ist (D-34 (7));
+ * - die Invariante der Freigaben verletzen würde (D-34 (7)): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets
+ *   die mit den kleinsten Nummern.** Also `konflikt`, wenn ein `RechnungChangeSet` eine Rechnung freigibt, solange eine
+ *   frühere nicht freigegeben ist; eine Rechnung löscht oder ihre Freigabe entfernt, solange eine spätere freigegeben ist;
+ *   oder eine Rechnung anlegt (`vorher: null`), solange dasselbe Auftrags-LV eine freigegebene Rechnung mit größerer Nummer
+ *   hat (sonst: AR 2 löschen, AR 3 freigeben, AR 2 neu anlegen und freigeben → Doppelzahlung);
  * - auf ein Auftrags-LV, Aufmaßblatt oder eine Kennung verweist, die es im Projekt nicht gibt (Nachtragsangaben,
  *   `auftragsLvId`, `aufmassIds`);
  * - eine Blatt- oder Rechnungsnummer doppelt vergäbe (je Auftrags-LV eindeutig).

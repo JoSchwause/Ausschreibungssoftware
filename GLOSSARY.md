@@ -269,8 +269,8 @@ Die Stufe einer Kostenermittlung nach DIN 276: Kostenrahmen, Kostenschätzung, K
 ### Aufmaß & Mengenermittlung (REB 23.003)
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
 
-### Aufmaßblatt (Aufmaß)
-Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je Auftrags-LV eindeutig), Bezeichnung, Datum und je Position höchstens eine Aufmaßposition. Mehrere Blätter ergeben zusammen die kumulierte Menge, die eine Rechnung abrechnet. Ein GAEB-X31-Import legt ein Aufmaßblatt an. Im Code `Aufmass`, `AufmassKopf`.
+### Aufmaßblatt
+Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je Auftrags-LV eindeutig), Bezeichnung, Datum und je Position höchstens eine Aufmaßposition. Mehrere Blätter ergeben zusammen die kumulierte Menge, die eine Rechnung abrechnet. Ein GAEB-X31-Import legt ein Aufmaßblatt an. Im Code `Aufmass` (kurz für das Blatt), `AufmassKopf`. „Aufmaß“ allein ist kein Name für das Blatt, sondern die Tätigkeit (siehe „Aufmaß & Mengenermittlung“).
 
 ### Aufmaßposition
 Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (oder keiner) und die Menge dieses Blatts. Die Menge rechnet die App aus dem Mengenansatz (Paket `mengen`); gespeichert werden beide. Im Code `Aufmassposition`.

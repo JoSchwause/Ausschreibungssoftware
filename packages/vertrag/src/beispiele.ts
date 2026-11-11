@@ -48,6 +48,7 @@ import type {
 import type {
   AuftragsLvUebersicht,
   KostenermittlungUebersicht,
+  LvUebersicht,
   Projektdatei,
   Protokolleintrag,
 } from './speicher';
@@ -1019,6 +1020,13 @@ export const beispielChangeSetNachtragBeauftragt: LvChangeSet = {
   },
 };
 
+/** Review (D-43): das Nachtrags-LV N01 in der LV-Liste des Projekts; kein Muster-LV, also ohne `vorlage`. */
+export const beispielLvUebersichtNachtrag: LvUebersicht = {
+  id: nachtragsLvId,
+  name: 'Nachtrag N01 (erfunden)',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'angeboten' },
+};
+
 /** Kostengruppe 330 (erfunden; nur die Nummer, keine Bezeichnung der Norm, G-16). */
 const kg330 = '330' as Kostengruppennummer;
 
@@ -1153,7 +1161,7 @@ const rechnung2Id = '019b76e9-0000-7000-8000-000000000121' as RechnungId;
  * Herleitung des eingefrorenen Zahlbetrags (jeder Schritt auf 2 Stellen, N2): Leistung 1,000 × 10,000 = 10,00 und
  * 2,500 × 15,000 = 37,50, zusammen 47,50; kein Nachlass; MwSt round(47,50 × 19 %) = 9,03 (9,025); Brutto 56,53; Umlage
  * round(56,53 × 0,50 %) = 0,28 (0,28265); Einbehalt round(56,53 × 5 %) = 2,83 (2,8265); Zahlbetrag 56,53 − 0,28 − 2,83 =
- * 53,42. Der Auftragnehmer forderte dasselbe Netto und Brutto.
+ * 53,42. Der Auftragnehmer forderte dasselbe Netto, Brutto und denselben Zahlbetrag.
  */
 export const beispielRechnung1: Rechnung = {
   id: rechnung1Id,
@@ -1163,7 +1171,7 @@ export const beispielRechnung1: Rechnung = {
   art: 'abschlag',
   eingang: '2026-11-05',
   rechnungsnummerAuftragnehmer: 'AR-2026-001',
-  gefordert: { netto: '47.50' as Betrag, brutto: '56.53' as Betrag },
+  gefordert: { netto: '47.50' as Betrag, brutto: '56.53' as Betrag, zahlbetrag: '53.42' as Betrag },
   aufmassIds: [aufmass1Id],
   umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' as Prozent }],
   sicherheitSatz: '5.00' as Prozent,
@@ -1317,7 +1325,7 @@ export const beispielRechnungAnlegen: RechnungAnlegen = {
   rechnung: beispielRechnung2,
 };
 
-/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaße, Abzüge, Löschen). */
+/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaßblätter, Abzüge, Löschen). */
 export const beispielRechnungsbefehle: readonly [
   RechnungsangabenSetzen,
   RechnungsaufmasseSetzen,
@@ -1329,7 +1337,8 @@ export const beispielRechnungsbefehle: readonly [
     rechnungsart: 'abschlag',
     eingang: '2026-11-10',
     rechnungsnummerAuftragnehmer: 'AR-2026-002',
-    gefordert: { netto: '49.85' as Betrag, brutto: '59.32' as Betrag },
+    // die Rechnung nennt keinen Zahlbetrag
+    gefordert: { netto: '49.85' as Betrag, brutto: '59.32' as Betrag, zahlbetrag: null },
   },
   { art: 'RechnungsaufmasseSetzen', aufmassIds: [aufmass1Id, aufmass2Id] },
   {

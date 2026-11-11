@@ -148,7 +148,7 @@ export interface AufmassZustand {
 
 /**
  * Rechnung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 7). Ohne Prüfergebnis: Das rechnet `abrechnung` bei Bedarf
- * aus Auftrags-LV, Aufmaßen und früheren Rechnungen (D-36 (2)).
+ * aus Auftrags-LV, Aufmaßblättern und früheren Rechnungen (D-36 (2)).
  */
 export interface RechnungZustand {
   readonly rechnung: Rechnung;
@@ -265,7 +265,7 @@ export interface AngebotChangeSet {
  *
  * v1.4 (Ticket 70 Punkt 2): `NachtragUebernehmen` liefert `kopf: null`, neue Knoten unter `knoten.hinzugefuegt` und die
  * betroffenen Summen; `KostengruppeSetzen` eine Knotenänderung ohne Summen. Entfernt ein ChangeSet eine Position, auf die
- * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaße,
+ * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaßblätter,
  * Rechnungen oder Nachtragsangaben eines LV darauf verweisen, weist `speicher` mit `konflikt` ab (Q5, wie beim
  * Papierkorb und Angeboten).
  */
@@ -296,10 +296,13 @@ export interface AufmassChangeSet {
  * `AufmassChangeSet`. Freigeben und Freigabe aufheben sind Gegenstücke (nur `freigabe` unterscheidet `vorher` und
  * `nachher`).
  *
- * `speicher` weist mit `konflikt` ab (Q5, D-34 (7)), auch wenn das ChangeSet ohne Ausführer kommt (Undo): eine Freigabe,
+ * Invariante (Q5, D-34 (7)): Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.
+ * `speicher` hält sie und weist mit `konflikt` ab, auch wenn das ChangeSet ohne Ausführer kommt (Undo): eine Freigabe,
  * solange eine frühere Rechnung desselben Auftrags-LV nicht freigegeben ist; das Löschen einer Rechnung oder das Entfernen
- * ihrer Freigabe, solange eine spätere freigegeben ist; eine Kennung in `aufmassIds`, zu der es kein Blatt dieses
- * Auftrags-LV gibt.
+ * ihrer Freigabe, solange eine spätere freigegeben ist; das Anlegen einer Rechnung (`rechnung.vorher: null`), solange das
+ * Auftrags-LV eine freigegebene Rechnung mit größerer Nummer hat (sonst würde eine gelöschte und neu angelegte Rechnung
+ * zwischen eingefrorene Zahlbeträge geschoben und doppelt bezahlt). Dazu `konflikt` für eine Kennung in `aufmassIds`, zu
+ * der es kein Blatt dieses Auftrags-LV gibt. Umsetzung Ticket 79, Befund der Prüfung Ticket 81.
  */
 export interface RechnungChangeSet {
   readonly art: 'rechnung';
