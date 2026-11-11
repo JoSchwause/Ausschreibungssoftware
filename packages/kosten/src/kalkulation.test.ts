@@ -83,6 +83,14 @@ describe('einzelpreiskalkulationBerechnen: Rechenweg', () => {
     expect(r.befunde).toEqual([]);
   });
 
+  // Frei: 1,000 × 7,250 = 7,250 (0 %) = EP; die Bezeichnung des freien Anteils kommt vom Aufrufer
+  it('übernimmt die Bezeichnung des freien Anteils in die Einheitspreisanteile', () => {
+    const r = einzelpreiskalkulationBerechnen([z('frei', 'Container', '1.000', '7.250')], SAETZE, 'Entsorgung');
+    expect(r.anteile.frei).toBe('7.250');
+    expect(r.anteile.freiBezeichnung).toBe('Entsorgung');
+    expect(r.einheitspreis).toBe('7.250');
+  });
+
   // Nachunternehmer ohne Satz (0 %): 0,500 × 4,157 = 2,0785 → kaufmännisch 2,079 (halbe Einheit aufwärts; nicht 2,078)
   it('rundet den Anteil kaufmännisch auf 3 Stellen', () => {
     const r = einzelpreiskalkulationBerechnen([z('nachunternehmer', 'Abbruch', '0.500', '4.157')], SAETZE);

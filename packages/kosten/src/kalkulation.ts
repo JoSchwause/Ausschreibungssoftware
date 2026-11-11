@@ -93,9 +93,14 @@ const MINUS_HUNDERT = konstante('-100.0');
 
 const negativ = (wert: Dezimal): boolean => vorzeichen(wert) < 0;
 
+/**
+ * Rechnet die Einzelpreiskalkulation einer Position. `freiBezeichnung` geht unverändert in die Einheitspreisanteile
+ * (trägt das LV `epaBezeichnungen`, übergibt die App `null`, D-28).
+ */
 export function einzelpreiskalkulationBerechnen(
   ansaetze: readonly Kalkulationsansatz[],
   saetze: Kalkulationszuschlagssaetze,
+  freiBezeichnung: string | null = null,
 ): Einzelpreiskalkulation {
   const befunde: Kalkulationsbefund[] = [];
   const befund = (
@@ -155,7 +160,7 @@ export function einzelpreiskalkulationBerechnen(
       nachunternehmer: anteil.nachunternehmer ?? null,
       sonstiges: anteil.sonstiges ?? null,
       frei: anteil.frei ?? null,
-      freiBezeichnung: null,
+      freiBezeichnung,
     },
     einheitspreis,
     kostenarten,

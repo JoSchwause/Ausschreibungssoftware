@@ -27,6 +27,9 @@ export { bezeichnungenLesen } from './bezeichnungen';
 export type {
   Einzelpreiskalkulation,
   Kalkulationsansatz,
+  Kalkulationsbefund,
+  Kalkulationsbefundcode,
+  Kalkulationsfeld,
   Kalkulationszuschlagssaetze,
   Kostenartnachweis,
 } from './kalkulation';
