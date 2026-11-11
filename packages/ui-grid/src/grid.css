@@ -360,3 +360,155 @@
   color: var(--tx-color-text-muted);
   font-size: var(--tx-font-size-sm);
 }
+
+/* ---------- Vergleichsgrid (Ticket 60): zweizeiliger Kopf, fixierte Spalten, Kennzeichen, Summenzeilen ---------- */
+
+/* Kopf als ein Raster über alle Kopfzeilen, damit Gruppen- und Spaltenköpfe sich Zeilen und Spalten teilen können. */
+.tx-grid__kopf--raster {
+  display: grid;
+}
+
+/* Die Kopfzeilen tragen nur die Rolle (ARIA); ihre Zellen stehen im Raster des Kopfes. */
+.tx-grid__kopfzeile--rolle {
+  display: contents;
+}
+
+.tx-grid__kopfzelle--gruppe {
+  justify-content: center;
+  border-bottom: 1px solid var(--tx-color-border);
+  color: var(--tx-color-text);
+}
+
+.tx-grid__kopfzelle--rechts,
+.tx-grid__zelle--rechts {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__kopfzelle--mitte,
+.tx-grid__zelle--mitte {
+  justify-content: center;
+}
+
+.tx-grid__zelle--rechts .tx-grid__text {
+  text-overflow: clip;
+}
+
+/* Fixierte linke Spalten: Sie kleben beim waagerechten Scrollen; der Versatz steht am Element (`left`). */
+.tx-grid__zelle--fixiert {
+  position: sticky;
+  z-index: 1;
+  background: inherit;
+}
+
+.tx-grid__kopfzelle--fixiert {
+  position: sticky;
+  z-index: 1;
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__zelle--fixiert-letzte,
+.tx-grid__kopfzelle--fixiert-letzte {
+  border-right: 1px solid var(--tx-color-border-strong);
+}
+
+.tx-grid__zeile--gliederung {
+  background: var(--tx-color-surface-raised);
+  font-weight: var(--tx-weight-bold);
+}
+
+/* Zellauswahl (Umschalt+Pfeil, Umschalt+Klick, Strg+A). */
+.tx-grid__zelle--ausgewaehlt,
+.tx-grid__zelle--fixiert.tx-grid__zelle--ausgewaehlt {
+  background: var(--tx-color-accent-subtle);
+}
+
+/* Ausreißer: zusätzlich zur Marke eine Linie am unteren Zellrand (nicht nur Farbe: die Marke trägt das Symbol). */
+.tx-grid__zelle--hoch {
+  box-shadow: inset 0 -2px 0 var(--tx-color-danger);
+}
+
+.tx-grid__zelle--niedrig {
+  box-shadow: inset 0 -2px 0 var(--tx-color-warning);
+}
+
+.tx-grid__zelle--nicht-angeboten .tx-grid__text {
+  color: var(--tx-color-text-muted);
+  font-style: italic;
+}
+
+/* Marken der Kennzeichen: Symbol als Text auf eigener Fläche; jedes Paar ist ein geprüftes Token-Paar (Kontrast). */
+.tx-grid__kennzeichenliste {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  order: -1;
+}
+
+.tx-grid__zelle--rechts .tx-grid__kennzeichenliste {
+  margin-right: auto;
+}
+
+.tx-grid__kennzeichen {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 3px;
+  border-radius: var(--tx-radius-sm);
+  font-size: var(--tx-font-size-sm);
+  font-weight: var(--tx-weight-bold);
+  font-style: normal;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--tx-color-text-muted);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__kennzeichen--hoch {
+  color: var(--tx-color-danger);
+  background: var(--tx-color-danger-subtle);
+}
+
+.tx-grid__kennzeichen--niedrig {
+  color: var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+}
+
+.tx-grid__kennzeichen--min {
+  color: var(--tx-color-success);
+  background: var(--tx-color-success-subtle);
+}
+
+.tx-grid__kennzeichen--max {
+  color: var(--tx-color-accent-text);
+  background: var(--tx-color-accent-subtle);
+}
+
+.tx-grid__kennzeichen--nicht-angeboten {
+  color: var(--tx-color-text-muted);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__kennzeichen--nullpreis {
+  color: var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+}
+
+.tx-grid__kennzeichen--hinweis {
+  color: var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+}
+
+/* Summenzeilen: kleben am unteren Rand des Scrollbereichs und scrollen waagerecht mit den Spalten. */
+.tx-grid__fuss {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  border-top: 1px solid var(--tx-color-border-strong);
+  background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__fuss .tx-grid__zeile {
+  position: relative;
+  background: var(--tx-color-surface-sunken);
+  font-weight: var(--tx-weight-bold);
+}
