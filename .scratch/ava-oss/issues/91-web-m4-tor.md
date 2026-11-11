@@ -1,6 +1,6 @@
 # 91: Tor M4: Kettentest und E2E „LPH 6–8“
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: – · Ordner: `apps/web/e2e/m4.spec.ts`, `apps/web/e2e/m3.spec.ts`, `apps/web/src/m4-kette.test.ts` (neu);
 kleine Reparaturen in den App-Ordnern der Welle nur mit Vermerk im Ticket
