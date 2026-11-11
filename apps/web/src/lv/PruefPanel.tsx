@@ -4,7 +4,7 @@
 // die Einträge, Enter springt. Einklappbar; der Kopf mit der Zahl bleibt sichtbar.
 
 import type { Pruefbefund } from '@tethys/vertrag';
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
 import type { Pruefgruppe } from './pruefung';
 import { texte } from './texte';
@@ -36,13 +36,28 @@ export const PruefPanel = forwardRef<PruefPanelSteuerung, PruefPanelProps>(funct
     ...(liste.current?.querySelectorAll<HTMLButtonElement>('[data-pruefeintrag]') ?? []),
   ];
 
+  // Der Fokus geht mit dem Tastendruck (bzw. Klick) selbst ins Panel, nicht erst im nächsten Bild: Bei langsamen Bildern
+  // käme ein verspäteter Fokus erst an, nachdem der Nutzer schon zu einem anderen Eintrag gewechselt ist, und nähme ihm
+  // den wieder weg. Ist das Panel zu, fokussiert der Effekt gleich nach dem Aufklappen; React schreibt das Aufklappen
+  // aus einem Tastendruck oder Klick fest, bevor das nächste Ereignis kommt.
+  const fokusNachAufklappen = useRef(false);
+  const ersterEintragFokussieren = (): void => {
+    (eintraege()[0] ?? kopf.current)?.focus();
+  };
+  useLayoutEffect(() => {
+    if (!offen || !fokusNachAufklappen.current) return;
+    fokusNachAufklappen.current = false;
+    ersterEintragFokussieren();
+  });
+
   useImperativeHandle(ref, () => ({
     fokussieren() {
-      if (!offen) onOffenChange(true);
-      // Nach dem Aufklappen steht die Liste erst im nächsten Bild.
-      requestAnimationFrame(() => {
-        (eintraege()[0] ?? kopf.current)?.focus();
-      });
+      if (offen) {
+        ersterEintragFokussieren();
+        return;
+      }
+      fokusNachAufklappen.current = true;
+      onOffenChange(true);
     },
   }));
 
