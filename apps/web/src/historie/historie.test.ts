@@ -193,8 +193,7 @@ describe('Befehlsweg: Rückgängig und Wiederholen', () => {
   it('LV-Stand: Undo entfernt ihn, Redo friert neu ein', async () => {
     const { speicher, u, weg, lv } = await aufbau();
     const lvId = z(lv).leistungsverzeichnis.id;
-    const staende = speicher.lvStaende;
-    if (!staende) throw new Error('kein lvStaende');
+    const staende = speicher.lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
     await lv.befehl({ art: 'LvStandAnlegen', id: u.ids.lvStand(), name: 'Versand' });
     expect((await staende.auflisten(lvId)).ok).toBe(true);
     const liste = async () => {

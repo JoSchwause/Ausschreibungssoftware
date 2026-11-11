@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Type: task
 Welle: 4 · Strang: V4 · Paket: `packages/vergabe`
-Blocked by: 53 (`vertrag` v1.3: Auftragnehmer), 51 (Fixtures in GAEB-Form)
+Blocked by: 53 (`vertrag` v1.3: Auftragnehmer), 51 (Fixtures in GAEB-Form); für das Speichern des Ergebnisses 57
 Regeln: A2, A3, A5, ADR 0011, F4, N2, N5, U5, Q5, G-26, E-04, D-21
 Herkunft: `plan.md` §2 V4, D-21
 
@@ -53,3 +53,7 @@ Wahlgruppen mit ihren Varianten (für den Dialog in Ticket 64).
 Oberfläche (Ticket 64), Nachträge, X86-Export des Auftrags-LV (läuft über den vorhandenen Writer).
 
 ## Comments
+
+### Aus Ticket 53 (Review, D-27)
+- Ein gesetzter `auftragnehmer` wird von `speicher` bis Ticket 57 mit `unbekannt` abgewiesen; die Rechnung hier ist davon unabhängig, die App (64) braucht 57.
+- Der Mengenansatz der Positionen kommt über das gedachte LV mit ins Auftrags-LV (Spread); das ist gewollt.

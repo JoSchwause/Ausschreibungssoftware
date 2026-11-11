@@ -35,8 +35,7 @@ function sammlungUmkehren<T>(a: Aenderungen<T>): Aenderungen<T> {
 
 /** Summen umkehren: alte Werte und die Summen entfernter Knoten zurück, neu entstandene Summen fallen weg. */
 export function summenUmkehren(s: Summenaenderung): Summenaenderung {
-  const v = s.vorher;
-  if (v === undefined) throw new Error('keine alten Summen im ChangeSet (summen.vorher fehlt)');
+  const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   const alteP = new Set<string>(v.positionen.map((p) => p.positionId));
   const alteG = new Set<string>(v.gliederungen.map((g) => g.gliederungId));
   return {

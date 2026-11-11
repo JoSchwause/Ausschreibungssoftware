@@ -339,3 +339,26 @@ Question: Der Löschdialog des Grids und App-Dialoge können den neuen Anfangsfo
 Decision: Ticket 67 ergänzt `Button` um die Weitergabe des `ref` (benannte Ausnahme von P2, `ui-basis` hat in dieser Phase keinen Schreiber); der Löschdialog in `ui-grid` bleibt bis zu einem späteren Grid-Ticket bei seinem Tastenhandler.
 Reason: Eine Zeile, additiv, kein anderer Schreiber in `ui-basis`.
 Reversible: yes  Touches: packages/ui-basis, apps/web
+
+## D-27 Tor für `vertrag` v1.3
+Welle 4 · Ticket 53 · decided by: orchestrator
+Question: Ist v1.3 stabil genug, damit 56, 57, 59, 65, 68 darauf bauen (statt Prüfung durch den Nutzer, P9, D-22 (iv))?
+Decision: Ja, nach Behebung der Review-Befunde. Opus-Reviewer: „yes-with-fixes“; nicht additive Punkte 3, 4, 5, 9 gegen alle Verbraucher geprüft, kein Verlust außer `PositionAnlegen` mit `mengenansatz` (wird abgewiesen). Befunde 1, 2, 5, 6, 8 behebt Ticket 53, Befund 3 per D-28, Befund 4 als Nachträge „Aus Ticket 53“ in 56, 57, 59, 65, 68; Befund 7 geht an Ticket 68.
+Reason: Alle Befunde eindeutig lösbar; die eine Abwägung (Befund 3) hat der Berater entschieden.
+Reversible: yes  Touches: packages/vertrag, Tickets 56, 57, 59, 65, 68
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-28 EPA-Bezeichnungen mit ausdrücklicher Nummer
+Welle 4 · Ticket 53, 57, 68 · decided by: advisor
+Question: `epaBezeichnungen` als dichte Liste (Eintrag i = `UPComp<i+1>`) kann keine Lücken zeigen; der GAEB-Leser erzeugt aber Lücken.
+Decision: `EpaBezeichnung { nummer: 1..6; anteil: EpaArt; bezeichnung: string | null }`, nach `nummer` sortiert, `nummer` und `anteil` je eindeutig, Feld optional. Fehlende Nummer = Platz nicht belegt; `bezeichnung: null` = Art aus `Type` bekannt, Beschriftung leer; Feld fehlt = heutige feste Belegung des Writers. Writer nummerieren nie um; ob das XSD Lücken in `LblUPComp` zulässt, prüft Ticket 68 (sonst Platzhalter-Beschriftung, keine Umnummerierung).
+Reason: Die Platznummer ist der einzige Schlüssel, der `UPComp<n>` eines Bieters (X84 ohne `LblUPComp`) einer Art zuordnet; eine dichte Liste verschöbe Preise still in eine falsche Art (Q5).
+Reversible: yes (noch nicht gespeichert)  Touches: packages/vertrag, Tickets 57, 68
+
+## D-53.1 Enge Lesarten im Vertrag v1.3
+Welle 4 · Ticket 53 · decided by: implementer
+Question: Wo lässt Ticket 53 (mit D-22) die Typform offen?
+Decision: `LvUebersicht` nur `{ id, name }`, sortiert wie die Projektliste; `Projektdatei.lvStaende` bleibt optional (nur `Speicher.lvStaende` wird Pflicht); neue Ortsform `{ art: 'hinter-gliederung'; gliederungId }` nur für Gliederungen, `nach` unverändert, der Kern weist sie bis Ticket 56 mit `befehl-nicht-zustaendig` ab; `auftragnehmer?` und `epaBezeichnungen?` (geordnet nach `UPComp<n>`) am gemeinsamen `LvInhaltKopf`; `MengenansatzSetzen` setzt die Menge auch beim Entfernen des Ansatzes, `[]` gilt wie `null`; `speicher` weist die neuen Felder bis Ticket 57 mit `unbekannt` ab (Q5). Alternativen als Offene Typfragen 1–8 in Ticket 53.
+Reason: Additiv, wo möglich; nicht Additives (Punkte 3, 4, 5, 9 und die Rückgabe von `auflisten`) nur mit markierter mechanischer Anpassung (W-03 (b)); kein stiller Datenverlust.
+Reversible: yes  Touches: packages/vertrag, mechanische Zeilen in kern, mengen, speicher, vergabe, ui-grid (E2E), apps/web, proto
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-22).

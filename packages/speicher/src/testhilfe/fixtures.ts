@@ -45,6 +45,7 @@ import type {
   TitelId,
   Zeitstempel,
 } from '@tethys/vertrag';
+import { LEERES_SUMMENVORHER } from '../vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket
 
 interface FxNachlass {
   art: 'prozent' | 'betrag';
@@ -336,7 +337,7 @@ export function lvAnlegenChangeSet(z: LvZustand): LvChangeSet {
     leistungsverzeichnisId: kopf.id,
     kopf: { vorher: null, nachher: kopf },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-    summen: z.summen,
+    summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   };
 }
 
@@ -401,7 +402,7 @@ export function auftragsLvAnlegenChangeSet(z: AuftragsLvZustand): AuftragsLvChan
     auftragsLeistungsverzeichnisId: kopf.id,
     kopf: { vorher: null, nachher: kopf },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-    summen: z.summen,
+    summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   };
 }
 
@@ -412,7 +413,7 @@ export function angebotAnlegenChangeSet(z: AngebotZustand): AngebotChangeSet {
     angebotId: kopf.id,
     kopf: { vorher: null, nachher: kopf },
     positionen: { hinzugefuegt: positionen, geaendert: [], entfernt: [] },
-    summen: z.summen,
+    summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   };
 }
 

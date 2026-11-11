@@ -267,7 +267,8 @@ describe('Nachlass', () => {
       nachlass: '14.00',
       nettoNachNachlass: '126.00',
     });
-    expect(cs.summen.vorher?.gesamt).toEqual(s.summen.gesamt);
+    // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
+    expect(cs.summen.vorher.gesamt).toEqual(s.summen.gesamt);
   });
 
   it('gleicher Nachlass → leer; Entfernen ohne Nachlass → leer', () => {

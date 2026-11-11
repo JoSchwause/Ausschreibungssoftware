@@ -9,8 +9,11 @@ import type {
   AuftragsLeistungsverzeichnisAnlegen,
   GliederungAnlegen,
   KnotenEinfuegen,
+  KnotenVerschieben,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
+  MengeAendern,
+  MengenansatzSetzen,
   ProjektLoeschen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
@@ -28,6 +31,7 @@ import type {
 } from './marken';
 import type {
   Angebotsposition,
+  Ansatzzeile,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Leistungsverzeichnis,
@@ -290,7 +294,17 @@ export const beispielChangeSetMitHinweis: LvChangeSet = {
   leistungsverzeichnisId: lvId,
   kopf: null,
   knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
-  summen: { positionen: [], gliederungen: [], gesamt: null },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: {
+      positionen: [],
+      gliederungen: [],
+      gesamt: null,
+      entfernt: { positionen: [], gliederungen: [] },
+    },
+  },
   hinweise: [{ code: 'netto-nach-nachlass-negativ', meldung: 'Netto nach Nachlass ist negativ.' }],
 };
 
@@ -745,4 +759,93 @@ export const beispielProtokollRueckgaengig: Protokolleintrag = {
   wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
   wann: '2026-11-10T12:05:00.000Z' as Zeitstempel,
   befehl: { art: 'Rueckgaengig', protokollId: '019b76e9-0000-7000-8000-000000000090' as ProtokollId },
+};
+
+// --- v1.3 (Ticket 53) -------------------------------------------------------------------------------------------
+
+/**
+ * Punkte 2 und 6 (D-53.6): LV-Kopf mit Auftragnehmer (aus X86, `CTR`) und EPA-Bezeichnungen: `UPComp1` ist Lohn,
+ * `UPComp2` Stoffe, `UPComp3` ist keinem Anteil zugeordnet (fehlt), `UPComp4` der Nachunternehmer-Anteil, `UPComp5`
+ * Sonstiges ohne Beschriftung (Art aus GAEB `Type`). Name und Anschrift erfunden.
+ */
+export const beispielLvKopfV13: LvKopf = {
+  ...lvKopf,
+  auftragnehmer: { name: 'Beispielbau GmbH', strasse: 'Musterweg 1', plz: null, ort: 'Musterstadt' },
+  epaBezeichnungen: [
+    { nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' },
+    { nummer: 2, anteil: 'stoffe', bezeichnung: 'Stoffe' },
+    { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    { nummer: 5, anteil: 'sonstiges', bezeichnung: null },
+  ],
+};
+
+/** Punkt 5: Der zweite Titel kommt als Geschwister direkt hinter den ersten (nicht als dessen erstes Kind wie bei `nach`). */
+export const beispielVerschiebenHinterGliederung: KnotenVerschieben = {
+  art: 'KnotenVerschieben',
+  knotenId: titel2Id,
+  ziel: { art: 'hinter-gliederung', gliederungId: titelId },
+};
+
+/** Punkt 9: Mengenansatz mit Bezug auf Zeile 1: 0,5 × 2 = 1,000; 1,000 × 0,235 = 0,235; Summe 1,235. */
+const ansatz: readonly Ansatzzeile[] = [
+  { zeile: 1, formel: 91, ausdruck: '0,5*2', variable: null },
+  { zeile: 2, formel: 91, ausdruck: 'Z1*0,235', variable: null },
+];
+
+/** Punkt 9: Die App hat die Menge mit `mengen` gerechnet und gibt sie mit; der Kern rechnet nicht nach. */
+export const beispielMengenansatzSetzen: MengenansatzSetzen = {
+  art: 'MengenansatzSetzen',
+  positionId: posId,
+  mengenansatz: ansatz,
+  menge: '1.235' as Menge,
+};
+
+/** Punkt 9, Lesart (b): Ein Ansatz mit Fehler (Zeile 2 teilt durch null) kommt mit `menge: null`. */
+export const beispielMengenansatzMitFehler: MengenansatzSetzen = {
+  art: 'MengenansatzSetzen',
+  positionId: posId,
+  mengenansatz: [...ansatz.slice(0, 1), { zeile: 2, formel: 91, ausdruck: 'Z1/0', variable: null }],
+  menge: null,
+};
+
+/** Punkt 9: ChangeSet zu `beispielMengenansatzSetzen`: Menge 1,000 → 1,235 samt Ansatz; Summen wie `beispielChangeSet`. */
+export const beispielChangeSetMengenansatz: LvChangeSet = {
+  ...beispielChangeSet,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      { vorher: { ...position, menge: '1.000' as Menge }, nachher: { ...position, mengenansatz: ansatz } },
+    ],
+    entfernt: [],
+  },
+};
+
+/** Punkt 9, Lesart (a): `MengeAendern` an der Position mit Ansatz; der Ansatz fällt im selben ChangeSet weg. */
+export const beispielMengeAendernMitAnsatz: MengeAendern = {
+  art: 'MengeAendern',
+  positionId: posId,
+  menge: '1.000' as Menge,
+};
+
+/** Punkt 9, Lesart (a): ChangeSet zu `beispielMengeAendernMitAnsatz`; `nachher` trägt kein `mengenansatz` mehr. */
+export const beispielChangeSetMengeOhneAnsatz: LvChangeSet = {
+  ...beispielChangeSet,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      { vorher: { ...position, mengenansatz: ansatz }, nachher: { ...position, menge: '1.000' as Menge } },
+    ],
+    entfernt: [],
+  },
+  summen: {
+    positionen: [{ positionId: posId, gesamtpreis: '10.00' as Betrag, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: titelId, summe: '10.00' as Betrag }],
+    gesamt: gesamtsummen('10.00', '0.00', '10.00', '1.90', '11.90'),
+    vorher: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: g1235,
+      entfernt: keinGesamt,
+    },
+  },
 };

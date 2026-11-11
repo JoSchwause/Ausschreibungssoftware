@@ -45,3 +45,9 @@ Herkunft: Ticket 53 (Punkte 5, 8, 9), D-22
 Auswertung des Ansatzes im Kern, Oberfläche, Speicherung.
 
 ## Comments
+
+### Aus Ticket 53 (Review, D-27)
+- `KnotenEinfuegen` (Kopie) behält den Mengenansatz; `[]` als Ansatz gilt wie `null`; `PositionAnlegen` mit `mengenansatz` wird bis hier markiert abgewiesen – entscheiden, ob es ihn tragen darf.
+- `MengenansatzSetzen` hat dieselben Vorbedingungen wie `MengeAendern` (Zuschlagsposition, Pauschal).
+- Nullbewegung bei `hinter-gliederung` auf sich selbst abfangen (`knoten-befehle.ts` prüft heute nur `nach`).
+- Formprüfung für `auftragnehmer` und `epaBezeichnungen` (D-28: `nummer` und `anteil` eindeutig, sortiert) in `inhaltKopfFehler`; der Vertragskommentar sagt „prüft der Kern“.

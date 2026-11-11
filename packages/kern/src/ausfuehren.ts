@@ -105,7 +105,9 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
  */
 type Offen = Exclude<Art, Umgesetzt>;
 export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<Partial<Record<Art, string>>> =
-  {};
+  {
+    MengenansatzSetzen: 'M2 (Ticket 56)', // v1.3: mechanisch angepasst, Folgeticket (kern: Mengenansatz, Ticket 56)
+  };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 
