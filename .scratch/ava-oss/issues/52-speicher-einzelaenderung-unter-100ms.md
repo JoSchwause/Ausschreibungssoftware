@@ -29,11 +29,11 @@ Baumprüfung nach dem Schreiben (`pruefeBaum`), Transaktion und Antwort über de
 
 ## Acceptance criteria
 
-- [ ] Phasenmessung von `anwenden` (Prüfsumme, Prüfungen, Transaktion, Worker-Antwort) im Ticket
-- [ ] `MengeAendern` bei `gross` (5.000 Positionen) bis zur Summenzeile: Median < 100 ms gesamt, in drei Läufen; Messwert im Ticket
-- [ ] Alle bisherigen `speicher`-Tests grün, Prüfungen unverändert (Q5), Protokoll unverändert
-- [ ] `e2e/leistung.spec.ts` prüft die Gesamtzeit hart (< 100 ms Median, grobe Schranke nur für Ausreißer)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] Phasenmessung von `anwenden` (Prüfsumme, Prüfungen, Transaktion, Worker-Antwort) im Ticket
+- [x] `MengeAendern` bei `gross` (5.000 Positionen) bis zur Summenzeile: Median < 100 ms gesamt, in drei Läufen; Messwert im Ticket
+- [x] Alle bisherigen `speicher`-Tests grün, Prüfungen unverändert (Q5), Protokoll unverändert
+- [x] `e2e/leistung.spec.ts` prüft die Gesamtzeit hart (< 100 ms Median, grobe Schranke nur für Ausreißer)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
@@ -155,3 +155,9 @@ neu laden: unter hoher Last 1 von 3 Läufen mit leerem Projekt).
   Danach App-E2E (die drei betroffenen Tests je 15 Mal) 45 von 45 grün. Neuer Browser-Test „Neuladen während des
   Schließens“ (25 Runden) als Wache; er trifft das Zeitfenster nicht zuverlässig (auf ruhiger Maschine auch ohne die
   Option grün).
+
+Suite (Umsetzer, nach Merge von `integration/welle-4` mit Vertrag v1.3): `pnpm lint`, `pnpm typecheck` grün; `pnpm test`
+1881 bestanden, 2 übersprungen; `@tethys/speicher` e2e 16 bestanden; `@tethys/web` e2e 50 bestanden (Messung dabei:
+dauerhaftes Profil Mengenänderung Median 46 ms, Undo 31 ms; flüchtiger Kontext 57 ms). In einem früheren Lauf unter
+Last 18 fielen drei reine CPU-Budgets anderer Pakete (`kern` K9 und `lvPruefen`, `vergabe` Preisspiegel); allein und
+auf ruhigerer Maschine grün, nicht aus diesem Ticket.
