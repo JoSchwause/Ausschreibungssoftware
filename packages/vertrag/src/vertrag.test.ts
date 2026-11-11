@@ -90,6 +90,19 @@ import {
   type Vergabeinformationen,
   type VergabeinformationenSetzen,
   type Wiederholen,
+  type Ansatzzeile,
+  type Auftragnehmer,
+  type AuftragsLvKopf,
+  type Einheitspreisanteile,
+  type EpaArt,
+  type EpaBezeichnung,
+  type LvInhaltKopf,
+  type LvRepository,
+  type LvUebersicht,
+  type MengenansatzSetzen,
+  type Massenbefehlsart,
+  type Positionsdaten,
+  type Summenvorher,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -117,6 +130,13 @@ import {
   beispielKnotenEinfuegen,
   beispielLvStandChangeSet,
   beispielProtokollRueckgaengig,
+  beispielChangeSetMengenansatz,
+  beispielChangeSetMengeOhneAnsatz,
+  beispielLvKopfV13,
+  beispielMengenansatzMitFehler,
+  beispielMengenansatzSetzen,
+  beispielMengeAendernMitAnsatz,
+  beispielVerschiebenHinterGliederung,
 } from './beispiele';
 
 /**
@@ -336,12 +356,10 @@ describe('Beispiele kompilieren', () => {
 
 /**
  * Umkehrung eines LV-ChangeSets, nur aus dem ChangeSet gelesen (kein Zustand, kein Kern). Der Test belegt, dass der
- * Vertrag dafür alles trägt; die Umsetzung im Kern ist Sache des Folgetickets. Fehlt `summen.vorher`, ist das
- * ChangeSet nicht ohne Zustand umkehrbar: die Funktion wirft.
+ * Vertrag dafür alles trägt; die Umsetzung im Kern ist Sache des Folgetickets. `summen.vorher` ist seit v1.3 Pflicht.
  */
 function umkehren(cs: LvChangeSet): LvChangeSet {
   const v = cs.summen.vorher;
-  if (v === undefined) throw new Error('keine alten Summen im ChangeSet');
   const alteP = new Set<string>(v.positionen.map((p) => p.positionId));
   const alteG = new Set<string>(v.gliederungen.map((g) => g.gliederungId));
   const summen: Summenaenderung = {
@@ -419,7 +437,7 @@ describe('v1.1a Punkt 1: Summen umkehrbar', () => {
   it('Entfernen stellt Knoten und deren Summen aus dem ChangeSet allein wieder her', () => {
     const neu = umkehren(beispielChangeSetEntfernen);
     expect(neu.knoten.hinzugefuegt).toHaveLength(1);
-    expect(neu.summen.positionen).toEqual(beispielChangeSetEntfernen.summen.vorher?.entfernt.positionen);
+    expect(neu.summen.positionen).toEqual(beispielChangeSetEntfernen.summen.vorher.entfernt.positionen);
     expect(neu.summen.gliederungen[0]?.summe).toBe('22.35');
   });
 
@@ -440,10 +458,11 @@ describe('v1.1a Punkt 1: Summen umkehrbar', () => {
     expect(m.summen.gesamt?.brutto).toBe('14.70');
   });
 
-  it('ein ChangeSet ohne `vorher` ist nicht ohne Zustand umkehrbar', () => {
+  it('v1.3: ein ChangeSet ohne `vorher` ist kein gültiger Wert mehr (Pflichtfeld, Ticket 53 Punkt 3)', () => {
     const { positionen, gliederungen, gesamt } = beispielChangeSet.summen;
-    const ohne: LvChangeSet = { ...beispielChangeSet, summen: { positionen, gliederungen, gesamt } };
-    expect(() => umkehren(ohne)).toThrow();
+    // @ts-expect-error -- seit v1.3 ist `Summenaenderung.vorher` Pflicht
+    const ohne: Summenaenderung = { positionen, gliederungen, gesamt };
+    expect(ohne).not.toHaveProperty('vorher');
   });
 });
 
@@ -490,7 +509,7 @@ describe('v1.1a Punkt 4: Löschen', () => {
     expectTypeOf<ProjektChangeSet['projekt']['nachher']>().toEqualTypeOf<Projekt | null>();
     expectTypeOf<AngebotChangeSet['kopf']>().toEqualTypeOf<Aenderung<AngebotKopf> | null>();
     expect(beispielLoeschChangeSet.knoten.entfernt).toEqual(beispielLv.knoten);
-    expect(beispielLoeschChangeSet.summen.vorher?.entfernt.positionen).toHaveLength(1);
+    expect(beispielLoeschChangeSet.summen.vorher.entfernt.positionen).toHaveLength(1);
   });
 });
 
@@ -667,7 +686,7 @@ describe('v1.2 Nr. 4: Kopieren, Verschieben, Papierkorb (K9)', () => {
     expect(h.knoten.entfernt).toEqual(eintrag?.knoten);
     expect(eintrag?.knoten[0]?.reihenfolge).toBe(1);
     expect(h.summen.positionen).toHaveLength(0);
-    expect(h.summen.vorher?.entfernt.positionen).toHaveLength(1);
+    expect(h.summen.vorher.entfernt.positionen).toHaveLength(1);
     const w = beispielChangeSetWiederherstellen;
     expect(w.knoten.hinzugefuegt).toEqual(eintrag?.knoten);
     expect(w.papierkorb?.entfernt).toEqual([eintrag]);
@@ -703,8 +722,8 @@ describe('v1.2 Nr. 5: Rückgängig, Wiederholen, LV-Stand (S3)', () => {
     expect(umkehrenV12(zurueck)).toEqual(cs);
   });
 
-  it('Speicher und Projektdatei kennen LV-Stände (optional bis Ticket 43)', () => {
-    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository | undefined>();
+  it('Speicher und Projektdatei kennen LV-Stände (am Speicher Pflicht seit v1.3, in der Datei optional)', () => {
+    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository>();
     expectTypeOf<Projektdatei['lvStaende']>().toEqualTypeOf<readonly LvStand[] | undefined>();
     expectTypeOf<ReturnType<LvStandRepository['laden']>>().toEqualTypeOf<
       Promise<Ergebnis<LvStand, Speicherfehler>>
@@ -769,5 +788,141 @@ describe('v1.2: reine Daten und Werte vor v1.2', () => {
     // die Umkehrung ab v1.2 erfindet keine Felder
     expect(Object.keys(umkehrenV12(cs))).not.toContain('papierkorb');
     expect(Object.keys(umkehrenV12(cs))).not.toContain('lvStand');
+  });
+});
+
+// --- v1.3 (Ticket 53) -------------------------------------------------------------------------------------------
+
+/** Die Position eines Knotens oder `undefined`. */
+const alsPosition = (k: Knoten | undefined): Position | undefined => (k?.art === 'position' ? k : undefined);
+
+describe('v1.3 Punkt 1: LV-Übersicht', () => {
+  it('auflisten liefert Kennung und Name, keine Knoten', () => {
+    expectTypeOf<ReturnType<LvRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly LvUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<LvUebersicht['id']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<LvUebersicht['name']>().toEqualTypeOf<string>();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('knoten');
+  });
+});
+
+describe('v1.3 Punkte 2 und 6: EPA-Bezeichnungen und Auftragnehmer am LV-Kopf', () => {
+  it('EpaArt sind genau die Anteile von Einheitspreisanteile', () => {
+    expectTypeOf<EpaArt>().toEqualTypeOf<Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>>();
+    expectTypeOf<EpaBezeichnung['anteil']>().toEqualTypeOf<EpaArt>();
+    expectTypeOf<LvInhaltKopf['epaBezeichnungen']>().toEqualTypeOf<readonly EpaBezeichnung[] | undefined>();
+  });
+
+  it('Auftragnehmer: optional am gemeinsamen Kopf, also auch am Auftrags-LV; alle Felder nullbar', () => {
+    expectTypeOf<LvInhaltKopf['auftragnehmer']>().toEqualTypeOf<Auftragnehmer | undefined>();
+    expectTypeOf<AuftragsLvKopf['auftragnehmer']>().toEqualTypeOf<Auftragnehmer | undefined>();
+    expectTypeOf<Auftragnehmer[keyof Auftragnehmer]>().toEqualTypeOf<string | null>();
+  });
+
+  it('Beispiel: Reihenfolge der Bezeichnungen ist die der Anteile in der Datei, jede Art höchstens einmal', () => {
+    const b = beispielLvKopfV13.epaBezeichnungen ?? [];
+    expect(b.map((e) => e.anteil)).toEqual(['lohn', 'stoffe', 'nachunternehmer']);
+    expect(new Set(b.map((e) => e.anteil)).size).toBe(b.length);
+    expect(beispielLvKopfV13.auftragnehmer?.plz).toBeNull();
+  });
+});
+
+describe('v1.3 Punkte 3 und 4: Pflichtfelder', () => {
+  it('Summenaenderung.vorher und Speicher.lvStaende sind Pflicht, Projektdatei.lvStaende bleibt optional', () => {
+    expectTypeOf<Summenaenderung['vorher']>().toEqualTypeOf<Summenvorher>();
+    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository>();
+    expectTypeOf<Projektdatei['lvStaende']>().toEqualTypeOf<readonly LvStand[] | undefined>();
+  });
+});
+
+describe('v1.3 Punkt 5: Einfügen hinter einer Gliederung', () => {
+  it('neue Form nur für Gliederungen; `nach` bleibt unverändert', () => {
+    type Hinter = Extract<Einfuegeort, { art: 'hinter-gliederung' }>;
+    expectTypeOf<Hinter['gliederungId']>().toEqualTypeOf<GliederungId>();
+    expectTypeOf<PositionId>().not.toExtend<Hinter['gliederungId']>();
+    expectTypeOf<Extract<Einfuegeort, { art: 'nach' }>['knotenId']>().toEqualTypeOf<KnotenId>();
+    expectTypeOf<Einfuegeort['art']>().toEqualTypeOf<'nach' | 'anfang' | 'ende' | 'hinter-gliederung'>();
+    expect(beispielVerschiebenHinterGliederung.ziel).toEqual({
+      art: 'hinter-gliederung',
+      gliederungId: '019b76e9-0000-7000-8000-000000000002',
+    });
+  });
+});
+
+describe('v1.3 Punkte 7 und 8: kein Typ für Positionsnachlass und Bieterergänzung, Langtext bleibt weit', () => {
+  it('Angebotsposition unverändert (G-26, Offene Typfrage)', () => {
+    expectTypeOf<Extract<Angebotsposition, { status: 'angeboten' }>>().not.toHaveProperty('nachlass');
+  });
+
+  it('leere Liste, Tabelle ohne Zeilen und Zeile ohne Zellen sind gültige Langtexte (D-22)', () => {
+    const leer: Langtext = [
+      { art: 'liste', geordnet: false, punkte: [] },
+      { art: 'tabelle', zeilen: [] },
+      { art: 'tabelle', zeilen: [{ zellen: [] }] },
+    ];
+    expect(leer).toHaveLength(3);
+  });
+});
+
+describe('v1.3 Punkt 9: Mengenansatz an der Position', () => {
+  it('Ansatzzeile liegt im Vertrag; die Position trägt den Ansatz optional', () => {
+    expectTypeOf<Positionsdaten['mengenansatz']>().toEqualTypeOf<readonly Ansatzzeile[] | undefined>();
+    expectTypeOf<Ansatzzeile>().toEqualTypeOf<{
+      readonly zeile: number;
+      readonly formel: number;
+      readonly ausdruck: string;
+      readonly variable: string | null;
+    }>();
+  });
+
+  it('MengenansatzSetzen ist ein LV-Befehl mit Ansatz (oder null) und gerechneter Menge, kein Massenbefehl', () => {
+    expectTypeOf<MengenansatzSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<MengenansatzSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<MengenansatzSetzen['mengenansatz']>().toEqualTypeOf<readonly Ansatzzeile[] | null>();
+    expectTypeOf<MengenansatzSetzen['menge']>().toEqualTypeOf<Menge | null>();
+    expectTypeOf<'MengenansatzSetzen'>().not.toExtend<Massenbefehlsart>();
+    expect(beispielMengenansatzSetzen.menge).toBe('1.235');
+    // Lesart (b): ein Ansatz mit Fehler kommt ohne Menge
+    expect(beispielMengenansatzMitFehler.menge).toBeNull();
+    expect(beispielMengenansatzMitFehler.mengenansatz).toHaveLength(2);
+  });
+
+  it('ChangeSet: Ansatz und Menge in einer Knotenänderung; die Umkehrung nimmt den Ansatz wieder weg', () => {
+    const g = beispielChangeSetMengenansatz.knoten.geaendert[0];
+    expect(alsPosition(g?.nachher)?.mengenansatz).toEqual(beispielMengenansatzSetzen.mengenansatz);
+    expect(alsPosition(g?.nachher)?.menge).toBe(beispielMengenansatzSetzen.menge);
+    expect(alsPosition(g?.vorher)).not.toHaveProperty('mengenansatz');
+    const zurueck = umkehren(beispielChangeSetMengenansatz);
+    expect(alsPosition(zurueck.knoten.geaendert[0]?.nachher)).not.toHaveProperty('mengenansatz');
+    expect(umkehren(zurueck)).toEqual(beispielChangeSetMengenansatz);
+  });
+
+  it('Lesart (a): ein reiner Mengenbefehl entfernt den Ansatz im selben ChangeSet', () => {
+    expect(beispielMengeAendernMitAnsatz.art).toBe('MengeAendern');
+    const g = beispielChangeSetMengeOhneAnsatz.knoten.geaendert[0];
+    expect(alsPosition(g?.vorher)?.mengenansatz).toHaveLength(2);
+    expect(alsPosition(g?.nachher)).not.toHaveProperty('mengenansatz');
+    expect(alsPosition(g?.nachher)?.menge).toBe(beispielMengeAendernMitAnsatz.menge);
+    expect(beispielChangeSetMengeOhneAnsatz.summen.gesamt?.netto).toBe('10.00');
+    expect(beispielChangeSetMengeOhneAnsatz.summen.vorher.gesamt?.netto).toBe('12.35');
+  });
+});
+
+describe('v1.3: reine Daten und Werte vor v1.3', () => {
+  it('NurDaten deckt die neuen Typen ab', () => {
+    expectTypeOf<NurDaten<MengenansatzSetzen>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvUebersicht>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvInhaltKopf>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Einfuegeort>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+  });
+
+  it('Position ohne Ansatz und Kopf ohne Auftragnehmer und EPA-Bezeichnungen bleiben gültig', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).toBeDefined();
+    expect(p).not.toHaveProperty('mengenansatz');
+    expect(beispielLv).not.toHaveProperty('auftragnehmer');
+    expect(beispielLv).not.toHaveProperty('epaBezeichnungen');
   });
 });

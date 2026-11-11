@@ -22,6 +22,7 @@ import type {
 import type {
   Angebot,
   Angebotsposition,
+  Ansatzzeile,
   Auftraggeber,
   AuftragsLeistungsverzeichnis,
   Bauherr,
@@ -46,7 +47,15 @@ export type Einfuegeort =
   /** Hinter dem Knoten. Elternknoten: bei einer Position/einem Hinweistext derselbe, bei einem Gliederungsknoten dessen erster Unterknoten (Ticket 05). */
   | { readonly art: 'nach'; readonly knotenId: KnotenId }
   | { readonly art: 'anfang'; readonly elternId: ElternId }
-  | { readonly art: 'ende'; readonly elternId: ElternId };
+  | { readonly art: 'ende'; readonly elternId: ElternId }
+  /**
+   * Hinter der Gliederung samt ihrem Unterbaum, als ihr Geschwister (v1.3, Ticket 53 Punkt 5): Elternknoten ist der
+   * der Gliederung, der Index der nächste hinter ihr. Ergänzt `nach`, das bei einer Gliederung „als erstes Kind“ heißt
+   * und so bleibt (Befehle im Protokoll behalten ihre Bedeutung). Vorläufige Annahme, Entscheidung offen (enge
+   * Lesart): nur für Gliederungen; hinter einer Position oder einem Hinweistext gilt weiter `nach` (eine Schreibweise je
+   * Ort). Die Kern-Logik liefert Ticket 56; bis dahin weist der Kern diese Form mit `befehl-nicht-zustaendig` ab.
+   */
+  | { readonly art: 'hinter-gliederung'; readonly gliederungId: GliederungId };
 
 // --- Projekt ---------------------------------------------------------------------------------------
 
@@ -280,10 +289,36 @@ export interface HinweistextAendern {
   readonly text: Langtext;
 }
 
+/**
+ * Setzt die Menge von Hand. v1.3 (D-22, Lesart (a)): Hat die Position einen Mengenansatz, entfernt der Kern ihn im
+ * selben ChangeSet (Ticket 56); die Menge kommt dann nicht mehr aus dem Ansatz.
+ */
 export interface MengeAendern {
   readonly art: 'MengeAendern';
   readonly positionId: PositionId;
   /** `null`: Menge leeren. */
+  readonly menge: Menge | null;
+}
+
+/**
+ * Setzt den Mengenansatz einer Position und ihre daraus gerechnete Menge in einem Befehl (v1.3, M2; D-22). Die App rechnet
+ * `menge` mit `mengen` (`mengenansatzBerechnen(...).summe`); der Kern legt beides unausgewertet ab und rechnet nie nach
+ * (A3: kein `kern → mengen`). Das ChangeSet ist eine Knotenänderung der Position (`knoten.geaendert`) samt Summen.
+ *
+ * - `mengenansatz: null` entfernt den Ansatz (`Positionsdaten.mengenansatz` fehlt danach); `menge` wird trotzdem
+ *   gesetzt (die App gibt die Menge mit, die stehen bleiben soll). Ein leerer Ansatz `[]` ist keiner: Der Kern legt
+ *   dafür kein Feld ab wie bei `null` (Normalisierung beim Befehl wie `''` bei der Einheit; Ticket 56).
+ * - Lesart (b) (D-22): Ein Ansatz mit Fehler (eine Zeile ohne Ergebnis, `summe: null`) kommt mit `menge: null`; der
+ *   Ansatz wird gespeichert, die Menge ist dann nicht gesetzt (U5: der Fehler sperrt die Eingabe nicht).
+ * - Lesart (a) (D-22): Ein reiner Mengenbefehl (`MengeAendern`) an einer Position mit Ansatz entfernt den Ansatz im
+ *   selben ChangeSet (die Oberfläche fragt vorher); so laufen Menge und Ansatz nie auseinander.
+ *
+ * Kern-Handler Ticket 56, Speicherung Ticket 57, Panel Ticket 65.
+ */
+export interface MengenansatzSetzen {
+  readonly art: 'MengenansatzSetzen';
+  readonly positionId: PositionId;
+  readonly mengenansatz: readonly Ansatzzeile[] | null;
   readonly menge: Menge | null;
 }
 
@@ -413,7 +448,9 @@ export type LvBefehl =
   | LvStandAnlegen
   | AuftraggeberSetzen
   | VergabeinformationenSetzen
-  | LeitbeschreibungSetzen;
+  | LeitbeschreibungSetzen
+  // v1.3
+  | MengenansatzSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
