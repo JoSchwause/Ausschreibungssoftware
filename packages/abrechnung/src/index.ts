@@ -18,8 +18,8 @@ export { leistungsstandBerechnen } from './leistungsstand';
 export type { Leistungsbefund, Leistungsergebnis } from './leistungsstand';
 export { freigabeMoeglich, rechnungPruefen } from './rechnung-pruefen';
 export type {
-  Abweichung,
   Abzugskette,
+  Forderungsdifferenz,
   Forderungsvergleich,
   Freigabehindernis,
   FruehereZahlung,
