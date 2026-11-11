@@ -1,6 +1,6 @@
 # 64: V4: Zuschlag und Auftrags-LV in der App, E2E für Tor M3
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: V4 · Paket: `apps/web` (Ordner `src/vergabe/` (nach 63) und `src/auftrag/`; Einhängestellen, D-20)
 Blocked by: 63 (Preisspiegel-Seite), 59 (`zuschlagErteilen`), 57 (Speicher v1.3), 54 (schreibgeschütztes Grid), 69 (X84-Dateien)
