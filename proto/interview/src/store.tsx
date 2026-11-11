@@ -37,7 +37,7 @@ export function wendeAn(knoten: readonly Knoten[], b: LvBefehl): Knoten[] {
         elternId = b.ort.elternId;
         index = liste.length;
       } else if (b.ort.art === 'hinter-gliederung') {
-        return liste; // v1.3: mechanisch angepasst, Folgeticket (Einfuegeort hinter-gliederung, Ticket 56)
+        throw new Error('hinter-gliederung: erst Ticket 56'); // v1.3: mechanisch angepasst, Folgeticket
       } else {
         const ziel = b.ort.elternId;
         elternId = ziel;

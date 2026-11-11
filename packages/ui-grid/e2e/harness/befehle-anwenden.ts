@@ -40,7 +40,7 @@ function umhaengen(liste: readonly Knoten[], ids: readonly KnotenId[], ziel: Ein
         index = (kinder.get(eltern) ?? []).findIndex((k) => k.id === x.id) + 1;
       }
     } else if (ziel.art === 'hinter-gliederung') {
-      return [...liste]; // v1.3: mechanisch angepasst, Folgeticket (Einfuegeort hinter-gliederung, Ticket 56)
+      throw new Error('hinter-gliederung: erst Ticket 56'); // v1.3: mechanisch angepasst, Folgeticket
     } else {
       eltern = ziel.elternId;
       index = ziel.art === 'anfang' ? 0 : (kinder.get(eltern) ?? []).length;
@@ -104,7 +104,7 @@ export function wendeAn(knoten: readonly Knoten[], befehle: readonly LvBefehl[])
           elternId = b.ort.elternId;
           index = liste.length;
         } else if (b.ort.art === 'hinter-gliederung') {
-          break; // v1.3: mechanisch angepasst, Folgeticket (Einfuegeort hinter-gliederung, Ticket 56)
+          throw new Error('hinter-gliederung: erst Ticket 56'); // v1.3: mechanisch angepasst, Folgeticket
         } else {
           const ziel = b.ort.elternId;
           elternId = ziel;

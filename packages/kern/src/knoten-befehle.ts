@@ -221,6 +221,14 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   const d = b.daten;
+  // v1.3: mechanisch angepasst, Folgeticket (Ticket 56 entscheidet, ob PositionAnlegen einen Mengenansatz mitbringt)
+  if (d.mengenansatz !== undefined)
+    return nein(
+      'befehl-nicht-zustaendig',
+      'PositionAnlegen mit Mengenansatz: zuständig Ticket 56.',
+      b.id,
+      'mengenansatz',
+    );
   return ok(
     einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
       positionMitEinheiten({

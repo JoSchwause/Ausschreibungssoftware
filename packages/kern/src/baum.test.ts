@@ -692,7 +692,7 @@ describe('Befehle anderer Tickets', () => {
   });
 
   // v1.3: mechanisch angepasst, Folgeticket (Ticket 56 ersetzt diesen Test durch die Logik)
-  it('v1.3: MengenansatzSetzen und der Einfügeort hinter-gliederung werden vorläufig abgewiesen', () => {
+  it('v1.3: MengenansatzSetzen, der Einfügeort hinter-gliederung und PositionAnlegen mit Ansatz werden vorläufig abgewiesen', () => {
     const p1 = id.pos('P1');
     expect(
       fehlercode(z, { art: 'MengenansatzSetzen', positionId: p1, mengenansatz: null, menge: null }),
@@ -700,6 +700,16 @@ describe('Befehle anderer Tickets', () => {
     const hinterT1: Einfuegeort = { art: 'hinter-gliederung', gliederungId: id.titel('T1') };
     expect(fehlercode(z, titel('T2', hinterT1))).toBe('befehl-nicht-zustaendig');
     expect(fehlercode(z, position('P9', hinterT1))).toBe('befehl-nicht-zustaendig');
+    const mitAnsatz: LvBefehl = {
+      art: 'PositionAnlegen',
+      id: id.pos('P9'),
+      ort: ende('T1'),
+      daten: {
+        ...positionsdaten('P9'),
+        mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '1', variable: null }],
+      },
+    };
+    expect(fehlercode(z, mitAnsatz)).toBe('befehl-nicht-zustaendig');
     expect(fehlercode(z, verschiebe('P1', hinterT1))).toBe('befehl-nicht-zustaendig');
     expect(fehlercode(z, { art: 'KnotenlisteVerschieben', knotenIds: [p1], ziel: hinterT1 })).toBe(
       'befehl-nicht-zustaendig',
