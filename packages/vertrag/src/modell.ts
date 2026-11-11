@@ -574,9 +574,54 @@ export interface LvInhalt extends LvInhaltKopf {
   readonly knoten: readonly Knoten[];
 }
 
+// --- Nachtrag (v1.4, A1; D-35) ------------------------------------------------------------------------------------
+
+/**
+ * Stand eines Nachtrags (v1.4, Ticket 70 Punkt 3; D-35; Glossar „Nachtragsstatus“): `angemeldet` (der Auftragnehmer hat
+ * die geänderte oder zusätzliche Leistung angezeigt), `angeboten` (das Nachtragsangebot liegt vor), `beauftragt` (der
+ * Auftraggeber hat beauftragt; der Nachtrag steht über `NachtragUebernehmen` im Auftrags-LV), `abgelehnt`.
+ *
+ * Nur ein beauftragter Nachtrag steht im Auftrags-LV und geht damit in Aufmaß und Rechnung; ein anderer erscheint dort
+ * höchstens als Infozeile (D-35; die zweite Bedeutung von „VOB 80“, 80 % in Abschlagsrechnungen, ist nicht in v1).
+ * Übergänge prüft der Kern nicht: Er sieht nur das Nachtrags-LV, nicht das Auftrags-LV. `beauftragt` setzt die App erst,
+ * nachdem `NachtragUebernehmen` geschrieben ist (D-35).
+ */
+export type Nachtragsstatus = 'angemeldet' | 'angeboten' | 'beauftragt' | 'abgelehnt';
+
+/**
+ * Nachtragsangaben (v1.4, Ticket 70 Punkt 3; D-35; Glossar „Nachtrag“, „Nachtragsangaben“): Sie machen ein gewöhnliches
+ * Ausschreibungs-LV zum Nachtrags-LV. Das Nachtragsangebot ist ein gewöhnliches `Angebot` zu diesem LV mit der `bieterId`
+ * des beauftragten Angebots (der Typ prüft das nicht); Preisspiegel, GAEB und Grid arbeiten mit ihm wie mit jedem LV.
+ */
+export interface Nachtragsangaben {
+  /**
+   * Das Auftrags-LV desselben Projekts, zu dem der Nachtrag gehört. Der Kern prüft die Kennung nicht (anderes Aggregat);
+   * `speicher` weist eine Kennung ohne Auftrags-LV im Projekt mit `konflikt` ab, ebenso die Umkehrung des Anlegens dieses
+   * Auftrags-LV, solange Nachtragsangaben darauf verweisen (Q5).
+   */
+  readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
+  /**
+   * Nachtragsnummer, wie die Beteiligten sie führen (z. B. `N01`); freier Text, nicht leer (der Kern weist `''` und reinen
+   * Leerraum mit `ungueltige-eingabe` ab). Ob sie je Auftrags-LV eindeutig ist, sieht der Kern nicht (ein Aggregat); die
+   * App weist darauf hin, sperrt aber nicht (U5). Die Gliederung im Auftrags-LV heißt „Nachtrag <nummer>“.
+   */
+  readonly nummer: string;
+  readonly status: Nachtragsstatus;
+}
+
 export interface LvKopf extends LvInhaltKopf {
   readonly id: LeistungsverzeichnisId;
   readonly projektId: ProjektId;
+  /**
+   * Fehlt: kein Nachtrag (v1.4, Ticket 70 Punkt 3; D-35). Gesetzt: das LV ist ein Nachtrags-LV, siehe `Nachtragsangaben`.
+   * Geändert nur über `NachtragsangabenSetzen`.
+   *
+   * Vorläufige Annahme, Entscheidung offen (enge Lesart): am `LvKopf`, nicht am gemeinsamen `LvInhaltKopf`. So trägt das
+   * Auftrags-LV es nie, und weder `LeistungsverzeichnisAnlegen` noch der GAEB-Leser bringen es mit: Die App legt das
+   * Nachtrags-LV an und setzt die Angaben im selben Schritt (Befehlsfolge, ein Undo-Schritt). Ein LV, das aus einem
+   * LV-Stand zurückgeholt wird, ist kein Nachtrag mehr. Alternative: am `LvInhaltKopf` (Offene Typfrage, Ticket 70).
+   */
+  readonly nachtrag?: Nachtragsangaben;
 }
 
 /**

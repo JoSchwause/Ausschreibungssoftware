@@ -112,6 +112,9 @@ import {
   type AuftragsLvChangeSetAnwenden,
   type AuftragsLvChangeSetUmkehren,
   type NachtragUebernehmen,
+  type Nachtragsangaben,
+  type NachtragsangabenSetzen,
+  type Nachtragsstatus,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -151,6 +154,8 @@ import {
   beispielAuftragsLvUebersicht,
   beispielChangeSetNachtragUebernehmen,
   beispielNachtragUebernehmen,
+  beispielChangeSetNachtragBeauftragt,
+  beispielNachtragsangabenSetzen,
 } from './beispiele';
 
 /**
@@ -1050,5 +1055,39 @@ describe('v1.4 Punkt 2: Befehle am Auftrags-LV, Nachtrag übernehmen', () => {
     expect(zurueck.summen.vorher.entfernt.positionen).toHaveLength(2);
     expect(zurueck.summen.gesamt?.netto).toBe('12.35');
     expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 3: Nachtrag (D-35)', () => {
+  it('Nachtragsstatus und Nachtragsangaben', () => {
+    expectTypeOf<Nachtragsstatus>().toEqualTypeOf<'angemeldet' | 'angeboten' | 'beauftragt' | 'abgelehnt'>();
+    expectTypeOf<Nachtragsangaben['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<Nachtragsangaben['nummer']>().toEqualTypeOf<string>();
+    expectTypeOf<Nachtragsangaben['status']>().toEqualTypeOf<Nachtragsstatus>();
+  });
+
+  it('enge Lesart: am LvKopf, nicht am gemeinsamen Kopf (also weder im Import noch am Auftrags-LV)', () => {
+    expectTypeOf<LvKopf['nachtrag']>().toEqualTypeOf<Nachtragsangaben | undefined>();
+    expectTypeOf<LvInhaltKopf>().not.toHaveProperty('nachtrag');
+    expectTypeOf<LvInhalt>().not.toHaveProperty('nachtrag');
+    expectTypeOf<AuftragsLvKopf>().not.toHaveProperty('nachtrag');
+  });
+
+  it('NachtragsangabenSetzen ist ein LV-Befehl; null entfernt die Angaben', () => {
+    expectTypeOf<NachtragsangabenSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<NachtragsangabenSetzen['nachtrag']>().toEqualTypeOf<Nachtragsangaben | null>();
+    expectTypeOf<'NachtragsangabenSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+    expect(beispielNachtragsangabenSetzen.nachtrag?.status).toBe('beauftragt');
+  });
+
+  it('ChangeSet: nur der Kopf; die Umkehrung nimmt den Status zurück', () => {
+    const cs = beispielChangeSetNachtragBeauftragt;
+    expect(cs.kopf?.vorher?.nachtrag?.status).toBe('angeboten');
+    expect(cs.kopf?.nachher?.nachtrag?.status).toBe('beauftragt');
+    expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
+    expect(cs.summen.gesamt).toBeNull();
+    const zurueck = umkehren(cs);
+    expect(zurueck.kopf?.nachher?.nachtrag?.status).toBe('angeboten');
+    expect(umkehren(zurueck)).toEqual(cs);
   });
 });

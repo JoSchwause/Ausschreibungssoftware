@@ -34,6 +34,7 @@ import type {
   Leitbeschreibung,
   LvInhalt,
   Nachlass,
+  Nachtragsangaben,
   OzMaske,
   Positionsdaten,
   Positionsmerkmale,
@@ -369,6 +370,17 @@ export interface VergabeinformationenSetzen {
   readonly vergabeinformationen: Vergabeinformationen | null;
 }
 
+/**
+ * Setzt die Nachtragsangaben des LV als ganzen Wert; `null` entfernt sie, das LV ist dann kein Nachtrags-LV mehr (das
+ * Feld fehlt danach am `LvKopf`) (v1.4, Ticket 70 Punkt 3; D-35). ChangeSet: nur der Kopf, keine Summen. Der Kern prüft
+ * `nummer` (nicht leer) und `status` (einer der vier Werte), nicht die Kennung des Auftrags-LV und keine Übergänge (siehe
+ * `Nachtragsangaben`). Kern-Handler Ticket 71.
+ */
+export interface NachtragsangabenSetzen {
+  readonly art: 'NachtragsangabenSetzen';
+  readonly nachtrag: Nachtragsangaben | null;
+}
+
 /** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
 export interface LeitbeschreibungSetzen {
   readonly art: 'LeitbeschreibungSetzen';
@@ -450,7 +462,9 @@ export type LvBefehl =
   | VergabeinformationenSetzen
   | LeitbeschreibungSetzen
   // v1.3
-  | MengenansatzSetzen;
+  | MengenansatzSetzen
+  // v1.4
+  | NachtragsangabenSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 

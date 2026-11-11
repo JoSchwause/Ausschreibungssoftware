@@ -15,6 +15,7 @@ import type {
   MengeAendern,
   MengenansatzSetzen,
   NachtragUebernehmen,
+  NachtragsangabenSetzen,
   ProjektLoeschen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
@@ -935,5 +936,41 @@ export const beispielChangeSetNachtragUebernehmen: AuftragsLvChangeSet = {
     ],
     gesamt: gesamtsummen('62.35', '0.00', '62.35', '11.85', '74.20'),
     vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
+};
+
+/** Punkt 3 (D-35): Das Nachtrags-LV N01 gehört zum Beispiel-Auftrags-LV; der Auftraggeber hat beauftragt. */
+export const beispielNachtragsangabenSetzen: NachtragsangabenSetzen = {
+  art: 'NachtragsangabenSetzen',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'beauftragt' },
+};
+
+const nachtragsKopf: LvKopf = {
+  ...lvKopf,
+  id: nachtragsLvId,
+  name: 'Nachtrag N01 (erfunden)',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'angeboten' },
+};
+
+/**
+ * Punkt 3: ChangeSet zu `beispielNachtragsangabenSetzen` am Nachtrags-LV, das vorher `angeboten` war. Nur der Kopf ändert
+ * sich; die App schreibt es nach `beispielNachtragUebernehmen` (D-35).
+ */
+export const beispielChangeSetNachtragBeauftragt: LvChangeSet = {
+  art: 'leistungsverzeichnis',
+  leistungsverzeichnisId: nachtragsLvId,
+  kopf: {
+    vorher: nachtragsKopf,
+    nachher: {
+      ...nachtragsKopf,
+      nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'beauftragt' },
+    },
+  },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
   },
 };
