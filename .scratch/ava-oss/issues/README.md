@@ -152,10 +152,10 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | resolved |
 | 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | resolved |
-| 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
+| 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | resolved |
 | 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
 | 83 | M3 | GAEB X31 | `packages/gaeb` | resolved |
-| 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
+| 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | resolved |
 | 85 | F | Fixture M4 | `fixtures/` | resolved |
 | 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | ready-for-agent |
 | 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | ready-for-agent |
