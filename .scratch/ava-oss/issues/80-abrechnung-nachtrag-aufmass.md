@@ -1,6 +1,6 @@
 # 80: A1+A2: Paket `abrechnung`: Nachtrag übernehmen, Aufmaß-Befehle
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A1, A2 · Paket: `packages/abrechnung` (neu; Workspace-Dateien; `tools/boundaries.mjs` kennt es schon)
 Blocked by: 70
