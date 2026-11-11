@@ -115,6 +115,8 @@ import {
   type Nachtragsangaben,
   type NachtragsangabenSetzen,
   type Nachtragsstatus,
+  type Kostengruppennummer,
+  type KostengruppeSetzen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -156,6 +158,8 @@ import {
   beispielNachtragUebernehmen,
   beispielChangeSetNachtragBeauftragt,
   beispielNachtragsangabenSetzen,
+  beispielChangeSetKostengruppe,
+  beispielKostengruppeSetzen,
 } from './beispiele';
 
 /**
@@ -1089,5 +1093,39 @@ describe('v1.4 Punkt 3: Nachtrag (D-35)', () => {
     const zurueck = umkehren(cs);
     expect(zurueck.kopf?.nachher?.nachtrag?.status).toBe('angeboten');
     expect(umkehren(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
+  it('die Marke Kostengruppennummer liegt im Vertrag; string ist nicht zuweisbar', () => {
+    expectTypeOf<Kostengruppennummer>().toExtend<string>();
+    expectTypeOf<string>().not.toExtend<Kostengruppennummer>();
+    expectTypeOf<Kostengruppennummer>().not.toExtend<Ordnungszahl>();
+    expectTypeOf<Positionsdaten['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+  });
+
+  it('KostengruppeSetzen gilt im LV und im Auftrags-LV, derselbe Typ in beiden Unions', () => {
+    expectTypeOf<KostengruppeSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<KostengruppeSetzen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<Extract<Befehl, { art: 'KostengruppeSetzen' }>>().toEqualTypeOf<KostengruppeSetzen>();
+    expectTypeOf<KostengruppeSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<KostengruppeSetzen['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | null>();
+  });
+
+  it('AuftragsLvBefehl ist genau Anlegen, Nachtrag übernehmen und Kostengruppe setzen (D-36 (4))', () => {
+    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<
+      'AuftragsLeistungsverzeichnisAnlegen' | 'NachtragUebernehmen' | 'KostengruppeSetzen'
+    >();
+  });
+
+  it('ChangeSet: eine Knotenänderung ohne Summen; die Umkehrung nimmt die Kostengruppe wieder weg', () => {
+    const cs = beispielChangeSetKostengruppe;
+    const g = cs.knoten.geaendert[0];
+    expect(alsPosition(g?.vorher)).not.toHaveProperty('kostengruppe');
+    expect(alsPosition(g?.nachher)?.kostengruppe).toBe(beispielKostengruppeSetzen.kostengruppe);
+    expect(cs.summen.gesamt).toBeNull();
+    const zurueck = umkehrenAuftragsLv(cs);
+    expect(alsPosition(zurueck.knoten.geaendert[0]?.nachher)).not.toHaveProperty('kostengruppe');
+    expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
   });
 });

@@ -7,6 +7,7 @@ import type {
   Befehlsfehlercode,
   Einfuegeort,
   Knoten,
+  Kostengruppennummer,
   LvBefehl,
   LvZustand,
   Menge,
@@ -689,12 +690,21 @@ describe('Befehle anderer Tickets', () => {
   // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 leert ZUSTAENDIGES_TICKET wieder)
   it('jeder LV-Befehl bis v1.3 hat einen Handler; offen sind nur die LV-Befehle aus Vertrag v1.4 (Ticket 71)', () => {
     expect(Object.values(ZUSTAENDIGES_TICKET).every((t) => t.endsWith('(Ticket 71)'))).toBe(true);
-    expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual(['NachtragsangabenSetzen']);
+    expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual(['KostengruppeSetzen', 'NachtragsangabenSetzen']);
   });
 
   // v1.4: mechanisch angepasst, Folgeticket (Ticket 71 ersetzt die Abweisung durch die Handler)
   it('die LV-Befehle aus Vertrag v1.4 werden bis Ticket 71 mit befehl-nicht-zustaendig abgewiesen', () => {
-    const v14: readonly LvBefehl[] = [{ art: 'NachtragsangabenSetzen', nachtrag: null }];
+    const v14: readonly LvBefehl[] = [
+      { art: 'NachtragsangabenSetzen', nachtrag: null },
+      { art: 'KostengruppeSetzen', positionId: id.pos('P1'), kostengruppe: null },
+      {
+        art: 'PositionAnlegen',
+        id: id.pos('V14'),
+        ort: ende('T1'),
+        daten: { ...positionsdaten('v1.4'), kostengruppe: '330' as Kostengruppennummer },
+      },
+    ];
     for (const b of v14) {
       const e = lvBefehlAusfuehren(z, b);
       expect(!e.ok && e.fehler.code).toBe('befehl-nicht-zustaendig');

@@ -60,6 +60,15 @@ export type Zeitstempel = string & Marke<'Zeitstempel'>;
 export type Ordnungszahl = string & Marke<'Ordnungszahl'>;
 
 /**
+ * Dreistellige Kostengruppennummer `100` bis `999` (Glossar „Kostengruppe“; D-24): genau drei Ziffern, die erste nicht 0.
+ * v1.4 (Ticket 70 Punkt 4): aus `kosten` hierher gewandert, weil LV, Auftrags-LV und Kostenermittlung sie tragen (A4);
+ * `kosten` importiert sie von hier. Erzeugt wird sie weiter nur von `kgLesen` in `kosten` (aus Text, an den Rändern);
+ * Ebene, Elternteil und Sortierung folgen dort allein aus den Ziffern. Die Bezeichnungen der Norm stehen nicht im Repo (G-16).
+ * Wer eine Nummer aus einem Befehl oder einer Datei liest (Kern, `speicher`), prüft die Form selbst nach.
+ */
+export type Kostengruppennummer = string & Marke<'Kostengruppennummer'>;
+
+/**
  * Quelle für neue Kennungen. Wird von außen in Kern, Parser und Oberfläche gereicht (A2: kein Zufall,
  * keine Uhr im reinen Code). Die Umsetzung (UUIDv7) liegt in der App.
  *

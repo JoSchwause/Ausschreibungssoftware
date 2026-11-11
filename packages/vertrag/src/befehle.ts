@@ -11,6 +11,7 @@ import type {
   GliederungId,
   HinweistextId,
   KnotenId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LvStandId,
   Ordnungszahl,
@@ -356,6 +357,24 @@ export interface PositionsmerkmaleSetzen {
   readonly zuschlag: Zuschlag | null;
 }
 
+/**
+ * Ordnet einer Position eine Kostengruppe zu; `null` entfernt die Zuordnung (das Feld fehlt danach) (v1.4, Ticket 70
+ * Punkt 4; C2, D-36 (4)). Gilt im Ausschreibungs-LV (Zuordnung LV ↔ Kostengruppe) und im Auftrags-LV (Grundlage der
+ * Kostenkontrolle, D-37): **derselbe** Typ steht in `LvBefehl` und in `AuftragsLvBefehl`, ein Name für eine Handlung
+ * (L2); welches Aggregat gemeint ist, sagt im Protokoll `Protokolleintrag.aggregat` (`AggregatBezug`), beim Ausführen der
+ * Zustand.
+ *
+ * Nur an einer Position (eine Kostengruppe je Position; sonst `knoten-unbekannt`). Der Kern prüft die Form der Nummer
+ * (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und Datei kommen;
+ * ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
+ * (`knoten.geaendert`), Summen unverändert. Kern-Handler Ticket 71.
+ */
+export interface KostengruppeSetzen {
+  readonly art: 'KostengruppeSetzen';
+  readonly positionId: PositionId;
+  readonly kostengruppe: Kostengruppennummer | null;
+}
+
 // --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
 
 /** Setzt den Auftraggeber des LV als ganzen Wert; `null` entfernt ihn (das Feld fehlt danach am LV). */
@@ -464,7 +483,8 @@ export type LvBefehl =
   // v1.3
   | MengenansatzSetzen
   // v1.4
-  | NachtragsangabenSetzen;
+  | NachtragsangabenSetzen
+  | KostengruppeSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -560,7 +580,7 @@ export interface NachtragUebernehmen {
  * Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). v1.4 (D-36 (4)): genau das Anlegen (Zuschlag, D-21), die
  * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
  */
-export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen;
+export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen | KostengruppeSetzen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

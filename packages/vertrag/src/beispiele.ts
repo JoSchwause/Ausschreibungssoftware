@@ -10,6 +10,7 @@ import type {
   GliederungAnlegen,
   KnotenEinfuegen,
   KnotenVerschieben,
+  KostengruppeSetzen,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
   MengeAendern,
@@ -46,7 +47,14 @@ import type {
   Positionsmerkmale,
   Zuschlag,
 } from './modell';
-import type { LeistungsverzeichnisId, Ordnungszahl, PositionId, ProjektId, TitelId } from './marken';
+import type {
+  Kostengruppennummer,
+  LeistungsverzeichnisId,
+  Ordnungszahl,
+  PositionId,
+  ProjektId,
+  TitelId,
+} from './marken';
 import type { Gesamtsummen } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
@@ -967,6 +975,34 @@ export const beispielChangeSetNachtragBeauftragt: LvChangeSet = {
     },
   },
   knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+};
+
+/** Kostengruppe 330 (erfunden; nur die Nummer, keine Bezeichnung der Norm, G-16). */
+const kg330 = '330' as Kostengruppennummer;
+
+/** Punkt 4: Die Position des Beispiel-Auftrags-LV bekommt die Kostengruppe 330 (derselbe Befehl gilt im LV). */
+export const beispielKostengruppeSetzen: KostengruppeSetzen = {
+  art: 'KostengruppeSetzen',
+  positionId: posId,
+  kostengruppe: kg330,
+};
+
+/** Punkt 4: ChangeSet am Auftrags-LV zu `beispielKostengruppeSetzen`: eine Knotenänderung, keine Summen. */
+export const beispielChangeSetKostengruppe: AuftragsLvChangeSet = {
+  art: 'auftrags-leistungsverzeichnis',
+  auftragsLeistungsverzeichnisId: auftragsId,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [{ vorher: position, nachher: { ...position, kostengruppe: kg330 } }],
+    entfernt: [],
+  },
   summen: {
     positionen: [],
     gliederungen: [],

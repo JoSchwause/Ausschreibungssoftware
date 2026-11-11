@@ -11,6 +11,7 @@ import type {
   BildId,
   ElternId,
   HinweistextId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LosId,
   Ordnungszahl,
@@ -417,6 +418,14 @@ export interface Positionsdaten {
   /** Im Ausschreibungs-LV ein Schätzpreis; `null`: nicht gesetzt (auch bei Zuschlagsposition). Nicht gleichbedeutend mit 0. */
   readonly einheitspreis: Einheitspreis | null;
   readonly epa: Einheitspreisanteile | null;
+  /**
+   * Kostengruppe der Position (v1.4, Ticket 70 Punkt 4; C2, D-36 (4); Glossar „Kostengruppe“). Fehlt: keiner zugeordnet
+   * (in der Kostenkontrolle die Zeile „ohne Kostengruppe“, D-37). Genau eine je Position; Gliederungen und Hinweistexte
+   * tragen keine. Geändert nur über `KostengruppeSetzen` (im LV und im Auftrags-LV); Anlege- und Kopierbefehle bringen sie
+   * mit, der Zuschlag (D-21) übernimmt sie mit den Positionsdaten in das Auftrags-LV, danach sind beide unabhängig. Wirkt
+   * auf keine Summe des Kerns.
+   */
+  readonly kostengruppe?: Kostengruppennummer;
 }
 
 /**

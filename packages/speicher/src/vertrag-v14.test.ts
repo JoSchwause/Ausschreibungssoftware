@@ -7,9 +7,15 @@ import type { ChangeSet, Protokolleintrag } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import type { SpeicherKern } from './kern';
-import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
+import {
+  anlegenSchritte,
+  auftragsLvAnlegenChangeSet,
+  auftragsLvAus,
+  eintrag,
+  ladeFixture,
+} from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
-import { kopfAendern } from './testhilfe/umkehrung';
+import { feldAendern, kopfAendern } from './testhilfe/umkehrung';
 
 const f = ladeFixture('winzig');
 const lv = f.lv.leistungsverzeichnis;
@@ -39,6 +45,31 @@ describe('Vertrag v1.4 bis Ticket 79: unbekannt statt still verworfen (Q5)', () 
     const r = await versuche(kern, cs, { art: 'leistungsverzeichnis', id: lv.id });
     expect(!r.ok && r.fehler.code).toBe('unbekannt');
     expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
+  });
+
+  it('Kostengruppe an einer Position, im LV und im Auftrags-LV', async () => {
+    const kern = await mitLv();
+    const p = f.lv.leistungsverzeichnis.knoten.find((k) => k.art === 'position');
+    if (p === undefined) throw new Error('keine Position');
+    const cs = feldAendern(f.lv, p.id, { ...p, kostengruppe: '330' as never }, '0.00');
+    const r = await versuche(kern, cs, { art: 'leistungsverzeichnis', id: lv.id });
+    expect(!r.ok && r.fehler.code).toBe('unbekannt');
+    expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
+    const a = auftragsLvAus(
+      {
+        ...f.lv,
+        leistungsverzeichnis: {
+          ...lv,
+          knoten: lv.knoten.map((k) => (k.id === p.id ? { ...p, kostengruppe: '330' as never } : k)),
+        },
+      },
+      'angebot-1' as never,
+    );
+    const ra = await versuche(kern, auftragsLvAnlegenChangeSet(a), {
+      art: 'auftrags-leistungsverzeichnis',
+      id: a.auftragsLeistungsverzeichnis.id,
+    });
+    expect(!ra.ok && ra.fehler.code).toBe('unbekannt');
   });
 
   it('das Repository der Auftrags-LVs antwortet mit unbekannt', async () => {
