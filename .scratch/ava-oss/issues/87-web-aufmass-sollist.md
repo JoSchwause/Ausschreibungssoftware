@@ -1,6 +1,6 @@
 # 87: A2+M3 in der App: Aufmaßblätter, Soll/Ist, X31
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A2, M3 · Ordner: `apps/web/src/abrechnung/` (neu), `apps/web/src/mengen/` (Panel verallgemeinern);
 Einhängestellen in `App.tsx`, `auftrag/AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (markiert `// Ticket 87`, D-20)
@@ -146,6 +146,9 @@ pnpm test` grün (Vitest 204 Dateien, 2.584 Tests bestanden, 3 übersprungen; `n
 `aufmass.spec.ts` (2), `mengen.spec.ts` (3), `undo.spec.ts` (6) grün (11 bestanden, Last 2–6).
 
 ## Answer
+
+Merged: d7acb15 in integration/welle-5
+
 
 Umgesetzt auf `welle-5/87-aufmass`: Aufmaßseite je Auftrags-LV (Liste mit Nummer, Bezeichnung, Datum, Zahl der
 Positionen; „Neues Aufmaßblatt“; Blatt öffnen), Blatt im `VergleichsGrid` (U2) mit OZ, Kurztext, Einheit, Auftragsmenge,
