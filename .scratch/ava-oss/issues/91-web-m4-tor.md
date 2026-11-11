@@ -1,6 +1,6 @@
 # 91: Tor M4: Kettentest und E2E „LPH 6–8“
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: – · Ordner: `apps/web/e2e/m4.spec.ts`, `apps/web/e2e/m3.spec.ts`, `apps/web/src/m4-kette.test.ts` (neu);
 kleine Reparaturen in den App-Ordnern der Welle nur mit Vermerk im Ticket
@@ -89,6 +89,9 @@ lint && pnpm typecheck && pnpm test` grün (Vitest 205 Dateien, 2595 Tests besta
 Die E2E ist nicht wackelig: Die verkürzte Fassung nach D-38 ist nicht nötig.
 
 ## Answer
+
+Merged: e15deca in integration/welle-5
+
 
 Tor M4 erfüllt (D-38). Branch `welle-5/91-m4`.
 
