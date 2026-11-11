@@ -72,6 +72,10 @@ export function appIdQuelle(optionen: IdQuelleOptionen = {}): IdQuelle {
     hinweistext: k,
     papierkorbeintrag: k,
     lvStand: k,
+    // v1.4: mechanisch angepasst, Folgeticket (Kennungen für Aufmaß, Rechnung, Kostenermittlung)
+    aufmass: k,
+    rechnung: k,
+    kostenermittlung: k,
   };
 }
 

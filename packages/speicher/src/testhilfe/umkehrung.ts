@@ -89,12 +89,19 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         knoten: sammlungUmkehren(cs.knoten),
         summen: summenUmkehren(cs.summen),
       };
+    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 kehrt die ganzen Aggregate um: Tausch von vorher/nachher)
+    case 'aufmass':
+    case 'rechnung':
+    case 'kostenermittlung':
+      throw new Error(`umkehren: ChangeSet ${cs.art} (Vertrag v1.4) erst mit Ticket 79`);
   }
 }
 
 /** Ein Anlegen-ChangeSet (`kopf.vorher: null`) mit leerem `summen.vorher`: so ist es ohne Vorzustand umkehrbar. */
 export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
-  if (cs.art === 'projekt') return cs;
+  // v1.4: mechanisch angepasst, Folgeticket (die Aggregate aus v1.4 haben keine Summen)
+  if (cs.art === 'projekt' || cs.art === 'aufmass' || cs.art === 'rechnung' || cs.art === 'kostenermittlung')
+    return cs;
   return {
     ...cs,
     summen: {
