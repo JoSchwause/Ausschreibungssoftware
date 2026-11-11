@@ -26,9 +26,13 @@ const FORM = /^[0-9]{3}$/;
 /** Prüft die Form einer Kostengruppennummer. Leerraum am Rand wird entfernt (D-55.1). */
 export function kgLesen(text: string): Ergebnis<Kostengruppennummer, Kostengruppenfehler> {
   const t = text.trim();
-  if (t === '') return { ok: false, fehler: { code: 'nummer-leer', meldung: 'Kostengruppennummer ist leer' } };
+  if (t === '')
+    return { ok: false, fehler: { code: 'nummer-leer', meldung: 'Kostengruppennummer ist leer' } };
   if (!FORM.test(t)) {
-    return { ok: false, fehler: { code: 'nummer-form', meldung: `Keine dreistellige Nummer: ${JSON.stringify(t)}` } };
+    return {
+      ok: false,
+      fehler: { code: 'nummer-form', meldung: `Keine dreistellige Nummer: ${JSON.stringify(t)}` },
+    };
   }
   if (t.startsWith('0')) {
     return { ok: false, fehler: { code: 'nummer-null', meldung: `Nummer unter 100: ${t}` } };

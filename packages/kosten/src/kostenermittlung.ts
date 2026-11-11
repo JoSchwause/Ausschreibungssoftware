@@ -70,7 +70,9 @@ function betragLesen(text: string, befund: (code: Kostenbefundcode, meldung: str
   return gerundet;
 }
 
-export function kostenermittlungBerechnen(eintraege: readonly Kostenermittlungseintrag[]): Kostenermittlungsergebnis {
+export function kostenermittlungBerechnen(
+  eintraege: readonly Kostenermittlungseintrag[],
+): Kostenermittlungsergebnis {
   const befunde: Kostenbefund[] = [];
   const eigen = new Map<Kostengruppennummer, Betrag>();
   const summen = new Map<Kostengruppennummer, Betrag>();
@@ -81,7 +83,12 @@ export function kostenermittlungBerechnen(eintraege: readonly Kostenermittlungse
   eintraege.forEach((eintrag, index) => {
     const nummer = kgLesen(eintrag.nummer);
     if (!nummer.ok) {
-      befunde.push({ code: 'nummer-ungueltig', eintrag: index, nummer: null, meldung: nummer.fehler.meldung });
+      befunde.push({
+        code: 'nummer-ungueltig',
+        eintrag: index,
+        nummer: null,
+        meldung: nummer.fehler.meldung,
+      });
       return;
     }
     const n = nummer.wert;
@@ -93,7 +100,8 @@ export function kostenermittlungBerechnen(eintraege: readonly Kostenermittlungse
     if (vorzeichen(betrag) < 0) befund('betrag-negativ', `Negativer Betrag ${betrag}`);
 
     const bisher = eigen.get(n);
-    if (bisher !== undefined) befund('nummer-doppelt', `Nummer ${n} kommt mehrfach vor; Beträge werden addiert`);
+    if (bisher !== undefined)
+      befund('nummer-doppelt', `Nummer ${n} kommt mehrfach vor; Beträge werden addiert`);
     eigen.set(n, bisher === undefined ? betrag : addiere(bisher, betrag));
     zuSumme(n, betrag);
     for (const v of kgVorfahren(n)) zuSumme(v, betrag);

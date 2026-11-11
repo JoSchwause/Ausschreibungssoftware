@@ -113,7 +113,12 @@ describe('kostenermittlungBerechnen: Befunde, nie Sperre (U5)', () => {
 
   // Nur 910 = 1.00 zählt; 900 = 1.00
   it('ungültige Nummer oder unlesbarer Betrag: Eintrag zählt nicht, Befund', () => {
-    const r = kostenermittlungBerechnen([e('050', '5.00'), e('910', '1,00'), e('910', '1.00'), e('9100', '2.00')]);
+    const r = kostenermittlungBerechnen([
+      e('050', '5.00'),
+      e('910', '1,00'),
+      e('910', '1.00'),
+      e('9100', '2.00'),
+    ]);
     expect(r.gruppen).toEqual([
       { nummer: '900', ebene: 1, eigenerBetrag: null, summe: '1.00' },
       { nummer: '910', ebene: 2, eigenerBetrag: '1.00', summe: '1.00' },
