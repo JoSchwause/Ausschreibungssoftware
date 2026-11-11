@@ -362,3 +362,10 @@ Decision: `LvUebersicht` nur `{ id, name }`, sortiert wie die Projektliste; `Pro
 Reason: Additiv, wo möglich; nicht Additives (Punkte 3, 4, 5, 9 und die Rückgabe von `auflisten`) nur mit markierter mechanischer Anpassung (W-03 (b)); kein stiller Datenverlust.
 Reversible: yes  Touches: packages/vertrag, mechanische Zeilen in kern, mengen, speicher, vergabe, ui-grid (E2E), apps/web, proto
 Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-22).
+
+## D-29 Q4-Schranke der Einzeländerung im dauerhaften Profil
+Welle 4 · Ticket 52 · decided by: orchestrator
+Question: Ticket 52 prüft „< 100 ms Median bis zur Summenzeile“ hart nur im dauerhaften Browserprofil; im flüchtigen Playwright-Kontext (OPFS über Prozessgrenzen, 1–2 ms je Schreibzugriff) bleibt die alte grobe Schranke. Annehmen?
+Decision: Ja. Das dauerhafte Profil ist der Betrieb des Nutzers (installierte PWA); dort 36–61 ms unter Last 15–22. Der flüchtige Kontext wird weiter gemessen und im Ticket genannt, die harte Schranke dort wäre ein Test der Testumgebung.
+Reason: Q4 meint die Erfahrung des Nutzers; keine Prüfung geschwächt, nur der Messort festgelegt.
+Reversible: yes  Touches: apps/web/e2e/leistung.spec.ts
