@@ -1,6 +1,6 @@
 # 84: `gaeb` v1.4: Kostengruppe als Katalogzuordnung, neue Felder beim Export
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: G, C2 · Paket: `packages/gaeb`
 Blocked by: 70, 83
@@ -65,6 +65,9 @@ XSD 3.3 (2021-05) und 3.2 (2013-10): `BoQInfo/Ctlg` (`CtlgID`, `CtlgType`, `Ctlg
   58 von 58 (davon 6 `typisch-kg`).
 
 ## Answer
+
+Merged: 5a7742a in integration/welle-5
+
 
 Umgesetzt in `packages/gaeb` (Branch `welle-5/84-gaeb-kostengruppe`). Die Kostengruppe einer Position wird in X81, X83 und X86
 (3.3 und 3.2) als Zuordnung zum Katalog DIN 276 geschrieben und gelesen (`kostengruppe.ts`; D-84.1, D-84.2); X84 kennt keine
