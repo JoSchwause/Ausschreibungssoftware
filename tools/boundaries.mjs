@@ -28,7 +28,8 @@ export const ERLAUBT = {
   'packages/vergabe': FACH,
   'packages/mengen': FACH,
   'packages/abrechnung': FACH,
-  'packages/kosten': FACH,
+  // Kostengliederung und Kostenermittlung (Ticket 55, D-24): nur Typen und Dezimalarithmetik, kein Kern.
+  'packages/kosten': ['packages/vertrag', 'packages/dezimal'],
   'packages/ausgabe': FACH,
   // Die App darf alle Pakete einbinden.
   'apps/web': [
