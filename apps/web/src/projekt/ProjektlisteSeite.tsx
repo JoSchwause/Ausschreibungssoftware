@@ -95,7 +95,6 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
           ))}
         </ul>
       )}
-
       <form className="projekt__formular" onSubmit={(e) => void anlegen(e)} aria-label={texte.anlegen.titel}>
         <h2>{texte.anlegen.titel}</h2>
         <div className="projekt__felder">
@@ -114,7 +113,6 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
           </Button>
         </div>
       </form>
-
       <div className="projekt__werkzeuge">
         <HistorieKnoepfe />
         <input
