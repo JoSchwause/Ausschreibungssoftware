@@ -1,6 +1,6 @@
 # 88: A3+A4 in der App: Rechnungen prüfen und freigeben, XRechnung einlesen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A3, A4 · Ordner: `apps/web/src/rechnung/` (neu); Einhängestellen in `App.tsx`,
 `auftrag/AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (markiert `// Ticket 88`, D-20)
