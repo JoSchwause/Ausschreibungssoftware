@@ -226,4 +226,74 @@ describe('kostenkontrolleBerechnen', () => {
       ['kostengruppe-groeber-als-budget', 'hinweis', 'A', 'a6', '300'],
     ]);
   });
+
+  // Ohne Budget: Spalten Budget und Abweichung leer, keine Befunde zur Budget-Gliederung. Vergabe wie oben für B:
+  // 400 = 410 = 26.345,67; ohne Leistungsstand Abrechnung 0,00.
+  it('ohne Budget und ohne Leistungsstand', () => {
+    const r = kostenkontrolleBerechnen({ budget: null, auftraege: [B], leistungsstaende: [] });
+    expect(r.kostengruppen.map((z) => [z.nummer, z.budget, z.vergabe, z.abrechnung, z.abweichung])).toEqual([
+      ['400', null, '26345.67', '0.00', null],
+      ['410', null, '26345.67', '0.00', null],
+    ]);
+    expect(r.ohneKostengruppe).toEqual({
+      budget: null,
+      vergabe: '0.00',
+      abrechnung: '0.00',
+      abweichung: null,
+    });
+    expect(r.nachlass).toEqual({ budget: null, vergabe: '0.00', abrechnung: '0.00', abweichung: null });
+    expect(r.gesamt).toEqual({ budget: null, vergabe: '26345.67', abrechnung: '0.00', abweichung: null });
+    expect(r.befunde).toEqual([]);
+  });
+
+  // Nur der erste Leistungsstand zu B zählt (12.000,00); der zweite und der zu einem fremden Auftrags-LV nicht.
+  it('Leistungsstand doppelt oder zu einem unbekannten Auftrags-LV: Befund, zählt nicht', () => {
+    const r = kostenkontrolleBerechnen({
+      budget: null,
+      auftraege: [B],
+      leistungsstaende: [
+        { auftragsLvId: B_ID, leistungsstand: STAND_B },
+        { auftragsLvId: A_ID, leistungsstand: STAND_A },
+        { auftragsLvId: B_ID, leistungsstand: STAND_B },
+      ],
+    });
+    expect(r.gesamt.abrechnung).toBe('12000.00');
+    expect(r.kostengruppen.map((z) => [z.nummer, z.abrechnung])).toEqual([
+      ['400', '12000.00'],
+      ['410', '12000.00'],
+    ]);
+    expect(r.befunde.map((x) => [x.code, x.schwere, x.auftragsLvId])).toEqual([
+      ['leistungsstand-unbekannt', 'warnung', 'A'],
+      ['leistungsstand-doppelt', 'warnung', 'B'],
+    ]);
+  });
+
+  // Summenstand passt nicht: Netto nach Nachlass 26.000,00, die Positionen ergeben 26.345,67. Gesamt bleibt der Wert des
+  // Summenstands (D-37), die Abweichung der Zeilen ist ein Befund.
+  it('Zeilen ergeben nicht das Gesamt: Befund, Gesamt aus dem Summenstand', () => {
+    const falsch: AuftragsLvZustand = {
+      ...B,
+      summen: { ...B.summen, gesamt: { ...B.summen.gesamt, nettoNachNachlass: b('26000.00') } },
+    };
+    const r = kostenkontrolleBerechnen({ budget: null, auftraege: [falsch], leistungsstaende: [] });
+    expect(r.gesamt.vergabe).toBe('26000.00');
+    expect(r.befunde.map((x) => [x.code, x.spalte])).toEqual([['summe-abweichend', 'vergabe']]);
+  });
+
+  // Budget nur auf 332: Position auf 331 liegt in keinem Budget-Eintrag (Warnung); 330 ist Gliederung des Budgets, 331
+  // nicht: Zeile 331 ohne Budget und ohne Abweichung (die steht an 330: 500,00 − 1.000,00 = −500,00).
+  it('Kostengruppe neben einem Budget-Eintrag derselben Gruppe darüber', () => {
+    const r = kostenkontrolleBerechnen({
+      budget: { ...BUDGET, eintraege: [{ nummer: kg('332'), betrag: b('1000.00') }] },
+      auftraege: [auftrag('C', [{ id: 'c1', kg: '331', gp: '500.00', zaehlt: true }], '0.00', '500.00')],
+      leistungsstaende: [],
+    });
+    expect(r.kostengruppen.map((z) => [z.nummer, z.budget, z.vergabe, z.abweichung])).toEqual([
+      ['300', '1000.00', '500.00', '-500.00'],
+      ['330', '1000.00', '500.00', '-500.00'],
+      ['331', null, '500.00', null],
+      ['332', '1000.00', '0.00', '-1000.00'],
+    ]);
+    expect(r.befunde.map((x) => [x.code, x.nummer])).toEqual([['kostengruppe-ohne-budget', '331']]);
+  });
 });
