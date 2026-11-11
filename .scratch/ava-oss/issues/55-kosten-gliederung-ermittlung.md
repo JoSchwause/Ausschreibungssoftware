@@ -1,6 +1,6 @@
 # 55: C1: Kostengliederung (nur Nummern) und Kostenermittlung
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: C1 · Paket: `packages/kosten` (neu; dazu der Eintrag in `tools/boundaries.mjs`, Workspace-Konfiguration)
 Blocked by: –
@@ -40,11 +40,11 @@ Begriffe „Kostengruppe“, „Kostenermittlung“, „Kostengliederung“ zuer
 
 ## Acceptance criteria
 
-- [ ] Golden-Tests (Hand-Beispiele mit hergeleiteten Summen) und Property-Tests (Summe der Ebene 1 = Summe aller eigenen
+- [x] Golden-Tests (Hand-Beispiele mit hergeleiteten Summen) und Property-Tests (Summe der Ebene 1 = Summe aller eigenen
       Beträge; Reihenfolge der Einträge ändert nichts) (Q1)
-- [ ] CSV-Leser: Tests für Trenner, BOM, Anführungszeichen, Befunde
-- [ ] Paketgrenzen-Prüfung kennt `kosten`; Lint-Regel N1 gilt für das Paket
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] CSV-Leser: Tests für Trenner, BOM, Anführungszeichen, Befunde
+- [x] Paketgrenzen-Prüfung kennt `kosten`; Lint-Regel N1 gilt für das Paket
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -80,3 +80,7 @@ Speicherung, Oberfläche, Zuordnung LV ↔ Kostengruppe (C2), Kostenkontrolle (C
 - **D-55.7** Grenze von `kosten`? → In `tools/boundaries.mjs` von `FACH` (mit `kern`) auf `vertrag`, `dezimal` verengt, wie
   im Ticket; ein Test in `tools/boundaries.test.mjs` hält das fest. Die Lockfile-Änderung enthält nur den neuen Importer
   (die lokale pnpm-Version hätte sonst `libc`-Felder anderer Pakete umgeschrieben).
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 5b09c0f; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Reines Paket ohne Speicherung und Oberfläche (D-24); C2 in Welle 5.

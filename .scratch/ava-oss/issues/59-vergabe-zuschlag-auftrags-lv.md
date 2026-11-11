@@ -1,6 +1,6 @@
 # 59: V4: Zuschlag → Auftrags-LV (Rechnung)
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: V4 · Paket: `packages/vergabe`
 Blocked by: 53 (`vertrag` v1.3: Auftragnehmer), 51 (Fixtures in GAEB-Form); für das Speichern des Ergebnisses 57
@@ -138,3 +138,7 @@ Das Speichern braucht Ticket 57 (Auftragnehmer, siehe oben).
 - Suite nach Merge von `integration/welle-4` (a4e7da0): Lint und Typecheck grün; `pnpm test` unter Last (Load ~15) mit
   drei Leistungsbudgets rot (`kern` K9-Verschieben und `lvPruefen(gross)`, `vergabe` `preisspiegelBerechnen`, keines
   von diesem Ticket berührt), einzeln wiederholt grün; Fixture-Selbsttests 20/20 grün. Budgets nicht gelockert.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit fd0cef4; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

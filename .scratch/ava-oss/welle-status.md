@@ -6,4 +6,5 @@
 | 1 | done | Tickets 04–07, 10, 20–22 |
 | 2 | done | Stufe 1 (24–28) auf `main`; Stufen 2 und 3 als Phase A im Lauf „Welle 3“ (Tickets 29–40), Tor M1 erreicht |
 | 3 | done | Branch `integration/welle-3` (lokal, nicht auf `main`), Tickets 29–50 resolved, Tor M2 „erfüllt mit gelisteten Unterschieden“ (D-18), Bericht `welle-3-bericht.md` |
-| 4 | in progress | Lauf `/implement-welle 4`, Branch `integration/welle-4` (lokal), Schnitt `schnitt-welle-4.md` |
+| 4 | done | Branch `integration/welle-4` (lokal), Tickets 51–69 resolved, **Tor M3 erreicht** (`apps/web/e2e/m3.spec.ts`), Bericht `welle-4-bericht.md` |
+| 5 | open | Eintritt: siehe `welle-4-bericht.md`, Abschnitt „Eintritt Welle 5“; Folgetickets 70–75, G-27 vorher klären |

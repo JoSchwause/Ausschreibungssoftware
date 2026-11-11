@@ -1,6 +1,6 @@
 # 62: S4: PWA-Installation, offline, Datensicherung (Export-Erinnerung, Sicherungsordner)
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: S4 · Paket: `apps/web` (Ordner `src/sicherung/`, dazu `vite.config.ts`, `index.html`, `public/`; in
 gemeinsamen Dateien wie `App.tsx`, `main.tsx`, `ui/Huelle.tsx` nur je eine markierte Einhängestelle, D-20)
@@ -35,12 +35,12 @@ Herkunft: `plan.md` §2 S4 („PWA-Installation, Offline, Datensicherung. Export
 
 ## Acceptance criteria
 
-- [ ] `pnpm build` erzeugt Manifest und Service Worker; ein E2E (gegen `vite preview`) lädt die App, schaltet das Netz ab
+- [x] `pnpm build` erzeugt Manifest und Service Worker; ein E2E (gegen `vite preview`) lädt die App, schaltet das Netz ab
       (`context.setOffline(true)`), lädt neu und sieht die Projektliste
-- [ ] Erinnerung: Unit-Test der Regel (Schwelle, „seitdem Befehle“) und ein E2E mit vorgestelltem Zeitstempel
-- [ ] Sicherungsordner: Unit-Test des Dateinamens und der Schreiblogik gegen eine Attrappe der API; E2E nur, wenn die API
+- [x] Erinnerung: Unit-Test der Regel (Schwelle, „seitdem Befehle“) und ein E2E mit vorgestelltem Zeitstempel
+- [x] Sicherungsordner: Unit-Test des Dateinamens und der Schreiblogik gegen eine Attrappe der API; E2E nur, wenn die API
       im Headless-Chromium bedienbar ist (sonst im Ticket begründen)
-- [ ] Lizenzprüfung grün; `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und
+- [x] Lizenzprüfung grün; `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und
       `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
@@ -65,3 +65,7 @@ Entscheidung: Fehlt die Berechtigung, fragt „Jetzt sichern“ neu (Nutzeraktio
 
 ### D-62.4 PWA
 Entscheidung: `vite-plugin-pwa` (MIT) mit `generateSW`, `registerType: 'prompt'`, nur im Build (der E2E läuft gegen `vite preview` und ist damit mit Service Worker getestet). Manifest und Icons (PNG 192/512 aus `icon.svg`, eigene Gestaltung) erzeugt der Build mit `base`. Neue Abhängigkeiten als Dev-Abhängigkeiten: `vite-plugin-pwa`, `workbox-build`, `workbox-window` (Peers des Plugins). „Neue Version verfügbar“ ist ein eigenes Banner mit „Neu laden“, weil der Toast aus `ui-basis` keine Schaltfläche trägt.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 444c3fe; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Sicherungsordner-E2E über einen OPFS-Ordner statt des Systemdialogs (D-62.3); Laufzeit-Hülle durch Hörer am Befehlsweg ersetzt (Review, D-62.2).

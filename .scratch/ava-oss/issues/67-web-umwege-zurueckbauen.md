@@ -1,6 +1,6 @@
 # 67: Umwege aus Welle 3 in der App zurückbauen
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: U · Paket: `apps/web` (Ordner `src/lv/`, `src/historie/`; D-20)
 Blocked by: 54 (beide Teile)
@@ -28,8 +28,8 @@ durch die neuen Eigenschaften ersetzt (die Comments von 39, 46, 47, 48 und 54 ne
 
 ## Acceptance criteria
 
-- [ ] Je Punkt ein E2E oder ein angepasster bestehender E2E; entfernter Umweg-Code im Ticket aufgelistet
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] Je Punkt ein E2E oder ein angepasster bestehender E2E; entfernter Umweg-Code im Ticket aufgelistet
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
@@ -52,3 +52,7 @@ Entscheidungen:
 - **D-67.1 Dialoge mit Enter-Bestätigung.** Frage: Wo gab es in der App Tastenhandler-Umwege für Enter? Entscheidung: In der App keine; ihre Dialoge sind Formulare (Enter im Feld übernimmt). Der Tastenhandler lebt im Löschdialog von `ui-grid` und bleibt (D-26). Als Anwendung des Anfangsfokus startet der Dialog „Merkmale“ auf „Übernehmen“ (Enter bestätigt sofort; vorher lag der Fokus auf dem Schließen-Kreuz). Die übrigen Dialoge (Positionen, LV-Angaben, Stände, Projekt) bleiben, dort ist der erste Fokus ein Eingabefeld besser. `Button` nimmt `ref` an (`ComponentPropsWithRef<'button'>`, React 19). Reversible: yes.
 - **D-67.2 Zeile öffnen auf einer Gliederung.** Frage: Das Grid meldet jede Zeilenart, was tut die App? Entscheidung: Positionen öffnen den Dialog; bei Gliederungen und Hinweisen erscheint die Meldung „Merkmale gibt es nur an Positionen“ (wie bisher bei Strg+Enter; neu auch beim Doppelklick auf OZ/Art/GP einer Gliederung, wo vorher nichts geschah). Reversible: yes.
 - **D-67.3 Aktive Zeile.** Das Grid meldet die aktive Zeile schon beim Rendern (erste Zeile); „Titel/Position anlegen“ per Knopf ohne Klick geht damit hinter die erste Zeile statt ans LV-Ende (Verhalten besser, Test Punkt 1).
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 506b566; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

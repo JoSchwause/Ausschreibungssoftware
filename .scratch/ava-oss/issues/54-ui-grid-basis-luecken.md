@@ -1,6 +1,6 @@
 # 54: `ui-grid` und `ui-basis`: Lücken aus Welle 3
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: U · Paket: `packages/ui-grid`, `packages/ui-basis` (zwei Schreiber nacheinander, je Paket ein Pull Request; die Anbindung in `apps/web` folgt als eigenes Ticket)
 Blocked by: –
@@ -39,11 +39,11 @@ in den Paketen (die App-Umwege werden danach in einem Folgeticket zurückgebaut)
 
 ## Acceptance criteria
 
-- [ ] Je Punkt 1 bis 6 ein Test (Vitest oder Playwright über die Testseite) und eine kurze Beschreibung der Eigenschaft in den Comments
-- [ ] Schreibgeschützt: kein Editor, kein Rückruf für Änderungen, Fokus und Navigation funktionieren, Screenreader-Ansage
-- [ ] Löschdialog nennt die übergebene Zahl, ohne Eigenschaft wie bisher
-- [ ] Tabelle einfügen: Ergebnis ist ein formgültiger v1.1b-Langtext, Rundweg `Langtext` ↔ TipTap bleibt gleich
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` und die E2E beider Pakete grün
+- [x] Je Punkt 1 bis 6 ein Test (Vitest oder Playwright über die Testseite) und eine kurze Beschreibung der Eigenschaft in den Comments
+- [x] Schreibgeschützt: kein Editor, kein Rückruf für Änderungen, Fokus und Navigation funktionieren, Screenreader-Ansage
+- [x] Löschdialog nennt die übergebene Zahl, ohne Eigenschaft wie bisher
+- [x] Tabelle einfügen: Ergebnis ist ein formgültiger v1.1b-Langtext, Rundweg `Langtext` ↔ TipTap bleibt gleich
+- [x] `pnpm lint && pnpm typecheck && pnpm test` und die E2E beider Pakete grün
 
 ## Nicht-Ziele
 
@@ -108,3 +108,7 @@ Entscheidungen (Frage → Entscheidung → Grund):
 **Punkt 6, Dialog-Anfangsfokus.** `Dialog` hat die Eigenschaft `anfangsfokus?: RefObject<HTMLElement | null>`. Ist die Referenz beim Öffnen gesetzt, bekommt dieses Element den Fokus (Radix `onOpenAutoFocus` mit `preventDefault`); ohne Angabe oder bei leerer Referenz bleibt es wie bisher (Radix fokussiert das Schließen-Kreuz). Die Rückgabe des Fokus an den Auslöser beim Schließen ist unverändert. Test: `Dialog.test.ts`.
 
 - **D-54.14 Referenz statt Selektor.** Frage: Eigenschaft als Ref, Selektor oder Callback? Entscheidung: `RefObject`. Grund: typsicher, kein DOM-Wissen in der App. Reversible: yes.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 1590f1e (ui-grid), 6f00530 (ui-basis); Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

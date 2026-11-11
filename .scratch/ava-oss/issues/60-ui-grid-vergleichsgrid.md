@@ -1,6 +1,6 @@
 # 60: `ui-grid`: Vergleichsgrid (schreibgeschützt, freie Spalten) für den Preisspiegel
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: U2/V3 · Paket: `packages/ui-grid`
 Blocked by: 54 (Punkte 1–4, gleiches Paket)
@@ -111,3 +111,7 @@ Entscheidungen (Frage → Entscheidung → Grund):
   zügiges Lesen (5.600 px/s) etwa 40–50 fps (LV-Grid 43–56); schneller Wisch (28.000 px/s) etwa 15–23 fps (vorher
   10–15; LV-Grid 45–60). Der Rest wächst mit den Elementen je Zeile (Zelle, Text, Marken, Beschreibung); weitere
   Schritte wären weniger Elemente je Zelle. Reversible: yes.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 11f1cf5; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Schnelles Wischen 5.000 × 5 Bieter nur 15–23 Bilder/s: Ticket 74.

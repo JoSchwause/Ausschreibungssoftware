@@ -1,6 +1,6 @@
 # 61: O2: Excel-Export und -Import (LV für Bieter, Rücklauf als Angebot)
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: O2 (mit V5) · Paket: `packages/ausgabe`
 Blocked by: 58 (gleiches Paket)
@@ -118,3 +118,7 @@ Wohlgeformtheit, Content-Types und Beziehungsziele (`excel-datei.test.ts`). In M
 2. `Befundquelle` um `'excel'` erweitern, falls die App die Befunde mit den übrigen Prüfbefunden zeigt (Vertrags-Ticket, siehe D-61.2).
 3. Nicht geprüft: Öffnen in Microsoft Excel und in Numbers; Dateien mit mehreren Blättern (gelesen wird das erste Blatt laut
    `workbook.xml`); `.xls` (altes Binärformat) wird als `datei-unlesbar` gemeldet.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 672712e; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

@@ -1,6 +1,6 @@
 # 58: O1: LV-Druck als PDF vervollständigen (ADR 0012)
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: O1 · Paket: `packages/ausgabe` (dazu `docs/adr/0012-*.md`)
 Blocked by: –
@@ -116,3 +116,6 @@ das Modell hat sie absichtlich nur als Text.
 **Nicht geprüft.** Aussehen über die Seite 1 von `typisch` hinaus (mit und ohne Preise als Bild angesehen, nicht committet); Tabellen mit
 sehr vielen Spalten oder tiefer Verschachtelung; Bilder im Langtext; Firefox/Safari; Worker.
 
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 14ad76d; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). ADR 0012 `proposed` (D-23). Bedarfs-/Wahlsumme im Test gegen den Summenstand des Kerns, unabhängige Sollwerte: Ticket 75.

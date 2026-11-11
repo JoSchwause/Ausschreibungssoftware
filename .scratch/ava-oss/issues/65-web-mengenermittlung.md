@@ -1,6 +1,6 @@
 # 65: M2: Mengenermittlungs-Panel
 
-Status: done
+Status: resolved
 Type: task
 Welle: 4 · Strang: M2 · Paket: `apps/web` (Ordner `src/mengen/`; Einhängestelle im Positionsdialog bzw. `lv/LvSeite.tsx`, D-20)
 Blocked by: 56 (Kern: `MengenansatzSetzen`), 57 (Speicher: Mengenansatz)
@@ -54,3 +54,7 @@ Nur `apps/web/src/mengen/` (Panel `MengenPanel.tsx`, Rückfrage `AnsatzFrage.tsx
 - **D-65.5 Tasten im Panel.** Enter legt eine Zeile hinter der aktuellen an, Strg+Entf löscht, Alt+Pfeil hoch/runter verschiebt (wie im Grid), Strg+Enter übernimmt; Schaltflächen gibt es auch. Der Fehler einer Zeile ist eine Schaltfläche, die das Feld an der Fehlerspalte markiert (Spalte ab 1 angezeigt, `mengen` zählt ab 0).
 - **D-65.6 Rückfrage.** Wo: jede Befehlsfolge, die das Grid sendet (`onBefehl`, `onBefehlsfolge`, also auch Einfügen und Entf in der Mengenzelle) und „Übernehmen“ im Positionsdialog. Gefragt wird nur bei einem `MengeAendern` mit anderer Menge an einer Position mit Ansatz (dieselbe Menge ändert nichts, D-56.2). Abbrechen: kein Befehl; das Grid zeigt ohnehin nur den gespeicherten Stand (Q5), der Positionsdialog bleibt mit seinem Entwurf offen. Anfangsfokus auf „Abbrechen“.
 - **D-65.7 Panel im Positionsdialog.** Das Panel liegt als zweiter Dialog über dem Positionsdialog; seine Befehle gehen über dieselbe Befehlsfolge wie „Übernehmen“ des Positionsdialogs, die Eingaben des Positionsdialogs bleiben erhalten (`entwurfNachfuehren` zeigt die neue Menge, solange die Menge nicht angefasst wurde).
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit b60ca0b; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Neutrales Kennzeichen für Positionen mit Ansatz braucht `ui-grid`: Ticket 74.

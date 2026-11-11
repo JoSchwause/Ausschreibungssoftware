@@ -1,6 +1,6 @@
 # 53: `vertrag` v1.3 (Vertrag plus Anpassung)
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die den Typ nutzen)
 Blocked by: –
@@ -61,11 +61,11 @@ in Ticket 43 (D-31.1, Fremdschlüssel `protokoll.projekt_id`, kein Vertragsthema
 
 ## Acceptance criteria
 
-- [ ] Typen für die Punkte 1 bis 9 (Punkte 2, 6, 7, 8 wie unter „Entscheidungen für diesen Lauf“) mit Kommentar im Stil von `vertrag`
-- [ ] Jede mechanische Anpassung markiert; ihre Liste in den Comments
-- [ ] Offene Typfragen mit Alternativen in den Comments
-- [ ] `GLOSSARY.md` nachgezogen (L2), falls neue Begriffe entstehen (z. B. „Auftragnehmer“, „Bieterergänzung“)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Typen für die Punkte 1 bis 9 (Punkte 2, 6, 7, 8 wie unter „Entscheidungen für diesen Lauf“) mit Kommentar im Stil von `vertrag`
+- [x] Jede mechanische Anpassung markiert; ihre Liste in den Comments
+- [x] Offene Typfragen mit Alternativen in den Comments
+- [x] `GLOSSARY.md` nachgezogen (L2), falls neue Begriffe entstehen (z. B. „Auftragnehmer“, „Bieterergänzung“)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -229,3 +229,7 @@ Alle sechs umgesetzt: (1) `positionAnlegen` weist `daten.mengenansatz` markiert 
 (3) EPA-Bezeichnungen mit `nummer` (D-53.6), Beispiel mit Lücke und `bezeichnung: null`, Typtests; (4) Testmodell in
 `ui-grid` und Prototyp werfen bei `hinter-gliederung`; (5) Glossar „Auftragnehmer“: steht am LV-Kopf, gesetzt beim
 Auftrags-LV (Zuschlag) oder aus X86; (6) `EpaArt` abgeleitet. `pruefeV13` brauchte keine Änderung.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit f69eff9; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Geprüft durch Opus-Reviewer statt Nutzer (D-27, P9); EPA-Bezeichnungen nach D-28. Offene Typfragen in den Comments.

@@ -1,6 +1,6 @@
 # 66: O1/O2: Drucken und Excel-Rundlauf in der App
 
-Status: done
+Status: resolved
 Type: task
 Welle: 4 · Strang: O1/O2 · Paket: `apps/web` (Ordner `src/ausgabe/`; Einhängestellen in `lv/LvSeite.tsx` und der Angebotsliste, D-20)
 Blocked by: 58 (PDF), 61 (Excel)
@@ -56,3 +56,7 @@ Frage: Die Excel-Datei trägt keinen Bieternamen. Entscheidung: Vorschlag ist de
 
 ### D-66.5 Glossar
 „Blankett“ und „Excel-Rundlauf“ sind im `GLOSSARY.md` (L2), weil die Oberfläche sie zeigt.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit e35c350; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

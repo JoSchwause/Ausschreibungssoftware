@@ -1,6 +1,6 @@
 # 56: Kern v1.3: Mengenansatz, Einfügen hinter einer Gliederung, leere Langtext-Strukturen
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: K · Paket: `packages/kern`
 Blocked by: 53 (`vertrag` v1.3), 51 (Fixture-Testcode im Kern)
@@ -109,3 +109,7 @@ Pflicht) haben kein Folgeticket und bleiben.
   `pauschal-menge`). Grund: D-27 („dieselben Vorbedingungen“), U5.
 - **D-56.8** Seams der Tests (Demo-Modus, keine Rückfrage möglich): `lvBefehlAusfuehren`, `auftragsLvBefehlAusfuehren`,
   `lvChangeSetAnwenden`/`changeSetUmkehren`, `lvPruefen`; keine Tests gegen interne Funktionen.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 78d4229; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

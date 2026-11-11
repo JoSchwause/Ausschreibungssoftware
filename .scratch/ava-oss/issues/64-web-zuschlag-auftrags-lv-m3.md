@@ -1,6 +1,6 @@
 # 64: V4: Zuschlag und Auftrags-LV in der App, E2E für Tor M3
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: V4 · Paket: `apps/web` (Ordner `src/vergabe/` (nach 63) und `src/auftrag/`; Einhängestellen, D-20)
 Blocked by: 63 (Preisspiegel-Seite), 59 (`zuschlagErteilen`), 57 (Speicher v1.3), 54 (schreibgeschütztes Grid), 69 (X84-Dateien)
@@ -100,3 +100,7 @@ In-Memory-Speicher (`auftrag.test.ts`), `auftragZiel`, `auftragAusgeben` (X86 mi
   hintereinander grün (`--repeat-each=3`).
 - Nach Merge von `integration/welle-4` (b60ca0b, Ticket 65): Lint, Typecheck, `pnpm test` (2017 Tests) grün; Web-E2E
   64/64 grün; `m3.spec.ts` erneut dreimal hintereinander grün.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit c509030; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Tor M3 grün (`apps/web/e2e/m3.spec.ts`). LV über den Testweg statt X83 (D-64.1, Ticket 73). Kein Repository/keine Kern-Umkehrung für Auftrags-LV: Tickets 70, 71.

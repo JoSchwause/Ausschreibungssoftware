@@ -4,7 +4,7 @@ title: Projekt-Überblick
 description: Grunddaten zum Projekt Ausschreibungssoftware (Ort, Status, offene Punkte).
 resource: /home/jsk/Documents/Privates/Ausschreibungssoftware
 tags: [ausschreibungssoftware, status]
-timestamp: 2026-11-11T12:00:00Z
+timestamp: 2026-11-11T18:00:00Z
 ---
 ## Kontext (vom Nutzer, 2026-11-09)
 - Ziel: eine Open-Source-AVA-Software (Ausschreibung, Vergabe, Abrechnung) für einen befreundeten Architekten in Deutschland.
@@ -14,7 +14,7 @@ timestamp: 2026-11-11T12:00:00Z
 ## Verifizierter Stand
 - Projektordner: `/home/jsk/Documents/Privates/Ausschreibungssoftware`. Zusätzlich existiert der Git-Worktree `reverse_engineer_nova_ava` (Branch `reverse_engineer_nova_ava`), dessen Arbeit am 2026-11-09 in `main` zusammengeführt wurde.
 - Git-Repo (Branch `main`) mit Remote `origin` = https://github.com/JoSchwause/Ausschreibungssoftware (öffentlich, angelegt 2026-11-09).
-- `main` enthält Welle 0 und 1 sowie Teile von Welle 2 (Code unter `packages/`); Welle 3 liegt lokal auf Branch `integration/welle-3` (Web-App `apps/web`, Pakete `mengen` und `vergabe`, `gaeb`-Writer). Daneben `okf/` (Wissensbasis, ohne `okf/research/`), Agent-Konfiguration (`AGENTS.md`, `.claude/skills/`, `docs/agents/`), Architektur-Entscheidungen (`docs/adr/`), Domänen-Glossar (`GLOSSARY.md`), lokale Entscheidungen und Plan (`.scratch/`) und `.gitignore`.
+- `main` enthält Welle 0 und 1 sowie Teile von Welle 2 (Code unter `packages/`); Welle 3 ist auf `main` (PR #9); Welle 4 liegt lokal auf Branch `integration/welle-4` (Preisspiegel, Zuschlag/Auftrags-LV, PDF, Excel, Mengen-Panel, PWA, Paket `kosten`). Daneben `okf/` (Wissensbasis, ohne `okf/research/`), Agent-Konfiguration (`AGENTS.md`, `.claude/skills/`, `docs/agents/`), Architektur-Entscheidungen (`docs/adr/`), Domänen-Glossar (`GLOSSARY.md`), lokale Entscheidungen und Plan (`.scratch/`) und `.gitignore`.
 - `.gitignore` schließt `docs/research/nova-ava/` und `okf/research/` aus. Beides nie committen, weil das Repo öffentlich ist.
 - **Repo-Änderung (gepusht auf Branch `grilling-rueckschreibung`, nicht auf `main`):** `okf/research/` ist aus dem Git-Index genommen (`git rm --cached`), die lokalen Dateien bleiben. Die Git-Historie enthält den Inhalt weiterhin, bis sie ausdrücklich umgeschrieben wird (G-44, Q2). Auf GitHub bleibt er in der Historie von `main` öffentlich sichtbar (Nutzerentscheidung 2026-11-09: Repo bleibt öffentlich, pushen).
 - **Cloud-Sessions:** Lokale, git-ignorierte `.env` im Projektwurzelordner enthält die Umgebungsvariablen für die Claude-Code-Cloud-Umgebung (ohne Geheimnisse; Inhalt ins Umgebungsformular kopieren). `GAEB_XSD_URL` ist leer, bis Strang G die XSD-Quelle festlegt. Umsetzende Cloud-Agenten lesen nur Tickets (C3).
@@ -36,4 +36,4 @@ timestamp: 2026-11-11T12:00:00Z
 - Verrechnung mehrerer Nachlässe im Preisspiegel (Annahme, G-26) und die zweite Bedeutung von „VOB 80“ (vor A1).
 - Interview mit dem Architekten-Freund steht aus (Leitfaden: `okf/research/synthesis.md`, Abschnitt 8); siehe G-02.
 - Anwendungscode: Welle 3 (Branch `integration/welle-3`, nicht auf `main`) liefert eine lauffähige lokale PWA: M1 „LV anlegen, rechnen, speichern“ erreicht, M2 (GAEB-Export mit XSD-Gegenprüfung) erfüllt bis auf erwartete Unterschiede im Rundweg; Handprüfung im GAEB-Betrachter offen. Bericht: `.scratch/ava-oss/welle-3-bericht.md`.
-- Welle 4: Tickets 51–54 (Fixtures in GAEB-Zuschlagsform, Einzeländerung < 100 ms, `vertrag` v1.3, UI-Lücken) sind geschnitten (`.scratch/ava-oss/issues/README.md`).
+- Welle 4 (2026-11-11, `integration/welle-4`, nicht auf `main`): Tickets 51–69 umgesetzt, **M3 „Ausschreibung → Angebote → Zuschlag“ erreicht**. Zu prüfen: Entscheidungslog D-20 bis D-30, `vertrag` v1.3, ADR 0012 (Vorschlag). Folgetickets 70–75; G-27 vor Welle 5. Bericht: `.scratch/ava-oss/welle-4-bericht.md`.

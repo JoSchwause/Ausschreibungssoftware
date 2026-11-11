@@ -1,6 +1,6 @@
 # 51: Fixtures `typisch`, `gross`, `typisch-angebote` auf GAEB-Zuschlagsform umstellen
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: F · Paket: `fixtures/` (benannte Ausnahme: die Fixture-Testhelfer und -Tests anderer Pakete, siehe Grenzen)
 Blocked by: – (Ticket 44 und 37 sind gemergt)
@@ -45,11 +45,11 @@ finden und nachtragen.
 
 ## Acceptance criteria
 
-- [ ] `typisch` ergibt die oben genannten Zahlen; Sollwerte unabhängig von `kern` und `vergabe` berechnet
-- [ ] `typisch-angebote` und `gross` in GAEB-Form; Sollwerte neu, Selbsttest der Fixtures grün
-- [ ] Alle Fixture-Verbraucher (Liste oben) grün, GAEB-Export-Goldens und `gross.sha256.json` begründet aktualisiert
-- [ ] `fixtures/README.md` und `GLOSSARY.md` nachgezogen (A4 ersetzt, Umsteller genannt)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` und `pnpm e2e` grün
+- [x] `typisch` ergibt die oben genannten Zahlen; Sollwerte unabhängig von `kern` und `vergabe` berechnet
+- [x] `typisch-angebote` und `gross` in GAEB-Form; Sollwerte neu, Selbsttest der Fixtures grün
+- [x] Alle Fixture-Verbraucher (Liste oben) grün, GAEB-Export-Goldens und `gross.sha256.json` begründet aktualisiert
+- [x] `fixtures/README.md` und `GLOSSARY.md` nachgezogen (A4 ersetzt, Umsteller genannt)
+- [x] `pnpm lint && pnpm typecheck && pnpm test` und `pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -107,3 +107,7 @@ Neue Fixtures, Änderungen an Rechenregeln, `vertrag`.
   (Wegwerf-Prototyp, Ausgabe eingecheckt, nicht in der Suite) nicht neu erzeugt.
 - Leistung: `vergabe/leistung.test.ts` `preisspiegelBerechnen` (gross, 5 Angebote) einzeln 825 ms (vorher mit der Altform
   1.050–1.260 ms auf derselben, ausgelasteten Maschine); das Budget von 1 s ist bei voller Parallelsuite lastabhängig.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 5b7dc4f; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

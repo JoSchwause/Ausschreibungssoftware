@@ -1,6 +1,6 @@
 # 69: X84-Dateien der Angebote zu `typisch` und Preisspiegel-Sollwerte
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: F · Paket: `fixtures/`
 Blocked by: 51 (Fixtures in GAEB-Form)
@@ -95,3 +95,7 @@ Abweichung: Schätzpreis 0,00 statt 55.465,59, weil das X83 keine EP trägt (sie
   64 legt die zwei Dateien nicht fest; Rang und virtuelle Bieter hängen von der Auswahl ab.
 - **D-69.6 Rang als String.** Entscheidung: `"1"`, `"2"`, `"3"`. Grund: Die Fixtures enthalten keine JSON-Zahlen
   (Selbsttest „Dezimalwerte in JSON sind nie Zahlen“ prüft das ganze Dokument).
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 66b57ab; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

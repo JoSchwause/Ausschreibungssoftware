@@ -1,6 +1,6 @@
 # 57: Speicher v1.3: Migration 4 (Mengenansatz, Auftragnehmer, EPA-Bezeichnungen), LV-Übersicht
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: S · Paket: `packages/speicher`
 Blocked by: 53 (`vertrag` v1.3), 52 (gleiches Paket)
@@ -116,3 +116,7 @@ Suite: `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 1991 bestanden (nach Mer
   dieselbe Sache weiter; nur ihre ChangeSets waren für die neue Prüfung unvollständig.
 - **D-57.8** `Projektdatei.lvStaende` mit Migration 4 Pflicht machen (Offene Typfrage 2 aus Ticket 53)? Nein, bleibt
   optional. Grund: Vertragsänderung, nicht in diesem Paket (P2); das Feld fehlt weiter, wenn es keine Stände gibt.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 2bfb344; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

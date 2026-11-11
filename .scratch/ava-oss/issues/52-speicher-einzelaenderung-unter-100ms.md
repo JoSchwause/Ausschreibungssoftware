@@ -1,6 +1,6 @@
 # 52: Speicher: Einzeländerung bei 5.000 Positionen unter 100 ms bis zur Summenzeile
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: S · Paket: `packages/speicher` (dazu Messung in `apps/web/e2e/leistung.spec.ts`)
 Blocked by: –
@@ -161,3 +161,7 @@ Suite (Umsetzer, nach Merge von `integration/welle-4` mit Vertrag v1.3): `pnpm l
 dauerhaftes Profil Mengenänderung Median 46 ms, Undo 31 ms; flüchtiger Kontext 57 ms). In einem früheren Lauf unter
 Last 18 fielen drei reine CPU-Budgets anderer Pakete (`kern` K9 und `lvPruefen`, `vergabe` Preisspiegel); allein und
 auf ruhigerer Maschine grün, nicht aus diesem Ticket.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit c42aa76; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`). Harte Schranke < 100 ms im dauerhaften Profil (D-29); im flüchtigen Playwright-Kontext nur gemessen. Datenverlust beim Neuladen behoben (D-52.5).

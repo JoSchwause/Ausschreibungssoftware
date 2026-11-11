@@ -153,3 +153,7 @@ Stand 2026-11-09:
     `vertrag` v1.2. Tor M1 erreicht, M2 erfüllt mit gelisteten Unterschieden. Entscheidungen D-01 bis D-19 in
     `entscheidungen-auto.md`. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.2, Merge nach `main`),
     Folgetickets 51–54. Bericht: `.scratch/ava-oss/welle-3-bericht.md`.
+12. ✅ **Lauf „Welle 4“ im Demo-Modus (2026-11-11)** auf dem lokalen Branch `integration/welle-4`: V3+V4, O1+O2, M2, S4, C1 und
+    die Folgetickets 51–54, Tickets 51–69, `vertrag` v1.3. **Tor M3 erreicht** (`apps/web/e2e/m3.spec.ts`). Entscheidungen D-20
+    bis D-30 in `entscheidungen-auto.md`, ADR 0012 als Vorschlag. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog,
+    `vertrag` v1.3, ADR 0012, Merge nach `main`), Folgetickets 70–75, G-27 vor Welle 5. Bericht: `.scratch/ava-oss/welle-4-bericht.md`.

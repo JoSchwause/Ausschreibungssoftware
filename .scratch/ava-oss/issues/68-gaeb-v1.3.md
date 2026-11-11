@@ -1,6 +1,6 @@
 # 68: `gaeb` v1.3: Auftragnehmer in X86, EPA-Bezeichnungen, leere Langtext-Strukturen, Import der X84 aus Ticket 69
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: G · Paket: `packages/gaeb`
 Blocked by: 53 (`vertrag` v1.3), 51 (Goldens), 57 (Speicherung der neuen Felder), 69 (X84-Dateien)
@@ -114,3 +114,7 @@ Speicherung der Felder: Ticket 57.
 - **D-68.11** Vergleich mit `typisch-angebote.json`? Die Fixture lässt Vorgaben weg; der Test ergänzt `epa: null` und an
   Zuschlagszeilen den Platzhalter-EP `0.000` (Vertrag v1.2, D-12 Nr. 7; die X84 tragen dort kein `UP`, D-69.2) und
   vergleicht dann mit `toEqual`; erwartete Befunde: keine.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit b3d2895; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).

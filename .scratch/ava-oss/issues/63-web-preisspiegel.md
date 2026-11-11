@@ -1,6 +1,6 @@
 # 63: V3: Preisspiegel-Ansicht in der App
 
-Status: claimed
+Status: resolved
 Type: task
 Welle: 4 · Strang: V3 · Paket: `apps/web` (Ordner `src/vergabe/`; Einhängestellen in `App.tsx`/`lv/LvSeite.tsx`, D-20)
 Blocked by: 60 (`VergleichsGrid`), 51 (Fixtures)
@@ -30,11 +30,11 @@ der Angebotsliste aus Ticket 49):
 
 ## Acceptance criteria
 
-- [ ] E2E: Projekt mit `typisch` und den drei Angeboten aus `typisch-angebote` (über den vorhandenen Testweg oder X84 aus
+- [x] E2E: Projekt mit `typisch` und den drei Angeboten aus `typisch-angebote` (über den vorhandenen Testweg oder X84 aus
       Ticket 69, falls schon gemergt) → Preisspiegel zeigt je Bieter Netto, Netto nach Nachlass, Brutto und Rang gleich den
       Sollwerten der Fixture; ein Ausreißer und ein „nicht angeboten“ sind sichtbar und per Tastatur erreichbar
-- [ ] Schwelle ändern ändert die Kennzeichen (E2E)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] Schwelle ändern ändert die Kennzeichen (E2E)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
@@ -97,3 +97,7 @@ Entscheidungen (Frage → Entscheidung → Grund):
   ohne 03.0080: dort bietet C 0,000, nach D-05 ein Nullpreis und nie Ausreißer (A7 zählt Nullen mit). „Schwelle ändern“
   prüft 200 %: Bei drei Bietern liegt ein Preis > 0 höchstens 200 % über und weniger als 100 % unter dem Mittel, also
   verschwinden alle Ausreißer (aus der Regel hergeleitet, nicht aus dem Kern). Reversible: yes.
+
+## Answer
+
+Gemergt auf `integration/welle-4` mit Merge-Commit 51ebd1c; Review-Befunde behoben in `fix/welle-4-review` (847aa43, siehe `../review-welle-4.md`).
