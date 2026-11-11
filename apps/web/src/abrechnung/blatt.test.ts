@@ -5,7 +5,7 @@
 import type { Aufmass, AufmassId, Menge, PositionId } from '@tethys/vertrag';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { blattAnsicht, kumuliertBisHier, zeilenBefehl, zeilenZiel } from './blatt';
-import { mitAuftrag, positionMitOz, type Aufbau } from './testaufbau';
+import { mitAuftrag, positionMitOz, type Aufbau } from './testhilfen';
 
 let auf: Aufbau;
 beforeAll(async () => {

@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import type { Aufmass, AufmassId, Menge } from '@tethys/vertrag';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { mitAuftrag, positionMitOz, type Aufbau } from './testaufbau';
+import { mitAuftrag, positionMitOz, type Aufbau } from './testhilfen';
 import { blattAlsX31, x31Vorschau } from './x31';
 
 const wurzel = new URL('../../../../', import.meta.url);

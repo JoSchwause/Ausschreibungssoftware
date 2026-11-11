@@ -6,7 +6,7 @@ import type { Aufmass, Menge } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { zaehlenderSpeicher, speicherImSpeicher } from '../testhilfen';
 import { abrechnungLaden, aufmassSitzung, neuesBlatt } from './aufmass';
-import { mitAuftrag, positionMitOz } from './testaufbau';
+import { mitAuftrag, positionMitOz } from './testhilfen';
 
 describe('Aufmaßblatt über den Befehlsweg', () => {
   it('legt ein Blatt an, setzt Zeilen; jeder Schritt ein Befehl mit Protokolleintrag am Aggregat `aufmass`', async () => {

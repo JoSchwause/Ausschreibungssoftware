@@ -6,7 +6,7 @@
 import type { Aufmass, AufmassId, Menge, Prozent } from '@tethys/vertrag';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { sollIstAnsicht, sollIstRechnen } from './sollist';
-import { mitAuftrag, positionMitOz, type Aufbau } from './testaufbau';
+import { mitAuftrag, positionMitOz, type Aufbau } from './testhilfen';
 
 let auf: Aufbau;
 beforeAll(async () => {
