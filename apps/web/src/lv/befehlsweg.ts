@@ -34,6 +34,7 @@ import type {
   Speicherfehler,
   Zeitstempel,
 } from '@tethys/vertrag';
+import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten'; // Ticket 89
 import { Historie, type Teil } from '../historie/historie';
 import { ozErgaenzen } from './ozergaenzen';
 
@@ -59,10 +60,11 @@ export type Ausgang<Z> =
 export const EINZIGER_NUTZER = 'nutzer' as NutzerId;
 
 /** Ein angenommener Befehl samt dem, was der Undo-Stapel von ihm braucht. */
-type Lauf<Z> =
+export type Lauf<Z> =
+  // Ticket 89: exportiert für `kosten/schreiben.ts`
   (Extract<Ausgang<Z>, { ok: true }> & { readonly teil: Teil }) | Extract<Ausgang<Z>, { ok: false }>;
 
-function eintrag(
+export function eintrag( // Ticket 89: exportiert für `kosten/schreiben.ts`
   u: Umgebung,
   projektId: ProjektId,
   aggregat: Protokolleintrag['aggregat'],
@@ -98,12 +100,12 @@ export async function eintragSchreiben(
   return r;
 }
 
-async function speichern<Z>(
+export async function speichern<Z>(
   u: Umgebung,
   e: Protokolleintrag,
   cs: Teil['changeSet'],
   neu: () => Z,
-  hinweise: readonly Befehlshinweis[] = ('hinweise' in cs ? cs.hinweise : undefined) ?? [], // Ticket 87
+  hinweise: readonly Befehlshinweis[] = 'hinweise' in cs ? (cs.hinweise ?? []) : [], // Ticket 87/89: Aufmaß, Kostenermittlung haben keine
 ): Promise<Lauf<Z>> {
   const r = await eintragSchreiben(u, e, cs);
   if (!r.ok) return { ok: false, abweisung: { art: 'speicher', fehler: r.fehler } };
@@ -232,7 +234,9 @@ const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
         ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag; Ticket 86: Nachtrag übernehmen
         : cs.art === 'aufmass'
           ? aufmassChangeSetUmkehren(cs) // Ticket 87: Aufmaßblatt
-          : projektChangeSetUmkehren(cs);
+          : cs.art === 'kostenermittlung'
+            ? kostenermittlungChangeSetUmkehren(cs) // Ticket 89
+            : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie

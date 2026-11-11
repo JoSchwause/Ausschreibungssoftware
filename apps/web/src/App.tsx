@@ -13,6 +13,11 @@ import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
+import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
+import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
+import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 89
+import { kostenRoute } from './kosten/pfad'; // Ticket 89
+import { texte as kostenTexte } from './kosten/texte'; // Ticket 89
 import { LvSeite } from './lv/LvSeite';
 import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
@@ -87,6 +92,19 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
       titel: texte.seiten.vergabe.titel,
       inhalt: mitSpeicher(<AuftragsLvSeite key={id} projektId={projektId} id={id} gehe={gehe} />),
     };
+  }
+  // Ticket 89: Kostenermittlungen und Kostenkontrolle eines Projekts
+  const kosten = kostenRoute(pfad);
+  if (kosten !== null) {
+    const seite =
+      kosten.art === 'liste' ? (
+        <KostenListeSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
+      ) : kosten.art === 'kontrolle' ? (
+        <KostenkontrolleSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
+      ) : (
+        <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
+      );
+    return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {

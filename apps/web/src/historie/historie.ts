@@ -14,6 +14,7 @@ import type {
   AngebotChangeSet,
   AufmassChangeSet, // Ticket 87
   AuftragsLvChangeSet, // Ticket 64
+  KostenermittlungChangeSet, // Ticket 89
   LvChangeSet,
   ProjektChangeSet,
   ProjektId,
@@ -32,7 +33,8 @@ export interface Teil {
     | ProjektChangeSet
     | AngebotChangeSet
     | AuftragsLvChangeSet // Ticket 64: Zuschlag
-    | AufmassChangeSet; // Ticket 87: Aufmaßblatt
+    | AufmassChangeSet // Ticket 87: Aufmaßblatt
+    | KostenermittlungChangeSet; // Ticket 89
 }
 
 /** Ein Undo-Schritt: die Teile in der Reihenfolge, in der sie geschrieben wurden. */

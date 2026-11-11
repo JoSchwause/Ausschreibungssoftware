@@ -1,0 +1,114 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Kostenseiten, Kostengruppen-Zuordnung und EP-Kalkulation (Ticket 89). Nur Tokens (U4). */
+
+.kosten h2 {
+  margin: var(--tx-space-6) 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-lg);
+}
+
+.kosten__grid {
+  min-height: 160px;
+  max-height: 60vh;
+}
+
+.kosten__formular {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-4);
+  margin: var(--tx-space-3) 0;
+}
+
+.kosten__formular > .tx-button {
+  margin-top: 20px;
+}
+
+.kosten__hinweis {
+  max-width: 72ch;
+  color: var(--tx-color-text-muted);
+}
+
+.kosten__befunde {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.kosten__datei {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+}
+
+/* Zuordnung (Dialog am LV und Auftrags-LV) */
+.zuordnung__werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--tx-space-3);
+  margin-bottom: var(--tx-space-3);
+}
+
+.zuordnung__liste {
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.zuordnung__tabelle {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.zuordnung__tabelle th,
+.zuordnung__tabelle td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--tx-color-border);
+}
+
+.zuordnung__tabelle td:first-child {
+  width: 2em;
+}
+
+.zuordnung__kg {
+  font-family: var(--tx-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kalkulation */
+.kalkulation__zeilen {
+  display: grid;
+  grid-template-columns: 9em 1fr 8em 8em auto;
+  align-items: start;
+  gap: var(--tx-space-2) var(--tx-space-3);
+}
+
+.kalkulation__saetze {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-3);
+}
+
+.kalkulation__nachweis {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.kalkulation__nachweis th,
+.kalkulation__nachweis td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  text-align: right;
+  border-bottom: 1px solid var(--tx-color-border);
+}
+
+.kalkulation__nachweis th:first-child,
+.kalkulation__nachweis td:first-child {
+  text-align: left;
+}
+
+.kalkulation__ep {
+  font-weight: var(--tx-weight-medium);
+}
