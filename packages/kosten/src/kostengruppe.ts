@@ -19,6 +19,9 @@ export interface Kostengruppenfehler {
   readonly meldung: string;
 }
 
+// Die Formregel steht auch im Kern (`KOSTENGRUPPE_FORM` in `kern/src/positionsfelder.ts`, von `gaeb` und `speicher`
+// benutzt). `kosten` darf `kern` nicht importieren (A3) und meldet die Fehler feiner (Form, führende Null); ändert sich die
+// Regel, ändern sich beide Stellen.
 const FORM = /^[0-9]{3}$/;
 
 /** Prüft die Form einer Kostengruppennummer. Leerraum am Rand wird entfernt (D-55.1). */

@@ -9,6 +9,7 @@
 //   die Ableitung aus den Ziffern trägt (D-24). Andere Ausgaben und andere Katalogarten sind Befund, nichts wird erfunden.
 // - Geschrieben wird ein Katalog `DIN276` mit der neuesten Ausgabe, die das Schema der Version kennt.
 
+import { KOSTENGRUPPE_FORM } from '@tethys/kern';
 import type { Kostengruppennummer, PositionId } from '@tethys/vertrag';
 import type { Leser } from './lesen';
 import { elementKinder, textInhalt } from './xml';
@@ -35,8 +36,8 @@ const LESBAR: ReadonlySet<string> = new Set([
 ]);
 const DIN_276 = 'cost group DIN 276';
 
-/** Form einer Kostengruppennummer (Marke `Kostengruppennummer`): drei Ziffern, die erste nicht 0. */
-export const istKostengruppe = (s: string): s is Kostengruppennummer => /^[1-9][0-9]{2}$/.test(s);
+/** Form einer Kostengruppennummer (Marke `Kostengruppennummer`): die Formregel des Kerns (`KOSTENGRUPPE_FORM`, S3). */
+export const istKostengruppe = (s: string): s is Kostengruppennummer => KOSTENGRUPPE_FORM.test(s);
 
 /** Die Kataloge einer Datei: Kennungen der Kostengruppenkataloge und die Art der übrigen. */
 export interface Kataloge {
