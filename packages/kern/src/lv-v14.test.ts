@@ -3,7 +3,13 @@
 // die neuen Positionsfelder an mitgebrachten Knoten. Zuerst geschrieben (Q1).
 
 import { describe, expect, it } from 'vitest';
-import type { Kostengruppennummer, LvBefehl, LvZustand } from '@tethys/vertrag';
+import type {
+  AuftragsLeistungsverzeichnisId,
+  Kostengruppennummer,
+  LvBefehl,
+  LvZustand,
+  Nachtragsangaben,
+} from '@tethys/vertrag';
 import { changeSetUmkehren, lvBefehlAusfuehren } from './index';
 import {
   KEINE_SUMMEN,
@@ -149,5 +155,89 @@ describe('TextquelleSetzen (D-40)', () => {
     expect(fehler(z, setze('T1', 'x')).code).toBe('knotenart-unzulaessig');
     expect(fehler(z, setze('H1', 'x')).code).toBe('knotenart-unzulaessig');
     expect(fehler(z, setze('gibt-es-nicht', 'x')).code).toBe('knoten-unbekannt');
+  });
+});
+
+describe('NachtragsangabenSetzen (D-35)', () => {
+  const angaben = (ueber: Partial<Nachtragsangaben> = {}): Nachtragsangaben => ({
+    auftragsLvId: 'auftrag-1' as AuftragsLeistungsverzeichnisId,
+    nummer: 'N01',
+    status: 'angemeldet',
+    ...ueber,
+  });
+  const setze = (nachtrag: Nachtragsangaben | null): LvBefehl => ({ art: 'NachtragsangabenSetzen', nachtrag });
+
+  it('setzt die Angaben am Kopf (nur Kopf, keine Knoten, keine Summen); null entfernt das Feld', () => {
+    const z = basis();
+    const cs = erwarteOk(lvBefehlAusfuehren(z, setze(angaben())));
+    expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(cs.kopf?.vorher).not.toHaveProperty('nachtrag');
+    expect(cs.kopf?.nachher?.nachtrag).toEqual(angaben());
+    const z1 = wendeMitUmkehr(z, setze(angaben()));
+    expect(z1.leistungsverzeichnis.nachtrag).toEqual(angaben());
+    const z2 = wendeMitUmkehr(z1, setze(angaben({ status: 'beauftragt' })));
+    expect(z2.leistungsverzeichnis.nachtrag?.status).toBe('beauftragt');
+    const z3 = wendeMitUmkehr(z2, setze(null));
+    expect(z3.leistungsverzeichnis).not.toHaveProperty('nachtrag');
+    expect(z3).toEqual(z);
+  });
+
+  it('derselbe Wert und null ohne Angaben liefern ein leeres ChangeSet', () => {
+    const z1 = wendeMitUmkehr(basis(), setze(angaben()));
+    expect(erwarteOk(lvBefehlAusfuehren(z1, setze(angaben()))).kopf).toBeNull();
+    expect(erwarteOk(lvBefehlAusfuehren(basis(), setze(null))).kopf).toBeNull();
+  });
+
+  it('jeder Status der Liste ist erlaubt; nur die drei Felder landen im Kopf', () => {
+    for (const status of ['angemeldet', 'angeboten', 'beauftragt', 'abgelehnt'] as const)
+      expect(lvBefehlAusfuehren(basis(), setze(angaben({ status }))).ok, status).toBe(true);
+    const mitMehr = { ...angaben(), bemerkung: 'x' } as Nachtragsangaben;
+    const kopf = erwarteOk(lvBefehlAusfuehren(basis(), setze(mitMehr))).kopf?.nachher;
+    expect(kopf?.nachtrag).toEqual(angaben());
+  });
+
+  it('Form: Nummer nicht leer (auch nicht nur Leerraum), Status aus der Liste, Kennung ein Text', () => {
+    const z = basis();
+    const falsch: [unknown, string][] = [
+      [angaben({ nummer: '' }), 'nachtrag.nummer'],
+      [angaben({ nummer: '  \t' }), 'nachtrag.nummer'],
+      [{ ...angaben(), nummer: 1 }, 'nachtrag.nummer'],
+      [{ ...angaben(), status: 'erledigt' }, 'nachtrag.status'],
+      [{ ...angaben(), auftragsLvId: null }, 'nachtrag.auftragsLvId'],
+      ['N01', 'nachtrag'],
+      [[], 'nachtrag'],
+    ];
+    for (const [wert, feld] of falsch) {
+      const f = fehler(z, setze(wert as Nachtragsangaben));
+      expect(f.code, feld).toBe('ungueltige-eingabe');
+      expect(f.feld).toBe(feld);
+    }
+  });
+});
+
+describe('VorlageSetzen (D-40)', () => {
+  const setze = (vorlage: boolean): LvBefehl => ({ art: 'VorlageSetzen', vorlage });
+
+  it('true kennzeichnet das LV als Muster-LV, false nimmt das Feld weg (nie false im Zustand)', () => {
+    const z = basis();
+    const cs = erwarteOk(lvBefehlAusfuehren(z, setze(true)));
+    expect(cs.summen).toEqual(KEINE_SUMMEN);
+    expect(cs.kopf?.vorher).not.toHaveProperty('vorlage');
+    expect(cs.kopf?.nachher?.vorlage).toBe(true);
+    const z1 = wendeMitUmkehr(z, setze(true));
+    expect(z1.leistungsverzeichnis.vorlage).toBe(true);
+    const z2 = wendeMitUmkehr(z1, setze(false));
+    expect(z2.leistungsverzeichnis).not.toHaveProperty('vorlage');
+    expect(z2).toEqual(z);
+  });
+
+  it('derselbe Wert liefert ein leeres ChangeSet; kein Wahrheitswert: ungueltige-eingabe', () => {
+    const z1 = wendeMitUmkehr(basis(), setze(true));
+    expect(erwarteOk(lvBefehlAusfuehren(z1, setze(true))).kopf).toBeNull();
+    expect(erwarteOk(lvBefehlAusfuehren(basis(), setze(false))).kopf).toBeNull();
+    const f = fehler(basis(), { art: 'VorlageSetzen', vorlage: 'ja' as unknown as boolean });
+    expect(f.code).toBe('ungueltige-eingabe');
+    expect(f.feld).toBe('vorlage');
   });
 });
