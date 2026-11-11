@@ -2,9 +2,9 @@
 // Ticket 66: die reinen Teile von Drucken und Excel in der App (Dateinamen, Datum, Vorschau des Excel-Rücklaufs).
 // Die Uhr gehört der App (A2): Das Datum kommt von `u.uhr()`, nicht aus dem Paket `ausgabe`.
 
-import { excelRuecklaufLesen, type ExcelBefund } from '@tethys/ausgabe';
-import type { Angebot, IdQuelle, LvZustand, Zeitstempel } from '@tethys/vertrag';
-import type { Angebotsvorschau } from '../gaeb/gaeb';
+import type { ExcelBefund } from '@tethys/ausgabe';
+import type { Angebot, IdQuelle, LvZustand, Projekt, Zeitstempel } from '@tethys/vertrag';
+import { angebotAnlegenPlan, type Angebotsplan, type Angebotsvorschau } from '../gaeb/gaeb';
 
 const STANDARDNAME = 'Leistungsverzeichnis';
 
@@ -40,6 +40,27 @@ export function istDatumIso(text: string): boolean {
   return d.getUTCFullYear() === j && d.getUTCMonth() === mo - 1 && d.getUTCDate() === t;
 }
 
+/** `JJJJ-MM-TT` als `TT.MM.JJJJ` (Anzeige und Eingabe, N4). */
+export const datumIsoZuDe = (iso: string): string => iso.split('-').reverse().join('.');
+
+/** Eingabe `TT.MM.JJJJ` (auch ohne führende Nullen) als `JJJJ-MM-TT`; `null`, wenn es den Tag nicht gibt. */
+export function datumDeZuIso(text: string): string | null {
+  const m = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})\s*$/.exec(text);
+  if (m === null) return null;
+  const iso = `${m[3] ?? ''}-${(m[2] ?? '').padStart(2, '0')}-${(m[1] ?? '').padStart(2, '0')}`;
+  return istDatumIso(iso) ? iso : null;
+}
+
+/** Bieter (falls neu) und Angebot für den Befehlsweg; wie `angebotAnlegenPlan` der X84-Vorschau. */
+export function excelAngebotPlan(
+  vorschau: ExcelVorschau,
+  bieterName: string,
+  projekt: Projekt,
+  ids: IdQuelle,
+): Angebotsplan | null {
+  return angebotAnlegenPlan({ ...vorschau, befunde: [] }, bieterName, projekt, ids);
+}
+
 export interface ExcelVorschau extends Omit<Angebotsvorschau, 'befunde'> {
   readonly befunde: readonly ExcelBefund[];
 }
@@ -50,25 +71,26 @@ export interface ExcelVorschau extends Omit<Angebotsvorschau, 'befunde'> {
  * Übernehmbar ist eine Datei mit mindestens einer angebotenen Position; ein leeres Blankett oder eine Datei für ein
  * anderes LV liefert keine (nichts zu übernehmen).
  */
-export function excelAngebotLesen(
+export async function excelAngebotLesen(
   bytes: Uint8Array,
   dateiname: string,
   lv: LvZustand,
   ids: IdQuelle,
-): ExcelVorschau {
+): Promise<ExcelVorschau> {
+  // Nachgeladen: `ausgabe` zieht pdfmake mit und gehört nicht ins Hauptbündel.
+  const { excelRuecklaufLesen } = await import('@tethys/ausgabe');
   const r = excelRuecklaufLesen(bytes, lv);
   const l = lv.leistungsverzeichnis;
-  const angebot: Angebot | null =
-    r.positionen.every((p) => p.status === 'nicht-angeboten')
-      ? null
-      : {
-          id: ids.angebot(),
-          projektId: l.projektId,
-          leistungsverzeichnisId: l.id,
-          bieterId: ids.bieter(),
-          nachlass: r.nachlass,
-          positionen: r.positionen,
-        };
+  const angebot: Angebot | null = r.positionen.every((p) => p.status === 'nicht-angeboten')
+    ? null
+    : {
+        id: ids.angebot(),
+        projektId: l.projektId,
+        leistungsverzeichnisId: l.id,
+        bieterId: ids.bieter(),
+        nachlass: r.nachlass,
+        positionen: r.positionen,
+      };
   return {
     phase: null,
     version: null,

@@ -5,7 +5,7 @@ import { lvAlsExcel } from '@tethys/ausgabe';
 import type { LvZustand, Zeitstempel } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
-import { angebotAnlegenPlan, bietersummen } from '../gaeb/gaeb';
+import { bietersummen } from '../gaeb/gaeb';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
 import {
@@ -13,6 +13,9 @@ import {
   dateinameExcel,
   dateinamePdf,
   datumAusUhr,
+  datumDeZuIso,
+  datumIsoZuDe,
+  excelAngebotPlan,
   excelAngebotLesen,
   istDatumIso,
 } from './logik';
@@ -35,6 +38,13 @@ describe('Dateinamen', () => {
 });
 
 describe('Datum', () => {
+  it('Eingabe TT.MM.JJJJ wird JJJJ-MM-TT, schlechte Eingabe null', () => {
+    expect(datumDeZuIso('11.11.2026')).toBe('2026-11-11');
+    expect(datumDeZuIso(' 1.2.2027 ')).toBe('2027-02-01');
+    expect(datumDeZuIso('30.02.2026')).toBeNull();
+    expect(datumDeZuIso('2026-11-11')).toBeNull();
+    expect(datumIsoZuDe('2026-11-11')).toBe('11.11.2026');
+  });
   it('kommt aus der Uhr der App, als JJJJ-MM-TT (Ortszeit)', () => {
     const t = new Date(2026, 10, 11, 23, 30).toISOString() as Zeitstempel;
     expect(datumAusUhr(t)).toBe('2026-11-11');
@@ -70,7 +80,7 @@ describe('excelAngebotLesen', () => {
   it('Datei mit Preisen: Vorschau mit Angebot, Summe gleich der des LV, Plan legt Bieter und Angebot an', async () => {
     const { zustand, ids } = await lvZustand();
     const datei = lvAlsExcel(zustand, { mitPreisen: true });
-    const v = excelAngebotLesen(datei.bytes, 'Mustermann Bau.xlsx', zustand, ids);
+    const v = await excelAngebotLesen(datei.bytes, 'Mustermann Bau.xlsx', zustand, ids);
     expect(v.uebernehmbar).toBe(true);
     expect(v.bieterName).toBe('Mustermann Bau');
     if (v.angebot === null) throw new Error('Angebot');
@@ -82,20 +92,20 @@ describe('excelAngebotLesen', () => {
       bauherr: { name: 'Kreis', anschrift: null },
       bieter: [],
     };
-    const plan = angebotAnlegenPlan(v, v.bieterName, projekt as never, ids);
+    const plan = excelAngebotPlan(v, v.bieterName, projekt as never, ids);
     expect(plan?.neuerBieter?.name).toBe('Mustermann Bau');
     expect(plan?.angebot.leistungsverzeichnisId).toBe(zustand.leistungsverzeichnis.id);
   });
 
   it('ein leeres Blankett hat keine Preise: nichts zu übernehmen', async () => {
     const { zustand, ids } = await lvZustand();
-    const v = excelAngebotLesen(lvAlsExcel(zustand).bytes, 'x.xlsx', zustand, ids);
+    const v = await excelAngebotLesen(lvAlsExcel(zustand).bytes, 'x.xlsx', zustand, ids);
     expect(v.uebernehmbar).toBe(false);
   });
 
   it('keine Excel-Datei: Befund, nichts zu übernehmen', async () => {
     const { zustand, ids } = await lvZustand();
-    const v = excelAngebotLesen(new TextEncoder().encode('kein zip'), 'x.xlsx', zustand, ids);
+    const v = await excelAngebotLesen(new TextEncoder().encode('kein zip'), 'x.xlsx', zustand, ids);
     expect(v.uebernehmbar).toBe(false);
     expect(v.befunde.map((b) => b.code)).toContain('datei-unlesbar');
   });
