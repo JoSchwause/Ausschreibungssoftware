@@ -4,8 +4,9 @@
 // Kommentar über jedem Fall). Nummern sind beliebige Ziffernfolgen der Form, keine Gruppen der Norm (G-16).
 
 import { describe, expect, it } from 'vitest';
-import { kgLesen, kostenermittlungBerechnen } from './index';
-import type { Kostenermittlungseintrag, Kostengruppennummer } from './index';
+import { kgLesen, kostenermittlungBefehlAusfuehren, kostenermittlungBerechnen } from './index';
+import type { KostenermittlungId, Kostengruppennummer, ProjektId } from '@tethys/vertrag';
+import type { Kostenermittlungseingabe } from './index';
 
 function kg(text: string): Kostengruppennummer {
   const e = kgLesen(text);
@@ -13,16 +14,19 @@ function kg(text: string): Kostengruppennummer {
   return e.wert;
 }
 
-/** Eintrag aus Klartext; der Betrag ist ungeprüfter Text (S11), damit auch Fehleingaben testbar sind. */
-function e(nummer: string, betrag: string, bemerkung?: string): Kostenermittlungseintrag {
-  return bemerkung === undefined
-    ? { nummer: nummer as Kostengruppennummer, betrag }
-    : { nummer: nummer as Kostengruppennummer, betrag, bemerkung };
+/** Eingabe aus Klartext; Nummer und Betrag sind ungeprüfter Text (S11), damit auch Fehleingaben testbar sind. */
+function e(nummer: string, betrag: string, bemerkung?: string): Kostenermittlungseingabe {
+  return bemerkung === undefined ? { nummer, betrag } : { nummer, betrag, bemerkung };
 }
 
 describe('kostenermittlungBerechnen: Summen', () => {
   it('leere Ermittlung: keine Gruppen, Gesamtsumme 0.00', () => {
-    expect(kostenermittlungBerechnen([])).toEqual({ gruppen: [], gesamtsumme: '0.00', befunde: [] });
+    expect(kostenermittlungBerechnen([])).toEqual({
+      gruppen: [],
+      gesamtsumme: '0.00',
+      eintraege: [],
+      befunde: [],
+    });
   });
 
   // 220 = 221 + 222 = 250.50 + 49.50 = 300.00
@@ -128,5 +132,44 @@ describe('kostenermittlungBerechnen: Befunde, nie Sperre (U5)', () => {
       ['betrag-ungueltig', '910', 1],
       ['nummer-ungueltig', null, 3],
     ]);
+  });
+});
+
+describe('kostenermittlungBerechnen: Einträge für KostenermittlungAnlegen (Ticket 82)', () => {
+  // 330: 10.00 + 5.5 → 5.50 (gerundet, Befund) + 0.00 = 15.50, Bemerkungen „A“ und „B“ zusammen (die zweite „A“ nur
+  // einmal); 410: 1.00, leere Bemerkung weg; „xx“ zählt nicht. Geordnet nach Nummer.
+  it('fasst doppelte Nummern zusammen, ordnet nach Nummer und lässt Ungültiges weg; jeder Schritt mit Befund', () => {
+    const r = kostenermittlungBerechnen([
+      e('410', '1.00', ''),
+      e(' 330', '10.00', 'A'),
+      e('xx', '1.00'),
+      e('330', '5.5', 'B'),
+      e('330', '0.00', 'A'),
+    ]);
+    expect(r.eintraege).toEqual([
+      { nummer: kg('330'), betrag: '15.50', bemerkung: 'A; B' },
+      { nummer: kg('410'), betrag: '1.00' },
+    ]);
+    expect(r.befunde.map((b) => [b.code, b.eintrag])).toEqual([
+      ['nummer-ungueltig', 2],
+      ['betrag-nicht-kanonisch', 3],
+      ['nummer-doppelt', 3],
+      ['nummer-doppelt', 4],
+    ]);
+  });
+
+  it('die Einträge nimmt KostenermittlungAnlegen unverändert an', () => {
+    const { eintraege } = kostenermittlungBerechnen([e('410', '1.00'), e('330', '2.345'), e('330', '1.00')]);
+    const r = kostenermittlungBefehlAusfuehren(null, {
+      art: 'KostenermittlungAnlegen',
+      kostenermittlung: {
+        id: 'ke' as KostenermittlungId,
+        projektId: 'p' as ProjektId,
+        stufe: 'kostenschaetzung',
+        name: 'KS',
+        eintraege,
+      },
+    });
+    expect(r.ok ? r.wert.kostenermittlung.nachher?.eintraege : r.fehler).toEqual(eintraege);
   });
 });

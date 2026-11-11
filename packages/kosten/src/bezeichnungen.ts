@@ -7,7 +7,7 @@
 // leere Zeile, wenn ihre erste Zelle keine Ziffer enthält. UTF-8 mit oder ohne BOM; Zeilenenden CRLF, LF oder CR.
 // Anführungszeichen nach RFC 4180 (`""` im Feld, Trenner und Zeilenumbrüche im Feld).
 
-import type { Kostengruppennummer } from './kostengruppe';
+import type { Kostengruppennummer } from '@tethys/vertrag';
 import { kgLesen } from './kostengruppe';
 
 export type Trenner = ';' | ',';
