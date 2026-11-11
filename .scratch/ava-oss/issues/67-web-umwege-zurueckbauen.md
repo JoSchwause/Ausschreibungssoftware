@@ -4,6 +4,7 @@ Status: ready-for-agent
 Type: task
 Welle: 4 · Strang: U · Paket: `apps/web` (Ordner `src/lv/`, `src/historie/`; D-20)
 Blocked by: 54 (beide Teile)
+Ausnahme (D-26): `Button` in `packages/ui-basis` nimmt einen `ref` an (eine Stelle, additiv), damit der Anfangsfokus auf einen Knopf zeigen kann.
 Regeln: U3, U5, Q2, Q5
 Herkunft: Ticket 54 (Nicht-Ziel „Rückbau der Umwege in `apps/web` (Folgeticket)“), Comments der Tickets 39, 46, 47, 48
 
