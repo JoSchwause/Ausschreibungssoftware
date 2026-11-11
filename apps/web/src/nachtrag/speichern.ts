@@ -20,15 +20,15 @@ import type {
   LeistungsverzeichnisId,
   LvZustand,
   Nachtragsstatus,
-  Protokolleintrag,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
 import { bietersummen } from '../gaeb/gaeb';
 import type { Teil } from '../historie/historie';
 import {
-  eintragSchreiben,
+  eintrag,
   lvBefehlAnwenden,
+  speichern,
   type Abweisung,
   type Befehlsweg,
   type LvSitzung,
@@ -186,20 +186,10 @@ export function nachtragBeauftragen(
         teilweise: false,
       };
     const a = auftrag.auftragsLeistungsverzeichnis;
-    const eintrag: Protokolleintrag = {
-      id: u.ids.protokoll(),
-      projektId: a.projektId,
-      aggregat: { art: 'auftrags-leistungsverzeichnis', id: a.id },
-      wer: u.nutzer,
-      wann: u.uhr(),
-      befehl: plan.befehl,
-    };
-    const w = await eintragSchreiben(u, eintrag, cs.wert);
-    if (!w.ok)
-      return { ok: false, art: 'abweisung', abweisung: speicherfehler(w.fehler).abweisung, teilweise: false };
-    const teile: Teil[] = [
-      { protokollId: eintrag.id, projektId: a.projektId, aggregat: eintrag.aggregat, changeSet: cs.wert },
-    ];
+    const e = eintrag(u, a.projektId, { art: 'auftrags-leistungsverzeichnis', id: a.id }, plan.befehl);
+    const w = await speichern(u, e, cs.wert, () => null);
+    if (!w.ok) return { ok: false, art: 'abweisung', abweisung: w.abweisung, teilweise: false };
+    const teile: Teil[] = [w.teil];
     try {
       const s = await lvBefehlAnwenden(u, a.projektId, nachtragsLv, {
         art: 'NachtragsangabenSetzen',

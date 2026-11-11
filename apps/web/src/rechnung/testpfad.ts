@@ -13,7 +13,7 @@ import type {
   Knoten,
   LeistungsverzeichnisId,
 } from '@tethys/vertrag';
-import { befehlswegFuer, eintragSchreiben, type Umgebung } from '../lv/befehlsweg';
+import { befehlswegFuer, eintrag, eintragSchreiben, type Umgebung } from '../lv/befehlsweg';
 
 /** Legt das Blatt an; der Fehler ist der Code des Ausführers oder des Speichers. */
 export function aufmassSchreiben(u: Umgebung, aufmass: Aufmass): Promise<Ergebnis<void, string>> {
@@ -21,14 +21,7 @@ export function aufmassSchreiben(u: Umgebung, aufmass: Aufmass): Promise<Ergebni
     const befehl = { art: 'AufmassAnlegen', aufmass } as const;
     const r = aufmassBefehlAusfuehren(null, befehl);
     if (!r.ok) return { ok: false, fehler: r.fehler.code };
-    const e = {
-      id: u.ids.protokoll(),
-      projektId: aufmass.projektId,
-      aggregat: { art: 'aufmass', id: aufmass.id },
-      wer: u.nutzer,
-      wann: u.uhr(),
-      befehl,
-    } as const;
+    const e = eintrag(u, aufmass.projektId, { art: 'aufmass', id: aufmass.id }, befehl);
     const s = await eintragSchreiben(u, e, r.wert);
     return s.ok ? { ok: true, wert: undefined } : { ok: false, fehler: s.fehler.code };
   });
@@ -47,14 +40,12 @@ export function nachtragSchreiben(
     const befehl = { art: 'NachtragUebernehmen', nachtragLvId, knoten } as const;
     const r = auftragsLvBefehlAusfuehren(z.wert, befehl);
     if (!r.ok) return { ok: false, fehler: r.fehler.code };
-    const e = {
-      id: u.ids.protokoll(),
-      projektId: z.wert.auftragsLeistungsverzeichnis.projektId,
-      aggregat: { art: 'auftrags-leistungsverzeichnis', id: auftragsLvId },
-      wer: u.nutzer,
-      wann: u.uhr(),
+    const e = eintrag(
+      u,
+      z.wert.auftragsLeistungsverzeichnis.projektId,
+      { art: 'auftrags-leistungsverzeichnis', id: auftragsLvId },
       befehl,
-    } as const;
+    );
     const s = await eintragSchreiben(u, e, r.wert);
     return s.ok ? { ok: true, wert: undefined } : { ok: false, fehler: s.fehler.code };
   });

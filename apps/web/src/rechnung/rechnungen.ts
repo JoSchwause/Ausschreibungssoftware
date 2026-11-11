@@ -18,9 +18,8 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import type { Teil } from '../historie/historie';
 import { nachtraegeLaden, type Nachtragseintrag } from '../nachtrag/speichern';
-import { Sitzung, eintragSchreiben, type Befehlsweg, type Umgebung } from '../lv/befehlsweg';
+import { Sitzung, eintrag, speichern, type Befehlsweg, type Lauf, type Umgebung } from '../lv/befehlsweg';
 import { rechnungBefehlAusfuehren, rechnungChangeSetAnwenden } from '@tethys/abrechnung';
 
 /** Ein Befehl an eine Rechnung; `rechnungId: null` nur für `RechnungAnlegen`. */
@@ -39,31 +38,18 @@ async function ausfuehren(
   projektId: ProjektId,
   rechnungen: readonly Rechnung[],
   a: Rechnungsauftrag,
-) {
+): Promise<Lauf<readonly Rechnung[]>> {
   const vorher = a.rechnungId === null ? undefined : rechnungen.find((r) => r.id === a.rechnungId);
   const zustand = vorher === undefined ? null : { rechnung: vorher };
   const r = rechnungBefehlAusfuehren(zustand, a.befehl);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } } as const;
+  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
   const cs = r.wert;
-  const e = {
-    id: u.ids.protokoll(),
-    projektId,
-    aggregat: { art: 'rechnung', id: cs.rechnungId },
-    wer: u.nutzer,
-    wann: u.uhr(),
-    befehl: a.befehl,
-  } as const;
-  const s = await eintragSchreiben(u, e, cs);
-  if (!s.ok) return { ok: false, abweisung: { art: 'speicher', fehler: s.fehler } } as const;
-  const nachher = rechnungChangeSetAnwenden(zustand, cs);
-  const uebrige = rechnungen.filter((x) => x.id !== cs.rechnungId);
-  const teil: Teil = { protokollId: e.id, projektId, aggregat: e.aggregat, changeSet: cs };
-  return {
-    ok: true,
-    zustand: nachNummer(nachher === null ? uebrige : [...uebrige, nachher.rechnung]),
-    hinweise: [],
-    teil,
-  } as const;
+  const e = eintrag(u, projektId, { art: 'rechnung', id: cs.rechnungId }, a.befehl);
+  return speichern(u, e, cs, () => {
+    const nachher = rechnungChangeSetAnwenden(zustand, cs);
+    const uebrige = rechnungen.filter((x) => x.id !== cs.rechnungId);
+    return nachNummer(nachher === null ? uebrige : [...uebrige, nachher.rechnung]);
+  });
 }
 
 /** Sitzung über den Rechnungen eines Auftrags-LV (Zustand: die Rechnungen nach Nummer). */
