@@ -1,33 +1,78 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Auftrags-LV (Ticket 30, Punkt 12; ADR 0011): `AuftragsLeistungsverzeichnisAnlegen`. Bis zur Vergabe (Welle 4) der einzige
-// Befehl am Auftrags-LV. Es gelten dieselben Baumregeln wie beim LV; die Wurzel ist die Kennung des Auftrags-LV. Das
-// ChangeSet trägt Kopf, alle Knoten (kanonisch) und die vollständigen Summen (`kopf.vorher: null`).
+// Auftrags-LV (Ticket 30, Punkt 12; ADR 0011; Vertrag v1.4, Ticket 71): die drei Befehle am Auftrags-LV (D-36 (4)).
+//  - `AuftragsLeistungsverzeichnisAnlegen` (Zuschlag, D-21): dieselben Baumregeln wie beim LV, die Wurzel ist die Kennung
+//    des Auftrags-LV. Das ChangeSet trägt Kopf (nur Felder von `AuftragsLvKopf`, D-42), alle Knoten (kanonisch) und die
+//    vollständigen Summen (`kopf.vorher: null`).
+//  - `NachtragUebernehmen` (D-35, D-70.6): ein Teilbaum ans Ende der obersten Ebene, wie mitgebracht; Summen nur für den
+//    neuen Teilbaum und die Gesamtsumme (A6).
+//  - `KostengruppeSetzen` (D-70.1): dieselbe Handlung wie im LV (`kostengruppeWechsel`), Summen unverändert.
+// Anwenden und Umkehren der ChangeSets: `changeset.ts` (`auftragsLvChangeSetAnwenden`, `auftragsLvChangeSetUmkehren`).
 
-import type { AuftragsLvBefehlAusfuehren } from '@tethys/vertrag';
-import { positionNormal } from './mengenansatz';
+import type {
+  AuftragsLeistungsverzeichnis,
+  AuftragsLeistungsverzeichnisAnlegen,
+  AuftragsLvBefehlAusfuehren,
+  AuftragsLvChangeSet,
+  AuftragsLvKopf,
+  AuftragsLvZustand,
+  Befehlsfehler,
+  Ergebnis,
+  Knoten,
+  KostengruppeSetzen,
+  NachtragUebernehmen,
+  Summenaenderung,
+} from '@tethys/vertrag';
+import { LEERE_SUMMENAENDERUNG } from './changeset';
+import { listeFehler } from './einfuegen-befehle';
 import { nein, ok } from './fehler';
-import { anlegeHinweise } from './hinweise';
+import { anlegeHinweise, nettoHinweise } from './hinweise';
+import { kostengruppeWechsel } from './kostengruppe';
+import { positionNormal } from './mengenansatz';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
-import { kanonisch, ohneKnoten } from './struktur';
-import { LEERES_SUMMENVORHER, summenBerechnen } from './summen';
+import { MAX_GLIEDERUNGSEBENEN, obersteEbeneFehler } from './regeln';
+import { baueIndex, ebenenHoehe, indexVon, kanonisch } from './struktur';
+import { LEERES_SUMMENVORHER, summenAenderung, summenBerechnen, summenVorher } from './summen';
+
+type Antwort = Ergebnis<AuftragsLvChangeSet, Befehlsfehler>;
 
 /**
- * Führt einen Befehl am Auftrags-LV aus. `AuftragsLeistungsverzeichnisAnlegen` braucht `zustand === null`, sonst
- * `befehl-nicht-zustaendig`. Wie `LeistungsverzeichnisAnlegen`: Form der Stammdaten (`ungueltige-eingabe`), Baumregeln,
- * `''` als Einheit wird `null`, Hinweise für eine beanstandete Maske und ein negatives Netto (angenommen, U5).
+ * Die Felder von `AuftragsLvKopf`. Der Typprüfer verlangt jedes (ein neues Vertragsfeld fällt hier auf, statt still zu
+ * fehlen) und kein anderes.
  */
-export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, befehl) => {
-  // v1.4: mechanisch angepasst, Folgeticket (Ticket 71: Handler für die neuen Befehle am Auftrags-LV)
-  if (befehl.art !== 'AuftragsLeistungsverzeichnisAnlegen') {
-    return nein(
-      'befehl-nicht-zustaendig',
-      `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt; zuständig: Ticket 71.`,
-    );
-  }
-  if (zustand !== null) {
-    return nein('befehl-nicht-zustaendig', `${befehl.art}: das Auftrags-LV existiert schon.`);
-  }
-  const a = befehl.auftragsLeistungsverzeichnis;
+const KOPF_FELDER: { readonly [F in keyof Required<AuftragsLvKopf>]: true } = {
+  id: true,
+  projektId: true,
+  leistungsverzeichnisId: true,
+  angebotId: true,
+  name: true,
+  ozMaske: true,
+  mwstSatz: true,
+  nachlass: true,
+  auftraggeber: true,
+  vergabeinformationen: true,
+  auftragnehmer: true,
+  epaBezeichnungen: true,
+};
+
+/**
+ * Der Kopf des Auftrags-LV mit genau den Feldern von `AuftragsLvKopf` (D-42): Was ein Aufrufer zur Laufzeit mehr
+ * mitbringt (`nachtrag`, `vorlage` eines LV, `wurzelId`, `knoten`), landet nicht im ChangeSet. Fehlende optionale Felder
+ * fehlen auch im Ergebnis.
+ */
+function auftragsLvKopfVon(a: AuftragsLeistungsverzeichnis): AuftragsLvKopf {
+  const kopf: Partial<Record<keyof AuftragsLvKopf, unknown>> = {};
+  for (const f of Object.keys(KOPF_FELDER) as (keyof AuftragsLvKopf)[])
+    if (a[f] !== undefined) kopf[f] = a[f];
+  return kopf as AuftragsLvKopf;
+}
+
+/**
+ * `AuftragsLeistungsverzeichnisAnlegen`: wie `LeistungsverzeichnisAnlegen` Form der Stammdaten (`ungueltige-eingabe`),
+ * Baumregeln, Normalform der Positionen (`''` als Einheit wird `null`, `''` als Textquelle fällt weg), Hinweise für eine
+ * beanstandete Maske und ein negatives Netto (angenommen, U5).
+ */
+function anlegen(b: AuftragsLeistungsverzeichnisAnlegen): Antwort {
+  const a = b.auftragsLeistungsverzeichnis;
   const kopfFehler = inhaltKopfFehler(a);
   if (kopfFehler) return { ok: false, fehler: kopfFehler };
   const [erster] = baumfehler(a.id, a.knoten);
@@ -41,7 +86,7 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
   return ok({
     art: 'auftrags-leistungsverzeichnis',
     auftragsLeistungsverzeichnisId: a.id,
-    kopf: { vorher: null, nachher: ohneKnoten(a) },
+    kopf: { vorher: null, nachher: auftragsLvKopfVon(a) },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
     summen: {
       positionen: summen.positionen,
@@ -51,4 +96,140 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
     },
     ...(hinweise.length === 0 ? {} : { hinweise }),
   });
+}
+
+/**
+ * ChangeSet am bestehenden Auftrags-LV, gebaut wie `baueChangeSet` beim LV: kein Kopf, die alten Summen
+ * (`summen.vorher`) aus dem Zustand, der Hinweis für ein negatives Netto, wenn sich die Gesamtsummen ändern.
+ */
+function baueAuftragsChangeSet(
+  z: AuftragsLvZustand,
+  teile: {
+    readonly hinzugefuegt?: readonly Knoten[];
+    readonly geaendert?: readonly { readonly vorher: Knoten; readonly nachher: Knoten }[];
+    readonly summen?: Omit<Summenaenderung, 'vorher'>;
+  },
+): AuftragsLvChangeSet {
+  const s = teile.summen ?? LEERE_SUMMENAENDERUNG;
+  const hinweise = nettoHinweise(s.gesamt);
+  return {
+    art: 'auftrags-leistungsverzeichnis',
+    auftragsLeistungsverzeichnisId: z.auftragsLeistungsverzeichnis.id,
+    kopf: null,
+    knoten: { hinzugefuegt: teile.hinzugefuegt ?? [], geaendert: teile.geaendert ?? [], entfernt: [] },
+    summen: {
+      positionen: s.positionen,
+      gliederungen: s.gliederungen,
+      gesamt: s.gesamt,
+      vorher: summenVorher(z.summen, s, []),
+    },
+    ...(hinweise.length === 0 ? {} : { hinweise }),
+  };
+}
+
+const KEIN_PAPIERKORB: ReadonlyMap<string, Knoten> = new Map();
+
+/**
+ * `NachtragUebernehmen` (D-35, Lesart D-70.6 am Vertragstyp): Der Kern übernimmt die Knoten, wie sie kommen (Lage, OZ, Preise
+ * setzt `nachtragUebernehmen` in `abrechnung`), und prüft:
+ *  - die Liste wie bei `KnotenEinfuegen` (`listeFehler`): nicht leer, Kennungen neu auch gegen den vorhandenen Baum
+ *    (`id-vergeben`; das sperrt eine zweite Übernahme), Eltern vor Kindern, dichte `reihenfolge` im Teilbaum, Kinder nur
+ *    unter Gliederungen, Form der Positionen (samt Kostengruppe und Textquelle);
+ *  - genau eine Wurzel (`ungueltige-eingabe`), auf der obersten Ebene (`elternId` = Kennung des Auftrags-LV; ein Knoten
+ *    des Baums als Elternknoten: `ungueltige-eingabe`, ein unbekannter: `eltern-unbekannt`), eine Gliederung
+ *    (`knotenart-unzulaessig`, D-71.6), ans Ende (`reihenfolge` = Zahl der Knoten dort, sonst `ungueltige-eingabe`);
+ *  - F1 an der obersten Ebene (`obersteEbeneFehler`: kein Los neben Titeln und umgekehrt, unter einer Los-Stufe nur ein
+ *    Los; `knotenart-unzulaessig`) und höchstens 5 Gliederungsebenen samt der neuen (`ebene-ueberschritten`).
+ * Die OZ prüft er nicht gegen die Maske (U5, Befund der LV-Prüfung). ChangeSet: `knoten.hinzugefuegt` (die Liste, Positionen
+ * in Normalform), Summen des neuen Teilbaums und die Gesamtsummen samt `summen.vorher` (A6).
+ */
+function nachtragUebernehmen(z: AuftragsLvZustand, b: NachtragUebernehmen): Antwort {
+  const a = z.auftragsLeistungsverzeichnis;
+  const idx = indexVon(a.id, a.knoten);
+  const geprueft = listeFehler(a.id, idx, KEIN_PAPIERKORB, b.knoten);
+  if (!geprueft.ok) return geprueft;
+  const [wurzel, zweite] = geprueft.wert;
+  if (wurzel === undefined)
+    return nein('ungueltige-eingabe', 'Die Liste der Knoten ist leer.', undefined, 'knoten');
+  if (zweite !== undefined)
+    return nein(
+      'ungueltige-eingabe',
+      'Ein Nachtrag ist genau eine Gliederung samt Teilbaum (eine Wurzel).',
+      zweite.id,
+      'knoten',
+    );
+  if (wurzel.elternId !== a.id) {
+    return idx.byId.has(wurzel.elternId)
+      ? nein(
+          'ungueltige-eingabe',
+          'Der Nachtrag kommt auf die oberste Ebene des Auftrags-LV.',
+          wurzel.id,
+          'elternId',
+        )
+      : nein('eltern-unbekannt', `Elternknoten fehlt: ${wurzel.elternId}`, wurzel.id);
+  }
+  if (wurzel.art !== 'los' && wurzel.art !== 'titel')
+    return nein(
+      'knotenart-unzulaessig',
+      `Die Wurzel eines Nachtrags ist eine Gliederung (Los oder Titel), nicht „${wurzel.art}“.`,
+      wurzel.id,
+    );
+  const oben = idx.kinder.get(a.id) ?? [];
+  if (wurzel.reihenfolge !== oben.length)
+    return nein(
+      'ungueltige-eingabe',
+      `Der Nachtrag kommt ans Ende der obersten Ebene (reihenfolge ${String(oben.length)}).`,
+      wurzel.id,
+      'reihenfolge',
+    );
+  const f1 = obersteEbeneFehler(
+    wurzel.art,
+    oben.map((k) => k.art),
+    a.ozMaske.losStufe === true,
+  );
+  if (f1 !== null) return nein('knotenart-unzulaessig', f1, wurzel.id);
+  if (ebenenHoehe(baueIndex(a.id, b.knoten), wurzel) > MAX_GLIEDERUNGSEBENEN)
+    return nein(
+      'ebene-ueberschritten',
+      `Mehr als ${String(MAX_GLIEDERUNGSEBENEN)} Gliederungsebenen.`,
+      wurzel.id,
+    );
+  const hinzugefuegt = b.knoten.map((k) => (k.art === 'position' ? positionNormal(k) : k));
+  const summen = summenAenderung({ summen: z.summen, leistungsverzeichnis: a }, idx, {
+    knoten: { hinzugefuegt },
+  });
+  return ok(baueAuftragsChangeSet(z, { hinzugefuegt, summen }));
+}
+
+/** `KostengruppeSetzen` im Auftrags-LV: dieselbe Prüfung wie im LV (`kostengruppeWechsel`), Summen unverändert. */
+function kostengruppeSetzen(z: AuftragsLvZustand, b: KostengruppeSetzen): Antwort {
+  const a = z.auftragsLeistungsverzeichnis;
+  const idx = indexVon(a.id, a.knoten);
+  const w = kostengruppeWechsel((i) => idx.byId.get(i), b);
+  if (!w.ok) return w;
+  return ok(baueAuftragsChangeSet(z, w.wert === null ? {} : { geaendert: [w.wert] }));
+}
+
+/**
+ * Führt einen Befehl am Auftrags-LV aus: `(Zustand, Befehl) → ChangeSet` oder Fehlerwert (A5), rein und deterministisch
+ * (A2). `AuftragsLeistungsverzeichnisAnlegen` braucht `zustand === null`, die anderen beiden einen Zustand; sonst
+ * `befehl-nicht-zustaendig` („Befehl passt nicht zum übergebenen Zustand“), ebenso für eine unbekannte Befehlsart (Protokoll).
+ */
+export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, befehl) => {
+  const art: string = befehl.art;
+  if (befehl.art === 'AuftragsLeistungsverzeichnisAnlegen') {
+    if (zustand !== null)
+      return nein('befehl-nicht-zustaendig', `${befehl.art}: das Auftrags-LV existiert schon.`);
+    return anlegen(befehl);
+  }
+  if (zustand === null)
+    return nein('befehl-nicht-zustaendig', `${art}: kein Auftrags-LV als Zustand übergeben.`);
+  switch (befehl.art) {
+    case 'NachtragUebernehmen':
+      return nachtragUebernehmen(zustand, befehl);
+    case 'KostengruppeSetzen':
+      return kostengruppeSetzen(zustand, befehl);
+    default:
+      return nein('befehl-nicht-zustaendig', `Befehl ${art} gehört nicht zum Auftrags-LV.`);
+  }
 };
