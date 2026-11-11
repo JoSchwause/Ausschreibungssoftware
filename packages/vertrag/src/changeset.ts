@@ -70,12 +70,7 @@ export type Befehlsfehlercode =
    * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
    * Der eingefrorene Zahlbetrag ändert sich nie still.
    */
-  | 'rechnung-freigegeben'
-  /**
-   * v1.4 (D-34 (7)): Freigaben folgen der Rechnungsnummer. `RechnungFreigeben`, solange eine frühere Rechnung nicht
-   * freigegeben ist, oder `RechnungsfreigabeAufheben`, solange eine spätere freigegeben ist.
-   */
-  | 'freigabe-reihenfolge';
+  | 'rechnung-freigegeben';
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -301,9 +296,10 @@ export interface AufmassChangeSet {
  * `AufmassChangeSet`. Freigeben und Freigabe aufheben sind Gegenstücke (nur `freigabe` unterscheidet `vorher` und
  * `nachher`).
  *
- * `speicher` weist mit `konflikt` ab (Q5, D-34 (7)), auch wenn das ChangeSet ohne Ausführer kommt (Undo): das Löschen einer
- * Rechnung oder das Entfernen ihrer Freigabe, solange eine spätere Rechnung desselben Auftrags-LV freigegeben ist, und eine
- * Kennung in `aufmassIds`, zu der es kein Blatt dieses Auftrags-LV gibt.
+ * `speicher` weist mit `konflikt` ab (Q5, D-34 (7)), auch wenn das ChangeSet ohne Ausführer kommt (Undo): eine Freigabe,
+ * solange eine frühere Rechnung desselben Auftrags-LV nicht freigegeben ist; das Löschen einer Rechnung oder das Entfernen
+ * ihrer Freigabe, solange eine spätere freigegeben ist; eine Kennung in `aufmassIds`, zu der es kein Blatt dieses
+ * Auftrags-LV gibt.
  */
 export interface RechnungChangeSet {
   readonly art: 'rechnung';
@@ -382,11 +378,12 @@ export type AuftragsLvChangeSetUmkehren = (changeSet: AuftragsLvChangeSet) => Au
 
 // --- Signaturen der Aggregate aus v1.4 (Ticket 70 Punkt 10) ------------------------------------------------------
 //
-// Wie bei LV und Angebot: Ausführen ist rein und deterministisch (A2); der Kontext, den ein Ausführer braucht (Auftrags-LV,
-// übrige Blätter oder Rechnungen), steckt in einer Fabrik des liefernden Pakets, wie `angebotBefehlAusfuehrer(projekt, lv)`
-// in `vergabe`. Anwenden: `null` als Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“. Umkehren: Tausch
-// von `vorher` und `nachher` (ganze Aggregate, D-36 (8)). Liefern: `abrechnung` (Aufmaß Ticket 80, Rechnung Ticket 81),
-// `kosten` (Kostenermittlung Ticket 82).
+// Wie bei LV und Angebot: Ausführen ist rein und deterministisch (A2). Ein Ausführer sieht nur sein Aggregat und prüft die
+// Form (D-70.3); Regeln über mehrere Aggregate prüfen reine Funktionen als Befund (`aufmassPruefen`, `rechnungPruefen`)
+// oder vor dem Befehl (`freigabeMoeglich`), was nie verletzt sein darf `speicher` (`konflikt`). Anwenden: `null` als
+// Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“. Umkehren: Tausch von `vorher` und `nachher` (ganze
+// Aggregate, D-36 (8)). Liefern: `abrechnung` (Aufmaß Ticket 80, Rechnung Ticket 81), `kosten` (Kostenermittlung
+// Ticket 82).
 
 export type AufmassBefehlAusfuehren = (
   zustand: AufmassZustand | null,

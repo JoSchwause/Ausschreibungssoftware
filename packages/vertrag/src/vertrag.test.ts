@@ -1320,7 +1320,7 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     >();
     expectTypeOf<RechnungFreigeben['zahlbetrag']>().toEqualTypeOf<Betrag>();
     expectTypeOf<RechnungChangeSet['rechnung']>().toEqualTypeOf<Aenderung<Rechnung>>();
-    expectTypeOf<'rechnung-freigegeben' | 'freigabe-reihenfolge'>().toExtend<Befehlsfehlercode>();
+    expectTypeOf<'rechnung-freigegeben'>().toExtend<Befehlsfehlercode>();
   });
 
   it('Beispiel: kumulierte Abschlagsrechnungen; die zweite rechnet alle Blätter ab, die erste ist eingefroren', () => {

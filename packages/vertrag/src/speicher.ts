@@ -286,7 +286,8 @@ export interface Persistenzstatus {
  * - das Auftrags-LV löscht, solange ein Aufmaßblatt, eine Rechnung oder die Nachtragsangaben eines LV darauf verweisen;
  * - eine Position aus dem Auftrags-LV entfernt, auf die eine Aufmaßposition verweist (Umkehrung von `NachtragUebernehmen`);
  * - ein Aufmaßblatt löscht, das in einer Rechnung steht (`Rechnung.aufmassIds`);
- * - eine Rechnung löscht oder ihre Freigabe entfernt, solange eine spätere Rechnung desselben Auftrags-LV freigegeben ist;
+ * - eine Rechnung freigibt, solange eine frühere desselben Auftrags-LV nicht freigegeben ist, oder eine Rechnung löscht
+ *   oder ihre Freigabe entfernt, solange eine spätere freigegeben ist (D-34 (7));
  * - auf ein Auftrags-LV, Aufmaßblatt oder eine Kennung verweist, die es im Projekt nicht gibt (Nachtragsangaben,
  *   `auftragsLvId`, `aufmassIds`);
  * - eine Blatt- oder Rechnungsnummer doppelt vergäbe (je Auftrags-LV eindeutig).

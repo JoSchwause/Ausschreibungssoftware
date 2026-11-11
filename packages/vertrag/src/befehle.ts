@@ -617,15 +617,15 @@ export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUeb
 
 // --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
 //
-// Der Ausführer bekommt Auftrags-LV und die übrigen Blätter desselben Auftrags-LV als Kontext (wie
-// `angebotBefehlAusfuehrer(projekt, lv)` in `vergabe`); der Zustand ist nur das Blatt selbst. ChangeSet aller Befehle:
-// `AufmassChangeSet` mit dem ganzen Blatt vorher und nachher (D-36 (8)).
+// Der Ausführer sieht nur das Blatt (Signatur `AufmassBefehlAusfuehren`, D-70.3) und prüft die Form; den Bezug zum
+// Auftrags-LV prüft `aufmassPruefen` als Befund (U5), die Eindeutigkeit der Nummer `speicher` (`konflikt`). ChangeSet aller
+// Befehle: `AufmassChangeSet` mit dem ganzen Blatt vorher und nachher (D-36 (8)).
 
 /**
- * Legt ein Aufmaßblatt an, leer oder mit Zeilen (Erfassung, GAEB-X31-Import; D-33). Zustand `null`. Der Ausführer prüft:
- * Projekt und Auftrags-LV passen zueinander, `nummer` ≥ 1 und im Auftrags-LV frei (siehe `AufmassKopf.nummer`), jede Zeile
- * nennt eine Position des Auftrags-LV höchstens einmal (siehe `Aufmassposition`); einen Ansatz `[]` legt er als `null` ab.
- * Massenbefehl (siehe `MASSENBEFEHLSARTEN`): Ein X31-Import trägt eine Zeile je Position mit ihren Ansatzzeilen.
+ * Legt ein Aufmaßblatt an, leer oder mit Zeilen (Erfassung, GAEB-X31-Import; D-33). Zustand `null`. Der Ausführer prüft die
+ * Form: `nummer` ganze Zahl ≥ 1, jede Position höchstens einmal, Mengen kanonisch mit 3 Stellen; einen Ansatz `[]` legt er
+ * als `null` ab (siehe `AufmassKopf`, `Aufmassposition`). Massenbefehl (siehe `MASSENBEFEHLSARTEN`): Ein X31-Import trägt
+ * eine Zeile je Position mit ihren Ansatzzeilen.
  */
 export interface AufmassAnlegen {
   readonly art: 'AufmassAnlegen';
@@ -670,9 +670,11 @@ export type AufmassBefehl =
 
 // --- Rechnung (v1.4, A3; D-34, D-36 (2); Ausführer in `abrechnung`, Ticket 81) ----------------------------------
 //
-// Kontext des Ausführers: Auftrags-LV, Aufmaßblätter und die übrigen Rechnungen desselben Auftrags-LV. ChangeSet aller
-// Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher und nachher (D-36 (8)). Eine freigegebene Rechnung ändert
-// nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr weist der Ausführer mit `rechnung-freigegeben` ab (Q5).
+// Der Ausführer sieht nur die Rechnung (Signatur `RechnungBefehlAusfuehren`, D-70.3) und prüft die Form. Was andere
+// Rechnungen braucht, prüft die App vorher (`freigabeMoeglich`, Ticket 81) und `speicher` als `konflikt` (Q5), die übrigen
+// Regeln `rechnungPruefen` als Befund (U5). ChangeSet aller Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher
+// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr
+// weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4).
 
 /**
  * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
@@ -712,8 +714,8 @@ export interface RechnungsabzuegeSetzen {
 /**
  * Gibt die Rechnung mit ihrem Zahlbetrag frei und friert ihn ein (D-34 (7)). Die App rechnet den Zahlbetrag mit
  * `abrechnung` und gibt ihn mit; der Ausführer rechnet nicht nach (Lesart wie `MengenansatzSetzen`). Nur, wenn alle
- * früheren Rechnungen (kleinere Nummer) freigegeben sind (sonst `freigabe-reihenfolge`); eine schon freigegebene Rechnung
- * weist er mit `rechnung-freigegeben` ab.
+ * früheren Rechnungen (kleinere Nummer) freigegeben sind (D-34 (7)): Die App fragt vorher `freigabeMoeglich`, `speicher`
+ * weist sonst mit `konflikt` ab. Eine schon freigegebene Rechnung weist der Ausführer mit `rechnung-freigegeben` ab.
  */
 export interface RechnungFreigeben {
   readonly art: 'RechnungFreigeben';
@@ -722,10 +724,10 @@ export interface RechnungFreigeben {
 
 /**
  * Hebt die Freigabe ausdrücklich auf (`freigabe` wird `null`), damit eine falsch freigegebene Rechnung korrigiert werden
- * kann; das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere Nummer)
- * freigegeben ist (sonst `freigabe-reihenfolge`): Deren eingefrorener Zahlbetrag zieht diesen ab (D-34 (7)). Unumkehrbar
- * im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht freigegebene Rechnung weist der Ausführer mit
- * `ungueltige-eingabe` ab.
+ * kann (D-70.4); das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere
+ * Nummer) freigegeben ist, deren eingefrorener Zahlbetrag diesen abzieht (D-34 (7)): sonst `konflikt` in `speicher`, die
+ * App bietet es dann nicht an. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht
+ * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab.
  */
 export interface RechnungsfreigabeAufheben {
   readonly art: 'RechnungsfreigabeAufheben';

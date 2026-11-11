@@ -743,11 +743,15 @@ export interface AuftragsLeistungsverzeichnis extends AuftragsLvKopf {
 // Aufmaßblatt, Rechnung und Kostenermittlung sind eigene Aggregate (wie Angebot und Auftrags-LV, ADR 0011). Ihre
 // ChangeSets tragen das ganze Aggregat vorher und nachher, ohne Summen (D-36 (8)); was aus ihnen gerechnet wird (Menge
 // aus dem Ansatz, Prüfergebnis der Rechnung, Summen der Kostenermittlung), wird nie gespeichert.
+//
+// Lesart (D-70.3): Ihre Ausführer sehen nur das eigene Aggregat (Signaturen in `changeset.ts`) und prüfen die Form.
+// Regeln über mehrere Aggregate prüfen reine Funktionen als Befund (U5: `aufmassPruefen`, `rechnungPruefen`, Tickets 80,
+// 81) oder vor dem Befehl (`freigabeMoeglich`); was nie verletzt sein darf, hält `speicher` (`konflikt`, Q5).
 
 /**
  * Kopf eines Aufmaßblatts (v1.4, Ticket 70 Punkt 6; D-36 (1); Glossar „Aufmaßblatt“): das Blatt ohne seine Zeilen. Es
  * misst die Positionen genau eines Auftrags-LV auf; Befehle führt `abrechnung` aus (Ticket 80), gespeichert wird es von
- * `speicher` (Ticket 79), ein GAEB-X31-Import legt es an (D-33, Ticket 84).
+ * `speicher` (Ticket 79), ein GAEB-X31-Import legt es an (D-33, Ticket 83).
  */
 export interface AufmassKopf {
   readonly id: AufmassId;
@@ -756,10 +760,10 @@ export interface AufmassKopf {
   readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
   /**
    * Blattnummer, ganze Zahl ≥ 1, je Auftrags-LV eindeutig; Listen ordnen nach ihr. Der Befehl bringt sie mit (die App
-   * schlägt die höchste vorhandene + 1 vor). Der Ausführer prüft Form und Eindeutigkeit mit den übrigen Blättern des
-   * Auftrags-LV als Kontext (`ungueltige-eingabe`, `feld: 'nummer'`), `speicher` hält sie als eindeutigen Schlüssel
-   * (`konflikt`). Vorläufige Annahme, Entscheidung offen (enge Lesart): Sie bleibt nach dem Anlegen fest
-   * (`AufmasskopfSetzen` setzt nur Bezeichnung und Datum; Offene Typfrage, Ticket 70).
+   * schlägt die höchste vorhandene + 1 vor, `naechsteAufmassnummer`, Ticket 80). Der Ausführer prüft die Form
+   * (`ungueltige-eingabe`, `feld: 'nummer'`), `speicher` hält sie als eindeutigen Schlüssel (`konflikt`). Vorläufige
+   * Annahme, Entscheidung offen (enge Lesart, D-70.9): Sie bleibt nach dem Anlegen fest (`AufmasskopfSetzen` setzt nur
+   * Bezeichnung und Datum; Offene Typfrage, Ticket 70).
    */
   readonly nummer: number;
   /** Bezeichnung des Blatts, freier Text (z. B. „Erdarbeiten Achse 1–4“); `''` ist zulässig. */
@@ -773,10 +777,12 @@ export interface AufmassKopf {
  * Position des Auftrags-LV aufmisst, mit dem Mengenansatz, aus dem sie stammt. Lesarten wie bei `MengenansatzSetzen`
  * (D-22): Die App rechnet die Menge mit `mengen`, der Ausführer legt beides unausgewertet ab und rechnet nie nach.
  *
- * - Höchstens eine Zeile je Position und Blatt; mehrere Blätter ergeben zusammen die kumulierte Menge einer Rechnung.
- * - Nur Positionen des Auftrags-LV (auch aus einem übernommenen Nachtrag; sonst `knoten-unbekannt`), keine
- *   Zuschlagspositionen: Ihr Betrag folgt aus den Bezugspositionen (D-34 (1)); eine Zeile dafür weist der Ausführer mit
- *   `ungueltige-eingabe` ab.
+ * - Höchstens eine Zeile je Position und Blatt (der Ausführer weist eine zweite mit `ungueltige-eingabe` ab); mehrere
+ *   Blätter ergeben zusammen die kumulierte Menge einer Rechnung.
+ * - Gemeint sind Positionen des Auftrags-LV (auch aus einem übernommenen Nachtrag), keine Zuschlagspositionen: Deren
+ *   Betrag folgt aus den Bezugspositionen (D-34 (1)). Eine Zeile, deren Kennung keine solche Position ist, ist ein Befund
+ *   von `aufmassPruefen` (Ticket 80; U5) und zählt in Soll/Ist und Rechnung nicht; der Ausführer sieht das Auftrags-LV
+ *   nicht.
  */
 export interface Aufmassposition {
   readonly positionId: PositionId;
@@ -805,9 +811,9 @@ export interface Aufmass extends AufmassKopf {
 
 /**
  * Art einer Rechnung (v1.4, Ticket 70 Punkt 7; D-34; Glossar „Rechnungsart“): `abschlag` (kumulierte Abschlagsrechnung)
- * oder `schluss` (Schlussrechnung). Höchstens eine Schlussrechnung je Auftrags-LV, und nach ihr keine Rechnung mehr (sie
- * hat die höchste Nummer); das prüft der Ausführer mit den übrigen Rechnungen als Kontext (`ungueltige-eingabe`,
- * `feld: 'art'`). Teilschlussrechnungen gibt es in v1 nicht.
+ * oder `schluss` (Schlussrechnung). Eine Schlussrechnung ist die letzte Rechnung des Auftrags-LV (höchste Nummer, nur
+ * eine); eine Schlussrechnung, die das nicht ist, ist ein Befund der Prüfung (Ticket 81), keine Sperre (U5).
+ * Teilschlussrechnungen gibt es in v1 nicht.
  */
 export type Rechnungsart = 'abschlag' | 'schluss';
 
@@ -824,8 +830,8 @@ export interface Umlage {
 
 /**
  * Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (v1.4, Ticket 70 Punkt 7; A3, D-34,
- * D-36 (2); Glossar „Rechnung“). Eigenes Aggregat; Befehle führt `abrechnung` aus (Ticket 81), mit Auftrags-LV, Aufmaßen
- * und den übrigen Rechnungen des Auftrags-LV als Kontext. Gespeichert sind nur Angaben, Abzüge und die Freigabe: Das
+ * D-36 (2); Glossar „Rechnung“). Eigenes Aggregat; Befehle führt `abrechnung` aus (Ticket 81), der Ausführer sieht nur die
+ * Rechnung (D-70.3). Gespeichert sind nur Angaben, Abzüge und die Freigabe: Das
  * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, D-34) wird gerechnet, nie gespeichert;
  * eingefroren wird nur der freigegebene Zahlbetrag.
  *
@@ -840,8 +846,8 @@ export interface Rechnung {
   readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
   /**
    * Laufende Nummer, ganze Zahl ≥ 1, je Auftrags-LV eindeutig; legt die Reihenfolge fest: „frühere Rechnungen“ sind die mit
-   * kleinerer Nummer (D-34 (7)). Prüfung wie `AufmassKopf.nummer` (Ausführer mit Kontext, `speicher` als eindeutiger
-   * Schlüssel); bleibt nach dem Anlegen fest.
+   * kleinerer Nummer (D-34 (7)). Prüfung wie `AufmassKopf.nummer` (Form im Ausführer, Eindeutigkeit in `speicher`); bleibt
+   * nach dem Anlegen fest (D-70.9).
    */
   readonly nummer: number;
   readonly art: Rechnungsart;
@@ -858,10 +864,11 @@ export interface Rechnung {
   readonly gefordert: { readonly netto: Betrag; readonly brutto: Betrag } | null;
   /**
    * Die Aufmaßblätter, deren Mengen die Rechnung abrechnet, und zwar **alle** bis dahin, auch die schon in früheren
-   * Rechnungen (kumulierte Abschlagsrechnung, D-34 (1)): die vollständige kumulierte Menge. Nur Blätter desselben
-   * Auftrags-LV, jedes höchstens einmal, nach Blattnummer geordnet (der Ausführer prüft und ordnet mit Kontext,
-   * `ungueltige-eingabe`). Fehlt einer späteren Rechnung ein Blatt einer früheren, ist das ein Befund der Prüfung
-   * (Ticket 81), keine Sperre (U5). `[]`: noch keine Leistung.
+   * Rechnungen (kumulierte Abschlagsrechnung, D-34 (1)): die vollständige kumulierte Menge. Jedes Blatt höchstens einmal
+   * (der Ausführer weist Doppelte mit `ungueltige-eingabe` ab); die Reihenfolge hat keine Bedeutung (die App ordnet nach
+   * Blattnummer). Nur Blätter desselben Auftrags-LV: eine Kennung ohne solches Blatt weist `speicher` mit `konflikt` ab.
+   * Fehlt einer späteren Rechnung ein Blatt einer früheren, ist das ein Befund der Prüfung (Ticket 81), keine Sperre (U5).
+   * `[]`: noch keine Leistung.
    */
   readonly aufmassIds: readonly AufmassId[];
   /** Umlagen in Anzeigereihenfolge; `[]`: keine. */
@@ -896,9 +903,9 @@ export type Kostenermittlungsstufe =
 /**
  * Ein gespeicherter Eintrag einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (3); Glossar „Kostenermittlung“):
  * Nettobetrag auf einer Kostengruppe. Kanonisch: `betrag` ist ein `Betrag` mit 2 Stellen. Der ungeprüfte Text einer
- * Eingabe (Grid, CSV) bleibt eine Funktion in `kosten` (dort heißt der Eingabetyp heute ebenfalls
- * `Kostenermittlungseintrag`, mit `betrag: string`; Ticket 82 benennt ihn um, damit es einen Namen je Begriff gibt).
- * Negative Beträge sind zulässig (ein Befund in `kosten`, keine Sperre, U5).
+ * Eingabe (Grid, CSV) bleibt eine Funktion in `kosten`. Dort heißt der Eingabetyp heute ebenfalls
+ * `Kostenermittlungseintrag` (mit `betrag: string`); zwei Typen eines Namens sind eine Lücke für Ticket 82 (Offene
+ * Typfrage, Ticket 70). Negative Beträge sind zulässig (ein Befund in `kosten`, keine Sperre, U5).
  */
 export interface Kostenermittlungseintrag {
   readonly nummer: Kostengruppennummer;
@@ -921,9 +928,10 @@ export interface Kostenermittlung {
   /**
    * Die Einträge, nach `nummer` aufsteigend (wie `kgSortieren`), jede Nummer höchstens einmal. Vorläufige Annahme,
    * Entscheidung offen (enge Lesart): eindeutig im gespeicherten Stand. Doppelte Nummern einer Eingabe (CSV) bleiben ein
-   * Befund der Rechnung in `kosten` (D-55.4, U5); die App löst sie vor `KostenermittlungAnlegen` auf (wie, legt Ticket 82
-   * fest), der Ausführer weist sie sonst mit `ungueltige-eingabe` ab. Ein eigener Betrag neben Beträgen der Kinder ist
-   * zulässig (Befund in `kosten`). Alternative: doppelte Nummern speichern (Offene Typfrage, Ticket 70).
+   * Befund der Rechnung in `kosten` (D-55.4, U5); `kosten` fasst sie für `KostenermittlungAnlegen` zusammen (Beträge
+   * addiert, mit Befund; Ticket 82), der Ausführer weist sie sonst mit `ungueltige-eingabe` ab. Ein eigener Betrag neben
+   * Beträgen der Kinder ist zulässig (Befund in `kosten`). Alternative: doppelte Nummern speichern (Offene Typfrage,
+   * Ticket 70).
    */
   readonly eintraege: readonly Kostenermittlungseintrag[];
 }
