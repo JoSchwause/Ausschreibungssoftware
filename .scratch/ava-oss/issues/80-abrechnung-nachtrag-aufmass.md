@@ -136,11 +136,11 @@ den Tests von `aufmassPruefen` und `nachtragsbefunde`. Kein `skip`, kein `todo`.
 
 ### Prüfung
 
-Nach dem Merge von `integration/welle-5` (`938ea1d`, vor Ticket 71): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck
-&& pnpm test` grün: Vitest 166 Dateien, 2271 Tests bestanden, 2 übersprungen wie zuvor; Fixtures 29/29. Ein erster Lauf
-der Suite (Last 17 auf 4 Kernen) scheiterte nur am Leistungsbudget `packages/vergabe/src/leistung.test.ts`
-„preisspiegelBerechnen für gross mit 5 Angeboten unter 1000 ms“ (3.738 ms); die Datei allein grün (1.390 ms gemeldet), der
-zweite volle Lauf grün. Kein Budget gelockert.
+Nach dem letzten Merge von `integration/welle-5` (`b9c610c`, mit Ticket 71): `NODE_OPTIONS=--max-old-space-size=8192 pnpm
+lint && pnpm typecheck && pnpm test` grün: Vitest 169 Dateien, 2305 Tests bestanden, 2 übersprungen wie zuvor; Fixtures
+29/29. Davor (Merge `938ea1d`, ohne 71) scheiterte ein erster voller Lauf (Last 17 auf 4 Kernen) nur am Leistungsbudget
+`packages/vergabe/src/leistung.test.ts` „preisspiegelBerechnen für gross mit 5 Angeboten unter 1000 ms“ (3.738 ms); die
+Datei allein grün (1.390 ms gemeldet), der zweite volle Lauf grün. Kein Budget gelockert.
 
 ## Answer
 
