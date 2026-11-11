@@ -228,3 +228,25 @@ Question: Ticket 44 erlaubt, Punkt 5 abzuspalten, wenn es zu groß wird. Wird es
 Decision: Ja. `typisch`, `gross` und `typisch-angebote` bleiben in der Altform; Vermerk in `fixtures/README.md` und in Ticket 44, Comments (Liste der Verbraucher).
 Reason: Punkt 5 berührt die Fixture-Testhelfer und Sollwert-Tests in `kern` (in dieser Phase schreibt Ticket 41 dort), dazu die GAEB-Export-Goldens aus `typisch`/`gross` in `gaeb` (nicht im Ticket genannt; Ticket 45 schreibt dort) und `speicher`, `ausgabe`, `ui-grid`, `apps/web`; das sprengt P1 und kollidiert mit P2.
 Reversible: yes  Touches: fixtures/README.md, Folgeticket
+
+## D-42.1 K9: Lesarten bei Auswahl, Papierkorb und Bezügen
+Welle 3 · Ticket 42 · decided by: implementer
+Question: Was Ticket 42 bei Mehrfachauswahl, unbekanntem Eintrag, Wiederherstellen und Bezügen in den Papierkorb offen lässt.
+Decision: Nachfahren genannter Knoten und Doppelte zählen nicht eigens (Kopie, Verschieben, Papierkorb); `nach X` mit mitbewegtem X landet an dessen Stelle; leere Liste und unbekannter Eintrag `ungueltige-eingabe` (`feld` `knoten`/`knotenIds`/`eintragId`); ein Eintrag hält seine Knoten in Dokumentreihenfolge; Wiederherstellen mit `ort: null` an die alte Stelle (sonst Ende der Wurzel) mit den Prüfungen des Einfügens; Entfernen/Leeren lösen Bezüge auch in verbleibenden Einträgen (`papierkorb.geaendert`); Bezüge in den Papierkorb sind auch bei `PositionAnlegen`, `PositionsmerkmaleSetzen`, `KnotenEinfuegen` gültig, Kennungen im Papierkorb gelten als vergeben; `pruefeLvInvarianten(lv, papierkorb?)`. Einzelheiten: Ticket 42, Comments.
+Reason: D-12 (Bezüge bleiben stehen), Q5 (kein hängender Bezug nach dem Wiederherstellen), Umkehrbarkeit allein aus dem ChangeSet.
+Reversible: yes  Touches: packages/kern
+
+## D-42.2 KnotenEinfuegen vergibt den Wurzeln immer eine neue OZ
+Welle 3 · Ticket 42 · decided by: implementer
+Question: Das Ticket nennt die OZ-Neuvergabe „in einen anderen Elternknoten“; beim Einfügen zählt die mitgebrachte Lage der Wurzeln nach dem Vertrag nicht.
+Decision: Eingefügte Wurzeln bekommen immer einen OZ-Vorschlag, ihr Unterbaum wird darunter neu nummeriert; `kopieBauen` lässt die OZ stehen; `ozIndex` bleibt. Verschieben innerhalb desselben Elternknotens behält die OZ.
+Reason: Ein „gleicher Elternknoten“ ist beim Einfügen nicht erkennbar; eine Kopie ist ein neuer Knoten und braucht eine Nummer (W-06).
+Reversible: yes  Touches: packages/kern
+
+## D-42.3 Regel des OZ-Vorschlags
+Welle 3 · Ticket 42 · decided by: implementer
+Question: Was „nächste freie OZ hinter dem Vorgänger“ im Einzelnen heißt.
+Decision: Teil des Vorgängers + 10 (Position) bzw. + 1 (Gliederung); Vorgänger/Nachfolger = nächstes Geschwister derselben Art mit rein numerischem Teil; Ausweichen auf 5, 2, 1 mit `oz-schritt-ausgewichen`, wenn der Teil nicht vor den Nachfolger oder in die Stellen passt oder belegt ist; sonst `null`. Scheitert die Nummerierung eines eingefügten oder verschobenen Unterbaums, bleibt dessen OZ leer (K8 `oz-fehlt`), der Befehl wird nicht abgewiesen (U5).
+Reason: F2/E-09 und der Schritt der Umnummerierung (Ticket 06); Validierung blockiert die Eingabe nicht (U5).
+Reversible: yes  Touches: packages/kern
+

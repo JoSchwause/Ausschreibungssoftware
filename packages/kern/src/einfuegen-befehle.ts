@@ -3,7 +3,7 @@
 // mit. Summen leitet `summenAenderung` aus den Knotenänderungen ab: neue Positions- und Gliederungssummen, Ausweise, die
 // Zuschlagspositionen an Quelle und Ziel (R3/R4) und die Listen (R5), die eine betroffene Position nennen (A6).
 //
-// OZ (D-42.3): Wurzeln, die in einen anderen Elternknoten kommen, bekommen einen OZ-Vorschlag, ihr Unterbaum wird darunter
+// OZ (D-42.2, D-42.3): Wurzeln, die in einen anderen Elternknoten kommen, bekommen einen OZ-Vorschlag, ihr Unterbaum wird darunter
 // neu nummeriert (`neuvergabe`). Eingefügte Wurzeln gelten immer als „anderer Elternknoten“ (ihre mitgebrachte Lage zählt
 // nach dem Vertrag nicht). Verschieben innerhalb desselben Elternknotens behält die OZ (Anzeigedatum, A7).
 
