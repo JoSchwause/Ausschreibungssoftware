@@ -10,10 +10,15 @@ import { kgEbene, kgLesen, kgSortieren, kgVorfahren } from './kostengruppe';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
 
-/** Ein Eintrag einer Kostenermittlung: Nettobetrag mit 2 Stellen (N3) auf einer Kostengruppe. */
+/** Ein Eintrag einer Kostenermittlung: Nettobetrag auf einer Kostengruppe. */
 export interface Kostenermittlungseintrag {
   readonly nummer: Kostengruppennummer;
-  readonly betrag: Betrag;
+  /**
+   * Der Betrag als Text in Punktnotation, wie er eingegeben oder eingelesen wurde, noch ungeprüft (S11). Kanonisch hat
+   * er 2 Stellen (N3); andere Skalen werden kaufmännisch gerundet und gemeldet, Unlesbares zählt nicht (D-55.3). Die
+   * Rechnung liest ihn mit `alsBetrag`; erst ihr Ergebnis ist ein `Betrag`.
+   */
+  readonly betrag: string;
   readonly bemerkung?: string;
 }
 

@@ -4,7 +4,6 @@
 // Kommentar über jedem Fall). Nummern sind beliebige Ziffernfolgen der Form, keine Gruppen der Norm (G-16).
 
 import { describe, expect, it } from 'vitest';
-import type { Betrag } from '@tethys/vertrag';
 import { kgLesen, kostenermittlungBerechnen } from './index';
 import type { Kostenermittlungseintrag, Kostengruppennummer } from './index';
 
@@ -14,11 +13,11 @@ function kg(text: string): Kostengruppennummer {
   return e.wert;
 }
 
-/** Eintrag aus Klartext; der Betrag wird bewusst ungeprüft übernommen, damit auch Fehleingaben testbar sind. */
+/** Eintrag aus Klartext; der Betrag ist ungeprüfter Text (S11), damit auch Fehleingaben testbar sind. */
 function e(nummer: string, betrag: string, bemerkung?: string): Kostenermittlungseintrag {
   return bemerkung === undefined
-    ? { nummer: nummer as Kostengruppennummer, betrag: betrag as Betrag }
-    : { nummer: nummer as Kostengruppennummer, betrag: betrag as Betrag, bemerkung };
+    ? { nummer: nummer as Kostengruppennummer, betrag }
+    : { nummer: nummer as Kostengruppennummer, betrag, bemerkung };
 }
 
 describe('kostenermittlungBerechnen: Summen', () => {

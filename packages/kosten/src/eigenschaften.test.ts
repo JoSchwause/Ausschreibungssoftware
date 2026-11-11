@@ -4,7 +4,6 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Betrag } from '@tethys/vertrag';
 import {
   bezeichnungenLesen,
   kgEbene,
@@ -51,7 +50,7 @@ const eintraegeGen = fc.array(eintragGen, { maxLength: 40 });
 function alsEintraege(
   liste: readonly { nummer: Kostengruppennummer; cent: bigint }[],
 ): Kostenermittlungseintrag[] {
-  return liste.map(({ nummer, cent }) => ({ nummer, betrag: centText(cent) as Betrag }));
+  return liste.map(({ nummer, cent }) => ({ nummer, betrag: centText(cent) }));
 }
 
 /** Liegt `n` in der Gruppe `g` (gleich oder Nachfahre)? Allein aus den Ziffern, ohne `kgVorfahren`. */
