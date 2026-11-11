@@ -346,6 +346,9 @@ Chronologische tägliche Dokumentation des Bauablaufs auf der Baustelle (Witteru
 ### E-Rechnung (XRechnung & ZUGFeRD)
 Strukturierte elektronische Rechnungsformate nach europäischer Norm **EN 16931** für Bau- und Planerrechnungen (reines XML bei **XRechnung** bzw. hybrides PDF/A-3 mit eingebettetem XML bei **ZUGFeRD**).
 
+### Eingangsrechnung
+Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie sie in der Datei steht: Angaben nach den Business Terms der EN 16931 (BT-1 Rechnungsnummer bis BT-115 Zahlbetrag, Umsatzsteueraufschlüsselung, Positionen mit Unterpositionen der Extension), dazu Befunde. Die Rechenprüfung der Eingangsrechnung prüft nur die Summenregeln der Norm; sie ist nicht die Rechnungsprüfung gegen Aufmaß und Auftrags-LV (Abrechnung). Die App übernimmt daraus Nummer, Datum und geforderte Beträge in eine `Rechnung`. „Abschläge“ und „Zuschläge auf Dokumentenebene“ (BT-107, BT-108) sind Minderungen bzw. Aufschläge der Rechnung, weder Abschlagsrechnung noch Zuschlag (Vergabe). Im Code `Eingangsrechnung`, `xrechnungLesen` (Paket `erechnung`).
+
 ### DACH-Ausschreibungsstandards (STLB-Bau, ÖNORM, SIA / CRB NPK)
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.
 - **ÖNORM B 2063 / A 2063**: Österreichische Standards für Leistungsbeschreibungen, Aufmaß und elektronischen AVA-Datenaustausch (`.onlv` / `.onlb`).
