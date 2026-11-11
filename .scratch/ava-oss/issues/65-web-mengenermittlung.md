@@ -1,6 +1,6 @@
 # 65: M2: Mengenermittlungs-Panel
 
-Status: claimed
+Status: done
 Type: task
 Welle: 4 · Strang: M2 · Paket: `apps/web` (Ordner `src/mengen/`; Einhängestelle im Positionsdialog bzw. `lv/LvSeite.tsx`, D-20)
 Blocked by: 56 (Kern: `MengenansatzSetzen`), 57 (Speicher: Mengenansatz)
@@ -28,9 +28,9 @@ Ein Panel zur Mengenermittlung einer Position (aufrufbar per Tastatur aus dem Gr
 
 ## Acceptance criteria
 
-- [ ] E2E: Ansatz mit drei Zeilen (eine mit Variable, eine fehlerhaft, dann korrigiert) → Menge und GP in der Zeile, Summen
+- [x] E2E: Ansatz mit drei Zeilen (eine mit Variable, eine fehlerhaft, dann korrigiert) → Menge und GP in der Zeile, Summen
       stimmen; Neuladen → Ansatz noch da; Undo stellt die alte Menge her; direkte Mengenänderung fragt nach
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und `pnpm --filter @tethys/web e2e` grün
 
 ## Nicht-Ziele
 
