@@ -20,10 +20,12 @@ import type {
   NachtragUebernehmen,
   NachtragsangabenSetzen,
   ProjektLoeschen,
+  RechnungFreigeben,
+  RechnungsfreigabeAufheben,
   TextquelleSetzen,
   VorlageSetzen,
 } from './befehle';
-import type { AufmassChangeSet, AuftragsLvChangeSet, LvChangeSet } from './changeset';
+import type { AufmassChangeSet, AuftragsLvChangeSet, LvChangeSet, RechnungChangeSet } from './changeset';
 import type { AuftragsLvUebersicht, Protokolleintrag } from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
@@ -35,6 +37,7 @@ import type {
   NutzerId,
   PapierkorbeintragId,
   ProtokollId,
+  RechnungId,
   Zeitstempel,
 } from './marken';
 import type {
@@ -51,6 +54,7 @@ import type {
   Papierkorbeintrag,
   Position,
   Positionsmerkmale,
+  Rechnung,
   Zuschlag,
 } from './modell';
 import type {
@@ -1113,6 +1117,74 @@ export const beispielChangeSetAufmasspositionSetzen: AufmassChangeSet = {
       ),
     },
   },
+};
+
+const rechnung1Id = '019b76e9-0000-7000-8000-000000000120' as RechnungId;
+const rechnung2Id = '019b76e9-0000-7000-8000-000000000121' as RechnungId;
+
+/**
+ * Punkt 7 (D-34): Abschlagsrechnung 1 über Blatt 1, mit einer Umlage von 0,50 % und 5 % Sicherheitseinbehalt, freigegeben.
+ * Herleitung des eingefrorenen Zahlbetrags (jeder Schritt auf 2 Stellen, N2): Leistung 1,000 × 10,000 = 10,00 und
+ * 2,500 × 15,000 = 37,50, zusammen 47,50; kein Nachlass; MwSt round(47,50 × 19 %) = 9,03 (9,025); Brutto 56,53; Umlage
+ * round(56,53 × 0,50 %) = 0,28 (0,28265); Einbehalt round(56,53 × 5 %) = 2,83 (2,8265); Zahlbetrag 56,53 − 0,28 − 2,83 =
+ * 53,42. Der Auftragnehmer forderte dasselbe Netto und Brutto.
+ */
+export const beispielRechnung1: Rechnung = {
+  id: rechnung1Id,
+  projektId: beispielAuftragsLv.projektId,
+  auftragsLvId: auftragsId,
+  nummer: 1,
+  art: 'abschlag',
+  eingang: '2026-11-05',
+  rechnungsnummerAuftragnehmer: 'AR-2026-001',
+  gefordert: { netto: '47.50' as Betrag, brutto: '56.53' as Betrag },
+  aufmassIds: [aufmass1Id],
+  umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' as Prozent }],
+  sicherheitSatz: '5.00' as Prozent,
+  gewaehrleistungSatz: null,
+  freigabe: { zahlbetrag: '53.42' as Betrag },
+};
+
+/**
+ * Punkt 7 (D-34, D-38): Abschlagsrechnung 2, kumuliert über Blatt 1 und 2, noch nicht freigegeben. Die Prüfung ergäbe:
+ * Leistung 1,235 × 10,000 = 12,35 und 37,50, zusammen 49,85; MwSt 9,47 (9,4715); Brutto 59,32; Umlage 0,30 (0,2966);
+ * Einbehalt 2,97 (2,966); Zahlbetrag 59,32 − 0,30 − 2,97 − 53,42 (eingefroren aus Rechnung 1) = 2,63. Gespeichert wird
+ * davon nichts (D-36 (2)).
+ */
+export const beispielRechnung2: Rechnung = {
+  ...beispielRechnung1,
+  id: rechnung2Id,
+  nummer: 2,
+  eingang: '2026-11-10',
+  rechnungsnummerAuftragnehmer: 'AR-2026-002',
+  gefordert: null,
+  aufmassIds: [aufmass1Id, aufmass2Id],
+  freigabe: null,
+};
+
+/** Punkt 7: Freigabe der Rechnung 1 mit dem Zahlbetrag, den die App mit `abrechnung` gerechnet hat. */
+export const beispielRechnungFreigeben: RechnungFreigeben = {
+  art: 'RechnungFreigeben',
+  zahlbetrag: '53.42' as Betrag,
+};
+
+/** Punkt 7: ChangeSet zu `beispielRechnungFreigeben`: die ganze Rechnung, nur `freigabe` ändert sich. */
+export const beispielChangeSetRechnungFreigeben: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: rechnung1Id,
+  rechnung: { vorher: { ...beispielRechnung1, freigabe: null }, nachher: beispielRechnung1 },
+};
+
+/** Punkt 7: Die Freigabe ausdrücklich aufheben (D-70.4); sein ChangeSet ist das Gegenstück zum Freigeben. */
+export const beispielRechnungsfreigabeAufheben: RechnungsfreigabeAufheben = {
+  art: 'RechnungsfreigabeAufheben',
+};
+
+/** Punkt 7: ChangeSet zu `beispielRechnungsfreigabeAufheben`, gleich der Umkehrung von `beispielChangeSetRechnungFreigeben`. */
+export const beispielChangeSetFreigabeAufheben: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: rechnung1Id,
+  rechnung: { vorher: beispielRechnung1, nachher: { ...beispielRechnung1, freigabe: null } },
 };
 
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */

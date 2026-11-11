@@ -19,6 +19,7 @@ import type {
   PapierkorbeintragId,
   PositionId,
   ProjektId,
+  RechnungId,
   TitelId,
 } from './marken';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
@@ -797,4 +798,86 @@ export interface Aufmassposition {
  */
 export interface Aufmass extends AufmassKopf {
   readonly positionen: readonly Aufmassposition[];
+}
+
+// --- Rechnung (v1.4, A3; D-34, D-36 (2)) --------------------------------------------------------------------------
+
+/**
+ * Art einer Rechnung (v1.4, Ticket 70 Punkt 7; D-34; Glossar „Rechnungsart“): `abschlag` (kumulierte Abschlagsrechnung)
+ * oder `schluss` (Schlussrechnung). Höchstens eine Schlussrechnung je Auftrags-LV, und nach ihr keine Rechnung mehr (sie
+ * hat die höchste Nummer); das prüft der Ausführer mit den übrigen Rechnungen als Kontext (`ungueltige-eingabe`,
+ * `feld: 'art'`). Teilschlussrechnungen gibt es in v1 nicht.
+ */
+export type Rechnungsart = 'abschlag' | 'schluss';
+
+/**
+ * Umlage (v1.4, Ticket 70 Punkt 7; D-34 (5); Glossar „Umlage“): ein Abzug des Auftraggebers für eine gemeinsam genutzte
+ * Leistung. Die Prüfung rechnet je Umlage round(Brutto kumuliert × `satz`, 2), alle auf derselben Basis, nicht aufeinander;
+ * sie mindern die Steuerbasis nicht (Gegenforderung des Auftraggebers nach der MwSt).
+ */
+export interface Umlage {
+  /** Bezeichnung, wie die Beteiligten sie führen (z. B. „Bauwesenversicherung“), freier Text. */
+  readonly bezeichnung: string;
+  readonly satz: Prozent;
+}
+
+/**
+ * Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (v1.4, Ticket 70 Punkt 7; A3, D-34,
+ * D-36 (2); Glossar „Rechnung“). Eigenes Aggregat; Befehle führt `abrechnung` aus (Ticket 81), mit Auftrags-LV, Aufmaßen
+ * und den übrigen Rechnungen des Auftrags-LV als Kontext. Gespeichert sind nur Angaben, Abzüge und die Freigabe: Das
+ * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, D-34) wird gerechnet, nie gespeichert;
+ * eingefroren wird nur der freigegebene Zahlbetrag.
+ *
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändert nur
+ * `RechnungsfreigabeAufheben` (Q5); jeden anderen Befehl, auch `RechnungLoeschen`, weist der Ausführer mit
+ * `rechnung-freigegeben` ab.
+ */
+export interface Rechnung {
+  readonly id: RechnungId;
+  readonly projektId: ProjektId;
+  /** Das Auftrags-LV desselben Projekts, das die Rechnung abrechnet; bleibt nach dem Anlegen fest. */
+  readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
+  /**
+   * Laufende Nummer, ganze Zahl ≥ 1, je Auftrags-LV eindeutig; legt die Reihenfolge fest: „frühere Rechnungen“ sind die mit
+   * kleinerer Nummer (D-34 (7)). Prüfung wie `AufmassKopf.nummer` (Ausführer mit Kontext, `speicher` als eindeutiger
+   * Schlüssel); bleibt nach dem Anlegen fest.
+   */
+  readonly nummer: number;
+  readonly art: Rechnungsart;
+  /** Eingangsdatum beim Auftraggeber, `JJJJ-MM-TT`, vom Nutzer (oder aus der XRechnung, BT-2); `null`: keine Angabe. */
+  readonly eingang: string | null;
+  /** Rechnungsnummer, die der Auftragnehmer vergeben hat (XRechnung BT-1), freier Text; `null`: keine. Nie `''`. */
+  readonly rechnungsnummerAuftragnehmer: string | null;
+  /**
+   * Was die Rechnung des Auftragnehmers als ihre Summe nennt, Netto ohne und Brutto mit Umsatzsteuer (XRechnung BT-109 und
+   * BT-112, Ticket 76), ungeprüft übernommen. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
+   * rechnet aus den Aufmaßen). `null`: nicht erfasst. Ob die Beträge kumuliert sind, sagt der Typ nicht (Offene Typfrage,
+   * Ticket 70).
+   */
+  readonly gefordert: { readonly netto: Betrag; readonly brutto: Betrag } | null;
+  /**
+   * Die Aufmaßblätter, deren Mengen die Rechnung abrechnet, und zwar **alle** bis dahin, auch die schon in früheren
+   * Rechnungen (kumulierte Abschlagsrechnung, D-34 (1)): die vollständige kumulierte Menge. Nur Blätter desselben
+   * Auftrags-LV, jedes höchstens einmal, nach Blattnummer geordnet (der Ausführer prüft und ordnet mit Kontext,
+   * `ungueltige-eingabe`). Fehlt einer späteren Rechnung ein Blatt einer früheren, ist das ein Befund der Prüfung
+   * (Ticket 81), keine Sperre (U5). `[]`: noch keine Leistung.
+   */
+  readonly aufmassIds: readonly AufmassId[];
+  /** Umlagen in Anzeigereihenfolge; `[]`: keine. */
+  readonly umlagen: readonly Umlage[];
+  /**
+   * Satz des Sicherheitseinbehalts (D-34 (6)): round(Brutto kumuliert × Satz, 2), nur bei `art: 'abschlag'` gelesen.
+   * `null`: kein Einbehalt. Bei `schluss` bleibt er stehen, wird aber nicht gelesen (die App übernimmt beide Sätze als
+   * Vorschlag aus der vorigen Rechnung).
+   */
+  readonly sicherheitSatz: Prozent | null;
+  /** Satz des Gewährleistungseinbehalts (D-34 (6)), nur bei `art: 'schluss'` gelesen; sonst wie `sicherheitSatz`. */
+  readonly gewaehrleistungSatz: Prozent | null;
+  /**
+   * `null`: nicht freigegeben. Gesetzt nur durch `RechnungFreigeben`, mit dem Zahlbetrag, den die App mit `abrechnung`
+   * gerechnet und der Prüfer bestätigt hat; der Ausführer rechnet nicht nach (Lesart wie `MengenansatzSetzen`). Der Betrag
+   * ist **eingefroren** (D-34 (7)): Spätere Rechnungen ziehen ihn ab, auch wenn sich danach ein Aufmaß ändert (D-38).
+   * Negativ heißt Überzahlung (ein Befund, keine Sperre).
+   */
+  readonly freigabe: { readonly zahlbetrag: Betrag } | null;
 }

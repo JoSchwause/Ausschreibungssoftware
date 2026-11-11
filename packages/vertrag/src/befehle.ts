@@ -7,6 +7,7 @@
 // `Protokolleintrag`. Der Befehlsname im Feld `art` ist der Typname (ASCII, siehe GLOSSARY).
 
 import type {
+  AufmassId,
   ElternId,
   GliederungId,
   HinweistextId,
@@ -41,10 +42,13 @@ import type {
   OzMaske,
   Positionsdaten,
   Positionsmerkmale,
+  Rechnung,
+  Rechnungsart,
+  Umlage,
   Vergabeinformationen,
   Zuschlag,
 } from './modell';
-import type { Einheitspreis, Menge, Prozent } from './zahlen';
+import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
 export type Einfuegeort =
@@ -659,6 +663,88 @@ export interface AufmassLoeschen {
 /** Befehle gegen ein Aufmaßblatt (Zustand: `AufmassZustand`; v1.4, Ticket 70 Punkt 6). */
 export type AufmassBefehl =
   AufmassAnlegen | AufmasskopfSetzen | AufmasspositionSetzen | AufmasspositionEntfernen | AufmassLoeschen;
+
+// --- Rechnung (v1.4, A3; D-34, D-36 (2); Ausführer in `abrechnung`, Ticket 81) ----------------------------------
+//
+// Kontext des Ausführers: Auftrags-LV, Aufmaßblätter und die übrigen Rechnungen desselben Auftrags-LV. ChangeSet aller
+// Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher und nachher (D-36 (8)). Eine freigegebene Rechnung ändert
+// nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr weist der Ausführer mit `rechnung-freigegeben` ab (Q5).
+
+/**
+ * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
+ * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Kein Massenbefehl.
+ */
+export interface RechnungAnlegen {
+  readonly art: 'RechnungAnlegen';
+  readonly rechnung: Rechnung;
+}
+
+/**
+ * Setzt die Angaben der Rechnung als ganze Werte: Art, Eingang, Rechnungsnummer des Auftragnehmers und geforderte Beträge
+ * (siehe `Rechnung`). `rechnungsart` heißt hier so, weil `art` der Name des Befehls ist.
+ */
+export interface RechnungsangabenSetzen {
+  readonly art: 'RechnungsangabenSetzen';
+  readonly rechnungsart: Rechnungsart;
+  readonly eingang: string | null;
+  readonly rechnungsnummerAuftragnehmer: string | null;
+  readonly gefordert: Rechnung['gefordert'];
+}
+
+/** Setzt die abgerechneten Aufmaßblätter als ganze Liste (vollständige kumulierte Menge, siehe `Rechnung.aufmassIds`). */
+export interface RechnungsaufmasseSetzen {
+  readonly art: 'RechnungsaufmasseSetzen';
+  readonly aufmassIds: readonly AufmassId[];
+}
+
+/** Setzt die Abzüge als ganze Werte: Umlagen und die beiden Einbehaltssätze (siehe `Rechnung`). */
+export interface RechnungsabzuegeSetzen {
+  readonly art: 'RechnungsabzuegeSetzen';
+  readonly umlagen: readonly Umlage[];
+  readonly sicherheitSatz: Prozent | null;
+  readonly gewaehrleistungSatz: Prozent | null;
+}
+
+/**
+ * Gibt die Rechnung mit ihrem Zahlbetrag frei und friert ihn ein (D-34 (7)). Die App rechnet den Zahlbetrag mit
+ * `abrechnung` und gibt ihn mit; der Ausführer rechnet nicht nach (Lesart wie `MengenansatzSetzen`). Nur, wenn alle
+ * früheren Rechnungen (kleinere Nummer) freigegeben sind (sonst `freigabe-reihenfolge`); eine schon freigegebene Rechnung
+ * weist er mit `rechnung-freigegeben` ab.
+ */
+export interface RechnungFreigeben {
+  readonly art: 'RechnungFreigeben';
+  readonly zahlbetrag: Betrag;
+}
+
+/**
+ * Hebt die Freigabe ausdrücklich auf (`freigabe` wird `null`), damit eine falsch freigegebene Rechnung korrigiert werden
+ * kann; das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere Nummer)
+ * freigegeben ist (sonst `freigabe-reihenfolge`): Deren eingefrorener Zahlbetrag zieht diesen ab (D-34 (7)). Unumkehrbar
+ * im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht freigegebene Rechnung weist der Ausführer mit
+ * `ungueltige-eingabe` ab.
+ */
+export interface RechnungsfreigabeAufheben {
+  readonly art: 'RechnungsfreigabeAufheben';
+}
+
+/**
+ * Löscht die Rechnung (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Nur eine nicht freigegebene
+ * (sonst `rechnung-freigegeben`). Kommt danach eine freigegebene Rechnung (größere Nummer), weist `speicher` auch ein
+ * ChangeSet ohne Ausführer (Undo des Anlegens) mit `konflikt` ab.
+ */
+export interface RechnungLoeschen {
+  readonly art: 'RechnungLoeschen';
+}
+
+/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7). */
+export type RechnungBefehl =
+  | RechnungAnlegen
+  | RechnungsangabenSetzen
+  | RechnungsaufmasseSetzen
+  | RechnungsabzuegeSetzen
+  | RechnungFreigeben
+  | RechnungsfreigabeAufheben
+  | RechnungLoeschen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

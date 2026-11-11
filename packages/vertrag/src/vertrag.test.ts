@@ -128,6 +128,14 @@ import {
   type Aufmassposition,
   type AufmasspositionSetzen,
   type AufmassZustand,
+  type Rechnung,
+  type Rechnungsart,
+  type RechnungBefehl,
+  type RechnungChangeSet,
+  type RechnungFreigeben,
+  type RechnungId,
+  type RechnungZustand,
+  type Umlage,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -180,6 +188,12 @@ import {
   beispielAufmasspositionSetzen,
   beispielChangeSetAufmassAnlegen,
   beispielChangeSetAufmasspositionSetzen,
+  beispielChangeSetFreigabeAufheben,
+  beispielChangeSetRechnungFreigeben,
+  beispielRechnung1,
+  beispielRechnung2,
+  beispielRechnungFreigeben,
+  beispielRechnungsfreigabeAufheben,
 } from './beispiele';
 
 /**
@@ -1239,5 +1253,59 @@ describe('v1.4 Punkt 6: Aufmaßblatt (A2, D-36 (1))', () => {
       setzen.aufmass.vorher?.positionen.map((p) => p.positionId),
     );
     expect(tauschen(tauschen(setzen.aufmass))).toEqual(setzen.aufmass);
+  });
+});
+
+describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
+  it('Kennung, Art, Umlage und die Felder der Rechnung', () => {
+    expectTypeOf<string>().not.toExtend<RechnungId>();
+    expectTypeOf<RechnungId>().not.toExtend<AufmassId>();
+    expectTypeOf<Rechnungsart>().toEqualTypeOf<'abschlag' | 'schluss'>();
+    expectTypeOf<Umlage>().toEqualTypeOf<{ readonly bezeichnung: string; readonly satz: Prozent }>();
+    expectTypeOf<Rechnung['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<Rechnung['art']>().toEqualTypeOf<Rechnungsart>();
+    expectTypeOf<Rechnung['gefordert']>().toEqualTypeOf<{
+      readonly netto: Betrag;
+      readonly brutto: Betrag;
+    } | null>();
+    expectTypeOf<Rechnung['aufmassIds']>().toEqualTypeOf<readonly AufmassId[]>();
+    expectTypeOf<Rechnung['umlagen']>().toEqualTypeOf<readonly Umlage[]>();
+    expectTypeOf<Rechnung['sicherheitSatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Rechnung['gewaehrleistungSatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Rechnung['freigabe']>().toEqualTypeOf<{ readonly zahlbetrag: Betrag } | null>();
+    expectTypeOf<RechnungZustand['rechnung']>().toEqualTypeOf<Rechnung>();
+  });
+
+  it('Befehle; Freigeben trägt den Zahlbetrag, den die App gerechnet hat', () => {
+    expectTypeOf<RechnungBefehl['art']>().toEqualTypeOf<
+      | 'RechnungAnlegen'
+      | 'RechnungsangabenSetzen'
+      | 'RechnungsaufmasseSetzen'
+      | 'RechnungsabzuegeSetzen'
+      | 'RechnungFreigeben'
+      | 'RechnungsfreigabeAufheben'
+      | 'RechnungLoeschen'
+    >();
+    expectTypeOf<RechnungFreigeben['zahlbetrag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<RechnungChangeSet['rechnung']>().toEqualTypeOf<Aenderung<Rechnung>>();
+    expectTypeOf<'rechnung-freigegeben' | 'freigabe-reihenfolge'>().toExtend<Befehlsfehlercode>();
+  });
+
+  it('Beispiel: kumulierte Abschlagsrechnungen; die zweite rechnet alle Blätter ab, die erste ist eingefroren', () => {
+    const r1 = beispielRechnung1;
+    const r2 = beispielRechnung2;
+    expect([r1.nummer, r2.nummer]).toEqual([1, 2]);
+    expect(r1.aufmassIds.every((a) => r2.aufmassIds.includes(a))).toBe(true);
+    expect(r1.freigabe?.zahlbetrag).toBe('53.42');
+    expect(r2.freigabe).toBeNull();
+    expect(r1.gewaehrleistungSatz).toBeNull();
+  });
+
+  it('Freigeben und Freigabe aufheben: Gegenstücke, umkehrbar durch Tausch', () => {
+    const f = beispielChangeSetRechnungFreigeben;
+    expect(f.rechnung.vorher?.freigabe).toBeNull();
+    expect(f.rechnung.nachher?.freigabe).toEqual({ zahlbetrag: beispielRechnungFreigeben.zahlbetrag });
+    expect(tauschen(f.rechnung)).toEqual(beispielChangeSetFreigabeAufheben.rechnung);
+    expect(beispielRechnungsfreigabeAufheben.art).toBe('RechnungsfreigabeAufheben');
   });
 });
