@@ -70,6 +70,33 @@ function eintrag(
   return { id: u.ids.protokoll(), projektId, aggregat, wer: u.nutzer, wann: u.uhr(), befehl };
 }
 
+/** Hörer der geschriebenen Protokolleinträge je Umgebung (D-62.2, Review Welle 4): Befehle, Undo, Redo, Zuschlag. */
+const EINTRAGSHOERER = new WeakMap<Umgebung, Set<(e: Protokolleintrag) => void>>();
+
+/**
+ * Meldet jeden Protokolleintrag, den der Speicher angenommen hat, nach dem Schreiben (z. B. zum Zählen für das
+ * automatische Sichern). Rückgabe: Abmelden.
+ */
+export function nachJedemEintrag(u: Umgebung, h: (e: Protokolleintrag) => void): () => void {
+  const menge = EINTRAGSHOERER.get(u) ?? new Set<(e: Protokolleintrag) => void>();
+  menge.add(h);
+  EINTRAGSHOERER.set(u, menge);
+  return () => {
+    menge.delete(h);
+  };
+}
+
+/** Der eine Schreibzugriff der App auf den Speicher (A5): schreibt Eintrag und ChangeSet und meldet den Eintrag. */
+export async function eintragSchreiben(
+  u: Umgebung,
+  e: Protokolleintrag,
+  cs: Parameters<Speicher['anwenden']>[1],
+): ReturnType<Speicher['anwenden']> {
+  const r = await u.speicher.anwenden(e, cs);
+  if (r.ok) for (const h of [...(EINTRAGSHOERER.get(u) ?? [])]) h(e);
+  return r;
+}
+
 async function speichern<Z>(
   u: Umgebung,
   e: Protokolleintrag,
@@ -77,7 +104,7 @@ async function speichern<Z>(
   neu: () => Z,
   hinweise: readonly Befehlshinweis[] = cs.hinweise ?? [],
 ): Promise<Lauf<Z>> {
-  const r = await u.speicher.anwenden(e, cs);
+  const r = await eintragSchreiben(u, e, cs);
   if (!r.ok) return { ok: false, abweisung: { art: 'speicher', fehler: r.fehler } };
   const teil: Teil = { protokollId: e.id, projektId: e.projektId, aggregat: e.aggregat, changeSet: cs };
   return { ok: true, zustand: neu(), hinweise, teil };
@@ -339,7 +366,7 @@ export class Befehlsweg {
     befehl: Protokolleintrag['befehl'],
   ): Promise<Speicherfehler | null> {
     const e = eintrag(this.umgebung, t.projektId, t.aggregat, befehl);
-    const r = await this.umgebung.speicher.anwenden(e, cs);
+    const r = await eintragSchreiben(this.umgebung, e, cs);
     if (!r.ok) return r.fehler;
     if (cs.art === 'leistungsverzeichnis') {
       const anlegen = cs.kopf !== null && cs.kopf.vorher === null;

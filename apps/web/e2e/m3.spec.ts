@@ -26,6 +26,7 @@ const wurzel = new URL('../../../fixtures/', import.meta.url);
 const fx = JSON.parse(readFileSync(new URL('typisch-angebote.json', wurzel), 'utf8')) as {
   angebote: readonly {
     id: string;
+    nachlass: { art: 'prozent' | 'betrag'; wert: string } | null;
     sollwerte: { positionen: Readonly<Record<string, { gp: string }>> };
   }[];
   preisspiegel: {
@@ -56,21 +57,27 @@ const gpErster = (id: string | undefined): string =>
 const cent = (b: string): bigint => BigInt(b.replace('.', ''));
 const betrag = (c: bigint): string => `${(c / 100n).toString()}.${(c % 100n).toString().padStart(2, '0')}`;
 
+/** Prozentwert der Fixture als Hundertstel (`19.00` → 1900); kaufmännisch gerundet(c × p / 100, 2) für c ≥ 0. */
+const prozentVon = (c: bigint, p: string): bigint => (c * cent(p) + 5000n) / 10000n;
+
 /**
  * Erwartete Summen des Auftrags-LV mit gewählter Alternative (D-21, R2/N2): Die Alternative ersetzt die Grundposition,
- * das Netto ist das des Bieters minus GP der Grundposition plus GP der Alternative (beide GP aus der Fixture); ohne
- * Nachlass des Bieters ist Netto nach Nachlass gleich; MwSt = kaufmännisch gerundet(Netto × Satz des LV, 2).
+ * das Netto ist das des Bieters minus GP der Grundposition plus GP der Alternative (beide GP aus der Fixture). Der
+ * Nachlass ist der des Angebots aus der Fixture (D-21; N5: Prozent auf das Netto, kaufmännisch auf 2 Stellen, oder der
+ * Betrag), MwSt = kaufmännisch gerundet(Netto nach Nachlass × Satz des LV, 2).
  */
 function erwartet(): Summen {
   const netto = cent(ERSTER.summen.netto) - cent(gpErster(GRUND?.id)) + cent(gpErster(ALTERNATIVE?.id));
-  const satz = cent(lvFx.mwstSatz); // 19.00 % → 1900
-  const mwst = (netto * satz + 5000n) / 10000n;
+  const n = fx.angebote.find((a) => a.id === ERSTER.angebotId)?.nachlass ?? null;
+  const nachlass = n === null ? 0n : n.art === 'prozent' ? prozentVon(netto, n.wert) : cent(n.wert);
+  const nachNachlass = netto - nachlass;
+  const mwst = prozentVon(nachNachlass, lvFx.mwstSatz);
   return {
     netto: betrag(netto),
-    nachlass: '0.00',
-    nettoNachNachlass: betrag(netto),
+    nachlass: betrag(nachlass),
+    nettoNachNachlass: betrag(nachNachlass),
     mwst: betrag(mwst),
-    brutto: betrag(netto + mwst),
+    brutto: betrag(nachNachlass + mwst),
   };
 }
 

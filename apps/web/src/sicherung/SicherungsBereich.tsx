@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { letzterExportLesen } from './ablage';
-import { ERINNERUNG_SCHWELLE_TAGE, erinnerungPruefen } from './regel';
+import { erinnerungAusgeschlossen, erinnerungPruefen } from './regel';
 import { useSicherung } from './SicherungsAnbieter';
 import { texte } from './texte';
 import './sicherung.css';
@@ -18,8 +18,6 @@ interface Faellig {
   readonly name: string;
   readonly tage: number;
 }
-
-const TAG_MS = 24 * 60 * 60 * 1000;
 
 /** Projekte, deren Sicherung überfällig ist. Das Befehlsprotokoll wird nur gelesen, wenn die Schwelle überschritten ist. */
 function useFaellige(): readonly Faellig[] {
@@ -32,11 +30,11 @@ function useFaellige(): readonly Faellig[] {
     void (async () => {
       const liste = await u.speicher.projekte.auflisten();
       if (!liste.ok) return;
-      const jetzt = Date.now();
+      const jetzt = Date.parse(u.uhr());
       const treffer: Faellig[] = [];
       for (const p of liste.wert) {
         const letzter = letzterExportLesen(p.id);
-        if (letzter !== null && jetzt - letzter <= ERINNERUNG_SCHWELLE_TAGE * TAG_MS) continue;
+        if (erinnerungAusgeschlossen(jetzt, letzter)) continue;
         const protokoll = await u.speicher.protokoll(p.id);
         if (!protokoll.ok) continue;
         const r = erinnerungPruefen({

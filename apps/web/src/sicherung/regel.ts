@@ -22,10 +22,19 @@ export interface ErinnerungEingabe {
 export type Erinnerung = { readonly faellig: false } | { readonly faellig: true; readonly tage: number };
 
 /**
+ * Schon ohne Befehlsprotokoll entschieden: Liegt der letzte Export nicht länger als die Schwelle zurück, ist nichts
+ * fällig. Die Projektliste liest das Protokoll nur, wenn das nicht so ist.
+ */
+export function erinnerungAusgeschlossen(jetzt: number, letzterExport: number | null): boolean {
+  return letzterExport !== null && jetzt - letzterExport <= ERINNERUNG_SCHWELLE_TAGE * TAG_MS;
+}
+
+/**
  * Fällig, wenn es seit dem letzten Export Befehle gab **und** der Bezugspunkt länger als die Schwelle zurückliegt.
  * Bezugspunkt ist der letzte Export; gab es noch keinen, der erste Befehl des Projekts.
  */
 export function erinnerungPruefen({ jetzt, letzterExport, befehlszeiten }: ErinnerungEingabe): Erinnerung {
+  if (erinnerungAusgeschlossen(jetzt, letzterExport)) return { faellig: false };
   const seitdem = befehlszeiten.filter((t) => letzterExport === null || t > letzterExport);
   if (seitdem.length === 0) return { faellig: false };
   const bezug = letzterExport ?? Math.min(...seitdem);

@@ -569,6 +569,20 @@ test('typisch-angebote: Preisspiegel-Sollwerte, Rang und virtuelle Bieter (Ticke
       Object.fromEntries(Object.entries(a.sollwerte.titel).map(([id, t]) => [titelOz.get(id), t.summe])),
     );
   }
+  // Bedarfs- und Wahlsumme je Bieter (F4, Review Welle 4 P1), hier eigens aus den Zeilen der Angebote gegengerechnet:
+  // Summe von round_half_up(Menge x EP des Bieters, 2) über Bedarf ohne Gesamtbetrag bzw. Wahl.
+  const ausweis = (a, passt) => format(lv.knoten.filter((k) => k.art === 'position' && passt(k)).reduce((s, k) => {
+    const z = a.positionen.find((x) => x.positionId === k.id);
+    return z.status === 'angeboten' ? s + gesamtpreis(parse(k.menge, 3), parse(z.einheitspreis, 3)) : s;
+  }, 0n), 2);
+  for (const [i, a] of set.angebote.entries()) {
+    assert.deepEqual(ps.bieter[i].ausweise, {
+      summeBedarfOhneGesamtbetrag: ausweis(a, (k) => k.positionsart === 'bedarf' && k.bedarfMitGesamtbetrag !== true),
+      summeWahl: ausweis(a, (k) => k.positionsart === 'wahl'),
+    });
+  }
+  // Von Hand (README): Bieter A 12,000 x 50,123 = 601,476 -> 601,48; 96,000 x 60,148 = 5.774,208 -> 5.774,21.
+  assert.deepEqual(ps.bieter[0].ausweise, { summeBedarfOhneGesamtbetrag: '601.48', summeWahl: '5774.21' });
   const [A, B, C] = set.angebote.map((a) => a.id);
   assert.deepEqual(ps.vergleiche.map((v) => v.angebotIds), [[A, B, C], [A, B], [A, C], [B, C]]);
   // Rang nach Netto nach Nachlass: A 55.481,84 < B 56.607,77 < C 56.721,09

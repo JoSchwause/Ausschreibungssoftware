@@ -58,6 +58,7 @@ Grund: Keine Änderung an `vertrag`/`speicher`; das Protokoll überlebt Neuladen
 Frage: `Befehlsweg` kennt nur Hörer für Undo/Redo; wie zählt `sicherung/` Befehle ohne Eingriff in `lv/`?
 Entscheidung: `SicherungsAnbieter` hüllt `u.speicher.anwenden` zur Laufzeit ein (jeder Befehl, auch Undo/Redo, geht dort durch, A5) und stellt es beim Abbau zurück. Ist der Speicher nicht beschreibbar, entfällt nur das Zählen. Beim Verlassen der Seite (`visibilitychange` nach „hidden“, `pagehide`) wird alles Offene gesichert.
 Grund: Hält die Einhängestellen in gemeinsamen Dateien kurz (D-20).
+Nachtrag (Review Welle 4, D-30): Die Laufzeit-Hülle ist ersetzt durch einen Hörer am Befehlsweg (`nachJedemEintrag` in `lv/befehlsweg.ts`; alle Schreibzugriffe der App gehen über `eintragSchreiben`). Ohne Paketänderung.
 
 ### D-62.3 Sicherungsordner: Grenzen und Test
 Entscheidung: Fehlt die Berechtigung, fragt „Jetzt sichern“ neu (Nutzeraktion) und fällt bei Ablehnung auf den Download zurück; das automatische Sichern fragt nie nach und meldet einmal je Sitzung. Der Ordner-Handle liegt in IndexedDB (`tethys-sicherung`). Der E2E nutzt einen Ordner im OPFS statt des Systemdialogs, eingepackt in ein nicht klonbares Objekt: Das headless Chromium dieses Containers stürzt ab, sobald es einen Dateisystem-Handle aus IndexedDB liest. Das Merken über einen Neustart ist daher nur von Hand prüfbar.

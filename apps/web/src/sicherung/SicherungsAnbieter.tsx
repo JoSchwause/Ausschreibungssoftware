@@ -4,9 +4,10 @@
 // Der Export selbst ist der vorhandene Weg (`projektdateiExportieren`, Ticket 38); hier wird nichts am Speicher geändert.
 
 import { useToast } from '@tethys/ui-basis';
-import type { ProjektId, Speicher } from '@tethys/vertrag';
+import type { ProjektId } from '@tethys/vertrag';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { nachJedemEintrag } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { einstellungenLesen, einstellungenSchreiben, letzterExportMerken } from './ablage';
@@ -69,7 +70,7 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
   const [automatisch, setAutomatisch] = useState(() => einstellungenLesen().automatisch);
   const [stand, setStand] = useState(0);
   const ordnerMoeglich = ordnerWahlUnterstuetzt();
-  // Aktueller Stand für Rückrufe außerhalb des Renderns (Speicher-Hülle, Seite verlassen).
+  // Aktueller Stand für Rückrufe außerhalb des Renderns (Hörer am Befehlsweg, Seite verlassen).
   const live = useRef({ ordner, automatisch });
   live.current = { ordner, automatisch };
   /** Befehle je Projekt seit der letzten Sicherung. */
@@ -88,11 +89,14 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
     };
   }, [ordnerMoeglich]);
 
-  const vermerken = useCallback((id: ProjektId) => {
-    letzterExportMerken(id, Date.now());
-    offen.current.delete(id);
-    setStand((n) => n + 1);
-  }, []);
+  const vermerken = useCallback(
+    (id: ProjektId) => {
+      letzterExportMerken(id, Date.parse(u.uhr()));
+      offen.current.delete(id);
+      setStand((n) => n + 1);
+    },
+    [u],
+  );
 
   /** Exportiert das Projekt und schreibt es in den Ordner. `fuerNutzer`: darf nachfragen und Fehler melden. */
   const inOrdnerSichern = useCallback(
@@ -123,7 +127,7 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
         if (fuerNutzer) speicherfehler(r.fehler, texte.meldung.exportFehler);
         return false;
       }
-      const datei = sicherungsdateiname(projekt.name, new Date());
+      const datei = sicherungsdateiname(projekt.name, new Date(u.uhr()));
       const s = await inOrdnerSchreiben(o, datei, r.wert);
       if (!s.ok) {
         zeige({ titel: texte.meldung.ordnerFehler, beschreibung: s.meldung, art: 'fehler' });
@@ -154,7 +158,7 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
         speicherfehler(r.fehler, texte.meldung.exportFehler);
         return false;
       }
-      herunterladen(sicherungsdateiname(projekt.name, new Date()), r.wert);
+      herunterladen(sicherungsdateiname(projekt.name, new Date(u.uhr())), r.wert);
       vermerken(projekt.id);
       return true;
     },
@@ -176,28 +180,16 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
     [u, inOrdnerSichern],
   );
 
-  // Befehle zählen: Jeder angenommene Befehl geht durch `anwenden` (A5). Die Hülle sitzt nur, solange die App läuft.
-  useEffect(() => {
-    const sp = u.speicher as { anwenden: Speicher['anwenden'] };
-    const original = sp.anwenden;
-    const gezaehlt: Speicher['anwenden'] = async (eintrag, changeSet) => {
-      const r = await original.call(sp, eintrag, changeSet);
-      if (r.ok) {
+  // Befehle zählen: Jeder angenommene Eintrag (Befehl, Undo, Redo) meldet der Befehlsweg (A5, D-62.2).
+  useEffect(
+    () =>
+      nachJedemEintrag(u, (eintrag) => {
         const n = (offen.current.get(eintrag.projektId) ?? 0) + 1;
         offen.current.set(eintrag.projektId, n);
         if (n % AUTO_SICHERN_ALLE_BEFEHLE === 0) autoSichern(eintrag.projektId);
-      }
-      return r;
-    };
-    try {
-      sp.anwenden = gezaehlt;
-    } catch {
-      return; // Speicher gesperrt: dann kein automatisches Sichern nach n Befehlen
-    }
-    return () => {
-      if (sp.anwenden === gezaehlt) sp.anwenden = original;
-    };
-  }, [u, autoSichern]);
+      }),
+    [u, autoSichern],
+  );
 
   // Beim Verlassen der Seite: alles, was seit der letzten Sicherung dazukam. `visibilitychange` ist zuverlässiger als
   // `pagehide`; beides löst höchstens einmal je Projekt aus, weil das Sichern den Zähler leert.

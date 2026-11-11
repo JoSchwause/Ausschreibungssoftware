@@ -17,14 +17,14 @@ import type { ReactElement } from 'react';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { abweisungText } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { zuschlagSpeichern } from './auftrag';
+import { zuschlagserteilungSpeichern } from './auftrag';
 import { texte } from './texte';
-import { wahlSetzen, zuschlagPlanen } from './zuschlag';
+import { wahlSetzen, zuschlagserteilungPlanen } from './zuschlagserteilung';
 import './auftrag.css';
 
 const t = texte.dialog;
 
-export interface ZuschlagDialogProps {
+export interface ZuschlagserteilungDialogProps {
   readonly lv: LvZustand;
   readonly projekt: Projekt;
   /** Das Angebot, das den Zuschlag bekommen soll, mit dem Namen des Bieters; `null`: Dialog zu. */
@@ -34,7 +34,7 @@ export interface ZuschlagDialogProps {
   readonly onErteilt: (id: AuftragsLeistungsverzeichnisId) => void;
 }
 
-export function ZuschlagDialog(props: ZuschlagDialogProps): ReactElement {
+export function ZuschlagserteilungDialog(props: ZuschlagserteilungDialogProps): ReactElement {
   const { bieter } = props;
   return (
     <Dialog
@@ -55,7 +55,9 @@ function Inhalt({
   bieter,
   onSchliessen,
   onErteilt,
-}: ZuschlagDialogProps & { bieter: NonNullable<ZuschlagDialogProps['bieter']> }): ReactElement {
+}: ZuschlagserteilungDialogProps & {
+  bieter: NonNullable<ZuschlagserteilungDialogProps['bieter']>;
+}): ReactElement {
   const u = useUmgebung();
   const { zeige } = useToast();
   // Die Kennung des neuen Auftrags-LV entsteht einmal je Dialog (A2: Kennungen kommen von der App).
@@ -63,14 +65,14 @@ function Inhalt({
   const [gewaehlt, setGewaehlt] = useState<ReadonlySet<PositionId>>(new Set());
   const [laeuft, setLaeuft] = useState(false);
   const plan = useMemo(
-    () => zuschlagPlanen({ lv, angebot: bieter.zustand, projekt, gewaehlt, neueId }),
+    () => zuschlagserteilungPlanen({ lv, angebot: bieter.zustand, projekt, gewaehlt, neueId }),
     [lv, bieter, projekt, gewaehlt, neueId],
   );
 
   const erteilen = async (): Promise<void> => {
     if (plan.befehl === null || laeuft) return;
     setLaeuft(true);
-    const r = await zuschlagSpeichern(befehlswegFuer(u), plan.befehl);
+    const r = await zuschlagserteilungSpeichern(befehlswegFuer(u), plan.befehl);
     setLaeuft(false);
     if (r.ok) {
       zeige({ titel: t.erteilt(bieter.name), art: 'erfolg' });

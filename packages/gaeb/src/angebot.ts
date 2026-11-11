@@ -8,7 +8,7 @@
 // vor v1.3 in der Datei) bleiben sie unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
 // (G-26, D-10 Nr. 3): Fehler `nachlass-nicht-abgebildet`, der Preis bleibt ohne Nachlass.
 
-import { gesamtpreis, vergleiche } from '@tethys/dezimal';
+import { NULL_EINHEITSPREIS, gesamtpreis, vergleiche } from '@tethys/dezimal';
 import { betragsziel } from '@tethys/kern';
 import type {
   AngebotAnlegen,
@@ -52,8 +52,6 @@ export interface AngebotLesung {
   readonly version: GaebVersion | null;
   readonly befunde: readonly Pruefbefund[];
 }
-
-const NULL_EP = '0.000' as Einheitspreis;
 
 interface Anteilsangaben {
   /** Je `UPComp1…6` der Anteil, `null`: nicht zuordenbar (Grund in `grund`). */
@@ -353,7 +351,8 @@ class Angebotsaufbau {
     }
     // Platzhalter (Vertrag v1.2, D-12 Nr. 7): nie gerechnet; der EP der Datei, falls sie einen nennt.
     const upEl = kind(el, 'UP');
-    const ep = (upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null) ?? NULL_EP;
+    const ep =
+      (upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null) ?? NULL_EINHEITSPREIS;
     this.zeilen.set(p.id, {
       positionId: p.id,
       status: 'angeboten',

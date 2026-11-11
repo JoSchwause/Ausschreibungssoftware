@@ -13,7 +13,6 @@ import type {
   Ergebnis,
   LeistungsverzeichnisId,
   LvChangeSet,
-  LvInhaltKopf,
   LvZustand,
   Projektdatei,
   ProjektId,
@@ -21,7 +20,8 @@ import type {
   Speicherfehler,
 } from '@tethys/vertrag';
 import type { Teil } from '../historie/historie';
-import type { Abweisung, Befehlsweg } from '../lv/befehlsweg';
+import { eintragSchreiben, type Abweisung, type Befehlsweg } from '../lv/befehlsweg';
+import { inhaltKopf } from '../lv/inhalt';
 
 /** Die Auftrags-LVs eines Projekts, aus der Projektdatei des Speichers (D-64.2). */
 export async function auftragsLvsLaden(
@@ -43,7 +43,7 @@ export function auftragZumLv(
   return auftraege.find((a) => a.auftragsLeistungsverzeichnis.leistungsverzeichnisId === lvId) ?? null;
 }
 
-export type Zuschlagsausgang =
+export type Zuschlagserteilungsausgang =
   | { readonly ok: true; readonly id: AuftragsLeistungsverzeichnisId }
   /** Zum LV gibt es schon ein Auftrags-LV (D-21, Q5); nichts geschrieben. */
   | { readonly ok: false; readonly art: 'schon-vergeben'; readonly auftrag: AuftragsLvZustand }
@@ -54,13 +54,13 @@ export type Zuschlagsausgang =
  * Protokolleintrag, dann ein Undo-Schritt. Gibt es zum LV schon ein Auftrags-LV, wird nichts geschrieben; geprüft in der
  * Kette, damit auch ein doppelter Klick keinen zweiten Zuschlag erzeugt.
  */
-export function zuschlagSpeichern(
+export function zuschlagserteilungSpeichern(
   weg: Befehlsweg,
   befehl: AuftragsLeistungsverzeichnisAnlegen,
-): Promise<Zuschlagsausgang> {
+): Promise<Zuschlagserteilungsausgang> {
   const u = weg.umgebung;
   const a = befehl.auftragsLeistungsverzeichnis;
-  return weg.reihe(async (): Promise<Zuschlagsausgang> => {
+  return weg.reihe(async (): Promise<Zuschlagserteilungsausgang> => {
     const vorhanden = await auftragsLvsLaden(u.speicher, a.projektId);
     if (!vorhanden.ok)
       return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: vorhanden.fehler } };
@@ -76,7 +76,7 @@ export function zuschlagSpeichern(
       wann: u.uhr(),
       befehl,
     } as const;
-    const s = await u.speicher.anwenden(eintrag, r.wert);
+    const s = await eintragSchreiben(u, eintrag, r.wert);
     if (!s.ok) return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: s.fehler } };
     const teil: Teil = {
       protokollId: eintrag.id,
@@ -108,20 +108,6 @@ export function auftragsLvChangeSetUmkehren(cs: AuftragsLvChangeSet): AuftragsLv
     kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
     knoten: u.knoten,
     summen: u.summen,
-  };
-}
-
-/** Die Stammdaten ohne Kennungen und Knoten (Name, Maske, MwSt, Nachlass, Kopfdaten); fehlende Felder bleiben weg. */
-export function inhaltKopf(k: LvInhaltKopf): LvInhaltKopf {
-  return {
-    name: k.name,
-    ozMaske: k.ozMaske,
-    mwstSatz: k.mwstSatz,
-    nachlass: k.nachlass,
-    ...(k.auftraggeber === undefined ? {} : { auftraggeber: k.auftraggeber }),
-    ...(k.vergabeinformationen === undefined ? {} : { vergabeinformationen: k.vergabeinformationen }),
-    ...(k.auftragnehmer === undefined ? {} : { auftragnehmer: k.auftragnehmer }),
-    ...(k.epaBezeichnungen === undefined ? {} : { epaBezeichnungen: k.epaBezeichnungen }),
   };
 }
 

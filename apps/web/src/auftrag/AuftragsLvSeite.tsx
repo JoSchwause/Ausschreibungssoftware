@@ -23,7 +23,7 @@ import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from '../lv/pruef
 import { gridZahlen } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { preisspiegelPfad } from '../vergabe/PreisspiegelLink';
+import { preisspiegelPfad } from '../vergabe/pfad';
 import { alsLvZustand, auftragsLvsLaden } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';

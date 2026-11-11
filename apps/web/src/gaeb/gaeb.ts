@@ -27,6 +27,8 @@ import type {
   Projekt,
   Pruefbefund,
 } from '@tethys/vertrag';
+import { ERSATZ_LV, dateinameSauber } from '../dateiname';
+import { lvInhalt } from '../lv/inhalt';
 
 export const PROGRAMMNAME = 'Tethys AVA';
 
@@ -83,17 +85,13 @@ export interface Ausgabe {
 
 /** Dateiname ohne Sonderzeichen; bei einem Entwurf mit `_Entwurf` vor der Endung (G-13). */
 export function dateinameAusgabe(lvName: string, phase: ExportPhase, entwurf: boolean): string {
-  const sauber =
-    lvName
-      .replace(/[^\p{L}\p{N} _-]+/gu, '')
-      .replace(/ {2,}/g, ' ')
-      .trim() || 'Leistungsverzeichnis';
-  return `${sauber}${entwurf ? '_Entwurf' : ''}.${phase.toLowerCase()}`;
+  return `${dateinameSauber(lvName, ERSATZ_LV)}${entwurf ? '_Entwurf' : ''}.${phase.toLowerCase()}`;
 }
 
 /**
  * Das LV als GAEB-Datei. Datum und Uhrzeit stammen von der Uhr der App (`jetzt`, in UTC wie `Protokolleintrag.wann`),
- * für X86 kommen Summenstand und Zuschlagsbasen aus dem Kern.
+ * für X86 kommen Summenstand und Zuschlagsbasen aus dem Kern. Den Kopf baut `lvInhalt` (S5); das Auftrags-LV geht über
+ * `alsLvZustand` denselben Weg.
  */
 export function lvAusgeben(
   zustand: LvZustand,
@@ -105,25 +103,13 @@ export function lvAusgeben(
   const l = zustand.leistungsverzeichnis;
   const basen = new Map<PositionId, Betrag>();
   if (phase === 'X86') for (const [id, b] of zuschlagsbasen(l)) basen.set(id, b.basis);
-  const e = schreibeGaeb(
-    {
-      name: l.name,
-      ozMaske: l.ozMaske,
-      mwstSatz: l.mwstSatz,
-      nachlass: l.nachlass,
-      wurzelId: l.id,
-      knoten: l.knoten,
-      ...(l.auftraggeber === undefined ? {} : { auftraggeber: l.auftraggeber }),
-      ...(l.vergabeinformationen === undefined ? {} : { vergabeinformationen: l.vergabeinformationen }),
-    },
-    {
-      phase,
-      version,
-      erstellt: { datum: iso.slice(0, 10), zeit: iso.slice(11, 19) },
-      programm: PROGRAMMNAME,
-      ...(phase === 'X86' ? { summen: zustand.summen, zuschlagsbasen: basen } : {}),
-    },
-  );
+  const e = schreibeGaeb(lvInhalt(l), {
+    phase,
+    version,
+    erstellt: { datum: iso.slice(0, 10), zeit: iso.slice(11, 19) },
+    programm: PROGRAMMNAME,
+    ...(phase === 'X86' ? { summen: zustand.summen, zuschlagsbasen: basen } : {}),
+  });
   return {
     xml: e.xml,
     phase,

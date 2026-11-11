@@ -2,21 +2,13 @@
 // Ticket 64: Adressen des Auftrags-LV und das Ziel nach Rückgängig/Wiederholen eines Zuschlags (für `zielNach` der
 // Historie). Ohne Abhängigkeit auf Kern oder Speicher, damit die Hülle sie billig importiert.
 
-import type {
-  Aenderung,
-  AuftragsLeistungsverzeichnisId,
-  AuftragsLvKopf,
-  LeistungsverzeichnisId,
-  ProjektId,
-} from '@tethys/vertrag';
+import type { Aenderung, AuftragsLeistungsverzeichnisId, AuftragsLvKopf, ProjektId } from '@tethys/vertrag';
+import { preisspiegelPfad } from '../vergabe/pfad';
 
 /** Seite eines Auftrags-LV. Mit Projekt, weil das Auftrags-LV nur über die Projektdatei zu laden ist (D-64.2). */
 export function auftragPfad(projektId: ProjektId, id: AuftragsLeistungsverzeichnisId): string {
   return `/projekt/${projektId}/auftrag/${id}`;
 }
-
-/** Wie `vergabe/PreisspiegelLink`; hier dupliziert, damit dieses Modul nichts aus der Oberfläche zieht. */
-const preisspiegel = (lvId: LeistungsverzeichnisId): string => `/lv/${lvId}/preisspiegel`;
 
 type Kopf = Pick<AuftragsLvKopf, 'id' | 'leistungsverzeichnisId'>;
 
@@ -34,6 +26,6 @@ export function auftragZiel(
   const nachher = rueckwaerts ? cs.kopf.vorher : cs.kopf.nachher;
   const k = nachher ?? (rueckwaerts ? cs.kopf.nachher : cs.kopf.vorher);
   if (k === null) return null;
-  const ziel = nachher !== null ? auftragPfad(projektId, k.id) : preisspiegel(k.leistungsverzeichnisId);
+  const ziel = nachher !== null ? auftragPfad(projektId, k.id) : preisspiegelPfad(k.leistungsverzeichnisId);
   return ziel === pfad ? null : ziel;
 }

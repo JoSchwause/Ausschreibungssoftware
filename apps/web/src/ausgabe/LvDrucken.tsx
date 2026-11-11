@@ -11,7 +11,8 @@ import type { ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { herunterladenBytes } from './datei';
 import { ExcelBefunde } from './ExcelBefunde';
-import { dateinameExcel, dateinamePdf, datumAusUhr, datumDeZuIso, datumIsoZuDe } from './logik';
+import { datumDe, datumLesen } from '../lv/kopfdaten';
+import { dateinameExcel, dateinamePdf, datumAusUhr } from './logik';
 import { pdfErzeugen, type PdfLauf, type PdfSchritt } from './pdf-lauf';
 import { texte } from './texte';
 import '../gaeb/gaeb.css';
@@ -59,7 +60,8 @@ function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
   const [lage, setLage] = useState<PdfLage>({ art: 'bereit' });
   const lauf = useRef<PdfLauf | null>(null);
   const projekt = useProjekt(lv.projektId, offen);
-  const iso = datumDeZuIso(datum);
+  const gelesen = datumLesen(datum);
+  const iso = gelesen.ok ? gelesen.wert : null;
   const gueltig = iso !== null;
 
   // Schließt der Nutzer den Dialog oder die Seite, läuft kein Worker weiter.
@@ -71,7 +73,7 @@ function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
   );
 
   const oeffnen = (): void => {
-    setDatum(datumIsoZuDe(datumAusUhr(u.uhr()))); // „heute“ liest nur die App
+    setDatum(datumDe(datumAusUhr(u.uhr()))); // „heute“ liest nur die App
     setLage({ art: 'bereit' });
     setOffen(true);
   };

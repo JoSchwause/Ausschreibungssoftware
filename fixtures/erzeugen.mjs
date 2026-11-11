@@ -342,7 +342,7 @@ function erzeugeAngebote(lv) {
 const x84Datei = (name) => `angebote/typisch-${name.toLowerCase().replace(/\s+/g, '-')}.x84`;
 
 /**
- * Preisspiegel-Sollwerte (Ticket 69, additiv): je Bieter Datei, Summen und Titelsummen (Titel über die OZ, weil ein
+ * Preisspiegel-Sollwerte (Ticket 69, additiv): je Bieter Datei, Summen, Bedarfs- und Wahlsumme und Titelsummen (Titel über die OZ, weil ein
  * per X83 eingelesenes LV andere IDs hat), dazu Rang und virtuelle Bieter fuer alle drei Angebote und jedes Paar
  * (das Tor M3 liest zwei Dateien ein). Gerechnet in `rechnen.mjs` (`preisspiegelSollwerte`), nie aus `vergabe`.
  */
@@ -359,6 +359,8 @@ function preisspiegelDerAngebote(lv, bieter, angebote) {
       name: bieter[i].name,
       datei: x84Datei(bieter[i].name),
       summen: a.sollwerte.summen,
+      // Bedarfs- und Wahlsumme des Angebots (F4, Review Welle 4 P1): ausgewiesen, nicht im Netto.
+      ausweise: a.sollwerte.ausweise.gesamt,
       titel: Object.fromEntries(Object.entries(a.sollwerte.titel).map(([id, t]) => [titelOz.get(id), t.summe])),
     })),
     vergleiche: auswahlen.map((ix) => preisspiegelSollwerte(lv.knoten, ix.map((i) => angebote[i]), lv.sollwerte)),

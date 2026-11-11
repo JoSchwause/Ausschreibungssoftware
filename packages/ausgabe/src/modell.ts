@@ -226,16 +226,22 @@ function merkmalTexte(p: Position): string[] {
   return texte;
 }
 
-export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen = {}): Ausgabemodell {
-  const mitPreisen = optionen.mitPreisen ?? true;
-  const { leistungsverzeichnis: lv, summen } = zustand;
+/** Die Kinder jedes Knotens (und der Wurzel) nach `reihenfolge`; für Druck und Excel an einer Stelle (S6). */
+export function kinderNachReihenfolge(knoten: readonly Knoten[]): Map<string, Knoten[]> {
   const kinder = new Map<string, Knoten[]>();
-  for (const k of lv.knoten) {
+  for (const k of knoten) {
     const liste = kinder.get(k.elternId);
     if (liste) liste.push(k);
     else kinder.set(k.elternId, [k]);
   }
   for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  return kinder;
+}
+
+export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen = {}): Ausgabemodell {
+  const mitPreisen = optionen.mitPreisen ?? true;
+  const { leistungsverzeichnis: lv, summen } = zustand;
+  const kinder = kinderNachReihenfolge(lv.knoten);
   const positionssumme = new Map(summen.positionen.map((s) => [s.positionId as string, s]));
   const gliederungssumme = new Map(summen.gliederungen.map((s) => [s.gliederungId as string, s]));
   const oz = (o: string | null, index?: string | null): string => `${o ?? ''}${index ?? ''}`;

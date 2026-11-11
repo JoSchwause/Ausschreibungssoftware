@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { angebotLesen } from '../gaeb/gaeb';
 import { appIdQuelle } from '../lv/ids';
-import { wahlSetzen, zuschlagPlanen } from './zuschlag';
+import { wahlSetzen, zuschlagserteilungPlanen } from './zuschlagserteilung';
 
 const wurzel = new URL('../../../../', import.meta.url);
 const datei = (pfad: string): Uint8Array => new Uint8Array(readFileSync(new URL(pfad, wurzel)));
@@ -66,9 +66,15 @@ const id = (oz: string, index: string | null = null): PositionId => {
 };
 const KEINE: ReadonlySet<PositionId> = new Set();
 
-describe('zuschlagPlanen', () => {
+describe('zuschlagserteilungPlanen', () => {
   it('ohne Wahl: die Alternative 02.0070A entfällt, Bieter A hat alles angeboten, der Befehl ist bereit', () => {
-    const plan = zuschlagPlanen({ lv, angebot: a.angebot, projekt, gewaehlt: KEINE, neueId: NEUE_ID });
+    const plan = zuschlagserteilungPlanen({
+      lv,
+      angebot: a.angebot,
+      projekt,
+      gewaehlt: KEINE,
+      neueId: NEUE_ID,
+    });
     expect(plan.fehler).toBeNull();
     expect(plan.entfallend).toBe(1);
     expect(plan.unbepreist).toBe(0);
@@ -85,7 +91,13 @@ describe('zuschlagPlanen', () => {
   });
 
   it('Bieter B hat 03.0070 nicht angeboten: eine unbepreiste Position, in Worten gewarnt', () => {
-    const plan = zuschlagPlanen({ lv, angebot: b.angebot, projekt, gewaehlt: KEINE, neueId: NEUE_ID });
+    const plan = zuschlagserteilungPlanen({
+      lv,
+      angebot: b.angebot,
+      projekt,
+      gewaehlt: KEINE,
+      neueId: NEUE_ID,
+    });
     expect(plan.unbepreist).toBe(1);
     expect(plan.warnungen).toContain(
       '03.0070 Silikonfuge: vom Bieter nicht angeboten; die Position steht ohne Einheitspreis im Auftrags-LV.',
@@ -93,7 +105,13 @@ describe('zuschlagPlanen', () => {
   });
 
   it('Wahlgruppe von typisch: 02.0070A statt 02.0070; gewählt entfällt die Grundposition', () => {
-    const ohne = zuschlagPlanen({ lv, angebot: a.angebot, projekt, gewaehlt: KEINE, neueId: NEUE_ID });
+    const ohne = zuschlagserteilungPlanen({
+      lv,
+      angebot: a.angebot,
+      projekt,
+      gewaehlt: KEINE,
+      neueId: NEUE_ID,
+    });
     expect(ohne.wahlgruppen).toEqual([
       {
         titel: 'Statt 02.0070 Bodenplatte herstellen',
@@ -112,7 +130,7 @@ describe('zuschlagPlanen', () => {
       id('02.0070', 'A'),
       true,
     );
-    const mit = zuschlagPlanen({ lv, angebot: a.angebot, projekt, gewaehlt, neueId: NEUE_ID });
+    const mit = zuschlagserteilungPlanen({ lv, angebot: a.angebot, projekt, gewaehlt, neueId: NEUE_ID });
     expect(mit.wahlgruppen[0]?.alternativen[0]?.gewaehlt).toBe(true);
     expect(mit.entfallend).toBe(1);
     expect(mit.warnungen).toEqual(['Im Auftrags-LV entfällt 1 Position: 02.0070 Bodenplatte herstellen.']);
@@ -121,7 +139,7 @@ describe('zuschlagPlanen', () => {
 
   it('ein Angebot zu einem anderen LV: Fehler in Worten, kein Befehl', () => {
     const fremd = { ...a.angebot, leistungsverzeichnisId: 'anderes-lv' as Angebot['leistungsverzeichnisId'] };
-    const plan = zuschlagPlanen({ lv, angebot: fremd, projekt, gewaehlt: KEINE, neueId: NEUE_ID });
+    const plan = zuschlagserteilungPlanen({ lv, angebot: fremd, projekt, gewaehlt: KEINE, neueId: NEUE_ID });
     expect(plan.fehler).toBe('Das Angebot gehört nicht zu diesem LV.');
     expect(plan.befehl).toBeNull();
   });

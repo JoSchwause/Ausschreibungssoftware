@@ -4,7 +4,7 @@
 // und kommen über `@tethys/dezimal` zurück (N1, N4); was sich nicht eindeutig lesen lässt, wird ein Befund und nie
 // still gerundet oder verworfen (Q5).
 
-import { leseAustausch, parseDe } from '@tethys/dezimal';
+import { NULL_EINHEITSPREIS, leseAustausch, parseDe } from '@tethys/dezimal';
 import type {
   Angebotsposition,
   Befundort,
@@ -18,7 +18,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { bloeckeAlsText } from './langtext';
-import { baueAusgabemodell } from './modell';
+import { baueAusgabemodell, kinderNachReihenfolge } from './modell';
 import { sha256Hex } from './pruefsumme';
 import { STIL, excelZahl, leseXlsx, schreibeXlsx, spaltenname } from './xlsx';
 import type { Blatt, GeleseneZelle, Zelle } from './xlsx';
@@ -101,13 +101,7 @@ export interface ExcelDatei {
 
 /** Knoten in Dokumentreihenfolge (Tiefensuche nach `reihenfolge`). */
 function dokumentreihenfolge(lv: Leistungsverzeichnis): Knoten[] {
-  const kinder = new Map<string, Knoten[]>();
-  for (const k of lv.knoten) {
-    const liste = kinder.get(k.elternId);
-    if (liste) liste.push(k);
-    else kinder.set(k.elternId, [k]);
-  }
-  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  const kinder = kinderNachReihenfolge(lv.knoten);
   const folge: Knoten[] = [];
   const besuche = (id: string): void => {
     for (const k of kinder.get(id) ?? []) {
@@ -303,8 +297,6 @@ function zahlzelle<A extends 'einheitspreis' | 'prozent'>(
   };
 }
 
-const NULL_EP = '0.000' as Einheitspreis;
-
 /** Liest den Rücklauf eines Bieters zu diesem LV. Nichts wird still verworfen: Jede Abweichung ist ein Befund. */
 export function excelRuecklaufLesen(bytes: Uint8Array, zustand: LvZustand): ExcelRuecklauf {
   const lv = zustand.leistungsverzeichnis;
@@ -472,7 +464,7 @@ export function excelRuecklaufLesen(bytes: Uint8Array, zustand: LvZustand): Exce
         ? {
             positionId,
             status: 'angeboten',
-            einheitspreis: epWert ?? NULL_EP,
+            einheitspreis: epWert ?? NULL_EINHEITSPREIS,
             epa: null,
             zuschlagssatz: satzWert,
           }

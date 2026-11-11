@@ -9,8 +9,8 @@ import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { angebotAnlegenPlan, angebotLesen } from '../gaeb/gaeb';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
-import { auftragsLvsLaden, auftragZumLv, zuschlagSpeichern } from './auftrag';
-import { zuschlagPlanen } from './zuschlag';
+import { auftragsLvsLaden, auftragZumLv, zuschlagserteilungSpeichern } from './auftrag';
+import { zuschlagserteilungPlanen } from './zuschlagserteilung';
 
 const wurzel = new URL('../../../../', import.meta.url);
 const fx = JSON.parse(readFileSync(new URL('fixtures/typisch-angebote.json', wurzel), 'utf8')) as {
@@ -57,7 +57,7 @@ async function mitAngebot() {
 describe('Zuschlag über den Befehlsweg', () => {
   it('legt das Auftrags-LV an (Summen wie das Angebot), ein zweiter Zuschlag wird abgewiesen, Undo nimmt ihn zurück', async () => {
     const { u, weg, projekt, lv, angebot } = await mitAngebot();
-    const plan = zuschlagPlanen({
+    const plan = zuschlagserteilungPlanen({
       lv,
       angebot,
       projekt,
@@ -66,7 +66,7 @@ describe('Zuschlag über den Befehlsweg', () => {
     });
     if (plan.befehl === null) throw new Error(plan.fehler ?? 'kein Befehl');
 
-    const r = await zuschlagSpeichern(weg, plan.befehl);
+    const r = await zuschlagserteilungSpeichern(weg, plan.befehl);
     expect(r).toEqual({ ok: true, id: plan.befehl.auftragsLeistungsverzeichnis.id });
     expect(weg.historie.tiefe.rueck).toBe(4); // Projekt, LV, Angebot, Zuschlag: je ein Schritt
 
@@ -81,7 +81,7 @@ describe('Zuschlag über den Befehlsweg', () => {
       plan.befehl.auftragsLeistungsverzeichnis.id,
     );
 
-    const zweiter = zuschlagPlanen({
+    const zweiter = zuschlagserteilungPlanen({
       lv,
       angebot,
       projekt,
@@ -89,7 +89,7 @@ describe('Zuschlag über den Befehlsweg', () => {
       neueId: u.ids.auftragsLeistungsverzeichnis(),
     });
     if (zweiter.befehl === null) throw new Error('kein Befehl');
-    const r2 = await zuschlagSpeichern(weg, zweiter.befehl);
+    const r2 = await zuschlagserteilungSpeichern(weg, zweiter.befehl);
     expect(r2).toMatchObject({ ok: false, art: 'schon-vergeben' });
     expect(weg.historie.tiefe.rueck).toBe(4);
 

@@ -5,6 +5,7 @@
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
+import { NACHKOMMASTELLEN } from '@tethys/vertrag';
 
 // --- Schreiben ---------------------------------------------------------------------------------------------------
 
@@ -149,17 +150,22 @@ function blattXml(blatt: Blatt): string {
   );
 }
 
+/** Excel-Zahlformat mit den Nachkommastellen aus `NACHKOMMASTELLEN` (N3), z. B. `#,##0.000`. */
+const zahlformat = (ganz: string, stellen: number): string =>
+  stellen === 0 ? ganz : `${ganz}.${'0'.repeat(stellen)}`;
+
 /**
- * Feste Stile in der Reihenfolge von `STIL`. Eingabezellen (`eingabePreis`, `eingabeSatz`) sind entsperrt und
+ * Feste Stile in der Reihenfolge von `STIL`. Zahlformate: 164 Menge, 165 Betrag, 166 Prozent, 167 Einheitspreis. Eingabezellen (`eingabePreis`, `eingabeSatz`) sind entsperrt und
  * hinterlegt; alle anderen sind gesperrt (Vorgabe von SpreadsheetML).
  */
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-  '<numFmts count="3">' +
-  '<numFmt numFmtId="164" formatCode="#,##0.000"/>' +
-  '<numFmt numFmtId="165" formatCode="#,##0.00"/>' +
-  '<numFmt numFmtId="166" formatCode="0.00"/>' +
+  '<numFmts count="4">' +
+  `<numFmt numFmtId="164" formatCode="${zahlformat('#,##0', NACHKOMMASTELLEN.menge)}"/>` +
+  `<numFmt numFmtId="165" formatCode="${zahlformat('#,##0', NACHKOMMASTELLEN.betrag)}"/>` +
+  `<numFmt numFmtId="166" formatCode="${zahlformat('0', NACHKOMMASTELLEN.prozent)}"/>` +
+  `<numFmt numFmtId="167" formatCode="${zahlformat('#,##0', NACHKOMMASTELLEN.einheitspreis)}"/>` +
   '</numFmts>' +
   '<fonts count="2">' +
   '<font><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
@@ -182,7 +188,7 @@ const STYLES_XML =
   '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
   '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
-  '<xf numFmtId="164" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1"><protection locked="0"/></xf>' +
+  '<xf numFmtId="167" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1"><protection locked="0"/></xf>' +
   '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '<xf numFmtId="166" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1"><protection locked="0"/></xf>' +
   '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
@@ -481,6 +487,10 @@ export function leseXlsx(bytes: Uint8Array): XlsxLesung {
  * Den Zahltext einer Zelle als Dezimalzahl in Punktnotation, wie Excel sie meint: Exponenten werden aufgelöst, und
  * ein Text mit mehr als 15 geltenden Ziffern wird auf 15 gebracht, weil Excel nur 15 Ziffern hält und die
  * restlichen nur das Abbild der Gleitkommazahl sind (`18.440999999999999` → `18.441`). `null`: keine Zahl.
+ *
+ * Nur Schreibweise, keine Skala: Den Wert liest danach `leseAustausch` aus `dezimal` mit den Nachkommastellen der
+ * Zahlenart (zu viele bleiben ein Befund). Exponent und 15 Ziffern bleiben hier am Excel-Rand (N4), weil sie die
+ * Speicherform von Excel beschreiben; `leseAustausch` weist `1e3` für GAEB und Eingabe absichtlich ab (S2).
  */
 export function excelZahl(text: string): string | null {
   const m = /^([+-]?)([0-9]*)(?:\.([0-9]*))?(?:[eE]([+-]?[0-9]+))?$/.exec(text.trim());
