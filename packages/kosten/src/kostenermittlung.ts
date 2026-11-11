@@ -4,7 +4,7 @@
 // Auffälligkeiten sind Befunde, nie Sperre (U5).
 
 import { NULL_BETRAG, addiere, alsBetrag, alsDezimal, runden, vorzeichen } from '@tethys/dezimal';
-import type { Betrag, Kostengruppennummer } from '@tethys/vertrag';
+import type { Betrag, Kostenermittlungseintrag, Kostengruppennummer } from '@tethys/vertrag';
 import type { Kostengruppenebene } from './kostengruppe';
 import { kgEbene, kgLesen, kgSortieren, kgVorfahren } from './kostengruppe';
 
@@ -60,6 +60,12 @@ export interface Kostenermittlungsergebnis {
   readonly gruppen: readonly Kostengruppensumme[];
   /** Summe der Ebene-1-Gruppen (= Summe aller gezählten Einträge). */
   readonly gesamtsumme: Betrag;
+  /**
+   * Die gezählten Eingaben in Speicherform, bereit für `KostenermittlungAnlegen` (Ticket 82): je Nummer ein Eintrag mit
+   * dem eigenen Betrag (doppelte Nummern addiert, D-55.4), nach Nummer geordnet; die verschiedenen nicht leeren
+   * Bemerkungen einer Nummer mit „; “ verbunden in der Reihenfolge der Eingabe, keine: Feld fehlt (D-82.3).
+   */
+  readonly eintraege: readonly Kostenermittlungseintrag[];
   /** Erst die Befunde je Eintrag in Eingabereihenfolge, dann die Befunde je Gruppe nach Nummer. */
   readonly befunde: readonly Kostenbefund[];
 }
@@ -85,6 +91,7 @@ export function kostenermittlungBerechnen(
 ): Kostenermittlungsergebnis {
   const befunde: Kostenbefund[] = [];
   const eigen = new Map<Kostengruppennummer, Betrag>();
+  const bemerkungen = new Map<Kostengruppennummer, string[]>();
   const summen = new Map<Kostengruppennummer, Betrag>();
   const zuSumme = (n: Kostengruppennummer, b: Betrag): void => {
     summen.set(n, addiere(summen.get(n) ?? NULL_BETRAG, b));
@@ -113,6 +120,10 @@ export function kostenermittlungBerechnen(
     if (bisher !== undefined)
       befund('nummer-doppelt', `Nummer ${n} kommt mehrfach vor; Beträge werden addiert`);
     eigen.set(n, bisher === undefined ? betrag : addiere(bisher, betrag));
+    const texte = bemerkungen.get(n) ?? [];
+    if (eintrag.bemerkung !== undefined && eintrag.bemerkung !== '' && !texte.includes(eintrag.bemerkung))
+      texte.push(eintrag.bemerkung);
+    bemerkungen.set(n, texte);
     zuSumme(n, betrag);
     for (const v of kgVorfahren(n)) zuSumme(v, betrag);
   });
@@ -122,12 +133,21 @@ export function kostenermittlungBerechnen(
   for (const n of eigen.keys()) for (const v of kgVorfahren(n)) mitNachfahren.add(v);
 
   const gruppen: Kostengruppensumme[] = [];
+  const gespeichert: Kostenermittlungseintrag[] = [];
   let gesamtsumme = NULL_BETRAG;
   for (const n of kgSortieren([...summen.keys()])) {
     const eigenerBetrag = eigen.get(n) ?? null;
     const summe = summen.get(n) ?? NULL_BETRAG;
     const ebene = kgEbene(n);
     gruppen.push({ nummer: n, ebene, eigenerBetrag, summe });
+    if (eigenerBetrag !== null) {
+      const texte = bemerkungen.get(n) ?? [];
+      gespeichert.push(
+        texte.length === 0
+          ? { nummer: n, betrag: eigenerBetrag }
+          : { nummer: n, betrag: eigenerBetrag, bemerkung: texte.join('; ') },
+      );
+    }
     if (ebene === 1) gesamtsumme = addiere(gesamtsumme, summe);
     if (eigenerBetrag !== null && mitNachfahren.has(n)) {
       befunde.push({
@@ -138,5 +158,5 @@ export function kostenermittlungBerechnen(
       });
     }
   }
-  return { gruppen, gesamtsumme, befunde };
+  return { gruppen, gesamtsumme, eintraege: gespeichert, befunde };
 }
