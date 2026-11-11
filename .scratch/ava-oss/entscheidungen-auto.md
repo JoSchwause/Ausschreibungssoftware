@@ -442,3 +442,10 @@ Question: Wo wird bei der Zuschlagskalkulation gerundet?
 Decision: Einzelkosten ungerundet; Anteil je Kostenart = Einzelkosten × (1 + Satz/100) kaufmännisch auf 3 Stellen (EP 3, N3); EP = Σ der gerundeten Anteile. Nicht im M4-Weg.
 Reason: So gilt „Summe der Anteile = EP“ (Kernprüfung der EPA) immer; entspricht N2 (Summen aus gerundeten Werten).
 Reversible: yes  Touches: packages/kosten
+
+## D-40 Befehle für Vorlage und Textquelle
+Welle 5 · Ticket 70, 71 · decided by: orchestrator
+Question: D-36 (6) nimmt `vorlage?` und `textquelle?` „nur als Typ“; ohne Befehl kann der Nutzer sie nie setzen (A5).
+Decision: Zwei kleine LvBefehle `VorlageSetzen { vorlage }` und `TextquelleSetzen { positionId, textquelle | null }` in v1.4, Handler im Kern (Ticket 71). Kein Typ für Textbausteine (D-36 bleibt).
+Reason: Ein Feld ohne Befehl wäre nur über Import erreichbar; die Handler sind Feldbefehle wie `KurztextAendern`.
+Reversible: yes  Touches: packages/vertrag, packages/kern
