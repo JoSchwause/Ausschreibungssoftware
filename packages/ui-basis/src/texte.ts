@@ -21,5 +21,10 @@ export const langtextTexte = {
   unterstrichen: 'Unterstrichen',
   aufzaehlung: 'Aufzählung',
   nummerierteListe: 'Nummerierte Liste',
+  tabelleEinfuegen: 'Tabelle einfügen',
+  tabelleZeilen: 'Zeilen',
+  tabelleSpalten: 'Spalten',
+  tabelleUebernehmen: 'Einfügen',
+  tabelleAbbrechen: 'Abbrechen',
   hinweis: 'Strg+Enter oder Verlassen übernimmt, Esc verwirft.',
 } as const;

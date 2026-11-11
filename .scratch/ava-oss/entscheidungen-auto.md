@@ -293,3 +293,42 @@ Question: Welle 4 hat sechs App-Tickets (S4, V3, V4, M2, O1/O2, Rückbau). Stren
 Decision: In `apps/web` gilt „ein Schreiber je Ordner `src/<strang>/`“ (wie `plan.md` §1 die Ordner vorsieht). Gemeinsame Dateien (`App.tsx`, `main.tsx`, `ui/Huelle.tsx`, `lv/LvSeite.tsx`, `projekt/ProjektSeite.tsx`, `playwright.config.ts`) fasst ein Ticket nur an einer markierten Einhängestelle an; Konflikte dort löst der Merger.
 Reason: Hält die Welle parallel, ohne dass zwei Agenten dieselbe Fachlogik schreiben; die Einhängestellen sind kurz.
 Reversible: yes  Touches: apps/web, docs/regeln.md P2 (nur Lesart, kein Text geändert)
+
+## D-21 Zuschlag → Auftrags-LV: nur das Beauftragte
+Welle 4 · Ticket 59, 64 · decided by: advisor
+Question: Wie bildet das Auftrags-LV den Zuschlag ab, insbesondere das „Wählen“ von Wahlpositionen (E-04)?
+Decision: Reine Funktion in `vergabe` (`zuschlagErteilen(lv, angebot, gewaehlt, neueId)`), Ergebnis ist der vorhandene Befehl `AuftragsLeistungsverzeichnisAnlegen` plus Warnungen; kein neuer Vertragsbefehl. Grundlage ist das gedachte LV des Angebots (EP, Zuschlagssatz und Nachlass des Bieters, MwSt des LV). Eine gewählte Wahlposition wird normal (`wahl: null`); Grundposition (Variante 0) und nicht gewählte Alternativen ihrer Gruppe entfallen. Gruppen ohne Wahl behalten die Grundposition, alle Alternativen entfallen. Bedarf bleibt Bedarf. `reihenfolge` dicht neu je Elternknoten, OZ bleibt (Lücken erlaubt), geleerte Titel bleiben. Listenbezüge von Zuschlagspositionen und `grundpositionId` auf entfallene Positionen werden entfernt (je Warnung), nicht umgelenkt. Mehr als eine Wahl je Gruppe oder eine gewählte Kennung, die keine Alternative ist: Fehler. Nicht angebotene Positionen (auch gewählte): EP `null` mit Warnung, der Zuschlag geht durch (U5). Die App zeigt vor dem Bestätigen die Zahl der entfallenden und unbepreisten Positionen und lehnt einen zweiten Zuschlag zum selben LV ab (Q5).
+Reason: Glossar: Wählen ersetzt die Grundposition; F4 („ersetzt nie“) gilt für das Ausschreibungs-LV, das unverändert bleibt. Gruppe/Variante bleiben über die gemeinsame Positions-ID erhalten (ADR 0011).
+Reversible: yes (Auftrags-LV ist aus LV + Angebot ableitbar)  Touches: packages/vergabe, apps/web
+Annahme für Demo, Mensch bestätigt später (E-04).
+
+## D-22 `vertrag` v1.3: Umfang und Lesarten
+Welle 4 · Ticket 53 · decided by: advisor
+Question: Mengenansatz für M2, Punkte 7 und 8 von Ticket 53, Prüfung statt Nutzer (P9).
+Decision: (i) Neuer Punkt 9: `Ansatzzeile` wandert nach `vertrag` (`mengen` importiert den Typ, mechanisch); `Positionsdaten.mengenansatz?` optional; neuer LvBefehl `MengenansatzSetzen { positionId, mengenansatz | null, menge }`, die App rechnet die Menge mit `mengen`, der Kern speichert beides unausgewertet (kein `kern → mengen`, A3). Lesarten im Typkommentar: ein reiner Mengenbefehl an einer Position mit Ansatz entfernt den Ansatz im selben ChangeSet (die Oberfläche fragt vorher); ein Ansatz mit Fehler kommt mit `menge: null`. Kern-Handler, Speicher und Panel sind Folgetickets (56, 57, 65). (ii) Punkt 7: kein Typ, Offene Typfrage in den Comments, Befund `nachlass-nicht-abgebildet` bleibt (G-26). (iii) Punkt 8: Typ bleibt weit, K8 meldet einen Befund, der GAEB-Writer verwirft mit Warnung. (iv) P9: Opus-Reviewer prüft v1.3 (besonders die nicht additiven Punkte 3, 4, 5 gegen alle Verbraucher), Torvermerk wie D-13 vor den Folgetickets.
+Reason: Nur gespeicherte Menge plus unausgewerteter Ansatz respektiert A3; die zwei Lesarten verhindern Auseinanderlaufen. G-26 ist entschieden.
+Reversible: yes  Touches: packages/vertrag, packages/mengen (mechanisch), Tickets 56, 57, 65
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-23 O1: pdfmake ungetaggt, ADR 0012 als Vorschlag
+Welle 4 · Ticket 58 · decided by: advisor
+Question: W-04 (getaggtes PDF in v1?) ist unbeantwortet und blockiert O1.
+Decision: pdfmake, ungetaggt, für v1; ADR 0012 mit `Status: proposed` („für die Demo umgesetzt, Mensch bestätigt später (W-04)“). pdfmake bleibt hinter dem eigenen `Ausgabemodell`, damit der Renderer tauschbar ist; Weg B des Spikes (Browserdruck) entfällt. O1 druckt Bedarfs- und Wahlsummen getrennt (F4). Vor O3 ein Spike mit einer Bibliothek, die Struktur-Tags schreibt.
+Reason: U8 nennt das PDF nicht; der Browserdruck liefert der App keine Bytes.
+Reversible: yes  Touches: packages/ausgabe, docs/adr/0012
+Annahme für Demo, Mensch bestätigt später (W-04).
+
+## D-24 C1 als reines Paket `kosten`
+Welle 4 · Ticket 55 · decided by: advisor
+Question: Wie weit geht C1 in Welle 4?
+Decision: Neues reines Paket `packages/kosten` (importiert nur `vertrag`, `dezimal`), keine Vertragstypen, keine Speicherung, keine Oberfläche. Keine eingetippte DIN-276-Nummernliste: Ebene und Elternteil aus den Ziffern (X00 → XY0 → XYZ), nur die Form wird geprüft. Bezeichnungen aus einer CSV des Nutzers (reine Funktion Text → Zuordnung). Beträge 2 Stellen; Summe einer Gruppe = eigener Betrag + Summen der Kinder; eigener Betrag und Kinderbeträge zugleich ergibt einen Befund, nie eine Sperre (U5). Speicherung und Zuordnung LV ↔ KG mit C2 (Welle 5).
+Reason: Kein zweites Paket braucht die Typen vor C2 (A4); M3 braucht keine Kosten.
+Reversible: yes  Touches: packages/kosten, tools/boundaries.mjs
+Annahme für Demo, Mensch bestätigt später (G-16: Hierarchie aus den Ziffern, Regel „eigener Betrag + Kinder“).
+
+## D-25 O2: Excel über `fflate` und eigene SpreadsheetML-Schicht
+Welle 4 · Ticket 61 · decided by: orchestrator
+Question: Welche Bibliothek schreibt und liest `.xlsx` für den Bieter-Rundlauf?
+Decision: `fflate` (MIT) für ZIP, eigene kleine Schicht für SpreadsheetML (Schreiben mit festen Stilen, Lesen von Zellwerten inkl. Shared Strings und Inline-Strings). Keine große Excel-Bibliothek. Fällt die Lizenzprüfung für `fflate` durch, darf der Umsetzer eine andere MIT/Apache-Bibliothek wählen und begründen.
+Reason: deterministische Bytes für Golden-Tests, kleines Bündel, keine Node-Polyfills im Browser; der Bedarf (eine Tabelle mit festen Spalten) ist schmal.
+Reversible: yes  Touches: packages/ausgabe
