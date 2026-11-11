@@ -92,6 +92,10 @@ Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` 
 - `sprungziel`: `{ knotenId, spalte?, nr }`; jeder neue Wert von `nr` scrollt zur Zeile und fokussiert die Zelle. Liegt
   die Zeile unter einer zugeklappten Gliederung, tut das Grid nichts (das Aufklappen gehört der App).
 
+Kennzeichen ohne eigene Eigenschaft (Ticket 74): Trägt eine Position einen Mengenansatz (`knoten.mengenansatz`, nicht
+leer), zeigt die Mengenzelle die neutrale Marke Σ mit der Beschreibung „Menge aus Mengenansatz …“ (`title`, Screenreader).
+Das ist kein Befund: kein Warnstil, kein `aria-invalid`. Befunde an derselben Zelle erscheinen daneben wie sonst.
+
 ## VergleichsGrid (Ticket 60)
 
 Schreibgeschütztes Grid für Gegenüberstellungen, z. B. den Preisspiegel (Ticket 63). Eigene, generische Typen des

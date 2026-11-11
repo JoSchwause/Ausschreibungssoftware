@@ -223,6 +223,13 @@
   margin-right: auto;
 }
 
+/* Mengenansatz (Ticket 74, D-65.2): kein Befund, deshalb kein Warnstil. Die neutrale Marke der Kennzeichen (Fläche und
+   Farbe aus `.tx-grid__kennzeichen`, Kontrast geprüft) steht links neben der Zahl, ein Warnzeichen davor. */
+.tx-grid__kennzeichen--mengenansatz {
+  flex: 0 0 auto;
+  order: -1;
+}
+
 /* ---------- Eingabefeld ---------- */
 
 .tx-grid__editor {
