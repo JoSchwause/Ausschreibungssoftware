@@ -24,6 +24,8 @@ const PFADE = {
   aufzaehlung: 'M9 6h11M9 12h11M9 18h11M4.5 6h.5M4.5 12h.5M4.5 18h.5',
   /** Nummerierte Liste: Ziffern 1 und 2 mit Zeilen */
   nummeriert: 'M10 7h10M10 17h10M4 5.5l1.5-1v5M3.5 14.5a1.5 1.5 0 1 1 2.5 1.2L3.5 19.5h3',
+  /** Tabelle: Rahmen mit Zeilen- und Spaltenlinien */
+  tabelle: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
 } as const;
 
 export type IconName = keyof typeof PFADE;
