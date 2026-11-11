@@ -9,6 +9,7 @@ import type {
   Angebot,
   AngebotBefehl,
   AngebotBefehlAusfuehren,
+  AngebotChangeSet,
   AngebotId,
   AngebotZustand,
   Angebotsposition,
@@ -17,6 +18,8 @@ import type {
   ElternId,
   Einheitspreis,
   Ergebnis,
+  Gesamtsummen,
+  Gliederungssumme,
   HinweistextId,
   Knoten,
   LeistungsverzeichnisId,
@@ -29,6 +32,7 @@ import type {
   Position,
   PositionId,
   Positionsmerkmale,
+  Positionssumme,
   Projekt,
   ProjektId,
   Prozent,
@@ -401,4 +405,124 @@ export function angebotAusFixture(fx: FxAngebot, z: LvZustand): Angebot {
     ),
     fxNachlass(fx.nachlass),
   );
+}
+
+// --- Zeilen in `speicher` (Ticket 72) -----------------------------------------------------------------------------
+
+/**
+ * Die Zeilen eines gespeicherten Angebots je Kennung: Angebotspositionen, Positions- und Gliederungssummen,
+ * Gesamtsummen. `speicher` liest sie nach Kennung, nicht in der Reihenfolge des Hinzufügens; darum Maps.
+ */
+export interface Angebotszeilen {
+  readonly angebotspositionen: ReadonlyMap<string, Angebotsposition>;
+  readonly positionen: ReadonlyMap<string, Positionssumme>;
+  readonly gliederungen: ReadonlyMap<string, Gliederungssumme>;
+  readonly gesamt: Gesamtsummen;
+}
+
+export function angebotszeilen(z: AngebotZustand): Angebotszeilen {
+  return {
+    angebotspositionen: new Map(z.angebot.positionen.map((p) => [p.positionId as string, p])),
+    positionen: new Map(z.summen.positionen.map((p) => [p.positionId as string, p])),
+    gliederungen: new Map(z.summen.gliederungen.map((g) => [g.gliederungId as string, g])),
+    gesamt: z.summen.gesamt,
+  };
+}
+
+/** Gleichheit wie in `speicher`: kanonisches JSON (Schlüssel sortiert, `undefined` fehlt). */
+function kanonisch(x: unknown): string {
+  return JSON.stringify(x, (_k, v: unknown) =>
+    v !== null && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+const zeilengleich = (a: unknown, b: unknown): boolean => kanonisch(a) === kanonisch(b);
+
+function speicherAbbruch(code: 'konflikt' | 'unbekannt' | 'nicht-gefunden', was: string): never {
+  throw new Error(`speicher: ${code}: ${was}`);
+}
+
+/** `pruefeSummenvorher` für eine Summenart eines Angebots (keine entfernten Knoten; D-57.2, D-57.3). */
+function pruefeSummenart<T>(
+  was: string,
+  neu: readonly T[],
+  alt: readonly T[],
+  entfernt: readonly T[],
+  id: (x: T) => string,
+  gespeichert: ReadonlyMap<string, T>,
+): void {
+  const neuIds = new Set(neu.map(id));
+  const altNachId = new Map(alt.map((e) => [id(e), e]));
+  for (const k of altNachId.keys())
+    if (!neuIds.has(k)) speicherAbbruch('unbekannt', `alte ${was}summe ${k} ohne neuen Wert`);
+  for (const k of neuIds) {
+    const g = gespeichert.get(k);
+    const a = altNachId.get(k);
+    if (g !== undefined && (a === undefined || !zeilengleich(g, a)))
+      speicherAbbruch('konflikt', `alte ${was}summe ${k}`);
+  }
+  for (const e of entfernt) {
+    const g = gespeichert.get(id(e));
+    if (g === undefined || !zeilengleich(g, e)) speicherAbbruch('konflikt', `entfernte ${was}summe ${id(e)}`);
+  }
+}
+
+/**
+ * Wendet ein ChangeSet, das ein bestehendes Angebot ändert, so auf die Zeilen an wie `speicher` (`wendeAngebotAn` in
+ * `packages/speicher/src/schreiben.ts`, mit `pruefeSummenvorher` aus `summenvorher.ts`): Vorherstände prüfen (wirft
+ * bei `konflikt` oder `unbekannt`), dann entfernte Angebotspositionen samt ihrer Positionssumme löschen, geänderte
+ * ersetzen, neue einfügen, die Summen des ChangeSets einfügen oder ersetzen (nie löschen), die Gesamtsummen ersetzen.
+ * Der Kopf (Nachlass) gehört nicht zu den Zeilen; Anlegen und Löschen des Angebots bildet das Modell nicht ab.
+ */
+export function speicherAnwenden(zeilen: Angebotszeilen, cs: AngebotChangeSet): Angebotszeilen {
+  if (cs.kopf !== null && (cs.kopf.vorher === null || cs.kopf.nachher === null))
+    throw new Error('Modell: Anlegen und Löschen nicht abgebildet');
+  const p = cs.positionen;
+  const ap = new Map(zeilen.angebotspositionen);
+  for (const e of p.entfernt) {
+    const g = ap.get(e.positionId);
+    if (g === undefined) speicherAbbruch('nicht-gefunden', `Angebotsposition ${e.positionId}`);
+    if (!zeilengleich(g, e)) speicherAbbruch('konflikt', `entfernte Angebotsposition ${e.positionId}`);
+  }
+  for (const { vorher } of p.geaendert) {
+    const g = ap.get(vorher.positionId);
+    if (g === undefined) speicherAbbruch('nicht-gefunden', `Angebotsposition ${vorher.positionId}`);
+    if (!zeilengleich(g, vorher)) speicherAbbruch('konflikt', `Angebotsposition ${vorher.positionId}`);
+  }
+  for (const n of p.hinzugefuegt)
+    if (ap.has(n.positionId)) speicherAbbruch('unbekannt', `Angebotsposition ${n.positionId} gibt es schon`);
+  const s = cs.summen;
+  const v = s.vorher;
+  if (s.gesamt !== null) {
+    if (!zeilengleich(v.gesamt, zeilen.gesamt)) speicherAbbruch('konflikt', 'alte Gesamtsummen');
+  } else if (v.gesamt !== null) speicherAbbruch('unbekannt', 'alte Gesamtsummen ohne neue');
+  pruefeSummenart(
+    'Positions',
+    s.positionen,
+    v.positionen,
+    v.entfernt.positionen,
+    (x) => x.positionId,
+    zeilen.positionen,
+  );
+  pruefeSummenart(
+    'Gliederungs',
+    s.gliederungen,
+    v.gliederungen,
+    v.entfernt.gliederungen,
+    (x) => x.gliederungId,
+    zeilen.gliederungen,
+  );
+
+  const positionen = new Map(zeilen.positionen);
+  for (const e of p.entfernt) {
+    ap.delete(e.positionId);
+    positionen.delete(e.positionId);
+  }
+  for (const { nachher } of p.geaendert) ap.set(nachher.positionId, nachher);
+  for (const n of p.hinzugefuegt) ap.set(n.positionId, n);
+  for (const x of s.positionen) positionen.set(x.positionId, x);
+  const gliederungen = new Map(zeilen.gliederungen);
+  for (const x of s.gliederungen) gliederungen.set(x.gliederungId, x);
+  return { angebotspositionen: ap, positionen, gliederungen, gesamt: s.gesamt ?? zeilen.gesamt };
 }

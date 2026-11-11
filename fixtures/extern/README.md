@@ -6,14 +6,16 @@ SPDX-FileCopyrightText: 2026 Tethys AVA contributors
 # Dateien Dritter (`fixtures/extern/`)
 
 Amtliche GAEB-Testdateien, unverändert und mit Herkunft (Regel C4, G-55). Sie sind **nicht** AGPL, sondern mit
-`LicenseRef-BVBS-GAEB-Pruefdatei` gekennzeichnet: BVBS und GAEB nennen keine Lizenz.
+`LicenseRef-BVBS-GAEB-Pruefdatei` gekennzeichnet: BVBS und GAEB nennen keine Lizenz. Dazu Testdateien der
+XRechnung-Testsuite der KoSIT unter `xrechnung/` (Apache-2.0, Ticket 76).
 
 ## Eine Datei entfernen
 
 1. Datei löschen (`git rm fixtures/extern/<Pfad>`).
 2. Ihre Zeile in `HERKUNFT.md` löschen.
 3. Tests, die die Datei lesen, anpassen oder entfernen (Suche nach dem Dateinamen).
-4. Ist es die letzte Datei der Quelle: den Block in `REUSE.toml` und `LICENSES/LicenseRef-BVBS-GAEB-Pruefdatei.txt` löschen.
+4. Ist es die letzte Datei der Quelle: den Block in `REUSE.toml` und den Lizenztext unter `LICENSES/` löschen
+   (`LicenseRef-BVBS-GAEB-Pruefdatei.txt` bzw. `Apache-2.0.txt`, wenn keine andere Datei ihn mehr braucht).
 5. `pnpm test` und `reuse lint` laufen lassen; bei Anfrage des Rechteinhabers zusätzlich die Git-Historie bereinigen.
 
 ## Dateien
@@ -41,3 +43,15 @@ Alle Dateien: Zweck positiv, d. h. gültige Prüfdatei (keine Fehlerdateien), He
 | `3.1-musterdateien/Musterdatei_3.1_2008-004.X86`                    | X86   | 3.1     | positiv                                        |
 
 Version 3.2 ist nicht enthalten. Fehlerdateien (zehn Mini-X83) fehlen: siehe Ticket 23, Abschnitt Comments.
+
+## XRechnung (`xrechnung/`)
+
+Gelesen von `packages/erechnung` (Ticket 76). Selbst verfasste XRechnungen (Bau, Fehlerfälle) liegen nicht hier, sondern
+in `packages/erechnung/testdaten/`.
+
+| Datei                                         | Syntax | Rechnungsart | Zweck                                                     |
+| --------------------------------------------- | ------ | ------------ | --------------------------------------------------------- |
+| `01.01a-INVOICE_ubl.xml`                      | UBL    | 380          | positiv, Geschäftsfall 01.01a                             |
+| `01.01a-INVOICE_uncefact.xml`                 | CII    | 380          | positiv, derselbe Geschäftsfall in CII                    |
+| `04.04a-INVOICE_ubl.xml`                      | UBL    | 877          | positiv, Schlussrechnung Bau mit Unterpositionen          |
+| `01.01_comprehensive_test_uncefact.xml`       | CII    | 380          | positiv, umfassender technischer Fall (groß, 433 KB)      |

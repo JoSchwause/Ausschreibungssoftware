@@ -12,8 +12,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser, berechneZuschlagSollwerte,
-  berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
+  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisserSollwerte,
+  berechneZuschlagSollwerte, berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -28,7 +28,7 @@ const MASKE_KLEIN =
   'NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe';
 const MASKE_GROSS =
   'NN.NN.NN.NN.NN.NNNN: fünf Titelebenen zu je zwei Ziffern, Position vier Ziffern, kein Index';
-const AUSREISSER_SCHWELLE = 20; // Prozent, Glossar "Ausreisser" (Standard +-20 %)
+const AUSREISSER_SCHWELLE = 20; // Prozent, Glossar "Ausreisser" (Standard +-20 %, G-26, D-05)
 
 // ---------------------------------------------------------------- PRNG und IDs
 
@@ -285,12 +285,12 @@ function erzeugeAngebote(lv) {
   const bieterSpec = [
     { name: 'Bieter A', basis: 1000, nachlass: null, nicht: [], faktor: {}, nullEp: [] },
     { name: 'Bieter B', basis: 1060, nachlass: { art: 'prozent', wert: '3.00' }, nicht: ['03.0070'], faktor: {}, nullEp: [] },
-    // Ausreisser: zwei Positionen mit 150 % des Basispreises; 0,000 ist ein angebotener Preis (nicht "nicht angeboten").
+    // Ausreisser: zwei Positionen mit 150 % des Basispreises; 0,000 ist ein angebotener Preis (nicht "nicht angeboten"),
+    // nach D-05 ein Nullpreis und nie Ausreisser.
     { name: 'Bieter C', basis: 930, nachlass: null, nicht: [], faktor: { '02.0050': 1500, '03.0030': 1500 }, nullEp: ['03.0080'] },
   ];
   const lvId = lv.id;
   const bieter = bieterSpec.map((b) => ({ id: neueId(), name: b.name }));
-  const gpMaps = [];
   const angebote = bieterSpec.map((b, i) => {
     const nicht = new Set(b.nicht.map(jeOz));
     const nullEp = new Set(b.nullEp.map(jeOz));
@@ -315,15 +315,17 @@ function erzeugeAngebote(lv) {
       ep: z.einheitspreis === undefined ? null : parse(z.einheitspreis, STELLEN.ep),
       satz: z.zuschlagssatz === undefined ? null : parse(z.zuschlagssatz, STELLEN.prozent),
     }]));
-    const gpMap = new Map();
-    const soll = berechneSollwerteGaeb(lv.knoten, (k) => preisVon.get(k.id), b.nachlass, lv.mwstSatz, gpMap);
-    gpMaps.push(gpMap);
+    const soll = berechneSollwerteGaeb(lv.knoten, (k) => preisVon.get(k.id), b.nachlass, lv.mwstSatz);
     return { id: neueId(), bieterId: bieter[i].id, nachlass: b.nachlass, positionen: zeilen, sollwerte: soll };
   });
-  const flags = ausreisser(gpMaps, AUSREISSER_SCHWELLE);
+  // Ticket 75: nach D-05 neu gerechnet (vorher GP-Vergleich mit Nullpreisen und mindestens 3 Werten). Der Schluessel
+  // bleibt, damit Verbraucher ihn weiter finden.
+  const flags = ausreisserSollwerte(lv.knoten, angebote, AUSREISSER_SCHWELLE);
   const ausreisserAnnahmeA7 = {
     schwellePromille: String(AUSREISSER_SCHWELLE * 10),
-    regel: 'Annahme A7 im README: |GP - Mittel| / Mittel > Schwelle; Mittel aus allen Angeboten, die die Position angeboten haben, mindestens 3 Werte.',
+    regel: 'D-05 (README A7): je Position der EP des Bieters, an einer Zuschlagsposition sein Betrag (D-36.1, D-44.1); '
+      + 'Mittel nur über Werte > 0, Nullpreis und „nicht angeboten“ nie Ausreißer; ab 2 Werten > 0 Ausreißer, wenn '
+      + '|Wert - Mittel| / Mittel > Schwelle.',
     jeAngebot: Object.fromEntries(angebote.map((a, i) => [a.id, flags[i]])),
   };
   return {

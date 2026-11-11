@@ -8,7 +8,9 @@
 // (`testdaten/roundtrip-unterschiede.json`). Jeder andere Unterschied lässt den Test scheitern, ebenso ein gelisteter, der
 // nicht (mehr) eintritt. Der zweite Export des wieder gelesenen Modells ist byte-gleich dem ersten. M2 gilt damit als
 // „erfüllt mit gelisteten Unterschieden“ (D-18). Seit Ticket 51 tragen die Fixtures ihre Zuschlagspositionen in GAEB-Form;
-// die Einträge der Altform sind aus der Liste verschwunden, übrig sind die Wahlpositionen ohne Gruppe und Variante.
+// die Einträge der Altform sind aus der Liste verschwunden, übrig sind die Wahlpositionen ohne Gruppe und Variante. Seit
+// Ticket 73 behält eine Wahlgruppe im Rundweg ihre Grundposition: Diese steht als Variante 0 in der Liste, der Verweis
+// der Alternative ist kein Unterschied mehr.
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -29,15 +31,19 @@ import {
 import type { FixtureName, Normiert } from './testhilfen';
 
 /**
- * Ein erwarteter Unterschied an einer Position, benannt über ihre OZ mit Index:
- * - `wahl-nummer-kuenstlich`: Wahlposition ohne Gruppe und Variante (aus v1). Der Writer vergibt diese Nummern (D-16);
- *   die Grundposition kennt sie danach nicht mehr (GAEB kennt nur die Nummern, eine Variante 0 gibt es nicht).
+ * Ein erwarteter Unterschied an einer Position, benannt über ihre OZ mit Index. Die Fixtures tragen keine Gruppen- und
+ * Variantennummern (Fixture-Format, README A3), GAEB kennt eine Wahl aber nur über sie; der Writer vergibt sie (D-16):
+ * - `wahl-nummer-kuenstlich`: Wahlposition ohne Gruppe und Variante (aus v1) kommt mit diesen Nummern zurück. Ihren
+ *   Verweis auf die Grundposition behält sie, wenn die Liste die Grundposition als Variante 0 derselben Gruppe nennt
+ *   (der Leser ordnet über die Gruppennummer zu, Ticket 22); sonst geht er verloren.
+ * - `grundposition-nummer-kuenstlich`: Grundposition ohne eigene Wahl kommt als Variante 0 dieser Gruppe zurück
+ *   (Ticket 73; Summen gleich, Variante 0 geht ins Netto).
  * Die Altform der Zuschlagsposition (`altform-zuschlag`) steht seit Ticket 51 in keiner Fixture mehr (Fixture-Format,
  * mechanisch); ihren Export prüft `schreiben.test.ts` an einem eigenen LV.
  */
 interface Unterschied {
   readonly oz: string;
-  readonly art: 'wahl-nummer-kuenstlich';
+  readonly art: 'wahl-nummer-kuenstlich' | 'grundposition-nummer-kuenstlich';
   readonly gruppe: number;
   readonly variante: number;
 }
@@ -90,16 +96,31 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   };
 }
 
-/** Wendet einen gelisteten Unterschied an; passt er nicht zur Position, ist die Liste falsch. */
-function wende(p: Position, u: Unterschied): Position {
-  expect(u.art, `${u.oz}: unbekannte Art`).toBe('wahl-nummer-kuenstlich');
+/**
+ * Wendet einen gelisteten Unterschied an; passt er nicht zur Position, ist die Liste falsch. `grund` ist der Eintrag der
+ * Grundposition, auf die eine Wahlposition verweist.
+ */
+function wende(p: Position, u: Unterschied, grund: Unterschied | undefined): Position {
   const w = p.merkmale.wahl;
+  if (u.art === 'grundposition-nummer-kuenstlich') {
+    expect(w, `${u.oz}: Grundposition mit eigener Wahl`).toBeNull();
+    expect(u.variante, `${u.oz}: Grundposition nicht Variante 0`).toBe(0);
+    return {
+      ...p,
+      merkmale: { ...p.merkmale, wahl: { gruppe: u.gruppe, variante: 0, grundpositionId: null } },
+    };
+  }
+  expect(u.art, `${u.oz}: unbekannte Art`).toBe('wahl-nummer-kuenstlich');
   expect(w !== null && (w.gruppe === null || w.variante === null), `${u.oz}: keine Wahl ohne Nummer`).toBe(
     true,
   );
+  const verweis =
+    grund?.art === 'grundposition-nummer-kuenstlich' && grund.gruppe === u.gruppe
+      ? (w?.grundpositionId ?? null)
+      : null;
   return {
     ...p,
-    merkmale: { ...p.merkmale, wahl: { gruppe: u.gruppe, variante: u.variante, grundpositionId: null } },
+    merkmale: { ...p.merkmale, wahl: { gruppe: u.gruppe, variante: u.variante, grundpositionId: verweis } },
   };
 }
 
@@ -107,12 +128,16 @@ function wende(p: Position, u: Unterschied): Position {
 function erwartet(inhalt: LvInhalt, phase: ExportPhase, liste: readonly Unterschied[]): LvInhalt {
   const nachOz = new Map(liste.map((u) => [u.oz, u]));
   expect(nachOz.size, 'jede OZ höchstens einmal in der Liste').toBe(liste.length);
+  const ozJeId = new Map(
+    inhalt.knoten.filter((k): k is Position => k.art === 'position').map((p) => [p.id as string, ozVon(p)]),
+  );
   const getroffen: string[] = [];
   const knoten = inhalt.knoten.map((k) => {
     const u = k.art === 'position' ? nachOz.get(ozVon(k)) : undefined;
     if (k.art !== 'position' || u === undefined) return k;
     getroffen.push(u.oz);
-    return wende(k, u);
+    const grundId = k.merkmale.wahl?.grundpositionId ?? null;
+    return wende(k, u, grundId === null ? undefined : nachOz.get(ozJeId.get(grundId) ?? ''));
   });
   expect(getroffen.sort(), 'jede gelistete OZ gibt es im LV').toEqual([...nachOz.keys()].sort());
   return phasenform({ ...inhalt, knoten }, phase);
@@ -151,6 +176,30 @@ describe('Roundtrip der Fixtures', () => {
           expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, UNTERSCHIEDE[name]));
           expect(r.zweiter).toBe(r.erster);
         });
+});
+
+describe('Wahlgruppe im Rundweg (Ticket 73)', () => {
+  // `typisch` hat eine Wahlgruppe aus v1: 02.0070 A ist die Alternative zu 02.0070, beide ohne Gruppe und Variante.
+  // GAEB kennt die Zuordnung nur über die Gruppennummer; Variante 0 ist die Grundausführung (FD 4.5.2, Ticket 22).
+  // Die Fixture hat keine belegte Gruppe, also ist die künstliche Gruppe 1 (D-16).
+  for (const phase of PHASEN)
+    it(`typisch als ${phase}: die Wahlgruppe kommt mit ihrer Grundposition zurück`, () => {
+      const { inhalt, summen, basen } = fixtureLv('typisch');
+      const n = normiereKennungen(inhalt, summen, basen);
+      const xml = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n)).xml;
+      const l = leseGaeb(xml, { ids: testIds(), standardMwstSatz: n.inhalt.mwstSatz });
+      expect(l.befunde.map((b) => b.code)).not.toContain('wahl-ohne-grundposition');
+      const nachOz = new Map(
+        (l.inhalt?.knoten ?? []).filter((k): k is Position => k.art === 'position').map((p) => [ozVon(p), p]),
+      );
+      const grund = nachOz.get('02.0070');
+      expect(grund?.merkmale.wahl).toEqual({ gruppe: 1, variante: 0, grundpositionId: null });
+      expect(nachOz.get('02.0070A')?.merkmale.wahl).toEqual({
+        gruppe: 1,
+        variante: 1,
+        grundpositionId: grund?.id,
+      });
+    });
 });
 
 describe('Roundtrip der amtlichen Dateien (Inhalt des Lesers)', () => {

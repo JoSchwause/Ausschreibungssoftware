@@ -18,6 +18,24 @@ export type {
 } from './modell';
 export { BILDMARKE, LUECKE, bloeckeAlsText, langtextAlsBloecke } from './langtext';
 export type { DruckAbsatz, DruckBlock, DruckLauf, DruckListe, DruckTabelle, DruckZelle } from './langtext';
+export {
+  DRUCKPROFIL_SCHEMAVERSION,
+  STANDARD_DRUCKPROFILE,
+  druckprofilAlsJson,
+  druckprofilAusJson,
+  ersetzePlatzhalter,
+  neuesDruckprofil,
+  profilAlsOptionen,
+} from './druckprofil';
+export type {
+  DruckEingabe,
+  Druckprofil,
+  DruckprofilBefund,
+  DruckprofilBefundcode,
+  PlatzhalterWerte,
+} from './druckprofil';
+export { KUERZUNGSMARKE, kuerzeBloecke } from './kuerzen';
+export type { LangtextUmfang } from './modell';
 export { erzeugePdf } from './pdf';
 export type { PdfOptionen } from './pdf';
 export type { Schriften } from './schriften';

@@ -47,3 +47,12 @@ path = "packages/ausgabe/schriften/*.woff"
 precedence = "override"
 SPDX-FileCopyrightText = "2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)"
 SPDX-License-Identifier = "OFL-1.1"
+
+# Testdateien der XRechnung-Testsuite der KoSIT (Ticket 76, C4): Lizenz laut LICENSE des Repos
+# itplr-kosit/xrechnung-testsuite: Apache-2.0 (mit AGPL-3.0-or-later verträglich), unverändert übernommen, ohne NOTICE-Datei
+# in der Quelle. Herkunft je Datei: fixtures/extern/HERKUNFT.md.
+[[annotations]]
+path = "fixtures/extern/xrechnung/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Koordinierungsstelle für IT-Standards (KoSIT), XRechnung-Testsuite (https://github.com/itplr-kosit/xrechnung-testsuite)"
+SPDX-License-Identifier = "Apache-2.0"
