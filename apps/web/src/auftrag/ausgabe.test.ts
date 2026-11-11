@@ -16,7 +16,7 @@ import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { angebotLesen } from '../gaeb/gaeb';
 import { appIdQuelle } from '../lv/ids';
 import { auftragAusgeben } from './ausgabe';
-import { zuschlagPlanen } from './zuschlag';
+import { zuschlagserteilungPlanen } from './zuschlagserteilung';
 
 const wurzel = new URL('../../../../', import.meta.url);
 const P = 'p' as ProjektId;
@@ -46,7 +46,7 @@ function auftragA(): AuftragsLvZustand {
     bauherr: { name: 'B', anschrift: null },
     bieter: [{ id: v.angebot.bieterId, name: v.bieterName }],
   };
-  const plan = zuschlagPlanen({
+  const plan = zuschlagserteilungPlanen({
     lv,
     angebot: v.angebot,
     projekt,

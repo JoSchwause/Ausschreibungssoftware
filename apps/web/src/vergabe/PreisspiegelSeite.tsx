@@ -20,7 +20,7 @@ import type { ReactElement } from 'react';
 import { auftragsLvsLaden, auftragZumLv } from '../auftrag/auftrag';
 import { texte as atexte } from '../auftrag/texte';
 import { auftragPfad } from '../auftrag/ziel';
-import { ZuschlagDialog } from '../auftrag/ZuschlagDialog';
+import { ZuschlagserteilungDialog } from '../auftrag/ZuschlagserteilungDialog';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
@@ -137,7 +137,7 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
   const [wahl, setWahl] = useState<Spaltenwahl>(STANDARD_WAHL);
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const [ort, setOrt] = useState<VergleichsZellort | null>(null);
-  const [zuschlag, setZuschlag] = useState<Anbieter | null>(null);
+  const [erteilenAn, setErteilenAn] = useState<Anbieter | null>(null);
   const vergebenId = useId();
 
   // Die Rechnung nur bei neuem Stand oder neuen Einstellungen; Spalten und Aufklappen bauen nur die Ansicht neu.
@@ -231,7 +231,7 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
                     disabled={auftrag !== null}
                     {...(auftrag === null ? {} : { 'aria-describedby': vergebenId })}
                     onClick={() => {
-                      setZuschlag(a);
+                      setErteilenAn(a);
                     }}
                   >
                     {atexte.knopf.erteilen}
@@ -240,15 +240,15 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
               />
             </div>
           </div>
-          <ZuschlagDialog
+          <ZuschlagserteilungDialog
             lv={lv}
             projekt={projekt}
-            bieter={zuschlag}
+            bieter={erteilenAn}
             onSchliessen={() => {
-              setZuschlag(null);
+              setErteilenAn(null);
             }}
             onErteilt={(id) => {
-              setZuschlag(null);
+              setErteilenAn(null);
               gehe(auftragPfad(projekt.id, id));
             }}
           />

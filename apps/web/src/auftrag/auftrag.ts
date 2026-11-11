@@ -43,7 +43,7 @@ export function auftragZumLv(
   return auftraege.find((a) => a.auftragsLeistungsverzeichnis.leistungsverzeichnisId === lvId) ?? null;
 }
 
-export type Zuschlagsausgang =
+export type Zuschlagserteilungsausgang =
   | { readonly ok: true; readonly id: AuftragsLeistungsverzeichnisId }
   /** Zum LV gibt es schon ein Auftrags-LV (D-21, Q5); nichts geschrieben. */
   | { readonly ok: false; readonly art: 'schon-vergeben'; readonly auftrag: AuftragsLvZustand }
@@ -54,13 +54,13 @@ export type Zuschlagsausgang =
  * Protokolleintrag, dann ein Undo-Schritt. Gibt es zum LV schon ein Auftrags-LV, wird nichts geschrieben; geprüft in der
  * Kette, damit auch ein doppelter Klick keinen zweiten Zuschlag erzeugt.
  */
-export function zuschlagSpeichern(
+export function zuschlagserteilungSpeichern(
   weg: Befehlsweg,
   befehl: AuftragsLeistungsverzeichnisAnlegen,
-): Promise<Zuschlagsausgang> {
+): Promise<Zuschlagserteilungsausgang> {
   const u = weg.umgebung;
   const a = befehl.auftragsLeistungsverzeichnis;
-  return weg.reihe(async (): Promise<Zuschlagsausgang> => {
+  return weg.reihe(async (): Promise<Zuschlagserteilungsausgang> => {
     const vorhanden = await auftragsLvsLaden(u.speicher, a.projektId);
     if (!vorhanden.ok)
       return { ok: false, art: 'abweisung', abweisung: { art: 'speicher', fehler: vorhanden.fehler } };

@@ -31,7 +31,7 @@ export interface Wahlgruppenwahl {
   readonly alternativen: readonly Alternativwahl[];
 }
 
-export interface Zuschlagsplan {
+export interface Zuschlagserteilungsplan {
   /** Zahl der Positionen, die im Auftrags-LV entfallen; `null` bei ungültiger Wahl. */
   readonly entfallend: number | null;
   /** Zahl der Positionen ohne Preis des Bieters im Auftrags-LV; `null` bei ungültiger Wahl. */
@@ -44,7 +44,7 @@ export interface Zuschlagsplan {
   readonly befehl: AuftragsLeistungsverzeichnisAnlegen | null;
 }
 
-export interface Zuschlagseingang {
+export interface Zuschlagserteilungseingang {
   readonly lv: LvZustand;
   readonly angebot: AngebotZustand | Angebot;
   readonly projekt: Projekt;
@@ -83,7 +83,7 @@ function warnungText(w: Zuschlagswarnung, knoten: ReadonlyMap<string, Knoten>): 
 }
 
 /** Vorschau und Befehl des Zuschlags für die gewählten Alternativen. */
-export function zuschlagPlanen(e: Zuschlagseingang): Zuschlagsplan {
+export function zuschlagserteilungPlanen(e: Zuschlagserteilungseingang): Zuschlagserteilungsplan {
   const knoten = new Map<string, Knoten>(e.lv.leistungsverzeichnis.knoten.map((k) => [k.id, k]));
   const v = zuschlagsvorschau(e.lv, e.angebot, e.gewaehlt);
   const wahlgruppen = v.wahlgruppen.map((g): Wahlgruppenwahl => ({

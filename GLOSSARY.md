@@ -233,6 +233,9 @@ Kennzeichen eines Bieterpreises im Preisspiegel (D-05): angeboten, Nullpreis, ni
 ### Bieterzuschlag
 Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sein Zuschlagssatz, die Zuschlagsbasis aus seinen Preisen, der Betrag und das Preiskennzeichen; dazu, ob eine Bezugsposition ohne Preis des Bieters die Basis unvollständig lässt. Im Code `Bieterzuschlag`.
 
+### Zuschlag (Vergabe)
+Die Annahme eines Angebots durch den Auftraggeber (VOB/A § 18), in der App „Zuschlag erteilen“ aus dem Preisspiegel: Aus Ausschreibungs-LV und beauftragtem Angebot entsteht das Auftrags-LV, höchstens eines je LV (D-21). Nicht zu verwechseln mit der Zuschlagsposition (GAEB `MarkupItem`) und den Begriffen, die zu ihr gehören: Zuschlagssatz, Zuschlagsbasis, Zuschlagsbezug, Zuschlagskennzeichen, Bieterzuschlag. Im Code heißt der Zuschlag der Vergabe „Zuschlagserteilung“: `zuschlagErteilen`, `zuschlagsvorschau` und `Zuschlagswarnung` in `packages/vergabe`, in der App `zuschlagserteilungPlanen`, `zuschlagserteilungSpeichern`, `Zuschlagserteilungsplan`, `ZuschlagserteilungDialog`. Ein Bezeichner, der nur „zuschlag“ heißt (`Positionsdaten.zuschlag`, `Bieterpreis.zuschlag`), meint immer die Zuschlagsposition; der Warncode `zuschlagssatz-fehlt` einer `Zuschlagswarnung` meint den Zuschlagssatz einer Zuschlagsposition im Auftrags-LV.
+
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
 
