@@ -21,7 +21,7 @@ import type {
 import type { Teil } from '../historie/historie';
 import { nachtraegeLaden, type Nachtragseintrag } from '../nachtrag/speichern';
 import { Sitzung, eintragSchreiben, type Befehlsweg, type Umgebung } from '../lv/befehlsweg';
-import { rechnungBefehlAusfuehren, rechnungChangeSetAnwenden } from './ausfuehrer';
+import { rechnungBefehlAusfuehren, rechnungChangeSetAnwenden } from '@tethys/abrechnung';
 
 /** Ein Befehl an eine Rechnung; `rechnungId: null` nur für `RechnungAnlegen`. */
 export interface Rechnungsauftrag {
