@@ -55,6 +55,8 @@ Decision: `schemaversion: 1` im Objekt; fehlende Felder = Standardwert ohne Befu
 
 ## Answer
 
+Suite: lint, typecheck grün; `pnpm test` 2050 grün, einzig `packages/kern/src/lv-pruefung-fixtures.test.ts` (lvPruefen(gross) Median 111 ms unter Parallellast, Budget 50 ms) fiel; allein wiederholt: grün. Budget nicht angefasst.
+
 Druckprofile in `packages/ausgabe`: Typ, drei Standardprofile, JSON mit Befunden, neue Optionen. Je Einstellung ein Test über den Seitentext (`src/druckprofil.test.ts`), vorhandene Tests unverändert grün.
 
 Öffentliche API (`index.ts`):
