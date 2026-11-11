@@ -634,7 +634,9 @@ export interface LvKopf extends LvInhaltKopf {
   readonly projektId: ProjektId;
   /**
    * Fehlt: kein Nachtrag (v1.4, Ticket 70 Punkt 3; D-35). Gesetzt: das LV ist ein Nachtrags-LV, siehe `Nachtragsangaben`.
-   * Geändert nur über `NachtragsangabenSetzen`.
+   * Geändert nur über `NachtragsangabenSetzen`. Ein Nachtrags-LV bekommt keinen Zuschlag (`zuschlagErteilen` weist es ab,
+   * D-42); seine Positionen kommen über `NachtragUebernehmen` ins Auftrags-LV. Der Zuschlag eines Muster-LV lässt `vorlage`
+   * weg: Beide Felder gibt es am `AuftragsLvKopf` nicht.
    *
    * Vorläufige Annahme, Entscheidung offen (enge Lesart): am `LvKopf`, nicht am gemeinsamen `LvInhaltKopf`. So trägt das
    * Auftrags-LV es nie, und weder `LeistungsverzeichnisAnlegen` noch der GAEB-Leser bringen es mit: Die App legt das

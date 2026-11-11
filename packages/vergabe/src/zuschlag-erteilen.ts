@@ -12,6 +12,7 @@ import type {
   Ergebnis,
   Knoten,
   KnotenId,
+  Leistungsverzeichnis,
   LvZustand,
   PositionId,
   Projekt,
@@ -64,8 +65,16 @@ export function zuschlagErteilen(
   neueId: AuftragsLeistungsverzeichnisId,
 ): Ergebnis<Zuschlagsergebnis, Befehlsfehler> {
   const a = 'angebot' in angebot ? angebot.angebot : angebot;
-  const l = lv.leistungsverzeichnis;
+  // v1.4: D-42 — `nachtrag` und `vorlage` stehen nur am `LvKopf`, nie im Kopf des Auftrags-LV.
+  const { nachtrag } = lv.leistungsverzeichnis;
+  const l = ohneLvKennzeichen(lv.leistungsverzeichnis);
   const { id: lvId, projektId } = l;
+  // v1.4: D-42 — Ein Nachtrags-LV bekommt keinen Zuschlag; ein Nachtrag kommt über `NachtragUebernehmen` ins Auftrags-LV.
+  if (nachtrag !== undefined)
+    return fehler(
+      'Das LV ist ein Nachtrags-LV; es wird über „Nachtrag übernehmen“ beauftragt.',
+      'leistungsverzeichnis.nachtrag',
+    );
   if (a.leistungsverzeichnisId !== lvId)
     return fehler('Das Angebot gehört nicht zu diesem LV.', 'angebot.leistungsverzeichnisId');
   if (a.projektId !== projektId)
@@ -173,6 +182,14 @@ export function zuschlagsvorschau(
     wahlgruppen,
     fehler: null,
   };
+}
+
+/** v1.4: D-42 — das LV ohne die Kennzeichen, die nur am `LvKopf` stehen (`nachtrag`, `vorlage`, Vertrag v1.4). */
+function ohneLvKennzeichen(l: Leistungsverzeichnis): Omit<Leistungsverzeichnis, 'nachtrag' | 'vorlage'> {
+  const kopie: { -readonly [K in keyof Leistungsverzeichnis]?: Leistungsverzeichnis[K] } = { ...l };
+  delete kopie.nachtrag;
+  delete kopie.vorlage;
+  return kopie as Omit<Leistungsverzeichnis, 'nachtrag' | 'vorlage'>;
 }
 
 function fehler(meldung: string, feld: string, knotenId?: KnotenId): { ok: false; fehler: Befehlsfehler } {
