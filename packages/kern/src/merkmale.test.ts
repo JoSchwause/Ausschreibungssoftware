@@ -357,7 +357,8 @@ describe('PositionsmerkmaleSetzen', () => {
       summeBedarfOhneGesamtbetrag: '20.00',
       summeWahl: '0.00',
     });
-    expect(cs.summen.vorher?.gesamt?.netto).toBe('25.00');
+    // v1.3: mechanisch angepasst, Folgeticket (`summen.vorher` Pflicht: kein `?.`)
+    expect(cs.summen.vorher.gesamt?.netto).toBe('25.00');
     const neu = anwenden(z, cs);
     expect(neu.summen).toEqual(summenBerechnen(neu.leistungsverzeichnis));
     expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);

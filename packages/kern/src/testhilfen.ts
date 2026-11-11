@@ -167,7 +167,7 @@ export function ohneReihenfolge(cs: LvChangeSet): LvChangeSet {
     nachSchluessel(l, (x) => x.positionId);
   const g = <T extends { gliederungId: string }>(l: readonly T[]): T[] =>
     nachSchluessel(l, (x) => x.gliederungId);
-  const v: Summenvorher | undefined = cs.summen.vorher;
+  const v: Summenvorher = cs.summen.vorher;
   return {
     art: cs.art,
     leistungsverzeichnisId: cs.leistungsverzeichnisId,
@@ -179,19 +179,16 @@ export function ohneReihenfolge(cs: LvChangeSet): LvChangeSet {
       ...cs.summen,
       positionen: p(cs.summen.positionen),
       gliederungen: g(cs.summen.gliederungen),
-      ...(v === undefined
-        ? {}
-        : {
-            vorher: {
-              ...v,
-              positionen: p(v.positionen),
-              gliederungen: g(v.gliederungen),
-              entfernt: {
-                positionen: p(v.entfernt.positionen),
-                gliederungen: g(v.entfernt.gliederungen),
-              },
-            },
-          }),
+      // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht: keine Fallunterscheidung mehr)
+      vorher: {
+        ...v,
+        positionen: p(v.positionen),
+        gliederungen: g(v.gliederungen),
+        entfernt: {
+          positionen: p(v.entfernt.positionen),
+          gliederungen: g(v.entfernt.gliederungen),
+        },
+      },
     },
   };
 }

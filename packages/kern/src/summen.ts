@@ -329,7 +329,12 @@ interface Anteilsaenderung {
  * nicht ändert, steht nicht im Ergebnis; `gesamt` ist `null`, wenn die Gesamtsummen gleich bleiben. Die Listen sind nach
  * Kennung geordnet (deterministisch, auch für die Umkehrung).
  */
-export function summenAenderung(z: LvZustand, baum: Baumindex, e: SummenEingabe): Summenaenderung {
+export function summenAenderung(
+  z: LvZustand,
+  baum: Baumindex,
+  e: SummenEingabe,
+): Omit<Summenaenderung, 'vorher'> {
+  // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht; `vorher` setzt `baueChangeSet`)
   const stand = z.summen;
   const hinzu = e.knoten?.hinzugefuegt ?? [];
   const geaendert = e.knoten?.geaendert ?? [];

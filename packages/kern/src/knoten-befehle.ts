@@ -33,7 +33,7 @@ import type {
 import { baueChangeSet } from './changeset';
 import { positionMitEinheiten } from './einheit';
 import { handOzFehler } from './oz-befehle';
-import { nein, ok } from './fehler';
+import { hinterGliederungOffen, nein, ok } from './fehler'; // v1.3: mechanisch angepasst, Folgeticket (Ticket 56)
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
 import {
   MAX_GLIEDERUNGSEBENEN,
@@ -84,6 +84,8 @@ function zielAufloesen(idx: Baumindex, ort: Einfuegeort, ausser?: string): Ergeb
     // x ist der bewegte Knoten selbst: wird vom Aufrufer als Nullbewegung behandelt, hier nie erreicht.
     return ok({ elternId: eltern, elternArt, index: position + 1 });
   }
+  // v1.3: mechanisch angepasst, Folgeticket (kern: Einfügen hinter einer Gliederung, Ticket 56)
+  if (ort.art === 'hinter-gliederung') return hinterGliederungOffen(ort.gliederungId);
   const eltern = ort.elternId;
   let elternArt: ElternArt;
   if (eltern === idx.lvId) {
