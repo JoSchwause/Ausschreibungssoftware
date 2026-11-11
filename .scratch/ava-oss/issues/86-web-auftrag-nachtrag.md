@@ -1,6 +1,6 @@
 # 86: A1 in der App: Auftrags-LV lesen und umkehren über den Vertrag, Nachträge
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: A1 · Ordner: `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (neu); Einhängestellen in `App.tsx`,
 `lv/LvSeite.tsx`, `lv/befehlsweg.ts`, `projekt/ProjektSeite.tsx` (markiert `// Ticket 86`, D-20)
@@ -106,3 +106,22 @@ Neue Abhängigkeit `@tethys/abrechnung` in `apps/web` (Workspace-Paket, Lockfile
   (Zuschlag 56.607,77; Angebot N01 1.445,24; danach 59.803,77 / 1.794,11 / 58.009,66 / 11.021,84 / 69.031,50). Das
   Nachtragsangebot kommt über den Excel-Rücklauf (Datei im Test aus dem gespeicherten Nachtrags-LV mit den EP der
   Fixture, wie `ausgabe.spec.ts`); X84 bräuchte eine Datei zu einem LV, das erst im Test entsteht. Reversible: yes.
+- Nach Merge von `integration/welle-5` (6cb3f73): Lint, Typecheck grün; `pnpm test` 2471 bestanden, 1 rot nur in der vollen
+  Suite: `packages/vergabe/src/leistung.test.ts` „preisspiegelBerechnen für gross mit 5 Angeboten unter 1000 ms“ mit
+  1194,1 ms bei Last 16,9 (parallele Agenten); die Datei allein: 498,3 ms, grün. Nicht berührt, Budget nicht gelockert.
+  E2E `nachtrag.spec.ts`, `m3.spec.ts`, `undo.spec.ts` grün (8/8), `nachtrag.spec.ts` dreimal hintereinander grün;
+  vor dem Merge auch `preisspiegel.spec.ts`, `projekt.spec.ts` grün.
+
+## Answer
+
+Branch `welle-5/86-nachtrag` (enthält `integration/welle-5` bis 6cb3f73). Auftrags-LVs liest die App über
+`speicher.auftragsLeistungsverzeichnisse` (D-64.2 entfällt), Undo/Redo kehrt sie mit `auftragsLvChangeSetUmkehren` des
+Kerns um (D-64.4 entfällt). Nachträge: „Nachtrag anlegen“ auf der Auftrags-LV-Seite (LV + Nachtragsangaben, ein
+Undo-Schritt, Nummer N01, N02, … aus `LvUebersicht.nachtrag`), Kopfband auf der LV-Seite des Nachtrags (Status, Link zurück,
+„Beauftragen“), „Beauftragen“ mit Vorschau aus `nachtragUebernehmen` und dem Kern (Positionen, Angebotssumme,
+Auftragssumme vorher/nachher, Hinweise), Befehlsfolge `NachtragUebernehmen` + Status `beauftragt` als ein Undo-Schritt,
+Nachtragsliste mit Befunden aus `nachtragsbefunde`, Kennzeichen „Nachtrag N01“ auf der Projektseite; der Zuschlagsdialog
+nennt bei einem Nachtrags-LV den Weg „Beauftragen“ (D-42). Einhängestelle `{/* Ticket 87–89: Abrechnung */}` in der
+Werkzeugleiste der Auftrags-LV-Seite. Entscheidungen D-86.1 bis D-86.9. Offen: Der Knopf „Zuschlag erteilen“ im
+Preisspiegel eines Nachtrags-LV bleibt sichtbar (Dialog sperrt; `src/vergabe/`, D-86.8); die Projektseite lädt LVs weiter
+ganz (D-86.4).
