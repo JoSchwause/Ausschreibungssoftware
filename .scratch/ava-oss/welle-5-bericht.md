@@ -1,7 +1,7 @@
 # Bericht: Lauf „Welle 5“ (Demo-Modus)
 
 Stand 2026-11-12. Orchestrator: `/implement-welle 5`. Branch `integration/welle-5` ab dem Ende von Welle 4 (`97bd414`,
-`integration/welle-4`; Welle 4 liegt nicht auf `main`, D-31). Diff gegen `97bd414`: ‹DIFF›. Schnitt: `schnitt-welle-5.md`,
+`integration/welle-4`; Welle 4 liegt nicht auf `main`, D-31). Diff gegen `97bd414`: 375 Dateien, rund 48.600 Zeilen neu, 308 Commits. Schnitt: `schnitt-welle-5.md`,
 Übersicht `issues/README.md`.
 
 ## Was der Lauf umfasste
@@ -26,7 +26,27 @@ Orchestrator geschnitten; 70 und 71 sind gegenüber Welle 4 erweitert (v1.4). 23
 
 ## Was jetzt läuft
 
-‹LAEUFT›
+- **App:** zusätzlich zu Welle 4: **Nachträge** (auf der Auftrags-LV-Seite „Nachtrag anlegen“ → Nachtrags-LV mit Kopfband und
+  Status, Angebot des Auftragnehmers per X84/Excel/Erfassung, „Beauftragen“ mit Vorschau hängt die Positionen als Gliederung
+  „Nachtrag N01“ ins Auftrags-LV); **Aufmaßblätter** je Auftrags-LV mit Mengenansatz (Formel 91) über das Panel, **Soll/Ist**
+  mit Befund über 110 %, **X31** einlesen und je Blatt ausgeben; **Rechnungen** (Abschlag/Schluss, Umlagen, Sicherheits- bzw.
+  Gewährleistungseinbehalt) mit Prüfansicht der Abzugskette, gefordert gegen geprüft, Freigeben (Zahlbetrag eingefroren),
+  **XRechnung einlesen** (UBL und CII); **Kosten**: Kostenermittlungen (Stufe nach DIN 276, Bezeichnungen aus eigener CSV),
+  Kostengruppen zuordnen (LV und Auftrags-LV, Dialog mit Mehrfachauswahl), **Kostenkontrolle** (Budget, Vergabe, Abrechnung,
+  Abweichung je Kostengruppe), **EP-Kalkulation** je Position; **Druckprofile** im PDF-Dialog; **Muster-LV** kennzeichnen und
+  „Aus Vorlage übernehmen…“; Textquelle je Position; Kostengruppen im GAEB-Export (DIN-276-Katalog).
+- **Suite auf dem Branch-Ende** (`c6e16e7`, ruhige Maschine, Last 1,0–2,0): `pnpm lint` grün, `pnpm typecheck` grün,
+  `pnpm test` 2606 bestanden / 3 übersprungen (205 Dateien) und 29/29 (Fixtures). E2E: `ui-grid` 63 bestanden / 3 übersprungen
+  (Bildschirmfotos), `speicher` 17/17, `web` 76/76. XSD-Gegenprüfung 58/58 (amtliches XSD inkl. X31, lokal geladen, nie im Repo).
+  Kein Leistungsbudget rot.
+- **Tor M4** („durchgehende Kette LPH 6–8“, D-38): **erreicht.** `apps/web/e2e/m4.spec.ts` dreimal hintereinander grün, ganz über
+  die Oberfläche: LV `typisch` per X83, zwei X84, Zuschlag an Bieter B (3 % Nachlass), Nachtrag N01 beauftragt, Kostenberechnung
+  und Kostengruppen, Aufmaßblatt 1 und 2 über die Mengenermittlung, Soll/Ist mit genau einem Befund (02.0040, 112,50 %),
+  Abschlagsrechnung 1 = **8.874,40** (freigegeben), Abschlagsrechnung 2 = **10.100,84**, nach Korrektur an Blatt 1 **10.070,67**
+  bei unverändert eingefrorenen 8.874,40, Kostenkontrolle je Zeile gleich den Sollwerten (Gesamt: Budget 60.900,00, Vergabe
+  58.009,66, Abrechnung 16.846,81), Neuladen behält alles. Dazu der Kettentest ohne Oberfläche `apps/web/src/m4-kette.test.ts`
+  (`vergabe` → Kern → `abrechnung` → `mengen` → `kosten`), jede Zahl gegen `fixtures/typisch-abrechnung.json`, deren Sollwerte
+  unabhängig hergeleitet sind (N2, N5, D-34, VOB/B § 2 Abs. 3; C4). `m3.spec.ts` liest das LV jetzt per X83 (D-64.1 zurückgenommen).
 
 ## Was entschieden wurde
 
@@ -49,7 +69,7 @@ Orchestrator geschnitten; 70 und 71 sind gegenüber Welle 4 erweitert (v1.4). 23
   - **D-32** XRechnung in eigenem Paket `erechnung` statt in `abrechnung`; **D-33** M3 nur X31, DA11 später.
   - **D-48** Maske eines Nachtrags-LV ohne oberste Stufe (Review-Befund P6).
 - **Wellen-Review** (`code-review`, Fixpunkt `97bd414`): Standards 12 (2 hart: Glossar-Doppelbedeutungen), Spec 7 (kein
-  falscher Geldbetrag; schwerster P6: Nachtrags-OZ eine Stufe zu tief). Behebung in Ticket 92 (D-47), ‹FIX›.
+  falscher Geldbetrag; schwerster P6: Nachtrags-OZ eine Stufe zu tief). Behebung in Ticket 92 (D-47), alle 8 Pflicht- und 9 Sollbefunde behoben (u. a. P6 Maske des Nachtrags-LV, D-48; Glossar-Doppelbedeutungen; eine Tabelle für Undo und Sprungziel je Aggregatart; gemeinsame `Verweis`-Komponente; KG-Formregel und Baumhilfe aus dem Kern); P1 und P4 als Folgetickets 93 und 94.
 
 ## Was fehlt oder dünn ist
 
@@ -66,7 +86,7 @@ Orchestrator geschnitten; 70 und 71 sind gegenüber Welle 4 erweitert (v1.4). 23
   (`k9-leistung`, `lvPruefen gross`) und `gaeb` (2-MB-Datei); allein jeweils grün, kein Budget gelockert.
 - **Nutzungslimit:** Gegen 19:30 traf der Lauf das 5-Stunden-Limit; alle Agenten standen bis 21:10 und wurden danach aus
   ihrem gespeicherten Stand fortgesetzt (D-46). Verloren ging nichts.
-- Ein zusätzlicher übersprungener Test (3 statt 2) gegenüber Welle 4: ‹SKIP›.
+- Ein zusätzlicher übersprungener Test (3 statt 2) gegenüber Welle 4: der neue X31-Fall in `packages/gaeb/src/xsd-ausgabe.test.ts` läuft nur innerhalb der XSD-Gegenprüfung (dort bestanden).
 
 ## So probiert man es aus
 
