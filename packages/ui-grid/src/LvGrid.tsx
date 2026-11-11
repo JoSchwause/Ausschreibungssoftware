@@ -7,9 +7,9 @@
 
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
 import { useTable } from '@tanstack/react-table';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ClipboardEvent, FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
-import type { Einfuegeort, KnotenId, LvBefehl, LvSpalte, PositionAnlegen } from '@tethys/vertrag';
+import type { Einfuegeort, KnotenId, LvBefehl, LvSpalte, LvZeile, PositionAnlegen } from '@tethys/vertrag';
 import { Button, Dialog } from '@tethys/ui-basis';
 import type { EditorAktionen, Richtung } from './Editor';
 import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
@@ -69,8 +69,14 @@ function istSpalte(wert: string | undefined, spalten: readonly LvSpalte[]): LvSp
 }
 
 export function LvGrid(props: LvGridProps): ReactElement {
-  const { ansicht, zahlen, ids, onBefehl, onAufklappen, onAuswahlChange } = props;
-  const { onBefehlsfolge, onKopieEinfuegen, vorPositionAnlegen, sprungziel } = props;
+  const { ansicht, zahlen, onAufklappen, onAuswahlChange, onAktiveZeileChange, onZeileOeffnen, sprungziel } =
+    props;
+  /**
+   * Die Ausgänge für Änderungen (Befehle, Kennungen), nur im bearbeitbaren Grid. Im schreibgeschützten Grid ist er
+   * `null`: Kein Weg führt dort zu einem Befehl (Ticket 54, Punkt 3).
+   */
+  const aenderung = props.schreibgeschuetzt === true ? null : props;
+  const nurLesen = aenderung === null;
   const spalten = props.spalten ?? STANDARDSPALTEN;
   const baumspalte = props.baumspalte ?? 'kurztext';
   const zh = props.zeilenhoehe ?? 28;
@@ -115,6 +121,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const fokusAnfrage = useRef(false);
   const editorBeendet = useRef(false);
   const wurzel = useRef<HTMLDivElement>(null);
+  const nurLesenId = `${useId()}-nur-lesen`;
   const scroller = useRef<HTMLDivElement>(null);
 
   const indexVonId = useMemo(() => {
@@ -139,6 +146,22 @@ export function LvGrid(props: LvGridProps): ReactElement {
   useLayoutEffect(() => {
     if (aktivIndex >= 0) letzterIndex.current = aktivIndex;
   });
+
+  // Aktive Zeile melden (Ticket 54, Punkt 1), sobald sie sich ändert, gleich aus welchem Grund.
+  const gemeldeteZeile = useRef<KnotenId | null | undefined>(undefined);
+  useEffect(() => {
+    const id = aktiveId ?? null;
+    if (!onAktiveZeileChange || gemeldeteZeile.current === id) return;
+    gemeldeteZeile.current = id;
+    onAktiveZeileChange(id);
+  });
+
+  /** Ob sich die Zelle bearbeiten lässt; im schreibgeschützten Grid keine. */
+  const bearbeitbar = (z: LvZeile, spalte: LvSpalte): boolean => !nurLesen && istBearbeitbar(z, spalte);
+  /** Ansage, wenn im schreibgeschützten Grid etwas geändert werden soll. */
+  const meldeNurLesen = (): void => {
+    setStatus(texte.gridSchreibgeschuetzt);
+  };
 
   // Ein Entwurf an einem verschwundenen Knoten ist hinfällig.
   const bearbeitungGueltig = bearbeitung !== null && indexVonId.has(bearbeitung.id) ? bearbeitung : null;
@@ -245,6 +268,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const beginneBearbeitung = (zi: number, spalte: LvSpalte, startText?: string): void => {
     const z = zeilen[zi];
     if (!z) return;
+    if (nurLesen) {
+      meldeNurLesen();
+      return;
+    }
     if (!istBearbeitbar(z, spalte)) {
       setStatus(texte.schreibgeschuetzt);
       return;
@@ -263,11 +290,15 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const uebernimmText = (zi: number, spalte: LvSpalte, text: string): void => {
     const z = zeilen[zi];
     if (!z) return;
+    if (!aenderung) {
+      meldeNurLesen();
+      return;
+    }
     const r = befehlAusEingabe(z, spalte, text, zahlen);
     switch (r.art) {
       case 'befehl':
         entferneAblehnung(z.knoten.id, spalte);
-        onBefehl(r.befehl);
+        aenderung.onBefehl(r.befehl);
         break;
       case 'keine-aenderung':
         entferneAblehnung(z.knoten.id, spalte);
@@ -395,12 +426,17 @@ export function LvGrid(props: LvGridProps): ReactElement {
       : { art: 'nach', knotenId: aktiveZeile.knoten.id };
   /** Eine Benutzeraktion, eine Befehlsfolge (Punkt 6). */
   const sendeFolge = (befehle: readonly LvBefehl[]): void => {
-    if (befehle.length === 0) return;
-    if (onBefehlsfolge) onBefehlsfolge(befehle);
-    else for (const b of befehle) onBefehl(b);
+    if (befehle.length === 0 || !aenderung) return;
+    if (aenderung.onBefehlsfolge) aenderung.onBefehlsfolge(befehle);
+    else for (const b of befehle) aenderung.onBefehl(b);
   };
 
+  /** Strg+C auch im schreibgeschützten Grid (es ändert nichts); Strg+X nur im bearbeitbaren. */
   const kopiere = (ausschneiden: boolean): void => {
+    if (ausschneiden && nurLesen) {
+      meldeNurLesen();
+      return;
+    }
     const menge = auswahlOderAktiv();
     if (menge.size === 0) return;
     const text = zeilenAlsTsv(zeilen, menge, spalten, zahlen);
@@ -424,16 +460,23 @@ export function LvGrid(props: LvGridProps): ReactElement {
   };
 
   const fragLoeschen = (): void => {
+    if (!aenderung) {
+      meldeNurLesen();
+      return;
+    }
     const knotenIds = obersteKnoten(zeilen, auswahlOderAktiv());
     if (knotenIds.length === 0) return;
-    setRueckfrage({ knotenIds, frage: frageLoeschen(loeschUmfang(zeilen, knotenIds)) });
+    setRueckfrage({
+      knotenIds,
+      frage: frageLoeschen(loeschUmfang(zeilen, knotenIds, aenderung.positionenZaehlen)),
+    });
   };
   const bestaetigeLoeschen = (): void => {
-    if (!rueckfrage) return;
+    if (!rueckfrage || !aenderung) return;
     setRueckfrage(null);
-    onBefehl({
+    aenderung.onBefehl({
       art: 'KnotenInPapierkorbLegen',
-      eintragId: ids.papierkorbeintrag(),
+      eintragId: aenderung.ids.papierkorbeintrag(),
       knotenIds: rueckfrage.knotenIds,
     });
     setStatus(texte.inPapierkorb);
@@ -450,6 +493,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
   };
 
   const verschiebe = (richtung: Verschieberichtung): void => {
+    if (!aenderung) {
+      meldeNurLesen();
+      return;
+    }
     const befehl = planeVerschieben(zeilen, obersteKnoten(zeilen, auswahlOderAktiv()), richtung);
     if (!befehl) {
       setStatus(texte.verschiebenNichtMoeglich);
@@ -457,25 +504,29 @@ export function LvGrid(props: LvGridProps): ReactElement {
     }
     fokusAnfrage.current = true;
     scrollAnfrage.current = true;
-    onBefehl(befehl);
+    aenderung.onBefehl(befehl);
     setStatus(texte.verschoben);
   };
 
   const legePositionAn = (): void => {
+    if (!aenderung) {
+      meldeNurLesen();
+      return;
+    }
     let befehl: PositionAnlegen = {
       art: 'PositionAnlegen',
-      id: ids.position(),
+      id: aenderung.ids.position(),
       ort: ortHinterAktiv(),
       daten: leerePositionsdaten(),
     };
-    if (vorPositionAnlegen) befehl = vorPositionAnlegen(befehl);
+    if (aenderung.vorPositionAnlegen) befehl = aenderung.vorPositionAnlegen(befehl);
     // Eine zugeklappte Gliederung bekommt die Position als erstes Kind; aufklappen, damit sie sichtbar wird.
     if (aktiveZeile?.hatUnterknoten && !aktiveZeile.aufgeklappt) klappe(aktivIndex, true);
     wartetAuf.current = {
       id: befehl.id,
       spalte: spalten.includes('kurztext') ? 'kurztext' : (aktivSpalte ?? 'kurztext'),
     };
-    onBefehl(befehl);
+    aenderung.onBefehl(befehl);
     setStatus(texte.positionAngelegt);
   };
 
@@ -554,6 +605,11 @@ export function LvGrid(props: LvGridProps): ReactElement {
         legePositionAn();
         return;
       }
+      if (e.key === 'Enter' && !e.shiftKey && onZeileOeffnen) {
+        e.preventDefault();
+        onZeileOeffnen(z.knoten.id, spalte);
+        return;
+      }
     }
     if (!strg && !e.altKey && !e.shiftKey && spalte === baumspalte && z.hatUnterknoten) {
       if (e.key === 'ArrowRight' && !z.aufgeklappt) {
@@ -583,7 +639,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
         return;
       case 'Enter':
         e.preventDefault();
-        if (istBearbeitbar(z, spalte)) beginneBearbeitung(zi, spalte);
+        if (bearbeitbar(z, spalte)) beginneBearbeitung(zi, spalte);
         else aktiviere(bewege(von, e.shiftKey ? 'oben' : 'unten'), 'ersetzen', true);
         return;
       case 'Escape':
@@ -599,7 +655,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
       case 'Delete':
         if (istBearbeitbar(z, spalte)) {
           e.preventDefault();
-          uebernimmText(zi, spalte, '');
+          uebernimmText(zi, spalte, ''); // schreibgeschützt: nur die Ansage
         }
         return;
       case ' ': {
@@ -641,7 +697,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
     }
     if (e.key.length === 1 && !strg && !e.altKey && istBearbeitbar(z, spalte)) {
       e.preventDefault();
-      beginneBearbeitung(zi, spalte, e.key);
+      beginneBearbeitung(zi, spalte, e.key); // schreibgeschützt: nur die Ansage
     }
   };
 
@@ -682,7 +738,11 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const onDoubleClick = (e: MouseEvent<HTMLDivElement>): void => {
     if (imEditor(e.target) || (e.target instanceof Element && e.target.closest('[data-aufklappen]'))) return;
     const zelle = zelleVon(e.target);
-    if (zelle) beginneBearbeitung(zelle.zi, zelle.spalte);
+    const z = zelle ? zeilen[zelle.zi] : undefined;
+    if (!zelle || !z) return;
+    // Eine bearbeitbare Zelle bearbeitet der Doppelklick (U3); jede andere öffnet die Zeile, wenn die App das will.
+    if (onZeileOeffnen && !bearbeitbar(z, zelle.spalte)) onZeileOeffnen(z.knoten.id, zelle.spalte);
+    else beginneBearbeitung(zelle.zi, zelle.spalte);
   };
 
   const onFocus = (e: FocusEvent<HTMLDivElement>): void => {
@@ -698,6 +758,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
     if (imEditor(e.target)) return; // im Eingabefeld gilt das übliche Einfügen von Text
     const inhalt = e.clipboardData.getData('text/plain');
     e.preventDefault();
+    if (!aenderung) {
+      meldeNurLesen();
+      return;
+    }
     // Eigener Text (zuletzt vom Grid geschrieben): verlustfrei verschieben bzw. kopieren (Ticket 46, Punkt 2).
     // Läuft das Schreiben noch, liefert die Zwischenablage ihren alten Inhalt; gemeint sind aber die eben kopierten
     // bzw. ausgeschnittenen Zeilen, nicht dieser alte Text.
@@ -713,13 +777,17 @@ export function LvGrid(props: LvGridProps): ReactElement {
         setStatus(texte.zielAusgeschnitten);
         return;
       }
-      onBefehl({ art: 'KnotenlisteVerschieben', knotenIds: eigen.knotenIds, ziel: ortHinterAktiv() });
+      aenderung.onBefehl({
+        art: 'KnotenlisteVerschieben',
+        knotenIds: eigen.knotenIds,
+        ziel: ortHinterAktiv(),
+      });
       setMerkliste(null);
       setStatus(meldungZeilen(eigen.knotenIds.length, 'eingefügt'));
       return;
     }
-    if (eigen && onKopieEinfuegen) {
-      onKopieEinfuegen(eigen.knotenIds, ortHinterAktiv());
+    if (eigen && aenderung.onKopieEinfuegen) {
+      aenderung.onKopieEinfuegen(eigen.knotenIds, ortHinterAktiv());
       setStatus(meldungZeilen(eigen.knotenIds.length, 'eingefügt'));
       return;
     }
@@ -739,7 +807,14 @@ export function LvGrid(props: LvGridProps): ReactElement {
       ? { art: 'nach', knotenId: aktiveZeile.knoten.id }
       : { art: 'ende', elternId: ansicht.wurzelId };
     // Eigener Text ohne `onKopieEinfuegen` trägt alle sichtbaren Spalten: spaltengenau ab der ersten einfügen.
-    const plan = planeEinfuegen(matrix, eigen ? 0 : aktivSpaltenIndex, spalten, einfuegeanker, zahlen, ids);
+    const plan = planeEinfuegen(
+      matrix,
+      eigen ? 0 : aktivSpaltenIndex,
+      spalten,
+      einfuegeanker,
+      zahlen,
+      aenderung.ids,
+    );
     sendeFolge(plan.befehle);
     if (plan.ungueltig.length > 0) {
       setAbgelehnt((alt) => {
@@ -805,6 +880,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
         role="treegrid"
         aria-label={props.beschriftung ?? texte.standardBeschriftung}
         aria-multiselectable="true"
+        aria-readonly={nurLesen ? true : undefined}
+        aria-describedby={nurLesen ? nurLesenId : undefined}
         aria-rowcount={zeilen.length + 1}
         aria-colcount={spalten.length}
         tabIndex={zeilen.length === 0 ? 0 : undefined}
@@ -863,6 +940,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
                 abgelehnt={abgelehntJeZeile.get(id)}
                 baumspalte={baumspalte}
                 zahlen={zahlen}
+                schreibgeschuetzt={nurLesen}
                 editor={editorStabil}
               />
             );
@@ -870,6 +948,11 @@ export function LvGrid(props: LvGridProps): ReactElement {
         </div>
         {zeilen.length === 0 ? <p className="tx-grid__leer">{texte.leer}</p> : null}
       </div>
+      {nurLesen ? (
+        <span id={nurLesenId} className="tx-grid__nur-sr">
+          {texte.gridSchreibgeschuetzt}
+        </span>
+      ) : null}
       <Hinweisleiste hinweise={props.hinweise ?? []} onSprung={springeZu} />
       {/* Die Rückfrage liegt im Portal; Tastenereignisse laufen im React-Baum trotzdem hier vorbei: Enter bestätigt. */}
       <div
