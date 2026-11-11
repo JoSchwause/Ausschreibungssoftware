@@ -678,7 +678,9 @@ export type AufmassBefehl =
 
 /**
  * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
- * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Kein Massenbefehl.
+ * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Hat das Auftrags-LV
+ * schon eine freigegebene Rechnung mit größerer Nummer, weist `speicher` mit `konflikt` ab (Invariante an `Rechnung`).
+ * Kein Massenbefehl.
  */
 export interface RechnungAnlegen {
   readonly art: 'RechnungAnlegen';

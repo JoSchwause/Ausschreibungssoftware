@@ -286,8 +286,11 @@ export interface Persistenzstatus {
  * - das Auftrags-LV löscht, solange ein Aufmaßblatt, eine Rechnung oder die Nachtragsangaben eines LV darauf verweisen;
  * - eine Position aus dem Auftrags-LV entfernt, auf die eine Aufmaßposition verweist (Umkehrung von `NachtragUebernehmen`);
  * - ein Aufmaßblatt löscht, das in einer Rechnung steht (`Rechnung.aufmassIds`);
- * - eine Rechnung freigibt, solange eine frühere desselben Auftrags-LV nicht freigegeben ist, oder eine Rechnung löscht
- *   oder ihre Freigabe entfernt, solange eine spätere freigegeben ist (D-34 (7));
+ * - die Invariante der Freigaben verletzen würde (D-34 (7)): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets
+ *   die mit den kleinsten Nummern.** Also `konflikt`, wenn ein `RechnungChangeSet` eine Rechnung freigibt, solange eine
+ *   frühere nicht freigegeben ist; eine Rechnung löscht oder ihre Freigabe entfernt, solange eine spätere freigegeben ist;
+ *   oder eine Rechnung anlegt (`vorher: null`), solange dasselbe Auftrags-LV eine freigegebene Rechnung mit größerer Nummer
+ *   hat (sonst: AR 2 löschen, AR 3 freigeben, AR 2 neu anlegen und freigeben → Doppelzahlung);
  * - auf ein Auftrags-LV, Aufmaßblatt oder eine Kennung verweist, die es im Projekt nicht gibt (Nachtragsangaben,
  *   `auftragsLvId`, `aufmassIds`);
  * - eine Blatt- oder Rechnungsnummer doppelt vergäbe (je Auftrags-LV eindeutig).

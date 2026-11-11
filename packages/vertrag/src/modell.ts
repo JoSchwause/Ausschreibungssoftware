@@ -838,6 +838,10 @@ export interface Umlage {
  * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändert nur
  * `RechnungsfreigabeAufheben` (Q5); jeden anderen Befehl, auch `RechnungLoeschen`, weist der Ausführer mit
  * `rechnung-freigegeben` ab.
+ *
+ * Invariante (D-34 (7), Q5): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.**
+ * Nur so ist „Σ frühere Zahlbeträge“ eindeutig; `speicher` hält sie (`konflikt`, siehe `RechnungChangeSet`), auch gegen das
+ * Anlegen einer Rechnung unterhalb einer schon freigegebenen.
  */
 export interface Rechnung {
   readonly id: RechnungId;
