@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import type { Gesamtsummen, LeistungsverzeichnisId, LvZustand, PositionId, Projekt } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
+import { nachtragsmaske } from '@tethys/abrechnung';
 import { abrechnungsFixture, m4Nachtrag } from '../../../../packages/abrechnung/src/testhilfen';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { zuschlagserteilungSpeichern } from '../auftrag/auftrag';
@@ -112,7 +113,7 @@ describe('Nachtrag über den Befehlsweg', () => {
     const lv = await u.speicher.leistungsverzeichnisse.laden(r1.lvId);
     expect(lv.ok && lv.wert.leistungsverzeichnis).toMatchObject({
       name: 'Nachtrag N01 – Gründung',
-      ozMaske: a.ozMaske,
+      ozMaske: nachtragsmaske(a.ozMaske),
       mwstSatz: a.mwstSatz,
       nachtrag: { auftragsLvId: a.id, nummer: 'N01', status: 'angemeldet' },
     });

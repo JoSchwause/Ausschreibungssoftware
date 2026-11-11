@@ -1,6 +1,6 @@
 # 92: Behebung des Wellen-Reviews Welle 5
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 91
 nur dieses Ticket; 91 schreibt `apps/web/e2e/m4.spec.ts`, `m3.spec.ts`, `src/m4-kette.test.ts` – diese nicht anfassen)

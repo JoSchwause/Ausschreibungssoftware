@@ -72,6 +72,11 @@ export function NachtragAnlegen({
           </>
         }
       >
+        {auftrag.ozMaske.gliederung.length === 0 && (
+          <p className="nachtrag__hinweis" role="note">
+            {t.maskeOhneGliederung}
+          </p>
+        )}
         <form
           id={formId}
           onSubmit={(e) => {

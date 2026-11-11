@@ -17,7 +17,7 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { nachtragUebernehmen } from './nachtrag-uebernehmen';
+import { nachtragsmaske, nachtragUebernehmen } from './nachtrag-uebernehmen';
 import type { Nachtragsergebnis } from './nachtrag-uebernehmen';
 import {
   MASKE,
@@ -254,7 +254,10 @@ describe('nachtragUebernehmen: OZ außerhalb der Maske (D-80.1, U5)', () => {
     expect(knotenNach(e, 'tief')).toMatchObject({ ordnungszahl: '02.01.01.0010' });
     expect(knotenNach(e, 'ohne')).toMatchObject({ ordnungszahl: null });
     expect(knotenNach(e, 'kurz')).toMatchObject({ ordnungszahl: '02.01.010' });
-    expect(e.warnungen).toEqual([{ code: 'oz-unpassend', knotenIds: ['nu', 'tief', 'ohne', 'kurz'] }]);
+    expect(e.warnungen).toEqual([
+      { code: 'maske-zu-tief', tiefe: 3, stufen: 2 },
+      { code: 'oz-unpassend', knotenIds: ['nu', 'tief', 'ohne', 'kurz'] },
+    ]);
   });
 
   it('ohne freie OZ der obersten Stufe bleibt die neue Gliederung samt Baum ohne OZ', () => {
@@ -268,5 +271,78 @@ describe('nachtragUebernehmen: OZ außerhalb der Maske (D-80.1, U5)', () => {
       null,
     ]);
     expect(e.warnungen).toEqual([{ code: 'oz-unpassend', knotenIds: ['neu', 'np'] }]);
+  });
+});
+
+// D-48 (Review P6): Die Gliederung „Nachtrag <nummer>“ belegt bei der Übernahme die oberste Stufe der Maske des Auftrags-LV.
+// Das Nachtrags-LV bekommt darum die Maske ohne diese Stufe; nutzt es mehr Stufen, als dann frei sind, warnt die Übernahme.
+describe('nachtragUebernehmen: Maske des Nachtrags-LV (D-48)', () => {
+  const MASKE_LOS: OzMaske = { ...MASKE, losStufe: true };
+  const OHNE_GLIEDERUNG: OzMaske = { ...MASKE, gliederung: [] };
+
+  it('nachtragsmaske: die Maske des Auftrags-LV ohne ihre oberste Gliederungsstufe, eine Los-Stufe entfällt mit ihr', () => {
+    expect(nachtragsmaske(MASKE)).toEqual({ ...MASKE, gliederung: [{ laenge: 2, zeichen: 'numerisch' }] });
+    expect(nachtragsmaske(MASKE_LOS)).toEqual({
+      ...MASKE,
+      gliederung: [{ laenge: 2, zeichen: 'numerisch' }],
+    });
+    expect(nachtragsmaske(MASKE_LOS)).not.toHaveProperty('losStufe');
+  });
+
+  it('nachtragsmaske: ohne Gliederungsstufe bleibt die Maske gleich', () => {
+    expect(nachtragsmaske(OHNE_GLIEDERUNG)).toEqual(OHNE_GLIEDERUNG);
+  });
+
+  it('ein Nachtrag, der die verkürzte Maske voll nutzt, passt mit dem Präfix genau in die Maske des Auftrags-LV', () => {
+    const auftrag = auftragsLv('auftrag', [
+      titel('t1', 'auftrag', 0, '01'),
+      titel('t11', 't1', 0, '01.01'),
+      position('a1', 't11', 0, '01.01.0010', '1.000', '10.000'),
+    ]);
+    const nlv = nachtragsLv(
+      'auftrag',
+      [titel('nt', 'nlv', 0, '01'), position('np', 'nt', 0, '01.0010', '1.000')],
+      nachtragsmaske(MASKE),
+    );
+    const e = uebernehmen(auftrag, nlv, [ep('np', '2.000')]);
+    expect(knotenNach(e, 'nt')).toMatchObject({ ordnungszahl: '02.01' });
+    expect(knotenNach(e, 'np')).toMatchObject({ ordnungszahl: '02.01.0010' });
+    expect(e.warnungen).toEqual([]);
+  });
+
+  it('ein Nachtrag mit zwei Titelstufen unter einer Maske mit zwei Stufen: Warnung maske-zu-tief, OZ eine Stufe zu tief', () => {
+    const auftrag = auftragsLv('auftrag', [
+      titel('t1', 'auftrag', 0, '01'),
+      titel('t11', 't1', 0, '01.01'),
+      position('a1', 't11', 0, '01.01.0010', '1.000', '10.000'),
+    ]);
+    const nlv = nachtragsLv('auftrag', [
+      titel('nt', 'nlv', 0, '01'),
+      titel('nu', 'nt', 0, '01.01'),
+      position('np', 'nu', 0, '01.01.0010', '1.000'),
+    ]);
+    const e = uebernehmen(auftrag, nlv, [ep('np', '2.000')]);
+    expect(knotenNach(e, 'np')).toMatchObject({ ordnungszahl: '02.01.01.0010' });
+    expect(e.warnungen).toEqual([
+      { code: 'maske-zu-tief', tiefe: 3, stufen: 2 },
+      { code: 'oz-unpassend', knotenIds: ['nu', 'np'] },
+    ]);
+    const a = auftrag.auftragsLeistungsverzeichnis;
+    expect(baumfehler(a.id, [...a.knoten, ...e.befehl.knoten])).toEqual([]);
+  });
+
+  it('eine Maske ohne Gliederungsstufe: die neue Gliederung selbst passt nicht, Warnung maske-zu-tief (Maskenbefund, U5)', () => {
+    const auftrag = auftragsLv('auftrag', [position('a1', 'auftrag', 0, '0010', '1.000', '10.000')], {
+      maske: OHNE_GLIEDERUNG,
+    });
+    const nlv = nachtragsLv(
+      'auftrag',
+      [position('np', 'nlv', 0, '0010', '1.000')],
+      nachtragsmaske(OHNE_GLIEDERUNG),
+    );
+    const e = uebernehmen(auftrag, nlv, [ep('np', '2.000')]);
+    expect(e.warnungen[0]).toEqual({ code: 'maske-zu-tief', tiefe: 1, stufen: 0 });
+    expect(e.warnungen.at(-1)).toMatchObject({ code: 'oz-unpassend' });
+    expect(e.warnungen.at(-1)).toHaveProperty('knotenIds', expect.arrayContaining(['neu']));
   });
 });

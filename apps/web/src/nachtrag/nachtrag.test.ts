@@ -78,17 +78,21 @@ describe('nachtragAnlegenPlanen', () => {
     mwstSatz: '7.00' as Prozent,
   };
 
-  it('legt ein leeres LV mit Maske und MwSt des Auftrags-LV an und setzt die Nachtragsangaben (angemeldet)', () => {
+  // D-48: Die oberste Stufe belegt bei der Übernahme die Gliederung „Nachtrag <Nummer>“.
+  const ohneOberste = ozMaskeLesen('NN.NNNN[I]');
+  if (!ohneOberste.ok) throw new Error(ohneOberste.fehler);
+
+  it('legt ein leeres LV mit der Maske des Auftrags-LV ohne oberste Stufe und dessen MwSt an, Nachtragsangaben angemeldet', () => {
     const lvs = [uebersicht('n1', { auftragsLvId: A, nummer: 'N01' })];
     const plan = nachtragAnlegenPlanen(auftrag, lvs, '  Kernbohrungen ', appIdQuelle());
     expect(plan.nummer).toBe('N02');
     const [anlegen, setzen] = plan.befehle;
+    expect(anlegen.inhalt.ozMaske).toEqual(ohneOberste.wert);
     expect(anlegen).toMatchObject({
       art: 'LeistungsverzeichnisAnlegen',
       projektId: 'projekt',
       inhalt: {
         name: 'Nachtrag N02 – Kernbohrungen',
-        ozMaske: maske.wert,
         mwstSatz: '7.00',
         nachlass: null,
         knoten: [],
@@ -99,6 +103,13 @@ describe('nachtragAnlegenPlanen', () => {
       art: 'NachtragsangabenSetzen',
       nachtrag: { auftragsLvId: A, nummer: 'N02', status: 'angemeldet' },
     });
+  });
+
+  it('hat die Maske keine Gliederungsstufe, bleibt sie gleich (D-48)', () => {
+    const flach = ozMaskeLesen('NNNN');
+    if (!flach.ok) throw new Error(flach.fehler);
+    const plan = nachtragAnlegenPlanen({ ...auftrag, ozMaske: flach.wert }, [], '', appIdQuelle());
+    expect(plan.befehle[0].inhalt.ozMaske).toEqual(flach.wert);
   });
 
   it('ohne Bezeichnung heißt das LV nur „Nachtrag N01“', () => {
