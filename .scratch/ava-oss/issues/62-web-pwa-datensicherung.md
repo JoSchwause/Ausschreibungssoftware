@@ -1,6 +1,6 @@
 # 62: S4: PWA-Installation, offline, Datensicherung (Export-Erinnerung, Sicherungsordner)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: S4 · Paket: `apps/web` (Ordner `src/sicherung/`, dazu `vite.config.ts`, `index.html`, `public/`; in
 gemeinsamen Dateien wie `App.tsx`, `main.tsx`, `ui/Huelle.tsx` nur je eine markierte Einhängestelle, D-20)
@@ -48,3 +48,19 @@ Herkunft: `plan.md` §2 S4 („PWA-Installation, Offline, Datensicherung. Export
 Synchronisation, Server, Sicherung des OPFS als Datenbankdatei, Wiederherstellen aus dem Ordner (Import gibt es schon).
 
 ## Comments
+
+### D-62.1 Wo liegen Zeitpunkt und „seitdem Befehle“?
+Frage: Wo merkt sich die App den letzten Export, und woher weiß sie, ob es seitdem Befehle gab?
+Entscheidung: Zeitpunkt in `localStorage` je Projekt-ID (`tethys.sicherung.letzterExport.<id>`), Einstellungen unter `tethys.sicherung.einstellungen`. „Seitdem Befehle“ liest die App aus dem Befehlsprotokoll (`speicher.protokoll`, `wann`), das nur geladen wird, wenn die Schwelle überschritten ist. Gab es noch nie einen Export, ist der erste Befehl der Bezugspunkt. Schwelle (7 Tage) und „nach jedem 20. Befehl“ stehen als Konstanten in `src/sicherung/regel.ts`.
+Grund: Keine Änderung an `vertrag`/`speicher`; das Protokoll überlebt Neuladen und ist die einzige dauerhafte Befehlsquelle.
+
+### D-62.2 Befehle zählen für das automatische Sichern
+Frage: `Befehlsweg` kennt nur Hörer für Undo/Redo; wie zählt `sicherung/` Befehle ohne Eingriff in `lv/`?
+Entscheidung: `SicherungsAnbieter` hüllt `u.speicher.anwenden` zur Laufzeit ein (jeder Befehl, auch Undo/Redo, geht dort durch, A5) und stellt es beim Abbau zurück. Ist der Speicher nicht beschreibbar, entfällt nur das Zählen. Beim Verlassen der Seite (`visibilitychange` nach „hidden“, `pagehide`) wird alles Offene gesichert.
+Grund: Hält die Einhängestellen in gemeinsamen Dateien kurz (D-20).
+
+### D-62.3 Sicherungsordner: Grenzen und Test
+Entscheidung: Fehlt die Berechtigung, fragt „Jetzt sichern“ neu (Nutzeraktion) und fällt bei Ablehnung auf den Download zurück; das automatische Sichern fragt nie nach und meldet einmal je Sitzung. Der Ordner-Handle liegt in IndexedDB (`tethys-sicherung`). Der E2E nutzt einen Ordner im OPFS statt des Systemdialogs, eingepackt in ein nicht klonbares Objekt: Das headless Chromium dieses Containers stürzt ab, sobald es einen Dateisystem-Handle aus IndexedDB liest. Das Merken über einen Neustart ist daher nur von Hand prüfbar.
+
+### D-62.4 PWA
+Entscheidung: `vite-plugin-pwa` (MIT) mit `generateSW`, `registerType: 'prompt'`, nur im Build (der E2E läuft gegen `vite preview` und ist damit mit Service Worker getestet). Manifest und Icons (PNG 192/512 aus `icon.svg`, eigene Gestaltung) erzeugt der Build mit `base`. Neue Abhängigkeiten als Dev-Abhängigkeiten: `vite-plugin-pwa`, `workbox-build`, `workbox-window` (Peers des Plugins). „Neue Version verfügbar“ ist ein eigenes Banner mit „Neu laden“, weil der Toast aus `ui-basis` keine Schaltfläche trägt.

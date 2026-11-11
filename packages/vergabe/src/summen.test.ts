@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Bietersummen (Ticket 36, Punkt 2): Golden-Beispiel aus dem Ticket und Sollwerte von `fixtures/typisch-angebote.json`.
+// Bietersummen (Ticket 36, Punkt 2): Golden-Beispiel aus dem Ticket und Sollwerte von `fixtures/typisch-angebote.json`
+// (seit Ticket 51 mit Zuschlagssatz des Bieters an 02.0050 A).
 
 import { describe, expect, it } from 'vitest';
-import { angebotSummenBerechnen } from './index';
+import type { PositionId } from '@tethys/vertrag';
+import { angebotSummenBerechnen, angebotZuschlaegeBerechnen } from './index';
 import {
   angebot,
   angebotAusFixture,
@@ -132,6 +134,19 @@ describe('Bietersummen von fixtures/typisch-angebote.json', () => {
       }).toEqual(fx.sollwerte.summen);
       const nichtAngebotenIds = s.positionen.filter((p) => p.gesamtpreis === null).map((p) => p.positionId);
       expect(nichtAngebotenIds.sort()).toEqual([...fx.sollwerte.nichtAngeboten].sort());
+      // Ticket 51: Fixture-Format, mechanisch. Bedarfs- und Wahlsumme je Titel und gesamt, Zuschlag mit dem Satz des
+      // Bieters (Basis und Betrag wie in der Datei, unabhängig in `fixtures/rechnen.mjs` gerechnet).
+      expect(s.gesamt).toMatchObject(fx.sollwerte.ausweise.gesamt);
+      for (const g of s.gliederungen) {
+        expect(g).toMatchObject(fx.sollwerte.ausweise.titel[g.gliederungId] ?? {});
+      }
+      const zuschlaege = angebotZuschlaegeBerechnen(zustand, angebotAusFixture(fx, zustand));
+      expect(Object.keys(fx.sollwerte.zuschlaege)).toHaveLength(1);
+      for (const [id, soll] of Object.entries(fx.sollwerte.zuschlaege)) {
+        const ist = zuschlaege.get(id as PositionId);
+        expect({ basis: ist?.basis, betrag: ist?.betrag }).toEqual(soll);
+        expect(ist?.satz).toBe(fx.positionen.find((p) => p.positionId === id)?.zuschlagssatz);
+      }
     });
   }
 });

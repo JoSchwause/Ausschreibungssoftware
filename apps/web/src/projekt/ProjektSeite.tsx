@@ -18,6 +18,7 @@ import { texte as lvTexte } from '../lv/texte';
 import { useMeldungen } from '../lv/meldungen';
 import { STANDARD_MASKE_TEXT, ozMaskeLesen } from '../lv/ozmaske';
 import { formatiereBetragDe, formatiereProzentDe, zahlLesen } from '../lv/zahlen';
+import { useSicherung } from '../sicherung/SicherungsAnbieter'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { STANDARD_MWST, lvAnlegenBefehl } from './befehle';
@@ -113,6 +114,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   // Undo/Redo kann Projekt und LVs ändern (auch löschen oder zurückholen): neu laden.
   useEffect(() => befehlswegFuer(u).beiHistorie(() => void laden()), [u, laden]);
   const { zeige } = useToast();
+  const sicherung = useSicherung(); // Ticket 62
   const weg = befehlswegFuer(u);
   // --- Löschen (Ticket 48, Punkt 5) ------------------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState<{ art: 'projekt' } | { art: 'lv'; lv: LvZustand } | null>(null);
@@ -225,6 +227,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
       return;
     }
     herunterladen(dateiname(projekt.name), r.wert);
+    sicherung.exportVermerken(projekt.id); // Ticket 62
   };
 
   const meldung = (feld: 'name' | 'maske' | 'mwst') =>

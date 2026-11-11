@@ -21,7 +21,7 @@ Zuschlag erzeugt das Auftrags-LV.
 | 69 | F | X84-Dateien der Angebote zu `typisch` | `fixtures/` | 51 | 2 | opus |
 | 56 | K | Kern v1.3: Mengenansatz, Einfügen hinter einer Gliederung, leere Langtext-Strukturen | `packages/kern` | 53, 51 | 2 | opus |
 | 57 | S | Speicher v1.3: Migration 4, LV-Übersicht | `packages/speicher` | 53, 52 | 2 | opus |
-| 59 | V4 | Zuschlag → Auftrags-LV (Rechnung) | `packages/vergabe` | 53, 51 | 2 | opus |
+| 59 | V4 | Zuschlag → Auftrags-LV (Rechnung) | `packages/vergabe` | 53, 51 (57 für die App) | 2 | opus |
 | 60 | U2 | `ui-grid`: Vergleichsgrid (schreibgeschützt, freie Spalten) für den Preisspiegel | `packages/ui-grid` | 54a | 2 | opus |
 | 61 | O2 | Excel-Export und -Import (LV für Bieter, Rücklauf als Angebot) | `packages/ausgabe` | 58 | 2 | opus |
 | 68 | G | `gaeb` v1.3: Auftragnehmer in X86, EPA-Bezeichnungen, Import der X84 aus 69 | `packages/gaeb` | 53, 51, 57, 69 | 3 | opus |

@@ -1,6 +1,6 @@
 # 55: C1: Kostengliederung (nur Nummern) und Kostenermittlung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: C1 · Paket: `packages/kosten` (neu; dazu der Eintrag in `tools/boundaries.mjs`, Workspace-Konfiguration)
 Blocked by: –
@@ -51,3 +51,32 @@ Begriffe „Kostengruppe“, „Kostenermittlung“, „Kostengliederung“ zuer
 Speicherung, Oberfläche, Zuordnung LV ↔ Kostengruppe (C2), Kostenkontrolle (C3), Ausgaben der Norm (Edition 2008/2018).
 
 ## Comments
+
+- **D-55.1** Wie streng ist `kgLesen`? → Leerraum am Rand wird entfernt, sonst genau drei ASCII-Ziffern, erste Ziffer
+  1–9. Codes `nummer-leer`, `nummer-form`, `nummer-null`. Grund: CSV-Zellen und Eingaben tragen oft Leerzeichen; alles
+  andere (Präfix „KG“, Vollbreitenziffern, `099`) ist keine Nummer der Form `100`–`999`.
+- **D-55.2** Wohin gehört `X0Z` (Z ≠ 0)? → Ebene 3 mit Elternteil `X00` (die Ticketregel `XYZ` → `XY0` mit Y = 0). Es
+  gibt keine Zwischengruppe. Grund: Hierarchie nur aus den Ziffern (D-24), keine erfundene Ebene.
+- **D-55.3** Was passiert mit einem Betrag, der nicht kanonisch ist? → Ist er eine Dezimalzahl in Punktnotation mit
+  anderer Skala (`12.345`, `7.5`), wird er kaufmännisch auf 2 Stellen gebracht (negative nach E-07) und zählt, mit Befund
+  `betrag-nicht-kanonisch`. Ist er keine Dezimalzahl (`1,00`), zählt der Eintrag nicht, Befund `betrag-ungueltig`.
+  Ungültige Nummer: Eintrag zählt nicht, Befund `nummer-ungueltig`. Grund: nie still runden (Ticket), nie sperren (U5);
+  was sich nicht lesen lässt, kann nicht summiert werden.
+- **D-55.4** Doppelte Nummer in der Ermittlung? → Beträge werden addiert (eigener Betrag = Summe aller Einträge der
+  Nummer), Befund `nummer-doppelt` an jedem weiteren gezählten Eintrag. Grund: kein Betrag geht verloren; Gesamtsumme =
+  Summe aller Einträge bleibt wahr.
+- **D-55.5** „Eigener Betrag zugleich mit Kinderbeträgen“ über welche Tiefe? → Über den ganzen Teilbaum: Befund
+  `eigener-betrag-und-kinder` (ohne Eintragsindex) an jeder Gruppe mit eigenem Eintrag, unter der ein weiterer Eintrag
+  liegt. Beides wird summiert. Gruppen, die nur als Vorfahre vorkommen, haben `eigenerBetrag: null` (nicht `0.00`), damit
+  „nicht erfasst“ und „0,00 erfasst“ unterscheidbar bleiben.
+- **D-55.6** CSV-Details? → Trenner: der erste `;` oder `,` außerhalb von Anführungszeichen in der ersten Zeile mit Inhalt,
+  sonst `;`. Kopfzeile: die erste nicht leere Zeile, wenn ihre erste Zelle keine Ziffer enthält. Leere Zeilen und Zeilen
+  nur aus Trennern werden übergangen; Spalten ab der dritten ignoriert; Nummer und Bezeichnung ohne Leerraum am Rand,
+  Zeilenumbrüche in Bezeichnungen bleiben. Doppelte Nummer: die erste gilt, Befund an den weiteren. Offenes
+  Anführungszeichen bis Textende: Befund `anfuehrungszeichen-offen`, der Datensatz wird nicht übernommen. Zeichen nach
+  einem schließenden Anführungszeichen werden angehängt (nachsichtig statt Fehler). Befundzeile = physische Zeile, in der
+  der Datensatz beginnt. Grund: deutsche Excel-Exporte nutzen `;`, andere `,`; nachsichtig lesen, aber jede verworfene
+  Zeile melden.
+- **D-55.7** Grenze von `kosten`? → In `tools/boundaries.mjs` von `FACH` (mit `kern`) auf `vertrag`, `dezimal` verengt, wie
+  im Ticket; ein Test in `tools/boundaries.test.mjs` hält das fest. Die Lockfile-Änderung enthält nur den neuen Importer
+  (die lokale pnpm-Version hätte sonst `libc`-Felder anderer Pakete umgeschrieben).

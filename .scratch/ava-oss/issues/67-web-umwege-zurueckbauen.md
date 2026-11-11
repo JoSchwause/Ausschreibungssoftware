@@ -1,6 +1,6 @@
 # 67: Umwege aus Welle 3 in der App zurückbauen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: U · Paket: `apps/web` (Ordner `src/lv/`, `src/historie/`; D-20)
 Blocked by: 54 (beide Teile)
@@ -36,3 +36,19 @@ durch die neuen Eigenschaften ersetzt (die Comments von 39, 46, 47, 48 und 54 ne
 Neue Funktionen.
 
 ## Comments
+
+### Umsetzung (Welle 4)
+
+Tests: `apps/web/e2e/umwege.spec.ts` (Punkte 1, 2, 4, 5), `apps/web/e2e/undo.spec.ts` (Punkt 3, angepasst), `apps/web/src/lv/ansicht.test.ts` (`positionenImTeilbaum`), `packages/ui-basis/src/Button.test.ts` (`ref`).
+
+Entfernter Umweg-Code:
+
+- `LvSeite.tsx`: `onKeyDownCapture` (Strg+Enter vor dem Grid abgefangen), `onDoubleClick` samt Menge `OHNE_EINGABE`, Hilfsfunktion `gridZeile` (DOM-Suche nach `data-i`/`data-spalte`), die Ableitung der aktiven Zeile aus `onAuswahlChange` (letzte Auswahl). Ersatz: `onAktiveZeileChange`, `onZeileOeffnen`.
+- `LvStandSeite.tsx`: die Rückrufe `onBefehl`/`onBefehlsfolge`/`onKopieEinfuegen`, die nur „Stand ist schreibgeschützt“ meldeten, samt `useToast`/`ids`. Ersatz: `schreibgeschuetzt`. Texte `schreibgeschuetzt` und `schreibgeschuetztText` in `historie/texte.ts` gelöscht (das Kennzeichen „schreibgeschützt“ bleibt).
+- Löschdialog: „mindestens“ bei zugeklappten Titeln entfällt in der App durch `positionenZaehlen` (`positionenImTeilbaum` in `lv/ansicht.ts`).
+
+Entscheidungen:
+
+- **D-67.1 Dialoge mit Enter-Bestätigung.** Frage: Wo gab es in der App Tastenhandler-Umwege für Enter? Entscheidung: In der App keine; ihre Dialoge sind Formulare (Enter im Feld übernimmt). Der Tastenhandler lebt im Löschdialog von `ui-grid` und bleibt (D-26). Als Anwendung des Anfangsfokus startet der Dialog „Merkmale“ auf „Übernehmen“ (Enter bestätigt sofort; vorher lag der Fokus auf dem Schließen-Kreuz). Die übrigen Dialoge (Positionen, LV-Angaben, Stände, Projekt) bleiben, dort ist der erste Fokus ein Eingabefeld besser. `Button` nimmt `ref` an (`ComponentPropsWithRef<'button'>`, React 19). Reversible: yes.
+- **D-67.2 Zeile öffnen auf einer Gliederung.** Frage: Das Grid meldet jede Zeilenart, was tut die App? Entscheidung: Positionen öffnen den Dialog; bei Gliederungen und Hinweisen erscheint die Meldung „Merkmale gibt es nur an Positionen“ (wie bisher bei Strg+Enter; neu auch beim Doppelklick auf OZ/Art/GP einer Gliederung, wo vorher nichts geschah). Reversible: yes.
+- **D-67.3 Aktive Zeile.** Das Grid meldet die aktive Zeile schon beim Rendern (erste Zeile); „Titel/Position anlegen“ per Knopf ohne Klick geht damit hinter die erste Zeile statt ans LV-Ende (Verhalten besser, Test Punkt 1).

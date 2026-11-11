@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Messung des Spikes (Ticket 28): Dauer und Dateigröße für `fixtures/gross.json` (5.000 Positionen) für beide Wege,
+// Messung (Tickets 28 und 58): Dauer und Dateigröße des LV-Drucks für `fixtures/gross.json` (5.000 Positionen),
 // im Browser (Chromium) und unter Node. Lauf: `pnpm --dir packages/ausgabe messen`. Schreibt `messung/ergebnis.json`.
-// Weg B misst `page.pdf()` als Ersatz für den Druckdialog (derselbe Druckpfad von Chromium, ohne Dialog).
+// Der Browserdruck (Weg B des Spikes) ist mit ADR 0012 entfallen.
 
 import { writeFileSync } from 'node:fs';
 import { cpus, loadavg, totalmem } from 'node:os';
@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest';
 import { formatiereBetragDe } from '@tethys/dezimal';
 import type { Betrag } from '@tethys/vertrag';
 import { baueAusgabemodell, erzeugePdf } from '../src/index';
-import { erzeugeDruckHtml } from '../src/druck';
 import { liesPdf, alsText } from '../src/pdftext';
 import { schriftenAusDateien } from '../src/schriften-node';
 import { lvZustandAusFixture } from '../src/testhilfen';
@@ -96,7 +95,7 @@ async function verwaisteTitel(pdf: Uint8Array, titel: Set<string>) {
 }
 
 describe('Messung gross', () => {
-  it('misst beide Wege', async () => {
+  it('misst den LV-Druck', async () => {
     const { fx, zustand } = lvZustandAusFixture('gross');
     const schriften = schriftenAusDateien();
     const modell = baueAusgabemodell(zustand);
@@ -131,7 +130,7 @@ describe('Messung gross', () => {
       nodeMs.push(performance.now() - t0);
     }
     const aNode = await verwaisteTitel(nodePdf, titel);
-    ergebnis['wegA_pdfmake_node'] = {
+    ergebnis['pdfmake_node'] = {
       ...stat(nodeMs),
       bytes: nodePdf.length,
       seiten: aNode.seiten,
@@ -150,7 +149,6 @@ describe('Messung gross', () => {
       ergebnis['chromium'] = browser.version();
       const seiteA = await browser.newPage();
       const code = await buendel(fileURLToPath(new URL('./seite-pdfmake.ts', import.meta.url)));
-      const codeDruck = await buendel(fileURLToPath(new URL('./seite-druck.ts', import.meta.url)));
       await seiteA.addScriptTag({ content: code });
       const argumente = [zustand, b64(schriften.normal), b64(schriften.fett)] as const;
       type Messung = { ms: number; bytes: number };
@@ -182,7 +180,7 @@ describe('Messung gross', () => {
         argumente,
       );
       const aBrowser = await verwaisteTitel(new Uint8Array(Buffer.from(browserB64, 'base64')), titel);
-      ergebnis['wegA_pdfmake_chromium'] = {
+      ergebnis['pdfmake_chromium'] = {
         ...stat(browserMs),
         bytes: browserBytes,
         seiten: aBrowser.seiten,
@@ -191,50 +189,8 @@ describe('Messung gross', () => {
       for (const w of sollSummen) expect(aBrowser.text).toContain(w);
       await seiteA.close();
 
-      // --- Weg B im Browser: HTML bauen (Node), laden, page.pdf() ---
-      const htmlMs: number[] = [];
-      let html = '';
-      for (let i = 0; i < LAEUFE; i++) {
-        const t0 = performance.now();
-        html = erzeugeDruckHtml(zustand, schriften);
-        htmlMs.push(performance.now() - t0);
-      }
-      const seiteB = await browser.newPage();
-      const wegB: Record<string, unknown> = {
-        htmlErzeugen: stat(htmlMs),
-        htmlBytes: Buffer.byteLength(html),
-      };
-      for (const tagged of [true, false]) {
-        const druckeMs: number[] = [];
-        let bPdf: Uint8Array = new Uint8Array();
-        for (let i = -1; i < LAEUFE; i++) {
-          const t0 = performance.now();
-          await seiteB.setContent(html, { waitUntil: 'load' });
-          await seiteB.evaluate(() => document.fonts.ready.then(() => true));
-          bPdf = new Uint8Array(await seiteB.pdf({ preferCSSPageSize: true, tagged }));
-          if (i >= 0) druckeMs.push(performance.now() - t0);
-        }
-        const b = await verwaisteTitel(bPdf, titel);
-        wegB[tagged ? 'mitTags' : 'ohneTags'] = {
-          setContentPlusPdf: stat(druckeMs),
-          bytes: bPdf.length,
-          seiten: b.seiten,
-          verwaisteTitelSeiten: b.verwaist,
-          letzteSeitenzahl: b.letzteSeitenzahl,
-          schriftEingebettet: schriftEingebettet(bPdf),
-          strukturElemente: tagged ? await strukturElemente(bPdf) : undefined,
-        };
-        for (const w of sollSummen) expect(b.text).toContain(w);
-      }
-      ergebnis['wegB_browserdruck_chromium'] = wegB;
-      await seiteB.close();
-
       ergebnis['buendel'] = {
-        wegA_pdfmake_minifiziert: { bytes: Buffer.byteLength(code), gzipBytes: gzipSync(code).length },
-        wegB_html_erzeugung_minifiziert: {
-          bytes: Buffer.byteLength(codeDruck),
-          gzipBytes: gzipSync(codeDruck).length,
-        },
+        pdfmake_minifiziert: { bytes: Buffer.byteLength(code), gzipBytes: gzipSync(code).length },
         schriftdateien: { normal: schriften.normal.length, fett: schriften.fett.length },
       };
     } finally {
