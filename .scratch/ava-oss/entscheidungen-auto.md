@@ -449,3 +449,10 @@ Question: D-36 (6) nimmt `vorlage?` und `textquelle?` „nur als Typ“; ohne Be
 Decision: Zwei kleine LvBefehle `VorlageSetzen { vorlage }` und `TextquelleSetzen { positionId, textquelle | null }` in v1.4, Handler im Kern (Ticket 71). Kein Typ für Textbausteine (D-36 bleibt).
 Reason: Ein Feld ohne Befehl wäre nur über Import erreichbar; die Handler sind Feldbefehle wie `KurztextAendern`.
 Reversible: yes  Touches: packages/vertrag, packages/kern
+
+## D-41 D-73.3 angenommen: Alternative ohne Nummern tritt der Gruppe ihrer Grundposition bei
+Welle 5 · Ticket 73 · decided by: orchestrator
+Question: Der Umsetzer von 73 lässt eine Alternative ohne Gruppe/Variante, deren Grundposition schon Variante 0 einer Gruppe ist, dieser Gruppe beitreten, statt eine neue Gruppe ohne Grundposition zu eröffnen; das geht über D-16 hinaus.
+Decision: Angenommen. Die Grundposition wird beim Export als Variante 0 geschrieben (D-73.1, mit Warnung), die Alternative folgt ihr.
+Reason: Betrifft nur die Vergabe künstlicher Nummern im Writer; der Bezug `grundpositionId` bleibt erhalten, Summen ändern sich nicht; umkehrbar und auf `gaeb` begrenzt.
+Reversible: yes  Touches: packages/gaeb
