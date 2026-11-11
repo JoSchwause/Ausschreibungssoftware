@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
+import { Verweis } from '../ui/Verweis';
 import { auftragsLvsLaden } from './auftrag';
 import { texte } from './texte';
 import { auftragPfad } from './ziel';
@@ -56,16 +56,7 @@ export function AuftragsLvListe({
             const name = t.eintrag(a.name, a.auftragnehmer?.name ?? '–');
             return (
               <li key={a.id}>
-                <a
-                  href={hrefFuer(pfad)}
-                  onClick={(e) => {
-                    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-                    e.preventDefault();
-                    gehe(pfad);
-                  }}
-                >
-                  {name}
-                </a>
+                <Verweis pfad={pfad} text={name} gehe={gehe} />
                 <span className="projekt__betrag" aria-label={`${t.netto} ${name}`}>
                   {formatiereBetragDe(z.summen.gesamt.nettoNachNachlass)} €
                 </span>

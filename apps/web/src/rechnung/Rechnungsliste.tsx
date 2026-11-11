@@ -10,7 +10,7 @@ import { formatiereBetragDe } from '../lv/zahlen';
 import { rechnungPfad } from './pfad';
 import { gepruefterZahlbetrag } from './pruefung';
 import type { Rechnungsstand } from './rechnungen';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import { texte } from './texte';
 
 const t = texte.liste;

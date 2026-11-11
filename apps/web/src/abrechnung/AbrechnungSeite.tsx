@@ -11,7 +11,7 @@ import { abrechnungLaden, type Abrechnungsstand } from './aufmass';
 import { BlattListe } from './BlattListe';
 import { BlattSeite } from './BlattSeite';
 import { SollIstSeite } from './SollIstSeite';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import type { Abrechnungsseite } from './pfad';
 import { texte } from './texte';
 import '@tethys/ui-grid/grid.css';

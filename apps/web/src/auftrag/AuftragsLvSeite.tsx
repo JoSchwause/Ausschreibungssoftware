@@ -33,7 +33,7 @@ import { texte as rechnungTexte } from '../rechnung/texte'; // Ticket 88
 import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './auftrag.css';

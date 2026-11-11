@@ -8,7 +8,7 @@ import { Button } from '@tethys/ui-basis';
 import type { AuftragsLvZustand } from '@tethys/vertrag';
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Verweis } from '../auftrag/Verweis';
+import { Verweis } from '../ui/Verweis';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { formatiereBetragDe } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';

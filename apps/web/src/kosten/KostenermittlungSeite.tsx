@@ -25,7 +25,7 @@ import { eintragEntfernenBefehl, eintragSetzenBefehl, kopfBefehl, type Feld } fr
 import { kontrollePfad, kostenPfad } from './pfad';
 import { kostenermittlungSitzung } from './schreiben';
 import { STUFEN, texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './kosten.css';

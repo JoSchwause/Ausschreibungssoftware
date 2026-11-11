@@ -16,7 +16,7 @@ import { kostenermittlungAnlegenBefehl } from './befehle';
 import { kontrollePfad, kostenermittlungPfad } from './pfad';
 import { kostenermittlungSitzung, kostenermittlungenLaden } from './schreiben';
 import { STUFEN, texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import '../lv/lv.css';
 import './kosten.css';
 
@@ -101,7 +101,12 @@ export function KostenListeSeite({
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
-        <Verweis pfad={kontrollePfad(projekt.id)} text={texte.seite.zurKontrolle} gehe={gehe} knopf />
+        <Verweis
+          pfad={kontrollePfad(projekt.id)}
+          text={texte.seite.zurKontrolle}
+          gehe={gehe}
+          className="tx-button tx-button--schlicht"
+        />
       </div>
       {ermittlungen.length === 0 ? (
         <p>{texte.seite.leer}</p>

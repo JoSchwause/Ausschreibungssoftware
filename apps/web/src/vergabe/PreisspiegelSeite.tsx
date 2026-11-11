@@ -24,7 +24,7 @@ import { ZuschlagserteilungDialog } from '../auftrag/ZuschlagserteilungDialog';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
+import { Verweis } from '../ui/Verweis';
 import {
   STANDARD_WAHL,
   preisspiegelAnsicht,
@@ -181,15 +181,7 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
         <h1>
           {texte.seite.titel} – {kopf.name}
         </h1>
-        <a
-          href={hrefFuer(lvPfad)}
-          onClick={(e) => {
-            e.preventDefault();
-            gehe(lvPfad);
-          }}
-        >
-          {texte.seite.zumLv}
-        </a>
+        <Verweis pfad={lvPfad} text={texte.seite.zumLv} gehe={gehe} />
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
@@ -227,16 +219,11 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
               {auftrag === null ? null : (
                 <p id={vergebenId} className="auftrag__vergeben">
                   {atexte.knopf.vergeben(auftrag.auftragsLeistungsverzeichnis.auftragnehmer?.name ?? '–')}{' '}
-                  <a
-                    href={hrefFuer(auftragPfad(projekt.id, auftrag.auftragsLeistungsverzeichnis.id))}
-                    onClick={(e) => {
-                      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-                      e.preventDefault();
-                      gehe(auftragPfad(projekt.id, auftrag.auftragsLeistungsverzeichnis.id));
-                    }}
-                  >
-                    {atexte.knopf.oeffnen}
-                  </a>
+                  <Verweis
+                    pfad={auftragPfad(projekt.id, auftrag.auftragsLeistungsverzeichnis.id)}
+                    text={atexte.knopf.oeffnen}
+                    gehe={gehe}
+                  />
                 </p>
               )}
               <Bieteruebersicht

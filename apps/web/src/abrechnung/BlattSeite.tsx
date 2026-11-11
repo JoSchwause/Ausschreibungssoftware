@@ -26,7 +26,7 @@ import { blattAnsicht, kumuliertBisHier, zeilenBefehl, zeilenZiel } from './blat
 import { KopfDialog } from './KopfDialog';
 import { aufmassPfad, sollIstPfad } from './pfad';
 import { texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 import { X31Ausgeben } from './X31Ausgeben';
 
 const t = texte.blatt;

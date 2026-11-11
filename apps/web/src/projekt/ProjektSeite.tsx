@@ -26,7 +26,7 @@ import { STANDARD_MASKE_TEXT, ozMaskeLesen } from '../lv/ozmaske';
 import { formatiereProzentDe, zahlLesen } from '../lv/zahlen';
 import { useSicherung } from '../sicherung/SicherungsAnbieter'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
+import { Verweis } from '../ui/Verweis';
 import { STANDARD_MWST, lvAnlegenBefehl } from './befehle';
 import { LvNetto, useLvNetto } from './LvNetto';
 import { texte } from './texte';
@@ -152,15 +152,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     return (
       <div className="seite projekt">
         <h1>{texte.projekt.nichtGefunden}</h1>
-        <a
-          href={hrefFuer('/')}
-          onClick={(e) => {
-            e.preventDefault();
-            gehe('/');
-          }}
-        >
-          {texte.projekt.zurueck}
-        </a>
+        <Verweis pfad="/" text={texte.projekt.zurueck} gehe={gehe} />
       </div>
     );
   }
@@ -274,28 +266,19 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         </Button>
         <Button onClick={() => void exportieren()}>{texte.projekt.exportieren}</Button>
         {/* Ticket 89 */}
-        <a
+        <Verweis
+          pfad={kostenPfad(projekt.id)}
+          text={kostenTexte.projekt.kosten}
+          gehe={gehe}
           className="tx-button tx-button--schlicht"
-          href={hrefFuer(kostenPfad(projekt.id))}
-          onClick={(e) => {
-            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-            e.preventDefault();
-            gehe(kostenPfad(projekt.id));
-          }}
-        >
-          {kostenTexte.projekt.kosten}
-        </a>
+        />
         <GaebEinlesen projekt={projekt} onAngelegt={() => void laden()} />
-        <a
+        <Verweis
+          pfad="/"
+          text={texte.projekt.zurueck}
+          gehe={gehe}
           className="tx-button tx-button--schlicht"
-          href={hrefFuer('/')}
-          onClick={(e) => {
-            e.preventDefault();
-            gehe('/');
-          }}
-        >
-          {texte.projekt.zurueck}
-        </a>
+        />
       </div>
       <h2>{texte.lvs.titel}</h2>
       {lvs.length === 0 ? (
@@ -304,15 +287,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <ul className="projekt__liste" aria-label={texte.lvs.tabelle}>
           {lvs.map((lv) => (
             <li key={lv.id}>
-              <a
-                href={hrefFuer(lvPfad(lv.id))}
-                onClick={(e) => {
-                  e.preventDefault();
-                  gehe(lvPfad(lv.id));
-                }}
-              >
-                {lv.name}
-              </a>
+              <Verweis pfad={lvPfad(lv.id)} text={lv.name} gehe={gehe} />
               <NachtragKennzeichen nachtrag={lv.nachtrag} /> {/* Ticket 86 */}
               {/* Ticket 90: Kennzeichen Muster-LV */}
               {lv.vorlage === true ? (

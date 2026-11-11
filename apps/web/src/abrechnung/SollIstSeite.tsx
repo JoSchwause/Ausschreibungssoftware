@@ -18,7 +18,7 @@ import type { Abrechnungsstand } from './aufmass';
 import { aufmassPfad } from './pfad';
 import { STANDARD_OBERSCHWELLE, STANDARD_UNTERSCHWELLE, sollIstAnsicht, sollIstRechnen } from './sollist';
 import { texte } from './texte';
-import { Verweis } from './Verweis';
+import { Verweis } from '../ui/Verweis';
 
 const t = texte.sollIst;
 
