@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@tethys/abrechnung':
+        specifier: workspace:*
+        version: link:../../packages/abrechnung
       '@tethys/ausgabe':
         specifier: workspace:*
         version: link:../../packages/ausgabe

@@ -24,7 +24,7 @@ import { gridZahlen } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { preisspiegelPfad } from '../vergabe/pfad';
-import { alsLvZustand, auftragsLvsLaden } from './auftrag';
+import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
 import '@tethys/ui-grid/grid.css';
@@ -57,9 +57,9 @@ export function AuftragsLvSeite({
   useEffect(() => {
     let aktiv = true;
     void (async (): Promise<Laden> => {
-      const r = await auftragsLvsLaden(u.speicher, projektId);
-      const auftrag = r.ok ? r.wert.find((a) => a.auftragsLeistungsverzeichnis.id === id) : undefined;
-      if (auftrag === undefined) return { art: 'fehlt' };
+      const r = await u.speicher.auftragsLeistungsverzeichnisse.laden(id);
+      if (!r.ok) return { art: 'fehlt' };
+      const auftrag = r.wert;
       const kopf = auftrag.auftragsLeistungsverzeichnis;
       const [lv, p, a] = await Promise.all([
         u.speicher.leistungsverzeichnisse.laden(kopf.leistungsverzeichnisId),
