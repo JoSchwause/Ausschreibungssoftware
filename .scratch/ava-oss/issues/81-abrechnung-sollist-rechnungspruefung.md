@@ -46,4 +46,11 @@ Herkunft: `plan.md` §2 A2, A3; G-27 (Annahme D-34)
       Schlussrechnung − Umlagen − Gewährleistungseinbehalt; Reihenfolge der Aufmaßblätter ändert nichts
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Befund, wenn die Freigabe-Invariante verletzt ist (freigegebene Rechnung mit größerer Nummer als eine offene).
+- `gefordert` ist `{ netto | null, brutto | null, zahlbetrag | null } | null` (D-44): Differenz nur, wo ein Wert da ist,
+  bevorzugt Zahlbetrag; kein Befund für fehlende Forderungen.
+- Zuschlagsposition: round(Satz × Σ gp / 100, 2); `prozentsatz: null` → gp 0.00 mit Befund (wie EP `null`).
+
 ## Comments

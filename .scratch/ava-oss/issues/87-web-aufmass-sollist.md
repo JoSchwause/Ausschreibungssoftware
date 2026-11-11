@@ -33,4 +33,11 @@ Herkunft: `plan.md` §2 A2, M3
 - [ ] Unit-Tests der Logik, E2E `aufmass.spec.ts` grün; `mengen.spec.ts` bleibt grün
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Die App muss `aufmass`-ChangeSets umkehren: `Teil.changeSet` (`apps/web/src/historie/historie.ts`), `umkehren`
+  (`apps/web/src/lv/befehlsweg.ts`) und das Sprungziel in `apps/web/src/historie/HistorieAnbieter.tsx` um `aufmass`
+  erweitern (mit `aufmassChangeSetUmkehren` aus `abrechnung`); Einhängestelle markiert `// Ticket 87`.
+- D-45: Zeit und Speicher je Undo-Schritt an einem Aufmaßblatt mit 5.000 Zeilen messen und im Ticket nennen (Q4).
+
 ## Comments

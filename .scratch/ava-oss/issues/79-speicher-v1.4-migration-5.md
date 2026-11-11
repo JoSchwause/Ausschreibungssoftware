@@ -41,4 +41,12 @@ Herkunft: `vertrag` v1.4 (Ticket 70, Comments „Folgearbeit Speicher“); D-64.
 - [ ] E2E des Pakets (`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/speicher e2e`) grün
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Freigabe-Invariante (Review-Befund 1): `konflikt` auf jedes `RechnungChangeSet` mit `vorher: null`, wenn dasselbe
+  Auftrags-LV eine freigegebene Rechnung mit größerer Nummer hat (Lesart in v1.4); Test „AR 2 löschen, AR 3 freigeben, AR 2
+  neu anlegen“ → `konflikt`.
+- `LvUebersicht.nachtrag?`/`vorlage?` aus dem Kopf füllen (D-43); Test: Übersicht = Kopf nach `NachtragsangabenSetzen` /
+  `VorlageSetzen` und nach deren Undo.
+
 ## Comments
