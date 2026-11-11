@@ -4,6 +4,7 @@
 
 import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
 import type {
+  Ansatzzeile,
   Befehlsfehler,
   Knoten,
   Leistungsverzeichnis,
@@ -45,7 +46,8 @@ export function unerlaubtesFeld(
  *  2. Zuschlagsposition mit `zuschlagskennzeichen` (`merkmale.zuschlagskennzeichen`): sie ist nie Basis;
  *  3. Bezugsliste nennt eine Zuschlagsposition (`zuschlag.bezug.positionen`; D-03: nie Basis einer anderen);
  *  4. `wahl.variante` nicht ganzzahlig 0 bis 9 oder `wahl.gruppe` negativ oder nicht ganzzahlig (`merkmale.wahl`);
- *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`).
+ *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`);
+ *  6. Mengenansatz in falscher Form (`mengenansatz`, `mengenansatzFehler`; Ticket 56).
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -63,6 +65,10 @@ export function positionsdatenFehler(
   if (daten.einheitspreis !== null) {
     const e = alsEinheitspreis(daten.einheitspreis);
     if (!e.ok) return feld('einheitspreis', e.fehler.meldung);
+  }
+  if (daten.mengenansatz !== undefined) {
+    const m = mengenansatzFehler(daten.mengenansatz);
+    if (m !== null) return feld('mengenansatz', m);
   }
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
@@ -146,6 +152,27 @@ export function positionsdatenFehler(
           `Bezugsposition ist selbst eine Zuschlagsposition: ${b.positionId}`,
         );
     }
+  }
+  return null;
+}
+
+/**
+ * Form eines Mengenansatzes (Ticket 56, D-22): eine Liste von Ansatzzeilen mit ganzzahliger Zeilen- und Formelnummer,
+ * Ausdruck als Zeichenkette und Variablenname als Zeichenkette oder `null`. Der Kern wertet den Ansatz nie aus (A3: kein
+ * `kern → mengen`); doppelte Zeilennummern, unbekannte Formeln und Fehler im Ausdruck meldet `mengen`, nicht der Kern.
+ * Liefert einen Fehlertext oder `null`.
+ */
+export function mengenansatzFehler(ansatz: unknown): string | null {
+  if (!Array.isArray(ansatz)) return 'Der Mengenansatz muss eine Liste von Ansatzzeilen sein.';
+  for (const roh of ansatz as readonly unknown[]) {
+    if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
+      return 'Eine Ansatzzeile muss ein Objekt sein.';
+    const z = roh as Partial<Record<keyof Ansatzzeile, unknown>>;
+    if (!Number.isSafeInteger(z.zeile)) return 'Die Zeilennummer einer Ansatzzeile ist ganzzahlig.';
+    if (!Number.isSafeInteger(z.formel)) return 'Die Formelnummer einer Ansatzzeile ist ganzzahlig.';
+    if (typeof z.ausdruck !== 'string') return 'Der Ausdruck einer Ansatzzeile ist eine Zeichenkette.';
+    if (z.variable !== null && typeof z.variable !== 'string')
+      return 'Der Variablenname einer Ansatzzeile ist eine Zeichenkette oder null.';
   }
   return null;
 }

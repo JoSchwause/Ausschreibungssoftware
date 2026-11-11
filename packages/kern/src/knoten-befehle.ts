@@ -31,7 +31,7 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { handOzFehler } from './oz-befehle';
 import { hinterGliederungOffen, nein, ok } from './fehler'; // v1.3: mechanisch angepasst, Folgeticket (Ticket 56)
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
@@ -221,17 +221,11 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   const d = b.daten;
-  // v1.3: mechanisch angepasst, Folgeticket (Ticket 56 entscheidet, ob PositionAnlegen einen Mengenansatz mitbringt)
-  if (d.mengenansatz !== undefined)
-    return nein(
-      'befehl-nicht-zustaendig',
-      'PositionAnlegen mit Mengenansatz: zuständig Ticket 56.',
-      b.id,
-      'mengenansatz',
-    );
+  // Ein mitgebrachter Mengenansatz bleibt stehen (Ticket 56, D-56.1; Form geprüft in `positionsdatenFehler`, `[]` fällt
+  // in `positionNormal` weg).
   return ok(
     einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
-      positionMitEinheiten({
+      positionNormal({
         art: 'position',
         id: b.id,
         elternId: t.elternId as ElternId,
@@ -241,6 +235,7 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
         merkmale: d.merkmale,
         zuschlag: d.zuschlag,
         ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
+        ...(d.mengenansatz === undefined ? {} : { mengenansatz: d.mengenansatz }),
         kurztext: d.kurztext,
         langtext: d.langtext,
         menge: d.menge,

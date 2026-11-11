@@ -17,7 +17,7 @@ import type {
   LvZustand,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { neuvergabe } from './oz-vorschlag';
 import type { Neuvergabe } from './oz-vorschlag';
@@ -161,7 +161,7 @@ export function knotenEinfuegen(z: LvZustand, b: KnotenEinfuegen): Antwort {
     });
   const hinzugefuegt = b.knoten.map((k) => {
     const n = mitOz(lage.get(k.id) ?? k, nv);
-    return n.art === 'position' ? positionMitEinheiten(n) : n;
+    return n.art === 'position' ? positionNormal(n) : n;
   });
   return ok(changeSet(z, idx, { hinzugefuegt, geaendert: lageAenderungen(listen, wurzelIds) }, nv));
 }
