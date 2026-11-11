@@ -29,6 +29,7 @@ import type {
   Summenstand,
   Vergabeinformationen,
 } from '@tethys/vertrag';
+import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
 import type { Attribute } from './ausgabe';
 import { schreibeDetailtext, schreibeEinzeiler, schreibeKurztext } from './text-schreiben';
@@ -55,20 +56,26 @@ export interface SchreibOptionen {
 /** `GAEBInfo/VersDate` je Version (Schemastand). */
 export const VERSIONSDATUM: Readonly<Record<ExportVersion, string>> = { '3.3': '2021-05', '3.2': '2013-10' };
 
-/** Grenzen aus dem XSD (Typnamen in Klammern). */
+/**
+ * Grenzen aus dem XSD (Typnamen in Klammern). Was auch die LV-Prüfung prüft, steht im Kern (N3, eine Stelle; Review S6)
+ * und wird hier nur benannt; nur die Grenzen, die allein der Writer kennt, stehen hier.
+ */
 export const GRENZEN = {
   /** `BoQInfo/Name` (tgNormalizedString20). */
-  name: 20,
+  name: PRUEF_GRENZEN.lvNameZeichen,
   /** `BoQInfo/LblBoQ` (tgNormalizedString60). */
   bezeichnung: 60,
   /** `QU` (tgNormalizedString4). */
-  einheit: 4,
+  einheit: PRUEF_GRENZEN.einheitZeichen,
   /** OZ einschließlich Index (F2; tgRNoPart bis 14). */
-  oz: 14,
+  oz: OZ_MAX_LAENGE,
   /** Gliederungsstufen einschließlich Los (F1). */
-  stufen: 5,
-  /** Vorkommastellen: Menge (tgDecimal_11_3), EP (tgDecimal_13_3), Betrag (tgDecimal_13_2), Satz (tgDecimal_9_6). */
-  vorkomma: { menge: 8, einheitspreis: 10, betrag: 11, satz: 3 },
+  stufen: MAX_GLIEDERUNGSEBENEN,
+  /**
+   * Vorkommastellen: Menge (tgDecimal_11_3), EP (tgDecimal_13_3), Betrag (tgDecimal_13_2), Zuschlagssatz
+   * (tgDecimal_9_6).
+   */
+  vorkomma: PRUEF_GRENZEN.vorkommastellen,
   /** `ALNGroupNo` (bis 999), `ALNSerNo` (bis 9), `SubDNo` (1 bis 99). */
   wahlgruppe: 999,
   wahlvariante: 9,
@@ -83,17 +90,15 @@ const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
 const zeichen = (s: string): number => Array.from(s).length;
 const kuerze = (s: string, n: number): string => Array.from(s).slice(0, n).join('');
 
-function vorkommastellen(wert: string): number {
-  const ganz = wert.replace(/^-/, '').split('.')[0] ?? '';
-  return ganz.length;
-}
-
 /** GAEB-Kennung (xs:ID) aus einer Modellkennung: Präfix plus die Zeichen `[A-Za-z0-9_]`, deterministisch. */
 export function gaebKennung(praefix: string, id: string): string {
   return praefix + id.replace(/[^A-Za-z0-9_]/g, '');
 }
 
 type Zahlart = keyof typeof GRENZEN.vorkomma;
+
+/** MwSt-Satz und Nachlass in Prozent schreibt GAEB im selben Zahlformat wie den Zuschlagssatz (bis 3 Vorkommastellen). */
+const PROZENTFORMAT: Zahlart = 'zuschlagssatz';
 
 interface Wahlnummer {
   readonly gruppe: number;
@@ -544,14 +549,14 @@ class Schreiber {
       const n = this.inhalt.nachlass;
       if (n !== null) {
         if (n.art === 'prozent')
-          a.blatt('DiscountPcnt', this.zahl(n.wert, 'satz', 'Der Nachlass', undefined, 'nachlass'));
+          a.blatt('DiscountPcnt', this.zahl(n.wert, PROZENTFORMAT, 'Der Nachlass', undefined, 'nachlass'));
         else a.blatt('DiscountAmt', this.zahl(n.wert, 'betrag', 'Der Nachlass', undefined, 'nachlass'));
         a.blatt(
           'TotAfterDisc',
           this.zahl(g.nettoNachNachlass, 'betrag', 'Die Summe nach Nachlass', undefined, 'summen'),
         );
       }
-      a.blatt('VAT', this.zahl(this.inhalt.mwstSatz, 'satz', 'Der MwSt-Satz', undefined, 'mwstSatz'));
+      a.blatt('VAT', this.zahl(this.inhalt.mwstSatz, PROZENTFORMAT, 'Der MwSt-Satz', undefined, 'mwstSatz'));
       a.blatt('VATAmount', this.zahl(g.mwst, 'betrag', 'Die MwSt', undefined, 'summen.mwst'));
       a.blatt('TotalGross', this.zahl(g.brutto, 'betrag', 'Die Bruttosumme', undefined, 'summen.brutto'));
     });
@@ -943,7 +948,7 @@ class Schreiber {
         else
           a.blatt(
             'Markup',
-            this.zahl(z.prozentsatz, 'satz', 'Der Zuschlagssatz', p.id, 'zuschlag.prozentsatz'),
+            this.zahl(z.prozentsatz, 'zuschlagssatz', 'Der Zuschlagssatz', p.id, 'zuschlag.prozentsatz'),
           );
         const gp = this.positionssummen.get(p.id);
         if (gp != null) a.blatt('IT', this.zahl(gp, 'betrag', 'Der Zuschlagsbetrag', p.id, 'gesamtpreis'));

@@ -27,7 +27,8 @@ import type {
   Summenstand,
   TitelId,
 } from '@tethys/vertrag';
-import { leseGaeb, schreibeGaeb } from './index';
+import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN } from '@tethys/kern';
+import { GRENZEN, leseGaeb, schreibeGaeb } from './index';
 import type { ExportPhase, SchreibOptionen } from './index';
 import {
   FIXTURES,
@@ -212,6 +213,39 @@ describe('Leistung', () => {
     const dauer = performance.now() - start;
     console.log(`gross X86: ${dauer.toFixed(0)} ms, ${String(e.xml.length)} Zeichen`);
     expect(dauer).toBeLessThan(1000);
+  });
+});
+
+// --- Grenzen an einer Stelle (N3, Review S6) ----------------------------------------------------------------------
+
+describe('Grenzen der eigenen Prüfung kommen aus dem Kern (N3, eine Stelle)', () => {
+  it('Vorkommastellen, Name, Einheit, OZ-Länge und Stufen sind die des Kerns', () => {
+    expect(GRENZEN.vorkomma).toBe(PRUEF_GRENZEN.vorkommastellen);
+    expect(GRENZEN.name).toBe(PRUEF_GRENZEN.lvNameZeichen);
+    expect(GRENZEN.einheit).toBe(PRUEF_GRENZEN.einheitZeichen);
+    expect(GRENZEN.oz).toBe(OZ_MAX_LAENGE);
+    expect(GRENZEN.stufen).toBe(MAX_GLIEDERUNGSEBENEN);
+  });
+
+  it('der Zuschlagssatz wird mit der Grenze zuschlagssatz geprüft, auch mit Vorzeichen', () => {
+    const z = (satz: string): Position =>
+      position('z', '01.0020', 1, {
+        menge: null,
+        einheit: null,
+        zuschlag: { prozentsatz: satz as Prozent, bezug: { art: 'gliederung' } },
+      });
+    const grenze = PRUEF_GRENZEN.vorkommastellen.zuschlagssatz;
+    const passt = `-${'9'.repeat(grenze)}.00`;
+    const zuGross = `${'9'.repeat(grenze + 1)}.00`;
+    const basen = new Map([['z' as PositionId, '0.00' as Betrag]]);
+    expect(codes(schreibe(lv([p1(), z(passt)]), 'X86', { zuschlagsbasen: basen }))).not.toContain(
+      'zahl-zu-gross',
+    );
+    expect(
+      befund(schreibe(lv([p1(), z(zuGross)]), 'X86', { zuschlagsbasen: basen }), 'zahl-zu-gross'),
+    ).toMatchObject({
+      ort: { knotenId: 'z', feld: 'zuschlag.prozentsatz' },
+    });
   });
 });
 

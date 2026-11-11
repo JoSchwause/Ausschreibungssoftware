@@ -4,8 +4,9 @@
 // wird nie halb oder verlustbehaftet übernommen (Q5).
 //
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
-// Sache des Kerns, den `speicher` nicht importieren darf (A3).
+// Sache des Kerns.
 
+import { langtextFormFehler } from '@tethys/kern';
 import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   Angebot,
@@ -32,9 +33,6 @@ import type {
   HinweistextId,
   Knoten,
   Langtext,
-  LangtextBaustein,
-  LangtextInline,
-  LangtextInnen,
   Leistungsverzeichnis,
   Leitbeschreibung,
   LeistungsverzeichnisId,
@@ -61,11 +59,6 @@ import type {
   Prozent,
   Pruefsummenalgorithmus,
   Summenstand,
-  Tabellenzeile,
-  Tabellenzelle,
-  Textbild,
-  Textfluss,
-  Textlauf,
   TitelId,
   Unterbeschreibung,
   Vergabeinformationen,
@@ -187,128 +180,15 @@ function ozMaske(x: unknown, pfad: string): OzMaske {
 //
 // Gelesen wird genau die Form des Vertrags (`LangtextBaustein`), streng wie der Rest der Datei: unbekannte `art`,
 // fehlende oder fremde Felder, eine Auszeichnung mit `false` (der Vertrag kennt nur `true` oder fehlend), `spalten`
-// unter 1 und eine Textergänzung unterhalb der obersten Ebene sind `datei-ungueltig` mit Pfad. Eine Datei der
-// Schemaversion 1 kann damit Bausteine enthalten, die ein älterer Stand der App nicht liest (rückwärts lesen bleibt
-// garantiert, vorwärts nicht; A8).
+// unter 1 und eine Textergänzung unterhalb der obersten Ebene sind `datei-ungueltig` mit Pfad. Die Formprüfung ist die
+// des Kerns (`langtextFormFehler`, eine Stelle, Review S5): Was der Kern als Befehl annimmt, liest `speicher` zurück,
+// und umgekehrt. Eine Datei der Schemaversion 1 kann damit Bausteine enthalten, die ein älterer Stand der App nicht
+// liest (rückwärts lesen bleibt garantiert, vorwärts nicht; A8).
 
-/** Wo ein Baustein steht; jede Ebene erlaubt eine Teilmenge der Arten (Vertrag `modell.ts`). */
-type Ebene = 'langtext' | 'innen' | 'absatz' | 'textfluss';
-
-const ARTEN_JE_EBENE: Record<Ebene, readonly string[]> = {
-  langtext: ['text', 'umbruch', 'bild', 'absatz', 'liste', 'tabelle', 'ergaenzung'],
-  innen: ['text', 'umbruch', 'bild', 'absatz', 'liste', 'tabelle'],
-  absatz: ['text', 'umbruch', 'bild'],
-  textfluss: ['text', 'umbruch'],
-};
-const ORT: Record<Ebene, string> = {
-  langtext: 'im Langtext',
-  innen: 'in einem Listenpunkt oder einer Tabellenzelle',
-  absatz: 'in einem Absatz',
-  textfluss: 'in einer Textergänzung',
-};
-
-const AUSZEICHNUNGEN = ['fett', 'kursiv', 'unterstrichen'] as const;
-
-function textlauf(x: unknown, pfad: string): Textlauf {
-  const o = objekt(x, pfad, ['art', 'text', ...AUSZEICHNUNGEN.filter((a) => Object.hasOwn(x as Roh, a))]);
-  const t: { -readonly [K in keyof Textlauf]: Textlauf[K] } = {
-    art: 'text',
-    text: zeichenkette(feld(o, 'text'), `${pfad}.text`),
-  };
-  for (const a of AUSZEICHNUNGEN) {
-    if (!Object.hasOwn(o, a)) continue;
-    if (feld(o, a) !== true) ungueltig(`${pfad}.${a}`, 'nur true erlaubt; ohne Auszeichnung fehlt das Feld');
-    t[a] = true;
-  }
-  return t;
+function langtext(x: unknown, pfad: string): Langtext {
+  const formfehler = langtextFormFehler(x, pfad);
+  return formfehler === null ? (x as Langtext) : abbruch('datei-ungueltig', formfehler);
 }
-
-function textbild(x: unknown, pfad: string): Textbild {
-  const o = objekt(x, pfad, ['art', 'bild']);
-  const b = objekt(feld(o, 'bild'), `${pfad}.bild`, ['id', 'medientyp', 'daten']);
-  return {
-    art: 'bild',
-    bild: {
-      id: zeichenkette(feld(b, 'id'), `${pfad}.bild.id`) as LangtextBildId,
-      medientyp: zeichenkette(feld(b, 'medientyp'), `${pfad}.bild.medientyp`),
-      daten: zeichenkette(feld(b, 'daten'), `${pfad}.bild.daten`),
-    },
-  };
-}
-type LangtextBildId = Textbild['bild']['id'];
-
-const bausteine = (x: unknown, pfad: string, ebene: Ebene): LangtextBaustein[] =>
-  liste(x, pfad).map((b, i) => baustein(b, `${pfad}[${String(i)}]`, ebene));
-
-function baustein(x: unknown, pfad: string, ebene: Ebene): LangtextBaustein {
-  if (typeof x !== 'object' || x === null || Array.isArray(x)) return ungueltig(pfad, 'Objekt erwartet');
-  const art = aufzaehlung((x as Roh)['art'], `${pfad}.art`, ARTEN_JE_EBENE.langtext);
-  if (!ARTEN_JE_EBENE[ebene].includes(art))
-    return ungueltig(`${pfad}.art`, `„${art}“ steht nicht ${ORT[ebene]}`);
-  switch (art) {
-    case 'text':
-      return textlauf(x, pfad);
-    case 'umbruch':
-      objekt(x, pfad, ['art']);
-      return { art: 'umbruch' };
-    case 'bild':
-      return textbild(x, pfad);
-    case 'absatz': {
-      const o = objekt(x, pfad, ['art', 'inhalt']);
-      return {
-        art: 'absatz',
-        inhalt: bausteine(feld(o, 'inhalt'), `${pfad}.inhalt`, 'absatz') as LangtextInline[],
-      };
-    }
-    case 'liste': {
-      const o = objekt(x, pfad, ['art', 'geordnet', 'punkte']);
-      return {
-        art: 'liste',
-        geordnet: wahrheit(feld(o, 'geordnet'), `${pfad}.geordnet`),
-        punkte: liste(feld(o, 'punkte'), `${pfad}.punkte`).map(
-          (p, i) => bausteine(p, `${pfad}.punkte[${String(i)}]`, 'innen') as LangtextInnen,
-        ),
-      };
-    }
-    case 'tabelle': {
-      const o = objekt(x, pfad, ['art', 'zeilen']);
-      return {
-        art: 'tabelle',
-        zeilen: liste(feld(o, 'zeilen'), `${pfad}.zeilen`).map((z, i): Tabellenzeile => {
-          const q = `${pfad}.zeilen[${String(i)}]`;
-          const zo = objekt(z, q, ['zellen']);
-          return {
-            zellen: liste(feld(zo, 'zellen'), `${q}.zellen`).map((c, j): Tabellenzelle => {
-              const r = `${q}.zellen[${String(j)}]`;
-              const co = objekt(c, r, ['spalten', 'inhalt']);
-              const spalten = ganz(feld(co, 'spalten'), `${r}.spalten`);
-              if (spalten < 1) ungueltig(`${r}.spalten`, 'mindestens 1 erwartet');
-              return {
-                spalten,
-                inhalt: bausteine(feld(co, 'inhalt'), `${r}.inhalt`, 'innen') as LangtextInnen,
-              };
-            }),
-          };
-        }),
-      };
-    }
-    default: {
-      const o = objekt(x, pfad, ['art', 'herkunft', 'kennung', 'leer', 'davor', 'inhalt', 'danach']);
-      const fluss = (n: string): Textfluss => bausteine(feld(o, n), `${pfad}.${n}`, 'textfluss') as Textfluss;
-      return {
-        art: 'ergaenzung',
-        herkunft: aufzaehlung(feld(o, 'herkunft'), `${pfad}.herkunft`, ['bieter', 'ausschreibender']),
-        kennung: zeichenkette(feld(o, 'kennung'), `${pfad}.kennung`),
-        leer: wahrheit(feld(o, 'leer'), `${pfad}.leer`),
-        davor: fluss('davor'),
-        inhalt: fluss('inhalt'),
-        danach: fluss('danach'),
-      };
-    }
-  }
-}
-
-const langtext = (x: unknown, pfad: string): Langtext => bausteine(x, pfad, 'langtext');
 
 function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   return oderNull(x, (v) => {
