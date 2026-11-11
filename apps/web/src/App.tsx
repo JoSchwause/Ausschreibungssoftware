@@ -14,6 +14,8 @@ import { LvSeite } from './lv/LvSeite';
 import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
+import { rechnungsadresse } from './rechnung/pfad'; // Ticket 88
+import { RechnungenSeite } from './rechnung/RechnungenSeite'; // Ticket 88
 import { SpeicherAnbieter } from './speicher/SpeicherAnbieter';
 import { AppAktualisierung } from './sicherung/AppAktualisierung'; // Ticket 62
 import { SicherungsAnbieter } from './sicherung/SicherungsAnbieter'; // Ticket 62
@@ -65,6 +67,14 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     return {
       titel: texte.seiten.projekt.titel,
       inhalt: mitSpeicher(<ProjektSeite key={id} id={id} gehe={gehe} />),
+    };
+  }
+  // Ticket 88: Rechnungen eines Auftrags-LV (Liste und Prüfansicht); dieselbe Seite, damit der Wechsel nicht neu lädt
+  const rechnungen = rechnungsadresse(pfad);
+  if (rechnungen !== null) {
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<RechnungenSeite key={rechnungen.auftragsLvId} adresse={rechnungen} gehe={gehe} />),
     };
   }
   // Ticket 64: Auftrags-LV eines Projekts

@@ -24,6 +24,8 @@ import { gridZahlen } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { preisspiegelPfad } from '../vergabe/pfad';
+import { rechnungenPfad } from '../rechnung/pfad'; // Ticket 88
+import { texte as rechnungTexte } from '../rechnung/texte'; // Ticket 88
 import { alsLvZustand, auftragsLvsLaden } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
@@ -220,6 +222,8 @@ function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }
       <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
         <HistorieKnoepfe />
         <AuftragAusgeben auftrag={auftrag} />
+        {/* Ticket 88 */}
+        <Verweis pfad={rechnungenPfad(kopf.projektId, kopf.id)} text={rechnungTexte.liste.link} gehe={gehe} />
         <button
           type="button"
           className="tx-button tx-button--sekundaer"
