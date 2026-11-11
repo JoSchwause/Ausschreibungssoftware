@@ -184,7 +184,13 @@ test.describe('Einzeländerung in Phasen (Ticket 52)', () => {
     const f = ladeFixture('gross');
     await start(page);
     await ps(page, 'oeffnenMessend', DB);
-    console.info(`[speicher/opfs] Schreibmodus: ${JSON.stringify(await ps(page, 'schreibmodus', DB))}`);
+    // Schreibmodus (D-52.1): WAL mit exklusiver Sperre, Haltbarkeit unverändert (synchronous = FULL).
+    expect(await ps(page, 'schreibmodus', DB)).toEqual({
+      journalMode: 'wal',
+      lockingMode: 'exclusive',
+      synchronous: 2,
+      journalSizeLimit: 4 * 1024 * 1024,
+    });
     await ps(page, 'anwenden', DB, anlegenSchritte(f));
 
     // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
