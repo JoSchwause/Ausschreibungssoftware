@@ -250,3 +250,10 @@ Decision: Teil des Vorgängers + 10 (Position) bzw. + 1 (Gliederung); Vorgänger
 Reason: F2/E-09 und der Schritt der Umnummerierung (Ticket 06); Validierung blockiert die Eingabe nicht (U5).
 Reversible: yes  Touches: packages/kern
 
+
+## D-15 Langtext-Lücke im Kern als eigenes Ticket 50
+Welle 3 · Ticket 47, 48, 50 · decided by: orchestrator
+Question: Der Kern weist Absätze, Listen, Tabellen und Textergänzungen in `LangtextAendern` ab; Ticket 47 konnte deshalb einen Akzeptanztest nur als `test.fixme` schreiben.
+Decision: 47 mit dem markierten `test.fixme` mergen (Lücke liegt außerhalb von `apps/web`); neues Kern-Ticket 50 schließt die Lücke; Ticket 48 entfernt das `fixme`, sobald 50 gemergt ist.
+Reason: P2 (ein Schreiber je Paket); kein dauerhaft übersprungener Test.
+Reversible: yes  Touches: packages/kern, apps/web/e2e
