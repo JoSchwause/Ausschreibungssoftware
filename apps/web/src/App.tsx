@@ -9,6 +9,8 @@ import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
 import { SpeicherAnbieter } from './speicher/SpeicherAnbieter';
+import { AppAktualisierung } from './sicherung/AppAktualisierung'; // Ticket 62
+import { SicherungsAnbieter } from './sicherung/SicherungsAnbieter'; // Ticket 62
 import { testpfad } from './testpfad';
 import { Huelle } from './ui/Huelle';
 import { Platzhalterseite } from './ui/Platzhalterseite';
@@ -28,7 +30,9 @@ const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
 function mitSpeicher(inhalt: ReactElement): ReactElement {
   return (
     <SpeicherAnbieter {...testpfad}>
-      <HistorieAnbieter>{inhalt}</HistorieAnbieter>
+      <SicherungsAnbieter>{/* Ticket 62 */}
+        <HistorieAnbieter>{inhalt}</HistorieAnbieter>
+      </SicherungsAnbieter>
     </SpeicherAnbieter>
   );
 }
@@ -119,6 +123,7 @@ export function App(): ReactElement {
   const { titel, inhalt } = waehleSeite({ pfad, gehe });
   return (
     <ToastAnbieter>
+      <AppAktualisierung /> {/* Ticket 62 */}
       <Huelle pfad={pfad} gehe={gehe} mitKatalog={MIT_KATALOG} seitenTitel={titel}>
         {inhalt}
       </Huelle>
