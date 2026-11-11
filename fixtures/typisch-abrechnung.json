@@ -1,0 +1,673 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "abrechnungsset",
+  "regel": "Ticket 85, README „M4-Abrechnung“: Zuschlag nach D-21, Nachtrag nach D-35 (OZ-Lesart D-85.2), Leistungsstand und Abzugskette nach D-34 (jeder Schritt kaufmännisch auf 2 Stellen, dann verrechnet; frühere Zahlbeträge eingefroren), Soll/Ist nach D-35 (VOB/B § 2 Abs. 3, streng > 110 %), Kostenkontrolle nach D-37 (D-85.3).",
+  "lvId": "019b76e9-ea40-7f8c-a8f8-da06db622e5d",
+  "lvName": "Typisch: Musterhaus (erfunden)",
+  "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+  "zuschlag": {
+    "angebotId": "019b76f9-2c84-7df5-8da4-f13927bb3331",
+    "bieterId": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+    "bieterName": "Bieter B",
+    "gewaehlt": [],
+    "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+    "nachlass": {"art":"prozent","wert":"3.00"},
+    "mwstSatz": "19.00",
+    "entfallen": ["019b76e9-ea51-78b8-8588-e3dc3a1f7da6"],
+    "ohnePreis": ["019b76e9-ea5b-73f9-9221-62a34eba45ec"],
+    "sollwerte": {
+      "positionen": {
+        "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": {"gp":"1951.75","inSumme":true},
+        "019b76e9-ea43-79e5-a71b-20f7abf907b0": {"gp":"668.30","inSumme":true},
+        "019b76e9-ea44-7a84-a6a6-36868f616703": {"gp":"930.96","inSumme":true},
+        "019b76e9-ea45-74f6-8e75-27856918c88c": {"gp":"608.51","inSumme":false},
+        "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200": {"gp":"1208.58","inSumme":true},
+        "019b76e9-ea47-7e66-80d3-97961e44c237": {"gp":"1010.86","inSumme":true},
+        "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": {"gp":"803.17","inSumme":true},
+        "019b76e9-ea4a-78de-9cba-20fdd5149cc1": {"gp":"3254.55","inSumme":true},
+        "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"790.16","inSumme":true},
+        "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1200.19","inSumme":true},
+        "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6780.48","inSumme":true},
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"617.02","inSumme":true},
+        "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5725.15","inSumme":true},
+        "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5256.48","inSumme":true},
+        "019b76e9-ea52-79cb-a520-fb024fa6495b": {"gp":"842.27","inSumme":true},
+        "019b76e9-ea53-7f9f-bacb-47d207700e3e": {"gp":"1146.87","inSumme":true},
+        "019b76e9-ea55-79cd-926f-7a3b3917032e": {"gp":"11193.27","inSumme":true},
+        "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc": {"gp":"8569.49","inSumme":true},
+        "019b76e9-ea57-75e5-a1d0-370693d7b6c3": {"gp":"2083.49","inSumme":true},
+        "019b76e9-ea58-7f8a-870d-926d78ec765a": {"gp":"2323.23","inSumme":true},
+        "019b76e9-ea59-71fa-92ed-4ea48a6b5a62": {"gp":"1260.14","inSumme":true},
+        "019b76e9-ea5a-752f-8a06-76e4507c0c26": {"gp":"542.59","inSumme":true},
+        "019b76e9-ea5b-73f9-9221-62a34eba45ec": {"gp":null,"inSumme":false},
+        "019b76e9-ea5c-792b-9c81-2db5b428a9bc": {"gp":"199.53","inSumme":true}
+      },
+      "titel": {
+        "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5770.45"},
+        "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"26416.34"},
+        "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"26171.74"}
+      },
+      "summen": {"netto":"58358.53","nachlass":"1750.76","nettoNachNachlass":"56607.77","mwst":"10755.48","brutto":"67363.25"},
+      "nichtAngeboten": ["019b76e9-ea5b-73f9-9221-62a34eba45ec"],
+      "zuschlaege": {
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6780.48","betrag":"617.02"}
+      },
+      "ausweise": {
+        "gesamt": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"0.00"},
+        "titel": {
+          "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"0.00"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"},
+          "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+        }
+      }
+    }
+  },
+  "nachtrag": {
+    "lv": {
+      "id": "019b7708-6ec2-7178-82b9-23f6028e042a",
+      "name": "Nachtrag N01 (erfunden)",
+      "ozMaske": "NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe",
+      "mwstSatz": "19.00",
+      "nachlass": null,
+      "nachtrag": {"auftragsLvId":"019b7708-6ec1-70d9-b161-c989757a7278","nummer":"N01","status":"angeboten"},
+      "knoten": [
+        {"id":"019b7708-6ec3-7d5c-b846-b85864b10e64","parentId":"019b7708-6ec2-7178-82b9-23f6028e042a","art":"titel","ordnungszahl":"01","kurztext":"Zusatzleistungen Gründung (erfunden)"},
+        {"id":"019b7708-6ec4-73b4-98ca-0b5aee602f02","parentId":"019b7708-6ec3-7d5c-b846-b85864b10e64","art":"position","positionsart":"normal","ordnungszahl":"01.0010","kurztext":"Bodenaustausch unter Fundamenten","langtext":"Nicht tragfähigen Boden unter den Fundamenten ausheben und durch verdichteten Kies ersetzen (erfunden).","menge":"24.000","einheit":"m³","einheitspreis":null},
+        {"id":"019b7708-6ec5-7768-a3f5-4029bb4e5970","parentId":"019b7708-6ec3-7d5c-b846-b85864b10e64","art":"position","positionsart":"normal","ordnungszahl":"01.0020","kurztext":"Kernbohrung Hausanschluss","langtext":"Kernbohrung durch die Bodenplatte für die Hausanschlüsse herstellen (erfunden).","menge":"6.000","einheit":"St","einheitspreis":null}
+      ]
+    },
+    "angebot": {
+      "id": "019b7708-6ec6-780b-86a9-f5285fbf99a9",
+      "bieterId": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+      "nachlass": null,
+      "positionen": [
+        {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","status":"angeboten","einheitspreis":"38.437"},
+        {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","status":"angeboten","einheitspreis":"87.125"}
+      ],
+      "sollwerte": {
+        "positionen": {
+          "019b7708-6ec4-73b4-98ca-0b5aee602f02": {"gp":"922.49","inSumme":true},
+          "019b7708-6ec5-7768-a3f5-4029bb4e5970": {"gp":"522.75","inSumme":true}
+        },
+        "titel": {
+          "019b7708-6ec3-7d5c-b846-b85864b10e64": {"summe":"1445.24"}
+        },
+        "summen": {"netto":"1445.24","nachlass":"0.00","nettoNachNachlass":"1445.24","mwst":"274.60","brutto":"1719.84"},
+        "nichtAngeboten": [],
+        "zuschlaege": {},
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"},
+          "titel": {
+            "019b7708-6ec3-7d5c-b846-b85864b10e64": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
+      }
+    },
+    "statusNachUebernahme": "beauftragt",
+    "uebernahme": {
+      "art": "NachtragUebernehmen",
+      "nachtragLvId": "019b7708-6ec2-7178-82b9-23f6028e042a",
+      "gliederungReihenfolge": "3",
+      "knoten": [
+        {"id":"019b7708-6ec7-707f-80f3-72005df5fcdc","parentId":"019b7708-6ec1-70d9-b161-c989757a7278","art":"titel","ordnungszahl":"04","kurztext":"Nachtrag N01"},
+        {"id":"019b7708-6ec3-7d5c-b846-b85864b10e64","parentId":"019b7708-6ec7-707f-80f3-72005df5fcdc","art":"titel","ordnungszahl":"04.01","kurztext":"Zusatzleistungen Gründung (erfunden)"},
+        {"id":"019b7708-6ec4-73b4-98ca-0b5aee602f02","parentId":"019b7708-6ec3-7d5c-b846-b85864b10e64","art":"position","positionsart":"normal","ordnungszahl":"04.01.0010","kurztext":"Bodenaustausch unter Fundamenten","langtext":"Nicht tragfähigen Boden unter den Fundamenten ausheben und durch verdichteten Kies ersetzen (erfunden).","menge":"24.000","einheit":"m³","einheitspreis":"38.437"},
+        {"id":"019b7708-6ec5-7768-a3f5-4029bb4e5970","parentId":"019b7708-6ec3-7d5c-b846-b85864b10e64","art":"position","positionsart":"normal","ordnungszahl":"04.01.0020","kurztext":"Kernbohrung Hausanschluss","langtext":"Kernbohrung durch die Bodenplatte für die Hausanschlüsse herstellen (erfunden).","menge":"6.000","einheit":"St","einheitspreis":"87.125"}
+      ]
+    },
+    "sollwerte": {
+      "positionen": {
+        "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": {"gp":"1951.75","inSumme":true},
+        "019b76e9-ea43-79e5-a71b-20f7abf907b0": {"gp":"668.30","inSumme":true},
+        "019b76e9-ea44-7a84-a6a6-36868f616703": {"gp":"930.96","inSumme":true},
+        "019b76e9-ea45-74f6-8e75-27856918c88c": {"gp":"608.51","inSumme":false},
+        "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200": {"gp":"1208.58","inSumme":true},
+        "019b76e9-ea47-7e66-80d3-97961e44c237": {"gp":"1010.86","inSumme":true},
+        "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": {"gp":"803.17","inSumme":true},
+        "019b76e9-ea4a-78de-9cba-20fdd5149cc1": {"gp":"3254.55","inSumme":true},
+        "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"790.16","inSumme":true},
+        "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1200.19","inSumme":true},
+        "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6780.48","inSumme":true},
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"617.02","inSumme":true},
+        "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5725.15","inSumme":true},
+        "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5256.48","inSumme":true},
+        "019b76e9-ea52-79cb-a520-fb024fa6495b": {"gp":"842.27","inSumme":true},
+        "019b76e9-ea53-7f9f-bacb-47d207700e3e": {"gp":"1146.87","inSumme":true},
+        "019b76e9-ea55-79cd-926f-7a3b3917032e": {"gp":"11193.27","inSumme":true},
+        "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc": {"gp":"8569.49","inSumme":true},
+        "019b76e9-ea57-75e5-a1d0-370693d7b6c3": {"gp":"2083.49","inSumme":true},
+        "019b76e9-ea58-7f8a-870d-926d78ec765a": {"gp":"2323.23","inSumme":true},
+        "019b76e9-ea59-71fa-92ed-4ea48a6b5a62": {"gp":"1260.14","inSumme":true},
+        "019b76e9-ea5a-752f-8a06-76e4507c0c26": {"gp":"542.59","inSumme":true},
+        "019b76e9-ea5b-73f9-9221-62a34eba45ec": {"gp":null,"inSumme":false},
+        "019b76e9-ea5c-792b-9c81-2db5b428a9bc": {"gp":"199.53","inSumme":true},
+        "019b7708-6ec4-73b4-98ca-0b5aee602f02": {"gp":"922.49","inSumme":true},
+        "019b7708-6ec5-7768-a3f5-4029bb4e5970": {"gp":"522.75","inSumme":true}
+      },
+      "titel": {
+        "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5770.45"},
+        "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"26416.34"},
+        "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"26171.74"},
+        "019b7708-6ec7-707f-80f3-72005df5fcdc": {"summe":"1445.24"},
+        "019b7708-6ec3-7d5c-b846-b85864b10e64": {"summe":"1445.24"}
+      },
+      "summen": {"netto":"59803.77","nachlass":"1794.11","nettoNachNachlass":"58009.66","mwst":"11021.84","brutto":"69031.50"},
+      "nichtAngeboten": ["019b76e9-ea5b-73f9-9221-62a34eba45ec"],
+      "zuschlaege": {
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6780.48","betrag":"617.02"}
+      },
+      "ausweise": {
+        "gesamt": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"0.00"},
+        "titel": {
+          "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"0.00"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"},
+          "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"},
+          "019b7708-6ec7-707f-80f3-72005df5fcdc": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"},
+          "019b7708-6ec3-7d5c-b846-b85864b10e64": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+        }
+      }
+    }
+  },
+  "positionen": [
+    {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","oz":"01.0010","kurztext":"Baustelle einrichten","kostengruppe":"391"},
+    {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","oz":"01.0020","kurztext":"Bauzaun stellen","kostengruppe":"391"},
+    {"positionId":"019b76e9-ea44-7a84-a6a6-36868f616703","oz":"01.0030","kurztext":"Baustrom und Bauwasser","kostengruppe":"391"},
+    {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","oz":"01.0040","kurztext":"Verkehrssicherung Zufahrt","kostengruppe":"391"},
+    {"positionId":"019b76e9-ea46-7fab-ab9a-3aa7d0e2b200","oz":"01.0050","kurztext":"Bauschutt entsorgen","kostengruppe":"391"},
+    {"positionId":"019b76e9-ea47-7e66-80d3-97961e44c237","oz":"01.0060","kurztext":"Grundstück räumen","kostengruppe":"214"},
+    {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","oz":"02.0010","kurztext":"Oberboden abtragen","kostengruppe":"311"},
+    {"positionId":"019b76e9-ea4a-78de-9cba-20fdd5149cc1","oz":"02.0020","kurztext":"Baugrube ausheben","kostengruppe":"311"},
+    {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","oz":"02.0030","kurztext":"Baugrube verfüllen","kostengruppe":"311"},
+    {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","oz":"02.0040","kurztext":"Sauberkeitsschicht","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","oz":"02.0050","kurztext":"Fundamente betonieren","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","oz":"02.0050A","kurztext":"Zuschlag Frosteinbau","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","oz":"02.0060","kurztext":"Betonstahl verlegen","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","oz":"02.0070","kurztext":"Bodenplatte herstellen","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea52-79cb-a520-fb024fa6495b","oz":"02.0080","kurztext":"Sockel abdichten","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea53-7f9f-bacb-47d207700e3e","oz":"02.0090","kurztext":"Drainage verlegen","kostengruppe":"322"},
+    {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","oz":"03.0010","kurztext":"Innenwände mauern","kostengruppe":"340"},
+    {"positionId":"019b76e9-ea56-7c0b-9ccd-9f1ae20696fc","oz":"03.0020","kurztext":"Innenputz","kostengruppe":"340"},
+    {"positionId":"019b76e9-ea57-75e5-a1d0-370693d7b6c3","oz":"03.0030","kurztext":"Estrich einbringen","kostengruppe":"352"},
+    {"positionId":"019b76e9-ea58-7f8a-870d-926d78ec765a","oz":"03.0040","kurztext":"Wandanstrich","kostengruppe":"340"},
+    {"positionId":"019b76e9-ea59-71fa-92ed-4ea48a6b5a62","oz":"03.0050","kurztext":"Türzargen einbauen","kostengruppe":"340"},
+    {"positionId":"019b76e9-ea5a-752f-8a06-76e4507c0c26","oz":"03.0060","kurztext":"Sockelleiste","kostengruppe":"352"},
+    {"positionId":"019b76e9-ea5b-73f9-9221-62a34eba45ec","oz":"03.0070","kurztext":"Silikonfuge","kostengruppe":null},
+    {"positionId":"019b76e9-ea5c-792b-9c81-2db5b428a9bc","oz":"03.0080","kurztext":"Endreinigung","kostengruppe":null},
+    {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","oz":"04.01.0010","kurztext":"Bodenaustausch unter Fundamenten","kostengruppe":"322"},
+    {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","oz":"04.01.0020","kurztext":"Kernbohrung Hausanschluss","kostengruppe":null}
+  ],
+  "gliederungen": [
+    {"id":"019b76e9-ea41-7576-8947-bf4601b85123","oz":"01","kurztext":"Baustelleneinrichtung und Vorarbeiten"},
+    {"id":"019b76e9-ea48-7e5f-8113-92b1ee0bbcbf","oz":"02","kurztext":"Erd- und Betonarbeiten"},
+    {"id":"019b76e9-ea54-797f-b0fa-81f37b92bae6","oz":"03","kurztext":"Ausbau und Oberflächen"},
+    {"id":"019b7708-6ec7-707f-80f3-72005df5fcdc","oz":"04","kurztext":"Nachtrag N01"},
+    {"id":"019b7708-6ec3-7d5c-b846-b85864b10e64","oz":"04.01","kurztext":"Zusatzleistungen Gründung (erfunden)"}
+  ],
+  "kostenermittlung": {
+    "id": "019b7708-6ecc-7ec1-abd3-6ebf5793defc",
+    "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+    "stufe": "kostenberechnung",
+    "name": "Kostenberechnung (erfunden)",
+    "eintraege": [
+      {"nummer":"214","betrag":"1100.00"},
+      {"nummer":"311","betrag":"4600.00"},
+      {"nummer":"322","betrag":"21800.00"},
+      {"nummer":"330","betrag":"3000.00","bemerkung":"nur im Budget (erfunden)"},
+      {"nummer":"340","betrag":"22500.00"},
+      {"nummer":"352","betrag":"2700.00"},
+      {"nummer":"391","betrag":"5200.00"}
+    ]
+  },
+  "aufmasse": [
+    {
+      "aufmass": {
+        "id": "019b7708-6ec8-705e-88ab-a127af67f61b",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": "1",
+        "bezeichnung": "Blatt 1 (erfunden)",
+        "datum": "2026-10-28",
+        "positionen": [
+          {
+            "positionId": "019b76e9-ea42-7a6c-9180-36c38b8c3b9e",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"0,5","variable":null}
+            ],
+            "menge": "0.500"
+          },
+          {
+            "positionId": "019b76e9-ea43-79e5-a71b-20f7abf907b0",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"2*(25,5+17,75)","variable":null}
+            ],
+            "menge": "86.500"
+          },
+          {
+            "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"17*21*0,25","variable":null}
+            ],
+            "menge": "89.250"
+          },
+          {
+            "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"12*9","variable":null}
+            ],
+            "menge": "108.000"
+          },
+          {
+            "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"2*(12+9)*0,6*0,8","variable":null},
+              {"zeile":"2","formel":"91","ausdruck":"2,5*1,75*0,3","variable":null}
+            ],
+            "menge": "21.473"
+          },
+          {
+            "positionId": "019b7708-6ec4-73b4-98ca-0b5aee602f02",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"6*4*0,5","variable":null}
+            ],
+            "menge": "12.000"
+          }
+        ]
+      },
+      "zeilenergebnisse": {
+        "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": ["0.500"],
+        "019b76e9-ea43-79e5-a71b-20f7abf907b0": ["86.500"],
+        "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": ["89.250"],
+        "019b76e9-ea4c-76c8-85b1-626b44c884e5": ["108.000"],
+        "019b76e9-ea4d-711c-ab51-51f1cef5e0df": ["20.160","1.313"],
+        "019b7708-6ec4-73b4-98ca-0b5aee602f02": ["12.000"]
+      }
+    },
+    {
+      "aufmass": {
+        "id": "019b7708-6ec9-7dbc-a446-887667e54aac",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": "2",
+        "bezeichnung": "Blatt 2 (erfunden)",
+        "datum": "2026-11-25",
+        "positionen": [
+          {
+            "positionId": "019b76e9-ea45-74f6-8e75-27856918c88c",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"2*3,5","variable":null}
+            ],
+            "menge": "7.000"
+          },
+          {
+            "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"6*5,5*0,3","variable":null}
+            ],
+            "menge": "9.900"
+          },
+          {
+            "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"2*(6+4,5)*0,6*0,8","variable":null}
+            ],
+            "menge": "10.080"
+          },
+          {
+            "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"(12,5+8,25)*2,75*2","variable":null}
+            ],
+            "menge": "114.125"
+          },
+          {
+            "positionId": "019b7708-6ec4-73b4-98ca-0b5aee602f02",
+            "mengenansatz": [
+              {"zeile":"1","formel":"91","ausdruck":"6*4*0,6","variable":null}
+            ],
+            "menge": "14.400"
+          },
+          {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","mengenansatz":null,"menge":"4.000"}
+        ]
+      },
+      "zeilenergebnisse": {
+        "019b76e9-ea45-74f6-8e75-27856918c88c": ["7.000"],
+        "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": ["9.900"],
+        "019b76e9-ea4d-711c-ab51-51f1cef5e0df": ["10.080"],
+        "019b76e9-ea55-79cd-926f-7a3b3917032e": ["114.125"],
+        "019b7708-6ec4-73b4-98ca-0b5aee602f02": ["14.400"]
+      }
+    }
+  ],
+  "korrektur": {
+    "aufmassId": "019b7708-6ec8-705e-88ab-a127af67f61b",
+    "befehl": {
+      "art": "AufmasspositionSetzen",
+      "position": {
+        "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"17*20*0,25","variable":null}
+        ],
+        "menge": "85.000"
+      }
+    },
+    "zeilenergebnisse": ["85.000"],
+    "aufmassNachher": {
+      "id": "019b7708-6ec8-705e-88ab-a127af67f61b",
+      "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+      "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+      "nummer": "1",
+      "bezeichnung": "Blatt 1 (erfunden)",
+      "datum": "2026-10-28",
+      "positionen": [
+        {
+          "positionId": "019b76e9-ea42-7a6c-9180-36c38b8c3b9e",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"0,5","variable":null}
+          ],
+          "menge": "0.500"
+        },
+        {
+          "positionId": "019b76e9-ea43-79e5-a71b-20f7abf907b0",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"2*(25,5+17,75)","variable":null}
+          ],
+          "menge": "86.500"
+        },
+        {
+          "positionId": "019b76e9-ea49-7ea5-9807-78cd9fa2e55e",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"17*20*0,25","variable":null}
+          ],
+          "menge": "85.000"
+        },
+        {
+          "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"12*9","variable":null}
+          ],
+          "menge": "108.000"
+        },
+        {
+          "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"2*(12+9)*0,6*0,8","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"2,5*1,75*0,3","variable":null}
+          ],
+          "menge": "21.473"
+        },
+        {
+          "positionId": "019b7708-6ec4-73b4-98ca-0b5aee602f02",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"6*4*0,5","variable":null}
+          ],
+          "menge": "12.000"
+        }
+      ]
+    }
+  },
+  "rechnungen": [
+    {
+      "id": "019b7708-6eca-7394-aa65-037bd01670db",
+      "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+      "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+      "nummer": "1",
+      "art": "abschlag",
+      "eingang": "2026-10-30",
+      "rechnungsnummerAuftragnehmer": "AN-2026-017 (erfunden)",
+      "gefordert": null,
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+      "umlagen": [
+        {"bezeichnung":"Bauwesenversicherung","satz":"0.50"}
+      ],
+      "sicherheitSatz": "5.00",
+      "gewaehrleistungSatz": null,
+      "freigabe": {"zahlbetrag":"8874.40"}
+    },
+    {
+      "id": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+      "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+      "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+      "nummer": "2",
+      "art": "abschlag",
+      "eingang": "2026-11-27",
+      "rechnungsnummerAuftragnehmer": "AN-2026-023 (erfunden)",
+      "gefordert": null,
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b","019b7708-6ec9-7dbc-a446-887667e54aac"],
+      "umlagen": [
+        {"bezeichnung":"Bauwesenversicherung","satz":"0.50"}
+      ],
+      "sicherheitSatz": "5.00",
+      "gewaehrleistungSatz": null,
+      "freigabe": null
+    }
+  ],
+  "pruefungen": {
+    "ar1": {
+      "rechnungId": "019b7708-6eca-7394-aa65-037bd01670db",
+      "korrigiert": false,
+      "leistungsstand": {
+        "positionen": [
+          {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","menge":"0.500","gp":"975.88"},
+          {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","menge":"86.500","gp":"668.30"},
+          {"positionId":"019b76e9-ea44-7a84-a6a6-36868f616703","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea46-7fab-ab9a-3aa7d0e2b200","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea47-7e66-80d3-97961e44c237","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","menge":"89.250","gp":"580.66"},
+          {"positionId":"019b76e9-ea4a-78de-9cba-20fdd5149cc1","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","menge":"108.000","gp":"1350.22"},
+          {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","menge":"21.473","gp":"3757.35"},
+          {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","menge":null,"gp":"341.92"},
+          {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea52-79cb-a520-fb024fa6495b","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea53-7f9f-bacb-47d207700e3e","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea56-7c0b-9ccd-9f1ae20696fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea57-75e5-a1d0-370693d7b6c3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea58-7f8a-870d-926d78ec765a","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea59-71fa-92ed-4ea48a6b5a62","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5a-752f-8a06-76e4507c0c26","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5b-73f9-9221-62a34eba45ec","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5c-792b-9c81-2db5b428a9bc","menge":null,"gp":"0.00"},
+          {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","menge":"12.000","gp":"461.24"},
+          {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","menge":null,"gp":"0.00"}
+        ],
+        "leistung": "8135.57",
+        "nachlass": "244.07",
+        "nettoNachNachlass": "7891.50"
+      },
+      "kette": {
+        "leistung": "8135.57",
+        "nachlass": "244.07",
+        "nettoNachNachlass": "7891.50",
+        "mwst": "1499.39",
+        "bruttoKumuliert": "9390.89",
+        "umlagen": [
+          {"bezeichnung":"Bauwesenversicherung","satz":"0.50","betrag":"46.95"}
+        ],
+        "einbehalt": "469.54",
+        "fruehereZahlbetraege": "0.00",
+        "zahlbetrag": "8874.40"
+      }
+    },
+    "ar2VorKorrektur": {
+      "rechnungId": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+      "korrigiert": false,
+      "leistungsstand": {
+        "positionen": [
+          {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","menge":"0.500","gp":"975.88"},
+          {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","menge":"86.500","gp":"668.30"},
+          {"positionId":"019b76e9-ea44-7a84-a6a6-36868f616703","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","menge":"7.000","gp":"354.96"},
+          {"positionId":"019b76e9-ea46-7fab-ab9a-3aa7d0e2b200","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea47-7e66-80d3-97961e44c237","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","menge":"99.150","gp":"645.07"},
+          {"positionId":"019b76e9-ea4a-78de-9cba-20fdd5149cc1","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","menge":"108.000","gp":"1350.22"},
+          {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","menge":"31.553","gp":"5521.14"},
+          {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","menge":null,"gp":"502.42"},
+          {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea52-79cb-a520-fb024fa6495b","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea53-7f9f-bacb-47d207700e3e","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","menge":"114.125","gp":"6014.27"},
+          {"positionId":"019b76e9-ea56-7c0b-9ccd-9f1ae20696fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea57-75e5-a1d0-370693d7b6c3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea58-7f8a-870d-926d78ec765a","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea59-71fa-92ed-4ea48a6b5a62","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5a-752f-8a06-76e4507c0c26","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5b-73f9-9221-62a34eba45ec","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5c-792b-9c81-2db5b428a9bc","menge":null,"gp":"0.00"},
+          {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","menge":"26.400","gp":"1014.74"},
+          {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","menge":"4.000","gp":"348.50"}
+        ],
+        "leistung": "17395.50",
+        "nachlass": "521.87",
+        "nettoNachNachlass": "16873.63"
+      },
+      "kette": {
+        "leistung": "17395.50",
+        "nachlass": "521.87",
+        "nettoNachNachlass": "16873.63",
+        "mwst": "3205.99",
+        "bruttoKumuliert": "20079.62",
+        "umlagen": [
+          {"bezeichnung":"Bauwesenversicherung","satz":"0.50","betrag":"100.40"}
+        ],
+        "einbehalt": "1003.98",
+        "fruehereZahlbetraege": "8874.40",
+        "zahlbetrag": "10100.84"
+      }
+    },
+    "ar2NachKorrektur": {
+      "rechnungId": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+      "korrigiert": true,
+      "leistungsstand": {
+        "positionen": [
+          {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","menge":"0.500","gp":"975.88"},
+          {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","menge":"86.500","gp":"668.30"},
+          {"positionId":"019b76e9-ea44-7a84-a6a6-36868f616703","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","menge":"7.000","gp":"354.96"},
+          {"positionId":"019b76e9-ea46-7fab-ab9a-3aa7d0e2b200","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea47-7e66-80d3-97961e44c237","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","menge":"94.900","gp":"617.42"},
+          {"positionId":"019b76e9-ea4a-78de-9cba-20fdd5149cc1","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","menge":"108.000","gp":"1350.22"},
+          {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","menge":"31.553","gp":"5521.14"},
+          {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","menge":null,"gp":"502.42"},
+          {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea52-79cb-a520-fb024fa6495b","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea53-7f9f-bacb-47d207700e3e","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","menge":"114.125","gp":"6014.27"},
+          {"positionId":"019b76e9-ea56-7c0b-9ccd-9f1ae20696fc","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea57-75e5-a1d0-370693d7b6c3","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea58-7f8a-870d-926d78ec765a","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea59-71fa-92ed-4ea48a6b5a62","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5a-752f-8a06-76e4507c0c26","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5b-73f9-9221-62a34eba45ec","menge":null,"gp":"0.00"},
+          {"positionId":"019b76e9-ea5c-792b-9c81-2db5b428a9bc","menge":null,"gp":"0.00"},
+          {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","menge":"26.400","gp":"1014.74"},
+          {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","menge":"4.000","gp":"348.50"}
+        ],
+        "leistung": "17367.85",
+        "nachlass": "521.04",
+        "nettoNachNachlass": "16846.81"
+      },
+      "kette": {
+        "leistung": "17367.85",
+        "nachlass": "521.04",
+        "nettoNachNachlass": "16846.81",
+        "mwst": "3200.89",
+        "bruttoKumuliert": "20047.70",
+        "umlagen": [
+          {"bezeichnung":"Bauwesenversicherung","satz":"0.50","betrag":"100.24"}
+        ],
+        "einbehalt": "1002.39",
+        "fruehereZahlbetraege": "8874.40",
+        "zahlbetrag": "10070.67"
+      }
+    }
+  },
+  "gegenprobeOhneEinfrieren": {"ar1Zahlbetrag":"8844.23","ar2Zahlbetrag":"10100.84"},
+  "sollIst": {
+    "nachBlatt1": {
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+      "korrigiert": false,
+      "zeilen": [
+        {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","soll":"1.000","ist":"0.500","anteil":"50.00"},
+        {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","soll":"86.500","ist":"86.500","anteil":"100.00"},
+        {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","soll":"123.450","ist":"89.250","anteil":"72.30"},
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","soll":"96.000","ist":"108.000","anteil":"112.50"},
+        {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","soll":"38.750","ist":"21.473","anteil":"55.41"},
+        {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","soll":"24.000","ist":"12.000","anteil":"50.00"}
+      ],
+      "befunde": [
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","art":"ueber-schwelle","anteil":"112.50"}
+      ]
+    },
+    "nachBlatt2": {
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b","019b7708-6ec9-7dbc-a446-887667e54aac"],
+      "korrigiert": false,
+      "zeilen": [
+        {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","soll":"1.000","ist":"0.500","anteil":"50.00"},
+        {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","soll":"86.500","ist":"86.500","anteil":"100.00"},
+        {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","soll":"12.000","ist":"7.000","anteil":"58.33"},
+        {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","soll":"123.450","ist":"99.150","anteil":"80.32"},
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","soll":"96.000","ist":"108.000","anteil":"112.50"},
+        {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","soll":"38.750","ist":"31.553","anteil":"81.43"},
+        {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","soll":"212.400","ist":"114.125","anteil":"53.73"},
+        {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","soll":"24.000","ist":"26.400","anteil":"110.00"},
+        {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","soll":"6.000","ist":"4.000","anteil":"66.67"}
+      ],
+      "befunde": [
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","art":"ueber-schwelle","anteil":"112.50"}
+      ]
+    },
+    "nachKorrektur": {
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b","019b7708-6ec9-7dbc-a446-887667e54aac"],
+      "korrigiert": true,
+      "zeilen": [
+        {"positionId":"019b76e9-ea42-7a6c-9180-36c38b8c3b9e","soll":"1.000","ist":"0.500","anteil":"50.00"},
+        {"positionId":"019b76e9-ea43-79e5-a71b-20f7abf907b0","soll":"86.500","ist":"86.500","anteil":"100.00"},
+        {"positionId":"019b76e9-ea45-74f6-8e75-27856918c88c","soll":"12.000","ist":"7.000","anteil":"58.33"},
+        {"positionId":"019b76e9-ea49-7ea5-9807-78cd9fa2e55e","soll":"123.450","ist":"94.900","anteil":"76.87"},
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","soll":"96.000","ist":"108.000","anteil":"112.50"},
+        {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","soll":"38.750","ist":"31.553","anteil":"81.43"},
+        {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","soll":"212.400","ist":"114.125","anteil":"53.73"},
+        {"positionId":"019b7708-6ec4-73b4-98ca-0b5aee602f02","soll":"24.000","ist":"26.400","anteil":"110.00"},
+        {"positionId":"019b7708-6ec5-7768-a3f5-4029bb4e5970","soll":"6.000","ist":"4.000","anteil":"66.67"}
+      ],
+      "befunde": [
+        {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","art":"ueber-schwelle","anteil":"112.50"}
+      ]
+    }
+  },
+  "kostenkontrolle": {
+    "rechnungId": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+    "kostenermittlungId": "019b7708-6ecc-7ec1-abd3-6ebf5793defc",
+    "zeilen": [
+      {"kostengruppe":"200","budget":"1100.00","vergabe":"1010.86","abrechnung":"0.00","abweichung":"-89.14"},
+      {"kostengruppe":"210","budget":"1100.00","vergabe":"1010.86","abrechnung":"0.00","abweichung":"-89.14"},
+      {"kostengruppe":"214","budget":"1100.00","vergabe":"1010.86","abrechnung":"0.00","abweichung":"-89.14"},
+      {"kostengruppe":"300","budget":"59800.00","vergabe":"58070.63","abrechnung":"17019.35","abweichung":"-1729.37"},
+      {"kostengruppe":"310","budget":"4600.00","vergabe":"4847.88","abrechnung":"617.42","abweichung":"247.88"},
+      {"kostengruppe":"311","budget":"4600.00","vergabe":"4847.88","abrechnung":"617.42","abweichung":"247.88"},
+      {"kostengruppe":"320","budget":"21800.00","vergabe":"22490.95","abrechnung":"8388.52","abweichung":"690.95"},
+      {"kostengruppe":"322","budget":"21800.00","vergabe":"22490.95","abrechnung":"8388.52","abweichung":"690.95"},
+      {"kostengruppe":"330","budget":"3000.00","vergabe":"0.00","abrechnung":"0.00","abweichung":"-3000.00"},
+      {"kostengruppe":"340","budget":"22500.00","vergabe":"23346.13","abrechnung":"6014.27","abweichung":"846.13"},
+      {"kostengruppe":"350","budget":"2700.00","vergabe":"2626.08","abrechnung":"0.00","abweichung":"-73.92"},
+      {"kostengruppe":"352","budget":"2700.00","vergabe":"2626.08","abrechnung":"0.00","abweichung":"-73.92"},
+      {"kostengruppe":"390","budget":"5200.00","vergabe":"4759.59","abrechnung":"1999.14","abweichung":"-440.41"},
+      {"kostengruppe":"391","budget":"5200.00","vergabe":"4759.59","abrechnung":"1999.14","abweichung":"-440.41"}
+    ],
+    "ohneKostengruppe": {"budget":"0.00","vergabe":"722.28","abrechnung":"348.50","abweichung":"722.28"},
+    "nachlass": {"budget":"0.00","vergabe":"-1794.11","abrechnung":"-521.04","abweichung":"-1794.11"},
+    "gesamt": {"budget":"60900.00","vergabe":"58009.66","abrechnung":"16846.81","abweichung":"-2890.34"}
+  }
+}
