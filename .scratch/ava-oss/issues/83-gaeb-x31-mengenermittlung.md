@@ -1,6 +1,6 @@
 # 83: M3: GAEB X31 (Mengenermittlung) lesen und schreiben
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: M3 · Paket: `packages/gaeb` (dazu `werkzeuge/xsd-gegenpruefung.mjs` im Paket)
 Blocked by: 70, 73
