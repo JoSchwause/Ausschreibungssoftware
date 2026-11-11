@@ -88,6 +88,8 @@ async function messeScrollen(page: Page, pixelProSekunde: number, dauerMs: numbe
 const FALLE = [
   { name: 'gross, 5.000 Zeilen', url: '/?fixture=gross' },
   { name: 'gross x2, 10.000 Zeilen', url: '/?fixture=gross&kopien=2' },
+  // Vergleichsgrid (Ticket 60): erfundener Preisspiegel, 5 Bieter und Min/Mittel/Max je EP und GP (20 Spalten)
+  { name: 'Vergleich 5.000 Zeilen x 5 Bieter', url: '/vergleich.html?zeilen=5000&bieter=5' },
 ] as const;
 
 // zwei Geschwindigkeiten: zügiges Lesen (200 Zeilen/s) und ein schneller Wisch (1.000 Zeilen/s)

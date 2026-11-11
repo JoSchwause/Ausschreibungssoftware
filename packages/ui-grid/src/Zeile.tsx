@@ -7,6 +7,7 @@ import type { ReactElement } from 'react';
 import type { Row } from '@tanstack/react-table';
 import type { GridZahlen, LvSpalte, LvZeile, Pruefbefund } from '@tethys/vertrag';
 import { Icon } from '@tethys/ui-basis';
+import { Baumeinzug } from './Baumeinzug';
 import { Editor } from './Editor';
 import type { EditorAktionen } from './Editor';
 import { anzeigeText, istBearbeitbar } from './eingabe';
@@ -151,25 +152,11 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
             }
           >
             {spalte === baumspalte ? (
-              <span className="tx-grid__baum" style={{ paddingInlineStart: zeile.tiefe * 16 }}>
-                {zeile.hatUnterknoten ? (
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    data-aufklappen=""
-                    className="tx-grid__knopf"
-                    aria-label={zeile.aufgeklappt ? texte.zuklappen : texte.aufklappen}
-                  >
-                    <Icon
-                      name="pfeilUnten"
-                      groesse={14}
-                      className={zeile.aufgeklappt ? undefined : 'tx-grid__pfeil--zu'}
-                    />
-                  </button>
-                ) : (
-                  <span className="tx-grid__platz" aria-hidden="true" />
-                )}
-              </span>
+              <Baumeinzug
+                tiefe={zeile.tiefe}
+                hatUnterknoten={zeile.hatUnterknoten}
+                aufgeklappt={zeile.aufgeklappt}
+              />
             ) : null}
             {bearbeitung?.spalte === spalte ? (
               <Editor spalte={spalte} entwurf={bearbeitung.entwurf} aktionen={editor} />
