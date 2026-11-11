@@ -2,9 +2,10 @@
 // ChangeSet am Angebot anwenden und umkehren (Ticket 36, Punkt 3). Beides sind reine Funktionen.
 //
 // Darstellung des Zustands: `angebot.positionen` in der Reihenfolge des Hinzufügens (neue Einträge hinten, geänderte am
-// selben Platz); `summen` wie `angebotSummenBerechnen`: `positionen` und `gliederungen` in der Reihenfolge der Knoten
-// des LV, je Position des LV genau ein Eintrag. Ein Angebotsbefehl ändert am Summenstand nur Werte, nie die Liste
-// selbst (außer Anlegen und Löschen); so ersetzt `angebotChangeSetAnwenden` Einträge am selben Arrayindex.
+// selben Platz); `summen` beim Anlegen wie `angebotSummenBerechnen`: `positionen` und `gliederungen` in der Reihenfolge
+// der Knoten des LV, je Position des LV genau ein Eintrag. Ein Angebotsbefehl ändert daran meist nur Werte;
+// `angebotChangeSetAnwenden` ersetzt sie am selben Arrayindex. Ausnahme (Ticket 72): Eine LV-Position, die nach dem
+// Anlegen ins LV kam, hat keinen Eintrag; ihre Summe kommt beim Bepreisen hinten dazu und fällt bei der Umkehrung weg.
 
 import type {
   AngebotChangeSet,
@@ -168,14 +169,14 @@ export function angebotChangeSetAnwenden(
   };
 }
 
-// v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht: `LEERES_VORHER` entfällt)
 /**
  * Kehrt ein ChangeSet um, ohne den Vorzustand zu kennen: alte und neue Stände tauschen, Hinzugefügtes wird entfernt
- * und umgekehrt. Anlegen und Löschen sind Gegenstücke. Doppelte Umkehrung ergibt das ChangeSet.
+ * und umgekehrt; eine Summe ohne alten Wert kommt in `vorher.entfernt` und fällt weg. Anlegen und Löschen sind
+ * Gegenstücke. Doppelte Umkehrung ergibt das ChangeSet (Summen mit altem Wert stehen vor denen ohne).
  */
 export function angebotChangeSetUmkehren(cs: AngebotChangeSet): AngebotChangeSet {
   const s = cs.summen;
-  const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
+  const v = s.vorher;
   const altP = new Set<string>(v.positionen.map(positionsKennung));
   const altG = new Set<string>(v.gliederungen.map(gliederungsKennung));
   const summen: Summenaenderung = {

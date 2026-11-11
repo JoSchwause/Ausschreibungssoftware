@@ -394,14 +394,24 @@ export function angebotBefehlAusfuehrer(projekt: Projekt, lv: LvZustand): Angebo
         }
       }
     }
-    // Geschrieben wird eine Summe, die sich ändert. Ohne gespeicherte Summe nur zusammen mit der neuen Angebotsposition:
-    // `speicher` entfernt Angebotssummen nur mit ihrer Angebotsposition, so nimmt die Umkehrung beides wieder weg (D-72.2).
-    const geschrieben = kandidaten.filter((c) =>
-      c.vorher === undefined
-        ? alt === undefined && c.lvPos.id === neu.positionId
-        : c.vorher.gesamtpreis !== c.nachher.gesamtpreis ||
-          c.vorher.gehtInSummeEin !== c.nachher.gehtInSummeEin,
+    // Geschrieben wird eine Summe, die sich ändert, und immer die Summe einer neuen Angebotsposition: `speicher` löscht
+    // mit einer Angebotsposition auch ihre Summe, die Umkehrung muss sie also zurückschreiben (gespeichert) oder weglassen
+    // (ohne gespeicherte Summe). Eine andere Summe ohne gespeicherten Stand bleibt ungeschrieben; die Umkehrung könnte
+    // sie in `speicher` nicht entfernen (D-72.2, D-72.3).
+    const neueAngebotsposition = (c: (typeof kandidaten)[number]): boolean =>
+      alt === undefined && c.lvPos.id === neu.positionId;
+    const zuSchreiben = kandidaten.filter(
+      (c) =>
+        neueAngebotsposition(c) ||
+        (c.vorher !== undefined &&
+          (c.vorher.gesamtpreis !== c.nachher.gesamtpreis ||
+            c.vorher.gehtInSummeEin !== c.nachher.gehtInSummeEin)),
     );
+    // Summen mit altem Wert vorn, neue dahinter: so ergibt die doppelte Umkehrung dasselbe ChangeSet.
+    const geschrieben = [
+      ...zuSchreiben.filter((c) => c.vorher !== undefined),
+      ...zuSchreiben.filter((c) => c.vorher === undefined),
+    ];
     const altBetrag = (c: (typeof kandidaten)[number]): Betrag =>
       c.vorher === undefined ? NULL_BETRAG : betrag(c.vorher);
     const verschoben = kandidaten.filter(
