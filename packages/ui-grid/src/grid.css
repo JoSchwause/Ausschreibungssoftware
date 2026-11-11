@@ -96,11 +96,6 @@
   background: var(--tx-color-accent-subtle);
 }
 
-/* Hülle der Rückfrage: nur für die Tastenereignisse im React-Baum, ohne eigenes Kästchen im Layout. */
-.tx-grid__rueckfrage {
-  display: contents;
-}
-
 /* Ausgeschnitten (Strg+X), bis eingefügt oder mit Escape abgebrochen: gestrichelter Rahmen, Text gedämpft. */
 .tx-grid__zeile--ausgeschnitten {
   outline: 1px dashed var(--tx-color-accent);

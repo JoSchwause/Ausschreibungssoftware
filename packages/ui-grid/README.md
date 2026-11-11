@@ -51,14 +51,14 @@ Tastatur zuerst (U3, U8). Strg steht auf dem Mac für Cmd.
 
 ### Zeilen (Ticket 46)
 
-| Taste                                    | Wirkung                                                                              |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Strg+C                                   | ausgewählte Zeilen (sonst die aktive) als Tabelle (TSV) kopieren, Zahlen in de-DE    |
-| Strg+X                                   | wie Strg+C, die Zeilen sind bis zum Einfügen als „ausgeschnitten“ markiert           |
-| Strg+V                                   | einfügen hinter der aktiven Zeile, siehe unten                                       |
-| Strg+Minus, Strg+Entf                    | Zeilen nach Rückfrage in den Papierkorb legen (Enter bestätigt, Escape bricht ab)    |
-| Alt+Pfeil hoch / runter                  | Zeilen um eine Stelle unter ihren Geschwistern verschieben; am Rand geschieht nichts |
-| Strg+Plus (US-Tastatur: Strg+Umschalt+=) | leere Position hinter der aktiven Zeile anlegen und ihren Kurztext fokussieren       |
+| Taste                                    | Wirkung                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Strg+C                                   | ausgewählte Zeilen (sonst die aktive) als Tabelle (TSV) kopieren, Zahlen in de-DE                                  |
+| Strg+X                                   | wie Strg+C, die Zeilen sind bis zum Einfügen als „ausgeschnitten“ markiert                                         |
+| Strg+V                                   | einfügen hinter der aktiven Zeile, siehe unten                                                                     |
+| Strg+Minus, Strg+Entf                    | Zeilen nach Rückfrage in den Papierkorb legen (Fokus auf der Bestätigung: Enter legt sie hinein, Escape bricht ab) |
+| Alt+Pfeil hoch / runter                  | Zeilen um eine Stelle unter ihren Geschwistern verschieben; am Rand geschieht nichts                               |
+| Strg+Plus (US-Tastatur: Strg+Umschalt+=) | leere Position hinter der aktiven Zeile anlegen und ihren Kurztext fokussieren                                     |
 
 „Hinter der aktiven Zeile“ heißt bei einer Gliederung: als erstes Kind (wie überall im Vertrag, `Einfuegeort`).
 

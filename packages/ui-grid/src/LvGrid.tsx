@@ -106,6 +106,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
   /** Text, den das Grid gerade in die System-Zwischenablage schreibt; `null`, sobald `writeText` fertig ist. */
   const schreibtNoch = useRef<string | null>(null);
   const [rueckfrage, setRueckfrage] = useState<Rueckfrage | null>(null);
+  /** Bestätigen-Schaltfläche der Rückfrage: Anfangsfokus des Dialogs, damit Enter bestätigt (D-26). */
+  const bestaetigen = useRef<HTMLButtonElement>(null);
   /** Nur ein Anstoß zum Neuzeichnen, damit eine Fokusanfrage außerhalb eines Ereignisses ausgeführt wird. */
   const [, setFokusRunde] = useState(0);
   /** Neue Zeile, die nach dem Befehl in den Eigenschaften erscheinen soll und dann den Fokus bekommt. */
@@ -863,35 +865,27 @@ export function LvGrid(props: LvGridProps): ReactElement {
         </span>
       ) : null}
       <Hinweisleiste hinweise={props.hinweise ?? []} onSprung={springeZu} />
-      {/* Die Rückfrage liegt im Portal; Tastenereignisse laufen im React-Baum trotzdem hier vorbei: Enter bestätigt. */}
-      <div
-        className="tx-grid__rueckfrage"
-        onKeyDown={(e) => {
-          const abbrechen = e.target instanceof HTMLElement && e.target.dataset['abbrechen'] !== undefined;
-          if (e.key !== 'Enter' || abbrechen) return;
-          e.preventDefault();
-          bestaetigeLoeschen();
+      {/* Rückfrage vor dem Löschen (Q5): Der Fokus steht beim Öffnen auf der Bestätigung, Enter wirkt nur auf die
+          fokussierte Schaltfläche (D-26, Ticket 74). */}
+      <Dialog
+        offen={rueckfrage !== null}
+        onOffenChange={(offen) => {
+          if (!offen) brichLoeschenAb();
         }}
-      >
-        <Dialog
-          offen={rueckfrage !== null}
-          onOffenChange={(offen) => {
-            if (!offen) brichLoeschenAb();
-          }}
-          titel={texte.loeschenTitel}
-          beschreibung={rueckfrage?.frage ?? ''}
-          fuss={
-            <>
-              <Button variante="sekundaer" data-abbrechen="" onClick={brichLoeschenAb}>
-                {texte.abbrechen}
-              </Button>
-              <Button variante="gefahr" onClick={bestaetigeLoeschen}>
-                {texte.loeschenBestaetigen}
-              </Button>
-            </>
-          }
-        />
-      </div>
+        titel={texte.loeschenTitel}
+        beschreibung={rueckfrage?.frage ?? ''}
+        anfangsfokus={bestaetigen}
+        fuss={
+          <>
+            <Button variante="sekundaer" onClick={brichLoeschenAb}>
+              {texte.abbrechen}
+            </Button>
+            <Button ref={bestaetigen} variante="gefahr" onClick={bestaetigeLoeschen}>
+              {texte.loeschenBestaetigen}
+            </Button>
+          </>
+        }
+      />
       <div className="tx-grid__status" role="status" aria-live="polite">
         {status}
       </div>
