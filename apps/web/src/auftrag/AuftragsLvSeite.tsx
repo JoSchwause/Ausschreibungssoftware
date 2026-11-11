@@ -16,6 +16,7 @@ import type {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
 import { lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
@@ -109,7 +110,15 @@ export function AuftragsLvSeite({
       </div>
     );
   }
-  return <Ansicht stand={lage.stand} gehe={gehe} />;
+  return (
+    <Ansicht
+      stand={lage.stand}
+      gehe={gehe}
+      neuLaden={() => {
+        setLauf((n) => n + 1); // Ticket 89: nach Kostengruppen neu laden
+      }}
+    />
+  );
 }
 
 function Verweis({
@@ -135,7 +144,15 @@ function Verweis({
   );
 }
 
-function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }): ReactElement {
+function Ansicht({
+  stand,
+  gehe,
+  neuLaden,
+}: {
+  stand: Stand;
+  gehe: (pfad: string) => void;
+  neuLaden: () => void; // Ticket 89
+}): ReactElement {
   const { auftrag } = stand;
   const kopf = auftrag.auftragsLeistungsverzeichnis;
   const zustand = useMemo(() => alsLvZustand(auftrag), [auftrag]);
@@ -220,6 +237,7 @@ function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }
       <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
         <HistorieKnoepfe />
         <AuftragAusgeben auftrag={auftrag} />
+        <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
         <button
           type="button"
           className="tx-button tx-button--sekundaer"

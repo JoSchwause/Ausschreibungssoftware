@@ -13,6 +13,7 @@ import type {
   Position,
   PositionId,
 } from '@tethys/vertrag';
+import { kinderJeEltern } from '../lv/ansicht';
 import { texte } from './texte';
 
 /**
@@ -25,9 +26,18 @@ export function kgEingabe(text: string): Ergebnis<Kostengruppennummer | null, st
   return r.ok ? r : { ok: false, fehler: texte.zuordnung.fehlerForm };
 }
 
-/** Die Positionen eines Knotenbaums in Dokumentreihenfolge ist Sache der Ansicht; hier nur der Filter auf Positionen. */
-export function positionenVon(knoten: readonly Knoten[]): readonly Position[] {
-  return knoten.filter((k): k is Position => k.art === 'position');
+/** Die Positionen eines Baums in Dokumentreihenfolge (Tiefensuche nach `reihenfolge`), auch unter zugeklappten Gliederungen. */
+export function positionenInReihenfolge(wurzelId: string, knoten: readonly Knoten[]): Position[] {
+  const kinder = kinderJeEltern(knoten);
+  const aus: Position[] = [];
+  const besuche = (elternId: string): void => {
+    for (const k of kinder.get(elternId) ?? []) {
+      if (k.art === 'position') aus.push(k);
+      else besuche(k.id);
+    }
+  };
+  besuche(wurzelId);
+  return aus;
 }
 
 /**

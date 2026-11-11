@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Betrag, Kostengruppennummer, PositionId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { inGliederung, kgEingabe, kostengruppenBefehle } from './kostengruppe';
+import type { Knoten } from '@tethys/vertrag';
+import { inGliederung, kgEingabe, kostengruppenBefehle, positionenInReihenfolge } from './kostengruppe';
 
 const kg = (s: string): Kostengruppennummer => s as Kostengruppennummer;
 const pid = (s: string): PositionId => s as PositionId;
@@ -63,5 +64,20 @@ describe('inGliederung', () => {
   it('eine fremde Gruppe liegt außerhalb; ohne Ermittlung ebenso', () => {
     expect(inGliederung(kg('400'), e)).toBe(false);
     expect(inGliederung(kg('330'), [])).toBe(false);
+  });
+});
+
+describe('positionenInReihenfolge', () => {
+  const k = (id: string, art: 'titel' | 'position', elternId: string, reihenfolge: number) =>
+    ({ id, art, elternId, reihenfolge }) as unknown as Knoten;
+
+  it('Tiefensuche nach Reihenfolge, nur Positionen', () => {
+    const knoten = [
+      k('p3', 'position', 'w', 1),
+      k('t1', 'titel', 'w', 0),
+      k('p2', 'position', 't1', 1),
+      k('p1', 'position', 't1', 0),
+    ];
+    expect(positionenInReihenfolge('w', knoten).map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
   });
 });
