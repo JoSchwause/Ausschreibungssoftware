@@ -257,3 +257,25 @@ Question: Der Kern weist Absätze, Listen, Tabellen und Textergänzungen in `Lan
 Decision: 47 mit dem markierten `test.fixme` mergen (Lücke liegt außerhalb von `apps/web`); neues Kern-Ticket 50 schließt die Lücke; Ticket 48 entfernt das `fixme`, sobald 50 gemergt ist.
 Reason: P2 (ein Schreiber je Paket); kein dauerhaft übersprungener Test.
 Reversible: yes  Touches: packages/kern, apps/web/e2e
+
+## D-16 Wahl ohne Gruppe/Variante im GAEB-Export
+Welle 3 · Review C2, S4 · decided by: advisor
+Question: Aus v1 migrierte Wahlpositionen (Gruppe/Variante `null`) schreibt der Writer als normale `Item`; beim Re-Import zählen sie ins Netto. `gaeb` hat eine eigene, abweichende Kopie der Kern-Regel `betragsziel`.
+Decision: Der Writer vergibt deterministisch eine künstliche Wahlgruppe (eine Gruppe je `grundpositionId`, Varianten 1..n in LV-Reihenfolge, Gruppennummern oberhalb der höchsten belegten; Wahl ohne Grundposition eigene Gruppe), mit Warnung (U5). Über 9 Varianten oder 999 Gruppen: vorhandener Fehler `wahl-nummer-ungueltig`, kein Rückfall auf `Item`. `gaeb` nutzt die Kern-Regel `betragsziel` (Abhängigkeit `gaeb → kern`, A3 erlaubt) statt einer Kopie. Die Migration erfindet keine Fachdaten.
+Reason: D-37.1 („Variante `null` = Wahl“) bindet; ein normales `Item` verschiebt still Geld ins Netto.
+Reversible: yes  Touches: packages/gaeb
+Annahme für Demo, Mensch bestätigt später (E-04: Gruppe und Variante aus GAEB).
+
+## D-17 Summen nach der Migration v1 → v2 neu rechnen
+Welle 3 · Review C1 · decided by: advisor
+Question: Migration 2 lässt Bedarfs-/Wahlsumme `NULL`; Pauschal-GP (D-37.1) macht gespeicherte Summen veraltet.
+Decision: Nach dem Schemaschritt rechnet `speicher` in derselben Transaktion alle gespeicherten Summen mit `summenBerechnen` aus dem Kern neu, für Datei- und Datenbankweg (Abhängigkeit `speicher → kern`, A3 erlaubt). Weist der Kern Altdaten ab: Daten behalten, Befund melden, Migration nicht abbrechen.
+Reason: Gespeicherte Summen müssen im Ruhezustand stimmen; kein dauerhafter Altlast-Zweig im Kern.
+Reversible: yes  Touches: packages/speicher
+
+## D-18 Tor M2 „erfüllt mit gelisteten Unterschieden“
+Welle 3 · Review P1, P2 · decided by: advisor
+Question: Roundtrip ergibt ein identisches Modell nur bis auf eine Liste erwarteter Unterschiede; Fixture `zuschlag` fehlt in Export und XSD-Prüfung.
+Decision: `zuschlag` jetzt in die Export-/XSD-/Roundtrip-Liste; die Unterschiedsliste ist je Fixture und Position ausdrücklich, der Test schlägt bei jedem ungelisteten Unterschied fehl. M2 gilt als „erfüllt mit gelisteten Unterschieden“. Fixture-Umstellung auf die GAEB-Form als Folgeticket 51 (`ready-for-agent`, blockiert M3).
+Reason: D-44.2 hat die Umstellung aus P1/P2-Gründen abgespalten; sie jetzt zu machen öffnet fünf Pakete beim Wellenabschluss.
+Reversible: yes  Touches: packages/gaeb, Ticket 51
