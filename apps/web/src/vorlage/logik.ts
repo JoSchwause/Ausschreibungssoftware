@@ -19,7 +19,7 @@ import type {
 } from '@tethys/vertrag';
 
 /** `VorlageSetzen`, wenn sich das Kennzeichen ändert; sonst nichts (Abbrechen und Übernehmen ohne Änderung sind kein Befehl). */
-export function vorlageBefehl(lv: { readonly vorlage?: true | boolean }, gewollt: boolean): LvBefehl | null {
+export function vorlageBefehl(lv: { readonly vorlage?: boolean }, gewollt: boolean): LvBefehl | null {
   return (lv.vorlage === true) === gewollt ? null : { art: 'VorlageSetzen', vorlage: gewollt };
 }
 
@@ -88,7 +88,7 @@ export function baumZeilen(zustand: LvZustand): BaumZeile[] {
   const gehe = (elternId: string, tiefe: number): void => {
     for (const k of kinder.get(elternId) ?? []) {
       zeilen.push({
-        id: k.id as KnotenId,
+        id: k.id,
         art: k.art,
         tiefe,
         text: zeilentext(k),

@@ -147,7 +147,7 @@ describe('Übernahme in ein anderes LV', () => {
       },
     };
     const vorher = JSON.stringify(mitQuelle);
-    const r = uebernahmeBauen(mitQuelle, new Set([erste.id as KnotenId]), ids, einfuegeOrt(ziel, null));
+    const r = uebernahmeBauen(mitQuelle, new Set<KnotenId>([erste.id]), ids, einfuegeOrt(ziel, null));
     if (r === null || r.befehl.art !== 'KnotenEinfuegen') throw new Error('keine Übernahme');
     expect((r.befehl.knoten[0] as Position).textquelle).toBe('Eigener Text');
     expect(JSON.stringify(mitQuelle)).toBe(vorher);

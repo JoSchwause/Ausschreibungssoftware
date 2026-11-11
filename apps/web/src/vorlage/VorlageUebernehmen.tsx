@@ -6,7 +6,7 @@
 import { Auswahl, Button, Dialog, useToast } from '@tethys/ui-basis';
 import type { KnotenId, LvBefehl, LvZustand } from '@tethys/vertrag';
 import { useEffect, useMemo, useState } from 'react';
-import type { MutableRefObject, ReactElement } from 'react';
+import type { ReactElement, RefObject } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import {
   auswahlUmschalten,
@@ -37,7 +37,7 @@ export function VorlageUebernehmen({
   /** Das LV, in das übernommen wird. */
   zustand: LvZustand;
   /** Die aktive Zeile des Grids (gelesen beim Übernehmen). */
-  aktiv: MutableRefObject<KnotenId | null>;
+  aktiv: RefObject<KnotenId | null>;
   senden: (befehl: LvBefehl) => Promise<boolean>;
 }): ReactElement {
   const u = useUmgebung();
@@ -52,7 +52,7 @@ export function VorlageUebernehmen({
 
   useEffect(() => {
     if (!offen) return;
-    let lebt = true;
+    const stand = { lebt: true };
     setListe({ art: 'laedt' });
     setGewaehlt(null);
     setQuelle({ art: 'keine' });
@@ -65,10 +65,10 @@ export function VorlageUebernehmen({
           const lvs = await u.speicher.leistungsverzeichnisse.auflisten(p.id);
           if (lvs.ok) mitLvs.push({ id: p.id, name: p.name, lvs: lvs.wert });
         }
-      if (lebt) setListe({ art: 'da', eintraege: vorlagenAus(mitLvs, lvId) });
+      if (stand.lebt) setListe({ art: 'da', eintraege: vorlagenAus(mitLvs, lvId) });
     })();
     return () => {
-      lebt = false;
+      stand.lebt = false;
     };
   }, [offen, u, lvId]);
 
