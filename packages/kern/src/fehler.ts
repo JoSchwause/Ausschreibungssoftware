@@ -25,12 +25,3 @@ export const nein = (
   knotenId?: string,
   feld?: string,
 ): Ergebnis<never, Befehlsfehler> => ({ ok: false, fehler: befehlsfehler(code, meldung, knotenId, feld) });
-
-// v1.3: mechanisch angepasst, Folgeticket (kern: Einfügen hinter einer Gliederung, Ticket 56)
-/** Der Einfügeort `hinter-gliederung` (Vertrag v1.3) ist im Kern noch nicht umgesetzt: Fehlerwert statt Raten. */
-export const hinterGliederungOffen = (gliederungId: string): Ergebnis<never, Befehlsfehler> =>
-  nein(
-    'befehl-nicht-zustaendig',
-    'Einfuegeort hinter-gliederung ist im Kern noch nicht umgesetzt; zuständig: Ticket 56.',
-    gliederungId,
-  );

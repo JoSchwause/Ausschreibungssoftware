@@ -1,0 +1,115 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Preisspiegel-Seite (Ticket 63): Einstellungen, Grid, Detailleiste, Bieterübersicht. Nur Tokens (U4). */
+
+a.tx-button {
+  text-decoration: none;
+}
+
+.preisspiegel__einstellungen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--tx-space-2) var(--tx-space-4);
+  margin: 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.preisspiegel__einstellungen legend {
+  padding: 0 var(--tx-space-1);
+  font-weight: var(--tx-weight-medium);
+}
+
+.preisspiegel__schwelle {
+  width: 7em;
+}
+
+.preisspiegel__spalten {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+  min-height: var(--tx-control-height);
+}
+
+.preisspiegel__spaltentitel {
+  color: var(--tx-color-text-muted);
+}
+
+.preisspiegel__schalter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-1);
+}
+
+.preisspiegel__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.preisspiegel__grid {
+  min-height: 360px;
+}
+
+.preisspiegel__unten {
+  display: flex;
+  gap: var(--tx-space-4);
+  align-items: flex-start;
+}
+
+.preisspiegel__detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-1) var(--tx-space-4);
+  min-height: calc(var(--tx-control-height) * 2);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface);
+}
+
+.preisspiegel__detail p,
+.preisspiegel__detail ul {
+  margin: 0;
+}
+
+.preisspiegel__detail dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--tx-space-1) var(--tx-space-2);
+  margin: 0;
+}
+
+.preisspiegel__detail dt {
+  color: var(--tx-color-text-muted);
+}
+
+.preisspiegel__detail dd {
+  margin: 0 var(--tx-space-3) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.preisspiegel__detail ul {
+  padding-left: var(--tx-space-4);
+}
+
+.preisspiegel__bieter {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.preisspiegel__bieter th,
+.preisspiegel__bieter td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: right;
+}
+
+.preisspiegel__bieter th[scope='row'],
+.preisspiegel__bieter thead th:first-child {
+  text-align: left;
+}

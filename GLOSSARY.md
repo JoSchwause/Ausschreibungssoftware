@@ -202,6 +202,8 @@ Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
 - **X86**: Auftragserteilung (Vereinbartes Auftrags-LV mit Vertragspreisen).
 - **X89**: Rechnungs-/Abrechnungsdaten.
 - **X31**: Mengenermittlungsdaten (Übergabe von Aufmaßen).
+- **Blankett**: Das LV ohne Preise als Vordruck für Bieter (PDF „ohne Preise“ mit Eingabefeldern, Excel für Bieter). Der Bieter trägt EP und, bei Zuschlagspositionen, den Zuschlagssatz ein.
+- **Excel-Rundlauf**: Der Weg Blankett als `.xlsx` → Bieter füllt EP aus → „Excel einlesen“ legt Bieter und Angebot an. Zugeordnet wird über die versteckte Positions-ID; eine Prüfsumme der LV-Struktur zeigt, ob das LV seit dem Export geändert wurde. Gleichwertig zum X84-Weg, nicht GAEB.
 
 ### BIM (Building Information Modeling) & IFC
 Modellbasierte Arbeitsweise im Bauwesen. Über offene Austauschformate wie **IFC (Industry Foundation Classes)** werden 3D-Bauwerksmodelle mit Bauteileigenschaften (Properties/Quantities) geladen, um Mengen direkt am 3D-Bauteil zu ermitteln (**modellbasierte Mengenermittlung / QTO**) und nachvollziehbar mit LV-Positionen oder Kostengruppen zu verknüpfen.

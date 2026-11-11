@@ -16,6 +16,7 @@ import { Huelle } from './ui/Huelle';
 import { Platzhalterseite } from './ui/Platzhalterseite';
 import { useRoute } from './ui/route';
 import { texte } from './ui/texte';
+import { PreisspiegelSeite } from './vergabe/PreisspiegelSeite'; // Ticket 63
 
 // Die Katalogseite gibt es nur im Dev-Server. Für E2E-Tests wird sie mit VITE_KATALOG=1 in einen
 // Build aufgenommen; ein normaler Produktions-Build enthält sie nicht (Konstante wird zur Bauzeit ersetzt).
@@ -66,6 +67,15 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     return {
       titel: texte.seiten.lv.titel,
       inhalt: mitSpeicher(<LvStandSeite key={standId} lvId={lvId} standId={standId} gehe={gehe} />),
+    };
+  }
+  // Ticket 63: Preisspiegel eines LV
+  const preisspiegel = /^\/lv\/([^/]+)\/preisspiegel$/.exec(pfad);
+  if (preisspiegel?.[1] !== undefined) {
+    const lvId = decodeURIComponent(preisspiegel[1]) as LeistungsverzeichnisId;
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<PreisspiegelSeite key={lvId} lvId={lvId} gehe={gehe} />),
     };
   }
   const lv = /^\/lv\/([^/]+)$/.exec(pfad);

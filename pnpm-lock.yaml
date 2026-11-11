@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@tethys/ausgabe':
+        specifier: workspace:*
+        version: link:../../packages/ausgabe
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
