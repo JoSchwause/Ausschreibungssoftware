@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, devices, expect, test, type Page } from '@playwright/test';
-import { lvBefehlAusfuehren } from '@tethys/kern';
+import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
 import type { Menge, Position } from '@tethys/vertrag';
 import type { Phasenmessung, Pruefstand, PruefSchritt } from '../harness/main';
 import { kanonischesJson } from '../src/kanonisch';
@@ -186,6 +186,14 @@ test.describe('Leistung', () => {
     test.info().annotations.push({ type: 'messung', description: meldung });
     expect(erstes).toBeLessThan(2000);
     expect(median).toBeLessThan(2000);
+
+    // LV-Übersicht (Ticket 57): eine Abfrage ohne Knoten, über den Worker, Median unter 20 ms.
+    const liste = [...(await ps(page, 'lvListezeit', DB, f.projekt.id, 9))].sort((a, b) => a - b);
+    const listeMedian = liste[Math.floor(liste.length / 2)] ?? Number.NaN;
+    const listeMeldung = `[speicher/opfs] gross: LV-Übersicht (9 Läufe) Median ${ms(listeMedian)} ms, max ${ms(liste.at(-1) ?? Number.NaN)} ms`;
+    console.info(listeMeldung);
+    test.info().annotations.push({ type: 'messung', description: listeMeldung });
+    expect(listeMedian).toBeLessThan(20);
   });
 });
 
@@ -268,17 +276,20 @@ async function phasenMessen(page: Page, wo: string): Promise<Record<string, numb
   await ps(page, 'anwenden', DB, anlegenSchritte(f));
 
   // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
-  // und des LV). Jede Änderung trifft eine andere Position, ihr Vorherstand ist also der gespeicherte.
+  // und des LV) auf dem Stand nach der vorigen Änderung (dessen alte Summen prüft `speicher`, Ticket 57). Jede Änderung
+  // trifft eine andere Position.
   const lvId = f.lv.leistungsverzeichnis.id;
   const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
   const AUFWAERMEN = 5;
   const MESSUNGEN = 21;
+  let stand = f.lv;
   const folge: PruefSchritt[] = Array.from({ length: AUFWAERMEN + MESSUNGEN }, (_, i) => {
     const p = positionen[i * 190];
     if (p === undefined) throw new Error('Position fehlt');
     const befehl = { art: 'MengeAendern', positionId: p.id, menge: '7.000' as Menge } as const;
-    const cs = lvBefehlAusfuehren(f.lv, befehl);
+    const cs = lvBefehlAusfuehren(stand, befehl);
     if (!cs.ok) throw new Error(cs.fehler.meldung);
+    stand = lvChangeSetAnwenden(stand, cs.wert) ?? stand;
     return {
       eintrag: eintrag(2000 + i, f.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, befehl),
       changeSet: cs.wert,

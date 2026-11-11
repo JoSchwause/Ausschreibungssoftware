@@ -192,6 +192,18 @@ const harness = {
     return zeiten;
   },
 
+  /** Zeiten von `leistungsverzeichnisse.auflisten` (LV-Übersicht, Ticket 57) über den Worker, in ms. */
+  async lvListezeit(name: string, projekt: ProjektId, wiederholungen: number): Promise<number[]> {
+    const zeiten: number[] = [];
+    for (let i = 0; i < wiederholungen; i++) {
+      const t0 = performance.now();
+      const r = await hole(name).leistungsverzeichnisse.auflisten(projekt);
+      zeiten.push(performance.now() - t0);
+      if (!r.ok) throw new Error(r.fehler.meldung);
+    }
+    return zeiten;
+  },
+
   /** LV-Stände des LV ohne Zustand (`Speicher.lvStaende.auflisten`). */
   async lvStaende(name: string, id: LeistungsverzeichnisId): Promise<LvStandUebersicht[] | Kurz> {
     const repo = hole(name).lvStaende;

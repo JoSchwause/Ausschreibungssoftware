@@ -72,6 +72,16 @@ describe('Fixtures speichern und laden', () => {
     );
     expect(lv.leistungsverzeichnis.knoten.filter((k) => k.art === 'position')).toHaveLength(5000);
     expect(lv).toEqual(normalisiere(f.lv));
+
+    // LV-Übersicht (Ticket 57): eine Abfrage ohne Knoten; Median von 9 Läufen unter 20 ms.
+    const zeiten = Array.from({ length: 9 }, () => {
+      const t = performance.now();
+      expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
+        { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
+      ]);
+      return performance.now() - t;
+    }).sort((a, b) => a - b);
+    expect(zeiten[4]).toBeLessThan(20);
   });
 });
 
