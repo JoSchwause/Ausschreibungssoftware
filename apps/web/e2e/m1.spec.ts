@@ -4,6 +4,7 @@
 // Umnummerieren, Nachlass 2,00 %, Seite neu laden: dieselben Werte. Dazu die Merkmale (Ticket 37 ist gemergt):
 // 01.0010 pauschal, 01.0060 Bedarf mit Gesamtbetrag (Summen gleich), zwei weitere Positionen unter 01.02 als Bedarf ohne
 // Gesamtbetrag mit Stundenlohn und als Wahl: Netto unverändert, Bedarfs- und Wahlsumme getrennt ausgewiesen.
+// Nachtrag Ticket 47: am Ende von 01.02 eine Zuschlagsposition über den Positionsdialog (Gliederung, 10,00 %).
 
 import { expect, test, type Page } from '@playwright/test';
 import {
@@ -74,6 +75,20 @@ const ERWARTET_SUMMEN = {
   Brutto: '6.418,75',
 };
 
+/** Ticket 47, Punkt 4: Basis 1.169,97 + 977,59 = 2.147,56, Betrag gerundet(214,756) = 214,76. */
+const ZUSCHLAG = 'Zuschlag Baustellenlogistik';
+const ERWARTET_ZEILEN_ZUSCHLAG = ERWARTET_ZEILEN_MERKMALE.map(([oz, kt, s]) =>
+  oz === '01' ? [oz, kt, '5.718,75'] : oz === '01.02' ? [oz, kt, '2.362,32'] : [oz, kt, s],
+).concat([['01.02.0050', ZUSCHLAG, '214,76']]);
+const ERWARTET_SUMMEN_ZUSCHLAG = {
+  Netto: '5.718,75',
+  Nachlass: '114,38',
+  'Netto nach Nachlass': '5.604,37',
+  MwSt: '1.064,83',
+  Brutto: '6.669,20',
+  ...ERWARTET_AUSWEISE,
+};
+
 const zelle = (page: Page, zeile: number, spalte: string) =>
   page.locator(`[role="row"][data-i="${String(zeile)}"] [data-spalte="${spalte}"]`);
 
@@ -102,6 +117,7 @@ async function merkmaleSetzen(page: Page, zeile: number, ankreuzen: readonly str
 }
 
 test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben Werte da', async ({ page }) => {
+  test.setTimeout(120_000);
   // Die GP der Fixture stimmen mit der Tabelle im Ticket überein (zweiter Abgleich).
   expect([...unter0101, ...unter0102].map(gp)).toEqual([
     '1.850,00',
@@ -167,4 +183,39 @@ test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben 
   await expect(menge).toHaveText('86,500');
   await expect(zelle(page, 3, 'einheit')).toHaveText('m');
   await expect(zelle(page, 3, 'einheitspreis')).toHaveText('7,450');
+
+  // Ticket 47: Zuschlagsposition hinter der letzten Position von 01.02, Satz und Bezugsform im Positionsdialog.
+  // Zur letzten Zeile mit der Tastatur (die aktive Zeile kommt aus der Auswahl des Grids).
+  await zelle(page, 8, 'kurztext').focus();
+  await page.keyboard.press('ArrowDown');
+  await neueZeile(page, () => page.keyboard.press('Control+Alt+KeyP'));
+  await tippe(page, ZUSCHLAG);
+  await page.keyboard.press('Control+Enter');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Zuschlagsposition').focus();
+  await page.keyboard.press('Space');
+  await dialog.getByRole('textbox', { name: 'Zuschlagssatz' }).fill('10');
+  await dialog.getByRole('radio', { name: 'Gliederung' }).check();
+  // Basis und Betrag aus dem Kern, schon vor dem Übernehmen.
+  await expect(dialog.locator('[data-wert="basis"]')).toHaveText('2.147,56');
+  await expect(dialog.locator('[data-wert="betrag"]')).toHaveText('214,76');
+  await dialog.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  await expect.poll(() => zeilen(page)).toEqual(ERWARTET_ZEILEN_ZUSCHLAG);
+  await expect.poll(() => summen(page)).toMatchObject(ERWARTET_SUMMEN_ZUSCHLAG);
+  await expect.poll(async () => (await arten(page)).at(-1)).toBe('Zuschlag');
+
+  await page.reload();
+  await expect(page.getByRole('treegrid', { name: 'Positionen' })).toBeVisible();
+  await expect.poll(() => zeilen(page)).toEqual(ERWARTET_ZEILEN_ZUSCHLAG);
+  await expect.poll(() => summen(page)).toMatchObject(ERWARTET_SUMMEN_ZUSCHLAG);
+  // Nach dem Neuladen zeigt der Dialog Satz, Bezugsform und dieselbe Basis.
+  await zelle(page, 10, 'ordnungszahl').dblclick();
+  await expect(dialog.getByRole('textbox', { name: 'Zuschlagssatz' })).toHaveValue('10,00');
+  await expect(dialog.getByRole('radio', { name: 'Gliederung' })).toBeChecked();
+  await expect(dialog.locator('[data-wert="basis"]')).toHaveText('2.147,56');
+  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(dialog).toHaveCount(0);
 });

@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Einheitspreis, LvBefehl, Menge, Position, PositionId, Prozent, TitelId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { entwurfBefehle, entwurfVon, kernFehlerFeld, type Positionsentwurf } from './positionsentwurf';
+import {
+  entwurfBefehle,
+  entwurfNachfuehren,
+  entwurfVon,
+  kernFehlerFeld,
+  type Positionsentwurf,
+} from './positionsentwurf';
 
 const P = 'p1' as PositionId;
 const position = (x: Partial<Position> = {}): Position => ({
@@ -285,6 +291,20 @@ describe('Einheitspreisanteile und Leitbeschreibung', () => {
     expect(entwurfBefehle(mitLb, mit(mitLb, { leitbeschreibung: false })).befehle).toEqual([
       { art: 'LeitbeschreibungSetzen', positionId: P, leitbeschreibung: null },
     ]);
+  });
+});
+
+describe('Neuer gespeicherter Stand, während der Dialog offen ist', () => {
+  it('übernimmt ihn in unberührte Felder; geänderte Felder bleiben, wie der Nutzer sie eingab', () => {
+    const alt = position({ kurztext: '' });
+    const basis = entwurfVon(alt);
+    const eingabe = { ...basis, menge: '13' };
+    // Der Kurztext aus dem Grid kommt erst jetzt im Zustand an.
+    const neu = position({ kurztext: 'Zuschlag' });
+    const e = entwurfNachfuehren(eingabe, basis, entwurfVon(neu));
+    expect([e.kurztext, e.menge]).toEqual(['Zuschlag', '13']);
+    // Damit überschreibt Übernehmen den neuen Kurztext nicht mit dem alten.
+    expect(entwurfBefehle(neu, e).befehle).toEqual([{ art: 'MengeAendern', positionId: P, menge: '13.000' }]);
   });
 });
 

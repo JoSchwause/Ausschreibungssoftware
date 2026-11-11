@@ -112,6 +112,22 @@ export function entwurfVon(p: Position): Positionsentwurf {
   };
 }
 
+/**
+ * Ein neuer gespeicherter Stand kommt an, während der Dialog offen ist (z. B. der Kurztext aus dem Grid, dessen Befehl
+ * noch lief, oder die schon übernommenen Felder): Unberührte Felder (gleich der alten `basis`) zeigen den neuen Stand,
+ * vom Nutzer geänderte bleiben. So überschreibt Übernehmen nie einen Wert, den der Nutzer im Dialog nicht angefasst hat.
+ */
+export function entwurfNachfuehren(
+  eingabe: Positionsentwurf,
+  basis: Positionsentwurf,
+  neu: Positionsentwurf,
+): Positionsentwurf {
+  const aus: Record<string, unknown> = {};
+  for (const k of Object.keys(neu) as (keyof Positionsentwurf)[])
+    aus[k] = gleich(eingabe[k], basis[k]) ? neu[k] : eingabe[k];
+  return aus as unknown as Positionsentwurf;
+}
+
 /** Tiefer Vergleich für Werte aus JSON (Langtext, Merkmale, Zuschlag, Anteile). */
 export function gleich(a: unknown, b: unknown): boolean {
   if (a === b) return true;

@@ -12,6 +12,7 @@ import type { ReactElement, ReactNode } from 'react';
 import type { Ausgang } from './befehlsweg';
 import {
   entwurfBefehle,
+  entwurfNachfuehren,
   entwurfVon,
   kernFehlerFeld,
   type Bezugsform,
@@ -95,6 +96,15 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
   /** Immer der neueste Entwurf: der Langtext-Editor meldet beim Verlassen, kurz vor dem Klick auf Übernehmen. */
   const aktuell = useRef(e);
   aktuell.current = e;
+  /** Der gespeicherte Stand, auf dem der Entwurf beruht. */
+  const basis = useRef(e);
+  useEffect(() => {
+    const neu = entwurfVon(position);
+    const nachgefuehrt = entwurfNachfuehren(aktuell.current, basis.current, neu);
+    basis.current = neu;
+    aktuell.current = nachgefuehrt;
+    setE(nachgefuehrt);
+  }, [position]);
   const [kernfehler, setKernfehler] = useState<Feldfehler>({});
   const [laeuft, setLaeuft] = useState(false);
   const [gesendet, setGesendet] = useState(false);
