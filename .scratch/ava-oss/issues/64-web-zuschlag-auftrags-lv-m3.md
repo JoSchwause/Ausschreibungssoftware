@@ -44,3 +44,55 @@ Nachträge, Aufmaß, Bearbeiten des Auftrags-LV.
 ### Aus Ticket 69 (Orchestrator)
 - X84-Dateien: `fixtures/angebote/typisch-bieter-{a,b,c}.x84`; Sollwerte im Block `preisspiegel` von `fixtures/typisch-angebote.json`, auch je Paar. Für M3 die Paare A+B nehmen (Rang A 1, B 2; Netto nach Nachlass 55.481,84 / 56.607,77).
 - Ein aus `typisch-X83-3.3.x83` eingelesenes LV trägt keine EP: Schätzpreis-Spalte 0,00 (D-69.4). Der X83-Import meldet `wahl-ohne-grundposition` und `mwst-ersatzwert` als Warnungen: prüfen, ob die Wahlgruppe von `typisch` nach dem X83-Import für den Zuschlag mit Wahl noch taugt; sonst das LV über den vorhandenen Testweg (Projektdatei/Fixture) anlegen und das im Ticket begründen.
+
+### Umsetzung (Branch `welle-4/64-zuschlag-m3`)
+
+Neu in `apps/web/src/auftrag/`: `zuschlag.ts` (rein: `zuschlagPlanen` – Vorschau, Wahlgruppen zum Ankreuzen, Zahlen,
+Warnungen in Worten, Befehl; `wahlSetzen`), `auftrag.ts` (`zuschlagSpeichern` auf der Kette des Befehlswegs,
+`auftragsLvsLaden`, `auftragZumLv`, `auftragsLvChangeSetUmkehren`, `alsLvZustand`), `ziel.ts` (Adresse, Ziel nach
+Undo/Redo), `ausgabe.ts` (X86), `ZuschlagDialog.tsx`, `AuftragsLvSeite.tsx` (`/projekt/<id>/auftrag/<id>`),
+`AuftragAusgeben.tsx`, `AuftragsLvListe.tsx`, `texte.ts`, `auftrag.css`. In `src/vergabe/`: `PreisspiegelSeite.tsx`
+lädt Projekt und ein vorhandenes Auftrags-LV, „Zuschlag erteilen“ je Bieter über `Bieteruebersicht.aktion`.
+Einhängestellen (`// Ticket 64`): Route in `App.tsx`, Liste in `projekt/ProjektSeite.tsx`, `Teil.changeSet` in
+`historie/historie.ts`, `umkehren` in `lv/befehlsweg.ts`, `zielNach` in `historie/HistorieAnbieter.tsx`. Keine
+Paketänderung.
+
+Getestete Schnittstellen (Demo-Modus, statt Abstimmung mit dem Nutzer): `zuschlagPlanen`/`wahlSetzen` (Vitest gegen
+`typisch` und die X84 von Bieter A/B), `zuschlagSpeichern` + `auftragsLvsLaden` + Undo/Redo gegen einen echten
+In-Memory-Speicher (`auftrag.test.ts`), `auftragZiel`, `auftragAusgeben` (X86 mit `CTR` und Summen der Fixture), E2E
+`m3.spec.ts`.
+
+- **D-64.1** LV in der M3-E2E über den Testpfad statt X83? → Ja, `tethysTest.lvAnlegen` mit dem Inhalt der Fixture (wie
+  `preisspiegel.spec.ts`); die X84 kommen über die Oberfläche. → Nach dem X83-Rundweg hat die Wahlgruppe von `typisch`
+  keine Grundposition mehr (D-16, Warnung `wahl-ohne-grundposition`); eine gewählte Alternative ersetzte dann nichts
+  (D-59.2) und der Zuschlag mit Wahl, den das Ticket verlangt, wäre nicht prüfbar. Der X83-Import selbst ist durch
+  `gaeb.spec.ts` gedeckt. Reversible: yes.
+- **D-64.2** Wie liest die App Auftrags-LVs? → Über `speicher.projektdateiExportieren(projektId)` und den Block
+  `auftragsLeistungsverzeichnisse` (Dezimalwerte stehen dort in Vertragsform). → `Speicher` (Vertrag v1.3) hat kein
+  Repository für Auftrags-LVs; ein `AuftragsLvRepository` (`auflisten(projektId)`, `laden(id)`) wäre ein Vertragsticket
+  (A4, P9). **Lücke gemeldet.** Folge: Preisspiegel, Projektseite und Auftrags-LV-Seite exportieren beim Laden die
+  ganze Projektdatei (samt Protokoll); bei `typisch` unmerklich, bei großen Projekten langsam. Deshalb trägt die Route
+  auch die Projekt-ID. Reversible: yes.
+- **D-64.3** Route → `/projekt/<projektId>/auftrag/<id>` (Vorschlag des Tickets), wegen D-64.2. Reversible: yes.
+- **D-64.4** Undo des Zuschlags → `Teil.changeSet` kennt `AuftragsLvChangeSet`; die Umkehrung überträgt das gleich gebaute
+  ChangeSet auf `changeSetUmkehren` des Kerns (Knoten, Summen), Kopf und Kennung werden nur vertauscht. → Der Kern hat
+  keine `auftragsLvChangeSetUmkehren`; kein eigener Rechenweg in der App. **Lücke gemeldet** (gehört in `kern`).
+  Nach Rückgängig wechselt die App zum Preisspiegel, nach Wiederholen auf die Seite des Auftrags-LV. Reversible: yes.
+- **D-64.5** Dialog → Ankreuzfelder je Wahlgruppe (Überschrift „Statt <Grundpositionen>“), Ankreuzen nimmt die andere
+  Alternative derselben Gruppe weg (höchstens eine, D-21); Zahlen aus `zuschlagsvorschau`, Warnungen aus
+  `zuschlagErteilen` bei jeder Änderung der Wahl, also schon vor dem Bestätigen; die neue Kennung entsteht einmal je
+  Dialog. Ein Fehler (`ungueltige-eingabe`) steht im Dialog, „Zuschlag erteilen“ ist dann aus. Reversible: yes.
+- **D-64.6** Zweiter Zuschlag → Knöpfe aus, `aria-describedby` auf den Hinweis „Der Zuschlag zu diesem LV ist an … erteilt.
+  Ein zweiter Zuschlag ist nicht möglich; Rückgängig nimmt den Zuschlag zurück.“ mit Link zum Auftrags-LV; zusätzlich
+  prüft `zuschlagSpeichern` in der Kette des Befehlswegs (doppelter Klick, zweiter Tab desselben Speichers nicht möglich,
+  E-14). Reversible: yes.
+- **D-64.7** X86 → eigener Knopf „GAEB X86 ausgeben“ auf der Auftrags-LV-Seite über `schreibeGaeb` mit Summen und
+  Zuschlagsbasen des Kerns und `auftragnehmer` (Name) als Option des Writers. → `GaebAusgeben` der LV-Seite nimmt ein
+  `LvZustand`, bietet X81/X83 an und lässt den Auftragnehmer weg (Ticket 49). Ohne Paketänderung nutzbar. Ändert
+  Ticket 68 die Option zugunsten von `LvInhaltKopf.auftragnehmer`, genügt `ausgabe.ts` anzupassen. Reversible: yes.
+- **D-64.8** Prüf-Panel nur lesend → `lvPruefen` auf dem Auftrags-LV in LV-Form (`alsLvZustand`); Sprünge gehen zur Zelle
+  bzw. Zeile, nie in den Positionsdialog. F8 wie auf der LV-Seite. Reversible: yes.
+- **D-64.9** Erwartete Summen des Auftrags-LV in `m3.spec.ts` → hergeleitet aus der Fixture: Netto des Bieters minus GP der
+  Grundposition plus GP der Alternative (beide aus `sollwerte.positionen`), MwSt nach N2 mit dem Satz des LV
+  (55.481,84 − 5.155,30 + 5.774,21 = 56.100,75; MwSt 10.659,14; Brutto 66.759,89, wie die Goldens von Ticket 59).
+  Reversible: yes.
