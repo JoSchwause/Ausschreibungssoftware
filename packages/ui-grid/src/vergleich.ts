@@ -54,6 +54,25 @@ export function fixierteVersaetze(
   });
 }
 
+/**
+ * Die festen Klassen der Zellen je Spalte (Ausrichtung, fixiert, letzte fixierte), einmal je Grid statt je Zelle und
+ * Zeile (Ticket 74). `versaetze` wie aus `fixierteVersaetze`.
+ */
+export function festeZellklassen(
+  spalten: readonly Pick<VergleichsSpalte, 'ausrichtung'>[],
+  versaetze: readonly (number | null)[],
+): string[] {
+  const letzteFixierte = versaetze.reduce<number>((l, v, i) => (v === null ? l : i), -1);
+  return spalten.map((s, i) => {
+    let klassen = 'tx-grid__zelle';
+    if (s.ausrichtung === 'rechts' || s.ausrichtung === 'mitte')
+      klassen += ` tx-grid__zelle--${s.ausrichtung}`;
+    if ((versaetze[i] ?? null) !== null) klassen += ' tx-grid__zelle--fixiert';
+    if (i === letzteFixierte) klassen += ' tx-grid__zelle--fixiert-letzte';
+    return klassen;
+  });
+}
+
 /** Eingebaute Kennzeichen: Symbol in der Zelle und Beschreibung in Worten (nicht nur Farbe, U8). */
 export const KENNZEICHEN: Readonly<Record<string, KennzeichenText>> = {
   hoch: { symbol: '▲', beschreibung: 'Ausreißer nach oben' },

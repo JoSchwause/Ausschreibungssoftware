@@ -68,7 +68,6 @@ export const texte = {
   abbrechen: 'Abbrechen',
   uebernehmen: 'Übernehmen',
   ansatzEntfernen: 'Ansatz entfernen',
-  kennzeichen: 'Menge aus Mengenansatz. Eine direkte Änderung der Menge entfernt den Mengenansatz.',
   imDialog: {
     hinweis: 'Menge aus Mengenansatz',
     oeffnen: 'Mengenermittlung …',
