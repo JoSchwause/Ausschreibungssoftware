@@ -21,7 +21,7 @@ function sofficeVorhanden(): boolean {
   }
 }
 
-describe.skipIf(!sofficeVorhanden())('Excel-Datei in LibreOffice', () => {
+describe.skipIf(!sofficeVorhanden())('Excel-Datei in LibreOffice', { timeout: 240_000 }, () => {
   let ordner = '';
 
   /** Wandelt `name.xlsx` im Ordner in das Zielformat; eigenes Profil, damit parallele Läufe sich nicht stören. */
