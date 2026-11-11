@@ -2,7 +2,8 @@
 // Leistung der App-Schicht (Ticket 39, Punkt 5; Q4): Ein LV mit 5.000 Positionen (Fixture `gross`, über den Testpfad
 // als `LeistungsverzeichnisAnlegen` durch Kern und Speicher geladen). Gemessen wird eine Mengenänderung im Grid von der
 // Enter-Taste bis zur aktualisierten Summenzeile: Kern, Speicher im Worker (OPFS), Zustand, Ansicht, Zeichnen. Der
-// Anteil des Speichers (`anwenden`) wird getrennt ausgewiesen.
+// Anteil des Speichers (`anwenden`) wird getrennt ausgewiesen. Seit Ticket 47 läuft die formale LV-Prüfung nach jedem
+// Befehl im Leerlauf mit (nie im Tastendruck); die Messung schließt sie also ein.
 
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
@@ -72,6 +73,9 @@ test('Mengenänderung bei 5.000 Positionen: App-Schicht bis zur Summenzeile unte
   await expect(page.getByRole('heading', { level: 1, name: inhalt.name })).toBeVisible({ timeout: 30_000 });
   // Die Summen kommen aus dem Kern und stimmen mit den Sollwerten der Fixture.
   await expect.poll(async () => (await summen(page))['Netto']).toBe(betragDe(fx.sollwerte.summen.netto));
+  // Die formale LV-Prüfung (Ticket 47) läuft nach jedem Befehl im Leerlauf mit; gemessen wird also mit ihr.
+  const pruefzahl = page.locator('.lv-pruefung__zahl');
+  await expect(pruefzahl).not.toHaveText('…', { timeout: 30_000 });
 
   // Eine normale Position im sichtbaren Bereich; jede Messung tippt eine neue Menge und übernimmt mit Enter.
   const zeile = page.locator('[role="row"].tx-grid__zeile--position').filter({ hasText: 'Normal' }).first();
@@ -85,6 +89,8 @@ test('Mengenänderung bei 5.000 Positionen: App-Schicht bis zur Summenzeile unte
     gesamt.push(m.gesamt);
     speicher.push(m.speicher);
   }
+  // Die Prüfung ist nach den Messungen nachgelaufen (Zahl im Kopf des Panels steht wieder).
+  await expect(pruefzahl).toHaveAttribute('data-anzahl', /\d+/);
   const ohneSpeicher = gesamt.map((g, i) => g - (speicher[i] ?? 0));
   const meldung =
     `Mengenänderung → Summenzeile, ${String(MESSUNGEN)} Messungen nach ${String(AUFWAERMEN)} zum Aufwärmen (ms): ` +
