@@ -83,3 +83,49 @@ describe('einzelpreiskalkulationBerechnen: Rechenweg', () => {
     expect(r.befunde).toEqual([]);
   });
 });
+
+describe('einzelpreiskalkulationBerechnen: Befunde, nie Sperre (U5)', () => {
+  // Zeile 0 (Lohn) ohne Ansatzmenge und Zeile 1 (Stoffe) ohne Kostensatz zählen nicht: Lohn und Stoffe bleiben leer.
+  // Geräte: 2,000 × 3,500 = 7,000; Zuschlag 15 % = 1,050; Anteil 8,050 = EP
+  it('Zeile ohne Ansatzmenge oder Kostensatz zählt nicht; eine Kostenart ohne zählende Zeile hat keinen Anteil', () => {
+    const r = einzelpreiskalkulationBerechnen(
+      [
+        z('lohn', 'Maurer', null, '48.500'),
+        z('stoffe', 'Stein', '1.000', null),
+        z('geraete', 'Kran', '2.000', '3.500'),
+        z('sonstiges', 'leer', null, null),
+      ],
+      SAETZE,
+    );
+    expect(r.anteile.lohn).toBeNull();
+    expect(r.anteile.stoffe).toBeNull();
+    expect(r.anteile.sonstiges).toBeNull();
+    expect(r.anteile.geraete).toBe('8.050');
+    expect(r.einheitspreis).toBe('8.050');
+    expect(r.kostenarten.map((k) => k.art)).toEqual(['geraete']);
+    expect(r.befunde.map((b) => [b.code, b.feld, b.zeile, b.art])).toEqual([
+      ['wert-fehlt', 'ansatzmenge', 0, 'lohn'],
+      ['wert-fehlt', 'kostensatz', 1, 'stoffe'],
+      ['wert-fehlt', 'ansatzmenge', 3, 'sonstiges'],
+      ['wert-fehlt', 'kostensatz', 3, 'sonstiges'],
+    ]);
+  });
+
+  it('keine Zeile: alle Anteile leer, kein EP, keine Befunde', () => {
+    const r = einzelpreiskalkulationBerechnen([], SAETZE);
+    expect(r).toEqual({
+      anteile: {
+        lohn: null,
+        stoffe: null,
+        geraete: null,
+        nachunternehmer: null,
+        sonstiges: null,
+        frei: null,
+        freiBezeichnung: null,
+      },
+      einheitspreis: null,
+      kostenarten: [],
+      befunde: [],
+    });
+  });
+});

@@ -41,7 +41,24 @@ export interface Einzelpreiskalkulation {
   readonly einheitspreis: Einheitspreis | null;
   /** Je Kostenart mit Anteil, in der Reihenfolge der Einheitspreisanteile. */
   readonly kostenarten: readonly Kostenartnachweis[];
-  readonly befunde: readonly never[];
+  /** Erst die Befunde je Zeile in Eingabereihenfolge, dann je Kostenart, dann zum EP. */
+  readonly befunde: readonly Kalkulationsbefund[];
+}
+
+export type Kalkulationsbefundcode =
+  | 'wert-fehlt'; // Zeile ohne Ansatzmenge oder Kostensatz; die Zeile zählt nicht
+
+export type Kalkulationsfeld = 'ansatzmenge' | 'kostensatz';
+
+export interface Kalkulationsbefund {
+  readonly code: Kalkulationsbefundcode;
+  readonly feld: Kalkulationsfeld;
+  /** Index des Kalkulationsansatzes in der Eingabe; `null` bei Befunden über eine Kostenart oder den EP. */
+  readonly zeile: number | null;
+  /** Betroffene Kostenart; `null` beim EP. */
+  readonly art: EpaArt | null;
+  /** Meldung für Entwickler und Protokoll; die deutsche Anzeige entsteht in der Oberfläche. */
+  readonly meldung: string;
 }
 
 // --- Rechnen ---------------------------------------------------------------------------------------------------
@@ -69,13 +86,19 @@ export function einzelpreiskalkulationBerechnen(
   ansaetze: readonly Kalkulationsansatz[],
   saetze: Kalkulationszuschlagssaetze,
 ): Einzelpreiskalkulation {
+  const befunde: Kalkulationsbefund[] = [];
   const einzelkosten = new Map<EpaArt, Dezimal>();
-  for (const a of ansaetze) {
-    if (a.ansatzmenge === null || a.kostensatz === null) continue;
+  ansaetze.forEach((a, index) => {
+    const befund = (code: Kalkulationsbefundcode, feld: Kalkulationsfeld, meldung: string): void => {
+      befunde.push({ code, feld, zeile: index, art: a.art, meldung });
+    };
+    if (a.ansatzmenge === null) befund('wert-fehlt', 'ansatzmenge', 'Zeile ohne Ansatzmenge zählt nicht');
+    if (a.kostensatz === null) befund('wert-fehlt', 'kostensatz', 'Zeile ohne Kostensatz zählt nicht');
+    if (a.ansatzmenge === null || a.kostensatz === null) return;
     const zeile = multipliziere(a.ansatzmenge, a.kostensatz);
     const bisher = einzelkosten.get(a.art);
     einzelkosten.set(a.art, bisher === undefined ? zeile : addiere(bisher, zeile));
-  }
+  });
 
   const kostenarten: Kostenartnachweis[] = [];
   const anteil: Partial<Record<EpaArt, Einheitspreis>> = {};
@@ -103,6 +126,6 @@ export function einzelpreiskalkulationBerechnen(
     },
     einheitspreis,
     kostenarten,
-    befunde: [],
+    befunde,
   };
 }
