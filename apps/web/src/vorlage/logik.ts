@@ -29,7 +29,9 @@ export function vorlageBefehl(lv: { readonly vorlage?: true | boolean }, gewollt
  */
 export function textquelleBefehl(p: Pick<Position, 'id' | 'textquelle'>, text: string): LvBefehl | null {
   const neu = text.trim() === '' ? null : text.trim();
-  return (p.textquelle ?? null) === neu ? null : { art: 'TextquelleSetzen', positionId: p.id, textquelle: neu };
+  return (p.textquelle ?? null) === neu
+    ? null
+    : { art: 'TextquelleSetzen', positionId: p.id, textquelle: neu };
 }
 
 export interface VorlageEintrag {

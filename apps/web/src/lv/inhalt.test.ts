@@ -66,6 +66,8 @@ describe('inhaltKopf und lvInhalt', () => {
       erstellt: { datum: '2026-11-11', zeit: '10:00:00' },
       programm: 'Test',
     });
-    expect(e.befunde.some((b) => b.code === 'export-verworfen' && b.meldung.includes('Muster-LV'))).toBe(true);
+    expect(e.befunde.some((b) => b.code === 'export-verworfen' && b.meldung.includes('Muster-LV'))).toBe(
+      true,
+    );
   });
 });

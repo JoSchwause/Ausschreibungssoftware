@@ -10,6 +10,7 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
 import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
@@ -291,6 +292,12 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
                 >
                   {lv.name}
                 </a>
+                {/* Ticket 90: Kennzeichen Muster-LV */}
+                {lv.vorlage === true ? (
+                  <span className="projekt__kennzeichen" data-testid="kennzeichen-vorlage">
+                    {vorlageTexte.kennzeichen}
+                  </span>
+                ) : null}
                 <span className="projekt__betrag" aria-label={`${texte.lvs.netto} ${lv.name}`}>
                   {formatiereBetragDe(z.summen.gesamt.netto)} €
                 </span>

@@ -26,6 +26,7 @@ import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
 import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
+import { VorlageUebernehmen } from '../vorlage/VorlageUebernehmen'; // Ticket 90
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
@@ -437,6 +438,7 @@ function LvBearbeiten({
         <GaebAusgeben zustand={zustand} />
         <LvDrucken zustand={zustand} /> {/* Ticket 66 */}
         <Angebote zustand={zustand} />
+        <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
         <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
       </div>
       <div className="lv__haupt">

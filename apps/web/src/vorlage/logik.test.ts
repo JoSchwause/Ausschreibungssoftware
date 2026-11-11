@@ -2,7 +2,14 @@
 // Ticket 90: Logik von Muster-LV und Textquelle (Befehle, Vorlagenliste, Baum, Übernahme in ein anderes LV).
 
 import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
-import type { KnotenId, LeistungsverzeichnisId, LvUebersicht, LvZustand, Position, ProjektId } from '@tethys/vertrag';
+import type {
+  KnotenId,
+  LeistungsverzeichnisId,
+  LvUebersicht,
+  LvZustand,
+  Position,
+  ProjektId,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { befehlswegFuer } from '../lv/befehlsweg';
@@ -81,7 +88,11 @@ describe('Vorlagenliste', () => {
       { id: 'p1' as ProjektId, name: 'Alt', lvs: [lv('a', 'A', true), lv('b', 'B')] },
       { id: 'p2' as ProjektId, name: 'Neu', lvs: [lv('c', 'C', true), lv('d', 'D', true)] },
     ];
-    expect(vorlagenAus(projekte).map((v) => `${v.projektName}/${v.lvName}`)).toEqual(['Alt/A', 'Neu/C', 'Neu/D']);
+    expect(vorlagenAus(projekte).map((v) => `${v.projektName}/${v.lvName}`)).toEqual([
+      'Alt/A',
+      'Neu/C',
+      'Neu/D',
+    ]);
     expect(vorlagenAus(projekte, 'c' as LeistungsverzeichnisId).map((v) => v.lvName)).toEqual(['A', 'D']);
     expect(vorlagenAus([])).toEqual([]);
   });
@@ -145,7 +156,9 @@ describe('Übernahme in ein anderes LV', () => {
   it('Bezüge aus der Auswahl hinaus (Zuschlag, Grundposition) werden entfernt und gezählt', async () => {
     const { vorlage, ziel, ids } = await vorlageUndZiel();
     const einzeln = positionen(vorlage).filter(
-      (p) => (p.zuschlag ?? null) !== null || (p.merkmale.wahl !== null && p.merkmale.wahl.grundpositionId !== null),
+      (p) =>
+        (p.zuschlag ?? null) !== null ||
+        (p.merkmale.wahl !== null && p.merkmale.wahl.grundpositionId !== null),
     );
     expect(einzeln.length).toBeGreaterThan(0);
     const r = uebernahmeBauen(

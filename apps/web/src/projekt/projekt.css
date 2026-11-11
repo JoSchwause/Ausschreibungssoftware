@@ -6,6 +6,15 @@
   font-size: var(--tx-font-size-lg);
 }
 
+/* Ticket 90: Kennzeichen „Vorlage“ (Muster-LV) in der LV-Liste */
+.projekt__kennzeichen {
+  margin-left: var(--tx-space-2);
+  padding: 0 var(--tx-space-2);
+  border: 1px solid var(--tx-color-border);
+  font-size: var(--tx-font-size-sm);
+  color: var(--tx-color-text-muted);
+}
+
 .projekt__liste {
   margin: 0;
   padding: 0;
