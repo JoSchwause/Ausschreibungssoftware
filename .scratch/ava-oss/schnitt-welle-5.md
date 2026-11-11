@@ -18,9 +18,38 @@ Tor **M4** „durchgehende Kette LPH 6–8“: Definition in `plan.md` §4 (erg�
 | 76 | A4 | XRechnung lesen (UBL, CII) | `packages/erechnung` (neu), `fixtures/extern/xrechnung/` | – | opus |
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | – | sonnet |
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | – | opus |
-| 70 | F | `vertrag` v1.4 (Repository Auftrags-LV und alle Typen der Welle 5) | `packages/vertrag` + markierte mechanische Zeilen | Berater D-34 ff. | opus |
+| 70 | F | `vertrag` v1.4 (Auftrags-LV, Nachtrag, Aufmaß, Rechnung, Kostenermittlung; D-34 bis D-40) | `packages/vertrag` + markierte mechanische Zeilen | – | opus |
 
-Stufen 2 und 3 folgen unten, sobald `vertrag` v1.4 geschnitten ist.
+Vor Stufe 2: Opus-Review von v1.4 gegen alle Verbraucher, Torvermerk im Log (wie D-27).
+
+## Stufe 2 (nach `vertrag` v1.4)
+
+| Nr | Strang | Titel | Paket (ein Schreiber) | Blocked by | Modell |
+|---|---|---|---|---|---|
+| 71 | K | Kern v1.4: Befehle am Auftrags-LV, Umkehrung, neue LV-Befehle | `packages/kern` | 70 | opus |
+| 79 | S | Speicher v1.4: Migration 5, Repositories | `packages/speicher` | 70 | opus |
+| 80 | A1+A2 | `abrechnung`: Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | 70 | opus |
+| 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | 70, 80 | opus |
+| 82 | C2+C3 | Kostenermittlung als Aggregat, Kostenkontrolle | `packages/kosten` | 70, 78 | opus |
+| 83 | M3 | GAEB X31 lesen und schreiben | `packages/gaeb` | 70, 73 | opus |
+| 84 | G/C2 | `gaeb` v1.4: Kostengruppe als Katalogzuordnung | `packages/gaeb` | 70, 83 | opus |
+| 85 | F | Fixture M4 mit hergeleiteten Sollwerten | `fixtures/` | 70, 75 | opus |
+
+## Stufe 3 (App, Tor M4)
+
+| Nr | Strang | Titel | Ordner (ein Schreiber) | Blocked by | Modell |
+|---|---|---|---|---|---|
+| 86 | A1 | Auftrags-LV über den Vertrag, Nachträge | `apps/web/src/auftrag/`, `src/nachtrag/` | 71, 79, 80 | opus |
+| 87 | A2+M3 | Aufmaßblätter, Soll/Ist, X31 | `apps/web/src/abrechnung/`, `src/mengen/` | 79, 80, 81, 83 | opus |
+| 88 | A3+A4 | Rechnungen prüfen und freigeben, XRechnung | `apps/web/src/rechnung/` | 76, 79, 81 | opus |
+| 89 | C2–C4 | Kostenermittlung, KG zuordnen, Kostenkontrolle, EP-Kalkulation | `apps/web/src/kosten/` | 71, 78, 79, 82 | opus |
+| 90 | O3+C5 | Druckprofile, Muster-LV, Textquelle | `apps/web/src/ausgabe/`, `src/vorlage/` | 71, 77, 79 | sonnet |
+| 91 | – | Tor M4: Kettentest und E2E | `apps/web/e2e/m4.spec.ts`, `src/m4-kette.test.ts` | 73, 85, 86–89 | opus |
+
+Gemeinsame Dateien der App (`App.tsx`, `lv/LvSeite.tsx`, `lv/befehlsweg.ts`, `auftrag/AuftragsLvSeite.tsx`,
+`projekt/ProjektSeite.tsx`) fasst ein Ticket nur an einer markierten Einhängestelle an (`// Ticket <nr>`); Konflikte dort
+löst der Merger (D-20). Kürzungsreihenfolge bei Überlauf (D-36): 90 → 84 → X31-Schreiben in 83/87 → XRechnung in 88 nur
+Kopfsummen → EP-Kalkulation in 89. Nie gekürzt: 71, 79, 80, 81, 82, 85, 86–88 (ohne die genannten Teile), 89 (C2, C3), 91.
 
 ## Gemeinsame Regeln für Umsetzer (Kurzfassung, verbindlich bleibt `docs/regeln.md`)
 
