@@ -10,7 +10,7 @@
 
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import type { Angebot, Aufmass, AufmassId, Knoten, Menge, PositionId } from '@tethys/vertrag';
+import type { Angebot, Aufmass, Knoten, Menge, PositionId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { zuschlagserteilungSpeichern } from '../auftrag/auftrag';
