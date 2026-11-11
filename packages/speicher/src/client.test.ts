@@ -16,8 +16,9 @@ import { SpeicherKern } from './kern';
 import { RPC_METHODEN, type WorkerLike } from './rpc';
 import { betreibeWorker, type Oeffner } from './worker-host';
 import { direktTransport } from './client';
-import { anlegenSchritte, ladeFixture, normalisiere } from './testhilfe/fixtures';
+import { anlegenSchritte, eintrag, ladeFixture, normalisiere } from './testhilfe/fixtures';
 import { neuerKern, wert } from './testhilfe/node';
+import { standAnlegen } from './testhilfe/umkehrung';
 
 type Hoerer = (e: { readonly data: unknown }) => void;
 
@@ -84,6 +85,32 @@ describe('Client über Worker-Host', () => {
     expect(w.beendet).toBe(true);
   });
 
+  it('LV-Stände über den Worker (v1.2): anlegen über anwenden, auflisten ohne Zustand, laden mit', async () => {
+    const f = ladeFixture('winzig');
+    const speicher = wert(await speicherOeffnen({ worker: falscherWorker(imSpeicher), verwaltung: null }));
+    for (const s of anlegenSchritte(f)) wert(await speicher.anwenden(s.eintrag, s.changeSet));
+    const lv = f.lv.leistungsverzeichnis.id;
+    const z = wert(await speicher.leistungsverzeichnisse.laden(lv));
+    const e = eintrag(
+      50,
+      f.projekt.id,
+      { art: 'leistungsverzeichnis', id: lv },
+      {
+        art: 'LvStandAnlegen',
+        id: 'stand-1' as never,
+        name: 'Versand',
+      },
+    );
+    wert(await speicher.anwenden(e, standAnlegen(z, 'stand-1', 'Versand')));
+    const staende = speicher.lvStaende;
+    if (staende === undefined) throw new Error('lvStaende fehlt');
+    expect(wert(await staende.auflisten(lv))).toEqual([
+      { id: 'stand-1', leistungsverzeichnisId: lv, name: 'Versand', angelegt: e.wann },
+    ]);
+    expect(wert(await staende.laden('stand-1' as never)).zustand).toEqual(z);
+    wert(await speicher.schliessen());
+  });
+
   it('Fehler beim Öffnen sind Werte und beenden den Worker: OPFS gesperrt, Quote, Schema zu neu', async () => {
     const gesperrt = falscherWorker(() =>
       Promise.reject(new DOMException('Access Handles cannot be created', 'NoModificationAllowedError')),
@@ -122,6 +149,8 @@ describe('Client über Worker-Host', () => {
         'lvLaden',
         'angeboteAuflisten',
         'angebotLaden',
+        'lvStaendeAuflisten',
+        'lvStandLaden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',
@@ -153,7 +182,11 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     if (schritt === undefined) throw new Error('kein Schritt');
     const p = f.projekt.id;
     const lv = f.lv.leistungsverzeichnis.id;
+    const staende = s.lvStaende;
+    if (staende === undefined) throw new Error('lvStaende fehlt');
     return [
+      fehlercode(await staende.auflisten(lv)),
+      fehlercode(await staende.laden('s' as never)),
       fehlercode(await s.projekte.auflisten()),
       fehlercode(await s.projekte.laden(p)),
       fehlercode(await s.leistungsverzeichnisse.auflisten(p)),
@@ -172,7 +205,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);
     wert(await s.schliessen());
-    expect(await alleCodes(s)).toEqual(Array.from({ length: 11 }, () => 'gesperrt'));
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 13 }, () => 'gesperrt'));
   });
 
   it('Kern direkt: auch ohne Client liefert jede Methode gesperrt', async () => {
@@ -188,7 +221,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const s = wert(await speicherOeffnen({ worker: w, verwaltung: null }));
     wert(await s.schliessen());
     expect(w.beendet).toBe(true);
-    expect(await alleCodes(s)).toEqual(Array.from({ length: 11 }, () => 'gesperrt'));
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 13 }, () => 'gesperrt'));
   });
 });
 
@@ -259,6 +292,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'angebote',
       'anwenden',
       'leistungsverzeichnisse',
+      'lvStaende',
       'persistenzstatus',
       'projektdateiExportieren',
       'projektdateiImportieren',

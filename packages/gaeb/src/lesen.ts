@@ -147,11 +147,11 @@ const BLATTNAMEN: ReadonlySet<string> = new Set([
 
 type Veraenderlich<T> = { -readonly [K in keyof T]: T[K] };
 
-const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
+export const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
   e ? elementKinder(e).find((k) => k.name === name) : undefined;
-const kinder = (e: XmlElement | undefined, name: string): XmlElement[] =>
+export const kinder = (e: XmlElement | undefined, name: string): XmlElement[] =>
   e ? elementKinder(e).filter((k) => k.name === name) : [];
-const wert = (e: XmlElement | undefined): string | null => (e ? textInhalt(e).trim() : null);
+export const wert = (e: XmlElement | undefined): string | null => (e ? textInhalt(e).trim() : null);
 
 interface Aggregat {
   anzahl: number;
@@ -171,8 +171,8 @@ const HINWEIS_TEXT: Readonly<Record<Austauschhinweiscode, string | null>> = {
   gerundet: 'hat mehr Nachkommastellen als zulässig; der Wert wurde kaufmännisch gerundet',
 };
 
-/** Der eigentliche Leser, ein Aufruf je Datei. */
-class Leser {
+/** Der eigentliche Leser, ein Aufruf je Datei. Auch der Angebotsleser (X84, `angebot.ts`) meldet über ihn. */
+export class Leser {
   readonly befunde: Pruefbefund[] = [];
   private readonly aggregate = new Map<string, Aggregat>();
   private begrenzt = false;
@@ -180,10 +180,16 @@ class Leser {
   private readonly formatArten = new Set<string>();
   private formatErst: XmlElement | null = null;
 
+  /** `ids`: `null`, wenn der Aufrufer keine Texte liest (X84); dann werfen `kurztext` und `langtext`. */
   constructor(
     private readonly xml: XmlErgebnis,
-    private readonly opt: LeseOptionen,
+    private readonly ids: IdQuelle | null,
   ) {}
+
+  private idQuelle(): IdQuelle {
+    if (this.ids === null) throw new Error('Leser ohne IdQuelle kann keine Texte lesen');
+    return this.ids;
+  }
 
   // --- Befunde -------------------------------------------------------------------------------------------
 
@@ -191,7 +197,11 @@ class Leser {
     el: XmlElement | undefined,
     extra: { knotenId?: PositionId | string; feld?: string } = {},
   ): Pruefbefund['ort'] {
-    if (!el) return { ...(extra.feld ? { feld: extra.feld } : {}) };
+    if (!el)
+      return {
+        ...(extra.knotenId ? { knotenId: extra.knotenId as PositionId } : {}),
+        ...(extra.feld ? { feld: extra.feld } : {}),
+      };
     const { zeile, spalte } = this.xml.ortVon(el.offset);
     return {
       pfad: this.xml.pfadVon(el),
@@ -290,13 +300,13 @@ class Leser {
   }
 
   kurztext(el: XmlElement | undefined): string {
-    const r = leseKurztext(el, this.opt.ids);
+    const r = leseKurztext(el, this.idQuelle());
     this.nimm(r, el);
     return r.text;
   }
 
   langtext(el: XmlElement | undefined): Position['langtext'] {
-    const r = leseLangtext(el, this.opt.ids);
+    const r = leseLangtext(el, this.idQuelle());
     this.nimm(r, el);
     return r.langtext;
   }
@@ -369,7 +379,7 @@ class Leser {
 
 // --- OZ-Maske ----------------------------------------------------------------------------------------------
 
-interface Bkdn {
+export interface Bkdn {
   readonly typ: 'Lot' | 'BoQLevel' | 'Item' | 'Index';
   readonly laenge: number;
   readonly numerisch: boolean;
@@ -381,7 +391,7 @@ const stelle = (b: Bkdn): OzStelle => ({
   zeichen: b.numerisch ? 'numerisch' : 'alphanumerisch',
 });
 
-function leseMaske(
+export function leseMaske(
   l: Leser,
   boqInfo: XmlElement | undefined,
   trenn: string | null,
@@ -528,14 +538,14 @@ const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'Outli
 const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody']);
 /** X86: `Totals` der Bereiche sind abgeleitete Werte; der Kern rechnet sie neu (Ticket 40). */
 const KATEGORIE_BEHANDELT_X86: ReadonlySet<string> = new Set([...KATEGORIE_BEHANDELT, 'Totals']);
-const ANTEILE = ['UPComp1', 'UPComp2', 'UPComp3', 'UPComp4', 'UPComp5', 'UPComp6'] as const;
+export const ANTEILE = ['UPComp1', 'UPComp2', 'UPComp3', 'UPComp4', 'UPComp5', 'UPComp6'] as const;
 /** X86: Preise einer Position, die der Leser übernimmt (`UP`, `UPComp…`) oder als abgeleitet übergeht (`IT`). */
 const POSITION_BEHANDELT_X86: ReadonlySet<string> = new Set([...POSITION_BEHANDELT, 'IT', ...ANTEILE]);
 const ZUSCHLAG_BEHANDELT_X86: ReadonlySet<string> = new Set([...ZUSCHLAG_BEHANDELT, 'IT', 'ITMarkup']);
 const TEILE_ERLAUBT = /^[0-9A-Za-z_ ]*$/;
 
 /** Ein Feld der Einheitspreisanteile ohne die Bezeichnung des freien Anteils. */
-type Anteil = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+export type Anteil = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
 
 /** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus `LblUPComp<n>`), und die Bezeichnung des freien Anteils. */
 interface Preisangaben {
@@ -543,7 +553,7 @@ interface Preisangaben {
   readonly freiBezeichnung: string | null;
 }
 
-const ANTEIL_NACH_BEZEICHNUNG: Readonly<Record<string, Anteil>> = {
+export const ANTEIL_NACH_BEZEICHNUNG: Readonly<Record<string, Anteil>> = {
   lohn: 'lohn',
   stoffe: 'stoffe',
   material: 'stoffe',
@@ -1409,30 +1419,54 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
 
 const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83', 'X86']);
 
+/** Gemeinsame Optionen des Vorlaufs (Größe, Kodierung, XML, Erkennung) für `leseGaeb` und `leseAngebot`. */
+export interface VorlaufOptionen {
+  readonly dateiname?: string;
+  readonly maxBytes?: number;
+  readonly maxTiefe?: number;
+}
+
+/** Ergebnis des Vorlaufs: entweder schon fertig (zurückgewiesen, Version nicht gelesen) oder bereit zum Lesen. */
+export type Vorlauf =
+  | {
+      readonly bereit: false;
+      readonly phase: GaebLesung['phase'];
+      readonly version: GaebLesung['version'];
+      readonly befunde: readonly Pruefbefund[];
+    }
+  | {
+      readonly bereit: true;
+      readonly phase: GaebPhase | null;
+      readonly version: GaebLesung['version'];
+      readonly wurzel: XmlElement;
+      readonly leser: Leser;
+      /** Befunde vor dem Leser (Größe, Kodierung, XML); das Ergebnis ist `[...vorlauf, ...leser.befunde]`. */
+      readonly vorlauf: readonly Pruefbefund[];
+    };
+
 /**
- * Liest eine GAEB-DA-XML-3.3-Datei der Phase X81 oder X83. Wirft nie bei Dateiinhalt: Probleme sind Befunde;
- * `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder Phase).
+ * Prüft Größe, dekodiert, parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und
+ * Phase. Nicht gelesene Versionen (3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer.
  */
-export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
-  const vorlauf: Pruefbefund[] = [];
-  const ergebnis = (
+export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids: IdQuelle | null): Vorlauf {
+  const befunde: Pruefbefund[] = [];
+  const fertig = (
     phase: GaebLesung['phase'],
     version: GaebLesung['version'],
-    befunde: readonly Pruefbefund[],
-    inhalt: LvInhalt | null = null,
-  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde] });
+    weitere: readonly Pruefbefund[] = [],
+  ): Vorlauf => ({ bereit: false, phase, version, befunde: [...befunde, ...weitere] });
 
   const groesse = eingabe.length;
   const maxBytes = opt.maxBytes ?? STANDARD_MAX_BYTES;
   if (groesse > maxBytes) {
-    vorlauf.push({
+    befunde.push({
       schwere: 'fehler',
       quelle: 'gaeb-lesen',
       code: 'datei-zu-gross',
       meldung: `Die Eingabe ist ${String(groesse)} Bytes groß; zulässig sind höchstens ${String(maxBytes)}. Sie wird nicht gelesen.`,
       ort: {},
     });
-    return ergebnis(null, null, []);
+    return fertig(null, null);
   }
 
   let text: string;
@@ -1440,15 +1474,15 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
   else {
     const d = dekodiereBytes(eingabe);
     text = d.text;
-    vorlauf.push(...d.befunde);
+    befunde.push(...d.befunde);
   }
 
   const xml = parseXml(text, { maxTiefe: opt.maxTiefe ?? STANDARD_MAX_TIEFE, blattNamen: BLATTNAMEN });
-  vorlauf.push(...xml.befunde);
+  befunde.push(...xml.befunde);
   const root = xml.wurzel;
-  if (xml.abgelehnt || root === null) return ergebnis(null, null, []);
+  if (xml.abgelehnt || root === null) return fertig(null, null);
 
-  const l = new Leser(xml, opt);
+  const l = new Leser(xml, ids);
   if (root.name !== 'GAEB') {
     l.melde(
       'fehler',
@@ -1456,7 +1490,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
       `Das Wurzelelement heißt „${root.name}“, erwartet wird GAEB.`,
       root,
     );
-    return ergebnis(null, null, l.befunde);
+    return fertig(null, null, l.befunde);
   }
 
   const erk = erkenne(root, opt.dateiname);
@@ -1469,7 +1503,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
       `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden 3.3 und 3.2 (3.1 folgt mit Ticket G4).`,
       root,
     );
-    return ergebnis(erk.phase, erk.version, l.befunde);
+    return fertig(erk.phase, erk.version, l.befunde);
   }
   if (erk.stand === 'unbekannt')
     l.melde(
@@ -1478,17 +1512,35 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
       `Die Version ${erk.versionText === null ? '(ohne Angabe)' : `„${erk.versionText}“`} ist unbekannt; die Datei wird wie 3.3 gelesen.`,
       root,
     );
-  if (erk.phase !== null && !LESBARE_PHASEN.has(erk.phase)) {
+  return { bereit: true, phase: erk.phase, version: erk.version, wurzel: root, leser: l, vorlauf: befunde };
+}
+
+/**
+ * Liest eine GAEB-DA-XML-Datei (3.3, 3.2) der Phase X81, X83 oder X86. Wirft nie bei Dateiinhalt: Probleme sind
+ * Befunde; `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder
+ * Phase). X84 liest `leseAngebot`.
+ */
+export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
+  const v = vorlauf(eingabe, opt, opt.ids);
+  if (!v.bereit) return { phase: v.phase, version: v.version, inhalt: null, befunde: v.befunde };
+  const l = v.leser;
+  const ergebnis = (inhalt: LvInhalt | null): GaebLesungErgebnis => ({
+    phase: v.phase,
+    version: v.version,
+    inhalt,
+    befunde: [...v.vorlauf, ...l.befunde],
+  });
+  if (v.phase !== null && !LESBARE_PHASEN.has(v.phase)) {
     l.melde(
       'fehler',
       'phase-nicht-unterstuetzt',
-      `Die Phase ${erk.phase} wird in diesem Leser nicht gelesen (nur X81, X83 und X86).`,
-      root,
+      `Die Phase ${v.phase} wird in diesem Leser nicht gelesen (nur X81, X83 und X86).`,
+      v.wurzel,
     );
-    return ergebnis(erk.phase, erk.version, l.befunde);
+    return ergebnis(null);
   }
 
-  const gebaut = baueInhalt(root, opt, l, erk.phase);
+  const gebaut = baueInhalt(v.wurzel, opt, l, v.phase);
   l.abschliessen();
-  return ergebnis(erk.phase, erk.version, l.befunde, gebaut);
+  return ergebnis(gebaut);
 }

@@ -9,6 +9,9 @@ import type {
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
+  LvStand,
+  LvStandId,
+  LvStandUebersicht,
   LvZustand,
   Projekt,
   ProjektId,
@@ -24,6 +27,9 @@ import {
   aggregatIds,
   leseAngebot,
   leseLv,
+  leseLvKopf,
+  leseLvStaende,
+  leseLvStand,
   leseProjekt,
   leseProtokoll,
   listeIds,
@@ -59,6 +65,44 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
   if (cs.art === 'projekt' && e.projektId !== cs.projektId) {
     abbruch('unbekannt', 'Protokolleintrag und ChangeSet betreffen verschiedene Projekte.');
   }
+}
+
+/**
+ * `Rueckgaengig` und `Wiederholen` (v1.2, S3): `protokollId` muss auf einen gespeicherten Eintrag desselben Projekts
+ * und desselben Aggregats zeigen, und zwar auf den ursprünglichen Befehl, nicht auf einen anderen Historienbefehl
+ * (Vertrag). Sonst `konflikt`: Die Umkehrung gehört dann nicht zu diesem Stand. Ob das ChangeSet wirklich die
+ * Umkehrung ist, prüft `speicher` nicht (das Protokoll ist Nebenbuch, Undo liest es nicht; ADR 0009); geprüft wird wie
+ * bei jedem ChangeSet, dass `vorher` zum gespeicherten Stand passt.
+ *
+ * Ausnahme (D-31.1): Ein ChangeSet, das das Projekt anlegt, findet den Eintrag nicht mehr, weil das Löschen des Projekts
+ * sein Protokoll mitnahm. Sein Verweis wird nicht geprüft.
+ */
+function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet): void {
+  const b = e.befehl;
+  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
+  if (cs.art === 'projekt' && cs.projekt.vorher === null) return;
+  const z = db.zeilen('SELECT projekt_id, aggregat_art, aggregat_id, befehl FROM protokoll WHERE id = ?', [
+    b.protokollId,
+  ])[0];
+  const passt =
+    z !== undefined &&
+    z['projekt_id'] === e.projektId &&
+    z['aggregat_art'] === e.aggregat.art &&
+    z['aggregat_id'] === e.aggregat.id &&
+    !istHistorienbefehl(String(z['befehl']));
+  if (!passt) {
+    abbruch(
+      'konflikt',
+      `Konflikt: ${b.art} verweist auf ${b.protokollId}, keinen ursprünglichen Befehl an ${e.aggregat.art} ` +
+        `${e.aggregat.id} in diesem Projekt; es wurde nichts geschrieben.`,
+    );
+  }
+}
+
+/** Ist der gespeicherte Befehl (JSON) ein `Rueckgaengig` oder `Wiederholen`? */
+function istHistorienbefehl(json: string): boolean {
+  const art = (JSON.parse(json) as { art?: unknown }).art;
+  return art === 'Rueckgaengig' || art === 'Wiederholen';
 }
 
 const GESCHLOSSEN = (): Ergebnis<never, Speicherfehler> =>
@@ -142,6 +186,22 @@ export class SpeicherKern {
     );
   }
 
+  /** `LvStandRepository.auflisten` (v1.2): die Stände des LV ohne Zustand, ältester zuerst. */
+  lvStaendeAuflisten(lvId: LeistungsverzeichnisId): Ergebnis<readonly LvStandUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      if (leseLvKopf(this.#db, lvId) === null)
+        abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
+      return leseLvStaende(this.#db, lvId);
+    });
+  }
+
+  /** `LvStandRepository.laden` (v1.2): ein Stand samt eingefrorenem Zustand. */
+  lvStandLaden(id: LvStandId): Ergebnis<LvStand, Speicherfehler> {
+    return this.#fange(
+      () => leseLvStand(this.#db, id) ?? abbruch('nicht-gefunden', `LV-Stand ${id} ist nicht vorhanden.`),
+    );
+  }
+
   protokoll(projektId: ProjektId): Ergebnis<readonly Protokolleintrag[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)
@@ -177,12 +237,13 @@ export class SpeicherKern {
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
+        pruefeHistorienbezug(this.#db, eintrag, changeSet);
         switch (changeSet.art) {
           case 'projekt':
             wendeProjektAn(this.#db, changeSet);
             break;
           case 'leistungsverzeichnis':
-            wendeLvAn(this.#db, changeSet, eintrag.projektId);
+            wendeLvAn(this.#db, changeSet, eintrag.projektId, eintrag.wann);
             break;
           case 'angebot':
             wendeAngebotAn(this.#db, changeSet, eintrag.projektId);
