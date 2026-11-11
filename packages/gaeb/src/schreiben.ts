@@ -113,8 +113,13 @@ interface Wahlnummer {
  * Künstliche Wahlnummern (D-16) für Wahlpositionen ohne Gruppen- oder Variantennummer (aus v1 migriert, D-37.1: Wahl).
  * GAEB kennt eine Wahl nur über `ALNGroupNo`/`ALNSerNo`; als gewöhnliches `Item` ginge ihr Betrag beim Wiederlesen ins
  * Netto. Deterministisch: eine Gruppe je Grundposition, eine eigene Gruppe je Wahl ohne Grundposition, nummeriert in
- * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Die Grundposition selbst
- * bleibt, wie sie ist (die Migration erfindet keine Fachdaten). Über 9 Varianten oder 999 Gruppen prüft `merkmale`.
+ * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Über 9 Varianten oder 999
+ * Gruppen prüft `merkmale`.
+ *
+ * Die Grundposition (ohne eigene Wahl) bekommt Variante 0 derselben Gruppe, wenn mindestens eine ihrer Alternativen unter
+ * demselben Elternknoten steht (Ticket 73). Der Leser ordnet eine Alternative nur über die Gruppennummer einer
+ * Grundausführung (Variante 0) im selben LV-Bereich zu (FD 4.5.2, Ticket 22); ohne sie verlöre der Rundweg die
+ * Grundposition. Die Summen ändern sich nicht: Variante 0 geht ins Netto (`betragsziel`). Das Modell bleibt, wie es ist.
  */
 function kuenstlicheWahlnummern(
   wurzelId: string,
@@ -122,7 +127,9 @@ function kuenstlicheWahlnummern(
   kinder: ReadonlyMap<string, readonly Knoten[]>,
 ): ReadonlyMap<string, Wahlnummer> {
   let hoechste = 0;
+  const nachId = new Map<string, Knoten>();
   for (const k of knoten) {
+    nachId.set(k.id, k);
     const g = k.art === 'position' ? k.merkmale.wahl?.gruppe : null;
     if (typeof g === 'number' && Number.isInteger(g) && g > hoechste) hoechste = g;
   }
@@ -141,6 +148,9 @@ function kuenstlicheWahlnummern(
         }
         g.varianten += 1;
         aus.set(k.id, { gruppe: g.gruppe, variante: g.varianten });
+        const gp = grund === null ? undefined : nachId.get(grund);
+        if (gp?.art === 'position' && gp.merkmale.wahl === null && gp.elternId === k.elternId)
+          aus.set(gp.id, { gruppe: g.gruppe, variante: 0 });
       }
       besuche(k.id);
     }
@@ -825,15 +835,17 @@ class Schreiber {
     const a = this.aus;
     const m = p.merkmale;
     const w = m.wahl;
-    if (w !== null) {
-      const kuenstlich = this.kuenstlicheWahl.get(p.id);
-      const { gruppe, variante } = kuenstlich ?? w;
+    const kuenstlich = this.kuenstlicheWahl.get(p.id);
+    if (w !== null || kuenstlich !== undefined) {
+      const { gruppe, variante } = kuenstlich ?? w ?? { gruppe: null, variante: null };
       if (kuenstlich !== undefined)
         this.melde(
           'warnung',
           'wahl-nummer-vergeben',
-          `Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als Gruppe ${String(kuenstlich.gruppe)}, ` +
-            `Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
+          (w === null
+            ? 'Die Position ist Grundposition einer Wahlposition ohne Gruppen- und Variantennummer; sie wird als '
+            : 'Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als ') +
+            `Gruppe ${String(kuenstlich.gruppe)}, Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
           p.id,
           'merkmale.wahl',
         );

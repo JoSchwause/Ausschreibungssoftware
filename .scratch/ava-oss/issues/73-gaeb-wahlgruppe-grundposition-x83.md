@@ -1,6 +1,6 @@
 # 73: `gaeb`: Wahlgruppe verliert die Grundposition im Rundweg X83
 
-Status: ready-for-agent
+Status: claimed
 Type: bug
 Welle: 5 · Strang: G · Paket: `packages/gaeb`
 Blocked by: –

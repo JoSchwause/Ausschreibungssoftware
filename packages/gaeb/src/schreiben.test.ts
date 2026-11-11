@@ -540,23 +540,50 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
       ...e.xml.matchAll(/<Item ID="P(\w+)"[^>]*>\s*<ALNGroupNo>(\d+)<\/ALNGroupNo>\s*<ALNSerNo>(\d+)</g),
     ].map((m) => `${m[1] ?? ''}:${m[2] ?? ''}/${m[3] ?? ''}`);
     // Je Grundposition eine Gruppe, Varianten 1..n in LV-Reihenfolge; Wahl ohne Grundposition je eine eigene Gruppe.
-    expect(nummern).toEqual(['w1:8/1', 'n:7/0', 'w2:9/1', 'w3:8/2', 'w4:10/1']);
+    // Die Grundposition g1 (ohne eigene Wahl, gleicher Elternknoten) ist Variante 0 ihrer Gruppe (Ticket 73).
+    expect(nummern).toEqual(['g1:8/0', 'w1:8/1', 'n:7/0', 'w2:9/1', 'w3:8/2', 'w4:10/1']);
     expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => [b.schwere, b.ort])).toEqual(
-      ['w1', 'w2', 'w3', 'w4'].map((id) => ['warnung', { knotenId: id, feld: 'merkmale.wahl' }]),
+      ['g1', 'w1', 'w2', 'w3', 'w4'].map((id) => ['warnung', { knotenId: id, feld: 'merkmale.wahl' }]),
+    );
+    expect(befund(e, 'wahl-nummer-vergeben')?.meldung).toMatch(
+      /^Die Position ist Grundposition .* Variante 0 /,
     );
     expect(verworfen(e).filter((m) => m.startsWith('Wahl'))).toEqual([]);
     expect(e.entwurf).toBe(false);
-    // Wieder gelesen bleiben sie Wahlpositionen: ihr Betrag geht nie still ins Netto (D-37.1).
+    // Wieder gelesen bleiben sie Wahlpositionen: ihr Betrag geht nie still ins Netto (D-37.1). Die Alternativen von g1
+    // verweisen wieder auf sie; w2 und w4 haben keine Grundposition (Warnung des Lesers).
     const gelesen = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent }).inhalt;
     const wahlen = (gelesen?.knoten ?? []).filter(
       (k): k is Position => k.art === 'position' && k.merkmale.wahl !== null,
     );
-    expect(wahlen.map((k) => [k.ordnungszahl, k.merkmale.wahl?.gruppe, k.merkmale.wahl?.variante])).toEqual([
-      ['01.0020', 8, 1],
-      ['01.0030', 7, 0],
-      ['01.0040', 9, 1],
-      ['01.0050', 8, 2],
-      ['01.0060', 10, 1],
+    const g1 = wahlen.find((k) => k.ordnungszahl === '01.0010')?.id;
+    expect(wahlen.map((k) => [k.ordnungszahl, k.merkmale.wahl])).toEqual([
+      ['01.0010', { gruppe: 8, variante: 0, grundpositionId: null }],
+      ['01.0020', { gruppe: 8, variante: 1, grundpositionId: g1 }],
+      ['01.0030', { gruppe: 7, variante: 0, grundpositionId: null }],
+      ['01.0040', { gruppe: 9, variante: 1, grundpositionId: null }],
+      ['01.0050', { gruppe: 8, variante: 2, grundpositionId: g1 }],
+      ['01.0060', { gruppe: 10, variante: 1, grundpositionId: null }],
+    ]);
+  });
+
+  it('Grundposition unter einem anderen Elternknoten bleibt ohne Wahlnummer: GAEB ordnet nur im selben LV-Bereich zu (Ticket 73)', () => {
+    const inhalt = lv([
+      position('g1', '01.0010', 0),
+      titel('t2', '02', 1),
+      position('w1', '02.0010', 0, {
+        elternId: 't2' as ElternId,
+        merkmale: {
+          ...p1().merkmale,
+          wahl: { gruppe: null, variante: null, grundpositionId: 'g1' as PositionId },
+        },
+      }),
+    ]);
+    const e = schreibe(inhalt);
+    expect(e.xml).toMatch(/<Item ID="Pg1" RNoPart="0010">\s*<Qty>/);
+    expect(e.xml).toMatch(/<Item ID="Pw1" RNoPart="0010">\s*<ALNGroupNo>1<\/ALNGroupNo>\s*<ALNSerNo>1</);
+    expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => b.ort.knotenId)).toEqual([
+      'w1',
     ]);
   });
 
