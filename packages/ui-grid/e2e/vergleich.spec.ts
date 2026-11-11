@@ -294,6 +294,18 @@ test.describe('Vergleichsgrid: fixierte Spalten und große Datenmenge', () => {
     await expect(grid(page)).toBeVisible();
     await expect(grid(page)).toHaveAttribute('aria-rowcount', String(2 + 5000 + 5));
     expect(await grid(page).locator('.tx-grid__koerper [role="row"]').count()).toBeLessThan(80);
+    // auch waagerecht virtualisiert: nicht alle 20 Spalten im DOM; nach rechts gescrollt erscheinen die übrigen
+    const zellenErsteZeile = zeile(page, '01.0010').getByRole('gridcell');
+    expect(await zellenErsteZeile.count()).toBeLessThan(20);
+    await expect(zelle(page, '01.0010', 'max-gp')).toHaveCount(0);
+    await grid(page).evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    await expect(text(zelle(page, '01.0010', 'max-gp'))).toBeInViewport();
+    await expect(zelle(page, '01.0010', 'oz')).toBeInViewport();
+    await grid(page).evaluate((el) => {
+      el.scrollLeft = 0;
+    });
     await expect(summenzeile(page, 'Brutto')).toBeInViewport();
     await grid(page).evaluate((el) => {
       el.scrollTop = 60_000;

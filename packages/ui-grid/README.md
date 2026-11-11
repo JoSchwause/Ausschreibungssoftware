@@ -96,7 +96,8 @@ Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` 
 
 Schreibgeschütztes Grid für Gegenüberstellungen, z. B. den Preisspiegel (Ticket 63). Eigene, generische Typen des
 Pakets (`src/vergleichTypen.ts`, alle exportiert), nichts aus `vertrag`, `kern` oder `vergabe`. Das Grid rechnet und
-formatiert nie (N1, A5): Jede Zelle kommt als fertiger Text, ihre Bedeutung als Kennzeichen.
+formatiert nie (N1, A5): Jede Zelle kommt als fertiger Text, ihre Bedeutung als Kennzeichen. Zeilen und Spalten sind virtualisiert (fixierte und aktive Spalte bleiben
+immer im DOM).
 
 ```tsx
 import { VergleichsGrid } from '@tethys/ui-grid';

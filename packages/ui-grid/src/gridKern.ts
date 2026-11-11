@@ -276,3 +276,39 @@ export function klappAbsicht(
   if (e.ctrlKey || e.metaKey || e.shiftKey || !inBaumspalte || !zeile.hatUnterknoten) return null;
   return zeile.aufgeklappt === auf ? null : auf;
 }
+
+/**
+ * Waagerechte Virtualisierung für breite Grids (viele Spalten): die Indizes der Spalten, die gerendert werden, aufsteigend.
+ * Immer dabei sind die fixierten linken Spalten und die aktive Spalte (wie die aktive Zeile: Der Fokus überlebt das
+ * Scrollen); dazu die sichtbaren mit zwei Spalten Überhang. Die Liste ist stabil, solange sich der Bereich nicht ändert.
+ */
+export function useSichtbareSpalten(o: {
+  readonly scroller: RefObject<HTMLDivElement | null>;
+  readonly breiten: readonly number[];
+  readonly fixiert: number;
+  readonly aktivSpaltenIndex: number;
+}): readonly number[] {
+  const { scroller, breiten, fixiert } = o;
+  const aktivRef = useRef(o.aktivSpaltenIndex);
+  aktivRef.current = o.aktivSpaltenIndex;
+  const v = useVirtualizer({
+    horizontal: true,
+    count: breiten.length,
+    getScrollElement: () => scroller.current,
+    estimateSize: (i) => breiten[i] ?? 0,
+    // Die Breiten kommen aus den Eigenschaften: Ändern sie sich bei gleicher Zahl, misst der Virtualisierer neu.
+    getItemKey: (i) => `${String(i)}:${String(breiten[i] ?? 0)}`,
+    overscan: 2,
+    rangeExtractor: (bereich) => {
+      const menge = new Set(defaultRangeExtractor(bereich));
+      for (let i = 0; i < Math.min(fixiert, bereich.count); i++) menge.add(i);
+      if (aktivRef.current >= 0 && aktivRef.current < bereich.count) menge.add(aktivRef.current);
+      return [...menge].sort((a, b) => a - b);
+    },
+  });
+  const schluessel = v
+    .getVirtualItems()
+    .map((item) => item.index)
+    .join(',');
+  return useMemo(() => (schluessel === '' ? [] : schluessel.split(',').map(Number)), [schluessel]);
+}

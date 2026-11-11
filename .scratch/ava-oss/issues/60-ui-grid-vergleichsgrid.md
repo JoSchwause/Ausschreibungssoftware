@@ -105,7 +105,9 @@ Entscheidungen (Frage → Entscheidung → Grund):
 - **D-60.9** Testseite → zweiter Vite-Einstieg `e2e/harness/vergleich.html` (Mehrseiten-Build) statt eines Modus in
   `main.tsx` → die LV-Testseite bleibt unverändert. Reversible: yes.
 - **D-60.10** Leistung → Fall „Vergleich 5.000 Zeilen x 5 Bieter“ (20 Spalten) in der vorhandenen Messung, ohne neue
-  Schwelle (wie dort nur mit `GRID_MIN_FPS`). Gemessen auf der stark belasteten 4-Kern-Maschine (Headless, ohne GPU):
-  zügiges Lesen (5.600 px/s) etwa 50 fps wie das LV-Grid; schneller Wisch (28.000 px/s) etwa 20–25 fps gegenüber
-  etwa 50–60 beim LV-Grid. Die Kosten wachsen mit der Zahl der Zellen je Zeile (20 statt 7); eine waagerechte
-  Virtualisierung der Spalten wäre der nächste Schritt, falls der Preisspiegel im Alltag ruckelt. Reversible: yes.
+  Schwelle (wie dort nur mit `GRID_MIN_FPS`). Zusätzlich waagerechte Virtualisierung der Spalten (`useSichtbareSpalten`
+  im Kern: fixierte und aktive Spalte immer im DOM, sonst Sichtbereich plus zwei Spalten) und feste Flächen der
+  fixierten Zellen statt `inherit`. Gemessen auf der stark belasteten 4-Kern-Maschine (Headless, ohne GPU, Last 13–17):
+  zügiges Lesen (5.600 px/s) etwa 40–50 fps (LV-Grid 43–56); schneller Wisch (28.000 px/s) etwa 15–23 fps (vorher
+  10–15; LV-Grid 45–60). Der Rest wächst mit den Elementen je Zeile (Zelle, Text, Marken, Beschreibung); weitere
+  Schritte wären weniger Elemente je Zelle. Reversible: yes.

@@ -2,7 +2,7 @@
 // Eine Zeile des Vergleichsgrids (Körper oder Summenzeile). Reine Darstellung: Zustand und Ereignisse gehören dem
 // Grid (Delegation am Wurzelelement). Memoisiert, damit beim Scrollen nur neue Zeilen gerendert werden.
 
-import { memo } from 'react';
+import { Fragment, memo } from 'react';
 import type { ReactElement } from 'react';
 import { Baumeinzug } from './Baumeinzug';
 import { kennzeichenText, zellbeschreibung } from './vergleich';
@@ -25,6 +25,8 @@ export interface VergleichszeileProps {
   readonly spalten: readonly VergleichsSpalte[];
   /** Linker Versatz der fixierten Spalten, `null` für mitscrollende. */
   readonly versaetze: readonly (number | null)[];
+  /** Indizes der gerenderten Spalten, aufsteigend (waagerechte Virtualisierung); Lücken füllt ein Platzhalter. */
+  readonly sichtbar: readonly number[];
   readonly baumspalte: string | undefined;
   /** Aktive Zelle in dieser Zeile (bekommt `tabindex="0"`), sonst `null`. */
   readonly aktiv: string | null;
@@ -37,7 +39,7 @@ export interface VergleichszeileProps {
 
 function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
   const { zellen, baum, index, ariaZeile, versatz, hoehe, vorlage, breite, spalten, versaetze } = props;
-  const { baumspalte, aktiv, auswahl, kennzeichenTexte, idPraefix } = props;
+  const { sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte, idPraefix } = props;
   const letzteFixierte = versaetze.reduce<number>((l, v, i) => (v === null ? l : i), -1);
 
   const klassen = ['tx-grid__zeile'];
@@ -60,7 +62,19 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
         ...(versatz === null ? {} : { transform: `translateY(${String(versatz)}px)` }),
       }}
     >
-      {spalten.map((spalte, si) => {
+      {sichtbar.map((si, k) => {
+        const spalte = spalten[si];
+        if (spalte === undefined) return null;
+        const vorher = k === 0 ? -1 : (sichtbar[k - 1] ?? -1);
+        const luecke =
+          si - vorher > 1 ? (
+            <div
+              key={`luecke-${String(si)}`}
+              className="tx-grid__luecke"
+              aria-hidden="true"
+              style={{ gridColumn: `${String(vorher + 2)} / ${String(si + 1)}` }}
+            />
+          ) : null;
         const zelle = Object.hasOwn(zellen, spalte.id) ? zellen[spalte.id] : undefined;
         const kennzeichen = zelle?.kennzeichen ?? [];
         const beschreibung = zelle ? zellbeschreibung(zelle, kennzeichenTexte) : '';
@@ -79,50 +93,52 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
         for (const k of kennzeichen) if (KLASSENTAUGLICH.test(k)) z.push(`tx-grid__zelle--${k}`);
 
         return (
-          <div
-            key={spalte.id}
-            role="gridcell"
-            className={z.join(' ')}
-            data-spalte={spalte.id}
-            aria-colindex={si + 1}
-            aria-readonly
-            aria-selected={ausgewaehlt}
-            tabIndex={aktiv === spalte.id ? 0 : -1}
-            aria-describedby={beschreibung === '' ? undefined : beschreibungsId}
-            title={beschreibung === '' ? undefined : beschreibung}
-            style={links === null ? undefined : { left: links }}
-          >
-            {baum && spalte.id === baumspalte ? (
-              <Baumeinzug
-                tiefe={baum.tiefe}
-                hatUnterknoten={baum.hatUnterknoten}
-                aufgeklappt={baum.aufgeklappt}
-              />
-            ) : null}
-            {kennzeichen.length > 0 ? (
-              <span className="tx-grid__kennzeichenliste" aria-hidden="true">
-                {kennzeichen.map((k) => (
-                  <span
-                    key={k}
-                    className={
-                      KLASSENTAUGLICH.test(k)
-                        ? `tx-grid__kennzeichen tx-grid__kennzeichen--${k}`
-                        : 'tx-grid__kennzeichen'
-                    }
-                    data-kennzeichen={k}
-                  >
-                    {kennzeichenText(k, kennzeichenTexte).symbol}
-                  </span>
-                ))}
-              </span>
-            ) : null}
-            <span className="tx-grid__text">{zelle?.text ?? ''}</span>
-            {beschreibung === '' ? null : (
-              <span id={beschreibungsId} className="tx-grid__nur-sr">
-                {beschreibung}
-              </span>
-            )}
-          </div>
+          <Fragment key={spalte.id}>
+            {luecke}
+            <div
+              role="gridcell"
+              className={z.join(' ')}
+              data-spalte={spalte.id}
+              aria-colindex={si + 1}
+              aria-readonly
+              aria-selected={ausgewaehlt}
+              tabIndex={aktiv === spalte.id ? 0 : -1}
+              aria-describedby={beschreibung === '' ? undefined : beschreibungsId}
+              title={beschreibung === '' ? undefined : beschreibung}
+              style={links === null ? undefined : { left: links }}
+            >
+              {baum && spalte.id === baumspalte ? (
+                <Baumeinzug
+                  tiefe={baum.tiefe}
+                  hatUnterknoten={baum.hatUnterknoten}
+                  aufgeklappt={baum.aufgeklappt}
+                />
+              ) : null}
+              {kennzeichen.length > 0 ? (
+                <span className="tx-grid__kennzeichenliste" aria-hidden="true">
+                  {kennzeichen.map((k) => (
+                    <span
+                      key={k}
+                      className={
+                        KLASSENTAUGLICH.test(k)
+                          ? `tx-grid__kennzeichen tx-grid__kennzeichen--${k}`
+                          : 'tx-grid__kennzeichen'
+                      }
+                      data-kennzeichen={k}
+                    >
+                      {kennzeichenText(k, kennzeichenTexte).symbol}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+              <span className="tx-grid__text">{zelle?.text ?? ''}</span>
+              {beschreibung === '' ? null : (
+                <span id={beschreibungsId} className="tx-grid__nur-sr">
+                  {beschreibung}
+                </span>
+              )}
+            </div>
+          </Fragment>
         );
       })}
     </div>

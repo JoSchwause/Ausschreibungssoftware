@@ -8,7 +8,7 @@
 import { useTable } from '@tanstack/react-table';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
-import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSprung } from './gridKern';
+import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { features, vergleichsSpaltenDefinitionen } from './tabelle';
@@ -274,6 +274,14 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   };
 
   // --- Darstellung ----------------------------------------------------------------------------------------------
+  // Waagerecht virtualisiert: Bei 20 Spalten halbiert das die Zellen je Zeile beim schnellen Scrollen (D-60.10).
+  const breiten = useMemo(() => spalten.map((s) => s.breite ?? STANDARDBREITE), [spalten]);
+  const sichtbar = useSichtbareSpalten({
+    scroller,
+    breiten,
+    fixiert,
+    aktivSpaltenIndex: kern.aktivSpaltenIndex,
+  });
   const zeilenAuswahl = (i: number): readonly [number, number] | null =>
     auswahl && i >= auswahl.zeilen[0] && i <= auswahl.zeilen[1] ? auswahl.spalten : null;
   const aktivIn = (i: number): string | null =>
@@ -284,6 +292,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
     breite: mindestbreite,
     spalten,
     versaetze,
+    sichtbar,
     baumspalte,
     kennzeichenTexte,
     idPraefix,
