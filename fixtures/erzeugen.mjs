@@ -3,6 +3,7 @@
 //
 // Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele; zuschlag (Ticket 37).
 // Seit Ticket 51 tragen typisch, typisch-angebote und gross ihre Zuschlagspositionen in GAEB-Form (Satz und Bezug).
+// Ticket 69: je Bieter eine X84 unter angebote/ und Preisspiegel-Sollwerte in typisch-angebote.json.
 // Aufruf: node fixtures/erzeugen.mjs
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
