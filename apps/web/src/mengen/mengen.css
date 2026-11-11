@@ -116,3 +116,35 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Ticket 87: Textform aus X31 (nur lesen) und die Menge ohne Ansatz auf einem Aufmaßblatt. */
+.mengen__textform {
+  color: var(--tx-color-text-muted);
+  font-family: var(--tx-font-mono);
+}
+
+.mengen__textform-hinweis {
+  color: var(--tx-color-text-muted);
+  white-space: normal;
+}
+
+.mengen__direkt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2);
+}
+
+.mengen__direkt-feld {
+  width: 10em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mengen__direkt-hinweis {
+  color: var(--tx-color-text-muted);
+}
+
+.mengen__direkt-fehler {
+  color: var(--tx-color-danger);
+}

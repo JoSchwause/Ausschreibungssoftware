@@ -5,6 +5,8 @@ import {
   ansatzBefehl,
   ansatzBerechnen,
   entwurfAusPosition,
+  istTextform,
+  mengeneingabe,
   zeileAnlegen,
   zeileLoeschen,
   zeileVerschieben,
@@ -116,5 +118,67 @@ describe('ansatzBefehl', () => {
   });
   it('ohne Ansatz und ohne Zeilen: nichts zu tun', () => {
     expect(ansatzBefehl(position(), [z(1, '')])).toBeNull();
+  });
+});
+
+// Ticket 87: dasselbe Panel für eine Zeile eines Aufmaßblatts, dort auch mit einer Menge ohne Ansatz.
+describe('mengeneingabe (allgemein: Position oder Aufmaßzeile)', () => {
+  const ohne = { mengenansatz: null, menge: null };
+  it('Zeilen gehen vor: Ansatz und Summe, die Menge ohne Ansatz zählt dann nicht', () => {
+    expect(mengeneingabe(ohne, [z(1, '2*3')], '7')).toEqual({
+      ok: true,
+      wert: {
+        mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }],
+        menge: '6.000',
+      },
+    });
+  });
+  it('ohne Zeilen: die Menge ohne Ansatz (de-DE), auch negativ; leer heißt keine Menge', () => {
+    expect(mengeneingabe(ohne, [z(1, '')], '12,5')).toEqual({
+      ok: true,
+      wert: { mengenansatz: null, menge: '12.500' },
+    });
+    expect(mengeneingabe(ohne, [], '-3')).toEqual({
+      ok: true,
+      wert: { mengenansatz: null, menge: '-3.000' },
+    });
+    expect(mengeneingabe({ mengenansatz: null, menge: '4.000' as Menge }, [], '')).toEqual({
+      ok: true,
+      wert: { mengenansatz: null, menge: null },
+    });
+  });
+  it('ungültige Menge ohne Ansatz: Meldung am Feld, kein Ergebnis', () => {
+    const r = mengeneingabe(ohne, [], '1.5');
+    expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.fehler).toMatch(/Menge/);
+  });
+  it('unverändert (gleicher Ansatz, oder gleiche Menge ohne Ansatz): nichts zu tun', () => {
+    const mit = {
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }],
+      menge: '6.000' as Menge,
+    };
+    expect(mengeneingabe(mit, [z(1, '2*3')], '')).toEqual({ ok: true, wert: null });
+    expect(mengeneingabe({ mengenansatz: null, menge: '4.000' as Menge }, [], '4')).toEqual({
+      ok: true,
+      wert: null,
+    });
+    expect(mengeneingabe(ohne, [], '')).toEqual({ ok: true, wert: null });
+  });
+  it('ohne Feld für die Menge (LV): Ansatz entfernen lässt die gespeicherte Menge', () => {
+    const mit = {
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }],
+      menge: '6.000' as Menge,
+    };
+    expect(mengeneingabe(mit, [], null)).toEqual({ ok: true, wert: { mengenansatz: null, menge: '6.000' } });
+  });
+  it('Textform einer Zeile aus GAEB X31 (D-83.2): erkannt, nie gerechnet', () => {
+    const t = z(1, '*      H 91 Hilfswert 2,5');
+    expect(istTextform(t)).toBe(true);
+    expect(istTextform(z(1, '2*3'))).toBe(false);
+    const r = mengeneingabe(ohne, [t], '');
+    expect(r).toEqual({
+      ok: true,
+      wert: { mengenansatz: [{ zeile: 1, formel: 91, ausdruck: t.ausdruck, variable: null }], menge: null },
+    });
   });
 });

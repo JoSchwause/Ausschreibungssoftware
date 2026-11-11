@@ -16,6 +16,7 @@ import type {
 } from '@tethys/vertrag';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { AbrechnungVerweise } from '../abrechnung/Verweis'; // Ticket 87
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
 import { lvAnsichtBauen } from '../lv/ansicht';
@@ -222,6 +223,7 @@ function Ansicht({
         <NachtragAnlegen auftrag={kopf} gehe={gehe} />
         <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
         {/* Ticket 87–89: Abrechnung */}
+        <AbrechnungVerweise projektId={kopf.projektId} auftragsLvId={kopf.id} gehe={gehe} /> {/* Ticket 87 */}
         {/* Ticket 88 */}
         <Verweis pfad={rechnungenPfad(kopf.projektId, kopf.id)} text={rechnungTexte.liste.link} gehe={gehe} />
         <button

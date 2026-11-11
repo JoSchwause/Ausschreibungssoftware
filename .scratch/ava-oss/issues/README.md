@@ -158,7 +158,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | resolved |
 | 85 | F | Fixture M4 | `fixtures/` | resolved |
 | 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | resolved |
-| 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | ready-for-agent |
+| 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | resolved |
 | 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | resolved |
 | 89 | C2–C4 | Kosten in der App | `apps/web/src/kosten/` | resolved |
 | 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | resolved |
