@@ -162,7 +162,7 @@ Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (A
 Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
 
 ### Zuschlagssatz
-Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis.
+Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis. Nicht zu verwechseln mit dem Zuschlagssatz der Kalkulation.
 
 ### Auftraggeber (Kopfdaten)
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
@@ -289,11 +289,26 @@ Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteil
 Die Zuordnung eines nummerierten Anteils der GAEB-Datei (1 bis 6) zu einer Art der Einheitspreisanteile samt der Beschriftung, die das LV ihm gibt (z. B. „Lohn“, „Nachunternehmer“; GAEB `LblUPComp`). Über sie ordnet der Import eines Angebots (X84) die Anteile des Bieters zu; ohne sie gilt die feste Belegung 1 Lohn bis 6 frei. Im Code `EpaBezeichnung`, `LvInhaltKopf.epaBezeichnungen`.
 
 ### Einzelpreiskalkulation (Bottom-Up-Kalkulation / Urkalkulation)
-Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G).
+Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G). In der App eine reine Rechnung (Paket `kosten`, D-39): Je Kostenart ist der Anteil (Σ Einzelkosten) × (1 + Zuschlagssatz der Kalkulation / 100), kaufmännisch auf 3 Stellen gerundet; der EP ist die Summe dieser Anteile, sodass „Summe der Anteile = EP“ immer gilt. Das Ergebnis sind Einheitspreisanteile und EP, die die App mit den vorhandenen Befehlen schreibt; die Kalkulation selbst wird nicht gespeichert (D-36). Im Code `einzelpreiskalkulationBerechnen`, `Einzelpreiskalkulation`.
+
+### Kalkulationsansatz
+Eine Zeile der Einzelpreiskalkulation einer Position: Kostenart (eine Art der Einheitspreisanteile, `EpaArt`), freie Bezeichnung, **Ansatzmenge** je Einheit der Position (z. B. 0,450 h je m², 3 Stellen) und Kostensatz. Die **Einzelkosten** der Zeile sind Ansatzmenge × Kostensatz, ungerundet. Bei der Kostenart Lohn zählt die Ansatzmenge als Lohnstunden. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht und ist ein Befund. Im Code `Kalkulationsansatz`, `ansatzmenge`.
+
+### Kostensatz
+Kosten je Einheit eines Kalkulationsansatzes (z. B. 48,500 € je Lohnstunde oder je m² Stein), netto, 3 Stellen wie ein EP. Im Code `kostensatz`.
+
+### Zuschlagssatz der Kalkulation
+Prozentsatz (2 Stellen), mit dem die Zuschlagskalkulation die Einzelkosten einer Kostenart beaufschlagt; ein Satz je Kostenart, der die Zuschläge für Gemeinkosten der Baustelle, Allgemeine Geschäftskosten sowie Wagnis und Gewinn vorab zusammenfasst. Eine Kostenart ohne Satz hat 0 %. Der gerechnete Betrag je Einheit (Einzelkosten × Satz / 100, ungerundet) heißt **Kalkulationszuschlag**. Ausdrücklich nicht der Zuschlagssatz einer Zuschlagsposition (GAEB `MarkupItem`, `Markup`), der auf die Summe von Bezugspositionen gerechnet wird; darum tragen die Bezeichner im Code immer das Wort „Kalkulation“: `Kalkulationszuschlagssaetze`, `kalkulationszuschlagssatz`, `kalkulationszuschlag`.
+
+### Kalkulationsübersicht
+Die Einzelpreiskalkulationen mehrerer Positionen eines LV mit ihren Mengen zusammengerechnet, ohne Baum: je Position EP und GP (kaufmännisch auf 2 Stellen, N2), je Kostenart die Summe der Einzelkosten und die Summe der Anteile × Menge (je Position auf 2 Stellen gerundet), die Herstellkosten und der Mittellohn-Nachweis. Im Code `kalkulationsuebersichtBerechnen`, `Kalkulationsuebersicht`.
+
+### Mittellohn
+Lohnkosten je Lohnstunde über die Lohnzeilen einer Kalkulationsübersicht: Σ (Menge × Einzelkosten Lohn) / Σ (Menge × Lohnstunden je Einheit), exakt gerechnet und einmal kaufmännisch auf 3 Stellen gerundet. Zusammen mit der Summe der **Lohnstunden** (3 Stellen) bildet er den Mittellohn-Nachweis. Im Code `mittellohn`, `lohnstunden`.
 
 ### Herstellkosten & Zuschlagskalkulation
-- **Herstellkosten**: Summe der direkten Einzelkosten der Teilleistungen (EKT) ohne nachgelagerte Gemeinkosten- und Gewinnzuschläge.
-- **Zuschlagskalkulation**: Beaufschlagung der Einzelkosten je Kostenart mit prozentualen Zuschlagssätzen zur Ermittlung des Angebotspreises.
+- **Herstellkosten**: Summe der direkten Einzelkosten der Teilleistungen (EKT) ohne nachgelagerte Gemeinkosten- und Gewinnzuschläge. In der Kalkulationsübersicht die Summe der Einzelkosten aller Kostenarten (`Kalkulationsuebersicht.herstellkosten`).
+- **Zuschlagskalkulation**: Beaufschlagung der Einzelkosten je Kostenart mit prozentualen Zuschlagssätzen der Kalkulation zur Ermittlung des Angebotspreises.
 
 ### Kostenkennwert & Mengenbezugsgrößen (DIN 277)
 Verhältniszahl aus Baukosten (z. B. je Kostengruppe nach DIN 276 oder Leistungsbereich) und einer geometrischen Bezugsgröße des Bauwerks (z. B. Brutto-Grundfläche **BGF**, Brutto-Rauminhalt **BRI** oder Nutzungsfläche **NF** nach **DIN 277**), angegeben etwa in `€/m² BGF`.
@@ -345,6 +360,9 @@ Chronologische tägliche Dokumentation des Bauablaufs auf der Baustelle (Witteru
 
 ### E-Rechnung (XRechnung & ZUGFeRD)
 Strukturierte elektronische Rechnungsformate nach europäischer Norm **EN 16931** für Bau- und Planerrechnungen (reines XML bei **XRechnung** bzw. hybrides PDF/A-3 mit eingebettetem XML bei **ZUGFeRD**).
+
+### Eingangsrechnung
+Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie sie in der Datei steht: Angaben nach den Business Terms der EN 16931 (BT-1 Rechnungsnummer bis BT-115 Zahlbetrag, Umsatzsteueraufschlüsselung, Positionen mit Unterpositionen der Extension), dazu Befunde. Die Rechenprüfung der Eingangsrechnung prüft nur die Summenregeln der Norm; sie ist nicht die Rechnungsprüfung gegen Aufmaß und Auftrags-LV (Abrechnung). Die App übernimmt daraus Nummer, Datum und geforderte Beträge in eine `Rechnung`. „Abschläge“ und „Zuschläge auf Dokumentenebene“ (BT-107, BT-108) sind Minderungen bzw. Aufschläge der Rechnung, weder Abschlagsrechnung noch Zuschlag (Vergabe). Im Code `Eingangsrechnung`, `xrechnungLesen` (Paket `erechnung`).
 
 ### DACH-Ausschreibungsstandards (STLB-Bau, ÖNORM, SIA / CRB NPK)
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.

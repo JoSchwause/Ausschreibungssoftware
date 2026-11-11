@@ -249,11 +249,11 @@
   ],
   "ausreisserAnnahmeA7": {
     "schwellePromille": "200",
-    "regel": "Annahme A7 im README: |GP - Mittel| / Mittel > Schwelle; Mittel aus allen Angeboten, die die Position angeboten haben, mindestens 3 Werte.",
+    "regel": "D-05 (README A7): je Position der EP des Bieters, an einer Zuschlagsposition sein Betrag (D-36.1, D-44.1); Mittel nur über Werte > 0, Nullpreis und „nicht angeboten“ nie Ausreißer; ab 2 Werten > 0 Ausreißer, wenn |Wert - Mittel| / Mittel > Schwelle.",
     "jeAngebot": {
-      "019b76f9-2c83-7dd1-8cb8-4edeaf573f4d": ["019b76e9-ea5c-792b-9c81-2db5b428a9bc"],
-      "019b76f9-2c84-7df5-8da4-f13927bb3331": ["019b76e9-ea5c-792b-9c81-2db5b428a9bc"],
-      "019b76f9-2c85-7763-bbaa-ed3faaf4719a": ["019b76e9-ea4d-711c-ab51-51f1cef5e0df","019b76e9-ea57-75e5-a1d0-370693d7b6c3","019b76e9-ea5c-792b-9c81-2db5b428a9bc"]
+      "019b76f9-2c83-7dd1-8cb8-4edeaf573f4d": [],
+      "019b76f9-2c84-7df5-8da4-f13927bb3331": [],
+      "019b76f9-2c85-7763-bbaa-ed3faaf4719a": ["019b76e9-ea4d-711c-ab51-51f1cef5e0df","019b76e9-ea57-75e5-a1d0-370693d7b6c3"]
     }
   },
   "preisspiegel": {

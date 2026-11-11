@@ -78,6 +78,11 @@ export interface FxLv {
   sollwerte: {
     summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
     titel: Record<string, { summe: string }>;
+    /** Unabhängige Sollwerte für Bedarfs- und Wahlsumme; nur `typisch` und `gross` tragen sie. */
+    ausweise?: {
+      gesamt: { summeBedarfOhneGesamtbetrag: string; summeWahl: string };
+      titel: Record<string, { summeBedarfOhneGesamtbetrag: string; summeWahl: string }>;
+    };
   };
 }
 

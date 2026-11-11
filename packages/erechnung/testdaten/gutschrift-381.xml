@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Selbst verfasst (Ticket 76): UBL-Gutschrift (CreditNote, 381) mit Standard-Namensraum statt Präfix an der Wurzel. -->
+<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"
+            xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+            xmlns:b="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+    <b:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</b:CustomizationID>
+    <b:ID>GS-2026-001</b:ID>
+    <b:IssueDate>2026-11-05</b:IssueDate>
+    <b:CreditNoteTypeCode>381</b:CreditNoteTypeCode>
+    <b:DocumentCurrencyCode>EUR</b:DocumentCurrencyCode>
+    <b:BuyerReference>991-01234-56</b:BuyerReference>
+    <cac:AccountingSupplierParty>
+        <cac:Party>
+            <cac:PartyLegalEntity>
+                <b:RegistrationName>Beispielbau GmbH</b:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingSupplierParty>
+    <cac:AccountingCustomerParty>
+        <cac:Party>
+            <cac:PartyLegalEntity>
+                <b:RegistrationName>Gemeinde Beispielstadt</b:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingCustomerParty>
+    <cac:TaxTotal>
+        <b:TaxAmount currencyID="EUR">9.50</b:TaxAmount>
+        <cac:TaxSubtotal>
+            <b:TaxableAmount currencyID="EUR">50.00</b:TaxableAmount>
+            <b:TaxAmount currencyID="EUR">9.50</b:TaxAmount>
+            <cac:TaxCategory>
+                <b:ID>S</b:ID>
+                <b:Percent>19</b:Percent>
+                <cac:TaxScheme>
+                    <b:ID>VAT</b:ID>
+                </cac:TaxScheme>
+            </cac:TaxCategory>
+        </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:LegalMonetaryTotal>
+        <b:LineExtensionAmount currencyID="EUR">50.00</b:LineExtensionAmount>
+        <b:TaxExclusiveAmount currencyID="EUR">50.00</b:TaxExclusiveAmount>
+        <b:TaxInclusiveAmount currencyID="EUR">59.50</b:TaxInclusiveAmount>
+        <b:PayableAmount currencyID="EUR">59.50</b:PayableAmount>
+    </cac:LegalMonetaryTotal>
+    <cac:CreditNoteLine>
+        <b:ID>1</b:ID>
+        <b:CreditedQuantity unitCode="H87">2</b:CreditedQuantity>
+        <b:LineExtensionAmount currencyID="EUR">50.00</b:LineExtensionAmount>
+        <cac:Item>
+            <b:Name>Rücknahme Gerüstteile</b:Name>
+        </cac:Item>
+        <cac:Price>
+            <b:PriceAmount currencyID="EUR">25.00</b:PriceAmount>
+        </cac:Price>
+    </cac:CreditNoteLine>
+</CreditNote>

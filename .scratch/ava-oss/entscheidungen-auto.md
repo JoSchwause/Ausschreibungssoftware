@@ -442,3 +442,46 @@ Question: Wo wird bei der Zuschlagskalkulation gerundet?
 Decision: Einzelkosten ungerundet; Anteil je Kostenart = Einzelkosten × (1 + Satz/100) kaufmännisch auf 3 Stellen (EP 3, N3); EP = Σ der gerundeten Anteile. Nicht im M4-Weg.
 Reason: So gilt „Summe der Anteile = EP“ (Kernprüfung der EPA) immer; entspricht N2 (Summen aus gerundeten Werten).
 Reversible: yes  Touches: packages/kosten
+
+## D-40 Befehle für Vorlage und Textquelle
+Welle 5 · Ticket 70, 71 · decided by: orchestrator
+Question: D-36 (6) nimmt `vorlage?` und `textquelle?` „nur als Typ“; ohne Befehl kann der Nutzer sie nie setzen (A5).
+Decision: Zwei kleine LvBefehle `VorlageSetzen { vorlage }` und `TextquelleSetzen { positionId, textquelle | null }` in v1.4, Handler im Kern (Ticket 71). Kein Typ für Textbausteine (D-36 bleibt).
+Reason: Ein Feld ohne Befehl wäre nur über Import erreichbar; die Handler sind Feldbefehle wie `KurztextAendern`.
+Reversible: yes  Touches: packages/vertrag, packages/kern
+
+## D-41 D-73.3 angenommen: Alternative ohne Nummern tritt der Gruppe ihrer Grundposition bei
+Welle 5 · Ticket 73 · decided by: orchestrator
+Question: Der Umsetzer von 73 lässt eine Alternative ohne Gruppe/Variante, deren Grundposition schon Variante 0 einer Gruppe ist, dieser Gruppe beitreten, statt eine neue Gruppe ohne Grundposition zu eröffnen; das geht über D-16 hinaus.
+Decision: Angenommen. Die Grundposition wird beim Export als Variante 0 geschrieben (D-73.1, mit Warnung), die Alternative folgt ihr.
+Reason: Betrifft nur die Vergabe künstlicher Nummern im Writer; der Bezug `grundpositionId` bleibt erhalten, Summen ändern sich nicht; umkehrbar und auf `gaeb` begrenzt.
+Reversible: yes  Touches: packages/gaeb
+
+## D-42 Tor für `vertrag` v1.4
+Welle 5 · Ticket 70 · decided by: orchestrator
+Question: Ist v1.4 stabil genug, damit 71 und 79–91 darauf bauen (statt Prüfung durch den Nutzer, P9, D-36)?
+Decision: Ja, nach den Review-Fixes. Opus-Reviewer: „yes-with-fixes“, keine Änderung an Bestandsdaten, Projektdateien oder Protokollen; nicht-additive Stellen markiert und laut abweisend. Fixes in Ticket 70: Freigabe-Invariante (Anlegen einer Rechnung unter einer freigegebenen Nummer → `konflikt`), `LvUebersicht` additiv (D-43), `gefordert` mit Zahlbetrag (D-44), „× Satz / 100“ und Zuschlagsposition ohne Satz in den Lesarten, Glossar „Aufmaßblatt“. Leck `zuschlagErteilen` (`nachtrag`/`vorlage` landen im Kopf des Auftrags-LV): Fehler bei Nachtrags-LV, `vorlage` weglassen – als benannte Ausnahme von P2 im Ticket 70, weil `vergabe` in Welle 5 keinen Schreiber mehr hat (zwei Zeilen und Tests); Kern-Teil in 71, Oberfläche in 86. Übrige Befunde gehen als Nachträge in 71, 80, 82, 83, 86–89.
+Reason: Alle Befunde eindeutig lösbar; zwei Formfragen hat der Berater entschieden (D-43, D-44).
+Reversible: yes  Touches: packages/vertrag, packages/vergabe (D-42-Zeilen), Tickets 71, 79–89
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-43 `LvUebersicht` mit Nachtragsangaben und Vorlage
+Welle 5 · Ticket 70, 79, 86, 90 · decided by: advisor
+Question: Die App müsste für das Kennzeichen „Nachtrag N01“, die Nachtragsliste und die Vorlagen jedes LV ganz laden (bis 5.000 Positionen).
+Decision: Additiv `LvUebersicht.nachtrag?: Nachtragsangaben` und `vorlage?: true`, von `speicher` aus dem Kopf gefüllt (fehlt = nein, nie `false`/`null`); kein neuer Repository-Weg; die projektübergreifende Vorlagenliste baut die App aus `projekte.auflisten` + `leistungsverzeichnisse.auflisten`. Test in `speicher`: Übersicht = Kopf nach Setzen und nach Undo.
+Reason: Nur Kopffelder nötig; additiv, wie `AuftragsLvUebersicht`.
+Reversible: yes  Touches: packages/vertrag, packages/speicher, apps/web
+
+## D-44 `Rechnung.gefordert` mit nullbaren Beträgen und Zahlbetrag
+Welle 5 · Ticket 70, 81, 88 · decided by: advisor
+Question: `gefordert: { netto; brutto }` verlangt beide Beträge; die XRechnung liefert BT-109, BT-112, BT-115 je wahlweise.
+Decision: `gefordert: { netto: Betrag | null; brutto: Betrag | null; zahlbetrag: Betrag | null } | null` (`zahlbetrag` = BT-115); äußeres `null` ist die einzige Schreibweise für „nichts erfasst“, ein Objekt mit drei `null` weist der Ausführer ab. Nur Vergleich, nie Grundlage der Prüfung; Ticket 81 meldet keinen Befund für fehlende Forderungen; Ticket 88 zeigt „–“ ohne Differenz und vergleicht bevorzugt den Zahlbetrag.
+Reason: 1:1 zu `erechnung`; der Zahlbetrag ist das Gegenstück zum eingefrorenen `freigabe.zahlbetrag` (D-34 (7)).
+Reversible: yes (noch kein Verbraucher)  Touches: packages/vertrag, abrechnung, apps/web
+
+## D-45 Aufmaßblatt bleibt ganzes Aggregat im ChangeSet
+Welle 5 · Ticket 70, 87 · decided by: orchestrator
+Question: Jede Zeilenänderung trägt das ganze Aufmaßblatt zweimal in die Undo-Historie (Offene Typfrage 6).
+Decision: Bei D-36 (8) bleiben; Ticket 87 misst Zeit und Speicher je Undo-Schritt an einem Blatt mit 5.000 Zeilen (Q4). Nur bei überschrittenem Budget folgt in v1.5 `Aenderungen<Aufmassposition>`.
+Reason: Hält v1.4 klein; ein großes Blatt ist selten, die Messung entscheidet.
+Reversible: yes  Touches: apps/web (Messung)

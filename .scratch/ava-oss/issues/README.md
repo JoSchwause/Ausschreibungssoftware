@@ -129,7 +129,37 @@ gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgeti
 | 69 | F | X84-Dateien und Preisspiegel-Sollwerte | `fixtures/` | resolved |
 | 70 | F | `vertrag` v1.4: Repository Auftrags-LV (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 5) |
 | 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | ready-for-agent (Welle 5) |
-| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | ready-for-agent (Welle 5) |
-| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | ready-for-agent (Welle 5) |
+| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved (Welle 5) |
+| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | resolved (Welle 5) |
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent (Welle 5) |
-| 75 | F | Fixtures: Restpunkte | `fixtures/` | ready-for-agent (Welle 5) |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved (Welle 5) |
+
+# Tickets Welle 5 (Lauf, 2026-11-11)
+
+Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entscheidungen D-31 bis D-40 in
+`../entscheidungen-auto.md`. 70 und 71 sind gegenüber Welle 4 erweitert (v1.4).
+
+| Nr | Strang | Titel | Paket | Status |
+|---|---|---|---|---|
+| 70 | F | `vertrag` v1.4 | `packages/vertrag` | ready-for-agent |
+| 71 | K | Kern v1.4 | `packages/kern` | ready-for-agent |
+| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved |
+| 73 | G | Wahlgruppe im X83-Rundweg | `packages/gaeb` | resolved |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved |
+| 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | resolved |
+| 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
+| 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
+| 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
+| 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | ready-for-agent |
+| 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
+| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | ready-for-agent |
+| 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |
+| 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
+| 85 | F | Fixture M4 | `fixtures/` | ready-for-agent |
+| 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | ready-for-agent |
+| 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | ready-for-agent |
+| 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | ready-for-agent |
+| 89 | C2–C4 | Kosten in der App | `apps/web/src/kosten/` | ready-for-agent |
+| 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | ready-for-agent |
+| 91 | – | Tor M4 | `apps/web/e2e/` | ready-for-agent |

@@ -266,12 +266,98 @@ test('typisch-angebote: drei Bieter, nicht angeboten ist nicht 0,00, Summen', ()
   assert.equal(nicht, 1);
   assert.equal(null0, 1);
   assert.equal(nachlaesse, 1);
-  // genau ein Bieter-Angebot hat Ausreisser auf den vorgesehenen Positionen (Annahme A7)
-  const flags = Object.values(set.ausreisserAnnahmeA7.jeAngebot);
-  const posVon = (oz) => lv.knoten.find((k) => k.ordnungszahl + (k.ozIndex ?? '') === oz).id;
-  assert.ok(flags[2].includes(posVon('02.0050')));
-  assert.ok(flags[2].includes(posVon('03.0030')));
-  assert.equal(flags[0].includes(posVon('02.0050')), false);
+});
+
+// ---------------------------------------------------------------- Ticket 75: Ausreißer nach D-05
+
+/**
+ * Ausreißer je Angebot, hier eigens aus den Angebotszeilen gerechnet (nicht über rechnen.mjs; Regel D-05, D-36.1,
+ * D-44.1, README A7): je Position der EP des Bieters, an einer Zuschlagsposition sein Betrag; verglichen werden nur
+ * Werte > 0 (Nullpreis und „nicht angeboten“ nie); ab 2 solchen Werten und Summe > 0 ist ein Wert Ausreißer, wenn
+ * |n x Wert - Summe| x 100 > Schwelle x Summe (strikt, ganzzahlig). Liefert je Angebot die Positions-IDs in
+ * Dokumentreihenfolge.
+ */
+function ausreisserGegenrechnung(lv, angebote, schwelleProzent) {
+  const aus = angebote.map(() => []);
+  for (const p of lv.knoten.filter((k) => k.art === 'position')) {
+    const werte = angebote.map((a) => {
+      if (p.zuschlag) {
+        const betrag = a.sollwerte.zuschlaege[p.id]?.betrag;
+        return betrag == null ? null : parse(betrag, 2);
+      }
+      const z = a.positionen.find((x) => x.positionId === p.id);
+      return z.status === 'angeboten' ? parse(z.einheitspreis, 3) : null;
+    });
+    const bepreist = werte.filter((w) => w !== null && w > 0n);
+    const n = BigInt(bepreist.length);
+    const summe = bepreist.reduce((x, y) => x + y, 0n);
+    if (n < 2n || summe === 0n) continue;
+    werte.forEach((w, i) => {
+      if (w === null || w <= 0n) return;
+      const abw = n * w > summe ? n * w - summe : summe - n * w;
+      if (abw * 100n > BigInt(schwelleProzent) * summe) aus[i].push(p.id);
+    });
+  }
+  return aus;
+}
+
+test('typisch-angebote: Ausreißer nach D-05 (Werte > 0, Nullpreis und „nicht angeboten“ nie Ausreißer)', () => {
+  const lv = laden('typisch.json');
+  const set = laden('typisch-angebote.json');
+  const a7 = set.ausreisserAnnahmeA7;
+  const ozVon = new Map(lv.knoten.filter((k) => k.art === 'position').map((k) => [k.id, k.ordnungszahl + (k.ozIndex ?? '')]));
+  assert.equal(a7.schwellePromille, '200');
+  assert.match(a7.regel, /D-05/);
+  assert.deepEqual(Object.keys(a7.jeAngebot), set.angebote.map((a) => a.id));
+  assert.deepEqual(Object.values(a7.jeAngebot), ausreisserGegenrechnung(lv, set.angebote, 20));
+  // Von Hand (README A7): nur Bieter C, an 02.0050 und 03.0030, beide nach oben.
+  // 02.0050: EP 165,184 / 174,980 / 253,350; Summe 593,514; C: 3 x 253,350 - 593,514 = 166,536 > 0,20 x 593,514 = 118,7028.
+  // 03.0030: EP 21,647 / 23,609 / 32,700; Summe 77,956; C: 98,100 - 77,956 = 20,144 > 15,5912.
+  // 03.0080: C bietet 0,000 (Nullpreis, D-05), zählt nicht; A 2,107 und B 2,261 liegen je 0,077 (3,5 %) vom Mittel 2,184.
+  // 02.0050 A (Beträge 544,71 / 617,02 / 772,62; Summe 1.934,35): C 383,51 < 386,87, knapp kein Ausreißer.
+  assert.deepEqual(Object.values(a7.jeAngebot).map((ids) => ids.map((id) => ozVon.get(id))), [[], [], ['02.0050', '03.0030']]);
+  // Schwelle 200 % (D-63.9): Bei 3 Werten > 0 liegt keiner mehr als 200 % über oder 100 % unter dem Mittel.
+  assert.deepEqual(ausreisserGegenrechnung(lv, set.angebote, 200), [[], [], []]);
+});
+
+// ---------------------------------------------------------------- Ticket 75: Bedarfs- und Wahlsumme der LV-Fixtures
+
+test('LV-Fixtures: Bedarfs- und Wahlsumme unabhängig gegengerechnet (F4; Sollwerte für den LV-Druck)', () => {
+  for (const name of [...LVS, 'zuschlag.json']) {
+    const lv = laden(name);
+    // Hier eigens aus den Knoten: Summe von round_half_up(Menge x EP, 2) über Bedarf ohne Gesamtbetrag bzw. Wahl,
+    // je Titel einschließlich Untertitel und für das LV (nicht über berechneSollwerteGaeb).
+    const leer = () => ({ summeBedarfOhneGesamtbetrag: 0n, summeWahl: 0n });
+    const titel = new Map(lv.knoten.filter((k) => k.art === 'titel').map((k) => [k.id, leer()]));
+    const eltern = new Map(lv.knoten.map((k) => [k.id, k.parentId]));
+    const gesamt = leer();
+    let anzahl = 0;
+    for (const k of lv.knoten) {
+      if (k.art !== 'position') continue;
+      const feld = k.positionsart === 'wahl' ? 'summeWahl'
+        : k.positionsart === 'bedarf' && k.bedarfMitGesamtbetrag !== true ? 'summeBedarfOhneGesamtbetrag' : null;
+      if (feld === null) continue;
+      anzahl++;
+      assert.equal(k.zuschlag, undefined, `${name}: Bedarf/Wahl als Zuschlagsposition kommt nicht vor`);
+      const gp = gesamtpreis(parse(k.menge, 3), parse(k.einheitspreis, 3));
+      gesamt[feld] += gp;
+      for (let t = eltern.get(k.id); titel.has(t); t = eltern.get(t)) titel.get(t)[feld] += gp;
+    }
+    const alsText = (a) => ({
+      summeBedarfOhneGesamtbetrag: format(a.summeBedarfOhneGesamtbetrag, 2), summeWahl: format(a.summeWahl, 2),
+    });
+    const ausweise = lv.sollwerte.ausweise;
+    if (ausweise === undefined) {
+      // winzig, zuschlag: keine Bedarfs- und keine Wahlposition, also beide Summen 0,00 (im Druck keine Zeile, D-58.4)
+      assert.equal(anzahl, 0, `${name}: Bedarf oder Wahl, aber keine ausweise`);
+      continue;
+    }
+    assert.ok(anzahl > 0, `${name}: ausweise ohne Bedarf und Wahl`);
+    assert.deepEqual(ausweise.gesamt, alsText(gesamt), name);
+    assert.deepEqual(ausweise.titel, Object.fromEntries([...titel].map(([id, a]) => [id, alsText(a)])), name);
+  }
+  // Von Hand (README): typisch 01.0040 = 12,000 x 48,900 = 586,80 (Titel 01); 02.0070 A = 96,000 x 61,250 = 5.880,00 (Titel 02).
+  assert.deepEqual(laden('typisch.json').sollwerte.ausweise.gesamt, { summeBedarfOhneGesamtbetrag: '586.80', summeWahl: '5880.00' });
 });
 
 test('Dezimalwerte in JSON sind nie Zahlen', () => {
