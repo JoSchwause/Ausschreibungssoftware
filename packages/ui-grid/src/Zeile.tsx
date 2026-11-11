@@ -43,6 +43,8 @@ export interface ZeileProps {
   readonly abgelehnt: ReadonlyMap<LvSpalte, Abgelehnt> | undefined;
   readonly baumspalte: LvSpalte;
   readonly zahlen: GridZahlen;
+  /** Schreibgeschütztes Grid: keine Zelle ist bearbeitbar. */
+  readonly schreibgeschuetzt: boolean;
   readonly editor: EditorAktionen;
 }
 
@@ -78,7 +80,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
     ausgeschnitten,
     bearbeitung,
   } = props;
-  const { abgelehnt, baumspalte, zahlen, editor } = props;
+  const { abgelehnt, baumspalte, zahlen, schreibgeschuetzt, editor } = props;
   const zeile = row.original;
   const k = zeile.knoten;
   const zellen = row.getAllCells();
@@ -111,7 +113,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         const spalte = spaltenIds[si];
         if (spalte === undefined) return null;
         const text = anzeigeText(zeile, spalte, zahlen);
-        const bearbeitbar = istBearbeitbar(zeile, spalte);
+        const bearbeitbar = !schreibgeschuetzt && istBearbeitbar(zeile, spalte);
         const hinweise = befunde.get(spalte) ?? [];
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);
