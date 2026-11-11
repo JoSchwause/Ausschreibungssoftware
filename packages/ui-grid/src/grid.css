@@ -96,11 +96,6 @@
   background: var(--tx-color-accent-subtle);
 }
 
-/* Hülle der Rückfrage: nur für die Tastenereignisse im React-Baum, ohne eigenes Kästchen im Layout. */
-.tx-grid__rueckfrage {
-  display: contents;
-}
-
 /* Ausgeschnitten (Strg+X), bis eingefügt oder mit Escape abgebrochen: gestrichelter Rahmen, Text gedämpft. */
 .tx-grid__zeile--ausgeschnitten {
   outline: 1px dashed var(--tx-color-accent);
@@ -184,8 +179,9 @@
   color: var(--tx-color-text);
 }
 
-.tx-grid__platz {
-  display: inline-block;
+/* Zeile ohne Unterknoten: Einzug und Platz des Knopfs in einem Element (Ticket 74). */
+.tx-grid__baum--blatt {
+  box-sizing: content-box;
   width: 18px;
 }
 
@@ -226,6 +222,12 @@
 .tx-grid__zelle--zahl .tx-grid__marke {
   order: -1;
   margin-right: auto;
+}
+
+/* Mengenansatz (Ticket 74, D-65.2): kein Befund, deshalb kein Warnstil. Die neutrale Marke der Kennzeichen (Fläche und
+   Farbe aus `.tx-grid__kennzeichen`, Kontrast geprüft) steht links neben der Zahl, ein Warnzeichen davor. */
+.tx-grid__kennzeichen--mengenansatz {
+  order: -1;
 }
 
 /* ---------- Eingabefeld ---------- */
@@ -363,6 +365,17 @@
 
 /* ---------- Vergleichsgrid (Ticket 60): zweizeiliger Kopf, fixierte Spalten, Kennzeichen, Summenzeilen ---------- */
 
+/* Zeilen erben Raster und Mindestbreite von Körper bzw. Fuß und die Höhe vom Scrollbereich: Eine neue Zeile trägt beim
+   Scrollen nur ihren Versatz als eigenen Stil (Ticket 74). Die Rasterzeile hat eine feste Höhe, damit das Layout die
+   Zellen nicht erst nach ihrem Inhalt vermisst. */
+.tx-grid--vergleich .tx-grid__zeile {
+  width: 100%;
+  height: var(--tx-grid-zeilenhoehe);
+  min-width: inherit;
+  grid-template-columns: inherit;
+  grid-template-rows: 100%;
+}
+
 /* Kopf als ein Raster über alle Kopfzeilen, damit Gruppen- und Spaltenköpfe sich Zeilen und Spalten teilen können. */
 .tx-grid__kopf--raster {
   display: grid;
@@ -390,7 +403,10 @@
   justify-content: center;
 }
 
+/* Zahlen werden abgeschnitten, nicht mit „…“ gekürzt; das Abschneiden übernimmt die Zelle (`overflow: hidden`). Ohne
+   eigenen Clip am Text sparen Vorzeichnen und Zeichnen beim schnellen Scrollen je Zelle einen Clip (Ticket 74). */
 .tx-grid__zelle--rechts .tx-grid__text {
+  overflow: visible;
   text-overflow: clip;
 }
 
@@ -450,20 +466,16 @@
   font-style: italic;
 }
 
-/* Marken der Kennzeichen: Symbol als Text auf eigener Fläche; jedes Paar ist ein geprüftes Token-Paar (Kontrast). */
-.tx-grid__kennzeichenliste {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 2px;
-  order: -1;
-}
-
-.tx-grid__zelle--rechts .tx-grid__kennzeichenliste {
-  margin-right: auto;
+/* Marken der Kennzeichen: Symbol als Text auf eigener Fläche; jedes Paar ist ein geprüftes Token-Paar (Kontrast). Die
+   Marken stehen ohne Hülle direkt in der Zelle vor dem Text (Ticket 74); in rechtsbündigen Zellen schiebt der Text sie
+   an den linken Rand. */
+.tx-grid__zelle--rechts > .tx-grid__text {
+  margin-left: auto;
 }
 
 .tx-grid__kennzeichen {
   display: inline-block;
+  flex: 0 0 auto;
   min-width: 1.4em;
   padding: 0 3px;
   border-radius: var(--tx-radius-sm);
@@ -474,6 +486,10 @@
   text-align: center;
   color: var(--tx-color-text-muted);
   background: var(--tx-color-surface-sunken);
+}
+
+.tx-grid__kennzeichen + .tx-grid__kennzeichen {
+  margin-left: calc(2px - var(--tx-space-2));
 }
 
 .tx-grid__kennzeichen--hoch {

@@ -31,7 +31,6 @@ import { texte as htexte } from '../historie/texte';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
 import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
-import { ansatzKennzeichen, befundeZusammen } from '../mengen/rueckfrage'; // Ticket 65
 import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
@@ -170,11 +169,8 @@ function LvBearbeiten({
       }),
     [zustand],
   );
-  // Ticket 65: Positionen mit Mengenansatz tragen an der Mengenzelle einen Hinweis (D-65.2).
-  const jeKnoten = useMemo(
-    () => befundeZusammen(befundeJeKnoten(befunde ?? []), ansatzKennzeichen(lv.knoten)),
-    [befunde, lv.knoten],
-  );
+  // Positionen mit Mengenansatz kennzeichnet das Grid selbst, neutral und ohne Befund (Ticket 74, D-65.2).
+  const jeKnoten = useMemo(() => befundeJeKnoten(befunde ?? []), [befunde]);
   const gruppen = useMemo(() => pruefgruppen(befunde ?? [], lv.knoten), [befunde, lv.knoten]);
 
   const ansicht = useMemo(

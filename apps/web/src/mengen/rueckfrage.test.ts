@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Knoten, LvBefehl, Menge, PositionId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { ansatzEntfernungen, ansatzKennzeichen } from './rueckfrage';
+import { ansatzEntfernungen } from './rueckfrage';
 
 const ansatz = [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }];
 const knoten = [
@@ -30,15 +30,5 @@ describe('ansatzEntfernungen (Lesart a, D-22)', () => {
       ansatzEntfernungen(knoten, [{ art: 'KurztextAendern', knotenId: 'a', kurztext: 'x' } as LvBefehl]),
     ).toEqual([]);
     expect(ansatzEntfernungen(knoten, [menge('a', '7.000'), menge('a', '8.000')])).toHaveLength(1);
-  });
-});
-
-describe('ansatzKennzeichen', () => {
-  it('nur Positionen mit Ansatz, ein Hinweis an der Mengenzelle', () => {
-    const k = ansatzKennzeichen(knoten);
-    expect([...k.keys()]).toEqual(['a']);
-    const b = k.get('a')?.[0];
-    expect(b).toMatchObject({ code: 'mengenansatz', ort: { knotenId: 'a', feld: 'menge' } });
-    expect(b?.meldung).toContain('Mengenansatz');
   });
 });
