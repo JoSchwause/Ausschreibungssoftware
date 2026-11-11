@@ -3,8 +3,9 @@
 // LeistungsverzeichnisUmbenennen. Jeder Befehl ist `(LvZustand, Befehl) → Ergebnis<LvChangeSet, Befehlsfehler>`: rein (A2).
 // Das ChangeSet nennt genau den geänderten Knoten (oder den Kopf) und keine Summen: diese Felder gehen in keine Summe ein
 // (A6). Derselbe Wert noch einmal liefert ein leeres ChangeSet. Text wird unverändert übernommen (U5): kein Trimmen, keine
-// Längen- oder Zeichenregel, keine Einheitenliste; Prüfungen sind Sache der LV-Prüfung (K8). Einzige Ausnahme: eine leere
-// Einheit (`''`) legt der Kern als `null` ab (Vertrag v1.2, D-06).
+// Längen- oder Zeichenregel, keine Einheitenliste; ein Langtext wird nur auf seine Form geprüft (`langtext.ts`, Ticket 50).
+// Prüfungen sind Sache der LV-Prüfung (K8). Einzige Ausnahme: eine leere Einheit (`''`) legt der Kern als `null` ab
+// (Vertrag v1.2, D-06).
 
 import type {
   Befehlsfehler,
@@ -15,7 +16,6 @@ import type {
   HinweistextAendern,
   Knoten,
   KurztextAendern,
-  Langtext,
   LangtextAendern,
   LeistungsverzeichnisUmbenennen,
   LvChangeSet,
@@ -25,6 +25,7 @@ import type {
 import { baueChangeSet } from './changeset';
 import { einheitNormal } from './einheit';
 import { nein, ok } from './fehler';
+import { langtextFormFehler, langtextGleich } from './langtext';
 import { ohneKnoten } from './struktur';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
@@ -56,44 +57,6 @@ function textFehler(wert: unknown, feld: string, leerErlaubt: boolean): string |
   if (typeof wert !== 'string') return `${feld} muss ein Text sein.`;
   if (wert === '' && !leerErlaubt) return `${feld} darf nicht leer sein.`;
   return null;
-}
-
-function langtextFehler(wert: unknown, feld: string): string | null {
-  if (!Array.isArray(wert)) return `${feld} muss eine Liste von Bausteinen sein.`;
-  for (const b of wert as readonly unknown[]) {
-    const baustein = b as { art?: unknown; text?: unknown; bild?: unknown } | null;
-    if (baustein === null || typeof baustein !== 'object') return `${feld}: Baustein ist kein Objekt.`;
-    if (baustein.art === 'text') {
-      if (typeof baustein.text !== 'string') return `${feld}: Textbaustein ohne Text.`;
-    } else if (baustein.art === 'bild') {
-      if (baustein.bild === null || typeof baustein.bild !== 'object')
-        return `${feld}: Bildbaustein ohne Bild.`;
-    } else {
-      return `${feld}: unbekannte Bausteinart.`;
-    }
-  }
-  return null;
-}
-
-/**
- * Gleichheit zweier Langtexte für die Regel „derselbe Wert → leeres ChangeSet“: strukturell. Gleiche Länge und je Stelle
- * gleiche Bausteinart; Textbausteine gleich, wenn der Text Zeichen für Zeichen gleich ist; Bildbausteine gleich, wenn
- * `id`, `medientyp` und `daten` gleich sind. Die Reihenfolge zählt. Keine Normalisierung (zwei Textbausteine `a`,`b`
- * sind nicht gleich einem Baustein `ab`).
- */
-export function langtextGleich(a: Langtext, b: Langtext): boolean {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  return a.every((x, i) => {
-    const y = b[i];
-    if (y === undefined || x.art !== y.art) return false;
-    if (x.art === 'text' && y.art === 'text') return x.text === y.text;
-    if (x.art === 'bild' && y.art === 'bild')
-      return (
-        x.bild.id === y.bild.id && x.bild.medientyp === y.bild.medientyp && x.bild.daten === y.bild.daten
-      );
-    return false;
-  });
 }
 
 function knotenFinden(z: LvZustand, knotenId: string): Knoten | null {
@@ -130,7 +93,7 @@ export function langtextAendern(z: LvZustand, b: LangtextAendern): Antwort {
       b.positionId,
     );
   }
-  const meldung = langtextFehler(b.langtext, 'langtext');
+  const meldung = langtextFormFehler(b.langtext, 'langtext');
   if (meldung !== null) return nein('ungueltige-eingabe', meldung, b.positionId, 'langtext');
   if (langtextGleich(k.langtext, b.langtext)) return ok(baueChangeSet(z, {}));
   const neu: Position = { ...k, langtext: b.langtext };
@@ -143,7 +106,7 @@ export function hinweistextAendern(z: LvZustand, b: HinweistextAendern): Antwort
   if (k.art !== 'hinweis') {
     return nein('knotenart-unzulaessig', `Kein Hinweistext, sondern „${k.art}“.`, b.knotenId);
   }
-  const meldung = langtextFehler(b.text, 'text');
+  const meldung = langtextFormFehler(b.text, 'text');
   if (meldung !== null) return nein('ungueltige-eingabe', meldung, b.knotenId, 'text');
   if (langtextGleich(k.text, b.text)) return ok(baueChangeSet(z, {}));
   const neu: Hinweistext = { ...k, text: b.text };
