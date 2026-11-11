@@ -302,6 +302,9 @@ Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen
 ### Ansatzzeile
 Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile` (Typ in `vertrag`), `Zeilenergebnis`.
 
+### Textform (einer Ansatzzeile)
+Die Form, in der eine Zeile aus einer GAEB-Mengenermittlung (X31) im Mengenansatz steht, wenn der freie Rechenansatz sie nicht genau abbildet (andere REB-Formel als 91, Kennung wie Hilfswert oder Zwischensumme, Vorzeichen oder Faktor, Verweis außerhalb der Position): Die Formelnummer bleibt, der Ausdruck ist `*` und dahinter die Zeile der Datei im Wortlaut. `mengen` rechnet eine solche Zeile nie (die Menge der Position bleibt leer), sie bleibt aber lesbar erhalten (Q5; D-83.2). Beim X31-Export entfällt eine Position mit einer Zeile in der Textform ganz, mit Warnung (D-83.10). Im Code `x31Lesen` (Paket `gaeb`).
+
 ### REB-Formel
 Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
 

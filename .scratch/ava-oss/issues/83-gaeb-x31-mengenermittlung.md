@@ -109,6 +109,9 @@ und Faktor, 30–31 Formel, 32–69 Werte bzw. Ausdruck (`=` am Ende schließt a
   bearbeitbaren Ausdruck; `mengen` weist sie ab, die Menge der Position bleibt leer. Bezeichnung und Datum des Blatts fragt
   die App ab (D-83.6). Der Begriff „Textform (einer Ansatzzeile)“ fehlt im `GLOSSARY.md` (außerhalb von `packages/gaeb`,
   P2): Vorschlag für den Orchestrator.
+- Nachtrag (Orchestrator): `integration/welle-5` mit Kern 71 gemergt (f189ef3); Glossar um „Textform (einer
+  Ansatzzeile)“ ergänzt (L2, vom Orchestrator freigegeben). Danach `pnpm lint`, `pnpm typecheck`, `pnpm test` grün (Vitest 163
+  Dateien, 2274 Tests bestanden, 3 übersprungen; Fixtures 29/29), XSD-Gegenprüfung 52 von 52.
 
 ## Answer
 
