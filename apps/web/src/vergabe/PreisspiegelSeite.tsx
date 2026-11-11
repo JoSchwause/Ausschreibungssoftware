@@ -160,6 +160,20 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
     });
   }, []);
 
+  const zuschlagKnopf = (a: Anbieter): ReactElement => (
+    <Button
+      groesse="sm"
+      aria-label={atexte.knopf.erteilenFuer(a.name)}
+      disabled={auftrag !== null}
+      {...(auftrag === null ? {} : { 'aria-describedby': vergebenId })}
+      onClick={() => {
+        setErteilenAn(a);
+      }}
+    >
+      {atexte.knopf.erteilen}
+    </Button>
+  );
+
   const lvPfad = `/lv/${kopf.id}`;
   return (
     <div className="seite lv preisspiegel">
@@ -206,6 +220,10 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
           <div className="preisspiegel__unten">
             <Detailleiste detail={detail} />
             <div className="preisspiegel__vergabe">
+              {kopf.nachtrag === undefined ? null : (
+                // D-42: Ein Nachtrags-LV bekommt keinen Zuschlag; es wird auf seiner LV-Seite beauftragt.
+                <p className="auftrag__vergeben">{atexte.nachtragOhneZuschlag(kopf.nachtrag.nummer)}</p>
+              )}
               {auftrag === null ? null : (
                 <p id={vergebenId} className="auftrag__vergeben">
                   {atexte.knopf.vergeben(auftrag.auftragsLeistungsverzeichnis.auftragnehmer?.name ?? '–')}{' '}
@@ -224,19 +242,7 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
               <Bieteruebersicht
                 anbieter={anbieter}
                 preisspiegel={preisspiegel}
-                aktion={(a) => (
-                  <Button
-                    groesse="sm"
-                    aria-label={atexte.knopf.erteilenFuer(a.name)}
-                    disabled={auftrag !== null}
-                    {...(auftrag === null ? {} : { 'aria-describedby': vergebenId })}
-                    onClick={() => {
-                      setErteilenAn(a);
-                    }}
-                  >
-                    {atexte.knopf.erteilen}
-                  </Button>
-                )}
+                {...(kopf.nachtrag !== undefined ? {} : { aktion: zuschlagKnopf })}
               />
             </div>
           </div>
