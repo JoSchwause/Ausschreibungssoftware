@@ -5,17 +5,20 @@
 
 import { describe, expect, it } from 'vitest';
 import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
-import type {
-  AngebotZustand,
-  Einheit,
-  ElternId,
-  LvBefehl,
-  LvZustand,
-  Menge,
-  PositionId,
-} from '@tethys/vertrag';
+import type { AngebotZustand, ElternId, LvBefehl, LvZustand, Menge, PositionId } from '@tethys/vertrag';
 import { angebotBefehlAusfuehrer, angebotChangeSetAnwenden, angebotChangeSetUmkehren } from './index';
-import { angebot, ep, erwarteOk, lv, position, projekt, titel, wende } from './testhilfen';
+import {
+  angebot,
+  angebotszeilen,
+  ep,
+  erwarteOk,
+  lv,
+  position,
+  projekt,
+  speicherAnwenden,
+  titel,
+  wende,
+} from './testhilfen';
 
 /** LV-Befehl über den Kern ausführen und anwenden. */
 function lvBefehl(z: LvZustand, befehl: LvBefehl): LvZustand {
@@ -52,7 +55,7 @@ const nachher = lvBefehl(vorAngebot, {
     kurztext: 'Position p4',
     langtext: [],
     menge: '4.000' as Menge,
-    einheit: 'm' as Einheit,
+    einheit: 'm',
     einheitspreis: null,
     epa: null,
   },
@@ -71,5 +74,18 @@ describe('Bepreisen einer LV-Position, die nach dem Angebot hinzukam', () => {
     expect(bepreist.summen.gesamt.netto).toBe('150.00');
 
     expect(angebotChangeSetAnwenden(bepreist, angebotChangeSetUmkehren(cs))).toEqual(angebotsstand);
+  });
+
+  it('auch in speicher: Rückgängig lässt keine Summenzeile zurück, Wiederholen schreibt sie wieder', () => {
+    const cs = erwarteOk(
+      ausfuehren(angebotsstand, { art: 'AngebotspositionSetzen', position: ep('p4', '2.500') }),
+    );
+    const gespeichert = angebotszeilen(angebotsstand);
+    const bepreist = speicherAnwenden(gespeichert, cs);
+    expect(bepreist).toEqual(angebotszeilen(angebotChangeSetAnwenden(angebotsstand, cs) as AngebotZustand));
+
+    const zurueck = speicherAnwenden(bepreist, angebotChangeSetUmkehren(cs));
+    expect(zurueck).toEqual(gespeichert);
+    expect(speicherAnwenden(zurueck, cs)).toEqual(bepreist);
   });
 });
