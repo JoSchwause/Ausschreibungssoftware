@@ -286,3 +286,10 @@ Question: Die Behebung von C1 (D-17) und S4/S6 (D-16) braucht Kern-Funktionen in
 Decision: Beide Kanten in `tools/boundaries.mjs` freigegeben, mit Grund im Kommentar. Kein Aufweichen der Prüfung: A3 sieht `vertrag ← kern ← Fachpakete` vor; Fachpakete untereinander bleiben verboten.
 Reason: Die Liste war enger als Regel A3; die Alternative wären doppelte Fachregeln (genau der Review-Befund).
 Reversible: yes  Touches: tools/boundaries.mjs
+
+## D-20 `apps/web`: ein Schreiber je Ordner statt je Paket
+Welle 4 · Ticket 62–67 · decided by: orchestrator
+Question: Welle 4 hat sechs App-Tickets (S4, V3, V4, M2, O1/O2, Rückbau). Streng nach P2 liefen sie alle nacheinander.
+Decision: In `apps/web` gilt „ein Schreiber je Ordner `src/<strang>/`“ (wie `plan.md` §1 die Ordner vorsieht). Gemeinsame Dateien (`App.tsx`, `main.tsx`, `ui/Huelle.tsx`, `lv/LvSeite.tsx`, `projekt/ProjektSeite.tsx`, `playwright.config.ts`) fasst ein Ticket nur an einer markierten Einhängestelle an; Konflikte dort löst der Merger.
+Reason: Hält die Welle parallel, ohne dass zwei Agenten dieselbe Fachlogik schreiben; die Einhängestellen sind kurz.
+Reversible: yes  Touches: apps/web, docs/regeln.md P2 (nur Lesart, kein Text geändert)
