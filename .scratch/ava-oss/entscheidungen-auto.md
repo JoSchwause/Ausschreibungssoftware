@@ -485,3 +485,10 @@ Question: Jede Zeilenänderung trägt das ganze Aufmaßblatt zweimal in die Undo
 Decision: Bei D-36 (8) bleiben; Ticket 87 misst Zeit und Speicher je Undo-Schritt an einem Blatt mit 5.000 Zeilen (Q4). Nur bei überschrittenem Budget folgt in v1.5 `Aenderungen<Aufmassposition>`.
 Reason: Hält v1.4 klein; ein großes Blatt ist selten, die Messung entscheidet.
 Reversible: yes  Touches: apps/web (Messung)
+
+## D-46 Nach dem Nutzungslimit: Vorrang für den M4-Weg
+Welle 5 · Tickets 84, 87–90 · decided by: orchestrator
+Question: Gegen 19:30 traf der Lauf das 5-Stunden-Limit; alle Agenten standen bis zur Rückstellung um 21:10. Wie weiter, damit das Tor M4 vor einem zweiten Limit erreichbar bleibt?
+Decision: Unterbrochene Agenten aus ihrem gespeicherten Stand fortsetzen (nichts verloren). Zuerst der M4-Weg (71, 79, 80 → 81 → 86, 87, 88, 89 → 91); Ticket 90 (Muster-LV, Kürzungsreihenfolge D-36) erst danach; Ticket 89 auf Sonnet statt Opus (Oberfläche und Anbindung, die Rechnung liegt in `kosten`). Gemergte Branches, die den Integrationsstand schon enthalten, merged der Orchestrator selbst (der Baum ist dann der getestete); zusammengeführte Stände aus getrennten Paketen prüft eine volle Suite im Hintergrund.
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem zweiten Limit fertig ist.
+Reversible: yes  Touches: Ablauf, Modellwahl
