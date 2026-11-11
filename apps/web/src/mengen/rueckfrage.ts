@@ -9,7 +9,10 @@ import { texte } from './texte';
  * Die Positionen mit Mengenansatz, deren Ansatz einer der Befehle entfernen würde: ein `MengeAendern` mit anderer Menge
  * (dieselbe Menge ändert nichts, D-56.2). Jede Position einmal, in der Reihenfolge der Befehle.
  */
-export function ansatzEntfernungen(knoten: readonly Knoten[], befehle: readonly LvBefehl[]): readonly Position[] {
+export function ansatzEntfernungen(
+  knoten: readonly Knoten[],
+  befehle: readonly LvBefehl[],
+): readonly Position[] {
   const betroffen = new Map<string, Position>();
   for (const b of befehle) {
     if (b.art !== 'MengeAendern') continue;

@@ -9,6 +9,9 @@ import { Auswahl, Button, Dialog, Eingabefeld, LangtextEditor } from '@tethys/ui
 import type { Bedarf, LvBefehl, LvZustand, Position, PositionId } from '@tethys/vertrag';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
+import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
+import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import type { Ausgang } from './befehlsweg';
 import {
   entwurfBefehle,
@@ -118,6 +121,8 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
   const [kernfehler, setKernfehler] = useState<Feldfehler>({});
   const [laeuft, setLaeuft] = useState(false);
   const [gesendet, setGesendet] = useState(false);
+  const [mengenOffen, setMengenOffen] = useState(false); // Ticket 65
+  const ansatzFrage = useAnsatzFrage(); // Ticket 65
 
   const setze = <K extends keyof Positionsentwurf>(feld: K, wert: Positionsentwurf[K]): void => {
     setE((alt) => {
@@ -142,8 +147,10 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
 
   const uebernehmen = async (): Promise<void> => {
     if (laeuft) return;
-    setLaeuft(true);
     const r = entwurfBefehle(position, aktuell.current);
+    // Ticket 65: Eine von Hand geänderte Menge entfernt den Mengenansatz (D-22 (a)); vorher fragt die App (Q5).
+    if (!(await ansatzFrage.pruefen(zustand.leistungsverzeichnis.knoten, r.befehle))) return;
+    setLaeuft(true);
     const neu: Record<string, string> = {};
     for (const a of await folge(r.befehle)) {
       if (a.ok) continue;
@@ -223,6 +230,20 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
               {feld('menge', t.menge, true)}
               {feld('einheit', t.einheit)}
               {feld('einheitspreis', t.einheitspreis, true)}
+            </div>
+            {/* Ticket 65 */}
+            <div className="lv-dialog__zeile">
+              {(position.mengenansatz ?? []).length > 0 ? (
+                <p className="lv-dialog__hinweis">{mtexte.imDialog.hinweis}</p>
+              ) : null}
+              <Button
+                groesse="sm"
+                onClick={() => {
+                  setMengenOffen(true);
+                }}
+              >
+                {mtexte.imDialog.oeffnen}
+              </Button>
             </div>
           </Bereich>
           <Bereich titel={t.epa} meldung={fehler['epa']}>
@@ -354,6 +375,20 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
           .map(([, m]) => ` ${m}`)
           .join('')}
       </p>
+      {/* Ticket 65: Mengenermittlung über dem Dialog (Portal); Eingaben im Dialog bleiben erhalten. */}
+      <MengenPanel
+        position={mengenOffen ? position : null}
+        onSchliessen={() => {
+          setMengenOffen(false);
+        }}
+        senden={async (b) => {
+          const a = (await folge([b]))[0];
+          if (a === undefined) return false;
+          if (!a.ok) speicherAbweisung(a);
+          return a.ok;
+        }}
+      />
+      {ansatzFrage.dialog}
       <footer className="tx-dialog__fuss">
         <Button onClick={onSchliessen}>{t.abbrechen}</Button>
         <Button type="submit" variante="primaer" disabled={laeuft}>
