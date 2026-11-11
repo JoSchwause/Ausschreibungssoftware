@@ -79,3 +79,27 @@ und Faktor, 30–31 Formel, 32–69 Werte bzw. Ausdruck (`=` am Ende schließt a
   Auftrags-LV“). Die App fragt Bezeichnung und Datum beim Anlegen ab. Reversible: yes.
 - **D-83.7** Befundschwere? → `position-unbekannt`, `formel-nicht-unterstuetzt`, `zeile-nicht-abbildbar`, `menge-mehrfach`,
   `zeile-ohne-formel` sind Fehler (die Menge einer Position fehlt), die übrigen Warnungen; nichts sperrt (U5).
+- **D-83.8** Signatur des Writers? → `aufmassAlsX31(aufmass, auftragsLv, version, { erstellt, programm })`: das vierte
+  Argument wie bei `schreibeGaeb`, weil `GAEBInfo/Date` Pflicht ist und das Paket keine Uhr hat (A2). Ergebnis
+  `GaebExport` mit `phase: 'X31'`. Reversible: yes.
+- **D-83.9** Zeilennummern der Datei? → Fortlaufend über die ganze Datei in der Reihenfolge des Auftrags-LV: Blatt 0001,
+  Buchstaben B bis Z, Ziffer 0 (wie die Prüfdatei), dann Blatt 0002 usw. (höchstens 249.975, sonst Fehler
+  `zeilen-zu-viele`). `Z<n>` und Variablennamen werden zur Nummer der letzten Zeile ihres Ausdrucks; der Name selbst
+  entfällt mit Warnung (`export-verworfen`). Ein langer Ausdruck wird bevorzugt vor einem Leerzeichen geteilt, nie hinter
+  einem, sodass der Leser genau den Ausdruck zurückerhält. Grund: Verweise in X31 sind Zeilennummern, eindeutig je Datei.
+  Reversible: yes.
+- **D-83.10** Was X31 nicht trägt? → Eine Aufmaßposition mit einer Zeile, die X31 nicht abbildet (andere Formel als 91,
+  Textform, Bezug oder Name ohne frühere Zeile, „=“ oder Zeilenumbruch im Ausdruck), **entfällt ganz** mit Warnung
+  `export-verworfen`: Eine Teilmenge wäre beim Empfänger still eine falsche Menge (Q5). Die Textform wird nicht
+  zurückgeschrieben, weil ihre Verweise auf Zeilennummern nach dem Neunummerieren ins Leere oder auf andere Zeilen zeigten.
+  Bezeichnung und Datum des Blatts sowie eine Aufmaßzeile ohne Menge und Ansatz: Warnung. `Qty` nur für eine Menge von Hand
+  (ohne Ansatz); neben einem Ansatz rechnet der Empfänger. Positionen stehen in der Reihenfolge des Auftrags-LV, nur
+  Gliederungen mit aufgemessenen Positionen. Kein `OWN`/`OrdDescr` (der Leser übernähme sie nicht, D-83.6). Reversible: yes.
+- **D-83.11** Rundweg (Q3)? → Eigenes Blatt → X31 → Blatt gleich bis auf die Menge neben einem Ansatz (die rechnet die App),
+  zweiter Export byte-gleich. BVBS-X31 → Blatt → X31 → Blatt gleich für die sieben Positionen, die nur Formel 91 ohne
+  Kennung, Faktor oder fremden Verweis tragen; die sieben übrigen entfallen mit einer Warnung (D-83.10). Gelistet im Test,
+  nicht verschwiegen.
+- **D-83.12** XSD? → Amtliche Pakete `2021-05_Mengenermittlung.zip` (3.3) und `Mengenermittlung_3.2_2013-10.zip` (3.2) von
+  gaeb.de mit SHA-256 im Skript, zur Laufzeit geladen, nie committet; geprüft werden das gelesene BVBS-Blatt und ein eigenes
+  Blatt × 3.3/3.2. Das XSD schreibt für `Row` genau 80 Zeichen mit 11 führenden Leerzeichen vor. (Ein Paket
+  `2023-01_Mengenermittlung.zip` gibt es auch; gewählt ist 2021-05 wie bei den LV-Schemas.)
