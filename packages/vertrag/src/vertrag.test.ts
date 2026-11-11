@@ -135,6 +135,7 @@ import {
   type RechnungFreigeben,
   type RechnungId,
   type RechnungZustand,
+  type RechnungsangabenSetzen,
   type Umlage,
   type Leistungsstand,
   type Kostenermittlung,
@@ -1313,10 +1314,13 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     expectTypeOf<Umlage>().toEqualTypeOf<{ readonly bezeichnung: string; readonly satz: Prozent }>();
     expectTypeOf<Rechnung['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
     expectTypeOf<Rechnung['art']>().toEqualTypeOf<Rechnungsart>();
+    // Review (D-44): dazu der geforderte Zahlbetrag (XRechnung BT-115); jeder Wert einzeln nullbar
     expectTypeOf<Rechnung['gefordert']>().toEqualTypeOf<{
-      readonly netto: Betrag;
-      readonly brutto: Betrag;
+      readonly netto: Betrag | null;
+      readonly brutto: Betrag | null;
+      readonly zahlbetrag: Betrag | null;
     } | null>();
+    expectTypeOf<RechnungsangabenSetzen['gefordert']>().toEqualTypeOf<Rechnung['gefordert']>();
     expectTypeOf<Rechnung['aufmassIds']>().toEqualTypeOf<readonly AufmassId[]>();
     expectTypeOf<Rechnung['umlagen']>().toEqualTypeOf<readonly Umlage[]>();
     expectTypeOf<Rechnung['sicherheitSatz']>().toEqualTypeOf<Prozent | null>();
@@ -1346,6 +1350,12 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     expect([r1.nummer, r2.nummer]).toEqual([1, 2]);
     expect(r1.aufmassIds.every((a) => r2.aufmassIds.includes(a))).toBe(true);
     expect(r1.freigabe?.zahlbetrag).toBe('53.42');
+    // gefordert: „nichts erfasst“ nur als äußeres null, sonst mindestens ein Wert (D-44)
+    expect(r1.gefordert?.zahlbetrag).toBe('53.42');
+    expect(r2.gefordert).toBeNull();
+    const angaben = beispielRechnungsbefehle[0].gefordert;
+    expect(angaben?.zahlbetrag).toBeNull();
+    expect(angaben?.netto).toBe('49.85');
     expect(r2.freigabe).toBeNull();
     expect(r1.gewaehrleistungSatz).toBeNull();
   });

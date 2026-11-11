@@ -865,12 +865,18 @@ export interface Rechnung {
   /** Rechnungsnummer, die der Auftragnehmer vergeben hat (XRechnung BT-1), freier Text; `null`: keine. Nie `''`. */
   readonly rechnungsnummerAuftragnehmer: string | null;
   /**
-   * Was die Rechnung des Auftragnehmers als ihre Summe nennt, Netto ohne und Brutto mit Umsatzsteuer (XRechnung BT-109 und
-   * BT-112, Ticket 76), ungeprüft übernommen. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
-   * rechnet aus den Aufmaßen). `null`: nicht erfasst. Ob die Beträge kumuliert sind, sagt der Typ nicht (Offene Typfrage,
-   * Ticket 70).
+   * Was die Rechnung des Auftragnehmers fordert, wie sie es nennt (v1.4, Review D-44): Netto ohne und Brutto mit
+   * Umsatzsteuer (XRechnung BT-109, BT-112) und der Zahlbetrag (BT-115; Ticket 76), ungeprüft übernommen; jeder Wert
+   * `null`, wenn die Rechnung ihn nicht nennt. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
+   * rechnet aus den Aufmaßblättern). „Nichts erfasst“ hat genau eine Schreibweise, das äußere `null`: Ein Objekt mit allen
+   * drei Werten `null` weist der Ausführer mit `ungueltige-eingabe` ab. Ob Netto und Brutto kumuliert sind, sagt der Typ
+   * nicht (Offene Typfrage, Ticket 70).
    */
-  readonly gefordert: { readonly netto: Betrag; readonly brutto: Betrag } | null;
+  readonly gefordert: {
+    readonly netto: Betrag | null;
+    readonly brutto: Betrag | null;
+    readonly zahlbetrag: Betrag | null;
+  } | null;
   /**
    * Die Aufmaßblätter, deren Mengen die Rechnung abrechnet, und zwar **alle** bis dahin, auch die schon in früheren
    * Rechnungen (kumulierte Abschlagsrechnung, D-34 (1)): die vollständige kumulierte Menge. Jedes Blatt höchstens einmal
