@@ -9,6 +9,7 @@ import type { SyntheticEvent, ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
+import { SicherungsBereich } from '../sicherung/SicherungsBereich'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { projektAnlegenBefehl } from './befehle';
@@ -72,6 +73,7 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
   return (
     <div className="seite projekt">
       <h1>{texte.liste.titel}</h1>
+      <SicherungsBereich /> {/* Ticket 62 */}
       {projekte === null ? (
         <p aria-busy="true">{texte.liste.laden}</p>
       ) : projekte.length === 0 ? (
@@ -93,7 +95,6 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
           ))}
         </ul>
       )}
-
       <form className="projekt__formular" onSubmit={(e) => void anlegen(e)} aria-label={texte.anlegen.titel}>
         <h2>{texte.anlegen.titel}</h2>
         <div className="projekt__felder">
@@ -112,7 +113,6 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
           </Button>
         </div>
       </form>
-
       <div className="projekt__werkzeuge">
         <HistorieKnoepfe />
         <input
