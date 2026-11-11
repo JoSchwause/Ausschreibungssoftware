@@ -28,6 +28,10 @@ import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
+import { KalkulationsDialog } from '../kosten/KalkulationsDialog'; // Ticket 89
+import { KostengruppenDialog } from '../kosten/KostengruppenDialog'; // Ticket 89
+import { positionenInReihenfolge } from '../kosten/kostengruppe'; // Ticket 89
+import { texte as ktexte } from '../kosten/texte'; // Ticket 89
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
 import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
@@ -153,6 +157,9 @@ function LvBearbeiten({
   const [merkmale, setMerkmale] = useState<Position | null>(null);
   const [dialog, setDialog] = useState<PositionId | null>(null);
   const [mengenPanel, setMengenPanel] = useState<PositionId | null>(null); // Ticket 65
+  const [kgOffen, setKgOffen] = useState(false); // Ticket 89
+  const [kalkulation, setKalkulation] = useState<Position | null>(null); // Ticket 89
+  const auswahl = useRef<readonly KnotenId[]>([]); // Ticket 89: Mehrfachauswahl des Grids für „Kostengruppen“
   const ansatzFrage = useAnsatzFrage(); // Ticket 65
   const [kopfdaten, setKopfdaten] = useState(false);
   const [papierkorbOffen, setPapierkorbOffen] = useState(false);
@@ -277,6 +284,24 @@ function LvBearbeiten({
     else zeige({ titel: mtexte.keinePosition, beschreibung: mtexte.keinePositionText });
   };
 
+  // Ticket 89: Kostengruppen mehrerer Positionen und EP-Kalkulation; je Aktion ein Undo-Schritt, Meldungen wie überall.
+  const kostenFolge = async (bs: readonly LvBefehl[]): Promise<boolean> => {
+    const aus = await folge(bs);
+    let ok = true;
+    for (const a of aus) if (!pruefe(a)) ok = false;
+    return ok;
+  };
+  const kalkulationOeffnen = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'position') setKalkulation(k);
+    else
+      zeige({ titel: ktexte.kalkulation.keinePosition, beschreibung: ktexte.kalkulation.keinePositionText });
+  };
+  const kgPositionen = useMemo(
+    () => (kgOffen ? positionenInReihenfolge(lv.id, lv.knoten) : []),
+    [kgOffen, lv.id, lv.knoten],
+  );
+
   const dialogOeffnen = (): void => {
     const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
     if (k?.art === 'position') setDialog(k.id);
@@ -347,6 +372,10 @@ function LvBearbeiten({
       KeyP: positionAnlegen,
       KeyM: merkmaleOeffnen,
       KeyE: mengenPanelOeffnen, // Ticket 65
+      KeyG: () => {
+        setKgOffen(true); // Ticket 89
+      },
+      KeyK: kalkulationOeffnen, // Ticket 89
     }[e.code];
     if (aktion === undefined) return;
     e.preventDefault();
@@ -406,6 +435,18 @@ function LvBearbeiten({
         <Button onClick={mengenPanelOeffnen} aria-keyshortcuts="Control+Alt+E">
           {mtexte.oeffnen} <Tastenkuerzel tasten={mtexte.tasten} />
         </Button>
+        {/* Ticket 89 */}
+        <Button
+          onClick={() => {
+            setKgOffen(true);
+          }}
+          aria-keyshortcuts="Control+Alt+G"
+        >
+          {ktexte.zuordnung.knopf} <Tastenkuerzel tasten={['Strg', 'Alt', 'G']} />
+        </Button>
+        <Button onClick={kalkulationOeffnen} aria-keyshortcuts="Control+Alt+K">
+          {ktexte.kalkulation.knopf} <Tastenkuerzel tasten={['Strg', 'Alt', 'K']} />
+        </Button>
         <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
           {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
         </Button>
@@ -464,6 +505,9 @@ function LvBearbeiten({
             onAktiveZeileChange={(knotenId) => {
               aktiv.current = knotenId;
             }}
+            onAuswahlChange={(ids) => {
+              auswahl.current = ids; // Ticket 89
+            }}
             onZeileOeffnen={(knotenId) => {
               zeileOeffnen(knotenId);
             }}
@@ -519,6 +563,25 @@ function LvBearbeiten({
         senden={senden}
       />
       {ansatzFrage.dialog}
+      {/* Ticket 89 */}
+      <KostengruppenDialog
+        offen={kgOffen}
+        onSchliessen={() => {
+          setKgOffen(false);
+        }}
+        projektId={lv.projektId}
+        positionen={kgPositionen}
+        vorauswahl={auswahl.current as readonly string[] as readonly PositionId[]}
+        senden={kostenFolge}
+      />
+      <KalkulationsDialog
+        position={kalkulation}
+        epaBezeichnungenGesetzt={lv.epaBezeichnungen !== undefined}
+        onSchliessen={() => {
+          setKalkulation(null);
+        }}
+        senden={kostenFolge}
+      />
       <PapierkorbDialog
         offen={papierkorbOffen}
         onSchliessen={() => {

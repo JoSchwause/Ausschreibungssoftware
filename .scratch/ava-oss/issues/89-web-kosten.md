@@ -1,6 +1,6 @@
 # 89: C2+C3+C4 in der App: Kostenermittlung, Kostengruppen zuordnen, Kostenkontrolle, EP-Kalkulation
 
-Status: ready-for-agent
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: C2, C3, C4 · Ordner: `apps/web/src/kosten/` (neu); Einhängestellen in `App.tsx`,
 `projekt/ProjektSeite.tsx`, `lv/LvSeite.tsx` (Spalte/Feld KG, Aktion „Kalkulieren“), `auftrag/AuftragsLvSeite.tsx`,
@@ -45,3 +45,13 @@ Herkunft: `plan.md` §2 C2–C4
   der Writer).
 
 ## Comments
+- **D-89.1** „Spalte KG“ im LV-Grid? Das Grid (`ui-grid`, `LvSpalte` in `vertrag`) hat keinen Spaltenmechanismus und gehört nicht zu diesem Ticket (P2). Entscheidung: Schaltfläche „Kostengruppen“ (Strg+Alt+G) öffnet einen Dialog mit Positionsliste, Filter, Mehrfachauswahl (Vorauswahl = Grid-Auswahl) und KG-Eingabe; im Auftrags-LV derselbe Dialog (`KostengruppenAmAuftrag`). Mehrfachsetzen = `Sitzung.folge` = ein Undo-Schritt. Folgeticket für eine echte Spalte (ui-grid + vertrag).
+- **D-89.2** Bearbeiten der Einträge „in ui-grid“? Es gibt kein editierbares flaches Grid (nur `LvGrid`, schreibgeschütztes `VergleichsGrid`). Entscheidung: Anzeige im `VergleichsGrid` (Baum, Summen), Bearbeiten über ein Formular (Nummer, Betrag, Bemerkung; setzen/entfernen); formwidrige Nummer oder unlesbarer Betrag = Feldfehler, kein Befehl.
+- **D-89.3** Routen: `/projekt/<id>/kosten` (Liste, anlegen), `/projekt/<id>/kosten/<kid>` (Editor), `/projekt/<id>/kosten/kontrolle`. Undo/Redo von `kostenermittlung`-ChangeSets über `kostenermittlungChangeSetUmkehren` in `befehlsweg.ts` und Ziel in `HistorieAnbieter`.
+- **D-89.4** Hinweis (U5) zur KG außerhalb der Gliederung: im Zuordnungsdialog, wenn die Nummer in keiner Kostenermittlung des Projekts liegt (Eintrag, Vorfahr oder Nachfahr); in der Kostenkontrolle zeigen die Befunde aus `kostenkontrolleBerechnen`.
+- **D-89.5** Budget der Kostenkontrolle: erste Kostenermittlung (Name), Auswahl in der Sitzung, „Kein Budget“ möglich; nicht gespeichert. Abrechnung: `leistungsstandBerechnen` (Ticket 81) der Rechnung mit der höchsten Nummer je Auftrags-LV über deren `aufmassIds` und `art`; ohne Rechnung bleibt die Spalte „–“. Bezeichnungen-CSV: als Text im Browserspeicher (try/catch), nicht in der Projektdatei.
+- **D-89.6** EP-Kalkulation: Dialog „Kalkulieren“ (Strg+Alt+K) an der aktiven Position; Ansätze nur im Dialog (Hinweistext), „Übernehmen“ = `EinheitspreisanteileSetzen` + `EinheitspreisAendern` in einer Aktion (ein Undo-Schritt); mit `epaBezeichnungen` am LV keine freie Bezeichnung (D-28).
+
+## Answer
+
+Branch `welle-5/89-kosten`. Neuer Ordner `apps/web/src/kosten/` (Seiten, Dialoge, Logik mit Unit-Tests), Einhängestellen `// Ticket 89` in `App.tsx`, `ProjektSeite.tsx`, `LvSeite.tsx`, `AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (Umkehrung `kostenermittlung`, `eintrag`/`speichern`/`Lauf` exportiert), `historie/*`; Abhängigkeiten `@tethys/kosten`, `@tethys/abrechnung` in `apps/web`. E2E `e2e/kosten.spec.ts` grün, mit `lv.spec.ts` und `leistung.spec.ts` (Mengenänderung Median 51 ms, Undo 34 ms). Suite: Lint, Typecheck grün; Vitest nur CPU-Budgets anderer Pakete (`vergabe/leistung`, `kern/k9-leistung`) wechselnd rot unter Last, einzeln grün. Offen: echte KG-Spalte im Grid (D-89.1), Abrechnung in der E2E erst mit der Rechnung aus Ticket 88 (M4-Ticket 91); GAEB-Export verliert KG bis Ticket 84 gemergt ist.
