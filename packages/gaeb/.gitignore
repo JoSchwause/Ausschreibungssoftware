@@ -1,0 +1,5 @@
+# Amtliches GAEB-Schema (ADR 0010): wird nur zur Prüfzeit in ein Temp-Verzeichnis geladen, nie versioniert.
+*.xsd
+*.XSD
+xsd-*/
+schema-*.zip

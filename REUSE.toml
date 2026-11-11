@@ -29,6 +29,14 @@ precedence = "override"
 SPDX-FileCopyrightText = "BVBS e.V. und GAEB (Herausgeber der amtlichen Prüf- und Musterdateien), keine Lizenz genannt"
 SPDX-License-Identifier = "LicenseRef-BVBS-GAEB-Pruefdatei"
 
+# Goldene Erwartungswerte des GAEB-Lesers, die Textauszüge aus den amtlichen Prüf- und Musterdateien enthalten
+# (Welle 3, Ticket 32): gleiche Herkunft und Lizenzlage wie die Quelldateien unter fixtures/extern/.
+[[annotations]]
+path = ["packages/gaeb/testdaten/golden/ava-x81*", "packages/gaeb/testdaten/golden/bauausfuehrung-x83*", "packages/gaeb/testdaten/golden/texterstellung-x81*", "packages/gaeb/testdaten/golden/angebot-ava-x84*", "packages/gaeb/testdaten/golden/angebot-bauausfuehrung-x84*"]
+precedence = "override"
+SPDX-FileCopyrightText = "BVBS e.V. und GAEB (Herausgeber der amtlichen Prüf- und Musterdateien), keine Lizenz genannt"
+SPDX-License-Identifier = "LicenseRef-BVBS-GAEB-Pruefdatei"
+
 # Schriftdateien der PDF-Ausgabe (Ticket 28): Noto Sans, Latin-Teilmenge als WOFF, aus dem npm-Paket
 # @fontsource/noto-sans 5.3.0 (Dateien files/noto-sans-latin-{400,700}-normal.woff). Lizenz laut LICENSE des Pakets:
 # SIL Open Font License 1.1, Urheber laut dessen Kopfzeile "The Noto Project Authors". Die Dateien liegen so vor,

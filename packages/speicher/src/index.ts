@@ -3,8 +3,10 @@
 // (`@tethys/speicher/worker`) und in `backends.ts`.
 
 export { kanonischesJson } from './kanonisch';
+export { befehlskurzfassung, massenbefehlskopf, pruefsummeBilden } from './kurzfassung';
 export { MIGRATIONEN, SCHEMA_VERSION, type Migration } from './migrationen';
 export { SpeicherKern } from './kern';
+export type { Migrationsbefund } from './summenmigration';
 export {
   direktTransport,
   speicherOeffnen,

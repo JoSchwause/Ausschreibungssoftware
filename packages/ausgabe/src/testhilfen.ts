@@ -163,7 +163,10 @@ export function lvZustandAusInhalt(id: string, inhalt: LvInhalt): LvZustand {
     inhalt,
   });
   if (!e.ok) throw new Error(`Kern lehnt das LV ab: ${JSON.stringify(e.fehler)}`);
-  return lvChangeSetAnwenden(null, e.wert);
+  // Ticket 30: mechanisch angepasst (`lvChangeSetAnwenden` liefert `null`, wenn das ChangeSet das LV entfernt).
+  const zustand = lvChangeSetAnwenden(null, e.wert);
+  if (zustand === null) throw new Error('Das ChangeSet entfernt das LV.');
+  return zustand;
 }
 
 export function lvZustandAusFixture(name: 'winzig' | 'typisch' | 'gross'): { fx: FxLv; zustand: LvZustand } {

@@ -14,6 +14,7 @@ import type {
   LeistungsverzeichnisId,
   LosId,
   Ordnungszahl,
+  PapierkorbeintragId,
   PositionId,
   ProjektId,
   TitelId,
@@ -22,7 +23,13 @@ import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 // --- Texte ---------------------------------------------------------------------------------
 
-/** Maßeinheit (`m`, `m²`, `psch`, `h` …), freier Text. */
+/**
+ * Maßeinheit (`m`, `m²`, `psch`, `h` …), freier Text.
+ *
+ * v1.2 (D-06, W-05 Nr. 3): Eine leere Zeichenkette ist keine Einheit. Ein Befehl darf `''` tragen (Rand: Grid,
+ * GAEB-Import); der Kern legt dafür `null` ab (Normalisierung beim Befehl, Ticket 30; für `KnotenEinfuegen` Ticket 42).
+ * Im Zustand (`Leistungsverzeichnis`, `LvZustand`, ChangeSet) steht nie `''`, nur eine nicht leere Einheit oder `null`.
+ */
 export type Einheit = string;
 
 /** Eingebettetes Bild eines Langtexts. Die Bytes liegen Base64-kodiert im Wert (JSON-tauglich). */
@@ -288,7 +295,10 @@ export type Zuschlagsbezug =
  * bisher (Fixture `typisch`, Annahme A4); sie sind dann weiter gesetzt.
  */
 export interface Zuschlag {
-  /** `null`: nicht gesetzt (die Ausschreibungsdateien X81/X83 tragen keinen Satz, X84/X86 tragen ihn als `Markup`). */
+  /**
+   * Zuschlagssatz im LV (Glossar „Zuschlagssatz“; im Angebot `Angebotsposition.zuschlagssatz`). `null`: nicht gesetzt
+   * (die Ausschreibungsdateien X81/X83 tragen keinen Satz, X84/X86 tragen ihn als `Markup`).
+   */
   readonly prozentsatz: Prozent | null;
   readonly bezug: Zuschlagsbezug;
 }
@@ -304,6 +314,7 @@ export interface Unterbeschreibung {
   readonly langtext: Langtext;
   /** `null`: keine Mengenangabe (GAEB `QtySpec` nicht `Yes`). */
   readonly menge: Menge | null;
+  /** `null`: keine Einheit. Nie `''` im Zustand (v1.2, siehe `Einheit`). */
   readonly einheit: Einheit | null;
 }
 
@@ -334,6 +345,10 @@ export interface Positionsdaten {
   readonly langtext: Langtext;
   /** `null`: nicht gesetzt (z. B. X81 ohne Menge, Zuschlagsposition). Nicht gleichbedeutend mit 0. */
   readonly menge: Menge | null;
+  /**
+   * `null`: keine Einheit (z. B. Zuschlagsposition). Im Zustand nie `''`; ein Befehl mit `''` (Rand, Import) wird
+   * vom Kern zu `null` normalisiert (v1.2, siehe `Einheit`).
+   */
   readonly einheit: Einheit | null;
   /** Im Ausschreibungs-LV ein Schätzpreis; `null`: nicht gesetzt (auch bei Zuschlagsposition). Nicht gleichbedeutend mit 0. */
   readonly einheitspreis: Einheitspreis | null;
@@ -474,7 +489,31 @@ export interface LvKopf extends LvInhaltKopf {
   readonly projektId: ProjektId;
 }
 
-/** Ausschreibungs-LV. */
+/**
+ * Papierkorbeintrag (v1.2, K9): die Knoten, die ein `KnotenInPapierkorbLegen` aus dem Baum genommen hat, samt ihren
+ * Unterbäumen, als **ein** Eintrag. Flach, Eltern vor Kindern. Die Knoten tragen ihre alte Lage (`elternId`,
+ * `reihenfolge`), damit `PapierkorbeintragWiederherstellen` mit `ort: null` sie an die alte Stelle zurücklegt. Die
+ * Kennungen bleiben (Positionsidentität, ADR 0011): Angebote finden ihre Positionen nach dem Wiederherstellen wieder.
+ *
+ * Positionen im Papierkorb gehen in keine Summe ein und haben keine `Positionssumme`.
+ *
+ * Bezüge auf Positionen im Papierkorb (D-12): Ein Zuschlagsbezug (`Bezugsposition`) oder ein `wahl.grundpositionId`
+ * eines Knotens im Baum, der auf eine Position in einem Eintrag zeigt, bleibt stehen und zählt nichts, solange das
+ * Ziel im Papierkorb liegt (nach dem Wiederherstellen gilt er wieder). `PapierkorbeintragEntfernen` und
+ * `PapierkorbLeeren` entfernen die dann hängenden Bezüge im selben ChangeSet (`knoten.geaendert`).
+ */
+export interface Papierkorbeintrag {
+  readonly id: PapierkorbeintragId;
+  /**
+   * Laufende Nummer des Eintrags im LV (D-12): Reihenfolge des Hineinlegens. Der Kern vergibt den Höchstwert der
+   * vorhandenen Einträge + 1 (1 im leeren Papierkorb); keine Uhr (A2). Der Papierkorb wird nach `nummer` sortiert
+   * gelesen; so stellt die Umkehrung eines Entfernens den Platz des Eintrags aus dem ChangeSet allein wieder her.
+   */
+  readonly nummer: number;
+  readonly knoten: readonly Knoten[];
+}
+
+/** Ausschreibungs-LV. Den Papierkorb trägt der Zustand (`LvZustand.papierkorb`), nicht das LV (D-12). */
 export interface Leistungsverzeichnis extends LvKopf {
   readonly knoten: readonly Knoten[];
 }
@@ -484,8 +523,21 @@ export type Angebotsposition =
   | {
       readonly positionId: PositionId;
       readonly status: 'angeboten';
+      /**
+       * Bei gesetztem `zuschlagssatz` nie gerechnet. Vorläufige Annahme, Entscheidung offen (v1.2): Der Erzeuger
+       * (X84-Import, Erfassung) setzt hier den EP aus der Datei, wenn sie einen nennt, sonst `0.000` (Platzhalter).
+       * Wer `zuschlagssatz` nicht auswertet, darf die Position nicht rechnen (D-12): Der Platzhalter ist kein Preis.
+       * Alternative (Offene Typfrage, Ticket 29): eigene Variante `status: 'zuschlag-angeboten'` ohne EP.
+       */
       readonly einheitspreis: Einheitspreis;
       readonly epa: Einheitspreisanteile | null;
+      /**
+       * Zuschlagssatz des Bieters (v1.2, D-04; GAEB `Markup` in X84). Nur an einer Position, die im LV eine
+       * Zuschlagsposition ist (`Positionsdaten.zuschlag !== null`): der Prozentsatz, den der Bieter anbietet. Fehlt:
+       * kein Satz angeboten. Die Rechnung (Ticket 44) liest bei gesetztem Satz nur den Satz, nie `einheitspreis`.
+       * Ob ein Satz an einer Position ohne Zuschlag ein Fehler ist, entscheidet die Rechnung, nicht der Typ.
+       */
+      readonly zuschlagssatz?: Prozent;
     }
   | { readonly positionId: PositionId; readonly status: 'nicht-angeboten' };
 

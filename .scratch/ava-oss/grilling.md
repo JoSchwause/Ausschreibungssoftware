@@ -72,6 +72,8 @@ explizit geantwortet), **offen**.
   verrechnet werden (additiv oder multiplikativ), ist offen, bis ein Fall aus der Recherche belegt
   ist. (2026-11-09) **Nachtrag (2026-11-09):** Mehrere Nachlässe werden nicht zugelassen: genau
   einer je LV und je Angebot, kein Verrechnen. Neu fragen, sobald ein Praxisfall vorliegt.
+  Annahme für Demo, Mensch bestätigt später: Mittel und Min nur über Bieter mit Preis > 0; 0,00 und
+  „nicht angeboten“ eigene Kennzeichen, nie Ausreißer (D-05 in `entscheidungen-auto.md`).
 - **G-27** Tiefe der Rechnungsprüfung — *vertagt*. **Antwort:** Eigene Grilling-Runde vor Welle 5.
   A3 bleibt bis dahin offen. (2026-11-09)
 - **G-28** MwSt — *entschieden*. **Antwort:** Ein Satz je LV, kein Satzwechsel in v1. (2026-11-09)
@@ -149,6 +151,8 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
   „Inhaltsmodell“ (E-03, E-04, E-05, E-10, E-11, E-13). Nutzer prüft beide.
 - **E-03** Zuschlagsposition — *entschieden*. GAEB-Semantik: Prozentsatz auf die Summe der Bezugspositionen,
   mehrere Bezugsformen. Vor K6 die Fachdokumentation wörtlich zitieren. Ändert Fixture `typisch` und Annahme A4.
+  Annahme für Demo, Mensch bestätigt später: Rechenregel aus den amtlichen Prüfdateien statt aus der
+  Fachdokumentation belegt (D-03 in `entscheidungen-auto.md`).
 - **E-04** Bedarf und Wahl in den Summen — *entschieden*. Vorläufige Regel gilt; getrennte Summenfelder;
   „Wählen“ erst bei der Vergabe (Welle 4); Gruppe und Variante aus GAEB.
 - **E-05** Positionsart — *entschieden*. Kombinierbare Merkmale (Bedarf, Wahl, Stundenlohn, Pauschal).

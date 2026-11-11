@@ -5,7 +5,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Menge, Position } from '@tethys/vertrag';
 import type { Pruefstand, PruefSchritt } from '../harness/main';
+import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
+import { inhaltMitAllenAltenArten, mitKernSummen } from '../src/testhilfe/inhalt-v1';
+import { SCHEMA_VERSION } from '../src/migrationen';
+import { normalisiere } from '../src/testhilfe/normalisiere';
+import { feldAendern, standAnlegen } from '../src/testhilfe/umkehrung';
 
 const DB = 'e2e';
 const ms = (x: number): string => String(Math.round(x));
@@ -205,7 +210,7 @@ test.describe('Fehlerwerte statt stillem Verlust (Q5)', () => {
       lv.eintrag.befehl,
     );
     const r = await ps(page, 'anwendenEinzeln', DB, doppelt, lv.changeSet);
-    expect(r).toMatchObject({ ok: false, code: 'unbekannt' });
+    expect(r).toMatchObject({ ok: false, code: 'konflikt' });
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(folge.length);
 
     await ps(page, 'schliessen', DB);
@@ -214,6 +219,88 @@ test.describe('Fehlerwerte statt stillem Verlust (Q5)', () => {
     const geladen: { gleich: boolean } = await ps(page, 'lvPruefen', DB, f.lv.leistungsverzeichnis.id, f.lv);
     expect(geladen.gleich).toBe(true);
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(folge.length);
+  });
+});
+
+test.describe('Migration im OPFS (A8, Ticket 38)', () => {
+  test('eine Datenbank der Version 1 wird beim Öffnen auf die aktuelle Version migriert; Export und erneutes Öffnen liefern dieselben Daten', async ({
+    page,
+  }) => {
+    const inhalt = inhaltMitAllenAltenArten(2);
+    // Nach Migration 2 stehen die Summen so, wie der Kern sie vollständig rechnet (D-17); die Daten bleiben.
+    const soll = mitKernSummen(inhalt);
+    const lv = soll.leistungsverzeichnisse[0];
+    if (lv === undefined) throw new Error('kein LV');
+    await start(page);
+    expect(await ps(page, 'schema1Anlegen', DB, inhalt)).toEqual({ ok: true, version: 1 });
+
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true }); // migriert auf die aktuelle Version
+    expect((await ps(page, 'lvPruefen', DB, lv.leistungsverzeichnis.id, lv)).gleich).toBe(true);
+    for (const a of soll.angebote) expect(await ps(page, 'angebotPruefen', DB, a.angebot.id, a)).toBe(true);
+    const erster = await ps(page, 'exportieren', DB, inhalt.projekt.id);
+    if (erster.text === undefined) throw new Error(`Export fehlgeschlagen: ${JSON.stringify(erster)}`);
+    expect((JSON.parse(erster.text) as { schemaVersion: number }).schemaVersion).toBe(SCHEMA_VERSION);
+
+    // Derselbe Inhalt, frisch in Version 2 importiert, ergibt dieselbe Datei: nichts ging bei der Migration verloren.
+    await ps(page, 'oeffnen', 'vergleich');
+    expect(await ps(page, 'importieren', 'vergleich', kanonischesJson(soll))).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', 'vergleich', inhalt.projekt.id)).text === erster.text).toBe(true);
+    await ps(page, 'schliessen', 'vergleich');
+
+    await ps(page, 'schliessen', DB);
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', DB, inhalt.projekt.id)).text === erster.text).toBe(true);
+    expect((await ps(page, 'lvPruefen', DB, lv.leistungsverzeichnis.id, lv)).gleich).toBe(true);
+  });
+});
+
+test.describe('LV-Stand im OPFS (Ticket 43, ADR 0006)', () => {
+  test('Stand anlegen, LV weiter ändern, Seite neu laden, Stand laden: der eingefrorene Stand ist unverändert', async ({
+    page,
+  }) => {
+    const f = ladeFixture('typisch');
+    const lvId = f.lv.leistungsverzeichnis.id;
+    const amLv = { art: 'leistungsverzeichnis', id: lvId } as const;
+    const gespeichert = normalisiere(f.lv); // so liefert der Speicher das LV
+    const stand: PruefSchritt = {
+      eintrag: eintrag(100, f.projekt.id, amLv, {
+        art: 'LvStandAnlegen',
+        id: 'stand-1' as never,
+        name: 'Versand',
+      }),
+      changeSet: standAnlegen(gespeichert, 'stand-1', 'Versand'),
+    };
+    const p = gespeichert.leistungsverzeichnis.knoten.find((k): k is Position => k.art === 'position');
+    if (p === undefined) throw new Error('keine Position');
+    const danach: PruefSchritt = {
+      eintrag: eintrag(101, f.projekt.id, amLv, {
+        art: 'MengeAendern',
+        positionId: p.id,
+        menge: '9.000' as Menge,
+      }),
+      changeSet: feldAendern(gespeichert, p.id, { ...p, menge: '9.000' as Menge }, '90.00'),
+    };
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect(await ps(page, 'anwenden', DB, [...anlegenSchritte(f), stand, danach])).toMatchObject({
+      ok: true,
+    });
+    await ps(page, 'schliessen', DB);
+
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    expect(await ps(page, 'lvStaende', DB, lvId)).toEqual([
+      { id: 'stand-1', leistungsverzeichnisId: lvId, name: 'Versand', angelegt: stand.eintrag.wann },
+    ]);
+    expect(await ps(page, 'lvStandPruefen', DB, 'stand-1' as never, f.lv)).toEqual({
+      ok: true,
+      gleich: true,
+    });
+    // Das LV selbst trägt die spätere Änderung, der Stand nicht.
+    expect((await ps(page, 'lvPruefen', DB, lvId, f.lv)).gleich).toBe(false);
   });
 });
 

@@ -16,6 +16,8 @@ import type {
   ElternId,
   Einheit,
   Einheitspreis,
+  GridIdQuelle,
+  GridZahlen,
   KnotenId,
   LvBefehl,
   LvSpalte,
@@ -24,7 +26,6 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { istBearbeitbareSpalte, leseEinheitspreis, leseMenge } from './eingabe';
-import type { GridIdQuelle, GridZahlen } from './typen';
 
 export interface UngueltigeZelle {
   readonly knotenId: PositionId;
@@ -42,6 +43,22 @@ export interface Einfuegeplan {
 export type Einfuegeanker =
   | { readonly art: 'nach'; readonly knotenId: KnotenId }
   | { readonly art: 'ende'; readonly elternId: ElternId };
+
+/** Daten einer leeren Position ohne Merkmale und ohne OZ (die OZ ergänzt die App, Ticket 46 Punkt 5). */
+export function leerePositionsdaten(): Positionsdaten {
+  return {
+    ordnungszahl: null,
+    ozIndex: null,
+    merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
+    zuschlag: null,
+    kurztext: '',
+    langtext: [],
+    menge: null,
+    einheit: null,
+    einheitspreis: null,
+    epa: null,
+  };
+}
 
 export function planeEinfuegen(
   matrix: readonly (readonly string[])[],
@@ -94,24 +111,8 @@ export function planeEinfuegen(
         }
       }
     });
-    const daten: Positionsdaten = {
-      ordnungszahl: null,
-      ozIndex: null,
-      merkmale: {
-        bedarf: null,
-        wahl: null,
-        stundenlohn: false,
-        pauschal: false,
-        zuschlagskennzeichen: false,
-      }, // // v1.1b: mechanisch angepasst, Folgeticket
-      zuschlag: null,
-      kurztext,
-      langtext: [],
-      menge,
-      einheit,
-      einheitspreis,
-      epa: null,
-    };
+    // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog.
+    const daten: Positionsdaten = { ...leerePositionsdaten(), kurztext, menge, einheit, einheitspreis };
     befehle.push({ art: 'PositionAnlegen', id, ort, daten });
     ort = { art: 'nach', knotenId: id };
   }

@@ -4,7 +4,6 @@
 // in `number` gewandelt (N1). Die Casts auf die Zahlentypen sind deshalb reine Typmarken.
 
 import type {
-  AngebotId,
   Angebotsposition,
   Betrag,
   BieterId,
@@ -15,19 +14,19 @@ import type {
   HinweistextId,
   Knoten,
   Langtext,
+  Leitbeschreibung,
   LeistungsverzeichnisId,
   LosId,
+  LvInhaltKopf,
   Menge,
   Nachlass,
   Ordnungszahl,
   OzMaske,
-  Position,
   PositionId,
   Positionsmerkmale,
   ProjektId,
   Prozent,
   Gesamtsummen,
-  Gliederungssumme,
   TitelId,
   Zuschlag,
 } from '@tethys/vertrag';
@@ -92,11 +91,9 @@ export const KNOTEN_SPALTEN = [
   'ordnungszahl',
   'oz_index',
   'kurztext',
-  'positionsart',
-  'pauschal',
-  'bedarf_mit_gesamtbetrag',
-  'bezugsposition_id',
-  'grundposition_id',
+  'merkmale',
+  'zuschlag',
+  'leitbeschreibung',
   'text_json',
   'menge',
   'einheit',
@@ -104,131 +101,45 @@ export const KNOTEN_SPALTEN = [
   'epa',
 ] as const;
 
-// // v1.1b: mechanisch angepasst, Folgeticket: Felder, für die `speicher` noch keine Spalten hat (Kopfdaten des LV, getrennte Bedarfs- und Wahlsummen).
-// Sie werden abgewiesen statt still verworfen (Q5), bis das Folgeticket `speicher` sie aufnimmt. Der Kern setzt sie
-// heute nie, kein Paket erzeugt sie.
+// --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
 
-/**
- * // v1.1b: mechanisch angepasst, Folgeticket. Die Datenbank legt den Langtext als JSON ab, die Projektdatei-Prüfung kennt aber nur `text` ohne
- * Auszeichnung und `bild`. Wer neue Bausteine (Auszeichnung, Absatz, Liste, Tabelle, Textergänzung) schreibt, könnte
- * das Projekt speichern, aber nicht aus seinem eigenen Export wiederherstellen; darum wird hier abgewiesen.
- */
-export function pruefeLangtext(knotenId: string, lt: Langtext): void {
-  const alt = lt.every((b) =>
-    b.art === 'bild' ? true : b.art === 'text' && Object.keys(b).every((k) => k === 'art' || k === 'text'),
-  );
-  if (!alt)
-    abbruch(
-      'unbekannt',
-      `Knoten ${knotenId}: Langtext mit Auszeichnung, Absatz, Liste, Tabelle oder Textergänzung lässt sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
-    );
+/** Wert als kanonisches JSON; `null` bzw. `undefined` (Feld fehlt) als `NULL`. */
+export const jsonOderNull = (wert: unknown): string | null =>
+  wert === null || wert === undefined ? null : kanonischKompakt(wert);
+
+/** Liest eine JSON-Spalte, die `NULL` sein darf. */
+export function jsonSpalte(z: SqlZeile, spalte: string): unknown {
+  const w = textOderNull(z, spalte);
+  return w === null ? null : jsonLesen(w, spalte);
 }
 
-export function pruefeKopfdaten(k: {
-  id: string;
-  auftraggeber?: unknown;
-  vergabeinformationen?: unknown;
-}): void {
-  if (k.auftraggeber !== undefined || k.vergabeinformationen !== undefined)
-    abbruch(
-      'unbekannt',
-      `LV ${k.id}: Auftraggeber und Vergabeinformationen lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
-    );
+/** Das Feld `spalte` → `name` mit dem Wert der JSON-Spalte, oder gar kein Feld bei `NULL` (optionale Felder). */
+function optionalesFeld(z: SqlZeile, spalte: string, name: string): Record<string, unknown> {
+  const w = jsonSpalte(z, spalte);
+  return w === null ? {} : { [name]: w };
 }
 
-export function pruefeSummenfelder(
-  aggregatId: string,
-  s: { gesamt: Gesamtsummen | null; gliederungen: readonly Gliederungssumme[] },
-): void {
-  const g = s.gesamt;
-  if (
-    g?.summeBedarfOhneGesamtbetrag !== undefined ||
-    g?.summeWahl !== undefined ||
-    s.gliederungen.some((x) => x.summeBedarfOhneGesamtbetrag !== undefined || x.summeWahl !== undefined)
-  )
-    abbruch(
-      'unbekannt',
-      `${aggregatId}: Die Bedarfs- und Wahlsummen lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
-    );
+/** Kopfdaten von LV und Auftrags-LV (v1.1b, Punkt 6) als Spaltenwerte `auftraggeber`, `vergabeinformationen`. */
+export function kopfdatenSpalten(k: LvInhaltKopf): [SqlWert, SqlWert] {
+  return [jsonOderNull(k.auftraggeber), jsonOderNull(k.vergabeinformationen)];
 }
 
-// // v1.1b: mechanisch angepasst, Folgeticket: Die Tabelle `knoten` hat noch die Spalten vor v1.1b (eine Positionsart, ein Bezug, eine Grundposition).
-// Eine Position, die sich darin nicht verlustfrei ablegen lässt, wird abgewiesen (Q5: nie still verwerfen), bis das
-// Folgeticket `speicher` Spalten oder JSON für Merkmale, Zuschlag, Leitbeschreibung und die neuen Langtext-Bausteine
-// einführt (Migration, A8). Heute erzeugt kein Paket solche Positionen.
-export function altSpalten(k: Position): [string, number, number, PositionId | null, PositionId | null] {
-  const m = k.merkmale;
-  const arten = [k.zuschlag !== null, m.wahl !== null, m.bedarf !== null, m.stundenlohn].filter(
-    Boolean,
-  ).length;
-  const bezug = k.zuschlag?.bezug;
-  const nichtSpeicherbar =
-    arten > 1 ||
-    m.zuschlagskennzeichen ||
-    k.leitbeschreibung !== undefined ||
-    (m.wahl !== null && (m.wahl.gruppe !== null || m.wahl.variante !== null)) ||
-    (k.zuschlag !== null &&
-      (k.zuschlag.prozentsatz !== null ||
-        bezug?.art !== 'positionen' ||
-        bezug.positionen.length > 1 ||
-        bezug.positionen.some((b) => b.teilmenge !== null)));
-  if (nichtSpeicherbar)
-    return abbruch(
-      'unbekannt',
-      `Position ${k.id}: Die Merkmale, der Zuschlag oder die Leitbeschreibung lassen sich noch nicht speichern (Vertrag v1.1b, Folgeticket speicher).`,
-    );
-  const art =
-    k.zuschlag !== null
-      ? 'zuschlag'
-      : m.wahl !== null
-        ? 'wahl'
-        : m.bedarf !== null
-          ? 'bedarf'
-          : m.stundenlohn
-            ? 'stundenlohn'
-            : 'normal';
-  return [
-    art,
-    m.pauschal ? 1 : 0,
-    m.bedarf === 'mit-gesamtbetrag' ? 1 : 0,
-    bezug?.art === 'positionen' ? (bezug.positionen[0]?.positionId ?? null) : null,
-    m.wahl?.grundpositionId ?? null,
-  ];
-}
-
-function neuAusAltSpalten(z: SqlZeile): { merkmale: Positionsmerkmale; zuschlag: Zuschlag | null } {
-  const art = text(z, 'positionsart');
-  const bezug = textOderNull(z, 'bezugsposition_id') as PositionId | null;
+export function kopfdatenAusZeile(z: SqlZeile): Pick<LvInhaltKopf, 'auftraggeber' | 'vergabeinformationen'> {
   return {
-    merkmale: {
-      bedarf:
-        art === 'bedarf'
-          ? ganzzahl(z, 'bedarf_mit_gesamtbetrag') === 1
-            ? 'mit-gesamtbetrag'
-            : 'ohne-gesamtbetrag'
-          : null,
-      wahl:
-        art === 'wahl'
-          ? {
-              gruppe: null,
-              variante: null,
-              grundpositionId: textOderNull(z, 'grundposition_id') as PositionId | null,
-            }
-          : null,
-      stundenlohn: art === 'stundenlohn',
-      pauschal: ganzzahl(z, 'pauschal') === 1,
-      zuschlagskennzeichen: false,
-    },
-    zuschlag:
-      art === 'zuschlag'
-        ? {
-            prozentsatz: null,
-            bezug: {
-              art: 'positionen',
-              positionen: bezug === null ? [] : [{ positionId: bezug, teilmenge: null }],
-            },
-          }
-        : null,
+    ...optionalesFeld(z, 'auftraggeber', 'auftraggeber'),
+    ...optionalesFeld(z, 'vergabeinformationen', 'vergabeinformationen'),
+  };
+}
+
+/** Getrennte Ausweise (v1.1b, Punkt 4): Betrag als TEXT, `NULL` = nicht berechnet (Feld fehlt). */
+export function ausweisAusZeile(
+  z: SqlZeile,
+): Pick<Gesamtsummen, 'summeBedarfOhneGesamtbetrag' | 'summeWahl'> {
+  const bedarf = textOderNull(z, 'summe_bedarf_ohne_gb') as Betrag | null;
+  const wahl = textOderNull(z, 'summe_wahl') as Betrag | null;
+  return {
+    ...(bedarf === null ? {} : { summeBedarfOhneGesamtbetrag: bedarf }),
+    ...(wahl === null ? {} : { summeWahl: wahl }),
   };
 }
 
@@ -237,47 +148,19 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   switch (k.art) {
     case 'los':
     case 'titel':
-      return [
-        ...kopf,
-        k.ordnungszahl,
-        null,
-        k.kurztext,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-      ];
+      return [...kopf, k.ordnungszahl, null, k.kurztext, null, null, null, null, null, null, null, null];
     case 'hinweis':
-      return [
-        ...kopf,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        (pruefeLangtext(k.id, k.text), JSON.stringify(k.text)),
-        null,
-        null,
-        null,
-        null,
-      ];
+      return [...kopf, null, null, null, null, null, null, JSON.stringify(k.text), null, null, null, null];
     case 'position':
       return [
         ...kopf,
         k.ordnungszahl,
         k.ozIndex,
         k.kurztext,
-        ...altSpalten(k),
-        (pruefeLangtext(k.id, k.langtext), JSON.stringify(k.langtext)),
+        kanonischKompakt(k.merkmale),
+        jsonOderNull(k.zuschlag),
+        jsonOderNull(k.leitbeschreibung),
+        JSON.stringify(k.langtext),
         k.menge,
         k.einheit,
         k.einheitspreis,
@@ -325,7 +208,11 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         id: text(z, 'id') as PositionId,
         ordnungszahl: ozOderNull,
         ozIndex: textOderNull(z, 'oz_index'),
-        ...neuAusAltSpalten(z), // // v1.1b: mechanisch angepasst, Folgeticket
+        merkmale: jsonLesen(text(z, 'merkmale'), 'merkmale') as Positionsmerkmale,
+        zuschlag: jsonSpalte(z, 'zuschlag') as Zuschlag | null,
+        ...(optionalesFeld(z, 'leitbeschreibung', 'leitbeschreibung') as {
+          leitbeschreibung?: Leitbeschreibung;
+        }),
         kurztext: text(z, 'kurztext'),
         langtext: jsonLesen(text(z, 'text_json'), 'text_json') as Langtext,
         menge: textOderNull(z, 'menge') as Menge | null,
@@ -341,21 +228,24 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
 
 // --- Angebotspositionen -------------------------------------------------------------------------------------
 
-export function angebotspositionZuBindung(angebotId: AngebotId, p: Angebotsposition): SqlWert[] {
+/** Spalten `status`, `einheitspreis`, `epa`, `zuschlagssatz` einer Angebotsposition. */
+export function angebotspositionWerte(p: Angebotsposition): [SqlWert, SqlWert, SqlWert, SqlWert] {
   return p.status === 'angeboten'
-    ? [angebotId, p.positionId, 'angeboten', p.einheitspreis, p.epa === null ? null : kanonischKompakt(p.epa)]
-    : [angebotId, p.positionId, 'nicht-angeboten', null, null];
+    ? ['angeboten', p.einheitspreis, p.epa === null ? null : kanonischKompakt(p.epa), p.zuschlagssatz ?? null]
+    : ['nicht-angeboten', null, null, null];
 }
 
 export function angebotspositionAusZeile(z: SqlZeile): Angebotsposition {
   const positionId = text(z, 'position_id') as PositionId;
   if (text(z, 'status') === 'nicht-angeboten') return { positionId, status: 'nicht-angeboten' };
   const epa = textOderNull(z, 'epa');
+  const satz = textOderNull(z, 'zuschlagssatz') as Prozent | null;
   return {
     positionId,
     status: 'angeboten',
     einheitspreis: text(z, 'einheitspreis') as Einheitspreis,
     epa: epa === null ? null : (jsonLesen(epa, 'epa') as Einheitspreisanteile),
+    ...(satz === null ? {} : { zuschlagssatz: satz }),
   };
 }
 
@@ -368,6 +258,7 @@ export function gesamtAusZeile(z: SqlZeile): Gesamtsummen {
     nettoNachNachlass: text(z, 'netto_nach_nachlass') as Betrag,
     mwst: text(z, 'mwst') as Betrag,
     brutto: text(z, 'brutto') as Betrag,
+    ...ausweisAusZeile(z),
   };
 }
 

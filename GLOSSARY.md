@@ -45,7 +45,13 @@ Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht 
 Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
 ### Zuschlagsposition
-Position, die eine Mehr- oder Zusatzleistung zu einer bestehenden Bezugsposition (Grundposition) beschreibt (z. B. erschwerte Bedingungen oder höherwertiges Material) und zusätzlich zum Preis der Bezugsposition vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Ab v1.1b/K6 gilt GAEB-Semantik: ein Prozentsatz auf die Summe der Bezugspositionen, mit mehreren Bezugsformen (Liste mit Teilmengen, alle Positionen einer Gliederung, markierte Positionen); bis dahin rechnet der Kern sie vorläufig wie eine Normalposition (Entscheidung E-03, 2026-11-10).
+Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. B. erschwerte Bedingungen) und zusätzlich vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Seit K6 gilt GAEB-Semantik (E-03, D-03): Ihr Betrag ist der Zuschlagssatz auf die Zuschlagsbasis, kaufmännisch auf 2 Stellen gerundet, und geht wie ein GP in die Gliederungssumme und, nach ihren Merkmalen, in Netto, Bedarfs- oder Wahlsumme. Drei Bezugsformen (siehe Zuschlagsbezug): Gliederung, Kennzeichnung, Liste. Eine Zuschlagsposition ist nie Bezugsposition einer anderen. Ohne Satz hat sie keinen Betrag, außer in der Altform. Im Code `Positionsdaten.zuschlag`.
+
+### Zuschlagsbasis
+Die Summe der GP der Bezugspositionen einer Zuschlagsposition, auf die der Zuschlagssatz gerechnet wird. Es zählen nur Bezugspositionen mit GP, deren Betrag ins Netto geht (keine Wahl mit Variante ungleich 0, kein Bedarf ohne Gesamtbetrag) und die selbst keine Zuschlagsposition sind; bei einer Teilmenge zählt Teilmenge × EP. Im Code `Zuschlagsbasis.basis` (`zuschlagsbasen`).
+
+### Altform der Zuschlagsposition
+Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 51 stellt die Fixtures auf die GAEB-Form um (aus Ticket 44 abgespalten, D-44.2).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -57,7 +63,7 @@ Eigenschaft einer Position, die sich mit anderen kombinieren lässt (E-05): Beda
 Die Zuordnung einer Position zu einer Wahl mit Gruppennummer und Variantennummer aus GAEB (Variante 0: Grundausführung, 1 bis 9: Alternativen). Im Ausschreibungs-LV gibt es keinen Zustand „gewählt“; gewählt wird bei der Vergabe (E-04). Im Code `Wahlzuordnung`.
 
 ### Zuschlagsbezug (Bezugsposition)
-Die Positionen, auf die sich eine Zuschlagsposition bezieht. Drei Formen wie in GAEB: eine Liste einzelner Positionen (je mit optionaler Teilmenge), alle Positionen der Gliederung, unter der die Zuschlagsposition steht, oder alle Positionen mit Zuschlagskennzeichen. Im Code `Zuschlagsbezug`, `Bezugsposition`.
+Die Positionen, auf die sich eine Zuschlagsposition bezieht. Drei Formen wie in GAEB: eine Liste einzelner Positionen, wo immer sie im LV stehen, je mit optionaler Teilmenge (`ListInSubQty`); „Gliederung“: die Positionen vor der Zuschlagsposition unter demselben Elternknoten bis zur vorigen Zuschlagsposition oder zum Anfang, wobei unmittelbar aufeinanderfolgende Zuschlagspositionen dieselbe Basis teilen (`AllInCat`); „Kennzeichnung“: derselbe Bereich, davon nur die Positionen mit Zuschlagskennzeichen (`IdentAsMark`). Im Code `Zuschlagsbezug`, `Bezugsposition`.
 
 ### Zuschlagskennzeichen
 Markierung an einer Position, die sie zum Bezug einer Zuschlagsposition der Form „Kennzeichnung“ macht (GAEB `MarkupIt`). Im Code `Positionsmerkmale.zuschlagskennzeichen`.
@@ -81,7 +87,7 @@ Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennun
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
 - **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
-- **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`).
+- **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`). Eine leere Eingabe ist keine Einheit: Ein Befehl darf eine leere Zeichenkette tragen, gespeichert wird „keine Einheit“ (`null`); im Zustand steht nie eine leere Einheit (D-06).
 - **Einheitspreis (EP)**: Netto-Preis pro Einheit, mit 3 Nachkommastellen gespeichert (Entscheidung G-21).
 - **Gesamtpreis (GP)**: Produkt aus Menge × EP, kaufmännisch auf 2 Nachkommastellen (Cent) gerundet.
 
@@ -134,8 +140,26 @@ Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ä
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
 
+### Migrationsbefund
+Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
+
+### Formale LV-Prüfung (LV-Prüfung)
+Die Prüfung eines Ausschreibungs-LV auf Vollständigkeit und GAEB-Tauglichkeit (fehlende oder doppelte Ordnungszahl, leere Texte, fehlende Einheit oder Menge, zu große Zahlen, Zuschlagspositionen ohne Bezug, negatives Netto nach Nachlass usw.). Sie liefert Prüfbefunde mit der Quelle `lv-pruefung` und sperrt nie die Eingabe. Im Code `lvPruefen`, Regeln in `pruefregeln.ts`.
+
 ### Befehlshinweis
-Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, oder das Netto nach Nachlass ist negativ). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
+Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, das Netto nach Nachlass ist negativ, oder ein GAEB-Import brachte eine OZ-Maske mit, die die Prüfung beanstandet). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
+
+### Papierkorb, Papierkorbeintrag
+Ablage gelöschter Knoten eines LV, aus der sie sich wiederherstellen lassen. Ein Papierkorbeintrag hält die Knoten eines Löschvorgangs samt Unterbäumen und ihrer alten Lage; beim Wiederherstellen behalten sie ihre Kennungen (Positionsidentität). Positionen im Papierkorb gehen in keine Summe ein. Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, bis die Position zurückkommt; erst das endgültige Entfernen löst sie. Endgültig entfernt wird ein Eintrag nur ausdrücklich und nicht, solange ein Angebot auf eine seiner Positionen verweist (Q5). Im Code `Papierkorbeintrag`, `LvZustand.papierkorb`, `KnotenInPapierkorbLegen`.
+
+### LV-Stand
+Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`.
+
+### Rückgängig / Wiederholen (Undo/Redo)
+Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
+
+### Zuschlagssatz
+Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis.
 
 ### Auftraggeber (Kopfdaten)
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
@@ -187,7 +211,28 @@ Tabellarische Gegenüberstellung aller Bieterangebote zu einem LV auf Positions-
 Rechnerischer Vergleichsbieter im Preisspiegel, der nicht selbst angeboten hat: der günstigste Bieter (Min), der Mittelwert, der höchste Bieter (Max) und der Schätzpreis aus dem LV.
 
 ### Ausreißer
-Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %).
+Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert oder Referenzpreis abweicht (Standard ±20 %). Das Mittel bilden nur die Bieter mit einem Einheitspreis über 0,00 (D-05); ein Nullpreis und „nicht angeboten“ haben je ein eigenes Kennzeichen und sind nie Ausreißer. Unter zwei Bietern mit Preis über 0,00 wird nichts markiert. Im Code `Ausreisser`.
+
+### Bietersumme
+Die Gesamtsummen eines Angebots (Netto, Nachlass, Netto nach Nachlass, MwSt, Brutto), gerechnet wie die des LV: mit den Einheitspreisen des Angebots, dem Nachlass des Angebots und dem MwSt-Satz des LV. Eine nicht angebotene Position geht nicht ein. Im Code `angebotSummenBerechnen`, `Bietersumme`.
+
+### Gedachtes LV
+Das LV, wie es mit den Preisen eines Bieters rechnet (R7): die Knoten des Ausschreibungs-LV, jede Position mit dem EP des Angebots (nicht angeboten: kein EP), eine Zuschlagsposition mit dem Zuschlagssatz des Bieters statt dem des LV, dazu der Nachlass des Angebots und der MwSt-Satz des LV. Bietersumme, Preisspiegel und Bieterzuschläge rechnet der Kern auf diesem LV; gespeichert wird es nie. Im Code `GedachtesLv`, `gedachtesLv`.
+
+### Preiskennzeichen
+Kennzeichen eines Bieterpreises im Preisspiegel (D-05): angeboten, Nullpreis, nicht angeboten oder, nur an einer Zuschlagsposition, angeboten ohne Zuschlagssatz (rechnet wie nicht angeboten). Im Code `Preiskennzeichen` mit den Werten `angeboten`, `nullpreis`, `nicht-angeboten`, `zuschlagssatz-fehlt`.
+
+### Bieterzuschlag
+Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sein Zuschlagssatz, die Zuschlagsbasis aus seinen Preisen, der Betrag und das Preiskennzeichen; dazu, ob eine Bezugsposition ohne Preis des Bieters die Basis unvollständig lässt. Im Code `Bieterzuschlag`.
+
+### Rang
+Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
+
+### ABC-Klasse
+Einteilung der Positionen eines Preisspiegels nach ihrem Anteil an der Summe: absteigend nach Gesamtpreis sortiert bilden die Positionen bis zu einer einstellbaren Schwelle (Standard 80 %) die Klasse A, bis zur zweiten Schwelle (Standard 95 %) die Klasse B, der Rest die Klasse C. Bezug ist der GP eines virtuellen Bieters (Standard: Mittel). Im Code `AbcKlasse`.
+
+### Nullpreis
+Ein angebotener Einheitspreis von 0,00. Er ist ein Preis (GP 0,00, geht in die Bietersumme ein), anders als „nicht angeboten“, trägt im Preisspiegel aber ein eigenes Kennzeichen, zählt nicht für Min, Mittel und Max und ist nie Ausreißer (D-05). Im Code `nullpreis`.
 
 ### Nachlass
 Prozentualer oder absoluter Abzug auf die Summe eines LVs. In v1 gibt es genau einen Nachlass je LV. Er ist umkehrbar und wird nicht in die Einheitspreise eingerechnet. Der Nachlassbetrag wird auf 2 Stellen gerundet und dann abgezogen; ein negatives Netto nach Nachlass ist ein Befund der LV-Prüfung (E-06).
@@ -200,6 +245,15 @@ Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **
 
 ### Aufmaß & Mengenermittlung (REB 23.003)
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
+
+### Mengenansatz
+Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Im Code `Mengenansatz`, `mengenansatzBerechnen`.
+
+### Ansatzzeile
+Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile`, `Zeilenergebnis`.
+
+### REB-Formel
+Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
 
 ### Nachtrag
 Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt.

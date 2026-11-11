@@ -9,7 +9,9 @@ import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { erzeugeAlle } from './erzeugen.mjs';
-import { parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp, berechneSollwerte } from './rechnen.mjs';
+import {
+  parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp, berechneSollwerte, berechneZuschlagSollwerte,
+} from './rechnen.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
 const datei = (name) => join(hier, name);
@@ -21,7 +23,7 @@ const LVS = ['winzig.json', 'typisch.json', 'gross.json'];
 test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten Dateien', () => {
   const erste = erzeugeAlle();
   const zweite = erzeugeAlle();
-  assert.deepEqual(Object.keys(erste).sort(), ['gross.json', 'handbeispiele.json', 'typisch-angebote.json', 'typisch.json', 'winzig.json']);
+  assert.deepEqual(Object.keys(erste).sort(), ['gross.json', 'handbeispiele.json', 'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json']);
   for (const [name, inhalt] of Object.entries(erste)) {
     assert.equal(inhalt, zweite[name], `${name}: zweite Erzeugung weicht ab`);
     assert.equal(readFileSync(datei(name), 'utf8'), inhalt, `${name}: weicht von der eingecheckten Datei ab (node fixtures/erzeugen.mjs ausfuehren)`);
@@ -181,7 +183,7 @@ test('Dezimalwerte in JSON sind nie Zahlen', () => {
     assert.notEqual(typeof v, 'number', `Zahl bei ${pfad}`);
     if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`);
   };
-  for (const name of [...LVS, 'typisch-angebote.json', 'handbeispiele.json']) pruefe(laden(name), name);
+  for (const name of [...LVS, 'typisch-angebote.json', 'handbeispiele.json', 'zuschlag.json']) pruefe(laden(name), name);
 });
 
 // ---------------------------------------------------------------- Ticket 25
@@ -248,4 +250,61 @@ test('gross: Dokumentreihenfolge (Eltern vor Kindern, Geschwister in Arrayreihen
   });
   const neu = berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, 3), lv.nachlass, lv.mwstSatz);
   assert.deepEqual(neu, lv.sollwerte);
+});
+
+// ---------------------------------------------------------------- Ticket 37
+
+test('zuschlag: Sollwerte gleich den Goldens aus den amtlichen Prüfdateien (D-03)', () => {
+  const lv = laden('zuschlag.json');
+  const s = lv.sollwerte;
+  const nachOz = (oz) => lv.knoten.find((k) => k.ordnungszahl === oz);
+  const titel = (oz) => s.titel[nachOz(oz).id].summe;
+  assert.equal(titel('01.01'), '1450.50');
+  assert.equal(titel('01.02'), '1790.00');
+  assert.equal(titel('01.03'), '819.10');
+  assert.equal(titel('01'), '4059.60');
+  assert.equal(titel('02'), '2791.00');
+  assert.deepEqual(s.summen, {
+    netto: '6850.60', nachlass: '0.00', nettoNachNachlass: '6850.60', mwst: '1301.61', brutto: '8152.21',
+  });
+  const betrag = (oz) => s.zuschlaege[nachOz(oz).id];
+  assert.deepEqual(betrag('01.01.0040'), { basis: '955.00', betrag: '95.50' });
+  assert.deepEqual(betrag('01.02.0040'), { basis: '1400.00', betrag: '140.00' });
+  assert.deepEqual(betrag('01.02.0050'), { basis: '1400.00', betrag: '140.00' });
+  assert.deepEqual(betrag('01.02.0070'), { basis: '100.00', betrag: '10.00' });
+  assert.deepEqual(betrag('01.03.0030'), { basis: '400.00', betrag: '40.00' });
+  assert.deepEqual(betrag('01.03.0040'), { basis: '2791.00', betrag: '279.10' });
+  assert.deepEqual(s.epa.titel[nachOz('02').id], {
+    lohn: '223.00', stoffe: '2312.00', geraete: '256.00', nachunternehmer: '0.00', sonstiges: '0.00', frei: '0.00',
+  });
+  // EP = Summe der Anteile (BVBS X86, 1.10.30.20: 27,910 = 2,230 + 23,120 + 2,560 + 0,000)
+  const p = nachOz('02.0010');
+  const summe = ['lohn', 'stoffe', 'geraete', 'nachunternehmer'].reduce((a, x) => a + parse(p.epa[x], 3), 0n);
+  assert.equal(format(summe, 3), p.einheitspreis);
+  assert.deepEqual(berechneZuschlagSollwerte(lv.knoten, lv.nachlass, lv.mwstSatz), s);
+});
+
+test('zuschlag: Struktur (IDs, Bezüge, alle drei Bezugsformen)', () => {
+  const lv = laden('zuschlag.json');
+  const ids = [lv.id, ...lv.knoten.map((k) => k.id)];
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ids) assert.match(id, UUID7);
+  const art = new Map(lv.knoten.map((k) => [k.id, k]));
+  const formen = new Set();
+  for (const k of lv.knoten.filter((x) => x.art === 'position')) {
+    if (k.zuschlag) {
+      formen.add(k.zuschlag.bezug.art);
+      assert.equal(k.positionsart, 'zuschlag');
+      assert.equal(k.menge, null);
+      assert.equal(k.zuschlagskennzeichen, undefined);
+      for (const b of k.zuschlag.bezug.positionen ?? []) {
+        assert.equal(art.get(b.positionId)?.art, 'position');
+        assert.equal(art.get(b.positionId)?.zuschlag, undefined);
+      }
+    } else {
+      assert.match(k.menge, DEZIMAL);
+      assert.equal(k.einheitspreis.split('.')[1].length, 3);
+    }
+  }
+  assert.deepEqual([...formen].sort(), ['gliederung', 'kennzeichnung', 'positionen']);
 });

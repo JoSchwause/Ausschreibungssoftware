@@ -3,7 +3,14 @@
 // Einzelbefehle und die Invariantenprüfung `pruefeLvInvarianten`.
 
 import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
-import type { Befehlsfehler, Knoten, Leistungsverzeichnis, LvInhalt, Positionsdaten } from '@tethys/vertrag';
+import type {
+  Befehlsfehler,
+  Knoten,
+  Leistungsverzeichnis,
+  LvInhalt,
+  Papierkorbeintrag,
+  Positionsdaten,
+} from '@tethys/vertrag';
 import { befehlsfehler } from './fehler';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
 import type { ElternArt } from './regeln';
@@ -30,17 +37,22 @@ export function unerlaubtesFeld(
 }
 
 /**
- * Form einer Position: Zahlen in kanonischer Schreibweise, Bezüge zeigen auf vorhandene Positionen. `istPosition`
- * sagt, ob eine ID eine (künftige) Position im LV ist.
+ * Form einer Position: Zahlen in kanonischer Schreibweise, Bezüge zeigen auf vorhandene Positionen. `knotenVon`
+ * liefert den Knoten zu einer ID im LV (für Bezüge).
  *
- * v1.1b: mechanisch angepasst, Folgeticket. Seit v1.1b gibt es keine Positionsart mehr und damit keine Prüfung „Merkmal nur bei passender Art“; die
- * Merkmale sind kombinierbar (F5). Welche Kombinationen ungültig sind, entscheidet K5/K6; bis dahin weist der Kern
- * keine Kombination ab. Geprüft werden weiter die Bezüge: die Positionen einer Zuschlagsliste und die Grundposition.
+ * Die Merkmale sind kombinierbar (F5, E-05). Abgewiesen werden nur Formfehler (Ticket 37, `ungueltige-eingabe`):
+ *  1. Zuschlagsposition mit `pauschal` oder `stundenlohn` (`merkmale`): ein Prozentzuschlag hat weder Menge noch Zeit;
+ *  2. Zuschlagsposition mit `zuschlagskennzeichen` (`merkmale.zuschlagskennzeichen`): sie ist nie Basis;
+ *  3. Bezugsliste nennt eine Zuschlagsposition (`zuschlag.bezug.positionen`; D-03: nie Basis einer anderen);
+ *  4. `wahl.variante` nicht ganzzahlig 0 bis 9 oder `wahl.gruppe` negativ oder nicht ganzzahlig (`merkmale.wahl`);
+ *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`).
+ * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
+ * LV-Prüfung (K8, Ticket 41).
  */
 export function positionsdatenFehler(
   daten: Positionsdaten,
   positionsId: string,
-  istPosition: (id: string) => boolean,
+  knotenVon: (id: string) => Knoten | undefined,
 ): Befehlsfehler | null {
   const feld = (f: string, text: string): Befehlsfehler =>
     befehlsfehler('ungueltige-eingabe', text, positionsId, f);
@@ -52,8 +64,6 @@ export function positionsdatenFehler(
     const e = alsEinheitspreis(daten.einheitspreis);
     if (!e.ok) return feld('einheitspreis', e.fehler.meldung);
   }
-  // v1.1b: mechanisch angepasst, Folgeticket. Nur Formprüfung der neuen Felder (wie vorher die Art und die Zahlen),
-  // keine Fachregel: jede Kombination der Merkmale bleibt zulässig (K5 entscheidet).
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
     return feld('merkmale', 'Die Merkmale fehlen oder sind kein Objekt.');
@@ -80,13 +90,35 @@ export function positionsdatenFehler(
       const liste: unknown = daten.zuschlag.bezug.positionen;
       if (!Array.isArray(liste))
         return feld('zuschlag.bezug.positionen', 'Die Bezugspositionen müssen eine Liste sein.');
+      const gesehen = new Set<string>();
       for (const b of daten.zuschlag.bezug.positionen) {
         if (b.teilmenge !== null) {
           const e = alsMenge(b.teilmenge);
           if (!e.ok) return feld('zuschlag.bezug.positionen.teilmenge', e.fehler.meldung);
         }
+        if (gesehen.has(b.positionId))
+          return feld('zuschlag.bezug.positionen', `Bezugsposition doppelt genannt: ${b.positionId}`);
+        gesehen.add(b.positionId);
       }
     }
+    if (daten.merkmale.pauschal || daten.merkmale.stundenlohn)
+      return feld('merkmale', 'Eine Zuschlagsposition ist weder pauschal noch Stundenlohn.');
+    if (daten.merkmale.zuschlagskennzeichen)
+      return feld('merkmale.zuschlagskennzeichen', 'Eine Zuschlagsposition ist nie Basis eines Zuschlags.');
+  }
+  const wahl = daten.merkmale.wahl;
+  if (wahl !== null) {
+    const nummer = (n: unknown, max: number): boolean =>
+      n === null || (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= max);
+    if (
+      typeof wahl !== 'object' ||
+      !nummer(wahl.variante, 9) ||
+      !nummer(wahl.gruppe, Number.MAX_SAFE_INTEGER)
+    )
+      return feld(
+        'merkmale.wahl',
+        'Die Variante ist 0 bis 9, die Gruppe nicht negativ (jeweils ganzzahlig oder null).',
+      );
   }
   const bezug = daten.zuschlag?.bezug;
   const ziele: (readonly [string, string | null])[] = [
@@ -96,7 +128,7 @@ export function positionsdatenFehler(
       : []),
   ];
   for (const [name, ziel] of ziele) {
-    if (ziel !== null && (ziel === positionsId || !istPosition(ziel))) {
+    if (ziel !== null && (ziel === positionsId || knotenVon(ziel)?.art !== 'position')) {
       return befehlsfehler(
         'bezug-unbekannt',
         `${name} verweist nicht auf eine andere vorhandene Position: ${ziel}`,
@@ -105,11 +137,21 @@ export function positionsdatenFehler(
       );
     }
   }
+  if (bezug?.art === 'positionen') {
+    for (const b of bezug.positionen) {
+      const k = knotenVon(b.positionId);
+      if (k?.art === 'position' && k.zuschlag !== null)
+        return feld(
+          'zuschlag.bezug.positionen',
+          `Bezugsposition ist selbst eine Zuschlagsposition: ${b.positionId}`,
+        );
+    }
+  }
   return null;
 }
 
 /** Form der Stammdaten, die `LeistungsverzeichnisAnlegen` mitbringt (Zahlen in kanonischer Schreibweise). */
-export function inhaltKopfFehler(inhalt: LvInhalt): Befehlsfehler | null {
+export function inhaltKopfFehler(inhalt: Pick<LvInhalt, 'mwstSatz' | 'nachlass'>): Befehlsfehler | null {
   const mwst = alsProzent(inhalt.mwstSatz);
   if (!mwst.ok) return befehlsfehler('ungueltige-eingabe', mwst.fehler.meldung, undefined, 'mwstSatz');
   if (inhalt.nachlass !== null) {
@@ -124,9 +166,14 @@ export function inhaltKopfFehler(inhalt: LvInhalt): Befehlsfehler | null {
  * Sammelt alle Verstöße gegen die Baumregeln: IDs eindeutig, jeder Knoten hat genau einen vorhandenen Elternknoten
  * (die Wurzel oder ein Los/Titel), Los nur an der erlaubten Stelle, keine Menge/kein Preis an Hinweistext und
  * Gliederung, `reihenfolge` je Elternknoten dicht 0..n-1, zyklenfrei, höchstens 5 Gliederungsebenen, Form der
- * Positionen. Unabhängig von der Array-Reihenfolge.
+ * Positionen. Unabhängig von der Array-Reihenfolge. `extern` (v1.2, K9): weitere Knoten, auf die ein Bezug zeigen darf
+ * (die Positionen im Papierkorb, D-12).
  */
-export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehler[] {
+export function baumfehler(
+  lvId: string,
+  knoten: readonly Knoten[],
+  extern?: (id: string) => Knoten | undefined,
+): Befehlsfehler[] {
   const fehler: Befehlsfehler[] = [];
   const byId = new Map<string, Knoten>();
   for (const k of knoten) {
@@ -242,19 +289,73 @@ export function baumfehler(lvId: string, knoten: readonly Knoten[]): Befehlsfehl
   }
 
   // Positionen
-  const istPosition = (id: string): boolean => byId.get(id)?.art === 'position';
+  const knotenVon = (id: string): Knoten | undefined => byId.get(id) ?? extern?.(id);
   for (const k of knoten) {
     if (k.art !== 'position') continue;
-    const f = positionsdatenFehler(k, k.id, istPosition);
+    const f = positionsdatenFehler(k, k.id, knotenVon);
     if (f) fehler.push(f);
   }
   return fehler;
 }
 
 /**
- * Alle Verstöße des LV gegen die Invarianten des Baums als Meldungstexte; leer heißt gültig. Für Tests und
- * Folgetickets (z. B. nach jedem Befehl in Property-Tests).
+ * Verstöße des Papierkorbs (v1.2, K9): Eintragskennungen und Nummern eindeutig, Nummern ganzzahlig ab 1, kein Eintrag
+ * leer, kein Knoten zugleich im Baum oder in zwei Einträgen.
  */
-export function pruefeLvInvarianten(lv: Pick<Leistungsverzeichnis, 'id' | 'knoten'>): string[] {
-  return baumfehler(lv.id, lv.knoten).map((f) => `${f.code}: ${f.meldung}`);
+function papierkorbfehler(
+  lvId: string,
+  knoten: readonly Knoten[],
+  korb: readonly Papierkorbeintrag[],
+): Befehlsfehler[] {
+  const fehler: Befehlsfehler[] = [];
+  const belegt = new Set<string>([lvId, ...knoten.map((k) => k.id)]);
+  const eintraege = new Set<string>();
+  const nummern = new Set<number>();
+  for (const e of korb) {
+    if (eintraege.has(e.id))
+      fehler.push(
+        befehlsfehler('id-vergeben', `Papierkorbeintrag doppelt: ${e.id}`, undefined, 'papierkorb'),
+      );
+    eintraege.add(e.id);
+    if (!Number.isInteger(e.nummer) || e.nummer < 1 || nummern.has(e.nummer))
+      fehler.push(
+        befehlsfehler(
+          'ungueltige-eingabe',
+          `Nummer ${String(e.nummer)} des Eintrags ${e.id} ist ungültig oder doppelt.`,
+          undefined,
+          'nummer',
+        ),
+      );
+    nummern.add(e.nummer);
+    if (e.knoten.length === 0)
+      fehler.push(
+        befehlsfehler('ungueltige-eingabe', `Papierkorbeintrag ${e.id} ist leer.`, undefined, 'papierkorb'),
+      );
+    for (const k of e.knoten) {
+      if (belegt.has(k.id))
+        fehler.push(
+          befehlsfehler('id-vergeben', `Knoten ${k.id} liegt zweimal im LV (Baum oder Papierkorb).`, k.id),
+        );
+      belegt.add(k.id);
+    }
+  }
+  return fehler;
+}
+
+/**
+ * Alle Verstöße des LV gegen die Invarianten des Baums als Meldungstexte; leer heißt gültig. Für Tests und
+ * Folgetickets (z. B. nach jedem Befehl in Property-Tests). Mit `papierkorb` (v1.2, `LvZustand.papierkorb`): Bezüge auf
+ * Positionen im Papierkorb sind gültig (D-12), und der Papierkorb selbst wird geprüft (`papierkorbfehler`).
+ */
+export function pruefeLvInvarianten(
+  lv: Pick<Leistungsverzeichnis, 'id' | 'knoten'>,
+  papierkorb?: readonly Papierkorbeintrag[],
+): string[] {
+  const korb = papierkorb ?? [];
+  const imKorb = new Map<string, Knoten>();
+  for (const e of korb) for (const k of e.knoten) imKorb.set(k.id, k);
+  return [
+    ...baumfehler(lv.id, lv.knoten, korb.length === 0 ? undefined : (i) => imKorb.get(i)),
+    ...papierkorbfehler(lv.id, lv.knoten, korb),
+  ].map((f) => `${f.code}: ${f.meldung}`);
 }

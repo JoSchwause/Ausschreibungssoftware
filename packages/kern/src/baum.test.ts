@@ -16,12 +16,14 @@ import type {
 import {
   LOS_ANNAHME,
   MAX_GLIEDERUNGSEBENEN,
+  ZUSTAENDIGES_TICKET,
   lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
   changeSetUmkehren,
   pruefeLvInvarianten,
 } from './index';
 import {
+  ohneReihenfolge,
+  anwenden,
   LV_ID,
   PROJEKT_ID,
   erwarteOk,
@@ -30,9 +32,10 @@ import {
   kinderIds,
   neuesLv,
   positionsdaten,
-  positionsfelder,
   wende,
-  type PositionsKurzform,
+  merkmale,
+  wahlzuordnung,
+  zuschlagsliste,
 } from './testhilfen';
 
 // --- Kurzschreibweisen für Befehle ---------------------------------------------------------------------------
@@ -122,9 +125,23 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(cs.summen).toEqual({
       positionen: [],
       gliederungen: [],
-      gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+      gesamt: {
+        netto: '0.00',
+        nachlass: '0.00',
+        nettoNachNachlass: '0.00',
+        mwst: '0.00',
+        brutto: '0.00',
+        summeBedarfOhneGesamtbetrag: '0.00',
+        summeWahl: '0.00',
+      },
+      vorher: {
+        positionen: [],
+        gliederungen: [],
+        gesamt: null,
+        entfernt: { positionen: [], gliederungen: [] },
+      },
     });
-    const z = lvChangeSetAnwenden(null, cs);
+    const z = anwenden(null, cs);
     expect(z.leistungsverzeichnis.knoten).toEqual([]);
     expect(pruefeLvInvarianten(z.leistungsverzeichnis)).toEqual([]);
   });
@@ -184,18 +201,13 @@ describe('LeistungsverzeichnisAnlegen', () => {
     ordnungszahl: null,
     kurztext: i,
   });
-  const p = (
-    i: string,
-    eltern: string,
-    r = 0,
-    ueber: Partial<Position> & PositionsKurzform = {},
-  ): Position => ({
+  const p = (i: string, eltern: string, r = 0, ueber: Partial<Position> = {}): Position => ({
     art: 'position',
     id: id.pos(i),
     elternId: id.eltern(eltern),
     reihenfolge: r,
     ...positionsdaten(i),
-    ...positionsfelder(ueber),
+    ...ueber,
   });
 
   it('weist Zyklen, unbekannte Eltern, doppelte IDs und Lücken in der Reihenfolge ab', () => {
@@ -224,20 +236,14 @@ describe('LeistungsverzeichnisAnlegen', () => {
     expect(fehlercode(null, anlegen([t('T', LV_ID), p('P', 'T', 0, { menge: '1.5' as Menge })]))).toBe(
       'ungueltige-eingabe',
     );
-    // v1.1b: mechanisch angepasst, Folgeticket. „Merkmal nur bei Art `bedarf`“ entfällt, die Merkmale sind kombinierbar (F5); `bedarfMitGesamtbetrag` ohne Bedarf ist nicht mehr darstellbar.
+    // Die Merkmale sind kombinierbar (F5); welche Formen der Kern abweist, prüft `merkmale.test.ts` (Ticket 37).
     expect(
-      fehlercode(
-        null,
-        anlegen([
-          t('T', LV_ID),
-          p('Z', 'T', 0, { positionsart: 'zuschlag', bezugspositionId: id.pos('fehlt') }),
-        ]),
-      ),
+      fehlercode(null, anlegen([t('T', LV_ID), p('Z', 'T', 0, { zuschlag: zuschlagsliste(['fehlt']) })])),
     ).toBe('bezug-unbekannt');
     const ok = anlegen([
       t('T', LV_ID),
       p('P', 'T', 0, { menge: '1.500' as Menge }),
-      p('Z', 'T', 1, { positionsart: 'zuschlag', bezugspositionId: id.pos('P') }),
+      p('Z', 'T', 1, { zuschlag: zuschlagsliste(['P']) }),
     ]);
     expect(lvBefehlAusfuehren(null, ok).ok).toBe(true);
   });
@@ -276,7 +282,7 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       ['P3', 2, 3],
     ]);
     expect(cs.knoten.entfernt).toEqual([]);
-    expect(kinderIds(lvChangeSetAnwenden(z, cs), 'T1')).toEqual(['P1', 'PX', 'P2', 'P3']);
+    expect(kinderIds(anwenden(z, cs), 'T1')).toEqual(['P1', 'PX', 'P2', 'P3']);
   });
 
   it('„nach“ dem letzten Geschwister hängt an, ohne Änderung der Geschwister', () => {
@@ -408,7 +414,8 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
         rohdaten(zus({ art: 'positionen', positionen: [{ positionId: id.pos('P1'), teilmenge: '1.5' }] })),
       ),
     ).toBe('ungueltige-eingabe:zuschlag.bezug.positionen.teilmenge');
-    // Gültig und zulässig: jede Kombination der Merkmale, alle Bezugsformen, kanonische Zahlen.
+    // Gültig und zulässig: jede Kombination der Merkmale (F5), alle Bezugsformen, kanonische Zahlen. Die fünf
+    // Formprüfungen der Zuschlagsposition und der Wahl (Ticket 37) stehen in `merkmale.test.ts`.
     expect(
       feldVon(
         rohdaten({
@@ -418,6 +425,20 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
             stundenlohn: true,
             pauschal: true,
             zuschlagskennzeichen: true,
+          },
+          zuschlag: null,
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      feldVon(
+        rohdaten({
+          merkmale: {
+            bedarf: 'ohne-gesamtbetrag',
+            wahl: { gruppe: 2, variante: 1, grundpositionId: null },
+            stundenlohn: false,
+            pauschal: false,
+            zuschlagskennzeichen: false,
           },
           zuschlag: { prozentsatz: '10.00', bezug: { art: 'kennzeichnung' } },
         }),
@@ -441,22 +462,19 @@ describe('Einfügen: Elternknoten und Reihenfolge', () => {
       daten,
     });
     expect(fehlercode(z, mit(positionsdaten('x', { menge: '1' as Menge })))).toBe('ungueltige-eingabe');
-    // v1.1b: mechanisch angepasst, Folgeticket. „Bezug nur bei Art `zuschlag`“ entfällt (der Bezug steht jetzt in `Positionsdaten.zuschlag`).
+    // Der Bezug steht in `Positionsdaten.zuschlag` (v1.1b); er muss auf eine andere vorhandene Position zeigen.
+    expect(fehlercode(z, mit(positionsdaten('x', { zuschlag: zuschlagsliste(['fehlt']) })))).toBe(
+      'bezug-unbekannt',
+    );
     expect(
       fehlercode(
         z,
-        mit(positionsdaten('x', { positionsart: 'zuschlag', bezugspositionId: id.pos('fehlt') })),
+        mit(positionsdaten('x', { merkmale: merkmale({ wahl: wahlzuordnung(null, null, 'T1') }) })),
       ),
-    ).toBe('bezug-unbekannt');
-    expect(
-      fehlercode(z, mit(positionsdaten('x', { positionsart: 'wahl', grundpositionId: id.pos('T1') }))),
     ).toBe('bezug-unbekannt'); // verweist auf einen Titel, nicht auf eine Position
-    expect(
-      lvBefehlAusfuehren(
-        z,
-        mit(positionsdaten('x', { positionsart: 'zuschlag', bezugspositionId: id.pos('P1') })),
-      ).ok,
-    ).toBe(true);
+    expect(lvBefehlAusfuehren(z, mit(positionsdaten('x', { zuschlag: zuschlagsliste(['P1']) }))).ok).toBe(
+      true,
+    );
   });
 });
 
@@ -495,7 +513,7 @@ describe('Gliederungsebenen', () => {
 
   it('VORLÄUFIGE ANNAHME (Entscheidung offen): ein Los steht nur direkt unter der Wurzel', () => {
     expect(LOS_ANNAHME.nurUnterWurzel).toBe(true);
-    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende(LV_ID)));
+    const z = reihe(null, los('L', ende(LV_ID)), titel('T', ende('L'))); // F1: Titel im Los, nicht daneben
     expect(lvBefehlAusfuehren(z, los('L2', ende(LV_ID))).ok).toBe(true);
     expect(fehlercode(z, los('X', ende('L')))).toBe('knotenart-unzulaessig');
     expect(fehlercode(z, los('X', ende('T')))).toBe('knotenart-unzulaessig');
@@ -524,7 +542,7 @@ describe('KnotenLoeschen', () => {
     expect(cs.knoten.entfernt.map((k) => k.id)).toEqual(['T1', 'T2', 'P1', 'H1', 'P2']);
     expect(cs.knoten.entfernt[0]).toEqual(knotenVon(z, 'T1'));
     expect(cs.knoten.hinzugefuegt).toEqual([]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.leistungsverzeichnis.knoten.map((k) => k.id)).toEqual(['T3', 'P3']);
   });
 
@@ -534,7 +552,7 @@ describe('KnotenLoeschen', () => {
     expect(
       cs.knoten.geaendert.map((g) => [g.vorher.id, g.vorher.reihenfolge, g.nachher.reihenfolge]),
     ).toEqual([['T3', 1, 0]]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(kinderIds(z2, LV_ID)).toEqual(['T3']);
     expect(pruefeLvInvarianten(z2.leistungsverzeichnis)).toEqual([]);
   });
@@ -558,7 +576,7 @@ describe('KnotenLoeschen', () => {
     // Die Summen entfernter Knoten stehen nicht im ChangeSet (Vertrag), sie fallen mit dem Knoten weg.
     expect(cs.summen.positionen).toEqual([]);
     expect(cs.summen.gliederungen).toEqual([]);
-    const z2 = lvChangeSetAnwenden(z, cs);
+    const z2 = anwenden(z, cs);
     expect(z2.summen.positionen.map((p) => p.positionId)).toEqual(['P3']);
     expect(z2.summen.gliederungen.map((g) => g.gliederungId)).toEqual(['T3']);
     expect(z2.summen.gesamt).toBe(z.summen.gesamt);
@@ -637,12 +655,21 @@ describe('KnotenVerschieben', () => {
   });
 
   it('Fehlerwerte: unbekannter Knoten, unbekanntes Ziel, Ziel ist eine Position, Los unter einen Titel', () => {
-    const z = reihe(baum(), los('L', anfang(LV_ID)));
+    // F1: Lose und Titel nicht nebeneinander auf der obersten Ebene; das Los steht neben einem LV mit Titeln im Los.
+    const z = reihe(
+      null,
+      los('L', ende(LV_ID)),
+      titel('T1', ende('L')),
+      position('P1', ende('T1')),
+      position('P2', ende('T1')),
+      los('L0', ende(LV_ID)),
+      titel('T0', ende('L0')),
+    );
     expect(fehlercode(z, verschiebe('gibt-es-nicht', ende('T1')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('gibt-es-nicht')))).toBe('eltern-unbekannt');
     expect(fehlercode(z, verschiebe('P1', nach('gibt-es-nicht')))).toBe('knoten-unbekannt');
     expect(fehlercode(z, verschiebe('P1', ende('P2')))).toBe('knotenart-unzulaessig');
-    expect(fehlercode(z, verschiebe('L', ende('T1')))).toBe('knotenart-unzulaessig');
+    expect(fehlercode(z, verschiebe('L', ende('T0')))).toBe('knotenart-unzulaessig');
     expect(lvBefehlAusfuehren(z, verschiebe('L', ende(LV_ID))).ok).toBe(true);
   });
 
@@ -659,28 +686,9 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  const fremde: LvBefehl[] = [
-    { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: null },
-    {
-      art: 'PositionsmerkmaleSetzen',
-      positionId: id.pos('P1'),
-      merkmale: positionsdaten('x').merkmale,
-      zuschlag: null,
-    },
-  ];
-
-  it.each(fremde.map((b) => [b.art, b] as const))(
-    '%s: befehl-nicht-zustaendig, Meldung nennt das Ticket',
-    (_art, b) => {
-      const e = lvBefehlAusfuehren(z, b);
-      expect(e.ok).toBe(false);
-      if (!e.ok) {
-        expect(e.fehler.code).toBe('befehl-nicht-zustaendig');
-        expect(e.fehler.meldung).toMatch(/Ticket|K\d/);
-        expect(e.fehler.meldung).toContain(b.art);
-      }
-    },
-  );
+  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9): ZUSTAENDIGES_TICKET ist leer', () => {
+    expect(ZUSTAENDIGES_TICKET).toEqual({});
+  });
 
   it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {
     const meldung = (b: LvBefehl): string => {
@@ -709,9 +717,9 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
       titel('TX', nach('T1')),
     ]) {
       const cs = erwarteOk(lvBefehlAusfuehren(z, b));
-      const danach = lvChangeSetAnwenden(z, cs);
+      const danach = anwenden(z, cs);
       expect(danach).not.toEqual(z);
-      expect(lvChangeSetAnwenden(danach, changeSetUmkehren(cs, z))).toEqual(z);
+      expect(anwenden(danach, changeSetUmkehren(cs))).toEqual(z);
     }
   });
 
@@ -719,16 +727,16 @@ describe('lvChangeSetAnwenden und changeSetUmkehren', () => {
     const z = basis();
     const cs = erwarteOk(lvBefehlAusfuehren(z, position('PX', nach('P1'))));
     const kopie = structuredClone(cs);
-    const u = changeSetUmkehren(cs, z);
+    const u = changeSetUmkehren(cs);
     expect(cs).toEqual(kopie);
     expect(u.knoten.entfernt).toEqual(cs.knoten.hinzugefuegt);
     expect(u.knoten.hinzugefuegt).toEqual(cs.knoten.entfernt);
     expect(u.knoten.geaendert[0]?.vorher).toEqual(cs.knoten.geaendert[0]?.nachher);
-    expect(changeSetUmkehren(u, lvChangeSetAnwenden(z, cs))).toEqual(cs);
+    expect(ohneReihenfolge(changeSetUmkehren(u))).toEqual(ohneReihenfolge(cs));
   });
 
   it('ohne Zustand und ohne Kopf lässt sich ein ChangeSet nicht anwenden (Programmfehler)', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(basis(), position('PX', nach('P1'))));
-    expect(() => lvChangeSetAnwenden(null, cs)).toThrow();
+    expect(() => anwenden(null, cs)).toThrow();
   });
 });

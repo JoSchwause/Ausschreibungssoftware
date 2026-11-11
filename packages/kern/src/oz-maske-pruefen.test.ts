@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Prüfbefund zur OZ-Maske beim Anlegen (Ticket 25, Punkt 3). Zuerst geschrieben (Q1).
-// Die Funktion liefert Befunde statt Stille; `LeistungsverzeichnisAnlegen` selbst bleibt unverändert (U5).
+// Die Funktion liefert Befunde statt Stille; `LeistungsverzeichnisAnlegen` nimmt die Maske an (U5) und liefert den
+// Befund als Hinweis (Ticket 30).
 
 import { describe, expect, it } from 'vitest';
-import type { LeistungsverzeichnisId, OzMaske } from '@tethys/vertrag';
+import type { OzMaske } from '@tethys/vertrag';
 import { lvBefehlAusfuehren, ozMaskeFehler, ozMaskePruefen } from './index';
-import { PROJEKT_ID, inhalt } from './testhilfen';
+import { LV_ID, PROJEKT_ID, inhalt } from './testhilfen';
 
 const num = (laenge: number) => ({ laenge, zeichen: 'numerisch' as const });
 const alnum = (laenge: number) => ({ laenge, zeichen: 'alphanumerisch' as const });
@@ -62,11 +63,11 @@ describe('ozMaskePruefen', () => {
 });
 
 describe('LeistungsverzeichnisAnlegen mit ungültiger Maske', () => {
-  it('geht weiter durch (Verhalten unverändert, U5); die Prüffunktion meldet die Maske', () => {
+  it('geht weiter durch (U5); die Prüffunktion meldet die Maske (Hinweis am Befehl: lv-aggregat.test.ts)', () => {
     const zuLang: OzMaske = { ...GUELTIG, gliederung: [num(2), num(2), num(2), num(2), num(2)] };
     const e = lvBefehlAusfuehren(null, {
       art: 'LeistungsverzeichnisAnlegen',
-      id: 'lv-x' as LeistungsverzeichnisId,
+      id: LV_ID,
       projektId: PROJEKT_ID,
       inhalt: { ...inhalt([]), ozMaske: zuLang },
     });

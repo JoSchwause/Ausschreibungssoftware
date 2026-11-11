@@ -6,13 +6,19 @@
 //  1. Eintrag am Ende von `MIGRATIONEN` anfügen (lückenlos nummeriert). Bestehende Einträge nie ändern.
 //  2. `hoch` verändert das Schema und überführt vorhandene Zeilen; kein Datenverlust (Q5).
 //  3. `datei` hebt eine Projektdatei der Version N auf N+1 (reine Funktion über das geparste JSON).
-//  4. Die eingefrorene Datei `packages/speicher/fixtures/projektdatei-v1.json` bleibt unverändert und wird weiter geöffnet;
-//     für N+1 kommt eine weitere eingefrorene Datei dazu.
+//  4. Die eingefrorenen Dateien `packages/speicher/fixtures/projektdatei-v<N>.json` bleiben unverändert und werden
+//     weiter geöffnet; für N+1 kommt eine weitere eingefrorene Datei dazu.
+//  5. Das SQL steht hier (A5: Schema nur in dieser Datei), die Dateimigration ab Version 2 in `dateimigration<N>.ts`.
+//  6. Ändert der Schritt, was der Kern rechnet, setzt er `summenNeuRechnen` (D-17): Danach stehen alle gespeicherten
+//     Summen so, wie der Kern sie vollständig rechnet, auf dem Datenbank- und dem Dateiweg (`summenmigration.ts`).
 
 import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';
 import { fehlerAusAusnahme } from './fehler';
 import { fehler, ok } from './ergebnis';
+import { dateiAuf2 } from './dateimigration2';
+import { dateiAuf3 } from './dateimigration3';
 import type { Datenbank } from './sql';
+import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
 export interface Migration {
   readonly version: number;
@@ -21,6 +27,11 @@ export interface Migration {
   readonly hoch: (db: Datenbank) => void;
   /** Hebt eine Projektdatei von `version - 1` auf `version`. `null` für Version 1 (Anfang der Reihe). */
   readonly datei: ((roh: Record<string, unknown>) => Record<string, unknown>) | null;
+  /**
+   * Nach dem Schritt alle gespeicherten Summen mit dem Kern neu rechnen (D-17): auf dem Datenbankweg in derselben
+   * Transaktion, auf dem Dateiweg nach der Prüfung der gehobenen Datei. Was der Kern abweist, bleibt und wird Befund.
+   */
+  readonly summenNeuRechnen?: boolean;
 }
 
 /**
@@ -157,6 +168,114 @@ CREATE TABLE protokoll (
 CREATE INDEX protokoll_projekt ON protokoll (projekt_id, seq);
 `;
 
+// --- Version 2 (Ticket 38) ------------------------------------------------------------------------------------------
+//
+// Das Inhaltsmodell von `vertrag` v1.1b/v1.2 verlustfrei ablegen. Die Tabelle `knoten` verliert die Spalten der alten
+// Positionsform (`positionsart`, `pauschal`, `bedarf_mit_gesamtbetrag`, `bezugsposition_id`, `grundposition_id`) und
+// bekommt `merkmale`, `zuschlag` und `leitbeschreibung` als kanonisches JSON (Dezimalwerte darin als Zeichenketten,
+// N1). SQLite kann Spalten, die in einer CHECK-Regel stehen, nicht löschen; die Tabelle wird deshalb neu angelegt und
+// umkopiert (keine Fremdschlüssel zeigen auf sie). Die übrigen Tabellen bekommen nur Spalten dazu (`NULL` = fehlt bzw.
+// nicht berechnet). Vorhandene Positionen werden überführt wie in `dateimigration2.ts` (Altform, nichts erfunden).
+
+// Schlüssel in `json_object` alphabetisch: so ist das Ergebnis schon kanonisch (wie `kanonischKompakt`).
+const MERKMALE_AUS_V1 = `CASE WHEN art = 'position' THEN json_object(
+    'bedarf', CASE WHEN positionsart = 'bedarf'
+                   THEN CASE WHEN bedarf_mit_gesamtbetrag = 1 THEN 'mit-gesamtbetrag' ELSE 'ohne-gesamtbetrag' END
+              END,
+    'pauschal', json(CASE WHEN pauschal = 1 THEN 'true' ELSE 'false' END),
+    'stundenlohn', json(CASE WHEN positionsart = 'stundenlohn' THEN 'true' ELSE 'false' END),
+    'wahl', CASE WHEN positionsart = 'wahl'
+                 THEN json_object('grundpositionId', grundposition_id, 'gruppe', NULL, 'variante', NULL) END,
+    'zuschlagskennzeichen', json('false')) END`;
+
+const ZUSCHLAG_AUS_V1 = `CASE WHEN art = 'position' AND positionsart = 'zuschlag' THEN json_object(
+    'bezug', json_object('art', 'positionen', 'positionen',
+      CASE WHEN bezugsposition_id IS NULL THEN json_array()
+           ELSE json_array(json_object('positionId', bezugsposition_id, 'teilmenge', NULL)) END),
+    'prozentsatz', NULL) END`;
+
+/** Schema von Version 1 auf 2. Läuft in der Transaktion von `migriere`. */
+const SCHEMA_V2 = `
+CREATE TABLE knoten_v2 (
+  aggregat_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  art TEXT NOT NULL CHECK (art IN ('los', 'titel', 'position', 'hinweis')),
+  eltern_id TEXT NOT NULL,
+  reihenfolge INTEGER NOT NULL CHECK (reihenfolge >= 0),
+  ordnungszahl TEXT,
+  oz_index TEXT,
+  kurztext TEXT,
+  merkmale TEXT,
+  zuschlag TEXT,
+  leitbeschreibung TEXT,
+  text_json TEXT,
+  menge TEXT,
+  einheit TEXT,
+  einheitspreis TEXT,
+  epa TEXT,
+  PRIMARY KEY (aggregat_id, id),
+  CHECK (art NOT IN ('los', 'titel', 'position') OR kurztext IS NOT NULL),
+  CHECK (art NOT IN ('hinweis', 'position') OR text_json IS NOT NULL),
+  CHECK ((art = 'position') = (merkmale IS NOT NULL)),
+  CHECK (art = 'position' OR (zuschlag IS NULL AND leitbeschreibung IS NULL))
+) STRICT;
+
+INSERT INTO knoten_v2 (aggregat_id, id, art, eltern_id, reihenfolge, ordnungszahl, oz_index, kurztext, merkmale,
+                       zuschlag, leitbeschreibung, text_json, menge, einheit, einheitspreis, epa)
+SELECT aggregat_id, id, art, eltern_id, reihenfolge, ordnungszahl, oz_index, kurztext, ${MERKMALE_AUS_V1},
+       ${ZUSCHLAG_AUS_V1}, NULL, text_json, menge, einheit, einheitspreis, epa
+FROM knoten;
+
+DROP TABLE knoten;
+ALTER TABLE knoten_v2 RENAME TO knoten;
+CREATE INDEX knoten_eltern ON knoten (aggregat_id, eltern_id, reihenfolge);
+
+ALTER TABLE leistungsverzeichnis ADD COLUMN auftraggeber TEXT;
+ALTER TABLE leistungsverzeichnis ADD COLUMN vergabeinformationen TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN auftraggeber TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN vergabeinformationen TEXT;
+
+ALTER TABLE summe_gesamt ADD COLUMN summe_bedarf_ohne_gb TEXT;
+ALTER TABLE summe_gesamt ADD COLUMN summe_wahl TEXT;
+ALTER TABLE summe_gliederung ADD COLUMN summe_bedarf_ohne_gb TEXT;
+ALTER TABLE summe_gliederung ADD COLUMN summe_wahl TEXT;
+
+ALTER TABLE angebotsposition ADD COLUMN zuschlagssatz TEXT CHECK (zuschlagssatz IS NULL OR status = 'angeboten');
+`;
+
+// --- Version 3 (Ticket 43, S3) ---------------------------------------------------------------------------------------
+//
+// Papierkorb und LV-Stände (ADR 0006, `vertrag` v1.2). Beide hängen am LV (Fremdschlüssel): Ein LV mit Ständen lässt
+// sich nicht löschen (D-12), sein Papierkorb geht beim Löschen im ChangeSet mit (`papierkorb.entfernt`).
+//
+// `papierkorb_eintrag`: ein Eintrag je Löschvorgang, `nummer` ist die Reihenfolge des Hineinlegens (D-12). Die Knoten
+// stehen als kanonisches JSON im Eintrag (flach, Eltern vor Kindern, mit alter Lage), nicht in `knoten`: Der Baum, seine
+// Prüfungen und Summen bleiben unberührt, und ein Eintrag wird nur als Ganzes hineingelegt, wiederhergestellt oder
+// entfernt.
+//
+// `lv_stand`: eingefrorener `LvZustand` (samt Summen und Papierkorb) als kanonisches JSON, `angelegt` ist
+// `Protokolleintrag.wann` des Befehls. `seq` hält die Reihenfolge des Anlegens (ältester zuerst).
+const SCHEMA_V3 = `
+CREATE TABLE papierkorb_eintrag (
+  leistungsverzeichnis_id TEXT NOT NULL REFERENCES leistungsverzeichnis (id),
+  id TEXT NOT NULL,
+  nummer INTEGER NOT NULL CHECK (nummer >= 1),
+  knoten TEXT NOT NULL,
+  PRIMARY KEY (leistungsverzeichnis_id, id),
+  UNIQUE (leistungsverzeichnis_id, nummer)
+) STRICT;
+
+CREATE TABLE lv_stand (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  leistungsverzeichnis_id TEXT NOT NULL REFERENCES leistungsverzeichnis (id),
+  name TEXT NOT NULL,
+  angelegt TEXT NOT NULL,
+  zustand TEXT NOT NULL
+) STRICT;
+CREATE INDEX lv_stand_lv ON lv_stand (leistungsverzeichnis_id, seq);
+`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -165,6 +284,24 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V1);
     },
     datei: null,
+  },
+  {
+    version: 2,
+    name: 'Inhaltsmodell v1.1b/v1.2: Merkmale, Zuschlag, Leitbeschreibung, Kopfdaten, Ausweise, Zuschlagssatz',
+    hoch: (db) => {
+      db.skript(SCHEMA_V2);
+    },
+    datei: dateiAuf2,
+    // Version 1 kannte weder Bedarfs- und Wahlsumme noch Pauschal ohne Menge (D-37.1, Review C1).
+    summenNeuRechnen: true,
+  },
+  {
+    version: 3,
+    name: 'Papierkorb und LV-Stände',
+    hoch: (db) => {
+      db.skript(SCHEMA_V3);
+    },
+    datei: dateiAuf3,
   },
 ];
 
@@ -177,10 +314,14 @@ export function aktuelleVersion(db: Datenbank): number {
   return typeof v === 'number' ? v : 0;
 }
 
-/** Wendet alle noch fehlenden Migrationen an, jede in einer eigenen Transaktion. */
+/**
+ * Wendet alle noch fehlenden Migrationen an, jede in einer eigenen Transaktion. Befunde der Summen-Neuberechnung
+ * (D-17) landen in `befunde`; sie brechen nichts ab.
+ */
 export function migriere(
   db: Datenbank,
   migrationen: readonly Migration[] = MIGRATIONEN,
+  befunde: Migrationsbefund[] = [],
 ): Ergebnis<number, Speicherfehler> {
   const ziel = migrationen[migrationen.length - 1]?.version ?? 0;
   const start = aktuelleVersion(db);
@@ -196,8 +337,10 @@ export function migriere(
       db.ausfuehren('BEGIN IMMEDIATE');
       try {
         m.hoch(db);
+        const neu = m.summenNeuRechnen === true ? summenDerDatenbankNeuRechnen(db) : [];
         db.skript(`PRAGMA user_version = ${String(m.version)}`);
         db.ausfuehren('COMMIT');
+        befunde.push(...neu);
       } catch (e) {
         try {
           db.ausfuehren('ROLLBACK');

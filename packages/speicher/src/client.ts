@@ -7,6 +7,7 @@ import type {
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
+  LvStandId,
   Persistenzstatus,
   ProjektId,
   Protokolleintrag,
@@ -17,6 +18,7 @@ import { fehler } from './ergebnis';
 import { fehlerAusAusnahme } from './fehler';
 import type { SpeicherKern } from './kern';
 import type { OeffnenOptionen, RpcAnfrage, RpcAntwort, RpcMethode, WorkerLike } from './rpc';
+import type { Migrationsbefund } from './summenmigration';
 
 /** Schickt eine Anfrage und liefert die Antwort als Wert. Wirft nie. */
 export type Transport = (
@@ -30,10 +32,15 @@ export interface SpeicherVerwaltung {
   persisted(): Promise<boolean>;
 }
 
-export interface GeoeffneterSpeicher extends Speicher {
-  /** Schließt die Datenbank und gibt die OPFS-Handles frei. Danach ist die Instanz unbrauchbar. */
-  schliessen(): Promise<Ergebnis<void, Speicherfehler>>;
-}
+/**
+ * Der geöffnete Speicher: die Schnittstelle des Vertrags (`schliessen` gehört seit v1.1a dazu) und die Befunde der
+ * Migrationen (D-17). Nach `schliessen` liefert jeder Aufruf `gesperrt` als Fehlerwert, auch ein zweites `schliessen`;
+ * nur `persistenzstatus` antwortet weiter, weil er die Datenbank nicht braucht und keinen Fehlerwert kennt.
+ */
+export type GeoeffneterSpeicher = Speicher & {
+  /** Aggregate, deren Summen eine Migration nicht neu rechnen konnte (D-17); ihre Daten sind unverändert. */
+  migrationsbefunde(): Promise<Ergebnis<readonly Migrationsbefund[], Speicherfehler>>;
+};
 
 function standardVerwaltung(): SpeicherVerwaltung | null {
   const nav = (globalThis as { navigator?: { storage?: Partial<SpeicherVerwaltung> } }).navigator;
@@ -41,15 +48,26 @@ function standardVerwaltung(): SpeicherVerwaltung | null {
   return s?.persist !== undefined && s.persisted !== undefined ? (s as SpeicherVerwaltung) : null;
 }
 
+const geschlossen = (): Ergebnis<never, Speicherfehler> =>
+  fehler('gesperrt', 'Der Speicher ist geschlossen; für weitere Aufrufe muss er neu geöffnet werden.');
+
 /**
  * Baut den `Speicher` über einem Transport. Fragt dauerhaften Speicher an (`storage.persist()`, Spec §9);
  * der Zustand ist über `persistenzstatus()` abrufbar. Ist die API nicht vorhanden oder wirft sie, ist
  * `persistent` `null` beziehungsweise `angefragt` `false`.
+ *
+ * Ab dem Aufruf von `schliessen` geht keine Anfrage mehr über den Transport; jede liefert `gesperrt`. Danach läuft
+ * `nachSchliessen` (beim Worker: `terminate`), auch wenn das Schließen selbst einen Fehler meldet.
  */
 export function speicherUeberTransport(
-  senden: Transport,
+  transport: Transport,
   verwaltung: SpeicherVerwaltung | null = standardVerwaltung(),
+  nachSchliessen: () => void = () => undefined,
 ): GeoeffneterSpeicher {
+  let zu = false;
+  const senden: Transport = (methode, args) =>
+    zu ? Promise.resolve(geschlossen()) : transport(methode, args);
+
   let angefragt = false;
   let anfrage: Promise<void> | null = null;
   const persistenzAnfragen = (): Promise<void> => {
@@ -81,6 +99,10 @@ export function speicherUeberTransport(
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('angeboteAuflisten', lvId),
       laden: (id: AngebotId) => aufruf('angebotLaden', id),
     },
+    lvStaende: {
+      auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
+      laden: (id: LvStandId) => aufruf('lvStandLaden', id),
+    },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),
@@ -95,7 +117,14 @@ export function speicherUeberTransport(
     },
     projektdateiExportieren: (projektId: ProjektId) => aufruf('projektdateiExportieren', projektId),
     projektdateiImportieren: (inhalt: string) => aufruf('projektdateiImportieren', inhalt),
-    schliessen: () => senden('schliessen', []) as Promise<Ergebnis<void, Speicherfehler>>,
+    migrationsbefunde: () => aufruf('migrationsbefunde'),
+    schliessen: async () => {
+      if (zu) return geschlossen();
+      zu = true; // auch Aufrufe, die während des Schließens kommen, gehen nicht mehr hinaus
+      const r = (await transport('schliessen', [])) as Ergebnis<void, Speicherfehler>;
+      nachSchliessen();
+      return r;
+    },
   };
 }
 
@@ -157,29 +186,24 @@ export async function speicherOeffnen(
     optionen.worker.terminate();
     return r;
   }
-  const speicher = speicherUeberTransport(senden, optionen.verwaltung);
+  const speicher = speicherUeberTransport(senden, optionen.verwaltung, () => {
+    optionen.worker.terminate();
+  });
   void speicher.persistenzstatus();
-  return {
-    ok: true,
-    wert: {
-      ...speicher,
-      schliessen: async () => {
-        const zu = await senden('schliessen', []);
-        optionen.worker.terminate();
-        return zu as Ergebnis<void, Speicherfehler>;
-      },
-    },
-  };
+  return { ok: true, wert: speicher };
 }
 
-/** Transport ohne Worker: ruft den synchronen Kern direkt auf (Tests, Skripte). */
+/** Transport ohne Worker: ruft den Kern direkt auf (Tests, Skripte). */
 export function direktTransport(kern: SpeicherKern): Transport {
   return (methode, args) => {
     if (methode === 'oeffnen') return Promise.resolve(fehler('unbekannt', 'Der Kern ist schon geöffnet.'));
     if (methode === 'schliessen') return Promise.resolve(kern.schliessen());
-    const f = (kern as unknown as Record<string, (...a: unknown[]) => Ergebnis<unknown, Speicherfehler>>)[
-      methode
-    ];
+    const f = (
+      kern as unknown as Record<
+        string,
+        (...a: unknown[]) => Ergebnis<unknown, Speicherfehler> | Promise<Ergebnis<unknown, Speicherfehler>>
+      >
+    )[methode];
     return Promise.resolve(
       f === undefined ? fehler('unbekannt', `Unbekannte Methode ${methode}.`) : f.apply(kern, [...args]),
     );

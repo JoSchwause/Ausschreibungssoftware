@@ -1,0 +1,2 @@
+{"schwere":"warnung","quelle":"lv-pruefung","code":"lv-name-zu-lang","meldung":"Der Name des LV hat 30 Zeichen; GAEB fasst 20, der Export kürzt.","ort":{"feld":"name"}}
+{"schwere":"warnung","quelle":"lv-pruefung","code":"zuschlag-altform","meldung":"Die Zuschlagsposition hat keinen Zuschlagssatz, aber Menge und Einheitspreis; sie rechnet Menge × EP (Altform).","ort":{"knotenId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894"}}

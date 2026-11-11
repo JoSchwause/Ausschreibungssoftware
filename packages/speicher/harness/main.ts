@@ -7,14 +7,18 @@ import type {
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
+  LvStandId,
+  LvStandUebersicht,
   LvZustand,
   AngebotZustand,
   Persistenzstatus,
   ProjektId,
+  Projektdatei,
   Protokolleintrag,
   Speicherfehler,
 } from '@tethys/vertrag';
 import SpeicherWorker from '@tethys/speicher/worker?worker';
+import Schema1Worker from './schema1-worker?worker';
 import { kanonischKompakt } from '../src/kanonisch';
 import { speicherOeffnen, type GeoeffneterSpeicher } from '../src/index';
 import { normalisiere } from '../src/testhilfe/normalisiere';
@@ -136,6 +140,30 @@ const harness = {
     return zeiten;
   },
 
+  /** LV-Stände des LV ohne Zustand (`Speicher.lvStaende.auflisten`). */
+  async lvStaende(name: string, id: LeistungsverzeichnisId): Promise<LvStandUebersicht[] | Kurz> {
+    const repo = hole(name).lvStaende;
+    if (repo === undefined) return { ok: false, code: 'unbekannt', meldung: 'lvStaende fehlt' };
+    const r = await repo.auflisten(id);
+    return r.ok ? [...r.wert] : kurz(r);
+  },
+
+  /** Lädt einen LV-Stand und vergleicht seinen eingefrorenen Zustand kanonisch mit dem Erwarteten. */
+  async lvStandPruefen(
+    name: string,
+    id: LvStandId,
+    erwartet: LvZustand,
+  ): Promise<Kurz & { gleich?: boolean }> {
+    const repo = hole(name).lvStaende;
+    if (repo === undefined) return { ok: false, code: 'unbekannt', meldung: 'lvStaende fehlt' };
+    const r = await repo.laden(id);
+    if (!r.ok) return kurz(r);
+    return {
+      ok: true,
+      gleich: kanonischKompakt(r.wert.zustand) === kanonischKompakt(normalisiere(erwartet)),
+    };
+  },
+
   async angebotPruefen(name: string, id: AngebotId, erwartet: AngebotZustand): Promise<boolean> {
     const r = await hole(name).angebote.laden(id);
     return r.ok && kanonischKompakt(r.wert) === kanonischKompakt(normalisiere(erwartet));
@@ -163,6 +191,39 @@ const harness = {
       exportMs: t1 - t0,
       importMs: t2 - t1,
     };
+  },
+
+  /** Legt im OPFS eine Datenbank der Schemaversion 1 mit dem Inhalt `datei` an (eigener Worker, danach freigegeben). */
+  async schema1Anlegen(
+    name: string,
+    datei: Projektdatei,
+  ): Promise<{ ok: boolean; version?: number; meldung?: string }> {
+    const w = new Schema1Worker();
+    try {
+      return await new Promise((fertig) => {
+        w.addEventListener(
+          'message',
+          (e: MessageEvent<{ ok: boolean; version?: number; meldung?: string }>) => {
+            fertig(e.data);
+          },
+        );
+        w.addEventListener('error', (e) => {
+          fertig({ ok: false, meldung: e.message });
+        });
+        w.postMessage({ name, datei });
+      });
+    } finally {
+      w.terminate();
+    }
+  },
+
+  async exportieren(name: string, projektId: ProjektId): Promise<Kurz & { text?: string }> {
+    const r = await hole(name).projektdateiExportieren(projektId);
+    return r.ok ? { ok: true, text: r.wert } : kurz(r);
+  },
+
+  async importieren(name: string, text: string): Promise<Kurz> {
+    return kurz(await hole(name).projektdateiImportieren(text));
   },
 
   async persistenz(name: string): Promise<Persistenzstatus> {

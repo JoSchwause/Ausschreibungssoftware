@@ -10,6 +10,9 @@ import type {
   AngebotId,
   AngebotZustand,
   Angebotsposition,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvChangeSet,
+  AuftragsLvZustand,
   Betrag,
   BieterId,
   ChangeSet,
@@ -37,6 +40,7 @@ import type {
   Protokolleintrag,
   ProtokollId,
   Prozent,
+  Summenaenderung,
   Summenstand,
   TitelId,
   Zeitstempel,
@@ -156,7 +160,7 @@ function abbilden(fx: FxLv, projektId: ProjektId): LvZustand {
       id: k.id as PositionId,
       ordnungszahl: k.ordnungszahl as Ordnungszahl,
       ozIndex: k.ozIndex ?? null,
-      merkmale: fixtureMerkmale(k), // // v1.1b: mechanisch angepasst, Folgeticket
+      merkmale: fixtureMerkmale(k),
       zuschlag: fixtureZuschlag(k),
       kurztext: k.kurztext,
       langtext: [{ art: 'text', text: k.langtext }],
@@ -185,8 +189,9 @@ export interface FixtureDaten {
   readonly angebote: readonly AngebotZustand[];
 }
 
-// // v1.1b: mechanisch angepasst, Folgeticket: Die Fixtures kennen noch die einzelne Positionsart; die Abbildung setzt sie in die Merkmale von `vertrag`
-// v1.1b um (Gruppe und Variante der Wahl `null`: die Fixtures haben keine, nichts erfunden).
+// Dauerhafte Abbildung des Fixture-Formats: Die Fixtures (`fixtures/*.json`) führen je Position eine einzelne
+// `positionsart` und behalten sie; hier wird sie in die Merkmale und den Zuschlag von `vertrag` übersetzt (Gruppe und
+// Variante der Wahl `null`: die Fixtures haben keine, nichts erfunden).
 type FxPosition = Extract<FxKnoten, { art: 'position' }>;
 
 function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
@@ -271,7 +276,7 @@ export function eintrag(
   nr: number,
   projektId: ProjektId,
   aggregat: Protokolleintrag['aggregat'],
-  befehl: Protokolleintrag['befehl'], // // v1.1b: mechanisch angepasst, Folgeticket
+  befehl: Protokolleintrag['befehl'],
 ): Protokolleintrag {
   return {
     id: `protokoll-${String(nr).padStart(6, '0')}` as ProtokollId,
@@ -294,6 +299,71 @@ export function lvAnlegenChangeSet(z: LvZustand): LvChangeSet {
   return {
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: kopf.id,
+    kopf: { vorher: null, nachher: kopf },
+    knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
+    summen: z.summen,
+  };
+}
+
+/** Löschen eines LV, wie der Vertrag es beschreibt: voller Kopf in `vorher`, alle Knoten und alle Summen als entfernt. */
+export function lvLoeschenChangeSet(z: LvZustand): LvChangeSet {
+  const { knoten, ...kopf } = z.leistungsverzeichnis;
+  return {
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: kopf.id,
+    kopf: { vorher: kopf, nachher: null },
+    knoten: { hinzugefuegt: [], geaendert: [], entfernt: knoten },
+    summen: loeschSummen(z.summen),
+  };
+}
+
+/** Löschen eines Angebots: voller Kopf in `vorher`, alle Angebotspositionen und Summen als entfernt. */
+export function angebotLoeschenChangeSet(z: AngebotZustand): AngebotChangeSet {
+  const { positionen, ...kopf } = z.angebot;
+  return {
+    art: 'angebot',
+    angebotId: kopf.id,
+    kopf: { vorher: kopf, nachher: null },
+    positionen: { hinzugefuegt: [], geaendert: [], entfernt: positionen },
+    summen: loeschSummen(z.summen),
+  };
+}
+
+function loeschSummen(s: Summenstand): Summenaenderung {
+  return {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: {
+      positionen: [],
+      gliederungen: [],
+      gesamt: s.gesamt,
+      entfernt: { positionen: s.positionen, gliederungen: s.gliederungen },
+    },
+  };
+}
+
+/** Ein Auftrags-LV aus dem LV und einem Angebot des Fixtures (Knoten und Summen wie im LV; nur für Speichertests). */
+export function auftragsLvAus(lv: LvZustand, angebotId: AngebotId, id = 'auftrags-lv-1'): AuftragsLvZustand {
+  const { id: lvId, ...rest } = lv.leistungsverzeichnis;
+  return {
+    auftragsLeistungsverzeichnis: {
+      ...rest,
+      id: id as AuftragsLeistungsverzeichnisId,
+      leistungsverzeichnisId: lvId,
+      angebotId,
+      name: `Auftrag zu ${rest.name}`,
+      knoten: rest.knoten.map((k) => (k.elternId === lvId ? { ...k, elternId: id as ElternId } : k)),
+    },
+    summen: lv.summen,
+  };
+}
+
+export function auftragsLvAnlegenChangeSet(z: AuftragsLvZustand): AuftragsLvChangeSet {
+  const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
+  return {
+    art: 'auftrags-leistungsverzeichnis',
+    auftragsLeistungsverzeichnisId: kopf.id,
     kopf: { vorher: null, nachher: kopf },
     knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
     summen: z.summen,
@@ -340,7 +410,7 @@ export function anlegenSchritte(f: FixtureDaten, ab = 1): Schritt[] {
             mwstSatz: kopf.mwstSatz,
             nachlass: kopf.nachlass,
             knoten,
-            wurzelId: kopf.id, // v1.1a: mechanisch angepasst, Folgeticket
+            wurzelId: kopf.id,
           },
         },
       ),

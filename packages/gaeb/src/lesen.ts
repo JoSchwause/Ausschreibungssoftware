@@ -2,34 +2,50 @@
 // GAEB DA XML 3.3, Phasen X81 und X83 → `LvInhalt` (Ticket 22). Tolerant lesen: Fehler sind Prüfbefunde, nie ein
 // Abbruch. Rein (A2): Eingabe sind Bytes oder Text, Kennungen kommen aus der `IdQuelle`, kein I/O, keine Uhr.
 //
-// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments. Was `vertrag` nicht halten kann, wird nicht
+// Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments; seit v1.1b (Ticket 32) zusätzlich alle
+// Positionsmerkmale unabhängig (F5), Wahl mit Gruppe und Variante, Zuschlag in allen drei Bezugsformen, Langtext
+// (`text.ts`), Kopfdaten (`OWN`, `AwardInfo`) und Leitbeschreibung (`SumDescr`/`SubDescr`). Was `vertrag` nicht halten kann, wird nicht
 // still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …).
 
-import { leseAustausch } from '@tethys/dezimal';
+import { gesamtpreis, leseAustausch, vergleiche } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
+  Auftraggeber,
+  Bedarf,
+  Bezugsposition,
+  Einheitspreis,
+  Einheitspreisanteile,
   ElternId,
   GaebLesung,
   GaebPhase,
+  Gewaehrleistung,
   Hinweistext,
   IdQuelle,
   Knoten,
   LeistungsverzeichnisId,
+  Leitbeschreibung,
   Los,
   LvInhalt,
+  Menge,
+  Nachlass,
+  Ordnungszahl,
   OzMaske,
   OzStelle,
-  Ordnungszahl,
   Position,
   PositionId,
+  Positionsmerkmale,
   Prozent,
   Pruefbefund,
   Titel,
+  Unterbeschreibung,
+  Vergabeinformationen,
+  Wahlzuordnung,
   Zahlenart,
+  Zuschlagsbezug,
 } from '@tethys/vertrag';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
-import { leseKurztext, leseLangtext } from './text';
+import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
 import type { XmlElement, XmlErgebnis } from './xml';
@@ -53,10 +69,11 @@ export interface LeseOptionen {
   readonly trennzeichen?: string | null;
 }
 
-/** `GaebLesung` plus die Wurzelkennung, unter der die obersten Knoten hängen (`elternId` der Ebene 1). */
-export interface GaebLesungErgebnis extends GaebLesung {
-  readonly wurzelId: LeistungsverzeichnisId | null;
-}
+/**
+ * Ergebnis des Lesers. Die Wurzelkennung, unter der die obersten Knoten hängen, steht seit v1.1a nur noch in
+ * `inhalt.wurzelId`.
+ */
+export type GaebLesungErgebnis = GaebLesung;
 
 /** E-19: MwSt-Satz, wenn der Aufrufer keinen liefert (X81/X83 tragen keinen). */
 export const STANDARD_MWST_SATZ = '19.00' as Prozent;
@@ -108,18 +125,33 @@ const BLATTNAMEN: ReadonlySet<string> = new Set([
   'RefDescr',
   'CtlgID',
   'CtlgCode',
+  'Markup',
+  'Name1',
+  'Street',
+  'PCode',
+  'City',
+  'AwardNo',
+  'DPNo',
+  'OpenDate',
+  'OpenTime',
+  'EvalEnd',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
 ]);
 
 type Veraenderlich<T> = { -readonly [K in keyof T]: T[K] };
 
-/** v1.1b: mechanisch angepasst, Folgeticket. Rangfolge der Merkmale (wahl vor bedarf vor stundenlohn), wie der Leser sie vor v1.1b als einzelne Art ansetzte. */
-type Merkmalsrang = 'wahl' | 'bedarf' | 'stundenlohn' | 'normal';
-
-const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
+export const kind = (e: XmlElement | undefined, name: string): XmlElement | undefined =>
   e ? elementKinder(e).find((k) => k.name === name) : undefined;
-const kinder = (e: XmlElement | undefined, name: string): XmlElement[] =>
+export const kinder = (e: XmlElement | undefined, name: string): XmlElement[] =>
   e ? elementKinder(e).filter((k) => k.name === name) : [];
-const wert = (e: XmlElement | undefined): string | null => (e ? textInhalt(e).trim() : null);
+export const wert = (e: XmlElement | undefined): string | null => (e ? textInhalt(e).trim() : null);
 
 interface Aggregat {
   anzahl: number;
@@ -139,8 +171,8 @@ const HINWEIS_TEXT: Readonly<Record<Austauschhinweiscode, string | null>> = {
   gerundet: 'hat mehr Nachkommastellen als zulässig; der Wert wurde kaufmännisch gerundet',
 };
 
-/** Der eigentliche Leser, ein Aufruf je Datei. */
-class Leser {
+/** Der eigentliche Leser, ein Aufruf je Datei. Auch der Angebotsleser (X84, `angebot.ts`) meldet über ihn. */
+export class Leser {
   readonly befunde: Pruefbefund[] = [];
   private readonly aggregate = new Map<string, Aggregat>();
   private begrenzt = false;
@@ -148,10 +180,16 @@ class Leser {
   private readonly formatArten = new Set<string>();
   private formatErst: XmlElement | null = null;
 
+  /** `ids`: `null`, wenn der Aufrufer keine Texte liest (X84); dann werfen `kurztext` und `langtext`. */
   constructor(
     private readonly xml: XmlErgebnis,
-    private readonly opt: LeseOptionen,
+    private readonly ids: IdQuelle | null,
   ) {}
+
+  private idQuelle(): IdQuelle {
+    if (this.ids === null) throw new Error('Leser ohne IdQuelle kann keine Texte lesen');
+    return this.ids;
+  }
 
   // --- Befunde -------------------------------------------------------------------------------------------
 
@@ -159,7 +197,11 @@ class Leser {
     el: XmlElement | undefined,
     extra: { knotenId?: PositionId | string; feld?: string } = {},
   ): Pruefbefund['ort'] {
-    if (!el) return { ...(extra.feld ? { feld: extra.feld } : {}) };
+    if (!el)
+      return {
+        ...(extra.knotenId ? { knotenId: extra.knotenId as PositionId } : {}),
+        ...(extra.feld ? { feld: extra.feld } : {}),
+      };
     const { zeile, spalte } = this.xml.ortVon(el.offset);
     return {
       pfad: this.xml.pfadVon(el),
@@ -232,8 +274,8 @@ class Leser {
         quelle: 'gaeb-lesen',
         code: 'formatierung-verworfen',
         meldung:
-          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Auszeichnung verworfen, die der Vertrag nicht abbildet ` +
-          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt als reiner Text erhalten.`,
+          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Formatierung verworfen, die der Vertrag nicht abbildet ` +
+          `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt ohne diese Formatierung erhalten.`,
         ort: this.ort(this.formatErst ?? undefined),
       });
     for (const a of this.aggregate.values())
@@ -258,13 +300,13 @@ class Leser {
   }
 
   kurztext(el: XmlElement | undefined): string {
-    const r = leseKurztext(el, this.opt.ids);
+    const r = leseKurztext(el, this.idQuelle());
     this.nimm(r, el);
     return r.text;
   }
 
   langtext(el: XmlElement | undefined): Position['langtext'] {
-    const r = leseLangtext(el, this.opt.ids);
+    const r = leseLangtext(el, this.idQuelle());
     this.nimm(r, el);
     return r.langtext;
   }
@@ -337,7 +379,7 @@ class Leser {
 
 // --- OZ-Maske ----------------------------------------------------------------------------------------------
 
-interface Bkdn {
+export interface Bkdn {
   readonly typ: 'Lot' | 'BoQLevel' | 'Item' | 'Index';
   readonly laenge: number;
   readonly numerisch: boolean;
@@ -349,7 +391,7 @@ const stelle = (b: Bkdn): OzStelle => ({
   zeichen: b.numerisch ? 'numerisch' : 'alphanumerisch',
 });
 
-function leseMaske(
+export function leseMaske(
   l: Leser,
   boqInfo: XmlElement | undefined,
   trenn: string | null,
@@ -442,8 +484,11 @@ function leseMaske(
       index.el,
     );
 
+  // F1 (v1.1a): Nur ein Lot an erster Stelle ist die Los-Stufe; tiefere Lot-Stufen werden Titel (`los-zu-titel`).
+  const losStufe = eintraege[0]?.typ === 'Lot';
   const maske: OzMaske = {
     gliederung: stufen.map(stelle),
+    ...(losStufe ? { losStufe: true } : {}),
     position: item ? stelle(item) : { laenge: 4, zeichen: 'numerisch' },
     index: index ? stelle(index) : null,
     trennzeichen: trenn,
@@ -455,6 +500,7 @@ function leseMaske(
 
 const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'Qty',
+  'QtyTBD',
   'QU',
   'UP',
   'Description',
@@ -463,10 +509,96 @@ const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'Provis',
   'ALNGroupNo',
   'ALNSerNo',
+  'MarkupIt',
+  'SumDescr',
+  'SubDescr',
 ]);
-const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set(['MarkupType', 'MarkupSubQty', 'Description']);
+/** Eine Zuschlagsposition trägt dieselben Merkmale wie eine Position (F5) plus Bezugsform und Satz. */
+const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
+  'MarkupType',
+  'MarkupSubQty',
+  'Markup',
+  'Description',
+  'LumpSumItem',
+  'HourIt',
+  'Provis',
+  'ALNGroupNo',
+  'ALNSerNo',
+  'MarkupIt',
+]);
+const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
+  'SubDNo',
+  'Description',
+  'QtySpec',
+  'Qty',
+  'QU',
+]);
+const BESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set(['CompleteText']);
+const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'OutlineText']);
 const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody']);
+/** X86: `Totals` der Bereiche sind abgeleitete Werte; der Kern rechnet sie neu (Ticket 40). */
+const KATEGORIE_BEHANDELT_X86: ReadonlySet<string> = new Set([...KATEGORIE_BEHANDELT, 'Totals']);
+export const ANTEILE = ['UPComp1', 'UPComp2', 'UPComp3', 'UPComp4', 'UPComp5', 'UPComp6'] as const;
+/** X86: Preise einer Position, die der Leser übernimmt (`UP`, `UPComp…`) oder als abgeleitet übergeht (`IT`). */
+const POSITION_BEHANDELT_X86: ReadonlySet<string> = new Set([...POSITION_BEHANDELT, 'IT', ...ANTEILE]);
+const ZUSCHLAG_BEHANDELT_X86: ReadonlySet<string> = new Set([...ZUSCHLAG_BEHANDELT, 'IT', 'ITMarkup']);
 const TEILE_ERLAUBT = /^[0-9A-Za-z_ ]*$/;
+
+/** Ein Feld der Einheitspreisanteile ohne die Bezeichnung des freien Anteils. */
+export type Anteil = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+
+/** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus `LblUPComp<n>`), und die Bezeichnung des freien Anteils. */
+interface Preisangaben {
+  readonly anteile: readonly (Anteil | null)[];
+  readonly freiBezeichnung: string | null;
+}
+
+export const ANTEIL_NACH_BEZEICHNUNG: Readonly<Record<string, Anteil>> = {
+  lohn: 'lohn',
+  stoffe: 'stoffe',
+  material: 'stoffe',
+  geräte: 'geraete',
+  geraete: 'geraete',
+  nachunternehmer: 'nachunternehmer',
+  sonstiges: 'sonstiges',
+};
+const ANTEIL_NACH_TYP: Readonly<Record<string, Anteil>> = {
+  Wages: 'lohn',
+  Materials: 'stoffe',
+  Plant: 'geraete',
+  Miscellaneous: 'sonstiges',
+  Unknown: 'frei',
+};
+
+/**
+ * Ordnet `LblUPComp1…6` den Anteilen zu (Ticket 40): zuerst nach der Bezeichnung (Lohn, Stoffe/Material, Geräte,
+ * Nachunternehmer, Sonstiges; so schreibt der Export), sonst nach `Type` (Wages, Materials, Plant, Miscellaneous;
+ * Unknown ist der freie Anteil mit der Bezeichnung als `freiBezeichnung`). Ein zweiter Anteil derselben Art ist Befund.
+ */
+function lesePreisangaben(l: Leser, boqInfo: XmlElement | undefined): Preisangaben {
+  const anteile: (Anteil | null)[] = [];
+  const belegt = new Set<Anteil>();
+  let freiBezeichnung: string | null = null;
+  for (let n = 1; n <= 6; n++) {
+    const el = kind(boqInfo, `LblUPComp${String(n)}`);
+    if (!el) {
+      anteile.push(null);
+      continue;
+    }
+    const bez = wert(el) ?? '';
+    const typ = el.attrs.get('Type') ?? '';
+    const anteil = ANTEIL_NACH_BEZEICHNUNG[bez.toLowerCase()] ?? ANTEIL_NACH_TYP[typ] ?? 'frei';
+    if (belegt.has(anteil)) {
+      l.nichtAbgebildet(el, `BoQInfo/LblUPComp${String(n)}`, 'zweiter Einheitspreisanteil derselben Art');
+      anteile.push(null);
+      continue;
+    }
+    belegt.add(anteil);
+    anteile.push(anteil);
+    if (anteil === 'frei') freiBezeichnung = bez === '' ? null : bez;
+  }
+  return { anteile, freiBezeichnung };
+}
 
 interface Ebene {
   /** Kennung des Elternknotens im Ergebnis. */
@@ -485,14 +617,11 @@ class Aufbau {
   private readonly gaebIds = new Map<string, PositionId>();
   private readonly ozGesehen = new Set<string>();
   private readonly grundpositionen = new Map<string, PositionId>();
-  private wahlGefunden = 0;
   private bereichszaehler = 0;
   private readonly zuschlaege: {
     pos: Veraenderlich<Position>;
-    refs: { id: string; el: XmlElement }[];
-    el: XmlElement;
+    refs: { id: string; el: XmlElement; teilmenge: Menge | null }[];
   }[] = [];
-  private readonly wahlOhneBezug: Veraenderlich<Position>[] = [];
 
   constructor(
     private readonly l: Leser,
@@ -501,6 +630,7 @@ class Aufbau {
     private readonly stufen: readonly Bkdn[],
     private readonly trenn: string | null,
     readonly wurzelId: LeistungsverzeichnisId,
+    private readonly preise: Preisangaben | null = null,
   ) {}
 
   private reihenfolge(elternId: string): number {
@@ -621,7 +751,7 @@ class Aufbau {
       this.knoten.push(titel);
       id = titel.id;
     }
-    this.l.restMelden(el, KATEGORIE_BEHANDELT, 'BoQCtgy');
+    this.l.restMelden(el, this.preise ? KATEGORIE_BEHANDELT_X86 : KATEGORIE_BEHANDELT, 'BoQCtgy');
     const naechste: Ebene = { id, teile, ozOk, tiefe };
     for (const b of kinder(el, 'BoQBody')) this.koerper(b, naechste);
   }
@@ -632,7 +762,8 @@ class Aufbau {
     const detail = kind(ct, 'DetailTxt');
     const outline = kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt');
     let text = this.l.langtext(detail);
-    if (text.length === 0) text = this.l.langtext(outline);
+    // Ein Detailtext ohne Inhalt (auch nur leere Absätze) gilt als fehlend; dann trägt der Kurztext den Hinweis.
+    if (langtextLeer(text)) text = this.l.langtext(outline);
     else if (outline && textInhalt(outline).trim() !== '')
       this.l.nichtAbgebildet(outline, 'Remark/OutlineText', 'Kurztext des Hinweistexts ohne Entsprechung');
     const h: Hinweistext = {
@@ -653,7 +784,7 @@ class Aufbau {
           this.position(k, eltern, bereich);
           break;
         case 'MarkupItem':
-          this.zuschlagsposition(k, eltern);
+          this.zuschlagsposition(k, eltern, bereich);
           break;
         case 'Remark':
           this.hinweis(k, eltern);
@@ -722,20 +853,23 @@ class Aufbau {
     return { ordnungszahl, ozIndex };
   }
 
-  private position(el: XmlElement, eltern: Ebene, bereich: number): void {
-    const id = this.ids.position();
-    this.registriereId(el, id);
-    const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
-
-    // Positionsmerkmale
+  /**
+   * Liest die Positionsmerkmale (F5): Bedarf (`Provis`), Wahl (`ALNGroupNo`/`ALNSerNo`), Stundenlohn (`HourIt`),
+   * Pauschal (`LumpSumItem`) und Zuschlagskennzeichen (`MarkupIt`), jedes unabhängig von den anderen. Für eine
+   * Alternative (Variante > 0) setzt `grundpositionId` die erste Grundausführung (Variante 0) derselben Gruppe im
+   * selben LV-Bereich davor; die Grundausführung selbst verweist auf keine (Vertragskommentar `Positionsmerkmale.wahl`).
+   */
+  private merkmale(el: XmlElement, id: PositionId, bereich: number): Positionsmerkmale {
     const pauschal = this.l.merkmal(el, 'LumpSumItem', id);
     const stundenlohn = this.l.merkmal(el, 'HourIt', id);
+    const zuschlagskennzeichen = this.l.merkmal(el, 'MarkupIt', id);
     const provis = this.l.aufzaehlung(kind(el, 'Provis'), ['WithTotal', 'WithoutTotal'] as const, id);
-    const qtyTbd = kind(el, 'QtyTBD') !== undefined;
+    const bedarf: Bedarf | null =
+      provis === null ? null : provis === 'WithTotal' ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag';
+
+    let wahl: Wahlzuordnung | null = null;
     const gruppeEl = kind(el, 'ALNGroupNo');
     const serieEl = kind(el, 'ALNSerNo');
-    let gruppe: string | null = null;
-    let serie: number | null = null;
     if (gruppeEl || serieEl) {
       const g = wert(gruppeEl);
       const s = wert(serieEl);
@@ -743,33 +877,60 @@ class Aufbau {
         this.l.melde(
           'warnung',
           'wahl-angabe-unvollstaendig',
-          'ALNGroupNo und ALNSerNo müssen beide als Zahl vorhanden sein; die Zuordnung zu einer Grundposition entfällt.',
+          'ALNGroupNo und ALNSerNo müssen beide als Zahl vorhanden sein; die Position wird ohne Wahl übernommen.',
           gruppeEl ?? serieEl,
           { knotenId: id },
         );
       else {
-        gruppe = String(Number(g));
-        serie = Number(s);
+        const gruppe = Number(g);
+        const variante = Number(s);
+        const schluessel = `${String(bereich)}|${String(gruppe)}`;
+        let grundpositionId: PositionId | null = null;
+        if (variante === 0) {
+          if (!this.grundpositionen.has(schluessel)) this.grundpositionen.set(schluessel, id);
+        } else {
+          grundpositionId = this.grundpositionen.get(schluessel) ?? null;
+          if (grundpositionId === null)
+            this.l.melde(
+              'warnung',
+              'wahl-ohne-grundposition',
+              `Zur Wahlposition (Gruppe ${String(gruppe)}, Variante ${String(variante)}) gibt es im selben LV-Bereich davor keine Grundposition.`,
+              el,
+              { knotenId: id, feld: 'grundpositionId' },
+            );
+        }
+        wahl = { gruppe, variante, grundpositionId };
       }
     }
-    const merkmale: Merkmalsrang[] = [];
-    if (serie !== null && serie > 0) merkmale.push('wahl');
-    if (provis !== null) merkmale.push('bedarf');
-    if (stundenlohn) merkmale.push('stundenlohn');
-    const positionsart: Merkmalsrang = merkmale[0] ?? 'normal';
-    if (merkmale.length > 1)
-      this.l.melde(
-        'warnung',
-        'positionsart-kombination',
-        `Die Position trägt mehrere Arten (${merkmale.join(', ')}); der Vertrag kennt nur eine: ${positionsart} gilt, ${merkmale.slice(1).join(', ')} geht verloren.`,
-        el,
-        { knotenId: id, feld: 'positionsart' },
-      );
+    return { bedarf, wahl, stundenlohn, pauschal, zuschlagskennzeichen };
+  }
+
+  /** Kurz- und Langtext aus `Description/CompleteText`. */
+  private texte(desc: XmlElement | undefined): Pick<Position, 'kurztext' | 'langtext'> {
+    const ct = kind(desc, 'CompleteText');
+    return {
+      kurztext: this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt')),
+      langtext: this.l.langtext(kind(ct, 'DetailTxt')),
+    };
+  }
+
+  /** Einheit (`QU`): leer ergibt `null`, nie `''` (Vertrag v1.2); `----` bleibt Text. */
+  private einheit(el: XmlElement): string | null {
+    const w = wert(kind(el, 'QU'));
+    return w === null || w === '' ? null : w;
+  }
+
+  private position(el: XmlElement, eltern: Ebene, bereich: number): void {
+    const id = this.ids.position();
+    this.registriereId(el, id);
+    const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
+    const merkmale = this.merkmale(el, id, bereich);
+    const qtyTbd = kind(el, 'QtyTBD') !== undefined;
 
     // Menge, Einheit, Preis
     const qtyEl = kind(el, 'Qty');
     const menge = qtyEl ? this.l.zahl('menge', qtyEl, id, 'menge') : null;
-    if (!qtyEl && !qtyTbd && !pauschal)
+    if (!qtyEl && !qtyTbd && !merkmale.pauschal)
       this.l.melde(
         'warnung',
         'menge-fehlt',
@@ -777,17 +938,23 @@ class Aufbau {
         el,
         { knotenId: id, feld: 'menge' },
       );
-    const quEl = kind(el, 'QU');
-    const einheit = wert(quEl);
-    if (einheit === null || einheit === '')
-      this.l.melde('warnung', 'einheit-fehlt', 'Die Position hat keine Mengeneinheit (QU).', quEl ?? el, {
-        knotenId: id,
-        feld: 'einheit',
-      });
+    const einheit = this.einheit(el);
+    if (einheit === null)
+      this.l.melde(
+        'warnung',
+        'einheit-fehlt',
+        'Die Position hat keine Mengeneinheit (QU).',
+        kind(el, 'QU') ?? el,
+        { knotenId: id, feld: 'einheit' },
+      );
     const upEl = kind(el, 'UP');
     const einheitspreis = upEl ? this.l.zahl('einheitspreis', upEl, id, 'einheitspreis') : null;
+    const epa = this.preise ? this.anteile(el, id, this.preise) : null;
+    if (this.preise && menge !== null && einheitspreis !== null)
+      this.pruefeGesamtpreis(el, id, menge, einheitspreis);
+    const tbd = kind(el, 'QtyTBD');
+    if (tbd && qtyEl) this.l.nichtAbgebildet(tbd, 'Item/QtyTBD', 'Menge noch festzulegen neben einer Menge');
 
-    // Texte
     const desc = kind(el, 'Description');
     if (!desc)
       this.l.melde(
@@ -797,79 +964,114 @@ class Aufbau {
         el,
         { knotenId: id },
       );
-    const ct = kind(desc, 'CompleteText');
-    const kurztext = this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt'));
-    const langtext = this.l.langtext(kind(ct, 'DetailTxt'));
+    const texte = this.texte(desc);
+    const leitbeschreibung = this.leitbeschreibung(el, id);
 
-    const pos: Veraenderlich<Position> = {
+    const pos: Position = {
       art: 'position',
       id,
       elternId: eltern.id as ElternId,
       reihenfolge: this.reihenfolge(eltern.id),
       ordnungszahl,
       ozIndex,
-      // v1.1b: mechanisch angepasst, Folgeticket. Nur das Merkmal, das vor v1.1b als Art galt (Befund
-      // `positionsart-kombination` bleibt). Gruppe und Variante bleiben wie bisher ungespeichert (`null`, Befund
-      // `wahl-variante-nicht-abgebildet`); sie zu setzen ist Sache des Folgetickets gaeb.
-      merkmale: {
-        bedarf:
-          positionsart === 'bedarf'
-            ? provis === 'WithTotal'
-              ? 'mit-gesamtbetrag'
-              : 'ohne-gesamtbetrag'
-            : null,
-        wahl: positionsart === 'wahl' ? { gruppe: null, variante: null, grundpositionId: null } : null,
-        stundenlohn: positionsart === 'stundenlohn',
-        pauschal,
-        zuschlagskennzeichen: false,
-      },
+      merkmale,
       zuschlag: null,
-      kurztext,
-      langtext,
+      ...(leitbeschreibung === undefined ? {} : { leitbeschreibung }),
+      ...texte,
       menge,
-      einheit: einheit === '' ? null : einheit,
+      einheit,
       einheitspreis,
-      epa: null,
+      epa,
     };
     this.knoten.push(pos);
-
-    // Wahl- und Grundpositionen (ALNGroupNo/ALNSerNo, Fachdokumentation 3.3, 4.5.2)
-    if (gruppe !== null && serie !== null) {
-      this.wahlGefunden += 1;
-      const schluessel = `${String(bereich)}|${gruppe}`;
-      if (serie === 0) {
-        if (!this.grundpositionen.has(schluessel)) this.grundpositionen.set(schluessel, id);
-      } else {
-        const grund = this.grundpositionen.get(schluessel);
-        if (grund && positionsart === 'wahl' && pos.merkmale.wahl !== null)
-          pos.merkmale = { ...pos.merkmale, wahl: { ...pos.merkmale.wahl, grundpositionId: grund } }; // v1.1b: mechanisch angepasst, Folgeticket
-        else if (positionsart === 'wahl')
-          this.l.melde(
-            'warnung',
-            'wahl-ohne-grundposition',
-            `Zur Wahlposition (Gruppe ${gruppe}, Variante ${String(serie)}) gibt es im selben LV-Bereich davor keine Grundposition.`,
-            el,
-            { knotenId: id, feld: 'grundpositionId' },
-          );
-      }
-    }
-
-    this.l.restMelden(el, POSITION_BEHANDELT, 'Item');
+    this.l.restMelden(el, this.preise ? POSITION_BEHANDELT_X86 : POSITION_BEHANDELT, 'Item');
   }
 
-  private zuschlagsposition(el: XmlElement, eltern: Ebene): void {
+  /**
+   * Leitbeschreibung (E-11): `SumDescr` = Yes und die `SubDescr` darunter. `undefined`: keine. Unterbeschreibungen
+   * ohne `SumDescr` werden trotzdem übernommen (kein stiller Verlust), mit Befund.
+   */
+  private leitbeschreibung(el: XmlElement, id: PositionId): Leitbeschreibung | undefined {
+    const sum = this.l.merkmal(el, 'SumDescr', id);
+    const subs = kinder(el, 'SubDescr');
+    if (!sum && subs.length === 0) return undefined;
+    if (!sum)
+      this.l.melde(
+        'warnung',
+        'leitbeschreibung-ohne-kennzeichen',
+        'Die Position hat Unterbeschreibungen (SubDescr), aber SumDescr ist nicht Yes; sie werden als Leitbeschreibung übernommen.',
+        subs[0],
+        { knotenId: id, feld: 'leitbeschreibung' },
+      );
+    const unterbeschreibungen = subs.map((sub): Unterbeschreibung => {
+      const nummer = wert(kind(sub, 'SubDNo')) ?? '';
+      if (nummer === '')
+        this.l.melde(
+          'warnung',
+          'unterbeschreibung-ohne-nummer',
+          'Die Unterbeschreibung hat keine Nummer (SubDNo).',
+          sub,
+          { knotenId: id, feld: 'leitbeschreibung' },
+        );
+      const mitMenge = this.l.merkmal(sub, 'QtySpec', id);
+      const qtyEl = kind(sub, 'Qty');
+      const menge = mitMenge && qtyEl ? this.l.zahl('menge', qtyEl, id, 'leitbeschreibung') : null;
+      if (!mitMenge && qtyEl) this.l.nichtAbgebildet(qtyEl, 'SubDescr/Qty', 'Menge ohne QtySpec Yes');
+      const desc = kind(sub, 'Description');
+      if (desc) {
+        this.l.restMelden(desc, BESCHREIBUNG_BEHANDELT, 'SubDescr/Description');
+        const ct = kind(desc, 'CompleteText');
+        if (ct) this.l.restMelden(ct, KOMPLETTTEXT_BEHANDELT, 'SubDescr/CompleteText');
+      }
+      this.l.restMelden(sub, UNTERBESCHREIBUNG_BEHANDELT, 'SubDescr');
+      return { nummer, ...this.texte(desc), menge, einheit: this.einheit(sub) };
+    });
+    return { unterbeschreibungen };
+  }
+
+  private zuschlagsposition(el: XmlElement, eltern: Ebene, bereich: number): void {
     const id = this.ids.position();
     this.registriereId(el, id);
     const { ordnungszahl, ozIndex } = this.basis(el, eltern, id);
-    const typ = this.l.aufzaehlung(
-      kind(el, 'MarkupType'),
-      ['IdentAsMark', 'AllInCat', 'ListInSubQty'] as const,
-      id,
-    );
-    const desc = kind(el, 'Description');
-    const ct = kind(desc, 'CompleteText');
-    const kurztext = this.l.kurztext(kind(kind(kind(ct, 'OutlineText'), 'OutlTxt'), 'TextOutlTxt'));
-    const langtext = this.l.langtext(kind(ct, 'DetailTxt'));
+    const merkmale = this.merkmale(el, id, bereich);
+    const typEl = kind(el, 'MarkupType');
+    const typ = this.l.aufzaehlung(typEl, ['IdentAsMark', 'AllInCat', 'ListInSubQty'] as const, id);
+    const markupEl = kind(el, 'Markup');
+    const prozentsatz = markupEl ? this.l.zahl('prozent', markupEl, id, 'zuschlag.prozentsatz') : null;
+
+    const refs: { id: string; el: XmlElement; teilmenge: Menge | null }[] = [];
+    for (const sub of kinder(el, 'MarkupSubQty')) {
+      const r = kind(sub, 'RefItem');
+      const ref = r?.attrs.get('IDRef');
+      // Teilmenge (`SubQty`): keine amtliche Datei zeigt sie; seit Ticket 40 schreibt der Export sie, also liest der
+      // Leser sie auch (Rundweg).
+      const subQty = kind(sub, 'SubQty');
+      const teilmenge = subQty ? this.l.zahl('menge', subQty, id, 'zuschlag.bezug') : null;
+      if (r && ref !== undefined) refs.push({ id: ref, el: r, teilmenge });
+      else if (subQty) this.l.nichtAbgebildet(subQty, 'MarkupSubQty/SubQty', 'Teilmenge ohne Bezugsposition');
+    }
+
+    let bezug: Zuschlagsbezug;
+    if (typ === 'IdentAsMark') bezug = { art: 'kennzeichnung' };
+    else if (typ === 'AllInCat') bezug = { art: 'gliederung' };
+    else bezug = { art: 'positionen', positionen: [] };
+    if (typ === null)
+      this.l.melde(
+        'warnung',
+        'zuschlag-bezug-nicht-abbildbar',
+        `Die Zuschlagsposition hat keine gültige Bezugsform (MarkupType); ${refs.length > 0 ? 'die RefItem werden als Liste von Bezugspositionen übernommen' : 'der Bezug bleibt leer'}.`,
+        typEl ?? el,
+        { knotenId: id, feld: 'zuschlag.bezug' },
+      );
+    else if (typ !== 'ListInSubQty' && refs.length > 0)
+      this.l.melde(
+        'warnung',
+        'zuschlag-bezug-nicht-abbildbar',
+        `Die Bezugsform ${typ} hat keine Liste von Bezugspositionen; ${String(refs.length)} RefItem werden nicht übernommen.`,
+        refs[0]?.el,
+        { knotenId: id, feld: 'zuschlag.bezug' },
+      );
+
     const pos: Veraenderlich<Position> = {
       art: 'position',
       id,
@@ -877,62 +1079,70 @@ class Aufbau {
       reihenfolge: this.reihenfolge(eltern.id),
       ordnungszahl,
       ozIndex,
-      // v1.1b: mechanisch angepasst, Folgeticket. Zuschlag mit leerer Bezugsliste, wie vor v1.1b ohne Bezug; die Bezugsformen `gliederung` und
-      // `kennzeichnung`, der Prozentsatz (`Markup`) und das Kennzeichen (`MarkupIt`) folgen mit dem Folgeticket gaeb.
-      merkmale: {
-        bedarf: null,
-        wahl: null,
-        stundenlohn: false,
-        pauschal: false,
-        zuschlagskennzeichen: false,
-      },
-      zuschlag: { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } },
-      kurztext,
-      langtext,
+      merkmale,
+      zuschlag: { prozentsatz, bezug },
+      ...this.texte(kind(el, 'Description')),
       menge: null,
       einheit: null,
       einheitspreis: null,
       epa: null,
     };
     this.knoten.push(pos);
-
-    const refs: { id: string; el: XmlElement }[] = [];
-    for (const sub of kinder(el, 'MarkupSubQty')) {
-      const r = kind(sub, 'RefItem');
-      const ref = r?.attrs.get('IDRef');
-      if (r && ref !== undefined) refs.push({ id: ref, el: r });
-      if (kind(sub, 'SubQty'))
-        this.l.nichtAbgebildet(
-          kind(sub, 'SubQty') ?? sub,
-          'MarkupSubQty/SubQty',
-          'Teilmenge der Bezugsposition',
-        );
-    }
-    if (typ === 'IdentAsMark' || typ === 'AllInCat')
-      this.l.melde(
-        'warnung',
-        'zuschlag-bezug-nicht-abbildbar',
-        typ === 'AllInCat'
-          ? 'Der Zuschlag bezieht sich auf alle davorstehenden Positionen des LV-Bereichs (AllInCat); der Vertrag hält nur eine einzelne Bezugsposition.'
-          : 'Der Zuschlag bezieht sich auf die mit MarkupIt gekennzeichneten davorstehenden Positionen (IdentAsMark); der Vertrag hält nur eine einzelne Bezugsposition.',
-        el,
-        { knotenId: id, feld: 'bezugspositionId' },
-      );
-    else if (typ === 'ListInSubQty' && refs.length > 1)
-      this.l.melde(
-        'warnung',
-        'zuschlag-bezug-nicht-abbildbar',
-        `Der Zuschlag bezieht sich auf ${String(refs.length)} Positionen (ListInSubQty); der Vertrag hält nur eine, die erste.`,
-        el,
-        { knotenId: id, feld: 'bezugspositionId' },
-      );
-    if (typ === 'ListInSubQty' && refs.length > 0) this.zuschlaege.push({ pos, refs: refs.slice(0, 1), el });
-    this.l.restMelden(el, ZUSCHLAG_BEHANDELT, 'MarkupItem');
+    if (bezug.art === 'positionen' && refs.length > 0) this.zuschlaege.push({ pos, refs });
+    this.l.restMelden(el, this.preise ? ZUSCHLAG_BEHANDELT_X86 : ZUSCHLAG_BEHANDELT, 'MarkupItem');
   }
 
-  /** Löst die Verweise der Zuschlagspositionen auf, nachdem alle Positionen gelesen sind. */
+  /** X86: `UPComp1…6` → Einheitspreisanteile; `null`, wenn die Position keinen Anteil trägt. */
+  private anteile(el: XmlElement, id: PositionId, preise: Preisangaben): Einheitspreisanteile | null {
+    const epa: Veraenderlich<Einheitspreisanteile> = {
+      lohn: null,
+      stoffe: null,
+      geraete: null,
+      nachunternehmer: null,
+      sonstiges: null,
+      frei: null,
+      freiBezeichnung: null,
+    };
+    let gesetzt = false;
+    for (const [i, name] of ANTEILE.entries()) {
+      const komp = kind(el, name);
+      if (!komp) continue;
+      const anteil = preise.anteile[i] ?? null;
+      if (anteil === null) {
+        this.l.nichtAbgebildet(komp, `Item/${name}`, 'Einheitspreisanteil ohne Bezeichnung im BoQInfo');
+        continue;
+      }
+      const w = this.l.zahl('einheitspreis', komp, id, 'epa');
+      if (w === null) continue;
+      epa[anteil] = w;
+      gesetzt = true;
+      if (anteil === 'frei') epa.freiBezeichnung = preise.freiBezeichnung;
+    }
+    return gesetzt ? epa : null;
+  }
+
+  /** X86: `IT` ist abgeleitet; weicht er vom gerundeten Menge × EP ab, ist das ein Befund (Totals siehe Ticket 40). */
+  private pruefeGesamtpreis(el: XmlElement, id: PositionId, menge: Menge, ep: Einheitspreis): void {
+    const itEl = kind(el, 'IT');
+    if (!itEl) return;
+    const roh = wert(itEl) ?? '';
+    const it = leseAustausch('betrag', roh);
+    if (!it.ok) return;
+    const soll = gesamtpreis(menge, ep);
+    if (vergleiche(it.wert, soll) !== 0)
+      this.l.melde(
+        'warnung',
+        'gesamtpreis-abweichend',
+        `Der Gesamtpreis (IT) ${roh} weicht von Menge × EP = ${soll} ab; die Summen rechnet die App selbst.`,
+        itEl,
+        { knotenId: id, feld: 'gesamtpreis' },
+      );
+  }
+
+  /** Löst die Verweise der Zuschlagspositionen (`ListInSubQty`) auf, nachdem alle Positionen gelesen sind. */
   loeseVerweise(): void {
     for (const z of this.zuschlaege) {
+      const positionen: Bezugsposition[] = [];
       for (const r of z.refs) {
         const ziel = this.gaebIds.get(r.id);
         if (ziel === z.pos.id)
@@ -942,32 +1152,156 @@ class Aufbau {
             'verweis-auf-sich',
             `RefItem der Zuschlagsposition verweist auf deren eigene ID „${r.id}“; der Bezug entfällt.`,
             r.el,
-            { knotenId: z.pos.id, feld: 'bezugspositionId' },
+            { knotenId: z.pos.id, feld: 'zuschlag.bezug' },
           );
-        else if (ziel)
-          z.pos.zuschlag = {
-            prozentsatz: null,
-            bezug: { art: 'positionen', positionen: [{ positionId: ziel, teilmenge: null }] },
-          }; // v1.1b: mechanisch angepasst, Folgeticket
+        else if (ziel) positionen.push({ positionId: ziel, teilmenge: r.teilmenge });
         else
           this.l.melde(
             'warnung',
             'verweis-unbekannt',
             `RefItem verweist auf die unbekannte ID „${r.id}“.`,
             r.el,
-            { knotenId: z.pos.id, feld: 'bezugspositionId' },
+            { knotenId: z.pos.id, feld: 'zuschlag.bezug' },
           );
       }
+      z.pos.zuschlag = {
+        prozentsatz: z.pos.zuschlag?.prozentsatz ?? null,
+        bezug: { art: 'positionen', positionen },
+      };
     }
-    if (this.wahlGefunden > 0 && this.knoten.length > 0)
-      this.l.aggregiere(
-        'wahl-variante',
-        'wahl-variante-nicht-abgebildet',
-        null,
-        () =>
-          `Alternativpositionen: Verwiesen wird nur auf die erste Grundposition; Gruppen- und Variantennummer (ALNGroupNo, ALNSerNo) und weitere Grundpositionen einer Gruppe speichert der Vertrag nicht (${String(this.wahlGefunden)} Positionen mit ALN-Angaben).`,
+  }
+}
+
+// --- Kopfdaten (E-11) -------------------------------------------------------------------------------------
+
+const DATUM = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+const UHRZEIT = /^[0-9]{2}:[0-9]{2}:[0-9]{2}$/;
+
+/** Text eines Kindelements; leer oder fehlend ergibt `null`. */
+const textOderNull = (e: XmlElement | undefined, name: string): string | null => wert(kind(e, name)) || null;
+
+/** Datum oder Uhrzeit im erwarteten Format, sonst `null` mit Befund `wert-ungueltig`. */
+function zeitangabe(
+  l: Leser,
+  eltern: XmlElement,
+  name: string,
+  muster: RegExp,
+  beschreibung: string,
+): string | null {
+  const el = kind(eltern, name);
+  const w = textOderNull(eltern, name);
+  if (w === null || muster.test(w)) return w;
+  l.melde(
+    'warnung',
+    'wert-ungueltig',
+    `${name} „${w}“ ist kein ${beschreibung}; der Wert wird nicht übernommen.`,
+    el,
+    { feld: `vergabeinformationen.${name}` },
+  );
+  return null;
+}
+
+/** `OWN` → `Auftraggeber`. Nicht abgebildete Teile (`DPNo`, weitere Adressfelder) sind Befund. */
+function leseAuftraggeber(l: Leser, own: XmlElement): Auftraggeber {
+  const adresse = kind(own, 'Address');
+  l.restMelden(own, new Set(['Address', 'AwardNo']), 'OWN');
+  if (adresse) l.restMelden(adresse, new Set(['Name1', 'Street', 'PCode', 'City']), 'OWN/Address');
+  return {
+    name: textOderNull(adresse, 'Name1'),
+    strasse: textOderNull(adresse, 'Street'),
+    plz: textOderNull(adresse, 'PCode'),
+    ort: textOderNull(adresse, 'City'),
+    vergabenummer: textOderNull(own, 'AwardNo'),
+  };
+}
+
+const VERGABE_BEHANDELT: ReadonlySet<string> = new Set([
+  'OpenDate',
+  'OpenTime',
+  'SubmLoc',
+  'CnstStart',
+  'CnstEnd',
+  'ContrNo',
+  'ContrDate',
+  'AcceptType',
+  'WarrDur',
+  'WarrUnit',
+]);
+
+/** `AwardInfo` → `Vergabeinformationen`. Nicht abgebildet (Befund): `Cat`, `EvalEnd`, `Cur`, `CurLbl` u. a. */
+function leseVergabeinformationen(l: Leser, info: XmlElement): Vergabeinformationen {
+  l.restMelden(info, VERGABE_BEHANDELT, 'AwardInfo');
+  const datum = (name: string): string | null => zeitangabe(l, info, name, DATUM, 'Datum (JJJJ-MM-TT)');
+  const dauerText = textOderNull(info, 'WarrDur');
+  const einheit = textOderNull(info, 'WarrUnit');
+  let gewaehrleistung: Gewaehrleistung | null = null;
+  if (dauerText !== null || einheit !== null) {
+    if (dauerText !== null && /^[0-9]+(\.[0-9]+)?$/.test(dauerText) && einheit !== null)
+      gewaehrleistung = { dauer: Number(dauerText), einheit };
+    else
+      l.melde(
+        'warnung',
+        'wert-ungueltig',
+        `Die Gewährleistung (WarrDur „${dauerText ?? ''}“, WarrUnit „${einheit ?? ''}“) braucht eine Zahl und eine Einheit; sie wird nicht übernommen.`,
+        kind(info, 'WarrDur') ?? kind(info, 'WarrUnit'),
+        { feld: 'vergabeinformationen.gewaehrleistung' },
       );
   }
+  return {
+    eroeffnungsdatum: datum('OpenDate'),
+    eroeffnungszeit: zeitangabe(l, info, 'OpenTime', UHRZEIT, 'Uhrzeit (HH:MM:SS)'),
+    abgabeort: textOderNull(info, 'SubmLoc'),
+    ausfuehrungsbeginn: datum('CnstStart'),
+    ausfuehrungsende: datum('CnstEnd'),
+    auftragsnummer: textOderNull(info, 'ContrNo'),
+    auftragsdatum: datum('ContrDate'),
+    abnahmeart: textOderNull(info, 'AcceptType'),
+    gewaehrleistung,
+  };
+}
+
+// --- Summen des LV (X86) ------------------------------------------------------------------------------------
+
+/**
+ * X86, `BoQInfo/Totals`: Steuersatz (`VAT`) und Nachlass (`DiscountPcnt` bzw. `DiscountAmt`) gehören zum LV und
+ * werden übernommen. Die Beträge (`Total`, `TotAfterDisc`, `VATAmount`, `TotalGross` …) sind abgeleitet; die App
+ * rechnet sie selbst und übernimmt sie nicht (Ticket 40).
+ */
+function leseLvSummen(
+  l: Leser,
+  totals: XmlElement | undefined,
+): { mwstAusDatei: Prozent | null; nachlass: Nachlass | null } {
+  if (!totals) return { mwstAusDatei: null, nachlass: null };
+  l.restMelden(
+    totals,
+    new Set([
+      'Total',
+      'DiscountPcnt',
+      'DiscountAmt',
+      'TotAfterDisc',
+      'VAT',
+      'TotalNet',
+      'VATAmount',
+      'TotalGross',
+      'TotalLSUM',
+      'VATPart',
+      'TotalNetUpComp',
+    ]),
+    'Totals',
+  );
+  const vat = kind(totals, 'VAT');
+  const mwstAusDatei = vat ? l.zahl('prozent', vat, '', 'mwstSatz') : null;
+  const dp = kind(totals, 'DiscountPcnt');
+  const da = kind(totals, 'DiscountAmt');
+  let nachlass: Nachlass | null = null;
+  if (dp) {
+    const w = l.zahl('prozent', dp, '', 'nachlass');
+    if (w !== null) nachlass = { art: 'prozent', wert: w };
+  } else if (da) {
+    const w = l.zahl('betrag', da, '', 'nachlass');
+    if (w !== null) nachlass = { art: 'betrag', wert: w };
+  }
+  return { mwstAusDatei, nachlass };
 }
 
 // --- Dokumentkopf ---------------------------------------------------------------------------------------
@@ -988,11 +1322,7 @@ function pruefeIds(l: Leser, wurzel: XmlElement): void {
   }
 }
 
-function baueInhalt(
-  root: XmlElement,
-  opt: LeseOptionen,
-  l: Leser,
-): { inhalt: LvInhalt; wurzelId: LeistungsverzeichnisId } | null {
+function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPhase | null): LvInhalt | null {
   const award = kind(root, 'Award');
   const boq = kind(award, 'BoQ');
   if (!award || !boq) {
@@ -1006,28 +1336,57 @@ function baueInhalt(
     if (!['GAEBInfo', 'PrjInfo', 'Award'].includes(k.name)) l.nichtAbgebildet(k, `GAEB/${k.name}`);
   const prj = kind(root, 'PrjInfo');
   if (prj) l.restMelden(prj, new Set(['NamePrj']), 'PrjInfo');
-  l.restMelden(award, new Set(['DP', 'BoQ']), 'Award');
+  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo']), 'Award');
+  const own = kind(award, 'OWN');
+  const info = kind(award, 'AwardInfo');
+  const auftraggeber = own ? leseAuftraggeber(l, own) : undefined;
+  const vergabeinformationen = info ? leseVergabeinformationen(l, info) : undefined;
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
   const boqInfo = kind(boq, 'BoQInfo');
-  if (boqInfo) l.restMelden(boqInfo, new Set(['Name', 'BoQBkdn']), 'BoQInfo');
+  const x86 = phase === 'X86';
+  // Name: Ist `Name` der Anfang von `LblBoQ`, ist er dessen gekürzte Form (so schreibt der Export einen Namen über
+  // 20 Zeichen, Ticket 40); dann gilt `LblBoQ`. Sonst bleibt es bei `Name`, und `LblBoQ` ist nicht abgebildet.
+  const kurzName = wert(kind(boqInfo, 'Name'));
+  const lblBoQ = wert(kind(boqInfo, 'LblBoQ'));
+  const langName = lblBoQ && kurzName && lblBoQ.startsWith(kurzName) ? lblBoQ : null;
+  const infoBehandelt = new Set(['Name', 'BoQBkdn', 'OutlCompl']);
+  if (langName !== null) infoBehandelt.add('LblBoQ');
+  if (x86)
+    for (const n of [
+      'NoUPComps',
+      'LblUPComp1',
+      'LblUPComp2',
+      'LblUPComp3',
+      'LblUPComp4',
+      'LblUPComp5',
+      'LblUPComp6',
+      'Totals',
+    ])
+      infoBehandelt.add(n);
+  if (boqInfo) l.restMelden(boqInfo, infoBehandelt, 'BoQInfo');
   else l.melde('warnung', 'oz-maske-ohne-position', 'BoQInfo fehlt; die Gliederung ist unbekannt.', boq);
   const trenn = opt.trennzeichen === undefined ? '.' : opt.trennzeichen;
   const { maske, stufen } = leseMaske(l, boqInfo, trenn);
 
-  const name =
-    wert(kind(boqInfo, 'Name')) || wert(kind(prj, 'NamePrj')) || opt.dateiname || 'Leistungsverzeichnis';
+  const name = langName || kurzName || wert(kind(prj, 'NamePrj')) || opt.dateiname || 'Leistungsverzeichnis';
+  const { mwstAusDatei, nachlass } = x86
+    ? leseLvSummen(l, kind(boqInfo, 'Totals'))
+    : { mwstAusDatei: null, nachlass: null };
   const wurzelId = opt.ids.leistungsverzeichnis();
-  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId);
+  const preise = x86 ? lesePreisangaben(l, boqInfo) : null;
+  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise);
   const wurzelEbene: Ebene = { id: wurzelId, teile: [], ozOk: true, tiefe: 0 };
   const bodies = kinder(boq, 'BoQBody');
   if (bodies.length === 0) l.melde('warnung', 'lv-leer', 'Das Leistungsverzeichnis hat keinen BoQBody.', boq);
   for (const b of bodies) aufbau.koerper(b, wurzelEbene);
   aufbau.loeseVerweise();
 
-  const mwstSatz = opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
-  if (opt.standardMwstSatz === undefined) {
+  const mwstSatz = mwstAusDatei ?? opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
+  if (mwstAusDatei !== null) {
+    // X86 trägt den Satz in BoQInfo/Totals/VAT.
+  } else if (opt.standardMwstSatz === undefined) {
     l.melde(
       'warnung',
       'mwst-standardsatz',
@@ -1045,41 +1404,69 @@ function baueInhalt(
     );
   }
   return {
-    // v1.1a: mechanisch angepasst, Folgeticket (gaeb: `wurzelId` nur noch in `inhalt`)
-    inhalt: { name, ozMaske: maske, mwstSatz, nachlass: null, knoten: aufbau.knoten, wurzelId },
+    name,
+    ozMaske: maske,
+    mwstSatz,
+    nachlass,
+    ...(auftraggeber === undefined ? {} : { auftraggeber }),
+    ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
     wurzelId,
+    knoten: aufbau.knoten,
   };
 }
 
 // --- Einstieg -----------------------------------------------------------------------------------------------
 
-const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83']);
+const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83', 'X86']);
+
+/** Gemeinsame Optionen des Vorlaufs (Größe, Kodierung, XML, Erkennung) für `leseGaeb` und `leseAngebot`. */
+export interface VorlaufOptionen {
+  readonly dateiname?: string;
+  readonly maxBytes?: number;
+  readonly maxTiefe?: number;
+}
+
+/** Ergebnis des Vorlaufs: entweder schon fertig (zurückgewiesen, Version nicht gelesen) oder bereit zum Lesen. */
+export type Vorlauf =
+  | {
+      readonly bereit: false;
+      readonly phase: GaebLesung['phase'];
+      readonly version: GaebLesung['version'];
+      readonly befunde: readonly Pruefbefund[];
+    }
+  | {
+      readonly bereit: true;
+      readonly phase: GaebPhase | null;
+      readonly version: GaebLesung['version'];
+      readonly wurzel: XmlElement;
+      readonly leser: Leser;
+      /** Befunde vor dem Leser (Größe, Kodierung, XML); das Ergebnis ist `[...vorlauf, ...leser.befunde]`. */
+      readonly vorlauf: readonly Pruefbefund[];
+    };
 
 /**
- * Liest eine GAEB-DA-XML-3.3-Datei der Phase X81 oder X83. Wirft nie bei Dateiinhalt: Probleme sind Befunde;
- * `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder Phase).
+ * Prüft Größe, dekodiert, parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und
+ * Phase. Nicht gelesene Versionen (3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer.
  */
-export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
-  const vorlauf: Pruefbefund[] = [];
-  const ergebnis = (
+export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids: IdQuelle | null): Vorlauf {
+  const befunde: Pruefbefund[] = [];
+  const fertig = (
     phase: GaebLesung['phase'],
     version: GaebLesung['version'],
-    befunde: readonly Pruefbefund[],
-    inhalt: LvInhalt | null = null,
-    wurzelId: LeistungsverzeichnisId | null = null,
-  ): GaebLesungErgebnis => ({ phase, version, inhalt, befunde: [...vorlauf, ...befunde], wurzelId });
+    weitere: readonly Pruefbefund[] = [],
+  ): Vorlauf => ({ bereit: false, phase, version, befunde: [...befunde, ...weitere] });
 
   const groesse = eingabe.length;
   const maxBytes = opt.maxBytes ?? STANDARD_MAX_BYTES;
   if (groesse > maxBytes) {
-    vorlauf.push({
+    befunde.push({
       schwere: 'fehler',
       quelle: 'gaeb-lesen',
       code: 'datei-zu-gross',
       meldung: `Die Eingabe ist ${String(groesse)} Bytes groß; zulässig sind höchstens ${String(maxBytes)}. Sie wird nicht gelesen.`,
       ort: {},
     });
-    return ergebnis(null, null, []);
+    return fertig(null, null);
   }
 
   let text: string;
@@ -1087,15 +1474,15 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
   else {
     const d = dekodiereBytes(eingabe);
     text = d.text;
-    vorlauf.push(...d.befunde);
+    befunde.push(...d.befunde);
   }
 
   const xml = parseXml(text, { maxTiefe: opt.maxTiefe ?? STANDARD_MAX_TIEFE, blattNamen: BLATTNAMEN });
-  vorlauf.push(...xml.befunde);
+  befunde.push(...xml.befunde);
   const root = xml.wurzel;
-  if (xml.abgelehnt || root === null) return ergebnis(null, null, []);
+  if (xml.abgelehnt || root === null) return fertig(null, null);
 
-  const l = new Leser(xml, opt);
+  const l = new Leser(xml, ids);
   if (root.name !== 'GAEB') {
     l.melde(
       'fehler',
@@ -1103,7 +1490,7 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
       `Das Wurzelelement heißt „${root.name}“, erwartet wird GAEB.`,
       root,
     );
-    return ergebnis(null, null, l.befunde);
+    return fertig(null, null, l.befunde);
   }
 
   const erk = erkenne(root, opt.dateiname);
@@ -1113,10 +1500,10 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
     l.melde(
       'fehler',
       'version-nicht-unterstuetzt',
-      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen wird nur 3.3 (3.2 folgt mit Ticket G4).`,
+      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden 3.3 und 3.2 (3.1 folgt mit Ticket G4).`,
       root,
     );
-    return ergebnis(erk.phase, erk.version, l.befunde);
+    return fertig(erk.phase, erk.version, l.befunde);
   }
   if (erk.stand === 'unbekannt')
     l.melde(
@@ -1125,17 +1512,35 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
       `Die Version ${erk.versionText === null ? '(ohne Angabe)' : `„${erk.versionText}“`} ist unbekannt; die Datei wird wie 3.3 gelesen.`,
       root,
     );
-  if (erk.phase !== null && !LESBARE_PHASEN.has(erk.phase)) {
+  return { bereit: true, phase: erk.phase, version: erk.version, wurzel: root, leser: l, vorlauf: befunde };
+}
+
+/**
+ * Liest eine GAEB-DA-XML-Datei (3.3, 3.2) der Phase X81, X83 oder X86. Wirft nie bei Dateiinhalt: Probleme sind
+ * Befunde; `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder
+ * Phase). X84 liest `leseAngebot`.
+ */
+export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
+  const v = vorlauf(eingabe, opt, opt.ids);
+  if (!v.bereit) return { phase: v.phase, version: v.version, inhalt: null, befunde: v.befunde };
+  const l = v.leser;
+  const ergebnis = (inhalt: LvInhalt | null): GaebLesungErgebnis => ({
+    phase: v.phase,
+    version: v.version,
+    inhalt,
+    befunde: [...v.vorlauf, ...l.befunde],
+  });
+  if (v.phase !== null && !LESBARE_PHASEN.has(v.phase)) {
     l.melde(
       'fehler',
       'phase-nicht-unterstuetzt',
-      `Die Phase ${erk.phase} wird in diesem Leser nicht gelesen (nur X81 und X83).`,
-      root,
+      `Die Phase ${v.phase} wird in diesem Leser nicht gelesen (nur X81, X83 und X86).`,
+      v.wurzel,
     );
-    return ergebnis(erk.phase, erk.version, l.befunde);
+    return ergebnis(null);
   }
 
-  const gebaut = baueInhalt(root, opt, l);
+  const gebaut = baueInhalt(v.wurzel, opt, l, v.phase);
   l.abschliessen();
-  return ergebnis(erk.phase, erk.version, l.befunde, gebaut?.inhalt ?? null, gebaut?.wurzelId ?? null);
+  return ergebnis(gebaut);
 }

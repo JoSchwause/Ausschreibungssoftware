@@ -1,6 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { parseTsv } from './tsv';
+import { parseTsv, schreibeTsv } from './tsv';
+
+describe('schreibeTsv', () => {
+  it('schreibt Zeilen wie Excel: Tab, CRLF, abschließender Zeilenumbruch', () => {
+    expect(
+      schreibeTsv([
+        ['01.0010', 'Bauzaun', '86,500'],
+        ['', 'Schalung', ''],
+      ]),
+    ).toBe('01.0010\tBauzaun\t86,500\r\n\tSchalung\t\r\n');
+  });
+
+  it('setzt Zellen mit Tab, Zeilenumbruch oder Anführungszeichen in Excel-Anführung', () => {
+    expect(schreibeTsv([['Bewehrung,\nzweilagig', 'mit\tTab', '5" Rohr', 'ohne']])).toBe(
+      '"Bewehrung,\nzweilagig"\t"mit\tTab"\t"5"" Rohr"\tohne\r\n',
+    );
+  });
+
+  it('parseTsv liest zurück, was schreibeTsv geschrieben hat', () => {
+    const matrix = [
+      ['"zitiert"', 'a\r\nb', ''],
+      ['1.234,500', 'm³', 'x\ty'],
+    ];
+    expect(parseTsv(schreibeTsv(matrix))).toEqual(matrix);
+  });
+
+  it('keine Zeilen ergeben leeren Text', () => {
+    expect(schreibeTsv([])).toBe('');
+  });
+});
 
 describe('parseTsv', () => {
   it('zerlegt Tabulatoren und Zeilen; der abschließende Zeilenumbruch erzeugt keine leere Zeile', () => {

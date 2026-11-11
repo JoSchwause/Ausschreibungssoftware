@@ -8,15 +8,15 @@ import { elementKinder, textInhalt } from './xml';
 import type { XmlElement } from './xml';
 
 export type Versionsstand =
-  /** 3.3: wird gelesen. */
+  /** 3.3 und 3.2 (Ticket 40): werden gelesen. */
   | 'unterstuetzt'
-  /** 3.2 oder älter: bekannt, aber nicht Teil dieses Tickets. */
+  /** 3.1 oder älter: bekannt, aber nicht gelesen (G4). */
   | 'bekannt-nicht-unterstuetzt'
   /** Nicht erkennbar oder neuer als 3.3: tolerant als 3.3 gelesen. */
   | 'unbekannt';
 
 export interface Erkennung {
-  /** Das Ergebnis für `GaebLesung.version`: nur 3.2 und 3.3 sind darstellbar, sonst `null`. */
+  /** Das Ergebnis für `GaebLesung.version`: nur 3.1, 3.2 und 3.3 sind darstellbar, sonst `null`. */
   readonly version: GaebVersion | null;
   /** Die erkannte Version im Wortlaut (z. B. `3.1`), `null`: keine Angabe. */
   readonly versionText: string | null;
@@ -50,8 +50,8 @@ function klassifiziere(version: string): Versionsstand {
   if (!m) return 'unbekannt';
   const haupt = Number(m[1]);
   const neben = Number(m[2]);
-  if (haupt === 3 && neben === 3) return 'unterstuetzt';
-  if (haupt < 3 || (haupt === 3 && neben <= 2)) return 'bekannt-nicht-unterstuetzt';
+  if (haupt === 3 && (neben === 3 || neben === 2)) return 'unterstuetzt';
+  if (haupt < 3 || (haupt === 3 && neben <= 1)) return 'bekannt-nicht-unterstuetzt';
   return 'unbekannt';
 }
 
@@ -138,7 +138,7 @@ export function erkenne(wurzel: XmlElement, dateiname: string | undefined): Erke
 
   const stand = versionText === null ? 'unbekannt' : klassifiziere(versionText);
   let version: GaebVersion | null = null;
-  if (stand === 'unterstuetzt') version = '3.3';
-  else if (stand === 'bekannt-nicht-unterstuetzt' && versionText === '3.2') version = '3.2';
+  if (stand === 'unterstuetzt') version = versionText === '3.2' ? '3.2' : '3.3';
+  else if (stand === 'bekannt-nicht-unterstuetzt' && versionText === '3.1') version = versionText;
   return { version, versionText, stand, phase: phase as GaebPhase | null, befunde };
 }

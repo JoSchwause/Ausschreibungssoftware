@@ -29,6 +29,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+      # GAEB-Exporte gegen das amtliche XSD (ADR 0010, Q3). Das Schema wird zur Laufzeit geladen (SHA-256 geprüft)
+      # und nie versioniert; das Skript schlägt auch fehl, wenn ein *.xsd im Repo liegt.
+      - name: GAEB XSD-Gegenprüfung
+        run: |
+          command -v xmllint >/dev/null || (sudo apt-get update && sudo apt-get install -y libxml2-utils)
+          pnpm --filter @tethys/gaeb run xsd-gegenpruefung
+
       - run: pnpm --filter @tethys/web exec playwright install --with-deps chromium
       - run: pnpm e2e
 

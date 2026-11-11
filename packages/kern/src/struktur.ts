@@ -13,7 +13,7 @@
 // stehen vor Kindern, wie in `LvInhalt` („Dokumentreihenfolge“). Jeder vom Kern erzeugte Zustand ist kanonisch; damit
 // ist „ChangeSet anwenden, Umkehrung anwenden“ auch im Array exakt die Identität.
 
-import type { Knoten } from '@tethys/vertrag';
+import type { Knoten, Papierkorbeintrag } from '@tethys/vertrag';
 import { ebenenbeitrag } from './regeln';
 
 export type KinderMap = ReadonlyMap<string, readonly Knoten[]>;
@@ -30,6 +30,13 @@ export function ohneKnoten<T extends { readonly knoten: unknown }>(aggregat: T):
   const kopie: { -readonly [K in keyof T]?: T[K] } = { ...aggregat };
   delete kopie.knoten;
   return kopie as Omit<T, 'knoten'>;
+}
+
+/** Die Stammdaten ohne `wurzelId` (die Wurzel ist die Kennung des Aggregats, kein Feld des Kopfs). */
+export function ohneWurzel<T extends { readonly wurzelId: unknown }>(inhalt: T): Omit<T, 'wurzelId'> {
+  const kopie: { -readonly [K in keyof T]?: T[K] } = { ...inhalt };
+  delete kopie.wurzelId;
+  return kopie as Omit<T, 'wurzelId'>;
 }
 
 const nachReihenfolge = (a: Knoten, b: Knoten): number => a.reihenfolge - b.reihenfolge;
@@ -158,4 +165,23 @@ export function liegtUnter(index: Baumindex, knotenId: string, wurzelId: string)
     aktuell = k.elternId;
   }
   return false;
+}
+
+const korbCache = new WeakMap<readonly Papierkorbeintrag[], ReadonlyMap<string, Knoten>>();
+const LEER_KORB: ReadonlyMap<string, Knoten> = new Map();
+
+/**
+ * Alle Knoten im Papierkorb nach Kennung (v1.2, K9). Bezüge auf eine Position im Papierkorb sind gültig (D-12); wer einen
+ * Bezug prüft, schlägt nach dem Baum hier nach. Einmal je Papierkorb-Array gebaut und gemerkt (wie der Baumindex).
+ */
+export function papierkorbKnoten(
+  korb: readonly Papierkorbeintrag[] | undefined,
+): ReadonlyMap<string, Knoten> {
+  if (korb === undefined || korb.length === 0) return LEER_KORB;
+  const vorhanden = korbCache.get(korb);
+  if (vorhanden) return vorhanden;
+  const neu = new Map<string, Knoten>();
+  for (const e of korb) for (const k of e.knoten) neu.set(k.id, k);
+  korbCache.set(korb, neu);
+  return neu;
 }

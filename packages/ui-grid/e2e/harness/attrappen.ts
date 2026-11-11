@@ -3,8 +3,15 @@
 // später die echten Parser ein. Diese Attrappen arbeiten nur mit Zeichenketten und kennen keine Gleitkommazahl;
 // sie sind keine Fachlogik und kommen nie in Produktivcode.
 
-import type { Betrag, Einheitspreis, Ergebnis, Menge, PositionId } from '@tethys/vertrag';
-import type { GridIdQuelle, GridZahlen } from '../../src/typen';
+import type {
+  Betrag,
+  Einheitspreis,
+  Ergebnis,
+  GridIdQuelle,
+  GridZahlen,
+  Menge,
+  PositionId,
+} from '@tethys/vertrag';
 
 const DE_ZAHL = /^(-?)(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d+))?$/;
 
@@ -52,5 +59,8 @@ export function idQuelleAttrappe(): GridIdQuelle {
       n += 1;
       return `neu-${String(n)}` as PositionId;
     },
+    // v1.2: mechanisch angepasst, Folgeticket (Ticket 46)
+    papierkorbeintrag: () =>
+      `papierkorb-${String((n += 1))}` as ReturnType<GridIdQuelle['papierkorbeintrag']>,
   };
 }

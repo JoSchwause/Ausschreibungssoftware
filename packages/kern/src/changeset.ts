@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// ChangeSet anwenden und umkehren (Ticket 05, Summen: Ticket 07). Beides sind reine Funktionen; die App nutzt sie für
-// den Zustand, der Kern in Tests, `changeSetUmkehren` bereitet Undo vor.
+// ChangeSet anwenden und umkehren (Ticket 05, Summen: Ticket 07, ohne Vorzustand: Ticket 30). Beides sind reine
+// Funktionen; die App nutzt sie für den Zustand, der Kern in Tests, `changeSetUmkehren` für Undo (S3).
 
 import { NULL_BETRAG } from '@tethys/dezimal';
 import type {
   Aenderung,
+  Aenderungen,
+  Befehlshinweis,
   Gesamtsummen,
   Gliederungssumme,
   Knoten,
@@ -13,22 +15,29 @@ import type {
   LvChangeSetAnwenden,
   LvKopf,
   LvZustand,
+  Papierkorbeintrag,
   Positionssumme,
   Summenaenderung,
   Summenstand,
 } from '@tethys/vertrag';
+import { nettoHinweise } from './hinweise';
 import { kanonisch, ohneKnoten } from './struktur';
 import {
+  LEERES_SUMMENVORHER,
   baueSummenIndex,
-  gliederungssummeVon,
   merkeSummenIndex,
   ordneNachKennung,
-  positionssummeVon,
   summenIndexVon,
+  summenVorher,
 } from './summen';
 
-/** Keine Summenänderung (zum Beispiel bei Hinweistexten und Nullbewegungen). */
-export const LEERE_SUMMENAENDERUNG: Summenaenderung = { positionen: [], gliederungen: [], gesamt: null };
+/** Keine Summenänderung (zum Beispiel bei Hinweistexten und Nullbewegungen); auch keine alten Werte. */
+export const LEERE_SUMMENAENDERUNG: Summenaenderung = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: LEERES_SUMMENVORHER,
+};
 
 /** Alle Gesamtsummen null: Ausgangsstand, auf den ein ChangeSet ein neues LV anwendet. */
 const NULL_GESAMT: Gesamtsummen = {
@@ -113,11 +122,20 @@ export interface ChangeSetTeile {
   readonly hinzugefuegt?: readonly Knoten[];
   readonly geaendert?: readonly { readonly vorher: Knoten; readonly nachher: Knoten }[];
   readonly entfernt?: readonly Knoten[];
+  /** Neue Werte; `vorher` setzt `baueChangeSet` aus dem Zustand (ein mitgegebenes `vorher` zählt nicht). */
   readonly summen?: Summenaenderung;
+  readonly hinweise?: readonly Befehlshinweis[];
 }
 
-/** Baut ein ChangeSet am LV des Zustands. */
+/**
+ * Baut ein ChangeSet am LV des Zustands. Die alten Summen (`summen.vorher`, v1.1a) liest es aus dem Zustand: für jede
+ * genannte Summe, `gesamt` bei geänderten Gesamtsummen und die vollen Summen der entfernten Knoten. So trägt jedes
+ * ChangeSet eines Befehls, was seine Umkehrung braucht, ohne dass ein Befehl daran denken muss.
+ */
 export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet {
+  const entfernt = teile.entfernt ?? [];
+  const s = teile.summen ?? LEERE_SUMMENAENDERUNG;
+  const hinweise = [...(teile.hinweise ?? []), ...nettoHinweise(s.gesamt)];
   return {
     art: 'leistungsverzeichnis',
     leistungsverzeichnisId: z.leistungsverzeichnis.id,
@@ -125,14 +143,21 @@ export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet 
     knoten: {
       hinzugefuegt: teile.hinzugefuegt ?? [],
       geaendert: teile.geaendert ?? [],
-      entfernt: teile.entfernt ?? [],
+      entfernt,
     },
-    summen: teile.summen ?? LEERE_SUMMENAENDERUNG,
+    summen: {
+      positionen: s.positionen,
+      gliederungen: s.gliederungen,
+      gesamt: s.gesamt,
+      vorher: summenVorher(z.summen, s, entfernt),
+    },
+    ...(hinweise.length === 0 ? {} : { hinweise }),
   };
 }
 
 /**
  * Wendet ein ChangeSet auf einen Zustand an. `zustand: null`: das LV entsteht; dann muss `kopf.nachher` gesetzt sein.
+ * `kopf.nachher: null` (das LV wird gelöscht, oder die Umkehrung seines Anlegens): Ergebnis `null`, es gibt kein LV mehr.
  *
  * - Knoten: entfernen, ersetzen (`geaendert`), hinzufügen; das Ergebnis steht in kanonischer Reihenfolge
  *   (Vorordnung, siehe `struktur.ts`). Ein ChangeSet ohne Knotenänderung übernimmt das Array unverändert.
@@ -140,18 +165,17 @@ export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet 
  *   Gesamtsummen stehen. Das Ergebnis ist der vollständige Summenstand, sofern `cs` von diesem Kern stammt
  *   (Property-Test: gleich der Neuberechnung `summenBerechnen`).
  * - Ein ChangeSet ohne jede Änderung liefert denselben Zustand (dasselbe Objekt).
+ * - `hinweise` wertet die Funktion nicht aus (sie gehören zur Antwort auf den Befehl).
+ * - Papierkorb (v1.2, K9): `cs.papierkorb` wird angewandt (nach `nummer` geordnet, leer: das Feld fehlt); ohne Änderung
+ *   bleibt er stehen. `cs.lvStand` ändert den Zustand nicht (den Stand friert `speicher` ein).
  *
- * Ein ChangeSet, das sich nicht anwenden lässt (kein Zustand und kein neuer Kopf; ein ChangeSet, das das LV
- * entfernt), ist ein Programmfehler, kein erwartbarer Fehler: die Funktion wirft. Der Kern selbst erzeugt solche
- * ChangeSets nicht.
+ * Ein ChangeSet ohne Kopf auf „kein LV“ ist ein Programmfehler, kein erwartbarer Fehler: die Funktion wirft. Der Kern
+ * selbst erzeugt solche ChangeSets nicht.
  */
-// v1.1a: mechanisch angepasst, Folgeticket (kern: `null` als Ergebnis, wenn das ChangeSet das LV entfernt). `satisfies`
-// statt Annotation, damit die Funktion weiter `LvZustand` liefert und kein Aufrufer `null` behandeln muss.
-export const lvChangeSetAnwenden = ((zustand, cs) => {
+export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
   let kopf: Omit<Leistungsverzeichnis, 'knoten'>;
   if (cs.kopf !== null) {
-    if (cs.kopf.nachher === null)
-      throw new Error('ChangeSet entfernt das LV: als LvZustand nicht darstellbar.');
+    if (cs.kopf.nachher === null) return null;
     kopf = cs.kopf.nachher;
   } else if (zustand !== null) {
     kopf = ohneKnoten(zustand.leistungsverzeichnis);
@@ -168,7 +192,8 @@ export const lvChangeSetAnwenden = ((zustand, cs) => {
     !knotenGeaendert &&
     s.positionen.length === 0 &&
     s.gliederungen.length === 0 &&
-    s.gesamt === null
+    s.gesamt === null &&
+    cs.papierkorb === undefined
   ) {
     return zustand;
   }
@@ -188,61 +213,96 @@ export const lvChangeSetAnwenden = ((zustand, cs) => {
     knoten = kanonisch(kopf.id, rest);
   }
   const summen = summenAnwenden(zustand?.summen ?? LEERER_SUMMENSTAND, cs, knoten);
-  return { leistungsverzeichnis: { ...kopf, knoten }, summen } satisfies LvZustand;
-}) satisfies LvChangeSetAnwenden;
-
-/** Die Summen, die die Umkehrung herstellen muss: die Werte vor dem ChangeSet (siehe `changeSetUmkehren`). */
-function summenUmkehren(cs: LvChangeSet, vorher: LvZustand | null): Summenaenderung {
-  if (vorher === null) return LEERE_SUMMENAENDERUNG;
-  const alt = vorher.summen;
-  const positionen = new Map<string, Positionssumme>();
-  const gliederungen = new Map<string, Gliederungssumme>();
-  for (const p of cs.summen.positionen) {
-    const a = positionssummeVon(alt, p.positionId);
-    if (a) positionen.set(p.positionId, a);
-  }
-  for (const g of cs.summen.gliederungen) {
-    const a = gliederungssummeVon(alt, g.gliederungId);
-    if (a) gliederungen.set(g.gliederungId, a);
-  }
-  // Entfernte Knoten kommen mit der Umkehrung zurück; ihre Summen sind im alten Stand die richtigen.
-  for (const n of cs.knoten.entfernt) {
-    if (n.art === 'position') {
-      const a = positionssummeVon(alt, n.id);
-      if (a) positionen.set(n.id, a);
-    } else if (n.art !== 'hinweis') {
-      const a = gliederungssummeVon(alt, n.id);
-      if (a) gliederungen.set(n.id, a);
-    }
-  }
+  const papierkorb = papierkorbAnwenden(zustand?.papierkorb, cs.papierkorb);
   return {
-    positionen: ordneNachKennung([...positionen.values()], (p) => p.positionId),
-    gliederungen: ordneNachKennung([...gliederungen.values()], (g) => g.gliederungId),
-    gesamt: cs.summen.gesamt === null ? null : alt.gesamt,
+    leistungsverzeichnis: { ...kopf, knoten },
+    summen,
+    ...(papierkorb === undefined || papierkorb.length === 0 ? {} : { papierkorb }),
+  };
+};
+
+/**
+ * Der Papierkorb nach dem ChangeSet (v1.2, K9): entfernte Einträge fallen weg, geänderte werden ersetzt, neue kommen dazu;
+ * nach `nummer` aufsteigend (Vertrag `LvZustand.papierkorb`). Ohne Papierkorbänderung bleibt das Array, wie es ist.
+ */
+function papierkorbAnwenden(
+  alt: readonly Papierkorbeintrag[] | undefined,
+  p: Aenderungen<Papierkorbeintrag> | undefined,
+): readonly Papierkorbeintrag[] | undefined {
+  if (p === undefined) return alt;
+  const weg = new Set<string>(p.entfernt.map((e) => e.id));
+  const ersatz = new Map<string, Papierkorbeintrag>(p.geaendert.map((g) => [g.nachher.id, g.nachher]));
+  const neu = [
+    ...(alt ?? []).filter((e) => !weg.has(e.id)).map((e) => ersatz.get(e.id) ?? e),
+    ...p.hinzugefuegt,
+  ];
+  return neu.sort((a, b) => a.nummer - b.nummer);
+}
+
+/** Vertauscht die beiden Seiten einer Sammlungsänderung. */
+function aenderungenUmkehren<T>(a: Aenderungen<T>): Aenderungen<T> {
+  return {
+    hinzugefuegt: a.entfernt,
+    geaendert: a.geaendert.map((g) => ({ vorher: g.nachher, nachher: g.vorher })),
+    entfernt: a.hinzugefuegt,
   };
 }
 
 /**
- * Die Umkehrung eines ChangeSets (Undo): `vorher`/`nachher` und `hinzugefuegt`/`entfernt` vertauscht.
- * `entfernt` steht wie `hinzugefuegt` mit Eltern vor Kindern, so lässt sich die Umkehrung ohne Umsortieren anwenden.
- *
- * `zustandVorher` ist der Zustand, auf den `changeSet` angewendet wurde. Der Vertrag lässt `Summenaenderung` ohne Vorwerte,
- * deshalb liest die Umkehrung die alten Summen aus dem Vorzustand: für jede im ChangeSet genannte Summe und für jeden
- * entfernten Knoten die Werte von damals, `gesamt` nur, wenn das ChangeSet es geändert hat. So stellt „anwenden, Umkehrung
- * anwenden“ den Vorzustand einschließlich der Summen exakt her (Property-Test), und die Umkehrung der Umkehrung (mit dem
- * Nachzustand) ist wieder das ChangeSet. `null` (das LV entstand erst): keine Summen.
- * Die Umkehrung eines LV-Anlegens (`kopf.nachher: null`) kann `lvChangeSetAnwenden` nicht anwenden.
+ * Die Summen der Umkehrung, allein aus dem ChangeSet (v1.1a). Die Umkehrung setzt die alten Werte
+ * (`vorher.positionen`/`gliederungen`) und bringt die Summen der zurückkehrenden Knoten (`vorher.entfernt`) wieder; ihr
+ * eigenes `vorher` sind die neuen Werte des ChangeSets, aufgeteilt in überschriebene Summen und solche der Knoten, die
+ * die Umkehrung entfernt (`knoten.hinzugefuegt` des ChangeSets). `gesamt` und `vorher.gesamt` tauschen die Plätze;
+ * das deckt auch Anlegen und Löschen ab (das eine ist die Umkehrung des anderen).
  */
-export function changeSetUmkehren(cs: LvChangeSet, zustandVorher: LvZustand | null): LvChangeSet {
+function summenUmkehren(cs: LvChangeSet): Summenaenderung {
+  const s = cs.summen;
+  const v = s.vorher;
+  if (v === undefined)
+    throw new Error(
+      'ChangeSet ohne summen.vorher: ohne Vorzustand nicht umkehrbar (vor Vertrag v1.1a erzeugt).',
+    );
+  const neu = new Set<string>(cs.knoten.hinzugefuegt.map((k) => k.id));
+  const positionen = (bleibt: boolean): Positionssumme[] =>
+    s.positionen.filter((p) => neu.has(p.positionId) !== bleibt);
+  const gliederungen = (bleibt: boolean): Gliederungssumme[] =>
+    s.gliederungen.filter((g) => neu.has(g.gliederungId) !== bleibt);
+  return {
+    positionen: ordneNachKennung([...v.positionen, ...v.entfernt.positionen], (p) => p.positionId),
+    gliederungen: ordneNachKennung([...v.gliederungen, ...v.entfernt.gliederungen], (g) => g.gliederungId),
+    gesamt: v.gesamt,
+    vorher: {
+      positionen: ordneNachKennung(positionen(true), (p) => p.positionId),
+      gliederungen: ordneNachKennung(gliederungen(true), (g) => g.gliederungId),
+      gesamt: s.gesamt,
+      entfernt: {
+        positionen: ordneNachKennung(positionen(false), (p) => p.positionId),
+        gliederungen: ordneNachKennung(gliederungen(false), (g) => g.gliederungId),
+      },
+    },
+  };
+}
+
+/**
+ * Die Umkehrung eines ChangeSets (Undo), allein aus dem ChangeSet (v1.1a): `vorher`/`nachher` und
+ * `hinzugefuegt`/`entfernt` vertauscht, die Summen aus `summen.vorher` (siehe `summenUmkehren`). `entfernt` steht wie
+ * `hinzugefuegt` mit Eltern vor Kindern, so lässt sich die Umkehrung ohne Umsortieren anwenden. Die Umkehrung des
+ * Anlegens löscht das LV, die des Löschens legt es wieder an.
+ *
+ * Anwenden und dann die Umkehrung anwenden stellt den Vorzustand samt Summen exakt her; die Umkehrung der Umkehrung ist
+ * wieder das ChangeSet, die Summenlisten als Mengen verglichen (Property-Tests). Hinweise gehören zur Antwort auf den
+ * Befehl und gehen nicht in die Umkehrung ein. Papierkorb und LV-Stand (v1.2) werden ebenso vertauscht.
+ */
+export function changeSetUmkehren(cs: LvChangeSet): LvChangeSet {
   return {
     art: cs.art,
     leistungsverzeichnisId: cs.leistungsverzeichnisId,
     kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
-    knoten: {
-      hinzugefuegt: cs.knoten.entfernt,
-      geaendert: cs.knoten.geaendert.map((g) => ({ vorher: g.nachher, nachher: g.vorher })),
-      entfernt: cs.knoten.hinzugefuegt,
-    },
-    summen: summenUmkehren(cs, zustandVorher),
+    knoten: aenderungenUmkehren(cs.knoten),
+    summen: summenUmkehren(cs),
+    ...(cs.papierkorb === undefined ? {} : { papierkorb: aenderungenUmkehren(cs.papierkorb) }),
+    ...(cs.lvStand === undefined
+      ? {}
+      : { lvStand: { vorher: cs.lvStand.nachher, nachher: cs.lvStand.vorher } }),
   };
 }

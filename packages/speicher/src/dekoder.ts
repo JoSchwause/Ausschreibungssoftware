@@ -4,21 +4,25 @@
 // wird nie halb oder verlustbehaftet übernommen (Q5).
 //
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
-// Sache des Kerns, den `speicher` nicht importieren darf (A3).
+// Sache des Kerns.
 
-import { NACHKOMMASTELLEN } from '@tethys/vertrag';
+import { langtextFormFehler } from '@tethys/kern';
+import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   Angebot,
   AngebotId,
   AngebotKopf,
   AngebotZustand,
   Angebotsposition,
+  Auftraggeber,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
   Befehl,
   Befehlsart,
+  Befehlskurzfassung,
   Betrag,
+  Bezugsposition,
   Bieter,
   BieterId,
   ElternId,
@@ -29,11 +33,16 @@ import type {
   HinweistextId,
   Knoten,
   Langtext,
-  LangtextBaustein,
   Leistungsverzeichnis,
+  Leitbeschreibung,
   LeistungsverzeichnisId,
   LosId,
+  LvStand,
+  LvStandId,
   LvZustand,
+  Massenbefehlsart,
+  Papierkorbeintrag,
+  PapierkorbeintragId,
   Menge,
   Nachlass,
   NutzerId,
@@ -48,11 +57,16 @@ import type {
   Protokolleintrag,
   ProtokollId,
   Prozent,
+  Pruefsummenalgorithmus,
   Summenstand,
   TitelId,
+  Unterbeschreibung,
+  Vergabeinformationen,
+  Wahlzuordnung,
   Zahlenart,
   Zeitstempel,
   Zuschlag,
+  Zuschlagsbezug,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 
@@ -62,12 +76,19 @@ type Roh = Record<string, unknown>;
 
 const ungueltig = (pfad: string, was: string): never => abbruch('datei-ungueltig', `${pfad}: ${was}`);
 
-function objekt(x: unknown, pfad: string, felder: readonly string[]): Roh {
+/** Objekt mit genau den Pflichtfeldern `felder` und höchstens den Feldern aus `optional` (fehlt: keine Angabe). */
+function objekt(x: unknown, pfad: string, felder: readonly string[], optional: readonly string[] = []): Roh {
   if (typeof x !== 'object' || x === null || Array.isArray(x)) return ungueltig(pfad, 'Objekt erwartet');
   const o = x as Roh;
   for (const f of felder) if (!Object.hasOwn(o, f)) return ungueltig(pfad, `Feld „${f}“ fehlt`);
-  for (const k of Object.keys(o)) if (!felder.includes(k)) return ungueltig(pfad, `unbekanntes Feld „${k}“`);
+  for (const k of Object.keys(o))
+    if (!felder.includes(k) && !optional.includes(k)) return ungueltig(pfad, `unbekanntes Feld „${k}“`);
   return o;
+}
+
+/** `{ [name]: f(wert) }`, wenn das optionale Feld da ist, sonst `{}` (der Vertrag kennt nur „fehlt“, nie `undefined`). */
+function optional<K extends string, T>(o: Roh, name: K, f: (v: unknown) => T): { [P in K]?: T } {
+  return (Object.hasOwn(o, name) ? { [name]: f(o[name]) } : {}) as { [P in K]?: T };
 }
 
 function feld(o: Roh, name: string): unknown {
@@ -142,38 +163,32 @@ function ozStelle(x: unknown, pfad: string): OzStelle {
 }
 
 function ozMaske(x: unknown, pfad: string): OzMaske {
-  const o = objekt(x, pfad, ['gliederung', 'position', 'index', 'trennzeichen']);
+  // `losStufe` ist optional (v1.1a, F1); fehlt es, ist die oberste Stufe Titel.
+  const o = objekt(x, pfad, ['gliederung', 'position', 'index', 'trennzeichen'], ['losStufe']);
   return {
     gliederung: liste(feld(o, 'gliederung'), `${pfad}.gliederung`).map((s, i) =>
       ozStelle(s, `${pfad}.gliederung[${String(i)}]`),
     ),
+    ...optional(o, 'losStufe', (v) => wahrheit(v, `${pfad}.losStufe`)),
     position: ozStelle(feld(o, 'position'), `${pfad}.position`),
     index: oderNull(feld(o, 'index'), (v) => ozStelle(v, `${pfad}.index`)),
     trennzeichen: oderNull(feld(o, 'trennzeichen'), (v) => zeichenkette(v, `${pfad}.trennzeichen`)),
   };
 }
 
+// --- Langtext (v1.1b, F6, E-10) -----------------------------------------------------------------------------------
+//
+// Gelesen wird genau die Form des Vertrags (`LangtextBaustein`), streng wie der Rest der Datei: unbekannte `art`,
+// fehlende oder fremde Felder, eine Auszeichnung mit `false` (der Vertrag kennt nur `true` oder fehlend), `spalten`
+// unter 1 und eine Textergänzung unterhalb der obersten Ebene sind `datei-ungueltig` mit Pfad. Die Formprüfung ist die
+// des Kerns (`langtextFormFehler`, eine Stelle, Review S5): Was der Kern als Befehl annimmt, liest `speicher` zurück,
+// und umgekehrt. Eine Datei der Schemaversion 1 kann damit Bausteine enthalten, die ein älterer Stand der App nicht
+// liest (rückwärts lesen bleibt garantiert, vorwärts nicht; A8).
+
 function langtext(x: unknown, pfad: string): Langtext {
-  return liste(x, pfad).map((b, i): LangtextBaustein => {
-    const p = `${pfad}[${String(i)}]`;
-    if (typeof b === 'object' && b !== null && (b as Roh)['art'] === 'bild') {
-      const o = objekt(b, p, ['art', 'bild']);
-      const bild = objekt(feld(o, 'bild'), `${p}.bild`, ['id', 'medientyp', 'daten']);
-      return {
-        art: 'bild',
-        bild: {
-          id: zeichenkette(feld(bild, 'id'), `${p}.bild.id`) as LangtextBildId,
-          medientyp: zeichenkette(feld(bild, 'medientyp'), `${p}.bild.medientyp`),
-          daten: zeichenkette(feld(bild, 'daten'), `${p}.bild.daten`),
-        },
-      };
-    }
-    const o = objekt(b, p, ['art', 'text']);
-    aufzaehlung(feld(o, 'art'), `${p}.art`, ['text']);
-    return { art: 'text', text: zeichenkette(feld(o, 'text'), `${p}.text`) };
-  });
+  const formfehler = langtextFormFehler(x, pfad);
+  return formfehler === null ? (x as Langtext) : abbruch('datei-ungueltig', formfehler);
 }
-type LangtextBildId = Extract<LangtextBaustein, { art: 'bild' }>['bild']['id'];
 
 function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   return oderNull(x, (v) => {
@@ -202,8 +217,149 @@ function epa(x: unknown, pfad: string): Einheitspreisanteile | null {
   });
 }
 
-// v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 kennt noch die Positionsart vor v1.1b (siehe `projektdateiInAlterForm`).
-const POSITIONSARTEN = ['normal', 'bedarf', 'wahl', 'zuschlag', 'stundenlohn'] as const;
+// --- Merkmale, Zuschlag, Leitbeschreibung (v1.1b, Punkte 1–3, 6; Schemaversion 2) ------------------------------
+
+const ganzOderNull = (x: unknown, pfad: string): number | null => oderNull(x, (v) => ganz(v, pfad));
+const textOderNull = (x: unknown, pfad: string): string | null => oderNull(x, (v) => zeichenkette(v, pfad));
+
+function merkmale(x: unknown, pfad: string): Positionsmerkmale {
+  const o = objekt(x, pfad, ['bedarf', 'wahl', 'stundenlohn', 'pauschal', 'zuschlagskennzeichen']);
+  return {
+    bedarf: oderNull(feld(o, 'bedarf'), (v) =>
+      aufzaehlung(v, `${pfad}.bedarf`, ['ohne-gesamtbetrag', 'mit-gesamtbetrag'] as const),
+    ),
+    wahl: oderNull(feld(o, 'wahl'), (v): Wahlzuordnung => {
+      const q = `${pfad}.wahl`;
+      const w = objekt(v, q, ['gruppe', 'variante', 'grundpositionId']);
+      return {
+        gruppe: ganzOderNull(feld(w, 'gruppe'), `${q}.gruppe`),
+        variante: ganzOderNull(feld(w, 'variante'), `${q}.variante`),
+        grundpositionId: textOderNull(
+          feld(w, 'grundpositionId'),
+          `${q}.grundpositionId`,
+        ) as PositionId | null,
+      };
+    }),
+    stundenlohn: wahrheit(feld(o, 'stundenlohn'), `${pfad}.stundenlohn`),
+    pauschal: wahrheit(feld(o, 'pauschal'), `${pfad}.pauschal`),
+    zuschlagskennzeichen: wahrheit(feld(o, 'zuschlagskennzeichen'), `${pfad}.zuschlagskennzeichen`),
+  };
+}
+
+function zuschlagsbezug(x: unknown, pfad: string): Zuschlagsbezug {
+  const art = aufzaehlung(
+    typeof x === 'object' && x !== null ? (x as Roh)['art'] : undefined,
+    `${pfad}.art`,
+    ['positionen', 'gliederung', 'kennzeichnung'] as const,
+  );
+  if (art !== 'positionen') {
+    objekt(x, pfad, ['art']);
+    return { art };
+  }
+  const o = objekt(x, pfad, ['art', 'positionen']);
+  return {
+    art,
+    positionen: liste(feld(o, 'positionen'), `${pfad}.positionen`).map((b, i): Bezugsposition => {
+      const q = `${pfad}.positionen[${String(i)}]`;
+      const bo = objekt(b, q, ['positionId', 'teilmenge']);
+      return {
+        positionId: zeichenkette(feld(bo, 'positionId'), `${q}.positionId`) as PositionId,
+        teilmenge: oderNull(feld(bo, 'teilmenge'), (v) => dezimal(v, `${q}.teilmenge`, 'menge') as Menge),
+      };
+    }),
+  };
+}
+
+function zuschlag(x: unknown, pfad: string): Zuschlag | null {
+  return oderNull(x, (v) => {
+    const o = objekt(v, pfad, ['prozentsatz', 'bezug']);
+    return {
+      prozentsatz: oderNull(
+        feld(o, 'prozentsatz'),
+        (w) => dezimal(w, `${pfad}.prozentsatz`, 'prozent') as Prozent,
+      ),
+      bezug: zuschlagsbezug(feld(o, 'bezug'), `${pfad}.bezug`),
+    };
+  });
+}
+
+function leitbeschreibung(x: unknown, pfad: string): Leitbeschreibung {
+  const o = objekt(x, pfad, ['unterbeschreibungen']);
+  return {
+    unterbeschreibungen: liste(feld(o, 'unterbeschreibungen'), `${pfad}.unterbeschreibungen`).map(
+      (u, i): Unterbeschreibung => {
+        const q = `${pfad}.unterbeschreibungen[${String(i)}]`;
+        const uo = objekt(u, q, ['nummer', 'kurztext', 'langtext', 'menge', 'einheit']);
+        return {
+          nummer: zeichenkette(feld(uo, 'nummer'), `${q}.nummer`),
+          kurztext: zeichenkette(feld(uo, 'kurztext'), `${q}.kurztext`),
+          langtext: langtext(feld(uo, 'langtext'), `${q}.langtext`),
+          menge: oderNull(feld(uo, 'menge'), (v) => dezimal(v, `${q}.menge`, 'menge') as Menge),
+          einheit: textOderNull(feld(uo, 'einheit'), `${q}.einheit`),
+        };
+      },
+    ),
+  };
+}
+
+// --- Kopfdaten von LV und Auftrags-LV (v1.1b, Punkt 6) --------------------------------------------------------------
+
+function auftraggeber(x: unknown, pfad: string): Auftraggeber {
+  const o = objekt(x, pfad, ['name', 'strasse', 'plz', 'ort', 'vergabenummer']);
+  const t = (n: string): string | null => textOderNull(feld(o, n), `${pfad}.${n}`);
+  return {
+    name: t('name'),
+    strasse: t('strasse'),
+    plz: t('plz'),
+    ort: t('ort'),
+    vergabenummer: t('vergabenummer'),
+  };
+}
+
+function vergabeinformationen(x: unknown, pfad: string): Vergabeinformationen {
+  const o = objekt(x, pfad, [
+    'eroeffnungsdatum',
+    'eroeffnungszeit',
+    'abgabeort',
+    'ausfuehrungsbeginn',
+    'ausfuehrungsende',
+    'auftragsnummer',
+    'auftragsdatum',
+    'abnahmeart',
+    'gewaehrleistung',
+  ]);
+  const t = (n: string): string | null => textOderNull(feld(o, n), `${pfad}.${n}`);
+  return {
+    eroeffnungsdatum: t('eroeffnungsdatum'),
+    eroeffnungszeit: t('eroeffnungszeit'),
+    abgabeort: t('abgabeort'),
+    ausfuehrungsbeginn: t('ausfuehrungsbeginn'),
+    ausfuehrungsende: t('ausfuehrungsende'),
+    auftragsnummer: t('auftragsnummer'),
+    auftragsdatum: t('auftragsdatum'),
+    abnahmeart: t('abnahmeart'),
+    gewaehrleistung: oderNull(feld(o, 'gewaehrleistung'), (v) => {
+      const q = `${pfad}.gewaehrleistung`;
+      const g = objekt(v, q, ['dauer', 'einheit']);
+      return {
+        dauer: ganz(feld(g, 'dauer'), `${q}.dauer`),
+        einheit: zeichenkette(feld(g, 'einheit'), `${q}.einheit`),
+      };
+    }),
+  };
+}
+
+const KOPFDATEN = ['auftraggeber', 'vergabeinformationen'] as const;
+
+function kopfdaten(
+  o: Roh,
+  pfad: string,
+): Pick<Leistungsverzeichnis, 'auftraggeber' | 'vergabeinformationen'> {
+  return {
+    ...optional(o, 'auftraggeber', (v) => auftraggeber(v, `${pfad}.auftraggeber`)),
+    ...optional(o, 'vergabeinformationen', (v) => vergabeinformationen(v, `${pfad}.vergabeinformationen`)),
+  };
+}
 
 function knoten(x: unknown, pfad: string): Knoten {
   const art = typeof x === 'object' && x !== null ? (x as Roh)['art'] : undefined;
@@ -237,69 +393,36 @@ function knoten(x: unknown, pfad: string): Knoten {
       };
     }
     case 'position': {
-      const o = objekt(x, pfad, [
-        'art',
-        'id',
-        'elternId',
-        'reihenfolge',
-        'ordnungszahl',
-        'ozIndex',
-        'positionsart',
-        'pauschal',
-        'bedarfMitGesamtbetrag',
-        'bezugspositionId',
-        'grundpositionId',
-        'kurztext',
-        'langtext',
-        'menge',
-        'einheit',
-        'einheitspreis',
-        'epa',
-      ]);
-      const pid = (n: string): PositionId | null =>
-        oderNull(feld(o, n), (v) => zeichenkette(v, `${pfad}.${n}`) as PositionId);
+      const o = objekt(
+        x,
+        pfad,
+        [
+          'art',
+          'id',
+          'elternId',
+          'reihenfolge',
+          'ordnungszahl',
+          'ozIndex',
+          'merkmale',
+          'zuschlag',
+          'kurztext',
+          'langtext',
+          'menge',
+          'einheit',
+          'einheitspreis',
+          'epa',
+        ],
+        ['leitbeschreibung'],
+      );
       return {
         ...lage(o),
         art: 'position',
         id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as PositionId,
         ordnungszahl: oz(o),
         ozIndex: oderNull(feld(o, 'ozIndex'), (v) => zeichenkette(v, `${pfad}.ozIndex`)),
-        ...(() => {
-          // v1.1b: mechanisch angepasst, Folgeticket: Datei der Version 1 (alte Form) → Merkmale und Zuschlag von `vertrag` v1.1b.
-          const art = aufzaehlung(feld(o, 'positionsart'), `${pfad}.positionsart`, POSITIONSARTEN);
-          const mit = wahrheit(feld(o, 'bedarfMitGesamtbetrag'), `${pfad}.bedarfMitGesamtbetrag`);
-          const bezug = pid('bezugspositionId');
-          const grund = pid('grundpositionId');
-          // Vor v1.1b wurden diese Felder wörtlich gelesen; ein Wert außerhalb seiner Art darf nicht still verschwinden (Q5).
-          const fremd = (name: string, gesetzt: boolean, nur: string): void => {
-            if (gesetzt && art !== nur)
-              ungueltig(
-                `${pfad}.${name}`,
-                `Position ${String(o['id'])}: ${name} ist nur bei positionsart „${nur}“ zulässig.`,
-              );
-          };
-          fremd('bedarfMitGesamtbetrag', mit, 'bedarf');
-          fremd('bezugspositionId', bezug !== null, 'zuschlag');
-          fremd('grundpositionId', grund !== null, 'wahl');
-          const merkmale: Positionsmerkmale = {
-            bedarf: art === 'bedarf' ? (mit ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
-            wahl: art === 'wahl' ? { gruppe: null, variante: null, grundpositionId: grund } : null,
-            stundenlohn: art === 'stundenlohn',
-            pauschal: wahrheit(feld(o, 'pauschal'), `${pfad}.pauschal`),
-            zuschlagskennzeichen: false,
-          };
-          const zuschlag: Zuschlag | null =
-            art === 'zuschlag'
-              ? {
-                  prozentsatz: null,
-                  bezug: {
-                    art: 'positionen',
-                    positionen: bezug === null ? [] : [{ positionId: bezug, teilmenge: null }],
-                  },
-                }
-              : null;
-          return { merkmale, zuschlag };
-        })(),
+        merkmale: merkmale(feld(o, 'merkmale'), `${pfad}.merkmale`),
+        zuschlag: zuschlag(feld(o, 'zuschlag'), `${pfad}.zuschlag`),
+        ...optional(o, 'leitbeschreibung', (v) => leitbeschreibung(v, `${pfad}.leitbeschreibung`)),
         kurztext: zeichenkette(feld(o, 'kurztext'), `${pfad}.kurztext`),
         langtext: langtext(feld(o, 'langtext'), `${pfad}.langtext`),
         menge: oderNull(feld(o, 'menge'), (v) => dezimal(v, `${pfad}.menge`, 'menge') as Menge),
@@ -316,15 +439,25 @@ function knoten(x: unknown, pfad: string): Knoten {
   }
 }
 
+/** Getrennte Ausweise (v1.1b, Punkt 4); fehlt ein Feld, ist es nicht berechnet. */
+const AUSWEISE = ['summeBedarfOhneGesamtbetrag', 'summeWahl'] as const;
+
+function ausweise(o: Roh, pfad: string): Pick<Gesamtsummen, 'summeBedarfOhneGesamtbetrag' | 'summeWahl'> {
+  const b = (v: unknown, n: string): Betrag => dezimal(v, `${pfad}.${n}`, 'betrag') as Betrag;
+  return {
+    ...optional(o, 'summeBedarfOhneGesamtbetrag', (v) => b(v, 'summeBedarfOhneGesamtbetrag')),
+    ...optional(o, 'summeWahl', (v) => b(v, 'summeWahl')),
+  };
+}
+
 function summenstand(x: unknown, pfad: string): Summenstand {
   const o = objekt(x, pfad, ['positionen', 'gliederungen', 'gesamt']);
-  const g = objekt(feld(o, 'gesamt'), `${pfad}.gesamt`, [
-    'netto',
-    'nachlass',
-    'nettoNachNachlass',
-    'mwst',
-    'brutto',
-  ]);
+  const g = objekt(
+    feld(o, 'gesamt'),
+    `${pfad}.gesamt`,
+    ['netto', 'nachlass', 'nettoNachNachlass', 'mwst', 'brutto'],
+    AUSWEISE,
+  );
   const b = (n: string): Betrag => dezimal(feld(g, n), `${pfad}.gesamt.${n}`, 'betrag') as Betrag;
   const gesamt: Gesamtsummen = {
     netto: b('netto'),
@@ -332,6 +465,7 @@ function summenstand(x: unknown, pfad: string): Summenstand {
     nettoNachNachlass: b('nettoNachNachlass'),
     mwst: b('mwst'),
     brutto: b('brutto'),
+    ...ausweise(g, `${pfad}.gesamt`),
   };
   return {
     positionen: liste(feld(o, 'positionen'), `${pfad}.positionen`).map((p, i) => {
@@ -348,10 +482,11 @@ function summenstand(x: unknown, pfad: string): Summenstand {
     }),
     gliederungen: liste(feld(o, 'gliederungen'), `${pfad}.gliederungen`).map((p, i) => {
       const q = `${pfad}.gliederungen[${String(i)}]`;
-      const go = objekt(p, q, ['gliederungId', 'summe']);
+      const go = objekt(p, q, ['gliederungId', 'summe'], AUSWEISE);
       return {
         gliederungId: zeichenkette(feld(go, 'gliederungId'), `${q}.gliederungId`) as GliederungId,
         summe: dezimal(feld(go, 'summe'), `${q}.summe`, 'betrag') as Betrag,
+        ...ausweise(go, q),
       };
     }),
     gesamt,
@@ -381,18 +516,30 @@ function projekt(x: unknown, pfad: string): Projekt {
   };
 }
 
+/** Ein Papierkorbeintrag (Schema 3): Kennung, Nummer ab 1 und die Knoten mit alter Lage. */
+function papierkorbeintrag(x: unknown, pfad: string): Papierkorbeintrag {
+  const o = objekt(x, pfad, ['id', 'nummer', 'knoten']);
+  const nummer = ganz(feld(o, 'nummer'), `${pfad}.nummer`);
+  if (nummer < 1) ungueltig(`${pfad}.nummer`, 'ganze Zahl ab 1 erwartet');
+  const knotenListe = liste(feld(o, 'knoten'), `${pfad}.knoten`);
+  if (knotenListe.length === 0)
+    ungueltig(`${pfad}.knoten`, 'ein Papierkorbeintrag hat mindestens einen Knoten');
+  return {
+    id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as PapierkorbeintragId,
+    nummer,
+    knoten: knotenListe.map((k, i) => knoten(k, `${pfad}.knoten[${String(i)}]`)),
+  };
+}
+
 function lvZustand(x: unknown, pfad: string): LvZustand {
-  const z = objekt(x, pfad, ['leistungsverzeichnis', 'summen']);
+  const z = objekt(x, pfad, ['leistungsverzeichnis', 'summen'], ['papierkorb']);
   const p = `${pfad}.leistungsverzeichnis`;
-  const o = objekt(feld(z, 'leistungsverzeichnis'), p, [
-    'id',
-    'projektId',
-    'name',
-    'ozMaske',
-    'mwstSatz',
-    'nachlass',
-    'knoten',
-  ]);
+  const o = objekt(
+    feld(z, 'leistungsverzeichnis'),
+    p,
+    ['id', 'projektId', 'name', 'ozMaske', 'mwstSatz', 'nachlass', 'knoten'],
+    KOPFDATEN,
+  );
   const lv: Leistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as LeistungsverzeichnisId,
     projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
@@ -400,25 +547,55 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     ozMaske: ozMaske(feld(o, 'ozMaske'), `${p}.ozMaske`),
     mwstSatz: dezimal(feld(o, 'mwstSatz'), `${p}.mwstSatz`, 'prozent') as Prozent,
     nachlass: nachlass(feld(o, 'nachlass'), `${p}.nachlass`),
+    ...kopfdaten(o, p),
     knoten: liste(feld(o, 'knoten'), `${p}.knoten`).map((k, i) => knoten(k, `${p}.knoten[${String(i)}]`)),
   };
-  return { leistungsverzeichnis: lv, summen: summenstand(feld(z, 'summen'), `${pfad}.summen`) };
+  return {
+    leistungsverzeichnis: lv,
+    summen: summenstand(feld(z, 'summen'), `${pfad}.summen`),
+    ...optional(z, 'papierkorb', (v) =>
+      liste(v, `${pfad}.papierkorb`).map((e, i) => papierkorbeintrag(e, `${pfad}.papierkorb[${String(i)}]`)),
+    ),
+  };
+}
+
+/** Ein LV-Stand (Schema 3): Kopf, `angelegt` und der eingefrorene Zustand des LV, der zum Kopf passt. */
+function lvStand(x: unknown, pfad: string): LvStand {
+  const o = objekt(x, pfad, ['id', 'leistungsverzeichnisId', 'name', 'angelegt', 'zustand']);
+  const s: LvStand = {
+    id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as LvStandId,
+    leistungsverzeichnisId: zeichenkette(
+      feld(o, 'leistungsverzeichnisId'),
+      `${pfad}.leistungsverzeichnisId`,
+    ) as LeistungsverzeichnisId,
+    name: zeichenkette(feld(o, 'name'), `${pfad}.name`),
+    angelegt: zeichenkette(feld(o, 'angelegt'), `${pfad}.angelegt`) as Zeitstempel,
+    zustand: lvZustand(feld(o, 'zustand'), `${pfad}.zustand`),
+  };
+  if (s.zustand.leistungsverzeichnis.id !== s.leistungsverzeichnisId)
+    ungueltig(`${pfad}.zustand`, 'gehört zu einem anderen LV als der Stand');
+  return s;
 }
 
 function auftragsLvZustand(x: unknown, pfad: string): AuftragsLvZustand {
   const z = objekt(x, pfad, ['auftragsLeistungsverzeichnis', 'summen']);
   const p = `${pfad}.auftragsLeistungsverzeichnis`;
-  const o = objekt(feld(z, 'auftragsLeistungsverzeichnis'), p, [
-    'id',
-    'projektId',
-    'leistungsverzeichnisId',
-    'angebotId',
-    'name',
-    'ozMaske',
-    'mwstSatz',
-    'nachlass',
-    'knoten',
-  ]);
+  const o = objekt(
+    feld(z, 'auftragsLeistungsverzeichnis'),
+    p,
+    [
+      'id',
+      'projektId',
+      'leistungsverzeichnisId',
+      'angebotId',
+      'name',
+      'ozMaske',
+      'mwstSatz',
+      'nachlass',
+      'knoten',
+    ],
+    KOPFDATEN,
+  );
   const lv: AuftragsLeistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as AuftragsLeistungsverzeichnisId,
     projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
@@ -431,6 +608,7 @@ function auftragsLvZustand(x: unknown, pfad: string): AuftragsLvZustand {
     ozMaske: ozMaske(feld(o, 'ozMaske'), `${p}.ozMaske`),
     mwstSatz: dezimal(feld(o, 'mwstSatz'), `${p}.mwstSatz`, 'prozent') as Prozent,
     nachlass: nachlass(feld(o, 'nachlass'), `${p}.nachlass`),
+    ...kopfdaten(o, p),
     knoten: liste(feld(o, 'knoten'), `${p}.knoten`).map((k, i) => knoten(k, `${p}.knoten[${String(i)}]`)),
   };
   return { auftragsLeistungsverzeichnis: lv, summen: summenstand(feld(z, 'summen'), `${pfad}.summen`) };
@@ -467,7 +645,7 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
         status: 'nicht-angeboten',
       };
     }
-    const ao = objekt(a, q, ['positionId', 'status', 'einheitspreis', 'epa']);
+    const ao = objekt(a, q, ['positionId', 'status', 'einheitspreis', 'epa'], ['zuschlagssatz']);
     aufzaehlung(feld(ao, 'status'), `${q}.status`, ['angeboten']);
     return {
       positionId: zeichenkette(feld(ao, 'positionId'), `${q}.positionId`) as PositionId,
@@ -478,6 +656,7 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
         'einheitspreis',
       ) as Einheitspreis,
       epa: epa(feld(ao, 'epa'), `${q}.epa`),
+      ...optional(ao, 'zuschlagssatz', (v) => dezimal(v, `${q}.zuschlagssatz`, 'prozent') as Prozent),
     };
   });
   const angebot: Angebot = { ...kopf, positionen };
@@ -503,7 +682,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   EinheitAendern: true,
   EinheitspreisAendern: true,
   EinheitspreisanteileSetzen: true,
-  PositionsmerkmaleSetzen: true, // v1.1b: mechanisch angepasst, Folgeticket
+  PositionsmerkmaleSetzen: true,
   OzMaskeSetzen: true,
   OrdnungszahlSetzen: true,
   Umnummerieren: true,
@@ -514,11 +693,23 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   AngebotspositionSetzen: true,
   AngebotsNachlassSetzen: true,
   AngebotsNachlassEntfernen: true,
-  // v1.1a: mechanisch angepasst, Folgeticket (speicher: Löschen und Auftrags-LV umsetzen)
   ProjektLoeschen: true,
   LeistungsverzeichnisLoeschen: true,
   AngebotLoeschen: true,
   AuftragsLeistungsverzeichnisAnlegen: true,
+  // v1.2: mechanisch angepasst, Folgeticket (speicher: Papierkorb, LV-Stände und Undo umsetzen, Ticket 43)
+  KnotenEinfuegen: true,
+  KnotenlisteVerschieben: true,
+  KnotenInPapierkorbLegen: true,
+  PapierkorbeintragWiederherstellen: true,
+  PapierkorbeintragEntfernen: true,
+  PapierkorbLeeren: true,
+  LvStandAnlegen: true,
+  AuftraggeberSetzen: true,
+  VergabeinformationenSetzen: true,
+  LeitbeschreibungSetzen: true,
+  Rueckgaengig: true,
+  Wiederholen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {
@@ -541,6 +732,43 @@ function jsonWert(x: unknown, pfad: string): void {
   ungueltig(pfad, 'kein JSON-Wert');
 }
 
+/** Hexadezimale Stellen je Prüfsummenalgorithmus (256 bzw. 512 Bit). */
+const PRUEFSUMMENLAENGE: Record<Pruefsummenalgorithmus, number> = { 'sha-256': 64, 'sha-512': 128 };
+
+/** Die lange Liste, die ein Massenbefehlskopf nicht trägt (E-13), je Befehlsart: Feld und Feld darin. */
+const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
+  LeistungsverzeichnisAnlegen: ['inhalt', 'knoten'],
+  AngebotAnlegen: ['angebot', 'positionen'],
+  AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
+};
+
+/**
+ * Kurzfassung eines Massenbefehls (E-13): Kopf eines Massenbefehls ohne seine lange Liste und eine Prüfsumme in
+ * gültiger Form (bekannter Algorithmus, hexadezimal klein, passende Länge). Den Kopf selbst prüft der Dekoder wie
+ * jeden Befehl nur auf seine Art (siehe Dateikopf); ob die Summe zum Befehl passt, kann ohne den Befehl niemand prüfen.
+ */
+function befehlskurzfassung(b: Roh, pfad: string): void {
+  objekt(b, pfad, ['art', 'kopf', 'pruefsumme']);
+  const kopf = objekt(feld(b, 'kopf'), `${pfad}.kopf`, Object.keys(feld(b, 'kopf') ?? {}));
+  const art = aufzaehlung(feld(kopf, 'art'), `${pfad}.kopf.art`, MASSENBEFEHLSARTEN);
+  const [aussen, liste] = LANGE_LISTE[art];
+  const teil = feld(kopf, aussen);
+  if (typeof teil !== 'object' || teil === null || Array.isArray(teil))
+    ungueltig(`${pfad}.kopf.${aussen}`, 'Objekt erwartet');
+  else if (Object.hasOwn(teil, liste))
+    ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
+  const q = `${pfad}.pruefsumme`;
+  const ps = objekt(feld(b, 'pruefsumme'), q, ['algorithmus', 'wert']);
+  const algorithmus = aufzaehlung(feld(ps, 'algorithmus'), `${q}.algorithmus`, [
+    'sha-256',
+    'sha-512',
+  ] as const);
+  const wert = zeichenkette(feld(ps, 'wert'), `${q}.wert`);
+  const laenge = PRUEFSUMMENLAENGE[algorithmus];
+  if (!new RegExp(`^[0-9a-f]{${String(laenge)}}$`).test(wert))
+    ungueltig(`${q}.wert`, `${String(laenge)} hexadezimale Stellen (klein) erwartet für ${algorithmus}`);
+}
+
 function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   const o = objekt(x, pfad, ['id', 'projektId', 'aggregat', 'wer', 'wann', 'befehl']);
   const ag = objekt(feld(o, 'aggregat'), `${pfad}.aggregat`, ['art', 'id']);
@@ -557,7 +785,13 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     Object.keys(befehl !== null && typeof befehl === 'object' ? befehl : {}),
   );
   const bart = zeichenkette(feld(b, 'art'), `${pfad}.befehl.art`);
-  if (!Object.hasOwn(BEFEHLSARTEN, bart)) ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
+  if (bart === 'Befehlskurzfassung') befehlskurzfassung(b, `${pfad}.befehl`);
+  else if (bart === 'Rueckgaengig' || bart === 'Wiederholen') {
+    // Historienbefehle (v1.2) haben genau eine Form; ihr Verweis wird in `pruefeHistorienbezuege` geprüft.
+    const h = objekt(b, `${pfad}.befehl`, ['art', 'protokollId']);
+    zeichenkette(feld(h, 'protokollId'), `${pfad}.befehl.protokollId`);
+  } else if (!Object.hasOwn(BEFEHLSARTEN, bart))
+    ungueltig(`${pfad}.befehl.art`, `unbekannter Befehl „${bart}“`);
   jsonWert(befehl, `${pfad}.befehl`);
   return {
     id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as ProtokollId,
@@ -568,20 +802,54 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     } as Protokolleintrag['aggregat'],
     wer: zeichenkette(feld(o, 'wer'), `${pfad}.wer`) as NutzerId,
     wann: zeichenkette(feld(o, 'wann'), `${pfad}.wann`) as Zeitstempel,
-    befehl: befehl as Befehl,
+    befehl: befehl as Befehl | Befehlskurzfassung,
   };
+}
+
+/**
+ * `Rueckgaengig`/`Wiederholen` im Protokoll der Datei (v1.2, S3): `protokollId` zeigt auf einen früheren Eintrag
+ * derselben Datei (also desselben Projekts) mit demselben Aggregat, der kein Historienbefehl ist. Wie `anwenden`, nur
+ * als `datei-ungueltig`. Ausnahme wie dort (D-31.1): Am Projekt darf der Verweis ins Leere zeigen, weil das Löschen des
+ * Projekts sein Protokoll mitnahm, bevor die Umkehrung es wieder anlegte.
+ */
+function pruefeHistorienbezuege(protokoll: readonly Protokolleintrag[]): void {
+  const frueher = new Map<string, Protokolleintrag>();
+  protokoll.forEach((e, i) => {
+    const b = e.befehl;
+    if (b.art === 'Rueckgaengig' || b.art === 'Wiederholen') {
+      const ziel = frueher.get(b.protokollId);
+      const passt =
+        ziel === undefined
+          ? e.aggregat.art === 'projekt' && !protokoll.some((x) => x.id === b.protokollId)
+          : ziel.aggregat.art === e.aggregat.art &&
+            ziel.aggregat.id === e.aggregat.id &&
+            ziel.befehl.art !== 'Rueckgaengig' &&
+            ziel.befehl.art !== 'Wiederholen';
+      if (!passt)
+        ungueltig(
+          `$.protokoll[${String(i)}].befehl.protokollId`,
+          'zeigt auf keinen früheren ursprünglichen Befehl am selben Aggregat',
+        );
+    }
+    frueher.set(e.id, e);
+  });
 }
 
 /** Prüft eine bereits auf die aktuelle Version gehobene Projektdatei und liefert sie typisiert. */
 export function dekodiereProjektdatei(roh: unknown, version: number): Projektdatei {
-  const o = objekt(roh, '$', [
-    'schemaVersion',
-    'projekt',
-    'leistungsverzeichnisse',
-    'angebote',
-    'auftragsLeistungsverzeichnisse',
-    'protokoll',
-  ]);
+  const o = objekt(
+    roh,
+    '$',
+    [
+      'schemaVersion',
+      'projekt',
+      'leistungsverzeichnisse',
+      'angebote',
+      'auftragsLeistungsverzeichnisse',
+      'protokoll',
+    ],
+    ['lvStaende'],
+  );
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
   const p = projekt(feld(o, 'projekt'), '$.projekt');
   const datei: Projektdatei = {
@@ -600,6 +868,9 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     protokoll: liste(feld(o, 'protokoll'), '$.protokoll').map((x, i) =>
       protokolleintrag(x, `$.protokoll[${String(i)}]`),
     ),
+    ...optional(o, 'lvStaende', (v) =>
+      liste(v, '$.lvStaende').map((s, i) => lvStand(s, `$.lvStaende[${String(i)}]`)),
+    ),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [
@@ -607,7 +878,9 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...datei.angebote.map((z) => z.angebot.projektId),
     ...datei.auftragsLeistungsverzeichnisse.map((z) => z.auftragsLeistungsverzeichnis.projektId),
     ...datei.protokoll.map((e) => e.projektId),
+    ...(datei.lvStaende ?? []).map((s) => s.zustand.leistungsverzeichnis.projektId),
   ].find((id) => id !== p.id);
   if (fremd !== undefined) ungueltig('$', `enthält Daten des fremden Projekts ${fremd}`);
+  pruefeHistorienbezuege(datei.protokoll);
   return datei;
 }

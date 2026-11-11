@@ -3,8 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { formatiereBetragDe, formatiereEinheitspreisDe, formatiereMengeDe, parseEinheitspreisDe, parseMengeDe } from '@tethys/dezimal';
-import type { GridIdQuelle, GridZahlen } from '@tethys/ui-grid';
-import type { Knoten, LvBefehl, PositionId, Prozent, Position } from '@tethys/vertrag';
+import type { GridIdQuelle, GridZahlen, Knoten, LvBefehl, PositionId, Prozent, Position } from '@tethys/vertrag';
 import { gpLv, ladeLv, rechne } from './rechnen';
 import type { Rechnung } from './rechnen';
 import { baueSpiegel } from './spiegel';
@@ -53,11 +52,11 @@ export function wendeAn(knoten: readonly Knoten[], b: LvBefehl): Knoten[] {
 
 /** Ränder zum Grid (N4): Parsen und Formatieren ueber @tethys/dezimal. */
 export const zahlen: GridZahlen = {
-  parseMenge: (t) => {
+  parseMenge: (t: string) => {
     const r = parseMengeDe(t);
     return r.ok ? r : { ok: false, fehler: 'Keine gültige Menge. Erwartet wird z. B. 1.234,500.' };
   },
-  parseEinheitspreis: (t) => {
+  parseEinheitspreis: (t: string) => {
     const r = parseEinheitspreisDe(t);
     return r.ok ? r : { ok: false, fehler: 'Kein gültiger Einheitspreis. Erwartet wird z. B. 12,350.' };
   },
@@ -125,6 +124,9 @@ export function StoreAnbieter({ children, navigiere }: { children: ReactNode; na
         zaehler.current += 1;
         return `neu-${String(zaehler.current)}` as PositionId;
       },
+      // v1.2: mechanisch angepasst, Folgeticket (GridIdQuelle, D-10 (4))
+      papierkorbeintrag: () =>
+        `papierkorb-${String((zaehler.current += 1))}` as ReturnType<GridIdQuelle['papierkorbeintrag']>,
     }),
     [],
   );

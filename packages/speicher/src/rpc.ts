@@ -12,10 +12,13 @@ export const RPC_METHODEN = [
   'lvLaden',
   'angeboteAuflisten',
   'angebotLaden',
+  'lvStaendeAuflisten',
+  'lvStandLaden',
   'anwenden',
   'protokoll',
   'projektdateiExportieren',
   'projektdateiImportieren',
+  'migrationsbefunde',
 ] as const;
 
 export type RpcMethode = (typeof RPC_METHODEN)[number];

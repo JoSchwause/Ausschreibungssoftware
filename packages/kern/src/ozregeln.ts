@@ -64,7 +64,7 @@ export const OZ_ANNAHMEN: {
     'Ein Knoten in einer Stufe, die die Maske nicht hat, wird nicht nummeriert; der Befehl wird mit maske-ungueltig (OzMaskeSetzen, Umnummerieren) oder oz-ungueltig (OrdnungszahlSetzen) abgewiesen und nennt den Knoten',
   /** (c) `nummerAls`: Überlauf. */
   ueberlauf:
-    'Passt ein Zähler (Geschwisterzahl mal Schritt) nicht in die Stellen, weicht die Vergabe für diese Geschwistergruppe automatisch auf Schritt 5, dann 2, dann 1 aus (E-09, F2; nur auf Schritte unter dem Standardschritt, Gliederungen haben also keinen Rückfall). Passt auch Schritt 1 nicht, wird abgewiesen (maske-ungueltig, nennt den ersten Knoten ohne Platz); nie eine abgeschnittene oder doppelte OZ. Ein Hinweis an die Nutzerin wird noch nicht geliefert: Befehlsergebnis und ChangeSet des Vertrags haben keinen Kanal dafür (Ticket vertrag v1.1a)',
+    'Passt ein Zähler (Geschwisterzahl mal Schritt) nicht in die Stellen, weicht die Vergabe für diese Geschwistergruppe automatisch auf Schritt 5, dann 2, dann 1 aus (E-09, F2; nur auf Schritte unter dem Standardschritt, Gliederungen haben also keinen Rückfall) und liefert je ausgewichener Gruppe einen Befehlshinweis oz-schritt-ausgewichen an der ersten Position der Gruppe (feld ordnungszahl). Passt auch Schritt 1 nicht (oder eine Gliederungsnummer nicht in ihre Stellen), wird abgewiesen (oz-ueberlauf, nennt den ersten Knoten ohne Platz); nie eine abgeschnittene oder doppelte OZ (doppelt: oz-doppelt)',
   /** (d) Indexpositionen. */
   indexpositionen:
     'ozIndex wird nie verändert. Eine Position mit ozIndex teilt den Grundteil der nächsten vorhergehenden Position unter demselben Elternknoten (Muster in fixtures/typisch: 0050 und 0050 A) und verbraucht keinen Zähler; ohne vorhergehende Position bekommt sie einen eigenen Grundteil. Passt der Index nicht zur Maske oder entstehen gleiche OZ mit Index, wird abgewiesen',
@@ -146,10 +146,10 @@ export function maskeFehler(maske: OzMaske): string | null {
 }
 
 /**
- * Prüfbefunde zu einer Maske beim Anlegen eines LV. Rein und ohne Wirkung auf den Befehl: `LeistungsverzeichnisAnlegen`
- * nimmt auch eine ungültige Maske an (ein GAEB-Import darf daran nicht scheitern, U5). Der Vertrag v1 hat für einen
- * angenommenen Befehl noch keinen Ort für Befunde; ab v1.1a (Ticket 24) liefert der Befehl diese Befunde mit.
- * Regeln: allein `maskeFehler`. Schwere und Code sind eine vorläufige Annahme, Entscheidung offen: eine Warnung,
+ * Prüfbefunde zu einer Maske beim Anlegen eines LV. Rein: `LeistungsverzeichnisAnlegen` nimmt auch eine beanstandete
+ * Maske an (ein GAEB-Import darf daran nicht scheitern, U5) und liefert jeden Befund als `Befehlshinweis`
+ * `oz-maske-ungueltig` mit `feld: 'ozMaske'` (Vertrag v1.2, Ticket 30). `OzMaskeSetzen` (Handeingabe) weist eine
+ * solche Maske dagegen mit `maske-ungueltig` ab. Regeln: allein `maskeFehler`. Schwere und Code sind eine vorläufige Annahme, Entscheidung offen: eine Warnung,
  * Code `oz-maske-ungueltig`, ein Befund je Maske (der erste Fehler).
  */
 export function maskePruefen(maske: OzMaske): readonly Pruefbefund[] {
@@ -173,7 +173,7 @@ export function maskenLaenge(maske: OzMaske): number {
   return summe;
 }
 
-/** Gleiche Masken (Wert, nicht Objektidentität). */
+/** Gleiche Masken (Wert, nicht Objektidentität). `losStufe`: fehlt gilt wie `false`. */
 export function maskenGleich(a: OzMaske, b: OzMaske): boolean {
   const gleich = (x: OzStelle | null, y: OzStelle | null): boolean =>
     x === null || y === null ? x === y : x.laenge === y.laenge && x.zeichen === y.zeichen;
@@ -182,7 +182,8 @@ export function maskenGleich(a: OzMaske, b: OzMaske): boolean {
     a.gliederung.every((s, i) => gleich(s, b.gliederung[i] ?? null)) &&
     gleich(a.position, b.position) &&
     gleich(a.index, b.index) &&
-    a.trennzeichen === b.trennzeichen
+    a.trennzeichen === b.trennzeichen &&
+    (a.losStufe === true) === (b.losStufe === true)
   );
 }
 

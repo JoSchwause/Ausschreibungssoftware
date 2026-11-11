@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Einstiegspunkt von @tethys/gaeb (Ticket 22): GAEB DA XML 3.3, Phasen X81 und X83 lesen.
-// Schreiben (G2), X84 (G3) und Version 3.2 (G4) folgen in eigenen Tickets.
+// Einstiegspunkt von @tethys/gaeb: GAEB DA XML 3.3 und 3.2 lesen (X81, X83, X86; Ticket 22, 32, 40) und schreiben
+// (X81, X83, X86; Ticket 40); Angebote X84 → `AngebotAnlegen` (Ticket 45).
 
 export { leseGaeb, MAX_STUFEN, OZ_MAX_LAENGE, STANDARD_MAX_BYTES, STANDARD_MWST_SATZ } from './lesen';
 export type { GaebLesungErgebnis, LeseOptionen } from './lesen';
+export { GRENZEN, VERSIONSDATUM, gaebKennung, schreibeGaeb } from './schreiben';
+export type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
+export { leseAngebot } from './angebot';
+export type { AngebotLeseOptionen, AngebotLesung } from './angebot';

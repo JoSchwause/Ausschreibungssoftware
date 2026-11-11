@@ -8,6 +8,7 @@ import type {
   AngebotLoeschen,
   AuftragsLeistungsverzeichnisAnlegen,
   GliederungAnlegen,
+  KnotenEinfuegen,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
   ProjektLoeschen,
@@ -19,11 +20,14 @@ import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
   BildId,
+  LvStandId,
   NutzerId,
+  PapierkorbeintragId,
   ProtokollId,
   Zeitstempel,
 } from './marken';
 import type {
+  Angebotsposition,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Leistungsverzeichnis,
@@ -31,6 +35,7 @@ import type {
   LvKopf,
   Langtext,
   OzMaske,
+  Papierkorbeintrag,
   Position,
   Positionsmerkmale,
   Zuschlag,
@@ -603,4 +608,141 @@ export const beispielMassenprotokoll: Protokolleintrag = {
       wert: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     },
   },
+};
+
+// --- v1.2 (Ticket 29) -------------------------------------------------------------------------------------------
+
+/**
+ * Nr. 1: Angebotsposition zur ersten Zuschlagsposition aus `beispielZuschlagsbezuege`: Der Bieter bietet 5,00 % an.
+ * Die Datei nannte keinen EP, darum `0.000` (vorläufige Annahme); bei gesetztem Satz wird der EP nie gerechnet.
+ */
+export const beispielAngebotspositionMitZuschlagssatz: Angebotsposition = {
+  positionId: zuschlagId(1),
+  status: 'angeboten',
+  einheitspreis: '0.000' as Einheitspreis,
+  epa: null,
+  zuschlagssatz: '5.00' as Prozent,
+};
+
+const kopieTitelId = '019b76e9-0000-7000-8000-000000000060' as TitelId;
+
+/**
+ * Nr. 4: Kopie eines Titels mit zwei Positionen, alle Kennungen neu. Der Titel ist die Wurzel des Teilbaums (seine
+ * `elternId` steht nicht in der Liste); seine Lage setzt der Kern am `ort`. Die Positionen hängen am neuen Titel.
+ */
+export const beispielKnotenEinfuegen: KnotenEinfuegen = {
+  art: 'KnotenEinfuegen',
+  ort: { art: 'nach', knotenId: titelId },
+  knoten: [
+    {
+      art: 'titel',
+      id: kopieTitelId,
+      elternId: lvId,
+      reihenfolge: 0,
+      ordnungszahl: null,
+      kurztext: 'Beispieltitel (Kopie)',
+    },
+    {
+      ...position,
+      id: '019b76e9-0000-7000-8000-000000000061' as PositionId,
+      elternId: kopieTitelId,
+      reihenfolge: 0,
+      ordnungszahl: null,
+    },
+    {
+      ...pos2,
+      id: '019b76e9-0000-7000-8000-000000000062' as PositionId,
+      elternId: kopieTitelId,
+      reihenfolge: 1,
+      ordnungszahl: null,
+    },
+  ],
+};
+
+/** Nr. 4: der Papierkorbeintrag mit der zweiten Position; sie trägt ihre alte Lage (Titel, Reihenfolge 1). */
+const papierkorbeintrag: Papierkorbeintrag = {
+  id: '019b76e9-0000-7000-8000-000000000070' as PapierkorbeintragId,
+  nummer: 1,
+  knoten: [pos2],
+};
+
+/**
+ * Nr. 4: In den Papierkorb legen. Knoten und Summen wie beim Entfernen (die Position fällt aus allen Summen), dazu
+ * der neue Eintrag. Die Umkehrung ist `beispielChangeSetWiederherstellen`.
+ */
+export const beispielChangeSetHineinlegen: LvChangeSet = {
+  ...beispielChangeSetEntfernen,
+  papierkorb: { hinzugefuegt: [papierkorbeintrag], geaendert: [], entfernt: [] },
+};
+
+/** Nr. 4: Wiederherstellen an die alte Stelle. Knoten und Summen wie beim Hinzufügen, der Eintrag entfällt. */
+export const beispielChangeSetWiederherstellen: LvChangeSet = {
+  ...beispielChangeSetHinzufuegen,
+  papierkorb: { hinzugefuegt: [], geaendert: [], entfernt: [papierkorbeintrag] },
+};
+
+const zuschlagMitBezug = beispielZuschlagsbezuege[0];
+
+/**
+ * Nr. 4 (D-12): Entfernen des Eintrags, während die erste Zuschlagsposition aus `beispielZuschlagsbezuege` noch auf
+ * die zweite Position (im Eintrag) verweist. Der hängende Bezug fällt im selben ChangeSet weg (`knoten.geaendert`);
+ * Summen ändern sich nicht, weil der Bezug auf den Papierkorb schon nichts zählte.
+ */
+export const beispielChangeSetPapierkorbeintragEntfernen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      {
+        vorher: zuschlagMitBezug,
+        nachher: {
+          ...zuschlagMitBezug,
+          zuschlag: {
+            prozentsatz: '10.00' as Prozent,
+            bezug: { art: 'positionen', positionen: [{ positionId: posId, teilmenge: '0.500' as Menge }] },
+          },
+        },
+      },
+    ],
+    entfernt: [],
+  },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+  papierkorb: { hinzugefuegt: [], geaendert: [], entfernt: [papierkorbeintrag] },
+};
+
+/** Nr. 5: ChangeSet von `LvStandAnlegen`: nur der Kopf des neuen Stands; Knoten und Summen bleiben. */
+export const beispielLvStandChangeSet: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+  lvStand: {
+    vorher: null,
+    nachher: {
+      id: '019b76e9-0000-7000-8000-000000000080' as LvStandId,
+      leistungsverzeichnisId: lvId,
+      name: 'Stand vor Versand',
+    },
+  },
+};
+
+/** Nr. 5: Protokolleintrag eines `Rueckgaengig`; `protokollId` nennt den Eintrag des ursprünglichen Befehls. */
+export const beispielProtokollRueckgaengig: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000091' as ProtokollId,
+  projektId: '019b76e9-0000-7000-8000-000000000000' as ProjektId,
+  aggregat: { art: 'leistungsverzeichnis', id: lvId },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-10T12:05:00.000Z' as Zeitstempel,
+  befehl: { art: 'Rueckgaengig', protokollId: '019b76e9-0000-7000-8000-000000000090' as ProtokollId },
 };

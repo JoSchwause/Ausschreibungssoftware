@@ -5,10 +5,12 @@
 //
 // Die OZ ist Anzeigedatum (A7): kein Befehl ändert eine ID, die Baumstruktur oder eine Summe. Das ChangeSet nennt genau
 // die Knoten, deren `ordnungszahl` sich ändert; Summen bleiben leer (A6). Umnummerieren und OzMaskeSetzen sind alles
-// oder nichts: kann ein Knoten nicht nummeriert werden, gibt es einen Fehlerwert und keine einzige Änderung.
+// oder nichts: kann ein Knoten nicht nummeriert werden, gibt es einen Fehlerwert und keine einzige Änderung. Weicht eine
+// Geschwistergruppe auf einen kleineren Schritt aus (F2, E-09), trägt das ChangeSet einen Hinweis je Gruppe.
 
 import type {
   Befehlsfehler,
+  Befehlshinweis,
   Ergebnis,
   Knoten,
   LvChangeSet,
@@ -21,7 +23,8 @@ import type {
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
-import { ebenenbeitrag } from './regeln';
+import { befehlshinweis } from './hinweise';
+import { ebenenbeitrag, obersteEbeneFehler } from './regeln';
 import { ebenenBis, indexVon, ohneKnoten } from './struktur';
 import type { Baumindex } from './struktur';
 import {
@@ -44,22 +47,30 @@ type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 /** Neue OZ je Knoten-ID in Vorordnung (Einfügereihenfolge der `Map`). */
 type NeueOz = Map<string, Ordnungszahl>;
 
+/** Ergebnis der Vergabe: neue OZ und Hinweise (Ausweichen auf einen kleineren Schritt, F2). */
+export interface Vergabe {
+  readonly oz: NeueOz;
+  readonly hinweise: Befehlshinweis[];
+}
+
 /**
  * Vergibt die OZ aller Nachfahren von `elternId` (Gliederung +1, Positionen +10, führende Nullen; passt ein Zähler nicht,
- * weicht die Geschwistergruppe auf Schritt 5, 2, 1 aus, E-09). `ebene` ist die Zahl
- * der Stufen bis einschließlich `elternId` (0 für die LV-Wurzel), `praefix` die Teile von dessen OZ. Gibt den ersten
- * Fehler zurück (Knoten nennend) oder `null`. Die Rekursion ist durch die Stufenzahl der Maske (höchstens 5) begrenzt.
+ * weicht die Geschwistergruppe auf Schritt 5, 2, 1 aus, E-09, und es entsteht ein Hinweis `oz-schritt-ausgewichen` an
+ * der ersten Position der Gruppe). `ebene` ist die Zahl der Stufen bis einschließlich `elternId` (0 für die LV-Wurzel),
+ * `praefix` die Teile von dessen OZ. Gibt den ersten Fehler zurück (Knoten nennend) oder `null`: `oz-ueberlauf`, wenn
+ * auch Schritt 1 (Position) bzw. die Gliederungsnummer nicht in die Stellen passt; `maske-ungueltig`, wenn die Maske den
+ * Knoten nicht fasst (Stufe, Index). Die Rekursion ist durch die Stufenzahl der Maske (höchstens 5) begrenzt.
  */
-function nummeriere(
+export function nummeriere(
   idx: Baumindex,
   maske: OzMaske,
   elternId: string,
   ebene: number,
   praefix: readonly string[],
-  aus: NeueOz,
+  aus: Vergabe,
 ): Befehlsfehler | null {
   const befehlsfehler = (
-    code: 'maske-ungueltig' | 'oz-ungueltig',
+    code: 'maske-ungueltig' | 'oz-ueberlauf',
     meldung: string,
     k: Knoten,
   ): Befehlsfehler => {
@@ -75,7 +86,19 @@ function nummeriere(
     if (k.art === 'position' && !(k.ozIndex !== null && anzahlPositionen > 0)) anzahlPositionen++;
   }
   // Ohne passenden Schritt gilt Schritt 1; der erste Knoten ohne Platz wird dann unten abgewiesen.
-  const positionsSchritt = zaehlerSchritt(maske.position, anzahlPositionen, POSITION_SCHRITT) ?? 1;
+  const gefunden = zaehlerSchritt(maske.position, anzahlPositionen, POSITION_SCHRITT);
+  const positionsSchritt = gefunden ?? 1;
+  const erste = kinder.find((k) => k.art === 'position');
+  if (gefunden !== null && gefunden < POSITION_SCHRITT && erste !== undefined) {
+    aus.hinweise.push(
+      befehlshinweis(
+        'oz-schritt-ausgewichen',
+        `Die ${String(anzahlPositionen)} Positionen unter ${elternId} passen mit Schritt ${String(POSITION_SCHRITT)} nicht in ${String(maske.position.laenge)} Stellen; die Vergabe weicht auf Schritt ${String(gefunden)} aus.`,
+        erste.id,
+        'ordnungszahl',
+      ),
+    );
+  }
   let gliederungen = 0;
   let positionen = 0;
   let grundteil: string | null = null;
@@ -99,14 +122,14 @@ function nummeriere(
         teil = positionsTeil(maske.position, positionen, positionsSchritt);
         if (teil === null) {
           return befehlsfehler(
-            'maske-ungueltig',
+            'oz-ueberlauf',
             `Position ${k.id} ist die ${String(positionen)}. Position unter ${elternId}; ihre Nummer passt auch mit Schritt 1 nicht in ${String(maske.position.laenge)} Stellen.`,
             k,
           );
         }
         grundteil = teil;
       }
-      aus.set(k.id, ozZusammensetzen(maske, [...praefix, teil]));
+      aus.oz.set(k.id, ozZusammensetzen(maske, [...praefix, teil]));
       continue;
     }
     const stufe = ebene + ebenenbeitrag(k.art);
@@ -122,13 +145,13 @@ function nummeriere(
     const teil = gliederungsTeil(stelle, gliederungen);
     if (teil === null) {
       return befehlsfehler(
-        'maske-ungueltig',
+        'oz-ueberlauf',
         `${k.id} ist die ${String(gliederungen)}. Gliederung unter ${elternId}; ihre Nummer passt nicht in ${String(stelle.laenge)} Stellen.`,
         k,
       );
     }
     const teile = [...praefix, teil];
-    aus.set(k.id, ozZusammensetzen(maske, teile));
+    aus.oz.set(k.id, ozZusammensetzen(maske, teile));
     const f = nummeriere(idx, maske, k.id, stufe, teile, aus);
     if (f !== null) return f;
   }
@@ -151,7 +174,7 @@ function doppeltFehler(idx: Baumindex, neu: NeueOz): Befehlsfehler | null {
     const s = ozSchluessel(oz, k.art === 'position' ? k.ozIndex : null);
     if (belegt.has(s)) {
       const e = nein(
-        'oz-ungueltig',
+        'oz-doppelt',
         `Die OZ „${oz}“ würde doppelt vergeben (Knoten ${kennung}).`,
         kennung,
         'ordnungszahl',
@@ -163,21 +186,25 @@ function doppeltFehler(idx: Baumindex, neu: NeueOz): Befehlsfehler | null {
   return null;
 }
 
-/** Das ChangeSet der Knoten, deren OZ sich ändert, in Vorordnung. */
-function aenderungen(z: LvZustand, idx: Baumindex, neu: NeueOz, kopf?: LvChangeSet['kopf']): LvChangeSet {
+/** Das ChangeSet der Knoten, deren OZ sich ändert, in Vorordnung, samt den Hinweisen der Vergabe. */
+function aenderungen(z: LvZustand, idx: Baumindex, neu: Vergabe, kopf?: LvChangeSet['kopf']): LvChangeSet {
   const geaendert: { vorher: Knoten; nachher: Knoten }[] = [];
-  for (const [kennung, oz] of neu) {
+  for (const [kennung, oz] of neu.oz) {
     const k = idx.byId.get(kennung);
     if (k === undefined || k.art === 'hinweis' || k.ordnungszahl === oz) continue;
     geaendert.push({ vorher: k, nachher: { ...k, ordnungszahl: oz } });
   }
-  return baueChangeSet(z, kopf === undefined || kopf === null ? { geaendert } : { geaendert, kopf });
+  const hinweise = neu.hinweise;
+  return baueChangeSet(
+    z,
+    kopf === undefined || kopf === null ? { geaendert, hinweise } : { geaendert, kopf, hinweise },
+  );
 }
 
 /** Nummeriert den ganzen Baum unter der Wurzel mit `maske` neu; Fehlerwert oder die neuen OZ. */
-function nummeriereAlles(idx: Baumindex, maske: OzMaske): Ergebnis<NeueOz, Befehlsfehler> {
-  const neu: NeueOz = new Map();
-  const f = nummeriere(idx, maske, idx.lvId, 0, [], neu) ?? doppeltFehler(idx, neu);
+function nummeriereAlles(idx: Baumindex, maske: OzMaske): Ergebnis<Vergabe, Befehlsfehler> {
+  const neu: Vergabe = { oz: new Map(), hinweise: [] };
+  const f = nummeriere(idx, maske, idx.lvId, 0, [], neu) ?? doppeltFehler(idx, neu.oz);
   return f === null ? ok(neu) : { ok: false, fehler: f };
 }
 
@@ -228,8 +255,8 @@ export function umnummerieren(z: LvZustand, b: Umnummerieren): Antwort {
       'ordnungszahl',
     );
   }
-  const neu: NeueOz = new Map();
-  const f = nummeriere(idx, maske, wurzel.id, stufe, praefix, neu) ?? doppeltFehler(idx, neu);
+  const neu: Vergabe = { oz: new Map(), hinweise: [] };
+  const f = nummeriere(idx, maske, wurzel.id, stufe, praefix, neu) ?? doppeltFehler(idx, neu.oz);
   return f === null ? ok(aenderungen(z, idx, neu)) : { ok: false, fehler: f };
 }
 
@@ -244,10 +271,52 @@ export function ozMaskeSetzen(z: LvZustand, b: OzMaskeSetzen): Antwort {
   const lv = z.leistungsverzeichnis;
   if (maskenGleich(lv.ozMaske, b.maske)) return ok(baueChangeSet(z, {}));
   const idx = indexVon(lv.id, lv.knoten);
+  if (b.maske.losStufe === true) {
+    // F1, E-08: mit Los-Stufe stehen auf der obersten Ebene nur Lose (`obersteEbeneFehler`).
+    const titel = (idx.kinder.get(lv.id) ?? []).find((k) => k.art === 'titel');
+    if (titel !== undefined) {
+      return nein(
+        'knotenart-unzulaessig',
+        obersteEbeneFehler('titel', [], true) ?? 'Titel auf der Los-Stufe.',
+        titel.id,
+      );
+    }
+  }
   const r = nummeriereAlles(idx, b.maske);
   if (!r.ok) return r;
   const vorher = ohneKnoten(lv);
   return ok(aenderungen(z, idx, r.wert, { vorher, nachher: { ...vorher, ozMaske: b.maske } }));
+}
+
+/**
+ * Prüft eine von Hand eingegebene OZ samt Index an einem Knoten der Art `art` in Stufe `stufe` gegen die Maske
+ * (`OrdnungszahlSetzen`, `GliederungAnlegen`): Fehlerwert `oz-ungueltig` mit dem Feld (`ordnungszahl` oder `ozIndex`)
+ * oder `null`. Eindeutigkeit wird nicht geprüft (U5, F2). `stufe`: bei einer Gliederung ihre eigene Stufe, bei einer
+ * Position die Zahl der Stufen darüber.
+ */
+export function handOzFehler(
+  maske: OzMaske,
+  art: 'los' | 'titel' | 'position',
+  stufe: number,
+  ordnungszahl: Ordnungszahl | null,
+  ozIndex: string | null,
+  knotenId: string,
+): Befehlsfehler | null {
+  const fehler = (meldung: string, feld: string): Befehlsfehler => {
+    const e = nein('oz-ungueltig', meldung, knotenId, feld);
+    if (e.ok) throw new Error('unerreichbar');
+    return e.fehler;
+  };
+  const gliederung = art !== 'position';
+  const ozArt = gliederung ? 'gliederung' : 'position';
+  const index = gliederung ? null : ozIndex;
+  if (ozIndex !== null && gliederung) return fehler('Eine Gliederung hat keinen Index.', 'ozIndex');
+  if (ordnungszahl === null) {
+    return ozIndex === null ? null : fehler('Ein Index braucht eine OZ.', 'ozIndex');
+  }
+  const f = ozFehler(maske, ordnungszahl, index, ozArt, stufe);
+  if (f === null) return null;
+  return fehler(f, indexFehler(maske, ozArt, index) === null ? 'ordnungszahl' : 'ozIndex');
 }
 
 /**
@@ -264,21 +333,9 @@ export function ordnungszahlSetzen(z: LvZustand, b: OrdnungszahlSetzen): Antwort
     return nein('knotenart-unzulaessig', 'Ein Hinweistext trägt keine Ordnungszahl.', k.id);
   }
   const gliederung = k.art !== 'position';
-  const art = gliederung ? 'gliederung' : 'position';
   const stufe = ebenenBis(idx, k.elternId) + (gliederung ? ebenenbeitrag(k.art) : 0);
-  const index = gliederung ? null : b.ozIndex;
-  if (b.ozIndex !== null && gliederung) {
-    return nein('oz-ungueltig', 'Eine Gliederung hat keinen Index.', k.id, 'ozIndex');
-  }
-  if (b.ordnungszahl === null) {
-    if (b.ozIndex !== null) return nein('oz-ungueltig', 'Ein Index braucht eine OZ.', k.id, 'ozIndex');
-  } else {
-    const f = ozFehler(lv.ozMaske, b.ordnungszahl, index, art, stufe);
-    if (f !== null) {
-      const feld = indexFehler(lv.ozMaske, art, index) === null ? 'ordnungszahl' : 'ozIndex';
-      return nein('oz-ungueltig', f, k.id, feld);
-    }
-  }
+  const f = handOzFehler(lv.ozMaske, k.art, stufe, b.ordnungszahl, b.ozIndex, k.id);
+  if (f !== null) return { ok: false, fehler: f };
   const nachher: Knoten =
     k.art === 'position'
       ? { ...k, ordnungszahl: b.ordnungszahl, ozIndex: b.ozIndex }

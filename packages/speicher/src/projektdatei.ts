@@ -5,26 +5,34 @@ import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
   Ergebnis,
-  Knoten,
   LeistungsverzeichnisId,
   Projektdatei,
   ProjektId,
   Speicherfehler,
 } from '@tethys/vertrag';
 import { dekodiereProjektdatei } from './dekoder';
-import { altSpalten } from './zeilen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
-import { aggregatIds, leseAngebot, leseAuftragsLv, leseLv, leseProjekt, leseProtokoll } from './lesen';
+import {
+  aggregatIds,
+  leseAngebot,
+  leseAuftragsLv,
+  leseLv,
+  leseLvStaendeDesProjekts,
+  leseProjekt,
+  leseProtokoll,
+} from './lesen';
 import type { Migration } from './migrationen';
 import {
-  schreibeAuftragsLv,
+  schreibeLvStand,
   schreibeProtokolleintrag,
   wendeAngebotAn,
+  wendeAuftragsLvAn,
   wendeLvAn,
   wendeProjektAn,
 } from './schreiben';
 import type { Datenbank } from './sql';
+import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
 
 /** Baut die Projektdatei im Stand der aktuellen Schemaversion. Reihenfolge der Listen: nach Kennung. */
 export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: number): Projektdatei {
@@ -32,6 +40,7 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
   if (projekt === null) return abbruch('nicht-gefunden', `Projekt ${id} ist nicht vorhanden.`);
   const holen = <T>(wert: T | null, was: string): T =>
     wert === null ? abbruch('datei-ungueltig', `${was} verschwand während des Exports.`) : wert;
+  const staende = leseLvStaendeDesProjekts(db, id);
   return {
     schemaVersion,
     projekt,
@@ -45,56 +54,20 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
       holen(leseAuftragsLv(db, a as AuftragsLeistungsverzeichnisId), `Auftrags-LV ${a}`),
     ),
     protokoll: leseProtokoll(db, id),
-  };
-}
-
-/**
- * // v1.1b: mechanisch angepasst, Folgeticket: Die Projektdatei der Schemaversion 1 trägt Positionen noch in der Form vor v1.1b (`positionsart`,
- * `pauschal`, `bedarfMitGesamtbetrag`, `bezugspositionId`, `grundpositionId`); der Export in Version 1 ist byte-gleich der
- * eingefrorenen Datei und bleibt es. Diese Funktion schreibt die Positionen der LV und Auftrags-LV in diese Form
- * zurück; eine Position, die sich darin nicht verlustfrei ablegen lässt, weist `altSpalten` ab (Q5). Das Folgeticket
- * `speicher` hebt die Datei mit einer Migration auf die neue Form (A8) und löscht diese Funktion. Befehle im Protokoll
- * gehen unverändert durch (undurchsichtiges JSON).
- */
-export function projektdateiInAlterForm(d: Projektdatei): unknown {
-  const knoten = (ks: readonly Knoten[]): unknown[] =>
-    ks.map((k) => {
-      if (k.art !== 'position') return k;
-      const rest: Record<string, unknown> = { ...k };
-      for (const feld of ['merkmale', 'zuschlag', 'leitbeschreibung']) Reflect.deleteProperty(rest, feld);
-      const [art, pauschal, mit, bezug, grund] = altSpalten(k);
-      return {
-        ...rest,
-        positionsart: art,
-        pauschal: pauschal === 1,
-        bedarfMitGesamtbetrag: mit === 1,
-        bezugspositionId: bezug,
-        grundpositionId: grund,
-      };
-    });
-  return {
-    ...d,
-    leistungsverzeichnisse: d.leistungsverzeichnisse.map((z) => ({
-      ...z,
-      leistungsverzeichnis: { ...z.leistungsverzeichnis, knoten: knoten(z.leistungsverzeichnis.knoten) },
-    })),
-    auftragsLeistungsverzeichnisse: d.auftragsLeistungsverzeichnisse.map((z) => ({
-      ...z,
-      auftragsLeistungsverzeichnis: {
-        ...z.auftragsLeistungsverzeichnis,
-        knoten: knoten(z.auftragsLeistungsverzeichnis.knoten),
-      },
-    })),
+    // Schema 3: fehlt, wenn es keine Stände gibt (Vertrag: „Fehlt: keine“); so bleibt eine Datei ohne Stände gleich.
+    ...(staende.length > 0 ? { lvStaende: staende } : {}),
   };
 }
 
 /**
  * Liest den JSON-Text, hebt eine ältere Dateiversion Schritt für Schritt auf die aktuelle (A8) und prüft das
- * Ergebnis streng gegen die aktuelle Form.
+ * Ergebnis streng gegen die aktuelle Form. Verlangt ein Schritt es, rechnet der Kern danach alle Summen neu (D-17);
+ * Befunde dazu landen in `befunde`.
  */
 export function leseProjektdatei(
   inhalt: string,
   migrationen: readonly Migration[],
+  befunde: Migrationsbefund[] = [],
 ): Ergebnis<Projektdatei, Speicherfehler> {
   let roh: unknown;
   try {
@@ -120,21 +93,30 @@ export function leseProjektdatei(
       `Die Projektdatei hat Schemaversion ${String(von)}, diese Version kennt höchstens ${String(ziel)}.`,
     );
   }
+  let summenNeu = false;
   for (const m of migrationen) {
     if (m.version <= von) continue;
+    summenNeu ||= m.summenNeuRechnen === true;
     if (m.datei === null) {
       return fehler('migration-fehlgeschlagen', `Migration ${String(m.version)} hat keine Dateimigration.`);
     }
     try {
       aktuell = { ...m.datei(aktuell), schemaVersion: m.version };
     } catch (e) {
+      // Eine Datei, die schon in ihrer alten Version nicht stimmt, ist ungültig, nicht die Migration fehlgeschlagen.
+      if (e instanceof SpeicherAbbruch && e.fehler.code === 'datei-ungueltig')
+        return { ok: false, fehler: e.fehler };
       return fehler(
         'migration-fehlgeschlagen',
         `Dateimigration auf Version ${String(m.version)} fehlgeschlagen: ${fehlerAusAusnahme(e).meldung}`,
       );
     }
   }
-  return fange(() => dekodiereProjektdatei(aktuell, ziel));
+  const datei = fange(() => dekodiereProjektdatei(aktuell, ziel));
+  if (!datei.ok || !summenNeu) return datei;
+  const neu = summenDerDateiNeuRechnen(datei.wert);
+  befunde.push(...neu.befunde);
+  return { ok: true, wert: neu.datei };
 }
 
 /**
@@ -156,10 +138,14 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           kopf: { vorher: null, nachher: kopf },
           knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
           summen: z.summen,
+          ...(z.papierkorb === undefined
+            ? {}
+            : { papierkorb: { hinzugefuegt: z.papierkorb, geaendert: [], entfernt: [] } }),
         },
         projektId,
       );
     }
+    for (const s of d.lvStaende ?? []) schreibeLvStand(db, s);
     for (const z of d.angebote) {
       const { positionen, ...kopf } = z.angebot;
       wendeAngebotAn(
@@ -174,13 +160,29 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
         projektId,
       );
     }
-    for (const z of d.auftragsLeistungsverzeichnisse) schreibeAuftragsLv(db, z);
+    for (const z of d.auftragsLeistungsverzeichnisse) {
+      const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
+      wendeAuftragsLvAn(
+        db,
+        {
+          art: 'auftrags-leistungsverzeichnis',
+          auftragsLeistungsverzeichnisId: kopf.id,
+          kopf: { vorher: null, nachher: kopf },
+          knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
+          summen: z.summen,
+        },
+        projektId,
+      );
+    }
     for (const e of d.protokoll) schreibeProtokolleintrag(db, e);
   } catch (e) {
     // Jede Verletzung von Integritätsregeln beim Import heißt: Die Datei passt nicht zum Schema. Ein
     // Ein-/Ausgabefehler des Speichers sagt nichts über die Datei und bleibt, was er ist.
     const f = fehlerAusAusnahme(e);
-    if ((f.code === 'unbekannt' || f.code === 'nicht-gefunden') && !istAusgabefehler(e))
+    if (
+      (f.code === 'unbekannt' || f.code === 'nicht-gefunden' || f.code === 'konflikt') &&
+      !istAusgabefehler(e)
+    )
       throw new SpeicherAbbruch('datei-ungueltig', f.meldung);
     throw e;
   }

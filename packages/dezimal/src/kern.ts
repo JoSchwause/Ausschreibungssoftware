@@ -14,7 +14,8 @@ export type Dezimalfehlercode =
   | 'ungueltiges-format'
   | 'zu-lang'
   | 'falsche-nachkommastellen' // kanonischer Wert hat nicht die Skala des Typs
-  | 'zu-viele-nachkommastellen'; // de-DE-Eingabe hat mehr Stellen als die Skala (kein stilles Runden)
+  | 'zu-viele-nachkommastellen' // de-DE-Eingabe hat mehr Stellen als die Skala (kein stilles Runden)
+  | 'division-durch-null'; // Teiler ist null (Ticket 35)
 
 export interface Dezimalfehler {
   readonly code: Dezimalfehlercode;
@@ -212,6 +213,27 @@ export function rundeAufStellen(wert: Dezimal, stellen: number): Dezimal {
     throw new RangeError(`Stellenzahl muss eine ganze Zahl >= 1 sein: ${String(stellen)}`);
   const w = lies(wert);
   return baue(rundeGanz(w.ganz, w.skala, stellen), stellen);
+}
+
+/**
+ * Quotient `a / b`, exakt gebildet und kaufmännisch auf `stellen` Nachkommastellen gerundet, mit derselben Regel
+ * wie {@link rundeAufStellen}: Betrag runden, Vorzeichen davor (E-07), nie „-0“. Ungültige `stellen` sind ein
+ * Programmfehler (`RangeError`); Division durch null ist ein Fehlerwert, keine Ausnahme (Ticket 35, D-08).
+ */
+export function dividiere(a: Dezimal, b: Dezimal, stellen: number): Ergebnis<Dezimal, Dezimalfehler> {
+  if (!Number.isInteger(stellen) || stellen < 1)
+    throw new RangeError(`Stellenzahl muss eine ganze Zahl >= 1 sein: ${String(stellen)}`);
+  const x = lies(a);
+  const y = lies(b);
+  if (y.ganz === 0n) return fehler('division-durch-null', `Division durch null: ${a} / ${b}`);
+  // a / b = (x / 10^p) / (y / 10^q); auf Skala s: x · 10^(q+s) / (y · 10^p)
+  const zaehler = (x.ganz < 0n ? -x.ganz : x.ganz) * potenz(y.skala + stellen);
+  const nenner = (y.ganz < 0n ? -y.ganz : y.ganz) * potenz(x.skala);
+  const quotient = zaehler / nenner;
+  const rest = zaehler % nenner;
+  const betrag = 2n * rest >= nenner ? quotient + 1n : quotient;
+  const negativ = x.ganz < 0n !== y.ganz < 0n;
+  return { ok: true, wert: baue(negativ ? -betrag : betrag, stellen) };
 }
 
 /** Rundet kaufmännisch auf eine ganze Zahl (0 Nachkommastellen). */

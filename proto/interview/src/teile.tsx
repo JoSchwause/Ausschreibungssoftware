@@ -1,7 +1,7 @@
 // Wegwerfcode. Gemeinsame Bausteine der Ansichten.
 import { useEffect, useState } from 'react';
 import { formatiereProzentDe, parseProzentDe } from '@tethys/dezimal';
-import type { Betrag, Knoten, LvAnsicht, LvZeile, Position, Prozent, Titel } from '@tethys/vertrag';
+import type { Betrag, Knoten, LvAnsicht, LvZeile, Position, Prozent, Titel, WurzelId } from '@tethys/vertrag';
 import type { Summen } from './rechnen';
 import { euro } from './rechnen';
 import { useStore } from './store';
@@ -45,7 +45,7 @@ export function baueAnsicht(
     }
   };
   besuche(lvId, 0);
-  return { zeilen, gesamt };
+  return { wurzelId: lvId as WurzelId, zeilen, gesamt };
 }
 
 /** Prozentfeld: uebernimmt jede gueltige Eingabe sofort, markiert ungueltige, sperrt nie (U5). */

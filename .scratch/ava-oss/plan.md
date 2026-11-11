@@ -148,3 +148,8 @@ Stand 2026-11-09:
 10. ✅ **Welle 2, Stufe 1 (2026-11-10)**: Tickets 25, 27, 28 gemergt (PR #3, #5, #6), Prototyp (18) auf Branch
     `proto/interview`. ⏳ **Offen:** Prüfung von v1.1a (PR #4) und v1.1b (PR #7) durch den Nutzer; Entscheidungen
     W-01 bis W-06 in `.scratch/ava-oss/next-decisions-welle-2.md`. Danach Stufe 2 und 3 (Schnitt dort, Abschnitt C).
+11. ✅ **Lauf „Welle 3“ im Demo-Modus (2026-11-10/11)** auf dem lokalen Branch `integration/welle-3`: Rest von Welle 2
+    (Anpassungen an v1.1a/v1.1b, K5–K7, S2, U3, G2) und Welle 3 (K8, K9, S3, U4–U6, G3, V1+V2, M1), Tickets 29–50,
+    `vertrag` v1.2. Tor M1 erreicht, M2 erfüllt mit gelisteten Unterschieden. Entscheidungen D-01 bis D-19 in
+    `entscheidungen-auto.md`. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.2, Merge nach `main`),
+    Folgetickets 51–54. Bericht: `.scratch/ava-oss/welle-3-bericht.md`.

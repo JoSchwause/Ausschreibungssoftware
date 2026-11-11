@@ -30,7 +30,18 @@ import {
   langtextAendern,
   leistungsverzeichnisUmbenennen,
 } from './feld-befehle';
-import { leistungsverzeichnisAnlegen } from './lv-anlegen';
+import { einheitspreisanteileSetzen } from './epa';
+import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen } from './kopfdaten-befehle';
+import { positionsmerkmaleSetzen } from './merkmal-befehle';
+import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
+import { knotenEinfuegen, knotenlisteVerschieben } from './einfuegen-befehle';
+import { lvStandAnlegen } from './lv-stand';
+import {
+  knotenInPapierkorbLegen,
+  papierkorbLeeren,
+  papierkorbeintragEntfernen,
+  papierkorbeintragWiederherstellen,
+} from './papierkorb-befehle';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
   einheitspreisAendern,
@@ -49,10 +60,11 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
+  LeistungsverzeichnisLoeschen: leistungsverzeichnisLoeschen,
   GliederungAnlegen: gliederungAnlegen,
   PositionAnlegen: positionAnlegen,
   HinweistextAnlegen: hinweistextAnlegen,
@@ -70,17 +82,30 @@ export const BEFEHLS_HANDLER = {
   OzMaskeSetzen: ozMaskeSetzen,
   OrdnungszahlSetzen: ordnungszahlSetzen,
   Umnummerieren: umnummerieren,
+  PositionsmerkmaleSetzen: positionsmerkmaleSetzen,
+  EinheitspreisanteileSetzen: einheitspreisanteileSetzen,
+  AuftraggeberSetzen: auftraggeberSetzen,
+  VergabeinformationenSetzen: vergabeinformationenSetzen,
+  LeitbeschreibungSetzen: leitbeschreibungSetzen,
+  LvStandAnlegen: lvStandAnlegen,
+  KnotenInPapierkorbLegen: knotenInPapierkorbLegen,
+  PapierkorbeintragWiederherstellen: papierkorbeintragWiederherstellen,
+  PapierkorbeintragEntfernen: papierkorbeintragEntfernen,
+  PapierkorbLeeren: papierkorbLeeren,
+  KnotenEinfuegen: knotenEinfuegen,
+  KnotenlisteVerschieben: knotenlisteVerschieben,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
-/** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
-export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
-  EinheitspreisanteileSetzen: 'kein Ticket zugeordnet (Einheitspreisanteile)',
-  PositionsmerkmaleSetzen: 'K5 (Ticket 08, Positionsarten)', // v1.1b: mechanisch angepasst, Folgeticket
-  // v1.1a: mechanisch angepasst, Folgeticket
-  LeistungsverzeichnisLoeschen: 'Folgeticket kern (Löschen, Vertrag v1.1a)',
-};
+/**
+ * Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. Seit
+ * Ticket 42 (K9) leer: jeder LV-Befehl hat einen Handler. Bringt der Vertrag einen neuen Befehl, verlangt der Typ hier
+ * einen Eintrag (`Offen`), bis sein Ticket den Handler liefert.
+ */
+type Offen = Exclude<Art, Umgesetzt>;
+export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<Partial<Record<Art, string>>> =
+  {};
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 
@@ -94,7 +119,7 @@ export const lvBefehlAusfuehren: LvBefehlAusfuehren = (zustand, befehl) => {
   if (!istUmgesetzt(art)) {
     return nein(
       'befehl-nicht-zustaendig',
-      `Befehl ${art} ist im Kern noch nicht umgesetzt; zuständig: ${ZUSTAENDIGES_TICKET[art]}.`,
+      `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt; zuständig: ${ZUSTAENDIGES_TICKET[befehl.art] ?? 'unbekannt'}.`,
     );
   }
   if (art === 'LeistungsverzeichnisAnlegen') {

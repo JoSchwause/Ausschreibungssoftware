@@ -19,21 +19,31 @@ import type {
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
   LvKopf,
+  LvStand,
+  LvStandId,
+  LvStandUebersicht,
   LvZustand,
+  Papierkorbeintrag,
+  PapierkorbeintragId,
   PositionId,
   Projekt,
   ProjektId,
   Protokolleintrag,
   Summenstand,
+  Zeitstempel,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
-import type { Datenbank } from './sql';
+import type { Datenbank, SqlZeile } from './sql';
 import {
   angebotspositionAusZeile,
+  ausweisAusZeile,
   bieterId,
+  ganzzahl,
   gesamtAusZeile,
   gliederungId,
+  jsonSpalte,
   knotenAusZeile,
+  kopfdatenAusZeile,
   lvId,
   maskeAusZeile,
   nachlassAusZeile,
@@ -56,10 +66,18 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
   };
 }
 
+/** Deutscher Namensvergleich für die Projektliste (Umlaute beim Grundbuchstaben, Groß/klein nachrangig). */
+const NAMENSVERGLEICH = new Intl.Collator('de-DE');
+
+/**
+ * Projektliste nach Name, deutsch verglichen (`Intl.Collator('de-DE')`; SQLite sortiert nur nach Bytes); gleiche Namen
+ * nach Kennung, damit die Reihenfolge stabil ist (Ticket 38, Punkt 6).
+ */
 export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] {
   return db
-    .zeilen('SELECT id, name FROM projekt ORDER BY name, id')
-    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }));
+    .zeilen('SELECT id, name FROM projekt ORDER BY id')
+    .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }))
+    .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 export function listeIds(db: Datenbank, sql: string, bind: readonly string[]): string[] {
@@ -78,6 +96,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as LvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 
@@ -124,7 +143,11 @@ export function leseSummen(db: Datenbank, aggregatId: string): Summenstand | nul
       })),
     gliederungen: db
       .zeilen('SELECT * FROM summe_gliederung WHERE aggregat_id = ? ORDER BY gliederung_id', [aggregatId])
-      .map((z) => ({ gliederungId: gliederungId(z, 'gliederung_id'), summe: text(z, 'summe') as Betrag })),
+      .map((z) => ({
+        gliederungId: gliederungId(z, 'gliederung_id'),
+        summe: text(z, 'summe') as Betrag,
+        ...ausweisAusZeile(z),
+      })),
     gesamt: gesamtAusZeile(gesamt),
   };
 }
@@ -137,7 +160,75 @@ export function leseLv(db: Datenbank, id: LeistungsverzeichnisId): LvZustand | n
     return abbruch('datei-ungueltig', `LV ${id}: Es fehlen die gespeicherten Gesamtsummen.`);
   }
   const lv: Leistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
-  return { leistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
+  const papierkorb = lesePapierkorb(db, id);
+  return {
+    leistungsverzeichnis: lv,
+    summen: inKnotenreihenfolge(summen, lv.knoten),
+    // Fehlt: leer (Vertrag). Ein leerer Papierkorb steht deshalb nie im Zustand, auch nicht in der Projektdatei.
+    ...(papierkorb.length > 0 ? { papierkorb } : {}),
+  };
+}
+
+// --- Papierkorb und LV-Stände (Schema 3, Ticket 43) ------------------------------------------------------------------
+
+function papierkorbeintragAusZeile(z: SqlZeile): Papierkorbeintrag {
+  return {
+    id: text(z, 'id') as PapierkorbeintragId,
+    nummer: ganzzahl(z, 'nummer'),
+    knoten: jsonSpalte(z, 'knoten') as Knoten[],
+  };
+}
+
+/** Der Papierkorb eines LV nach `nummer` (Reihenfolge des Hineinlegens, D-12). */
+export function lesePapierkorb(db: Datenbank, lvId: string): Papierkorbeintrag[] {
+  return db
+    .zeilen('SELECT * FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? ORDER BY nummer', [lvId])
+    .map(papierkorbeintragAusZeile);
+}
+
+export function lesePapierkorbeintrag(db: Datenbank, lvId: string, id: string): Papierkorbeintrag | null {
+  const z = db.zeilen('SELECT * FROM papierkorb_eintrag WHERE leistungsverzeichnis_id = ? AND id = ?', [
+    lvId,
+    id,
+  ])[0];
+  return z === undefined ? null : papierkorbeintragAusZeile(z);
+}
+
+function lvStandUebersichtAusZeile(z: SqlZeile): LvStandUebersicht {
+  return {
+    id: text(z, 'id') as LvStandId,
+    leistungsverzeichnisId: lvId(z, 'leistungsverzeichnis_id'),
+    name: text(z, 'name'),
+    angelegt: text(z, 'angelegt') as Zeitstempel,
+  };
+}
+
+/** Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst). */
+export function leseLvStaende(db: Datenbank, lv: string): LvStandUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ? ORDER BY seq',
+      [lv],
+    )
+    .map(lvStandUebersichtAusZeile);
+}
+
+export function leseLvStand(db: Datenbank, id: string): LvStand | null {
+  const z = db.zeilen('SELECT * FROM lv_stand WHERE id = ?', [id])[0];
+  return z === undefined
+    ? null
+    : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
+}
+
+/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei). */
+export function leseLvStaendeDesProjekts(db: Datenbank, projektId: ProjektId): LvStand[] {
+  return db
+    .zeilen(
+      `SELECT s.* FROM lv_stand s JOIN leistungsverzeichnis l ON l.id = s.leistungsverzeichnis_id
+       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.seq`,
+      [projektId],
+    )
+    .map((z) => ({ ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand }));
 }
 
 /**
@@ -198,7 +289,7 @@ export function leseAngebot(db: Datenbank, id: AngebotId): AngebotZustand | null
   return { angebot, summen };
 }
 
-// --- Auftrags-LV (nur über Projektdatei, siehe Ticket) ----------------------------------------------------------
+// --- Auftrags-LV (gelesen nur über die Projektdatei: der Vertrag hat kein Repository dafür, Offene Typfrage D) ------
 
 export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichnisId): AuftragsLvKopf | null {
   const z = db.zeilen('SELECT * FROM auftrags_lv WHERE id = ?', [id])[0];
@@ -212,6 +303,7 @@ export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichn
     ozMaske: maskeAusZeile(z),
     mwstSatz: text(z, 'mwst_satz') as AuftragsLvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
+    ...kopfdatenAusZeile(z),
   };
 }
 
@@ -223,7 +315,7 @@ export function leseAuftragsLv(db: Datenbank, id: AuftragsLeistungsverzeichnisId
     return abbruch('datei-ungueltig', `Auftrags-LV ${id}: Es fehlen die gespeicherten Gesamtsummen.`);
   }
   const lv: AuftragsLeistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
-  return { auftragsLeistungsverzeichnis: lv, summen };
+  return { auftragsLeistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------
