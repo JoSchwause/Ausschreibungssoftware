@@ -15,6 +15,7 @@
     "@tethys/abrechnung": "workspace:*",
     "@tethys/ausgabe": "workspace:*",
     "@tethys/dezimal": "workspace:*",
+    "@tethys/erechnung": "workspace:*",
     "@tethys/gaeb": "workspace:*",
     "@tethys/kern": "workspace:*",
     "@tethys/kosten": "workspace:*",

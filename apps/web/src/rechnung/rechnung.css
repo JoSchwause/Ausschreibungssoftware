@@ -1,0 +1,110 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Rechnungen (Ticket 88): Liste, Prüfansicht, Formular. Nur Tokens (U4), dicht und tabellenartig. */
+
+.rechnung {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-4);
+}
+
+.rechnung__datei {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.rechnung__leer,
+.rechnung__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}
+
+.rechnung__tabelle {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rechnung__tabelle caption {
+  padding-bottom: var(--tx-space-2);
+  font-weight: var(--tx-weight-bold);
+  text-align: left;
+}
+
+.rechnung__tabelle th,
+.rechnung__tabelle td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+}
+
+.rechnung__tabelle thead th {
+  color: var(--tx-color-text-muted);
+  font-weight: var(--tx-weight-medium);
+}
+
+.rechnung__tabelle .rechnung__zahl {
+  font-family: var(--tx-font-mono);
+  text-align: right;
+}
+
+.rechnung__zeichen {
+  width: 1.5em;
+  color: var(--tx-color-text-muted);
+  text-align: center;
+}
+
+.rechnung__summe th,
+.rechnung__summe td {
+  font-weight: var(--tx-weight-bold);
+}
+
+.rechnung__massgeblich th,
+.rechnung__massgeblich td {
+  font-weight: var(--tx-weight-bold);
+}
+
+.rechnung__pruefung {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-4);
+}
+
+.rechnung__abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+}
+
+.rechnung__spalten {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+  gap: var(--tx-space-6, var(--tx-space-5));
+  align-items: start;
+}
+
+.rechnung__rechts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-4);
+}
+
+.rechnung-formular__arten,
+.rechnung-formular__blaetter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-2) var(--tx-space-5);
+}
+
+.rechnung-formular__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+}
+
+.rechnung-xrechnung {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+}
