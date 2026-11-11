@@ -147,7 +147,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 73 | G | Wahlgruppe im X83-Rundweg | `packages/gaeb` | resolved |
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent |
 | 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved |
-| 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | ready-for-agent |
+| 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | resolved |
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |

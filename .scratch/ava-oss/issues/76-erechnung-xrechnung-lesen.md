@@ -1,6 +1,6 @@
 # 76: A4: XRechnung lesen (UBL und CII)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A4 · Paket: `packages/erechnung` (neu; dazu der Eintrag in `tools/boundaries.mjs`, Workspace-Dateien,
 `fixtures/extern/xrechnung/` mit `HERKUNFT.md` und REUSE-Eintrag)
@@ -151,3 +151,5 @@ Volle Suite nach dem Merge: Lint grün (Grenzen, Lizenzen, Clean Room), Typechec
 übersprungen, 1 fehlgeschlagen: das Leistungsbudget `lvPruefen(gross): warm, Median unter 50 ms` in
 `packages/kern/src/lv-pruefung-fixtures.test.ts` (fremdes Paket) mit Median 50,45 ms unter Parallellast; die Datei allein
 wiederholt: 14/14 grün, Median 14,70 ms. Fixtures (`node --test`) 22/22.
+
+Merged: 4fd001a95e9fce17c91055315c8ebc064aa20d32 in integration/welle-5
