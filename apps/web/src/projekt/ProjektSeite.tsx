@@ -11,6 +11,7 @@ import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tet
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
 import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
+import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
@@ -33,8 +34,7 @@ export function lvPfad(id: LeistungsverzeichnisId): string {
 type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; projekt: Projekt; lvs: readonly LvZustand[] };
 
 function dateiname(name: string): string {
-  const sauber = name.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'projekt';
-  return `${sauber}.tethys.json`;
+  return `${dateinameSauber(name, ERSATZ_PROJEKT)}.tethys.json`;
 }
 
 function herunterladen(name: string, inhalt: string): void {

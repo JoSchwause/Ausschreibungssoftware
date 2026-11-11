@@ -4,22 +4,12 @@
 
 import type { ExcelBefund } from '@tethys/ausgabe';
 import type { Angebot, IdQuelle, LvZustand, Projekt, Zeitstempel } from '@tethys/vertrag';
+import { ERSATZ_LV, dateinameSauber } from '../dateiname';
 import { angebotAnlegenPlan, type Angebotsplan, type Angebotsvorschau } from '../gaeb/gaeb';
 
-const STANDARDNAME = 'Leistungsverzeichnis';
-
 /** Dateiname ohne Sonderzeichen (wie beim GAEB-Export), mit Endung. */
-function sauber(lvName: string): string {
-  return (
-    lvName
-      .replace(/[^\p{L}\p{N} _-]+/gu, '')
-      .replace(/ {2,}/g, ' ')
-      .trim() || STANDARDNAME
-  );
-}
-
-export const dateinamePdf = (lvName: string): string => `${sauber(lvName)}.pdf`;
-export const dateinameExcel = (lvName: string): string => `${sauber(lvName)}-Bieter.xlsx`;
+export const dateinamePdf = (lvName: string): string => `${dateinameSauber(lvName, ERSATZ_LV)}.pdf`;
+export const dateinameExcel = (lvName: string): string => `${dateinameSauber(lvName, ERSATZ_LV)}-Bieter.xlsx`;
 
 /** Vorschlag für den Bieternamen: der Dateiname ohne `.xlsx`; der Nutzer ändert ihn in der Vorschau. */
 export const bieterNameAusDatei = (dateiname: string): string => dateiname.replace(/\.xlsx$/i, '').trim();

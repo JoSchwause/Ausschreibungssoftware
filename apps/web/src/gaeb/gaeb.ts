@@ -27,6 +27,7 @@ import type {
   Projekt,
   Pruefbefund,
 } from '@tethys/vertrag';
+import { ERSATZ_LV, dateinameSauber } from '../dateiname';
 import { lvInhalt } from '../lv/inhalt';
 
 export const PROGRAMMNAME = 'Tethys AVA';
@@ -84,12 +85,7 @@ export interface Ausgabe {
 
 /** Dateiname ohne Sonderzeichen; bei einem Entwurf mit `_Entwurf` vor der Endung (G-13). */
 export function dateinameAusgabe(lvName: string, phase: ExportPhase, entwurf: boolean): string {
-  const sauber =
-    lvName
-      .replace(/[^\p{L}\p{N} _-]+/gu, '')
-      .replace(/ {2,}/g, ' ')
-      .trim() || 'Leistungsverzeichnis';
-  return `${sauber}${entwurf ? '_Entwurf' : ''}.${phase.toLowerCase()}`;
+  return `${dateinameSauber(lvName, ERSATZ_LV)}${entwurf ? '_Entwurf' : ''}.${phase.toLowerCase()}`;
 }
 
 /**
