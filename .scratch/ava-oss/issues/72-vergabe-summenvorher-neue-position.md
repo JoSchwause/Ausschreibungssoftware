@@ -38,8 +38,9 @@ Nur `packages/vergabe`; `speicher` und `vertrag` unverändert.
   gewachsenen LV, jede Angebotsposition hat eine Summe.
 
 **Leistungsbudget** (`leistung.test.ts`, Preisspiegel `gross` mit 5 Angeboten, Budget 1000 ms, von diesem Ticket nicht
-berührt): fällt nur unter Parallellast (Lastmittel 13–16 auf 4 Kernen): volle Suite 1438 ms, Paketlauf 2348, 1030 und
-1480 ms; die Datei allein 456 ms und 469 ms. `AngebotspositionSetzen` auf `gross` allein: Median 1,4 bis 1,6 ms (Budget 16).
+berührt): fällt nur unter Parallellast (Lastmittel 13–16 auf 4 Kernen): volle Suite 1438 ms und nach dem zweiten Merge
+2414 ms, Paketlauf 2348, 1030 und 1480 ms; die Datei allein 456, 469 und 450 ms. `AngebotspositionSetzen` auf `gross`
+allein: Median 1,4 bis 1,6 ms (Budget 16).
 
 ### Entscheidungen (Frage, Entscheidung, Grund)
 
@@ -68,7 +69,7 @@ berührt): fällt nur unter Parallellast (Lastmittel 13–16 auf 4 Kernen): voll
 
 ## Answer
 
-Behoben auf `welle-5/72-summenvorher` (58d0d8c, 078d604, 4ec59cf; Merge von `integration/welle-5`). `vorher` nennt nur
-gespeicherte Summen; Rückgängig stellt den Summenstand rein und im Zeilenmodell von `speicher` exakt her. Suite: `pnpm lint`,
-`pnpm typecheck` grün; `pnpm test` 2029 bestanden, 2 übersprungen, 1 Leistungsbudget nur unter Parallellast (siehe oben);
-`node --test` 20 bestanden. `speicher` braucht keine Änderung.
+Behoben auf `welle-5/72-summenvorher` (58d0d8c, 078d604, 4ec59cf; Merge von `integration/welle-5` bis 579aa99). `vorher`
+nennt nur gespeicherte Summen; Rückgängig stellt den Summenstand rein und im Zeilenmodell von `speicher` exakt her. Suite:
+`pnpm lint`, `pnpm typecheck` grün; `pnpm test` 2034 bestanden, 2 übersprungen, 1 Leistungsbudget nur unter Parallellast
+(siehe oben, allein grün); `node --test` 22 bestanden. `speicher` braucht keine Änderung.
