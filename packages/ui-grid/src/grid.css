@@ -394,11 +394,24 @@
   text-overflow: clip;
 }
 
-/* Fixierte linke Spalten: Sie kleben beim waagerechten Scrollen; der Versatz steht am Element (`left`). */
+/* Fixierte linke Spalten: Sie kleben beim waagerechten Scrollen; der Versatz steht am Element (`left`). Die Fläche ist
+   je Zeilenart ausdrücklich gesetzt, nicht `inherit`: Das kostet beim schnellen Scrollen messbar Stilberechnung. */
 .tx-grid__zelle--fixiert {
   position: sticky;
   z-index: 1;
-  background: inherit;
+  background: var(--tx-color-surface);
+}
+
+.tx-grid__zeile:hover .tx-grid__zelle--fixiert {
+  background: var(--tx-color-surface-hover);
+}
+
+.tx-grid__zeile--gliederung .tx-grid__zelle--fixiert {
+  background: var(--tx-color-surface-raised);
+}
+
+.tx-grid__fuss .tx-grid__zelle--fixiert {
+  background: var(--tx-color-surface-sunken);
 }
 
 .tx-grid__kopfzelle--fixiert {
@@ -418,8 +431,8 @@
 }
 
 /* Zellauswahl (Umschalt+Pfeil, Umschalt+Klick, Strg+A). */
-.tx-grid__zelle--ausgewaehlt,
-.tx-grid__zelle--fixiert.tx-grid__zelle--ausgewaehlt {
+.tx-grid__zeile .tx-grid__zelle--ausgewaehlt,
+.tx-grid__zeile:hover .tx-grid__zelle--ausgewaehlt {
   background: var(--tx-color-accent-subtle);
 }
 

@@ -83,7 +83,16 @@ export const texte = {
   verschoben: 'Verschoben.',
   zielAusgeschnitten: 'Das Ziel liegt in den ausgeschnittenen Zeilen.',
   positionAngelegt: 'Neue Position angelegt.',
+  vergleichBeschriftung: 'Vergleich',
+  vergleichLeer: 'Keine Zeilen vorhanden.',
 } as const;
+
+/** Ansage nach Strg+C im Vergleichsgrid, z. B. „1 Zelle kopiert.“ oder „3 × 2 Zellen kopiert.“. */
+export function meldungZellenKopiert(zeilen: number, spalten: number): string {
+  return zeilen * spalten === 1
+    ? '1 Zelle kopiert.'
+    : `${String(zeilen)} × ${String(spalten)} Zellen kopiert.`;
+}
 
 export function meldungZeilen(anzahl: number, was: 'kopiert' | 'ausgeschnitten' | 'eingefügt'): string {
   return `${anzahl === 1 ? '1 Zeile' : `${String(anzahl)} Zeilen`} ${was}.`;

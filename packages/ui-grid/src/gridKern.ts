@@ -38,6 +38,11 @@ export interface GridKernOptionen<S extends string> {
   readonly fusshoehe?: number;
   /** Solange gesetzt (z. B. offener Zelleditor), holt der Kern den Fokus nicht auf die aktive Zelle. */
   readonly fokusGesperrt?: boolean;
+  /**
+   * Zahl der linken Spalten, die beim waagerechten Scrollen kleben (Standard 0). Eine fokussierte Zelle dahinter holt
+   * der Kern so in den Sichtbereich, dass sie nicht unter ihnen liegt.
+   */
+  readonly fixierteSpalten?: number;
   /** Meldet die Zeile der aktiven Zelle nach dem Rendern, sobald sie sich ändert; `null` ohne Zeilen. */
   readonly onAktiveZeileChange?: ((id: string | null) => void) | undefined;
 }
@@ -148,6 +153,23 @@ export function useGridKern<S extends string>(o: GridKernOptionen<S>): GridKern<
   };
 
   const fokusGesperrt = o.fokusGesperrt ?? false;
+  const fixierteSpalten = o.fixierteSpalten ?? 0;
+  /** Waagerecht: die Zelle ganz in den Sichtbereich, rechts von den fixierten Spalten (Fokus ohne Browser-Scrollen). */
+  const zeigeWaagerecht = (el: HTMLElement): void => {
+    const sc = scroller.current;
+    if (!sc || aktivSpaltenIndex < fixierteSpalten) return;
+    const rand = sc.getBoundingClientRect();
+    const letzteFixierte = spalten[fixierteSpalten - 1];
+    const fixiertBis =
+      letzteFixierte === undefined
+        ? rand.left
+        : (el.parentElement?.querySelector(`[data-spalte="${letzteFixierte}"]`)?.getBoundingClientRect()
+            .right ?? rand.left);
+    const box = el.getBoundingClientRect();
+    if (box.left < fixiertBis) sc.scrollLeft -= fixiertBis - box.left;
+    else if (box.right > rand.left + sc.clientWidth)
+      sc.scrollLeft += box.right - (rand.left + sc.clientWidth);
+  };
   useLayoutEffect(() => {
     if (!fokusAnfrage.current || fokusGesperrt || aktivIndex < 0 || aktivSpalte === undefined) return;
     const el = wurzel.current?.querySelector<HTMLElement>(
@@ -155,6 +177,7 @@ export function useGridKern<S extends string>(o: GridKernOptionen<S>): GridKern<
     );
     if (el) {
       el.focus({ preventScroll: true });
+      zeigeWaagerecht(el);
       fokusAnfrage.current = false;
     }
     if (scrollAnfrage.current) {
