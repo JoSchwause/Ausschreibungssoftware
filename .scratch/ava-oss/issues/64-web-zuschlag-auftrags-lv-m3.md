@@ -40,3 +40,7 @@ Herkunft: `plan.md` §2 V4, §4 Tor M3
 Nachträge, Aufmaß, Bearbeiten des Auftrags-LV.
 
 ## Comments
+
+### Aus Ticket 69 (Orchestrator)
+- X84-Dateien: `fixtures/angebote/typisch-bieter-{a,b,c}.x84`; Sollwerte im Block `preisspiegel` von `fixtures/typisch-angebote.json`, auch je Paar. Für M3 die Paare A+B nehmen (Rang A 1, B 2; Netto nach Nachlass 55.481,84 / 56.607,77).
+- Ein aus `typisch-X83-3.3.x83` eingelesenes LV trägt keine EP: Schätzpreis-Spalte 0,00 (D-69.4). Der X83-Import meldet `wahl-ohne-grundposition` und `mwst-ersatzwert` als Warnungen: prüfen, ob die Wahlgruppe von `typisch` nach dem X83-Import für den Zuschlag mit Wahl noch taugt; sonst das LV über den vorhandenen Testweg (Projektdatei/Fixture) anlegen und das im Ticket begründen.
