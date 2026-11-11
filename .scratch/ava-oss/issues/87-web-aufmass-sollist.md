@@ -42,7 +42,7 @@ Herkunft: `plan.md` §2 A2, M3
 
 ## Comments
 
-### Ergebnis (Branch `welle-5/87-aufmass`, Basis `integration/welle-5`, zuletzt gemergt mit Ticket 81 und 86)
+### Ergebnis (Branch `welle-5/87-aufmass`, Basis `integration/welle-5`, zuletzt gemergt bei `299bf26` mit 81, 86, 88–90)
 
 Neuer Ordner `apps/web/src/abrechnung/`: `aufmass.ts` (Befehlsweg des Blatts, Laden), `pfad.ts` (Adressen, Sprungziel
 nach Undo/Redo), `blatt.ts` (Ansicht des Blatts für das Grid, „kumuliert bis hier“, Befehl aus dem Panel), `sollist.ts`
@@ -120,14 +120,14 @@ Tests (Vitest, `apps/web/src/abrechnung/*.test.ts`, `mengen/ansatz.test.ts`): Be
 `apps/web/src/abrechnung/leistung.test.ts`: Auftrags-LV aus `gross` (5.000 Positionen), Blatt mit einer Zeile je
 Position, je zwei Ansatzzeilen (Blatt als JSON 1.057 KiB). 4 Kerne, bis zu 8 Agenten gleichzeitig.
 
-| | Last 13–14 (während der Arbeit) | Last 7 (Datei allein, 2 Läufe) |
-|---|---|---|
-| Rückgängig je Schritt (Median) | 99–144 ms, davon Speicher 99 ms | 94 / 105 ms, davon Speicher 94 / 105 ms |
-| Wiederholen je Schritt (Median) | 86–136 ms | 86 / 82 ms |
-| Befehl `AufmasspositionSetzen` (Median) | 104–119 ms | 93 / 89 ms |
-| Seite nachführen: „kumuliert“ (Soll/Ist) / Grid-Zeilen | 94 / 17 ms | 51–75 / 14 ms |
-| Anlegen des ganzen Blatts (X31-Fall) | 148 ms | 84–98 ms |
-| Arbeitsspeicher je Undo-Schritt | 37–39 KiB | 37–39 KiB |
+| | Last 13–14 (während der Arbeit) | Last 7 (Datei allein, 2 Läufe) | Last 4 (Datei allein) |
+|---|---|---|---|
+| Rückgängig je Schritt (Median) | 99–144 ms, davon Speicher 99 ms | 94 / 105 ms, fast ganz Speicher | 91 ms, davon Speicher 91 ms |
+| Wiederholen je Schritt (Median) | 86–136 ms | 86 / 82 ms | 79 ms |
+| Befehl `AufmasspositionSetzen` (Median) | 104–119 ms | 93 / 89 ms | 84 ms |
+| Seite nachführen: „kumuliert“ (Soll/Ist) / Grid-Zeilen | 94 / 17 ms | 51–75 / 14 ms | 59 / 13 ms |
+| Anlegen des ganzen Blatts (X31-Fall) | 148 ms | 84–98 ms | 97 ms |
+| Arbeitsspeicher je Undo-Schritt | 37–39 KiB | 37–39 KiB | 35 KiB |
 
 Bewertung: **Arbeitsspeicher je Schritt unkritisch** (ein neues Feld mit 5.000 Verweisen, die Zeilen selbst werden
 geteilt; bei 200 Schritten der Historie höchstens etwa 8 MiB). **Zeit je Schritt am Budget:** Fast alles liegt im
@@ -140,9 +140,10 @@ Vergleich mit `vorher` über den gespeicherten JSON-Text statt über ein geparst
 
 ### Prüfung
 
-Nach dem Merge von `integration/welle-5` (mit 81 und 86): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm
-typecheck && pnpm test` grün (Vitest 190 Dateien, 2.498 Tests bestanden, 3 übersprungen wie zuvor; `node --test` 29/29).
-E2E `aufmass.spec.ts` (2), `mengen.spec.ts` (3), `undo.spec.ts` (6) grün (11 bestanden, Last 11–12).
+Nach dem Merge von `integration/welle-5` bei `299bf26` (mit 81, 86, 88, 89, 90; Konflikte an den Einhängestellen so
+gelöst, dass die Zeilen aller Tickets bleiben): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck &&
+pnpm test` grün (Vitest 204 Dateien, 2.584 Tests bestanden, 3 übersprungen; `node --test` 29/29). E2E
+`aufmass.spec.ts` (2), `mengen.spec.ts` (3), `undo.spec.ts` (6) grün (11 bestanden, Last 2–6).
 
 ## Answer
 
