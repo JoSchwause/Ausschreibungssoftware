@@ -86,6 +86,7 @@ Vergleichsgrid 5.000 Zeilen × 5 Bieter (20 Spalten), schneller Wisch 28.000 px/
 | vorher (Basis `integration/welle-5`) | 0,3–0,9 | 59,6 | 37,1 | 5,2 / 4,4 |
 | nachher, Datei allein | 1,1–1,9 | 59,4 | 56,8 | 10,4 / 5,6 |
 | nachher, ganze E2E des Pakets | 2,8–3,1 | 59,2 | 56,8 | 8,7 / 5,9 |
+| nachher, ganze E2E nach Merge von `vertrag` v1.4 | 4,4–5,5 | 60,0 | 54,8 | 13,2 / 6,7 |
 
 Abwechselnd vorher/nachher unter gleicher Last (je 3 Läufe à 5 s, Bilder/s bei 28.000 px/s): Last 1,3–2,2: vorher
 45,7 / 48,5 / 39,7 → nachher 57,8 / 58,8 / 56,8; Last 3,6–5,0: vorher 50,0 / 36,1 / 45,8 → nachher 46,6 / 57,6 / 47,4.
