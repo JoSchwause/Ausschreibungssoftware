@@ -105,4 +105,28 @@ describe('Zuschlag über den Befehlsweg', () => {
       sollA?.nettoNachNachlass,
     ]);
   });
+
+  it('liest Auftrags-LVs über das Repository, nicht über den Export der Projektdatei (Ticket 86, D-64.2)', async () => {
+    const { u, weg, projekt, lv, angebot } = await mitAngebot();
+    const plan = zuschlagserteilungPlanen({
+      lv,
+      angebot,
+      projekt,
+      gewaehlt: new Set<PositionId>(),
+      neueId: u.ids.auftragsLeistungsverzeichnis(),
+    });
+    if (plan.befehl === null) throw new Error('kein Befehl');
+    // Ab hier ist der Export gesperrt: Laden und die Prüfung „schon vergeben“ dürfen ihn nicht brauchen.
+    const ohneExport = {
+      ...u.speicher,
+      projektdateiExportieren: () => Promise.reject(new Error('Export der Projektdatei')),
+    } as typeof u.speicher;
+    const weg2 = befehlswegFuer({ ...u, speicher: ohneExport });
+    expect(await zuschlagserteilungSpeichern(weg2, plan.befehl)).toMatchObject({ ok: true });
+    const geladen = await auftragsLvsLaden(ohneExport, projekt.id);
+    expect(geladen.ok && geladen.wert.map((z) => z.auftragsLeistungsverzeichnis.id)).toEqual([
+      plan.befehl.auftragsLeistungsverzeichnis.id,
+    ]);
+    expect(weg.historie.tiefe.rueck).toBe(3);
+  });
 });

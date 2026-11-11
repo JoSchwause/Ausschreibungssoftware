@@ -30,6 +30,7 @@ import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
+import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
 import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
 import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
@@ -374,6 +375,10 @@ function LvBearbeiten({
           {texte.seite.zumProjekt}
         </a>
       </div>
+      {/* Ticket 86 */}
+      {lv.nachtrag === undefined ? null : (
+        <NachtragKopfband sitzung={sitzung} zustand={zustand} nachtrag={lv.nachtrag} gehe={gehe} />
+      )}
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge.leiste}>
         <HistorieKnoepfe />
         <Button

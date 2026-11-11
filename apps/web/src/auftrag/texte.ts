@@ -44,6 +44,8 @@ export const texte = {
       `Der Zuschlag zu diesem LV ist an ${bieter} erteilt. Ein zweiter Zuschlag ist nicht möglich; Rückgängig nimmt den Zuschlag zurück.`,
     oeffnen: 'Auftrags-LV öffnen',
   },
+  nachtragOhneZuschlag: (nummer: string) =>
+    `Nachtrag ${nummer} ist ein Nachtrags-LV und bekommt keinen Zuschlag. Er wird auf seiner LV-Seite beauftragt („Beauftragen“).`,
   schonVergeben:
     'Zu diesem LV gibt es schon ein Auftrags-LV. Ein zweiter Zuschlag ist nicht möglich; Rückgängig nimmt den ersten zurück.',
   seite: {

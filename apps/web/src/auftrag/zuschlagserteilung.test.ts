@@ -143,6 +143,27 @@ describe('zuschlagserteilungPlanen', () => {
     expect(plan.fehler).toBe('Das Angebot gehört nicht zu diesem LV.');
     expect(plan.befehl).toBeNull();
   });
+
+  it('ein Nachtrags-LV bekommt keinen Zuschlag; der Grund nennt den Weg „Beauftragen“ (Ticket 86, D-42)', () => {
+    const nachtrag = {
+      ...lv,
+      leistungsverzeichnis: {
+        ...lv.leistungsverzeichnis,
+        nachtrag: { auftragsLvId: NEUE_ID, nummer: 'N01', status: 'angeboten' as const },
+      },
+    };
+    const plan = zuschlagserteilungPlanen({
+      lv: nachtrag,
+      angebot: a.angebot,
+      projekt,
+      gewaehlt: KEINE,
+      neueId: NEUE_ID,
+    });
+    expect(plan.befehl).toBeNull();
+    expect(plan.fehler).toBe(
+      'Nachtrag N01 ist ein Nachtrags-LV und bekommt keinen Zuschlag. Er wird auf seiner LV-Seite beauftragt („Beauftragen“).',
+    );
+  });
 });
 
 describe('wahlSetzen', () => {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Liste der Auftrags-LVs auf der Projektseite (Ticket 64). Lädt selbst (über die Projektdatei, D-64.2) und nach jedem
+// Liste der Auftrags-LVs auf der Projektseite (Ticket 64). Lädt selbst (über das Repository, Ticket 86) und nach jedem
 // Undo/Redo neu. Netto nach Nachlass aus dem gespeicherten Summenstand (Kern), formatiert über `dezimal`.
 
 import { formatiereBetragDe } from '@tethys/dezimal';

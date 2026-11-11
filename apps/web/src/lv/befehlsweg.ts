@@ -5,6 +5,7 @@
 // Redo (Ticket 48) schreiben hier.
 
 import {
+  auftragsLvChangeSetUmkehren, // Ticket 86: Umkehrung des Auftrags-LV aus dem Kern (statt D-64.4)
   changeSetUmkehren,
   lvBefehlAusfuehren,
   lvChangeSetAnwenden,
@@ -33,7 +34,6 @@ import type {
   Speicherfehler,
   Zeitstempel,
 } from '@tethys/vertrag';
-import { auftragsLvChangeSetUmkehren } from '../auftrag/auftrag'; // Ticket 64
 import { Historie, type Teil } from '../historie/historie';
 import { ozErgaenzen } from './ozergaenzen';
 
@@ -229,7 +229,7 @@ const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
     : cs.art === 'angebot'
       ? angebotChangeSetUmkehren(cs)
       : cs.art === 'auftrags-leistungsverzeichnis'
-        ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag
+        ? auftragsLvChangeSetUmkehren(cs) // Ticket 64: Zuschlag; Ticket 86: Nachtrag übernehmen
         : cs.art === 'aufmass'
           ? aufmassChangeSetUmkehren(cs) // Ticket 87: Aufmaßblatt
           : projektChangeSetUmkehren(cs);
