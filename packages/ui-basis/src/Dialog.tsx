@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useRef } from 'react';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode, RefObject } from 'react';
 import { Icon } from './Icon';
 import { baustein } from './texte';
 
@@ -15,6 +15,11 @@ export interface DialogProps {
   /** Schaltflächen unten rechts. */
   fuss?: ReactNode;
   schliessenLabel?: string;
+  /**
+   * Element, das beim Öffnen den Fokus bekommt (z. B. die Bestätigen-Schaltfläche, damit Enter bestätigt). Ohne
+   * Angabe, oder solange die Referenz leer ist, fokussiert Radix das erste fokussierbare Element (das Schließen-Kreuz).
+   */
+  anfangsfokus?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -29,6 +34,7 @@ export function Dialog({
   children,
   fuss,
   schliessenLabel = baustein.dialogSchliessen,
+  anfangsfokus,
 }: DialogProps): ReactElement {
   const ausloeser = useRef<HTMLElement | null>(null);
   return (
@@ -38,10 +44,15 @@ export function Dialog({
         <RadixDialog.Content
           className="tx-dialog"
           {...(beschreibung === undefined ? { 'aria-describedby': undefined } : {})}
-          onOpenAutoFocus={() => {
+          onOpenAutoFocus={(e) => {
             // Ohne Radix-Trigger merkt sich der Dialog selbst, wohin der Fokus beim Schließen zurückkehrt.
             const aktiv = document.activeElement;
             ausloeser.current = aktiv instanceof HTMLElement ? aktiv : null;
+            const ziel = anfangsfokus?.current;
+            if (ziel) {
+              e.preventDefault();
+              ziel.focus();
+            }
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();

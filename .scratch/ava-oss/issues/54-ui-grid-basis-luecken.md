@@ -50,3 +50,16 @@ in den Paketen (die App-Umwege werden danach in einem Folgeticket zurückgebaut)
 Rückbau der Umwege in `apps/web` (Folgeticket), neue Grid-Funktionen über die genannten hinaus.
 
 ## Comments
+
+### ui-basis (Punkte 5–6)
+
+**Punkt 5, Werkzeug „Tabelle einfügen“.** Neuer Knopf in der Werkzeugleiste des `LangtextEditor` (Icon `tabelle`, `aria-expanded`). Er öffnet in der Leiste ein kleines Feld mit „Zeilen“ und „Spalten“ (Zahlfelder), „Einfügen“ und „Abbrechen“; Enter in einem Feld fügt ein, Esc schließt nur das Feld (nicht das Verwerfen des Editors). Im Nur-Lesen-Modus fehlt das Werkzeug. Der Baustein liegt in `langtext/tabelle.ts` (`leereTabelle`, `begrenzeTabellenmass`, `TABELLE_GRENZEN`). Tests: `tabelle.test.ts` und `LangtextEditor.test.ts` („Tabelle einfügen“).
+
+- **D-54.10 Maße.** Frage: welche Grenzen? Entscheidung: 1 bis 20 Zeilen, 1 bis 10 Spalten, Vorgabe 2 × 2; Eingaben werden gerundet und geklemmt, Unsinn (leer, keine Zahl) wird 1. Grund: reicht für Tabellen im Langtext, nie leer (D-T34), bleibt bedienbar. Reversible: yes.
+- **D-54.11 Zellinhalt.** Frage: wie sieht eine neue Zelle aus? Entscheidung: ein leerer loser Absatz, im Langtext `{ spalten: 1, inhalt: [] }`; es entsteht nie eine Tabelle ohne Zeile oder eine Zeile ohne Zelle, jede Zeile hat gleich viele Zellen, `colspan` 1. Grund: bestehende Abbildung („leere Zelle ist ein leerer loser Absatz“), Rundweg bleibt gleich (Test). Reversible: yes.
+- **D-54.12 Feld in der Leiste statt Popover.** Frage: Radix Popover oder Dialog für die Auswahl? Entscheidung: Inline-Feld innerhalb des Editor-Containers. Grund: keine neue Abhängigkeit; Fokus bleibt im Container, daher löst die Auswahl kein „Verlassen“ (Übernehmen) aus. Reversible: yes.
+- **D-54.13 Einfügeort.** Entscheidung: `insertContent` an der Auswahl (TipTap-Standard); in einer Tabellenzelle entsteht eine verschachtelte Tabelle, was Schema und Vertrag erlauben. Reversible: yes.
+
+**Punkt 6, Dialog-Anfangsfokus.** `Dialog` hat die Eigenschaft `anfangsfokus?: RefObject<HTMLElement | null>`. Ist die Referenz beim Öffnen gesetzt, bekommt dieses Element den Fokus (Radix `onOpenAutoFocus` mit `preventDefault`); ohne Angabe oder bei leerer Referenz bleibt es wie bisher (Radix fokussiert das Schließen-Kreuz). Die Rückgabe des Fokus an den Auslöser beim Schließen ist unverändert. Test: `Dialog.test.ts`.
+
+- **D-54.14 Referenz statt Selektor.** Frage: Eigenschaft als Ref, Selektor oder Callback? Entscheidung: `RefObject`. Grund: typsicher, kein DOM-Wissen in der App. Reversible: yes.
