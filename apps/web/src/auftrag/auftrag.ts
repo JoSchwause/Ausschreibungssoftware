@@ -13,7 +13,7 @@ import type {
   Ergebnis,
   LeistungsverzeichnisId,
   LvChangeSet,
-  LvKopf,
+  LvInhaltKopf,
   LvZustand,
   Projektdatei,
   ProjektId,
@@ -111,19 +111,33 @@ export function auftragsLvChangeSetUmkehren(cs: AuftragsLvChangeSet): AuftragsLv
   };
 }
 
+/** Die Stammdaten ohne Kennungen und Knoten (Name, Maske, MwSt, Nachlass, Kopfdaten); fehlende Felder bleiben weg. */
+export function inhaltKopf(k: LvInhaltKopf): LvInhaltKopf {
+  return {
+    name: k.name,
+    ozMaske: k.ozMaske,
+    mwstSatz: k.mwstSatz,
+    nachlass: k.nachlass,
+    ...(k.auftraggeber === undefined ? {} : { auftraggeber: k.auftraggeber }),
+    ...(k.vergabeinformationen === undefined ? {} : { vergabeinformationen: k.vergabeinformationen }),
+    ...(k.auftragnehmer === undefined ? {} : { auftragnehmer: k.auftragnehmer }),
+    ...(k.epaBezeichnungen === undefined ? {} : { epaBezeichnungen: k.epaBezeichnungen }),
+  };
+}
+
 /**
  * Das Auftrags-LV in der Form eines LV-Zustands, für das schreibgeschützte Grid, die Prüfung und den GAEB-Writer, die
  * mit LVs arbeiten. Die Kennung des Auftrags-LV ist die Wurzel seiner Knoten (`WurzelId`).
  */
 export function alsLvZustand(z: AuftragsLvZustand): LvZustand {
-  const {
-    id,
-    projektId,
-    leistungsverzeichnisId: _lv,
-    angebotId: _angebot,
-    knoten,
-    ...kopf
-  } = z.auftragsLeistungsverzeichnis;
-  const lvKopf: LvKopf = { ...kopf, id: id as string as LeistungsverzeichnisId, projektId };
-  return { leistungsverzeichnis: { ...lvKopf, knoten }, summen: z.summen };
+  const a = z.auftragsLeistungsverzeichnis;
+  return {
+    leistungsverzeichnis: {
+      ...inhaltKopf(a),
+      id: a.id as string as LeistungsverzeichnisId,
+      projektId: a.projektId,
+      knoten: a.knoten,
+    },
+    summen: z.summen,
+  };
 }

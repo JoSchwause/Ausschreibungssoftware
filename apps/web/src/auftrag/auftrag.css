@@ -1,0 +1,87 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Zuschlag und Auftrags-LV (Ticket 64): Dialog, Kopf der Seite, Hinweis am Preisspiegel. Nur Tokens (U4). */
+
+.auftrag__zuschlag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+  max-width: 640px;
+}
+
+.auftrag__zuschlag p {
+  margin: 0;
+}
+
+.auftrag__wahlgruppe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.auftrag__wahlgruppe legend {
+  padding: 0 var(--tx-space-1);
+  font-weight: var(--tx-weight-medium);
+}
+
+.auftrag__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+}
+
+.auftrag__zahlen,
+.auftrag__kopf {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--tx-space-1) var(--tx-space-4);
+  margin: 0;
+}
+
+.auftrag__zahlen dt,
+.auftrag__kopf dt {
+  color: var(--tx-color-text-muted);
+}
+
+.auftrag__zahlen dd,
+.auftrag__kopf dd {
+  margin: 0;
+}
+
+.auftrag__zahlen dd {
+  font-family: var(--tx-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.auftrag__unterkopf {
+  margin: 0;
+  font-size: var(--tx-font-size-md);
+}
+
+.auftrag__warnungen {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.auftrag__fehler {
+  color: var(--tx-color-danger);
+}
+
+.auftrag__leise {
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.auftrag__fuss {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tx-space-3);
+}
+
+.auftrag__vergeben {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}

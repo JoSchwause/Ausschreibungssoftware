@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ToastAnbieter } from '@tethys/ui-basis';
-import type { LeistungsverzeichnisId, LvStandId, ProjektId } from '@tethys/vertrag';
+import type {
+  AuftragsLeistungsverzeichnisId, // Ticket 64
+  LeistungsverzeichnisId,
+  LvStandId,
+  ProjektId,
+} from '@tethys/vertrag';
 import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
+import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { LvSeite } from './lv/LvSeite';
 import { LvStandSeite } from './lv/LvStandSeite';
@@ -58,6 +64,16 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     return {
       titel: texte.seiten.projekt.titel,
       inhalt: mitSpeicher(<ProjektSeite key={id} id={id} gehe={gehe} />),
+    };
+  }
+  // Ticket 64: Auftrags-LV eines Projekts
+  const auftrag = /^\/projekt\/([^/]+)\/auftrag\/([^/]+)$/.exec(pfad);
+  if (auftrag?.[1] !== undefined && auftrag[2] !== undefined) {
+    const projektId = decodeURIComponent(auftrag[1]) as ProjektId;
+    const id = decodeURIComponent(auftrag[2]) as AuftragsLeistungsverzeichnisId;
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<AuftragsLvSeite key={id} projektId={projektId} id={id} gehe={gehe} />),
     };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
