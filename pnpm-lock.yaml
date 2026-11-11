@@ -50,6 +50,9 @@ importers:
       '@tethys/kern':
         specifier: workspace:*
         version: link:../../packages/kern
+      '@tethys/mengen':
+        specifier: workspace:*
+        version: link:../../packages/mengen
       '@tethys/speicher':
         specifier: workspace:*
         version: link:../../packages/speicher
