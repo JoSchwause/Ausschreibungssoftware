@@ -821,8 +821,8 @@ export type Rechnungsart = 'abschlag' | 'schluss';
 
 /**
  * Umlage (v1.4, Ticket 70 Punkt 7; D-34 (5); Glossar „Umlage“): ein Abzug des Auftraggebers für eine gemeinsam genutzte
- * Leistung. Die Prüfung rechnet je Umlage round(Brutto kumuliert × `satz`, 2), alle auf derselben Basis, nicht aufeinander;
- * sie mindern die Steuerbasis nicht (Gegenforderung des Auftraggebers nach der MwSt).
+ * Leistung. Die Prüfung rechnet je Umlage round(Brutto kumuliert × `satz` / 100, 2) (`'0.50'` heißt 0,5 %), alle auf
+ * derselben Basis, nicht aufeinander; sie mindern die Steuerbasis nicht (Gegenforderung des Auftraggebers nach der MwSt).
  */
 export interface Umlage {
   /** Bezeichnung, wie die Beteiligten sie führen (z. B. „Bauwesenversicherung“), freier Text. */
@@ -883,8 +883,8 @@ export interface Rechnung {
   /** Umlagen in Anzeigereihenfolge; `[]`: keine. */
   readonly umlagen: readonly Umlage[];
   /**
-   * Satz des Sicherheitseinbehalts (D-34 (6)): round(Brutto kumuliert × Satz, 2), nur bei `art: 'abschlag'` gelesen.
-   * `null`: kein Einbehalt. Bei `schluss` bleibt er stehen, wird aber nicht gelesen (die App übernimmt beide Sätze als
+   * Satz des Sicherheitseinbehalts (D-34 (6)): round(Brutto kumuliert × Satz / 100, 2), nur bei `art: 'abschlag'`
+   * gelesen. `null`: kein Einbehalt. Bei `schluss` bleibt er stehen, wird aber nicht gelesen (die App übernimmt beide Sätze als
    * Vorschlag aus der vorigen Rechnung).
    */
   readonly sicherheitSatz: Prozent | null;

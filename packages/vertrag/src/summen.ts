@@ -115,11 +115,12 @@ export interface Summenaenderung {
  * - `menge`: die kumulierte Aufmaßmenge, Σ `Aufmassposition.menge` über die Blätter der Rechnung (Zeilen ohne Menge
  *   zählen nicht); `null`: keine Zeile mit Menge, bei einer Zuschlagsposition immer.
  * - `gp`: round(`menge` × Vertrags-EP, 2); `0.00`, wenn `menge` oder EP `null` ist (ein fehlender EP ist ein Befund der
- *   Prüfung). Bedarfspositionen zählen, sobald sie aufgemessen sind. Eine Zuschlagsposition: round(Satz × Σ `gp` ihrer
- *   Bezugspositionen, 2) (D-34 (1)).
+ *   Prüfung). Bedarfspositionen zählen, sobald sie aufgemessen sind. Eine Zuschlagsposition: round(Satz / 100 × Σ `gp`
+ *   ihrer Bezugspositionen, 2) (D-34 (1); ein `Prozent` `'5.00'` heißt 5 %). Eine Zuschlagsposition ohne Satz
+ *   (`Zuschlag.prozentsatz: null`) hat `gp` `0.00`, ein Befund der Prüfung wie ein fehlender EP.
  * - `leistung` = Σ `gp`. `nachlass` ist der abgezogene Betrag, ≥ 0 wie `Gesamtsummen.nachlass` (Prozent:
- *   round(`leistung` × %, 2) über das ganze Auftrags-LV samt Nachtragspositionen; absolut: in einer Abschlagsrechnung
- *   anteilig, höchstens der volle Betrag, in der Schlussrechnung voll; D-34 (2)). `nettoNachNachlass` = `leistung` −
+ *   round(`leistung` × Satz / 100, 2) über das ganze Auftrags-LV samt Nachtragspositionen; absolut: in einer
+ *   Abschlagsrechnung anteilig, höchstens der volle Betrag, in der Schlussrechnung voll; D-34 (2)). `nettoNachNachlass` = `leistung` −
  *   `nachlass`, negativ ist ein Befund (E-06). Die Kostenkontrolle zeigt `nachlass` als eigene, negative Zeile (D-37).
  */
 export interface Leistungsstand {
