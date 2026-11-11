@@ -24,3 +24,10 @@ export type {
   Trenner,
 } from './bezeichnungen';
 export { bezeichnungenLesen } from './bezeichnungen';
+export type {
+  Einzelpreiskalkulation,
+  Kalkulationsansatz,
+  Kalkulationszuschlagssaetze,
+  Kostenartnachweis,
+} from './kalkulation';
+export { einzelpreiskalkulationBerechnen } from './kalkulation';
