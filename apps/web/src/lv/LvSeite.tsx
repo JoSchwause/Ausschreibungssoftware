@@ -269,8 +269,10 @@ function LvBearbeiten({
   /** Legt einen Knoten an und setzt die aktive Zelle auf seinen Kurztext. */
   const anlegen = async (befehl: LvBefehl & { id: KnotenId; ort: Einfuegeort }): Promise<void> => {
     // Eine zugeklappte Gliederung, in die der Knoten kommt, wird aufgeklappt, damit er sichtbar ist.
-    const ziel = befehl.ort.art === 'nach' ? befehl.ort.knotenId : befehl.ort.elternId;
-    if (zugeklappt.has(ziel)) {
+    // v1.3: mechanisch angepasst, Folgeticket (hinter-gliederung: neben die Gliederung, nichts aufzuklappen)
+    const ort = befehl.ort;
+    const ziel = ort.art === 'nach' ? ort.knotenId : ort.art === 'hinter-gliederung' ? null : ort.elternId;
+    if (ziel !== null && zugeklappt.has(ziel)) {
       setZugeklappt((alt) => {
         const neu = new Set(alt);
         neu.delete(ziel);

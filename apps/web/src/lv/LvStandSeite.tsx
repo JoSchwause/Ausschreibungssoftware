@@ -40,11 +40,7 @@ export function LvStandSeite({
 
   useEffect(() => {
     let aktiv = true;
-    const staende = u.speicher.lvStaende;
-    if (staende === undefined) {
-      setLage({ art: 'fehlt' });
-      return;
-    }
+    const staende = u.speicher.lvStaende; // v1.3: mechanisch angepasst, Folgeticket (Speicher.lvStaende Pflicht)
     void staende.laden(standId).then((r) => {
       if (aktiv)
         setLage(
