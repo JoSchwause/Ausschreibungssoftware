@@ -1,6 +1,6 @@
 # 90: O3+C5 in der App: Druckprofile, Muster-LV, Textquelle
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: O3, C5 · Ordner: `apps/web/src/ausgabe/`, `apps/web/src/vorlage/` (neu); Einhängestellen in
 `lv/LvSeite.tsx`, `lv/PositionsDialog.tsx`, `lv/KopfdatenDialog.tsx`, `auftrag/AuftragAusgeben.tsx` (markiert `// Ticket 90`,
