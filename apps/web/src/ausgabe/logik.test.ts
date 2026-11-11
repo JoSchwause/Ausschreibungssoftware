@@ -92,7 +92,7 @@ describe('excelAngebotLesen', () => {
       bauherr: { name: 'Kreis', anschrift: null },
       bieter: [],
     };
-    const plan = excelAngebotPlan(v, v.bieterName, projekt as never, ids);
+    const plan = excelAngebotPlan(v, v.bieterName, projekt, ids);
     expect(plan?.neuerBieter?.name).toBe('Mustermann Bau');
     expect(plan?.angebot.leistungsverzeichnisId).toBe(zustand.leistungsverzeichnis.id);
   });
