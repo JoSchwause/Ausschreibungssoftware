@@ -241,6 +241,17 @@ describe('Detailleiste: aktive Zelle in Worten', () => {
     expect(m.erklaerungen[0]).toMatch(/^Virtueller Bieter Mittel/);
   });
 
+  it('Gliederung: Titelsumme des Bieters wie die Fixture', () => {
+    const titel = lv.leistungsverzeichnis.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === '02');
+    const a = eingelesen.find((e) => e.name === 'Bieter A');
+    const d = zellDetail(eingang, { zeilenId: titel?.id ?? '', spalte: `${angebotId('Bieter A')}:gp` });
+    expect(d).toMatchObject({
+      bieter: 'Bieter A',
+      position: '02 Erd- und Betonarbeiten',
+      wert: `GP ${betragDe(a?.fx.titel['02'] ?? '')}`,
+    });
+  });
+
   it('Zelle ohne Bieter: nur die Position, ABC-Klasse erklärt', () => {
     const d = zellDetail(eingang, { zeilenId: positionsId('02.0060'), spalte: 'abc' });
     expect(d.bieter).toBeNull();

@@ -254,12 +254,25 @@ function positionszellen(
 
 // --- Zeilen und Summen --------------------------------------------------------------------------------------------
 
+/** Zellen einer Gliederung (Los, Titel): OZ, Kurztext und die Gliederungssumme je Bieter. */
+function gliederungszellen(
+  k: Exclude<Knoten, { art: 'hinweis' | 'position' }>,
+  e: AnsichtEingang,
+): Record<string, VergleichsZelle> {
+  const zellen: Record<string, VergleichsZelle> = {
+    oz: zelle(k.ordnungszahl ?? ''),
+    kurztext: zelle(k.kurztext),
+  };
+  const spalte = wertspalte(e.wahl);
+  for (const s of e.preisspiegel.gliederungen.find((g) => g.gliederungId === k.id)?.summen ?? [])
+    zellen[spaltenId(s.angebotId, spalte)] = zelle(betrag(s.summe));
+  return zellen;
+}
+
 function zeilenBauen(e: AnsichtEingang): VergleichsZeile[] {
   const lv = e.lv.leistungsverzeichnis;
   const kinder = kinderJeEltern(lv.knoten);
   const preiszeile = new Map(e.preisspiegel.zeilen.map((z) => [z.positionId as string, z]));
-  const gliederung = new Map(e.preisspiegel.gliederungen.map((g) => [g.gliederungId as string, g]));
-  const spalte = wertspalte(e.wahl);
   const zeilen: VergleichsZeile[] = [];
   const besuche = (elternId: string, tiefe: number): void => {
     for (const k of kinder.get(elternId) ?? []) {
@@ -279,13 +292,14 @@ function zeilenBauen(e: AnsichtEingang): VergleichsZeile[] {
           zellen: positionszellen(k, z, e.wahl),
         });
       } else {
-        const zellen: Record<string, VergleichsZelle> = {
-          oz: zelle(k.ordnungszahl ?? ''),
-          kurztext: zelle(k.kurztext),
-        };
-        for (const s of gliederung.get(k.id)?.summen ?? [])
-          zellen[spaltenId(s.angebotId, spalte)] = zelle(betrag(s.summe));
-        zeilen.push({ id: k.id, art: 'gliederung', tiefe, hatUnterknoten, aufgeklappt, zellen });
+        zeilen.push({
+          id: k.id,
+          art: 'gliederung',
+          tiefe,
+          hatUnterknoten,
+          aufgeklappt,
+          zellen: gliederungszellen(k, e),
+        });
       }
       if (aufgeklappt) besuche(k.id, tiefe + 1);
     }
@@ -415,7 +429,9 @@ export function zellDetail(e: AnsichtEingang, ort: VergleichsZellort): Zelldetai
       ? summenBauen(e).find((s) => s.id === ort.zeilenId)?.zellen
       : knoten?.art === 'position' && zeile !== undefined
         ? positionszellen(knoten, zeile, e.wahl)
-        : zeilenBauen({ ...e, zugeklappt: new Set() }).find((z) => z.id === ort.zeilenId)?.zellen;
+        : knoten === undefined || knoten.art === 'hinweis' || knoten.art === 'position'
+          ? undefined
+          : gliederungszellen(knoten, e);
   const text = zellen?.[ort.spalte]?.text ?? '';
   const kopf = was === 'ep' ? texte.spalten.ep : was === 'gp' ? texte.spalten.gp : '';
   const wert =
