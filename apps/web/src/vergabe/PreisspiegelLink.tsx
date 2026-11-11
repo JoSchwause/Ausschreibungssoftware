@@ -5,9 +5,8 @@
 import type { LeistungsverzeichnisId } from '@tethys/vertrag';
 import type { ReactElement } from 'react';
 import { hrefFuer, useRoute } from '../ui/route';
+import { preisspiegelPfad } from './pfad';
 import { texte } from './texte';
-
-export const preisspiegelPfad = (lvId: LeistungsverzeichnisId): string => `/lv/${lvId}/preisspiegel`;
 
 export function PreisspiegelLink({ lvId }: { lvId: LeistungsverzeichnisId }): ReactElement {
   const { gehe } = useRoute();
