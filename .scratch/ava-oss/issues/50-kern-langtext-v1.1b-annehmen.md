@@ -1,6 +1,6 @@
 # 50: Kern nimmt den vollen Langtext (v1.1b) an
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: K · Paket: `packages/kern`
 Blocked by: 41 (gemergt)
