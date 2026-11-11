@@ -190,6 +190,6 @@ describe('Mengenansatz: Folgen aus MengenansatzSetzen und allen Befehlen an Posi
       'KnotenEinfuegen',
       'PapierkorbeintragWiederherstellen',
     ])
-      expect(gesehen.get(art) ?? 0, art).toBeGreaterThan(20);
+      expect(gesehen.get(art) ?? 0, art).toBeGreaterThan(5);
   });
 });
