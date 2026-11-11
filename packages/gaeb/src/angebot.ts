@@ -3,8 +3,9 @@
 // Kennungen bringt der Aufrufer, kein I/O, keine Uhr. Tolerant: Was nicht passt, wird Befund, nichts geht still
 // verloren (Q5). Zuordnung zum LV allein über die Ordnungszahl (A7); die GAEB-`ID` ist kein Schlüssel.
 //
-// Lesarten (D-45.1, Ticket 45, Comments): EPA wie der X86-Leser (Bezeichnung vor `Type`); ohne `LblUPComp` in der
-// Datei bleiben die Anteile unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
+// Lesarten (D-45.1, Ticket 45, Comments): EPA wie der X86-Leser (Bezeichnung vor `Type`). Seit v1.3 (Ticket 68, D-28)
+// ordnet das LV mit seinen EPA-Bezeichnungen die Anteile über die Nummer zu; nur ohne Bezeichnung (im LV, bei einem LV
+// vor v1.3 in der Datei) bleiben sie unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
 // (G-26, D-10 Nr. 3): Fehler `nachlass-nicht-abgebildet`, der Preis bleibt ohne Nachlass.
 
 import { gesamtpreis, vergleiche } from '@tethys/dezimal';
@@ -16,6 +17,7 @@ import type {
   BieterId,
   Einheitspreis,
   Einheitspreisanteile,
+  EpaBezeichnung,
   GaebPhase,
   GaebVersion,
   Knoten,
@@ -28,7 +30,8 @@ import type {
   Prozent,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { ANTEILE, ANTEIL_NACH_BEZEICHNUNG, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
+import { EPA_NUMMERN, deuteBeschriftung } from './epa';
+import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
 import { elementKinder, textInhalt } from './xml';
 import type { XmlElement } from './xml';
@@ -52,16 +55,6 @@ export interface AngebotLesung {
 
 const NULL_EP = '0.000' as Einheitspreis;
 
-/** `LblUPComp<n>`-Typen mit fester Art; `Unknown` und andere führen zur Bezeichnung oder zum freien Anteil. */
-const ANTEIL_NACH_TYP: Readonly<Record<string, Anteil>> = {
-  Wages: 'lohn',
-  Materials: 'stoffe',
-  Plant: 'geraete',
-  Miscellaneous: 'sonstiges',
-};
-/** Bezeichnungen, die der X86-Leser kennt, plus „Gerät“ (BVBS Bauausführung X83). */
-const ANTEIL_NACH_NAME: Readonly<Record<string, Anteil>> = { ...ANTEIL_NACH_BEZEICHNUNG, gerät: 'geraete' };
-
 interface Anteilsangaben {
   /** Je `UPComp1…6` der Anteil, `null`: nicht zuordenbar (Grund in `grund`). */
   readonly anteile: readonly (Anteil | null)[];
@@ -70,9 +63,8 @@ interface Anteilsangaben {
 }
 
 /**
- * `LblUPComp1…6` → Anteile (D-45.1). Wie der X86-Leser (D-40.1): zuerst die Bezeichnung, dann `Type`, sonst der freie
- * Anteil. `Miscellaneous` passt zu Nachunternehmer und Sonstiges (so schreibt der eigene Export); jeder andere
- * Widerspruch zwischen Bezeichnung und Typ ist Warnung `epa-beschriftung-abweichend`, die Bezeichnung gilt.
+ * `LblUPComp1…6` der Angebotsdatei → Anteile (D-45.1), gedeutet wie im LV-Leser (`epa.ts`). Nur für ein LV ohne
+ * EPA-Bezeichnungen (Daten vor v1.3); sonst gilt `anteileAusLv`.
  */
 function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsangaben {
   const anteile: (Anteil | null)[] = [];
@@ -88,14 +80,7 @@ function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsa
     }
     const bez = wert(el) ?? '';
     const typ = el.attrs.get('Type') ?? '';
-    const nachName = ANTEIL_NACH_NAME[bez.toLowerCase()];
-    const nachTyp = ANTEIL_NACH_TYP[typ];
-    const anteil: Anteil = nachName ?? nachTyp ?? 'frei';
-    const vertraeglich =
-      nachName === undefined ||
-      nachTyp === undefined ||
-      nachName === nachTyp ||
-      (typ === 'Miscellaneous' && nachName === 'nachunternehmer');
+    const { anteil, vertraeglich } = deuteBeschriftung(bez, typ);
     if (!vertraeglich)
       l.melde(
         'warnung',
@@ -114,6 +99,41 @@ function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsa
     if (anteil === 'frei') freiBezeichnung = bez === '' ? null : bez;
   }
   return { anteile, grund, freiBezeichnung };
+}
+
+/**
+ * Anteile über die EPA-Bezeichnungen des LV (v1.3, Ticket 68, D-28): `UPComp<n>` ist der Anteil, den das LV unter der
+ * Nummer `n` führt. Die Nummer ist der Schlüssel; die amtlichen X84 tragen keine `LblUPComp` (das XSD der Phase 84 kennt
+ * sie nicht). Beschriftet die Datei trotzdem einen Platz anders als das LV, gilt das LV (Warnung
+ * `epa-beschriftung-abweichend`). Ein Platz ohne Bezeichnung im LV bleibt unzugeordnet (Befund `epa-nicht-abgebildet`).
+ * Die Bezeichnung des freien Anteils steht im LV, nicht an der Position (D-53.6).
+ */
+function anteileAusLv(
+  l: Leser,
+  boqInfo: XmlElement | undefined,
+  bezeichnungen: readonly EpaBezeichnung[],
+): Anteilsangaben {
+  const anteile: (Anteil | null)[] = [];
+  const grund: string[] = [];
+  for (const n of EPA_NUMMERN) {
+    const imLv = bezeichnungen.find((e) => e.nummer === n);
+    const el = kind(boqInfo, `LblUPComp${String(n)}`);
+    if (el) {
+      const bez = wert(el) ?? '';
+      const inDatei = deuteBeschriftung(bez, el.attrs.get('Type') ?? '').anteil;
+      if (inDatei !== imLv?.anteil)
+        l.melde(
+          'warnung',
+          'epa-beschriftung-abweichend',
+          `LblUPComp${String(n)} „${bez}“ der Angebotsdatei steht für ${inDatei}, das LV führt unter Nummer ${String(n)} ` +
+            `${imLv === undefined ? 'keinen Anteil' : imLv.anteil}; es gilt das LV.`,
+          el,
+        );
+    }
+    anteile.push(imLv?.anteil ?? null);
+    grund.push(imLv === undefined ? 'ohne EPA-Bezeichnung im LV' : '');
+  }
+  return { anteile, grund, freiBezeichnung: null };
 }
 
 const gleicheStelle = (a: OzStelle, b: OzStelle): boolean => a.laenge === b.laenge && a.zeichen === b.zeichen;
@@ -546,7 +566,11 @@ export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOption
     );
   const nachlass = leseAngebotsnachlass(l, kind(boqInfo, 'Totals'));
 
-  const aufbau = new Angebotsaufbau(l, lv, leseAnteilsangaben(l, boqInfo));
+  const anteile =
+    lv.epaBezeichnungen === undefined
+      ? leseAnteilsangaben(l, boqInfo)
+      : anteileAusLv(l, boqInfo, lv.epaBezeichnungen);
+  const aufbau = new Angebotsaufbau(l, lv, anteile);
   for (const b of kinder(boq, 'BoQBody')) aufbau.koerper(b, []);
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');

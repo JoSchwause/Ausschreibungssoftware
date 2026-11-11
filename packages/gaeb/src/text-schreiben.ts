@@ -10,7 +10,9 @@
 //   die Tabellenform entfällt (Warnung `export-verworfen`);
 // - ein loses Bild in einem Listenpunkt oder einer Zelle (`li`/`td` kennen kein Bild): in einem eigenen `p`
 //   (kein Verlust; beim Wiederlesen ist es ein Absatz mit dem Bild);
-// - eine leere Liste oder Tabelle (`ul`/`ol` brauchen ein `li`, `table` ein `tr`): entfällt (Warnung);
+// - eine leere Liste oder Tabelle (`ul`/`ol` brauchen ein `li`, `table` ein `tr`): entfällt (Warnung); ebenso eine
+//   Tabellenzeile ohne Zellen (v1.3, D-22 (iii): das XSD ließe ein leeres `tr` zu, der Kern meldet sie als Befund) und
+//   damit eine Tabelle, die nur aus leeren Zeilen besteht;
 // - ein Bild mit einem Medientyp außer PNG, JPEG, GIF: entfällt (Warnung).
 
 import type {
@@ -96,18 +98,20 @@ function baustein(aus: XmlAusgabe, b: LangtextInnenBaustein, u: Umgebung, m: Tex
           });
       });
       return;
-    case 'tabelle':
+    case 'tabelle': {
       if (u === 'li') {
         m.verworfen('Tabelle in einem Listenpunkt (Zellinhalte ohne Tabellenform geschrieben)');
         for (const z of b.zeilen) for (const zelle of z.zellen) bausteine(aus, zelle.inhalt, 'li', m);
         return;
       }
-      if (b.zeilen.length === 0) {
+      for (const z of b.zeilen) if (z.zellen.length === 0) m.verworfen('leere Tabellenzeile');
+      const zeilen = b.zeilen.filter((z) => z.zellen.length > 0);
+      if (zeilen.length === 0) {
         m.verworfen('leere Tabelle');
         return;
       }
       aus.element('table', [], () => {
-        for (const z of b.zeilen)
+        for (const z of zeilen)
           aus.element('tr', [], () => {
             for (const zelle of z.zellen)
               aus.element('td', [['colspan', zelle.spalten === 1 ? null : String(zelle.spalten)]], () => {
@@ -116,6 +120,7 @@ function baustein(aus: XmlAusgabe, b: LangtextInnenBaustein, u: Umgebung, m: Tex
           });
       });
       return;
+    }
   }
 }
 

@@ -19,7 +19,7 @@ import type {
 } from '@tethys/vertrag';
 import { leseAngebot, leseGaeb } from './index';
 import type { AngebotLesung } from './index';
-import { TEST_MWST, lesePfad, leseTestdatei, testIds } from './testhilfen';
+import { TEST_MWST, fixtureLv, lesePfad, leseTestdatei, testIds } from './testhilfen';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HIER, '..', 'testdaten', 'golden');
@@ -240,6 +240,109 @@ describe('BVBS Bauausführung X84 gegen das LV aus der X83', () => {
   it('Golden', () => {
     vergleicheGolden('angebot-bauausfuehrung-x84', 'BVBS_Pruefdatei_3.3_Bauausfuehrung_V-11-06-2021.x84', l);
   });
+});
+
+// --- v1.3: Anteile über die EPA-Bezeichnungen des LV (Ticket 68, D-28) -----------------------------------------
+
+const AVA_X86 = 'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X86';
+
+describe('v1.3: X84 ohne LblUPComp, Anteile über die EPA-Bezeichnungen des LV', () => {
+  const lv = lvAus(lesePfad(AVA_X86));
+  const l = lies(lesePfad(AVA_X84), lv, 'a.X84');
+
+  it('BVBS AVA X84 gegen das LV aus der X86 (Material, Lohn, Geräte, Nachunternehmer): Anteile zugeordnet', () => {
+    expect(zeile(l, lv, '1.10.30.20')).toMatchObject({
+      status: 'angeboten',
+      einheitspreis: '27.910',
+      epa: {
+        stoffe: '2.230',
+        lohn: '23.120',
+        geraete: '2.560',
+        nachunternehmer: '0.000',
+        sonstiges: null,
+        frei: null,
+        freiBezeichnung: null,
+      },
+    });
+    expect(codes(l)).not.toContain('epa-nicht-abgebildet');
+    const mitEpa = (l.befehl?.angebot.positionen ?? []).filter(
+      (p) => p.status === 'angeboten' && p.epa !== null,
+    );
+    expect(mitEpa).toHaveLength(5);
+  });
+
+  it('ein UPComp, dessen Nummer das LV nicht beschriftet, bleibt unzugeordnet (Befund nennt den Grund)', () => {
+    const ohneVier: Leistungsverzeichnis = {
+      ...lv,
+      epaBezeichnungen: (lv.epaBezeichnungen ?? []).filter((e) => e.nummer !== 4),
+    };
+    const m = lies(lesePfad(AVA_X84), ohneVier);
+    expect(zeile(m, ohneVier, '1.10.30.20')).toMatchObject({
+      epa: { stoffe: '2.230', lohn: '23.120', geraete: '2.560', nachunternehmer: null },
+    });
+    const b = mitCode(m, 'epa-nicht-abgebildet');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toContain('5 Werte');
+    expect(b[0]?.meldung).toContain('ohne EPA-Bezeichnung im LV');
+  });
+
+  it('beschriftet die X84 selbst anders als das LV: das LV gilt, Warnung epa-beschriftung-abweichend', () => {
+    const roh = new TextDecoder()
+      .decode(lesePfad(AVA_X84))
+      .replace(
+        '</BoQBkdn><Totals>',
+        '</BoQBkdn><NoUPComps>2</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1><Totals>',
+      );
+    const m = lies(roh, lv);
+    expect(zeile(m, lv, '1.10.30.20')).toMatchObject({ epa: { stoffe: '2.230', lohn: '23.120' } });
+    const b = mitCode(m, 'epa-beschriftung-abweichend');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toContain('LblUPComp1');
+  });
+});
+
+// --- X84 der Angebote zu `typisch` (Ticket 69, eingelesen in Ticket 68) ---------------------------------------------
+
+/** Angebotszeile in der Form der Fixture `typisch-angebote.json` (Vorgaben weggelassen: `epa`, Platzhalter-EP). */
+type FxZeile =
+  | { positionId: string; status: 'angeboten'; einheitspreis?: string; zuschlagssatz?: string }
+  | { positionId: string; status: 'nicht-angeboten' };
+interface FxAngebote {
+  bieter: { id: string; name: string }[];
+  angebote: { id: string; bieterId: string; nachlass: unknown; positionen: FxZeile[] }[];
+}
+
+/**
+ * Die Zeile in Vertragsform (v1.2): Die Fixture lässt `epa` weg (die X84 tragen keine Anteile, also `null`), und eine
+ * Zuschlagszeile hat keinen EP; der Leser setzt dort den Platzhalter `0.000` (Vertrag v1.2, D-12 Nr. 7; die X84 tragen an
+ * `MarkupItem` kein `UP`, D-69.2).
+ */
+function inVertragsform(z: FxZeile): Angebotsposition {
+  if (z.status === 'nicht-angeboten') return z as Angebotsposition;
+  return {
+    ...z,
+    einheitspreis: z.einheitspreis ?? '0.000',
+    epa: null,
+  } as Angebotsposition;
+}
+
+describe('X84 der Angebote zu typisch (fixtures/angebote, Ticket 69) gegen das LV typisch', () => {
+  const fx = JSON.parse(new TextDecoder().decode(lesePfad('fixtures/typisch-angebote.json'))) as FxAngebote;
+  const { inhalt } = fixtureLv('typisch');
+  const { wurzelId, knoten, ...kopf } = inhalt;
+  const lv: Leistungsverzeichnis = { ...kopf, id: wurzelId, projektId: PROJEKT, knoten };
+
+  for (const [i, datei] of ['typisch-bieter-a.x84', 'typisch-bieter-b.x84', 'typisch-bieter-c.x84'].entries())
+    it(`${datei}: Angebotspositionen und Nachlass genau wie typisch-angebote.json, kein Befund`, () => {
+      const soll = fx.angebote[i];
+      if (soll === undefined) throw new Error(`Angebot ${String(i)} fehlt in der Fixture`);
+      const l = lies(lesePfad(`fixtures/angebote/${datei}`), lv, datei);
+      expect([l.phase, l.version]).toEqual(['X84', '3.3']);
+      expect(l.befunde).toEqual([]);
+      expect(l.bieter).toEqual({ name: fx.bieter.find((b) => b.id === soll.bieterId)?.name });
+      expect(l.befehl?.angebot.nachlass).toEqual(soll.nachlass);
+      expect(l.befehl?.angebot.positionen).toEqual(soll.positionen.map(inVertragsform));
+    });
 });
 
 // --- Andere Version, andere Phase ----------------------------------------------------------------------------
