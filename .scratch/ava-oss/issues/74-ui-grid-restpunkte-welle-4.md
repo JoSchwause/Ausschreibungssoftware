@@ -1,6 +1,6 @@
 # 74: `ui-grid`: Restpunkte aus Welle 4
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: U · Paket: `packages/ui-grid`
 Blocked by: –
@@ -100,6 +100,9 @@ Ticket 60 trat während der Schlussmessungen nicht auf; Zwischenmessungen bei La
 denselben Abstand. Kein Budget gelockert, keine neue harte Schranke.
 
 ## Answer
+
+Merged: c775550 in integration/welle-5
+
 
 Erledigt auf `welle-5/74-ui-grid-rest`: (1) neutrale Marke Σ an der Mengenzelle von Positionen mit Mengenansatz, ohne
 Warnstil, App umgestellt (D-74.1–3); (2) Löschdialog mit Anfangsfokus aus `ui-basis` statt eigenem Enter-Handler
