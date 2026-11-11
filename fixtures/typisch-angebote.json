@@ -255,5 +255,56 @@
       "019b76f9-2c84-7df5-8da4-f13927bb3331": ["019b76e9-ea5c-792b-9c81-2db5b428a9bc"],
       "019b76f9-2c85-7763-bbaa-ed3faaf4719a": ["019b76e9-ea4d-711c-ab51-51f1cef5e0df","019b76e9-ea57-75e5-a1d0-370693d7b6c3","019b76e9-ea5c-792b-9c81-2db5b428a9bc"]
     }
+  },
+  "preisspiegel": {
+    "regel": "Ticket 69, README „Preisspiegel-Sollwerte“: Rang nach Netto nach Nachlass (1, 1, 3); virtuelle Bieter je eingehender Position über Werte > 0 (EP, an Zuschlagspositionen der Betrag), Mittel = Summe / Anzahl kaufmännisch auf 3 (EP) bzw. 2 Stellen (Betrag), Netto ohne Nachlass (D-05, D-36.1, D-44.1).",
+    "bieter": [
+      {
+        "angebotId": "019b76f9-2c83-7dd1-8cb8-4edeaf573f4d",
+        "bieterId": "019b76f9-2c80-737e-8c4e-d0e9e835d68a",
+        "name": "Bieter A",
+        "datei": "angebote/typisch-bieter-a.x84",
+        "summen": {"netto":"55481.84","nachlass":"0.00","nettoNachNachlass":"55481.84","mwst":"10541.55","brutto":"66023.39"},
+        "titel": {"01":"5423.41","02":"25066.17","03":"24992.26"}
+      },
+      {
+        "angebotId": "019b76f9-2c84-7df5-8da4-f13927bb3331",
+        "bieterId": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+        "name": "Bieter B",
+        "datei": "angebote/typisch-bieter-b.x84",
+        "summen": {"netto":"58358.53","nachlass":"1750.76","nettoNachNachlass":"56607.77","mwst":"10755.48","brutto":"67363.25"},
+        "titel": {"01":"5770.45","02":"26416.34","03":"26171.74"}
+      },
+      {
+        "angebotId": "019b76f9-2c85-7763-bbaa-ed3faaf4719a",
+        "bieterId": "019b76f9-2c82-7655-b780-32b7f3b813d5",
+        "name": "Bieter C",
+        "datei": "angebote/typisch-bieter-c.x84",
+        "summen": {"netto":"56721.09","nachlass":"0.00","nettoNachNachlass":"56721.09","mwst":"10777.01","brutto":"67498.10"},
+        "titel": {"01":"5094.40","02":"27450.90","03":"24175.79"}
+      }
+    ],
+    "vergleiche": [
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c84-7df5-8da4-f13927bb3331","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c84-7df5-8da4-f13927bb3331":"2","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"3"},
+        "virtuelleSummen": {"min":"52287.26","mittel":"56961.21","max":"62482.84","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c84-7df5-8da4-f13927bb3331"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c84-7df5-8da4-f13927bb3331":"2"},
+        "virtuelleSummen": {"min":"55481.84","mittel":"56985.83","max":"58488.12","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"2"},
+        "virtuelleSummen": {"min":"52287.26","mittel":"56197.05","max":"60101.61","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c84-7df5-8da4-f13927bb3331","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c84-7df5-8da4-f13927bb3331":"1","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"2"},
+        "virtuelleSummen": {"min":"52925.90","mittel":"57702.81","max":"62474.72","schaetzpreis":"55465.59"}
+      }
+    ]
   }
 }

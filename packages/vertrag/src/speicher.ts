@@ -135,8 +135,21 @@ export interface ProjektRepository {
   laden(id: ProjektId): Promise<Ergebnis<Projekt, Speicherfehler>>;
 }
 
+/**
+ * Ein LV in der Liste des Projekts (v1.3, Ticket 53 Punkt 1): Kennung und Name, ohne Knoten, wie `Projektuebersicht`.
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53).
+ */
+export interface LvUebersicht {
+  readonly id: LeistungsverzeichnisId;
+  readonly name: string;
+}
+
 export interface LvRepository {
-  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly LeistungsverzeichnisId[], Speicherfehler>>;
+  /**
+   * Die LVs des Projekts ohne Knoten (v1.3), nach Name deutsch verglichen (`Intl.Collator('de-DE')`), gleiche Namen
+   * nach Kennung (wie die Projektliste). Unbekanntes Projekt: `nicht-gefunden`.
+   */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly LvUebersicht[], Speicherfehler>>;
   laden(id: LeistungsverzeichnisId): Promise<Ergebnis<LvZustand, Speicherfehler>>;
 }
 
@@ -176,11 +189,8 @@ export interface Speicher {
   readonly projekte: ProjektRepository;
   readonly leistungsverzeichnisse: LvRepository;
   readonly angebote: AngebotRepository;
-  /**
-   * LV-Stände (v1.2). Optional, damit `speicher` ohne Änderung übersetzt; Pflicht, sobald Ticket 43 es liefert
-   * (Offene Typfrage, Ticket 29). Fehlt es, weist `anwenden` ein ChangeSet mit `lvStand` mit `unbekannt` ab.
-   */
-  readonly lvStaende?: LvStandRepository;
+  /** LV-Stände (v1.2; seit v1.3 Pflicht, Ticket 53 Punkt 4: `speicher` liefert sie seit Ticket 43). */
+  readonly lvStaende: LvStandRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -212,6 +222,10 @@ export interface Projektdatei {
   readonly angebote: readonly AngebotZustand[];
   readonly auftragsLeistungsverzeichnisse: readonly AuftragsLvZustand[];
   readonly protokoll: readonly Protokolleintrag[];
-  /** LV-Stände aller LVs des Projekts (v1.2, S3). Fehlt: keine. Das Schema dafür liefert Ticket 43 (A8). */
+  /**
+   * LV-Stände aller LVs des Projekts (v1.2, S3). Fehlt: keine (`speicher` lässt das Feld bei null Ständen weg,
+   * kanonische Datei der Schemaversion 3, Ticket 43). Bleibt in v1.3 optional, anders als `Speicher.lvStaende`: Pflicht
+   * hieße `lvStaende: []` in jeder Datei, also eine neue Schemaversion (A8; Offene Typfrage, Ticket 53).
+   */
   readonly lvStaende?: readonly LvStand[];
 }

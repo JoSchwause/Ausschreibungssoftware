@@ -12,7 +12,7 @@ Typen liegen in `packages/vertrag` (Ticket 02).
 ## Erzeugen und prüfen
 
 ```
-node fixtures/erzeugen.mjs        # schreibt alle JSON-Dateien neu
+node fixtures/erzeugen.mjs        # schreibt alle JSON- und X84-Dateien neu
 node --test                       # im Wurzelverzeichnis; oder: node --test "fixtures/*.test.mjs"
 ```
 
@@ -26,7 +26,8 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 |---|---|---|
 | `winzig.json` | 1 Titel, 3 Positionen, Netto 2.565,00 | selbst verfasst, vom Skript erzeugt |
 | `typisch.json` | 3 Titel, 25 Positionen, 2 Hinweistexte, MwSt 19 %, Nachlass 2,00 %; Netto 55.465,59, Brutto 64.683,97 | selbst verfasst, Daten im Skript, Sollwerte berechnet |
-| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A | selbst verfasst, Preise und Sätze per Seed gestreut |
+| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A; Preisspiegel-Sollwerte (Ticket 69) | selbst verfasst, Preise und Sätze per Seed gestreut |
+| `angebote/typisch-bieter-{a,b,c}.x84` | die drei Angebote als GAEB DA XML 3.3, Phase 84 (Ticket 69) | vom Skript aus `typisch-angebote.json` erzeugt, eigener XML-Baustein |
 | `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross`, Zuschlagssätze aus Seed `fixtures-v1/gross/zuschlagssatz` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
 | `zuschlag.json` | Zuschlagspositionen in GAEB-Form, alle drei Bezugsformen, Einheitspreisanteile; Netto 6.850,60, Brutto 8.152,21 (Ticket 37) | selbst verfasste Texte, Zahlen aus BVBS 3.3 AVA X86 Bereich 1.30 und 1.10.30.20 (D-03), Sollwerte vom Skript berechnet |
@@ -59,7 +60,12 @@ Sollwerte: { positionen:{id:{gp, inSumme}}, titel:{id:{summe}}, summen:{netto, n
   Sollwerte zusätzlich: zuschlaege:{id:{basis, betrag}}, epa:{gesamt:{lohn,…,frei}, titel:{id:{lohn,…,frei}}}
 Angebotsset: { schemaVersion, art:"angebotsset", lvId, lvName, bieter[{id,name}],
                angebote[{id, bieterId, nachlass|null, positionen[{positionId, status, [einheitspreis], [zuschlagssatz]}], sollwerte}],
-               ausreisserAnnahmeA7 }
+               ausreisserAnnahmeA7, preisspiegel }
+Preisspiegel (Ticket 69, additiv): { regel,
+               bieter[{angebotId, bieterId, name, datei, summen:{netto, nachlass, nettoNachNachlass, mwst, brutto}, titel:{OZ: summe}}],
+               vergleiche[{angebotIds[], rang:{angebotId: "1"}, virtuelleSummen:{min, mittel, max, schaetzpreis}}] }
+  `vergleiche`: alle drei Angebote, dann die Paare A+B, A+C, B+C (das Tor M3 liest zwei Dateien ein). Titel über die
+  OZ, weil ein per GAEB eingelesenes LV andere IDs hat. Der Rang ist ein String (keine JSON-Zahlen in den Fixtures).
   Eine Zuschlagsposition bietet der Bieter mit `zuschlagssatz` statt `einheitspreis` an (Vertrag v1.2,
   `Angebotsposition.zuschlagssatz`); den Platzhalter-EP `0.000` des Vertrags setzt der Testhelfer beim Abbilden.
 ```
@@ -91,6 +97,57 @@ Die Ordnungszahl ist Anzeigedatum, kein Schlüssel; Bezüge laufen über IDs. De
 
 Negative Werte kommen nicht vor; das Skript lehnt sie ab, bis Ticket 04 die Rundung negativer Beträge entscheidet.
 Ein Angebot rechnet mit denselben Regeln, nur mit den EP und Sätzen des Bieters (R7, „gedachtes LV“).
+
+## X84 der Angebote (Ticket 69)
+
+`erzeugen.mjs` schreibt je Bieter `angebote/typisch-bieter-<a|b|c>.x84` (UTF-8, LF, feste Zeitangabe) mit einem eigenen,
+kleinen XML-Baustein, unabhängig vom Writer in `packages/gaeb`. Form nach den amtlichen X84 (`fixtures/extern/bvbs/
+3.3-ava`, `3.3-bauausfuehrung`) und dem X84-Leser (Ticket 45, D-45.1):
+
+- Kopf: Namensraum `DA84/3.3`, `Award/DP` 84, `CTR/Address/Name1` = „Bieter A“ usw. (erfunden, keine Adresse, C4).
+- `BoQInfo`: Maske wie der X83-Export von `typisch` (zwei Titelebenen zu 2, Position 4, Index 1 alphanumerisch), damit
+  der Leser keine `maske-abweichend` meldet; `Totals` mit Netto, Nachlass des Angebots (`DiscountPcnt`, nur Bieter B,
+  3,00 %), Netto nach Nachlass, MwSt-Satz des LV, MwSt, Brutto.
+- Je Titel `BoQCtgy` mit `RNoPart` und Titelsumme; je Position eine Zeile, zugeordnet über OZ (`RNoPart`, `RNoIndex`):
+  `Item` mit `UP` (EP des Bieters) und `IT` (GP); die Zuschlagsposition 02.0050 A als `MarkupItem` mit `ITMarkup`
+  (Basis des Bieters), `Markup` (Satz des Bieters) und `IT` (Betrag). Wahl- und Bedarfsposition tragen ihren GP als `IT`
+  (wie der eigene X86-Export; der Leser prüft `IT` nur auf Menge × EP).
+- „Nicht angeboten“ (Bieter B, 03.0070): `Item` ohne `UP` und ohne `IT`. Die amtlichen X84 enthalten keinen solchen Fall;
+  die Form ist die des Lesers (Ticket 45: `UP` fehlt → nicht angeboten). Der Preis 0,000 (Bieter C, 03.0080) steht als
+  `UP` 0.000 da.
+- Hinweistexte und Langtexte bleiben weg (sie gehören dem LV, nicht dem Angebot).
+
+Der Selbsttest liest jede Datei mit einem strengen Wohlgeformtheits-Prüfer und vergleicht jede Zeile mit dem Angebot.
+
+## Preisspiegel-Sollwerte (Ticket 69)
+
+`preisspiegelSollwerte` in `rechnen.mjs` (BigInt, nie aus `kern` oder `vergabe`). Regeln wie D-05, D-36.1, D-44.1
+(Annahmen für die Demo):
+
+| Sollwert | Regel |
+|---|---|
+| Bieter: `summen`, `titel` | die Sollwerte des Angebots (`berechneSollwerteGaeb`, R7), Titel über die OZ |
+| `rang` | 1 + Anzahl der Angebote mit kleinerem Netto nach Nachlass (gleiche Werte gleicher Rang: 1, 1, 3) |
+| Min, Mittel, Max je Position | nur Positionen, die laut LV ins Netto gehen; verglichen werden Werte > 0 (0,000 und „nicht angeboten“ zählen nicht, D-05); an einer Normalposition der EP, an einer Zuschlagsposition der Betrag des Bieters (D-44.1) |
+| Mittel | `round_half_up(Summe / Anzahl)` auf die Stellen des Werts: EP 3, Betrag 2 |
+| GP des virtuellen Bieters | `round_half_up(Menge × EP, 2)`, an der Zuschlagsposition der Betrag selbst; ohne Wert > 0 nichts |
+| `virtuelleSummen.min/mittel/max` | Summe dieser GP, ohne Nachlass |
+| `virtuelleSummen.schaetzpreis` | Netto des LV mit seinen Schätzpreisen (55.465,59) |
+
+Herleitung an drei Positionen (alle drei Angebote):
+
+- 03.0070 (31,600 m; B nicht angeboten): A 4,101, C 3,844. Min 3,844 → 121,47; Max 4,101 → 129,59; Mittel
+  7,945 / 2 = 3,9725 → 3,973 → 31,600 × 3,973 = 125,5468 → **125,55**.
+- 03.0080 (88,250 m²; C 0,000): nur A 2,107 und B 2,261 zählen. Mittel 4,368 / 2 = 2,184 → 192,738 → **192,74**;
+  Min 185,94; Max 199,53.
+- 02.0050 A (Zuschlag, Beträge): A 544,71, B 617,02, C 772,62; Mittel 1.934,35 / 3 = 644,7833 → **644,78**.
+
+Rang: A 55.481,84 < B 56.607,77 (58.358,53 − 3 % = 1.750,76) < C 56.721,09 → 1, 2, 3; in jedem Paar entsprechend 1, 2.
+Der Selbsttest rechnet die virtuellen Summen ein zweites Mal unmittelbar aus den Angebotszeilen nach.
+
+Hinweis für Verbraucher: Der Schätzpreis setzt ein LV mit den EP aus `typisch.json` voraus. Ein per X83 eingelesenes
+LV trägt keine EP (X83 ist die Angebotsaufforderung); dort ist der Schätzpreis 0,00. Alle übrigen Werte hängen nur an
+Mengen, Bezügen und den Preisen der Bieter.
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 

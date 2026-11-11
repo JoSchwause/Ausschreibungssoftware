@@ -12,6 +12,7 @@ import type {
   LvStand,
   LvStandId,
   LvStandUebersicht,
+  LvUebersicht,
   LvZustand,
   Projekt,
   ProjektId,
@@ -24,7 +25,6 @@ import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { protokollform } from './kurzfassung';
 import {
-  aggregatIds,
   leseAngebot,
   leseLv,
   leseLvKopf,
@@ -33,6 +33,7 @@ import {
   leseProjekt,
   leseProtokoll,
   listeIds,
+  listeLvs,
   listeProjekte,
 } from './lesen';
 import { migriere, MIGRATIONEN, type Migration } from './migrationen';
@@ -46,6 +47,7 @@ import {
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
+import { pruefeV13 } from './vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket (Ticket 57)
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -168,11 +170,12 @@ export class SpeicherKern {
     );
   }
 
-  lvAuflisten(projektId: ProjektId): Ergebnis<readonly LeistungsverzeichnisId[], Speicherfehler> {
+  // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3: `LvUebersicht` statt Kennungen; Ticket 57)
+  lvAuflisten(projektId: ProjektId): Ergebnis<readonly LvUebersicht[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)
         abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
-      return aggregatIds(this.#db, 'leistungsverzeichnis', projektId) as LeistungsverzeichnisId[];
+      return listeLvs(this.#db, projektId);
     });
   }
 
@@ -251,6 +254,7 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
+        pruefeV13(changeSet); // v1.3: mechanisch angepasst, Folgeticket (Ticket 57 speichert die neuen Felder)
         switch (changeSet.art) {
           case 'projekt':
             wendeProjektAn(this.#db, changeSet);

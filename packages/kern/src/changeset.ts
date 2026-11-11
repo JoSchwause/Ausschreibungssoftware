@@ -123,7 +123,7 @@ export interface ChangeSetTeile {
   readonly geaendert?: readonly { readonly vorher: Knoten; readonly nachher: Knoten }[];
   readonly entfernt?: readonly Knoten[];
   /** Neue Werte; `vorher` setzt `baueChangeSet` aus dem Zustand (ein mitgegebenes `vorher` zählt nicht). */
-  readonly summen?: Summenaenderung;
+  readonly summen?: Omit<Summenaenderung, 'vorher'>; // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   readonly hinweise?: readonly Befehlshinweis[];
 }
 
@@ -257,11 +257,7 @@ function aenderungenUmkehren<T>(a: Aenderungen<T>): Aenderungen<T> {
  */
 function summenUmkehren(cs: LvChangeSet): Summenaenderung {
   const s = cs.summen;
-  const v = s.vorher;
-  if (v === undefined)
-    throw new Error(
-      'ChangeSet ohne summen.vorher: ohne Vorzustand nicht umkehrbar (vor Vertrag v1.1a erzeugt).',
-    );
+  const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3, keine Prüfung auf undefined mehr)
   const neu = new Set<string>(cs.knoten.hinzugefuegt.map((k) => k.id));
   const positionen = (bleibt: boolean): Positionssumme[] =>
     s.positionen.filter((p) => neu.has(p.positionId) !== bleibt);

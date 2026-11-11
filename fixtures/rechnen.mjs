@@ -343,3 +343,59 @@ export function berechneZuschlagSollwerte(knoten, nachlass, mwstSatz) {
     },
   };
 }
+
+/** round_half_up(summe / n) fuer summe >= 0, n > 0 (BigInt, gleicher Massstab): floor((2 x summe + n) / (2 x n)). */
+function teileHalfUp(summe, n) {
+  if (summe < 0n || n <= 0n) throw new Error('Nur nicht negative Summe und positive Anzahl');
+  return (2n * summe + n) / (2n * n);
+}
+
+/**
+ * Preisspiegel-Sollwerte einer Auswahl von Angeboten (Ticket 69; Regeln D-05, D-36.1, D-44.1, Annahmen fuer die Demo).
+ * Unabhaengig von `vergabe` geschrieben, nur BigInt. `angebote`: `[{ id, positionen, sollwerte }]` wie in
+ * `typisch-angebote.json` (Sollwerte aus `berechneSollwerteGaeb`); `lvSollwerte`: Sollwerte des LV.
+ * - Rang: 1 + Anzahl der Angebote mit kleinerem Netto nach Nachlass (Gleichstand gleicher Rang: 1, 1, 3).
+ * - Virtuelle Bieter (Min, Mittel, Max) je Position, die laut LV ins Netto geht (`betragsziel` = netto): verglichen
+ *   werden nur Werte > 0 (0,000 und „nicht angeboten“ zaehlen nicht); an einer Normalposition der EP, an einer
+ *   Zuschlagsposition der Betrag des Bieters. Mittel = round_half_up(Summe / Anzahl) auf die Stellen des Werts (EP 3,
+ *   Betrag 2). GP des virtuellen Bieters = round_half_up(Menge x EP, 2) bzw. der Betrag. Ohne Wert > 0 traegt die
+ *   Position nichts bei. Netto = Summe dieser GP, ohne Nachlass. Schaetzpreis = Netto des LV.
+ */
+export function preisspiegelSollwerte(knoten, angebote, lvSollwerte) {
+  const nettoNach = angebote.map((a) => parse(a.sollwerte.summen.nettoNachNachlass, STELLEN.betrag));
+  const rang = Object.fromEntries(angebote.map((a, i) => [
+    a.id, String(1 + nettoNach.filter((x) => x < nettoNach[i]).length),
+  ]));
+  const zeilen = angebote.map((a) => new Map(a.positionen.map((z) => [z.positionId, z])));
+  const summe = { min: 0n, mittel: 0n, max: 0n };
+  for (const k of knoten) {
+    if (k.art !== 'position' || betragsziel(k) !== 'netto') continue;
+    const werte = [];
+    angebote.forEach((a, i) => {
+      let w = null;
+      if (istZuschlag(k)) {
+        const betrag = a.sollwerte.zuschlaege[k.id]?.betrag;
+        if (betrag != null) w = parse(betrag, STELLEN.betrag);
+      } else {
+        const z = zeilen[i].get(k.id);
+        if (z?.status === 'angeboten' && z.einheitspreis !== undefined) w = parse(z.einheitspreis, STELLEN.ep);
+      }
+      if (w !== null && w > 0n) werte.push(w);
+    });
+    if (werte.length === 0) continue;
+    const gp = istZuschlag(k) ? (w) => w : (w) => gesamtpreis(parse(k.menge, STELLEN.menge), w);
+    summe.min += gp(werte.reduce((x, y) => (y < x ? y : x)));
+    summe.mittel += gp(teileHalfUp(werte.reduce((x, y) => x + y, 0n), BigInt(werte.length)));
+    summe.max += gp(werte.reduce((x, y) => (y > x ? y : x)));
+  }
+  return {
+    angebotIds: angebote.map((a) => a.id),
+    rang,
+    virtuelleSummen: {
+      min: format(summe.min, STELLEN.betrag),
+      mittel: format(summe.mittel, STELLEN.betrag),
+      max: format(summe.max, STELLEN.betrag),
+      schaetzpreis: lvSollwerte.summen.netto,
+    },
+  };
+}

@@ -107,7 +107,13 @@ export interface Absatz {
   readonly inhalt: readonly LangtextInline[];
 }
 
-/** Aufzählung (`geordnet: false`) oder nummerierte Liste (GAEB `ul`, `ol`). Jeder Punkt ist selbst ein Langtext. */
+/**
+ * Aufzählung (`geordnet: false`) oder nummerierte Liste (GAEB `ul`, `ol`). Jeder Punkt ist selbst ein Langtext.
+ *
+ * v1.3 (D-22, Ticket 53 Punkt 8): Der Typ bleibt weit; eine leere Liste (`punkte: []`) ist zulässig, obwohl der
+ * Langtext-Editor sie nicht darstellen kann (D-T34). Die formale LV-Prüfung meldet sie als Befund (Ticket 56), der
+ * GAEB-Writer verwirft sie mit Warnung (Ticket 68). Dasselbe gilt für eine Tabelle ohne Zeilen und eine Zeile ohne Zellen.
+ */
 export interface Liste {
   readonly art: 'liste';
   readonly geordnet: boolean;
@@ -124,7 +130,7 @@ export interface Tabellenzeile {
   readonly zellen: readonly Tabellenzelle[];
 }
 
-/** Tabelle (GAEB `table`, `tr`, `td`). */
+/** Tabelle (GAEB `table`, `tr`, `td`). Ohne Zeilen oder mit einer Zeile ohne Zellen zulässig (v1.3, siehe `Liste`). */
 export interface Tabelle {
   readonly art: 'tabelle';
   readonly zeilen: readonly Tabellenzeile[];
@@ -209,6 +215,41 @@ export interface Einheitspreisanteile {
   readonly frei: Einheitspreis | null;
   /** Bezeichnung des frei definierbaren Anteils. */
   readonly freiBezeichnung: string | null;
+}
+
+/**
+ * Einer der sechs Anteile der Einheitspreisanteile (v1.3): die Feldnamen von `Einheitspreisanteile` außer der
+ * Bezeichnung, aus dem Typ abgeleitet, damit beide nie auseinanderlaufen.
+ */
+export type EpaArt = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+
+/** Nummer eines Anteils in der GAEB-Datei (`UPComp1` … `UPComp6`, `LblUPComp1` … `LblUPComp6`). */
+export type EpaNummer = 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * EPA-Bezeichnung (v1.3, Ticket 53 Punkt 2, D-53.6; Glossar „EPA-Bezeichnung“): welcher Anteil der GAEB-Datei
+ * (`UPComp<nummer>`, beschriftet über `LblUPComp<nummer>` im `BoQInfo`) welche `EpaArt` ist und wie das LV ihn nennt. So
+ * nimmt der X84-Leser die Zuordnung der Anteile eines Angebots aus dem LV, und der Writer schreibt dieselben Nummern
+ * zurück.
+ *
+ * Regeln für `LvInhaltKopf.epaBezeichnungen` (prüft der Leser bzw. der Kern, nicht der Typ):
+ * - Die Liste ist nach `nummer` aufsteigend sortiert; `nummer` und `anteil` kommen je höchstens einmal vor.
+ * - Eine fehlende `nummer` heißt: dieser Platz ist keinem Anteil zugeordnet (die Datei beschriftet ihn nicht, oder er
+ *   wäre ein zweiter Anteil derselben Art, den das Modell nicht abbildet).
+ * - Fehlt das ganze Feld, gilt die feste Belegung des Writers von heute: 1 Lohn, 2 Stoffe, 3 Geräte, 4 Nachunternehmer,
+ *   5 Sonstiges, 6 frei.
+ * - Writer nummerieren nie um: Sie schreiben `UPComp<nummer>`/`LblUPComp<nummer>` mit der Nummer aus der Liste.
+ */
+export interface EpaBezeichnung {
+  readonly nummer: EpaNummer;
+  readonly anteil: EpaArt;
+  /**
+   * Beschriftung, wie das LV sie nennt (z. B. „Lohn“, „Nachunternehmer“); `null`: die Art ist aus GAEB `Type` bekannt,
+   * die Beschriftung ist leer. Ist das Feld `epaBezeichnungen` gesetzt, ist es die einzige Quelle aller Beschriftungen,
+   * auch der des Anteils `frei`: `Einheitspreisanteile.freiBezeichnung` an der Position wird dann nicht gelesen (Leser
+   * legen dort `null` ab). Fehlt das Feld, bleibt `freiBezeichnung` an der Position die Quelle (Daten vor v1.3).
+   */
+  readonly bezeichnung: string | null;
 }
 
 // --- LV-Baum --------------------------------------------------------------------------------------
@@ -326,6 +367,21 @@ export interface Leitbeschreibung {
   readonly unterbeschreibungen: readonly Unterbeschreibung[];
 }
 
+// --- Mengenansatz (v1.3, M2; D-22) ---------------------------------------------------------------------------------
+
+/**
+ * Eine Zeile eines Mengenansatzes (Glossar „Ansatzzeile“; v1.3, D-22: aus `mengen` hierher gewandert, `mengen` rechnet
+ * und importiert den Typ). `zeile` ist die Zeilennummer (Bezug `Z3`), `formel` die Nummer der REB-Formel (91: freier
+ * Rechenansatz), `ausdruck` der Rechenausdruck als Text (de-DE, wie eingegeben), `variable` der Name des
+ * Zeilenergebnisses für spätere Zeilen (`null`: kein Name). Die Zahlen sind Nummern, keine Mengen (N1 gilt nicht).
+ */
+export interface Ansatzzeile {
+  readonly zeile: number;
+  readonly formel: number;
+  readonly ausdruck: string;
+  readonly variable: string | null;
+}
+
 /**
  * Fachliche Daten einer Position. Wirkung der Merkmale auf Summen legt `kern` fest, nicht dieser Typ (P5).
  * Hinweistexte sind keine Positionen, sondern eigene Knoten (`Hinweistext`). Den einzelnen Wert `positionsart`
@@ -345,6 +401,14 @@ export interface Positionsdaten {
   readonly langtext: Langtext;
   /** `null`: nicht gesetzt (z. B. X81 ohne Menge, Zuschlagsposition). Nicht gleichbedeutend mit 0. */
   readonly menge: Menge | null;
+  /**
+   * Mengenansatz der Position (v1.3, M2; D-22). Fehlt: kein Ansatz, die Menge ist von Hand gesetzt. Gesetzt: die Zeilen,
+   * aus denen die App mit `mengen` die `menge` gerechnet hat; der Kern speichert beide unausgewertet (A3: kein
+   * `kern → mengen`) und rechnet nie nach. Nie `[]` im Zustand (ein leerer Ansatz ist keiner, siehe
+   * `MengenansatzSetzen`). Geändert nur über `MengenansatzSetzen` (und entfernt nach Lesart (a)); Kopien und
+   * Anlegebefehle bringen ihn mit, der Kern prüft die Form.
+   */
+  readonly mengenansatz?: readonly Ansatzzeile[];
   /**
    * `null`: keine Einheit (z. B. Zuschlagsposition). Im Zustand nie `''`; ein Befehl mit `''` (Rand, Import) wird
    * vom Kern zu `null` normalisiert (v1.2, siehe `Einheit`).
@@ -432,6 +496,19 @@ export interface Auftraggeber {
   readonly vergabenummer: string | null;
 }
 
+/**
+ * Auftragnehmer (v1.3, Ticket 53 Punkt 6; Glossar „Auftragnehmer“; GAEB `CTR`): der Bieter, der den Zuschlag erhalten
+ * hat, mit den Adressfeldern, die die Dateien in `CTR/Address` zeigen (`Name1`, `Street`, `PCode`, `City`). Jedes Feld
+ * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt, `DPNo`, `AwardNo` und weitere
+ * Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat (Offene Typfrage, Ticket 53).
+ */
+export interface Auftragnehmer {
+  readonly name: string | null;
+  readonly strasse: string | null;
+  readonly plz: string | null;
+  readonly ort: string | null;
+}
+
 /** Gewährleistung als Dauer mit Einheit (GAEB `WarrDur`, `WarrUnit`). */
 export interface Gewaehrleistung {
   readonly dauer: number;
@@ -467,6 +544,19 @@ export interface LvInhaltKopf {
   readonly auftraggeber?: Auftraggeber;
   /** Fehlt: keine Angabe (v1.1b, Punkt 6). */
   readonly vergabeinformationen?: Vergabeinformationen;
+  /**
+   * Fehlt: keine Angabe (v1.3, Ticket 53 Punkt 6). Gehört zur Auftragserteilung (X86, Auftrags-LV): Der X86-Leser legt
+   * `CTR` hier ab, der Writer schreibt es zurück (Ticket 68). Vorläufige Annahme, Entscheidung offen (enge Lesart): am
+   * gemeinsamen Kopf, weil Leser und Writer mit `LvInhalt` arbeiten; ein Ausschreibungs-LV trägt es nicht (der Typ
+   * verbietet es nicht). Alternative: nur am `AuftragsLvKopf` (Offene Typfrage, Ticket 53).
+   */
+  readonly auftragnehmer?: Auftragnehmer;
+  /**
+   * Zuordnung und Beschriftung der Einheitspreisanteile, nach `nummer` sortiert (v1.3, Ticket 53 Punkt 2, D-53.6; siehe
+   * `EpaBezeichnung`). Fehlt: feste Belegung des Writers (1 Lohn … 6 frei); nie `[]` (ein Erzeuger ohne Zuordnung lässt
+   * das Feld weg). Leser und Writer schließt Ticket 68 an, die Speicherung Ticket 57.
+   */
+  readonly epaBezeichnungen?: readonly EpaBezeichnung[];
 }
 
 /** Inhalt eines LV ohne Kennung und Projekt, z. B. das Ergebnis eines GAEB-Imports. */

@@ -83,7 +83,7 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
   Ab `vertrag` v1.1b trägt der Langtext die GAEB-abbildbare Teilmenge: Auszeichnung (fett, kursiv, unterstrichen), Absätze, Listen, Tabellen, Bilder und Textergänzungen (E-10).
 
 ### Textergänzung
-Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`.
+Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`. Die Eingabe des Bieters zu einer Textergänzung im Angebot heißt **Bieterergänzung**; das Angebot hält sie noch nicht (Befund beim X84-Import, Offene Typfrage in Ticket 53).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
 - **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
@@ -163,6 +163,9 @@ Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositione
 
 ### Auftraggeber (Kopfdaten)
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
+
+### Auftragnehmer (Kopfdaten)
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
@@ -256,10 +259,10 @@ Liste von Einträgen (Kostengruppennummer, Nettobetrag mit 2 Stellen, wahlweise 
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
 
 ### Mengenansatz
-Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Im Code `Mengenansatz`, `mengenansatzBerechnen`.
+Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Eine Position kann ihren Mengenansatz tragen; dann ist ihre Menge die Summe, die die App gerechnet hat, und beide werden zusammen gesetzt. Wer die Menge von Hand ändert, entfernt den Ansatz. Im Code `mengenansatzBerechnen`, `Positionsdaten.mengenansatz`, Befehl `MengenansatzSetzen`.
 
 ### Ansatzzeile
-Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile`, `Zeilenergebnis`.
+Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile` (Typ in `vertrag`), `Zeilenergebnis`.
 
 ### REB-Formel
 Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
@@ -272,7 +275,10 @@ Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, 
 ## Kalkulation, Stammdaten & Kennwerte
 
 ### Einheitspreisanteile (EPA)
-Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteile (typischerweise Lohn, Stoffe/Material, Geräte, Nachunternehmer, Sonstiges sowie ein frei definierbarer Anteil), deren Summe den Einheitspreis ergibt.
+Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteile (typischerweise Lohn, Stoffe/Material, Geräte, Nachunternehmer, Sonstiges sowie ein frei definierbarer Anteil), deren Summe den Einheitspreis ergibt. Im Code `Einheitspreisanteile`, ein Anteil `EpaArt`.
+
+### EPA-Bezeichnung
+Die Zuordnung eines nummerierten Anteils der GAEB-Datei (1 bis 6) zu einer Art der Einheitspreisanteile samt der Beschriftung, die das LV ihm gibt (z. B. „Lohn“, „Nachunternehmer“; GAEB `LblUPComp`). Über sie ordnet der Import eines Angebots (X84) die Anteile des Bieters zu; ohne sie gilt die feste Belegung 1 Lohn bis 6 frei. Im Code `EpaBezeichnung`, `LvInhaltKopf.epaBezeichnungen`.
 
 ### Einzelpreiskalkulation (Bottom-Up-Kalkulation / Urkalkulation)
 Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G).

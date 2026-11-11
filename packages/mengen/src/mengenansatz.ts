@@ -3,7 +3,7 @@
 // `number` nur für Zeilennummer, Formelnummer und Spalte.
 
 import { NULL_MENGE, addiere, dividiere, multipliziere, negiere, runden, subtrahiere } from '@tethys/dezimal';
-import type { Dezimal, Ergebnis, Menge } from '@tethys/vertrag';
+import type { Ansatzzeile, Dezimal, Ergebnis, Menge } from '@tethys/vertrag';
 import { FREIER_RECHENANSATZ, ZWISCHENSTELLEN } from './annahmen';
 import { ausdruckLesen } from './ausdruck';
 import type { Ausdruck } from './ausdruck';
@@ -12,13 +12,9 @@ import type { Formelfehler } from './fehler';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
 
-/** Eine Zeile eines Mengenansatzes. `variable` benennt ihr Zeilenergebnis für spätere Zeilen (`null`: kein Name). */
-export interface Ansatzzeile {
-  readonly zeile: number;
-  readonly formel: number;
-  readonly ausdruck: string;
-  readonly variable: string | null;
-}
+// v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3, D-22: `Ansatzzeile` liegt jetzt in `vertrag`)
+/** Eine Zeile eines Mengenansatzes (Typ aus `vertrag`, v1.3). Hier weiter exportiert, damit Aufrufer unverändert bleiben. */
+export type { Ansatzzeile };
 
 /** Ergebnis einer Ansatzzeile: genau eins von `menge` und `fehler` ist gesetzt. */
 export interface Zeilenergebnis {

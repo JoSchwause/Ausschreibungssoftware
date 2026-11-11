@@ -22,6 +22,7 @@ import type {
   LvStand,
   LvStandId,
   LvStandUebersicht,
+  LvUebersicht,
   LvZustand,
   Papierkorbeintrag,
   PapierkorbeintragId,
@@ -77,6 +78,15 @@ export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] 
   return db
     .zeilen('SELECT id, name FROM projekt ORDER BY id')
     .map((z) => ({ id: projektId(z, 'id'), name: text(z, 'name') }))
+    .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+// v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3, `LvUebersicht`; Ticket 57)
+/** LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. */
+export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
+  return db
+    .zeilen('SELECT id, name FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
+    .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name') }))
     .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
