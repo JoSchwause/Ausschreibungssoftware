@@ -20,3 +20,5 @@ export type {
   VirtuellerPreis,
   Zuschlagsangabe,
 } from './preisspiegel';
+export { zuschlagErteilen } from './zuschlag-erteilen';
+export type { Zuschlagsergebnis, Zuschlagswarnung } from './zuschlag-erteilen';
