@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Property-Tests der Einzelpreiskalkulation und der Kalkulationsübersicht (Ticket 78, Q1). Das Orakel rechnet unabhängig von der Implementierung:
-// Werte entstehen als ganze Tausendstel bzw. Hundertstel (`bigint`) im Test; Text und Erwartungswert werden hier gebildet,
-// die Rundung ist hier von Hand geschrieben (Betrag halb aufwärts, Vorzeichen davor, E-07).
+// Property-Tests der Einzelpreiskalkulation und der Kalkulationsübersicht (Ticket 78, Q1). Das Orakel rechnet
+// unabhängig von der Implementierung: Werte entstehen als ganze Tausendstel bzw. Hundertstel (`bigint`) im Test; Text
+// und Erwartungswert werden hier gebildet, die Rundung ist hier von Hand geschrieben (Betrag halb aufwärts, Vorzeichen
+// davor, E-07).
 
 import type { Einheitspreis, EpaArt, Menge, PositionId, Prozent } from '@tethys/vertrag';
 import fc from 'fast-check';

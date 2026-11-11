@@ -2,7 +2,13 @@
 // Einzelpreiskalkulation (Ticket 78, C4): Zuschlagskalkulation je Kostenart. Aus den Kalkulationsansätzen einer Position
 // und einem Zuschlagssatz der Kalkulation je Kostenart entstehen Einheitspreisanteile und EP. Rundung nach D-39:
 // Einzelkosten ungerundet, Anteil kaufmännisch auf 3 Stellen (EP 3, N3), EP = Σ der gerundeten Anteile. Rein (A2), nur
-// Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes. Nicht gespeichert (D-36 (5)).
+// Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes und die Reihenfolge der Kostenarten. Nicht
+// gespeichert (D-36 (5)).
+//
+// Kein Überlaufbefund und kein eigener Grenzwert (D-78.4): `dezimal` rechnet auf BigInt und läuft nie über. Ob ein EP
+// oder Anteil in das GAEB-Zahlformat passt, ist eine Grenze des Kerns (`PRUEF_GRENZEN`); seine LV-Prüfung meldet sie
+// (`zahl-zu-gross`), sobald die App das Ergebnis mit `EinheitspreisanteileSetzen` schreibt. `kosten` darf `kern` nicht
+// importieren (A3), und eine Kopie der Zahl wäre eine zweite Quelle, die still auseinanderlaufen kann.
 
 import {
   NULL_MENGE,
