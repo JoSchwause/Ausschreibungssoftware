@@ -56,7 +56,11 @@ export type ProfilErgebnis =
   | { readonly ok: false; readonly fehler: ProfilFehler };
 
 /** Legt ein neues eigenes Profil an; ein vergebener oder Standard-Name ist abgewiesen (nichts überschreibt still, Q5). */
-export function profilAnlegen(w: Werkzeug, eigene: readonly Druckprofil[], profil: Druckprofil): ProfilErgebnis {
+export function profilAnlegen(
+  w: Werkzeug,
+  eigene: readonly Druckprofil[],
+  profil: Druckprofil,
+): ProfilErgebnis {
   const name = profil.name.trim();
   if (name === '') return { ok: false, fehler: 'name-leer' };
   if (istStandardName(w, name)) return { ok: false, fehler: 'name-standard' };
@@ -65,7 +69,11 @@ export function profilAnlegen(w: Werkzeug, eigene: readonly Druckprofil[], profi
 }
 
 /** Ändert ein vorhandenes eigenes Profil am Platz; ein Standardprofil ändert sich nie. */
-export function profilAendern(w: Werkzeug, eigene: readonly Druckprofil[], profil: Druckprofil): ProfilErgebnis {
+export function profilAendern(
+  w: Werkzeug,
+  eigene: readonly Druckprofil[],
+  profil: Druckprofil,
+): ProfilErgebnis {
   if (istStandardName(w, profil.name)) return { ok: false, fehler: 'name-standard' };
   if (!eigene.some((p) => p.name === profil.name)) return { ok: false, fehler: 'name-leer' };
   return { ok: true, eigene: eigene.map((p) => (p.name === profil.name ? profil : p)) };
@@ -107,7 +115,8 @@ export function profilImportieren(w: Werkzeug, eigene: readonly Druckprofil[], t
   };
 }
 
-export const dateinameProfil = (name: string): string => `${dateinameSauber(name, ERSATZ_LV)}.druckprofil.json`;
+export const dateinameProfil = (name: string): string =>
+  `${dateinameSauber(name, ERSATZ_LV)}.druckprofil.json`;
 
 /** Zeilenzahl der Kürzung: ganze Zahl von 1 bis `ZEILEN_HOECHSTENS`, sonst `null`. */
 export function zeilenLesen(text: string): number | null {

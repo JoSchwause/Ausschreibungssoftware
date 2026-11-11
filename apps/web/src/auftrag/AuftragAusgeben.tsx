@@ -6,10 +6,12 @@ import { Auswahl, Button, Dialog, useToast } from '@tethys/ui-basis';
 import type { AuftragsLvZustand } from '@tethys/vertrag';
 import { useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
+import { PdfAusgabe } from '../ausgabe/LvDrucken'; // Ticket 90
 import { Befundliste } from '../gaeb/Befundliste';
 import { herunterladen } from '../gaeb/datei';
 import { texte as gtexte } from '../gaeb/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { alsLvZustand } from './auftrag'; // Ticket 90
 import { auftragAusgeben } from './ausgabe';
 import { texte } from './texte';
 
@@ -27,8 +29,10 @@ export function AuftragAusgeben({ auftrag }: { auftrag: AuftragsLvZustand }): Re
   );
   const fehler = ausgabe?.befunde.filter((b) => b.schwere === 'fehler').length ?? 0;
 
+  const lvZustand = useMemo(() => alsLvZustand(auftrag), [auftrag]); // Ticket 90
   return (
     <>
+      <PdfAusgabe zustand={lvZustand} /> {/* Ticket 90: Druckprofile auch für das Auftrags-LV */}
       <Button
         onClick={() => {
           setOffen(true);

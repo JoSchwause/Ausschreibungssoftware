@@ -32,3 +32,13 @@ Herkunft: `plan.md` §2 O3, C5
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### D-90.1 Ablage der eigenen Druckprofile
+Question: Wo liegen die eigenen Profile („Einstellung des Nutzers“, D-36 (7))? Die Preisspiegel-Einstellungen leben nur in der Sitzung.
+Decision: In `localStorage` des Browsers (Schlüssel `tethys-druckprofile`, Liste als JSON; zuletzt gewähltes Profil `tethys-druckprofil-gewaehlt`), gelesen mit `druckprofilAusJson` je Eintrag; Unlesbares, doppelte und Standardnamen fallen weg. Nicht im Projekt, nicht in der Projektdatei. Reason: Es gibt keine Nutzer-Einstellungs-Ablage in `speicher`; `tethys-modus` geht denselben Weg. Grenze: Sicherung/Ordner-Export enthält die Profile nicht, sie wandern per Datei-Export. Reversible: yes.
+
+### D-90.2 Druckdialog
+Decision: Der Dialog „LV als PDF ausgeben“ wählt ein Profil; die Felder (Inhalt, Langtext, Zeilen, Seitenrand, Titelsummen, Schlussblock, Kopfblock, Kopf-/Fußzeile) bearbeiten eine Arbeitskopie, die für den Druck gilt, auch ungespeichert. Standardprofile ändern sich nie; „Als neues Profil speichern“ legt eine Kopie an, ein vergebener Name wird abgewiesen, ein Import mit vergebenem Namen heißt „… (2)“ (nichts überschreibt still, Q5). Vorbelegung: zuletzt gewähltes, sonst „Auftrags-LV mit Preisen“ (= Druck wie bisher, `ausgabe.spec.ts` bleibt grün). Das Paket `ausgabe` wird beim Öffnen nachgeladen (Hauptbündel bleibt ohne pdfmake). Dasselbe `PdfAusgabe` hängt (markiert `// Ticket 90`) in `auftrag/AuftragAusgeben.tsx` für das Auftrags-LV.
+
+### Stand
+Teil 1 (Druckprofile) fertig: `ausgabe/profile.ts` (+12 Unit-Tests), `ausgabe/DruckProfilFeld.tsx`, E2E `e2e/druckprofil.spec.ts`. Teil 2/3 (Muster-LV, Textquelle) warten auf 71 und 79.
