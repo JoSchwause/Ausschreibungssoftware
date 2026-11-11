@@ -14,6 +14,19 @@ export const texte = {
       'Der Nachtrag ist schon übernommen: Seine Positionen stehen bereits im Auftrags-LV. Rückgängig nimmt eine Übernahme zurück.',
     zuTief: 'Unter der Gliederung „Nachtrag“ hätte das Auftrags-LV mehr als 5 Gliederungsebenen (F1).',
     andereMwst: 'Der MwSt-Satz des Nachtrags-LV ist nicht der des Auftrags-LV; so lässt er sich nicht übernehmen.',
+    keinNachtrag: 'Das LV ist kein Nachtrags-LV.',
+  },
+  status: {
+    angemeldet: 'angemeldet',
+    angeboten: 'angeboten',
+    beauftragt: 'beauftragt',
+    abgelehnt: 'abgelehnt',
+  },
+  befund: {
+    nichtUebernommen: (nummer: string, n: number) =>
+      `Nachtrag ${nummer}: beauftragt, aber ${positionen(n)} ${n === 1 ? 'fehlt' : 'fehlen'} im Auftrags-LV.`,
+    nichtBeauftragt: (nummer: string, n: number, status: string) =>
+      `Nachtrag ${nummer}: ${positionen(n)} ${n === 1 ? 'steht' : 'stehen'} im Auftrags-LV, der Status ist aber „${status}“.`,
   },
   warnung: {
     hinweistext: 'Hinweistext',
