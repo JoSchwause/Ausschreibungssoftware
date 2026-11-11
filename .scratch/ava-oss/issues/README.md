@@ -162,5 +162,8 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | resolved |
 | 89 | C2–C4 | Kosten in der App | `apps/web/src/kosten/` | resolved |
 | 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | resolved |
-| 91 | – | Tor M4 | `apps/web/e2e/` | ready-for-agent |
+| 91 | – | Tor M4 | `apps/web/e2e/` | resolved |
 | 92 | – | Behebung des Wellen-Reviews | mehrere (D-47) | ready-for-agent |
+| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid` | ready-for-agent (Welle 6) |
+| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | ready-for-agent (Welle 6) |
+| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | ready-for-agent (Welle 6) |
