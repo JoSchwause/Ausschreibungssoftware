@@ -1,6 +1,6 @@
 # 76: A4: XRechnung lesen (UBL und CII)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A4 · Paket: `packages/erechnung` (neu; dazu der Eintrag in `tools/boundaries.mjs`, Workspace-Dateien,
 `fixtures/extern/xrechnung/` mit `HERKUNFT.md` und REUSE-Eintrag)
