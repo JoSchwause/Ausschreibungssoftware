@@ -127,13 +127,15 @@ interface FxKnoten {
   readonly langtext?: string;
   readonly text?: string;
   readonly positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
-  readonly menge?: string;
-  readonly einheit?: string;
-  readonly einheitspreis?: string;
+  readonly menge?: string | null;
+  readonly einheit?: string | null;
+  readonly einheitspreis?: string | null;
   readonly bedarfMitGesamtbetrag?: boolean;
-  readonly bezugspositionId?: string;
   readonly grundpositionId?: string;
-  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  /**
+   * Zuschlag in Vertragsform (`zuschlag.json` seit Ticket 37; `typisch`, `gross` seit Ticket 51: Fixture-Format,
+   * mechanisch). Kennzeichen und Einheitspreisanteile nur in `zuschlag.json`.
+   */
   readonly zuschlag?: Zuschlag;
   readonly zuschlagskennzeichen?: boolean;
   readonly epa?: Einheitspreisanteile;
@@ -150,7 +152,7 @@ interface FxLv {
     readonly positionen: Readonly<Record<string, { readonly gp: string | null; readonly inSumme: boolean }>>;
     readonly titel: Readonly<Record<string, { readonly summe: string }>>;
     readonly summen: Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
-    /** Nur `zuschlag.json`: Basis und Betrag je Zuschlagsposition (für `ITMarkup` in X86). */
+    /** Basis und Betrag je Zuschlagsposition (für `ITMarkup` in X86); `zuschlag`, seit Ticket 51 auch `typisch`, `gross`. */
     readonly zuschlaege?: Readonly<Record<string, { readonly basis: string; readonly betrag: string }>>;
   };
 }
@@ -227,20 +229,7 @@ export function fixtureLv(name: FixtureName): {
         pauschal: false,
         zuschlagskennzeichen: k.zuschlagskennzeichen === true,
       },
-      zuschlag:
-        k.zuschlag ??
-        (art === 'zuschlag'
-          ? {
-              prozentsatz: null,
-              bezug: {
-                art: 'positionen',
-                positionen:
-                  k.bezugspositionId === undefined
-                    ? []
-                    : [{ positionId: k.bezugspositionId as PositionId, teilmenge: null }],
-              },
-            }
-          : null),
+      zuschlag: k.zuschlag ?? null, // Ticket 51: Fixture-Format, mechanisch (keine Altform mehr in den Fixtures)
       kurztext: k.kurztext ?? '',
       langtext: absatz(k.langtext),
       menge: (k.menge ?? null) as Menge | null,

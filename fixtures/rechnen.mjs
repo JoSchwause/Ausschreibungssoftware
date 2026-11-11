@@ -136,6 +136,147 @@ export function ausreisser(gpJeAngebot, schwelleProzent) {
 }
 
 /**
+ * Ziel eines Betrags (Ticket 37, Teil 1; D-37.1): Wahlposition -> Wahlsumme, sonst Bedarf ohne Gesamtbetrag ->
+ * Bedarfssumme, sonst Netto. Das Fixture-Format kennt keine Variante; eine Wahlposition ist immer Wahl (Variante
+ * `null`). `netto` heisst dasselbe wie `inSumme` (Annahmen A1 bis A3).
+ */
+export function betragsziel(knoten) {
+  if (knoten.positionsart === 'wahl') return 'wahl';
+  if (knoten.positionsart === 'bedarf' && knoten.bedarfMitGesamtbetrag !== true) return 'bedarf';
+  return 'netto';
+}
+
+const istZuschlag = (k) => k?.art === 'position' && k.zuschlag != null;
+
+/**
+ * Basis einer Zuschlagsposition in GAEB-Form (Ticket 37, R2 bis R5; D-03, D-37.2). `gpVon(k)` liefert den GP einer
+ * Position (Betrag, Massstab 2) oder null, `epVon(k)` ihren EP (Massstab 3) oder null (nur fuer Teilmengen).
+ * R2: nur Bezugspositionen, die selbst einen GP haben, ins Netto gehen und keine Zuschlagsposition sind.
+ * R3 `gliederung`: rueckwaerts ab der Zuschlagsposition erst unmittelbar davorstehende Zuschlagspositionen (und
+ * Hinweise, Untergliederungen) ueberspringen, dann Positionen sammeln bis zur naechsten Zuschlagsposition oder zum
+ * Anfang des Elternknotens. R4 `kennzeichnung`: davon nur `zuschlagskennzeichen`. R5 `positionen`: die genannten
+ * Positionen, wo immer sie stehen (Teilmenge x EP, falls gesetzt).
+ */
+function zuschlagsbasis(z, { byId, geschwister, gpVon, epVon }) {
+  const bezug = z.zuschlag.bezug;
+  const istBasis = (k) => k?.art === 'position' && !istZuschlag(k) && betragsziel(k) === 'netto';
+  let basis = 0n;
+  if (bezug.art === 'positionen') {
+    for (const b of bezug.positionen) {
+      const r = byId.get(b.positionId);
+      if (!istBasis(r)) continue;
+      let gp;
+      if (b.teilmenge == null) gp = gpVon(r);
+      else {
+        const ep = epVon(r);
+        gp = ep === null ? null : gesamtpreis(parse(b.teilmenge, STELLEN.menge), ep);
+      }
+      if (gp !== null) basis += gp;
+    }
+    return basis;
+  }
+  const g = geschwister.get(z.parentId);
+  let i = g.indexOf(z) - 1;
+  while (i >= 0 && (g[i].art !== 'position' || istZuschlag(g[i]))) i--;
+  for (; i >= 0; i--) {
+    const k = g[i];
+    if (k.art !== 'position') continue;
+    if (istZuschlag(k)) break;
+    if (!istBasis(k) || (bezug.art === 'kennzeichnung' && k.zuschlagskennzeichen !== true)) continue;
+    const gp = gpVon(k);
+    if (gp !== null) basis += gp;
+  }
+  return basis;
+}
+
+function geschwisterVon(knoten) {
+  const geschwister = new Map();
+  for (const k of knoten) {
+    if (!geschwister.has(k.parentId)) geschwister.set(k.parentId, []);
+    geschwister.get(k.parentId).push(k);
+  }
+  return geschwister;
+}
+
+/** Preise eines LV: EP der Position, Satz der Zuschlagsposition (beide null, wenn nicht gesetzt). */
+export const preiseDesLv = (k) => ({
+  ep: k.einheitspreis == null ? null : parse(k.einheitspreis, STELLEN.ep),
+  satz: k.zuschlag?.prozentsatz == null ? null : parse(k.zuschlag.prozentsatz, STELLEN.prozent),
+});
+
+/**
+ * Sollwerte eines LV oder Angebots mit Zuschlagspositionen in GAEB-Form (Ticket 51: `typisch`, `typisch-angebote`,
+ * `gross`). Unabhaengig vom Kern geschrieben, nur BigInt. `preisVon(knoten)` liefert `null` (nicht angeboten) oder
+ * `{ ep, satz }`: EP (Massstab 3) einer Position, Satz (Massstab 2) einer Zuschlagsposition, je null, wenn nicht
+ * gesetzt. Regeln: GP = round_half_up(Menge x EP, 2); Betrag einer Zuschlagsposition (R1) = round_half_up(Basis x
+ * Satz / 100, 2), ohne Satz kein Betrag; Basis nach `zuschlagsbasis` (R2 bis R5) aus den GP derselben Preisquelle
+ * (R7: ein Angebot rechnet mit den EP und Saetzen des Bieters). Jeder Betrag geht nach `betragsziel` ins Netto (und
+ * in die Titelsummen), in die Bedarfs- oder in die Wahlsumme (R6, F4); Bedarfs- und Wahlsumme je Titel und fuer das
+ * LV unter `ausweise`. `gpMap` (optional) wird mit id -> Betrag (BigInt) gefuellt.
+ */
+export function berechneSollwerteGaeb(knoten, preisVon, nachlass, mwstSatz, gpMap = new Map()) {
+  const byId = new Map(knoten.map((k) => [k.id, k]));
+  const geschwister = geschwisterVon(knoten);
+  const preise = new Map();
+  for (const k of knoten) if (k.art === 'position') preise.set(k.id, preisVon(k));
+  const gpEigen = new Map();
+  for (const [id, p] of preise) {
+    const k = byId.get(id);
+    if (p === null || istZuschlag(k) || p.ep === null || k.menge == null) continue;
+    gpEigen.set(id, gesamtpreis(parse(k.menge, STELLEN.menge), p.ep));
+  }
+  const kontext = {
+    byId, geschwister, gpVon: (k) => gpEigen.get(k.id) ?? null, epVon: (k) => preise.get(k.id)?.ep ?? null,
+  };
+  const eltern = new Map(knoten.map((k) => [k.id, k.parentId]));
+  const titelIds = knoten.filter((k) => k.art === 'titel').map((k) => k.id);
+  const titelSumme = new Map(titelIds.map((id) => [id, 0n]));
+  const titelAusweis = new Map(titelIds.map((id) => [id, { bedarf: 0n, wahl: 0n }]));
+  const gesamtAusweis = { bedarf: 0n, wahl: 0n };
+  const positionen = {};
+  const zuschlaege = {};
+  const nichtAngeboten = [];
+  let netto = 0n;
+  for (const k of knoten) {
+    if (k.art !== 'position') continue;
+    const p = preise.get(k.id);
+    if (p === null) {
+      positionen[k.id] = { gp: null, inSumme: false };
+      nichtAngeboten.push(k.id);
+      continue;
+    }
+    let gp = gpEigen.get(k.id) ?? null;
+    if (istZuschlag(k)) {
+      const basis = zuschlagsbasis(k, kontext);
+      gp = p.satz === null ? null : prozentVon(basis, p.satz);
+      zuschlaege[k.id] = { basis: format(basis, 2), betrag: gp === null ? null : format(gp, 2) };
+    }
+    const ziel = betragsziel(k);
+    positionen[k.id] = { gp: gp === null ? null : format(gp, 2), inSumme: gp !== null && ziel === 'netto' };
+    if (gp === null) continue;
+    gpMap.set(k.id, gp);
+    if (ziel === 'netto') netto += gp;
+    else gesamtAusweis[ziel] += gp;
+    for (let t = eltern.get(k.id); titelSumme.has(t); t = eltern.get(t)) {
+      if (ziel === 'netto') titelSumme.set(t, titelSumme.get(t) + gp);
+      else titelAusweis.get(t)[ziel] += gp;
+    }
+  }
+  const ausweis = (a) => ({ summeBedarfOhneGesamtbetrag: format(a.bedarf, 2), summeWahl: format(a.wahl, 2) });
+  return {
+    positionen,
+    titel: Object.fromEntries(titelIds.map((id) => [id, { summe: format(titelSumme.get(id), 2) }])),
+    summen: summen(netto, nachlass, mwstSatz),
+    nichtAngeboten,
+    zuschlaege,
+    ausweise: {
+      gesamt: ausweis(gesamtAusweis),
+      titel: Object.fromEntries(titelIds.map((id) => [id, ausweis(titelAusweis.get(id))])),
+    },
+  };
+}
+
+/**
  * Sollwerte eines LV mit Zuschlagspositionen in GAEB-Form (Ticket 37, `zuschlag.json`). Unabhaengig vom Kern
  * geschrieben, nur BigInt. Regeln (amtliche Pruefdateien, D-03): Betrag = round_half_up(Basis x Satz / 100, 2);
  * Basis = Summe der GP der Bezugspositionen, die selbst in die Summe eingehen und keine Zuschlagsposition sind.
@@ -146,45 +287,17 @@ export function ausreisser(gpJeAngebot, schwelleProzent) {
  * Dazu je Titel und fuer das LV die Summen der Einheitspreisanteile: Summe von round_half_up(Menge x Anteil, 2).
  */
 export function berechneZuschlagSollwerte(knoten, nachlass, mwstSatz) {
-  const byId = new Map(knoten.map((k) => [k.id, k]));
-  const geschwister = new Map();
-  for (const k of knoten) {
-    if (!geschwister.has(k.parentId)) geschwister.set(k.parentId, []);
-    geschwister.get(k.parentId).push(k);
-  }
   const eigenerGp = (k) =>
     k.menge == null || k.einheitspreis == null
       ? null
       : gesamtpreis(parse(k.menge, STELLEN.menge), parse(k.einheitspreis, STELLEN.ep));
-  const istZuschlag = (k) => k.art === 'position' && k.zuschlag != null;
-  const istBasis = (k) => k?.art === 'position' && !istZuschlag(k) && inSumme(k);
-  const basisVon = (z) => {
-    const bezug = z.zuschlag.bezug;
-    let basis = 0n;
-    if (bezug.art === 'positionen') {
-      for (const b of bezug.positionen) {
-        const r = byId.get(b.positionId);
-        if (!istBasis(r)) continue;
-        const gp = b.teilmenge == null ? eigenerGp(r)
-          : r.einheitspreis == null ? null
-            : gesamtpreis(parse(b.teilmenge, STELLEN.menge), parse(r.einheitspreis, STELLEN.ep));
-        if (gp !== null) basis += gp;
-      }
-      return basis;
-    }
-    const g = geschwister.get(z.parentId);
-    let i = g.indexOf(z) - 1;
-    while (i >= 0 && (g[i].art !== 'position' || istZuschlag(g[i]))) i--;
-    for (; i >= 0; i--) {
-      const k = g[i];
-      if (k.art !== 'position') continue;
-      if (istZuschlag(k)) break;
-      if (!istBasis(k) || (bezug.art === 'kennzeichnung' && k.zuschlagskennzeichen !== true)) continue;
-      const gp = eigenerGp(k);
-      if (gp !== null) basis += gp;
-    }
-    return basis;
+  const kontext = {
+    byId: new Map(knoten.map((k) => [k.id, k])),
+    geschwister: geschwisterVon(knoten),
+    gpVon: eigenerGp,
+    epVon: (k) => (k.einheitspreis == null ? null : parse(k.einheitspreis, STELLEN.ep)),
   };
+  const basisVon = (z) => zuschlagsbasis(z, kontext);
   const eltern = new Map(knoten.map((k) => [k.id, k.parentId]));
   const titelSumme = new Map(knoten.filter((k) => k.art === 'titel').map((k) => [k.id, 0n]));
   const ANTEILE = ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei'];
@@ -227,6 +340,62 @@ export function berechneZuschlagSollwerte(knoten, nachlass, mwstSatz) {
     epa: {
       gesamt: alsText(epaGesamt),
       titel: Object.fromEntries([...epaTitel].map(([id, o]) => [id, alsText(o)])),
+    },
+  };
+}
+
+/** round_half_up(summe / n) fuer summe >= 0, n > 0 (BigInt, gleicher Massstab): floor((2 x summe + n) / (2 x n)). */
+function teileHalfUp(summe, n) {
+  if (summe < 0n || n <= 0n) throw new Error('Nur nicht negative Summe und positive Anzahl');
+  return (2n * summe + n) / (2n * n);
+}
+
+/**
+ * Preisspiegel-Sollwerte einer Auswahl von Angeboten (Ticket 69; Regeln D-05, D-36.1, D-44.1, Annahmen fuer die Demo).
+ * Unabhaengig von `vergabe` geschrieben, nur BigInt. `angebote`: `[{ id, positionen, sollwerte }]` wie in
+ * `typisch-angebote.json` (Sollwerte aus `berechneSollwerteGaeb`); `lvSollwerte`: Sollwerte des LV.
+ * - Rang: 1 + Anzahl der Angebote mit kleinerem Netto nach Nachlass (Gleichstand gleicher Rang: 1, 1, 3).
+ * - Virtuelle Bieter (Min, Mittel, Max) je Position, die laut LV ins Netto geht (`betragsziel` = netto): verglichen
+ *   werden nur Werte > 0 (0,000 und „nicht angeboten“ zaehlen nicht); an einer Normalposition der EP, an einer
+ *   Zuschlagsposition der Betrag des Bieters. Mittel = round_half_up(Summe / Anzahl) auf die Stellen des Werts (EP 3,
+ *   Betrag 2). GP des virtuellen Bieters = round_half_up(Menge x EP, 2) bzw. der Betrag. Ohne Wert > 0 traegt die
+ *   Position nichts bei. Netto = Summe dieser GP, ohne Nachlass. Schaetzpreis = Netto des LV.
+ */
+export function preisspiegelSollwerte(knoten, angebote, lvSollwerte) {
+  const nettoNach = angebote.map((a) => parse(a.sollwerte.summen.nettoNachNachlass, STELLEN.betrag));
+  const rang = Object.fromEntries(angebote.map((a, i) => [
+    a.id, String(1 + nettoNach.filter((x) => x < nettoNach[i]).length),
+  ]));
+  const zeilen = angebote.map((a) => new Map(a.positionen.map((z) => [z.positionId, z])));
+  const summe = { min: 0n, mittel: 0n, max: 0n };
+  for (const k of knoten) {
+    if (k.art !== 'position' || betragsziel(k) !== 'netto') continue;
+    const werte = [];
+    angebote.forEach((a, i) => {
+      let w = null;
+      if (istZuschlag(k)) {
+        const betrag = a.sollwerte.zuschlaege[k.id]?.betrag;
+        if (betrag != null) w = parse(betrag, STELLEN.betrag);
+      } else {
+        const z = zeilen[i].get(k.id);
+        if (z?.status === 'angeboten' && z.einheitspreis !== undefined) w = parse(z.einheitspreis, STELLEN.ep);
+      }
+      if (w !== null && w > 0n) werte.push(w);
+    });
+    if (werte.length === 0) continue;
+    const gp = istZuschlag(k) ? (w) => w : (w) => gesamtpreis(parse(k.menge, STELLEN.menge), w);
+    summe.min += gp(werte.reduce((x, y) => (y < x ? y : x)));
+    summe.mittel += gp(teileHalfUp(werte.reduce((x, y) => x + y, 0n), BigInt(werte.length)));
+    summe.max += gp(werte.reduce((x, y) => (y > x ? y : x)));
+  }
+  return {
+    angebotIds: angebote.map((a) => a.id),
+    rang,
+    virtuelleSummen: {
+      min: format(summe.min, STELLEN.betrag),
+      mittel: format(summe.mittel, STELLEN.betrag),
+      max: format(summe.max, STELLEN.betrag),
+      schaetzpreis: lvSollwerte.summen.netto,
     },
   };
 }

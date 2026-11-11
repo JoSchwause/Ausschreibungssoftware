@@ -6,4 +6,7 @@
 export interface Schriften {
   readonly normal: Uint8Array;
   readonly fett: Uint8Array;
+  /** Kursiv und fett kursiv; fehlen sie, setzt der Druck kursiven Text in der aufrechten Schrift. */
+  readonly kursiv?: Uint8Array;
+  readonly fettKursiv?: Uint8Array;
 }

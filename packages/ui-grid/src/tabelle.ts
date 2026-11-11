@@ -6,6 +6,8 @@
 import { columnSizingFeature, createColumnHelper, tableFeatures } from '@tanstack/react-table';
 import type { LvSpalte, LvZeile } from '@tethys/vertrag';
 import { SPALTENTITEL } from './texte';
+import { STANDARDBREITE } from './vergleich';
+import type { VergleichsSpalte, VergleichsZeile } from './vergleichTypen';
 
 export const features = tableFeatures({ columnSizingFeature });
 
@@ -36,4 +38,39 @@ export function spaltenDefinitionen(spalten: readonly LvSpalte[]) {
   return spalten.map((s) =>
     spaltenHelfer.display({ id: s, header: SPALTENTITEL[s], size: SPALTENBREITE[s] }),
   );
+}
+
+const vergleichsHelfer = createColumnHelper<typeof features, VergleichsZeile>();
+
+/**
+ * Spaltenmodell des Vergleichsgrids: aufeinanderfolgende Spalten derselben Gruppe werden eine Gruppenspalte (zweizeiliger
+ * Kopf); TanStack liefert daraus die Kopfzeilen mit `colSpan` und `rowSpan`. Die Kennung einer Gruppenspalte ist
+ * `gruppe:<Index der ersten Spalte>`, damit eine Gruppe, die zweimal vorkommt, eindeutig bleibt.
+ */
+export function vergleichsSpaltenDefinitionen(spalten: readonly VergleichsSpalte[]) {
+  const ergebnis: ReturnType<typeof vergleichsHelfer.group>[] = [];
+  const blatt = (s: VergleichsSpalte) =>
+    vergleichsHelfer.display({ id: s.id, header: s.kopf, size: s.breite ?? STANDARDBREITE });
+  let i = 0;
+  while (i < spalten.length) {
+    const s = spalten[i];
+    if (s === undefined) break;
+    const gruppe = s.gruppe;
+    if (gruppe === undefined) {
+      ergebnis.push(blatt(s));
+      i++;
+      continue;
+    }
+    const start = i;
+    const kinder = [];
+    while (i < spalten.length && spalten[i]?.gruppe?.id === gruppe.id) {
+      const k = spalten[i];
+      if (k !== undefined) kinder.push(blatt(k));
+      i++;
+    }
+    ergebnis.push(
+      vergleichsHelfer.group({ id: `gruppe:${String(start)}`, header: gruppe.kopf, columns: kinder }),
+    );
+  }
+  return ergebnis;
 }

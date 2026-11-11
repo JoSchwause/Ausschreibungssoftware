@@ -92,14 +92,13 @@ export interface Summenvorher {
  * `positionen`/`gliederungen`, sondern in `vorher.entfernt`.
  * `gesamt` ist `null`, wenn sich die Gesamtsummen nicht geändert haben (oder das Aggregat gelöscht wird).
  *
- * `vorher` (v1.1a) trägt die alten Werte. Es ist optional, damit `kern` und `speicher` ohne Änderung weiter
- * übersetzen; fehlt es, ist das ChangeSet nur mit dem Vorzustand umkehrbar (heute `changeSetUmkehren(cs,
- * zustandVorher)` im Kern). Jedes ChangeSet, das der Kern nach dem Folgeticket erzeugt, setzt `vorher`
- * (siehe „Offene Typfragen“, Ticket 24).
+ * `vorher` (v1.1a) trägt die alten Werte. Seit v1.3 (Ticket 53 Punkt 3) Pflicht: Der Kern setzt es seit Ticket 30 in
+ * jedem ChangeSet, `vergabe` ebenso; damit ist jedes ChangeSet allein umkehrbar und `speicher` kann es überall prüfen
+ * (bisher nur beim Löschen eines Aggregats).
  */
 export interface Summenaenderung {
   readonly positionen: readonly Positionssumme[];
   readonly gliederungen: readonly Gliederungssumme[];
   readonly gesamt: Gesamtsummen | null;
-  readonly vorher?: Summenvorher;
+  readonly vorher: Summenvorher;
 }

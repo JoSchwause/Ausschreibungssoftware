@@ -20,3 +20,11 @@ export type {
   VirtuellerPreis,
   Zuschlagsangabe,
 } from './preisspiegel';
+export { zuschlagErteilen, zuschlagsvorschau } from './zuschlag-erteilen';
+export type {
+  Vorschaugruppe,
+  Vorschauvariante,
+  Zuschlagsergebnis,
+  Zuschlagsvorschau,
+  Zuschlagswarnung,
+} from './zuschlag-erteilen';

@@ -41,3 +41,9 @@ still verloren (Q5). Deshalb:
 Neue Befehle, Oberfläche, GAEB.
 
 ## Comments
+
+### Aus Ticket 53 (Review, D-27)
+- `Summenaenderung.vorher` ist Pflicht: Prüfung in `speicher` überall, nicht nur beim Löschen.
+- `pruefeV13` (vorläufige Abweisung der neuen Felder) entfernen, sobald sie gespeichert werden.
+- Projektdatei-Dekoder: neue Schemaversion mit den Feldern; Papierkorb- und LV-Stand-Rundweg mit Mengenansatz.
+- EPA-Bezeichnungen in der Form aus D-28 (`nummer`, `anteil`, `bezeichnung | null`).

@@ -192,6 +192,9 @@ function erwarteterBaum(z: LvZustand, b: LvBefehl): Baum {
         eltern = elternVon(z, ort.knotenId) ?? '';
         index = (baum.get(eltern) ?? []).indexOf(ort.knotenId) + 1;
       }
+    } else if (ort.art === 'hinter-gliederung') {
+      // v1.3: mechanisch angepasst, Folgeticket (Ticket 56; der Generator erzeugt die Form nicht)
+      throw new Error('hinter-gliederung: erst Ticket 56');
     } else {
       eltern = ort.elternId;
       index = ort.art === 'anfang' ? 0 : (baum.get(eltern) ?? []).length;

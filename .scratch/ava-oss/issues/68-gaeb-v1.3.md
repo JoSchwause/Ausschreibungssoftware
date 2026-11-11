@@ -37,3 +37,7 @@ Herkunft: Ticket 53 (Punkte 2, 6, 8), Tickets 40, 45, 49 (Comments)
 Positionsnachlass/Bieterergänzungen im Angebot (D-22 (ii)), GAEB 90/2000, X82/X85/X89.
 
 ## Comments
+
+### Aus Ticket 53 (Review, D-27, D-28)
+- Option `auftragnehmer` in `SchreibOptionen` doppelt `LvInhaltKopf.auftragnehmer`: das Modell gewinnt, die Option entfällt.
+- EPA-Bezeichnungen in der Form aus D-28; nie umnummerieren. Prüfen, ob das XSD Lücken in `LblUPComp` mit `NoUPComps` = höchste Nummer annimmt; sonst Platzhalter-Beschriftung.

@@ -2,9 +2,9 @@
 // Seite `/projekt/<id>`: Stammdaten des Projekts (umbenennen), seine LVs (anlegen, umbenennen, öffnen) und der Export
 // der Projektdatei. Jede Änderung ist genau ein Befehl durch Kern und Speicher (A5).
 //
-// Lücke im Vertrag: `leistungsverzeichnisse.auflisten` liefert nur Kennungen, keine Namen. Die Seite lädt deshalb jedes
-// LV ganz (`laden`), um Name und Netto zu zeigen. Bei vielen großen LVs ist das langsam; eine Übersicht mit Namen
-// gehört in ein Vertragsticket.
+// Seit Vertrag v1.3 liefert `leistungsverzeichnisse.auflisten` Kennung und Name (`LvUebersicht`). Die Seite lädt trotzdem
+// jedes LV ganz (`laden`), weil sie das Netto zeigt und beim Löschen den Zustand braucht; bei vielen großen LVs ist das
+// langsam (Folgeticket). // v1.3: mechanisch angepasst, Folgeticket
 
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
@@ -18,6 +18,7 @@ import { texte as lvTexte } from '../lv/texte';
 import { useMeldungen } from '../lv/meldungen';
 import { STANDARD_MASKE_TEXT, ozMaskeLesen } from '../lv/ozmaske';
 import { formatiereBetragDe, formatiereProzentDe, zahlLesen } from '../lv/zahlen';
+import { useSicherung } from '../sicherung/SicherungsAnbieter'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { STANDARD_MWST, lvAnlegenBefehl } from './befehle';
@@ -99,7 +100,8 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     }
     const ids = await u.speicher.leistungsverzeichnisse.auflisten(id);
     const lvs: LvZustand[] = [];
-    for (const lvId of ids.ok ? ids.wert : []) {
+    // v1.3: mechanisch angepasst, Folgeticket (Vertrag v1.3: `LvUebersicht`; die Seite lädt weiter jedes LV, Netto und Löschen brauchen den Zustand)
+    for (const { id: lvId } of ids.ok ? ids.wert : []) {
       const lv = await u.speicher.leistungsverzeichnisse.laden(lvId);
       if (lv.ok) lvs.push(lv.wert);
     }
@@ -113,6 +115,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   // Undo/Redo kann Projekt und LVs ändern (auch löschen oder zurückholen): neu laden.
   useEffect(() => befehlswegFuer(u).beiHistorie(() => void laden()), [u, laden]);
   const { zeige } = useToast();
+  const sicherung = useSicherung(); // Ticket 62
   const weg = befehlswegFuer(u);
   // --- Löschen (Ticket 48, Punkt 5) ------------------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState<{ art: 'projekt' } | { art: 'lv'; lv: LvZustand } | null>(null);
@@ -225,6 +228,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
       return;
     }
     herunterladen(dateiname(projekt.name), r.wert);
+    sicherung.exportVermerken(projekt.id); // Ticket 62
   };
 
   const meldung = (feld: 'name' | 'maske' | 'mwst') =>

@@ -94,15 +94,14 @@ const nachKennung = <T>(liste: readonly T[], id: (e: T) => string): T[] =>
   [...liste].sort((a, b) => (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));
 
 /**
- * Prüft beim Löschen eines Aggregats, dass das ChangeSet keine neuen Summen setzt und dass `summen.vorher` (falls
- * gesetzt) den gespeicherten Summen entspricht: Gesamtsummen und alle Positions- und Gliederungssummen als entfernt.
+ * Prüft beim Löschen eines Aggregats, dass das ChangeSet keine neuen Summen setzt und dass `summen.vorher` (seit
+ * v1.3 Pflicht) den gespeicherten Summen entspricht: Gesamtsummen und alle Positions- und Gliederungssummen als entfernt.
  */
 function pruefeLoeschSummen(db: Datenbank, aggregatId: string, s: Summenaenderung, was: string): void {
   if (s.positionen.length > 0 || s.gliederungen.length > 0 || s.gesamt !== null) {
     abbruch('unbekannt', `ChangeSet: Das Löschen von ${was} setzt neue Summen.`);
   }
-  const v = s.vorher;
-  if (v === undefined) return;
+  const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3: immer geprüft)
   const gespeichert = leseSummen(db, aggregatId);
   const passt =
     gespeichert !== null &&
@@ -306,7 +305,11 @@ function schreibeGesamt(db: Datenbank, aggregatId: string, g: Gesamtsummen): voi
 }
 
 /** Überschreibt die gelisteten Summen. Es wird nichts berechnet oder geprüft. */
-function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): void {
+function wendeSummenAn(
+  db: Datenbank,
+  aggregatId: string,
+  s: Omit<Summenaenderung, 'vorher'>, // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
+): void {
   db.stapel(
     `INSERT INTO summe_position (aggregat_id, position_id, gesamtpreis, geht_in_summe) VALUES (?, ?, ?, ?)
      ON CONFLICT (aggregat_id, position_id) DO UPDATE SET gesamtpreis = excluded.gesamtpreis,

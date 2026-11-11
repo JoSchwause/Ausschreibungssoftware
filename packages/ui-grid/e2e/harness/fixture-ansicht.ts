@@ -34,12 +34,13 @@ type FxKnoten =
       ordnungszahl: string;
       ozIndex?: string;
       kurztext: string;
-      menge: string;
-      einheit: string;
-      einheitspreis: string;
+      // Ticket 51: Fixture-Format, mechanisch: an der Zuschlagsposition `null`, Satz und Bezug stehen in `zuschlag` (Vertragsform)
+      menge: string | null;
+      einheit: string | null;
+      einheitspreis: string | null;
       bedarfMitGesamtbetrag?: boolean;
-      bezugspositionId?: string;
       grundpositionId?: string;
+      zuschlag?: Zuschlag;
     };
 
 // Die Fixtures behalten dauerhaft ihr Format mit einer einzelnen Positionsart (Ticket 19); diese Abbildung setzt sie
@@ -68,16 +69,9 @@ function fixtureMerkmale(k: FxPosition): Positionsmerkmale {
   };
 }
 
+// Ticket 51: Fixture-Format, mechanisch: der Zuschlag steht in Vertragsform an der Position (GAEB-Form, Satz und Liste).
 function fixtureZuschlag(k: FxPosition): Zuschlag | null {
-  if (k.positionsart !== 'zuschlag') return null;
-  const bezug = k.bezugspositionId as PositionId | undefined;
-  return {
-    prozentsatz: null,
-    bezug: {
-      art: 'positionen',
-      positionen: bezug === undefined ? [] : [{ positionId: bezug, teilmenge: null }],
-    },
-  };
+  return k.zuschlag ?? null;
 }
 
 interface FxLv {
@@ -148,9 +142,9 @@ export async function ladeFixture(name: FixtureName, kopien = 1): Promise<Modell
           zuschlag: fixtureZuschlag(k),
           kurztext: k.kurztext,
           langtext: [],
-          menge: k.menge as Menge,
+          menge: k.menge as Menge | null, // Ticket 51: Fixture-Format, mechanisch
           einheit: k.einheit,
-          einheitspreis: k.einheitspreis as Einheitspreis,
+          einheitspreis: k.einheitspreis as Einheitspreis | null,
           epa: null,
         });
       }

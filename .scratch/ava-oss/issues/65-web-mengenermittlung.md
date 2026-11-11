@@ -37,3 +37,6 @@ Ein Panel zur Mengenermittlung einer Position (aufrufbar per Tastatur aus dem Gr
 Weitere REB-Formeln, Aufmaßblätter (A2), X31.
 
 ## Comments
+
+### Aus Ticket 53 (Review, D-27)
+- Die Rückfrage nach Lesart (a) braucht es auch im Positionsdialog (`apps/web/src/lv/positionsentwurf.ts`), nicht nur bei der Grid-Eingabe (die Grid-Eingabe läuft über `ui-grid/src/eingabe.ts`; braucht das Grid dafür eine Eigenschaft, melden).

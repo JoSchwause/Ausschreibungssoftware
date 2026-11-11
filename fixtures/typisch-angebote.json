@@ -25,7 +25,7 @@
         {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","status":"angeboten","einheitspreis":"5.161"},
         {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","status":"angeboten","einheitspreis":"11.239"},
         {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","status":"angeboten","einheitspreis":"165.184"},
-        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","einheitspreis":"14.314"},
+        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","zuschlagssatz":"8.51"},
         {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","status":"angeboten","einheitspreis":"1.627"},
         {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","status":"angeboten","einheitspreis":"53.701"},
         {"positionId":"019b76e9-ea51-78b8-8588-e3dc3a1f7da6","status":"angeboten","einheitspreis":"60.148"},
@@ -53,7 +53,7 @@
           "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"722.54","inSumme":true},
           "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1078.94","inSumme":true},
           "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6400.88","inSumme":true},
-          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"554.67","inSumme":true},
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"544.71","inSumme":true},
           "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5450.45","inSumme":true},
           "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5155.30","inSumme":true},
           "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5774.21","inSumme":false},
@@ -70,11 +70,22 @@
         },
         "titel": {
           "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5423.41"},
-          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"25076.13"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"25066.17"},
           "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"24992.26"}
         },
-        "summen": {"netto":"55491.80","nachlass":"0.00","nettoNachNachlass":"55491.80","mwst":"10543.44","brutto":"66035.24"},
-        "nichtAngeboten": []
+        "summen": {"netto":"55481.84","nachlass":"0.00","nettoNachNachlass":"55481.84","mwst":"10541.55","brutto":"66023.39"},
+        "nichtAngeboten": [],
+        "zuschlaege": {
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6400.88","betrag":"544.71"}
+        },
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"601.48","summeWahl":"5774.21"},
+          "titel": {
+            "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"601.48","summeWahl":"0.00"},
+            "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5774.21"},
+            "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
       }
     },
     {
@@ -93,7 +104,7 @@
         {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","status":"angeboten","einheitspreis":"5.644"},
         {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","status":"angeboten","einheitspreis":"12.502"},
         {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","status":"angeboten","einheitspreis":"174.980"},
-        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","einheitspreis":"15.301"},
+        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","zuschlagssatz":"9.10"},
         {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","status":"angeboten","einheitspreis":"1.709"},
         {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","status":"angeboten","einheitspreis":"54.755"},
         {"positionId":"019b76e9-ea51-78b8-8588-e3dc3a1f7da6","status":"angeboten","einheitspreis":"65.599"},
@@ -121,7 +132,7 @@
           "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"790.16","inSumme":true},
           "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1200.19","inSumme":true},
           "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6780.48","inSumme":true},
-          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"592.91","inSumme":true},
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"617.02","inSumme":true},
           "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5725.15","inSumme":true},
           "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5256.48","inSumme":true},
           "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"6297.50","inSumme":false},
@@ -138,11 +149,22 @@
         },
         "titel": {
           "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5770.45"},
-          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"26392.23"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"26416.34"},
           "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"26171.74"}
         },
-        "summen": {"netto":"58334.42","nachlass":"1750.03","nettoNachNachlass":"56584.39","mwst":"10751.03","brutto":"67335.42"},
-        "nichtAngeboten": ["019b76e9-ea5b-73f9-9221-62a34eba45ec"]
+        "summen": {"netto":"58358.53","nachlass":"1750.76","nettoNachNachlass":"56607.77","mwst":"10755.48","brutto":"67363.25"},
+        "nichtAngeboten": ["019b76e9-ea5b-73f9-9221-62a34eba45ec"],
+        "zuschlaege": {
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6780.48","betrag":"617.02"}
+        },
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"6297.50"},
+          "titel": {
+            "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"608.51","summeWahl":"0.00"},
+            "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"6297.50"},
+            "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
       }
     },
     {
@@ -161,7 +183,7 @@
         {"positionId":"019b76e9-ea4b-7446-af25-e138598df2b7","status":"angeboten","einheitspreis":"5.019"},
         {"positionId":"019b76e9-ea4c-76c8-85b1-626b44c884e5","status":"angeboten","einheitspreis":"10.389"},
         {"positionId":"019b76e9-ea4d-711c-ab51-51f1cef5e0df","status":"angeboten","einheitspreis":"253.350"},
-        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","einheitspreis":"13.242"},
+        {"positionId":"019b76e9-ea4e-72e6-aa2e-a1ad93edf894","status":"angeboten","zuschlagssatz":"7.87"},
         {"positionId":"019b76e9-ea4f-70a0-a8ef-5392c22227fc","status":"angeboten","einheitspreis":"1.538"},
         {"positionId":"019b76e9-ea50-7801-8694-72bbf397eaf3","status":"angeboten","einheitspreis":"49.116"},
         {"positionId":"019b76e9-ea51-78b8-8588-e3dc3a1f7da6","status":"angeboten","einheitspreis":"56.534"},
@@ -189,7 +211,7 @@
           "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"702.66","inSumme":true},
           "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"997.34","inSumme":true},
           "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"9817.31","inSumme":true},
-          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"513.13","inSumme":true},
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"772.62","inSumme":true},
           "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5152.30","inSumme":true},
           "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"4715.14","inSumme":true},
           "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5427.26","inSumme":false},
@@ -206,11 +228,22 @@
         },
         "titel": {
           "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5094.40"},
-          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"27191.41"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"27450.90"},
           "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"24175.79"}
         },
-        "summen": {"netto":"56461.60","nachlass":"0.00","nettoNachNachlass":"56461.60","mwst":"10727.70","brutto":"67189.30"},
-        "nichtAngeboten": []
+        "summen": {"netto":"56721.09","nachlass":"0.00","nettoNachNachlass":"56721.09","mwst":"10777.01","brutto":"67498.10"},
+        "nichtAngeboten": [],
+        "zuschlaege": {
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"9817.31","betrag":"772.62"}
+        },
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"538.68","summeWahl":"5427.26"},
+          "titel": {
+            "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"538.68","summeWahl":"0.00"},
+            "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5427.26"},
+            "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
       }
     }
   ],
@@ -222,5 +255,56 @@
       "019b76f9-2c84-7df5-8da4-f13927bb3331": ["019b76e9-ea5c-792b-9c81-2db5b428a9bc"],
       "019b76f9-2c85-7763-bbaa-ed3faaf4719a": ["019b76e9-ea4d-711c-ab51-51f1cef5e0df","019b76e9-ea57-75e5-a1d0-370693d7b6c3","019b76e9-ea5c-792b-9c81-2db5b428a9bc"]
     }
+  },
+  "preisspiegel": {
+    "regel": "Ticket 69, README „Preisspiegel-Sollwerte“: Rang nach Netto nach Nachlass (1, 1, 3); virtuelle Bieter je eingehender Position über Werte > 0 (EP, an Zuschlagspositionen der Betrag), Mittel = Summe / Anzahl kaufmännisch auf 3 (EP) bzw. 2 Stellen (Betrag), Netto ohne Nachlass (D-05, D-36.1, D-44.1).",
+    "bieter": [
+      {
+        "angebotId": "019b76f9-2c83-7dd1-8cb8-4edeaf573f4d",
+        "bieterId": "019b76f9-2c80-737e-8c4e-d0e9e835d68a",
+        "name": "Bieter A",
+        "datei": "angebote/typisch-bieter-a.x84",
+        "summen": {"netto":"55481.84","nachlass":"0.00","nettoNachNachlass":"55481.84","mwst":"10541.55","brutto":"66023.39"},
+        "titel": {"01":"5423.41","02":"25066.17","03":"24992.26"}
+      },
+      {
+        "angebotId": "019b76f9-2c84-7df5-8da4-f13927bb3331",
+        "bieterId": "019b76f9-2c81-7a89-a3e5-e68ea999d4a0",
+        "name": "Bieter B",
+        "datei": "angebote/typisch-bieter-b.x84",
+        "summen": {"netto":"58358.53","nachlass":"1750.76","nettoNachNachlass":"56607.77","mwst":"10755.48","brutto":"67363.25"},
+        "titel": {"01":"5770.45","02":"26416.34","03":"26171.74"}
+      },
+      {
+        "angebotId": "019b76f9-2c85-7763-bbaa-ed3faaf4719a",
+        "bieterId": "019b76f9-2c82-7655-b780-32b7f3b813d5",
+        "name": "Bieter C",
+        "datei": "angebote/typisch-bieter-c.x84",
+        "summen": {"netto":"56721.09","nachlass":"0.00","nettoNachNachlass":"56721.09","mwst":"10777.01","brutto":"67498.10"},
+        "titel": {"01":"5094.40","02":"27450.90","03":"24175.79"}
+      }
+    ],
+    "vergleiche": [
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c84-7df5-8da4-f13927bb3331","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c84-7df5-8da4-f13927bb3331":"2","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"3"},
+        "virtuelleSummen": {"min":"52287.26","mittel":"56961.21","max":"62482.84","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c84-7df5-8da4-f13927bb3331"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c84-7df5-8da4-f13927bb3331":"2"},
+        "virtuelleSummen": {"min":"55481.84","mittel":"56985.83","max":"58488.12","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c83-7dd1-8cb8-4edeaf573f4d","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c83-7dd1-8cb8-4edeaf573f4d":"1","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"2"},
+        "virtuelleSummen": {"min":"52287.26","mittel":"56197.05","max":"60101.61","schaetzpreis":"55465.59"}
+      },
+      {
+        "angebotIds": ["019b76f9-2c84-7df5-8da4-f13927bb3331","019b76f9-2c85-7763-bbaa-ed3faaf4719a"],
+        "rang": {"019b76f9-2c84-7df5-8da4-f13927bb3331":"1","019b76f9-2c85-7763-bbaa-ed3faaf4719a":"2"},
+        "virtuelleSummen": {"min":"52925.90","mittel":"57702.81","max":"62474.72","schaetzpreis":"55465.59"}
+      }
+    ]
   }
 }

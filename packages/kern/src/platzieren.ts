@@ -8,7 +8,7 @@
 // Liste an der Stelle, an der X stand.
 
 import type { Befehlsfehler, Einfuegeort, Ergebnis, Knoten, KnotenId, LvZustand } from '@tethys/vertrag';
-import { befehlsfehler, nein, ok } from './fehler';
+import { befehlsfehler, hinterGliederungOffen, nein, ok } from './fehler'; // v1.3: mechanisch angepasst, Folgeticket (Ticket 56)
 import {
   MAX_GLIEDERUNGSEBENEN,
   darfKinderHaben,
@@ -63,6 +63,8 @@ export function ortAufloesen(
       index: bewegt.has(x.id) ? index : index + 1,
     });
   }
+  // v1.3: mechanisch angepasst, Folgeticket (kern: Einfügen hinter einer Gliederung, Ticket 56)
+  if (ort.art === 'hinter-gliederung') return hinterGliederungOffen(ort.gliederungId);
   const eltern = ort.elternId;
   const elternArt = elternArtVon(idx, eltern);
   if (elternArt === undefined) return nein('eltern-unbekannt', `Elternknoten unbekannt: ${eltern}`, eltern);

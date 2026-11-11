@@ -12,7 +12,7 @@ Typen liegen in `packages/vertrag` (Ticket 02).
 ## Erzeugen und prüfen
 
 ```
-node fixtures/erzeugen.mjs        # schreibt alle JSON-Dateien neu
+node fixtures/erzeugen.mjs        # schreibt alle JSON- und X84-Dateien neu
 node --test                       # im Wurzelverzeichnis; oder: node --test "fixtures/*.test.mjs"
 ```
 
@@ -25,9 +25,10 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 | Datei | Inhalt | Herkunft |
 |---|---|---|
 | `winzig.json` | 1 Titel, 3 Positionen, Netto 2.565,00 | selbst verfasst, vom Skript erzeugt |
-| `typisch.json` | 3 Titel, 25 Positionen, 2 Hinweistexte, MwSt 19 %, Nachlass 2,00 % | selbst verfasst, Daten im Skript, Sollwerte berechnet |
-| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch` | selbst verfasst, Preise per Seed gestreut |
-| `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross` | vollständig erzeugt, nicht von Hand gepflegt |
+| `typisch.json` | 3 Titel, 25 Positionen, 2 Hinweistexte, MwSt 19 %, Nachlass 2,00 %; Netto 55.465,59, Brutto 64.683,97 | selbst verfasst, Daten im Skript, Sollwerte berechnet |
+| `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A; Preisspiegel-Sollwerte (Ticket 69) | selbst verfasst, Preise und Sätze per Seed gestreut |
+| `angebote/typisch-bieter-{a,b,c}.x84` | die drei Angebote als GAEB DA XML 3.3, Phase 84 (Ticket 69) | vom Skript aus `typisch-angebote.json` erzeugt, eigener XML-Baustein |
+| `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross`, Zuschlagssätze aus Seed `fixtures-v1/gross/zuschlagssatz` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
 | `zuschlag.json` | Zuschlagspositionen in GAEB-Form, alle drei Bezugsformen, Einheitspreisanteile; Netto 6.850,60, Brutto 8.152,21 (Ticket 37) | selbst verfasste Texte, Zahlen aus BVBS 3.3 AVA X86 Bereich 1.30 und 1.10.30.20 (D-03), Sollwerte vom Skript berechnet |
 | `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs` | Generator, Dezimalrechnung, Selbsttest | selbst verfasst |
@@ -44,18 +45,29 @@ LV:      { schemaVersion, art:"leistungsverzeichnis", id, name, ozMaske, mwstSat
 Knoten:  flach, in Dokumentreihenfolge; parentId = LV-ID oder Titel-ID; Reihenfolge der Geschwister = Arrayreihenfolge
   titel:    { id, parentId, art:"titel", ordnungszahl, kurztext }
   position: { id, parentId, art:"position", positionsart:"normal|bedarf|wahl|zuschlag", ordnungszahl, [ozIndex],
-              kurztext, langtext, menge, einheit, einheitspreis, [bedarfMitGesamtbetrag], [bezugspositionId], [grundpositionId] }
+              kurztext, langtext, menge, einheit, einheitspreis, [bedarfMitGesamtbetrag], [grundpositionId], [zuschlag] }
   hinweis:  { id, parentId, art:"hinweis", text }
+  Zuschlagsposition (GAEB-Form, alle Dateien seit Ticket 51): positionsart:"zuschlag", menge/einheit/einheitspreis: null,
+              zuschlag: { prozentsatz, bezug: {art:"gliederung"} | {art:"kennzeichnung"} | {art:"positionen", positionen:[{positionId, teilmenge}]} }
+              (Form wie im Vertrag; `typisch` und `gross` nutzen nur die Liste mit einer Bezugsposition, ohne Teilmenge)
 Nachlass: { art:"prozent"|"betrag", wert }
 Sollwerte: { positionen:{id:{gp, inSumme}}, titel:{id:{summe}}, summen:{netto, nachlass, nettoNachNachlass, mwst, brutto}, nichtAngeboten:[id] }
+  `gp` einer Zuschlagsposition ist ihr Betrag.
+  typisch, gross, Angebote (Ticket 51) zusätzlich: zuschlaege:{id:{basis, betrag}},
+              ausweise:{gesamt:{summeBedarfOhneGesamtbetrag, summeWahl}, titel:{id:{summeBedarfOhneGesamtbetrag, summeWahl}}}
   zuschlag.json (Ticket 37, additiv; die übrigen Dateien tragen diese Felder nicht):
   position: [zuschlagskennzeichen: true], [epa: { lohn, stoffe, geraete, nachunternehmer, sonstiges, frei, freiBezeichnung }]
-  Zuschlagsposition: positionsart:"zuschlag", menge/einheit/einheitspreis: null,
-              zuschlag: { prozentsatz, bezug: {art:"gliederung"} | {art:"kennzeichnung"} | {art:"positionen", positionen:[{positionId, teilmenge}]} }
   Sollwerte zusätzlich: zuschlaege:{id:{basis, betrag}}, epa:{gesamt:{lohn,…,frei}, titel:{id:{lohn,…,frei}}}
 Angebotsset: { schemaVersion, art:"angebotsset", lvId, lvName, bieter[{id,name}],
-               angebote[{id, bieterId, nachlass|null, positionen[{positionId, status, [einheitspreis]}], sollwerte}],
-               ausreisserAnnahmeA7 }
+               angebote[{id, bieterId, nachlass|null, positionen[{positionId, status, [einheitspreis], [zuschlagssatz]}], sollwerte}],
+               ausreisserAnnahmeA7, preisspiegel }
+Preisspiegel (Ticket 69, additiv): { regel,
+               bieter[{angebotId, bieterId, name, datei, summen:{netto, nachlass, nettoNachNachlass, mwst, brutto}, titel:{OZ: summe}}],
+               vergleiche[{angebotIds[], rang:{angebotId: "1"}, virtuelleSummen:{min, mittel, max, schaetzpreis}}] }
+  `vergleiche`: alle drei Angebote, dann die Paare A+B, A+C, B+C (das Tor M3 liest zwei Dateien ein). Titel über die
+  OZ, weil ein per GAEB eingelesenes LV andere IDs hat. Der Rang ist ein String (keine JSON-Zahlen in den Fixtures).
+  Eine Zuschlagsposition bietet der Bieter mit `zuschlagssatz` statt `einheitspreis` an (Vertrag v1.2,
+  `Angebotsposition.zuschlagssatz`); den Platzhalter-EP `0.000` des Vertrags setzt der Testhelfer beim Abbilden.
 ```
 
 `ozMaske` ist ein Text: vor dem ersten `:` stehen die Stellen (`N` Ziffer, `I` Index, `.` Trennzeichen zählt nicht),
@@ -80,8 +92,62 @@ Die Ordnungszahl ist Anzeigedatum, kein Schlüssel; Bezüge laufen über IDs. De
 | `nettoNachNachlass` | `netto − nachlass` |
 | `mwst` | `round_half_up(nettoNachNachlass × Satz / 100, 2)`, einmal auf die Summe, nicht je Position (N2) |
 | `brutto` | `nettoNachNachlass + mwst` |
+| Zuschlagsbetrag (`gp` der Zuschlagsposition, `zuschlaege`) | R1: `round_half_up(Basis × Satz / 100, 2)`; Basis nach R2 bis R5 (siehe Annahme A4) |
+| `ausweise` | Summe der Beträge der Wahlpositionen (`summeWahl`) bzw. der Bedarfspositionen ohne Gesamtbetrag (`summeBedarfOhneGesamtbetrag`), je Titel einschließlich Untertitel und für das LV (F4, Ticket 37 Teil 1) |
 
 Negative Werte kommen nicht vor; das Skript lehnt sie ab, bis Ticket 04 die Rundung negativer Beträge entscheidet.
+Ein Angebot rechnet mit denselben Regeln, nur mit den EP und Sätzen des Bieters (R7, „gedachtes LV“).
+
+## X84 der Angebote (Ticket 69)
+
+`erzeugen.mjs` schreibt je Bieter `angebote/typisch-bieter-<a|b|c>.x84` (UTF-8, LF, feste Zeitangabe) mit einem eigenen,
+kleinen XML-Baustein, unabhängig vom Writer in `packages/gaeb`. Form nach den amtlichen X84 (`fixtures/extern/bvbs/
+3.3-ava`, `3.3-bauausfuehrung`) und dem X84-Leser (Ticket 45, D-45.1):
+
+- Kopf: Namensraum `DA84/3.3`, `Award/DP` 84, `CTR/Address/Name1` = „Bieter A“ usw. (erfunden, keine Adresse, C4).
+- `BoQInfo`: Maske wie der X83-Export von `typisch` (zwei Titelebenen zu 2, Position 4, Index 1 alphanumerisch), damit
+  der Leser keine `maske-abweichend` meldet; `Totals` mit Netto, Nachlass des Angebots (`DiscountPcnt`, nur Bieter B,
+  3,00 %), Netto nach Nachlass, MwSt-Satz des LV, MwSt, Brutto.
+- Je Titel `BoQCtgy` mit `RNoPart` und Titelsumme; je Position eine Zeile, zugeordnet über OZ (`RNoPart`, `RNoIndex`):
+  `Item` mit `UP` (EP des Bieters) und `IT` (GP); die Zuschlagsposition 02.0050 A als `MarkupItem` mit `ITMarkup`
+  (Basis des Bieters), `Markup` (Satz des Bieters) und `IT` (Betrag). Wahl- und Bedarfsposition tragen ihren GP als `IT`
+  (wie der eigene X86-Export; der Leser prüft `IT` nur auf Menge × EP).
+- „Nicht angeboten“ (Bieter B, 03.0070): `Item` ohne `UP` und ohne `IT`. Die amtlichen X84 enthalten keinen solchen Fall;
+  die Form ist die des Lesers (Ticket 45: `UP` fehlt → nicht angeboten). Der Preis 0,000 (Bieter C, 03.0080) steht als
+  `UP` 0.000 da.
+- Hinweistexte und Langtexte bleiben weg (sie gehören dem LV, nicht dem Angebot).
+
+Der Selbsttest liest jede Datei mit einem strengen Wohlgeformtheits-Prüfer und vergleicht jede Zeile mit dem Angebot.
+
+## Preisspiegel-Sollwerte (Ticket 69)
+
+`preisspiegelSollwerte` in `rechnen.mjs` (BigInt, nie aus `kern` oder `vergabe`). Regeln wie D-05, D-36.1, D-44.1
+(Annahmen für die Demo):
+
+| Sollwert | Regel |
+|---|---|
+| Bieter: `summen`, `titel` | die Sollwerte des Angebots (`berechneSollwerteGaeb`, R7), Titel über die OZ |
+| `rang` | 1 + Anzahl der Angebote mit kleinerem Netto nach Nachlass (gleiche Werte gleicher Rang: 1, 1, 3) |
+| Min, Mittel, Max je Position | nur Positionen, die laut LV ins Netto gehen; verglichen werden Werte > 0 (0,000 und „nicht angeboten“ zählen nicht, D-05); an einer Normalposition der EP, an einer Zuschlagsposition der Betrag des Bieters (D-44.1) |
+| Mittel | `round_half_up(Summe / Anzahl)` auf die Stellen des Werts: EP 3, Betrag 2 |
+| GP des virtuellen Bieters | `round_half_up(Menge × EP, 2)`, an der Zuschlagsposition der Betrag selbst; ohne Wert > 0 nichts |
+| `virtuelleSummen.min/mittel/max` | Summe dieser GP, ohne Nachlass |
+| `virtuelleSummen.schaetzpreis` | Netto des LV mit seinen Schätzpreisen (55.465,59) |
+
+Herleitung an drei Positionen (alle drei Angebote):
+
+- 03.0070 (31,600 m; B nicht angeboten): A 4,101, C 3,844. Min 3,844 → 121,47; Max 4,101 → 129,59; Mittel
+  7,945 / 2 = 3,9725 → 3,973 → 31,600 × 3,973 = 125,5468 → **125,55**.
+- 03.0080 (88,250 m²; C 0,000): nur A 2,107 und B 2,261 zählen. Mittel 4,368 / 2 = 2,184 → 192,738 → **192,74**;
+  Min 185,94; Max 199,53.
+- 02.0050 A (Zuschlag, Beträge): A 544,71, B 617,02, C 772,62; Mittel 1.934,35 / 3 = 644,7833 → **644,78**.
+
+Rang: A 55.481,84 < B 56.607,77 (58.358,53 − 3 % = 1.750,76) < C 56.721,09 → 1, 2, 3; in jedem Paar entsprechend 1, 2.
+Der Selbsttest rechnet die virtuellen Summen ein zweites Mal unmittelbar aus den Angebotszeilen nach.
+
+Hinweis für Verbraucher: Der Schätzpreis setzt ein LV mit den EP aus `typisch.json` voraus. Ein per X83 eingelesenes
+LV trägt keine EP (X83 ist die Angebotsaufforderung); dort ist der Schätzpreis 0,00. Alle übrigen Werte hängen nur an
+Mengen, Bezügen und den Preisen der Bieter.
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
@@ -102,21 +168,30 @@ vorsichtigste Darstellung. **Spätere Tickets (K5/K6, V1/V2, 04) dürfen diese W
 Sollwerte der betroffenen Fälle gelten nur unter der jeweiligen Annahme.
 
 - **A1 Bedarfsposition ohne Gesamtbetrag:** GP wird berechnet und ausgewiesen (`gp`), geht aber nicht in
-  Titelsummen und Netto ein (`inSumme: false`). Das Glossar lässt „oder separat ausgewiesen“ zu; eine separate
-  Summe gibt es hier nicht.
+  Titelsummen und Netto ein (`inSumme: false`). Seit Ticket 51 tragen `typisch`, `gross` und die Angebote die
+  getrennte Bedarfssumme (`ausweise.…summeBedarfOhneGesamtbetrag`, F4); `winzig` hat keine Bedarfsposition.
 - **A2 Bedarfsposition mit Gesamtbetrag** (`bedarfMitGesamtbetrag: true`): geht wie eine Normalposition in die Summen
   ein. `typisch` enthält keine; `gross` enthält etwa 2 %.
-- **A3 Wahlposition:** GP wird berechnet und ausgewiesen, geht nicht in die Summen ein. Es findet kein Ersetzen der
-  Grundposition statt (`grundpositionId` ist nur ein Verweis). Der Zustand „Auftraggeber hat gewählt“ ist nicht abgebildet.
-- **A4 Zuschlagsposition:** hat eigene Menge, Einheit und EP, kein Prozentsatz auf die Bezugsposition. Ihr GP geht wie
-  bei einer Normalposition in die Summen ein; `bezugspositionId` ist nur ein Verweis. Seit Ticket 37 ist das die „Altform der
-  Zuschlagsposition“ (Glossar): Der Kern rechnet sie weiter als Menge × EP (R8). `zuschlag.json` zeigt die GAEB-Form mit
-  Satz und Bezugsform; die Rechenregel steht in `rechnen.mjs` (`berechneZuschlagSollwerte`) und ist aus den amtlichen
-  Prüfdateien belegt (D-03). Die Umstellung von `typisch`, `gross` und `typisch-angebote` war Punkt 5 von Ticket 44 und
-  ist ein eigenes Folgeticket (Ticket 44, Comments; D-44.2): Sie berührt die Fixture-Testhelfer von `kern`, `vertrag`,
-  `speicher`, `ausgabe`, `ui-grid`, `apps/web` und die GAEB-Export-Goldens aus `typisch`/`gross`. Bis dahin bleiben die
-  drei Dateien in der Altform. `vergabe` rechnet Angebote zu einer Zuschlagsposition in GAEB-Form schon mit dem Satz des
-  Bieters (`Angebotsposition.zuschlagssatz`); ein Angebot ohne Satz zu einer Altform-Position rechnet weiter Menge × EP.
+- **A3 Wahlposition:** GP wird berechnet und ausgewiesen, geht nicht in die Summen ein, aber in die Wahlsumme
+  (`ausweise.…summeWahl`, seit Ticket 51). Es findet kein Ersetzen der Grundposition statt (`grundpositionId` ist nur ein
+  Verweis). Der Zustand „Auftraggeber hat gewählt“ ist nicht abgebildet.
+- **A4 Zuschlagsposition** (seit Ticket 51 in allen Dateien GAEB-Form; ersetzt die frühere Annahme „eigene Menge × EP“):
+  Die Rechenregel ist Ticket 37, R1 bis R6, belegt aus den amtlichen Prüfdateien (D-03; BVBS 3.3 AVA X86 Bereich 1.30,
+  Musterdatei 3.1 X84). `rechnen.mjs` setzt sie unabhängig vom Kern um (`zuschlagsbasis`, `berechneSollwerteGaeb`).
+  - R1 Betrag = `round_half_up(Basis × Satz / 100, 2)`; ohne Satz kein Betrag.
+  - R2 Basis = Summe der GP der Bezugspositionen, die selbst einen GP haben und ins Netto gehen (keine Wahl, kein
+    Bedarf ohne Gesamtbetrag); eine Zuschlagsposition ist nie Basis.
+  - R3 `gliederung`: die Positionen vor der Zuschlagsposition unter demselben Elternknoten, rückwärts bis zur nächsten
+    Zuschlagsposition oder zum Anfang; unmittelbar davorstehende Zuschlagspositionen teilen dieselbe Basis.
+  - R4 `kennzeichnung`: wie R3, nur Positionen mit `zuschlagskennzeichen`.
+  - R5 `positionen`: die genannten Positionen, wo immer sie stehen (Teilmenge × EP, falls gesetzt; Annahme D-37.2).
+  - R6 Der Betrag geht wie ein GP in die Titelsummen und, nach den Merkmalen der Zuschlagsposition, in Netto,
+    Bedarfs- oder Wahlsumme.
+  `typisch`: 02.0050 A mit Satz 8,50 % auf 02.0050 (GP 6.544,88), Betrag 556,31 (in der Altform waren es
+  38,750 × 14,300 = 554,13). `gross`: jede Zuschlagsposition mit Satz 1,00 bis 15,00 % (eigener Seed) auf die
+  vorangehende Normalposition. `typisch-angebote`: Satz des Bieters = Satz des LV × Promille des Bieters (Basis plus
+  Streuung aus dem Seed), auf 2 Stellen gerundet. Die „Altform der Zuschlagsposition“ (Glossar; Kern R8) kommt in
+  keiner Fixture mehr vor; `bezugspositionId` entfällt, der Bezug steht in `zuschlag.bezug`.
 - **A5 Nicht angebotene Position:** Eintrag mit `status: "nicht-angeboten"`, ohne Feld `einheitspreis`; `gp` ist
   `null`, `inSumme: false`, die ID steht in `nichtAngeboten`. Ein angebotener Preis von `0.000` (`status: "angeboten"`)
   ist davon verschieden und ergibt GP `0.00`. Wie ein Preisspiegel nicht angebotene Positionen bewertet
