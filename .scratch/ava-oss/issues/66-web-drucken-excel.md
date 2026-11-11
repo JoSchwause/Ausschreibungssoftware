@@ -1,6 +1,6 @@
 # 66: O1/O2: Drucken und Excel-Rundlauf in der App
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: O1/O2 · Paket: `apps/web` (Ordner `src/ausgabe/`; Einhängestellen in `lv/LvSeite.tsx` und der Angebotsliste, D-20)
 Blocked by: 58 (PDF), 61 (Excel)
