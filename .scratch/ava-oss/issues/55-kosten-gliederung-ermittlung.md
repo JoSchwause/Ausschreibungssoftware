@@ -1,6 +1,6 @@
 # 55: C1: Kostengliederung (nur Nummern) und Kostenermittlung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: C1 · Paket: `packages/kosten` (neu; dazu der Eintrag in `tools/boundaries.mjs`, Workspace-Konfiguration)
 Blocked by: –
