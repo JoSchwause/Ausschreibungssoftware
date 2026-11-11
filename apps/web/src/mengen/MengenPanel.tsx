@@ -1,27 +1,77 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Panel der Mengenermittlung (Ticket 65, M2): Ansatzzeilen einer Position als Tabelle. Jede Zeile zeigt ihr Ergebnis
-// oder ihren Fehler mit Spalte; gerechnet wird nur von `mengen` (N1). Übernehmen schickt genau einen Befehl
-// `MengenansatzSetzen` mit Ansatz und Summe (A5, ein Undo-Schritt). Tastatur zuerst (U3): Enter legt eine Zeile an,
-// Strg+Entf löscht, Alt+Pfeil verschiebt, Strg+Enter übernimmt.
+// Panel der Mengenermittlung (Ticket 65, M2): Ansatzzeilen als Tabelle. Jede Zeile zeigt ihr Ergebnis oder ihren Fehler
+// mit Spalte; gerechnet wird nur von `mengen` (N1). Übernehmen gibt Ansatz und Summe genau einmal weiter (A5, ein
+// Undo-Schritt). Tastatur zuerst (U3): Enter legt eine Zeile an, Strg+Entf löscht, Alt+Pfeil verschiebt, Strg+Enter
+// übernimmt.
+//
+// Ticket 87: allgemein (`MengenansatzPanel`) für eine Position des LV (`MengenPanel`, Befehl `MengenansatzSetzen`) und
+// für eine Zeile eines Aufmaßblatts, dort mit einem Feld für eine Menge ohne Ansatz. Zeilen in der Textform aus GAEB X31
+// (D-83.2) stehen als Text da, nicht als bearbeitbarer Ausdruck; man kann sie nur löschen.
 
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { Button, Dialog } from '@tethys/ui-basis';
-import type { MengenansatzSetzen, Position } from '@tethys/vertrag';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Ansatzzeile, Menge, MengenansatzSetzen, Position } from '@tethys/vertrag';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactElement, RefObject } from 'react';
 import {
-  ansatzBefehl,
   ansatzBerechnen,
-  entwurfAusPosition,
+  entwurfAusAnsatz,
   FORMELNUMMERN,
+  istTextform,
+  mengeneingabe,
   zeileAnlegen,
   zeileLeer,
   zeileLoeschen,
   zeileVerschieben,
   type Ansatzentwurf,
+  type Mengeneingabe,
 } from './ansatz';
 import { fehlerText, texte } from './texte';
 import './mengen.css';
+
+/** Wofür die Menge ermittelt wird: eine Position des LV oder die Zeile einer Position auf einem Aufmaßblatt. */
+export interface Mengenziel {
+  /** Ein neues Ziel beginnt mit frischem Entwurf (z. B. die Kennung der Position). */
+  readonly schluessel: string;
+  /** OZ und Kurztext, für den Titel. */
+  readonly name: string;
+  readonly einheit: string | null;
+  /** Der gespeicherte Stand. */
+  readonly mengenansatz: readonly Ansatzzeile[] | null;
+  readonly menge: Menge | null;
+}
+
+export interface MengenansatzPanelProps {
+  /** Offen, solange ein Ziel gewählt ist. */
+  ziel: Mengenziel | null;
+  /** Mit Feld für eine Menge ohne Ansatz (Aufmaßblatt); ohne steht die Menge im Grid (LV). */
+  direkteMenge?: boolean;
+  onSchliessen: () => void;
+  /** Übernimmt Ansatz und Menge, nur wenn sich etwas ändert; `true`, wenn angenommen (sonst steht die Meldung da). */
+  uebernehmen: (eingabe: Mengeneingabe) => Promise<boolean>;
+}
+
+export function MengenansatzPanel(props: MengenansatzPanelProps): ReactElement {
+  const { ziel, onSchliessen } = props;
+  const erstes = useRef<HTMLInputElement>(null);
+  return (
+    <Dialog
+      offen={ziel !== null}
+      onOffenChange={(o) => {
+        if (!o) onSchliessen();
+      }}
+      titel={ziel ? `${texte.titel}: ${ziel.name}` : texte.titel}
+      beschreibung={
+        props.direkteMenge === true
+          ? `${texte.beschreibung} ${texte.direkt.beschreibung}`
+          : texte.beschreibung
+      }
+      anfangsfokus={erstes}
+    >
+      {ziel ? <Inhalt key={ziel.schluessel} {...props} ziel={ziel} erstes={erstes} /> : null}
+    </Dialog>
+  );
+}
 
 export interface MengenPanelProps {
   /** Offen, solange eine Position gewählt ist. */
@@ -33,32 +83,48 @@ export interface MengenPanelProps {
 
 const positionsname = (p: Position): string => [p.ordnungszahl, p.kurztext].filter(Boolean).join(' ');
 
-export function MengenPanel(props: MengenPanelProps): ReactElement {
-  const { position, onSchliessen } = props;
-  const erstes = useRef<HTMLInputElement>(null);
+/** Das Panel an einer Position des LV (Ticket 65): Übernehmen schickt genau einen Befehl `MengenansatzSetzen`. */
+export function MengenPanel({ position, onSchliessen, senden }: MengenPanelProps): ReactElement {
   return (
-    <Dialog
-      offen={position !== null}
-      onOffenChange={(o) => {
-        if (!o) onSchliessen();
-      }}
-      titel={position ? `${texte.titel}: ${positionsname(position)}` : texte.titel}
-      beschreibung={texte.beschreibung}
-      anfangsfokus={erstes}
-    >
-      {position ? <Inhalt key={position.id} {...props} position={position} erstes={erstes} /> : null}
-    </Dialog>
+    <MengenansatzPanel
+      ziel={
+        position === null
+          ? null
+          : {
+              schluessel: position.id,
+              name: positionsname(position),
+              einheit: position.einheit,
+              mengenansatz: position.mengenansatz ?? null,
+              menge: position.menge,
+            }
+      }
+      onSchliessen={onSchliessen}
+      uebernehmen={(e) =>
+        position === null
+          ? Promise.resolve(false)
+          : senden({ art: 'MengenansatzSetzen', positionId: position.id, ...e })
+      }
+    />
   );
 }
 
 function Inhalt(
-  props: MengenPanelProps & { position: Position; erstes: RefObject<HTMLInputElement | null> },
+  props: MengenansatzPanelProps & { ziel: Mengenziel; erstes: RefObject<HTMLInputElement | null> },
 ) {
-  const { position, onSchliessen, senden, erstes } = props;
+  const { ziel, onSchliessen, erstes } = props;
+  const direkteMenge = props.direkteMenge === true;
   const [zeilen, setZeilen] = useState<readonly Ansatzentwurf[]>(() => {
-    const e = entwurfAusPosition(position);
+    const e = entwurfAusAnsatz(ziel.mengenansatz);
     return e.length > 0 ? e : zeileAnlegen([], -1);
   });
+  // Menge ohne Ansatz (nur Aufmaßblatt): Eine gespeicherte Menge von Hand steht im Feld, der Fokus beginnt dort.
+  const vonHand = direkteMenge && ziel.mengenansatz === null && ziel.menge !== null;
+  const [direkt, setDirekt] = useState(() =>
+    direkteMenge && ziel.mengenansatz === null && ziel.menge !== null ? formatiereMengeDe(ziel.menge) : '',
+  );
+  const [direktFehler, setDirektFehler] = useState<string | null>(null);
+  const direktFeld = useRef<HTMLInputElement | null>(null);
+  const direktId = useId();
   const [laeuft, setLaeuft] = useState(false);
   const felder = useRef(new Map<number, HTMLInputElement>());
   const [fokus, setFokus] = useState<number | null>(null);
@@ -81,6 +147,7 @@ function Inhalt(
     }
     return m;
   }, [zeilen, ergebnis]);
+  const mitZeilen = zeilen.some((z) => !zeileLeer(z));
 
   const aendere = (schluessel: number, teil: Partial<Ansatzentwurf>): void => {
     setZeilen((alt) => alt.map((z) => (z.schluessel === schluessel ? { ...z, ...teil } : z)));
@@ -88,13 +155,18 @@ function Inhalt(
 
   const uebernehmen = async (): Promise<void> => {
     if (laeuft) return;
-    const b = ansatzBefehl(position, zeilen);
-    if (b === null) {
+    const r = mengeneingabe(ziel, zeilen, direkteMenge ? direkt : null);
+    if (!r.ok) {
+      setDirektFehler(r.fehler);
+      direktFeld.current?.focus();
+      return;
+    }
+    if (r.wert === null) {
       onSchliessen();
       return;
     }
     setLaeuft(true);
-    const ok = await senden(b);
+    const ok = await props.uebernehmen(r.wert);
     setLaeuft(false);
     if (ok) onSchliessen();
   };
@@ -162,12 +234,14 @@ function Inhalt(
           ) : null}
           {zeilen.map((z, i) => {
             const r = jeZeile.get(z.schluessel);
-            const fehler = r?.fehler ?? null;
+            const textform = istTextform(z);
+            const fehler = textform ? null : (r?.fehler ?? null);
             return (
               <tr
                 key={z.schluessel}
                 data-zeile={z.zeile}
                 data-fehler={fehler ? fehler.code : undefined}
+                data-textform={textform ? true : undefined}
                 onKeyDown={(e) => {
                   taste(e, i);
                 }}
@@ -179,6 +253,7 @@ function Inhalt(
                   <select
                     className="mengen__auswahl"
                     aria-label={texte.formelLabel(z.zeile)}
+                    disabled={textform}
                     value={z.formel}
                     onChange={(e) => {
                       aendere(z.schluessel, { formel: Number(e.target.value) });
@@ -198,12 +273,18 @@ function Inhalt(
                     ref={(el) => {
                       if (el) felder.current.set(z.schluessel, el);
                       else felder.current.delete(z.schluessel);
-                      if (i === 0) erstes.current = el;
+                      if (i === 0 && !vonHand) erstes.current = el;
                     }}
                     type="text"
-                    className="tx-eingabe mengen__ausdruck"
+                    className={
+                      textform
+                        ? 'tx-eingabe mengen__ausdruck mengen__textform'
+                        : 'tx-eingabe mengen__ausdruck'
+                    }
                     aria-label={texte.ausdruckLabel(z.zeile)}
                     aria-invalid={fehler ? true : undefined}
+                    readOnly={textform}
+                    title={textform ? texte.textform : undefined}
                     spellCheck={false}
                     autoComplete="off"
                     value={z.ausdruck}
@@ -217,6 +298,7 @@ function Inhalt(
                     type="text"
                     className="tx-eingabe mengen__variable"
                     aria-label={texte.variableLabel(z.zeile)}
+                    readOnly={textform}
                     spellCheck={false}
                     autoComplete="off"
                     value={z.variable}
@@ -226,7 +308,9 @@ function Inhalt(
                   />
                 </td>
                 <td className="mengen__ergebnis" aria-live="polite">
-                  {fehler ? (
+                  {textform ? (
+                    <span className="mengen__textform-hinweis">{texte.textformKurz}</span>
+                  ) : fehler ? (
                     <button
                       type="button"
                       className="mengen__fehler"
@@ -292,8 +376,8 @@ function Inhalt(
               ) : (
                 <span data-wert="summe">{formatiereMengeDe(ergebnis.summe)}</span>
               )}{' '}
-              <span className="mengen__einheit">{position.einheit ?? ''}</span>
-              {ergebnis.summe === null && zeilen.some((z) => !zeileLeer(z)) ? (
+              <span className="mengen__einheit">{ziel.einheit ?? ''}</span>
+              {ergebnis.summe === null && mitZeilen ? (
                 <span className="mengen__nur-sr"> {texte.summeFehler}</span>
               ) : null}
             </td>
@@ -301,6 +385,48 @@ function Inhalt(
           </tr>
         </tfoot>
       </table>
+      {direkteMenge ? (
+        <div className="mengen__direkt">
+          <label htmlFor={direktId}>{texte.direkt.label}</label>
+          <input
+            ref={(el) => {
+              direktFeld.current = el;
+              if (vonHand) erstes.current = el;
+            }}
+            id={direktId}
+            type="text"
+            inputMode="decimal"
+            className="tx-eingabe mengen__direkt-feld"
+            spellCheck={false}
+            autoComplete="off"
+            disabled={mitZeilen}
+            aria-invalid={direktFehler !== null && !mitZeilen ? true : undefined}
+            aria-describedby={`${direktId}-hinweis`}
+            value={mitZeilen ? '' : direkt}
+            onChange={(e) => {
+              setDirekt(e.target.value);
+              setDirektFehler(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.metaKey) return;
+              e.preventDefault();
+              void uebernehmen();
+            }}
+          />
+          <span className="mengen__einheit">{ziel.einheit ?? ''}</span>
+          <span
+            id={`${direktId}-hinweis`}
+            className={
+              direktFehler !== null && !mitZeilen
+                ? 'mengen__direkt-hinweis mengen__direkt-fehler'
+                : 'mengen__direkt-hinweis'
+            }
+            role="status"
+          >
+            {mitZeilen ? texte.direkt.ausAnsatz : (direktFehler ?? texte.direkt.hinweis)}
+          </span>
+        </div>
+      ) : null}
       <p className="mengen__hinweis">{texte.tastenHinweis}</p>
       <footer className="tx-dialog__fuss">
         <Button

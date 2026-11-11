@@ -12,6 +12,7 @@
 
 import type {
   AngebotChangeSet,
+  AufmassChangeSet, // Ticket 87
   AuftragsLvChangeSet, // Ticket 64
   KostenermittlungChangeSet, // Ticket 89
   LvChangeSet,
@@ -33,6 +34,7 @@ export interface Teil {
     | ProjektChangeSet
     | AngebotChangeSet
     | AuftragsLvChangeSet // Ticket 64: Zuschlag
+    | AufmassChangeSet // Ticket 87: Aufmaßblatt
     | RechnungChangeSet // Ticket 88
     | KostenermittlungChangeSet; // Ticket 89
 }
