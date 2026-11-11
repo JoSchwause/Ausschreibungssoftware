@@ -156,6 +156,49 @@ test.describe('Kopieren, Ausschneiden, Einfügen', () => {
     expect(await page.evaluate(() => window.__harness.kopien)).toEqual([]);
     await expect(grid(page).locator('.tx-grid__zeile--ausgeschnitten')).toHaveCount(0);
   });
+
+  test('Strg+V gleich nach Strg+X verschiebt, auch solange die Zwischenablage noch den alten Text hat', async ({
+    page,
+  }) => {
+    await page.goto('/?fixture=typisch&kopie=1');
+    await zelle(page, 'Bauzaun stellen', 'kurztext').click();
+    await page.keyboard.press('Shift+ArrowDown');
+    // Strg+X, Klick aufs Ziel und Strg+V in einer Aufgabe, also bevor der Browser das Schreiben in die Zwischenablage
+    // abschließt (Chrome: nach dem nächsten Bild). Das Einfügen sieht darum noch den alten Inhalt der Zwischenablage.
+    await page.evaluate(async () => {
+      const reactFertig = async (): Promise<void> => {
+        for (let i = 0; i < 3; i++) await Promise.resolve();
+      };
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'x',
+          code: 'KeyX',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await reactFertig();
+      const ziel = [...document.querySelectorAll('[role="row"][data-i]')]
+        .find((r) => r.querySelector('[data-spalte="kurztext"]')?.textContent === 'Sauberkeitsschicht')
+        ?.querySelector('[data-spalte="menge"]');
+      ziel?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+      await reactFertig();
+      const alt = new DataTransfer();
+      alt.setData('text/plain', 'Alter Inhalt\t1,000\tStk');
+      ziel?.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: alt, bubbles: true, cancelable: true }),
+      );
+    });
+    expect(await befehle(page)).toEqual([
+      {
+        art: 'KnotenlisteVerschieben',
+        knotenIds: [idVon('Bauzaun stellen'), idVon('Baustrom und Bauwasser')],
+        ziel: { art: 'nach', knotenId: idVon('Sauberkeitsschicht') },
+      },
+    ]);
+    expect(await page.evaluate(() => window.__harness.kopien)).toEqual([]);
+  });
 });
 
 test.describe('Löschen mit Rückfrage', () => {
