@@ -1,6 +1,6 @@
 # 79: Speicher v1.4: Migration 5, Repositories für Auftrags-LV, Aufmaß, Rechnung, Kostenermittlung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: S · Paket: `packages/speicher`
 Blocked by: 70
