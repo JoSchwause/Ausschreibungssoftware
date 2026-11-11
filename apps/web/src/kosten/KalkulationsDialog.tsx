@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// EP kalkulieren (Ticket 89, C4, Ticket 78): Ansatzzeilen und Zuschlagssätze je Kostenart. Gerechnet wird in `kosten`
-// (`einzelpreiskalkulationBerechnen`); der Dialog zeigt den Nachweis (Einzelkosten, Zuschlag, Anteil) und den EP. „Übernehmen“
+// EP kalkulieren (Ticket 89, C4, Ticket 78): Kalkulationsansätze und Zuschlagssätze der Kalkulation je Kostenart. Gerechnet
+// wird in `kosten` (`einzelpreiskalkulationBerechnen`); der Dialog zeigt den Nachweis (Einzelkosten, Kalkulationszuschlag,
+// Anteil) und den EP. „Übernehmen“
 // schreibt Einheitspreisanteile und EP als **ein** Undo-Schritt. Die Ansätze selbst werden nicht gespeichert (D-36 (5)); der Dialog
 // sagt das und beginnt bei jedem Öffnen leer. Unlesbare Werte sind Feldfehler wie in jeder Zelle (U5: nichts wird gesperrt).
 
@@ -16,7 +17,7 @@ import {
   LEERE_ZEILE,
   kalkulationBefehle,
   kalkulationRechnen,
-  type Ansatzzeile,
+  type Kalkulationszeile,
   type Kalkulationsformular,
 } from './kalkulation';
 import { texte } from './texte';
@@ -53,7 +54,7 @@ export function KalkulationsDialog({
   );
   const { ergebnis, fehler } = lauf;
 
-  const zeileAendern = (i: number, neu: Partial<Ansatzzeile>): void => {
+  const zeileAendern = (i: number, neu: Partial<Kalkulationszeile>): void => {
     setForm((f) => ({ ...f, zeilen: f.zeilen.map((z, j) => (j === i ? { ...z, ...neu } : z)) }));
   };
   const feldFehler = (i: number, feld: 'ansatzmenge' | 'kostensatz'): string | undefined =>
@@ -151,7 +152,7 @@ export function KalkulationsDialog({
           <tr>
             <th>{t.spalteArt}</th>
             <th>{t.spalteEinzelkosten}</th>
-            <th>{t.spalteZuschlag}</th>
+            <th>{t.spalteKalkulationszuschlag}</th>
             <th>{t.spalteAnteil}</th>
           </tr>
         </thead>
@@ -208,10 +209,10 @@ function ZeilenFelder({
   onEntfernen,
 }: {
   nr: number;
-  zeile: Ansatzzeile;
+  zeile: Kalkulationszeile;
   fehlerMenge: string | undefined;
   fehlerSatz: string | undefined;
-  onChange: (neu: Partial<Ansatzzeile>) => void;
+  onChange: (neu: Partial<Kalkulationszeile>) => void;
   onEntfernen: () => void;
 }): ReactElement {
   return (
