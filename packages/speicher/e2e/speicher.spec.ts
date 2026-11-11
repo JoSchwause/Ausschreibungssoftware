@@ -139,7 +139,7 @@ test.describe('Neuladen während des Schließens (Ticket 52)', () => {
             ],
             entfernt: [],
           },
-          summen: { positionen: [], gliederungen: [], gesamt: null },
+          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
         },
       }));
       expect(await ps(page, 'anwenden', DB, schritte)).toMatchObject({ ok: true });

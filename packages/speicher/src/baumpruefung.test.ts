@@ -7,6 +7,7 @@ import type { Knoten, LvChangeSet, Position, PositionId, Protokolleintrag, Titel
 import { describe, expect, it } from 'vitest';
 import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert, zaehle } from './testhilfe/node';
+import { LEERES_SUMMENVORHER } from './vertrag-v13';
 
 const typisch = ladeFixture('typisch');
 const lvId = typisch.lv.leistungsverzeichnis.id;
@@ -27,7 +28,7 @@ const changeSet = (k: Partial<LvChangeSet['knoten']>): LvChangeSet => ({
   leistungsverzeichnisId: lvId,
   kopf: null,
   knoten: { hinzugefuegt: [], geaendert: [], entfernt: [], ...k },
-  summen: { positionen: [], gliederungen: [], gesamt: null },
+  summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
 });
 
 const kinder = (elternId: string): Knoten[] => knoten.filter((k) => k.elternId === elternId);
