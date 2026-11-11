@@ -498,3 +498,84 @@ describe('Gutschrift und Namensräume', () => {
     expect(kern(lesung.befunde)).toEqual([{ code: 'keine-xrechnung', feld: undefined, schwere: 'fehler' }]);
   });
 });
+
+describe('Unterpositionen in CII (cii-unterpositionen.xml)', () => {
+  const lesung = xrechnungLesen(testdatei('cii-unterpositionen.xml'));
+
+  it('hängt Positionen mit ParentLineID unter ihre Oberposition; BT-106 zählt nur die oberste Ebene', () => {
+    expect(lesung.rechnung?.rechnungsart).toBe('876');
+    expect(lesung.rechnung?.positionen).toEqual([
+      position({
+        kennung: '1',
+        nettobetrag: '100.00',
+        bezeichnung: 'Titel 1 Erdarbeiten',
+        unterpositionen: [
+          position({
+            kennung: '1.1',
+            menge: '25.000',
+            einheit: 'MTK',
+            nettobetrag: '60.00',
+            nettopreis: '2.400',
+            bezeichnung: 'Oberboden abtragen',
+          }),
+          position({
+            kennung: '1.2',
+            menge: '5.000',
+            einheit: 'MTQ',
+            nettobetrag: '40.00',
+            nettopreis: '8.000',
+            bezeichnung: 'Boden lösen',
+          }),
+        ],
+      }),
+      position({
+        kennung: '2.1',
+        menge: '0.500',
+        einheit: 'HUR',
+        nettobetrag: '20.00',
+        nettopreis: '40.000',
+        bezeichnung: 'Stundenlohn',
+      }),
+    ]);
+  });
+
+  it('liest eine Unterposition ohne vorangehende Oberposition als eigene Position, mit Befund', () => {
+    expect(lesung.befunde).toEqual([
+      expect.objectContaining({
+        code: 'unterposition-ohne-oberposition',
+        schwere: 'warnung',
+        ort: {
+          pfad: '/CrossIndustryInvoice/SupplyChainTradeTransaction/IncludedSupplyChainTradeLineItem[4]',
+        },
+      }),
+    ]);
+  });
+});
+
+describe('Umsatzsteueraufschlüsselung', () => {
+  const kopfsteuer =
+    '<ram:RateApplicablePercent>19</ram:RateApplicablePercent>\n            </ram:ApplicableTradeTax>\n' +
+    '            <ram:SpecifiedTradeSettlementHeaderMonetarySummation>';
+
+  it('meldet einen fehlenden Steuerbetrag (BT-117) statt einer Rechenabweichung', () => {
+    const text = testdatei('bau-abschlag-875.xml').replace(
+      '<ram:CalculatedAmount>1935.34</ram:CalculatedAmount>',
+      '',
+    );
+    const lesung = xrechnungLesen(text);
+    expect(lesung.rechnung?.umsatzsteueraufschluesselung[0]?.betrag).toBeNull();
+    expect(kern(lesung.befunde)).toEqual([
+      { code: 'pflichtangabe-fehlt', feld: 'BT-117', schwere: 'fehler' },
+    ]);
+  });
+
+  it('lässt einen Satz mit mehr als 2 Stellen exakt stehen, mit Befund', () => {
+    const original = testdatei('bau-abschlag-875.xml');
+    expect(original).toContain(kopfsteuer);
+    const lesung = xrechnungLesen(original.replace(kopfsteuer, kopfsteuer.replace('>19<', '>19.125<')));
+    expect(lesung.rechnung?.umsatzsteueraufschluesselung[0]?.satz).toBe('19.125');
+    expect(kern(lesung.befunde)).toEqual([
+      { code: 'satz-zu-viele-stellen', feld: 'BT-119', schwere: 'warnung' },
+    ]);
+  });
+});

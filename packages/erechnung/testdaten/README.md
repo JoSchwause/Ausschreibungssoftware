@@ -56,3 +56,20 @@ Die Positionen der 1. Abschlagsrechnung (Σ BT-131 = 10.185,99), dazu bewusst fa
 
 Jede Regel rechnet mit den Werten der Datei, nicht mit den Sollwerten der Regel davor; deshalb meldet jede Regel genau
 einen Befund.
+
+## `cii-unterpositionen.xml` (CII, Teilschlussrechnung Bau 876, Extension)
+
+Position 1 (Gruppe) mit den Unterpositionen 1.1 (25 MTK × 2,40 = 60,00) und 1.2 (5 MTQ × 8,00 = 40,00), zusammen
+100,00. Position 2.1 (0,5 HUR × 40,00 = 20,00) verweist auf eine Oberposition 9, die es nicht gibt, und zählt deshalb
+als eigene Position. BT-106 = 100,00 + 20,00 = 120,00; USt 19 % = 22,80; BT-112 = BT-115 = 142,80.
+
+## Weitere Dateien
+
+| Datei                         | Zweck                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| `pflichtangaben-fehlen.xml`   | CII ohne BT-1, BT-2, BT-5, BT-109, BT-115 und ohne BT-131 in Position 2                        |
+| `auffaellige-werte.xml`       | UBL: BT-24 ohne XRechnung, 30. Februar, USD, `1.000,00`, 3 Stellen im Betrag, 4 in Menge/Preis |
+| `gutschrift-381.xml`          | UBL-Gutschrift (`CreditNote`, 381) mit Standard-Namensraum an der Wurzel                       |
+| `entitaet-billion-laughs.xml` | DOCTYPE mit verschachtelten Entitäten („Billion Laughs“)                                       |
+| `entitaet-extern.xml`         | DOCTYPE mit externer Entität (XXE)                                                             |
+| `fremde-wurzel.xml`           | wohlgeformtes XML, aber GAEB statt XRechnung                                                   |
