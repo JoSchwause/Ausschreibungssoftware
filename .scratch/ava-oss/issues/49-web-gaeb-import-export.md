@@ -1,6 +1,6 @@
 # 49: App: GAEB-Import und -Export, X84-Import (optional, wenn Zeit)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: G (App-Teil) · Paket: `apps/web`
 Blocked by: 48, 40, 45, 44
