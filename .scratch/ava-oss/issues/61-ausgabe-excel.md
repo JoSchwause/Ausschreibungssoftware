@@ -1,6 +1,6 @@
 # 61: O2: Excel-Export und -Import (LV für Bieter, Rücklauf als Angebot)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: O2 (mit V5) · Paket: `packages/ausgabe`
 Blocked by: 58 (gleiches Paket)
