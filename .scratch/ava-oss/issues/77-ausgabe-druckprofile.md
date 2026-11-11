@@ -1,6 +1,6 @@
 # 77: O3: Druckprofile und Spike „getaggtes PDF“
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: O3 · Paket: `packages/ausgabe`
 Blocked by: –
@@ -66,3 +66,5 @@ Druckprofile in `packages/ausgabe`: Typ, drei Standardprofile, JSON mit Befunden
 - Neue Optionen (Vorgabe = bisheriges Verhalten): `langtext` (`voll | kein | zeilen`), `titelsummen`, `schlussblock`, `deckblatt`; nur PDF: `seitenrand`, `kopfzeile`, `fusszeile`; dazu `ersetzePlatzhalter`, `kuerzeBloecke`.
 
 Spike getaggtes PDF (ADR 0012, Abschnitt „Spike: getaggtes PDF“; Code `messung/spike-tags.spec.ts`, `pnpm --dir packages/ausgabe messen`): pdfkit 0.20.2 (MIT, schon unter pdfmake, keine neue Abhängigkeit) schreibt mit `tagged: true` und `struct()` einen echten Strukturbaum; `gross` als Gerüst etwa 1,7 s, 6,6 MB (pdfmake 1,4 MB), Bündel unverändert 68 KiB gzip; im Browser nicht gemessen. Empfehlung v1.x: pdfmake bleibt; bei Tag-Pflicht ein zweiter Renderer direkt auf pdfkit (eigener Umbruch nötig), eigenes Ticket. Nicht geprüft: pdf-lib, jsPDF, @react-pdf.
+
+Merged: 843bc745116bf8af561f513f0d56a3f2d6bacfc9 in integration/welle-5

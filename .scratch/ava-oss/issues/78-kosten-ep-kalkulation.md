@@ -1,6 +1,6 @@
 # 78: C4: EP-Kalkulation (Zuschlagskalkulation je Kostenart)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: C4 · Paket: `packages/kosten`
 Blocked by: –
@@ -108,3 +108,5 @@ Branch `welle-5/78-ep-kalkulation` (auf `integration/welle-5` gemergt). Paket `p
 Tests: Golden (Mauerwerk, Rundung halb aufwärts, negative Werte, Satz unter −100 %, fehlende Werte, freie Bezeichnung;
 Übersicht mit zwei Positionen, Mittellohn 49,047, Lohnstunden 0) und 9 Property-Tests mit `bigint`-Orakel. Volle Suite
 grün: Lint, Typecheck, Vitest 2046 bestanden (2 übersprungen, wie zuvor), Fixtures 20/20.
+
+Merged: 3923136bebcd6f0e71a2a325f8d6e5c77a07b3e8 in integration/welle-5

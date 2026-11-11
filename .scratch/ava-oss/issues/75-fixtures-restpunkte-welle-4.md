@@ -82,4 +82,4 @@ werden jetzt im Selbsttest eigens aus den Knoten nachgezählt; der Drucktest (Ti
 `fx.sollwerte.ausweise.gesamt.summeBedarfOhneGesamtbetrag`/`.summeWahl` und `fx.sollwerte.ausweise.titel[<Titel-ID>]`
 lesen (Änderung in `packages/ausgabe`, siehe Hinweis 1). README A7 und neuer Abschnitt „Bedarfs- und Wahlsumme der LV“.
 
-Merged: 579aa9977ab0fd0acbf5bac502b4cea35dcea4f6 in integration/welle-5
+Merged: 78da98fff371a71d7c97522e55689d72429ed9f1 in integration/welle-5

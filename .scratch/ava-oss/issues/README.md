@@ -130,9 +130,9 @@ gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgeti
 | 70 | F | `vertrag` v1.4: Repository Auftrags-LV (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 5) |
 | 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | ready-for-agent (Welle 5) |
 | 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | ready-for-agent (Welle 5) |
-| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | ready-for-agent (Welle 5) |
+| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | resolved (Welle 5) |
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent (Welle 5) |
-| 75 | F | Fixtures: Restpunkte | `fixtures/` | ready-for-agent (Welle 5) |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved (Welle 5) |
 
 # Tickets Welle 5 (Lauf, 2026-11-11)
 
@@ -148,8 +148,8 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent |
 | 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved |
 | 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | ready-for-agent |
-| 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | ready-for-agent |
-| 78 | C4 | EP-Kalkulation | `packages/kosten` | ready-for-agent |
+| 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
+| 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
 | 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | ready-for-agent |
 | 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
