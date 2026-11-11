@@ -14,6 +14,7 @@ import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
 import { lvSitzung, projektSitzung, type LvSitzung } from './befehlsweg';
 import { merkmaleBefehl, merkmalwahlVon } from './merkmale';
+import { entwurfBefehle, entwurfVon } from './positionsentwurf';
 import { ozMaskeLesen } from './ozmaske';
 import { nachlassBefehl } from './summeneingabe';
 
@@ -118,6 +119,44 @@ describe('Merkmale an der Position (F4, F5)', () => {
       pauschal: false,
     });
     expect(b?.merkmale.wahl).toEqual({ gruppe: 1, variante: 2, grundpositionId: null });
+  });
+});
+
+describe('Positionsdialog durch Kern und Speicher (Ticket 47)', () => {
+  it('Anteile, Leitbeschreibung und Wahl mit Grundposition kommen an; der EP folgt den Anteilen', async () => {
+    const s = await lvMitPositionen();
+    const p = position(s, 1);
+    const e = entwurfVon(p);
+    const r = entwurfBefehle(p, {
+      ...e,
+      epa: { ...e.epa, lohn: '40', stoffe: '8,9' },
+      wahl: true,
+      wahlGruppe: '1',
+      wahlVariante: '1',
+      grundpositionId: position(s, 0).id,
+      leitbeschreibung: true,
+      unterbeschreibungen: [{ nummer: '01', kurztext: 'Teil', langtext: [], menge: '2', einheit: 'h' }],
+    });
+    for (const b of r.befehle) expect((await s.befehl(b)).ok).toBe(true);
+    const neu = position(s, 1);
+    expect(neu.einheitspreis).toBe('48.900');
+    expect(neu.epa?.lohn).toBe('40.000');
+    expect(neu.merkmale.wahl).toEqual({ gruppe: 1, variante: 1, grundpositionId: position(s, 0).id });
+    expect(neu.leitbeschreibung?.unterbeschreibungen[0]?.menge).toBe('2.000');
+    expect(entwurfBefehle(neu, entwurfVon(neu)).befehle).toEqual([]);
+  });
+
+  it('Formfehler des Kerns: pauschale Zuschlagsposition wird abgewiesen (Feld merkmale)', async () => {
+    const s = await lvMitPositionen();
+    const p = position(s, 2);
+    const r = entwurfBefehle(p, {
+      ...entwurfVon(p),
+      zuschlag: true,
+      pauschal: true,
+      bezugsform: 'gliederung',
+    });
+    const a = await s.befehl(r.befehle[0] as never);
+    expect(a.ok ? null : a.abweisung.art === 'befehl' && a.abweisung.fehler.feld).toBe('merkmale');
   });
 });
 
