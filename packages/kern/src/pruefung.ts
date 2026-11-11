@@ -4,7 +4,11 @@
 
 import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
 import type {
+  Ansatzzeile,
+  Auftragnehmer,
   Befehlsfehler,
+  EpaArt,
+  EpaBezeichnung,
   Knoten,
   Leistungsverzeichnis,
   LvInhalt,
@@ -45,7 +49,8 @@ export function unerlaubtesFeld(
  *  2. Zuschlagsposition mit `zuschlagskennzeichen` (`merkmale.zuschlagskennzeichen`): sie ist nie Basis;
  *  3. Bezugsliste nennt eine Zuschlagsposition (`zuschlag.bezug.positionen`; D-03: nie Basis einer anderen);
  *  4. `wahl.variante` nicht ganzzahlig 0 bis 9 oder `wahl.gruppe` negativ oder nicht ganzzahlig (`merkmale.wahl`);
- *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`).
+ *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`);
+ *  6. Mengenansatz in falscher Form (`mengenansatz`, `mengenansatzFehler`; Ticket 56).
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -63,6 +68,10 @@ export function positionsdatenFehler(
   if (daten.einheitspreis !== null) {
     const e = alsEinheitspreis(daten.einheitspreis);
     if (!e.ok) return feld('einheitspreis', e.fehler.meldung);
+  }
+  if (daten.mengenansatz !== undefined) {
+    const m = mengenansatzFehler(daten.mengenansatz);
+    if (m !== null) return feld('mengenansatz', m);
   }
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
@@ -150,14 +159,100 @@ export function positionsdatenFehler(
   return null;
 }
 
-/** Form der Stammdaten, die `LeistungsverzeichnisAnlegen` mitbringt (Zahlen in kanonischer Schreibweise). */
-export function inhaltKopfFehler(inhalt: Pick<LvInhalt, 'mwstSatz' | 'nachlass'>): Befehlsfehler | null {
+/**
+ * Form eines Mengenansatzes (Ticket 56, D-22): eine Liste von Ansatzzeilen mit ganzzahliger Zeilen- und Formelnummer,
+ * Ausdruck als Zeichenkette und Variablenname als Zeichenkette oder `null`. Der Kern wertet den Ansatz nie aus (A3: kein
+ * `kern → mengen`); doppelte Zeilennummern, unbekannte Formeln und Fehler im Ausdruck meldet `mengen`, nicht der Kern.
+ * Liefert einen Fehlertext oder `null`.
+ */
+export function mengenansatzFehler(ansatz: unknown): string | null {
+  if (!Array.isArray(ansatz)) return 'Der Mengenansatz muss eine Liste von Ansatzzeilen sein.';
+  for (const roh of ansatz as readonly unknown[]) {
+    if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
+      return 'Eine Ansatzzeile muss ein Objekt sein.';
+    const z = roh as Partial<Record<keyof Ansatzzeile, unknown>>;
+    if (!Number.isSafeInteger(z.zeile)) return 'Die Zeilennummer einer Ansatzzeile ist ganzzahlig.';
+    if (!Number.isSafeInteger(z.formel)) return 'Die Formelnummer einer Ansatzzeile ist ganzzahlig.';
+    if (typeof z.ausdruck !== 'string') return 'Der Ausdruck einer Ansatzzeile ist eine Zeichenkette.';
+    if (z.variable !== null && typeof z.variable !== 'string')
+      return 'Der Variablenname einer Ansatzzeile ist eine Zeichenkette oder null.';
+  }
+  return null;
+}
+
+const AUFTRAGNEHMER_FELDER: readonly (keyof Auftragnehmer)[] = ['name', 'strasse', 'plz', 'ort'];
+
+/** Form des Auftragnehmers (v1.3): ein Objekt mit Name, Straße, PLZ und Ort, je Zeichenkette oder `null`. */
+function auftragnehmerFehler(roh: unknown): string | null {
+  if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
+    return 'Der Auftragnehmer muss ein Objekt sein.';
+  const a = roh as Partial<Record<keyof Auftragnehmer, unknown>>;
+  for (const f of AUFTRAGNEHMER_FELDER) {
+    const w = a[f];
+    if (w !== null && typeof w !== 'string') return `Auftragnehmer: „${f}“ ist eine Zeichenkette oder null.`;
+  }
+  return null;
+}
+
+const EPA_ARTEN: ReadonlySet<string> = new Set<EpaArt>([
+  'lohn',
+  'stoffe',
+  'geraete',
+  'nachunternehmer',
+  'sonstiges',
+  'frei',
+]);
+
+/**
+ * Form der EPA-Bezeichnungen (v1.3, D-28, D-53.6): eine nicht leere Liste, nach `nummer` streng aufsteigend (also jede
+ * Nummer höchstens einmal), `nummer` ganzzahlig 1 bis 6, `anteil` eine `EpaArt` und höchstens einmal, `bezeichnung`
+ * Zeichenkette oder `null`.
+ */
+function epaBezeichnungenFehler(roh: unknown): string | null {
+  if (!Array.isArray(roh) || roh.length === 0)
+    return 'Die EPA-Bezeichnungen sind eine nicht leere Liste (ohne Zuordnung fehlt das Feld).';
+  let vorige = 0;
+  const arten = new Set<unknown>();
+  for (const e of roh as readonly unknown[]) {
+    if (typeof e !== 'object' || e === null || Array.isArray(e))
+      return 'Eine EPA-Bezeichnung muss ein Objekt sein.';
+    const b = e as Partial<Record<keyof EpaBezeichnung, unknown>>;
+    if (typeof b.nummer !== 'number' || !Number.isInteger(b.nummer) || b.nummer < 1 || b.nummer > 6)
+      return 'Die Nummer einer EPA-Bezeichnung ist ganzzahlig 1 bis 6.';
+    if (b.nummer <= vorige)
+      return 'Die EPA-Bezeichnungen sind nach Nummer aufsteigend sortiert, jede Nummer einmal.';
+    vorige = b.nummer;
+    if (typeof b.anteil !== 'string' || !EPA_ARTEN.has(b.anteil))
+      return `Unbekannter Anteil einer EPA-Bezeichnung: ${String(b.anteil)}`;
+    if (arten.has(b.anteil)) return `Anteil „${b.anteil}“ kommt in den EPA-Bezeichnungen zweimal vor.`;
+    arten.add(b.anteil);
+    if (b.bezeichnung !== null && typeof b.bezeichnung !== 'string')
+      return 'Die Bezeichnung einer EPA-Bezeichnung ist eine Zeichenkette oder null.';
+  }
+  return null;
+}
+
+/**
+ * Form der Stammdaten, die `LeistungsverzeichnisAnlegen` (und `AuftragsLeistungsverzeichnisAnlegen`) mitbringt: Zahlen in
+ * kanonischer Schreibweise; seit v1.3 (Ticket 56, D-27) die Form von `auftragnehmer` und `epaBezeichnungen`, nie Inhalte.
+ */
+export function inhaltKopfFehler(
+  inhalt: Pick<LvInhalt, 'mwstSatz' | 'nachlass' | 'auftragnehmer' | 'epaBezeichnungen'>,
+): Befehlsfehler | null {
   const mwst = alsProzent(inhalt.mwstSatz);
   if (!mwst.ok) return befehlsfehler('ungueltige-eingabe', mwst.fehler.meldung, undefined, 'mwstSatz');
   if (inhalt.nachlass !== null) {
     const e =
       inhalt.nachlass.art === 'prozent' ? alsProzent(inhalt.nachlass.wert) : alsBetrag(inhalt.nachlass.wert);
     if (!e.ok) return befehlsfehler('ungueltige-eingabe', e.fehler.meldung, undefined, 'nachlass');
+  }
+  if (Object.hasOwn(inhalt, 'auftragnehmer')) {
+    const f = auftragnehmerFehler(inhalt.auftragnehmer);
+    if (f !== null) return befehlsfehler('ungueltige-eingabe', f, undefined, 'auftragnehmer');
+  }
+  if (Object.hasOwn(inhalt, 'epaBezeichnungen')) {
+    const f = epaBezeichnungenFehler(inhalt.epaBezeichnungen);
+    if (f !== null) return befehlsfehler('ungueltige-eingabe', f, undefined, 'epaBezeichnungen');
   }
   return null;
 }

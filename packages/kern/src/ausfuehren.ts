@@ -36,6 +36,7 @@ import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { knotenEinfuegen, knotenlisteVerschieben } from './einfuegen-befehle';
 import { lvStandAnlegen } from './lv-stand';
+import { mengenansatzSetzen } from './mengenansatz-befehle';
 import {
   knotenInPapierkorbLegen,
   papierkorbLeeren,
@@ -60,7 +61,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten; Ticket 56: Mengenansatz). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
@@ -94,6 +95,7 @@ export const BEFEHLS_HANDLER = {
   PapierkorbLeeren: papierkorbLeeren,
   KnotenEinfuegen: knotenEinfuegen,
   KnotenlisteVerschieben: knotenlisteVerschieben,
+  MengenansatzSetzen: mengenansatzSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -105,9 +107,7 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
  */
 type Offen = Exclude<Art, Umgesetzt>;
 export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<Partial<Record<Art, string>>> =
-  {
-    MengenansatzSetzen: 'M2 (Ticket 56)', // v1.3: mechanisch angepasst, Folgeticket (kern: Mengenansatz, Ticket 56)
-  };
+  {};
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 

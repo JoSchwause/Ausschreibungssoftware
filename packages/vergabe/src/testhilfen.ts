@@ -246,6 +246,7 @@ interface FxKnoten {
   bedarfMitGesamtbetrag?: boolean;
   grundpositionId?: string;
   zuschlag?: Zuschlag;
+  zuschlagskennzeichen?: boolean; // nur `zuschlag.json` (Ticket 37)
 }
 
 export interface FxLv {
@@ -294,6 +295,10 @@ export interface FxAngebotsset {
   lvId: string;
   bieter: { id: string; name: string }[];
   angebote: FxAngebot[];
+  /** Ticket 69: Bietersummen je Angebot, Titelsummen nach OZ. */
+  preisspiegel: {
+    bieter: { angebotId: string; name: string; summen: FxSummen; titel: Record<string, string> }[];
+  };
 }
 
 function lies(name: string): unknown {
@@ -315,6 +320,7 @@ function fxMerkmale(k: FxKnoten): Positionsmerkmale {
       art === 'wahl'
         ? { gruppe: null, variante: null, grundpositionId: (k.grundpositionId ?? null) as PositionId | null }
         : null,
+    zuschlagskennzeichen: k.zuschlagskennzeichen === true,
   };
 }
 
@@ -372,7 +378,7 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
   };
 }
 
-export function lvAusFixture(name: 'typisch' | 'gross'): { fx: FxLv; zustand: LvZustand } {
+export function lvAusFixture(name: 'typisch' | 'gross' | 'zuschlag'): { fx: FxLv; zustand: LvZustand } {
   const fx = lies(name) as FxLv;
   return { fx, zustand: lvZustandAusInhalt(fx.id, fixtureAlsInhalt(fx)) };
 }
