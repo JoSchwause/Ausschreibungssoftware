@@ -7,6 +7,8 @@ export { auftragsLvBefehlAusfuehren } from './auftrags-lv';
 export {
   LEERE_SUMMENAENDERUNG,
   LEERER_SUMMENSTAND,
+  auftragsLvChangeSetAnwenden,
+  auftragsLvChangeSetUmkehren,
   changeSetUmkehren,
   lvChangeSetAnwenden,
 } from './changeset';
