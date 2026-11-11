@@ -8,6 +8,7 @@ import type {
   Prozent,
   ProjektId,
 } from '@tethys/vertrag';
+import { schreibeGaeb } from '@tethys/gaeb';
 import { describe, expect, it } from 'vitest';
 import { ozMaskeLesen } from './ozmaske';
 import { inhaltKopf, lvInhalt } from './inhalt';
@@ -45,5 +46,26 @@ describe('inhaltKopf und lvInhalt', () => {
     };
     expect(Object.keys(inhaltKopf(lv)).sort()).toEqual(['mwstSatz', 'nachlass', 'name', 'ozMaske']);
     expect(lvInhalt({ ...lv, ...voll })).toEqual({ ...voll, wurzelId: 'lv', knoten: [] });
+  });
+
+  it('Ticket 90: reicht vorlage und nachtrag an den GAEB-Writer weiter, damit er sie mit Warnung verwirft', () => {
+    const lv: Leistungsverzeichnis = {
+      name: 'X',
+      ozMaske: maske,
+      mwstSatz: '19.00' as Prozent,
+      nachlass: null,
+      id: 'lv' as LeistungsverzeichnisId,
+      projektId: 'p' as ProjektId,
+      knoten: [],
+    };
+    expect('vorlage' in lvInhalt(lv)).toBe(false);
+    expect(lvInhalt({ ...lv, vorlage: true }).vorlage).toBe(true);
+    const e = schreibeGaeb(lvInhalt({ ...lv, vorlage: true }), {
+      phase: 'X83',
+      version: '3.3',
+      erstellt: { datum: '2026-11-11', zeit: '10:00:00' },
+      programm: 'Test',
+    });
+    expect(e.befunde.some((b) => b.code === 'export-verworfen' && b.meldung.includes('Muster-LV'))).toBe(true);
   });
 });
