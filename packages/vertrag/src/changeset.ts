@@ -1,27 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ChangeSet (A6), Ergebniswerte und Fehler abgewiesener Befehle. Nur Typen.
 
-import type { AngebotBefehl, AuftragsLvBefehl, LvBefehl, ProjektBefehl } from './befehle';
+import type {
+  AngebotBefehl,
+  AufmassBefehl,
+  AuftragsLvBefehl,
+  KostenermittlungBefehl,
+  LvBefehl,
+  ProjektBefehl,
+  RechnungBefehl,
+} from './befehle';
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   KnotenId,
+  KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
   ProjektId,
+  RechnungId,
   Zeitstempel,
 } from './marken';
 import type {
   Angebot,
   AngebotKopf,
   Angebotsposition,
+  Aufmass,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
   Knoten,
+  Kostenermittlung,
   Leistungsverzeichnis,
   LvKopf,
   Papierkorbeintrag,
   Projekt,
+  Rechnung,
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
 
@@ -51,7 +65,12 @@ export type Befehlsfehlercode =
    */
   | 'oz-ueberlauf'
   | 'angebot-unbekannt'
-  | 'befehl-nicht-zustaendig'; // Befehl passt nicht zum übergebenen Zustand
+  | 'befehl-nicht-zustaendig' // Befehl passt nicht zum übergebenen Zustand
+  /**
+   * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
+   * Der eingefrorene Zahlbetrag ändert sich nie still.
+   */
+  | 'rechnung-freigegeben';
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -117,6 +136,27 @@ export interface AngebotZustand {
 export interface AuftragsLvZustand {
   readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
   readonly summen: Summenstand;
+}
+
+/**
+ * Aufmaßblatt als Zustand seiner Befehle (v1.4, Ticket 70 Punkt 6). Ohne Summen: Die Mengen rechnet die App, Summen
+ * entstehen erst in der Rechnungsprüfung (`abrechnung`) und werden nie gespeichert.
+ */
+export interface AufmassZustand {
+  readonly aufmass: Aufmass;
+}
+
+/**
+ * Rechnung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 7). Ohne Prüfergebnis: Das rechnet `abrechnung` bei Bedarf
+ * aus Auftrags-LV, Aufmaßblättern und früheren Rechnungen (D-36 (2)).
+ */
+export interface RechnungZustand {
+  readonly rechnung: Rechnung;
+}
+
+/** Kostenermittlung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 9). Ihre Summen rechnet `kosten` bei Bedarf (D-24). */
+export interface KostenermittlungZustand {
+  readonly kostenermittlung: Kostenermittlung;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -222,6 +262,12 @@ export interface AngebotChangeSet {
 /**
  * ChangeSet am Auftrags-LV (v1.1a, Punkt 5), gleich gebaut wie `LvChangeSet`. Mehr als das Anlegen erzeugt bis zur
  * Vergabe (Welle 4) kein Befehl; der Typ ist aber schon vollständig, damit Speicher und Undo nichts nachrüsten müssen.
+ *
+ * v1.4 (Ticket 70 Punkt 2): `NachtragUebernehmen` liefert `kopf: null`, neue Knoten unter `knoten.hinzugefuegt` und die
+ * betroffenen Summen; `KostengruppeSetzen` eine Knotenänderung ohne Summen. Entfernt ein ChangeSet eine Position, auf die
+ * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaßblätter,
+ * Rechnungen oder Nachtragsangaben eines LV darauf verweisen, weist `speicher` mit `konflikt` ab (Q5, wie beim
+ * Papierkorb und Angeboten).
  */
 export interface AuftragsLvChangeSet {
   readonly art: 'auftrags-leistungsverzeichnis';
@@ -233,7 +279,57 @@ export interface AuftragsLvChangeSet {
   readonly hinweise?: readonly Befehlshinweis[];
 }
 
-export type ChangeSet = ProjektChangeSet | LvChangeSet | AngebotChangeSet | AuftragsLvChangeSet;
+/**
+ * ChangeSet an einem Aufmaßblatt (v1.4, Ticket 70 Punkt 6; D-36 (8)): das ganze Blatt vorher und nachher, ohne Summen.
+ * `aufmass.vorher: null` legt an, `nachher: null` löscht (der volle Stand steht dann in `vorher`), beide gesetzt ändern.
+ * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` (Undo, ADR 0006). Bewusst grob: Auch eine einzelne
+ * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70).
+ */
+export interface AufmassChangeSet {
+  readonly art: 'aufmass';
+  readonly aufmassId: AufmassId;
+  readonly aufmass: Aenderung<Aufmass>;
+}
+
+/**
+ * ChangeSet an einer Rechnung (v1.4, Ticket 70 Punkt 7; D-36 (8)): die ganze Rechnung vorher und nachher, Lesart wie
+ * `AufmassChangeSet`. Freigeben und Freigabe aufheben sind Gegenstücke (nur `freigabe` unterscheidet `vorher` und
+ * `nachher`).
+ *
+ * Invariante (Q5, D-34 (7)): Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.
+ * `speicher` hält sie und weist mit `konflikt` ab, auch wenn das ChangeSet ohne Ausführer kommt (Undo): eine Freigabe,
+ * solange eine frühere Rechnung desselben Auftrags-LV nicht freigegeben ist; das Löschen einer Rechnung oder das Entfernen
+ * ihrer Freigabe, solange eine spätere freigegeben ist; das Anlegen einer Rechnung (`rechnung.vorher: null`), solange das
+ * Auftrags-LV eine freigegebene Rechnung mit größerer Nummer hat (sonst würde eine gelöschte und neu angelegte Rechnung
+ * zwischen eingefrorene Zahlbeträge geschoben und doppelt bezahlt). Dazu `konflikt` für eine Kennung in `aufmassIds`, zu
+ * der es kein Blatt dieses Auftrags-LV gibt. Umsetzung Ticket 79, Befund der Prüfung Ticket 81.
+ */
+export interface RechnungChangeSet {
+  readonly art: 'rechnung';
+  readonly rechnungId: RechnungId;
+  readonly rechnung: Aenderung<Rechnung>;
+}
+
+/**
+ * ChangeSet an einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (8)): die ganze Kostenermittlung vorher und nachher,
+ * Lesart wie `AufmassChangeSet`.
+ */
+export interface KostenermittlungChangeSet {
+  readonly art: 'kostenermittlung';
+  readonly kostenermittlungId: KostenermittlungId;
+  readonly kostenermittlung: Aenderung<Kostenermittlung>;
+}
+
+/** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */
+export type ChangeSet =
+  | ProjektChangeSet
+  | LvChangeSet
+  | AngebotChangeSet
+  | AuftragsLvChangeSet
+  // v1.4
+  | AufmassChangeSet
+  | RechnungChangeSet
+  | KostenermittlungChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -265,3 +361,67 @@ export type AuftragsLvBefehlAusfuehren = (
  * Funktion liefert, ist `kern`.
  */
 export type LvChangeSetAnwenden = (zustand: LvZustand | null, changeSet: LvChangeSet) => LvZustand | null;
+
+/**
+ * Wendet ein ChangeSet des Auftrags-LV an (v1.4, Ticket 70 Punkt 2), Lesart wie `LvChangeSetAnwenden`: `null` als
+ * Zustand heißt „entsteht erst“, `null` als Ergebnis „verschwindet“ (die Umkehrung des Anlegens). Liefert `kern`
+ * (Ticket 71).
+ */
+export type AuftragsLvChangeSetAnwenden = (
+  zustand: AuftragsLvZustand | null,
+  changeSet: AuftragsLvChangeSet,
+) => AuftragsLvZustand | null;
+
+/**
+ * Kehrt ein ChangeSet des Auftrags-LV ohne Vorzustand um (v1.4, Ticket 70 Punkt 2; Undo, ADR 0006): Kopf und Knoten
+ * vertauscht, Summen aus `summen.vorher`, wie beim LV. Liefert `kern` (Ticket 71); die App gibt dann ihren Umweg über die
+ * Umkehrung eines LV-ChangeSets auf (D-64.4).
+ */
+export type AuftragsLvChangeSetUmkehren = (changeSet: AuftragsLvChangeSet) => AuftragsLvChangeSet;
+
+// --- Signaturen der Aggregate aus v1.4 (Ticket 70 Punkt 10) ------------------------------------------------------
+//
+// Wie bei LV und Angebot: Ausführen ist rein und deterministisch (A2). Ein Ausführer sieht nur sein Aggregat und prüft die
+// Form (D-70.3); Regeln über mehrere Aggregate prüfen reine Funktionen als Befund (`aufmassPruefen`, `rechnungPruefen`)
+// oder vor dem Befehl (`freigabeMoeglich`), was nie verletzt sein darf `speicher` (`konflikt`). Anwenden: `null` als
+// Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“. Umkehren: Tausch von `vorher` und `nachher` (ganze
+// Aggregate, D-36 (8)). Liefern: `abrechnung` (Aufmaß Ticket 80, Rechnung Ticket 81), `kosten` (Kostenermittlung
+// Ticket 82).
+
+export type AufmassBefehlAusfuehren = (
+  zustand: AufmassZustand | null,
+  befehl: AufmassBefehl,
+) => Ergebnis<AufmassChangeSet, Befehlsfehler>;
+
+export type AufmassChangeSetAnwenden = (
+  zustand: AufmassZustand | null,
+  changeSet: AufmassChangeSet,
+) => AufmassZustand | null;
+
+export type AufmassChangeSetUmkehren = (changeSet: AufmassChangeSet) => AufmassChangeSet;
+
+export type RechnungBefehlAusfuehren = (
+  zustand: RechnungZustand | null,
+  befehl: RechnungBefehl,
+) => Ergebnis<RechnungChangeSet, Befehlsfehler>;
+
+export type RechnungChangeSetAnwenden = (
+  zustand: RechnungZustand | null,
+  changeSet: RechnungChangeSet,
+) => RechnungZustand | null;
+
+export type RechnungChangeSetUmkehren = (changeSet: RechnungChangeSet) => RechnungChangeSet;
+
+export type KostenermittlungBefehlAusfuehren = (
+  zustand: KostenermittlungZustand | null,
+  befehl: KostenermittlungBefehl,
+) => Ergebnis<KostenermittlungChangeSet, Befehlsfehler>;
+
+export type KostenermittlungChangeSetAnwenden = (
+  zustand: KostenermittlungZustand | null,
+  changeSet: KostenermittlungChangeSet,
+) => KostenermittlungZustand | null;
+
+export type KostenermittlungChangeSetUmkehren = (
+  changeSet: KostenermittlungChangeSet,
+) => KostenermittlungChangeSet;

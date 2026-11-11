@@ -184,6 +184,8 @@ export const texte = {
     'oz-ueberlauf': 'Die OZ-Maske hat keinen Platz mehr für weitere Nummern.',
     'angebot-unbekannt': 'Das Angebot gibt es nicht.',
     'befehl-nicht-zustaendig': 'Diese Änderung passt nicht zum geöffneten Stand.',
+    // v1.4: mechanisch angepasst, Folgeticket (Rechnungsprüfung in der App; Texte dort prüfen)
+    'rechnung-freigegeben': 'Die Rechnung ist freigegeben. Zuerst die Freigabe aufheben.',
   } satisfies Record<Befehlsfehlercode, string>,
   speicherfehler: {
     'nicht-gefunden': 'Der Eintrag wurde im Speicher nicht gefunden.',

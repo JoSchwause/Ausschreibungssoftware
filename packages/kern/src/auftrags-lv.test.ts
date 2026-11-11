@@ -96,6 +96,19 @@ describe('AuftragsLeistungsverzeichnisAnlegen', () => {
   });
 });
 
+// v1.4: mechanisch angepasst, Folgeticket (Ticket 71 ersetzt diese Abweisung durch die Handler)
+describe('Vertrag v1.4: neue Befehle am Auftrags-LV bis Ticket 71', () => {
+  it('NachtragUebernehmen wird mit befehl-nicht-zustaendig abgewiesen', () => {
+    const e = auftragsLvBefehlAusfuehren(null, {
+      art: 'NachtragUebernehmen',
+      nachtragLvId: 'lv-nachtrag' as LeistungsverzeichnisId,
+      knoten: [],
+    });
+    expect(!e.ok && e.fehler.code).toBe('befehl-nicht-zustaendig');
+    expect(!e.ok && e.fehler.meldung).toContain('Ticket 71');
+  });
+});
+
 function fehlt(): never {
   throw new Error('fehlt');
 }

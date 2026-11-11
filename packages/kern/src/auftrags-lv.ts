@@ -17,6 +17,13 @@ import { LEERES_SUMMENVORHER, summenBerechnen } from './summen';
  * `''` als Einheit wird `null`, Hinweise für eine beanstandete Maske und ein negatives Netto (angenommen, U5).
  */
 export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, befehl) => {
+  // v1.4: mechanisch angepasst, Folgeticket (Ticket 71: Handler für die neuen Befehle am Auftrags-LV)
+  if (befehl.art !== 'AuftragsLeistungsverzeichnisAnlegen') {
+    return nein(
+      'befehl-nicht-zustaendig',
+      `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt; zuständig: Ticket 71.`,
+    );
+  }
   if (zustand !== null) {
     return nein('befehl-nicht-zustaendig', `${befehl.art}: das Auftrags-LV existiert schon.`);
   }

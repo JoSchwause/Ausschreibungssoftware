@@ -6,34 +6,73 @@
 
 import type {
   AngebotLoeschen,
+  AufmassAnlegen,
+  AufmasskopfSetzen,
+  AufmassLoeschen,
+  AufmasspositionEntfernen,
+  AufmasspositionSetzen,
   AuftragsLeistungsverzeichnisAnlegen,
   GliederungAnlegen,
   KnotenEinfuegen,
   KnotenVerschieben,
+  KostenermittlungAnlegen,
+  KostenermittlungLoeschen,
+  KostenermittlungseintragEntfernen,
+  KostenermittlungseintragSetzen,
+  KostenermittlungskopfSetzen,
+  KostengruppeSetzen,
   LeistungsverzeichnisLoeschen,
   LvBefehl,
   MengeAendern,
   MengenansatzSetzen,
+  NachtragUebernehmen,
+  NachtragsangabenSetzen,
   ProjektLoeschen,
+  RechnungAnlegen,
+  RechnungFreigeben,
+  RechnungLoeschen,
+  RechnungsabzuegeSetzen,
+  RechnungsangabenSetzen,
+  RechnungsaufmasseSetzen,
+  RechnungsfreigabeAufheben,
+  TextquelleSetzen,
+  VorlageSetzen,
 } from './befehle';
-import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
-import type { Protokolleintrag } from './speicher';
+import type {
+  AufmassChangeSet,
+  AuftragsLvChangeSet,
+  KostenermittlungChangeSet,
+  LvChangeSet,
+  RechnungChangeSet,
+} from './changeset';
+import type {
+  AuftragsLvUebersicht,
+  KostenermittlungUebersicht,
+  LvUebersicht,
+  Projektdatei,
+  Protokolleintrag,
+} from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
   AngebotId,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   BildId,
+  KostenermittlungId,
   LvStandId,
   NutzerId,
   PapierkorbeintragId,
   ProtokollId,
+  RechnungId,
   Zeitstempel,
 } from './marken';
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Aufmass,
   AuftragsLeistungsverzeichnis,
   AuftragsLvKopf,
+  Kostenermittlung,
   Leistungsverzeichnis,
   LvInhalt,
   LvKopf,
@@ -42,10 +81,18 @@ import type {
   Papierkorbeintrag,
   Position,
   Positionsmerkmale,
+  Rechnung,
   Zuschlag,
 } from './modell';
-import type { LeistungsverzeichnisId, Ordnungszahl, PositionId, ProjektId, TitelId } from './marken';
-import type { Gesamtsummen } from './summen';
+import type {
+  Kostengruppennummer,
+  LeistungsverzeichnisId,
+  Ordnungszahl,
+  PositionId,
+  ProjektId,
+  TitelId,
+} from './marken';
+import type { Gesamtsummen, Leistungsstand } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
@@ -848,4 +895,511 @@ export const beispielChangeSetMengeOhneAnsatz: LvChangeSet = {
       entfernt: keinGesamt,
     },
   },
+};
+
+// --- v1.4 (Ticket 70) -------------------------------------------------------------------------------------------
+
+/** Punkt 1: das Beispiel-Auftrags-LV in der Liste des Projekts (ohne Knoten). */
+export const beispielAuftragsLvUebersicht: AuftragsLvUebersicht = {
+  id: beispielAuftragsLv.id,
+  name: beispielAuftragsLv.name,
+  leistungsverzeichnisId: beispielAuftragsLv.leistungsverzeichnisId,
+  angebotId: beispielAuftragsLv.angebotId,
+};
+
+const nachtragsLvId = '019b76e9-0000-7000-8000-000000000100' as LeistungsverzeichnisId;
+const nachtragTitelId = '019b76e9-0000-7000-8000-000000000101' as TitelId;
+const nachtragsTitelId = '019b76e9-0000-7000-8000-000000000102' as TitelId;
+const nachtragPos1Id = '019b76e9-0000-7000-8000-000000000103' as PositionId;
+const nachtragPos2Id = '019b76e9-0000-7000-8000-000000000104' as PositionId;
+
+/**
+ * Punkt 2 (D-35): Übernahme des Nachtrags N01 mit zwei Positionen. Die neue Gliederung „Nachtrag N01“ (neue Kennung,
+ * nächste freie OZ `02`) kommt hinter den einen Titel der obersten Ebene; darunter der Titel des Nachtrags-LV und seine
+ * Positionen mit ihren Kennungen aus dem Nachtrags-LV und den EP des Nachtragsangebots (2 × 15 = 30,00; 1 × 20 = 20,00).
+ */
+export const beispielNachtragUebernehmen: NachtragUebernehmen = {
+  art: 'NachtragUebernehmen',
+  nachtragLvId: nachtragsLvId,
+  knoten: [
+    {
+      art: 'titel',
+      id: nachtragTitelId,
+      elternId: auftragsId,
+      reihenfolge: 1,
+      ordnungszahl: '02' as Ordnungszahl,
+      kurztext: 'Nachtrag N01',
+    },
+    {
+      art: 'titel',
+      id: nachtragsTitelId,
+      elternId: nachtragTitelId,
+      reihenfolge: 0,
+      ordnungszahl: '02.01' as Ordnungszahl,
+      kurztext: 'Mehrleistungen (erfunden)',
+    },
+    {
+      ...position,
+      id: nachtragPos1Id,
+      elternId: nachtragsTitelId,
+      reihenfolge: 0,
+      ordnungszahl: '02.01.0010' as Ordnungszahl,
+      kurztext: 'Zusätzliche Leistung 1',
+      menge: '2.000' as Menge,
+      einheitspreis: '15.000' as Einheitspreis,
+    },
+    {
+      ...position,
+      id: nachtragPos2Id,
+      elternId: nachtragsTitelId,
+      reihenfolge: 1,
+      ordnungszahl: '02.01.0020' as Ordnungszahl,
+      kurztext: 'Zusätzliche Leistung 2',
+      menge: '1.000' as Menge,
+      einheitspreis: '20.000' as Einheitspreis,
+    },
+  ],
+};
+
+/**
+ * Punkt 2: ChangeSet zu `beispielNachtragUebernehmen` am Beispiel-Auftrags-LV (12,35 vorher): Netto 62,35, MwSt
+ * round(62,35 × 19 %, 2) = 11,85, Brutto 74,20. Die Summen der neuen Gliederungen sind neu (kein `vorher`).
+ */
+export const beispielChangeSetNachtragUebernehmen: AuftragsLvChangeSet = {
+  art: 'auftrags-leistungsverzeichnis',
+  auftragsLeistungsverzeichnisId: auftragsId,
+  kopf: null,
+  knoten: { hinzugefuegt: beispielNachtragUebernehmen.knoten, geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [
+      { positionId: nachtragPos1Id, gesamtpreis: '30.00' as Betrag, gehtInSummeEin: true },
+      { positionId: nachtragPos2Id, gesamtpreis: '20.00' as Betrag, gehtInSummeEin: true },
+    ],
+    gliederungen: [
+      { gliederungId: nachtragTitelId, summe: '50.00' as Betrag },
+      { gliederungId: nachtragsTitelId, summe: '50.00' as Betrag },
+    ],
+    gesamt: gesamtsummen('62.35', '0.00', '62.35', '11.85', '74.20'),
+    vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
+};
+
+/** Punkt 3 (D-35): Das Nachtrags-LV N01 gehört zum Beispiel-Auftrags-LV; der Auftraggeber hat beauftragt. */
+export const beispielNachtragsangabenSetzen: NachtragsangabenSetzen = {
+  art: 'NachtragsangabenSetzen',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'beauftragt' },
+};
+
+const nachtragsKopf: LvKopf = {
+  ...lvKopf,
+  id: nachtragsLvId,
+  name: 'Nachtrag N01 (erfunden)',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'angeboten' },
+};
+
+/**
+ * Punkt 3: ChangeSet zu `beispielNachtragsangabenSetzen` am Nachtrags-LV, das vorher `angeboten` war. Nur der Kopf ändert
+ * sich; die App schreibt es nach `beispielNachtragUebernehmen` (D-35).
+ */
+export const beispielChangeSetNachtragBeauftragt: LvChangeSet = {
+  art: 'leistungsverzeichnis',
+  leistungsverzeichnisId: nachtragsLvId,
+  kopf: {
+    vorher: nachtragsKopf,
+    nachher: {
+      ...nachtragsKopf,
+      nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'beauftragt' },
+    },
+  },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+};
+
+/** Review (D-43): das Nachtrags-LV N01 in der LV-Liste des Projekts; kein Muster-LV, also ohne `vorlage`. */
+export const beispielLvUebersichtNachtrag: LvUebersicht = {
+  id: nachtragsLvId,
+  name: 'Nachtrag N01 (erfunden)',
+  nachtrag: { auftragsLvId: auftragsId, nummer: 'N01', status: 'angeboten' },
+};
+
+/** Kostengruppe 330 (erfunden; nur die Nummer, keine Bezeichnung der Norm, G-16). */
+const kg330 = '330' as Kostengruppennummer;
+
+/** Punkt 4: Die Position des Beispiel-Auftrags-LV bekommt die Kostengruppe 330 (derselbe Befehl gilt im LV). */
+export const beispielKostengruppeSetzen: KostengruppeSetzen = {
+  art: 'KostengruppeSetzen',
+  positionId: posId,
+  kostengruppe: kg330,
+};
+
+/** Punkt 4: ChangeSet am Auftrags-LV zu `beispielKostengruppeSetzen`: eine Knotenänderung, keine Summen. */
+export const beispielChangeSetKostengruppe: AuftragsLvChangeSet = {
+  art: 'auftrags-leistungsverzeichnis',
+  auftragsLeistungsverzeichnisId: auftragsId,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [{ vorher: position, nachher: { ...position, kostengruppe: kg330 } }],
+    entfernt: [],
+  },
+  summen: {
+    positionen: [],
+    gliederungen: [],
+    gesamt: null,
+    vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+  },
+};
+
+/** Summen eines ChangeSets, das keine Summe berührt (Kopf- und Textfelder). */
+const keineSummen = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+} as const;
+
+/** Punkt 5 (D-40): Das Beispiel-LV wird Muster-LV; seine Positionen sind dann Textbausteine. */
+export const beispielVorlageSetzen: VorlageSetzen = { art: 'VorlageSetzen', vorlage: true };
+
+/** Punkt 5: ChangeSet zu `beispielVorlageSetzen`; nur der Kopf. `vorlage: false` wäre die Umkehrung (Feld fehlt). */
+export const beispielChangeSetVorlage: LvChangeSet = {
+  ...lvRahmen,
+  kopf: { vorher: lvKopf, nachher: { ...lvKopf, vorlage: true } },
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: keineSummen,
+};
+
+/** Punkt 5 (G-17): Der Text der Position stammt aus einem Muster-LV (Name erfunden). */
+export const beispielTextquelleSetzen: TextquelleSetzen = {
+  art: 'TextquelleSetzen',
+  positionId: posId,
+  textquelle: 'Muster-LV Rohbau (erfunden)',
+};
+
+const aufmass1Id = '019b76e9-0000-7000-8000-000000000110' as AufmassId;
+const aufmass2Id = '019b76e9-0000-7000-8000-000000000111' as AufmassId;
+
+/**
+ * Punkt 6: Aufmaßblatt 1 zum Beispiel-Auftrags-LV nach der Übernahme von N01. Die Position `01.0010` mit Ansatz
+ * (0,5 × 2 = 1,000), die Nachtragsposition `02.01.0010` von Hand mit 2,500 (mehr als 110 % der LV-Menge 2,000: ein
+ * Soll/Ist-Befund, D-35). `02.01.0020` ist noch nicht aufgemessen.
+ */
+export const beispielAufmass1: Aufmass = {
+  id: aufmass1Id,
+  projektId: beispielAuftragsLv.projektId,
+  auftragsLvId: auftragsId,
+  nummer: 1,
+  bezeichnung: 'Blatt 1 (erfunden)',
+  datum: '2026-11-02',
+  positionen: [
+    {
+      positionId: posId,
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '0,5*2', variable: null }],
+      menge: '1.000' as Menge,
+    },
+    { positionId: nachtragPos1Id, mengenansatz: null, menge: '2.500' as Menge },
+  ],
+};
+
+/** Punkt 6: Aufmaßblatt 2 misst den Rest der Position `01.0010` auf (0,235); zusammen mit Blatt 1 also 1,235. */
+export const beispielAufmass2: Aufmass = {
+  ...beispielAufmass1,
+  id: aufmass2Id,
+  nummer: 2,
+  bezeichnung: 'Blatt 2 (erfunden)',
+  datum: '2026-11-09',
+  positionen: [
+    {
+      positionId: posId,
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '0,235', variable: null }],
+      menge: '0.235' as Menge,
+    },
+  ],
+};
+
+/** Punkt 6: Blatt 1 anlegen (von Hand oder aus X31; Massenbefehl). */
+export const beispielAufmassAnlegen: AufmassAnlegen = { art: 'AufmassAnlegen', aufmass: beispielAufmass1 };
+
+/** Punkt 6: ChangeSet zu `beispielAufmassAnlegen`: das ganze Blatt, vorher keines. */
+export const beispielChangeSetAufmassAnlegen: AufmassChangeSet = {
+  art: 'aufmass',
+  aufmassId: aufmass1Id,
+  aufmass: { vorher: null, nachher: beispielAufmass1 },
+};
+
+/** Punkt 6: Korrektur auf Blatt 1: die Nachtragsposition hat 2,400 statt 2,500 (von Hand). */
+export const beispielAufmasspositionSetzen: AufmasspositionSetzen = {
+  art: 'AufmasspositionSetzen',
+  position: { positionId: nachtragPos1Id, mengenansatz: null, menge: '2.400' as Menge },
+};
+
+/** Punkt 6: ChangeSet zur Korrektur: das ganze Blatt vorher und nachher; die Zeile bleibt an ihrer Stelle. */
+export const beispielChangeSetAufmasspositionSetzen: AufmassChangeSet = {
+  art: 'aufmass',
+  aufmassId: aufmass1Id,
+  aufmass: {
+    vorher: beispielAufmass1,
+    nachher: {
+      ...beispielAufmass1,
+      positionen: beispielAufmass1.positionen.map((p) =>
+        p.positionId === nachtragPos1Id ? beispielAufmasspositionSetzen.position : p,
+      ),
+    },
+  },
+};
+
+const rechnung1Id = '019b76e9-0000-7000-8000-000000000120' as RechnungId;
+const rechnung2Id = '019b76e9-0000-7000-8000-000000000121' as RechnungId;
+
+/**
+ * Punkt 7 (D-34): Abschlagsrechnung 1 über Blatt 1, mit einer Umlage von 0,50 % und 5 % Sicherheitseinbehalt, freigegeben.
+ * Herleitung des eingefrorenen Zahlbetrags (jeder Schritt auf 2 Stellen, N2): Leistung 1,000 × 10,000 = 10,00 und
+ * 2,500 × 15,000 = 37,50, zusammen 47,50; kein Nachlass; MwSt round(47,50 × 19 %) = 9,03 (9,025); Brutto 56,53; Umlage
+ * round(56,53 × 0,50 %) = 0,28 (0,28265); Einbehalt round(56,53 × 5 %) = 2,83 (2,8265); Zahlbetrag 56,53 − 0,28 − 2,83 =
+ * 53,42. Der Auftragnehmer forderte dasselbe Netto, Brutto und denselben Zahlbetrag.
+ */
+export const beispielRechnung1: Rechnung = {
+  id: rechnung1Id,
+  projektId: beispielAuftragsLv.projektId,
+  auftragsLvId: auftragsId,
+  nummer: 1,
+  art: 'abschlag',
+  eingang: '2026-11-05',
+  rechnungsnummerAuftragnehmer: 'AR-2026-001',
+  gefordert: { netto: '47.50' as Betrag, brutto: '56.53' as Betrag, zahlbetrag: '53.42' as Betrag },
+  aufmassIds: [aufmass1Id],
+  umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' as Prozent }],
+  sicherheitSatz: '5.00' as Prozent,
+  gewaehrleistungSatz: null,
+  freigabe: { zahlbetrag: '53.42' as Betrag },
+};
+
+/**
+ * Punkt 7 (D-34, D-38): Abschlagsrechnung 2, kumuliert über Blatt 1 und 2, noch nicht freigegeben. Die Prüfung ergäbe:
+ * Leistung 1,235 × 10,000 = 12,35 und 37,50, zusammen 49,85; MwSt 9,47 (9,4715); Brutto 59,32; Umlage 0,30 (0,2966);
+ * Einbehalt 2,97 (2,966); Zahlbetrag 59,32 − 0,30 − 2,97 − 53,42 (eingefroren aus Rechnung 1) = 2,63. Gespeichert wird
+ * davon nichts (D-36 (2)).
+ */
+export const beispielRechnung2: Rechnung = {
+  ...beispielRechnung1,
+  id: rechnung2Id,
+  nummer: 2,
+  eingang: '2026-11-10',
+  rechnungsnummerAuftragnehmer: 'AR-2026-002',
+  gefordert: null,
+  aufmassIds: [aufmass1Id, aufmass2Id],
+  freigabe: null,
+};
+
+/** Punkt 7: Freigabe der Rechnung 1 mit dem Zahlbetrag, den die App mit `abrechnung` gerechnet hat. */
+export const beispielRechnungFreigeben: RechnungFreigeben = {
+  art: 'RechnungFreigeben',
+  zahlbetrag: '53.42' as Betrag,
+};
+
+/** Punkt 7: ChangeSet zu `beispielRechnungFreigeben`: die ganze Rechnung, nur `freigabe` ändert sich. */
+export const beispielChangeSetRechnungFreigeben: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: rechnung1Id,
+  rechnung: { vorher: { ...beispielRechnung1, freigabe: null }, nachher: beispielRechnung1 },
+};
+
+/** Punkt 7: Die Freigabe ausdrücklich aufheben (D-70.4); sein ChangeSet ist das Gegenstück zum Freigeben. */
+export const beispielRechnungsfreigabeAufheben: RechnungsfreigabeAufheben = {
+  art: 'RechnungsfreigabeAufheben',
+};
+
+/** Punkt 7: ChangeSet zu `beispielRechnungsfreigabeAufheben`, gleich der Umkehrung von `beispielChangeSetRechnungFreigeben`. */
+export const beispielChangeSetFreigabeAufheben: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: rechnung1Id,
+  rechnung: { vorher: beispielRechnung1, nachher: { ...beispielRechnung1, freigabe: null } },
+};
+
+/** Punkt 8: das Beispiel-Auftrags-LV nach der Übernahme von N01 (Knoten in Dokumentreihenfolge). */
+export const beispielAuftragsLvMitNachtrag: AuftragsLeistungsverzeichnis = {
+  ...beispielAuftragsLv,
+  knoten: [...beispielAuftragsLv.knoten, ...beispielNachtragUebernehmen.knoten],
+};
+
+/**
+ * Punkt 8 (D-34 (1)–(3)): Leistungsstand zu `beispielRechnung2` (Blatt 1 und 2): `01.0010` 1,000 + 0,235 = 1,235 × 10,000
+ * = 12,35; `02.01.0010` 2,500 × 15,000 = 37,50; `02.01.0020` nicht aufgemessen. Das Auftrags-LV hat keinen Nachlass.
+ */
+export const beispielLeistungsstand: Leistungsstand = {
+  positionen: [
+    { positionId: posId, menge: '1.235' as Menge, gp: '12.35' as Betrag },
+    { positionId: nachtragPos1Id, menge: '2.500' as Menge, gp: '37.50' as Betrag },
+    { positionId: nachtragPos2Id, menge: null, gp: '0.00' as Betrag },
+  ],
+  leistung: '49.85' as Betrag,
+  nachlass: '0.00' as Betrag,
+  nettoNachNachlass: '49.85' as Betrag,
+};
+
+const kostenermittlungId = '019b76e9-0000-7000-8000-000000000130' as KostenermittlungId;
+const kg = (n: string): Kostengruppennummer => n as Kostengruppennummer;
+
+/**
+ * Punkt 9 (D-36 (3)): Kostenberechnung des Beispielprojekts als Budget der Kostenkontrolle (D-38). Nur Nummern, keine
+ * Bezeichnungen der Norm (G-16); Beträge erfunden. Nach Nummer geordnet, jede Nummer einmal.
+ */
+export const beispielKostenermittlung: Kostenermittlung = {
+  id: kostenermittlungId,
+  projektId: beispielLv.projektId,
+  stufe: 'kostenberechnung',
+  name: 'Kostenberechnung (erfunden)',
+  eintraege: [
+    { nummer: kg330, betrag: '15.00' as Betrag, bemerkung: 'Außenwände (erfunden)' },
+    { nummer: kg('340'), betrag: '10.00' as Betrag },
+    { nummer: kg('410'), betrag: '25.00' as Betrag },
+  ],
+};
+
+/** Punkt 9: Ein neuer Eintrag 350; er kommt an seine Stelle zwischen 340 und 410. */
+export const beispielKostenermittlungseintragSetzen: KostenermittlungseintragSetzen = {
+  art: 'KostenermittlungseintragSetzen',
+  eintrag: { nummer: kg('350'), betrag: '5.00' as Betrag },
+};
+
+/** Punkt 9: ChangeSet zu `beispielKostenermittlungseintragSetzen`: die ganze Kostenermittlung vorher und nachher. */
+export const beispielChangeSetKostenermittlungseintrag: KostenermittlungChangeSet = {
+  art: 'kostenermittlung',
+  kostenermittlungId,
+  kostenermittlung: {
+    vorher: beispielKostenermittlung,
+    nachher: {
+      ...beispielKostenermittlung,
+      eintraege: [
+        ...beispielKostenermittlung.eintraege.slice(0, 2),
+        beispielKostenermittlungseintragSetzen.eintrag,
+        ...beispielKostenermittlung.eintraege.slice(2),
+      ],
+    },
+  },
+};
+
+/**
+ * Punkt 10 (D-70.5): Protokolleintrag von `beispielAufmassAnlegen`, einem Massenbefehl: Kopf (das Blatt ohne Zeilen) und
+ * Prüfsumme (hier ein Platzhalterwert in gültiger Form).
+ */
+export const beispielMassenprotokollAufmass: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000140' as ProtokollId,
+  projektId: beispielAufmass1.projektId,
+  aggregat: { art: 'aufmass', id: aufmass1Id },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-11T09:00:00.000Z' as Zeitstempel,
+  befehl: {
+    art: 'Befehlskurzfassung',
+    kopf: {
+      art: 'AufmassAnlegen',
+      aufmass: {
+        id: beispielAufmass1.id,
+        projektId: beispielAufmass1.projektId,
+        auftragsLvId: beispielAufmass1.auftragsLvId,
+        nummer: beispielAufmass1.nummer,
+        bezeichnung: beispielAufmass1.bezeichnung,
+        datum: beispielAufmass1.datum,
+      },
+    },
+    pruefsumme: { algorithmus: 'sha-256', wert: '0'.repeat(64) },
+  },
+};
+
+/** Punkt 11: die übrigen Befehle am Aufmaßblatt (Kopf setzen, Zeile entfernen, Löschen). */
+export const beispielAufmassBefehle: readonly [AufmasskopfSetzen, AufmasspositionEntfernen, AufmassLoeschen] =
+  [
+    { art: 'AufmasskopfSetzen', bezeichnung: 'Blatt 1, Erdarbeiten (erfunden)', datum: '2026-11-03' },
+    { art: 'AufmasspositionEntfernen', positionId: nachtragPos1Id },
+    { art: 'AufmassLoeschen' },
+  ];
+
+/** Punkt 11: Rechnung 2 anlegen (noch nicht freigegeben, sonst `ungueltige-eingabe`). */
+export const beispielRechnungAnlegen: RechnungAnlegen = {
+  art: 'RechnungAnlegen',
+  rechnung: beispielRechnung2,
+};
+
+/** Punkt 11: die übrigen Befehle an der Rechnung (Angaben, Aufmaßblätter, Abzüge, Löschen). */
+export const beispielRechnungsbefehle: readonly [
+  RechnungsangabenSetzen,
+  RechnungsaufmasseSetzen,
+  RechnungsabzuegeSetzen,
+  RechnungLoeschen,
+] = [
+  {
+    art: 'RechnungsangabenSetzen',
+    rechnungsart: 'abschlag',
+    eingang: '2026-11-10',
+    rechnungsnummerAuftragnehmer: 'AR-2026-002',
+    // die Rechnung nennt keinen Zahlbetrag
+    gefordert: { netto: '49.85' as Betrag, brutto: '59.32' as Betrag, zahlbetrag: null },
+  },
+  { art: 'RechnungsaufmasseSetzen', aufmassIds: [aufmass1Id, aufmass2Id] },
+  {
+    art: 'RechnungsabzuegeSetzen',
+    umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' as Prozent }],
+    sicherheitSatz: '5.00' as Prozent,
+    gewaehrleistungSatz: '3.00' as Prozent,
+  },
+  { art: 'RechnungLoeschen' },
+];
+
+/** Punkt 11: die übrigen Befehle an der Kostenermittlung (Anlegen, Kopf setzen, Eintrag entfernen, Löschen). */
+export const beispielKostenermittlungsbefehle: readonly [
+  KostenermittlungAnlegen,
+  KostenermittlungskopfSetzen,
+  KostenermittlungseintragEntfernen,
+  KostenermittlungLoeschen,
+] = [
+  { art: 'KostenermittlungAnlegen', kostenermittlung: beispielKostenermittlung },
+  { art: 'KostenermittlungskopfSetzen', name: 'Kostenanschlag (erfunden)', stufe: 'kostenanschlag' },
+  { art: 'KostenermittlungseintragEntfernen', nummer: kg('410') },
+  { art: 'KostenermittlungLoeschen' },
+];
+
+/** Punkt 10: die Kostenermittlung in der Liste des Projekts (ohne Einträge). */
+export const beispielKostenermittlungUebersicht: KostenermittlungUebersicht = {
+  id: beispielKostenermittlung.id,
+  projektId: beispielKostenermittlung.projektId,
+  stufe: beispielKostenermittlung.stufe,
+  name: beispielKostenermittlung.name,
+};
+
+/**
+ * Punkt 10: eine Projektdatei mit den drei neuen Listen (Zustände der Aggregate); LVs, Angebote und Auftrags-LVs sind
+ * hier weggelassen. Fehlt eine der Listen, gilt sie als leer.
+ */
+export const beispielProjektdateiV14: Projektdatei = {
+  schemaVersion: 5,
+  projekt: {
+    id: beispielLv.projektId,
+    name: 'Beispiel',
+    bauherr: { name: 'Beispiel', anschrift: null },
+    bieter: [],
+  },
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [],
+  aufmasse: [{ aufmass: beispielAufmass1 }, { aufmass: beispielAufmass2 }],
+  rechnungen: [{ rechnung: beispielRechnung1 }, { rechnung: beispielRechnung2 }],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenermittlung }],
+};
+
+/** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */
+export const beispielChangeSetTextquelle: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [{ vorher: position, nachher: { ...position, textquelle: 'Muster-LV Rohbau (erfunden)' } }],
+    entfernt: [],
+  },
+  summen: keineSummen,
 };

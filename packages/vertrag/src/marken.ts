@@ -24,6 +24,12 @@ export type BildId = string & Marke<'BildId'>;
 export type PapierkorbeintragId = string & Marke<'PapierkorbeintragId'>;
 /** Kennung eines LV-Stands (v1.2; ADR 0006): ein eingefrorener, unveränderlicher Stand eines LV. */
 export type LvStandId = string & Marke<'LvStandId'>;
+/** Kennung eines Aufmaßblatts (v1.4, Ticket 70 Punkt 6): eigenes Aggregat, eindeutig im Projekt. */
+export type AufmassId = string & Marke<'AufmassId'>;
+/** Kennung einer Rechnung (v1.4, Ticket 70 Punkt 7): eigenes Aggregat, eindeutig im Projekt. */
+export type RechnungId = string & Marke<'RechnungId'>;
+/** Kennung einer Kostenermittlung (v1.4, Ticket 70 Punkt 9): eigenes Aggregat, eindeutig im Projekt. */
+export type KostenermittlungId = string & Marke<'KostenermittlungId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;
@@ -60,6 +66,15 @@ export type Zeitstempel = string & Marke<'Zeitstempel'>;
 export type Ordnungszahl = string & Marke<'Ordnungszahl'>;
 
 /**
+ * Dreistellige Kostengruppennummer `100` bis `999` (Glossar „Kostengruppe“; D-24): genau drei Ziffern, die erste nicht 0.
+ * v1.4 (Ticket 70 Punkt 4): aus `kosten` hierher gewandert, weil LV, Auftrags-LV und Kostenermittlung sie tragen (A4);
+ * `kosten` importiert sie von hier. Erzeugt wird sie weiter nur von `kgLesen` in `kosten` (aus Text, an den Rändern);
+ * Ebene, Elternteil und Sortierung folgen dort allein aus den Ziffern. Die Bezeichnungen der Norm stehen nicht im Repo (G-16).
+ * Wer eine Nummer aus einem Befehl oder einer Datei liest (Kern, `speicher`), prüft die Form selbst nach.
+ */
+export type Kostengruppennummer = string & Marke<'Kostengruppennummer'>;
+
+/**
  * Quelle für neue Kennungen. Wird von außen in Kern, Parser und Oberfläche gereicht (A2: kein Zufall,
  * keine Uhr im reinen Code). Die Umsetzung (UUIDv7) liegt in der App.
  *
@@ -82,4 +97,10 @@ export interface IdQuelle {
   papierkorbeintrag(): PapierkorbeintragId;
   /** v1.2: für `LvStandAnlegen`. */
   lvStand(): LvStandId;
+  /** v1.4: für `AufmassAnlegen`. */
+  aufmass(): AufmassId;
+  /** v1.4: für `RechnungAnlegen`. */
+  rechnung(): RechnungId;
+  /** v1.4: für `KostenermittlungAnlegen`. */
+  kostenermittlung(): KostenermittlungId;
 }

@@ -153,6 +153,14 @@ describe('zuschlagErteilen: Kopf des Auftrags-LV', () => {
     expect(imKern(befehl).summen.gesamt).toMatchObject({ nettoNachNachlass: '11.76', brutto: '12.58' });
   });
 
+  // v1.4: D-42
+  it('trägt das Kennzeichen „Muster-LV“ nicht in den Kopf des Auftrags-LV (Vertrag v1.4: nur am LvKopf)', () => {
+    const vorlage: LvZustand = { ...z, leistungsverzeichnis: { ...z.leistungsverzeichnis, vorlage: true } };
+    const { befehl } = erwarteOk(zuschlagErteilen(vorlage, a, projekt(['b1']), OHNE_WAHL, NEUE_ID));
+    expect(befehl.auftragsLeistungsverzeichnis).not.toHaveProperty('vorlage');
+    expect(befehl).toEqual(erwarteOk(zuschlagErteilen(z, a, projekt(['b1']), OHNE_WAHL, NEUE_ID)).befehl);
+  });
+
   it('nimmt auch den Angebotszustand an', () => {
     const zustand = { angebot: a, summen: angebotSummenBerechnen(z, a) };
     expect(zuschlagErteilen(z, zustand, projekt(['b1']), OHNE_WAHL, NEUE_ID)).toEqual(
@@ -209,6 +217,26 @@ describe('zuschlagErteilen: Fehler', () => {
     expect(e).toMatchObject({
       ok: false,
       fehler: { code: 'ungueltige-eingabe', feld: 'angebot.leistungsverzeichnisId' },
+    });
+  });
+
+  // v1.4: D-42
+  it('weist ein Nachtrags-LV ab: ein Nachtrag kommt über NachtragUebernehmen ins Auftrags-LV', () => {
+    const nachtrag: LvZustand = {
+      ...lvW,
+      leistungsverzeichnis: {
+        ...lvW.leistungsverzeichnis,
+        nachtrag: {
+          auftragsLvId: 'auftrag-1' as AuftragsLeistungsverzeichnisId,
+          nummer: 'N01',
+          status: 'angeboten',
+        },
+      },
+    };
+    const e = zuschlagErteilen(nachtrag, angebotW, projektW, OHNE_WAHL, NEUE_ID);
+    expect(e).toMatchObject({
+      ok: false,
+      fehler: { code: 'ungueltige-eingabe', feld: 'leistungsverzeichnis.nachtrag' },
     });
   });
 

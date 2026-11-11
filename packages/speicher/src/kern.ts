@@ -47,6 +47,7 @@ import {
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
+import { pruefeV14 } from './vertrag-v14'; // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -57,7 +58,10 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
         ? { art: 'leistungsverzeichnis', id: cs.leistungsverzeichnisId as string }
         : cs.art === 'angebot'
           ? { art: 'angebot', id: cs.angebotId as string }
-          : { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string };
+          : cs.art === 'auftrags-leistungsverzeichnis'
+            ? { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string }
+            : // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 speichert Aufmaß, Rechnung, Kostenermittlung)
+              abbruch('unbekannt', `ChangeSet ${cs.art} (Vertrag v1.4) speichert erst Ticket 79.`);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',
@@ -252,6 +256,7 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
+        pruefeV14(changeSet); // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
         switch (changeSet.art) {
           case 'projekt':
             wendeProjektAn(this.#db, changeSet);

@@ -771,6 +771,29 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   Rueckgaengig: true,
   Wiederholen: true,
   MengenansatzSetzen: true,
+  // v1.4: mechanisch angepasst, Folgeticket (Ticket 79; die ChangeSets weist `anwenden` bis dahin mit `unbekannt` ab)
+  NachtragUebernehmen: true,
+  NachtragsangabenSetzen: true,
+  KostengruppeSetzen: true,
+  VorlageSetzen: true,
+  TextquelleSetzen: true,
+  AufmassAnlegen: true,
+  AufmasskopfSetzen: true,
+  AufmasspositionSetzen: true,
+  AufmasspositionEntfernen: true,
+  AufmassLoeschen: true,
+  RechnungAnlegen: true,
+  RechnungsangabenSetzen: true,
+  RechnungsaufmasseSetzen: true,
+  RechnungsabzuegeSetzen: true,
+  RechnungFreigeben: true,
+  RechnungsfreigabeAufheben: true,
+  RechnungLoeschen: true,
+  KostenermittlungAnlegen: true,
+  KostenermittlungskopfSetzen: true,
+  KostenermittlungseintragSetzen: true,
+  KostenermittlungseintragEntfernen: true,
+  KostenermittlungLoeschen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {
@@ -801,6 +824,7 @@ const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
   LeistungsverzeichnisAnlegen: ['inhalt', 'knoten'],
   AngebotAnlegen: ['angebot', 'positionen'],
   AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
+  AufmassAnlegen: ['aufmass', 'positionen'], // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
 };
 
 /**
