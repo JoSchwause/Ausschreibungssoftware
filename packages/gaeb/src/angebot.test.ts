@@ -323,6 +323,30 @@ describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
     ).toMatch(/3\.000.*5\.00/);
   });
 
+  it('IT 0,00 an einer Wahl ohne Gruppe/Variante (aus v1) ist kein gp-abweichend: dieselbe Regel wie der Kern (D-16, S4)', () => {
+    const p = lv.knoten.find((k): k is Position => k.art === 'position' && k.ordnungszahl === '01.0010');
+    if (p === undefined) throw new Error('01.0010 fehlt');
+    const ohneNummer = {
+      ...lv,
+      knoten: lv.knoten.map((k) =>
+        k.id === p.id && k.art === 'position'
+          ? {
+              ...k,
+              merkmale: { ...k.merkmale, wahl: { gruppe: null, variante: null, grundpositionId: null } },
+            }
+          : k,
+      ),
+    };
+    const text = new TextDecoder()
+      .decode(leseTestdatei('x84/fehler.x84'))
+      .replace('<IT>125.00</IT>', '<IT>0.00</IT>');
+    const abweichend = (x: AngebotLesung): Pruefbefund[] =>
+      mitCode(x, 'gp-abweichend').filter((b) => b.ort.knotenId === p.id);
+    expect(abweichend(lies(text, ohneNummer))).toEqual([]);
+    // Gegenprobe: dieselbe Zeile an der Normalposition weicht ab.
+    expect(abweichend(lies(text, lv))).toHaveLength(1);
+  });
+
   it('EP mit mehr als 3 Stellen: gerundet als Fehler, Wert 20,123', () => {
     expect(zeile(l, lv, '02.0010')).toMatchObject({ status: 'angeboten', einheitspreis: '20.123' });
     expect(an('02.0010')).toEqual(['gerundet']);

@@ -11,7 +11,7 @@ import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Befundliste } from './Befundliste';
-import { dateiBytes, naechsterZug } from './datei';
+import { DateiNichtLesbar, dateiBytes, naechsterZug } from './datei';
 import { lvLesen, type Lesevorschau } from './gaeb';
 import { texte } from './texte';
 import './gaeb.css';
@@ -41,8 +41,10 @@ export function GaebEinlesen({
       await naechsterZug();
       const vorschau = lvLesen(await dateiBytes(f), f.name, u.ids);
       setLage({ art: 'da', name: f.name, vorschau });
-    } catch {
+    } catch (e) {
       setLage(null);
+      // Erwartet ist nur „Datei nicht lesbar“; ein Fehler des Lesers ist ein Programmfehler und geht weiter (Q5).
+      if (!(e instanceof DateiNichtLesbar)) throw e;
       zeige({ titel: texte.einlesen.nichtLesbar, beschreibung: f.name, art: 'fehler' });
     }
   };

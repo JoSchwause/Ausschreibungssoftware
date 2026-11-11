@@ -28,6 +28,7 @@ import type {
 import type {
   Betrag,
   Einheitspreis,
+  Einheitspreisanteile,
   ElternId,
   Knoten,
   LvInhalt,
@@ -38,6 +39,7 @@ import type {
   Positionsmerkmale,
   Prozent,
   Summenstand,
+  Zuschlag,
 } from '@tethys/vertrag';
 
 import { leseGaeb } from './lesen';
@@ -131,6 +133,10 @@ interface FxKnoten {
   readonly bedarfMitGesamtbetrag?: boolean;
   readonly bezugspositionId?: string;
   readonly grundpositionId?: string;
+  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  readonly zuschlag?: Zuschlag;
+  readonly zuschlagskennzeichen?: boolean;
+  readonly epa?: Einheitspreisanteile;
 }
 
 interface FxLv {
@@ -144,11 +150,13 @@ interface FxLv {
     readonly positionen: Readonly<Record<string, { readonly gp: string | null; readonly inSumme: boolean }>>;
     readonly titel: Readonly<Record<string, { readonly summe: string }>>;
     readonly summen: Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
+    /** Nur `zuschlag.json`: Basis und Betrag je Zuschlagsposition (für `ITMarkup` in X86). */
+    readonly zuschlaege?: Readonly<Record<string, { readonly basis: string; readonly betrag: string }>>;
   };
 }
 
-/** Die Fixtures, die der Export und die XSD-Gegenprüfung abdecken. */
-export const FIXTURES = ['winzig', 'typisch', 'gross'] as const;
+/** Die Fixtures, die Export, eigene Prüfung, Roundtrip und XSD-Gegenprüfung abdecken (Ticket 40 §6, D-18). */
+export const FIXTURES = ['winzig', 'typisch', 'gross', 'zuschlag'] as const;
 export type FixtureName = (typeof FIXTURES)[number];
 
 /** Maske aus der Fixture-Schreibweise `NN.NN.NNNN[I]: Erläuterung`. */
@@ -168,8 +176,15 @@ function fxMaske(text: string): OzMaske {
 const absatz = (text: string | undefined): Langtext =>
   text === undefined || text === '' ? [] : [{ art: 'absatz', inhalt: [{ art: 'text', text }] }];
 
-/** Eine Fixture als `LvInhalt` mit ihrem Summenstand aus den Sollwerten (der Writer rechnet nicht). */
-export function fixtureLv(name: FixtureName): { inhalt: LvInhalt; summen: Summenstand } {
+/**
+ * Eine Fixture als `LvInhalt` mit ihrem Summenstand und den Zuschlagsbasen aus den Sollwerten (der Writer rechnet
+ * nicht).
+ */
+export function fixtureLv(name: FixtureName): {
+  inhalt: LvInhalt;
+  summen: Summenstand;
+  basen?: ReadonlyMap<PositionId, Betrag>;
+} {
   const fx = JSON.parse(new TextDecoder().decode(lesePfad(`fixtures/${name}.json`))) as FxLv;
   const folge = new Map<string, number>();
   const knoten = fx.knoten.map((k): Knoten => {
@@ -210,10 +225,11 @@ export function fixtureLv(name: FixtureName): { inhalt: LvInhalt; summen: Summen
             : null,
         stundenlohn: false,
         pauschal: false,
-        zuschlagskennzeichen: false,
+        zuschlagskennzeichen: k.zuschlagskennzeichen === true,
       },
       zuschlag:
-        art === 'zuschlag'
+        k.zuschlag ??
+        (art === 'zuschlag'
           ? {
               prozentsatz: null,
               bezug: {
@@ -224,13 +240,13 @@ export function fixtureLv(name: FixtureName): { inhalt: LvInhalt; summen: Summen
                     : [{ positionId: k.bezugspositionId as PositionId, teilmenge: null }],
               },
             }
-          : null,
+          : null),
       kurztext: k.kurztext ?? '',
       langtext: absatz(k.langtext),
       menge: (k.menge ?? null) as Menge | null,
       einheit: k.einheit ?? null,
       einheitspreis: (k.einheitspreis ?? null) as Einheitspreis | null,
-      epa: null,
+      epa: k.epa ?? null,
     };
   });
   const inhalt: LvInhalt = {
@@ -265,7 +281,11 @@ export function fixtureLv(name: FixtureName): { inhalt: LvInhalt; summen: Summen
       brutto: s.summen.brutto as Betrag,
     },
   };
-  return { inhalt, summen };
+  if (s.zuschlaege === undefined) return { inhalt, summen };
+  const basen = new Map(
+    Object.entries(s.zuschlaege).map(([id, z]) => [id as PositionId, z.basis as Betrag] as const),
+  );
+  return { inhalt, summen, basen };
 }
 
 // --- Kennungen vergleichbar machen ------------------------------------------------------------------------------
@@ -717,8 +737,8 @@ export function exportfaelle(): Exportfall[] {
     version,
   });
   for (const name of FIXTURES) {
-    const { inhalt, summen } = fixtureLv(name);
-    const n = normiereKennungen(inhalt, summen);
+    const { inhalt, summen, basen } = fixtureLv(name);
+    const n = normiereKennungen(inhalt, summen, basen);
     for (const phase of ['X81', 'X83', 'X86'] as const)
       for (const version of versionen) faelle.push(fall(name, n, phase, version));
   }

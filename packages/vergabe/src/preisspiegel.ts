@@ -18,6 +18,7 @@ import {
   vorzeichen,
 } from '@tethys/dezimal';
 import { positionGehtInSumme, positionsSumme, summenBerechnen, zuschlagsbasen } from '@tethys/kern';
+import { NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   AngebotId,
   AngebotZustand,
@@ -191,22 +192,22 @@ interface Bepreist {
   readonly wert: Dezimal;
 }
 
-/** Wie aus einem verglichenen Wert ein virtueller Preis wird: EP-Zeile oder Betragszeile (Zuschlagsposition). */
+/**
+ * Wie aus einem verglichenen Wert ein virtueller Preis wird: EP-Zeile oder Betragszeile (Zuschlagsposition). Die
+ * Stellen des Mittels folgen aus `mittelArt` (`NACHKOMMASTELLEN`, N3).
+ */
 interface Vergleichsart {
   readonly mittelArt: 'einheitspreis' | 'betrag';
-  readonly mittelStellen: number;
   preis(wert: Dezimal): Pick<VirtuellerPreis, 'einheitspreis' | 'gesamtpreis'>;
 }
 
 const epZeile = (menge: Menge | null): Vergleichsart => ({
   mittelArt: 'einheitspreis',
-  mittelStellen: 3,
   preis: (wert) => ({ einheitspreis: wert as Einheitspreis, gesamtpreis: gp(menge, wert as Einheitspreis) }),
 });
 
 const BETRAGSZEILE: Vergleichsart = {
   mittelArt: 'betrag',
-  mittelStellen: 2,
   preis: (wert) => ({ einheitspreis: null, gesamtpreis: wert as Betrag }),
 };
 
@@ -223,10 +224,10 @@ function extrem(art: Vergleichsart, bepreist: readonly Bepreist[], richtung: 1 |
   };
 }
 
-/** Mittel = Σ / n, kaufmännisch auf 3 Stellen (EP) bzw. 2 Stellen (Betrag) (N3, `dividiere`). */
+/** Mittel = Σ / n, kaufmännisch auf die Stellen des EP bzw. Betrags (N3: `NACHKOMMASTELLEN`, `dividiere`). */
 function mittel(art: Vergleichsart, bepreist: readonly Bepreist[], summe: Dezimal): VirtuellerPreis {
   if (bepreist.length === 0) return KEIN_PREIS;
-  const q = dividiere(summe, anzahl(bepreist.length), art.mittelStellen);
+  const q = dividiere(summe, anzahl(bepreist.length), NACHKOMMASTELLEN[art.mittelArt]);
   if (!q.ok) throw new Error(`Mittel nicht berechenbar: ${q.fehler.meldung}`);
   return { ...art.preis(runden(q.wert, art.mittelArt)), angebotIds: bepreist.map((b) => b.angebotId) };
 }

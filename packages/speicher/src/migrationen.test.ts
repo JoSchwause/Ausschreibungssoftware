@@ -9,7 +9,7 @@ import { aktuelleVersion, migriere, MIGRATIONEN, SCHEMA_VERSION, type Migration 
 import { SpeicherKern } from './kern';
 import { kanonischesJson } from './kanonisch';
 import { normalisiere } from './testhilfe/fixtures';
-import { inhaltMitAllenAltenArten } from './testhilfe/inhalt-v1';
+import { inhaltMitAllenAltenArten, mitKernSummen } from './testhilfe/inhalt-v1';
 import { kernAufDb, neueDatenbank, neuerKern, wert, zaehle } from './testhilfe/node';
 import { schreibeInSchema1 } from './testhilfe/schema1';
 import type { Datenbank } from './sql';
@@ -191,14 +191,18 @@ describe('Migration 2 überführt eine Datenbank der Version 1 ohne Verlust (Q5)
 
     const kern = kernAufDb(db);
     expect(aktuelleVersion(db)).toBe(SCHEMA_VERSION);
-    expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(normalisiere(lv));
-    for (const a of inhalt.angebote) expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
+    // Die Daten bleiben; die Summen stehen danach so, wie der Kern sie vollständig rechnet (D-17).
+    const soll = mitKernSummen(inhalt);
+    expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(
+      normalisiere(soll.leistungsverzeichnisse[0] ?? lv),
+    );
+    for (const a of soll.angebote) expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
     expect(wert(kern.projektLaden(inhalt.projekt.id))).toEqual(inhalt.projekt);
     expect(wert(kern.protokoll(inhalt.projekt.id))).toEqual(inhalt.protokoll);
 
     // Ganzer Stand einschließlich Auftrags-LV: Export der migrierten Datenbank = Export nach Import des Modells.
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(kanonischesJson(inhalt)));
+    wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
     expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
       wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
     );
@@ -227,15 +231,22 @@ describe('Migration 2 überführt eine Datenbank der Version 1 ohne Verlust (Q5)
       ],
     ].map(([id, merkmale, zuschlag]) => ({ id, merkmale, zuschlag, leitbeschreibung: null }));
     expect(zeilen).toEqual([...erwartet, ...erwartet]); // LV und Auftrags-LV
-    // Die neuen Spalten der übrigen Tabellen sind NULL (fehlt bzw. nicht berechnet).
+    // Die neuen Spalten der übrigen Tabellen sind NULL (fehlt).
     for (const [t, s] of [
       ['leistungsverzeichnis', 'auftraggeber'],
       ['auftrags_lv', 'vergabeinformationen'],
-      ['summe_gesamt', 'summe_wahl'],
-      ['summe_gliederung', 'summe_bedarf_ohne_gb'],
       ['angebotsposition', 'zuschlagssatz'],
     ] as const) {
       expect(zaehle(db, `${t} WHERE ${s} IS NOT NULL`), `${t}.${s}`).toBe(0);
+    }
+    // Die Ausweise erfindet die Migration nicht, sie rechnet sie mit dem Kern aus den Daten (D-17): überall gesetzt.
+    for (const [t, s] of [
+      ['summe_gesamt', 'summe_wahl'],
+      ['summe_gesamt', 'summe_bedarf_ohne_gb'],
+      ['summe_gliederung', 'summe_wahl'],
+      ['summe_gliederung', 'summe_bedarf_ohne_gb'],
+    ] as const) {
+      expect(zaehle(db, `${t} WHERE ${s} IS NULL`), `${t}.${s}`).toBe(0);
     }
   });
 });
@@ -256,10 +267,14 @@ describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)
     expect(aktuelleVersion(db)).toBe(3);
     expect(['knoten', 'angebotsposition', 'protokoll'].map((t) => zaehle(db, t))).toEqual(zeilenV2);
     expect(zaehle(db, 'papierkorb_eintrag') + zaehle(db, 'lv_stand')).toBe(0);
-    expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(normalisiere(lv));
+    // Die Summen hat schon Migration 2 mit dem Kern neu gerechnet (D-17).
+    const soll = mitKernSummen(inhalt);
+    expect(wert(kern.lvLaden(lv.leistungsverzeichnis.id))).toEqual(
+      normalisiere(soll.leistungsverzeichnisse[0] ?? lv),
+    );
     expect(wert(kern.lvStaendeAuflisten(lv.leistungsverzeichnis.id))).toEqual([]);
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(kanonischesJson(inhalt)));
+    wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
     expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
       wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
     );

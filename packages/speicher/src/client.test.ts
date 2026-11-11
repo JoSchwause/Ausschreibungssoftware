@@ -140,7 +140,7 @@ describe('Client über Worker-Host', () => {
     expect(fehlercode(await offen)).toBe('gesperrt');
   });
 
-  it('nur die Methoden des Vertrags sind über den Worker erreichbar; rohes SQL gibt es nicht (A5)', async () => {
+  it('nur die Methoden des Vertrags (und die Migrationsbefunde, D-17) sind über den Worker erreichbar; rohes SQL gibt es nicht (A5)', async () => {
     expect([...RPC_METHODEN].sort()).toEqual(
       [
         'projekteAuflisten',
@@ -155,6 +155,7 @@ describe('Client über Worker-Host', () => {
         'protokoll',
         'projektdateiExportieren',
         'projektdateiImportieren',
+        'migrationsbefunde',
       ].sort(),
     );
     const w = falscherWorker(imSpeicher);
@@ -197,6 +198,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
       fehlercode(await s.protokoll(p)),
       fehlercode(await s.projektdateiExportieren(p)),
       fehlercode(await s.projektdateiImportieren('{}')),
+      fehlercode(await s.migrationsbefunde()),
       fehlercode(await s.schliessen()),
     ];
   }
@@ -205,7 +207,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);
     wert(await s.schliessen());
-    expect(await alleCodes(s)).toEqual(Array.from({ length: 13 }, () => 'gesperrt'));
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 14 }, () => 'gesperrt'));
   });
 
   it('Kern direkt: auch ohne Client liefert jede Methode gesperrt', async () => {
@@ -221,7 +223,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const s = wert(await speicherOeffnen({ worker: w, verwaltung: null }));
     wert(await s.schliessen());
     expect(w.beendet).toBe(true);
-    expect(await alleCodes(s)).toEqual(Array.from({ length: 13 }, () => 'gesperrt'));
+    expect(await alleCodes(s)).toEqual(Array.from({ length: 14 }, () => 'gesperrt'));
   });
 });
 
@@ -283,7 +285,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
     expect(treffer.sort()).toEqual(['migrationen.ts', 'schreiben.ts']);
   });
 
-  it('der Kern gibt die Datenbank nicht heraus; der Client hat genau die Methoden der Speicher-Schnittstelle', async () => {
+  it('der Kern gibt die Datenbank nicht heraus; der Client hat genau die Methoden der Speicher-Schnittstelle und die Migrationsbefunde (D-17)', async () => {
     const { kern } = await neuerKern();
     expect(Object.getOwnPropertyNames(kern)).toEqual([]);
     expect(SpeicherKern.prototype).not.toHaveProperty('db');
@@ -293,6 +295,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'anwenden',
       'leistungsverzeichnisse',
       'lvStaende',
+      'migrationsbefunde',
       'persistenzstatus',
       'projektdateiExportieren',
       'projektdateiImportieren',

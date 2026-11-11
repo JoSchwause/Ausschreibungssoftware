@@ -27,7 +27,8 @@ import type {
   Summenstand,
   TitelId,
 } from '@tethys/vertrag';
-import { leseGaeb, schreibeGaeb } from './index';
+import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN } from '@tethys/kern';
+import { GRENZEN, leseGaeb, schreibeGaeb } from './index';
 import type { ExportPhase, SchreibOptionen } from './index';
 import {
   FIXTURES,
@@ -172,8 +173,8 @@ describe('Golden-Dateien je Fixture und Phase (deterministisch)', () => {
   for (const name of FIXTURES)
     for (const phase of phasen)
       it(`${name} ${phase} 3.3`, () => {
-        const { inhalt, summen } = fixtureLv(name);
-        const n = normiereKennungen(inhalt, summen);
+        const { inhalt, summen, basen } = fixtureLv(name);
+        const n = normiereKennungen(inhalt, summen, basen);
         const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
         expect(e.entwurf).toBe(false);
         expect(e.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
@@ -212,6 +213,39 @@ describe('Leistung', () => {
     const dauer = performance.now() - start;
     console.log(`gross X86: ${dauer.toFixed(0)} ms, ${String(e.xml.length)} Zeichen`);
     expect(dauer).toBeLessThan(1000);
+  });
+});
+
+// --- Grenzen an einer Stelle (N3, Review S6) ----------------------------------------------------------------------
+
+describe('Grenzen der eigenen Prüfung kommen aus dem Kern (N3, eine Stelle)', () => {
+  it('Vorkommastellen, Name, Einheit, OZ-Länge und Stufen sind die des Kerns', () => {
+    expect(GRENZEN.vorkomma).toBe(PRUEF_GRENZEN.vorkommastellen);
+    expect(GRENZEN.name).toBe(PRUEF_GRENZEN.lvNameZeichen);
+    expect(GRENZEN.einheit).toBe(PRUEF_GRENZEN.einheitZeichen);
+    expect(GRENZEN.oz).toBe(OZ_MAX_LAENGE);
+    expect(GRENZEN.stufen).toBe(MAX_GLIEDERUNGSEBENEN);
+  });
+
+  it('der Zuschlagssatz wird mit der Grenze zuschlagssatz geprüft, auch mit Vorzeichen', () => {
+    const z = (satz: string): Position =>
+      position('z', '01.0020', 1, {
+        menge: null,
+        einheit: null,
+        zuschlag: { prozentsatz: satz as Prozent, bezug: { art: 'gliederung' } },
+      });
+    const grenze = PRUEF_GRENZEN.vorkommastellen.zuschlagssatz;
+    const passt = `-${'9'.repeat(grenze)}.00`;
+    const zuGross = `${'9'.repeat(grenze + 1)}.00`;
+    const basen = new Map([['z' as PositionId, '0.00' as Betrag]]);
+    expect(codes(schreibe(lv([p1(), z(passt)]), 'X86', { zuschlagsbasen: basen }))).not.toContain(
+      'zahl-zu-gross',
+    );
+    expect(
+      befund(schreibe(lv([p1(), z(zuGross)]), 'X86', { zuschlagsbasen: basen }), 'zahl-zu-gross'),
+    ).toMatchObject({
+      ort: { knotenId: 'z', feld: 'zuschlag.prozentsatz' },
+    });
   });
 });
 
@@ -479,14 +513,73 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
     expect(e.entwurf).toBe(false);
   });
 
-  it('Wahlposition ohne Gruppe/Variante: ohne ALNGroupNo/ALNSerNo geschrieben', () => {
-    const e = schreibe(
+  it('Wahlposition ohne Gruppe/Variante: künstliche Wahlgruppe oberhalb der höchsten belegten, mit Warnung (D-16)', () => {
+    const wahl = (gruppe: number | null, variante: number | null, grund: string | null) => ({
+      ...p1().merkmale,
+      wahl: { gruppe, variante, grundpositionId: grund as PositionId | null },
+    });
+    const inhalt = lv([
+      position('g1', '01.0010', 0),
+      position('w1', '01.0020', 1, { merkmale: wahl(null, null, 'g1') }),
+      position('n', '01.0030', 2, { merkmale: wahl(7, 0, null) }),
+      position('w2', '01.0040', 3, { merkmale: wahl(null, null, null) }),
+      position('w3', '01.0050', 4, { merkmale: wahl(null, null, 'g1') }),
+      position('w4', '01.0060', 5, { merkmale: wahl(null, null, null) }),
+    ]);
+    const e = schreibe(inhalt);
+    const nummern = [
+      ...e.xml.matchAll(/<Item ID="P(\w+)"[^>]*>\s*<ALNGroupNo>(\d+)<\/ALNGroupNo>\s*<ALNSerNo>(\d+)</g),
+    ].map((m) => `${m[1] ?? ''}:${m[2] ?? ''}/${m[3] ?? ''}`);
+    // Je Grundposition eine Gruppe, Varianten 1..n in LV-Reihenfolge; Wahl ohne Grundposition je eine eigene Gruppe.
+    expect(nummern).toEqual(['w1:8/1', 'n:7/0', 'w2:9/1', 'w3:8/2', 'w4:10/1']);
+    expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => [b.schwere, b.ort])).toEqual(
+      ['w1', 'w2', 'w3', 'w4'].map((id) => ['warnung', { knotenId: id, feld: 'merkmale.wahl' }]),
+    );
+    expect(verworfen(e).filter((m) => m.startsWith('Wahl'))).toEqual([]);
+    expect(e.entwurf).toBe(false);
+    // Wieder gelesen bleiben sie Wahlpositionen: ihr Betrag geht nie still ins Netto (D-37.1).
+    const gelesen = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent }).inhalt;
+    const wahlen = (gelesen?.knoten ?? []).filter(
+      (k): k is Position => k.art === 'position' && k.merkmale.wahl !== null,
+    );
+    expect(wahlen.map((k) => [k.ordnungszahl, k.merkmale.wahl?.gruppe, k.merkmale.wahl?.variante])).toEqual([
+      ['01.0020', 8, 1],
+      ['01.0030', 7, 0],
+      ['01.0040', 9, 1],
+      ['01.0050', 8, 2],
+      ['01.0060', 10, 1],
+    ]);
+  });
+
+  it('künstliche Wahlnummern über 9 Varianten oder 999 Gruppen: Fehler wahl-nummer-ungueltig, kein Rückfall auf eine Position ohne Wahl', () => {
+    const wahl = (gruppe: number | null, grund: string | null) => ({
+      ...p1().merkmale,
+      wahl: { gruppe, variante: gruppe === null ? null : 0, grundpositionId: grund as PositionId | null },
+    });
+    const zehn = Array.from({ length: 10 }, (_, i) =>
+      position(`w${String(i)}`, `01.${String(20 + i * 10).padStart(4, '0')}`, i + 1, {
+        merkmale: wahl(null, 'g1'),
+      }),
+    );
+    const viele = schreibe(lv([position('g1', '01.0010', 0), ...zehn]));
+    expect(befund(viele, 'wahl-nummer-ungueltig')).toMatchObject({
+      schwere: 'fehler',
+      ort: { knotenId: 'w9' },
+    });
+    expect(viele.xml).toContain('<ALNSerNo>10</ALNSerNo>');
+    expect(viele.entwurf).toBe(true);
+
+    const hoch = schreibe(
       lv([
-        p1({ merkmale: { ...p1().merkmale, wahl: { gruppe: null, variante: null, grundpositionId: null } } }),
+        position('n', '01.0010', 0, { merkmale: wahl(999, null) }),
+        position('w', '01.0020', 1, { merkmale: wahl(null, null) }),
       ]),
     );
-    expect(e.xml).not.toContain('ALNGroupNo');
-    expect(verworfen(e)[0]).toMatch(/^Wahlposition ohne Gruppen- und Variantennummer/);
+    expect(befund(hoch, 'wahl-nummer-ungueltig')).toMatchObject({
+      schwere: 'fehler',
+      ort: { knotenId: 'w' },
+    });
+    expect(hoch.xml).toContain('<ALNGroupNo>1000</ALNGroupNo>');
   });
 
   it('Altform der Zuschlagsposition: X81/X83 als MarkupItem ohne Menge und EP, X86 als Position ohne Bezug', () => {

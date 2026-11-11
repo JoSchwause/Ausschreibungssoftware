@@ -26,7 +26,7 @@ export {
 export type { DoppelteOrdnungszahl } from './ozregeln';
 export { LOS_ANNAHME, MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, losErlaubtUnter } from './regeln';
 export { FELD_ANNAHMEN } from './feld-befehle';
-export { langtextGleich } from './langtext';
+export { langtextFormFehler, langtextGleich } from './langtext';
 export { HINWEIS_ANNAHMEN } from './hinweise';
 export { ANTEILE, EPA_ANNAHMEN, anteilsumme, epaSummen } from './epa';
 export type { Anteil, Anteilsummen, EpaSummen } from './epa';
@@ -37,7 +37,7 @@ export {
 } from './projekt-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
 export { lvPruefen } from './lv-pruefung';
-export { KNOTEN_REGELN, LV_REGELN, PRUEF_ANNAHMEN, PRUEF_GRENZEN } from './pruefregeln';
+export { KNOTEN_REGELN, LV_REGELN, PRUEF_ANNAHMEN, PRUEF_GRENZEN, vorkommastellen } from './pruefregeln';
 export type { Knotenregel, LvRegel } from './pruefregeln';
 export { gesamtsummen, positionsSumme, summenBerechnen, zuschlagsbasen } from './summen';
 export type { Ausweise } from './summen';

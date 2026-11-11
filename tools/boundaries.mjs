@@ -17,8 +17,10 @@ export const ERLAUBT = {
   'packages/vertrag': [],
   'packages/dezimal': ['packages/vertrag'],
   'packages/kern': ['packages/vertrag', 'packages/dezimal'],
-  'packages/speicher': ['packages/vertrag'],
-  'packages/gaeb': ['packages/vertrag', 'packages/dezimal'],
+  // Summen nach Migration 2 neu rechnen (D-17): speicher fragt den Kern, rechnet nicht selbst.
+  'packages/speicher': ['packages/vertrag', 'packages/kern'],
+  // Betragsziel und Prüfgrenzen aus dem Kern statt eigener Kopien (D-16, Review S4/S6).
+  'packages/gaeb': ['packages/vertrag', 'packages/dezimal', 'packages/kern'],
   // Der Langtext-Editor (Ticket 34) braucht die Langtext-Typen; sonst bleibt ui-basis ohne Fachwissen.
   'packages/ui-basis': ['packages/vertrag'],
   'packages/ui-grid': ['packages/vertrag', 'packages/ui-basis'],

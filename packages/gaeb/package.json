@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tethys/dezimal": "workspace:*",
+    "@tethys/kern": "workspace:*",
     "@tethys/vertrag": "workspace:*"
   }
 }

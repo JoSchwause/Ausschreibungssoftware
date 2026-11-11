@@ -9,6 +9,8 @@
 //  4. Die eingefrorenen Dateien `packages/speicher/fixtures/projektdatei-v<N>.json` bleiben unverändert und werden
 //     weiter geöffnet; für N+1 kommt eine weitere eingefrorene Datei dazu.
 //  5. Das SQL steht hier (A5: Schema nur in dieser Datei), die Dateimigration ab Version 2 in `dateimigration<N>.ts`.
+//  6. Ändert der Schritt, was der Kern rechnet, setzt er `summenNeuRechnen` (D-17): Danach stehen alle gespeicherten
+//     Summen so, wie der Kern sie vollständig rechnet, auf dem Datenbank- und dem Dateiweg (`summenmigration.ts`).
 
 import type { Ergebnis, Speicherfehler } from '@tethys/vertrag';
 import { fehlerAusAusnahme } from './fehler';
@@ -16,6 +18,7 @@ import { fehler, ok } from './ergebnis';
 import { dateiAuf2 } from './dateimigration2';
 import { dateiAuf3 } from './dateimigration3';
 import type { Datenbank } from './sql';
+import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
 export interface Migration {
   readonly version: number;
@@ -24,6 +27,11 @@ export interface Migration {
   readonly hoch: (db: Datenbank) => void;
   /** Hebt eine Projektdatei von `version - 1` auf `version`. `null` für Version 1 (Anfang der Reihe). */
   readonly datei: ((roh: Record<string, unknown>) => Record<string, unknown>) | null;
+  /**
+   * Nach dem Schritt alle gespeicherten Summen mit dem Kern neu rechnen (D-17): auf dem Datenbankweg in derselben
+   * Transaktion, auf dem Dateiweg nach der Prüfung der gehobenen Datei. Was der Kern abweist, bleibt und wird Befund.
+   */
+  readonly summenNeuRechnen?: boolean;
 }
 
 /**
@@ -284,6 +292,8 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V2);
     },
     datei: dateiAuf2,
+    // Version 1 kannte weder Bedarfs- und Wahlsumme noch Pauschal ohne Menge (D-37.1, Review C1).
+    summenNeuRechnen: true,
   },
   {
     version: 3,
@@ -304,10 +314,14 @@ export function aktuelleVersion(db: Datenbank): number {
   return typeof v === 'number' ? v : 0;
 }
 
-/** Wendet alle noch fehlenden Migrationen an, jede in einer eigenen Transaktion. */
+/**
+ * Wendet alle noch fehlenden Migrationen an, jede in einer eigenen Transaktion. Befunde der Summen-Neuberechnung
+ * (D-17) landen in `befunde`; sie brechen nichts ab.
+ */
 export function migriere(
   db: Datenbank,
   migrationen: readonly Migration[] = MIGRATIONEN,
+  befunde: Migrationsbefund[] = [],
 ): Ergebnis<number, Speicherfehler> {
   const ziel = migrationen[migrationen.length - 1]?.version ?? 0;
   const start = aktuelleVersion(db);
@@ -323,8 +337,10 @@ export function migriere(
       db.ausfuehren('BEGIN IMMEDIATE');
       try {
         m.hoch(db);
+        const neu = m.summenNeuRechnen === true ? summenDerDatenbankNeuRechnen(db) : [];
         db.skript(`PRAGMA user_version = ${String(m.version)}`);
         db.ausfuehren('COMMIT');
+        befunde.push(...neu);
       } catch (e) {
         try {
           db.ausfuehren('ROLLBACK');

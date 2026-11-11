@@ -51,7 +51,7 @@ Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. 
 Die Summe der GP der Bezugspositionen einer Zuschlagsposition, auf die der Zuschlagssatz gerechnet wird. Es zählen nur Bezugspositionen mit GP, deren Betrag ins Netto geht (keine Wahl mit Variante ungleich 0, kein Bedarf ohne Gesamtbetrag) und die selbst keine Zuschlagsposition sind; bei einer Teilmenge zählt Teilmenge × EP. Im Code `Zuschlagsbasis.basis` (`zuschlagsbasen`).
 
 ### Altform der Zuschlagsposition
-Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 44 stellt die Fixtures auf die GAEB-Form um.
+Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 51 stellt die Fixtures auf die GAEB-Form um (aus Ticket 44 abgespalten, D-44.2).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -140,6 +140,9 @@ Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ä
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
 
+### Migrationsbefund
+Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
+
 ### Formale LV-Prüfung (LV-Prüfung)
 Die Prüfung eines Ausschreibungs-LV auf Vollständigkeit und GAEB-Tauglichkeit (fehlende oder doppelte Ordnungszahl, leere Texte, fehlende Einheit oder Menge, zu große Zahlen, Zuschlagspositionen ohne Bezug, negatives Netto nach Nachlass usw.). Sie liefert Prüfbefunde mit der Quelle `lv-pruefung` und sperrt nie die Eingabe. Im Code `lvPruefen`, Regeln in `pruefregeln.ts`.
 
@@ -212,6 +215,15 @@ Bieterpreis, der um mehr als einen einstellbaren Schwellenwert vom Mittelwert od
 
 ### Bietersumme
 Die Gesamtsummen eines Angebots (Netto, Nachlass, Netto nach Nachlass, MwSt, Brutto), gerechnet wie die des LV: mit den Einheitspreisen des Angebots, dem Nachlass des Angebots und dem MwSt-Satz des LV. Eine nicht angebotene Position geht nicht ein. Im Code `angebotSummenBerechnen`, `Bietersumme`.
+
+### Gedachtes LV
+Das LV, wie es mit den Preisen eines Bieters rechnet (R7): die Knoten des Ausschreibungs-LV, jede Position mit dem EP des Angebots (nicht angeboten: kein EP), eine Zuschlagsposition mit dem Zuschlagssatz des Bieters statt dem des LV, dazu der Nachlass des Angebots und der MwSt-Satz des LV. Bietersumme, Preisspiegel und Bieterzuschläge rechnet der Kern auf diesem LV; gespeichert wird es nie. Im Code `GedachtesLv`, `gedachtesLv`.
+
+### Preiskennzeichen
+Kennzeichen eines Bieterpreises im Preisspiegel (D-05): angeboten, Nullpreis, nicht angeboten oder, nur an einer Zuschlagsposition, angeboten ohne Zuschlagssatz (rechnet wie nicht angeboten). Im Code `Preiskennzeichen` mit den Werten `angeboten`, `nullpreis`, `nicht-angeboten`, `zuschlagssatz-fehlt`.
+
+### Bieterzuschlag
+Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sein Zuschlagssatz, die Zuschlagsbasis aus seinen Preisen, der Betrag und das Preiskennzeichen; dazu, ob eine Bezugsposition ohne Preis des Bieters die Basis unvollständig lässt. Im Code `Bieterzuschlag`.
 
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.

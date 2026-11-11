@@ -429,6 +429,8 @@
                 </Description>
               </Item>
               <Item ID="Pposition0015" RNoPart="0070" RNoIndex="A">
+                <ALNGroupNo>1</ALNGroupNo>
+                <ALNSerNo>1</ALNSerNo>
                 <Qty>96.000</Qty>
                 <QU>m²</QU>
                 <UP>61.250</UP>

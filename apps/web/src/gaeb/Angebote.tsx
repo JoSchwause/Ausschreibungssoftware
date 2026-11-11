@@ -12,7 +12,7 @@ import { useMeldungen } from '../lv/meldungen';
 import { formatiereBetragDe } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Befundliste } from './Befundliste';
-import { dateiBytes, naechsterZug } from './datei';
+import { DateiNichtLesbar, dateiBytes, naechsterZug } from './datei';
 import { angebotAnlegenPlan, angebotLesen, bietersummen, type Angebotsvorschau } from './gaeb';
 import { texte } from './texte';
 import './gaeb.css';
@@ -91,8 +91,10 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
       await naechsterZug();
       const vorschau = angebotLesen(await dateiBytes(f), f.name, zustand, u.ids);
       setLage({ art: 'da', name: f.name, vorschau, bieter: vorschau.bieterName, meldung: null });
-    } catch {
+    } catch (e) {
       setLage(null);
+      // Erwartet ist nur „Datei nicht lesbar“; ein Fehler des Lesers ist ein Programmfehler und geht weiter (Q5).
+      if (!(e instanceof DateiNichtLesbar)) throw e;
       zeige({ titel: texte.einlesen.nichtLesbar, beschreibung: f.name, art: 'fehler' });
     }
   };
