@@ -70,7 +70,11 @@ export function aufmass(nummer: number, mehr: Partial<Aufmass> = {}): Aufmass {
 }
 
 /** Abschlagsrechnung `nummer` über die Blätter `blaetter`, nicht freigegeben. */
-export function rechnung(nummer: number, blaetter: readonly number[], mehr: Partial<Rechnung> = {}): Rechnung {
+export function rechnung(
+  nummer: number,
+  blaetter: readonly number[],
+  mehr: Partial<Rechnung> = {},
+): Rechnung {
   return {
     id: `rechnung-${String(nummer)}` as RechnungId,
     projektId: P,
@@ -159,10 +163,7 @@ let nr = 500;
 /** Wendet ein ChangeSet mit einem passenden Protokolleintrag an (Befehl wie angegeben, sonst ein kurzer Platzhalter). */
 export function anwenden(kern: SpeicherKern, cs: ChangeSet, befehl?: Protokolleintrag['befehl']) {
   nr += 1;
-  return kern.anwenden(
-    eintrag(nr, P, aggregatVon(cs), befehl ?? { art: 'AufmassLoeschen' }),
-    cs,
-  );
+  return kern.anwenden(eintrag(nr, P, aggregatVon(cs), befehl ?? { art: 'AufmassLoeschen' }), cs);
 }
 
 /** Projekt, LV, drei Angebote und das Auftrags-LV des Fixtures `typisch`. */
@@ -170,10 +171,15 @@ export async function mitAuftrag(): Promise<SpeicherKern> {
   const { kern } = await neuerKern();
   await speichere(kern, anlegenSchritte(F));
   const r = await kern.anwenden(
-    eintrag(90, P, { art: 'auftrags-leistungsverzeichnis', id: AUFTRAG }, {
-      art: 'AuftragsLeistungsverzeichnisAnlegen',
-      auftragsLeistungsverzeichnis: AUFTRAG_ZUSTAND.auftragsLeistungsverzeichnis,
-    }),
+    eintrag(
+      90,
+      P,
+      { art: 'auftrags-leistungsverzeichnis', id: AUFTRAG },
+      {
+        art: 'AuftragsLeistungsverzeichnisAnlegen',
+        auftragsLeistungsverzeichnis: AUFTRAG_ZUSTAND.auftragsLeistungsverzeichnis,
+      },
+    ),
     auftragsLvAnlegenChangeSet(AUFTRAG_ZUSTAND),
   );
   if (!r.ok) throw new Error(r.fehler.meldung);

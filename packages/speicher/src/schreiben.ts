@@ -77,6 +77,7 @@ import {
   pruefeAufmassAnlegen,
   pruefeAufmassLoeschen,
   pruefeAuftragsLvKopf,
+  pruefeEntfernteAufmasspositionen,
   pruefeFreigabereihenfolge,
   pruefeNachtragsbezug,
   pruefeRechnungAnlegen,
@@ -171,7 +172,8 @@ function schreibeBieter(db: Datenbank, p: Projekt): void {
  * mit: `protokoll.projekt_id` verweist auf das Projekt (seit Schema 1; Schema 2 lässt das so, Ticket 38). Der Eintrag
  * des Löschbefehls selbst wird deshalb nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt,
  * dem er gehört. Das ist die einzige Ausnahme von „ein Eintrag je Befehl“ (D-31.1).
- * LVs, Angebote und Auftrags-LV verhindern das Löschen (`konflikt`).
+ * LVs, Angebote, Auftrags-LV und (v1.4) Aufmaßblätter, Rechnungen und Kostenermittlungen verhindern das Löschen
+ * (`konflikt`).
  */
 export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
   const { vorher, nachher } = cs.projekt;
@@ -218,6 +220,9 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
     `SELECT 'LV' AS art, id FROM leistungsverzeichnis WHERE projekt_id = ?1
      UNION ALL SELECT 'Angebot', id FROM angebot WHERE projekt_id = ?1
      UNION ALL SELECT 'Auftrags-LV', id FROM auftrags_lv WHERE projekt_id = ?1
+     UNION ALL SELECT 'Aufmaßblatt', id FROM aufmass WHERE projekt_id = ?1
+     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE projekt_id = ?1
+     UNION ALL SELECT 'Kostenermittlung', id FROM kostenermittlung WHERE projekt_id = ?1
      ORDER BY 1, 2`,
     id,
   );
@@ -932,6 +937,7 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
   }
   wendeKnotenAn(db, id, cs.knoten, () => {
     pruefeSummenvorher(db, id, cs.summen, cs.kopf?.vorher === null, kennungen(cs.knoten.entfernt));
+    pruefeEntfernteAufmasspositionen(db, id, cs.knoten.entfernt);
   });
   wendeSummenAn(db, id, cs.summen);
 }
@@ -947,6 +953,17 @@ function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: Pr
   if (gespeichert.projektId !== projektId)
     return abbruch('unbekannt', `Auftrags-LV ${id} gehört zu einem anderen Projekt.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Auftrags-LV-Kopfs');
+  // v1.4 (Q5): Aufmaßblätter, Rechnungen und Nachtragsangaben eines LV verweisen auf das Auftrags-LV.
+  abhaengig(
+    db,
+    `Auftrags-LV ${id}`,
+    `SELECT 'Aufmaßblatt' AS art, id FROM aufmass WHERE auftrags_lv_id = ?1
+     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE auftrags_lv_id = ?1
+     UNION ALL SELECT 'LV mit Nachtragsangaben', id FROM leistungsverzeichnis
+       WHERE json_extract(nachtrag, '$.auftragsLvId') = ?1
+     ORDER BY 1, 2`,
+    id,
+  );
   loescheKnotenUndSummen(db, id, cs.knoten, cs.summen, `Auftrags-LV ${id}`);
   db.ausfuehren('DELETE FROM auftrags_lv WHERE id = ?', [id]);
 }
@@ -1058,7 +1075,11 @@ export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId:
 }
 
 /** Kostenermittlung anlegen, ändern oder löschen (`KostenermittlungChangeSet`); an ihr hängt nichts. */
-export function wendeKostenermittlungAn(db: Datenbank, cs: KostenermittlungChangeSet, projektId: ProjektId): void {
+export function wendeKostenermittlungAn(
+  db: Datenbank,
+  cs: KostenermittlungChangeSet,
+  projektId: ProjektId,
+): void {
   const id = cs.kostenermittlungId;
   const was = `Kostenermittlung ${id}`;
   const { vorher, nachher } = cs.kostenermittlung;

@@ -89,7 +89,11 @@ export function imProtokoll(e: Protokolleintrag): Protokolleintrag {
     case 'AufmassAnlegen':
       return {
         ...e,
-        befehl: { art: 'Befehlskurzfassung', kopf: { art: b.art, aufmass: ohne(b.aufmass, 'positionen') }, pruefsumme },
+        befehl: {
+          art: 'Befehlskurzfassung',
+          kopf: { art: b.art, aufmass: ohne(b.aufmass, 'positionen') },
+          pruefsumme,
+        },
       };
     default:
       return e;

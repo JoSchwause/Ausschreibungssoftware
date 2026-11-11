@@ -104,11 +104,13 @@ const nachName = <T extends { readonly id: string; readonly name: string }>(a: T
  * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein).
  */
 export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
-  return db
-    // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
-    .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
-    .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
-    .sort(nachName);
+  return (
+    db
+      // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
+      .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
+      .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
+      .sort(nachName)
+  );
 }
 
 /** Auftrags-LV-Liste eines Projekts (`AuftragsLvRepository.auflisten`, v1.4): ohne Knoten, sortiert wie die LV-Liste. */
@@ -408,7 +410,9 @@ export function leseKostenermittlung(db: Datenbank, id: string): Kostenermittlun
 /** Die Kostenermittlungen eines Projekts ohne Einträge, sortiert wie die LV-Liste. */
 export function listeKostenermittlungen(db: Datenbank, projekt: ProjektId): KostenermittlungUebersicht[] {
   return db
-    .zeilen('SELECT id, projekt_id, stufe, name FROM kostenermittlung WHERE projekt_id = ? ORDER BY id', [projekt])
+    .zeilen('SELECT id, projekt_id, stufe, name FROM kostenermittlung WHERE projekt_id = ? ORDER BY id', [
+      projekt,
+    ])
     .map(kostenermittlungUebersichtAusZeile)
     .sort(nachName);
 }

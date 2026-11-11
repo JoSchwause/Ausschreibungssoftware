@@ -178,7 +178,10 @@ export const LV_KENNZEICHEN_SPALTEN = ['nachtrag', 'vorlage'] as const;
 export function lvKennzeichenSpalten(k: LvKopf): [SqlWert, SqlWert] {
   const v: unknown = k.vorlage;
   if (v !== undefined && v !== true)
-    abbruch('unbekannt', `LV ${k.id}: vorlage ist nur true oder fehlt (Vertrag v1.4), nicht ${String(v)}.`);
+    abbruch(
+      'unbekannt',
+      `LV ${k.id}: vorlage ist nur true oder fehlt (Vertrag v1.4), nicht ${JSON.stringify(v)}.`,
+    );
   return [jsonOderNull(k.nachtrag), v === true ? 1 : null];
 }
 

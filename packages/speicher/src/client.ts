@@ -116,7 +116,8 @@ export function speicherUeberTransport(
       laden: (id: AufmassId) => aufruf('aufmassLaden', id),
     },
     rechnungen: {
-      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) => aufruf('rechnungenAuflisten', auftragsLvId),
+      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) =>
+        aufruf('rechnungenAuflisten', auftragsLvId),
       laden: (id: RechnungId) => aufruf('rechnungLaden', id),
     },
     kostenermittlungen: {

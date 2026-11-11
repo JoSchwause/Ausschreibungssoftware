@@ -96,7 +96,11 @@ describe('Vertrag v1.4: Felder am LV-Kopf', () => {
     const gesetzt = wert(kern.lvLaden(n.leistungsverzeichnis.id));
     expect(gesetzt.leistungsverzeichnis.nachtrag).toEqual(NACHTRAG);
     const uebersicht = () => wert(kern.lvAuflisten(P)).find((u) => u.id === n.leistungsverzeichnis.id);
-    expect(uebersicht()).toEqual({ id: n.leistungsverzeichnis.id, name: n.leistungsverzeichnis.name, nachtrag: NACHTRAG });
+    expect(uebersicht()).toEqual({
+      id: n.leistungsverzeichnis.id,
+      name: n.leistungsverzeichnis.name,
+      nachtrag: NACHTRAG,
+    });
 
     const beauftragt = kopfAendern(gesetzt, { nachtrag: { ...NACHTRAG, status: 'beauftragt' } }, '1.00');
     await schreibe(kern, beauftragt);
@@ -197,12 +201,21 @@ describe('Vertrag v1.4: Kostengruppe und Textquelle an der Position', () => {
       art: 'auftrags-leistungsverzeichnis',
       auftragsLeistungsverzeichnisId: AUFTRAG,
       kopf: null,
-      knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher: { ...vorher, kostengruppe: KG } }], entfernt: [] },
+      knoten: {
+        hinzugefuegt: [],
+        geaendert: [{ vorher, nachher: { ...vorher, kostengruppe: KG } }],
+        entfernt: [],
+      },
       summen: {
         positionen: [],
         gliederungen: [],
         gesamt: null,
-        vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: { positionen: [], gliederungen: [] } },
+        vorher: {
+          positionen: [],
+          gliederungen: [],
+          gesamt: null,
+          entfernt: { positionen: [], gliederungen: [] },
+        },
       },
     };
     await schreibe(kern, cs);

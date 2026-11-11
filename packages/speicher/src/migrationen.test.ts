@@ -436,7 +436,14 @@ describe('Migration 5 überführt eine Datenbank der Version 4 ohne Verlust (Q5)
     const lvs = wert(alt.lvAuflisten(projekt));
     const vorher = lvs.map((l) => wert(alt.lvLaden(l.id)));
     const protokoll = wert(alt.protokoll(projekt));
-    const tabellen = ['knoten', 'angebotsposition', 'protokoll', 'papierkorb_eintrag', 'lv_stand', 'auftrags_lv'];
+    const tabellen = [
+      'knoten',
+      'angebotsposition',
+      'protokoll',
+      'papierkorb_eintrag',
+      'lv_stand',
+      'auftrags_lv',
+    ];
     const zeilenV4 = tabellen.map((t) => zaehle(db, t));
     const seqV4 = db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq');
 
@@ -458,7 +465,9 @@ describe('Migration 5 überführt eine Datenbank der Version 4 ohne Verlust (Q5)
     // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 4 (Dateimigration).
     const frisch = await neuerKern();
     wert(frisch.kern.projektdateiImportieren(v4));
-    expect(wert(kern.projektdateiExportieren(projekt))).toBe(wert(frisch.kern.projektdateiExportieren(projekt)));
+    expect(wert(kern.projektdateiExportieren(projekt))).toBe(
+      wert(frisch.kern.projektdateiExportieren(projekt)),
+    );
   });
 
   it('protokoll: die neue CHECK-Regel kennt die drei Aggregatarten; seq und Zähler laufen weiter (keine Nummer doppelt)', async () => {

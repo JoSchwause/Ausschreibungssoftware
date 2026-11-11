@@ -14,7 +14,8 @@ const anlegen = (a = aufmass(1)): [AufmassChangeSet, Befehl] => [
   { art: 'AufmassAnlegen', aufmass: a },
 ];
 
-const code = (r: { ok: boolean; fehler?: { code: string } }): string | false => !r.ok && (r.fehler?.code ?? '');
+const code = (r: { ok: boolean; fehler?: { code: string } }): string | false =>
+  !r.ok && (r.fehler?.code ?? '');
 
 describe('Aufmaßblatt speichern und laden', () => {
   it('Anlegen → Laden; auflisten liefert die Köpfe nach Blattnummer; AufmassAnlegen steht als Kurzfassung im Protokoll', async () => {
@@ -26,10 +27,20 @@ describe('Aufmaßblatt speichern und laden', () => {
     expect(wert(await s.aufmasse.laden(zwei.id))).toEqual({ aufmass: zwei });
     expect(wert(await s.aufmasse.laden(aufmass(1).id))).toEqual({ aufmass: aufmass(1) });
     const kopf = (n: number, mehr: object = {}) => {
-      const { positionen: _, ...k } = { ...aufmass(n), ...mehr };
-      return k;
+      const a = { ...aufmass(n), ...mehr };
+      return {
+        id: a.id,
+        projektId: a.projektId,
+        auftragsLvId: a.auftragsLvId,
+        nummer: a.nummer,
+        bezeichnung: a.bezeichnung,
+        datum: a.datum,
+      };
     };
-    expect(wert(await s.aufmasse.auflisten(AUFTRAG))).toEqual([kopf(1), kopf(2, { datum: null, bezeichnung: '' })]);
+    expect(wert(await s.aufmasse.auflisten(AUFTRAG))).toEqual([
+      kopf(1),
+      kopf(2, { datum: null, bezeichnung: '' }),
+    ]);
     const letzter = wert(kern.protokoll(P)).at(-1);
     if (letzter === undefined) throw new Error('kein Protokolleintrag');
     expect(letzter.befehl.art).toBe('Befehlskurzfassung');
@@ -40,7 +51,10 @@ describe('Aufmaßblatt speichern und laden', () => {
     const kern = await mitAuftrag();
     wert(await anwenden(kern, ...anlegen()));
     const a = aufmass(1);
-    const geaendert = { ...a, positionen: [a.positionen[0], { ...a.positionen[1], menge: '2.400' }] } as typeof a;
+    const geaendert = {
+      ...a,
+      positionen: [a.positionen[0], { ...a.positionen[1], menge: '2.400' }],
+    } as typeof a;
     const cs = aufmassCs(a, geaendert);
     wert(await anwenden(kern, cs));
     expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(geaendert);
@@ -92,7 +106,8 @@ describe('Aufmaßblatt speichern und laden', () => {
       aufmassCs(null, aufmass(0)),
       { art: 'aufmass', aufmassId: a.id, aufmass: { vorher: null, nachher: null } },
     ];
-    for (const cs of faelle) expect(code(await anwenden(kern, cs)), JSON.stringify(cs).slice(0, 80)).toBe('unbekannt');
+    for (const cs of faelle)
+      expect(code(await anwenden(kern, cs)), JSON.stringify(cs).slice(0, 80)).toBe('unbekannt');
     expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(a);
   });
 

@@ -261,7 +261,8 @@ export class SpeicherKern {
   /** `AuftragsLvRepository.laden` (v1.4). */
   auftragsLvLaden(id: AuftragsLeistungsverzeichnisId): Ergebnis<AuftragsLvZustand, Speicherfehler> {
     return this.#fange(
-      () => leseAuftragsLv(this.#db, id) ?? abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`),
+      () =>
+        leseAuftragsLv(this.#db, id) ?? abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`),
     );
   }
 
@@ -272,7 +273,9 @@ export class SpeicherKern {
   }
 
   /** `AufmassRepository.auflisten` (v1.4): die Blätter des Auftrags-LV ohne Zeilen, nach Blattnummer. */
-  aufmasseAuflisten(auftragsLvId: AuftragsLeistungsverzeichnisId): Ergebnis<readonly AufmassKopf[], Speicherfehler> {
+  aufmasseAuflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Ergebnis<readonly AufmassKopf[], Speicherfehler> {
     return this.#fange(() => {
       this.#auftragsLvDa(auftragsLvId);
       return listeAufmasse(this.#db, auftragsLvId);
@@ -290,7 +293,9 @@ export class SpeicherKern {
   }
 
   /** `RechnungRepository.auflisten` (v1.4): die Rechnungen des Auftrags-LV, ganz, nach Nummer. */
-  rechnungenAuflisten(auftragsLvId: AuftragsLeistungsverzeichnisId): Ergebnis<readonly Rechnung[], Speicherfehler> {
+  rechnungenAuflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Ergebnis<readonly Rechnung[], Speicherfehler> {
     return this.#fange(() => {
       this.#auftragsLvDa(auftragsLvId);
       return leseRechnungen(this.#db, auftragsLvId);
@@ -301,7 +306,9 @@ export class SpeicherKern {
   rechnungLaden(id: RechnungId): Ergebnis<RechnungZustand, Speicherfehler> {
     return this.#fange(() => {
       const rechnung = leseRechnung(this.#db, id);
-      return rechnung === null ? abbruch('nicht-gefunden', `Rechnung ${id} ist nicht vorhanden.`) : { rechnung };
+      return rechnung === null
+        ? abbruch('nicht-gefunden', `Rechnung ${id} ist nicht vorhanden.`)
+        : { rechnung };
     });
   }
 

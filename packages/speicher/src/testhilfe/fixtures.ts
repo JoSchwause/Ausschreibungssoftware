@@ -406,6 +406,18 @@ export function auftragsLvAnlegenChangeSet(z: AuftragsLvZustand): AuftragsLvChan
   };
 }
 
+/** Löschen eines Auftrags-LV: voller Kopf in `vorher`, alle Knoten und alle Summen als entfernt (wie beim LV). */
+export function auftragsLvLoeschenChangeSet(z: AuftragsLvZustand): AuftragsLvChangeSet {
+  const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
+  return {
+    art: 'auftrags-leistungsverzeichnis',
+    auftragsLeistungsverzeichnisId: kopf.id,
+    kopf: { vorher: kopf, nachher: null },
+    knoten: { hinzugefuegt: [], geaendert: [], entfernt: knoten },
+    summen: loeschSummen(z.summen),
+  };
+}
+
 export function angebotAnlegenChangeSet(z: AngebotZustand): AngebotChangeSet {
   const { positionen, ...kopf } = z.angebot;
   return {
