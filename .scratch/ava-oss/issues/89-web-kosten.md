@@ -35,4 +35,13 @@ Herkunft: `plan.md` §2 C2–C4
 - [ ] Unit-Tests der Logik, E2E `kosten.spec.ts` grün; LV-Grid-Leistungsbudgets bleiben grün (`leistung.spec.ts`)
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Die App muss `kostenermittlung`-ChangeSets umkehren (wie 87; `kostenermittlungChangeSetUmkehren` aus `kosten`);
+  Einhängestellen markiert `// Ticket 89`.
+- Eine formwidrige KG-Nummer ist ein Zellfehler wie eine unlesbare Menge (die Marke lässt sie nicht in den Befehl); der
+  Befund nach U5 betrifft eine KG außerhalb der Budget-Gliederung (Ticket 82 Punkt 3).
+- Bis Ticket 84 gemergt ist, verliert der GAEB-Export gesetzte Kostengruppen; 84 ist Pflicht vor Wellenende (sonst warnt
+  der Writer).
+
 ## Comments

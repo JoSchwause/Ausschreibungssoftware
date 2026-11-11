@@ -44,4 +44,11 @@ Neue Begriffe zuerst ins `GLOSSARY.md` (L2), soweit Ticket 70 sie nicht schon ei
       des Kerns: `baumfehler`)
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- `nachtragUebernehmen` braucht den Bieter des Auftrags: zusätzlicher Parameter `auftragsangebot: AngebotKopf` (oder
+  `bieterId`), sonst ist der Fehler „Angebot nicht vom Bieter des Auftrags“ nicht prüfbar.
+- Nachtrags-LV mit Losen (F1: ein Los steht nur auf oberster Stufe): entscheiden – Fehler, oder Los wird Titel mit gleicher
+  Kennung – und als `D-80.<n>` begründen.
+
 ## Comments

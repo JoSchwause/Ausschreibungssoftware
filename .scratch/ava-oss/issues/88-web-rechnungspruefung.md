@@ -36,4 +36,11 @@ Herkunft: `plan.md` §2 A3, A4; G-27 (D-34)
 - [ ] Unit-Tests der Logik, E2E `rechnung.spec.ts` grün
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Die App muss `rechnung`-ChangeSets umkehren (wie 87 für `aufmass`; `rechnungChangeSetUmkehren` aus `abrechnung`);
+  Einhängestellen in `historie.ts`, `befehlsweg.ts`, `HistorieAnbieter.tsx` markiert `// Ticket 88`.
+- `gefordert` (D-44): fehlende Werte als „–“ ohne Differenz; Differenzzeile bevorzugt den Zahlbetrag (BT-115); XRechnung
+  übernimmt netto (BT-109), brutto (BT-112), zahlbetrag (BT-115), je wie vorhanden.
+
 ## Comments

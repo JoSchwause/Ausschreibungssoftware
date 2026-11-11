@@ -35,4 +35,10 @@ Herkunft: `plan.md` §2 M3; D-33 (nur X31, DA11 später)
 - [ ] Rundweg-Tests (Q3), XSD-Gegenprüfung grün (`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`)
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
+## Nachträge aus dem Review von v1.4 (D-42)
+
+- Rückgabe von `x31Lesen`: `Omit<Aufmass, 'id' | 'projektId' | 'auftragsLvId' | 'nummer'>` (plus Befunde); die App ergänzt
+  den Kopf und baut `AufmassAnlegen`.
+- Mehrere `Item`s zu derselben OZ zu einer Aufmaßposition zusammenführen (sonst weist der Ausführer mit `ungueltige-eingabe` ab).
+
 ## Comments
