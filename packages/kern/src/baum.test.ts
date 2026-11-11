@@ -690,18 +690,6 @@ describe('Befehle anderer Tickets', () => {
     expect(ZUSTAENDIGES_TICKET).toEqual({});
   });
 
-  // v1.3: mechanisch angepasst, Folgeticket (Ticket 56 ersetzt diesen Test durch die Logik)
-  it('v1.3: der Einfügeort hinter-gliederung wird vorläufig abgewiesen', () => {
-    const p1 = id.pos('P1');
-    const hinterT1: Einfuegeort = { art: 'hinter-gliederung', gliederungId: id.titel('T1') };
-    expect(fehlercode(z, titel('T2', hinterT1))).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, position('P9', hinterT1))).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, verschiebe('P1', hinterT1))).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, { art: 'KnotenlisteVerschieben', knotenIds: [p1], ziel: hinterT1 })).toBe(
-      'befehl-nicht-zustaendig',
-    );
-  });
-
   it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {
     const meldung = (b: LvBefehl): string => {
       const e = lvBefehlAusfuehren(z, b);

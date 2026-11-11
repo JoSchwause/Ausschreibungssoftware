@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Property-Test für K9 (Ticket 42): beliebige Folgen aus Einfügen (Kopie), Verschieben, Papierkorb, Wiederherstellen,
-// Entfernen und Leeren. Nach jedem angenommenen Befehl gilt:
+// Entfernen und Leeren, an jeden Ort (seit Ticket 56 auch hinter eine Gliederung). Nach jedem angenommenen Befehl gilt:
 //  - der inkrementell gepflegte Summenstand ist gleich der Neuberechnung `summenBerechnen` (Positionen im Papierkorb
 //    haben also keine Summe und zählen nirgends);
 //  - `pruefeLvInvarianten` hält, mit dem Papierkorb (Bezüge in den Papierkorb sind gültig);
@@ -84,7 +84,7 @@ function ort(z: LvZustand, b: number): Einfuegeort {
   const gliederungen = knoten.filter((k) => k.art === 'los' || k.art === 'titel');
   const k = waehle(knoten, b >> 2);
   const g = waehle(gliederungen, b >> 2);
-  switch (b % 4) {
+  switch (b % 5) {
     case 0:
       return { art: 'ende', elternId: id.eltern(LV_ID) };
     case 1:
@@ -93,8 +93,13 @@ function ort(z: LvZustand, b: number): Einfuegeort {
         : { art: 'anfang', elternId: g.id };
     case 2:
       return g === undefined ? { art: 'ende', elternId: id.eltern(LV_ID) } : { art: 'ende', elternId: g.id };
-    default:
+    case 3:
       return k === undefined ? { art: 'ende', elternId: id.eltern(LV_ID) } : { art: 'nach', knotenId: k.id };
+    default:
+      // v1.3 (Ticket 56): hinter einer Gliederung als Geschwister.
+      return g === undefined
+        ? { art: 'ende', elternId: id.eltern(LV_ID) }
+        : { art: 'hinter-gliederung', gliederungId: g.id };
   }
 }
 
