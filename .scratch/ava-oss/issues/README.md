@@ -153,7 +153,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
 | 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | ready-for-agent |
 | 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
-| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | ready-for-agent |
+| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
 | 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |
 | 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
 | 85 | F | Fixture M4 | `fixtures/` | resolved |

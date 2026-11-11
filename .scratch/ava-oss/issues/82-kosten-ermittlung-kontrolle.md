@@ -1,6 +1,6 @@
 # 82: C2+C3: Kostenermittlung als Aggregat, Kostenkontrolle
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: C2, C3 · Paket: `packages/kosten`
 Blocked by: 70, 78
@@ -89,6 +89,9 @@ Herkunft: `plan.md` §2 C2, C3; `vertrag` v1.4 (Ticket 70, Comments „Folgearbe
   braucht die Sonderzeilen getrennt; kein Vertragstyp nötig (A4).
 
 ## Answer
+
+Merged: ee710e9 in integration/welle-5
+
 
 Branch `welle-5/82-kosten-kontrolle` (auf `integration/welle-5` gemergt). Paket `packages/kosten`, neue Module
 `kostenermittlung-befehle.ts` und `kostenkontrolle.ts`; `kostenermittlung.ts` und `kostengruppe.ts` angepasst; Glossar
