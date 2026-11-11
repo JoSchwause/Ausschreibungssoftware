@@ -3,12 +3,12 @@
 // Variante „mit Preisen“ und Befunde des Exports. Golden aktualisieren: GOLDEN_UPDATE=1 pnpm vitest run packages/ausgabe
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Knoten, Menge } from '@tethys/vertrag';
+import { NACHKOMMASTELLEN, type Knoten, type Menge } from '@tethys/vertrag';
 import { lvAlsExcel } from './index';
 import { mitInhalt, positionenAendern } from './testhilfe/bau';
 import { teile, teilLesen, zeileVon } from './testhilfe/excel';
 import { lvZustandAusFixture } from './testhilfen';
-import { leseXlsx } from './xlsx';
+import { STIL, leseXlsx } from './xlsx';
 
 const GOLDEN = new URL('../testdaten/excel-winzig.golden.xml', import.meta.url);
 const AKTUALISIEREN = process.env['GOLDEN_UPDATE'] === '1';
@@ -99,6 +99,24 @@ describe('Excel-Datei: OOXML-Grundform', () => {
       (p) => `${p.zuschlag === null ? 'F' : 'H'}${String(zeileVon(bytes, p.id))}`,
     );
     expect(offen.sort()).toEqual(erwartet.sort());
+  });
+
+  it('Zahlformate tragen die Nachkommastellen aus NACHKOMMASTELLEN (N3, S2)', () => {
+    const styles = teilLesen(bytes, 'xl/styles.xml');
+    const formate = new Map(
+      [...styles.matchAll(/<numFmt numFmtId="([0-9]+)" formatCode="([^"]*)"\/>/g)].map((m) => [m[1], m[2]]),
+    );
+    const xfs = [
+      ...(/<cellXfs[^>]*>(.*)<\/cellXfs>/.exec(styles)?.[1] ?? '').matchAll(/<xf [^>]*?(?:\/>|>.*?<\/xf>)/g),
+    ];
+    const stellen = (stil: number): number | undefined => {
+      const id = /numFmtId="([0-9]+)"/.exec(xfs[stil]?.[0] ?? '')?.[1];
+      return /\.(0+)$/.exec(formate.get(id) ?? '')?.[1]?.length ?? 0;
+    };
+    expect(stellen(STIL.menge)).toBe(NACHKOMMASTELLEN.menge);
+    expect(stellen(STIL.eingabePreis)).toBe(NACHKOMMASTELLEN.einheitspreis);
+    expect(stellen(STIL.betrag)).toBe(NACHKOMMASTELLEN.betrag);
+    expect(stellen(STIL.eingabeSatz)).toBe(NACHKOMMASTELLEN.prozent);
   });
 });
 
