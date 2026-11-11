@@ -110,7 +110,10 @@ export function lvZustand(
  */
 export function auftragsLvZustand(a: AuftragsLeistungsverzeichnis): AuftragsLvZustand {
   const cs = erwarteOk(
-    auftragsLvBefehlAusfuehren(null, { art: 'AuftragsLeistungsverzeichnisAnlegen', auftragsLeistungsverzeichnis: a }),
+    auftragsLvBefehlAusfuehren(null, {
+      art: 'AuftragsLeistungsverzeichnisAnlegen',
+      auftragsLeistungsverzeichnis: a,
+    }),
   );
   const kopf = cs.kopf?.nachher;
   const gesamt = cs.summen.gesamt;
@@ -196,7 +199,10 @@ export function zuschlagsposition(
     einheit: null,
     zuschlag: {
       prozentsatz: prozentsatz as Prozent | null,
-      bezug: { art: 'positionen', positionen: bezug.map((b) => ({ positionId: b as PositionId, teilmenge: null })) },
+      bezug: {
+        art: 'positionen',
+        positionen: bezug.map((b) => ({ positionId: b as PositionId, teilmenge: null })),
+      },
     },
   };
 }
@@ -290,7 +296,12 @@ interface FxAngebot {
   id: string;
   bieterId: string;
   nachlass: Nachlass | null;
-  positionen: { positionId: string; status: 'angeboten' | 'nicht-angeboten'; einheitspreis?: string; zuschlagssatz?: string }[];
+  positionen: {
+    positionId: string;
+    status: 'angeboten' | 'nicht-angeboten';
+    einheitspreis?: string;
+    zuschlagssatz?: string;
+  }[];
 }
 
 interface FxSummen {
@@ -329,7 +340,12 @@ export interface FxAbrechnung {
   nachtrag: {
     lv: FxLv & { nachtrag: Nachtragsangaben };
     angebot: FxAngebot & { sollwerte: { summen: FxSummen } };
-    uebernahme: { art: 'NachtragUebernehmen'; nachtragLvId: string; gliederungReihenfolge: string; knoten: FxKnoten[] };
+    uebernahme: {
+      art: 'NachtragUebernehmen';
+      nachtragLvId: string;
+      gliederungReihenfolge: string;
+      knoten: FxKnoten[];
+    };
     sollwerte: { summen: FxSummen; titel: Record<string, { summe: string }> };
   };
   aufmasse: { aufmass: FxAufmass }[];
@@ -340,15 +356,16 @@ export interface FxAbrechnung {
   };
 }
 
-function lies<T>(name: string): T {
-  return JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8')) as T;
+function lies(name: string): unknown {
+  return JSON.parse(readFileSync(new URL(`../../../fixtures/${name}.json`, import.meta.url), 'utf8'));
 }
 
 function fxMerkmale(k: FxKnoten): Positionsmerkmale {
   const art = k.positionsart ?? 'normal';
   return {
     ...OHNE_MERKMALE,
-    bedarf: art === 'bedarf' ? (k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
+    bedarf:
+      art === 'bedarf' ? (k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag') : null,
     wahl:
       art === 'wahl'
         ? { gruppe: null, variante: null, grundpositionId: (k.grundpositionId ?? null) as PositionId | null }
@@ -360,7 +377,10 @@ function fxMerkmale(k: FxKnoten): Positionsmerkmale {
  * Knoten im Fixture-Format als Vertragstypen; `reihenfolge` zählt je Elternknoten in der Reihenfolge der Liste, außer
  * `reihenfolge` nennt sie für einzelne Kennungen ausdrücklich.
  */
-export function fxKnoten(liste: readonly FxKnoten[], reihenfolge: ReadonlyMap<string, number> = new Map()): Knoten[] {
+export function fxKnoten(
+  liste: readonly FxKnoten[],
+  reihenfolge: ReadonlyMap<string, number> = new Map(),
+): Knoten[] {
   const zaehler = new Map<string, number>();
   return liste.map((k): Knoten => {
     const n = zaehler.get(k.parentId) ?? 0;
@@ -375,7 +395,12 @@ export function fxKnoten(liste: readonly FxKnoten[], reihenfolge: ReadonlyMap<st
         kurztext: k.kurztext ?? '',
       };
     if (k.art === 'hinweis')
-      return { ...lage, art: 'hinweis', id: k.id as HinweistextId, text: [{ art: 'text', text: k.text ?? '' }] };
+      return {
+        ...lage,
+        art: 'hinweis',
+        id: k.id as HinweistextId,
+        text: [{ art: 'text', text: k.text ?? '' }],
+      };
     return {
       ...lage,
       art: 'position',
@@ -410,7 +435,7 @@ function fxAngebot(fx: FxAngebot, lv: LvZustand): Angebot {
   );
 }
 
-export const abrechnungsFixture = (): FxAbrechnung => lies<FxAbrechnung>('typisch-abrechnung');
+export const abrechnungsFixture = (): FxAbrechnung => lies('typisch-abrechnung') as FxAbrechnung;
 
 /**
  * Das Auftrags-LV des Tors M4 (Ticket 85, D-85.1): `typisch` mit dem Angebot von Bieter B nach D-21 ohne gewählte
@@ -419,8 +444,8 @@ export const abrechnungsFixture = (): FxAbrechnung => lies<FxAbrechnung>('typisc
  */
 export function m4AuftragsLv(): AuftragsLvZustand {
   const fx = abrechnungsFixture();
-  const lv = lies<FxLv>('typisch');
-  const set = lies<{ angebote: FxAngebot[] }>('typisch-angebote');
+  const lv = lies('typisch') as FxLv;
+  const set = lies('typisch-angebote') as { angebote: FxAngebot[] };
   const b = set.angebote.find((a) => a.id === fx.zuschlag.angebotId);
   if (b === undefined) throw new Error('Angebot von Bieter B fehlt in typisch-angebote');
   const entfallen = new Set(fx.zuschlag.entfallen);
@@ -436,9 +461,16 @@ export function m4AuftragsLv(): AuftragsLvZustand {
         ...k,
         ...lage,
         einheitspreis: null,
-        zuschlag: { ...k.zuschlag, prozentsatz: (angeboten ? (p.zuschlagssatz ?? null) : null) as Prozent | null },
+        zuschlag: {
+          ...k.zuschlag,
+          prozentsatz: (angeboten ? (p.zuschlagssatz ?? null) : null) as Prozent | null,
+        },
       };
-    return { ...k, ...lage, einheitspreis: (angeboten ? (p.einheitspreis ?? null) : null) as Einheitspreis | null };
+    return {
+      ...k,
+      ...lage,
+      einheitspreis: (angeboten ? (p.einheitspreis ?? null) : null) as Einheitspreis | null,
+    };
   });
   return auftragsLvZustand({
     id: auftragsLvId as AuftragsLeistungsverzeichnisId,
@@ -460,7 +492,13 @@ export function m4Nachtrag(): { lv: LvZustand; angebot: Angebot } {
   const n = fx.nachtrag.lv;
   const lv = lvZustand(
     n.id,
-    { name: n.name, ozMaske: MASKE, mwstSatz: n.mwstSatz as Prozent, nachlass: n.nachlass, knoten: fxKnoten(n.knoten) },
+    {
+      name: n.name,
+      ozMaske: MASKE,
+      mwstSatz: n.mwstSatz as Prozent,
+      nachlass: n.nachlass,
+      knoten: fxKnoten(n.knoten),
+    },
     fx.projektId as ProjektId,
     n.nachtrag,
   );
@@ -486,9 +524,12 @@ export function fxAufmassposition(p: FxAufmass['positionen'][number]): Aufmass['
     mengenansatz:
       p.mengenansatz === null
         ? null
-        : p.mengenansatz.map(
-            (z): Ansatzzeile => ({ zeile: Number(z.zeile), formel: Number(z.formel), ausdruck: z.ausdruck, variable: z.variable }),
-          ),
+        : p.mengenansatz.map((z): Ansatzzeile => ({
+            zeile: Number(z.zeile),
+            formel: Number(z.formel),
+            ausdruck: z.ausdruck,
+            variable: z.variable,
+          })),
     menge: p.menge as Menge | null,
   };
 }

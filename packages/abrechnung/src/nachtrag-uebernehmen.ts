@@ -28,13 +28,11 @@ import type {
   Befehlsfehlercode,
   ElternId,
   Ergebnis,
-  GliederungId,
   IdQuelle,
   Knoten,
   KnotenId,
   LeistungsverzeichnisId,
   Leistungsverzeichnis,
-  LosId,
   LvZustand,
   Nachlass,
   NachtragUebernehmen,
@@ -62,7 +60,11 @@ export type NachtragIdQuelle = Pick<IdQuelle, 'los' | 'titel'>;
  */
 export type Nachtragswarnung =
   | { readonly code: 'nachlass-ignoriert'; readonly nachlass: Nachlass }
-  | { readonly code: 'alternativen-entfallen'; readonly anzahl: number; readonly positionIds: readonly PositionId[] }
+  | {
+      readonly code: 'alternativen-entfallen';
+      readonly anzahl: number;
+      readonly positionIds: readonly PositionId[];
+    }
   | { readonly code: 'los-wird-titel'; readonly knotenId: TitelId }
   | { readonly code: 'nicht-angeboten'; readonly positionId: PositionId }
   | { readonly code: 'zuschlagssatz-fehlt'; readonly positionId: PositionId }
@@ -127,7 +129,12 @@ function uebernommeneKnoten(l: Leistungsverzeichnis): Eintrag[] {
   const besuche = (eltern: string, stufeEltern: number): void => {
     (kinder.get(eltern) ?? []).forEach((k, reihenfolge) => {
       const stufe = stufeEltern + ebenenbeitrag(k.art);
-      aus.push({ knoten: k, elternId: eltern, reihenfolge, stufe: k.art === 'position' || k.art === 'hinweis' ? stufeEltern : stufe });
+      aus.push({
+        knoten: k,
+        elternId: eltern,
+        reihenfolge,
+        stufe: k.art === 'position' || k.art === 'hinweis' ? stufeEltern : stufe,
+      });
       if (k.art === 'los' || k.art === 'titel') besuche(k.id, stufe);
     });
   };
@@ -190,19 +197,34 @@ function ohneFehlendeBezuege(
   const grund = merkmale.wahl?.grundpositionId ?? null;
   if (merkmale.wahl !== null && grund !== null && !mit.has(grund)) {
     merkmale = { ...merkmale, wahl: { ...merkmale.wahl, grundpositionId: null } };
-    warnungen.push({ code: 'bezug-entfernt', positionId: p.id, feld: 'merkmale.wahl.grundpositionId', zielId: grund });
+    warnungen.push({
+      code: 'bezug-entfernt',
+      positionId: p.id,
+      feld: 'merkmale.wahl.grundpositionId',
+      zielId: grund,
+    });
   }
   if (zuschlag !== null && zuschlag.bezug.art === 'positionen') {
     const fehlend = zuschlag.bezug.positionen.filter((b) => !mit.has(b.positionId));
     for (const b of fehlend)
-      warnungen.push({ code: 'bezug-entfernt', positionId: p.id, feld: 'zuschlag.bezug.positionen', zielId: b.positionId });
+      warnungen.push({
+        code: 'bezug-entfernt',
+        positionId: p.id,
+        feld: 'zuschlag.bezug.positionen',
+        zielId: b.positionId,
+      });
     if (fehlend.length > 0)
       zuschlag = {
         ...zuschlag,
-        bezug: { art: 'positionen', positionen: zuschlag.bezug.positionen.filter((b) => mit.has(b.positionId)) },
+        bezug: {
+          art: 'positionen',
+          positionen: zuschlag.bezug.positionen.filter((b) => mit.has(b.positionId)),
+        },
       };
   }
-  return warnungen.length === 0 ? { position: p, warnungen } : { position: { ...p, merkmale, zuschlag }, warnungen };
+  return warnungen.length === 0
+    ? { position: p, warnungen }
+    : { position: { ...p, merkmale, zuschlag }, warnungen };
 }
 
 /**
@@ -222,7 +244,11 @@ export function nachtragUebernehmen(
   const an = 'angebot' in angebot ? angebot.angebot : angebot;
   const nachtrag = l.nachtrag;
   if (nachtrag === undefined)
-    return nein('ungueltige-eingabe', 'Das LV hat keine Nachtragsangaben; es ist kein Nachtrags-LV.', 'nachtragsLv.nachtrag');
+    return nein(
+      'ungueltige-eingabe',
+      'Das LV hat keine Nachtragsangaben; es ist kein Nachtrags-LV.',
+      'nachtragsLv.nachtrag',
+    );
   if (nachtrag.auftragsLvId !== a.id)
     return nein(
       'ungueltige-eingabe',
@@ -230,7 +256,11 @@ export function nachtragUebernehmen(
       'nachtragsLv.nachtrag.auftragsLvId',
     );
   if (l.projektId !== a.projektId)
-    return nein('ungueltige-eingabe', 'Das Nachtrags-LV gehört zu einem anderen Projekt.', 'nachtragsLv.projektId');
+    return nein(
+      'ungueltige-eingabe',
+      'Das Nachtrags-LV gehört zu einem anderen Projekt.',
+      'nachtragsLv.projektId',
+    );
   if (auftragsangebot.id !== a.angebotId)
     return nein(
       'ungueltige-eingabe',
@@ -238,9 +268,17 @@ export function nachtragUebernehmen(
       'auftragsangebot.id',
     );
   if (an.leistungsverzeichnisId !== l.id)
-    return nein('ungueltige-eingabe', 'Das Angebot gehört nicht zum Nachtrags-LV.', 'angebot.leistungsverzeichnisId');
+    return nein(
+      'ungueltige-eingabe',
+      'Das Angebot gehört nicht zum Nachtrags-LV.',
+      'angebot.leistungsverzeichnisId',
+    );
   if (an.bieterId !== auftragsangebot.bieterId)
-    return nein('ungueltige-eingabe', 'Das Angebot ist nicht vom Bieter des Auftrags (Auftragnehmer).', 'angebot.bieterId');
+    return nein(
+      'ungueltige-eingabe',
+      'Das Angebot ist nicht vom Bieter des Auftrags (Auftragnehmer).',
+      'angebot.bieterId',
+    );
   if (vergleiche(l.mwstSatz, a.mwstSatz) !== 0)
     return nein(
       'ungueltige-eingabe',
@@ -252,7 +290,12 @@ export function nachtragUebernehmen(
   const vorhanden = new Set<string>([a.id, ...a.knoten.map((k) => k.id)]);
   for (const { knoten: k, stufe } of eintraege) {
     if (vorhanden.has(k.id))
-      return nein('id-vergeben', `Die Kennung ${k.id} gibt es im Auftrags-LV schon (schon übernommen?).`, undefined, k.id);
+      return nein(
+        'id-vergeben',
+        `Die Kennung ${k.id} gibt es im Auftrags-LV schon (schon übernommen?).`,
+        undefined,
+        k.id,
+      );
     if ((k.art === 'los' || k.art === 'titel') && stufe > MAX_GLIEDERUNGSEBENEN)
       return nein(
         'ebene-ueberschritten',
@@ -266,8 +309,14 @@ export function nachtragUebernehmen(
   const oberste = a.knoten.filter((k) => k.elternId === a.id);
   const alsLos = a.ozMaske.losStufe === true || oberste.some((k) => k.art === 'los');
   const art = alsLos ? 'los' : 'titel';
-  const ozOben = ozVorschlag(alsLvAnsicht(auftragsLv), { art: 'ende', elternId: a.id }, art)?.ordnungszahl ?? null;
-  const kopfLage = { elternId: a.id as ElternId, reihenfolge: oberste.length, ordnungszahl: ozOben, kurztext: `Nachtrag ${nachtrag.nummer}` };
+  const ozOben =
+    ozVorschlag(alsLvAnsicht(auftragsLv), { art: 'ende', elternId: a.id }, art)?.ordnungszahl ?? null;
+  const kopfLage = {
+    elternId: a.id as ElternId,
+    reihenfolge: oberste.length,
+    ordnungszahl: ozOben,
+    kurztext: `Nachtrag ${nachtrag.nummer}`,
+  };
   const kopf: Knoten = alsLos
     ? { art: 'los', id: neueIds.los(), ...kopfLage }
     : { art: 'titel', id: neueIds.titel(), ...kopfLage };
@@ -280,26 +329,52 @@ export function nachtragUebernehmen(
   const nachId = new Map<string, Angebotsposition>(an.positionen.map((p) => [p.positionId, p]));
   const warnungen: Nachtragswarnung[] = [];
   if (an.nachlass !== null) warnungen.push({ code: 'nachlass-ignoriert', nachlass: an.nachlass });
+  const alternativen = l.knoten.filter(istAlternative).map((p) => p.id);
+  if (alternativen.length > 0)
+    warnungen.push({
+      code: 'alternativen-entfallen',
+      anzahl: alternativen.length,
+      positionIds: alternativen,
+    });
+
+  // OZ, die fehlen oder nicht zur Maske des Auftrags-LV passen (Prüfung des Kerns, `ozFehler`): Warnung, keine Sperre (U5).
+  const unpassend: KnotenId[] = [];
+  const pruefeOz = (k: Knoten, stufe: number): void => {
+    if (k.art === 'hinweis') return;
+    const art = k.art === 'position' ? 'position' : 'gliederung';
+    const index = k.art === 'position' ? k.ozIndex : null;
+    if (k.ordnungszahl === null || ozFehler(a.ozMaske, k.ordnungszahl, index, art, stufe) !== null)
+      unpassend.push(k.id);
+  };
+  pruefeOz(kopf, 1);
+
   const knoten: Knoten[] = [kopf];
   for (const e of eintraege) {
     const k = e.knoten;
-    const lage = { elternId: (e.elternId === l.id ? kopf.id : e.elternId) as ElternId, reihenfolge: e.reihenfolge };
-    if (k.art === 'hinweis') {
-      knoten.push({ ...k, ...lage });
-      continue;
+    const lage = {
+      elternId: (e.elternId === l.id ? kopf.id : e.elternId) as ElternId,
+      reihenfolge: e.reihenfolge,
+    };
+    let neu: Knoten;
+    if (k.art === 'hinweis') neu = { ...k, ...lage };
+    else if (k.art === 'los' || k.art === 'titel') {
+      // D-80.2: Ein Los steht nur auf der obersten Ebene (F1); unter der neuen Gliederung wird es Titel derselben Kennung.
+      const id = k.id as string as TitelId;
+      if (k.art === 'los') warnungen.push({ code: 'los-wird-titel', knotenId: id });
+      neu = { ...k, ...lage, art: 'titel', id, ordnungszahl: ozVon(k.ordnungszahl) };
+    } else {
+      const preis = mitPreisen(k, nachId.get(k.id));
+      if (preis.warnung !== null) warnungen.push(preis.warnung);
+      const bezug = ohneFehlendeBezuege(preis.position, mit);
+      warnungen.push(...bezug.warnungen);
+      neu = { ...bezug.position, ...lage, ordnungszahl: ozVon(k.ordnungszahl) };
     }
-    if (k.art === 'los' || k.art === 'titel') {
-      knoten.push({ ...k, ...lage, art: 'titel', id: k.id as string as TitelId, ordnungszahl: ozVon(k.ordnungszahl) });
-      continue;
-    }
-    const preis = mitPreisen(k, nachId.get(k.id));
-    if (preis.warnung !== null) warnungen.push(preis.warnung);
-    const bezug = ohneFehlendeBezuege(preis.position, mit);
-    warnungen.push(...bezug.warnungen);
-    knoten.push({ ...bezug.position, ...lage, ordnungszahl: ozVon(k.ordnungszahl) });
+    pruefeOz(neu, e.stufe);
+    knoten.push(neu);
   }
-  void (null as GliederungId | null);
-  void (null as LosId | null);
-  void ozFehler;
-  return { ok: true, wert: { befehl: { art: 'NachtragUebernehmen', nachtragLvId: l.id, knoten }, warnungen } };
+  if (unpassend.length > 0) warnungen.push({ code: 'oz-unpassend', knotenIds: unpassend });
+  return {
+    ok: true,
+    wert: { befehl: { art: 'NachtragUebernehmen', nachtragLvId: l.id, knoten }, warnungen },
+  };
 }

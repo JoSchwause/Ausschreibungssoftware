@@ -47,7 +47,10 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
   const fx = abrechnungsFixture();
   const auftrag = m4AuftragsLv();
   const nachtrag = m4Nachtrag();
-  const auftragsangebot = { id: auftrag.auftragsLeistungsverzeichnis.angebotId, bieterId: nachtrag.angebot.bieterId };
+  const auftragsangebot = {
+    id: auftrag.auftragsLeistungsverzeichnis.angebotId,
+    bieterId: nachtrag.angebot.bieterId,
+  };
 
   it('das Auftrags-LV der Hilfe hat die Summen der Fixture (D-21, Bieter B)', () => {
     expect(auftrag.summen.gesamt).toMatchObject(fx.zuschlag.sollwerte.summen);
@@ -61,7 +64,11 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
       fx.nachtrag.uebernahme.knoten,
       new Map([[NEUE_GLIEDERUNG, Number(fx.nachtrag.uebernahme.gliederungReihenfolge)]]),
     );
-    expect(befehl).toEqual({ art: 'NachtragUebernehmen', nachtragLvId: fx.nachtrag.uebernahme.nachtragLvId, knoten: erwartet });
+    expect(befehl).toEqual({
+      art: 'NachtragUebernehmen',
+      nachtragLvId: fx.nachtrag.uebernahme.nachtragLvId,
+      knoten: erwartet,
+    });
     expect(warnungen).toEqual([]);
   });
 
@@ -69,30 +76,51 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
     const [p1, p2] = nachtrag.angebot.positionen;
     if (p1 === undefined || p2 === undefined) throw new Error('Angebot ohne zwei Positionen');
     const teilweise = { ...nachtrag.angebot, positionen: [p1, nichtAngeboten(p2.positionId)] };
-    const { befehl, warnungen } = erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, teilweise, auftragsangebot, ids));
+    const { befehl, warnungen } = erwarteOk(
+      nachtragUebernehmen(auftrag, nachtrag.lv, teilweise, auftragsangebot, ids),
+    );
     const zweite = befehl.knoten.find((k) => k.id === p2.positionId);
-    expect(zweite).toMatchObject({ art: 'position', ordnungszahl: '04.01.0020', einheitspreis: null, menge: '6.000' });
+    expect(zweite).toMatchObject({
+      art: 'position',
+      ordnungszahl: '04.01.0020',
+      einheitspreis: null,
+      menge: '6.000',
+    });
     expect(warnungen).toEqual([{ code: 'nicht-angeboten', positionId: p2.positionId }]);
     // Ohne den Eintrag im Angebot ebenso.
     const ohneEintrag = { ...nachtrag.angebot, positionen: [p1] };
-    expect(erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, ohneEintrag, auftragsangebot, ids)).warnungen).toEqual([
-      { code: 'nicht-angeboten', positionId: p2.positionId },
-    ]);
+    expect(
+      erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, ohneEintrag, auftragsangebot, ids)).warnungen,
+    ).toEqual([{ code: 'nicht-angeboten', positionId: p2.positionId }]);
     // Summe: 58.358,53 + 922,49 = 59.281,02 netto (Handrechnung aus den Sollwerten der Fixture).
     const a = auftrag.auftragsLeistungsverzeichnis;
-    const s = summenBerechnen({ id: a.id, knoten: [...a.knoten, ...befehl.knoten], nachlass: a.nachlass, mwstSatz: a.mwstSatz });
+    const s = summenBerechnen({
+      id: a.id,
+      knoten: [...a.knoten, ...befehl.knoten],
+      nachlass: a.nachlass,
+      mwstSatz: a.mwstSatz,
+    });
     expect(s.gesamt.netto).toBe('59281.02');
   });
 
   it('der Nachlass des Nachtragsangebots wird mit Warnung ignoriert (D-35)', () => {
-    const mitNachlass = { ...nachtrag.angebot, nachlass: { art: 'prozent', wert: '5.00' as Prozent } as const };
-    const { befehl, warnungen } = erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, mitNachlass, auftragsangebot, ids));
+    const mitNachlass = {
+      ...nachtrag.angebot,
+      nachlass: { art: 'prozent', wert: '5.00' as Prozent } as const,
+    };
+    const { befehl, warnungen } = erwarteOk(
+      nachtragUebernehmen(auftrag, nachtrag.lv, mitNachlass, auftragsangebot, ids),
+    );
     expect(warnungen).toEqual([{ code: 'nachlass-ignoriert', nachlass: mitNachlass.nachlass }]);
-    expect(befehl).toEqual(erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids)).befehl);
+    expect(befehl).toEqual(
+      erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids)).befehl,
+    );
   });
 
   it('der Baum danach erfüllt die Baumregeln des Kerns und hat die Summen der Fixture', () => {
-    const { befehl } = erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids));
+    const { befehl } = erwarteOk(
+      nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids),
+    );
     const a = auftrag.auftragsLeistungsverzeichnis;
     const knoten = [...a.knoten, ...befehl.knoten];
     expect(baumfehler(a.id, knoten)).toEqual([]);
@@ -106,7 +134,10 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
 describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
   const auftrag = m4AuftragsLv();
   const nachtrag = m4Nachtrag();
-  const auftragsangebot = { id: auftrag.auftragsLeistungsverzeichnis.angebotId, bieterId: nachtrag.angebot.bieterId };
+  const auftragsangebot = {
+    id: auftrag.auftragsLeistungsverzeichnis.angebotId,
+    bieterId: nachtrag.angebot.bieterId,
+  };
   let gerufen = 0;
   const zaehlendeIds = {
     los: () => {
@@ -136,7 +167,8 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
   };
 
   it('ein LV ohne Nachtragsangaben', () => {
-    const { nachtrag: _weg, ...ohne } = nachtrag.lv.leistungsverzeichnis;
+    const ohne: Leistungsverzeichnis = { ...nachtrag.lv.leistungsverzeichnis };
+    delete (ohne as { nachtrag?: unknown }).nachtrag;
     expect(fehlerVon({ ...nachtrag.lv, leistungsverzeichnis: ohne })).toMatchObject({
       code: 'ungueltige-eingabe',
       feld: 'nachtragsLv.nachtrag',
@@ -147,7 +179,10 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
     const n = nachtrag.lv.leistungsverzeichnis.nachtrag;
     if (n === undefined) throw new Error('Nachtragsangaben fehlen');
     const fremd = mitKopf({ nachtrag: { ...n, auftragsLvId: 'anderes' as AuftragsLeistungsverzeichnisId } });
-    expect(fehlerVon(fremd)).toMatchObject({ code: 'ungueltige-eingabe', feld: 'nachtragsLv.nachtrag.auftragsLvId' });
+    expect(fehlerVon(fremd)).toMatchObject({
+      code: 'ungueltige-eingabe',
+      feld: 'nachtragsLv.nachtrag.auftragsLvId',
+    });
   });
 
   it('ein Nachtrags-LV aus einem anderen Projekt', () => {
@@ -167,7 +202,10 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
 
   it('ein Angebot, das nicht vom Bieter des Auftrags ist', () => {
     const fremd = { ...nachtrag.angebot, bieterId: '019b76f9-2c80-737e-8c4e-d0e9e835d68a' as BieterId };
-    expect(fehlerVon(nachtrag.lv, fremd)).toMatchObject({ code: 'ungueltige-eingabe', feld: 'angebot.bieterId' });
+    expect(fehlerVon(nachtrag.lv, fremd)).toMatchObject({
+      code: 'ungueltige-eingabe',
+      feld: 'angebot.bieterId',
+    });
   });
 
   it('ein Auftragsangebot, das nicht das beauftragte Angebot des Auftrags-LV ist', () => {
@@ -186,7 +224,9 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
   });
 
   it('eine zweite Übernahme desselben Nachtrags: Kennung schon im Auftrags-LV', () => {
-    const { befehl } = erwarteOk(nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids));
+    const { befehl } = erwarteOk(
+      nachtragUebernehmen(auftrag, nachtrag.lv, nachtrag.angebot, auftragsangebot, ids),
+    );
     const a = auftrag.auftragsLeistungsverzeichnis;
     const danach = auftragsLvZustand({ ...a, knoten: [...a.knoten, ...befehl.knoten] });
     const [, ersterNachtragsknoten] = befehl.knoten;
@@ -200,8 +240,13 @@ describe('nachtragUebernehmen: Fehler (D-35, D-42)', () => {
     const [vorhanden] = auftrag.auftragsLeistungsverzeichnis.knoten.filter((k) => k.art === 'position');
     if (vorhanden === undefined) throw new Error('Auftrags-LV ohne Position');
     const n = nachtrag.lv.leistungsverzeichnis;
-    const doppelt = n.knoten.map((k) => (k.art === 'position' && k.reihenfolge === 1 ? { ...k, id: vorhanden.id } : k));
-    expect(fehlerVon(mitKopf({ knoten: doppelt }))).toMatchObject({ code: 'id-vergeben', knotenId: vorhanden.id });
+    const doppelt = n.knoten.map((k) =>
+      k.art === 'position' && k.reihenfolge === 1 ? { ...k, id: vorhanden.id } : k,
+    );
+    expect(fehlerVon(mitKopf({ knoten: doppelt }))).toMatchObject({
+      code: 'id-vergeben',
+      knotenId: vorhanden.id,
+    });
   });
 
   it('mehr als 5 Gliederungsebenen samt der neuen Gliederung', () => {
