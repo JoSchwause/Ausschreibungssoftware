@@ -17,7 +17,8 @@ const grenze = (wert: number, max: number): number => Math.max(0, Math.min(wert,
 
 /**
  * Ziel einer Navigationstaste oder `null`, wenn die Taste keine Navigation ist oder sich nichts bewegt.
- * Pfeile bewegen um eine Zelle und bleiben am Rand stehen. Pos1/Ende springen in die erste/letzte Spalte der Zeile,
+ * Pfeile bewegen um eine Zelle und bleiben am Rand stehen; mit Strg springen sie an den Rand des Rasters (wie Excel in
+ * einer lückenlos gefüllten Tabelle). Pos1/Ende springen in die erste/letzte Spalte der Zeile,
  * mit Strg an den Anfang/das Ende des ganzen Rasters. Bild auf/ab bewegt um eine Seite in derselben Spalte.
  */
 export function zielZelle(taste: string, mitStrg: boolean, von: Zelle, r: Raster): Zelle | null {
@@ -27,16 +28,16 @@ export function zielZelle(taste: string, mitStrg: boolean, von: Zelle, r: Raster
   let z: Zelle;
   switch (taste) {
     case 'ArrowUp':
-      z = { zeile: von.zeile - 1, spalte: von.spalte };
+      z = { zeile: mitStrg ? 0 : von.zeile - 1, spalte: von.spalte };
       break;
     case 'ArrowDown':
-      z = { zeile: von.zeile + 1, spalte: von.spalte };
+      z = { zeile: mitStrg ? letzteZeile : von.zeile + 1, spalte: von.spalte };
       break;
     case 'ArrowLeft':
-      z = { zeile: von.zeile, spalte: von.spalte - 1 };
+      z = { zeile: von.zeile, spalte: mitStrg ? 0 : von.spalte - 1 };
       break;
     case 'ArrowRight':
-      z = { zeile: von.zeile, spalte: von.spalte + 1 };
+      z = { zeile: von.zeile, spalte: mitStrg ? letzteSpalte : von.spalte + 1 };
       break;
     case 'Home':
       z = mitStrg ? { zeile: 0, spalte: 0 } : { zeile: von.zeile, spalte: 0 };

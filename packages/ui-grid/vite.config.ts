@@ -43,7 +43,17 @@ export default defineConfig({
   root: fileURLToPath(new URL('./e2e/harness', import.meta.url)),
   base: './',
   plugins: [react(), fixturesBereitstellen()],
-  build: { outDir: '../dist', emptyOutDir: true },
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+    // Zwei Testseiten: das LV-Grid (index.html) und das Vergleichsgrid (vergleich.html, Ticket 60).
+    rolldownOptions: {
+      input: {
+        index: fileURLToPath(new URL('./e2e/harness/index.html', import.meta.url)),
+        vergleich: fileURLToPath(new URL('./e2e/harness/vergleich.html', import.meta.url)),
+      },
+    },
+  },
   server: { port: 4180, strictPort: true },
   preview: { port: 4180, strictPort: true },
 });

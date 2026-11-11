@@ -5,9 +5,8 @@
 // Bedienzustand: aktive Zelle, Zeilenauswahl, Eingabeentwurf, abgelehnte Eingaben, Merkliste der Zwischenablage,
 // offene Rückfrage und eine Statusmeldung.
 
-import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
 import { useTable } from '@tanstack/react-table';
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ClipboardEvent, FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import type { Einfuegeort, KnotenId, LvBefehl, LvSpalte, LvZeile, PositionAnlegen } from '@tethys/vertrag';
 import { Button, Dialog } from '@tethys/ui-basis';
@@ -16,8 +15,9 @@ import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
 import { Hinweisleiste } from './Hinweisleiste';
 import { leerePositionsdaten, planeEinfuegen } from './einfuegen';
 import type { Einfuegeanker } from './einfuegen';
+import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
-import type { Raster, Zelle } from './navigation';
+import type { Zelle } from './navigation';
 import { SPALTENBREITE, STANDARDSPALTEN, features, spaltenDefinitionen } from './tabelle';
 import { frageLoeschen, meldungEingefuegt, meldungZeilen, texte } from './texte';
 import { parseTsv } from './tsv';
@@ -31,11 +31,9 @@ const KEINE_AUSWAHL: ReadonlySet<string> = new Set();
 const KEINE_ABLEHNUNGEN: ReadonlyMap<string, Abgelehnt> = new Map();
 const FLEXSPALTE: LvSpalte = 'kurztext';
 
-interface Aktiv {
+interface Bearbeitung {
   readonly id: string;
   readonly spalte: LvSpalte;
-}
-interface Bearbeitung extends Aktiv {
   readonly entwurf: string;
 }
 type Auswahlart = 'ersetzen' | 'erweitern';
@@ -100,7 +98,6 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const mindestbreite = useMemo(() => spalten.reduce((summe, s) => summe + SPALTENBREITE[s], 0), [spalten]);
 
   // --- flüchtiger Zustand -------------------------------------------------------------------------------------
-  const [aktiv, setAktiv] = useState<Aktiv | null>(null);
   const [bearbeitung, setBearbeitung] = useState<Bearbeitung | null>(null);
   const [auswahl, setAuswahlZustand] = useState<ReadonlySet<string>>(KEINE_AUSWAHL);
   const [abgelehnt, setAbgelehnt] = useState<ReadonlyMap<string, Abgelehnt>>(KEINE_ABLEHNUNGEN);
@@ -113,48 +110,41 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const [, setFokusRunde] = useState(0);
   /** Neue Zeile, die nach dem Befehl in den Eigenschaften erscheinen soll und dann den Fokus bekommt. */
   const wartetAuf = useRef<{ readonly id: string; readonly spalte: LvSpalte } | null>(null);
-  /** Nach einem Verschieben: die aktive Zeile an ihrem neuen Platz in den Sichtbereich holen. */
-  const scrollAnfrage = useRef(false);
-  const sprungNr = useRef<number | null>(null);
   const anker = useRef<string | null>(null);
-  const letzterIndex = useRef(0);
-  const fokusAnfrage = useRef(false);
   const editorBeendet = useRef(false);
-  const wurzel = useRef<HTMLDivElement>(null);
   const nurLesenId = `${useId()}-nur-lesen`;
-  const scroller = useRef<HTMLDivElement>(null);
 
-  const indexVonId = useMemo(() => {
-    const m = new Map<string, number>();
-    zeilen.forEach((z, i) => m.set(z.knoten.id, i));
-    return m;
-  }, [zeilen]);
+  // Ein Entwurf an einem verschwundenen Knoten ist hinfällig.
+  const zeilenIds = useMemo((): readonly string[] => zeilen.map((z) => z.knoten.id), [zeilen]);
+  const bearbeitungGueltig = bearbeitung !== null && zeilenIds.includes(bearbeitung.id) ? bearbeitung : null;
 
-  // Die aktive Zelle wird über die Knotenkennung gehalten: Sie bleibt an ihrem Knoten, wenn Zeilen davor
-  // dazukommen oder wegfallen. Verschwindet der Knoten (zugeklappt, gelöscht), gilt die Zeile am letzten Index.
-  const aktivIndex =
-    zeilen.length === 0
-      ? -1
-      : aktiv
-        ? (indexVonId.get(aktiv.id) ?? Math.min(letzterIndex.current, zeilen.length - 1))
-        : 0;
-  const aktivSpaltenIndex = Math.max(0, aktiv ? spalten.indexOf(aktiv.spalte) : 0);
-  const aktivSpalte = spalten[aktivSpaltenIndex];
+  // Aktive Zelle, Virtualisierung, Fokus: der gemeinsame Kern (U2). Die aktive Zeile meldet er nach dem Rendern,
+  // sobald sie sich ändert, gleich aus welchem Grund (Ticket 54, Punkt 1).
+  const kern = useGridKern({
+    zeilenIds,
+    spalten,
+    zeilenhoehe: zh,
+    kopfhoehe: zh,
+    fokusGesperrt: bearbeitungGueltig !== null,
+    onAktiveZeileChange:
+      onAktiveZeileChange &&
+      ((id) => {
+        onAktiveZeileChange(id as KnotenId | null);
+      }),
+  });
+  const {
+    wurzel,
+    scroller,
+    virtualizer,
+    indexVonId,
+    aktiv,
+    setAktiv,
+    aktivIndex,
+    aktivSpaltenIndex,
+    aktivSpalte,
+  } = kern;
+  const { aktiveId, fokusAnfrage, scrollAnfrage, raster, zelleVon } = kern;
   const aktiveZeile = aktivIndex >= 0 ? zeilen[aktivIndex] : undefined;
-  const aktiveId = aktiveZeile?.knoten.id;
-
-  useLayoutEffect(() => {
-    if (aktivIndex >= 0) letzterIndex.current = aktivIndex;
-  });
-
-  // Aktive Zeile melden (Ticket 54, Punkt 1), sobald sie sich ändert, gleich aus welchem Grund.
-  const gemeldeteZeile = useRef<KnotenId | null | undefined>(undefined);
-  useEffect(() => {
-    const id = aktiveId ?? null;
-    if (!onAktiveZeileChange || gemeldeteZeile.current === id) return;
-    gemeldeteZeile.current = id;
-    onAktiveZeileChange(id);
-  });
 
   /** Ob sich die Zelle bearbeiten lässt; im schreibgeschützten Grid keine. */
   const bearbeitbar = (z: LvZeile, spalte: LvSpalte): boolean => !nurLesen && istBearbeitbar(z, spalte);
@@ -163,39 +153,9 @@ export function LvGrid(props: LvGridProps): ReactElement {
     setStatus(texte.gridSchreibgeschuetzt);
   };
 
-  // Ein Entwurf an einem verschwundenen Knoten ist hinfällig.
-  const bearbeitungGueltig = bearbeitung !== null && indexVonId.has(bearbeitung.id) ? bearbeitung : null;
   useLayoutEffect(() => {
     if (bearbeitung !== null && bearbeitungGueltig === null) setBearbeitung(null);
   }, [bearbeitung, bearbeitungGueltig]);
-
-  // --- Virtualisierung ---------------------------------------------------------------------------------------
-  const aktivIndexRef = useRef(aktivIndex);
-  aktivIndexRef.current = aktivIndex;
-  const virtualizer = useVirtualizer({
-    count: zeilen.length,
-    getScrollElement: () => scroller.current,
-    estimateSize: () => zh,
-    overscan: 10,
-    scrollMargin: zh,
-    scrollPaddingStart: zh,
-    getItemKey: (i) => zeilen[i]?.knoten.id ?? i,
-    // Die aktive Zeile bleibt immer im DOM, auch wenn sie aus dem Sichtbereich scrollt: So überlebt der Fokus
-    // die Virtualisierung und das Grid bleibt per Tab erreichbar.
-    rangeExtractor: (bereich) => {
-      const basis = defaultRangeExtractor(bereich);
-      const a = aktivIndexRef.current;
-      if (a < 0 || a >= bereich.count || basis.includes(a)) return basis;
-      const ergebnis = [...basis, a];
-      ergebnis.sort((x, y) => x - y);
-      return ergebnis;
-    },
-  });
-  const seite = useCallback(() => {
-    const h = scroller.current?.clientHeight ?? 0;
-    return Math.max(1, Math.floor((h - zh) / zh) - 1);
-  }, [zh]);
-  const raster = (): Raster => ({ zeilen: zeilen.length, spalten: spalten.length, seite: seite() });
 
   // --- Auswahl --------------------------------------------------------------------------------------------------
   const setzeAuswahl = (neu: ReadonlySet<string>): void => {
@@ -218,10 +178,9 @@ export function LvGrid(props: LvGridProps): ReactElement {
   // --- Aktivieren, Fokus ------------------------------------------------------------------------------------
   const aktiviere = (ziel: Zelle, auswahlart: Auswahlart | null, mitFokus: boolean): void => {
     const z = zeilen[ziel.zeile];
-    const spalte = spalten[ziel.spalte];
-    if (!z || spalte === undefined) return;
+    if (!z || spalten[ziel.spalte] === undefined) return;
     wartetAuf.current = null;
-    setAktiv({ id: z.knoten.id, spalte });
+    kern.zeigeZelle(ziel, mitFokus);
     if (auswahlart === 'ersetzen') {
       anker.current = z.knoten.id;
       setzeAuswahl(new Set([z.knoten.id]));
@@ -229,27 +188,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
       anker.current ??= aktiveId ?? z.knoten.id;
       setzeAuswahl(waehleBereich(anker.current, ziel.zeile));
     }
-    if (mitFokus) {
-      fokusAnfrage.current = true;
-      virtualizer.scrollToIndex(ziel.zeile, { align: 'auto' });
-    }
   };
-
-  useLayoutEffect(() => {
-    if (!fokusAnfrage.current || bearbeitungGueltig !== null || aktivIndex < 0 || aktivSpalte === undefined)
-      return;
-    const el = wurzel.current?.querySelector<HTMLElement>(
-      `[data-i="${String(aktivIndex)}"] [data-spalte="${aktivSpalte}"]`,
-    );
-    if (el) {
-      el.focus({ preventScroll: true });
-      fokusAnfrage.current = false;
-    }
-    if (scrollAnfrage.current) {
-      scrollAnfrage.current = false;
-      virtualizer.scrollToIndex(aktivIndex, { align: 'auto' });
-    }
-  });
 
   // --- Bearbeiten ---------------------------------------------------------------------------------------------
   const ablehnungFuer = (id: string, spalte: LvSpalte, text: string): Abgelehnt | undefined => {
@@ -539,25 +478,16 @@ export function LvGrid(props: LvGridProps): ReactElement {
   });
 
   // Sprungziel (Prüf-Links): ein neuer Wert von `nr` springt zur Zelle; eine nicht sichtbare Zeile übergeht das Grid.
-  useLayoutEffect(() => {
-    if (!sprungziel || sprungziel.nr === sprungNr.current) return;
-    sprungNr.current = sprungziel.nr;
-    const zi = indexVonId.get(sprungziel.knotenId);
-    if (zi === undefined) return;
-    const si = sprungziel.spalte === undefined ? -1 : spalten.indexOf(sprungziel.spalte);
-    aktiviere({ zeile: zi, spalte: si >= 0 ? si : aktivSpaltenIndex }, 'ersetzen', true);
-  });
+  useSprung(
+    sprungziel && { zeilenId: sprungziel.knotenId, spalte: sprungziel.spalte, nr: sprungziel.nr },
+    kern,
+    spalten,
+    (ziel) => {
+      aktiviere(ziel, 'ersetzen', true);
+    },
+  );
 
   // --- Ereignisse (Delegation am Wurzelelement) ------------------------------------------------------------
-  const zelleVon = (ziel: EventTarget | null): { zi: number; si: number; spalte: LvSpalte } | null => {
-    if (!(ziel instanceof Element)) return null;
-    const zelle = ziel.closest<HTMLElement>('[data-spalte]');
-    const zeile = zelle?.closest<HTMLElement>('[data-i]');
-    const spalte = istSpalte(zelle?.dataset['spalte'], spalten);
-    const zi = Number(zeile?.dataset['i']);
-    if (spalte === null || Number.isNaN(zi)) return null;
-    return { zi, si: spalten.indexOf(spalte), spalte };
-  };
   const imEditor = (ziel: EventTarget | null): boolean =>
     ziel instanceof Element && ziel.closest('[data-editor]') !== null;
 
@@ -578,9 +508,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
     const strg = e.ctrlKey || e.metaKey;
     const von: Zelle = { zeile: zi, spalte: si };
 
-    if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    const klappen = klappAbsicht(e, z, spalte === baumspalte);
+    if (klappen !== null) {
       e.preventDefault();
-      klappe(zi, e.key === 'ArrowRight');
+      klappe(zi, klappen);
       return;
     }
     if (e.altKey && !strg && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
@@ -608,18 +539,6 @@ export function LvGrid(props: LvGridProps): ReactElement {
       if (e.key === 'Enter' && !e.shiftKey && onZeileOeffnen) {
         e.preventDefault();
         onZeileOeffnen(z.knoten.id, spalte);
-        return;
-      }
-    }
-    if (!strg && !e.altKey && !e.shiftKey && spalte === baumspalte && z.hatUnterknoten) {
-      if (e.key === 'ArrowRight' && !z.aufgeklappt) {
-        e.preventDefault();
-        klappe(zi, true);
-        return;
-      }
-      if (e.key === 'ArrowLeft' && z.aufgeklappt) {
-        e.preventDefault();
-        klappe(zi, false);
         return;
       }
     }
@@ -680,17 +599,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
     }
 
     const ziel = zielZelle(e.key, strg, von, raster());
-    const istNavigation = [
-      'ArrowUp',
-      'ArrowDown',
-      'ArrowLeft',
-      'ArrowRight',
-      'Home',
-      'End',
-      'PageUp',
-      'PageDown',
-    ].includes(e.key);
-    if (istNavigation) {
+    if (NAVIGATIONSTASTEN.has(e.key)) {
       e.preventDefault();
       if (ziel) aktiviere(ziel, e.shiftKey ? 'erweitern' : 'ersetzen', true);
       return;
@@ -928,7 +837,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
                 key={row.id}
                 row={row}
                 index={item.index}
-                versatz={item.start - zh}
+                versatz={kern.versatz(item.start)}
                 hoehe={zh}
                 vorlage={vorlage}
                 breite={mindestbreite}
