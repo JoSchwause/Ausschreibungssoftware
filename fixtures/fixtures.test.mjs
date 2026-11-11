@@ -26,7 +26,8 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
   const zweite = erzeugeAlle();
   assert.deepEqual(Object.keys(erste).sort(), [
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
-    'gross.json', 'handbeispiele.json', 'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
+    'gross.json', 'handbeispiele.json', 'typisch-abrechnung.json', // Ticket 85
+    'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
   for (const [name, inhalt] of Object.entries(erste)) {
     assert.equal(inhalt, zweite[name], `${name}: zweite Erzeugung weicht ab`);
@@ -365,7 +366,9 @@ test('Dezimalwerte in JSON sind nie Zahlen', () => {
     assert.notEqual(typeof v, 'number', `Zahl bei ${pfad}`);
     if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`);
   };
-  for (const name of [...LVS, 'typisch-angebote.json', 'handbeispiele.json', 'zuschlag.json']) pruefe(laden(name), name);
+  for (const name of [...LVS, 'typisch-angebote.json', 'handbeispiele.json', 'zuschlag.json', 'typisch-abrechnung.json']) {
+    pruefe(laden(name), name);
+  }
 });
 
 // ---------------------------------------------------------------- Ticket 25
@@ -715,4 +718,531 @@ test('typisch-angebote: Preisspiegel-Sollwerte, Rang und virtuelle Bieter (Ticke
   // Von Hand: 02.0050 A vergleicht Beträge 544,71 / 617,02 / 772,62; Mittel 1.934,35 / 3 = 644,7833 -> 644,78.
   // 03.0070 (B nicht angeboten): Mittel über A und C. 03.0080 (C 0,000): Mittel nur über A und B (D-05).
   assert.equal(ps.vergleiche[0].virtuelleSummen.schaetzpreis, '55465.59');
+});
+
+// ---------------------------------------------------------------- Ticket 85: M4-Abrechnung (D-38)
+//
+// Sollwerte des Tors M4 (D-38): Zuschlag an Bieter B (D-21), Nachtrag N01 (D-35), Aufmaßblätter mit Formel 91,
+// Abschlagsrechnungen nach der Abzugskette (D-34), Soll/Ist (D-35, VOB/B § 2 Abs. 3), Kostenkontrolle (D-37).
+// Jede Zahl wird hier ein zweites Mal gerechnet: von Hand (Literale mit Rechenweg) und eigens aus den Eingaben der
+// Fixture (Gegenrechnung ohne die M4-Funktionen von rechnen.mjs, nur mit parse/format/gesamtpreis/prozentVon).
+// Nie aus `kern`, `vergabe`, `abrechnung`, `kosten` oder `mengen`.
+
+const M4 = 'typisch-abrechnung.json';
+/** Betrag mit Vorzeichen (E-07: Vorzeichen vor den Betrag); -179411n -> "-1794.11". */
+const mitVz = (w) => (w < 0n ? `-${format(-w, 2)}` : format(w, 2));
+const ohneVz = (t) => (t.startsWith('-') ? -parse(t.slice(1), 2) : parse(t, 2));
+
+/**
+ * Formel 91 (freier Rechenansatz, Ticket 35; MENGEN_ANNAHMEN): eigens gerechnet für die Teilmenge, die die Fixture
+ * nutzt: Zahlen mit Dezimalkomma, + - * und Klammern, Punkt vor Strich, exakt; das Zeilenergebnis kaufmännisch auf 3
+ * Stellen (Menge, N3). Eine Division kommt absichtlich nicht vor (sie würde vorher auf 10 Stellen runden).
+ */
+function formel91(ausdruck) {
+  const t = ausdruck.match(/\d+(?:,\d+)?|[-+*()]/g) ?? [];
+  assert.equal(t.join(''), ausdruck, `nur Zahlen, + - * und Klammern ohne Leerraum: ${ausdruck}`);
+  let i = 0;
+  const zahl = (s) => {
+    const [ganz, nach = ''] = s.split(',');
+    return { w: BigInt(ganz + nach), s: nach.length };
+  };
+  const primaer = () => {
+    const x = t[i++];
+    if (x !== '(') return zahl(x);
+    const v = summe();
+    assert.equal(t[i++], ')');
+    return v;
+  };
+  const produkt = () => {
+    let v = primaer();
+    while (t[i] === '*') {
+      i++;
+      const r = primaer();
+      v = { w: v.w * r.w, s: v.s + r.s };
+    }
+    return v;
+  };
+  const summe = () => {
+    let v = produkt();
+    while (t[i] === '+' || t[i] === '-') {
+      const op = t[i++];
+      const r = produkt();
+      const s = Math.max(v.s, r.s);
+      const a = v.w * 10n ** BigInt(s - v.s);
+      const b = r.w * 10n ** BigInt(s - r.s);
+      v = { w: op === '+' ? a + b : a - b, s };
+    }
+    return v;
+  };
+  const v = summe();
+  assert.equal(i, t.length, `Rest im Ausdruck: ${ausdruck}`);
+  assert.ok(v.w >= 0n, 'negative Zeilen kommen in der Fixture nicht vor');
+  return format(rundeHalfUp(v.w, v.s, 3), 3);
+}
+
+/** Eingaben der Gegenrechnung, nur aus typisch, typisch-angebote und den Eingabefeldern der M4-Fixture. */
+function m4Eingaben() {
+  const lv = laden('typisch.json');
+  const set = laden('typisch-angebote.json');
+  const fx = laden(M4);
+  const angebot = set.angebote.find((a) => a.id === fx.zuschlag.angebotId);
+  const zeile = new Map([...angebot.positionen, ...fx.nachtrag.angebot.positionen].map((z) => [z.positionId, z]));
+  const knoten = new Map([...lv.knoten, ...fx.nachtrag.lv.knoten].map((k) => [k.id, k]));
+  const ep = (id) => {
+    const z = zeile.get(id);
+    return z?.status === 'angeboten' && z.einheitspreis !== undefined ? parse(z.einheitspreis, 3) : null;
+  };
+  const ozVon = new Map(fx.positionen.map((p) => [p.positionId, p.oz]));
+  const idVon = new Map(fx.positionen.map((p) => [p.oz, p.positionId]));
+  return { lv, set, fx, angebot, zeile, knoten, ep, ozVon, idVon };
+}
+
+/** Kumulierte Aufmaßmenge je Position (D-34 (1)): Summe der Blattmengen, Zeilen ohne Menge zählen nicht. */
+function kumuliert(aufmasse) {
+  const m = new Map();
+  for (const a of aufmasse) {
+    for (const z of a.positionen) {
+      if (z.menge !== null) m.set(z.positionId, (m.get(z.positionId) ?? 0n) + parse(z.menge, 3));
+    }
+  }
+  return m;
+}
+
+/**
+ * Leistungsstand (D-34 (1)-(3), D-70.7) eigens gerechnet: je Position des Auftrags-LV eine Zeile; GP =
+ * round(kumulierte Menge x Vertrags-EP, 2), ohne Menge oder EP 0,00; Bedarf zählt, sobald aufgemessen; Zuschlagsposition
+ * = round(Σ GP der Bezugspositionen x Satz / 100, 2); Nachlass = round(Leistung x 3,00 %, 2).
+ */
+function leistungsstandGegen(e, aufmasse) {
+  const kum = kumuliert(aufmasse);
+  const gp = new Map();
+  for (const p of e.fx.positionen) {
+    const m = kum.get(p.positionId) ?? null;
+    const preis = e.ep(p.positionId);
+    gp.set(p.positionId, m === null || preis === null ? 0n : gesamtpreis(m, preis));
+  }
+  for (const p of e.fx.positionen) {
+    const k = e.knoten.get(p.positionId);
+    if (!k.zuschlag) continue;
+    const basis = k.zuschlag.bezug.positionen.reduce((s, b) => s + gp.get(b.positionId), 0n);
+    gp.set(p.positionId, prozentVon(basis, parse(e.zeile.get(p.positionId).zuschlagssatz, 2)));
+  }
+  const leistung = [...gp.values()].reduce((a, b) => a + b, 0n);
+  const nachlass = prozentVon(leistung, parse(e.fx.zuschlag.nachlass.wert, 2));
+  return {
+    positionen: e.fx.positionen.map((p) => ({
+      positionId: p.positionId,
+      menge: kum.has(p.positionId) ? format(kum.get(p.positionId), 3) : null,
+      gp: format(gp.get(p.positionId), 2),
+    })),
+    leistung: format(leistung, 2),
+    nachlass: format(nachlass, 2),
+    nettoNachNachlass: format(leistung - nachlass, 2),
+  };
+}
+
+/** Abzugskette D-34 (4)-(7), eigens gerechnet: jeder Schritt auf 2 Stellen, dann verrechnet. */
+function ketteGegen(ls, rechnung, frueher) {
+  const nnn = parse(ls.nettoNachNachlass, 2);
+  const mwst = prozentVon(nnn, parse('19.00', 2));
+  const brutto = nnn + mwst;
+  const umlagen = rechnung.umlagen.map((u) => ({
+    bezeichnung: u.bezeichnung, satz: u.satz, betrag: format(prozentVon(brutto, parse(u.satz, 2)), 2),
+  }));
+  const einbehalt = prozentVon(brutto, parse(rechnung.sicherheitSatz, 2));
+  const zahl = brutto - umlagen.reduce((s, u) => s + parse(u.betrag, 2), 0n) - einbehalt - frueher;
+  return {
+    leistung: ls.leistung, nachlass: ls.nachlass, nettoNachNachlass: ls.nettoNachNachlass, mwst: format(mwst, 2),
+    bruttoKumuliert: format(brutto, 2), umlagen, einbehalt: format(einbehalt, 2),
+    fruehereZahlbetraege: format(frueher, 2), zahlbetrag: mitVz(zahl),
+  };
+}
+
+test('typisch-abrechnung: Struktur, Kennungen und Bezüge (Ticket 85)', () => {
+  const { lv, set, fx } = m4Eingaben();
+  assert.equal(fx.schemaVersion, 'fixture-v1');
+  assert.equal(fx.art, 'abrechnungsset');
+  assert.equal(fx.lvId, lv.id);
+  // Kennungen: UUIDv7-förmig und über typisch, typisch-angebote und diese Datei eindeutig
+  const neu = [
+    fx.projektId, fx.zuschlag.auftragsLvId, fx.nachtrag.lv.id, ...fx.nachtrag.lv.knoten.map((k) => k.id),
+    fx.nachtrag.angebot.id, fx.nachtrag.uebernahme.knoten[0].id, fx.kostenermittlung.id,
+    ...fx.aufmasse.map((a) => a.aufmass.id), ...fx.rechnungen.map((r) => r.id),
+  ];
+  for (const id of neu) assert.match(id, UUID7);
+  const alle = [
+    lv.id, ...lv.knoten.map((k) => k.id), ...set.bieter.map((b) => b.id), ...set.angebote.map((a) => a.id), ...neu,
+  ];
+  assert.equal(new Set(alle).size, alle.length, 'Kennungen nicht eindeutig');
+  // Zuschlag an Bieter B mit 3,00 % Nachlass (D-38), ohne Wahl (D-85.1)
+  const b = set.bieter.find((x) => x.name === 'Bieter B');
+  assert.deepEqual([fx.zuschlag.bieterId, fx.zuschlag.bieterName], [b.id, 'Bieter B']);
+  assert.equal(set.angebote.find((a) => a.id === fx.zuschlag.angebotId).bieterId, b.id);
+  assert.deepEqual(fx.zuschlag.nachlass, { art: 'prozent', wert: '3.00' });
+  assert.deepEqual(fx.zuschlag.gewaehlt, []);
+  // Positionen des Auftrags-LV nach dem Nachtrag: typisch ohne die Wahl-Alternative, dann die zwei Nachtragspositionen
+  const typischPos = lv.knoten.filter((k) => k.art === 'position' && k.positionsart !== 'wahl');
+  const nachtragPos = fx.nachtrag.lv.knoten.filter((k) => k.art === 'position');
+  assert.deepEqual(fx.positionen.map((p) => p.positionId), [...typischPos, ...nachtragPos].map((k) => k.id));
+  // Aufmaß- und Rechnungsbezüge
+  const posIds = new Set(fx.positionen.map((p) => p.positionId));
+  const blattIds = fx.aufmasse.map((a) => a.aufmass.id);
+  for (const { aufmass } of [...fx.aufmasse, { aufmass: fx.korrektur.aufmassNachher }]) {
+    assert.deepEqual([aufmass.projektId, aufmass.auftragsLvId], [fx.projektId, fx.zuschlag.auftragsLvId]);
+    for (const z of aufmass.positionen) assert.ok(posIds.has(z.positionId), z.positionId);
+    const ids = new Set(aufmass.positionen.map((z) => z.positionId));
+    assert.equal(ids.size, aufmass.positionen.length, 'eine Zeile je Position');
+  }
+  assert.deepEqual(fx.aufmasse.map((a) => a.aufmass.nummer), ['1', '2']); // Nummern als Text (D-85.4)
+  assert.deepEqual(fx.rechnungen.map((r) => [r.nummer, r.art, r.aufmassIds]), [
+    ['1', 'abschlag', [blattIds[0]]], ['2', 'abschlag', blattIds],
+  ]);
+  for (const r of fx.rechnungen) {
+    assert.deepEqual([r.projektId, r.auftragsLvId, r.gefordert], [fx.projektId, fx.zuschlag.auftragsLvId, null]);
+    assert.deepEqual(r.umlagen, [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' }]);
+    assert.deepEqual([r.sicherheitSatz, r.gewaehrleistungSatz], ['5.00', null]);
+  }
+  // Freigabe: AR 1 eingefroren mit dem geprüften Zahlbetrag, AR 2 offen (Freigaben sind die kleinsten Nummern)
+  assert.deepEqual(fx.rechnungen[0].freigabe, { zahlbetrag: fx.pruefungen.ar1.kette.zahlbetrag });
+  assert.equal(fx.rechnungen[1].freigabe, null);
+  assert.equal(fx.korrektur.aufmassId, blattIds[0]);
+  assert.equal(fx.kostenermittlung.stufe, 'kostenberechnung');
+  assert.equal(fx.kostenermittlung.projektId, fx.projektId);
+});
+
+test('typisch-abrechnung: Zuschlag an Bieter B ergibt das Auftrags-LV (D-21), von Hand', () => {
+  const { lv, set, fx, idVon } = m4Eingaben();
+  const s = fx.zuschlag.sollwerte;
+  // Die Alternative 02.0070 A entfällt (keine Wahl, D-21), 03.0070 hat keinen Preis (B nicht angeboten, Warnung).
+  const ozLv = (oz) => lv.knoten.find((k) => k.ordnungszahl + (k.ozIndex ?? '') === oz).id;
+  assert.deepEqual(fx.zuschlag.entfallen, [ozLv('02.0070A')]);
+  assert.deepEqual(fx.zuschlag.ohnePreis, [ozLv('03.0070')]);
+  assert.deepEqual(s.nichtAngeboten, [ozLv('03.0070')]);
+  assert.equal(idVon.has('02.0070A'), false);
+  // Netto wie das Angebot B (die Wahl war nie im Netto): 58.358,53; Nachlass 58.358,53 x 3 % = 1.750,7559 -> 1.750,76;
+  // MwSt 56.607,77 x 19 % = 10.755,4763 -> 10.755,48; Brutto 67.363,25 (N2, N5).
+  assert.deepEqual(s.summen, {
+    netto: '58358.53', nachlass: '1750.76', nettoNachNachlass: '56607.77', mwst: '10755.48', brutto: '67363.25',
+  });
+  // Bedarf bleibt Bedarf (12,000 x 50,709 = 608,508 -> 608,51), die Wahlsumme ist leer (Alternative entfallen).
+  assert.deepEqual(s.ausweise.gesamt, { summeBedarfOhneGesamtbetrag: '608.51', summeWahl: '0.00' });
+  const titel = (oz) => s.titel[lv.knoten.find((k) => k.art === 'titel' && k.ordnungszahl === oz).id].summe;
+  assert.deepEqual(['01', '02', '03'].map(titel), ['5770.45', '26416.34', '26171.74']);
+  // Gegenrechnung: GP je Position mit den EP und dem Satz von B, Summen nach N2/N5.
+  const b = set.angebote.find((a) => a.id === fx.zuschlag.angebotId);
+  const preise = new Map(b.positionen.map((p) => [p.positionId, p.status !== 'angeboten' ? null : {
+    ep: p.einheitspreis === undefined ? null : parse(p.einheitspreis, 3),
+    satz: p.zuschlagssatz === undefined ? null : parse(p.zuschlagssatz, 2),
+  }]));
+  const knoten = lv.knoten.filter((k) => k.positionsart !== 'wahl');
+  assert.deepEqual(berechneSollwerteGaeb(knoten, (k) => preise.get(k.id), fx.zuschlag.nachlass, lv.mwstSatz), s);
+  for (const [id, p] of Object.entries(s.positionen)) assert.equal(p.gp, b.sollwerte.positionen[id].gp, id);
+});
+
+test('typisch-abrechnung: Nachtrag N01, Knoten nach der Übernahme und Summen danach (D-35), von Hand', () => {
+  const { fx } = m4Eingaben();
+  const n = fx.nachtrag;
+  assert.equal(n.lv.mwstSatz, '19.00'); // gleicher Satz wie das Auftrags-LV, sonst Fehler (D-35)
+  assert.equal(n.lv.nachlass, null);
+  assert.deepEqual(n.lv.nachtrag, { auftragsLvId: fx.zuschlag.auftragsLvId, nummer: 'N01', status: 'angeboten' });
+  assert.equal(n.statusNachUebernahme, 'beauftragt');
+  assert.equal(n.angebot.bieterId, fx.zuschlag.bieterId); // Nachtragsangebot vom Auftragnehmer (D-35)
+  assert.equal(n.angebot.nachlass, null);
+  const [titel, p1, p2] = n.lv.knoten;
+  assert.deepEqual([titel.art, titel.ordnungszahl, titel.parentId], ['titel', '01', n.lv.id]);
+  assert.deepEqual([p1, p2].map((p) => [p.ordnungszahl, p.menge, p.einheit, p.einheitspreis]), [
+    ['01.0010', '24.000', 'm³', null], ['01.0020', '6.000', 'St', null], // Nachtrags-LV ohne Schätzpreis (D-85.7)
+  ]);
+  assert.deepEqual(n.angebot.positionen.map((z) => [z.positionId, z.status, z.einheitspreis]), [
+    [p1.id, 'angeboten', '38.437'], [p2.id, 'angeboten', '87.125'],
+  ]);
+  // Übernahme (D-35, D-85.2): neue Gliederung „Nachtrag N01“ als Titel auf oberster Ebene (dort stehen Titel, F1), nächste
+  // freie OZ 04 nach 01, 02, 03, ans Ende (Reihenfolge 3); darunter der Baum des Nachtrags mit seinen Kennungen, OZ mit
+  // 04 davor, EP aus dem Angebot.
+  const u = n.uebernahme;
+  assert.deepEqual([u.art, u.nachtragLvId, u.gliederungReihenfolge], ['NachtragUebernehmen', n.lv.id, '3']);
+  assert.deepEqual(u.knoten.map((k) => [k.art, k.ordnungszahl, k.kurztext]), [
+    ['titel', '04', 'Nachtrag N01'], ['titel', '04.01', titel.kurztext],
+    ['position', '04.01.0010', p1.kurztext], ['position', '04.01.0020', p2.kurztext],
+  ]);
+  assert.deepEqual(u.knoten.map((k) => k.parentId), [fx.zuschlag.auftragsLvId, u.knoten[0].id, titel.id, titel.id]);
+  assert.deepEqual(u.knoten.slice(1).map((k) => k.id), [titel.id, p1.id, p2.id]);
+  assert.deepEqual(u.knoten.slice(2).map((k) => [k.menge, k.einheit, k.einheitspreis]), [
+    ['24.000', 'm³', '38.437'], ['6.000', 'St', '87.125'],
+  ]);
+  // Nachtragsangebot: 24,000 x 38,437 = 922,488 -> 922,49; 6,000 x 87,125 = 522,750 -> 522,75; Netto 1.445,24;
+  // MwSt 1.445,24 x 19 % = 274,5956 -> 274,60; Brutto 1.719,84.
+  assert.deepEqual(n.angebot.sollwerte.summen, {
+    netto: '1445.24', nachlass: '0.00', nettoNachNachlass: '1445.24', mwst: '274.60', brutto: '1719.84',
+  });
+  // Auftrags-LV danach: Netto 58.358,53 + 1.445,24 = 59.803,77; Nachlass 3 % über das ganze Auftrags-LV samt Nachtrag
+  // (D-34 (2), N5): 1.794,1131 -> 1.794,11; Netto n. N. 58.009,66; MwSt 11.021,8354 -> 11.021,84; Brutto 69.031,50.
+  const s = n.sollwerte;
+  assert.deepEqual(s.summen, {
+    netto: '59803.77', nachlass: '1794.11', nettoNachNachlass: '58009.66', mwst: '11021.84', brutto: '69031.50',
+  });
+  assert.deepEqual([s.titel[u.knoten[0].id], s.titel[titel.id]], [{ summe: '1445.24' }, { summe: '1445.24' }]);
+  assert.deepEqual([s.positionen[p1.id], s.positionen[p2.id]], [
+    { gp: '922.49', inSumme: true }, { gp: '522.75', inSumme: true },
+  ]);
+  // Gegenrechnung: Netto = Netto vorher + GP der Nachtragspositionen; Nachlass, MwSt nach N2/N5.
+  const netto = parse(fx.zuschlag.sollwerte.summen.netto, 2) + parse('922.49', 2) + parse('522.75', 2);
+  assert.deepEqual(s.summen, summen(netto, fx.zuschlag.nachlass, '19.00'));
+  assert.deepEqual(fx.gliederungen.map((g) => g.oz), ['01', '02', '03', '04', '04.01']);
+});
+
+test('typisch-abrechnung: Aufmaßblätter, Formel-91-Zeilen eigens gerechnet', () => {
+  const { fx, ozVon } = m4Eingaben();
+  const blaetter = [...fx.aufmasse, { aufmass: fx.korrektur.aufmassNachher, zeilenergebnisse: null }];
+  for (const { aufmass, zeilenergebnisse } of blaetter) {
+    for (const z of aufmass.positionen) {
+      if (z.mengenansatz === null) continue;
+      const ergebnisse = z.mengenansatz.map((a) => {
+        assert.deepEqual([a.formel, a.variable], ['91', null]);
+        return formel91(a.ausdruck);
+      });
+      if (zeilenergebnisse) assert.deepEqual(zeilenergebnisse[z.positionId], ergebnisse, ozVon.get(z.positionId));
+      // Menge = Summe der gerundeten Zeilenergebnisse (MENGEN_ANNAHMEN.summe)
+      assert.equal(z.menge, format(ergebnisse.reduce((s, x) => s + parse(x, 3), 0n), 3), ozVon.get(z.positionId));
+    }
+  }
+  // Von Hand (Blatt 1): 0,5 = 0,500; 2*(25,5+17,75) = 2 x 43,25 = 86,500; 17*21*0,25 = 89,250; 12*9 = 108,000;
+  // 02.0050 zwei Zeilen: 2*(12+9)*0,6*0,8 = 42 x 0,48 = 20,160 und 2,5*1,75*0,3 = 1,3125 -> 1,313 (kaufmännisch, .5),
+  // zusammen 21,473; Nachtrag 04.01.0010: 6*4*0,5 = 12,000.
+  const menge = (a) => Object.fromEntries(a.positionen.map((z) => [ozVon.get(z.positionId), z.menge]));
+  assert.deepEqual(menge(fx.aufmasse[0].aufmass), {
+    '01.0010': '0.500', '01.0020': '86.500', '02.0010': '89.250', '02.0040': '108.000', '02.0050': '21.473',
+    '04.01.0010': '12.000',
+  });
+  const b1 = fx.aufmasse[0];
+  assert.deepEqual(b1.zeilenergebnisse[b1.aufmass.positionen[4].positionId], ['20.160', '1.313']);
+  // Blatt 2: 2*3,5 = 7,000 (Bedarf); 6*5,5*0,3 = 9,900; 2*(6+4,5)*0,6*0,8 = 21 x 0,48 = 10,080;
+  // (12,5+8,25)*2,75*2 = 20,75 x 5,5 = 114,125; 6*4*0,6 = 14,400; 04.01.0020 von Hand 4,000 (kein Ansatz).
+  assert.deepEqual(menge(fx.aufmasse[1].aufmass), {
+    '01.0040': '7.000', '02.0010': '9.900', '02.0050': '10.080', '03.0010': '114.125', '04.01.0010': '14.400',
+    '04.01.0020': '4.000',
+  });
+  assert.equal(fx.aufmasse[1].aufmass.positionen.at(-1).mengenansatz, null);
+  // Korrektur an Blatt 1 nach der Freigabe von AR 1: 02.0010 mit 20 m statt 21 m Breite, 17*20*0,25 = 85,000; die Zeile
+  // bleibt an ihrer Stelle (AufmasspositionSetzen), sonst ändert sich nichts.
+  const k = fx.korrektur;
+  assert.equal(k.befehl.art, 'AufmasspositionSetzen');
+  assert.deepEqual([ozVon.get(k.befehl.position.positionId), k.befehl.position.menge, k.zeilenergebnisse], [
+    '02.0010', '85.000', ['85.000'],
+  ]);
+  assert.deepEqual(k.aufmassNachher, {
+    ...b1.aufmass,
+    positionen: b1.aufmass.positionen.map((z) => (z.positionId === k.befehl.position.positionId ? k.befehl.position : z)),
+  });
+});
+
+test('typisch-abrechnung: Abschlagsrechnungen nach der Abzugskette (D-34), eingefrorener Zahlbetrag (D-38)', () => {
+  const e = m4Eingaben();
+  const { fx } = e;
+  const [b1, b2] = fx.aufmasse.map((a) => a.aufmass);
+  const b1k = fx.korrektur.aufmassNachher;
+  const [ar1, ar2] = fx.rechnungen;
+  const p = fx.pruefungen;
+  assert.deepEqual(
+    [p.ar1.rechnungId, p.ar2VorKorrektur.rechnungId, p.ar2NachKorrektur.rechnungId], [ar1.id, ar2.id, ar2.id],
+  );
+  assert.deepEqual(
+    [p.ar1.korrigiert, p.ar2VorKorrektur.korrigiert, p.ar2NachKorrektur.korrigiert], [false, false, true],
+  );
+
+  // Gegenrechnung jeder Zeile (Leistungsstand in Vertragsform, D-70.7) und jeder Zwischenzahl der Kette.
+  const ls1 = leistungsstandGegen(e, [b1]);
+  const ls2v = leistungsstandGegen(e, [b1, b2]);
+  const ls2n = leistungsstandGegen(e, [b1k, b2]);
+  assert.deepEqual(p.ar1.leistungsstand, ls1);
+  assert.deepEqual(p.ar2VorKorrektur.leistungsstand, ls2v);
+  assert.deepEqual(p.ar2NachKorrektur.leistungsstand, ls2n);
+  assert.deepEqual(p.ar1.kette, ketteGegen(ls1, ar1, 0n));
+  const eingefroren = parse(ar1.freigabe.zahlbetrag, 2); // gespeichert, nie neu gerechnet (D-34 (7))
+  assert.deepEqual(p.ar2VorKorrektur.kette, ketteGegen(ls2v, ar2, eingefroren));
+  assert.deepEqual(p.ar2NachKorrektur.kette, ketteGegen(ls2n, ar2, eingefroren));
+
+  // Von Hand, AR 1 (Blatt 1): 0,500 x 1.951,750 = 975,875 -> 975,88 (kaufmännisch, .5); 86,500 x 7,726 = 668,299 ->
+  // 668,30; 89,250 x 6,506 = 580,6605 -> 580,66; 108,000 x 12,502 = 1.350,216 -> 1.350,22; 21,473 x 174,980 =
+  // 3.757,34554 -> 3.757,35; Zuschlag 02.0050 A: 3.757,35 x 9,10 % = 341,91885 -> 341,92; 04.01.0010: 12,000 x 38,437 =
+  // 461,244 -> 461,24. Leistung 8.135,57; Nachlass 8.135,57 x 3 % = 244,0671 -> 244,07; Netto n. N. 7.891,50;
+  // MwSt 7.891,50 x 19 % = 1.499,385 -> 1.499,39 (kaufmännisch, .5); Brutto 9.390,89; Umlage 0,50 % = 46,95445 -> 46,95;
+  // Sicherheitseinbehalt 5 % = 469,5445 -> 469,54; Zahlbetrag 9.390,89 - 46,95 - 469,54 = 8.874,40.
+  const gp = (ls) => Object.fromEntries(
+    ls.positionen.filter((z) => z.gp !== '0.00').map((z) => [e.ozVon.get(z.positionId), z.gp]),
+  );
+  assert.deepEqual(gp(p.ar1.leistungsstand), {
+    '01.0010': '975.88', '01.0020': '668.30', '02.0010': '580.66', '02.0040': '1350.22', '02.0050': '3757.35',
+    '02.0050A': '341.92', '04.01.0010': '461.24',
+  });
+  const umlage = (betrag) => [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50', betrag }];
+  assert.deepEqual(p.ar1.kette, {
+    leistung: '8135.57', nachlass: '244.07', nettoNachNachlass: '7891.50', mwst: '1499.39', bruttoKumuliert: '9390.89',
+    umlagen: umlage('46.95'), einbehalt: '469.54', fruehereZahlbetraege: '0.00', zahlbetrag: '8874.40',
+  });
+  assert.equal(ar1.freigabe.zahlbetrag, '8874.40');
+
+  // Von Hand, AR 2 vor der Korrektur (Blatt 1 + 2, kumuliert): dazu 01.0040 (Bedarf, zählt aufgemessen) 7,000 x 50,709 =
+  // 354,963 -> 354,96; 02.0010 99,150 x 6,506 = 645,0699 -> 645,07; 02.0050 31,553 x 174,980 = 5.521,14394 -> 5.521,14;
+  // Zuschlag 5.521,14 x 9,10 % = 502,42374 -> 502,42; 03.0010 114,125 x 52,699 = 6.014,273375 -> 6.014,27;
+  // 04.01.0010 26,400 x 38,437 = 1.014,7368 -> 1.014,74; 04.01.0020 4,000 x 87,125 = 348,50. Leistung 17.395,50;
+  // Nachlass 17.395,50 x 3 % = 521,865 -> 521,87 (kaufmännisch, .5); Netto n. N. 16.873,63; MwSt 3.205,9897 -> 3.205,99;
+  // Brutto 20.079,62; Umlage 100,3981 -> 100,40; Einbehalt 1.003,981 -> 1.003,98;
+  // Zahlbetrag 20.079,62 - 100,40 - 1.003,98 - 8.874,40 (eingefroren) = 10.100,84.
+  assert.deepEqual(p.ar2VorKorrektur.kette, {
+    leistung: '17395.50', nachlass: '521.87', nettoNachNachlass: '16873.63', mwst: '3205.99',
+    bruttoKumuliert: '20079.62', umlagen: umlage('100.40'), einbehalt: '1003.98', fruehereZahlbetraege: '8874.40',
+    zahlbetrag: '10100.84',
+  });
+
+  // Von Hand, AR 2 nach der Korrektur: 02.0010 85,000 + 9,900 = 94,900 x 6,506 = 617,4194 -> 617,42; Leistung
+  // 17.395,50 - 645,07 + 617,42 = 17.367,85; Nachlass 521,0355 -> 521,04; Netto n. N. 16.846,81; MwSt 3.200,8939 ->
+  // 3.200,89; Brutto 20.047,70; Umlage 100,2385 -> 100,24; Einbehalt 1.002,385 -> 1.002,39 (kaufmännisch, .5);
+  // Zahlbetrag 20.047,70 - 100,24 - 1.002,39 - 8.874,40 = 10.070,67. AR 1 bleibt 8.874,40 (eingefroren).
+  assert.deepEqual(p.ar2NachKorrektur.kette, {
+    leistung: '17367.85', nachlass: '521.04', nettoNachNachlass: '16846.81', mwst: '3200.89',
+    bruttoKumuliert: '20047.70', umlagen: umlage('100.24'), einbehalt: '1002.39', fruehereZahlbetraege: '8874.40',
+    zahlbetrag: '10070.67',
+  });
+
+  // Gegenprobe ohne Einfrieren: AR 1 nach der Korrektur neu geprüft wäre 8.844,23 (Leistung 8.107,92; Nachlass
+  // 243,2376 -> 243,24; MwSt 1.494,2892 -> 1.494,29; Brutto 9.358,97; Umlage 46,79485 -> 46,79; Einbehalt 467,9485 ->
+  // 467,95), AR 2 damit 10.100,84, also gleich dem Wert vor der Korrektur: Ohne Einfrieren hebt sich die Korrektur auf.
+  const ar1Neu = ketteGegen(leistungsstandGegen(e, [b1k]), ar1, 0n);
+  assert.equal(ar1Neu.zahlbetrag, '8844.23');
+  const ar2Ohne = ketteGegen(ls2n, ar2, parse(ar1Neu.zahlbetrag, 2));
+  assert.deepEqual(fx.gegenprobeOhneEinfrieren, { ar1Zahlbetrag: '8844.23', ar2Zahlbetrag: ar2Ohne.zahlbetrag });
+  assert.equal(ar2Ohne.zahlbetrag, '10100.84');
+  assert.notEqual(ar2Ohne.zahlbetrag, p.ar2NachKorrektur.kette.zahlbetrag);
+});
+
+test('typisch-abrechnung: Soll/Ist, genau ein Befund über 110 %, keiner unter 90 % (D-35, VOB/B § 2 Abs. 3)', () => {
+  const e = m4Eingaben();
+  const { fx, ozVon } = e;
+  const [b1, b2] = fx.aufmasse.map((a) => a.aufmass);
+  const soll = (id) => parse(e.knoten.get(id).menge, 3);
+  // Eigens: Ist = Σ Blattmengen; Anteil = round_half_up(Ist / Soll x 100, 2); Befund `ueber-schwelle` bei
+  // Ist x 100 > Soll x 110 (streng); `unter-schwelle` nur mit `abgeschlossen` (keine Schlussrechnung: nie).
+  const gegen = (aufmasse) => {
+    const kum = kumuliert(aufmasse);
+    const zeilen = fx.positionen.filter((p) => kum.has(p.positionId)).map((p) => {
+      const s = soll(p.positionId);
+      const ist = kum.get(p.positionId);
+      return {
+        positionId: p.positionId, soll: format(s, 3), ist: format(ist, 3),
+        anteil: format((2n * ist * 10000n + s) / (2n * s), 2),
+      };
+    });
+    const befunde = zeilen.filter((z) => parse(z.ist, 3) * 100n > parse(z.soll, 3) * 110n)
+      .map((z) => ({ positionId: z.positionId, art: 'ueber-schwelle', anteil: z.anteil }));
+    return { zeilen, befunde };
+  };
+  const faelle = [
+    ['nachBlatt1', [b1]], ['nachBlatt2', [b1, b2]], ['nachKorrektur', [fx.korrektur.aufmassNachher, b2]],
+  ];
+  for (const [name, blaetter] of faelle) {
+    const si = fx.sollIst[name];
+    assert.deepEqual(si.aufmassIds, blaetter.map((a) => a.id), name);
+    assert.deepEqual({ zeilen: si.zeilen, befunde: si.befunde }, gegen(blaetter), name);
+    // Von Hand: 02.0040 108,000 / 96,000 = 112,50 % > 110 %, der einzige Befund; nie `unter-schwelle`.
+    assert.deepEqual(
+      si.befunde.map((b) => [ozVon.get(b.positionId), b.art, b.anteil]), [['02.0040', 'ueber-schwelle', '112.50']],
+    );
+  }
+  // Grenzfall streng: 04.01.0010 nach Blatt 2 mit 12,000 + 14,400 = 26,400 von 24,000 = genau 110,00 %, kein Befund.
+  const anteil = (name, oz) => fx.sollIst[name].zeilen.find((z) => ozVon.get(z.positionId) === oz).anteil;
+  assert.equal(anteil('nachBlatt2', '04.01.0010'), '110.00');
+  // 89,250 / 123,450 = 72,2965 -> 72,30; 7 / 12 = 58,333 -> 58,33; 4 / 6 = 66,667 -> 66,67; 94,9 / 123,45 = 76,873 -> 76,87
+  assert.deepEqual([
+    anteil('nachBlatt1', '02.0010'), anteil('nachBlatt2', '01.0040'), anteil('nachBlatt2', '04.01.0020'),
+    anteil('nachKorrektur', '02.0010'),
+  ], ['72.30', '58.33', '66.67', '76.87']);
+});
+
+test('typisch-abrechnung: Kostenkontrolle nach AR 2 (D-37), Zeilensumme = Gesamt auf den Cent', () => {
+  const { fx } = m4Eingaben();
+  const kk = fx.kostenkontrolle;
+  assert.deepEqual([kk.rechnungId, kk.kostenermittlungId], [fx.rechnungen[1].id, fx.kostenermittlung.id]);
+  // Zuordnung (D-85.3): fast alle Positionen haben eine KG; zwei der Ebene 3 unter verschiedenen Ebene-2-Gruppen und
+  // eine Position auf Ebene 2 (340); ohne KG: 03.0070 (ohne Preis), 03.0080, 04.01.0020.
+  const kg = Object.fromEntries(fx.positionen.map((p) => [p.oz, p.kostengruppe]));
+  assert.deepEqual(
+    Object.entries(kg).filter(([, n]) => n === null).map(([oz]) => oz), ['03.0070', '03.0080', '04.01.0020'],
+  );
+  assert.deepEqual(
+    [...new Set(Object.values(kg).filter((n) => n !== null))].sort(), ['214', '311', '322', '340', '352', '391'],
+  );
+  for (const n of Object.values(kg)) if (n !== null) assert.match(n, /^[1-9][0-9]{2}$/);
+
+  // Gegenrechnung. Vorfahren einer Nummer aus den Ziffern (D-24): XYZ -> XY0 -> X00.
+  const vorfahren = (n) => [...new Set([n, `${n.slice(0, 2)}0`, `${n[0]}00`])];
+  const zeilen = new Map();
+  const buche = (n, feld, w) => {
+    for (const v of vorfahren(n)) {
+      if (!zeilen.has(v)) zeilen.set(v, { budget: 0n, vergabe: 0n, abrechnung: 0n });
+      zeilen.get(v)[feld] += w;
+    }
+  };
+  for (const x of fx.kostenermittlung.eintraege) buche(x.nummer, 'budget', parse(x.betrag, 2));
+  const ohne = { budget: 0n, vergabe: 0n, abrechnung: 0n };
+  const vergabe = fx.nachtrag.sollwerte.positionen; // GP des Auftrags-LV nach dem Nachtrag; nur zählende (F4)
+  const ls = fx.pruefungen.ar2NachKorrektur.leistungsstand; // Rechnung mit der höchsten Nummer (D-37)
+  const abrechnung = new Map(ls.positionen.map((z) => [z.positionId, z.gp]));
+  for (const p of fx.positionen) {
+    const v = vergabe[p.positionId].inSumme ? parse(vergabe[p.positionId].gp, 2) : 0n;
+    const a = parse(abrechnung.get(p.positionId), 2);
+    if (p.kostengruppe === null) {
+      ohne.vergabe += v;
+      ohne.abrechnung += a;
+    } else {
+      buche(p.kostengruppe, 'vergabe', v);
+      buche(p.kostengruppe, 'abrechnung', a);
+    }
+  }
+  const text = (z) => ({
+    budget: mitVz(z.budget), vergabe: mitVz(z.vergabe), abrechnung: mitVz(z.abrechnung),
+    abweichung: mitVz(z.vergabe - z.budget),
+  });
+  assert.deepEqual(kk.zeilen, [...zeilen.keys()].sort().map((n) => ({ kostengruppe: n, ...text(zeilen.get(n)) })));
+  assert.deepEqual(kk.ohneKostengruppe, text(ohne));
+  const nachlass = {
+    budget: 0n, vergabe: -parse(fx.nachtrag.sollwerte.summen.nachlass, 2), abrechnung: -parse(ls.nachlass, 2),
+  };
+  assert.deepEqual(kk.nachlass, text(nachlass));
+  // Gesamt (D-37): Budget = Σ Einträge, Vergabe = Netto n. N. des Auftrags-LV, Abrechnung = Netto n. N. des Leistungsstands
+  const gesamt = {
+    budget: fx.kostenermittlung.eintraege.reduce((s, x) => s + parse(x.betrag, 2), 0n),
+    vergabe: parse(fx.nachtrag.sollwerte.summen.nettoNachNachlass, 2),
+    abrechnung: parse(ls.nettoNachNachlass, 2),
+  };
+  assert.deepEqual(kk.gesamt, text(gesamt));
+  // Property (D-37, Ticket 82): Ebene 1 + ohne KG + Nachlass = Gesamt, je Spalte auf den Cent.
+  for (const feld of ['budget', 'vergabe', 'abrechnung', 'abweichung']) {
+    const summe = [...kk.zeilen.filter((z) => z.kostengruppe.endsWith('00')), kk.ohneKostengruppe, kk.nachlass]
+      .reduce((s, z) => s + ohneVz(z[feld]), 0n);
+    assert.equal(mitVz(summe), kk.gesamt[feld], feld);
+  }
+
+  // Von Hand: Vergabe 391 = 1.951,75 + 668,30 + 930,96 + 1.208,58 = 4.759,59 (Bedarf 01.0040 zählt nicht, F4);
+  // 322 = 1.200,19 + 6.780,48 + 617,02 + 5.725,15 + 5.256,48 + 842,27 + 1.146,87 + 922,49 = 22.490,95;
+  // Abrechnung 391 = 975,88 + 668,30 + 354,96 (Bedarf, aufgemessen) = 1.999,14; 322 = 1.350,22 + 5.521,14 + 502,42 +
+  // 1.014,74 = 8.388,52; ohne KG = 199,53 + 522,75 = 722,28 (Vergabe) bzw. 348,50 (Abrechnung).
+  const z = (n) => kk.zeilen.find((x) => x.kostengruppe === n);
+  assert.deepEqual(kk.zeilen.map((x) => x.kostengruppe), [
+    '200', '210', '214', '300', '310', '311', '320', '322', '330', '340', '350', '352', '390', '391',
+  ]);
+  const zeileSoll = (kostengruppe, budget, vergabe, abrechnung, abweichung) => ({
+    kostengruppe, budget, vergabe, abrechnung, abweichung,
+  });
+  assert.deepEqual(z('391'), zeileSoll('391', '5200.00', '4759.59', '1999.14', '-440.41'));
+  assert.deepEqual(z('322'), zeileSoll('322', '21800.00', '22490.95', '8388.52', '690.95'));
+  assert.deepEqual(z('330'), zeileSoll('330', '3000.00', '0.00', '0.00', '-3000.00'));
+  assert.deepEqual(z('340'), zeileSoll('340', '22500.00', '23346.13', '6014.27', '846.13'));
+  assert.deepEqual(z('300'), zeileSoll('300', '59800.00', '58070.63', '17019.35', '-1729.37'));
+  assert.deepEqual(z('200'), zeileSoll('200', '1100.00', '1010.86', '0.00', '-89.14'));
+  assert.deepEqual(kk.ohneKostengruppe, { budget: '0.00', vergabe: '722.28', abrechnung: '348.50', abweichung: '722.28' });
+  assert.deepEqual(kk.nachlass, { budget: '0.00', vergabe: '-1794.11', abrechnung: '-521.04', abweichung: '-1794.11' });
+  assert.deepEqual(kk.gesamt, {
+    budget: '60900.00', vergabe: '58009.66', abrechnung: '16846.81', abweichung: '-2890.34',
+  });
 });

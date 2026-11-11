@@ -1,6 +1,6 @@
 # 85: Fixture M4: Nachtrag, Aufmaß, Rechnungen, Kostenkontrolle mit hergeleiteten Sollwerten
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: F · Paket: `fixtures/`
 Blocked by: 70, 75
