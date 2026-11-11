@@ -9,7 +9,7 @@
 import { aufmassPruefen } from '@tethys/abrechnung';
 import { Button, Dialog, Tastenkuerzel, useToast } from '@tethys/ui-basis';
 import { VergleichsGrid } from '@tethys/ui-grid';
-import type { Aufmass, AufmassBefehl, AufmassId, AufmassZustand } from '@tethys/vertrag';
+import type { Aufmass, AufmassBefehl, AufmassId, AufmassZustand, Menge } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { auftragPfad } from '../auftrag/ziel';
@@ -18,6 +18,7 @@ import { befehlswegFuer } from '../lv/befehlsweg';
 import { datumDe } from '../lv/kopfdaten';
 import { useMeldungen } from '../lv/meldungen';
 import { ozText } from '../lv/oztext';
+import { imLeerlauf } from '../lv/pruefung';
 import { MengenansatzPanel, type Mengenziel } from '../mengen/MengenPanel';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { aufmassSitzung, type Abrechnungsstand, type AufmassSitzung } from './aufmass';
@@ -29,6 +30,7 @@ import { Verweis } from './Verweis';
 import { X31Ausgeben } from './X31Ausgeben';
 
 const t = texte.blatt;
+const KEINE: ReadonlyMap<string, Menge | null> = new Map();
 
 export function BlattSeite({
   stand,
@@ -114,8 +116,14 @@ function Blatt({
     () => stand.blaetter.map((b): Aufmass => (b.id === blatt.id ? blatt : b)),
     [stand.blaetter, blatt],
   );
-  const kumuliert = useMemo(
-    () => kumuliertBisHier(auftrag, blaetter, blatt.nummer),
+  // „Kumuliert bis hier“ rechnet Soll/Ist über alle Zeilen (bei 5.000 Zeilen spürbar, D-87.7): im nächsten Leerlauf wie
+  // die LV-Prüfung, nie im Tastendruck; bis dahin steht der vorige Wert.
+  const [kumuliert, setKumuliert] = useState<ReadonlyMap<string, Menge | null>>(KEINE);
+  useEffect(
+    () =>
+      imLeerlauf(() => {
+        setKumuliert(kumuliertBisHier(auftrag, blaetter, blatt.nummer));
+      }),
     [auftrag, blaetter, blatt.nummer],
   );
   const ansicht = useMemo(

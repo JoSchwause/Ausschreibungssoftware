@@ -180,9 +180,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   // Als X31 ausgeben (Download) …
   await page.getByRole('button', { name: 'Als X31 ausgeben' }).click();
   const aus = page.getByRole('dialog', { name: 'Aufmaßblatt als GAEB X31 ausgeben' });
-  await expect(aus.getByTestId('ausgabe-dateiname')).toHaveText(
-    'Typisch Musterhaus erfunden Aufmass 1.x31',
-  );
+  await expect(aus.getByTestId('ausgabe-dateiname')).toHaveText('Typisch Musterhaus erfunden Aufmass 1.x31');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     aus.getByRole('button', { name: 'Herunterladen' }).click(),
