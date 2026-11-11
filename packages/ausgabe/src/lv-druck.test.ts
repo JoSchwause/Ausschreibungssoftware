@@ -64,19 +64,16 @@ describe.each(['winzig', 'typisch', 'zuschlag'] as FixtureName[])('Druck mit Pre
 
   it('druckt Bedarfs- und Wahlsumme getrennt, wenn das LV solche Positionen hat (F4)', async () => {
     const t = await text;
-    const g = zustand.summen.gesamt;
-    const hatBedarf = zustand.leistungsverzeichnis.knoten.some(
-      (k) => k.art === 'position' && k.merkmale.bedarf === 'ohne-gesamtbetrag',
-    );
-    const hatWahl = zustand.leistungsverzeichnis.knoten.some((k) => k.art === 'position' && k.merkmale.wahl);
-    if (hatBedarf) {
+    const soll = fx.sollwerte.ausweise;
+    if (soll !== undefined) {
       expect(t).toContain('Bedarfssumme');
-      expect(t).toContain(formatiereBetragDe(g.summeBedarfOhneGesamtbetrag as Betrag));
-    } else expect(t).not.toContain('Bedarfssumme');
-    if (hatWahl) {
+      expect(t).toContain(formatiereBetragDe(soll.gesamt.summeBedarfOhneGesamtbetrag as Betrag));
       expect(t).toContain('Wahlsumme');
-      expect(t).toContain(formatiereBetragDe(g.summeWahl as Betrag));
-    } else expect(t).not.toContain('Wahlsumme');
+      expect(t).toContain(formatiereBetragDe(soll.gesamt.summeWahl as Betrag));
+    } else {
+      expect(t).not.toContain('Bedarfssumme');
+      expect(t).not.toContain('Wahlsumme');
+    }
   });
 });
 

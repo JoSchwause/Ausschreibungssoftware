@@ -112,24 +112,35 @@ export function berechneSollwerte(knoten, preisVon, nachlass, mwstSatz, gpMap = 
 }
 
 /**
- * Annahme A7 (README): Ausreisser, wenn |GP - Mittel| / Mittel > schwelle Prozent. Mittel = arithmetisches
- * Mittel der GP aller Angebote, die die Position angeboten haben (mindestens 3 Werte, Mittel > 0).
- * Exakter Vergleich ohne Division: |n*GP - S| * 100 > schwelle * S.
+ * Ausreisser (README A7, Ticket 75; Regeln D-05, D-36.1, D-44.1, Annahmen fuer die Demo). `angebote` wie in
+ * `typisch-angebote.json` (Zeilen und Sollwerte aus `berechneSollwerteGaeb`). Je Position (Dokumentreihenfolge) ist der
+ * verglichene Wert eines Angebots sein EP, an einer Zuschlagsposition sein Betrag. Gezaehlt werden nur Werte > 0: ein
+ * Nullpreis (0,000) und „nicht angeboten“ (auch ein Zuschlag ohne Betrag) sind nie Ausreisser. Ab n >= 2 solchen
+ * Werten mit Summe S > 0 ist ein Wert w Ausreisser, wenn |w - S/n| / (S/n) > Schwelle, exakt ohne Division:
+ * |n x w - S| x 100 > Schwelle x S. Liefert je Angebot die Positions-IDs.
  */
-export function ausreisser(gpJeAngebot, schwelleProzent) {
+export function ausreisserSollwerte(knoten, angebote, schwelleProzent) {
   const schwelle = BigInt(schwelleProzent);
-  const ergebnis = gpJeAngebot.map(() => []);
-  const alleIds = new Set(gpJeAngebot.flatMap((m) => [...m.keys()]));
-  for (const id of alleIds) {
-    const werte = gpJeAngebot.map((m) => m.get(id) ?? null);
-    const vorhanden = werte.filter((w) => w !== null);
-    const n = BigInt(vorhanden.length);
-    const s = vorhanden.reduce((a, b) => a + b, 0n);
-    if (n < 3n || s === 0n) continue;
+  const zeilen = angebote.map((a) => new Map(a.positionen.map((z) => [z.positionId, z])));
+  const ergebnis = angebote.map(() => []);
+  for (const k of knoten) {
+    if (k.art !== 'position') continue;
+    const werte = angebote.map((a, i) => {
+      if (istZuschlag(k)) {
+        const betrag = a.sollwerte.zuschlaege[k.id]?.betrag;
+        return betrag == null ? null : parse(betrag, STELLEN.betrag);
+      }
+      const z = zeilen[i].get(k.id);
+      return z?.status === 'angeboten' && z.einheitspreis !== undefined ? parse(z.einheitspreis, STELLEN.ep) : null;
+    });
+    const positiv = werte.map((w) => w !== null && w > 0n);
+    const n = BigInt(positiv.filter(Boolean).length);
+    const s = werte.reduce((a, w, i) => (positiv[i] ? a + w : a), 0n);
+    if (n < 2n || s === 0n) continue;
     werte.forEach((w, i) => {
-      if (w === null) return;
+      if (!positiv[i]) return;
       const abw = n * w > s ? n * w - s : s - n * w;
-      if (abw * 100n > schwelle * s) ergebnis[i].push(id);
+      if (abw * 100n > schwelle * s) ergebnis[i].push(k.id);
     });
   }
   return ergebnis;

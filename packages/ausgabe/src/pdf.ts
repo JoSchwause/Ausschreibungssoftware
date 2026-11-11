@@ -8,12 +8,16 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { LvZustand } from '@tethys/vertrag';
 import { baueAusgabemodell } from './modell';
 import type { AusgabeZeile, Ausgabemodell, ModellOptionen, PositionZeile } from './modell';
+import { ersetzePlatzhalter } from './platzhalter';
 import type { DruckBlock, DruckLauf } from './langtext';
 import type { Schriften } from './schriften';
 
 // Spaltenbreiten in pt (A4 hoch, 40 pt Rand links/rechts = 515 pt Satzbreite).
 const BREITEN = [58, '*', 54, 28, 58, 66] as const;
 const EINRUECKUNG = 62;
+const SEITENBREITE = 595.28; // A4 in pt
+/** Seitenränder `[links, oben, rechts, unten]` in pt. */
+const RAENDER = { normal: [40, 62, 40, 46], eng: [28, 56, 28, 40] } as const;
 const SCHRIFT = 'NotoSans';
 const GRAU = '#555555';
 
@@ -264,7 +268,14 @@ function erzeugungsdatum(datum: string | undefined): Date {
 }
 
 /** Baut die Dokumentdefinition. Titel und der Anfang ihres ersten Kindes stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */
-function dokument(modell: Ausgabemodell, tagged: boolean, datum: string | undefined): TDocumentDefinitions {
+function dokument(modell: Ausgabemodell, optionen: PdfOptionen): TDocumentDefinitions {
+  const { datum } = optionen;
+  const tagged = optionen.tagged ?? false;
+  const rand = RAENDER[optionen.seitenrand ?? 'normal'];
+  const links = rand[0];
+  const satzbreite = SEITENBREITE - links - rand[2];
+  const platzhalter = (text: string, seite: number, seiten: number): string =>
+    ersetzePlatzhalter(text, { seite, seiten, datum: modell.datum, lv: modell.name });
   const inhalt: Content[] = [kopfBlock(modell)];
   let kopfgruppe: Content[] = [];
   for (const z of modell.zeilen) {
@@ -292,13 +303,23 @@ function dokument(modell: Ausgabemodell, tagged: boolean, datum: string | undefi
     language: 'de-DE',
     tagged,
     pageSize: 'A4',
-    pageMargins: [40, 62, 40, 46],
+    pageMargins: [...rand],
     defaultStyle: { font: SCHRIFT, fontSize: 8 },
-    header: (seite: number) => ({
-      margin: [40, 24, 40, 0],
+    header: (seite: number, seiten: number) => ({
+      margin: [links, rand[1] - 38, rand[2], 0],
       stack: [
-        // Auf der ersten Seite steht der LV-Name im Kopf des Inhalts.
-        { text: seite > 1 ? modell.name : '', bold: true, fontSize: 9, margin: [0, 0, 0, 4] },
+        // Ohne eigenen Kopfzeilentext steht auf der ersten Seite der LV-Name im Kopf des Inhalts.
+        {
+          text:
+            optionen.kopfzeile !== undefined
+              ? platzhalter(optionen.kopfzeile, seite, seiten)
+              : seite > 1
+                ? modell.name
+                : '',
+          bold: true,
+          fontSize: 9,
+          margin: [0, 0, 0, 4],
+        },
         zeile(
           ['OZ', 'Kurztext', 'Menge', 'Einh.', 'EP in €', 'GP in €'].map((t) => ({
             text: t,
@@ -306,16 +327,20 @@ function dokument(modell: Ausgabemodell, tagged: boolean, datum: string | undefi
             fontSize: 7,
           })),
         ),
-        { canvas: [{ type: 'line', x1: 0, y1: 2, x2: 515, y2: 2, lineWidth: 0.5 }] },
+        { canvas: [{ type: 'line', x1: 0, y1: 2, x2: satzbreite, y2: 2, lineWidth: 0.5 }] },
       ],
     }),
     footer: (seite: number, seiten: number) => ({
-      margin: [40, 14, 40, 0],
+      margin: [links, 14, rand[2], 0],
       fontSize: 7,
-      columns: [
-        { text: modell.datum === null ? '' : `Stand: ${modell.datum}`, width: '*' },
-        { text: `Seite ${String(seite)} von ${String(seiten)}`, alignment: 'right', width: 'auto' },
-      ],
+      ...(optionen.fusszeile !== undefined
+        ? { text: platzhalter(optionen.fusszeile, seite, seiten) }
+        : {
+            columns: [
+              { text: modell.datum === null ? '' : `Stand: ${modell.datum}`, width: '*' },
+              { text: `Seite ${String(seite)} von ${String(seiten)}`, alignment: 'right', width: 'auto' },
+            ],
+          }),
     }),
     content: inhalt,
   };
@@ -325,6 +350,12 @@ export interface PdfOptionen extends ModellOptionen {
   // `tagged` steht standardmäßig aus: pdfmake setzt dann zwar /MarkInfo, schreibt aber keinen Strukturbaum. Ein
   // „getaggtes“ PDF ohne Struktur täuscht Barrierefreiheit nur vor (ADR 0012, Messung in Ticket 28).
   readonly tagged?: boolean;
+  /** Vorgabe `'normal'` (40 pt links und rechts); `'eng'`: 28 pt, mehr Platz für den Kurztext. */
+  readonly seitenrand?: 'normal' | 'eng';
+  /** Text im Seitenkopf jeder Seite, mit Platzhaltern (`ersetzePlatzhalter`). Ohne Angabe: der LV-Name ab Seite 2. */
+  readonly kopfzeile?: string;
+  /** Text im Seitenfuß, mit Platzhaltern. Ohne Angabe: „Stand: Datum“ links und „Seite x von y“ rechts. */
+  readonly fusszeile?: string;
 }
 
 /**
@@ -350,8 +381,6 @@ export async function erzeugePdf(
     },
   });
   const modell = baueAusgabemodell(zustand, optionen);
-  const puffer = await pdfMake
-    .createPdf(dokument(modell, optionen.tagged ?? false, optionen.datum))
-    .getBuffer();
+  const puffer = await pdfMake.createPdf(dokument(modell, optionen)).getBuffer();
   return new Uint8Array(puffer);
 }
