@@ -171,6 +171,22 @@ describe('loeschUmfang', () => {
       mindestens: true,
     });
   });
+
+  it('mit der Zahl der App (Ticket 54, Punkt 4): genau diese Zahl, nie „mindestens“; Knoten und Gliederungen wie sonst', () => {
+    const gefragt: (readonly KnotenId[])[] = [];
+    const zaehle = (knotenIds: readonly KnotenId[]): number => {
+      gefragt.push(knotenIds);
+      return 17;
+    };
+    expect(loeschUmfang(baum, ids('T2', 'p3'), zaehle)).toEqual({
+      knoten: 2,
+      lose: 0,
+      titel: 1,
+      positionen: 17,
+      mindestens: false,
+    });
+    expect(gefragt).toEqual([ids('T2', 'p3')]);
+  });
 });
 
 describe('planeVerschieben', () => {

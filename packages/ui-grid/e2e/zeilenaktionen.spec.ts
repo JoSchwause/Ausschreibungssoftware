@@ -246,6 +246,29 @@ test.describe('Löschen mit Rückfrage', () => {
     expect(await befehle(page)).toEqual([]);
     await expect(zelle(page, 'Erd- und Betonarbeiten', 'kurztext')).toBeFocused();
   });
+
+  test('zugeklappt: ohne Zahl der App „mindestens“, mit positionenZaehlen die genaue Zahl (Ticket 54, Punkt 4)', async ({
+    page,
+  }) => {
+    const titelId = idVon('Erd- und Betonarbeiten');
+    const unter = (id: string): FxKnoten[] =>
+      typisch.filter((k) => k.parentId === id).flatMap((k) => [k, ...unter(k.id)]);
+    const genau = unter(titelId).filter((k) => k.art === 'position').length;
+    const frage = (n: string): string =>
+      `1 Zeile in den Papierkorb legen, darunter 1 Titel mit ${n} ${n === '1' ? 'Position' : 'Positionen'}?`;
+
+    await page.goto('/?fixture=typisch&auf=keine');
+    await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
+    await page.keyboard.press('Control+Delete');
+    await expect(page.getByRole('dialog')).toContainText(frage('mindestens 0'));
+    await page.keyboard.press('Escape');
+
+    await page.goto('/?fixture=typisch&auf=keine&zaehlen=1');
+    await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
+    await page.keyboard.press('Control+Delete');
+    await expect(page.getByRole('dialog')).toContainText(frage(String(genau)));
+    expect(genau).toBeGreaterThan(1);
+  });
 });
 
 test.describe('Verschieben per Tastatur', () => {

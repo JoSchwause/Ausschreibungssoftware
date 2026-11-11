@@ -16,6 +16,10 @@
 //   folge=1                 onBefehlsfolge gesetzt (Folgen in window.__harness.folgen)
 //   kopie=1                 onKopieEinfuegen gesetzt (Aufrufe in window.__harness.kopien)
 //   oz=1                    vorPositionAnlegen setzt die OZ „NEU“ (statt der OZ-Vergabe der App)
+//   nurlesen=1              schreibgeschütztes Grid (keine Befehlsempfänger, Ticket 54)
+//   oeffnen=1               onZeileOeffnen gesetzt (Aufrufe in window.__harness.geoeffnet)
+//   zaehlen=1               positionenZaehlen gesetzt: genaue Zahl aus dem ganzen Modell, auch zugeklappt
+//   Die aktive Zeile (onAktiveZeileChange) steht immer in window.__harness.aktiveZeilen (jede Meldung).
 
 import '@tethys/ui-basis/tokens.css';
 import '@tethys/ui-basis/bausteine.css';
@@ -32,7 +36,7 @@ import type {
   Ordnungszahl,
   Pruefbefund,
 } from '@tethys/vertrag';
-import type { Sprungziel } from '../../src/index';
+import type { LvGridProps, Sprungziel } from '../../src/index';
 import { LvGrid } from '../../src/index';
 import { idQuelleAttrappe, zahlenAttrappe } from './attrappen';
 import { wendeAn } from './befehle-anwenden';
@@ -116,6 +120,21 @@ const gesamt =
     : modell0.gesamt;
 const hinweise = params.get('hinweise') === '1' ? beispielHinweise(modell0.knoten) : [];
 
+/**
+ * Zahl der Positionen in den Knoten samt aller Unterknoten, auch zugeklappter: Das leistet später die App aus ihrem
+ * Modell (Ticket 54, Punkt 4). Nur Testseite.
+ */
+function positionenIn(knoten: readonly Knoten[], knotenIds: readonly KnotenId[]): number {
+  const kinder = new Map<string, Knoten[]>();
+  for (const k of knoten) kinder.set(k.elternId, [...(kinder.get(k.elternId) ?? []), k]);
+  const zaehle = (k: Knoten): number =>
+    (k.art === 'position' ? 1 : 0) + (kinder.get(k.id) ?? []).reduce((n, u) => n + zaehle(u), 0);
+  return knotenIds.reduce((n, id) => {
+    const k = knoten.find((x) => x.id === id);
+    return n + (k ? zaehle(k) : 0);
+  }, 0);
+}
+
 function Seite() {
   const [knoten, setKnoten] = useState<readonly Knoten[]>(params.get('leer') === '1' ? [] : modell0.knoten);
   const [offen, setOffen] = useState<ReadonlySet<string>>(() =>
@@ -149,7 +168,34 @@ function Seite() {
         nr: (alt?.nr ?? 0) + 1,
       }));
     },
+    aktiveZeilen: window.__harness.aktiveZeilen,
+    geoeffnet: window.__harness.geoeffnet,
   };
+  const gemeinsam = {
+    ansicht,
+    zahlen: zahlenAttrappe,
+    hinweise,
+    ...(sprungziel ? { sprungziel } : {}),
+    onAufklappen: (id: KnotenId, auf: boolean) => {
+      setOffen((alt) => {
+        const neu = new Set(alt);
+        if (auf) neu.add(id);
+        else neu.delete(id);
+        return neu;
+      });
+    },
+    onAuswahlChange: setAuswahl,
+    onAktiveZeileChange: (id: KnotenId | null) => {
+      window.__harness.aktiveZeilen.push(id);
+    },
+    ...(params.get('oeffnen') === '1'
+      ? {
+          onZeileOeffnen: (knotenId: KnotenId, spalte: LvSpalte) => {
+            window.__harness.geoeffnet.push({ knotenId, spalte });
+          },
+        }
+      : {}),
+  } satisfies Partial<LvGridProps>;
   const nimm = (neu: readonly LvBefehl[]): void => {
     window.__harness.befehle.push(...neu);
     if (live) setKnoten((k) => wendeAn(k, neu));
@@ -163,48 +209,43 @@ function Seite() {
         Davor
       </button>
       <div className="seite__grid">
-        <LvGrid
-          ansicht={ansicht}
-          zahlen={zahlenAttrappe}
-          ids={ids}
-          hinweise={hinweise}
-          onBefehl={(b) => {
-            nimm([b]);
-          }}
-          {...(params.get('folge') === '1'
-            ? {
-                onBefehlsfolge: (folge: readonly LvBefehl[]) => {
-                  window.__harness.folgen.push([...folge]);
-                  nimm(folge);
-                },
-              }
-            : {})}
-          {...(params.get('kopie') === '1'
-            ? {
-                onKopieEinfuegen: (knotenIds, ort) => {
-                  window.__harness.kopien.push({ knotenIds: [...knotenIds], ort });
-                },
-              }
-            : {})}
-          {...(params.get('oz') === '1'
-            ? {
-                vorPositionAnlegen: (b) => ({
-                  ...b,
-                  daten: { ...b.daten, ordnungszahl: 'NEU' as Ordnungszahl },
-                }),
-              }
-            : {})}
-          {...(sprungziel ? { sprungziel } : {})}
-          onAufklappen={(id, auf) => {
-            setOffen((alt) => {
-              const neu = new Set(alt);
-              if (auf) neu.add(id);
-              else neu.delete(id);
-              return neu;
-            });
-          }}
-          onAuswahlChange={setAuswahl}
-        />
+        {params.get('nurlesen') === '1' ? (
+          <LvGrid {...gemeinsam} schreibgeschuetzt />
+        ) : (
+          <LvGrid
+            {...gemeinsam}
+            ids={ids}
+            onBefehl={(b) => {
+              nimm([b]);
+            }}
+            {...(params.get('folge') === '1'
+              ? {
+                  onBefehlsfolge: (folge: readonly LvBefehl[]) => {
+                    window.__harness.folgen.push([...folge]);
+                    nimm(folge);
+                  },
+                }
+              : {})}
+            {...(params.get('kopie') === '1'
+              ? {
+                  onKopieEinfuegen: (knotenIds, ort) => {
+                    window.__harness.kopien.push({ knotenIds: [...knotenIds], ort });
+                  },
+                }
+              : {})}
+            {...(params.get('oz') === '1'
+              ? {
+                  vorPositionAnlegen: (b) => ({
+                    ...b,
+                    daten: { ...b.daten, ordnungszahl: 'NEU' as Ordnungszahl },
+                  }),
+                }
+              : {})}
+            {...(params.get('zaehlen') === '1'
+              ? { positionenZaehlen: (knotenIds) => positionenIn(knoten, knotenIds) }
+              : {})}
+          />
+        )}
       </div>
       <button type="button" className="tx-button tx-button--sm">
         Danach
@@ -230,6 +271,8 @@ window.__harness = {
   folgen: [],
   kopien: [],
   springe: () => undefined,
+  aktiveZeilen: [],
+  geoeffnet: [],
 };
 
 const root = document.getElementById('root');
