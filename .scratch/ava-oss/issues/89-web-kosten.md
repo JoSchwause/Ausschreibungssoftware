@@ -1,6 +1,6 @@
 # 89: C2+C3+C4 in der App: Kostenermittlung, Kostengruppen zuordnen, Kostenkontrolle, EP-Kalkulation
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: C2, C3, C4 · Ordner: `apps/web/src/kosten/` (neu); Einhängestellen in `App.tsx`,
 `projekt/ProjektSeite.tsx`, `lv/LvSeite.tsx` (Spalte/Feld KG, Aktion „Kalkulieren“), `auftrag/AuftragsLvSeite.tsx`,
@@ -53,5 +53,8 @@ Herkunft: `plan.md` §2 C2–C4
 - **D-89.6** EP-Kalkulation: Dialog „Kalkulieren“ (Strg+Alt+K) an der aktiven Position; Ansätze nur im Dialog (Hinweistext), „Übernehmen“ = `EinheitspreisanteileSetzen` + `EinheitspreisAendern` in einer Aktion (ein Undo-Schritt); mit `epaBezeichnungen` am LV keine freie Bezeichnung (D-28).
 
 ## Answer
+
+Merged: 7c290eb in integration/welle-5 (Konflikte an den Einhängestellen in `AuftragsLvSeite.tsx` und `befehlsweg.ts` vom Orchestrator gelöst; danach App-Unit-Tests 228/228, E2E kosten, nachtrag, m3, undo, lv 12/12)
+
 
 Branch `welle-5/89-kosten`. Neuer Ordner `apps/web/src/kosten/` (Seiten, Dialoge, Logik mit Unit-Tests), Einhängestellen `// Ticket 89` in `App.tsx`, `ProjektSeite.tsx`, `LvSeite.tsx`, `AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (Umkehrung `kostenermittlung`, `eintrag`/`speichern`/`Lauf` exportiert), `historie/*`; Abhängigkeiten `@tethys/kosten`, `@tethys/abrechnung` in `apps/web`. E2E `e2e/kosten.spec.ts` grün, mit `lv.spec.ts` und `leistung.spec.ts` (Mengenänderung Median 51 ms, Undo 34 ms). Suite: Lint, Typecheck grün; Vitest nur CPU-Budgets anderer Pakete (`vergabe/leistung`, `kern/k9-leistung`) wechselnd rot unter Last, einzeln grün. Offen: echte KG-Spalte im Grid (D-89.1), Abrechnung in der E2E erst mit der Rechnung aus Ticket 88 (M4-Ticket 91); GAEB-Export verliert KG bis Ticket 84 gemergt ist.
