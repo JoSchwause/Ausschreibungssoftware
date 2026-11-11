@@ -41,6 +41,7 @@ import {
   exportInhalt,
   exportOptionen,
   fixtureLv,
+  leereStrukturenLv,
   normiereKennungen,
   ohneAuftragnehmer,
   position,
@@ -760,6 +761,79 @@ describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
     expect(e.befunde.filter((b) => b.schwere === 'fehler').map((b) => [b.code, b.ort.feld])).toEqual([
       ['wert-zu-lang', 'auftragnehmer.name'],
     ]);
+  });
+});
+
+describe('v1.3: leere Langtext-Strukturen (D-22 (iii))', () => {
+  it('LV leereStrukturenLv (auch in der XSD-Gegenprüfung): in jeder Phase ohne Fehler, kein leeres ul/ol/table/tr', () => {
+    const n = leereStrukturenLv();
+    for (const phase of ['X81', 'X83', 'X86'] as const) {
+      const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
+      expect(e.entwurf).toBe(false);
+      const x = kompakt(e.xml);
+      expect(x).not.toMatch(/<(ul|ol|table|tr)\/>|<ul><\/ul>|<ol><\/ol>|<table><\/table>|<tr><\/tr>/);
+      expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+        expect.stringMatching(/^leere Liste.*6 Vorkommen/),
+        // je Text (Position, Hinweistext, Unterbeschreibung): 2 Listen, 3 Tabellen (eine nur aus einer leeren Zeile,
+        // eine verschachtelt in einer Zelle), 3 Zeilen ohne Zellen
+        expect.stringMatching(/^leere Tabelle.*9 Vorkommen/),
+        expect.stringMatching(/^leere Tabellenzeile.*9 Vorkommen/),
+      ]);
+    }
+  });
+
+  it('Zeile ohne Zellen entfällt mit Warnung; eine Tabelle nur aus leeren Zeilen entfällt ganz', () => {
+    const e = schreibe(
+      lv([
+        p1({
+          langtext: [
+            {
+              art: 'tabelle',
+              zeilen: [{ zellen: [] }, { zellen: [{ spalten: 1, inhalt: [{ art: 'text', text: 'A' }] }] }],
+            },
+            { art: 'tabelle', zeilen: [{ zellen: [] }, { zellen: [] }] },
+          ],
+        }),
+      ]),
+    );
+    expect(kompakt(e.xml)).toContain('<Text><table><tr><td><span>A</span></td></tr></table></Text>');
+    expect(e.xml.match(/<tr>/g)).toHaveLength(1);
+    expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+      expect.stringMatching(/^leere Tabellenzeile.*3 Vorkommen/),
+      expect.stringMatching(/^leere Tabelle.*1 Vorkommen/),
+    ]);
+  });
+
+  it('leere Strukturen in Listenpunkten, Zellen und Hinweistexten ebenso', () => {
+    const leer: LvInhalt['knoten'][number] = {
+      art: 'hinweis',
+      id: 'h1' as never,
+      elternId: 't1' as ElternId,
+      reihenfolge: 0,
+      text: [
+        {
+          art: 'liste',
+          geordnet: false,
+          punkte: [
+            [
+              { art: 'text', text: 'x' },
+              { art: 'liste', geordnet: true, punkte: [] },
+            ],
+          ],
+        },
+        {
+          art: 'tabelle',
+          zeilen: [{ zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [] }] }] }],
+        },
+      ],
+    };
+    const e = schreibe(lv([{ ...p1(), reihenfolge: 1 }, leer]));
+    expect(e.xml).not.toMatch(/<ol>|<ol\/>|<table\/>/);
+    expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+      expect.stringMatching(/^leere Liste/),
+      expect.stringMatching(/^leere Tabelle/),
+    ]);
+    expect(e.entwurf).toBe(false);
   });
 });
 

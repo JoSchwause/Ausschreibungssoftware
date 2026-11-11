@@ -446,6 +446,75 @@ export function position(
   };
 }
 
+/**
+ * Ein LV mit leeren Langtext-Strukturen (v1.3, D-22 (iii)): leere Liste, Tabelle ohne Zeilen, Zeile ohne Zellen, auch
+ * verschachtelt, in Position, Hinweistext und Unterbeschreibung. Der Writer verwirft sie mit Warnung; die
+ * XSD-Gegenprüfung zeigt, dass der Export gültig bleibt.
+ */
+export function leereStrukturenLv(): Normiert {
+  const leer: Langtext = [
+    { art: 'liste', geordnet: false, punkte: [] },
+    { art: 'tabelle', zeilen: [] },
+    { art: 'tabelle', zeilen: [{ zellen: [] }] },
+    {
+      art: 'liste',
+      geordnet: true,
+      punkte: [
+        [
+          { art: 'text', text: 'Punkt' },
+          { art: 'liste', geordnet: false, punkte: [] },
+        ],
+      ],
+    },
+    {
+      art: 'tabelle',
+      zeilen: [
+        { zellen: [] },
+        { zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [{ zellen: [] }] }] }] },
+      ],
+    },
+  ];
+  const hinweis: Knoten = {
+    art: 'hinweis',
+    id: 'h1' as HinweistextId,
+    elternId: 't1' as ElternId,
+    reihenfolge: 0,
+    text: leer,
+  };
+  const p = position('p1', '01.0010', 1, {
+    langtext: leer,
+    leitbeschreibung: {
+      unterbeschreibungen: [{ nummer: '1', kurztext: 'U', langtext: leer, menge: null, einheit: null }],
+    },
+  });
+  const inhalt: LvInhalt = {
+    name: 'Leere Strukturen',
+    ozMaske: {
+      gliederung: [{ laenge: 2, zeichen: 'numerisch' }],
+      position: { laenge: 4, zeichen: 'numerisch' },
+      index: null,
+      trennzeichen: '.',
+    },
+    mwstSatz: '19.00' as Prozent,
+    nachlass: null,
+    wurzelId: LV,
+    knoten: [titel('t1', '01'), hinweis, p],
+  };
+  const b = (x: string): Betrag => x as Betrag;
+  const summen: Summenstand = {
+    positionen: [{ positionId: 'p1' as PositionId, gesamtpreis: null, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: 't1' as TitelId, summe: b('0.00') }],
+    gesamt: {
+      netto: b('0.00'),
+      nachlass: b('0.00'),
+      nettoNachNachlass: b('0.00'),
+      mwst: b('0.00'),
+      brutto: b('0.00'),
+    },
+  };
+  return normiereKennungen(inhalt, summen);
+}
+
 /** Ein LV mit allem, was der Vertrag trägt: Los, Merkmale, Wahl, Zuschläge, Leitbeschreibung, EPA, Langtext, Kopf. */
 export function reichesLv(): {
   inhalt: LvInhalt;
@@ -753,7 +822,7 @@ export interface Exportfall {
 }
 
 /**
- * Alle Exporte der XSD-Gegenprüfung: jede Fixture und das LV `reichesLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
+ * Alle Exporte der XSD-Gegenprüfung: jede Fixture, `reichesLv` und `leereStrukturenLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
  * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
  */
 export function exportfaelle(): Exportfall[] {
@@ -775,6 +844,9 @@ export function exportfaelle(): Exportfall[] {
   const reich = normiereKennungen(r.inhalt, r.summen, r.basen);
   for (const phase of ['X81', 'X83', 'X86'] as const)
     for (const version of versionen) faelle.push(fall('reich', reich, phase, version));
+  const leer = leereStrukturenLv();
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('leer', leer, phase, version));
   for (const a of AMTLICH_LESBAR) {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)
