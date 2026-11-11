@@ -1,6 +1,6 @@
 # 70: `vertrag` v1.4: Auftrags-LV, Nachtrag, Aufmaß, Rechnung, Kostenermittlung
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: –
@@ -307,6 +307,9 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
 Danach `integration/welle-5` gemergt (`6f99294`, mit D-42 bis D-45 und den Nachträgen an 71, 79–89).
 
 ## Answer
+
+Merged: 1a55037 in integration/welle-5 (Tor: D-42, Review „yes-with-fixes“, Fixes im Branch)
+
 
 `vertrag` v1.4 auf Branch `welle-5/70-vertrag-v1.4` (enthält `integration/welle-5` bis `de01bde`, mit den Review-Fixes
 D-42 bis D-45, siehe Comments). Neue Typen:
