@@ -18,6 +18,10 @@ declare global {
       kopien: { knotenIds: KnotenId[]; ort: Einfuegeort }[];
       /** Setzt das Sprungziel (neue `nr` je Aufruf). */
       springe: (knotenId: string, spalte?: LvSpalte) => void;
+      /** Jede Meldung von `onAktiveZeileChange` in Reihenfolge. */
+      aktiveZeilen: (KnotenId | null)[];
+      /** Aufrufe von `onZeileOeffnen` (nur mit `oeffnen=1`). */
+      geoeffnet: { knotenId: KnotenId; spalte: LvSpalte }[];
     };
   }
 }
