@@ -54,11 +54,14 @@ async function messeScrollen(page: Page, pixelProSekunde: number, dauerMs: numbe
           if (erste !== vorherigeErste) bilderMitNeuenZeilen++;
           vorherigeErste = erste;
           const vergangen = t - start;
-          el.scrollTop = (vergangen / 1000) * geschwindigkeit;
           if (vergangen < dauer) {
+            el.scrollTop = (vergangen / 1000) * geschwindigkeit;
             requestAnimationFrame(bild);
             return;
           }
+          // Im letzten Bild wird nicht mehr gescrollt: Die gerenderten Zeilen werden mit der Scrollposition verglichen,
+          // die das Grid schon gesehen hat (ihr Scroll-Ereignis kommt vor diesem Bild). Eine eben erst gesetzte Position
+          // könnte es noch gar nicht zeigen; der Abstand hinge dann an der Länge des letzten Bildes.
           const sortiert = [...abstaende].sort((a, b) => a - b);
           const summe = abstaende.reduce((s, x) => s + x, 0);
           fertig({
