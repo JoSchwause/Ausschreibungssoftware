@@ -37,4 +37,8 @@ export type {
   Kostenartsumme,
 } from './kalkulationsuebersicht';
 export { kalkulationsuebersichtBerechnen } from './kalkulationsuebersicht';
-export { kostenermittlungBefehlAusfuehren } from './kostenermittlung-befehle';
+export {
+  kostenermittlungBefehlAusfuehren,
+  kostenermittlungChangeSetAnwenden,
+  kostenermittlungChangeSetUmkehren,
+} from './kostenermittlung-befehle';

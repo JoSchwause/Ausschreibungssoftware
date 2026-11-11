@@ -13,6 +13,8 @@ import type {
   Kostenermittlung,
   KostenermittlungBefehlAusfuehren,
   KostenermittlungChangeSet,
+  KostenermittlungChangeSetAnwenden,
+  KostenermittlungChangeSetUmkehren,
   Kostenermittlungseintrag,
   Kostenermittlungsstufe,
 } from '@tethys/vertrag';
@@ -122,3 +124,18 @@ export const kostenermittlungBefehlAusfuehren: KostenermittlungBefehlAusfuehren 
       return changeSet(k, null);
   }
 };
+
+/** Wendet ein ChangeSet an: `nachher` ist der neue Stand, `null` heißt gelöscht (ganzes Aggregat, D-36 (8)). */
+export const kostenermittlungChangeSetAnwenden: KostenermittlungChangeSetAnwenden = (_zustand, changeSet) => {
+  const nachher = changeSet.kostenermittlung.nachher;
+  return nachher === null ? null : { kostenermittlung: nachher };
+};
+
+/** Kehrt ein ChangeSet um: Tausch von `vorher` und `nachher`. */
+export const kostenermittlungChangeSetUmkehren: KostenermittlungChangeSetUmkehren = (changeSet) => ({
+  ...changeSet,
+  kostenermittlung: {
+    vorher: changeSet.kostenermittlung.nachher,
+    nachher: changeSet.kostenermittlung.vorher,
+  },
+});
