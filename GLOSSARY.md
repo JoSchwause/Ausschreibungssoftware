@@ -255,16 +255,43 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Im Code `Kostengruppennummer`, `kgLesen`, `bezeichnungenLesen`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
 
 ### Kostenermittlung
-Liste von Einträgen (Kostengruppennummer, Nettobetrag mit 2 Stellen, wahlweise Bemerkung), für die je Kostengruppe der **eigene Betrag** und die **Summe** (eigener Betrag plus Summen der Kinder) gebildet werden; die **Gesamtsumme** ist die Summe der Ebene-1-Gruppen. Doppelte Nummern, eigener Betrag neben Kinderbeträgen und negative Beträge sind Befunde, keine Sperre (U5). Im Code `Kostenermittlungseintrag`, `kostenermittlungBerechnen`.
+Liste von Einträgen (Kostengruppennummer, Nettobetrag mit 2 Stellen, wahlweise Bemerkung), für die je Kostengruppe der **eigene Betrag** und die **Summe** (eigener Betrag plus Summen der Kinder) gebildet werden; die **Gesamtsumme** ist die Summe der Ebene-1-Gruppen. Doppelte Nummern, eigener Betrag neben Kinderbeträgen und negative Beträge sind Befunde, keine Sperre (U5). Gespeichert ist eine Kostenermittlung ein eigenes Aggregat des Projekts mit Name, Kostenermittlungsstufe und Einträgen, je Kostengruppennummer höchstens einer; die Kostenkontrolle nimmt sie als Budget (C3, D-37). Im Code `Kostenermittlung`, `Kostenermittlungseintrag`, `kostenermittlungBerechnen`.
+
+### Kostenermittlungsstufe
+Die Stufe einer Kostenermittlung nach DIN 276: Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag oder Kostenfeststellung. Im Code `Kostenermittlungsstufe`.
 
 ### Aufmaß & Mengenermittlung (REB 23.003)
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
+
+### Aufmaßblatt (Aufmaß)
+Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je Auftrags-LV eindeutig), Bezeichnung, Datum und je Position höchstens eine Aufmaßposition. Mehrere Blätter ergeben zusammen die kumulierte Menge, die eine Rechnung abrechnet. Ein GAEB-X31-Import legt ein Aufmaßblatt an. Im Code `Aufmass`, `AufmassKopf`.
+
+### Aufmaßposition
+Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (oder keiner) und die Menge dieses Blatts. Die Menge rechnet die App aus dem Mengenansatz (Paket `mengen`); gespeichert werden beide. Im Code `Aufmassposition`.
+
+### Rechnung
+Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
+
+### Rechnungsart
+**Abschlagsrechnung** (kumuliert: rechnet die ganze bis dahin aufgemessene Leistung ab und zieht die früheren Zahlbeträge ab) oder **Schlussrechnung** (die letzte; statt des Sicherheitseinbehalts gilt der Gewährleistungseinbehalt, ein absoluter Nachlass zählt voll). Im Code `Rechnungsart` mit `abschlag`, `schluss`.
+
+### Umlage
+Prozentualer Abzug des Auftraggebers vom kumulierten Bruttobetrag einer Rechnung für eine gemeinsam genutzte Leistung (z. B. Bauwesenversicherung, Baustrom), mit Bezeichnung und Satz. Alle Umlagen einer Rechnung werden auf dieselbe Basis gerechnet, nicht aufeinander; sie mindern die Steuerbasis nicht. Im Code `Umlage`.
+
+### Sicherheitseinbehalt / Gewährleistungseinbehalt
+Prozentualer Einbehalt vom kumulierten Bruttobetrag einer Rechnung als Sicherheit des Auftraggebers: in Abschlagsrechnungen der **Sicherheitseinbehalt** (Vertragserfüllung), in der Schlussrechnung stattdessen der **Gewährleistungseinbehalt** (Mängelansprüche). Im Code `Rechnung.sicherheitSatz`, `Rechnung.gewaehrleistungSatz`.
+
+### Zahlbetrag / Freigabe
+**Zahlbetrag**: was der Auftraggeber auf eine Rechnung zahlt, kumuliertes Brutto minus Umlagen, Einbehalt und alle früheren Zahlbeträge; negativ heißt Überzahlung (ein Befund). **Freigabe**: Der Prüfer gibt eine Rechnung mit ihrem Zahlbetrag frei; der Betrag wird dabei eingefroren, damit eine spätere Aufmaßkorrektur eine bezahlte Rechnung nicht still ändert. Freigegeben wird in der Reihenfolge der Rechnungsnummern; eine freigegebene Rechnung ändert sich nur, wenn ihre Freigabe ausdrücklich aufgehoben wird. Im Code `Rechnung.freigabe`, `RechnungFreigeben`, `RechnungsfreigabeAufheben`.
+
+### Leistungsstand
+Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Im Code `Leistungsstand`.
 
 ### Mengenansatz
 Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Eine Position kann ihren Mengenansatz tragen; dann ist ihre Menge die Summe, die die App gerechnet hat, und beide werden zusammen gesetzt. Wer die Menge von Hand ändert, entfernt den Ansatz. Im Code `mengenansatzBerechnen`, `Positionsdaten.mengenansatz`, Befehl `MengenansatzSetzen`.
@@ -276,7 +303,13 @@ Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenaus
 Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
 
 ### Nachtrag
-Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt.
+Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt. In v1 (D-35) ist ein Nachtrag ein gewöhnliches Ausschreibungs-LV mit Nachtragsangaben (**Nachtrags-LV**); das **Nachtragsangebot** ist ein gewöhnliches Angebot des Auftragnehmers dazu. Ist der Nachtrag beauftragt, kommen seine Positionen mit ihren Kennungen als eigene Gliederung „Nachtrag <Nummer>“ ins Auftrags-LV; erst dann gehen sie in Aufmaß und Rechnung. Im Code `LvKopf.nachtrag`, Befehl `NachtragUebernehmen`.
+
+### Nachtragsangaben
+Die Angaben, die ein LV zum Nachtrags-LV machen: das Auftrags-LV, zu dem der Nachtrag gehört, die Nachtragsnummer (z. B. `N01`) und der Nachtragsstatus. Im Code `Nachtragsangaben`, Befehl `NachtragsangabenSetzen`.
+
+### Nachtragsstatus
+Stand eines Nachtrags: **angemeldet** (der Auftragnehmer hat die geänderte oder zusätzliche Leistung angezeigt), **angeboten** (das Nachtragsangebot liegt vor), **beauftragt** (vom Auftraggeber beauftragt und ins Auftrags-LV übernommen) oder **abgelehnt**. Nur ein beauftragter Nachtrag geht in eine Rechnung. Im Code `Nachtragsstatus`.
 
 ---
 
@@ -299,8 +332,11 @@ Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsa
 Verhältniszahl aus Baukosten (z. B. je Kostengruppe nach DIN 276 oder Leistungsbereich) und einer geometrischen Bezugsgröße des Bauwerks (z. B. Brutto-Grundfläche **BGF**, Brutto-Rauminhalt **BRI** oder Nutzungsfläche **NF** nach **DIN 277**), angegeben etwa in `€/m² BGF`.
 
 ### Muster-LV (MLV) & Rahmenvertrag (RLV)
-- **Muster-LV**: Projektübergreifende Bibliothek geprüfter Standardpositionen, Texte, Kostengruppenzuordnungen und Kalkulationsansätze.
+- **Muster-LV**: Projektübergreifende Bibliothek geprüfter Standardpositionen, Texte, Kostengruppenzuordnungen und Kalkulationsansätze. In v1 ist ein Muster-LV ein gewöhnliches LV mit dem Kennzeichen **Vorlage** (C5, D-36); seine Positionen und Hinweistexte sind die Textbausteine, die man in andere LVs kopiert. Einen eigenen Typ für Textbausteine gibt es nicht. Im Code `LvKopf.vorlage`, Befehl `VorlageSetzen`.
 - **Rahmenvertrag**: Zeitlich befristete Vereinbarung mit einem Auftragnehmer über fest vereinbarte Einheitspreise (ggf. mit Auf-/Abgebotsfaktor) für wiederkehrende Bauunterhaltungs- und Einzelabrufe.
+
+### Textquelle
+Freie Angabe, woher der Text einer Position stammt (z. B. ein Katalog, ein Muster-LV oder eigener Text). Der Text selbst steht in Kurz- und Langtext; ein Katalog wie STLB-Bau wird nicht angebunden (G-17). Im Code `Positionsdaten.textquelle`, Befehl `TextquelleSetzen`.
 
 ---
 
