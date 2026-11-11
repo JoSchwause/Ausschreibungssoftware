@@ -33,10 +33,10 @@ navigation wie `LvGrid` (gemeinsamen Code herausziehen, nicht kopieren):
 
 ## Acceptance criteria
 
-- [ ] Testseite in der E2E-Harness mit einem erfundenen Preisspiegel (3 Bieter + Min/Mittel/Max), Playwright-Tests für
+- [x] Testseite in der E2E-Harness mit einem erfundenen Preisspiegel (3 Bieter + Min/Mittel/Max), Playwright-Tests für
       Navigation, fixierte Spalten, Kennzeichen (Text + `aria`), Kopieren als TSV, Summenzeilen
-- [ ] Leistungstest 5.000 Zeilen
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und
+- [x] Leistungstest 5.000 Zeilen
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` und
       `pnpm --filter @tethys/ui-grid e2e` grün
 
 ## Nicht-Ziele
