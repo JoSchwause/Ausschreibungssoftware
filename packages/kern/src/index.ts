@@ -38,6 +38,7 @@ export {
   projektChangeSetUmkehren,
 } from './projekt-befehle';
 export { baumfehler, pruefeLvInvarianten } from './pruefung';
+export { KOSTENGRUPPE_FORM, kostengruppeFehler } from './positionsfelder';
 export { lvPruefen } from './lv-pruefung';
 export { KNOTEN_REGELN, LV_REGELN, PRUEF_ANNAHMEN, PRUEF_GRENZEN, vorkommastellen } from './pruefregeln';
 export type { Knotenregel, LvRegel } from './pruefregeln';
