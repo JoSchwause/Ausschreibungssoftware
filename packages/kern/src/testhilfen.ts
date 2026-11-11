@@ -229,19 +229,21 @@ interface FxKnoten {
   einheit?: string | null;
   einheitspreis?: string | null;
   bedarfMitGesamtbetrag?: boolean;
-  bezugspositionId?: string;
   grundpositionId?: string;
-  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  /**
+   * Zuschlag in Vertragsform (`zuschlag.json` seit Ticket 37; `typisch`, `gross` seit Ticket 51: Fixture-Format,
+   * mechanisch). Kennzeichen und Einheitspreisanteile nur in `zuschlag.json`.
+   */
   zuschlag?: Zuschlag;
   zuschlagskennzeichen?: boolean;
   epa?: Einheitspreisanteile;
 }
-/** Positionsart des Fixture-Formats (`fixtures/README.md`, Annahmen A1 bis A4); Ticket 44 stellt das Format um. */
+/** Positionsart des Fixture-Formats (`fixtures/README.md`, Annahmen A1 bis A3); Zuschläge seit Ticket 51 in GAEB-Form. */
 export type FxPositionsart = 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
 
 /**
- * Merkmale und Zuschlag aus dem Fixture-Format. Eine Zuschlagsposition mit `bezugspositionId` ist die Altform (R8,
- * D-10); `zuschlag.json` trägt den Zuschlag in Vertragsform (Ticket 37).
+ * Merkmale und Zuschlag aus dem Fixture-Format. Alle Fixtures tragen den Zuschlag in Vertragsform (GAEB-Form; Ticket 37,
+ * Ticket 51: Fixture-Format, mechanisch); die Altform (R8) steht in keiner Fixture mehr.
  */
 function fixtureMerkmale(k: FxKnoten): Pick<Position, 'merkmale' | 'zuschlag'> {
   const art = k.positionsart ?? 'normal';
@@ -256,11 +258,8 @@ function fixtureMerkmale(k: FxKnoten): Pick<Position, 'merkmale' | 'zuschlag'> {
       wahl: art === 'wahl' ? wahlzuordnung(null, null, k.grundpositionId ?? null) : null,
       zuschlagskennzeichen: k.zuschlagskennzeichen === true,
     }),
-    zuschlag:
-      k.zuschlag ??
-      (art === 'zuschlag'
-        ? zuschlagsliste(k.bezugspositionId === undefined ? [] : [k.bezugspositionId])
-        : null),
+    // Ticket 51: Fixture-Format, mechanisch
+    zuschlag: k.zuschlag ?? null,
   };
 }
 
@@ -396,6 +395,15 @@ export interface Sollwerte {
   positionen: Record<string, { gp: string | null; inSumme: boolean }>;
   titel: Record<string, { summe: string }>;
   summen: { netto: string; nachlass: string; nettoNachNachlass: string; mwst: string; brutto: string };
+  // Ticket 51: Fixture-Format, mechanisch (nur `typisch`, `gross`; `zuschlaege` auch in `zuschlag`)
+  zuschlaege?: Record<string, { basis: string; betrag: string | null }>;
+  ausweise?: { gesamt: Ausweis; titel: Record<string, Ausweis> };
+}
+
+/** Bedarfs- und Wahlsumme der Fixture-Sollwerte (Ticket 51), Feldnamen wie in `Gesamtsummen`. */
+export interface Ausweis {
+  summeBedarfOhneGesamtbetrag: string;
+  summeWahl: string;
 }
 
 export function sollwerteLesen(name: FixtureName): Sollwerte {
