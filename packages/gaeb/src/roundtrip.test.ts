@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Roundtrip Export → Import → Modell (Q3, Ticket 40): für jede Fixture und jede Phase und für die Inhalte, die der
-// Leser aus den amtlichen 3.3-Dateien X81/X83 liest. Seams: `schreibeGaeb` und `leseGaeb`.
+// Roundtrip Export → Import → Modell (Q3, Ticket 40, D-18): für jede Fixture und jede Phase und für die Inhalte, die
+// der Leser aus den amtlichen 3.3-Dateien X81/X83 liest. Seams: `schreibeGaeb` und `leseGaeb`.
 //
 // Verglichen wird das Ausgangsmodell mit normierten Kennungen (zählende IdQuelle in Dokumentreihenfolge, wie der
-// Leser sie vergibt) gegen das wieder gelesene Modell. Erwartete Unterschiede stehen je Phase in `erwartet` und
-// sind die vollständige Liste; der zweite Export des wieder gelesenen Modells ist byte-gleich dem ersten.
+// Leser sie vergibt) gegen das wieder gelesene Modell, und zwar ganz: Erlaubt ist nur, was die Phase nicht trägt
+// (`phasenform`), und die ausdrücklich gelisteten Unterschiede je Fixture und Position
+// (`testdaten/roundtrip-unterschiede.json`). Jeder andere Unterschied lässt den Test scheitern, ebenso ein gelisteter, der
+// nicht (mehr) eintritt. Der zweite Export des wieder gelesenen Modells ist byte-gleich dem ersten. M2 gilt damit als
+// „erfüllt mit gelisteten Unterschieden“ (D-18); die Fixture-Umstellung auf die GAEB-Form leert die Liste (Ticket 51).
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { LvInhalt, Position } from '@tethys/vertrag';
 import { leseGaeb, schreibeGaeb } from './index';
@@ -19,43 +23,40 @@ import {
   normiereKennungen,
   testIds,
 } from './testhilfen';
-import type { Normiert } from './testhilfen';
+import type { FixtureName, Normiert } from './testhilfen';
 
 /**
- * Die festgeschriebenen Unterschiede je Phase (Ticket 40, Punkt 4 und 6):
- * - X81/X83: keine Preise (EP, Anteile, Zuschlagssatz, Nachlass); die Altform einer Zuschlagsposition (Menge × EP
- *   ohne Satz) verliert Menge, Einheit und EP.
- * - X86: die Altform wird eine Position ohne Zuschlagsbezug; ein fehlender Auftraggeber wird leer (OWN ist Pflicht).
- * - Alle Phasen: eine Wahlposition ohne Gruppen- und Variantennummer bekommt künstliche Nummern (D-16) und bleibt Wahl;
- *   ihre Grundposition kennt sie danach nicht mehr (GAEB kennt nur die Nummern, eine Variante 0 gibt es nicht).
+ * Ein erwarteter Unterschied an einer Position, benannt über ihre OZ mit Index:
+ * - `altform-zuschlag`: Zuschlagsposition in der Altform (Menge × EP ohne Satz, D-10). X81/X83 schreiben sie als
+ *   `MarkupItem` ohne Menge, Einheit und EP; X86 als Position ohne Zuschlagsbezug (Ticket 40, Punkt 4).
+ * - `wahl-nummer-kuenstlich`: Wahlposition ohne Gruppe und Variante (aus v1). Der Writer vergibt diese Nummern (D-16);
+ *   die Grundposition kennt sie danach nicht mehr (GAEB kennt nur die Nummern, eine Variante 0 gibt es nicht).
  */
-function erwartet(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
+type Unterschied =
+  | { readonly oz: string; readonly art: 'altform-zuschlag' }
+  | {
+      readonly oz: string;
+      readonly art: 'wahl-nummer-kuenstlich';
+      readonly gruppe: number;
+      readonly variante: number;
+    };
+
+const UNTERSCHIEDE = JSON.parse(
+  readFileSync(new URL('../testdaten/roundtrip-unterschiede.json', import.meta.url), 'utf8'),
+) as Readonly<Record<FixtureName, readonly Unterschied[]>>;
+
+const ozVon = (p: Position): string => `${p.ordnungszahl ?? ''}${p.ozIndex ?? ''}`;
+
+/**
+ * Was die Phase überhaupt trägt (kein Unterschied des Modells, sondern die Form der Phase): X81/X83 haben keine Preise
+ * (EP, Anteile, Zuschlagssatz, Nachlass); X86 schreibt einen fehlenden Auftraggeber leer (OWN ist Pflicht).
+ */
+function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   const x86 = phase === 'X86';
   const knoten = inhalt.knoten.map((k) => {
-    if (k.art !== 'position') return k;
-    let p: Position = k;
-    const wahl = p.merkmale.wahl;
-    if (wahl !== null && (wahl.gruppe === null || wahl.variante === null))
-      p = {
-        ...p,
-        merkmale: {
-          ...p.merkmale,
-          wahl: {
-            gruppe: expect.any(Number) as number,
-            variante: expect.any(Number) as number,
-            grundpositionId: null,
-          },
-        },
-      };
-    const z = p.zuschlag;
-    const altform = z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null);
-    if (altform && x86) p = { ...p, zuschlag: null };
-    else if (altform) p = { ...p, menge: null, einheit: null, einheitspreis: null, epa: null };
-    if (!x86) {
-      p = { ...p, einheitspreis: null, epa: null };
-      if (p.zuschlag !== null) p = { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
-    }
-    return p;
+    if (k.art !== 'position' || x86) return k;
+    const p: Position = { ...k, einheitspreis: null, epa: null };
+    return p.zuschlag === null ? p : { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
   });
   return {
     ...inhalt,
@@ -65,6 +66,43 @@ function erwartet(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
       ? { auftraggeber: { name: null, strasse: null, plz: null, ort: null, vergabenummer: null } }
       : {}),
   };
+}
+
+/** Wendet einen gelisteten Unterschied an; passt er nicht zur Position, ist die Liste falsch. */
+function wende(p: Position, u: Unterschied, phase: ExportPhase): Position {
+  if (u.art === 'altform-zuschlag') {
+    const z = p.zuschlag;
+    expect(
+      z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null),
+      `${u.oz}: keine Altform`,
+    ).toBe(true);
+    return phase === 'X86'
+      ? { ...p, zuschlag: null }
+      : { ...p, menge: null, einheit: null, einheitspreis: null, epa: null };
+  }
+  const w = p.merkmale.wahl;
+  expect(w !== null && (w.gruppe === null || w.variante === null), `${u.oz}: keine Wahl ohne Nummer`).toBe(
+    true,
+  );
+  return {
+    ...p,
+    merkmale: { ...p.merkmale, wahl: { gruppe: u.gruppe, variante: u.variante, grundpositionId: null } },
+  };
+}
+
+/** Das erwartete wieder gelesene Modell: Phasenform des Ausgangsmodells mit genau den gelisteten Unterschieden. */
+function erwartet(inhalt: LvInhalt, phase: ExportPhase, liste: readonly Unterschied[]): LvInhalt {
+  const nachOz = new Map(liste.map((u) => [u.oz, u]));
+  expect(nachOz.size, 'jede OZ höchstens einmal in der Liste').toBe(liste.length);
+  const getroffen: string[] = [];
+  const knoten = inhalt.knoten.map((k) => {
+    const u = k.art === 'position' ? nachOz.get(ozVon(k)) : undefined;
+    if (k.art !== 'position' || u === undefined) return k;
+    getroffen.push(u.oz);
+    return wende(k, u, phase);
+  });
+  expect(getroffen.sort(), 'jede gelistete OZ gibt es im LV').toEqual([...nachOz.keys()].sort());
+  return phasenform({ ...inhalt, knoten }, phase);
 }
 
 function rundweg(
@@ -86,14 +124,18 @@ function rundweg(
 const PHASEN: readonly ExportPhase[] = ['X81', 'X83', 'X86'];
 
 describe('Roundtrip der Fixtures', () => {
+  it('die Liste der Unterschiede nennt genau die Fixtures', () => {
+    expect(Object.keys(UNTERSCHIEDE).sort()).toEqual([...FIXTURES].sort());
+  });
+
   for (const name of FIXTURES)
     for (const phase of PHASEN)
       for (const version of ['3.3', '3.2'] as const)
         it(`${name} als ${phase} ${version}: Modell gleich bis auf die erwarteten Unterschiede, zweiter Export byte-gleich`, () => {
-          const { inhalt, summen } = fixtureLv(name);
-          const n = normiereKennungen(inhalt, summen);
+          const { inhalt, summen, basen } = fixtureLv(name);
+          const n = normiereKennungen(inhalt, summen, basen);
           const r = rundweg(n, phase, version);
-          expect(r.gelesen).toEqual(erwartet(n.inhalt, phase));
+          expect(r.gelesen).toEqual(erwartet(n.inhalt, phase, UNTERSCHIEDE[name]));
           expect(r.zweiter).toBe(r.erster);
         });
 });
@@ -104,7 +146,7 @@ describe('Roundtrip der amtlichen Dateien (Inhalt des Lesers)', () => {
       it(`${a.name} als ${phase} 3.3`, () => {
         const n = amtlichLv(a.pfad);
         const r = rundweg(n, phase, '3.3');
-        expect(r.gelesen).toEqual(erwartet(n.inhalt, phase));
+        expect(r.gelesen).toEqual(erwartet(n.inhalt, phase, []));
         expect(r.zweiter).toBe(r.erster);
       });
 });

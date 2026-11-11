@@ -172,8 +172,8 @@ describe('Golden-Dateien je Fixture und Phase (deterministisch)', () => {
   for (const name of FIXTURES)
     for (const phase of phasen)
       it(`${name} ${phase} 3.3`, () => {
-        const { inhalt, summen } = fixtureLv(name);
-        const n = normiereKennungen(inhalt, summen);
+        const { inhalt, summen, basen } = fixtureLv(name);
+        const n = normiereKennungen(inhalt, summen, basen);
         const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
         expect(e.entwurf).toBe(false);
         expect(e.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
