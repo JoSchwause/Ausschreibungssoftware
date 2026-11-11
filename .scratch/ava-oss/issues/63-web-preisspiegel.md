@@ -1,6 +1,6 @@
 # 63: V3: Preisspiegel-Ansicht in der App
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: V3 · Paket: `apps/web` (Ordner `src/vergabe/`; Einhängestellen in `App.tsx`/`lv/LvSeite.tsx`, D-20)
 Blocked by: 60 (`VergleichsGrid`), 51 (Fixtures)
