@@ -1,6 +1,6 @@
 # 53: `vertrag` v1.3 (Vertrag plus Anpassung)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die den Typ nutzen)
 Blocked by: –
