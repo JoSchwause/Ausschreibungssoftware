@@ -110,7 +110,7 @@ test('typisch als X83 3.3 ausgeben: Datei wird heruntergeladen, die eigene Prüf
     dialog.getByRole('button', { name: 'Herunterladen' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('Typisch Musterhaus erfunden.x83');
-  const text = readFileSync((await download.path()) ?? '', 'utf8');
+  const text = readFileSync(await download.path(), 'utf8');
   expect(text).toContain('GAEB');
   expect(text).not.toContain('Entwurf:');
 });
@@ -126,7 +126,7 @@ test('Eine Einheit über 4 Zeichen macht den Export zum Entwurf; er geschieht tr
     dialog.getByRole('button', { name: 'Herunterladen' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('Typisch Musterhaus erfunden_Entwurf.x83');
-  expect(readFileSync((await download.path()) ?? '', 'utf8')).toContain('Entwurf:');
+  expect(readFileSync(await download.path(), 'utf8')).toContain('Entwurf:');
 });
 
 test('X84 zum eingelesenen BVBS-LV: Bieter wird angelegt, Angebot erscheint mit Bietersumme, ein Undo-Schritt', async ({

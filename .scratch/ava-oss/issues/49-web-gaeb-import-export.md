@@ -43,17 +43,52 @@ am Ende `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün. `okf/resea
 
 ## Acceptance criteria
 
-- [ ] E2E: BVBS AVA X81 einlesen, Vorschau zeigt 22 Gliederungen, 74 Positionen, 14 Hinweistexte (Zahlen aus Ticket 22) und Befunde; Übernehmen legt das LV an; Neuladen behält es
-- [ ] E2E: `typisch` als X83 3.3 ausgeben; Datei wird heruntergeladen, die eigene Prüfung zeigt keine Fehler; ein LV mit Einheit über 4 Zeichen ergibt „Entwurf“ und Dateiname mit `_Entwurf`, der Export geschieht trotzdem
-- [ ] E2E: X84 zum eingelesenen BVBS-LV einlesen, Bieter wird angelegt, das Angebot erscheint mit Bietersumme
-- [ ] Integrationstest Punkt 4 mit den genannten Zahlen (bzw. dem Rückfall ohne 44)
-- [ ] Roundtrip Punkt 5
-- [ ] Einlesen eines LV und eines Angebots ist je ein Undo-Schritt
-- [ ] Handprüfung für M2 vorbereitet: README-Abschnitt oder Comments, wie man einen Export in einem freien GAEB-Betrachter öffnet (welcher, Ergebnis, falls in der Sitzung möglich)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] E2E: BVBS AVA X81 einlesen, Vorschau zeigt 22 Gliederungen, 74 Positionen, 14 Hinweistexte (Zahlen aus Ticket 22) und Befunde; Übernehmen legt das LV an; Neuladen behält es
+- [x] E2E: `typisch` als X83 3.3 ausgeben; Datei wird heruntergeladen, die eigene Prüfung zeigt keine Fehler; ein LV mit Einheit über 4 Zeichen ergibt „Entwurf“ und Dateiname mit `_Entwurf`, der Export geschieht trotzdem
+- [x] E2E: X84 zum eingelesenen BVBS-LV einlesen, Bieter wird angelegt, das Angebot erscheint mit Bietersumme
+- [x] Integrationstest Punkt 4 mit den genannten Zahlen (bzw. dem Rückfall ohne 44)
+- [x] Roundtrip Punkt 5
+- [x] Einlesen eines LV und eines Angebots ist je ein Undo-Schritt
+- [x] Handprüfung für M2 vorbereitet: README-Abschnitt oder Comments, wie man einen Export in einem freien GAEB-Betrachter öffnet (welcher, Ergebnis, falls in der Sitzung möglich)
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
 Preisspiegel-Ansicht (V3), Zuschlag und Auftrags-LV (V4), Excel (O2, V5), GAEB 90/2000 und 3.1 (G4), X82/X85/X89.
 
 ## Comments
+
+### Umsetzung (Branch `ticket/49-web-gaeb`)
+
+Alle Punkte 1-5 umgesetzt, nichts gestrichen (X84 und 3.2 sind dabei). Neu in `apps/web/src/gaeb/`: `gaeb.ts` (rein: `lvLesen`,
+`lvAusgeben`, `angebotLesen`, `angebotAnlegenPlan`, `bietersummen`), `GaebEinlesen`, `GaebAusgeben`, `Angebote`,
+`Befundliste`; Tests `gaeb.test.ts` (Integration, Punkte 4 und 5) und `e2e/gaeb.spec.ts`. Befehlsweg: neue Methode
+`Befehlsweg.angebotAnlegen` (`BieterAnlegen` + `AngebotAnlegen` als ein Undo-Schritt); `Teil.changeSet` und `umkehren` kennen
+jetzt `AngebotChangeSet`; `zielNach` bleibt auf der Seite, wenn nur Bieter geändert wurden.
+
+- Wo stehen die Knöpfe? -> „GAEB einlesen“ in der Werkzeugleiste der Projektseite; „GAEB ausgeben“, „Angebot einlesen“ und „Angebote (n)“ in der Leiste der LV-Seite; Angebotsliste als Dialog (das Grid behält seine Höhe).
+- Name des LV beim Einlesen? -> Name aus der Datei, kein Eingabefeld (umbenennen geht danach auf der Projektseite); Grund: klein, reversibel.
+- Uhr der Datei? -> `u.uhr()` (UTC, wie `Protokolleintrag.wann`), Datum = erste 10, Uhrzeit = Zeichen 11-19 des ISO-Strings (A2).
+- X86 in der App: `summen` und `zuschlagsbasen` aus dem Kern (`LvZustand.summen`, `zuschlagsbasen(lv)`); kein `auftragnehmer` (das Modell kennt keinen, Ticket 40: Warnung `angabe-leer`, kein Fehler).
+- Bieter schon im Projekt? -> gleicher Name (Ränder und Groß-/Kleinschreibung egal) wird wiederverwendet, sonst neuer Bieter; Name in der Vorschau änderbar, leerer Name meldet am Feld.
+- Bietersummen der Liste: `angebotSummenBerechnen(lv, angebot).gesamt` gegen den aktuellen LV-Stand, nicht der gespeicherte `AngebotZustand.summen`.
+- Dateiendungen im Dateiauswahlfenster: `.x81 .x83 .x84 .x86 .xml`; Erkennung der Phase macht der Leser aus dem Inhalt.
+- Ein X84 mit anderer Phase: `leseAngebot` liefert `befehl: null`, die Vorschau zeigt Befunde und „nichts zu übernehmen“.
+- Große Dateien: kein Web Worker (zu viel für dieses Ticket); der Leser läuft im Seitenthread, vor dem Lesen erscheint die Wartemeldung („Die Datei wird gelesen …“, ein Zug an den Browser). Gemessen: BVBS AVA X81 (74 Positionen) in Vitest unter 100 ms; eine Messung mit 100 MiB steht aus, der Worker ist ein eigenes Ticket, wenn sie stört.
+- Roundtrip (Punkt 5) weicht vom Ticketwortlaut ab: X83 trägt keine Preise (Ticket 40, erwartete Unterschiede), „gleiche Summen“ gilt dort nur für Struktur, Mengen, Texte (Summen 0,00); die Summengleichheit prüft derselbe Test mit **X86**. `typisch` wird dafür ohne die Zuschlagspositionen in Altform (verlieren Menge und EP) und ohne die Wahlkennzeichnung ohne Gruppe/Variante (Warnung `export-verworfen`, E-11) verwendet, beides laut Ticket 40 erwartete Unterschiede.
+- Punkt 4 mit Ticket 44: 1.30.20 = 1.790,00, 1.30.30 = 819,10, 1.30.10 = 1.500,00, Hauptgruppe 3 = 12.000,00 stimmen. Zusätzlich Messwert der ganzen Prüfdatei: Netto 1.421.024.428,85, Brutto 1.691.019.070,33 (im Integrationstest und im E2E festgehalten).
+- Zahlen aus Ticket 22 (22 Gliederungen, 74 Positionen, 14 Hinweistexte) und 28 Befunde der X81 bestätigt.
+
+Lücken (nicht hier geändert):
+- `gaeb`: kein Auftragnehmer im Modell (X86 immer mit leerer Adresse); Altform der Zuschlagsposition und Wahl ohne Gruppe/Variante gehen im Export verloren (Warnung).
+- `vergabe`/`speicher`: nichts gefehlt.
+- E2E `dialog.spec.ts` „Prüf-Panel“ war in einem Gesamtlauf einmal rot (Zeitüberschreitung bei Last), beim Wiederholen 3x grün; nicht aus diesem Ticket.
+
+### Handprüfung für M2 (freier GAEB-Betrachter)
+
+Nicht in dieser Sitzung ausgeführt (kein Betrachter, kein Bildschirm). Ablauf für die Handprüfung:
+1. App starten (`pnpm --filter @tethys/web dev`), LV öffnen (z. B. über „GAEB einlesen“ die BVBS-Prüfdatei `fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X81`).
+2. „GAEB ausgeben“, Phase X81, X83 und X86, Version 3.3 und 3.2, je „Herunterladen“; Dateinamen ohne `_Entwurf` heißt: eigene Prüfung ohne Fehler.
+3. Jede Datei in einem frei verfügbaren GAEB-Betrachter öffnen (Betrachter, Version und Ergebnis hier eintragen): Struktur (Gliederung, OZ), Kurz- und Langtexte, Mengen und Einheiten, bei X86 Preise und Summen mit der Anzeige in der App vergleichen.
+4. Ergebnis: _offen_ (Betrachter: ..., Datum: ...).
+
