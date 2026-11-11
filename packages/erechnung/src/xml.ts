@@ -177,7 +177,7 @@ function lies(text: string, maxTiefe: number): XmlElement {
     if (ns === undefined || ns === '') {
       fehler('xml-ungueltig', `Das Präfix „${praefix}“ ist an keinen Namensraum gebunden.`, offset);
     }
-    return { ns: ns ?? '', name: qname.slice(k + 1) };
+    return { ns, name: qname.slice(k + 1) };
   };
 
   while (i < n) {
@@ -201,7 +201,7 @@ function lies(text: string, maxTiefe: number): XmlElement {
       if (!oben) fehler('xml-ungueltig', 'CDATA außerhalb des Wurzelelements.', i);
       const j = text.indexOf(']]>', i + 9);
       if (j < 0) fehler('xml-ungueltig', 'CDATA-Abschnitt ohne Ende.', i);
-      if (oben) oben.text += text.slice(i + 9, j);
+      oben.text += text.slice(i + 9, j);
       i = j + 3;
     } else if (text.startsWith('<!DOCTYPE', i)) {
       fehler(

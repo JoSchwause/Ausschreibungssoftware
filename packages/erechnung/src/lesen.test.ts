@@ -7,8 +7,11 @@ import { xrechnungLesen } from './index';
 import type { Eingangsrechnung, Rechnungsposition } from './index';
 import { kosit, testdatei } from './testhilfen';
 
+/** Erwartete Position: Werte als einfache Texte; nicht genannte Felder sind leer. */
+type Positionserwartung = { readonly [K in keyof Rechnungsposition]?: unknown };
+
 /** Position mit allen Feldern; nicht genannte Felder sind leer. */
-function position(p: Partial<Rechnungsposition>): Rechnungsposition {
+function position(p: Positionserwartung): Positionserwartung {
   return {
     kennung: null,
     menge: null,
@@ -20,7 +23,7 @@ function position(p: Partial<Rechnungsposition>): Rechnungsposition {
     artikelnummerKaeufer: null,
     unterpositionen: [],
     ...p,
-  } as Rechnungsposition;
+  };
 }
 
 /**
