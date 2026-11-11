@@ -100,3 +100,36 @@ Schnitt und Reihenfolge: [`../schnitt-welle-3.md`](../schnitt-welle-3.md). Alle 
 | 52 | S | Einzeländerung bei 5.000 Positionen < 100 ms | `packages/speicher` | ready-for-agent (Welle 4) |
 | 53 | F | `vertrag` v1.3 (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 4) |
 | 54 | U | `ui-grid`/`ui-basis`: Lücken aus Welle 3 | `packages/ui-grid`, `packages/ui-basis` | ready-for-agent (Welle 4) |
+
+# Tickets Welle 4 (Lauf, 2026-11-11)
+
+Schnitt und Reihenfolge: [`../schnitt-welle-4.md`](../schnitt-welle-4.md). Tickets 51–69 sind auf `integration/welle-4`
+gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgetickets für Welle 5.
+
+| Nr | Strang | Titel | Paket | Status |
+|---|---|---|---|---|
+| 51 | F | Fixtures auf GAEB-Zuschlagsform | `fixtures/` | resolved |
+| 52 | S | Einzeländerung bei 5.000 Positionen < 100 ms | `packages/speicher` | resolved |
+| 53 | F | `vertrag` v1.3 | `packages/vertrag` | resolved |
+| 54 | U | `ui-grid`/`ui-basis`: Lücken aus Welle 3 | `packages/ui-grid`, `packages/ui-basis` | resolved |
+| 55 | C1 | Kostengliederung und Kostenermittlung | `packages/kosten` (neu) | resolved |
+| 56 | K | Kern v1.3 | `packages/kern` | resolved |
+| 57 | S | Speicher v1.3, Migration 4 | `packages/speicher` | resolved |
+| 58 | O1 | LV-Druck als PDF (ADR 0012) | `packages/ausgabe` | resolved |
+| 59 | V4 | Zuschlag → Auftrags-LV | `packages/vergabe` | resolved |
+| 60 | U2 | Vergleichsgrid | `packages/ui-grid` | resolved |
+| 61 | O2 | Excel-Export und -Rücklauf | `packages/ausgabe` | resolved |
+| 62 | S4 | PWA und Datensicherung | `apps/web` | resolved |
+| 63 | V3 | Preisspiegel-Ansicht | `apps/web` | resolved |
+| 64 | V4 | Zuschlag und Auftrags-LV in der App, E2E M3 | `apps/web` | resolved |
+| 65 | M2 | Mengenermittlungs-Panel | `apps/web` | resolved |
+| 66 | O1/O2 | Drucken und Excel in der App | `apps/web` | resolved |
+| 67 | U | Umwege aus Welle 3 zurückbauen | `apps/web` | resolved |
+| 68 | G | `gaeb` v1.3 | `packages/gaeb` | resolved |
+| 69 | F | X84-Dateien und Preisspiegel-Sollwerte | `fixtures/` | resolved |
+| 70 | F | `vertrag` v1.4: Repository Auftrags-LV (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 5) |
+| 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | ready-for-agent (Welle 5) |
+| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | ready-for-agent (Welle 5) |
+| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | ready-for-agent (Welle 5) |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent (Welle 5) |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | ready-for-agent (Welle 5) |
