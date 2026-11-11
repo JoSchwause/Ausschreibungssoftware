@@ -80,4 +80,40 @@ describe('kalkulationsuebersichtBerechnen', () => {
     expect(r.lohnstunden).toBe('64.000');
     expect(r.mittellohn).toBe('49.047');
   });
+
+  // Abbruch, 2,000 St: Nachunternehmer 1,000 × 1.234,567 (kein Satz, 0 %) = 1.234,567; Lohn 0,000 × 50,000 = 0 → 0,000
+  // EP 1.234,567; GP 2 × 1.234,567 = 2.469,134 → 2.469,13; Lohnstunden 0: Mittellohn wäre 0 / 0, also keiner
+  it('Lohnstunden 0: kein Mittellohn; eine Kostenart mit Anteil 0,000 zählt mit', () => {
+    const r = kalkulationsuebersichtBerechnen(
+      [
+        p('p1', '2.000', [
+          z('nachunternehmer', 'Abbruch', '1.000', '1234.567'),
+          z('lohn', 'Aufsicht', '0.000', '50.000'),
+        ]),
+      ],
+      SAETZE,
+    );
+    expect(r.positionen.map((x) => [x.kalkulation.einheitspreis, x.gesamtpreis])).toEqual([
+      ['1234.567', '2469.13'],
+    ]);
+    expect(r.kostenarten).toEqual([
+      { art: 'lohn', einzelkosten: '0.00', anteilsumme: '0.00' },
+      { art: 'nachunternehmer', einzelkosten: '2469.13', anteilsumme: '2469.13' },
+    ]);
+    expect(r.herstellkosten).toBe('2469.13');
+    expect(r.gesamtsumme).toBe('2469.13');
+    expect(r.lohnstunden).toBe('0.000');
+    expect(r.mittellohn).toBeNull();
+  });
+
+  it('keine Position: Summen 0, kein Mittellohn', () => {
+    expect(kalkulationsuebersichtBerechnen([], SAETZE)).toEqual({
+      positionen: [],
+      kostenarten: [],
+      herstellkosten: '0.00',
+      gesamtsumme: '0.00',
+      lohnstunden: '0.000',
+      mittellohn: null,
+    });
+  });
 });

@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Property-Tests der Einzelpreiskalkulation (Ticket 78, Q1). Das Orakel rechnet unabhängig von der Implementierung:
+// Property-Tests der Einzelpreiskalkulation und der Kalkulationsübersicht (Ticket 78, Q1). Das Orakel rechnet unabhängig von der Implementierung:
 // Werte entstehen als ganze Tausendstel bzw. Hundertstel (`bigint`) im Test; Text und Erwartungswert werden hier gebildet,
 // die Rundung ist hier von Hand geschrieben (Betrag halb aufwärts, Vorzeichen davor, E-07).
 
-import type { Einheitspreis, EpaArt, Menge, Prozent } from '@tethys/vertrag';
+import type { Einheitspreis, EpaArt, Menge, PositionId, Prozent } from '@tethys/vertrag';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { einzelpreiskalkulationBerechnen } from './index';
-import type { Einzelpreiskalkulation, Kalkulationsansatz, Kalkulationszuschlagssaetze } from './index';
+import { einzelpreiskalkulationBerechnen, kalkulationsuebersichtBerechnen } from './index';
+import type {
+  Einzelpreiskalkulation,
+  Kalkulationsansatz,
+  Kalkulationsuebersicht,
+  Kalkulationszuschlagssaetze,
+} from './index';
 
 const runs = { numRuns: 300 };
 
@@ -75,15 +80,20 @@ function saetzeAus(saetze: Partial<Record<EpaArt, bigint>>): Kalkulationszuschla
   return aus;
 }
 
-/** Orakel: Anteil je Kostenart in Tausendsteln, aus den Zeilen mit beiden Werten. */
+/** Orakel: Einzelkosten je Kostenart in Millionsteln, aus den Zeilen mit beiden Werten. */
+function erwarteteEinzelkosten(zeilen: readonly Zeile[]): Map<EpaArt, bigint> {
+  const ek = new Map<EpaArt, bigint>();
+  for (const { art, m, k } of zeilen) if (m !== null && k !== null) ek.set(art, (ek.get(art) ?? 0n) + m * k);
+  return ek;
+}
+
+/** Orakel: Anteil je Kostenart in Tausendsteln. */
 function erwarteteAnteile(
   zeilen: readonly Zeile[],
   saetze: Partial<Record<EpaArt, bigint>>,
 ): Map<EpaArt, bigint> {
-  const ek = new Map<EpaArt, bigint>(); // Millionstel
-  for (const { art, m, k } of zeilen) if (m !== null && k !== null) ek.set(art, (ek.get(art) ?? 0n) + m * k);
   const aus = new Map<EpaArt, bigint>();
-  for (const [art, e] of ek) {
+  for (const [art, e] of erwarteteEinzelkosten(zeilen)) {
     // e / 10^6 × (10000 + s) / 10^4 auf Tausendstel: e × (10000 + s) / 10^7
     aus.set(art, rundeHalbAuf(e * (10_000n + (saetze[art] ?? 0n)), 10n ** 7n));
   }
@@ -184,6 +194,138 @@ describe('Eigenschaften der Einzelpreiskalkulation', () => {
           expect(anteilVon(r, art) !== null).toBe(zaehlt);
         }
       }),
+      runs,
+    );
+  });
+});
+
+interface Pos {
+  /** Menge in Tausendsteln. */
+  readonly menge: bigint;
+  readonly zeilen: readonly Zeile[];
+}
+const positionenGen: fc.Arbitrary<Pos[]> = fc.array(
+  fc.record({
+    menge: fc.bigInt({ min: -1_000n, max: 10n ** 9n }),
+    zeilen: fc.array(zeileGen, { maxLength: 8 }),
+  }),
+  { maxLength: 10 },
+);
+function eingabe(positionen: readonly Pos[]) {
+  return positionen.map((p, i) => ({
+    positionId: `p${String(i)}` as PositionId,
+    menge: text(p.menge, 3) as Menge,
+    ansaetze: ansaetze(p.zeilen),
+  }));
+}
+
+describe('Eigenschaften der Kalkulationsübersicht', () => {
+  it('GP je Position = kaufmännisch(Menge × EP, 2); Gesamtsumme = Σ GP; jede Position wie einzeln gerechnet', () => {
+    fc.assert(
+      fc.property(positionenGen, saetzeGen, (positionen, saetze) => {
+        const r = kalkulationsuebersichtBerechnen(eingabe(positionen), saetzeAus(saetze));
+        let summe = 0n;
+        positionen.forEach((p, i) => {
+          const x = r.positionen[i];
+          expect(x?.kalkulation).toEqual(
+            einzelpreiskalkulationBerechnen(ansaetze(p.zeilen), saetzeAus(saetze)),
+          );
+          const anteile = [...erwarteteAnteile(p.zeilen, saetze).values()];
+          if (anteile.length === 0) {
+            expect(x?.gesamtpreis).toBeNull();
+            return;
+          }
+          // Menge (Tausendstel) × EP (Tausendstel) = Millionstel, auf Hundertstel
+          const gp = rundeHalbAuf(p.menge * anteile.reduce((s, a) => s + a, 0n), 10_000n);
+          expect(x?.gesamtpreis).toBe(text(gp, 2));
+          summe += gp;
+        });
+        expect(r.positionen).toHaveLength(positionen.length);
+        expect(r.gesamtsumme).toBe(text(summe, 2));
+      }),
+      runs,
+    );
+  });
+
+  it('je Kostenart Σ kaufmännisch(Menge × Einzelkosten, 2) und Σ kaufmännisch(Menge × Anteil, 2); Herstellkosten = Σ', () => {
+    fc.assert(
+      fc.property(positionenGen, saetzeGen, (positionen, saetze) => {
+        const r = kalkulationsuebersichtBerechnen(eingabe(positionen), saetzeAus(saetze));
+        const ek = new Map<EpaArt, bigint>();
+        const an = new Map<EpaArt, bigint>();
+        for (const p of positionen) {
+          // Menge (Tausendstel) × Einzelkosten (Millionstel) = 10^-9, auf Hundertstel
+          for (const [art, e] of erwarteteEinzelkosten(p.zeilen))
+            ek.set(art, (ek.get(art) ?? 0n) + rundeHalbAuf(p.menge * e, 10n ** 7n));
+          for (const [art, a] of erwarteteAnteile(p.zeilen, saetze))
+            an.set(art, (an.get(art) ?? 0n) + rundeHalbAuf(p.menge * a, 10_000n));
+        }
+        const erwartet = ARTEN.filter((a) => ek.has(a)).map((art) => ({
+          art,
+          einzelkosten: text(ek.get(art) ?? 0n, 2),
+          anteilsumme: text(an.get(art) ?? 0n, 2),
+        }));
+        expect(r.kostenarten).toEqual(erwartet);
+        expect(r.herstellkosten).toBe(
+          text(
+            [...ek.values()].reduce((s, e) => s + e, 0n),
+            2,
+          ),
+        );
+      }),
+      runs,
+    );
+  });
+
+  it('Lohnstunden und Mittellohn exakt summiert und einmal gerundet; ein einheitlicher Lohnsatz ist der Mittellohn', () => {
+    fc.assert(
+      fc.property(positionenGen, saetzeGen, (positionen, saetze) => {
+        const r = kalkulationsuebersichtBerechnen(eingabe(positionen), saetzeAus(saetze));
+        let stunden = 0n; // Menge × Ansatzmenge: Millionstel
+        let kosten = 0n; // Menge × Ansatzmenge × Kostensatz: 10^-9
+        let hatLohn = false;
+        const saetzeLohn = new Set<bigint>();
+        for (const p of positionen)
+          for (const { art, m, k } of p.zeilen)
+            if (art === 'lohn' && m !== null && k !== null) {
+              stunden += p.menge * m;
+              kosten += p.menge * m * k;
+              hatLohn = true;
+              saetzeLohn.add(k);
+            }
+        expect(r.lohnstunden).toBe(text(rundeHalbAuf(stunden, 1_000n), 3));
+        // kosten · 10^-9 / (stunden · 10^-6) = (kosten / stunden) · 10^-3: in Tausendsteln genau kosten / stunden
+        const mittellohn =
+          !hatLohn || stunden === 0n
+            ? null
+            : text(stunden < 0n ? rundeHalbAuf(-kosten, -stunden) : rundeHalbAuf(kosten, stunden), 3);
+        expect(r.mittellohn).toBe(mittellohn);
+        const [einziger] = [...saetzeLohn];
+        if (saetzeLohn.size === 1 && einziger !== undefined && stunden !== 0n)
+          expect(r.mittellohn).toBe(text(einziger, 3));
+      }),
+      runs,
+    );
+  });
+
+  it('Reihenfolge der Positionen ändert keine Summe', () => {
+    fc.assert(
+      fc.property(
+        positionenGen.chain((p) => fc.tuple(fc.constant(p), fc.shuffledSubarray(p, { minLength: p.length }))),
+        saetzeGen,
+        ([positionen, gemischt], saetze) => {
+          const summen = (r: Kalkulationsuebersicht): unknown[] => [
+            r.kostenarten,
+            r.herstellkosten,
+            r.gesamtsumme,
+            r.lohnstunden,
+            r.mittellohn,
+          ];
+          const a = kalkulationsuebersichtBerechnen(eingabe(positionen), saetzeAus(saetze));
+          const b = kalkulationsuebersichtBerechnen(eingabe(gemischt), saetzeAus(saetze));
+          expect(summen(b)).toEqual(summen(a));
+        },
+      ),
       runs,
     );
   });
