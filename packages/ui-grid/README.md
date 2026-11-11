@@ -138,8 +138,13 @@ Eingebaute Kennzeichen (offene Vereinigung `Kennzeichen`, jedes andere ist erlau
 `niedrig` ▼ „Ausreißer nach unten“, `min` „niedrigster Preis“, `max` „höchster Preis“, `nicht-angeboten` – „nicht
 angeboten“, `nullpreis` 0 „Nullpreis“, `hinweis` ! „Hinweis“. Ein unbekanntes Kennzeichen ohne Text erscheint als •
 mit sich selbst als Beschreibung. Die Marke zeigt das Symbol auf eigener Token-Fläche (Kontrast in hell und dunkel
-geprüft, `src/kennzeichen.test.ts`); die Beschreibung in Worten steht im `title` und als `aria-describedby` an der
-Zelle (U8, nicht nur Farbe). Ausreißer `hoch`/`niedrig` unterstreichen die Zelle zusätzlich.
+geprüft, `src/kennzeichen.test.ts`); die Beschreibung in Worten steht im `title` der Zelle, der zugleich ihre
+zugängliche Beschreibung ist (U8, nicht nur Farbe). Ausreißer `hoch`/`niedrig` unterstreichen die Zelle zusätzlich.
+
+Leistung (Ticket 74): Eine Zelle besteht nur aus sich, ihrem Text (`.tx-grid__text`) und je Kennzeichen einer Marke,
+ohne Hülle und ohne verstecktes Beschreibungselement; `aria-readonly` steht nur am Grid. Neue Zeilen tragen nur ihren
+Versatz als eigenen Stil (Raster, Höhe und Mindestbreite erben sie). `e2e/leistung.spec.ts` prüft die Zahl der Elemente
+je Zelle und misst das Scrollen.
 
 Tastatur: Navigation wie im `LvGrid` (Pfeile, Strg+Pfeil, Pos1/Ende, Strg+Pos1/Ende, Bild auf/ab, Tab, Enter /
 Umschalt+Enter eine Zeile weiter / zurück), Auf-/Zuklappen wie im `LvGrid`. Zellauswahl: Umschalt+Pfeil und
