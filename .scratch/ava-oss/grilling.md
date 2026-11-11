@@ -52,6 +52,7 @@ explizit geantwortet), **offen**.
   im Repo; Summe = eigener Betrag + Kinder (D-24 in `entscheidungen-auto.md`).
 - **G-17** STLB-Bau — *entschieden*. **Antwort:** Im MVP ignorieren. Ein Feld für eine Textquelle
   bleibt vorgehalten. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: Feld `Positionsdaten.textquelle?`, Muster-LV = LV mit `vorlage` (D-36).
 
 ## Stufe 1 — Domänenmodell
 
@@ -78,6 +79,9 @@ explizit geantwortet), **offen**.
   „nicht angeboten“ eigene Kennzeichen, nie Ausreißer (D-05 in `entscheidungen-auto.md`).
 - **G-27** Tiefe der Rechnungsprüfung — *vertagt*. **Antwort:** Eigene Grilling-Runde vor Welle 5.
   A3 bleibt bis dahin offen. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: kumulierte Abschlags- und Schlussrechnung mit Abzugskette Leistung → Nachlass →
+  MwSt → Umlagen → Sicherheits- bzw. Gewährleistungseinbehalt → eingefrorene frühere Zahlbeträge (D-34 in
+  `entscheidungen-auto.md`).
 - **G-28** MwSt — *entschieden*. **Antwort:** Ein Satz je LV, kein Satzwechsel in v1. (2026-11-09)
 - **G-29** Lose — *entschieden*. **Antwort:** Im MVP nur gliedernd. Getrennte Vergabe später.
   (2026-11-09)
@@ -192,7 +196,7 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
 | KI-Assistent in P8 und Nicht-Ziel | G-05: X6 nach M4 |
 | EP mit 2 oder 3 Nachkommastellen | G-21: EP 3 gespeichert, Betrag 2 |
 | Kein Ereignisprotokoll (ADR 0006), Recherche „Muss“ | G-24: Nebenbuch, ADR 0009 |
-| „VOB 80“ zweimal belegt | Das `vob80`-Flag der Recherche (§ 2 Abs. 3 VOB/B, Schwellen 110 % und 80 %) ist belegt, `map-kosten.md` Zeile 96. Die zweite Bedeutung („80 % bei strittigen Nachträgen“) habe ich nicht gefunden. Vor A1 klären. |
+| „VOB 80“ zweimal belegt | Das `vob80`-Flag der Recherche (§ 2 Abs. 3 VOB/B, Schwellen 110 % und 80 %) ist belegt, `map-kosten.md` Zeile 96. Die zweite Bedeutung („80 % bei strittigen Nachträgen“) habe ich nicht gefunden. Vor A1 klären. Annahme für Demo, Mensch bestätigt später: zweite Bedeutung vermutlich § 650c Abs. 3 BGB, nicht in v1; Soll/Ist-Schwellen 110 %/90 % nach VOB/B § 2 Abs. 3 (D-35). |
 | Zulage (Vorbild) und Zuschlagsposition (GAEB) | G-22: Zuschlagsposition, GLOSSARY angepasst |
 | Zuschlagsposition als Menge × EP (Kern, Fixtures) und als Prozentzuschlag (GAEB, G-22) | E-03: GAEB-Semantik, Kern und Fixture ändern sich mit K6 |
 | XSD-Validierung nur in CI (Q3/M2) und eigene Prüfung | G-12: ADR 0010 |

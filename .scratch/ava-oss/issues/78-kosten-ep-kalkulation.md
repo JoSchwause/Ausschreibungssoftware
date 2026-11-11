@@ -4,7 +4,7 @@ Status: ready-for-agent
 Type: task
 Welle: 5 · Strang: C4 · Paket: `packages/kosten`
 Blocked by: –
-Regeln: A2, A3, N1, N2, N3, U5, Q1, D-24, D-35
+Regeln: A2, A3, N1, N2, N3, U5, Q1, D-24, D-36, D-39
 Herkunft: `plan.md` §2 C4 („EP-Kalkulation“), GLOSSARY „Einzelpreiskalkulation“, „Herstellkosten & Zuschlagskalkulation“,
 „Einheitspreisanteile (EPA)“
 
@@ -13,7 +13,7 @@ Herkunft: `plan.md` §2 C4 („EP-Kalkulation“), GLOSSARY „Einzelpreiskalkul
 Reine Rechnung im Paket `kosten` (nur `vertrag` und `dezimal`, A3): aus Kalkulationsansätzen einer Position und
 Zuschlagssätzen je Kostenart entstehen Einheitspreisanteile und Einheitspreis. Der Planer nutzt sie für Schätzpreise im
 Ausschreibungs-LV; die App schreibt das Ergebnis später mit den vorhandenen Befehlen `EinheitspreisanteileSetzen` und
-`EinheitspreisAendern` (keine eigene Speicherung in v1.4, D-35).
+`EinheitspreisAendern` (keine eigene Speicherung in v1.4, D-36 (5)).
 
 1. **Kalkulationsansatz.** Eine Zeile: Kostenart (`EpaArt` aus `vertrag`: lohn, stoffe, geraete, nachunternehmer,
    sonstiges, frei), Bezeichnung (frei), Ansatzmenge je Einheit der Position (z. B. 0,450 h/m², 3 Stellen) und Kostensatz je
@@ -21,7 +21,7 @@ Ausschreibungs-LV; die App schreibt das Ergebnis später mit den vorhandenen Bef
 2. **Zuschläge je Kostenart** (Prozent, 2 Stellen; Zuschlagskalkulation mit vorberechneten Zuschlägen für Gemeinkosten der
    Baustelle, Allgemeine Geschäftskosten, Wagnis und Gewinn, als ein Satz je Kostenart). Anteil der Kostenart = (Σ
    Einzelkosten der Art) × (1 + Satz/100), **kaufmännisch auf 3 Stellen gerundet** (EP 3, N3); EP = Σ der gerundeten Anteile
-   (so stimmt die Prüfung „Summe der Anteile = EP“ des Kerns immer; D-35). Leere Kostenart: Anteil `null`.
+   (so stimmt die Prüfung „Summe der Anteile = EP“ des Kerns immer; D-39). Leere Kostenart: Anteil `null`.
 3. **Ergebnis:** `Einheitspreisanteile` (mit `freiBezeichnung`), `Einheitspreis`, je Kostenart Einzelkosten und Zuschlag
    als Nachweis, Befunde: negative Werte, Satz unter −100 %, Zeile ohne Menge oder Satz, Überlauf über die Grenzen des Kerns
    (Vorkommastellen aus `PRUEF_GRENZEN` sind Kern; hier nur ein eigener, im Code begründeter Grenzwert oder keiner).

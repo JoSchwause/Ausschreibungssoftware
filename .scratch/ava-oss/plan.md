@@ -20,7 +20,8 @@ Klammern).
 | `packages/gaeb` | DA-XML-Modell, Parser, Writer, Phasenprofile, eigene Prüfung (XSD nur CI, ADR 0010) | G |
 | `packages/vergabe` | Bieter, Angebot, Preisspiegel-Rechnung, Zuschlag | V |
 | `packages/mengen` | REB-23.003-Formelparser, Aufmaßblätter, X31 | M |
-| `packages/abrechnung` | Auftrag, Nachträge, Soll/Ist, Rechnungsprüfung, E-Rechnung | A |
+| `packages/abrechnung` | Auftrag, Nachträge, Soll/Ist, Rechnungsprüfung | A |
+| `packages/erechnung` | XRechnung lesen (D-32), später ZUGFeRD/Erzeugen | A |
 | `packages/kosten` | DIN-276-Gliederung (nur Nummern), Kostenermittlung, Kostenkontrolle, EP-Kalkulation | C |
 | `packages/ausgabe` | PDF, Excel | O |
 | `packages/ui-grid`, `packages/ui-basis` | gemeinsames Grid, Tokens, Dialoge, Rich-Text | U |
@@ -118,6 +119,11 @@ sind geschnitten, G-06 ist beantwortet. Der Prototyp für das Nutzerinterview (G
   von Hand: Export in einem freien GAEB-Betrachter öffnen.
 - **M3:** E2E importiert zwei X84-Angebote, Preisspiegel-Summen stimmen mit den Sollwerten, der
   Zuschlag erzeugt das Auftrags-LV.
+- **M4** (D-38, Annahme für Demo): E2E auf dem Weg von M3: Nachtrag N01 (Nachtrags-LV, Angebot des AN, beauftragen) →
+  Aufmaßblatt 1 (Formel 91) → Soll/Ist mit Befund > 110 % → Abschlagsrechnung 1 (Prozent-Nachlass, Umlage,
+  Sicherheitseinbehalt) gleich dem Sollwert, freigeben → Aufmaßblatt 2 und Abschlagsrechnung 2 (kumuliert minus
+  eingefrorener Zahlbetrag) → Kostenkontrolle je Kostengruppe gleich den Sollwerten → Neuladen behält alles. Sollwerte
+  hergeleitet in einer Fixture (C4), dazu ein reiner Kettentest ohne Oberfläche mit derselben Fixture.
 - Dauerhaft in der CI: Paketgrenzen, Lizenzprüfung (AGPL-3.0-or-later), Clean-Room-Prüfung,
   Leistungsbudgets (5.000 und 10.000 Positionen), `okf/research/` darf nicht versioniert sein.
 

@@ -16,7 +16,7 @@ Herkunft: `plan.md` §2 O3 („Druckprofile“), D-23 („Vor O3 ein Spike mit e
    und LV-Name an oder aus, Kopf- und Fußzeilentext frei (mit Platzhaltern für Seitenzahl und Datum), Seitenrand eng/normal.
    Typ, Standardprofile (mindestens „Ausschreibung mit Langtext ohne Preise“, „Kostenanschlag mit Preisen, nur Kurztext“,
    „Auftrags-LV mit Preisen“) und eine reine Funktion, die ein Profil auf `ModellOptionen`/`PdfOptionen` abbildet. Der Typ
-   lebt in `ausgabe`, nicht im Vertrag (D-34): gespeichert wird ein Profil von der App als Einstellung des Nutzers.
+   lebt in `ausgabe`, nicht im Vertrag (D-36 (7)): gespeichert wird ein Profil von der App als Einstellung des Nutzers.
 2. **Profil lesen/schreiben als JSON** (reine Funktionen, Schemaversion im Objekt, unbekannte Felder Befund, fehlende
    Felder Standardwert), damit die App Profile ablegen und als Datei weitergeben kann.
 3. **Spike getaggtes PDF (Zeitbox ≤ 1 h).** Prüfen, ob eine Bibliothek mit AGPL-verträglicher Lizenz einen echten

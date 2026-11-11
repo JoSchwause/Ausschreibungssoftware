@@ -397,3 +397,48 @@ Question: `plan.md` nennt „M3 X31/DA11“. DA11 ist das REB-Zeilenformat aus G
 Decision: In Welle 5 nur GAEB DA XML X31 (3.3 und 3.2, G-10) lesen und schreiben. Die REB-Zeilen in `QTakeoff` (gleiches Spaltenformat wie DA11) liest `gaeb` in `Ansatzzeile`n; nur Formel 91 wird gerechnet, andere Formeln bleiben als Text mit Befund. Eine reine DA11-Datei (GAEB 90) folgt mit G4.
 Reason: G-10 stellt GAEB 90/2000 auf „später“; die BVBS-Prüfdatei X31 liegt schon im Repo.
 Reversible: yes  Touches: packages/gaeb
+
+## D-34 G-27: Tiefe der Rechnungsprüfung (Abzugskette)
+Welle 5 · Ticket 81 · decided by: advisor
+Question: G-27 ist vertagt; A3 braucht eine Abzugskette.
+Decision: Kumulierte Abschlagsrechnungen und Schlussrechnung. Jeder Schritt auf 2 Stellen gerundet, dann addiert/abgezogen (N2, N5, E-07): (1) Leistung = Σ round(kumulierte Aufmaßmenge × Vertrags-EP, 2); EP `null` zählt 0 mit Befund; Bedarf zählt, sobald aufgemessen; Zuschlagsposition = round(Satz × Σ geprüfte GP der Bezugspositionen, 2). (2) Nachlass: Prozent = round(Leistung × %, 2) über das ganze Auftrags-LV inkl. Nachtragspositionen; Absolut in Abschlag = min(round(abs × Leistung / Auftrags-LV netto vor Nachlass, 2), abs), Basis 0 → 0 mit Befund; Absolut in Schluss = voller Betrag. (3) Netto nach Nachlass. (4) MwSt = round(Netto n. N. × Satz, 2); Brutto kumuliert. (5) Umlagen je round(Brutto kumuliert × %, 2), alle auf derselben Basis, nicht kaskadiert (nach der MwSt: Gegenforderung des AG, mindert die Steuerbasis nicht). (6) Einbehalt: Abschlag round(Brutto kum. × Sicherheit %, 2), Schluss stattdessen Gewährleistung %. (7) Zahlbetrag = Brutto kum. − Σ Umlagen − Einbehalt − Σ frühere Zahlbeträge; negativ = Befund (Überzahlung). Frühere Zahlbeträge sind **eingefroren** (Befehl `RechnungFreigeben` speichert den geprüften Zahlbetrag); freigeben nur, wenn alle früheren freigegeben sind. Später: tatsächliche Zahlungen, Skonto, Bauabzugsteuer, Vertragsstrafe, Stundenlohnzettel.
+Reason: kleinste Kette, in der eine Schlussrechnung aufgeht; jede Zahl folgt aus N2/N5. Das Einfrieren verhindert, dass eine spätere Aufmaßkorrektur bezahlte Rechnungen still umschreibt.
+Reversible: yes (Parameter, Typen bleiben)  Touches: packages/vertrag, packages/abrechnung, apps/web
+Annahme für Demo, Mensch bestätigt später (G-27).
+
+## D-35 A1: Nachtrag ist ein Ausschreibungs-LV; VOB 80; Soll/Ist-Schwellen
+Welle 5 · Ticket 70, 71, 80, 86 · decided by: advisor
+Question: Wie bildet v1 Nachträge ab, was heißt „VOB 80“, welche Schwellen hat Soll/Ist?
+Decision: Ein Nachtrag ist ein gewöhnliches Ausschreibungs-LV mit `Nachtragsangaben { auftragsLvId, nummer, status: angemeldet | angeboten | beauftragt | abgelehnt }` am Kopf (LvBefehl `NachtragsangabenSetzen`); das Nachtragsangebot ist ein gewöhnliches Angebot mit der `bieterId` des beauftragten Angebots. Reine Funktion `nachtragUebernehmen(auftragsLv, nachtragsLv, angebot, neueIds)` in `abrechnung` liefert den AuftragsLvBefehl `NachtragUebernehmen { nachtragLvId, knoten }` plus Warnungen; `kern` führt ihn aus: eine neue Gliederung „Nachtrag <nummer>“ auf oberster Ebene (Los, wenn dort Lose stehen, sonst Titel; F1) mit nächster freier OZ, darunter der Baum des Nachtrags mit unveränderten PositionIds und EP/EPA des Angebots; nicht angeboten → EP `null` mit Warnung (wie D-21); Wahl-Alternativen entfallen mit Warnung; Fehler: mehr als 5 Ebenen, anderer MwSt-Satz, PositionId schon vorhanden (sperrt auch eine zweite Übernahme); Nachlass des Nachtragsangebots wird mit Warnung ignoriert. Die App führt erst `NachtragUebernehmen`, dann Status `beauftragt` aus. **VOB 80:** die zweite Bedeutung ist vermutlich § 650c Abs. 3 BGB (80 % der angebotenen Mehrvergütung in Abschlagsrechnungen); nicht in v1, ein nicht beauftragter Nachtrag geht nie in eine Rechnung (nur Infozeile). **Soll/Ist (VOB/B § 2 Abs. 3):** Befund bei Ist > 110 % der LV-Menge; bei Ist < 90 % nur mit `abgeschlossen: true` (Schlussrechnung vorhanden); streng verglichen, beide Schwellen einstellbar; kein Befund bei Menge 0/`null` oder Pauschal.
+Reason: nutzt Grid, GAEB und Angebot fast ohne Mehrkosten; 110/90 ist das einzige Paar, das aus der Regel herleitbar ist (C4); die „80“ der Recherche ist unbelegt.
+Reversible: yes (PositionIds bleiben; ein eigenes Aggregat ließe sich später migrieren)  Touches: packages/vertrag, kern, abrechnung, apps/web
+Annahme für Demo, Mensch bestätigt später (Widerspruch „VOB 80“ in grilling.md).
+
+## D-36 Umfang `vertrag` v1.4
+Welle 5 · Ticket 70 · decided by: advisor
+Question: Was aus Welle 5 wird Vertragstyp?
+Decision: (1) Aggregat `Aufmass` (ein Aufmaßblatt je Auftrags-LV; je Position eine Zeile mit Mengenansatz und Menge; Menge rechnet die App mit `mengen`, wie D-22); X31 liest in dieses Aggregat. (2) Aggregat `Rechnung` (Kopf mit Art, Eingang, geforderten Beträgen, `aufmassIds` als vollständige kumulierte Menge, `umlagen`, `sicherheitSatz`, `gewaehrleistungSatz`, `freigabe: { zahlbetrag } | null`); das Prüfergebnis wird gerechnet, nie gespeichert. (3) Aggregat `Kostenermittlung` je Projekt (Typ wandert von `kosten` nach `vertrag`). (4) `Positionsdaten.kostengruppe?` (eine KG je Position), `KostengruppeSetzen` als LvBefehl und als AuftragsLvBefehl. AuftragsLvBefehl ist genau: Anlegen, `NachtragUebernehmen`, `KostengruppeSetzen`. (5) EP-Kalkulation wird nicht gespeichert. (6) `vorlage?` (Muster-LV) und `textquelle?` (G-17); kein Typ für Textbausteine (ein Textbaustein ist ein Hinweistext oder eine Position eines Muster-LV). (7) Druckprofile nicht im Vertrag (Einstellung der App). (8) `AuftragsLvRepository` (Ticket 70) und Repositories für (1)–(3); deren ChangeSets sind ganze Aggregate `{ vorher, nachher }` ohne Summendeltas; ein Migrationsticket in `speicher` (A8). Neu: `Leistungsstand { positionen: { positionId, menge, gp }[], nachlass, nettoNachNachlass }` als Vertragstyp (`abrechnung` erzeugt, `kosten` verbraucht; A3). Kürzungsreihenfolge bei Überlauf: O3 auf zwei feste Profile → M3 nur lesen → A4 nur Kopfsummen → C4 schlicht. A1–A3, C2, C3 werden nie gekürzt (M4). Opus-Review von v1.4 gegen alle Verbraucher vor den Folgetickets (wie D-22 iv).
+Reason: In den Vertrag kommt nur, was zwei Pakete teilen (A4); Einfrieren und Leistungsstand fehlten in der ersten Liste.
+Reversible: yes  Touches: packages/vertrag und mechanische Zeilen in allen Verbrauchern
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-37 C3: Kostenkontrolle ohne Verteilung des Nachlasses
+Welle 5 · Ticket 82 · decided by: advisor
+Question: Wie gehen Nachlass und Positionen ohne Kostengruppe in die Kostenkontrolle ein?
+Decision: Zeilen: Kostengruppen (Baumsummen nach D-24), „ohne Kostengruppe“, „Nachlass“ (negativ, ohne Budget), Gesamt. Vergabe = Σ Positionssummen des Kerns (gerundete GP, nur zählende Positionen nach F4) je KG; Gesamt = Auftrags-LV netto nach Nachlass. Abrechnung = Σ `Leistungsstand.gp` je KG aus der Rechnung mit der höchsten Nummer (freigegeben oder nicht); Nachlasszeile = `Leistungsstand.nachlass`; Gesamt = deren `nettoNachNachlass`. Umlagen, Einbehalt und MwSt gehören nicht dazu. Abweichung = Vergabe − Budget je KG und gesamt. Netto durchgehend. Property-Test: Zeilensumme = Gesamt, auf den Cent.
+Reason: Eine anteilige Verteilung erzeugt Rundungsreste und Zahlen, die kein Beleg zeigt; getrennte Zeilen gehen auf den Cent auf.
+Reversible: yes (verteilte Ansicht später als Anzeigeoption)  Touches: packages/kosten, apps/web
+
+## D-38 Tor M4
+Welle 5 · Ticket 85, 91 · decided by: advisor
+Question: `plan.md` §4 definiert M4 nicht.
+Decision: Eine Playwright-E2E auf dem Weg von M3: LV `typisch` → zwei X84 → Zuschlag → Nachtrag N01 (Nachtrags-LV mit 2 Positionen, Angebot des AN, beauftragen) → Aufmaßblatt 1 (Formel 91, mit einer Nachtragsposition und einer Position > 110 %) → Soll/Ist zeigt den Befund, keinen < 90 % → Abschlagsrechnung 1 mit einer Umlage und Sicherheitseinbehalt, **Prozent**-Nachlass, Zahlbetrag = Sollwert, freigeben → Aufmaßblatt 2 + Abschlagsrechnung 2: Zahlbetrag = kumuliert − eingefrorener Zahlbetrag AR 1; Aufmaßblatt 1 danach ändern ändert AR 2, nicht den eingefrorenen Wert von AR 1 → Kostenkontrolle mit KG-Zuordnung und Kostenberechnung als Budget: Werte je KG, „ohne Kostengruppe“, Nachlass und Gesamt = Sollwerte → Neuladen behält alles. Sollwerte in einer Fixture mit Herleitung (N2, N5, VOB/B § 2 Abs. 3; C4). Dazu ein reiner Kettentest ohne Oberfläche (`vergabe` → `abrechnung` → `kosten`) mit derselben Fixture; ist die E2E wackelig, gelten Kettentest plus verkürzte E2E als Tor. A4, M3, C4, C5, O3 haben eigene Tests, nicht im M4-Weg. Absoluter Nachlass und Schlussrechnung: Golden-Tests in `abrechnung`.
+Reason: Das Tor muss LPH 6–8 mit hergeleiteten Zahlen zeigen; das Einfrieren ist das Verhalten, das ein reiner Summentest übersieht.
+Reversible: yes  Touches: plan.md §4, fixtures, apps/web/e2e
+
+## D-39 C4: Rundung der EP-Kalkulation
+Welle 5 · Ticket 78 · decided by: orchestrator
+Question: Wo wird bei der Zuschlagskalkulation gerundet?
+Decision: Einzelkosten ungerundet; Anteil je Kostenart = Einzelkosten × (1 + Satz/100) kaufmännisch auf 3 Stellen (EP 3, N3); EP = Σ der gerundeten Anteile. Nicht im M4-Weg.
+Reason: So gilt „Summe der Anteile = EP“ (Kernprüfung der EPA) immer; entspricht N2 (Summen aus gerundeten Werten).
+Reversible: yes  Touches: packages/kosten
