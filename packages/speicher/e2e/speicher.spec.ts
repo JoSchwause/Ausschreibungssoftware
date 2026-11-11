@@ -96,7 +96,8 @@ test.describe('Neuladen während des Schließens (Ticket 52)', () => {
   // Wie die App bei `pagehide`: `schliessen` anstoßen, nicht abwarten, sofort neu laden. Der alte Worker schließt
   // (im WAL mit Checkpoint) und gibt die Dateien frei, während der neue sie schon öffnen will und `gesperrt` bekommt.
   // Vor `preserveOnInitFailure` löschte der gescheiterte Versuch das Verzeichnis des Pools; gab der alte Worker die
-  // Dateien in diesem Moment frei, war das ganze Projekt weg (im Prüfstand etwa jeder dritte Lauf über 25 Runden).
+  // Dateien in diesem Moment frei, war das ganze Projekt weg. Das hängt am Zeitpunkt und an der Last: Unter hoher Last
+  // fiel ein Lauf von drei, auf ruhiger Maschine keiner von acht. Der Test ist eine Wache, kein sicherer Nachweis.
   test('25 Runden schreiben, Schließen anstoßen, neu laden: jeder Befehl ist noch da', async ({ page }) => {
     test.setTimeout(240_000);
     const f = ladeFixture('typisch');

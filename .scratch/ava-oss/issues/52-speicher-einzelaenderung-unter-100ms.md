@@ -138,3 +138,20 @@ App-Schicht, die Gesamtzeit grob (< 400 ms Median). Ehrlich: Im flüchtigen Kont
   `sqlite_sequence` wegen `AUTOINCREMENT`). Weniger ginge nur über das Schema (eigenes Ticket, Protokollform bleibt).
 - Im flüchtigen Kontext bleibt der Speicher unter Last bei 20–75 ms; härter prüfen ließe er sich nur mit weniger
   Schreibzugriffen (siehe oben).
+
+### Nachtrag: Datenverlust beim Neuladen gefunden und behoben (D-52.5)
+
+Die App-E2E fielen mit WAL etwa einmal in 20 Läufen an einem Neuladen direkt nach dem Schreiben: Das LV (in
+`projekt.spec.ts` das importierte Projekt) war danach **nicht mehr da** (`nicht-gefunden`); mit Rückroll-Journal 0 von
+30. Ursache im VFS `opfs-sahpool`: Scheitert das Einrichten (`gesperrt`, weil der Worker der vorigen Seite die Dateien
+noch hält), ruft er `removeVfs()` und löscht sein ganzes Verzeichnis rekursiv. Solange der alte Worker alle Dateien hält,
+scheitert das Löschen („removeVfs() failed with no recovery strategy“ in der Konsole); gibt er sie in genau diesem
+Moment frei, sind Datenbank oder WAL weg. Mit WAL dauert das Schließen beim `pagehide` länger (Checkpoint), das Fenster
+wird größer; die Lücke bestand aber auch vorher. Im Prüfstand nachgestellt (25 Runden schreiben, `schliessen` anstoßen,
+neu laden: unter hoher Last 1 von 3 Läufen mit leerem Projekt).
+
+- D-52.5 → `installOpfsSAHPoolVfs({ preserveOnInitFailure: true })`: Ein gescheitertes Einrichten gibt nur die Handles
+  frei und lässt die Dateien liegen. → Q5; die App öffnet bei `gesperrt` ohnehin mit einem neuen Worker erneut (E-14).
+  Danach App-E2E (die drei betroffenen Tests je 15 Mal) 45 von 45 grün. Neuer Browser-Test „Neuladen während des
+  Schließens“ (25 Runden) als Wache; er trifft das Zeitfenster nicht zuverlässig (auf ruhiger Maschine auch ohne die
+  Option grün).
