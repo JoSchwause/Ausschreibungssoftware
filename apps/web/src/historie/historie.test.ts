@@ -137,7 +137,7 @@ describe('Befehlsweg: Rückgängig und Wiederholen', () => {
     const { speicher, u, lv } = await aufbau();
     const wurzel = z(lv).leistungsverzeichnis.id;
     await lv.folge([position(u.ids.position(), wurzel, 'A'), position(u.ids.position(), wurzel, 'B')]);
-    const oz = z(lv).leistungsverzeichnis.knoten.map((k) => k.ordnungszahl);
+    const oz = z(lv).leistungsverzeichnis.knoten.map((k) => (k.art === 'hinweis' ? null : k.ordnungszahl));
     expect(oz[0]).not.toBeNull();
     expect(oz[1]).not.toBeNull();
     expect(oz[0]).not.toBe(oz[1]);

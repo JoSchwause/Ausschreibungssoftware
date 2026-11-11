@@ -6,7 +6,8 @@ import { Button, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { ProjektId, Projektuebersicht } from '@tethys/vertrag';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
-import { projektBefehlAnwenden } from '../lv/befehlsweg';
+import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
@@ -43,6 +44,8 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
   useEffect(() => {
     void laden();
   }, [laden]);
+  // Undo/Redo kann Projekte anlegen oder löschen: neu laden.
+  useEffect(() => befehlswegFuer(u).beiHistorie(() => void laden()), [u, laden]);
 
   const anlegen = async (e: SyntheticEvent): Promise<void> => {
     e.preventDefault();
@@ -50,7 +53,9 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
       setNameFehlt(true);
       return;
     }
-    const a = await projektBefehlAnwenden(u, null, projektAnlegenBefehl(u.ids, name.trim(), bauherr.trim()));
+    const a = await befehlswegFuer(u)
+      .projekt(null)
+      .befehl(projektAnlegenBefehl(u.ids, name.trim(), bauherr.trim()));
     if (pruefe(a) && a.zustand !== null) gehe(projektPfad(a.zustand.id));
   };
 
@@ -109,6 +114,7 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
       </form>
 
       <div className="projekt__werkzeuge">
+        <HistorieKnoepfe />
         <input
           ref={datei}
           type="file"

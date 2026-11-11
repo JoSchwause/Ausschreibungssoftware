@@ -25,7 +25,8 @@ export function KopfdatenDialog(props: {
   lv: Leistungsverzeichnis;
   offen: boolean;
   onSchliessen: () => void;
-  befehl: (b: LvBefehl) => Promise<Ausgang<unknown>>;
+  /** Die Befehle des Übernehmens, nacheinander und als ein Undo-Schritt (Ticket 48). */
+  folge: (befehle: readonly LvBefehl[]) => Promise<Ausgang<unknown>[]>;
   abweisung: (a: Ausgang<unknown>) => void;
 }): ReactElement {
   const { offen, onSchliessen } = props;
@@ -45,10 +46,11 @@ export function KopfdatenDialog(props: {
 function Inhalt(props: {
   lv: Leistungsverzeichnis;
   onSchliessen: () => void;
-  befehl: (b: LvBefehl) => Promise<Ausgang<unknown>>;
+  /** Die Befehle des Übernehmens, nacheinander und als ein Undo-Schritt (Ticket 48). */
+  folge: (befehle: readonly LvBefehl[]) => Promise<Ausgang<unknown>[]>;
   abweisung: (a: Ausgang<unknown>) => void;
 }): ReactElement {
-  const { lv, onSchliessen, befehl, abweisung } = props;
+  const { lv, onSchliessen, folge, abweisung } = props;
   const formId = useId();
   const [e, setE] = useState<KopfdatenEntwurf>(() => kopfdatenEntwurf(lv));
   const [gesendet, setGesendet] = useState(false);
@@ -57,8 +59,7 @@ function Inhalt(props: {
   const uebernehmen = async (): Promise<void> => {
     const r = kopfdatenBefehle(lv, e);
     let ok = true;
-    for (const b of r.befehle) {
-      const a = await befehl(b);
+    for (const a of await folge(r.befehle)) {
       if (!a.ok) {
         ok = false;
         abweisung(a);

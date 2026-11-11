@@ -2,7 +2,7 @@
 // Seite `/lv/<id>`: das LV im Grid. Jede Änderung, aus dem Grid wie von den Schaltflächen, geht als genau ein Befehl
 // über die Sitzung durch Kern und Speicher (A5, U7); angezeigt wird erst der gespeicherte Stand (Q5).
 
-import { lvPruefen } from '@tethys/kern';
+import { kopieBauen, lvPruefen } from '@tethys/kern';
 import { Button, Tastenkuerzel, useToast } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
@@ -23,15 +23,19 @@ import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { lvAnsichtBauen } from './ansicht';
-import { lvSitzung, type Ausgang, type LvSitzung } from './befehlsweg';
+import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { texte as htexte } from '../historie/texte';
+import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
 import { KopfdatenDialog } from './KopfdatenDialog';
 import { MerkmaleDialog } from './MerkmaleDialog';
 import { useMeldungen } from './meldungen';
+import { PapierkorbDialog } from './PapierkorbDialog';
 import { PositionsDialog } from './PositionsDialog';
 import { PruefPanel, type PruefPanelSteuerung } from './PruefPanel';
 import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from './pruefung';
+import { StaendeDialog } from './StaendeDialog';
 import { SummenFelder } from './SummenFelder';
 import { texte } from './texte';
 import { gridZahlen } from './zahlen';
@@ -72,7 +76,7 @@ export function LvSeite({
       if (!aktiv) return;
       setLage(
         r.ok
-          ? { art: 'da', sitzung: lvSitzung(u, r.wert.leistungsverzeichnis.projektId, r.wert) }
+          ? { art: 'da', sitzung: befehlswegFuer(u).lv(r.wert.leistungsverzeichnis.projektId, r.wert) }
           : { art: 'fehlt' },
       );
     });
@@ -95,14 +99,46 @@ export function LvSeite({
       </div>
     );
   }
-  return <LvBearbeiten sitzung={lage.sitzung} gehe={gehe} />;
+  return <LvAngemeldet id={id} sitzung={lage.sitzung} gehe={gehe} />;
 }
 
-function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: string) => void }): ReactElement {
+/** Meldet die Sitzung beim Befehlsweg an (Undo/Redo an diesem LV) und zeigt das LV, solange es es gibt. */
+function LvAngemeldet({
+  id,
+  sitzung,
+  gehe,
+}: {
+  id: LeistungsverzeichnisId;
+  sitzung: LvSitzung;
+  gehe: (pfad: string) => void;
+}): ReactElement {
+  const u = useUmgebung();
+  useEffect(() => befehlswegFuer(u).anmelden(id, sitzung), [u, id, sitzung]);
+  const zustand = useSyncExternalStore(sitzung.abonnieren, sitzung.lesen);
+  if (zustand === null) {
+    // Ein Rückgängig hat das LV gelöscht (z. B. sein Anlegen zurückgenommen); Wiederholen holt es zurück.
+    return (
+      <div className="seite">
+        <h1>{texte.seite.nichtGefunden}</h1>
+      </div>
+    );
+  }
+  return <LvBearbeiten sitzung={sitzung} zustand={zustand} gehe={gehe} />;
+}
+
+function LvBearbeiten({
+  sitzung,
+  zustand,
+  gehe,
+}: {
+  sitzung: LvSitzung;
+  zustand: LvZustand;
+  gehe: (pfad: string) => void;
+}): ReactElement {
   const u = useUmgebung();
   const { pruefe } = useMeldungen();
-  const zustand = useSyncExternalStore(sitzung.abonnieren, sitzung.lesen) as LvZustand;
   const lv = zustand.leistungsverzeichnis;
+  const papierkorb = zustand.papierkorb ?? [];
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const [hinweise, setHinweise] = useState<readonly Befehlshinweis[]>([]);
   const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
@@ -112,6 +148,8 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   const [merkmale, setMerkmale] = useState<Position | null>(null);
   const [dialog, setDialog] = useState<PositionId | null>(null);
   const [kopfdaten, setKopfdaten] = useState(false);
+  const [papierkorbOffen, setPapierkorbOffen] = useState(false);
+  const [staendeOffen, setStaendeOffen] = useState(false);
   const [panelOffen, setPanelOffen] = useState(true);
   const panel = useRef<PruefPanelSteuerung>(null);
   const { zeige } = useToast();
@@ -136,19 +174,57 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
   const senden = useCallback(
     async (befehl: LvBefehl): Promise<boolean> => {
       const a = await sitzung.befehl(befehl);
+      if (!a.ok && a.abweisung.art === 'speicher' && a.abweisung.fehler.code === 'konflikt') {
+        // D-12: Ein Angebot verweist auf eine Position im Eintrag; sonst ein abhängiger Stand.
+        const papier = befehl.art === 'PapierkorbeintragEntfernen' || befehl.art === 'PapierkorbLeeren';
+        zeige({
+          titel: texte.meldungen.nichtGespeichert,
+          beschreibung: papier ? htexte.papierkorb.konflikt : texte.speicherfehler.konflikt,
+          art: 'fehler',
+        });
+        return false;
+      }
       if (!pruefe(a)) return false;
       setHinweise(a.hinweise);
       return true;
     },
+    [sitzung, pruefe, zeige],
+  );
+
+  /** Mehrere Befehle aus einer Benutzeraktion: ein Undo-Schritt (Einfügen aus der Zwischenablage). */
+  const sendenFolge = useCallback(
+    async (befehle: readonly LvBefehl[]): Promise<void> => {
+      const aus = await sitzung.folge(befehle);
+      const neu: Befehlshinweis[] = [];
+      for (const a of aus) if (pruefe(a)) neu.push(...a.hinweise);
+      setHinweise(neu);
+    },
     [sitzung, pruefe],
   );
 
-  /** Ein Befehl mit seinem Ausgang (für die Dialoge, die Formfehler am Feld zeigen). */
-  const befehl = useCallback(
-    async (b: LvBefehl): Promise<Ausgang<unknown>> => {
-      const a = await sitzung.befehl(b);
-      if (a.ok) setHinweise(a.hinweise);
-      return a;
+  /** Strg+V nach Strg+C im selben Grid: die Kopie baut der Kern mit neuen Kennungen der App (Ticket 42). */
+  const kopieEinfuegen = (knotenIds: readonly KnotenId[], ort: Einfuegeort): void => {
+    const z = sitzung.zustand;
+    if (z === null) return;
+    let knoten;
+    try {
+      knoten = kopieBauen(z, knotenIds, u.ids);
+    } catch {
+      // Die kopierten Zeilen gibt es nicht mehr (gelöscht oder rückgängig gemacht).
+      zeige({ titel: texte.meldungen.kopieFehlt, art: 'fehler' });
+      return;
+    }
+    void senden({ art: 'KnotenEinfuegen', ort, knoten });
+  };
+
+  /** Befehle mit ihrem Ausgang, ein Undo-Schritt (für die Dialoge, die Formfehler am Feld zeigen). */
+  const folge = useCallback(
+    async (bs: readonly LvBefehl[]): Promise<Ausgang<unknown>[]> => {
+      const aus = await sitzung.folge(bs);
+      const neu: Befehlshinweis[] = [];
+      for (const a of aus) if (a.ok) neu.push(...a.hinweise);
+      setHinweise(neu);
+      return aus;
     },
     [sitzung],
   );
@@ -303,6 +379,7 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         </a>
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge.leiste}>
+        <HistorieKnoepfe />
         <Button
           onClick={() => {
             titelAnlegen(false);
@@ -344,6 +421,20 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         >
           {texte.pruefung.titel} <Tastenkuerzel tasten={texte.pruefung.tasten} />
         </Button>
+        <Button
+          onClick={() => {
+            setPapierkorbOffen(true);
+          }}
+        >
+          {htexte.papierkorb.knopf} ({papierkorb.length})
+        </Button>
+        <Button
+          onClick={() => {
+            setStaendeOffen(true);
+          }}
+        >
+          {htexte.staende.knopf}
+        </Button>
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">
@@ -355,9 +446,8 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
             hinweise={hinweise}
             {...(sprungziel ? { sprungziel } : {})}
             onBefehl={(b) => void senden(b)}
-            onBefehlsfolge={(folge) => {
-              for (const b of folge) void senden(b);
-            }}
+            onBefehlsfolge={(bs) => void sendenFolge(bs)}
+            onKopieEinfuegen={kopieEinfuegen}
             onAuswahlChange={(ids) => {
               const letzte = ids.at(-1);
               if (letzte !== undefined) aktiv.current = letzte;
@@ -395,10 +485,27 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         onSchliessen={() => {
           setDialog(null);
         }}
-        befehl={befehl}
+        folge={folge}
         speicherAbweisung={(a) => {
           pruefe(a);
         }}
+      />
+      <PapierkorbDialog
+        offen={papierkorbOffen}
+        onSchliessen={() => {
+          setPapierkorbOffen(false);
+        }}
+        papierkorb={papierkorb}
+        senden={senden}
+      />
+      <StaendeDialog
+        lvId={lv.id}
+        offen={staendeOffen}
+        onSchliessen={() => {
+          setStaendeOffen(false);
+        }}
+        senden={senden}
+        gehe={gehe}
       />
       <KopfdatenDialog
         lv={lv}
@@ -406,7 +513,7 @@ function LvBearbeiten({ sitzung, gehe }: { sitzung: LvSitzung; gehe: (pfad: stri
         onSchliessen={() => {
           setKopfdaten(false);
         }}
-        befehl={befehl}
+        folge={folge}
         abweisung={(a) => {
           pruefe(a);
         }}
