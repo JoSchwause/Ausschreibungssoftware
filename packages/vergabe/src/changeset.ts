@@ -121,20 +121,14 @@ export function angebotChangeSetAnwenden(
   };
 }
 
-const LEERES_VORHER = {
-  positionen: [],
-  gliederungen: [],
-  gesamt: null,
-  entfernt: { positionen: [], gliederungen: [] },
-} as const;
-
+// v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht: `LEERES_VORHER` entfällt)
 /**
  * Kehrt ein ChangeSet um, ohne den Vorzustand zu kennen: alte und neue Stände tauschen, Hinzugefügtes wird entfernt
  * und umgekehrt. Anlegen und Löschen sind Gegenstücke. Doppelte Umkehrung ergibt das ChangeSet.
  */
 export function angebotChangeSetUmkehren(cs: AngebotChangeSet): AngebotChangeSet {
   const s = cs.summen;
-  const v = s.vorher ?? LEERES_VORHER;
+  const v = s.vorher; // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht)
   const altP = new Set<string>(v.positionen.map(positionsKennung));
   const altG = new Set<string>(v.gliederungen.map(gliederungsKennung));
   const summen: Summenaenderung = {
