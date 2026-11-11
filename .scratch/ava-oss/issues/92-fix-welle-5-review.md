@@ -1,6 +1,6 @@
 # 92: Behebung des Wellen-Reviews Welle 5
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 91
 nur dieses Ticket; 91 schreibt `apps/web/e2e/m4.spec.ts`, `m3.spec.ts`, `src/m4-kette.test.ts` – diese nicht anfassen)
@@ -44,8 +44,8 @@ In dieser Reihenfolge, je Befund ein Commit (Befundnummer in der Nachricht). Ers
 
 ## Acceptance criteria
 
-- [ ] Je Befund ein Commit; Ticket-Comments: Befund → Commit, nicht Erledigtes mit Grund
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; E2E `nachtrag`, `preisspiegel`,
+- [x] Je Befund ein Commit; Ticket-Comments: Befund → Commit, nicht Erledigtes mit Grund
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; E2E `nachtrag`, `preisspiegel`,
       `projekt`, `rechnung`, `kosten`, `aufmass`, `vorlage`, `druckprofil`, `undo`, `m3` grün
 
 ## Comments
@@ -113,3 +113,18 @@ Nicht in diesem Ticket (D-47): P1 und P4 sind die Folgetickets 93 und 94.
   Nachtragsangaben, ist die Änderung auch auf der Seite des Auftrags-LV sichtbar (Nachtragsliste); dort bleibt die App.**
   Grund: dieselbe Regel wie „nur Kopf, Projektseite offen“; keine Sonderregel für Schritte, Rückgängig von „Nachtrag anlegen“
   führt weiter zur Projektseite.
+
+### Prüfung
+
+Nach dem Merge von `integration/welle-5` (`c835924`, mit Ticket 91): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint`
+(samt Lizenz- und Clean-Room-Prüfung), `pnpm typecheck`, `pnpm test` grün: Vitest 205 Dateien, 2606 Tests bestanden,
+3 übersprungen wie zuvor; kein Budget fiel, keines gelockert. E2E (`PW_WEB_PORT=4395`) `nachtrag`, `preisspiegel`,
+`projekt`, `rechnung`, `kosten`, `aufmass`, `vorlage`, `druckprofil`, `undo`, `m3`: 24/24 grün; zusätzlich `m4.spec.ts`
+(Ticket 91) grün.
+
+## Answer
+
+Branch `welle-5/92-review-fix` (enthält `integration/welle-5` bis `1443c21`). Alle 9 Pflicht- und alle 9 Sollpunkte sind
+erledigt, je Befund ein Commit (Liste oben). Entscheidungen D-92.1 bis D-92.8. Folgeticket-Stichpunkte:
+`LvUebersicht.netto` im Vertrag, damit die Projektseite das Netto nicht nachladen muss (D-92.4); zurückgehaltene
+Druckprofile sichern oder entfernen (D-92.6). P1 und P4 bleiben die Tickets 93 und 94 (D-47).
