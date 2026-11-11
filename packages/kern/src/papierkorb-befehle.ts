@@ -23,7 +23,14 @@ import type {
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
-import { obenFehler, ortAufloesen, platzieren, wurzelFehler, wurzelnVon } from './platzieren';
+import {
+  lageAenderungen,
+  obenFehler,
+  ortAufloesen,
+  platzieren,
+  wurzelFehler,
+  wurzelnVon,
+} from './platzieren';
 import type { Gruppe, Ziel } from './platzieren';
 import { baueIndex, ebenenHoehe, indexVon, unterbaum } from './struktur';
 import type { Baumindex } from './struktur';
@@ -48,21 +55,6 @@ function changeSet(
       entfernt: papierkorb.entfernt ?? [],
     },
   };
-}
-
-/** Geschwister, deren Lage sich in den neuen Listen ändert (nur Knoten des Baums, nicht `ausser`). */
-function lageAenderungen(
-  listen: ReadonlyMap<string, readonly Knoten[]>,
-  ausser: ReadonlySet<string>,
-): Aenderung[] {
-  const aus: Aenderung[] = [];
-  for (const [eltern, liste] of listen) {
-    liste.forEach((k, i) => {
-      if (ausser.has(k.id) || (k.elternId === eltern && k.reihenfolge === i)) return;
-      aus.push({ vorher: k, nachher: { ...k, elternId: eltern as Knoten['elternId'], reihenfolge: i } });
-    });
-  }
-  return aus;
 }
 
 const eintragFehlt = (eintragId: string): Ergebnis<never, Befehlsfehler> =>

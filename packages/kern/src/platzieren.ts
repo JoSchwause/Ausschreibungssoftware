@@ -34,6 +34,8 @@ export interface Gruppe {
   readonly wurzeln: readonly Knoten[];
 }
 
+type Aenderung = { readonly vorher: Knoten; readonly nachher: Knoten };
+
 const elternArtVon = (idx: Baumindex, eltern: string): ElternArt | undefined =>
   eltern === idx.lvId ? 'wurzel' : idx.byId.get(eltern)?.art;
 
@@ -126,6 +128,21 @@ export function platzieren(
     l.splice(Math.min(g.index, l.length), 0, ...g.wurzeln);
   }
   return listen;
+}
+
+/** Geschwister, deren Lage sich in den neuen Listen ändert (nur Knoten des Baums, nicht `ausser`). */
+export function lageAenderungen(
+  listen: ReadonlyMap<string, readonly Knoten[]>,
+  ausser: ReadonlySet<string>,
+): Aenderung[] {
+  const aus: Aenderung[] = [];
+  for (const [eltern, liste] of listen) {
+    liste.forEach((k, i) => {
+      if (ausser.has(k.id) || (k.elternId === eltern && k.reihenfolge === i)) return;
+      aus.push({ vorher: k, nachher: { ...k, elternId: eltern as Knoten['elternId'], reihenfolge: i } });
+    });
+  }
+  return aus;
 }
 
 /**

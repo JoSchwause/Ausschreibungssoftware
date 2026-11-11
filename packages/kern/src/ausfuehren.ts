@@ -34,6 +34,7 @@ import { einheitspreisanteileSetzen } from './epa';
 import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen } from './kopfdaten-befehle';
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
+import { knotenEinfuegen, knotenlisteVerschieben } from './einfuegen-befehle';
 import { lvStandAnlegen } from './lv-stand';
 import {
   knotenInPapierkorbLegen,
@@ -91,15 +92,14 @@ export const BEFEHLS_HANDLER = {
   PapierkorbeintragWiederherstellen: papierkorbeintragWiederherstellen,
   PapierkorbeintragEntfernen: papierkorbeintragEntfernen,
   PapierkorbLeeren: papierkorbLeeren,
+  KnotenEinfuegen: knotenEinfuegen,
+  KnotenlisteVerschieben: knotenlisteVerschieben,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
 /** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
-export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
-  KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-};
+export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {};
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 
