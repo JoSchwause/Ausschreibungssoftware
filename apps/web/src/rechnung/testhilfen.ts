@@ -21,8 +21,8 @@ export interface Auftragsstand {
   readonly auftrag: AuftragsLvZustand;
 }
 
-/** Projekt, LV `typisch`, Angebot von Bieter A, Zuschlag: ein Auftrags-LV im Speicher. */
-export async function mitAuftrag(): Promise<Auftragsstand> {
+/** Projekt, LV `typisch`, Angebot von Bieter A (oder B), Zuschlag ohne Wahl: ein Auftrags-LV im Speicher. */
+export async function mitAuftrag(bieter: 'a' | 'b' = 'a'): Promise<Auftragsstand> {
   const u = testUmgebung(await speicherImSpeicher());
   const weg = befehlswegFuer(u);
   const p = await weg.projekt(null).befehl({
@@ -42,8 +42,9 @@ export async function mitAuftrag(): Promise<Auftragsstand> {
   });
   if (!l.ok || s.zustand === null) throw new Error('LV');
   const lv = s.zustand;
-  const bytes = new Uint8Array(readFileSync(new URL('fixtures/angebote/typisch-bieter-a.x84', wurzel)));
-  const v = angebotLesen(bytes, 'typisch-bieter-a.x84', lv, u.ids);
+  const datei = `typisch-bieter-${bieter}.x84`;
+  const bytes = new Uint8Array(readFileSync(new URL(`fixtures/angebote/${datei}`, wurzel)));
+  const v = angebotLesen(bytes, datei, lv, u.ids);
   const plan = angebotAnlegenPlan(v, v.bieterName, p.zustand, u.ids);
   if (plan === null) throw new Error('Angebot');
   const a = await weg.angebotAnlegen(p.zustand, lv, plan.neuerBieter, plan.angebot);

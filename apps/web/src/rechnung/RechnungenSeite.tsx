@@ -156,7 +156,7 @@ function Ansicht({
     async (auftraege: readonly Rechnungsauftrag[]): Promise<boolean> => {
       const aus: Ausgang<readonly Rechnung[]>[] = await sitzung.folge(auftraege);
       const abgewiesen = aus.find((a) => !a.ok);
-      if (abgewiesen !== undefined && !abgewiesen.ok) {
+      if (abgewiesen !== undefined) {
         zeige({ ...rechnungsabweisung(abgewiesen.abweisung), art: 'fehler' });
         return false;
       }
