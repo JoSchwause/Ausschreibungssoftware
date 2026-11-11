@@ -56,6 +56,9 @@ importers:
       '@tethys/kern':
         specifier: workspace:*
         version: link:../../packages/kern
+      '@tethys/kosten':
+        specifier: workspace:*
+        version: link:../../packages/kosten
       '@tethys/mengen':
         specifier: workspace:*
         version: link:../../packages/mengen

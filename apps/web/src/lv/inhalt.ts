@@ -3,7 +3,7 @@
 // an den GAEB-Writer oder in die Form eines LV-Zustands gibt, nimmt den Kopf von hier; so geht kein Kopffeld still
 // verloren (Q5), wenn der Vertrag eines hinzufügt: `KOPF_FELDER` muss jedes Feld von `LvInhaltKopf` nennen.
 
-import type { Leistungsverzeichnis, LvInhalt, LvInhaltKopf } from '@tethys/vertrag';
+import type { Leistungsverzeichnis, LvInhalt, LvInhaltKopf, LvKopf } from '@tethys/vertrag';
 
 /** Jedes Feld von `LvInhaltKopf`; ein neues Feld im Vertrag macht diese Liste zum Typfehler. */
 const KOPF_FELDER = {
@@ -26,7 +26,17 @@ export function inhaltKopf(k: LvInhaltKopf): LvInhaltKopf {
   return kopf as LvInhaltKopf;
 }
 
-/** Das LV als Inhalt für den GAEB-Writer: Kopf, Wurzel (die Kennung des LV) und Knoten. */
-export function lvInhalt(l: Leistungsverzeichnis): LvInhalt {
-  return { ...inhaltKopf(l), wurzelId: l.id, knoten: l.knoten };
+/**
+ * Das LV als Inhalt für den GAEB-Writer: Kopf, Wurzel (die Kennung des LV) und Knoten. Ticket 90 (D-84.4): `nachtrag`
+ * und `vorlage` (v1.4) gehen mit, wenn das LV sie trägt; GAEB hat dafür nichts, der Writer verwirft sie mit Warnung
+ * (`export-verworfen`), die der Nutzer beim Export sieht (Q5). Fehlende Felder bleiben weg (der Writer prüft das Feld).
+ */
+export function lvInhalt(l: Leistungsverzeichnis): LvInhalt & Partial<Pick<LvKopf, 'nachtrag' | 'vorlage'>> {
+  return {
+    ...inhaltKopf(l),
+    wurzelId: l.id,
+    knoten: l.knoten,
+    ...(l.nachtrag === undefined ? {} : { nachtrag: l.nachtrag }), // Ticket 90
+    ...(l.vorlage === undefined ? {} : { vorlage: l.vorlage }), // Ticket 90
+  };
 }

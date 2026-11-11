@@ -10,7 +10,10 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
 import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
+import { kostenPfad } from '../kosten/pfad'; // Ticket 89
+import { texte as kostenTexte } from '../kosten/texte'; // Ticket 89
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
@@ -262,6 +265,18 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           {htexte.loeschen.projektKnopf}
         </Button>
         <Button onClick={() => void exportieren()}>{texte.projekt.exportieren}</Button>
+        {/* Ticket 89 */}
+        <a
+          className="tx-button tx-button--schlicht"
+          href={hrefFuer(kostenPfad(projekt.id))}
+          onClick={(e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            gehe(kostenPfad(projekt.id));
+          }}
+        >
+          {kostenTexte.projekt.kosten}
+        </a>
         <GaebEinlesen projekt={projekt} onAngelegt={() => void laden()} />
         <a
           className="tx-button tx-button--schlicht"
@@ -293,6 +308,12 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
                   {lv.name}
                 </a>
                 <NachtragKennzeichen nachtrag={lv.nachtrag} /> {/* Ticket 86 */}
+                {/* Ticket 90: Kennzeichen Muster-LV */}
+                {lv.vorlage === true ? (
+                  <span className="projekt__kennzeichen" data-testid="kennzeichen-vorlage">
+                    {vorlageTexte.kennzeichen}
+                  </span>
+                ) : null}
                 <span className="projekt__betrag" aria-label={`${texte.lvs.netto} ${lv.name}`}>
                   {formatiereBetragDe(z.summen.gesamt.netto)} €
                 </span>

@@ -7,6 +7,8 @@ import { Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
 import type { Leistungsverzeichnis, LvBefehl } from '@tethys/vertrag';
 import { useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
+import { vorlageBefehl } from '../vorlage/logik'; // Ticket 90
+import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
 import type { Ausgang } from './befehlsweg';
 import {
   AUFTRAGGEBER_FELDER,
@@ -54,12 +56,14 @@ function Inhalt(props: {
   const formId = useId();
   const [e, setE] = useState<KopfdatenEntwurf>(() => kopfdatenEntwurf(lv));
   const [gesendet, setGesendet] = useState(false);
+  const [vorlage, setVorlage] = useState(lv.vorlage === true); // Ticket 90
   const { fehler } = useMemo((): { fehler: Feldfehler } => kopfdatenBefehle(lv, e), [lv, e]);
 
   const uebernehmen = async (): Promise<void> => {
     const r = kopfdatenBefehle(lv, e);
     let ok = true;
-    for (const a of await folge(r.befehle)) {
+    const vb = vorlageBefehl(lv, vorlage); // Ticket 90
+    for (const a of await folge(vb === null ? r.befehle : [...r.befehle, vb])) {
       if (!a.ok) {
         ok = false;
         abweisung(a);
@@ -123,6 +127,18 @@ function Inhalt(props: {
           )}
         </div>
       </fieldset>
+      {/* Ticket 90: Muster-LV */}
+      <label className="lv__option">
+        <input
+          type="checkbox"
+          checked={vorlage}
+          onChange={(x) => {
+            setVorlage(x.target.checked);
+          }}
+        />
+        {vorlageTexte.kennzeichnen.label}
+      </label>
+      <p className="lv-dialog__hinweis">{vorlageTexte.kennzeichnen.hinweis}</p>
       <p className="lv__meldung" role="status">
         {gesendet && Object.keys(fehler).length > 0 ? texte.dialog.nichtUebernommen : ''}
       </p>
