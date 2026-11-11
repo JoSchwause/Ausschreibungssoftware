@@ -1,6 +1,6 @@
 # 70: `vertrag` v1.4: Auftrags-LV, Nachtrag, Aufmaß, Rechnung, Kostenermittlung
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 5 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: –
@@ -286,3 +286,33 @@ Umkehr-Zweig: `Teil.changeSet` in `historie/historie.ts` nennt nur die vier bish
   `freigabeMoeglich` vor `RechnungFreigeben`. 89: `KostengruppeSetzen` mit dem richtigen Aggregat im Protokolleintrag
   (`leistungsverzeichnis` bzw. `auftrags-leistungsverzeichnis`). 90: `VorlageSetzen`, `TextquelleSetzen`; Liste der Vorlagen
   (Offene Typfrage 3).
+
+## Answer
+
+`vertrag` v1.4 auf Branch `welle-5/70-vertrag-v1.4` (enthält `integration/welle-5` bis `f2cc53d`). Neue Typen:
+
+- **Auftrags-LV:** `AuftragsLvUebersicht`, `AuftragsLvRepository` (`Speicher.auftragsLeistungsverzeichnisse`);
+  `AuftragsLvBefehl` = Anlegen | `NachtragUebernehmen` | `KostengruppeSetzen`; `AuftragsLvChangeSetAnwenden`/`…Umkehren`.
+- **Nachtrag (D-35):** `Nachtragsstatus`, `Nachtragsangaben`, `LvKopf.nachtrag?`, LvBefehl `NachtragsangabenSetzen`.
+- **Kostengruppe (C2):** Marke `Kostengruppennummer` (aus `kosten`), `Positionsdaten.kostengruppe?`, `KostengruppeSetzen`
+  (derselbe Typ im LV und im Auftrags-LV).
+- **Muster-LV, Textquelle (C5, D-40):** `LvKopf.vorlage?: true`, `Positionsdaten.textquelle?`, `VorlageSetzen`,
+  `TextquelleSetzen`.
+- **Aufmaß (A2):** `AufmassId`, `AufmassKopf`, `Aufmassposition`, `Aufmass`, `AufmassZustand`, `AufmassBefehl` (5 Befehle,
+  `AufmassAnlegen` ist Massenbefehl), `AufmassChangeSet` (ganzes Aggregat), `AufmassRepository`.
+- **Rechnung (A3, D-34):** `RechnungId`, `Rechnungsart`, `Umlage`, `Rechnung` (eingefrorener `freigabe.zahlbetrag`),
+  `RechnungZustand`, `RechnungBefehl` (7 Befehle samt `RechnungsfreigabeAufheben`), `RechnungChangeSet`,
+  `RechnungRepository`, Fehlercode `rechnung-freigegeben`.
+- **Leistungsstand (D-37):** `Leistungsstand` (`abrechnung` erzeugt, `kosten` liest, nie gespeichert).
+- **Kostenermittlung (C3):** `KostenermittlungId`, `Kostenermittlungsstufe`, `Kostenermittlungseintrag`, `Kostenermittlung`,
+  `KostenermittlungZustand`, `KostenermittlungBefehl` (5), `KostenermittlungChangeSet`, `KostenermittlungUebersicht`,
+  `KostenermittlungRepository`.
+- **Rand:** `AggregatBezug`, `Befehl`, `ChangeSet` erweitert; je neuem Aggregat `…BefehlAusfuehren`, `…ChangeSetAnwenden`,
+  `…ChangeSetUmkehren`; `Projektdatei.aufmasse?`/`.rechnungen?`/`.kostenermittlungen?`; `IdQuelle.aufmass()`,
+  `.rechnung()`, `.kostenermittlung()`; `MASSENBEFEHLSARTEN` + `AufmassAnlegen`.
+
+Lesarten stehen am Typ; Entscheidungen D-70.1 bis D-70.11, 15 Offene Typfragen, die Liste der mechanischen Anpassungen und
+die Folgearbeit je Ticket (71, 79–84, Vergabe, App) unter Comments; Glossar ergänzt. Prüfung nach dem Merge:
+`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Vitest 154 Dateien, 2172 Tests
+bestanden, 2 übersprungen wie zuvor; Fixtures 22/22). Ausstehend: Opus-Review von v1.4 gegen alle Verbraucher vor Stufe 2
+(D-36, Schnitt Welle 5).
