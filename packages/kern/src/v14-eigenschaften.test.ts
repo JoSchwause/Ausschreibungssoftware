@@ -7,7 +7,7 @@
 // angenommenen Befehl gilt:
 //  - anwenden ∘ umkehren = Identität (die Umkehrung stellt den Vorzustand exakt her), die Umkehrung der Umkehrung ist das
 //    ChangeSet (Summenlisten als Mengen);
-//  - Summen = Neuberechnung (`summenBerechnen`), Invarianten halten (`pruefeLvInvarianten`);
+//  - Summen = Neuberechnung (`summenBerechnen`), Invarianten halten (`pruefeLvInvarianten`, am Auftrags-LV `baumfehler`);
 //  - Normalform: nie `''` als Textquelle, nie `vorlage: false`, jede Kostengruppe in der Form 100 bis 999.
 // Abgewiesene Befehle ändern nichts (es entsteht kein ChangeSet).
 
@@ -39,6 +39,7 @@ import {
   auftragsLvChangeSetAnwenden,
   auftragsLvChangeSetUmkehren,
   changeSetUmkehren,
+  baumfehler,
   kopieBauen,
   lvBefehlAusfuehren,
   pruefeLvInvarianten,
@@ -398,7 +399,7 @@ describe('Vertrag v1.4 im Auftrags-LV: Folgen aus NachtragUebernehmen und Kosten
           );
           const a = neu.auftragsLeistungsverzeichnis;
           expect(neu.summen).toEqual(summenBerechnen(a));
-          expect(pruefeLvInvarianten(a)).toEqual([]);
+          expect(baumfehler(AID, a.knoten)).toEqual([]);
           expect(normalformFehler(a, a.knoten)).toEqual([]);
           z = neu;
         });

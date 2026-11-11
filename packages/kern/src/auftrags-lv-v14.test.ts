@@ -19,7 +19,7 @@ import {
   auftragsLvBefehlAusfuehren,
   auftragsLvChangeSetAnwenden,
   auftragsLvChangeSetUmkehren,
-  pruefeLvInvarianten,
+  baumfehler,
   summenBerechnen,
 } from './index';
 import {
@@ -226,7 +226,7 @@ describe('NachtragUebernehmen (D-35, D-70.6)', () => {
 
     const neu = wende(z, uebernehmen());
     expect(neu.summen).toEqual(summenBerechnen(neu.auftragsLeistungsverzeichnis));
-    expect(pruefeLvInvarianten(neu.auftragsLeistungsverzeichnis)).toEqual([]);
+    expect(baumfehler(AID, neu.auftragsLeistungsverzeichnis.knoten)).toEqual([]);
     expect(neu.auftragsLeistungsverzeichnis.knoten.at(-4)?.id).toBe(NT);
   });
 
