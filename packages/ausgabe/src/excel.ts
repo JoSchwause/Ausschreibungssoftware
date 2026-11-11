@@ -4,7 +4,7 @@
 // und kommen über `@tethys/dezimal` zurück (N1, N4); was sich nicht eindeutig lesen lässt, wird ein Befund und nie
 // still gerundet oder verworfen (Q5).
 
-import { leseAustausch, parseDe } from '@tethys/dezimal';
+import { NULL_EINHEITSPREIS, leseAustausch, parseDe } from '@tethys/dezimal';
 import type {
   Angebotsposition,
   Befundort,
@@ -303,8 +303,6 @@ function zahlzelle<A extends 'einheitspreis' | 'prozent'>(
   };
 }
 
-const NULL_EP = '0.000' as Einheitspreis;
-
 /** Liest den Rücklauf eines Bieters zu diesem LV. Nichts wird still verworfen: Jede Abweichung ist ein Befund. */
 export function excelRuecklaufLesen(bytes: Uint8Array, zustand: LvZustand): ExcelRuecklauf {
   const lv = zustand.leistungsverzeichnis;
@@ -472,7 +470,7 @@ export function excelRuecklaufLesen(bytes: Uint8Array, zustand: LvZustand): Exce
         ? {
             positionId,
             status: 'angeboten',
-            einheitspreis: epWert ?? NULL_EP,
+            einheitspreis: epWert ?? NULL_EINHEITSPREIS,
             epa: null,
             zuschlagssatz: satzWert,
           }
