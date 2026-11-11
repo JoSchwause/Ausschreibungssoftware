@@ -4,6 +4,7 @@
 // Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele; zuschlag (Ticket 37).
 // Seit Ticket 51 tragen typisch, typisch-angebote und gross ihre Zuschlagspositionen in GAEB-Form (Satz und Bezug).
 // Ticket 69: je Bieter eine X84 unter angebote/ und Preisspiegel-Sollwerte in typisch-angebote.json.
+// Ticket 85: typisch-abrechnung.json, die Sollwerte des Tors M4 (D-38): Zuschlag, Nachtrag, Aufmaß, Rechnungen, Kosten.
 // Aufruf: node fixtures/erzeugen.mjs
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
@@ -14,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisserSollwerte,
   berechneZuschlagSollwerte, berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
+  kumulierteMengen, leistungsstandBerechnen, abschlagsketteBerechnen, sollIstBerechnen, kostenkontrolleBerechnen,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -642,6 +644,292 @@ function erzeugeZuschlag() {
   return lv;
 }
 
+// ---------------------------------------------------------------- M4: Abrechnung zu typisch (Ticket 85)
+
+// Eingaben des M4-Wegs (D-38), alle erfunden. Die Formel-91-Zeilen tragen ihr Ergebnis von Hand (Rechenweg im Kommentar);
+// der Selbsttest rechnet jeden Ausdruck eigens nach. Kostengruppen nur als Nummer, ohne Bezeichnung der Norm (G-16).
+const M4 = {
+  bieter: 'Bieter B', // 3,00 % Nachlass (D-38); keine Wahl gewählt (D-85.1)
+  nachtrag: {
+    nummer: 'N01',
+    titel: 'Zusatzleistungen Gründung (erfunden)',
+    positionen: [
+      {
+        oz: '01.0010', kurztext: 'Bodenaustausch unter Fundamenten', menge: '24.000', einheit: 'm³', ep: '38.437',
+        langtext: 'Nicht tragfähigen Boden unter den Fundamenten ausheben und durch verdichteten Kies ersetzen (erfunden).',
+      },
+      {
+        oz: '01.0020', kurztext: 'Kernbohrung Hausanschluss', menge: '6.000', einheit: 'St', ep: '87.125',
+        langtext: 'Kernbohrung durch die Bodenplatte für die Hausanschlüsse herstellen (erfunden).',
+      },
+    ],
+  },
+  // Kostengruppe je OZ des Auftrags-LV nach dem Nachtrag; fehlt: ohne Kostengruppe (03.0070, 03.0080, 04.01.0020).
+  // Ebene 3 unter verschiedenen Ebene-2-Gruppen (214, 311, 322, 352, 391), eine auf Ebene 2 (340).
+  kostengruppen: {
+    '01.0010': '391', '01.0020': '391', '01.0030': '391', '01.0040': '391', '01.0050': '391', '01.0060': '214',
+    '02.0010': '311', '02.0020': '311', '02.0030': '311', '02.0040': '322', '02.0050': '322', '02.0050A': '322',
+    '02.0060': '322', '02.0070': '322', '02.0080': '322', '02.0090': '322',
+    '03.0010': '340', '03.0020': '340', '03.0030': '352', '03.0040': '340', '03.0050': '340', '03.0060': '352',
+    '04.01.0010': '322',
+  },
+  // Kostenberechnung als Budget (netto), Summe 60.900,00; 330 steht nur im Budget.
+  budget: [
+    ['214', '1100.00'], ['311', '4600.00'], ['322', '21800.00'], ['330', '3000.00', 'nur im Budget (erfunden)'],
+    ['340', '22500.00'], ['352', '2700.00'], ['391', '5200.00'],
+  ],
+  // Zeilen: [Ausdruck, Ergebnis von Hand]; `menge` statt `zeilen`: von Hand ohne Ansatz.
+  blatt1: [
+    { oz: '01.0010', zeilen: [['0,5', '0.500']] }, // halbe Pauschale
+    { oz: '01.0020', zeilen: [['2*(25,5+17,75)', '86.500']] }, // 2 x 43,25
+    { oz: '02.0010', zeilen: [['17*21*0,25', '89.250']] }, // 357 x 0,25
+    { oz: '02.0040', zeilen: [['12*9', '108.000']] }, // 112,50 % von 96,000: Soll/Ist-Befund
+    { oz: '02.0050', zeilen: [['2*(12+9)*0,6*0,8', '20.160'], ['2,5*1,75*0,3', '1.313']] }, // 42 x 0,48; 1,3125 -> 1,313
+    { oz: '04.01.0010', zeilen: [['6*4*0,5', '12.000']] }, // Nachtragsposition
+  ],
+  blatt2: [
+    { oz: '01.0040', zeilen: [['2*3,5', '7.000']] }, // Bedarf, zählt aufgemessen (D-34 (1))
+    { oz: '02.0010', zeilen: [['6*5,5*0,3', '9.900']] }, // 33 x 0,3
+    { oz: '02.0050', zeilen: [['2*(6+4,5)*0,6*0,8', '10.080']] }, // 21 x 0,48
+    { oz: '03.0010', zeilen: [['(12,5+8,25)*2,75*2', '114.125']] }, // 20,75 x 5,5
+    { oz: '04.01.0010', zeilen: [['6*4*0,6', '14.400']] }, // kumuliert 26,400 = genau 110 %, kein Befund (streng)
+    { oz: '04.01.0020', menge: '4.000' }, // von Hand, ohne Ansatz
+  ],
+  // Nach der Freigabe von AR 1: 02.0010 auf Blatt 1 mit 20 m statt 21 m Breite (17 x 20 x 0,25 = 85,000).
+  korrektur: { oz: '02.0010', zeilen: [['17*20*0,25', '85.000']] },
+  umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' }],
+  sicherheitSatz: '5.00',
+};
+
+/**
+ * Die M4-Fixture (Ticket 85, D-38): Zuschlag an Bieter B (D-21), Nachtrag N01 (D-35), zwei Aufmaßblätter und eine
+ * Korrektur, AR 1 (freigegeben, Zahlbetrag eingefroren) und AR 2 vor und nach der Korrektur (D-34), Soll/Ist und
+ * Kostenkontrolle (D-37). Alle Sollwerte aus `rechnen.mjs`, nie aus `vergabe`, `abrechnung`, `kosten` oder `mengen`.
+ */
+function erzeugeAbrechnung(lv, set) {
+  const neueId = idFabrik('fixtures-v1/typisch-abrechnung', 1767225600000 + 3_000_000);
+  const projektId = neueId();
+  const auftragsLvId = neueId();
+  const nachtragsLvId = neueId();
+  const nachtragTitelId = neueId();
+  const nachtragPosIds = M4.nachtrag.positionen.map(() => neueId());
+  const nachtragsangebotId = neueId();
+  const gliederungId = neueId();
+  const blattIds = [neueId(), neueId()];
+  const rechnungIds = [neueId(), neueId()];
+  const kostenermittlungId = neueId();
+  const MWST = lv.mwstSatz;
+  const oz = (k) => k.ordnungszahl + (k.ozIndex ?? '');
+
+  // 1. Zuschlag (D-21): ohne Wahl entfällt die Alternative, die Grundposition bleibt; Bedarf bleibt Bedarf; die nicht
+  // angebotene Position bekommt keinen Preis. Grundlage sind EP, Zuschlagssatz und Nachlass von Bieter B.
+  const bieter = set.bieter.find((b) => b.name === M4.bieter);
+  const angebot = set.angebote.find((a) => a.bieterId === bieter.id);
+  const entfallen = lv.knoten.filter((k) => k.art === 'position' && k.positionsart === 'wahl').map((k) => k.id);
+  const knotenAuftrag = lv.knoten.filter((k) => !entfallen.includes(k.id));
+  const preis = new Map(angebot.positionen.map((z) => [z.positionId, z.status !== 'angeboten' ? null : {
+    ep: z.einheitspreis === undefined ? null : parse(z.einheitspreis, STELLEN.ep),
+    satz: z.zuschlagssatz === undefined ? null : parse(z.zuschlagssatz, STELLEN.prozent),
+  }]));
+  const sollZuschlag = berechneSollwerteGaeb(knotenAuftrag, (k) => preis.get(k.id), angebot.nachlass, MWST);
+
+  // 2. Nachtrag N01 (D-35): Nachtrags-LV ohne Schätzpreise, Angebot des Auftragnehmers mit EP.
+  const nachtragKnoten = [
+    { id: nachtragTitelId, parentId: nachtragsLvId, art: 'titel', ordnungszahl: '01', kurztext: M4.nachtrag.titel },
+    ...M4.nachtrag.positionen.map((p, i) => ({
+      id: nachtragPosIds[i], parentId: nachtragTitelId, art: 'position', positionsart: 'normal', ordnungszahl: p.oz,
+      kurztext: p.kurztext, langtext: p.langtext, menge: p.menge, einheit: p.einheit, einheitspreis: null,
+    })),
+  ];
+  const nachtragsangebotZeilen = M4.nachtrag.positionen.map((p, i) => ({
+    positionId: nachtragPosIds[i], status: 'angeboten', einheitspreis: p.ep,
+  }));
+  for (const z of nachtragsangebotZeilen) preis.set(z.positionId, { ep: parse(z.einheitspreis, STELLEN.ep), satz: null });
+  // Übernahme (D-35, D-85.2): Titel „Nachtrag N01“ mit der nächsten freien OZ der obersten Stufe ans Ende der obersten
+  // Ebene; darunter der Baum des Nachtrags mit seinen Kennungen, OZ mit dieser davor, EP aus dem Angebot.
+  const oben = lv.knoten.filter((k) => k.art === 'titel' && k.parentId === lv.id);
+  const ozNeu = String(Math.max(...oben.map((k) => Number(k.ordnungszahl))) + 1).padStart(2, '0');
+  const uebernahmeKnoten = [
+    { id: gliederungId, parentId: auftragsLvId, art: 'titel', ordnungszahl: ozNeu, kurztext: `Nachtrag ${M4.nachtrag.nummer}` },
+    ...nachtragKnoten.map((k) => ({
+      ...k,
+      parentId: k.parentId === nachtragsLvId ? gliederungId : k.parentId,
+      ordnungszahl: `${ozNeu}.${k.ordnungszahl}`,
+      ...(k.art === 'position' ? { einheitspreis: format(preis.get(k.id).ep, STELLEN.ep) } : {}),
+    })),
+  ];
+  const knotenNachher = [...knotenAuftrag, ...uebernahmeKnoten];
+  const sollNachtrag = berechneSollwerteGaeb(knotenNachher, (k) => preis.get(k.id), angebot.nachlass, MWST);
+
+  // Positionen des Auftrags-LV nach dem Nachtrag (Dokumentreihenfolge) mit Kostengruppe; Rechengrundlage je Position.
+  const positionen = knotenNachher.filter((k) => k.art === 'position');
+  const posListe = positionen.map((k) => ({
+    positionId: k.id, oz: oz(k), kurztext: k.kurztext, kostengruppe: M4.kostengruppen[oz(k)] ?? null,
+  }));
+  const idVonOz = new Map(posListe.map((p) => [p.oz, p.positionId]));
+  const rechenPositionen = positionen.map((k) => ({
+    id: k.id,
+    ep: preis.get(k.id)?.ep ?? null,
+    zuschlag: k.zuschlag
+      ? { satz: preis.get(k.id).satz, bezug: k.zuschlag.bezug.positionen.map((b) => b.positionId) }
+      : null,
+  }));
+
+  // 3. Kostenberechnung als Budget
+  const kostenermittlung = {
+    id: kostenermittlungId,
+    projektId,
+    stufe: 'kostenberechnung',
+    name: 'Kostenberechnung (erfunden)',
+    eintraege: M4.budget.map(([nummer, betrag, bemerkung]) => (bemerkung ? { nummer, betrag, bemerkung } : { nummer, betrag })),
+  };
+
+  // 4. Aufmaßblätter (Vertragsform, Nummern als Text, D-85.4) und Korrektur
+  const zeile = (r) => {
+    const positionId = idVonOz.get(r.oz);
+    if (!positionId) throw new Error(`Position ${r.oz} fehlt im Auftrags-LV`);
+    if (!r.zeilen) return { positionId, mengenansatz: null, menge: r.menge };
+    const menge = r.zeilen.reduce((s, [, erg]) => s + parse(erg, STELLEN.menge), 0n);
+    return {
+      positionId,
+      mengenansatz: r.zeilen.map(([ausdruck], i) => ({ zeile: String(i + 1), formel: '91', ausdruck, variable: null })),
+      menge: format(menge, STELLEN.menge),
+    };
+  };
+  const ergebnisse = (zeilen) => Object.fromEntries(
+    zeilen.filter((r) => r.zeilen).map((r) => [idVonOz.get(r.oz), r.zeilen.map(([, erg]) => erg)]),
+  );
+  const blatt = (i, datum, zeilen) => ({
+    aufmass: {
+      id: blattIds[i], projektId, auftragsLvId, nummer: String(i + 1), bezeichnung: `Blatt ${i + 1} (erfunden)`, datum,
+      positionen: zeilen.map(zeile),
+    },
+    zeilenergebnisse: ergebnisse(zeilen),
+  });
+  const aufmasse = [blatt(0, '2026-10-28', M4.blatt1), blatt(1, '2026-11-25', M4.blatt2)];
+  const [b1, b2] = aufmasse.map((a) => a.aufmass);
+  const korrigiert = zeile(M4.korrektur);
+  const b1k = { ...b1, positionen: b1.positionen.map((z) => (z.positionId === korrigiert.positionId ? korrigiert : z)) };
+
+  // 5. Rechnungen (Vertragsform) und Prüfung nach D-34; AR 1 freigegeben mit eingefrorenem Zahlbetrag.
+  const leistungsstand = (blaetter) => leistungsstandBerechnen(rechenPositionen, kumulierteMengen(blaetter), angebot.nachlass);
+  const abzuege = { mwstSatz: MWST, umlagen: M4.umlagen, sicherheitSatz: M4.sicherheitSatz };
+  const kette = (ls, frueher) => abschlagsketteBerechnen(ls, { ...abzuege, fruehereZahlbetraege: frueher });
+  const ls1 = leistungsstand([b1]);
+  const kette1 = kette(ls1, 0n);
+  const rechnung = (i, eingang, nummerAn, aufmassIds, freigabe) => ({
+    id: rechnungIds[i], projektId, auftragsLvId, nummer: String(i + 1), art: 'abschlag', eingang,
+    rechnungsnummerAuftragnehmer: nummerAn, gefordert: null, aufmassIds, umlagen: M4.umlagen,
+    sicherheitSatz: M4.sicherheitSatz, gewaehrleistungSatz: null, freigabe,
+  });
+  const rechnungen = [
+    rechnung(0, '2026-10-30', 'AN-2026-017 (erfunden)', [b1.id], { zahlbetrag: kette1.zahlbetrag }),
+    rechnung(1, '2026-11-27', 'AN-2026-023 (erfunden)', [b1.id, b2.id], null),
+  ];
+  const eingefroren = parse(rechnungen[0].freigabe.zahlbetrag, STELLEN.betrag);
+  const ls2v = leistungsstand([b1, b2]);
+  const ls2n = leistungsstand([b1k, b2]);
+  const ar1Neu = kette(leistungsstand([b1k]), 0n);
+  const pruefung = (rechnungId, korr, ls, k) => ({ rechnungId, korrigiert: korr, leistungsstand: ls, kette: k });
+
+  // 6. Soll/Ist (D-35): Soll = Menge des Auftrags-LV
+  const soll = positionen.map((k) => ({ id: k.id, soll: k.menge == null ? null : parse(k.menge, STELLEN.menge) }));
+  const sollIst = (blaetter, korr) => ({
+    aufmassIds: blaetter.map((a) => a.id), korrigiert: korr, ...sollIstBerechnen(soll, kumulierteMengen(blaetter)),
+  });
+
+  // 7. Kostenkontrolle (D-37) für den Stand nach AR 2 (nach der Korrektur, Rechnung mit der höchsten Nummer)
+  const abrechnungGp = new Map(ls2n.positionen.map((z) => [z.positionId, parse(z.gp, STELLEN.betrag)]));
+  const kostenkontrolle = kostenkontrolleBerechnen({
+    budget: kostenermittlung.eintraege,
+    positionen: posListe.map((p) => {
+      const v = sollNachtrag.positionen[p.positionId];
+      return {
+        kostengruppe: p.kostengruppe,
+        vergabe: v.inSumme ? parse(v.gp, STELLEN.betrag) : 0n,
+        abrechnung: abrechnungGp.get(p.positionId),
+      };
+    }),
+    nachlass: {
+      vergabe: parse(sollNachtrag.summen.nachlass, STELLEN.betrag),
+      abrechnung: parse(ls2n.nachlass, STELLEN.betrag),
+    },
+  });
+
+  return {
+    schemaVersion: SCHEMA,
+    art: 'abrechnungsset',
+    regel: 'Ticket 85, README „M4-Abrechnung“: Zuschlag nach D-21, Nachtrag nach D-35 (OZ-Lesart D-85.2), Leistungsstand '
+      + 'und Abzugskette nach D-34 (jeder Schritt kaufmännisch auf 2 Stellen, dann verrechnet; frühere Zahlbeträge '
+      + 'eingefroren), Soll/Ist nach D-35 (VOB/B § 2 Abs. 3, streng > 110 %), Kostenkontrolle nach D-37 (D-85.3).',
+    lvId: lv.id,
+    lvName: lv.name,
+    projektId,
+    zuschlag: {
+      angebotId: angebot.id,
+      bieterId: bieter.id,
+      bieterName: bieter.name,
+      gewaehlt: [],
+      auftragsLvId,
+      nachlass: angebot.nachlass,
+      mwstSatz: MWST,
+      entfallen,
+      ohnePreis: sollZuschlag.nichtAngeboten,
+      sollwerte: sollZuschlag,
+    },
+    nachtrag: {
+      lv: {
+        id: nachtragsLvId,
+        name: `Nachtrag ${M4.nachtrag.nummer} (erfunden)`,
+        ozMaske: MASKE_KLEIN,
+        mwstSatz: MWST,
+        nachlass: null,
+        nachtrag: { auftragsLvId, nummer: M4.nachtrag.nummer, status: 'angeboten' },
+        knoten: nachtragKnoten,
+      },
+      angebot: {
+        id: nachtragsangebotId,
+        bieterId: bieter.id,
+        nachlass: null,
+        positionen: nachtragsangebotZeilen,
+        sollwerte: berechneSollwerteGaeb(nachtragKnoten, (k) => preis.get(k.id) ?? { ep: null, satz: null }, null, MWST),
+      },
+      statusNachUebernahme: 'beauftragt',
+      uebernahme: {
+        art: 'NachtragUebernehmen', nachtragLvId: nachtragsLvId, gliederungReihenfolge: String(oben.length),
+        knoten: uebernahmeKnoten,
+      },
+      sollwerte: sollNachtrag,
+    },
+    positionen: posListe,
+    gliederungen: knotenNachher.filter((k) => k.art === 'titel').map((k) => ({ id: k.id, oz: k.ordnungszahl, kurztext: k.kurztext })),
+    kostenermittlung,
+    aufmasse,
+    korrektur: {
+      aufmassId: b1.id,
+      befehl: { art: 'AufmasspositionSetzen', position: korrigiert },
+      zeilenergebnisse: M4.korrektur.zeilen.map(([, erg]) => erg),
+      aufmassNachher: b1k,
+    },
+    rechnungen,
+    pruefungen: {
+      ar1: pruefung(rechnungIds[0], false, ls1, kette1),
+      ar2VorKorrektur: pruefung(rechnungIds[1], false, ls2v, kette(ls2v, eingefroren)),
+      ar2NachKorrektur: pruefung(rechnungIds[1], true, ls2n, kette(ls2n, eingefroren)),
+    },
+    gegenprobeOhneEinfrieren: {
+      ar1Zahlbetrag: ar1Neu.zahlbetrag,
+      ar2Zahlbetrag: kette(ls2n, parse(ar1Neu.zahlbetrag, STELLEN.betrag)).zahlbetrag,
+    },
+    sollIst: {
+      nachBlatt1: sollIst([b1], false),
+      nachBlatt2: sollIst([b1, b2], false),
+      nachKorrektur: sollIst([b1k, b2], true),
+    },
+    kostenkontrolle: { rechnungId: rechnungIds[1], kostenermittlungId, ...kostenkontrolle },
+  };
+}
+
 // ---------------------------------------------------------------- Ausgabe
 
 /** Liefert Dateiname -> Dateiinhalt. */
@@ -652,6 +940,7 @@ export function erzeugeAlle() {
     'winzig.json': alsDatei(erzeugeWinzig()),
     'typisch.json': alsDatei(typisch),
     'typisch-angebote.json': alsDatei(angebote),
+    'typisch-abrechnung.json': alsDatei(erzeugeAbrechnung(typisch, angebote)),
     'gross.json': alsDatei(erzeugeGross()),
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),

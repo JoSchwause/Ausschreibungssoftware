@@ -28,6 +28,7 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 | `typisch.json` | 3 Titel, 25 Positionen, 2 Hinweistexte, MwSt 19 %, Nachlass 2,00 %; Netto 55.465,59, Brutto 64.683,97 | selbst verfasst, Daten im Skript, Sollwerte berechnet |
 | `typisch-angebote.json` | 3 Bieter (A, B, C) mit Angeboten zu `typisch`, je ein Zuschlagssatz an 02.0050 A; Ausreißer nach D-05 (Ticket 75); Preisspiegel-Sollwerte (Ticket 69) | selbst verfasst, Preise und Sätze per Seed gestreut |
 | `angebote/typisch-bieter-{a,b,c}.x84` | die drei Angebote als GAEB DA XML 3.3, Phase 84 (Ticket 69) | vom Skript aus `typisch-angebote.json` erzeugt, eigener XML-Baustein |
+| `typisch-abrechnung.json` | Tor M4 (D-38, Ticket 85): Zuschlag an Bieter B, Nachtrag N01, zwei Aufmaßblätter und eine Korrektur, AR 1 und AR 2, Soll/Ist, Kostenberechnung und Kostenkontrolle; Zahlbetrag AR 1 8.874,40, AR 2 10.100,84 / 10.070,67 | selbst verfasst, Eingaben im Skript, Sollwerte berechnet (siehe „M4-Abrechnung“) |
 | `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross`, Zuschlagssätze aus Seed `fixtures-v1/gross/zuschlagssatz` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
 | `zuschlag.json` | Zuschlagspositionen in GAEB-Form, alle drei Bezugsformen, Einheitspreisanteile; Netto 6.850,60, Brutto 8.152,21 (Ticket 37) | selbst verfasste Texte, Zahlen aus BVBS 3.3 AVA X86 Bereich 1.30 und 1.10.30.20 (D-03), Sollwerte vom Skript berechnet |
@@ -70,6 +71,27 @@ Preisspiegel (Ticket 69, additiv): { regel,
   OZ, weil ein per GAEB eingelesenes LV andere IDs hat. Der Rang ist ein String (keine JSON-Zahlen in den Fixtures).
   Eine Zuschlagsposition bietet der Bieter mit `zuschlagssatz` statt `einheitspreis` an (Vertrag v1.2,
   `Angebotsposition.zuschlagssatz`); den Platzhalter-EP `0.000` des Vertrags setzt der Testhelfer beim Abbilden.
+Abrechnungsset (Ticket 85, Tor M4): { schemaVersion, art:"abrechnungsset", regel, lvId, lvName, projektId,
+               zuschlag{angebotId, bieterId, bieterName, gewaehlt[], auftragsLvId, nachlass, mwstSatz, entfallen[],
+                        ohnePreis[], sollwerte},
+               nachtrag{lv{id, name, ozMaske, mwstSatz, nachlass, nachtrag{auftragsLvId, nummer, status}, knoten[]},
+                        angebot{id, bieterId, nachlass, positionen[], sollwerte}, statusNachUebernahme,
+                        uebernahme{art, nachtragLvId, gliederungReihenfolge, knoten[]}, sollwerte},
+               positionen[{positionId, oz, kurztext, kostengruppe|null}], gliederungen[{id, oz, kurztext}],
+               kostenermittlung, aufmasse[{aufmass, zeilenergebnisse{positionId:[…]}}],
+               korrektur{aufmassId, befehl, zeilenergebnisse[], aufmassNachher}, rechnungen[],
+               pruefungen{ar1, ar2VorKorrektur, ar2NachKorrektur: {rechnungId, korrigiert, leistungsstand, kette}},
+               gegenprobeOhneEinfrieren{ar1Zahlbetrag, ar2Zahlbetrag},
+               sollIst{nachBlatt1, nachBlatt2, nachKorrektur: {aufmassIds[], korrigiert, zeilen[], befunde[]}},
+               kostenkontrolle{rechnungId, kostenermittlungId, zeilen[], ohneKostengruppe, nachlass, gesamt} }
+  `kostenermittlung`, `aufmass`, `rechnungen[]`, `leistungsstand`, `nachtrag.lv.nachtrag` und `uebernahme` (ohne
+  `gliederungReihenfolge`) tragen die Feldnamen der Vertragstypen v1.4 (`Kostenermittlung`, `Aufmass`, `Rechnung`,
+  `Leistungsstand`, `Nachtragsangaben`, `NachtragUebernehmen`); Knoten und Angebote stehen im Fixture-Format wie oben.
+  Ganze Zahlen des Vertrags (Blatt- und Rechnungsnummer, `zeile`, `formel`, `gliederungReihenfolge`) sind Text wie der
+  Rang (keine JSON-Zahlen); beim Abbilden `Number(…)`. Negative Beträge mit führendem `-` (nur Kostenkontrolle).
+  `kette`: {leistung, nachlass, nettoNachNachlass, mwst, bruttoKumuliert, umlagen[{bezeichnung, satz, betrag}], einbehalt,
+  fruehereZahlbetraege, zahlbetrag}; Soll/Ist-Zeile {positionId, soll, ist, anteil}, Befund {positionId, art, anteil};
+  Kostenkontrolle-Zeile {kostengruppe, budget, vergabe, abrechnung, abweichung} (diese Namen sind Fixture-Namen).
 ```
 
 `ozMaske` ist ein Text: vor dem ersten `:` stehen die Stellen (`N` Ziffer, `I` Index, `.` Trennzeichen zählt nicht),
@@ -98,6 +120,8 @@ Die Ordnungszahl ist Anzeigedatum, kein Schlüssel; Bezüge laufen über IDs. De
 | `ausweise` | Summe der Beträge der Wahlpositionen (`summeWahl`) bzw. der Bedarfspositionen ohne Gesamtbetrag (`summeBedarfOhneGesamtbetrag`), je Titel einschließlich Untertitel und für das LV (F4, Ticket 37 Teil 1); Herleitung siehe „Bedarfs- und Wahlsumme der LV“ |
 
 Negative Werte kommen nicht vor; das Skript lehnt sie ab, bis Ticket 04 die Rundung negativer Beträge entscheidet.
+Ausnahme (Ticket 85): Differenzen der Kostenkontrolle (Nachlasszeile, Abweichung) stehen mit Vorzeichen da
+(`formatMitVorzeichen`, E-07); gerundet wird dabei nie ein negativer Wert.
 Ein Angebot rechnet mit denselben Regeln, nur mit den EP und Sätzen des Bieters (R7, „gedachtes LV“).
 
 ## X84 der Angebote (Ticket 69)
@@ -173,6 +197,65 @@ einschließlich Untertitel. Der Selbsttest zählt beide Summen ein zweites Mal u
 
 Handrechnung `typisch`: 01.0040 (Bedarf ohne Gesamtbetrag) 12,000 h × 48,900 = **586,80**; 02.0070 A (Wahl)
 96,000 m² × 61,250 = **5.880,00**; Titel 03 trägt beide Summen mit 0,00. Netto (55.465,59) enthält keine der beiden.
+
+## M4-Abrechnung (Ticket 85)
+
+`typisch-abrechnung.json` trägt die Sollwerte des Tors M4 (D-38) für den Kettentest und die E2E (Ticket 91) und für die
+Golden-Tests in `abrechnung` (Ticket 81) und `kosten` (Ticket 82). Eingaben (alle erfunden) stehen in `erzeugen.mjs`
+(`M4`), gerechnet wird in `rechnen.mjs` (`leistungsstandBerechnen`, `abschlagsketteBerechnen`, `sollIstBerechnen`,
+`kostenkontrolleBerechnen`), nur BigInt und nie aus `kern`, `vergabe`, `abrechnung`, `kosten` oder `mengen`. Der
+Selbsttest rechnet jede Zahl ein zweites Mal: von Hand (Literale mit Rechenweg) und eigens aus den Eingaben, die
+Formel-91-Zeilen mit einem eigenen kleinen Rechner. Verbraucher ordnen über `positionen[].oz` und `gliederungen[].oz` zu,
+wenn ihre Kennungen andere sind (LV per X83, Kennungen aus der App).
+
+| Schritt | Regel | Sollwert |
+|---|---|---|
+| Zuschlag an Bieter B, keine Wahl | D-21: Alternative 02.0070 A entfällt, Grundposition bleibt, Bedarf bleibt Bedarf, 03.0070 (nicht angeboten) ohne EP; Nachlass, EP und Satz von B | Netto 58.358,53; Nachlass 3 % 1.750,76; Netto n. N. 56.607,77; MwSt 10.755,48; Brutto 67.363,25 |
+| Nachtrag N01 übernehmen | D-35: Titel „Nachtrag N01“ mit nächster freier OZ `04` ans Ende der obersten Ebene; Baum des Nachtrags mit seinen Kennungen und OZ mit `04.` davor (D-85.2); EP aus dem Angebot | 24,000 × 38,437 = 922,49; 6,000 × 87,125 = 522,75; Netto 59.803,77; Nachlass 1.794,11; Netto n. N. 58.009,66; MwSt 11.021,84; Brutto 69.031,50 |
+| Zeilenergebnis Formel 91 | Ticket 35: exakt, kaufmännisch auf 3 Stellen; Menge = Summe der gerundeten Zeilen | `2,5*1,75*0,3` = 1,3125 → **1,313** |
+| Leistungsstand | D-34 (1)–(3): Σ round(kum. Menge × Vertrags-EP, 2); Bedarf zählt aufgemessen; Zuschlag round(Σ GP Bezug × Satz / 100, 2); Nachlass round(Leistung × 3 %, 2) über das ganze Auftrags-LV | siehe unten |
+| Abzugskette | D-34 (4)–(7): MwSt, Brutto kum., Umlage 0,50 %, Sicherheitseinbehalt 5 %, je round(…, 2); Zahlbetrag = Brutto − Umlage − Einbehalt − frühere **eingefrorene** Zahlbeträge | AR 1 8.874,40; AR 2 10.100,84 vor, 10.070,67 nach der Korrektur |
+| Soll/Ist | D-35, VOB/B § 2 Abs. 3: Befund bei Ist > 110 % (streng, exakt), < 90 % nur mit Schlussrechnung; Anteil round(Ist / Soll × 100, 2) | genau ein `ueber-schwelle`: 02.0040 mit 112,50 %; 04.01.0010 nach Blatt 2 genau 110,00 %, kein Befund |
+| Kostenkontrolle | D-37, D-24, D-85.3: Zeilen je KG samt Vorfahren, „ohne Kostengruppe“, „Nachlass“ (negativ), Gesamt; Vergabe = GP zählender Positionen (F4), Abrechnung = `Leistungsstand.gp` von AR 2 nach der Korrektur; Budget ohne Eintrag 0,00; Abweichung = Vergabe − Budget | Gesamt: Budget 60.900,00, Vergabe 58.009,66, Abrechnung 16.846,81, Abweichung −2.890,34 |
+
+Handrechnung (Preise von Bieter B; „→“ heißt kaufmännisch gerundet, „(.5)“ eine Rundung genau auf der Hälfte):
+
+- **AR 1** (Blatt 1): 01.0010 0,500 × 1.951,750 = 975,875 → 975,88 (.5); 01.0020 86,500 × 7,726 = 668,299 → 668,30;
+  02.0010 89,250 × 6,506 = 580,6605 → 580,66; 02.0040 108,000 × 12,502 = 1.350,216 → 1.350,22; 02.0050 21,473 ×
+  174,980 = 3.757,34554 → 3.757,35; Zuschlag 02.0050 A 3.757,35 × 9,10 % = 341,91885 → 341,92; 04.01.0010 12,000 ×
+  38,437 = 461,244 → 461,24. Leistung **8.135,57**; Nachlass 244,0671 → 244,07; Netto n. N. 7.891,50; MwSt 1.499,385 →
+  1.499,39 (.5); Brutto 9.390,89; Umlage 46,95445 → 46,95; Einbehalt 469,5445 → 469,54; Zahlbetrag **8.874,40**
+  (freigegeben, eingefroren).
+- **AR 2 vor der Korrektur** (Blatt 1 + 2): dazu 01.0040 (Bedarf) 7,000 × 50,709 → 354,96; 02.0010 99,150 → 645,07;
+  02.0050 31,553 → 5.521,14, Zuschlag → 502,42; 03.0010 114,125 × 52,699 = 6.014,273375 → 6.014,27; 04.01.0010 26,400
+  → 1.014,74; 04.01.0020 4,000 × 87,125 = 348,50. Leistung 17.395,50; Nachlass 521,865 → 521,87 (.5); Netto n. N.
+  16.873,63; MwSt 3.205,99; Brutto 20.079,62; Umlage 100,40; Einbehalt 1.003,98; Zahlbetrag 20.079,62 − 100,40 −
+  1.003,98 − 8.874,40 = **10.100,84**.
+- **Korrektur** an Blatt 1 nach der Freigabe von AR 1: 02.0010 `17*20*0,25` = 85,000 statt 89,250.
+- **AR 2 nach der Korrektur**: 02.0010 94,900 → 617,42; Leistung 17.367,85; Nachlass 521,0355 → 521,04; Netto n. N.
+  16.846,81; MwSt 3.200,89; Brutto 20.047,70; Umlage 100,24; Einbehalt 1.002,385 → 1.002,39 (.5); Zahlbetrag
+  **10.070,67**. AR 1 bleibt 8.874,40.
+- **Gegenprobe ohne Einfrieren** (`gegenprobeOhneEinfrieren`): AR 1 neu geprüft wäre 8.844,23 und AR 2 damit
+  10.100,84, also gleich dem Wert vor der Korrektur. Wer frühere Zahlbeträge neu rechnet statt sie einzufrieren, sieht
+  die Korrektur in AR 2 nicht.
+
+Lesarten, die die Regeln offen lassen (Ticket 85, D-85.1 bis D-85.8; Annahmen für die Demo):
+
+- **D-85.1** Zuschlag an Bieter B (3,00 %) ohne gewählte Wahlposition: Die Wahl wurde im Tor M3 geprüft; hier zählt der
+  Prozent-Nachlass. 03.0070 (von B nicht angeboten) hat im Auftrags-LV keinen EP und wird nie aufgemessen.
+- **D-85.2** OZ der übernommenen Nachtragsknoten: die neue Gliederung bekommt die nächste freie OZ der obersten Stufe,
+  der Baum des Nachtrags behält seine OZ mit dieser davor (`01` → `04.01`, `01.0010` → `04.01.0010`), wie das Beispiel in
+  `vertrag` (`beispielNachtragUebernehmen`). D-35 nennt nur die OZ der Gliederung; Ticket 80 entscheidet endgültig.
+- **D-85.3** Kostenkontrolle: Zeilen sind alle Kostengruppen aus Budget und Positionen samt Vorfahren (D-24), nach
+  Nummer; Budget ohne Eintrag ist 0,00, auch in „ohne Kostengruppe“ und „Nachlass“; Abweichung = Vergabe − Budget in
+  jeder Zeile. So gehen Ebene 1 + ohne KG + Nachlass je Spalte auf den Cent auf (Property von Ticket 82).
+- **D-85.4** Keine JSON-Zahlen: ganze Zahlen des Vertrags stehen als Text (Präzedenz: Rang, Ticket 69).
+- **D-85.5** Soll/Ist-Zeilen nur für Positionen mit Aufmaß; Positionen ohne Aufmaß haben Ist 0 und ohne
+  Schlussrechnung keinen Befund.
+- **D-85.6** Das Nachtrags-LV trägt keine Schätzpreise (EP `null`); die EP kommen aus dem Nachtragsangebot des
+  Auftragnehmers. Status vor der Übernahme `angeboten`, danach `beauftragt` (D-35: erst übernehmen, dann beauftragen).
+- **D-85.7** `gefordert` ist in beiden Rechnungen `null` (ob kumuliert, ist offen; Offene Typfrage 8 zu Ticket 70).
+- **D-85.8** Kostengruppen werden am Auftrags-LV gesetzt (`KostengruppeSetzen` als AuftragsLvBefehl), nicht im LV.
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
