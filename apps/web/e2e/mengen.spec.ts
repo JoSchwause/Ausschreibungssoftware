@@ -178,7 +178,7 @@ test('Undo nimmt den Ansatz in einem Schritt zurück; ein Ansatz mit Fehler läs
   await panelOeffnen(page);
   const p = panel(page);
   await p.getByLabel('Ausdruck Zeile 3').fill('Z1/0');
-  await expect(p.locator('tr[data-zeile="3"] .mengen__fehler')).toHaveText('Division durch null (Spalte 4)');
+  await expect(p.locator('tr[data-zeile="3"] .mengen__fehler')).toHaveText('Division durch null (Spalte 3)');
   await expect(p.locator('[data-wert="summe"]')).toHaveText('–');
   await p.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(panel(page)).toHaveCount(0);
