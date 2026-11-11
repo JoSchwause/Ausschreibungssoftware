@@ -49,7 +49,7 @@ test('Aktive Zeile (Punkt 1): Fokus nur per Tab ins Grid genügt, „Position an
           (r) => (r.querySelector('[data-spalte="kurztext"] .tx-grid__text')?.textContent ?? 'x') === '',
         );
         const gp = [...document.querySelectorAll('[role="row"][data-i]')].find((r) =>
-          (r.textContent ?? '').includes('Baustelle einrichten'),
+          r.textContent.includes('Baustelle einrichten'),
         );
         const i = (e: Element | undefined): number => Number(e?.getAttribute('data-i') ?? '-1');
         // Die neue Position steht vor der ersten alten Position, also direkt unter dem Titel, nicht am LV-Ende.
