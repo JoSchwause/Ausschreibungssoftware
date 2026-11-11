@@ -60,11 +60,17 @@ import {
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
+  LV_KENNZEICHEN_SPALTEN,
+  lvKennzeichenSpalten,
   nachlassSpalten,
 } from './zeilen';
+import { pruefeAuftragsLvKopf, pruefeNachtragsbezug } from './bezuege';
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
+/** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
+const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
+const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
 
@@ -355,7 +361,14 @@ export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenst
  * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `wann` ist der Zeitpunkt des
  * Protokolleintrags; ein LV-Stand bekommt ihn als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
  */
-export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, wann?: Zeitstempel): void {
+export function wendeLvAn(
+  db: Datenbank,
+  cs: LvChangeSet,
+  projektId: ProjektId,
+  wann?: Zeitstempel,
+  /** v1.4: Verweis der Nachtragsangaben prüfen; der Import prüft alle am Ende (das Auftrags-LV kommt dort später). */
+  nachtragPruefen = true,
+): void {
   const id = cs.leistungsverzeichnisId;
   const gespeichert = leseLvKopf(db, id);
   if (cs.kopf === null) {
@@ -374,7 +387,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
-    const kopfdaten = kopfdatenSpalten(nachher);
+    const kopfdaten = [...kopfdatenSpalten(nachher), ...lvKennzeichenSpalten(nachher)];
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {
@@ -385,8 +398,8 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
       }
       db.ausfuehren(
         `INSERT INTO leistungsverzeichnis (id, projekt_id, name, oz_maske, mwst_satz, nachlass_art, nachlass_wert,
-           ${KOPFDATEN_SPALTEN.join(', ')})
-         VALUES (?, ?, ?, ?, ?, ?, ?, ${KOPFDATEN_SPALTEN.map(() => '?').join(', ')})`,
+           ${LV_KOPF_SPALTEN.join(', ')})
+         VALUES (?, ?, ?, ?, ?, ?, ?, ${LV_KOPF_SPALTEN.map(() => '?').join(', ')})`,
         [
           id,
           nachher.projektId,
@@ -406,7 +419,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
         return abbruch('unbekannt', 'Ein LV wechselt nicht das Projekt.');
       db.ausfuehren(
         `UPDATE leistungsverzeichnis SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?,
-           ${KOPFDATEN_SETZEN}
+           ${LV_KOPF_SETZEN}
          WHERE id = ?`,
         [
           nachher.name,
@@ -419,6 +432,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
         ],
       );
     }
+    if (nachtragPruefen) pruefeNachtragsbezug(db, nachher);
   }
   wendeKnotenAn(db, id, cs.knoten, () => {
     pruefeSummenvorher(db, id, cs.summen, cs.kopf?.vorher === null, kennungen(cs.knoten.entfernt));
@@ -831,6 +845,7 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
       return abbruch('unbekannt', 'ChangeSet: auftragsLeistungsverzeichnisId und Kopf.id weichen ab.');
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
+    pruefeAuftragsLvKopf(nachher);
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     const kopfdaten = kopfdatenSpalten(nachher);
     if (vorher === null) {

@@ -12,6 +12,7 @@ import type {
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvKopf,
+  AuftragsLvUebersicht,
   AuftragsLvZustand,
   Bieter,
   Betrag,
@@ -48,6 +49,7 @@ import {
   knotenAusZeile,
   kopfdatenAusZeile,
   lvId,
+  lvKennzeichenAusZeile,
   maskeAusZeile,
   nachlassAusZeile,
   projektId,
@@ -83,12 +85,36 @@ export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] 
     .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. */
+/** Nach Name deutsch verglichen, gleiche Namen nach Kennung (Projekt-, LV-, Auftrags-LV- und Kostenermittlungsliste). */
+const nachName = <T extends { readonly id: string; readonly name: string }>(a: T, b: T): number =>
+  NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/**
+ * LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. v1.4 (D-43): dazu
+ * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein).
+ */
 export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
   return db
-    .zeilen('SELECT id, name FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
-    .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name') }))
-    .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
+    .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
+    .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
+    .sort(nachName);
+}
+
+/** Auftrags-LV-Liste eines Projekts (`AuftragsLvRepository.auflisten`, v1.4): ohne Knoten, sortiert wie die LV-Liste. */
+export function listeAuftragsLvs(db: Datenbank, projekt: ProjektId): AuftragsLvUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, name, leistungsverzeichnis_id, angebot_id FROM auftrags_lv WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map((z) => ({
+      id: text(z, 'id') as AuftragsLeistungsverzeichnisId,
+      name: text(z, 'name'),
+      leistungsverzeichnisId: lvId(z, 'leistungsverzeichnis_id'),
+      angebotId: text(z, 'angebot_id') as AngebotId,
+    }))
+    .sort(nachName);
 }
 
 export function listeIds(db: Datenbank, sql: string, bind: readonly string[]): string[] {
@@ -108,6 +134,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     mwstSatz: text(z, 'mwst_satz') as LvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
     ...kopfdatenAusZeile(z),
+    ...lvKennzeichenAusZeile(z),
   };
 }
 
@@ -304,7 +331,7 @@ export function leseAngebot(db: Datenbank, id: AngebotId): AngebotZustand | null
   return { angebot, summen };
 }
 
-// --- Auftrags-LV (gelesen nur über die Projektdatei: der Vertrag hat kein Repository dafür, Offene Typfrage D) ------
+// --- Auftrags-LV (v1.4: `AuftragsLvRepository`, Ticket 79; vorher nur über die Projektdatei, D-64.2) ---------------
 
 export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichnisId): AuftragsLvKopf | null {
   const z = db.zeilen('SELECT * FROM auftrags_lv WHERE id = ?', [id])[0];

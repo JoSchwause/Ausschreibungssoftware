@@ -4,6 +4,7 @@
 
 import type {
   AngebotId,
+  AuftragsLeistungsverzeichnisId,
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
@@ -106,10 +107,9 @@ export function speicherUeberTransport(
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
       laden: (id: LvStandId) => aufruf('lvStandLaden', id),
     },
-    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
     auftragsLeistungsverzeichnisse: {
-      auflisten: () => erstV14('Auftrags-LVs auflisten'),
-      laden: () => erstV14('Auftrags-LV laden'),
+      auflisten: (projektId: ProjektId) => aufruf('auftragsLvAuflisten', projektId),
+      laden: (id: AuftragsLeistungsverzeichnisId) => aufruf('auftragsLvLaden', id),
     },
     aufmasse: {
       auflisten: () => erstV14('Aufmaßblätter auflisten'),

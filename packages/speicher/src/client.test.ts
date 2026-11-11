@@ -150,6 +150,8 @@ describe('Client über Worker-Host', () => {
         'angebotLaden',
         'lvStaendeAuflisten',
         'lvStandLaden',
+        'auftragsLvAuflisten',
+        'auftragsLvLaden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',

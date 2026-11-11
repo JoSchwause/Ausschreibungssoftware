@@ -6,6 +6,9 @@
 import type {
   AngebotId,
   AngebotZustand,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvUebersicht,
+  AuftragsLvZustand,
   ChangeSet,
   Ergebnis,
   LeistungsverzeichnisId,
@@ -26,12 +29,14 @@ import { kanonischesJson } from './kanonisch';
 import { protokollform } from './kurzfassung';
 import {
   leseAngebot,
+  leseAuftragsLv,
   leseLv,
   leseLvKopf,
   leseLvStaende,
   leseLvStand,
   leseProjekt,
   leseProtokoll,
+  listeAuftragsLvs,
   listeIds,
   listeLvs,
   listeProjekte,
@@ -47,7 +52,6 @@ import {
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
-import { pruefeV14 } from './vertrag-v14'; // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -175,10 +179,15 @@ export class SpeicherKern {
 
   lvAuflisten(projektId: ProjektId): Ergebnis<readonly LvUebersicht[], Speicherfehler> {
     return this.#fange(() => {
-      if (leseProjekt(this.#db, projektId) === null)
-        abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+      this.#projektDa(projektId);
       return listeLvs(this.#db, projektId);
     });
+  }
+
+  /** Bricht mit `nicht-gefunden` ab, wenn es das Projekt nicht gibt (Listen eines Projekts). */
+  #projektDa(projektId: ProjektId): void {
+    if (this.#db.zeilen('SELECT 1 AS da FROM projekt WHERE id = ?', [projektId]).length === 0)
+      abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
   }
 
   lvLaden(id: LeistungsverzeichnisId): Ergebnis<LvZustand, Speicherfehler> {
@@ -220,6 +229,21 @@ export class SpeicherKern {
     );
   }
 
+  /** `AuftragsLvRepository.auflisten` (v1.4): die Auftrags-LVs des Projekts ohne Knoten, nach Name. */
+  auftragsLvAuflisten(projektId: ProjektId): Ergebnis<readonly AuftragsLvUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return listeAuftragsLvs(this.#db, projektId);
+    });
+  }
+
+  /** `AuftragsLvRepository.laden` (v1.4). */
+  auftragsLvLaden(id: AuftragsLeistungsverzeichnisId): Ergebnis<AuftragsLvZustand, Speicherfehler> {
+    return this.#fange(
+      () => leseAuftragsLv(this.#db, id) ?? abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`),
+    );
+  }
+
   protokoll(projektId: ProjektId): Ergebnis<readonly Protokolleintrag[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)
@@ -256,7 +280,6 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        pruefeV14(changeSet); // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
         switch (changeSet.art) {
           case 'projekt':
             wendeProjektAn(this.#db, changeSet);
