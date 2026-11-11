@@ -4,7 +4,7 @@
 // Übernehmen wählen und als **einen** `KnotenEinfuegen` mit neuen Kennungen bauen (`kopieBauen`, K9); die Textquelle der
 // übernommenen Positionen ist der Name der Vorlage, wenn sie leer ist. Textquelle einer Position: `TextquelleSetzen`.
 
-import { kopieBauen } from '@tethys/kern';
+import { kinderJeEltern, kopieBauen } from '@tethys/kern';
 import type {
   Einfuegeort,
   IdQuelle,
@@ -75,13 +75,7 @@ function zeilentext(k: Knoten): string {
 /** Der Baum des LV in Anzeigereihenfolge (Eltern vor Kindern, Geschwister nach `reihenfolge`). */
 export function baumZeilen(zustand: LvZustand): BaumZeile[] {
   const lv = zustand.leistungsverzeichnis;
-  const kinder = new Map<string, Knoten[]>();
-  for (const k of lv.knoten) {
-    const liste = kinder.get(k.elternId) ?? [];
-    liste.push(k);
-    kinder.set(k.elternId, liste);
-  }
-  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
+  const kinder = kinderJeEltern(lv.knoten); // Kern (S9)
   const zeilen: BaumZeile[] = [];
   const nachfahren = (id: string): KnotenId[] =>
     (kinder.get(id) ?? []).flatMap((k) => [k.id as KnotenId, ...nachfahren(k.id)]);

@@ -19,7 +19,7 @@
 //   (`maske-zu-tief`); umnummeriert wird nie (die OZ sind mit dem Auftragnehmer vereinbart).
 
 import { vergleiche } from '@tethys/dezimal';
-import { MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, ozFehler, ozVorschlag } from '@tethys/kern';
+import { MAX_GLIEDERUNGSEBENEN, ebenenbeitrag, kinderJeEltern, ozFehler, ozVorschlag } from '@tethys/kern';
 import type {
   Angebot,
   AngebotKopf,
@@ -123,18 +123,6 @@ function nein(code: Befehlsfehlercode, meldung: string, feld?: string, knotenId?
 export const istAlternative = (k: Knoten): boolean =>
   k.art === 'position' && k.merkmale.wahl !== null && k.merkmale.wahl.variante !== 0;
 
-/** Kinder je Elternknoten in Geschwisterreihenfolge. */
-function kinderVon(knoten: readonly Knoten[]): Map<string, Knoten[]> {
-  const kinder = new Map<string, Knoten[]>();
-  for (const k of knoten) {
-    const liste = kinder.get(k.elternId);
-    if (liste) liste.push(k);
-    else kinder.set(k.elternId, [k]);
-  }
-  for (const liste of kinder.values()) liste.sort((a, b) => a.reihenfolge - b.reihenfolge);
-  return kinder;
-}
-
 /** Ein übernommener Knoten mit seiner Stufe im Auftrags-LV (Gliederung: eigene; sonst die Stufen darüber). */
 interface Eintrag {
   readonly knoten: Knoten;
@@ -148,7 +136,7 @@ interface Eintrag {
  * dicht je Elternknoten, `stufe` mit der neuen Gliederung als Stufe 1.
  */
 function uebernommeneKnoten(l: Leistungsverzeichnis): Eintrag[] {
-  const kinder = kinderVon(l.knoten.filter((k) => !istAlternative(k)));
+  const kinder = kinderJeEltern(l.knoten.filter((k) => !istAlternative(k)));
   const aus: Eintrag[] = [];
   const besuche = (eltern: string, stufeEltern: number): void => {
     (kinder.get(eltern) ?? []).forEach((k, reihenfolge) => {
