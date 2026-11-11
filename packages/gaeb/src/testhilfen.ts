@@ -6,7 +6,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   AngebotId,
+  Aufmass,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
+  AuftragsLvZustand,
   BieterId,
   BildId,
   HinweistextId,
@@ -44,6 +47,7 @@ import type {
 } from '@tethys/vertrag';
 
 import { leseGaeb } from './lesen';
+import { x31Lesen } from './x31';
 import type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
 
 /** Zählende IdQuelle: `position-0001`, `titel-0001` … Gleiche Eingabe ergibt gleiche Kennungen. */
@@ -855,6 +859,102 @@ export function exportfaelle(): Exportfall[] {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)
       for (const version of versionen) faelle.push(fall(a.name, n, phase, version));
+  }
+  return faelle;
+}
+
+// --- Mengenermittlung X31 (Ticket 83) ----------------------------------------------------------------------------
+
+/** Die BVBS-Prüfdatei Mengenermittlung 3.3 (ohne Endung: `.x31` und die X86 mit dem LV dazu). */
+export const BVBS_MENGENERMITTLUNG =
+  'fixtures/extern/bvbs/3.3-mengenermittlung/Pruefdatei_3.3_Mengenermittlung_V-11-06-2021';
+
+const NULL_BETRAG = '0.00' as Betrag;
+
+/** Das Auftrags-LV aus einer X86, wie die App es nach dem Zuschlag hält (Summen sind für X31 ohne Belang). */
+export function auftragsLvAus(bytes: Uint8Array): AuftragsLvZustand {
+  const l = leseGaeb(bytes, { ids: testIds(), standardMwstSatz: TEST_MWST });
+  if (l.inhalt === null) throw new Error('Auftrags-LV nicht lesbar');
+  const { wurzelId, knoten, ...kopf } = l.inhalt;
+  return {
+    auftragsLeistungsverzeichnis: {
+      ...kopf,
+      id: wurzelId as string as AuftragsLeistungsverzeichnisId,
+      projektId: 'projekt-1' as ProjektId,
+      leistungsverzeichnisId: 'lv-1' as LeistungsverzeichnisId,
+      angebotId: 'angebot-1' as AngebotId,
+      knoten,
+    },
+    summen: {
+      positionen: [],
+      gliederungen: [],
+      gesamt: {
+        netto: NULL_BETRAG,
+        nachlass: NULL_BETRAG,
+        nettoNachNachlass: NULL_BETRAG,
+        mwst: NULL_BETRAG,
+        brutto: NULL_BETRAG,
+      },
+    },
+  };
+}
+
+/** Kennung der Position mit dieser OZ (mit Index) im Auftrags-LV. */
+export function positionId(lv: AuftragsLvZustand, oz: string): PositionId {
+  const p = lv.auftragsLeistungsverzeichnis.knoten.find(
+    (k): k is Position => k.art === 'position' && `${k.ordnungszahl ?? ''}${k.ozIndex ?? ''}` === oz,
+  );
+  if (!p) throw new Error(`keine Position ${oz}`);
+  return p.id;
+}
+
+export interface X31Exportfall {
+  readonly datei: string;
+  readonly aufmass: Aufmass;
+  readonly lv: AuftragsLvZustand;
+  readonly version: ExportVersion;
+}
+
+/**
+ * Die X31-Exporte der XSD-Gegenprüfung: das gelesene Blatt der BVBS-Prüfdatei und ein eigenes Blatt (mehrzeiliger
+ * Ausdruck, Bezug, Variable, Menge von Hand, negative Menge) × 3.3/3.2.
+ */
+export function x31Exportfaelle(): X31Exportfall[] {
+  const lv = auftragsLvAus(lesePfad(`${BVBS_MENGENERMITTLUNG}.x86`));
+  const kopf = {
+    id: 'aufmass-1' as AufmassId,
+    projektId: 'projekt-1' as ProjektId,
+    auftragsLvId: lv.auftragsLeistungsverzeichnis.id,
+    nummer: 1,
+    bezeichnung: '',
+    datum: null,
+  };
+  const gelesen = x31Lesen(lesePfad(`${BVBS_MENGENERMITTLUNG}.x31`), lv).aufmass;
+  if (gelesen === null) throw new Error('BVBS-X31 nicht lesbar');
+  const z = (zeile: number, ausdruck: string, variable: string | null = null) => ({
+    zeile,
+    formel: 91,
+    ausdruck,
+    variable,
+  });
+  const eigen: Aufmass = {
+    ...kopf,
+    positionen: [
+      {
+        positionId: positionId(lv, '001.001.0010'),
+        mengenansatz: [
+          z(1, '(12,345 + 23,456 + 34,567 + 45,678) * (1,5 + 2,25) - 7,125 / 3', 'flaeche'),
+          z(2, 'flaeche * 0,5 + Z1'),
+        ],
+        menge: null,
+      },
+      { positionId: positionId(lv, '001.003.0010'), mengenansatz: null, menge: '-12.500' as Menge },
+    ],
+  };
+  const faelle: X31Exportfall[] = [];
+  for (const version of ['3.3', '3.2'] as const) {
+    faelle.push({ datei: `aufmass-bvbs-X31-${version}.x31`, aufmass: { ...kopf, ...gelesen }, lv, version });
+    faelle.push({ datei: `aufmass-eigen-X31-${version}.x31`, aufmass: eigen, lv, version });
   }
   return faelle;
 }

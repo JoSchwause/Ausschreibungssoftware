@@ -87,8 +87,9 @@ export const GRENZEN = {
 } as const;
 
 const RNO_ZEICHEN = /^[0-9A-Za-z_]+$/;
-const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
-const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+/** `GAEBInfo/Date` und `Time` (tgDate, tgTime); auch für X31. */
+export const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+export const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
 
 /** Zahl der Zeichen (Codepunkte), wie das XSD `maxLength` zählt. */
 const zeichen = (s: string): number => Array.from(s).length;
@@ -1063,6 +1064,28 @@ function kommentar(s: string): string {
 }
 
 /**
+ * XML-Deklaration und, wenn die eigene Prüfung Fehler fand, der Kommentar „Entwurf: …“ (U5, G-13); auch für X31
+ * (`x31-schreiben.ts`).
+ */
+export function exportKopf(befunde: readonly Pruefbefund[]): {
+  readonly kopf: string;
+  readonly entwurf: boolean;
+} {
+  const fehler = befunde.filter((b) => b.schwere === 'fehler');
+  const entwurf = fehler.length > 0;
+  let kopf = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  if (entwurf) {
+    const erster = fehler[0];
+    kopf += `<!-- ${kommentar(
+      `Entwurf: Die eigene Prüfung fand ${String(fehler.length)} ${fehler.length === 1 ? 'Fehler' : 'Fehler'}` +
+        (erster ? `, zuerst ${erster.code}: ${erster.meldung}` : '') +
+        ' Die Datei ist nicht zur Weitergabe bestimmt.',
+    )} -->\n`;
+  }
+  return { kopf, entwurf };
+}
+
+/**
  * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
  * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
  * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
@@ -1074,17 +1097,7 @@ export function schreibeGaeb(
   const s = new Schreiber(alsInhalt(inhalt), optionen);
   s.schreibe();
   s.abschliessen();
-  const fehler = s.befunde.filter((b) => b.schwere === 'fehler');
-  const entwurf = fehler.length > 0;
-  let kopf = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  if (entwurf) {
-    const erster = fehler[0];
-    kopf += `<!-- ${kommentar(
-      `Entwurf: Die eigene Prüfung fand ${String(fehler.length)} ${fehler.length === 1 ? 'Fehler' : 'Fehler'}` +
-        (erster ? `, zuerst ${erster.code}: ${erster.meldung}` : '') +
-        ' Die Datei ist nicht zur Weitergabe bestimmt.',
-    )} -->\n`;
-  }
+  const { kopf, entwurf } = exportKopf(s.befunde);
   return {
     phase: optionen.phase,
     version: optionen.version,

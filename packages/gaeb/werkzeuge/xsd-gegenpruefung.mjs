@@ -4,10 +4,11 @@
 // Aufruf: pnpm --filter @tethys/gaeb run xsd-gegenpruefung
 //
 // 1. Kein `*.xsd` darf versioniert sein (das amtliche Schema kommt nie ins Repo).
-// 2. Lädt die amtlichen Schemadateien 3.3 und 3.2 zur Laufzeit in ein Temp-Verzeichnis außerhalb des Repos
-//    (`$RUNNER_TEMP` bzw. das Temp-Verzeichnis des Systems) und prüft die SHA-256 der ZIP-Dateien.
-// 3. Schreibt alle Exporte (jede Fixture × X81/X83/X86 × 3.3/3.2, dazu die gelesenen amtlichen X81/X83) über den
-//    Vitest-Lauf `src/xsd-ausgabe.test.ts` in dasselbe Temp-Verzeichnis.
+// 2. Lädt die amtlichen Schemadateien 3.3 und 3.2 (Leistungsverzeichnis und Mengenermittlung) zur Laufzeit in ein
+//    Temp-Verzeichnis außerhalb des Repos (`$RUNNER_TEMP` bzw. das Temp-Verzeichnis des Systems) und prüft die SHA-256
+//    der ZIP-Dateien.
+// 3. Schreibt alle Exporte (jede Fixture × X81/X83/X86 × 3.3/3.2, dazu die gelesenen amtlichen X81/X83 und die
+//    Aufmaßblätter als X31, Ticket 83) über den Vitest-Lauf `src/xsd-ausgabe.test.ts` in dasselbe Temp-Verzeichnis.
 // 4. Prüft jede Datei mit `xmllint --noout --schema`. Jeder Schemafehler lässt das Skript scheitern und nennt Datei
 //    und Zeile.
 // Danach wird das Temp-Verzeichnis gelöscht.
@@ -30,19 +31,40 @@ const IN_CI = process.env.CI === 'true';
 /** Programm für die Schemaprüfung; `XMLLINT` überschreibt es (z. B. um das Überspringen zu prüfen). */
 const XMLLINT = process.env.XMLLINT ?? 'xmllint';
 
-/** Amtliche Schemapakete; weicht die Prüfsumme ab, hat sich das Schema geändert. */
-const SCHEMAS = {
-  3.3: {
+/**
+ * Amtliche Schemapakete je Version und Phasen; weicht die Prüfsumme ab, hat sich das Schema geändert. Die Mengenermittlung
+ * (X31, Ticket 83) steht in eigenen Paketen.
+ */
+const SCHEMAS = [
+  {
+    version: '3.3',
+    phasen: ['81', '83', '86'],
     url: 'https://www.gaeb.de/wp-content/uploads/2021/06/2021-05_Leistungsverzeichnis.zip',
     sha256: 'd4f19a79c46119ba6a7bbca1067bc2a26ccadb60d1b5fd8a82725f45b491e203',
     datei: (phase) => `GAEB_DA_XML_${phase}_3.3_2021-05.xsd`,
   },
-  3.2: {
+  {
+    version: '3.2',
+    phasen: ['81', '83', '86'],
     url: 'https://www.gaeb.de/wp-content/uploads/2019/04/Leistungsverzeichnis.zip',
     sha256: 'b655e955db75df43c82f49bea0a4246c19f25bcb2ad01186a6a14ffdae03fe76',
     datei: (phase) => `Leistungsverzeichnis/GAEB_DA_XML_${phase}_3.2_2013-10.xsd`,
   },
-};
+  {
+    version: '3.3',
+    phasen: ['31'],
+    url: 'https://www.gaeb.de/wp-content/uploads/2021/06/2021-05_Mengenermittlung.zip',
+    sha256: '88e796ec1c26419edf4446dab24953a83b449c0983297ae9c7e25ca3500888f0',
+    datei: () => 'GAEB_DA_XML_31_3.3_2021-05.xsd',
+  },
+  {
+    version: '3.2',
+    phasen: ['31'],
+    url: 'https://www.gaeb.de/wp-content/uploads/2019/04/Mengenermittlung_3.2_2013-10.zip',
+    sha256: 'f360a10886d164d7b4ddf297d3327b9e70a9b1194e50f76c4e59f88cf02d9267',
+    datei: () => 'Mengenermittlung/GAEB_DA_XML_31_3.2_2013-10.xsd',
+  },
+];
 
 class Uebersprungen extends Error {}
 
@@ -96,9 +118,10 @@ function pruefeNichtsVersioniert() {
 
 function ladeSchemas(temp) {
   if (lauf(XMLLINT, ['--version']).error) ueberspringen('xmllint ist nicht installiert');
-  const verzeichnisse = {};
-  for (const [version, s] of Object.entries(SCHEMAS)) {
-    const zip = join(temp, `schema-${version}.zip`);
+  /** `<version>|<phase>` → Pfad des XSD. */
+  const schemas = {};
+  for (const [i, s] of SCHEMAS.entries()) {
+    const zip = join(temp, `schema-${String(i)}.zip`);
     const r = lauf('curl', ['-fsSL', '--retry', '2', '-o', zip, s.url]);
     if (r.error) ueberspringen('curl ist nicht installiert');
     if (r.status !== 0) ueberspringen(`Download von ${s.url} fehlgeschlagen (${r.stderr.trim()})`);
@@ -109,11 +132,11 @@ function ladeSchemas(temp) {
         `SHA-256 von ${s.url} ist ${summe}, erwartet ${s.sha256}. Das amtliche Schema hat sich geändert; ` +
           'Exporte und Prüfsumme sind zu prüfen.',
       );
-    const ziel = join(temp, `xsd-${version}`);
+    const ziel = join(temp, `xsd-${String(i)}`);
     entpacke(daten, ziel);
-    verzeichnisse[version] = ziel;
+    for (const phase of s.phasen) schemas[`${s.version}|${phase}`] = join(ziel, s.datei(phase));
   }
-  return verzeichnisse;
+  return schemas;
 }
 
 function schreibeExporte(ziel) {
@@ -137,10 +160,11 @@ function main() {
     const dateien = schreibeExporte(exporte);
     let fehler = 0;
     for (const datei of dateien) {
-      const m = /-X(8[136])-(3\.[23])\.x8[136]$/.exec(datei);
+      const m = /-X(8[136]|31)-(3\.[23])\.x(?:8[136]|31)$/.exec(datei);
       if (!m) throw new Error(`Unerwarteter Dateiname ${datei}`);
       const [, phase, version] = m;
-      const xsd = join(schemas[version], SCHEMAS[version].datei(phase));
+      const xsd = schemas[`${version}|${phase}`];
+      if (xsd === undefined) throw new Error(`Kein Schema für X${phase} ${version}`);
       const r = lauf(XMLLINT, ['--noout', '--schema', xsd, join(exporte, datei)]);
       if (r.status === 0) console.log(`bestanden  ${datei}`);
       else {
