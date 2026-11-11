@@ -14,6 +14,7 @@ import type {
   AuftragsLvChangeSetAnwenden,
   AuftragsLvChangeSetUmkehren,
   AuftragsLvKopf,
+  AuftragsLvZustand,
   Befehlshinweis,
   Gesamtsummen,
   Gliederungssumme,
@@ -170,18 +171,19 @@ export interface ChangeSetTeile {
 }
 
 /**
- * Baut ein ChangeSet am LV des Zustands. Die alten Summen (`summen.vorher`, v1.1a) liest es aus dem Zustand: für jede
- * genannte Summe, `gesamt` bei geänderten Gesamtsummen und die vollen Summen der entfernten Knoten. So trägt jedes
- * ChangeSet eines Befehls, was seine Umkehrung braucht, ohne dass ein Befehl daran denken muss.
+ * Knoten, Summen und Hinweise eines ChangeSets, gleich für LV und Auftrags-LV (Review Welle 5, S10). Die alten Summen
+ * (`summen.vorher`, v1.1a) liest es aus dem Summenstand: für jede genannte Summe, `gesamt` bei geänderten Gesamtsummen und
+ * die vollen Summen der entfernten Knoten. So trägt jedes ChangeSet eines Befehls, was seine Umkehrung braucht, ohne dass ein
+ * Befehl daran denken muss. Dazu der Hinweis für ein negatives Netto, wenn sich die Gesamtsummen ändern.
  */
-export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet {
+function knotenUndSummen(
+  alt: Summenstand,
+  teile: Omit<ChangeSetTeile, 'kopf'>,
+): Pick<LvChangeSet, 'knoten' | 'summen' | 'hinweise'> {
   const entfernt = teile.entfernt ?? [];
   const s = teile.summen ?? LEERE_SUMMENAENDERUNG;
   const hinweise = [...(teile.hinweise ?? []), ...nettoHinweise(s.gesamt)];
   return {
-    art: 'leistungsverzeichnis',
-    leistungsverzeichnisId: z.leistungsverzeichnis.id,
-    kopf: teile.kopf ?? null,
     knoten: {
       hinzugefuegt: teile.hinzugefuegt ?? [],
       geaendert: teile.geaendert ?? [],
@@ -191,9 +193,32 @@ export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet 
       positionen: s.positionen,
       gliederungen: s.gliederungen,
       gesamt: s.gesamt,
-      vorher: summenVorher(z.summen, s, entfernt),
+      vorher: summenVorher(alt, s, entfernt),
     },
     ...(hinweise.length === 0 ? {} : { hinweise }),
+  };
+}
+
+/** Baut ein ChangeSet am LV des Zustands (`knotenUndSummen`, dazu der Kopf). */
+export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet {
+  return {
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: z.leistungsverzeichnis.id,
+    kopf: teile.kopf ?? null,
+    ...knotenUndSummen(z.summen, teile),
+  };
+}
+
+/** Baut ein ChangeSet am bestehenden Auftrags-LV wie `baueChangeSet`, ohne Kopf. */
+export function baueAuftragsChangeSet(
+  z: AuftragsLvZustand,
+  teile: Omit<ChangeSetTeile, 'kopf'>,
+): AuftragsLvChangeSet {
+  return {
+    art: 'auftrags-leistungsverzeichnis',
+    auftragsLeistungsverzeichnisId: z.auftragsLeistungsverzeichnis.id,
+    kopf: null,
+    ...knotenUndSummen(z.summen, teile),
   };
 }
 

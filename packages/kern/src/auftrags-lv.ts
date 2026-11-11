@@ -20,18 +20,17 @@ import type {
   Knoten,
   KostengruppeSetzen,
   NachtragUebernehmen,
-  Summenaenderung,
 } from '@tethys/vertrag';
-import { LEERE_SUMMENAENDERUNG } from './changeset';
+import { baueAuftragsChangeSet } from './changeset';
 import { listeFehler } from './einfuegen-befehle';
 import { nein, ok } from './fehler';
-import { anlegeHinweise, nettoHinweise } from './hinweise';
+import { anlegeHinweise } from './hinweise';
 import { kostengruppeWechsel } from './kostengruppe';
 import { positionNormal } from './mengenansatz';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
 import { MAX_GLIEDERUNGSEBENEN, obersteEbeneFehler } from './regeln';
 import { baueIndex, ebenenHoehe, indexVon, kanonisch } from './struktur';
-import { LEERES_SUMMENVORHER, summenAenderung, summenBerechnen, summenVorher } from './summen';
+import { LEERES_SUMMENVORHER, summenAenderung, summenBerechnen } from './summen';
 
 type Antwort = Ergebnis<AuftragsLvChangeSet, Befehlsfehler>;
 
@@ -96,35 +95,6 @@ function anlegen(b: AuftragsLeistungsverzeichnisAnlegen): Antwort {
     },
     ...(hinweise.length === 0 ? {} : { hinweise }),
   });
-}
-
-/**
- * ChangeSet am bestehenden Auftrags-LV, gebaut wie `baueChangeSet` beim LV: kein Kopf, die alten Summen
- * (`summen.vorher`) aus dem Zustand, der Hinweis für ein negatives Netto, wenn sich die Gesamtsummen ändern.
- */
-function baueAuftragsChangeSet(
-  z: AuftragsLvZustand,
-  teile: {
-    readonly hinzugefuegt?: readonly Knoten[];
-    readonly geaendert?: readonly { readonly vorher: Knoten; readonly nachher: Knoten }[];
-    readonly summen?: Omit<Summenaenderung, 'vorher'>;
-  },
-): AuftragsLvChangeSet {
-  const s = teile.summen ?? LEERE_SUMMENAENDERUNG;
-  const hinweise = nettoHinweise(s.gesamt);
-  return {
-    art: 'auftrags-leistungsverzeichnis',
-    auftragsLeistungsverzeichnisId: z.auftragsLeistungsverzeichnis.id,
-    kopf: null,
-    knoten: { hinzugefuegt: teile.hinzugefuegt ?? [], geaendert: teile.geaendert ?? [], entfernt: [] },
-    summen: {
-      positionen: s.positionen,
-      gliederungen: s.gliederungen,
-      gesamt: s.gesamt,
-      vorher: summenVorher(z.summen, s, []),
-    },
-    ...(hinweise.length === 0 ? {} : { hinweise }),
-  };
 }
 
 const KEIN_PAPIERKORB: ReadonlyMap<string, Knoten> = new Map();
