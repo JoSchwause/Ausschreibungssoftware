@@ -12,7 +12,17 @@ import {
   formatiereProzentDe,
   vorzeichen,
 } from '@tethys/dezimal';
-import type { Bauherr, Betrag, Knoten, LvZustand, Position, Zuschlag } from '@tethys/vertrag';
+import type {
+  Bauherr,
+  Betrag,
+  GliederungId,
+  HinweistextId,
+  Knoten,
+  LvZustand,
+  Position,
+  PositionId,
+  Zuschlag,
+} from '@tethys/vertrag';
 import { langtextAlsBloecke } from './langtext';
 import type { DruckBlock } from './langtext';
 
@@ -30,6 +40,8 @@ export interface Kopf {
 
 export interface TitelZeile {
   readonly art: 'titel';
+  /** Kennung des Loses bzw. Titels (für Renderer, die zurückgelesen werden, z. B. Excel). */
+  readonly knotenId: GliederungId;
   /** 1 = oberste Gliederungsebene. */
   readonly ebene: number;
   readonly ordnungszahl: string;
@@ -65,6 +77,7 @@ export interface ZuschlagAngabe {
 
 export interface PositionZeile {
   readonly art: 'position';
+  readonly knotenId: PositionId;
   readonly ordnungszahl: string;
   readonly kurztext: string;
   /** Sichtbare Merkmale (F5): Bedarf, Wahl mit Gruppe und Variante, Stundenlohn, Pauschal. */
@@ -85,6 +98,7 @@ export interface PositionZeile {
 
 export interface HinweisZeile {
   readonly art: 'hinweis';
+  readonly knotenId: HinweistextId;
   readonly text: readonly DruckBlock[];
 }
 
@@ -257,6 +271,7 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
     const s = positionssumme.get(p.id);
     return {
       art: 'position',
+      knotenId: p.id,
       ordnungszahl: oz(p.ordnungszahl, p.ozIndex),
       kurztext: p.kurztext,
       merkmale: merkmalTexte(p),
@@ -294,7 +309,7 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
         case 'los':
         case 'titel': {
           const o = oz(k.ordnungszahl);
-          zeilen.push({ art: 'titel', ebene, ordnungszahl: o, kurztext: k.kurztext });
+          zeilen.push({ art: 'titel', knotenId: k.id, ebene, ordnungszahl: o, kurztext: k.kurztext });
           besuche(k.id, ebene + 1);
           if (mitPreisen) {
             const s = gliederungssumme.get(k.id);
@@ -314,7 +329,7 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
           zeilen.push(positionZeile(k));
           break;
         case 'hinweis':
-          zeilen.push({ art: 'hinweis', text: langtextAlsBloecke(k.text) });
+          zeilen.push({ art: 'hinweis', knotenId: k.id, text: langtextAlsBloecke(k.text) });
           break;
       }
     }
