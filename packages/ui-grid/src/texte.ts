@@ -48,6 +48,7 @@ export const texte = {
   zuklappen: 'Zuklappen',
   nichtInSumme: 'Geht nicht in die Summe ein',
   schreibgeschuetzt: 'Diese Zelle lässt sich nicht bearbeiten.',
+  gridSchreibgeschuetzt: 'Schreibgeschützt: Hier lässt sich nichts ändern.',
   summen: 'Summen',
   summeNetto: 'Netto',
   summeNachlass: 'Nachlass',

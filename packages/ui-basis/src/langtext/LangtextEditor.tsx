@@ -7,13 +7,24 @@ import type { Langtext } from '@tethys/vertrag';
 import { Extension, type Editor } from '@tiptap/core';
 import { Gapcursor, UndoRedo } from '@tiptap/extensions';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
-import { useEffect, useMemo, useRef, type FocusEvent, type ReactElement, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  type Ref,
+  type ReactNode,
+} from 'react';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { langtextTexte } from '../texte';
 import { Tooltip } from '../Tooltip';
 import { dokumentZuLangtext, langtextGleich, langtextKanonisch, langtextZuDokument } from './abbildung';
 import { langtextSchemaErweiterungen } from './schema';
+import { begrenzeTabellenmass, leereTabelle, TABELLE_GRENZEN, TABELLE_VORGABE } from './tabelle';
 
 export interface LangtextEditorProps {
   wert: Langtext;
@@ -175,6 +186,7 @@ function Werkzeugleiste({ editor }: { editor: Editor }): ReactElement {
       >
         <Icon name="nummeriert" />
       </Werkzeug>
+      <TabelleEinfuegen editor={editor} />
     </div>
   );
 }
@@ -204,5 +216,126 @@ function Werkzeug({ text, kuerzel, aktiv, onAusloesen, children }: WerkzeugProps
         {children}
       </Button>
     </Tooltip>
+  );
+}
+
+/** Werkzeug „Tabelle einfügen“: kleines Feld für Zeilen und Spalten innerhalb der Werkzeugleiste (Ticket 54). */
+function TabelleEinfuegen({ editor }: { editor: Editor }): ReactElement {
+  const [offen, setOffen] = useState(false);
+  const [zeilen, setZeilen] = useState(String(TABELLE_VORGABE.zeilen));
+  const [spalten, setSpalten] = useState(String(TABELLE_VORGABE.spalten));
+  const zeilenFeld = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (offen) zeilenFeld.current?.focus();
+  }, [offen]);
+
+  const schliessen = (): void => {
+    setOffen(false);
+    editor.commands.focus();
+  };
+  const einfuegen = (): void => {
+    const m = begrenzeTabellenmass(Number(zeilen), Number(spalten));
+    setOffen(false);
+    editor.chain().focus().insertContent(leereTabelle(m.zeilen, m.spalten)).run();
+  };
+  const tasten = (e: KeyboardEvent<HTMLElement>): void => {
+    if (e.key === 'Escape') {
+      // Esc schließt nur das Feld; das Verwerfen des Editors bleibt dem Textfeld.
+      e.preventDefault();
+      e.stopPropagation();
+      schliessen();
+    } else if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+      e.preventDefault();
+      einfuegen();
+    }
+  };
+
+  return (
+    <>
+      <Tooltip text={langtextTexte.tabelleEinfuegen}>
+        <Button
+          variante="schlicht"
+          groesse="sm"
+          aria-label={langtextTexte.tabelleEinfuegen}
+          aria-expanded={offen}
+          onMouseDown={(e) => {
+            e.preventDefault();
+          }}
+          onClick={() => {
+            setOffen((o) => !o);
+          }}
+        >
+          <Icon name="tabelle" />
+        </Button>
+      </Tooltip>
+      {offen ? (
+        <div
+          className="tx-langtext__tabelle"
+          role="group"
+          aria-label={langtextTexte.tabelleEinfuegen}
+          onKeyDown={tasten}
+        >
+          <MassFeld
+            ref={zeilenFeld}
+            label={langtextTexte.tabelleZeilen}
+            wert={zeilen}
+            grenzen={TABELLE_GRENZEN.zeilen}
+            onWertChange={setZeilen}
+          />
+          <MassFeld
+            label={langtextTexte.tabelleSpalten}
+            wert={spalten}
+            grenzen={TABELLE_GRENZEN.spalten}
+            onWertChange={setSpalten}
+          />
+          <Button
+            variante="primaer"
+            groesse="sm"
+            aria-label={langtextTexte.tabelleUebernehmen}
+            onClick={einfuegen}
+          >
+            {langtextTexte.tabelleUebernehmen}
+          </Button>
+          <Button
+            variante="schlicht"
+            groesse="sm"
+            aria-label={langtextTexte.tabelleAbbrechen}
+            onClick={schliessen}
+          >
+            {langtextTexte.tabelleAbbrechen}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+interface MassFeldProps {
+  label: string;
+  wert: string;
+  grenzen: { readonly min: number; readonly max: number };
+  onWertChange: (w: string) => void;
+  ref?: Ref<HTMLInputElement>;
+}
+
+function MassFeld({ label, wert, grenzen, onWertChange, ref }: MassFeldProps): ReactElement {
+  return (
+    <label className="tx-langtext__tabelle-feld">
+      <span>{label}</span>
+      <input
+        ref={ref}
+        className="tx-eingabe tx-langtext__tabelle-zahl"
+        type="number"
+        inputMode="numeric"
+        min={grenzen.min}
+        max={grenzen.max}
+        aria-label={label}
+        value={wert}
+        onChange={(e) => {
+          onWertChange(e.target.value);
+        }}
+      />
+    </label>
   );
 }

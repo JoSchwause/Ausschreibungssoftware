@@ -332,3 +332,10 @@ Question: Welche Bibliothek schreibt und liest `.xlsx` für den Bieter-Rundlauf?
 Decision: `fflate` (MIT) für ZIP, eigene kleine Schicht für SpreadsheetML (Schreiben mit festen Stilen, Lesen von Zellwerten inkl. Shared Strings und Inline-Strings). Keine große Excel-Bibliothek. Fällt die Lizenzprüfung für `fflate` durch, darf der Umsetzer eine andere MIT/Apache-Bibliothek wählen und begründen.
 Reason: deterministische Bytes für Golden-Tests, kleines Bündel, keine Node-Polyfills im Browser; der Bedarf (eine Tabelle mit festen Spalten) ist schmal.
 Reversible: yes  Touches: packages/ausgabe
+
+## D-26 Ticket 67 darf `Button` in `ui-basis` einen `ref` geben
+Welle 4 · Ticket 67 (Folge von 54) · decided by: orchestrator
+Question: Der Löschdialog des Grids und App-Dialoge können den neuen Anfangsfokus (54, Punkt 6) nicht auf einen Knopf setzen, weil `Button` keinen `ref` annimmt.
+Decision: Ticket 67 ergänzt `Button` um die Weitergabe des `ref` (benannte Ausnahme von P2, `ui-basis` hat in dieser Phase keinen Schreiber); der Löschdialog in `ui-grid` bleibt bis zu einem späteren Grid-Ticket bei seinem Tastenhandler.
+Reason: Eine Zeile, additiv, kein anderer Schreiber in `ui-basis`.
+Reversible: yes  Touches: packages/ui-basis, apps/web
