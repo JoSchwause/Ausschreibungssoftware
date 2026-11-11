@@ -227,8 +227,8 @@ class Ansatzbau {
     return this.zeilen.length + 1;
   }
 
+  /** Die Zeile in der Textform: Ihr Text bleibt im Ausdruck stehen, ist also kein Befund. */
   private textform(z: RebZeile): void {
-    if (z.text !== '') this.bemerkungen.push(z.text);
     this.zeilen.push({
       zeile: this.naechste(),
       formel: Number(z.formel),
