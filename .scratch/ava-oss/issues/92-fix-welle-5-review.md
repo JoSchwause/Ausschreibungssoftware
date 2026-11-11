@@ -62,3 +62,54 @@ Befund → Commit (Pflicht):
 - P5 → `367911c` (Infozeilen nicht beauftragter Nachträge in der Prüfansicht, `nachtragsinfo`)
 - P7 → `237a096` (`ablageLesen`/`ablageAlsText`: Zurückgehaltenes bleibt in der Ablage, Hinweis im Druckdialog; E2E)
 - S12 → `0582354` (`kosten/useLvKosten.tsx`, Einhängestellen in `LvSeite.tsx`)
+
+Befund → Commit (Soll, alle erledigt):
+- S7 → `21995b7` (`historie/arten.ts`: Tabelle `art → { umkehren, ziel }`, `Teil.changeSet` ist `ChangeSet`)
+- S8 → `13c865a` (`ui/Verweis.tsx`; die Kopien in `abrechnung`, `auftrag`, `rechnung`, `kosten` und die Links in
+  `ProjektSeite.tsx`, `AuftragsLvListe.tsx`, `PreisspiegelLink.tsx`, `PreisspiegelSeite.tsx` ersetzt)
+- S6 → `3c5c480` (`rechnung/ausfuehrer.ts` entfernt)
+- S5 → `fadf4a0` (`aufmass.ts`, `rechnungen.ts`, `nachtrag/speichern.ts`, `auftrag/auftrag.ts`, dazu `rechnung/testpfad.ts`)
+- S3 → `17d4d61` (`gaeb`, `speicher` nehmen `KOSTENGRUPPE_FORM`; `kosten` mit Verweis-Kommentar)
+- S10 → `eafdf55` (`knotenUndSummen` in `kern/changeset.ts`, `baueAuftragsChangeSet` dort)
+- S4 → `215d6cf` (Kern exportiert `mengenansatzFehler`, `ansatzFehler` entfällt; Kalenderregel in `abrechnung` und
+  `erechnung` bleibt doppelt, Kommentar an beiden Stellen)
+- S9 → `83e3bf1` (Kern exportiert `kinderJeEltern`, `dokumentreihenfolge`; `abrechnung/baum.ts`,
+  `nachtrag-uebernehmen.ts`, `gaeb/x31-schreiben.ts`, `vorlage/logik.ts`)
+- D-86.7 → `7eb4690` (Wiederholen der Beauftragung bleibt auf dem Auftrags-LV; E2E `nachtrag.spec.ts` angepasst)
+
+Nicht in diesem Ticket (D-47): P1 und P4 sind die Folgetickets 93 und 94.
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-92.1** (P6) Form der Warnung und Ort der Regel? **`nachtragsmaske(auftragsmaske)` in `abrechnung` (neben
+  `nachtragUebernehmen`), Warnung `{ code: 'maske-zu-tief', tiefe, stufen }` vor `oz-unpassend`; eine Los-Stufe entfällt
+  mit der obersten Stufe; ohne Gliederungsstufe bleibt die Maske, der Dialog „Nachtrag anlegen“ sagt es vorab.** Grund: Regel
+  und Warnung gehören zusammen (D-48); `tiefe` zählt die neue Gliederung als Stufe 1, so ist die Warnung ohne Rechnen lesbar.
+  Die M4-Fixture bleibt (ihr Nachtrag nutzt eine Titelstufe; `m4-kette.test.ts` erwartet weiter keine Warnung).
+- **D-92.2** (S11) Name? **`Forderungsdifferenz`** (statt nur `Differenz`, das auch Soll/Ist als Feld trägt), im Glossar
+  bei „Rechnungsprüfung“. Die Befundcodes `gefordert-abweichend` und `freigabe-abweichend` bleiben (Adjektiv, kein Fachbegriff;
+  Texte der App hängen daran).
+- **D-92.3** (S1, S2) **`Kalkulationszeile`** mit Glossar-Notiz beim Kalkulationsansatz; Spalte und Bezeichner
+  **`spalteKalkulationszuschlag: 'Kalkulationszuschlag'`**. Die Feldbeschriftungen „Zuschlagssatz Lohn (%)“ stehen unter
+  „Zuschlagssätze je Kostenart“ im Kalkulationsdialog und bleiben (Text, kein Bezeichner; die E2E `kosten` nutzt sie).
+- **D-92.4** (P3) Netto-Spalte? **Behalten, aber nachgeladen: `LvNetto` lädt ein LV erst, wenn seine Zeile sichtbar ist
+  (`IntersectionObserver`, sonst sofort), einmal je Stand der Liste; Umbenennen und Löschen laden das LV beim Klick.** Grund:
+  `LvUebersicht` hat nach D-53.1 keine Summen, eine Summe dort ist eine Vertragsänderung (Typfrage 1 aus Ticket 53); die Spalte
+  zu streichen nähme dem Nutzer eine sichtbare Zahl. Folgeticket-Stichpunkt: `LvUebersicht.netto` aus `summe_gesamt`
+  (Vertrag, zusammen mit 95), dann entfällt das Nachladen.
+- **D-92.5** (P5) Welche Nachträge? **Jeder nicht beauftragte (angemeldet, angeboten, abgelehnt) mit einem Angebot des
+  Auftragnehmers, mit Status in der Zeile; geladen in `rechnungsstandLaden` über `nachtraegeLaden` (nur die Nachtrags-LVs,
+  D-43).** Grund: Der Status sagt, wie die Zahl zu lesen ist; ein abgelehnter Nachtrag mit Angebot ist für den Prüfer genauso
+  Information. Getestet über Speicher und `nachtragsinfo` (Vitest); keine eigene E2E (die Rechnungs-E2E hat keinen
+  Nachtrag mit Angebot, die Kette gehört Ticket 91).
+- **D-92.6** (P7) Wie bleiben die Rohdaten? **Jeder nicht verwendbare Eintrag (unlesbar, Standardname, doppelter Name) bleibt
+  unverändert hinter den eigenen Profilen in der Ablage; ein ganzer Text, der keine JSON-Liste ist, wird ein Eintrag (als
+  Zeichenkette).** Grund: kein zweiter Schlüssel, Rundweg stabil (Test). Folgeticket-Stichpunkt: zurückgehaltene Einträge
+  als Datei sichern oder bewusst entfernen (heute bleiben sie für immer).
+- **D-92.7** (S9) Namen im Kern? **`kinderJeEltern` und `dokumentreihenfolge` (Export der inneren `gruppiere`, `praeorder`)**,
+  `KinderMap` als Typ. Grund: sprechende Namen außen, innen kein Umbau; die Kopie `kinderVon` in `nachtrag-uebernehmen.ts`
+  fiel mit.
+- **D-92.8** (D-86.7) Mechanik? **In der Tabelle (S7) beim LV: Ändert ein Teil nur den Kopf und trägt der Kopf
+  Nachtragsangaben, ist die Änderung auch auf der Seite des Auftrags-LV sichtbar (Nachtragsliste); dort bleibt die App.**
+  Grund: dieselbe Regel wie „nur Kopf, Projektseite offen“; keine Sonderregel für Schritte, Rückgängig von „Nachtrag anlegen“
+  führt weiter zur Projektseite.
