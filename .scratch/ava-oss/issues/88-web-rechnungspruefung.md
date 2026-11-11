@@ -92,10 +92,11 @@ Branch `welle-5/88-rechnung` (ab `integration/welle-5`, Ticket 81 nach seinem Me
 
 ### Prüfung
 
-Volle Suite nach dem Merge von `integration/welle-5` (bis `6cb3f73`): `pnpm lint` grün (Grenzen, Lizenzen, Clean Room),
-`pnpm typecheck` grün, Vitest 186 Dateien (1 übersprungen), 2.484 Tests bestanden, 3 übersprungen; Fixtures 29/29.
-E2E `rechnung.spec.ts` und `undo.spec.ts` 7/7, `m3.spec.ts` grün. Hinweis: mit `PW_WEB_PORT=4388`, weil Playwright sonst
-mit `reuseExistingServer` den Vorschau-Server eines anderen Worktrees auf 4173 nutzen könnte.
+Volle Suite nach dem Merge von `integration/welle-5` (bis `3ed193e`, mit Ticket 86; Konflikte an den Einhängestellen in
+`befehlsweg.ts` und `AuftragsLvSeite.tsx` aufgelöst, beide Zeilen bleiben): `pnpm lint` grün (Grenzen, Lizenzen, Clean
+Room), `pnpm typecheck` grün, Vitest 188 Dateien (1 übersprungen), 2.498 Tests bestanden, 3 übersprungen; Fixtures 29/29.
+E2E `rechnung.spec.ts`, `undo.spec.ts`, `nachtrag.spec.ts`, `m3.spec.ts` 9/9. Hinweis: mit `PW_WEB_PORT=4388`, weil
+Playwright sonst mit `reuseExistingServer` den Vorschau-Server eines anderen Worktrees auf 4173 nutzen könnte.
 
 ## Answer
 
