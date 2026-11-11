@@ -450,11 +450,12 @@ function papierkorbfehler(
 
 /**
  * Alle Verstöße des LV gegen die Invarianten des Baums als Meldungstexte; leer heißt gültig. Für Tests und
- * Folgetickets (z. B. nach jedem Befehl in Property-Tests). Mit `papierkorb` (v1.2, `LvZustand.papierkorb`): Bezüge auf
+ * Folgetickets (z. B. nach jedem Befehl in Property-Tests); seit Ticket 71 auch für das Auftrags-LV (die Wurzel ist seine
+ * Kennung, `id` ist darum nur ein Text). Mit `papierkorb` (v1.2, `LvZustand.papierkorb`): Bezüge auf
  * Positionen im Papierkorb sind gültig (D-12), und der Papierkorb selbst wird geprüft (`papierkorbfehler`).
  */
 export function pruefeLvInvarianten(
-  lv: Pick<Leistungsverzeichnis, 'id' | 'knoten'>,
+  lv: { readonly id: string; readonly knoten: Leistungsverzeichnis['knoten'] },
   papierkorb?: readonly Papierkorbeintrag[],
 ): string[] {
   const korb = papierkorb ?? [];
