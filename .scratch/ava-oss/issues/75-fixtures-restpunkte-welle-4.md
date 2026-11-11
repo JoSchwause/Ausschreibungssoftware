@@ -1,6 +1,6 @@
 # 75: Fixtures: Restpunkte aus Welle 4
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: F · Paket: `fixtures/`
 Blocked by: –
