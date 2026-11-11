@@ -11,7 +11,7 @@
 //  - Budget: 390 = 6.000,00, 340 = 24.000,00, 310 = 26.000,00 (Eingaben); Ebene 2 liegt unter 300, also 300 = 56.000,00.
 //  - Abweichung = Vergabe − Budget (D-82.5); die Zeilen unter einer Budgetgruppe haben ihre eigene Abweichung.
 //  - EP-Kalkulation (D-39): Lohn 0,450 × 48,50 = 21,825, +10 % = 24,0075 → 24,008; Stoffe 2,000 × 6,25 = 12,500, +5 % =
-//    13,125; EP = 37,133; GP der Position 03.0050 (Menge 9,000) = 334,197 → 334,20.
+//    13,125; EP = 37,133; GP der Position 01.0020 (Menge 86,500) = 3.212,0045 → 3.212,00 (vorher 644,43).
 
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -251,18 +251,18 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(zelle(k, '340', 'abweichung')).toHaveText('–');
   await expect(zelle(k, 'Gesamt', 'vergabe')).toHaveText(de(GESAMT));
 
-  // --- C4: EP kalkulieren an 03.0050 im LV, ein Undo-Schritt ----------------------------------------------------
+  // --- C4: EP kalkulieren an 01.0020 im LV, ein Undo-Schritt ----------------------------------------------------
   await page.goto(`/lv/${inhalt.wurzelId}`);
   await expect(page.getByRole('heading', { level: 1, name: inhalt.name })).toBeVisible();
   const zeile = page.getByRole('treegrid', { name: 'Positionen' }).locator('[role="row"]', {
-    hasText: 'Türzargen einbauen',
+    hasText: 'Bauzaun stellen',
   });
   const gp = zeile.locator('[data-spalte="gesamtpreis"] .tx-grid__text');
   const ep = zeile.locator('[data-spalte="einheitspreis"] .tx-grid__text');
-  await expect(gp).toHaveText(betragDe('1210.50')); // 9,000 × 134,500
+  await expect(gp).toHaveText(betragDe('644.43')); // 86,500 × 7,450 = 644,425
   await zeile.locator('[data-spalte="kurztext"]').click();
   await page.getByRole('button', { name: /^Kalkulieren/ }).click();
-  const kalk = page.getByRole('dialog', { name: /^EP kalkulieren: 03\.0050/ });
+  const kalk = page.getByRole('dialog', { name: /^EP kalkulieren: 01\.0020/ });
   await expect(kalk.getByTestId('kalkulation-nicht-gespeichert')).toContainText('nicht gespeichert');
   await kalk.getByLabel('Ansatzmenge 1').fill('0,450');
   await kalk.getByLabel('Kostensatz 1 (€)').fill('48,50');
@@ -278,14 +278,14 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await kalk.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(kalk).toBeHidden();
   await expect(ep).toHaveText('37,133');
-  await expect(gp).toHaveText(betragDe('334.20'));
+  await expect(gp).toHaveText(betragDe('3212.00'));
 
   // EP und Anteile sind ein Undo-Schritt: ein Rückgängig stellt beides her, Wiederholen setzt beides.
   await page.getByRole('button', { name: /^Rückgängig/ }).click();
-  await expect(gp).toHaveText(betragDe('1210.50'));
-  await expect(ep).toHaveText('134,500');
+  await expect(gp).toHaveText(betragDe('644.43'));
+  await expect(ep).toHaveText('7,450');
   await page.getByRole('button', { name: /^Wiederholen/ }).click();
-  await expect(gp).toHaveText(betragDe('334.20'));
+  await expect(gp).toHaveText(betragDe('3212.00'));
   // Die Ansätze wurden nicht gespeichert: Der Dialog beginnt leer.
   await zeile.locator('[data-spalte="kurztext"]').click();
   await page.getByRole('button', { name: /^Kalkulieren/ }).click();
