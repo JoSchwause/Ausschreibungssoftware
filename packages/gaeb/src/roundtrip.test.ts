@@ -24,6 +24,7 @@ import {
   exportInhalt,
   exportOptionen,
   fixtureLv,
+  mitKostengruppen,
   normiereKennungen,
   ohneAuftragnehmer,
   testIds,
@@ -69,8 +70,14 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   const frei = positionen.find((p) => p.epa?.freiBezeichnung != null)?.epa?.freiBezeichnung ?? null;
   const knoten = inhalt.knoten.map((k) => {
     if (k.art !== 'position') return k;
-    if (x86) return festeBelegung && k.epa !== null ? { ...k, epa: { ...k.epa, freiBezeichnung: null } } : k;
-    const p: Position = { ...k, einheitspreis: null, epa: null };
+    // Die Textquelle (v1.4) hat in keiner Phase ein Gegenstück: Der Writer verwirft sie mit Warnung (Ticket 84).
+    const ohneTextquelle: Position = { ...k };
+    Reflect.deleteProperty(ohneTextquelle, 'textquelle');
+    if (x86)
+      return festeBelegung && k.epa !== null
+        ? { ...ohneTextquelle, epa: { ...k.epa, freiBezeichnung: null } }
+        : ohneTextquelle;
+    const p: Position = { ...ohneTextquelle, einheitspreis: null, epa: null };
     return p.zuschlag === null ? p : { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
   });
   // X81/X83 kennen kein CTR: Der Auftragnehmer wird mit Warnung verworfen (v1.3, Ticket 68).
@@ -176,6 +183,36 @@ describe('Roundtrip der Fixtures', () => {
           expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, UNTERSCHIEDE[name]));
           expect(r.zweiter).toBe(r.erster);
         });
+});
+
+describe('Kostengruppen im Rundweg (Ticket 84)', () => {
+  for (const phase of PHASEN)
+    for (const version of ['3.3', '3.2'] as const)
+      it(`typisch mit Kostengruppen als ${phase} ${version}: jede Kostengruppe kommt zurück`, () => {
+        const { inhalt, summen, basen } = fixtureLv('typisch');
+        const n = normiereKennungen(mitKostengruppen(inhalt), summen, basen);
+        // 25 Positionen (fixtures/typisch.json), die 1., 3., … 25. mit Kostengruppe.
+        expect(
+          n.inhalt.knoten.filter((k) => k.art === 'position' && k.kostengruppe !== undefined).length,
+        ).toBe(13);
+        const r = rundweg(n, phase, version);
+        expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, UNTERSCHIEDE.typisch));
+        expect(r.zweiter).toBe(r.erster);
+      });
+});
+
+describe('Textquelle im Rundweg: bekannte Ausnahme (Ticket 84)', () => {
+  for (const phase of PHASEN)
+    it(`typisch mit Textquelle als ${phase}: die Textquelle entfällt mit Warnung, sonst gleich`, () => {
+      const { inhalt, summen, basen } = fixtureLv('typisch');
+      const knoten = inhalt.knoten.map((k) => (k.art === 'position' ? { ...k, textquelle: 'Muster-LV' } : k));
+      const n = normiereKennungen({ ...inhalt, knoten }, summen, basen);
+      const opt = exportOptionen(phase, '3.3', n);
+      const e = schreibeGaeb(exportInhalt(phase, n), opt);
+      expect(e.befunde.filter((b) => b.meldung.startsWith('Textquelle der Position'))).toHaveLength(1);
+      const r = rundweg(n, phase, '3.3');
+      expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, UNTERSCHIEDE.typisch));
+    });
 });
 
 describe('Wahlgruppe im Rundweg (Ticket 73)', () => {
