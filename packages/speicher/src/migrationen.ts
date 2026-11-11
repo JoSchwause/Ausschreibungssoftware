@@ -17,6 +17,7 @@ import { fehlerAusAusnahme } from './fehler';
 import { fehler, ok } from './ergebnis';
 import { dateiAuf2 } from './dateimigration2';
 import { dateiAuf3 } from './dateimigration3';
+import { dateiAuf4 } from './dateimigration4';
 import type { Datenbank } from './sql';
 import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
@@ -276,6 +277,21 @@ CREATE TABLE lv_stand (
 CREATE INDEX lv_stand_lv ON lv_stand (leistungsverzeichnis_id, seq);
 `;
 
+// --- Version 4 (Ticket 57, `vertrag` v1.3) ----------------------------------------------------------------------------
+//
+// Die neuen optionalen Felder aus v1.3 als kanonisches JSON, `NULL` = fehlt: `auftragnehmer` und `epa_bezeichnungen` am
+// Kopf von LV und Auftrags-LV (Ticket 53 Punkte 2 und 6, D-28; beide am gemeinsamen `LvInhaltKopf`), `mengenansatz` an
+// der Position (Punkt 9, D-22). Nur neue Spalten; vorhandene Zeilen bleiben, wie sie sind (alle neuen Werte fehlen).
+// Den Mengenansatz rechnet `speicher` nie aus (A3), er ändert keine Summe: keine Neuberechnung (D-17).
+// Papierkorbeinträge und LV-Stände halten Knoten und Kopf schon als JSON; sie brauchen keine Spalte.
+const SCHEMA_V4 = `
+ALTER TABLE leistungsverzeichnis ADD COLUMN auftragnehmer TEXT;
+ALTER TABLE leistungsverzeichnis ADD COLUMN epa_bezeichnungen TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN auftragnehmer TEXT;
+ALTER TABLE auftrags_lv ADD COLUMN epa_bezeichnungen TEXT;
+ALTER TABLE knoten ADD COLUMN mengenansatz TEXT CHECK (mengenansatz IS NULL OR art = 'position');
+`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -302,6 +318,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V3);
     },
     datei: dateiAuf3,
+  },
+  {
+    version: 4,
+    name: 'Vertrag v1.3: Auftragnehmer, EPA-Bezeichnungen, Mengenansatz',
+    hoch: (db) => {
+      db.skript(SCHEMA_V4);
+    },
+    datei: dateiAuf4,
   },
 ];
 

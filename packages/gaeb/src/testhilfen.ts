@@ -26,6 +26,7 @@ import type {
   Zeilenumbruch,
 } from '@tethys/vertrag';
 import type {
+  Auftragnehmer,
   Betrag,
   Einheitspreis,
   Einheitspreisanteile,
@@ -445,6 +446,75 @@ export function position(
   };
 }
 
+/**
+ * Ein LV mit leeren Langtext-Strukturen (v1.3, D-22 (iii)): leere Liste, Tabelle ohne Zeilen, Zeile ohne Zellen, auch
+ * verschachtelt, in Position, Hinweistext und Unterbeschreibung. Der Writer verwirft sie mit Warnung; die
+ * XSD-Gegenprüfung zeigt, dass der Export gültig bleibt.
+ */
+export function leereStrukturenLv(): Normiert {
+  const leer: Langtext = [
+    { art: 'liste', geordnet: false, punkte: [] },
+    { art: 'tabelle', zeilen: [] },
+    { art: 'tabelle', zeilen: [{ zellen: [] }] },
+    {
+      art: 'liste',
+      geordnet: true,
+      punkte: [
+        [
+          { art: 'text', text: 'Punkt' },
+          { art: 'liste', geordnet: false, punkte: [] },
+        ],
+      ],
+    },
+    {
+      art: 'tabelle',
+      zeilen: [
+        { zellen: [] },
+        { zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [{ zellen: [] }] }] }] },
+      ],
+    },
+  ];
+  const hinweis: Knoten = {
+    art: 'hinweis',
+    id: 'h1' as HinweistextId,
+    elternId: 't1' as ElternId,
+    reihenfolge: 0,
+    text: leer,
+  };
+  const p = position('p1', '01.0010', 1, {
+    langtext: leer,
+    leitbeschreibung: {
+      unterbeschreibungen: [{ nummer: '1', kurztext: 'U', langtext: leer, menge: null, einheit: null }],
+    },
+  });
+  const inhalt: LvInhalt = {
+    name: 'Leere Strukturen',
+    ozMaske: {
+      gliederung: [{ laenge: 2, zeichen: 'numerisch' }],
+      position: { laenge: 4, zeichen: 'numerisch' },
+      index: null,
+      trennzeichen: '.',
+    },
+    mwstSatz: '19.00' as Prozent,
+    nachlass: null,
+    wurzelId: LV,
+    knoten: [titel('t1', '01'), hinweis, p],
+  };
+  const b = (x: string): Betrag => x as Betrag;
+  const summen: Summenstand = {
+    positionen: [{ positionId: 'p1' as PositionId, gesamtpreis: null, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: 't1' as TitelId, summe: b('0.00') }],
+    gesamt: {
+      netto: b('0.00'),
+      nachlass: b('0.00'),
+      nettoNachNachlass: b('0.00'),
+      mwst: b('0.00'),
+      brutto: b('0.00'),
+    },
+  };
+  return normiereKennungen(inhalt, summen);
+}
+
 /** Ein LV mit allem, was der Vertrag trägt: Los, Merkmale, Wahl, Zuschläge, Leitbeschreibung, EPA, Langtext, Kopf. */
 export function reichesLv(): {
   inhalt: LvInhalt;
@@ -551,7 +621,8 @@ export function reichesLv(): {
         nachunternehmer: '1.000' as Einheitspreis,
         sonstiges: null,
         frei: '2.000' as Einheitspreis,
-        freiBezeichnung: 'Entsorgung',
+        // v1.3: Die Bezeichnung des freien Anteils steht in `epaBezeichnungen` (D-53.6).
+        freiBezeichnung: null,
       },
     }),
     pos('b', '1.A1.0020', 2, {
@@ -625,6 +696,20 @@ export function reichesLv(): {
       ort: 'Musterstadt',
       vergabenummer: 'V-1',
     },
+    auftragnehmer: {
+      name: 'Beispielbau (erfunden)',
+      strasse: 'Werkstraße 2',
+      plz: '54321',
+      ort: 'Beispielhausen',
+    },
+    // v1.3 (D-28): andere Reihenfolge als die feste Belegung, eine Lücke (5) und eine leere Beschriftung (3).
+    epaBezeichnungen: [
+      { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: null },
+      { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+      { nummer: 6, anteil: 'frei', bezeichnung: 'Entsorgung' },
+    ],
     vergabeinformationen: {
       eroeffnungsdatum: null,
       eroeffnungszeit: null,
@@ -671,7 +756,7 @@ export function reichesLv(): {
 /** Fester Zeitpunkt der Test-Exporte (A2: die Uhr liefert der Aufrufer). */
 export const TEST_ERSTELLT = { datum: '2026-11-10', zeit: '12:00:00' } as const;
 
-/** Exportoptionen der Tests; X86 bekommt Summen, Zuschlagsbasen und einen erfundenen Auftragnehmer. */
+/** Exportoptionen der Tests; X86 bekommt Summen und Zuschlagsbasen. */
 export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: Normiert): SchreibOptionen {
   return {
     phase,
@@ -680,8 +765,32 @@ export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: No
     programm: 'Tethys AVA (Test)',
     ...(n.summen === undefined ? {} : { summen: n.summen }),
     ...(n.basen === undefined ? {} : { zuschlagsbasen: n.basen }),
-    ...(phase === 'X86' ? { auftragnehmer: 'Auftragnehmer (erfunden)' } : {}),
   };
+}
+
+/** Erfundener Auftragnehmer der X86-Exporte (C4: kein echter Name). */
+export const ERFUNDENER_AUFTRAGNEHMER: Auftragnehmer = {
+  name: 'Auftragnehmer (erfunden)',
+  strasse: null,
+  plz: null,
+  ort: null,
+};
+
+/** Der Inhalt ohne Auftragnehmer: so liest ihn eine X81/X83 wieder (CTR gibt es nur in X86). */
+export function ohneAuftragnehmer(inhalt: LvInhalt): LvInhalt {
+  const kopie = { ...inhalt };
+  Reflect.deleteProperty(kopie, 'auftragnehmer');
+  return kopie;
+}
+
+/**
+ * Der Inhalt, den die Tests in eine Phase schreiben: X86 ist die Auftragserteilung und bekommt den erfundenen
+ * Auftragnehmer, wenn das LV keinen hat (v1.3, Ticket 68: der Auftragnehmer kommt aus dem Modell, nicht aus einer Option).
+ */
+export function exportInhalt(phase: ExportPhase, n: Normiert): LvInhalt {
+  return phase === 'X86' && n.inhalt.auftragnehmer === undefined
+    ? { ...n.inhalt, auftragnehmer: ERFUNDENER_AUFTRAGNEHMER }
+    : n.inhalt;
 }
 
 /** Amtliche 3.3-Dateien, deren gelesener Inhalt als X81/X83 wieder geschrieben wird. */
@@ -713,7 +822,7 @@ export interface Exportfall {
 }
 
 /**
- * Alle Exporte der XSD-Gegenprüfung: jede Fixture und das LV `reichesLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
+ * Alle Exporte der XSD-Gegenprüfung: jede Fixture, `reichesLv` und `leereStrukturenLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
  * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
  */
 export function exportfaelle(): Exportfall[] {
@@ -735,6 +844,9 @@ export function exportfaelle(): Exportfall[] {
   const reich = normiereKennungen(r.inhalt, r.summen, r.basen);
   for (const phase of ['X81', 'X83', 'X86'] as const)
     for (const version of versionen) faelle.push(fall('reich', reich, phase, version));
+  const leer = leereStrukturenLv();
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('leer', leer, phase, version));
   for (const a of AMTLICH_LESBAR) {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)

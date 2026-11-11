@@ -4,6 +4,7 @@
 //  - `SCHEMA_ABBILD` hält je Version das Soll-Schema fest. Für eine neue Version kommt ein Eintrag dazu,
 //    bestehende Einträge werden nie geändert.
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { aktuelleVersion, migriere, MIGRATIONEN, SCHEMA_VERSION, type Migration } from './migrationen';
 import { SpeicherKern } from './kern';
@@ -12,6 +13,7 @@ import { normalisiere } from './testhilfe/fixtures';
 import { inhaltMitAllenAltenArten, mitKernSummen } from './testhilfe/inhalt-v1';
 import { kernAufDb, neueDatenbank, neuerKern, wert, zaehle } from './testhilfe/node';
 import { schreibeInSchema1 } from './testhilfe/schema1';
+import { aufSchema3 } from './testhilfe/schema3';
 import type { Datenbank } from './sql';
 
 /** Soll-Schema je Version: `tabelle: spalte:TYP[!=NOT NULL][*=Schlüssel]` und die Indizes. Nie rückwirkend ändern. */
@@ -56,6 +58,24 @@ const SCHEMA_ABBILD: Record<number, { tabellen: string[]; indizes: string }> = {
       'bieter: projekt_id:TEXT!* id:TEXT!* name:TEXT! reihenfolge:INTEGER!',
       'knoten: aggregat_id:TEXT!* id:TEXT!* art:TEXT! eltern_id:TEXT! reihenfolge:INTEGER! ordnungszahl:TEXT oz_index:TEXT kurztext:TEXT merkmale:TEXT zuschlag:TEXT leitbeschreibung:TEXT text_json:TEXT menge:TEXT einheit:TEXT einheitspreis:TEXT epa:TEXT',
       'leistungsverzeichnis: id:TEXT!* projekt_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT',
+      'lv_stand: seq:INTEGER* id:TEXT! leistungsverzeichnis_id:TEXT! name:TEXT! angelegt:TEXT! zustand:TEXT!',
+      'papierkorb_eintrag: leistungsverzeichnis_id:TEXT!* id:TEXT!* nummer:INTEGER! knoten:TEXT!',
+      'projekt: id:TEXT!* name:TEXT! bauherr_name:TEXT! bauherr_anschrift:TEXT',
+      'protokoll: seq:INTEGER* id:TEXT! projekt_id:TEXT! aggregat_art:TEXT! aggregat_id:TEXT! wer:TEXT! wann:TEXT! befehl:TEXT!',
+      'summe_gesamt: aggregat_id:TEXT!* netto:TEXT! nachlass:TEXT! netto_nach_nachlass:TEXT! mwst:TEXT! brutto:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_gliederung: aggregat_id:TEXT!* gliederung_id:TEXT!* summe:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_position: aggregat_id:TEXT!* position_id:TEXT!* gesamtpreis:TEXT geht_in_summe:INTEGER!',
+    ],
+    indizes: 'angebot_lv,knoten_eltern,leistungsverzeichnis_projekt,lv_stand_lv,protokoll_projekt',
+  },
+  4: {
+    tabellen: [
+      'angebot: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! bieter_id:TEXT! nachlass_art:TEXT nachlass_wert:TEXT',
+      'angebotsposition: angebot_id:TEXT!* position_id:TEXT!* status:TEXT! einheitspreis:TEXT epa:TEXT zuschlagssatz:TEXT',
+      'auftrags_lv: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! angebot_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT auftragnehmer:TEXT epa_bezeichnungen:TEXT',
+      'bieter: projekt_id:TEXT!* id:TEXT!* name:TEXT! reihenfolge:INTEGER!',
+      'knoten: aggregat_id:TEXT!* id:TEXT!* art:TEXT! eltern_id:TEXT! reihenfolge:INTEGER! ordnungszahl:TEXT oz_index:TEXT kurztext:TEXT merkmale:TEXT zuschlag:TEXT leitbeschreibung:TEXT text_json:TEXT menge:TEXT einheit:TEXT einheitspreis:TEXT epa:TEXT mengenansatz:TEXT',
+      'leistungsverzeichnis: id:TEXT!* projekt_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT auftragnehmer:TEXT epa_bezeichnungen:TEXT',
       'lv_stand: seq:INTEGER* id:TEXT! leistungsverzeichnis_id:TEXT! name:TEXT! angelegt:TEXT! zustand:TEXT!',
       'papierkorb_eintrag: leistungsverzeichnis_id:TEXT!* id:TEXT!* nummer:INTEGER! knoten:TEXT!',
       'projekt: id:TEXT!* name:TEXT! bauherr_name:TEXT! bauherr_anschrift:TEXT',
@@ -273,10 +293,12 @@ describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)
       normalisiere(soll.leistungsverzeichnisse[0] ?? lv),
     );
     expect(wert(kern.lvStaendeAuflisten(lv.leistungsverzeichnis.id))).toEqual([]);
+    // Seit Version 4 exportiert die frische Datenbank eine höhere Schemaversion; sonst ist die Datei gleich.
     const frisch = await neuerKern();
     wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
+    const neu = JSON.parse(wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id))) as object;
     expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
-      wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
+      kanonischesJson({ ...neu, schemaVersion: 3 }),
     );
   });
 
@@ -288,5 +310,85 @@ describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)
     expect(datei(roh)).toEqual(roh);
     expect(() => datei({ ...roh, lvStaende: [] })).toThrow(/lvStaende/);
     expect(() => datei({ ...roh, leistungsverzeichnisse: [{ papierkorb: [] }] })).toThrow(/papierkorb/);
+  });
+});
+
+describe('Migration 4 überführt eine Datenbank der Version 3 ohne Verlust (Q5)', () => {
+  const v3 = readFileSync(new URL('../fixtures/projektdatei-v3.json', import.meta.url), 'utf8');
+
+  it('Datenbank der Version 3 mit Inhalt: Modell und Projektdatei bleiben gleich, die neuen Spalten sind NULL', async () => {
+    // Eine Datenbank der Version 3 nachgestellt: die Datei importiert, dann die Spalten von Version 4 entfernt.
+    const db = await neueDatenbank();
+    const projekt = wert(kernAufDb(db).projektdateiImportieren(v3));
+    aufSchema3(db);
+    expect(schemaAbbild(db)).toEqual(SCHEMA_ABBILD[3]);
+    const alt = kernAufDb(db, bis(3));
+    const lvs = wert(alt.lvAuflisten(projekt));
+    const vorher = lvs.map((l) => wert(alt.lvLaden(l.id)));
+    const tabellen = ['knoten', 'angebotsposition', 'protokoll', 'papierkorb_eintrag', 'lv_stand'];
+    const zeilenV3 = tabellen.map((t) => zaehle(db, t));
+
+    const kern = kernAufDb(db);
+    expect(aktuelleVersion(db)).toBe(4);
+    expect(tabellen.map((t) => zaehle(db, t))).toEqual(zeilenV3);
+    expect(lvs.map((l) => wert(kern.lvLaden(l.id)))).toEqual(vorher);
+    for (const [t, s] of [
+      ['leistungsverzeichnis', 'auftragnehmer'],
+      ['leistungsverzeichnis', 'epa_bezeichnungen'],
+      ['auftrags_lv', 'auftragnehmer'],
+      ['auftrags_lv', 'epa_bezeichnungen'],
+      ['knoten', 'mengenansatz'],
+    ] as const) {
+      expect(zaehle(db, `${t} WHERE ${s} IS NOT NULL`), `${t}.${s}`).toBe(0);
+    }
+    // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 3 (Dateimigration).
+    const frisch = await neuerKern();
+    wert(frisch.kern.projektdateiImportieren(v3));
+    expect(wert(kern.projektdateiExportieren(projekt))).toBe(
+      wert(frisch.kern.projektdateiExportieren(projekt)),
+    );
+  });
+
+  it('die neue Spalte mengenansatz gibt es nur an Positionen', async () => {
+    const db = await neueDatenbank();
+    expect(migriere(db).ok).toBe(true);
+    db.skript(`INSERT INTO knoten (aggregat_id, id, art, eltern_id, reihenfolge, kurztext, merkmale, text_json,
+                 mengenansatz) VALUES ('a', 'p', 'position', 'a', 0, 'k', '{}', '[]', '[]')`);
+    expect(() => {
+      db.skript(`INSERT INTO knoten (aggregat_id, id, art, eltern_id, reihenfolge, kurztext, mengenansatz)
+                 VALUES ('a', 't', 'titel', 'a', 1, 'k', '[]')`);
+    }).toThrow(/CHECK/);
+  });
+
+  it('Dateimigration 3 → 4 lässt den Inhalt gleich und weist die neuen Felder in einer Datei der Version 3 ab', () => {
+    const datei = MIGRATIONEN.find((x) => x.version === 4)?.datei;
+    if (datei == null) throw new Error('keine Dateimigration 4');
+    const roh = JSON.parse(v3) as Record<string, unknown>;
+    expect(datei(roh)).toEqual(roh);
+    type Pfad = (string | number)[];
+    const mit = (pfad: Pfad, feld: string): Record<string, unknown> => {
+      const d = JSON.parse(v3) as Record<string, unknown>;
+      let o = d as Record<string | number, unknown>;
+      for (const s of pfad) o = o[s] as Record<string | number, unknown>;
+      o[feld] = [];
+      return d;
+    };
+    const lv: Pfad = ['leistungsverzeichnisse', 0, 'leistungsverzeichnis'];
+    const auftrag: Pfad = ['auftragsLeistungsverzeichnisse', 0, 'auftragsLeistungsverzeichnis'];
+    const stand: Pfad = ['lvStaende', 0, 'zustand'];
+    for (const [pfad, feld] of [
+      [lv, 'auftragnehmer'],
+      [lv, 'epaBezeichnungen'],
+      [[...lv, 'knoten', 3], 'mengenansatz'],
+      [auftrag, 'auftragnehmer'],
+      [auftrag, 'epaBezeichnungen'],
+      [[...auftrag, 'knoten', 3], 'mengenansatz'],
+      [['leistungsverzeichnisse', 0, 'papierkorb', 0, 'knoten', 0], 'mengenansatz'],
+      [[...stand, 'leistungsverzeichnis'], 'epaBezeichnungen'],
+      [[...stand, 'leistungsverzeichnis', 'knoten', 3], 'mengenansatz'],
+      [[...stand, 'papierkorb', 0, 'knoten', 0], 'mengenansatz'],
+    ] as [Pfad, string][]) {
+      expect(() => datei(mit(pfad, feld)), `${pfad.join('.')}.${feld}`).toThrow(new RegExp(feld));
+    }
   });
 });

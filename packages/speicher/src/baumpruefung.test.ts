@@ -7,7 +7,7 @@ import type { Knoten, LvChangeSet, Position, PositionId, Protokolleintrag, Titel
 import { describe, expect, it } from 'vitest';
 import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert, zaehle } from './testhilfe/node';
-import { LEERES_SUMMENVORHER } from './vertrag-v13';
+import { LEERES_SUMMENVORHER } from './summenvorher';
 
 const typisch = ladeFixture('typisch');
 const lvId = typisch.lv.leistungsverzeichnis.id;
@@ -23,13 +23,29 @@ let nr = 500;
 const lvEintrag = (): Protokolleintrag =>
   eintrag(nr++, typisch.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, { art: 'NachlassEntfernen' });
 
-const changeSet = (k: Partial<LvChangeSet['knoten']>): LvChangeSet => ({
-  art: 'leistungsverzeichnis',
-  leistungsverzeichnisId: lvId,
-  kopf: null,
-  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [], ...k },
-  summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
-});
+/** Ohne Summenänderung; die Summen entfernter Knoten stehen in `vorher.entfernt` (Ticket 57: überall geprüft). */
+const changeSet = (k: Partial<LvChangeSet['knoten']>): LvChangeSet => {
+  const weg = new Set((k.entfernt ?? []).map((e) => e.id as string));
+  const s = typisch.lv.summen;
+  return {
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: lvId,
+    kopf: null,
+    knoten: { hinzugefuegt: [], geaendert: [], entfernt: [], ...k },
+    summen: {
+      positionen: [],
+      gliederungen: [],
+      gesamt: null,
+      vorher: {
+        ...LEERES_SUMMENVORHER,
+        entfernt: {
+          positionen: s.positionen.filter((e) => weg.has(e.positionId)),
+          gliederungen: s.gliederungen.filter((e) => weg.has(e.gliederungId)),
+        },
+      },
+    },
+  };
+};
 
 const kinder = (elternId: string): Knoten[] => knoten.filter((k) => k.elternId === elternId);
 const ersteGliederungMitKindern = (): Titel => {

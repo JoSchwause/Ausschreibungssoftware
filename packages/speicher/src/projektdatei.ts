@@ -33,7 +33,7 @@ import {
 } from './schreiben';
 import type { Datenbank } from './sql';
 import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
-import { LEERES_SUMMENVORHER } from './vertrag-v13'; // v1.3: mechanisch angepasst, Folgeticket (Ticket 57)
+import { LEERES_SUMMENVORHER } from './summenvorher';
 
 /** Baut die Projektdatei im Stand der aktuellen Schemaversion. Reihenfolge der Listen: nach Kennung. */
 export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: number): Projektdatei {
@@ -138,7 +138,7 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           leistungsverzeichnisId: kopf.id,
           kopf: { vorher: null, nachher: kopf },
           knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3)
+          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
           ...(z.papierkorb === undefined
             ? {}
             : { papierkorb: { hinzugefuegt: z.papierkorb, geaendert: [], entfernt: [] } }),
@@ -156,7 +156,7 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           angebotId: kopf.id,
           kopf: { vorher: null, nachher: kopf },
           positionen: { hinzugefuegt: positionen, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3)
+          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
         },
         projektId,
       );
@@ -170,7 +170,7 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           auftragsLeistungsverzeichnisId: kopf.id,
           kopf: { vorher: null, nachher: kopf },
           knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER }, // v1.3: mechanisch angepasst, Folgeticket (Pflicht seit v1.3)
+          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
         },
         projektId,
       );
