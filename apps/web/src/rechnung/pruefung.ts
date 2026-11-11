@@ -11,8 +11,16 @@ import {
   type Rechnungsbefund,
   type Rechnungspruefung,
 } from '@tethys/abrechnung';
-import type { AufmassId, Betrag, PositionId, Rechnung } from '@tethys/vertrag';
+import type {
+  AufmassId,
+  Betrag,
+  LeistungsverzeichnisId,
+  Nachtragsstatus,
+  PositionId,
+  Rechnung,
+} from '@tethys/vertrag';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
+import type { Nachtragseintrag } from '../nachtrag/speichern';
 import type { Rechnungsstand } from './rechnungen';
 import { texte } from './texte';
 
@@ -34,6 +42,28 @@ export function gepruefterZahlbetrag(
   rechnungen: readonly Rechnung[],
 ): Betrag {
   return rechnung.freigabe?.zahlbetrag ?? pruefen(rechnung, stand, rechnungen).kette.zahlbetrag;
+}
+
+/** Eine Infozeile der Prüfung zu einem Nachtrag, der nicht in die Rechnung geht (D-35). */
+export interface Nachtragsinfo {
+  readonly lvId: LeistungsverzeichnisId;
+  readonly nummer: string;
+  readonly status: Exclude<Nachtragsstatus, 'beauftragt'>;
+  /** Netto des Nachtragsangebots des Auftragnehmers. */
+  readonly angebotsnetto: Betrag;
+}
+
+/**
+ * Je nicht beauftragtem Nachtrag mit Angebot des Auftragnehmers eine Infozeile (D-35), in der Reihenfolge der Nachträge.
+ * Ein solcher Nachtrag steht nicht im Auftrags-LV und geht nie in die Abzugskette; „VOB 80“ (Abschlag auf angebotene
+ * Nachträge) gibt es in v1 nicht.
+ */
+export function nachtragsinfo(nachtraege: readonly Nachtragseintrag[]): Nachtragsinfo[] {
+  const aus: Nachtragsinfo[] = [];
+  for (const n of nachtraege)
+    if (n.status !== 'beauftragt' && n.angebotsnetto !== null)
+      aus.push({ lvId: n.lvId, nummer: n.nummer, status: n.status, angebotsnetto: n.angebotsnetto });
+  return aus;
 }
 
 /** Eine Zeile der Abzugskette. `zeichen`: wie der Betrag in die Kette eingeht; `=` ist ein Zwischenergebnis. */

@@ -19,6 +19,7 @@ import type {
   Speicherfehler,
 } from '@tethys/vertrag';
 import type { Teil } from '../historie/historie';
+import { nachtraegeLaden, type Nachtragseintrag } from '../nachtrag/speichern';
 import { Sitzung, eintragSchreiben, type Befehlsweg, type Umgebung } from '../lv/befehlsweg';
 import { rechnungBefehlAusfuehren, rechnungChangeSetAnwenden } from './ausfuehrer';
 
@@ -83,6 +84,11 @@ export interface Rechnungsstand {
   readonly aufmasse: readonly Aufmass[];
   /** Nach Nummer. */
   readonly rechnungen: readonly Rechnung[];
+  /**
+   * Die Nachträge des Auftrags-LV mit Status und Netto des Nachtragsangebots, nach Nummer. Nur zur Information: Gerechnet
+   * wird ein Nachtrag erst, wenn er beauftragt und übernommen ist (D-35).
+   */
+  readonly nachtraege: readonly Nachtragseintrag[];
 }
 
 export async function rechnungsstandLaden(
@@ -97,6 +103,8 @@ export async function rechnungsstandLaden(
   if (!auftrag.ok) return auftrag;
   if (!blaetter.ok) return blaetter;
   if (!rechnungen.ok) return rechnungen;
+  const nachtraege = await nachtraegeLaden(speicher, auftrag.wert);
+  if (!nachtraege.ok) return nachtraege;
   const aufmasse: Aufmass[] = [];
   for (const b of blaetter.wert) {
     const a = await speicher.aufmasse.laden(b.id);
@@ -110,6 +118,7 @@ export async function rechnungsstandLaden(
       blaetter: blaetter.wert,
       aufmasse,
       rechnungen: nachNummer(rechnungen.wert),
+      nachtraege: nachtraege.wert.nachtraege,
     },
   };
 }
