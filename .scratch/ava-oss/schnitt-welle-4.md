@@ -24,7 +24,7 @@ Zuschlag erzeugt das Auftrags-LV.
 | 59 | V4 | Zuschlag → Auftrags-LV (Rechnung) | `packages/vergabe` | 53, 51 | 2 | opus |
 | 60 | U2 | `ui-grid`: Vergleichsgrid (schreibgeschützt, freie Spalten) für den Preisspiegel | `packages/ui-grid` | 54a | 2 | opus |
 | 61 | O2 | Excel-Export und -Import (LV für Bieter, Rücklauf als Angebot) | `packages/ausgabe` | 58 | 2 | opus |
-| 68 | G | `gaeb` v1.3: Auftragnehmer in X86, EPA-Bezeichnungen, Import der X84 aus 69 | `packages/gaeb` | 53, 51, 69 | 3 | opus |
+| 68 | G | `gaeb` v1.3: Auftragnehmer in X86, EPA-Bezeichnungen, Import der X84 aus 69 | `packages/gaeb` | 53, 51, 57, 69 | 3 | opus |
 | 63 | V3 | Preisspiegel-Ansicht in der App | `apps/web/src/vergabe/` | 60, 51 | 3 | opus |
 | 64 | V4 | Zuschlag und Auftrags-LV in der App, **E2E Tor M3** | `apps/web/src/vergabe/`, `src/auftrag/` | 63, 59, 57, 69 | 4 | opus |
 | 65 | M2 | Mengenermittlungs-Panel | `apps/web/src/mengen/` | 56, 57 | 3 | sonnet |

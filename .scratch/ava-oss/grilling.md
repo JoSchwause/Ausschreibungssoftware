@@ -48,6 +48,8 @@ explizit geantwortet), **offen**.
   danach. (2026-11-09)
 - **G-16** DIN-276-Bezeichnungen, Einheitenkatalog, REB-Formeltexte — *entschieden*. **Antwort:** Im
   Repo nur Nummern. Bezeichnungen und Katalogtexte importiert der Nutzer selbst. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: Kostengruppen-Hierarchie aus den Ziffern abgeleitet, keine Nummernliste
+  im Repo; Summe = eigener Betrag + Kinder (D-24 in `entscheidungen-auto.md`).
 - **G-17** STLB-Bau — *entschieden*. **Antwort:** Im MVP ignorieren. Ein Feld für eine Textquelle
   bleibt vorgehalten. (2026-11-09)
 
@@ -155,6 +157,8 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
   Fachdokumentation belegt (D-03 in `entscheidungen-auto.md`).
 - **E-04** Bedarf und Wahl in den Summen — *entschieden*. Vorläufige Regel gilt; getrennte Summenfelder;
   „Wählen“ erst bei der Vergabe (Welle 4); Gruppe und Variante aus GAEB.
+  Annahme für Demo, Mensch bestätigt später: Das Auftrags-LV enthält nur das Beauftragte; gewählte Alternative wird
+  normale Position, Grundposition und nicht gewählte Alternativen entfallen (D-21 in `entscheidungen-auto.md`).
 - **E-05** Positionsart — *entschieden*. Kombinierbare Merkmale (Bedarf, Wahl, Stundenlohn, Pauschal).
 - **E-06** Nachlass-Rundung — *entschieden*. Betrag auf 2 Stellen runden, dann abziehen. Negatives Netto nach
   Nachlass ist ein Befund (K8), keine Sperre.

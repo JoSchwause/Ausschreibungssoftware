@@ -4,6 +4,7 @@ Status: ready-for-agent
 Type: task
 Welle: 4 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die den Typ nutzen)
 Blocked by: –
+Welle-4-Lauf: siehe `../schnitt-welle-4.md`; Zusatzpunkt 9 und Entscheidungen D-22
 Regeln: A4, F3, W-03 (b), D-06, P9 (der Nutzer prüft), G-26, G-32
 Herkunft: Comments der Tickets 30, 34, 38, 39, 40, 43, 45, 46, 47, 48 und 49 (Lücken, siehe Liste)
 
@@ -33,6 +34,21 @@ einer Fassung v1.3 im Stil von Ticket 29: enge, umkehrbare Lesart im Typ, Altern
 8. **Leere Liste, Tabelle ohne Zeilen, Zeile ohne Zellen im `Langtext`** (Ticket 34). Der Editor kann sie nicht darstellen;
    Typfrage, ob der Vertrag sie verbietet (G2 prüft, ob GAEB sie zulässt).
 
+9. **Mengenansatz an der Position** (Welle 4, M2; D-22). `Ansatzzeile` (heute `packages/mengen/src/mengenansatz.ts`) wandert
+   nach `vertrag`; `mengen` importiert den Typ von dort (mechanisch). `Positionsdaten.mengenansatz?: readonly Ansatzzeile[]`
+   (optional wie `leitbeschreibung`, fehlt = kein Ansatz). Neuer `LvBefehl` `MengenansatzSetzen { positionId, mengenansatz:
+   readonly Ansatzzeile[] | null, menge: Menge | null }`: die App rechnet die Menge mit `mengen`, der Kern speichert beides
+   unausgewertet (A3: kein `kern → mengen`). Lesarten im Typkommentar: (a) ein reiner Mengenbefehl (`MengeAendern` u. a.)
+   an einer Position mit Ansatz entfernt den Ansatz im selben ChangeSet; (b) ein Ansatz mit Fehler kommt mit `menge: null`.
+   Neues Glied der geschlossenen Befehlsliste: Kern-Handler, Speicher und Panel sind Folgetickets (56, 57, 65); hier nur so
+   viel Mechanik, dass alles grün bleibt (z. B. der Kern weist den Befehl vorläufig mit `befehl-nicht-zustaendig` ab, markiert).
+
+**Entscheidungen für diesen Lauf (D-22):** Punkt 7 bekommt **keinen** Typ (Offene Typfrage mit Alternativen in den Comments,
+G-26). Punkt 8: Typ bleibt weit; K8-Befund und Writer-Warnung kommen in Folgetickets (56, 68). Punkte 2 und 6: Typ als
+optionale Felder (additiv), Leser/Writer in Ticket 68, Speicherung in Ticket 57. Punkt 5: Typ und mechanische Anpassung hier,
+die Kern-Logik für die neue Form in Ticket 56 (bis dahin weist der Kern sie markiert ab). Prüfung durch einen Opus-Reviewer
+statt des Nutzers (P9, D-22); der Merge wartet auf diesen Review.
+
 Aus Ticket 47 und 48 kommen keine Vertragslücken; ihre Lücken stehen in Ticket 54 (`ui-grid`, `ui-basis`) und für `speicher`
 in Ticket 43 (D-31.1, Fremdschlüssel `protokoll.projekt_id`, kein Vertragsthema).
 
@@ -45,7 +61,7 @@ in Ticket 43 (D-31.1, Fremdschlüssel `protokoll.projekt_id`, kein Vertragsthema
 
 ## Acceptance criteria
 
-- [ ] Typen für die Punkte 1 bis 8 (Punkte 2, 6, 7, 8 je nach Entscheidung) mit Kommentar im Stil von `vertrag`
+- [ ] Typen für die Punkte 1 bis 9 (Punkte 2, 6, 7, 8 wie unter „Entscheidungen für diesen Lauf“) mit Kommentar im Stil von `vertrag`
 - [ ] Jede mechanische Anpassung markiert; ihre Liste in den Comments
 - [ ] Offene Typfragen mit Alternativen in den Comments
 - [ ] `GLOSSARY.md` nachgezogen (L2), falls neue Begriffe entstehen (z. B. „Auftragnehmer“, „Bieterergänzung“)
