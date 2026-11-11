@@ -170,7 +170,14 @@ function warnungText(w: Nachtragswarnung, knoten: ReadonlyMap<string, Knoten>): 
  * (`speichern.ts`).
  */
 export function nachtragBeauftragenPlanen(e: Beauftragungseingang): Beauftragungsplan {
-  const leer = { befehl: null, angebotId: null, positionen: 0, angebotsnetto: null, auftrag: null, warnungen: [] };
+  const leer = {
+    befehl: null,
+    angebotId: null,
+    positionen: 0,
+    angebotsnetto: null,
+    auftrag: null,
+    warnungen: [],
+  };
   const lv = e.nachtragsLv.leistungsverzeichnis;
   const wahl = nachtragsangebot(e.angebote, lv.id, e.auftragsangebot);
   if (wahl === null) {

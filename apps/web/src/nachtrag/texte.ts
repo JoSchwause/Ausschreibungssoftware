@@ -13,7 +13,8 @@ export const texte = {
     schonUebernommen:
       'Der Nachtrag ist schon übernommen: Seine Positionen stehen bereits im Auftrags-LV. Rückgängig nimmt eine Übernahme zurück.',
     zuTief: 'Unter der Gliederung „Nachtrag“ hätte das Auftrags-LV mehr als 5 Gliederungsebenen (F1).',
-    andereMwst: 'Der MwSt-Satz des Nachtrags-LV ist nicht der des Auftrags-LV; so lässt er sich nicht übernehmen.',
+    andereMwst:
+      'Der MwSt-Satz des Nachtrags-LV ist nicht der des Auftrags-LV; so lässt er sich nicht übernehmen.',
     keinNachtrag: 'Das LV ist kein Nachtrags-LV.',
   },
   status: {
@@ -21,6 +22,60 @@ export const texte = {
     angeboten: 'angeboten',
     beauftragt: 'beauftragt',
     abgelehnt: 'abgelehnt',
+  },
+  kennzeichen: (nummer: string) => `Nachtrag ${nummer}`,
+  anlegen: {
+    knopf: 'Nachtrag anlegen',
+    titel: 'Nachtrag anlegen',
+    einleitung:
+      'Es entsteht ein leeres Nachtrags-LV mit der OZ-Maske und dem MwSt-Satz des Auftrags-LV und der nächsten freien Nummer (Status „angemeldet“).',
+    bezeichnung: 'Bezeichnung',
+    hinweis: 'Der Name des LV wird „Nachtrag <Nummer> – <Bezeichnung>“.',
+    abbrechen: 'Abbrechen',
+    anlegen: 'Anlegen',
+    angelegt: (nummer: string) => `Nachtrag ${nummer} angelegt`,
+  },
+  band: {
+    beschriftung: 'Nachtrag',
+    titel: (nummer: string) => `Nachtrag ${nummer}`,
+    zu: 'zu',
+    ohneAuftrag: 'einem Auftrags-LV',
+    status: 'Status',
+    beauftragtNur: 'beauftragt (nur über „Beauftragen“)',
+    beauftragen: 'Beauftragen',
+    istBeauftragt: 'Der Nachtrag ist beauftragt und steht im Auftrags-LV; Rückgängig nimmt das zurück.',
+    istAbgelehnt: 'Der Nachtrag ist abgelehnt. Zum Beauftragen erst den Status ändern.',
+  },
+  liste: {
+    titel: 'Nachträge',
+    tabelle: 'Nachträge des Auftrags-LV',
+    leer: 'Noch kein Nachtrag.',
+    nummer: 'Nummer',
+    bezeichnung: 'Bezeichnung',
+    status: 'Status',
+    angebot: 'Angebot netto',
+    aktion: 'Aktion',
+    ohneAngebot: 'kein Angebot',
+    befunde: 'Hinweise zu den Nachträgen',
+    beauftragenFuer: (nummer: string) => `Beauftragen: Nachtrag ${nummer}`,
+  },
+  dialog: {
+    titel: (nummer: string) => `Nachtrag ${nummer} beauftragen`,
+    einleitung:
+      'Die Positionen des Nachtrags kommen mit den Preisen des Auftragnehmers als eigene Gliederung „Nachtrag <Nummer>“ ins Auftrags-LV; danach ist der Status „beauftragt“.',
+    laden: 'Vorschau wird berechnet …',
+    positionen: 'Positionen',
+    angebot: 'Summe des Angebots (netto)',
+    vorher: 'Auftragssumme netto nach Nachlass bisher',
+    nachher: 'Auftragssumme netto nach Nachlass danach',
+    warnungen: 'Hinweise zur Übernahme',
+    undo: 'Rückgängig nimmt die Beauftragung wieder zurück.',
+    abbrechen: 'Abbrechen',
+    bestaetigen: 'Beauftragen',
+    beauftragt: (nummer: string) => `Nachtrag ${nummer} beauftragt`,
+    nicht: 'Nachtrag nicht beauftragt',
+    teilweise:
+      'Die Positionen stehen im Auftrags-LV, der Status „beauftragt“ ist nicht gesetzt (Hinweis in der Nachtragsliste).',
   },
   befund: {
     nichtUebernommen: (nummer: string, n: number) =>
@@ -32,7 +87,8 @@ export const texte = {
     hinweistext: 'Hinweistext',
     mehrereAngebote: (n: number) =>
       `Der Auftragnehmer hat ${String(n)} Angebote zu diesem Nachtrag abgegeben; übernommen werden die Preise des zuletzt eingelesenen.`,
-    nachlassIgnoriert: 'Der Nachlass des Nachtragsangebots gilt nicht; das Auftrags-LV behält seinen Nachlass.',
+    nachlassIgnoriert:
+      'Der Nachlass des Nachtragsangebots gilt nicht; das Auftrags-LV behält seinen Nachlass.',
     alternativenEntfallen: (welche: readonly string[]) =>
       `Wahl-Alternativen kommen nicht ins Auftrags-LV (${positionen(welche.length)}): ${liste(welche)}.`,
     losWirdTitel: (p: string) => `${p}: Das Los des Nachtrags steht im Auftrags-LV als Titel.`,

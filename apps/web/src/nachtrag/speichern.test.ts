@@ -4,13 +4,7 @@
 // dem Nachtragsangebot des Auftragnehmers. Erwartete Summen aus `typisch-abrechnung.json`, nicht aus dem Kern.
 
 import { readFileSync } from 'node:fs';
-import type {
-  Gesamtsummen,
-  LeistungsverzeichnisId,
-  LvZustand,
-  PositionId,
-  Projekt,
-} from '@tethys/vertrag';
+import type { Gesamtsummen, LeistungsverzeichnisId, LvZustand, PositionId, Projekt } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { abrechnungsFixture, m4Nachtrag } from '../../../../packages/abrechnung/src/testhilfen';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
@@ -46,7 +40,12 @@ async function mitAuftrag() {
   if (!p.ok || p.zustand === null) throw new Error('Projekt');
   const inhalt = fixtureInhalt('typisch');
   const s = weg.lv(p.zustand.id, null);
-  const l = await s.befehl({ art: 'LeistungsverzeichnisAnlegen', id: inhalt.wurzelId, projektId: p.zustand.id, inhalt });
+  const l = await s.befehl({
+    art: 'LeistungsverzeichnisAnlegen',
+    id: inhalt.wurzelId,
+    projektId: p.zustand.id,
+    inhalt,
+  });
   if (!l.ok || s.zustand === null) throw new Error('LV');
   const lv = s.zustand;
   const bytes = new Uint8Array(readFileSync(new URL('fixtures/angebote/typisch-bieter-b.x84', wurzel)));
@@ -123,9 +122,9 @@ describe('Nachtrag über den Befehlsweg', () => {
     // Ein Rückgängig nimmt N02 ganz zurück (LV samt Angaben), N01 bleibt.
     await weg.rueckgaengig();
     const liste = await u.speicher.leistungsverzeichnisse.auflisten(a.projektId);
-    expect(liste.ok && liste.wert.filter((l) => l.nachtrag !== undefined).map((l) => l.nachtrag?.nummer)).toEqual([
-      'N01',
-    ]);
+    expect(
+      liste.ok && liste.wert.filter((l) => l.nachtrag !== undefined).map((l) => l.nachtrag?.nummer),
+    ).toEqual(['N01']);
   });
 
   it('„Beauftragen“: Übernahme ins Auftrags-LV und Status beauftragt in einem Undo-Schritt, Summen wie die Fixture', async () => {
@@ -167,7 +166,9 @@ describe('Nachtrag über den Befehlsweg', () => {
     await weg.rueckgaengig();
     const zurueck = await u.speicher.auftragsLeistungsverzeichnisse.laden(a.id);
     expect(zurueck.ok && zurueck.wert.summen.gesamt).toMatchObject(fx.zuschlag.sollwerte.summen);
-    expect((await nachtraegeLaden(u.speicher, auftrag)).nachtraege.map((n) => n.status)).toEqual(['angemeldet']);
+    expect((await nachtraegeLaden(u.speicher, auftrag)).nachtraege.map((n) => n.status)).toEqual([
+      'angemeldet',
+    ]);
     await weg.wiederholen();
     const wieder = await u.speicher.auftragsLeistungsverzeichnisse.laden(a.id);
     expect(wieder.ok && wieder.wert.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);

@@ -42,9 +42,9 @@ function uebersicht(
 describe('naechsteNachtragsnummer', () => {
   it('beginnt mit N01, wenn das Auftrags-LV noch keinen Nachtrag hat', () => {
     expect(naechsteNachtragsnummer([], A)).toBe('N01');
-    expect(naechsteNachtragsnummer([uebersicht('lv'), uebersicht('n', { auftragsLvId: B, nummer: 'N01' })], A)).toBe(
-      'N01',
-    );
+    expect(
+      naechsteNachtragsnummer([uebersicht('lv'), uebersicht('n', { auftragsLvId: B, nummer: 'N01' })], A),
+    ).toBe('N01');
   });
 
   it('nimmt die höchste Nummer des Auftrags-LV plus 1, zweistellig, ab 100 dreistellig', () => {
@@ -115,7 +115,11 @@ describe('nachtragAnlegenPlanen', () => {
       z = lvChangeSetAnwenden(z, r.wert);
     }
     expect(z?.leistungsverzeichnis.id).toBe(plan.lvId);
-    expect(z?.leistungsverzeichnis.nachtrag).toEqual({ auftragsLvId: A, nummer: 'N01', status: 'angemeldet' });
+    expect(z?.leistungsverzeichnis.nachtrag).toEqual({
+      auftragsLvId: A,
+      nummer: 'N01',
+      status: 'angemeldet',
+    });
     expect(z?.summen.gesamt.netto).toBe('0.00');
   });
 });

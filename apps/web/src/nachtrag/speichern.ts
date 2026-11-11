@@ -26,8 +26,19 @@ import type {
 } from '@tethys/vertrag';
 import { bietersummen } from '../gaeb/gaeb';
 import type { Teil } from '../historie/historie';
-import { eintragSchreiben, lvBefehlAnwenden, type Abweisung, type Befehlsweg, type LvSitzung } from '../lv/befehlsweg';
-import { nachtragAnlegenPlanen, nachtragBeauftragenPlanen, nachtragsangebot, type Beauftragungsplan } from './nachtrag';
+import {
+  eintragSchreiben,
+  lvBefehlAnwenden,
+  type Abweisung,
+  type Befehlsweg,
+  type LvSitzung,
+} from '../lv/befehlsweg';
+import {
+  nachtragAnlegenPlanen,
+  nachtragBeauftragenPlanen,
+  nachtragsangebot,
+  type Beauftragungsplan,
+} from './nachtrag';
 import { texte } from './texte';
 
 const speicherfehler = (fehler: Speicherfehler): { ok: false; abweisung: Abweisung } => ({
@@ -135,7 +146,12 @@ export type Beauftragungsausgang =
   /** Es geht so nicht (kein Angebot des Auftragnehmers, schon übernommen, …); nichts geschrieben. */
   | { readonly ok: false; readonly art: 'plan'; readonly fehler: string }
   /** Kern oder Speicher hat abgewiesen; `teilweise`: die Übernahme steht, der Status nicht (Befund in der Liste). */
-  | { readonly ok: false; readonly art: 'abweisung'; readonly abweisung: Abweisung; readonly teilweise: boolean };
+  | {
+      readonly ok: false;
+      readonly art: 'abweisung';
+      readonly abweisung: Abweisung;
+      readonly teilweise: boolean;
+    };
 
 /**
  * „Beauftragen“ (D-35): in der Kette frisch geplant (`nachtragBeauftragenPlanen`), dann `NachtragUebernehmen` am Auftrags-LV
@@ -153,7 +169,8 @@ export function nachtragBeauftragen(
   const u = weg.umgebung;
   return weg.reihe(async (): Promise<Beauftragungsausgang> => {
     const d = await beauftragungLaden(u.speicher, ziel.auftragsLvId, ziel.nachtragsLvId, ziel.sitzung);
-    if (!d.ok) return { ok: false, art: 'abweisung', abweisung: speicherfehler(d.fehler).abweisung, teilweise: false };
+    if (!d.ok)
+      return { ok: false, art: 'abweisung', abweisung: speicherfehler(d.fehler).abweisung, teilweise: false };
     const { auftrag, nachtragsLv } = d.wert;
     const nachtrag = nachtragsLv.leistungsverzeichnis.nachtrag;
     const plan = nachtragBeauftragenPlanen({ ...d.wert, ids: u.ids });
@@ -162,7 +179,12 @@ export function nachtragBeauftragen(
 
     const cs = auftragsLvBefehlAusfuehren(auftrag, plan.befehl);
     if (!cs.ok)
-      return { ok: false, art: 'abweisung', abweisung: { art: 'befehl', fehler: cs.fehler }, teilweise: false };
+      return {
+        ok: false,
+        art: 'abweisung',
+        abweisung: { art: 'befehl', fehler: cs.fehler },
+        teilweise: false,
+      };
     const a = auftrag.auftragsLeistungsverzeichnis;
     const eintrag: Protokolleintrag = {
       id: u.ids.protokoll(),
@@ -173,7 +195,8 @@ export function nachtragBeauftragen(
       befehl: plan.befehl,
     };
     const w = await eintragSchreiben(u, eintrag, cs.wert);
-    if (!w.ok) return { ok: false, art: 'abweisung', abweisung: speicherfehler(w.fehler).abweisung, teilweise: false };
+    if (!w.ok)
+      return { ok: false, art: 'abweisung', abweisung: speicherfehler(w.fehler).abweisung, teilweise: false };
     const teile: Teil[] = [
       { protokollId: eintrag.id, projektId: a.projektId, aggregat: eintrag.aggregat, changeSet: cs.wert },
     ];

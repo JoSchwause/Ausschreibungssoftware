@@ -14,6 +14,7 @@ import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { NachtragKennzeichen } from '../nachtrag/NachtragKennzeichen'; // Ticket 86
 import { texte as htexte } from '../historie/texte';
 import { befehlswegFuer, type Ausgang } from '../lv/befehlsweg';
 import { texte as lvTexte } from '../lv/texte';
@@ -291,6 +292,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
                 >
                   {lv.name}
                 </a>
+                <NachtragKennzeichen nachtrag={lv.nachtrag} /> {/* Ticket 86 */}
                 <span className="projekt__betrag" aria-label={`${texte.lvs.netto} ${lv.name}`}>
                   {formatiereBetragDe(z.summen.gesamt.netto)} €
                 </span>

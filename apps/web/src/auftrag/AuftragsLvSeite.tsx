@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Seite `/projekt/<id>/auftrag/<id>` (Ticket 64): das Auftrags-LV nach dem Zuschlag, nur lesend (Nicht-Ziel: Bearbeiten,
-// Nachträge, Aufmaß). Kopf mit Auftragnehmer und Bezug auf LV und Angebot, Grid schreibgeschützt (Ticket 54) mit seiner
-// Summenzeile, Prüf-Panel nur lesend, Ausgabe als GAEB X86. Summen und Befunde aus dem Kern (N1).
+// Seite `/projekt/<id>/auftrag/<id>` (Ticket 64): das Auftrags-LV nach dem Zuschlag, nur lesend (kein Bearbeiten außer über
+// die Befehle aus v1.4). Kopf mit Auftragnehmer und Bezug auf LV und Angebot, Grid schreibgeschützt (Ticket 54) mit seiner
+// Summenzeile, Prüf-Panel nur lesend, Ausgabe als GAEB X86. Summen und Befunde aus dem Kern (N1). Ticket 86: „Nachtrag
+// anlegen“ und die Nachtragsliste mit „Beauftragen“; übernommene Nachtragspositionen stehen im Grid wie die übrigen.
 
 import { lvPruefen } from '@tethys/kern';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
@@ -21,12 +22,14 @@ import { befehlswegFuer } from '../lv/befehlsweg';
 import { PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
 import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from '../lv/pruefung';
 import { gridZahlen } from '../lv/zahlen';
+import { NachtragAnlegen } from '../nachtrag/NachtragAnlegen';
+import { Nachtragsliste } from '../nachtrag/Nachtragsliste';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
 import { preisspiegelPfad } from '../vergabe/pfad';
 import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
+import { Verweis } from './Verweis';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './auftrag.css';
@@ -109,33 +112,26 @@ export function AuftragsLvSeite({
       </div>
     );
   }
-  return <Ansicht stand={lage.stand} gehe={gehe} />;
-}
-
-function Verweis({
-  pfad,
-  text,
-  gehe,
-}: {
-  pfad: string;
-  text: string;
-  gehe: (pfad: string) => void;
-}): ReactElement {
   return (
-    <a
-      href={hrefFuer(pfad)}
-      onClick={(e) => {
-        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        gehe(pfad);
+    <Ansicht
+      stand={lage.stand}
+      gehe={gehe}
+      neuLaden={() => {
+        setLauf((n) => n + 1);
       }}
-    >
-      {text}
-    </a>
+    />
   );
 }
 
-function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }): ReactElement {
+function Ansicht({
+  stand,
+  gehe,
+  neuLaden,
+}: {
+  stand: Stand;
+  gehe: (pfad: string) => void;
+  neuLaden: () => void;
+}): ReactElement {
   const { auftrag } = stand;
   const kopf = auftrag.auftragsLeistungsverzeichnis;
   const zustand = useMemo(() => alsLvZustand(auftrag), [auftrag]);
@@ -220,6 +216,8 @@ function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }
       <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
         <HistorieKnoepfe />
         <AuftragAusgeben auftrag={auftrag} />
+        <NachtragAnlegen auftrag={kopf} gehe={gehe} />
+        {/* Ticket 87–89: Abrechnung */}
         <button
           type="button"
           className="tx-button tx-button--sekundaer"
@@ -231,6 +229,7 @@ function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }
           {t.pruefung}
         </button>
       </div>
+      <Nachtragsliste auftrag={auftrag} gehe={gehe} onBeauftragt={neuLaden} />
       <div className="lv__haupt">
         <div className="lv__grid">
           <LvGrid
