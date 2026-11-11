@@ -36,6 +36,8 @@ export function wendeAn(knoten: readonly Knoten[], b: LvBefehl): Knoten[] {
       } else if (b.ort.art === 'ende') {
         elternId = b.ort.elternId;
         index = liste.length;
+      } else if (b.ort.art === 'hinter-gliederung') {
+        return liste; // v1.3: mechanisch angepasst, Folgeticket (Einfuegeort hinter-gliederung, Ticket 56)
       } else {
         const ziel = b.ort.elternId;
         elternId = ziel;
