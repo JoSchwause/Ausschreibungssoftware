@@ -332,3 +332,11 @@ Question: Welche Bibliothek schreibt und liest `.xlsx` für den Bieter-Rundlauf?
 Decision: `fflate` (MIT) für ZIP, eigene kleine Schicht für SpreadsheetML (Schreiben mit festen Stilen, Lesen von Zellwerten inkl. Shared Strings und Inline-Strings). Keine große Excel-Bibliothek. Fällt die Lizenzprüfung für `fflate` durch, darf der Umsetzer eine andere MIT/Apache-Bibliothek wählen und begründen.
 Reason: deterministische Bytes für Golden-Tests, kleines Bündel, keine Node-Polyfills im Browser; der Bedarf (eine Tabelle mit festen Spalten) ist schmal.
 Reversible: yes  Touches: packages/ausgabe
+
+## D-53.1 Enge Lesarten im Vertrag v1.3
+Welle 4 · Ticket 53 · decided by: implementer
+Question: Wo lässt Ticket 53 (mit D-22) die Typform offen?
+Decision: `LvUebersicht` nur `{ id, name }`, sortiert wie die Projektliste; `Projektdatei.lvStaende` bleibt optional (nur `Speicher.lvStaende` wird Pflicht); neue Ortsform `{ art: 'hinter-gliederung'; gliederungId }` nur für Gliederungen, `nach` unverändert, der Kern weist sie bis Ticket 56 mit `befehl-nicht-zustaendig` ab; `auftragnehmer?` und `epaBezeichnungen?` (geordnet nach `UPComp<n>`) am gemeinsamen `LvInhaltKopf`; `MengenansatzSetzen` setzt die Menge auch beim Entfernen des Ansatzes, `[]` gilt wie `null`; `speicher` weist die neuen Felder bis Ticket 57 mit `unbekannt` ab (Q5). Alternativen als Offene Typfragen 1–8 in Ticket 53.
+Reason: Additiv, wo möglich; nicht Additives (Punkte 3, 4, 5, 9 und die Rückgabe von `auflisten`) nur mit markierter mechanischer Anpassung (W-03 (b)); kein stiller Datenverlust.
+Reversible: yes  Touches: packages/vertrag, mechanische Zeilen in kern, mengen, speicher, vergabe, ui-grid (E2E), apps/web, proto
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-22).
