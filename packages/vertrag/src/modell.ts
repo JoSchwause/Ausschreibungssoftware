@@ -217,23 +217,39 @@ export interface Einheitspreisanteile {
   readonly freiBezeichnung: string | null;
 }
 
-/** Einer der sechs Anteile der Einheitspreisanteile (v1.3): die Feldnamen von `Einheitspreisanteile` außer der Bezeichnung. */
-export type EpaArt = 'lohn' | 'stoffe' | 'geraete' | 'nachunternehmer' | 'sonstiges' | 'frei';
+/**
+ * Einer der sechs Anteile der Einheitspreisanteile (v1.3): die Feldnamen von `Einheitspreisanteile` außer der
+ * Bezeichnung, aus dem Typ abgeleitet, damit beide nie auseinanderlaufen.
+ */
+export type EpaArt = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+
+/** Nummer eines Anteils in der GAEB-Datei (`UPComp1` … `UPComp6`, `LblUPComp1` … `LblUPComp6`). */
+export type EpaNummer = 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
- * EPA-Bezeichnung (v1.3, Ticket 53 Punkt 2; Glossar „EPA-Bezeichnung“): wie das LV einen Anteil beschriftet (GAEB
- * `LblUPComp<n>` im `BoQInfo`, mit `NoUPComps` als Anzahl). Die Liste `LvInhaltKopf.epaBezeichnungen` ist geordnet:
- * Eintrag `i` beschriftet den Anteil `UPComp<i+1>` der Datei. So nimmt der X84-Leser die Zuordnung der Anteile eines
- * Angebots aus dem LV, und der Writer schreibt die Beschriftungen in derselben Reihenfolge zurück.
+ * EPA-Bezeichnung (v1.3, Ticket 53 Punkt 2, D-53.6; Glossar „EPA-Bezeichnung“): welcher Anteil der GAEB-Datei
+ * (`UPComp<nummer>`, beschriftet über `LblUPComp<nummer>` im `BoQInfo`) welche `EpaArt` ist und wie das LV ihn nennt. So
+ * nimmt der X84-Leser die Zuordnung der Anteile eines Angebots aus dem LV, und der Writer schreibt dieselben Nummern
+ * zurück.
  *
- * Vorläufige Annahme, Entscheidung offen (enge Lesart): Jede `EpaArt` kommt höchstens einmal vor (prüft der Leser bzw.
- * der Kern, nicht der Typ). Die Bezeichnung des Anteils `frei` an der Position (`Einheitspreisanteile.freiBezeichnung`)
- * bleibt daneben bestehen (Offene Typfrage, Ticket 53).
+ * Regeln für `LvInhaltKopf.epaBezeichnungen` (prüft der Leser bzw. der Kern, nicht der Typ):
+ * - Die Liste ist nach `nummer` aufsteigend sortiert; `nummer` und `anteil` kommen je höchstens einmal vor.
+ * - Eine fehlende `nummer` heißt: dieser Platz ist keinem Anteil zugeordnet (die Datei beschriftet ihn nicht, oder er
+ *   wäre ein zweiter Anteil derselben Art, den das Modell nicht abbildet).
+ * - Fehlt das ganze Feld, gilt die feste Belegung des Writers von heute: 1 Lohn, 2 Stoffe, 3 Geräte, 4 Nachunternehmer,
+ *   5 Sonstiges, 6 frei.
+ * - Writer nummerieren nie um: Sie schreiben `UPComp<nummer>`/`LblUPComp<nummer>` mit der Nummer aus der Liste.
  */
 export interface EpaBezeichnung {
+  readonly nummer: EpaNummer;
   readonly anteil: EpaArt;
-  /** Beschriftung, wie das LV sie nennt (z. B. „Lohn“, „Nachunternehmer“); nicht leer. */
-  readonly bezeichnung: string;
+  /**
+   * Beschriftung, wie das LV sie nennt (z. B. „Lohn“, „Nachunternehmer“); `null`: die Art ist aus GAEB `Type` bekannt,
+   * die Beschriftung ist leer. Ist das Feld `epaBezeichnungen` gesetzt, ist es die einzige Quelle aller Beschriftungen,
+   * auch der des Anteils `frei`: `Einheitspreisanteile.freiBezeichnung` an der Position wird dann nicht gelesen (Leser
+   * legen dort `null` ab). Fehlt das Feld, bleibt `freiBezeichnung` an der Position die Quelle (Daten vor v1.3).
+   */
+  readonly bezeichnung: string | null;
 }
 
 // --- LV-Baum --------------------------------------------------------------------------------------
@@ -389,7 +405,8 @@ export interface Positionsdaten {
    * Mengenansatz der Position (v1.3, M2; D-22). Fehlt: kein Ansatz, die Menge ist von Hand gesetzt. Gesetzt: die Zeilen,
    * aus denen die App mit `mengen` die `menge` gerechnet hat; der Kern speichert beide unausgewertet (A3: kein
    * `kern → mengen`) und rechnet nie nach. Nie `[]` im Zustand (ein leerer Ansatz ist keiner, siehe
-   * `MengenansatzSetzen`). Gesetzt nur über `MengenansatzSetzen`; ein reiner Mengenbefehl entfernt ihn (siehe dort).
+   * `MengenansatzSetzen`). Geändert nur über `MengenansatzSetzen` (und entfernt nach Lesart (a)); Kopien und
+   * Anlegebefehle bringen ihn mit, der Kern prüft die Form.
    */
   readonly mengenansatz?: readonly Ansatzzeile[];
   /**
@@ -535,9 +552,9 @@ export interface LvInhaltKopf {
    */
   readonly auftragnehmer?: Auftragnehmer;
   /**
-   * Beschriftung der Einheitspreisanteile, geordnet nach der Nummer des Anteils in der Datei (v1.3, Ticket 53 Punkt 2;
-   * siehe `EpaBezeichnung`). Fehlt: keine Angabe; nie `[]` (ein Erzeuger ohne Beschriftungen lässt das Feld weg). Leser
-   * und Writer schließt Ticket 68 an, die Speicherung Ticket 57.
+   * Zuordnung und Beschriftung der Einheitspreisanteile, nach `nummer` sortiert (v1.3, Ticket 53 Punkt 2, D-53.6; siehe
+   * `EpaBezeichnung`). Fehlt: feste Belegung des Writers (1 Lohn … 6 frei); nie `[]` (ein Erzeuger ohne Zuordnung lässt
+   * das Feld weg). Leser und Writer schließt Ticket 68 an, die Speicherung Ticket 57.
    */
   readonly epaBezeichnungen?: readonly EpaBezeichnung[];
 }

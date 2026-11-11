@@ -165,7 +165,7 @@ Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositione
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
 
 ### Auftragnehmer (Kopfdaten)
-Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am Kopf des LV und gehört zur Auftragserteilung (Auftrags-LV); im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
@@ -278,7 +278,7 @@ Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, 
 Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteile (typischerweise Lohn, Stoffe/Material, Geräte, Nachunternehmer, Sonstiges sowie ein frei definierbarer Anteil), deren Summe den Einheitspreis ergibt. Im Code `Einheitspreisanteile`, ein Anteil `EpaArt`.
 
 ### EPA-Bezeichnung
-Die Beschriftung, die das LV einem Einheitspreisanteil gibt (z. B. „Lohn“, „Nachunternehmer“; GAEB `LblUPComp`), in der Reihenfolge, in der die Datei die Anteile nummeriert. Über sie ordnet der Import eines Angebots (X84) die Anteile des Bieters zu. Im Code `EpaBezeichnung`, `LvInhaltKopf.epaBezeichnungen`.
+Die Zuordnung eines nummerierten Anteils der GAEB-Datei (1 bis 6) zu einer Art der Einheitspreisanteile samt der Beschriftung, die das LV ihm gibt (z. B. „Lohn“, „Nachunternehmer“; GAEB `LblUPComp`). Über sie ordnet der Import eines Angebots (X84) die Anteile des Bieters zu; ohne sie gilt die feste Belegung 1 Lohn bis 6 frei. Im Code `EpaBezeichnung`, `LvInhaltKopf.epaBezeichnungen`.
 
 ### Einzelpreiskalkulation (Bottom-Up-Kalkulation / Urkalkulation)
 Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G).

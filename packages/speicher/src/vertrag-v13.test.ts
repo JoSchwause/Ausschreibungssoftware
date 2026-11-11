@@ -45,7 +45,7 @@ describe('Vertrag v1.3: neue Felder vor Ticket 57', () => {
   it('Auftragnehmer oder EPA-Bezeichnungen am Kopf: unbekannt', async () => {
     const auftragnehmer = { name: 'Beispielbau', strasse: null, plz: null, ort: null };
     expect(await anlegenMit({ ...f.lv, leistungsverzeichnis: { ...lv, auftragnehmer } })).toBe('unbekannt');
-    const epaBezeichnungen = [{ anteil: 'lohn', bezeichnung: 'Lohn' }] as const;
+    const epaBezeichnungen = [{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }] as const;
     expect(await anlegenMit({ ...f.lv, leistungsverzeichnis: { ...lv, epaBezeichnungen } })).toBe(
       'unbekannt',
     );

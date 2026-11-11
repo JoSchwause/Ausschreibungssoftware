@@ -810,7 +810,12 @@ describe('v1.3 Punkt 1: LV-Übersicht', () => {
 describe('v1.3 Punkte 2 und 6: EPA-Bezeichnungen und Auftragnehmer am LV-Kopf', () => {
   it('EpaArt sind genau die Anteile von Einheitspreisanteile', () => {
     expectTypeOf<EpaArt>().toEqualTypeOf<Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>>();
+    expectTypeOf<EpaArt>().toEqualTypeOf<
+      'lohn' | 'stoffe' | 'geraete' | 'nachunternehmer' | 'sonstiges' | 'frei'
+    >();
     expectTypeOf<EpaBezeichnung['anteil']>().toEqualTypeOf<EpaArt>();
+    expectTypeOf<EpaBezeichnung['nummer']>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6>();
+    expectTypeOf<EpaBezeichnung['bezeichnung']>().toEqualTypeOf<string | null>();
     expectTypeOf<LvInhaltKopf['epaBezeichnungen']>().toEqualTypeOf<readonly EpaBezeichnung[] | undefined>();
   });
 
@@ -820,10 +825,13 @@ describe('v1.3 Punkte 2 und 6: EPA-Bezeichnungen und Auftragnehmer am LV-Kopf', 
     expectTypeOf<Auftragnehmer[keyof Auftragnehmer]>().toEqualTypeOf<string | null>();
   });
 
-  it('Beispiel: Reihenfolge der Bezeichnungen ist die der Anteile in der Datei, jede Art höchstens einmal', () => {
+  it('Beispiel (D-53.6): nach Nummer sortiert, Nummer und Art je höchstens einmal, Lücke = nicht zugeordnet', () => {
     const b = beispielLvKopfV13.epaBezeichnungen ?? [];
-    expect(b.map((e) => e.anteil)).toEqual(['lohn', 'stoffe', 'nachunternehmer']);
+    expect(b.map((e) => e.nummer)).toEqual([1, 2, 4, 5]);
+    expect(b.map((e) => e.anteil)).toEqual(['lohn', 'stoffe', 'nachunternehmer', 'sonstiges']);
+    expect(new Set(b.map((e) => e.nummer)).size).toBe(b.length);
     expect(new Set(b.map((e) => e.anteil)).size).toBe(b.length);
+    expect(b.find((e) => e.nummer === 5)?.bezeichnung).toBeNull();
     expect(beispielLvKopfV13.auftragnehmer?.plz).toBeNull();
   });
 });

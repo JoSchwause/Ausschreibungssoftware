@@ -764,16 +764,18 @@ export const beispielProtokollRueckgaengig: Protokolleintrag = {
 // --- v1.3 (Ticket 53) -------------------------------------------------------------------------------------------
 
 /**
- * Punkte 2 und 6: LV-Kopf mit Auftragnehmer (aus X86, `CTR`) und EPA-Bezeichnungen in der Reihenfolge der Datei:
- * `UPComp1` ist Lohn, `UPComp2` Stoffe, `UPComp3` der Nachunternehmer-Anteil. Name und Anschrift erfunden.
+ * Punkte 2 und 6 (D-53.6): LV-Kopf mit Auftragnehmer (aus X86, `CTR`) und EPA-Bezeichnungen: `UPComp1` ist Lohn,
+ * `UPComp2` Stoffe, `UPComp3` ist keinem Anteil zugeordnet (fehlt), `UPComp4` der Nachunternehmer-Anteil, `UPComp5`
+ * Sonstiges ohne Beschriftung (Art aus GAEB `Type`). Name und Anschrift erfunden.
  */
 export const beispielLvKopfV13: LvKopf = {
   ...lvKopf,
   auftragnehmer: { name: 'Beispielbau GmbH', strasse: 'Musterweg 1', plz: null, ort: 'Musterstadt' },
   epaBezeichnungen: [
-    { anteil: 'lohn', bezeichnung: 'Lohn' },
-    { anteil: 'stoffe', bezeichnung: 'Stoffe' },
-    { anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    { nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' },
+    { nummer: 2, anteil: 'stoffe', bezeichnung: 'Stoffe' },
+    { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    { nummer: 5, anteil: 'sonstiges', bezeichnung: null },
   ],
 };
 

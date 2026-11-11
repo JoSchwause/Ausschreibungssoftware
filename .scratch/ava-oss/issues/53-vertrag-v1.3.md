@@ -84,9 +84,10 @@ Alternativen unten als Offene Typfragen. Kein Rechenwert, keine Fixture, kein Go
 
 1. **LV-Übersicht.** `speicher.ts`: `LvUebersicht { id, name }`; `LvRepository.auflisten` → `readonly LvUebersicht[]`,
    nach Name (`Intl.Collator('de-DE')`), gleiche Namen nach Kennung (wie `listeProjekte`). Keine Summen (Typfrage 1).
-2. **EPA-Bezeichnungen.** `modell.ts`: `EpaArt` (die sechs Anteile), `EpaBezeichnung { anteil, bezeichnung }`,
-   `LvInhaltKopf.epaBezeichnungen?: readonly EpaBezeichnung[]`, geordnet: Eintrag `i` beschriftet `UPComp<i+1>`; nie
-   `[]`. Leser/Writer Ticket 68, Speicherung Ticket 57.
+2. **EPA-Bezeichnungen.** `modell.ts`: `EpaArt = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>`,
+   `EpaNummer = 1 | … | 6`, `EpaBezeichnung { nummer, anteil, bezeichnung: string | null }`,
+   `LvInhaltKopf.epaBezeichnungen?: readonly EpaBezeichnung[]` nach `nummer` sortiert, `nummer` und `anteil` je
+   eindeutig; nie `[]` (nach Review: D-53.6). Leser/Writer Ticket 68, Speicherung Ticket 57.
 3. **`Summenaenderung.vorher` Pflicht** (`summen.ts`). Kern (seit Ticket 30) und `vergabe` setzten es schon; neu gesetzt
    werden musste es nur in `speicher` (Import der Projektdatei) und in Testliteralen. Die Rückfallwege für ein fehlendes
    `vorher` in `kern`, `vergabe` und `speicher` entfallen (Lint: unnötige Bedingung).
@@ -118,6 +119,7 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.3: mechanisch angepasst"` f
 |---|---|---|---|
 | `packages/kern/src/ausfuehren.ts` | 109 | `ZUSTAENDIGES_TICKET`: `MengenansatzSetzen` → `'M2 (Ticket 56)'` | 56 |
 | `packages/kern/src/fehler.ts` | 29–36 | `hinterGliederungOffen`: Fehlerwert `befehl-nicht-zustaendig` für die neue Ortsform | 56 |
+| `packages/kern/src/knoten-befehle.ts` | 224 | `positionAnlegen` mit `daten.mengenansatz` → `befehl-nicht-zustaendig` (sonst still verworfen; nach Review) | 56 |
 | `packages/kern/src/knoten-befehle.ts` | 36, 87 | `zielAufloesen`: `hinter-gliederung` → `hinterGliederungOffen` (Anlegen, `KnotenVerschieben`) | 56 |
 | `packages/kern/src/platzieren.ts` | 11, 66 | `ortAufloesen`: ebenso (`KnotenEinfuegen`, `KnotenlisteVerschieben`, Wiederherstellen; `ozVorschlag` → `null`) | 56 |
 | `packages/kern/src/summen.ts` | 332–337 | `summenAenderung` liefert `Omit<Summenaenderung, 'vorher'>` (nur der Typ; `baueChangeSet` setzt `vorher`) | – |
@@ -139,11 +141,11 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.3: mechanisch angepasst"` f
 | `packages/speicher/src/projektdatei.ts` | 36, 141, 159, 173 | Import: Anlege-ChangeSets mit `vorher: LEERES_SUMMENVORHER` | – |
 | `packages/speicher/src/testhilfe/fixtures.ts`, `testhilfe/umkehrung.ts`, `harness/main.ts`, `e2e/speicher.spec.ts`, `src/*.test.ts` (client, historie, kern, kurzfassung, langtext, loeschen, projektliste) | siehe Marker | `vorher: LEERES_SUMMENVORHER` in Testliteralen; keine Prüfung mehr auf fehlendes `lvStaende`/`vorher`; `lvAuflisten` erwartet `{ id, name }`; neuer Test zur Sortierung der LV-Übersicht | 57 |
 | `packages/speicher/src/vertrag-v13.test.ts` | neu | die `unbekannt`-Fälle aus `pruefeV13` | 57 |
-| `packages/ui-grid/e2e/harness/befehle-anwenden.ts` | 43, 107 | Testmodell: `hinter-gliederung` ändert nichts | 56 |
+| `packages/ui-grid/e2e/harness/befehle-anwenden.ts` | 43, 107 | Testmodell: `hinter-gliederung` wirft (`erst Ticket 56`) | 56 |
 | `apps/web/src/projekt/ProjektSeite.tsx` | 7, 102 | Kennungen aus `LvUebersicht`; lädt weiter jedes LV (Netto, Löschen) | App |
 | `apps/web/src/lv/LvSeite.tsx` | 272 | `anlegen`: bei `hinter-gliederung` nichts aufklappen | 67 |
 | `apps/web/src/lv/LvStandSeite.tsx`, `StaendeDialog.tsx`, `historie/historie.test.ts`, `historie/texte.ts` | 43; 42, 73; 196 | `lvStaende` ohne `?.`/`undefined`-Zweig; Text `nichtVerfuegbar` entfällt | 67 |
-| `proto/interview/src/store.tsx` | 40 | Prototyp: `hinter-gliederung` ändert nichts | – |
+| `proto/interview/src/store.tsx` | 40 | Prototyp: `hinter-gliederung` wirft (`erst Ticket 56`) | – |
 
 `gaeb`, `ausgabe`, `ui-basis`, `ui-grid/src` brauchten nichts. Der GAEB-Writer ignoriert die neuen Felder bis Ticket 68
 (er hat schon die Option `auftragnehmer`); der Projektdatei-Dekoder weist sie als unbekannte Felder ab (`datei-ungueltig`).
@@ -189,9 +191,10 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.3: mechanisch angepasst"` f
    `AngebotKopf.nichtGerechneteNachlaesse?` als Daten für einen Hinweis im Preisspiegel. (c) Bieterergänzungen:
    `Angebotsposition.ergaenzungen?: readonly { kennung: string; inhalt: Textfluss }[]` (Bezug über
    `Textergaenzung.kennung` im LV). Heute: Befund `nachlass-nicht-abgebildet` bzw. `nicht-abgebildet` beim Import.
-6. **`epaBezeichnungen` als geordnete Liste, höchstens ein Eintrag je Art.** Alternative: ein Satz je Art
-   (`Record<EpaArt, string | null>`); dann fehlt die Nummer des Anteils in der Datei. Zweite Frage: ob die Bezeichnung
-   von `frei` am LV die `Einheitspreisanteile.freiBezeichnung` an der Position ersetzt.
+6. ~~`epaBezeichnungen` als geordnete Liste, höchstens ein Eintrag je Art.~~ **Beantwortet (D-53.6, Berater nach
+   Review):** Einträge mit ausdrücklicher `nummer`; Lücke = Platz nicht zugeordnet; `bezeichnung: null` = Art aus
+   GAEB `Type`, Beschriftung leer; Feld fehlt = feste Belegung des Writers; ist das Feld gesetzt, ist es die einzige
+   Quelle der Beschriftungen (auch für `frei`; `Einheitspreisanteile.freiBezeichnung` wird dann nicht gelesen).
 7. **`MengenansatzSetzen` setzt die Menge auch beim Entfernen (`mengenansatz: null`).** Alternative: `menge` nur bei
    gesetztem Ansatz; beim Entfernen bleibt die Menge stehen (dann `menge?`).
 8. **Leere Langtext-Strukturen erlaubt (Punkt 8, D-22).** Alternative: `punkte`, `zeilen`, `zellen` als nicht leere
@@ -210,3 +213,19 @@ Zeilen nach dem Stand dieses Branches; `grep -rn "v1.3: mechanisch angepasst"` f
   Grund: nur ein Typ ändert sich; `baueChangeSet` setzt `vorher` wie bisher.
 - **D-53.5** `LvUebersicht` sortiert wie die Projektliste (Name de-DE, dann Kennung). Grund: Wortlaut des Tickets und
   dieselbe Regel wie `Projektuebersicht`.
+- **D-53.6** (Berater, nach dem Opus-Review) Form der EPA-Bezeichnungen? `EpaBezeichnung { nummer: 1|…|6; anteil:
+  EpaArt; bezeichnung: string | null }`, Liste nach `nummer` sortiert, `nummer` und `anteil` je eindeutig, Feld
+  optional. Fehlende `nummer` = Platz nicht zugeordnet (keine Beschriftung oder zweiter Anteil derselben Art);
+  `bezeichnung: null` = Art aus GAEB `Type` bekannt, Beschriftung leer; Feld fehlt = heutige feste Belegung des
+  Writers (1 Lohn, 2 Stoffe, 3 Geräte, 4 Nachunternehmer, 5 Sonstiges, 6 frei); Writer nummerieren nie um. Bei
+  gesetztem Feld ist es die einzige Quelle der Beschriftungen, `Einheitspreisanteile.freiBezeichnung` an der Position
+  gilt nur ohne das Feld. `EpaArt` ist aus `Einheitspreisanteile` abgeleitet. Grund: Die Position eines Eintrags in der
+  Liste trug die Nummer nur implizit; Lücken und doppelte Arten der Datei waren nicht darstellbar.
+
+### Review-Korrekturen (Opus-Reviewer, „yes-with-fixes“)
+
+Alle sechs umgesetzt: (1) `positionAnlegen` weist `daten.mengenansatz` markiert ab statt ihn still zu verwerfen
+(Test in `baum.test.ts`); (2) Kommentar an `Positionsdaten.mengenansatz` („Geändert nur über `MengenansatzSetzen` …“);
+(3) EPA-Bezeichnungen mit `nummer` (D-53.6), Beispiel mit Lücke und `bezeichnung: null`, Typtests; (4) Testmodell in
+`ui-grid` und Prototyp werfen bei `hinter-gliederung`; (5) Glossar „Auftragnehmer“: steht am LV-Kopf, gesetzt beim
+Auftrags-LV (Zuschlag) oder aus X86; (6) `EpaArt` abgeleitet. `pruefeV13` brauchte keine Änderung.
