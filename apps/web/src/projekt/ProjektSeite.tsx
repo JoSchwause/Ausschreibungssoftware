@@ -10,6 +10,7 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
@@ -272,7 +273,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           {texte.projekt.zurueck}
         </a>
       </div>
-
       <h2>{texte.lvs.titel}</h2>
       {lvs.length === 0 ? (
         <p>{texte.lvs.leer}</p>
@@ -318,7 +318,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           })}
         </ul>
       )}
-
+      <AuftragsLvListe projekt={projekt} gehe={gehe} /> {/* Ticket 64 */}
       <form
         className="projekt__formular"
         onSubmit={(e) => void lvAnlegen(e)}
@@ -359,7 +359,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           </Button>
         </div>
       </form>
-
       <Dialog
         offen={loeschen !== null}
         onOffenChange={(o) => {
@@ -391,7 +390,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
             : htexte.loeschen.projektFrage(projekt.name, lvs.length)}
         </p>
       </Dialog>
-
       <FormDialog
         offen={stammdaten !== null}
         titel={texte.projekt.umbenennen}
@@ -415,7 +413,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           }}
         />
       </FormDialog>
-
       <FormDialog
         offen={umbenennen !== null}
         titel={texte.lvs.umbenennenTitel}

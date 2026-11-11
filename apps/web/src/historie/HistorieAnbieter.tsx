@@ -8,6 +8,7 @@ import { changeSetUmkehren, projektChangeSetUmkehren } from '@tethys/kern';
 import { Button, Tastenkuerzel, useToast } from '@tethys/ui-basis';
 import { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { auftragZiel } from '../auftrag/ziel'; // Ticket 64
 import { befehlswegFuer, type Historienausgang } from '../lv/befehlsweg';
 import { texte as lvTexte } from '../lv/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
@@ -55,6 +56,7 @@ export function zielNach(teil: Teil, rueckwaerts: boolean, pfad: string): string
     const lvId = (cs.kopf?.nachher ?? cs.kopf?.vorher)?.leistungsverzeichnisId;
     return lvId === undefined || pfad === `/lv/${lvId}` ? null : `/lv/${lvId}`;
   }
+  if (cs.art === 'auftrags-leistungsverzeichnis') return auftragZiel(teil.projektId, cs, rueckwaerts, pfad); // Ticket 64
   const geschrieben = rueckwaerts ? changeSetUmkehren(cs) : cs;
   const lvPfad = `/lv/${cs.leistungsverzeichnisId}`;
   const kopf = geschrieben.kopf;

@@ -113,3 +113,11 @@ a.tx-button {
 .preisspiegel__bieter thead th:first-child {
   text-align: left;
 }
+
+/* Ticket 64: Bieterübersicht mit „Zuschlag erteilen“ und dem Hinweis auf ein schon erteiltes Auftrags-LV. */
+.preisspiegel__vergabe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  max-width: 50%;
+}
