@@ -3,7 +3,8 @@
 //
 // Dezimalrechnung der Fixture-Erzeugung: nur BigInt, kein Gleitkomma (N1, N2, N3).
 // Ein Wert ist eine ganze Zahl mit festem Massstab ("scaled integer"). Negative Werte sind
-// nicht unterstuetzt, solange Ticket 04 die Rundung negativer Betraege nicht entschieden hat.
+// nicht unterstuetzt, solange Ticket 04 die Rundung negativer Betraege nicht entschieden hat. Ausnahme seit Ticket 85:
+// `formatMitVorzeichen` schreibt Differenzen (Kostenkontrolle, Nachlasszeile); gerundet wird nie ein negativer Wert.
 
 /** Nachkommastellen (N3, G-21). Nur fuer Fixtures; die massgebliche Tabelle gehoert spaeter in `vertrag`. */
 export const STELLEN = Object.freeze({ menge: 3, ep: 3, prozent: 2, betrag: 2 });
@@ -408,5 +409,161 @@ export function preisspiegelSollwerte(knoten, angebote, lvSollwerte) {
       max: format(summe.max, STELLEN.betrag),
       schaetzpreis: lvSollwerte.summen.netto,
     },
+  };
+}
+
+// ---------------------------------------------------------------- M4: Abrechnung (Ticket 85)
+//
+// Sollwerte des Tors M4 (D-38), unabhaengig von `abrechnung` und `kosten` geschrieben, nur BigInt. Regeln: D-34
+// (Abzugskette), D-35 (Soll/Ist, VOB/B § 2 Abs. 3), D-37 (Kostenkontrolle), N2, N5, E-07. Die Lesarten, die diese Regeln
+// offen lassen, stehen in der README („M4-Abrechnung“) und im Ticket 85 (D-85.x).
+
+/** Betrag mit Vorzeichen (E-07: Vorzeichen vor den Betrag): -179411n -> "-1794.11". Rundet nicht. */
+export function formatMitVorzeichen(wert, stellen) {
+  return wert < 0n ? `-${format(-wert, stellen)}` : format(wert, stellen);
+}
+
+/** Kumulierte Aufmassmenge je Position (D-34 (1)): Summe der Blattmengen (3 Stellen); Zeilen ohne Menge zaehlen nicht. */
+export function kumulierteMengen(aufmasse) {
+  const mengen = new Map();
+  for (const a of aufmasse) {
+    for (const z of a.positionen) {
+      if (z.menge === null) continue;
+      mengen.set(z.positionId, (mengen.get(z.positionId) ?? 0n) + parse(z.menge, STELLEN.menge));
+    }
+  }
+  return mengen;
+}
+
+/**
+ * Leistungsstand einer Rechnung (D-34 (1)-(3); Vertragstyp `Leistungsstand`, Lesart D-70.7). `positionen`: die Positionen
+ * des Auftrags-LV in Dokumentreihenfolge als `{ id, ep, zuschlag }` (EP Massstab 3 oder null; `zuschlag` = `{ satz,
+ * bezug: [positionId] }` oder null). Je Position eine Zeile: GP = round(kumulierte Menge x EP, 2), ohne Menge oder EP 0,00;
+ * Bedarf zaehlt, sobald aufgemessen (die Funktion kennt keine Merkmale). Zuschlagsposition: Menge null, GP =
+ * round(Summe GP der Bezugspositionen x Satz / 100, 2). Nachlass `prozent`: round(Leistung x Satz / 100, 2) ueber alle
+ * Positionen samt Nachtrag (D-34 (2), N5); der absolute Nachlass kommt in M4 nicht vor (D-38).
+ */
+export function leistungsstandBerechnen(positionen, mengen, nachlass) {
+  if (nachlass?.art !== 'prozent') throw new Error('M4 rechnet nur mit Prozent-Nachlass (D-38)');
+  const gp = new Map();
+  for (const p of positionen) {
+    if (p.zuschlag) continue;
+    const m = mengen.get(p.id) ?? null;
+    gp.set(p.id, m === null || p.ep === null ? 0n : gesamtpreis(m, p.ep));
+  }
+  for (const p of positionen) {
+    if (!p.zuschlag) continue;
+    gp.set(p.id, prozentVon(p.zuschlag.bezug.reduce((s, id) => s + gp.get(id), 0n), p.zuschlag.satz));
+  }
+  const leistung = [...gp.values()].reduce((a, b) => a + b, 0n);
+  const nachlassBetrag = prozentVon(leistung, parse(nachlass.wert, STELLEN.prozent));
+  return {
+    positionen: positionen.map((p) => ({
+      positionId: p.id,
+      menge: !p.zuschlag && mengen.has(p.id) ? format(mengen.get(p.id), STELLEN.menge) : null,
+      gp: format(gp.get(p.id), STELLEN.betrag),
+    })),
+    leistung: format(leistung, STELLEN.betrag),
+    nachlass: format(nachlassBetrag, STELLEN.betrag),
+    nettoNachNachlass: format(leistung - nachlassBetrag, STELLEN.betrag),
+  };
+}
+
+/**
+ * Pruefkette einer Abschlagsrechnung (D-34 (4)-(7)): MwSt = round(Netto n. N. x Satz, 2); Brutto kumuliert = Netto n. N.
+ * + MwSt; je Umlage round(Brutto kumuliert x Satz, 2), alle auf derselben Basis; Sicherheitseinbehalt round(Brutto
+ * kumuliert x Satz, 2); Zahlbetrag = Brutto kumuliert - Umlagen - Einbehalt - Summe der frueheren, eingefrorenen
+ * Zahlbetraege (Massstab 2). Jeder Schritt auf 2 Stellen gerundet, dann verrechnet (N2).
+ */
+export function abschlagsketteBerechnen(leistungsstand, { mwstSatz, umlagen, sicherheitSatz, fruehereZahlbetraege }) {
+  const nnn = parse(leistungsstand.nettoNachNachlass, STELLEN.betrag);
+  const mwst = prozentVon(nnn, parse(mwstSatz, STELLEN.prozent));
+  const brutto = nnn + mwst;
+  const umlagebetraege = umlagen.map((u) => prozentVon(brutto, parse(u.satz, STELLEN.prozent)));
+  const einbehalt = sicherheitSatz === null ? 0n : prozentVon(brutto, parse(sicherheitSatz, STELLEN.prozent));
+  const zahlbetrag = brutto - umlagebetraege.reduce((a, b) => a + b, 0n) - einbehalt - fruehereZahlbetraege;
+  return {
+    leistung: leistungsstand.leistung,
+    nachlass: leistungsstand.nachlass,
+    nettoNachNachlass: leistungsstand.nettoNachNachlass,
+    mwst: format(mwst, STELLEN.betrag),
+    bruttoKumuliert: format(brutto, STELLEN.betrag),
+    umlagen: umlagen.map((u, i) => ({ bezeichnung: u.bezeichnung, satz: u.satz, betrag: format(umlagebetraege[i], 2) })),
+    einbehalt: format(einbehalt, STELLEN.betrag),
+    fruehereZahlbetraege: format(fruehereZahlbetraege, STELLEN.betrag),
+    zahlbetrag: formatMitVorzeichen(zahlbetrag, STELLEN.betrag),
+  };
+}
+
+/**
+ * Soll/Ist (D-35, VOB/B § 2 Abs. 3). `positionen`: `{ id, soll }` in Dokumentreihenfolge (Soll Massstab 3 oder null).
+ * Zeilen nur fuer Positionen mit Aufmass: Soll, Ist (Summe der Blaetter), Anteil = round_half_up(Ist / Soll x 100, 2).
+ * Befund `ueber-schwelle` bei Ist > 110 % von Soll, streng und exakt (Ist x 100 > Soll x 110); `unter-schwelle` bei
+ * Ist < 90 % nur mit `abgeschlossen` (M4 hat keine Schlussrechnung). Kein Befund bei Soll 0 oder null.
+ */
+export function sollIstBerechnen(positionen, mengen, { abgeschlossen = false } = {}) {
+  const zeilen = [];
+  const befunde = [];
+  for (const p of positionen) {
+    if (!mengen.has(p.id) || p.soll === null || p.soll === 0n) continue;
+    const ist = mengen.get(p.id);
+    const anteil = format(teileHalfUp(ist * 10000n, p.soll), STELLEN.prozent);
+    zeilen.push({ positionId: p.id, soll: format(p.soll, 3), ist: format(ist, 3), anteil });
+    if (ist * 100n > p.soll * 110n) befunde.push({ positionId: p.id, art: 'ueber-schwelle', anteil });
+    else if (abgeschlossen && ist * 100n < p.soll * 90n) befunde.push({ positionId: p.id, art: 'unter-schwelle', anteil });
+  }
+  return { zeilen, befunde };
+}
+
+/** Kostengruppe und ihre Vorfahren aus den Ziffern (D-24): XYZ -> XY0 -> X00, ohne Doppel. */
+function kgMitVorfahren(nummer) {
+  return [...new Set([nummer, `${nummer.slice(0, 2)}0`, `${nummer[0]}00`])];
+}
+
+/**
+ * Kostenkontrolle (D-37). `budget`: Eintraege `{ nummer, betrag }` der Kostenermittlung; `positionen`: `{ kostengruppe |
+ * null, vergabe, abrechnung }` (Massstab 2; Vergabe = GP nur zaehlender Positionen nach F4, sonst 0; Abrechnung =
+ * `Leistungsstand.gp`); `nachlass`: `{ vergabe, abrechnung }` (Nachlass des Auftrags-LV und des Leistungsstands, >= 0).
+ * Zeilen: jede Kostengruppe aus Budget und Positionen samt Vorfahren, nach Nummer; Baumsumme = eigener Wert + Kinder
+ * (D-24). Dazu „ohne Kostengruppe“, „Nachlass“ (negativ) und Gesamt. Budget ohne Eintrag 0,00; Abweichung = Vergabe -
+ * Budget in jeder Zeile (D-85.3). Gesamt = Summe der Ebene 1 + ohne KG + Nachlass (geht auf den Cent auf).
+ */
+export function kostenkontrolleBerechnen({ budget, positionen, nachlass }) {
+  const leer = () => ({ budget: 0n, vergabe: 0n, abrechnung: 0n });
+  const zeilen = new Map();
+  const buche = (nummer, feld, wert) => {
+    for (const n of kgMitVorfahren(nummer)) {
+      if (!zeilen.has(n)) zeilen.set(n, leer());
+      zeilen.get(n)[feld] += wert;
+    }
+  };
+  for (const e of budget) buche(e.nummer, 'budget', parse(e.betrag, STELLEN.betrag));
+  const ohne = leer();
+  for (const p of positionen) {
+    if (p.kostengruppe === null) {
+      ohne.vergabe += p.vergabe;
+      ohne.abrechnung += p.abrechnung;
+    } else {
+      buche(p.kostengruppe, 'vergabe', p.vergabe);
+      buche(p.kostengruppe, 'abrechnung', p.abrechnung);
+    }
+  }
+  const nachlassZeile = { budget: 0n, vergabe: -nachlass.vergabe, abrechnung: -nachlass.abrechnung };
+  const gesamt = leer();
+  const ebene1 = [...zeilen].filter(([n]) => n.endsWith('00')).map(([, z]) => z);
+  for (const z of [...ebene1, ohne, nachlassZeile]) {
+    for (const f of ['budget', 'vergabe', 'abrechnung']) gesamt[f] += z[f];
+  }
+  const text = (z) => ({
+    budget: formatMitVorzeichen(z.budget, STELLEN.betrag),
+    vergabe: formatMitVorzeichen(z.vergabe, STELLEN.betrag),
+    abrechnung: formatMitVorzeichen(z.abrechnung, STELLEN.betrag),
+    abweichung: formatMitVorzeichen(z.vergabe - z.budget, STELLEN.betrag),
+  });
+  return {
+    zeilen: [...zeilen.keys()].sort().map((n) => ({ kostengruppe: n, ...text(zeilen.get(n)) })),
+    ohneKostengruppe: text(ohne),
+    nachlass: text(nachlassZeile),
+    gesamt: text(gesamt),
   };
 }
