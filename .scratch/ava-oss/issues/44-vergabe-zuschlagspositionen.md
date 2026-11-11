@@ -1,6 +1,6 @@
 # 44: Vergabe: Zuschlagspositionen im Angebot und im Preisspiegel; Fixture `typisch` auf GAEB-Form
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: V · Paket: `packages/vergabe` (benannte Ausnahmen: `fixtures/` und die Fixture-Testhelfer, siehe Grenzen)
 Blocked by: 36, 37, 29
