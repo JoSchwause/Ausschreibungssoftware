@@ -317,12 +317,12 @@ describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)
       normalisiere(soll.leistungsverzeichnisse[0] ?? lv),
     );
     expect(wert(kern.lvStaendeAuflisten(lv.leistungsverzeichnis.id))).toEqual([]);
-    // Seit Version 4 exportiert die frische Datenbank eine höhere Schemaversion; sonst ist die Datei gleich.
+    // Seit Version 5 liest der Export Tabellen, die es in Version 3 nicht gibt: Die Datenbank geht weiter bis zur
+    // aktuellen Version, dann ist die Datei gleich der nach einem frischen Import (D-79.6).
     const frisch = await neuerKern();
     wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
-    const neu = JSON.parse(wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id))) as object;
-    expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
-      kanonischesJson({ ...neu, schemaVersion: 3 }),
+    expect(wert(kernAufDb(db).projektdateiExportieren(inhalt.projekt.id))).toBe(
+      wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
     );
   });
 
