@@ -220,11 +220,16 @@ test('LV-Stand anlegen, neu laden, schreibgeschützt öffnen; Änderungen am LV 
   await expect(page.getByText('schreibgeschützt', { exact: true })).toBeVisible();
   // Der Stand hat die alten Werte.
   await expect.poll(async () => (await summen(page))['Netto']).toBe('55.463,41');
-  // Jede Bearbeitung meldet „Stand ist schreibgeschützt“ und ändert nichts.
+  // Das Grid ist schreibgeschützt (Ticket 67, Punkt 3): kein Zelleditor, kein Toast, die Ansage kommt vom Grid.
+  await expect(page.getByRole('treegrid')).toHaveAttribute('aria-readonly', 'true');
   await zelle(page, 'Baustelle einrichten', 'menge').click();
   await page.keyboard.type('5');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Stand ist schreibgeschützt').first()).toBeVisible();
+  await expect(page.locator('[data-editor]')).toHaveCount(0);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Schreibgeschützt: Hier lässt sich nichts ändern.' }),
+  ).toHaveCount(1);
+  await expect(page.getByText('Stand ist schreibgeschützt')).toHaveCount(0);
   await expect.poll(async () => (await summen(page))['Netto']).toBe('55.463,41');
 
   // Stand als neues LV übernehmen.

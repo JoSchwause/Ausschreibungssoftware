@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
 import { lvPruefen } from '@tethys/kern';
-import { lvAnsichtBauen } from './ansicht';
+import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
 import { lvSitzung, projektSitzung, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { ozMaskeLesen } from './ozmaske';
@@ -159,5 +159,19 @@ describe('Zahlenränder des Grids (N4)', () => {
     const r = gridZahlen.parseMenge('1,2345');
     expect(r).toEqual({ ok: false, fehler: 'Eine Menge hat höchstens 3 Nachkommastellen.' });
     expect(gridZahlen.parseEinheitspreis('12.34').ok).toBe(false);
+  });
+});
+
+describe('positionenImTeilbaum (genaue Löschzahl für das Grid)', () => {
+  it('zählt Positionen unter zugeklappten Gliederungen mit und jede nur einmal', async () => {
+    const { s, t01, t0101, t0102 } = await m1Lv();
+    const knoten = lv(s).leistungsverzeichnis.knoten;
+    expect(positionenImTeilbaum(knoten, [t01])).toBe(5);
+    expect(positionenImTeilbaum(knoten, [t0101])).toBe(3);
+    expect(positionenImTeilbaum(knoten, [t0101, t0102])).toBe(5);
+    expect(positionenImTeilbaum(knoten, [t01, t0101])).toBe(5);
+    expect(positionenImTeilbaum(knoten, [])).toBe(0);
+    const einePosition = knoten.find((k) => k.art === 'position');
+    expect(positionenImTeilbaum(knoten, einePosition ? [einePosition.id] : [])).toBe(1);
   });
 });
