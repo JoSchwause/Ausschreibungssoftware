@@ -1,0 +1,43 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Nachträge (Ticket 86): Kopfband des Nachtrags-LV, Nachtragsliste am Auftrags-LV. Nur Tokens (U4). */
+
+.nachtrag__band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--tx-space-3) var(--tx-space-5);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.nachtrag__band p {
+  margin: 0;
+}
+
+.nachtrag__liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+}
+
+.nachtrag__liste p {
+  margin: 0;
+}
+
+.nachtrag__tabelle {
+  border-collapse: collapse;
+}
+
+.nachtrag__tabelle th,
+.nachtrag__tabelle td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+}
+
+.nachtrag__tabelle th:nth-child(4),
+.nachtrag__tabelle td:nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
