@@ -86,14 +86,14 @@ in `.scratch/ava-oss/entscheidungen-auto.md` ein.
 
 ## Acceptance criteria
 
-- [ ] `lvPruefen` liefert für jede Regel der Tabelle einen Befund mit Code, Schwere, Quelle `lv-pruefung`, `knotenId` und `feld` wie angegeben; je Regel ein positiver und ein negativer Test
-- [ ] Doppelte OZ aus Handeingabe (`OrdnungszahlSetzen`) werden angenommen und als `oz-doppelt` an beiden Knoten gemeldet
-- [ ] Ein LV mit Absolutnachlass über dem Netto: Befehl angenommen, Befund `netto-nach-nachlass-negativ`
-- [ ] Golden: `lvPruefen` über `winzig`, `typisch`, `gross` und (falls vorhanden) `zuschlag` als Golden-Datei; `typisch` meldet die Altform-Zuschlagsposition
-- [ ] Ergebnis deterministisch (gleiche Eingabe, gleiche Reihenfolge); Property-Test: kein Befehl wird wegen einer Regel abgewiesen
-- [ ] `lvPruefen(gross)` < 50 ms (Messwert im Ticket)
-- [ ] Die drei Kopfdaten-Befehle aus Ticket 29 sind zuständig; je Wirkung, leeres ChangeSet bei gleichem Wert, Umkehrung, Fehlerfälle getestet
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `lvPruefen` liefert für jede Regel der Tabelle einen Befund mit Code, Schwere, Quelle `lv-pruefung`, `knotenId` und `feld` wie angegeben; je Regel ein positiver und ein negativer Test
+- [x] Doppelte OZ aus Handeingabe (`OrdnungszahlSetzen`) werden angenommen und als `oz-doppelt` an beiden Knoten gemeldet
+- [x] Ein LV mit Absolutnachlass über dem Netto: Befehl angenommen, Befund `netto-nach-nachlass-negativ`
+- [x] Golden: `lvPruefen` über `winzig`, `typisch`, `gross` und (falls vorhanden) `zuschlag` als Golden-Datei; `typisch` meldet die Altform-Zuschlagsposition
+- [x] Ergebnis deterministisch (gleiche Eingabe, gleiche Reihenfolge); Property-Test: kein Befehl wird wegen einer Regel abgewiesen
+- [x] `lvPruefen(gross)` < 50 ms (Messwert im Ticket)
+- [x] Die drei Kopfdaten-Befehle aus Ticket 29 sind zuständig; je Wirkung, leeres ChangeSet bei gleichem Wert, Umkehrung, Fehlerfälle getestet
+- [x] `pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Nicht-Ziele
 
@@ -101,3 +101,13 @@ Prüf-Panel und Sprunglinks (47), Prüfung von Angeboten (Welle 4), GAEB-Exportp
 Autokorrektur, inkrementelle Prüfung.
 
 ## Comments
+
+- Seams (Demo-Modus, ohne Rückfrage festgelegt): `lvPruefen(zustand)` und `lvBefehlAusfuehren` für die drei Kopfdaten-Befehle; Golden-Dateien unter `packages/kern/testdaten/golden/` (`GOLDEN_UPDATE=1`).
+- Messwert: `lvPruefen(gross)` warm, Median 11–13 ms allein, bis etwa 30 ms unter paralleler Last (Budget 50 ms). Schneller Weg: ein kompiliertes Maskenmuster je Art und Stufe vor `ozFehler`; ein Property-Test sichert, dass `oz-maske-verletzt` genau `ozFehler` folgt.
+- Frage: Schwere von `menge-null`? Entscheidung: Warnung, nur ohne Zuschlag. Grund: Ticket nennt es Warnung; die Zuschlagsposition hat `zuschlag-satz-und-menge` (D-41.1).
+- Frage: Maske selbst ungültig? Entscheidung: `oz-maske-ungueltig` (wie beim Anlegen) und keine OZ-gegen-Maske-Prüfung. Grund: sonst Befundflut an jedem Knoten (D-41.1).
+- Frage: Woher GP und Summen? Entscheidung: aus `LvZustand.summen`. Grund: Budget; der Kern hält den Stand gleich der Neuberechnung (Property-Test aus Ticket 07).
+- Frage: Golden mit welcher Maske? Entscheidung: mit der Maske aus dem Maskentext der Fixture, nicht der Standardmaske von `fixtureAlsInhalt` (sonst falsche Indexbefunde in `typisch`).
+- Frage: Prüfung der Einheit von Unterbeschreibungen? Entscheidung: nicht geprüft (nicht in der Tabelle).
+- Kopfdaten-Befehle: Form wie Ticket 27; ein entferntes Feld fehlt danach ganz; Langtext der Unterbeschreibung nur als Liste geprüft (der Feldbefehl-Prüfer aus Ticket 27 kennt die v1.1b-Bausteine nicht).
+- `baum.test.ts` „Befehle anderer Tickets“ nimmt jetzt `LvStandAnlegen` statt `AuftraggeberSetzen` (mechanisch).
