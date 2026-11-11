@@ -24,7 +24,8 @@ export interface Sprungziel {
   readonly nr: number;
 }
 
-export interface LvGridProps {
+/** Eigenschaften, die ein bearbeitbares und ein schreibgeschütztes Grid gleich haben. */
+interface LvGridGemeinsam {
   /**
    * Sichtbare Zeilen (aufgeklappt/zugeklappt steht in `zeile.aufgeklappt`), Summenzeile und Wurzel. In ein leeres LV
    * fügt das Grid am Ende von `ansicht.wurzelId` ein.
@@ -34,6 +35,42 @@ export interface LvGridProps {
   readonly spalten?: readonly LvSpalte[];
   /** Zahlenränder (N4); die App schließt sie an `dezimal` an. */
   readonly zahlen: GridZahlen;
+  /** Sprung zu einer Zelle (Prüf-Links). Steht die Zeile nicht in der Ansicht (zugeklappt), tut das Grid nichts. */
+  readonly sprungziel?: Sprungziel;
+  /** Der Nutzer will einen Knoten auf- oder zuklappen. Der Zustand gehört dem Aufrufer, das Grid merkt ihn sich nicht. */
+  readonly onAufklappen?: (knotenId: KnotenId, aufgeklappt: boolean) => void;
+  /** Die Mehrfachauswahl (Zeilen) hat sich geändert, in Anzeigereihenfolge. */
+  readonly onAuswahlChange?: (knotenIds: readonly KnotenId[]) => void;
+  /**
+   * Die aktive Zeile hat sich geändert (Ticket 54, Punkt 1): die Zeile der aktiven Zelle, an der Strg+Plus, Strg+V
+   * und Tab ins Grid ansetzen. Gemeldet wird nach dem Rendern, sobald sie sich ändert, auch beim ersten Rendern (ohne
+   * Klick ist es die erste Zeile), beim Fokus per Tab und wenn die Zeile aus der Ansicht verschwindet; `null` im
+   * leeren LV.
+   */
+  readonly onAktiveZeileChange?: (knotenId: KnotenId | null) => void;
+  /**
+   * Der Nutzer will eine Zeile öffnen (Ticket 54, Punkt 2), z. B. für den Positionsdialog: Strg+Enter auf einer Zelle
+   * oder Doppelklick auf eine Zelle, die sich nicht bearbeiten lässt (im schreibgeschützten Grid: jede Zelle). Ein
+   * Doppelklick auf eine bearbeitbare Zelle bearbeitet sie weiter (U3). Das Grid meldet jede Zeilenart; was geöffnet
+   * wird, entscheidet die App.
+   */
+  readonly onZeileOeffnen?: (knotenId: KnotenId, spalte: LvSpalte) => void;
+  /**
+   * Hinweise zum zuletzt angenommenen Befehl (v1.1a, Punkt 10). Der Aufrufer setzt und leert sie; das Grid zeigt sie
+   * in einer Hinweisleiste an, mit Sprungknopf, wenn ein Hinweis einen Knoten nennt. Sie sperren nie (U5).
+   */
+  readonly hinweise?: readonly Befehlshinweis[];
+  /** Zugänglicher Name des Grids. */
+  readonly beschriftung?: string;
+  /** Spalte mit Einzug und Auf-/Zuklappknopf; Standard `kurztext`. */
+  readonly baumspalte?: LvSpalte;
+  /** Zeilenhöhe in Pixeln; Standard 28 (wie `--tx-control-height`). */
+  readonly zeilenhoehe?: number;
+}
+
+/** Das bearbeitbare Grid: Jede Änderung geht als Befehl hinaus. */
+export interface LvGridBearbeitbar extends LvGridGemeinsam {
+  readonly schreibgeschuetzt?: false;
   /**
    * Kennungen für neue Positionen und Papierkorbeinträge (A2: das Grid erzeugt nie selbst Kennungen). Ein Zuschnitt der
    * einen `IdQuelle` des Vertrags.
@@ -57,21 +94,27 @@ export interface LvGridProps {
    * Die Kennung muss bleiben, sonst findet das Grid die neue Zeile nicht. Ohne die Eigenschaft geht er ohne OZ hinaus.
    */
   readonly vorPositionAnlegen?: (befehl: PositionAnlegen) => PositionAnlegen;
-  /** Sprung zu einer Zelle (Prüf-Links). Steht die Zeile nicht in der Ansicht (zugeklappt), tut das Grid nichts. */
-  readonly sprungziel?: Sprungziel;
-  /** Der Nutzer will einen Knoten auf- oder zuklappen. Der Zustand gehört dem Aufrufer, das Grid merkt ihn sich nicht. */
-  readonly onAufklappen?: (knotenId: KnotenId, aufgeklappt: boolean) => void;
-  /** Die Mehrfachauswahl (Zeilen) hat sich geändert, in Anzeigereihenfolge. */
-  readonly onAuswahlChange?: (knotenIds: readonly KnotenId[]) => void;
   /**
-   * Hinweise zum zuletzt angenommenen Befehl (v1.1a, Punkt 10). Der Aufrufer setzt und leert sie; das Grid zeigt sie
-   * in einer Hinweisleiste an, mit Sprungknopf, wenn ein Hinweis einen Knoten nennt. Sie sperren nie (U5).
+   * Genaue Zahl der Positionen in diesen Knoten samt aller, auch zugeklappter Unterknoten (Ticket 54, Punkt 4), für
+   * die Rückfrage beim Löschen. Ohne die Eigenschaft zählt das Grid die sichtbaren Zeilen und sagt bei zugeklappten
+   * Knoten „mindestens“.
    */
-  readonly hinweise?: readonly Befehlshinweis[];
-  /** Zugänglicher Name des Grids. */
-  readonly beschriftung?: string;
-  /** Spalte mit Einzug und Auf-/Zuklappknopf; Standard `kurztext`. */
-  readonly baumspalte?: LvSpalte;
-  /** Zeilenhöhe in Pixeln; Standard 28 (wie `--tx-control-height`). */
-  readonly zeilenhoehe?: number;
+  readonly positionenZaehlen?: (knotenIds: readonly KnotenId[]) => number;
 }
+
+/**
+ * Das schreibgeschützte Grid (Ticket 54, Punkt 3), z. B. für einen LV-Stand oder ein Auftrags-LV: kein Zelleditor,
+ * keine Zeilenaktionen außer Kopieren (Strg+C), kein Befehl. Fokus, Navigation, Auswahl, Auf- und Zuklappen, Sprungziel
+ * und Zeile öffnen bleiben. Der Versuch zu ändern wird angesagt.
+ */
+export interface LvGridSchreibgeschuetzt extends LvGridGemeinsam {
+  readonly schreibgeschuetzt: true;
+  readonly ids?: never;
+  readonly onBefehl?: never;
+  readonly onBefehlsfolge?: never;
+  readonly onKopieEinfuegen?: never;
+  readonly vorPositionAnlegen?: never;
+  readonly positionenZaehlen?: never;
+}
+
+export type LvGridProps = LvGridBearbeitbar | LvGridSchreibgeschuetzt;

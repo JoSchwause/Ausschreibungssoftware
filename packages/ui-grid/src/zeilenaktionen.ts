@@ -84,13 +84,21 @@ export interface Loeschumfang {
   readonly knoten: number;
   readonly lose: number;
   readonly titel: number;
-  /** Positionen unter den Knoten und die Knoten selbst, soweit sichtbar. */
+  /** Positionen unter den Knoten und die Knoten selbst: die Zahl der App, sonst die sichtbaren. */
   readonly positionen: number;
-  /** Ein zugeklappter Knoten mit Unterknoten ist dabei: Es können mehr Positionen sein. */
+  /** Ohne Zahl der App ist ein zugeklappter Knoten mit Unterknoten dabei: Es können mehr Positionen sein. */
   readonly mindestens: boolean;
 }
 
-export function loeschUmfang(zeilen: readonly LvZeile[], knotenIds: readonly KnotenId[]): Loeschumfang {
+/**
+ * Was ein Löschen der Knoten trifft. Mit `positionenZaehlen` (Ticket 54, Punkt 4) nennt die App die genaue Zahl der
+ * Positionen samt aller, auch zugeklappter Unterknoten; das Grid zählt dann nicht selbst. Ohne zählt es die sichtbaren.
+ */
+export function loeschUmfang(
+  zeilen: readonly LvZeile[],
+  knotenIds: readonly KnotenId[],
+  positionenZaehlen?: (knotenIds: readonly KnotenId[]) => number,
+): Loeschumfang {
   const menge = new Set<string>(knotenIds);
   let lose = 0;
   let titel = 0;
@@ -112,6 +120,15 @@ export function loeschUmfang(zeilen: readonly LvZeile[], knotenIds: readonly Kno
       if (u?.hatUnterknoten && !u.aufgeklappt) mindestens = true;
     }
     i = ende;
+  }
+  if (positionenZaehlen) {
+    return {
+      knoten: knotenIds.length,
+      lose,
+      titel,
+      positionen: positionenZaehlen(knotenIds),
+      mindestens: false,
+    };
   }
   return { knoten: knotenIds.length, lose, titel, positionen, mindestens };
 }

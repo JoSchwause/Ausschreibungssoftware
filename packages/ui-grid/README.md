@@ -30,6 +30,7 @@ Tastatur zuerst (U3, U8). Strg steht auf dem Mac für Cmd.
 | Taste                  | Wirkung                                              |
 | ---------------------- | ---------------------------------------------------- |
 | Enter, F2, Doppelklick | Zelle bearbeiten                                     |
+| Strg+Enter             | Zeile öffnen (nur mit `onZeileOeffnen`, Ticket 54)   |
 | Zeichen tippen         | Bearbeiten beginnt mit diesem Zeichen                |
 | Enter / Umschalt+Enter | im Eingabefeld: übernehmen, Zelle darunter / darüber |
 | Tab                    | im Eingabefeld: übernehmen, nächste Zelle            |
@@ -68,6 +69,19 @@ Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` 
 über `onBefehl`. Kurze Ansagen („2 Zeilen kopiert.“) stehen in der Live-Region unter dem Grid.
 
 ## Weitere Eigenschaften
+
+- `onAktiveZeileChange(knotenId | null)`: meldet die Zeile der aktiven Zelle, sobald sie sich ändert (auch beim ersten
+  Rendern, beim Fokus per Tab und wenn die Zeile aus der Ansicht verschwindet); `null` im leeren LV.
+- `onZeileOeffnen(knotenId, spalte)`: Strg+Enter auf einer Zelle oder Doppelklick auf eine Zelle, die sich nicht
+  bearbeiten lässt (z. B. OZ, Art, GP; im schreibgeschützten Grid jede Zelle). Ein Doppelklick auf eine bearbeitbare
+  Zelle bearbeitet sie weiter. Das Grid meldet jede Zeilenart, die App entscheidet. Ohne die Eigenschaft bearbeitet
+  Strg+Enter wie Enter.
+- `schreibgeschuetzt`: Nur-Lese-Grid (LV-Stand, Auftrags-LV). Ohne `ids`, `onBefehl` und die übrigen Befehlsrückrufe
+  (der Typ verbietet sie). Kein Zelleditor, kein Befehl, keine Zeilenaktion außer Strg+C; Navigation, Auswahl,
+  Auf-/Zuklappen, Sprungziel und Zeile öffnen bleiben. Das Grid trägt `aria-readonly` und eine Beschreibung; ein
+  Änderungsversuch (F2, Tippen, Entf, Strg+X/V/Minus/Plus, Alt+Pfeil) wird in der Live-Region angesagt.
+- `positionenZaehlen(knotenIds)`: genaue Zahl der Positionen samt zugeklappter Unterknoten für die Rückfrage beim
+  Löschen; ohne die Eigenschaft zählt das Grid die sichtbaren Zeilen und sagt „mindestens“.
 
 - `vorPositionAnlegen`: ergänzt den Befehl von Strg+Plus (z. B. die OZ), bevor er hinausgeht.
 - `sprungziel`: `{ knotenId, spalte?, nr }`; jeder neue Wert von `nr` scrollt zur Zeile und fokussiert die Zelle. Liegt
