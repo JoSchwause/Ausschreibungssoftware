@@ -87,12 +87,14 @@ In-Memory-Speicher (`auftrag.test.ts`), `auftragZiel`, `auftragAusgeben` (X86 mi
   prüft `zuschlagSpeichern` in der Kette des Befehlswegs (doppelter Klick, zweiter Tab desselben Speichers nicht möglich,
   E-14). Reversible: yes.
 - **D-64.7** X86 → eigener Knopf „GAEB X86 ausgeben“ auf der Auftrags-LV-Seite über `schreibeGaeb` mit Summen und
-  Zuschlagsbasen des Kerns und `auftragnehmer` (Name) als Option des Writers. → `GaebAusgeben` der LV-Seite nimmt ein
-  `LvZustand`, bietet X81/X83 an und lässt den Auftragnehmer weg (Ticket 49). Ohne Paketänderung nutzbar. Ändert
-  Ticket 68 die Option zugunsten von `LvInhaltKopf.auftragnehmer`, genügt `ausgabe.ts` anzupassen. Reversible: yes.
+  Zuschlagsbasen des Kerns. → `GaebAusgeben` der LV-Seite nimmt ein `LvZustand`, bietet X81/X83 an und lässt den
+  Auftragnehmer weg (Ticket 49). Seit Ticket 68 nimmt der Writer das `AuftragsLeistungsverzeichnis` selbst und schreibt
+  `CTR` aus `auftragnehmer`; `ausgabe.ts` übergibt es so (die frühere Writer-Option ist entfallen). Reversible: yes.
 - **D-64.8** Prüf-Panel nur lesend → `lvPruefen` auf dem Auftrags-LV in LV-Form (`alsLvZustand`); Sprünge gehen zur Zelle
   bzw. Zeile, nie in den Positionsdialog. F8 wie auf der LV-Seite. Reversible: yes.
 - **D-64.9** Erwartete Summen des Auftrags-LV in `m3.spec.ts` → hergeleitet aus der Fixture: Netto des Bieters minus GP der
   Grundposition plus GP der Alternative (beide aus `sollwerte.positionen`), MwSt nach N2 mit dem Satz des LV
   (55.481,84 − 5.155,30 + 5.774,21 = 56.100,75; MwSt 10.659,14; Brutto 66.759,89, wie die Goldens von Ticket 59).
   Reversible: yes.
+- Nach Merge von `integration/welle-4` (2bfb344, Tickets 57 und 68): `auftrag.test.ts` grün, `m3.spec.ts` dreimal
+  hintereinander grün (`--repeat-each=3`).
