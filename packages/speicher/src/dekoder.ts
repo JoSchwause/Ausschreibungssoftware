@@ -771,6 +771,8 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   Rueckgaengig: true,
   Wiederholen: true,
   MengenansatzSetzen: true,
+  // v1.4: mechanisch angepasst, Folgeticket (Ticket 79; die ChangeSets weist `anwenden` bis dahin mit `unbekannt` ab)
+  NachtragUebernehmen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

@@ -14,6 +14,7 @@ import type {
   LvBefehl,
   MengeAendern,
   MengenansatzSetzen,
+  NachtragUebernehmen,
   ProjektLoeschen,
 } from './befehle';
 import type { AuftragsLvChangeSet, LvChangeSet } from './changeset';
@@ -858,4 +859,81 @@ export const beispielAuftragsLvUebersicht: AuftragsLvUebersicht = {
   name: beispielAuftragsLv.name,
   leistungsverzeichnisId: beispielAuftragsLv.leistungsverzeichnisId,
   angebotId: beispielAuftragsLv.angebotId,
+};
+
+const nachtragsLvId = '019b76e9-0000-7000-8000-000000000100' as LeistungsverzeichnisId;
+const nachtragTitelId = '019b76e9-0000-7000-8000-000000000101' as TitelId;
+const nachtragsTitelId = '019b76e9-0000-7000-8000-000000000102' as TitelId;
+const nachtragPos1Id = '019b76e9-0000-7000-8000-000000000103' as PositionId;
+const nachtragPos2Id = '019b76e9-0000-7000-8000-000000000104' as PositionId;
+
+/**
+ * Punkt 2 (D-35): Übernahme des Nachtrags N01 mit zwei Positionen. Die neue Gliederung „Nachtrag N01“ (neue Kennung,
+ * nächste freie OZ `02`) kommt hinter den einen Titel der obersten Ebene; darunter der Titel des Nachtrags-LV und seine
+ * Positionen mit ihren Kennungen aus dem Nachtrags-LV und den EP des Nachtragsangebots (2 × 15 = 30,00; 1 × 20 = 20,00).
+ */
+export const beispielNachtragUebernehmen: NachtragUebernehmen = {
+  art: 'NachtragUebernehmen',
+  nachtragLvId: nachtragsLvId,
+  knoten: [
+    {
+      art: 'titel',
+      id: nachtragTitelId,
+      elternId: auftragsId,
+      reihenfolge: 1,
+      ordnungszahl: '02' as Ordnungszahl,
+      kurztext: 'Nachtrag N01',
+    },
+    {
+      art: 'titel',
+      id: nachtragsTitelId,
+      elternId: nachtragTitelId,
+      reihenfolge: 0,
+      ordnungszahl: '02.01' as Ordnungszahl,
+      kurztext: 'Mehrleistungen (erfunden)',
+    },
+    {
+      ...position,
+      id: nachtragPos1Id,
+      elternId: nachtragsTitelId,
+      reihenfolge: 0,
+      ordnungszahl: '02.01.0010' as Ordnungszahl,
+      kurztext: 'Zusätzliche Leistung 1',
+      menge: '2.000' as Menge,
+      einheitspreis: '15.000' as Einheitspreis,
+    },
+    {
+      ...position,
+      id: nachtragPos2Id,
+      elternId: nachtragsTitelId,
+      reihenfolge: 1,
+      ordnungszahl: '02.01.0020' as Ordnungszahl,
+      kurztext: 'Zusätzliche Leistung 2',
+      menge: '1.000' as Menge,
+      einheitspreis: '20.000' as Einheitspreis,
+    },
+  ],
+};
+
+/**
+ * Punkt 2: ChangeSet zu `beispielNachtragUebernehmen` am Beispiel-Auftrags-LV (12,35 vorher): Netto 62,35, MwSt
+ * round(62,35 × 19 %, 2) = 11,85, Brutto 74,20. Die Summen der neuen Gliederungen sind neu (kein `vorher`).
+ */
+export const beispielChangeSetNachtragUebernehmen: AuftragsLvChangeSet = {
+  art: 'auftrags-leistungsverzeichnis',
+  auftragsLeistungsverzeichnisId: auftragsId,
+  kopf: null,
+  knoten: { hinzugefuegt: beispielNachtragUebernehmen.knoten, geaendert: [], entfernt: [] },
+  summen: {
+    positionen: [
+      { positionId: nachtragPos1Id, gesamtpreis: '30.00' as Betrag, gehtInSummeEin: true },
+      { positionId: nachtragPos2Id, gesamtpreis: '20.00' as Betrag, gehtInSummeEin: true },
+    ],
+    gliederungen: [
+      { gliederungId: nachtragTitelId, summe: '50.00' as Betrag },
+      { gliederungId: nachtragsTitelId, summe: '50.00' as Betrag },
+    ],
+    gesamt: gesamtsummen('62.35', '0.00', '62.35', '11.85', '74.20'),
+    vorher: { positionen: [], gliederungen: [], gesamt: g1235, entfernt: keinGesamt },
+  },
 };

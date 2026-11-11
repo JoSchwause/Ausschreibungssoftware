@@ -222,6 +222,12 @@ export interface AngebotChangeSet {
 /**
  * ChangeSet am Auftrags-LV (v1.1a, Punkt 5), gleich gebaut wie `LvChangeSet`. Mehr als das Anlegen erzeugt bis zur
  * Vergabe (Welle 4) kein Befehl; der Typ ist aber schon vollständig, damit Speicher und Undo nichts nachrüsten müssen.
+ *
+ * v1.4 (Ticket 70 Punkt 2): `NachtragUebernehmen` liefert `kopf: null`, neue Knoten unter `knoten.hinzugefuegt` und die
+ * betroffenen Summen; `KostengruppeSetzen` eine Knotenänderung ohne Summen. Entfernt ein ChangeSet eine Position, auf die
+ * eine Aufmaßposition verweist (die Umkehrung einer Übernahme), oder löscht es das Auftrags-LV, solange Aufmaße,
+ * Rechnungen oder Nachtragsangaben eines LV darauf verweisen, weist `speicher` mit `konflikt` ab (Q5, wie beim
+ * Papierkorb und Angeboten).
  */
 export interface AuftragsLvChangeSet {
   readonly art: 'auftrags-leistungsverzeichnis';
@@ -265,3 +271,20 @@ export type AuftragsLvBefehlAusfuehren = (
  * Funktion liefert, ist `kern`.
  */
 export type LvChangeSetAnwenden = (zustand: LvZustand | null, changeSet: LvChangeSet) => LvZustand | null;
+
+/**
+ * Wendet ein ChangeSet des Auftrags-LV an (v1.4, Ticket 70 Punkt 2), Lesart wie `LvChangeSetAnwenden`: `null` als
+ * Zustand heißt „entsteht erst“, `null` als Ergebnis „verschwindet“ (die Umkehrung des Anlegens). Liefert `kern`
+ * (Ticket 71).
+ */
+export type AuftragsLvChangeSetAnwenden = (
+  zustand: AuftragsLvZustand | null,
+  changeSet: AuftragsLvChangeSet,
+) => AuftragsLvZustand | null;
+
+/**
+ * Kehrt ein ChangeSet des Auftrags-LV ohne Vorzustand um (v1.4, Ticket 70 Punkt 2; Undo, ADR 0006): Kopf und Knoten
+ * vertauscht, Summen aus `summen.vorher`, wie beim LV. Liefert `kern` (Ticket 71); die App gibt dann ihren Umweg über die
+ * Umkehrung eines LV-ChangeSets auf (D-64.4).
+ */
+export type AuftragsLvChangeSetUmkehren = (changeSet: AuftragsLvChangeSet) => AuftragsLvChangeSet;

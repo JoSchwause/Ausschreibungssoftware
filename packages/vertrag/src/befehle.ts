@@ -505,8 +505,48 @@ export interface AuftragsLeistungsverzeichnisAnlegen {
   readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
 }
 
-/** Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). Bis zur Vergabe nur das Anlegen. */
-export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen;
+/**
+ * Übernimmt einen beauftragten Nachtrag in das Auftrags-LV (v1.4, Ticket 70 Punkt 2; D-35, Glossar „Nachtrag“). Den
+ * Befehl baut die reine Funktion `nachtragUebernehmen(auftragsLv, nachtragsLv, angebot, neueIds)` in `abrechnung`
+ * (Ticket 80) aus dem Nachtrags-LV und dem Nachtragsangebot; der Kern führt ihn aus (Ticket 71). Die App schreibt danach am
+ * Nachtrags-LV `NachtragsangabenSetzen` mit Status `beauftragt` (zwei Aggregate, eine Befehlsfolge, D-35).
+ *
+ * Lesart (D-35, enge Lesart im Typ):
+ * - `knoten` ist genau **eine** neue Gliederung auf oberster Ebene des Auftrags-LV samt ihrem Teilbaum, flach, Eltern vor
+ *   Kindern. Die Gliederung heißt „Nachtrag <nummer>“, ist ein Los, wenn auf oberster Ebene Lose stehen, sonst ein Titel
+ *   (F1), hat `elternId` = Kennung des Auftrags-LV und `reihenfolge` = Zahl der Knoten der obersten Ebene (sie kommt ans
+ *   Ende). Darunter steht der Baum des Nachtrags-LV mit den EP und EPA des Nachtragsangebots.
+ * - Der Kern übernimmt die Knoten, wie sie kommen (wie `AuftragsLeistungsverzeichnisAnlegen`, nicht wie
+ *   `KnotenEinfuegen`): Lage, Ordnungszahlen und Preise setzt `nachtragUebernehmen`, der Kern vergibt nichts neu. Eine
+ *   leere Einheit (`''`) legt er als `null` ab (siehe `Einheit`). Abweichungen der OZ von der Maske meldet die
+ *   LV-Prüfung (U5), sie sperren nicht.
+ * - Kennungen: Positionen behalten ihre `PositionId` aus dem Nachtrags-LV (Positionsidentität mit Nachtrags-LV und
+ *   Nachtragsangebot, ADR 0011); Gliederungen und Hinweistexte des Nachtrags behalten ihre Kennung ebenfalls, die neue
+ *   oberste Gliederung hat eine neue aus der `IdQuelle`. Keine Kennung darf im Auftrags-LV schon vorkommen (`id-vergeben`);
+ *   das sperrt auch eine zweite Übernahme desselben Nachtrags.
+ * - Der Kern prüft die Baumregeln wie beim Anlegen: F1 (Lose und Titel nie nebeneinander auf oberster Ebene,
+ *   `knotenart-unzulaessig`), höchstens 5 Gliederungsebenen samt der neuen (`ebene-ueberschritten`), Eltern vor Kindern
+ *   und dichte `reihenfolge` (`ungueltige-eingabe`), genau eine Wurzel des Teilbaums an der genannten Stelle.
+ * - Was der Befehl nicht trägt, prüft `nachtragUebernehmen` vorher (Fehler oder Warnung, nicht der Kern): anderer
+ *   MwSt-Satz als das Auftrags-LV (Fehler), nicht angebotene Position (EP `null` mit Warnung, wie D-21), Wahl-Alternativen
+ *   (entfallen mit Warnung), Nachlass des Nachtragsangebots (ignoriert mit Warnung).
+ * - `nachtragLvId` nennt das Nachtrags-LV für Protokoll und Anzeige; der Kern kennt es nicht und prüft es nicht.
+ *
+ * ChangeSet: `AuftragsLvChangeSet` mit `kopf: null`, den Knoten unter `knoten.hinzugefuegt` und den betroffenen Summen.
+ * Seine Umkehrung (Undo) entfernt die Knoten wieder; verweist dann eine Aufmaßposition auf eine dieser Positionen, weist
+ * `speicher` mit `konflikt` ab (siehe `AuftragsLvChangeSet`). Kein Massenbefehl: ein Nachtrag ist kurz.
+ */
+export interface NachtragUebernehmen {
+  readonly art: 'NachtragUebernehmen';
+  readonly nachtragLvId: LeistungsverzeichnisId;
+  readonly knoten: readonly Knoten[];
+}
+
+/**
+ * Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). v1.4 (D-36 (4)): genau das Anlegen (Zuschlag, D-21), die
+ * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
+ */
+export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

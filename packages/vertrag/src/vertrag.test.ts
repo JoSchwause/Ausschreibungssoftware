@@ -109,6 +109,9 @@ import {
   type AuftragsLeistungsverzeichnisId,
   type AuftragsLvRepository,
   type AuftragsLvUebersicht,
+  type AuftragsLvChangeSetAnwenden,
+  type AuftragsLvChangeSetUmkehren,
+  type NachtragUebernehmen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -146,6 +149,8 @@ import {
   // v1.4
   beispielAuftragsLv,
   beispielAuftragsLvUebersicht,
+  beispielChangeSetNachtragUebernehmen,
+  beispielNachtragUebernehmen,
 } from './beispiele';
 
 /**
@@ -525,7 +530,8 @@ describe('v1.1a Punkt 4: Löschen', () => {
 describe('v1.1a Punkt 5: Auftrags-LV', () => {
   it('Befehl und ChangeSet legen das Auftrags-LV als Aggregat an', () => {
     expectTypeOf(beispielAuftragsBefehl).toExtend<Befehl>();
-    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<'AuftragsLeistungsverzeichnisAnlegen'>();
+    // v1.4 (Ticket 70 Punkt 2): dazu `NachtragUebernehmen` und `KostengruppeSetzen`, siehe unten
+    expectTypeOf<'AuftragsLeistungsverzeichnisAnlegen'>().toExtend<AuftragsLvBefehl['art']>();
     expectTypeOf(beispielAuftragsChangeSet).toEqualTypeOf<AuftragsLvChangeSet>();
     expectTypeOf<AuftragsLvChangeSet>().toExtend<ChangeSet>();
     expectTypeOf<AuftragsLvZustand>().toHaveProperty('auftragsLeistungsverzeichnis');
@@ -973,5 +979,76 @@ describe('v1.4 Punkt 1: Auftrags-LV lesen', () => {
       Promise<Ergebnis<AuftragsLvZustand, Speicherfehler>>
     >();
     expectTypeOf<Speicher['auftragsLeistungsverzeichnisse']>().toEqualTypeOf<AuftragsLvRepository>();
+  });
+});
+
+/**
+ * Umkehrung eines Auftrags-LV-ChangeSets, nur aus dem ChangeSet (v1.4): gleich gebaut wie beim LV, darum über `umkehren`
+ * mit vertauschtem Kopf. Belegt, dass der Vertrag alles trägt; die Umsetzung liefert der Kern (Ticket 71).
+ */
+function umkehrenAuftragsLv(cs: AuftragsLvChangeSet): AuftragsLvChangeSet {
+  const alsLv = umkehren({
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId as string as LeistungsverzeichnisId,
+    kopf: null,
+    knoten: cs.knoten,
+    summen: cs.summen,
+  });
+  return {
+    art: cs.art,
+    auftragsLeistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId,
+    kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
+    knoten: alsLv.knoten,
+    summen: alsLv.summen,
+  };
+}
+
+describe('v1.4 Punkt 2: Befehle am Auftrags-LV, Nachtrag übernehmen', () => {
+  it('NachtragUebernehmen ist ein Befehl am Auftrags-LV, nicht am LV, und kein Massenbefehl', () => {
+    expectTypeOf<NachtragUebernehmen['nachtragLvId']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<NachtragUebernehmen['knoten']>().toEqualTypeOf<readonly Knoten[]>();
+    expectTypeOf<NachtragUebernehmen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<'NachtragUebernehmen'>().not.toExtend<LvBefehl['art']>();
+    expectTypeOf<'NachtragUebernehmen'>().not.toExtend<Massenbefehlsart>();
+  });
+
+  it('Lesart D-35: genau eine neue Gliederung auf oberster Ebene samt Teilbaum, Eltern vor Kindern', () => {
+    const b = beispielNachtragUebernehmen;
+    const ids = new Set<string>(b.knoten.map((k) => k.id));
+    const wurzeln = b.knoten.filter((k) => !ids.has(k.elternId));
+    expect(wurzeln).toHaveLength(1);
+    expect(wurzeln[0]?.art).toBe('titel');
+    expect(wurzeln[0]?.elternId).toBe(beispielAuftragsLv.id);
+    // hinter dem einen Knoten der obersten Ebene des Auftrags-LV
+    expect(wurzeln[0]?.reihenfolge).toBe(1);
+    const gesehen = new Set<string>([beispielAuftragsLv.id]);
+    for (const k of b.knoten) {
+      expect(gesehen.has(k.elternId)).toBe(true);
+      gesehen.add(k.id);
+    }
+    // keine Kennung des Auftrags-LV kommt noch einmal vor (sonst `id-vergeben`)
+    const vorhanden = new Set<string>(beispielAuftragsLv.knoten.map((k) => k.id));
+    expect(b.knoten.some((k) => vorhanden.has(k.id))).toBe(false);
+  });
+
+  it('Anwenden und Umkehren des Auftrags-LV-ChangeSets sind Signaturen wie beim LV (Ticket 71)', () => {
+    expectTypeOf<AuftragsLvChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: AuftragsLvZustand | null, changeSet: AuftragsLvChangeSet) => AuftragsLvZustand | null
+    >();
+    expectTypeOf<AuftragsLvChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: AuftragsLvChangeSet) => AuftragsLvChangeSet
+    >();
+  });
+
+  it('ChangeSet der Übernahme: neue Knoten und Summen, kein Kopf; die Umkehrung nimmt beides wieder heraus', () => {
+    const cs = beispielChangeSetNachtragUebernehmen;
+    expect(cs.kopf).toBeNull();
+    expect(cs.knoten.hinzugefuegt).toEqual(beispielNachtragUebernehmen.knoten);
+    expect(cs.summen.gesamt?.netto).toBe('62.35');
+    const zurueck = umkehrenAuftragsLv(cs);
+    expect(zurueck.knoten.entfernt).toEqual(beispielNachtragUebernehmen.knoten);
+    expect(zurueck.summen.vorher.entfernt.positionen).toHaveLength(2);
+    expect(zurueck.summen.gesamt?.netto).toBe('12.35');
+    expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
   });
 });
