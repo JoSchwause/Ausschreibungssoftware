@@ -91,14 +91,14 @@ Neuladen. Zuschlagspositionen deckt der E2E von Ticket 47 ab (sie brauchen den P
 
 ## Acceptance criteria
 
-- [ ] Jede Änderung im Grid und auf den Seiten geht als genau ein Befehl durch Kern und Speicher (Test mit einer Attrappe, die Befehle zählt); kein Schreibzugriff an den Befehlen vorbei
-- [ ] Speicherfehler: Anzeige bleibt beim alten Stand, Meldung erscheint (Test mit einem Speicher, der `speicher-voll` liefert)
-- [ ] Zweiter Tab: verständliche Meldung (E-14), Playwright
-- [ ] Projektliste: anlegen, umbenennen, öffnen; LV anlegen, umbenennen, öffnen; Export und Import der Projektdatei (Playwright: exportieren, in frischem Speicher importieren, gleiche Summen)
-- [ ] Position und Titel ohne Zwischenablage anlegen; Nachlass und MwSt an der Summenzeile bearbeiten (Playwright)
-- [ ] **M1-E2E** wie oben: fünf Positionen in zwei Ebenen, alle Summen wie in der Tabelle, nach Neuladen gleich; mit Ticket 37 zusätzlich die Merkmale samt Bedarfs- und Wahlsumme (sonst in den Comments vermerkt, wird in 47 nachgeholt)
+- [x] Jede Änderung im Grid und auf den Seiten geht als genau ein Befehl durch Kern und Speicher (Test mit einer Attrappe, die Befehle zählt); kein Schreibzugriff an den Befehlen vorbei
+- [x] Speicherfehler: Anzeige bleibt beim alten Stand, Meldung erscheint (Test mit einem Speicher, der `speicher-voll` liefert)
+- [x] Zweiter Tab: verständliche Meldung (E-14), Playwright
+- [x] Projektliste: anlegen, umbenennen, öffnen; LV anlegen, umbenennen, öffnen; Export und Import der Projektdatei (Playwright: exportieren, in frischem Speicher importieren, gleiche Summen)
+- [x] Position und Titel ohne Zwischenablage anlegen; Nachlass und MwSt an der Summenzeile bearbeiten (Playwright)
+- [x] **M1-E2E** wie oben: fünf Positionen in zwei Ebenen, alle Summen wie in der Tabelle, nach Neuladen gleich; mit Ticket 37 zusätzlich die Merkmale samt Bedarfs- und Wahlsumme (sonst in den Comments vermerkt, wird in 47 nachgeholt)
 - [ ] Mengenänderung bei 5.000 Positionen bis zur Summenzeile < 100 ms (Messwert im Ticket)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
@@ -106,3 +106,30 @@ Positionsdialog und Langtext (47), Prüf-Panel (47), Zwischenablage für Zeilen,
 LV-Stände (46, 48), GAEB (49), Preisspiegel (Welle 4), Löschen von Projekt und LV (48), Datensicherung (S4).
 
 ## Comments
+
+### Umsetzer
+
+Entscheidungen (paketlokal, umkehrbar; Frage → Entscheidung → Grund):
+
+- Tastenkürzel → Strg+Alt+T (Titel), Strg+Alt+U (Untertitel), Strg+Alt+P (Position), Strg+Alt+M (Merkmale) → Strg+Umschalt+T ist in Chrome reserviert (letzten Tab öffnen), das Grid nutzt Strg ohne Alt.
+- Ort neuer Knoten → Position „hinter der aktiven Zeile“ wie Strg+Plus; Titel am Ende der Ebene der aktiven Gliederung; Untertitel als letztes Kind → `Einfuegeort` kennt „hinter einer Gliederung“ nur als „erstes Kind“, ein Geschwister direkt hinter einem nicht letzten Titel ist in einem Befehl nicht ausdrückbar (Lücke Vertrag/Kern, für 42/48).
+- Aktive Zeile → aus `onAuswahlChange` (letzte gemeldete Zeile) → `ui-grid` hat keinen Rückruf für die aktive Zeile (Lücke 46/48); nur Fokus per Tab ins Grid meldet keine Auswahl.
+- Umnummerieren → ganzes LV (`teilbaumId` = LV-Kennung) → einfachster Fall für M1; Teilbaum-Umnummerieren mit Ticket 48 (OZ-Vorschlag).
+- Merkmale → Dialog „Merkmale“ an der aktiven Position (Optionsfelder, Enter übernimmt), ein `PositionsmerkmaleSetzen`; eine neue Wahl ohne Gruppe/Variante/Grundposition (nichts erfinden), eine bestehende Wahlzuordnung bleibt.
+- Speicher-Sperre (E-14) → Öffnen wird bei `gesperrt` 12 × 250 ms wiederholt, dann Meldung mit „Erneut versuchen“ → beim Neuladen gibt der alte Worker die OPFS-Handles erst kurz nach dem Start der neuen Seite frei.
+- Testpfad → `VITE_TESTPFAD=1` (nur Test-Build, wie `VITE_KATALOG`): `window.tethysTest` legt ein LV als `LeistungsverzeichnisAnlegen` an, lässt `anwenden` Fehler liefern und misst `anwenden`; nie an den Befehlen vorbei.
+- `playwright.config.ts` → `PW_WEB_PORT` (Standard 4173) und `workers: 1` → parallele Worktrees auf einer Maschine stießen auf den belegten Port.
+
+Lücken (nicht hier geändert):
+
+- `leistungsverzeichnisse.auflisten` liefert nur Kennungen: Die Projektseite lädt jedes LV ganz, um Name und Netto zu zeigen (langsam bei vielen großen LVs; Übersicht mit Namen gehört in ein Vertragsticket).
+- Siehe oben: aktive Zeile in `ui-grid`, Einfügeort „hinter einer Gliederung“ in Vertrag/Kern.
+
+Messwert (Punkt 5, `e2e/leistung.spec.ts`, `gross`, Mengenänderung Enter → Summenzeile, 9 Messungen nach 2 zum Aufwärmen,
+Maschine mit Last 5–7 durch parallele Agenten): Median gesamt 78 / 82 / 86 ms in drei Läufen, unter starker Last 101 / 133 ms;
+davon `speicher.anwenden` (Worker, OPFS) Median 68–111 ms, **App-Schicht ohne Speicher Median 11–16 ms**. Hart geprüft wird die
+App-Schicht (< 100 ms) und die Gesamtzeit mit grober Schranke (< 400 ms), weil der Speicheranteil mit der Last schwankt
+(Ticket 10: Einzelbefehl allein Median 47 ms, „nicht optimiert“). Das Kriterium „< 100 ms bis zur Summenzeile“ hält damit
+auf einer ruhigen Maschine, ist aber nicht hart gesichert; der Hebel liegt in `speicher` (Prüfung beim `anwenden`).
+
+M1-E2E (`e2e/m1.spec.ts`): Ticket 37 ist gemergt, die Merkmale sind enthalten.
