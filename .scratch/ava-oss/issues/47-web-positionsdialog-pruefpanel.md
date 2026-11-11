@@ -65,19 +65,49 @@ Einträge zur betroffenen Stelle springen. Vorgehen: TDD mit dem Skill `tdd`; am
 
 ## Acceptance criteria
 
-- [ ] Dialog bearbeitet Kurz- und Langtext, Menge, Einheit, EP, Merkmale, Zuschlag (alle drei Bezugsformen) und EPA; jede Änderung als Befehl, nur geänderte Felder
-- [ ] Abbrechen erzeugt keinen Befehl; ungültige Zahl sperrt die übrigen Felder nicht
-- [ ] Prüf-Panel zeigt die Befunde aus `lvPruefen`, gruppiert, mit Zahl; Zellen im Grid tragen dieselben Befunde
-- [ ] Sprunglink führt zur Zelle (mit 46) bzw. öffnet den Dialog (ohne 46); per Tastatur erreichbar
-- [ ] E2E Zuschlagsposition mit den Zahlen aus Punkt 4, auch nach Neuladen; ggf. Merkmal-Nachtrag zu M1
+- [x] Dialog bearbeitet Kurz- und Langtext, Menge, Einheit, EP, Merkmale, Zuschlag (alle drei Bezugsformen) und EPA; jede Änderung als Befehl, nur geänderte Felder
+- [x] Abbrechen erzeugt keinen Befehl; ungültige Zahl sperrt die übrigen Felder nicht
+- [x] Prüf-Panel zeigt die Befunde aus `lvPruefen`, gruppiert, mit Zahl; Zellen im Grid tragen dieselben Befunde
+- [x] Sprunglink führt zur Zelle (mit 46) bzw. öffnet den Dialog (ohne 46); per Tastatur erreichbar
+- [x] E2E Zuschlagsposition mit den Zahlen aus Punkt 4, auch nach Neuladen; ggf. Merkmal-Nachtrag zu M1
 - [ ] E2E Langtext mit Auszeichnung, Liste und Tabelle und die Kopfdaten bleiben nach Neuladen gleich
-- [ ] E2E Prüf-Panel wie in Punkt 6
-- [ ] Kopfdaten des LV und Leitbeschreibung bearbeitbar, je als Befehl; E2E wie in Punkt 5
-- [ ] Prüfung läuft nicht im Tastendruck: Eingabe in einer Zelle bei 5.000 Positionen bleibt flüssig (Playwright-Messung < 100 ms bis zur Anzeige)
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
+- [x] E2E Prüf-Panel wie in Punkt 6
+- [x] Kopfdaten des LV und Leitbeschreibung bearbeitbar, je als Befehl; E2E wie in Punkt 5
+- [x] Prüfung läuft nicht im Tastendruck: Eingabe in einer Zelle bei 5.000 Positionen bleibt flüssig (Playwright-Messung < 100 ms bis zur Anzeige)
+- [x] `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` grün
 
 ## Nicht-Ziele
 
 Katalog- und Einheitenvorschläge, Zwischenablage, Undo, Papierkorb (48), GAEB (49).
 
 ## Comments
+
+### Umsetzer
+
+Entscheidungen (paketlokal, umkehrbar; Frage → Entscheidung → Grund):
+
+- Öffnen des Dialogs → Strg+Enter auf einer Zeile (vor dem Grid abgefangen, sonst nähme es Enter), Schaltfläche „Position bearbeiten“, Doppelklick nur auf OZ, Art, GP (Zellen ohne Eingabe), Sprunglink → Doppelklick auf Kurztext, Menge, Einheit, EP bleibt Bearbeiten im Grid (U3, Excel-nah).
+- Merkmale-Dialog (Strg+Alt+M, Ticket 39) → bleibt neben dem Positionsdialog → M1-E2E nutzt ihn, Zusammenlegen wäre Ticket 48.
+- Übernehmen → Befehle nacheinander in fester Reihenfolge OZ, Kurztext, Langtext, Menge, Einheit, EP, Merkmale+Zuschlag (ein `PositionsmerkmaleSetzen`), Anteile, Leitbeschreibung → Anteile setzen den EP (D-37.3) und kommen deshalb nach dem EP. Die Folge ist noch kein Undo-Schritt (48).
+- Ungültige Eingabe → live am Feld markiert (`aria-invalid`); Übernehmen schickt die übrigen Befehle und lässt den Dialog offen mit „Markierte Felder wurden nicht übernommen“. Ein Befehl, zu dem ein ungültiges Feld gehört (z. B. eine Teilmenge im Merkmalbefehl), entfällt ganz → ein halber Merkmalbefehl wäre ein anderer Wert.
+- Formfehler des Kerns → `Befehlsfehler.feld` wird einem Bereich im Dialog zugeordnet (`kernFehlerFeld`: merkmale, Wahl, Bezug, Zuschlag, EPA, Leitbeschreibung, Langtext), deutsche Meldung aus `texte.ts`; Speicherfehler als Toast wie bisher.
+- Neuer gespeicherter Stand bei offenem Dialog (z. B. Kurztext aus dem Grid, dessen Befehl noch lief) → unberührte Felder folgen ihm, geänderte bleiben (`entwurfNachfuehren`) → sonst überschrieb Übernehmen den neuen Kurztext mit dem alten (im E2E gefunden).
+- Ordnungszahl im Dialog (`OrdnungszahlSetzen`, Index bleibt) → aufgenommen → Punkt 6 verlangt doppelte OZ „von Hand“, das Grid kann die OZ nicht bearbeiten.
+- Wahl → Gruppe und Variante als ganze Zahlen (leer = `null`), Grundposition aus einer Auswahl aller Positionen außer der eigenen (`Auswahl` aus `ui-basis`).
+- Zuschlag → Schalter, Satz (leer = `null`), Bezugsform als Optionsfelder, neue Zuschlagsposition startet mit „Gliederung“; Liste über ein Suchfeld (OZ oder Kurztext, höchstens 8 Treffer) mit Teilmenge je Bezug. Basis und Betrag: `zuschlagsbasen` auf dem gedachten Stand nach den Befehlen des Entwurfs (`lvBefehlAusfuehren` + `lvChangeSetAnwenden`, nichts gespeichert) → Anzeige schon vor dem Übernehmen, die App rechnet nicht.
+- EPA → sechs Felder + Bezeichnung; alle leer = `epa: null`.
+- Leitbeschreibung → Schalter „Position ist Leitbeschreibung“ (aus = `null`) und Unterbeschreibungen mit Nummer (Vorschlag 01, 02, …), Kurztext, Langtext-Editor, Menge, Einheit.
+- LV-Angaben → ein Dialog, je Teil ein Befehl; alles leer = `null`; Datum `TT.MM.JJJJ` (auch `JJJJ-MM-TT`) nur als echter Kalendertag, Uhrzeit `HH:MM[:SS]`, Gewährleistung Dauer (ganze Zahl) + Einheit als Text.
+- Prüf-Panel → Seitenleiste rechts (300 px), einklappbar, Zahl im Kopf; Gruppen Fehler, dann Warnungen, je Eintrag OZ + Kurztext (LV-weit: „LV“) und die Meldung des Kerns. F8 (Schaltfläche „Prüfung“ ebenso) fokussiert den ersten Eintrag, Pfeile/Pos1/Ende wandern, Enter springt.
+- Prüfzeitpunkt → `requestIdleCallback` (timeout 1 s), Rückfall `setTimeout` 50 ms; ein neuer Zustand bricht die ausstehende Prüfung ab.
+- Sprungziel → Feld ist eine Grid-Spalte: Zelle (Ticket 46 ist gemergt); Gliederung ohne Feld: Zeile; Position mit Feld ohne Spalte (Langtext, Zuschlag, …) oder ohne Feld (Zuschlag, Wahl): Zeile und Positionsdialog; LV-weit: `nachlass` fokussiert das Nachlassfeld, sonst kein Ziel. Vorfahren werden aufgeklappt.
+- Befunde ohne passende Spalte (z. B. `langtext-leer`) → das Grid zeigt sie an der ersten Spalte (OZ), wie `ui-grid` es vorsieht. Die Zellbeschreibung steht im Textinhalt der Zelle; E2E-Prüfungen auf Zellwerte lesen deshalb `.tx-grid__text` (`lv.spec.ts` mechanisch angepasst).
+
+Lücken (nicht hier geändert):
+
+- **Kern (Ticket 27/41):** `LangtextAendern` (und `HinweistextAendern`) nimmt nur Textläufe und Bilder auf oberster Ebene an (`langtextFehler`, `packages/kern/src/feld-befehle.ts`) und weist Absatz, Liste, Tabelle, Umbruch und Textergänzung (Vertrag v1.1b) mit `ungueltige-eingabe` ab. Ein Langtext mit mehreren Absätzen, Liste oder Tabelle lässt sich deshalb nicht speichern; der Dialog zeigt die Abweisung am Langtext (U5). Der E2E „Langtext mit Liste und Tabelle“ steht als `test.fixme` in `e2e/dialog.spec.ts` bereit; der E2E mit Fett/Kursiv/Unterstrichen in einem Absatz ist grün.
+- **Editor (Ticket 34):** keine Schaltfläche „Tabelle einfügen“; Tabellen kommen nur über die Zwischenablage (der fixme-E2E fügt HTML ein).
+- **Grid (Ticket 46/48):** Doppelklick auf eine bearbeitbare Zelle startet immer das Bearbeiten; ein eigener Rückruf „Zeile öffnen“ fehlt. Aktive Zeile weiter nur über `onAuswahlChange` (Ticket 39).
+
+Messwert (Punkt 9, `e2e/leistung.spec.ts`, 5.000 Positionen, Prüfung läuft mit): Median gesamt 77 ms und 94 ms in zwei Läufen, App ohne Speicher Median 19 / 20 ms.
+
