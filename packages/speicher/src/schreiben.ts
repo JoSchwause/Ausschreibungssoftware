@@ -22,9 +22,11 @@ import type {
   Aenderung,
   Aenderungen,
   AngebotChangeSet,
+  AufmassChangeSet,
   AuftragsLvChangeSet,
   Gesamtsummen,
   Knoten,
+  KostenermittlungChangeSet,
   LeistungsverzeichnisId,
   LvChangeSet,
   LvStand,
@@ -34,6 +36,7 @@ import type {
   ProjektChangeSet,
   ProjektId,
   Protokolleintrag,
+  RechnungChangeSet,
   Summenaenderung,
   Summenstand,
   Zeitstempel,
@@ -43,28 +46,43 @@ import { kanonischKompakt } from './kanonisch';
 import {
   leseAngebotKopf,
   leseAngebotposition,
+  leseAufmass,
   leseAuftragsLvKopf,
   leseKnoten1,
+  leseKostenermittlung,
   leseLv,
   leseLvKopf,
   leseLvStand,
   lesePapierkorbeintrag,
   leseProjekt,
+  leseRechnung,
   leseSummen,
 } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
 import {
   angebotspositionWerte,
+  aufmassWerte,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
   LV_KENNZEICHEN_SPALTEN,
   lvKennzeichenSpalten,
+  kostenermittlungWerte,
   nachlassSpalten,
+  rechnungWerte,
 } from './zeilen';
-import { pruefeAuftragsLvKopf, pruefeNachtragsbezug } from './bezuege';
+import {
+  pruefeAufmassAnlegen,
+  pruefeAufmassLoeschen,
+  pruefeAuftragsLvKopf,
+  pruefeFreigabereihenfolge,
+  pruefeNachtragsbezug,
+  pruefeRechnungAnlegen,
+  pruefeRechnungLoeschen,
+  pruefeRechnungsaufmasse,
+} from './bezuege';
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
@@ -931,6 +949,139 @@ function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: Pr
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Auftrags-LV-Kopfs');
   loescheKnotenUndSummen(db, id, cs.knoten, cs.summen, `Auftrags-LV ${id}`);
   db.ausfuehren('DELETE FROM auftrags_lv WHERE id = ?', [id]);
+}
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4; D-36 (8)) -------------------------------------------------
+//
+// Ihre ChangeSets tragen das ganze Aggregat vorher und nachher, ohne Summen. Gemeinsam: `vorher: null` legt an (die
+// Kennung darf es noch nicht geben), `nachher: null` löscht, beide gesetzt ändern; `vorher` muss kanonisch gleich dem
+// gespeicherten Stand sein (`konflikt`), ein unbekanntes Aggregat zu ändern oder zu löschen ist `nicht-gefunden` (wie bei
+// LV und Angebot). Kennung und Projekt müssen zu ChangeSet und Protokolleintrag passen, Auftrags-LV und Nummer bleiben
+// nach dem Anlegen fest (D-70.9); sonst ist das ChangeSet ein Programmfehler (`unbekannt`). Die Bezüge zu anderen
+// Aggregaten prüft `bezuege.ts`.
+
+interface GanzesAggregat {
+  readonly id: string;
+  readonly projektId: ProjektId;
+}
+
+/** Prüft ein ChangeSet eines ganzen Aggregats gegen sich selbst, den Protokolleintrag und den gespeicherten Stand. */
+function pruefeGanzesAggregat<T extends GanzesAggregat>(
+  a: Aenderung<T>,
+  id: string,
+  projektId: ProjektId,
+  gespeichert: T | null,
+  was: string,
+  fest: readonly (keyof T & string)[],
+): void {
+  const { vorher, nachher } = a;
+  if (vorher === null && nachher === null) abbruch('unbekannt', `ChangeSet: ${was} ohne vorher und nachher.`);
+  for (const seite of [vorher, nachher]) {
+    if (seite === null) continue;
+    if (seite.id !== id) abbruch('unbekannt', `ChangeSet: Die Kennung von ${was} weicht ab (${seite.id}).`);
+    if (seite.projektId !== projektId)
+      abbruch('unbekannt', `ChangeSet: ${was} gehört zu einem anderen Projekt als der Protokolleintrag.`);
+  }
+  if (vorher === null) {
+    if (gespeichert !== null) konflikt(`${was} existiert bereits, das ChangeSet`);
+    return;
+  }
+  if (gespeichert === null) abbruch('nicht-gefunden', `${was} ist nicht vorhanden.`);
+  if (!gleich(gespeichert, vorher)) konflikt(`der Vorherstand von ${was}`);
+  if (nachher !== null)
+    for (const f of fest)
+      if (!gleich(vorher[f], nachher[f])) abbruch('unbekannt', `ChangeSet: ${f} von ${was} bleibt fest.`);
+}
+
+/** Blatt- und Rechnungsnummer: ganze Zahl ab 1 (Form, prüft der Ausführer; hier nur gegen Programmfehler). */
+function pruefeNummer(nummer: number, was: string): void {
+  if (!Number.isSafeInteger(nummer) || nummer < 1)
+    abbruch('unbekannt', `ChangeSet: Die Nummer von ${was} ist keine ganze Zahl ab 1 (${String(nummer)}).`);
+}
+
+/** Aufmaßblatt anlegen, ändern oder löschen (`AufmassChangeSet`). */
+export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: ProjektId): void {
+  const id = cs.aufmassId;
+  const was = `Aufmaßblatt ${id}`;
+  const { vorher, nachher } = cs.aufmass;
+  pruefeGanzesAggregat(cs.aufmass, id, projektId, leseAufmass(db, id), was, ['auftragsLvId', 'nummer']);
+  if (nachher === null) {
+    if (vorher !== null) pruefeAufmassLoeschen(db, vorher);
+    db.ausfuehren('DELETE FROM aufmass WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    pruefeNummer(nachher.nummer, was);
+    pruefeAufmassAnlegen(db, nachher);
+    db.ausfuehren(
+      `INSERT INTO aufmass (id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      aufmassWerte(nachher),
+    );
+    return;
+  }
+  db.ausfuehren('UPDATE aufmass SET bezeichnung = ?, datum = ?, positionen = ? WHERE id = ?', [
+    nachher.bezeichnung,
+    nachher.datum,
+    kanonischKompakt(nachher.positionen),
+    id,
+  ]);
+}
+
+/**
+ * Rechnung anlegen, ändern oder löschen (`RechnungChangeSet`). Vor dem Schreiben die Bezüge (Auftrags-LV, Nummer,
+ * `aufmassIds`) und die Regeln „keine spätere freigegebene“ beim Anlegen und Löschen, danach die Invariante der Freigaben
+ * (D-34 (7)): Sie fängt das Freigeben und das Aufheben der Freigabe außer der Reihe.
+ */
+export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId: ProjektId): void {
+  const id = cs.rechnungId;
+  const was = `Rechnung ${id}`;
+  const { vorher, nachher } = cs.rechnung;
+  pruefeGanzesAggregat(cs.rechnung, id, projektId, leseRechnung(db, id), was, ['auftragsLvId', 'nummer']);
+  if (nachher === null) {
+    if (vorher !== null) pruefeRechnungLoeschen(db, vorher);
+    db.ausfuehren('DELETE FROM rechnung WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    pruefeNummer(nachher.nummer, was);
+    pruefeRechnungAnlegen(db, nachher);
+  }
+  pruefeRechnungsaufmasse(db, nachher);
+  if (vorher === null)
+    db.ausfuehren(
+      'INSERT INTO rechnung (id, projekt_id, auftrags_lv_id, nummer, angaben) VALUES (?, ?, ?, ?, ?)',
+      rechnungWerte(nachher),
+    );
+  else db.ausfuehren('UPDATE rechnung SET angaben = ? WHERE id = ?', [rechnungWerte(nachher)[4] ?? null, id]);
+  pruefeFreigabereihenfolge(db, nachher.auftragsLvId);
+}
+
+/** Kostenermittlung anlegen, ändern oder löschen (`KostenermittlungChangeSet`); an ihr hängt nichts. */
+export function wendeKostenermittlungAn(db: Datenbank, cs: KostenermittlungChangeSet, projektId: ProjektId): void {
+  const id = cs.kostenermittlungId;
+  const was = `Kostenermittlung ${id}`;
+  const { vorher, nachher } = cs.kostenermittlung;
+  pruefeGanzesAggregat(cs.kostenermittlung, id, projektId, leseKostenermittlung(db, id), was, []);
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM kostenermittlung WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    if (leseProjekt(db, projektId) === null)
+      abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+    db.ausfuehren(
+      'INSERT INTO kostenermittlung (id, projekt_id, stufe, name, eintraege) VALUES (?, ?, ?, ?, ?)',
+      kostenermittlungWerte(nachher),
+    );
+    return;
+  }
+  db.ausfuehren('UPDATE kostenermittlung SET stufe = ?, name = ?, eintraege = ? WHERE id = ?', [
+    nachher.stufe,
+    nachher.name,
+    kanonischKompakt(nachher.eintraege),
+    id,
+  ]);
 }
 
 // --- Protokoll -------------------------------------------------------------------------------------------------

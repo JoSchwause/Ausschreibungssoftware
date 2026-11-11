@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Nur für Tests: Umkehrung eines ChangeSets allein aus seinen Daten (v1.1a/v1.2, wie `umkehrenV12` in
+// Nur für Tests: Umkehrung eines ChangeSets allein aus seinen Daten (v1.1a/v1.2/v1.4, wie `umkehrenV12` in
 // `packages/vertrag/src/vertrag.test.ts`), ohne `kern` (A3). Dazu kleine Bauhilfen für ChangeSets am LV, wie der Kern
 // sie liefert: Feld ändern, Knoten einfügen, aus dem Baum nehmen (löschen oder in den Papierkorb), verschieben.
 // Die Summenwerte sind Speicherbeispiele: `speicher` rechnet nicht, es schreibt und prüft nur.
@@ -8,18 +8,21 @@ import type {
   Aenderung,
   Aenderungen,
   AngebotChangeSet,
+  AufmassChangeSet,
   AuftragsLvChangeSet,
   Betrag,
   ChangeSet,
   ElternId,
   Gesamtsummen,
   Knoten,
+  KostenermittlungChangeSet,
   LvChangeSet,
   LvKopf,
   LvZustand,
   Papierkorbeintrag,
   PapierkorbeintragId,
   Positionssumme,
+  RechnungChangeSet,
   Summenaenderung,
 } from '@tethys/vertrag';
 
@@ -58,6 +61,9 @@ export function summenUmkehren(s: Summenaenderung): Summenaenderung {
 export function umkehren(cs: LvChangeSet): LvChangeSet;
 export function umkehren(cs: AngebotChangeSet): AngebotChangeSet;
 export function umkehren(cs: AuftragsLvChangeSet): AuftragsLvChangeSet;
+export function umkehren(cs: AufmassChangeSet): AufmassChangeSet;
+export function umkehren(cs: RechnungChangeSet): RechnungChangeSet;
+export function umkehren(cs: KostenermittlungChangeSet): KostenermittlungChangeSet;
 export function umkehren(cs: ChangeSet): ChangeSet;
 export function umkehren(cs: ChangeSet): ChangeSet {
   switch (cs.art) {
@@ -89,17 +95,23 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         knoten: sammlungUmkehren(cs.knoten),
         summen: summenUmkehren(cs.summen),
       };
-    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 kehrt die ganzen Aggregate um: Tausch von vorher/nachher)
+    // v1.4: ganze Aggregate (D-36 (8)), umgekehrt durch Tausch von `vorher` und `nachher`.
     case 'aufmass':
+      return { art: 'aufmass', aufmassId: cs.aufmassId, aufmass: tausche(cs.aufmass) };
     case 'rechnung':
+      return { art: 'rechnung', rechnungId: cs.rechnungId, rechnung: tausche(cs.rechnung) };
     case 'kostenermittlung':
-      throw new Error(`umkehren: ChangeSet ${cs.art} (Vertrag v1.4) erst mit Ticket 79`);
+      return {
+        art: 'kostenermittlung',
+        kostenermittlungId: cs.kostenermittlungId,
+        kostenermittlung: tausche(cs.kostenermittlung),
+      };
   }
 }
 
 /** Ein Anlegen-ChangeSet (`kopf.vorher: null`) mit leerem `summen.vorher`: so ist es ohne Vorzustand umkehrbar. */
 export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
-  // v1.4: mechanisch angepasst, Folgeticket (die Aggregate aus v1.4 haben keine Summen)
+  // Die Aggregate aus v1.4 haben keine Summen.
   if (cs.art === 'projekt' || cs.art === 'aufmass' || cs.art === 'rechnung' || cs.art === 'kostenermittlung')
     return cs;
   return {

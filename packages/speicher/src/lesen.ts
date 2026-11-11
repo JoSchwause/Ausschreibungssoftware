@@ -9,6 +9,8 @@ import type {
   AngebotId,
   AngebotKopf,
   AngebotZustand,
+  Aufmass,
+  AufmassKopf,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvKopf,
@@ -18,6 +20,8 @@ import type {
   Betrag,
   Gliederungssumme,
   Knoten,
+  Kostenermittlung,
+  KostenermittlungUebersicht,
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
   LvKopf,
@@ -33,6 +37,7 @@ import type {
   Projekt,
   ProjektId,
   Protokolleintrag,
+  Rechnung,
   Summenstand,
   Zeitstempel,
 } from '@tethys/vertrag';
@@ -40,6 +45,11 @@ import { abbruch } from './ergebnis';
 import type { Datenbank, SqlZeile } from './sql';
 import {
   angebotspositionAusZeile,
+  aufmassAusZeile,
+  aufmasskopfAusZeile,
+  kostenermittlungAusZeile,
+  kostenermittlungUebersichtAusZeile,
+  rechnungAusZeile,
   ausweisAusZeile,
   bieterId,
   ganzzahl,
@@ -358,6 +368,60 @@ export function leseAuftragsLv(db: Datenbank, id: AuftragsLeistungsverzeichnisId
   }
   const lv: AuftragsLeistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
   return { auftragsLeistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
+}
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4) ----------------------------------------------------------
+
+export function leseAufmass(db: Datenbank, id: string): Aufmass | null {
+  const z = db.zeilen('SELECT * FROM aufmass WHERE id = ?', [id])[0];
+  return z === undefined ? null : aufmassAusZeile(z);
+}
+
+/** Die Köpfe der Blätter eines Auftrags-LV nach Blattnummer (`AufmassRepository.auflisten`), ohne die Zeilen zu lesen. */
+export function listeAufmasse(db: Datenbank, auftragsLvId: string): AufmassKopf[] {
+  return db
+    .zeilen(
+      `SELECT id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum FROM aufmass
+       WHERE auftrags_lv_id = ? ORDER BY nummer`,
+      [auftragsLvId],
+    )
+    .map(aufmasskopfAusZeile);
+}
+
+export function leseRechnung(db: Datenbank, id: string): Rechnung | null {
+  const z = db.zeilen('SELECT * FROM rechnung WHERE id = ?', [id])[0];
+  return z === undefined ? null : rechnungAusZeile(z);
+}
+
+/** Die Rechnungen eines Auftrags-LV, ganz, nach Nummer (`RechnungRepository.auflisten`). */
+export function leseRechnungen(db: Datenbank, auftragsLvId: string): Rechnung[] {
+  return db
+    .zeilen('SELECT * FROM rechnung WHERE auftrags_lv_id = ? ORDER BY nummer', [auftragsLvId])
+    .map(rechnungAusZeile);
+}
+
+export function leseKostenermittlung(db: Datenbank, id: string): Kostenermittlung | null {
+  const z = db.zeilen('SELECT * FROM kostenermittlung WHERE id = ?', [id])[0];
+  return z === undefined ? null : kostenermittlungAusZeile(z);
+}
+
+/** Die Kostenermittlungen eines Projekts ohne Einträge, sortiert wie die LV-Liste. */
+export function listeKostenermittlungen(db: Datenbank, projekt: ProjektId): KostenermittlungUebersicht[] {
+  return db
+    .zeilen('SELECT id, projekt_id, stufe, name FROM kostenermittlung WHERE projekt_id = ? ORDER BY id', [projekt])
+    .map(kostenermittlungUebersichtAusZeile)
+    .sort(nachName);
+}
+
+/** Alle Aufmaßblätter, Rechnungen bzw. Kostenermittlungen eines Projekts nach Kennung (Projektdatei). */
+export function aggregateDesProjekts(db: Datenbank, projekt: ProjektId) {
+  const alle = (tabelle: string): SqlZeile[] =>
+    db.zeilen(`SELECT * FROM ${tabelle} WHERE projekt_id = ? ORDER BY id`, [projekt]);
+  return {
+    aufmasse: alle('aufmass').map(aufmassAusZeile),
+    rechnungen: alle('rechnung').map(rechnungAusZeile),
+    kostenermittlungen: alle('kostenermittlung').map(kostenermittlungAusZeile),
+  };
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------

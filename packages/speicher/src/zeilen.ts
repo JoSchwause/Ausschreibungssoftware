@@ -6,6 +6,11 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Aufmass,
+  AufmassId,
+  AufmassKopf,
+  Aufmassposition,
+  AuftragsLeistungsverzeichnisId,
   Betrag,
   BieterId,
   ElternId,
@@ -14,6 +19,11 @@ import type {
   GliederungId,
   HinweistextId,
   Knoten,
+  Kostenermittlung,
+  KostenermittlungId,
+  Kostenermittlungseintrag,
+  Kostenermittlungsstufe,
+  KostenermittlungUebersicht,
   Langtext,
   Leitbeschreibung,
   LeistungsverzeichnisId,
@@ -29,6 +39,8 @@ import type {
   Positionsmerkmale,
   ProjektId,
   Prozent,
+  Rechnung,
+  RechnungId,
   Gesamtsummen,
   TitelId,
   Zuschlag,
@@ -333,6 +345,81 @@ export function angebotspositionAusZeile(z: SqlZeile): Angebotsposition {
     ...(satz === null ? {} : { zuschlagssatz: satz }),
   };
 }
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4; D-79.1) ------------------------------------------------
+//
+// Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel, der Rest als kanonisches JSON. Gelesen wird das Aggregat aus
+// beiden zusammengesetzt; es ist dann kanonisch gleich dem geschriebenen (`gleich` in `schreiben.ts`).
+
+/** Kopf eines Aufmaßblatts aus seinen Spalten (ohne `positionen`). */
+export function aufmasskopfAusZeile(z: SqlZeile): AufmassKopf {
+  return {
+    id: text(z, 'id') as AufmassId,
+    projektId: projektId(z),
+    auftragsLvId: text(z, 'auftrags_lv_id') as AuftragsLeistungsverzeichnisId,
+    nummer: ganzzahl(z, 'nummer'),
+    bezeichnung: text(z, 'bezeichnung'),
+    datum: textOderNull(z, 'datum'),
+  };
+}
+
+export const aufmassAusZeile = (z: SqlZeile): Aufmass => ({
+  ...aufmasskopfAusZeile(z),
+  positionen: jsonLesen(text(z, 'positionen'), 'positionen') as Aufmassposition[],
+});
+
+/** Spalten `id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen`. */
+export const aufmassWerte = (a: Aufmass): SqlWert[] => [
+  a.id,
+  a.projektId,
+  a.auftragsLvId,
+  a.nummer,
+  a.bezeichnung,
+  a.datum,
+  kanonischKompakt(a.positionen),
+];
+
+/** Die Angaben einer Rechnung: alles außer den Kopfspalten (`id`, `projektId`, `auftragsLvId`, `nummer`). */
+type Rechnungsangaben = Omit<Rechnung, 'id' | 'projektId' | 'auftragsLvId' | 'nummer'>;
+
+export function rechnungAusZeile(z: SqlZeile): Rechnung {
+  return {
+    ...(jsonLesen(text(z, 'angaben'), 'angaben') as Rechnungsangaben),
+    id: text(z, 'id') as RechnungId,
+    projektId: projektId(z),
+    auftragsLvId: text(z, 'auftrags_lv_id') as AuftragsLeistungsverzeichnisId,
+    nummer: ganzzahl(z, 'nummer'),
+  };
+}
+
+/** Spalten `id, projekt_id, auftrags_lv_id, nummer, angaben`. */
+export function rechnungWerte(r: Rechnung): SqlWert[] {
+  const { id, projektId: projekt, auftragsLvId, nummer, ...angaben } = r;
+  return [id, projekt, auftragsLvId, nummer, kanonischKompakt(angaben)];
+}
+
+export function kostenermittlungUebersichtAusZeile(z: SqlZeile): KostenermittlungUebersicht {
+  return {
+    id: text(z, 'id') as KostenermittlungId,
+    projektId: projektId(z),
+    stufe: text(z, 'stufe') as Kostenermittlungsstufe,
+    name: text(z, 'name'),
+  };
+}
+
+export const kostenermittlungAusZeile = (z: SqlZeile): Kostenermittlung => ({
+  ...kostenermittlungUebersichtAusZeile(z),
+  eintraege: jsonLesen(text(z, 'eintraege'), 'eintraege') as Kostenermittlungseintrag[],
+});
+
+/** Spalten `id, projekt_id, stufe, name, eintraege`. */
+export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
+  k.id,
+  k.projektId,
+  k.stufe,
+  k.name,
+  kanonischKompakt(k.eintraege),
+];
 
 // --- Summen ---------------------------------------------------------------------------------------------------
 
