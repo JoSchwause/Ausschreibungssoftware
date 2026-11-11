@@ -78,7 +78,7 @@ liest Position, Gliederungen, Gesamtsumme), flüchtiger Kontext 25–39 ms; weit
 dauerhaftes Profil: Mengenänderung bis Summenzeile Median 41 ms (Speicher 16), Undo Median 32 ms (Speicher 8);
 flüchtiger Kontext Median 52 ms.
 
-Suite: `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 1963 bestanden, 2 übersprungen, `node --test` 20; E2E
+Suite: `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 1991 bestanden (nach Merge von `integration/welle-4` mit Ticket 68), 2 übersprungen, `node --test` 20; E2E
 `@tethys/speicher` 16 bestanden, `@tethys/web` 60 bestanden.
 
 ### Entscheidungen (Frage, Entscheidung, Grund)
