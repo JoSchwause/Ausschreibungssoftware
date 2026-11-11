@@ -763,6 +763,103 @@ describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
   });
 });
 
+describe('v1.3: EPA-Bezeichnungen (LblUPComp) aus dem LV, nie umnummeriert (D-28)', () => {
+  const ep = (s: string): Einheitspreis => s as Einheitspreis;
+  const epa = {
+    lohn: ep('4.000'),
+    stoffe: ep('3.000'),
+    geraete: null,
+    nachunternehmer: ep('1.000'),
+    sonstiges: null,
+    frei: null,
+    freiBezeichnung: null,
+  };
+  const mitEpa = p1({ einheitspreis: ep('8.000'), epa });
+  const bez: LvInhalt['epaBezeichnungen'] = [
+    { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+    { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+    { nummer: 3, anteil: 'geraete', bezeichnung: null },
+    { nummer: 5, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+  ];
+
+  it('X86: NoUPComps = höchste Nummer, LblUPComp mit Type je Art, Lücke bleibt, UPComp unter derselben Nummer', () => {
+    const e = schreibe(lv([mitEpa], { epaBezeichnungen: bez }), 'X86');
+    expect(kompakt(e.xml)).toContain(
+      '<NoUPComps>5</NoUPComps><LblUPComp1 Type="Materials">Material</LblUPComp1>' +
+        '<LblUPComp2 Type="Wages">Lohn</LblUPComp2><LblUPComp3 Type="Plant"/>' +
+        '<LblUPComp5 Type="Miscellaneous">Nachunternehmer</LblUPComp5>',
+    );
+    expect(e.xml).not.toContain('LblUPComp4');
+    expect(kompakt(e.xml)).toContain(
+      '<UP>8.000</UP><UPComp1>3.000</UPComp1><UPComp2>4.000</UPComp2><UPComp5>1.000</UPComp5>',
+    );
+    expect(e.befunde.filter((b) => b.ort.feld?.startsWith('epa') === true)).toEqual([]);
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.epaBezeichnungen).toEqual(bez);
+    expect(l.inhalt?.knoten.find((k) => k.art === 'position')).toMatchObject({ epa });
+  });
+
+  it('X81 und X83 schreiben die Bezeichnungen ebenso (ohne Preise); der Leser liest sie zurück', () => {
+    for (const phase of ['X81', 'X83'] as const) {
+      const e = schreibe(lv([p1({ einheit: 'St' })], { epaBezeichnungen: bez }), phase);
+      expect(kompakt(e.xml)).toContain(
+        '<NoUPComps>5</NoUPComps><LblUPComp1 Type="Materials">Material</LblUPComp1>',
+      );
+      expect(
+        leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent }).inhalt?.epaBezeichnungen,
+      ).toEqual(bez);
+    }
+  });
+
+  it('ohne das Feld: X81/X83 schreiben keine Bezeichnungen, X86 die feste Belegung nur mit Anteilen', () => {
+    expect(schreibe(lv([p1({ einheit: 'St' })]), 'X83').xml).not.toContain('UPComp');
+    expect(schreibe(lv([p1()]), 'X86').xml).not.toContain('UPComp');
+    expect(kompakt(schreibe(lv([mitEpa]), 'X86').xml)).toContain(
+      '<NoUPComps>6</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1>',
+    );
+  });
+
+  it('nur Nummer 1 belegt: NoUPComps 2 (das XSD kennt 1 nicht)', () => {
+    const e = schreibe(
+      lv([p1()], { epaBezeichnungen: [{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }] }),
+      'X86',
+    );
+    expect(kompakt(e.xml)).toContain('<NoUPComps>2</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1>');
+  });
+
+  it('ein Anteil ohne Nummer in den Bezeichnungen wird mit Warnung verworfen, der EP bleibt', () => {
+    const e = schreibe(
+      lv([mitEpa], { epaBezeichnungen: [{ nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' }] }),
+      'X86',
+    );
+    expect(kompakt(e.xml)).toContain('<UP>8.000</UP><UPComp2>4.000</UPComp2><Description>');
+    expect(verworfen(e)).toEqual([
+      expect.stringMatching(/^EP-Anteil ohne Nummer in den EPA-Bezeichnungen.*2 Vorkommen/),
+    ]);
+  });
+
+  it('Bezeichnung über 20 Zeichen ist ein Fehler; Nachunternehmer, der beim Lesen Sonstiges würde, ist eine Warnung', () => {
+    const e = schreibe(
+      lv([p1()], {
+        epaBezeichnungen: [
+          { nummer: 1, anteil: 'lohn', bezeichnung: 'L'.repeat(21) },
+          { nummer: 2, anteil: 'nachunternehmer', bezeichnung: 'Fremdleistung' },
+          { nummer: 3, anteil: 'stoffe', bezeichnung: 'Lohn' },
+        ],
+      }),
+      'X86',
+    );
+    expect(
+      e.befunde.filter((b) => b.ort.feld === 'epaBezeichnungen').map((b) => [b.schwere, b.code]),
+    ).toEqual([
+      ['fehler', 'wert-zu-lang'],
+      ['warnung', 'epa-beschriftung-mehrdeutig'],
+      ['warnung', 'epa-beschriftung-mehrdeutig'],
+    ]);
+    expect(befund(e, 'epa-beschriftung-mehrdeutig')?.meldung).toContain('LblUPComp2');
+  });
+});
+
 describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
   for (const version of ['3.3', '3.2'] as const)
     it(`X86 ${version}: Export → Import gleich, ohne Fehler und ohne Verwerfen; zweiter Export byte-gleich`, () => {
@@ -814,6 +911,22 @@ describe('Der Leser nimmt X86 an (amtliche AVA-X86)', () => {
     expect(l.befunde.map((b) => b.code)).not.toContain('phase-nicht-unterstuetzt');
     expect(l.befunde.map((b) => b.code)).not.toContain('mwst-standardsatz');
     expect(l.inhalt?.mwstSatz).toBe('19.00');
+    // v1.3 (Ticket 68): EPA-Bezeichnungen mit der Nummer der Datei; Material steht dort auf Platz 1.
+    expect(l.inhalt?.epaBezeichnungen).toEqual([
+      { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: 'Geräte' },
+      { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    ]);
+    expect(ps.find((p) => p.einheitspreis === '27.910')?.epa).toEqual({
+      stoffe: '2.230',
+      lohn: '23.120',
+      geraete: '2.560',
+      nachunternehmer: '0.000',
+      sonstiges: null,
+      frei: null,
+      freiBezeichnung: null,
+    });
     // Positionsnachlass (Item/DiscountPcnt) kennt der Vertrag nicht (G-23): IT weicht dann von Menge × EP ab.
     const abweichend = l.befunde.filter((b) => b.code === 'gesamtpreis-abweichend');
     expect(abweichend.length).toBeGreaterThan(0);

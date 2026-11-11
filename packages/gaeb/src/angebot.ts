@@ -28,7 +28,8 @@ import type {
   Prozent,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { ANTEILE, ANTEIL_NACH_BEZEICHNUNG, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
+import { deuteBeschriftung } from './epa';
+import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
 import { elementKinder, textInhalt } from './xml';
 import type { XmlElement } from './xml';
@@ -52,16 +53,6 @@ export interface AngebotLesung {
 
 const NULL_EP = '0.000' as Einheitspreis;
 
-/** `LblUPComp<n>`-Typen mit fester Art; `Unknown` und andere führen zur Bezeichnung oder zum freien Anteil. */
-const ANTEIL_NACH_TYP: Readonly<Record<string, Anteil>> = {
-  Wages: 'lohn',
-  Materials: 'stoffe',
-  Plant: 'geraete',
-  Miscellaneous: 'sonstiges',
-};
-/** Bezeichnungen, die der X86-Leser kennt, plus „Gerät“ (BVBS Bauausführung X83). */
-const ANTEIL_NACH_NAME: Readonly<Record<string, Anteil>> = { ...ANTEIL_NACH_BEZEICHNUNG, gerät: 'geraete' };
-
 interface Anteilsangaben {
   /** Je `UPComp1…6` der Anteil, `null`: nicht zuordenbar (Grund in `grund`). */
   readonly anteile: readonly (Anteil | null)[];
@@ -70,9 +61,8 @@ interface Anteilsangaben {
 }
 
 /**
- * `LblUPComp1…6` → Anteile (D-45.1). Wie der X86-Leser (D-40.1): zuerst die Bezeichnung, dann `Type`, sonst der freie
- * Anteil. `Miscellaneous` passt zu Nachunternehmer und Sonstiges (so schreibt der eigene Export); jeder andere
- * Widerspruch zwischen Bezeichnung und Typ ist Warnung `epa-beschriftung-abweichend`, die Bezeichnung gilt.
+ * `LblUPComp1…6` der Angebotsdatei → Anteile (D-45.1), gedeutet wie im LV-Leser (`epa.ts`). Nur für ein LV ohne
+ * EPA-Bezeichnungen (Daten vor v1.3); sonst gilt `anteileAusLv`.
  */
 function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsangaben {
   const anteile: (Anteil | null)[] = [];
@@ -88,14 +78,7 @@ function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsa
     }
     const bez = wert(el) ?? '';
     const typ = el.attrs.get('Type') ?? '';
-    const nachName = ANTEIL_NACH_NAME[bez.toLowerCase()];
-    const nachTyp = ANTEIL_NACH_TYP[typ];
-    const anteil: Anteil = nachName ?? nachTyp ?? 'frei';
-    const vertraeglich =
-      nachName === undefined ||
-      nachTyp === undefined ||
-      nachName === nachTyp ||
-      (typ === 'Miscellaneous' && nachName === 'nachunternehmer');
+    const { anteil, vertraeglich } = deuteBeschriftung(bez, typ);
     if (!vertraeglich)
       l.melde(
         'warnung',

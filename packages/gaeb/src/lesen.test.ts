@@ -791,3 +791,85 @@ describe('Leistung (Messung)', () => {
     expect(ms).toBeLessThan(1000);
   });
 });
+
+// --- v1.3: EPA-Bezeichnungen (Ticket 68, D-28) ----------------------------------------------------------------
+
+describe('v1.3: EPA-Bezeichnungen aus LblUPComp (X81, X83, X86)', () => {
+  /** Eine kleine Datei der Phase mit den gegebenen Beschriftungen im BoQInfo. */
+  const mitBeschriftung = (dp: '81' | '83' | '86', lbl: string): string =>
+    mini(`http://www.gaeb.de/GAEB_DA_XML/DA${dp}/3.3`, '3.3', dp).replace(
+      '</BoQBkdn></BoQInfo>',
+      `</BoQBkdn>${lbl}</BoQInfo>`,
+    );
+  const nichtAbgebildet = (l: GaebLesungErgebnis): string[] =>
+    l.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung);
+
+  it('BVBS Bauausführung X83: Lohn, Material, Gerät, Sonstiges mit Type Unknown → Arten über die Bezeichnung', () => {
+    const l = lies(lesePfad(BAU_X83), 'x.x83');
+    expect(l.inhalt?.epaBezeichnungen).toEqual([
+      { nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 2, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: 'Gerät' },
+      { nummer: 4, anteil: 'sonstiges', bezeichnung: 'Sonstiges' },
+    ]);
+    expect(nichtAbgebildet(l).filter((m) => m.includes('UPComp'))).toEqual([]);
+  });
+
+  it('BVBS Texterstellung X81 ebenso', () => {
+    const l = lies(lesePfad(TEXT_X81), 'x.x81');
+    expect(l.inhalt?.epaBezeichnungen?.map((e) => [e.nummer, e.anteil])).toEqual([
+      [1, 'lohn'],
+      [2, 'stoffe'],
+      [3, 'geraete'],
+      [4, 'sonstiges'],
+    ]);
+  });
+
+  it('ohne LblUPComp fehlt das Feld (nie [])', () => {
+    const l = lies(mini('http://www.gaeb.de/GAEB_DA_XML/DA83/3.3', '3.3', '83'));
+    expect(l.inhalt).not.toBeNull();
+    expect(l.inhalt && 'epaBezeichnungen' in l.inhalt).toBe(false);
+  });
+
+  it('Lücken bleiben Lücken (nie umnummeriert); leere Beschriftung mit Type → bezeichnung null', () => {
+    const l = lies(
+      mitBeschriftung(
+        '83',
+        '<NoUPComps>5</NoUPComps><LblUPComp2 Type="Plant"></LblUPComp2>' +
+          '<LblUPComp5 Type="Miscellaneous">Nachunternehmer</LblUPComp5>',
+      ),
+    );
+    expect(l.inhalt?.epaBezeichnungen).toEqual([
+      { nummer: 2, anteil: 'geraete', bezeichnung: null },
+      { nummer: 5, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    ]);
+    expect(nichtAbgebildet(l)).toEqual([]);
+  });
+
+  it('zweiter Anteil derselben Art: Platz bleibt frei, Befund nicht-abgebildet', () => {
+    const l = lies(
+      mitBeschriftung(
+        '81',
+        '<NoUPComps>2</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1>' +
+          '<LblUPComp2 Type="Wages">Lohn 2</LblUPComp2>',
+      ),
+    );
+    expect(l.inhalt?.epaBezeichnungen).toEqual([{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }]);
+    expect(nichtAbgebildet(l)).toEqual([expect.stringContaining('LblUPComp2')]);
+  });
+
+  it('Bezeichnung und Type widersprechen sich: die Bezeichnung gilt, Warnung epa-beschriftung-abweichend', () => {
+    const l = lies(
+      mitBeschriftung('83', '<NoUPComps>2</NoUPComps><LblUPComp1 Type="Plant">Lohn</LblUPComp1>'),
+    );
+    expect(l.inhalt?.epaBezeichnungen).toEqual([{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }]);
+    expect(codes(l)).toContain('epa-beschriftung-abweichend');
+  });
+
+  it('unbekannte Bezeichnung mit Type Unknown ist der freie Anteil', () => {
+    const l = lies(
+      mitBeschriftung('86', '<NoUPComps>6</NoUPComps><LblUPComp6 Type="Unknown">Wagnis</LblUPComp6>'),
+    );
+    expect(l.inhalt?.epaBezeichnungen).toEqual([{ nummer: 6, anteil: 'frei', bezeichnung: 'Wagnis' }]);
+  });
+});

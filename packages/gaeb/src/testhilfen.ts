@@ -552,7 +552,8 @@ export function reichesLv(): {
         nachunternehmer: '1.000' as Einheitspreis,
         sonstiges: null,
         frei: '2.000' as Einheitspreis,
-        freiBezeichnung: 'Entsorgung',
+        // v1.3: Die Bezeichnung des freien Anteils steht in `epaBezeichnungen` (D-53.6).
+        freiBezeichnung: null,
       },
     }),
     pos('b', '1.A1.0020', 2, {
@@ -632,6 +633,14 @@ export function reichesLv(): {
       plz: '54321',
       ort: 'Beispielhausen',
     },
+    // v1.3 (D-28): andere Reihenfolge als die feste Belegung, eine Lücke (5) und eine leere Beschriftung (3).
+    epaBezeichnungen: [
+      { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: null },
+      { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+      { nummer: 6, anteil: 'frei', bezeichnung: 'Entsorgung' },
+    ],
     vergabeinformationen: {
       eroeffnungsdatum: null,
       eroeffnungszeit: null,

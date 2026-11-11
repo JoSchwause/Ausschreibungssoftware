@@ -51,12 +51,19 @@ const ozVon = (p: Position): string => `${p.ordnungszahl ?? ''}${p.ozIndex ?? ''
 /**
  * Was die Phase überhaupt trägt (kein Unterschied des Modells, sondern die Form der Phase): X81/X83 haben keine Preise
  * (EP, Anteile, Zuschlagssatz, Nachlass) und keinen Auftragnehmer; X86 schreibt einen fehlenden Auftraggeber leer (OWN ist
- * Pflicht).
+ * Pflicht). Ein X86 mit Anteilen aus einem LV ohne EPA-Bezeichnungen trägt die feste Belegung des Writers ausdrücklich
+ * (`LblUPComp1…6`); der Leser liest sie als `epaBezeichnungen`, die Bezeichnung des freien Anteils steht dann dort statt an
+ * der Position (D-53.6: „Feld fehlt = feste Belegung“, gleiche Bedeutung, ausdrückliche Form; v1.3, Ticket 68).
  */
 function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
   const x86 = phase === 'X86';
+  const positionen = inhalt.knoten.filter((k): k is Position => k.art === 'position');
+  const festeBelegung =
+    x86 && inhalt.epaBezeichnungen === undefined && positionen.some((p) => p.epa !== null);
+  const frei = positionen.find((p) => p.epa?.freiBezeichnung != null)?.epa?.freiBezeichnung ?? null;
   const knoten = inhalt.knoten.map((k) => {
-    if (k.art !== 'position' || x86) return k;
+    if (k.art !== 'position') return k;
+    if (x86) return festeBelegung && k.epa !== null ? { ...k, epa: { ...k.epa, freiBezeichnung: null } } : k;
     const p: Position = { ...k, einheitspreis: null, epa: null };
     return p.zuschlag === null ? p : { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
   });
@@ -67,6 +74,18 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
     ...(x86 ? {} : { nachlass: null }),
     ...(x86 && inhalt.auftraggeber === undefined
       ? { auftraggeber: { name: null, strasse: null, plz: null, ort: null, vergabenummer: null } }
+      : {}),
+    ...(festeBelegung
+      ? {
+          epaBezeichnungen: [
+            { nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' },
+            { nummer: 2, anteil: 'stoffe', bezeichnung: 'Stoffe' },
+            { nummer: 3, anteil: 'geraete', bezeichnung: 'Geräte' },
+            { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+            { nummer: 5, anteil: 'sonstiges', bezeichnung: 'Sonstiges' },
+            { nummer: 6, anteil: 'frei', bezeichnung: frei },
+          ],
+        }
       : {}),
   };
 }

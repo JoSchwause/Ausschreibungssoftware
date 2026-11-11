@@ -16,6 +16,7 @@ import type {
   AuftragsLeistungsverzeichnis,
   Betrag,
   Einheitspreisanteile,
+  EpaBezeichnung,
   GaebExport,
   GaebVersion,
   Hinweistext,
@@ -33,6 +34,7 @@ import type {
 } from '@tethys/vertrag';
 import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
+import { EPA_ARTEN, TYP_DER_ART, deuteBeschriftung } from './epa';
 import type { Attribute } from './ausgabe';
 import { schreibeDetailtext, schreibeEinzeiler, schreibeKurztext } from './text-schreiben';
 import type { TextMelder } from './text-schreiben';
@@ -172,7 +174,10 @@ class Schreiber {
   private readonly ozGesehen = new Set<string>();
   private readonly positionssummen = new Map<string, Betrag | null>();
   private readonly gliederungssummen = new Map<string, Betrag>();
+  /** `true`: BoQInfo trägt `NoUPComps`/`LblUPComp` (aus dem LV, sonst in X86 mit Anteilen die feste Belegung). */
   private readonly mitAnteilen: boolean;
+  /** EPA-Bezeichnungen des LV nach Nummer (v1.3, D-28); `null`: feste Belegung des Writers. */
+  private readonly bezeichnungen: readonly EpaBezeichnung[] | null;
   private readonly kuenstlicheWahl: ReadonlyMap<string, Wahlnummer>;
   private freiBezeichnung: string | null = null;
 
@@ -191,8 +196,12 @@ class Schreiber {
       for (const p of opt.summen.positionen) this.positionssummen.set(p.positionId, p.gesamtpreis);
       for (const g of opt.summen.gliederungen) this.gliederungssummen.set(g.gliederungId, g.summe);
     }
+    const b = inhalt.epaBezeichnungen;
+    this.bezeichnungen =
+      b === undefined || b.length === 0 ? null : [...b].sort((x, y) => x.nummer - y.nummer);
     this.mitAnteilen =
-      opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null);
+      this.bezeichnungen !== null ||
+      (opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null));
   }
 
   get x86(): boolean {
@@ -521,7 +530,16 @@ class Schreiber {
 
   // --- Preise (X86) -----------------------------------------------------------------------------------------
 
+  /**
+   * `NoUPComps` und `LblUPComp<n>` (v1.3, Ticket 68, D-28). Mit EPA-Bezeichnungen im LV (X81, X83, X86): genau deren
+   * Nummern, nie umnummeriert; eine Lücke bleibt eine Lücke (das XSD lässt jedes `LblUPComp<n>` weg), `NoUPComps` ist
+   * die höchste Nummer, mindestens 2 (das XSD kennt 1 nicht). Ohne das Feld: die feste Belegung (nur X86 mit Anteilen).
+   */
   private anteilsbezeichnungen(): void {
+    if (this.bezeichnungen !== null) {
+      this.bezeichnungenAusLv(this.bezeichnungen);
+      return;
+    }
     const a = this.aus;
     a.blatt('NoUPComps', '6');
     for (const k of this.inhalt.knoten)
@@ -541,7 +559,53 @@ class Schreiber {
     );
   }
 
+  private bezeichnungenAusLv(liste: readonly EpaBezeichnung[]): void {
+    const a = this.aus;
+    const nummern = new Set(liste.map((e) => e.nummer));
+    const arten = new Set(liste.map((e) => e.anteil));
+    if (nummern.size !== liste.length || arten.size !== liste.length)
+      this.fehler(
+        'wert-ungueltig',
+        'Die EPA-Bezeichnungen nennen eine Nummer oder einen Anteil mehrfach.',
+        undefined,
+        'epaBezeichnungen',
+      );
+    const hoechste = Math.max(2, ...liste.map((e) => e.nummer));
+    a.blatt('NoUPComps', String(hoechste));
+    for (const e of liste) {
+      const name = `LblUPComp${String(e.nummer)}`;
+      const typ = TYP_DER_ART[e.anteil];
+      const text = this.text(e.bezeichnung ?? '', 20, `Die Bezeichnung ${name}`, 'epaBezeichnungen');
+      const gelesen = deuteBeschriftung(text, typ).anteil;
+      if (gelesen !== e.anteil)
+        this.melde(
+          'warnung',
+          'epa-beschriftung-mehrdeutig',
+          `${name} „${text}“ (Type ${typ}) steht für den Anteil ${e.anteil}, wird beim Lesen aber als ${gelesen} ` +
+            'gedeutet: die Bezeichnung nennt eine andere Art, oder GAEB hat für die Art keinen eigenen Typ.',
+          undefined,
+          'epaBezeichnungen',
+        );
+      a.blatt(name, text, [['Type', typ]]);
+    }
+  }
+
   private anteile(epa: Einheitspreisanteile, id: string): void {
+    if (this.bezeichnungen !== null) {
+      const liste = this.bezeichnungen;
+      for (const e of liste) {
+        const w = epa[e.anteil];
+        if (w !== null)
+          this.aus.blatt(
+            `UPComp${String(e.nummer)}`,
+            this.zahl(w, 'einheitspreis', 'Der EP-Anteil', id, 'epa'),
+          );
+      }
+      for (const art of EPA_ARTEN)
+        if (epa[art] !== null && !liste.some((e) => e.anteil === art))
+          this.verwirf('EP-Anteil ohne Nummer in den EPA-Bezeichnungen des LV', id);
+      return;
+    }
     if (epa.freiBezeichnung !== null && epa.freiBezeichnung !== this.freiBezeichnung)
       this.verwirf('Abweichende Bezeichnung des freien EP-Anteils (GAEB kennt eine je LV)', id);
     const werte = [epa.lohn, epa.stoffe, epa.geraete, epa.nachunternehmer, epa.sonstiges, epa.frei];
