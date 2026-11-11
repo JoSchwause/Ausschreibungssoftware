@@ -16,6 +16,11 @@ Herkunft: Ticket 71 (D-71.3), Ticket 76 (eigener `XRechnungBefund`), Ticket 80 (
 3. Ein OZ-Vorschlag des Kerns für das Auftrags-LV ohne umgedeutete Kennung (Ticket 80, Vorschlag D-80.x).
 4. Offene Typfragen aus Ticket 70 sichten (Rechnungsdatum, Bemerkung je Aufmaßposition, ob `gefordert` kumuliert ist) und
    entscheiden oder ausdrücklich vertagen.
+5. `LvUebersicht.netto` (oder eine Summenübersicht), damit die Projektseite die Netto-Spalte nicht je LV ganz laden muss
+   (D-92.4; heute lädt sie nur sichtbare Zeilen nach).
+
+Folgearbeit App (eigenes kleines Ticket nach 95): zurückgehaltene, unlesbare Druckprofile exportieren oder löschen können
+(D-92.6, Q5).
 
 ## Acceptance criteria
 

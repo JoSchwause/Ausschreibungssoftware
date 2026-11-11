@@ -1,6 +1,6 @@
 # 92: Behebung des Wellen-Reviews Welle 5
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 91
 nur dieses Ticket; 91 schreibt `apps/web/e2e/m4.spec.ts`, `m3.spec.ts`, `src/m4-kette.test.ts` – diese nicht anfassen)
@@ -123,6 +123,9 @@ Nach dem Merge von `integration/welle-5` (`c835924`, mit Ticket 91): `NODE_OPTIO
 (Ticket 91) grün.
 
 ## Answer
+
+Merged: b281a1f in integration/welle-5
+
 
 Branch `welle-5/92-review-fix` (enthält `integration/welle-5` bis `1443c21`). Alle 9 Pflicht- und alle 9 Sollpunkte sind
 erledigt, je Befund ein Commit (Liste oben). Entscheidungen D-92.1 bis D-92.8. Folgeticket-Stichpunkte:

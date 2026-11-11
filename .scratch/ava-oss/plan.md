@@ -5,7 +5,8 @@ Stand: 2026-11-09, nach der Grilling-Sitzung. Ersetzt `.scratch/ava-mvp/map.md`.
 Klammern).
 
 - Regeln: `docs/regeln.md` (verbindlich, zuerst lesen).
-- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-27, vertagt bis vor Welle 5).
+- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-27, vertagt bis vor Welle 5; im Lauf
+  „Welle 5“ als Annahme D-34 entschieden, Mensch bestätigt später).
 - Verhalten der Referenzsoftware: `okf/research/` ist lokal und nicht im Repo (G-44). Umsetzende
   Agenten arbeiten mit den Tickets, die das Verhalten in eigenen Worten enthalten (Regel C3).
 
@@ -76,7 +77,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 **A — Auftrag und Abrechnung** (entschieden: G-15; A3 vertagt, G-27)
 - A1 Nachträge (VOB-80-Regel: Bedeutung klären, siehe grilling.md) · A2 Aufmaßblätter und Soll/Ist
-- A3 Rechnungsprüfung (Abzugskette) — vertagt, Grilling-Runde vor Welle 5
+- A3 Rechnungsprüfung (Abzugskette) — vertagt, Grilling-Runde vor Welle 5; Annahme für Demo D-34 (Welle 5)
 - A4 XRechnung lesen, danach ZUGFeRD/Erzeugen (G-15)
 
 **C — Kosten** (entschieden: G-16, G-17)
@@ -163,3 +164,8 @@ Stand 2026-11-09:
     die Folgetickets 51–54, Tickets 51–69, `vertrag` v1.3. **Tor M3 erreicht** (`apps/web/e2e/m3.spec.ts`). Entscheidungen D-20
     bis D-30 in `entscheidungen-auto.md`, ADR 0012 als Vorschlag. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog,
     `vertrag` v1.3, ADR 0012, Merge nach `main`), Folgetickets 70–75, G-27 vor Welle 5. Bericht: `.scratch/ava-oss/welle-4-bericht.md`.
+13. ✅ **Lauf „Welle 5“ im Demo-Modus (2026-11-11/12)** auf dem lokalen Branch `integration/welle-5` (ab dem Ende von Welle 4, D-31):
+    A1–A4, M3, C2–C5, O3 und die Folgetickets 70–75, Tickets 70–92, `vertrag` v1.4, neue Pakete `abrechnung` und `erechnung`.
+    **Tor M4 erreicht** (Definition in §4, D-38). Entscheidungen D-31 bis D-48 in `entscheidungen-auto.md`; G-27 und „VOB 80“
+    als Annahme (D-34, D-35). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.4, ADR 0012, Merge von Welle 4
+    und 5 nach `main`), Folgetickets 93–95, G-05 für Welle 6. Bericht: `.scratch/ava-oss/welle-5-bericht.md`.
