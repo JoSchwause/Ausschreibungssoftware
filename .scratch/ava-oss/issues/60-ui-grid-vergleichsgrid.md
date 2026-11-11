@@ -1,6 +1,6 @@
 # 60: `ui-grid`: Vergleichsgrid (schreibgeschützt, freie Spalten) für den Preisspiegel
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: U2/V3 · Paket: `packages/ui-grid`
 Blocked by: 54 (Punkte 1–4, gleiches Paket)
