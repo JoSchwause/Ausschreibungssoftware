@@ -38,12 +38,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@tethys/abrechnung':
+        specifier: workspace:*
+        version: link:../../packages/abrechnung
       '@tethys/ausgabe':
         specifier: workspace:*
         version: link:../../packages/ausgabe
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
+      '@tethys/erechnung':
+        specifier: workspace:*
+        version: link:../../packages/erechnung
       '@tethys/gaeb':
         specifier: workspace:*
         version: link:../../packages/gaeb
