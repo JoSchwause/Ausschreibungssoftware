@@ -43,7 +43,7 @@ import {
   obersteEbeneFehler,
 } from './regeln';
 import type { ElternArt } from './regeln';
-import { ebenenBis, ebenenHoehe, indexVon, liegtUnter, unterbaum } from './struktur';
+import { ebenenBis, ebenenHoehe, indexVon, liegtUnter, papierkorbKnoten, unterbaum } from './struktur';
 import type { Baumindex } from './struktur';
 import { summenAenderung } from './summen';
 import { bezugsindex } from './zuschlag';
@@ -122,7 +122,11 @@ function einfuegenPruefen(
   ort: Einfuegeort,
   art: Knoten['art'],
 ): Ergebnis<Ziel, Befehlsfehler> {
-  if (idx.byId.has(neueId) || neueId === z.leistungsverzeichnis.id) {
+  if (
+    idx.byId.has(neueId) ||
+    neueId === z.leistungsverzeichnis.id ||
+    papierkorbKnoten(z.papierkorb).has(neueId)
+  ) {
     return nein('id-vergeben', `Kennung bereits vergeben: ${neueId}`, neueId);
   }
   const ziel = zielAufloesen(idx, ort);
@@ -211,7 +215,8 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const idx = indexVon(z.leistungsverzeichnis.id, z.leistungsverzeichnis.knoten);
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, 'position');
   if (!ziel.ok) return ziel;
-  const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i));
+  const korb = papierkorbKnoten(z.papierkorb);
+  const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   const d = b.daten;
   return ok(

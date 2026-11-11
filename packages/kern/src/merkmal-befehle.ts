@@ -15,6 +15,7 @@ import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
 import { positionsdatenFehler } from './pruefung';
 import { positionAendern, positionFinden } from './summen-befehle';
+import { papierkorbKnoten } from './struktur';
 import { bezugsindex } from './zuschlag';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
@@ -37,7 +38,9 @@ export function positionsmerkmaleSetzen(z: LvZustand, b: PositionsmerkmaleSetzen
   if (!f.ok) return f;
   const { idx, position } = f.wert;
   const neu: Position = { ...position, merkmale: b.merkmale, zuschlag: b.zuschlag };
-  const formfehler = positionsdatenFehler(neu, position.id, (i) => idx.byId.get(i));
+  // Ein Bezug darf auf eine Position im Papierkorb zeigen (v1.2, D-12); er zählt dann nichts.
+  const korb = papierkorbKnoten(z.papierkorb);
+  const formfehler = positionsdatenFehler(neu, position.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   // Wird die Position zur Zuschlagsposition, darf keine Liste sie nennen (D-03; sonst verletzte das LV Prüfung 3).
   if (b.zuschlag !== null && position.zuschlag === null) {

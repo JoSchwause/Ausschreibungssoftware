@@ -686,7 +686,7 @@ describe('KnotenVerschieben', () => {
 describe('Befehle anderer Tickets', () => {
   const z = basis();
   const fremde: LvBefehl[] = [
-    { art: 'PapierkorbLeeren' },
+    { art: 'KnotenlisteVerschieben', knotenIds: [id.knoten('P1')], ziel: ende(LV_ID) },
   ];
 
   it.each(fremde.map((b) => [b.art, b] as const))(

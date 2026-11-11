@@ -15,6 +15,7 @@ import type {
   LvChangeSetAnwenden,
   LvKopf,
   LvZustand,
+  Papierkorbeintrag,
   Positionssumme,
   Summenaenderung,
   Summenstand,
@@ -165,6 +166,8 @@ export function baueChangeSet(z: LvZustand, teile: ChangeSetTeile): LvChangeSet 
  *   (Property-Test: gleich der Neuberechnung `summenBerechnen`).
  * - Ein ChangeSet ohne jede Änderung liefert denselben Zustand (dasselbe Objekt).
  * - `hinweise` wertet die Funktion nicht aus (sie gehören zur Antwort auf den Befehl).
+ * - Papierkorb (v1.2, K9): `cs.papierkorb` wird angewandt (nach `nummer` geordnet, leer: das Feld fehlt); ohne Änderung
+ *   bleibt er stehen. `cs.lvStand` ändert den Zustand nicht (den Stand friert `speicher` ein).
  *
  * Ein ChangeSet ohne Kopf auf „kein LV“ ist ein Programmfehler, kein erwartbarer Fehler: die Funktion wirft. Der Kern
  * selbst erzeugt solche ChangeSets nicht.
@@ -189,7 +192,8 @@ export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
     !knotenGeaendert &&
     s.positionen.length === 0 &&
     s.gliederungen.length === 0 &&
-    s.gesamt === null
+    s.gesamt === null &&
+    cs.papierkorb === undefined
   ) {
     return zustand;
   }
@@ -209,8 +213,31 @@ export const lvChangeSetAnwenden: LvChangeSetAnwenden = (zustand, cs) => {
     knoten = kanonisch(kopf.id, rest);
   }
   const summen = summenAnwenden(zustand?.summen ?? LEERER_SUMMENSTAND, cs, knoten);
-  return { leistungsverzeichnis: { ...kopf, knoten }, summen };
+  const papierkorb = papierkorbAnwenden(zustand?.papierkorb, cs.papierkorb);
+  return {
+    leistungsverzeichnis: { ...kopf, knoten },
+    summen,
+    ...(papierkorb === undefined || papierkorb.length === 0 ? {} : { papierkorb }),
+  };
 };
+
+/**
+ * Der Papierkorb nach dem ChangeSet (v1.2, K9): entfernte Einträge fallen weg, geänderte werden ersetzt, neue kommen dazu;
+ * nach `nummer` aufsteigend (Vertrag `LvZustand.papierkorb`). Ohne Papierkorbänderung bleibt das Array, wie es ist.
+ */
+function papierkorbAnwenden(
+  alt: readonly Papierkorbeintrag[] | undefined,
+  p: Aenderungen<Papierkorbeintrag> | undefined,
+): readonly Papierkorbeintrag[] | undefined {
+  if (p === undefined) return alt;
+  const weg = new Set<string>(p.entfernt.map((e) => e.id));
+  const ersatz = new Map<string, Papierkorbeintrag>(p.geaendert.map((g) => [g.nachher.id, g.nachher]));
+  const neu = [
+    ...(alt ?? []).filter((e) => !weg.has(e.id)).map((e) => ersatz.get(e.id) ?? e),
+    ...p.hinzugefuegt,
+  ];
+  return neu.sort((a, b) => a.nummer - b.nummer);
+}
 
 /** Vertauscht die beiden Seiten einer Sammlungsänderung. */
 function aenderungenUmkehren<T>(a: Aenderungen<T>): Aenderungen<T> {

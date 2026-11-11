@@ -16,7 +16,7 @@ export function lvStandAnlegen(z: LvZustand, b: LvStandAnlegen): Ergebnis<LvChan
   const lv = z.leistungsverzeichnis;
   if (typeof b.name !== 'string' || b.name.trim() === '')
     return nein('ungueltige-eingabe', 'Ein LV-Stand braucht einen Namen.', undefined, 'name');
-  if (b.id === lv.id || indexVon(lv.id, lv.knoten).byId.has(b.id))
+  if ((b.id as string) === lv.id || indexVon(lv.id, lv.knoten).byId.has(b.id))
     return nein('id-vergeben', `Kennung bereits vergeben: ${b.id}`, undefined, 'id');
   return ok({
     ...baueChangeSet(z, {}),

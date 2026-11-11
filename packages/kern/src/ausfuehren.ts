@@ -35,6 +35,12 @@ import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen 
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { lvStandAnlegen } from './lv-stand';
+import {
+  knotenInPapierkorbLegen,
+  papierkorbLeeren,
+  papierkorbeintragEntfernen,
+  papierkorbeintragWiederherstellen,
+} from './papierkorb-befehle';
 import { ordnungszahlSetzen, ozMaskeSetzen, umnummerieren } from './oz-befehle';
 import {
   einheitspreisAendern,
@@ -81,6 +87,10 @@ export const BEFEHLS_HANDLER = {
   VergabeinformationenSetzen: vergabeinformationenSetzen,
   LeitbeschreibungSetzen: leitbeschreibungSetzen,
   LvStandAnlegen: lvStandAnlegen,
+  KnotenInPapierkorbLegen: knotenInPapierkorbLegen,
+  PapierkorbeintragWiederherstellen: papierkorbeintragWiederherstellen,
+  PapierkorbeintragEntfernen: papierkorbeintragEntfernen,
+  PapierkorbLeeren: papierkorbLeeren,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
@@ -89,10 +99,6 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {
   KnotenEinfuegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
   KnotenlisteVerschieben: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  KnotenInPapierkorbLegen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  PapierkorbeintragWiederherstellen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  PapierkorbeintragEntfernen: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
-  PapierkorbLeeren: 'K9 (Ticket 42)', // v1.2: mechanisch angepasst, Folgeticket
 };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
