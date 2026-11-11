@@ -1,6 +1,6 @@
 # 47: App: Positionsdialog mit Langtext-Editor, Prüf-Panel mit Sprunglinks (U4 + U6)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 3 (Phase B) · Strang: U (U4, U6) · Paket: `apps/web`
 Blocked by: 39, 34, 41
