@@ -1,6 +1,6 @@
 # 86: A1 in der App: Auftrags-LV lesen und umkehren über den Vertrag, Nachträge
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A1 · Ordner: `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (neu); Einhängestellen in `App.tsx`,
 `lv/LvSeite.tsx`, `lv/befehlsweg.ts`, `projekt/ProjektSeite.tsx` (markiert `// Ticket 86`, D-20)
@@ -113,6 +113,9 @@ Neue Abhängigkeit `@tethys/abrechnung` in `apps/web` (Workspace-Paket, Lockfile
   vor dem Merge auch `preisspiegel.spec.ts`, `projekt.spec.ts` grün.
 
 ## Answer
+
+Merged: a47b297 in integration/welle-5
+
 
 Branch `welle-5/86-nachtrag` (enthält `integration/welle-5` bis 6cb3f73). Auftrags-LVs liest die App über
 `speicher.auftragsLeistungsverzeichnisse` (D-64.2 entfällt), Undo/Redo kehrt sie mit `auftragsLvChangeSetUmkehren` des
