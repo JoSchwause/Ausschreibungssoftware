@@ -144,7 +144,10 @@ export function KostengruppenDialog({
           <Eingabefeld
             label={t.kostengruppe}
             value={kg}
-            onWertChange={setKg}
+            onWertChange={(w) => {
+              setKg(w);
+              setFehler(null); // der Feldfehler gilt der alten Eingabe
+            }}
             inputMode="numeric"
             {...(fehler === null ? (hinweis === null ? {} : { meldung: hinweis }) : { meldung: fehler })}
           />
