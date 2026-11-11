@@ -3,8 +3,9 @@
 // Kennungen bringt der Aufrufer, kein I/O, keine Uhr. Tolerant: Was nicht passt, wird Befund, nichts geht still
 // verloren (Q5). Zuordnung zum LV allein über die Ordnungszahl (A7); die GAEB-`ID` ist kein Schlüssel.
 //
-// Lesarten (D-45.1, Ticket 45, Comments): EPA wie der X86-Leser (Bezeichnung vor `Type`); ohne `LblUPComp` in der
-// Datei bleiben die Anteile unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
+// Lesarten (D-45.1, Ticket 45, Comments): EPA wie der X86-Leser (Bezeichnung vor `Type`). Seit v1.3 (Ticket 68, D-28)
+// ordnet das LV mit seinen EPA-Bezeichnungen die Anteile über die Nummer zu; nur ohne Bezeichnung (im LV, bei einem LV
+// vor v1.3 in der Datei) bleiben sie unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
 // (G-26, D-10 Nr. 3): Fehler `nachlass-nicht-abgebildet`, der Preis bleibt ohne Nachlass.
 
 import { gesamtpreis, vergleiche } from '@tethys/dezimal';
@@ -16,6 +17,7 @@ import type {
   BieterId,
   Einheitspreis,
   Einheitspreisanteile,
+  EpaBezeichnung,
   GaebPhase,
   GaebVersion,
   Knoten,
@@ -28,7 +30,7 @@ import type {
   Prozent,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { deuteBeschriftung } from './epa';
+import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
 import { elementKinder, textInhalt } from './xml';
@@ -97,6 +99,41 @@ function leseAnteilsangaben(l: Leser, boqInfo: XmlElement | undefined): Anteilsa
     if (anteil === 'frei') freiBezeichnung = bez === '' ? null : bez;
   }
   return { anteile, grund, freiBezeichnung };
+}
+
+/**
+ * Anteile über die EPA-Bezeichnungen des LV (v1.3, Ticket 68, D-28): `UPComp<n>` ist der Anteil, den das LV unter der
+ * Nummer `n` führt. Die Nummer ist der Schlüssel; die amtlichen X84 tragen keine `LblUPComp` (das XSD der Phase 84 kennt
+ * sie nicht). Beschriftet die Datei trotzdem einen Platz anders als das LV, gilt das LV (Warnung
+ * `epa-beschriftung-abweichend`). Ein Platz ohne Bezeichnung im LV bleibt unzugeordnet (Befund `epa-nicht-abgebildet`).
+ * Die Bezeichnung des freien Anteils steht im LV, nicht an der Position (D-53.6).
+ */
+function anteileAusLv(
+  l: Leser,
+  boqInfo: XmlElement | undefined,
+  bezeichnungen: readonly EpaBezeichnung[],
+): Anteilsangaben {
+  const anteile: (Anteil | null)[] = [];
+  const grund: string[] = [];
+  for (const n of EPA_NUMMERN) {
+    const imLv = bezeichnungen.find((e) => e.nummer === n);
+    const el = kind(boqInfo, `LblUPComp${String(n)}`);
+    if (el) {
+      const bez = wert(el) ?? '';
+      const inDatei = deuteBeschriftung(bez, el.attrs.get('Type') ?? '').anteil;
+      if (inDatei !== imLv?.anteil)
+        l.melde(
+          'warnung',
+          'epa-beschriftung-abweichend',
+          `LblUPComp${String(n)} „${bez}“ der Angebotsdatei steht für ${inDatei}, das LV führt unter Nummer ${String(n)} ` +
+            `${imLv === undefined ? 'keinen Anteil' : imLv.anteil}; es gilt das LV.`,
+          el,
+        );
+    }
+    anteile.push(imLv?.anteil ?? null);
+    grund.push(imLv === undefined ? 'ohne EPA-Bezeichnung im LV' : '');
+  }
+  return { anteile, grund, freiBezeichnung: null };
 }
 
 const gleicheStelle = (a: OzStelle, b: OzStelle): boolean => a.laenge === b.laenge && a.zeichen === b.zeichen;
@@ -529,7 +566,11 @@ export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOption
     );
   const nachlass = leseAngebotsnachlass(l, kind(boqInfo, 'Totals'));
 
-  const aufbau = new Angebotsaufbau(l, lv, leseAnteilsangaben(l, boqInfo));
+  const anteile =
+    lv.epaBezeichnungen === undefined
+      ? leseAnteilsangaben(l, boqInfo)
+      : anteileAusLv(l, boqInfo, lv.epaBezeichnungen);
+  const aufbau = new Angebotsaufbau(l, lv, anteile);
   for (const b of kinder(boq, 'BoQBody')) aufbau.koerper(b, []);
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');

@@ -242,6 +242,65 @@ describe('BVBS Bauausführung X84 gegen das LV aus der X83', () => {
   });
 });
 
+// --- v1.3: Anteile über die EPA-Bezeichnungen des LV (Ticket 68, D-28) -----------------------------------------
+
+const AVA_X86 = 'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021.X86';
+
+describe('v1.3: X84 ohne LblUPComp, Anteile über die EPA-Bezeichnungen des LV', () => {
+  const lv = lvAus(lesePfad(AVA_X86));
+  const l = lies(lesePfad(AVA_X84), lv, 'a.X84');
+
+  it('BVBS AVA X84 gegen das LV aus der X86 (Material, Lohn, Geräte, Nachunternehmer): Anteile zugeordnet', () => {
+    expect(zeile(l, lv, '1.10.30.20')).toMatchObject({
+      status: 'angeboten',
+      einheitspreis: '27.910',
+      epa: {
+        stoffe: '2.230',
+        lohn: '23.120',
+        geraete: '2.560',
+        nachunternehmer: '0.000',
+        sonstiges: null,
+        frei: null,
+        freiBezeichnung: null,
+      },
+    });
+    expect(codes(l)).not.toContain('epa-nicht-abgebildet');
+    const mitEpa = (l.befehl?.angebot.positionen ?? []).filter(
+      (p) => p.status === 'angeboten' && p.epa !== null,
+    );
+    expect(mitEpa).toHaveLength(5);
+  });
+
+  it('ein UPComp, dessen Nummer das LV nicht beschriftet, bleibt unzugeordnet (Befund nennt den Grund)', () => {
+    const ohneVier: Leistungsverzeichnis = {
+      ...lv,
+      epaBezeichnungen: (lv.epaBezeichnungen ?? []).filter((e) => e.nummer !== 4),
+    };
+    const m = lies(lesePfad(AVA_X84), ohneVier);
+    expect(zeile(m, ohneVier, '1.10.30.20')).toMatchObject({
+      epa: { stoffe: '2.230', lohn: '23.120', geraete: '2.560', nachunternehmer: null },
+    });
+    const b = mitCode(m, 'epa-nicht-abgebildet');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toContain('5 Werte');
+    expect(b[0]?.meldung).toContain('ohne EPA-Bezeichnung im LV');
+  });
+
+  it('beschriftet die X84 selbst anders als das LV: das LV gilt, Warnung epa-beschriftung-abweichend', () => {
+    const roh = new TextDecoder()
+      .decode(lesePfad(AVA_X84))
+      .replace(
+        '</BoQBkdn><Totals>',
+        '</BoQBkdn><NoUPComps>2</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1><Totals>',
+      );
+    const m = lies(roh, lv);
+    expect(zeile(m, lv, '1.10.30.20')).toMatchObject({ epa: { stoffe: '2.230', lohn: '23.120' } });
+    const b = mitCode(m, 'epa-beschriftung-abweichend');
+    expect(b).toHaveLength(1);
+    expect(b[0]?.meldung).toContain('LblUPComp1');
+  });
+});
+
 // --- Andere Version, andere Phase ----------------------------------------------------------------------------
 
 describe('was leseAngebot nicht liest', () => {
