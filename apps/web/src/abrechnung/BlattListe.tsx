@@ -40,7 +40,10 @@ export function BlattListe({
   const nummer = naechsteAufmassnummer(stand.blaetter);
 
   /** `AufmassAnlegen` über den Befehlsweg; bei Erfolg auf das neue Blatt. */
-  const anlegen = async (kopf: Kopfangaben, positionen: readonly Aufmassposition[] = []): Promise<boolean> => {
+  const anlegen = async (
+    kopf: Kopfangaben,
+    positionen: readonly Aufmassposition[] = [],
+  ): Promise<boolean> => {
     const befehl = neuesBlatt(u.ids, a, stand.blaetter, kopf, positionen);
     const r = await aufmassSitzung(weg, a.projektId, null).befehl(befehl);
     if (!pruefe(r)) return false;
@@ -66,7 +69,12 @@ export function BlattListe({
           {t.neu}
         </Button>
         <X31Einlesen auftrag={stand.auftrag} naechsteNummer={nummer} anlegen={anlegen} />
-        <Verweis pfad={sollIstPfad(a.projektId, a.id)} text={t.sollIst} gehe={gehe} className="tx-button tx-button--sekundaer" />
+        <Verweis
+          pfad={sollIstPfad(a.projektId, a.id)}
+          text={t.sollIst}
+          gehe={gehe}
+          className="tx-button tx-button--sekundaer"
+        />
       </div>
       {stand.blaetter.length === 0 ? (
         <p>{t.leer}</p>

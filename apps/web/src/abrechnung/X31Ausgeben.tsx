@@ -16,7 +16,13 @@ import { blattAlsX31 } from './x31';
 type Version = '3.3' | '3.2';
 const t = texte.x31;
 
-export function X31Ausgeben({ blatt, auftrag }: { blatt: Aufmass; auftrag: AuftragsLvZustand }): ReactElement {
+export function X31Ausgeben({
+  blatt,
+  auftrag,
+}: {
+  blatt: Aufmass;
+  auftrag: AuftragsLvZustand;
+}): ReactElement {
   const u = useUmgebung();
   const { zeige } = useToast();
   const [offen, setOffen] = useState(false);

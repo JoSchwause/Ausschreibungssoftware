@@ -222,7 +222,11 @@ function Blatt({
         </Button>
       </div>
       <p className="abrechnung__hinweis">{t.tastenHinweis}</p>
-      <div className="lv__grid abrechnung__grid" onKeyDownCapture={onKeyDownCapture} onDoubleClick={onDoubleClick}>
+      <div
+        className="lv__grid abrechnung__grid"
+        onKeyDownCapture={onKeyDownCapture}
+        onDoubleClick={onDoubleClick}
+      >
         <VergleichsGrid
           beschriftung={t.grid}
           spalten={ansicht.spalten}

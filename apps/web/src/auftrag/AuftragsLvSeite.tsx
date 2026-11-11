@@ -15,6 +15,7 @@ import type {
 } from '@tethys/vertrag';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { AbrechnungVerweise } from '../abrechnung/Verweis'; // Ticket 87
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
@@ -220,6 +221,8 @@ function Ansicht({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }
       <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
         <HistorieKnoepfe />
         <AuftragAusgeben auftrag={auftrag} />
+        {/* Ticket 87: Aufmaß und Soll/Ist */}
+        <AbrechnungVerweise projektId={kopf.projektId} auftragsLvId={kopf.id} gehe={gehe} />
         <button
           type="button"
           className="tx-button tx-button--sekundaer"

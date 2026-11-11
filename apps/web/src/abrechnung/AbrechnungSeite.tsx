@@ -10,6 +10,7 @@ import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { abrechnungLaden, type Abrechnungsstand } from './aufmass';
 import { BlattListe } from './BlattListe';
 import { BlattSeite } from './BlattSeite';
+import { SollIstSeite } from './SollIstSeite';
 import { Verweis } from './Verweis';
 import type { Abrechnungsseite } from './pfad';
 import { texte } from './texte';
@@ -54,7 +55,10 @@ export function AbrechnungSeite({
   const weg = befehlswegFuer(u);
   const { lage, neuLaden } = useAbrechnungsstand(seite);
   // Die Liste lädt nach jedem Undo/Redo neu; das Blatt führt seinen eigenen Stand nach (BlattSeite).
-  useEffect(() => (seite.art === 'blatt' ? undefined : weg.beiHistorie(neuLaden)), [weg, seite.art, neuLaden]);
+  useEffect(
+    () => (seite.art === 'blatt' ? undefined : weg.beiHistorie(neuLaden)),
+    [weg, seite.art, neuLaden],
+  );
 
   if (lage.art === 'laedt') {
     return (
@@ -75,13 +79,7 @@ export function AbrechnungSeite({
     );
   }
   if (seite.art === 'blatt')
-    return (
-      <BlattSeite
-        stand={lage.stand}
-        aufmassId={seite.aufmassId}
-        gehe={gehe}
-        neuLaden={neuLaden}
-      />
-    );
+    return <BlattSeite stand={lage.stand} aufmassId={seite.aufmassId} gehe={gehe} neuLaden={neuLaden} />;
+  if (seite.art === 'soll-ist') return <SollIstSeite stand={lage.stand} gehe={gehe} />;
   return <BlattListe stand={lage.stand} gehe={gehe} />;
 }

@@ -4,6 +4,7 @@
 // (N1): Die Menge des Blatts kommt aus dem Befehl (gerechnet von `mengen`), „kumuliert bis hier“ aus `abrechnung`; hier
 // wird nur über `dezimal` formatiert (N4).
 
+import { sollIstBerechnen } from '@tethys/abrechnung';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import type { KennzeichenText, VergleichsSpalte, VergleichsZeile, VergleichsZelle } from '@tethys/ui-grid';
 import type {
@@ -27,6 +28,24 @@ export interface BlattEingang {
   readonly kumuliert: ReadonlyMap<string, Menge | null>;
   /** Zugeklappte Gliederungen; der Aufklappzustand gehört der Seite. */
   readonly zugeklappt: ReadonlySet<string>;
+}
+
+/**
+ * „Kumuliert bis hier“: die Ist-Menge von Soll/Ist (`abrechnung`, Ticket 81) über die Blätter bis einschließlich der
+ * Nummer, nur für Positionen mit einer Zeile auf einem dieser Blätter (sonst bliebe jede Zeile bei 0,000). Zeilen, die
+ * Soll/Ist nicht zählt (ohne Menge, ohne Position), zählen auch hier nicht.
+ */
+export function kumuliertBisHier(
+  auftrag: AuftragsLvZustand,
+  blaetter: readonly Aufmass[],
+  nummer: number,
+): ReadonlyMap<string, Menge | null> {
+  const bis = blaetter.filter((b) => b.nummer <= nummer);
+  const aufgemessen = new Set<string>(bis.flatMap((b) => b.positionen.map((z) => z.positionId)));
+  const aus = new Map<string, Menge | null>();
+  for (const z of sollIstBerechnen(auftrag, bis).zeilen)
+    if (aufgemessen.has(z.positionId)) aus.set(z.positionId, z.ist);
+  return aus;
 }
 
 export interface Blattansicht {

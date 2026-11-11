@@ -83,9 +83,11 @@ export function X31Einlesen({
         {v === null ? null : (
           <>
             <p data-testid="x31-zusammenfassung">
-              {v.uebernehmbar ? t.zusammenfassung(v.positionen.length, naechsteNummer) : t.nichtsZuUebernehmen}
+              {v.uebernehmbar
+                ? t.zusammenfassung(v.positionen.length, naechsteNummer)
+                : t.nichtsZuUebernehmen}
             </p>
-            {v.ohneMenge > 0 ? <p>{t.ohneMenge(v.ohneMenge)}</p> : null}
+            {v.ungerechnet > 0 ? <p>{t.ungerechnet(v.ungerechnet)}</p> : null}
             <Befundliste befunde={v.befunde} />
           </>
         )}

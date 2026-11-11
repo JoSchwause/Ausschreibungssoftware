@@ -50,7 +50,7 @@ describe('X31 ausgeben und wieder einlesen', () => {
 
     const v = x31Vorschau(aus.xml, auf.auftrag);
     expect(v.uebernehmbar).toBe(true);
-    expect(v.ohneMenge).toBe(0);
+    expect(v.ungerechnet).toBe(0);
     // Reihenfolge des Auftrags-LV; der Variablenname wird zum Zeilenbezug (D-83.9), die Menge rechnet `mengen`.
     expect(v.positionen).toEqual([
       { positionId: zaun, mengenansatz: null, menge: '42.500' },
@@ -101,7 +101,7 @@ describe('X31 ausgeben und wieder einlesen', () => {
         menge: null,
       },
     ]);
-    expect(v.ohneMenge).toBe(1);
+    expect(v.ungerechnet).toBe(1);
     expect(v.uebernehmbar).toBe(true);
   });
 });

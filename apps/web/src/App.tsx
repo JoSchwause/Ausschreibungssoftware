@@ -8,6 +8,9 @@ import type {
 } from '@tethys/vertrag';
 import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
+import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
+import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
+import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { LvSeite } from './lv/LvSeite';
@@ -65,6 +68,14 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     return {
       titel: texte.seiten.projekt.titel,
       inhalt: mitSpeicher(<ProjektSeite key={id} id={id} gehe={gehe} />),
+    };
+  }
+  // Ticket 87: Aufmaßblätter und Soll/Ist eines Auftrags-LV
+  const abrechnung = abrechnungsseite(pfad);
+  if (abrechnung !== null) {
+    return {
+      titel: abrechnungTexte.seitentitel,
+      inhalt: mitSpeicher(<AbrechnungSeite key={pfad} seite={abrechnung} gehe={gehe} />),
     };
   }
   // Ticket 64: Auftrags-LV eines Projekts

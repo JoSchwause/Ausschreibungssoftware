@@ -16,7 +16,7 @@ export interface X31Vorschau {
   /** Die Zeilen des neuen Blatts, Menge aus dem Ansatz gerechnet (`mengen`), in der Reihenfolge der Datei. */
   readonly positionen: readonly Aufmassposition[];
   /** Zahl der Zeilen ohne Menge (Ansatz mit Fehler oder in der Textform). */
-  readonly ohneMenge: number;
+  readonly ungerechnet: number;
   /** Ohne eine Zeile zu einer Position des Auftrags-LV entsteht kein Blatt (D-87.6). */
   readonly uebernehmbar: boolean;
 }
@@ -24,14 +24,13 @@ export interface X31Vorschau {
 /** Liest eine X31 gegen das Auftrags-LV (Zuordnung über die OZ, Ticket 83). */
 export function x31Vorschau(eingabe: Uint8Array | string, auftrag: AuftragsLvZustand): X31Vorschau {
   const l = x31Lesen(eingabe, auftrag);
-  const positionen = (l.aufmass?.positionen ?? []).map(
-    (p): Aufmassposition =>
-      p.mengenansatz === null ? p : { ...p, menge: mengenansatzBerechnen(p.mengenansatz).summe },
+  const positionen = (l.aufmass?.positionen ?? []).map((p): Aufmassposition =>
+    p.mengenansatz === null ? p : { ...p, menge: mengenansatzBerechnen(p.mengenansatz).summe },
   );
   return {
     befunde: l.befunde,
     positionen,
-    ohneMenge: positionen.filter((p) => p.menge === null).length,
+    ungerechnet: positionen.filter((p) => p.menge === null).length,
     uebernehmbar: positionen.length > 0,
   };
 }

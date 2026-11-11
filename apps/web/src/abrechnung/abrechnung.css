@@ -78,3 +78,38 @@ a.tx-button {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.abrechnung__einstellungen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--tx-space-2) var(--tx-space-4);
+  margin: 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+}
+
+.abrechnung__einstellungen legend {
+  padding: 0 var(--tx-space-1);
+  font-weight: var(--tx-weight-medium);
+}
+
+.abrechnung__schwelle {
+  width: 7em;
+}
+
+.abrechnung__sprung {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tx-color-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.abrechnung__sprung:focus-visible {
+  outline: 2px solid var(--tx-color-focus);
+}

@@ -28,6 +28,7 @@ export const texte = {
     ohneBezeichnung: 'ohne Bezeichnung',
     neu: 'Neues Aufmaßblatt',
     sollIst: 'Soll/Ist',
+    aufmass: 'Aufmaß',
   },
   kopf: {
     titelNeu: 'Neues Aufmaßblatt',
@@ -101,6 +102,18 @@ export const texte = {
     angelegt: (nr: number) => `Aufmaßblatt ${String(nr)} angelegt`,
     geloescht: (nr: number) => `Aufmaßblatt ${String(nr)} gelöscht`,
   },
+  sollIst: {
+    titel: (name: string) => `Soll/Ist – ${name}`,
+    grid: 'Soll/Ist je Position',
+    einstellungen: 'Schwellen (VOB/B § 2 Abs. 3)',
+    oberSchwelle: 'Obere Schwelle in %',
+    unterSchwelle: 'Untere Schwelle in %',
+    abgeschlossen: 'Es gibt eine Schlussrechnung: Auch Mengen unter der unteren Schwelle sind Befunde.',
+    offen: 'Noch keine Schlussrechnung: Befunde nur über der oberen Schwelle.',
+    blaetter: (n: number) => (n === 1 ? 'Ist über 1 Aufmaßblatt.' : `Ist über ${String(n)} Aufmaßblätter.`),
+    befunde: 'Befunde',
+    keineBefunde: 'Keine Position außerhalb der Schwellen.',
+  },
   x31: {
     einlesen: 'X31 einlesen',
     dateiWaehlen: 'X31-Datei wählen',
@@ -109,7 +122,7 @@ export const texte = {
     nichtLesbar: (datei: string) => `Die Datei ${datei} ließ sich nicht lesen.`,
     zusammenfassung: (n: number, nr: number) =>
       `${positionen(n)} mit Menge oder Mengenansatz; es entsteht Aufmaßblatt ${String(nr)}.`,
-    ohneMenge: (n: number) =>
+    ungerechnet: (n: number) =>
       n === 0 ? '' : `${positionen(n)} ohne Menge: Der Ansatz hat einen Fehler oder Zeilen in der Textform.`,
     nichtsZuUebernehmen:
       'Die Datei enthält keine Zeile zu einer Position dieses Auftrags-LV; es entsteht kein Blatt.',

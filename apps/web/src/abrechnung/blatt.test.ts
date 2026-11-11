@@ -4,7 +4,7 @@
 
 import type { Aufmass, AufmassId, Menge, PositionId } from '@tethys/vertrag';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { blattAnsicht, zeilenBefehl, zeilenZiel } from './blatt';
+import { blattAnsicht, kumuliertBisHier, zeilenBefehl, zeilenZiel } from './blatt';
 import { mitAuftrag, positionMitOz, type Aufbau } from './testaufbau';
 
 let auf: Aufbau;
@@ -100,6 +100,42 @@ describe('blattAnsicht', () => {
     });
     expect(v.zeilen.some((z) => z.zellen['oz']?.text === '02.0010')).toBe(false);
     expect(v.zeilen.find((z) => z.id === titel?.id)?.aufgeklappt).toBe(false);
+  });
+});
+
+describe('kumuliertBisHier (Soll/Ist aus `abrechnung` über die Blätter bis zu diesem)', () => {
+  it('summiert die Blätter bis einschließlich der Nummer; nur aufgemessene Positionen; Zeilen ohne Menge zählen nicht', () => {
+    const aushub = positionMitOz(auf.auftrag, '02.0020');
+    const zaun = positionMitOz(auf.auftrag, '01.0020');
+    const eins = {
+      ...blatt([{ positionId: aushub, mengenansatz: null, menge: '100.000' as Menge }]),
+      nummer: 1,
+    };
+    const zwei = {
+      ...blatt([
+        { positionId: aushub, mengenansatz: null, menge: '50.500' as Menge },
+        {
+          positionId: zaun,
+          mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '(1', variable: null }],
+          menge: null,
+        },
+      ]),
+      id: 'b2' as AufmassId,
+      nummer: 2,
+    };
+    const drei = {
+      ...blatt([{ positionId: aushub, mengenansatz: null, menge: '-10.000' as Menge }]),
+      id: 'b3' as AufmassId,
+      nummer: 3,
+    };
+    // Die Reihenfolge der Liste zählt nicht, nur die Nummer.
+    const alle = [drei, eins, zwei];
+    expect(Object.fromEntries(kumuliertBisHier(auf.auftrag, alle, 1))).toEqual({ [aushub]: '100.000' });
+    expect(Object.fromEntries(kumuliertBisHier(auf.auftrag, alle, 2))).toEqual({
+      [aushub]: '150.500',
+      [zaun]: '0.000',
+    });
+    expect(kumuliertBisHier(auf.auftrag, alle, 3).get(aushub)).toBe('140.500');
   });
 });
 
