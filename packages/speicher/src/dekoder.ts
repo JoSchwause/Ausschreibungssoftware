@@ -15,6 +15,10 @@ import type {
   AngebotZustand,
   Angebotsposition,
   Ansatzzeile,
+  Aufmass,
+  AufmassId,
+  Aufmassposition,
+  AufmassZustand,
   Auftraggeber,
   Auftragnehmer,
   AuftragsLeistungsverzeichnis,
@@ -37,6 +41,12 @@ import type {
   GliederungId,
   HinweistextId,
   Knoten,
+  Kostenermittlung,
+  KostenermittlungId,
+  Kostenermittlungseintrag,
+  Kostenermittlungsstufe,
+  KostenermittlungZustand,
+  Kostengruppennummer,
   Langtext,
   Leistungsverzeichnis,
   Leitbeschreibung,
@@ -50,6 +60,8 @@ import type {
   PapierkorbeintragId,
   Menge,
   Nachlass,
+  Nachtragsangaben,
+  Nachtragsstatus,
   NutzerId,
   Ordnungszahl,
   OzMaske,
@@ -63,8 +75,12 @@ import type {
   ProtokollId,
   Prozent,
   Pruefsummenalgorithmus,
+  Rechnung,
+  RechnungId,
+  RechnungZustand,
   Summenstand,
   TitelId,
+  Umlage,
   Unterbeschreibung,
   Vergabeinformationen,
   Wahlzuordnung,
@@ -471,7 +487,7 @@ function knoten(x: unknown, pfad: string): Knoten {
           'einheitspreis',
           'epa',
         ],
-        ['leitbeschreibung', 'mengenansatz'],
+        ['leitbeschreibung', 'mengenansatz', 'kostengruppe', 'textquelle'],
       );
       return {
         ...lage(o),
@@ -492,6 +508,8 @@ function knoten(x: unknown, pfad: string): Knoten {
         ),
         epa: epa(feld(o, 'epa'), `${pfad}.epa`),
         ...optional(o, 'mengenansatz', (v) => mengenansatz(v, `${pfad}.mengenansatz`)),
+        ...optional(o, 'kostengruppe', (v) => kostengruppe(v, `${pfad}.kostengruppe`)),
+        ...optional(o, 'textquelle', (v) => nichtLeer(v, `${pfad}.textquelle`)),
       };
     }
     default:
@@ -598,7 +616,7 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     feld(z, 'leistungsverzeichnis'),
     p,
     ['id', 'projektId', 'name', 'ozMaske', 'mwstSatz', 'nachlass', 'knoten'],
-    KOPFDATEN,
+    [...KOPFDATEN, 'nachtrag', 'vorlage'],
   );
   const lv: Leistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as LeistungsverzeichnisId,
@@ -608,6 +626,8 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     mwstSatz: dezimal(feld(o, 'mwstSatz'), `${p}.mwstSatz`, 'prozent') as Prozent,
     nachlass: nachlass(feld(o, 'nachlass'), `${p}.nachlass`),
     ...kopfdaten(o, p),
+    ...optional(o, 'nachtrag', (v) => nachtragsangaben(v, `${p}.nachtrag`)),
+    ...optional(o, 'vorlage', (v) => nurWahr(v, `${p}.vorlage`)),
     knoten: liste(feld(o, 'knoten'), `${p}.knoten`).map((k, i) => knoten(k, `${p}.knoten[${String(i)}]`)),
   };
   return {
@@ -723,6 +743,206 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
   return { angebot, summen: summenstand(feld(z, 'summen'), `${pfad}.summen`) };
 }
 
+// --- Vertrag v1.4 (Schemaversion 5, Ticket 79; Strenge D-79.4) ---------------------------------------------------------
+
+/** Kostengruppennummer `100` bis `999` (Marke in `vertrag`: Wer sie aus einer Datei liest, prüft die Form nach). */
+function kostengruppe(x: unknown, pfad: string): Kostengruppennummer {
+  const s = zeichenkette(x, pfad);
+  if (!/^[1-9][0-9]{2}$/.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
+  return s as Kostengruppennummer;
+}
+
+/** Text, der nicht leer ist (Vertrag: „nie `''`“; das Feld fehlt bzw. ist `null`). */
+function nichtLeer(x: unknown, pfad: string): string {
+  const s = zeichenkette(x, pfad);
+  if (s === '') ungueltig(pfad, 'leerer Text (das Feld fehlt bzw. ist null)');
+  return s;
+}
+
+/** Kennzeichen, das nur `true` sein kann (fehlt = nein, D-70.2). */
+function nurWahr(x: unknown, pfad: string): true {
+  if (x !== true) ungueltig(pfad, 'nur true (fehlt = nein)');
+  return true;
+}
+
+function ganzAbEins(x: unknown, pfad: string): number {
+  const n = ganz(x, pfad);
+  if (n < 1) ungueltig(pfad, 'ganze Zahl ab 1 erwartet');
+  return n;
+}
+
+const NACHTRAGSSTATUS: readonly Nachtragsstatus[] = ['angemeldet', 'angeboten', 'beauftragt', 'abgelehnt'];
+
+function nachtragsangaben(x: unknown, pfad: string): Nachtragsangaben {
+  const o = objekt(x, pfad, ['auftragsLvId', 'nummer', 'status']);
+  const nummer = zeichenkette(feld(o, 'nummer'), `${pfad}.nummer`);
+  if (nummer.trim() === '') ungueltig(`${pfad}.nummer`, 'leere Nachtragsnummer');
+  return {
+    auftragsLvId: zeichenkette(
+      feld(o, 'auftragsLvId'),
+      `${pfad}.auftragsLvId`,
+    ) as AuftragsLeistungsverzeichnisId,
+    nummer,
+    status: aufzaehlung(feld(o, 'status'), `${pfad}.status`, NACHTRAGSSTATUS),
+  };
+}
+
+/** Kennungen einer Liste, jede höchstens einmal. */
+function eindeutig(werte: readonly string[], pfad: string, was: string): void {
+  werte.forEach((w, i) => {
+    if (werte.indexOf(w) !== i) ungueltig(`${pfad}[${String(i)}]`, `${was} ${w} doppelt`);
+  });
+}
+
+function aufmassZustand(x: unknown, pfad: string): AufmassZustand {
+  const z = objekt(x, pfad, ['aufmass']);
+  const p = `${pfad}.aufmass`;
+  const o = objekt(feld(z, 'aufmass'), p, [
+    'id',
+    'projektId',
+    'auftragsLvId',
+    'nummer',
+    'bezeichnung',
+    'datum',
+    'positionen',
+  ]);
+  const positionen = liste(feld(o, 'positionen'), `${p}.positionen`).map((zeile, i): Aufmassposition => {
+    const q = `${p}.positionen[${String(i)}]`;
+    const zo = objekt(zeile, q, ['positionId', 'mengenansatz', 'menge']);
+    return {
+      positionId: zeichenkette(feld(zo, 'positionId'), `${q}.positionId`) as PositionId,
+      mengenansatz: oderNull(feld(zo, 'mengenansatz'), (v) => mengenansatz(v, `${q}.mengenansatz`)),
+      menge: oderNull(feld(zo, 'menge'), (v) => dezimal(v, `${q}.menge`, 'menge') as Menge),
+    };
+  });
+  eindeutig(
+    positionen.map((zeile) => zeile.positionId),
+    `${p}.positionen`,
+    'Zeile zur Position',
+  );
+  const aufmass: Aufmass = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as AufmassId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    auftragsLvId: zeichenkette(
+      feld(o, 'auftragsLvId'),
+      `${p}.auftragsLvId`,
+    ) as AuftragsLeistungsverzeichnisId,
+    nummer: ganzAbEins(feld(o, 'nummer'), `${p}.nummer`),
+    bezeichnung: zeichenkette(feld(o, 'bezeichnung'), `${p}.bezeichnung`),
+    datum: textOderNull(feld(o, 'datum'), `${p}.datum`),
+    positionen,
+  };
+  return { aufmass };
+}
+
+function rechnungZustand(x: unknown, pfad: string): RechnungZustand {
+  const z = objekt(x, pfad, ['rechnung']);
+  const p = `${pfad}.rechnung`;
+  const o = objekt(feld(z, 'rechnung'), p, [
+    'id',
+    'projektId',
+    'auftragsLvId',
+    'nummer',
+    'art',
+    'eingang',
+    'rechnungsnummerAuftragnehmer',
+    'gefordert',
+    'aufmassIds',
+    'umlagen',
+    'sicherheitSatz',
+    'gewaehrleistungSatz',
+    'freigabe',
+  ]);
+  const betrag = (v: unknown, q: string): Betrag => dezimal(v, q, 'betrag') as Betrag;
+  const prozent = (v: unknown, q: string): Prozent => dezimal(v, q, 'prozent') as Prozent;
+  const gefordert = oderNull(feld(o, 'gefordert'), (v) => {
+    const q = `${p}.gefordert`;
+    const g = objekt(v, q, ['netto', 'brutto', 'zahlbetrag']);
+    const w = {
+      netto: oderNull(feld(g, 'netto'), (b) => betrag(b, `${q}.netto`)),
+      brutto: oderNull(feld(g, 'brutto'), (b) => betrag(b, `${q}.brutto`)),
+      zahlbetrag: oderNull(feld(g, 'zahlbetrag'), (b) => betrag(b, `${q}.zahlbetrag`)),
+    };
+    if (w.netto === null && w.brutto === null && w.zahlbetrag === null)
+      ungueltig(q, 'alle drei Beträge null (nichts erfasst heißt gefordert: null, D-44)');
+    return w;
+  });
+  const aufmassIds = liste(feld(o, 'aufmassIds'), `${p}.aufmassIds`).map(
+    (a, i) => zeichenkette(a, `${p}.aufmassIds[${String(i)}]`) as AufmassId,
+  );
+  eindeutig(aufmassIds, `${p}.aufmassIds`, 'Aufmaßblatt');
+  const rechnung: Rechnung = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as RechnungId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    auftragsLvId: zeichenkette(
+      feld(o, 'auftragsLvId'),
+      `${p}.auftragsLvId`,
+    ) as AuftragsLeistungsverzeichnisId,
+    nummer: ganzAbEins(feld(o, 'nummer'), `${p}.nummer`),
+    art: aufzaehlung(feld(o, 'art'), `${p}.art`, ['abschlag', 'schluss'] as const),
+    eingang: textOderNull(feld(o, 'eingang'), `${p}.eingang`),
+    rechnungsnummerAuftragnehmer: oderNull(feld(o, 'rechnungsnummerAuftragnehmer'), (v) =>
+      nichtLeer(v, `${p}.rechnungsnummerAuftragnehmer`),
+    ),
+    gefordert,
+    aufmassIds,
+    umlagen: liste(feld(o, 'umlagen'), `${p}.umlagen`).map((u, i): Umlage => {
+      const q = `${p}.umlagen[${String(i)}]`;
+      const uo = objekt(u, q, ['bezeichnung', 'satz']);
+      return {
+        bezeichnung: zeichenkette(feld(uo, 'bezeichnung'), `${q}.bezeichnung`),
+        satz: prozent(feld(uo, 'satz'), `${q}.satz`),
+      };
+    }),
+    sicherheitSatz: oderNull(feld(o, 'sicherheitSatz'), (v) => prozent(v, `${p}.sicherheitSatz`)),
+    gewaehrleistungSatz: oderNull(feld(o, 'gewaehrleistungSatz'), (v) =>
+      prozent(v, `${p}.gewaehrleistungSatz`),
+    ),
+    freigabe: oderNull(feld(o, 'freigabe'), (v) => {
+      const fo = objekt(v, `${p}.freigabe`, ['zahlbetrag']);
+      return { zahlbetrag: betrag(feld(fo, 'zahlbetrag'), `${p}.freigabe.zahlbetrag`) };
+    }),
+  };
+  return { rechnung };
+}
+
+const KOSTENERMITTLUNGSSTUFEN: readonly Kostenermittlungsstufe[] = [
+  'kostenrahmen',
+  'kostenschaetzung',
+  'kostenberechnung',
+  'kostenanschlag',
+  'kostenfeststellung',
+];
+
+function kostenermittlungZustand(x: unknown, pfad: string): KostenermittlungZustand {
+  const z = objekt(x, pfad, ['kostenermittlung']);
+  const p = `${pfad}.kostenermittlung`;
+  const o = objekt(feld(z, 'kostenermittlung'), p, ['id', 'projektId', 'stufe', 'name', 'eintraege']);
+  const eintraege = liste(feld(o, 'eintraege'), `${p}.eintraege`).map((e, i): Kostenermittlungseintrag => {
+    const q = `${p}.eintraege[${String(i)}]`;
+    const eo = objekt(e, q, ['nummer', 'betrag'], ['bemerkung']);
+    return {
+      nummer: kostengruppe(feld(eo, 'nummer'), `${q}.nummer`),
+      betrag: dezimal(feld(eo, 'betrag'), `${q}.betrag`, 'betrag') as Betrag,
+      ...optional(eo, 'bemerkung', (v) => nichtLeer(v, `${q}.bemerkung`)),
+    };
+  });
+  // Nach Nummer aufsteigend und eindeutig (enge Lesart des Vertrags); dreistellige Nummern vergleichen sich als Text.
+  eintraege.forEach((e, i) => {
+    const vorige = eintraege[i - 1];
+    if (vorige !== undefined && vorige.nummer >= e.nummer)
+      ungueltig(`${p}.eintraege[${String(i)}].nummer`, 'nach Nummer aufsteigend und eindeutig erwartet');
+  });
+  const kostenermittlung: Kostenermittlung = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as KostenermittlungId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    stufe: aufzaehlung(feld(o, 'stufe'), `${p}.stufe`, KOSTENERMITTLUNGSSTUFEN),
+    name: zeichenkette(feld(o, 'name'), `${p}.name`),
+    eintraege,
+  };
+  return { kostenermittlung };
+}
+
 /** Alle Befehlsnamen des Vertrags. Der Typ erzwingt Vollständigkeit: ein neuer Befehl bricht die Übersetzung. */
 const BEFEHLSARTEN: Record<Befehlsart, true> = {
   ProjektAnlegen: true,
@@ -771,7 +991,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   Rueckgaengig: true,
   Wiederholen: true,
   MengenansatzSetzen: true,
-  // v1.4: mechanisch angepasst, Folgeticket (Ticket 79; die ChangeSets weist `anwenden` bis dahin mit `unbekannt` ab)
+  // v1.4 (Ticket 70; gespeichert seit Ticket 79)
   NachtragUebernehmen: true,
   NachtragsangabenSetzen: true,
   KostengruppeSetzen: true,
@@ -824,7 +1044,7 @@ const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
   LeistungsverzeichnisAnlegen: ['inhalt', 'knoten'],
   AngebotAnlegen: ['angebot', 'positionen'],
   AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
-  AufmassAnlegen: ['aufmass', 'positionen'], // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
+  AufmassAnlegen: ['aufmass', 'positionen'],
 };
 
 /**
@@ -862,6 +1082,9 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     'leistungsverzeichnis',
     'angebot',
     'auftrags-leistungsverzeichnis',
+    'aufmass',
+    'rechnung',
+    'kostenermittlung',
   ]);
   const befehl = feld(o, 'befehl');
   const b = objekt(
@@ -933,7 +1156,7 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
       'auftragsLeistungsverzeichnisse',
       'protokoll',
     ],
-    ['lvStaende'],
+    ['lvStaende', 'aufmasse', 'rechnungen', 'kostenermittlungen'],
   );
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
   const p = projekt(feld(o, 'projekt'), '$.projekt');
@@ -956,6 +1179,17 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...optional(o, 'lvStaende', (v) =>
       liste(v, '$.lvStaende').map((s, i) => lvStand(s, `$.lvStaende[${String(i)}]`)),
     ),
+    ...optional(o, 'aufmasse', (v) =>
+      liste(v, '$.aufmasse').map((x, i) => aufmassZustand(x, `$.aufmasse[${String(i)}]`)),
+    ),
+    ...optional(o, 'rechnungen', (v) =>
+      liste(v, '$.rechnungen').map((x, i) => rechnungZustand(x, `$.rechnungen[${String(i)}]`)),
+    ),
+    ...optional(o, 'kostenermittlungen', (v) =>
+      liste(v, '$.kostenermittlungen').map((x, i) =>
+        kostenermittlungZustand(x, `$.kostenermittlungen[${String(i)}]`),
+      ),
+    ),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [
@@ -964,6 +1198,9 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...datei.auftragsLeistungsverzeichnisse.map((z) => z.auftragsLeistungsverzeichnis.projektId),
     ...datei.protokoll.map((e) => e.projektId),
     ...(datei.lvStaende ?? []).map((s) => s.zustand.leistungsverzeichnis.projektId),
+    ...(datei.aufmasse ?? []).map((z) => z.aufmass.projektId),
+    ...(datei.rechnungen ?? []).map((z) => z.rechnung.projektId),
+    ...(datei.kostenermittlungen ?? []).map((z) => z.kostenermittlung.projektId),
   ].find((id) => id !== p.id);
   if (fremd !== undefined) ungueltig('$', `enthält Daten des fremden Projekts ${fremd}`);
   pruefeHistorienbezuege(datei.protokoll);

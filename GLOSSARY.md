@@ -275,6 +275,9 @@ Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je 
 ### Aufmaßposition
 Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (oder keiner) und die Menge dieses Blatts. Die Menge rechnet die App aus dem Mengenansatz (Paket `mengen`); gespeichert werden beide. Im Code `Aufmassposition`.
 
+### Aufmaßbefund
+Befund zu einem Aufmaßblatt gegen sein Auftrags-LV: eine Zeile ohne Position im Auftrags-LV, zu einer Gliederung oder einem Hinweistext, zu einer Zuschlagsposition (wird nicht aufgemessen), zu einer Position ohne Einheitspreis oder ohne Menge, oder ein Blatt eines anderen Auftrags-LV. Ein Aufmaßbefund sperrt nie (U5); Soll/Ist und Rechnung lassen solche Zeilen weg. Im Code `Aufmassbefund`, `aufmassPruefen` (Paket `abrechnung`).
+
 ### Rechnung
 Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
 
@@ -316,6 +319,9 @@ Die Angaben, die ein LV zum Nachtrags-LV machen: das Auftrags-LV, zu dem der Nac
 
 ### Nachtragsstatus
 Stand eines Nachtrags: **angemeldet** (der Auftragnehmer hat die geänderte oder zusätzliche Leistung angezeigt), **angeboten** (das Nachtragsangebot liegt vor), **beauftragt** (vom Auftraggeber beauftragt und ins Auftrags-LV übernommen) oder **abgelehnt**. Nur ein beauftragter Nachtrag geht in eine Rechnung. Im Code `Nachtragsstatus`.
+
+### Nachtrag übernehmen
+Die Übernahme eines beauftragten Nachtrags ins Auftrags-LV: eine neue Gliederung „Nachtrag <Nummer>“ am Ende der obersten Ebene (Los oder Titel wie die Gliederungen dort) mit der nächsten freien Ordnungszahl, darunter der Baum des Nachtrags-LV mit seinen Kennungen und seinen Ordnungszahlen, vor die die Ordnungszahl der neuen Gliederung tritt (`01.0010` → `04.01.0010`), und den Preisen des Nachtragsangebots. Wahl-Alternativen entfallen, ein Los des Nachtrags-LV wird Titel. Was dabei auffällt (nicht angeboten, entfallene Alternativen, ignorierter Nachlass, Ordnungszahl außerhalb der Maske), ist eine **Nachtragswarnung**; der Befehl entsteht trotzdem. Passen Nachtragsstatus und Übernahme nicht zusammen (beauftragt, aber nicht übernommen, oder umgekehrt), ist das ein **Nachtragsbefund**. Im Code `nachtragUebernehmen`, `Nachtragswarnung`, `nachtragsbefunde`, `Nachtragsbefund` (Paket `abrechnung`), Befehl `NachtragUebernehmen`.
 
 ---
 

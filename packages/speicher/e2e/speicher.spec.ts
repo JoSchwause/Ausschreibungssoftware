@@ -2,12 +2,12 @@
 // Browser-Tests des Speichers: echter Worker, SQLite-WASM im OPFS (VFS opfs-sahpool), ohne COOP/COEP-Header.
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, devices, expect, test, type Page } from '@playwright/test';
 import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
-import type { Menge, Position } from '@tethys/vertrag';
+import type { Aufmass, Menge, Position, Projektdatei } from '@tethys/vertrag';
 import type { Phasenmessung, Pruefstand, PruefSchritt } from '../harness/main';
 import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
@@ -501,6 +501,60 @@ test.describe('LV-Stand im OPFS (Ticket 43, ADR 0006)', () => {
     });
     // Das LV selbst trägt die spätere Änderung, der Stand nicht.
     expect((await ps(page, 'lvPruefen', DB, lvId, f.lv)).gleich).toBe(false);
+  });
+});
+
+test.describe('Vertrag v1.4 im OPFS (Ticket 79)', () => {
+  test('Projektdatei der Version 5 importieren, Aufmaßblatt ändern, neu laden: Stand und Regeln bleiben', async ({
+    page,
+  }) => {
+    const v5 = readFileSync(new URL('../fixtures/projektdatei-v5.json', import.meta.url), 'utf8');
+    const d = JSON.parse(v5) as Projektdatei;
+    const blatt = d.aufmasse?.[1]?.aufmass as Aufmass; // Blatt 2, in der Schlussrechnung
+    const projekt = d.projekt.id;
+    const aufBlatt = { art: 'aufmass', id: blatt.id } as const;
+    const geaendert: Aufmass = { ...blatt, bezeichnung: 'Blatt 2, Erdarbeiten (erfunden)' };
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect(await ps(page, 'importieren', DB, v5)).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', DB, projekt)).text === v5).toBe(true);
+    // Ein Blatt in einer Rechnung lässt sich nicht löschen (Q5), ändern schon.
+    const loeschen = await ps(
+      page,
+      'anwendenEinzeln',
+      DB,
+      eintrag(900, projekt, aufBlatt, { art: 'AufmassLoeschen' }),
+      { art: 'aufmass', aufmassId: blatt.id, aufmass: { vorher: blatt, nachher: null } },
+    );
+    expect(loeschen).toMatchObject({ ok: false, code: 'konflikt' });
+    expect(
+      await ps(
+        page,
+        'anwendenEinzeln',
+        DB,
+        eintrag(901, projekt, aufBlatt, {
+          art: 'AufmasskopfSetzen',
+          bezeichnung: geaendert.bezeichnung,
+          datum: null,
+        }),
+        { art: 'aufmass', aufmassId: blatt.id, aufmass: { vorher: blatt, nachher: geaendert } },
+      ),
+    ).toEqual({ ok: true });
+    await ps(page, 'schliessen', DB);
+
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    const nachher = await ps(page, 'exportieren', DB, projekt);
+    if (nachher.text === undefined) throw new Error(`Export fehlgeschlagen: ${JSON.stringify(nachher)}`);
+    const e = JSON.parse(nachher.text) as Projektdatei;
+    expect(e.aufmasse?.map((z) => z.aufmass)).toEqual([d.aufmasse?.[0]?.aufmass, geaendert]);
+    expect(e.rechnungen).toEqual(d.rechnungen);
+    expect(e.kostenermittlungen).toEqual(d.kostenermittlungen);
+    expect(e.protokoll.map((x) => x.befehl.art).slice(-2)).toEqual([
+      'KostenermittlungseintragSetzen',
+      'AufmasskopfSetzen',
+    ]);
   });
 });
 

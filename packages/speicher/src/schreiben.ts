@@ -22,9 +22,11 @@ import type {
   Aenderung,
   Aenderungen,
   AngebotChangeSet,
+  AufmassChangeSet,
   AuftragsLvChangeSet,
   Gesamtsummen,
   Knoten,
+  KostenermittlungChangeSet,
   LeistungsverzeichnisId,
   LvChangeSet,
   LvStand,
@@ -34,6 +36,7 @@ import type {
   ProjektChangeSet,
   ProjektId,
   Protokolleintrag,
+  RechnungChangeSet,
   Summenaenderung,
   Summenstand,
   Zeitstempel,
@@ -43,28 +46,50 @@ import { kanonischKompakt } from './kanonisch';
 import {
   leseAngebotKopf,
   leseAngebotposition,
+  leseAufmass,
   leseAuftragsLvKopf,
   leseKnoten1,
+  leseKostenermittlung,
   leseLv,
   leseLvKopf,
   leseLvStand,
   lesePapierkorbeintrag,
   leseProjekt,
+  leseRechnung,
   leseSummen,
 } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
 import {
   angebotspositionWerte,
+  aufmassWerte,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
+  LV_KENNZEICHEN_SPALTEN,
+  lvKennzeichenSpalten,
+  kostenermittlungWerte,
   nachlassSpalten,
+  rechnungWerte,
 } from './zeilen';
+import {
+  pruefeAufmassAnlegen,
+  pruefeAufmassLoeschen,
+  pruefeAuftragsLvKopf,
+  pruefeEntfernteAufmasspositionen,
+  pruefeFreigabereihenfolge,
+  pruefeNachtragsbezug,
+  pruefeRechnungAnlegen,
+  pruefeRechnungLoeschen,
+  pruefeRechnungsaufmasse,
+} from './bezuege';
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
+/** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
+const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
+const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
 
@@ -147,7 +172,8 @@ function schreibeBieter(db: Datenbank, p: Projekt): void {
  * mit: `protokoll.projekt_id` verweist auf das Projekt (seit Schema 1; Schema 2 lässt das so, Ticket 38). Der Eintrag
  * des Löschbefehls selbst wird deshalb nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt,
  * dem er gehört. Das ist die einzige Ausnahme von „ein Eintrag je Befehl“ (D-31.1).
- * LVs, Angebote und Auftrags-LV verhindern das Löschen (`konflikt`).
+ * LVs, Angebote, Auftrags-LV und (v1.4) Aufmaßblätter, Rechnungen und Kostenermittlungen verhindern das Löschen
+ * (`konflikt`).
  */
 export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
   const { vorher, nachher } = cs.projekt;
@@ -194,6 +220,9 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
     `SELECT 'LV' AS art, id FROM leistungsverzeichnis WHERE projekt_id = ?1
      UNION ALL SELECT 'Angebot', id FROM angebot WHERE projekt_id = ?1
      UNION ALL SELECT 'Auftrags-LV', id FROM auftrags_lv WHERE projekt_id = ?1
+     UNION ALL SELECT 'Aufmaßblatt', id FROM aufmass WHERE projekt_id = ?1
+     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE projekt_id = ?1
+     UNION ALL SELECT 'Kostenermittlung', id FROM kostenermittlung WHERE projekt_id = ?1
      ORDER BY 1, 2`,
     id,
   );
@@ -355,7 +384,14 @@ export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenst
  * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `wann` ist der Zeitpunkt des
  * Protokolleintrags; ein LV-Stand bekommt ihn als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
  */
-export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, wann?: Zeitstempel): void {
+export function wendeLvAn(
+  db: Datenbank,
+  cs: LvChangeSet,
+  projektId: ProjektId,
+  wann?: Zeitstempel,
+  /** v1.4: Verweis der Nachtragsangaben prüfen; der Import prüft alle am Ende (das Auftrags-LV kommt dort später). */
+  nachtragPruefen = true,
+): void {
   const id = cs.leistungsverzeichnisId;
   const gespeichert = leseLvKopf(db, id);
   if (cs.kopf === null) {
@@ -374,7 +410,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
-    const kopfdaten = kopfdatenSpalten(nachher);
+    const kopfdaten = [...kopfdatenSpalten(nachher), ...lvKennzeichenSpalten(nachher)];
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {
@@ -385,8 +421,8 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
       }
       db.ausfuehren(
         `INSERT INTO leistungsverzeichnis (id, projekt_id, name, oz_maske, mwst_satz, nachlass_art, nachlass_wert,
-           ${KOPFDATEN_SPALTEN.join(', ')})
-         VALUES (?, ?, ?, ?, ?, ?, ?, ${KOPFDATEN_SPALTEN.map(() => '?').join(', ')})`,
+           ${LV_KOPF_SPALTEN.join(', ')})
+         VALUES (?, ?, ?, ?, ?, ?, ?, ${LV_KOPF_SPALTEN.map(() => '?').join(', ')})`,
         [
           id,
           nachher.projektId,
@@ -406,7 +442,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
         return abbruch('unbekannt', 'Ein LV wechselt nicht das Projekt.');
       db.ausfuehren(
         `UPDATE leistungsverzeichnis SET name = ?, oz_maske = ?, mwst_satz = ?, nachlass_art = ?, nachlass_wert = ?,
-           ${KOPFDATEN_SETZEN}
+           ${LV_KOPF_SETZEN}
          WHERE id = ?`,
         [
           nachher.name,
@@ -419,6 +455,7 @@ export function wendeLvAn(db: Datenbank, cs: LvChangeSet, projektId: ProjektId, 
         ],
       );
     }
+    if (nachtragPruefen) pruefeNachtragsbezug(db, nachher);
   }
   wendeKnotenAn(db, id, cs.knoten, () => {
     pruefeSummenvorher(db, id, cs.summen, cs.kopf?.vorher === null, kennungen(cs.knoten.entfernt));
@@ -831,6 +868,7 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
       return abbruch('unbekannt', 'ChangeSet: auftragsLeistungsverzeichnisId und Kopf.id weichen ab.');
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
+    pruefeAuftragsLvKopf(nachher);
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
     const kopfdaten = kopfdatenSpalten(nachher);
     if (vorher === null) {
@@ -899,6 +937,7 @@ export function wendeAuftragsLvAn(db: Datenbank, cs: AuftragsLvChangeSet, projek
   }
   wendeKnotenAn(db, id, cs.knoten, () => {
     pruefeSummenvorher(db, id, cs.summen, cs.kopf?.vorher === null, kennungen(cs.knoten.entfernt));
+    pruefeEntfernteAufmasspositionen(db, id, cs.knoten.entfernt);
   });
   wendeSummenAn(db, id, cs.summen);
 }
@@ -914,8 +953,156 @@ function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: Pr
   if (gespeichert.projektId !== projektId)
     return abbruch('unbekannt', `Auftrags-LV ${id} gehört zu einem anderen Projekt.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Auftrags-LV-Kopfs');
+  // v1.4 (Q5): Aufmaßblätter, Rechnungen und Nachtragsangaben eines LV verweisen auf das Auftrags-LV.
+  abhaengig(
+    db,
+    `Auftrags-LV ${id}`,
+    `SELECT 'Aufmaßblatt' AS art, id FROM aufmass WHERE auftrags_lv_id = ?1
+     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE auftrags_lv_id = ?1
+     UNION ALL SELECT 'LV mit Nachtragsangaben', id FROM leistungsverzeichnis
+       WHERE json_extract(nachtrag, '$.auftragsLvId') = ?1
+     ORDER BY 1, 2`,
+    id,
+  );
   loescheKnotenUndSummen(db, id, cs.knoten, cs.summen, `Auftrags-LV ${id}`);
   db.ausfuehren('DELETE FROM auftrags_lv WHERE id = ?', [id]);
+}
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4; D-36 (8)) -------------------------------------------------
+//
+// Ihre ChangeSets tragen das ganze Aggregat vorher und nachher, ohne Summen. Gemeinsam: `vorher: null` legt an (die
+// Kennung darf es noch nicht geben), `nachher: null` löscht, beide gesetzt ändern; `vorher` muss kanonisch gleich dem
+// gespeicherten Stand sein (`konflikt`), ein unbekanntes Aggregat zu ändern oder zu löschen ist `nicht-gefunden` (wie bei
+// LV und Angebot). Kennung und Projekt müssen zu ChangeSet und Protokolleintrag passen, Auftrags-LV und Nummer bleiben
+// nach dem Anlegen fest (D-70.9); sonst ist das ChangeSet ein Programmfehler (`unbekannt`). Die Bezüge zu anderen
+// Aggregaten prüft `bezuege.ts`.
+
+interface GanzesAggregat {
+  readonly id: string;
+  readonly projektId: ProjektId;
+}
+
+/** Prüft ein ChangeSet eines ganzen Aggregats gegen sich selbst, den Protokolleintrag und den gespeicherten Stand. */
+function pruefeGanzesAggregat<T extends GanzesAggregat>(
+  a: Aenderung<T>,
+  id: string,
+  projektId: ProjektId,
+  gespeichert: T | null,
+  was: string,
+  fest: readonly (keyof T & string)[],
+): void {
+  const { vorher, nachher } = a;
+  if (vorher === null && nachher === null) abbruch('unbekannt', `ChangeSet: ${was} ohne vorher und nachher.`);
+  for (const seite of [vorher, nachher]) {
+    if (seite === null) continue;
+    if (seite.id !== id) abbruch('unbekannt', `ChangeSet: Die Kennung von ${was} weicht ab (${seite.id}).`);
+    if (seite.projektId !== projektId)
+      abbruch('unbekannt', `ChangeSet: ${was} gehört zu einem anderen Projekt als der Protokolleintrag.`);
+  }
+  if (vorher === null) {
+    if (gespeichert !== null) konflikt(`${was} existiert bereits, das ChangeSet`);
+    return;
+  }
+  if (gespeichert === null) abbruch('nicht-gefunden', `${was} ist nicht vorhanden.`);
+  if (!gleich(gespeichert, vorher)) konflikt(`der Vorherstand von ${was}`);
+  if (nachher !== null)
+    for (const f of fest)
+      if (!gleich(vorher[f], nachher[f])) abbruch('unbekannt', `ChangeSet: ${f} von ${was} bleibt fest.`);
+}
+
+/** Blatt- und Rechnungsnummer: ganze Zahl ab 1 (Form, prüft der Ausführer; hier nur gegen Programmfehler). */
+function pruefeNummer(nummer: number, was: string): void {
+  if (!Number.isSafeInteger(nummer) || nummer < 1)
+    abbruch('unbekannt', `ChangeSet: Die Nummer von ${was} ist keine ganze Zahl ab 1 (${String(nummer)}).`);
+}
+
+/** Aufmaßblatt anlegen, ändern oder löschen (`AufmassChangeSet`). */
+export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: ProjektId): void {
+  const id = cs.aufmassId;
+  const was = `Aufmaßblatt ${id}`;
+  const { vorher, nachher } = cs.aufmass;
+  pruefeGanzesAggregat(cs.aufmass, id, projektId, leseAufmass(db, id), was, ['auftragsLvId', 'nummer']);
+  if (nachher === null) {
+    if (vorher !== null) pruefeAufmassLoeschen(db, vorher);
+    db.ausfuehren('DELETE FROM aufmass WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    pruefeNummer(nachher.nummer, was);
+    pruefeAufmassAnlegen(db, nachher);
+    db.ausfuehren(
+      `INSERT INTO aufmass (id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      aufmassWerte(nachher),
+    );
+    return;
+  }
+  db.ausfuehren('UPDATE aufmass SET bezeichnung = ?, datum = ?, positionen = ? WHERE id = ?', [
+    nachher.bezeichnung,
+    nachher.datum,
+    kanonischKompakt(nachher.positionen),
+    id,
+  ]);
+}
+
+/**
+ * Rechnung anlegen, ändern oder löschen (`RechnungChangeSet`). Vor dem Schreiben die Bezüge (Auftrags-LV, Nummer,
+ * `aufmassIds`) und die Regeln „keine spätere freigegebene“ beim Anlegen und Löschen, danach die Invariante der Freigaben
+ * (D-34 (7)): Sie fängt das Freigeben und das Aufheben der Freigabe außer der Reihe.
+ */
+export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId: ProjektId): void {
+  const id = cs.rechnungId;
+  const was = `Rechnung ${id}`;
+  const { vorher, nachher } = cs.rechnung;
+  pruefeGanzesAggregat(cs.rechnung, id, projektId, leseRechnung(db, id), was, ['auftragsLvId', 'nummer']);
+  if (nachher === null) {
+    if (vorher !== null) pruefeRechnungLoeschen(db, vorher);
+    db.ausfuehren('DELETE FROM rechnung WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    pruefeNummer(nachher.nummer, was);
+    pruefeRechnungAnlegen(db, nachher);
+  }
+  pruefeRechnungsaufmasse(db, nachher);
+  if (vorher === null)
+    db.ausfuehren(
+      'INSERT INTO rechnung (id, projekt_id, auftrags_lv_id, nummer, angaben) VALUES (?, ?, ?, ?, ?)',
+      rechnungWerte(nachher),
+    );
+  else db.ausfuehren('UPDATE rechnung SET angaben = ? WHERE id = ?', [rechnungWerte(nachher)[4] ?? null, id]);
+  pruefeFreigabereihenfolge(db, nachher.auftragsLvId);
+}
+
+/** Kostenermittlung anlegen, ändern oder löschen (`KostenermittlungChangeSet`); an ihr hängt nichts. */
+export function wendeKostenermittlungAn(
+  db: Datenbank,
+  cs: KostenermittlungChangeSet,
+  projektId: ProjektId,
+): void {
+  const id = cs.kostenermittlungId;
+  const was = `Kostenermittlung ${id}`;
+  const { vorher, nachher } = cs.kostenermittlung;
+  pruefeGanzesAggregat(cs.kostenermittlung, id, projektId, leseKostenermittlung(db, id), was, []);
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM kostenermittlung WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    if (leseProjekt(db, projektId) === null)
+      abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+    db.ausfuehren(
+      'INSERT INTO kostenermittlung (id, projekt_id, stufe, name, eintraege) VALUES (?, ?, ?, ?, ?)',
+      kostenermittlungWerte(nachher),
+    );
+    return;
+  }
+  db.ausfuehren('UPDATE kostenermittlung SET stufe = ?, name = ?, eintraege = ? WHERE id = ?', [
+    nachher.stufe,
+    nachher.name,
+    kanonischKompakt(nachher.eintraege),
+    id,
+  ]);
 }
 
 // --- Protokoll -------------------------------------------------------------------------------------------------

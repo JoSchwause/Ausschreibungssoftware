@@ -1,6 +1,6 @@
 # 83: M3: GAEB X31 (Mengenermittlung) lesen und schreiben
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: M3 · Paket: `packages/gaeb` (dazu `werkzeuge/xsd-gegenpruefung.mjs` im Paket)
 Blocked by: 70, 73
@@ -114,6 +114,9 @@ und Faktor, 30–31 Formel, 32–69 Werte bzw. Ausdruck (`=` am Ende schließt a
   Dateien, 2274 Tests bestanden, 3 übersprungen; Fixtures 29/29), XSD-Gegenprüfung 52 von 52.
 
 ## Answer
+
+Merged: 05f8f0c in integration/welle-5
+
 
 Umgesetzt in `packages/gaeb` (Branch `welle-5/83-x31`, letzter Commit vor dem Merge e93c7ba, Merge a537073). Öffentliche API
 (`@tethys/gaeb`):

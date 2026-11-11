@@ -6,7 +6,19 @@
 import type {
   AngebotId,
   AngebotZustand,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvUebersicht,
+  AuftragsLvZustand,
+  AufmassId,
+  AufmassKopf,
+  AufmassZustand,
   ChangeSet,
+  KostenermittlungId,
+  KostenermittlungUebersicht,
+  KostenermittlungZustand,
+  Rechnung,
+  RechnungId,
+  RechnungZustand,
   Ergebnis,
   LeistungsverzeichnisId,
   LvStand,
@@ -26,13 +38,21 @@ import { kanonischesJson } from './kanonisch';
 import { protokollform } from './kurzfassung';
 import {
   leseAngebot,
+  leseAufmass,
+  leseAuftragsLv,
+  leseKostenermittlung,
   leseLv,
   leseLvKopf,
   leseLvStaende,
   leseLvStand,
   leseProjekt,
   leseProtokoll,
+  leseRechnung,
+  leseRechnungen,
+  listeAufmasse,
+  listeAuftragsLvs,
   listeIds,
+  listeKostenermittlungen,
   listeLvs,
   listeProjekte,
 } from './lesen';
@@ -41,13 +61,15 @@ import { baueProjektdatei, leseProjektdatei, schreibeProjektdatei } from './proj
 import {
   schreibeProtokolleintrag,
   wendeAngebotAn,
+  wendeAufmassAn,
   wendeAuftragsLvAn,
+  wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
+  wendeRechnungAn,
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
-import { pruefeV14 } from './vertrag-v14'; // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -60,8 +82,11 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
           ? { art: 'angebot', id: cs.angebotId as string }
           : cs.art === 'auftrags-leistungsverzeichnis'
             ? { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string }
-            : // v1.4: mechanisch angepasst, Folgeticket (Ticket 79 speichert Aufmaß, Rechnung, Kostenermittlung)
-              abbruch('unbekannt', `ChangeSet ${cs.art} (Vertrag v1.4) speichert erst Ticket 79.`);
+            : cs.art === 'aufmass'
+              ? { art: 'aufmass', id: cs.aufmassId as string }
+              : cs.art === 'rechnung'
+                ? { art: 'rechnung', id: cs.rechnungId as string }
+                : { art: 'kostenermittlung', id: cs.kostenermittlungId as string };
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',
@@ -175,10 +200,15 @@ export class SpeicherKern {
 
   lvAuflisten(projektId: ProjektId): Ergebnis<readonly LvUebersicht[], Speicherfehler> {
     return this.#fange(() => {
-      if (leseProjekt(this.#db, projektId) === null)
-        abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+      this.#projektDa(projektId);
       return listeLvs(this.#db, projektId);
     });
+  }
+
+  /** Bricht mit `nicht-gefunden` ab, wenn es das Projekt nicht gibt (Listen eines Projekts). */
+  #projektDa(projektId: ProjektId): void {
+    if (this.#db.zeilen('SELECT 1 AS da FROM projekt WHERE id = ?', [projektId]).length === 0)
+      abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
   }
 
   lvLaden(id: LeistungsverzeichnisId): Ergebnis<LvZustand, Speicherfehler> {
@@ -220,6 +250,88 @@ export class SpeicherKern {
     );
   }
 
+  /** `AuftragsLvRepository.auflisten` (v1.4): die Auftrags-LVs des Projekts ohne Knoten, nach Name. */
+  auftragsLvAuflisten(projektId: ProjektId): Ergebnis<readonly AuftragsLvUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return listeAuftragsLvs(this.#db, projektId);
+    });
+  }
+
+  /** `AuftragsLvRepository.laden` (v1.4). */
+  auftragsLvLaden(id: AuftragsLeistungsverzeichnisId): Ergebnis<AuftragsLvZustand, Speicherfehler> {
+    return this.#fange(
+      () =>
+        leseAuftragsLv(this.#db, id) ?? abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`),
+    );
+  }
+
+  /** Bricht mit `nicht-gefunden` ab, wenn es das Auftrags-LV nicht gibt (Listen eines Auftrags-LV). */
+  #auftragsLvDa(id: AuftragsLeistungsverzeichnisId): void {
+    if (this.#db.zeilen('SELECT 1 AS da FROM auftrags_lv WHERE id = ?', [id]).length === 0)
+      abbruch('nicht-gefunden', `Auftrags-LV ${id} ist nicht vorhanden.`);
+  }
+
+  /** `AufmassRepository.auflisten` (v1.4): die Blätter des Auftrags-LV ohne Zeilen, nach Blattnummer. */
+  aufmasseAuflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Ergebnis<readonly AufmassKopf[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#auftragsLvDa(auftragsLvId);
+      return listeAufmasse(this.#db, auftragsLvId);
+    });
+  }
+
+  /** `AufmassRepository.laden` (v1.4). */
+  aufmassLaden(id: AufmassId): Ergebnis<AufmassZustand, Speicherfehler> {
+    return this.#fange(() => {
+      const aufmass = leseAufmass(this.#db, id);
+      return aufmass === null
+        ? abbruch('nicht-gefunden', `Aufmaßblatt ${id} ist nicht vorhanden.`)
+        : { aufmass };
+    });
+  }
+
+  /** `RechnungRepository.auflisten` (v1.4): die Rechnungen des Auftrags-LV, ganz, nach Nummer. */
+  rechnungenAuflisten(
+    auftragsLvId: AuftragsLeistungsverzeichnisId,
+  ): Ergebnis<readonly Rechnung[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#auftragsLvDa(auftragsLvId);
+      return leseRechnungen(this.#db, auftragsLvId);
+    });
+  }
+
+  /** `RechnungRepository.laden` (v1.4). */
+  rechnungLaden(id: RechnungId): Ergebnis<RechnungZustand, Speicherfehler> {
+    return this.#fange(() => {
+      const rechnung = leseRechnung(this.#db, id);
+      return rechnung === null
+        ? abbruch('nicht-gefunden', `Rechnung ${id} ist nicht vorhanden.`)
+        : { rechnung };
+    });
+  }
+
+  /** `KostenermittlungRepository.auflisten` (v1.4): die Kostenermittlungen des Projekts ohne Einträge, nach Name. */
+  kostenermittlungenAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly KostenermittlungUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return listeKostenermittlungen(this.#db, projektId);
+    });
+  }
+
+  /** `KostenermittlungRepository.laden` (v1.4). */
+  kostenermittlungLaden(id: KostenermittlungId): Ergebnis<KostenermittlungZustand, Speicherfehler> {
+    return this.#fange(() => {
+      const kostenermittlung = leseKostenermittlung(this.#db, id);
+      return kostenermittlung === null
+        ? abbruch('nicht-gefunden', `Kostenermittlung ${id} ist nicht vorhanden.`)
+        : { kostenermittlung };
+    });
+  }
+
   protokoll(projektId: ProjektId): Ergebnis<readonly Protokolleintrag[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)
@@ -256,7 +368,6 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        pruefeV14(changeSet); // v1.4: mechanisch angepasst, Folgeticket (Ticket 79)
         switch (changeSet.art) {
           case 'projekt':
             wendeProjektAn(this.#db, changeSet);
@@ -269,6 +380,15 @@ export class SpeicherKern {
             break;
           case 'auftrags-leistungsverzeichnis':
             wendeAuftragsLvAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'aufmass':
+            wendeAufmassAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'rechnung':
+            wendeRechnungAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'kostenermittlung':
+            wendeKostenermittlungAn(this.#db, changeSet, eintrag.projektId);
             break;
         }
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er

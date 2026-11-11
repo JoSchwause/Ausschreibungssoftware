@@ -150,6 +150,14 @@ describe('Client über Worker-Host', () => {
         'angebotLaden',
         'lvStaendeAuflisten',
         'lvStandLaden',
+        'auftragsLvAuflisten',
+        'auftragsLvLaden',
+        'aufmasseAuflisten',
+        'aufmassLaden',
+        'rechnungenAuflisten',
+        'rechnungLaden',
+        'kostenermittlungenAuflisten',
+        'kostenermittlungLaden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',
@@ -288,7 +296,6 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
     expect(Object.getOwnPropertyNames(kern)).toEqual([]);
     expect(SpeicherKern.prototype).not.toHaveProperty('db');
     const speicher = speicherUeberTransport(direktTransport(kern), null);
-    // v1.4: mechanisch angepasst, Folgeticket (Ticket 79): aufmasse, auftragsLeistungsverzeichnisse, kostenermittlungen, rechnungen
     expect(Object.keys(speicher).sort()).toEqual([
       'angebote',
       'anwenden',
