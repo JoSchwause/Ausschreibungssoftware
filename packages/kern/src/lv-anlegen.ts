@@ -14,7 +14,7 @@ import type {
   LvChangeSet,
   LvZustand,
 } from '@tethys/vertrag';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { anlegeHinweise } from './hinweise';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
@@ -47,7 +47,7 @@ export function leistungsverzeichnisAnlegen(
   const stamm = ohneWurzel(ohneKnoten(inhalt));
   const knoten = kanonisch(
     b.id,
-    inhalt.knoten.map((k) => (k.art === 'position' ? positionMitEinheiten(k) : k)),
+    inhalt.knoten.map((k) => (k.art === 'position' ? positionNormal(k) : k)),
   );
   const summen = summenBerechnen({ id: b.id, knoten, nachlass: inhalt.nachlass, mwstSatz: inhalt.mwstSatz });
   const hinweise = anlegeHinweise(inhalt.ozMaske, summen.gesamt);

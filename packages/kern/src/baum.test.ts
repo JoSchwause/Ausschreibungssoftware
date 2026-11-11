@@ -686,34 +686,8 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9): ZUSTAENDIGES_TICKET nennt nur MengenansatzSetzen', () => {
-    // v1.3: mechanisch angepasst, Folgeticket (Ticket 56: wieder leer)
-    expect(ZUSTAENDIGES_TICKET).toEqual({ MengenansatzSetzen: 'M2 (Ticket 56)' });
-  });
-
-  // v1.3: mechanisch angepasst, Folgeticket (Ticket 56 ersetzt diesen Test durch die Logik)
-  it('v1.3: MengenansatzSetzen, der Einfügeort hinter-gliederung und PositionAnlegen mit Ansatz werden vorläufig abgewiesen', () => {
-    const p1 = id.pos('P1');
-    expect(
-      fehlercode(z, { art: 'MengenansatzSetzen', positionId: p1, mengenansatz: null, menge: null }),
-    ).toBe('befehl-nicht-zustaendig');
-    const hinterT1: Einfuegeort = { art: 'hinter-gliederung', gliederungId: id.titel('T1') };
-    expect(fehlercode(z, titel('T2', hinterT1))).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, position('P9', hinterT1))).toBe('befehl-nicht-zustaendig');
-    const mitAnsatz: LvBefehl = {
-      art: 'PositionAnlegen',
-      id: id.pos('P9'),
-      ort: ende('T1'),
-      daten: {
-        ...positionsdaten('P9'),
-        mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '1', variable: null }],
-      },
-    };
-    expect(fehlercode(z, mitAnsatz)).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, verschiebe('P1', hinterT1))).toBe('befehl-nicht-zustaendig');
-    expect(fehlercode(z, { art: 'KnotenlisteVerschieben', knotenIds: [p1], ziel: hinterT1 })).toBe(
-      'befehl-nicht-zustaendig',
-    );
+  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9, Ticket 56 den Mengenansatz): ZUSTAENDIGES_TICKET ist leer', () => {
+    expect(ZUSTAENDIGES_TICKET).toEqual({});
   });
 
   it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {

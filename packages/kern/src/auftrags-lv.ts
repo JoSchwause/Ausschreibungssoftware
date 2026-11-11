@@ -4,7 +4,7 @@
 // ChangeSet trägt Kopf, alle Knoten (kanonisch) und die vollständigen Summen (`kopf.vorher: null`).
 
 import type { AuftragsLvBefehlAusfuehren } from '@tethys/vertrag';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { anlegeHinweise } from './hinweise';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
@@ -27,7 +27,7 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
   if (erster) return { ok: false, fehler: erster };
   const knoten = kanonisch(
     a.id,
-    a.knoten.map((k) => (k.art === 'position' ? positionMitEinheiten(k) : k)),
+    a.knoten.map((k) => (k.art === 'position' ? positionNormal(k) : k)),
   );
   const summen = summenBerechnen({ id: a.id, knoten, nachlass: a.nachlass, mwstSatz: a.mwstSatz });
   const hinweise = anlegeHinweise(a.ozMaske, summen.gesamt);

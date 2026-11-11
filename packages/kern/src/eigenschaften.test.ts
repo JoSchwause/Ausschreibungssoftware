@@ -41,7 +41,7 @@ import type { Menge } from '@tethys/vertrag';
 // --- Zufällige Aktionen -----------------------------------------------------------------------------------------
 
 interface OrtWahl {
-  readonly art: 'nach' | 'anfang' | 'ende';
+  readonly art: 'nach' | 'anfang' | 'ende' | 'hinter-gliederung';
   readonly ziel: number;
   readonly unbekannt: boolean;
 }
@@ -62,7 +62,7 @@ type Aktion =
     };
 
 const ortArb: fc.Arbitrary<OrtWahl> = fc.record({
-  art: fc.constantFrom('nach', 'anfang', 'ende'),
+  art: fc.constantFrom('nach', 'anfang', 'ende', 'hinter-gliederung'),
   ziel: fc.nat(10_000),
   unbekannt: fc.integer({ min: 0, max: 24 }).map((n) => n === 0),
 });
@@ -112,13 +112,23 @@ function befehlAus(z: LvZustand, a: Aktion, nr: number): LvBefehl {
   const alle = [LV_ID as string, ...knoten.map((k) => k.id as string)];
   const knotenId = (n: number, unbekannt: boolean): string =>
     unbekannt || knoten.length === 0 ? 'gibt-es-nicht' : (knoten[n % knoten.length]?.id ?? 'gibt-es-nicht');
+  // `hinter-gliederung` (Ticket 56): meist eine Gliederung, gelegentlich ein anderer Knoten (dann abgewiesen).
+  const gliederungen = knoten.filter((k) => k.art === 'los' || k.art === 'titel');
+  const hinterZiel = (o: OrtWahl): string =>
+    o.ziel % 5 === 0 || gliederungen.length === 0
+      ? knotenId(o.ziel, o.unbekannt)
+      : o.unbekannt
+        ? 'gibt-es-nicht'
+        : (gliederungen[o.ziel % gliederungen.length]?.id ?? 'gibt-es-nicht');
   const ort = (o: OrtWahl): Einfuegeort =>
     o.art === 'nach'
       ? { art: 'nach', knotenId: id.knoten(knotenId(o.ziel, o.unbekannt)) }
-      : {
-          art: o.art,
-          elternId: id.eltern(o.unbekannt ? 'gibt-es-nicht' : (alle[o.ziel % alle.length] ?? LV_ID)),
-        };
+      : o.art === 'hinter-gliederung'
+        ? { art: 'hinter-gliederung', gliederungId: id.titel(hinterZiel(o)) }
+        : {
+            art: o.art,
+            elternId: id.eltern(o.unbekannt ? 'gibt-es-nicht' : (alle[o.ziel % alle.length] ?? LV_ID)),
+          };
   const neueId = (doppelt: boolean): string => (doppelt && knoten[0] ? knoten[0].id : `n${String(nr)}`);
   switch (a.art) {
     case 'titel':
@@ -193,8 +203,9 @@ function erwarteterBaum(z: LvZustand, b: LvBefehl): Baum {
         index = (baum.get(eltern) ?? []).indexOf(ort.knotenId) + 1;
       }
     } else if (ort.art === 'hinter-gliederung') {
-      // v1.3: mechanisch angepasst, Folgeticket (Ticket 56; der Generator erzeugt die Form nicht)
-      throw new Error('hinter-gliederung: erst Ticket 56');
+      // Ticket 56: Geschwister direkt hinter der Gliederung (wie `nach` einer Position).
+      eltern = elternVon(z, ort.gliederungId) ?? '';
+      index = (baum.get(eltern) ?? []).indexOf(ort.gliederungId) + 1;
     } else {
       eltern = ort.elternId;
       index = ort.art === 'anfang' ? 0 : (baum.get(eltern) ?? []).length;
@@ -220,8 +231,10 @@ function erwarteterBaum(z: LvZustand, b: LvBefehl): Baum {
     }
     case 'KnotenVerschieben': {
       const alt = elternVon(z, b.knotenId) ?? '';
-      // Selbstbezug einer Position/eines Hinweistexts ist eine Nullbewegung.
+      // Selbstbezug einer Position/eines Hinweistexts (`nach`) oder einer Gliederung (`hinter-gliederung`) ist eine
+      // Nullbewegung.
       if (b.ziel.art === 'nach' && b.ziel.knotenId === b.knotenId) break;
+      if (b.ziel.art === 'hinter-gliederung' && b.ziel.gliederungId === b.knotenId) break;
       baum.set(
         alt,
         (baum.get(alt) ?? []).filter((x) => x !== b.knotenId),
@@ -348,7 +361,7 @@ const folgeArb = fc.array(aktionArb, { minLength: 10, maxLength: 80 });
 
 describe('Befehlsfolgen auf dem LV-Baum', () => {
   it('jeder angenommene Befehl erhält alle Invarianten, ChangeSet und Umkehrung stimmen; jeder abgewiesene ändert nichts', () => {
-    const statistik = { angenommen: 0, abgewiesen: 0, los: 0, verschoben: 0, geloescht: 0 };
+    const statistik = { angenommen: 0, abgewiesen: 0, los: 0, verschoben: 0, geloescht: 0, hinter: 0 };
     fc.assert(
       fc.property(folgeArb, (folge) => {
         let z = neuesLv();
@@ -367,6 +380,11 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
           if (befehl.art === 'KnotenVerschieben') statistik.verschoben++;
           if (befehl.art === 'KnotenLoeschen') statistik.geloescht++;
           if (befehl.art === 'GliederungAnlegen' && befehl.gliederungsart === 'los') statistik.los++;
+          if (
+            ('ort' in befehl ? befehl.ort : 'ziel' in befehl ? befehl.ziel : null)?.art ===
+            'hinter-gliederung'
+          )
+            statistik.hinter++;
           const neu = anwenden(z, e.wert);
           expect(unabhaengigePruefung(neu)).toEqual([]);
           expect(pruefeLvInvarianten(neu.leistungsverzeichnis)).toEqual([]);
@@ -390,6 +408,7 @@ describe('Befehlsfolgen auf dem LV-Baum', () => {
     expect(statistik.verschoben).toBeGreaterThan(100);
     expect(statistik.geloescht).toBeGreaterThan(50);
     expect(statistik.los).toBeGreaterThan(20);
+    expect(statistik.hinter).toBeGreaterThan(100);
     console.info('[kern/05] Property-Statistik', JSON.stringify(statistik));
   });
 
