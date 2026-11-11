@@ -7,8 +7,30 @@ export const naechsterZug = (): Promise<void> =>
     setTimeout(fertig, 0);
   });
 
+/**
+ * Der Browser gibt die Bytes einer gewählten Datei nicht heraus (gelöscht, gesperrt, keine Berechtigung). Das ist der
+ * erwartete Lesefehler, den die Seite als „nicht lesbar“ meldet; jeder andere Fehler beim Einlesen ist ein
+ * Programmfehler und wird nicht geschluckt (Review S8, Q5).
+ */
+export class DateiNichtLesbar extends Error {
+  constructor(
+    readonly datei: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Die Datei ${datei} ließ sich nicht lesen.`, options);
+    this.name = 'DateiNichtLesbar';
+  }
+}
+
+/** Die Bytes der Datei; kann der Browser sie nicht lesen: `DateiNichtLesbar` mit der Ursache. */
 export async function dateiBytes(f: File): Promise<Uint8Array> {
-  return new Uint8Array(await f.arrayBuffer());
+  let puffer: ArrayBuffer;
+  try {
+    puffer = await f.arrayBuffer();
+  } catch (e) {
+    throw new DateiNichtLesbar(f.name, { cause: e });
+  }
+  return new Uint8Array(puffer);
 }
 
 export function herunterladen(name: string, inhalt: string, typ: string): void {
