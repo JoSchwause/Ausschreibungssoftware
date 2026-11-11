@@ -73,7 +73,7 @@ export function zuschlagErteilen(
   const bieter = projekt.bieter.find((b) => b.id === a.bieterId);
   if (bieter === undefined)
     return fehler('Den Bieter des Angebots kennt das Projekt nicht.', 'angebot.bieterId');
-  const wahl = wahlAufloesen(l.knoten, gewaehlt);
+  const wahl = wahlAufloesen(wahlgruppenBilden(l.knoten), gewaehlt);
   if (!wahl.ok) return wahl;
   const { knoten, warnungen } = auftragsKnoten(lv, a, wahl.wert, neueId);
   return {
@@ -99,6 +99,81 @@ export function zuschlagErteilen(
   };
 }
 
+// --- Vorschau für den Dialog (Ticket 64) ----------------------------------------------------------------------------
+
+/** Eine Alternative einer Wahlgruppe mit ihrer Variantennummer (`null` in der Verweisform). */
+export interface Vorschauvariante {
+  readonly positionId: PositionId;
+  readonly variante: number | null;
+}
+
+/** Eine Wahlgruppe des LV für den Zuschlagsdialog, in Dokumentreihenfolge (nach der ersten Position der Gruppe). */
+export interface Vorschaugruppe {
+  /** Gruppennummer aus den Daten (`wahl.gruppe` des ersten Mitglieds, das eine trägt); `null` in der Verweisform. */
+  readonly gruppe: number | null;
+  /** Die Positionen, die eine gewählte Alternative ersetzt; leer, wenn die Daten keine nennen. */
+  readonly grundpositionen: readonly PositionId[];
+  readonly alternativen: readonly Vorschauvariante[];
+  /** Die gewählte Alternative dieser Gruppe (bei mehreren die erste), `null`: keine. */
+  readonly gewaehlt: PositionId | null;
+}
+
+/**
+ * Was ein Zuschlag mit dieser Wahl ergäbe (Ticket 59, für den Dialog in Ticket 64; D-21: die App zeigt vor dem
+ * Bestätigen die Zahl der entfallenden und unbepreisten Positionen).
+ */
+export interface Zuschlagsvorschau {
+  /** Zahl der Positionen, die im Auftrags-LV entfallen; `null` bei ungültiger Wahl. */
+  readonly entfallend: number | null;
+  /**
+   * Zahl der Positionen im Auftrags-LV ohne Preis des Bieters (Warnungen `nicht-angeboten` und `zuschlagssatz-fehlt`);
+   * `null` bei ungültiger Wahl.
+   */
+  readonly unbepreist: number | null;
+  readonly wahlgruppen: readonly Vorschaugruppe[];
+  /** Der Fehler, den `zuschlagErteilen` für diese Wahl meldete (`feld: 'gewaehlt'`); `null`: die Wahl ist gültig. */
+  readonly fehler: Befehlsfehler | null;
+}
+
+/**
+ * Vorschau eines Zuschlags: dieselbe Rechnung wie `zuschlagErteilen`, ohne Projekt und ohne Befehl. Prüft nicht, ob
+ * das Angebot zum LV gehört (das meldet erst `zuschlagErteilen`).
+ */
+export function zuschlagsvorschau(
+  lv: LvZustand,
+  angebot: AngebotZustand | Angebot,
+  gewaehlt: ReadonlySet<PositionId>,
+): Zuschlagsvorschau {
+  const a = 'angebot' in angebot ? angebot.angebot : angebot;
+  const knoten = lv.leistungsverzeichnis.knoten;
+  const gruppen = wahlgruppenBilden(knoten);
+  const wahlVon = new Map(
+    knoten.flatMap((k) => (k.art === 'position' ? [[k.id as string, k.merkmale.wahl]] : [])),
+  );
+  const wahlgruppen = gruppen.map((g): Vorschaugruppe => ({
+    gruppe:
+      [...g.grundpositionen, ...g.alternativen]
+        .map((id) => wahlVon.get(id)?.gruppe ?? null)
+        .find((n) => n !== null) ?? null,
+    grundpositionen: g.grundpositionen,
+    alternativen: g.alternativen.map((positionId) => ({
+      positionId,
+      variante: wahlVon.get(positionId)?.variante ?? null,
+    })),
+    gewaehlt: g.alternativen.find((id) => gewaehlt.has(id)) ?? null,
+  }));
+  const wahl = wahlAufloesen(gruppen, gewaehlt);
+  if (!wahl.ok) return { entfallend: null, unbepreist: null, wahlgruppen, fehler: wahl.fehler };
+  const { knoten: auftrag, warnungen } = auftragsKnoten(lv, a, wahl.wert, lv.leistungsverzeichnis.id);
+  return {
+    entfallend: knoten.length - auftrag.length,
+    unbepreist: warnungen.filter((w) => w.code === 'nicht-angeboten' || w.code === 'zuschlagssatz-fehlt')
+      .length,
+    wahlgruppen,
+    fehler: null,
+  };
+}
+
 function fehler(meldung: string, feld: string, knotenId?: KnotenId): { ok: false; fehler: Befehlsfehler } {
   return {
     ok: false,
@@ -118,10 +193,9 @@ interface AufgeloesteWahl {
  * gewählte Alternative in Dokumentreihenfolge.
  */
 function wahlAufloesen(
-  knoten: readonly Knoten[],
+  gruppen: readonly Wahlgruppe[],
   gewaehlt: ReadonlySet<PositionId>,
 ): Ergebnis<readonly AufgeloesteWahl[], Befehlsfehler> {
-  const gruppen = wahlgruppenBilden(knoten);
   const alternativen = new Set<string>(gruppen.flatMap((g) => g.alternativen));
   for (const id of gewaehlt) {
     if (!alternativen.has(id))

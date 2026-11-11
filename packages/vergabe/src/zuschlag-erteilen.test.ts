@@ -20,7 +20,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { angebotSummenBerechnen, zuschlagErteilen } from './index';
+import { angebotSummenBerechnen, zuschlagErteilen, zuschlagsvorschau } from './index';
 import {
   angebot,
   angebotAusFixture,
@@ -571,5 +571,71 @@ describe('zuschlagErteilen: Bezüge und Zugehörigkeit', () => {
         b.name,
       ).toEqual(b.titel);
     }
+  });
+});
+
+describe('zuschlagsvorschau', () => {
+  it('nennt Wahlgruppen mit Varianten und zählt entfallende und unbepreiste Positionen', () => {
+    // Angebot wie im Lückentest: a2 ohne Eintrag, z1 ohne Satz, g1 nicht angeboten.
+    const a = angebot('a-v', lvW, 'w1', [
+      nichtAngeboten('g1'),
+      ep('a1', '12.000'),
+      ep('g2', '20.000'),
+      ep('b1', '22.000'),
+      ep('b2', '21.000'),
+      ep('n1', '100.000'),
+      ep('z1', '5.000'),
+      ep('c1', '50.000'),
+      ep('d1', '90.000'),
+    ]);
+    const gruppen = [
+      {
+        gruppe: null,
+        grundpositionen: ['g1'],
+        alternativen: [
+          { positionId: 'a1', variante: null },
+          { positionId: 'a2', variante: null },
+        ],
+        gewaehlt: 'a2',
+      },
+      {
+        gruppe: 1,
+        grundpositionen: ['g2'],
+        alternativen: [
+          { positionId: 'b1', variante: 1 },
+          { positionId: 'b2', variante: 2 },
+        ],
+        gewaehlt: null,
+      },
+      {
+        gruppe: null,
+        grundpositionen: ['n1'],
+        alternativen: [{ positionId: 'd1', variante: null }],
+        gewaehlt: null,
+      },
+    ];
+    // Entfallen: g1, a1, b1, b2, d1. Unbepreist im Auftrags-LV: a2 (kein Eintrag), z1 (kein Satz).
+    expect(zuschlagsvorschau(lvW, a, gewaehlt('a2'))).toEqual({
+      entfallend: 5,
+      unbepreist: 2,
+      wahlgruppen: gruppen,
+      fehler: null,
+    });
+    // Ohne Wahl: a1, a2, b1, b2, d1 entfallen; g1 ist jetzt unbepreist, a2 entfällt.
+    expect(zuschlagsvorschau(lvW, a, OHNE_WAHL)).toMatchObject({
+      entfallend: 5,
+      unbepreist: 2,
+      fehler: null,
+    });
+  });
+
+  it('meldet eine ungültige Wahl, ohne Zahlen', () => {
+    const v = zuschlagsvorschau(lvW, angebotW, gewaehlt('b1', 'b2'));
+    expect(v).toMatchObject({
+      entfallend: null,
+      unbepreist: null,
+      fehler: { code: 'ungueltige-eingabe', feld: 'gewaehlt', knotenId: 'b2' },
+    });
+    expect(v.wahlgruppen.map((g) => g.gewaehlt)).toEqual([null, 'b1', null]);
   });
 });
