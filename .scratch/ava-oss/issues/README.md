@@ -131,7 +131,7 @@ gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgeti
 | 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | ready-for-agent (Welle 5) |
 | 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved (Welle 5) |
 | 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | resolved (Welle 5) |
-| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent (Welle 5) |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved (Welle 5) |
 | 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved (Welle 5) |
 
 # Tickets Welle 5 (Lauf, 2026-11-11)
@@ -145,7 +145,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 71 | K | Kern v1.4 | `packages/kern` | ready-for-agent |
 | 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved |
 | 73 | G | Wahlgruppe im X83-Rundweg | `packages/gaeb` | resolved |
-| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | ready-for-agent |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved |
 | 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved |
 | 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | resolved |
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
@@ -153,10 +153,10 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
 | 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | ready-for-agent |
 | 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
-| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | ready-for-agent |
+| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
 | 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |
 | 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
-| 85 | F | Fixture M4 | `fixtures/` | ready-for-agent |
+| 85 | F | Fixture M4 | `fixtures/` | resolved |
 | 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | ready-for-agent |
 | 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | ready-for-agent |
 | 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | ready-for-agent |

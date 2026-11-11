@@ -19,6 +19,7 @@
 //   nurlesen=1              schreibgeschütztes Grid (keine Befehlsempfänger, Ticket 54)
 //   oeffnen=1               onZeileOeffnen gesetzt (Aufrufe in window.__harness.geoeffnet)
 //   zaehlen=1               positionenZaehlen gesetzt: genaue Zahl aus dem ganzen Modell, auch zugeklappt
+//   ansatz=1                die 4. und 5. Position tragen einen erfundenen Mengenansatz (Ticket 74)
 //   Die aktive Zeile (onAktiveZeileChange) steht immer in window.__harness.aktiveZeilen (jede Meldung).
 
 import '@tethys/ui-basis/tokens.css';
@@ -51,6 +52,19 @@ document.documentElement.dataset['theme'] = params.get('thema') === 'dark' ? 'da
 
 const modell0 = await ladeFixture(fixtureName, kopien);
 const ids = idQuelleAttrappe();
+
+/** Ein erfundener Mengenansatz an der 4. und 5. Position (Ticket 74); die 4. hat mit `befunde=1` auch eine Warnung. */
+function mitAnsatz(knoten: readonly Knoten[]): readonly Knoten[] {
+  const ziele = new Set(
+    knoten
+      .filter((k) => k.art === 'position')
+      .slice(3, 5)
+      .map((k) => k.id),
+  );
+  const ansatz = [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }];
+  return knoten.map((k) => (k.art === 'position' && ziele.has(k.id) ? { ...k, mengenansatz: ansatz } : k));
+}
+const knoten0 = params.get('ansatz') === '1' ? mitAnsatz(modell0.knoten) : modell0.knoten;
 
 /** Beispiel-Prüfhinweise (erfunden), damit sich die Darstellung ansehen lässt. */
 function beispielBefunde(knoten: readonly Knoten[]): ReadonlyMap<string, readonly Pruefbefund[]> {
@@ -136,7 +150,7 @@ function positionenIn(knoten: readonly Knoten[], knotenIds: readonly KnotenId[])
 }
 
 function Seite() {
-  const [knoten, setKnoten] = useState<readonly Knoten[]>(params.get('leer') === '1' ? [] : modell0.knoten);
+  const [knoten, setKnoten] = useState<readonly Knoten[]>(params.get('leer') === '1' ? [] : knoten0);
   const [offen, setOffen] = useState<ReadonlySet<string>>(() =>
     params.get('auf') === 'keine' ? new Set<string>() : alleGliederungen(modell0),
   );

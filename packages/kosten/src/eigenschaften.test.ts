@@ -13,7 +13,8 @@ import {
   kgVorfahren,
   kostenermittlungBerechnen,
 } from './index';
-import type { Kostenermittlungseintrag, Kostengruppennummer } from './index';
+import type { Kostengruppennummer } from '@tethys/vertrag';
+import type { Kostenermittlungseingabe } from './index';
 
 const runs = { numRuns: 300 };
 
@@ -49,7 +50,7 @@ const eintraegeGen = fc.array(eintragGen, { maxLength: 40 });
 
 function alsEintraege(
   liste: readonly { nummer: Kostengruppennummer; cent: bigint }[],
-): Kostenermittlungseintrag[] {
+): Kostenermittlungseingabe[] {
   return liste.map(({ nummer, cent }) => ({ nummer, betrag: centText(cent) }));
 }
 

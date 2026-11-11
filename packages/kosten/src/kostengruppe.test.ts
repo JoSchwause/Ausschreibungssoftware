@@ -3,7 +3,7 @@
 // Die Nummern hier sind beliebige Ziffernfolgen der Form, keine Liste der Norm (G-16).
 
 import { describe, expect, it } from 'vitest';
-import type { Kostengruppennummer } from './index';
+import type { Kostengruppennummer } from '@tethys/vertrag';
 import { kgEbene, kgElternteil, kgLesen, kgSortieren, kgVergleichen, kgVorfahren } from './index';
 
 function kg(text: string): Kostengruppennummer {

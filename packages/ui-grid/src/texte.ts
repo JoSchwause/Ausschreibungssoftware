@@ -66,6 +66,9 @@ export const texte = {
   fehler: 'Fehler',
   warnung: 'Warnung',
   eingabeUngueltig: 'Eingabe nicht übernommen',
+  /** Kennzeichen der Mengenzelle einer Position mit Mengenansatz (Ticket 74, D-65.2): Symbol und Beschreibung. */
+  mengenansatzSymbol: 'Σ',
+  mengenansatz: 'Menge aus Mengenansatz. Eine direkte Änderung der Menge entfernt den Mengenansatz',
   bild: '[Bild]',
   listenpunkt: '• ',
   zellentrenner: ' | ',
