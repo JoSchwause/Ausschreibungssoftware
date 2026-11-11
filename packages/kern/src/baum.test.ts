@@ -691,7 +691,6 @@ describe('Befehle anderer Tickets', () => {
   it('jeder LV-Befehl bis v1.3 hat einen Handler; offen sind nur die LV-Befehle aus Vertrag v1.4 (Ticket 71)', () => {
     expect(Object.values(ZUSTAENDIGES_TICKET).every((t) => t.endsWith('(Ticket 71)'))).toBe(true);
     expect(Object.keys(ZUSTAENDIGES_TICKET).sort()).toEqual([
-      'KostengruppeSetzen',
       'NachtragsangabenSetzen',
       'TextquelleSetzen',
       'VorlageSetzen',
@@ -702,7 +701,6 @@ describe('Befehle anderer Tickets', () => {
   it('die LV-Befehle aus Vertrag v1.4 werden bis Ticket 71 mit befehl-nicht-zustaendig abgewiesen', () => {
     const v14: readonly LvBefehl[] = [
       { art: 'NachtragsangabenSetzen', nachtrag: null },
-      { art: 'KostengruppeSetzen', positionId: id.pos('P1'), kostengruppe: null },
       {
         art: 'PositionAnlegen',
         id: id.pos('V14'),

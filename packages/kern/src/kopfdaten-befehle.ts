@@ -130,7 +130,7 @@ const leitbeschreibungNormal = (l: Leitbeschreibung): Leitbeschreibung =>
     : l;
 
 /** Ein Objekt mit gesetztem (`wert`) oder entferntem (`null`) Feld; ein entferntes Feld fehlt danach ganz. */
-function mitFeld<T extends object>(objekt: T, feld: string, wert: unknown): T {
+export function mitFeld<T extends object>(objekt: T, feld: string, wert: unknown): T {
   const eintraege: [string, unknown][] = Object.entries(objekt).filter(([k]) => k !== feld);
   if (wert !== null) eintraege.push([feld, wert]);
   return Object.fromEntries(eintraege) as T;
