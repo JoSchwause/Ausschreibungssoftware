@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { kgLesen, kostenermittlungBerechnen } from './index';
-import type { Kostenermittlungseintrag, Kostengruppennummer } from './index';
+import type { Kostengruppennummer } from '@tethys/vertrag';
+import type { Kostenermittlungseingabe } from './index';
 
 function kg(text: string): Kostengruppennummer {
   const e = kgLesen(text);
@@ -13,11 +14,9 @@ function kg(text: string): Kostengruppennummer {
   return e.wert;
 }
 
-/** Eintrag aus Klartext; der Betrag ist ungeprüfter Text (S11), damit auch Fehleingaben testbar sind. */
-function e(nummer: string, betrag: string, bemerkung?: string): Kostenermittlungseintrag {
-  return bemerkung === undefined
-    ? { nummer: nummer as Kostengruppennummer, betrag }
-    : { nummer: nummer as Kostengruppennummer, betrag, bemerkung };
+/** Eingabe aus Klartext; Nummer und Betrag sind ungeprüfter Text (S11), damit auch Fehleingaben testbar sind. */
+function e(nummer: string, betrag: string, bemerkung?: string): Kostenermittlungseingabe {
+  return bemerkung === undefined ? { nummer, betrag } : { nummer, betrag, bemerkung };
 }
 
 describe('kostenermittlungBerechnen: Summen', () => {

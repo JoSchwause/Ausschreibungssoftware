@@ -3,17 +3,12 @@
 // des Nutzers, Kostenermittlung mit Summen je Kostengruppe; Einzelpreiskalkulation und Kalkulationsübersicht (Ticket 78,
 // D-39). Rein (A2); importiert nur `vertrag` und `dezimal` (A3).
 
-export type {
-  Kostengruppenebene,
-  Kostengruppenfehler,
-  Kostengruppenfehlercode,
-  Kostengruppennummer,
-} from './kostengruppe';
+export type { Kostengruppenebene, Kostengruppenfehler, Kostengruppenfehlercode } from './kostengruppe';
 export { kgEbene, kgElternteil, kgLesen, kgSortieren, kgVergleichen, kgVorfahren } from './kostengruppe';
 export type {
   Kostenbefund,
   Kostenbefundcode,
-  Kostenermittlungseintrag,
+  Kostenermittlungseingabe,
   Kostenermittlungsergebnis,
   Kostengruppensumme,
 } from './kostenermittlung';

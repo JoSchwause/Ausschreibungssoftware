@@ -4,15 +4,20 @@
 // Auffälligkeiten sind Befunde, nie Sperre (U5).
 
 import { NULL_BETRAG, addiere, alsBetrag, alsDezimal, runden, vorzeichen } from '@tethys/dezimal';
-import type { Betrag } from '@tethys/vertrag';
-import type { Kostengruppenebene, Kostengruppennummer } from './kostengruppe';
+import type { Betrag, Kostengruppennummer } from '@tethys/vertrag';
+import type { Kostengruppenebene } from './kostengruppe';
 import { kgEbene, kgLesen, kgSortieren, kgVorfahren } from './kostengruppe';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
 
-/** Ein Eintrag einer Kostenermittlung: Nettobetrag auf einer Kostengruppe. */
-export interface Kostenermittlungseintrag {
-  readonly nummer: Kostengruppennummer;
+/**
+ * Eine ungeprüfte Eingabe für eine Kostenermittlung (Grid, CSV): Nettobetrag auf einer Kostengruppe. Nicht zu
+ * verwechseln mit dem gespeicherten `Kostenermittlungseintrag` aus `vertrag` (geprüft, `betrag: Betrag`), der ihr
+ * zuweisbar ist (D-82.2).
+ */
+export interface Kostenermittlungseingabe {
+  /** Die Nummer als Text, noch ungeprüft; die Rechnung liest sie mit `kgLesen` (Leerraum am Rand fällt weg). */
+  readonly nummer: string;
   /**
    * Der Betrag als Text in Punktnotation, wie er eingegeben oder eingelesen wurde, noch ungeprüft (S11). Kanonisch hat
    * er 2 Stellen (N3); andere Skalen werden kaufmännisch gerundet und gemeldet, Unlesbares zählt nicht (D-55.3). Die
@@ -76,7 +81,7 @@ function betragLesen(text: string, befund: (code: Kostenbefundcode, meldung: str
 }
 
 export function kostenermittlungBerechnen(
-  eintraege: readonly Kostenermittlungseintrag[],
+  eintraege: readonly Kostenermittlungseingabe[],
 ): Kostenermittlungsergebnis {
   const befunde: Kostenbefund[] = [];
   const eigen = new Map<Kostengruppennummer, Betrag>();

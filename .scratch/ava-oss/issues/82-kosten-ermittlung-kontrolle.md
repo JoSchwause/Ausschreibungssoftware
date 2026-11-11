@@ -1,6 +1,6 @@
 # 82: C2+C3: Kostenermittlung als Aggregat, Kostenkontrolle
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: C2, C3 · Paket: `packages/kosten`
 Blocked by: 70, 78
