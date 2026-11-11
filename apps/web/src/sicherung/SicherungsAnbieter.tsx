@@ -88,11 +88,14 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
     };
   }, [ordnerMoeglich]);
 
-  const vermerken = useCallback((id: ProjektId) => {
-    letzterExportMerken(id, Date.now());
-    offen.current.delete(id);
-    setStand((n) => n + 1);
-  }, []);
+  const vermerken = useCallback(
+    (id: ProjektId) => {
+      letzterExportMerken(id, Date.parse(u.uhr()));
+      offen.current.delete(id);
+      setStand((n) => n + 1);
+    },
+    [u],
+  );
 
   /** Exportiert das Projekt und schreibt es in den Ordner. `fuerNutzer`: darf nachfragen und Fehler melden. */
   const inOrdnerSichern = useCallback(
@@ -123,7 +126,7 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
         if (fuerNutzer) speicherfehler(r.fehler, texte.meldung.exportFehler);
         return false;
       }
-      const datei = sicherungsdateiname(projekt.name, new Date());
+      const datei = sicherungsdateiname(projekt.name, new Date(u.uhr()));
       const s = await inOrdnerSchreiben(o, datei, r.wert);
       if (!s.ok) {
         zeige({ titel: texte.meldung.ordnerFehler, beschreibung: s.meldung, art: 'fehler' });
@@ -154,7 +157,7 @@ export function SicherungsAnbieter({ children }: { children: ReactNode }): React
         speicherfehler(r.fehler, texte.meldung.exportFehler);
         return false;
       }
-      herunterladen(sicherungsdateiname(projekt.name, new Date()), r.wert);
+      herunterladen(sicherungsdateiname(projekt.name, new Date(u.uhr())), r.wert);
       vermerken(projekt.id);
       return true;
     },

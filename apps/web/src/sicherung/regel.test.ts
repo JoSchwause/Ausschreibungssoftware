@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { ERINNERUNG_SCHWELLE_TAGE, erinnerungPruefen } from './regel';
+import { ERINNERUNG_SCHWELLE_TAGE, erinnerungAusgeschlossen, erinnerungPruefen } from './regel';
 
 const TAG = 24 * 60 * 60 * 1000;
 const JETZT = Date.UTC(2026, 10, 20, 12);
@@ -41,5 +41,11 @@ describe('Export-Erinnerung (G-03)', () => {
 
   it('ohne Befehle und ohne Export gibt es nichts zu sichern', () => {
     expect(erinnerungPruefen({ jetzt: JETZT, letzterExport: null, befehlszeiten: [] }).faellig).toBe(false);
+  });
+
+  it('ohne Protokoll entschieden nur bei einem Export innerhalb der Schwelle (S7: eine Regel für Liste und Prüfung)', () => {
+    expect(erinnerungAusgeschlossen(JETZT, JETZT - ERINNERUNG_SCHWELLE_TAGE * TAG)).toBe(true);
+    expect(erinnerungAusgeschlossen(JETZT, JETZT - ERINNERUNG_SCHWELLE_TAGE * TAG - 1)).toBe(false);
+    expect(erinnerungAusgeschlossen(JETZT, null)).toBe(false);
   });
 });
