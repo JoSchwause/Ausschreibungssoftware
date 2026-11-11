@@ -35,7 +35,7 @@ Orchestrator geschnitten; 70 und 71 sind gegenüber Welle 4 erweitert (v1.4). 23
   Kostengruppen zuordnen (LV und Auftrags-LV, Dialog mit Mehrfachauswahl), **Kostenkontrolle** (Budget, Vergabe, Abrechnung,
   Abweichung je Kostengruppe), **EP-Kalkulation** je Position; **Druckprofile** im PDF-Dialog; **Muster-LV** kennzeichnen und
   „Aus Vorlage übernehmen…“; Textquelle je Position; Kostengruppen im GAEB-Export (DIN-276-Katalog).
-- **Suite auf dem Branch-Ende** (`c6e16e7`, ruhige Maschine, Last 1,0–2,0): `pnpm lint` grün, `pnpm typecheck` grün,
+- **Suite auf dem Branch-Ende** (Code-Stand `b281a1f`, danach nur Doku; ruhige Maschine, Last 1,0–2,0): `pnpm lint` grün, `pnpm typecheck` grün,
   `pnpm test` 2606 bestanden / 3 übersprungen (205 Dateien) und 29/29 (Fixtures). E2E: `ui-grid` 63 bestanden / 3 übersprungen
   (Bildschirmfotos), `speicher` 17/17, `web` 76/76. XSD-Gegenprüfung 58/58 (amtliches XSD inkl. X31, lokal geladen, nie im Repo).
   Kein Leistungsbudget rot.
