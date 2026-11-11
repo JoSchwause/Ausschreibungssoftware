@@ -369,3 +369,10 @@ Question: Ticket 52 prüft „< 100 ms Median bis zur Summenzeile“ hart nur im
 Decision: Ja. Das dauerhafte Profil ist der Betrieb des Nutzers (installierte PWA); dort 36–61 ms unter Last 15–22. Der flüchtige Kontext wird weiter gemessen und im Ticket genannt, die harte Schranke dort wäre ein Test der Testumgebung.
 Reason: Q4 meint die Erfahrung des Nutzers; keine Prüfung geschwächt, nur der Messort festgelegt.
 Reversible: yes  Touches: apps/web/e2e/leistung.spec.ts
+
+## D-30 Umfang der Review-Behebung Welle 4
+Welle 4 · Review · decided by: orchestrator
+Question: Welche Befunde des Wellen-Reviews (`review-welle-4.md`) werden in dieser Welle behoben?
+Decision: Behoben in `fix/welle-4-review`: Exportverlust `lvAusgeben` (über einen gemeinsamen Kopfbau, S5), S1, S2 (Zahlformate aus `NACHKOMMASTELLEN`; Exponent-Lesen nach `dezimal`, falls klein, sonst begründet), S3, S4, S6 (soweit Paketgrenzen es erlauben), S7, S8 (Glossar „Zuschlag (Vergabe)“, eindeutige Codes), S9, S10, S11, P1 (Sollwerte Bedarf/Wahl in der Fixture, Test), P5, D-62.2 (Haken am Befehlsweg statt Laufzeit-Hülle, falls ohne Paketänderung möglich). Als Folgetickets: D-57.2 (`vergabe`), D-64.2 (`vertrag`-Repository Auftrags-LV), D-64.4 (Kern-Umkehrung Auftrags-LV), P2, P6. P3/P4 erledigt der Orchestrator beim Abschluss.
+Reason: Alles Behobene liegt in den Paketen der Welle und ändert keinen Vertrag; Vertragsänderungen bleiben eigene Tickets (A4, P9).
+Reversible: yes  Touches: apps/web, packages/ausgabe, packages/gaeb, packages/kosten, packages/dezimal, fixtures, GLOSSARY.md
