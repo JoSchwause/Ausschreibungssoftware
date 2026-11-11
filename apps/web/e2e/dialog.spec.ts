@@ -217,3 +217,24 @@ test('Prüf-Panel: Befunde gruppiert, Sprung zur Zelle und in den Dialog; behobe
   await expect(eintraege('einheit-fehlt')).toHaveCount(0);
   await expect(zelle(page, 2, 'einheit')).not.toHaveClass(/tx-grid__zelle--warnung/);
 });
+
+test('Zuschlagsposition mit Bezugsliste: Bezugsposition über die Suche, Betrag aus dem Kern', async ({
+  page,
+}) => {
+  await lvMitZweiPositionen(page);
+  const dialog = await dialogAuf(page, 2);
+  await dialog.getByLabel('Zuschlagsposition').check();
+  await dialog.getByRole('textbox', { name: 'Zuschlagssatz' }).fill('10');
+  await dialog.getByRole('radio', { name: 'Liste von Positionen' }).check();
+  await dialog.getByRole('textbox', { name: 'Bezugsposition suchen (OZ oder Kurztext)' }).fill('01.0010');
+  await dialog.getByRole('button', { name: /^Hinzufügen: 01\.0010/ }).click();
+  await dialog.getByRole('textbox', { name: 'Menge', exact: true }).fill('');
+  await dialog.getByRole('textbox', { name: 'Einheitspreis' }).fill('');
+  // Basis: GP von 01.0010 (1.850,00), Betrag 10 %.
+  await expect(dialog.locator('[data-wert="basis"]')).toHaveText('1.850,00');
+  await expect(dialog.locator('[data-wert="betrag"]')).toHaveText('185,00');
+  await dialog.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(text(page, 2, 'gesamtpreis')).toHaveText('185,00');
+  await expect(text(page, 2, 'positionsart')).toHaveText('Zuschlag');
+});
