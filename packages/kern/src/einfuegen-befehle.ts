@@ -22,6 +22,7 @@ import { nein, ok } from './fehler';
 import { neuvergabe } from './oz-vorschlag';
 import type { Neuvergabe } from './oz-vorschlag';
 import {
+  istListe,
   lageAenderungen,
   obenFehler,
   ortAufloesen,
@@ -66,14 +67,13 @@ function listeFehler(
   idx: Baumindex,
   liste: readonly Knoten[],
 ): Ergebnis<Knoten[], Befehlsfehler> {
-  if (!Array.isArray(liste) || liste.length === 0)
+  if (!istListe(liste) || liste.length === 0)
     return nein('ungueltige-eingabe', 'Die Liste der Knoten ist leer.', undefined, 'knoten');
   const lvId = z.leistungsverzeichnis.id as string;
   const korb = papierkorbKnoten(z.papierkorb);
   const inListe = new Map<string, Knoten>();
   for (const k of liste) {
-    if (!ARTEN.has(k.art))
-      return nein('ungueltige-eingabe', `Unbekannte Knotenart „${String(k.art)}“.`, k.id, 'art');
+    if (!ARTEN.has(k.art)) return nein('ungueltige-eingabe', `Unbekannte Knotenart „${k.art}“.`, k.id, 'art');
     if (inListe.has(k.id) || idx.byId.has(k.id) || k.id === lvId || korb.has(k.id))
       return nein('id-vergeben', `Kennung bereits vergeben: ${k.id}`, k.id);
     inListe.set(k.id, k);

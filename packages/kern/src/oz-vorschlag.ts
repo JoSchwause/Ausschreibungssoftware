@@ -219,7 +219,7 @@ export function neuvergabe(
     const neu = v?.ordnungszahl ?? null;
     oz.set(w.id, neu);
     if (v?.hinweis !== undefined) hinweise.push({ ...v.hinweis, knotenId: w.id });
-    liste[i] = { ...w, ordnungszahl: neu } as Knoten;
+    liste[i] = { ...w, ordnungszahl: neu };
     if (w.art === 'position') continue;
 
     const unter = unterbaum(quelle, w).slice(1);

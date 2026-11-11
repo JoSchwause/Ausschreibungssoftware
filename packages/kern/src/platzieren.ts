@@ -34,6 +34,9 @@ export interface Gruppe {
   readonly wurzeln: readonly Knoten[];
 }
 
+/** Ist der Wert eine Liste? (Ohne Typverengung: Befehle kommen auch als JSON von außen.) */
+export const istListe = (x: unknown): boolean => Array.isArray(x);
+
 type Aenderung = { readonly vorher: Knoten; readonly nachher: Knoten };
 
 const elternArtVon = (idx: Baumindex, eltern: string): ElternArt | undefined =>
@@ -179,7 +182,7 @@ export function wurzelnVon(
   idx: Baumindex,
   knotenIds: readonly KnotenId[],
 ): Ergebnis<readonly Knoten[], Befehlsfehler> {
-  if (!Array.isArray(knotenIds) || knotenIds.length === 0)
+  if (!istListe(knotenIds) || knotenIds.length === 0)
     return nein('ungueltige-eingabe', 'Die Liste der Knoten ist leer.', undefined, 'knotenIds');
   const genannt = new Set<string>();
   for (const kennung of knotenIds) {

@@ -98,8 +98,14 @@ export const BEFEHLS_HANDLER = {
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
-/** Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. */
-export const ZUSTAENDIGES_TICKET: Record<Exclude<Art, Umgesetzt>, string> = {};
+/**
+ * Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. Seit
+ * Ticket 42 (K9) leer: jeder LV-Befehl hat einen Handler. Bringt der Vertrag einen neuen Befehl, verlangt der Typ hier
+ * einen Eintrag (`Offen`), bis sein Ticket den Handler liefert.
+ */
+type Offen = Exclude<Art, Umgesetzt>;
+export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<Partial<Record<Art, string>>> =
+  {};
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 
@@ -113,7 +119,7 @@ export const lvBefehlAusfuehren: LvBefehlAusfuehren = (zustand, befehl) => {
   if (!istUmgesetzt(art)) {
     return nein(
       'befehl-nicht-zustaendig',
-      `Befehl ${art} ist im Kern noch nicht umgesetzt; zuständig: ${ZUSTAENDIGES_TICKET[art]}.`,
+      `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt; zuständig: ${ZUSTAENDIGES_TICKET[befehl.art] ?? 'unbekannt'}.`,
     );
   }
   if (art === 'LeistungsverzeichnisAnlegen') {

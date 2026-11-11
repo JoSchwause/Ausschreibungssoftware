@@ -19,7 +19,6 @@ import type {
   Papierkorbeintrag,
   PapierkorbeintragEntfernen,
   PapierkorbeintragWiederherstellen,
-  PapierkorbLeeren,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
@@ -210,7 +209,7 @@ export function papierkorbeintragEntfernen(z: LvZustand, b: PapierkorbeintragEnt
 }
 
 /** Entfernt alle Einträge (wie `PapierkorbeintragEntfernen`); ein leerer Papierkorb ergibt ein leeres ChangeSet. */
-export function papierkorbLeeren(z: LvZustand, _b: PapierkorbLeeren): Antwort {
+export function papierkorbLeeren(z: LvZustand): Antwort {
   const korb = z.papierkorb ?? [];
   return ok(korb.length === 0 ? baueChangeSet(z, {}) : entfernenChangeSet(z, korb));
 }
