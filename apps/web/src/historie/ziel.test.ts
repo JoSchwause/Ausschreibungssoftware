@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Wohin die App nach Undo/Redo wechselt, Zeilen des Papierkorbs und „Stand als neues LV übernehmen“ (Ticket 48).
-import type { LvStand, LvStandId, PositionId, Projekt, Zeitstempel } from '@tethys/vertrag';
+import type { LvStand, LvStandId, Projekt, Zeitstempel } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
@@ -105,7 +105,7 @@ describe('Papierkorb und Stand', () => {
     await lv.befehl({
       art: 'KnotenInPapierkorbLegen',
       eintragId: u.ids.papierkorbeintrag(),
-      knotenIds: positionen.map((p) => p.id as PositionId),
+      knotenIds: positionen.map((p) => p.id),
     });
     const e = lv.zustand?.papierkorb?.[0];
     if (e === undefined) throw new Error('kein Eintrag');
