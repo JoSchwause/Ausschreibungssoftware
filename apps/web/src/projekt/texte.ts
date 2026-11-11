@@ -40,6 +40,8 @@ export const texte = {
     tabelle: 'Leistungsverzeichnisse',
     name: 'Name',
     netto: 'Netto',
+    nettoLaedt: '…',
+    ladeFehler: 'LV nicht geladen',
     umbenennen: 'Umbenennen',
     umbenennenTitel: 'Leistungsverzeichnis umbenennen',
     neuerName: 'Neuer Name',
