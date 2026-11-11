@@ -1,6 +1,6 @@
 # 51: Fixtures `typisch`, `gross`, `typisch-angebote` auf GAEB-Zuschlagsform umstellen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: F · Paket: `fixtures/` (benannte Ausnahme: die Fixture-Testhelfer und -Tests anderer Pakete, siehe Grenzen)
 Blocked by: – (Ticket 44 und 37 sind gemergt)
