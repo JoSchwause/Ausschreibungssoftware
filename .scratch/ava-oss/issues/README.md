@@ -150,11 +150,11 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | resolved |
 | 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
 | 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
-| 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | ready-for-agent |
+| 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | resolved |
 | 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | resolved |
 | 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | ready-for-agent |
 | 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
-| 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |
+| 83 | M3 | GAEB X31 | `packages/gaeb` | resolved |
 | 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
 | 85 | F | Fixture M4 | `fixtures/` | resolved |
 | 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | ready-for-agent |

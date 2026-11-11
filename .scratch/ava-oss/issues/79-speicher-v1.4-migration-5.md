@@ -1,6 +1,6 @@
 # 79: Speicher v1.4: Migration 5, Repositories für Auftrags-LV, Aufmaß, Rechnung, Kostenermittlung
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: S · Paket: `packages/speicher`
 Blocked by: 70
@@ -133,6 +133,9 @@ E2E `@tethys/speicher` (17 bestanden, parallel zu anderen Agenten): `MengeAender
 2319 bestanden, 2 übersprungen (wie zuvor), `node --test` 29/29.
 
 ## Answer
+
+Merged: d68a2af in integration/welle-5
+
 
 `speicher` hält jetzt alles aus `vertrag` v1.4 (Schema und Projektdatei Version 5, alte Datenbanken und Dateien v1–v4 öffnen
 weiter). Die App kann `speicher.auftragsLeistungsverzeichnisse.auflisten/laden` statt des Projektdatei-Umwegs (D-64.2)
