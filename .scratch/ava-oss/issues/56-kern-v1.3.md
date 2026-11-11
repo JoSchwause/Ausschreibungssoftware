@@ -1,6 +1,6 @@
 # 56: Kern v1.3: Mengenansatz, Einfügen hinter einer Gliederung, leere Langtext-Strukturen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: K · Paket: `packages/kern`
 Blocked by: 53 (`vertrag` v1.3), 51 (Fixture-Testcode im Kern)
