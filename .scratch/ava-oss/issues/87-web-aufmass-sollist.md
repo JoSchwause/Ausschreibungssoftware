@@ -1,6 +1,6 @@
 # 87: A2+M3 in der App: Aufmaßblätter, Soll/Ist, X31
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 5 · Strang: A2, M3 · Ordner: `apps/web/src/abrechnung/` (neu), `apps/web/src/mengen/` (Panel verallgemeinern);
 Einhängestellen in `App.tsx`, `auftrag/AuftragsLvSeite.tsx`, `lv/befehlsweg.ts` (markiert `// Ticket 87`, D-20)
