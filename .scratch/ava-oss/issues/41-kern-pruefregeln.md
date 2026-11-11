@@ -1,6 +1,6 @@
 # 41: Kern: Prüfregeln, formale LV-Prüfung (K8, Logikteil); Befehle für Kopfdaten (D-07)
 
-Status: claimed
+Status: merged (integration/welle-3)
 Type: task
 Welle: 3 (Phase B) · Strang: K (K8) · Paket: `packages/kern`
 Blocked by: 37, 29
