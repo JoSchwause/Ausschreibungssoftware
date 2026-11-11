@@ -1,6 +1,6 @@
 # 81: A2+A3: Soll/Ist, Leistungsstand, Rechnungsprüfung
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: A2, A3 · Paket: `packages/abrechnung`
 Blocked by: 70, 80
@@ -138,6 +138,9 @@ Nach dem Merge von `integration/welle-5` (`e17df7f`): `NODE_OPTIONS=--max-old-sp
 && pnpm test` grün: Vitest 181 Dateien, 2458 Tests bestanden, 3 übersprungen (keiner in `abrechnung`); Fixtures 29/29.
 
 ## Answer
+
+Merged: 350a1a7 in integration/welle-5
+
 
 Paket `@tethys/abrechnung` (Branch `welle-5/81-rechnungspruefung`), neu aus Ticket 81:
 
