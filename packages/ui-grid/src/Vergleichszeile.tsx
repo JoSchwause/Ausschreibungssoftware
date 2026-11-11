@@ -21,11 +21,12 @@ export interface VergleichszeileProps {
   readonly baum: Pick<VergleichsZeile, 'art' | 'tiefe' | 'hatUnterknoten' | 'aufgeklappt'> | null;
   readonly index: number;
   readonly ariaZeile: number;
-  /** Abstand vom Anfang des Körpers; `null` für eine Summenzeile (sie steht im Fluss des Fußes). */
+  /**
+   * Abstand vom Anfang des Körpers; `null` für eine Summenzeile (sie steht im Fluss des Fußes). Raster, Höhe und
+   * Mindestbreite erbt die Zeile von Körper bzw. Fuß (`grid.css`), damit eine neue Zeile nur ihren Versatz als eigenen
+   * Stil trägt (Ticket 74).
+   */
   readonly versatz: number | null;
-  readonly hoehe: number;
-  readonly vorlage: string;
-  readonly breite: number;
   readonly spalten: readonly VergleichsSpalte[];
   /** Linker Versatz der fixierten Spalten, `null` für mitscrollende. */
   readonly versaetze: readonly (number | null)[];
@@ -42,7 +43,7 @@ export interface VergleichszeileProps {
 }
 
 function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
-  const { zellen, baum, index, ariaZeile, versatz, hoehe, vorlage, breite, spalten, versaetze } = props;
+  const { zellen, baum, index, ariaZeile, versatz, spalten, versaetze } = props;
   const { zellklassen, sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte } = props;
 
   return (
@@ -53,13 +54,7 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
       aria-rowindex={ariaZeile}
       aria-level={baum ? baum.tiefe + 1 : undefined}
       aria-expanded={baum?.hatUnterknoten ? baum.aufgeklappt : undefined}
-      style={{
-        height: hoehe,
-        width: '100%',
-        minWidth: breite,
-        gridTemplateColumns: vorlage,
-        ...(versatz === null ? {} : { transform: `translateY(${String(versatz)}px)` }),
-      }}
+      style={versatz === null ? undefined : { transform: `translateY(${String(versatz)}px)` }}
     >
       {sichtbar.map((si, k) => {
         const spalte = spalten[si];

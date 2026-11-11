@@ -115,15 +115,19 @@ export function useGridKern<S extends string>(o: GridKernOptionen<S>): GridKern<
   // --- Virtualisierung ---------------------------------------------------------------------------------------
   const aktivIndexRef = useRef(aktivIndex);
   aktivIndexRef.current = aktivIndex;
+  // Stabile Rückrufe: Ein neuer `getItemKey` je Rendern ließe den Virtualisierer bei jedem Scrollschritt alle Zeilen neu
+  // vermessen (Ticket 74).
+  const zeilenKey = useCallback((i: number): string | number => zeilenIds[i] ?? i, [zeilenIds]);
+  const zeilenGroesse = useCallback(() => zh, [zh]);
   const virtualizer = useVirtualizer({
     count: koerper,
     getScrollElement: () => scroller.current,
-    estimateSize: () => zh,
+    estimateSize: zeilenGroesse,
     overscan: 10,
     scrollMargin: kopfhoehe,
     scrollPaddingStart: kopfhoehe,
     scrollPaddingEnd: fusshoehe,
-    getItemKey: (i) => zeilenIds[i] ?? i,
+    getItemKey: zeilenKey,
     // Die aktive Zeile bleibt immer im DOM, auch wenn sie aus dem Sichtbereich scrollt: So überlebt der Fokus
     // die Virtualisierung und das Grid bleibt per Tab erreichbar.
     rangeExtractor: (bereich) => {
@@ -291,13 +295,15 @@ export function useSichtbareSpalten(o: {
   const { scroller, breiten, fixiert } = o;
   const aktivRef = useRef(o.aktivSpaltenIndex);
   aktivRef.current = o.aktivSpaltenIndex;
+  const spaltenGroesse = useCallback((i: number) => breiten[i] ?? 0, [breiten]);
+  // Die Breiten kommen aus den Eigenschaften: Ändern sie sich bei gleicher Zahl, misst der Virtualisierer neu.
+  const spaltenKey = useCallback((i: number) => `${String(i)}:${String(breiten[i] ?? 0)}`, [breiten]);
   const v = useVirtualizer({
     horizontal: true,
     count: breiten.length,
     getScrollElement: () => scroller.current,
-    estimateSize: (i) => breiten[i] ?? 0,
-    // Die Breiten kommen aus den Eigenschaften: Ändern sie sich bei gleicher Zahl, misst der Virtualisierer neu.
-    getItemKey: (i) => `${String(i)}:${String(breiten[i] ?? 0)}`,
+    estimateSize: spaltenGroesse,
+    getItemKey: spaltenKey,
     overscan: 2,
     rangeExtractor: (bereich) => {
       const menge = new Set(defaultRangeExtractor(bereich));
