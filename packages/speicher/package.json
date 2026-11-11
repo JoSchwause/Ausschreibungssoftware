@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "@tethys/kern": "workspace:*",
     "@tethys/vertrag": "workspace:*"
   },
   "devDependencies": {

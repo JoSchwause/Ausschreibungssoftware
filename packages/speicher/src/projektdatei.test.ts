@@ -91,12 +91,15 @@ describe('eingefrorene Projektdatei der Schemaversion 1', () => {
     const lv = wert(kern.lvLaden('019b76da-a800-727e-984b-1b9791bc2486' as never));
     expect(lv.leistungsverzeichnis.name).toBe('Winzig: Handrechnung (erfunden)');
     expect(lv.leistungsverzeichnis.knoten).toHaveLength(5); // Titel, drei Positionen, Hinweistext
+    // Migration 2 rechnet die Summen mit dem Kern neu (D-17): dieselben Fachwerte, dazu die Ausweise.
     expect(lv.summen.gesamt).toEqual({
       netto: '2565.00',
       nachlass: '0.00',
       nettoNachNachlass: '2565.00',
       mwst: '487.35',
       brutto: '3052.35',
+      summeBedarfOhneGesamtbetrag: '0.00',
+      summeWahl: '0.00',
     });
     const mitEpa = lv.leistungsverzeichnis.knoten.find((k) => k.art === 'position' && k.epa !== null);
     expect(mitEpa).toMatchObject({

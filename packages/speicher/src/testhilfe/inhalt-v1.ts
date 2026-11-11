@@ -4,6 +4,7 @@
 // Wahl mit Grundposition, Zuschlag mit Bezug); dazu kommen Bedarf mit Gesamtbetrag, Wahl ohne Grundposition, Zuschlag
 // ohne Bezug, Stundenlohn und eine Pauschalposition mit Index und EPA, außerdem ein Auftrags-LV.
 
+import { summenBerechnen } from '@tethys/kern';
 import type {
   Einheitspreis,
   Knoten,
@@ -14,6 +15,7 @@ import type {
   Zuschlag,
 } from '@tethys/vertrag';
 import { anlegenSchritte, auftragsLvAus, eintrag, ladeFixture } from './fixtures';
+import { normalisiere } from './normalisiere';
 
 const OHNE: Positionsmerkmale = {
   bedarf: null,
@@ -88,5 +90,42 @@ export function inhaltMitAllenAltenArten(schemaVersion: number): Projektdatei {
         },
       ),
     ],
+  };
+}
+
+/**
+ * Erwarteter Stand nach Migration 2 (D-17): dieselben Daten, jede Summe so, wie der Kern sie vollständig rechnet. Für
+ * ein Angebot ist das das gedachte LV (R7): Knoten des LV mit den EP des Bieters (Version 1 kennt keinen Satz).
+ * Unabhängig vom Produktivweg (`summenmigration.ts`) gebildet; die Angebotssummen nach Kennung wie im Speicher.
+ */
+export function mitKernSummen(d: Projektdatei): Projektdatei {
+  const lvs = new Map(d.leistungsverzeichnisse.map((z) => [z.leistungsverzeichnis.id as string, z]));
+  return {
+    ...d,
+    leistungsverzeichnisse: d.leistungsverzeichnisse.map((z) => ({
+      ...z,
+      summen: summenBerechnen(z.leistungsverzeichnis),
+    })),
+    angebote: d.angebote.map((z) => {
+      const lv = lvs.get(z.angebot.leistungsverzeichnisId)?.leistungsverzeichnis;
+      if (lv === undefined) throw new Error(`LV zu Angebot ${z.angebot.id} fehlt`);
+      const ep = new Map(z.angebot.positionen.map((p) => [p.positionId as string, p]));
+      const knoten = lv.knoten.map((k) => {
+        if (k.art !== 'position') return k;
+        const p = ep.get(k.id);
+        return { ...k, einheitspreis: p?.status === 'angeboten' ? p.einheitspreis : null };
+      });
+      const summen = summenBerechnen({
+        id: lv.id,
+        knoten,
+        nachlass: z.angebot.nachlass,
+        mwstSatz: lv.mwstSatz,
+      });
+      return normalisiere({ ...z, summen });
+    }),
+    auftragsLeistungsverzeichnisse: d.auftragsLeistungsverzeichnisse.map((z) => ({
+      ...z,
+      summen: summenBerechnen(z.auftragsLeistungsverzeichnis),
+    })),
   };
 }

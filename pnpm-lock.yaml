@@ -130,6 +130,9 @@ importers:
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../dezimal
+      '@tethys/kern':
+        specifier: workspace:*
+        version: link:../kern
       '@tethys/vertrag':
         specifier: workspace:*
         version: link:../vertrag
@@ -165,6 +168,9 @@ importers:
       '@sqlite.org/sqlite-wasm':
         specifier: 3.54.1-build1
         version: 3.54.1-build1
+      '@tethys/kern':
+        specifier: workspace:*
+        version: link:../kern
       '@tethys/vertrag':
         specifier: workspace:*
         version: link:../vertrag

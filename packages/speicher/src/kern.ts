@@ -45,6 +45,7 @@ import {
   wendeProjektAn,
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
+import type { Migrationsbefund } from './summenmigration';
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -112,6 +113,8 @@ export class SpeicherKern {
   // Echte private Felder (`#`): Die Datenbank ist von außen nicht erreichbar, auch nicht zur Laufzeit (A5).
   readonly #db: Datenbank;
   readonly #migrationen: readonly Migration[];
+  /** Befunde der Summen-Neuberechnung beim Öffnen und bei jedem Import einer alten Datei (D-17). */
+  readonly #befunde: Migrationsbefund[];
   #geschlossen = false;
   /** Letzter `anwenden`-Lauf: der nächste wartet auf ihn (Reihenfolge der Aufrufe, ein Schreiber). */
   #reihe: Promise<unknown> = Promise.resolve();
@@ -124,9 +127,10 @@ export class SpeicherKern {
     return this.#geschlossen ? GESCHLOSSEN() : fange(f);
   }
 
-  private constructor(db: Datenbank, migrationen: readonly Migration[]) {
+  private constructor(db: Datenbank, migrationen: readonly Migration[], befunde: Migrationsbefund[]) {
     this.#db = db;
     this.#migrationen = migrationen;
+    this.#befunde = befunde;
   }
 
   /** Schaltet Fremdschlüssel ein und bringt das Schema auf den aktuellen Stand (A8). */
@@ -138,9 +142,18 @@ export class SpeicherKern {
       db.ausfuehren('PRAGMA foreign_keys = ON');
     });
     if (!f.ok) return f;
-    const m = migriere(db, migrationen);
+    const befunde: Migrationsbefund[] = [];
+    const m = migriere(db, migrationen, befunde);
     if (!m.ok) return m;
-    return ok(new SpeicherKern(db, migrationen));
+    return ok(new SpeicherKern(db, migrationen, befunde));
+  }
+
+  /**
+   * Befunde der Migrationen seit dem Öffnen (D-17): Aggregate, deren Summen der Kern nicht neu rechnen konnte, weil er
+   * ihre Daten abweist. Die Daten sind unverändert gespeichert.
+   */
+  migrationsbefunde(): Ergebnis<readonly Migrationsbefund[], Speicherfehler> {
+    return this.#fange(() => [...this.#befunde]);
   }
 
   // --- Lesen ------------------------------------------------------------------------------------------------
@@ -273,9 +286,10 @@ export class SpeicherKern {
   /** Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). */
   projektdateiImportieren(inhalt: string): Ergebnis<ProjektId, Speicherfehler> {
     if (this.#geschlossen) return GESCHLOSSEN();
-    const datei = leseProjektdatei(inhalt, this.#migrationen);
+    const befunde: Migrationsbefund[] = [];
+    const datei = leseProjektdatei(inhalt, this.#migrationen, befunde);
     if (!datei.ok) return datei;
-    return fange(() =>
+    const r = fange(() =>
       transaktion(this.#db, () => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {
           abbruch(
@@ -286,6 +300,8 @@ export class SpeicherKern {
         return schreibeProjektdatei(this.#db, datei.wert);
       }),
     );
+    if (r.ok) this.#befunde.push(...befunde);
+    return r;
   }
 
   /** Schließt die Datenbank. Danach liefert jeder Aufruf `gesperrt`, auch ein zweites `schliessen`. */

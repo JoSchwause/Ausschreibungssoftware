@@ -32,6 +32,7 @@ import {
   wendeProjektAn,
 } from './schreiben';
 import type { Datenbank } from './sql';
+import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
 
 /** Baut die Projektdatei im Stand der aktuellen Schemaversion. Reihenfolge der Listen: nach Kennung. */
 export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: number): Projektdatei {
@@ -60,11 +61,13 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
 
 /**
  * Liest den JSON-Text, hebt eine ältere Dateiversion Schritt für Schritt auf die aktuelle (A8) und prüft das
- * Ergebnis streng gegen die aktuelle Form.
+ * Ergebnis streng gegen die aktuelle Form. Verlangt ein Schritt es, rechnet der Kern danach alle Summen neu (D-17);
+ * Befunde dazu landen in `befunde`.
  */
 export function leseProjektdatei(
   inhalt: string,
   migrationen: readonly Migration[],
+  befunde: Migrationsbefund[] = [],
 ): Ergebnis<Projektdatei, Speicherfehler> {
   let roh: unknown;
   try {
@@ -90,8 +93,10 @@ export function leseProjektdatei(
       `Die Projektdatei hat Schemaversion ${String(von)}, diese Version kennt höchstens ${String(ziel)}.`,
     );
   }
+  let summenNeu = false;
   for (const m of migrationen) {
     if (m.version <= von) continue;
+    summenNeu ||= m.summenNeuRechnen === true;
     if (m.datei === null) {
       return fehler('migration-fehlgeschlagen', `Migration ${String(m.version)} hat keine Dateimigration.`);
     }
@@ -107,7 +112,11 @@ export function leseProjektdatei(
       );
     }
   }
-  return fange(() => dekodiereProjektdatei(aktuell, ziel));
+  const datei = fange(() => dekodiereProjektdatei(aktuell, ziel));
+  if (!datei.ok || !summenNeu) return datei;
+  const neu = summenDerDateiNeuRechnen(datei.wert);
+  befunde.push(...neu.befunde);
+  return { ok: true, wert: neu.datei };
 }
 
 /**

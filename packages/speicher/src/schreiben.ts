@@ -34,6 +34,7 @@ import type {
   ProjektId,
   Protokolleintrag,
   Summenaenderung,
+  Summenstand,
   Zeitstempel,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
@@ -314,6 +315,12 @@ function wendeSummenAn(db: Datenbank, aggregatId: string, s: Summenaenderung): v
     ]),
   );
   if (s.gesamt !== null) schreibeGesamt(db, aggregatId, s.gesamt);
+}
+
+/** Ersetzt alle Summen eines Aggregats durch einen vollständigen Stand (Neuberechnung nach Migration 2, D-17). */
+export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenstand): void {
+  loescheSummen(db, aggregatId);
+  wendeSummenAn(db, aggregatId, stand);
 }
 
 // --- Leistungsverzeichnis ------------------------------------------------------------------------------------

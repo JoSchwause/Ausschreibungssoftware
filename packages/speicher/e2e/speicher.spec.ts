@@ -7,7 +7,7 @@ import type { Menge, Position } from '@tethys/vertrag';
 import type { Pruefstand, PruefSchritt } from '../harness/main';
 import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
-import { inhaltMitAllenAltenArten } from '../src/testhilfe/inhalt-v1';
+import { inhaltMitAllenAltenArten, mitKernSummen } from '../src/testhilfe/inhalt-v1';
 import { SCHEMA_VERSION } from '../src/migrationen';
 import { normalisiere } from '../src/testhilfe/normalisiere';
 import { feldAendern, standAnlegen } from '../src/testhilfe/umkehrung';
@@ -227,21 +227,23 @@ test.describe('Migration im OPFS (A8, Ticket 38)', () => {
     page,
   }) => {
     const inhalt = inhaltMitAllenAltenArten(2);
-    const lv = inhalt.leistungsverzeichnisse[0];
+    // Nach Migration 2 stehen die Summen so, wie der Kern sie vollständig rechnet (D-17); die Daten bleiben.
+    const soll = mitKernSummen(inhalt);
+    const lv = soll.leistungsverzeichnisse[0];
     if (lv === undefined) throw new Error('kein LV');
     await start(page);
     expect(await ps(page, 'schema1Anlegen', DB, inhalt)).toEqual({ ok: true, version: 1 });
 
     expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true }); // migriert auf die aktuelle Version
     expect((await ps(page, 'lvPruefen', DB, lv.leistungsverzeichnis.id, lv)).gleich).toBe(true);
-    for (const a of inhalt.angebote) expect(await ps(page, 'angebotPruefen', DB, a.angebot.id, a)).toBe(true);
+    for (const a of soll.angebote) expect(await ps(page, 'angebotPruefen', DB, a.angebot.id, a)).toBe(true);
     const erster = await ps(page, 'exportieren', DB, inhalt.projekt.id);
     if (erster.text === undefined) throw new Error(`Export fehlgeschlagen: ${JSON.stringify(erster)}`);
     expect((JSON.parse(erster.text) as { schemaVersion: number }).schemaVersion).toBe(SCHEMA_VERSION);
 
     // Derselbe Inhalt, frisch in Version 2 importiert, ergibt dieselbe Datei: nichts ging bei der Migration verloren.
     await ps(page, 'oeffnen', 'vergleich');
-    expect(await ps(page, 'importieren', 'vergleich', kanonischesJson(inhalt))).toEqual({ ok: true });
+    expect(await ps(page, 'importieren', 'vergleich', kanonischesJson(soll))).toEqual({ ok: true });
     expect((await ps(page, 'exportieren', 'vergleich', inhalt.projekt.id)).text === erster.text).toBe(true);
     await ps(page, 'schliessen', 'vergleich');
 

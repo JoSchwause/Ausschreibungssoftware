@@ -140,6 +140,9 @@ Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ä
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
 
+### Migrationsbefund
+Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
+
 ### Formale LV-Prüfung (LV-Prüfung)
 Die Prüfung eines Ausschreibungs-LV auf Vollständigkeit und GAEB-Tauglichkeit (fehlende oder doppelte Ordnungszahl, leere Texte, fehlende Einheit oder Menge, zu große Zahlen, Zuschlagspositionen ohne Bezug, negatives Netto nach Nachlass usw.). Sie liefert Prüfbefunde mit der Quelle `lv-pruefung` und sperrt nie die Eingabe. Im Code `lvPruefen`, Regeln in `pruefregeln.ts`.
 

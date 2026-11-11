@@ -18,6 +18,7 @@ import { fehler } from './ergebnis';
 import { fehlerAusAusnahme } from './fehler';
 import type { SpeicherKern } from './kern';
 import type { OeffnenOptionen, RpcAnfrage, RpcAntwort, RpcMethode, WorkerLike } from './rpc';
+import type { Migrationsbefund } from './summenmigration';
 
 /** Schickt eine Anfrage und liefert die Antwort als Wert. Wirft nie. */
 export type Transport = (
@@ -32,11 +33,14 @@ export interface SpeicherVerwaltung {
 }
 
 /**
- * Der geöffnete Speicher: genau die Schnittstelle des Vertrags (`schliessen` gehört seit v1.1a dazu). Nach
- * `schliessen` liefert jeder Aufruf `gesperrt` als Fehlerwert, auch ein zweites `schliessen`; nur
- * `persistenzstatus` antwortet weiter, weil er die Datenbank nicht braucht und keinen Fehlerwert kennt.
+ * Der geöffnete Speicher: die Schnittstelle des Vertrags (`schliessen` gehört seit v1.1a dazu) und die Befunde der
+ * Migrationen (D-17). Nach `schliessen` liefert jeder Aufruf `gesperrt` als Fehlerwert, auch ein zweites `schliessen`;
+ * nur `persistenzstatus` antwortet weiter, weil er die Datenbank nicht braucht und keinen Fehlerwert kennt.
  */
-export type GeoeffneterSpeicher = Speicher;
+export type GeoeffneterSpeicher = Speicher & {
+  /** Aggregate, deren Summen eine Migration nicht neu rechnen konnte (D-17); ihre Daten sind unverändert. */
+  migrationsbefunde(): Promise<Ergebnis<readonly Migrationsbefund[], Speicherfehler>>;
+};
 
 function standardVerwaltung(): SpeicherVerwaltung | null {
   const nav = (globalThis as { navigator?: { storage?: Partial<SpeicherVerwaltung> } }).navigator;
@@ -113,6 +117,7 @@ export function speicherUeberTransport(
     },
     projektdateiExportieren: (projektId: ProjektId) => aufruf('projektdateiExportieren', projektId),
     projektdateiImportieren: (inhalt: string) => aufruf('projektdateiImportieren', inhalt),
+    migrationsbefunde: () => aufruf('migrationsbefunde'),
     schliessen: async () => {
       if (zu) return geschlossen();
       zu = true; // auch Aufrufe, die während des Schließens kommen, gehen nicht mehr hinaus

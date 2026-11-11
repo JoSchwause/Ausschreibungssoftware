@@ -18,6 +18,7 @@ export const RPC_METHODEN = [
   'protokoll',
   'projektdateiExportieren',
   'projektdateiImportieren',
+  'migrationsbefunde',
 ] as const;
 
 export type RpcMethode = (typeof RPC_METHODEN)[number];
