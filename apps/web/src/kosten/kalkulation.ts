@@ -39,11 +39,20 @@ export interface Kalkulationsformular {
 
 export const LEERE_ZEILE: Ansatzzeile = { art: 'lohn', bezeichnung: '', ansatzmenge: '', kostensatz: '' };
 
-export const LEERES_FORMULAR: Kalkulationsformular = { zeilen: [LEERE_ZEILE], saetze: {}, freiBezeichnung: '' };
+export const LEERES_FORMULAR: Kalkulationsformular = {
+  zeilen: [LEERE_ZEILE],
+  saetze: {},
+  freiBezeichnung: '',
+};
 
 /** Ein unlesbarer Wert: Zeile (Index) und Feld, oder der Satz einer Kostenart; die Meldung ist deutsch. */
 export type Formfehler =
-  | { readonly ort: 'zeile'; readonly zeile: number; readonly feld: 'ansatzmenge' | 'kostensatz'; readonly meldung: string }
+  | {
+      readonly ort: 'zeile';
+      readonly zeile: number;
+      readonly feld: 'ansatzmenge' | 'kostensatz';
+      readonly meldung: string;
+    }
   | { readonly ort: 'satz'; readonly art: EpaArt; readonly meldung: string };
 
 export interface Kalkulationslauf {
@@ -56,7 +65,10 @@ export interface Kalkulationslauf {
  * Liest das Formular (leer = fehlt, unlesbar = Feldfehler und fehlt) und rechnet. Eine Zeile ganz ohne Eingabe (nur die
  * Kostenart) zählt nicht und erzeugt keinen Befund.
  */
-export function kalkulationRechnen(form: Kalkulationsformular, lvHatEpaBezeichnungen: boolean): Kalkulationslauf {
+export function kalkulationRechnen(
+  form: Kalkulationsformular,
+  lvHatEpaBezeichnungen: boolean,
+): Kalkulationslauf {
   const fehler: Formfehler[] = [];
   const ansaetze: Kalkulationsansatz[] = [];
   form.zeilen.forEach((z, i) => {
@@ -66,13 +78,20 @@ export function kalkulationRechnen(form: Kalkulationsformular, lvHatEpaBezeichnu
     if (z.ansatzmenge.trim() !== '') {
       const m = zahlLesen('menge', z.ansatzmenge.trim());
       if (m.ok) menge = m.wert;
-      else fehler.push({ ort: 'zeile', zeile: i, feld: 'ansatzmenge', meldung: texte.kalkulation.fehlerMenge });
+      else
+        fehler.push({ ort: 'zeile', zeile: i, feld: 'ansatzmenge', meldung: texte.kalkulation.fehlerMenge });
     }
     let satz: Einheitspreis | null = null;
     if (z.kostensatz.trim() !== '') {
       const s = zahlLesen('einheitspreis', z.kostensatz.trim());
       if (s.ok) satz = s.wert;
-      else fehler.push({ ort: 'zeile', zeile: i, feld: 'kostensatz', meldung: texte.kalkulation.fehlerKostensatz });
+      else
+        fehler.push({
+          ort: 'zeile',
+          zeile: i,
+          feld: 'kostensatz',
+          meldung: texte.kalkulation.fehlerKostensatz,
+        });
     }
     ansaetze.push({ art: z.art, bezeichnung: z.bezeichnung.trim(), ansatzmenge: menge, kostensatz: satz });
   });
@@ -85,7 +104,8 @@ export function kalkulationRechnen(form: Kalkulationsformular, lvHatEpaBezeichnu
     else fehler.push({ ort: 'satz', art, meldung: texte.kalkulation.fehlerSatz });
   }
   // Ist `epaBezeichnungen` am LV gesetzt, ist es die einzige Quelle der Beschriftung (D-28): `null` geht weiter.
-  const frei = lvHatEpaBezeichnungen || form.freiBezeichnung.trim() === '' ? null : form.freiBezeichnung.trim();
+  const frei =
+    lvHatEpaBezeichnungen || form.freiBezeichnung.trim() === '' ? null : form.freiBezeichnung.trim();
   return { ergebnis: einzelpreiskalkulationBerechnen(ansaetze, saetze, frei), fehler };
 }
 

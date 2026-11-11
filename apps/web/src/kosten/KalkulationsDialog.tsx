@@ -47,7 +47,10 @@ export function KalkulationsDialog({
     setMeldung(null);
   }, [position?.id]);
 
-  const lauf = useMemo(() => kalkulationRechnen(form, epaBezeichnungenGesetzt), [form, epaBezeichnungenGesetzt]);
+  const lauf = useMemo(
+    () => kalkulationRechnen(form, epaBezeichnungenGesetzt),
+    [form, epaBezeichnungenGesetzt],
+  );
   const { ergebnis, fehler } = lauf;
 
   const zeileAendern = (i: number, neu: Partial<Ansatzzeile>): void => {
@@ -93,7 +96,6 @@ export function KalkulationsDialog({
       <div className="kalkulation__zeilen">
         {form.zeilen.map((z, i) => (
           // Die Zeilen sind unbenannt und nur nach Index zu unterscheiden; ein Entfernen mischt nur Textfelder.
-          // eslint-disable-next-line react/no-array-index-key
           <ZeilenFelder
             key={i}
             nr={i + 1}

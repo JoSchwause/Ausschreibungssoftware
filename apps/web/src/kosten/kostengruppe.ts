@@ -72,7 +72,8 @@ export function inGliederung(
     for (const eintrag of e.eintraege) {
       if (verwandt.has(eintrag.nummer)) return true; // Eintrag auf der Gruppe selbst oder auf einem Vorfahren
       // Eintrag unterhalb der Gruppe: die Gruppe ist Vorfahre des Eintrags
-      for (let n = kgElternteil(eintrag.nummer); n !== null; n = kgElternteil(n)) if (n === nummer) return true;
+      for (let n = kgElternteil(eintrag.nummer); n !== null; n = kgElternteil(n))
+        if (n === nummer) return true;
     }
   }
   return false;

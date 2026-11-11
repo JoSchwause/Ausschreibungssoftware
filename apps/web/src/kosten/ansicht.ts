@@ -6,7 +6,13 @@
 import { formatiereBetragDe } from '@tethys/dezimal';
 import { kgElternteil, kgVorfahren } from '@tethys/kosten';
 import type { Kostenermittlungsergebnis, Kostenkontrolle, Kostenkontrollwerte } from '@tethys/kosten';
-import type { KennzeichenText, VergleichsSpalte, VergleichsSummenzeile, VergleichsZelle, VergleichsZeile } from '@tethys/ui-grid';
+import type {
+  KennzeichenText,
+  VergleichsSpalte,
+  VergleichsSummenzeile,
+  VergleichsZelle,
+  VergleichsZeile,
+} from '@tethys/ui-grid';
 import { vorzeichen } from '@tethys/dezimal';
 import type { Betrag, Kostengruppennummer } from '@tethys/vertrag';
 import { texte } from './texte';
@@ -21,7 +27,10 @@ export interface KostenAnsicht {
 }
 
 const betrag = (b: Betrag): string => formatiereBetragDe(b);
-const zelle = (text: string, extra: Omit<VergleichsZelle, 'text'> = {}): VergleichsZelle => ({ text, ...extra });
+const zelle = (text: string, extra: Omit<VergleichsZelle, 'text'> = {}): VergleichsZelle => ({
+  text,
+  ...extra,
+});
 
 interface Baumknoten {
   readonly nummer: Kostengruppennummer;
@@ -87,7 +96,9 @@ export function ermittlungAnsicht(
   return {
     spalten,
     zeilen,
-    summen: [{ id: 'gesamt', zellen: { nummer: zelle(t.gesamt), summe: zelle(betrag(ergebnis.gesamtsumme)) } }],
+    summen: [
+      { id: 'gesamt', zellen: { nummer: zelle(t.gesamt), summe: zelle(betrag(ergebnis.gesamtsumme)) } },
+    ],
   };
 }
 

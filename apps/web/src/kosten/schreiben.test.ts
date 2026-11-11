@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { projektAnlegenBefehl } from '../projekt/befehle';
 import { befehlswegFuer, projektSitzung } from '../lv/befehlsweg';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
-import { eintragEntfernenBefehl, eintragSetzenBefehl, kopfBefehl, kostenermittlungAnlegenBefehl } from './befehle';
+import {
+  eintragEntfernenBefehl,
+  eintragSetzenBefehl,
+  kopfBefehl,
+  kostenermittlungAnlegenBefehl,
+} from './befehle';
 import { kostenermittlungSitzung, kostenermittlungenLaden } from './schreiben';
 
 async function aufbau() {
@@ -52,7 +57,12 @@ describe('Befehle aus Formularfeldern', () => {
 describe('Kostenermittlung durch den Speicher', () => {
   it('anlegen, Einträge setzen, Kopf ändern; Rückgängig und Wiederholen stellen den gespeicherten Stand her', async () => {
     const { speicher, u, projekt, weg } = await aufbau();
-    const anlegen = kostenermittlungAnlegenBefehl(u.ids, projekt.id, ' Kostenberechnung ', 'kostenberechnung');
+    const anlegen = kostenermittlungAnlegenBefehl(
+      u.ids,
+      projekt.id,
+      ' Kostenberechnung ',
+      'kostenberechnung',
+    );
     const id: KostenermittlungId = anlegen.kostenermittlung.id;
     const s = kostenermittlungSitzung(u, projekt.id, null);
     expect((await s.befehl(anlegen)).ok).toBe(true);
@@ -85,7 +95,9 @@ describe('Kostenermittlung durch den Speicher', () => {
 
     const stand = async () => {
       const g = await kostenermittlungenLaden(speicher, projekt.id);
-      return g.ok ? (g.wert[0]?.kostenermittlung.eintraege.map((e) => `${e.nummer}=${e.betrag}`) ?? null) : null;
+      return g.ok
+        ? (g.wert[0]?.kostenermittlung.eintraege.map((e) => `${e.nummer}=${e.betrag}`) ?? null)
+        : null;
     };
     expect(await stand()).toEqual(['330=1.00', '340=2.00']);
     expect((await weg.rueckgaengig()).ok).toBe(true);
@@ -113,6 +125,8 @@ describe('Kostenermittlung durch den Speicher', () => {
     expect(nachLoeschen.ok && nachLoeschen.wert).toEqual([]);
     await weg.rueckgaengig();
     const zurueck = await kostenermittlungenLaden(speicher, projekt.id);
-    expect(zurueck.ok && zurueck.wert[0]?.kostenermittlung.eintraege).toEqual([{ nummer: '330', betrag: '9.00' }]);
+    expect(zurueck.ok && zurueck.wert[0]?.kostenermittlung.eintraege).toEqual([
+      { nummer: '330', betrag: '9.00' },
+    ]);
   });
 });

@@ -293,7 +293,8 @@ function LvBearbeiten({
   const kalkulationOeffnen = (): void => {
     const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
     if (k?.art === 'position') setKalkulation(k);
-    else zeige({ titel: ktexte.kalkulation.keinePosition, beschreibung: ktexte.kalkulation.keinePositionText });
+    else
+      zeige({ titel: ktexte.kalkulation.keinePosition, beschreibung: ktexte.kalkulation.keinePositionText });
   };
   const kgPositionen = useMemo(
     () => (kgOffen ? positionenInReihenfolge(lv.id, lv.knoten) : []),

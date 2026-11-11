@@ -62,7 +62,10 @@ export function KostenkontrolleSeite({
       if (!p.ok || !k.ok || !a.ok) return { art: 'fehlt' };
       const l = await leistungsstaendeLaden(u.speicher, a.wert, LEISTUNGSSTAND_RECHNER);
       if (!l.ok) return { art: 'fehlt' };
-      return { art: 'da', stand: { projekt: p.wert, ermittlungen: k.wert, auftraege: a.wert, leistungsstaende: l.wert } };
+      return {
+        art: 'da',
+        stand: { projekt: p.wert, ermittlungen: k.wert, auftraege: a.wert, leistungsstaende: l.wert },
+      };
     })().then((s) => {
       if (aktiv) setLage(s);
     });

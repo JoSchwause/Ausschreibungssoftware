@@ -63,7 +63,9 @@ export function kostenermittlungSitzung(
   projektId: ProjektId,
   zustand: KostenermittlungZustand | null,
 ): KostenermittlungSitzung {
-  return new Sitzung(befehlswegFuer(u), zustand, (z, b) => kostenermittlungBefehlAnwenden(u, projektId, z, b));
+  return new Sitzung(befehlswegFuer(u), zustand, (z, b) =>
+    kostenermittlungBefehlAnwenden(u, projektId, z, b),
+  );
 }
 
 export function auftragsLvSitzung(

@@ -7,7 +7,12 @@
 import { kostenermittlungBerechnen } from '@tethys/kosten';
 import { Auswahl, Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
 import { VergleichsGrid } from '@tethys/ui-grid';
-import type { KostenermittlungId, KostenermittlungZustand, Kostenermittlungsstufe, ProjektId } from '@tethys/vertrag';
+import type {
+  KostenermittlungId,
+  KostenermittlungZustand,
+  Kostenermittlungsstufe,
+  ProjektId,
+} from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
@@ -110,7 +115,10 @@ function Editor({
 
   const ergebnis = useMemo(() => kostenermittlungBerechnen(k.eintraege), [k.eintraege]);
   const bemerkungen = useMemo(
-    () => new Map(k.eintraege.flatMap((e) => (e.bemerkung === undefined ? [] : [[e.nummer, e.bemerkung] as const]))),
+    () =>
+      new Map(
+        k.eintraege.flatMap((e) => (e.bemerkung === undefined ? [] : [[e.nummer, e.bemerkung] as const])),
+      ),
     [k.eintraege],
   );
   const ansicht = useMemo(

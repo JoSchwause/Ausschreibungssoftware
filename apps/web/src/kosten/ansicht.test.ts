@@ -7,8 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { ermittlungAnsicht, kontrolleAnsicht } from './ansicht';
 
 const KEINE: ReadonlySet<string> = new Set();
-const text = (z: { zellen: Readonly<Record<string, { text: string } | undefined>> }, s: string): string | undefined =>
-  z.zellen[s]?.text;
+const text = (
+  z: { zellen: Readonly<Record<string, { text: string } | undefined>> },
+  s: string,
+): string | undefined => z.zellen[s]?.text;
 
 describe('ermittlungAnsicht', () => {
   // 300 hat keinen eigenen Eintrag; 330 = 100.000,00, 340 = 25.000,50, 410 = 7,00. Summe 300 = 125.000,50.

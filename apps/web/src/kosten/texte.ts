@@ -82,8 +82,7 @@ export const texte = {
       'betrag-nicht-kanonisch': 'Der Betrag hatte nicht genau 2 Nachkommastellen und wurde gerundet.',
       'betrag-negativ': 'Negativer Betrag; er zählt mit.',
       'nummer-doppelt': 'Die Nummer kommt mehrfach vor; die Beträge wurden addiert.',
-      'eigener-betrag-und-kinder':
-        'Die Gruppe hat einen eigenen Betrag und Einträge darunter; beides zählt.',
+      'eigener-betrag-und-kinder': 'Die Gruppe hat einen eigenen Betrag und Einträge darunter; beides zählt.',
     },
   },
   kontrolle: {
@@ -116,7 +115,8 @@ export const texte = {
         `Kostengruppe ${nr} ist gröber als die Einträge des gewählten Budgets.`,
       'leistungsstand-unbekannt': () =>
         'Ein Leistungsstand gehört zu keinem Auftrags-LV des Projekts und zählt nicht.',
-      'leistungsstand-doppelt': () => 'Zu einem Auftrags-LV liegen zwei Leistungsstände vor; nur der erste zählt.',
+      'leistungsstand-doppelt': () =>
+        'Zu einem Auftrags-LV liegen zwei Leistungsstände vor; nur der erste zählt.',
       'summe-abweichend': (spalte: string) =>
         `Die Zeilen der Spalte ${spalte} ergeben nicht das Gesamt (der Summenstand passt nicht zu den Positionen).`,
     },

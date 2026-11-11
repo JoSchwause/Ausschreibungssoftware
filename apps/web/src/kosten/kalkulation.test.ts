@@ -7,7 +7,12 @@
 
 import type { PositionId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { LEERES_FORMULAR, kalkulationBefehle, kalkulationRechnen, type Kalkulationsformular } from './kalkulation';
+import {
+  LEERES_FORMULAR,
+  kalkulationBefehle,
+  kalkulationRechnen,
+  type Kalkulationsformular,
+} from './kalkulation';
 
 const form: Kalkulationsformular = {
   zeilen: [

@@ -59,7 +59,8 @@ export type Ausgang<Z> =
 export const EINZIGER_NUTZER = 'nutzer' as NutzerId;
 
 /** Ein angenommener Befehl samt dem, was der Undo-Stapel von ihm braucht. */
-export type Lauf<Z> = // Ticket 89: exportiert für `kosten/schreiben.ts`
+export type Lauf<Z> =
+  // Ticket 89: exportiert für `kosten/schreiben.ts`
   (Extract<Ausgang<Z>, { ok: true }> & { readonly teil: Teil }) | Extract<Ausgang<Z>, { ok: false }>;
 
 export function eintrag( // Ticket 89: exportiert für `kosten/schreiben.ts`

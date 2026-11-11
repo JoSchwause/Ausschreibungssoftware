@@ -122,7 +122,11 @@ export function KostenListeSeite({
           })}
         </ul>
       )}
-      <form className="kosten__formular" onSubmit={(e) => void anlegen(e)} aria-label={texte.seite.anlegenTitel}>
+      <form
+        className="kosten__formular"
+        onSubmit={(e) => void anlegen(e)}
+        aria-label={texte.seite.anlegenTitel}
+      >
         <Eingabefeld
           label={texte.seite.name}
           value={name}

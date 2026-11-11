@@ -74,7 +74,6 @@ export function KostengruppenDialog({
       aktiv = false;
     };
     // `vorauswahl` ist der Stand beim Öffnen; spätere Änderungen im Grid betreffen den offenen Dialog nicht.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offen, u, projektId]);
 
   const sichtbar = useMemo(() => {

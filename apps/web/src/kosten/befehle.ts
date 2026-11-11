@@ -5,7 +5,6 @@
 
 import { kgLesen } from '@tethys/kosten';
 import type {
-  Betrag,
   Ergebnis,
   IdQuelle,
   KostenermittlungAnlegen,
@@ -62,7 +61,7 @@ export function eintragSetzenBefehl(
   const text = bemerkung.trim();
   const eintrag: Kostenermittlungseintrag = {
     nummer: n.wert,
-    betrag: b.wert as Betrag,
+    betrag: b.wert,
     ...(text === '' ? {} : { bemerkung: text }),
   };
   return { ok: true, wert: { art: 'KostenermittlungseintragSetzen', eintrag } };

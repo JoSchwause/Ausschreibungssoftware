@@ -26,7 +26,10 @@ export function KostengruppenAmAuftrag({
   const { pruefe } = useMeldungen();
   const [offen, setOffen] = useState(false);
   const a = auftrag.auftragsLeistungsverzeichnis;
-  const positionen = useMemo(() => (offen ? positionenInReihenfolge(a.id, a.knoten) : []), [offen, a.id, a.knoten]);
+  const positionen = useMemo(
+    () => (offen ? positionenInReihenfolge(a.id, a.knoten) : []),
+    [offen, a.id, a.knoten],
+  );
 
   const senden = async (befehle: readonly KostengruppeSetzen[]): Promise<boolean> => {
     const aus = await auftragsLvSitzung(u, a.projektId, auftrag).folge(befehle);

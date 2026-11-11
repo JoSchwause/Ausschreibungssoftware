@@ -53,13 +53,18 @@ const BUDGET_310 = 2600000n;
 const BUDGET_300 = BUDGET_390 + BUDGET_340 + BUDGET_310;
 
 const kontrolle = (page: Page): Locator => page.getByRole('treegrid', { name: 'Kostenkontrolle' });
-const ermittlung = (page: Page): Locator => page.getByRole('treegrid', { name: 'Kostengruppen der Kostenermittlung' });
+const ermittlung = (page: Page): Locator =>
+  page.getByRole('treegrid', { name: 'Kostengruppen der Kostenermittlung' });
 
 /** Die Zelle `spalte` der Zeile, deren erste Zelle `nummer` zeigt (Kostengruppe oder Name einer Summenzeile). */
 function zelle(grid: Locator, nummer: string, spalte: string): Locator {
   return grid
     .locator('[role="row"]')
-    .filter({ has: grid.page().locator('[data-spalte="nummer"] .tx-grid__text', { hasText: new RegExp(`^${nummer}$`) }) })
+    .filter({
+      has: grid
+        .page()
+        .locator('[data-spalte="nummer"] .tx-grid__text', { hasText: new RegExp(`^${nummer}$`) }),
+    })
     .locator(`[data-spalte="${spalte}"] .tx-grid__text`);
 }
 
@@ -85,9 +90,13 @@ async function dialogSchliessen(dialog: Locator): Promise<void> {
 
 /** Kostengruppe der Position mit der OZ in der Liste des Dialogs. */
 const kgDerPosition = (dialog: Locator, oz: string): Locator =>
-  dialog.getByRole('row', { name: new RegExp(`^\\s*${oz.replace('.', '\\.')}\\b`) }).locator('.zuordnung__kg');
+  dialog
+    .getByRole('row', { name: new RegExp(`^\\s*${oz.replace('.', '\\.')}\\b`) })
+    .locator('.zuordnung__kg');
 
-test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Kalkulation', async ({ page }) => {
+test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Kalkulation', async ({
+  page,
+}) => {
   const inhalt = fixtureInhalt('typisch');
   await projektAnlegen(page, 'Musterhaus', 'Bauherr');
   const projektPfad = new URL(page.url()).pathname;
@@ -108,7 +117,9 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(dialog.getByText('Keine Kostengruppennummer.')).toBeVisible();
   // Eine Nummer, die in keiner Kostenermittlung liegt, ist nur ein Hinweis (U5): Es gibt noch keine.
   await dialog.getByLabel('Kostengruppe (dreistellig)').fill('390');
-  await expect(dialog.getByText(/Kostengruppe 390 liegt in keiner Kostenermittlung des Projekts/)).toBeVisible();
+  await expect(
+    dialog.getByText(/Kostengruppe 390 liegt in keiner Kostenermittlung des Projekts/),
+  ).toBeVisible();
   await kgSetzen(dialog, '01.', '390');
   await expect(dialog.getByTestId('zuordnung-status')).toHaveText('Kostengruppe an 6 Positionen gesetzt');
   await expect(kgDerPosition(dialog, '01.0010')).toHaveText('390');
@@ -137,7 +148,9 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(page.getByRole('heading', { level: 1, name: 'Kosten – Musterhaus' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill('Kostenberechnung');
   await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Kostenermittlung – Kostenberechnung' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Kostenermittlung – Kostenberechnung' }),
+  ).toBeVisible();
 
   const eintrag = async (nummer: string, betrag: string, bemerkung = ''): Promise<void> => {
     await page.getByLabel('Kostengruppe (dreistellig)').fill(nummer);
@@ -289,5 +302,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   // Die Ansätze wurden nicht gespeichert: Der Dialog beginnt leer.
   await zeile.locator('[data-spalte="kurztext"]').click();
   await page.getByRole('button', { name: /^Kalkulieren/ }).click();
-  await expect(page.getByRole('dialog', { name: /^EP kalkulieren/ }).getByLabel('Ansatzmenge 1')).toHaveValue('');
+  await expect(page.getByRole('dialog', { name: /^EP kalkulieren/ }).getByLabel('Ansatzmenge 1')).toHaveValue(
+    '',
+  );
 });
