@@ -65,7 +65,7 @@ import type {
   ProjektId,
   TitelId,
 } from './marken';
-import type { Gesamtsummen } from './summen';
+import type { Gesamtsummen, Leistungsstand } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
@@ -1185,6 +1185,27 @@ export const beispielChangeSetFreigabeAufheben: RechnungChangeSet = {
   art: 'rechnung',
   rechnungId: rechnung1Id,
   rechnung: { vorher: beispielRechnung1, nachher: { ...beispielRechnung1, freigabe: null } },
+};
+
+/** Punkt 8: das Beispiel-Auftrags-LV nach der Übernahme von N01 (Knoten in Dokumentreihenfolge). */
+export const beispielAuftragsLvMitNachtrag: AuftragsLeistungsverzeichnis = {
+  ...beispielAuftragsLv,
+  knoten: [...beispielAuftragsLv.knoten, ...beispielNachtragUebernehmen.knoten],
+};
+
+/**
+ * Punkt 8 (D-34 (1)–(3)): Leistungsstand zu `beispielRechnung2` (Blatt 1 und 2): `01.0010` 1,000 + 0,235 = 1,235 × 10,000
+ * = 12,35; `02.01.0010` 2,500 × 15,000 = 37,50; `02.01.0020` nicht aufgemessen. Das Auftrags-LV hat keinen Nachlass.
+ */
+export const beispielLeistungsstand: Leistungsstand = {
+  positionen: [
+    { positionId: posId, menge: '1.235' as Menge, gp: '12.35' as Betrag },
+    { positionId: nachtragPos1Id, menge: '2.500' as Menge, gp: '37.50' as Betrag },
+    { positionId: nachtragPos2Id, menge: null, gp: '0.00' as Betrag },
+  ],
+  leistung: '49.85' as Betrag,
+  nachlass: '0.00' as Betrag,
+  nettoNachNachlass: '49.85' as Betrag,
 };
 
 /** Punkt 5: ChangeSet zu `beispielTextquelleSetzen`; eine Knotenänderung ohne Summen. */

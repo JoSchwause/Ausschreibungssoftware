@@ -136,6 +136,7 @@ import {
   type RechnungId,
   type RechnungZustand,
   type Umlage,
+  type Leistungsstand,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -194,6 +195,8 @@ import {
   beispielRechnung2,
   beispielRechnungFreigeben,
   beispielRechnungsfreigabeAufheben,
+  beispielAuftragsLvMitNachtrag,
+  beispielLeistungsstand,
 } from './beispiele';
 
 /**
@@ -1307,5 +1310,32 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
     expect(f.rechnung.nachher?.freigabe).toEqual({ zahlbetrag: beispielRechnungFreigeben.zahlbetrag });
     expect(tauschen(f.rechnung)).toEqual(beispielChangeSetFreigabeAufheben.rechnung);
     expect(beispielRechnungsfreigabeAufheben.art).toBe('RechnungsfreigabeAufheben');
+  });
+});
+
+/** Cent eines Betrags (2 Stellen, Punktnotation) als ganze Zahl; nur für Prüfungen im Test, nie für Geld im Code (N1). */
+const cent = (b: Betrag): bigint => BigInt(b.replace('.', ''));
+
+describe('v1.4 Punkt 8: Leistungsstand (D-34, D-37)', () => {
+  it('je Position Menge und GP, dazu Leistung, Nachlass und Netto nach Nachlass; reine Daten', () => {
+    expectTypeOf<Leistungsstand['positionen'][number]>().toEqualTypeOf<{
+      readonly positionId: PositionId;
+      readonly menge: Menge | null;
+      readonly gp: Betrag;
+    }>();
+    expectTypeOf<Leistungsstand['leistung']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Leistungsstand['nachlass']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Leistungsstand['nettoNachNachlass']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<NurDaten<Leistungsstand>>().toEqualTypeOf<true>();
+  });
+
+  it('Beispiel zu Rechnung 2: eine Zeile je Position, Leistung = Σ GP, Netto nach Nachlass = Leistung − Nachlass', () => {
+    const l = beispielLeistungsstand;
+    expect(l.positionen.map((p) => p.positionId)).toEqual(
+      beispielAuftragsLvMitNachtrag.knoten.filter((k) => k.art === 'position').map((k) => k.id),
+    );
+    expect(l.positionen.reduce((s, p) => s + cent(p.gp), 0n)).toBe(cent(l.leistung));
+    expect(cent(l.leistung) - cent(l.nachlass)).toBe(cent(l.nettoNachNachlass));
+    expect(l.positionen.find((p) => p.menge === null)?.gp).toBe('0.00');
   });
 });
