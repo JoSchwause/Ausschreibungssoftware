@@ -4,16 +4,16 @@
 // Auftrags-LV mit den erwarteten Summen; ein zweiter Zuschlag geht nicht, Rückgängig nimmt ihn zurück, nach dem
 // Neuladen ist alles noch da.
 //
-// LV `typisch` kommt über den Testpfad (Projektdatei-Inhalt der Fixture), nicht als X83: Nach dem X83-Rundweg trägt die
-// Wahlgruppe keine Grundposition mehr (D-16, Warnung `wahl-ohne-grundposition`), eine gewählte Alternative ersetzte
-// dann nichts (D-59.2); geprüft werden soll aber der Zuschlag mit Wahl (D-64.1). Alle erwarteten Zahlen stehen in den
-// Fixtures (`typisch-angebote.json`: Bietersummen, Rang, GP je Position) oder sind daraus nach N2 hergeleitet, nie aus
-// einem Lauf des Kerns.
+// LV `typisch` kommt als X83 über „GAEB einlesen“ (Ticket 91, D-64.1 zurückgenommen): Die Datei schreibt der GAEB-Writer
+// aus der Fixture; seit Ticket 73 trägt die Wahlgruppe nach dem Rundweg ihre Grundposition (02.0070 Variante 0, 02.0070 A
+// Variante 1), der Zuschlag mit Wahl ersetzt sie also. Alle erwarteten Zahlen stehen in den Fixtures
+// (`typisch-angebote.json`: Bietersummen, Rang, GP je Position) oder sind daraus nach N2 hergeleitet, nie aus einem Lauf
+// des Kerns.
 
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { fixtureInhalt } from './fixture-inhalt';
-import { betragDe, projektAnlegen, summen } from './hilfen';
+import { fixtureAlsX83 } from './fixture-inhalt';
+import { betragDe, gaebEinlesen, projektAnlegen, summen } from './hilfen';
 
 type Summen = Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
 interface FxBieter {
@@ -35,6 +35,7 @@ const fx = JSON.parse(readFileSync(new URL('typisch-angebote.json', wurzel), 'ut
   };
 };
 const lvFx = JSON.parse(readFileSync(new URL('typisch.json', wurzel), 'utf8')) as {
+  name: string;
   mwstSatz: string;
   knoten: readonly { id: string; ordnungszahl?: string; positionsart?: string; grundpositionId?: string }[];
 };
@@ -121,18 +122,12 @@ test('Tor M3: zwei X84, Preisspiegel wie die Sollwerte, Zuschlag mit Wahl erzeug
   expect(ALTERNATIVE?.ordnungszahl).toBe('02.0070');
   const soll = erwartet();
 
-  // Projekt und LV `typisch`, dann die zwei Angebote über „Angebot einlesen“.
-  const inhalt = fixtureInhalt('typisch');
+  // Projekt und LV `typisch` per X83, dann die zwei Angebote über „Angebot einlesen“.
   await projektAnlegen(page, 'Musterhaus', 'Bauherr');
   const projektPfad = new URL(page.url()).pathname;
   const projektId = decodeURIComponent(projektPfad.split('/').at(-1) ?? '');
-  const r = await page.evaluate(([id, lv]) => window.tethysTest?.lvAnlegen(id as never, lv as never), [
-    projektId,
-    inhalt,
-  ] as const);
-  expect(r?.ok).toBe(true);
-  await page.goto(`/lv/${inhalt.wurzelId}`);
-  await expect(page.getByRole('heading', { level: 1, name: inhalt.name })).toBeVisible();
+  await gaebEinlesen(page, fixtureAlsX83('typisch'), lvFx.name);
+  const lvPfad = new URL(page.url()).pathname;
   for (const b of PAAR) {
     await page.getByLabel('Angebotsdatei wählen').setInputFiles(datei(b.datei));
     const dialog = page.getByRole('dialog', { name: 'Angebot (X84) einlesen' });
@@ -164,7 +159,7 @@ test('Tor M3: zwei X84, Preisspiegel wie die Sollwerte, Zuschlag mit Wahl erzeug
 
   // Rückgängig nimmt den Zuschlag zurück: zurück zum Preisspiegel, der Knopf geht wieder.
   await page.getByRole('button', { name: /^Rückgängig/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/lv/${inhalt.wurzelId}/preisspiegel$`));
+  await expect(page).toHaveURL(new RegExp(`${lvPfad}/preisspiegel$`));
   await preisspiegelPruefen(page);
   await expect(zuschlagKnopf(page, ERSTER.name)).toBeEnabled();
 

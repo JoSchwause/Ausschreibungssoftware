@@ -46,6 +46,26 @@ export async function projektAnlegen(page: Page, name: string, bauherr: string):
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
 }
 
+/**
+ * Ticket 91: eine GAEB-Datei auf der Projektseite über „GAEB einlesen“ übernehmen und das neue LV öffnen (Name wie in
+ * der Datei). Danach steht die LV-Seite offen.
+ */
+export async function gaebEinlesen(
+  page: Page,
+  datei: { name: string; mimeType: string; buffer: Buffer },
+  lvName: string,
+): Promise<void> {
+  await page.getByLabel('GAEB-Datei wählen').setInputFiles(datei);
+  const dialog = page.getByRole('dialog', { name: 'GAEB-Datei einlesen' });
+  await dialog.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(dialog).toBeHidden();
+  await page
+    .getByRole('list', { name: 'Leistungsverzeichnisse', exact: true })
+    .getByRole('link', { name: lvName, exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: lvName })).toBeVisible();
+}
+
 export async function lvAnlegen(page: Page, name: string, maske = 'NN.NN.NNNN[I]'): Promise<void> {
   await page.getByLabel('Name des LV').focus();
   await page.keyboard.type(name);

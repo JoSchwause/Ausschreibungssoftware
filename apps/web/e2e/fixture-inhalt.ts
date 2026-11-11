@@ -4,6 +4,7 @@
 // `packages/vertrag/src/fixtures-abbildung.test.ts`.
 
 import { readFileSync } from 'node:fs';
+import { schreibeGaeb } from '../../../packages/gaeb/src/index';
 import type {
   Betrag,
   Einheitspreis,
@@ -119,4 +120,18 @@ export function fixtureInhalt(name: string): LvInhalt {
       return knoten(k, r);
     }),
   };
+}
+
+/**
+ * Ticket 91 (D-64.1 zurückgenommen, Ticket 73): die Fixture als X83 3.3, geschrieben vom GAEB-Writer der App (`gaeb`),
+ * als Datei für „GAEB einlesen“. Datum und Uhrzeit fest (A2: kein `Date.now()` im Writer), damit die Datei je Lauf gleich ist.
+ */
+export function fixtureAlsX83(name: string): { name: string; mimeType: string; buffer: Buffer } {
+  const e = schreibeGaeb(fixtureInhalt(name), {
+    phase: 'X83',
+    version: '3.3',
+    erstellt: { datum: '2026-11-11', zeit: '12:00:00' },
+    programm: 'Tethys AVA (E2E)',
+  });
+  return { name: `${name}.x83`, mimeType: 'application/xml', buffer: Buffer.from(e.xml, 'utf8') };
 }
