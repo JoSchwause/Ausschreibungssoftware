@@ -1,6 +1,6 @@
 # 85: Fixture M4: Nachtrag, Aufmaß, Rechnungen, Kostenkontrolle mit hergeleiteten Sollwerten
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 5 · Strang: F · Paket: `fixtures/`
 Blocked by: 70, 75
@@ -108,6 +108,9 @@ legen ihre eigenen Typen fest und bilden ab.
 29/29.
 
 ## Answer
+
+Merged: af7c74c in integration/welle-5
+
 
 Fixture `fixtures/typisch-abrechnung.json` (Tor M4, D-38) mit hergeleiteten Sollwerten; Rechenweg in README
 („M4-Abrechnung“) und als Kommentar im Selbsttest; Lesarten D-85.1 bis D-85.8 oben.

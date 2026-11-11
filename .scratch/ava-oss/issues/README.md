@@ -156,7 +156,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | ready-for-agent |
 | 83 | M3 | GAEB X31 | `packages/gaeb` | ready-for-agent |
 | 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | ready-for-agent |
-| 85 | F | Fixture M4 | `fixtures/` | ready-for-agent |
+| 85 | F | Fixture M4 | `fixtures/` | resolved |
 | 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | ready-for-agent |
 | 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | ready-for-agent |
 | 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | ready-for-agent |
