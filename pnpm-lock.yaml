@@ -41,6 +41,9 @@ importers:
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
+      '@tethys/gaeb':
+        specifier: workspace:*
+        version: link:../../packages/gaeb
       '@tethys/kern':
         specifier: workspace:*
         version: link:../../packages/kern
@@ -53,6 +56,9 @@ importers:
       '@tethys/ui-grid':
         specifier: workspace:*
         version: link:../../packages/ui-grid
+      '@tethys/vergabe':
+        specifier: workspace:*
+        version: link:../../packages/vergabe
       '@tethys/vertrag':
         specifier: workspace:*
         version: link:../../packages/vertrag
