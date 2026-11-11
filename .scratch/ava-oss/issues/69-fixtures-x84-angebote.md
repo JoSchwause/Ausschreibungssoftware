@@ -1,6 +1,6 @@
 # 69: X84-Dateien der Angebote zu `typisch` und Preisspiegel-Sollwerte
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 4 · Strang: F · Paket: `fixtures/`
 Blocked by: 51 (Fixtures in GAEB-Form)
