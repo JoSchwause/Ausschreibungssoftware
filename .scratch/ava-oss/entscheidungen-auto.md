@@ -376,3 +376,24 @@ Question: Welche Befunde des Wellen-Reviews (`review-welle-4.md`) werden in dies
 Decision: Behoben in `fix/welle-4-review`: Exportverlust `lvAusgeben` (über einen gemeinsamen Kopfbau, S5), S1, S2 (Zahlformate aus `NACHKOMMASTELLEN`; Exponent-Lesen nach `dezimal`, falls klein, sonst begründet), S3, S4, S6 (soweit Paketgrenzen es erlauben), S7, S8 (Glossar „Zuschlag (Vergabe)“, eindeutige Codes), S9, S10, S11, P1 (Sollwerte Bedarf/Wahl in der Fixture, Test), P5, D-62.2 (Haken am Befehlsweg statt Laufzeit-Hülle, falls ohne Paketänderung möglich). Als Folgetickets: D-57.2 (`vergabe`), D-64.2 (`vertrag`-Repository Auftrags-LV), D-64.4 (Kern-Umkehrung Auftrags-LV), P2, P6. P3/P4 erledigt der Orchestrator beim Abschluss.
 Reason: Alles Behobene liegt in den Paketen der Welle und ändert keinen Vertrag; Vertragsänderungen bleiben eigene Tickets (A4, P9).
 Reversible: yes  Touches: apps/web, packages/ausgabe, packages/gaeb, packages/kosten, packages/dezimal, fixtures, GLOSSARY.md
+
+## D-31 Welle 5 setzt auf dem Ende von Welle 4 auf, nicht auf `main`
+Welle 5 · Ticket – · decided by: orchestrator
+Question: Der Skill verlangt `integration/welle-5` ab `main`; Welle 4 (Tor M3, Tickets 51–69) liegt aber nur auf `claude/relaxed-noether-jy8ohv` (lokal `integration/welle-4`), nicht auf `main`.
+Decision: `integration/welle-5` ab `97bd414` (Ende von Welle 4). `main` wird nicht verändert; der Mensch merged Welle 4 und 5 später nacheinander (oder Welle 5 allein, die Welle 4 enthält).
+Reason: Welle 5 baut auf Auftrags-LV, Preisspiegel und `vertrag` v1.3 aus Welle 4 auf; ab `main` wäre sie nicht lauffähig.
+Reversible: yes  Touches: Branches
+
+## D-32 XRechnung in einem eigenen Paket `erechnung`
+Welle 5 · Ticket 76 · decided by: orchestrator
+Question: `plan.md` §1 legt E-Rechnung in `abrechnung`; dort laufen in dieser Welle schon Aufmaß, Soll/Ist und Rechnungsprüfung nacheinander (ein Schreiber, P2).
+Decision: Neues reines Paket `packages/erechnung` (importiert `vertrag`, `dezimal`), nur Lesen (G-15). `apps/web` darf es importieren. Es ist ein Format-Rand wie `gaeb` (N4), keine Fachrechnung.
+Reason: Hält die Welle parallel; ein Lesepaket ohne Fachregel lässt sich später ohne Verlust in `abrechnung` verschieben.
+Reversible: yes  Touches: packages/erechnung, tools/boundaries.mjs, plan.md §1 (Zeile ergänzt)
+
+## D-33 M3 nur X31 (DA XML), DA11 später
+Welle 5 · Strang M3 · decided by: orchestrator
+Question: `plan.md` nennt „M3 X31/DA11“. DA11 ist das REB-Zeilenformat aus GAEB 90.
+Decision: In Welle 5 nur GAEB DA XML X31 (3.3 und 3.2, G-10) lesen und schreiben. Die REB-Zeilen in `QTakeoff` (gleiches Spaltenformat wie DA11) liest `gaeb` in `Ansatzzeile`n; nur Formel 91 wird gerechnet, andere Formeln bleiben als Text mit Befund. Eine reine DA11-Datei (GAEB 90) folgt mit G4.
+Reason: G-10 stellt GAEB 90/2000 auf „später“; die BVBS-Prüfdatei X31 liegt schon im Repo.
+Reversible: yes  Touches: packages/gaeb
