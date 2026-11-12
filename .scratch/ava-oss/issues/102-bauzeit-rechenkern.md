@@ -1,6 +1,6 @@
 # 102: X2: Terminrechnung des Bauzeitenplans (`bauzeit`)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X2 · Paket: `packages/bauzeit` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: –
@@ -57,9 +57,10 @@ Begriffe zuerst ins `GLOSSARY.md` (L2), Abschnitt „Planerhonorar (HOAI) & Proj
 
 ## Acceptance criteria
 
-- [ ] Golden-, Property- und Leistungstests wie oben; Feiertage je Land mit Quelle
-- [ ] Paketgrenzen-Prüfung kennt `bauzeit`
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Golden-, Property- und Leistungstests wie oben; Feiertage je Land mit Quelle
+- [x] Paketgrenzen-Prüfung kennt `bauzeit`
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (bis auf ein fremdes
+      Leistungsbudget unter Volllast, siehe Ergebnis der Suite)
 
 ## Comments
 
@@ -170,3 +171,33 @@ Projektende Mi 02.06.2027; kritischer Weg A → B → C → D → E → M → G 
 Weg). Gegenprobe Berlin (ohne Fronleichnam): M und G einen Arbeitstag früher, Projektende 01.06.2027. Ticket 112 braucht für
 das Tor zusätzlich einen Sammelvorgang; der Golden-Plan hier kommt ohne aus (Sammelvorgänge prüfen eigene Tests und die
 Properties).
+
+### Tests des Pakets
+
+129 Tests in 8 Dateien: Datum (22), Feiertage je Land und Jahr samt Gaußscher Herleitung von Ostern 2026/2027 und der zwei
+Lichtenberg-Ausnahmen (43), Arbeitskalender (8), Terminrechnung je Anordnungsart, Meilenstein, Terminvorgabe, Puffer,
+Sammelvorgang, Zyklus (25), Befunde (16), Golden (3), Properties (3 × 200 Läufe, Orakel mit `Date.UTC` im Test; per Mutation
+geprüft: Rückwärtsrechnung ohne Projektende-Schranke, freier Puffer ohne Schranke, Ende-Ende/Anfang-Ende ohne Dauer werden je
+erkannt), Leistung (1), Zeitachse (8).
+
+**Leistung (Q4):** 1.000 Vorgänge (20 Sammelvorgänge, 980 Blätter), 2.000 Beziehungen, Bayern mit freien Tagen: Median 15,1 ms
+CPU allein, 13,0 ms bei der Wiederholung nach der Suite (Budget 100 ms).
+
+### Ergebnis der Suite (Branch `welle-6/102-bauzeit` @ `0846aed`, nach Merge von `integration/welle-6` @ `c42e389`)
+
+- `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint`: grün (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean-Room).
+- `pnpm typecheck`: grün.
+- `pnpm test`: Vitest 226 Dateien grün, 1 übersprungen; 2.977 Tests grün, 3 übersprungen, **1 rot**:
+  `apps/web/src/abrechnung/leistung.test.ts` („D-45: Undo an einem Aufmaßblatt mit 5.000 Zeilen“, Ticket 94, nicht dieses
+  Paket) unter Volllast der parallelen Agenten (Testdauer 20,2 s). Allein wiederholt grün: Undo je Schritt Median 74,1 ms,
+  Befehl Median 47,3 ms, Soll/Ist nachführen Median 101,9 ms, Testdauer 8,3 s. Budget nicht angefasst. `node --test
+  "fixtures/*.test.mjs"` (zweiter Teil von `pnpm test`, nach dem roten Vitest-Lauf einzeln gestartet): 29 von 29 grün.
+
+### Hinweise für die Folgetickets
+
+- **109:** Umstellung auf v1.6 ohne Umbenennen der Eingabe (D-102.12); Formprüfungen der Befehle sind dieselben Grenzen wie
+  hier (`HOECHSTWERT_ARBEITSTAGE`, Daten mit `datumPruefen`), die Rechnung meldet sie weiter als Befund (U5).
+- **112:** Lesarten aus `BAUZEIT_ANNAHMEN`, Feiertage aus `feiertage(jahr, land)`; der Golden-Plan oben ist ein Muster für
+  `fixtures/bauzeit.json` (dort mit Sammelvorgang).
+- **113/118:** Texte für Monate („Mai 2027“) und Kalenderwochen („KW 21“) setzt die App aus `monate` und `kalenderwochen`;
+  `BAUZEIT_ANNAHMEN.meilenstein` erklärt, warum ein Fertigstellungsmeilenstein am nächsten Arbeitstag steht.
