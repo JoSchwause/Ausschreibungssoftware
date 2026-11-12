@@ -29,6 +29,14 @@ export interface Leistungsbilddaten {
   /** In aufsteigender Nummer, ohne Lücke ab 1; die Prozentsätze ergeben zusammen 100. */
   readonly leistungsphasen: readonly Leistungsphase[];
   readonly quelleLeistungsphasen: Quelle;
+  /**
+   * Der Umbauzuschlag, der bei durchschnittlichem Schwierigkeitsgrad vereinbart werden kann („bis 33 Prozent“ bzw.
+   * „bis 50 Prozent“); ein höherer Satz ist ein Befund, kein Fehler.
+   */
+  readonly umbauzuschlagBis: Prozent;
+  readonly quelleUmbauzuschlag: Quelle;
+  /** Die anrechenbaren Kosten lassen sich nach § 33 aus Kosten nach DIN 276 herleiten (Gebäude und Innenräume). */
+  readonly kostenNachDin276: boolean;
 }
 
 const NUMMERN: readonly Leistungsphasennummer[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -113,6 +121,10 @@ const PHASEN_TECHNISCHE_AUSRUESTUNG = leistungsphasen([
   [LPH_9, '1.00'],
 ]);
 
+/** § 36 Abs. 1 (Gebäude) und § 36 Abs. 2 (Innenräume): Umbauzuschlag bis 33 bzw. bis 50 Prozent. */
+const BIS_33 = prozent('33.00');
+const BIS_50 = prozent('50.00');
+
 export const LEISTUNGSBILDER: Readonly<Record<Leistungsbild, Leistungsbilddaten>> = {
   // Gebäude und Innenräume teilen die Tafel des § 35 Abs. 1, bewerten die Leistungsphasen aber verschieden.
   gebaeude: {
@@ -120,23 +132,39 @@ export const LEISTUNGSBILDER: Readonly<Record<Leistungsbild, Leistungsbilddaten>
     honorartafel: TAFEL_35,
     leistungsphasen: PHASEN_GEBAEUDE,
     quelleLeistungsphasen: quelle(34, 3),
+    // § 36 Abs. 1: „bis 33 Prozent“.
+    umbauzuschlagBis: BIS_33,
+    quelleUmbauzuschlag: quelle(36, 1),
+    kostenNachDin276: true,
   },
   innenraeume: {
     bezeichnung: 'Innenräume',
     honorartafel: TAFEL_35,
     leistungsphasen: PHASEN_INNENRAEUME,
     quelleLeistungsphasen: quelle(34, 3),
+    // § 36 Abs. 2: „bis 50 Prozent“.
+    umbauzuschlagBis: BIS_50,
+    quelleUmbauzuschlag: quelle(36, 2),
+    kostenNachDin276: true,
   },
   tragwerksplanung: {
     bezeichnung: 'Tragwerksplanung',
     honorartafel: TAFEL_52,
     leistungsphasen: PHASEN_TRAGWERKSPLANUNG,
     quelleLeistungsphasen: quelle(51, 1),
+    // § 52 Abs. 4: „bis 50 Prozent“.
+    umbauzuschlagBis: BIS_50,
+    quelleUmbauzuschlag: quelle(52, 4),
+    kostenNachDin276: false,
   },
   'technische-ausruestung': {
     bezeichnung: 'Technische Ausrüstung',
     honorartafel: TAFEL_56,
     leistungsphasen: PHASEN_TECHNISCHE_AUSRUESTUNG,
     quelleLeistungsphasen: quelle(55, 1),
+    // § 56 Abs. 5: „bis 50 Prozent“.
+    umbauzuschlagBis: BIS_50,
+    quelleUmbauzuschlag: quelle(56, 5),
+    kostenNachDin276: false,
   },
 };

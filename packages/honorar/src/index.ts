@@ -18,3 +18,15 @@ export type {
   KostenNachDin276,
 } from './anrechenbare-kosten';
 export { anrechenbareKostenHerleiten } from './anrechenbare-kosten';
+export type {
+  BeauftragteLeistungsphase,
+  Honorarbefund,
+  Honorarbefundcode,
+  Honorarberechnung,
+  Honorarergebnis,
+  Honorarobjekt,
+  Nebenkostenangabe,
+  Objektergebnis,
+  Phasenbetrag,
+} from './honorar-berechnen';
+export { honorarBerechnen } from './honorar-berechnen';
