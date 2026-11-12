@@ -2,11 +2,15 @@
 // Öffentliche Typen von @tethys/erechnung (Ticket 76). Felder heißen nach den Business Terms der EN 16931 (BT-…, BG-…);
 // die Nummer steht jeweils im Kommentar. Alle Werte sind reine, serialisierbare Daten.
 
-import type { Befundort, Befundschwere, Betrag, Dezimal } from '@tethys/vertrag';
+import type { Betrag, Dezimal, Pruefbefund } from '@tethys/vertrag';
 
 /** Syntax der EN 16931, in der die XRechnung vorliegt: UBL 2.1 (`Invoice`, `CreditNote`) oder UN/CEFACT CII D16B. */
 export type XRechnungSyntax = 'ubl' | 'cii';
 
+/**
+ * Codes der Befunde beim Lesen einer XRechnung. Die Befunde selbst sind `Pruefbefund` mit der Quelle `erechnung-lesen`
+ * (Ticket 104, D-95.2); `code` ist dort ein `string`, diese Liste ist die Menge, die `erechnung` tatsächlich meldet.
+ */
 export type XRechnungBefundcode =
   // Die Datei wird nicht gelesen (`rechnung` ist `null`):
   | 'eingabe-zu-gross'
@@ -32,18 +36,6 @@ export type XRechnungBefundcode =
   | 'brutto-falsch'
   | 'zahlbetrag-falsch'
   | 'umsatzsteuer-falsch';
-
-/**
- * Befund beim Lesen einer XRechnung. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle`, weil der
- * Vertrag noch keine Quelle für E-Rechnungen kennt (D-76.4). `ort.feld` nennt den Business Term (z. B. `BT-106`),
- * `ort.pfad` das Element in der Datei; Zeile und Spalte stehen nur bei XML-Fehlern.
- */
-export interface XRechnungBefund {
-  readonly schwere: Befundschwere;
-  readonly code: XRechnungBefundcode;
-  readonly meldung: string;
-  readonly ort: Befundort;
-}
 
 /** Summen der Rechnung (BG-22). Fehlende Angaben sind `null`. */
 export interface Rechnungssummen {
@@ -152,7 +144,7 @@ export interface Eingangsrechnung {
 export interface XRechnungLesung {
   readonly syntax: XRechnungSyntax | null;
   readonly rechnung: Eingangsrechnung | null;
-  readonly befunde: readonly XRechnungBefund[];
+  readonly befunde: readonly Pruefbefund[];
 }
 
 export interface XRechnungOptionen {

@@ -5,9 +5,12 @@
 export { LvGrid } from './LvGrid';
 export type { LvGridBearbeitbar, LvGridProps, LvGridSchreibgeschuetzt, Sprungziel } from './typen';
 
-// Das schreibgeschützte Vergleichsgrid (Ticket 60), z. B. für den Preisspiegel; derselbe Kern wie `LvGrid`.
+// Das schreibgeschützte Vergleichsgrid (Ticket 60), z. B. für den Preisspiegel; derselbe Kern wie `LvGrid`. Mit einer
+// Balkenspalte (Ticket 96) zeigt es auch den Bauzeitenplan: `VergleichsSpalte.zeitleiste`, `VergleichsZelle.balken`.
 export { VergleichsGrid } from './VergleichsGrid';
 export type {
+  Balken,
+  Balkenart,
   Kennzeichen,
   KennzeichenText,
   VergleichsGridProps,
@@ -18,4 +21,7 @@ export type {
   VergleichsZelle,
   VergleichsZellort,
   VergleichsZeile,
+  Zeitabschnitt,
+  Zeitleiste,
+  Zeitmarkierung,
 } from './vergleichTypen';

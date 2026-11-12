@@ -1,0 +1,294 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Honorartafeln der HOAI 2021 als Daten (Ticket 101, D-56). Die HOAI ist ein amtliches Werk (§ 5 Abs. 1 UrhG); im Repo
+// stehen nur die Tafelwerte, je mit Vorschrift, Adresse und Abrufdatum. Die Abschriften folgen Zeile für Zeile der
+// Quelle: anrechenbare Kosten, dann je Honorarzone „von“ und „bis“, ganze Euro, Leerzeichen als Tausendertrenner wie
+// dort. Die Datentests (`honorartafeln.test.ts`) prüfen Ordnung und Zonenübergänge und schreiben die erste und letzte
+// Zeile jeder Tafel ein zweites Mal ab.
+
+import { alsBetrag } from '@tethys/dezimal';
+import type { Betrag } from '@tethys/vertrag';
+
+// --- Typen -----------------------------------------------------------------------------------------------------
+
+/** Honorarzone nach § 5; die Technische Ausrüstung kennt nur I bis III (§ 56 Abs. 1). */
+export type Honorarzone = 'I' | 'II' | 'III' | 'IV' | 'V';
+
+/** „von“ (Basishonorarsatz) und „bis“ (oberer Honorarsatz) einer Honorarzone, in Euro mit 2 Stellen. */
+export interface Honorarspanne {
+  readonly von: Betrag;
+  readonly bis: Betrag;
+}
+
+/** Eine Zeile einer Honorartafel: anrechenbare Kosten und je Honorarzone der Tafel ihre Honorarspanne. */
+export interface Tafelzeile {
+  readonly anrechenbareKosten: Betrag;
+  readonly spannen: Readonly<Partial<Record<Honorarzone, Honorarspanne>>>;
+}
+
+/** Fundstelle einer Tafel oder eines Prozentsatzes in der HOAI. */
+export interface Quelle {
+  /** Paragraph und Absatz, z. B. `§ 35 Abs. 1`. */
+  readonly vorschrift: string;
+  readonly url: string;
+  /** Abrufdatum der Quelle (ISO-Datum). */
+  readonly abgerufen: string;
+}
+
+export interface Honorartafel {
+  readonly quelle: Quelle;
+  /** Die Honorarzonen der Tafel, aufsteigend. */
+  readonly honorarzonen: readonly Honorarzone[];
+  /** Nach anrechenbaren Kosten streng steigend. */
+  readonly zeilen: readonly Tafelzeile[];
+}
+
+// --- Abschrift lesen -------------------------------------------------------------------------------------------
+
+/** Abrufdatum aller Abschriften in diesem Paket. */
+export const ABGERUFEN = '2026-11-12';
+
+/** Fundstelle in der amtlichen Fassung auf gesetze-im-internet.de (die HOAI 2021 steht unter `hoai_2013`). */
+export function quelle(paragraph: number, absatz: number): Quelle {
+  return {
+    vorschrift: `§ ${String(paragraph)} Abs. ${String(absatz)}`,
+    url: `https://www.gesetze-im-internet.de/hoai_2013/__${String(paragraph)}.html`,
+    abgerufen: ABGERUFEN,
+  };
+}
+
+/** Ganze Euro der Abschrift (`1 049 587`) als Betrag (`1049587.00`). Unlesbares ist ein Datenfehler: Ausnahme. */
+function euro(zelle: string, ort: string): Betrag {
+  const ziffern = zelle.trim().split(' ').join('');
+  if (!/^[1-9][0-9]*$/.test(ziffern))
+    throw new Error(`${ort}: kein ganzer Eurobetrag: ${JSON.stringify(zelle)}`);
+  const betrag = alsBetrag(`${ziffern}.00`);
+  if (!betrag.ok) throw new Error(`${ort}: ${betrag.fehler.meldung}`);
+  return betrag.wert;
+}
+
+/**
+ * Liest die Abschrift einer Tafel. Jede Zeile hat die anrechenbaren Kosten und je Honorarzone „von“ und „bis“, durch
+ * `|` getrennt. Eine falsche Spaltenzahl oder ein unlesbarer Wert ist ein Datenfehler und wirft beim Laden des Pakets;
+ * die Datentests decken das sofort auf.
+ */
+function tafelLesen(
+  quelleDerTafel: Quelle,
+  honorarzonen: readonly Honorarzone[],
+  abschrift: string,
+): Honorartafel {
+  const zeilen = abschrift
+    .trim()
+    .split('\n')
+    .map((text, index): Tafelzeile => {
+      const ort = `${quelleDerTafel.vorschrift}, Zeile ${String(index + 1)}`;
+      const [kosten, ...werte] = text.split('|').map((zelle) => euro(zelle, ort));
+      if (kosten === undefined || werte.length !== 2 * honorarzonen.length)
+        throw new Error(`${ort}: erwartet ${String(1 + 2 * honorarzonen.length)} Spalten: ${text}`);
+      const spannen: Partial<Record<Honorarzone, Honorarspanne>> = {};
+      honorarzonen.forEach((zone, n) => {
+        const von = werte[2 * n];
+        const bis = werte[2 * n + 1];
+        if (von === undefined || bis === undefined) throw new Error(`${ort}: Zone ${zone} unvollständig`);
+        spannen[zone] = { von, bis };
+      });
+      return { anrechenbareKosten: kosten, spannen };
+    });
+  return { quelle: quelleDerTafel, honorarzonen, zeilen };
+}
+
+const ZONEN_I_BIS_V: readonly Honorarzone[] = ['I', 'II', 'III', 'IV', 'V'];
+const ZONEN_I_BIS_III: readonly Honorarzone[] = ['I', 'II', 'III'];
+
+// --- Tafeln ----------------------------------------------------------------------------------------------------
+
+/**
+ * § 35 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Gebäuden und Innenräumen (Honorarzonen I bis V).
+ * https://www.gesetze-im-internet.de/hoai_2013/__35.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis | IV von | IV bis | V von | V bis.
+ */
+export const TAFEL_35 = tafelLesen(
+  quelle(35, 1),
+  ZONEN_I_BIS_V,
+  `
+25 000 | 3 120 | 3 657 | 3 657 | 4 339 | 4 339 | 5 412 | 5 412 | 6 094 | 6 094 | 6 631
+35 000 | 4 217 | 4 942 | 4 942 | 5 865 | 5 865 | 7 315 | 7 315 | 8 237 | 8 237 | 8 962
+50 000 | 5 804 | 6 801 | 6 801 | 8 071 | 8 071 | 10 066 | 10 066 | 11 336 | 11 336 | 12 333
+75 000 | 8 342 | 9 776 | 9 776 | 11 601 | 11 601 | 14 469 | 14 469 | 16 293 | 16 293 | 17 727
+100 000 | 10 790 | 12 644 | 12 644 | 15 005 | 15 005 | 18 713 | 18 713 | 21 074 | 21 074 | 22 928
+150 000 | 15 500 | 18 164 | 18 164 | 21 555 | 21 555 | 26 883 | 26 883 | 30 274 | 30 274 | 32 938
+200 000 | 20 037 | 23 480 | 23 480 | 27 863 | 27 863 | 34 751 | 34 751 | 39 134 | 39 134 | 42 578
+300 000 | 28 750 | 33 692 | 33 692 | 39 981 | 39 981 | 49 864 | 49 864 | 56 153 | 56 153 | 61 095
+500 000 | 45 232 | 53 006 | 53 006 | 62 900 | 62 900 | 78 449 | 78 449 | 88 343 | 88 343 | 96 118
+750 000 | 64 666 | 75 781 | 75 781 | 89 927 | 89 927 | 112 156 | 112 156 | 126 301 | 126 301 | 137 416
+1 000 000 | 83 182 | 97 479 | 97 479 | 115 675 | 115 675 | 144 268 | 144 268 | 162 464 | 162 464 | 176 761
+1 500 000 | 119 307 | 139 813 | 139 813 | 165 911 | 165 911 | 206 923 | 206 923 | 233 022 | 233 022 | 253 527
+2 000 000 | 153 965 | 180 428 | 180 428 | 214 108 | 214 108 | 267 034 | 267 034 | 300 714 | 300 714 | 327 177
+3 000 000 | 220 161 | 258 002 | 258 002 | 306 162 | 306 162 | 381 843 | 381 843 | 430 003 | 430 003 | 467 843
+5 000 000 | 343 879 | 402 984 | 402 984 | 478 207 | 478 207 | 596 416 | 596 416 | 671 640 | 671 640 | 730 744
+7 500 000 | 493 923 | 578 816 | 578 816 | 686 862 | 686 862 | 856 648 | 856 648 | 964 694 | 964 694 | 1 049 587
+10 000 000 | 638 277 | 747 981 | 747 981 | 887 604 | 887 604 | 1 107 012 | 1 107 012 | 1 246 635 | 1 246 635 | 1 356 339
+15 000 000 | 915 129 | 1 072 416 | 1 072 416 | 1 272 601 | 1 272 601 | 1 587 176 | 1 587 176 | 1 787 360 | 1 787 360 | 1 944 648
+20 000 000 | 1 180 414 | 1 383 298 | 1 383 298 | 1 641 513 | 1 641 513 | 2 047 281 | 2 047 281 | 2 305 496 | 2 305 496 | 2 508 380
+25 000 000 | 1 436 874 | 1 683 837 | 1 683 837 | 1 998 153 | 1 998 153 | 2 492 079 | 2 492 079 | 2 806 395 | 2 806 395 | 3 053 358
+`,
+);
+
+/**
+ * § 52 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Tragwerksplanungen (Honorarzonen I bis V).
+ * https://www.gesetze-im-internet.de/hoai_2013/__52.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis | IV von | IV bis | V von | V bis.
+ */
+export const TAFEL_52 = tafelLesen(
+  quelle(52, 1),
+  ZONEN_I_BIS_V,
+  `
+10 000 | 1 461 | 1 624 | 1 624 | 2 064 | 2 064 | 2 575 | 2 575 | 3 015 | 3 015 | 3 178
+15 000 | 2 011 | 2 234 | 2 234 | 2 841 | 2 841 | 3 543 | 3 543 | 4 149 | 4 149 | 4 373
+25 000 | 3 006 | 3 340 | 3 340 | 4 247 | 4 247 | 5 296 | 5 296 | 6 203 | 6 203 | 6 537
+50 000 | 5 187 | 5 763 | 5 763 | 7 327 | 7 327 | 9 139 | 9 139 | 10 703 | 10 703 | 11 279
+75 000 | 7 135 | 7 928 | 7 928 | 10 080 | 10 080 | 12 572 | 12 572 | 14 724 | 14 724 | 15 517
+100 000 | 8 946 | 9 940 | 9 940 | 12 639 | 12 639 | 15 763 | 15 763 | 18 461 | 18 461 | 19 455
+150 000 | 12 303 | 13 670 | 13 670 | 17 380 | 17 380 | 21 677 | 21 677 | 25 387 | 25 387 | 26 754
+250 000 | 18 370 | 20 411 | 20 411 | 25 951 | 25 951 | 32 365 | 32 365 | 37 906 | 37 906 | 39 947
+350 000 | 23 909 | 26 565 | 26 565 | 33 776 | 33 776 | 42 125 | 42 125 | 49 335 | 49 335 | 51 992
+500 000 | 31 594 | 35 105 | 35 105 | 44 633 | 44 633 | 55 666 | 55 666 | 65 194 | 65 194 | 68 705
+750 000 | 43 463 | 48 293 | 48 293 | 61 401 | 61 401 | 76 578 | 76 578 | 89 686 | 89 686 | 94 515
+1 000 000 | 54 495 | 60 550 | 60 550 | 76 984 | 76 984 | 96 014 | 96 014 | 112 449 | 112 449 | 118 504
+1 250 000 | 64 940 | 72 155 | 72 155 | 91 740 | 91 740 | 114 418 | 114 418 | 134 003 | 134 003 | 141 218
+1 500 000 | 74 938 | 83 265 | 83 265 | 105 865 | 105 865 | 132 034 | 132 034 | 154 635 | 154 635 | 162 961
+2 000 000 | 93 923 | 104 358 | 104 358 | 132 684 | 132 684 | 165 483 | 165 483 | 193 808 | 193 808 | 204 244
+3 000 000 | 129 059 | 143 398 | 143 398 | 182 321 | 182 321 | 227 389 | 227 389 | 266 311 | 266 311 | 280 651
+5 000 000 | 192 384 | 213 760 | 213 760 | 271 781 | 271 781 | 338 962 | 338 962 | 396 983 | 396 983 | 418 359
+7 500 000 | 264 487 | 293 874 | 293 874 | 373 640 | 373 640 | 466 001 | 466 001 | 545 767 | 545 767 | 575 154
+10 000 000 | 331 398 | 368 220 | 368 220 | 468 166 | 468 166 | 583 892 | 583 892 | 683 838 | 683 838 | 720 660
+15 000 000 | 455 117 | 505 686 | 505 686 | 642 943 | 642 943 | 801 873 | 801 873 | 939 131 | 939 131 | 989 699
+`,
+);
+
+/**
+ * § 56 Abs. 1 HOAI: Honorartafel für Grundleistungen der Technischen Ausrüstung (nur Honorarzonen I bis III).
+ * https://www.gesetze-im-internet.de/hoai_2013/__56.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis.
+ */
+export const TAFEL_56 = tafelLesen(
+  quelle(56, 1),
+  ZONEN_I_BIS_III,
+  `
+5 000 | 2 132 | 2 547 | 2 547 | 2 990 | 2 990 | 3 405
+10 000 | 3 689 | 4 408 | 4 408 | 5 174 | 5 174 | 5 893
+15 000 | 5 084 | 6 075 | 6 075 | 7 131 | 7 131 | 8 122
+25 000 | 7 615 | 9 098 | 9 098 | 10 681 | 10 681 | 12 164
+35 000 | 9 934 | 11 869 | 11 869 | 13 934 | 13 934 | 15 869
+50 000 | 13 165 | 15 729 | 15 729 | 18 465 | 18 465 | 21 029
+75 000 | 18 122 | 21 652 | 21 652 | 25 418 | 25 418 | 28 948
+100 000 | 22 723 | 27 150 | 27 150 | 31 872 | 31 872 | 36 299
+150 000 | 31 228 | 37 311 | 37 311 | 43 800 | 43 800 | 49 883
+250 000 | 46 640 | 55 726 | 55 726 | 65 418 | 65 418 | 74 504
+500 000 | 80 684 | 96 402 | 96 402 | 113 168 | 113 168 | 128 886
+750 000 | 111 105 | 132 749 | 132 749 | 155 836 | 155 836 | 177 480
+1 000 000 | 139 347 | 166 493 | 166 493 | 195 448 | 195 448 | 222 594
+1 250 000 | 166 043 | 198 389 | 198 389 | 232 891 | 232 891 | 265 237
+1 500 000 | 191 545 | 228 859 | 228 859 | 268 660 | 268 660 | 305 974
+2 000 000 | 239 792 | 286 504 | 286 504 | 336 331 | 336 331 | 383 044
+2 500 000 | 285 649 | 341 295 | 341 295 | 400 650 | 400 650 | 456 296
+3 000 000 | 329 420 | 393 593 | 393 593 | 462 044 | 462 044 | 526 217
+3 500 000 | 371 491 | 443 859 | 443 859 | 521 052 | 521 052 | 593 420
+4 000 000 | 412 126 | 492 410 | 492 410 | 578 046 | 578 046 | 658 331
+`,
+);
+
+/**
+ * § 40 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Freianlagen (Honorarzonen I bis V).
+ * https://www.gesetze-im-internet.de/hoai_2013/__40.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis | IV von | IV bis | V von | V bis.
+ */
+export const TAFEL_40 = tafelLesen(
+  quelle(40, 1),
+  ZONEN_I_BIS_V,
+  `
+20 000 | 3 643 | 4 348 | 4 348 | 5 229 | 5 229 | 6 521 | 6 521 | 7 403 | 7 403 | 8 108
+25 000 | 4 406 | 5 259 | 5 259 | 6 325 | 6 325 | 7 888 | 7 888 | 8 954 | 8 954 | 9 807
+30 000 | 5 147 | 6 143 | 6 143 | 7 388 | 7 388 | 9 215 | 9 215 | 10 460 | 10 460 | 11 456
+35 000 | 5 870 | 7 006 | 7 006 | 8 426 | 8 426 | 10 508 | 10 508 | 11 928 | 11 928 | 13 064
+40 000 | 6 577 | 7 850 | 7 850 | 9 441 | 9 441 | 11 774 | 11 774 | 13 365 | 13 365 | 14 638
+50 000 | 7 953 | 9 492 | 9 492 | 11 416 | 11 416 | 14 238 | 14 238 | 16 162 | 16 162 | 17 701
+60 000 | 9 287 | 11 085 | 11 085 | 13 332 | 13 332 | 16 627 | 16 627 | 18 874 | 18 874 | 20 672
+75 000 | 11 227 | 13 400 | 13 400 | 16 116 | 16 116 | 20 100 | 20 100 | 22 816 | 22 816 | 24 989
+100 000 | 14 332 | 17 106 | 17 106 | 20 574 | 20 574 | 25 659 | 25 659 | 29 127 | 29 127 | 31 901
+125 000 | 17 315 | 20 666 | 20 666 | 24 855 | 24 855 | 30 999 | 30 999 | 35 188 | 35 188 | 38 539
+150 000 | 20 201 | 24 111 | 24 111 | 28 998 | 28 998 | 36 166 | 36 166 | 41 053 | 41 053 | 44 963
+200 000 | 25 746 | 30 729 | 30 729 | 36 958 | 36 958 | 46 094 | 46 094 | 52 323 | 52 323 | 57 306
+250 000 | 31 053 | 37 063 | 37 063 | 44 576 | 44 576 | 55 594 | 55 594 | 63 107 | 63 107 | 69 117
+350 000 | 41 147 | 49 111 | 49 111 | 59 066 | 59 066 | 73 667 | 73 667 | 83 622 | 83 622 | 91 586
+500 000 | 55 300 | 66 004 | 66 004 | 79 383 | 79 383 | 99 006 | 99 006 | 112 385 | 112 385 | 123 088
+650 000 | 69 114 | 82 491 | 82 491 | 99 212 | 99 212 | 123 736 | 123 736 | 140 457 | 140 457 | 153 834
+800 000 | 82 430 | 98 384 | 98 384 | 118 326 | 118 326 | 147 576 | 147 576 | 167 518 | 167 518 | 183 472
+1 000 000 | 99 578 | 118 851 | 118 851 | 142 942 | 142 942 | 178 276 | 178 276 | 202 368 | 202 368 | 221 641
+1 250 000 | 120 238 | 143 510 | 143 510 | 172 600 | 172 600 | 215 265 | 215 265 | 244 355 | 244 355 | 267 627
+1 500 000 | 140 204 | 167 340 | 167 340 | 201 261 | 201 261 | 251 011 | 251 011 | 284 931 | 284 931 | 312 067
+`,
+);
+
+/**
+ * § 44 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Ingenieurbauwerken (Honorarzonen I bis V).
+ * https://www.gesetze-im-internet.de/hoai_2013/__44.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis | IV von | IV bis | V von | V bis.
+ */
+export const TAFEL_44 = tafelLesen(
+  quelle(44, 1),
+  ZONEN_I_BIS_V,
+  `
+25 000 | 3 449 | 4 109 | 4 109 | 4 768 | 4 768 | 5 428 | 5 428 | 6 036 | 6 036 | 6 696
+35 000 | 4 475 | 5 331 | 5 331 | 6 186 | 6 186 | 7 042 | 7 042 | 7 831 | 7 831 | 8 687
+50 000 | 5 897 | 7 024 | 7 024 | 8 152 | 8 152 | 9 279 | 9 279 | 10 320 | 10 320 | 11 447
+75 000 | 8 069 | 9 611 | 9 611 | 11 154 | 11 154 | 12 697 | 12 697 | 14 121 | 14 121 | 15 663
+100 000 | 10 079 | 12 005 | 12 005 | 13 932 | 13 932 | 15 859 | 15 859 | 17 637 | 17 637 | 19 564
+150 000 | 13 786 | 16 422 | 16 422 | 19 058 | 19 058 | 21 693 | 21 693 | 24 126 | 24 126 | 26 762
+200 000 | 17 215 | 20 506 | 20 506 | 23 797 | 23 797 | 27 088 | 27 088 | 30 126 | 30 126 | 33 417
+300 000 | 23 534 | 28 033 | 28 033 | 32 532 | 32 532 | 37 031 | 37 031 | 41 185 | 41 185 | 45 684
+500 000 | 34 865 | 41 530 | 41 530 | 48 195 | 48 195 | 54 861 | 54 861 | 61 013 | 61 013 | 67 679
+750 000 | 47 576 | 56 672 | 56 672 | 65 767 | 65 767 | 74 863 | 74 863 | 83 258 | 83 258 | 92 354
+1 000 000 | 59 264 | 70 594 | 70 594 | 81 924 | 81 924 | 93 254 | 93 254 | 103 712 | 103 712 | 115 042
+1 500 000 | 80 998 | 96 482 | 96 482 | 111 967 | 111 967 | 127 452 | 127 452 | 141 746 | 141 746 | 157 230
+2 000 000 | 101 054 | 120 373 | 120 373 | 139 692 | 139 692 | 159 011 | 159 011 | 176 844 | 176 844 | 196 163
+3 000 000 | 137 907 | 164 272 | 164 272 | 190 636 | 190 636 | 217 001 | 217 001 | 241 338 | 241 338 | 267 702
+5 000 000 | 203 584 | 242 504 | 242 504 | 281 425 | 281 425 | 320 345 | 320 345 | 356 272 | 356 272 | 395 192
+7 500 000 | 278 415 | 331 642 | 331 642 | 384 868 | 384 868 | 438 095 | 438 095 | 487 227 | 487 227 | 540 453
+10 000 000 | 347 568 | 414 014 | 414 014 | 480 461 | 480 461 | 546 908 | 546 908 | 608 244 | 608 244 | 674 690
+15 000 000 | 474 901 | 565 691 | 565 691 | 656 480 | 656 480 | 747 270 | 747 270 | 831 076 | 831 076 | 921 866
+20 000 000 | 592 324 | 705 563 | 705 563 | 818 801 | 818 801 | 932 040 | 932 040 | 1 036 568 | 1 036 568 | 1 149 806
+25 000 000 | 702 770 | 837 123 | 837 123 | 971 476 | 971 476 | 1 105 829 | 1 105 829 | 1 229 848 | 1 229 848 | 1 364 201
+`,
+);
+
+/**
+ * § 48 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Verkehrsanlagen (Honorarzonen I bis V).
+ * https://www.gesetze-im-internet.de/hoai_2013/__48.html, abgerufen am 2026-11-12.
+ * Spalten: anrechenbare Kosten | I von | I bis | II von | II bis | III von | III bis | IV von | IV bis | V von | V bis.
+ */
+export const TAFEL_48 = tafelLesen(
+  quelle(48, 1),
+  ZONEN_I_BIS_V,
+  `
+25 000 | 3 882 | 4 624 | 4 624 | 5 366 | 5 366 | 6 108 | 6 108 | 6 793 | 6 793 | 7 535
+35 000 | 4 981 | 5 933 | 5 933 | 6 885 | 6 885 | 7 837 | 7 837 | 8 716 | 8 716 | 9 668
+50 000 | 6 487 | 7 727 | 7 727 | 8 967 | 8 967 | 10 207 | 10 207 | 11 352 | 11 352 | 12 592
+75 000 | 8 759 | 10 434 | 10 434 | 12 108 | 12 108 | 13 783 | 13 783 | 15 328 | 15 328 | 17 003
+100 000 | 10 839 | 12 911 | 12 911 | 14 983 | 14 983 | 17 056 | 17 056 | 18 968 | 18 968 | 21 041
+150 000 | 14 634 | 17 432 | 17 432 | 20 229 | 20 229 | 23 027 | 23 027 | 25 610 | 25 610 | 28 407
+200 000 | 18 106 | 21 567 | 21 567 | 25 029 | 25 029 | 28 490 | 28 490 | 31 685 | 31 685 | 35 147
+300 000 | 24 435 | 29 106 | 29 106 | 33 778 | 33 778 | 38 449 | 38 449 | 42 761 | 42 761 | 47 433
+500 000 | 35 622 | 42 433 | 42 433 | 49 243 | 49 243 | 56 053 | 56 053 | 62 339 | 62 339 | 69 149
+750 000 | 48 001 | 57 178 | 57 178 | 66 355 | 66 355 | 75 532 | 75 532 | 84 002 | 84 002 | 93 179
+1 000 000 | 59 267 | 70 597 | 70 597 | 81 928 | 81 928 | 93 258 | 93 258 | 103 717 | 103 717 | 115 047
+1 500 000 | 80 009 | 95 305 | 95 305 | 110 600 | 110 600 | 125 896 | 125 896 | 140 015 | 140 015 | 155 311
+2 000 000 | 98 962 | 117 881 | 117 881 | 136 800 | 136 800 | 155 719 | 155 719 | 173 183 | 173 183 | 192 102
+3 000 000 | 133 441 | 158 951 | 158 951 | 184 462 | 184 462 | 209 973 | 209 973 | 233 521 | 233 521 | 259 032
+5 000 000 | 194 094 | 231 200 | 231 200 | 268 306 | 268 306 | 305 412 | 305 412 | 339 664 | 339 664 | 376 770
+7 500 000 | 262 407 | 312 573 | 312 573 | 362 739 | 362 739 | 412 905 | 412 905 | 459 212 | 459 212 | 509 378
+10 000 000 | 324 978 | 387 107 | 387 107 | 449 235 | 449 235 | 511 363 | 511 363 | 568 712 | 568 712 | 630 840
+15 000 000 | 439 179 | 523 140 | 523 140 | 607 101 | 607 101 | 691 062 | 691 062 | 768 564 | 768 564 | 852 525
+20 000 000 | 543 619 | 647 546 | 647 546 | 751 473 | 751 473 | 855 401 | 855 401 | 951 333 | 951 333 | 1 055 260
+25 000 000 | 641 265 | 763 860 | 763 860 | 886 454 | 886 454 | 1 009 049 | 1 009 049 | 1 122 213 | 1 122 213 | 1 244 808
+`,
+);

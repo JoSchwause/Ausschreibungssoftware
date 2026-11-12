@@ -541,3 +541,238 @@
   background: var(--tx-color-surface-sunken);
   font-weight: var(--tx-weight-bold);
 }
+
+/* ---------- Balkenspalte (Ticket 96): Zeitachse im Kopf, je Zeile ein Balken ---------- */
+
+/* Farben der Balkenspalte als eigene Tokens des Grids. Jedes verweist auf ein Token aus ui-basis und folgt damit hell
+   und dunkel (U4); Grafik gegen Fläche hat in beiden mindestens 3 : 1 (`src/balkenfarben.test.ts`). Die freien Tage sind
+   eine durchscheinende Tönung aus der Textfarbe, damit sie auf jeder Zeilenfläche (Gliederung, Auswahl) sichtbar bleiben. */
+.tx-grid {
+  --tx-grid-balken: var(--tx-color-accent-subtle);
+  --tx-grid-balken-rand: var(--tx-color-accent);
+  --tx-grid-balken-kritisch: var(--tx-color-danger-subtle);
+  --tx-grid-balken-kritisch-rand: var(--tx-color-danger);
+  --tx-grid-balken-ist: var(--tx-color-text-muted);
+  --tx-grid-sammelvorgang: var(--tx-color-text);
+  --tx-grid-meilenstein: var(--tx-color-text);
+  --tx-grid-markierung: var(--tx-color-warning);
+  --tx-grid-freier-tag: color-mix(in srgb, var(--tx-color-text) 8%, transparent);
+}
+
+/* Kopf: Die Achse füllt die Kopfzelle über beide Kopfzeilen; die Abschnitte liegen an ihren Tagen. */
+.tx-grid__kopfzelle--zeitleiste {
+  position: relative;
+  padding: 0;
+}
+
+.tx-grid__zeitkopf {
+  position: absolute;
+  inset: 0;
+}
+
+.tx-grid__zeitabschnitt {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0 var(--tx-space-2);
+  border-right: 1px solid var(--tx-color-border);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: var(--tx-grid-zeilenhoehe);
+}
+
+.tx-grid__zeitabschnitt--oben {
+  top: 0;
+  height: 50%;
+  border-bottom: 1px solid var(--tx-color-border);
+  color: var(--tx-color-text);
+}
+
+.tx-grid__zeitabschnitt--unten {
+  top: 50%;
+  height: 50%;
+  font-weight: var(--tx-weight-normal);
+}
+
+.tx-grid__zeitabschnitt--voll {
+  top: 0;
+  height: 100%;
+  line-height: calc(2 * var(--tx-grid-zeilenhoehe));
+  color: var(--tx-color-text);
+}
+
+/* Fähnchen einer Markierung oben im Kopf (Tooltip mit der Beschreibung); die Linie zeichnet das Raster. */
+.tx-grid__zeitmarke {
+  position: absolute;
+  top: 0;
+  margin-left: -5px;
+  border-top: 7px solid var(--tx-grid-markierung);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+}
+
+/* Raster aus freien Tagen und Markierungen: ein SVG über die volle Höhe, waagerecht 1 : 1 zur Achse. */
+.tx-grid__zeitraster {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tx-grid__freie-tage {
+  fill: var(--tx-grid-freier-tag);
+}
+
+.tx-grid__markierung {
+  fill: none;
+  stroke: var(--tx-grid-markierung);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Zelle: Balken liegen frei auf der Achse; Kennzeichen und Text der Zelle folgen rechts vom Balken (`padding-left` am
+   Element). */
+.tx-grid__zelle--zeitleiste {
+  padding-right: 0;
+}
+
+.tx-grid__balken {
+  position: absolute;
+  top: 22%;
+  height: 50%;
+  min-width: 2px;
+  box-sizing: border-box;
+  border: 1px solid var(--tx-grid-balken-rand);
+  border-radius: var(--tx-radius-sm);
+  background-color: var(--tx-grid-balken);
+  background-repeat: no-repeat;
+}
+
+/* Ein abgeschnittenes Ende hat keinen Rand: Der Balken geht dort weiter. */
+.tx-grid__balken--offen-anfang {
+  border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.tx-grid__balken--offen-ende {
+  border-right-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Fortschritt: gefüllter Anteil von links; die Breite in Pixeln setzt das Grid (`--tx-grid-fortschritt`). */
+.tx-grid__balken--fortschritt {
+  background-image: linear-gradient(var(--tx-grid-balken-rand), var(--tx-grid-balken-rand));
+  background-size: var(--tx-grid-fortschritt) 100%;
+}
+
+/* Kritisch: andere Farbe und zusätzlich schraffiert, nicht nur Farbe (U8). */
+.tx-grid__balken--kritisch {
+  border-color: var(--tx-grid-balken-kritisch-rand);
+  background-color: var(--tx-grid-balken-kritisch);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--tx-grid-balken-kritisch-rand) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+.tx-grid__balken--kritisch.tx-grid__balken--fortschritt {
+  background-image:
+    linear-gradient(var(--tx-grid-balken-kritisch-rand), var(--tx-grid-balken-kritisch-rand)),
+    repeating-linear-gradient(-45deg, var(--tx-grid-balken-kritisch-rand) 0 2px, transparent 2px 6px);
+  background-size:
+    var(--tx-grid-fortschritt) 100%,
+    auto;
+}
+
+/* Sammelvorgang: schmale Klammer mit Füßen an beiden Enden; ein abgeschnittenes Ende bleibt offen. */
+.tx-grid__balken--sammelvorgang {
+  top: 30%;
+  height: 22%;
+  border: 0;
+  border-radius: 0;
+  background: var(--tx-grid-sammelvorgang);
+}
+
+.tx-grid__balken--sammelvorgang::before,
+.tx-grid__balken--sammelvorgang::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  border-top: 5px solid var(--tx-grid-sammelvorgang);
+}
+
+.tx-grid__balken--sammelvorgang::before {
+  left: 0;
+  border-right: 5px solid transparent;
+}
+
+.tx-grid__balken--sammelvorgang::after {
+  right: 0;
+  border-left: 5px solid transparent;
+}
+
+.tx-grid__balken--offen-anfang::before,
+.tx-grid__balken--offen-ende::after {
+  display: none;
+}
+
+.tx-grid__balken--sammelvorgang.tx-grid__balken--kritisch {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tx-grid-balken-kritisch-rand) 0 2px,
+    var(--tx-grid-balken-kritisch) 2px 4px
+  );
+}
+
+.tx-grid__balken--sammelvorgang.tx-grid__balken--kritisch::before,
+.tx-grid__balken--sammelvorgang.tx-grid__balken--kritisch::after {
+  border-top-color: var(--tx-grid-balken-kritisch-rand);
+}
+
+/* Meilenstein: Raute, deren Mitte auf `vonTag` liegt; kritisch zusätzlich gerahmt. */
+.tx-grid__balken--meilenstein {
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  margin: -6px 0 0 -6px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--tx-grid-meilenstein);
+  transform: rotate(45deg);
+}
+
+.tx-grid__balken--meilenstein.tx-grid__balken--kritisch {
+  background: var(--tx-grid-balken-kritisch-rand);
+  outline: 2px solid var(--tx-grid-balken-kritisch-rand);
+  outline-offset: 1px;
+}
+
+/* Ist-Termine: schmaler Balken unter dem Balken. */
+.tx-grid__balken-ist {
+  position: absolute;
+  bottom: 7%;
+  height: 14%;
+  min-width: 2px;
+  border-radius: 1px;
+  background: var(--tx-grid-balken-ist);
+}
+
+/* Kennzeichen am Rand der Achse für abgeschnittene Balken (Q5): Marke wie die übrigen Kennzeichen. */
+.tx-grid__balkenrand {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tx-grid__balkenrand--anfang {
+  left: 0;
+}
+
+.tx-grid__balkenrand--ende {
+  right: 0;
+}

@@ -187,6 +187,13 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
 - **E-20** Schnitt von Welle 2 — *entschieden*. Reihenfolge laut `next-decisions.md` mit v1.1a/v1.1b;
   Interview-Prototyp jetzt; Preisspiegel-Typen erst nach M1.
 
+## Stufe 4 — Welle 6
+
+- **G-57** Sync-Server nach v1 — *offen*. **Frage:** Sync-Server nach v1: ja oder nein, und in welcher Form
+  (Datei-Abgleich zwischen Installationen oder selbst betriebener Server)? Grundlage ist ADR 0013 (`proposed`);
+  G-14 bleibt bindend, ein Bieterportal steht nicht zur Wahl.
+  Annahme für Demo, Mensch bestätigt später: ADR 0013 als Vorschlag, kein Code in Welle 6 (D-55 in entscheidungen-auto.md).
+
 ## Widersprüche (Stand nach der Sitzung)
 
 | Widerspruch | Auflösung |

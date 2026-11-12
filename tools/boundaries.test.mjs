@@ -95,6 +95,18 @@ describe('Paketgrenzen (A3)', () => {
     expect(regeln).toEqual(['grenze-packages-erechnung']);
   });
 
+  it('honorar darf vertrag und dezimal importieren, kern nicht; die App darf honorar importieren (Ticket 101, D-56)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/honorar', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/honorar']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/honorar/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-honorar']);
+  });
+
   it('bauzeit darf vertrag und dezimal importieren, die App darf bauzeit importieren, kern nicht (Ticket 102)', async () => {
     paket('packages/vertrag');
     paket('packages/dezimal', ['@tethys/vertrag']);

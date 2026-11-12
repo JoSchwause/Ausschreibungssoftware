@@ -12,8 +12,8 @@ import {
   summiereBetraege,
   vergleiche,
 } from '@tethys/dezimal';
-import type { Betrag } from '@tethys/vertrag';
-import type { Eingangsrechnung, XRechnungBefund, XRechnungBefundcode } from './typen';
+import type { Betrag, Pruefbefund } from '@tethys/vertrag';
+import type { Eingangsrechnung, XRechnungBefundcode } from './typen';
 
 /** Alle Werte vorhanden? Dann die Liste ohne `null`, sonst `null`. */
 function alle(werte: readonly (Betrag | null)[]): Betrag[] | null {
@@ -21,8 +21,8 @@ function alle(werte: readonly (Betrag | null)[]): Betrag[] | null {
   return ohne.length === werte.length ? ohne : null;
 }
 
-export function summenregelnPruefen(rechnung: Eingangsrechnung): XRechnungBefund[] {
-  const befunde: XRechnungBefund[] = [];
+export function summenregelnPruefen(rechnung: Eingangsrechnung): Pruefbefund[] {
+  const befunde: Pruefbefund[] = [];
   const s = rechnung.summen;
   const oderNull = (b: Betrag | null): Betrag => b ?? NULL_BETRAG;
 
@@ -37,6 +37,7 @@ export function summenregelnPruefen(rechnung: Eingangsrechnung): XRechnungBefund
     if (datei === null || soll === null || vergleiche(datei, soll) === 0) return;
     befunde.push({
       schwere: 'fehler',
+      quelle: 'erechnung-lesen',
       code,
       meldung: `${feld} (${name}) ist ${formatiereBetragDe(datei)}; ${regel} ergibt ${formatiereBetragDe(soll)}.`,
       ort: { feld },
