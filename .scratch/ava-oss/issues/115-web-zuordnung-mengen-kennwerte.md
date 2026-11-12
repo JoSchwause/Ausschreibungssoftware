@@ -1,6 +1,6 @@
 # 115: X1c–e in der App: Bauteile zuordnen, Mengen übernehmen, DIN 277 und Kennwerte, Aufmaß aus Auswahl
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1c, X1d, X1e · Ordner: `apps/web/src/bim/` (nach 114); Einhängestellen in `lv/LvSeite.tsx`,
 `auftrag/AuftragsLvSeite.tsx`, `kosten/` (nur Verweis), `lv/befehlsweg.ts` (markiert `// Ticket 115`, D-20)
