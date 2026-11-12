@@ -3,13 +3,12 @@
 // lesen, Befunde sammeln, dann rechnen lassen (`pruefen.ts`). Rein (A2): Text rein, Werte und Befunde raus.
 
 import { formatiereBetragDe } from '@tethys/dezimal';
-import type { Befundort, Befundschwere, Betrag, Dezimal, Zahlenart } from '@tethys/vertrag';
+import type { Befundort, Befundschwere, Betrag, Dezimal, Pruefbefund, Zahlenart } from '@tethys/vertrag';
 import { summenregelnPruefen } from './pruefen';
 import type {
   Eingangsrechnung,
   Rechnungsposition,
   Umsatzsteueraufschluesselung,
-  XRechnungBefund,
   XRechnungBefundcode,
   XRechnungLesung,
   XRechnungOptionen,
@@ -115,8 +114,9 @@ export function xrechnungLesen(text: string, optionen: XRechnungOptionen = {}): 
     maxTiefe: optionen.maxTiefe ?? STANDARD_MAX_TIEFE,
   });
   if (!xml.ok) {
-    const befund: XRechnungBefund = {
+    const befund: Pruefbefund = {
       schwere: 'fehler',
+      quelle: 'erechnung-lesen',
       code: xml.code,
       meldung: xml.meldung,
       ort: ortVon(text, xml.offset),
@@ -136,8 +136,9 @@ export function xrechnungLesen(text: string, optionen: XRechnungOptionen = {}): 
     syntax = 'cii';
     roh = ausCii(w);
   } else {
-    const befund: XRechnungBefund = {
+    const befund: Pruefbefund = {
       schwere: 'fehler',
+      quelle: 'erechnung-lesen',
       code: 'keine-xrechnung',
       meldung:
         `Das Wurzelelement „${w.name}“${w.ns === '' ? ' ohne Namensraum' : ` im Namensraum „${kurz(w.ns)}“`} ist ` +
@@ -309,15 +310,15 @@ function ausCii(w: XmlElement): RoheRechnung {
 
 // --- Übernehmen: Texte, Zahlen, Daten lesen; Befunde sammeln -----------------------------------------------------
 
-function uebernehmen(roh: RoheRechnung): { rechnung: Eingangsrechnung; befunde: XRechnungBefund[] } {
-  const befunde: XRechnungBefund[] = [];
+function uebernehmen(roh: RoheRechnung): { rechnung: Eingangsrechnung; befunde: Pruefbefund[] } {
+  const befunde: Pruefbefund[] = [];
   const melde = (
     schwere: Befundschwere,
     code: XRechnungBefundcode,
     meldung: string,
     ort: Befundort,
   ): void => {
-    befunde.push({ schwere, code, meldung, ort });
+    befunde.push({ schwere, quelle: 'erechnung-lesen', code, meldung, ort });
   };
   const ort = (el: XmlElement, feld: string): Befundort => ({ feld, pfad: pfadVon(el) });
 

@@ -6,6 +6,7 @@
 
 import type {
   AngebotLoeschen,
+  Einfuegeort,
   AufmassAnlegen,
   AufmasskopfSetzen,
   AufmassLoeschen,
@@ -41,8 +42,12 @@ import type {
 import type {
   AufmassChangeSet,
   AuftragsLvChangeSet,
+  AuftragsLvZustand,
+  Befehlsfehler,
   KostenermittlungChangeSet,
   LvChangeSet,
+  OzVorschlag,
+  OzVorschlagen,
   RechnungChangeSet,
 } from './changeset';
 import type {
@@ -53,6 +58,7 @@ import type {
   Protokolleintrag,
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
+import type { Pruefbefund } from './gaeb';
 import type {
   AngebotId,
   AufmassId,
@@ -1402,4 +1408,82 @@ export const beispielChangeSetTextquelle: LvChangeSet = {
     entfernt: [],
   },
   summen: keineSummen,
+};
+
+// --- v1.5 (Ticket 95) -------------------------------------------------------------------------------------------
+
+/** Eine Kennung, zu der es in keinem Beispiel einen Knoten gibt. */
+const ohneKnotenId = '019b76e9-0000-7000-8000-0000000001ff' as PositionId;
+
+/**
+ * Punkt 1 (D-71.3): die Antworten des Kerns auf `KostengruppeSetzen` am Beispiel-Auftrags-LV, wie bei jedem Feldbefehl und
+ * im LV ebenso: am Titel `01` (eine Gliederung trägt keine Kostengruppe) `knotenart-unzulaessig`, an einer Kennung ohne
+ * Knoten im Baum `knoten-unbekannt`. Die Meldungen sind für Entwickler; die Anzeige baut die App aus dem Code.
+ */
+export const beispielFehlerKostengruppe: readonly [Befehlsfehler, Befehlsfehler] = [
+  {
+    code: 'knotenart-unzulaessig',
+    meldung: 'Eine Kostengruppe trägt nur eine Position, nicht „titel“.',
+    knotenId: titelId,
+  },
+  { code: 'knoten-unbekannt', meldung: 'Kein Knoten mit dieser Kennung.', knotenId: ohneKnotenId },
+];
+
+/**
+ * Punkt 2 (Ticket 76, D-76.4): zwei Befunde beim Lesen der XRechnung (UBL) zur Abschlagsrechnung 2, in der gemeinsamen
+ * Befundliste (erfunden). Ein Befund an einem Element: Der Nettobetrag der zweiten Rechnungsposition hat drei
+ * Nachkommastellen (`37.504`, gelesen als 37,50). Ein Befund einer Summenregel: Die Datei fordert 6,90 (BT-115), Brutto
+ * 59,32 (BT-112) minus bereits gezahlt 53,42 (BT-113, der eingefrorene Zahlbetrag der Rechnung 1) ergibt 5,90; die Regel
+ * hängt an keinem einzelnen Element, darum steht nur der Business Term im Ort.
+ */
+export const beispielBefundeERechnung: readonly [Pruefbefund, Pruefbefund] = [
+  {
+    schwere: 'warnung',
+    quelle: 'erechnung-lesen',
+    code: 'betrag-nicht-kanonisch',
+    meldung: 'BT-131: „37.504“ hat mehr als 2 Nachkommastellen; kaufmännisch gerundet auf 37,50.',
+    ort: { feld: 'BT-131', pfad: '/Invoice/InvoiceLine[2]/LineExtensionAmount' },
+  },
+  {
+    schwere: 'fehler',
+    quelle: 'erechnung-lesen',
+    code: 'zahlbetrag-falsch',
+    meldung: 'BT-115 (Fälliger Zahlbetrag) ist 6,90; BT-112 − BT-113 + BT-114 ergibt 5,90.',
+    ort: { feld: 'BT-115' },
+  },
+];
+
+/**
+ * Punkt 3 (D-80.1): der OZ-Vorschlag für die Gliederung „Nachtrag N01“ am Beispiel-Auftrags-LV, Aufruf und Ergebnis. Zustand
+ * und Ort nennen die Kennung des Auftrags-LV selbst (keine umgedeutete LV-Kennung). Hinter dem Titel `01`, dem einzigen
+ * Knoten der obersten Ebene, ist der Vorschlag `02` (Vorgänger + 1, D-42.3): die OZ, die `beispielNachtragUebernehmen` trägt.
+ */
+export const beispielOzVorschlagAuftragsLv: {
+  readonly zustand: AuftragsLvZustand;
+  readonly ort: Einfuegeort;
+  readonly art: Parameters<OzVorschlagen>[2];
+  readonly vorschlag: OzVorschlag;
+} = {
+  zustand: {
+    auftragsLeistungsverzeichnis: beispielAuftragsLv,
+    summen: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: g1235,
+    },
+  },
+  ort: { art: 'ende', elternId: auftragsId },
+  art: 'titel',
+  vorschlag: { ordnungszahl: '02' as Ordnungszahl, ozIndex: null },
+};
+
+/**
+ * Punkt 5 (D-92.4): das Beispiel-LV in der Liste des Projekts nach `beispielChangeSetNachlass` (10 % Nachlass): Netto
+ * 12,35, Nachlass round(12,35 × 10 / 100, 2) = 1,24 (1,235), Netto nach Nachlass 11,11. Die Übersicht trägt 11,11, den Wert
+ * der gespeicherten Summen.
+ */
+export const beispielLvUebersichtNetto: LvUebersicht = {
+  id: lvId,
+  name: beispielLv.name,
+  nettoNachNachlass: '11.11' as Betrag,
 };

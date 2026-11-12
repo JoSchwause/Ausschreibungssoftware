@@ -35,6 +35,8 @@ export const ERLAUBT = {
   'packages/ausgabe': FACH,
   // XRechnung lesen (Ticket 76, D-32): ein Format-Rand wie gaeb, aber ohne Kern und ohne den GAEB-Leser.
   'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
+  // HOAI-Honorarberechnung (Ticket 101, D-56): reine Rechnung mit den Honorartafeln als Daten, kein Kern.
+  'packages/honorar': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -51,6 +53,7 @@ export const ERLAUBT = {
     'packages/kosten',
     'packages/ausgabe',
     'packages/erechnung',
+    'packages/honorar',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],
