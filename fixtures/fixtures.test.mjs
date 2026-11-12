@@ -31,7 +31,7 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
     'gross.json', 'handbeispiele.json', 'ifc/haus-v1-ifc2x3.ifc', 'ifc/haus-v1.ifc', 'ifc/haus-v2.ifc', // Ticket 99
     'typisch-abrechnung.json', // Ticket 85
-    'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
+    'typisch-angebote.json', 'typisch-bim.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
   for (const [name, inhalt] of Object.entries(erste)) {
     assert.equal(inhalt, zweite[name], `${name}: zweite Erzeugung weicht ab`);
@@ -1499,6 +1499,8 @@ function dzText(a) {
   const z = (w < 0n ? -w : w).toString().padStart(s + 1, '0');
   return `${w < 0n ? '-' : ''}${s === 0 ? z : `${z.slice(0, -s)}.${z.slice(-s)}`}`;
 }
+/** Kaufmännisch auf 3 Stellen (Menge, N3), nur für Werte ≥ 0. */
+const dz3 = (a) => format(rundeHalfUp(a.w, a.s, 3), 3);
 /** Länge aus der Datei in m: Faktor "1" (Datei in m) oder "1000" (Datei in mm, exakt durch 1000). */
 const inMeter = (text, faktor) => ({ ...dz(text), s: dz(text).s + (faktor === '1000' ? 3 : 0) });
 /** Mengen in SI-Einheit als `[Name, Text]`: Längen umgerechnet, Flächen in m², Volumen in m³ wie gelesen. */
@@ -1827,4 +1829,175 @@ test('IFC-Haus v2: eine Wand entfernt, eine neu, eine länger, ein Fenster im OG
   const knoten = (m) => ['IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE'].flatMap((typ) =>
     m.von(typ).map((k) => [k.attr[0], k.attr[2], m.mengen.has(k.nr) ? mengenInSi(m.mengen.get(k.nr).werte, '1') : null]));
   assert.deepEqual(knoten(v2), knoten(v1));
+});
+
+// ---------------------------------------------------------------- Ticket 99: Sollwerte des Tors X1 (typisch-bim.json)
+//
+// Gegenrechnung jeder Zahl aus den IFC-Texten (eigener Leser oben, Abgleich über die GlobalId) und aus `typisch.json`,
+// nur mit parse/format/gesamtpreis/prozentVon/summen (N2, N5), nie aus `ifc`, `bim`, `kern` oder `mengen`; dazu von Hand.
+
+const BIM = 'typisch-bim.json';
+/** Einheit der Position je Art der Menge (D-53: passt die Einheit nicht, ist das ein Befund, nie 0). */
+const EINHEIT_JE_MENGE = { IFCQUANTITYLENGTH: 'm', IFCQUANTITYAREA: 'm²', IFCQUANTITYVOLUME: 'm³' };
+const komma = (t) => t.replace('.', ',');
+
+/** Wert einer Ansatzzeile (D-53): die Menge des Bauteils in SI-Einheit, kaufmännisch auf 3 Stellen; `Stueck` = 1. */
+function zeilenwert(m, faktor, { globalId, mengenart }) {
+  const b = m.bauteile.find((x) => x.globalId === globalId);
+  assert.ok(b, `Bauteil ${globalId} fehlt im Modell`);
+  if (mengenart === 'Stueck') return '1.000';
+  const q = b.mengen.werte.get(mengenart);
+  assert.ok(q, `${b.kennung}: Menge ${mengenart} fehlt`);
+  return dz3(q.klasse === 'IFCQUANTITYLENGTH' ? inMeter(q.text, faktor) : dz(q.text));
+}
+
+/** Vordersatz eigens aus dem Modell: je zugeordnetem Bauteil, das im Modell steht, eine Zeile Formel 91 (D-53). */
+function vordersatzGegen(m, faktor, z, auswahl = null) {
+  const bauteile = z.bauteile.filter((b) => m.bauteile.some((x) => x.globalId === b.globalId)
+    && (auswahl === null || auswahl.has(b.globalId)));
+  const werte = bauteile.map((b) => zeilenwert(m, faktor, b));
+  return {
+    positionId: z.positionId,
+    oz: z.oz,
+    mengenansatz: werte.map((w, i) => ({ zeile: String(i + 1), formel: '91', ausdruck: komma(w), variable: null })),
+    menge: format(werte.reduce((s, w) => s + parse(w, 3), 0n), 3),
+  };
+}
+const ohneHerleitung = ({ positionId, oz, mengenansatz, menge }) => ({ positionId, oz, mengenansatz, menge });
+
+/**
+ * LV `typisch` mit neuen Mengen (Map Positions-ID → Menge), eigens gerechnet: GP = round(Menge × EP, 2) (N2); die
+ * Zuschlagsposition 02.0050 A = round(Basis × 8,50 %, 2) auf den GP ihrer Bezugsposition (R1, R5); Netto = Σ GP der
+ * Positionen, die ins Netto gehen; Nachlass, MwSt, Brutto nach N2/N5.
+ */
+function lvMitMengen(lv, mengen) {
+  const gp = new Map();
+  const positionen = lv.knoten.filter((k) => k.art === 'position');
+  for (const k of positionen.filter((x) => x.positionsart !== 'zuschlag')) {
+    gp.set(k.id, gesamtpreis(parse(mengen.get(k.id) ?? k.menge, 3), parse(k.einheitspreis, 3)));
+  }
+  for (const k of positionen.filter((x) => x.positionsart === 'zuschlag')) {
+    const basis = k.zuschlag.bezug.positionen.reduce((s, b) => s + gp.get(b.positionId), 0n);
+    gp.set(k.id, prozentVon(basis, parse(k.zuschlag.prozentsatz, 2)));
+  }
+  const netto = positionen.filter((k) => lv.sollwerte.positionen[k.id].inSumme).reduce((s, k) => s + gp.get(k.id), 0n);
+  return { gp: new Map([...gp].map(([id, w]) => [id, format(w, 2)])), summen: summen(netto, lv.nachlass, lv.mwstSatz) };
+}
+
+/** Prüft Sollwerte eines LV nach neuen Mengen: eigene Gegenrechnung und `berechneSollwerteGaeb` (Titelsummen, Ausweise). */
+function lvSollwerteGegen(lv, sollwerte, mengen) {
+  const gegen = lvMitMengen(lv, mengen);
+  assert.deepEqual(sollwerte.summen, gegen.summen);
+  for (const [id, gp] of gegen.gp) assert.equal(sollwerte.positionen[id].gp, gp, id);
+  const knoten = lv.knoten.map((k) => (mengen.has(k.id) ? { ...k, menge: mengen.get(k.id) } : k));
+  assert.deepEqual(sollwerte, berechneSollwerteGaeb(knoten, preiseDesLv, lv.nachlass, lv.mwstSatz));
+}
+
+test('typisch-bim: Zuordnung Bauteil ↔ Position von typisch, Mengenart passend zur Einheit (D-52, Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  assert.deepEqual([fx.schemaVersion, fx.art, fx.lvId, fx.lvName], ['fixture-v1', 'bimset', lv.id, lv.name]);
+  // Modelldateien mit SHA-256 der Bytes (D-51)
+  assert.deepEqual(fx.modelle.map((x) => [x.stand, x.datei, x.schema, x.laengeneinheit]), [
+    ['v1', 'ifc/haus-v1.ifc', 'IFC4', 'm'], ['v1', 'ifc/haus-v1-ifc2x3.ifc', 'IFC2X3', 'mm'], ['v2', 'ifc/haus-v2.ifc', 'IFC4', 'm'],
+  ]);
+  for (const x of fx.modelle) assert.equal(x.sha256, sha256(readFileSync(datei(x.datei), 'utf8')), x.datei);
+  const knoten = new Map(lv.knoten.map((k) => [k.id, k]));
+  const kennung = new Map(v1.bauteile.map((b) => [b.globalId, b.kennung]));
+  const uebersicht = fx.zuordnungen.map((z) => {
+    const k = knoten.get(z.positionId);
+    assert.deepEqual([z.oz, z.kurztext, z.einheit], [k.ordnungszahl, k.kurztext, k.einheit]);
+    assert.deepEqual(z.kennungen, z.bauteile.map((b) => kennung.get(b.globalId)));
+    // dasselbe Paar (GlobalId, Mengenart) nie zweimal an einer Position (D-52)
+    assert.equal(new Set(z.bauteile.map((b) => `${b.globalId}/${b.mengenart}`)).size, z.bauteile.length);
+    for (const b of z.bauteile) {
+      assert.deepEqual(Object.keys(b), ['globalId', 'mengenart']); // Form von `Positionsdaten.bauteile` (D-52)
+      const bauteil = v1.bauteile.find((x) => x.globalId === b.globalId);
+      const einheit = b.mengenart === 'Stueck' ? 'St' : EINHEIT_JE_MENGE[bauteil.mengen.werte.get(b.mengenart).klasse];
+      assert.equal(einheit, z.einheit, `${z.oz} ${bauteil.kennung} ${b.mengenart}`);
+    }
+    return [z.oz, z.bauteile[0].mengenart, z.kennungen.join(' ')];
+  });
+  // Von Hand: welche Bauteile des Hauses an welcher Position von typisch (README „BIM: Haus und Tor X1“)
+  assert.deepEqual(uebersicht, [
+    ['02.0040', 'GrossArea', 'PL-EG'],
+    ['02.0050', 'NetVolume', 'FU-S FU-N FU-W FU-O'],
+    ['02.0070', 'NetArea', 'PL-EG'],
+    ['02.0080', 'Length', 'AW-EG-S AW-EG-N AW-EG-W AW-EG-O'],
+    ['03.0010', 'NetSideArea', 'IW-EG-1 IW-EG-2 IW-EG-3'],
+    ['03.0020', 'NetSideArea', 'AW-EG-S AW-EG-N AW-EG-W AW-EG-O'],
+    ['03.0050', 'Stueck', 'T-EG-1 T-OG-1 T-OG-2'],
+  ]);
+});
+
+test('typisch-bim: X1-Kern, Ansatzzeilen gleich den Mengen im IFC-Text, LV-Summen nach N2/N5, von Hand (Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v1ifc2x3 = modellLesen(ifcDatei('haus-v1-ifc2x3.ifc'));
+  const k = fx.kern;
+  assert.deepEqual(k.vordersaetze.map(ohneHerleitung), fx.zuordnungen.map((z) => vordersatzGegen(v1, '1', z)));
+  // IFC 2x3 in mm liefert dieselben Zeilen (Umrechnung exakt, D-53)
+  assert.deepEqual(fx.zuordnungen.map((z) => vordersatzGegen(v1ifc2x3, '1000', z)), k.vordersaetze.map(ohneHerleitung));
+  for (const v of k.vordersaetze) {
+    // Zeilenergebnis = Formel 91 des Ausdrucks; Menge = Summe der gerundeten Zeilen; je Zeile eine Herleitung
+    assert.deepEqual(v.zeilenergebnisse, v.mengenansatz.map((a) => formel91(a.ausdruck)), v.oz);
+    assert.equal(v.herleitung.length, v.mengenansatz.length, v.oz);
+  }
+  // Von Hand (Herleitung in der README): 03.0010 Innenwände des EG, NetSideArea: 7,51 × 2,75 − Tür 0,885 × 2,01 =
+  // 18,87365 → 18,874; 3,145 × 2,75 = 8,64875 → 8,649; 2 × 2,75 = 5,500; Menge 33,023.
+  const vs = (oz) => k.vordersaetze.find((v) => v.oz === oz);
+  assert.deepEqual(vs('03.0010').mengenansatz.map((a) => a.ausdruck), ['18,874', '8,649', '5,500']);
+  // 03.0020 Außenwände des EG: 28,804175 → 28,804; 31,2274 → 31,227; 19,25365 → 19,254; 20,6525 → 20,653 (.5 auf)
+  assert.deepEqual(vs('03.0020').mengenansatz.map((a) => a.ausdruck), ['28,804', '31,227', '19,254', '20,653']);
+  assert.deepEqual(k.vordersaetze.map((v) => [v.oz, v.menge]), [
+    ['02.0040', '98.798'], // 11,99 × 8,24 = 98,7976
+    ['02.0050', '18.720'], // 2 × 12,225 × 0,6 × 0,8 + 2 × 7,275 × 0,6 × 0,8 = 2 × 5,868 + 2 × 3,492
+    ['02.0070', '98.638'], // 98,7976 − 0,4 × 0,4 = 98,6376
+    ['02.0080', '39.000'], // 11,99 + 11,99 + 7,51 + 7,51
+    ['03.0010', '33.023'],
+    ['03.0020', '99.938'],
+    ['03.0050', '3.000'], // drei Innentüren je 1 Stück
+  ]);
+  // LV nach der Übernahme: GP und Summen (N2, N5)
+  const mengen = new Map(k.vordersaetze.map((v) => [v.positionId, v.menge]));
+  lvSollwerteGegen(lv, k.sollwerte, mengen);
+  const gp = (oz, index = '') => k.sollwerte.positionen[
+    lv.knoten.find((x) => x.ordnungszahl === oz && (x.ozIndex ?? '') === index).id].gp;
+  // 33,023 × 48,750 = 1.609,87125 → 1.609,87; 18,720 × 168,900 = 3.161,808 → 3.161,81; Zuschlag 3.161,81 × 8,50 % =
+  // 268,75385 → 268,75; 98,798 × 11,480 = 1.134,20104 → 1.134,20; 98,638 × 52,700 = 5.198,2226 → 5.198,22;
+  // 39,000 × 18,760 = 731,64; 99,938 × 19,360 = 1.934,79968 → 1.934,80; 3,000 × 134,500 = 403,50.
+  assert.deepEqual(
+    [gp('03.0010'), gp('02.0050'), gp('02.0050', 'A'), gp('02.0040'), gp('02.0070'), gp('02.0080'), gp('03.0020'), gp('03.0050')],
+    ['1609.87', '3161.81', '268.75', '1134.20', '5198.22', '731.64', '1934.80', '403.50'],
+  );
+  // Netto 55.465,59 − 33.839,52 (bisherige GP samt Zuschlag) + 14.442,79 = 36.068,86; Nachlass 2 % = 721,3772 → 721,38;
+  // Netto n. N. 35.347,48; MwSt 19 % = 6.716,0212 → 6.716,02; Brutto 42.063,50.
+  assert.deepEqual(k.sollwerte.summen, {
+    netto: '36068.86', nachlass: '721.38', nettoNachNachlass: '35347.48', mwst: '6716.02', brutto: '42063.50',
+  });
+  // Torweg der E2E (D-99.2): nur die Innenwände des EG an 03.0010, Netto 55.465,59 − 10.354,50 + 1.609,87 = 46.720,96;
+  // Nachlass 934,4192 → 934,42; Netto n. N. 45.786,54; MwSt 8.699,4426 → 8.699,44; Brutto 54.485,98.
+  const tor = k.torweg;
+  assert.deepEqual(tor.positionIds, [fx.zuordnungen.find((z) => z.oz === '03.0010').positionId]);
+  lvSollwerteGegen(lv, tor.sollwerte, new Map([[tor.positionIds[0], vs('03.0010').menge]]));
+  assert.deepEqual(tor.sollwerte.summen, {
+    netto: '46720.96', nachlass: '934.42', nettoNachNachlass: '45786.54', mwst: '8699.44', brutto: '54485.98',
+  });
+});
+
+test('typisch-bim: Bauteile v1 und v2 mit Mengen auf 3 Stellen, exakt und hergeleitet, gleich dem IFC-Text (Ticket 99)', () => {
+  const fx = laden(BIM);
+  for (const [stand, name] of [['v1', 'haus-v1.ifc'], ['v2', 'haus-v2.ifc']]) {
+    const m = modellLesen(ifcDatei(name));
+    const klasse = (k) => `Ifc${k.slice(3, 4)}${k.slice(4).toLowerCase()}`;
+    assert.deepEqual(fx.bauteile[stand].map(({ globalId, kennung, klasse: kl, name: n, geschoss, mengen }) => ({
+      globalId, kennung, klasse: kl, name: n, geschoss, mengen: mengen.map((q) => [q.name, q.wert, q.exakt]),
+    })), m.bauteile.map((b) => ({
+      globalId: b.globalId, kennung: b.kennung, klasse: klasse(b.klasse), name: b.name, geschoss: b.geschoss,
+      mengen: [...b.mengen.werte].map(([n, q]) => [n, dz3(dz(q.text)), dzText(dz(q.text))]),
+    })), stand);
+    for (const b of fx.bauteile[stand]) for (const q of b.mengen) assert.match(q.herleitung, /= -?[\d.,]+$|^[\d,]+$/, `${b.kennung} ${q.name}`);
+  }
 });

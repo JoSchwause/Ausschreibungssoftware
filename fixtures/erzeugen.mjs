@@ -18,6 +18,7 @@ import {
   kumulierteMengen, leistungsstandBerechnen, abschlagsketteBerechnen, sollIstBerechnen, kostenkontrolleBerechnen,
 } from './rechnen.mjs';
 import { hausDateiname, hausIfc } from './ifc/haus.mjs';
+import { bimSollwerte } from './ifc/sollwerte.mjs';
 
 const SCHEMA = 'fixture-v1';
 
@@ -937,6 +938,7 @@ function erzeugeAbrechnung(lv, set) {
 export function erzeugeAlle() {
   const typisch = erzeugeTypisch();
   const angebote = erzeugeAngebote(typisch);
+  const haus = erzeugeHaus();
   return {
     'winzig.json': alsDatei(erzeugeWinzig()),
     'typisch.json': alsDatei(typisch),
@@ -946,7 +948,8 @@ export function erzeugeAlle() {
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),
     ...erzeugeX84(typisch, angebote),
-    ...erzeugeHaus(), // Ticket 99
+    ...haus, // Ticket 99
+    'typisch-bim.json': alsDatei(bimSollwerte(typisch, haus)),
   };
 }
 
