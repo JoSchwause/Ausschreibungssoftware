@@ -1,6 +1,6 @@
 # 104: `erechnung` nutzt die gemeinsame Befundliste
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: A4 · Paket: `packages/erechnung` (Ausnahme von P2: die markierten Verwendungen der Befunde in
 `apps/web/src/rechnung/` mechanisch nachziehen; dort schreibt in Stufe 1b niemand)
@@ -32,3 +32,21 @@ eine Befundquelle für das Lesen einer XRechnung in der gemeinsamen Befundliste 
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen
+
+- **D-104.1** Was geschieht mit `XRechnungBefund`? **Entfällt ohne Alias; `XRechnungLesung.befunde` ist `readonly Pruefbefund[]`, jeder Befund trägt `quelle: 'erechnung-lesen'`.** Grund: Der Typ hatte keinen Verbraucher außerhalb des Pakets (`apps/web` übersetzt unverändert), ein Übergangsname brächte nur eine zweite Schreibweise.
+- **D-104.2** Bleibt `XRechnungBefundcode`? **Ja, als Menge der Codes, die `erechnung` meldet, nur noch intern zum Erzeugen der Befunde und weiter exportiert; `Pruefbefund.code` ist ein `string`.** Grund: Der Compiler hält so Schreibfehler an den Meldestellen fern; Codes und Texte bleiben unverändert (L2, kein Glossarbezug).
+- **D-104.3** Zeilen in `apps/web/src/rechnung/`? **Keine nötig, nichts mit `// Ticket 104` markiert.** Grund: Die App liest `befunde` strukturell (`code`, `schwere`, `meldung`, `ort`), alle Felder sind geblieben; `pnpm typecheck` ist ohne Änderung grün.
+- **D-104.4** Tests: neuer Abschnitt „gemeinsame Befundliste“ in `lesen.test.ts` (Quelle bei jedem Befund, Typ, Ort nach D-95.2: Summenregel nur `feld`, Datei als Ganzes nur `pfad`, kaputtes XML mit `zeile`). Die Golden-Tests blieben unverändert grün.
+
+### Ergebnis
+
+`pnpm lint` und `pnpm typecheck` grün. `pnpm test`: 2634 grün, 2 Leistungsbudgets rot nur in der vollen Suite (CPU geteilt mit anderen Agenten):
+`kern/k9-leistung.test.ts` und `speicher/aufmass-leistung.test.ts`; beide einzeln wiederholt grün, kein Budget gelockert.
+`e2e/rechnung.spec.ts` 1/1 grün.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `cca3329` (Branch `welle-6/104-erechnung-befunde`, `a5f0247`). Befunde von `erechnung` sind
+`Pruefbefund` mit Quelle `erechnung-lesen` (D-95.2); Verhalten unverändert; App ohne Änderung.
