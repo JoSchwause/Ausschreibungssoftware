@@ -181,14 +181,16 @@ function befund(code: Bauzeitbefundcode, meldung: string, ort: Befundort = {}): 
 const am = (vorgangId: VorgangId, feld?: string): Befundort =>
   feld === undefined ? { vorgangId } : { vorgangId, feld };
 
-const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
+/** Die vier Anordnungsarten (auch für die Formprüfung des Ausführers). */
+export const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
   'ende-anfang',
   'anfang-anfang',
   'ende-ende',
   'anfang-ende',
 ];
 
-const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
+/** Ganze Arbeitstage von `kleinster` bis `HOECHSTWERT_ARBEITSTAGE` (D-102.7; auch für den Ausführer). */
+export const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
   Number.isInteger(wert) && wert >= kleinster && wert <= HOECHSTWERT_ARBEITSTAGE;
 
 function hundertProzent(): Prozent {
@@ -208,8 +210,12 @@ function istPruefen(ist: Isttermine): string | null {
   // Hier sind beide, wenn vorhanden, gültig gelesen.
   if (beginn?.ok === true && ende?.ok === true && ende.wert < beginn.wert)
     return 'Ist-Ende liegt vor dem Ist-Beginn';
-  if (ist.fortschritt === null) return null;
-  const fortschritt = alsProzent(String(ist.fortschritt));
+  return ist.fortschritt === null ? null : fortschrittPruefen(ist.fortschritt);
+}
+
+/** Fortschritt: Prozent mit zwei Stellen (N3), `0.00` bis `100.00` (D-102.6); liefert das Problem oder `null`. */
+export function fortschrittPruefen(wert: Prozent): string | null {
+  const fortschritt = alsProzent(String(wert));
   if (!fortschritt.ok) return `Fortschritt: ${fortschritt.fehler.meldung}`;
   if (vorzeichen(fortschritt.wert) < 0 || vergleiche(fortschritt.wert, HUNDERT_PROZENT) > 0) {
     return `Fortschritt außerhalb von 0 bis 100 Prozent: ${fortschritt.wert}`;
