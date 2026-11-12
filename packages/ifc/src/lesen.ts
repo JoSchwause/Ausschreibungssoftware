@@ -2,6 +2,7 @@
 // IFC lesen (Ticket 98): STEP-Datei prüfen, Kopf und Schema lesen, dann Struktur, Bauteile, Mengen, Eigenschaften,
 // Klassifikation und Material aus den Instanzen holen. Rein (A2): Bytes rein, Werte und Befunde raus.
 
+import { Modellleser, strukturLesen, zerlegungLesen } from './modell';
 import { befund, datenLesen, kopfLesen, textmodusErmitteln } from './step';
 import type { StepKopf } from './step';
 import type { IfcBefund, IfcBefundcode, IfcKopf, IfcLesung, IfcOptionen, IfcSchema } from './typen';
@@ -65,8 +66,11 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const befunde: IfcBefund[] = [];
   const daten = datenLesen(bytes, kopf, modus, maxTiefe, befunde);
   if (daten === null) return abweisen('keine-ifc-datei', 'Keine IFC-Datei: Der Abschnitt „DATA;“ fehlt.');
+  const leser = new Modellleser(daten, befunde);
+  const ganzes = zerlegungLesen(leser);
+  const struktur = strukturLesen(leser, ganzes);
   return {
-    modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur: [], bauteile: [] },
+    modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur, bauteile: [] },
     befunde,
   };
 }

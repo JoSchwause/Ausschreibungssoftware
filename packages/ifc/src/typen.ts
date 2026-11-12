@@ -141,7 +141,10 @@ export type IfcBefundcode =
   | 'step-syntaxfehler'
   | 'step-zu-tief'
   | 'instanz-doppelt'
-  | 'zeichenkette-ungueltig';
+  | 'zeichenkette-ungueltig'
+  | 'verweis-fehlt'
+  // Bauwerksstruktur:
+  | 'strukturknoten-ohne-eltern';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für
