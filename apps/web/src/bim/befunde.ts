@@ -4,7 +4,7 @@
 
 import { bauteileOhneGeometrie } from '@tethys/bim';
 import type { Ladebericht } from '@tethys/ui-modell';
-import type { Bauwerksmodell, Pruefbefund } from '@tethys/vertrag';
+import type { Bauwerksmodell, KnotenId, Pruefbefund } from '@tethys/vertrag';
 
 export function geometriebefunde(modell: Bauwerksmodell, bericht: Ladebericht): Pruefbefund[] {
   return bauteileOhneGeometrie(modell, bericht.mitGeometrie);
@@ -14,11 +14,17 @@ export interface Befundeintrag {
   readonly befund: Pruefbefund;
   /** Sprungziel im Modellbaum; `null`, wenn der Befund kein Objekt nennt. */
   readonly globalId: string | null;
+  /** Ticket 122 (PC-a1): die Position einer Zuordnung als Sprungziel; `null`, wenn der Befund keine nennt. */
+  readonly knotenId: KnotenId | null;
 }
 
 /** Fehler vor Warnungen, sonst in der gemeldeten Reihenfolge. */
 export function befundliste(befunde: readonly Pruefbefund[]): Befundeintrag[] {
-  const eintrag = (b: Pruefbefund): Befundeintrag => ({ befund: b, globalId: b.ort.globalId ?? null });
+  const eintrag = (b: Pruefbefund): Befundeintrag => ({
+    befund: b,
+    globalId: b.ort.globalId ?? null,
+    knotenId: b.ort.knotenId ?? null,
+  });
   return [
     ...befunde.filter((b) => b.schwere === 'fehler').map(eintrag),
     ...befunde.filter((b) => b.schwere !== 'fehler').map(eintrag),

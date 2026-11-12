@@ -173,3 +173,42 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   );
   await expect(folgen.getByRole('button', { name: 'Mengen aktualisieren …' })).toBeEnabled();
 });
+
+test('Hängende Zuordnung: Sprung zur Position auf der Modellseite und in der Vorschau der Mengenübernahme (Ticket 122)', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await aufbau(page);
+  const weg = SOLL.vergleich.entfernt[0];
+  const zuordnung = BIM_SOLL.zuordnungen.find((z) => z.bauteile.some((b) => b.globalId === weg?.globalId));
+  if (weg === undefined || zuordnung === undefined)
+    throw new Error('Fixture ohne entferntes, zugeordnetes Bauteil');
+
+  // Modellseite von v2: Das entfernte Bauteil hängt an seiner Position; ohne Zeile im Baum, aber mit Sprung zur Position.
+  const bereich = page.getByRole('region', { name: 'Zuordnung zu Positionen' });
+  const befund = bereich
+    .getByRole('region', { name: 'Befunde der Zuordnung' })
+    .getByRole('listitem')
+    .filter({ hasText: weg.globalId });
+  await expect(befund).toHaveCount(1);
+  await expect(befund.getByRole('button', { name: 'Im Baum zeigen' })).toHaveCount(0);
+  await befund.getByRole('button', { name: 'Zur Position' }).click();
+  const position = bereich.locator(`[data-position="${zuordnung.positionId}"]`);
+  await expect(position).toBeFocused();
+  await expect(position).toContainText(zuordnung.oz);
+
+  // LV-Seite: „Mengen aus Modell …“ mit v2 zeigt denselben Befund; „Zur Position“ schließt und springt zur Menge.
+  await page.goto(`/lv/${typischNachUebernahme().wurzelId}`);
+  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
+  await dialog.getByRole('combobox', { name: 'Modell', exact: true }).click();
+  await page.getByRole('option', { name: /^haus-v2/ }).click();
+  const vorschauBefund = dialog.getByRole('listitem').filter({ hasText: weg.globalId });
+  await vorschauBefund.getByRole('button', { name: 'Zur Position' }).click();
+  await expect(dialog).toHaveCount(0);
+  const grid = page.getByRole('treegrid', { name: /Positionen/ }).first();
+  await expect(grid.locator('[role="gridcell"]:focus')).toHaveAttribute('data-spalte', 'menge');
+  await expect(grid.locator('[role="row"]', { has: page.locator('[role="gridcell"]:focus') })).toContainText(
+    zuordnung.oz,
+  );
+});

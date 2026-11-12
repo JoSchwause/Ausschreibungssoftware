@@ -4,9 +4,9 @@
 // entfernen, Befunde der Zuordnung mit Sprung in den Baum (U5). Dazu „Aufmaßblatt aus Auswahl …“ bei einem Auftrags-LV.
 
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { Bauwerksmodell, Position, PositionId, ProjektId } from '@tethys/vertrag';
+import type { Bauwerksmodell, KnotenId, Position, PositionId, ProjektId } from '@tethys/vertrag';
 import { zuordnungenPruefen } from '@tethys/bim';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AufmassAusAuswahlDialog } from './AufmassAusAuswahlDialog';
 import { BefundListe } from './BefundListe';
@@ -58,9 +58,16 @@ export function ZuordnungBereich({
     for (const k of modell.struktur) ids.add(k.globalId);
     return (g: string): boolean => ids.has(g);
   }, [namen, modell]);
+  // Ticket 122 (PC-a1): Sprung aus einem Befund zur Position in der Liste der Zuordnungen (auch bei hängender Zuordnung).
+  const bereich = useRef<HTMLElement | null>(null);
+  const zurPosition = (knotenId: KnotenId): void => {
+    const ziel = bereich.current?.querySelector<HTMLElement>(`[data-position="${CSS.escape(knotenId)}"]`);
+    ziel?.scrollIntoView({ block: 'nearest' });
+    ziel?.focus();
+  };
 
   return (
-    <section className="bim__leiste bim__zuordnung" aria-label={t.region}>
+    <section ref={bereich} className="bim__leiste bim__zuordnung" aria-label={t.region}>
       <h2>{t.region}</h2>
       {bezug.wahlen === null ? (
         <p aria-busy="true">{t.laedt}</p>
@@ -103,7 +110,7 @@ export function ZuordnungBereich({
       ) : (
         <ul className="bim__zuordnungen" aria-label={t.liste}>
           {mitZuordnung.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} data-position={p.id} tabIndex={-1}>
               <strong>{t.position(p.ordnungszahl ?? '', p.kurztext)}</strong>
               <ul>
                 {(p.bauteile ?? []).map((z) => {
@@ -136,6 +143,7 @@ export function ZuordnungBereich({
           beschriftung={t.befunde}
           onSprung={zurZeile}
           imModell={imModell}
+          onPositionSprung={zurPosition}
         />
       )}
       {dialog === 'zuordnen' ? (
@@ -147,6 +155,7 @@ export function ZuordnungBereich({
             setDialog(null);
           }}
           zurZeile={zurZeile}
+          zurPosition={zurPosition}
           imModell={imModell}
         />
       ) : null}
@@ -172,6 +181,7 @@ function ZuordnenDialog({
   bezug,
   onSchliessen,
   zurZeile,
+  zurPosition,
   imModell,
 }: {
   modell: Bauwerksmodell;
@@ -179,6 +189,7 @@ function ZuordnenDialog({
   bezug: Bezugsstand;
   onSchliessen: () => void;
   zurZeile: (globalId: string) => void;
+  zurPosition: (knotenId: KnotenId) => void;
   imModell: (globalId: string) => boolean;
 }): ReactElement {
   const { zeige } = useToast();
@@ -270,6 +281,10 @@ function ZuordnenDialog({
             zurZeile(g);
           }}
           imModell={imModell}
+          onPositionSprung={(k) => {
+            onSchliessen();
+            zurPosition(k);
+          }}
         />
       ) : null}
     </Dialog>

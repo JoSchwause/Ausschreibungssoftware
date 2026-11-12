@@ -198,6 +198,7 @@ export const texte = {
     dieseAusblenden: 'Ausblenden',
     befunde: 'Befunde',
     zurZeile: 'Im Baum zeigen',
+    zurPosition: 'Zur Position', // Ticket 122 (PC-a1)
     dateiFehlt: 'Die Datei des Modells fehlt im Speicher; der Baum steht, die 3D-Ansicht nicht.',
     dreiDFehler: 'Die 3D-Ansicht konnte das Modell nicht zeigen.',
   },
