@@ -1,6 +1,6 @@
 # 109: X2: `bauzeit`: Befehle und Vertragstypen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X2 · Paket: `packages/bauzeit`
 Blocked by: 97, 102 (gleiches Paket)
