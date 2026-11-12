@@ -48,7 +48,11 @@ describe('Fixtures speichern und laden', () => {
         knoten.filter((k) => k.art === 'titel' || k.art === 'los').map((k) => k.id),
       );
       expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
-        { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
+        {
+          id: f.lv.leistungsverzeichnis.id,
+          name: f.lv.leistungsverzeichnis.name,
+          nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass,
+        },
       ]);
       for (const a of f.angebote) {
         expect(wert(kern.angebotLaden(a.angebot.id))).toEqual(normalisiere(a));
@@ -77,7 +81,11 @@ describe('Fixtures speichern und laden', () => {
     const zeiten = Array.from({ length: 9 }, () => {
       const t = performance.now();
       expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
-        { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
+        {
+          id: f.lv.leistungsverzeichnis.id,
+          name: f.lv.leistungsverzeichnis.name,
+          nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass,
+        },
       ]);
       return performance.now() - t;
     }).sort((a, b) => a - b);

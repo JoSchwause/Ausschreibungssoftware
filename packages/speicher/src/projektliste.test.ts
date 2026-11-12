@@ -78,7 +78,11 @@ describe('Projektliste', () => {
       { id: 'p-0', name: 'Zahnarztpraxis' },
     ]);
     expect(wert(await speicher.leistungsverzeichnisse.auflisten(f.projekt.id))).toEqual([
-      { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
+      {
+        id: f.lv.leistungsverzeichnis.id,
+        name: f.lv.leistungsverzeichnis.name,
+        nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass,
+      },
     ]);
     expect(wert(await speicher.leistungsverzeichnisse.auflisten('p-0' as ProjektId))).toEqual([]);
   });
@@ -109,10 +113,10 @@ describe('Projektliste', () => {
     await weiteres('lv-1', 'zebra');
     await weiteres('lv-0', 'Ärztehaus');
     expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
-      { id: 'lv-0', name: 'Ärztehaus' },
-      { id: 'lv-2', name: 'Ärztehaus' },
-      { id: lv.id, name: lv.name },
-      { id: 'lv-1', name: 'zebra' },
+      { id: 'lv-0', name: 'Ärztehaus', nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass },
+      { id: 'lv-2', name: 'Ärztehaus', nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass },
+      { id: lv.id, name: lv.name, nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass },
+      { id: 'lv-1', name: 'zebra', nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass },
     ]);
   });
 });

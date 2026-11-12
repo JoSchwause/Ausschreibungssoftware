@@ -101,14 +101,27 @@ const nachName = <T extends { readonly id: string; readonly name: string }>(a: T
 
 /**
  * LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. v1.4 (D-43): dazu
- * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein).
+ * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein). v1.5 (D-95.5, Ticket 106): dazu `nettoNachNachlass` aus der
+ * gespeicherten Zeile in `summe_gesamt`, nie gerechnet; ohne Zeile fehlt das Feld (nie `null`).
  */
 export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
   return (
     db
-      // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
-      .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
-      .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
+      // `l.*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
+      .zeilen(
+        `SELECT l.*, s.netto_nach_nachlass AS uebersicht_netto_nach_nachlass FROM leistungsverzeichnis l
+         LEFT JOIN summe_gesamt s ON s.aggregat_id = l.id WHERE l.projekt_id = ? ORDER BY l.id`,
+        [projekt],
+      )
+      .map((z): LvUebersicht => {
+        const netto = textOderNull(z, 'uebersicht_netto_nach_nachlass') as Betrag | null;
+        return {
+          id: lvId(z, 'id'),
+          name: text(z, 'name'),
+          ...lvKennzeichenAusZeile(z),
+          ...(netto === null ? {} : { nettoNachNachlass: netto }),
+        };
+      })
       .sort(nachName)
   );
 }

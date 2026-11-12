@@ -597,7 +597,15 @@ describe('Migration 6 überführt eine Datenbank der Version 5 ohne Verlust (Q5)
     const lvs = wert(alt.lvAuflisten(projekt));
     const vorher = lvs.map((l) => wert(alt.lvLaden(l.id)));
     const protokoll = wert(alt.protokoll(projekt));
-    const tabellen = ['knoten', 'protokoll', 'aufmass', 'rechnung', 'kostenermittlung', 'lv_stand', 'auftrags_lv'];
+    const tabellen = [
+      'knoten',
+      'protokoll',
+      'aufmass',
+      'rechnung',
+      'kostenermittlung',
+      'lv_stand',
+      'auftrags_lv',
+    ];
     const zeilenV5 = tabellen.map((t) => zaehle(db, t));
     const seqV5 = db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq');
 
