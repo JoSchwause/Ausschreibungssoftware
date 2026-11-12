@@ -6,6 +6,7 @@
 
 import type {
   AngebotLoeschen,
+  Einfuegeort,
   AufmassAnlegen,
   AufmasskopfSetzen,
   AufmassLoeschen,
@@ -41,9 +42,12 @@ import type {
 import type {
   AufmassChangeSet,
   AuftragsLvChangeSet,
+  AuftragsLvZustand,
   Befehlsfehler,
   KostenermittlungChangeSet,
   LvChangeSet,
+  OzVorschlag,
+  OzVorschlagen,
   RechnungChangeSet,
 } from './changeset';
 import type {
@@ -1448,3 +1452,27 @@ export const beispielBefundeERechnung: readonly [Pruefbefund, Pruefbefund] = [
     ort: { feld: 'BT-115' },
   },
 ];
+
+/**
+ * Punkt 3 (D-80.1): der OZ-Vorschlag für die Gliederung „Nachtrag N01“ am Beispiel-Auftrags-LV, Aufruf und Ergebnis. Zustand
+ * und Ort nennen die Kennung des Auftrags-LV selbst (keine umgedeutete LV-Kennung). Hinter dem Titel `01`, dem einzigen
+ * Knoten der obersten Ebene, ist der Vorschlag `02` (Vorgänger + 1, D-42.3): die OZ, die `beispielNachtragUebernehmen` trägt.
+ */
+export const beispielOzVorschlagAuftragsLv: {
+  readonly zustand: AuftragsLvZustand;
+  readonly ort: Einfuegeort;
+  readonly art: Parameters<OzVorschlagen>[2];
+  readonly vorschlag: OzVorschlag;
+} = {
+  zustand: {
+    auftragsLeistungsverzeichnis: beispielAuftragsLv,
+    summen: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: g1235,
+    },
+  },
+  ort: { art: 'ende', elternId: auftragsId },
+  art: 'titel',
+  vorschlag: { ordnungszahl: '02' as Ordnungszahl, ozIndex: null },
+};

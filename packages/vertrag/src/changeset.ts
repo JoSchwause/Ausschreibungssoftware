@@ -5,6 +5,7 @@ import type {
   AngebotBefehl,
   AufmassBefehl,
   AuftragsLvBefehl,
+  Einfuegeort,
   KostenermittlungBefehl,
   LvBefehl,
   ProjektBefehl,
@@ -18,6 +19,7 @@ import type {
   KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
+  Ordnungszahl,
   ProjektId,
   RechnungId,
   Zeitstempel,
@@ -435,3 +437,42 @@ export type KostenermittlungChangeSetAnwenden = (
 export type KostenermittlungChangeSetUmkehren = (
   changeSet: KostenermittlungChangeSet,
 ) => KostenermittlungChangeSet;
+
+// --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
+
+/**
+ * Vorschlag des Kerns für die Ordnungszahl eines neuen Knotens (Glossar „OZ-Vorschlag“). Kein Befehl und kein ChangeSet: Wer
+ * einen Befehl baut (die App, `nachtragUebernehmen` in `abrechnung`), fragt vorher und legt die OZ als Wert in den Befehl
+ * (Befehle bleiben reine Daten). `ozIndex` ist für einen neuen Knoten immer `null`. `hinweis` ist gesetzt
+ * (`oz-schritt-ausgewichen`), wenn der Standardschritt nicht passte (F2, D-42.3); ihn reicht der Aufrufer weiter oder
+ * verwirft ihn, gespeichert wird er nie. v1.5: aus `kern` in den Vertrag übernommen, gleich gebaut; der Kern führt bis
+ * Ticket 105 noch seinen eigenen Typ dieses Namens.
+ */
+export interface OzVorschlag {
+  readonly ordnungszahl: Ordnungszahl;
+  readonly ozIndex: string | null;
+  readonly hinweis?: Befehlshinweis;
+}
+
+/**
+ * OZ-Vorschlag für einen neuen Knoten der Art `art` am Ort `ort` (v1.5, Ticket 95 Punkt 3; D-80.1), rein und deterministisch
+ * (A2). `null`: kein Vorschlag (kein Platz, ein Ort, den es im Baum nicht gibt, eine ungültige Maske, ein Elternknoten ohne
+ * lesbare OZ oder eine Stufe, die die Maske nicht hat); die OZ bleibt dann leer, die LV-Prüfung meldet sie (U5, K8).
+ *
+ * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - Eine Regel für LV und Auftrags-LV (D-42.3), mit Maske und Baum des übergebenen Aggregats. Wurzel ist dessen eigene
+ *   Kennung (`WurzelId`): `LvZustand.leistungsverzeichnis.id` bzw. `AuftragsLvZustand.auftragsLeistungsverzeichnis.id`, im
+ *   `ort` als `elternId`. Eine Kennung des Auftrags-LV wird dafür nie als LV-Kennung umgedeutet (so liest
+ *   `nachtragUebernehmen` heute, D-80.1, bis der Kern diese Signatur liefert).
+ * - Am Auftrags-LV legt kein Befehl einen einzelnen Knoten an oder nummeriert um (`AuftragsLvBefehl`). Der Vorschlag dient
+ *   dort `nachtragUebernehmen` (Ticket 80): Die Gliederung „Nachtrag <nummer>“ bekommt die OZ für
+ *   `{ art: 'ende', elternId: <Kennung des Auftrags-LV> }` (D-35, D-80.1).
+ *
+ * Liefert `kern` (Ticket 105; heute `ozVorschlag` nur mit `LvZustand`). Erweitert er den ersten Parameter seiner Funktion auf
+ * beide Zustände, bleibt jeder heutige Aufruf gültig.
+ */
+export type OzVorschlagen = (
+  zustand: LvZustand | AuftragsLvZustand,
+  ort: Einfuegeort,
+  art: 'position' | 'titel' | 'los',
+) => OzVorschlag | null;

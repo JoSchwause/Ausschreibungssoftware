@@ -166,6 +166,8 @@ import {
   // v1.5
   type Befundquelle,
   type Pruefbefund,
+  type OzVorschlag,
+  type OzVorschlagen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -240,6 +242,7 @@ import {
   // v1.5
   beispielFehlerKostengruppe,
   beispielBefundeERechnung,
+  beispielOzVorschlagAuftragsLv,
 } from './beispiele';
 
 /**
@@ -1744,5 +1747,47 @@ describe('v1.5 Punkt 2: Befundquelle für E-Rechnungen (Ticket 76, D-76.4)', () 
     expect(wert.ort.pfad).toMatch(/^(\/[A-Za-z][A-Za-z0-9]*(\[[1-9][0-9]*\])?)+$/);
     // Eine Summenregel betrifft keinen einzelnen Wert der Datei: nur der Business Term.
     expect(regel.ort).toEqual({ feld: 'BT-115' });
+  });
+});
+
+/**
+ * Die Wurzel eines Zustands, wie sie der OZ-Vorschlag liest (v1.5): aus beiden Aggregaten ohne Umdeutung einer Kennung (kein
+ * `as`). Belegt, dass die Signatur ohne die Leseansicht aus D-80.1 umsetzbar ist; die Umsetzung liefert der Kern (Ticket 105).
+ */
+const wurzelVon = (z: Parameters<OzVorschlagen>[0]): WurzelId =>
+  'leistungsverzeichnis' in z ? z.leistungsverzeichnis.id : z.auftragsLeistungsverzeichnis.id;
+
+describe('v1.5 Punkt 3: OZ-Vorschlag des Kerns, auch für das Auftrags-LV (D-80.1)', () => {
+  it('Signatur am Rand wie die übrigen Kern-Signaturen: LV oder Auftrags-LV, Ort und Knotenart ohne Hinweistext', () => {
+    expectTypeOf<OzVorschlagen>().toEqualTypeOf<
+      (
+        zustand: LvZustand | AuftragsLvZustand,
+        ort: Einfuegeort,
+        art: 'position' | 'titel' | 'los',
+      ) => OzVorschlag | null
+    >();
+    expectTypeOf<Parameters<OzVorschlagen>[2]>().toEqualTypeOf<Exclude<Knoten['art'], 'hinweis'>>();
+    expectTypeOf<OzVorschlag>().toEqualTypeOf<{
+      readonly ordnungszahl: Ordnungszahl;
+      readonly ozIndex: string | null;
+      readonly hinweis?: Befehlshinweis;
+    }>();
+    expectTypeOf<NurDaten<OzVorschlag>>().toEqualTypeOf<true>();
+  });
+
+  it('ohne umgedeutete Kennung: das Auftrags-LV ist selbst Wurzel und Elternknoten des Orts', () => {
+    expectTypeOf<AuftragsLeistungsverzeichnisId>().toExtend<ElternId>();
+    expectTypeOf<AuftragsLvZustand>().toExtend<Parameters<OzVorschlagen>[0]>();
+    const { zustand, ort, art } = beispielOzVorschlagAuftragsLv;
+    expect(wurzelVon(zustand)).toBe(beispielAuftragsLv.id);
+    expect(ort).toEqual({ art: 'ende', elternId: beispielAuftragsLv.id });
+    expect(art).toBe('titel');
+  });
+
+  it('Beispiel: die Gliederung „Nachtrag N01“ bekommt hinter dem Titel 01 den Vorschlag 02 (D-42.3: Vorgänger + 1)', () => {
+    const { vorschlag } = beispielOzVorschlagAuftragsLv;
+    const neu = beispielNachtragUebernehmen.knoten.find((k) => k.elternId === beispielAuftragsLv.id);
+    expect(neu?.art === 'titel' ? neu.ordnungszahl : undefined).toBe(vorschlag.ordnungszahl);
+    expect(vorschlag).toEqual({ ordnungszahl: '02', ozIndex: null });
   });
 });
