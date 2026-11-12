@@ -1,6 +1,6 @@
 # 104: `erechnung` nutzt die gemeinsame Befundliste
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: A4 · Paket: `packages/erechnung` (Ausnahme von P2: die markierten Verwendungen der Befunde in
 `apps/web/src/rechnung/` mechanisch nachziehen; dort schreibt in Stufe 1b niemand)
