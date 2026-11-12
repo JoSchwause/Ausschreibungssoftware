@@ -6,11 +6,11 @@ import { multipliziere } from '@tethys/dezimal';
 import type { Dezimal } from '@tethys/vertrag';
 import { klassenname } from './klassen';
 import type { Modellleser } from './modell';
-import type { Bauteilmenge } from './typen';
+import type { StepBauteilmenge } from './typen';
 import { aufzaehlung, text } from './werte';
 import { zahlwert, zehnHoch } from './zahlen';
 
-type Art = Bauteilmenge['art'];
+type Art = StepBauteilmenge['art'];
 
 /** Einheitentyp (`IfcUnitEnum`) und Zeichen der SI-Grundeinheit je Art; `anzahl` hat keine Einheit (Stück). */
 const EINHEIT: Readonly<Record<Exclude<Art, 'anzahl'>, { readonly typ: string; readonly zeichen: string }>> =

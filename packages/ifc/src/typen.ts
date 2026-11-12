@@ -3,22 +3,19 @@
 // allem, was die Datei sagt. Seit Ticket 107 innen: Nach außen gibt das Paket das `Bauwerksmodell` des Vertrags
 // (`bauwerksmodell.ts`) und die Angaben bei Bedarf (`eigenschaftsindex.ts`); öffentlich sind hier nur `Eigenschaft`,
 // `Klassifikation`, `IfcBefundcode` und `IfcOptionen` (`index.ts`). Alle Werte sind reine, serialisierbare Daten in der
-// Reihenfolge der Datei.
+// Reihenfolge der Datei. Die Typen der STEP-Ebene heißen `Step…` (Ticket 122, L1/L2): Ihre Form weicht vom Vertragstyp gleichen
+// Stamms ab (etwa Mengen ohne Wert, GlobalIds nicht in Form), ein Name meint so nie zwei Typen. Das Schema der Datei ist
+// `IfcSchema` aus `vertrag`: `IFC4` umfasst `IFC4` und `IFC4X0` samt Zusätzen (`IFC4_ADD2`, `IFC4X0_ADD2`), `IFC2X3` auch mit
+// Zusatz (`IFC2X3_TC1`); IFC 4.1 bis 4.3 (`IFC4X1` …) und alle anderen Schemata liest das Paket nicht.
 
-import type { Befundort, Befundschwere, Kostengruppennummer, Menge } from '@tethys/vertrag';
-
-/**
- * Schema der Datei laut `FILE_SCHEMA`. `IFC4` umfasst `IFC4` und `IFC4X0` samt Zusätzen (`IFC4_ADD2`, `IFC4X0_ADD2`);
- * `IFC2X3` auch mit Zusatz (`IFC2X3_TC1`). IFC 4.1 bis 4.3 (`IFC4X1` …) und alle anderen Schemata liest das Paket nicht.
- */
-export type IfcSchema = 'IFC2X3' | 'IFC4';
+import type { Befundort, Befundschwere, IfcSchema, Kostengruppennummer, Menge } from '@tethys/vertrag';
 
 /**
  * GlobalId (Glossar) als Text der Datei. Die Form (22 Zeichen aus `0-9A-Za-z_$`) prüft der Leser und meldet Abweichungen
  * als Befund; der Wert bleibt, wie er in der Datei steht (`''`, wenn sie fehlt). Die Marke gleichen Namens aus `vertrag`
  * v1.6 trägt nur GlobalIds in Form; ein Objekt ohne sie fällt bei der Abbildung weg (Ticket 107).
  */
-export type IfcGlobalId = string;
+export type StepGlobalId = string;
 
 /** Kopf der Datei (`HEADER`): `FILE_DESCRIPTION`, `FILE_NAME`, `FILE_SCHEMA`, wie sie in der Datei stehen. */
 export interface IfcKopf {
@@ -42,8 +39,11 @@ export interface IfcKopf {
   readonly schemakennung: string;
 }
 
-/** Bauteilmenge (Glossar): eine Menge aus einem Mengensatz (`IfcElementQuantity`) eines Bauteils oder Strukturknotens. */
-export interface Bauteilmenge {
+/**
+ * Bauteilmenge (Glossar), wie die Datei sie liefert: eine Menge aus einem Mengensatz (`IfcElementQuantity`) eines Bauteils oder
+ * Strukturknotens, auch ohne Wert (anders als `Bauteilmenge` des Vertrags).
+ */
+export interface StepBauteilmenge {
   /** Name des Mengensatzes (Glossar), z. B. `Qto_WallBaseQuantities`; `null`, wenn die Datei keinen nennt. */
   readonly satz: string | null;
   /** Name der Menge, wie er im Modell steht, z. B. `NetVolume`. */
@@ -58,17 +58,17 @@ export interface Bauteilmenge {
   readonly wert: Menge | null;
 }
 
-/** Strukturknoten (Glossar): Projekt, Grundstück, Gebäude, Geschoss oder Raum. */
-export interface Strukturknoten {
-  readonly globalId: IfcGlobalId;
+/** Strukturknoten (Glossar), wie die Datei ihn liefert: Projekt, Grundstück, Gebäude, Geschoss oder Raum. */
+export interface StepStrukturknoten {
+  readonly globalId: StepGlobalId;
   /** Nach der IFC-Klasse: `IfcProject`, `IfcSite`, `IfcBuilding`, `IfcBuildingStorey`, `IfcSpace`. */
   readonly art: 'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum';
   /** `Name` der Datei (bei Räumen oft die Raumnummer). */
   readonly name: string | null;
   /** GlobalId des Elternknotens (`IfcRelAggregates`); `null` beim Projekt und bei einem Knoten ohne Eltern (Befund). */
-  readonly elternGlobalId: IfcGlobalId | null;
+  readonly elternGlobalId: StepGlobalId | null;
   /** Mengen des Knotens, z. B. `Qto_BuildingStoreyBaseQuantities.GrossFloorArea`. */
-  readonly mengen: readonly Bauteilmenge[];
+  readonly mengen: readonly StepBauteilmenge[];
 }
 
 /** Eigenschaft (Glossar „Eigenschaftssatz“): `IfcPropertySingleValue` oder `IfcPropertyEnumeratedValue`. */
@@ -94,25 +94,25 @@ export interface Klassifikation {
   readonly name: string | null;
 }
 
-/** Bauteil (Glossar). */
-export interface Bauteil {
-  readonly globalId: IfcGlobalId;
+/** Bauteil (Glossar), wie die Datei es liefert, mit Eigenschaften, Klassifikationen und Materialien. */
+export interface StepBauteil {
+  readonly globalId: StepGlobalId;
   /** IFC-Klasse, wie sie in der Datei steht (nicht auf eine Oberklasse vereinheitlicht), z. B. `IfcWallStandardCase`. */
   readonly ifcKlasse: string;
   readonly name: string | null;
   /** Name des Typs (`IfcRelDefinesByType`). */
   readonly typ: string | null;
   /** GlobalId des enthaltenden Strukturknotens; ein Teil ohne eigenen Strukturknoten erbt den des Ganzen. */
-  readonly strukturGlobalId: IfcGlobalId | null;
+  readonly strukturGlobalId: StepGlobalId | null;
   /** GlobalId des Ganzen, wenn das Bauteil ein Teil ist (`IfcRelAggregates`). */
-  readonly teilVonGlobalId: IfcGlobalId | null;
+  readonly teilVonGlobalId: StepGlobalId | null;
   /**
    * Kostengruppen-Vorschlag (Glossar „Bauteil“): die Kennung der ersten Klassifikation mit „276“ im Namen des Systems,
    * die eine dreistellige Nummer ist. Nur ein Vorschlag, keine Zuordnung.
    */
   readonly kostengruppe: Kostengruppennummer | null;
   /** Mengen des Bauteils und seines Typs; die Menge am Bauteil überschreibt die gleichnamige desselben Satzes am Typ. */
-  readonly mengen: readonly Bauteilmenge[];
+  readonly mengen: readonly StepBauteilmenge[];
   /** Eigenschaften, getrennt von den Mengen; sie werden nicht gespeichert (D-51). Überschreiben wie bei den Mengen. */
   readonly eigenschaften: readonly Eigenschaft[];
   readonly klassifikationen: readonly Klassifikation[];
@@ -124,13 +124,13 @@ export interface Bauteil {
  * Bauwerksmodell (Glossar), wie die Datei es liefert. Kennung, Projekt, Name, Modelldatei, Vorgänger und Datum des
  * Einlesens setzt die App beim Anlegen (`vertrag` v1.6, Ticket 107).
  */
-export interface Bauwerksmodell {
+export interface StepBauwerksmodell {
   readonly schema: IfcSchema;
   readonly kopf: IfcKopf;
   /** Strukturknoten in der Reihenfolge der Datei. */
-  readonly struktur: readonly Strukturknoten[];
+  readonly struktur: readonly StepStrukturknoten[];
   /** Bauteile in der Reihenfolge der Datei. */
-  readonly bauteile: readonly Bauteil[];
+  readonly bauteile: readonly StepBauteil[];
 }
 
 export type IfcBefundcode =
@@ -186,7 +186,7 @@ export interface IfcBefund {
 
 /** Ergebnis von `ifcLesen`. `modell` ist `null`, wenn die Datei nicht gelesen werden konnte (dann genau ein Befund). */
 export interface IfcLesung {
-  readonly modell: Bauwerksmodell | null;
+  readonly modell: StepBauwerksmodell | null;
   readonly befunde: readonly IfcBefund[];
 }
 
