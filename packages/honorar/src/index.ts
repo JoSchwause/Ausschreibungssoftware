@@ -17,3 +17,8 @@ export type {
   Honorarobjekteingabe,
 } from './honorar-berechnen';
 export { honorarBerechnen } from './honorar-berechnen';
+export {
+  honorarberechnungBefehlAusfuehren,
+  honorarberechnungChangeSetAnwenden,
+  honorarberechnungChangeSetUmkehren,
+} from './honorarberechnung-befehle';
