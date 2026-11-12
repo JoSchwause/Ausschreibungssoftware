@@ -1,6 +1,6 @@
 # 99: Fixtures: IFC-Haus in zwei Ständen, großes Modell, Sollwerte für das Tor X1
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: F, X1 · Paket: `fixtures/` (neuer Ordner `fixtures/ifc/`, dazu `fixtures/README.md`, `fixtures.test.mjs`,
 `REUSE.toml` falls nötig)
