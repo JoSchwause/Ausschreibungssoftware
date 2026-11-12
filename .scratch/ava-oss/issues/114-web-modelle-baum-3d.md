@@ -1,6 +1,6 @@
 # 114: X1a+b in der App: Modelle einlesen, Baum ↔ 3D, Eigenschaften
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1a, X1b · Ordner: `apps/web/src/bim/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 114`, D-20); PWA-/Vite-Einstellungen der App für WASM und Worker
