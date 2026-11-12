@@ -1,6 +1,6 @@
 # 93: `ui-grid`: editierbare Spalte für die Kostengruppe im LV-Grid
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: U, C2 · Paket: `packages/ui-grid`, danach `apps/web/src/kosten/` und die Einhängestellen in
 `apps/web/src/lv/LvSeite.tsx`, `apps/web/src/auftrag/AuftragsLvSeite.tsx` (markiert `// Ticket 93`, D-20)
