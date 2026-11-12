@@ -3,10 +3,10 @@
 // mit ihren Prozentsätzen. Nur Namen, Tafelwerte und Prozentsätze, je mit Vorschrift und Abrufdatum; keine Texte der
 // Grundleistungen aus den Anlagen (C1).
 
-import { alsProzent } from '@tethys/dezimal';
 import type { Prozent } from '@tethys/vertrag';
 import type { Honorartafel, Quelle } from './honorartafeln';
 import { TAFEL_35, TAFEL_52, TAFEL_56, quelle } from './honorartafeln';
+import { prozent } from './konstanten';
 
 /** Leistungsbild der HOAI, für das die App Honorare rechnet. */
 export type Leistungsbild = 'gebaeude' | 'innenraeume' | 'tragwerksplanung' | 'technische-ausruestung';
@@ -29,13 +29,6 @@ export interface Leistungsbilddaten {
   /** In aufsteigender Nummer, ohne Lücke ab 1; die Prozentsätze ergeben zusammen 100. */
   readonly leistungsphasen: readonly Leistungsphase[];
   readonly quelleLeistungsphasen: Quelle;
-}
-
-/** Prozentsatz aus den Daten; ein unlesbarer Wert ist ein Datenfehler und wirft beim Laden des Pakets. */
-function prozent(text: string): Prozent {
-  const p = alsProzent(text);
-  if (!p.ok) throw new Error(`Prozentsatz der Daten: ${p.fehler.meldung}`);
-  return p.wert;
 }
 
 const NUMMERN: readonly Leistungsphasennummer[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];

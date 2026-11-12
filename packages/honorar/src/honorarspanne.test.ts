@@ -3,12 +3,13 @@
 // für sich, erst multiplizieren, dann teilen, kaufmännisch auf 2 Stellen. Die Sollwerte sind von Hand aus den Tafeln
 // hergeleitet (C4); die Tafelwerte stehen jeweils im Kommentar mit Vorschrift.
 
-import type { Betrag } from '@tethys/vertrag';
+import type { Betrag, Prozent } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import type { Honorartafel } from './index';
-import { LEISTUNGSBILDER, honorarspanneBerechnen } from './index';
+import { LEISTUNGSBILDER, honorarInSpanne, honorarspanneBerechnen } from './index';
 
 const b = (wert: string): Betrag => wert as Betrag;
+const p = (wert: string): Prozent => wert as Prozent;
 const TAFEL_35: Honorartafel = LEISTUNGSBILDER.gebaeude.honorartafel;
 const TAFEL_56: Honorartafel = LEISTUNGSBILDER['technische-ausruestung'].honorartafel;
 
@@ -74,5 +75,33 @@ describe('honorarspanneBerechnen', () => {
       ok: false,
       fehler: 'honorarzone-unbekannt',
     });
+  });
+});
+
+describe('honorarInSpanne', () => {
+  const spanne = { von: b('97111.33'), bis: b('121116.04') };
+
+  it('Honorarsatz 50: von + (bis − von) × 50 / 100, die halbe Einheit kaufmännisch aufgerundet', () => {
+    // bis − von = 121 116,04 − 97 111,33 = 24 004,71; × 50 / 100 = 12 002,355
+    // 97 111,33 + 12 002,355 = 109 113,685 → 109 113,69
+    expect(honorarInSpanne(spanne, p('50.00'))).toBe('109113.69');
+  });
+
+  it('Honorarsatz mit Nachkommastellen (37,50)', () => {
+    // § 52 Abs. 1, Zone II bei 1 111 111,11: von 65 707,78, bis 83 542,22 (Herleitung im Golden-Test der Berechnung).
+    // 83 542,22 − 65 707,78 = 17 834,44; × 37,5 / 100 = 6 687,915; 65 707,78 + 6 687,915 = 72 395,695 → 72 395,70
+    expect(honorarInSpanne({ von: b('65707.78'), bis: b('83542.22') }, p('37.50'))).toBe('72395.70');
+  });
+
+  it('0 ist der Basishonorarsatz („von“), 100 der obere Honorarsatz („bis“)', () => {
+    expect(honorarInSpanne(spanne, p('0.00'))).toBe('97111.33');
+    expect(honorarInSpanne(spanne, p('100.00'))).toBe('121116.04');
+  });
+
+  it('rechnet einen Honorarsatz außerhalb von 0 bis 100 nach derselben Formel', () => {
+    // 120: 97 111,33 + 24 004,71 × 1,2 = 97 111,33 + 28 805,652 = 125 916,982 → 125 916,98
+    expect(honorarInSpanne(spanne, p('120.00'))).toBe('125916.98');
+    // −10: 97 111,33 − 2 400,471 = 94 710,859 → 94 710,86
+    expect(honorarInSpanne(spanne, p('-10.00'))).toBe('94710.86');
   });
 });

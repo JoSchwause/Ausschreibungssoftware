@@ -2,12 +2,35 @@
 // Honorarspanne nach § 13 HOAI (Ticket 101, D-56): Zwischen zwei Tafelzeilen werden „von“ und „bis“ der Honorarzone je
 // für sich linear interpoliert, erst multipliziert, dann geteilt und kaufmännisch auf 2 Stellen gerundet
 // (Projektkonvention, die HOAI regelt keine Rundung). Außerhalb der Tafel gibt es keinen Wert (keine Extrapolation).
-// Rein (A2), nur Dezimalarithmetik (N1).
+// Das Honorar liegt nach dem Honorarsatz in der Spanne. Rein (A2), nur Dezimalarithmetik (N1).
 
 import { addiere, dividiere, multipliziere, runden, subtrahiere, vergleiche } from '@tethys/dezimal';
 import { NACHKOMMASTELLEN } from '@tethys/vertrag';
-import type { Betrag, Ergebnis } from '@tethys/vertrag';
+import type { Betrag, Dezimal, Ergebnis, Prozent } from '@tethys/vertrag';
 import type { Honorarspanne, Honorartafel, Honorarzone, Tafelzeile } from './honorartafeln';
+import { HUNDERT } from './konstanten';
+
+/** `zaehler / nenner`, exakt gebildet und einmal kaufmännisch auf 2 Stellen gerundet; `nenner` ist nie null. */
+function teileAufBetrag(zaehler: Dezimal, nenner: Dezimal): Betrag {
+  const wert = dividiere(zaehler, nenner, NACHKOMMASTELLEN.betrag);
+  // Die Teiler hier sind der Zeilenabstand einer streng steigenden Tafel (Datentest) oder 100: null ist ein
+  // Programmfehler.
+  if (!wert.ok) throw new Error(wert.fehler.meldung);
+  return runden(wert.wert, 'betrag');
+}
+
+/**
+ * Honorar = round(von + (bis − von) × Honorarsatz / 100, 2) (D-56): 0 ist der Basishonorarsatz („von“), 100 der obere
+ * Honorarsatz („bis“). Ein Satz außerhalb von 0 bis 100 folgt derselben Formel; den Befund gibt `honorarBerechnen`.
+ */
+export function honorarInSpanne(spanne: Honorarspanne, honorarsatz: Prozent): Betrag {
+  // Exakt als ein Bruch: (von × 100 + (bis − von) × Honorarsatz) / 100, einmal gerundet.
+  const zaehler = addiere(
+    multipliziere(spanne.von, HUNDERT),
+    multipliziere(subtrahiere(spanne.bis, spanne.von), honorarsatz),
+  );
+  return teileAufBetrag(zaehler, HUNDERT);
+}
 
 /** Warum eine Tafel für anrechenbare Kosten und Honorarzone keine Honorarspanne liefert. */
 export type Spannenfehler =
@@ -39,10 +62,7 @@ function interpolieren(
     multipliziere(wertUnten, abstand),
     multipliziere(subtrahiere(anrechenbareKosten, kostenUnten), subtrahiere(wertOben, wertUnten)),
   );
-  const wert = dividiere(zaehler, abstand, NACHKOMMASTELLEN.betrag);
-  // Die Zeilen einer Tafel steigen streng (Datentest); ein Abstand von null ist ein Programmfehler.
-  if (!wert.ok) throw new Error(`Tafelzeilen ohne Abstand: ${kostenUnten} und ${kostenOben}`);
-  return runden(wert.wert, 'betrag');
+  return teileAufBetrag(zaehler, abstand);
 }
 
 function spanneDerZone(zeile: Tafelzeile, honorarzone: Honorarzone): Honorarspanne {

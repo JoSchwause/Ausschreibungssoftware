@@ -11,4 +11,4 @@ export type {
 } from './leistungsbilder';
 export { LEISTUNGSBILDER } from './leistungsbilder';
 export type { Spannenfehler, Tafelinterpolation } from './honorarspanne';
-export { honorarspanneBerechnen } from './honorarspanne';
+export { honorarInSpanne, honorarspanneBerechnen } from './honorarspanne';
