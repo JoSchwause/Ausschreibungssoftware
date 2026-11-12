@@ -38,3 +38,5 @@ export type {
   Vergleichsfolgen,
 } from './vergleich';
 export { modellVergleichen, vergleichsfolgenBerechnen } from './vergleich';
+export type { Zuordnungspruefung } from './pruefung';
+export { bauteileOhneGeometrie, zuordnungenPruefen } from './pruefung';

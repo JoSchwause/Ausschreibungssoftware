@@ -13,6 +13,7 @@ import {
   mengenuebernahmeBerechnen,
   modellVergleichen,
   vergleichsfolgenBerechnen,
+  zuordnungenPruefen,
 } from './index';
 import {
   BIM,
@@ -186,5 +187,32 @@ describe('Modellvergleich v1 → v2 (D-99.8)', () => {
       })),
     );
     expect(f.positionen).toHaveLength(BIM.zuordnungen.length);
+  });
+});
+
+describe('Modellprüfung (D-99.13)', () => {
+  it('v1: keine Befunde; ohne Zuordnung bleiben 15 Bauteile (Fenster, Trockenbau, Außenwände OG, Decken, Haustür)', () => {
+    const p = zuordnungenPruefen(typisch, v1);
+    expect(p.befunde).toEqual([]);
+    // D-99.13: sechs Fenster, Haustür, Geschoss- und Dachdecke, Außenwände des OG, Trockenbauwände des OG.
+    expect(p.ohneZuordnung.map((id) => KENNUNG.get(id)).sort()).toEqual(
+      [
+        ...['F-EG-S', 'F-EG-N', 'F-EG-W', 'F-OG-S', 'F-OG-F', 'F-OG-N'],
+        'T-EG-H',
+        ...['DE-OG', 'DA-OG'],
+        ...['AW-OG-S', 'AW-OG-N', 'AW-OG-W', 'AW-OG-O'],
+        ...['IW-OG-1', 'IW-OG-2'],
+      ].sort(),
+    );
+    const stelle = p.ohneZuordnung.map((id) => v1.bauteile.findIndex((b) => b.globalId === id));
+    expect(stelle).toEqual([...stelle].sort((a, b) => a - b));
+  });
+
+  it('v2: die hängende Zuordnung IW-EG-3 an 03.0010; das neue IW-EG-4 bleibt ohne Zuordnung (D-99.12)', () => {
+    const p = zuordnungenPruefen(typisch, v2);
+    expect(p.befunde.map((b) => [b.code, KENNUNG.get(b.ort.globalId ?? '')])).toEqual([
+      ['bauteil-fehlt', 'IW-EG-3'],
+    ]);
+    expect(p.ohneZuordnung.map((id) => KENNUNG.get(id))).toContain('IW-EG-4');
   });
 });
