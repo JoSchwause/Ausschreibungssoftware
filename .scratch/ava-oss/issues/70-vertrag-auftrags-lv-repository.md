@@ -181,6 +181,9 @@ geändert. Je Punkt ein Commit (1–11), dazu Glossar und eine Angleichung an di
 
 ### Offene Typfragen (enge Lesart im Typ; Alternative hier)
 
+v1.5 (Ticket 95, D-95.4): alle gesichtet. 8 entschieden (Netto und Brutto kumuliert, ohne Typänderung), 12 erledigt
+(Ticket 82), 4, 6, 10 und 15 vertagt mit Grund, die übrigen bleiben in der engen Lesart. Einzelheiten dort.
+
 1. **`nachtrag` und `vorlage` nur am `LvKopf`** (D-70.2). Alternative: am `LvInhaltKopf`, damit `LeistungsverzeichnisAnlegen`
    sie mitbringt (dann auch am Auftrags-LV möglich und im GAEB-Leser zu bedenken).
 2. **`vorlage?: true`.** Alternative: `vorlage?: boolean` (Wortlaut des Tickets; zwei Schreibweisen für „kein Muster-LV“).

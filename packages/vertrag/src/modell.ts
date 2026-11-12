@@ -434,7 +434,7 @@ export interface Positionsdaten {
    * z. B. ein Katalog, ein Muster-LV oder „eigener Text“. Fehlt: keine Angabe; nie `''` im Zustand (ein leerer Text ist
    * keine Quelle, siehe `TextquelleSetzen`). Nur Herkunft: Kurz- und Langtext bleiben die einzige Quelle des Texts, ein
    * Katalog wie STLB-Bau wird nicht angebunden (G-17). Geändert nur über `TextquelleSetzen`; Anlege- und Kopierbefehle
-   * bringen sie mit. Hinweistexte tragen keine (Offene Typfrage, Ticket 70).
+   * bringen sie mit. Hinweistexte tragen keine (Offene Typfrage, Ticket 70; in v1.5 vertagt, D-95.4).
    */
   readonly textquelle?: string;
 }
@@ -788,6 +788,8 @@ export interface AufmassKopf {
  *   Betrag folgt aus den Bezugspositionen (D-34 (1)). Eine Zeile, deren Kennung keine solche Position ist, ist ein Befund
  *   von `aufmassPruefen` (Ticket 80; U5) und zählt in Soll/Ist und Rechnung nicht; der Ausführer sieht das Auftrags-LV
  *   nicht.
+ * - Keine Bemerkung je Zeile (Offene Typfrage 10, Ticket 70; in v1.5 vertagt, D-95.4): Textzeilen einer X31 stehen in der
+ *   Textform der Ansatzzeile (D-83.2).
  */
 export interface Aufmassposition {
   readonly positionId: PositionId;
@@ -862,7 +864,7 @@ export interface Rechnung {
   readonly art: Rechnungsart;
   /**
    * Eingangsdatum beim Auftraggeber, `JJJJ-MM-TT`, vom Nutzer; `null`: keine Angabe. Nicht das Rechnungsdatum der XRechnung
-   * (BT-2), das die App höchstens vorschlägt (ein eigenes Feld dafür: Offene Typfrage, Ticket 70).
+   * (BT-2), das die App höchstens vorschlägt (ein eigenes Feld dafür: Offene Typfrage, Ticket 70; in v1.5 vertagt, D-95.4).
    */
   readonly eingang: string | null;
   /** Rechnungsnummer, die der Auftragnehmer vergeben hat (XRechnung BT-1), freier Text; `null`: keine. Nie `''`. */
@@ -872,8 +874,13 @@ export interface Rechnung {
    * Umsatzsteuer (XRechnung BT-109, BT-112) und der Zahlbetrag (BT-115; Ticket 76), ungeprüft übernommen; jeder Wert
    * `null`, wenn die Rechnung ihn nicht nennt. Nur zum Vergleich mit dem geprüften Stand, nie Grundlage der Prüfung (die
    * rechnet aus den Aufmaßblättern). „Nichts erfasst“ hat genau eine Schreibweise, das äußere `null`: Ein Objekt mit allen
-   * drei Werten `null` weist der Ausführer mit `ungueltige-eingabe` ab. Ob Netto und Brutto kumuliert sind, sagt der Typ
-   * nicht (Offene Typfrage, Ticket 70).
+   * drei Werten `null` weist der Ausführer mit `ungueltige-eingabe` ab.
+   *
+   * v1.5 (Ticket 95, D-95.4; Offene Typfrage 8 aus Ticket 70 entschieden, ohne Typänderung): `netto` und `brutto` sind
+   * kumuliert wie die Abschlagsrechnung (D-34 (1)), also die ganze bis dahin abgerechnete Leistung; die Prüfung stellt sie
+   * Netto nach Nachlass und Brutto kumuliert gegenüber. `zahlbetrag` ist, was diese Rechnung jetzt fordert (BT-115: nach
+   * Abzug des bereits Gezahlten), nie kumuliert. Nennt eine Rechnung bei Netto und Brutto nur den Zuwachs, zeigt der
+   * Vergleich dort eine Forderungsdifferenz; darum vergleicht die Prüfung zuerst den Zahlbetrag (D-44).
    */
   readonly gefordert: {
     readonly netto: Betrag | null;
@@ -921,9 +928,9 @@ export type Kostenermittlungsstufe =
 /**
  * Ein gespeicherter Eintrag einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (3); Glossar „Kostenermittlung“):
  * Nettobetrag auf einer Kostengruppe. Kanonisch: `betrag` ist ein `Betrag` mit 2 Stellen. Der ungeprüfte Text einer
- * Eingabe (Grid, CSV) bleibt eine Funktion in `kosten`. Dort heißt der Eingabetyp heute ebenfalls
- * `Kostenermittlungseintrag` (mit `betrag: string`); zwei Typen eines Namens sind eine Lücke für Ticket 82 (Offene
- * Typfrage, Ticket 70). Negative Beträge sind zulässig (ein Befund in `kosten`, keine Sperre, U5).
+ * Eingabe (Grid, CSV) bleibt eine Funktion in `kosten` und heißt dort `Kostenermittlungseingabe` (`betrag: string`; Ticket
+ * 82, damit ist Offene Typfrage 12 aus Ticket 70 erledigt). Negative Beträge sind zulässig (ein Befund in `kosten`, keine
+ * Sperre, U5).
  */
 export interface Kostenermittlungseintrag {
   readonly nummer: Kostengruppennummer;

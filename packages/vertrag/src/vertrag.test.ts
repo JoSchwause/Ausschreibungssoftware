@@ -1791,3 +1791,25 @@ describe('v1.5 Punkt 3: OZ-Vorschlag des Kerns, auch für das Auftrags-LV (D-80.
     expect(vorschlag).toEqual({ ordnungszahl: '02', ozIndex: null });
   });
 });
+
+describe('v1.5 Punkt 4: Offene Typfragen aus Ticket 70 gesichtet (D-95.4)', () => {
+  it('Typfrage 8 entschieden: Netto und Brutto der Forderung sind kumuliert wie die Abzugskette (D-34 (1))', () => {
+    // Rechnung 2 rechnet Blatt 1 und 2 ab: gefordert ist die ganze Leistung bis dahin, nicht der Zuwachs seit Rechnung 1.
+    const gefordert = beispielRechnungsbefehle[0].gefordert;
+    expect(gefordert?.netto).toBe(beispielLeistungsstand.nettoNachNachlass);
+    expect(gefordert?.netto).not.toBe(beispielRechnung1.gefordert?.netto);
+    // kein Kennzeichen „kumuliert“ am Typ
+    expectTypeOf<NonNullable<Rechnung['gefordert']>>().toEqualTypeOf<{
+      readonly netto: Betrag | null;
+      readonly brutto: Betrag | null;
+      readonly zahlbetrag: Betrag | null;
+    }>();
+  });
+
+  it('vertagt: kein Rechnungsdatum (15), keine Bemerkung je Aufmaßposition (10), das Blatt bleibt ganzes Aggregat (6)', () => {
+    expectTypeOf<Rechnung>().not.toHaveProperty('rechnungsdatum');
+    expectTypeOf<Aufmassposition>().not.toHaveProperty('bemerkung');
+    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
+    expectTypeOf<Hinweistext>().not.toHaveProperty('textquelle');
+  });
+});
