@@ -1,6 +1,6 @@
 # 111: X4: `bauleitung`: Mängel und Bautagebuch
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X4 · Paket: `packages/bauleitung` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: 97
@@ -119,3 +119,8 @@ Leistungsbudgets anderer Pakete bei Lastmittel 20–45 auf 4 Kernen (volle Suite
 `vergabe/leistung` 4.227 ms < 1.000, `web/abrechnung/leistung` 114 ms < 100; in früheren Läufen ebenso `gaeb/schreiben`,
 `kern/k9-leistung`, `kern/summen-leistung`). **Jede Datei allein wiederholt: alle grün** (Lastmittel 19). Kein Budget gelockert,
 nichts übersprungen; dieser Branch ändert keines dieser Pakete. `bauleitung` selbst: 8 Dateien, 56 Tests grün.
+
+## Answer
+
+Gemergt mit `ea16fbb` (Branch `welle-6/111-bauleitung`, `7c191ed`). Paket `bauleitung`: Mangel- und Bautagebuchbefehle, Statustabelle,
+Fristprüfung zum Stichtag (`fristpruefung`), Auswertungen; Fixture `bauleitung.json` passt unverändert, Kettentest gleich den Sollwerten.
