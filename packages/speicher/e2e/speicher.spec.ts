@@ -2,6 +2,7 @@
 // Browser-Tests des Speichers: echter Worker, SQLite-WASM im OPFS (VFS opfs-sahpool), ohne COOP/COEP-Header.
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -517,7 +518,9 @@ test.describe('Vertrag v1.4 im OPFS (Ticket 79)', () => {
     await start(page);
     await ps(page, 'oeffnen', DB);
     expect(await ps(page, 'importieren', DB, v5)).toEqual({ ok: true });
-    expect((await ps(page, 'exportieren', DB, projekt)).text === v5).toBe(true);
+    // Seit Version 6 exportiert der Speicher in der aktuellen Version; ohne das Neue ist die Datei sonst gleich (Ticket 106).
+    const v5Aktuell = v5.replace('"schemaVersion": 5', `"schemaVersion": ${String(SCHEMA_VERSION)}`);
+    expect((await ps(page, 'exportieren', DB, projekt)).text === v5Aktuell).toBe(true);
     // Ein Blatt in einer Rechnung lässt sich nicht löschen (Q5), ändern schon.
     const loeschen = await ps(
       page,
@@ -555,6 +558,60 @@ test.describe('Vertrag v1.4 im OPFS (Ticket 79)', () => {
       'KostenermittlungseintragSetzen',
       'AufmasskopfSetzen',
     ]);
+  });
+});
+
+test.describe('Vertrag v1.6 im OPFS (Ticket 106)', () => {
+  test('Projektdatei der Version 6 importieren, Bytes ablegen, Modell löschen, neu laden: Bytes werden erst beim Öffnen frei', async ({
+    page,
+  }) => {
+    const v6 = readFileSync(new URL('../fixtures/projektdatei-v6.json', import.meta.url), 'utf8');
+    const d = JSON.parse(v6) as Projektdatei;
+    const projekt = d.projekt.id;
+    const [m1, m2] = (d.bauwerksmodelle ?? []).map((z) => z.bauwerksmodell);
+    if (m1 === undefined || m2 === undefined) throw new Error('Modelle fehlen');
+    const extraText = "ISO-10303-21;\nHEADER;\nFILE_NAME('e2e (erfunden)');\nENDSEC;\nEND-ISO-10303-21;\n";
+    const extra = createHash('sha256').update(extraText).digest('hex');
+
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect(await ps(page, 'importieren', DB, v6)).toEqual({ ok: true });
+    // Die Bytes liegen als BLOB im OPFS, so wie die Datei sie bringt: der Export ist byte-gleich.
+    expect((await ps(page, 'exportieren', DB, projekt)).text === v6).toBe(true);
+    expect(await ps(page, 'modelldateiAblegen', DB, extraText)).toEqual({ ok: true, hash: extra });
+    const { struktur, bauteile, ...kopf } = m2;
+    const loeschen = await ps(
+      page,
+      'anwendenEinzeln',
+      DB,
+      eintrag(900, projekt, { art: 'bauwerksmodell', id: m2.id }, { art: 'BauwerksmodellLoeschen' }),
+      {
+        art: 'bauwerksmodell',
+        bauwerksmodellId: m2.id,
+        kopf: { vorher: kopf, nachher: null },
+        inhalt: { vorher: { struktur, bauteile }, nachher: null },
+      },
+    );
+    expect(loeschen).toEqual({ ok: true });
+    // In derselben Sitzung bleiben die Bytes (ein Undo fände sie noch, D-97.5).
+    expect(await ps(page, 'modelldateiPruefen', DB, m2.datei.hash)).toEqual({
+      vorhanden: true,
+      sha: m2.datei.hash,
+    });
+    await ps(page, 'schliessen', DB);
+
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    expect(await ps(page, 'bauwerksmodelle', DB, projekt)).toEqual([
+      { id: m1.id, anzahlBauteile: m1.bauteile.length },
+    ]);
+    expect(await ps(page, 'modelldateiPruefen', DB, m1.datei.hash)).toEqual({
+      vorhanden: true,
+      sha: m1.datei.hash,
+    });
+    expect(await ps(page, 'modelldateiPruefen', DB, m2.datei.hash)).toEqual({ vorhanden: false, sha: null });
+    expect(await ps(page, 'modelldateiPruefen', DB, extra)).toEqual({ vorhanden: false, sha: null });
   });
 });
 
