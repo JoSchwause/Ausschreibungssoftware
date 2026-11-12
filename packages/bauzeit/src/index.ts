@@ -24,3 +24,5 @@ export type {
   Vorgangstermine,
 } from './bauzeitenplan';
 export { bauzeitenplanBerechnen } from './bauzeitenplan';
+export type { Monatsabschnitt, Wochenabschnitt, Zeitachse, Zeitachsenfehler } from './zeitachse';
+export { balkenlage, tagesindex, zeitachseBerechnen } from './zeitachse';
