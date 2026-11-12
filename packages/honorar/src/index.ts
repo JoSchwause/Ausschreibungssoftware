@@ -12,3 +12,9 @@ export type {
 export { LEISTUNGSBILDER } from './leistungsbilder';
 export type { Spannenfehler, Tafelinterpolation } from './honorarspanne';
 export { honorarInSpanne, honorarspanneBerechnen } from './honorarspanne';
+export type {
+  AnrechenbareKostenangabe,
+  AnrechenbareKostenHerleitung,
+  KostenNachDin276,
+} from './anrechenbare-kosten';
+export { anrechenbareKostenHerleiten } from './anrechenbare-kosten';
