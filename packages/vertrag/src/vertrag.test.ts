@@ -1860,3 +1860,30 @@ describe('v1.5 Punkt 6: Spalte „KG“ im LV-Grid (D-89.1, Ticket 93)', () => {
     expectTypeOf<'kostengruppe'>().toExtend<NonNullable<LvZeile['befunde'][number]['ort']['feld']>>();
   });
 });
+
+describe('v1.5: reine Daten und Werte vor v1.5', () => {
+  it('NurDaten deckt die neuen und geänderten Typen ab', () => {
+    expectTypeOf<NurDaten<OzVorschlag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvUebersicht>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Pruefbefund>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+  });
+
+  it('jeder Wert aus v1.4 bleibt gültig: v1.5 ist additiv oder eine Lesart, kein Befehl ändert sich', () => {
+    const uebersicht: LvUebersicht = beispielLvUebersichtNachtrag;
+    expect(uebersicht).not.toHaveProperty('nettoNachNachlass');
+    const befund: Pruefbefund = {
+      schwere: 'warnung',
+      quelle: 'gaeb-lesen',
+      code: 'dezimalkomma',
+      meldung: 'Dezimalkomma statt Punkt (erfunden).',
+      ort: { pfad: '/GAEB/Award/BoQ/BoQBody', zeile: 12 },
+    };
+    expect(befund.ort).not.toHaveProperty('feld');
+    expectTypeOf<KostengruppeSetzen>().toEqualTypeOf<{
+      readonly art: 'KostengruppeSetzen';
+      readonly positionId: PositionId;
+      readonly kostengruppe: Kostengruppennummer | null;
+    }>();
+  });
+});
