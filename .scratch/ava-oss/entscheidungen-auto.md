@@ -632,3 +632,10 @@ Question: Der Opus-Reviewer (statt des Nutzers, P9) urteilt „yes-with-fixes“
 Decision: Nachtrag zu Ticket 97 (derselbe Umsetzer, nur Lesarten, additive Felder, Glossar): MUST 1 – der Hinweis „HOAI § 4 Abs. 1 verweist auf DIN 276:2008-12“ ist nie ein Befund und nicht Teil des `Honorarergebnis`, App und PDF drucken ihn als festen Text; MUST 2 – „Kopieren verwirft Zuordnungen“ gilt für Kopieren/Einfügen im LV und die Übernahme aus einem Muster-LV, „LV-Stand als neues LV“ behält sie (Kern 105 bekommt eine Option, App 121 eine Zeile); dazu die SHOULD 3, 5–10 (Lesart Anlegen ohne Inhalt, erster Treffer bei doppelten GlobalIds, `IFC_GLOBALID_MUSTER`, Pfad für Beziehungsbefunde, eigener Glossarname der Honorar-Eingabe, Befund „Bauteil ohne Geometrie“, `Mangelverlaufseintrag.frist?`). SHOULD 4 (Ringe in Struktur und Teilen mit Befund aufbrechen) geht an 107; SHOULD 11 (Laden eines 10k-Modells) messen 106/114; SHOULD 12 (GAEB-Export verwirft `bauteile` ohne F6-Warnung) geht in die Review-Behebung der Welle; SHOULD 13 (alte Namen in Tickettexten) erledigt durch Hinweise in 107, 109–111, 113, 118–121.
 Reason: Alle Befunde sind eng und additiv; die Stufe-2-Umsetzer bekommen die zwei MUST sofort als Nachricht.
 Reversible: yes  Touches: packages/vertrag, GLOSSARY.md, Tickets 105–121
+
+## D-67 Drittes Nutzungslimit (bis 23:10)
+Welle 6 · Tickets 115, 116 · decided by: orchestrator
+Question: Nach dem Merge von 114, 118–121 traf der Lauf das 5-Stunden-Limit ein drittes Mal; 115 (Zuordnung) und 116 (Modellvergleich) standen.
+Decision: Beide aus ihrem gespeicherten Stand fortgesetzt (wie D-61/D-65). Nichts gekürzt: X2–X5 sind schon erreicht, offen ist nur der Weg X1 (115, 116, 117).
+Reason: Der restliche Umfang passt ohne Kürzung; die Kürzungsreihenfolge greift erst, wenn X1-Kern gefährdet ist.
+Reversible: yes  Touches: Ablauf
