@@ -1,6 +1,6 @@
 # 113: O: PDF für Mängelliste, Bautagebuch, Honorarberechnung, Bauzeitenplan
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: O, X2–X4 · Paket: `packages/ausgabe`
 Blocked by: 97
@@ -39,3 +39,31 @@ Hinweis zu DIN 276:2008-12 steht im Honorar-PDF als fester Text; die Mängelanze
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-113.1** Reicht das `Ausgabemodell` für Tabellenberichte? **Nein, es ist LV-spezifisch (OZ, Positionen, Summenblock). Daneben steht ein
+  zweites, allgemeines `Berichtsmodell` (Abschnitte aus Absatz, Tabelle, Felder, Angaben, Liste) mit eigenem pdfmake-Renderer
+  `erzeugeBerichtPdf`.** Grund: gleiche Regeln wie ADR 0012 (fertig formatierte de-DE-Texte, nichts gerechnet, Datum aus der Eingabe,
+  Renderer tauschbar), aber keine Verbiegung des LV-Modells; der LV-Druck bleibt unverändert.
+- **D-113.2** Auftragnehmer eines Mangels? **Die Eingabe der Mängelliste trägt `auftragnehmer: Record<AuftragsLvId, Name>`.** Grund: `Mangel`
+  kennt nur `auftragsLvId`; ohne Auftrags-LV oder ohne Namen steht „–“. Filtern (z. B. je Auftragnehmer) macht der Aufrufer; `filter` ist nur
+  der Text im Kopf.
+- **D-113.3** „überfällig“? **Nur wenn ein Befund der Quelle `fristpruefung` mit `ort.mangelId` des Mangels mitgegeben wird** (Text unter dem Status).
+  Das Paket vergleicht keine Daten (A2, D-57).
+- **D-113.4** Frist der Mängelanzeige? **Die Frist des letzten Verlaufseintrags `angezeigt` (D-66), mit dessen Datum als „Angezeigt“; fehlt sie
+  (Eintrag vor v1.6), die Frist am Mangel; sonst „–“.** Ein später wieder geöffneter Mangel behält so die Frist seiner Anzeige. Die Anzeige
+  druckt, was übergeben wird; die Auswahl der angezeigten Mängel trifft der Aufrufer.
+- **D-113.5** Leere Angaben? **Ein Strich „–“ statt einer leeren Zelle; Beschreibung des Mangels steht unter dem Titel** (Q5: nichts fällt
+  still weg). Ein Bild gibt es hier nicht.
+- **D-113.6** Bautagebuch ohne Summe der Arbeitskräfte (nicht gerechnet, A2); Temperaturen mit echtem Minuszeichen; Zeitraum `von`/`bis`
+  einschließlich, Sortierung nach Datum, Filter im Druck (Eingabe ist die ganze Liste).
+- **D-113.7** Honorar: Eingabe `Honorarberechnung` plus `Honorarergebnis` (Objekte nach Index zugeordnet). Gedruckt: Leistungsbild, Zone,
+  Honorarsatz, Herleitung der anrechenbaren Kosten (§ 33), Tafelwerte der Zone (unten, oben, interpolierte Spanne), Honorar, Phasen,
+  Grundhonorar, Umbauzuschlag, Summen, Befunde als Liste, dazu der feste Hinweis `DIN276_HINWEIS` (DIN 276:2008-12, § 4 Abs. 1; kein Befund,
+  D-56, D-66). Ein Objekt ohne Ergebnis druckt „nicht berechnet (siehe Befunde)“, nie eine erfundene Zahl.
+- **D-113.8** Bauzeitenplan: Eingabe `Bauzeitenplan` plus `Bauzeitenplanergebnis` (D-64). Tabelle in Planreihenfolge, Kinder eingerückt;
+  Sammelvorgang fett ohne Dauer, Meilenstein „Meilenstein“; Dauer und Puffer in Arbeitstagen (AT); ohne Ergebnis Striche. Ist-Termine und
+  Fortschritt stehen nicht in der Tabelle; dafür die Marke „[Ist-Termine]“ (Q5). Nicht gekürzt, keine Balken.
+- **D-113.9** Druckdatum? **`datum?: string` als `JJJJ-MM-TT` in jeder Eingabe, wie `ModellOptionen.datum`;** ohne Angabe fest `1970-01-01` in den
+  PDF-Metadaten und kein „Stand“ im Fuß. Gleiche Eingabe gibt gleiche Bytes (je Ausgabe getestet).
