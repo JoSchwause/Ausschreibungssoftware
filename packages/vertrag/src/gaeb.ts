@@ -28,7 +28,8 @@ export type Befundschwere = 'warnung' | 'fehler';
  * - `ifc-lesen`: das Lesen einer IFC-Datei (`ifc`, Tickets 98, 107), etwa eine Menge ohne Einheit oder eine doppelte GlobalId.
  * - `modell-pruefung`: die Prüfungen rund um das Bauwerksmodell in `bim` (Ticket 108): hängende Zuordnungen, Mengenart fehlt
  *   oder ist mehrdeutig, Einheit passt nicht zur Position, Geschossmengen für DIN 277 fehlen, doppelte GlobalIds und geringe
- *   Überdeckung zweier Modellstände.
+ *   Überdeckung zweier Modellstände; dazu (Nachtrag Review, D-66) ein Bauteil ohne Geometrie: Die Modellansicht
+ *   (`ui-modell`) meldet seine GlobalId, die App legt den Befund mit dieser Quelle an (D-50).
  * - `terminrechnung`: die Terminrechnung eines Bauzeitenplans (`bauzeit`, Tickets 102, 109), etwa ein Zyklus oder eine
  *   Anordnungsbeziehung an einem Sammelvorgang.
  * - `honorarberechnung`: die Honorarberechnung (`honorar`, Tickets 101, 110), etwa außerhalb der Honorartafel oder eine
@@ -69,7 +70,9 @@ export type Befundquelle =
  *   (Überdeckung) hat keinen Ort.
  * - `terminrechnung`: `vorgangId` der Vorgang, `feld` sein Feld (`dauer`, `vorgaenger`, `fruehesterBeginn`, `elternId`,
  *   `ist`); ein Zyklus ergibt je beteiligtem Vorgang einen Befund. Ein Befund zum Plan hat nur `feld` (`projektbeginn`,
- *   `kalender`) oder keinen Ort.
+ *   `kalender`) oder keinen Ort. Nachtrag Review (D-66): Ein Befund zu genau einer Anordnungsbeziehung trägt dazu
+ *   `pfad: '/vorgaenge[n]/vorgaenger[m]'` (beide ab 1, in der Reihenfolge des Plans und von `Vorgang.vorgaenger`), so ist die
+ *   Beziehung auch bei zwei Arten zum selben Vorgänger eindeutig; `vorgangId` ist der Nachfolger, `feld` `vorgaenger`.
  * - `honorarberechnung`: `pfad` das Honorarobjekt als Pfad im Aggregat in der Schreibweise wie bei der E-Rechnung,
  *   `/objekte[n]` (ab 1), dazu `feld` sein Feld (`honorarsatz`, `anrechenbareKosten`, `leistungsphasen`,
  *   `umbauzuschlagssatz`); ein Befund zur ganzen Berechnung hat nur `feld` (`nebenkosten`, `mwstSatz`) oder keinen Ort.

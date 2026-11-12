@@ -399,6 +399,11 @@ export interface KostenermittlungChangeSet {
  * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` in `kopf` und `inhalt` (Undo, ADR 0006). Die Bytes der
  * Datei stehen nie darin (D-51), nur ihre Angaben (`kopf.….datei`). Weil Struktur und Bauteile sich nie ändern, vergleicht
  * `speicher` beim Umbenennen und Löschen nur den Kopf mit dem gespeicherten Stand (Ticket 106).
+ *
+ * Nachtrag Review (D-66): Hält ein ChangeSet diese Regel nicht ein (Anlegen oder Löschen ohne `inhalt`, Umbenennen mit
+ * `inhalt`, `inhalt` mit `null` auf der anderen Seite als `kopf`), weist `speicher.anwenden` es mit `unbekannt` ab und schreibt
+ * nichts (auch nicht als Undo). Die Form bleibt ein Typ mit optionalem `inhalt` statt einer Union nach Fall, damit die
+ * Verbraucher (Tickets 106, 108, 114) unverändert bleiben (Offene Typfrage 14, Ticket 97).
  */
 export interface BauwerksmodellChangeSet {
   readonly art: 'bauwerksmodell';

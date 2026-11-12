@@ -50,7 +50,9 @@ export interface BeauftragteLeistungsphase {
  *   `weitereKosten` (§ 33 Abs. 3; mit KG 300 die „sonstigen anrechenbaren Kosten“) und `mitzuverarbeitendeBausubstanz`
  *   (§ 2 Abs. 7, § 4 Abs. 3; `0.00`: keine). `technischeAnlagenAnteilig: true` (der übliche Fall): Der Auftragnehmer plant
  *   oder überwacht die Technischen Anlagen nicht selbst; KG 400 zählt anteilig nach § 33 Abs. 2. `false`: KG 400 zählt hier
- *   nicht. Namen wie in `honorar` (`KostenNachDin276`, D-101.5, D-101.10).
+ *   nicht. Namen wie in `honorar` (`KostenNachDin276`, D-101.5, D-101.10). Nachtrag Review (D-66): Dieser Name meint nur die
+ *   gespeicherte Form; die Eingabe der Rechnung in `honorar` (Betrag oder die Beträge von KG 300 und KG 400) heißt
+ *   `AnrechenbareKosteneingabe` (Glossar; Umbenennung in Ticket 110).
  *
  * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart): Gespeichert wird der **Verweis** auf die Kostenermittlung,
  * nicht ihre Beträge; eine spätere Änderung der Kostenermittlung ändert das Honorar mit. Grundlage nach § 6 Abs. 1 Nr. 2 ist
@@ -201,6 +203,10 @@ export interface Honorarergebnis {
   /**
    * Befunde der Honorarberechnung (Quelle `honorarberechnung`, Ort siehe `Befundort`): erst je Objekt in Eingabereihenfolge,
    * je Objekt in der Folge der Rechnung, dann die übrigen (D-101.7).
+   *
+   * Nachtrag Review (D-66): Der Hinweis, dass § 4 Abs. 1 auf DIN 276 in der Fassung 2008-12 verweist (D-56), ist **nie** ein
+   * Befund und kein Teil des Honorarergebnisses; er gilt für jede Berechnung gleich. App (Ticket 119) und PDF (Ticket 113)
+   * drucken ihn als festen Text. Eine Berechnung ohne Auffälligkeiten hat `befunde: []` (so auch `fixtures/honorar.json`).
    */
   readonly befunde: readonly Pruefbefund[];
 }
