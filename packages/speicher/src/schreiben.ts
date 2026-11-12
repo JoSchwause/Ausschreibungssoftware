@@ -1162,6 +1162,27 @@ export function wendeKostenermittlungAn(
   ]);
 }
 
+// --- Modelldateien (Schema 6, v1.6; D-51) ------------------------------------------------------------------------------
+
+/**
+ * Legt die Bytes einer Modelldatei ab (`inhalt` schon mit deflate-raw komprimiert, `groesse` die Länge der unkomprimierten
+ * Bytes). Idempotent: Ein Hash, der schon abgelegt ist, bleibt unverändert (gleiche Bytes, gleicher Hash).
+ */
+export function schreibeModelldatei(db: Datenbank, hash: string, groesse: number, inhalt: Uint8Array): void {
+  db.ausfuehren(
+    'INSERT INTO modelldatei (hash, groesse, inhalt) VALUES (?, ?, ?) ON CONFLICT (hash) DO NOTHING',
+    [hash, groesse, inhalt],
+  );
+}
+
+/**
+ * Freigabe (D-97.5): entfernt die Bytes, die kein Bauwerksmodell irgendeines Projekts nennt. Nur beim Öffnen des Speichers,
+ * nie während einer Sitzung: Ein Undo von `BauwerksmodellLoeschen` oder ein Wiederholen des Anlegens findet die Bytes so noch.
+ */
+export function gibUngenutzteModelldateienFrei(db: Datenbank): void {
+  db.ausfuehren('DELETE FROM modelldatei WHERE hash NOT IN (SELECT datei_hash FROM bauwerksmodell)');
+}
+
 // --- Protokoll -------------------------------------------------------------------------------------------------
 
 export function schreibeProtokolleintrag(db: Datenbank, e: Protokolleintrag): void {

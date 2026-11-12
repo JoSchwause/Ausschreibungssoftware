@@ -453,6 +453,29 @@ export function aggregateDesProjekts(db: Datenbank, projekt: ProjektId) {
   };
 }
 
+// --- Modelldateien (Schema 6, v1.6; D-51) --------------------------------------------------------------------------------
+
+/** Eine abgelegte Modelldatei: Länge der unkomprimierten Bytes und die Bytes mit deflate-raw komprimiert. */
+export interface GespeicherteModelldatei {
+  readonly groesse: number;
+  readonly inhalt: Uint8Array;
+}
+
+export function leseModelldatei(db: Datenbank, hash: string): GespeicherteModelldatei | null {
+  const z = db.zeilen('SELECT groesse, inhalt FROM modelldatei WHERE hash = ?', [hash])[0];
+  if (z === undefined) return null;
+  const inhalt = z['inhalt'];
+  if (!(inhalt instanceof Uint8Array))
+    return abbruch('datei-ungueltig', `Modelldatei ${hash}: Die Bytes fehlen in der Datenbank.`);
+  return { groesse: ganzzahl(z, 'groesse'), inhalt };
+}
+
+/** Länge der abgelegten unkomprimierten Bytes, ohne sie zu lesen; `null`: nicht abgelegt. */
+export function modelldateiGroesse(db: Datenbank, hash: string): number | null {
+  const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [hash])[0];
+  return z === undefined ? null : ganzzahl(z, 'groesse');
+}
+
 // --- Protokoll ---------------------------------------------------------------------------------------------------
 
 export function leseProtokoll(db: Datenbank, id: ProjektId): Protokolleintrag[] {

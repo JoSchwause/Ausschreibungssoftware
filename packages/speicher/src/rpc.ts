@@ -22,6 +22,10 @@ export const RPC_METHODEN = [
   'rechnungLaden',
   'kostenermittlungenAuflisten',
   'kostenermittlungLaden',
+  // v1.6 (Ticket 106)
+  'modelldateiAblegen',
+  'modelldateiLaden',
+  'modelldateiVorhanden',
   'anwenden',
   'protokoll',
   'projektdateiExportieren',

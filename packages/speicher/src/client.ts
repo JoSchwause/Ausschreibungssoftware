@@ -130,10 +130,9 @@ export function speicherUeberTransport(
       laden: (id: KostenermittlungId) => aufruf('kostenermittlungLaden', id),
     },
     modelldateien: {
-      // v1.6: mechanisch angepasst, Folgeticket 106
-      ablegen: () => erstV16('Modelldateien ablegen'),
-      laden: () => erstV16('Modelldateien laden'),
-      vorhanden: () => erstV16('Modelldateien prüfen'),
+      ablegen: (bytes: Uint8Array) => aufruf('modelldateiAblegen', bytes),
+      laden: (hash: string) => aufruf('modelldateiLaden', hash),
+      vorhanden: (hash: string) => aufruf('modelldateiVorhanden', hash),
     },
     // v1.6: mechanisch angepasst, Folgeticket 106 (Repositories der neuen Aggregate)
     bauwerksmodelle: { auflisten: () => erstV16('Bauwerksmodelle'), laden: () => erstV16('Bauwerksmodell') },

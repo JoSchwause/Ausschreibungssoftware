@@ -13,14 +13,6 @@ const f = ladeFixture('typisch');
 const P = f.projekt.id;
 
 describe('vertrag v1.6 in speicher bis Ticket 106: laut abweisen', () => {
-  it('die Ablage der Modelldateien antwortet unbekannt', async () => {
-    const { kern } = await neuerKern();
-    const s = speicherUeberTransport(direktTransport(kern), null);
-    const bytes = new TextEncoder().encode('ISO-10303-21;');
-    for (const e of [await s.modelldateien.ablegen(bytes), await s.modelldateien.vorhanden('0'.repeat(64))])
-      expect(!e.ok && e.fehler.code).toBe('unbekannt');
-  });
-
   it('die Repositories der neuen Aggregate antworten unbekannt', async () => {
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);

@@ -158,6 +158,10 @@ describe('Client über Worker-Host', () => {
         'rechnungLaden',
         'kostenermittlungenAuflisten',
         'kostenermittlungLaden',
+        // v1.6 (Ticket 106)
+        'modelldateiAblegen',
+        'modelldateiLaden',
+        'modelldateiVorhanden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',

@@ -4,7 +4,8 @@
 
 import type { Database } from '@sqlite.org/sqlite-wasm';
 
-export type SqlWert = string | number | null;
+/** Ein Wert einer Spalte; `Uint8Array` nur für BLOB-Spalten (Schema 6: die Bytes der Modelldateien). */
+export type SqlWert = string | number | null | Uint8Array;
 export type SqlZeile = Record<string, SqlWert>;
 
 export interface Datenbank {

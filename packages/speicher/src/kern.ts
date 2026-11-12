@@ -35,6 +35,7 @@ import type {
 import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
+import { deflateRaw, inflateRaw, sha256Hex } from './komprimierung';
 import { protokollform } from './kurzfassung';
 import { pruefeV16 } from './vertrag-v16'; // v1.6: mechanisch angepasst, Folgeticket 106
 import {
@@ -46,6 +47,7 @@ import {
   leseLvKopf,
   leseLvStaende,
   leseLvStand,
+  leseModelldatei,
   leseProjekt,
   leseProtokoll,
   leseRechnung,
@@ -56,10 +58,13 @@ import {
   listeKostenermittlungen,
   listeLvs,
   listeProjekte,
+  modelldateiGroesse,
 } from './lesen';
 import { migriere, MIGRATIONEN, type Migration } from './migrationen';
 import { baueProjektdatei, leseProjektdatei, schreibeProjektdatei } from './projektdatei';
 import {
+  gibUngenutzteModelldateienFrei,
+  schreibeModelldatei,
   schreibeProtokolleintrag,
   wendeAngebotAn,
   wendeAufmassAn,
@@ -177,6 +182,13 @@ export class SpeicherKern {
     const befunde: Migrationsbefund[] = [];
     const m = migriere(db, migrationen, befunde);
     if (!m.ok) return m;
+    // Beginn einer Sitzung: Bytes, die kein Modell nennt, werden frei (D-97.5); erst ab Schema 6 gibt es die Ablage.
+    if (m.wert >= 6) {
+      const frei = fange(() => {
+        gibUngenutzteModelldateienFrei(db);
+      });
+      if (!frei.ok) return frei;
+    }
     return ok(new SpeicherKern(db, migrationen, befunde));
   }
 
@@ -332,6 +344,55 @@ export class SpeicherKern {
         ? abbruch('nicht-gefunden', `Kostenermittlung ${id} ist nicht vorhanden.`)
         : { kostenermittlung };
     });
+  }
+
+  // --- Modelldateien (`Modelldateiablage`, v1.6; D-51) ------------------------------------------------------------------
+
+  /**
+   * `Modelldateiablage.ablegen`: SHA-256 der unkomprimierten Bytes (Web Crypto, asynchron vor der Transaktion), dann die Bytes
+   * mit deflate-raw komprimiert ablegen. Idempotent; schon abgelegte Bytes werden nicht noch einmal komprimiert. Kein Befehl:
+   * kein Protokolleintrag, kein ChangeSet. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  modelldateiAblegen(bytes: Uint8Array): Promise<Ergebnis<string, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#ablegenDann(bytes));
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  async #ablegenDann(bytes: Uint8Array): Promise<Ergebnis<string, Speicherfehler>> {
+    if (this.#geschlossen) return GESCHLOSSEN();
+    if (!(bytes instanceof Uint8Array))
+      return fehler('unbekannt', 'Modelldateiablage: ablegen erwartet die Bytes der Datei (Uint8Array).');
+    let hash: string;
+    try {
+      hash = await sha256Hex(bytes);
+    } catch (x) {
+      return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
+    return this.#fange(() => {
+      if (modelldateiGroesse(this.#db, hash) === null)
+        transaktion(this.#db, () => {
+          schreibeModelldatei(this.#db, hash, bytes.length, deflateRaw(bytes));
+        });
+      return hash;
+    });
+  }
+
+  /** `Modelldateiablage.laden`: die abgelegten Bytes unverändert; ein Hash ohne Bytes: `nicht-gefunden`. */
+  modelldateiLaden(hash: string): Ergebnis<Uint8Array, Speicherfehler> {
+    return this.#fange(() => {
+      const d = leseModelldatei(this.#db, hash);
+      if (d === null) return abbruch('nicht-gefunden', `Die Modelldatei ${hash} ist nicht abgelegt.`);
+      const bytes = inflateRaw(d.inhalt);
+      if (bytes.length !== d.groesse)
+        abbruch('datei-ungueltig', `Modelldatei ${hash}: Die Länge der Bytes passt nicht zur Ablage.`);
+      return bytes;
+    });
+  }
+
+  /** `Modelldateiablage.vorhanden`. */
+  modelldateiVorhanden(hash: string): Ergebnis<boolean, Speicherfehler> {
+    return this.#fange(() => modelldateiGroesse(this.#db, hash) !== null);
   }
 
   protokoll(projektId: ProjektId): Ergebnis<readonly Protokolleintrag[], Speicherfehler> {
