@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Öffentliche Typen von @tethys/ifc (Ticket 98): das Leseergebnis einer IFC-Datei, ohne Geometrie. Eigene Typen in der
-// Form, die Ticket 97 für `vertrag` v1.6 vorsieht (gleiche Feldnamen), damit Ticket 107 nur abbildet. Alle Werte sind
-// reine, serialisierbare Daten in der Reihenfolge der Datei.
+// Typen des Lesers (Ticket 98): das Leseergebnis einer IFC-Datei, ohne Geometrie, in der Form der Vertragstypen v1.6 mit
+// allem, was die Datei sagt. Seit Ticket 107 innen: Nach außen gibt das Paket das `Bauwerksmodell` des Vertrags
+// (`bauwerksmodell.ts`) und die Angaben bei Bedarf (`eigenschaftsindex.ts`); öffentlich sind hier nur `Eigenschaft`,
+// `Klassifikation`, `IfcBefundcode` und `IfcOptionen` (`index.ts`). Alle Werte sind reine, serialisierbare Daten in der
+// Reihenfolge der Datei.
 
 import type { Befundort, Befundschwere, Kostengruppennummer, Menge } from '@tethys/vertrag';
 
@@ -13,8 +15,8 @@ export type IfcSchema = 'IFC2X3' | 'IFC4';
 
 /**
  * GlobalId (Glossar) als Text der Datei. Die Form (22 Zeichen aus `0-9A-Za-z_$`) prüft der Leser und meldet Abweichungen
- * als Befund; der Wert bleibt, wie er in der Datei steht (`''`, wenn sie fehlt). Die Marke gleichen Namens bringt `vertrag`
- * v1.6 (Ticket 97); Ticket 107 bildet ab.
+ * als Befund; der Wert bleibt, wie er in der Datei steht (`''`, wenn sie fehlt). Die Marke gleichen Namens aus `vertrag`
+ * v1.6 trägt nur GlobalIds in Form; ein Objekt ohne sie fällt bei der Abbildung weg (Ticket 107).
  */
 export type IfcGlobalId = string;
 
@@ -51,7 +53,7 @@ export interface Bauteilmenge {
   /**
    * Wert in der SI-Grundeinheit (m, m², m³, Stück, kg, s): der Text der Datei exakt als Dezimalwert, exakt umgerechnet und
    * erst am Ende kaufmännisch auf 3 Stellen gerundet (G-21). `null` mit Befund, wenn die Einheit oder die Zahl fehlt oder
-   * nicht lesbar ist, nie 0. `vertrag` v1.6 kennt nur Mengen mit Wert; Ticket 107 entscheidet die Abbildung.
+   * nicht lesbar ist, nie 0. `vertrag` v1.6 kennt nur Mengen mit Wert: Die Abbildung lässt sie mit Befund weg (Ticket 107).
    */
   readonly wert: Menge | null;
 }
