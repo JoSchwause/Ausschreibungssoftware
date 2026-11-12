@@ -1,6 +1,6 @@
 # 95: `vertrag` v1.5: Kleinpunkte aus Welle 5
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: F · Paket: `packages/vertrag` (+ markierte mechanische Zeilen); P9 (Mensch prüft; im Demo-Lauf Opus-Review,
 D-42-Muster)
