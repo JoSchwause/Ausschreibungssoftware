@@ -130,6 +130,8 @@ function Tagebuch({
   const { pruefe } = useMeldungen();
   const [aktivId, setAktivId] = useState<string | null>(null);
   const [sprung, setSprung] = useState<VergleichsSprungziel | undefined>(undefined);
+  // Der Eintrag, zu dem die Liste springen soll, sobald er in ihr steht (nach dem Speichern erst nach dem Neuladen).
+  const [vorgemerkt, setVorgemerkt] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialogart | null>(null);
   const [vonText, setVonText] = useState('');
   const [bisText, setBisText] = useState('');
@@ -190,8 +192,7 @@ function Tagebuch({
     if (!r.ok) return r.fehler;
     const a = await schreibe(alt, { art: 'BautagebucheintragSetzen', eintrag: r.wert });
     if (!a.ok) return abweisungAlsFeld(a, e);
-    setAktivId(id);
-    setSprung((s) => ({ zeilenId: id, spalte: 'datum', nr: (s?.nr ?? 0) + 1 }));
+    setVorgemerkt(id);
     return null;
   };
 
@@ -200,6 +201,13 @@ function Tagebuch({
     const a = await schreibe(gewaehlt, { art: 'BautagebucheintragLoeschen' });
     if (pruefe(a)) setDialog(null);
   };
+
+  useEffect(() => {
+    if (vorgemerkt === null || !eintraege.some((e) => e.id === vorgemerkt)) return;
+    setVorgemerkt(null);
+    setAktivId(vorgemerkt);
+    setSprung((s) => ({ zeilenId: vorgemerkt, spalte: 'datum', nr: (s?.nr ?? 0) + 1 }));
+  }, [vorgemerkt, eintraege]);
 
   const dateiBereich = `${von ?? ''} ${bis ?? ''}`.trim();
   return (

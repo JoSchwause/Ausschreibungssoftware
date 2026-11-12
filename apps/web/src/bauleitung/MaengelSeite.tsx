@@ -191,6 +191,8 @@ function Maengel({
   const [filter, setFilter] = useState<MangelFilter>(KEIN_FILTER);
   const [aktivId, setAktivId] = useState<string | null>(null);
   const [sprung, setSprung] = useState<VergleichsSprungziel | undefined>(undefined);
+  // Der Mangel, zu dem die Liste springen soll, sobald er in ihr steht (nach dem Anlegen erst nach dem Neuladen).
+  const [vorgemerkt, setVorgemerkt] = useState<MangelId | null>(null);
   const [dialog, setDialog] = useState<Dialogart | null>(null);
 
   const angaben = useMemo(
@@ -225,11 +227,16 @@ function Maengel({
     return aus;
   };
 
-  const springeZu = (id: MangelId): void => {
-    if (!filtern(maengel, filter, namen).some((m) => m.id === id)) setFilter(KEIN_FILTER);
-    setSprung((s) => ({ zeilenId: id, spalte: 'nummer', nr: (s?.nr ?? 0) + 1 }));
-    setAktivId(id);
-  };
+  useEffect(() => {
+    if (vorgemerkt === null || !maengel.some((m) => m.id === vorgemerkt)) return;
+    if (!sichtbar.some((m) => m.id === vorgemerkt)) {
+      setFilter(KEIN_FILTER);
+      return;
+    }
+    setVorgemerkt(null);
+    setAktivId(vorgemerkt);
+    setSprung((s) => ({ zeilenId: vorgemerkt, spalte: 'nummer', nr: (s?.nr ?? 0) + 1 }));
+  }, [vorgemerkt, maengel, sichtbar]);
 
   // --- Formular: neu und bearbeiten ------------------------------------------------------------------------------
   const neuerEntwurf = (): MangelEntwurf => leererEntwurf(naechsteMangelnummer(maengel), stichtag);
@@ -245,8 +252,7 @@ function Maengel({
     if (!b.ok) return b.fehler;
     const [a] = await schreibe(null, [b.wert]);
     if (a === undefined || !a.ok) return abweisungAlsFeld(a);
-    setAktivId(b.wert.mangel.id);
-    setSprung((s) => ({ zeilenId: b.wert.mangel.id, spalte: 'nummer', nr: (s?.nr ?? 0) + 1 }));
+    setVorgemerkt(b.wert.mangel.id);
     return null;
   };
 
@@ -419,7 +425,7 @@ function Maengel({
                   variante="schlicht"
                   aria-label={`${t.zumMangel} ${String(m.nummer)}`}
                   onClick={() => {
-                    springeZu(m.id);
+                    setVorgemerkt(m.id);
                   }}
                 >
                   {t.zumMangel}
