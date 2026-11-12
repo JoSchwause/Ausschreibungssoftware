@@ -82,6 +82,17 @@ test.describe('Balkenspalte: Kopf und Lage', () => {
     await expect(zeile(page, '0')).toHaveAttribute('aria-rowindex', '2');
   });
 
+  test('eine Balkenspalte gehört nie zu einer Gruppe: Die Achse behält beide Kopfzeilen', async ({ page }) => {
+    // Die Testseite gibt der Balkenspalte dieselbe Gruppe wie Anfang und Ende.
+    await page.goto('/bauzeit.html?achseInGruppe=1');
+    const termine = grid(page).getByRole('columnheader', { name: 'Termine' });
+    await expect(termine).toHaveAttribute('aria-colspan', '2');
+    const k = await box(achsenkopf(page));
+    expect(k.height).toBeCloseTo(56, 0);
+    expect(k.y).toBeCloseTo((await box(termine)).y, 0);
+    await expect(achsenkopf(page).locator('[data-zeitabschnitt="kopf"]').first()).toHaveText('Januar 2027');
+  });
+
   test('Balken an der Lage und in der Breite ihrer Tage, bündig mit dem Kopf', async ({ page }) => {
     const zelle = balkenzelle(page, '1.2');
     const z = await box(zelle);

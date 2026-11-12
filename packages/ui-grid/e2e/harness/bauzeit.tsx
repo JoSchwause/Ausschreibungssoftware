@@ -8,6 +8,7 @@
 //   px=16            Pixel je Tag
 //   unterkopf=0      ohne untere Kopfzeile (Kalenderwochen)
 //   gruppen=0        ohne die Spaltengruppe „Termine“ über Anfang und Ende
+//   achseInGruppe=1  die Balkenspalte nennt dieselbe Gruppe (das Grid übergeht sie)
 //   fixiert=2        fixierte linke Spalten (Standard 2: Nr. und Vorgang)
 //   thema=dark|light
 // Meldungen: window.__bauzeit.aktiveZellen (jede Meldung von onZelleAktiv).
@@ -34,6 +35,7 @@ const plan = erfindeBauzeitenplan(
   zeilenParam === null ? null : Number(zeilenParam),
   zeitleiste(Number(params.get('tage') ?? '120'), Number(params.get('px') ?? '16'), params.get('unterkopf') !== '0'),
   params.get('gruppen') !== '0',
+  params.get('achseInGruppe') === '1',
 );
 const fixiert = Number(params.get('fixiert') ?? '2');
 window.__bauzeit = { aktiveZellen: [] };

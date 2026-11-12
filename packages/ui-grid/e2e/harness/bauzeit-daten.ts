@@ -227,10 +227,15 @@ function erzeugePlan(anzahl: number, tage: number): Vorgang[] {
   return ergebnis;
 }
 
+/**
+ * `mitGruppe`: Anfang und Ende unter dem Gruppenkopf „Termine“. `achseInGruppe`: auch die Balkenspalte nennt diese
+ * Gruppe (das Grid übergeht sie, die Achse braucht beide Kopfzeilen).
+ */
 export function erfindeBauzeitenplan(
   anzahlZeilen: number | null,
   zl: Zeitleiste,
   mitGruppe: boolean,
+  achseInGruppe = false,
 ): Bauzeitenplan {
   const termine = mitGruppe ? { gruppe: { id: 'termine', kopf: 'Termine' } } : {};
   const spalten: VergleichsSpalte[] = [
@@ -239,7 +244,7 @@ export function erfindeBauzeitenplan(
     { id: 'dauer', kopf: 'Dauer', ausrichtung: 'rechts', breite: 72 },
     { id: 'anfang', kopf: 'Anfang', breite: 96, ...termine },
     { id: 'ende', kopf: 'Ende', breite: 96, ...termine },
-    { id: 'balken', kopf: 'Zeitplan', zeitleiste: zl },
+    { id: 'balken', kopf: 'Zeitplan', zeitleiste: zl, ...(achseInGruppe ? termine : {}) },
   ];
   const plan = anzahlZeilen === null ? PLAN : erzeugePlan(anzahlZeilen, zl.tage);
   const hatKinder = new Set(plan.map((v) => v.elternId));
