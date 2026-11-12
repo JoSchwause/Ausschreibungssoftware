@@ -18,3 +18,5 @@ export {
   mengenuebernahmeBerechnen,
   positionUebernehmen,
 } from './mengenuebernahme';
+export type { AufmassAusAuswahl, Aufmasshinweis, Aufmassvorschlag } from './aufmass-auswahl';
+export { aufmassAusAuswahl, bauteileImStrukturknoten } from './aufmass-auswahl';

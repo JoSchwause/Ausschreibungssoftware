@@ -4,7 +4,8 @@
 // gerechnet; die Fixture rechnet ihn aus der Geometrie, unabhängig von diesem Paket.
 
 import { describe, expect, it } from 'vitest';
-import { mengenuebernahmeBerechnen } from './index';
+import type { IfcGlobalId } from '@tethys/vertrag';
+import { aufmassAusAuswahl, bauteileImStrukturknoten, mengenuebernahmeBerechnen } from './index';
 import { BIM, KENNUNG, hausModell, nachUebernahme, typischKnoten, zeileAusFixture } from './testhilfe/haus';
 import type { FxVordersatz } from './testhilfe/haus';
 
@@ -48,5 +49,23 @@ describe('Mengenübernahme (Tor X1-Kern, D-99.5)', () => {
     expect(u.positionen.filter((p) => p.geaendert).map((p) => p.positionId)).toEqual(
       BIM.erweitert.betroffenePositionen.map((p) => p.positionId),
     );
+  });
+});
+
+describe('Aufmaßblatt aus Auswahl (D-99.9)', () => {
+  it('Auswahl „Geschoss EG“ auf v1 ergibt die Aufmaßpositionen der Fixture', () => {
+    const soll = BIM.erweitert.aufmassAusAuswahl;
+    const auswahl = bauteileImStrukturknoten(v1, soll.auswahl.globalId as IfcGlobalId);
+    expect(auswahl).toHaveLength(17);
+    const a = aufmassAusAuswahl(typisch, v1, auswahl);
+    expect(
+      a.positionen.map((p) => ({
+        positionId: p.positionId,
+        bauteile: p.bauteile,
+        zeilen: p.zeilen,
+        menge: p.menge,
+      })),
+    ).toEqual(soll.positionen.map((p) => ({ ...sollVordersatz(p), bauteile: p.bauteile })));
+    expect(a.befunde).toEqual([]);
   });
 });
