@@ -24,3 +24,5 @@ export {
   bautagebucheintragChangeSetAnwenden,
   bautagebucheintragChangeSetUmkehren,
 } from './bautagebuch-befehle';
+export type { Bautagebuchauswertung } from './bautagebuchauswertung';
+export { bautagebuchAuswerten } from './bautagebuchauswertung';
