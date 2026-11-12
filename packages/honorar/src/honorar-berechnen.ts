@@ -23,6 +23,7 @@ import type {
   Betrag,
   Honorarergebnis,
   Honorarobjekt,
+  Kostenermittlung,
   Leistungsbild,
   Leistungsphasennummer,
   Nebenkostenangabe,
@@ -42,11 +43,15 @@ import { LEISTUNGSBILDER } from './leistungsbilder';
 // --- Eingabe -----------------------------------------------------------------------------------------------------
 
 /**
- * Ein Honorarobjekt, wie `honorarBerechnen` es annimmt: wie gespeichert (`Honorarobjekt` des Vertrags), die anrechenbaren
- * Kosten dazu auch als Beträge nach DIN 276 (`KostenNachDin276`, ungespeichert, etwa aus einer Datei oder einem Test).
+ * Anrechenbare Kosten, wie `honorarBerechnen` sie annimmt: in gespeicherter Form (`AnrechenbareKostenangabe` des Vertrags:
+ * Betrag von Hand oder Verweis auf eine Kostenermittlung) oder als Beträge nach DIN 276 (`KostenNachDin276`, ungespeichert,
+ * etwa aus einer Datei oder einem Test).
  */
+export type AnrechenbareKosteneingabe = AnrechenbareKostenangabe | KostenNachDin276;
+
+/** Ein Honorarobjekt, wie `honorarBerechnen` es annimmt: wie gespeichert, die anrechenbaren Kosten auch nach DIN 276. */
 export interface Honorarobjekteingabe extends Omit<Honorarobjekt, 'anrechenbareKosten'> {
-  readonly anrechenbareKosten: AnrechenbareKostenangabe | KostenNachDin276;
+  readonly anrechenbareKosten: AnrechenbareKosteneingabe;
 }
 
 /**
@@ -126,24 +131,44 @@ interface Kosten {
 
 const KEINE_KOSTEN: Kosten = { anrechenbareKosten: null, herleitung: null };
 
+/** Summe der Einträge einer Kostengruppe der ersten Ebene (`'3'`: 300 bis 399): eigener Betrag plus Kinder (D-24). */
+function kostengruppeSummieren(kostenermittlung: Kostenermittlung, ziffer: '3' | '4'): Betrag {
+  return summiereBetraege(
+    kostenermittlung.eintraege.filter((e) => e.nummer.startsWith(ziffer)).map((e) => e.betrag),
+  );
+}
+
 /** Die Kosten nach DIN 276 zur Angabe; `null`, wenn sie sich nicht bestimmen lassen (Befund). */
 function kostenNachDin276(
-  angabe: Exclude<Honorarobjekteingabe['anrechenbareKosten'], { readonly art: 'betrag' }>,
+  angabe: Exclude<AnrechenbareKosteneingabe, { readonly art: 'betrag' }>,
+  kostenermittlungen: readonly Kostenermittlung[],
   befund: Befundgeber,
 ): KostenNachDin276 | null {
   if (angabe.art === 'din-276') return angabe;
-  befund(
-    'kostenermittlung-unbekannt',
-    'fehler',
-    'anrechenbareKosten',
-    `Kostenermittlung ${angabe.kostenermittlungId} wurde nicht übergeben; kein Honorar`,
-  );
-  return null;
+  const kostenermittlung = kostenermittlungen.find((k) => k.id === angabe.kostenermittlungId);
+  if (kostenermittlung === undefined) {
+    befund(
+      'kostenermittlung-unbekannt',
+      'fehler',
+      'anrechenbareKosten',
+      `Kostenermittlung ${angabe.kostenermittlungId} wurde nicht übergeben; kein Honorar`,
+    );
+    return null;
+  }
+  return {
+    art: 'din-276',
+    kg300: kostengruppeSummieren(kostenermittlung, '3'),
+    kg400: kostengruppeSummieren(kostenermittlung, '4'),
+    technischeAnlagenAnteilig: angabe.technischeAnlagenAnteilig,
+    weitereKosten: angabe.weitereKosten,
+    mitzuverarbeitendeBausubstanz: angabe.mitzuverarbeitendeBausubstanz,
+  };
 }
 
 function kostenErmitteln(
-  angabe: Honorarobjekteingabe['anrechenbareKosten'],
+  angabe: AnrechenbareKosteneingabe,
   daten: Leistungsbilddaten,
+  kostenermittlungen: readonly Kostenermittlung[],
   befund: Befundgeber,
 ): Kosten {
   if (angabe.art === 'betrag') return { anrechenbareKosten: angabe.betrag, herleitung: null };
@@ -156,7 +181,7 @@ function kostenErmitteln(
     );
     return KEINE_KOSTEN;
   }
-  const kosten = kostenNachDin276(angabe, befund);
+  const kosten = kostenNachDin276(angabe, kostenermittlungen, befund);
   if (kosten === null) return KEINE_KOSTEN;
   negativPruefen(
     {
@@ -275,7 +300,11 @@ function umbauzuschlagPruefen(
     );
 }
 
-function objektBerechnen(objekt: Honorarobjekteingabe, befund: Befundgeber): Objektergebnis {
+function objektBerechnen(
+  objekt: Honorarobjekteingabe,
+  kostenermittlungen: readonly Kostenermittlung[],
+  befund: Befundgeber,
+): Objektergebnis {
   const ohneHonorar = (kosten: Kosten): Objektergebnis => ({
     bezeichnung: objekt.bezeichnung,
     leistungsbild: objekt.leistungsbild,
@@ -299,7 +328,7 @@ function objektBerechnen(objekt: Honorarobjekteingabe, befund: Befundgeber): Obj
     return ohneHonorar(KEINE_KOSTEN);
   }
   // Befunde in der Folge der Rechnung, auch wenn das Objekt am Ende kein Honorar hat.
-  const kosten = kostenErmitteln(objekt.anrechenbareKosten, daten, befund);
+  const kosten = kostenErmitteln(objekt.anrechenbareKosten, daten, kostenermittlungen, befund);
   const tafel =
     kosten.anrechenbareKosten === null
       ? null
@@ -331,11 +360,17 @@ function objektBerechnen(objekt: Honorarobjekteingabe, befund: Befundgeber): Obj
   };
 }
 
-/** Honorarberechnung nach HOAI 2021 mit der Rundungskette aus D-56. */
-export function honorarBerechnen(berechnung: Honorarberechnungseingabe): Honorarergebnis {
+/**
+ * Honorarberechnung nach HOAI 2021 mit der Rundungskette aus D-56. `kostenermittlungen`: die Kostenermittlungen des
+ * Projekts mit ihren Einträgen (A2: die App lädt sie); daraus löst die Rechnung die Verweise der Honorarobjekte auf.
+ */
+export function honorarBerechnen(
+  berechnung: Honorarberechnungseingabe,
+  kostenermittlungen: readonly Kostenermittlung[] = [],
+): Honorarergebnis {
   const befunde: Pruefbefund[] = [];
   const objekte = berechnung.objekte.map((objekt, index) =>
-    objektBerechnen(objekt, befundgeber(befunde, index)),
+    objektBerechnen(objekt, kostenermittlungen, befundgeber(befunde, index)),
   );
   const gesamt = befundgeber(befunde, null);
   if (objekte.length > 1)

@@ -10,5 +10,10 @@ export type { Spannenfehler } from './honorarspanne';
 export { honorarInSpanne, honorarspanneBerechnen } from './honorarspanne';
 export type { KostenNachDin276 } from './anrechenbare-kosten';
 export { anrechenbareKostenHerleiten } from './anrechenbare-kosten';
-export type { Honorarbefundcode, Honorarberechnungseingabe, Honorarobjekteingabe } from './honorar-berechnen';
+export type {
+  AnrechenbareKosteneingabe,
+  Honorarbefundcode,
+  Honorarberechnungseingabe,
+  Honorarobjekteingabe,
+} from './honorar-berechnen';
 export { honorarBerechnen } from './honorar-berechnen';
