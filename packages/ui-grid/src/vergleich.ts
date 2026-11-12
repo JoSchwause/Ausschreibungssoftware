@@ -48,14 +48,14 @@ export function bereichAlsTsv(
 
 /** Linker Versatz jeder fixierten Spalte (die ersten `anzahl`), `null` für Spalten, die mitscrollen. */
 export function fixierteVersaetze(
-  spalten: readonly Pick<VergleichsSpalte, 'breite'>[],
+  spalten: readonly Pick<VergleichsSpalte, 'breite' | 'zeitleiste'>[],
   anzahl: number,
 ): (number | null)[] {
   let links = 0;
   return spalten.map((s, i) => {
     if (i >= anzahl) return null;
     const versatz = links;
-    links += s.breite ?? STANDARDBREITE;
+    links += spaltenbreite(s);
     return versatz;
   });
 }
