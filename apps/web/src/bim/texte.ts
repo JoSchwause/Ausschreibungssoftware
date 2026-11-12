@@ -145,6 +145,7 @@ export const texte = {
   },
   aufmass: {
     knopf: 'Aufmaßblatt aus Auswahl …',
+    ausAuftrag: 'Aufmaß aus Modell',
     titel: 'Aufmaßblatt aus Auswahl',
     nurAuftrag: 'Wählen Sie ein Auftrags-LV und Bauteile.',
     bezeichnung: 'Bezeichnung',
