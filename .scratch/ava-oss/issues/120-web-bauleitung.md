@@ -27,6 +27,9 @@ Herkunft: `plan.md` §2 X4; Tor X4 (`plan.md` §4)
    Soll → beide PDFs erzeugt → Neuladen; `x4-kette.test.ts` ohne Oberfläche gegen dieselben Sollwerte. Dreimal grün; sonst
    Kettentest plus verkürzte E2E.
 
+Aus dem Review (D-66): Die Mängelanzeige nimmt die Frist aus dem Verlaufseintrag `angezeigt` (`frist?`), damit ein wieder
+geöffneter Mangel die Frist der früheren Anzeige behält.
+
 ## Grenzen
 
 - Regeln stehen in `bauleitung`. Keine Fotos (D-57). `okf/research/` wird nicht gelesen (C3).
