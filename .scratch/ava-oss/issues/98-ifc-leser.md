@@ -1,6 +1,6 @@
 # 98: X1a: IFC lesen (eigener STEP-Leser, IFC 2x3 und IFC 4)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc` (neu; dazu die Zeile in `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml`
 falls nötig)
@@ -216,3 +216,10 @@ Text stehen.
 fällt weg). Schwere `fehler`, wenn etwas verloren oder mehrdeutig ist (Syntax, fehlender Verweis, Einheit, Menge ohne Zahl,
 GlobalId), sonst `warnung`. Doppelte Instanznummer: die erste gilt (`instanz-doppelt`); abgeschnittene Datei: gelesen bis zur
 letzten vollständigen Instanz (`datei-unvollstaendig`).
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `26e2399` (Branch `welle-6/98-ifc-leser`, `f61be1a`). Paket `ifc`: `ifcLesen(Uint8Array)` für IFC 2x3
+und 4 ohne Geometrie (Struktur, Bauteile mit Teilen und Typdaten, Eigenschaften, Klassifikation mit KG-Vorschlag, Materialien,
+Befunde statt Ausnahmen), Mengen exakt dezimal in SI. Hausmodelle aus 99 ohne Befund, Werte gleich `typisch-bim.json`; 10.000
+Bauteile (21 MB) in 1,68 s CPU. Menge ohne Wert: Ticket 107 lässt sie mit Befund weg (Vertrag bleibt `wert: Menge`).

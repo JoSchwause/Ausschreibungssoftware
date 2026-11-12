@@ -22,6 +22,10 @@ Herkunft: Ticket 98 (Leser), Ticket 97 (Vertragstypen), Berater D-50, D-54
 4. **Leistung (Q4, D-54):** Das 10.000-Bauteile-Modell aus `fixtures/ifc/erzeugen.mjs` lesen und abbilden ≤ 5 s CPU in Node
    (Median mehrerer Läufe; unter Parallellast einzeln wiederholen und beide Werte nennen).
 
+Hinweis aus Ticket 98: Das Leseergebnis kennt Mengen ohne Wert (`wert: Menge | null`), `Bauteilmenge.wert` in v1.6 nicht.
+Entscheidung des Orchestrators: Eine Menge ohne Wert entfällt bei der Abbildung mit einem Befund (Bauteil, Mengensatz, Name), nie 0;
+kein Vertragsfeld dafür.
+
 ## Grenzen
 
 - Nur `packages/ifc`. Kein `vertrag`. Mengenübernahme, Vergleich und DIN 277 gehören `bim` (Ticket 108). `okf/research/` wird
