@@ -106,13 +106,14 @@ die Wörter gleich.
 - `IfcBefund { schwere; code: IfcBefundcode; meldung; ort }` wie `Pruefbefund` ohne `quelle`; `ort.pfad` = `#n`,
   `ort.zeile`, `ort.feld` (z. B. `GlobalId`). 26 Codes, siehe `typen.ts`.
 
-**Tests:** 12 Testdateien, 115 Tests im Paket (Golden je Fall, IFC 2x3 in mm = IFC 4 in m, Sicherheit: Größe, Tiefe
-100.000 ohne Stapelüberlauf, Kreise, fehlende Verweise; Property-Tests: beliebige Bytes, Bytes hinter gültigem Kopf,
-STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m; zusammen etwa
-1,2 s). Ganze Suite nach dem letzten Merge von `integration/welle-6` (mit 96, 100, 101, 102), Stand `b89cc05`:
-`pnpm lint` 0, `pnpm typecheck` 0; `vitest run --maxWorkers=1` 247 Dateien / 3.151 Tests grün (3 übersprungen wie vorher),
-Fixtures 29/29. Mit der Standardparallelität (`pnpm test`) fielen unter Lastmittel 15 bis 20 auf 4 Kernen nur
-Zeitbudgets fremder Pakete, die dieser Branch nicht berührt; je allein wiederholt grün:
+**Tests:** 13 Testdateien, 120 Tests im Paket (Golden je Fall, IFC 2x3 in mm = IFC 4 in m, Hausmodelle aus Ticket 99,
+Sicherheit: Größe, Tiefe 100.000 ohne Stapelüberlauf, Kreise, fehlende Verweise; Property-Tests: beliebige Bytes, Bytes
+hinter gültigem Kopf, STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für
+mm → m; zusammen etwa 1,5 s). **Ganze Suite am Ende** (nach dem Merge von `integration/welle-6` mit 96, 99, 100, 101, 102,
+Stand `65128af`): `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 248 Dateien / 3.156 Tests grün (3 übersprungen wie vorher),
+Fixtures 42/42. In früheren Läufen mit der Standardparallelität fielen unter Lastmittel 15 bis 20 auf 4 Kernen nur
+Zeitbudgets fremder Pakete, die dieser Branch nicht berührt; je allein wiederholt grün, und mit `vitest run --maxWorkers=1`
+war dieselbe Suite grün (247 Dateien / 3.151 Tests vor den Tests aus 99):
 
 | Budget | volle Suite | Datei allein |
 |---|---|---|
@@ -123,12 +124,16 @@ Zeitbudgets fremder Pakete, die dieser Branch nicht berührt; je allein wiederho
 Kein Budget gelockert, kein Test übersprungen. Hinweis an den Orchestrator: Mit den neuen Paketen der Welle wächst die Last
 der parallelen Suite; Zeitbudgets, die Wanduhrzeit neben anderen Workern messen, werden dabei wackelig.
 
-**Messung** (einmalig, nicht committet; das Budget prüft Ticket 107): synthetisches IFC-4-Modell, 10.000 Wände mit
-Geometrie-Instanzen, Mengen-, Eigenschafts- und Materialsätzen, 19,6 MB: `ifcLesen` 5 Läufe 1,1 / 1,4 / 1,4 / 1,6 / 1,9 s
-CPU, Median 1,4 s, unter Parallellast anderer Agenten, 0 Befunde.
+**Messung** (einmalig, nicht committet; das Budget prüft Ticket 107): Modell des Erzeugers aus Ticket 99
+(`erzeugeModell()`, 10.000 Bauteile auf 10 Geschossen, 21,0 MB): `ifcLesen` 5 Läufe 1,60 / 1,62 / 1,68 / 1,86 / 2,00 s CPU,
+Median 1,68 s bei Lastmittel 7, 10.000 Bauteile, 0 Befunde. Vorher mit einem eigenen Probemodell (10.000 Wände, 19,6 MB):
+Median 1,4 s.
 
-**Hausmodelle aus Ticket 99:** lagen bis zum Abschluss nicht auf `integration/welle-6`; die Golden-Tests mit
-`fixtures/ifc/haus-v1*.ifc` und `haus-v2.ifc` macht Ticket 107 (dort ohnehin Punkt 3).
+**Hausmodelle aus Ticket 99:** kamen kurz vor Schluss auf `integration/welle-6` und sind gemergt. `haus.test.ts`:
+`haus-v1.ifc`, `haus-v1-ifc2x3.ifc` und `haus-v2.ifc` lesen sich ohne Befund; Klasse, Name, Geschoss und alle Mengen der
+30 Bauteile je Stand gleichen den Sollwerten in `fixtures/typisch-bim.json` (auch in der Reihenfolge der Mengen), ebenso
+BGF, BRI der Geschosse und NRF der Räume; IFC 2x3 in mm = IFC 4 in m; ein Modell des Erzeugers (600 Bauteile) ohne Befund.
+Für Ticket 107 bleiben die Goldens der Abbildung auf v1.6 und das Budget.
 
 **Was Ticket 107 abbilden muss** (Vertrag v1.6, Ticket 97):
 
