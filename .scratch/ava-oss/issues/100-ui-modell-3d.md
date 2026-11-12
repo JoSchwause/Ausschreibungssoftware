@@ -1,6 +1,6 @@
 # 100: X1b: 3D-Ansicht des Modells im Browser (`ui-modell`)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1b · Paket: `packages/ui-modell` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml` falls
 nötig)
