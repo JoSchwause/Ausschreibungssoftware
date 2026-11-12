@@ -268,7 +268,11 @@ describe('Honorarberechnung', () => {
     ])
       expect(t, s).toContain(s);
     expect(t).toContain(normal(DIN276_HINWEIS));
-    expect(DIN276_HINWEIS).toContain('DIN 276:2008-12');
+    // Ticket 122 (PB9): genau der Hinweis aus D-56/D-66 (§ 4 Abs. 1 verweist auf DIN 276:2008-12), nichts darüber hinaus.
+    expect(DIN276_HINWEIS).toBe(
+      'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12.',
+    );
+    expect(t).not.toContain('gegliedert');
   });
 
   it('Befunde: gedruckt werden die Texte der Seite, nie die Meldungen der Rechnung (kein UUID, keine kanonische Zahl)', async () => {

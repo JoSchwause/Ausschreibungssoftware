@@ -196,5 +196,9 @@ describe('Hinweis zu DIN 276', () => {
   it('ist ein fester Text mit Fassung und Paragraph, kein Befund (D-66)', () => {
     expect(DIN276_HINWEIS).toContain('§ 4 Abs. 1 HOAI');
     expect(DIN276_HINWEIS).toContain('DIN 276:2008-12');
+    // Ticket 122 (PB9): genau der Hinweis aus D-56/D-66, nichts darüber hinaus.
+    expect(DIN276_HINWEIS).toBe(
+      'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12.',
+    );
   });
 });

@@ -8,8 +8,7 @@ import type { Honorarobjekt, Honorarzone, Leistungsbild } from '@tethys/vertrag'
  * (`DIN276_HINWEIS` in `ausgabe`); ein Test hält beide gleich, damit das Hauptbündel `ausgabe` (pdfmake) nicht lädt.
  */
 export const DIN276_HINWEIS =
-  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12. ' +
-  'Die Kostenermittlung muss nach dieser Fassung gegliedert sein.';
+  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12.';
 
 export const LEISTUNGSBILD_TEXT: Readonly<Record<Leistungsbild, string>> = {
   gebaeude: 'Gebäude',
