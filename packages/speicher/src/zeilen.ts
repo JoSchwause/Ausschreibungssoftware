@@ -6,6 +6,7 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Bauteilzuordnung,
   Aufmass,
   AufmassId,
   AufmassKopf,
@@ -117,6 +118,7 @@ export const KNOTEN_SPALTEN = [
   'mengenansatz', // Schema 4 (v1.3)
   'kostengruppe', // Schema 5 (v1.4)
   'textquelle', // Schema 5 (v1.4)
+  'bauteile', // Schema 6 (v1.6)
 ] as const;
 
 // --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
@@ -205,6 +207,18 @@ export function ausweisAusZeile(
   };
 }
 
+/**
+ * Bauteilzuordnungen einer Position (Schema 6, v1.6) als kanonisches JSON, `NULL` = fehlt. Eine leere Liste kennt der Vertrag im
+ * Zustand nicht („nie `[]`“, `Positionsdaten.bauteile`): Sie bliebe gespeichert, ließe sich aber nicht mehr als Projektdatei
+ * importieren (Q5), also `unbekannt` wie `vorlage: false` (D-79.3).
+ */
+function bauteileSpalte(k: Extract<Knoten, { art: 'position' }>): SqlWert {
+  const b: unknown = k.bauteile;
+  if (Array.isArray(b) && b.length === 0)
+    abbruch('unbekannt', `Position ${k.id}: bauteile ist nie leer (Vertrag v1.6: das Feld fehlt dann).`);
+  return jsonOderNull(b);
+}
+
 export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   const kopf: SqlWert[] = [aggregatId, k.id, k.art, k.elternId, k.reihenfolge];
   switch (k.art) {
@@ -215,6 +229,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ordnungszahl,
         null,
         k.kurztext,
+        null,
         null,
         null,
         null,
@@ -244,6 +259,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
+        null,
       ];
     case 'position':
       return [
@@ -262,6 +278,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         jsonOderNull(k.mengenansatz),
         k.kostengruppe ?? null,
         k.textquelle ?? null,
+        bauteileSpalte(k),
       ];
   }
 }
@@ -319,6 +336,7 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         ...(optionalesFeld(z, 'mengenansatz', 'mengenansatz') as { mengenansatz?: readonly Ansatzzeile[] }),
         ...optionalerText(z, 'kostengruppe'),
         ...optionalerText(z, 'textquelle'),
+        ...(optionalesFeld(z, 'bauteile', 'bauteile') as { bauteile?: readonly Bauteilzuordnung[] }),
       };
     }
     default:

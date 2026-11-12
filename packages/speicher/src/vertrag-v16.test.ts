@@ -3,45 +3,16 @@
 // laut ab (`unbekannt`), statt sie still zu verwerfen (Q5); die Ablage der Modelldateien antwortet `unbekannt`. Ticket 106
 // löscht diese Datei samt `vertrag-v16.ts`.
 
-import type { Bauteilzuordnung, IfcGlobalId, Knoten, Mangel, MangelId, Position } from '@tethys/vertrag';
+import type { Mangel, MangelId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
-import { feldAendern } from './testhilfe/umkehrung';
 
 const f = ladeFixture('typisch');
-const lv = f.lv.leistungsverzeichnis;
 const P = f.projekt.id;
-const erste = lv.knoten.find((k): k is Position => k.art === 'position') as Position;
-const ZUORDNUNG: Bauteilzuordnung = {
-  globalId: '1Wand$Aussen_EG_000001' as IfcGlobalId,
-  mengenart: 'NetVolume',
-};
 
 describe('vertrag v1.6 in speicher bis Ticket 106: laut abweisen', () => {
-  it('eine Position mit Bauteilzuordnungen: unbekannt, nichts geschrieben', async () => {
-    const { kern } = await neuerKern();
-    await speichere(kern, anlegenSchritte(f));
-    const nachher: Knoten = { ...erste, bauteile: [ZUORDNUNG] };
-    const cs = feldAendern(f.lv, erste.id, nachher, '0.00');
-    const e = await kern.anwenden(
-      eintrag(
-        900,
-        P,
-        { art: 'leistungsverzeichnis', id: lv.id },
-        {
-          art: 'BauteileZuordnen',
-          positionId: erste.id,
-          bauteile: [ZUORDNUNG],
-        },
-      ),
-      cs,
-    );
-    expect(!e.ok && e.fehler.code).toBe('unbekannt');
-    expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
-  });
-
   it('die Ablage der Modelldateien antwortet unbekannt', async () => {
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);
