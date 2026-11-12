@@ -56,9 +56,10 @@ describe('Kamera: Bedienbefehle', () => {
       grad(89),
       9,
     );
-    expect(
-      bedienen({ ...vorne, hoehe: grad(-80) }, { art: 'drehen', richtung: 'runter' }).hoehe,
-    ).toBeCloseTo(grad(-89), 9);
+    expect(bedienen({ ...vorne, hoehe: grad(-80) }, { art: 'drehen', richtung: 'runter' }).hoehe).toBeCloseTo(
+      grad(-89),
+      9,
+    );
   });
 
   it('drehen rechts bewegt die Kamera nach rechts (von vorn gesehen: zur +x-Seite)', () => {
@@ -71,7 +72,10 @@ describe('Kamera: Bedienbefehle', () => {
     nahe(bedienen(vorne, { art: 'verschieben', richtung: 'links' }).ziel, [-1, 0, 0]);
     nahe(bedienen(vorne, { art: 'verschieben', richtung: 'hoch' }).ziel, [0, 1, 0]);
     // von der Seite (+x) gesehen ist rechts die −z-Richtung
-    nahe(bedienen({ ...vorne, azimut: grad(90) }, { art: 'verschieben', richtung: 'rechts' }).ziel, [0, 0, -1]);
+    nahe(
+      bedienen({ ...vorne, azimut: grad(90) }, { art: 'verschieben', richtung: 'rechts' }).ziel,
+      [0, 0, -1],
+    );
     const k = bedienen(vorne, { art: 'verschieben', richtung: 'runter' });
     expect(k.abstand).toBe(10);
     nahe(kameraposition(k), [0, -1, 10]);

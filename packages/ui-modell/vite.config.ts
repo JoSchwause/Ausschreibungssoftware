@@ -20,7 +20,11 @@ function modelleBereitstellen(): Plugin {
     generateBundle() {
       for (const name of MODELLE) {
         if (!existsSync(modellDatei(name))) continue;
-        this.emitFile({ type: 'asset', fileName: `modelle/${name}.ifc`, source: readFileSync(modellDatei(name)) });
+        this.emitFile({
+          type: 'asset',
+          fileName: `modelle/${name}.ifc`,
+          source: readFileSync(modellDatei(name)),
+        });
       }
     },
   };

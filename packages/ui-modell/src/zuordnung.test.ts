@@ -18,7 +18,11 @@ describe('zuordnen: expressID der Geometrie → Bauteil mit GlobalId', () => {
 
   it('zeichnet nur Bauteile: Öffnungen, virtuelle Elemente und Nicht-Elemente (Raum, Grundstück) bleiben weg', () => {
     const virtuell = { expressId: 50, globalId: '0Virt00000000000000001', klasse: 'IFCVIRTUALELEMENT' };
-    const oeffnungNorm = { expressId: 60, globalId: '0Oeff00000000000000002', klasse: 'IfcOpeningStandardCase' };
+    const oeffnungNorm = {
+      expressId: 60,
+      globalId: '0Oeff00000000000000002',
+      klasse: 'IfcOpeningStandardCase',
+    };
     // 70 ist ein Raum (kein IfcElement, steht nicht in der Elementliste), hat aber Geometrie
     const z = zuordnen([wand, oeffnung, virtuell, oeffnungNorm], [40, 10, 70, 50, 60]);
     expect(z.mitGeometrie).toEqual(['0Wand00000000000000001']);

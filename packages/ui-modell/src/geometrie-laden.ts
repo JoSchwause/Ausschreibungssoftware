@@ -27,7 +27,10 @@ export class Ladefehler extends Error {
 }
 
 const neuerWorker = (): Worker =>
-  new Worker(new URL('./geometrie-worker.ts', import.meta.url), { type: 'module', name: 'ui-modell-geometrie' });
+  new Worker(new URL('./geometrie-worker.ts', import.meta.url), {
+    type: 'module',
+    name: 'ui-modell-geometrie',
+  });
 
 export function geometrieLaden(datei: Uint8Array, worker: Worker = neuerWorker()): Ladeauftrag {
   const ergebnis = new Promise<Modellgeometrie>((erfuellen, ablehnen) => {
@@ -39,7 +42,12 @@ export function geometrieLaden(datei: Uint8Array, worker: Worker = neuerWorker()
     };
     worker.onerror = (e: ErrorEvent) => {
       worker.terminate();
-      ablehnen(new Ladefehler({ code: 'worker-fehler', meldung: e.message || 'Der Geometrie-Worker ist abgestürzt.' }));
+      ablehnen(
+        new Ladefehler({
+          code: 'worker-fehler',
+          meldung: e.message || 'Der Geometrie-Worker ist abgestürzt.',
+        }),
+      );
     };
   });
   const kopie = datei.slice().buffer;

@@ -129,7 +129,10 @@ function Pruefstand() {
         }}
         onGeladen={(bericht) => {
           gpuWarten();
-          window.__modell.ereignisse.geladen.push({ ...bericht, seitUebergabeMs: performance.now() - uebergabe });
+          window.__modell.ereignisse.geladen.push({
+            ...bericht,
+            seitUebergabeMs: performance.now() - uebergabe,
+          });
         }}
         onFehler={(f) => {
           window.__modell.ereignisse.fehler.push(f);

@@ -40,7 +40,10 @@ function markieren(verzeichnis: Bauteilverzeichnis, globalIds: Iterable<string>)
 }
 
 /** Sichtbar ist ein Bauteil, wenn es isoliert ist (oder nichts isoliert ist) und nicht ausgeblendet. */
-export function darstellungBerechnen(verzeichnis: Bauteilverzeichnis, e: Darstellungseingaben): Bauteildarstellung {
+export function darstellungBerechnen(
+  verzeichnis: Bauteilverzeichnis,
+  e: Darstellungseingaben,
+): Bauteildarstellung {
   const ausgeblendet = markieren(verzeichnis, e.ausgeblendet);
   const isoliert = e.isoliert === null ? null : markieren(verzeichnis, e.isoliert);
   const ausgewaehlt = markieren(verzeichnis, e.auswahl);

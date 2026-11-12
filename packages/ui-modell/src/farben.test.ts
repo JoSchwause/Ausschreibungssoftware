@@ -17,7 +17,10 @@ function tokens(anfang: string): Map<string, string> {
   if (start < 0) throw new Error(`Block nicht gefunden: ${anfang}`);
   const block = tokensCss.slice(start, tokensCss.indexOf('\n}', start));
   return new Map(
-    [...block.matchAll(/--tx-color-([a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [m[1] ?? '', m[2] ?? '']),
+    [...block.matchAll(/--tx-color-([a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [
+      m[1] ?? '',
+      m[2] ?? '',
+    ]),
   );
 }
 
@@ -37,7 +40,10 @@ const kontrast = (a: string, b: string): number => {
 /** Variable → Token-Name aus `modellansicht.css`, z. B. `--tx-modell-auswahl` → `focus`. */
 function zuordnungAusCss(): Map<string, string> {
   return new Map(
-    [...modellCss.matchAll(/(--tx-modell-[a-z-]+):\s*([^;]+);/g)].map((m) => [m[1] ?? '', (m[2] ?? '').trim()]),
+    [...modellCss.matchAll(/(--tx-modell-[a-z-]+):\s*([^;]+);/g)].map((m) => [
+      m[1] ?? '',
+      (m[2] ?? '').trim(),
+    ]),
   );
 }
 
@@ -45,7 +51,9 @@ describe('Farben der Leinwand', () => {
   const css = zuordnungAusCss();
 
   it('nennt für Hintergrund, Auswahl und jedes Kennzeichen eine Variable, die nur auf ein Farb-Token zeigt', () => {
-    expect(Object.keys(FARBVARIABLEN).sort()).toEqual(['auswahl', 'hintergrund', ...BAUTEILKENNZEICHEN].sort());
+    expect(Object.keys(FARBVARIABLEN).sort()).toEqual(
+      ['auswahl', 'hintergrund', ...BAUTEILKENNZEICHEN].sort(),
+    );
     for (const variable of Object.values(FARBVARIABLEN)) {
       expect(css.get(variable), variable).toMatch(/^var\(--tx-color-[a-z-]+\)$/);
     }
@@ -58,7 +66,8 @@ describe('Farben der Leinwand', () => {
     dunkel: tokens("[data-theme='dark']"),
   })) {
     describe(modus, () => {
-      const farbe = (name: keyof typeof FARBVARIABLEN): string => farben.get(token(FARBVARIABLEN[name])) ?? '';
+      const farbe = (name: keyof typeof FARBVARIABLEN): string =>
+        farben.get(token(FARBVARIABLEN[name])) ?? '';
       const hintergrund = farbe('hintergrund');
 
       for (const name of ['auswahl', ...BAUTEILKENNZEICHEN] as const) {

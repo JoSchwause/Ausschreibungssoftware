@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Die 3D-Leinwand mit three.js, ohne React: Szene, Kamera, Zeichnen nur bei Bedarf, Picken über einen CPU-Raycast
-// (D-50). Je Deckung ein `BatchedMesh`; jedes Teil eines Bauteils ist eine Instanz darin, so dass Hervorheben, Ausblenden
-// und Färben je Bauteil ohne neues Laden gehen. Bedienung: Maus (drehen, verschieben, zoomen) und Tastatur (`tasten.ts`).
+// (D-50). Je Deckung (deckend, durchsichtig) ein zusammengeführter Puffer mit Bereichen je Teil, gezeichnet mit einem
+// einzigen Aufruf (D-100.5): Die Farbe steht je Ecke im Puffer, ein ausgeblendetes Teil bekommt entartete Dreiecke in
+// seinem Indexbereich. So gehen Hervorheben, Ausblenden, Isolieren und Färben je Bauteil ohne neues Laden, und eine
+// Änderung lädt nur die geänderten Bereiche neu auf die GPU. Licht je Ecke (`schattierung.ts`). Bedienung: Maus und
+// Tastatur (`tasten.ts`).
 
 import {
-  BatchedMesh,
   Box3,
   BufferAttribute,
   BufferGeometry,
   Color,
-  DirectionalLight,
-  DoubleSide,
-  HemisphereLight,
-  MeshLambertMaterial,
-  Object3D,
+  Mesh,
   PerspectiveCamera,
   Raycaster,
   Scene,
@@ -21,9 +19,9 @@ import {
   SRGBColorSpace,
   Vector2,
   Vector3,
-  Vector4,
   WebGLRenderer,
 } from 'three';
+import type { ShaderMaterial } from 'three';
 import { darstellungBerechnen } from './darstellung';
 import type { Anzeigefarbe, Darstellungseingaben } from './darstellung';
 import { farbtafelLesen } from './farben';
@@ -42,6 +40,7 @@ import {
   zoomen,
 } from './kamera';
 import type { Grenzen, Kamerastand } from './kamera';
+import { gruppenmaterial, softwareRasterung } from './schattierung';
 import { befehlAusTaste } from './tasten';
 import type { Bedienbefehl } from './tasten';
 import type { Bildschirmpunkt, Darstellungsstand } from './typen';
@@ -57,9 +56,29 @@ export class WebglFehlt extends Error {
   override readonly name = 'WebglFehlt';
 }
 
-interface Instanz {
-  readonly netz: number;
-  readonly id: number;
+/** Eine Deckungsgruppe: ein Netz, ein Zeichenaufruf. */
+interface Gruppe {
+  readonly netz: Mesh<BufferGeometry, ShaderMaterial>;
+  /** r, g, b, Deckkraft je Ecke (linear), der Farbpuffer des Netzes */
+  readonly farben: Float32Array;
+  /** Indexpuffer des Netzes: ausgeblendete Teile entartet */
+  readonly indizes: Uint32Array;
+  /** die Dreiecke, wie der Worker sie liefert */
+  readonly original: Uint32Array;
+  /** `TEIL_FELDER` je Teil (Bauteil, erste Ecke, Eckenzahl, erster Index, Indexzahl) */
+  readonly teile: Uint32Array;
+  /** eigene Farbe je Teil (linear r, g, b, Deckkraft) */
+  readonly eigene: Float32Array;
+  /** min x y z, max x y z je Teil (für den Raycast) */
+  readonly grenzen: Float32Array;
+  /** angewandt je Teil */
+  readonly sichtbar: Uint8Array;
+  readonly angewandt: (Anzeigefarbe | null)[];
+}
+
+interface Teilverweis {
+  readonly gruppe: number;
+  readonly teil: number;
 }
 
 interface Zeiger {
@@ -77,7 +96,28 @@ interface Zeiger {
 const ZIEHSCHWELLE_PX = 4;
 /** Höchstens so viele Dreiecke je Teil probiert `bildschirmpunkt`. */
 const PROBEN_JE_TEIL = 64;
+/** Ab so vielen geänderten Bereichen wird ein Puffer ganz statt stückweise hochgeladen. */
+const HOECHSTENS_BEREICHE = 64;
 const START: Kamerastand = { ziel: [0, 0, 0], azimut: Math.PI / 4, hoehe: Math.PI / 6, abstand: 10 };
+
+/** Merkt geänderte Bereiche eines Puffers und lädt sie gesammelt hoch. */
+class Bereiche {
+  readonly #liste: [number, number][] = [];
+
+  merken(start: number, anzahl: number): void {
+    this.#liste.push([start, anzahl]);
+  }
+
+  hochladen(attribut: BufferAttribute): void {
+    if (this.#liste.length === 0) return;
+    attribut.clearUpdateRanges();
+    if (this.#liste.length <= HOECHSTENS_BEREICHE) {
+      for (const [start, anzahl] of this.#liste) attribut.addUpdateRange(start, anzahl);
+    }
+    attribut.needsUpdate = true;
+    this.#liste.length = 0;
+  }
+}
 
 export class Leinwand {
   readonly #canvas: HTMLCanvasElement;
@@ -86,23 +126,17 @@ export class Leinwand {
   readonly #szene = new Scene();
   readonly #kamera3d = new PerspectiveCamera((SICHTWINKEL * 180) / Math.PI, 1, 0.01, 1000);
   readonly #raycaster = new Raycaster();
-  readonly #beobachter: { trennen(): void }[] = [];
+  readonly #trennen: (() => void)[] = [];
 
-  #netze: BatchedMesh[] = [];
-  /** je Netz: Bauteilindex je Instanz */
-  #bauteilJeInstanz: Int32Array[] = [];
-  /** je Netz: Farbe aus der IFC-Datei je Instanz (linear, r g b a) */
-  #eigeneFarben: Float32Array[] = [];
-  /** je Bauteilindex seine Instanzen */
-  #instanzen: Instanz[][] = [];
+  #gruppen: Gruppe[] = [];
+  /** je Bauteilindex seine Teile */
+  #teile: Teilverweis[][] = [];
   /** je Bauteilindex min x y z, max x y z */
   #grenzenJeBauteil = new Float32Array(0);
   #verzeichnis: Bauteilverzeichnis | null = null;
   #grenzen: Grenzen | null = null;
   #kamera: Kamerastand = START;
   #eingaben: Darstellungseingaben = { auswahl: [], ausgeblendet: [], isoliert: null, faerbung: new Map() };
-  #angewandt: readonly Anzeigefarbe[] = [];
-  #sichtbar: readonly boolean[] = [];
   #farben = new Map<Farbrolle, Color>();
   #bilder = 0;
   #angefordert: number | null = null;
@@ -113,30 +147,27 @@ export class Leinwand {
     this.#canvas = canvas;
     this.#rueckrufe = rueckrufe;
     try {
-      this.#renderer = new WebGLRenderer({ canvas, antialias: true });
+      // Kantenglättung nur mit GPU; in der Software-Rasterung kostet sie ein Mehrfaches der Bildzeit (D-100.6).
+      this.#renderer = new WebGLRenderer({ canvas, antialias: !softwareRasterung() });
     } catch (e) {
       throw new WebglFehlt(e instanceof Error ? e.message : String(e));
     }
     this.#renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.#renderer.outputColorSpace = SRGBColorSpace;
 
-    // Licht: Himmel und Boden, dazu ein Licht schräg über der Kamera, das mit ihr wandert.
-    this.#szene.add(new HemisphereLight(0xffffff, 0x8c8c8c, 2.2));
-    const licht = new DirectionalLight(0xffffff, 1.6);
-    licht.position.set(-1, 2, 1);
-    const lichtziel = new Object3D();
-    lichtziel.position.set(0, 0, -1);
-    licht.target = lichtziel;
-    this.#kamera3d.add(licht, lichtziel);
-    this.#szene.add(this.#kamera3d);
-
-    canvas.addEventListener('pointerdown', this.#runter);
-    canvas.addEventListener('pointermove', this.#bewegt);
-    canvas.addEventListener('pointerup', this.#hoch);
-    canvas.addEventListener('pointercancel', this.#abgebrochen);
-    canvas.addEventListener('wheel', this.#rad, { passive: false });
-    canvas.addEventListener('keydown', this.#taste);
-    canvas.addEventListener('contextmenu', this.#kontextmenue);
+    const ereignisse: [string, EventListener, AddEventListenerOptions?][] = [
+      ['pointerdown', this.#runter as EventListener],
+      ['pointermove', this.#bewegt as EventListener],
+      ['pointerup', this.#hoch as EventListener],
+      ['pointercancel', this.#abgebrochen],
+      ['wheel', this.#rad as EventListener, { passive: false }],
+      ['keydown', this.#taste as EventListener],
+      ['contextmenu', this.#kontextmenue],
+    ];
+    for (const [art, f, optionen] of ereignisse) canvas.addEventListener(art, f, optionen);
+    this.#trennen.push(() => {
+      for (const [art, f] of ereignisse) canvas.removeEventListener(art, f);
+    });
 
     const groesse = new ResizeObserver(() => {
       this.#groesseAnpassen();
@@ -145,19 +176,19 @@ export class Leinwand {
     // Schema hell/dunkel: data-theme an <html> oder einem Vorfahren
     const schema = new MutationObserver(() => {
       this.#farbenLesen();
-      this.#darstellungAnwenden();
+      this.#darstellungAnwenden(true);
     });
-    schema.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'], subtree: true });
-    this.#beobachter.push(
-      {
-        trennen: () => {
-          groesse.disconnect();
-        },
+    schema.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+      subtree: true,
+    });
+    this.#trennen.push(
+      () => {
+        groesse.disconnect();
       },
-      {
-        trennen: () => {
-          schema.disconnect();
-        },
+      () => {
+        schema.disconnect();
       },
     );
 
@@ -173,69 +204,74 @@ export class Leinwand {
   modellZeigen(g: Modellgeometrie): void {
     this.#netzeFreigeben();
     const verzeichnis = new Bauteilverzeichnis(g.globalIdJeIndex);
-    const instanzen: Instanz[][] = Array.from({ length: verzeichnis.anzahl }, () => []);
+    const teile: Teilverweis[][] = Array.from({ length: verzeichnis.anzahl }, () => []);
     const grenzen = new Float32Array(verzeichnis.anzahl * 6);
-    for (let i = 0; i < verzeichnis.anzahl; i++) grenzen.set([Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], i * 6);
-
+    for (let i = 0; i < verzeichnis.anzahl; i++) {
+      grenzen.set([Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], i * 6);
+    }
     const farbe = new Color();
-    const v4 = new Vector4();
     for (const gruppe of g.gruppen) {
       const anzahl = gruppe.teile.length / TEIL_FELDER;
-      const material = new MeshLambertMaterial({
-        color: 0xffffff,
-        side: DoubleSide,
-        transparent: gruppe.durchsichtig,
-        depthWrite: !gruppe.durchsichtig,
-      });
-      const netz = new BatchedMesh(anzahl, gruppe.positionen.length / 3, gruppe.indizes.length, material);
-      const nr = this.#netze.length;
-      const bauteilJeInstanz = new Int32Array(anzahl);
+      const nr = this.#gruppen.length;
       const eigene = new Float32Array(anzahl * 4);
+      const farben = new Float32Array((gruppe.positionen.length / 3) * 4);
+      const box = new Box3();
       for (let t = 0; t < anzahl; t++) {
-        const f = t * TEIL_FELDER;
-        const [bauteil, ecke, ecken, index, indexzahl] = [
-          gruppe.teile[f] ?? 0,
-          gruppe.teile[f + 1] ?? 0,
-          gruppe.teile[f + 2] ?? 0,
-          gruppe.teile[f + 3] ?? 0,
-          gruppe.teile[f + 4] ?? 0,
-        ];
-        const geo = new BufferGeometry();
-        geo.setAttribute('position', new BufferAttribute(gruppe.positionen.subarray(ecke * 3, (ecke + ecken) * 3), 3));
-        geo.setAttribute('normal', new BufferAttribute(gruppe.normalen.subarray(ecke * 3, (ecke + ecken) * 3), 3));
-        geo.setIndex(new BufferAttribute(gruppe.indizes.subarray(index, index + indexzahl), 1));
-        const b = gruppe.grenzen.subarray(t * 6, t * 6 + 6);
-        geo.boundingBox = new Box3(new Vector3(b[0], b[1], b[2]), new Vector3(b[3], b[4], b[5]));
-        geo.boundingSphere = geo.boundingBox.getBoundingSphere(new Sphere());
-        const id = netz.addInstance(netz.addGeometry(geo));
-        bauteilJeInstanz[id] = bauteil;
-        instanzen[bauteil]?.push({ netz: nr, id });
-        farbe.setRGB(gruppe.farben[t * 4] ?? 1, gruppe.farben[t * 4 + 1] ?? 1, gruppe.farben[t * 4 + 2] ?? 1, SRGBColorSpace);
-        eigene.set([farbe.r, farbe.g, farbe.b, gruppe.farben[t * 4 + 3] ?? 1], id * 4);
-        netz.setColorAt(id, v4.set(farbe.r, farbe.g, farbe.b, gruppe.farben[t * 4 + 3] ?? 1));
+        const bauteil = gruppe.teile[t * TEIL_FELDER] ?? 0;
+        teile[bauteil]?.push({ gruppe: nr, teil: t });
+        farbe.setRGB(
+          gruppe.farben[t * 4] ?? 1,
+          gruppe.farben[t * 4 + 1] ?? 1,
+          gruppe.farben[t * 4 + 2] ?? 1,
+          SRGBColorSpace,
+        );
+        eigene.set([farbe.r, farbe.g, farbe.b, gruppe.farben[t * 4 + 3] ?? 1], t * 4);
         for (let k = 0; k < 3; k++) {
-          grenzen[bauteil * 6 + k] = Math.min(grenzen[bauteil * 6 + k] ?? Infinity, b[k] ?? Infinity);
-          grenzen[bauteil * 6 + 3 + k] = Math.max(grenzen[bauteil * 6 + 3 + k] ?? -Infinity, b[3 + k] ?? -Infinity);
+          const unten = gruppe.grenzen[t * 6 + k] ?? Infinity;
+          const oben = gruppe.grenzen[t * 6 + 3 + k] ?? -Infinity;
+          grenzen[bauteil * 6 + k] = Math.min(grenzen[bauteil * 6 + k] ?? Infinity, unten);
+          grenzen[bauteil * 6 + 3 + k] = Math.max(grenzen[bauteil * 6 + 3 + k] ?? -Infinity, oben);
         }
+        box.expandByPoint(
+          new Vector3(gruppe.grenzen[t * 6], gruppe.grenzen[t * 6 + 1], gruppe.grenzen[t * 6 + 2]),
+        );
+        box.expandByPoint(
+          new Vector3(gruppe.grenzen[t * 6 + 3], gruppe.grenzen[t * 6 + 4], gruppe.grenzen[t * 6 + 5]),
+        );
       }
-      netz.computeBoundingBox();
-      netz.computeBoundingSphere();
+      const indizes = gruppe.indizes.slice();
+      const geometrie = new BufferGeometry();
+      geometrie.setAttribute('position', new BufferAttribute(gruppe.positionen, 3));
+      geometrie.setAttribute('normal', new BufferAttribute(gruppe.normalen, 3));
+      geometrie.setAttribute('farbe', new BufferAttribute(farben, 4));
+      geometrie.setIndex(new BufferAttribute(indizes, 1));
+      geometrie.boundingBox = box;
+      geometrie.boundingSphere = box.getBoundingSphere(new Sphere());
+      const netz = new Mesh(geometrie, gruppenmaterial(gruppe.durchsichtig));
       this.#szene.add(netz);
-      this.#netze.push(netz);
-      this.#bauteilJeInstanz.push(bauteilJeInstanz);
-      this.#eigeneFarben.push(eigene);
+      this.#gruppen.push({
+        netz,
+        farben,
+        indizes,
+        original: gruppe.indizes,
+        teile: gruppe.teile,
+        eigene,
+        grenzen: gruppe.grenzen,
+        sichtbar: new Uint8Array(anzahl).fill(1),
+        angewandt: new Array<Anzeigefarbe | null>(anzahl).fill(null),
+      });
     }
     this.#verzeichnis = verzeichnis;
-    this.#instanzen = instanzen;
+    this.#teile = teile;
     this.#grenzenJeBauteil = grenzen;
     this.#grenzen = g.grenzen;
     this.#kameraSetzen(g.grenzen ? startansicht(g.grenzen, this.#kamera3d.aspect) : START);
-    this.#darstellungAnwenden();
+    this.#darstellungAnwenden(true);
   }
 
   darstellungSetzen(e: Darstellungseingaben): void {
     this.#eingaben = e;
-    this.#darstellungAnwenden();
+    this.#darstellungAnwenden(false);
   }
 
   bedienen(b: Bedienbefehl): void {
@@ -264,20 +300,19 @@ export class Leinwand {
     const sichtbar = new Set<string>();
     const hervorgehoben = new Set<string>();
     const farben: Record<string, string> = {};
-    const v4 = new Vector4();
     const farbe = new Color();
     if (v) {
-      this.#instanzen.forEach((liste, i) => {
-        const erste = liste[0];
-        if (!erste) return;
-        const netz = this.#netze[erste.netz];
-        if (!netz) return;
+      this.#teile.forEach((liste, i) => {
+        const erster = liste[0];
+        const g = erster ? this.#gruppen[erster.gruppe] : undefined;
+        if (!erster || !g) return;
         const id = v.globalId(i);
-        const zuSehen = netz.getVisibleAt(erste.id);
+        const zuSehen = g.sichtbar[erster.teil] === 1;
         if (zuSehen) sichtbar.add(id);
-        if (zuSehen && this.#angewandt[i] === 'auswahl') hervorgehoben.add(id);
-        netz.getColorAt(erste.id, v4);
-        farben[id] = `#${farbe.setRGB(v4.x, v4.y, v4.z).getHexString()}`;
+        if (zuSehen && g.angewandt[erster.teil] === 'auswahl') hervorgehoben.add(id);
+        const ecke = (g.teile[erster.teil * TEIL_FELDER + 1] ?? 0) * 4;
+        farbe.setRGB(g.farben[ecke] ?? 0, g.farben[ecke + 1] ?? 0, g.farben[ecke + 2] ?? 0);
+        farben[id] = `#${farbe.getHexString()}`;
       });
     }
     return {
@@ -311,23 +346,26 @@ export class Leinwand {
       };
     };
     for (const i of ziele) {
-      if (!this.#sichtbar[i]) continue;
       const g = this.#grenzenJeBauteil.subarray(i * 6, i * 6 + 6);
       const mitte = probieren(
-        punkt.set(((g[0] ?? 0) + (g[3] ?? 0)) / 2, ((g[1] ?? 0) + (g[4] ?? 0)) / 2, ((g[2] ?? 0) + (g[5] ?? 0)) / 2),
+        punkt.set(
+          ((g[0] ?? 0) + (g[3] ?? 0)) / 2,
+          ((g[1] ?? 0) + (g[4] ?? 0)) / 2,
+          ((g[2] ?? 0) + (g[5] ?? 0)) / 2,
+        ),
       );
       if (mitte) return mitte;
-      for (const inst of this.#instanzen[i] ?? []) {
-        const netz = this.#netze[inst.netz];
-        const bereich = netz?.getGeometryRangeAt(netz.getGeometryIdAt(inst.id));
-        const index = netz?.geometry.getIndex();
-        const lage = netz?.geometry.getAttribute('position');
-        if (!bereich || !index || !lage) continue;
-        const dreiecke = Math.min(PROBEN_JE_TEIL, Math.floor(bereich.indexCount / 3));
+      for (const { gruppe, teil } of this.#teile[i] ?? []) {
+        const gr = this.#gruppen[gruppe];
+        if (!gr || gr.sichtbar[teil] !== 1) continue;
+        const lage = gr.netz.geometry.getAttribute('position');
+        const f = teil * TEIL_FELDER;
+        const index = gr.teile[f + 3] ?? 0;
+        const dreiecke = Math.min(PROBEN_JE_TEIL, Math.floor((gr.teile[f + 4] ?? 0) / 3));
         for (let d = 0; d < dreiecke; d++) {
           punkt.set(0, 0, 0);
           for (let e = 0; e < 3; e++) {
-            const ecke = index.getX(bereich.indexStart + d * 3 + e);
+            const ecke = gr.original[index + d * 3 + e] ?? 0;
             punkt.x += lage.getX(ecke) / 3;
             punkt.y += lage.getY(ecke) / 3;
             punkt.z += lage.getZ(ecke) / 3;
@@ -344,15 +382,7 @@ export class Leinwand {
     if (this.#angefordert !== null) cancelAnimationFrame(this.#angefordert);
     this.#angefordert = null;
     for (const f of this.#wartende.splice(0)) f();
-    for (const b of this.#beobachter) b.trennen();
-    const c = this.#canvas;
-    c.removeEventListener('pointerdown', this.#runter);
-    c.removeEventListener('pointermove', this.#bewegt);
-    c.removeEventListener('pointerup', this.#hoch);
-    c.removeEventListener('pointercancel', this.#abgebrochen);
-    c.removeEventListener('wheel', this.#rad);
-    c.removeEventListener('keydown', this.#taste);
-    c.removeEventListener('contextmenu', this.#kontextmenue);
+    for (const f of this.#trennen.splice(0)) f();
     this.#netzeFreigeben();
     this.#renderer.dispose();
   }
@@ -360,48 +390,78 @@ export class Leinwand {
   // ---------------------------------------------------------------------------------------------------------------
 
   #netzeFreigeben(): void {
-    for (const netz of this.#netze) {
+    for (const { netz } of this.#gruppen) {
       this.#szene.remove(netz);
-      netz.dispose();
-      (netz.material as MeshLambertMaterial).dispose();
+      netz.geometry.dispose();
+      netz.material.dispose();
     }
-    this.#netze = [];
-    this.#bauteilJeInstanz = [];
-    this.#eigeneFarben = [];
-    this.#instanzen = [];
+    this.#gruppen = [];
+    this.#teile = [];
     this.#verzeichnis = null;
   }
 
   #farbenLesen(): void {
     const tafel = farbtafelLesen(this.#canvas);
     this.#farben = new Map(
-      (Object.entries(tafel) as [Farbrolle, string][]).map(([rolle, wert]) => [rolle, new Color(wert || '#808080')]),
+      (Object.entries(tafel) as [Farbrolle, string][]).map(([rolle, wert]) => [
+        rolle,
+        new Color(wert || '#808080'),
+      ]),
     );
     this.#renderer.setClearColor(this.#farben.get('hintergrund') ?? new Color(0x808080), 1);
     this.#anfordern();
   }
 
-  #darstellungAnwenden(): void {
+  /** Überträgt Sichtbarkeit und Farbe je Bauteil in die Puffer; nur geänderte Teile (oder alle mit `erzwingen`). */
+  #darstellungAnwenden(erzwingen: boolean): void {
     const v = this.#verzeichnis;
     if (!v) return;
     const d = darstellungBerechnen(v, this.#eingaben);
-    const v4 = new Vector4();
-    this.#instanzen.forEach((liste, i) => {
+    const farbBereiche = this.#gruppen.map(() => new Bereiche());
+    const indexBereiche = this.#gruppen.map(() => new Bereiche());
+    this.#teile.forEach((liste, i) => {
       const art = d.farbe[i] ?? 'eigen';
-      const sichtbar = d.sichtbar[i] ?? true;
-      for (const { netz: n, id } of liste) {
-        const netz = this.#netze[n];
-        const eigene = this.#eigeneFarben[n];
-        if (!netz || !eigene) continue;
-        netz.setVisibleAt(id, sichtbar);
-        const deckkraft = eigene[id * 4 + 3] ?? 1;
-        const f = art === 'eigen' ? null : this.#farben.get(art);
-        if (f) netz.setColorAt(id, v4.set(f.r, f.g, f.b, deckkraft));
-        else netz.setColorAt(id, v4.set(eigene[id * 4] ?? 1, eigene[id * 4 + 1] ?? 1, eigene[id * 4 + 2] ?? 1, deckkraft));
+      const sichtbar = (d.sichtbar[i] ?? true) ? 1 : 0;
+      for (const { gruppe, teil } of liste) {
+        const g = this.#gruppen[gruppe];
+        if (!g) continue;
+        const f = teil * TEIL_FELDER;
+        const [ecke, ecken, index, indexzahl] = [
+          g.teile[f + 1] ?? 0,
+          g.teile[f + 2] ?? 0,
+          g.teile[f + 3] ?? 0,
+          g.teile[f + 4] ?? 0,
+        ];
+        if (g.sichtbar[teil] !== sichtbar) {
+          if (sichtbar) g.indizes.set(g.original.subarray(index, index + indexzahl), index);
+          else g.indizes.fill(ecke, index, index + indexzahl);
+          g.sichtbar[teil] = sichtbar;
+          indexBereiche[gruppe]?.merken(index, indexzahl);
+        }
+        // ein Teil ohne angewandte Farbe (null) unterscheidet sich immer von `art`
+        if (g.angewandt[teil] !== art || (erzwingen && art !== 'eigen')) {
+          const tafel = art === 'eigen' ? null : this.#farben.get(art);
+          const deckkraft = g.eigene[teil * 4 + 3] ?? 1;
+          const [r, gr, b] = tafel
+            ? [tafel.r, tafel.g, tafel.b]
+            : [g.eigene[teil * 4] ?? 1, g.eigene[teil * 4 + 1] ?? 1, g.eigene[teil * 4 + 2] ?? 1];
+          for (let k = ecke; k < ecke + ecken; k++) {
+            g.farben[k * 4] = r;
+            g.farben[k * 4 + 1] = gr;
+            g.farben[k * 4 + 2] = b;
+            g.farben[k * 4 + 3] = deckkraft;
+          }
+          g.angewandt[teil] = art;
+          farbBereiche[gruppe]?.merken(ecke * 4, ecken * 4);
+        }
       }
     });
-    this.#angewandt = d.farbe;
-    this.#sichtbar = d.sichtbar;
+    this.#gruppen.forEach((g, n) => {
+      const index = g.netz.geometry.getIndex();
+      const farbe = g.netz.geometry.getAttribute('farbe');
+      if (index) indexBereiche[n]?.hochladen(index);
+      if (farbe instanceof BufferAttribute) farbBereiche[n]?.hochladen(farbe);
+    });
     this.#anfordern();
   }
 
@@ -457,13 +517,44 @@ export class Leinwand {
     });
   }
 
-  /** Bauteilindex unter einem Punkt in Gerätekoordinaten (−1 … 1). */
+  /**
+   * Bauteilindex unter einem Punkt in Gerätekoordinaten (−1 … 1), CPU-Raycast (D-100.7): erst die Grenzen je sichtbarem
+   * Teil, dann nur die Dreiecke der Teile, deren Grenzen der Strahl vor dem bisher nächsten Treffer schneidet.
+   */
   #picken(ndc: Vector2): number | null {
     this.#raycaster.setFromCamera(ndc, this.#kamera3d);
-    const [treffer] = this.#raycaster.intersectObjects(this.#netze, false);
-    if (!treffer || treffer.batchId === undefined) return null;
-    const n = this.#netze.indexOf(treffer.object as BatchedMesh);
-    return this.#bauteilJeInstanz[n]?.[treffer.batchId] ?? null;
+    const strahl = this.#raycaster.ray;
+    const box = new Box3();
+    const [a, b, c, punkt] = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+    let naechster = Infinity;
+    let bauteil: number | null = null;
+    for (const g of this.#gruppen) {
+      const lage = g.netz.geometry.getAttribute('position');
+      const anzahl = g.teile.length / TEIL_FELDER;
+      for (let t = 0; t < anzahl; t++) {
+        if (g.sichtbar[t] !== 1) continue;
+        box.min.fromArray(g.grenzen, t * 6);
+        box.max.fromArray(g.grenzen, t * 6 + 3);
+        // ebene Teile (Grenzen ohne Dicke) sicher treffen
+        if (!strahl.intersectBox(box.expandByScalar(1e-4), punkt)) continue;
+        if (strahl.origin.distanceTo(punkt) >= naechster) continue;
+        const f = t * TEIL_FELDER;
+        const start = g.teile[f + 3] ?? 0;
+        const ende = start + (g.teile[f + 4] ?? 0);
+        for (let i = start; i < ende; i += 3) {
+          a.fromBufferAttribute(lage, g.original[i] ?? 0);
+          b.fromBufferAttribute(lage, g.original[i + 1] ?? 0);
+          c.fromBufferAttribute(lage, g.original[i + 2] ?? 0);
+          if (!strahl.intersectTriangle(a, b, c, false, punkt)) continue;
+          const abstand = strahl.origin.distanceTo(punkt);
+          if (abstand < naechster) {
+            naechster = abstand;
+            bauteil = g.teile[f] ?? null;
+          }
+        }
+      }
+    }
+    return bauteil;
   }
 
   #pickenBei(clientX: number, clientY: number): number | null {

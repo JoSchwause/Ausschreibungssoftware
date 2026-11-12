@@ -93,7 +93,9 @@ export function ifcText(m: Modellvorgabe): string {
   const ursprung2d = neu('IFCCARTESIANPOINT((0.,0.))');
   const lage2d = neu(`IFCAXIS2PLACEMENT2D(${ursprung2d},$)`);
   const kontext = neu(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,${welt},$)`);
-  const koerperKontext = neu(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,${kontext},$,.MODEL_VIEW.,$)`);
+  const koerperKontext = neu(
+    `IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,${kontext},$,.MODEL_VIEW.,$)`,
+  );
   const einheiten = [
     neu('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)'),
     neu('IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)'),
@@ -101,7 +103,9 @@ export function ifcText(m: Modellvorgabe): string {
     neu('IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)'),
   ];
   const zuweisung = neu(`IFCUNITASSIGNMENT((${einheiten.join(',')}))`);
-  const projekt = neu(`IFCPROJECT(${text(globalId('Projekt', 1))},$,'Pruefmodell',$,$,$,$,(${kontext}),${zuweisung})`);
+  const projekt = neu(
+    `IFCPROJECT(${text(globalId('Projekt', 1))},$,'Pruefmodell',$,$,$,$,(${kontext}),${zuweisung})`,
+  );
   const lageGrund = neu(`IFCLOCALPLACEMENT($,${welt})`);
   const grundstueck = neu(
     `IFCSITE(${text(globalId('Grund', 1))},$,'Grundstueck',$,$,${lageGrund},$,$,.ELEMENT.,$,$,$,$,$)`,
@@ -122,7 +126,9 @@ export function ifcText(m: Modellvorgabe): string {
     return { geschoss, lage };
   });
   if (geschosse.length > 0) {
-    neu(`IFCRELAGGREGATES(${text(relId())},$,$,$,${gebaeude},(${geschosse.map((g) => g.geschoss).join(',')}))`);
+    neu(
+      `IFCRELAGGREGATES(${text(relId())},$,$,$,${gebaeude},(${geschosse.map((g) => g.geschoss).join(',')}))`,
+    );
   }
 
   const stile = new Map<string, string>();
@@ -130,7 +136,9 @@ export function ifcText(m: Modellvorgabe): string {
     const vorhanden = stile.get(s.name);
     if (vorhanden) return vorhanden;
     const farbe = neu(`IFCCOLOURRGB($,${zahl(s.r)},${zahl(s.g)},${zahl(s.b)})`);
-    const darstellung = neu(`IFCSURFACESTYLERENDERING(${farbe},${zahl(s.transparenz)},$,$,$,$,$,$,.NOTDEFINED.)`);
+    const darstellung = neu(
+      `IFCSURFACESTYLERENDERING(${farbe},${zahl(s.transparenz)},$,$,$,$,$,$,.NOTDEFINED.)`,
+    );
     const stil = neu(`IFCSURFACESTYLE(${text(s.name)},.BOTH.,(${darstellung}))`);
     stile.set(s.name, stil);
     return stil;
@@ -162,9 +170,12 @@ export function ifcText(m: Modellvorgabe): string {
         ? neu(`IFCWINDOW(${kopf},$,$,.WINDOW.,$,$)`)
         : neu(
             `${b.klasse}(${kopf},${
-              { IFCWALL: '.STANDARD.', IFCSLAB: '.FLOOR.', IFCCOLUMN: '.COLUMN.', IFCBUILDINGELEMENTPROXY: '$' }[
-                b.klasse
-              ]
+              {
+                IFCWALL: '.STANDARD.',
+                IFCSLAB: '.FLOOR.',
+                IFCCOLUMN: '.COLUMN.',
+                IFCBUILDINGELEMENTPROXY: '$',
+              }[b.klasse]
             })`,
           );
     const liste = enthalten.get(b.geschoss) ?? [];
@@ -186,7 +197,9 @@ export function ifcText(m: Modellvorgabe): string {
   const raeumeJeGeschoss = new Map<number, string[]>();
   for (const r of m.raeume) {
     const { lage, form } = quader(r.geschoss, r.koerper);
-    const raum = neu(`IFCSPACE(${text(r.globalId)},$,${text(r.name)},$,$,${lage},${form},$,.ELEMENT.,.INTERNAL.,$)`);
+    const raum = neu(
+      `IFCSPACE(${text(r.globalId)},$,${text(r.name)},$,$,${lage},${form},$,.ELEMENT.,.INTERNAL.,$)`,
+    );
     const liste = raeumeJeGeschoss.get(r.geschoss) ?? [];
     liste.push(raum);
     raeumeJeGeschoss.set(r.geschoss, liste);
@@ -233,7 +246,10 @@ export function kleinesModell(): Modellvorgabe {
     bauteile: [
       {
         ...wand(1, 'Wand Sued', { x: 5, y: 0, z: 0, dx: 10, dy: 0.3, dz: 3 }),
-        oeffnung: { globalId: globalId('Oeffnung', 1), koerper: { x: 3, y: 0, z: 1, dx: 1.2, dy: 0.6, dz: 1.2 } },
+        oeffnung: {
+          globalId: globalId('Oeffnung', 1),
+          koerper: { x: 3, y: 0, z: 1, dx: 1.2, dy: 0.6, dz: 1.2 },
+        },
       },
       wand(2, 'Wand Nord', { x: 5, y: 8, z: 0, dx: 10, dy: 0.3, dz: 3 }),
       wand(3, 'Wand West', { x: 0, y: 4, z: 0, dx: 0.3, dy: 8, dz: 3 }),
@@ -262,7 +278,12 @@ export function kleinesModell(): Modellvorgabe {
         koerper: { x: 3, y: 0, z: 1, dx: 1.2, dy: 0.1, dz: 1.2 },
         stil: STILE.glas,
       },
-      { globalId: globalId('Platzhalter', 1), klasse: 'IFCBUILDINGELEMENTPROXY', name: 'Platzhalter', geschoss: 0 },
+      {
+        globalId: globalId('Platzhalter', 1),
+        klasse: 'IFCBUILDINGELEMENTPROXY',
+        name: 'Platzhalter',
+        geschoss: 0,
+      },
     ],
     raeume: [
       {

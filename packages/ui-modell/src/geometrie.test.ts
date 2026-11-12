@@ -67,7 +67,7 @@ describe('Geometriesammler: Teile je Deckung in einem Puffer, Lage eingerechnet'
     nahe((s.fertig()[0]?.normalen ?? []).slice(0, 3), [0.5 / l, 1 / l, 0]);
   });
 
-  it('trennt deckende und durchsichtige Teile; Dreiecke bleiben je Teil ab 0 gezählt', () => {
+  it('trennt deckende und durchsichtige Teile; die Dreiecke zählen die Ecken der ganzen Gruppe', () => {
     const s = new Geometriesammler();
     const teil = { ecken: dreieck(), dreiecke: new Uint32Array([0, 1, 2]), lage: EINHEIT };
     s.hinzufuegen({ ...teil, bauteil: 0, farbe: [1, 0, 0, 1] });
@@ -77,7 +77,8 @@ describe('Geometriesammler: Teile je Deckung in einem Puffer, Lage eingerechnet'
     const deckend = gruppen.find((g) => !g.durchsichtig);
     const durchsichtig = gruppen.find((g) => g.durchsichtig);
     expect([...(deckend?.teile ?? [])]).toEqual([0, 0, 3, 0, 3, 2, 3, 3, 3, 3]);
-    expect([...(deckend?.indizes ?? [])]).toEqual([0, 1, 2, 0, 1, 2]);
+    // das zweite deckende Teil beginnt bei Ecke 3: ein Puffer für einen einzigen Zeichenaufruf je Gruppe
+    expect([...(deckend?.indizes ?? [])]).toEqual([0, 1, 2, 3, 4, 5]);
     expect([...(durchsichtig?.teile ?? [])]).toEqual([1, 0, 3, 0, 3]);
     nahe(durchsichtig?.farben ?? [], [0, 0, 1, 0.4]);
   });

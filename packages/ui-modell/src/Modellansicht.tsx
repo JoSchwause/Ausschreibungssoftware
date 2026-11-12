@@ -79,17 +79,19 @@ export function Modellansicht(props: ModellansichtProps): ReactElement {
     if (!l) return;
     const start = performance.now();
     let aktiv = true;
+    // als Funktion, damit die Prüfung nach `await` nicht als schon entschieden gilt
+    const abgeloest = (): boolean => !aktiv;
     setZustand({ art: 'laedt' });
     const auftrag = geometrieLaden(datei);
     auftrag.ergebnis.then(
       async (geometrie) => {
-        if (!aktiv) return;
+        if (abgeloest()) return;
         l.modellZeigen(geometrie);
         l.darstellungSetzen(eingabenRef.current);
         const verzeichnis = l.verzeichnis;
         if (verzeichnis) setZustand({ art: 'bereit', verzeichnis, bauteile: geometrie.mitGeometrie.length });
         await l.gezeichnet();
-        if (!aktiv) return;
+        if (abgeloest()) return;
         rueckrufe.current.onGeladen?.({
           mitGeometrie: geometrie.mitGeometrie,
           ohneGeometrie: geometrie.ohneGeometrie,
@@ -97,7 +99,7 @@ export function Modellansicht(props: ModellansichtProps): ReactElement {
         });
       },
       (fehler: unknown) => {
-        if (!aktiv) return;
+        if (abgeloest()) return;
         melden(
           fehler instanceof Ladefehler
             ? fehler.fehler

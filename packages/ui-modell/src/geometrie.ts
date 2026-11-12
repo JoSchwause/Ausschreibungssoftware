@@ -29,7 +29,7 @@ export interface Geometriegruppe {
   readonly positionen: Float32Array;
   /** nx, ny, nz je Ecke, Länge 1 */
   readonly normalen: Float32Array;
-  /** Eckennummern, je Teil ab 0 gezählt (relativ zur ersten Ecke des Teils) */
+  /** Eckennummern der ganzen Gruppe (ein Zeichenaufruf je Gruppe); die Dreiecke eines Teils liegen am Stück */
   readonly indizes: Uint32Array;
   /** `TEIL_FELDER` Werte je Teil */
   readonly teile: Uint32Array;
@@ -90,7 +90,17 @@ function normalenmatrix(m: ArrayLike<number>): number[] {
   ];
   // Kofaktoren; (A⁻¹)ᵀ = Kofaktormatrix / det
   const k = [f * j - g * i, g * h - d * j, d * i - f * h, c * i - b * j, a * j - c * h, b * h - a * i];
-  const kofaktoren = [k[0], k[1], k[2], k[3], k[4], k[5], b * g - c * f, c * d - a * g, a * f - b * d] as number[];
+  const kofaktoren = [
+    k[0],
+    k[1],
+    k[2],
+    k[3],
+    k[4],
+    k[5],
+    b * g - c * f,
+    c * d - a * g,
+    a * f - b * d,
+  ] as number[];
   const det = a * (kofaktoren[0] ?? 0) + b * (kofaktoren[1] ?? 0) + c * (kofaktoren[2] ?? 0);
   if (Math.abs(det) < 1e-12) return [a, b, c, d, f, g, h, i, j];
   return kofaktoren.map((x) => x / det);
@@ -140,7 +150,7 @@ export class Geometriesammler {
     s.grenzen.push(...min, ...max);
     s.positionen.push(positionen);
     s.normalen.push(normalen);
-    s.indizes.push(t.dreiecke);
+    s.indizes.push(s.ecken === 0 ? t.dreiecke : t.dreiecke.map((e) => e + s.ecken));
     s.ecken += anzahl;
     s.indexzahl += t.dreiecke.length;
     for (let k = 0; k < 3; k++) {

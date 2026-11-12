@@ -69,7 +69,12 @@ export function passenderAbstand(g: Grenzen, seitenverhaeltnis: number): number 
 
 /** Schräg von oben auf das ganze Modell. */
 export function startansicht(g: Grenzen, seitenverhaeltnis: number): Kamerastand {
-  return { ziel: mitte(g), azimut: 45 * GRAD, hoehe: 30 * GRAD, abstand: passenderAbstand(g, seitenverhaeltnis) };
+  return {
+    ziel: mitte(g),
+    azimut: 45 * GRAD,
+    hoehe: 30 * GRAD,
+    abstand: passenderAbstand(g, seitenverhaeltnis),
+  };
 }
 
 /** Ziel und Abstand auf die Grenzen, die Blickrichtung bleibt. */

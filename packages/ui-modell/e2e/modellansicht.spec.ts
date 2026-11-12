@@ -210,7 +210,9 @@ test.describe('kleines Modell', () => {
     expect(await kamera(page)).toEqual(k0);
   });
 
-  test('F zeigt die Auswahl: Ziel in der Mitte der Leinwand, Abstand passend zum Bauteil', async ({ page }) => {
+  test('F zeigt die Auswahl: Ziel in der Mitte der Leinwand, Abstand passend zum Bauteil', async ({
+    page,
+  }) => {
     await page.keyboard.press('Tab');
     const k0 = await kamera(page);
     await page.keyboard.press('f');
@@ -238,7 +240,9 @@ test.describe('kleines Modell', () => {
     expect(await kamera(page)).toEqual(k0);
   });
 
-  test('Maus: Ziehen dreht, rechts Ziehen verschiebt, das Rad zoomt; nichts davon wählt aus', async ({ page }) => {
+  test('Maus: Ziehen dreht, rechts Ziehen verschiebt, das Rad zoomt; nichts davon wählt aus', async ({
+    page,
+  }) => {
     const k0 = await kamera(page);
     await page.mouse.move(700, 450);
     await page.mouse.down();
