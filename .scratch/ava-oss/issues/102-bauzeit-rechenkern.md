@@ -1,6 +1,6 @@
 # 102: X2: Terminrechnung des Bauzeitenplans (`bauzeit`)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X2 · Paket: `packages/bauzeit` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: –
@@ -201,3 +201,10 @@ CPU allein, 13,0 ms bei der Wiederholung nach der Suite (Budget 100 ms).
   `fixtures/bauzeit.json` (dort mit Sammelvorgang).
 - **113/118:** Texte für Monate („Mai 2027“) und Kalenderwochen („KW 21“) setzt die App aus `monate` und `kalenderwochen`;
   `BAUZEIT_ANNAHMEN.meilenstein` erklärt, warum ein Fertigstellungsmeilenstein am nächsten Arbeitstag steht.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `c62960d` (Branch `welle-6/102-bauzeit`, `8b0f1b1`). Paket `bauzeit`: Arbeitskalender mit
+Osterformel und Feiertagen aller 16 Länder (mit Quelle und Gültigkeitsjahr), Terminrechnung mit vier Beziehungsarten und Abstand,
+Puffer, kritische Wege, Sammelvorgänge, Zeitachse passend zu Ticket 96; 129 Tests, 1.000 Vorgänge in 13–15 ms. Meilenstein-Lesart
+D-102.2 angenommen (D-63).
