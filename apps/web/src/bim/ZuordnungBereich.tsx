@@ -5,7 +5,7 @@
 
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { Bauwerksmodell, KnotenId, Position, PositionId, ProjektId } from '@tethys/vertrag';
-import { zuordnungenPruefen } from '@tethys/bim';
+import { MENGENART_STUECK, zuordnungenPruefen } from '@tethys/bim';
 import { useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AufmassAusAuswahlDialog } from './AufmassAusAuswahlDialog';
@@ -197,7 +197,8 @@ function ZuordnenDialog({
   const [positionId, setPositionId] = useState<PositionId | null>(null);
   const [mengenart, setMengenart] = useState<string | undefined>(undefined);
   const arten = useMemo(() => mengenartenDerAuswahl(modell, auswahl), [modell, auswahl]);
-  const anzahl = arten.at(-1)?.anzahl ?? 0;
+  // Die Zahl der gewählten Bauteile trägt die Mengenart „Stück“ (jedes Bauteil zählt 1), ausdrücklich gesucht (Ticket 122).
+  const anzahl = arten.find((a) => a.name === MENGENART_STUECK)?.anzahl ?? 0;
   const treffer = useMemo(() => positionenSuchen(bezug.knoten, suche), [bezug.knoten, suche]);
   const position: Position | undefined = bezug.knoten.find(
     (k): k is Position => k.art === 'position' && k.id === positionId,
