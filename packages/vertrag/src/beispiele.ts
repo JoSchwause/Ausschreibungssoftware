@@ -1516,13 +1516,25 @@ export const beispielGlobalIds = {
 const g = beispielGlobalIds;
 
 /**
- * Punkt 1 (D-51): die Datei des ersten Stands, wie die App sie abgelegt hat. Der Hash ist erfunden (64 Hexziffern, klein);
- * sonst ist er der SHA-256 der unkomprimierten Bytes.
+ * Punkte 1 und 2 (D-51): die Datei des ersten Stands, wie die App sie abgelegt hat: Hash (SHA-256 der unkomprimierten
+ * Bytes), Name und Größe. Die Bytes des Beispiels sind nur der Rahmen einer IFC-Datei (Kopf ohne Instanzen, 215 Bytes,
+ * siehe `beispielModelldateiInProjektdatei`); sie stehen für die Datei des Beispielhauses.
  */
 export const beispielModelldatei: Modelldatei = {
-  hash: '5f2b9c0d4e6a8b1c3d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c',
+  hash: '95a2a75b559104a32534f6136c61766cfd482a33619764008759cd963e5ec33b',
   dateiname: 'haus-v1.ifc',
-  groesse: 48213,
+  groesse: 215,
+};
+
+/**
+ * Punkt 2 (D-51): dieselbe Datei als Eintrag der Projektdatei: `inhalt` sind die Bytes, mit deflate-raw komprimiert (hier mit
+ * Python `zlib`, Stufe 9) und Base64-kodiert. Eine andere Implementierung darf anders komprimieren; verglichen wird nur der
+ * SHA-256 der entpackten Bytes mit `hash`.
+ */
+export const beispielModelldateiInProjektdatei: NonNullable<Projektdatei['modelldateien']>[number] = {
+  hash: beispielModelldatei.hash,
+  inhalt:
+    'VU/LCsIwELz3K7xtCo1kU/FgTiFJacC2YooXESnaYi4t+Px9Ux+IMMwyM8wua11FkaUspRxFlBupzVpEmV2avTZOre2qtlVJCGx8+9Bt53t/9UM/2aphOB9934xqzHYQJ8AFQvypl7IwBE7N7ULvOPXdAULO+JwiUuQ1sgUbAQmBUH0RwBvfFU7lppDhuM3UDOJgm1I7o0SkZS1/Kkxq/x55Ag==',
 };
 
 /**

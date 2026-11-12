@@ -197,5 +197,7 @@ export const texte = {
     'schema-zu-neu': 'Die Daten stammen von einer neueren Version von Tethys AVA.',
     'migration-fehlgeschlagen': 'Die Daten ließen sich nicht auf diese Version umstellen.',
     unbekannt: 'Unbekannter Fehler beim Speichern.',
+    // v1.6: mechanisch angepasst, Folgeticket 106 (Export mit großen Modelldateien; Text dort prüfen)
+    'datei-zu-gross': 'Die Projektdatei wäre zu groß für eine einzelne Datei. Es wurde nichts exportiert.',
   } satisfies Record<Speicherfehlercode, string>,
 } as const;

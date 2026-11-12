@@ -6,6 +6,7 @@ import type {
   AngebotZustand,
   AufmassZustand,
   AuftragsLvZustand,
+  BauwerksmodellZustand,
   ChangeSet,
   Ergebnis,
   KostenermittlungZustand,
@@ -38,7 +39,7 @@ import type {
   Rechnung,
 } from './modell';
 import type { Betrag } from './zahlen';
-import type { BauwerksmodellKopf } from './bim';
+import type { BauwerksmodellKopf, Modelldatei } from './bim';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -150,7 +151,12 @@ export type Speicherfehlercode =
   | 'datei-ungueltig' // Projektdatei nicht lesbar oder nicht schemakonform
   | 'schema-zu-neu' // Projektdatei stammt von einer neueren Version
   | 'migration-fehlgeschlagen'
-  | 'unbekannt';
+  | 'unbekannt'
+  /**
+   * v1.6 (Ticket 97 Punkt 2, D-51): Die Projektdatei würde die Grenze für Zeichenketten der Laufzeit überschreiten (etwa
+   * 512 MB Text, meist wegen großer Modelldateien). Der Export schlägt laut fehl und kürzt nie (Q5); es entsteht keine Datei.
+   */
+  | 'datei-zu-gross';
 
 /** Speicherfehler als Wert: nie stiller Datenverlust (Q5). */
 export interface Speicherfehler {
@@ -285,6 +291,33 @@ export interface KostenermittlungRepository {
   laden(id: KostenermittlungId): Promise<Ergebnis<KostenermittlungZustand, Speicherfehler>>;
 }
 
+/**
+ * Ablage der Modelldateien (v1.6, Ticket 97 Punkt 2; D-51; Glossar „Modelldatei“): die Bytes der IFC-Dateien,
+ * inhaltsadressiert über den SHA-256 der unkomprimierten Bytes (`Modelldatei.hash`). Kein Repository eines Aggregats und kein
+ * Befehl: Ablegen schreibt keinen Protokolleintrag und kein ChangeSet und gehört nicht zur Undo-Historie. Die Ablage gehört
+ * zum ganzen Speicher, nicht zu einem Projekt: Dieselbe Datei in zwei Projekten liegt einmal ab. Bis Ticket 106 antwortet
+ * `speicher` auf alle drei Aufrufe mit `unbekannt`.
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - `ablegen` ist idempotent: Dieselben Bytes ergeben denselben Hash und liegen nur einmal ab; ein zweites Ablegen ist kein
+ *   Fehler. Eine Größengrenze prüft die Ablage nicht (über etwa 200 MB ist die Datei ein Befund der App, keine Sperre, D-51);
+ *   ist die Quote erschöpft, `speicher-voll`.
+ * - Die App legt die Bytes ab, **bevor** sie `BauwerksmodellAnlegen` schreibt. Ein ChangeSet, das ein Modell anlegt
+ *   (`kopf.vorher: null`), dessen `datei.hash` keine abgelegten Bytes nennt oder dessen `datei.groesse` nicht deren Länge
+ *   ist, weist `speicher.anwenden` mit `konflikt` ab (Q5: kein Modell ohne Datei).
+ * - Bytes bleiben, solange ein Bauwerksmodell irgendeines Projekts ihren Hash nennt. **Freigabe:** Bytes, die kein Modell
+ *   nennt, entfernt `speicher` nur beim Öffnen des Speichers (Beginn einer Sitzung; eine Sitzung je Datenbank, E-14), nie
+ *   während einer Sitzung: Die Undo-Historie lebt nur in der Sitzung (ADR 0006), und ein Undo von `BauwerksmodellLoeschen`
+ *   oder ein Wiederholen des Anlegens findet die Bytes so noch. Ebenso fallen beim nächsten Öffnen abgelegte Bytes weg, deren
+ *   Anlegen nie geschrieben wurde (etwa ein abgebrochenes Einlesen).
+ * - `laden` liefert die Bytes unverändert (dieselben, die abgelegt wurden); ein Hash ohne Bytes: `nicht-gefunden`.
+ */
+export interface Modelldateiablage {
+  ablegen(bytes: Uint8Array): Promise<Ergebnis<Modelldatei['hash'], Speicherfehler>>;
+  laden(hash: Modelldatei['hash']): Promise<Ergebnis<Uint8Array, Speicherfehler>>;
+  vorhanden(hash: Modelldatei['hash']): Promise<Ergebnis<boolean, Speicherfehler>>;
+}
+
 /** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
 export interface LvStandRepository {
   /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
@@ -341,6 +374,11 @@ export interface Speicher {
   readonly rechnungen: RechnungRepository;
   /** Kostenermittlungen (v1.4, Ticket 70 Punkt 10; Pflicht). `speicher` liefert sie mit Ticket 79, bis dahin `unbekannt`. */
   readonly kostenermittlungen: KostenermittlungRepository;
+  /**
+   * Die Bytes der Modelldateien (v1.6, Ticket 97 Punkt 2, D-51; Pflicht wie die Repositories). `speicher` liefert sie mit
+   * Ticket 106, bis dahin `unbekannt`.
+   */
+  readonly modelldateien: Modelldateiablage;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -386,4 +424,24 @@ export interface Projektdatei {
   readonly aufmasse?: readonly AufmassZustand[];
   readonly rechnungen?: readonly RechnungZustand[];
   readonly kostenermittlungen?: readonly KostenermittlungZustand[];
+  /**
+   * Bauwerksmodelle des Projekts (v1.6, Ticket 97 Punkt 2; D-51). Vorläufige Annahme, Entscheidung offen (enge Lesart, wie
+   * `aufmasse`): optional, fehlt = keine; `speicher` lässt ein leeres Feld weg. Die Migration (Schema 6) liefert Ticket 106.
+   */
+  readonly bauwerksmodelle?: readonly BauwerksmodellZustand[];
+  /**
+   * Die Bytes der Modelldateien, die die Bauwerksmodelle dieser Datei nennen (v1.6, Ticket 97 Punkt 2; D-51), damit eine
+   * Sicherung eine einzige Datei bleibt. Optional, fehlt = keine (nur mit `bauwerksmodelle`). Lesarten (vorläufige Annahme,
+   * Entscheidung offen, enge Lesart):
+   * - Je Hash genau ein Eintrag, nach `hash` aufsteigend (kanonische Datei); `hash` ist der SHA-256 der unkomprimierten
+   *   Bytes, `inhalt` die Bytes, mit deflate-raw (RFC 1951) komprimiert und Base64-kodiert (RFC 4648, mit Auffüllung).
+   * - Vollständig und nur das Nötige: Der Export schreibt genau die Hashes, die die Modelle der Datei nennen. Fehlt beim
+   *   Import ein genannter Hash oder ist der SHA-256 der entpackten Bytes nicht `hash`, weist der Import die ganze Datei mit
+   *   `datei-ungueltig` ab (nichts wird halb importiert, Q5); Bytes, die schon abgelegt sind, bleiben unverändert.
+   * - Prüfsummen und Tests vergleichen den SHA-256 der unkomprimierten Bytes, nie den Text `inhalt`: deflate ist zwischen
+   *   Implementierungen nicht byte-stabil (D-51). Darum ist die Datei mit Modellen nur bis auf `inhalt` byte-stabil.
+   * - Nähert sich der Export der Grenze für Zeichenketten (etwa 512 MB Text), schlägt er mit `datei-zu-gross` fehl und kürzt
+   *   nie (D-51).
+   */
+  readonly modelldateien?: readonly { readonly hash: Modelldatei['hash']; readonly inhalt: string }[];
 }

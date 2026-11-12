@@ -305,6 +305,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'leistungsverzeichnisse',
       'lvStaende',
       'migrationsbefunde',
+      'modelldateien', // v1.6: mechanisch angepasst, Folgeticket 106
       'persistenzstatus',
       'projektdateiExportieren',
       'projektdateiImportieren',

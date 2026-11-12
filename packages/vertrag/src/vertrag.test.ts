@@ -2,6 +2,8 @@
 // Typtests für `vertrag` (Ticket 02). Sie laufen im Typprüfer (`pnpm typecheck`); zur Laufzeit prüft vitest
 // nur die Konstantentabelle und die Beispiele.
 
+import { createHash } from 'node:crypto';
+import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   NACHKOMMASTELLEN,
@@ -264,6 +266,7 @@ import type {
   IfcGlobalId,
   IfcSchema,
   Modelldatei,
+  Modelldateiablage,
   Strukturknoten,
 } from './index';
 import {
@@ -275,6 +278,7 @@ import {
   beispielChangeSetBauwerksmodellUmbenennen,
   beispielGlobalIds,
   beispielModelldatei,
+  beispielModelldateiInProjektdatei,
 } from './beispiele';
 
 /**
@@ -2036,5 +2040,52 @@ describe('v1.6 Punkt 1: Bauwerksmodell (X1, D-50, D-51, D-53)', () => {
     expectTypeOf<NurDaten<BauwerksmodellChangeSet>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<BauwerksmodellBefehl>>().toEqualTypeOf<true>();
     expectTypeOf<Uint8Array>().not.toExtend<Modelldatei[keyof Modelldatei]>();
+  });
+});
+
+describe('v1.6 Punkt 2: Modelldateien (D-51)', () => {
+  it('eine inhaltsadressierte Ablage am Speicher, kein Befehl: ablegen liefert den Hash, laden die Bytes', () => {
+    expectTypeOf<Speicher['modelldateien']>().toEqualTypeOf<Modelldateiablage>();
+    expectTypeOf<Modelldateiablage['ablegen']>().parameter(0).toEqualTypeOf<Uint8Array>();
+    expectTypeOf<ReturnType<Modelldateiablage['ablegen']>>().toEqualTypeOf<
+      Promise<Ergebnis<Modelldatei['hash'], Speicherfehler>>
+    >();
+    expectTypeOf<Modelldateiablage['laden']>().parameter(0).toEqualTypeOf<Modelldatei['hash']>();
+    expectTypeOf<ReturnType<Modelldateiablage['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<Uint8Array, Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<Modelldateiablage['vorhanden']>>().toEqualTypeOf<
+      Promise<Ergebnis<boolean, Speicherfehler>>
+    >();
+    // Ablegen ist kein Befehl: Es gibt keinen Befehlsnamen dafür.
+    expectTypeOf<Extract<Befehlsart, `Modelldatei${string}`>>().toEqualTypeOf<never>();
+  });
+
+  it('Projektdatei: Modelle und Modelldateien optional (fehlt = keine); die Bytes als deflate-raw in Base64', () => {
+    expectTypeOf<Projektdatei['bauwerksmodelle']>().toEqualTypeOf<
+      readonly BauwerksmodellZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['modelldateien']>().toEqualTypeOf<
+      readonly { readonly hash: string; readonly inhalt: string }[] | undefined
+    >();
+  });
+
+  it('Beispiel: verglichen wird der SHA-256 der entpackten Bytes, nie der komprimierte Text', () => {
+    const { hash, inhalt } = beispielModelldateiInProjektdatei;
+    const bytes = inflateRawSync(Buffer.from(inhalt, 'base64'));
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(hash);
+    expect(bytes.length).toBe(beispielModelldatei.groesse);
+    expect(hash).toBe(beispielBauwerksmodell.datei.hash);
+    // Ein anderer Packer liefert anderen Text für dieselben Bytes: Der Hash bleibt derselbe.
+    const anders = deflateRawSync(bytes, { level: 1 }).toString('base64');
+    expect(
+      createHash('sha256')
+        .update(inflateRawSync(Buffer.from(anders, 'base64')))
+        .digest('hex'),
+    ).toBe(hash);
+  });
+
+  it('ein eigener Fehlercode für einen Export über der Grenze für Zeichenketten (kürzt nie, D-51)', () => {
+    expectTypeOf<'datei-zu-gross'>().toExtend<Speicherfehlercode>();
   });
 });
