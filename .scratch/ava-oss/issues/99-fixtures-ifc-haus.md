@@ -175,12 +175,14 @@ drei Hausdateien und ein erzeugtes Modell mit 600 Bauteilen laden; jedes Bauteil
 ausgeschnitten (bis 52 Dreiecke statt 12), die Aussparung der Bodenplatte ebenso; Räume liefert `StreamAllMeshes` wie
 üblich nicht.
 
-**Suite** nach `git merge integration/welle-6` (Stand `c42e389`): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün,
-`pnpm typecheck` grün, `pnpm test` grün (Vitest 218 Dateien, 2.848 Tests bestanden, 3 übersprungen; `node --test
-"fixtures/*.test.mjs"` 42/42, etwa 2,4 s). Ein erster Lauf der ganzen Suite bei Last 16–19 auf 4 Kernen fiel nur im
-Leistungsbudget D-45 von `apps/web/src/abrechnung/leistung.test.ts` (fremdes Paket, liest keine Datei dieses Tickets):
-Rückgängig Median 109,4 ms > 100 ms; die Datei allein: Rückgängig 28,7 ms, Befehl 30,1 ms, Wiederholen 27,0 ms; der zweite
-volle Lauf war ganz grün. Kein Budget gelockert, kein Test übersprungen.
+**Suite** nach `git merge integration/welle-6` (Stand `c04946e`, mit 100 und 102): `NODE_OPTIONS=--max-old-space-size=8192
+pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` grün (Vitest 235 Dateien, 3.035 Tests bestanden, 3 übersprungen;
+`node --test "fixtures/*.test.mjs"` 42/42, etwa 2,4 s). Bei Last 16–22 auf 4 Kernen fielen zwei volle Läufe nur in
+Leistungsbudgets fremder Pakete, die keine Datei dieses Tickets lesen: D-45 in `apps/web/src/abrechnung/leistung.test.ts`
+(Rückgängig Median 109,4 ms bzw. Wiederholen 119,6 ms > 100 ms; die Datei allein: Rückgängig 28,7 bzw. 41,6 ms, Befehl
+30,1 ms, Wiederholen 27,0 ms) und `packages/vergabe/src/leistung.test.ts` (Preisspiegel `gross` 2.592 ms > 1.000 ms; allein
+383 ms). Der jeweils nächste volle Lauf (vor und nach dem zweiten Merge) war ganz grün. Kein Budget gelockert, kein Test
+übersprungen.
 
 **Offen / Hinweise:** keine G-Frage berührt. Für 107/108/117: Die Lesarten D-99.2, D-99.5 bis D-99.10 und D-99.12 sind
 Annahmen dieser Fixture; wählt `bim` andere Befundcodes oder Ausdrucksformen, gelten die Mengen und Beträge trotzdem.
