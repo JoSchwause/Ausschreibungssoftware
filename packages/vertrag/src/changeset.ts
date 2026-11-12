@@ -16,6 +16,7 @@ import type {
   AufmassId,
   AuftragsLeistungsverzeichnisId,
   BauwerksmodellId,
+  BauzeitenplanId,
   KnotenId,
   KostenermittlungId,
   LeistungsverzeichnisId,
@@ -42,6 +43,7 @@ import type {
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
 import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from './bim';
+import type { Bauzeitenplan } from './bauzeit';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -179,6 +181,14 @@ export interface KostenermittlungZustand {
  */
 export interface BauwerksmodellZustand {
   readonly bauwerksmodell: Bauwerksmodell;
+}
+
+/**
+ * Bauzeitenplan als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 4). Ohne Termine: Die rechnet `bauzeit` bei Bedarf
+ * (`Bauzeitenplanergebnis`, D-57), gespeichert werden nur die Eingaben.
+ */
+export interface BauzeitenplanZustand {
+  readonly bauzeitenplan: Bauzeitenplan;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -363,6 +373,18 @@ export interface BauwerksmodellChangeSet {
   readonly bauwerksmodellId: BauwerksmodellId;
   readonly kopf: Aenderung<BauwerksmodellKopf>;
   readonly inhalt?: Aenderung<BauwerksmodellInhalt>;
+}
+
+/**
+ * ChangeSet an einem Bauzeitenplan (v1.6, Ticket 97 Punkt 4; D-57): der ganze Plan vorher und nachher, Lesart wie
+ * `AufmassChangeSet` (Anlegen `vorher: null`, Löschen `nachher: null`, Umkehrung durch Tausch). Ein Plan ist eine
+ * Recheneinheit und bleibt ein Aggregat; Ticket 106 misst Speichern und Undo bei 1.000 Vorgängen (D-45-Muster), über dem
+ * Budget folgt `Aenderungen<Vorgang>` in einem Vertragsticket.
+ */
+export interface BauzeitenplanChangeSet {
+  readonly art: 'bauzeitenplan';
+  readonly bauzeitenplanId: BauzeitenplanId;
+  readonly bauzeitenplan: Aenderung<Bauzeitenplan>;
 }
 
 /** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */

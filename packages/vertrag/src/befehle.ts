@@ -20,6 +20,7 @@ import type {
   PositionId,
   ProjektId,
   ProtokollId,
+  VorgangId,
 } from './marken';
 import type {
   Angebot,
@@ -52,6 +53,7 @@ import type {
   Zuschlag,
 } from './modell';
 import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
+import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -893,6 +895,70 @@ export interface BauwerksmodellLoeschen {
 /** Befehle gegen ein Bauwerksmodell (Zustand: `BauwerksmodellZustand`; v1.6, Ticket 97 Punkt 1). */
 export type BauwerksmodellBefehl = BauwerksmodellAnlegen | BauwerksmodellUmbenennen | BauwerksmodellLoeschen;
 
+// --- Bauzeitenplan (v1.6, X2; D-57; Ausführer in `bauzeit`, Ticket 109) ------------------------------------------------
+//
+// Der Ausführer sieht nur den Plan (Signatur `BauzeitenplanBefehlAusfuehren`) und prüft die Form (`ungueltige-eingabe` mit
+// `feld`; Lesarten an `Bauzeitenplan`, `Vorgang`, `Anordnungsbeziehung`, `Arbeitskalender`, `Isttermine`). Fachliche
+// Auffälligkeiten (Zyklus über Anordnungsbeziehungen, Beziehung oder Terminvorgabe an einem Sammelvorgang) sind Befunde der
+// Terminrechnung, keine Fehler (U5). ChangeSet aller Befehle: `BauzeitenplanChangeSet` mit dem ganzen Plan vorher und nachher
+// (D-57; Ticket 106 misst Undo bei 1.000 Vorgängen, über dem Budget folgt `Aenderungen<Vorgang>`).
+
+/**
+ * Legt einen Bauzeitenplan an (Zustand `null`), leer oder mit Vorgängen (etwa als Kopie eines Plans oder aus einer Fixture).
+ * Der Ausführer prüft die Form aller Teile und die Dokumentreihenfolge der Vorgänge (siehe `Bauzeitenplan`); doppelte
+ * Kennungen von Vorgängen: `ungueltige-eingabe`. Kein Massenbefehl (D-97.9): Ein Plan entsteht meist leer und wächst über
+ * `VorgangSetzen`.
+ */
+export interface BauzeitenplanAnlegen {
+  readonly art: 'BauzeitenplanAnlegen';
+  readonly bauzeitenplan: Bauzeitenplan;
+}
+
+/** Setzt Name, Projektbeginn und Arbeitskalender des Plans als ganze Werte; die Vorgänge bleiben. */
+export interface BauzeitenplankopfSetzen {
+  readonly art: 'BauzeitenplankopfSetzen';
+  readonly name: string;
+  readonly projektbeginn: string;
+  readonly kalender: Arbeitskalender;
+}
+
+/**
+ * Setzt einen Vorgang: legt ihn an (seine Kennung steht noch nicht im Plan) oder ersetzt den Vorgang mit dieser Kennung, und
+ * legt seine Lage fest (Lesart, vorläufige Annahme, Entscheidung offen):
+ * - Lage: unter `vorgang.elternId` direkt hinter dem Geschwister `nach` (ein Vorgang mit derselben `elternId`, sonst
+ *   `ungueltige-eingabe` mit `feld: 'nach'`); `nach: null` heißt als erstes Kind (bzw. als erster Vorgang der obersten Ebene).
+ *   Beim Ersetzen zieht der Teilbaum des Vorgangs mit; wer ihn nicht verschieben will, nennt das Geschwister, hinter dem er
+ *   schon steht.
+ * - Die Kinder eines ersetzten Vorgangs bleiben seine Kinder; seine Kennung ändert sich nie.
+ * - Anordnungsbeziehungen nennen nur Vorgänge, die nach dem Befehl im Plan stehen (sonst `ungueltige-eingabe`); einen
+ *   Vorgänger, den es noch nicht gibt, setzt die App nach dessen Anlegen.
+ */
+export interface VorgangSetzen {
+  readonly art: 'VorgangSetzen';
+  readonly vorgang: Vorgang;
+  readonly nach: VorgangId | null;
+}
+
+/**
+ * Entfernt einen Vorgang samt seinem Teilbaum (Lesart wie `KnotenLoeschen`, vorläufige Annahme, Entscheidung offen) und
+ * im selben ChangeSet jede Anordnungsbeziehung anderer Vorgänge, die einen entfernten Vorgang nennt, damit nie ein Verweis
+ * hängt. Eine Kennung ohne Vorgang im Plan: `knoten-unbekannt` (ein Vorgang ist ein Knoten des Plans). Q5: Hat der Vorgang
+ * Kinder oder Nachfolger, fragt die Oberfläche nach; das ChangeSet trägt den ganzen Plan vorher (Undo).
+ */
+export interface VorgangEntfernen {
+  readonly art: 'VorgangEntfernen';
+  readonly vorgangId: VorgangId;
+}
+
+/** Löscht den Plan samt Vorgängen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist darauf. */
+export interface BauzeitenplanLoeschen {
+  readonly art: 'BauzeitenplanLoeschen';
+}
+
+/** Befehle gegen einen Bauzeitenplan (Zustand: `BauzeitenplanZustand`; v1.6, Ticket 97 Punkt 4). */
+export type BauzeitenplanBefehl =
+  BauzeitenplanAnlegen | BauzeitenplankopfSetzen | VorgangSetzen | VorgangEntfernen | BauzeitenplanLoeschen;
+
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
 /**
@@ -937,7 +1003,8 @@ export type Befehl =
   | RechnungBefehl
   | KostenermittlungBefehl
   // v1.6 (Ticket 97)
-  | BauwerksmodellBefehl;
+  | BauwerksmodellBefehl
+  | BauzeitenplanBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];

@@ -1017,11 +1017,16 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   KostenermittlungseintragSetzen: true,
   KostenermittlungseintragEntfernen: true,
   KostenermittlungLoeschen: true,
-  // v1.6: mechanisch angepasst, Folgeticket 106 (Bauwerksmodell; `anwenden` weist sein ChangeSet bis dahin ab)
+  // v1.6: mechanisch angepasst, Folgeticket 106 (die Befehle aus vertrag v1.6; `anwenden` weist ihre ChangeSets bis dahin ab)
   BauwerksmodellAnlegen: true,
   BauwerksmodellUmbenennen: true,
   BauwerksmodellLoeschen: true,
   BauteileZuordnen: true,
+  BauzeitenplanAnlegen: true,
+  BauzeitenplankopfSetzen: true,
+  VorgangSetzen: true,
+  VorgangEntfernen: true,
+  BauzeitenplanLoeschen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

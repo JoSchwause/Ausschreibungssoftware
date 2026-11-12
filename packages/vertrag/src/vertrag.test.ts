@@ -252,6 +252,36 @@ import {
 } from './beispiele';
 // v1.6 (Ticket 97)
 import type {
+  Anordnungsart,
+  Anordnungsbeziehung,
+  Arbeitskalender,
+  Bauzeitenplan,
+  BauzeitenplanBefehl,
+  BauzeitenplanChangeSet,
+  Bauzeitenplanergebnis,
+  BauzeitenplanId,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanZustand,
+  Bundesland,
+  Isttermine,
+  Vorgang,
+  Vorgangsart,
+  Vorgangsbezug,
+  Vorgangsergebnis,
+  VorgangSetzen,
+  Vorgangstermine,
+  VorgangId,
+  Wochentag,
+} from './index';
+import {
+  beispielBauzeitenplan,
+  beispielBauzeitenplanbefehle,
+  beispielBauzeitenplanergebnis,
+  beispielChangeSetVorgangEntfernen,
+  beispielVorgangEntfernen,
+  beispielVorgangSetzen,
+} from './beispiele';
+import type {
   BauteileZuordnen,
   Bauteil,
   Bauteilmenge,
@@ -2152,5 +2182,141 @@ describe('v1.6 Punkt 3: Zuordnung Bauteil ↔ Position (X1c, D-52)', () => {
 
   it('offene Typfrage (D-53): eine Ansatzzeile nennt keine GlobalId', () => {
     expectTypeOf<Ansatzzeile>().not.toHaveProperty('globalId');
+  });
+});
+
+describe('v1.6 Punkt 4: Bauzeitenplan (X2, D-57)', () => {
+  it('Kennungen, Wochentag, Bundesland (16 Kürzel ohne DE-), Arbeitskalender und Anordnungsart', () => {
+    expectTypeOf<string>().not.toExtend<BauzeitenplanId>();
+    expectTypeOf<VorgangId>().not.toExtend<BauzeitenplanId>();
+    expectTypeOf<Wochentag>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6 | 7>();
+    const laender: Record<Bundesland, true> = {
+      BW: true,
+      BY: true,
+      BE: true,
+      BB: true,
+      HB: true,
+      HH: true,
+      HE: true,
+      MV: true,
+      NI: true,
+      NW: true,
+      RP: true,
+      SL: true,
+      SN: true,
+      ST: true,
+      SH: true,
+      TH: true,
+    };
+    expect(Object.keys(laender)).toHaveLength(16);
+    expectTypeOf<Arbeitskalender>().toEqualTypeOf<{
+      readonly arbeitstage: readonly Wochentag[];
+      readonly bundesland: Bundesland | null;
+      readonly freieTage: readonly string[];
+    }>();
+    expectTypeOf<Anordnungsart>().toEqualTypeOf<
+      'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'
+    >();
+    expectTypeOf<Anordnungsbeziehung>().toEqualTypeOf<{
+      readonly vorgaengerId: VorgangId;
+      readonly art: Anordnungsart;
+      readonly abstand: number;
+    }>();
+  });
+
+  it('Vorgang: nur Eingaben; Nummer, Terminvorgabe, Bezug und Ist nullbar; nichts Gerechnetes', () => {
+    expectTypeOf<Vorgang['nummer']>().toEqualTypeOf<string | null>();
+    expectTypeOf<Vorgang['elternId']>().toEqualTypeOf<VorgangId | null>();
+    expectTypeOf<Vorgang['bezug']>().toEqualTypeOf<Vorgangsbezug | null>();
+    expectTypeOf<Vorgang['ist']>().toEqualTypeOf<Isttermine | null>();
+    expectTypeOf<Isttermine['fortschritt']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Vorgang>().not.toHaveProperty('termine');
+    expectTypeOf<Vorgang>().not.toHaveProperty('beginn');
+    expectTypeOf<Bauzeitenplan>().not.toHaveProperty('kritischeWege');
+  });
+
+  it('Vorgangsbezug: LV oder Auftrags-LV wie im AggregatBezug, ganz (null) oder Positionen und Gliederungen', () => {
+    expectTypeOf<Vorgangsbezug['art']>().toEqualTypeOf<
+      'leistungsverzeichnis' | 'auftrags-leistungsverzeichnis'
+    >();
+    expectTypeOf<NonNullable<Vorgangsbezug['knotenIds']>[number]>().toEqualTypeOf<
+      GliederungId | PositionId
+    >();
+    expectTypeOf<HinweistextId>().not.toExtend<NonNullable<Vorgangsbezug['knotenIds']>[number]>();
+    const [rohbau, , mauerwerk] = beispielBauzeitenplan.vorgaenge;
+    expect(rohbau?.bezug?.knotenIds).toBeNull();
+    expect(mauerwerk?.bezug?.knotenIds).toHaveLength(1);
+  });
+
+  it('Beispiel: Dokumentreihenfolge, Vorgänger und Eltern im Plan, Kennungen eindeutig', () => {
+    const v = beispielBauzeitenplan.vorgaenge;
+    const ids = v.map((x) => x.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    v.forEach((x, i) => {
+      if (x.elternId !== null) expect(ids.indexOf(x.elternId)).toBeLessThan(i);
+      for (const b of x.vorgaenger) expect(ids).toContain(b.vorgaengerId);
+      expect(Number.isSafeInteger(x.dauer) && x.dauer >= 0).toBe(true);
+    });
+    expect(beispielBauzeitenplan.kalender.arbeitstage).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('Ergebnis: je Vorgang Art und Termine (oder null), mehrere kritische Wege möglich, Befunde der gemeinsamen Liste', () => {
+    expectTypeOf<Bauzeitenplanergebnis['vorgaenge'][number]>().toEqualTypeOf<Vorgangsergebnis>();
+    expectTypeOf<Vorgangsergebnis['termine']>().toEqualTypeOf<Vorgangstermine | null>();
+    expectTypeOf<Vorgangsart>().toEqualTypeOf<'vorgang' | 'sammelvorgang' | 'meilenstein'>();
+    expectTypeOf<Bauzeitenplanergebnis['kritischeWege']>().toEqualTypeOf<readonly (readonly VorgangId[])[]>();
+    expectTypeOf<Bauzeitenplanergebnis['befunde']>().toEqualTypeOf<readonly Pruefbefund[]>();
+    const e = beispielBauzeitenplanergebnis;
+    expect(e.vorgaenge.map((x) => x.vorgangId)).toEqual(beispielBauzeitenplan.vorgaenge.map((x) => x.id));
+    const meilenstein = e.vorgaenge.find((x) => x.art === 'meilenstein')?.termine;
+    expect(meilenstein?.beginn).toBe(meilenstein?.ende);
+    expect(e.projektende).toBe(meilenstein?.ende);
+    // Sammelvorgänge gehören nie zum kritischen Weg.
+    const sammel = new Set(e.vorgaenge.filter((x) => x.art === 'sammelvorgang').map((x) => x.vorgangId));
+    for (const weg of e.kritischeWege) for (const id of weg) expect(sammel.has(id)).toBe(false);
+  });
+
+  it('Befehle: Anlegen, Kopf setzen, Vorgang setzen (mit Lage), Vorgang entfernen, Löschen; kein Massenbefehl', () => {
+    expectTypeOf<BauzeitenplanBefehl['art']>().toEqualTypeOf<
+      | 'BauzeitenplanAnlegen'
+      | 'BauzeitenplankopfSetzen'
+      | 'VorgangSetzen'
+      | 'VorgangEntfernen'
+      | 'BauzeitenplanLoeschen'
+    >();
+    expectTypeOf<BauzeitenplanBefehl>().toExtend<Befehl>();
+    expectTypeOf<VorgangSetzen['nach']>().toEqualTypeOf<VorgangId | null>();
+    expectTypeOf<BauzeitenplankopfSetzen>().toEqualTypeOf<{
+      readonly art: 'BauzeitenplankopfSetzen';
+      readonly name: string;
+      readonly projektbeginn: string;
+      readonly kalender: Arbeitskalender;
+    }>();
+    expectTypeOf<'BauzeitenplanAnlegen'>().not.toExtend<Massenbefehlsart>();
+    const { vorgang, nach } = beispielVorgangSetzen;
+    const geschwister = beispielBauzeitenplan.vorgaenge.filter((x) => x.elternId === vorgang.elternId);
+    expect(geschwister.map((x) => x.id)).toContain(nach);
+  });
+
+  it('ChangeSet als ganzer Plan; Entfernen nimmt die Beziehungen auf den Vorgang mit, die Umkehrung durch Tausch', () => {
+    expectTypeOf<BauzeitenplanChangeSet['bauzeitenplan']>().toEqualTypeOf<Aenderung<Bauzeitenplan>>();
+    expectTypeOf<BauzeitenplanZustand>().toEqualTypeOf<{ readonly bauzeitenplan: Bauzeitenplan }>();
+    const { vorher, nachher } = beispielChangeSetVorgangEntfernen.bauzeitenplan;
+    const weg = beispielVorgangEntfernen.vorgangId;
+    expect(vorher?.vorgaenge.some((x) => x.id === weg)).toBe(true);
+    expect(nachher?.vorgaenge.some((x) => x.id === weg)).toBe(false);
+    for (const x of nachher?.vorgaenge ?? [])
+      expect(x.vorgaenger.map((b) => b.vorgaengerId)).not.toContain(weg);
+    expect(beispielBauzeitenplanbefehle.map((b) => b.art)).toEqual([
+      'BauzeitenplanAnlegen',
+      'BauzeitenplankopfSetzen',
+      'BauzeitenplanLoeschen',
+    ]);
+  });
+
+  it('die vertraglichen Eingaben passen in die Form, die `bauzeit` rechnet (reine Daten)', () => {
+    expectTypeOf<NurDaten<Bauzeitenplan>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Bauzeitenplanergebnis>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauzeitenplanBefehl>>().toEqualTypeOf<true>();
   });
 });

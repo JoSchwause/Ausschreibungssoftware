@@ -59,6 +59,16 @@ import type {
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
 import type {
+  BauzeitenplanAnlegen,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanLoeschen,
+  VorgangEntfernen,
+  VorgangSetzen,
+} from './befehle';
+import type { Bauzeitenplan, Bauzeitenplanergebnis } from './bauzeit';
+import type { BauzeitenplanChangeSet } from './changeset';
+import type { BauzeitenplanId, VorgangId } from './marken';
+import type {
   BauteileZuordnen,
   BauwerksmodellAnlegen,
   BauwerksmodellLoeschen,
@@ -1746,3 +1756,192 @@ export const beispielBauteileEntfernen: BauteileZuordnen = {
   positionId: posId,
   bauteile: null,
 };
+
+const planId = '019b76e9-0000-7000-8000-000000000301' as BauzeitenplanId;
+const vg = (n: string): VorgangId => `019b76e9-0000-7000-8000-00000000031${n}` as VorgangId;
+const rohbau = vg('0');
+const erdarbeiten = vg('1');
+const mauerwerk = vg('2');
+const fertig = vg('3');
+const dach = vg('4');
+
+/**
+ * Punkt 4 (D-57): ein Plan mit dem Sammelvorgang „Rohbau“, darin Erdarbeiten (5 Arbeitstage), Mauerwerk EG (10 Arbeitstage,
+ * Ende-Anfang nach den Erdarbeiten) und dem Meilenstein „Rohbau fertig“ (Ende-Anfang nach dem Mauerwerk). Dokumentreihenfolge:
+ * der Sammelvorgang vor seinen Kindern. Das Mauerwerk bezieht sich auf die Beispielposition des Auftrags-LV, der Rohbau auf das
+ * ganze Auftrags-LV (auch auf spätere Nachträge).
+ */
+export const beispielBauzeitenplan: Bauzeitenplan = {
+  id: planId,
+  projektId: beispielLv.projektId,
+  name: 'Rohbau (erfunden)',
+  projektbeginn: '2026-11-16',
+  kalender: { arbeitstage: [1, 2, 3, 4, 5], bundesland: 'BY', freieTage: ['2026-12-24', '2026-12-31'] },
+  vorgaenge: [
+    {
+      id: rohbau,
+      nummer: '1',
+      bezeichnung: 'Rohbau',
+      elternId: null,
+      dauer: 0,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: { art: 'auftrags-leistungsverzeichnis', id: auftragsId, knotenIds: null },
+      ist: null,
+    },
+    {
+      id: erdarbeiten,
+      nummer: '1.1',
+      bezeichnung: 'Erdarbeiten',
+      elternId: rohbau,
+      dauer: 5,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: { beginn: '2026-11-16', ende: null, fortschritt: '40.00' as Prozent },
+    },
+    {
+      id: mauerwerk,
+      nummer: '1.2',
+      bezeichnung: 'Mauerwerk EG',
+      elternId: rohbau,
+      dauer: 10,
+      vorgaenger: [{ vorgaengerId: erdarbeiten, art: 'ende-anfang', abstand: 0 }],
+      fruehesterBeginn: null,
+      bezug: { art: 'auftrags-leistungsverzeichnis', id: auftragsId, knotenIds: [posId] },
+      ist: null,
+    },
+    {
+      id: fertig,
+      nummer: null,
+      bezeichnung: 'Rohbau fertig',
+      elternId: rohbau,
+      dauer: 0,
+      vorgaenger: [{ vorgaengerId: mauerwerk, art: 'ende-anfang', abstand: 0 }],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: null,
+    },
+  ],
+};
+
+/**
+ * Punkt 4 (D-57, D-63): das Ergebnis der Terminrechnung zum Beispielplan, von Hand hergeleitet nach `BAUZEIT_ANNAHMEN`
+ * (Mo–Fr, Bayern, im Zeitraum kein Feiertag): Erdarbeiten Mo 16.11. bis Fr 20.11.; Mauerwerk am nächsten Arbeitstag nach dem
+ * Ende, Mo 23.11., zehn Arbeitstage bis Fr 04.12.; der Meilenstein am nächsten Arbeitstag nach dem Mauerwerk, Mo 07.12., am
+ * Anfang seines Tages (Beginn = Ende). Projektende 07.12.; alles liegt auf einem kritischen Weg, kein Puffer. Der
+ * Sammelvorgang reicht vom frühesten Beginn bis zum spätesten Ende seiner Kinder und gehört nie zum kritischen Weg. Beim
+ * Schreiben gegen `bauzeitenplanBerechnen` (Paket `bauzeit`, Stand Ticket 102) geprüft: gleich bis auf den Namen `vorgangId`.
+ */
+export const beispielBauzeitenplanergebnis: Bauzeitenplanergebnis = {
+  projektbeginn: '2026-11-16',
+  projektende: '2026-12-07',
+  vorgaenge: [
+    {
+      vorgangId: rohbau,
+      art: 'sammelvorgang',
+      termine: {
+        beginn: '2026-11-16',
+        ende: '2026-12-07',
+        spaetesterBeginn: '2026-11-16',
+        spaetestesEnde: '2026-12-07',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: erdarbeiten,
+      art: 'vorgang',
+      termine: {
+        beginn: '2026-11-16',
+        ende: '2026-11-20',
+        spaetesterBeginn: '2026-11-16',
+        spaetestesEnde: '2026-11-20',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: mauerwerk,
+      art: 'vorgang',
+      termine: {
+        beginn: '2026-11-23',
+        ende: '2026-12-04',
+        spaetesterBeginn: '2026-11-23',
+        spaetestesEnde: '2026-12-04',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: fertig,
+      art: 'meilenstein',
+      termine: {
+        beginn: '2026-12-07',
+        ende: '2026-12-07',
+        spaetesterBeginn: '2026-12-07',
+        spaetestesEnde: '2026-12-07',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+  ],
+  kritischeWege: [[erdarbeiten, mauerwerk, fertig]],
+  befunde: [],
+};
+
+/**
+ * Punkt 4: einen Vorgang „Dach“ anlegen, im Rohbau hinter dem Mauerwerk (`nach`), fünf Arbeitstage nach dessen Anfang
+ * beginnend (Anfang-Anfang mit Abstand 5).
+ */
+export const beispielVorgangSetzen: VorgangSetzen = {
+  art: 'VorgangSetzen',
+  vorgang: {
+    id: dach,
+    nummer: '1.3',
+    bezeichnung: 'Dach',
+    elternId: rohbau,
+    dauer: 5,
+    vorgaenger: [{ vorgaengerId: mauerwerk, art: 'anfang-anfang', abstand: 5 }],
+    fruehesterBeginn: null,
+    bezug: null,
+    ist: null,
+  },
+  nach: mauerwerk,
+};
+
+/** Punkt 4: das Mauerwerk entfernen; die Beziehung des Meilensteins auf das Mauerwerk fällt im selben ChangeSet weg. */
+export const beispielVorgangEntfernen: VorgangEntfernen = { art: 'VorgangEntfernen', vorgangId: mauerwerk };
+export const beispielChangeSetVorgangEntfernen: BauzeitenplanChangeSet = {
+  art: 'bauzeitenplan',
+  bauzeitenplanId: planId,
+  bauzeitenplan: {
+    vorher: beispielBauzeitenplan,
+    nachher: {
+      ...beispielBauzeitenplan,
+      vorgaenge: beispielBauzeitenplan.vorgaenge
+        .filter((v) => v.id !== mauerwerk)
+        .map((v) => (v.id === fertig ? { ...v, vorgaenger: [] } : v)),
+    },
+  },
+};
+
+/** Punkt 4: die übrigen Befehle am Plan (Anlegen, Kopf setzen, Löschen). */
+export const beispielBauzeitenplanbefehle: readonly [
+  BauzeitenplanAnlegen,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanLoeschen,
+] = [
+  { art: 'BauzeitenplanAnlegen', bauzeitenplan: { ...beispielBauzeitenplan, vorgaenge: [] } },
+  {
+    art: 'BauzeitenplankopfSetzen',
+    name: beispielBauzeitenplan.name,
+    projektbeginn: '2026-11-23',
+    kalender: { ...beispielBauzeitenplan.kalender, arbeitstage: [1, 2, 3, 4, 5, 6] },
+  },
+  { art: 'BauzeitenplanLoeschen' },
+];

@@ -50,6 +50,14 @@ export type BauwerksmodellId = string & Marke<'BauwerksmodellId'>;
  */
 export type IfcGlobalId = string & Marke<'IfcGlobalId'>;
 
+/** Kennung eines Bauzeitenplans (v1.6, Ticket 97 Punkt 4; X2, D-57): eigenes Aggregat, eindeutig im Projekt. */
+export type BauzeitenplanId = string & Marke<'BauzeitenplanId'>;
+/**
+ * Kennung eines Vorgangs (v1.6, Ticket 97 Punkt 4): eindeutig im Bauzeitenplan, kein Aggregat. Sie bleibt beim Ersetzen des
+ * Vorgangs (`VorgangSetzen`) gleich; Anordnungsbeziehungen und Kinder verweisen über sie.
+ */
+export type VorgangId = string & Marke<'VorgangId'>;
+
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;
 /** Los oder Titel. */
