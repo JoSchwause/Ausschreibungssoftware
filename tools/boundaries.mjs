@@ -43,6 +43,9 @@ export const ERLAUBT = {
   'packages/bauzeit': ['packages/vertrag', 'packages/dezimal'],
   // Mängel und Bautagebuch (Ticket 111, D-57): Befehle, Fristprüfung und Auswertungen, rein, nur Typen, kein Kern.
   'packages/bauleitung': ['packages/vertrag', 'packages/dezimal'],
+  // Fachlogik am Bauwerksmodell (Ticket 108, D-50): Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich;
+  // baut Befehle und Ansatzzeilen als Daten, rechnet keine Mengenansätze (kein `mengen`, kein Kern, A3).
+  'packages/bim': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -63,6 +66,7 @@ export const ERLAUBT = {
     'packages/honorar',
     'packages/bauzeit',
     'packages/bauleitung',
+    'packages/bim',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],

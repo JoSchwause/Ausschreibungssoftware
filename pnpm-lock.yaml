@@ -181,6 +181,19 @@ importers:
         specifier: ^4.10.2
         version: 4.10.2
 
+  packages/bim:
+    dependencies:
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../dezimal
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
+    devDependencies:
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/dezimal:
     dependencies:
       '@tethys/vertrag':
