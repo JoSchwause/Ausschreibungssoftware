@@ -355,6 +355,48 @@ describe('Fall 5: anrechenbare Kosten außerhalb der Honorartafel', () => {
   });
 });
 
+// --- Fall 6: Ingenieurbauwerke (§ 43, § 44) -------------------------------------------------------------------------
+
+describe('Fall 6: Ingenieurbauwerke, Honorarzone III, Basishonorarsatz, genau auf einer Tafelzeile', () => {
+  it('Werte der Zeile aus § 44 Abs. 1, Phasen nach § 43 Abs. 1', () => {
+    // § 44 Abs. 1, Zeile 1 000 000, Zone III: von 81 924, bis 93 254; Honorarsatz 0 → Honorar 81 924,00
+    // Phasen: 2 % 1 638,48; 20 % 16 384,80; 25 % 20 481,00; 5 % 4 096,20; 15 % 12 288,60; 13 % 10 650,12;
+    //         4 % 3 276,96; 15 % 12 288,60; 1 % 819,24; Summe 81 924,00
+    const ergebnis = honorarBerechnen({
+      objekte: [
+        {
+          bezeichnung: 'Brücke E',
+          leistungsbild: 'ingenieurbauwerke',
+          honorarzone: 'III',
+          honorarsatz: p('0.00'),
+          anrechenbareKosten: vonHand('1000000.00'),
+          leistungsphasen: LPH_1_BIS_9,
+          umbauzuschlagssatz: null,
+        },
+      ],
+      nebenkosten: null,
+      mwstSatz: p('19.00'),
+    });
+    const objekt = einObjekt(ergebnis);
+    expect(objekt.tafel?.spanne).toEqual({ von: '81924.00', bis: '93254.00' });
+    expect(objekt.honorar).toBe('81924.00');
+    expect(phasenbetraege(objekt)).toEqual([
+      [1, '2.00', '1638.48'],
+      [2, '20.00', '16384.80'],
+      [3, '25.00', '20481.00'],
+      [4, '5.00', '4096.20'],
+      [5, '15.00', '12288.60'],
+      [6, '13.00', '10650.12'],
+      [7, '4.00', '3276.96'],
+      [8, '15.00', '12288.60'],
+      [9, '1.00', '819.24'],
+    ]);
+    expect(objekt.phasen[7]?.name).toBe('Bauoberleitung');
+    expect(objekt.grundhonorar).toBe('81924.00');
+    expect(ergebnis.befunde).toEqual([]);
+  });
+});
+
 // --- Mehrere Objekte ----------------------------------------------------------------------------------------------
 
 describe('mehrere Honorarobjekte', () => {

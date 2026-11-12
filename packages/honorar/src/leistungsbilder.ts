@@ -5,11 +5,18 @@
 
 import type { Prozent } from '@tethys/vertrag';
 import type { Honorartafel, Quelle } from './honorartafeln';
-import { TAFEL_35, TAFEL_52, TAFEL_56, quelle } from './honorartafeln';
+import { TAFEL_35, TAFEL_40, TAFEL_44, TAFEL_48, TAFEL_52, TAFEL_56, quelle } from './honorartafeln';
 import { prozent } from './konstanten';
 
 /** Leistungsbild der HOAI, für das die App Honorare rechnet. */
-export type Leistungsbild = 'gebaeude' | 'innenraeume' | 'tragwerksplanung' | 'technische-ausruestung';
+export type Leistungsbild =
+  | 'gebaeude'
+  | 'innenraeume'
+  | 'freianlagen'
+  | 'ingenieurbauwerke'
+  | 'verkehrsanlagen'
+  | 'tragwerksplanung'
+  | 'technische-ausruestung';
 
 export type Leistungsphasennummer = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -121,7 +128,54 @@ const PHASEN_TECHNISCHE_AUSRUESTUNG = leistungsphasen([
   [LPH_9, '1.00'],
 ]);
 
-/** § 36 Abs. 1 (Gebäude) und § 36 Abs. 2 (Innenräume): Umbauzuschlag bis 33 bzw. bis 50 Prozent. */
+/**
+ * § 39 Abs. 3 Nr. 1 bis 9 HOAI. https://www.gesetze-im-internet.de/hoai_2013/__39.html, abgerufen am 2026-11-12.
+ */
+const PHASEN_FREIANLAGEN = leistungsphasen([
+  [LPH_1, '3.00'],
+  [LPH_2, '10.00'],
+  [LPH_3, '16.00'],
+  [LPH_4, '4.00'],
+  [LPH_5, '25.00'],
+  [LPH_6, '7.00'],
+  [LPH_7, '3.00'],
+  ['Objektüberwachung – Bauüberwachung und Dokumentation', '30.00'],
+  [LPH_9, '2.00'],
+]);
+
+/**
+ * § 43 Abs. 1 Satz 2 Nr. 1 bis 9 HOAI (die Abweichungen nach Abs. 2 und 3 sind ein abweichender Anteil der Eingabe).
+ * https://www.gesetze-im-internet.de/hoai_2013/__43.html, abgerufen am 2026-11-12.
+ */
+const PHASEN_INGENIEURBAUWERKE = leistungsphasen([
+  [LPH_1, '2.00'],
+  [LPH_2, '20.00'],
+  [LPH_3, '25.00'],
+  [LPH_4, '5.00'],
+  [LPH_5, '15.00'],
+  [LPH_6, '13.00'],
+  [LPH_7, '4.00'],
+  ['Bauoberleitung', '15.00'],
+  [LPH_9, '1.00'],
+]);
+
+/**
+ * § 47 Abs. 1 Satz 2 Nr. 1 bis 9 HOAI. https://www.gesetze-im-internet.de/hoai_2013/__47.html,
+ * abgerufen am 2026-11-12.
+ */
+const PHASEN_VERKEHRSANLAGEN = leistungsphasen([
+  [LPH_1, '2.00'],
+  [LPH_2, '20.00'],
+  [LPH_3, '25.00'],
+  [LPH_4, '8.00'],
+  [LPH_5, '15.00'],
+  [LPH_6, '10.00'],
+  [LPH_7, '4.00'],
+  ['Bauoberleitung', '15.00'],
+  [LPH_9, '1.00'],
+]);
+
+/** Umbauzuschlag „bis 33 Prozent“ bzw. „bis 50 Prozent“ bei durchschnittlichem Schwierigkeitsgrad. */
 const BIS_33 = prozent('33.00');
 const BIS_50 = prozent('50.00');
 
@@ -165,6 +219,36 @@ export const LEISTUNGSBILDER: Readonly<Record<Leistungsbild, Leistungsbilddaten>
     // § 56 Abs. 5: „bis 50 Prozent“.
     umbauzuschlagBis: BIS_50,
     quelleUmbauzuschlag: quelle(56, 5),
+    kostenNachDin276: false,
+  },
+  freianlagen: {
+    bezeichnung: 'Freianlagen',
+    honorartafel: TAFEL_40,
+    leistungsphasen: PHASEN_FREIANLAGEN,
+    quelleLeistungsphasen: quelle(39, 3),
+    // § 40 Abs. 6: § 36 Abs. 1 entsprechend, also „bis 33 Prozent“.
+    umbauzuschlagBis: BIS_33,
+    quelleUmbauzuschlag: quelle(40, 6),
+    kostenNachDin276: false,
+  },
+  ingenieurbauwerke: {
+    bezeichnung: 'Ingenieurbauwerke',
+    honorartafel: TAFEL_44,
+    leistungsphasen: PHASEN_INGENIEURBAUWERKE,
+    quelleLeistungsphasen: quelle(43, 1),
+    // § 44 Abs. 6: „bis 33 Prozent“.
+    umbauzuschlagBis: BIS_33,
+    quelleUmbauzuschlag: quelle(44, 6),
+    kostenNachDin276: false,
+  },
+  verkehrsanlagen: {
+    bezeichnung: 'Verkehrsanlagen',
+    honorartafel: TAFEL_48,
+    leistungsphasen: PHASEN_VERKEHRSANLAGEN,
+    quelleLeistungsphasen: quelle(47, 1),
+    // § 48 Abs. 6: „bis 33 Prozent“.
+    umbauzuschlagBis: BIS_33,
+    quelleUmbauzuschlag: quelle(48, 6),
     kostenNachDin276: false,
   },
 };

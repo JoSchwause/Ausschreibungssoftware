@@ -59,6 +59,30 @@ const ERWARTET: readonly Erwartung[] = [
     namen: [...LPH_1_BIS_7, 'Objektüberwachung – Bauüberwachung', 'Objektbetreuung'],
     anteile: ['2.00', '9.00', '17.00', '2.00', '22.00', '7.00', '5.00', '35.00', '1.00'],
   },
+  {
+    // § 39 Abs. 3 Nr. 1 bis 9.
+    leistungsbild: 'freianlagen',
+    vorschrift: '§ 39 Abs. 3',
+    url: 'https://www.gesetze-im-internet.de/hoai_2013/__39.html',
+    namen: [...LPH_1_BIS_7, 'Objektüberwachung – Bauüberwachung und Dokumentation', 'Objektbetreuung'],
+    anteile: ['3.00', '10.00', '16.00', '4.00', '25.00', '7.00', '3.00', '30.00', '2.00'],
+  },
+  {
+    // § 43 Abs. 1 Satz 2 Nr. 1 bis 9 (die Abweichungen nach Abs. 2 und 3 sind ein abweichender Anteil der Eingabe).
+    leistungsbild: 'ingenieurbauwerke',
+    vorschrift: '§ 43 Abs. 1',
+    url: 'https://www.gesetze-im-internet.de/hoai_2013/__43.html',
+    namen: [...LPH_1_BIS_7, 'Bauoberleitung', 'Objektbetreuung'],
+    anteile: ['2.00', '20.00', '25.00', '5.00', '15.00', '13.00', '4.00', '15.00', '1.00'],
+  },
+  {
+    // § 47 Abs. 1 Satz 2 Nr. 1 bis 9.
+    leistungsbild: 'verkehrsanlagen',
+    vorschrift: '§ 47 Abs. 1',
+    url: 'https://www.gesetze-im-internet.de/hoai_2013/__47.html',
+    namen: [...LPH_1_BIS_7, 'Bauoberleitung', 'Objektbetreuung'],
+    anteile: ['2.00', '20.00', '25.00', '8.00', '15.00', '10.00', '4.00', '15.00', '1.00'],
+  },
 ];
 
 describe.each(ERWARTET)('Leistungsphasen $leistungsbild ($vorschrift HOAI)', (e) => {
@@ -87,11 +111,15 @@ describe.each(ERWARTET)('Leistungsphasen $leistungsbild ($vorschrift HOAI)', (e)
 describe('Umbauzuschlag und Herleitung nach § 33 je Leistungsbild', () => {
   it.each<[Leistungsbild, string, string, boolean]>([
     // § 36 Abs. 1: Gebäude „bis 33 Prozent“; § 36 Abs. 2: Innenräume „bis 50 Prozent“;
-    // § 52 Abs. 4 und § 56 Abs. 5: „bis 50 Prozent“. § 33 gilt für Gebäude und Innenräume.
+    // § 52 Abs. 4 und § 56 Abs. 5: „bis 50 Prozent“; § 40 Abs. 6: § 36 Abs. 1 entsprechend, also „bis 33 Prozent“;
+    // § 44 Abs. 6 und § 48 Abs. 6: „bis 33 Prozent“. § 33 gilt für Gebäude und Innenräume.
     ['gebaeude', '33.00', '§ 36 Abs. 1', true],
     ['innenraeume', '50.00', '§ 36 Abs. 2', true],
     ['tragwerksplanung', '50.00', '§ 52 Abs. 4', false],
     ['technische-ausruestung', '50.00', '§ 56 Abs. 5', false],
+    ['freianlagen', '33.00', '§ 40 Abs. 6', false],
+    ['ingenieurbauwerke', '33.00', '§ 44 Abs. 6', false],
+    ['verkehrsanlagen', '33.00', '§ 48 Abs. 6', false],
   ])('%s: Umbauzuschlag bis %s nach %s, § 33: %s', (leistungsbild, bis, vorschrift, din276) => {
     const daten = LEISTUNGSBILDER[leistungsbild];
     expect(daten.umbauzuschlagBis).toBe(bis);
