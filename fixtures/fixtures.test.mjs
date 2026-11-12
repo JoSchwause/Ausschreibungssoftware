@@ -2151,3 +2151,299 @@ test('typisch-bim: X1-Erweitert, Vergleich v1 → v2, betroffene Positionen, Men
     netto: '35894.85', nachlass: '717.90', nettoNachNachlass: '35176.95', mwst: '6683.62', brutto: '41860.57',
   });
 });
+
+// ---------------------------------------------------------------- Ticket 112: Bauzeitenplan, Tor X2 (bauzeit.json)
+// Eigene Terminrechnung ohne das Paket `bauzeit`: Datum als ganze Tagnummer (Date.UTC nur als reine Kalenderrechnung, nie die
+// Uhr), Feiertage aus eigener Osterformel und Liste, Netzplan mit Zeitpunkten in Arbeitstagen nach den Lesarten von
+// `BAUZEIT_ANNAHMEN` (README „Bauzeitenplan: Tor X2“). Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const TAG_MS = 86_400_000;
+/** "2026-11-02" → Tage seit 1970-01-01; ungültige Daten scheitern. */
+function tagAus(text) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  assert.ok(m, `kein Datum: ${text}`);
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  assert.equal(new Date(t).toISOString().slice(0, 10), text, `ungültiges Datum: ${text}`);
+  return t / TAG_MS;
+}
+const tagText = (n) => new Date(n * TAG_MS).toISOString().slice(0, 10);
+/** ISO-Wochentag, 1 = Montag. */
+const isoWochentag = (n) => ((new Date(n * TAG_MS).getUTCDay() + 6) % 7) + 1;
+
+/** Ostersonntag nach der anonymen gregorianischen Osterformel (Meeus, Jones, Butcher) als Tagnummer. */
+function ostersonntag(jahr) {
+  const a = jahr % 19;
+  const b = Math.floor(jahr / 100);
+  const c = jahr % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+}
+
+/** Gesetzliche Feiertage eines Jahres: bundesweit, dazu Sachsen nach SächsSFG § 1 Abs. 1 (nur die Länder dieser Fixture). */
+function feiertageVon(jahr, land) {
+  const fest = (monat, tag) => Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+  const o = ostersonntag(jahr);
+  // Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember
+  const tage = [fest(1, 1), o - 2, o + 1, fest(5, 1), o + 39, o + 50, fest(10, 3), fest(12, 25), fest(12, 26)];
+  if (land === 'SN') {
+    const tag22 = fest(11, 22);
+    // Reformationsfest; Buß- und Bettag = Mittwoch vor dem 23. November (Fronleichnam gilt in Sachsen nur regional)
+    tage.push(fest(10, 31), tag22 - ((isoWochentag(tag22) - 3 + 7) % 7));
+  } else {
+    assert.equal(land, null, `Land ${land} ist in der Nachrechnung nicht abgebildet`);
+  }
+  return tage;
+}
+
+/** Arbeitstage ab dem Projektbeginn als Tagnummern: Index k = k-ter Arbeitstag (k = 0 der erste). */
+function arbeitstageAb(projektbeginn, kalender, anzahl) {
+  const frei = new Set(kalender.freieTage.map(tagAus));
+  const feiertage = new Map();
+  const istArbeitstag = (n) => {
+    const jahr = new Date(n * TAG_MS).getUTCFullYear();
+    if (!feiertage.has(jahr)) feiertage.set(jahr, new Set(feiertageVon(jahr, kalender.bundesland)));
+    return kalender.arbeitstage.includes(isoWochentag(n)) && !feiertage.get(jahr).has(n) && !frei.has(n);
+  };
+  const tage = [];
+  for (let n = tagAus(projektbeginn); tage.length < anzahl; n += 1) if (istArbeitstag(n)) tage.push(n);
+  return tage;
+}
+
+/** Wiederholt `schritt` (liefert „etwas geändert“), bis nichts mehr ändert; mehr Runden als Vorgänge hieße Zyklus. */
+function bisStabil(runden, schritt) {
+  for (let runde = 0; schritt(); runde += 1) assert.ok(runde <= runden, 'Zyklus');
+}
+
+/**
+ * Terminrechnung (Methode des kritischen Wegs) mit Zeitpunkten: Anfang a = Index des ersten Arbeitstags, Ende e = a + Dauer.
+ * Ende-Anfang a ≥ e(V) + Abstand, Anfang-Anfang a ≥ a(V) + Abstand, Ende-Ende e ≥ e(V) + Abstand, Anfang-Ende e ≥ a(V) +
+ * Abstand; nie vor dem Projektbeginn. Rückwärts vom Projektende E = max e, kein spätes Ende nach E. Gesamtpuffer = spätester
+ * Anfang − Anfang; freier Puffer = kleinster Spielraum zu Nachfolgern in der frühen Lage, höchstens E − e. Sammelvorgang als
+ * Hülle seiner Kinder. Nur für stimmige Pläne ohne Terminvorgabe und ohne Beziehung am Sammelvorgang (die Fixture hat keine).
+ */
+function terminplanNachrechnen(plan) {
+  const tage = arbeitstageAb(plan.projektbeginn, plan.kalender, 400);
+  const tag = (k) => tagText(tage[k]);
+  const kinder = new Map();
+  for (const v of plan.vorgaenge) {
+    if (v.elternId !== null) kinder.set(v.elternId, [...(kinder.get(v.elternId) ?? []), v]);
+  }
+  const blaetter = plan.vorgaenge.filter((v) => !kinder.has(v.id));
+  for (const v of plan.vorgaenge) {
+    assert.equal(v.fruehesterBeginn, null, 'Terminvorgaben bildet die Nachrechnung nicht ab');
+    if (kinder.has(v.id)) assert.deepEqual(v.vorgaenger, [], 'Beziehung am Sammelvorgang bildet die Nachrechnung nicht ab');
+  }
+  const blatt = new Map(blaetter.map((v) => [v.id, v]));
+  const a = new Map(blaetter.map((v) => [v.id, 0]));
+  const e = (id) => a.get(id) + blatt.get(id).dauer;
+  const untergrenze = (v, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return e(p) + b.abstand;
+      case 'anfang-anfang': return a.get(p) + b.abstand;
+      case 'ende-ende': return e(p) + b.abstand - v.dauer;
+      case 'anfang-ende': return a.get(p) + b.abstand - v.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const v of blaetter) {
+      const neu = Math.max(0, ...v.vorgaenger.map((b) => untergrenze(v, b)));
+      if (neu !== a.get(v.id)) {
+        a.set(v.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  const E = Math.max(...blaetter.map((v) => e(v.id)));
+  const nachfolger = (id) => blaetter.flatMap((s) => s.vorgaenger.filter((b) => b.vorgaengerId === id).map((b) => [s, b]));
+  // Rückwärts: spätestes Ende le (Zeitpunkt), spätester Anfang la = le − Dauer
+  const le = new Map(blaetter.map((v) => [v.id, E]));
+  const la = (id) => le.get(id) - blatt.get(id).dauer;
+  const obergrenze = (p, s, b) => {
+    switch (b.art) {
+      case 'ende-anfang': return la(s.id) - b.abstand;
+      case 'anfang-anfang': return la(s.id) - b.abstand + p.dauer;
+      case 'ende-ende': return le.get(s.id) - b.abstand;
+      case 'anfang-ende': return le.get(s.id) - b.abstand + p.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const p of blaetter) {
+      const neu = Math.min(E, ...nachfolger(p.id).map(([s, b]) => obergrenze(p, s, b)));
+      if (neu !== le.get(p.id)) {
+        le.set(p.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  /** Spielraum einer Beziehung in der frühen Lage. */
+  const spielraum = (s, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return a.get(s.id) - (e(p) + b.abstand);
+      case 'anfang-anfang': return a.get(s.id) - (a.get(p) + b.abstand);
+      case 'ende-ende': return e(s.id) - (e(p) + b.abstand);
+      case 'anfang-ende': return e(s.id) - (a.get(p) + b.abstand);
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  const termine = new Map();
+  for (const v of blaetter) {
+    const gesamtpuffer = la(v.id) - a.get(v.id);
+    termine.set(v.id, {
+      beginn: tag(a.get(v.id)),
+      ende: v.dauer > 0 ? tag(e(v.id) - 1) : tag(a.get(v.id)),
+      spaetesterBeginn: tag(la(v.id)),
+      spaetestesEnde: v.dauer > 0 ? tag(le.get(v.id) - 1) : tag(la(v.id)),
+      gesamtpuffer,
+      freierPuffer: Math.min(E - e(v.id), ...nachfolger(v.id).map(([s, b]) => spielraum(s, b))),
+      kritisch: gesamtpuffer <= 0,
+    });
+  }
+  const frueher = (x, y) => (y < x ? y : x);
+  const spaeter = (x, y) => (y > x ? y : x);
+  const huelle = (v) => {
+    if (termine.has(v.id)) return termine.get(v.id);
+    const t = kinder.get(v.id).map(huelle);
+    const h = {
+      beginn: t.map((x) => x.beginn).reduce(frueher),
+      ende: t.map((x) => x.ende).reduce(spaeter),
+      spaetesterBeginn: t.map((x) => x.spaetesterBeginn).reduce(frueher),
+      spaetestesEnde: t.map((x) => x.spaetestesEnde).reduce(spaeter),
+      gesamtpuffer: Math.min(...t.map((x) => x.gesamtpuffer)),
+      freierPuffer: Math.min(...t.map((x) => x.freierPuffer)),
+      kritisch: t.some((x) => x.kritisch),
+    };
+    termine.set(v.id, h);
+    return h;
+  };
+  // Kritische Wege: von einem kritischen Vorgang am Projektbeginn über Beziehungen ohne Spielraum bis zum Projektende
+  const wege = [];
+  const weiter = (weg) => {
+    const letzter = weg[weg.length - 1];
+    if (e(letzter.id) === E) wege.push(weg.map((v) => v.id));
+    for (const [s, b] of nachfolger(letzter.id)) {
+      if (termine.get(s.id).kritisch && spielraum(s, b) === 0) weiter([...weg, s]);
+    }
+  };
+  for (const v of blaetter) if (termine.get(v.id).kritisch && a.get(v.id) === 0) weiter([v]);
+  const art = (v) => (kinder.has(v.id) ? 'sammelvorgang' : v.dauer === 0 ? 'meilenstein' : 'vorgang');
+  const vorgaenge = plan.vorgaenge.map((v) => ({ id: v.id, art: art(v), termine: huelle(v) }));
+  return {
+    ergebnis: {
+      projektbeginn: tag(0),
+      projektende: vorgaenge.map((x) => x.termine.ende).reduce(spaeter),
+      vorgaenge,
+      kritischeWege: wege,
+      befunde: [],
+    },
+    spielraum,
+  };
+}
+
+test('bauzeit: Kalender Sachsen 2026, Ostern und Buß- und Bettag eigens gerechnet (Ticket 112)', () => {
+  // Ostersonntag 2026 = 05.04., 2027 = 28.03., 2019 = 21.04., 2000 = 23.04. (Kirchenkalender)
+  assert.deepEqual([2026, 2027, 2019, 2000].map((j) => tagText(ostersonntag(j))), ['2026-04-05', '2027-03-28', '2019-04-21', '2000-04-23']);
+  assert.deepEqual(feiertageVon(2026, 'SN').map(tagText).sort(), [
+    '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-01', '2026-05-14', '2026-05-25', '2026-10-03', '2026-10-31',
+    '2026-11-18', '2026-12-25', '2026-12-26',
+  ]);
+  // Buß- und Bettag: Mittwoch vor dem 23.11. (2017 fiel er auf den 22.11., 2027 fällt er auf den 17.11.)
+  assert.ok(feiertageVon(2017, 'SN').map(tagText).includes('2017-11-22'));
+  assert.ok(feiertageVon(2027, 'SN').map(tagText).includes('2027-11-17'));
+  const fx = laden('bauzeit.json');
+  assert.equal(fx.plan.kalender.bundesland, 'SN');
+  assert.equal(isoWochentag(tagAus(fx.plan.projektbeginn)), 7, 'Projektbeginn ist ein Sonntag');
+  // Arbeitstage k0 bis k15 wie in der Herleitung
+  assert.deepEqual(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map((n) => tagText(n).slice(5)), [
+    '11-02', '11-03', '11-04', '11-05', '11-06', '11-09', '11-10', '11-11', '11-12', '11-13', '11-16', '11-17', '11-19',
+    '11-20', '11-23', '11-24',
+  ]);
+  assert.match(fx.herleitung[2], /k11 Di 17\.11\., k12 Do 19\.11\./);
+});
+
+test('bauzeit: Eingabe deckt das Tor X2 ab (Ticket 112, plan.md §4)', () => {
+  const fx = laden('bauzeit.json');
+  const { vorgaenge } = fx.plan;
+  assert.ok(vorgaenge.length >= 6 && vorgaenge.length <= 8, '6–8 Vorgänge');
+  const ids = [fx.plan.id, fx.plan.projektId, ...vorgaenge.map((v) => v.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  const bekannt = new Set(vorgaenge.map((v) => v.id));
+  for (const v of vorgaenge) {
+    assert.ok(v.elternId === null || bekannt.has(v.elternId));
+    assert.ok(Number.isInteger(v.dauer) && v.dauer >= 0);
+    for (const b of v.vorgaenger) assert.ok(bekannt.has(b.vorgaengerId) && Number.isInteger(b.abstand));
+  }
+  const beziehungen = vorgaenge.flatMap((v) => v.vorgaenger);
+  assert.deepEqual([...new Set(beziehungen.map((b) => b.art))].sort(), ['anfang-anfang', 'anfang-ende', 'ende-anfang', 'ende-ende']);
+  assert.ok(beziehungen.some((b) => b.abstand === 0) && beziehungen.some((b) => b.abstand < 0), 'Abstand 0 und negativ');
+  const eltern = new Set(vorgaenge.map((v) => v.elternId).filter((x) => x !== null));
+  assert.equal(eltern.size, 1, 'genau ein Sammelvorgang');
+  assert.equal(vorgaenge.filter((v) => v.dauer === 0 && !eltern.has(v.id)).length, 1, 'genau ein Meilenstein');
+  // Jede Anordnungsart bestimmt einen Termin (Spielraum 0 in der frühen Lage): ein Fehler in ihr ändert das Ergebnis
+  const { spielraum } = terminplanNachrechnen(fx.plan);
+  for (const art of ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende']) {
+    assert.ok(vorgaenge.some((s) => s.vorgaenger.some((b) => b.art === art && spielraum(s, b) === 0)), art);
+  }
+});
+
+test('bauzeit: Sollwerte gleich der eigenen Terminrechnung (Ticket 112, BAUZEIT_ANNAHMEN, D-63)', () => {
+  const fx = laden('bauzeit.json');
+  assert.deepEqual(terminplanNachrechnen(fx.plan).ergebnis, fx.sollwerte);
+  // Von Hand (herleitung): Projektende Di 24.11.2026; Meilenstein Mo 16.11. nach dem Ende der Bodenplatte am Fr 13.11.
+  const nach = new Map(fx.plan.vorgaenge.map((v, i) => [v.nummer, fx.sollwerte.vorgaenge[i]]));
+  assert.equal(fx.sollwerte.projektende, '2026-11-24');
+  assert.equal(nach.get('1.3').termine.ende, '2026-11-13');
+  assert.deepEqual([nach.get('2').art, nach.get('2').termine.beginn, nach.get('2').termine.ende], ['meilenstein', '2026-11-16', '2026-11-16']);
+  assert.equal(nach.get('3').termine.beginn, '2026-11-16', 'Nachfolger des Meilensteins beginnt am selben Tag');
+  assert.deepEqual(
+    fx.sollwerte.kritischeWege.map((w) => w.map((id) => fx.plan.vorgaenge.find((v) => v.id === id).nummer)),
+    [['1.1', '1.2', '1.3', '2', '3']],
+  );
+  assert.deepEqual(
+    ['4', '5'].map((n) => [nach.get(n).termine.gesamtpuffer, nach.get(n).termine.freierPuffer]),
+    [[4, 0], [4, 4]],
+    'bei 4 ist der freie Puffer kleiner als der Gesamtpuffer',
+  );
+  // Feiertag und Wochenende auf dem kritischen Weg: freie Tage zwischen seinen Terminen
+  const arbeitstage = new Set(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map(tagText));
+  const imWeg = fx.sollwerte.kritischeWege[0].map((id) => fx.sollwerte.vorgaenge.find((v) => v.id === id).termine);
+  const freiImWeg = [];
+  for (let n = tagAus(imWeg[0].beginn); n <= tagAus(imWeg[imWeg.length - 1].ende); n += 1) {
+    if (!arbeitstage.has(tagText(n))) freiImWeg.push(tagText(n));
+  }
+  assert.deepEqual(freiImWeg, ['2026-11-07', '2026-11-08', '2026-11-14', '2026-11-15', '2026-11-18', '2026-11-21', '2026-11-22']);
+});
+
+test('bauzeit: Gegenprobe ohne Land, der Buß- und Bettag ist dann Arbeitstag (Ticket 112)', () => {
+  const fx = laden('bauzeit.json');
+  const g = fx.gegenprobeOhneLand;
+  const mit = terminplanNachrechnen(fx.plan).ergebnis;
+  const ohne = terminplanNachrechnen({ ...fx.plan, kalender: g.kalender }).ergebnis;
+  assert.equal(ohne.projektende, g.projektende);
+  assert.equal(g.projektende, '2026-11-23'); // von Hand: einen Arbeitstag früher als mit Sachsen
+  const geaendert = [];
+  fx.plan.vorgaenge.forEach((v, i) => {
+    const anders = Object.entries(ohne.vorgaenge[i].termine).filter(([k, x]) => x !== mit.vorgaenge[i].termine[k]);
+    if (anders.length > 0) geaendert.push({ nummer: v.nummer, ...Object.fromEntries(anders) });
+  });
+  assert.deepEqual(geaendert, g.geaendert);
+  assert.deepEqual(ohne.kritischeWege, mit.kritischeWege);
+});
