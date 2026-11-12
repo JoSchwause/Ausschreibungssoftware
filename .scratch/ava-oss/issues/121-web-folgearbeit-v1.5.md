@@ -1,6 +1,6 @@
 # 121: App: Folgearbeit v1.5 (Netto der LV-Liste, OZ-Vorschlag am Auftrags-LV, Druckprofile sichern)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: – · Ordner: `apps/web/src/projekt/`, `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (nur falls der
 OZ-Vorschlag dort gebraucht wird), `apps/web/src/ausgabe/`
@@ -46,3 +46,9 @@ Aus dem Review (D-66, Befund 2): „LV-Stand als neues LV übernehmen“ (`lv/st
   Nachladen mehr); `lv/stand.ts` ruft `kopieBauen(…, { bauteile: 'behalten' })` (Test in `historie/ziel.test.ts`);
   Druckprofile: `ausgabe/profile.ts` (`zurueckAlsDatei`, `zurueckNichtLesbar`), `DruckProfilFeld.tsx`.
 - Ergebnis: `pnpm lint`, `pnpm typecheck`, `pnpm test` grün (292 Dateien, 3767 Tests); E2E `projekt`, `druckprofil`, `nachtrag` grün (7 Tests).
+
+## Answer
+
+Gemergt mit `9c95900` (Branch `welle-6/121-web-folgearbeit`, `1e00427`). Projektseite zeigt „Netto nach Nachlass“ aus der Übersicht;
+zurückgehaltene Druckprofile sichtbar, als Datei sichern oder nach Bestätigung entfernen; `lv/stand.ts` behält Bauteilzuordnungen;
+OZ-Vorschlag ohne App-Änderung (D-121.1).
