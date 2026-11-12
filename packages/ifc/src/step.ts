@@ -372,6 +372,22 @@ export function kopfLesen(b: Uint8Array, modus: Textmodus, maxTiefe: number): St
 
 // --- Parameter zerlegen ------------------------------------------------------------------------------------------------
 
+/** Überspringt Leerraum und Kommentare in `[p, bis)`; −1, wenn ein Kommentar nicht endet. */
+function leerraumUeberspringen(b: Uint8Array, von: number, bis: number): number {
+  let p = von;
+  while (p < bis) {
+    const c = b[p] ?? 0;
+    if (c === SCHRAEG && b[p + 1] === STERN) {
+      p += 2;
+      while (p < bis && !(b[p] === STERN && b[p + 1] === SCHRAEG)) p++;
+      if (p >= bis) return -1;
+      p += 2;
+    } else if (c === SP || c === LF || c === CR || c === TAB || c === FF || c === VT) p++;
+    else break;
+  }
+  return p;
+}
+
 type Zerlegung =
   | { readonly ok: true; readonly werte: readonly StepWert[]; readonly ende: number }
   | { readonly ok: false; readonly grund: string; readonly zuTief: boolean };
@@ -399,17 +415,8 @@ function zerlegen(
   let erwarteWert = true;
   let nachKomma = false;
   for (;;) {
-    // Leerraum und Kommentare
-    while (p < bis) {
-      const c = b[p] ?? 0;
-      if (c === SCHRAEG && b[p + 1] === STERN) {
-        p += 2;
-        while (p < bis && !(b[p] === STERN && b[p + 1] === SCHRAEG)) p++;
-        if (p >= bis) return nein('Kommentar ohne Ende.');
-        p += 2;
-      } else if (c === SP || c === LF || c === CR || c === TAB || c === FF || c === VT) p++;
-      else break;
-    }
+    p = leerraumUeberspringen(b, p, bis);
+    if (p < 0) return nein('Kommentar ohne Ende.');
     if (p >= bis) return nein('Parameterliste ohne schließende Klammer.');
     const c = b[p] ?? 0;
     if (!erwarteWert) {
@@ -506,8 +513,8 @@ function zerlegen(
       let q = p + 1;
       while (q < bis && istWortzeichen(b[q] ?? 0)) q++;
       const typ = bytesAlsText(b, p, q, 'ascii').toUpperCase();
-      while (q < bis && (b[q] === SP || b[q] === LF || b[q] === CR || b[q] === TAB)) q++;
-      if (b[q] !== KLAMMER_AUF) return nein(`Getypter Wert ${typ} ohne „(“.`);
+      q = leerraumUeberspringen(b, q, bis);
+      if (q < 0 || b[q] !== KLAMMER_AUF) return nein(`Getypter Wert ${typ} ohne „(“.`);
       if (stapel.length + 2 > maxTiefe) return nein(`Verschachtelung tiefer als ${String(maxTiefe)}.`, true);
       stapel.push(aktuell);
       aktuell = { werte: [], typ };
@@ -685,9 +692,8 @@ export function datenLesen(
           befunde.push(befund('warnung', 'zeichenkette-ungueltig', `#${String(id)}: ${grund}.`, ort)),
         );
         if (ergebnis.ok) {
-          let q = ergebnis.ende;
-          while (q < (ende[i] ?? 0) && [SP, LF, CR, TAB, FF, VT].includes(b[q] ?? 0)) q++;
-          if (q === (ende[i] ?? 0)) werte = ergebnis.werte;
+          if (leerraumUeberspringen(b, ergebnis.ende, ende[i] ?? 0) === (ende[i] ?? 0))
+            werte = ergebnis.werte;
           else
             befunde.push(
               befund('fehler', 'step-syntaxfehler', `#${String(id)}: Text nach der Parameterliste.`, ort),

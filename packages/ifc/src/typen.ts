@@ -137,6 +137,8 @@ export type IfcBefundcode =
   | 'keine-ifc-datei'
   | 'schema-nicht-unterstuetzt'
   // STEP: die Datei wird gelesen, betroffene Instanzen fallen weg (U5):
+  | 'kodierung-utf8'
+  | 'kodierung-latin1'
   | 'datei-unvollstaendig'
   | 'step-syntaxfehler'
   | 'step-zu-tief'

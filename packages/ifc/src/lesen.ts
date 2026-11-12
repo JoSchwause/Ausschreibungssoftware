@@ -72,6 +72,16 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
         : `Das Schema „${schemakennung}“ wird nicht gelesen; gelesen werden IFC 2x3 und IFC 4.`,
     );
   const befunde: IfcBefund[] = [];
+  if (modus !== 'ascii')
+    befunde.push(
+      befund(
+        'warnung',
+        modus === 'utf8' ? 'kodierung-utf8' : 'kodierung-latin1',
+        modus === 'utf8'
+          ? 'Die Datei enthält Zeichen außerhalb von ASCII und wird als UTF-8 gelesen (die Norm verlangt ASCII).'
+          : 'Die Datei enthält Zeichen außerhalb von ASCII und ist kein gültiges UTF-8; sie wird als Latin-1 gelesen.',
+      ),
+    );
   const daten = datenLesen(bytes, kopf, modus, maxTiefe, befunde);
   if (daten === null) return abweisen('keine-ifc-datei', 'Keine IFC-Datei: Der Abschnitt „DATA;“ fehlt.');
   const leser = new Modellleser(daten, befunde);
