@@ -3,4 +3,8 @@
 // `vertrag` und `dezimal` (A3). Baut Befehle und Ansatzzeilen als Daten; die Mengen eines Ansatzes rechnet die App mit
 // `mengen` (D-22, D-53).
 
-export {};
+export {
+  bauwerksmodellBefehlAusfuehren,
+  bauwerksmodellChangeSetAnwenden,
+  bauwerksmodellChangeSetUmkehren,
+} from './bauwerksmodell-befehle';
