@@ -110,11 +110,15 @@ describe('KostengruppeSetzen im LV', () => {
       expect(lvBefehlAusfuehren(z, setze('P1', gut)).ok, gut).toBe(true);
   });
 
-  it('nur an einer Position: Gliederung, Hinweistext und unbekannte Kennung werden mit knoten-unbekannt abgewiesen', () => {
+  it('nur an einer Position: Gliederung und Hinweistext knotenart-unzulaessig, unbekannte Kennung knoten-unbekannt (D-71.3, Ticket 105)', () => {
     const z = basis();
-    for (const k of ['T1', 'H1', 'gibt-es-nicht']) {
+    for (const [k, code] of [
+      ['T1', 'knotenart-unzulaessig'],
+      ['H1', 'knotenart-unzulaessig'],
+      ['gibt-es-nicht', 'knoten-unbekannt'],
+    ] as const) {
       const f = fehler(z, setze(k, '330'));
-      expect(f.code, k).toBe('knoten-unbekannt');
+      expect(f.code, k).toBe(code);
       expect(f.knotenId).toBe(k);
     }
   });

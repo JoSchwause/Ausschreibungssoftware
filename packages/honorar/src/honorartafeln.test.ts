@@ -4,8 +4,9 @@
 // Spalten wie in der Quelle: anrechenbare Kosten, dann je Honorarzone „von“ und „bis“, ganze Euro.
 
 import { vergleiche } from '@tethys/dezimal';
+import type { Honorarzone, Leistungsbild, Tafelzeile } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import type { Honorartafel, Honorarzone, Leistungsbild, Tafelzeile } from './index';
+import type { Honorartafel } from './index';
 import { LEISTUNGSBILDER } from './index';
 
 interface Erwartung {

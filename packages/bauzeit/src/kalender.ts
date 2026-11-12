@@ -2,22 +2,14 @@
 // Arbeitskalender (Ticket 102 Punkt 2, D-57): Arbeitstage der Woche, gesetzliche Feiertage des Landes, freie Tage des Plans.
 // Ein Tag ist ein Arbeitstag, wenn sein Wochentag ein Arbeitstag ist und er weder Feiertag noch freier Tag ist. Rein (A2).
 
-import type { Datum, Tagnummer, Wochentag } from './datum';
+import type { Arbeitskalender, Bundesland, Wochentag } from '@tethys/vertrag';
+import type { Datum, Tagnummer } from './datum';
 import { tagnummerLesen, wochentagVon, zivilAusTagnummer } from './datum';
-import type { Bundesland } from './feiertage';
 import { LANDESFEIERTAGE, feiertageTagnummern } from './feiertage';
 
-/**
- * Arbeitskalender eines Bauzeitenplans. `freieTage` sind ungeprüfte Texte `JJJJ-MM-TT` (regionale und einmalige
- * Feiertage, Betriebsruhe); Unlesbares übergeht der Kalender, die Rechnung meldet es als Befund (U5).
- */
-export interface Arbeitskalender {
-  /** ISO-Wochentage, an denen gearbeitet wird (1 = Montag); Standard {@link STANDARD_ARBEITSTAGE}. */
-  readonly arbeitstage: readonly Wochentag[];
-  /** Land für die landesweiten Feiertage; `null` = nur die bundesweiten. */
-  readonly bundesland: Bundesland | null;
-  readonly freieTage: readonly string[];
-}
+// Der Arbeitskalender ist der Vertragstyp v1.6 (Ticket 109). `freieTage` liest der Kalender als ungeprüfte Texte
+// `JJJJ-MM-TT` (regionale und einmalige Feiertage, Betriebsruhe): Unlesbares übergeht er, die Rechnung meldet es als
+// Befund (U5); der Ausführer lässt nur gültige zu.
 
 /** Montag bis Freitag. */
 export const STANDARD_ARBEITSTAGE: readonly Wochentag[] = [1, 2, 3, 4, 5];

@@ -337,7 +337,9 @@ function nachtragAus(z: AuftragsLvZustand, w: AuftragWahl, nr: number): Knoten[]
 function auftragBefehl(z: AuftragsLvZustand, w: AuftragWahl, nr: number): AuftragsLvBefehl {
   if (w.art === 0) {
     const knoten = z.auftragsLeistungsverzeichnis.knoten;
-    const k = knoten[w.knoten % knoten.length];
+    // Ticket 105 (D-71.3): eine Stelle mehr als Knoten, damit auch eine unbekannte Kennung vorkommt (`knoten-unbekannt`);
+    // Gliederung und Hinweistext ergeben seither `knotenart-unzulaessig`.
+    const k = knoten[w.knoten % (knoten.length + 1)];
     return {
       art: 'KostengruppeSetzen',
       positionId: id.pos(k?.id ?? 'gibt-es-nicht'),

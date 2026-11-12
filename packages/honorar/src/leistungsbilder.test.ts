@@ -4,8 +4,8 @@
 // (https://www.gesetze-im-internet.de/hoai_2013/, abgerufen am 2026-11-12).
 
 import { NULL_PROZENT, addiere } from '@tethys/dezimal';
+import type { Leistungsbild } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import type { Leistungsbild } from './index';
 import { LEISTUNGSBILDER } from './index';
 
 const LPH_1_BIS_7 = [

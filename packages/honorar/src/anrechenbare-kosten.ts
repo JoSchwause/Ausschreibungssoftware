@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Anrechenbare Kosten (Ticket 101, D-56): bei Gebäuden und Innenräumen aus Kosten nach DIN 276 nach § 33 HOAI, sonst von
 // Hand. Netto (§ 4 Abs. 1). Jeder Teilbetrag kaufmännisch auf 2 Stellen. Rein (A2), nur Dezimalarithmetik (N1).
+// `AnrechenbareKostenHerleitung` steht im Vertrag (v1.6, Ticket 97 Punkt 5; Umstellung Ticket 110).
 
 import { NULL_BETRAG, addiere, prozentVon, subtrahiere, vergleiche } from '@tethys/dezimal';
-import type { Betrag } from '@tethys/vertrag';
+import type { AnrechenbareKostenHerleitung, Betrag } from '@tethys/vertrag';
 import { prozent } from './konstanten';
 
-/** Kosten nach DIN 276 eines Gebäudes oder Innenraums für § 33, netto (§ 4 Abs. 1). */
+/**
+ * Kosten nach DIN 276 eines Gebäudes oder Innenraums für § 33, netto (§ 4 Abs. 1): die Beträge von KG 300 und KG 400 selbst.
+ * Gespeichert wird stattdessen der Verweis auf eine Kostenermittlung (`AnrechenbareKostenangabe` mit `art: 'kostenermittlung'`
+ * im Vertrag), den `honorarBerechnen` auf diese Form abbildet (Ticket 110).
+ */
 export interface KostenNachDin276 {
   readonly art: 'din-276';
   /** KG 300 Bauwerk – Baukonstruktionen: voll anrechenbar (§ 33 Abs. 1). */
@@ -27,30 +32,6 @@ export interface KostenNachDin276 {
   readonly weitereKosten: Betrag;
   /** Von Hand: der Wert der mitzuverarbeitenden Bausubstanz (§ 2 Abs. 7, § 4 Abs. 3). */
   readonly mitzuverarbeitendeBausubstanz: Betrag;
-}
-
-/**
- * Die anrechenbaren Kosten eines Honorarobjekts: als Betrag von Hand oder (Gebäude, Innenräume) aus Kosten nach
- * DIN 276.
- */
-export type AnrechenbareKostenangabe = { readonly art: 'betrag'; readonly betrag: Betrag } | KostenNachDin276;
-
-/** Die Herleitung nach § 33 Schritt für Schritt, jeder Teilbetrag mit 2 Stellen. */
-export interface AnrechenbareKostenHerleitung {
-  readonly kg300: Betrag;
-  readonly weitereKosten: Betrag;
-  /** KG 300 plus weitere Kosten: die sonstigen anrechenbaren Kosten des § 33 Abs. 2. */
-  readonly sonstigeAnrechenbareKosten: Betrag;
-  readonly kg400: Betrag;
-  /** 25 % der sonstigen anrechenbaren Kosten (§ 33 Abs. 2 Nr. 1), kaufmännisch auf 2 Stellen. */
-  readonly grenzeTechnischeAnlagen: Betrag;
-  /** Der Teil von KG 400 bis zur Grenze, voll angerechnet (§ 33 Abs. 2 Nr. 1); 0, wenn nicht anteilig. */
-  readonly kg400Voll: Betrag;
-  /** Die Hälfte des Teils von KG 400 über der Grenze, kaufmännisch auf 2 Stellen (Nr. 2); 0, wenn nicht anteilig. */
-  readonly kg400Haelfte: Betrag;
-  readonly mitzuverarbeitendeBausubstanz: Betrag;
-  /** Sonstige anrechenbare Kosten + KG 400 voll + KG 400 zur Hälfte + mitzuverarbeitende Bausubstanz. */
-  readonly anrechenbareKosten: Betrag;
 }
 
 /** § 33 Abs. 2 Nr. 1: Technische Anlagen voll bis zu 25 Prozent der sonstigen anrechenbaren Kosten. */

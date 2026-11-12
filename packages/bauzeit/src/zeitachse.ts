@@ -4,7 +4,7 @@
 // Vergleichsgrids (Ticket 96: `Zeitleiste`, `Zeitabschnitt`, `Balken` mit Tagesindex, `bisTag` exklusiv). Rein, ohne DOM
 // (A2); die Texte der Abschnitte formatiert die App (N4).
 
-import type { Ergebnis } from '@tethys/vertrag';
+import type { Arbeitskalender, Ergebnis, Vorgangsart } from '@tethys/vertrag';
 import type { Datum, Tagnummer } from './datum';
 import {
   kalenderwocheVon,
@@ -14,8 +14,6 @@ import {
   wochentagVon,
   zivilAusTagnummer,
 } from './datum';
-import type { Vorgangsart } from './bauzeitenplan';
-import type { Arbeitskalender } from './kalender';
 import { Tageskalender } from './kalender';
 
 /** Ein Monat der Achse; `bisTag` exklusiv, am Rand auf die Achse geschnitten. */

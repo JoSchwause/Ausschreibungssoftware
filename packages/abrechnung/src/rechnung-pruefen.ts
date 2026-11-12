@@ -77,8 +77,8 @@ export interface Forderungsdifferenz {
 
 /**
  * Was die Rechnung fordert, gegen den geprüften Stand (D-44); je Wert `null`, wenn die Rechnung ihn nicht nennt. Netto
- * gegen `nettoNachNachlass`, Brutto gegen `bruttoKumuliert`, Zahlbetrag gegen `zahlbetrag` (kumuliert gelesen; ob die
- * Forderung kumuliert ist, sagt der Vertrag nicht, Offene Typfrage 8 zu Ticket 70).
+ * gegen `nettoNachNachlass`, Brutto gegen `bruttoKumuliert`, Zahlbetrag gegen `zahlbetrag`. Netto und Brutto der Forderung
+ * sind kumuliert wie die Abschlagsrechnung, der Zahlbetrag nie (Lesart an `Rechnung.gefordert`, D-95.4; Ticket 105).
  */
 export interface Forderungsvergleich {
   readonly netto: Forderungsdifferenz | null;
