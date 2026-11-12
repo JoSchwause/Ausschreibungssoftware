@@ -29,7 +29,7 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
   const zweite = erzeugeAlle();
   assert.deepEqual(Object.keys(erste).sort(), [
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
-    'gross.json', 'handbeispiele.json', 'ifc/haus-v1.ifc', // Ticket 99
+    'gross.json', 'handbeispiele.json', 'ifc/haus-v1-ifc2x3.ifc', 'ifc/haus-v1.ifc', // Ticket 99
     'typisch-abrechnung.json', // Ticket 85
     'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
@@ -1479,6 +1479,33 @@ test('IFC-Erzeuger: Kommandozeile liefert denselben Text wie die Funktion', () =
 
 const ifcDatei = (name) => readFileSync(datei(`ifc/${name}`), 'utf8');
 
+/** Exakter Dezimalwert `{ w, s }` aus STEP- oder JSON-Zahltext ("11.99", "3.", "-0.1175"); Rechnung nur mit BigInt. */
+function dz(text) {
+  const m = /^(-?)(\d+)\.?(\d*)$/.exec(text);
+  assert.ok(m, `keine Dezimalzahl: ${text}`);
+  const w = BigInt(m[2] + m[3]);
+  return { w: m[1] ? -w : w, s: m[3].length };
+}
+const dzMal = (...xs) => xs.reduce((a, b) => ({ w: a.w * b.w, s: a.s + b.s }));
+const dzPlus = (a, b) => {
+  const s = Math.max(a.s, b.s);
+  return { w: a.w * 10n ** BigInt(s - a.s) + b.w * 10n ** BigInt(s - b.s), s };
+};
+const dzMinus = (a, b) => dzPlus(a, { w: -b.w, s: b.s });
+/** Kanonischer Text ohne nachlaufende Nullen ("32.9725", "3", "-4.125"). */
+function dzText(a) {
+  let { w, s } = a;
+  while (s > 0 && w % 10n === 0n) { w /= 10n; s--; }
+  const z = (w < 0n ? -w : w).toString().padStart(s + 1, '0');
+  return `${w < 0n ? '-' : ''}${s === 0 ? z : `${z.slice(0, -s)}.${z.slice(-s)}`}`;
+}
+/** Länge aus der Datei in m: Faktor "1" (Datei in m) oder "1000" (Datei in mm, exakt durch 1000). */
+const inMeter = (text, faktor) => ({ ...dz(text), s: dz(text).s + (faktor === '1000' ? 3 : 0) });
+/** Mengen in SI-Einheit als `[Name, Text]`: Längen umgerechnet, Flächen in m², Volumen in m³ wie gelesen. */
+const mengenInSi = (werte, faktor) => [...werte].map(([name, q]) => [
+  name, dzText(q.klasse === 'IFCQUANTITYLENGTH' ? inMeter(q.text, faktor) : dz(q.text)),
+]);
+
 /**
  * Sicht auf eine gelesene IFC-Datei: Strukturknoten über IfcRelAggregates, Bauteile mit Kennung (Tag), Geschoss
  * (IfcRelContainedInSpatialStructure), Mengen als Text je Name (IfcElementQuantity), Eigenschaften, Körpermaßen
@@ -1609,4 +1636,135 @@ test('IFC-Haus v1: IFC 4 in m, Struktur Projekt → Grundstück → Gebäude →
     '322', '322', '334', '334', '344', '351', '361',
   ]);
   for (const b of m.bauteile) assert.match(b.kg, /^[1-9]\d\d$/, b.kennung);
+});
+
+/**
+ * Prüft jede Menge eines Hauses gegen seine Geometrie, exakt: Wand und Fundament Länge/Dicke/Höhe aus dem Profil (die
+ * längere Seite ist die Länge) und der Tiefe; Seitenfläche brutto Länge × Höhe, netto minus Σ Breite × Höhe der
+ * Öffnungskörper; Volumen = Seitenfläche × Dicke. Platte: Fläche dx × dy, netto minus Aussparungen, Volumen × Dicke.
+ * Fenster und Tür: Breite und Höhe ihrer Öffnung, Fläche = Breite × Höhe, gleich OverallWidth/OverallHeight. Räume:
+ * Bruttofläche = Profil; Geschosse: Volumen = Fläche × Bruttohöhe. `faktor`: Länge der Datei je m ("1" oder "1000").
+ */
+function mengenGegenGeometrie(m, faktor) {
+  const inM = (text) => inMeter(text, faktor);
+  const menge = (werte, name) => {
+    const q = werte.get(name);
+    assert.ok(q, `Menge ${name} fehlt`);
+    return q.klasse === 'IFCQUANTITYLENGTH' ? inM(q.text) : dz(q.text);
+  };
+  const gleich = (ist, soll, text) => assert.equal(dzText(ist), dzText(soll), text);
+  const laengs = (q) => dzMinus(inM(q.dx), inM(q.dy)).w > 0n;
+  for (const b of m.bauteile) {
+    const w = b.mengen.werte;
+    const [x, y, h] = [b.quader.dx, b.quader.dy, b.quader.dz].map(inM);
+    const t = (name) => `${b.kennung} ${name}`;
+    if (b.klasse === 'IFCWALL' || b.klasse === 'IFCFOOTING') {
+      const [l, dicke] = laengs(b.quader) ? [x, y] : [y, x];
+      gleich(menge(w, 'Length'), l, t('Length'));
+      gleich(menge(w, 'Width'), dicke, t('Width'));
+      gleich(menge(w, 'Height'), h, t('Height'));
+      if (b.klasse === 'IFCFOOTING') {
+        for (const n of ['GrossVolume', 'NetVolume']) gleich(menge(w, n), dzMal(l, dicke, h), t(n));
+        continue;
+      }
+      const brutto = dzMal(l, h);
+      const netto = b.oeffnungen
+        .map((o) => dzMal(inM(laengs(b.quader) ? o.quader.dx : o.quader.dy), inM(o.quader.dz)))
+        .reduce(dzMinus, brutto);
+      gleich(menge(w, 'GrossSideArea'), brutto, t('GrossSideArea'));
+      gleich(menge(w, 'NetSideArea'), netto, t('NetSideArea'));
+      gleich(menge(w, 'GrossVolume'), dzMal(brutto, dicke), t('GrossVolume'));
+      gleich(menge(w, 'NetVolume'), dzMal(netto, dicke), t('NetVolume'));
+    } else if (b.klasse === 'IFCSLAB') {
+      const brutto = dzMal(x, y);
+      const netto = b.oeffnungen.map((o) => dzMal(inM(o.quader.dx), inM(o.quader.dy))).reduce(dzMinus, brutto);
+      gleich(menge(w, 'Width'), h, t('Width'));
+      gleich(menge(w, 'Perimeter'), dzMal(dz('2'), dzPlus(x, y)), t('Perimeter'));
+      gleich(menge(w, 'GrossArea'), brutto, t('GrossArea'));
+      gleich(menge(w, 'NetArea'), netto, t('NetArea'));
+      gleich(menge(w, 'GrossVolume'), dzMal(brutto, h), t('GrossVolume'));
+      gleich(menge(w, 'NetVolume'), dzMal(netto, h), t('NetVolume'));
+    } else {
+      const wirt = m.bauteile.find((x2) => x2.oeffnungen.some((o) => o.fuellung === b.kennung));
+      const oeffnung = wirt.oeffnungen.find((o) => o.fuellung === b.kennung);
+      const breite = inM(laengs(wirt.quader) ? oeffnung.quader.dx : oeffnung.quader.dy);
+      const hoehe = inM(oeffnung.quader.dz);
+      gleich(menge(w, 'Width'), breite, t('Width'));
+      gleich(menge(w, 'Height'), hoehe, t('Height'));
+      gleich(menge(w, 'Area'), dzMal(breite, hoehe), t('Area'));
+      const produkt = m.instanzen.get(b.nr);
+      gleich(inM(produkt.attr[8].zahl), hoehe, t('OverallHeight'));
+      gleich(inM(produkt.attr[9].zahl), breite, t('OverallWidth'));
+    }
+  }
+  for (const raum of m.von('IFCSPACE')) {
+    const p = m.get(m.get(m.get(raum.attr[6]).attr[2][0]).attr[3][0]);
+    const profil = m.get(p.attr[0]);
+    gleich(menge(m.mengen.get(raum.nr).werte, 'GrossFloorArea'), dzMal(inM(profil.attr[3].zahl), inM(profil.attr[4].zahl)));
+  }
+  for (const g of m.von('IFCBUILDINGSTOREY')) {
+    const w = m.mengen.get(g.nr).werte;
+    gleich(menge(w, 'GrossVolume'), dzMal(menge(w, 'GrossFloorArea'), menge(w, 'GrossHeight')), g.attr[2]);
+  }
+}
+
+test('IFC-Haus v1: Mengen passen zur Geometrie (Netto = Brutto − Öffnung), von Hand nachgerechnet (C4)', () => {
+  const m = modellLesen(ifcDatei('haus-v1.ifc'));
+  mengenGegenGeometrie(m, '1');
+  const t = (k, name) => m.bauteil(k).mengen.werte.get(name).text;
+  // Außenwand Süd EG: 11,99 × 2,75 = 32,9725; Fenster 1,26 × 1,385 = 1,7451 und Haustür 1,135 × 2,135 = 2,423225,
+  // zusammen 4,168325; netto 28,804175; Volumen × 0,365: 12,0349625 und 10,513523875.
+  assert.deepEqual(['GrossSideArea', 'NetSideArea', 'GrossVolume', 'NetVolume'].map((n) => t('AW-EG-S', n)), [
+    '32.9725', '28.804175', '12.0349625', '10.513523875',
+  ]);
+  assert.equal(t('AW-EG-O', 'NetSideArea'), '20.6525'); // 7,51 × 2,75 ohne Öffnung; 3 Stellen: 20,653 (.5 aufgerundet)
+  assert.equal(t('IW-EG-1', 'NetSideArea'), '18.87365'); // 20,6525 − Tür 0,885 × 2,01 = 1,77885
+  assert.equal(t('IW-EG-2', 'NetSideArea'), '8.64875'); // 3,145 × 2,75
+  assert.equal(t('IW-EG-3', 'NetSideArea'), '5.5'); // 2 × 2,75
+  assert.deepEqual(['GrossArea', 'NetArea'].map((n) => t('PL-EG', n)), ['98.7976', '98.6376']); // 11,99 × 8,24 − 0,4 × 0,4
+  assert.deepEqual(['FU-S', 'FU-N', 'FU-W', 'FU-O'].map((k) => t(k, 'NetVolume')), ['5.868', '5.868', '3.492', '3.492']);
+  assert.equal(t('T-EG-1', 'Area'), '1.77885');
+  // Räume: Lichtmaß; Wohnen netto ohne die Grundfläche des Raumteilers 2 × 0,115 = 0,23 (D-99.6)
+  const raum = (name) => {
+    const r = m.von('IFCSPACE').find((x) => x.attr[2] === name);
+    return ['GrossFloorArea', 'NetFloorArea'].map((n) => m.mengen.get(r.nr).werte.get(n).text);
+  };
+  assert.deepEqual(raum('E.01'), ['47.87625', '47.64625']); // 6,375 × 7,51
+  assert.deepEqual(raum('E.02'), ['17.33895', '17.33895']); // 4,77 × 3,635
+  assert.deepEqual(raum('O.03'), ['18.063375', '18.063375']); // 4,785 × 3,775
+  // Geschosse: BGF aus dem Außenmaß 11,99 × 8,24 = 98,7976; BRI EG × 3,25 (−0,25 bis 3,00), OG × 3,00 (3,00 bis 6,00)
+  const geschoss = (name) => {
+    const g = m.von('IFCBUILDINGSTOREY').find((x) => x.attr[2] === name);
+    return ['GrossHeight', 'GrossFloorArea', 'GrossVolume'].map((n) => m.mengen.get(g.nr).werte.get(n).text);
+  };
+  assert.deepEqual(geschoss('EG'), ['3.25', '98.7976', '321.0922']);
+  assert.deepEqual(geschoss('OG'), ['3.', '98.7976', '296.3928']);
+});
+
+test('IFC-Haus v1 in IFC 2x3: Längen in mm, nach Umrechnung dieselben Mengen und GlobalIds wie IFC 4 (Ticket 99)', () => {
+  const text = ifcDatei('haus-v1-ifc2x3.ifc');
+  const drei = modellLesen(text);
+  const vier = modellLesen(ifcDatei('haus-v1.ifc'));
+  assert.equal(drei.schema, 'IFC2X3');
+  const einheiten = (m) => ['LENGTHUNIT', 'AREAUNIT', 'VOLUMEUNIT'].map((a) => [m.einheit(a).attr[2]?.enum ?? null, m.einheit(a).attr[3].enum]);
+  assert.deepEqual(einheiten(drei), [['MILLI', 'METRE'], [null, 'SQUARE_METRE'], [null, 'CUBIC_METRE']]);
+  mengenGegenGeometrie(drei, '1000');
+  // Gleicher Inhalt: Bauteile mit GlobalId, Klasse, Name, Kennung, Geschoss, KG, Material, Typ, Eigenschaften, Mengen in m
+  const bauteile = (m, faktor) => m.bauteile.map((b) => ({
+    globalId: b.globalId, klasse: b.klasse, name: b.name, kennung: b.kennung, geschoss: b.geschoss, kg: b.kg,
+    material: b.material, typ: b.typ, satz: b.mengen.satz, mengen: mengenInSi(b.mengen.werte, faktor),
+    psets: [...b.psets].map(([satz, werte]) => [satz, [...werte].map(([n, w]) => [n, w.typ, w.wert.zahl ?? w.wert])]),
+    oeffnungen: b.oeffnungen.map((o) => [o.name, o.fuellung]),
+  }));
+  assert.deepEqual(bauteile(drei, '1000'), bauteile(vier, '1'));
+  // Strukturknoten mit denselben GlobalIds; Raum- und Geschossmengen in m gleich
+  const knoten = (m, faktor) => ['IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE'].flatMap((typ) =>
+    m.von(typ).map((k) => [typ, k.attr[0], k.attr[2], m.mengen.has(k.nr) ? mengenInSi(m.mengen.get(k.nr).werte, faktor) : null]));
+  assert.deepEqual(knoten(drei, '1000'), knoten(vier, '1'));
+  // Beispiel: Außenwand Süd EG, Länge 11990 mm = 11,99 m; Seitenfläche in m² wie in IFC 4
+  const aw = drei.bauteil('AW-EG-S').mengen.werte;
+  assert.deepEqual([aw.get('Length').text, aw.get('NetSideArea').text], ['11990.', '28.804175']);
+  assert.equal(drei.von('IFCBUILDINGSTOREY')[1].attr[9].zahl, '3000.');
+  // IFC 2x3 schreibt Umlaute als \X\hh (Latin-1), IFC 4 als \X2\hhhh\X0\
+  assert.ok(text.includes("'Au\\X\\DFenwand S\\X\\FCd EG'"));
 });

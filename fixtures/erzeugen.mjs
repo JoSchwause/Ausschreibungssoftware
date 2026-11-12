@@ -952,7 +952,7 @@ export function erzeugeAlle() {
 
 /** Ticket 99: die Hausdateien des Tors X1 unter ifc/ (Beschreibung und Schreiber in ifc/haus.mjs). */
 function erzeugeHaus() {
-  const dateien = [['v1', 'IFC4']];
+  const dateien = [['v1', 'IFC4'], ['v1', 'IFC2X3']];
   return Object.fromEntries(dateien.map(([stand, schema]) => [`ifc/${hausDateiname(stand, schema)}`, hausIfc(stand, schema)]));
 }
 
