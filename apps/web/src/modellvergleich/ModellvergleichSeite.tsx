@@ -14,6 +14,7 @@ import '@tethys/ui-modell/modellansicht.css';
 import type {
   Bauwerksmodell,
   BauwerksmodellId,
+  BauwerksmodellUebersicht,
   BauwerksmodellZustand,
   LeistungsverzeichnisId,
   LvUebersicht,
@@ -27,6 +28,7 @@ import { bauwerksmodellLaden } from '../bim/schreiben';
 import { modellTesthaken } from '../bim/testhaken';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer, lvSitzung, type LvSitzung } from '../lv/befehlsweg';
+import { datumDe } from '../lv/kopfdaten';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Verweis } from '../ui/Verweis';
@@ -39,7 +41,8 @@ import {
   mengenAktualisieren,
 } from './folgen';
 import { texte } from './texte';
-import { LISTE_SPALTEN, vergleichsansicht } from './vergleich';
+import { vergleichPfad } from './pfad';
+import { LISTE_SPALTEN, fruehereStaende, vergleichsansicht } from './vergleich';
 import '../lv/lv.css';
 import '../bim/bim.css';
 import './modellvergleich.css';
@@ -54,6 +57,8 @@ type Laden =
       alt: BauwerksmodellZustand;
       bytes: Uint8Array | null;
       lvs: readonly LvUebersicht[];
+      /** Ticket 122 (PC-a6): die früheren Stände des neuen Modells zur Wahl des alten Stands. */
+      staende: readonly BauwerksmodellUebersicht[];
     };
 
 const KENNZEICHEN = {
@@ -87,12 +92,18 @@ export function ModellvergleichSeite({
       if (alt === null) return { art: 'fehlt' };
       const b = await u.speicher.modelldateien.laden(neu.bauwerksmodell.datei.hash);
       const l = await u.speicher.leistungsverzeichnisse.auflisten(projektId);
+      const m = await u.speicher.bauwerksmodelle.auflisten(projektId);
+      const kette = fruehereStaende(neuId, m.ok ? m.wert : []);
       return {
         art: 'da',
         neu,
         alt,
         bytes: b.ok ? b.wert : null,
         lvs: l.ok ? l.wert.filter((x) => x.vorlage !== true) : [],
+        // Ein alter Stand außerhalb der Kette (Adresse von Hand) bleibt wählbar, damit die Auswahl ihn zeigt.
+        staende: kette.some((k) => k.id === alt.bauwerksmodell.id)
+          ? kette
+          : [...kette, { ...alt.bauwerksmodell, anzahlBauteile: alt.bauwerksmodell.bauteile.length }],
       };
     })().then((l) => {
       if (aktiv) setLage(l);
@@ -127,6 +138,7 @@ export function ModellvergleichSeite({
       neu={lage.neu.bauwerksmodell}
       bytes={lage.bytes}
       lvs={lage.lvs}
+      staende={lage.staende}
       gehe={gehe}
     />
   );
@@ -138,6 +150,7 @@ function Vergleich({
   neu,
   bytes,
   lvs,
+  staende,
   gehe,
 }: {
   projektId: ProjektId;
@@ -145,6 +158,7 @@ function Vergleich({
   neu: Bauwerksmodell;
   bytes: Uint8Array | null;
   lvs: readonly LvUebersicht[];
+  staende: readonly BauwerksmodellUebersicht[];
   gehe: (pfad: string) => void;
 }): ReactElement {
   const ansicht = useMemo(() => vergleichsansicht(alt, neu), [alt, neu]);
@@ -162,6 +176,25 @@ function Vergleich({
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge}>
         <HistorieKnoepfe />
+        {/* Ticket 122 (PC-a6): alter Stand wählbar, Vorgabe der Vorgänger (Ticket 116 §1) */}
+        <Auswahl
+          kompakt
+          label={texte.vergleichMit}
+          wert={alt.id}
+          optionen={staende.map((m) => ({
+            wert: m.id,
+            label: texte.stand(m.name, datumDe(m.eingelesen), m.id === neu.vorgaengerId),
+          }))}
+          onWertChange={(id) => {
+            gehe(
+              vergleichPfad(
+                projektId,
+                neu.id,
+                id === neu.vorgaengerId ? undefined : (id as BauwerksmodellId),
+              ),
+            );
+          }}
+        />
       </div>
 
       <section aria-label={texte.zusammenfassung}>

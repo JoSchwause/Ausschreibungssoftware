@@ -212,3 +212,36 @@ test('Hängende Zuordnung: Sprung zur Position auf der Modellseite und in der Vo
     zuordnung.oz,
   );
 });
+
+test('Alten Stand wählen: alle früheren Stände, Vorgabe der Vorgänger (Ticket 122)', async ({ page }) => {
+  test.setTimeout(180_000);
+  await aufbau(page);
+  // Ein dritter Stand nach v2: wieder die Datei von v1.
+  await page.getByRole('link', { name: 'Zu den Modellen' }).click();
+  const wahl = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Neuer Stand von haus-v2' }).click();
+  await (await wahl).setFiles(datei('haus-v1'));
+  const dialog = page.getByRole('dialog', { name: 'Modell eingelesen' });
+  await expect(dialog.getByText('Keine Befunde.')).toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole('button', { name: 'Modell öffnen' }).click();
+  await page.getByRole('link', { name: 'Mit Vorgänger vergleichen' }).click();
+
+  // Vorgabe: der Vorgänger v2; zur Wahl stehen v2 und v1.
+  await expect(page.getByRole('heading', { level: 1, name: 'Vergleich: haus-v2 → haus-v1' })).toBeVisible();
+  const auswahl = page.getByRole('combobox', { name: 'Verglichen mit', exact: true });
+  await expect(auswahl).toContainText('haus-v2');
+  await expect(auswahl).toContainText('Vorgänger');
+  await auswahl.click();
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await page.getByRole('option', { name: /^haus-v1/ }).click();
+
+  // Die Adresse nennt den gewählten Stand; v1 und der dritte Stand sind dieselbe Datei: keine Änderung.
+  await expect(page).toHaveURL(/\/vergleich\/[^/]+$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Vergleich: haus-v1 → haus-v1' })).toBeVisible();
+  const zusammenfassung = page.getByRole('region', { name: 'Zusammenfassung' });
+  await expect(zusammenfassung).toContainText('Hinzugefügt0');
+  await expect(zusammenfassung).toContainText('Unverändert30');
+  await expect(page.getByRole('combobox', { name: 'Verglichen mit', exact: true })).not.toContainText(
+    'Vorgänger',
+  );
+});
