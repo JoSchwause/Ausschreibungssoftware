@@ -45,3 +45,67 @@ Herkunft: `plan.md` §2 X1c–X1e; Tore X1-Kern und X1-Erweitert (`plan.md` §4,
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Ergebnis (Branch `welle-6/115-web-bim-mengen`, Basis `integration/welle-6`, zuletzt gemergt mit 116, `7e431f8`)
+
+Ordner `apps/web/src/bim/` (neu: `zuordnung.ts`, `uebernahme.ts`, `aufmassblatt.ts`, `kennwerte.ts`, `darstellung.ts`,
+`useBezug.ts`, `ZuordnungBereich.tsx`, `AufmassAusAuswahlDialog.tsx`, `KennwerteBereich.tsx`, `MengenAusModell.tsx`; geändert:
+`ModellSeite.tsx`, `auswahl.ts`, `testhaken.ts`, `texte.ts`, `bim.css`). Einhängestellen `// Ticket 115` in `lv/LvSeite.tsx`
+(Knopf „Mengen aus Modell …“) und `auftrag/AuftragsLvSeite.tsx` (Verweis „Aufmaß aus Modell“ zur Modellliste, D-53).
+`lv/befehlsweg.ts` und `kosten/` blieben unberührt (D-115.9). E2E `apps/web/e2e/bim-mengen.spec.ts`.
+
+1. **Zuordnen (X1c).** Region „Zuordnung zu Positionen“ auf der Modellseite: Auswahl „LV für Zuordnung“ (alle LVs und
+   Auftrags-LVs des Projekts), „Zuordnen …“ (Dialog: Position suchen nach OZ/Kurztext, Mengenart mit Einheit und Zahl der
+   Bauteile, dazu „Stück“; Befunde der Position nach dem Zuordnen vorab) → **ein** `BauteileZuordnen` mit bisheriger Liste plus
+   neuen Paaren, Doppelte nicht doppelt. Liste „Zuordnungen“ je Position mit „Entfernen“ je Paar; Zählung „n Bauteile
+   zugeordnet, m ohne Zuordnung“; „Befunde der Zuordnung“ (`zuordnungenPruefen`) mit „Im Baum zeigen“. 3D färbt jedes Bauteil
+   „zugeordnet“/„ohne Zuordnung“ bezogen auf das gewählte LV. Im Baum ergänzt Strg/Cmd+Klick die Auswahl (D-115.1).
+2. **Mengen übernehmen (X1d).** LV-Seite „Mengen aus Modell …“ → Modell wählen (bei einem Modell vorgewählt) → Tabelle
+   „Vorschau der Mengenübernahme“ (OZ, Kurztext, Vordersatz bisher/neu, Ansatzzeilen, Befunde) → „n Positionen übernehmen“: je
+   geänderter Position `MengenansatzSetzen` (Zeilen aus `bim`, Menge aus `mengen.mengenansatzBerechnen`), alles `folge` = ein
+   Undo-Schritt.
+3. **DIN 277 und Kennwerte (X1e).** Region „Kennwerte“: BGF, BRI, NRF mit Quelle; fehlt eine Größe im Modell, ein Eingabefeld
+   („Eingabe“ gekennzeichnet). „Kostenschätzung über Kennwerte …“: Zeilen KG / Bezug / Kennwert, Vorschau mit Herleitung und
+   Gesamt → `KostenermittlungAnlegen` (Stufe Kostenschätzung) → Sprung zur neuen Kostenermittlung. „Kostenkennwerte“: für eine
+   gewählte Kostenermittlung je KG Summe, €/m² BGF, €/m³ BRI, €/m² NRF.
+4. **Aufmaßblatt aus Auswahl.** Bei gewähltem Auftrags-LV und Auswahl: Dialog mit Bezeichnung, Datum (heute), Vorschau je
+   Position, festem Hinweis aus `bim` → `AufmassAnlegen` (nächste Nummer, Mengen aus `mengen`) → Sprung zum Blatt.
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-115.0 Prüfnähte.** Reine Module mit Unit-Tests an ihrer öffentlichen Fläche: `zuordnung` (Befehlsbildung, Zusammenführen,
+  Entfernen, Mengenarten, Suche, Färbung, Modellreihenfolge), `uebernahme` (Vorschau, Befehle), `aufmassblatt`, `kennwerte`,
+  `auswahl` (Strg+Klick). Die Mengenübernahme läuft dazu durch Kern und echten Speicher (In-Memory-SQLite) samt Undo/Redo als
+  ein Schritt, mit den Sollwerten aus `typisch-bim.json`. Oberfläche und 3D über die E2E. Grund: wie D-114.0, autonom bestätigt.
+- **D-115.1 Mehrfachauswahl im Baum.** Strg/Cmd+Klick auf eine Baumzeile ergänzt die Auswahl um deren Bauteile
+  (`beiZeileAktiv(…, hinzufuegen)`, Modifikator aus `pointerdown` am Baum). Grund: Bisher ersetzte jede Zeile die Auswahl; drei
+  Innenwände ließen sich nur im 3D wählen, wo sie verdeckt sein können. Wie Strg+Klick im 3D (D-114.4).
+- **D-115.2 Reihenfolge der neuen Paare.** Neue Zuordnungen stehen hinter den bisherigen in der **Reihenfolge des Modells**,
+  nicht der Klickfolge (`bauteileInModellreihenfolge`). Grund: Die Reihenfolge bestimmt die Ansatzzeilen (D-53, D-105.4); so
+  ergibt dieselbe Auswahl immer denselben Vordersatz, und alle sieben Zuordnungen der Fixture stehen in Modellreihenfolge.
+- **D-115.3 Bezugs-LV.** Eine Auswahl für alle LVs (auch Nachtrags-LVs) und Auftrags-LVs, vorgewählt das erste; Färbung,
+  Liste, Befunde und Zählung beziehen sich darauf. Nach Rückgängig/Wiederholen lädt der Bezug neu. Grund: Ticket („LV wählen
+  … bezogen auf das gewählte LV“); `zuordnungenPruefen` nimmt die Knoten eines LV.
+- **D-115.4 Befunde.** Im Zuordnen-Dialog die Befunde, die die Mengenübernahme für die Position nach dem Zuordnen fände
+  (Einheit passt nicht, Menge fehlt, mehrdeutig), mit Sprung in den Baum; auf der Seite „Befunde der Zuordnung“ (hängend u. a.)
+  mit Sprung. Nichts sperrt (U5): ein Zuordnen mit Befund ist möglich, die Übernahme schreibt für ein solches Bauteil keine Zeile
+  (nie 0, Q5). In der Vorschau auf der LV-Seite stehen die Befunde je Position als Text und als Liste, ohne Sprung (die LV-Seite
+  zeigt kein Modell).
+- **D-115.5 Kein leerer Undo-Schritt.** Ändert ein Zuordnen nichts (alle Paare schon da), gibt es keinen Befehl (der Knopf ist
+  aus, mit Hinweis); „Übernehmen“ ist aus, wenn keine Position geändert würde.
+- **D-115.6 Kennwerte.** Eingabe nur für Größen, die das Modell nicht hergibt (das Modell geht vor, `bim` könnte auch
+  überschreiben); Kennwerte als Betrag (2 Stellen), KG dreistellig; Eingabefehler stehen am Feld und sperren nur das Anlegen.
+  Name vorgeschlagen „Kostenschätzung aus <Modell>“. Kostenkennwerte über alle KG-Ebenen von `kostenermittlungBerechnen`.
+- **D-115.7 Aufmaßblatt.** Bezeichnung „Aus Modell <Name>“ und Datum heute (Uhr der Umgebung), beide änderbar; nur
+  Vorschläge mit Zeilen werden Aufmaßpositionen (D-108.6); der Hinweis „nicht erkennbar“ steht immer (`role="note"`).
+- **D-115.8 Testhaken.** `window.tethysModell.faerbung()` liefert die Färbung, die die App der Leinwand gibt (wie `auswahl()`
+  Zustand statt Pixel, D-58).
+- **D-115.9 Keine Änderung an `lv/befehlsweg.ts`.** Geschrieben wird über die vorhandenen Sitzungen (`lv`, `auftragsLvSitzung`,
+  `aufmassSitzung`, `kostenermittlungSitzung`); die Modellseite meldet ihre LV-Sitzung nicht an, sondern lädt nach
+  Rückgängig/Wiederholen neu. Der markierte Haken war daher nicht nötig.
+
+### Offen / Hinweise
+
+- Rückgängig eines Zuordnens am **Ausschreibungs-LV** auf der Modellseite springt nach der bestehenden Regel `lvZiel`
+  (`historie/arten.ts`, nicht mein Ordner) auf die LV-Seite; am Auftrags-LV bleibt die Seite. Ein Ziel „Modellseite bleibt,
+  wenn nur `bauteile` geändert sind“ wäre eine Zeile in `arten.ts` (Review der Welle).
