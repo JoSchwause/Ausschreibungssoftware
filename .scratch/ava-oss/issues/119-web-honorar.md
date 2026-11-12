@@ -25,6 +25,8 @@ Herkunft: `plan.md` §2 X3; Tor X3 (`plan.md` §4)
    mit KG 300/400, Honorarberechnung) → alle Sollwerte → Neuladen → PDF; `x3-kette.test.ts` ohne Oberfläche gegen dieselben
    Sollwerte. Dreimal grün; sonst Kettentest plus verkürzte E2E.
 
+Aus dem Review (D-66): Der Hinweis zu DIN 276:2008-12 (§ 4 Abs. 1) ist fester Text auf der Seite, kein Befund.
+
 ## Grenzen
 
 - Die Rechnung steht in `honorar`. `okf/research/` wird nicht gelesen (C3).

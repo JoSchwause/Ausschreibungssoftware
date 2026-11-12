@@ -26,6 +26,10 @@ Hinweis aus Ticket 98: Das Leseergebnis kennt Mengen ohne Wert (`wert: Menge | n
 Entscheidung des Orchestrators: Eine Menge ohne Wert entfällt bei der Abbildung mit einem Befund (Bauteil, Mengensatz, Name), nie 0;
 kein Vertragsfeld dafür.
 
+Aus dem Review von v1.6 (D-66, Befund 4): Ringe in `elternGlobalId` (Struktur) und `teilVonGlobalId` (Teile) bricht die
+Abbildung mit einem Befund auf, damit `BauwerksmodellAnlegen` eine fehlerhafte Datei nicht ganz abweist (U5). Bei doppelten
+GlobalIds gilt jeder Verweis dem ersten Objekt in Dateireihenfolge (Befund 5).
+
 ## Grenzen
 
 - Nur `packages/ifc`. Kein `vertrag`. Mengenübernahme, Vergleich und DIN 277 gehören `bim` (Ticket 108). `okf/research/` wird
