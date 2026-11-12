@@ -82,6 +82,10 @@ const LV_FELDBEFEHLE: Readonly<Record<string, Feldbefehl<LvBefehl>>> = {
     bauen: (k, w) => ({ art: 'KostengruppeSetzen', positionId: id.pos(k), kostengruppe: w as null }),
     traegt: NUR_POSITION,
   },
+  BauteileZuordnen: {
+    bauen: (k, w) => ({ art: 'BauteileZuordnen', positionId: id.pos(k), bauteile: w as null }),
+    traegt: NUR_POSITION,
+  },
   TextquelleSetzen: {
     bauen: (k, w) => ({ art: 'TextquelleSetzen', positionId: id.pos(k), textquelle: w as null }),
     traegt: NUR_POSITION,
@@ -105,6 +109,10 @@ const LV_FELDBEFEHLE: Readonly<Record<string, Feldbefehl<LvBefehl>>> = {
 const AUFTRAGS_LV_FELDBEFEHLE: Readonly<Record<string, Feldbefehl<AuftragsLvBefehl>>> = {
   KostengruppeSetzen: {
     bauen: (k, w) => ({ art: 'KostengruppeSetzen', positionId: id.pos(k), kostengruppe: w as null }),
+    traegt: NUR_POSITION,
+  },
+  BauteileZuordnen: {
+    bauen: (k, w) => ({ art: 'BauteileZuordnen', positionId: id.pos(k), bauteile: w as null }),
     traegt: NUR_POSITION,
   },
 };
@@ -213,6 +221,7 @@ describe('Fehlercode der Feldbefehle (D-71.3): Knoten vor Wert', () => {
     // Orakel: die Befehle des Vertrags mit `positionId` oder `knotenId` an genau einem Knoten (ohne Baumbefehle).
     expect(Object.keys(LV_FELDBEFEHLE).sort()).toEqual(
       [
+        'BauteileZuordnen',
         'EinheitAendern',
         'EinheitspreisAendern',
         'EinheitspreisanteileSetzen',
@@ -228,7 +237,7 @@ describe('Fehlercode der Feldbefehle (D-71.3): Knoten vor Wert', () => {
         'TextquelleSetzen',
       ].sort(),
     );
-    expect(Object.keys(AUFTRAGS_LV_FELDBEFEHLE)).toEqual(['KostengruppeSetzen']);
+    expect(Object.keys(AUFTRAGS_LV_FELDBEFEHLE).sort()).toEqual(['BauteileZuordnen', 'KostengruppeSetzen']);
   });
 
   it('KostengruppeSetzen an Gliederung und Hinweistext: knotenart-unzulaessig (bisher knoten-unbekannt)', () => {
