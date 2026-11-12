@@ -211,6 +211,27 @@ Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
 ### BIM (Building Information Modeling) & IFC
 Modellbasierte Arbeitsweise im Bauwesen. Über offene Austauschformate wie **IFC (Industry Foundation Classes)** werden 3D-Bauwerksmodelle mit Bauteileigenschaften (Properties/Quantities) geladen, um Mengen direkt am 3D-Bauteil zu ermitteln (**modellbasierte Mengenermittlung / QTO**) und nachvollziehbar mit LV-Positionen oder Kostengruppen zu verknüpfen.
 
+### Bauwerksmodell
+Ein eingelesenes IFC-Modell (IFC 2x3 oder IFC 4, Datei im STEP-Format `.ifc`), unveränderlich: Bauwerksstruktur und Bauteile mit ihren Mengen, ohne Geometrie. Jedes Einlesen ergibt ein neues Bauwerksmodell; ein neuer Stand nennt seinen Vorgänger. Im Code `Bauwerksmodell`, gelesen von `ifcLesen` (Paket `ifc`).
+
+### Bauwerksstruktur / Strukturknoten
+Die räumliche Gliederung eines Bauwerksmodells: Projekt → Grundstück → Gebäude → Geschoss → Raum (IFC `IfcProject`, `IfcSite`, `IfcBuilding`, `IfcBuildingStorey`, `IfcSpace`, verbunden über `IfcRelAggregates`). Ein **Strukturknoten** ist ein Knoten dieser Gliederung mit GlobalId, Art (`projekt`, `grundstueck`, `gebaeude`, `geschoss`, `raum`), Name, Elternknoten und eigenen Bauteilmengen (z. B. Brutto-Grundfläche eines Geschosses, Netto-Raumfläche eines Raums).
+
+### Bauteil
+Ein Produkt des Bauwerksmodells mit GlobalId (Wand, Decke, Fenster, Tür …), das in einem Strukturknoten steht (`IfcRelContainedInSpatialStructure`), oder ein Teil eines solchen Produkts (`IfcRelAggregates`, mit Verweis auf das Ganze). Öffnungen, virtuelle Elemente, Beschriftungen und Raster sind keine Bauteile. Ein Bauteil trägt seine IFC-Klasse, wie sie in der Datei steht (z. B. `IfcWallStandardCase`), Name, Typname, Bauteilmengen, Eigenschaften, Klassifikationen (System, Kennung, Name) und Materialnamen. Eine dreistellige Nummer aus einer Klassifikation mit „276“ im Namen ist ein **Kostengruppen-Vorschlag**, keine Zuordnung.
+
+### GlobalId
+Die Kennung eines Objekts in IFC: 22 Zeichen aus dem IFC-Base64-Alphabet (`0-9`, `A-Z`, `a-z`, `_`, `$`). Über sie werden Bauteile zwischen zwei Modellständen, zwischen Leser und 3D-Ansicht und mit LV-Positionen verknüpft. Doppelte oder nicht wohlgeformte GlobalIds sind ein Befund; beide Objekte bleiben. Im Code `IfcGlobalId`.
+
+### Mengensatz
+Eine benannte Gruppe von Bauteilmengen in IFC (`IfcElementQuantity`, z. B. `Qto_WallBaseQuantities`), am Bauteil oder an seinem Typ. Eine Menge am Bauteil überschreibt die gleichnamige Menge desselben Mengensatzes am Typ. Im Code `satz` einer Bauteilmenge.
+
+### Bauteilmenge
+Eine Menge eines Bauteils oder Strukturknotens aus einem Mengensatz: Name, wie er im Modell steht (z. B. `NetVolume`), Art (`laenge`, `flaeche`, `volumen`, `anzahl`, `gewicht`, `zeit`) und Wert in der SI-Grundeinheit (m, m², m³, Stück, kg, s), exakt umgerechnet und erst am Ende kaufmännisch auf 3 Stellen gerundet. Fehlt die Einheit, bleibt die Menge ohne Wert (nie 0). Eine Bauteilmenge wird nie aus der Geometrie berechnet. Derselbe Name in zwei Mengensätzen eines Bauteils ergibt zwei Bauteilmengen.
+
+### Eigenschaftssatz
+Eine benannte Gruppe von Eigenschaften in IFC (`IfcPropertySet`, z. B. `Pset_WallCommon` mit `IsExternal`), am Bauteil oder an seinem Typ; das Bauteil überschreibt den Typ wie beim Mengensatz. Eine Eigenschaft hat einen Namen und Werte als Text mit IFC-Typname (z. B. `IfcBoolean`, `IfcLengthMeasure`). Eigenschaften werden nicht im Bauwerksmodell gespeichert, sondern bei Bedarf aus der Datei gelesen (D-51).
+
 ---
 
 ## Vergabe, Kosten & Abrechnung
