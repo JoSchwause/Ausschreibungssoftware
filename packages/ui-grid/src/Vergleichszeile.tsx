@@ -9,6 +9,8 @@
 import { Fragment, memo } from 'react';
 import type { ReactElement } from 'react';
 import { Baumeinzug } from './Baumeinzug';
+import { balkenzelle } from './Balkenspalte';
+import type { Balkenspaltenbild } from './Balkenspalte';
 import { kennzeichenText, zellbeschreibung } from './vergleich';
 import type { KennzeichenText, VergleichsSpalte, VergleichsZelle, VergleichsZeile } from './vergleichTypen';
 
@@ -40,11 +42,13 @@ export interface VergleichszeileProps {
   /** Ausgewählte Spalten dieser Zeile als Index-Spanne, sonst `null`. */
   readonly auswahl: readonly [number, number] | null;
   readonly kennzeichenTexte: Readonly<Record<string, KennzeichenText>> | undefined;
+  /** Je Spalte das Bild ihrer Zeitleiste (Ticket 96), `null` für Spalten ohne; einmal je Grid gerechnet. */
+  readonly achsen: readonly (Balkenspaltenbild | null)[];
 }
 
 function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
   const { zellen, baum, index, ariaZeile, versatz, spalten, versaetze } = props;
-  const { zellklassen, sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte } = props;
+  const { zellklassen, sichtbar, baumspalte, aktiv, auswahl, kennzeichenTexte, achsen } = props;
 
   return (
     <div
@@ -79,6 +83,27 @@ function VergleichszeileKomponente(props: VergleichszeileProps): ReactElement {
         if (aktiv === spalte.id) klassen += ' tx-grid__zelle--aktiv';
         if (ausgewaehlt) klassen += ' tx-grid__zelle--ausgewaehlt';
         for (const kz of kennzeichen) if (KLASSENTAUGLICH.test(kz)) klassen += ` tx-grid__zelle--${kz}`;
+
+        const bild = achsen[si] ?? null;
+        if (bild) {
+          return (
+            <Fragment key={spalte.id}>
+              {luecke}
+              {balkenzelle({
+                zelle,
+                bild,
+                klassen,
+                spalte: spalte.id,
+                spaltenIndex: si,
+                aktiv: aktiv === spalte.id,
+                ausgewaehlt,
+                beschreibung,
+                links,
+                kennzeichenTexte,
+              })}
+            </Fragment>
+          );
+        }
 
         return (
           <Fragment key={spalte.id}>

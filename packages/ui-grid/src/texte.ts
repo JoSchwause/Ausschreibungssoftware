@@ -89,6 +89,20 @@ export const texte = {
   positionAngelegt: 'Neue Position angelegt.',
   vergleichBeschriftung: 'Vergleich',
   vergleichLeer: 'Keine Zeilen vorhanden.',
+  /** Kennzeichen am Rand der Balkenspalte (Ticket 96): Der Balken reicht über den dargestellten Zeitraum hinaus. */
+  balkenVorher: 'beginnt vor dem dargestellten Zeitraum',
+  balkenNachher: 'endet nach dem dargestellten Zeitraum',
+  balkenGanzVorher: 'liegt vor dem dargestellten Zeitraum',
+  balkenGanzNachher: 'liegt nach dem dargestellten Zeitraum',
+  istVorher: 'Ist-Termine beginnen vor dem dargestellten Zeitraum',
+  istNachher: 'Ist-Termine enden nach dem dargestellten Zeitraum',
+  istGanzVorher: 'Ist-Termine liegen vor dem dargestellten Zeitraum',
+  istGanzNachher: 'Ist-Termine liegen nach dem dargestellten Zeitraum',
+  /** Symbole der Randkennzeichen: wohin der Balken weitergeht. */
+  balkenVorherSymbol: '◀',
+  balkenNachherSymbol: '▶',
+  /** Zugängliche Beschreibung des Kopfes einer Balkenspalte mit Markierungen, z. B. „Markierungen: Stichtag …“. */
+  markierungen: 'Markierungen',
 } as const;
 
 /** Ansage nach Strg+C im Vergleichsgrid, z. B. „1 Zelle kopiert.“ oder „3 × 2 Zellen kopiert.“. */

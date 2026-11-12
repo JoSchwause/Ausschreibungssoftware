@@ -5,9 +5,15 @@
 import { schreibeTsv } from './tsv';
 import type { Zelle } from './navigation';
 import type { Kennzeichen, KennzeichenText, VergleichsSpalte, VergleichsZelle } from './vergleichTypen';
+import { achse } from './zeitleiste';
 
 /** Standardbreite einer Spalte ohne Angabe, in Pixeln. */
 export const STANDARDBREITE = 120;
+
+/** Breite einer Spalte in Pixeln: eine Balkenspalte so breit wie ihre Achse (Ticket 96), sonst `breite` oder 120. */
+export function spaltenbreite(s: Pick<VergleichsSpalte, 'breite' | 'zeitleiste'>): number {
+  return s.zeitleiste ? achse(s.zeitleiste).breite : (s.breite ?? STANDARDBREITE);
+}
 
 /** Ein rechteckiger Zellbereich als Index-Spannen (beide Enden eingeschlossen). */
 export interface Bereich {
@@ -42,14 +48,14 @@ export function bereichAlsTsv(
 
 /** Linker Versatz jeder fixierten Spalte (die ersten `anzahl`), `null` für Spalten, die mitscrollen. */
 export function fixierteVersaetze(
-  spalten: readonly Pick<VergleichsSpalte, 'breite'>[],
+  spalten: readonly Pick<VergleichsSpalte, 'breite' | 'zeitleiste'>[],
   anzahl: number,
 ): (number | null)[] {
   let links = 0;
   return spalten.map((s, i) => {
     if (i >= anzahl) return null;
     const versatz = links;
-    links += s.breite ?? STANDARDBREITE;
+    links += spaltenbreite(s);
     return versatz;
   });
 }

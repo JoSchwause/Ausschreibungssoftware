@@ -46,11 +46,13 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    // Zwei Testseiten: das LV-Grid (index.html) und das Vergleichsgrid (vergleich.html, Ticket 60).
+    // Drei Testseiten: das LV-Grid (index.html), das Vergleichsgrid (vergleich.html, Ticket 60) und die Balkenspalte im
+    // Vergleichsgrid (bauzeit.html, Ticket 96).
     rolldownOptions: {
       input: {
         index: fileURLToPath(new URL('./e2e/harness/index.html', import.meta.url)),
         vergleich: fileURLToPath(new URL('./e2e/harness/vergleich.html', import.meta.url)),
+        bauzeit: fileURLToPath(new URL('./e2e/harness/bauzeit.html', import.meta.url)),
       },
     },
   },
