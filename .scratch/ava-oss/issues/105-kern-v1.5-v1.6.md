@@ -1,6 +1,6 @@
 # 105: Kern v1.5/v1.6: einheitlicher Fehlercode, OZ-Vorschlag am Auftrags-LV, `BauteileZuordnen`
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: K, X1c · Paket: `packages/kern` (benannte Ausnahmen von P2, nur wenn nötig und klein: die Stelle in
 `packages/abrechnung`, die heute den OZ-Vorschlag umdeutet (D-80.1), und `zuschlagErteilen` in `packages/vergabe`, falls es
@@ -127,3 +127,9 @@ wiederholt: `gaeb` `lesen` (2 MB: voll 1256 ms) und `angebot` (X84: voll 1029 ms
 1038,3 / 1030,3 / bestanden / 1128,4 ms. Der Preisspiegel ruft nur `summenBerechnen`, `positionsSumme`, `positionGehtInSumme`
 und `zuschlagsbasen`, die 105 nicht ändert; ich halte es für Last, bitte bei ruhiger Maschine nachmessen. Kein Budget gelockert,
 kein Test übersprungen.
+
+## Answer
+
+Gemergt mit `d5ed1c7` (Branch `welle-6/105-kern`, `6c556cd`). Fehlercode einheitlich, `ozVorschlag` erfüllt `OzVorschlagen` (auch Auftrags-LV,
+`abrechnung` ohne Umdeutung), `BauteileZuordnen` in LV und Auftrags-LV, Kopieren verwirft (Option `behalten`), Budgets 5,7 ms / 2,4–3,1 ms.
+Offen: `vergabe`-Budget unter Last (unveränderter Code) auf ruhiger Maschine nachmessen.
