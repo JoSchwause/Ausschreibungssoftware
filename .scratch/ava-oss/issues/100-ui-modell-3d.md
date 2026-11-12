@@ -1,6 +1,6 @@
 # 100: X1b: 3D-Ansicht des Modells im Browser (`ui-modell`)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1b · Paket: `packages/ui-modell` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml` falls
 nötig)
@@ -183,3 +183,11 @@ Branch `welle-6/100-ui-modell`. Paket `packages/ui-modell` (`@tethys/ui-modell`)
   `integration/welle-6` liegt (der Prüfstand ist vorbereitet; das Budget prüft heute der eigene Erzeuger, ≈ 4,8 MB statt
   ≈ 25 MB Text, gleiche Bauteilzahl).
 - Glossarzeile „Modellansicht“ (D-100.1) und die CSP/PWA-Punkte oben für Ticket 114.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `c04946e` (Branch `welle-6/100-ui-modell`, `878fb40`). Paket `ui-modell`: Modellansicht mit
+web-ifc 0.0.78 im Worker und three.js 0.186.1, Auswahl/Ausblenden/Isolieren/Färben über GlobalId, CPU-Raycast, Testhaken; E2E 13/13;
+10.000 Bauteile: Laden 2,5 s, Picken 147 ms (Budget 20 s/200 ms). Integrationssuite danach ganz grün (3.035 Tests). Offen: Test im
+Prüfstand mit `fixtures/ifc/haus-v1.ifc` (Ticket 99 lag noch nicht vor; die App-E2E in 114/117 nutzt es); das große Modell der
+Messung kam aus einem eigenen Erzeuger (4,8 MB statt 25 MB, gleiche Zahl Bauteile).
