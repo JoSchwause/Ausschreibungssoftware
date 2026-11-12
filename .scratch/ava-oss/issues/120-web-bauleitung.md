@@ -1,6 +1,6 @@
 # 120: X4 in der App: Mängel und Bautagebuch, Tor X4
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X4 · Ordner: `apps/web/src/bauleitung/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 120`, D-20); E2E `apps/web/e2e/x4.spec.ts`, Kettentest `apps/web/src/x4-kette.test.ts`
