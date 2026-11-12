@@ -41,6 +41,8 @@ export const ERLAUBT = {
   'packages/honorar': ['packages/vertrag', 'packages/dezimal'],
   // Terminrechnung des Bauzeitenplans (Ticket 102, D-57): reiner Rechenkern, nur Typen und Dezimalarithmetik, kein Kern.
   'packages/bauzeit': ['packages/vertrag', 'packages/dezimal'],
+  // Mängel und Bautagebuch (Ticket 111, D-57): Befehle, Fristprüfung und Auswertungen, rein, nur Typen, kein Kern.
+  'packages/bauleitung': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -60,6 +62,7 @@ export const ERLAUBT = {
     'packages/ifc',
     'packages/honorar',
     'packages/bauzeit',
+    'packages/bauleitung',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],

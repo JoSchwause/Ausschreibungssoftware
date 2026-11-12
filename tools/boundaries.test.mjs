@@ -131,6 +131,19 @@ describe('Paketgrenzen (A3)', () => {
     expect(regeln).toEqual(['grenze-packages-bauzeit']);
   });
 
+  it('bauleitung darf vertrag und dezimal importieren, die App darf bauleitung importieren, kern und bauzeit nicht (Ticket 111)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/bauzeit', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/bauleitung', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/bauleitung']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/bauleitung/src/index.ts', "import '@tethys/kern';\nimport '@tethys/bauzeit';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-bauleitung', 'grenze-packages-bauleitung']);
+  });
+
   it('weist Import der App durch ein Paket ab', async () => {
     paket('packages/vertrag', ['@tethys/web']);
     paket('apps/web');

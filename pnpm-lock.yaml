@@ -158,6 +158,16 @@ importers:
         specifier: ^8.3.7
         version: 8.3.7(@types/node@22.20.5)(terser@5.51.2)
 
+  packages/bauleitung:
+    dependencies:
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
+    devDependencies:
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/bauzeit:
     dependencies:
       '@tethys/dezimal':
