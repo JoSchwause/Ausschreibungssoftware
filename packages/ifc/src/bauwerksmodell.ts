@@ -81,6 +81,30 @@ function abbilden(
     return aus;
   };
 
+  /**
+   * GlobalId des Ziels eines Verweises von `i` auf die Instanz `ziel`; steht das Ziel nicht im Modell, entfällt der Verweis
+   * mit Befund (`code`, `wie`: wie `i` auf `ziel` verweist, `folge`: was im Modell daraus wird).
+   */
+  const verweis = (
+    i: number,
+    ziel: number | null,
+    code: Gelesen.IfcBefundcode,
+    wie: string,
+    folge: string,
+  ): IfcGlobalId | null => {
+    if (ziel === null) return null;
+    const globalId = imModell.get(ziel);
+    if (globalId !== undefined) return globalId;
+    l.melde(
+      'warnung',
+      code,
+      `${bezeichnung(l, i)} ${wie} #${String(l.daten.id(ziel))}, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell ${folge}.`,
+      l.ort(i),
+      i,
+    );
+    return null;
+  };
+
   const struktur: Strukturknoten[] = [];
   for (const k of inhalt.struktur) {
     const globalId = imModell.get(k.i);
@@ -89,7 +113,7 @@ function abbilden(
       globalId,
       art: k.knoten.art,
       name: k.knoten.name,
-      elternGlobalId: k.eltern === null ? null : (imModell.get(k.eltern) ?? null),
+      elternGlobalId: verweis(k.i, k.eltern, 'strukturknoten-ohne-eltern', 'hängt an', 'hat es keine Eltern'),
       mengen: mengen(k.i, k.knoten.mengen),
     });
   }
@@ -97,16 +121,23 @@ function abbilden(
   for (const b of inhalt.bauteile) {
     const globalId = imModell.get(b.i);
     if (globalId === undefined) continue;
-    const teilVon = b.teilVon === null ? undefined : imModell.get(b.teilVon);
+    const strukturGlobalId = verweis(
+      b.i,
+      b.struktur,
+      'bauteil-ohne-strukturknoten',
+      'steht in',
+      'steht es in keinem Strukturknoten',
+    );
+    const teilVon = verweis(b.i, b.teilVon, 'bauteil-ohne-ganzes', 'ist Teil von', 'ist es kein Teil');
     const kostengruppe = b.bauteil.kostengruppe;
     bauteile.push({
       globalId,
       ifcKlasse: b.bauteil.ifcKlasse,
       name: b.bauteil.name,
       typ: b.bauteil.typ,
-      strukturGlobalId: b.struktur === null ? null : (imModell.get(b.struktur) ?? null),
+      strukturGlobalId,
       // Optionale Felder fehlen statt `null` (vertrag v1.6).
-      ...(teilVon === undefined ? {} : { teilVonGlobalId: teilVon }),
+      ...(teilVon === null ? {} : { teilVonGlobalId: teilVon }),
       ...(kostengruppe === null ? {} : { kostengruppe }),
       mengen: mengen(b.i, b.bauteil.mengen),
     });

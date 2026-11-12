@@ -233,3 +233,87 @@ describe('Befunde der Abbildung', () => {
     expect(lesung.befunde.map((b) => b.code)).toEqual(['eingabe-zu-gross']);
   });
 });
+
+describe('Objekte ohne GlobalId in Form', () => {
+  it('fehlen im Modell; Verweise darauf entfallen mit Befund', () => {
+    const lesung = lesen([
+      ...grundgeruest(),
+      "#16=IFCBUILDINGSTOREY('kaputt',$,'OG',$,$,$,$,$,.ELEMENT.,3.);",
+      `#17=IFCRELAGGREGATES('${gid('r17')}',$,$,$,#11,(#16));`,
+      `#18=IFCSPACE('${gid('raum')}',$,'Raum',$,$,$,$,$,.ELEMENT.,.INTERNAL.,$);`,
+      `#19=IFCRELAGGREGATES('${gid('r19')}',$,$,$,#16,(#18));`,
+      `#100=IFCWALL('${gid('wand')}',$,'Wand',$,$,$,$,$,$);`,
+      `#101=IFCSTAIR($,$,'Treppe',$,$,$,$,$,.STRAIGHT_RUN_STAIR.);`,
+      `#102=IFCSTAIRFLIGHT('${gid('lauf')}',$,'Lauf',$,$,$,$,$,12,11,0.175,0.28,$);`,
+      `#103=IFCRELAGGREGATES('${gid('r103')}',$,$,$,#101,(#102));`,
+      `#104=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r104')}',$,$,$,(#100),#16);`,
+      `#105=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r105')}',$,$,$,(#101),#12);`,
+    ]);
+    const modell = lesung.bauwerksmodell;
+    expect(modell?.struktur.map((k) => [k.name, k.elternGlobalId])).toEqual([
+      ['Projekt', null],
+      ['Grundstück', gid('projekt')],
+      ['Haus', gid('grundstueck')],
+      ['EG', gid('gebaeude')],
+      ['Raum', null],
+    ]);
+    expect(modell?.bauteile).toStrictEqual([
+      { globalId: gid('wand'), ifcKlasse: 'IfcWall', name: 'Wand', typ: null, strukturGlobalId: null, mengen: [] },
+      {
+        globalId: gid('lauf'),
+        ifcKlasse: 'IfcStairFlight',
+        name: 'Lauf',
+        typ: null,
+        strukturGlobalId: gid('eg'),
+        mengen: [],
+      },
+    ]);
+    expect(lesung.befunde.map((b) => b.code)).toEqual([
+      'globalid-ungueltig',
+      'bauteil-ohne-mengen',
+      'globalid-ungueltig',
+      'bauteil-ohne-mengen',
+      'bauteil-ohne-mengen',
+      'strukturknoten-ohne-eltern',
+      'bauteil-ohne-strukturknoten',
+      'bauteil-ohne-ganzes',
+    ]);
+    expect(lesung.befunde[0]).toEqual({
+      schwere: 'fehler',
+      quelle: 'ifc-lesen',
+      code: 'globalid-ungueltig',
+      meldung:
+        'Die GlobalId „kaputt“ von #16 ist nicht wohlgeformt (22 Zeichen aus 0-9, A-Z, a-z, _ und $). Ohne GlobalId in Form steht es nicht im Bauwerksmodell.',
+      ort: { pfad: '#16', zeile: 21, feld: 'GlobalId' },
+    });
+    expect(lesung.befunde[2]?.meldung).toBe(
+      '#101 hat keine GlobalId. Ohne GlobalId in Form steht es nicht im Bauwerksmodell.',
+    );
+    expect(lesung.befunde.slice(5)).toEqual([
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'strukturknoten-ohne-eltern',
+        meldung:
+          'Raum (#18) hängt an #16, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell hat es keine Eltern.',
+        ort: { pfad: '#18', zeile: 23, globalId: gid('raum') },
+      },
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'bauteil-ohne-strukturknoten',
+        meldung:
+          'Wand (#100) steht in #16, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell steht es in keinem Strukturknoten.',
+        ort: { pfad: '#100', zeile: 25, globalId: gid('wand') },
+      },
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'bauteil-ohne-ganzes',
+        meldung:
+          'Lauf (#102) ist Teil von #101, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell ist es kein Teil.',
+        ort: { pfad: '#102', zeile: 27, globalId: gid('lauf') },
+      },
+    ]);
+  });
+});
