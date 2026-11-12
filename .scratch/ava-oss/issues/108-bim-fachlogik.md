@@ -186,3 +186,9 @@ speicher Aufmaß 5.000 Zeilen, vergabe Preisspiegel, ausgabe PDF gross, apps/web
 Gemergt mit `a693c35` (Branch `welle-6/108-bim`, `f7b2d50`). Paket `bim`: Modellbefehle, Mengenübernahme, Aufmaßblatt aus Auswahl, DIN 277,
 Kostenschätzung über Kennwerte, Kostenkennwerte, Modellvergleich mit Folgen, Zuordnungsprüfung; alle Sollwerte aus `typisch-bim.json`
 unverändert; Vergleich zweier 10k-Modelle 33 ms (Budget 500 ms).
+
+## Answer
+
+Gemergt mit `f2c8dd0` (Branch `welle-6/108-bim`, `f7b2d50`). Paket `bim`: Modellbefehle, Mengenübernahme, Aufmaßblatt aus Auswahl, DIN 277,
+Kostenschätzung über Kennwerte, Kostenkennwerte, Modellvergleich mit Folgen, Zuordnungsprüfung; alle Sollwerte aus `typisch-bim.json`
+unverändert; Vergleich zweier 10k-Modelle 33 ms (Budget 500 ms).
