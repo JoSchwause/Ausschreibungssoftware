@@ -65,7 +65,11 @@ describe('Kopf eines Bauzeitenplans', () => {
           projektId: p,
           name: 'Rohbau',
           projektbeginn: '2026-11-01',
-          kalender: { arbeitstage: [1, 2, 3, 4, 5], bundesland: 'SN', freieTage: ['2026-12-23', '2026-12-24'] },
+          kalender: {
+            arbeitstage: [1, 2, 3, 4, 5],
+            bundesland: 'SN',
+            freieTage: ['2026-12-23', '2026-12-24'],
+          },
           vorgaenge: [],
         },
       },
@@ -73,7 +77,13 @@ describe('Kopf eines Bauzeitenplans', () => {
   });
 
   it('Fehler je Feld: Name leer, Datum ungültig, kein Arbeitstag, freier Tag unlesbar', () => {
-    const r = kopfBefehl({ name: ' ', projektbeginn: '31.02.2026', arbeitstage: [], bundesland: null, freieTage: 'morgen' });
+    const r = kopfBefehl({
+      name: ' ',
+      projektbeginn: '31.02.2026',
+      arbeitstage: [],
+      bundesland: null,
+      freieTage: 'morgen',
+    });
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.fehler.map((f) => f.feld)).toEqual(['name', 'projektbeginn', 'arbeitstage', 'freieTage']);
@@ -134,18 +144,33 @@ describe('Vorgang aus dem Formular', () => {
   });
 
   it('neu auf oberster Ebene ohne Nummer, Termin, Ist: hinter dem letzten Vorgang der Ebene', () => {
-    const r = vorgangSetzenBefehl(p4, { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '0' }, () => id('n'));
+    const r = vorgangSetzenBefehl(p4, { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '0' }, () =>
+      id('n'),
+    );
     expect(r.ok && r.wert.nach).toBe('b');
-    expect(r.ok && r.wert.vorgang).toMatchObject({ nummer: null, fruehesterBeginn: null, ist: null, dauer: 0 });
+    expect(r.ok && r.wert.vorgang).toMatchObject({
+      nummer: null,
+      fruehesterBeginn: null,
+      ist: null,
+      dauer: 0,
+    });
   });
 
   it('erster Vorgang eines leeren Plans und erstes Kind: nach = null', () => {
-    expect(vorgangSetzenBefehl(plan([]), { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '1' }, () => id('n'))).toMatchObject({
+    expect(
+      vorgangSetzenBefehl(plan([]), { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '1' }, () =>
+        id('n'),
+      ),
+    ).toMatchObject({
       ok: true,
       wert: { nach: null },
     });
     expect(
-      vorgangSetzenBefehl(p4, { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '1', elternId: id('b') }, () => id('n')),
+      vorgangSetzenBefehl(
+        p4,
+        { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '1', elternId: id('b') },
+        () => id('n'),
+      ),
     ).toMatchObject({ ok: true, wert: { nach: null } });
   });
 
@@ -156,8 +181,14 @@ describe('Vorgang aus dem Formular', () => {
       ok: true,
       wert: { nach: 'a1', vorgang: { id: 'a2', bezeichnung: 'Neu' } },
     });
-    expect(vorgangSetzenBefehl(p4, vorgangsentwurf(a1), () => id('x'))).toMatchObject({ ok: true, wert: { nach: null } });
-    expect(vorgangSetzenBefehl(p4, { ...e, elternId: null }, () => id('x'))).toMatchObject({ ok: true, wert: { nach: 'b' } });
+    expect(vorgangSetzenBefehl(p4, vorgangsentwurf(a1), () => id('x'))).toMatchObject({
+      ok: true,
+      wert: { nach: null },
+    });
+    expect(vorgangSetzenBefehl(p4, { ...e, elternId: null }, () => id('x'))).toMatchObject({
+      ok: true,
+      wert: { nach: 'b' },
+    });
   });
 
   it('Entwurf zeigt gespeicherte Werte de-DE und liest sie unverändert zurück', () => {
@@ -171,7 +202,12 @@ describe('Vorgang aus dem Formular', () => {
       ist: { beginn: null, ende: '2026-11-20', fortschritt: '12.50' as Prozent },
     });
     const e = vorgangsentwurf(voll);
-    expect(e).toMatchObject({ dauer: '6', fruehesterBeginn: '16.11.2026', istEnde: '20.11.2026', fortschritt: '12,50' });
+    expect(e).toMatchObject({
+      dauer: '6',
+      fruehesterBeginn: '16.11.2026',
+      istEnde: '20.11.2026',
+      fortschritt: '12,50',
+    });
     expect(e.beziehungen).toEqual([{ vorgaengerId: 'b', art: 'anfang-ende', abstand: '0' }]);
     const r = vorgangSetzenBefehl(plan([b, voll]), e, () => id('x'));
     expect(r.ok && r.wert.vorgang).toEqual(voll);
@@ -210,7 +246,12 @@ describe('Vorgang aus dem Formular', () => {
   it('ein unbekannter Vorgänger kommt nie in einen Befehl (D-64)', () => {
     const r = vorgangSetzenBefehl(
       p4,
-      { ...leererVorgangsentwurf(), bezeichnung: 'X', dauer: '1', beziehungen: [{ vorgaengerId: id('weg'), art: 'ende-anfang', abstand: '0' }] },
+      {
+        ...leererVorgangsentwurf(),
+        bezeichnung: 'X',
+        dauer: '1',
+        beziehungen: [{ vorgaengerId: id('weg'), art: 'ende-anfang', abstand: '0' }],
+      },
       () => id('n'),
     );
     expect(r.ok ? [] : r.fehler.map((f) => f.feld)).toEqual(['beziehung-0-vorgaenger']);

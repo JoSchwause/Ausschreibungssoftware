@@ -28,7 +28,8 @@ const MONATE = [
   'Dezember',
 ] as const;
 
-const stueck = (n: number, eins: string, viele: string): string => (n === 1 ? `1 ${eins}` : `${String(n)} ${viele}`);
+const stueck = (n: number, eins: string, viele: string): string =>
+  n === 1 ? `1 ${eins}` : `${String(n)} ${viele}`;
 
 export const texte = {
   projekt: {

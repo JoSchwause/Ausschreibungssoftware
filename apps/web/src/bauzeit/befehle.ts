@@ -242,7 +242,8 @@ export function vorgangSetzenBefehl(
   e.beziehungen.forEach((b, i) => {
     const vid = b.vorgaengerId;
     const vorgaengerOk = vid !== null && bekannt.has(vid) && vid !== e.id;
-    if (!vorgaengerOk) fehler.push({ feld: `beziehung-${String(i)}-vorgaenger`, meldung: t.fehlerVorgaenger });
+    if (!vorgaengerOk)
+      fehler.push({ feld: `beziehung-${String(i)}-vorgaenger`, meldung: t.fehlerVorgaenger });
     const abstand = b.abstand.trim() === '' ? '0' : b.abstand.trim().replace('−', '-');
     if (!GANZ.test(abstand))
       fehler.push({ feld: `beziehung-${String(i)}-abstand`, meldung: t.fehlerAbstand });
