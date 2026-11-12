@@ -64,6 +64,7 @@ const GRID_SPALTEN: ReadonlySet<string> = new Set<LvSpalte>([
   'einheit',
   'einheitspreis',
   'gesamtpreis',
+  'kostengruppe', // Ticket 93: die Spalte „KG“ auf LV-Seite und Auftrags-LV
 ]);
 
 export type Sprungziel =
