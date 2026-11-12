@@ -1,6 +1,6 @@
 # 107: X1a: `ifc` bildet auf `Bauwerksmodell` ab, Eigenschaften bei Bedarf, Budgets
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc`
 Blocked by: 97, 98 (gleiches Paket), 99 (Fixtures)
@@ -37,8 +37,8 @@ GlobalIds gilt jeder Verweis dem ersten Objekt in Dateireihenfolge (Befund 5).
 
 ## Acceptance criteria
 
-- [ ] Abbildung und Eigenschaften getestet, Fixture-Goldens grün, Budget grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Abbildung und Eigenschaften getestet, Fixture-Goldens grün, Budget grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -91,6 +91,22 @@ hinzugefügt, entfernt und geändert (Felder, Mengen vorher/nachher) gleich `erw
 | dasselbe im Test (Median aus 3), volle Suite bei Last 32–36 und allein | grün in beiden | |
 | `eigenschaftsindexBauen`, dasselbe Modell, 3 Läufe, Last 32 | 1.277 / 1.540 / 1.652 ms | kein Budget |
 | alle 10.000 Abfragen `eigenschaften(globalId)` hintereinander | 497 ms gesamt, 0,05 ms je Abfrage | kein Budget |
+
+**Ganze Suite** nach `git merge integration/welle-6` (Stand `aca2dcb`, mit dem Nachtrag D-66 zu v1.6):
+`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün (Paketgrenzen, Lizenzen, Clean Room), `pnpm typecheck` grün,
+`node --test "fixtures/*.test.mjs"` 53/53. `pnpm test` mit Standardparallelität bei Last 32–36 auf 4 Kernen: 250 Dateien grün,
+6 Zeitbudgets fremder Pakete rot (Wanduhr), keines in `ifc`; jede Datei allein wiederholt grün, und `vitest run
+--maxWorkers=1` war ganz grün (256 Dateien, 3.268 Tests, 3 übersprungen wie vorher). Kein Budget gelockert, kein Test
+übersprungen.
+
+| Budget (fremdes Paket) | volle Suite | Datei allein |
+|---|---|---|
+| `gaeb` Lesen > 2 MB, < 1.000 ms | 1.999,8 ms | grün |
+| `gaeb` X86 `gross` schreiben, < 1.000 ms | 1.056,7 ms | grün |
+| `kern` `lvPruefen(gross)`, < 50 ms | 57,2 ms | grün |
+| `speicher` Aufmaß 5.000 Zeilen, < 100 ms | 102,4 ms | grün |
+| `vergabe` Preisspiegel `gross`, < 1.000 ms | 1.521,3 ms | grün |
+| `apps/web` D-45 Undo Aufmaßblatt, < 100 ms | 131,5 ms | grün |
 
 ### Entscheidungen (Frage, Entscheidung, Grund)
 
