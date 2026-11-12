@@ -1,6 +1,6 @@
 # 114: X1a+b in der App: Modelle einlesen, Baum ↔ 3D, Eigenschaften
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1a, X1b · Ordner: `apps/web/src/bim/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 114`, D-20); PWA-/Vite-Einstellungen der App für WASM und Worker
@@ -40,8 +40,8 @@ Herkunft: `plan.md` §2 X1a, X1b; Tor X1-Kern (`plan.md` §4, D-58)
 
 ## Acceptance criteria
 
-- [ ] Unit-Tests der Logik (Baumzeilen, Auswahlabgleich, Befunde), E2E `bim.spec.ts` grün; bestehende App-E2E grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Unit-Tests der Logik (Baumzeilen, Auswahlabgleich, Befunde), E2E `bim.spec.ts` grün; bestehende App-E2E grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -126,3 +126,15 @@ Ordner `apps/web/src/bim/` (neu); Einhängestellen `// Ticket 114` in `App.tsx` 
   und Undo).
 - Bestehende App-E2E: `leistung.spec.ts` 3/3 grün (Median 48 / 39 / App 23 ms), dazu `ausgabe`, `sicherung`, `start`, `huelle` (CSP) –
   19/19 grün.
+- Suite nach dem Merge von `integration/welle-6` (`101010c`): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün (ESLint,
+  Prettier, Paketgrenzen, Lizenzen, Clean Room), `pnpm typecheck` grün, `pnpm test` (Vitest): 297 Dateien grün, 1 übersprungen wie zuvor,
+  3.803 Tests bestanden; 2 Zeitbudgets fremder Pakete rot nur in der vollen Suite bei Last ≈ 12–14 auf 4 Kernen: `gaeb/lesen` „Datei über
+  2 MB unter 1 s“ (1.779 ms) und `speicher/aufmass-leistung` (Median < 100 ms). Beide Dateien allein wiederholt: 85/85 grün.
+  `node --test "fixtures/*.test.mjs"` 53/53. Kein Budget gelockert, kein Test übersprungen.
+
+### Offen / Hinweise
+
+- `lv/ids.ts` trägt noch den gemeinsamen Marker „v1.6 … Tickets 114, 118–120“ (Kennungen); er gehört den übrigen App-Tickets mit.
+- Laden eines 10k-Modells auf der Modellseite (SHOULD 11, D-66) nicht eigens in der App gemessen; `speicher` misst `laden` mit 44 ms, die
+  Leinwand 2,5 s (Ticket 100, 106).
+- Glossarzeile „Modellansicht“ (D-100.1) bleibt beim Orchestrator.
