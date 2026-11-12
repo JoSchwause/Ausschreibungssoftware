@@ -135,6 +135,15 @@ export function speicherUeberTransport(
       laden: () => erstV16('Modelldateien laden'),
       vorhanden: () => erstV16('Modelldateien prüfen'),
     },
+    // v1.6: mechanisch angepasst, Folgeticket 106 (Repositories der neuen Aggregate)
+    bauwerksmodelle: { auflisten: () => erstV16('Bauwerksmodelle'), laden: () => erstV16('Bauwerksmodell') },
+    bauzeitenplaene: { auflisten: () => erstV16('Bauzeitenpläne'), laden: () => erstV16('Bauzeitenplan') },
+    honorarberechnungen: {
+      auflisten: () => erstV16('Honorarberechnungen'),
+      laden: () => erstV16('Honorarberechnung'),
+    },
+    maengel: { auflisten: () => erstV16('Mängel'), laden: () => erstV16('Mangel') },
+    bautagebuch: { auflisten: () => erstV16('Bautagebuch'), laden: () => erstV16('Bautagebucheintrag') },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),

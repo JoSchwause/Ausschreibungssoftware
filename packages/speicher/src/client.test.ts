@@ -301,9 +301,14 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'anwenden',
       'aufmasse',
       'auftragsLeistungsverzeichnisse',
+      'bautagebuch', // v1.6: mechanisch angepasst, Folgeticket 106
+      'bauwerksmodelle',
+      'bauzeitenplaene',
+      'honorarberechnungen',
       'kostenermittlungen',
       'leistungsverzeichnisse',
       'lvStaende',
+      'maengel', // v1.6: mechanisch angepasst, Folgeticket 106
       'migrationsbefunde',
       'modelldateien', // v1.6: mechanisch angepasst, Folgeticket 106
       'persistenzstatus',

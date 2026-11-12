@@ -100,7 +100,9 @@ export interface BieterAnlegen {
  *
  * Gelöscht wird nur das Projekt selbst. Hängen noch LVs, Angebote oder Auftrags-LVs daran, weist `speicher` das
  * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“). v1.4:
- * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts.
+ * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts. v1.6 (Ticket 97 Punkt 8): ebenso Bauwerksmodelle,
+ * Bauzeitenpläne, Honorarberechnungen, Mängel und Bautagebucheinträge (die Bytes der Modelldateien gibt `speicher` frei,
+ * sobald kein Modell sie mehr nennt, siehe `Modelldateiablage`).
  */
 export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';

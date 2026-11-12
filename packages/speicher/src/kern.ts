@@ -74,6 +74,7 @@ import type { Migrationsbefund } from './summenmigration';
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
+  pruefeV16(cs); // v1.6: mechanisch angepasst, Folgeticket 106 (Teile aus v1.6: `unbekannt`, bevor der Bezug zählt)
   const erwartet =
     cs.art === 'projekt'
       ? { art: 'projekt', id: cs.projektId as string }
@@ -368,7 +369,6 @@ export class SpeicherKern {
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
-        pruefeV16(changeSet); // v1.6: mechanisch angepasst, Folgeticket 106
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
         switch (changeSet.art) {
           case 'projekt':

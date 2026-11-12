@@ -87,6 +87,7 @@ import type {
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
 import type { BautagebucheintragChangeSet, MangelChangeSet } from './changeset';
 import type { BautagebucheintragId, MangelId } from './marken';
+import type { BauwerksmodellUebersicht } from './speicher';
 import type { BauzeitenplanChangeSet } from './changeset';
 import type { BauzeitenplanId, VorgangId } from './marken';
 import type {
@@ -2295,3 +2296,61 @@ export const beispielBefundeV16: readonly [Pruefbefund, Pruefbefund, Pruefbefund
       ort: { mangelId: mangel1Id, feld: 'frist' },
     },
   ];
+
+/**
+ * Punkt 8 (E-13, D-54): `BauwerksmodellAnlegen` im Protokoll als Kurzfassung: der Kopf ohne Struktur und Bauteile, dazu die
+ * Prüfsumme über den ganzen Befehl (hier ein Platzhalter).
+ */
+export const beispielMassenprotokollBauwerksmodell: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000601' as ProtokollId,
+  projektId: beispielLv.projektId,
+  aggregat: { art: 'bauwerksmodell', id: beispielBauwerksmodell.id },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-12T10:00:00.000Z' as Zeitstempel,
+  befehl: {
+    art: 'Befehlskurzfassung',
+    kopf: { art: 'BauwerksmodellAnlegen', bauwerksmodell: modell1Kopf },
+    pruefsumme: { algorithmus: 'sha-256', wert: '0'.repeat(64) },
+  },
+};
+
+/** Punkt 8 (D-52): `BauteileZuordnen` im Protokoll, mit dem LV als Aggregat (im Auftrags-LV dessen Kennung). */
+export const beispielProtokollBauteileZuordnen: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000602' as ProtokollId,
+  projektId: beispielLv.projektId,
+  aggregat: { art: 'leistungsverzeichnis', id: lvId },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-12T10:05:00.000Z' as Zeitstempel,
+  befehl: beispielBauteileZuordnen,
+};
+
+/** Punkt 8 (D-51, D-54): das Beispielmodell in der Liste des Projekts: der Kopf und die Zahl der Bauteile. */
+export const beispielBauwerksmodellUebersicht: BauwerksmodellUebersicht = {
+  ...modell1Kopf,
+  anzahlBauteile: beispielBauwerksmodell.bauteile.length,
+};
+
+/**
+ * Punkt 8: eine Projektdatei mit allen Listen aus v1.6 (Schemaversion 6 bringt Ticket 106). Die Modelldatei steht einmal,
+ * nach Hash; die Kostenberechnung, auf die die Honorarberechnung verweist, steht mit in der Datei.
+ */
+export const beispielProjektdateiV16: Projektdatei = {
+  schemaVersion: 6,
+  projekt: {
+    id: beispielLv.projektId,
+    name: 'Beispiel',
+    bauherr: { name: 'Beispiel', anschrift: null },
+    bieter: [],
+  },
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [beispielMassenprotokollBauwerksmodell],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenberechnungHoai }],
+  bauwerksmodelle: [{ bauwerksmodell: beispielBauwerksmodell }],
+  modelldateien: [beispielModelldateiInProjektdatei],
+  bauzeitenplaene: [{ bauzeitenplan: beispielBauzeitenplan }],
+  honorarberechnungen: [{ honorarberechnung: beispielHonorarberechnung }],
+  maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
+  bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
+};

@@ -5,9 +5,14 @@ import type {
   AngebotBefehl,
   AufmassBefehl,
   AuftragsLvBefehl,
+  BautagebucheintragBefehl,
+  BauwerksmodellBefehl,
+  BauzeitenplanBefehl,
   Einfuegeort,
+  HonorarberechnungBefehl,
   KostenermittlungBefehl,
   LvBefehl,
+  MangelBefehl,
   ProjektBefehl,
   RechnungBefehl,
 } from './befehle';
@@ -446,7 +451,11 @@ export interface BautagebucheintragChangeSet {
   readonly bautagebucheintrag: Aenderung<Bautagebucheintrag>;
 }
 
-/** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */
+/**
+ * Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. v1.6
+ * (Ticket 97 Punkt 8): dazu Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel und Bautagebucheintrag; bis Ticket 106
+ * weist `speicher` sie mit `unbekannt` ab.
+ */
 export type ChangeSet =
   | ProjektChangeSet
   | LvChangeSet
@@ -455,7 +464,13 @@ export type ChangeSet =
   // v1.4
   | AufmassChangeSet
   | RechnungChangeSet
-  | KostenermittlungChangeSet;
+  | KostenermittlungChangeSet
+  // v1.6
+  | BauwerksmodellChangeSet
+  | BauzeitenplanChangeSet
+  | HonorarberechnungChangeSet
+  | MangelChangeSet
+  | BautagebucheintragChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -551,6 +566,86 @@ export type KostenermittlungChangeSetAnwenden = (
 export type KostenermittlungChangeSetUmkehren = (
   changeSet: KostenermittlungChangeSet,
 ) => KostenermittlungChangeSet;
+
+// --- Signaturen der Aggregate aus v1.6 (Ticket 97 Punkt 8) ------------------------------------------------------------
+//
+// Wie bei den Aggregaten aus v1.4: Ausführen ist rein und deterministisch (A2) und prüft die Form; Anwenden mit `null` als
+// Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“; Umkehren tauscht `vorher` und `nachher` (beim
+// Bauwerksmodell in `kopf` und `inhalt`). Ausnahme (D-57): Die Ausführer von Mangel und Bautagebucheintrag bekommen den
+// **Bestand** des Projekts (die gespeicherten Mängel bzw. Einträge, der eigene darf darin stehen und zählt nicht), weil sie
+// die eindeutige Nummer bzw. das eindeutige Datum prüfen; sie brauchen davon nur Kennung und Nummer bzw. Datum. Liefern:
+// `bim` (Bauwerksmodell, Ticket 108), `bauzeit` (Ticket 109), `honorar` (Ticket 110), `bauleitung` (Mangel,
+// Bautagebucheintrag, Ticket 111).
+
+export type BauwerksmodellBefehlAusfuehren = (
+  zustand: BauwerksmodellZustand | null,
+  befehl: BauwerksmodellBefehl,
+) => Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>;
+
+/**
+ * Wendet ein ChangeSet des Bauwerksmodells an: Anlegen und Löschen mit Kopf und Inhalt, Umbenennen nur mit dem Kopf (der Inhalt
+ * des Zustands bleibt).
+ */
+export type BauwerksmodellChangeSetAnwenden = (
+  zustand: BauwerksmodellZustand | null,
+  changeSet: BauwerksmodellChangeSet,
+) => BauwerksmodellZustand | null;
+
+export type BauwerksmodellChangeSetUmkehren = (changeSet: BauwerksmodellChangeSet) => BauwerksmodellChangeSet;
+
+export type BauzeitenplanBefehlAusfuehren = (
+  zustand: BauzeitenplanZustand | null,
+  befehl: BauzeitenplanBefehl,
+) => Ergebnis<BauzeitenplanChangeSet, Befehlsfehler>;
+
+export type BauzeitenplanChangeSetAnwenden = (
+  zustand: BauzeitenplanZustand | null,
+  changeSet: BauzeitenplanChangeSet,
+) => BauzeitenplanZustand | null;
+
+export type BauzeitenplanChangeSetUmkehren = (changeSet: BauzeitenplanChangeSet) => BauzeitenplanChangeSet;
+
+export type HonorarberechnungBefehlAusfuehren = (
+  zustand: HonorarberechnungZustand | null,
+  befehl: HonorarberechnungBefehl,
+) => Ergebnis<HonorarberechnungChangeSet, Befehlsfehler>;
+
+export type HonorarberechnungChangeSetAnwenden = (
+  zustand: HonorarberechnungZustand | null,
+  changeSet: HonorarberechnungChangeSet,
+) => HonorarberechnungZustand | null;
+
+export type HonorarberechnungChangeSetUmkehren = (
+  changeSet: HonorarberechnungChangeSet,
+) => HonorarberechnungChangeSet;
+
+export type MangelBefehlAusfuehren = (
+  zustand: MangelZustand | null,
+  befehl: MangelBefehl,
+  bestand: readonly Pick<Mangel, 'id' | 'nummer'>[],
+) => Ergebnis<MangelChangeSet, Befehlsfehler>;
+
+export type MangelChangeSetAnwenden = (
+  zustand: MangelZustand | null,
+  changeSet: MangelChangeSet,
+) => MangelZustand | null;
+
+export type MangelChangeSetUmkehren = (changeSet: MangelChangeSet) => MangelChangeSet;
+
+export type BautagebucheintragBefehlAusfuehren = (
+  zustand: BautagebucheintragZustand | null,
+  befehl: BautagebucheintragBefehl,
+  bestand: readonly Pick<Bautagebucheintrag, 'id' | 'datum'>[],
+) => Ergebnis<BautagebucheintragChangeSet, Befehlsfehler>;
+
+export type BautagebucheintragChangeSetAnwenden = (
+  zustand: BautagebucheintragZustand | null,
+  changeSet: BautagebucheintragChangeSet,
+) => BautagebucheintragZustand | null;
+
+export type BautagebucheintragChangeSetUmkehren = (
+  changeSet: BautagebucheintragChangeSet,
+) => BautagebucheintragChangeSet;
 
 // --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
 

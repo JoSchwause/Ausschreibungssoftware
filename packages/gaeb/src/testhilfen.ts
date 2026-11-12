@@ -77,6 +77,13 @@ export function testIds(): IdQuelle {
     aufmass: () => neu('aufmass') as ReturnType<IdQuelle['aufmass']>,
     rechnung: () => neu('rechnung') as ReturnType<IdQuelle['rechnung']>,
     kostenermittlung: () => neu('kostenermittlung') as ReturnType<IdQuelle['kostenermittlung']>,
+    // v1.6: mechanisch angepasst, Folgeticket (vertrag v1.6 verlangt die Kennungen der neuen Aggregate)
+    bauwerksmodell: () => neu('bauwerksmodell') as ReturnType<IdQuelle['bauwerksmodell']>,
+    bauzeitenplan: () => neu('bauzeitenplan') as ReturnType<IdQuelle['bauzeitenplan']>,
+    vorgang: () => neu('vorgang') as ReturnType<IdQuelle['vorgang']>,
+    honorarberechnung: () => neu('honorarberechnung') as ReturnType<IdQuelle['honorarberechnung']>,
+    mangel: () => neu('mangel') as ReturnType<IdQuelle['mangel']>,
+    bautagebucheintrag: () => neu('bautagebucheintrag') as ReturnType<IdQuelle['bautagebucheintrag']>,
   };
 }
 

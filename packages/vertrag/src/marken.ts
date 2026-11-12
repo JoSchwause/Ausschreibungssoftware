@@ -136,4 +136,16 @@ export interface IdQuelle {
   rechnung(): RechnungId;
   /** v1.4: für `KostenermittlungAnlegen`. */
   kostenermittlung(): KostenermittlungId;
+  /** v1.6 (Ticket 97): für `BauwerksmodellAnlegen` (nicht die GlobalId; die stammt aus der Datei). */
+  bauwerksmodell(): BauwerksmodellId;
+  /** v1.6: für `BauzeitenplanAnlegen`. */
+  bauzeitenplan(): BauzeitenplanId;
+  /** v1.6: für einen neuen Vorgang (`VorgangSetzen`). */
+  vorgang(): VorgangId;
+  /** v1.6: für `HonorarberechnungAnlegen`. */
+  honorarberechnung(): HonorarberechnungId;
+  /** v1.6: für `MangelAnlegen`. */
+  mangel(): MangelId;
+  /** v1.6: für einen neuen Bautagebucheintrag (`BautagebucheintragSetzen`). */
+  bautagebucheintrag(): BautagebucheintragId;
 }

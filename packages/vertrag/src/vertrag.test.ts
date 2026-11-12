@@ -267,8 +267,40 @@ import type {
   Mangelverlaufseintrag,
   MangelZustand,
 } from './index';
-import type { Befundort } from './index';
-import { beispielBefundeV16 } from './beispiele';
+import type {
+  Befundort,
+  BautagebuchRepository,
+  BautagebucheintragBefehlAusfuehren,
+  BautagebucheintragChangeSetAnwenden,
+  BautagebucheintragChangeSetUmkehren,
+  BauwerksmodellBefehlAusfuehren,
+  BauwerksmodellChangeSetAnwenden,
+  BauwerksmodellChangeSetUmkehren,
+  BauwerksmodellRepository,
+  BauwerksmodellUebersicht,
+  BauzeitenplanBefehlAusfuehren,
+  BauzeitenplanChangeSetAnwenden,
+  BauzeitenplanChangeSetUmkehren,
+  BauzeitenplanRepository,
+  BauzeitenplanUebersicht,
+  HonorarberechnungBefehlAusfuehren,
+  HonorarberechnungChangeSetAnwenden,
+  HonorarberechnungChangeSetUmkehren,
+  HonorarberechnungId,
+  HonorarberechnungRepository,
+  HonorarberechnungUebersicht,
+  MangelBefehlAusfuehren,
+  MangelChangeSetAnwenden,
+  MangelChangeSetUmkehren,
+  MangelRepository,
+} from './index';
+import {
+  beispielBauwerksmodellUebersicht,
+  beispielBefundeV16,
+  beispielMassenprotokollBauwerksmodell,
+  beispielProjektdateiV16,
+  beispielProtokollBauteileZuordnen,
+} from './beispiele';
 import {
   beispielBautagebuchbefehle,
   beispielBautagebucheintrag,
@@ -1587,8 +1619,10 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     | 'kostenermittlung';
 
   it('AggregatBezug und ChangeSet kennen Aufmaß, Rechnung und Kostenermittlung', () => {
-    expectTypeOf<AggregatBezug['art']>().toEqualTypeOf<Aggregatarten>();
-    expectTypeOf<ChangeSet['art']>().toEqualTypeOf<Aggregatarten>();
+    // v1.6 (Ticket 97 Punkt 8): dazu fünf Aggregate, siehe dort.
+    type Neu16 = 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag';
+    expectTypeOf<Exclude<AggregatBezug['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<Exclude<ChangeSet['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
     expectTypeOf<Extract<AggregatBezug, { art: 'aufmass' }>['id']>().toEqualTypeOf<AufmassId>();
     expectTypeOf<Extract<AggregatBezug, { art: 'rechnung' }>['id']>().toEqualTypeOf<RechnungId>();
     expectTypeOf<
@@ -2613,5 +2647,194 @@ describe('v1.6 Punkt 7: Befundquellen der Module X1 bis X4 in der gemeinsamen Be
     expect(nach.get('honorarberechnung')?.pfad).toMatch(/^\/objekte\[[1-9][0-9]*\]$/);
     expect(nach.get('fristpruefung')).toEqual({ mangelId: beispielMangel1.id, feld: 'frist' });
     for (const b of beispielBefundeV16) expect(b.ort).not.toHaveProperty('spalte');
+  });
+});
+
+describe('v1.6 Punkt 8: Rand (Protokoll, Unions, Signaturen, Repositories, Projektdatei, Kennungen)', () => {
+  type Neu = 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag';
+
+  it('AggregatBezug und ChangeSet kennen die fünf neuen Aggregate mit ihren Kennungen', () => {
+    expectTypeOf<Neu>().toExtend<AggregatBezug['art']>();
+    expectTypeOf<Extract<ChangeSet['art'], Neu>>().toEqualTypeOf<Neu>();
+    expectTypeOf<Exclude<AggregatBezug['art'], ChangeSet['art']>>().toEqualTypeOf<never>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'bauwerksmodell' }>['id']>().toEqualTypeOf<BauwerksmodellId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'bauzeitenplan' }>['id']>().toEqualTypeOf<BauzeitenplanId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'honorarberechnung' }>['id']
+    >().toEqualTypeOf<HonorarberechnungId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'mangel' }>['id']>().toEqualTypeOf<MangelId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'bautagebucheintrag' }>['id']
+    >().toEqualTypeOf<BautagebucheintragId>();
+  });
+
+  it('jeder Befehlsname gehört zu genau einem Aggregat, außer KostengruppeSetzen und BauteileZuordnen', () => {
+    type Alt =
+      | LvBefehl['art']
+      | AuftragsLvBefehl['art']
+      | AngebotBefehl['art']
+      | ProjektBefehl['art']
+      | AufmassBefehl['art']
+      | RechnungBefehl['art']
+      | KostenermittlungBefehl['art'];
+    type Neu16 =
+      | BauwerksmodellBefehl['art']
+      | BauzeitenplanBefehl['art']
+      | HonorarberechnungBefehl['art']
+      | MangelBefehl['art']
+      | BautagebucheintragBefehl['art'];
+    expectTypeOf<Extract<Neu16, Alt>>().toEqualTypeOf<never>();
+    expectTypeOf<
+      Extract<BauwerksmodellBefehl['art'], BauzeitenplanBefehl['art'] | HonorarberechnungBefehl['art']>
+    >().toEqualTypeOf<never>();
+    expectTypeOf<Extract<MangelBefehl['art'], BautagebucheintragBefehl['art']>>().toEqualTypeOf<never>();
+  });
+
+  it('Signaturen je neuem Aggregat; Mangel und Bautagebuch bekommen den Bestand (D-57)', () => {
+    expectTypeOf<BauwerksmodellBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BauwerksmodellZustand | null,
+        befehl: BauwerksmodellBefehl,
+      ) => Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<BauwerksmodellChangeSetAnwenden>().toEqualTypeOf<
+      (
+        zustand: BauwerksmodellZustand | null,
+        changeSet: BauwerksmodellChangeSet,
+      ) => BauwerksmodellZustand | null
+    >();
+    expectTypeOf<BauwerksmodellChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BauwerksmodellChangeSet) => BauwerksmodellChangeSet
+    >();
+    expectTypeOf<BauzeitenplanBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BauzeitenplanZustand | null,
+        befehl: BauzeitenplanBefehl,
+      ) => Ergebnis<BauzeitenplanChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<BauzeitenplanChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BauzeitenplanChangeSet) => BauzeitenplanChangeSet
+    >();
+    expectTypeOf<ReturnType<BauzeitenplanChangeSetAnwenden>>().toEqualTypeOf<BauzeitenplanZustand | null>();
+    expectTypeOf<HonorarberechnungBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: HonorarberechnungZustand | null,
+        befehl: HonorarberechnungBefehl,
+      ) => Ergebnis<HonorarberechnungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<
+      ReturnType<HonorarberechnungChangeSetAnwenden>
+    >().toEqualTypeOf<HonorarberechnungZustand | null>();
+    expectTypeOf<HonorarberechnungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: HonorarberechnungChangeSet) => HonorarberechnungChangeSet
+    >();
+    expectTypeOf<MangelBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: MangelZustand | null,
+        befehl: MangelBefehl,
+        bestand: readonly Pick<Mangel, 'id' | 'nummer'>[],
+      ) => Ergebnis<MangelChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<ReturnType<MangelChangeSetAnwenden>>().toEqualTypeOf<MangelZustand | null>();
+    expectTypeOf<MangelChangeSetUmkehren>().toEqualTypeOf<(changeSet: MangelChangeSet) => MangelChangeSet>();
+    expectTypeOf<BautagebucheintragBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BautagebucheintragZustand | null,
+        befehl: BautagebucheintragBefehl,
+        bestand: readonly Pick<Bautagebucheintrag, 'id' | 'datum'>[],
+      ) => Ergebnis<BautagebucheintragChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<
+      ReturnType<BautagebucheintragChangeSetAnwenden>
+    >().toEqualTypeOf<BautagebucheintragZustand | null>();
+    expectTypeOf<BautagebucheintragChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BautagebucheintragChangeSet) => BautagebucheintragChangeSet
+    >();
+    // Der ganze Bestand (wie `MangelRepository.auflisten` ihn liefert) passt als Parameter.
+    expectTypeOf<readonly Mangel[]>().toExtend<Parameters<MangelBefehlAusfuehren>[2]>();
+    expectTypeOf<readonly Bautagebucheintrag[]>().toExtend<
+      Parameters<BautagebucheintragBefehlAusfuehren>[2]
+    >();
+  });
+
+  it('Repositories am Speicher (Pflicht): Modellliste ohne Struktur und Bauteile, Mängel und Bautagebuch ganz', () => {
+    expectTypeOf<Speicher['bauwerksmodelle']>().toEqualTypeOf<BauwerksmodellRepository>();
+    expectTypeOf<Speicher['bauzeitenplaene']>().toEqualTypeOf<BauzeitenplanRepository>();
+    expectTypeOf<Speicher['honorarberechnungen']>().toEqualTypeOf<HonorarberechnungRepository>();
+    expectTypeOf<Speicher['maengel']>().toEqualTypeOf<MangelRepository>();
+    expectTypeOf<Speicher['bautagebuch']>().toEqualTypeOf<BautagebuchRepository>();
+    expectTypeOf<BauwerksmodellUebersicht>().not.toHaveProperty('bauteile');
+    expectTypeOf<BauwerksmodellUebersicht>().not.toHaveProperty('struktur');
+    expectTypeOf<BauwerksmodellUebersicht['anzahlBauteile']>().toEqualTypeOf<number>();
+    expectTypeOf<ReturnType<BauwerksmodellRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<BauwerksmodellZustand, Speicherfehler>>
+    >();
+    expectTypeOf<BauzeitenplanUebersicht>().not.toHaveProperty('vorgaenge');
+    expectTypeOf<HonorarberechnungUebersicht>().toEqualTypeOf<Omit<Honorarberechnung, 'objekte'>>();
+    expectTypeOf<ReturnType<MangelRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Mangel[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<BautagebuchRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Bautagebucheintrag[], Speicherfehler>>
+    >();
+    for (const r of [
+      expectTypeOf<BauwerksmodellRepository['auflisten']>(),
+      expectTypeOf<BauzeitenplanRepository['auflisten']>(),
+      expectTypeOf<HonorarberechnungRepository['auflisten']>(),
+      expectTypeOf<MangelRepository['auflisten']>(),
+      expectTypeOf<BautagebuchRepository['auflisten']>(),
+    ])
+      r.parameter(0).toEqualTypeOf<ProjektId>();
+    expect(beispielBauwerksmodellUebersicht).not.toHaveProperty('bauteile');
+    expect(beispielBauwerksmodellUebersicht.anzahlBauteile).toBe(4);
+  });
+
+  it('Projektdatei: sechs optionale Listen (fehlt = keine); eine Datei ohne sie bleibt gültig', () => {
+    expectTypeOf<Projektdatei['bauzeitenplaene']>().toEqualTypeOf<
+      readonly BauzeitenplanZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['honorarberechnungen']>().toEqualTypeOf<
+      readonly HonorarberechnungZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['maengel']>().toEqualTypeOf<readonly MangelZustand[] | undefined>();
+    expectTypeOf<Projektdatei['bautagebuch']>().toEqualTypeOf<
+      readonly BautagebucheintragZustand[] | undefined
+    >();
+    const d = beispielProjektdateiV16;
+    // Jeder Hash, den ein Modell nennt, steht in der Datei, je einmal (vollständig, D-51).
+    const hashes = (d.modelldateien ?? []).map((m) => m.hash);
+    expect(new Set(hashes).size).toBe(hashes.length);
+    for (const { bauwerksmodell } of d.bauwerksmodelle ?? [])
+      expect(hashes).toContain(bauwerksmodell.datei.hash);
+    // Der Verweis der Honorarberechnung nennt eine Kostenermittlung derselben Datei (sonst `konflikt`).
+    const kosten = new Set((d.kostenermittlungen ?? []).map((k) => k.kostenermittlung.id));
+    for (const { honorarberechnung } of d.honorarberechnungen ?? [])
+      for (const o of honorarberechnung.objekte)
+        if (o.anrechenbareKosten.art === 'kostenermittlung')
+          expect(kosten.has(o.anrechenbareKosten.kostenermittlungId)).toBe(true);
+    expect(beispielProjektdateiV14).not.toHaveProperty('bauwerksmodelle');
+  });
+
+  it('Protokoll: das Modell als Kurzfassung ohne Struktur und Bauteile; BauteileZuordnen mit dem LV als Aggregat', () => {
+    const b = beispielMassenprotokollBauwerksmodell.befehl;
+    expect(b.art).toBe('Befehlskurzfassung');
+    expect(b.art === 'Befehlskurzfassung' && b.kopf.art).toBe('BauwerksmodellAnlegen');
+    expect(JSON.stringify(b)).not.toContain('bauteile');
+    expect(beispielMassenprotokollBauwerksmodell.aggregat).toEqual({
+      art: 'bauwerksmodell',
+      id: beispielBauwerksmodell.id,
+    });
+    expect(beispielProtokollBauteileZuordnen.aggregat.art).toBe('leistungsverzeichnis');
+  });
+
+  it('IdQuelle liefert die Kennungen der neuen Aggregate und der Vorgänge', () => {
+    expectTypeOf<ReturnType<IdQuelle['bauwerksmodell']>>().toEqualTypeOf<BauwerksmodellId>();
+    expectTypeOf<ReturnType<IdQuelle['bauzeitenplan']>>().toEqualTypeOf<BauzeitenplanId>();
+    expectTypeOf<ReturnType<IdQuelle['vorgang']>>().toEqualTypeOf<VorgangId>();
+    expectTypeOf<ReturnType<IdQuelle['honorarberechnung']>>().toEqualTypeOf<HonorarberechnungId>();
+    expectTypeOf<ReturnType<IdQuelle['mangel']>>().toEqualTypeOf<MangelId>();
+    expectTypeOf<ReturnType<IdQuelle['bautagebucheintrag']>>().toEqualTypeOf<BautagebucheintragId>();
+    // Eine GlobalId kommt aus der Datei, nie aus der IdQuelle.
+    expectTypeOf<ReturnType<IdQuelle[keyof IdQuelle]>>().not.toEqualTypeOf<IfcGlobalId>();
   });
 });

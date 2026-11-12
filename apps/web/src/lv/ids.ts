@@ -76,6 +76,13 @@ export function appIdQuelle(optionen: IdQuelleOptionen = {}): IdQuelle {
     aufmass: k,
     rechnung: k,
     kostenermittlung: k,
+    // v1.6: mechanisch angepasst, Folgeticket (Kennungen für die Aggregate aus X1 bis X4; Tickets 114, 118–120)
+    bauwerksmodell: k,
+    bauzeitenplan: k,
+    vorgang: k,
+    honorarberechnung: k,
+    mangel: k,
+    bautagebucheintrag: k,
   };
 }
 

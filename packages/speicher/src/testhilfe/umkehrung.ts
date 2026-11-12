@@ -106,13 +106,15 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         kostenermittlungId: cs.kostenermittlungId,
         kostenermittlung: tausche(cs.kostenermittlung),
       };
+    default: // v1.6: mechanisch angepasst, Folgeticket 106 (Aggregate aus v1.6)
+      throw new Error(`umkehren: ${cs.art} erst mit Ticket 106`);
   }
 }
 
 /** Ein Anlegen-ChangeSet (`kopf.vorher: null`) mit leerem `summen.vorher`: so ist es ohne Vorzustand umkehrbar. */
 export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
-  // Die Aggregate aus v1.4 haben keine Summen.
-  if (cs.art === 'projekt' || cs.art === 'aufmass' || cs.art === 'rechnung' || cs.art === 'kostenermittlung')
+  // Die Aggregate aus v1.4 haben keine Summen. v1.6: mechanisch angepasst, Folgeticket 106 (ebenso die aus v1.6).
+  if (cs.art !== 'leistungsverzeichnis' && cs.art !== 'angebot' && cs.art !== 'auftrags-leistungsverzeichnis')
     return cs;
   return {
     ...cs,
