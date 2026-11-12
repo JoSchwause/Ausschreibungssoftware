@@ -1,6 +1,6 @@
 # 113: O: PDF für Mängelliste, Bautagebuch, Honorarberechnung, Bauzeitenplan
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: O, X2–X4 · Paket: `packages/ausgabe`
 Blocked by: 97
@@ -90,3 +90,8 @@ Alle PDFs liefern `Promise<Uint8Array>`; `erzeugeBerichtPdf(modell, schriften)` 
 Suite: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` bei 8 Agenten auf 4 Kernen 4 Fehlschläge nur in CPU-Budgets
 fremder Pakete (`kern/k9-leistung`, `speicher/aufmass-leistung`, `vergabe/leistung`, `apps/web/abrechnung/leistung`; in einem früheren Lauf 6); allein
 wiederholt (`--no-file-parallelism`) alle vier grün. Kein Budget geändert.
+
+## Answer
+
+Gemergt mit `12284c6` (Branch `welle-6/113-ausgabe-x2-x4`, `ebf9b62`). Fünf PDFs über ein neues `Berichtsmodell` mit eigenem Renderer
+(Mängelliste, Mängelanzeige, Bautagebuch, Honorarberechnung mit festem DIN-276-Hinweis, Bauzeitenplan als Tabelle); 21 Tests.
