@@ -2,7 +2,8 @@
 // Golden-Tests je Testdatei (Ticket 76). Die Sollwerte stehen hier von Hand, abgelesen aus der XML-Datei bzw. aus der
 // Herleitung in `testdaten/README.md`; sie werden nie aus dem Leser erzeugt.
 
-import { describe, expect, it } from 'vitest';
+import type { Pruefbefund } from '@tethys/vertrag';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { xrechnungLesen } from './index';
 import type { Eingangsrechnung, Rechnungsposition } from './index';
 import { kosit, testdatei } from './testhilfen';
@@ -577,5 +578,30 @@ describe('Umsatzsteueraufschlüsselung', () => {
     expect(kern(lesung.befunde)).toEqual([
       { code: 'satz-zu-viele-stellen', feld: 'BT-119', schwere: 'warnung' },
     ]);
+  });
+});
+
+describe('gemeinsame Befundliste (Ticket 104, D-95.2)', () => {
+  it('jeder Befund ist ein Pruefbefund der Quelle erechnung-lesen, auch bei nicht gelesenen Dateien', () => {
+    const dateien = [
+      xrechnungLesen(testdatei('rechenfehler.xml')),
+      xrechnungLesen(testdatei('pflichtangaben-fehlen.xml')),
+      xrechnungLesen('<a><b></a>'),
+      xrechnungLesen('<Fremd xmlns="urn:x"/>'),
+    ];
+    const alle = dateien.flatMap((l) => l.befunde);
+    expect(alle.length).toBeGreaterThan(5);
+    expectTypeOf(dateien[0]?.befunde).toEqualTypeOf<readonly Pruefbefund[] | undefined>();
+    for (const b of alle) expect(b.quelle).toBe('erechnung-lesen');
+  });
+
+  it('Ort nach D-95.2: Summenregel nur feld, Datei als Ganzes nur pfad, unlesbares XML mit zeile', () => {
+    const summe = xrechnungLesen(testdatei('rechenfehler.xml')).befunde[0];
+    expect(summe?.ort).toEqual({ feld: 'BT-106' });
+    const fremd = xrechnungLesen('<Fremd xmlns="urn:x"/>').befunde[0];
+    expect(fremd?.ort).toEqual({ pfad: '/Fremd' });
+    const kaputt = xrechnungLesen('<a><b></a>').befunde[0];
+    expect(kaputt?.ort.zeile).toBe(1);
+    expect(kaputt?.ort.knotenId).toBeUndefined();
   });
 });
