@@ -3,7 +3,7 @@
 // Beziehungen und Einheiten, Verweise auf fehlende Instanzen. Nichts davon darf eine Ausnahme auslösen.
 
 import { describe, expect, it } from 'vitest';
-import { STANDARD_MAX_TIEFE, ifcLesen } from './index';
+import { STANDARD_MAX_TIEFE, ifcLesen } from './lesen';
 import { abgewiesen, bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 const WAND = [

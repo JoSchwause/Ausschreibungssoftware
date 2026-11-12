@@ -3,7 +3,7 @@
 // Profilen und Listen; die des Typs nur, wenn das Bauteil selbst keine nennt. Sollwerte von Hand.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
+import { ifcLesen } from './lesen';
 import { bytes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Wand #100 im EG mit einer Menge, damit kein Befund „ohne Mengen“ stört. */

@@ -3,7 +3,7 @@
 // abgelesen aus den selbst verfassten IFC-Texten (C4); sie werden nie aus dem Leser erzeugt.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
+import { ifcLesen } from './lesen';
 import { abgewiesen, bytes, codes, ifcText } from './testhilfen';
 
 describe('Keine IFC-Datei', () => {

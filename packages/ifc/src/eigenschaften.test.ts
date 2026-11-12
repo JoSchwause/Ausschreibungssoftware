@@ -3,8 +3,8 @@
 // Aufzählungen, Wert als Text mit IFC-Typname; andere Eigenschaftsarten sind ein Befund. Sollwerte von Hand.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { IfcLesung } from './index';
+import { ifcLesen } from './lesen';
+import type { IfcLesung } from './typen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Wand #100 im EG mit Mengensatz (damit kein Befund „ohne Mengen“ stört) und den gegebenen Zeilen. */

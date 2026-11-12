@@ -4,7 +4,7 @@
 // ist ein Kostengruppen-Vorschlag. Sollwerte von Hand aus den IFC-Texten unten.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
+import { ifcLesen } from './lesen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Wand #100 im EG mit einer Menge, damit kein Befund „ohne Mengen“ stört. */

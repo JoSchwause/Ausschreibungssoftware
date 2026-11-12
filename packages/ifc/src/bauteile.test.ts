@@ -3,8 +3,8 @@
 // Öffnungen, virtuellen Elemente, Beschriftungen und Raster. Sollwerte von Hand aus den IFC-Texten unten.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { Bauteil } from './index';
+import { ifcLesen } from './lesen';
+import type { Bauteil } from './typen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Bauteil mit allen Feldern; nicht genannte Felder sind leer. */
