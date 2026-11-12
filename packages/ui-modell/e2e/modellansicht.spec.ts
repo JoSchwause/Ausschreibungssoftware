@@ -268,9 +268,13 @@ test.describe('kleines Modell', () => {
 test('dunkles Schema von Anfang an: Hintergrund und Auswahl aus den dunklen Tokens', async ({ page }) => {
   await laden(page, '/?modell=klein&thema=dark');
   await setzen(page, { auswahl: [STUETZE] });
+  expect(await page.evaluate(() => document.documentElement.dataset['theme'])).toBe('dark');
+  const t = await tokens(page);
   const d = await darstellung(page);
-  expect(d.hintergrund).toBe('#0d1215');
-  expect(d.farben[STUETZE]).toBe('#7fb0ff');
+  expect(d.hintergrund).toBe(t['surface-sunken']);
+  expect(d.farben[STUETZE]).toBe(t['focus']);
+  // hell wären es andere Werte (tokens.css): der Hintergrund kommt wirklich aus dem dunklen Schema
+  expect(d.hintergrund).not.toBe('#e9eef0');
 });
 
 test('eine Datei, die kein IFC ist, meldet onFehler und zeigt den Grund', async ({ page }) => {
