@@ -1,6 +1,6 @@
 # 115: X1c–e in der App: Bauteile zuordnen, Mengen übernehmen, DIN 277 und Kennwerte, Aufmaß aus Auswahl
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1c, X1d, X1e · Ordner: `apps/web/src/bim/` (nach 114); Einhängestellen in `lv/LvSeite.tsx`,
 `auftrag/AuftragsLvSeite.tsx`, `kosten/` (nur Verweis), `lv/befehlsweg.ts` (markiert `// Ticket 115`, D-20)
@@ -135,3 +135,11 @@ Kein Sollwert angepasst.
 - Rückgängig eines Zuordnens am **Ausschreibungs-LV** auf der Modellseite springt nach der bestehenden Regel `lvZiel`
   (`historie/arten.ts`, nicht mein Ordner) auf die LV-Seite; am Auftrags-LV bleibt die Seite. Ein Ziel „Modellseite bleibt,
   wenn nur `bauteile` geändert sind“ wäre eine Zeile in `arten.ts` (Review der Welle).
+
+## Answer
+
+Gemergt mit dem Merge von `welle-6/115-web-bim-mengen` (`05777aa`, enthält `integration/welle-6` mit 116). Modellseite: Zuordnung zu
+Positionen (ein `BauteileZuordnen` je Schritt, Probleme vor dem Zuordnen sichtbar), 3D-Einfärbung „zugeordnet/ohne Zuordnung“, Aufmaßblatt
+aus Auswahl, Kennwerte (BGF/BRI/NRF 197,596 / 617,485 / 166,252; Kostenschätzung 274.302,77); Einhängestellen in LV- und Auftrags-LV-Seite.
+Zahlen wie in den Goldens. Suite des Umsetzers: Lint, Typecheck, 3.921 Tests grün; E2E 8/8. Offen für das Wellen-Review: Rückgängig einer
+Zuordnung führt über `lvZiel` (`historie/arten.ts`) auf die LV-Seite statt auf die Modellseite.
