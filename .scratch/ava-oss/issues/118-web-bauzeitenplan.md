@@ -1,6 +1,6 @@
 # 118: X2 in der App: Bauzeitenplan, Tor X2
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X2 · Ordner: `apps/web/src/bauzeit/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 118`, D-20); E2E `apps/web/e2e/x2.spec.ts`, Kettentest `apps/web/src/x2-kette.test.ts`
