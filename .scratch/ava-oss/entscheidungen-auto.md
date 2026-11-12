@@ -583,3 +583,24 @@ Question: Wie kommen die Kleinpunkte (95) und die Typen für X1–X4 in den Vert
 Decision: Zwei serielle Vertragstickets: zuerst 95 (`vertrag` v1.5: Kleinpunkte samt `LvSpalte` `'kostengruppe'` für 93; klein, schneller Merge), danach 97 (`vertrag` v1.6: X1–X4 in einem Ticket). Beide prüft ein Opus-Reviewer statt des Nutzers (D-42-Muster), 97 vor Stufe 2. Reihenfolge nach G-05 („zuerst 93–95, danach X1–X5“) und nach Bedingung 1 des Beraters (X1-Typen in eigenem Ticket nach 95). X2–X4 gehen mit X1 in Ticket 97 statt in ein drittes Vertragsticket, weil jedes weitere serielle Vertragsticket die Stufe 2 aller X-Stränge verzögert (Präzedenz D-36). Rechenkerne ohne Vertrag (IFC-Leser, 3D-Leinwand, HOAI, Terminrechnung, Fixtures) laufen sofort in Stufe 1 mit eigenen Typen und stellen in Stufe 2 auf die Vertragstypen um.
 Reason: G-05 legt die Reihenfolge fest; Parallelität bleibt dort, wo der Vertrag nicht gebraucht wird.
 Reversible: yes  Touches: Tickets 93–122, schnitt-welle-6.md
+
+## D-60 Triviale Merges macht der Orchestrator
+Welle 6 · alle Tickets · decided by: orchestrator
+Question: Der Skill sieht für jeden Merge einen Sonnet-Merger mit voller Suite vor. Enthält ein Branch schon den aktuellen Stand von `integration/welle-6` und hat der Umsetzer darauf die volle Suite grün gemeldet, ist der Baum nach dem Merge genau der getestete.
+Decision: Dann merged der Orchestrator selbst (`--no-ff`, Vermerk im Merge-Commit) ohne zweite Suite (wie D-46). Ist der Integrationsstand seit dem letzten Merge des Umsetzers weitergezogen, merged ein Sonnet-Merger und lässt die volle Suite laufen; ist sie rot, nimmt er den Merge zurück, und ein Opus-Umsetzer behebt den Fehler.
+Reason: Spart eine volle Suite je Ticket auf 4 Kernen mit bis zu 8 Agenten, ohne je einen ungetesteten Baum zu mergen.
+Reversible: yes  Touches: Ablauf
+
+## D-61 Nach dem ersten Nutzungslimit: alle Agenten aus ihrem Stand fortsetzen
+Welle 6 · Tickets 95, 96, 98–103 · decided by: orchestrator
+Question: Kurz vor 13:10 traf der Lauf das 5-Stunden-Limit; alle acht laufenden Agenten (95, 96, 98, 99, 100, 101, 102, 103) standen, nur 94 war fertig und gemergt. Wie weiter?
+Decision: Um 13:10 alle acht aus ihrem gespeicherten Stand fortgesetzt (nichts verloren, unkommittierte Arbeit lag im Worktree), mit der Bitte, ab jetzt klein und oft zu committen; 95 zuerst, weil 97 und damit die ganze Stufe 2 an ihm hängt. Trifft der Lauf das Limit erneut, gilt dasselbe, mit Vorrang für den Weg 95 → 97 → Stufe 2 und X1-Kern (Kürzungsreihenfolge in `schnitt-welle-6.md`).
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist (wie D-46).
+Reversible: yes  Touches: Ablauf
+
+## D-62 Projektseite zeigt das Netto nach Nachlass
+Welle 6 · Ticket 95, 106, 121 · decided by: orchestrator
+Question: Ticket 95 nennt das neue Feld `LvUebersicht.nettoNachNachlass` statt `netto` (D-95.5: `Gesamtsummen.netto` ist das Netto vor Nachlass, L2). Die Projektseite zeigt bisher unter „Netto“ das Netto vor Nachlass; mit dem neuen Feld änderte sich die Zahl bei LVs mit Nachlass.
+Decision: Name `nettoNachNachlass` angenommen; die Spalte der Projektseite zeigt dieses Feld und heißt „Netto nach Nachlass“ (Ticket 121). Kein zweites Feld `netto` im Vertrag.
+Reason: Das Netto nach Nachlass ist die Zahl, die für ein LV in der Übersicht zählt; ein zweites Feld wäre eine weitere Vertragsänderung ohne Nutzen. Umbenennen der Spalte macht die geänderte Zahl ehrlich.
+Reversible: yes  Touches: apps/web/src/projekt, Tickets 106, 121

@@ -5,8 +5,9 @@
 // LV (auch Alternativen und Zuschlagspositionen, die als Befund zählen), jede mit zwei Ansatzzeilen.
 //
 // Gemessen am Befehlsweg der App mit dem echten Speicherkern (SQLite im Arbeitsspeicher, dieselbe Logik wie im Worker;
-// ohne Worker-Grenze und OPFS). Die Zahlen stehen im Ticket; die Schranke unten ist grob (Ausreißer bei Last), die
-// Messung entscheidet nach D-45, ob v1.5 Zeilen-ChangeSets braucht.
+// ohne Worker-Grenze und OPFS). Ticket 94: Seit `speicher` `vorher` gegen den gespeicherten Text vergleicht und nur schreibt,
+// was sich ändert, hält ein Schritt das Budget einer Einzeländerung; es ist hier ein Test (Q4). Die Zahlen stehen in den
+// Tickets 87 und 94.
 
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
@@ -24,10 +25,10 @@ setFlagsFromString('--expose-gc');
 const gc = runInNewContext('gc') as () => void;
 
 /**
- * Grobe Schranke je Undo-Schritt (Median) gegen einen krankhaften Rückschritt; kein Budget (D-45 verlangt die Messung,
- * das Budget einer Einzeländerung im Browser, 100 ms in `e2e/leistung.spec.ts`, ist der Vergleich im Ticket).
+ * Budget je Schritt (Median, Q4, Ticket 94): Befehl, Rückgängig und Wiederholen je unter 100 ms, wie eine Einzeländerung
+ * (`e2e/leistung.spec.ts`). Bis Ticket 94 stand hier nur eine grobe Schranke von 1 s (D-45: erst messen).
  */
-const SCHRANKE_MS = 1000;
+const BUDGET_MS = 100;
 const SCHRITTE = 10;
 const BEFEHLE = 20;
 
@@ -219,8 +220,9 @@ describe('D-45: Undo an einem Aufmaßblatt mit 5.000 Zeilen', () => {
         `  Arbeitsspeicher je Undo-Schritt (Historie): ${(jeSchrittByte / 1024).toFixed(1)} KiB`,
       ].join('\n'),
     );
-    expect(median(rueckMs)).toBeLessThan(SCHRANKE_MS);
-    expect(median(vorMs)).toBeLessThan(SCHRANKE_MS);
+    expect(median(befehlMs)).toBeLessThan(BUDGET_MS);
+    expect(median(rueckMs)).toBeLessThan(BUDGET_MS);
+    expect(median(vorMs)).toBeLessThan(BUDGET_MS);
     // Ein Schritt hält ein neues Feld der Zeilen (5.000 Verweise), nicht das ganze Blatt: weit unter dessen Größe.
     expect(jeSchrittByte).toBeLessThan(json / 4);
   });

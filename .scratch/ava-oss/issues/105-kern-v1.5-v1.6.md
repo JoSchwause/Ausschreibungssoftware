@@ -15,8 +15,11 @@ Herkunft: Ticket 95 (Punkte 1, 3), Ticket 97 (Punkt 3), Berater D-52, D-54
 1. **Einheitlicher Fehlercode (v1.5 Punkt 1, D-71.3).** Feldbefehle, die eine Position verlangen und eine Gliederung oder einen
    Hinweistext treffen, melden `knotenart-unzulaessig` (LV und Auftrags-LV); `knoten-unbekannt` nur für einen Knoten, den es
    nicht gibt. Bestehende Tests anpassen, Eigenschaftstest über alle Feldbefehle.
-2. **OZ-Vorschlag am Auftrags-LV (v1.5 Punkt 3, D-80.1).** Die Kernfunktion so, wie v1.5 sie festlegt, ohne umgedeutete
-   Kennung; `abrechnung` (`nachtragUebernehmen`) nutzt sie statt der Umdeutung (benannte Ausnahme, gleiche Ergebnisse, die
+   Nach Ticket 95 (D-95.1) meldet der Kern heute noch `knoten-unbekannt` für `KostengruppeSetzen` an einer Gliederung; das und
+   zwei Kern-Tests ändern sich.
+2. **OZ-Vorschlag am Auftrags-LV (v1.5 Punkt 3, D-80.1, D-95.3).** Die Kernfunktion erfüllt die Signatur `OzVorschlagen`
+   (`LvZustand | AuftragsLvZustand`) mit dem Ergebnistyp `OzVorschlag` aus `vertrag` (die eigene Kopie des Typs im Kern
+   entfällt), ohne umgedeutete Kennung; `abrechnung` (`nachtragUebernehmen`) nutzt sie statt der Umdeutung (benannte Ausnahme, gleiche Ergebnisse, die
    Golden-Tests von `abrechnung` bleiben unverändert grün).
 3. **`BauteileZuordnen` (v1.6 Punkt 3, D-52)** als LvBefehl und als AuftragsLvBefehl: ersetzt die ganze Liste an einer Position
    (`null` = keine); nur an Positionen (`knotenart-unzulaessig`); dasselbe Paar (GlobalId, Mengenart) zweimal →

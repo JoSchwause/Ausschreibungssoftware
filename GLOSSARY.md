@@ -141,7 +141,7 @@ Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der B
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
 
 ### Prüfbefund
-Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
+Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung, E-Rechnung lesen) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe. Beim Lesen einer E-Rechnung (Quelle `erechnung-lesen`, v1.5) ist der Ort der Business Term der EN 16931, zu dem der Befund gehört (z. B. `BT-115`), und das Element in der Datei; Zeile und Spalte nur, wenn die Datei kein lesbares XML ist. Im Code `Pruefbefund`, `Befundquelle`, `Befundort`.
 
 ### Migrationsbefund
 Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
@@ -178,6 +178,9 @@ Die Kennung des LV (oder Auftrags-LV) selbst, die die Knoten der obersten Ebene 
 
 ### Los-Stufe
 Die oberste Stufe der OZ-Maske, wenn das LV Lose hat. Das Los ist die oberste Gliederungsstufe und zählt zu den höchstens 5 Stufen (F1); Lose und Titel stehen nie nebeneinander auf der obersten Stufe.
+
+### OZ-Vorschlag
+Die Ordnungszahl, die der Kern für einen neuen Knoten an einem Ort vorschlägt, bevor die App oder eine reine Funktion den Befehl baut (der Befehl trägt die OZ dann als Wert): der Teil des Vorgängers unter denselben Geschwistern plus 10 (Position) bzw. plus 1 (Gliederung); passt das nicht, 5, 2 oder 1 mit Befehlshinweis, sonst kein Vorschlag (F2, D-42.3). Er gilt im LV und im Auftrags-LV, jeweils mit der Kennung des eigenen Aggregats als Wurzel (v1.5, D-80.1). Im Code `OzVorschlag`, Signatur `OzVorschlagen`, Funktion `ozVorschlag` (Paket `kern`).
 
 ### Entwurfskennzeichen
 Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.
@@ -276,7 +279,7 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.

@@ -22,6 +22,7 @@ import type {
   Aenderung,
   Aenderungen,
   AngebotChangeSet,
+  Aufmass,
   AufmassChangeSet,
   AuftragsLvChangeSet,
   Gesamtsummen,
@@ -42,11 +43,11 @@ import type {
   Zeitstempel,
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
-import { kanonischKompakt } from './kanonisch';
+import { kanonischeListe, kanonischKompakt } from './kanonisch';
 import {
   leseAngebotKopf,
   leseAngebotposition,
-  leseAufmass,
+  leseAufmassText,
   leseAuftragsLvKopf,
   leseKnoten1,
   leseKostenermittlung,
@@ -57,6 +58,7 @@ import {
   leseProjekt,
   leseRechnung,
   leseSummen,
+  type AufmassText,
 } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
@@ -982,12 +984,22 @@ interface GanzesAggregat {
   readonly projektId: ProjektId;
 }
 
+/** Der gespeicherte Stand eines ganzen Aggregats, gegen den `vorher` geprüft wird. */
+interface GespeicherterStand<T> {
+  /** Ist `vorher` kanonisch gleich dem gespeicherten Stand? */
+  readonly passt: (vorher: T) => boolean;
+}
+
+/** Der gespeicherte Stand als gelesenes Aggregat: `vorher` passt, wenn beide kanonisch gleich sind. */
+const alsStand = <T>(gespeichert: T | null): GespeicherterStand<T> | null =>
+  gespeichert === null ? null : { passt: (vorher) => gleich(gespeichert, vorher) };
+
 /** Prüft ein ChangeSet eines ganzen Aggregats gegen sich selbst, den Protokolleintrag und den gespeicherten Stand. */
 function pruefeGanzesAggregat<T extends GanzesAggregat>(
   a: Aenderung<T>,
   id: string,
   projektId: ProjektId,
-  gespeichert: T | null,
+  gespeichert: GespeicherterStand<T> | null,
   was: string,
   fest: readonly (keyof T & string)[],
 ): void {
@@ -1004,7 +1016,7 @@ function pruefeGanzesAggregat<T extends GanzesAggregat>(
     return;
   }
   if (gespeichert === null) abbruch('nicht-gefunden', `${was} ist nicht vorhanden.`);
-  if (!gleich(gespeichert, vorher)) konflikt(`der Vorherstand von ${was}`);
+  if (!gespeichert.passt(vorher)) konflikt(`der Vorherstand von ${was}`);
   if (nachher !== null)
     for (const f of fest)
       if (!gleich(vorher[f], nachher[f])) abbruch('unbekannt', `ChangeSet: ${f} von ${was} bleibt fest.`);
@@ -1016,12 +1028,50 @@ function pruefeNummer(nummer: number, was: string): void {
     abbruch('unbekannt', `ChangeSet: Die Nummer von ${was} ist keine ganze Zahl ab 1 (${String(nummer)}).`);
 }
 
-/** Aufmaßblatt anlegen, ändern oder löschen (`AufmassChangeSet`). */
+/** Die Zeilen eines Blatts in kanonischer Form; eine Zeile, die als dasselbe Objekt schon geschrieben wurde, aus der Merkliste. */
+const zeilentext = (positionen: unknown, merkliste: WeakMap<object, string>): string =>
+  Array.isArray(positionen)
+    ? kanonischeListe(positionen, merkliste, '$.positionen')
+    : kanonischKompakt(positionen);
+
+/**
+ * Der gespeicherte Stand eines Aufmaßblatts mit den Zeilen als gespeichertem Text (Ticket 94). `vorher` passt, wenn sein Kopf
+ * kanonisch gleich dem gespeicherten ist und seine Zeilen in kanonischer Form genau den gespeicherten Text ergeben: dieselbe
+ * Gleichheit wie `gleich` über das ganze Blatt, ohne den Text zu parsen und ein zweites Mal zu sortieren. Beide Teile werden
+ * ganz in kanonische Form gebracht, bevor verglichen wird; ein Wert, der kein JSON ist, bleibt so ein Programmfehler.
+ */
+function aufmassStand(g: AufmassText, merkliste: WeakMap<object, string>): GespeicherterStand<Aufmass> {
+  return {
+    passt: (vorher) => {
+      const { positionen, ...kopf } = vorher;
+      const kopfGleich = gleich(g.kopf, kopf);
+      // Ohne Zeilen fehlt der Schlüssel in der kanonischen Form: nicht gleich (gespeichert sind immer Zeilen).
+      const zeilen: unknown = positionen;
+      return (zeilen === undefined ? null : zeilentext(zeilen, merkliste)) === g.positionen && kopfGleich;
+    },
+  };
+}
+
+/**
+ * Aufmaßblatt anlegen, ändern oder löschen (`AufmassChangeSet`). Ändern (Ticket 94): Das ChangeSet trägt das ganze Blatt
+ * zweimal (D-36 (8)); jede Zeile wird höchstens einmal in kanonische Form gebracht (die Zeilen, die `nachher` mit `vorher`
+ * teilt, über die Merkliste; auch nach der Worker-Grenze, weil `postMessage` geteilte Objekte geteilt lässt), das gespeicherte
+ * Blatt wird nicht geparst, und geschrieben wird nur, was sich ändert.
+ */
 export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: ProjektId): void {
   const id = cs.aufmassId;
   const was = `Aufmaßblatt ${id}`;
   const { vorher, nachher } = cs.aufmass;
-  pruefeGanzesAggregat(cs.aufmass, id, projektId, leseAufmass(db, id), was, ['auftragsLvId', 'nummer']);
+  const merkliste = new WeakMap<object, string>();
+  const gespeichert = leseAufmassText(db, id);
+  pruefeGanzesAggregat(
+    cs.aufmass,
+    id,
+    projektId,
+    gespeichert === null ? null : aufmassStand(gespeichert, merkliste),
+    was,
+    ['auftragsLvId', 'nummer'],
+  );
   if (nachher === null) {
     if (vorher !== null) pruefeAufmassLoeschen(db, vorher);
     db.ausfuehren('DELETE FROM aufmass WHERE id = ?', [id]);
@@ -1037,12 +1087,16 @@ export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: P
     );
     return;
   }
-  db.ausfuehren('UPDATE aufmass SET bezeichnung = ?, datum = ?, positionen = ? WHERE id = ?', [
-    nachher.bezeichnung,
-    nachher.datum,
-    kanonischKompakt(nachher.positionen),
-    id,
-  ]);
+  // `vorher` ist der gespeicherte Stand (oben geprüft); Nummer und Auftrags-LV bleiben fest.
+  if (nachher.bezeichnung !== vorher.bezeichnung || nachher.datum !== vorher.datum)
+    db.ausfuehren('UPDATE aufmass SET bezeichnung = ?, datum = ? WHERE id = ?', [
+      nachher.bezeichnung,
+      nachher.datum,
+      id,
+    ]);
+  const zeilen = zeilentext(nachher.positionen, merkliste);
+  if (zeilen !== gespeichert?.positionen)
+    db.ausfuehren('UPDATE aufmass SET positionen = ? WHERE id = ?', [zeilen, id]);
 }
 
 /**
@@ -1054,7 +1108,10 @@ export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId:
   const id = cs.rechnungId;
   const was = `Rechnung ${id}`;
   const { vorher, nachher } = cs.rechnung;
-  pruefeGanzesAggregat(cs.rechnung, id, projektId, leseRechnung(db, id), was, ['auftragsLvId', 'nummer']);
+  pruefeGanzesAggregat(cs.rechnung, id, projektId, alsStand(leseRechnung(db, id)), was, [
+    'auftragsLvId',
+    'nummer',
+  ]);
   if (nachher === null) {
     if (vorher !== null) pruefeRechnungLoeschen(db, vorher);
     db.ausfuehren('DELETE FROM rechnung WHERE id = ?', [id]);
@@ -1083,7 +1140,7 @@ export function wendeKostenermittlungAn(
   const id = cs.kostenermittlungId;
   const was = `Kostenermittlung ${id}`;
   const { vorher, nachher } = cs.kostenermittlung;
-  pruefeGanzesAggregat(cs.kostenermittlung, id, projektId, leseKostenermittlung(db, id), was, []);
+  pruefeGanzesAggregat(cs.kostenermittlung, id, projektId, alsStand(leseKostenermittlung(db, id)), was, []);
   if (nachher === null) {
     db.ausfuehren('DELETE FROM kostenermittlung WHERE id = ?', [id]);
     return;

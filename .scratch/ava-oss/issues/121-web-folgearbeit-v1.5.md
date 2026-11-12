@@ -11,8 +11,9 @@ Herkunft: Ticket 95 (Punkte 3, 5 und Folgearbeit D-92.6)
 
 ## What to build
 
-1. **Netto der LV-Liste (D-92.4).** Die Projektseite zeigt das Netto aus `LvUebersicht.netto` (v1.5, gefüllt von `speicher`,
-   Ticket 106) statt jedes LV nachzuladen; das Nachladen (`LvNetto`) entfällt; fehlt der Wert, „–“.
+1. **Netto der LV-Liste (D-92.4, D-62).** Die Projektseite zeigt `LvUebersicht.nettoNachNachlass` (v1.5, Name nach D-95.5,
+   gefüllt von `speicher`, Ticket 106) statt jedes LV nachzuladen; das Nachladen (`LvNetto`) entfällt; fehlt der Wert, „–“.
+   Weil das ein anderer Wert ist als das bisher gezeigte Netto vor Nachlass, heißt die Spalte „Netto nach Nachlass“ (D-62).
 2. **OZ-Vorschlag am Auftrags-LV.** Wo die App eine Ordnungszahl im Auftrags-LV vorschlägt, nutzt sie die Kernfunktion aus
    Ticket 105 statt einer umgedeuteten Kennung.
 3. **Druckprofile (D-92.6, Q5).** Zurückgehaltene, nicht verwendbare Einträge der Ablage sind sichtbar („n Einträge konnten nicht
