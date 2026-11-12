@@ -7,3 +7,7 @@ export { globalIdLesen } from './globalid';
 export type { GlobalIdFehler } from './globalid';
 export { bauwerksmodellLesen } from './bauwerksmodell';
 export type { BauwerksmodellLesung } from './bauwerksmodell';
+export { eigenschaftenLesen, eigenschaftsindexBauen } from './eigenschaftsindex';
+export type { Eigenschaftsindex, Objekteigenschaften } from './eigenschaftsindex';
+export type { Eigenschaft, IfcBefundcode, IfcOptionen, Klassifikation } from './typen';
+export { STANDARD_MAX_BYTES, STANDARD_MAX_TIEFE } from './lesen';

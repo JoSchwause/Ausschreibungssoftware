@@ -14,6 +14,7 @@ import type {
 } from '@tethys/vertrag';
 import { alsMenge } from '@tethys/dezimal';
 import { istGlobalId } from './globalid';
+import { pruefbefund } from './pruefbefund';
 import { dateiOeffnen, inhaltLesen } from './lesen';
 import type { GelesenerInhalt } from './lesen';
 import type { Modellleser } from './modell';
@@ -24,17 +25,6 @@ export interface BauwerksmodellLesung {
   readonly bauwerksmodell: Bauwerksmodell | null;
   /** Befunde in der Reihenfolge, in der sie beim Lesen und Abbilden entstehen; Quelle immer `ifc-lesen`. */
   readonly befunde: readonly Pruefbefund[];
-}
-
-/** Ein Befund des Lesers als Prüfbefund des Vertrags; `globalId`, wenn er ein Objekt des Modells betrifft. */
-function pruefbefund(b: Gelesen.IfcBefund, globalId: IfcGlobalId | undefined): Pruefbefund {
-  return {
-    schwere: b.schwere,
-    quelle: 'ifc-lesen',
-    code: b.code,
-    meldung: b.meldung,
-    ort: globalId === undefined ? b.ort : { ...b.ort, globalId },
-  };
 }
 
 /** Das Objekt eines Befunds: angegeben beim Melden, sonst die Instanz seines Orts (`#n`). */

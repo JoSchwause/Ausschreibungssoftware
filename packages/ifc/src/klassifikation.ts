@@ -16,10 +16,16 @@ const KOSTENGRUPPE = /^[1-9][0-9]{2}$/;
 const MAX_STUFEN = 16;
 
 export class Klassifikationsleser {
-  private readonly vonObjekt = new Map<number, number[]>();
+  private readonly vonObjekt: Map<number, number[]>;
   private readonly gelesen = new Map<number, Klassifikation | null>();
 
-  constructor(private readonly l: Modellleser) {
+  /** Sammelt die Zuordnungen der Datei; mit `vorlage` übernimmt er deren Sammlung und liest mit `l` (wie `Definitionen`). */
+  constructor(
+    private readonly l: Modellleser,
+    vorlage?: Klassifikationsleser,
+  ) {
+    this.vonObjekt = vorlage?.vonObjekt ?? new Map<number, number[]>();
+    if (vorlage !== undefined) return;
     for (const r of l.daten.klasse('IFCRELASSOCIATESCLASSIFICATION')) {
       const p = l.parameter(r);
       if (p === null) continue;
