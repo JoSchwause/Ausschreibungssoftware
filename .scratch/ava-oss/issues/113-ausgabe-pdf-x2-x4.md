@@ -25,6 +25,10 @@ pdfmake bleibt der Renderer; das Erzeugungsdatum kommt aus der Eingabe), je mit 
 
 Was nicht ins Modell passt, verschwindet nicht still (Q5): Marke im Text wie „[Abbildung]“ im LV-Druck.
 
+Aus Ticket 97 und dem Review (D-64, D-66): Eingabe des Bauzeitenplans ist `Bauzeitenplanergebnis` (nicht „Terminplan“); der
+Hinweis zu DIN 276:2008-12 steht im Honorar-PDF als fester Text; die Mängelanzeige nimmt die Frist aus dem Verlaufseintrag
+`angezeigt` (`frist?`).
+
 ## Grenzen
 
 - Nur `packages/ausgabe`. Keine Rechnung im Paket (A2/ADR 0012). `okf/research/` wird nicht gelesen (C3).

@@ -20,6 +20,9 @@ Herkunft: Ticket 95 (Punkte 3, 5 und Folgearbeit D-92.6)
    gelesen werden“) und lassen sich **als Datei sichern** oder nach Bestätigung **entfernen**.
 4. E2E: bestehende `projekt.spec.ts`, `druckprofil.spec.ts` ergänzen; `nachtrag.spec.ts` grün.
 
+Aus dem Review (D-66, Befund 2): „LV-Stand als neues LV übernehmen“ (`lv/stand.ts`) ruft die Kopierhilfe des Kerns mit
+„Zuordnungen behalten“ (Ticket 105), sonst gingen die Bauteilzuordnungen des Stands still verloren (Q5). Eine markierte Zeile.
+
 ## Grenzen
 
 - `okf/research/` wird nicht gelesen (C3).
