@@ -1,6 +1,6 @@
 # 121: App: Folgearbeit v1.5 (Netto der LV-Liste, OZ-Vorschlag am Auftrags-LV, Druckprofile sichern)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: – · Ordner: `apps/web/src/projekt/`, `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (nur falls der
 OZ-Vorschlag dort gebraucht wird), `apps/web/src/ausgabe/`
