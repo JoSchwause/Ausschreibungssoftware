@@ -2,8 +2,9 @@
 // Leistungsbudget als Test (Q4, Ticket 94; D-45, D-47 P4): ein Aufmaßblatt mit 5.000 Zeilen am Auftrags-LV aus
 // `fixtures/gross`, eine Zeile je Position mit zwei Ansatzzeilen (wie die Messung D-45 in `apps/web`). Gemessen wird
 // `anwenden` im Speicherkern (Node, In-Memory-SQLite): eine Einzeländerung (`AufmasspositionSetzen`, das ganze Blatt
-// vorher und nachher, D-36 (8)), ihre Umkehrung (Undo) und erneut (Redo), warm, Median unter 100 ms. Das Budget wird
-// nicht aufgeweicht; die Messwerte stehen im Ticket.
+// vorher und nachher, D-36 (8)), ihre Umkehrung (Undo) und erneut (Redo), warm, Median unter 100 ms. Eintrag und ChangeSet
+// kommen geklont an, wie im Browser über die Worker-Grenze (`postMessage`); das Klonen selbst ist nicht mitgemessen. Das
+// Budget wird nicht aufgeweicht; die Messwerte stehen im Ticket.
 
 import type {
   Aufmass,
@@ -124,11 +125,15 @@ describe('Leistungsbudget Aufmaßblatt (Q4, Ticket 94)', () => {
       let stand = blatt;
       let nr = 100;
       const anwenden = async (befehl: Protokolleintrag['befehl'], cs: AufmassChangeSet) => {
-        const e = eintrag(++nr, P, aggregat, befehl);
+        const [e, c] = structuredClone([eintrag(++nr, P, aggregat, befehl), cs] as const);
         const t0 = performance.now();
-        wert(await kern.anwenden(e, cs));
+        wert(await kern.anwenden(e, c));
         return { id: e.id, ms: performance.now() - t0 };
       };
+      // Über die Worker-Grenze bleiben die Zeilen, die nachher mit vorher teilt, dieselben Objekte (strukturiertes Klonen).
+      const [probe] = zeileSetzen(blatt, 0, '1.000');
+      const geklont = structuredClone(probe);
+      expect(geklont.aufmass.nachher?.positionen[1]).toBe(geklont.aufmass.vorher?.positionen[1]);
       for (let i = 0; i < WARMLAUF + LAEUFE; i++) {
         const [cs, befehl] = zeileSetzen(stand, (i * 97) % 5000, `${String(i + 1)}.000`);
         const setzen = await anwenden(befehl, cs);
