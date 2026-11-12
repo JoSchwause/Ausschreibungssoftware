@@ -14,6 +14,7 @@
   "dependencies": {
     "@tethys/abrechnung": "workspace:*",
     "@tethys/ausgabe": "workspace:*",
+    "@tethys/bauleitung": "workspace:*",
     "@tethys/dezimal": "workspace:*",
     "@tethys/erechnung": "workspace:*",
     "@tethys/gaeb": "workspace:*",
