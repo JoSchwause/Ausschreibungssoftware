@@ -1,6 +1,6 @@
 # 116: X1f in der App: Modellstände vergleichen, Mengen aktualisieren
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1f · Ordner: `apps/web/src/modellvergleich/` (neu); Einhängestellen in `App.tsx` und `bim/` (nur ein Link auf
 der Modellseite, markiert `// Ticket 116`, D-20)
@@ -75,3 +75,10 @@ brutto laut Soll im Unit-Test), Undo-Tiefe +1; Rückgängig → Netto 36.068,86.
 - Nach `git merge integration/welle-6`: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün, `pnpm typecheck` grün, `pnpm test`:
   Vitest 315 Dateien grün (1 übersprungen wie zuvor), 3.898 Tests bestanden, 3 übersprungen; `node --test fixtures` 53/53. Kein Budget
   gelockert, kein Test übersprungen.
+
+## Answer
+
+Gemergt mit `a22fde8` (Branch `welle-6/116-web-modellvergleich`, `e811e83`). Vergleichsseite `/projekt/<id>/modelle/<neu>/vergleich[/<alt>]`
+mit Zusammenfassung, Befunden, Änderungsliste und 3D-Einfärbung (neu/geändert); betroffene Positionen mit alt/neu/Differenz;
+„Mengen aktualisieren“ mit Vorschau als ein Rückgängig-Schritt. Zahlen stimmen mit `typisch-bim.json` (Netto 35.894,85 nach, 36.068,86
+vor). Suite des Umsetzers nach Merge von `integration/welle-6`: Lint, Typecheck, 3.898 Tests grün; E2E `modellvergleich`, `bim` grün.
