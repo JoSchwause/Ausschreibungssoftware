@@ -21,6 +21,10 @@ node fixtures/ifc/erzeugen.mjs --bauteile 10000 --geschosse 10 --aus /tmp/modell
 Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG, feste IDs, kein `Date.now()`, kein
 `Math.random()`) und rechnet Geld und Mengen ausschließlich mit BigInt-Festkommazahlen (`rechnen.mjs`).
 
+`bauzeit.json`, `honorar.json` und `bauleitung.json` (Tore X2 bis X4, Ticket 112) erzeugt das Skript nicht: Eingaben und
+Sollwerte sind von Hand geschrieben und hergeleitet (Feld `herleitung`); der Selbsttest rechnet sie ein zweites Mal eigens
+nach, ohne die Pakete `bauzeit`, `honorar` und `bauleitung`.
+
 ## Dateien und Herkunft
 
 | Datei | Inhalt | Herkunft |
@@ -38,6 +42,9 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 | `typisch-bim.json` | Sollwerte der Tore X1-Kern und X1-Erweitert (D-58): Zuordnung zu `typisch`, Vordersätze, LV-Summen, DIN-277-Größen, Kostenschätzung, Aufmaßblatt aus Auswahl, Vergleich v1 → v2, Mengen aktualisieren | selbst verfasst, Sollwerte berechnet (`ifc/sollwerte.mjs`) |
 | `ifc/erzeugen.mjs` (+ `.d.mts`) | großes IFC-4-Modell für die Leistungsbudgets (Standard 10.000 Bauteile auf 10 Geschossen, etwa 21 MB), als Funktion `erzeugeModell` und Kommandozeile; die Datei liegt nicht im Repo (D-54) | selbst verfasst, deterministisch |
 | `ifc/schreiben.mjs` | STEP-Schreiber (IFC 4 und IFC 2x3) und Mengen aus der Geometrie | selbst verfasst nach den öffentlichen Schemata (nur Klassennamen und Attributfolgen) |
+| `bauzeit.json` | Tor X2 (D-58, Ticket 112): Bauzeitenplan mit 8 Vorgängen in Sachsen 2026 (Sammelvorgang, Meilenstein, alle vier Anordnungsarten, Abstand 0 und −1, Buß- und Bettag und Wochenenden auf dem kritischen Weg); Projektende Di 24.11.2026 | selbst verfasst, erfunden, Sollwerte von Hand (siehe „Bauzeitenplan: Tor X2“) |
+| `honorar.json` | Tor X3 (D-58, Ticket 112): Gebäude, Zone III, Honorarsatz 50 %, § 33 mit KG 400 über 25 %, LPH 1–9, Umbauzuschlag 25 %, Nebenkosten 4,50 %, MwSt 19 %; Brutto 267.595,90 | selbst verfasst, erfunden; Tafelzeilen und Phasen aus der HOAI 2021 abgeschrieben (amtliches Werk), Sollwerte von Hand (siehe „Honorar: Tor X3“) |
+| `bauleitung.json` | Tor X4 (D-58, Ticket 112): fünf Mängel an zwei Auftragnehmern, Stichtag 26.11.2026 mit genau einem überfälligen, drei Bautagebucheinträge; Auswertungen | selbst verfasst, erfunden, Sollwerte von Hand (siehe „Bauleitung: Tor X4“) |
 | `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs` | Generator, Dezimalrechnung, Selbsttest | selbst verfasst |
 
 Lizenz: AGPL-3.0-or-later (REUSE-Abdeckung über den Repo-weiten Glob für `fixtures/**`).
@@ -398,6 +405,89 @@ Geschosse; eine angeschnittene Gruppe bleibt gültig (Öffnung ohne Füllung). G
 Zufall: 10.000 Bauteile auf 10 Geschossen ergeben etwa 21 MB in etwa einer Sekunde, immer mit demselben SHA-256. Der
 Selbsttest prüft Determinismus, Zahl der Bauteile und Verweise; ein kleines Modell (37 Bauteile, 3 Geschosse) liest er
 streng wie die Hausdateien.
+
+## Bauzeitenplan: Tor X2 (Ticket 112)
+
+`bauzeit.json` trägt einen Plan in der Form `Bauzeitenplaneingabe` des Pakets `bauzeit` (dazu `id`, `projektId`, `name` und
+je Vorgang `bezug: null` aus dem geplanten Vertragstyp `Bauzeitenplan` v1.6) und die Sollwerte in der Form
+`Bauzeitenplanergebnis` (je Vorgang `id`, `art`, `termine`; v1.6 nennt die Kennung `vorgangId`, Ticket 109 bildet ab). Die
+Lesarten sind die von `BAUZEIT_ANNAHMEN` (Ticket 102, D-102.2, D-63): Ende ist der letzte Arbeitstag einschließlich,
+Ende-Anfang 0 heißt Beginn am nächsten Arbeitstag, ein Meilenstein liegt am Anfang seines Tages und sein Nachfolger mit
+Ende-Anfang 0 beginnt am selben Tag. Kalender: Sachsen (`SN`), Montag bis Freitag; der Buß- und Bettag (Mi 18.11.2026, nur
+Sachsen, SächsSFG § 1 Abs. 1; Mittwoch vor dem 23. November) liegt auf dem kritischen Weg. Projektbeginn So 01.11.2026, also
+erster Arbeitstag Mo 02.11.2026.
+
+| Nr | Vorgang | Dauer | Beziehung | Beginn | Ende | spät. Beginn | spät. Ende | GP | FP |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Gründung (Sammelvorgang: 1.1–1.3) | – | – | 02.11. | 13.11. | 02.11. | 13.11. | 0 | 0 |
+| 1.1 | Erdarbeiten | 4 | – | 02.11. | 05.11. | 02.11. | 05.11. | 0 | 0 |
+| 1.2 | Streifenfundamente | 4 | Anfang-Anfang 1.1 +2 | 04.11. | 09.11. | 04.11. | 09.11. | 0 | 0 |
+| 1.3 | Bodenplatte | 5 | Ende-Anfang 1.2 −1 | 09.11. | 13.11. | 09.11. | 13.11. | 0 | 0 |
+| 2 | Gründung abgenommen (Meilenstein) | 0 | Ende-Anfang 1.3 +0 | 16.11. | 16.11. | 16.11. | 16.11. | 0 | 0 |
+| 3 | Mauerwerk Erdgeschoss | 6 | Ende-Anfang 2 +0 | 16.11. | 24.11. | 16.11. | 24.11. | 0 | 0 |
+| 4 | Witterungsschutz Bodenplatte | 2 | Anfang-Ende 3 +0 | 12.11. | 13.11. | 19.11. | 20.11. | 4 | 0 |
+| 5 | Arbeitsraum verfüllen | 3 | Ende-Ende 4 +2 | 13.11. | 17.11. | 20.11. | 24.11. | 4 | 4 |
+
+Projektende **Di 24.11.2026**; kritischer Weg **1.1 → 1.2 → 1.3 → 2 → 3** (Wochenenden 07./08., 14./15., 21./22.11. und der
+Feiertag 18.11. liegen darauf); keine Befunde. Jede Anordnungsart bestimmt einen Termin (der Selbsttest prüft, dass ihr
+Spielraum 0 ist). Der Meilenstein steht nach dem Ende von 1.3 am Freitag am Montag (D-63). Bei 4 ist der freie Puffer (0)
+kleiner als der Gesamtpuffer (4), weil 5 unmittelbar folgt. **Gegenprobe ohne Land** (`gegenprobeOhneLand`): Der 18.11. ist
+dann Arbeitstag, 3 endet Mo 23.11., Projektende 23.11.2026; Puffer und Weg bleiben. Die Herleitung Schritt für Schritt steht
+in `herleitung`; der Selbsttest rechnet mit eigenem Kalender (Osterformel, Feiertagsliste) und eigener Vorwärts- und
+Rückwärtsrechnung nach.
+
+## Honorar: Tor X3 (Ticket 112)
+
+`honorar.json` trägt eine Honorarberechnung in der Form `Honorarberechnung` des Pakets `honorar` (dazu `id`, `projektId`,
+`name`), die Kostenberechnung, aus der KG 300 und KG 400 stammen (Vertragsform `Kostenermittlung`, nur Einträge der zweiten
+Ebene: KG 300 = Σ 3xx, KG 400 = Σ 4xx; KG 210 und 520 zählen nicht, KG 610 kommt als weitere Kosten nach § 33 Abs. 3 von
+Hand), die eigene Abschrift der Tafelzeilen 1.000.000 und 1.500.000 aus § 35 Abs. 1 und der Phasen aus § 34 Abs. 3 (Quelle
+`https://www.gesetze-im-internet.de/hoai_2013/`, abgerufen 2026-11-12) und die Sollwerte in der Form `Honorarergebnis`.
+Rundungskette D-56, kaufmännisch; „(.5)“ heißt Rundung genau auf der Hälfte.
+
+| Schritt | Regel | Sollwert |
+|---|---|---|
+| sonstige anrechenbare Kosten | § 33 Abs. 1, 3: KG 300 + weitere Kosten | 1.011.111,10 + 12.345,68 = 1.023.456,78 |
+| Grenze, KG 400 voll | § 33 Abs. 2 Nr. 1: 25 % der sonstigen | 255.864,195 → **255.864,20** (.5) |
+| KG 400 zur Hälfte | § 33 Abs. 2 Nr. 2 | (345.678,91 − 255.864,20) / 2 = 44.907,355 → **44.907,36** (.5) |
+| anrechenbare Kosten | dazu mitzuverarbeitende Bausubstanz 49.390,00 (§ 4 Abs. 3) | **1.373.618,34** (zwischen 1.000.000 und 1.500.000) |
+| von, bis (Zone III) | § 13: 115.675 + 373.618,34 × 50.236 / 500.000; 144.268 + 373.618,34 × 62.655 / 500.000 | 153.213,18185648 → **153.213,18**; 191.086,1141854 → **191.086,11** |
+| Honorar im Honorarsatz 50 % | von + (bis − von) × 50 / 100 | 172.149,645 → **172.149,65** (.5) |
+| LPH 1–9 | § 34 Abs. 3: 2, 7, 15, 3, 25, 10, 4, 32, 2 % | 3.442,99; 12.050,48; 25.822,45; 5.164,49; 43.037,41; 17.214,97 (.5); 6.885,99; 55.087,89; 3.442,99 |
+| Grundhonorar | Summe der Phasen | **172.149,66** (1 Cent über dem Honorar) |
+| Umbauzuschlag 25 % | § 6 Abs. 2, § 36 Abs. 1 (unter 33 %) | 43.037,415 → **43.037,42** (.5) |
+| Nebenkosten 4,50 % | § 14, auf Grundhonorar + Umbauzuschlag 215.187,08 | 9.683,4186 → **9.683,42** |
+| Netto, MwSt 19 %, Brutto | § 16 Abs. 1 | **224.870,50**; 42.725,395 → **42.725,40** (.5); **267.595,90** |
+
+Keine Befunde. Sechs Rundungen liegen genau auf der Hälfte: eine Rundung „half-even“ oder eine doppelte Rundung fiele auf.
+Der Selbsttest liest die Abschrift Zeile für Zeile (bis der Zone n = von der Zone n + 1) und rechnet die Kette in ganzen Cent
+nach.
+
+## Bauleitung: Tor X4 (Ticket 112)
+
+`bauleitung.json` trägt fünf Mängel, drei Bautagebucheinträge und die Sollwerte der Auswertungen. Die Formen folgen dem Text
+von Ticket 97 Punkt 6 (`Mangel`, `Mangelverlaufseintrag`, `Bautagebucheintrag`), weil `vertrag` v1.6 beim Schreiben noch
+nicht gemergt war. Der Auftragnehmer eines Mangels folgt aus dem Auftrags-LV; `auftraege` nennt ihn so, wie ihn die App
+übergibt (Ticket 111). Regeln nach Ticket 111: Status = letzter Verlaufseintrag; Wechsel offen → angezeigt → beseitigt →
+abgenommen und beseitigt → offen; überfällig = Frist vor dem Stichtag und Status offen oder angezeigt.
+
+| Nr | Auftragnehmer | Mangel | Frist | Verlauf | Status am Stichtag Do 26.11.2026 |
+|---|---|---|---|---|---|
+| 1 | Rohbau Muster GmbH | Kiesnest am Streifenfundament Süd | 20.11. | offen 10.11., angezeigt 11.11., beseitigt 19.11., abgenommen 23.11. | abgenommen, nicht überfällig |
+| 2 | Tiefbau Beispiel KG | Grundleitung mit Gegengefälle | 04.12. | offen 12.11., angezeigt 12.11., beseitigt 19.11., offen 23.11. | offen (Nachbesserung abgelehnt), Frist nach dem Stichtag |
+| 3 | Rohbau Muster GmbH | Riss in der Bodenplatte | 25.11. | offen 16.11., angezeigt 17.11. | **angezeigt, überfällig** |
+| 4 | Tiefbau Beispiel KG | Arbeitsraum nicht lagenweise verdichtet | 24.11. | offen 17.11., angezeigt 17.11., beseitigt 25.11. | beseitigt (zu spät), nicht überfällig |
+| 5 | Rohbau Muster GmbH | Sperrbahn unter der ersten Steinlage fehlt | 26.11. | offen 19.11., angezeigt 20.11. | angezeigt, Frist am Stichtag: nicht überfällig |
+
+Auswertung zum Stichtag: Rohbau 3 Mängel (angezeigt 2, abgenommen 1), offen 2, überfällig 1; Tiefbau 2 (offen 1, beseitigt
+1), offen 1, überfällig 0; gesamt 5, offen 3, überfällig **1** (Mangel 3); nächste Mangelnummer 6. „Offen“ in der Auswertung
+heißt Status offen oder angezeigt (die Beseitigung steht aus), dieselbe Menge wie bei der Fristprüfung; die Zahl je Status
+steht daneben. Gegenprobe Stichtag 27.11.: überfällig 3 und 5.
+
+Bautagebuch (16.11., 17.11., 19.11.2026; der 18.11. ist Buß- und Bettag) für den Zeitraum 16.11. bis 20.11., beide Grenzen
+eingeschlossen: je Tag 9, 8, 9; je Firma (nach Namen) Elektro Probe OHG 2, Rohbau Muster GmbH 6 + 6 + 7 = 19, Tiefbau
+Beispiel KG 3 + 2 = 5; Summe **26**. Gegenprobe 17.11. bis 19.11.: Summe 17. Die Temperatur am 19.11. ist −3 (ganze Zahl,
+negativ).
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
