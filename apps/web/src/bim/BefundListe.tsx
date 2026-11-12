@@ -11,11 +11,14 @@ export function BefundListe({
   befunde,
   beschriftung,
   onSprung,
+  imModell,
 }: {
   befunde: readonly Pruefbefund[];
   beschriftung: string;
   /** Ohne: kein Sprung (z. B. im Dialog des Einlesens). */
   onSprung?: (globalId: string) => void;
+  /** Ticket 115: Sprung nur zu Objekten, die im Baum stehen (eine hängende Zuordnung hat keine Zeile). Ohne: alle. */
+  imModell?: (globalId: string) => boolean;
 }): ReactElement {
   return (
     <section className="bim__befunde" aria-label={beschriftung}>
@@ -25,7 +28,7 @@ export function BefundListe({
           {befundliste(befunde).map((e, i) => (
             <li key={i} className={`bim__befund bim__befund--${e.befund.schwere}`}>
               <strong>{e.befund.schwere === 'fehler' ? 'Fehler' : 'Warnung'}:</strong> {e.befund.meldung}
-              {onSprung !== undefined && e.globalId !== null ? (
+              {onSprung !== undefined && e.globalId !== null && (imModell?.(e.globalId) ?? true) ? (
                 <>
                   {' '}
                   <Button

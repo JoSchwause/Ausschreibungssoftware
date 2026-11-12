@@ -64,7 +64,7 @@ export function useBezug(projektId: ProjektId): Bezugsstand {
   );
 
   useEffect(() => {
-    let aktiv = true;
+    const abo = { aktiv: true };
     void (async () => {
       const [lvs, auftraege] = await Promise.all([
         u.speicher.leistungsverzeichnisse.auflisten(projektId),
@@ -80,14 +80,14 @@ export function useBezug(projektId: ProjektId): Bezugsstand {
           label: texte.zuordnung.auftrag(a.name),
         })),
       ];
-      if (!aktiv) return;
+      if (!abo.aktiv) return;
       setWahlen(liste);
       setSchluessel((s) =>
         s !== undefined && liste.some((w) => w.schluessel === s) ? s : liste[0]?.schluessel,
       );
     })();
     return () => {
-      aktiv = false;
+      abo.aktiv = false;
     };
   }, [u, projektId, lauf]);
 

@@ -39,15 +39,13 @@ export function MengenAusModell({
   const [offen, setOffen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className="tx-button tx-button--sekundaer"
+      <Button
         onClick={() => {
           setOffen(true);
         }}
       >
         {t.knopf}
-      </button>
+      </Button>
       {offen ? (
         <MengenDialog
           zustand={zustand}

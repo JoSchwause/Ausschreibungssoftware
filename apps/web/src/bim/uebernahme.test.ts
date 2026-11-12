@@ -3,15 +3,7 @@
 // Undo-Schritt. Sollwerte aus `fixtures/typisch-bim.json` (Ticket 99, Torweg D-99.2), nie aus einem Lauf dieses Codes.
 
 import { readFileSync } from 'node:fs';
-import type {
-  Ansatzzeile,
-  IfcGlobalId,
-  LeistungsverzeichnisId,
-  LvZustand,
-  Position,
-  PositionId,
-  Projekt,
-} from '@tethys/vertrag';
+import type { Ansatzzeile, IfcGlobalId, LvZustand, Position, PositionId, Projekt } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { befehlswegFuer, lvSitzung, projektSitzung } from '../lv/befehlsweg';
@@ -21,6 +13,18 @@ import { hausModell, menge, modell, bauteil, knoten as sknoten } from './testhil
 import { uebernahmeBefehle, uebernahmeVorschau } from './uebernahme';
 import { zuordnenBefehl } from './zuordnung';
 
+/** Ansatzzeile in der Form der Fixture: Zeile und Formel als Text (D-85.4). */
+interface FxZeile {
+  readonly zeile: string;
+  readonly formel: string;
+  readonly ausdruck: string;
+  readonly variable: null;
+}
+interface FxVordersatz {
+  readonly positionId: string;
+  readonly mengenansatz: readonly FxZeile[];
+  readonly menge: string;
+}
 interface Vordersatz {
   readonly positionId: string;
   readonly mengenansatz: readonly Ansatzzeile[];
@@ -38,7 +42,7 @@ const fx = JSON.parse(
       readonly positionIds: readonly string[];
       readonly sollwerte: { summen: { netto: string } };
     };
-    readonly vordersaetze: readonly Vordersatz[];
+    readonly vordersaetze: readonly FxVordersatz[];
     readonly sollwerte: { summen: { netto: string } };
   };
 };
@@ -46,7 +50,7 @@ const POS = fx.kern.torweg.positionIds[0] as PositionId;
 const soll = (id: string): Vordersatz => {
   const v = fx.kern.vordersaetze.find((x) => x.positionId === id);
   if (v === undefined) throw new Error(id);
-  // Die Fixture schreibt Zeile und Formel als Text (D-85.4), der Vertrag als Zahl.
+  // Der Vertrag führt Zeile und Formel als Zahl.
   return {
     ...v,
     mengenansatz: v.mengenansatz.map((z) => ({ ...z, zeile: Number(z.zeile), formel: Number(z.formel) })),
@@ -62,12 +66,12 @@ async function aufbau() {
   const s = lvSitzung(u, projekt.id, null);
   const a = await s.befehl({
     art: 'LeistungsverzeichnisAnlegen',
-    id: inhalt.wurzelId as LeistungsverzeichnisId,
+    id: inhalt.wurzelId,
     projektId: projekt.id,
     inhalt,
   });
   if (!a.ok) throw new Error('LV');
-  befehlswegFuer(u).anmelden(inhalt.wurzelId as LeistungsverzeichnisId, s);
+  befehlswegFuer(u).anmelden(inhalt.wurzelId, s);
   return { u, s, weg: befehlswegFuer(u) };
 }
 const pos = (z: LvZustand | null, id: string): Position => {

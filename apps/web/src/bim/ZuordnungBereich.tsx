@@ -51,7 +51,13 @@ export function ZuordnungBereich({
     [bezug.bezug, bezug.knoten, modell],
   );
   const mitZuordnung = useMemo(() => zuordnungenDerPositionen(bezug.knoten), [bezug.knoten]);
-  const anzahlBauteile = new Set(modell.bauteile.map((b) => b.globalId)).size;
+  const anzahlBauteile = namen.size;
+  // Ein Sprung nur zu Objekten im Baum; eine hängende Zuordnung (Bauteil fehlt im Modell) hat keine Zeile.
+  const imModell = useMemo(() => {
+    const ids = new Set<string>(namen.keys());
+    for (const k of modell.struktur) ids.add(k.globalId);
+    return (g: string): boolean => ids.has(g);
+  }, [namen, modell]);
 
   return (
     <section className="bim__leiste bim__zuordnung" aria-label={t.region}>
@@ -125,7 +131,12 @@ export function ZuordnungBereich({
         </ul>
       )}
       {pruefung === null ? null : (
-        <BefundListe befunde={pruefung.befunde} beschriftung={t.befunde} onSprung={zurZeile} />
+        <BefundListe
+          befunde={pruefung.befunde}
+          beschriftung={t.befunde}
+          onSprung={zurZeile}
+          imModell={imModell}
+        />
       )}
       {dialog === 'zuordnen' ? (
         <ZuordnenDialog
@@ -136,6 +147,7 @@ export function ZuordnungBereich({
             setDialog(null);
           }}
           zurZeile={zurZeile}
+          imModell={imModell}
         />
       ) : null}
       {dialog === 'aufmass' && bezug.bezug?.art === 'auftrag' ? (
@@ -160,12 +172,14 @@ function ZuordnenDialog({
   bezug,
   onSchliessen,
   zurZeile,
+  imModell,
 }: {
   modell: Bauwerksmodell;
   auswahl: readonly string[];
   bezug: Bezugsstand;
   onSchliessen: () => void;
   zurZeile: (globalId: string) => void;
+  imModell: (globalId: string) => boolean;
 }): ReactElement {
   const { zeige } = useToast();
   const [suche, setSuche] = useState('');
@@ -255,6 +269,7 @@ function ZuordnenDialog({
             onSchliessen();
             zurZeile(g);
           }}
+          imModell={imModell}
         />
       ) : null}
     </Dialog>

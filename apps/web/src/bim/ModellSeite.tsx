@@ -324,6 +324,9 @@ function Arbeitsflaeche({
           onPointerDownCapture={(e) => {
             ergaenzen.current = e.ctrlKey || e.metaKey; // Ticket 115
           }}
+          onKeyDownCapture={() => {
+            ergaenzen.current = false; // Ticket 115: Tastatur ersetzt die Auswahl wie bisher
+          }}
         >
           <VergleichsGrid
             beschriftung={texte.baum.beschriftung}
