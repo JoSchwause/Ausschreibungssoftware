@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   entwurfAusEintrag,
   eintragLesen,
-  koepfe,
+  koepfeJeTag,
   leererEintrag,
   tageZeilen,
   wetterText,
@@ -143,16 +143,23 @@ describe('Anzeige', () => {
     );
     expect(wetterText({ beschreibung: null, temperaturMin: null, temperaturMax: 4 })).toBe('höchstens 4 °C');
     expect(wetterText({ beschreibung: null, temperaturMin: null, temperaturMax: null })).toBe('–');
-    expect(
-      koepfe(
-        eintrag('x', '2026-11-16', {
-          arbeitskraefte: [
-            { firma: 'a', anzahl: 6 },
-            { firma: 'b', anzahl: 3 },
-          ],
-        }),
-      ),
-    ).toBe(9);
+  });
+
+  it('Köpfe je Tag zählt `bauleitung` (A2): je Datum die Summe der Arbeitskräfte, auch ein Tag ohne', () => {
+    const k = koepfeJeTag([
+      eintrag('b2', '2026-11-17', {
+        arbeitskraefte: [
+          { firma: 'a', anzahl: 6 },
+          { firma: 'b', anzahl: 3 },
+        ],
+      }),
+      eintrag('b1', '2026-11-16'),
+    ]);
+    expect([...k]).toEqual([
+      ['2026-11-16', 0],
+      ['2026-11-17', 9],
+    ]);
+    expect(koepfeJeTag([]).size).toBe(0);
   });
 
   it('eine Zeile je Tag, nach Datum', () => {
