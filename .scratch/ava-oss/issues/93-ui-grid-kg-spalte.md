@@ -1,6 +1,6 @@
 # 93: `ui-grid`: editierbare Spalte für die Kostengruppe im LV-Grid
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: U, C2 · Paket: `packages/ui-grid`, danach `apps/web/src/kosten/` und die Einhängestellen in
 `apps/web/src/lv/LvSeite.tsx`, `apps/web/src/auftrag/AuftragsLvSeite.tsx` (markiert `// Ticket 93`, D-20)
@@ -141,3 +141,10 @@ Undo-Schritt. Leistungsbudgets des Grids bleiben grün (Q4). Der Dialog aus 89 b
   alles unter 100 ms.
 
 Offen: der Hinweis „KG außerhalb der Gliederung“ an der Zelle (D-93.7, möglicher Folgeauftrag); sonst nichts.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `a56592d` (Branch `welle-6/93-kg-spalte`, `9d970a7`). Spalte „KG“ im `LvGrid` bearbeitbar wie
+Menge/EP (Lesefunktion der App, Zellfehler, Einfügen einer Spalte setzt die KG der Zeilen als eine Folge), im Auftrags-LV als
+einzige bearbeitbare Spalte; App stellt um, Dialog aus 89 bleibt. ui-grid-E2E 87/87, App-E2E 15/15; Integrationssuite danach ganz
+grün (3.169 Tests). Folgepunkt D-93.7: Befund „KG außerhalb der Gliederung“ auch an der Zelle.
