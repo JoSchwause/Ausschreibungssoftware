@@ -590,3 +590,10 @@ Question: Der Skill sieht für jeden Merge einen Sonnet-Merger mit voller Suite 
 Decision: Dann merged der Orchestrator selbst (`--no-ff`, Vermerk im Merge-Commit) ohne zweite Suite (wie D-46). Ist der Integrationsstand seit dem letzten Merge des Umsetzers weitergezogen, merged ein Sonnet-Merger und lässt die volle Suite laufen; ist sie rot, nimmt er den Merge zurück, und ein Opus-Umsetzer behebt den Fehler.
 Reason: Spart eine volle Suite je Ticket auf 4 Kernen mit bis zu 8 Agenten, ohne je einen ungetesteten Baum zu mergen.
 Reversible: yes  Touches: Ablauf
+
+## D-61 Nach dem ersten Nutzungslimit: alle Agenten aus ihrem Stand fortsetzen
+Welle 6 · Tickets 95, 96, 98–103 · decided by: orchestrator
+Question: Kurz vor 13:10 traf der Lauf das 5-Stunden-Limit; alle acht laufenden Agenten (95, 96, 98, 99, 100, 101, 102, 103) standen, nur 94 war fertig und gemergt. Wie weiter?
+Decision: Um 13:10 alle acht aus ihrem gespeicherten Stand fortgesetzt (nichts verloren, unkommittierte Arbeit lag im Worktree), mit der Bitte, ab jetzt klein und oft zu committen; 95 zuerst, weil 97 und damit die ganze Stufe 2 an ihm hängt. Trifft der Lauf das Limit erneut, gilt dasselbe, mit Vorrang für den Weg 95 → 97 → Stufe 2 und X1-Kern (Kürzungsreihenfolge in `schnitt-welle-6.md`).
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist (wie D-46).
+Reversible: yes  Touches: Ablauf
