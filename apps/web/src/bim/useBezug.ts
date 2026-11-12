@@ -5,10 +5,12 @@
 
 import type {
   AuftragsLeistungsverzeichnisId,
+  AuftragsLvUebersicht,
   AuftragsLvZustand,
   BauteileZuordnen,
   Knoten,
   LeistungsverzeichnisId,
+  LvUebersicht,
   LvZustand,
   ProjektId,
 } from '@tethys/vertrag';
@@ -47,6 +49,22 @@ export function knotenDes(bezug: Bezug | null): readonly Knoten[] {
     : bezug.zustand.auftragsLeistungsverzeichnis.knoten;
 }
 
+/**
+ * Die Wahl des LV für die Zuordnung: Ausschreibungs-LVs, dann Auftrags-LVs; ohne Muster-LVs (Ticket 122, PC-c2, wie D-116.6):
+ * Zuordnungen an einem Muster-LV verwirft jede Übernahme (D-66 MUST 2), es wäre ein Ziel ohne Wirkung.
+ */
+export function bezugswahlenBauen(
+  lvs: readonly LvUebersicht[],
+  auftraege: readonly AuftragsLvUebersicht[],
+): Bezugswahl[] {
+  return [
+    ...lvs
+      .filter((l) => l.vorlage !== true)
+      .map((l) => ({ schluessel: `lv:${l.id}`, label: texte.zuordnung.lv(l.name) })),
+    ...auftraege.map((a) => ({ schluessel: `auftrag:${a.id}`, label: texte.zuordnung.auftrag(a.name) })),
+  ];
+}
+
 export function useBezug(projektId: ProjektId): Bezugsstand {
   const u = useUmgebung();
   const { pruefe } = useMeldungen();
@@ -70,16 +88,7 @@ export function useBezug(projektId: ProjektId): Bezugsstand {
         u.speicher.leistungsverzeichnisse.auflisten(projektId),
         u.speicher.auftragsLeistungsverzeichnisse.auflisten(projektId),
       ]);
-      const liste: Bezugswahl[] = [
-        ...(lvs.ok ? lvs.wert : []).map((l) => ({
-          schluessel: `lv:${l.id}`,
-          label: texte.zuordnung.lv(l.name),
-        })),
-        ...(auftraege.ok ? auftraege.wert : []).map((a) => ({
-          schluessel: `auftrag:${a.id}`,
-          label: texte.zuordnung.auftrag(a.name),
-        })),
-      ];
+      const liste = bezugswahlenBauen(lvs.ok ? lvs.wert : [], auftraege.ok ? auftraege.wert : []);
       if (!abo.aktiv) return;
       setWahlen(liste);
       setSchluessel((s) =>
