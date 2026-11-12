@@ -2,22 +2,11 @@
 // Ticket 116: die Ansicht des Modellvergleichs aus `haus-v1.ifc` und `haus-v2.ifc` (über `ifc` gelesen wie in der App),
 // gegen die Sollwerte aus `fixtures/typisch-bim.json` (Ticket 99, D-99.8).
 
-import { bauwerksmodellLesen } from '@tethys/ifc';
-import type { Bauwerksmodell } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { BIM_SOLL } from '../../e2e/modellvergleich-inhalt';
-import { hausBytes, kopfOhneSchema } from '../bim/testhilfen';
+import { V1, V2 } from './testhilfen';
 import { vergleichsansicht } from './vergleich';
 
-function haus(name: 'haus-v1' | 'haus-v2'): Bauwerksmodell {
-  const bytes = hausBytes(name);
-  const r = bauwerksmodellLesen(bytes, kopfOhneSchema(bytes, name, `${name}.ifc`));
-  if (r.bauwerksmodell === null) throw new Error(name);
-  return r.bauwerksmodell;
-}
-
-export const V1 = haus('haus-v1');
-export const V2 = haus('haus-v2');
 const SOLL = BIM_SOLL.erweitert.vergleich;
 
 describe('Vergleichsansicht v1 → v2', () => {
