@@ -43,6 +43,38 @@ const ERWARTET: readonly Erwartung[] = [
       '3053358',
     ],
   },
+  {
+    // § 52 Abs. 1 HOAI: Honorartafel für Grundleistungen bei Tragwerksplanungen.
+    leistungsbild: 'tragwerksplanung',
+    vorschrift: '§ 52 Abs. 1',
+    url: 'https://www.gesetze-im-internet.de/hoai_2013/__52.html',
+    honorarzonen: ALLE_ZONEN,
+    zeilen: 20,
+    erste: ['10000', '1461', '1624', '1624', '2064', '2064', '2575', '2575', '3015', '3015', '3178'],
+    letzte: [
+      '15000000',
+      '455117',
+      '505686',
+      '505686',
+      '642943',
+      '642943',
+      '801873',
+      '801873',
+      '939131',
+      '939131',
+      '989699',
+    ],
+  },
+  {
+    // § 56 Abs. 1 HOAI: Honorartafel für Grundleistungen der Technischen Ausrüstung, nur Honorarzonen I bis III.
+    leistungsbild: 'technische-ausruestung',
+    vorschrift: '§ 56 Abs. 1',
+    url: 'https://www.gesetze-im-internet.de/hoai_2013/__56.html',
+    honorarzonen: ['I', 'II', 'III'],
+    zeilen: 20,
+    erste: ['5000', '2132', '2547', '2547', '2990', '2990', '3405'],
+    letzte: ['4000000', '412126', '492410', '492410', '578046', '578046', '658331'],
+  },
 ];
 
 /** Die Zeile in der Form der Abschrift: anrechenbare Kosten, dann je Zone „von“ und „bis“, ganze Euro ohne „.00“. */
