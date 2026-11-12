@@ -12,3 +12,10 @@ export {
 } from './mangel-befehle';
 export type { Fristangaben, Fristbefundcode } from './fristpruefung';
 export { fristPruefen, istUeberfaellig } from './fristpruefung';
+export type {
+  Auftragnehmerangabe,
+  Maengelauswertung,
+  Maengelauswertungszeile,
+  Maengelzahlen,
+} from './maengelauswertung';
+export { maengelAuswerten } from './maengelauswertung';
