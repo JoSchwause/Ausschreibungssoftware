@@ -174,4 +174,23 @@ test('Unlesbare und doppelte gespeicherte Profile: Hinweis im Dialog, beim Speic
     42,
   ]);
   expect(danach[2]).toMatchObject({ titelsummen: false });
+
+  // Ticket 121 (D-92.6): Zahl der nicht lesbaren Einträge, Sicherung als Datei, Entfernen erst nach Bestätigung.
+  await expect(hinweis).toContainText('1 Eintrag konnte nicht gelesen werden.');
+  const [datei] = await Promise.all([
+    page.waitForEvent('download'),
+    hinweis.getByRole('button', { name: 'Einträge als Datei sichern' }).click(),
+  ]);
+  const gesichert = JSON.parse(readFileSync(await datei.path(), 'utf8')) as unknown[];
+  expect(gesichert).toHaveLength(2);
+  expect(gesichert).toContain(42);
+
+  await hinweis.getByRole('button', { name: 'Einträge entfernen' }).click();
+  const frage = page.getByRole('dialog', { name: 'Nicht verwendete Einträge entfernen?' });
+  await frage.getByRole('button', { name: 'Abbrechen' }).click();
+  expect(await ablage()).toHaveLength(4);
+  await hinweis.getByRole('button', { name: 'Einträge entfernen' }).click();
+  await frage.getByRole('button', { name: 'Endgültig entfernen' }).click();
+  await expect(hinweis).toHaveCount(0);
+  expect((await ablage()).map((p) => (p as { name: string }).name)).toEqual(['Mein Profil', 'Noch eins']);
 });

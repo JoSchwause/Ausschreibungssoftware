@@ -157,6 +157,33 @@ describe('Papierkorb und Stand', () => {
     expect(eintragZeile(e)).toEqual({ oz: '01.0010', kurztext: 'Aushub (+1)', positionen: 2 });
   });
 
+  // Ticket 121 (D-66, Q5): Bauteilzuordnungen des Stands gehen im neuen LV nicht still verloren.
+  it('Stand als neues LV behält die Bauteilzuordnungen', async () => {
+    const { u, lv } = await aufbau();
+    const z = lv.zustand;
+    if (z === null) throw new Error('LV');
+    const zuordnung = [{ globalId: '0Pq1xZr2n3E9$aBcDeFgHi', mengenart: 'NetVolume' }] as never;
+    const mit = {
+      ...z,
+      leistungsverzeichnis: {
+        ...z.leistungsverzeichnis,
+        knoten: z.leistungsverzeichnis.knoten.map((k) =>
+          k.art === 'position' ? { ...k, bauteile: zuordnung } : k,
+        ),
+      },
+    };
+    const stand: LvStand = {
+      id: 'stand' as LvStandId,
+      leistungsverzeichnisId: z.leistungsverzeichnis.id,
+      name: 'Versand',
+      angelegt: '2026-11-11T10:00:00.000Z' as Zeitstempel,
+      zustand: mit,
+    };
+    const positionen = standAlsLvBefehl(stand, u.ids).inhalt.knoten.filter((k) => k.art === 'position');
+    expect(positionen.length).toBeGreaterThan(0);
+    for (const p of positionen) expect(p.bauteile).toEqual(zuordnung);
+  });
+
   it('Stand als neues LV: neue Kennungen, gleicher Inhalt, Name mit Stand', async () => {
     const { u, weg, projekt, lv } = await aufbau();
     const z = lv.zustand;

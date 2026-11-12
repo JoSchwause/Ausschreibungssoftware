@@ -8,7 +8,10 @@ import {
   dateinameProfil,
   ablageAlsText,
   ablageLesen,
+  dateinameZurueck,
   freierName,
+  zurueckAlsDatei,
+  zurueckNichtLesbar,
   profilAendern,
   profilAnlegen,
   profilGleich,
@@ -114,6 +117,33 @@ describe('Freier Name und Import', () => {
     const r = profilImportieren(w, [], text);
     expect(r.profil?.mitPreisen).toBe(false);
     expect(r.befunde.map((b) => b.code)).toEqual(['unbekanntes-feld']);
+  });
+});
+
+// Ticket 121 (D-92.6, Q5): zurückgehaltene Einträge lassen sich sichern und nach Bestätigung entfernen.
+describe('Zurückgehaltene Einträge', () => {
+  const text = JSON.stringify([mein('A'), mein('A'), mein(stdName(0)), 42, 'x']);
+  const { eigene, zurueck } = ablageLesen(w, text);
+
+  it('zählt die nicht lesbaren Einträge', () => {
+    expect(zurueck).toHaveLength(4);
+    expect(zurueckNichtLesbar(zurueck)).toBe(2);
+    expect(zurueckNichtLesbar([])).toBe(0);
+  });
+  it('Sicherung: alle Einträge unverändert als JSON-Liste', () => {
+    const datei = JSON.parse(zurueckAlsDatei(zurueck)) as unknown[];
+    expect(datei).toEqual(zurueck.map((z) => z.roh));
+    expect(datei).toContain(42);
+  });
+  it('Sicherung eines ganz unlesbaren Textes bleibt lesbar und verlustfrei', () => {
+    const a = ablageLesen(w, '{kaputt');
+    expect(JSON.parse(zurueckAlsDatei(a.zurueck))).toEqual(['{kaputt']);
+  });
+  it('Entfernen: die Ablage behält die eigenen Profile', () => {
+    expect(ablageLesen(w, ablageAlsText(eigene, []))).toEqual({ eigene, zurueck: [] });
+  });
+  it('Dateiname', () => {
+    expect(dateinameZurueck()).toBe('Druckprofile-nicht-gelesen.json');
   });
 });
 

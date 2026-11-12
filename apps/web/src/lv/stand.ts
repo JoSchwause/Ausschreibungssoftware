@@ -22,7 +22,8 @@ export function standAlsLvBefehl(stand: LvStand, ids: IdQuelle): Leistungsverzei
   const knoten =
     wurzeln.length === 0
       ? []
-      : kopieBauen(stand.zustand, wurzeln, ids).map((k) =>
+      : // Ticket 121: Zuordnungen des Stands behalten (Q5)
+        kopieBauen(stand.zustand, wurzeln, ids, { bauteile: 'behalten' }).map((k) =>
           k.elternId === lv.id ? { ...k, elternId: id } : k,
         );
   return {
