@@ -68,12 +68,17 @@ function abbilden(inhalt: GelesenerInhalt): Pick<Bauwerksmodell, 'struktur' | 'b
   for (const b of inhalt.bauteile) {
     const globalId = imModell.get(b.i);
     if (globalId === undefined) continue;
+    const teilVon = b.teilVon === null ? undefined : imModell.get(b.teilVon);
+    const kostengruppe = b.bauteil.kostengruppe;
     bauteile.push({
       globalId,
       ifcKlasse: b.bauteil.ifcKlasse,
       name: b.bauteil.name,
       typ: b.bauteil.typ,
       strukturGlobalId: b.struktur === null ? null : (imModell.get(b.struktur) ?? null),
+      // Optionale Felder fehlen statt `null` (vertrag v1.6).
+      ...(teilVon === undefined ? {} : { teilVonGlobalId: teilVon }),
+      ...(kostengruppe === null ? {} : { kostengruppe }),
       mengen: mengen(b.bauteil.mengen),
     });
   }
