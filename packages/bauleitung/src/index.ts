@@ -4,3 +4,9 @@
 // `vertrag` (A3; `dezimal` wäre erlaubt, wird aber nicht gebraucht).
 
 export { MANGELSTATUS, MANGELSTATUSWECHSEL, mangelstatus, statuswechselZulaessig } from './mangelstatus';
+export {
+  mangelBefehlAusfuehren,
+  mangelChangeSetAnwenden,
+  mangelChangeSetUmkehren,
+  naechsteMangelnummer,
+} from './mangel-befehle';
