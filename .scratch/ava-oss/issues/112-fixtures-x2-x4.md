@@ -3,14 +3,15 @@
 Status: ready-for-agent
 Type: task
 Welle: 6 · Strang: F · Paket: `fixtures/`
-Blocked by: 97 (Formen), 99 (gleicher Ordner)
+Blocked by: 99 (gleicher Ordner); 97 nur für Punkt 3 (Formen der Mängel und des Bautagebuchs)
 Modell: opus
 Regeln: C4, N1–N3, D-56, D-57, D-58
 Herkunft: `plan.md` §4 (Tore X2, X3, X4; D-58)
 
 ## What to build
 
-Drei Fixture-Dateien in der Form der Vertragstypen (v1.6), je mit **unabhängig von Hand hergeleiteten** Sollwerten und
+Drei Fixture-Dateien in der Form der Vertragstypen (v1.6; für Bauzeitenplan und Honorar gelten bis zum Merge von 97 die Typen der
+gemergten Pakete `bauzeit` und `honorar`, die 97 übernimmt; Punkt 3 erst nach dem Merge von 97), je mit **unabhängig von Hand hergeleiteten** Sollwerten und
 Herleitung (C4), dazu eine eigene Nachrechnung in `fixtures.test.mjs` (wie `rechnen.mjs`, ohne die Pakete).
 
 1. **`fixtures/bauzeit.json`:** ein Plan mit 6–8 Vorgängen, allen vier Anordnungsarten, einem Abstand 0 und einem negativen,

@@ -1,0 +1,2 @@
+# IFC fixtures stay byte-identical (LF), their SHA-256 is a golden value in typisch-bim.json (Ticket 99, D-51).
+*.ifc -text

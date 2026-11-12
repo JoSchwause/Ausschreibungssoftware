@@ -17,6 +17,8 @@ import {
   berechneZuschlagSollwerte, berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
   kumulierteMengen, leistungsstandBerechnen, abschlagsketteBerechnen, sollIstBerechnen, kostenkontrolleBerechnen,
 } from './rechnen.mjs';
+import { hausDateiname, hausIfc } from './ifc/haus.mjs';
+import { bimSollwerte } from './ifc/sollwerte.mjs';
 
 const SCHEMA = 'fixture-v1';
 
@@ -936,6 +938,7 @@ function erzeugeAbrechnung(lv, set) {
 export function erzeugeAlle() {
   const typisch = erzeugeTypisch();
   const angebote = erzeugeAngebote(typisch);
+  const haus = erzeugeHaus();
   return {
     'winzig.json': alsDatei(erzeugeWinzig()),
     'typisch.json': alsDatei(typisch),
@@ -945,7 +948,15 @@ export function erzeugeAlle() {
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),
     ...erzeugeX84(typisch, angebote),
+    ...haus, // Ticket 99
+    'typisch-bim.json': alsDatei(bimSollwerte(typisch, haus)),
   };
+}
+
+/** Ticket 99: die Hausdateien des Tors X1 unter ifc/ (Beschreibung und Schreiber in ifc/haus.mjs). */
+function erzeugeHaus() {
+  const dateien = [['v1', 'IFC4'], ['v1', 'IFC2X3'], ['v2', 'IFC4']];
+  return Object.fromEntries(dateien.map(([stand, schema]) => [`ifc/${hausDateiname(stand, schema)}`, hausIfc(stand, schema)]));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
