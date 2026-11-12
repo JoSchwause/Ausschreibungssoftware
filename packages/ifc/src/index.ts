@@ -5,3 +5,5 @@
 
 export { globalIdLesen } from './globalid';
 export type { GlobalIdFehler } from './globalid';
+export { bauwerksmodellLesen } from './bauwerksmodell';
+export type { BauwerksmodellLesung } from './bauwerksmodell';
