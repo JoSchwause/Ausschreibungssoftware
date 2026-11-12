@@ -20,6 +20,10 @@
 //   oeffnen=1               onZeileOeffnen gesetzt (Aufrufe in window.__harness.geoeffnet)
 //   zaehlen=1               positionenZaehlen gesetzt: genaue Zahl aus dem ganzen Modell, auch zugeklappt
 //   ansatz=1                die 4. und 5. Position tragen einen erfundenen Mengenansatz (Ticket 74)
+//   kg=1                    Spalte „KG“ am Ende mit Lesefunktion (Ticket 93); die Positionen tragen der Reihe nach die
+//                           erfundenen Kostengruppen 310, 320 und keine (dann wieder 310 …). Mit befunde=1 dazu ein
+//                           Prüfhinweis an der KG der 9. Position; mit nurlesen=1 bleibt die Spalte „KG“ bearbeitbar
+//                           (onKostengruppen; Folgen in window.__harness.folgen)
 //   Die aktive Zeile (onAktiveZeileChange) steht immer in window.__harness.aktiveZeilen (jede Meldung).
 
 import '@tethys/ui-basis/tokens.css';
@@ -33,13 +37,14 @@ import type {
   Knoten,
   KnotenId,
   LvBefehl,
+  Kostengruppennummer,
   LvSpalte,
   Ordnungszahl,
   Pruefbefund,
 } from '@tethys/vertrag';
 import type { LvGridProps, Sprungziel } from '../../src/index';
-import { LvGrid } from '../../src/index';
-import { idQuelleAttrappe, zahlenAttrappe } from './attrappen';
+import { LvGrid, STANDARDSPALTEN } from '../../src/index';
+import { idQuelleAttrappe, kostengruppeAttrappe, zahlenAttrappe } from './attrappen';
 import { wendeAn } from './befehle-anwenden';
 import { alleGliederungen, baueAnsicht, ladeFixture } from './fixture-ansicht';
 import type { FixtureName } from './fixture-ansicht';
@@ -64,7 +69,20 @@ function mitAnsatz(knoten: readonly Knoten[]): readonly Knoten[] {
   const ansatz = [{ zeile: 1, formel: 91, ausdruck: '2*3', variable: null }];
   return knoten.map((k) => (k.art === 'position' && ziele.has(k.id) ? { ...k, mengenansatz: ansatz } : k));
 }
-const knoten0 = params.get('ansatz') === '1' ? mitAnsatz(modell0.knoten) : modell0.knoten;
+const mitKg = params.get('kg') === '1';
+/** Erfundene Kostengruppen (Ticket 93): die Positionen der Reihe nach 310, 320, keine. */
+function mitKostengruppen(knoten: readonly Knoten[]): readonly Knoten[] {
+  const folge = ['310', '320', null] as const;
+  let n = 0;
+  return knoten.map((k) => {
+    if (k.art !== 'position') return k;
+    const kg = folge[n++ % folge.length];
+    return kg ? { ...k, kostengruppe: kg as Kostengruppennummer } : k;
+  });
+}
+const mitAnsatz0 = params.get('ansatz') === '1' ? mitAnsatz(modell0.knoten) : modell0.knoten;
+const knoten0 = mitKg ? mitKostengruppen(mitAnsatz0) : mitAnsatz0;
+const spalten: readonly LvSpalte[] | undefined = mitKg ? [...STANDARDSPALTEN, 'kostengruppe'] : undefined;
 
 /** Beispiel-Prüfhinweise (erfunden), damit sich die Darstellung ansehen lässt. */
 function beispielBefunde(knoten: readonly Knoten[]): ReadonlyMap<string, readonly Pruefbefund[]> {
@@ -101,6 +119,18 @@ function beispielBefunde(knoten: readonly Knoten[]): ReadonlyMap<string, readonl
         code: 'kurztext-lang',
         meldung: 'Der Kurztext ist länger als 70 Zeichen.',
         ort: { knotenId: c.id, feld: 'kurztext' },
+      },
+    ]);
+  }
+  const d = positionen[8];
+  if (mitKg && d) {
+    m.set(d.id, [
+      {
+        schwere: 'warnung',
+        quelle: 'lv-pruefung',
+        code: 'kostengruppe-ausserhalb',
+        meldung: 'Die Kostengruppe liegt in keiner Kostenermittlung.',
+        ort: { knotenId: d.id, feld: 'kostengruppe' },
       },
     ]);
   }
@@ -199,6 +229,7 @@ function Seite() {
       });
     },
     onAuswahlChange: setAuswahl,
+    ...(spalten ? { spalten, kostengruppeLesen: kostengruppeAttrappe } : {}),
     onAktiveZeileChange: (id: KnotenId | null) => {
       window.__harness.aktiveZeilen.push(id);
     },
@@ -224,7 +255,18 @@ function Seite() {
       </button>
       <div className="seite__grid">
         {params.get('nurlesen') === '1' ? (
-          <LvGrid {...gemeinsam} schreibgeschuetzt />
+          <LvGrid
+            {...gemeinsam}
+            schreibgeschuetzt
+            {...(mitKg
+              ? {
+                  onKostengruppen: (folge: readonly LvBefehl[]) => {
+                    window.__harness.folgen.push([...folge]);
+                    nimm(folge);
+                  },
+                }
+              : {})}
+          />
         ) : (
           <LvGrid
             {...gemeinsam}
