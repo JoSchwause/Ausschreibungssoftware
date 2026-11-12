@@ -1,6 +1,6 @@
 # 114: X1a+b in der App: Modelle einlesen, Baum ↔ 3D, Eigenschaften
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1a, X1b · Ordner: `apps/web/src/bim/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 114`, D-20); PWA-/Vite-Einstellungen der App für WASM und Worker
@@ -138,3 +138,7 @@ Ordner `apps/web/src/bim/` (neu); Einhängestellen `// Ticket 114` in `App.tsx` 
 - Laden eines 10k-Modells auf der Modellseite (SHOULD 11, D-66) nicht eigens in der App gemessen; `speicher` misst `laden` mit 44 ms, die
   Leinwand 2,5 s (Ticket 100, 106).
 - Glossarzeile „Modellansicht“ (D-100.1) bleibt beim Orchestrator.
+
+## Answer
+
+Gemergt mit `b7b62c9` (Branch `welle-6/114-web-bim`). Modellliste und Modellseite (Baum ↔ 3D, Eigenschaften aus dem Worker, Sichtbarkeit, Befunde), Einlesen im Worker, CSP mit `'wasm-unsafe-eval'` nur im Build, WASM vorgehalten. `bim.spec.ts` grün, auch im Integrationslauf (11/11 E2E mit X2–X4, M4). Offen: Laden eines 10k-Modells in der App nicht gemessen.

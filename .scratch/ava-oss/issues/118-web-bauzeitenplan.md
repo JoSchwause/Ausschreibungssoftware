@@ -1,6 +1,6 @@
 # 118: X2 in der App: Bauzeitenplan, Tor X2
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X2 · Ordner: `apps/web/src/bauzeit/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 118`, D-20); E2E `apps/web/e2e/x2.spec.ts`, Kettentest `apps/web/src/x2-kette.test.ts`
@@ -104,3 +104,7 @@ Einhängestellen `// Ticket 118` in `App.tsx`, `projekt/ProjektSeite.tsx` (Knopf
   `node --test "fixtures/*.test.mjs"`: 53/53 grün.
 - Hinweis aus Ticket 96 (Monatsbeschriftung unter fixierten Spalten): Bei 18 px/Tag und kurzen Plänen stört das nicht; kein
   Folgeticket gemeldet.
+
+## Answer
+
+Gemergt mit `e4060cb` (Branch `welle-6/118-web-bauzeit`, `52391fa`). **Tor X2 erreicht:** `x2.spec.ts` dreimal grün, `x2-kette.test.ts` = alle Sollwerte (Projektende 24.11.2026, kritischer Weg 1.1 → 1.2 → 1.3 → 2 → 3); im Integrationslauf erneut grün. Offen: Fortschritt aus dem Leistungsstand nicht in der Oberfläche (D-118.7), Verschieben eines Vorgangs (D-118.3).
