@@ -604,3 +604,10 @@ Question: Ticket 95 nennt das neue Feld `LvUebersicht.nettoNachNachlass` statt `
 Decision: Name `nettoNachNachlass` angenommen; die Spalte der Projektseite zeigt dieses Feld und heißt „Netto nach Nachlass“ (Ticket 121). Kein zweites Feld `netto` im Vertrag.
 Reason: Das Netto nach Nachlass ist die Zahl, die für ein LV in der Übersicht zählt; ein zweites Feld wäre eine weitere Vertragsänderung ohne Nutzen. Umbenennen der Spalte macht die geänderte Zahl ehrlich.
 Reversible: yes  Touches: apps/web/src/projekt, Tickets 106, 121
+
+## D-63 Meilenstein am Beginn seines Tages
+Welle 6 · Ticket 102, 109, 112, 118 · decided by: orchestrator
+Question: Ticket 102 (D-102.2) legt einen Meilenstein an den Beginn seines Tages; ein Fertigstellungs-Meilenstein nach einem Vorgang, der am Freitag endet, steht deshalb am Montag. Annehmen?
+Decision: Ja für v1, einheitlich mit „Ende-Anfang mit Abstand 0 = nächster Arbeitstag“; die Lesart steht in `BAUZEIT_ANNAHMEN` und wird in der Oberfläche (Ticket 118) als Tooltip erklärt. Eine eigene Art „Ende-Meilenstein“ (am Ende des Vortags) ist ein späteres Ticket, falls das Büro es so erwartet.
+Reason: Eine Regel ohne Sonderfall; Fixtures (112) und Tor X2 hängen an genau einer Lesart; umkehrbar ohne Datenänderung (gespeichert werden nur Eingaben).
+Reversible: yes  Touches: packages/bauzeit, fixtures, apps/web/src/bauzeit
