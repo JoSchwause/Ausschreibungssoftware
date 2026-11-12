@@ -10,3 +10,5 @@ export {
   mangelChangeSetUmkehren,
   naechsteMangelnummer,
 } from './mangel-befehle';
+export type { Fristangaben, Fristbefundcode } from './fristpruefung';
+export { fristPruefen, istUeberfaellig } from './fristpruefung';
