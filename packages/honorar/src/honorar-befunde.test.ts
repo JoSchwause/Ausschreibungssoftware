@@ -2,16 +2,16 @@
 // Befunde der Honorarberechnung (Ticket 101, U5): Sie sperren nie; `fehler` heißt, ein Teil der Eingabe geht nicht in die
 // Rechnung ein, `warnung`, die Rechnung ist vollständig, aber auffällig.
 
-import type { Betrag, Prozent } from '@tethys/vertrag';
+import type { Betrag, Honorarergebnis, Leistungsbild, Prozent } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import type { Honorarberechnung, Honorarergebnis, Honorarobjekt, Leistungsbild } from './index';
+import type { Honorarberechnungseingabe, Honorarobjekteingabe } from './index';
 import { honorarBerechnen } from './index';
 
 const b = (wert: string): Betrag => wert as Betrag;
 const p = (wert: string): Prozent => wert as Prozent;
 
 /** Gebäude, Zone III, 819 756,16 von Hand, Honorarsatz 50, LPH 1–9 (Werte wie Fall 1 der Golden-Tests). */
-const GEBAEUDE: Honorarobjekt = {
+const GEBAEUDE: Honorarobjekteingabe = {
   bezeichnung: 'Gebäude',
   leistungsbild: 'gebaeude',
   honorarzone: 'III',
@@ -22,7 +22,7 @@ const GEBAEUDE: Honorarobjekt = {
 };
 
 /** Tragwerksplanung, Zone II, 1 111 111,11 von Hand, Honorarsatz 37,50 (Honorar 72 395,70 wie Fall 3). */
-const TRAGWERK: Honorarobjekt = {
+const TRAGWERK: Honorarobjekteingabe = {
   bezeichnung: 'Tragwerk',
   leistungsbild: 'tragwerksplanung',
   honorarzone: 'II',
@@ -32,12 +32,13 @@ const TRAGWERK: Honorarobjekt = {
   umbauzuschlagssatz: null,
 };
 
-function rechne(...objekte: Honorarobjekt[]): Honorarergebnis {
-  const berechnung: Honorarberechnung = { objekte, nebenkosten: null, mwstSatz: p('19.00') };
+function rechne(...objekte: Honorarobjekteingabe[]): Honorarergebnis {
+  const berechnung: Honorarberechnungseingabe = { objekte, nebenkosten: null, mwstSatz: p('19.00') };
   return honorarBerechnen(berechnung);
 }
-const befunde = (e: Honorarergebnis): [string, string, number | null][] =>
-  e.befunde.map((x) => [x.code, x.schwere, x.objekt]);
+/** Code, Schwere und Pfad des Objekts (`/objekte[n]`, ab 1; `null` bei Befunden zur ganzen Berechnung). */
+const befunde = (e: Honorarergebnis): [string, string, string | null][] =>
+  e.befunde.map((x) => [x.code, x.schwere, x.ort.pfad ?? null]);
 
 describe('Umbauzuschlag über der Grenze des Leistungsbilds: Hinweis, kein Fehler', () => {
   it.each<[Leistungsbild, string, boolean]>([
@@ -51,7 +52,7 @@ describe('Umbauzuschlag über der Grenze des Leistungsbilds: Hinweis, kein Fehle
     ['technische-ausruestung', '50.00', false],
     ['technische-ausruestung', '50.01', true],
   ])('%s mit %s %%: Befund %s', (leistungsbild, satz, befund) => {
-    const objekt: Honorarobjekt = {
+    const objekt: Honorarobjekteingabe = {
       ...(leistungsbild === 'tragwerksplanung' ? TRAGWERK : GEBAEUDE),
       leistungsbild,
       honorarzone: 'II',
@@ -59,7 +60,7 @@ describe('Umbauzuschlag über der Grenze des Leistungsbilds: Hinweis, kein Fehle
       umbauzuschlagssatz: p(satz),
     };
     const e = rechne(objekt);
-    expect(befunde(e)).toEqual(befund ? [['umbauzuschlag-ueber-grenze', 'warnung', 0]] : []);
+    expect(befunde(e)).toEqual(befund ? [['umbauzuschlag-ueber-grenze', 'warnung', '/objekte[1]']] : []);
     // Gerechnet wird der Zuschlag trotzdem: round(Grundhonorar × Satz / 100, 2) ist nie 0 bei Grundhonorar > 0.
     expect(e.objekte[0]?.umbauzuschlag).not.toBe('0.00');
   });
@@ -75,7 +76,7 @@ describe('Umbauzuschlag über der Grenze des Leistungsbilds: Hinweis, kein Fehle
 describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
   it('eine Honorarzone, die die Tafel nicht hat (§ 56: I bis III)', () => {
     const e = rechne({ ...GEBAEUDE, leistungsbild: 'technische-ausruestung', honorarzone: 'IV' });
-    expect(befunde(e)).toEqual([['honorarzone-unbekannt', 'fehler', 0]]);
+    expect(befunde(e)).toEqual([['honorarzone-unbekannt', 'fehler', '/objekte[1]']]);
     expect([e.objekte[0]?.honorar, e.grundhonorar]).toEqual([null, '0.00']);
   });
 
@@ -91,7 +92,7 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
         mitzuverarbeitendeBausubstanz: b('0.00'),
       },
     });
-    expect(befunde(e)).toEqual([['herleitung-nicht-anwendbar', 'fehler', 0]]);
+    expect(befunde(e)).toEqual([['herleitung-nicht-anwendbar', 'fehler', '/objekte[1]']]);
     expect([e.objekte[0]?.anrechenbareKosten, e.objekte[0]?.herleitung, e.objekte[0]?.honorar]).toEqual([
       null,
       null,
@@ -101,7 +102,7 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
 
   it('ein Leistungsbild ohne Honorartafel (ungeprüfte Eingabe)', () => {
     const e = rechne({ ...GEBAEUDE, leistungsbild: 'flaechenplanung' as Leistungsbild });
-    expect(befunde(e)).toEqual([['keine-honorartafel', 'fehler', 0]]);
+    expect(befunde(e)).toEqual([['keine-honorartafel', 'fehler', '/objekte[1]']]);
     expect(e.objekte[0]?.grundhonorar).toBe('0.00');
   });
 
@@ -115,10 +116,10 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
     });
     // Folge der Rechnung: anrechenbare Kosten und Tafel, Honorarsatz, Leistungsphasen, Umbauzuschlag.
     expect(befunde(e)).toEqual([
-      ['ausserhalb-honorartafel', 'fehler', 0],
-      ['honorarsatz-ausserhalb-spanne', 'warnung', 0],
-      ['leistungsphase-doppelt', 'fehler', 0],
-      ['umbauzuschlag-ueber-grenze', 'warnung', 0],
+      ['ausserhalb-honorartafel', 'fehler', '/objekte[1]'],
+      ['honorarsatz-ausserhalb-spanne', 'warnung', '/objekte[1]'],
+      ['leistungsphase-doppelt', 'fehler', '/objekte[1]'],
+      ['umbauzuschlag-ueber-grenze', 'warnung', '/objekte[1]'],
     ]);
     expect(e.objekte[0]?.phasen).toEqual([]);
   });
@@ -127,7 +128,7 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
 describe('Leistungsphasen', () => {
   it('eine Leistungsphase, die das Leistungsbild nicht hat, zählt nicht (Tragwerksplanung: nur 1 bis 6)', () => {
     const e = rechne({ ...TRAGWERK, leistungsphasen: [{ nummer: 4 }, { nummer: 7 }] });
-    expect(befunde(e)).toEqual([['leistungsphase-unbekannt', 'fehler', 0]]);
+    expect(befunde(e)).toEqual([['leistungsphase-unbekannt', 'fehler', '/objekte[1]']]);
     // LPH 4: 30 % von 72 395,70 = 21 718,71
     expect(e.objekte[0]?.phasen.map((ph) => [ph.nummer, ph.betrag])).toEqual([[4, '21718.71']]);
     expect(e.grundhonorar).toBe('21718.71');
@@ -135,14 +136,14 @@ describe('Leistungsphasen', () => {
 
   it('eine doppelt beauftragte Leistungsphase zählt einmal', () => {
     const e = rechne({ ...TRAGWERK, leistungsphasen: [{ nummer: 2 }, { nummer: 2 }] });
-    expect(befunde(e)).toEqual([['leistungsphase-doppelt', 'fehler', 0]]);
+    expect(befunde(e)).toEqual([['leistungsphase-doppelt', 'fehler', '/objekte[1]']]);
     // LPH 2: 10 % von 72 395,70 = 7 239,57
     expect(e.grundhonorar).toBe('7239.57');
   });
 
   it('ein abweichender Anteil ersetzt den Prozentsatz der HOAI und ist ein Hinweis (§ 51 Abs. 2: LPH 5 mit 30 %)', () => {
     const e = rechne({ ...TRAGWERK, leistungsphasen: [{ nummer: 5, anteil: p('30.00') }] });
-    expect(befunde(e)).toEqual([['anteil-abweichend', 'warnung', 0]]);
+    expect(befunde(e)).toEqual([['anteil-abweichend', 'warnung', '/objekte[1]']]);
     // 30 % statt 40 % von 72 395,70 = 21 718,71
     expect(e.objekte[0]?.phasen).toEqual([
       { nummer: 5, name: 'Ausführungsplanung', anteil: '30.00', betrag: '21718.71' },
@@ -173,7 +174,7 @@ describe('Honorarsatz und negative Werte', () => {
   it('ein Honorarsatz über 100 wird gerechnet und ist ein Hinweis', () => {
     // Fall 1: von 97 111,33, bis 121 116,04; 120 %: 97 111,33 + 24 004,71 × 1,2 = 125 916,982 → 125 916,98
     const e = rechne({ ...GEBAEUDE, honorarsatz: p('120.00') });
-    expect(befunde(e)).toEqual([['honorarsatz-ausserhalb-spanne', 'warnung', 0]]);
+    expect(befunde(e)).toEqual([['honorarsatz-ausserhalb-spanne', 'warnung', '/objekte[1]']]);
     expect(e.objekte[0]?.honorar).toBe('125916.98');
   });
 
@@ -196,8 +197,8 @@ describe('Honorarsatz und negative Werte', () => {
       mwstSatz: p('-19.00'),
     });
     expect(befunde(e)).toEqual([
-      ['wert-negativ', 'warnung', 0],
-      ['wert-negativ', 'warnung', 0],
+      ['wert-negativ', 'warnung', '/objekte[1]'],
+      ['wert-negativ', 'warnung', '/objekte[1]'],
       ['wert-negativ', 'warnung', null],
       ['wert-negativ', 'warnung', null],
     ]);
@@ -226,5 +227,87 @@ describe('ohne Honorarobjekt', () => {
       '595.00',
     ]);
     expect(e.befunde).toEqual([]);
+  });
+});
+
+describe('Befunde in der gemeinsamen Befundliste (Pruefbefund, D-97.11)', () => {
+  it('Quelle `honorarberechnung`; Ort: das Objekt als `/objekte[n]` (ab 1) mit seinem Feld, sonst nur das Feld', () => {
+    const e = honorarBerechnen({
+      objekte: [
+        GEBAEUDE,
+        {
+          ...TRAGWERK,
+          honorarsatz: p('-5.00'),
+          leistungsphasen: [{ nummer: 7 }],
+          umbauzuschlagssatz: p('60.00'),
+        },
+        { ...GEBAEUDE, leistungsbild: 'technische-ausruestung', honorarzone: 'IV' },
+        { ...GEBAEUDE, anrechenbareKosten: { art: 'betrag', betrag: b('26000000.00') } },
+      ],
+      nebenkosten: { art: 'betrag', betrag: b('-1.00') },
+      mwstSatz: p('19.00'),
+    });
+    expect(e.befunde.map((x) => [x.quelle, x.code, x.schwere, x.ort])).toEqual([
+      ['honorarberechnung', 'honorarsatz-ausserhalb-spanne', 'warnung', { pfad: '/objekte[2]', feld: 'honorarsatz' }],
+      ['honorarberechnung', 'leistungsphase-unbekannt', 'fehler', { pfad: '/objekte[2]', feld: 'leistungsphasen' }],
+      [
+        'honorarberechnung',
+        'umbauzuschlag-ueber-grenze',
+        'warnung',
+        { pfad: '/objekte[2]', feld: 'umbauzuschlagssatz' },
+      ],
+      ['honorarberechnung', 'honorarzone-unbekannt', 'fehler', { pfad: '/objekte[3]', feld: 'honorarzone' }],
+      ['honorarberechnung', 'ausserhalb-honorartafel', 'fehler', { pfad: '/objekte[4]', feld: 'anrechenbareKosten' }],
+      ['honorarberechnung', 'mehrere-objekte', 'warnung', {}],
+      ['honorarberechnung', 'wert-negativ', 'warnung', { feld: 'nebenkosten' }],
+    ]);
+  });
+
+  it.each<[string, Partial<Honorarobjekteingabe>, string, string]>([
+    ['Leistungsbild ohne Tafel', { leistungsbild: 'flaechenplanung' as Leistungsbild }, 'keine-honorartafel', 'leistungsbild'],
+    [
+      '§ 33 beim Tragwerk',
+      {
+        leistungsbild: 'tragwerksplanung',
+        anrechenbareKosten: {
+          art: 'din-276',
+          kg300: b('900000.00'),
+          kg400: b('0.00'),
+          technischeAnlagenAnteilig: true,
+          weitereKosten: b('0.00'),
+          mitzuverarbeitendeBausubstanz: b('0.00'),
+        },
+      },
+      'herleitung-nicht-anwendbar',
+      'anrechenbareKosten',
+    ],
+    [
+      'negativer Betrag nach DIN 276',
+      {
+        anrechenbareKosten: {
+          art: 'din-276',
+          kg300: b('900000.00'),
+          kg400: b('-1.00'),
+          technischeAnlagenAnteilig: true,
+          weitereKosten: b('0.00'),
+          mitzuverarbeitendeBausubstanz: b('0.00'),
+        },
+      },
+      'wert-negativ',
+      'anrechenbareKosten',
+    ],
+    ['negativer Umbauzuschlag', { umbauzuschlagssatz: p('-1.00') }, 'wert-negativ', 'umbauzuschlagssatz'],
+    ['doppelte Phase', { leistungsphasen: [{ nummer: 1 }, { nummer: 1 }] }, 'leistungsphase-doppelt', 'leistungsphasen'],
+    ['abweichender Anteil', { leistungsphasen: [{ nummer: 1, anteil: p('3.00') }] }, 'anteil-abweichend', 'leistungsphasen'],
+  ])('%s: Feld des Objekts', (_, aenderung, code, feld) => {
+    const e = rechne({ ...GEBAEUDE, ...aenderung });
+    expect(e.befunde.map((x) => [x.quelle, x.code, x.ort])).toEqual([
+      ['honorarberechnung', code, { pfad: '/objekte[1]', feld }],
+    ]);
+  });
+
+  it('negativer MwSt-Satz: Ort nur das Feld der Berechnung', () => {
+    const e = honorarBerechnen({ objekte: [GEBAEUDE], nebenkosten: null, mwstSatz: p('-19.00') });
+    expect(e.befunde.map((x) => [x.code, x.ort])).toEqual([['wert-negativ', { feld: 'mwstSatz' }]]);
   });
 });

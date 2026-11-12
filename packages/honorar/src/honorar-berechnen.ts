@@ -2,7 +2,8 @@
 // Honorarberechnung nach HOAI 2021 (Ticket 101, D-56): je Honorarobjekt anrechenbare Kosten, Honorarspanne (§ 13),
 // Honorar im Honorarsatz, Beträge der beauftragten Leistungsphasen, Grundhonorar und Umbauzuschlag; gesamt Nebenkosten
 // (§ 14), Netto, MwSt (Umsatzsteuer nach § 16 Abs. 1) und Brutto. Auffälligkeiten sind Befunde, nie Sperre (U5).
-// Eigene Eingabe- und Ergebnistypen, bis Ticket 97 die Vertragstypen bringt (Umstellung in Ticket 110).
+// Ein- und Ausgabe in den Typen des Vertrags (v1.6, Ticket 97 Punkt 5; Umstellung Ticket 110); die Befunde stehen als
+// `Pruefbefund` mit der Quelle `honorarberechnung` in der gemeinsamen Befundliste (D-97.11).
 // Rein (A2), nur Dezimalarithmetik (N1).
 
 import {
@@ -14,92 +15,59 @@ import {
   vergleiche,
   vorzeichen,
 } from '@tethys/dezimal';
-import type { Befundschwere, Betrag, Prozent } from '@tethys/vertrag';
-import type { AnrechenbareKostenangabe, AnrechenbareKostenHerleitung } from './anrechenbare-kosten';
+import type {
+  AnrechenbareKostenangabe,
+  AnrechenbareKostenHerleitung,
+  Befundort,
+  Befundschwere,
+  Betrag,
+  Honorarergebnis,
+  Honorarobjekt,
+  Leistungsbild,
+  Leistungsphasennummer,
+  Nebenkostenangabe,
+  Objektergebnis,
+  Phasenbetrag,
+  Pruefbefund,
+  Prozent,
+  Tafelinterpolation,
+} from '@tethys/vertrag';
+import type { KostenNachDin276 } from './anrechenbare-kosten';
 import { anrechenbareKostenHerleiten } from './anrechenbare-kosten';
-import type { Honorarzone } from './honorartafeln';
-import type { Tafelinterpolation } from './honorarspanne';
 import { honorarInSpanne, honorarspanneBerechnen } from './honorarspanne';
 import { HUNDERT } from './konstanten';
-import type {
-  Leistungsbild,
-  Leistungsbilddaten,
-  Leistungsphase,
-  Leistungsphasennummer,
-} from './leistungsbilder';
+import type { Leistungsbilddaten, Leistungsphase } from './leistungsbilder';
 import { LEISTUNGSBILDER } from './leistungsbilder';
 
 // --- Eingabe -----------------------------------------------------------------------------------------------------
 
-/** Eine beauftragte Leistungsphase (§ 8 Abs. 1). */
-export interface BeauftragteLeistungsphase {
-  readonly nummer: Leistungsphasennummer;
-  /**
-   * Abweichender Anteil in Prozent des Honorars, etwa nach § 8 Abs. 2 (nicht alle Grundleistungen der Phase), § 51
-   * Abs. 2 bis 4 oder § 55 Abs. 2; fehlt er, gilt der Prozentsatz der HOAI. Eine Abweichung ist ein Befund.
-   */
-  readonly anteil?: Prozent;
+/**
+ * Ein Honorarobjekt, wie `honorarBerechnen` es annimmt: wie gespeichert (`Honorarobjekt` des Vertrags), die anrechenbaren
+ * Kosten dazu auch als Beträge nach DIN 276 (`KostenNachDin276`, ungespeichert, etwa aus einer Datei oder einem Test).
+ */
+export interface Honorarobjekteingabe extends Omit<Honorarobjekt, 'anrechenbareKosten'> {
+  readonly anrechenbareKosten: AnrechenbareKostenangabe | KostenNachDin276;
 }
 
-/** Ein Objekt (§ 2 Abs. 1), dessen Honorar für sich berechnet wird (§ 11 Abs. 1). */
-export interface Honorarobjekt {
-  readonly bezeichnung: string;
-  readonly leistungsbild: Leistungsbild;
-  readonly honorarzone: Honorarzone;
-  /** Lage in der Honorarspanne in Prozent: 0 = Basishonorarsatz (Standard nach § 7 Abs. 1), 100 = oberer Honorarsatz. */
-  readonly honorarsatz: Prozent;
-  readonly anrechenbareKosten: AnrechenbareKostenangabe;
-  readonly leistungsphasen: readonly BeauftragteLeistungsphase[];
-  /** Umbauzuschlag in Prozent des Grundhonorars (§ 6 Abs. 2, § 36); `null`: kein Zuschlag. */
-  readonly umbauzuschlagssatz: Prozent | null;
-}
-
-/** Nebenkosten nach § 14: in Prozent von Grundhonorar plus Umbauzuschlägen oder als Betrag. */
-export type Nebenkostenangabe =
-  { readonly art: 'prozent'; readonly satz: Prozent } | { readonly art: 'betrag'; readonly betrag: Betrag };
-
-export interface Honorarberechnung {
-  readonly objekte: readonly Honorarobjekt[];
+/**
+ * Was `honorarBerechnen` rechnet: die Objekte mit Nebenkosten und MwSt-Satz. Eine gespeicherte `Honorarberechnung` des
+ * Vertrags passt unverändert (Kennung, Projekt und Name liest die Rechnung nicht).
+ */
+export interface Honorarberechnungseingabe {
+  readonly objekte: readonly Honorarobjekteingabe[];
   /** `null`: keine Nebenkosten. */
   readonly nebenkosten: Nebenkostenangabe | null;
   /** MwSt-Satz (Umsatzsteuer nach § 16 Abs. 1) auf das Netto aus Honorar und Nebenkosten. */
   readonly mwstSatz: Prozent;
 }
 
-// --- Ergebnis ----------------------------------------------------------------------------------------------------
+// --- Befunde -----------------------------------------------------------------------------------------------------
 
-export interface Phasenbetrag {
-  readonly nummer: Leistungsphasennummer;
-  readonly name: string;
-  /** Der angesetzte Anteil: der Prozentsatz der HOAI oder der abweichende Anteil der Eingabe. */
-  readonly anteil: Prozent;
-  /** round(Honorar × Anteil / 100, 2). */
-  readonly betrag: Betrag;
-}
-
-export interface Objektergebnis {
-  readonly bezeichnung: string;
-  readonly leistungsbild: Leistungsbild;
-  readonly honorarzone: Honorarzone;
-  /** `null`, wenn sie sich nicht bestimmen lassen (Befund). */
-  readonly anrechenbareKosten: Betrag | null;
-  /** Herleitung nach § 33; `null` bei anrechenbaren Kosten von Hand. */
-  readonly herleitung: AnrechenbareKostenHerleitung | null;
-  /** Tafelzeilen unten und oben und die interpolierte Honorarspanne; `null`: kein Honorar für das Objekt (Befund). */
-  readonly tafel: Tafelinterpolation | null;
-  /** Honorar im Honorarsatz, bezogen auf alle Leistungsphasen (100 %); `null` ohne Tafelwert. */
-  readonly honorar: Betrag | null;
-  /** Die angesetzten Leistungsphasen nach Nummer; leer ohne Honorar. */
-  readonly phasen: readonly Phasenbetrag[];
-  /** Summe der Phasenbeträge; 0,00 ohne Honorar. */
-  readonly grundhonorar: Betrag;
-  /** round(Grundhonorar × Umbauzuschlagssatz / 100, 2); 0,00 ohne Satz. */
-  readonly umbauzuschlag: Betrag;
-}
-
+/** Die Codes der Befunde der Honorarberechnung (`Pruefbefund.code` mit der Quelle `honorarberechnung`). */
 export type Honorarbefundcode =
   | 'keine-honorartafel' // fehler: Leistungsbild ohne Honorartafel, kein Honorar
   | 'herleitung-nicht-anwendbar' // fehler: § 33 gilt nur für Gebäude und Innenräume, kein Honorar
+  | 'kostenermittlung-unbekannt' // fehler: die genannte Kostenermittlung wurde nicht übergeben, kein Honorar
   | 'ausserhalb-honorartafel' // fehler: unter der ersten oder über der letzten Tafelzeile, kein Honorar (RifT später)
   | 'honorarzone-unbekannt' // fehler: die Tafel hat diese Honorarzone nicht, kein Honorar
   | 'leistungsphase-unbekannt' // fehler: das Leistungsbild hat diese Leistungsphase nicht; sie zählt nicht
@@ -110,32 +78,8 @@ export type Honorarbefundcode =
   | 'wert-negativ' // warnung: negativer Betrag oder Satz; gerechnet wie eingegeben
   | 'mehrere-objekte'; // warnung: je Objekt getrennt gerechnet, § 11 Abs. 2 bis 4 nicht berücksichtigt
 
-export interface Honorarbefund {
-  readonly code: Honorarbefundcode;
-  /** `fehler`: ein Teil der Eingabe geht nicht in die Rechnung ein; `warnung`: gerechnet, aber auffällig. */
-  readonly schwere: Befundschwere;
-  /** Index des Honorarobjekts in der Eingabe; `null` bei Befunden über die ganze Berechnung. */
-  readonly objekt: number | null;
-  /** Meldung für Entwickler und Protokoll; die deutsche Anzeige entsteht in der Oberfläche. */
-  readonly meldung: string;
-}
-
-export interface Honorarergebnis {
-  /** In der Reihenfolge der Eingabe. */
-  readonly objekte: readonly Objektergebnis[];
-  /** Summe der Grundhonorare der Objekte. */
-  readonly grundhonorar: Betrag;
-  /** Summe der Umbauzuschläge der Objekte. */
-  readonly umbauzuschlaege: Betrag;
-  readonly nebenkosten: Betrag;
-  /** Grundhonorar + Umbauzuschläge + Nebenkosten. */
-  readonly netto: Betrag;
-  /** round(Netto × MwSt-Satz / 100, 2) (§ 16 Abs. 1). */
-  readonly mwst: Betrag;
-  readonly brutto: Betrag;
-  /** Erst die Befunde je Objekt in Eingabereihenfolge, je Objekt in der Folge der Rechnung, dann die übrigen. */
-  readonly befunde: readonly Honorarbefund[];
-}
+/** Feld eines Honorarobjekts, an dem ein Befund hängt (`Befundort.feld`). */
+type Objektfeld = keyof Honorarobjekt;
 
 // --- Rechnen -----------------------------------------------------------------------------------------------------
 
