@@ -1,6 +1,6 @@
 # 121: App: Folgearbeit v1.5 (Netto der LV-Liste, OZ-Vorschlag am Auftrags-LV, Druckprofile sichern)
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: – · Ordner: `apps/web/src/projekt/`, `apps/web/src/auftrag/`, `apps/web/src/nachtrag/` (nur falls der
 OZ-Vorschlag dort gebraucht wird), `apps/web/src/ausgabe/`
@@ -33,3 +33,22 @@ Aus dem Review (D-66, Befund 2): „LV-Stand als neues LV übernehmen“ (`lv/st
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+- **D-121.1** OZ-Vorschlag am Auftrags-LV? **Keine Änderung nötig.** In `projekt/`, `auftrag/`, `nachtrag/` und `ausgabe/` schlägt die App
+  nirgends eine OZ vor; der einzige Aufrufer am Auftrags-LV ist `abrechnung.nachtragUebernehmen`, das `ozVorschlag` des Kerns schon
+  mit der Kennung des Auftrags-LV nutzt (Ticket 105). Grund: Es gibt in der App keine umgedeutete Kennung zu ersetzen.
+- **D-121.2** Welche Einträge lassen sich sichern/entfernen? **Alle zurückgehaltenen** (unlesbar, Standardname, doppelt), als ganze
+  Gruppe: „Einträge als Datei sichern“ (JSON-Liste der Rohwerte, `Druckprofile-nicht-gelesen.json`), „Einträge entfernen“ erst nach
+  Bestätigung im Dialog (Q5). Dazu die Zeile „n Einträge konnten nicht gelesen werden“ (nur die unlesbaren). Grund: Eine
+  Einzelauswahl brächte nichts, solange die Einträge in der Oberfläche keine Namen zum Wählen haben.
+- **D-121.3** Marker „Folgeticket 106“ in `lv/texte.ts`: Ticket 106 hat den Text geprüft (passt), Marker entfernt.
+- Umsetzung: `LvNetto.tsx` zeigt nur noch `LvUebersicht.nettoNachNachlass` (Spalte „Netto nach Nachlass“, fehlt der Wert „–“, kein
+  Nachladen mehr); `lv/stand.ts` ruft `kopieBauen(…, { bauteile: 'behalten' })` (Test in `historie/ziel.test.ts`);
+  Druckprofile: `ausgabe/profile.ts` (`zurueckAlsDatei`, `zurueckNichtLesbar`), `DruckProfilFeld.tsx`.
+- Ergebnis: `pnpm lint`, `pnpm typecheck`, `pnpm test` grün (292 Dateien, 3767 Tests); E2E `projekt`, `druckprofil`, `nachtrag` grün (7 Tests).
+
+## Answer
+
+Gemergt mit `9c95900` (Branch `welle-6/121-web-folgearbeit`, `1e00427`). Projektseite zeigt „Netto nach Nachlass“ aus der Übersicht;
+zurückgehaltene Druckprofile sichtbar, als Datei sichern oder nach Bestätigung entfernen; `lv/stand.ts` behält Bauteilzuordnungen;
+OZ-Vorschlag ohne App-Änderung (D-121.1).
