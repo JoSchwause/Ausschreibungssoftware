@@ -6,31 +6,37 @@
 // Mo 18. bis Fr 22.; Mo 25. bis Fr 29.; Mo 01.02. bis Fr 05.02.; Wochenenden dazwischen.
 
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Arbeitskalender, Bauzeitenplaneingabe, Vorgang } from './index';
+import type { Anordnungsbeziehung, Arbeitskalender, Bauzeitenplaneingabe, Vorgang, VorgangId } from './index';
 import { STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
 
 const MO_FR: Arbeitskalender = { arbeitstage: STANDARD_ARBEITSTAGE, bundesland: null, freieTage: [] };
 
+const vid = (id: string): VorgangId => id as VorgangId;
+/** Weitere Felder eines Vorgangs; der Sammelvorgang als Text. */
+type Weiteres = Partial<Omit<Vorgang, 'elternId'>> & { readonly elternId?: string };
 function vorgang(
   id: string,
   dauer: number,
   vorgaenger: readonly Anordnungsbeziehung[] = [],
-  weiteres: Partial<Vorgang> = {},
+  weiteres: Weiteres = {},
 ): Vorgang {
+  const { elternId, ...rest } = weiteres;
   return {
-    id,
+    id: vid(id),
+    nummer: null,
     bezeichnung: `Vorgang ${id}`,
-    elternId: null,
+    elternId: elternId === undefined ? null : vid(elternId),
     dauer,
     vorgaenger,
     fruehesterBeginn: null,
+    bezug: null,
     ist: null,
-    ...weiteres,
+    ...rest,
   };
 }
 
 const ea = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vid(vorgaengerId),
   art: 'ende-anfang',
   abstand,
 });
@@ -48,7 +54,7 @@ describe('ein Vorgang', () => {
     const e = bauzeitenplanBerechnen(plan([vorgang('a', 5)]));
     expect(e.vorgaenge).toEqual([
       {
-        id: 'a',
+        vorgangId: 'a',
         art: 'vorgang',
         termine: {
           beginn: '2027-01-04',
@@ -69,17 +75,17 @@ describe('ein Vorgang', () => {
 });
 
 const aa = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vid(vorgaengerId),
   art: 'anfang-anfang',
   abstand,
 });
 const ee = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vid(vorgaengerId),
   art: 'ende-ende',
   abstand,
 });
 const ae = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vid(vorgaengerId),
   art: 'anfang-ende',
   abstand,
 });
@@ -87,7 +93,7 @@ const ae = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
 /** Beginn und Ende (frühe Lage) je Vorgang. */
 function lage(e: ReturnType<typeof bauzeitenplanBerechnen>): Record<string, [string, string] | null> {
   return Object.fromEntries(
-    e.vorgaenge.map((v) => [v.id, v.termine === null ? null : [v.termine.beginn, v.termine.ende]]),
+    e.vorgaenge.map((v) => [v.vorgangId, v.termine === null ? null : [v.termine.beginn, v.termine.ende]]),
   );
 }
 
@@ -185,7 +191,7 @@ describe('Meilenstein', () => {
       m: ['2027-01-11', '2027-01-11'],
       b: ['2027-01-11', '2027-01-12'],
     });
-    expect(e.vorgaenge.find((v) => v.id === 'm')?.art).toBe('meilenstein');
+    expect(e.vorgaenge.find((v) => v.vorgangId === 'm')?.art).toBe('meilenstein');
     expect(e.kritischeWege).toEqual([['a', 'm', 'b']]);
   });
 
@@ -230,7 +236,7 @@ describe('Puffer und kritischer Weg', () => {
   const e = bauzeitenplanBerechnen(
     plan([vorgang('a', 5), vorgang('b', 2), vorgang('d', 1, [ea('b')]), vorgang('c', 1, [ea('a'), ea('d')])]),
   );
-  const t = (id: string) => e.vorgaenge.find((v) => v.id === id)?.termine;
+  const t = (id: string) => e.vorgaenge.find((v) => v.vorgangId === id)?.termine;
 
   it('Gesamtpuffer, freier Puffer und späte Lage', () => {
     expect(t('b')).toEqual({
@@ -279,7 +285,7 @@ describe('Sammelvorgang', () => {
   // p fasst s und t zusammen; s fasst a (5) und b (3, nach a) zusammen, t fasst x (1) zusammen.
   // a 0–5 (Mo 04. bis Fr 08.01.), b 5–8 (Mo 11. bis Mi 13.01.), x 0–1 (Mo 04.01.); Projektende 8.
   // x: spätester Anfang 7 (Mi 13.01.), Gesamtpuffer 7, freier Puffer 8 − 1 = 7.
-  const unter = (elternId: string): Partial<Vorgang> => ({ elternId });
+  const unter = (elternId: string): Weiteres => ({ elternId });
   const vorgaenge = [
     vorgang('p', 0),
     vorgang('s', 99, [], unter('p')),
@@ -289,11 +295,11 @@ describe('Sammelvorgang', () => {
     vorgang('x', 1, [], unter('t')),
   ];
   const e = bauzeitenplanBerechnen(plan(vorgaenge));
-  const v = (id: string) => e.vorgaenge.find((r) => r.id === id);
+  const v = (id: string) => e.vorgaenge.find((r) => r.vorgangId === id);
 
   it('Beginn = frühester Beginn, Ende = spätestes Ende der Kinder; Dauer ohne Bedeutung', () => {
     expect(v('s')).toEqual({
-      id: 's',
+      vorgangId: 's',
       art: 'sammelvorgang',
       termine: {
         beginn: '2027-01-04',
@@ -306,7 +312,7 @@ describe('Sammelvorgang', () => {
       },
     });
     expect(v('t')).toEqual({
-      id: 't',
+      vorgangId: 't',
       art: 'sammelvorgang',
       termine: {
         beginn: '2027-01-04',
@@ -336,9 +342,13 @@ describe('Sammelvorgang', () => {
     );
     expect(lage(mit)['x']).toEqual(['2027-01-04', '2027-01-04']);
     expect(lage(mit)['y']).toEqual(['2027-01-04', '2027-01-05']);
-    expect(mit.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId])).toEqual([
-      ['beziehung-an-sammelvorgang', 'x', 's'],
-      ['beziehung-an-sammelvorgang', 'y', 't'],
+    expect(mit.befunde.map((b) => [b.code, b.ort])).toEqual([
+      ['beziehung-an-sammelvorgang', { vorgangId: 'x', feld: 'vorgaenger' }],
+      ['beziehung-an-sammelvorgang', { vorgangId: 'y', feld: 'vorgaenger' }],
+    ]);
+    expect(mit.befunde.map((b) => b.meldung)).toEqual([
+      expect.stringContaining('s → x') as string,
+      expect.stringContaining('t → y') as string,
     ]);
     const amSammel = bauzeitenplanBerechnen(
       plan([
@@ -349,8 +359,8 @@ describe('Sammelvorgang', () => {
       ]),
     );
     expect(lage(amSammel)['a']).toEqual(['2027-01-04', '2027-01-08']);
-    expect(amSammel.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId])).toEqual([
-      ['beziehung-an-sammelvorgang', 's', 'z'],
+    expect(amSammel.befunde.map((b) => [b.code, b.ort])).toEqual([
+      ['beziehung-an-sammelvorgang', { vorgangId: 's', feld: 'vorgaenger' }],
     ]);
   });
 
@@ -363,7 +373,9 @@ describe('Sammelvorgang', () => {
       ]),
     );
     expect(lage(mit)['a']).toEqual(['2027-01-04', '2027-01-08']);
-    expect(mit.befunde.map((b) => [b.code, b.vorgangId])).toEqual([['terminvorgabe-an-sammelvorgang', 's']]);
+    expect(mit.befunde.map((b) => [b.code, b.ort])).toEqual([
+      ['terminvorgabe-an-sammelvorgang', { vorgangId: 's', feld: 'fruehesterBeginn' }],
+    ]);
   });
 });
 
@@ -373,11 +385,11 @@ describe('unbekannter Vorgänger und Zyklen', () => {
     expect(lage(e)['b']).toEqual(['2027-01-06', '2027-01-06']);
     expect(e.befunde).toEqual([
       {
+        schwere: 'fehler',
+        quelle: 'terminrechnung',
         code: 'vorgaenger-unbekannt',
-        vorgangId: 'b',
-        vorgaengerId: 'fehlt',
-        beteiligte: [],
-        meldung: expect.any(String) as string,
+        meldung: expect.stringContaining('fehlt → b') as string,
+        ort: { vorgangId: 'b', feld: 'vorgaenger' },
       },
     ]);
   });
@@ -404,10 +416,18 @@ describe('unbekannter Vorgänger und Zyklen', () => {
       e: ['2027-01-06', '2027-01-06'],
       f: null,
     });
-    expect(e.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId, b.beteiligte])).toEqual([
-      ['zyklus', null, null, ['b', 'c']],
-      ['zyklus', null, null, ['f']],
-      ['vorgaenger-ohne-termine', 'd', 'c', []],
+    // Je Beteiligter ein Befund (D-97.11), in der Reihenfolge der Zyklen und der Eingabe.
+    expect(e.befunde.map((b) => [b.code, b.ort.vorgangId, b.ort.feld])).toEqual([
+      ['zyklus', 'b', 'vorgaenger'],
+      ['zyklus', 'c', 'vorgaenger'],
+      ['zyklus', 'f', 'vorgaenger'],
+      ['vorgaenger-ohne-termine', 'd', 'vorgaenger'],
+    ]);
+    expect(e.befunde.map((b) => b.meldung)).toEqual([
+      expect.stringContaining('b → c') as string,
+      expect.stringContaining('b → c') as string,
+      expect.stringContaining('f') as string,
+      expect.stringContaining('Vorgänger c') as string,
     ]);
   });
 

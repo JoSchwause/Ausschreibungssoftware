@@ -2,30 +2,41 @@
 // Befunde der Terminrechnung (Ticket 102 Punkt 4, U5): Ungültiges sperrt nie die Rechnung des Übrigen. Jeder Fall nennt,
 // was entfällt und was weiter gerechnet wird. Kalender wie in `bauzeitenplan.test.ts` (Mo 04.01.2027 = Projektbeginn).
 
-import type { Prozent } from '@tethys/vertrag';
+import type { Anordnungsbeziehung, Prozent, Vorgang, VorgangId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Bauzeitenplanergebnis, Vorgang } from './index';
-import { KRITISCHE_WEGE_HOECHSTENS, STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
+import type { Bauzeitbefundcode, Bauzeitenplaneingabe, Bauzeitenplanergebnis } from './index';
+import {
+  BAUZEITBEFUNDE,
+  KRITISCHE_WEGE_HOECHSTENS,
+  STANDARD_ARBEITSTAGE,
+  bauzeitenplanBerechnen,
+} from './index';
 
+const vid = (id: string): VorgangId => id as VorgangId;
+/** Weitere Felder eines Vorgangs; der Sammelvorgang als Text. */
+type Weiteres = Partial<Omit<Vorgang, 'elternId'>> & { readonly elternId?: string };
 function vorgang(
   id: string,
   dauer: number,
   vorgaenger: readonly Anordnungsbeziehung[] = [],
-  weiteres: Partial<Vorgang> = {},
+  weiteres: Weiteres = {},
 ): Vorgang {
+  const { elternId, ...rest } = weiteres;
   return {
-    id,
+    id: vid(id),
+    nummer: null,
     bezeichnung: id,
-    elternId: null,
+    elternId: elternId === undefined ? null : vid(elternId),
     dauer,
     vorgaenger,
     fruehesterBeginn: null,
+    bezug: null,
     ist: null,
-    ...weiteres,
+    ...rest,
   };
 }
 const ea = (vorgaengerId: string, abstand = 0): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vid(vorgaengerId),
   art: 'ende-anfang',
   abstand,
 });
@@ -40,20 +51,21 @@ function plan(
     ...weiteres,
   };
 }
+/** Code, Vorgang und Feld je Befund (Ort nach der Lesart von `Befundort` für `terminrechnung`, D-97.11). */
 const codes = (e: Bauzeitenplanergebnis): [string, string | null, string | null][] =>
-  e.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId]);
+  e.befunde.map((b) => [b.code, b.ort.vorgangId ?? null, b.ort.feld ?? null]);
 const beginn = (e: Bauzeitenplanergebnis, id: string): string | null =>
-  e.vorgaenge.find((v) => v.id === id)?.termine?.beginn ?? null;
+  e.vorgaenge.find((v) => v.vorgangId === id)?.termine?.beginn ?? null;
 
 describe('Plan und Kalender', () => {
   it('ungültiger Projektbeginn: nichts wird gerechnet, die übrigen Befunde erscheinen trotzdem', () => {
     const e = bauzeitenplanBerechnen(plan([vorgang('a', 1, [ea('fehlt')])], { projektbeginn: '2027-02-30' }));
     expect(e.projektbeginn).toBeNull();
     expect(e.projektende).toBeNull();
-    expect(e.vorgaenge).toEqual([{ id: 'a', art: 'vorgang', termine: null }]);
+    expect(e.vorgaenge).toEqual([{ vorgangId: 'a', art: 'vorgang', termine: null }]);
     expect(codes(e)).toEqual([
-      ['projektbeginn-ungueltig', null, null],
-      ['vorgaenger-unbekannt', 'a', 'fehlt'],
+      ['projektbeginn-ungueltig', null, 'projektbeginn'],
+      ['vorgaenger-unbekannt', 'a', 'vorgaenger'],
     ]);
   });
 
@@ -62,7 +74,7 @@ describe('Plan und Kalender', () => {
       plan([vorgang('a', 1)], { kalender: { arbeitstage: [], bundesland: null, freieTage: [] } }),
     );
     expect(e.vorgaenge[0]?.termine).toBeNull();
-    expect(codes(e)).toEqual([['kalender-ohne-arbeitstage', null, null]]);
+    expect(codes(e)).toEqual([['kalender-ohne-arbeitstage', null, 'kalender']]);
   });
 
   it('unbekannte Wochentage, ein unbekanntes Land und unlesbare freie Tage werden übergangen', () => {
@@ -72,9 +84,9 @@ describe('Plan und Kalender', () => {
     );
     expect(beginn(e, 'a')).toBe('2027-01-04');
     expect(codes(e)).toEqual([
-      ['arbeitstag-ungueltig', null, null],
-      ['bundesland-unbekannt', null, null],
-      ['freier-tag-ungueltig', null, null],
+      ['arbeitstag-ungueltig', null, 'kalender'],
+      ['bundesland-unbekannt', null, 'kalender'],
+      ['freier-tag-ungueltig', null, 'kalender'],
     ]);
   });
 });
@@ -83,13 +95,13 @@ describe('Gliederung', () => {
   it('eine doppelte Kennung: der spätere Vorgang bleibt ohne Termine, Verweise gelten dem ersten', () => {
     const e = bauzeitenplanBerechnen(plan([vorgang('a', 2), vorgang('a', 5), vorgang('b', 1, [ea('a')])]));
     expect(e.vorgaenge.map((v) => v.termine?.beginn ?? null)).toEqual(['2027-01-04', null, '2027-01-06']);
-    expect(codes(e)).toEqual([['id-doppelt', 'a', null]]);
+    expect(codes(e)).toEqual([['id-doppelt', 'a', 'id']]);
   });
 
   it('ein unbekannter Sammelvorgang: der Vorgang steht auf der obersten Ebene', () => {
     const e = bauzeitenplanBerechnen(plan([vorgang('a', 2, [], { elternId: 'fehlt' })]));
     expect(beginn(e, 'a')).toBe('2027-01-04');
-    expect(codes(e)).toEqual([['eltern-unbekannt', 'a', null]]);
+    expect(codes(e)).toEqual([['eltern-unbekannt', 'a', 'elternId']]);
   });
 
   it('ein Kreis in der Gliederung: die Beteiligten stehen auf der obersten Ebene', () => {
@@ -101,12 +113,17 @@ describe('Gliederung', () => {
         vorgang('z', 2, [], { elternId: 'x' }),
       ]),
     );
-    expect(e.vorgaenge.map((v) => [v.id, v.art, v.termine?.ende ?? null])).toEqual([
+    expect(e.vorgaenge.map((v) => [v.vorgangId, v.art, v.termine?.ende ?? null])).toEqual([
       ['x', 'sammelvorgang', '2027-01-05'],
       ['y', 'vorgang', '2027-01-06'],
       ['z', 'vorgang', '2027-01-05'],
     ]);
-    expect(e.befunde.map((b) => [b.code, b.beteiligte])).toEqual([['eltern-zyklus', ['x', 'y']]]);
+    // Je Beteiligter ein Befund (D-97.11), die Meldung nennt den ganzen Kreis.
+    expect(codes(e)).toEqual([
+      ['eltern-zyklus', 'x', 'elternId'],
+      ['eltern-zyklus', 'y', 'elternId'],
+    ]);
+    expect(e.befunde.every((b) => b.meldung.includes('x → y'))).toBe(true);
   });
 });
 
@@ -120,8 +137,8 @@ describe('Werte eines Vorgangs', () => {
         ['vorgang', '2027-01-04'],
       ]);
       expect(codes(e)).toEqual([
-        ['dauer-ungueltig', 'a', null],
-        ['vorgaenger-ohne-termine', 'b', 'a'],
+        ['dauer-ungueltig', 'a', 'dauer'],
+        ['vorgaenger-ohne-termine', 'b', 'vorgaenger'],
       ]);
     },
   );
@@ -132,29 +149,25 @@ describe('Werte eines Vorgangs', () => {
         vorgang('a', 2),
         vorgang('b', 1, [ea('a', 1.5)]),
         vorgang('c', 1, [
-          { vorgaengerId: 'a', art: 'ende-mitte', abstand: 0 } as unknown as Anordnungsbeziehung,
+          { vorgaengerId: vid('a'), art: 'ende-mitte', abstand: 0 } as unknown as Anordnungsbeziehung,
         ]),
       ]),
     );
     expect([beginn(e, 'b'), beginn(e, 'c')]).toEqual(['2027-01-04', '2027-01-04']);
     expect(codes(e)).toEqual([
-      ['abstand-ungueltig', 'b', 'a'],
-      ['anordnungsart-unbekannt', 'c', 'a'],
+      ['abstand-ungueltig', 'b', 'vorgaenger'],
+      ['anordnungsart-unbekannt', 'c', 'vorgaenger'],
     ]);
   });
 
   it('eine unlesbare Terminvorgabe wird übergangen', () => {
     const e = bauzeitenplanBerechnen(plan([vorgang('a', 1, [], { fruehesterBeginn: '11.01.2027' })]));
     expect(beginn(e, 'a')).toBe('2027-01-04');
-    expect(codes(e)).toEqual([['terminvorgabe-ungueltig', 'a', null]]);
+    expect(codes(e)).toEqual([['terminvorgabe-ungueltig', 'a', 'fruehesterBeginn']]);
   });
 
   it('Ist-Termine verschieben nichts; Unstimmiges ist ein Befund', () => {
-    const ist = (
-      beginnText: string | null,
-      ende: string | null,
-      fortschritt: string | null,
-    ): Partial<Vorgang> => ({
+    const ist = (beginnText: string | null, ende: string | null, fortschritt: string | null): Weiteres => ({
       ist: { beginn: beginnText, ende, fortschritt: fortschritt as Prozent | null },
     });
     const e = bauzeitenplanBerechnen(
@@ -170,11 +183,11 @@ describe('Werte eines Vorgangs', () => {
     );
     expect(beginn(e, 'a')).toBe('2027-01-04');
     expect(codes(e)).toEqual([
-      ['ist-ungueltig', 'b', null], // kein Datum
-      ['ist-ungueltig', 'c', null], // Ende vor Beginn
-      ['ist-ungueltig', 'd', null], // über 100 %
-      ['ist-ungueltig', 'e', null], // nicht zwei Nachkommastellen (N3)
-      ['ist-ungueltig', 'f', null], // Ende ohne Beginn
+      ['ist-ungueltig', 'b', 'ist'], // kein Datum
+      ['ist-ungueltig', 'c', 'ist'], // Ende vor Beginn
+      ['ist-ungueltig', 'd', 'ist'], // über 100 %
+      ['ist-ungueltig', 'e', 'ist'], // nicht zwei Nachkommastellen (N3)
+      ['ist-ungueltig', 'f', 'ist'], // Ende ohne Beginn
     ]);
   });
 });
@@ -203,8 +216,8 @@ describe('Grenzen der Rechnung', () => {
     );
     expect(e.vorgaenge.map((v) => v.termine?.beginn ?? null)).toEqual([null, '2027-01-04']);
     expect(codes(e)).toEqual([
-      ['termin-ausserhalb-kalender', 'a', null],
-      ['vorgaenger-ohne-termine', 'b', 'a'],
+      ['termin-ausserhalb-kalender', 'a', 'fruehesterBeginn'],
+      ['vorgaenger-ohne-termine', 'b', 'vorgaenger'],
     ]);
   });
 
@@ -222,5 +235,51 @@ describe('Grenzen der Rechnung', () => {
     // Weg 20 (Nummer 19, binär 10011 von der ersten Stufe an): b, a, a, b, b.
     expect(e.kritischeWege[19]).toEqual(['1b', '2a', '3a', '4b', '5b']);
     expect(codes(e)).toEqual([['kritische-wege-gekuerzt', null, null]]);
+  });
+});
+
+describe('Form der Befunde (Pruefbefund, D-97.11)', () => {
+  it('Quelle Terminrechnung, Schwere je Code nach BAUZEITBEFUNDE, eine Meldung', () => {
+    const e = bauzeitenplanBerechnen(
+      plan([
+        vorgang('a', 2, [ea('b')]),
+        vorgang('b', 2, [ea('a')]),
+        vorgang('c', -1),
+        vorgang('d', 1, [ea('fehlt')]),
+      ]),
+    );
+    expect(e.befunde.map((b) => [b.quelle, b.schwere, b.code])).toEqual([
+      ['terminrechnung', 'fehler', 'dauer-ungueltig'],
+      ['terminrechnung', 'fehler', 'vorgaenger-unbekannt'],
+      ['terminrechnung', 'fehler', 'zyklus'],
+      ['terminrechnung', 'fehler', 'zyklus'],
+    ]);
+    expect(e.befunde.every((b) => b.meldung.length > 0)).toBe(true);
+  });
+
+  it('Fehler, wo eine Eingabe ungültig ist oder ein Vorgang ohne Termine bleibt; sonst Warnung', () => {
+    const warnungen: Bauzeitbefundcode[] = [
+      'terminvorgabe-an-sammelvorgang',
+      'ist-ungueltig',
+      'beziehung-an-sammelvorgang',
+      'vorgaenger-ohne-termine',
+      'kritische-wege-gekuerzt',
+    ];
+    const tabelle = Object.entries(BAUZEITBEFUNDE) as [Bauzeitbefundcode, string][];
+    expect(tabelle).toHaveLength(20);
+    for (const [code, schwere] of tabelle) {
+      expect([code, schwere]).toEqual([code, warnungen.includes(code) ? 'warnung' : 'fehler']);
+    }
+  });
+
+  it('ein Zyklus ergibt je Beteiligtem einen Befund am Feld der Anordnungsbeziehungen', () => {
+    const e = bauzeitenplanBerechnen(
+      plan([vorgang('a', 1), vorgang('b', 2, [ea('c')]), vorgang('c', 2, [ea('b'), ea('a')])]),
+    );
+    expect(codes(e)).toEqual([
+      ['zyklus', 'b', 'vorgaenger'],
+      ['zyklus', 'c', 'vorgaenger'],
+    ]);
+    expect(e.befunde.every((b) => b.meldung.includes('b → c'))).toBe(true);
   });
 });
