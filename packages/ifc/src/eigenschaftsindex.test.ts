@@ -48,6 +48,109 @@ describe('Eigenschaftsindex', () => {
       befunde: [],
     });
   });
+
+  it('liefert die Eigenschaften eines Strukturknotens; null für jede GlobalId, die kein Objekt des Modells trägt', () => {
+    const i = index([
+      ...grundgeruest(),
+      ...WAND,
+      `#16=IFCSPACE('${gid('raum')}',$,'Bad',$,$,$,$,$,.ELEMENT.,.INTERNAL.,$);`,
+      `#17=IFCRELAGGREGATES('${gid('r17')}',$,$,$,#12,(#16));`,
+      `#18=IFCPROPERTYSET('${gid('p18')}',$,'Pset_SpaceCommon',$,(#19));`,
+      "#19=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.F.),$);",
+      `#20=IFCRELDEFINESBYPROPERTIES('${gid('r20')}',$,$,$,(#16),#18);`,
+      `#120=IFCOPENINGELEMENT('${gid('oeffnung')}',$,'Öffnung',$,$,$,$,$,.OPENING.);`,
+      `#121=IFCRELVOIDSELEMENT('${gid('r121')}',$,$,$,#100,#120);`,
+    ]);
+    expect(i.eigenschaften(g('raum'))).toEqual({
+      eigenschaften: [
+        { satz: 'Pset_SpaceCommon', name: 'IsExternal', werte: [{ typ: 'IfcBoolean', text: 'FALSE' }] },
+      ],
+      klassifikationen: [],
+      materialien: [],
+      befunde: [],
+    });
+    expect(i.eigenschaften(g('eg'))).toEqual({
+      eigenschaften: [],
+      klassifikationen: [],
+      materialien: [],
+      befunde: [],
+    });
+    for (const fremd of ['unbekannt', 'oeffnung', 'typ', 'r101'])
+      expect(i.eigenschaften(g(fremd))).toBeNull();
+  });
+
+  it('weist eine Datei ab, die nicht gelesen wird, mit dem Befund wie beim Bauwerksmodell', () => {
+    const ergebnis = eigenschaftsindexBauen(bytes('Hallo Welt'));
+    expect(ergebnis.ok).toBe(false);
+    if (!ergebnis.ok)
+      expect(ergebnis.fehler).toMatchObject({
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'keine-ifc-datei',
+      });
+    expect(eigenschaftenLesen(bytes('Hallo Welt'), g('wand')).ok).toBe(false);
+  });
+
+  it('meldet bei jeder Abfrage, was sie betrifft, unabhängig von früheren Abfragen', () => {
+    const zeilen = [
+      ...grundgeruest(),
+      `#100=IFCWALL('${gid('wand1')}',$,'Wand 1',$,$,$,$,$,$);`,
+      `#101=IFCWALL('${gid('wand2')}',$,'Wand 2',$,$,$,$,$,$);`,
+      `#102=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r102')}',$,$,$,(#100,#101),#12);`,
+      `#103=IFCWALLTYPE('${gid('typ')}',$,'IW',$,$,(#104),$,$,$,.STANDARD.);`,
+      `#104=IFCPROPERTYSET('${gid('p104')}',$,'Pset_WallCommon',$,(#105,#106,#107));`,
+      "#105=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.F.),$);",
+      "#106=IFCPROPERTYBOUNDEDVALUE('Temperatur',$,IFCREAL(30.),IFCREAL(-10.),$,$);",
+      "#107=IFCPROPERTYSINGLEVALUE('Kaputt',$,IFCLABEL('a' 'b'),$);",
+      `#108=IFCRELDEFINESBYTYPE('${gid('r108')}',$,$,$,(#100,#101),#103);`,
+    ];
+    const erwartet = (wand: string) => ({
+      eigenschaften: [
+        { satz: 'Pset_WallCommon', name: 'IsExternal', werte: [{ typ: 'IfcBoolean', text: 'FALSE' }] },
+      ],
+      klassifikationen: [],
+      materialien: [],
+      befunde: [
+        expect.objectContaining({
+          code: 'eigenschaft-nicht-gelesen',
+          ort: { pfad: '#106', zeile: 27, globalId: g(wand) },
+        }),
+        expect.objectContaining({
+          code: 'step-syntaxfehler',
+          ort: { pfad: '#107', zeile: 28, globalId: g(wand) },
+        }),
+      ],
+    });
+    const i = index(zeilen);
+    expect(i.eigenschaften(g('wand1'))).toEqual(erwartet('wand1'));
+    expect(i.eigenschaften(g('wand2'))).toEqual(erwartet('wand2'));
+    expect(i.eigenschaften(g('wand1'))).toEqual(erwartet('wand1'));
+    expect(index(zeilen).eigenschaften(g('wand2'))).toEqual(i.eigenschaften(g('wand2')));
+  });
+
+  it('nimmt bei einer doppelten GlobalId das erste Objekt (Strukturknoten vor Bauteilen) und meldet es', () => {
+    const i = index([
+      ...grundgeruest(),
+      ...WAND,
+      `#120=IFCSLAB('${gid('eg')}',$,'Decke',$,$,$,$,$,.FLOOR.);`,
+      `#121=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r121')}',$,$,$,(#120),#12);`,
+      `#122=IFCRELASSOCIATESMATERIAL('${gid('r122')}',$,$,$,(#120),#113);`,
+    ]);
+    expect(i.eigenschaften(g('eg'))).toEqual({
+      eigenschaften: [],
+      klassifikationen: [],
+      materialien: [],
+      befunde: [
+        {
+          schwere: 'warnung',
+          quelle: 'ifc-lesen',
+          code: 'globalid-doppelt',
+          meldung: `Die GlobalId ${gid('eg')} tragen 2 Objekte (#12, #120); gezeigt werden die Angaben des ersten.`,
+          ort: { pfad: '#12', zeile: 17, feld: 'GlobalId', globalId: g('eg') },
+        },
+      ],
+    });
+  });
 });
 
 describe('Eigenschaften der Hausmodelle (Ticket 99)', () => {

@@ -21,6 +21,8 @@ export const STRUKTURARTEN: ReadonlyMap<string, Strukturknoten['art']> = new Map
 /** Gemeinsamer Zustand beim Lesen der Instanzen: Daten, Befunde, aufgelöste Verweise, vergebene GlobalIds. */
 export class Modellleser {
   private readonly fehlendeVerweise = new Set<string>();
+  /** Instanzen, deren Befunde beim Zerlegen dieser Leser schon gemeldet hat. */
+  private readonly zerlegungGemeldet = new Set<number>();
   /** Erste Instanz je wohlgeformter GlobalId der Strukturknoten und Bauteile. */
   private readonly vergeben = new Map<string, number>();
   /**
@@ -57,9 +59,15 @@ export class Modellleser {
     if (objekt !== undefined) this.objektVon.set(b, objekt);
   }
 
-  /** Parameter der Instanz mit Index `i`. */
+  /** Parameter der Instanz mit Index `i`; Befunde beim Zerlegen meldet dieser Leser einmal je Instanz. */
   parameter(i: number): readonly StepWert[] | null {
-    return this.daten.parameter(i);
+    const p = this.daten.parameter(i);
+    const befunde = this.daten.zerlegungsbefunde(i);
+    if (befunde.length > 0 && !this.zerlegungGemeldet.has(i)) {
+      this.zerlegungGemeldet.add(i);
+      this.befunde.push(...befunde);
+    }
+    return p;
   }
 
   /** Index der Instanz, auf die `w` in der Instanz `von` verweist; `null` ohne Verweis, Befund, wenn sie fehlt. */
