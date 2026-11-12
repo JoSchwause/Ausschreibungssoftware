@@ -1,6 +1,6 @@
 # 120: X4 in der App: Mängel und Bautagebuch, Tor X4
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X4 · Ordner: `apps/web/src/bauleitung/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 120`, D-20); E2E `apps/web/e2e/x4.spec.ts`, Kettentest `apps/web/src/x4-kette.test.ts`
@@ -57,3 +57,5 @@ geöffneter Mangel die Frist der früheren Anzeige behält.
 Neu `apps/web/src/bauleitung/`: Seiten `MaengelSeite`, `BautagebuchSeite`, Formulare, `PdfDialog` mit Worker (`pdf-worker`, `pdf-lauf`), reine Logik `maengel.ts`, `bautagebuch.ts`, Schreibweg `schreiben.ts`, `pfad.ts`, `texte.ts`, Tests je Datei. Hooks `// Ticket 120` in `App.tsx`, `projekt/ProjektSeite.tsx`, `historie/arten.ts` (Umkehrung aus `bauleitung`); Abhängigkeit `@tethys/bauleitung` in `apps/web/package.json` und Lockfile. Tor X4: `e2e/x4.spec.ts` (+ `e2e/x4-aufbau.ts`), `src/x4-kette.test.ts`.
 
 **Gate X4: bestanden.** `x4.spec.ts` (feste Uhr 26.11.2026) dreimal grün hintereinander (je ~33 s), Kettentest grün; genau Mangel 3 überfällig, Mangel 5 (Frist am Stichtag) nicht, Auswertung je Auftragnehmer 3/2/1 und 2/1/0, Bautagebuch 9/8/9, 2/19/5, Summe 26, beide Gegenproben, drei PDFs, Neuladen.
+
+Prüfung nach `git merge integration/welle-6`: `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` 292 Dateien / 3.767 Tests grün (1 Datei, 3 Tests übersprungen wie zuvor), `node --test` 53/53; `x4.spec.ts` danach erneut grün (4 Läufe insgesamt, alle grün).
