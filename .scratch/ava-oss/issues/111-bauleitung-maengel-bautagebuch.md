@@ -1,6 +1,6 @@
 # 111: X4: `bauleitung`: Mängel und Bautagebuch
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X4 · Paket: `packages/bauleitung` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: 97
