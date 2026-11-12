@@ -11,6 +11,8 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
 import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
 import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
+import { honorarPfad } from '../honorar/pfad'; // Ticket 119
+import { texte as honorarTexte } from '../honorar/texte'; // Ticket 119
 import { kostenPfad } from '../kosten/pfad'; // Ticket 89
 import { texte as kostenTexte } from '../kosten/texte'; // Ticket 89
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
@@ -266,6 +268,13 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <Verweis
           pfad={kostenPfad(projekt.id)}
           text={kostenTexte.projekt.kosten}
+          gehe={gehe}
+          className="tx-button tx-button--schlicht"
+        />
+        {/* Ticket 119 */}
+        <Verweis
+          pfad={honorarPfad(projekt.id)}
+          text={honorarTexte.projekt.honorar}
           gehe={gehe}
           className="tx-button tx-button--schlicht"
         />
