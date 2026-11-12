@@ -10,6 +10,7 @@ import type { Bauteil } from './typen';
 /** Was zu einem Objekt außer Klasse, Name und Lage gelesen wird (Mengen, Typ, …), je Index der Instanz. */
 export interface Objektdaten {
   mengen(i: number): Bauteil['mengen'];
+  eigenschaften(i: number): Bauteil['eigenschaften'];
   typname(i: number): string | null;
 }
 
@@ -117,7 +118,7 @@ export function bauteileLesen(
       teilVonGlobalId: oben === undefined ? null : l.globalId(oben),
       kostengruppe: null,
       mengen,
-      eigenschaften: [],
+      eigenschaften: daten.eigenschaften(i),
       klassifikationen: [],
       materialien: [],
     });
