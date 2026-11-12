@@ -6,6 +6,8 @@ import { bauteileLesen } from './bauteile';
 import { Definitionen } from './definitionen';
 import { Eigenschaftenleser } from './eigenschaften';
 import { Einheiten } from './einheiten';
+import { Klassifikationsleser } from './klassifikation';
+import { Materialleser } from './material';
 import { Mengenleser } from './mengen';
 import { Modellleser, strukturLesen, zerlegungLesen } from './modell';
 import { befund, datenLesen, kopfLesen, textmodusErmitteln } from './step';
@@ -78,11 +80,15 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const definitionen = new Definitionen(leser);
   const mengenleser = new Mengenleser(leser, einheiten, definitionen);
   const eigenschaftenleser = new Eigenschaftenleser(leser, definitionen);
+  const klassifikationsleser = new Klassifikationsleser(leser);
+  const materialleser = new Materialleser(leser);
   const mengen = (i: number) => mengenleser.mengen(i);
   const struktur = strukturLesen(leser, ganzes, mengen);
   const bauteile = bauteileLesen(leser, ganzes, {
     mengen,
     eigenschaften: (i) => eigenschaftenleser.eigenschaften(i),
+    klassifikationen: (i) => klassifikationsleser.klassifikationen(i, definitionen.typ(i)),
+    materialien: (i) => materialleser.materialien(i, definitionen.typ(i)),
     typname: (i) => {
       const typ = definitionen.typ(i);
       return typ === undefined ? null : leser.name(typ);

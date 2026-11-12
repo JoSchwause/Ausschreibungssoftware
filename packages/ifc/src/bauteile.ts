@@ -3,6 +3,7 @@
 // steht, und seine Teile über `IfcRelAggregates`, in der Reihenfolge der Datei.
 
 import { klassenname } from './klassen';
+import { kostengruppenvorschlaege } from './klassifikation';
 import { STRUKTURARTEN } from './modell';
 import type { Modellleser } from './modell';
 import type { Bauteil } from './typen';
@@ -11,6 +12,8 @@ import type { Bauteil } from './typen';
 export interface Objektdaten {
   mengen(i: number): Bauteil['mengen'];
   eigenschaften(i: number): Bauteil['eigenschaften'];
+  klassifikationen(i: number): Bauteil['klassifikationen'];
+  materialien(i: number): Bauteil['materialien'];
   typname(i: number): string | null;
 }
 
@@ -109,6 +112,15 @@ export function bauteileLesen(
         `${bezeichnung} hat keine Mengen (IfcElementQuantity).`,
         l.ort(i),
       );
+    const klassifikationen = daten.klassifikationen(i);
+    const vorschlaege = kostengruppenvorschlaege(klassifikationen);
+    if (vorschlaege.length > 1)
+      l.melde(
+        'warnung',
+        'kostengruppe-mehrdeutig',
+        `${bezeichnung} hat mehrere Kostengruppen-Vorschläge (${vorschlaege.join(', ')}); vorgeschlagen wird ${vorschlaege[0] ?? ''}.`,
+        l.ort(i),
+      );
     bauteile.push({
       globalId: l.globalId(i),
       ifcKlasse: klassenname(l.daten.name(i)),
@@ -116,11 +128,11 @@ export function bauteileLesen(
       typ: daten.typname(i),
       strukturGlobalId,
       teilVonGlobalId: oben === undefined ? null : l.globalId(oben),
-      kostengruppe: null,
+      kostengruppe: vorschlaege[0] ?? null,
       mengen,
       eigenschaften: daten.eigenschaften(i),
-      klassifikationen: [],
-      materialien: [],
+      klassifikationen,
+      materialien: daten.materialien(i),
     });
   }
   return bauteile;

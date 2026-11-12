@@ -155,7 +155,10 @@ export type IfcBefundcode =
   | 'einheit-umgerechnet'
   | 'menge-ungueltig'
   | 'menge-nicht-gelesen'
-  | 'eigenschaft-nicht-gelesen';
+  | 'eigenschaft-nicht-gelesen'
+  // Klassifikation:
+  | 'klassifikation-nicht-gelesen'
+  | 'kostengruppe-mehrdeutig';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für
