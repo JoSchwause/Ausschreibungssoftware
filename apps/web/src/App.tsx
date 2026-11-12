@@ -12,6 +12,10 @@ import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
 import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
+import { BauzeitListeSeite } from './bauzeit/BauzeitListeSeite'; // Ticket 118
+import { BauzeitenplanSeite } from './bauzeit/BauzeitenplanSeite'; // Ticket 118
+import { bauzeitRoute } from './bauzeit/pfad'; // Ticket 118
+import { texte as bauzeitTexte } from './bauzeit/texte'; // Ticket 118
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
 import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
@@ -115,6 +119,17 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
       );
     return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 118: Bauzeitenpläne eines Projekts
+  const bauzeit = bauzeitRoute(pfad);
+  if (bauzeit !== null) {
+    const seite =
+      bauzeit.art === 'liste' ? (
+        <BauzeitListeSeite key={bauzeit.projektId} projektId={bauzeit.projektId} gehe={gehe} />
+      ) : (
+        <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
+      );
+    return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {
