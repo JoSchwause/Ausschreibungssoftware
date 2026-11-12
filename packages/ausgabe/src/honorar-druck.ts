@@ -2,7 +2,15 @@
 // Honorarberechnung als Berichtsmodell (X3, Ticket 113). Alle Beträge kommen aus dem `Honorarergebnis` des Pakets `honorar`
 // (A2: hier wird nichts gerechnet); gedruckt wird die Herleitung Schritt für Schritt, damit man sie nachrechnen kann.
 
-import type { Honorarberechnung, Honorarergebnis, Honorarobjekt, Honorarzone, Leistungsbild, Objektergebnis, Pruefbefund } from '@tethys/vertrag';
+import type {
+  Honorarberechnung,
+  Honorarergebnis,
+  Honorarobjekt,
+  Honorarzone,
+  Leistungsbild,
+  Objektergebnis,
+  Pruefbefund,
+} from '@tethys/vertrag';
 import { KEINE_ANGABE, druckdatum, euro, prozent } from './bericht';
 import type { BerichtAbschnitt, BerichtBlock, Berichtsmodell } from './bericht';
 
@@ -28,9 +36,14 @@ const LEISTUNGSBILD: Readonly<Record<Leistungsbild, string>> = {
   'technische-ausruestung': 'Technische Ausrüstung',
 };
 
-const befundText = (b: Pruefbefund): string => `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`;
+const befundText = (b: Pruefbefund): string =>
+  `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`;
 
-function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt | undefined): BerichtAbschnitt {
+function objektAbschnitt(
+  nr: number,
+  o: Objektergebnis,
+  eingabe: Honorarobjekt | undefined,
+): BerichtAbschnitt {
   const zone: Honorarzone = o.honorarzone;
   const bloecke: BerichtBlock[] = [
     {
@@ -38,7 +51,10 @@ function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt |
       felder: [
         { bezeichnung: 'Leistungsbild', wert: LEISTUNGSBILD[o.leistungsbild] },
         { bezeichnung: 'Honorarzone', wert: zone },
-        { bezeichnung: 'Honorarsatz', wert: eingabe === undefined ? KEINE_ANGABE : prozent(eingabe.honorarsatz) },
+        {
+          bezeichnung: 'Honorarsatz',
+          wert: eingabe === undefined ? KEINE_ANGABE : prozent(eingabe.honorarsatz),
+        },
       ],
     },
   ];
@@ -52,7 +68,10 @@ function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt |
         { bezeichnung: 'Weitere Kosten', wert: euro(h.weitereKosten) },
         { bezeichnung: 'Sonstige anrechenbare Kosten', wert: euro(h.sonstigeAnrechenbareKosten) },
         { bezeichnung: 'KG 400 Bauwerk – Technische Anlagen', wert: euro(h.kg400) },
-        { bezeichnung: 'Grenze Technische Anlagen (25 % der sonstigen anrechenbaren Kosten)', wert: euro(h.grenzeTechnischeAnlagen) },
+        {
+          bezeichnung: 'Grenze Technische Anlagen (25 % der sonstigen anrechenbaren Kosten)',
+          wert: euro(h.grenzeTechnischeAnlagen),
+        },
         { bezeichnung: 'KG 400 bis zur Grenze, voll angerechnet', wert: euro(h.kg400Voll) },
         { bezeichnung: 'KG 400 über der Grenze, zur Hälfte angerechnet', wert: euro(h.kg400Haelfte) },
         { bezeichnung: 'Mitzuverarbeitende Bausubstanz', wert: euro(h.mitzuverarbeitendeBausubstanz) },
@@ -96,8 +115,7 @@ function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt |
     });
   }
 
-  if (o.honorar === null)
-    bloecke.push({ art: 'absatz', text: 'Honorar: nicht berechnet (siehe Befunde).' });
+  if (o.honorar === null) bloecke.push({ art: 'absatz', text: 'Honorar: nicht berechnet (siehe Befunde).' });
   else
     bloecke.push({
       art: 'felder',
@@ -119,7 +137,9 @@ function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt |
         { titel: 'Anteil', breite: 50, rechts: true },
         { titel: 'Honorar', breite: 80, rechts: true },
       ],
-      zeilen: o.phasen.map((p) => ({ zellen: [String(p.nummer), p.name, prozent(p.anteil), euro(p.betrag)] })),
+      zeilen: o.phasen.map((p) => ({
+        zellen: [String(p.nummer), p.name, prozent(p.anteil), euro(p.betrag)],
+      })),
     });
 
   bloecke.push({
@@ -128,7 +148,12 @@ function objektAbschnitt(nr: number, o: Objektergebnis, eingabe: Honorarobjekt |
       { bezeichnung: 'Grundhonorar (Summe der Phasen)', wert: euro(o.grundhonorar), fett: true },
       ...(eingabe?.umbauzuschlagssatz == null
         ? []
-        : [{ bezeichnung: `Umbauzuschlag ${prozent(eingabe.umbauzuschlagssatz)}`, wert: euro(o.umbauzuschlag) }]),
+        : [
+            {
+              bezeichnung: `Umbauzuschlag ${prozent(eingabe.umbauzuschlagssatz)}`,
+              wert: euro(o.umbauzuschlag),
+            },
+          ]),
     ],
   });
   return { ueberschrift: `Objekt ${String(nr)}: ${o.bezeichnung}`, bloecke };
@@ -138,7 +163,11 @@ export function baueHonorarModell(e: HonorarEingabe): Berichtsmodell {
   const { berechnung: b, ergebnis: r } = e;
   const nk = b.nebenkosten;
   const nebenkostenLabel =
-    nk === null ? 'Nebenkosten' : nk.art === 'prozent' ? `Nebenkosten (${prozent(nk.satz)} des Honorars)` : 'Nebenkosten (Betrag)';
+    nk === null
+      ? 'Nebenkosten'
+      : nk.art === 'prozent'
+        ? `Nebenkosten (${prozent(nk.satz)} des Honorars)`
+        : 'Nebenkosten (Betrag)';
   const abschnitte: BerichtAbschnitt[] = [
     ...r.objekte.map((o, i) => objektAbschnitt(i + 1, o, b.objekte[i])),
     {
@@ -159,7 +188,12 @@ export function baueHonorarModell(e: HonorarEingabe): Berichtsmodell {
     },
     ...(r.befunde.length === 0
       ? []
-      : [{ ueberschrift: 'Befunde', bloecke: [{ art: 'liste' as const, punkte: r.befunde.map(befundText) }] }]),
+      : [
+          {
+            ueberschrift: 'Befunde',
+            bloecke: [{ art: 'liste' as const, punkte: r.befunde.map(befundText) }],
+          },
+        ]),
     { ueberschrift: 'Hinweise', bloecke: [{ art: 'absatz', text: DIN276_HINWEIS }] },
   ];
   return {

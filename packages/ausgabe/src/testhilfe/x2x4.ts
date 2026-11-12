@@ -123,7 +123,11 @@ export const eintrag2: Bautagebucheintrag = {
   vorkommnisse: null,
 };
 
-export const eintragAusserhalb: Bautagebucheintrag = { ...eintrag1, id: 'b-3' as BautagebucheintragId, datum: '2026-12-15' };
+export const eintragAusserhalb: Bautagebucheintrag = {
+  ...eintrag1,
+  id: 'b-3' as BautagebucheintragId,
+  datum: '2026-12-15',
+};
 
 export const honorarberechnung: Honorarberechnung = {
   id: 'h-1' as HonorarberechnungId,
@@ -227,8 +231,28 @@ export const bauzeitenplan: Bauzeitenplan = {
   projektbeginn: '2026-11-16',
   kalender: { arbeitstage: [1, 2, 3, 4, 5], bundesland: 'BY', freieTage: [] },
   vorgaenge: [
-    { id: V_ROHBAU, nummer: '1', bezeichnung: 'Rohbau', elternId: null, dauer: 0, vorgaenger: [], fruehesterBeginn: null, bezug: null, ist: null },
-    { id: V_ERD, nummer: '1.1', bezeichnung: 'Erdarbeiten', elternId: V_ROHBAU, dauer: 5, vorgaenger: [], fruehesterBeginn: null, bezug: null, ist: null },
+    {
+      id: V_ROHBAU,
+      nummer: '1',
+      bezeichnung: 'Rohbau',
+      elternId: null,
+      dauer: 0,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: null,
+    },
+    {
+      id: V_ERD,
+      nummer: '1.1',
+      bezeichnung: 'Erdarbeiten',
+      elternId: V_ROHBAU,
+      dauer: 5,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: null,
+    },
     {
       id: V_MAUER,
       nummer: '1.2',

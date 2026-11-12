@@ -15,36 +15,41 @@ const EINRUECKUNG = 10;
 function block(b: BerichtBlock): Content {
   switch (b.art) {
     case 'absatz':
-      return { text: b.text, ...(b.klein === true ? { fontSize: 7, color: GRAU } : {}), margin: [0, 2, 0, 4] };
+      return {
+        text: b.text,
+        ...(b.klein === true ? { fontSize: 7, color: GRAU } : {}),
+        margin: [0, 2, 0, 4],
+      };
     case 'liste':
       return { ul: [...b.punkte], margin: [8, 2, 0, 4] };
     case 'angaben':
       return {
         margin: [0, 2, 0, 4],
-        stack: b.felder.map(
-          (f): Content => ({
-            columns: [
-              { text: f.bezeichnung, width: 100, color: GRAU },
-              { text: f.wert, width: '*' },
-            ],
-            columnGap: 6,
-            margin: [0, 1, 0, 1],
-          }),
-        ),
+        stack: b.felder.map((f): Content => ({
+          columns: [
+            { text: f.bezeichnung, width: 100, color: GRAU },
+            { text: f.wert, width: '*' },
+          ],
+          columnGap: 6,
+          margin: [0, 1, 0, 1],
+        })),
       };
     case 'felder':
       return {
         margin: [0, 2, 0, 4],
-        stack: b.felder.map(
-          (f): Content => ({
-            columns: [
-              { text: f.bezeichnung, width: '*', color: f.fett === true ? 'black' : GRAU, bold: f.fett === true },
-              { text: f.wert, width: 'auto', alignment: 'right', bold: f.fett === true },
-            ],
-            columnGap: 8,
-            margin: [0, 1, 0, 1],
-          }),
-        ),
+        stack: b.felder.map((f): Content => ({
+          columns: [
+            {
+              text: f.bezeichnung,
+              width: '*',
+              color: f.fett === true ? 'black' : GRAU,
+              bold: f.fett === true,
+            },
+            { text: f.wert, width: 'auto', alignment: 'right', bold: f.fett === true },
+          ],
+          columnGap: 8,
+          margin: [0, 1, 0, 1],
+        })),
       };
     case 'tabelle': {
       const kopf = b.spalten.map((s) => ({
@@ -65,7 +70,8 @@ function block(b: BerichtBlock): Content {
               ...(i === 0 && stufe > 0 ? { margin: [stufe * EINRUECKUNG, 0, 0, 0] } : {}),
             },
           ];
-          if (letzte && z.kleinerText !== undefined) inhalt.push({ text: z.kleinerText, fontSize: 7, color: GRAU });
+          if (letzte && z.kleinerText !== undefined)
+            inhalt.push({ text: z.kleinerText, fontSize: 7, color: GRAU });
           return { stack: inhalt, ...(s.rechts === true ? { alignment: 'right' as const } : {}) };
         }),
       );
@@ -118,15 +124,13 @@ function dokument(m: Berichtsmodell): TDocumentDefinitions {
       margin: [0, 0, 0, 8],
       stack: [
         { text: m.titel, bold: true, fontSize: 14, margin: [0, 0, 0, 6] },
-        ...m.kopf.map(
-          (f): Content => ({
-            columns: [
-              { text: f.bezeichnung, width: 110, color: GRAU },
-              { text: f.wert, width: '*' },
-            ],
-            margin: [0, 0, 0, 1],
-          }),
-        ),
+        ...m.kopf.map((f): Content => ({
+          columns: [
+            { text: f.bezeichnung, width: 110, color: GRAU },
+            { text: f.wert, width: '*' },
+          ],
+          margin: [0, 0, 0, 1],
+        })),
       ],
     },
     ...m.abschnitte.flatMap((a, i) => abschnitt(a, i === 0)),

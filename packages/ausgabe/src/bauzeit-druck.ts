@@ -2,7 +2,14 @@
 // Bauzeitenplan als Tabelle (X2, Ticket 113): Nummer, Vorgang, Dauer, Beginn, Ende, Puffer, kritisch; dazu Projektende und
 // kritischer Weg. Die Termine kommen aus dem `Bauzeitenplanergebnis` (A2: nichts wird hier gerechnet), ohne Balken.
 
-import type { Bauzeitenplan, Bauzeitenplanergebnis, Vorgang, VorgangId, Vorgangsergebnis, Wochentag } from '@tethys/vertrag';
+import type {
+  Bauzeitenplan,
+  Bauzeitenplanergebnis,
+  Vorgang,
+  VorgangId,
+  Vorgangsergebnis,
+  Wochentag,
+} from '@tethys/vertrag';
 import { KEINE_ANGABE, datumOderStrich, druckdatum } from './bericht';
 import type { BerichtAbschnitt, BerichtZeile, Berichtsmodell } from './bericht';
 
@@ -13,15 +20,24 @@ export interface BauzeitenplanEingabe {
   readonly datum?: string;
 }
 
-const WOCHENTAG: Readonly<Record<Wochentag, string>> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa', 7: 'So' };
+const WOCHENTAG: Readonly<Record<Wochentag, string>> = {
+  1: 'Mo',
+  2: 'Di',
+  3: 'Mi',
+  4: 'Do',
+  5: 'Fr',
+  6: 'Sa',
+  7: 'So',
+};
 
-const vorgangName = (v: Vorgang): string => (v.nummer === null ? v.bezeichnung : `${v.nummer} ${v.bezeichnung}`);
+const vorgangName = (v: Vorgang): string =>
+  v.nummer === null ? v.bezeichnung : `${v.nummer} ${v.bezeichnung}`;
 
 /** Tiefe in der Gliederung über `elternId`; ein Zyklus bricht ab (der Plan ist dann schon befundet). */
 function tiefe(v: Vorgang, nachId: ReadonlyMap<VorgangId, Vorgang>): number {
   let n = 0;
   const gesehen = new Set<VorgangId>([v.id]);
-  for (let e = v.elternId; e !== null; ) {
+  for (let e = v.elternId; e !== null;) {
     if (gesehen.has(e)) break;
     gesehen.add(e);
     n++;
@@ -84,7 +100,11 @@ export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell
               {
                 art: 'liste',
                 punkte: ergebnis.kritischeWege.map((weg) =>
-                  weg.map((id) => (nachId.get(id) === undefined ? KEINE_ANGABE : vorgangName(nachId.get(id) as Vorgang))).join(' → '),
+                  weg
+                    .map((id) =>
+                      nachId.get(id) === undefined ? KEINE_ANGABE : vorgangName(nachId.get(id) as Vorgang),
+                    )
+                    .join(' → '),
                 ),
               },
             ],
@@ -109,7 +129,9 @@ export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell
       bloecke: [
         {
           art: 'liste',
-          punkte: ergebnis.befunde.map((b) => `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`),
+          punkte: ergebnis.befunde.map(
+            (b) => `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`,
+          ),
         },
       ],
     });

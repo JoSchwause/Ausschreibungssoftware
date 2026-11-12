@@ -47,7 +47,9 @@ const titelMitBeschreibung = (m: Mangel): string =>
 
 export function baueMaengellisteModell(e: MaengellisteEingabe): Berichtsmodell {
   const ueberfaellig = new Set<string>(
-    e.befunde.filter((b) => b.quelle === 'fristpruefung' && b.ort.mangelId !== undefined).map((b) => b.ort.mangelId as string),
+    e.befunde
+      .filter((b) => b.quelle === 'fristpruefung' && b.ort.mangelId !== undefined)
+      .map((b) => b.ort.mangelId as string),
   );
   const zeilen: BerichtZeile[] = [...e.maengel].sort(nachNummer).map((m) => ({
     zellen: [

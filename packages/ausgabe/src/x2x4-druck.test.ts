@@ -25,7 +25,8 @@ import * as fx from './testhilfe/x2x4';
 
 const schriften = schriftenAusDateien();
 const normal = (t: string): string => t.replace(/\s+/g, ' ').trim();
-const text = async (bytes: Promise<Uint8Array>): Promise<string> => normal(alsText(await liesPdf(await bytes)));
+const text = async (bytes: Promise<Uint8Array>): Promise<string> =>
+  normal(alsText(await liesPdf(await bytes)));
 const modellText = (m: Berichtsmodell): string => JSON.stringify(m);
 
 const maengelEingabe = {
@@ -265,7 +266,9 @@ describe('Honorarberechnung', () => {
       ...eingabe,
       ergebnis: {
         ...fx.honorarergebnis,
-        objekte: [{ ...o, anrechenbareKosten: null, herleitung: null, tafel: null, honorar: null, phasen: [] }],
+        objekte: [
+          { ...o, anrechenbareKosten: null, herleitung: null, tafel: null, honorar: null, phasen: [] },
+        ],
       },
     });
     const t = modellText(m);
@@ -294,7 +297,15 @@ describe('Bauzeitenplan', () => {
     expect(tabelle.zeilen.map((z) => z.einrueckung ?? 0)).toEqual([0, 1, 1, 1]);
     expect(tabelle.zeilen[0]?.fett).toBe(true);
     expect(tabelle.zeilen[3]?.zellen).toContain('Meilenstein');
-    expect(tabelle.zeilen[1]?.zellen).toEqual(['1.1', 'Erdarbeiten', '5', '16.11.2026', '20.11.2026', '0', 'ja']);
+    expect(tabelle.zeilen[1]?.zellen).toEqual([
+      '1.1',
+      'Erdarbeiten',
+      '5',
+      '16.11.2026',
+      '20.11.2026',
+      '0',
+      'ja',
+    ]);
   });
 
   it('PDF: Tabelle, Projektende, kritischer Weg und Befunde', async () => {

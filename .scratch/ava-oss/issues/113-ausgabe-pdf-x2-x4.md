@@ -1,6 +1,6 @@
 # 113: O: PDF für Mängelliste, Bautagebuch, Honorarberechnung, Bauzeitenplan
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: O, X2–X4 · Paket: `packages/ausgabe`
 Blocked by: 97
@@ -35,8 +35,8 @@ Hinweis zu DIN 276:2008-12 steht im Honorar-PDF als fester Text; die Mängelanze
 
 ## Acceptance criteria
 
-- [ ] Je Ausgabe ein Test über Modell und Seitentext; das PDF ist bei gleicher Eingabe gleich
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Je Ausgabe ein Test über Modell und Seitentext; das PDF ist bei gleicher Eingabe gleich
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -67,3 +67,26 @@ Hinweis zu DIN 276:2008-12 steht im Honorar-PDF als fester Text; die Mängelanze
   Fortschritt stehen nicht in der Tabelle; dafür die Marke „[Ist-Termine]“ (Q5). Nicht gekürzt, keine Balken.
 - **D-113.9** Druckdatum? **`datum?: string` als `JJJJ-MM-TT` in jeder Eingabe, wie `ModellOptionen.datum`;** ohne Angabe fest `1970-01-01` in den
   PDF-Metadaten und kein „Stand“ im Fuß. Gleiche Eingabe gibt gleiche Bytes (je Ausgabe getestet).
+
+### Ergebnis (Branch `welle-6/113-ausgabe-x2-x4`)
+
+Neu in `packages/ausgabe/src`: `bericht.ts` (Berichtsmodell), `bericht-pdf.ts` (pdfmake-Renderer), `maengel-druck.ts`, `bautagebuch-druck.ts`,
+`honorar-druck.ts`, `bauzeit-druck.ts`, `x2x4-pdf.ts`, Test `x2x4-druck.test.ts` (21 Tests: Modell, Seitentext, gleiche Bytes), Testdaten
+`testhilfe/x2x4.ts`. Der LV-Druck ist unverändert. Alle vier Ausgaben sind umgesetzt (Bauzeitenplan nicht gekürzt).
+
+Öffentliche API (alle aus `@tethys/ausgabe`; `datum?` überall `JJJJ-MM-TT`; `Schriften` wie beim LV-Druck, die App reicht ihre Schriftbytes durch):
+
+| Ausgabe | Eingabe | Modell | PDF |
+|---|---|---|---|
+| Mängelliste | `MaengellisteEingabe { projekt, maengel: Mangel[], befunde: Pruefbefund[], auftragnehmer: Record<AuftragsLvId, Name>, filter?, datum? }` | `baueMaengellisteModell` | `erzeugeMaengellistePdf(e, schriften)` |
+| Mängelanzeige | `MaengelanzeigeEingabe { projekt, auftragnehmer: string, maengel: Mangel[], datum? }` | `baueMaengelanzeigeModell` | `erzeugeMaengelanzeigePdf` |
+| Bautagebuch | `BautagebuchEingabe { projekt, eintraege: Bautagebucheintrag[], von?, bis?, datum? }` | `baueBautagebuchModell` | `erzeugeBautagebuchPdf` |
+| Honorar | `HonorarEingabe { berechnung: Honorarberechnung, ergebnis: Honorarergebnis, projekt?, datum? }` | `baueHonorarModell` | `erzeugeHonorarPdf` |
+| Bauzeitenplan | `BauzeitenplanEingabe { plan: Bauzeitenplan, ergebnis: Bauzeitenplanergebnis, projekt?, datum? }` | `baueBauzeitenplanModell` | `erzeugeBauzeitenplanPdf` |
+
+Alle PDFs liefern `Promise<Uint8Array>`; `erzeugeBerichtPdf(modell, schriften)` rendert ein beliebiges `Berichtsmodell`. Fester Text: `DIN276_HINWEIS`,
+`MAENGELANZEIGE_TEXT`. Die App (118–120) rechnet vorher `honorarBerechnen`, `bauzeitenplanBerechnen` und die Fristprüfung und reicht Ergebnis bzw. Befunde durch.
+
+Suite: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` bei 8 Agenten auf 4 Kernen 4 Fehlschläge nur in CPU-Budgets
+fremder Pakete (`kern/k9-leistung`, `speicher/aufmass-leistung`, `vergabe/leistung`, `apps/web/abrechnung/leistung`; in einem früheren Lauf 6); allein
+wiederholt (`--no-file-parallelism`) alle vier grün. Kein Budget geändert.
