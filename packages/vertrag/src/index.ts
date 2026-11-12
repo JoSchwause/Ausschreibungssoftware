@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Einstiegspunkt von @tethys/vertrag: Domänentypen, Befehle, ChangeSet, Schnittstellen (Ticket 02).
-// Nur Typen und Konstantentabellen (Nachkommastellen, Massenbefehle); keine Logik, keine Laufzeitabhängigkeit.
+// Nur Typen und Konstanten (Nachkommastellen, Massenbefehle, v1.6 das Muster einer GlobalId); keine Logik, keine
+// Laufzeitabhängigkeit.
 
 export type * from './marken';
 export type * from './zahlen';
@@ -19,3 +20,4 @@ export type * from './bauleitung';
 
 export { MASSENBEFEHLSARTEN } from './befehle';
 export { NACHKOMMASTELLEN } from './zahlen';
+export { IFC_GLOBALID_MUSTER } from './bim';
