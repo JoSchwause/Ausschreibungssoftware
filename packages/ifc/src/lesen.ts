@@ -74,10 +74,17 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const leser = new Modellleser(daten, befunde);
   const einheiten = new Einheiten(leser);
   const ganzes = zerlegungLesen(leser);
-  const mengenleser = new Mengenleser(leser, einheiten, new Definitionen(leser));
+  const definitionen = new Definitionen(leser);
+  const mengenleser = new Mengenleser(leser, einheiten, definitionen);
   const mengen = (i: number) => mengenleser.mengen(i);
   const struktur = strukturLesen(leser, ganzes, mengen);
-  const bauteile = bauteileLesen(leser, ganzes, mengen);
+  const bauteile = bauteileLesen(leser, ganzes, {
+    mengen,
+    typname: (i) => {
+      const typ = definitionen.typ(i);
+      return typ === undefined ? null : leser.name(typ);
+    },
+  });
   return {
     modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur, bauteile },
     befunde,

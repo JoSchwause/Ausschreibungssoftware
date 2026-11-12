@@ -39,6 +39,34 @@ describe('Bauwerksstruktur', () => {
     ]);
   });
 
+  it('liest die Mengen eines Geschosses und eines Raums', () => {
+    const lesung = ifcLesen(
+      bytes(
+        ifcText([
+          ...grundgeruest(),
+          `#16=IFCSPACE('${gid('kueche')}',$,'0.01',$,$,$,$,'K\\X\\FCche',.ELEMENT.,.INTERNAL.,$);`,
+          `#17=IFCRELAGGREGATES('${gid('r17')}',$,$,$,#12,(#16));`,
+          `#30=IFCELEMENTQUANTITY('${gid('q30')}',$,'Qto_BuildingStoreyBaseQuantities',$,$,(#31,#32));`,
+          "#31=IFCQUANTITYAREA('GrossFloorArea',$,$,120.5,$);",
+          "#32=IFCQUANTITYVOLUME('GrossVolume',$,$,361.5,$);",
+          `#33=IFCRELDEFINESBYPROPERTIES('${gid('r33')}',$,$,$,(#12),#30);`,
+          `#34=IFCELEMENTQUANTITY('${gid('q34')}',$,'Qto_SpaceBaseQuantities',$,$,(#35));`,
+          "#35=IFCQUANTITYAREA('NetFloorArea',$,$,18.245,$);",
+          `#36=IFCRELDEFINESBYPROPERTIES('${gid('r36')}',$,$,$,(#16),#34);`,
+        ]),
+      ),
+    );
+    expect(lesung.befunde).toEqual([]);
+    const [, , , eg, kueche] = lesung.modell?.struktur ?? [];
+    expect(eg?.mengen).toEqual([
+      { satz: 'Qto_BuildingStoreyBaseQuantities', name: 'GrossFloorArea', art: 'flaeche', wert: '120.500' },
+      { satz: 'Qto_BuildingStoreyBaseQuantities', name: 'GrossVolume', art: 'volumen', wert: '361.500' },
+    ]);
+    expect(kueche?.mengen).toEqual([
+      { satz: 'Qto_SpaceBaseQuantities', name: 'NetFloorArea', art: 'flaeche', wert: '18.245' },
+    ]);
+  });
+
   it('gibt die Knoten in der Reihenfolge der Datei aus, nicht in der der Beziehungen', () => {
     const lesung = ifcLesen(
       bytes(

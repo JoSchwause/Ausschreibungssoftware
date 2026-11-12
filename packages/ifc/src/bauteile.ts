@@ -5,7 +5,13 @@
 import { klassenname } from './klassen';
 import { STRUKTURARTEN } from './modell';
 import type { Modellleser } from './modell';
-import type { Bauteil, Bauteilmenge } from './typen';
+import type { Bauteil } from './typen';
+
+/** Was zu einem Objekt außer Klasse, Name und Lage gelesen wird (Mengen, Typ, …), je Index der Instanz. */
+export interface Objektdaten {
+  mengen(i: number): Bauteil['mengen'];
+  typname(i: number): string | null;
+}
 
 /** Keine Bauteile (Ticket 98, Punkt 5), dazu die räumlichen Elemente, die keine Strukturknoten sind. */
 const KEINE_BAUTEILE = new Set([
@@ -49,7 +55,7 @@ function behaelterLesen(l: Modellleser): Map<number, number | null> {
 export function bauteileLesen(
   l: Modellleser,
   ganzes: ReadonlyMap<number, number>,
-  mengenVon: (i: number) => Bauteilmenge[],
+  daten: Objektdaten,
 ): Bauteil[] {
   const behaelter = behaelterLesen(l);
   const teile = new Map<number, number[]>();
@@ -94,7 +100,7 @@ export function bauteileLesen(
         l.ort(i),
       );
     const oben = teilVon.get(i);
-    const mengen = mengenVon(i);
+    const mengen = daten.mengen(i);
     if (mengen.length === 0)
       l.melde(
         'warnung',
@@ -106,7 +112,7 @@ export function bauteileLesen(
       globalId: l.globalId(i),
       ifcKlasse: klassenname(l.daten.name(i)),
       name: l.name(i),
-      typ: null,
+      typ: daten.typname(i),
       strukturGlobalId,
       teilVonGlobalId: oben === undefined ? null : l.globalId(oben),
       kostengruppe: null,

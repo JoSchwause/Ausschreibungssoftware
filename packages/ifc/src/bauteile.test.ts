@@ -115,6 +115,48 @@ describe('Bauteile', () => {
     expect(lesung.befunde[0]).toMatchObject({ schwere: 'warnung', ort: { pfad: '#102' } });
   });
 
+  it('liest den Typnamen und die Mengen des Typs; die Menge am Bauteil überschreibt die des Typs', () => {
+    const lesung = lesen(
+      `#100=IFCWALL('${gid('wand')}',$,'Wand 1',$,$,$,$,$,$);`,
+      `#101=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r101')}',$,$,$,(#100),#12);`,
+      `#102=IFCWALLTYPE('${gid('typ')}',$,'AW 24 KS',$,$,(#110),$,$,$,.STANDARD.);`,
+      `#103=IFCRELDEFINESBYTYPE('${gid('r103')}',$,$,$,(#100),#102);`,
+      `#110=IFCELEMENTQUANTITY('${gid('q110')}',$,'Qto_WallBaseQuantities',$,$,(#111,#112));`,
+      "#111=IFCQUANTITYLENGTH('Width',$,$,0.24,$);",
+      "#112=IFCQUANTITYLENGTH('Height',$,$,2.75,$);",
+      `#115=IFCELEMENTQUANTITY('${gid('q115')}',$,'Qto_WallBaseQuantities',$,$,(#116,#117));`,
+      "#116=IFCQUANTITYLENGTH('Height',$,$,3.,$);",
+      "#117=IFCQUANTITYLENGTH('Length',$,$,5.,$);",
+      `#118=IFCRELDEFINESBYPROPERTIES('${gid('r118')}',$,$,$,(#100),#115);`,
+      `#120=IFCELEMENTQUANTITY('${gid('q120')}',$,'Qto_Typ',$,$,(#121));`,
+      "#121=IFCQUANTITYCOUNT('Lagen',$,$,2,$);",
+      `#122=IFCRELDEFINESBYPROPERTIES('${gid('r122')}',$,$,$,(#102),#120);`,
+    );
+    expect(lesung.befunde).toEqual([]);
+    const [wand] = lesung.modell?.bauteile ?? [];
+    expect(wand?.typ).toBe('AW 24 KS');
+    // Sätze nach ihrer Stelle in der Datei (#110 am Typ, #115 am Bauteil, #120 am Typ); Height des Typs ist überschrieben.
+    expect(wand?.mengen).toEqual([
+      { satz: 'Qto_WallBaseQuantities', name: 'Width', art: 'laenge', wert: '0.240' },
+      { satz: 'Qto_WallBaseQuantities', name: 'Height', art: 'laenge', wert: '3.000' },
+      { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: '5.000' },
+      { satz: 'Qto_Typ', name: 'Lagen', art: 'anzahl', wert: '2.000' },
+    ]);
+  });
+
+  it('liest einen Mengensatz, der über ein IfcPropertySetDefinitionSet (IFC 4) hängt', () => {
+    const lesung = lesen(
+      `#100=IFCWALL('${gid('wand')}',$,'Wand 1',$,$,$,$,$,$);`,
+      `#101=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r101')}',$,$,$,(#100),#12);`,
+      `#110=IFCELEMENTQUANTITY('${gid('q110')}',$,'Qto_WallBaseQuantities',$,$,(#111));`,
+      "#111=IFCQUANTITYLENGTH('Length',$,$,4.5,$);",
+      `#118=IFCRELDEFINESBYPROPERTIES('${gid('r118')}',$,$,$,(#100),IFCPROPERTYSETDEFINITIONSET((#110)));`,
+    );
+    expect(lesung.modell?.bauteile[0]?.mengen).toEqual([
+      { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: '4.500' },
+    ]);
+  });
+
   it('behält ein Bauteil, dessen Behälter kein Strukturknoten ist, ohne Strukturknoten und meldet es', () => {
     const lesung = lesen(
       `#20=IFCEXTERNALSPATIALELEMENT('${gid('aussen')}',$,'Au\\X\\DFen',$,$,$,$,$,.EXTERNAL.);`,
