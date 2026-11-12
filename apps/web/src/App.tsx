@@ -20,6 +20,9 @@ import { BauzeitListeSeite } from './bauzeit/BauzeitListeSeite'; // Ticket 118
 import { BauzeitenplanSeite } from './bauzeit/BauzeitenplanSeite'; // Ticket 118
 import { bauzeitRoute } from './bauzeit/pfad'; // Ticket 118
 import { texte as bauzeitTexte } from './bauzeit/texte'; // Ticket 118
+import { ModellListeSeite } from './bim/ModellListeSeite'; // Ticket 114
+import { bimRoute } from './bim/pfad'; // Ticket 114
+import { texte as bimTexte } from './bim/texte'; // Ticket 114
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { HonorarListeSeite } from './honorar/HonorarListeSeite'; // Ticket 119
 import { HonorarSeite } from './honorar/HonorarSeite'; // Ticket 119
@@ -51,6 +54,8 @@ import { preisspiegelLvId } from './vergabe/pfad';
 // Build aufgenommen; ein normaler Produktions-Build enthält sie nicht (Konstante wird zur Bauzeit ersetzt).
 const MIT_KATALOG = import.meta.env.DEV || import.meta.env.VITE_KATALOG === '1';
 const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
+// Ticket 114: die Modellseite bringt three.js und web-ifc mit; ihr Bündel lädt erst beim Öffnen.
+const ModellSeite = lazy(() => import('./bim/ModellSeite').then((m) => ({ default: m.ModellSeite })));
 
 /**
  * Seiten, die den Speicher brauchen: erst nach dem Öffnen (E-14), sonst eine Meldung; mit Rückgängig und Wiederholen
@@ -170,6 +175,19 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
       );
     return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 114: Bauwerksmodelle eines Projekts (Liste) und ein Modell (Baum, 3D, Eigenschaften)
+  const bim = bimRoute(pfad);
+  if (bim !== null) {
+    const seite =
+      bim.art === 'liste' ? (
+        <ModellListeSeite key={bim.projektId} projektId={bim.projektId} gehe={gehe} />
+      ) : (
+        <Suspense fallback={null}>
+          <ModellSeite key={bim.id} projektId={bim.projektId} id={bim.id} gehe={gehe} />
+        </Suspense>
+      );
+    return { titel: bimTexte.liste.modelle, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {

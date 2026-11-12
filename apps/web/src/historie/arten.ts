@@ -6,6 +6,7 @@
 import { aufmassChangeSetUmkehren, rechnungChangeSetUmkehren } from '@tethys/abrechnung';
 import { bautagebucheintragChangeSetUmkehren, mangelChangeSetUmkehren } from '@tethys/bauleitung'; // Ticket 120
 import { bauzeitenplanChangeSetUmkehren } from '@tethys/bauzeit'; // Ticket 118
+import { bauwerksmodellChangeSetUmkehren } from '@tethys/bim'; // Ticket 114
 import { auftragsLvChangeSetUmkehren, changeSetUmkehren, projektChangeSetUmkehren } from '@tethys/kern';
 import { honorarberechnungChangeSetUmkehren } from '@tethys/honorar'; // Ticket 119
 import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten';
@@ -16,6 +17,7 @@ import { auftragPfad, auftragZiel } from '../auftrag/ziel'; // Ticket 64, 86
 import { honorarZiel } from '../honorar/pfad'; // Ticket 119
 import { bautagebuchZiel, mangelZiel } from '../bauleitung/pfad'; // Ticket 120
 import { bauzeitZiel } from '../bauzeit/pfad'; // Ticket 118
+import { bimZiel } from '../bim/pfad'; // Ticket 114
 import { kostenZiel } from '../kosten/pfad'; // Ticket 89
 import { rechnungZiel } from '../rechnung/pfad'; // Ticket 88
 import type { Teil } from './historie';
@@ -88,7 +90,7 @@ function lvZiel(projektId: ProjektId, cs: LvChangeSet, rueckwaerts: boolean, pfa
 }
 
 /**
- * v1.6: mechanisch angepasst, Folgeticket 114, 118, 119, 120 (die Aggregatarten aus vertrag v1.6). Bis die App sie schreibt,
+ * v1.6: mechanisch angepasst, Folgeticket 118, 119, 120 (die Aggregatarten aus vertrag v1.6). Bis die App sie schreibt,
  * entsteht kein solcher Teil; jedes Ticket ersetzt seine Zeile durch Umkehrung (aus `bim`, `bauzeit`, `honorar`,
  * `bauleitung`) und Ziel. Laut statt still (Q5): Wer früher umkehren will, bekommt einen Fehler.
  */
@@ -110,7 +112,7 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   rechnung: { umkehren: rechnungChangeSetUmkehren, ziel: rechnungZiel },
   kostenermittlung: { umkehren: kostenermittlungChangeSetUmkehren, ziel: kostenZiel },
   // v1.6: mechanisch angepasst, Folgeticket (siehe `erstMitTicket`)
-  bauwerksmodell: erstMitTicket('114'),
+  bauwerksmodell: { umkehren: bauwerksmodellChangeSetUmkehren, ziel: bimZiel }, // Ticket 114
   bauzeitenplan: { umkehren: bauzeitenplanChangeSetUmkehren, ziel: bauzeitZiel }, // Ticket 118
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
   mangel: { umkehren: mangelChangeSetUmkehren, ziel: mangelZiel }, // Ticket 120

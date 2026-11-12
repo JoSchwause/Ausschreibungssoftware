@@ -18,6 +18,8 @@ import { texte as bauleitungTexte } from '../bauleitung/texte'; // Ticket 120
 import { bauzeitPfad } from '../bauzeit/pfad'; // Ticket 118
 import { texte as bauzeitTexte } from '../bauzeit/texte'; // Ticket 118
 import { kostenPfad } from '../kosten/pfad'; // Ticket 89
+import { modellePfad } from '../bim/pfad'; // Ticket 114
+import { texte as bimTexte } from '../bim/texte'; // Ticket 114
 import { texte as kostenTexte } from '../kosten/texte'; // Ticket 89
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
@@ -299,6 +301,13 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <Verweis
           pfad={bauzeitPfad(projekt.id)}
           text={bauzeitTexte.projekt.bauzeit}
+          gehe={gehe}
+          className="tx-button tx-button--schlicht"
+        />
+        {/* Ticket 114 */}
+        <Verweis
+          pfad={modellePfad(projekt.id)}
+          text={bimTexte.liste.modelle}
           gehe={gehe}
           className="tx-button tx-button--schlicht"
         />
