@@ -22,6 +22,14 @@ import { texte } from './texte';
  */
 export function kgEingabe(text: string): Ergebnis<Kostengruppennummer | null, string> {
   if (text.trim() === '') return { ok: true, wert: null };
+  return kgZelleLesen(text);
+}
+
+/**
+ * Lesefunktion der Spalte „KG“ im LV-Grid (Ticket 93, `LvGridProps.kostengruppeLesen`): `kgLesen` aus `kosten`, der Fehler
+ * als dieselbe Meldung wie im Dialog. Leeren Text liest das Grid selbst als „Zuordnung entfernen“.
+ */
+export function kgZelleLesen(text: string): Ergebnis<Kostengruppennummer, string> {
   const r = kgLesen(text);
   return r.ok ? r : { ok: false, fehler: texte.zuordnung.fehlerForm };
 }

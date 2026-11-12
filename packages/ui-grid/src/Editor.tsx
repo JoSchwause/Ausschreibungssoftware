@@ -25,11 +25,16 @@ export interface EditorProps {
   spalte: LvSpalte;
   entwurf: string;
   aktionen: EditorAktionen;
+  /**
+   * Hinweis zur Form des Entwurfs für Spalten ohne Zahlenformat, z. B. die Spalte „KG“ (Ticket 93): eine Meldung oder
+   * `undefined`. Wie beim Zahlenformat nur eine Markierung, keine Sperre.
+   */
+  pruefen?: ((text: string) => string | undefined) | undefined;
 }
 
 const ZAHLSPALTEN: ReadonlySet<LvSpalte> = new Set<LvSpalte>(['menge', 'einheitspreis']);
 
-export function Editor({ spalte, entwurf, aktionen }: EditorProps): ReactElement {
+export function Editor({ spalte, entwurf, aktionen, pruefen }: EditorProps): ReactElement {
   const ref = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -40,7 +45,7 @@ export function Editor({ spalte, entwurf, aktionen }: EditorProps): ReactElement
   }, []);
 
   const pruefung = ZAHLSPALTEN.has(spalte) ? pruefeZahlformatDeDE(entwurf) : { gueltig: true as const };
-  const meldung = pruefung.gueltig ? undefined : pruefung.meldung;
+  const meldung = pruefung.gueltig ? pruefen?.(entwurf) : pruefung.meldung;
 
   return (
     <input
@@ -49,7 +54,7 @@ export function Editor({ spalte, entwurf, aktionen }: EditorProps): ReactElement
       className={meldung ? 'tx-grid__editor tx-grid__editor--hinweis' : 'tx-grid__editor'}
       type="text"
       value={entwurf}
-      inputMode={ZAHLSPALTEN.has(spalte) ? 'decimal' : 'text'}
+      inputMode={ZAHLSPALTEN.has(spalte) ? 'decimal' : spalte === 'kostengruppe' ? 'numeric' : 'text'}
       spellCheck={false}
       autoComplete="off"
       aria-label={SPALTENTITEL[spalte]}

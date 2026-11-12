@@ -6,14 +6,24 @@ import type {
   Befehlshinweis,
   BefehlsEmpfaenger,
   Einfuegeort,
+  Ergebnis,
   GridIdQuelle,
   GridZahlen,
   KnotenId,
+  Kostengruppennummer,
+  KostengruppeSetzen,
   LvAnsicht,
   LvBefehl,
   LvSpalte,
   PositionAnlegen,
 } from '@tethys/vertrag';
+
+/**
+ * Lesefunktion der App für die Spalte „KG“ (Ticket 93): getrimmter, nicht leerer Text → Kostengruppennummer oder eine
+ * deutsche Meldung für die Zelle. Die Form prüft nicht das Grid (es darf `kosten` nicht importieren, A3); die App reicht
+ * `kgLesen` aus `kosten` herein. Leeren Text liest das Grid selbst als `null` (Zuordnung entfernen).
+ */
+export type KostengruppeLesen = (text: string) => Ergebnis<Kostengruppennummer, string>;
 
 /** Ziel eines Sprunglinks (Ticket 46, Punkt 8): Ändert sich `nr`, springt das Grid zur Zelle. */
 export interface Sprungziel {
@@ -31,8 +41,17 @@ interface LvGridGemeinsam {
    * fügt das Grid am Ende von `ansicht.wurzelId` ein.
    */
   readonly ansicht: LvAnsicht;
-  /** Anzeige- und Navigationsreihenfolge der Spalten; Standard: alle sieben in der Reihenfolge von `LvSpalte`. */
+  /**
+   * Anzeige- und Navigationsreihenfolge der Spalten; Standard: `STANDARDSPALTEN`, die sieben Spalten vor `kostengruppe` in
+   * der Reihenfolge von `LvSpalte`. Die Spalte „KG“ (Ticket 93) erscheint nur, wenn die App sie hier nennt.
+   */
   readonly spalten?: readonly LvSpalte[];
+  /**
+   * Lesefunktion für die Spalte „KG“ (Ticket 93; die App reicht `kgLesen` aus `kosten` herein). Mit ihr lässt sich die
+   * Spalte an Positionen bearbeiten wie Menge und EP; eine formwidrige Eingabe ist ein Zellfehler, kein Befehl. Ohne sie
+   * zeigt die Spalte die Nummer nur an. Im schreibgeschützten Grid wirkt sie nur zusammen mit `onKostengruppen`.
+   */
+  readonly kostengruppeLesen?: KostengruppeLesen;
   /** Zahlenränder (N4); die App schließt sie an `dezimal` an. */
   readonly zahlen: GridZahlen;
   /** Sprung zu einer Zelle (Prüf-Links). Steht die Zeile nicht in der Ansicht (zugeklappt), tut das Grid nichts. */
@@ -100,6 +119,8 @@ export interface LvGridBearbeitbar extends LvGridGemeinsam {
    * Knoten „mindestens“.
    */
   readonly positionenZaehlen?: (knotenIds: readonly KnotenId[]) => number;
+  /** Nur im schreibgeschützten Grid: Hier gehen auch die Kostengruppen über `onBefehl` und `onBefehlsfolge`. */
+  readonly onKostengruppen?: never;
 }
 
 /**
@@ -115,6 +136,13 @@ export interface LvGridSchreibgeschuetzt extends LvGridGemeinsam {
   readonly onKopieEinfuegen?: never;
   readonly vorPositionAnlegen?: never;
   readonly positionenZaehlen?: never;
+  /**
+   * Ausnahme vom Schreibschutz (Ticket 93), z. B. im Auftrags-LV, an dem `KostengruppeSetzen` ein Befehl ist: Mit
+   * `kostengruppeLesen` und dieser Eigenschaft lässt sich die Spalte „KG“ an Positionen bearbeiten (Eingabe, Entf,
+   * Einfügen einer Spalte); alles andere bleibt schreibgeschützt. Jede Aktion kommt als eine Folge (ein Undo-Schritt),
+   * auch ein einzelner Befehl.
+   */
+  readonly onKostengruppen?: (befehle: readonly KostengruppeSetzen[]) => void;
 }
 
 export type LvGridProps = LvGridBearbeitbar | LvGridSchreibgeschuetzt;
