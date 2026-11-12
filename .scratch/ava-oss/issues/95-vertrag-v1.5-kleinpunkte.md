@@ -1,6 +1,6 @@
 # 95: `vertrag` v1.5: Kleinpunkte aus Welle 5
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: F · Paket: `packages/vertrag` (+ markierte mechanische Zeilen); P9 (Mensch prüft; im Demo-Lauf Opus-Review,
 D-42-Muster)
@@ -229,3 +229,9 @@ samt Paketgrenzen, Lizenzen und Clean Room; Vitest 207 Dateien bestanden, 1 übe
 wie zuvor; Fixtures 29/29). Ein Lauf davor (Stand `1859972`, ohne 94) war ebenso grün (205 Dateien, 2622 Tests).
 Kein Budget fiel, keines gelockert. Die E2E von `ui-grid` verlangt das Ticket nicht und liefen nicht: Die neue Spalte wird nur
 gezeichnet, wenn ein Aufrufer sie in `spalten` nennt (`props.spalten ?? STANDARDSPALTEN`), und das tut niemand.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `43bac31` (Branch `welle-6/95-vertrag-v1.5`, `47ec6b2`). `vertrag` v1.5 additiv: einheitlicher
+Fehlercode (Lesart), Befundquelle `erechnung-lesen`, `OzVorschlag`/`OzVorschlagen`, Typfragen aus 70 entschieden oder vertagt,
+`LvUebersicht.nettoNachNachlass` (D-95.5, D-62), `LvSpalte` `kostengruppe`. Folgearbeit in 93, 104, 105, 106, 121 eingetragen.

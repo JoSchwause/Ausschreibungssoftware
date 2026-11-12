@@ -26,8 +26,8 @@ Herkunft: Ticket 95 (Punkt 5), Ticket 97 (Punkte 1, 2, 4–8), Berater D-51, D-5
 3. **Repositories und `anwenden`** für alle neuen Aggregate und ChangeSets laut v1.6, mit den Löschregeln (`konflikt`) aus v1.6
    (u. a. `BauwerksmodellAnlegen` mit nicht abgelegtem Hash; Kostenermittlung in einer Honorarberechnung; Verweise von Mängeln)
    und Protokoll (Massenbefehl `BauwerksmodellAnlegen` als Kopf und Prüfsumme, E-13). Undo über die Umkehrung je Aggregat.
-4. **`LvUebersicht.netto` (v1.5 Punkt 5, D-92.4)** aus den gespeicherten Summen, nach Setzen und nach Undo gleich dem Kopf
-   (Test wie D-43).
+4. **`LvUebersicht.nettoNachNachlass` (v1.5 Punkt 5, D-92.4, Name nach D-95.5)** aus den gespeicherten Summen (Netto nach
+   Nachlass, nicht `Gesamtsummen.netto`), nach Setzen und nach Undo gleich dem gespeicherten Summenstand (Test wie D-43).
 5. **Leistung (Q4, D-54, D-57)**, unter Node mit In-Memory-SQLite wie die übrigen Budgettests des Pakets: ein Modell mit
    10.000 Bauteilen (`fixtures/ifc/erzeugen.mjs` über `packages/ifc`, sobald Ticket 107 gemergt ist; bis dahin ein Modell aus
    einem eigenen Testerzeuger in der Form von v1.6) speichern ≤ 3 s; Projektdatei-Export und -Import mit einem 25-MB-Modell je

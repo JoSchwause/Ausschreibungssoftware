@@ -597,3 +597,10 @@ Question: Kurz vor 13:10 traf der Lauf das 5-Stunden-Limit; alle acht laufenden 
 Decision: Um 13:10 alle acht aus ihrem gespeicherten Stand fortgesetzt (nichts verloren, unkommittierte Arbeit lag im Worktree), mit der Bitte, ab jetzt klein und oft zu committen; 95 zuerst, weil 97 und damit die ganze Stufe 2 an ihm hängt. Trifft der Lauf das Limit erneut, gilt dasselbe, mit Vorrang für den Weg 95 → 97 → Stufe 2 und X1-Kern (Kürzungsreihenfolge in `schnitt-welle-6.md`).
 Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist (wie D-46).
 Reversible: yes  Touches: Ablauf
+
+## D-62 Projektseite zeigt das Netto nach Nachlass
+Welle 6 · Ticket 95, 106, 121 · decided by: orchestrator
+Question: Ticket 95 nennt das neue Feld `LvUebersicht.nettoNachNachlass` statt `netto` (D-95.5: `Gesamtsummen.netto` ist das Netto vor Nachlass, L2). Die Projektseite zeigt bisher unter „Netto“ das Netto vor Nachlass; mit dem neuen Feld änderte sich die Zahl bei LVs mit Nachlass.
+Decision: Name `nettoNachNachlass` angenommen; die Spalte der Projektseite zeigt dieses Feld und heißt „Netto nach Nachlass“ (Ticket 121). Kein zweites Feld `netto` im Vertrag.
+Reason: Das Netto nach Nachlass ist die Zahl, die für ein LV in der Übersicht zählt; ein zweites Feld wäre eine weitere Vertragsänderung ohne Nutzen. Umbenennen der Spalte macht die geänderte Zahl ehrlich.
+Reversible: yes  Touches: apps/web/src/projekt, Tickets 106, 121

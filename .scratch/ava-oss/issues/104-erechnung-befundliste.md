@@ -14,8 +14,9 @@ Herkunft: Ticket 76 (eigener Typ `XRechnungBefund`), Ticket 95 Punkt 2 (Befundqu
 `erechnung` meldet seine Befunde heute in einem eigenen Typ `XRechnungBefund`. Seit `vertrag` v1.5 (Ticket 95, Punkt 2) gibt es
 eine Befundquelle für das Lesen einer XRechnung in der gemeinsamen Befundliste (`Pruefbefund`). Stelle `erechnung` darauf um:
 
-1. Jeder Befund des Lesers ist ein `Pruefbefund` mit der neuen Quelle und dem Ort, wie v1.5 ihn festlegt (Business Term bzw.
-   Pfad). Codes und Texte bleiben gleich (oder werden mit Grund umbenannt, Glossar beachten, L2).
+1. Jeder Befund des Lesers ist ein `Pruefbefund` mit der Quelle `'erechnung-lesen'` und dem Ort nach D-95.2 (`feld` =
+   Business Term, `pfad` = Element aus lokalen Namen mit `[n]` ab 1, `zeile`/`spalte` nur bei unlesbarem XML; eine Summenregel
+   nur mit `feld`, ein Befund zur Datei als Ganzes nur mit `pfad`). Codes und Texte bleiben gleich (oder werden mit Grund umbenannt, Glossar beachten, L2).
 2. `XRechnungBefund` entfällt; gibt es einen guten Grund für einen Übergangsnamen, als Alias mit Kommentar.
 3. Die App (`apps/web/src/rechnung/`, XRechnung einlesen) zeigt die Befunde wie bisher; nur die nötigen Zeilen nachziehen,
    markiert `// Ticket 104`.
