@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type {
+  IfcGlobalId,
   Kostengruppennummer,
   LvInhalt,
   Nachtragsangaben,
@@ -166,6 +167,13 @@ describe('Kostengruppe schreiben (Ticket 84)', () => {
   });
 });
 
+/** Leere Summen für einen X86-Export, der nur die Befunde prüft. */
+const SUMMEN_NULL = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: { netto: '0.00', nachlass: '0.00', nettoNachNachlass: '0.00', mwst: '0.00', brutto: '0.00' },
+} as never;
+
 describe('neue Felder ohne GAEB-Gegenstück: beim Export mit Warnung verworfen (Ticket 84)', () => {
   const NACHTRAG: Nachtragsangaben = {
     auftragsLvId: 'auftrags-lv-1' as AuftragsLeistungsverzeichnisId,
@@ -214,6 +222,40 @@ describe('neue Felder ohne GAEB-Gegenstück: beim Export mit Warnung verworfen (
       );
       expect(e.xml).not.toContain('Muster-LV Rohbau');
       expect(e.xml).not.toContain('N01');
+    }
+  });
+
+  it('Bauteilzuordnungen der Position (v1.6): mit Warnung verworfen, auch an einer Zuschlagsposition (D-66 SOLL 12, Ticket 122)', () => {
+    const wand = { globalId: '31nogOTPLaujT$VUogaKgY' as IfcGlobalId, mengenart: 'NetSideArea' };
+    const inhalt = lv([
+      position('p1', '01.0010', 0, { bauteile: [wand, { ...wand, mengenart: 'Stueck' }] }),
+      position('p2', '01.0020', 1, { bauteile: [] }),
+      position('z', '01.0030', 2, {
+        menge: null,
+        einheit: null,
+        zuschlag: { prozentsatz: '10.00' as Prozent, bezug: { art: 'gliederung' } },
+        bauteile: [wand],
+      }),
+    ]);
+    for (const phase of ['X81', 'X83', 'X86'] as const) {
+      const e = schreibeGaeb(inhalt, {
+        phase,
+        version: '3.3',
+        erstellt: TEST_ERSTELLT,
+        programm: 'Test',
+        ...(phase === 'X86' ? { summen: SUMMEN_NULL } : {}),
+      });
+      const verworfen = e.befunde.filter((b) => b.code === 'export-verworfen');
+      expect(
+        verworfen.map((b) => b.meldung),
+        phase,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^Bauteilzuordnungen der Position: .*\(2 Vorkommen\)/),
+        ]),
+      );
+      expect(verworfen.find((b) => b.meldung.startsWith('Bauteilzuordnungen'))?.schwere).toBe('warnung');
+      expect(e.xml).not.toContain(wand.globalId);
     }
   });
 });
