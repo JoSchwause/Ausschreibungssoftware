@@ -1,6 +1,6 @@
 # 94: Aufmaßblatt mit 5.000 Zeilen: Einzeländerung und Undo unter 100 ms
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: S, A2 · Paket: `packages/speicher` (Ausnahme von P2: die Messung in `apps/web/src/abrechnung/leistung.test.ts`
 darf nachgezogen werden, dort schreibt in Stufe 1 niemand)
@@ -40,8 +40,8 @@ Vorgehen:
 
 ## Acceptance criteria
 
-- [ ] Messung vor/nach im Ticket; Budgettest für 5.000 Zeilen in `speicher` (Q4), Konfliktregeln unverändert grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Messung vor/nach im Ticket; Budgettest für 5.000 Zeilen in `speicher` (Q4), Konfliktregeln unverändert grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -86,7 +86,9 @@ kaum schneller (15 statt 17 ms): Es zählt die Zahl der Objekte (rund 15.000), n
   eigenes `UPDATE`, beide nur bei Unterschied. Rechnung und Kostenermittlung prüfen unverändert über `gleich`
   (`GespeicherterStand`, `alsStand`). Abgesichert durch vier neue Fälle in `aufmass.test.ts` (Schlüsselreihenfolge und
   `undefined`, Zeilen wechseln die Stelle samt Undo/Redo, tiefe Abweichung und Kopf, Wert ohne JSON in `vorher`/`nachher`,
-  nur Kopf/nur Zeilen/nichts), vor der Änderung grün und danach. Reversible: yes.
+  nur Kopf/nur Zeilen/nichts), vor der Änderung grün und danach; dazu `kanonisch.test.ts`: `kanonischeListe` schreibt genau
+  wie `kanonischKompakt`, auch mit einer Merkliste über zwei Listen, deren Elemente die Stelle wechseln (per Mutation
+  geprüft: eine falsch geschriebene Lücke fällt auf). Reversible: yes.
 - **D-94.5 Budgettest an der Worker-Grenze.** Frage: Misst der Test das, was der Worker bekommt? Entscheidung: Eintrag und
   ChangeSet werden vor jedem `anwenden` mit `structuredClone` geklont (außerhalb der Messung), und der Test prüft, dass die
   geteilten Zeilen danach geteilt sind. Grund: Die Merkliste lebt davon; ginge die Identität verloren, zeigte es der Test.
@@ -124,6 +126,9 @@ kaum schneller (15 statt 17 ms): Es zählt die Zahl der Objekte (rund 15.000), n
 | Anlegen (`AufmassAnlegen`) | 59–81 ms (unverändert) | 64–69 ms |
 | Arbeitsspeicher je Undo-Schritt | – | 39–42 KiB (unverändert) |
 
+Unter Last 6,8–7,3 (andere Agenten, beide Dateien zugleich, nach der vollen Suite): `speicher` 32,1 / 42,1 / 37,3 ms
+(Setzen / Rückgängig / Wiederholen), App 26,5 / 31,5 / 26,9 ms. In der vollen Suite (Last bis 7,6) sind beide Budgettests grün.
+
 Bleibender Anteil je Schritt: die kanonische Form der 5.000 Zeilen von `vorher` (rund 20 ms); `nachher` aus der Merkliste rund
 1 ms, Text lesen 1 ms, `UPDATE` 2 ms. Nicht Teil dieses Tickets und unverändert: „Seite nachführen“ in der App (kumuliert
 Soll/Ist 41–47 ms, Grid-Zeilen 9–10 ms je Schritt).
@@ -132,3 +137,18 @@ Soll/Ist 41–47 ms, Grid-Zeilen 9–10 ms je Schritt).
 unter 100 ms im Speicherkern und am Befehlsweg der App. Nach Schritt 3 ist damit kein `vertrag` v1.5
 `Aenderungen<Aufmassposition>` nötig; die Entscheidung liegt beim Orchestrator (D-45). Hinweis für Ticket 106: Das Undo eines
 `Bauzeitenplan`-ChangeSets (ganzes Aggregat, D-57) kann denselben Weg nehmen (`GespeicherterStand`, `kanonischeListe`).
+
+### Prüfung
+
+Nach dem Merge von `integration/welle-6` bei `1859972` (nur neue Tickets): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint
+&& pnpm typecheck && pnpm test` grün (Vitest 208 Dateien: 207 bestanden, 1 übersprungen; 2.617 Tests bestanden, 3
+übersprungen; `node --test` 29/29), Last bis 7,6.
+
+## Answer
+
+Umgesetzt auf `welle-6/94-aufmass-undo`, nur die kleine Lösung, kein Vertrag: `speicher` vergleicht `vorher` eines
+Aufmaß-ChangeSets mit dem gespeicherten kanonischen Text statt mit dem geparsten Blatt, bringt jede Zeile höchstens einmal in
+kanonische Form (Merkliste für die Zeilen, die `nachher` mit `vorher` teilt, auch über `postMessage`) und schreibt nur, was sich
+ändert. 5.000 Zeilen: Einzeländerung, Undo und Redo je etwa 25–31 ms statt 63–71 ms (Leerlauf), unter Last 32–42 ms. Neuer
+Budgettest `speicher/src/aufmass-leistung.test.ts` (100 ms, Median); die App-Messung D-45 prüft jetzt dasselbe Budget statt 1 s.
+Entscheidungen D-94.1 bis D-94.6. Offen: Schreibkosten des 1-MiB-Satzes im OPFS des dauerhaften Profils (nicht gemessen).
