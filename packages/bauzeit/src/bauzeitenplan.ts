@@ -233,7 +233,17 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     }
     for (const b of v.vorgaenger) {
       const von = indexVon.get(b.vorgaengerId);
-      if (von === undefined) continue;
+      if (von === undefined) {
+        befunde.push(
+          befund(
+            'vorgaenger-unbekannt',
+            `Vorgang ${v.id}: Vorgänger ${b.vorgaengerId} gibt es nicht`,
+            v.id,
+            b.vorgaengerId,
+          ),
+        );
+        continue;
+      }
       if (sammel(von) || sammel(nach)) {
         befunde.push(
           befund(
@@ -248,6 +258,33 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
       kanten.push({ von, nach, art: b.art, abstand: b.abstand });
     }
   });
+
+  // --- Zyklen: ihre Beteiligten bleiben ohne Termine, Beziehungen von ihnen entfallen ---
+  const imZyklus = new Array<boolean>(n).fill(false);
+  for (const zyklus of zyklenFinden(n, kanten)) {
+    for (const i of zyklus) imZyklus[i] = true;
+    const ids = zyklus.map((i) => vorgaenge[i]?.id ?? '');
+    befunde.push(
+      befund('zyklus', `Zyklus in den Anordnungsbeziehungen: ${ids.join(' → ')}`, null, null, ids),
+    );
+  }
+  const imNetz = (i: number): boolean => !sammel(i) && imZyklus[i] !== true;
+  const netzkanten: Kante[] = [];
+  for (const k of kanten) {
+    if (imNetz(k.von) && imNetz(k.nach)) netzkanten.push(k);
+    else if (imNetz(k.nach)) {
+      const von = vorgaenge[k.von]?.id ?? '';
+      const nach = vorgaenge[k.nach]?.id ?? '';
+      befunde.push(
+        befund(
+          'vorgaenger-ohne-termine',
+          `Vorgang ${nach}: Vorgänger ${von} hat keine Termine, die Beziehung entfällt`,
+          nach,
+          von,
+        ),
+      );
+    }
+  }
 
   const ohneTermine = (projektbeginn: Datum | null): Bauzeitenplanergebnis => ({
     projektbeginn,
@@ -268,16 +305,16 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
 
   const aus: Kante[][] = Array.from({ length: n }, () => []);
   const ein: Kante[][] = Array.from({ length: n }, () => []);
-  for (const k of kanten) {
+  for (const k of netzkanten) {
     aus[k.von]?.push(k);
     ein[k.nach]?.push(k);
   }
 
   // --- Topologische Ordnung der Vorgänge im Netz (Kahn), Startknoten in Eingabereihenfolge ---
   const offen = new Array<number>(n).fill(0);
-  for (const k of kanten) offen[k.nach] = (offen[k.nach] ?? 0) + 1;
+  for (const k of netzkanten) offen[k.nach] = (offen[k.nach] ?? 0) + 1;
   const ordnung: number[] = [];
-  for (let i = 0; i < n; i++) if (!sammel(i) && offen[i] === 0) ordnung.push(i);
+  for (let i = 0; i < n; i++) if (imNetz(i) && offen[i] === 0) ordnung.push(i);
   for (let p = 0; p < ordnung.length; p++) {
     for (const k of aus[ordnung[p] ?? 0] ?? []) {
       const rest = (offen[k.nach] ?? 0) - 1;
@@ -464,4 +501,63 @@ function kritischeWegeFinden(
     );
   }
   return wege;
+}
+
+/**
+ * Zyklen der Anordnungsbeziehungen: starke Zusammenhangskomponenten (Tarjan, ohne Rekursion) mit mehr als einem Vorgang
+ * oder mit einer Beziehung auf sich selbst. Beteiligte je Zyklus aufsteigend, Zyklen nach ihrem ersten Beteiligten.
+ */
+function zyklenFinden(n: number, kanten: readonly Kante[]): number[][] {
+  const nachfolger: number[][] = Array.from({ length: n }, () => []);
+  const selbst = new Array<boolean>(n).fill(false);
+  for (const k of kanten) {
+    nachfolger[k.von]?.push(k.nach);
+    if (k.von === k.nach) selbst[k.von] = true;
+  }
+  const nummer = new Array<number>(n).fill(-1);
+  const tiefste = new Array<number>(n).fill(0);
+  const aufStapel = new Array<boolean>(n).fill(false);
+  const stapel: number[] = [];
+  const zyklen: number[][] = [];
+  let zaehler = 0;
+  const betreten = (v: number): void => {
+    nummer[v] = zaehler;
+    tiefste[v] = zaehler;
+    zaehler++;
+    stapel.push(v);
+    aufStapel[v] = true;
+  };
+  for (let s = 0; s < n; s++) {
+    if (nummer[s] !== -1) continue;
+    betreten(s);
+    const ruf: { v: number; pos: number }[] = [{ v: s, pos: 0 }];
+    while (ruf.length > 0) {
+      const oben = ruf[ruf.length - 1] ?? { v: s, pos: 0 };
+      const ziele = nachfolger[oben.v] ?? [];
+      if (oben.pos < ziele.length) {
+        const w = ziele[oben.pos] ?? 0;
+        oben.pos++;
+        if (nummer[w] === -1) {
+          betreten(w);
+          ruf.push({ v: w, pos: 0 });
+        } else if (aufStapel[w] === true) {
+          tiefste[oben.v] = Math.min(tiefste[oben.v] ?? 0, nummer[w] ?? 0);
+        }
+        continue;
+      }
+      ruf.pop();
+      const unten = ruf[ruf.length - 1];
+      if (unten !== undefined) tiefste[unten.v] = Math.min(tiefste[unten.v] ?? 0, tiefste[oben.v] ?? 0);
+      if (tiefste[oben.v] !== nummer[oben.v]) continue;
+      const komponente: number[] = [];
+      for (;;) {
+        const w = stapel.pop() ?? oben.v;
+        aufStapel[w] = false;
+        komponente.push(w);
+        if (w === oben.v) break;
+      }
+      if (komponente.length > 1 || selbst[oben.v] === true) zyklen.push(komponente.sort((x, y) => x - y));
+    }
+  }
+  return zyklen.sort((x, y) => (x[0] ?? 0) - (y[0] ?? 0));
 }

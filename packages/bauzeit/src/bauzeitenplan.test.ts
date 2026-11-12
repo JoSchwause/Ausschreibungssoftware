@@ -366,3 +366,53 @@ describe('Sammelvorgang', () => {
     expect(mit.befunde.map((b) => [b.code, b.vorgangId])).toEqual([['terminvorgabe-an-sammelvorgang', 's']]);
   });
 });
+
+describe('unbekannter Vorgänger und Zyklen', () => {
+  it('ein unbekannter Vorgänger ist ein Befund; die Beziehung entfällt', () => {
+    const e = bauzeitenplanBerechnen(plan([vorgang('a', 2), vorgang('b', 1, [ea('fehlt'), ea('a')])]));
+    expect(lage(e)['b']).toEqual(['2027-01-06', '2027-01-06']);
+    expect(e.befunde).toEqual([
+      {
+        code: 'vorgaenger-unbekannt',
+        vorgangId: 'b',
+        vorgaengerId: 'fehlt',
+        beteiligte: [],
+        meldung: expect.any(String) as string,
+      },
+    ]);
+  });
+
+  // a (2) → e (1); b und c hängen im Kreis aneinander; d (1) folgt auf c; f bezieht sich auf sich selbst.
+  const e = bauzeitenplanBerechnen(
+    plan([
+      vorgang('a', 2),
+      vorgang('b', 2, [ea('c')]),
+      vorgang('c', 2, [ea('b'), ea('a')]),
+      vorgang('d', 1, [ea('c')]),
+      vorgang('e', 1, [ea('a')]),
+      vorgang('f', 1, [ea('f')]),
+    ]),
+  );
+
+  it('die Beteiligten eines Zyklus bleiben ohne Termine; der Befund nennt sie in Eingabereihenfolge', () => {
+    expect(lage(e)).toEqual({
+      a: ['2027-01-04', '2027-01-05'],
+      b: null,
+      c: null,
+      // d ohne die Beziehung von c: ab Projektbeginn.
+      d: ['2027-01-04', '2027-01-04'],
+      e: ['2027-01-06', '2027-01-06'],
+      f: null,
+    });
+    expect(e.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId, b.beteiligte])).toEqual([
+      ['zyklus', null, null, ['b', 'c']],
+      ['zyklus', null, null, ['f']],
+      ['vorgaenger-ohne-termine', 'd', 'c', []],
+    ]);
+  });
+
+  it('die übrigen Vorgänge rechnen weiter; der kritische Weg führt nicht durch den Zyklus', () => {
+    expect(e.projektende).toBe('2027-01-06');
+    expect(e.kritischeWege).toEqual([['a', 'e']]);
+  });
+});
