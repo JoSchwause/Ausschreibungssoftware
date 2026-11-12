@@ -7,7 +7,7 @@
 // Sache des Kerns.
 
 import { KOSTENGRUPPE_FORM, langtextFormFehler } from '@tethys/kern';
-import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
+import { IFC_GLOBALID_MUSTER, MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   AnrechenbareKostenangabe,
   Anordnungsart,
@@ -989,12 +989,12 @@ function kostenermittlungZustand(x: unknown, pfad: string): KostenermittlungZust
 // „nie ''“ bzw. „nicht leer“); keine Fachregeln, die der Ausführer prüft (Ring in der Struktur, Statuswechsel, Datumsformat):
 // Strenger als er wäre, ließe Exporte nicht mehr importieren (D-79.4).
 
-const GLOBAL_ID = /^[0-9A-Za-z_$]{22}$/;
 const HASH = /^[0-9a-f]{64}$/;
 
 function globalId(x: unknown, pfad: string): IfcGlobalId {
   const s = zeichenkette(x, pfad);
-  if (!GLOBAL_ID.test(s)) ungueltig(pfad, `keine GlobalId (22 Zeichen aus 0-9, A-Z, a-z, _, $): „${s}“`);
+  if (!IFC_GLOBALID_MUSTER.test(s))
+    ungueltig(pfad, `keine GlobalId (22 Zeichen aus 0-9, A-Z, a-z, _, $): „${s}“`);
   return s as IfcGlobalId;
 }
 
@@ -1443,11 +1443,16 @@ function mangelZustand(x: unknown, pfad: string): MangelZustand {
     frist: textOderNull(feld(o, 'frist'), `${p}.frist`),
     verlauf: nichtLeereListe(feld(o, 'verlauf'), `${p}.verlauf`).map((e, i): Mangelverlaufseintrag => {
       const q = `${p}.verlauf[${String(i)}]`;
-      const eo = objekt(e, q, ['status', 'datum', 'bemerkung']);
+      const eo = objekt(e, q, ['status', 'datum', 'bemerkung'], ['frist']);
+      const status = aufzaehlung(feld(eo, 'status'), `${q}.status`, MANGELSTATUS);
+      // Nachtrag Review (D-66): die Frist einer Mängelanzeige, nur an einem Eintrag `angezeigt`; fehlt: keine Angabe.
+      if (Object.hasOwn(eo, 'frist') && status !== 'angezeigt')
+        ungueltig(`${q}.frist`, 'eine Frist steht nur an einem Eintrag angezeigt');
       return {
-        status: aufzaehlung(feld(eo, 'status'), `${q}.status`, MANGELSTATUS),
+        status,
         datum: zeichenkette(feld(eo, 'datum'), `${q}.datum`),
         bemerkung: nichtLeerOderNull(feld(eo, 'bemerkung'), `${q}.bemerkung`),
+        ...optional(eo, 'frist', (v) => nichtLeer(v, `${q}.frist`)),
       };
     }),
   };

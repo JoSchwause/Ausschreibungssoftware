@@ -148,6 +148,19 @@ describe('eingefrorene Projektdatei der Schemaversion 6', () => {
     if (SCHEMA_VERSION === 6) expect(neu).toBe(lese(5).replace('"schemaVersion": 5', '"schemaVersion": 6'));
   });
 
+  it('eine Frist am Verlaufseintrag angezeigt (D-66) kommt nach Import unverändert zurück', async () => {
+    const text = aendere(inhalt, ['maengel', 0, 'mangel', 'verlauf', 1, 'frist'], '2026-12-04');
+    const { kern } = await neuerKern();
+    wert(await kern.projektdateiImportieren(text));
+    expect(wert(kern.mangelLaden(V6_MANGEL_1)).mangel.verlauf[1]).toEqual({
+      status: 'angezeigt',
+      datum: '2026-11-21',
+      bemerkung: null,
+      frist: '2026-12-04',
+    });
+    expect(wert(kern.projektdateiExportieren(V2_PROJEKT))).toBe(kanonischesJson(JSON.parse(text)));
+  });
+
   it('schon abgelegte Bytes bleiben beim Import unverändert; ein zweiter Import desselben Projekts: existiert-bereits', async () => {
     const { kern } = await neuerKern();
     wert(await kern.modelldateiAblegen(V6_BYTES_1));
@@ -259,6 +272,11 @@ describe('Projektdatei Version 6: ungültige Formen (datei-ungueltig, nichts üb
     ['Mangelnummer doppelt', (d) => aendere(d, [...mangel, 'nummer'], 2)],
     ['Mangelstatus unbekannt', (d) => aendere(d, [...mangel, 'verlauf', 0, 'status'], 'erledigt')],
     ['Mangel ohne Verlauf', (d) => aendere(d, [...mangel, 'verlauf'], [])],
+    [
+      'Frist an einem Verlaufseintrag offen (D-66)',
+      (d) => aendere(d, [...mangel, 'verlauf', 0, 'frist'], '2026-12-04'),
+    ],
+    ['Frist eines Verlaufseintrags null (D-66)', (d) => aendere(d, [...mangel, 'verlauf', 1, 'frist'], null)],
     ['Mangelbeschreibung leer', (d) => aendere(d, [...mangel, 'beschreibung'], '')],
     ['Mangel an einem fremden Auftrags-LV', (d) => aendere(d, [...mangel, 'auftragsLvId'], 'fremd')],
     [
