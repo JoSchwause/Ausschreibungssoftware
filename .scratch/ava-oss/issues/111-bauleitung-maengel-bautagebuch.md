@@ -31,6 +31,9 @@ Ein reines TS-Paket (A2: keine Uhr; der Stichtag kommt vom Aufrufer), das die Be
 
 Neue Begriffe (z. B. „Mängelanzeige“, „Frist“) zuerst ins `GLOSSARY.md` (L2), Abschnitt „Bauleitung (LP 8)“.
 
+Aus Ticket 97 und dem Review (D-64, D-66): Befehlsnamen und Fehlercode `statuswechsel-unzulaessig` wie in v1.6; Befunde als
+`Pruefbefund` mit Quelle `fristpruefung`; `Mangelverlaufseintrag.frist?` (bei `angezeigt`) hält die Frist der Mängelanzeige.
+
 ## Grenzen
 
 - Nur `packages/bauleitung` (und die genannten Wurzeldateien). Keine Fotos (D-57). `okf/research/` wird nicht gelesen (C3).

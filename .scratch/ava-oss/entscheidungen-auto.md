@@ -625,3 +625,10 @@ Question: Kurz nach dem Start der Stufe 2 traf der Lauf erneut das 5-Stunden-Lim
 Decision: Um 18:13 alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-61). Trifft der Lauf das Limit ein drittes Mal, gilt die Kürzungsreihenfolge aus `schnitt-welle-6.md`; der Weg X1-Kern (105, 106, 107, 108 Mengenübernahme, 114, 115, 117) hat Vorrang vor X2–X4-Oberflächen, und der Bericht nennt, was offen bleibt.
 Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist.
 Reversible: yes  Touches: Ablauf
+
+## D-66 Review von `vertrag` v1.5/v1.6: „ja mit Korrekturen“
+Welle 6 · Ticket 97 (Folge: 105–121) · decided by: orchestrator
+Question: Der Opus-Reviewer (statt des Nutzers, P9) urteilt „yes-with-fixes“: 2 MUST, 11 SHOULD, keine Typänderung nötig. Was wird wo behoben?
+Decision: Nachtrag zu Ticket 97 (derselbe Umsetzer, nur Lesarten, additive Felder, Glossar): MUST 1 – der Hinweis „HOAI § 4 Abs. 1 verweist auf DIN 276:2008-12“ ist nie ein Befund und nicht Teil des `Honorarergebnis`, App und PDF drucken ihn als festen Text; MUST 2 – „Kopieren verwirft Zuordnungen“ gilt für Kopieren/Einfügen im LV und die Übernahme aus einem Muster-LV, „LV-Stand als neues LV“ behält sie (Kern 105 bekommt eine Option, App 121 eine Zeile); dazu die SHOULD 3, 5–10 (Lesart Anlegen ohne Inhalt, erster Treffer bei doppelten GlobalIds, `IFC_GLOBALID_MUSTER`, Pfad für Beziehungsbefunde, eigener Glossarname der Honorar-Eingabe, Befund „Bauteil ohne Geometrie“, `Mangelverlaufseintrag.frist?`). SHOULD 4 (Ringe in Struktur und Teilen mit Befund aufbrechen) geht an 107; SHOULD 11 (Laden eines 10k-Modells) messen 106/114; SHOULD 12 (GAEB-Export verwirft `bauteile` ohne F6-Warnung) geht in die Review-Behebung der Welle; SHOULD 13 (alte Namen in Tickettexten) erledigt durch Hinweise in 107, 109–111, 113, 118–121.
+Reason: Alle Befunde sind eng und additiv; die Stufe-2-Umsetzer bekommen die zwei MUST sofort als Nachricht.
+Reversible: yes  Touches: packages/vertrag, GLOSSARY.md, Tickets 105–121

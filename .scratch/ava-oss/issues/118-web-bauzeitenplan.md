@@ -27,6 +27,9 @@ Herkunft: `plan.md` §2 X2; Tor X2 (`plan.md` §4)
 Hinweis aus Ticket 96 (D-96.x): Ein langer Monat verliert beim waagerechten Scrollen seine Beschriftung unter den fixierten
 Spalten (KW bleiben lesbar). Ist das in der App störend, als kleines Folgeticket für `ui-grid` melden, nicht selbst ändern.
 
+Aus Ticket 97 (D-64): Ein unbekannter Vorgänger ist ein Fehler des Ausführers (das Formular lässt ihn nicht zu), kein Befund;
+das Ergebnis heißt `Bauzeitenplanergebnis`.
+
 ## Grenzen
 
 - Terminrechnung steht in `bauzeit`. `okf/research/` wird nicht gelesen (C3).
