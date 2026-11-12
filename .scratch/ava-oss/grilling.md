@@ -22,7 +22,9 @@ explizit geantwortet), **offen**.
   reine Export. (2026-11-09)
 - **G-04** Erster Schnitt — *entschieden*. **Antwort:** Schnitt A (Vergabe-Kern LPH 6–7). (2026-11-09)
 - **G-05** Module später oder nie — *entschieden*. **Antwort:** X1–X6 später. Auktion nie. Die
-  KI-Assistenz (X6) kommt nach M4, nicht in P8 davor. (2026-11-09)
+  KI-Assistenz (X6) kommt nach M4, nicht in P8 davor. (2026-11-09) **Nachtrag (2026-11-12, Nutzer, nach M4):** Welle 6 =
+  zuerst die Folgetickets 93–95, danach X1–X5. Schwerpunkt ist X1 BIM: dorthin geht der größte Teil der Arbeit (mehrere
+  Stränge, siehe `plan.md` §2 X). X6 (KI-Assistent) ist nicht in Welle 6. Auktion bleibt „nie“.
 - **G-06** Verhaltensgleichheit oder Lücken des Vorbilds schließen — *entschieden*. **Antwort:**
   Lücken schließen. Die Annahme in `docs/regeln.md` (U3, Q5) bleibt. (2026-11-09)
 - **G-07** Projektname — *entschieden (Platzhalter)*. **Antwort:** Arbeitsname **Tethys AVA**. Der

@@ -88,9 +88,18 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 **O — Ausgabe**
 - O1 PDF-Druck des LV · O2 Excel-Export/-Import · O3 Druckprofile
 
-**X — Erweiterungen** (G-05: alle später, Auktion nie)
+**X — Erweiterungen** (G-05: alle später, Auktion nie; Nachtrag 2026-11-12: X1–X5 in Welle 6, Schwerpunkt X1)
 - X1 BIM/IFC · X2 Bauzeitenplan · X3 HOAI · X4 Bauleitung (Mängel, Bautagebuch)
-- X5 Bieterportal / Sync-Server · X6 KI-Assistent (nach M4)
+- X5 Bieterportal / Sync-Server · X6 KI-Assistent (nach M4, nicht in Welle 6)
+- **X1 BIM, Schwerpunkt der Welle 6** (mehrere parallele Stränge, Vorschlag zum Schnitt):
+  X1a IFC lesen (Modellbaum, Bauteile mit Eigenschaften und Mengen, IFC 2x3/4) · X1b 3D-Ansicht im Browser (Auswahl,
+  Sichtbarkeit, Isolieren) · X1c Verknüpfung Bauteil (IFC-GlobalId) ↔ LV-Position und Kostengruppe (`vertrag`-Ticket) ·
+  X1d Mengen aus dem Modell (QTO) in Vordersätze und Aufmaßblätter · X1e Kosten aus dem Modell (Kostengruppen,
+  Kennwerte nach DIN 277) · X1f Modellstand und Änderungsvergleich (zwei IFC-Stände).
+  Vor dem Schnitt zu klären: Bibliothek für IFC und 3D-Ansicht samt Lizenz (C5, AGPL-verträglich), Ablage großer IFC-Dateien
+  (OPFS, nicht in der JSON-Projektdatei?), Leistungsbudgets für große Modelle (Q4).
+- X2–X5 je ein Strang. X5 (Bieterportal/Sync-Server) widerspricht ADR 0001 (lokal, ohne Server) sowie G-01 und G-14: vorher
+  eine ADR und eine Grilling-Frage.
 
 ## 3. Wellen
 
@@ -102,7 +111,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 | 3 | K8+K9 · S3 · U4–U6 · G3 · V1+V2 · M1 | **M2: GAEB rein und raus, XSD-valide** |
 | 4 | V3+V4 · O1+O2 · M2 · S4 · C1 | **M3 = MVP: Ausschreibung → Angebote → Zuschlag** |
 | 5 | A1–A4 · M3 · C2–C5 · O3 | **M4: durchgehende Kette LPH 6–8** |
-| 6 | in G-05 gewählte X-Stränge | je Modul (keine gewählt) |
+| 6 | Folgetickets 93–95, danach X1 BIM (Schwerpunkt, mehrere Stränge X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (nach ADR) | je Modul (G-05, Nachtrag 2026-11-12) |
 
 U hängt nur über `vertrag` an K. Deshalb baut U2 gegen Fixtures, bevor K fertig ist.
 

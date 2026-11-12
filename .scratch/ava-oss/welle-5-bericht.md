@@ -135,4 +135,6 @@ Welle 6 (`plan.md` §3): die in G-05 gewählten X-Stränge – keine gewählt. V
 2. **Merge:** `integration/welle-4` und `integration/welle-5` nach `main` (Welle 5 enthält Welle 4; ein Pull Request genügt,
    P7). Das Tor M4 ist die Grundlage für das Interview mit dem Büro (G-02).
 3. **Folgetickets 93–95** vor neuen Strängen.
-4. **G-05** neu fragen: welche X-Stränge (BIM, Bauzeitenplan, HOAI, Bauleitung, Bieterportal, KI-Assistent nach M4) in Welle 6.
+4. **G-05 beantwortet (2026-11-12, Nutzer):** Welle 6 = nach 93–95 die Stränge X1–X5, Schwerpunkt X1 BIM mit mehreren
+   Strängen (`plan.md` §2 X). Vor dem Schnitt: Bibliothek und Lizenz für IFC/3D, Ablage großer IFC-Dateien, Budgets; für X5
+   eine ADR (Server, gegen ADR 0001/G-01/G-14).
