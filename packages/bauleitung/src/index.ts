@@ -19,3 +19,8 @@ export type {
   Maengelzahlen,
 } from './maengelauswertung';
 export { maengelAuswerten } from './maengelauswertung';
+export {
+  bautagebucheintragBefehlAusfuehren,
+  bautagebucheintragChangeSetAnwenden,
+  bautagebucheintragChangeSetUmkehren,
+} from './bautagebuch-befehle';

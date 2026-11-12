@@ -7,7 +7,6 @@
 
 import type {
   Befehlsfehler,
-  Befehlsfehlercode,
   Ergebnis,
   Mangel,
   MangelangabenSetzen,
@@ -17,6 +16,7 @@ import type {
   MangelChangeSetUmkehren,
   Mangelverlaufseintrag,
 } from '@tethys/vertrag';
+import { type Abweisung, istFehler, istKennung, nein, textOderNull } from './befehlshilfen';
 import { istKalendertag } from './datum';
 import { istMangelstatus, statuswechselZulaessig } from './mangelstatus';
 
@@ -28,22 +28,8 @@ type Mangelangaben = Omit<MangelangabenSetzen, 'art'>;
 /** Form einer GlobalId (Zusage der Marke `IfcGlobalId`, D-97.4): 22 Zeichen aus dem IFC-Base64-Alphabet. */
 const GLOBAL_ID = /^[0-9A-Za-z_$]{22}$/;
 
-function nein(code: Befehlsfehlercode, meldung: string, feld?: string): { ok: false; fehler: Befehlsfehler } {
-  return { ok: false, fehler: feld === undefined ? { code, meldung } : { code, meldung, feld } };
-}
-
-/** Freier Text oder `null`; `''` wird `null` (D-111.4). `undefined`: kein Text und nicht `null` (Formfehler). */
-function textOderNull(wert: unknown): string | null | undefined {
-  if (wert === null || wert === '') return null;
-  return typeof wert === 'string' ? wert : undefined;
-}
-
-function istKennung(wert: unknown): boolean {
-  return typeof wert === 'string' && wert !== '';
-}
-
 /** Prüft die Angaben und gibt sie in Speicherform zurück (leere Texte als `null`). */
-function angabenLesen(a: Mangelangaben): Mangelangaben | { ok: false; fehler: Befehlsfehler } {
+function angabenLesen(a: Mangelangaben): Mangelangaben | Abweisung {
   if (typeof a.titel !== 'string' || a.titel.trim() === '')
     return nein('ungueltige-eingabe', 'Der Titel ist leer', 'titel');
   const beschreibung = textOderNull(a.beschreibung);
@@ -83,7 +69,7 @@ function angabenLesen(a: Mangelangaben): Mangelangaben | { ok: false; fehler: Be
 function eintragLesen(
   e: Mangelverlaufseintrag,
   vorheriger: Mangelverlaufseintrag | null,
-): Mangelverlaufseintrag | { ok: false; fehler: Befehlsfehler } {
+): Mangelverlaufseintrag | Abweisung {
   if (!istMangelstatus(e.status))
     return nein('ungueltige-eingabe', `Unbekannter Status: ${JSON.stringify(e.status)}`, 'status');
   if (!istKalendertag(e.datum))
@@ -108,16 +94,11 @@ function eintragLesen(
   return { status: e.status, datum: e.datum, bemerkung };
 }
 
-/** Ist `x` eine Abweisung statt eines gelesenen Werts? (Gelesene Werte tragen kein Feld `ok`.) */
-function istFehler(x: unknown): x is { ok: false; fehler: Befehlsfehler } {
-  return typeof x === 'object' && x !== null && 'ok' in x;
-}
-
 /** Prüft den ganzen Verlauf eines neuen Mangels gegen seinen Tag der Feststellung. */
 function verlaufLesen(
   verlauf: readonly Mangelverlaufseintrag[],
   festgestellt: string,
-): Mangelverlaufseintrag[] | { ok: false; fehler: Befehlsfehler } {
+): Mangelverlaufseintrag[] | Abweisung {
   if (verlauf.length === 0) return nein('ungueltige-eingabe', 'Der Verlauf ist leer', 'verlauf');
   const gelesen: Mangelverlaufseintrag[] = [];
   for (const e of verlauf) {
@@ -132,7 +113,7 @@ function verlaufLesen(
 function festgestelltPasst(
   festgestellt: string,
   verlauf: readonly Mangelverlaufseintrag[],
-): { ok: false; fehler: Befehlsfehler } | null {
+): Abweisung | null {
   const erster = verlauf[0];
   if (erster !== undefined && festgestellt > erster.datum)
     return nein(
