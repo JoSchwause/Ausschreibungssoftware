@@ -6,6 +6,20 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Arbeitskalender,
+  Bautagebucheintrag,
+  BautagebucheintragId,
+  Bauzeitenplan,
+  BauzeitenplanId,
+  BauzeitenplanKopf,
+  Honorarberechnung,
+  HonorarberechnungId,
+  HonorarberechnungUebersicht,
+  Honorarobjekt,
+  Mangel,
+  MangelId,
+  Nebenkostenangabe,
+  Vorgang,
   Bauteil,
   Bauteilzuordnung,
   Bauwerksmodell,
@@ -493,6 +507,103 @@ export const bauwerksmodellWerte = (k: BauwerksmodellKopf, anzahlBauteile: numbe
   k.eingelesen,
   anzahlBauteile,
 ];
+
+// --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
+//
+// Wie Aufmaßblatt und Rechnung (D-79.1): Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel, der Rest als kanonisches
+// JSON. Gelesen ist das Aggregat kanonisch gleich dem geschriebenen.
+
+export function bauzeitenplanKopfAusZeile(z: SqlZeile): BauzeitenplanKopf {
+  return {
+    id: text(z, 'id') as BauzeitenplanId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    projektbeginn: text(z, 'projektbeginn'),
+    kalender: jsonLesen(text(z, 'kalender'), 'kalender') as Arbeitskalender,
+  };
+}
+
+export const bauzeitenplanAusZeile = (z: SqlZeile): Bauzeitenplan => ({
+  ...bauzeitenplanKopfAusZeile(z),
+  vorgaenge: jsonLesen(text(z, 'vorgaenge'), 'vorgaenge') as Vorgang[],
+});
+
+/** Spalten `id, projekt_id, name, projektbeginn, kalender, vorgaenge` (die Vorgänge schon als kanonischer Text). */
+export const bauzeitenplanWerte = (b: BauzeitenplanKopf, vorgaenge: string): SqlWert[] => [
+  b.id,
+  b.projektId,
+  b.name,
+  b.projektbeginn,
+  kanonischKompakt(b.kalender),
+  vorgaenge,
+];
+
+export function honorarberechnungUebersichtAusZeile(z: SqlZeile): HonorarberechnungUebersicht {
+  return {
+    id: text(z, 'id') as HonorarberechnungId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    nebenkosten: jsonSpalte(z, 'nebenkosten') as Nebenkostenangabe | null,
+    mwstSatz: text(z, 'mwst_satz') as Prozent,
+  };
+}
+
+export const honorarberechnungAusZeile = (z: SqlZeile): Honorarberechnung => ({
+  ...honorarberechnungUebersichtAusZeile(z),
+  objekte: jsonLesen(text(z, 'objekte'), 'objekte') as Honorarobjekt[],
+});
+
+/** Spalten `id, projekt_id, name, nebenkosten, mwst_satz, objekte`. */
+export const honorarberechnungWerte = (h: Honorarberechnung): SqlWert[] => [
+  h.id,
+  h.projektId,
+  h.name,
+  jsonOderNull(h.nebenkosten),
+  h.mwstSatz,
+  kanonischKompakt(h.objekte),
+];
+
+/** Die Angaben eines Mangels: alles außer den Kopfspalten (`id`, `projektId`, `nummer`). */
+type Mangelangaben = Omit<Mangel, 'id' | 'projektId' | 'nummer'>;
+
+export const mangelAusZeile = (z: SqlZeile): Mangel => ({
+  ...(jsonLesen(text(z, 'angaben'), 'angaben') as Mangelangaben),
+  id: text(z, 'id') as MangelId,
+  projektId: projektId(z),
+  nummer: ganzzahl(z, 'nummer'),
+});
+
+/**
+ * Spalten `id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben`. Auftrags-LV und Modell stehen zusätzlich in
+ * eigenen Spalten (Fremdschlüssel, Index), damit ihr Löschen die Verweise ohne `json_each` findet.
+ */
+export function mangelWerte(m: Mangel): SqlWert[] {
+  const { id, projektId: projekt, nummer, ...angaben } = m;
+  return [
+    id,
+    projekt,
+    nummer,
+    m.auftragsLvId,
+    m.bauteil?.bauwerksmodellId ?? null,
+    kanonischKompakt(angaben),
+  ];
+}
+
+/** Die Angaben eines Bautagebucheintrags: alles außer den Kopfspalten (`id`, `projektId`, `datum`). */
+type Tagebuchangaben = Omit<Bautagebucheintrag, 'id' | 'projektId' | 'datum'>;
+
+export const bautagebucheintragAusZeile = (z: SqlZeile): Bautagebucheintrag => ({
+  ...(jsonLesen(text(z, 'angaben'), 'angaben') as Tagebuchangaben),
+  id: text(z, 'id') as BautagebucheintragId,
+  projektId: projektId(z),
+  datum: text(z, 'datum'),
+});
+
+/** Spalten `id, projekt_id, datum, angaben`. */
+export function bautagebucheintragWerte(t: Bautagebucheintrag): SqlWert[] {
+  const { id, projektId: projekt, datum, ...angaben } = t;
+  return [id, projekt, datum, kanonischKompakt(angaben)];
+}
 
 // --- Summen ---------------------------------------------------------------------------------------------------
 

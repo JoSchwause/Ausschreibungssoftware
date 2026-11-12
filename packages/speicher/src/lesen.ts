@@ -4,8 +4,14 @@
 // `reihenfolge`), Summen und Angebotspositionen nach Kennung, Protokoll nach Eintragsreihenfolge.
 
 import type {
+  Bautagebucheintrag,
   Bauwerksmodell,
   BauwerksmodellUebersicht,
+  Bauzeitenplan,
+  BauzeitenplanKopf,
+  Honorarberechnung,
+  HonorarberechnungUebersicht,
+  Mangel,
   Angebot,
   Angebotsposition,
   AngebotId,
@@ -49,8 +55,14 @@ import {
   angebotspositionAusZeile,
   aufmassAusZeile,
   aufmasskopfAusZeile,
+  bautagebucheintragAusZeile,
   bauwerksmodellAusZeilen,
   bauwerksmodellUebersichtAusZeile,
+  bauzeitenplanAusZeile,
+  bauzeitenplanKopfAusZeile,
+  honorarberechnungAusZeile,
+  honorarberechnungUebersichtAusZeile,
+  mangelAusZeile,
   kostenermittlungAusZeile,
   kostenermittlungUebersichtAusZeile,
   rechnungAusZeile,
@@ -480,6 +492,73 @@ export function listeBauwerksmodelle(db: Datenbank, projekt: ProjektId): Bauwerk
     .zeilen('SELECT * FROM bauwerksmodell WHERE projekt_id = ? ORDER BY id', [projekt])
     .map(bauwerksmodellUebersichtAusZeile)
     .sort(nachName);
+}
+
+// --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
+
+const eine = <T>(db: Datenbank, tabelle: string, id: string, aus: (z: SqlZeile) => T): T | null => {
+  const z = db.zeilen(`SELECT * FROM ${tabelle} WHERE id = ?`, [id])[0];
+  return z === undefined ? null : aus(z);
+};
+
+export const leseBauzeitenplan = (db: Datenbank, id: string): Bauzeitenplan | null =>
+  eine(db, 'bauzeitenplan', id, bauzeitenplanAusZeile);
+
+/** Ein gespeicherter Plan mit seinen Vorgängen als gespeicherter kanonischer Text, nicht geparst (wie `AufmassText`). */
+export interface BauzeitenplanText {
+  readonly kopf: BauzeitenplanKopf;
+  readonly vorgaenge: string;
+}
+
+export const leseBauzeitenplanText = (db: Datenbank, id: string): BauzeitenplanText | null =>
+  eine(db, 'bauzeitenplan', id, (z) => ({
+    kopf: bauzeitenplanKopfAusZeile(z),
+    vorgaenge: text(z, 'vorgaenge'),
+  }));
+
+/** Die Pläne eines Projekts ohne Vorgänge, sortiert wie die LV-Liste. */
+export function listeBauzeitenplaene(db: Datenbank, projekt: ProjektId): BauzeitenplanKopf[] {
+  return db
+    .zeilen(
+      'SELECT id, projekt_id, name, projektbeginn, kalender FROM bauzeitenplan WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map(bauzeitenplanKopfAusZeile)
+    .sort(nachName);
+}
+
+export const leseHonorarberechnung = (db: Datenbank, id: string): Honorarberechnung | null =>
+  eine(db, 'honorarberechnung', id, honorarberechnungAusZeile);
+
+/** Die Honorarberechnungen eines Projekts ohne Objekte, sortiert wie die LV-Liste. */
+export function listeHonorarberechnungen(db: Datenbank, projekt: ProjektId): HonorarberechnungUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, projekt_id, name, nebenkosten, mwst_satz FROM honorarberechnung WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map(honorarberechnungUebersichtAusZeile)
+    .sort(nachName);
+}
+
+export const leseMangel = (db: Datenbank, id: string): Mangel | null =>
+  eine(db, 'mangel', id, mangelAusZeile);
+
+/** Die Mängel eines Projekts, ganz, nach Nummer (`MangelRepository.auflisten`). */
+export function listeMaengel(db: Datenbank, projekt: ProjektId): Mangel[] {
+  return db
+    .zeilen('SELECT * FROM mangel WHERE projekt_id = ? ORDER BY nummer', [projekt])
+    .map(mangelAusZeile);
+}
+
+export const leseBautagebucheintrag = (db: Datenbank, id: string): Bautagebucheintrag | null =>
+  eine(db, 'bautagebucheintrag', id, bautagebucheintragAusZeile);
+
+/** Die Einträge eines Projekts, ganz, nach Datum (`BautagebuchRepository.auflisten`; je Datum höchstens einer). */
+export function listeBautagebuch(db: Datenbank, projekt: ProjektId): Bautagebucheintrag[] {
+  return db
+    .zeilen('SELECT * FROM bautagebucheintrag WHERE projekt_id = ? ORDER BY datum', [projekt])
+    .map(bautagebucheintragAusZeile);
 }
 
 // --- Modelldateien (Schema 6, v1.6; D-51) --------------------------------------------------------------------------------

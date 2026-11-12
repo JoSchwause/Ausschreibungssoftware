@@ -7,8 +7,11 @@
 import type {
   Aufmass,
   AuftragsLvKopf,
+  Bautagebucheintrag,
   BauwerksmodellKopf,
+  Honorarberechnung,
   Knoten,
+  Mangel,
   LvKopf,
   ProjektId,
   Rechnung,
@@ -217,6 +220,72 @@ export function pruefeBauwerksmodellAnlegen(db: Datenbank, k: BauwerksmodellKopf
       .length === 0
   )
     konflikt(`Bauwerksmodell ${k.id} nennt den Vorgänger ${vorgaenger}, den es im Projekt nicht gibt`);
+}
+
+// --- Honorarberechnung, Mangel, Bautagebucheintrag (v1.6, Ticket 106; D-97.6) ---------------------------------------------
+
+/** Jede Kostenermittlung, auf die ein Honorarobjekt verweist, gibt es im Projekt (D-56, Lesart an `AnrechenbareKostenangabe`). */
+export function pruefeHonorarbezuege(db: Datenbank, h: Honorarberechnung): void {
+  for (const o of h.objekte) {
+    const k = o.anrechenbareKosten;
+    if (
+      k.art === 'kostenermittlung' &&
+      db.zeilen('SELECT 1 AS da FROM kostenermittlung WHERE id = ? AND projekt_id = ?', [
+        k.kostenermittlungId,
+        h.projektId,
+      ]).length === 0
+    )
+      konflikt(
+        `Honorarberechnung ${h.id} verweist auf die Kostenermittlung ${k.kostenermittlungId}, die es im Projekt nicht gibt`,
+      );
+  }
+}
+
+/** Löschen einer Kostenermittlung: Keine Honorarberechnung verweist darauf (Q5). */
+export function pruefeKostenermittlungLoeschen(db: Datenbank, id: string): void {
+  const z = db.zeilen(
+    `SELECT h.id FROM honorarberechnung h, json_each(h.objekte) o
+     WHERE json_extract(o.value, '$.anrechenbareKosten.kostenermittlungId') = ? ORDER BY h.id LIMIT 1`,
+    [id],
+  )[0];
+  if (z !== undefined)
+    konflikt(
+      `Kostenermittlung ${id} lässt sich nicht löschen, solange die Honorarberechnung ${String(z['id'])} darauf verweist`,
+    );
+}
+
+/**
+ * Mangel schreiben: Die Nummer hat im Projekt kein anderer Mangel; das Auftrags-LV und das Modell des Bauteils gibt es im
+ * Projekt (starke Verweise, D-97.6). `positionId` ist ein schwacher Verweis und wird nicht geprüft.
+ */
+export function pruefeMangel(db: Datenbank, m: Mangel): void {
+  const da = db.zeilen('SELECT id FROM mangel WHERE projekt_id = ? AND nummer = ? AND id <> ?', [
+    m.projektId,
+    m.nummer,
+    m.id,
+  ])[0];
+  if (da !== undefined)
+    konflikt(`Die Mangelnummer ${String(m.nummer)} hat im Projekt schon ${String(da['id'])}`);
+  if (m.auftragsLvId !== null && !auftragsLvImProjekt(db, m.auftragsLvId, m.projektId))
+    konflikt(`Mangel ${m.id} verweist auf das Auftrags-LV ${m.auftragsLvId}, das es im Projekt nicht gibt`);
+  const modell = m.bauteil?.bauwerksmodellId ?? null;
+  if (
+    modell !== null &&
+    db.zeilen('SELECT 1 AS da FROM bauwerksmodell WHERE id = ? AND projekt_id = ?', [modell, m.projektId])
+      .length === 0
+  )
+    konflikt(`Mangel ${m.id} verweist auf das Bauwerksmodell ${modell}, das es im Projekt nicht gibt`);
+}
+
+/** Bautagebucheintrag schreiben: Das Datum trägt im Projekt kein anderer Eintrag (D-57). */
+export function pruefeBautagebucheintrag(db: Datenbank, t: Bautagebucheintrag): void {
+  const da = db.zeilen('SELECT id FROM bautagebucheintrag WHERE projekt_id = ? AND datum = ? AND id <> ?', [
+    t.projektId,
+    t.datum,
+    t.id,
+  ])[0];
+  if (da !== undefined)
+    konflikt(`Das Datum ${t.datum} trägt im Projekt schon der Eintrag ${String(da['id'])}`);
 }
 
 /** Löschen: Kein späterer Stand nennt das Modell als Vorgänger, kein Mangel verweist darauf (D-97.6, D-64). */

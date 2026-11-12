@@ -28,6 +28,12 @@ import type {
   BauwerksmodellChangeSet,
   BauwerksmodellKopf,
   BauwerksmodellUebersicht,
+  BautagebucheintragChangeSet,
+  Bauzeitenplan,
+  BauzeitenplanChangeSet,
+  BauzeitenplanKopf,
+  HonorarberechnungChangeSet,
+  MangelChangeSet,
   Gesamtsummen,
   Knoten,
   KostenermittlungChangeSet,
@@ -52,7 +58,11 @@ import {
   leseAngebotposition,
   leseAufmassText,
   leseAuftragsLvKopf,
+  leseBautagebucheintrag,
   leseBauwerksmodellKopf,
+  leseBauzeitenplanText,
+  leseHonorarberechnung,
+  leseMangel,
   leseKnoten1,
   leseKostenermittlung,
   leseLv,
@@ -63,13 +73,18 @@ import {
   leseRechnung,
   leseSummen,
   type AufmassText,
+  type BauzeitenplanText,
 } from './lesen';
 import type { Datenbank, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
 import {
   angebotspositionWerte,
   aufmassWerte,
+  bautagebucheintragWerte,
   bauwerksmodellWerte,
+  bauzeitenplanWerte,
+  honorarberechnungWerte,
+  mangelWerte,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
@@ -86,6 +101,10 @@ import {
   pruefeAuftragsLvKopf,
   pruefeBauwerksmodellAnlegen,
   pruefeBauwerksmodellLoeschen,
+  pruefeBautagebucheintrag,
+  pruefeHonorarbezuege,
+  pruefeKostenermittlungLoeschen,
+  pruefeMangel,
   pruefeEntfernteAufmasspositionen,
   pruefeFreigabereihenfolge,
   pruefeNachtragsbezug,
@@ -967,7 +986,7 @@ function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: Pr
   if (gespeichert.projektId !== projektId)
     return abbruch('unbekannt', `Auftrags-LV ${id} gehört zu einem anderen Projekt.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Auftrags-LV-Kopfs');
-  // v1.4 (Q5): Aufmaßblätter, Rechnungen und Nachtragsangaben eines LV verweisen auf das Auftrags-LV.
+  // v1.4 (Q5): Aufmaßblätter, Rechnungen und Nachtragsangaben eines LV verweisen auf das Auftrags-LV; v1.6 (D-97.6): Mängel.
   abhaengig(
     db,
     `Auftrags-LV ${id}`,
@@ -975,6 +994,7 @@ function loescheAuftragsLv(db: Datenbank, cs: AuftragsLvChangeSet, projektId: Pr
      UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE auftrags_lv_id = ?1
      UNION ALL SELECT 'LV mit Nachtragsangaben', id FROM leistungsverzeichnis
        WHERE json_extract(nachtrag, '$.auftragsLvId') = ?1
+     UNION ALL SELECT 'Mangel', id FROM mangel WHERE auftrags_lv_id = ?1
      ORDER BY 1, 2`,
     id,
   );
@@ -1154,6 +1174,7 @@ export function wendeKostenermittlungAn(
   const { vorher, nachher } = cs.kostenermittlung;
   pruefeGanzesAggregat(cs.kostenermittlung, id, projektId, alsStand(leseKostenermittlung(db, id)), was, []);
   if (nachher === null) {
+    pruefeKostenermittlungLoeschen(db, id); // v1.6 (Q5): keine Honorarberechnung verweist darauf
     db.ausfuehren('DELETE FROM kostenermittlung WHERE id = ?', [id]);
     return;
   }
@@ -1239,6 +1260,174 @@ export function wendeBauwerksmodellAn(
   }
   // Umbenennen: alles außer dem Namen ist oben als fest geprüft.
   db.ausfuehren('UPDATE bauwerksmodell SET name = ? WHERE id = ?', [nachher.name, id]);
+}
+
+// --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
+//
+// Ganze Aggregate wie Aufmaßblatt und Rechnung (`pruefeGanzesAggregat`). Ein Aggregat in einem Projekt anzulegen, das es nicht
+// gibt, ist `nicht-gefunden` (wie die Kostenermittlung, D-79.5).
+
+function projektDa(db: Datenbank, projektId: ProjektId): void {
+  if (leseProjekt(db, projektId) === null)
+    abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+}
+
+/** Der Kopf eines Plans (ohne Vorgänge). */
+function planKopf(b: Bauzeitenplan): BauzeitenplanKopf {
+  const { vorgaenge, ...kopf } = b;
+  void vorgaenge;
+  return kopf;
+}
+
+/**
+ * Der gespeicherte Stand eines Plans mit den Vorgängen als gespeichertem Text (wie `aufmassStand`, Ticket 94): Die Vorgänge,
+ * die `vorher` mit `nachher` teilt, werden nur einmal in kanonische Form gebracht, der gespeicherte Text wird nicht geparst
+ * (Undo bei 1.000 Vorgängen, D-57).
+ */
+function planStand(
+  g: BauzeitenplanText,
+  merkliste: WeakMap<object, string>,
+): GespeicherterStand<Bauzeitenplan> {
+  return {
+    passt: (vorher) => {
+      const zeilen: unknown = vorher.vorgaenge;
+      return (
+        (zeilen === undefined ? null : zeilentext(zeilen, merkliste)) === g.vorgaenge &&
+        gleich(g.kopf, planKopf(vorher))
+      );
+    },
+  };
+}
+
+/** Bauzeitenplan anlegen, ändern oder löschen (`BauzeitenplanChangeSet`); seine Verweise sind schwach (Befunde der App). */
+export function wendeBauzeitenplanAn(db: Datenbank, cs: BauzeitenplanChangeSet, projektId: ProjektId): void {
+  const id = cs.bauzeitenplanId;
+  const was = `Bauzeitenplan ${id}`;
+  const { vorher, nachher } = cs.bauzeitenplan;
+  const merkliste = new WeakMap<object, string>();
+  const gespeichert = leseBauzeitenplanText(db, id);
+  pruefeGanzesAggregat(
+    cs.bauzeitenplan,
+    id,
+    projektId,
+    gespeichert === null ? null : planStand(gespeichert, merkliste),
+    was,
+    [],
+  );
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM bauzeitenplan WHERE id = ?', [id]);
+    return;
+  }
+  const vorgaenge = zeilentext(nachher.vorgaenge, merkliste);
+  if (vorher === null) {
+    projektDa(db, projektId);
+    db.ausfuehren(
+      'INSERT INTO bauzeitenplan (id, projekt_id, name, projektbeginn, kalender, vorgaenge) VALUES (?, ?, ?, ?, ?, ?)',
+      bauzeitenplanWerte(nachher, vorgaenge),
+    );
+    return;
+  }
+  // `vorher` ist der gespeicherte Stand (oben geprüft); geschrieben wird nur, was sich ändert.
+  if (!gleich(planKopf(vorher), planKopf(nachher)))
+    db.ausfuehren('UPDATE bauzeitenplan SET name = ?, projektbeginn = ?, kalender = ? WHERE id = ?', [
+      nachher.name,
+      nachher.projektbeginn,
+      kanonischKompakt(nachher.kalender),
+      id,
+    ]);
+  if (vorgaenge !== gespeichert?.vorgaenge)
+    db.ausfuehren('UPDATE bauzeitenplan SET vorgaenge = ? WHERE id = ?', [vorgaenge, id]);
+}
+
+/** Honorarberechnung anlegen, ändern oder löschen; ihre Verweise auf Kostenermittlungen hält `speicher` (Q5). */
+export function wendeHonorarberechnungAn(
+  db: Datenbank,
+  cs: HonorarberechnungChangeSet,
+  projektId: ProjektId,
+): void {
+  const id = cs.honorarberechnungId;
+  const { vorher, nachher } = cs.honorarberechnung;
+  pruefeGanzesAggregat(
+    cs.honorarberechnung,
+    id,
+    projektId,
+    alsStand(leseHonorarberechnung(db, id)),
+    `Honorarberechnung ${id}`,
+    [],
+  );
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM honorarberechnung WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) projektDa(db, projektId);
+  pruefeHonorarbezuege(db, nachher);
+  const w = honorarberechnungWerte(nachher);
+  if (vorher === null)
+    db.ausfuehren(
+      'INSERT INTO honorarberechnung (id, projekt_id, name, nebenkosten, mwst_satz, objekte) VALUES (?, ?, ?, ?, ?, ?)',
+      w,
+    );
+  else
+    db.ausfuehren(
+      'UPDATE honorarberechnung SET name = ?, nebenkosten = ?, mwst_satz = ?, objekte = ? WHERE id = ?',
+      [...w.slice(2), id],
+    );
+}
+
+/** Mangel anlegen, ändern oder löschen; die Nummer bleibt fest (D-97.13), Auftrags-LV und Modell hält `speicher` (D-97.6). */
+export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: ProjektId): void {
+  const id = cs.mangelId;
+  const { vorher, nachher } = cs.mangel;
+  pruefeGanzesAggregat(cs.mangel, id, projektId, alsStand(leseMangel(db, id)), `Mangel ${id}`, ['nummer']);
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM mangel WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    pruefeNummer(nachher.nummer, `Mangel ${id}`);
+    projektDa(db, projektId);
+  }
+  pruefeMangel(db, nachher);
+  const w = mangelWerte(nachher);
+  if (vorher === null)
+    db.ausfuehren(
+      'INSERT INTO mangel (id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben) VALUES (?, ?, ?, ?, ?, ?)',
+      w,
+    );
+  else
+    db.ausfuehren('UPDATE mangel SET auftrags_lv_id = ?, bauwerksmodell_id = ?, angaben = ? WHERE id = ?', [
+      ...w.slice(3),
+      id,
+    ]);
+}
+
+/** Bautagebucheintrag anlegen, ändern oder löschen; je Projekt und Datum höchstens einer (D-57). */
+export function wendeBautagebucheintragAn(
+  db: Datenbank,
+  cs: BautagebucheintragChangeSet,
+  projektId: ProjektId,
+): void {
+  const id = cs.bautagebucheintragId;
+  const { vorher, nachher } = cs.bautagebucheintrag;
+  pruefeGanzesAggregat(
+    cs.bautagebucheintrag,
+    id,
+    projektId,
+    alsStand(leseBautagebucheintrag(db, id)),
+    `Bautagebucheintrag ${id}`,
+    [],
+  );
+  if (nachher === null) {
+    db.ausfuehren('DELETE FROM bautagebucheintrag WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) projektDa(db, projektId);
+  pruefeBautagebucheintrag(db, nachher);
+  const w = bautagebucheintragWerte(nachher);
+  if (vorher === null)
+    db.ausfuehren('INSERT INTO bautagebucheintrag (id, projekt_id, datum, angaben) VALUES (?, ?, ?, ?)', w);
+  else
+    db.ausfuehren('UPDATE bautagebucheintrag SET datum = ?, angaben = ? WHERE id = ?', [...w.slice(2), id]);
 }
 
 const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf => {

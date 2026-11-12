@@ -15,6 +15,18 @@ import type {
   BauwerksmodellId,
   BauwerksmodellUebersicht,
   BauwerksmodellZustand,
+  Bautagebucheintrag,
+  BautagebucheintragId,
+  BautagebucheintragZustand,
+  BauzeitenplanId,
+  BauzeitenplanUebersicht,
+  BauzeitenplanZustand,
+  HonorarberechnungId,
+  HonorarberechnungUebersicht,
+  HonorarberechnungZustand,
+  Mangel,
+  MangelId,
+  MangelZustand,
   ChangeSet,
   KostenermittlungId,
   KostenermittlungUebersicht,
@@ -40,12 +52,15 @@ import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { deflateRaw, inflateRaw, sha256Hex } from './komprimierung';
 import { protokollform } from './kurzfassung';
-import { pruefeV16 } from './vertrag-v16'; // v1.6: mechanisch angepasst, Folgeticket 106
 import {
   leseAngebot,
   leseAufmass,
   leseAuftragsLv,
+  leseBautagebucheintrag,
   leseBauwerksmodell,
+  leseBauzeitenplan,
+  leseHonorarberechnung,
+  leseMangel,
   leseKostenermittlung,
   leseLv,
   leseLvKopf,
@@ -58,7 +73,11 @@ import {
   leseRechnungen,
   listeAufmasse,
   listeAuftragsLvs,
+  listeBautagebuch,
   listeBauwerksmodelle,
+  listeBauzeitenplaene,
+  listeHonorarberechnungen,
+  listeMaengel,
   listeIds,
   listeKostenermittlungen,
   listeLvs,
@@ -74,7 +93,11 @@ import {
   wendeAngebotAn,
   wendeAufmassAn,
   wendeAuftragsLvAn,
+  wendeBautagebucheintragAn,
   wendeBauwerksmodellAn,
+  wendeBauzeitenplanAn,
+  wendeHonorarberechnungAn,
+  wendeMangelAn,
   wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
@@ -115,7 +138,6 @@ function aggregatDes(cs: ChangeSet): { art: string; id: string } {
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
-  pruefeV16(cs); // v1.6: mechanisch angepasst, Folgeticket 106 (Teile aus v1.6: `unbekannt`, bevor der Bezug zählt)
   const erwartet = aggregatDes(cs);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
@@ -391,6 +413,76 @@ export class SpeicherKern {
     });
   }
 
+  /** Liest ein Aggregat oder bricht mit `nicht-gefunden` ab. */
+  #eines<T, K extends string>(
+    lesen: () => T | null,
+    was: string,
+    schluessel: K,
+  ): Ergebnis<{ readonly [P in K]: T }, Speicherfehler> {
+    return this.#fange(() => {
+      const wert = lesen();
+      return wert === null
+        ? abbruch('nicht-gefunden', `${was} ist nicht vorhanden.`)
+        : ({ [schluessel]: wert } as { readonly [P in K]: T });
+    });
+  }
+
+  /** Eine Liste des Projekts; unbekanntes Projekt: `nicht-gefunden`. */
+  #liste<T>(projektId: ProjektId, f: () => T): Ergebnis<T, Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return f();
+    });
+  }
+
+  /** `BauzeitenplanRepository.auflisten`: die Pläne ohne Vorgänge, nach Name. */
+  bauzeitenplaeneAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly BauzeitenplanUebersicht[], Speicherfehler> {
+    return this.#liste(projektId, () => listeBauzeitenplaene(this.#db, projektId));
+  }
+
+  bauzeitenplanLaden(id: BauzeitenplanId): Ergebnis<BauzeitenplanZustand, Speicherfehler> {
+    return this.#eines(() => leseBauzeitenplan(this.#db, id), `Bauzeitenplan ${id}`, 'bauzeitenplan');
+  }
+
+  /** `HonorarberechnungRepository.auflisten`: ohne Objekte, nach Name. */
+  honorarberechnungenAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly HonorarberechnungUebersicht[], Speicherfehler> {
+    return this.#liste(projektId, () => listeHonorarberechnungen(this.#db, projektId));
+  }
+
+  honorarberechnungLaden(id: HonorarberechnungId): Ergebnis<HonorarberechnungZustand, Speicherfehler> {
+    return this.#eines(
+      () => leseHonorarberechnung(this.#db, id),
+      `Honorarberechnung ${id}`,
+      'honorarberechnung',
+    );
+  }
+
+  /** `MangelRepository.auflisten`: die Mängel ganz, nach Nummer. */
+  maengelAuflisten(projektId: ProjektId): Ergebnis<readonly Mangel[], Speicherfehler> {
+    return this.#liste(projektId, () => listeMaengel(this.#db, projektId));
+  }
+
+  mangelLaden(id: MangelId): Ergebnis<MangelZustand, Speicherfehler> {
+    return this.#eines(() => leseMangel(this.#db, id), `Mangel ${id}`, 'mangel');
+  }
+
+  /** `BautagebuchRepository.auflisten`: die Einträge ganz, nach Datum. */
+  bautagebuchAuflisten(projektId: ProjektId): Ergebnis<readonly Bautagebucheintrag[], Speicherfehler> {
+    return this.#liste(projektId, () => listeBautagebuch(this.#db, projektId));
+  }
+
+  bautagebucheintragLaden(id: BautagebucheintragId): Ergebnis<BautagebucheintragZustand, Speicherfehler> {
+    return this.#eines(
+      () => leseBautagebucheintrag(this.#db, id),
+      `Bautagebucheintrag ${id}`,
+      'bautagebucheintrag',
+    );
+  }
+
   // --- Modelldateien (`Modelldateiablage`, v1.6; D-51) ------------------------------------------------------------------
 
   /**
@@ -500,6 +592,18 @@ export class SpeicherKern {
             break;
           case 'bauwerksmodell':
             wendeBauwerksmodellAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'bauzeitenplan':
+            wendeBauzeitenplanAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'honorarberechnung':
+            wendeHonorarberechnungAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'mangel':
+            wendeMangelAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'bautagebucheintrag':
+            wendeBautagebucheintragAn(this.#db, changeSet, eintrag.projektId);
             break;
         }
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
