@@ -107,7 +107,8 @@ describe('balkenLage', () => {
   it('ohne Fortschritt, beim Meilenstein und ganz außerhalb gibt es keine Füllung', () => {
     expect(balkenLage(balken({ vonTag: 10, bisTag: 20, art: 'vorgang' }), achse120).fortschritt).toBeNull();
     expect(
-      balkenLage(balken({ vonTag: 10, bisTag: 10, art: 'meilenstein', fortschritt: 100 }), achse120).fortschritt,
+      balkenLage(balken({ vonTag: 10, bisTag: 10, art: 'meilenstein', fortschritt: 100 }), achse120)
+        .fortschritt,
     ).toBeNull();
     expect(
       balkenLage(balken({ vonTag: 130, bisTag: 140, art: 'vorgang', fortschritt: 50 }), achse120).fortschritt,

@@ -16,7 +16,10 @@ function farben(anfang: string): Map<string, string> {
   if (start < 0) throw new Error(`Block nicht gefunden: ${anfang}`);
   const block = tokensCss.slice(start, tokensCss.indexOf('\n}', start));
   return new Map(
-    [...block.matchAll(/--tx-color-([a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [m[1] ?? '', m[2] ?? '']),
+    [...block.matchAll(/--tx-color-([a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [
+      m[1] ?? '',
+      m[2] ?? '',
+    ]),
   );
 }
 
@@ -43,7 +46,8 @@ function basistoken(name: string): string {
   if (!name.startsWith('--tx-grid-')) return name;
   const wert = gridTokens.get(name);
   const ziel = wert === undefined ? undefined : /^var\(--tx-color-([a-z-]+)\)$/.exec(wert)?.[1];
-  if (ziel === undefined) throw new Error(`${name} verweist nicht direkt auf ein Token aus ui-basis: ${String(wert)}`);
+  if (ziel === undefined)
+    throw new Error(`${name} verweist nicht direkt auf ein Token aus ui-basis: ${String(wert)}`);
   return ziel;
 }
 

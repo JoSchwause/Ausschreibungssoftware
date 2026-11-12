@@ -82,7 +82,9 @@ test.describe('Balkenspalte: Kopf und Lage', () => {
     await expect(zeile(page, '0')).toHaveAttribute('aria-rowindex', '2');
   });
 
-  test('eine Balkenspalte gehört nie zu einer Gruppe: Die Achse behält beide Kopfzeilen', async ({ page }) => {
+  test('eine Balkenspalte gehört nie zu einer Gruppe: Die Achse behält beide Kopfzeilen', async ({
+    page,
+  }) => {
     // Die Testseite gibt der Balkenspalte dieselbe Gruppe wie Anfang und Ende.
     await page.goto('/bauzeit.html?achseInGruppe=1');
     const termine = grid(page).getByRole('columnheader', { name: 'Termine' });
@@ -127,7 +129,12 @@ const tokenfarbe = (page: Page, token: string): Promise<string> =>
 const stil = (l: Locator) =>
   l.evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bild: s.backgroundImage, rand: s.borderTopColor, umriss: s.outlineStyle, groesse: s.backgroundSize };
+    return {
+      bild: s.backgroundImage,
+      rand: s.borderTopColor,
+      umriss: s.outlineStyle,
+      groesse: s.backgroundSize,
+    };
   });
 
 test.describe('Balkenspalte: Darstellung', () => {
@@ -145,10 +152,14 @@ test.describe('Balkenspalte: Darstellung', () => {
     expect(normal.bild).toBe('none');
     expect(kritisch.rand).toBe(await tokenfarbe(page, '--tx-color-danger'));
     expect(normal.rand).toBe(await tokenfarbe(page, '--tx-color-accent'));
-    expect((await stil(balkenzelle(page, '1.4').locator('[data-balken="meilenstein"]'))).umriss).toBe('solid');
+    expect((await stil(balkenzelle(page, '1.4').locator('[data-balken="meilenstein"]'))).umriss).toBe(
+      'solid',
+    );
   });
 
-  test('Fortschritt füllt den Balken von links; Ist-Termine als schmaler Balken darunter', async ({ page }) => {
+  test('Fortschritt füllt den Balken von links; Ist-Termine als schmaler Balken darunter', async ({
+    page,
+  }) => {
     // 40 % von 12 Tagen = 4,8 Tage = 76,8 px
     const erdarbeiten = await stil(balkenzelle(page, '1.2').locator('[data-balken="vorgang"]'));
     expect(erdarbeiten.groesse).toMatch(/^76\.8px 100%/);
@@ -220,7 +231,9 @@ test.describe('Balkenspalte: Darstellung', () => {
       'title',
       'Meilenstein 21.05.2027, liegt nach dem dargestellten Zeitraum',
     );
-    await expect(abnahme).toHaveAccessibleName('Meilenstein 21.05.2027, liegt nach dem dargestellten Zeitraum');
+    await expect(abnahme).toHaveAccessibleName(
+      'Meilenstein 21.05.2027, liegt nach dem dargestellten Zeitraum',
+    );
   });
 
   test('dunkles Schema: Balken in den dunklen Tokens, kritisch weiterhin anders', async ({ page }) => {
@@ -285,7 +298,9 @@ test.describe('Balkenspalte: Bedienung', () => {
     expect((await box(balken)).x).toBeGreaterThanOrEqual((await fixiertBis()) - 1);
   });
 
-  test('eine Zeile ohne Balken: die Ansicht bleibt stehen, solange die Achse zu sehen ist', async ({ page }) => {
+  test('eine Zeile ohne Balken: die Ansicht bleibt stehen, solange die Achse zu sehen ist', async ({
+    page,
+  }) => {
     const scrollLeft = (): Promise<number> => grid(page).evaluate((el) => el.scrollLeft);
     const planung = balkenzelle(page, '0.1');
     const vorlauf = balkenzelle(page, '0');

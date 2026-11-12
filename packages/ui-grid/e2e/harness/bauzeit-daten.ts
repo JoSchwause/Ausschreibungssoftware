@@ -61,7 +61,7 @@ const tagVon = (iso: string): number => Math.round((Date.parse(iso) - ANFANG) / 
 
 function monate(tage: number): Zeitabschnitt[] {
   const ergebnis: Zeitabschnitt[] = [];
-  for (let tag = 0; tag < tage; ) {
+  for (let tag = 0; tag < tage;) {
     const d = datum(tag);
     const bis = Math.round((Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) - ANFANG) / TAG_MS);
     ergebnis.push({
@@ -138,8 +138,20 @@ interface Vorgang {
  */
 const PLAN: readonly Vorgang[] = [
   { id: 'g0', elternId: null, nr: '0', name: 'Vorlauf' },
-  { id: 'p01', elternId: 'g0', nr: '0.1', name: 'Planung', balken: { vonTag: -20, bisTag: 6, art: 'vorgang' } },
-  { id: 'g1', elternId: null, nr: '1', name: 'Rohbau', balken: { vonTag: 3, bisTag: 59, art: 'sammelvorgang' } },
+  {
+    id: 'p01',
+    elternId: 'g0',
+    nr: '0.1',
+    name: 'Planung',
+    balken: { vonTag: -20, bisTag: 6, art: 'vorgang' },
+  },
+  {
+    id: 'g1',
+    elternId: null,
+    nr: '1',
+    name: 'Rohbau',
+    balken: { vonTag: 3, bisTag: 59, art: 'sammelvorgang' },
+  },
   {
     id: 'p1',
     elternId: 'g1',
@@ -169,8 +181,20 @@ const PLAN: readonly Vorgang[] = [
     name: 'Rohbau fertig',
     balken: { vonTag: 59, bisTag: 59, art: 'meilenstein', kritisch: true },
   },
-  { id: 'g2', elternId: null, nr: '2', name: 'Ausbau', balken: { vonTag: 59, bisTag: 130, art: 'sammelvorgang' } },
-  { id: 'p5', elternId: 'g2', nr: '2.1', name: 'Estrich', balken: { vonTag: 59, bisTag: 73, art: 'vorgang' } },
+  {
+    id: 'g2',
+    elternId: null,
+    nr: '2',
+    name: 'Ausbau',
+    balken: { vonTag: 59, bisTag: 130, art: 'sammelvorgang' },
+  },
+  {
+    id: 'p5',
+    elternId: 'g2',
+    nr: '2.1',
+    name: 'Estrich',
+    balken: { vonTag: 59, bisTag: 73, art: 'vorgang' },
+  },
   {
     id: 'p6',
     elternId: 'g2',
@@ -185,7 +209,13 @@ const PLAN: readonly Vorgang[] = [
     name: 'Fliesen',
     balken: { vonTag: 108, bisTag: 130, art: 'vorgang', kritisch: true },
   },
-  { id: 'p8', elternId: 'g2', nr: '2.4', name: 'Abnahme', balken: { vonTag: 140, bisTag: 140, art: 'meilenstein' } },
+  {
+    id: 'p8',
+    elternId: 'g2',
+    nr: '2.4',
+    name: 'Abnahme',
+    balken: { vonTag: 140, bisTag: 140, art: 'meilenstein' },
+  },
 ];
 
 /** Erzeugte Zeilen für die Leistungsmessung: Balken über die ganze Achse verteilt, mit allen Arten und Merkmalen. */

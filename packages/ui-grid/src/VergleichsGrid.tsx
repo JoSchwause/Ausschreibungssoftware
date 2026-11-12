@@ -63,14 +63,8 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   const ariaKopfzeilen = Math.max(1, kopfgruppen.length);
   const kopfzeilen = achsen.some((a) => a !== null) ? 2 : ariaKopfzeilen;
 
-  const vorlage = useMemo(
-    () => spalten.map((s) => `${String(spaltenbreite(s))}px`).join(' '),
-    [spalten],
-  );
-  const mindestbreite = useMemo(
-    () => spalten.reduce((summe, s) => summe + spaltenbreite(s), 0),
-    [spalten],
-  );
+  const vorlage = useMemo(() => spalten.map((s) => `${String(spaltenbreite(s))}px`).join(' '), [spalten]);
+  const mindestbreite = useMemo(() => spalten.reduce((summe, s) => summe + spaltenbreite(s), 0), [spalten]);
   const fixiert = Math.min(props.fixierteSpalten ?? 0, spalten.length);
   const versaetze = useMemo(() => fixierteVersaetze(spalten, fixiert), [spalten, fixiert]);
   const zellklassen = useMemo(() => festeZellklassen(spalten, versaetze), [spalten, versaetze]);

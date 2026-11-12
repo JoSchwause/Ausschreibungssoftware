@@ -33,7 +33,11 @@ document.documentElement.dataset['theme'] = params.get('thema') === 'dark' ? 'da
 const zeilenParam = params.get('zeilen');
 const plan = erfindeBauzeitenplan(
   zeilenParam === null ? null : Number(zeilenParam),
-  zeitleiste(Number(params.get('tage') ?? '120'), Number(params.get('px') ?? '16'), params.get('unterkopf') !== '0'),
+  zeitleiste(
+    Number(params.get('tage') ?? '120'),
+    Number(params.get('px') ?? '16'),
+    params.get('unterkopf') !== '0',
+  ),
   params.get('gruppen') !== '0',
   params.get('achseInGruppe') === '1',
 );

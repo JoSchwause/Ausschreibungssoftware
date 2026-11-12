@@ -174,7 +174,7 @@ export function balkenzelle(p: BalkenzelleProps): ReactElement {
       data-spalte={p.spalte}
       aria-colindex={p.spaltenIndex + 1}
       aria-selected={p.ausgewaehlt}
-      aria-label={balken && l ? balkenName(zelle?.text ?? '', balken, l) : undefined}
+      aria-label={balken && l ? balkenName(zelle.text, balken, l) : undefined}
       tabIndex={p.aktiv ? 0 : -1}
       title={p.beschreibung === '' ? undefined : p.beschreibung}
       style={stil}
@@ -200,7 +200,9 @@ export function balkenzelle(p: BalkenzelleProps): ReactElement {
         <span
           key={kz}
           className={
-            KLASSENTAUGLICH.test(kz) ? `tx-grid__kennzeichen tx-grid__kennzeichen--${kz}` : 'tx-grid__kennzeichen'
+            KLASSENTAUGLICH.test(kz)
+              ? `tx-grid__kennzeichen tx-grid__kennzeichen--${kz}`
+              : 'tx-grid__kennzeichen'
           }
           data-kennzeichen={kz}
           aria-hidden="true"
