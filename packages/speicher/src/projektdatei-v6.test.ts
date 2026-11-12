@@ -321,6 +321,16 @@ describe('Projektdatei Version 6: ungültige Formen (datei-ungueltig, nichts üb
     expect(db.zeilen('SELECT COUNT(*) AS n FROM modelldatei')[0]?.['n']).toBe(0);
   });
 
+  it('Bytes, die entpackt länger wären als das Modell nennt: abgebrochen, ehe alles entpackt ist (Ticket 122, SA12)', async () => {
+    // 64 MiB Nullen: komprimiert wenige Kilobyte; entpackt wird nur bis zur Größe des Modells (Entpackgrenze).
+    const bombe = Buffer.from(deflateRawSync(Buffer.alloc(64 * 1024 * 1024))).toString('base64');
+    const { kern, db } = await neuerKern();
+    const r = await kern.projektdateiImportieren(aendere(inhalt, [...datei, 'inhalt'], bombe));
+    expect(r).toMatchObject(ungueltig);
+    expect(r.ok ? '' : r.fehler.meldung).toMatch(/länger als die \d+ Bytes/);
+    expect(db.zeilen('SELECT COUNT(*) AS n FROM modelldatei')[0]?.['n']).toBe(0);
+  });
+
   it('eine Datei der Version 5 mit den neuen Listen ist ungültig (die gab es dort nicht)', async () => {
     const { kern } = await neuerKern();
     expect(await kern.projektdateiImportieren(aendere(inhalt, ['schemaVersion'], 5))).toMatchObject(
