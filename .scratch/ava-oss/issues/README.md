@@ -205,3 +205,6 @@ Schwerpunkt X1 BIM.
 | 119 | X3 | App: Honorar, Tor X3 | `apps/web/src/honorar/` | resolved |
 | 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | resolved |
 | 121 | – | App: Folgearbeit v1.5 | `apps/web/src/projekt/`, `auftrag/`, `ausgabe/` | resolved |
+| 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | ready-for-agent |
+| 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | ready-for-agent (Welle 7) |
+| 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | ready-for-agent (Welle 7) |
