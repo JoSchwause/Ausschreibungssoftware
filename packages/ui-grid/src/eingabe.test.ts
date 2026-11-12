@@ -364,6 +364,41 @@ describe('planeEinfuegen', () => {
     expect(plan.uebersprungen).toBe(4);
   });
 
+  it('Spalte „KG“: neue Positionen bringen die Kostengruppe mit; eine formwidrige nur in ihrer Zelle verworfen', () => {
+    const mitKg: readonly LvSpalte[] = [...spalten, 'kostengruppe'];
+    const plan = planeEinfuegen(
+      parseTsv('A\t1\tm\t2\t\t330\nB\t2\tm\t3\t\t33\nC\t3\tm\t4\t\t'),
+      kurztextSpalte,
+      mitKg,
+      anker,
+      zahlenAttrappe,
+      idQuelleAttrappe(),
+      kostengruppeAttrappe,
+    );
+    expect(plan.befehle).toHaveLength(3);
+    expect(plan.befehle[0]).toMatchObject({ daten: { kurztext: 'A', kostengruppe: '330' } });
+    // die formwidrige Nummer: Position entsteht ohne Kostengruppe, die Zelle wird markiert
+    expect(plan.befehle[1]).toMatchObject({ daten: { kurztext: 'B', menge: '2.000' } });
+    expect(plan.befehle[1]).not.toHaveProperty('daten.kostengruppe');
+    expect(plan.befehle[2]).not.toHaveProperty('daten.kostengruppe');
+    expect(plan.ungueltig.map((u) => [u.knotenId, u.spalte, u.text])).toEqual([['neu-2', 'kostengruppe', '33']]);
+    // je Zeile die Gesamtpreis-Zelle
+    expect(plan.uebersprungen).toBe(3);
+  });
+
+  it('Spalte „KG“ ohne Lesefunktion: Zellen werden übersprungen, nichts gesetzt', () => {
+    const plan = planeEinfuegen(
+      parseTsv('330'),
+      7,
+      [...spalten, 'kostengruppe'],
+      anker,
+      zahlenAttrappe,
+      idQuelleAttrappe(),
+    );
+    expect(plan.befehle[0]).not.toHaveProperty('daten.kostengruppe');
+    expect(plan.uebersprungen).toBe(1);
+  });
+
   it('in ein leeres LV: erster Befehl hängt am Ende der Wurzel ein', () => {
     const plan = planeEinfuegen(
       parseTsv('A\nB'),
