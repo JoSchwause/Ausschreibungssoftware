@@ -2620,3 +2620,155 @@ test('honorar: Sollwerte gleich der eigenen Nachrechnung nach D-56 (Ticket 112)'
   ];
   for (const w of haelften) assert.equal(w % 10_000n, 5000n, 'genau ein halber Cent');
 });
+
+// ---------------------------------------------------------------- Ticket 112: Bauleitung, Tor X4 (bauleitung.json)
+// Eigene Auswertung ohne das Paket `bauleitung` (Ticket 111): Status = letzter Verlaufseintrag; überfällig = Frist vor dem
+// Stichtag und Status offen oder angezeigt; Bautagebuch je Zeitraum mit beiden Grenzen. Sollwerte von Hand (`herleitung`).
+
+const MANGELSTATUS = ['offen', 'angezeigt', 'beseitigt', 'abgenommen'];
+/** Erlaubte Statuswechsel (Ticket 111 Punkt 1, D-57): offen → angezeigt → beseitigt → abgenommen; beseitigt → offen. */
+const STATUSWECHSEL = new Map([
+  ['offen', ['angezeigt']],
+  ['angezeigt', ['beseitigt']],
+  ['beseitigt', ['abgenommen', 'offen']],
+  ['abgenommen', []],
+]);
+const statusVon = (m) => m.verlauf[m.verlauf.length - 1].status;
+const ueberfaelligAm = (maengel, stichtag) =>
+  maengel.filter((m) => m.frist !== null && m.frist < stichtag && ['offen', 'angezeigt'].includes(statusVon(m)));
+
+function maengelAuswerten(fx, stichtag) {
+  const zaehlen = (liste) => {
+    const jeStatus = Object.fromEntries(MANGELSTATUS.map((s) => [s, liste.filter((m) => statusVon(m) === s).length]));
+    return {
+      anzahl: liste.length,
+      jeStatus,
+      offen: jeStatus.offen + jeStatus.angezeigt,
+      ueberfaellig: ueberfaelligAm(liste, stichtag).length,
+    };
+  };
+  return {
+    stichtag,
+    jeAuftragnehmer: fx.auftraege.map((a) => ({
+      auftragsLvId: a.auftragsLvId,
+      auftragnehmer: a.auftragnehmer,
+      ...zaehlen(fx.maengel.filter((m) => m.auftragsLvId === a.auftragsLvId)),
+    })),
+    gesamt: zaehlen(fx.maengel),
+  };
+}
+
+function bautagebuchAuswerten(eintraege, von, bis) {
+  const imZeitraum = eintraege.filter((e) => von <= e.datum && e.datum <= bis).sort((x, y) => (x.datum < y.datum ? -1 : 1));
+  const jeFirma = new Map();
+  for (const e of imZeitraum) for (const k of e.arbeitskraefte) jeFirma.set(k.firma, (jeFirma.get(k.firma) ?? 0) + k.anzahl);
+  const jeTag = imZeitraum.map((e) => ({ datum: e.datum, arbeitskraefte: e.arbeitskraefte.reduce((s, k) => s + k.anzahl, 0) }));
+  return {
+    von,
+    bis,
+    jeTag,
+    jeFirma: [...jeFirma].sort(([x], [y]) => (x < y ? -1 : 1)).map(([firma, arbeitskraefte]) => ({ firma, arbeitskraefte })),
+    summe: jeTag.reduce((s, t) => s + t.arbeitskraefte, 0),
+  };
+}
+
+test('bauleitung: Mängel und Bautagebuch in der Form von Ticket 97 Punkt 6, Verläufe nach Ticket 111 (Ticket 112)', () => {
+  const fx = laden('bauleitung.json');
+  const ids = [fx.projektId, ...fx.auftraege.map((a) => a.auftragsLvId), ...fx.maengel.map((m) => m.id), ...fx.bautagebuch.map((e) => e.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  // fünf Mängel an zwei Auftragnehmern, je mit Frist und Verlauf
+  assert.equal(fx.maengel.length, 5);
+  assert.equal(fx.auftraege.length, 2);
+  const lvs = new Set(fx.auftraege.map((a) => a.auftragsLvId));
+  assert.deepEqual(new Set(fx.maengel.map((m) => m.auftragsLvId)), lvs);
+  assert.deepEqual(fx.maengel.map((m) => m.nummer), [1, 2, 3, 4, 5]);
+  for (const m of fx.maengel) {
+    assert.equal(m.projektId, fx.projektId);
+    assert.match(m.frist, /^\d{4}-\d{2}-\d{2}$/);
+    tagAus(m.frist);
+    assert.ok(m.verlauf.length >= 1);
+    assert.equal(m.verlauf[0].status, 'offen');
+    assert.equal(m.verlauf[0].datum, m.festgestellt);
+    for (let i = 1; i < m.verlauf.length; i += 1) {
+      const [vorher, jetzt] = [m.verlauf[i - 1], m.verlauf[i]];
+      assert.ok(STATUSWECHSEL.get(vorher.status).includes(jetzt.status), `${m.nummer}: ${vorher.status} → ${jetzt.status}`);
+      assert.ok(tagAus(jetzt.datum) >= tagAus(vorher.datum), `${m.nummer}: Datum nicht vor dem vorigen`);
+    }
+    for (const v of m.verlauf) assert.ok(v.datum <= fx.stichtag, 'alle Verlaufseinträge am oder vor dem Stichtag');
+  }
+  assert.ok(fx.maengel.some((m) => m.verlauf.some((v, i) => i > 0 && v.status === 'offen')), 'beseitigt → offen kommt vor');
+  // drei Bautagebucheinträge mit Arbeitskräften, ein Eintrag je Datum, ganze Zahlen
+  assert.equal(fx.bautagebuch.length, 3);
+  assert.equal(new Set(fx.bautagebuch.map((e) => e.datum)).size, 3);
+  for (const e of fx.bautagebuch) {
+    assert.equal(e.projektId, fx.projektId);
+    tagAus(e.datum);
+    assert.ok(e.arbeitskraefte.length > 0);
+    for (const k of e.arbeitskraefte) assert.ok(k.firma !== '' && Number.isInteger(k.anzahl) && k.anzahl >= 0);
+    const { temperaturMin, temperaturMax } = e.wetter;
+    assert.ok(Number.isInteger(temperaturMin) && Number.isInteger(temperaturMax) && temperaturMin <= temperaturMax);
+  }
+});
+
+test('bauleitung: Fristprüfung zum Stichtag, genau einer überfällig, Frist am Stichtag nicht (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  const s = fx.sollwerte;
+  assert.deepEqual(fx.maengel.map((m) => ({ nummer: m.nummer, status: statusVon(m) })), s.status);
+  assert.equal(Math.max(...fx.maengel.map((m) => m.nummer)) + 1, s.naechsteMangelnummer);
+  const zeile = (m) => ({ mangelId: m.id, nummer: m.nummer, frist: m.frist, status: statusVon(m) });
+  assert.equal(s.fristpruefung.stichtag, fx.stichtag);
+  assert.deepEqual(ueberfaelligAm(fx.maengel, fx.stichtag).map(zeile), s.fristpruefung.ueberfaellig);
+  assert.deepEqual(fx.maengel.filter((m) => m.frist === fx.stichtag).map(zeile), s.fristpruefung.fristAmStichtag);
+  // Von Hand: Stichtag Do 26.11.2026, überfällig nur 3 (Frist 25.11., angezeigt); 5 hat die Frist am Stichtag
+  assert.equal(fx.stichtag, '2026-11-26');
+  assert.deepEqual(s.fristpruefung.ueberfaellig.map((z) => z.nummer), [3]);
+  assert.deepEqual(s.fristpruefung.fristAmStichtag.map((z) => z.nummer), [5]);
+  // Frist vor dem Stichtag, aber beseitigt oder abgenommen: nicht überfällig (1, 4)
+  assert.deepEqual(fx.maengel.filter((m) => m.frist < fx.stichtag).map((m) => [m.nummer, statusVon(m)]), [
+    [1, 'abgenommen'], [3, 'angezeigt'], [4, 'beseitigt'],
+  ]);
+  const g = fx.gegenproben.stichtag20261127;
+  assert.deepEqual(ueberfaelligAm(fx.maengel, g.stichtag).map((m) => m.nummer), g.ueberfaellig);
+});
+
+test('bauleitung: Auswertung der Mängel je Auftragnehmer und des Bautagebuchs je Zeitraum (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  assert.deepEqual(maengelAuswerten(fx, fx.stichtag), fx.sollwerte.auswertungMaengel);
+  const b = fx.sollwerte.auswertungBautagebuch;
+  assert.deepEqual(bautagebuchAuswerten(fx.bautagebuch, b.von, b.bis), b);
+  // Von Hand: 9 + 8 + 9 = 26 = Rohbau 19 + Tiefbau 5 + Elektro 2
+  assert.deepEqual([b.jeTag.map((t) => t.arbeitskraefte), b.jeFirma.map((f) => f.arbeitskraefte), b.summe], [[9, 8, 9], [2, 19, 5], 26]);
+  const g = fx.gegenproben.bautagebuch17bis19;
+  const { jeFirma, summe } = bautagebuchAuswerten(fx.bautagebuch, g.von, g.bis);
+  assert.deepEqual({ jeFirma, summe }, { jeFirma: g.jeFirma, summe: g.summe });
+  assert.equal(g.summe, 17);
+});
+
+test('X2–X4: JSON-Zahlen nur für ganze Zahlen der Typen, Beträge und Prozente als Text (Ticket 112, N1, N3)', () => {
+  // Ganze Zahlen der Vertragstypen (Arbeitstage, Phasennummer, Mangelnummer, Köpfe, Grad, Zähler) stehen als JSON-Zahl, damit die
+  // Eingaben den Typen direkt zuweisbar sind (D-112.2); Dezimalwerte (Betrag, Prozent) als kanonischer Text mit 2 Stellen.
+  const GANZZAHLIG = {
+    'bauzeit.json': ['arbeitstage', 'dauer', 'abstand', 'gesamtpuffer', 'freierPuffer'],
+    'honorar.json': ['nummer'],
+    'bauleitung.json': [
+      'nummer', 'anzahl', 'temperaturMin', 'temperaturMax', 'naechsteMangelnummer', 'arbeitskraefte', 'summe', 'offen',
+      'angezeigt', 'beseitigt', 'abgenommen', 'ueberfaellig',
+    ],
+  };
+  for (const [name, felder] of Object.entries(GANZZAHLIG)) {
+    const pruefe = (v, pfad, feld) => {
+      if (typeof v === 'number') {
+        assert.ok(Number.isInteger(v), `${name}: keine ganze Zahl bei ${pfad}`);
+        assert.ok(felder.includes(feld), `${name}: JSON-Zahl bei ${pfad}`);
+      } else if (Array.isArray(v)) {
+        v.forEach((x, i) => pruefe(x, `${pfad}[${i}]`, feld));
+      } else if (v && typeof v === 'object') {
+        for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`, k);
+      } else if (typeof v === 'string' && name === 'honorar.json' && /^\d+\.\d+$/.test(v)) {
+        assert.match(v, /^\d+\.\d{2}$/, `${name}: Dezimalwert mit 2 Stellen bei ${pfad}`);
+      }
+    };
+    pruefe(laden(name), name, null);
+  }
+});
