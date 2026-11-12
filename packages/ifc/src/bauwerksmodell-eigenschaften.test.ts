@@ -5,10 +5,10 @@
 // Ring); nie eine Ausnahme, immer dasselbe Ergebnis. Die Prüfung hier ist unabhängig von der Abbildung geschrieben.
 
 import { alsMenge } from '@tethys/dezimal';
-import type { BauwerksmodellId, BauwerksmodellKopf, ProjektId } from '@tethys/vertrag';
+import type { BauwerksmodellId, BauwerksmodellKopf, IfcGlobalId, ProjektId } from '@tethys/vertrag';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { bauwerksmodellLesen } from './index';
+import { bauwerksmodellLesen, eigenschaftsindexBauen } from './index';
 import type { BauwerksmodellLesung } from './index';
 import type { IfcBefundcode } from './typen';
 import { bytes, gid, grundgeruest, ifcText } from './testhilfen';
@@ -185,6 +185,30 @@ function alsDatei(g: Geflecht): string {
 }
 
 describe('Abbildung: Eigenschaften', () => {
+  it('der Eigenschaftsindex kennt genau die GlobalIds des Modells und antwortet unabhängig von der Reihenfolge', () => {
+    fc.assert(
+      fc.property(geflecht, fc.array(fc.nat(5), { maxLength: 8 }), (g, abfragen) => {
+        const datei = bytes(alsDatei(g));
+        const modell = bauwerksmodellLesen(datei, KOPF).bauwerksmodell;
+        const index = eigenschaftsindexBauen(datei);
+        if (modell === null || !index.ok) throw new Error('Das Geflecht wird immer gelesen.');
+        const imModell = new Set<string>([...modell.struktur, ...modell.bauteile].map((o) => o.globalId));
+        const kandidaten = [...['a', 'b', 'c', 'd', 'e'].map((k) => gid(k)), 'kurz'];
+        for (const k of kandidaten)
+          expect(index.wert.eigenschaften(k as IfcGlobalId) !== null).toBe(imModell.has(k));
+        const frisch = (k: string) => {
+          const neu = eigenschaftsindexBauen(datei);
+          return neu.ok ? neu.wert.eigenschaften(k as IfcGlobalId) : undefined;
+        };
+        for (const n of abfragen) {
+          const k = kandidaten[n] ?? '';
+          expect(index.wert.eigenschaften(k as IfcGlobalId)).toEqual(frisch(k));
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+
   it('jedes Geflecht ergibt ein Modell nach den Lesarten des Vertrags, deterministisch', () => {
     fc.assert(
       fc.property(geflecht, (g) => {
