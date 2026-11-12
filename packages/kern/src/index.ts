@@ -50,7 +50,8 @@ export type { Ausweise } from './summen';
 export { ZUSCHLAG_REGELN } from './zuschlag';
 export { kopieBauen } from './kopie';
 export { ozVorschlag } from './oz-vorschlag';
-export type { OzVorschlag } from './oz-vorschlag';
+// Ticket 105 (Vertrag v1.5, D-95.3): der Ergebnistyp des OZ-Vorschlags ist der des Vertrags.
+export type { OzVorschlag } from '@tethys/vertrag';
 export type { KopieIdQuelle } from './kopie';
 export type { Zuschlagsbasis } from './zuschlag';
 export {
