@@ -65,3 +65,71 @@ Dateien.
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-99.1 Prüfnähte.** Getestet wird an den Artefakten, die andere Tickets nutzen: (1) `erzeugeModell` und die
+  Kommandozeile (Determinismus mit SHA-256, Zahl der Bauteile, Verweise; ein kleines Modell mit 37 Bauteilen streng
+  gelesen); (2) die drei IFC-Dateien, gelesen mit einem eigenen strengen STEP-Leser im Selbsttest (Kopf, Schema, eindeutige
+  `#n`, Attributzahl je Klasse nach IFC 4 ADD2 TC1 bzw. IFC 2x3 TC1, GlobalIds gültig und eindeutig, jeder Verweis
+  auflösbar), jede Menge gegen die Geometrie derselben Datei, IFC 2x3 gleich IFC 4 nach Umrechnung, v1 ↔ v2 über die
+  GlobalId; (3) `typisch-bim.json`, jede Zahl aus den IFC-Texten (Abgleich über die GlobalId) und aus `typisch.json` mit
+  den Grundfunktionen N2/N5 nachgerechnet, dazu Literale von Hand (vorab unabhängig mit Python `Decimal` gerechnet); (4)
+  Byte-Gleichheit aller erzeugten Dateien über `erzeugeAlle()` (Test (a)). Grund: Im autonomen Lauf bestätigt niemand die
+  Nähte vorab (Skill `tdd`); das sind die Wege, auf denen 98, 100, 107, 108 und 117 die Fixtures lesen. Reversible: yes.
+- **D-99.2 Torweg des Tors X1-Kern.** „Wände des EG einer Position von typisch zuordnen“ heißt hier: die gemauerten
+  Innenwände des EG (IW-EG-1 bis -3) an 03.0010 „Innenwände mauern“, Mengenart `NetSideArea`. `kern.torweg` trägt die
+  LV-Summen nur mit dieser Zuordnung (Netto 46.720,96), `kern.sollwerte` die mit allen sieben (Netto 36.068,86, für den
+  Kettentest). Grund: `typisch` hat keine Position für Außenwände; die Wände des OG sind Trockenbau, für die `typisch` keine
+  Position hat. Reversible: yes.
+- **D-99.3 Großes Modell.** Dieselben Bausteine wie das Haus samt Eigenschaftssätzen mit 3 bis 7 Werten (Namen der
+  IFC-Spezifikation, Werte erfunden), Wandachse (`Axis`, `Curve2D`) und Öffnungsmengen; Felder zu je sechs Bauteilen
+  (Außenwand + Fenster, Innenwand + Tür, Innenwand, Deckenfeld), 20 Felder je Reihe; je Geschoss ⌊n / g⌋, der Rest je eins
+  an die unteren Geschosse; ein angeschnittenes Feld bleibt gültig (Öffnung ohne Füllung); keine Räume. 10.000 Bauteile
+  ergeben etwa 21 MB (D-54 schätzte etwa 25 MB) in etwa einer Sekunde; kein künstliches Auffüllen. Wer 25 MB braucht, nimmt
+  `--bauteile 12000`. Der Test prüft 18 bis 30 MB. Alle Platzierungen sind reine Verschiebungen (achsparallele Quader).
+  Reversible: yes.
+- **D-99.4 IFC 2x3.** Gleiche Klassen wie in IFC 4, wo es sie in beiden gibt (`IfcWall`, nicht `IfcWallStandardCase`);
+  Mengensatznamen `Qto_…` aus IFC 4 auch in der 2x3-Datei (2x3 kennt keine festen Namen; so ist der Inhalt gleich); Längen
+  in mm, Flächen und Volumen in m² und m³ (prüft, dass jede Menge ihre eigene Einheit nutzt); Umlaute als `\X\hh` (2x3) und
+  `\X2\…\X0\` (IFC 4), damit der Leser beide Formen sieht; `IfcOwnerHistory` in beiden Dateien. Reversible: yes.
+- **D-99.5 Ansatzzeile aus dem Modell.** Ausdruck = Wert der Menge in SI-Einheit, kaufmännisch auf 3 Stellen, de-DE mit
+  Komma, immer 3 Nachkommastellen, ohne Tausenderpunkt (`18,874`; `Stueck` als `1,000`); `zeile` und `formel` als Text
+  (D-85.4), `variable` `null`; Reihenfolge der Zuordnung (D-53). Ein Bauteil, das im gewählten Modell fehlt, gibt keine Zeile,
+  sondern den Befund `{ art: 'bauteil-fehlt', globalId, kennung }` (Name der Fixture; `bim` darf einen eigenen Code wählen).
+  Reversible: yes.
+- **D-99.6 Raum- und Geschossmengen.** Raum: `GrossFloorArea` = Lichtmaß, `NetFloorArea` = Lichtmaß minus Grundfläche der
+  Bauteile im Raum (der Raumteiler im Wohnen, 0,23 m²), wie die IFC-Definitionen. Geschoss: `GrossFloorArea` aus dem
+  Außenmaß (BGF), `GrossVolume` = BGF × Bruttohöhe (EG von der Unterkante der Bodenplatte −0,25 bis Oberkante Geschossdecke
+  3,00; OG bis Oberkante Dachdecke 6,00), Fundamente nicht im BRI. Die Bodenplatte hat eine Aussparung 0,40 × 0,40, damit
+  `GrossArea` (02.0040) und `NetArea` (02.0070) verschieden sind. Reversible: yes.
+- **D-99.7 DIN-277-Größen.** BGF und BRI = Summe der Geschossmengen, NRF = Summe der `NetFloorArea` aller Räume (alle Räume
+  zählen zur NRF; keine Teilung in NUF, TF, VF); jede gelesene Menge vor dem Summieren auf 3 Stellen (wie die Ausgabe des
+  Lesers). Reversible: yes.
+- **D-99.8 Vergleich und betroffene Positionen.** Vergleich über die GlobalId mit den Feldern `klasse`, `name`,
+  `strukturknoten` (Name des Geschosses) und `mengen` (gelesen, auf 3 Stellen; Änderungen unter 0,0005 verschwinden);
+  `entfernt` und `geaendert` in der Reihenfolge von v1, `hinzugefuegt` in der von v2; Öffnungen und Räume sind keine Bauteile
+  (Ticket 98) und nicht im Vergleich. Betroffen ist eine Position, deren Vordersatz mit v2 andere Zeilen hat als mit v1
+  (auch durch ein fehlendes Bauteil); Differenz = nachher − vorher mit Vorzeichen. Eine Position, deren Bauteile nur Name
+  oder Geschoss ändern (PL-EG umbenannt), ist nicht betroffen. Reversible: yes.
+- **D-99.9 Aufmaßblatt aus Auswahl.** Auswahl „Geschoss EG“ = alle Bauteile, die im EG stehen (17 in v1); je zugeordneter
+  Position mit mindestens einem ausgewählten Bauteil eine Aufmaßposition (Zeilen wie beim Vordersatz, nur die ausgewählten,
+  Menge); `bauteile` nennt die ausgewählten GlobalIds. Gerechnet auf v1; der Bieter des Zuschlags ändert keine Menge.
+  Reversible: yes.
+- **D-99.10 Kostenschätzung.** Sechs Kostengruppen (320, 330, 340, 350, 360, 400) mit erfundenen Kennwerten in € je m²
+  BGF, 2 Nachkommastellen; Betrag = round(BGF × Kennwert, 2) (D-52); Einträge in der Form von `Kostenermittlungseintrag`,
+  Herleitung in `bemerkung` (ein Vorschlag; Tore vergleichen `betrag`); Stufe `kostenschaetzung`, `gesamt` = Summe.
+  Reversible: yes.
+- **D-99.11 GlobalIds und Kennung.** Haus: die ersten 128 Bit des SHA-256 von `tethys-ava/fixtures/ifc/haus/<Kennung>`,
+  als IFC-Base64 (erstes Zeichen 0 bis 3), gleich in allen drei Dateien und beiden Ständen; großes Modell: feste Basis plus
+  Zähler. `Tag` = Kennung (`AW-EG-S` …), damit Menschen und Tests Bauteile wiederfinden. Feste Zeit in Kopf und
+  `IfcOwnerHistory` (2026-11-12). Reversible: yes.
+- **D-99.12 Mengen aktualisieren.** Im LV (nicht im Auftrags-LV: `MengenansatzSetzen` ist kein AuftragsLvBefehl, D-53),
+  ausgehend vom LV nach der Übernahme mit v1; die Zuordnungen bleiben (ein fehlendes Bauteil bleibt zugeordnet, Befund);
+  das neue Bauteil IW-EG-4 wird nicht von selbst zugeordnet. Reversible: yes.
+- **D-99.13 Ohne Zuordnung.** Fenster (`typisch` hat keine Fensterposition), Trockenbauwände und Außenwände des OG,
+  Geschoss- und Dachdecke, Haustür (Türzargen nur für Innentüren). Sie bleiben Bauteile ohne Zuordnung, wie im Alltag.
+  Reversible: yes.
+- **D-99.14 Bytes und Typen.** `fixtures/ifc/.gitattributes` mit `*.ifc -text` (der SHA-256 der Dateien ist Sollwert,
+  D-51); `fixtures/ifc/erzeugen.d.mts` deklariert `erzeugeModell` für TypeScript-Tests (100, 107), geprüft mit `tsc --strict`
+  an einer Probedatei. Reversible: yes.

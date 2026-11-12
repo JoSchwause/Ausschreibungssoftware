@@ -395,7 +395,7 @@ Auftrags-LV (`MengenansatzSetzen` ist kein AuftragsLvBefehl, D-53), ausgehend vo
 `ifc/erzeugen.mjs` schreibt mit denselben Bausteinen Felder zu je sechs Bauteilen (Außenwand mit Fenster, Innenwand mit
 Tür, Innenwand, Deckenfeld) in Reihen zu 20 Feldern; je Geschoss ⌊n / g⌋ Bauteile, der Rest je eins an die unteren
 Geschosse; eine angeschnittene Gruppe bleibt gültig (Öffnung ohne Füllung). GlobalIds aus einem Zähler, keine Zeit, kein
-Zufall: 10.000 Bauteile auf 10 Geschossen ergeben etwa 21 MB in unter einer Sekunde, immer mit demselben SHA-256. Der
+Zufall: 10.000 Bauteile auf 10 Geschossen ergeben etwa 21 MB in etwa einer Sekunde, immer mit demselben SHA-256. Der
 Selbsttest prüft Determinismus, Zahl der Bauteile und Verweise; ein kleines Modell (37 Bauteile, 3 Geschosse) liest er
 streng wie die Hausdateien.
 
