@@ -104,3 +104,44 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-122.1 Befundtexte im PDF (Punkt 1).** Frage: Gemeinsame Abbildung Code → Text oder Texte der App in der Druckeingabe?
+  Entscheidung: **Die App reicht die fertigen Texte in die Druckeingabe** (`HonorarEingabe.befundtexte`,
+  `BauzeitenplanEingabe.befundtexte` vom Typ `Befundtext { schwere, ort, text }`, wie D-113.2 die Namen); die Druckmodelle lesen
+  `ergebnis.befunde` nicht mehr (Eingabetyp `Omit<…, 'befunde'>`). Die App bildet je Code einen eigenen de-DE-Text für Seite und
+  PDF (`honorar/ansicht.ts` `befundAnsicht`, `bauzeit/ansicht.ts` `befundEintraege`/`befundtexteFuerDruck`), Werte am Rand
+  formatiert, Vorgänge über Nummer und Bezeichnung. Grund: `ausgabe` darf `honorar`/`bauzeit` nicht importieren (A3), die Texte
+  brauchen deren Daten (Grenzen, Tafeln, Vorgänge); `vertrag` bleibt; eine Abbildung in der App hält Seite und PDF gleich. Ein
+  Befund zu einer Liste (Leistungsphasen) oder zu mehreren Beträgen nennt nur das Feld, weil der Befundort laut Vertrag kein
+  Element trägt; das Element steht im Formular daneben. Auch die Seiten zeigten vorher die rohen Meldungen (Feldschlüssel,
+  Kennungen) – sie zeigen jetzt dieselben Texte wie das PDF. Mängel und Bautagebuch geprüft: Ihr Druck gibt keine Meldung aus
+  (Status als Wort wie am Bildschirm, „überfällig“ als Kennzeichen, ganze Zahlen) – keine Änderung nötig.
+- **D-122.2 Mehrfachauswahl per Tastatur (Punkt 2).** Frage: Strg+Leertaste allein reicht nicht: Folgt die Auswahl dem Fokus,
+  ersetzt jeder Pfeil und jedes Tab über eine Zeilengrenze die Auswahl, und der Baum lässt sich nicht verlassen, um „Zuordnen …“
+  zu erreichen. Entscheidung: **Tasten bewegen im Baum nur den Fokus (die Eigenschaften folgen); die Leertaste wählt die aktive
+  Zeile wie ein Klick, Strg/Cmd+Leertaste nimmt sie auf oder heraus wie Strg+Klick.** Klicks unverändert (D-114.4, D-115.1).
+  Hinweis über dem Baum. Kein Eingriff in `ui-grid` nötig (die aktive Zeile meldet `onZeileAktiv` schon). Grund: U3 und E-18
+  („Leertaste wählt die Zeile“); so bleibt die Auswahl beim Verlassen des Baums per Tastatur (Strg+Ende, Tab) erhalten.
+  E2E `apps/web/e2e/bim-tastatur.spec.ts` drückt ab dem Baum nur Tasten.
+- **D-122.3 Kennwert-Vermerk (Punkt 4).** `Kostenschaetzungsangaben.herleitung: (groesse, kennwert) => string` setzt der
+  Aufrufer; `bim` formatiert nicht mehr. Die App (`bim/kennwerte.ts` `herleitungstext`) baut denselben Text wie vorher, darum
+  bleiben `x1-kette.test.ts` und alle Sollwerte unverändert (keine Änderung an 117s Test nötig).
+- **D-122.4 Namen in `ifc` (Punkt 5).** Die Typen der STEP-Ebene heißen `StepGlobalId`, `StepBauteilmenge`,
+  `StepStrukturknoten`, `StepBauteil`, `StepBauwerksmodell`; `IfcSchema` (gleiche Form) kommt aus `vertrag`. Kein Präfix „Roh“,
+  weil „Rohbauteil“ als Rohbau-Teil gelesen würde.
+- **D-122.5 Angezeigt ohne Frist (Punkt 8).** Entscheidung: **Befund statt Fehler** (U5): `fristPruefen` meldet einen
+  angezeigten Mangel ohne `Mangel.frist` (die geltende Frist laut Vertrag) als Warnung `mangel-angezeigt-ohne-frist` (Quelle
+  `fristpruefung`, Ort Mangel und `feld: 'frist'`); der Code steht in der eigenen Liste von `bauleitung` (`Fristbefundcode`),
+  `vertrag` bleibt. „Überfällig“ heißt nur `mangel-frist-ueberschritten` (Kennzeichen in der Liste, PDF). Grund: Der Dialog
+  „Mangel anzeigen“ verlangt eine Frist schon, aber das Bearbeiten kann sie leeren, und Daten aus Dateien sollen nicht
+  unbearbeitbar werden. Für 123: Der Vertragstext zur Quelle `fristpruefung` („ein überfälliger Mangel“) nennt den zweiten Code
+  noch nicht.
+
+### Stand
+
+- Punkt 1 erledigt (`52cb8fe`), Punkt 2 erledigt (`da0fa55`), Punkt 3 erledigt (`df536b4`), Punkt 4 erledigt (`b9402ce`),
+  Punkt 5 erledigt (`b50d65d`), Punkt 6 erledigt (`b4e7e17`), Punkt 7 erledigt (`7b36e4d`), Punkt 8 erledigt (`1334c09`).
+- `integration/welle-6` mit Ticket 117 gemergt (`e2923a9`).
+
