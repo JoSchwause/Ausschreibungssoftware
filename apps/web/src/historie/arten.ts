@@ -4,6 +4,7 @@
 // eine Zeile; der Typ der Tabelle erzwingt sie. Befehlsweg (Umkehren), Historie (`Teil`) und Bedienung (Ziel) lesen nur hier.
 
 import { aufmassChangeSetUmkehren, rechnungChangeSetUmkehren } from '@tethys/abrechnung';
+import { bautagebucheintragChangeSetUmkehren, mangelChangeSetUmkehren } from '@tethys/bauleitung'; // Ticket 120
 import { auftragsLvChangeSetUmkehren, changeSetUmkehren, projektChangeSetUmkehren } from '@tethys/kern';
 import { honorarberechnungChangeSetUmkehren } from '@tethys/honorar'; // Ticket 119
 import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten';
@@ -12,6 +13,7 @@ import type { AngebotChangeSet, ChangeSet, LvChangeSet, ProjektChangeSet, Projek
 import { aufmassZiel } from '../abrechnung/pfad'; // Ticket 87
 import { auftragPfad, auftragZiel } from '../auftrag/ziel'; // Ticket 64, 86
 import { honorarZiel } from '../honorar/pfad'; // Ticket 119
+import { bautagebuchZiel, mangelZiel } from '../bauleitung/pfad'; // Ticket 120
 import { kostenZiel } from '../kosten/pfad'; // Ticket 89
 import { rechnungZiel } from '../rechnung/pfad'; // Ticket 88
 import type { Teil } from './historie';
@@ -109,8 +111,8 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   bauwerksmodell: erstMitTicket('114'),
   bauzeitenplan: erstMitTicket('118'),
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
-  mangel: erstMitTicket('120'),
-  bautagebucheintrag: erstMitTicket('120'),
+  mangel: { umkehren: mangelChangeSetUmkehren, ziel: mangelZiel }, // Ticket 120
+  bautagebucheintrag: { umkehren: bautagebucheintragChangeSetUmkehren, ziel: bautagebuchZiel }, // Ticket 120
 };
 
 const art = <A extends Art>(cs: Von<A>): Aggregatart<A> => ARTEN[cs.art];

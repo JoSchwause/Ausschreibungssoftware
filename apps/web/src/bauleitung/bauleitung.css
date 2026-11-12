@@ -1,0 +1,101 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Mängel und Bautagebuch (Ticket 120). Nur Tokens (U4). */
+
+.bauleitung h2 {
+  margin: var(--tx-space-6) 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-lg);
+}
+
+.bauleitung__grid {
+  min-height: 200px;
+  max-height: 45vh;
+}
+
+.bauleitung__werkzeuge {
+  align-items: flex-end;
+}
+
+.bauleitung__werkzeuge .tx-feld {
+  min-width: 160px;
+}
+
+.bauleitung__auswahl {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}
+
+.bauleitung__liste {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.bauleitung__befund {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  background: var(--tx-color-warning-subtle);
+  color: var(--tx-color-warning);
+  list-style: none;
+}
+
+.bauleitung__befunde {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: 0;
+  max-width: 960px;
+}
+
+.bauleitung__formular {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tx-space-3) var(--tx-space-5);
+  min-width: min(640px, 80vw);
+}
+
+.bauleitung__formular .bauleitung__breit {
+  grid-column: 1 / -1;
+}
+
+.bauleitung__firmen {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--tx-space-2) var(--tx-space-3);
+}
+
+.bauleitung__firmen .tx-button {
+  margin-top: 20px;
+}
+
+.bauleitung__zeitraum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-4);
+}
+
+.bauleitung__tabelle {
+  border-collapse: collapse;
+}
+
+.bauleitung__tabelle th,
+.bauleitung__tabelle td {
+  padding: var(--tx-space-2) var(--tx-space-4);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+}
+
+.bauleitung__tabelle td:last-child,
+.bauleitung__tabelle th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bauleitung__firmenzeile {
+  display: contents;
+}

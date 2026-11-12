@@ -1,6 +1,6 @@
 # 120: X4 in der App: Mängel und Bautagebuch, Tor X4
 
-Status: ready-for-agent
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X4 · Ordner: `apps/web/src/bauleitung/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 120`, D-20); E2E `apps/web/e2e/x4.spec.ts`, Kettentest `apps/web/src/x4-kette.test.ts`
@@ -40,3 +40,22 @@ geöffneter Mangel die Frist der früheren Anzeige behält.
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-120.1** Stichtag: **`datumAusUhr(u.uhr())`** beim Laden der Seite (Rand, A2); `fristPruefen`/`maengelAuswerten` bekommen ihn als Wert. Grund: D-111.6 (der Aufrufer übergibt den Tag); `page.clock.setFixedTime` im E2E.
+- **D-120.2** Auftragnehmer: **`AuftragsLvKopf.auftragnehmer.name`, sonst Name des Auftrags-LV** (der Zuschlag setzt ihn aus dem Bieter); Filter und Auswahl nach Name, zwei Aufträge derselben Firma sind eine Auswahl. D-111.5 (aktueller Status) bestätigt, D-111.6 (RangeError) nie ausgelöst, weil die App nur Kalendertage übergibt.
+- **D-120.3** „Mangel anzeigen (Frist)“: **ein Undo-Schritt** aus `MangelstatusSetzen` (Eintrag mit `frist`, D-66) und, wenn die Frist abweicht, `MangelangabenSetzen`. Frist ist Pflicht bei dieser Aktion. Grund: Ticket 111 (Folgearbeit 120).
+- **D-120.4** Mängelanzeige-Auswahl: **Mängel eines Auftragnehmers mit mindestens einem Eintrag `angezeigt`, Status offen oder angezeigt** (auch wieder geöffnete; sie behalten die Frist der Anzeige, D-66/D-113.4). Alternative: freie Auswahl.
+- **D-120.5** Position im Formular als **OZ-Text** (Auflösung im gewählten Auftrags-LV), Bauteil als GlobalId (22 Zeichen) plus Modell oder „in jedem Modellstand“. Grund: skaliert bei großen LVs/Modellen, kein Listen-Select mit tausenden Einträgen.
+- **D-120.6** Zeile ohne Auswahl: Das Grid meldet immer eine aktive Zeile; Aktionen gelten dieser. Nach dem Anlegen springt die Liste erst nach dem Neuladen zur neuen Zeile (`vorgemerkt`).
+- **D-120.7** E2E-Aufbau: zu einem LV höchstens ein Auftrags-LV (D-21), daher `typisch` (Bieter A, Rohbau) und eine Kopie mit neuen Kennungen (Bieter B, Tiefbau) über Oberfläche (X84, Zuschlag). Mangel 2: erste Frist 19.11., nach Wiederöffnen über „Bearbeiten“ 04.12. (Fixture-Zustand); im Druck steht dann die Frist der Anzeige (19.11., D-66).
+- **D-120.8** Bautagebuch: Auswertungszeitraum standardmäßig erster bis letzter Eintrag; PDF nimmt denselben Zeitraum. Firmen als Datalist und Schaltflächen aus den Auftragnehmern.
+
+### Ergebnis (Branch `welle-6/120-web-bauleitung`)
+
+Neu `apps/web/src/bauleitung/`: Seiten `MaengelSeite`, `BautagebuchSeite`, Formulare, `PdfDialog` mit Worker (`pdf-worker`, `pdf-lauf`), reine Logik `maengel.ts`, `bautagebuch.ts`, Schreibweg `schreiben.ts`, `pfad.ts`, `texte.ts`, Tests je Datei. Hooks `// Ticket 120` in `App.tsx`, `projekt/ProjektSeite.tsx`, `historie/arten.ts` (Umkehrung aus `bauleitung`); Abhängigkeit `@tethys/bauleitung` in `apps/web/package.json` und Lockfile. Tor X4: `e2e/x4.spec.ts` (+ `e2e/x4-aufbau.ts`), `src/x4-kette.test.ts`.
+
+**Gate X4: bestanden.** `x4.spec.ts` (feste Uhr 26.11.2026) dreimal grün hintereinander (je ~33 s), Kettentest grün; genau Mangel 3 überfällig, Mangel 5 (Frist am Stichtag) nicht, Auswertung je Auftragnehmer 3/2/1 und 2/1/0, Bautagebuch 9/8/9, 2/19/5, Summe 26, beide Gegenproben, drei PDFs, Neuladen.
+
+Prüfung nach `git merge integration/welle-6`: `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` 292 Dateien / 3.767 Tests grün (1 Datei, 3 Tests übersprungen wie zuvor), `node --test` 53/53; `x4.spec.ts` danach erneut grün (4 Läufe insgesamt, alle grün).
