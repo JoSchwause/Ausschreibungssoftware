@@ -2001,3 +2001,153 @@ test('typisch-bim: Bauteile v1 und v2 mit Mengen auf 3 Stellen, exakt und hergel
     for (const b of fx.bauteile[stand]) for (const q of b.mengen) assert.match(q.herleitung, /= -?[\d.,]+$|^[\d,]+$/, `${b.kennung} ${q.name}`);
   }
 });
+
+const summe3 = (werte) => format(werte.reduce((s, w) => s + parse(w, 3), 0n), 3);
+/** Menge mit Vorzeichen auf 3 Stellen ("-4.125"), gerundet wird nie ein negativer Wert. */
+const mitVz3 = (w) => (w < 0n ? `-${format(-w, 3)}` : format(w, 3));
+
+test('typisch-bim: X1-Erweitert, BGF, BRI, NRF aus Geschoss- und Raummengen, Kostenschätzung über Kennwerte (Ticket 99)', () => {
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const { din277, kostenschaetzung: ks } = fx.erweitert;
+  const menge = (k, name) => dz3(dz(v1.mengen.get(k.nr).werte.get(name).text));
+  const geschosse = v1.von('IFCBUILDINGSTOREY');
+  const raeume = v1.von('IFCSPACE');
+  // Je Geschoss BGF (GrossFloorArea) und BRI (GrossVolume), je Raum NRF (NetFloorArea), je auf 3 Stellen, dann summiert
+  assert.deepEqual(din277.geschosse.map((g) => [g.globalId, g.name, g.bgf, g.bri]), geschosse.map((g) => [
+    g.attr[0], g.attr[2], menge(g, 'GrossFloorArea'), menge(g, 'GrossVolume'),
+  ]));
+  const geschossVon = new Map(geschosse.flatMap((g) => v1.teile(g).map((r) => [r.nr, g.attr[2]])));
+  assert.deepEqual(din277.raeume.map((r) => [r.globalId, r.name, r.langname, r.geschoss, r.nrf]), raeume.map((r) => [
+    r.attr[0], r.attr[2], r.attr[7], geschossVon.get(r.nr), menge(r, 'NetFloorArea'),
+  ]));
+  assert.deepEqual(din277.summen, {
+    bgf: summe3(din277.geschosse.map((g) => g.bgf)), bri: summe3(din277.geschosse.map((g) => g.bri)),
+    nrf: summe3(din277.raeume.map((r) => r.nrf)),
+  });
+  // Von Hand: BGF 98,7976 → 98,798 je Geschoss, 197,596; BRI 321,0922 → 321,092 und 296,3928 → 296,393, 617,485;
+  // NRF 47,646 (Wohnen netto ohne Raumteiler) + 17,339 + 17,935 + 47,876 + 17,393 + 18,063 = 166,252.
+  assert.deepEqual(din277.summen, { bgf: '197.596', bri: '617.485', nrf: '166.252' });
+  assert.deepEqual(din277.raeume.map((r) => r.nrf), ['47.646', '17.339', '17.935', '47.876', '17.393', '18.063']);
+  // Kostenschätzung (D-52): je KG Betrag = round(BGF × Kennwert, 2); Kennwerte erfunden, € je m² BGF (C1)
+  assert.deepEqual([ks.stufe, ks.bezugsgroesse], ['kostenschaetzung', { art: 'BGF', wert: din277.summen.bgf, einheit: 'm²' }]);
+  assert.deepEqual(ks.eintraege.map((x) => x.nummer), ks.kennwerte.map((x) => x.nummer));
+  ks.eintraege.forEach((x, i) => {
+    const kennwert = ks.kennwerte[i].kennwert;
+    assert.match(kennwert, /^\d+\.\d{2}$/);
+    assert.match(x.nummer, /^[1-9]\d\d$/);
+    assert.equal(x.betrag, format(rundeHalfUp(parse(ks.bezugsgroesse.wert, 3) * parse(kennwert, 2), 5, 2), 2), x.nummer);
+    assert.ok(x.bemerkung.includes('BGF 197,596 m²'), x.bemerkung);
+  });
+  assert.equal(ks.gesamt, format(ks.eintraege.reduce((s, x) => s + parse(x.betrag, 2), 0n), 2));
+  // Von Hand: 197,596 × 148,30 = 29.303,4868 → 29.303,49; 197,596 × 418,75 = 82.743,325 → 82.743,33 (.5 aufgerundet)
+  assert.deepEqual(ks.eintraege.map((x) => [x.nummer, x.betrag]), [
+    ['320', '29303.49'], ['330', '79562.03'], ['340', '25973.99'], ['350', '37385.16'], ['360', '19334.77'],
+    ['400', '82743.33'],
+  ]);
+  assert.equal(ks.gesamt, '274302.77');
+});
+
+test('typisch-bim: X1-Erweitert, Aufmaßblatt aus Auswahl „Geschoss EG“ je zugeordneter Position (D-53, Ticket 99)', () => {
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const a = fx.erweitert.aufmassAusAuswahl;
+  const eg = v1.von('IFCBUILDINGSTOREY').find((g) => g.attr[2] === 'EG');
+  assert.deepEqual([a.modell, a.auswahl], ['v1', { art: 'geschoss', globalId: eg.attr[0], name: 'EG' }]);
+  // ausgewählt sind alle Bauteile im EG (17); je zugeordneter Position mit ausgewählten Bauteilen eine Zeile
+  const auswahl = new Set(v1.bauteile.filter((b) => b.geschoss === 'EG').map((b) => b.globalId));
+  assert.equal(auswahl.size, 17);
+  const gegen = fx.zuordnungen.map((z) => vordersatzGegen(v1, '1', z, auswahl)).filter((v) => v.mengenansatz.length > 0);
+  assert.deepEqual(a.positionen.map(ohneHerleitung), gegen);
+  for (const p of a.positionen) {
+    const z = fx.zuordnungen.find((x) => x.positionId === p.positionId);
+    assert.deepEqual(p.bauteile, z.bauteile.map((b) => b.globalId).filter((id) => auswahl.has(id)), p.oz);
+  }
+  // Von Hand: alles wie der Vordersatz, nur 03.0050 zählt allein die Tür des EG (T-EG-1): 1,000 statt 3,000
+  assert.deepEqual(a.positionen.map((p) => [p.oz, p.menge]), [
+    ['02.0040', '98.798'], ['02.0050', '18.720'], ['02.0070', '98.638'], ['02.0080', '39.000'], ['03.0010', '33.023'],
+    ['03.0020', '99.938'], ['03.0050', '1.000'],
+  ]);
+});
+
+test('typisch-bim: X1-Erweitert, Vergleich v1 → v2, betroffene Positionen, Mengen aktualisieren mit v2 (D-53, Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v2 = modellLesen(ifcDatei('haus-v2.ifc'));
+  const { vergleich, betroffenePositionen, mengenAktualisieren: ma } = fx.erweitert;
+  // Vergleich über die GlobalId: Klasse, Name, Strukturknoten (Geschoss) und Mengen (auf 3 Stellen, wie gelesen)
+  const klasse = (k) => `Ifc${k.slice(3, 4)}${k.slice(4).toLowerCase()}`;
+  const kopf = (b) => ({ globalId: b.globalId, kennung: b.kennung, klasse: klasse(b.klasse), name: b.name, geschoss: b.geschoss });
+  const nachId = (m) => new Map(m.bauteile.map((b) => [b.globalId, b]));
+  const [a, b] = [nachId(v1), nachId(v2)];
+  assert.deepEqual([vergleich.vorher, vergleich.nachher], ['v1', 'v2']);
+  assert.deepEqual(vergleich.entfernt, [...a.values()].filter((x) => !b.has(x.globalId)).map(kopf));
+  assert.deepEqual(vergleich.hinzugefuegt, [...b.values()].filter((x) => !a.has(x.globalId)).map(kopf));
+  const geaendert = [];
+  for (const vorher of a.values()) {
+    const nachher = b.get(vorher.globalId);
+    if (!nachher) continue;
+    const g = { globalId: vorher.globalId, kennung: vorher.kennung, felder: [] };
+    if (vorher.klasse !== nachher.klasse) {
+      g.felder.push('klasse');
+      g.klasse = { vorher: klasse(vorher.klasse), nachher: klasse(nachher.klasse) };
+    }
+    if (vorher.name !== nachher.name) {
+      g.felder.push('name');
+      g.name = { vorher: vorher.name, nachher: nachher.name };
+    }
+    if (vorher.geschoss !== nachher.geschoss) {
+      g.felder.push('strukturknoten');
+      g.strukturknoten = { vorher: vorher.geschoss, nachher: nachher.geschoss };
+    }
+    const mengen = [...vorher.mengen.werte].map(([n, q]) => ({
+      name: n, vorher: dz3(dz(q.text)), nachher: dz3(dz(nachher.mengen.werte.get(n).text)),
+    })).filter((x) => x.vorher !== x.nachher);
+    if (mengen.length > 0) {
+      g.felder.push('mengen');
+      g.mengen = mengen;
+    }
+    if (g.felder.length > 0) geaendert.push(g);
+  }
+  assert.deepEqual(vergleich.geaendert, geaendert);
+  // Von Hand: entfernt IW-EG-3, neu IW-EG-4; IW-EG-2 3,145 → 3,645 m (8,64875 → 10,02375 m²); Westwand EG ohne, Westwand
+  // OG mit dem Fenster 1,01 × 1,385 = 1,39885 m² (19,25365 ↔ 20,6525); Fenster West EG → OG; Bodenplatte umbenannt.
+  assert.deepEqual(vergleich.geaendert.map((g) => [g.kennung, ...g.felder]), [
+    ['PL-EG', 'name'], ['AW-EG-W', 'mengen'], ['F-EG-W', 'strukturknoten'], ['IW-EG-2', 'mengen'], ['AW-OG-W', 'mengen'],
+  ]);
+  assert.deepEqual(vergleich.geaendert[3].mengen.map((x) => [x.name, x.vorher, x.nachher]), [
+    ['Length', '3.145', '3.645'], ['GrossSideArea', '8.649', '10.024'], ['NetSideArea', '8.649', '10.024'],
+    ['GrossVolume', '0.995', '1.153'], ['NetVolume', '0.995', '1.153'],
+  ]);
+  assert.deepEqual([vergleich.entfernt.map((x) => x.kennung), vergleich.hinzugefuegt.map((x) => x.kennung)], [
+    ['IW-EG-3'], ['IW-EG-4'],
+  ]);
+  // Mengen aktualisieren mit v2 (D-53): Zeilen nur für Bauteile im gewählten Modell; fehlt eines, Befund, nie 0
+  assert.equal(ma.modell, 'v2');
+  assert.deepEqual(ma.vordersaetze.map(ohneHerleitung), fx.zuordnungen.map((z) => vordersatzGegen(v2, '1', z)));
+  const p0010 = fx.zuordnungen.find((z) => z.oz === '03.0010');
+  assert.deepEqual(ma.befunde, [{
+    positionId: p0010.positionId, oz: '03.0010', art: 'bauteil-fehlt', globalId: p0010.bauteile[2].globalId, kennung: 'IW-EG-3',
+  }]);
+  assert.deepEqual(ma.vordersaetze.find((v) => v.oz === '03.0010').mengenansatz.map((x) => x.ausdruck), ['18,874', '10,024']);
+  lvSollwerteGegen(lv, ma.sollwerte, new Map(ma.vordersaetze.map((v) => [v.positionId, v.menge])));
+  // Betroffene Positionen: Vordersatz mit v2 anders als mit v1, Differenz = nachher − vorher
+  const vorher = new Map(fx.kern.vordersaetze.map((v) => [v.positionId, v]));
+  assert.deepEqual(betroffenePositionen, ma.vordersaetze
+    .filter((v) => JSON.stringify(v.mengenansatz) !== JSON.stringify(vorher.get(v.positionId).mengenansatz))
+    .map((v) => ({
+      positionId: v.positionId, oz: v.oz, vorher: vorher.get(v.positionId).menge, nachher: v.menge,
+      differenz: mitVz3(parse(v.menge, 3) - parse(vorher.get(v.positionId).menge, 3)),
+    })));
+  // Von Hand: 03.0010 18,874 + 10,024 = 28,898 (vorher 33,023), −4,125; 03.0020 28,804 + 31,227 + 20,653 + 20,653 =
+  // 101,337 (vorher 99,938), +1,399. LV: 28,898 × 48,750 = 1.408,7775 → 1.408,78; 101,337 × 19,360 = 1.961,88432 →
+  // 1.961,88; Netto 36.068,86 − 1.609,87 − 1.934,80 + 1.408,78 + 1.961,88 = 35.894,85; Nachlass 717,897 → 717,90;
+  // Netto n. N. 35.176,95; MwSt 6.683,6205 → 6.683,62; Brutto 41.860,57.
+  assert.deepEqual(betroffenePositionen.map((p) => [p.oz, p.vorher, p.nachher, p.differenz]), [
+    ['03.0010', '33.023', '28.898', '-4.125'], ['03.0020', '99.938', '101.337', '1.399'],
+  ]);
+  assert.deepEqual(ma.sollwerte.summen, {
+    netto: '35894.85', nachlass: '717.90', nettoNachNachlass: '35176.95', mwst: '6683.62', brutto: '41860.57',
+  });
+});
