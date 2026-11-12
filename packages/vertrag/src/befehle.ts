@@ -54,6 +54,7 @@ import type {
 } from './modell';
 import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
+import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -831,8 +832,10 @@ export interface KostenermittlungseintragEntfernen {
 }
 
 /**
- * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein anderes
- * Aggregat verweist auf sie (das Budget der Kostenkontrolle wählt die App), also kein `konflikt`.
+ * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Das Budget der
+ * Kostenkontrolle wählt die App, es verweist nicht auf sie. v1.6 (Ticket 97 Punkt 5, D-56): Verweist eine Honorarberechnung
+ * auf sie (`AnrechenbareKostenangabe` mit `art: 'kostenermittlung'`), weist `speicher` mit `konflikt` ab (Q5): Die
+ * Honorarberechnung verlöre still ihre Grundlage.
  */
 export interface KostenermittlungLoeschen {
   readonly art: 'KostenermittlungLoeschen';
@@ -959,6 +962,40 @@ export interface BauzeitenplanLoeschen {
 export type BauzeitenplanBefehl =
   BauzeitenplanAnlegen | BauzeitenplankopfSetzen | VorgangSetzen | VorgangEntfernen | BauzeitenplanLoeschen;
 
+// --- Honorarberechnung (v1.6, X3; D-56; Ausführer in `honorar`, Ticket 110) --------------------------------------------
+//
+// Der Ausführer sieht nur die Honorarberechnung (Signatur `HonorarberechnungBefehlAusfuehren`) und prüft die Form
+// (`ungueltige-eingabe` mit `feld`); was die HOAI anders vorsieht, ist ein Befund der Rechnung (siehe `Honorarobjekt`, U5). Den
+// Verweis auf eine Kostenermittlung hält `speicher` (`konflikt`, Q5). ChangeSet aller Befehle: `HonorarberechnungChangeSet`
+// mit der ganzen Honorarberechnung vorher und nachher.
+
+/** Legt eine Honorarberechnung an (Zustand `null`), leer oder mit Objekten. Kein Massenbefehl (wenige, kurze Objekte). */
+export interface HonorarberechnungAnlegen {
+  readonly art: 'HonorarberechnungAnlegen';
+  readonly honorarberechnung: Honorarberechnung;
+}
+
+/**
+ * Setzt den ganzen Inhalt der Honorarberechnung (Name, Objekte, Nebenkosten, MwSt-Satz) als ganze Werte; Kennung und Projekt
+ * bleiben. Ein Befehl für jede Änderung im Formular (ein Undo-Schritt), auch das Umbenennen.
+ */
+export interface HonorarberechnungSetzen {
+  readonly art: 'HonorarberechnungSetzen';
+  readonly name: string;
+  readonly objekte: readonly Honorarobjekt[];
+  readonly nebenkosten: Nebenkostenangabe | null;
+  readonly mwstSatz: Prozent;
+}
+
+/** Löscht die Honorarberechnung (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist darauf. */
+export interface HonorarberechnungLoeschen {
+  readonly art: 'HonorarberechnungLoeschen';
+}
+
+/** Befehle gegen eine Honorarberechnung (Zustand: `HonorarberechnungZustand`; v1.6, Ticket 97 Punkt 5). */
+export type HonorarberechnungBefehl =
+  HonorarberechnungAnlegen | HonorarberechnungSetzen | HonorarberechnungLoeschen;
+
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
 /**
@@ -1004,7 +1041,8 @@ export type Befehl =
   | KostenermittlungBefehl
   // v1.6 (Ticket 97)
   | BauwerksmodellBefehl
-  | BauzeitenplanBefehl;
+  | BauzeitenplanBefehl
+  | HonorarberechnungBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];

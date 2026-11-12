@@ -57,6 +57,8 @@ export type BauzeitenplanId = string & Marke<'BauzeitenplanId'>;
  * Vorgangs (`VorgangSetzen`) gleich; Anordnungsbeziehungen und Kinder verweisen über sie.
  */
 export type VorgangId = string & Marke<'VorgangId'>;
+/** Kennung einer Honorarberechnung (v1.6, Ticket 97 Punkt 5; X3, D-56): eigenes Aggregat, eindeutig im Projekt. */
+export type HonorarberechnungId = string & Marke<'HonorarberechnungId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;

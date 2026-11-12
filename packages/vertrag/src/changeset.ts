@@ -17,6 +17,7 @@ import type {
   AuftragsLeistungsverzeichnisId,
   BauwerksmodellId,
   BauzeitenplanId,
+  HonorarberechnungId,
   KnotenId,
   KostenermittlungId,
   LeistungsverzeichnisId,
@@ -44,6 +45,7 @@ import type {
 import type { Summenaenderung, Summenstand } from './summen';
 import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from './bim';
 import type { Bauzeitenplan } from './bauzeit';
+import type { Honorarberechnung } from './honorar';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -189,6 +191,11 @@ export interface BauwerksmodellZustand {
  */
 export interface BauzeitenplanZustand {
   readonly bauzeitenplan: Bauzeitenplan;
+}
+
+/** Honorarberechnung als Zustand ihrer Befehle (v1.6, Ticket 97 Punkt 5). Ohne Ergebnis: das rechnet `honorar` (D-56). */
+export interface HonorarberechnungZustand {
+  readonly honorarberechnung: Honorarberechnung;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -346,7 +353,8 @@ export interface RechnungChangeSet {
 
 /**
  * ChangeSet an einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (8)): die ganze Kostenermittlung vorher und nachher,
- * Lesart wie `AufmassChangeSet`.
+ * Lesart wie `AufmassChangeSet`. v1.6 (Ticket 97 Punkt 5): Löscht es eine Kostenermittlung, auf die eine Honorarberechnung
+ * verweist, weist `speicher` mit `konflikt` ab (auch ohne Ausführer, als Undo).
  */
 export interface KostenermittlungChangeSet {
   readonly art: 'kostenermittlung';
@@ -385,6 +393,17 @@ export interface BauzeitenplanChangeSet {
   readonly art: 'bauzeitenplan';
   readonly bauzeitenplanId: BauzeitenplanId;
   readonly bauzeitenplan: Aenderung<Bauzeitenplan>;
+}
+
+/**
+ * ChangeSet an einer Honorarberechnung (v1.6, Ticket 97 Punkt 5; D-56): die ganze Honorarberechnung vorher und nachher, Lesart
+ * wie `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn ein Objekt auf eine Kostenermittlung verweist, die es im
+ * Projekt nicht gibt.
+ */
+export interface HonorarberechnungChangeSet {
+  readonly art: 'honorarberechnung';
+  readonly honorarberechnungId: HonorarberechnungId;
+  readonly honorarberechnung: Aenderung<Honorarberechnung>;
 }
 
 /** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */

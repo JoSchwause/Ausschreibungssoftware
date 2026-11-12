@@ -66,6 +66,16 @@ import type {
   VorgangSetzen,
 } from './befehle';
 import type { Bauzeitenplan, Bauzeitenplanergebnis } from './bauzeit';
+import type { HonorarberechnungAnlegen, HonorarberechnungLoeschen, HonorarberechnungSetzen } from './befehle';
+import type { HonorarberechnungChangeSet } from './changeset';
+import type {
+  Honorarberechnung,
+  Honorarergebnis,
+  Honorarobjekt,
+  Leistungsphasennummer,
+  Tafelzeile,
+} from './honorar';
+import type { HonorarberechnungId } from './marken';
 import type { BauzeitenplanChangeSet } from './changeset';
 import type { BauzeitenplanId, VorgangId } from './marken';
 import type {
@@ -1945,3 +1955,168 @@ export const beispielBauzeitenplanbefehle: readonly [
   },
   { art: 'BauzeitenplanLoeschen' },
 ];
+
+const honorarId = '019b76e9-0000-7000-8000-000000000401' as HonorarberechnungId;
+const hoaiKostenberechnungId = '019b76e9-0000-7000-8000-000000000402' as KostenermittlungId;
+const btr = (wert: string): Betrag => wert as Betrag;
+const pz = (wert: string): Prozent => wert as Prozent;
+
+/** Punkt 5 (D-56): eine Kostenberechnung mit KG 300 und KG 400, die Grundlage der anrechenbaren Kosten (§ 6 Abs. 1 Nr. 2). */
+export const beispielKostenberechnungHoai: Kostenermittlung = {
+  id: hoaiKostenberechnungId,
+  projektId: beispielLv.projektId,
+  stufe: 'kostenberechnung',
+  name: 'Kostenberechnung Umbau (erfunden)',
+  eintraege: [
+    { nummer: kg('300'), betrag: btr('612345.67') },
+    { nummer: kg('400'), betrag: btr('201234.56') },
+  ],
+};
+
+/**
+ * Punkt 5 (D-56, D-101.10): eine Honorarberechnung mit einem Objekt, Gebäude, Honorarzone III, Honorarsatz 50 (in der Praxis
+ * „Mittelsatz“), anrechenbare Kosten aus der Kostenberechnung nach § 33 mit 18.000,00 € weiteren Kosten (Abs. 3) und
+ * 10.000,00 € mitzuverarbeitender Bausubstanz, LPH 1 bis 9 zu den Sätzen der HOAI, Umbauzuschlag 20 %, Nebenkosten 5 %,
+ * MwSt 19 % (der Golden-Fall 1 aus Ticket 101).
+ */
+export const beispielHonorarberechnung: Honorarberechnung = {
+  id: honorarId,
+  projektId: beispielLv.projektId,
+  name: 'Architekt, LPH 1–9 (erfunden)',
+  objekte: [
+    {
+      bezeichnung: 'Umbau Wohnhaus',
+      leistungsbild: 'gebaeude',
+      honorarzone: 'III',
+      honorarsatz: pz('50.00'),
+      anrechenbareKosten: {
+        art: 'kostenermittlung',
+        kostenermittlungId: hoaiKostenberechnungId,
+        technischeAnlagenAnteilig: true,
+        weitereKosten: btr('18000.00'),
+        mitzuverarbeitendeBausubstanz: btr('10000.00'),
+      },
+      leistungsphasen: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((nummer) => ({
+        nummer: nummer as Leistungsphasennummer,
+      })),
+      umbauzuschlagssatz: pz('20.00'),
+    },
+  ],
+  nebenkosten: { art: 'prozent', satz: pz('5.00') },
+  mwstSatz: pz('19.00'),
+};
+
+const spannen = (...z: readonly [string, string, string, string, string, string]): Tafelzeile['spannen'] => ({
+  I: { von: btr(z[0]), bis: btr(z[1]) },
+  II: { von: btr(z[1]), bis: btr(z[2]) },
+  III: { von: btr(z[2]), bis: btr(z[3]) },
+  IV: { von: btr(z[3]), bis: btr(z[4]) },
+  V: { von: btr(z[4]), bis: btr(z[5]) },
+});
+
+/**
+ * Punkt 5 (D-56): das Ergebnis zu `beispielHonorarberechnung` mit der Herleitung nach § 33 (Grenze 25 % von 630.345,67 =
+ * 157.586,42; KG 400 darüber zur Hälfte 21.824,07), den Tafelzeilen 750.000 € und 1.000.000 € aus § 35 Abs. 1 (amtliches Werk,
+ * D-56), der interpolierten Spanne der Zone III (97.111,33 bis 121.116,04), dem Honorar im Honorarsatz 50 (109.113,69) und den
+ * Phasen (Summe 109.113,68, ein Cent Rundungsrest). Beim Schreiben gegen `honorarBerechnen` (Paket `honorar`, Ticket 101) mit
+ * den Beträgen der Kostenberechnung geprüft.
+ */
+export const beispielHonorarergebnis: Honorarergebnis = {
+  objekte: [
+    {
+      bezeichnung: 'Umbau Wohnhaus',
+      leistungsbild: 'gebaeude',
+      honorarzone: 'III',
+      anrechenbareKosten: btr('819756.16'),
+      herleitung: {
+        kg300: btr('612345.67'),
+        weitereKosten: btr('18000.00'),
+        sonstigeAnrechenbareKosten: btr('630345.67'),
+        kg400: btr('201234.56'),
+        grenzeTechnischeAnlagen: btr('157586.42'),
+        kg400Voll: btr('157586.42'),
+        kg400Haelfte: btr('21824.07'),
+        mitzuverarbeitendeBausubstanz: btr('10000.00'),
+        anrechenbareKosten: btr('819756.16'),
+      },
+      tafel: {
+        zeileUnten: {
+          anrechenbareKosten: btr('750000.00'),
+          spannen: spannen('64666.00', '75781.00', '89927.00', '112156.00', '126301.00', '137416.00'),
+        },
+        zeileOben: {
+          anrechenbareKosten: btr('1000000.00'),
+          spannen: spannen('83182.00', '97479.00', '115675.00', '144268.00', '162464.00', '176761.00'),
+        },
+        spanne: { von: btr('97111.33'), bis: btr('121116.04') },
+      },
+      honorar: btr('109113.69'),
+      phasen: [
+        { nummer: 1, name: 'Grundlagenermittlung', anteil: pz('2.00'), betrag: btr('2182.27') },
+        { nummer: 2, name: 'Vorplanung', anteil: pz('7.00'), betrag: btr('7637.96') },
+        { nummer: 3, name: 'Entwurfsplanung', anteil: pz('15.00'), betrag: btr('16367.05') },
+        { nummer: 4, name: 'Genehmigungsplanung', anteil: pz('3.00'), betrag: btr('3273.41') },
+        { nummer: 5, name: 'Ausführungsplanung', anteil: pz('25.00'), betrag: btr('27278.42') },
+        { nummer: 6, name: 'Vorbereitung der Vergabe', anteil: pz('10.00'), betrag: btr('10911.37') },
+        { nummer: 7, name: 'Mitwirkung bei der Vergabe', anteil: pz('4.00'), betrag: btr('4364.55') },
+        {
+          nummer: 8,
+          name: 'Objektüberwachung – Bauüberwachung und Dokumentation',
+          anteil: pz('32.00'),
+          betrag: btr('34916.38'),
+        },
+        { nummer: 9, name: 'Objektbetreuung', anteil: pz('2.00'), betrag: btr('2182.27') },
+      ],
+      grundhonorar: btr('109113.68'),
+      umbauzuschlag: btr('21822.74'),
+    },
+  ],
+  grundhonorar: btr('109113.68'),
+  umbauzuschlaege: btr('21822.74'),
+  nebenkosten: btr('6546.82'),
+  netto: btr('137483.24'),
+  mwst: btr('26121.82'),
+  brutto: btr('163605.06'),
+  befunde: [],
+};
+
+const honorarObjekt = beispielHonorarberechnung.objekte[0] as Honorarobjekt;
+
+/** Punkt 5: Anlegen, den ganzen Inhalt setzen (Honorarsatz 25 statt 50, LPH 8 mit vereinbartem Anteil 30 %), Löschen. */
+export const beispielHonorarbefehle: readonly [
+  HonorarberechnungAnlegen,
+  HonorarberechnungSetzen,
+  HonorarberechnungLoeschen,
+] = [
+  { art: 'HonorarberechnungAnlegen', honorarberechnung: beispielHonorarberechnung },
+  {
+    art: 'HonorarberechnungSetzen',
+    name: beispielHonorarberechnung.name,
+    objekte: [
+      {
+        ...honorarObjekt,
+        honorarsatz: pz('25.00'),
+        leistungsphasen: honorarObjekt.leistungsphasen.map((p) =>
+          p.nummer === 8 ? { nummer: 8, anteil: pz('30.00') } : p,
+        ),
+      },
+    ],
+    nebenkosten: beispielHonorarberechnung.nebenkosten,
+    mwstSatz: beispielHonorarberechnung.mwstSatz,
+  },
+  { art: 'HonorarberechnungLoeschen' },
+];
+
+/** Punkt 5: ChangeSet des Setzens: die ganze Honorarberechnung vorher und nachher. */
+export const beispielChangeSetHonorarberechnungSetzen: HonorarberechnungChangeSet = {
+  art: 'honorarberechnung',
+  honorarberechnungId: honorarId,
+  honorarberechnung: {
+    vorher: beispielHonorarberechnung,
+    nachher: {
+      ...beispielHonorarberechnung,
+      name: beispielHonorarbefehle[1].name,
+      objekte: beispielHonorarbefehle[1].objekte,
+    },
+  },
+};

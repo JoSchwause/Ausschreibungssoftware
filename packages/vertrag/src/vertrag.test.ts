@@ -252,6 +252,34 @@ import {
 } from './beispiele';
 // v1.6 (Ticket 97)
 import type {
+  AnrechenbareKostenangabe,
+  AnrechenbareKostenHerleitung,
+  BeauftragteLeistungsphase,
+  Honorarberechnung,
+  HonorarberechnungBefehl,
+  HonorarberechnungChangeSet,
+  HonorarberechnungSetzen,
+  HonorarberechnungZustand,
+  Honorarergebnis,
+  Honorarobjekt,
+  Honorarspanne,
+  Honorarzone,
+  Leistungsbild,
+  Leistungsphasennummer,
+  Nebenkostenangabe,
+  Objektergebnis,
+  Phasenbetrag,
+  Tafelinterpolation,
+  Tafelzeile,
+} from './index';
+import {
+  beispielChangeSetHonorarberechnungSetzen,
+  beispielHonorarbefehle,
+  beispielHonorarberechnung,
+  beispielHonorarergebnis,
+  beispielKostenberechnungHoai,
+} from './beispiele';
+import type {
   Anordnungsart,
   Anordnungsbeziehung,
   Arbeitskalender,
@@ -2318,5 +2346,103 @@ describe('v1.6 Punkt 4: Bauzeitenplan (X2, D-57)', () => {
     expectTypeOf<NurDaten<Bauzeitenplan>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<Bauzeitenplanergebnis>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<BauzeitenplanBefehl>>().toEqualTypeOf<true>();
+  });
+});
+
+describe('v1.6 Punkt 5: Honorarberechnung (X3, D-56; Namen wie `honorar`, D-101.10)', () => {
+  it('Leistungsbilder, Honorarzonen in der Schreibweise der HOAI, Leistungsphasen 1 bis 9', () => {
+    expectTypeOf<Leistungsbild>().toEqualTypeOf<
+      | 'gebaeude'
+      | 'innenraeume'
+      | 'freianlagen'
+      | 'ingenieurbauwerke'
+      | 'verkehrsanlagen'
+      | 'tragwerksplanung'
+      | 'technische-ausruestung'
+    >();
+    expectTypeOf<Honorarzone>().toEqualTypeOf<'I' | 'II' | 'III' | 'IV' | 'V'>();
+    expectTypeOf<Leistungsphasennummer>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>();
+    expectTypeOf<BeauftragteLeistungsphase>().toEqualTypeOf<{
+      readonly nummer: Leistungsphasennummer;
+      readonly anteil?: Prozent;
+    }>();
+  });
+
+  it('anrechenbare Kosten: Betrag von Hand oder Verweis auf eine Kostenermittlung mit den Angaben nach § 33', () => {
+    expectTypeOf<AnrechenbareKostenangabe['art']>().toEqualTypeOf<'betrag' | 'kostenermittlung'>();
+    type AusKostenermittlung = Extract<AnrechenbareKostenangabe, { art: 'kostenermittlung' }>;
+    expectTypeOf<AusKostenermittlung['kostenermittlungId']>().toEqualTypeOf<KostenermittlungId>();
+    expectTypeOf<AusKostenermittlung['technischeAnlagenAnteilig']>().toEqualTypeOf<boolean>();
+    expectTypeOf<AusKostenermittlung['weitereKosten']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<AusKostenermittlung['mitzuverarbeitendeBausubstanz']>().toEqualTypeOf<Betrag>();
+    // Gespeichert wird der Verweis, nie die Beträge der Kostengruppen.
+    expectTypeOf<AusKostenermittlung>().not.toHaveProperty('kg300');
+  });
+
+  it('Honorarobjekt und Honorarberechnung: Umbauzuschlagssatz (Prozent) neben dem Ergebnis Umbauzuschlag (Betrag)', () => {
+    expectTypeOf<Honorarobjekt['umbauzuschlagssatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Objektergebnis['umbauzuschlag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Honorarobjekt>().not.toHaveProperty('umbauzuschlag');
+    expectTypeOf<Honorarberechnung['nebenkosten']>().toEqualTypeOf<Nebenkostenangabe | null>();
+    expectTypeOf<Honorarberechnung>().not.toHaveProperty('ergebnis');
+    expectTypeOf<HonorarberechnungZustand>().toEqualTypeOf<{
+      readonly honorarberechnung: Honorarberechnung;
+    }>();
+  });
+
+  it('Beispiel: der Verweis nennt eine Kostenberechnung (§ 6 Abs. 1 Nr. 2); Phasen aufsteigend, je einmal', () => {
+    const [objekt] = beispielHonorarberechnung.objekte;
+    const k = objekt?.anrechenbareKosten;
+    expect(k?.art === 'kostenermittlung' && k.kostenermittlungId).toBe(beispielKostenberechnungHoai.id);
+    expect(beispielKostenberechnungHoai.stufe).toBe('kostenberechnung');
+    expect(objekt?.leistungsphasen.map((p) => p.nummer)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('Ergebnis (Form wie `honorar`): Kette Grundhonorar + Zuschläge + Nebenkosten = Netto, Befunde in der gemeinsamen Liste', () => {
+    expectTypeOf<Honorarergebnis['befunde']>().toEqualTypeOf<readonly Pruefbefund[]>();
+    expectTypeOf<Tafelzeile['spannen']>().toEqualTypeOf<
+      Readonly<Partial<Record<Honorarzone, Honorarspanne>>>
+    >();
+    expectTypeOf<Tafelinterpolation>().toEqualTypeOf<{
+      readonly zeileUnten: Tafelzeile;
+      readonly zeileOben: Tafelzeile;
+      readonly spanne: Honorarspanne;
+    }>();
+    expectTypeOf<Objektergebnis['herleitung']>().toEqualTypeOf<AnrechenbareKostenHerleitung | null>();
+    expectTypeOf<Objektergebnis['phasen']>().toEqualTypeOf<readonly Phasenbetrag[]>();
+    const e = beispielHonorarergebnis;
+    const cent = (b: string): number => Math.round(Number(b) * 100);
+    expect(cent(e.netto)).toBe(cent(e.grundhonorar) + cent(e.umbauzuschlaege) + cent(e.nebenkosten));
+    expect(cent(e.brutto)).toBe(cent(e.netto) + cent(e.mwst));
+    const [o] = e.objekte;
+    expect(o?.phasen.reduce((s, p) => s + cent(p.betrag), 0)).toBe(cent(o?.grundhonorar ?? '0'));
+    const h = o?.herleitung;
+    expect(cent(h?.sonstigeAnrechenbareKosten ?? '0')).toBe(
+      cent(h?.kg300 ?? '0') + cent(h?.weitereKosten ?? '0'),
+    );
+  });
+
+  it('Befehle: Anlegen, Setzen (ganzer Inhalt), Löschen; ChangeSet als ganzes Aggregat; kein Massenbefehl', () => {
+    expectTypeOf<HonorarberechnungBefehl['art']>().toEqualTypeOf<
+      'HonorarberechnungAnlegen' | 'HonorarberechnungSetzen' | 'HonorarberechnungLoeschen'
+    >();
+    expectTypeOf<HonorarberechnungBefehl>().toExtend<Befehl>();
+    expectTypeOf<Omit<HonorarberechnungSetzen, 'art'>>().toEqualTypeOf<
+      Omit<Honorarberechnung, 'id' | 'projektId'>
+    >();
+    expectTypeOf<HonorarberechnungChangeSet['honorarberechnung']>().toEqualTypeOf<
+      Aenderung<Honorarberechnung>
+    >();
+    expectTypeOf<'HonorarberechnungAnlegen'>().not.toExtend<Massenbefehlsart>();
+    const { vorher, nachher } = beispielChangeSetHonorarberechnungSetzen.honorarberechnung;
+    expect(nachher?.id).toBe(vorher?.id);
+    expect(nachher?.objekte[0]?.honorarsatz).toBe('25.00');
+    expect(beispielHonorarbefehle.map((b) => b.art)).toEqual([
+      'HonorarberechnungAnlegen',
+      'HonorarberechnungSetzen',
+      'HonorarberechnungLoeschen',
+    ]);
+    expectTypeOf<NurDaten<Honorarberechnung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Honorarergebnis>>().toEqualTypeOf<true>();
   });
 });
