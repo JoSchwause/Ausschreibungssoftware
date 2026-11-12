@@ -44,6 +44,9 @@ importers:
       '@tethys/ausgabe':
         specifier: workspace:*
         version: link:../../packages/ausgabe
+      '@tethys/bauzeit':
+        specifier: workspace:*
+        version: link:../../packages/bauzeit
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
