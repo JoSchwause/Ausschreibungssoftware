@@ -29,7 +29,7 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
   const zweite = erzeugeAlle();
   assert.deepEqual(Object.keys(erste).sort(), [
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
-    'gross.json', 'handbeispiele.json', 'ifc/haus-v1-ifc2x3.ifc', 'ifc/haus-v1.ifc', // Ticket 99
+    'gross.json', 'handbeispiele.json', 'ifc/haus-v1-ifc2x3.ifc', 'ifc/haus-v1.ifc', 'ifc/haus-v2.ifc', // Ticket 99
     'typisch-abrechnung.json', // Ticket 85
     'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
@@ -1767,4 +1767,64 @@ test('IFC-Haus v1 in IFC 2x3: Längen in mm, nach Umrechnung dieselben Mengen un
   assert.equal(drei.von('IFCBUILDINGSTOREY')[1].attr[9].zahl, '3000.');
   // IFC 2x3 schreibt Umlaute als \X\hh (Latin-1), IFC 4 als \X2\hhhh\X0\
   assert.ok(text.includes("'Au\\X\\DFenwand S\\X\\FCd EG'"));
+});
+
+/** Vergleich zweier gelesener Stände über die GlobalId (D-53): entfernt, hinzugefügt, geändert (Felder je Bauteil). */
+function staendeVergleichen(alt, neu) {
+  const a = new Map(alt.bauteile.map((b) => [b.globalId, b]));
+  const b = new Map(neu.bauteile.map((x) => [x.globalId, x]));
+  const geaendert = [];
+  for (const [id, vorher] of a) {
+    const nachher = b.get(id);
+    if (!nachher) continue;
+    const felder = [];
+    if (vorher.klasse !== nachher.klasse) felder.push('klasse');
+    if (vorher.name !== nachher.name) felder.push('name');
+    if (vorher.geschoss !== nachher.geschoss) felder.push('strukturknoten');
+    const mengen = [...vorher.mengen.werte].filter(([n, q]) => nachher.mengen.werte.get(n)?.text !== q.text);
+    if (mengen.length > 0) felder.push(`mengen ${mengen.map(([n]) => n).join(' ')}`);
+    if (felder.length > 0) geaendert.push([vorher.kennung, ...felder]);
+  }
+  return {
+    entfernt: [...a.keys()].filter((id) => !b.has(id)).map((id) => a.get(id).kennung),
+    hinzugefuegt: [...b.keys()].filter((id) => !a.has(id)).map((id) => b.get(id).kennung),
+    geaendert,
+  };
+}
+
+test('IFC-Haus v2: eine Wand entfernt, eine neu, eine länger, ein Fenster im OG, eine umbenannt, sonst gleich (Ticket 99)', () => {
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v2 = modellLesen(ifcDatei('haus-v2.ifc'));
+  assert.equal(v2.schema, 'IFC4');
+  mengenGegenGeometrie(v2, '1');
+  assert.deepEqual(staendeVergleichen(v1, v2), {
+    entfernt: ['IW-EG-3'],
+    hinzugefuegt: ['IW-EG-4'],
+    geaendert: [
+      ['PL-EG', 'name'],
+      ['AW-EG-W', 'mengen NetSideArea NetVolume'],
+      ['F-EG-W', 'strukturknoten'],
+      ['IW-EG-2', 'mengen Length GrossSideArea NetSideArea GrossVolume NetVolume'],
+      ['AW-OG-W', 'mengen NetSideArea NetVolume'],
+    ],
+  });
+  assert.equal(v2.bauteil('PL-EG').name, 'Bodenplatte WU-Beton');
+  // IW-EG-2 um 0,50 m länger: 3,645 × 2,75 = 10,02375 (vorher 8,64875)
+  assert.deepEqual(['Length', 'NetSideArea'].map((n) => v2.bauteil('IW-EG-2').mengen.werte.get(n).text), ['3.645', '10.02375']);
+  // Das Fenster West sitzt mit seiner Öffnung (gleiche GlobalId) jetzt in der Westwand des OG
+  assert.deepEqual(v2.bauteil('AW-EG-W').oeffnungen, []);
+  assert.deepEqual(v2.bauteil('AW-OG-W').oeffnungen.map((o) => o.fuellung), ['F-EG-W']);
+  const oeffnungsId = (m) => m.von('IFCOPENINGELEMENT').find((o) => o.attr[2] === 'Öffnung F-EG-W').attr[0];
+  assert.equal(oeffnungsId(v2), oeffnungsId(v1));
+  assert.deepEqual(['NetSideArea', 'NetVolume'].map((n) => v2.bauteil('AW-EG-W').mengen.werte.get(n).text), [
+    '20.6525', '7.5381625',
+  ]);
+  // Der neue Raumteiler: gleiche Art und Maße wie der entfernte, andere Lage; Strukturknoten und ihre Mengen bleiben
+  const neu = v2.bauteil('IW-EG-4');
+  assert.deepEqual([neu.klasse, neu.name, neu.geschoss, neu.typ, neu.mengen.werte.get('NetSideArea').text], [
+    'IFCWALL', 'Raumteiler Wohnen Nord', 'EG', 'Innenwand Kalksandstein 11,5', '5.5',
+  ]);
+  const knoten = (m) => ['IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE'].flatMap((typ) =>
+    m.von(typ).map((k) => [k.attr[0], k.attr[2], m.mengen.has(k.nr) ? mengenInSi(m.mengen.get(k.nr).werte, '1') : null]));
+  assert.deepEqual(knoten(v2), knoten(v1));
 });
