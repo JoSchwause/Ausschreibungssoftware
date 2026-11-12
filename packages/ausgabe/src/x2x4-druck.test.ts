@@ -91,6 +91,16 @@ describe('Mängelliste', () => {
     expect(t).not.toContain('Putzriss');
   });
 
+  it('nur der Befund „Frist überschritten“ heißt überfällig, nicht „angezeigt ohne Frist“ (Ticket 122, PB6)', () => {
+    const m = baueMaengellisteModell({
+      ...maengelEingabe,
+      befunde: [{ ...fx.befundUeberfaellig, code: 'mangel-angezeigt-ohne-frist' }],
+    });
+    const tabelle = m.abschnitte.flatMap((a) => a.bloecke).find((b) => b.art === 'tabelle');
+    if (tabelle?.art !== 'tabelle') throw new Error('keine Tabelle');
+    expect(tabelle.zeilen.map((z) => z.kleinerText)).toEqual([undefined, undefined, undefined]);
+  });
+
   it('eine leere Liste sagt es', async () => {
     const t = await text(erzeugeMaengellistePdf({ ...maengelEingabe, maengel: [], befunde: [] }, schriften));
     expect(t).toContain('Keine Mängel');

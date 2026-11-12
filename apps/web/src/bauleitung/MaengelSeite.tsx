@@ -50,6 +50,7 @@ import {
   ozVonPosition,
   positionenNachOz,
   statusBefehle,
+  fristbefundText,
   ueberfaelligeIds,
   verlaufZeilen,
   type Feldfehler,
@@ -418,8 +419,8 @@ function Maengel({
             const m = maengel.find((x) => x.id === (b.ort as { mangelId?: string }).mangelId);
             if (m === undefined) return null;
             return (
-              <li key={m.id} className="bauleitung__befund">
-                <span>{t.befund(m.nummer, m.titel, datumDe(m.frist ?? ''), datumDe(stichtag))}</span>
+              <li key={`${m.id}-${b.code}`} className="bauleitung__befund">
+                <span>{fristbefundText(b, m, stichtag)}</span>
                 <Button
                   groesse="sm"
                   variante="schlicht"
