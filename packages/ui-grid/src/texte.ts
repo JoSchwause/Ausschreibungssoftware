@@ -11,6 +11,7 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
   einheit: 'Einheit',
   einheitspreis: 'Einheitspreis',
   gesamtpreis: 'Gesamtpreis',
+  kostengruppe: 'KG', // v1.5: mechanisch angepasst, Folgeticket 93
 };
 
 /**

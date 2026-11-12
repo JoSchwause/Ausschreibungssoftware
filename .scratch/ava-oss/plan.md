@@ -105,7 +105,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
   Vor dem Schnitt zu klären: Bibliothek für IFC und 3D-Ansicht samt Lizenz (C5, AGPL-verträglich), Ablage großer IFC-Dateien
   (OPFS, nicht in der JSON-Projektdatei?), Leistungsbudgets für große Modelle (Q4).
 - X2–X5 je ein Strang. X5 (Bieterportal/Sync-Server) widerspricht ADR 0001 (lokal, ohne Server) sowie G-01 und G-14: vorher
-  eine ADR und eine Grilling-Frage.
+  eine ADR und eine Grilling-Frage (ADR 0013 als Vorschlag, G-57 offen; kein Code in Welle 6).
 
 ## 3. Wellen
 

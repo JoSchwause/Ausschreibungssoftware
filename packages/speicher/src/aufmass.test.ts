@@ -2,12 +2,12 @@
 // Aufmaßblatt in `speicher` (Ticket 79, Vertrag v1.4): ganzes Aggregat im ChangeSet (D-36 (8)), `vorher` muss zum
 // gespeicherten Stand passen, Undo durch Tausch, Repository nach Blattnummer, `AufmassAnlegen` als Kurzfassung (E-13).
 
-import type { AufmassChangeSet, Befehl } from '@tethys/vertrag';
+import type { Aufmass, AufmassChangeSet, Aufmassposition, Befehl, Menge } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import { imProtokoll, wert } from './testhilfe/node';
 import { umkehren } from './testhilfe/umkehrung';
-import { anwenden, aufmass, aufmassCs, AUFTRAG, mitAuftrag, P } from './testhilfe/v14';
+import { anwenden, aufmass, aufmassCs, AUFTRAG, mitAuftrag, P, POSITIONEN } from './testhilfe/v14';
 
 const anlegen = (a = aufmass(1)): [AufmassChangeSet, Befehl] => [
   aufmassCs(null, a),
@@ -114,5 +114,87 @@ describe('Aufmaßblatt speichern und laden', () => {
   it('auflisten zu einem unbekannten Auftrags-LV: nicht-gefunden', async () => {
     const kern = await mitAuftrag();
     expect(code(kern.aufmasseAuflisten('unbekannt' as never))).toBe('nicht-gefunden');
+  });
+});
+
+// Ticket 94: `vorher` wird gegen den gespeicherten Text verglichen, geschrieben wird nur, was sich ändert. Die Regeln dafür
+// bleiben dieselben: kanonisch gleich (Schlüsselreihenfolge und `undefined`-Felder zählen nicht), sonst `konflikt`; ein Wert,
+// der kein JSON ist, ist ein Programmfehler (`unbekannt`).
+describe('Aufmaßblatt ändern: vorher und nachher Zeile für Zeile', () => {
+  const neueZeile: Aufmassposition = {
+    positionId: POSITIONEN[2] ?? ('?' as never),
+    mengenansatz: null,
+    menge: '7.000' as Menge,
+  };
+
+  it('vorher in anderer Schlüsselreihenfolge und mit undefined-Feld passt; Zeilen, die ihre Stelle wechseln, bleiben genau', async () => {
+    const kern = await mitAuftrag();
+    wert(await anwenden(kern, ...anlegen()));
+    const a = aufmass(1);
+    const [z0, z1] = a.positionen;
+    if (z0 === undefined || z1 === undefined) throw new Error('zwei Zeilen erwartet');
+    const umgestellt = {
+      ...a,
+      positionen: a.positionen.map((z) => ({
+        menge: z.menge,
+        extra: undefined,
+        mengenansatz: z.mengenansatz,
+        positionId: z.positionId,
+      })),
+    } as Aufmass;
+    // Erste Zeile entfernt, eine neue angehängt: Die übrige Zeile (dasselbe Objekt) rückt an Stelle 0.
+    const nachher: Aufmass = { ...umgestellt, positionen: [umgestellt.positionen[1] ?? z1, neueZeile] };
+    const cs = aufmassCs(umgestellt, nachher);
+    const soll: Aufmass = { ...a, positionen: [z1, neueZeile] };
+    wert(await anwenden(kern, cs));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(soll);
+    wert(await anwenden(kern, umkehren(cs)));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(a);
+    wert(await anwenden(kern, cs));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(soll);
+  });
+
+  it('vorher weicht in einer Ansatzzeile oder im Kopf ab: konflikt, nichts geschrieben', async () => {
+    const kern = await mitAuftrag();
+    wert(await anwenden(kern, ...anlegen()));
+    const a = aufmass(1);
+    const nachher: Aufmass = { ...a, positionen: [...a.positionen, neueZeile] };
+    const tief = {
+      ...a,
+      positionen: a.positionen.map((z, i) =>
+        i === 0 && z.mengenansatz !== null
+          ? { ...z, mengenansatz: z.mengenansatz.map((s) => ({ ...s, ausdruck: '0,5*3' })) }
+          : z,
+      ),
+    };
+    expect(code(await anwenden(kern, aufmassCs(tief, nachher)))).toBe('konflikt');
+    expect(code(await anwenden(kern, aufmassCs({ ...a, datum: null }, nachher)))).toBe('konflikt');
+    expect(code(await anwenden(kern, aufmassCs({ ...a, positionen: [] }, nachher)))).toBe('konflikt');
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(a);
+  });
+
+  it('ein Wert, der kein JSON ist, in vorher oder nachher: unbekannt, nichts geschrieben', async () => {
+    const kern = await mitAuftrag();
+    wert(await anwenden(kern, ...anlegen()));
+    const a = aufmass(1);
+    const mitZahl = (x: Aufmass): Aufmass =>
+      ({ ...x, positionen: [x.positionen[0], { ...x.positionen[1], menge: 2.5 }] }) as unknown as Aufmass;
+    expect(code(await anwenden(kern, aufmassCs(mitZahl(a), a)))).toBe('unbekannt');
+    expect(code(await anwenden(kern, aufmassCs(a, mitZahl(a))))).toBe('unbekannt');
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(a);
+  });
+
+  it('nur der Kopf ändert sich, nur die Zeilen ändern sich, nichts ändert sich: jeweils genau dieser Stand', async () => {
+    const kern = await mitAuftrag();
+    wert(await anwenden(kern, ...anlegen()));
+    const a = aufmass(1);
+    const kopf: Aufmass = { ...a, bezeichnung: 'Erdarbeiten (erfunden)', datum: null };
+    wert(await anwenden(kern, aufmassCs(a, kopf)));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(kopf);
+    const zeilen: Aufmass = { ...kopf, positionen: [neueZeile, ...kopf.positionen] };
+    wert(await anwenden(kern, aufmassCs(kopf, zeilen)));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(zeilen);
+    wert(await anwenden(kern, aufmassCs(zeilen, zeilen)));
+    expect(wert(kern.aufmassLaden(a.id)).aufmass).toEqual(zeilen);
   });
 });
