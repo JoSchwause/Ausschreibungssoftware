@@ -45,6 +45,17 @@ export const texte = {
       zurueckgehalten: 'Nicht verwendete gespeicherte Profile',
       zurueckHinweis:
         'Diese gespeicherten Einträge erscheinen nicht in der Auswahl. Sie bleiben unverändert gespeichert; nichts wird verworfen.',
+      zurueckNichtLesbar: (n: number) =>
+        n === 1
+          ? '1 Eintrag konnte nicht gelesen werden.'
+          : `${String(n)} Einträge konnten nicht gelesen werden.`,
+      zurueckSichern: 'Einträge als Datei sichern',
+      zurueckEntfernen: 'Einträge entfernen',
+      zurueckEntfernenTitel: 'Nicht verwendete Einträge entfernen?',
+      zurueckEntfernenFrage: (n: number) =>
+        `${String(n)} gespeicherte ${n === 1 ? 'Eintrag wird' : 'Einträge werden'} endgültig entfernt. Wer sie behalten will, sichert sie vorher als Datei.`,
+      zurueckEntfernenBestaetigen: 'Endgültig entfernen',
+      zurueckEntfernt: 'Nicht verwendete Einträge entfernt',
       zurueckGrund: {
         unlesbar: 'Ein gespeicherter Eintrag lässt sich nicht als Druckprofil lesen.',
         standardname: (n: string) => `Ein gespeichertes Profil heißt wie das Standardprofil „${n}“.`,
