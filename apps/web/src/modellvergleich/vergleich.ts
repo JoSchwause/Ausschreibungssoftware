@@ -27,11 +27,11 @@ export interface Vergleichsansicht {
 }
 
 export const LISTE_SPALTEN: readonly VergleichsSpalte[] = [
-  { id: 'art', kopf: texte.liste.art, breite: 110 },
-  { id: 'klasse', kopf: texte.liste.klasse, breite: 140 },
-  { id: 'name', kopf: texte.liste.name, breite: 220 },
-  { id: 'geschoss', kopf: texte.liste.geschoss, breite: 90 },
-  { id: 'aenderung', kopf: texte.liste.aenderung, breite: 460 },
+  { id: 'art', kopf: texte.liste.art, breite: 140 },
+  { id: 'klasse', kopf: texte.liste.klasse, breite: 110 },
+  { id: 'name', kopf: texte.liste.name, breite: 190 },
+  { id: 'geschoss', kopf: texte.liste.geschoss, breite: 80 },
+  { id: 'aenderung', kopf: texte.liste.aenderung, breite: 480 },
 ];
 
 /** Name des Geschosses über einem Strukturknoten (der Knoten selbst, wenn keiner darüber ein Geschoss ist). */

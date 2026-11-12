@@ -41,3 +41,8 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.vergleich__arbeitsflaeche {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  height: 48vh;
+}

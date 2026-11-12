@@ -177,7 +177,7 @@ function Vergleich({
       </section>
       <BefundListe befunde={ansicht.befunde} beschriftung={texte.befunde} />
 
-      <div className="bim__arbeitsflaeche">
+      <div className="bim__arbeitsflaeche vergleich__arbeitsflaeche">
         <div className="lv__grid bim__baum">
           {ansicht.zeilen.length === 0 ? (
             <p>{texte.liste.leer}</p>
@@ -186,7 +186,6 @@ function Vergleich({
               beschriftung={texte.liste.beschriftung}
               spalten={LISTE_SPALTEN}
               zeilen={ansicht.zeilen}
-              baumspalte="art"
               kennzeichenTexte={KENNZEICHEN}
             />
           )}

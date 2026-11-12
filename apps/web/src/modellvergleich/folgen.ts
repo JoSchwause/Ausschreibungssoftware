@@ -122,7 +122,7 @@ export function aktualisierungBerechnen(lv: LvZustand, alt: Bauwerksmodell, neu:
 }
 
 export const FOLGEN_SPALTEN: readonly VergleichsSpalte[] = [
-  { id: 'oz', kopf: texte.folgen.oz, breite: 90 },
+  { id: 'oz', kopf: texte.folgen.oz, breite: 110 },
   { id: 'kurztext', kopf: texte.folgen.kurztext, breite: 220 },
   { id: 'einheit', kopf: texte.folgen.einheit, breite: 70 },
   { id: 'vorher', kopf: texte.folgen.vorher, ausrichtung: 'rechts', breite: 110 },
