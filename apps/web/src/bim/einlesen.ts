@@ -21,7 +21,10 @@ import { texte } from './texte';
 /** Etwa 200 MB (D-51): darüber ein Befund. */
 export const GROSSE_DATEI = 200 * 1000 * 1000;
 
-export type Lesen = (bytes: Uint8Array, kopf: Omit<BauwerksmodellKopf, 'schema'>) => Promise<BauwerksmodellLesung>;
+export type Lesen = (
+  bytes: Uint8Array,
+  kopf: Omit<BauwerksmodellKopf, 'schema'>,
+) => Promise<BauwerksmodellLesung>;
 
 export function groessenbefund(groesse: number): Pruefbefund | null {
   if (groesse <= GROSSE_DATEI) return null;
@@ -44,7 +47,7 @@ export function namensvorschlag(dateiname: string): string {
 export function tagDesEinlesens(wann: Zeitstempel | string): string {
   const d = new Date(wann);
   const zwei = (n: number): string => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
+  return `${String(d.getFullYear())}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
 }
 
 export type Einlesung =
@@ -72,12 +75,16 @@ export async function modellEinlesen(
   const befunde = gross === null ? lesung.befunde : [gross, ...lesung.befunde];
   if (lesung.bauwerksmodell === null) return { art: 'nicht-lesbar', befunde };
   const abgelegt = await u.speicher.modelldateien.ablegen(datei.bytes);
-  if (!abgelegt.ok) return { art: 'abgewiesen', abweisung: { art: 'speicher', fehler: abgelegt.fehler }, befunde };
+  if (!abgelegt.ok)
+    return { art: 'abgewiesen', abweisung: { art: 'speicher', fehler: abgelegt.fehler }, befunde };
   const bauwerksmodell = {
     ...lesung.bauwerksmodell,
     datei: { ...lesung.bauwerksmodell.datei, hash: abgelegt.wert },
   };
-  const a = await bauwerksmodellSitzung(u, projektId, null).befehl({ art: 'BauwerksmodellAnlegen', bauwerksmodell });
+  const a = await bauwerksmodellSitzung(u, projektId, null).befehl({
+    art: 'BauwerksmodellAnlegen',
+    bauwerksmodell,
+  });
   return a.ok
     ? { art: 'angelegt', id: bauwerksmodell.id, befunde }
     : { art: 'abgewiesen', abweisung: a.abweisung, befunde };

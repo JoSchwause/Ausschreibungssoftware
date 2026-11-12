@@ -2,10 +2,7 @@
 // Schreib- und Lesewege der Modellseiten (Ticket 114). Jede Änderung ist ein Befehl durch `bim` und Speicher mit
 // Protokolleintrag und einem Undo-Teil (A5, U7); gelesen wird über die Repositories von `speicher`.
 
-import {
-  bauwerksmodellBefehlAusfuehren,
-  bauwerksmodellChangeSetAnwenden,
-} from '@tethys/bim';
+import { bauwerksmodellBefehlAusfuehren, bauwerksmodellChangeSetAnwenden } from '@tethys/bim';
 import type {
   BauwerksmodellBefehl,
   BauwerksmodellId,

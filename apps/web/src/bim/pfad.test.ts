@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { BauwerksmodellChangeSet, BauwerksmodellId, BauwerksmodellKopf, ProjektId } from '@tethys/vertrag';
+import type {
+  BauwerksmodellChangeSet,
+  BauwerksmodellId,
+  BauwerksmodellKopf,
+  ProjektId,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { bimRoute, bimZiel, modellPfad, modellePfad } from './pfad';
 

@@ -41,24 +41,25 @@ export function modellbaumBauen(modell: Bauwerksmodell): Modellbaum {
   const ersteStruktur = new Map<string, string>();
   const ersteBauteil = new Map<string, string>();
   modell.struktur.forEach((k, i) => {
-    const id = `s${i}`;
+    const id = `s${String(i)}`;
     knoten.set(id, { art: 'struktur', id, knoten: k });
     if (!ersteStruktur.has(k.globalId)) ersteStruktur.set(k.globalId, id);
   });
   modell.bauteile.forEach((b, i) => {
-    const id = `b${i}`;
+    const id = `b${String(i)}`;
     knoten.set(id, { art: 'bauteil', id, bauteil: b });
     if (!ersteBauteil.has(b.globalId)) ersteBauteil.set(b.globalId, id);
   });
 
   const eltern = new Map<string, string>();
   modell.struktur.forEach((k, i) => {
+    const id = `s${String(i)}`;
     const e = k.elternGlobalId === null ? undefined : ersteStruktur.get(k.elternGlobalId);
-    if (e !== undefined && e !== `s${i}`) eltern.set(`s${i}`, e);
+    if (e !== undefined && e !== id) eltern.set(id, e);
   });
   let ohneStruktur = false;
-  modell.bauteile.forEach((b, i) => {
-    const id = `b${i}`;
+  for (const [i, b] of modell.bauteile.entries()) {
+    const id = `b${String(i)}`;
     const ganzes = b.teilVonGlobalId === undefined ? undefined : ersteBauteil.get(b.teilVonGlobalId);
     const struktur = b.strukturGlobalId === null ? undefined : ersteStruktur.get(b.strukturGlobalId);
     const e = ganzes !== undefined && ganzes !== id ? ganzes : struktur;
@@ -67,7 +68,7 @@ export function modellbaumBauen(modell: Bauwerksmodell): Modellbaum {
       eltern.set(id, OHNE_STRUKTUR);
       ohneStruktur = true;
     }
-  });
+  }
   // Ringe (gegen die Zusage von `ifc`, D-107.7) brechen am ersten Knoten des Rings auf, der sich selbst wieder erreicht.
   for (const start of knoten.keys()) {
     const besucht = new Set<string>([start]);
@@ -105,9 +106,7 @@ export function spaltenmenge(
 ): Bauteilmenge | undefined {
   const vonArt = mengen.filter((m) => m.art === art);
   const bevorzugt =
-    art === 'laenge'
-      ? vonArt.find((m) => m.name === 'Length')
-      : vonArt.find((m) => m.name.startsWith('Net'));
+    art === 'laenge' ? vonArt.find((m) => m.name === 'Length') : vonArt.find((m) => m.name.startsWith('Net'));
   return bevorzugt ?? vonArt[0];
 }
 
@@ -159,7 +158,8 @@ export function sichtbareZeilen(baum: Modellbaum, zugeklappt: ReadonlySet<string
       aufgeklappt: kinder.length > 0 && auf,
       zellen: zellen(k),
     });
-    if (auf) for (let i = kinder.length - 1; i >= 0; i--) stapel.push({ id: kinder[i] ?? '', tiefe: s.tiefe + 1 });
+    if (auf)
+      for (let i = kinder.length - 1; i >= 0; i--) stapel.push({ id: kinder[i] ?? '', tiefe: s.tiefe + 1 });
   }
   return aus;
 }

@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { BAUM_SPALTEN, modellbaumBauen, sichtbareZeilen } from './baum';
 import { bauteil, gid, hausModell, knoten, menge, modell } from './testhilfen';
 
-const texte = (z: { zellen: Readonly<Record<string, { text: string } | undefined>> }, spalte: string): string =>
-  z.zellen[spalte]?.text ?? '';
+const texte = (
+  z: { zellen: Readonly<Record<string, { text: string } | undefined>> },
+  spalte: string,
+): string => z.zellen[spalte]?.text ?? '';
 
 describe('Modellbaum aus haus-v1', () => {
   const m = hausModell();

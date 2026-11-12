@@ -1,23 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
 import { modellbaumBauen } from './baum';
-import {
-  ALLES_SICHTBAR,
-  ausblenden,
-  bauteileDerKlasse,
-  geschosse,
-  isolieren,
-  klassen,
-} from './sichtbarkeit';
+import { ALLES_SICHTBAR, ausblenden, bauteileDerKlasse, geschosse, isolieren, klassen } from './sichtbarkeit';
 import { bauteil, gid, hausModell, knoten, modell } from './testhilfen';
 
 const m = modell(
-  [knoten('P', 'projekt', null), knoten('EG', 'geschoss', 'P'), knoten('OG', 'geschoss', 'P'), knoten('R', 'raum', 'EG')],
   [
-    bauteil('W1', 'EG'),
-    bauteil('F1', 'R', { ifcKlasse: 'IfcWindow' }),
-    bauteil('W2', 'OG'),
+    knoten('P', 'projekt', null),
+    knoten('EG', 'geschoss', 'P'),
+    knoten('OG', 'geschoss', 'P'),
+    knoten('R', 'raum', 'EG'),
   ],
+  [bauteil('W1', 'EG'), bauteil('F1', 'R', { ifcKlasse: 'IfcWindow' }), bauteil('W2', 'OG')],
 );
 const baum = modellbaumBauen(m);
 

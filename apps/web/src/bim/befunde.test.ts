@@ -16,14 +16,27 @@ describe('Befunde des Einlesens und der 3D-Ansicht', () => {
   it('Bauteile ohne Geometrie aus dem Ladebericht der 3D-Ansicht; ein Ganzes mit Teilen zählt nicht', () => {
     const m = modell(
       [knoten('P', 'projekt', null)],
-      [bauteil('A', 'P'), bauteil('B', 'P'), bauteil('Treppe', 'P'), bauteil('Lauf', 'P', { teilVon: 'Treppe' })],
+      [
+        bauteil('A', 'P'),
+        bauteil('B', 'P'),
+        bauteil('Treppe', 'P'),
+        bauteil('Lauf', 'P', { teilVon: 'Treppe' }),
+      ],
     );
-    const f = geometriebefunde(m, { mitGeometrie: [gid('A'), gid('Lauf')], ohneGeometrie: [gid('B')], dauerMs: 1 });
+    const f = geometriebefunde(m, {
+      mitGeometrie: [gid('A'), gid('Lauf')],
+      ohneGeometrie: [gid('B')],
+      dauerMs: 1,
+    });
     expect(f.map((x) => [x.code, x.ort.globalId])).toEqual([['bauteil-ohne-geometrie', gid('B')]]);
   });
 
   it('Liste: Fehler vor Warnungen, sonst in der gemeldeten Reihenfolge; mit Sprungziel, wenn eine GlobalId genannt ist', () => {
-    const l = befundliste([b('globalid-doppelt', 'warnung', 'X'), b('menge-ohne-wert', 'fehler', 'Y'), b('w', 'warnung')]);
+    const l = befundliste([
+      b('globalid-doppelt', 'warnung', 'X'),
+      b('menge-ohne-wert', 'fehler', 'Y'),
+      b('w', 'warnung'),
+    ]);
     expect(l.map((x) => [x.befund.code, x.globalId])).toEqual([
       ['menge-ohne-wert', gid('Y')],
       ['globalid-doppelt', gid('X')],

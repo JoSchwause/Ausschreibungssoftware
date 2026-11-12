@@ -20,7 +20,8 @@ export class IfcArbeiter {
       f?.(e.data);
     };
     this.#worker.onerror = (e) => {
-      for (const [nr, f] of this.#offen) f({ nr, art: 'fehler', meldung: e.message || 'IFC-Worker abgestürzt' });
+      for (const [nr, f] of this.#offen)
+        f({ nr, art: 'fehler', meldung: e.message || 'IFC-Worker abgestürzt' });
       this.#offen.clear();
     };
   }
@@ -29,7 +30,7 @@ export class IfcArbeiter {
     const nr = ++this.#nr;
     return new Promise((ok) => {
       this.#offen.set(nr, ok);
-      this.#worker.postMessage({ ...a, nr } as IfcAuftrag);
+      this.#worker.postMessage({ ...a, nr });
     });
   }
 

@@ -26,7 +26,9 @@ describe('Aufträge des IFC-Workers', () => {
     expect(b.bearbeite({ nr: 2, art: 'index', bytes: hausBytes() })).toEqual({ nr: 2, art: 'index' });
     const e = b.bearbeite({ nr: 3, art: 'eigenschaften', globalId: WAND });
     if (e.art !== 'eigenschaften' || e.wert === null) throw new Error('keine Eigenschaften');
-    expect(e.wert.eigenschaften.some((x) => x.satz === 'Pset_WallCommon' && x.name === 'IsExternal')).toBe(true);
+    expect(e.wert.eigenschaften.some((x) => x.satz === 'Pset_WallCommon' && x.name === 'IsExternal')).toBe(
+      true,
+    );
     const fremd = b.bearbeite({ nr: 4, art: 'eigenschaften', globalId: 'x'.repeat(22) });
     expect(fremd).toEqual({ nr: 4, art: 'eigenschaften', wert: null });
     expect(b.bearbeite({ nr: 5, art: 'eigenschaften', globalId: 'kaputt' })).toEqual({

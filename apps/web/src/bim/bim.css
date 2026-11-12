@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Modellseiten (Ticket 114). Nur Tokens (U4). */
+
+.bim h2 {
+  margin: var(--tx-space-4) 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-lg);
+}
+
+.bim h3 {
+  margin: var(--tx-space-3) 0 var(--tx-space-1);
+  font-size: var(--tx-font-size-md);
+}
+
+.bim__datei {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.bim__tabelle {
+  border-collapse: collapse;
+  margin: var(--tx-space-3) 0;
+}
+
+.bim__tabelle th,
+.bim__tabelle td {
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.bim__tabelle .bim__zahl {
+  text-align: right;
+}
+
+.bim__aktionen {
+  display: flex;
+  gap: var(--tx-space-2);
+}
+
+.bim__werkzeuge {
+  flex-wrap: wrap;
+}
+
+.bim__gruppe {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+}
+
+.bim__arbeitsflaeche {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--tx-space-3);
+  height: 62vh;
+  min-height: 360px;
+}
+
+.bim__baum {
+  min-height: 0;
+}
+
+.bim__ansicht {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--tx-color-border);
+}
+
+.bim__unten {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--tx-space-3);
+}
+
+.bim__eigenschaften {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--tx-space-1) var(--tx-space-3);
+  margin: 0;
+}
+
+.bim__eigenschaften dt {
+  color: var(--tx-color-text-muted);
+}
+
+.bim__eigenschaften dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bim__befunde ul {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.bim__befund--fehler strong {
+  color: var(--tx-color-danger);
+}
+
+.bim__befund--warnung strong {
+  color: var(--tx-color-warning);
+}

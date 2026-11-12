@@ -44,7 +44,12 @@ describe('Modell einlesen', () => {
     const { speicher, u, projekt, weg } = await aufbau();
     const bytes = hausBytes();
     const vorher = weg.historie.tiefe.rueck;
-    const e = await modellEinlesen(u, projekt.id, { name: 'haus-v1.ifc', bytes }, { lesen, vorgaengerId: null });
+    const e = await modellEinlesen(
+      u,
+      projekt.id,
+      { name: 'haus-v1.ifc', bytes },
+      { lesen, vorgaengerId: null },
+    );
     expect(e.art).toBe('angelegt');
     if (e.art !== 'angelegt') return;
     expect(e.befunde).toEqual([]);
@@ -72,15 +77,25 @@ describe('Modell einlesen', () => {
 
   it('neuer Stand nennt den Vorgänger', async () => {
     const { speicher, u, projekt } = await aufbau();
-    const v1 = await modellEinlesen(u, projekt.id, { name: 'haus-v1.ifc', bytes: hausBytes() }, {
-      lesen,
-      vorgaengerId: null,
-    });
+    const v1 = await modellEinlesen(
+      u,
+      projekt.id,
+      { name: 'haus-v1.ifc', bytes: hausBytes() },
+      {
+        lesen,
+        vorgaengerId: null,
+      },
+    );
     if (v1.art !== 'angelegt') throw new Error('v1');
-    const v2 = await modellEinlesen(u, projekt.id, { name: 'haus-v2.ifc', bytes: hausBytes('haus-v2') }, {
-      lesen,
-      vorgaengerId: v1.id,
-    });
+    const v2 = await modellEinlesen(
+      u,
+      projekt.id,
+      { name: 'haus-v2.ifc', bytes: hausBytes('haus-v2') },
+      {
+        lesen,
+        vorgaengerId: v1.id,
+      },
+    );
     if (v2.art !== 'angelegt') throw new Error('v2');
     expect((await bauwerksmodellLaden(speicher, v2.id))?.bauwerksmodell.vorgaengerId).toBe(v1.id);
   });
@@ -99,10 +114,15 @@ describe('Modell einlesen', () => {
 describe('Umbenennen und Löschen', () => {
   it('umbenennen und löschen sind je ein Undo-Schritt; Rückgängig des Löschens findet die Bytes', async () => {
     const { speicher, u, projekt, weg } = await aufbau();
-    const e = await modellEinlesen(u, projekt.id, { name: 'haus-v1.ifc', bytes: hausBytes() }, {
-      lesen,
-      vorgaengerId: null,
-    });
+    const e = await modellEinlesen(
+      u,
+      projekt.id,
+      { name: 'haus-v1.ifc', bytes: hausBytes() },
+      {
+        lesen,
+        vorgaengerId: null,
+      },
+    );
     if (e.art !== 'angelegt') throw new Error('einlesen');
     const id: BauwerksmodellId = e.id;
     const z = await bauwerksmodellLaden(speicher, id);
