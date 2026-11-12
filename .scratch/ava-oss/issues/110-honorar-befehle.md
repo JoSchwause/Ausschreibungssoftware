@@ -24,6 +24,10 @@ Herkunft: Ticket 101 (Rechenkern mit eigenen Typen), Ticket 97 (Vertragstypen)
 4. **Tests:** Golden-Fall aus Ticket 101 über eine Kostenermittlung (KG 300 und 400 über 25 %); Befund bei falscher Stufe;
    Umkehrung.
 
+Aus Ticket 97 und dem Review (D-64, D-66): Von der HOAI nicht vorgesehene Werte (Sätze, Zonen) sind Befunde, keine Fehler; der
+Hinweis zu DIN 276:2008-12 (§ 4 Abs. 1) ist kein Befund und nicht Teil des `Honorarergebnis` (App und PDF drucken ihn als festen
+Text); die Eingabe von `honorar` hat einen eigenen Namen neben `AnrechenbareKostenangabe` (L2).
+
 ## Grenzen
 
 - Nur `packages/honorar`. `okf/research/` wird nicht gelesen (C3).
