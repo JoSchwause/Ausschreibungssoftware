@@ -29,6 +29,14 @@ export interface Mangelverlaufseintrag {
   readonly datum: string;
   /** Freier Text, z. B. „Nachbesserung unzureichend“; `null`: keine. Nie `''`. */
   readonly bemerkung: string | null;
+  /**
+   * Die Frist, die mit dieser Mängelanzeige gesetzt wurde, `JJJJ-MM-TT` (Nachtrag Review, D-66; additiv). Nur bei `status:
+   * 'angezeigt'`, an jedem anderen Status weist der Ausführer sie mit `ungueltige-eingabe` (`feld: 'frist'`) ab; fehlt: keine
+   * Angabe (auch bei Einträgen vor v1.6). So bleibt die Frist einer früheren Anzeige im Verlauf, wenn ein Mangel wieder
+   * geöffnet und neu angezeigt wird. Die geltende Frist ist weiter `Mangel.frist` (sie prüft die Fristprüfung); die App setzt
+   * beide im selben Undo-Schritt.
+   */
+  readonly frist?: string;
 }
 
 /**
