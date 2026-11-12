@@ -6,6 +6,7 @@ import type {
   AngebotId,
   AufmassId,
   AuftragsLeistungsverzeichnisId,
+  BauwerksmodellId,
   ChangeSet,
   KostenermittlungId,
   Ergebnis,
@@ -135,7 +136,10 @@ export function speicherUeberTransport(
       vorhanden: (hash: string) => aufruf('modelldateiVorhanden', hash),
     },
     // v1.6: mechanisch angepasst, Folgeticket 106 (Repositories der neuen Aggregate)
-    bauwerksmodelle: { auflisten: () => erstV16('Bauwerksmodelle'), laden: () => erstV16('Bauwerksmodell') },
+    bauwerksmodelle: {
+      auflisten: (projektId: ProjektId) => aufruf('bauwerksmodelleAuflisten', projektId),
+      laden: (id: BauwerksmodellId) => aufruf('bauwerksmodellLaden', id),
+    },
     bauzeitenplaene: { auflisten: () => erstV16('Bauzeitenpläne'), laden: () => erstV16('Bauzeitenplan') },
     honorarberechnungen: {
       auflisten: () => erstV16('Honorarberechnungen'),

@@ -4,7 +4,15 @@
 // ChangeSet (auch ohne Ausführer, als Undo) einen Verweis ins Leere oder eine Regel über mehrere Aggregate verletzen würde.
 // Der Kern sieht immer nur ein Aggregat (D-70.3); was nie verletzt sein darf, hält `speicher`.
 
-import type { Aufmass, AuftragsLvKopf, Knoten, LvKopf, ProjektId, Rechnung } from '@tethys/vertrag';
+import type {
+  Aufmass,
+  AuftragsLvKopf,
+  BauwerksmodellKopf,
+  Knoten,
+  LvKopf,
+  ProjektId,
+  Rechnung,
+} from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import type { Datenbank } from './sql';
 
@@ -184,5 +192,42 @@ export function pruefeFreigabereihenfolge(db: Datenbank, auftragsLvId: string): 
     konflikt(
       `Rechnung ${String(z['frei'])} wäre freigegeben, die frühere Rechnung ${String(z['offen'])} nicht ` +
         '(die freigegebenen Rechnungen sind stets die mit den kleinsten Nummern, D-34 (7))',
+    );
+}
+
+// --- Bauwerksmodell (v1.6, Ticket 106; D-51, D-97.6) -------------------------------------------------------------------
+
+/**
+ * Anlegen: Die Modelldatei ist in genau dieser Größe abgelegt (kein Modell ohne Datei, D-51), und der Vorgänger ist ein
+ * Bauwerksmodell desselben Projekts (D-53).
+ */
+export function pruefeBauwerksmodellAnlegen(db: Datenbank, k: BauwerksmodellKopf): void {
+  const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [k.datei.hash])[0];
+  if (z === undefined)
+    konflikt(`Bauwerksmodell ${k.id} nennt die Modelldatei ${k.datei.hash}, die nicht abgelegt ist`);
+  else if (z['groesse'] !== k.datei.groesse)
+    konflikt(
+      `Bauwerksmodell ${k.id} nennt die Modelldatei ${k.datei.hash} mit ${String(k.datei.groesse)} Bytes, ` +
+        `abgelegt sind ${String(z['groesse'])}`,
+    );
+  const vorgaenger = k.vorgaengerId;
+  if (
+    vorgaenger !== null &&
+    db.zeilen('SELECT 1 AS da FROM bauwerksmodell WHERE id = ? AND projekt_id = ?', [vorgaenger, k.projektId])
+      .length === 0
+  )
+    konflikt(`Bauwerksmodell ${k.id} nennt den Vorgänger ${vorgaenger}, den es im Projekt nicht gibt`);
+}
+
+/** Löschen: Kein späterer Stand nennt das Modell als Vorgänger, kein Mangel verweist darauf (D-97.6, D-64). */
+export function pruefeBauwerksmodellLoeschen(db: Datenbank, id: string): void {
+  const z = db.zeilen(
+    `SELECT 'Bauwerksmodell' AS art, id FROM bauwerksmodell WHERE vorgaenger_id = ?1
+     UNION ALL SELECT 'Mangel', id FROM mangel WHERE bauwerksmodell_id = ?1 ORDER BY 1, 2 LIMIT 1`,
+    [id],
+  )[0];
+  if (z !== undefined)
+    konflikt(
+      `Bauwerksmodell ${id} lässt sich nicht löschen, solange ${String(z['art'])} ${String(z['id'])} darauf verweist`,
     );
 }

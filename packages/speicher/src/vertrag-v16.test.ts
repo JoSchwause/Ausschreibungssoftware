@@ -17,7 +17,6 @@ describe('vertrag v1.6 in speicher bis Ticket 106: laut abweisen', () => {
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);
     for (const e of [
-      await s.bauwerksmodelle.auflisten(P),
       await s.bauzeitenplaene.auflisten(P),
       await s.honorarberechnungen.auflisten(P),
       await s.maengel.auflisten(P),

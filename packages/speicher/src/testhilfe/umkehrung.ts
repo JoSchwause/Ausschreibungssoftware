@@ -9,6 +9,8 @@ import type {
   Aenderungen,
   AngebotChangeSet,
   AufmassChangeSet,
+  BauwerksmodellChangeSet,
+  BauzeitenplanChangeSet,
   AuftragsLvChangeSet,
   Betrag,
   ChangeSet,
@@ -64,6 +66,8 @@ export function umkehren(cs: AuftragsLvChangeSet): AuftragsLvChangeSet;
 export function umkehren(cs: AufmassChangeSet): AufmassChangeSet;
 export function umkehren(cs: RechnungChangeSet): RechnungChangeSet;
 export function umkehren(cs: KostenermittlungChangeSet): KostenermittlungChangeSet;
+export function umkehren(cs: BauwerksmodellChangeSet): BauwerksmodellChangeSet;
+export function umkehren(cs: BauzeitenplanChangeSet): BauzeitenplanChangeSet;
 export function umkehren(cs: ChangeSet): ChangeSet;
 export function umkehren(cs: ChangeSet): ChangeSet {
   switch (cs.art) {
@@ -106,14 +110,40 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         kostenermittlungId: cs.kostenermittlungId,
         kostenermittlung: tausche(cs.kostenermittlung),
       };
-    default: // v1.6: mechanisch angepasst, Folgeticket 106 (Aggregate aus v1.6)
-      throw new Error(`umkehren: ${cs.art} erst mit Ticket 106`);
+    // v1.6: Bauwerksmodell mit Kopf und (beim Anlegen und Löschen) Inhalt, die übrigen als ganze Aggregate.
+    case 'bauwerksmodell':
+      return {
+        art: 'bauwerksmodell',
+        bauwerksmodellId: cs.bauwerksmodellId,
+        kopf: tausche(cs.kopf),
+        ...(cs.inhalt === undefined ? {} : { inhalt: tausche(cs.inhalt) }),
+      };
+    case 'bauzeitenplan':
+      return {
+        art: 'bauzeitenplan',
+        bauzeitenplanId: cs.bauzeitenplanId,
+        bauzeitenplan: tausche(cs.bauzeitenplan),
+      };
+    case 'honorarberechnung':
+      return {
+        art: 'honorarberechnung',
+        honorarberechnungId: cs.honorarberechnungId,
+        honorarberechnung: tausche(cs.honorarberechnung),
+      };
+    case 'mangel':
+      return { art: 'mangel', mangelId: cs.mangelId, mangel: tausche(cs.mangel) };
+    case 'bautagebucheintrag':
+      return {
+        art: 'bautagebucheintrag',
+        bautagebucheintragId: cs.bautagebucheintragId,
+        bautagebucheintrag: tausche(cs.bautagebucheintrag),
+      };
   }
 }
 
 /** Ein Anlegen-ChangeSet (`kopf.vorher: null`) mit leerem `summen.vorher`: so ist es ohne Vorzustand umkehrbar. */
 export function mitLeeremVorher<T extends ChangeSet>(cs: T): T {
-  // Die Aggregate aus v1.4 haben keine Summen. v1.6: mechanisch angepasst, Folgeticket 106 (ebenso die aus v1.6).
+  // Die Aggregate aus v1.4 und v1.6 haben keine Summen.
   if (cs.art !== 'leistungsverzeichnis' && cs.art !== 'angebot' && cs.art !== 'auftrags-leistungsverzeichnis')
     return cs;
   return {

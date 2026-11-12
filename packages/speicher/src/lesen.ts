@@ -4,6 +4,8 @@
 // `reihenfolge`), Summen und Angebotspositionen nach Kennung, Protokoll nach Eintragsreihenfolge.
 
 import type {
+  Bauwerksmodell,
+  BauwerksmodellUebersicht,
   Angebot,
   Angebotsposition,
   AngebotId,
@@ -47,6 +49,8 @@ import {
   angebotspositionAusZeile,
   aufmassAusZeile,
   aufmasskopfAusZeile,
+  bauwerksmodellAusZeilen,
+  bauwerksmodellUebersichtAusZeile,
   kostenermittlungAusZeile,
   kostenermittlungUebersichtAusZeile,
   rechnungAusZeile,
@@ -451,6 +455,31 @@ export function aggregateDesProjekts(db: Datenbank, projekt: ProjektId) {
     rechnungen: alle('rechnung').map(rechnungAusZeile),
     kostenermittlungen: alle('kostenermittlung').map(kostenermittlungAusZeile),
   };
+}
+
+// --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54) -----------------------------------------------------------------------
+
+/** Kopf eines Bauwerksmodells und die Zahl seiner Bauteile (`BauwerksmodellUebersicht`), ohne den Inhalt zu lesen. */
+export function leseBauwerksmodellKopf(db: Datenbank, id: string): BauwerksmodellUebersicht | null {
+  const z = db.zeilen('SELECT * FROM bauwerksmodell WHERE id = ?', [id])[0];
+  return z === undefined ? null : bauwerksmodellUebersichtAusZeile(z);
+}
+
+export function leseBauwerksmodell(db: Datenbank, id: string): Bauwerksmodell | null {
+  const z = db.zeilen('SELECT * FROM bauwerksmodell WHERE id = ?', [id])[0];
+  if (z === undefined) return null;
+  const inhalt = db.zeilen('SELECT * FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?', [id])[0];
+  if (inhalt === undefined)
+    return abbruch('datei-ungueltig', `Bauwerksmodell ${id}: Struktur und Bauteile fehlen in der Datenbank.`);
+  return bauwerksmodellAusZeilen(z, inhalt);
+}
+
+/** Die Modelle eines Projekts als Übersicht (Kopf und Zahl der Bauteile), sortiert wie die LV-Liste; ohne den Inhalt. */
+export function listeBauwerksmodelle(db: Datenbank, projekt: ProjektId): BauwerksmodellUebersicht[] {
+  return db
+    .zeilen('SELECT * FROM bauwerksmodell WHERE projekt_id = ? ORDER BY id', [projekt])
+    .map(bauwerksmodellUebersichtAusZeile)
+    .sort(nachName);
 }
 
 // --- Modelldateien (Schema 6, v1.6; D-51) --------------------------------------------------------------------------------

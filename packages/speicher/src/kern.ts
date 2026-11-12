@@ -12,6 +12,9 @@ import type {
   AufmassId,
   AufmassKopf,
   AufmassZustand,
+  BauwerksmodellId,
+  BauwerksmodellUebersicht,
+  BauwerksmodellZustand,
   ChangeSet,
   KostenermittlungId,
   KostenermittlungUebersicht,
@@ -42,6 +45,7 @@ import {
   leseAngebot,
   leseAufmass,
   leseAuftragsLv,
+  leseBauwerksmodell,
   leseKostenermittlung,
   leseLv,
   leseLvKopf,
@@ -54,6 +58,7 @@ import {
   leseRechnungen,
   listeAufmasse,
   listeAuftragsLvs,
+  listeBauwerksmodelle,
   listeIds,
   listeKostenermittlungen,
   listeLvs,
@@ -69,6 +74,7 @@ import {
   wendeAngebotAn,
   wendeAufmassAn,
   wendeAuftragsLvAn,
+  wendeBauwerksmodellAn,
   wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
@@ -77,23 +83,40 @@ import {
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
 
+/** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
+function aggregatDes(cs: ChangeSet): { art: string; id: string } {
+  switch (cs.art) {
+    case 'projekt':
+      return { art: cs.art, id: cs.projektId };
+    case 'leistungsverzeichnis':
+      return { art: cs.art, id: cs.leistungsverzeichnisId };
+    case 'angebot':
+      return { art: cs.art, id: cs.angebotId };
+    case 'auftrags-leistungsverzeichnis':
+      return { art: cs.art, id: cs.auftragsLeistungsverzeichnisId };
+    case 'aufmass':
+      return { art: cs.art, id: cs.aufmassId };
+    case 'rechnung':
+      return { art: cs.art, id: cs.rechnungId };
+    case 'kostenermittlung':
+      return { art: cs.art, id: cs.kostenermittlungId };
+    case 'bauwerksmodell':
+      return { art: cs.art, id: cs.bauwerksmodellId };
+    case 'bauzeitenplan':
+      return { art: cs.art, id: cs.bauzeitenplanId };
+    case 'honorarberechnung':
+      return { art: cs.art, id: cs.honorarberechnungId };
+    case 'mangel':
+      return { art: cs.art, id: cs.mangelId };
+    case 'bautagebucheintrag':
+      return { art: cs.art, id: cs.bautagebucheintragId };
+  }
+}
+
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
   pruefeV16(cs); // v1.6: mechanisch angepasst, Folgeticket 106 (Teile aus v1.6: `unbekannt`, bevor der Bezug zählt)
-  const erwartet =
-    cs.art === 'projekt'
-      ? { art: 'projekt', id: cs.projektId as string }
-      : cs.art === 'leistungsverzeichnis'
-        ? { art: 'leistungsverzeichnis', id: cs.leistungsverzeichnisId as string }
-        : cs.art === 'angebot'
-          ? { art: 'angebot', id: cs.angebotId as string }
-          : cs.art === 'auftrags-leistungsverzeichnis'
-            ? { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string }
-            : cs.art === 'aufmass'
-              ? { art: 'aufmass', id: cs.aufmassId as string }
-              : cs.art === 'rechnung'
-                ? { art: 'rechnung', id: cs.rechnungId as string }
-                : { art: 'kostenermittlung', id: cs.kostenermittlungId as string };
+  const erwartet = aggregatDes(cs);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',
@@ -346,6 +369,28 @@ export class SpeicherKern {
     });
   }
 
+  // --- Aggregate aus v1.6 (Ticket 106) -----------------------------------------------------------------------------------
+
+  /** `BauwerksmodellRepository.auflisten`: die Köpfe mit der Zahl der Bauteile, ohne Struktur und Bauteile zu lesen. */
+  bauwerksmodelleAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly BauwerksmodellUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return listeBauwerksmodelle(this.#db, projektId);
+    });
+  }
+
+  /** `BauwerksmodellRepository.laden`: das ganze Modell, ohne die Bytes der Datei. */
+  bauwerksmodellLaden(id: BauwerksmodellId): Ergebnis<BauwerksmodellZustand, Speicherfehler> {
+    return this.#fange(() => {
+      const bauwerksmodell = leseBauwerksmodell(this.#db, id);
+      return bauwerksmodell === null
+        ? abbruch('nicht-gefunden', `Bauwerksmodell ${id} ist nicht vorhanden.`)
+        : { bauwerksmodell };
+    });
+  }
+
   // --- Modelldateien (`Modelldateiablage`, v1.6; D-51) ------------------------------------------------------------------
 
   /**
@@ -452,6 +497,9 @@ export class SpeicherKern {
             break;
           case 'kostenermittlung':
             wendeKostenermittlungAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'bauwerksmodell':
+            wendeBauwerksmodellAn(this.#db, changeSet, eintrag.projektId);
             break;
         }
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er

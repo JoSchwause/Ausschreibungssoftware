@@ -8,7 +8,6 @@ import { abbruch } from './ergebnis';
 
 /** Die Aggregatarten aus vertrag v1.6, die `speicher` bis Ticket 106 nicht kennt. */
 const ARTEN_V16: ReadonlySet<string> = new Set([
-  'bauwerksmodell',
   'bauzeitenplan',
   'honorarberechnung',
   'mangel',
@@ -17,7 +16,7 @@ const ARTEN_V16: ReadonlySet<string> = new Set([
 
 type ChangeSetV16 = Extract<
   ChangeSet,
-  { art: 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag' }
+  { art: 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag' }
 >;
 
 /** Ist das ChangeSet eines der Aggregate aus v1.6? */

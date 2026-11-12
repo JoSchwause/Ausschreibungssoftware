@@ -6,7 +6,14 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Bauteil,
   Bauteilzuordnung,
+  Bauwerksmodell,
+  BauwerksmodellId,
+  BauwerksmodellKopf,
+  BauwerksmodellUebersicht,
+  IfcSchema,
+  Strukturknoten,
   Aufmass,
   AufmassId,
   AufmassKopf,
@@ -440,6 +447,51 @@ export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
   k.stufe,
   k.name,
   kanonischKompakt(k.eintraege),
+];
+
+// --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54) ---------------------------------------------------------------------
+//
+// Der Kopf steht in Spalten (`bauwerksmodell`), Struktur und Bauteile als kanonisches JSON in `bauwerksmodell_inhalt`.
+
+export function bauwerksmodellUebersichtAusZeile(z: SqlZeile): BauwerksmodellUebersicht {
+  return {
+    id: text(z, 'id') as BauwerksmodellId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    datei: {
+      hash: text(z, 'datei_hash'),
+      dateiname: text(z, 'datei_name'),
+      groesse: ganzzahl(z, 'datei_groesse'),
+    },
+    schema: text(z, 'schema') as IfcSchema,
+    vorgaengerId: textOderNull(z, 'vorgaenger_id') as BauwerksmodellId | null,
+    eingelesen: text(z, 'eingelesen'),
+    anzahlBauteile: ganzzahl(z, 'anzahl_bauteile'),
+  };
+}
+
+export function bauwerksmodellAusZeilen(kopf: SqlZeile, inhalt: SqlZeile): Bauwerksmodell {
+  const { anzahlBauteile, ...k } = bauwerksmodellUebersichtAusZeile(kopf);
+  void anzahlBauteile;
+  return {
+    ...k,
+    struktur: jsonLesen(text(inhalt, 'struktur'), 'struktur') as Strukturknoten[],
+    bauteile: jsonLesen(text(inhalt, 'bauteile'), 'bauteile') as Bauteil[],
+  };
+}
+
+/** Spalten `id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id, eingelesen, anzahl_bauteile`. */
+export const bauwerksmodellWerte = (k: BauwerksmodellKopf, anzahlBauteile: number): SqlWert[] => [
+  k.id,
+  k.projektId,
+  k.name,
+  k.datei.hash,
+  k.datei.dateiname,
+  k.datei.groesse,
+  k.schema,
+  k.vorgaengerId,
+  k.eingelesen,
+  anzahlBauteile,
 ];
 
 // --- Summen ---------------------------------------------------------------------------------------------------

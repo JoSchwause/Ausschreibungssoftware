@@ -25,6 +25,9 @@ import type {
   Aufmass,
   AufmassChangeSet,
   AuftragsLvChangeSet,
+  BauwerksmodellChangeSet,
+  BauwerksmodellKopf,
+  BauwerksmodellUebersicht,
   Gesamtsummen,
   Knoten,
   KostenermittlungChangeSet,
@@ -49,6 +52,7 @@ import {
   leseAngebotposition,
   leseAufmassText,
   leseAuftragsLvKopf,
+  leseBauwerksmodellKopf,
   leseKnoten1,
   leseKostenermittlung,
   leseLv,
@@ -65,6 +69,7 @@ import { pruefeSummenvorher } from './summenvorher';
 import {
   angebotspositionWerte,
   aufmassWerte,
+  bauwerksmodellWerte,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
@@ -79,6 +84,8 @@ import {
   pruefeAufmassAnlegen,
   pruefeAufmassLoeschen,
   pruefeAuftragsLvKopf,
+  pruefeBauwerksmodellAnlegen,
+  pruefeBauwerksmodellLoeschen,
   pruefeEntfernteAufmasspositionen,
   pruefeFreigabereihenfolge,
   pruefeNachtragsbezug,
@@ -225,6 +232,11 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
      UNION ALL SELECT 'Aufmaßblatt', id FROM aufmass WHERE projekt_id = ?1
      UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE projekt_id = ?1
      UNION ALL SELECT 'Kostenermittlung', id FROM kostenermittlung WHERE projekt_id = ?1
+     UNION ALL SELECT 'Bauwerksmodell', id FROM bauwerksmodell WHERE projekt_id = ?1
+     UNION ALL SELECT 'Bauzeitenplan', id FROM bauzeitenplan WHERE projekt_id = ?1
+     UNION ALL SELECT 'Honorarberechnung', id FROM honorarberechnung WHERE projekt_id = ?1
+     UNION ALL SELECT 'Mangel', id FROM mangel WHERE projekt_id = ?1
+     UNION ALL SELECT 'Bautagebucheintrag', id FROM bautagebucheintrag WHERE projekt_id = ?1
      ORDER BY 1, 2`,
     id,
   );
@@ -1161,6 +1173,86 @@ export function wendeKostenermittlungAn(
     id,
   ]);
 }
+
+// --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54, D-97.3) ------------------------------------------------------------------
+
+/**
+ * Bauwerksmodell anlegen, umbenennen oder löschen (`BauwerksmodellChangeSet`). Verglichen wird nur der Kopf mit dem
+ * gespeicherten Stand (Struktur und Bauteile ändern sich nie, Vertrag); beim Löschen dazu die Zahl der Bauteile und
+ * Strukturknoten, damit ein Undo kein verkürztes Modell zurücklegt. Kopf und Inhalt stehen in getrennten Tabellen: Umbenennen
+ * schreibt nur die kleine Kopfzeile.
+ */
+export function wendeBauwerksmodellAn(
+  db: Datenbank,
+  cs: BauwerksmodellChangeSet,
+  projektId: ProjektId,
+): void {
+  const id = cs.bauwerksmodellId;
+  const was = `Bauwerksmodell ${id}`;
+  const { vorher, nachher } = cs.kopf;
+  const i = cs.inhalt;
+  // `inhalt` genau dann, wenn eine Seite des Kopfs `null` ist, und dann auf derselben Seite `null` (Vertrag).
+  const ganz = vorher === null || nachher === null;
+  if (
+    ganz !== (i !== undefined) ||
+    (i !== undefined &&
+      ((i.vorher === null) !== (vorher === null) || (i.nachher === null) !== (nachher === null)))
+  )
+    abbruch('unbekannt', `ChangeSet: ${was} trägt den Inhalt genau beim Anlegen und Löschen.`);
+  const gespeichert = leseBauwerksmodellKopf(db, id);
+  const kopf = gespeichert === null ? null : bauwerksmodellKopfOhneAnzahl(gespeichert);
+  pruefeGanzesAggregat(cs.kopf, id, projektId, alsStand(kopf), was, [
+    'datei',
+    'schema',
+    'vorgaengerId',
+    'eingelesen',
+  ]);
+  if (nachher === null) {
+    const vorherInhalt = i?.vorher;
+    if (gespeichert === null || vorherInhalt == null) return; // oben geprüft
+    if (
+      vorherInhalt.bauteile.length !== gespeichert.anzahlBauteile ||
+      vorherInhalt.struktur.length !== strukturAnzahl(db, id)
+    )
+      konflikt(`der Inhalt von ${was}`);
+    pruefeBauwerksmodellLoeschen(db, id);
+    db.ausfuehren('DELETE FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?', [id]);
+    db.ausfuehren('DELETE FROM bauwerksmodell WHERE id = ?', [id]);
+    return;
+  }
+  if (vorher === null) {
+    const neu = i?.nachher;
+    if (neu == null) return; // oben geprüft
+    if (leseProjekt(db, projektId) === null)
+      abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
+    pruefeBauwerksmodellAnlegen(db, nachher);
+    db.ausfuehren(
+      `INSERT INTO bauwerksmodell (id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id,
+                                   eingelesen, anzahl_bauteile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      bauwerksmodellWerte(nachher, neu.bauteile.length),
+    );
+    db.ausfuehren(
+      'INSERT INTO bauwerksmodell_inhalt (bauwerksmodell_id, struktur, bauteile) VALUES (?, ?, ?)',
+      [id, kanonischKompakt(neu.struktur), kanonischKompakt(neu.bauteile)],
+    );
+    return;
+  }
+  // Umbenennen: alles außer dem Namen ist oben als fest geprüft.
+  db.ausfuehren('UPDATE bauwerksmodell SET name = ? WHERE id = ?', [nachher.name, id]);
+}
+
+const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf => {
+  const { anzahlBauteile, ...kopf } = u;
+  void anzahlBauteile;
+  return kopf;
+};
+
+const strukturAnzahl = (db: Datenbank, id: string): number =>
+  anzahl(
+    db,
+    'SELECT json_array_length(struktur) AS n FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?',
+    id,
+  );
 
 // --- Modelldateien (Schema 6, v1.6; D-51) ------------------------------------------------------------------------------
 

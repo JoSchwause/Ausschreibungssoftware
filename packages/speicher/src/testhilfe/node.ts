@@ -95,6 +95,16 @@ export function imProtokoll(e: Protokolleintrag): Protokolleintrag {
           pruefsumme,
         },
       };
+    case 'BauwerksmodellAnlegen': {
+      // v1.6: das Modell ohne Struktur und Bauteile
+      const { struktur, bauteile, ...kopf } = b.bauwerksmodell;
+      void struktur;
+      void bauteile;
+      return {
+        ...e,
+        befehl: { art: 'Befehlskurzfassung', kopf: { art: b.art, bauwerksmodell: kopf }, pruefsumme },
+      };
+    }
     default:
       return e;
   }
