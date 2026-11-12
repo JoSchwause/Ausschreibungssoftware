@@ -60,11 +60,8 @@ function eintragLesen(e: Bautagebucheintrag): Bautagebucheintrag | Abweisung {
     if (wert === undefined) return nein('ungueltige-eingabe', `${feld} ist kein Text`, feld);
   }
   return {
-    id: e.id,
-    projektId: e.projektId,
-    datum: e.datum,
-    wetter: { beschreibung, temperaturMin, temperaturMax },
-    arbeitskraefte: e.arbeitskraefte.map(({ firma, anzahl }) => ({ firma, anzahl })),
+    ...e,
+    wetter: { ...e.wetter, beschreibung },
     geraete: texte.geraete ?? null,
     leistungen: texte.leistungen ?? null,
     behinderungen: texte.behinderungen ?? null,

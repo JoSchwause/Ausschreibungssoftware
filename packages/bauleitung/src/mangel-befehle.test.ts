@@ -226,6 +226,18 @@ describe('MangelstatusSetzen (Statusverlauf)', () => {
     expect(fehler(setzen(abgenommen, 'abgenommen', '2026-11-24'))).toEqual(unzulaessig);
   });
 
+  it('übernimmt weitere Felder des Eintrags unverändert (die Frist der Mängelanzeige, D-66; Q5)', () => {
+    // `Mangelverlaufseintrag.frist?` kommt mit dem Nachtrag zu Ticket 97; bis dahin nur als zusätzliches Feld.
+    const eintrag = {
+      status: 'angezeigt',
+      datum: '2026-11-11',
+      bemerkung: null,
+      frist: '2026-11-20',
+    } as const;
+    const cs = wert(mangelBefehlAusfuehren(zustand(mangel(1)), { art: 'MangelstatusSetzen', eintrag }, []));
+    expect(cs.mangel.nachher?.verlauf.at(-1)).toEqual(eintrag);
+  });
+
   it('weist ein Datum vor dem letzten Eintrag ab; derselbe Tag ist zulässig', () => {
     expect(fehler(setzen(mangel(1), 'angezeigt', '2026-11-09'))).toEqual({
       code: 'ungueltige-eingabe',

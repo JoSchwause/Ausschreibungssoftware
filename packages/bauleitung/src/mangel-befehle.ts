@@ -91,7 +91,8 @@ function eintragLesen(
       `${e.datum} liegt vor dem vorigen Eintrag (${vorheriger.datum})`,
       'datum',
     );
-  return { status: e.status, datum: e.datum, bemerkung };
+  // Weitere Felder des Eintrags bleiben (D-111.9: `frist?` kommt mit dem Nachtrag zu Ticket 97, D-66; Q5).
+  return { ...e, bemerkung };
 }
 
 /** Prüft den ganzen Verlauf eines neuen Mangels gegen seinen Tag der Feststellung. */
@@ -152,7 +153,7 @@ export const mangelBefehlAusfuehren: MangelBefehlAusfuehren = (zustand, befehl, 
         `Die Nummer ${String(m.nummer)} ist im Projekt schon vergeben`,
         'nummer',
       );
-    return changeSet(null, { id: m.id, projektId: m.projektId, nummer: m.nummer, ...angaben, verlauf });
+    return changeSet(null, { ...m, ...angaben, verlauf });
   }
   if (zustand === null) return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Mangel übergeben.`);
   const m = zustand.mangel;
