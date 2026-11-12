@@ -44,3 +44,25 @@ Vorgehen:
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+- **D-94.1 Messort und Naht.** Frage: Wo und woran misst der Budgettest? Entscheidung:
+  `packages/speicher/src/aufmass-leistung.test.ts` an der öffentlichen Naht `SpeicherKern.anwenden` (In-Memory-SQLite unter
+  Node wie die übrigen Tests des Pakets). Die ChangeSets baut der Test so, wie der Ausführer in `abrechnung` sie liefert
+  (ganzes Blatt vorher und nachher, ungeänderte Zeilen als dieselben Objekte), Undo als Tausch (`testhilfe/umkehrung`), mit
+  echten Protokolleinträgen `Rueckgaengig`/`Wiederholen`. Weil das Auftrags-LV per Fremdschlüssel auf ein Angebot verweist
+  und `gross` keines hat, bekommt das Projekt einen Bieter und ein leeres Angebot. Grund: `speicher` darf `abrechnung` nicht
+  importieren (A3); gemessen wird genau der Speicherkern. Reversible: yes.
+
+### Messung vorher (Stand `a5491d1`, 4 Kerne, Last 0,2–0,7)
+
+| | Budgettest `speicher` (3 Läufe, je 9 warm) | App `leistung.test.ts` (1 Lauf) |
+|---|---|---|
+| `AufmasspositionSetzen` (Median) | 63 / 65 / 70 ms | 67,8 ms, davon Speicher 67,4 ms |
+| Rückgängig (Median) | 64 / 67 / 68 ms | 67,7 ms, davon Speicher 67,1 ms |
+| Wiederholen (Median) | 65 / 65 / 69 ms | 63,4 ms |
+| Anlegen (`AufmassAnlegen`) | 62–78 ms | 59 ms |
+
+Phasen (Profil an 5.000 Zeilen, Blatt 1.060 KiB): die kanonische Form der Zeilen (`kanonischKompakt`) kostet 17–25 ms je
+Aufruf, und `anwenden` bildet sie dreimal (gespeichertes Blatt nach `JSON.parse`, `vorher`, `nachher`). Text lesen 1 ms,
+`JSON.parse` 3 ms, `UPDATE` 2 ms, Textvergleich 0,2 ms. Ein eigener Schreiber (Schlüsselreihenfolge je Objektform gemerkt) ist
+kaum schneller (15 statt 17 ms): Es zählt die Zahl der Objekte (rund 15.000), nicht der Code.
