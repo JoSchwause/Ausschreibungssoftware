@@ -163,7 +163,13 @@ export type IfcBefundcode =
   | 'kostengruppe-mehrdeutig'
   // GlobalId der Strukturknoten und Bauteile:
   | 'globalid-ungueltig'
-  | 'globalid-doppelt';
+  | 'globalid-doppelt'
+  // Abbildung auf den Vertrag (Ticket 107): was dabei wegfällt oder umgelenkt wird, nie still.
+  | 'menge-ohne-wert'
+  | 'bauteil-ohne-ganzes'
+  | 'verweis-mehrdeutig'
+  | 'strukturknoten-ring'
+  | 'bauteil-ring';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für

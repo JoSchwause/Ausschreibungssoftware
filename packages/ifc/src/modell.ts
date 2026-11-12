@@ -23,10 +23,20 @@ export class Modellleser {
   private readonly fehlendeVerweise = new Set<string>();
   /** Erste Instanz je wohlgeformter GlobalId der Strukturknoten und Bauteile. */
   private readonly vergeben = new Map<string, number>();
+  /**
+   * Das Objekt (Index der Instanz), das ein Befund betrifft, wenn es nicht die Instanz seines Orts ist (z. B. das Bauteil
+   * eines Befunds an einer Beziehung). Die Abbildung auf den Vertrag nennt daraus die GlobalId (Ticket 107).
+   */
+  readonly objektVon = new Map<IfcBefund, number>();
 
+  /**
+   * @param ohneGlobalIdEntfaellt Lesart für die Abbildung auf den Vertrag (Ticket 107): Ein Objekt ohne GlobalId in Form
+   *   steht nicht im Bauwerksmodell; der Befund `globalid-ungueltig` sagt das dazu.
+   */
   constructor(
     readonly daten: StepDaten,
     readonly befunde: IfcBefund[],
+    private readonly ohneGlobalIdEntfaellt = false,
   ) {}
 
   ort(i: number, feld?: string): Befundort {
@@ -34,8 +44,11 @@ export class Modellleser {
     return feld === undefined ? ort : { ...ort, feld };
   }
 
-  melde(schwere: IfcBefund['schwere'], code: IfcBefundcode, meldung: string, ort: Befundort): void {
-    this.befunde.push(befund(schwere, code, meldung, ort));
+  /** Meldet einen Befund; `objekt` ist das betroffene Objekt, wenn es nicht die Instanz von `ort` ist. */
+  melde(schwere: IfcBefund['schwere'], code: IfcBefundcode, meldung: string, ort: Befundort, objekt?: number): void {
+    const b = befund(schwere, code, meldung, ort);
+    this.befunde.push(b);
+    if (objekt !== undefined) this.objektVon.set(b, objekt);
   }
 
   /** Parameter der Instanz mit Index `i`. */
@@ -85,12 +98,14 @@ export class Modellleser {
     const globalId = this.globalId(i);
     const nummer = `#${String(this.daten.id(i))}`;
     if (!istGlobalId(globalId)) {
+      const folge = this.ohneGlobalIdEntfaellt ? ' Ohne GlobalId in Form steht es nicht im Bauwerksmodell.' : '';
       this.melde(
         'fehler',
         'globalid-ungueltig',
-        globalId === ''
+        (globalId === ''
           ? `${nummer} hat keine GlobalId.`
-          : `Die GlobalId „${globalId}“ von ${nummer} ist nicht wohlgeformt (22 Zeichen aus 0-9, A-Z, a-z, _ und $).`,
+          : `Die GlobalId „${globalId}“ von ${nummer} ist nicht wohlgeformt (22 Zeichen aus 0-9, A-Z, a-z, _ und $).`) +
+          folge,
         this.ort(i, 'GlobalId'),
       );
       return globalId;
@@ -125,20 +140,28 @@ export function zerlegungLesen(l: Modellleser): ReadonlyMap<number, number> {
   return ganzes;
 }
 
+/** Ein gelesener Strukturknoten mit den Instanzen der Datei: seiner (`i`) und der seiner Eltern, falls ein Strukturknoten. */
+export interface GelesenerKnoten {
+  readonly i: number;
+  readonly eltern: number | null;
+  readonly knoten: Strukturknoten;
+}
+
 /** Strukturknoten in der Reihenfolge der Datei (Ticket 98, Punkt 4). */
 export function strukturLesen(
   l: Modellleser,
   ganzes: ReadonlyMap<number, number>,
   mengen: (i: number) => Bauteilmenge[],
-): Strukturknoten[] {
+): GelesenerKnoten[] {
   const indizes = [...STRUKTURARTEN.keys()].flatMap((k) => l.daten.klasse(k)).sort((a, b) => a - b);
-  const knoten: Strukturknoten[] = [];
+  const knoten: GelesenerKnoten[] = [];
   for (const i of indizes) {
     const art = STRUKTURARTEN.get(l.daten.name(i));
     if (art === undefined || l.parameter(i) === null) continue;
     const globalId = l.gepruefteGlobalId(i);
     const oben = ganzes.get(i);
-    const eltern = oben !== undefined && STRUKTURARTEN.has(l.daten.name(oben)) ? l.globalId(oben) : null;
+    const elternInstanz = oben !== undefined && STRUKTURARTEN.has(l.daten.name(oben)) ? oben : null;
+    const eltern = elternInstanz === null ? null : l.globalId(elternInstanz);
     if (eltern === null && art !== 'projekt')
       l.melde(
         'warnung',
@@ -146,7 +169,11 @@ export function strukturLesen(
         `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))}) hängt an keinem Strukturknoten (IfcRelAggregates).`,
         l.ort(i),
       );
-    knoten.push({ globalId, art, name: l.name(i), elternGlobalId: eltern, mengen: mengen(i) });
+    knoten.push({
+      i,
+      eltern: elternInstanz,
+      knoten: { globalId, art, name: l.name(i), elternGlobalId: eltern, mengen: mengen(i) },
+    });
   }
   return knoten;
 }

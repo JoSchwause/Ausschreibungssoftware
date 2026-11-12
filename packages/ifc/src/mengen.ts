@@ -25,6 +25,8 @@ const MENGENARTEN: ReadonlyMap<string, Bauteilmenge['art']> = new Map([
 export class Mengenleser {
   /** Gelesene Mengensätze; ein Satz am Typ wird so nur einmal gelesen und gemeldet. */
   private readonly gelesen = new Map<number, readonly Bauteilmenge[]>();
+  /** Instanz jeder Menge ohne Wert, für den Ort des Befunds, wenn sie bei der Abbildung wegfällt (Ticket 107). */
+  private readonly ohneWert = new Map<Bauteilmenge, number>();
 
   constructor(
     private readonly l: Modellleser,
@@ -42,6 +44,11 @@ export class Mengenleser {
     return zusammenfuehren(lesen(eigene), lesen(vomTyp));
   }
 
+  /** Index der Instanz einer Menge ohne Wert (`IfcQuantity…`); `undefined` für jede andere Menge. */
+  instanzOhneWert(menge: Bauteilmenge): number | undefined {
+    return this.ohneWert.get(menge);
+  }
+
   private satz(s: number): readonly Bauteilmenge[] {
     const fertig = this.gelesen.get(s);
     if (fertig !== undefined) return fertig;
@@ -50,7 +57,9 @@ export class Mengenleser {
     const mengen: Bauteilmenge[] = [];
     for (const q of this.l.ziele(s, p?.[5])) {
       const menge = this.menge(q, satz);
-      if (menge !== null) mengen.push(menge);
+      if (menge === null) continue;
+      mengen.push(menge);
+      if (menge.wert === null) this.ohneWert.set(menge, q);
     }
     this.gelesen.set(s, mengen);
     return mengen;
@@ -72,7 +81,8 @@ export class Mengenleser {
     const p = this.l.parameter(q);
     if (p === null) return null;
     const name = text(p[0]);
-    if (name === null) {
+    // Ein Name nur aus Leerraum ist keiner (vertrag v1.6: der Name einer Bauteilmenge ist nicht leer; Ticket 107).
+    if (name === null || name.trim() === '') {
       this.l.melde(
         'fehler',
         'menge-ungueltig',
