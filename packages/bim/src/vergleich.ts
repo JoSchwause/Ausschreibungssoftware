@@ -18,7 +18,7 @@ import type {
 import { modellbefund } from './befunde';
 import type { Modellindex } from './form';
 import { doppelteInReihenfolge, modellIndex } from './form';
-import { zeilenLesen, zugeordnetePositionen } from './mengenuebernahme';
+import { gleicheZeilen, zeilenLesen, zugeordnetePositionen } from './mengenuebernahme';
 
 /** Ein Feld, in dem sich ein Bauteil zwischen zwei Ständen ändern kann (D-53). */
 export type Vergleichsfeld = 'klasse' | 'name' | 'strukturknoten' | 'mengen';
@@ -182,12 +182,6 @@ export function modellVergleichen(vorher: Bauwerksmodell, nachher: Bauwerksmodel
       ),
     );
   return { hinzugefuegt, entfernt, geaendert, anzahlUnveraendert, befunde };
-}
-
-function gleicheZeilen(a: readonly Ansatzzeile[], b: readonly Ansatzzeile[]): boolean {
-  return (
-    a.length === b.length && a.every((z, i) => z.ausdruck === b[i]?.ausdruck && z.formel === b[i].formel)
-  );
 }
 
 /** Die Folgen eines Vergleichs für ein LV (Ticket 108 Punkt 6): je Position mit Zuordnungen Mengen und Differenz. */

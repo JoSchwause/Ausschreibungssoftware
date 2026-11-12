@@ -150,7 +150,8 @@ export function zeilenLesen(
   return { zeilen, menge: zeilen.length === 0 ? null : summe, befunde, bauteile };
 }
 
-function gleicheZeilen(a: readonly Ansatzzeile[], b: readonly Ansatzzeile[] | undefined): boolean {
+/** Gleiche Ansatzzeilen in gleicher Reihenfolge (alle Felder); `undefined`: kein Ansatz. */
+export function gleicheZeilen(a: readonly Ansatzzeile[], b: readonly Ansatzzeile[] | undefined): boolean {
   if (b === undefined || a.length !== b.length) return false;
   return a.every((z, i) => {
     const y = b[i];
