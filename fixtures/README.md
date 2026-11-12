@@ -12,8 +12,9 @@ Typen liegen in `packages/vertrag` (Ticket 02).
 ## Erzeugen und prüfen
 
 ```
-node fixtures/erzeugen.mjs        # schreibt alle JSON- und X84-Dateien neu
+node fixtures/erzeugen.mjs        # schreibt alle JSON-, X84- und IFC-Dateien neu
 node --test                       # im Wurzelverzeichnis; oder: node --test "fixtures/*.test.mjs"
+node fixtures/ifc/erzeugen.mjs --bauteile 10000 --geschosse 10 --aus /tmp/modell.ifc   # großes Modell (D-54)
 ```
 
 `node --test fixtures/` (Verzeichnis als Argument) funktioniert unter Node 22 nicht, dort wird das Argument als
@@ -32,6 +33,11 @@ Moduldatei gelesen. Das Erzeugungsskript ist deterministisch (eigener Seed-PRNG,
 | `gross.json` | 5.000 Positionen, 5 Titelebenen (5 × 3 × 3 × 3 × 3 Titel), Seed `fixtures-v1/gross`, Zuschlagssätze aus Seed `fixtures-v1/gross/zuschlagssatz` | vollständig erzeugt, nicht von Hand gepflegt |
 | `handbeispiele.json` | Hand-Beispiele aus Ticket 19 und 07 mit Zwischenwerten | selbst verfasst, vom Skript erzeugt |
 | `zuschlag.json` | Zuschlagspositionen in GAEB-Form, alle drei Bezugsformen, Einheitspreisanteile; Netto 6.850,60, Brutto 8.152,21 (Ticket 37) | selbst verfasste Texte, Zahlen aus BVBS 3.3 AVA X86 Bereich 1.30 und 1.10.30.20 (D-03), Sollwerte vom Skript berechnet |
+| `ifc/haus-v1.ifc`, `ifc/haus-v2.ifc` | IFC-Haus des Tors X1 (Ticket 99): IFC 4, Längen in m; zwei Geschosse, 6 Räume, 30 Bauteile; v2 ist der zweite Stand | selbst verfasst, erfunden, vom Skript erzeugt (`ifc/haus.mjs`), siehe „BIM: Haus und Tor X1“ |
+| `ifc/haus-v1-ifc2x3.ifc` | dasselbe Haus v1 als IFC 2x3, Längen in mm | wie oben |
+| `typisch-bim.json` | Sollwerte der Tore X1-Kern und X1-Erweitert (D-58): Zuordnung zu `typisch`, Vordersätze, LV-Summen, DIN-277-Größen, Kostenschätzung, Aufmaßblatt aus Auswahl, Vergleich v1 → v2, Mengen aktualisieren | selbst verfasst, Sollwerte berechnet (`ifc/sollwerte.mjs`) |
+| `ifc/erzeugen.mjs` (+ `.d.mts`) | großes IFC-4-Modell für die Leistungsbudgets (Standard 10.000 Bauteile auf 10 Geschossen, etwa 21 MB), als Funktion `erzeugeModell` und Kommandozeile; die Datei liegt nicht im Repo (D-54) | selbst verfasst, deterministisch |
+| `ifc/schreiben.mjs` | STEP-Schreiber (IFC 4 und IFC 2x3) und Mengen aus der Geometrie | selbst verfasst nach den öffentlichen Schemata (nur Klassennamen und Attributfolgen) |
 | `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs` | Generator, Dezimalrechnung, Selbsttest | selbst verfasst |
 
 Lizenz: AGPL-3.0-or-later (REUSE-Abdeckung über den Repo-weiten Glob für `fixtures/**`).
@@ -92,6 +98,24 @@ Abrechnungsset (Ticket 85, Tor M4): { schemaVersion, art:"abrechnungsset", regel
   `kette`: {leistung, nachlass, nettoNachNachlass, mwst, bruttoKumuliert, umlagen[{bezeichnung, satz, betrag}], einbehalt,
   fruehereZahlbetraege, zahlbetrag}; Soll/Ist-Zeile {positionId, soll, ist, anteil}, Befund {positionId, art, anteil};
   Kostenkontrolle-Zeile {kostengruppe, budget, vergabe, abrechnung, abweichung} (diese Namen sind Fixture-Namen).
+BIM-Set (Ticket 99, Tor X1): { schemaVersion, art:"bimset", regel, lvId, lvName,
+               modelle[{stand, datei, schema, laengeneinheit, sha256}],
+               bauteile:{v1:[…], v2:[…]}  je {globalId, kennung, klasse, name, geschoss,
+                         mengen[{name, art:"laenge|flaeche|volumen", wert (3 Stellen), exakt (wie in der Datei), herleitung}]},
+               zuordnungen[{positionId, oz, kurztext, einheit, bauteile[{globalId, mengenart}], kennungen[]}],
+               kern{torweg{beschreibung, positionIds[], sollwerte}, vordersaetze[], sollwerte},
+               erweitert{din277{regel, geschosse[], raeume[], summen{bgf, bri, nrf}, herleitung},
+                         kostenschaetzung{stufe, name, bezugsgroesse, kennwerte[], eintraege[], gesamt},
+                         aufmassAusAuswahl{modell, auswahl{art, globalId, name}, positionen[]},
+                         vergleich{vorher, nachher, hinzugefuegt[], entfernt[], geaendert[]},
+                         betroffenePositionen[{positionId, oz, vorher, nachher, differenz}],
+                         mengenAktualisieren{modell, vordersaetze[], befunde[], sollwerte}} }
+  Vordersatz {positionId, oz, mengenansatz[{zeile, formel, ausdruck, variable}], zeilenergebnisse[], menge, herleitung[]}
+  (Aufmaßposition aus Auswahl zusätzlich `bauteile[]`, die ausgewählten GlobalIds). `bauteile` einer Zuordnung hat die
+  Form von `Positionsdaten.bauteile` (D-52); `sollwerte` haben die Form von `typisch.json`. Geändert {globalId, kennung,
+  felder[], [klasse|name|strukturknoten]{vorher, nachher}, [mengen[{name, vorher, nachher}]]}; Befund {positionId, oz, art,
+  globalId, kennung}; Differenz mit Vorzeichen (`-4.125`). `eintraege` der Kostenschätzung in der Form von
+  `Kostenermittlungseintrag` {nummer, betrag, bemerkung}.
 ```
 
 `ozMaske` ist ein Text: vor dem ersten `:` stehen die Stellen (`N` Ziffer, `I` Index, `.` Trennzeichen zählt nicht),
@@ -256,6 +280,124 @@ Lesarten, die die Regeln offen lassen (Ticket 85, D-85.1 bis D-85.8; Annahmen f�
   Auftragnehmers. Status vor der Übernahme `angeboten`, danach `beauftragt` (D-35: erst übernehmen, dann beauftragen).
 - **D-85.7** `gefordert` ist in beiden Rechnungen `null` (ob kumuliert, ist offen; Offene Typfrage 8 zu Ticket 70).
 - **D-85.8** Kostengruppen werden am Auftrags-LV gesetzt (`KostengruppeSetzen` als AuftragsLvBefehl), nicht im LV.
+
+## BIM: Haus und Tor X1 (Ticket 99)
+
+`typisch-bim.json` trägt die Sollwerte der Tore X1-Kern und X1-Erweitert (D-58) auf dem IFC-Haus unter `ifc/`. Haus,
+Dateien und Sollwerte erzeugt `erzeugen.mjs` aus einer Beschreibung in `ifc/haus.mjs` (Quader in m, exakt; Schreiber
+`ifc/schreiben.mjs`; Sollwerte `ifc/sollwerte.mjs`), nur mit BigInt und nie aus `ifc`, `bim`, `kern` oder `mengen`. Der
+Selbsttest liest jede IFC-Datei mit einem eigenen, strengen STEP-Leser (Kopf, Schema, eindeutige `#n`, Attributzahl je
+Klasse nach Schema, GlobalIds, Verweise), prüft jede Menge gegen die Geometrie der Datei und rechnet jede Sollzahl aus den
+IFC-Texten (Abgleich über die GlobalId) und aus `typisch.json` nach, dazu von Hand. Alles ist erfunden.
+
+### Das Haus
+
+Außenmaß 11,99 × 8,24 m, Erdgeschoss (EG, ±0,00) und Obergeschoss (OG, +3,00), Wandhöhe 2,75 m, Platten 0,25 m. Außenwände
+Ziegel 36,5 cm (Süd und Nord über die ganze Länge, West und Ost dazwischen, Länge 7,51 m), im EG Innenwände aus
+Kalksandstein 11,5 cm (nichttragend), im OG Trockenbauwände 10 cm. Fenster 1,26 bzw. 1,01 × 1,385 m (Brüstung 0,885 m),
+Innentüren 0,885 × 2,01 m, Haustür 1,135 × 2,135 m. Jede Datei: `IfcProject` → `IfcSite` → `IfcBuilding` → zwei
+`IfcBuildingStorey` → je drei `IfcSpace` (`IfcRelAggregates`); Bauteile im Geschoss (`IfcRelContainedInSpatialStructure`),
+Körper als `IfcExtrudedAreaSolid` mit `IfcRectangleProfileDef`, Wände zusätzlich mit Achse; Öffnungen als
+`IfcOpeningElement` (`IfcRelVoidsElement`), Fenster und Türen darin (`IfcRelFillsElement`); Mengensätze `Qto_…`,
+Eigenschaftssätze `Pset_WallCommon` (`IsExternal`, `LoadBearing` u. a.), `Pset_WindowCommon`, `Pset_DoorCommon`,
+`Pset_SlabCommon`; Wandtyp (`IfcRelDefinesByType`), Material, Kostengruppe als `IfcClassificationReference` der
+Klassifikation „DIN 276“ (nur die Nummer, C1). Kennung jedes Bauteils = `Tag`; GlobalId fest aus der Kennung (D-99.11).
+
+| Geschoss | Kennung | Klasse | Name | Maße (m) | Öffnungen |
+|---|---|---|---|---|---|
+| EG | FU-S, FU-N | IfcFooting | Streifenfundament Süd, Nord | 12,225 × 0,60 × 0,80, Unterkante −1,05 | – |
+| EG | FU-W, FU-O | IfcFooting | Streifenfundament West, Ost | 7,275 × 0,60 × 0,80 | – |
+| EG | PL-EG | IfcSlab `BASESLAB` | Bodenplatte | 11,99 × 8,24 × 0,25, Unterkante −0,25 | Aussparung AS-PL-EG 0,40 × 0,40 |
+| EG | AW-EG-S | IfcWall | Außenwand Süd EG | 11,99 × 0,365 × 2,75 | Fenster F-EG-S 1,26, Haustür T-EG-H |
+| EG | AW-EG-N | IfcWall | Außenwand Nord EG | 11,99 × 0,365 × 2,75 | Fenster F-EG-N 1,26 |
+| EG | AW-EG-W | IfcWall | Außenwand West EG | 7,51 × 0,365 × 2,75 | Fenster F-EG-W 1,01 (v2: keins) |
+| EG | AW-EG-O | IfcWall | Außenwand Ost EG | 7,51 × 0,365 × 2,75 | – |
+| EG | IW-EG-1 | IfcWall | Innenwand Wohnen/Flur | 7,51 × 0,115 × 2,75 | Tür T-EG-1 |
+| EG | IW-EG-2 | IfcWall | Innenwand Flur/Küche | 3,145 (v2: 3,645) × 0,115 × 2,75 | – |
+| EG | IW-EG-3 | IfcWall | Raumteiler Wohnen (nur v1) | 2,00 × 0,115 × 2,75 | – |
+| EG | IW-EG-4 | IfcWall | Raumteiler Wohnen Nord (nur v2) | 2,00 × 0,115 × 2,75 | – |
+| OG | DE-OG, DA-OG | IfcSlab `FLOOR`, `ROOF` | Geschossdecke, Dachdecke | je 11,99 × 8,24 × 0,25 | – |
+| OG | AW-OG-S | IfcWall | Außenwand Süd OG | 11,99 × 0,365 × 2,75 | Fenster F-OG-S 1,26, F-OG-F 1,01 |
+| OG | AW-OG-N | IfcWall | Außenwand Nord OG | 11,99 × 0,365 × 2,75 | Fenster F-OG-N 1,26 |
+| OG | AW-OG-W, AW-OG-O | IfcWall | Außenwand West, Ost OG | 7,51 × 0,365 × 2,75 | v2: Fenster F-EG-W in AW-OG-W |
+| OG | IW-OG-1 | IfcWall | Trockenbauwand Schlafen/Flur | 7,51 × 0,10 × 2,75 | Tür T-OG-1 |
+| OG | IW-OG-2 | IfcWall | Trockenbauwand Flur/Kind | 4,785 × 0,10 × 2,75 | Tür T-OG-2 |
+
+Räume (Lichtmaß): E.01 Wohnen 6,375 × 7,51, E.02 Flur 4,77 × 3,635, E.03 Küche 4,77 × 3,76; O.01 Schlafen 6,375 × 7,51,
+O.02 Flur 4,785 × 3,635, O.03 Kind 4,785 × 3,775. Zusammen 30 Bauteile (EG 17, OG 13) und 11 Öffnungen.
+
+**Stand v2** (gleiche GlobalIds außer den neuen): IW-EG-3 entfernt; IW-EG-4 neu (gleiche Art und Maße, andere Lage, keine
+Zuordnung); IW-EG-2 um 0,50 m länger; Fenster F-EG-W samt Öffnung von AW-EG-W nach AW-OG-W (Geschoss EG → OG); PL-EG
+heißt „Bodenplatte WU-Beton“. **IFC 2x3** (`haus-v1-ifc2x3.ifc`): derselbe Inhalt mit denselben GlobalIds, Längen in mm
+(`IfcSIUnit` mit `.MILLI.`), Flächen und Volumen in m² und m³, Umlaute als `\X\hh`, Klassen und Attributfolgen von IFC 2x3
+(D-99.4).
+
+### Mengen aus der Geometrie
+
+| Klasse | Mengen (Mengensatz) | Regel |
+|---|---|---|
+| Wand | `Length`, `Width`, `Height`, `GrossSideArea`, `NetSideArea`, `GrossVolume`, `NetVolume` (`Qto_WallBaseQuantities`) | Seitenfläche brutto Länge × Höhe, netto minus Σ Breite × Höhe der Öffnungen; Volumen = Seitenfläche × Dicke |
+| Fundament | `Length`, `Width`, `Height`, `GrossVolume`, `NetVolume` (`Qto_FootingBaseQuantities`) | Länge × Breite × Höhe |
+| Platte | `Width` (Dicke), `Perimeter`, `GrossArea`, `NetArea`, `GrossVolume`, `NetVolume` (`Qto_SlabBaseQuantities`) | Fläche dx × dy, netto minus Aussparungen; Volumen = Fläche × Dicke |
+| Fenster, Tür | `Width`, `Height`, `Area` (`Qto_WindowBaseQuantities`, `Qto_DoorBaseQuantities`) | Breite × Höhe der Öffnung |
+| Raum | `Height`, `GrossFloorArea`, `NetFloorArea` (`Qto_SpaceBaseQuantities`) | Lichtmaß; netto ohne die Grundfläche der Bauteile im Raum (D-99.6) |
+| Geschoss | `GrossHeight`, `GrossFloorArea`, `GrossVolume` (`Qto_BuildingStoreyBaseQuantities`) | BGF aus dem Außenmaß; BRI = BGF × Bruttohöhe (EG −0,25 bis 3,00, OG 3,00 bis 6,00) |
+
+Die Datei trägt den exakten Wert (z. B. `28.804175`); gelesen und verglichen wird er kaufmännisch auf 3 Stellen (G-21).
+Jede Menge steht in `bauteile` mit `exakt`, `wert` und `herleitung`.
+
+### Zuordnung und Tor X1-Kern
+
+Mengenübernahme nach D-53: je zugeordnetem Bauteil im gewählten Modell eine Ansatzzeile Formel 91 mit dem Wert der Menge
+auf 3 Stellen (Ausdruck de-DE, D-99.5), in der Reihenfolge der Zuordnung; Menge = Summe der Zeilen; GP und Summen nach N2/N5.
+
+| OZ | Kurztext | Einheit | Mengenart | Bauteile | Zeilen | Menge | GP |
+|---|---|---|---|---|---|---|---|
+| 02.0040 | Sauberkeitsschicht | m² | `GrossArea` | PL-EG | 98,798 | 98,798 | 1.134,20 |
+| 02.0050 | Fundamente betonieren | m³ | `NetVolume` | FU-S, FU-N, FU-W, FU-O | 5,868; 5,868; 3,492; 3,492 | 18,720 | 3.161,81 |
+| 02.0050 A | Zuschlag Frosteinbau | – | – | (8,50 % auf 02.0050) | – | – | 268,75 |
+| 02.0070 | Bodenplatte herstellen | m² | `NetArea` | PL-EG | 98,638 | 98,638 | 5.198,22 |
+| 02.0080 | Sockel abdichten | m | `Length` | AW-EG-S, -N, -W, -O | 11,990; 11,990; 7,510; 7,510 | 39,000 | 731,64 |
+| 03.0010 | Innenwände mauern | m² | `NetSideArea` | IW-EG-1, -2, -3 | 18,874; 8,649; 5,500 | 33,023 | 1.609,87 |
+| 03.0020 | Innenputz | m² | `NetSideArea` | AW-EG-S, -N, -W, -O | 28,804; 31,227; 19,254; 20,653 | 99,938 | 1.934,80 |
+| 03.0050 | Türzargen einbauen | St | `Stueck` | T-EG-1, T-OG-1, T-OG-2 | 1,000 je Tür | 3,000 | 403,50 |
+
+Handrechnung: AW-EG-S 11,99 × 2,75 = 32,9725 − Fenster 1,26 × 1,385 = 1,7451 − Haustür 1,135 × 2,135 = 2,423225 →
+28,804175 → **28,804**; AW-EG-O 7,51 × 2,75 = 20,6525 → **20,653** (kaufmännisch, .5); IW-EG-1 20,6525 − Tür 0,885 × 2,01
+= 1,77885 → 18,87365 → **18,874**; PL-EG 11,99 × 8,24 = 98,7976 → 98,798, netto − 0,4 × 0,4 → 98,6376 → 98,638; FU-S 12,225
+× 0,6 × 0,8 = 5,868. GP: 33,023 × 48,750 = 1.609,87125 → 1.609,87; 18,720 × 168,900 = 3.161,808 → 3.161,81, Zuschlag
+3.161,81 × 8,50 % = 268,75385 → 268,75; 98,798 × 11,480 = 1.134,20104 → 1.134,20; 98,638 × 52,700 = 5.198,2226 → 5.198,22;
+39,000 × 18,760 = 731,64; 99,938 × 19,360 = 1.934,79968 → 1.934,80; 3,000 × 134,500 = 403,50. **LV nach der Übernahme:**
+Netto 55.465,59 − 33.839,52 (bisherige GP samt Zuschlag) + 14.442,79 = **36.068,86**; Nachlass 2 % = 721,3772 → 721,38;
+Netto n. N. 35.347,48; MwSt 19 % = 6.716,0212 → 6.716,02; Brutto **42.063,50**.
+
+**Torweg der E2E** (`kern.torweg`, D-99.2): nur die gemauerten Innenwände des EG an 03.0010 („Wände des EG“; `typisch`
+hat keine Position für Außenwände). Netto 55.465,59 − 10.354,50 + 1.609,87 = **46.720,96**; Nachlass 934,4192 → 934,42;
+Netto n. N. 45.786,54; MwSt 8.699,4426 → 8.699,44; Brutto **54.485,98**. Der Kettentest nimmt alle sieben Zuordnungen.
+IFC 2x3 liefert dieselben Zeilen (Länge in mm exakt durch 1000).
+
+### Tor X1-Erweitert
+
+| Sollwert | Regel | Wert |
+|---|---|---|
+| BGF, BRI, NRF | Σ der Geschoss- bzw. Raummengen, jede auf 3 Stellen (D-99.7) | BGF 98,798 + 98,798 = **197,596**; BRI 321,092 + 296,393 = **617,485**; NRF 47,646 + 17,339 + 17,935 + 47,876 + 17,393 + 18,063 = **166,252** |
+| Kostenschätzung | D-52: je KG round(BGF × Kennwert, 2); Kennwerte erfunden in €/m² BGF (D-99.10) | 320: 148,30 → 29.303,49; 330: 402,65 → 79.562,03; 340: 131,45 → 25.973,99; 350: 189,20 → 37.385,16; 360: 97,85 → 19.334,77; 400: 418,75 → 82.743,325 → 82.743,33; gesamt **274.302,77** |
+| Aufmaßblatt aus Auswahl „Geschoss EG“ | je zugeordneter Position die Zeilen der ausgewählten Bauteile (alle 17 im EG), D-99.9 | wie der Vordersatz, nur 03.0050 **1,000** (T-EG-1) |
+| Vergleich v1 → v2 | über die GlobalId: Klasse, Name, Strukturknoten, Mengen auf 3 Stellen (D-99.8) | entfernt IW-EG-3; neu IW-EG-4; geändert PL-EG (Name), AW-EG-W (NetSideArea 19,254 → 20,653, NetVolume 7,028 → 7,538), F-EG-W (EG → OG), IW-EG-2 (Length 3,145 → 3,645 u. a.), AW-OG-W (umgekehrt wie AW-EG-W) |
+| Betroffene Positionen | Vordersatz mit v2 anders als mit v1; Differenz = nachher − vorher | 03.0010 33,023 → 28,898 (**−4,125**); 03.0020 99,938 → 101,337 (**+1,399**) |
+| Mengen aktualisieren mit v2 | wie die Übernahme; IW-EG-3 fehlt: keine Zeile, Befund `bauteil-fehlt` (D-53, D-99.12) | 03.0010 18,874 + 10,024 = 28,898 → 1.408,78; 03.0020 → 1.961,88; Netto 36.068,86 − 1.609,87 − 1.934,80 + 1.408,78 + 1.961,88 = **35.894,85**; Nachlass 717,897 → 717,90; Netto n. N. 35.176,95; MwSt 6.683,6205 → 6.683,62; Brutto **41.860,57** |
+
+Die Mengen des Aufmaßblatts hängen nicht vom Bieter des Zuschlags ab. „Mengen aktualisieren“ ändert das LV, nicht das
+Auftrags-LV (`MengenansatzSetzen` ist kein AuftragsLvBefehl, D-53), ausgehend vom LV nach der Übernahme mit v1.
+
+### Großes Modell (D-54)
+
+`ifc/erzeugen.mjs` schreibt mit denselben Bausteinen Felder zu je sechs Bauteilen (Außenwand mit Fenster, Innenwand mit
+Tür, Innenwand, Deckenfeld) in Reihen zu 20 Feldern; je Geschoss ⌊n / g⌋ Bauteile, der Rest je eins an die unteren
+Geschosse; eine angeschnittene Gruppe bleibt gültig (Öffnung ohne Füllung). GlobalIds aus einem Zähler, keine Zeit, kein
+Zufall: 10.000 Bauteile auf 10 Geschossen ergeben etwa 21 MB in unter einer Sekunde, immer mit demselben SHA-256. Der
+Selbsttest prüft Determinismus, Zahl der Bauteile und Verweise; ein kleines Modell (37 Bauteile, 3 Geschosse) liest er
+streng wie die Hausdateien.
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
