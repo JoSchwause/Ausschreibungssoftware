@@ -248,8 +248,18 @@ describe('Befunde in der gemeinsamen Befundliste (Pruefbefund, D-97.11)', () => 
       mwstSatz: p('19.00'),
     });
     expect(e.befunde.map((x) => [x.quelle, x.code, x.schwere, x.ort])).toEqual([
-      ['honorarberechnung', 'honorarsatz-ausserhalb-spanne', 'warnung', { pfad: '/objekte[2]', feld: 'honorarsatz' }],
-      ['honorarberechnung', 'leistungsphase-unbekannt', 'fehler', { pfad: '/objekte[2]', feld: 'leistungsphasen' }],
+      [
+        'honorarberechnung',
+        'honorarsatz-ausserhalb-spanne',
+        'warnung',
+        { pfad: '/objekte[2]', feld: 'honorarsatz' },
+      ],
+      [
+        'honorarberechnung',
+        'leistungsphase-unbekannt',
+        'fehler',
+        { pfad: '/objekte[2]', feld: 'leistungsphasen' },
+      ],
       [
         'honorarberechnung',
         'umbauzuschlag-ueber-grenze',
@@ -257,18 +267,29 @@ describe('Befunde in der gemeinsamen Befundliste (Pruefbefund, D-97.11)', () => 
         { pfad: '/objekte[2]', feld: 'umbauzuschlagssatz' },
       ],
       ['honorarberechnung', 'honorarzone-unbekannt', 'fehler', { pfad: '/objekte[3]', feld: 'honorarzone' }],
-      ['honorarberechnung', 'ausserhalb-honorartafel', 'fehler', { pfad: '/objekte[4]', feld: 'anrechenbareKosten' }],
+      [
+        'honorarberechnung',
+        'ausserhalb-honorartafel',
+        'fehler',
+        { pfad: '/objekte[4]', feld: 'anrechenbareKosten' },
+      ],
       ['honorarberechnung', 'mehrere-objekte', 'warnung', {}],
       ['honorarberechnung', 'wert-negativ', 'warnung', { feld: 'nebenkosten' }],
     ]);
   });
 
   it.each<[string, Partial<Honorarobjekteingabe>, string, string]>([
-    ['Leistungsbild ohne Tafel', { leistungsbild: 'flaechenplanung' as Leistungsbild }, 'keine-honorartafel', 'leistungsbild'],
+    [
+      'Leistungsbild ohne Tafel',
+      { leistungsbild: 'flaechenplanung' as Leistungsbild },
+      'keine-honorartafel',
+      'leistungsbild',
+    ],
     [
       '§ 33 beim Tragwerk',
       {
         leistungsbild: 'tragwerksplanung',
+        leistungsphasen: [{ nummer: 1 }],
         anrechenbareKosten: {
           art: 'din-276',
           kg300: b('900000.00'),
@@ -297,8 +318,18 @@ describe('Befunde in der gemeinsamen Befundliste (Pruefbefund, D-97.11)', () => 
       'anrechenbareKosten',
     ],
     ['negativer Umbauzuschlag', { umbauzuschlagssatz: p('-1.00') }, 'wert-negativ', 'umbauzuschlagssatz'],
-    ['doppelte Phase', { leistungsphasen: [{ nummer: 1 }, { nummer: 1 }] }, 'leistungsphase-doppelt', 'leistungsphasen'],
-    ['abweichender Anteil', { leistungsphasen: [{ nummer: 1, anteil: p('3.00') }] }, 'anteil-abweichend', 'leistungsphasen'],
+    [
+      'doppelte Phase',
+      { leistungsphasen: [{ nummer: 1 }, { nummer: 1 }] },
+      'leistungsphase-doppelt',
+      'leistungsphasen',
+    ],
+    [
+      'abweichender Anteil',
+      { leistungsphasen: [{ nummer: 1, anteil: p('3.00') }] },
+      'anteil-abweichend',
+      'leistungsphasen',
+    ],
   ])('%s: Feld des Objekts', (_, aenderung, code, feld) => {
     const e = rechne({ ...GEBAEUDE, ...aenderung });
     expect(e.befunde.map((x) => [x.quelle, x.code, x.ort])).toEqual([
