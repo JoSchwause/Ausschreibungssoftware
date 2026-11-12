@@ -6,8 +6,17 @@
 
 import { addiere, dividiere, multipliziere, runden, subtrahiere, vergleiche } from '@tethys/dezimal';
 import { NACHKOMMASTELLEN } from '@tethys/vertrag';
-import type { Betrag, Dezimal, Ergebnis, Prozent } from '@tethys/vertrag';
-import type { Honorarspanne, Honorartafel, Honorarzone, Tafelzeile } from './honorartafeln';
+import type {
+  Betrag,
+  Dezimal,
+  Ergebnis,
+  Honorarspanne,
+  Honorarzone,
+  Prozent,
+  Tafelinterpolation,
+  Tafelzeile,
+} from '@tethys/vertrag';
+import type { Honorartafel } from './honorartafeln';
 import { HUNDERT } from './konstanten';
 
 /** `zaehler / nenner`, exakt gebildet und einmal kaufmännisch auf 2 Stellen gerundet; `nenner` ist nie null. */
@@ -36,15 +45,6 @@ export function honorarInSpanne(spanne: Honorarspanne, honorarsatz: Prozent): Be
 export type Spannenfehler =
   | 'ausserhalb-honorartafel' // anrechenbare Kosten unter der ersten oder über der letzten Tafelzeile
   | 'honorarzone-unbekannt'; // die Tafel hat diese Honorarzone nicht (§ 56: nur I bis III)
-
-/** Die beiden Tafelzeilen um die anrechenbaren Kosten und die daraus interpolierte Honorarspanne der Zone. */
-export interface Tafelinterpolation {
-  /** Die Zeile mit den nächstkleineren anrechenbaren Kosten; bei einem Treffer die getroffene Zeile. */
-  readonly zeileUnten: Tafelzeile;
-  /** Die Zeile mit den nächstgrößeren anrechenbaren Kosten; bei einem Treffer dieselbe Zeile wie unten. */
-  readonly zeileOben: Tafelzeile;
-  readonly spanne: Honorarspanne;
-}
 
 /**
  * w(aK) = w_u + (aK − aK_u) × (w_o − w_u) / (aK_o − aK_u), exakt als ein Bruch gebildet

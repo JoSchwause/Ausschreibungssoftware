@@ -5,16 +5,16 @@
 // 100, 2), Grundhonorar = Summe der Phasen, Umbauzuschlag round(Grundhonorar × Satz / 100, 2), Nebenkosten round((Σ
 // Grundhonorar + Σ Umbauzuschläge) × Satz / 100, 2) oder Betrag, MwSt round(Netto × Satz / 100, 2) (§ 16 Abs. 1).
 
-import type { Betrag, Prozent } from '@tethys/vertrag';
-import { describe, expect, it } from 'vitest';
 import type {
   BeauftragteLeistungsphase,
-  Honorarberechnung,
+  Betrag,
   Honorarergebnis,
-  Honorarobjekt,
   Leistungsphasennummer,
   Objektergebnis,
-} from './index';
+  Prozent,
+} from '@tethys/vertrag';
+import { describe, expect, it } from 'vitest';
+import type { Honorarberechnungseingabe, Honorarobjekteingabe } from './index';
 import { honorarBerechnen } from './index';
 
 const b = (wert: string): Betrag => wert as Betrag;
@@ -26,7 +26,7 @@ function phasen(...nummern: Leistungsphasennummer[]): BeauftragteLeistungsphase[
 const LPH_1_BIS_9 = phasen(1, 2, 3, 4, 5, 6, 7, 8, 9);
 const LPH_1_BIS_6 = phasen(1, 2, 3, 4, 5, 6);
 
-function vonHand(betrag: string): Honorarobjekt['anrechenbareKosten'] {
+function vonHand(betrag: string): Honorarobjekteingabe['anrechenbareKosten'] {
   return { art: 'betrag', betrag: b(betrag) };
 }
 
@@ -52,7 +52,7 @@ const summen = (e: Honorarergebnis): Record<string, string> => ({
 
 // --- Fall 1: Gebäude, Zone III, § 33 mit beiden Zweigen, Honorarsatz 50, LPH 1–9, Umbau, Nebenkosten %, MwSt ---------
 
-const GEBAEUDE: Honorarobjekt = {
+const GEBAEUDE: Honorarobjekteingabe = {
   bezeichnung: 'Gebäude A',
   leistungsbild: 'gebaeude',
   honorarzone: 'III',
@@ -226,7 +226,7 @@ describe('Fall 2: Innenräume, Honorarzone IV, anrechenbare Kosten genau auf ein
 
 // --- Fall 3 und 4: Tragwerksplanung und Technische Ausrüstung -----------------------------------------------------------
 
-const TRAGWERK: Honorarobjekt = {
+const TRAGWERK: Honorarobjekteingabe = {
   bezeichnung: 'Tragwerk C',
   leistungsbild: 'tragwerksplanung',
   honorarzone: 'II',
@@ -236,7 +236,7 @@ const TRAGWERK: Honorarobjekt = {
   umbauzuschlagssatz: null,
 };
 
-const TECHNIK: Honorarobjekt = {
+const TECHNIK: Honorarobjekteingabe = {
   bezeichnung: 'Technische Ausrüstung D',
   leistungsbild: 'technische-ausruestung',
   honorarzone: 'II',
@@ -349,8 +349,8 @@ describe('Fall 5: anrechenbare Kosten außerhalb der Honorartafel', () => {
       mwst: '0.00',
       brutto: '0.00',
     });
-    expect(ergebnis.befunde.map((x) => [x.code, x.schwere, x.objekt])).toEqual([
-      ['ausserhalb-honorartafel', 'fehler', 0],
+    expect(ergebnis.befunde.map((x) => [x.code, x.schwere, x.ort.pfad ?? null])).toEqual([
+      ['ausserhalb-honorartafel', 'fehler', '/objekte[1]'],
     ]);
   });
 });
@@ -408,7 +408,7 @@ describe('mehrere Honorarobjekte', () => {
       objekte: [TRAGWERK, TECHNIK],
       nebenkosten: { art: 'prozent', satz: p('3.00') },
       mwstSatz: p('19.00'),
-    } satisfies Honorarberechnung);
+    } satisfies Honorarberechnungseingabe);
     expect(ergebnis.objekte.map((o) => [o.bezeichnung, o.grundhonorar, o.umbauzuschlag])).toEqual([
       ['Tragwerk C', '72395.70', '0.00'],
       ['Technische Ausrüstung D', '71597.97', '35798.99'],
@@ -421,7 +421,7 @@ describe('mehrere Honorarobjekte', () => {
       mwst: '35185.42',
       brutto: '220371.86',
     });
-    expect(ergebnis.befunde.map((x) => [x.code, x.schwere, x.objekt])).toEqual([
+    expect(ergebnis.befunde.map((x) => [x.code, x.schwere, x.ort.pfad ?? null])).toEqual([
       ['mehrere-objekte', 'warnung', null],
     ]);
   });

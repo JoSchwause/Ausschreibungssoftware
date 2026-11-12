@@ -6,24 +6,10 @@
 // Zeile jeder Tafel ein zweites Mal ab.
 
 import { alsBetrag } from '@tethys/dezimal';
-import type { Betrag } from '@tethys/vertrag';
+import type { Betrag, Honorarspanne, Honorarzone, Tafelzeile } from '@tethys/vertrag';
 
 // --- Typen -----------------------------------------------------------------------------------------------------
-
-/** Honorarzone nach § 5; die Technische Ausrüstung kennt nur I bis III (§ 56 Abs. 1). */
-export type Honorarzone = 'I' | 'II' | 'III' | 'IV' | 'V';
-
-/** „von“ (Basishonorarsatz) und „bis“ (oberer Honorarsatz) einer Honorarzone, in Euro mit 2 Stellen. */
-export interface Honorarspanne {
-  readonly von: Betrag;
-  readonly bis: Betrag;
-}
-
-/** Eine Zeile einer Honorartafel: anrechenbare Kosten und je Honorarzone der Tafel ihre Honorarspanne. */
-export interface Tafelzeile {
-  readonly anrechenbareKosten: Betrag;
-  readonly spannen: Readonly<Partial<Record<Honorarzone, Honorarspanne>>>;
-}
+// `Honorarzone`, `Honorarspanne` und `Tafelzeile` stehen im Vertrag (v1.6, Ticket 97 Punkt 5; Umstellung Ticket 110).
 
 /** Fundstelle einer Tafel oder eines Prozentsatzes in der HOAI. */
 export interface Quelle {

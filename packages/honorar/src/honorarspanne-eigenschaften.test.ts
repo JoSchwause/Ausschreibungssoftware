@@ -4,10 +4,10 @@
 // Formel als ein Bruch, die kaufmännische Rundung hier von Hand (halbe Einheit vom Nullpunkt weg).
 
 import { vergleiche } from '@tethys/dezimal';
-import type { Betrag, Prozent } from '@tethys/vertrag';
+import type { Betrag, Honorarzone, Leistungsbild, Prozent } from '@tethys/vertrag';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Honorartafel, Honorarzone, Leistungsbild } from './index';
+import type { Honorartafel } from './index';
 import { LEISTUNGSBILDER, honorarInSpanne, honorarspanneBerechnen } from './index';
 
 const runs = { numRuns: 300 };
