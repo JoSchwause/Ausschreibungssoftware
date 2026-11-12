@@ -9,8 +9,10 @@ import type {
   AngebotKopf,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
+  Bauteilzuordnung,
   Befehlsfehler,
   BieterId,
+  IfcGlobalId,
   LeistungsverzeichnisId,
   Leistungsverzeichnis,
   LosId,
@@ -138,6 +140,33 @@ describe('nachtragUebernehmen: Tor M4 (typisch, Bieter B, Nachtrag N01)', () => 
     expect(cs.knoten.hinzugefuegt.map((k) => k.id)).toEqual(befehl.knoten.map((k) => k.id));
     expect(cs.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
     expect(danach.summen.gesamt).toMatchObject(fx.nachtrag.sollwerte.summen);
+  });
+
+  // Ticket 105 (Vertrag v1.6, D-52): Bauteilzuordnungen kommen mit der Position aus dem Nachtrags-LV ins Auftrags-LV.
+  it('Bauteilzuordnungen einer Position kommen mit; der Kern nimmt sie an (Ticket 105)', () => {
+    const bauteile: readonly Bauteilzuordnung[] = [
+      { globalId: '1Wand$Aussen_EG_000001' as IfcGlobalId, mengenart: 'NetVolume' },
+      { globalId: '1Wand$Aussen_EG_000001' as IfcGlobalId, mengenart: 'Stueck' },
+    ];
+    const l = nachtrag.lv.leistungsverzeichnis;
+    const erste = l.knoten.find((k) => k.art === 'position');
+    if (erste === undefined) throw new Error('Nachtrags-LV ohne Position');
+    const mitZuordnung: LvZustand = {
+      ...nachtrag.lv,
+      leistungsverzeichnis: {
+        ...l,
+        knoten: l.knoten.map((k) => (k.id === erste.id ? { ...erste, bauteile } : k)),
+      },
+    };
+    const { befehl } = erwarteOk(
+      nachtragUebernehmen(auftrag, mitZuordnung, nachtrag.angebot, auftragsangebot, ids),
+    );
+    expect(befehl.knoten.find((k) => k.id === erste.id)).toMatchObject({ bauteile });
+    const { danach } = imKernUebernehmen(auftrag, befehl);
+    const uebernommen = danach.auftragsLeistungsverzeichnis.knoten.find((k) => k.id === erste.id);
+    expect(uebernommen).toMatchObject({ bauteile });
+    const andere = befehl.knoten.filter((k) => k.art === 'position' && k.id !== erste.id);
+    for (const k of andere) expect(k).not.toHaveProperty('bauteile');
   });
 });
 
