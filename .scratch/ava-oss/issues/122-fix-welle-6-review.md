@@ -1,6 +1,6 @@
 # 122: Behebung des Wellen-Reviews Welle 6
 
-Status: ready-for-agent
+Status: in-progress
 Type: task
 Welle: 6 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 117
 nur dieses Ticket; 117 schreibt `apps/web/e2e/x1-kern.spec.ts`, `apps/web/e2e/x1-erweitert.spec.ts`,
