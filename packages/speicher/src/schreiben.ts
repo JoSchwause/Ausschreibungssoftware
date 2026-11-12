@@ -85,6 +85,7 @@ import {
   bauzeitenplanWerte,
   honorarberechnungWerte,
   mangelWerte,
+  ohne,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
@@ -1274,9 +1275,7 @@ function projektDa(db: Datenbank, projektId: ProjektId): void {
 
 /** Der Kopf eines Plans (ohne Vorgänge). */
 function planKopf(b: Bauzeitenplan): BauzeitenplanKopf {
-  const { vorgaenge, ...kopf } = b;
-  void vorgaenge;
-  return kopf;
+  return ohne(b, 'vorgaenge');
 }
 
 /**
@@ -1430,11 +1429,8 @@ export function wendeBautagebucheintragAn(
     db.ausfuehren('UPDATE bautagebucheintrag SET datum = ?, angaben = ? WHERE id = ?', [...w.slice(2), id]);
 }
 
-const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf => {
-  const { anzahlBauteile, ...kopf } = u;
-  void anzahlBauteile;
-  return kopf;
-};
+const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf =>
+  ohne(u, 'anzahlBauteile');
 
 const strukturAnzahl = (db: Datenbank, id: string): number =>
   anzahl(

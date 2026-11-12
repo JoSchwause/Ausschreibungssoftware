@@ -35,6 +35,7 @@ import type {
   Vorgang,
   VorgangId,
 } from '@tethys/vertrag';
+import { ohne } from '../zeilen';
 import { P } from './v14';
 
 export const sha256 = (b: Uint8Array): string => createHash('sha256').update(b).digest('hex');
@@ -188,12 +189,7 @@ export function modell(
   };
 }
 
-export const kopfVon = (b: Bauwerksmodell): BauwerksmodellKopf => {
-  const { struktur, bauteile, ...kopf } = b;
-  void struktur;
-  void bauteile;
-  return kopf;
-};
+export const kopfVon = (b: Bauwerksmodell): BauwerksmodellKopf => ohne(b, 'struktur', 'bauteile');
 
 export const modellAnlegenCs = (b: Bauwerksmodell): BauwerksmodellChangeSet => ({
   art: 'bauwerksmodell',

@@ -10,6 +10,7 @@ import type { SpeicherKern } from './kern';
 import { anlegenSchritte, auftragsLvLoeschenChangeSet, eintrag } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
 import { umkehren } from './testhilfe/umkehrung';
+import { ohne } from './zeilen';
 import {
   AUFTRAG,
   AUFTRAG_ZUSTAND,
@@ -54,8 +55,7 @@ describe('Bauzeitenplan (v1.6, D-57)', () => {
     wert(await schreibe(kern, planCs(null, a)));
     wert(await schreibe(kern, planCs(null, b)));
     expect(wert(await s.bauzeitenplaene.laden(a.id))).toEqual({ bauzeitenplan: a });
-    const { vorgaenge, ...kopfB } = b;
-    void vorgaenge;
+    const kopfB = ohne(b, 'vorgaenge');
     expect(wert(await s.bauzeitenplaene.auflisten(P))[0]).toEqual(kopfB);
     expect(wert(await s.bauzeitenplaene.auflisten(P)).map((u) => u.name)).toEqual(['Ausbau', 'Rohbau']);
 
@@ -121,8 +121,7 @@ describe('Honorarberechnung (v1.6, D-56)', () => {
     const anlegen = honorarCs(null, h);
     wert(await schreibe(kern, anlegen));
     expect(wert(await s.honorarberechnungen.laden(h.id))).toEqual({ honorarberechnung: h });
-    const { objekte, ...uebersicht } = h;
-    void objekte;
+    const uebersicht = ohne(h, 'objekte');
     expect(wert(await s.honorarberechnungen.auflisten(P))).toEqual([uebersicht]);
     const aendern = honorarCs(h, { ...h, name: 'Tragwerk', nebenkosten: null });
     wert(await schreibe(kern, aendern));

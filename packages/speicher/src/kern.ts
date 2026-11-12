@@ -223,6 +223,11 @@ export class SpeicherKern {
     return this.#geschlossen ? GESCHLOSSEN() : fange(f);
   }
 
+  /** Ist der Speicher geschlossen? (Als Methode, damit eine Prüfung nach `await` nicht als überflüssig gilt.) */
+  #istGeschlossen(): boolean {
+    return this.#geschlossen;
+  }
+
   private constructor(
     db: Datenbank,
     migrationen: readonly Migration[],
@@ -696,7 +701,8 @@ export class SpeicherKern {
     } catch (x) {
       return { ok: false, fehler: fehlerAusAusnahme(x) };
     }
-    if (this.#geschlossen) return GESCHLOSSEN();
+    // Während des Wartens auf die Prüfsummen kann `schliessen` gekommen sein (es läuft nicht in der Reihe).
+    if (this.#istGeschlossen()) return GESCHLOSSEN();
     const r = fange(() =>
       transaktion(this.#db, () => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {

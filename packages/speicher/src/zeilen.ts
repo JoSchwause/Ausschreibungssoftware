@@ -463,6 +463,13 @@ export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
   kanonischKompakt(k.eintraege),
 ];
 
+/** Flache Kopie von `o` ohne die Felder `k` (Kopf eines Aggregats ohne seine lange Liste). */
+export function ohne<T extends object, K extends keyof T>(o: T, ...k: readonly K[]): Omit<T, K> {
+  const kopie: Partial<T> = { ...o };
+  for (const f of k) Reflect.deleteProperty(kopie, f);
+  return kopie as Omit<T, K>;
+}
+
 // --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54) ---------------------------------------------------------------------
 //
 // Der Kopf steht in Spalten (`bauwerksmodell`), Struktur und Bauteile als kanonisches JSON in `bauwerksmodell_inhalt`.
@@ -485,10 +492,8 @@ export function bauwerksmodellUebersichtAusZeile(z: SqlZeile): BauwerksmodellUeb
 }
 
 export function bauwerksmodellAusZeilen(kopf: SqlZeile, inhalt: SqlZeile): Bauwerksmodell {
-  const { anzahlBauteile, ...k } = bauwerksmodellUebersichtAusZeile(kopf);
-  void anzahlBauteile;
   return {
-    ...k,
+    ...ohne(bauwerksmodellUebersichtAusZeile(kopf), 'anzahlBauteile'),
     struktur: jsonLesen(text(inhalt, 'struktur'), 'struktur') as Strukturknoten[],
     bauteile: jsonLesen(text(inhalt, 'bauteile'), 'bauteile') as Bauteil[],
   };

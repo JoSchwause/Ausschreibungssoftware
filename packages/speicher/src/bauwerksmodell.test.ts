@@ -11,6 +11,7 @@ import type { SpeicherKern } from './kern';
 import { eintrag } from './testhilfe/fixtures';
 import { imProtokoll, kernAufDb, neuerKern, speichere, wert } from './testhilfe/node';
 import { umkehren } from './testhilfe/umkehrung';
+import { ohne } from './zeilen';
 import { anlegenSchritte } from './testhilfe/fixtures';
 import { aggregatVon, F, P } from './testhilfe/v14';
 import {
@@ -113,8 +114,7 @@ describe('Bauwerksmodell anlegen und laden', () => {
   it('Inhalt nur beim Anlegen und Löschen; ein Modell ohne Projekt: nicht-gefunden', async () => {
     const { kern } = await projekt();
     await kern.modelldateiAblegen(BYTES_1);
-    const { inhalt, ...ohneInhalt } = modellAnlegenCs(M1);
-    void inhalt;
+    const ohneInhalt = ohne(modellAnlegenCs(M1), 'inhalt');
     const r = await schreibe(kern, ohneInhalt);
     expect(!r.ok && r.fehler.code).toBe('unbekannt');
     const fremd = { ...M1, projektId: 'p-?' as never };

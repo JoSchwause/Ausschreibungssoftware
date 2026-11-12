@@ -97,9 +97,9 @@ export function imProtokoll(e: Protokolleintrag): Protokolleintrag {
       };
     case 'BauwerksmodellAnlegen': {
       // v1.6: das Modell ohne Struktur und Bauteile
-      const { struktur, bauteile, ...kopf } = b.bauwerksmodell;
-      void struktur;
-      void bauteile;
+      const kopf = { ...b.bauwerksmodell };
+      Reflect.deleteProperty(kopf, 'struktur');
+      Reflect.deleteProperty(kopf, 'bauteile');
       return {
         ...e,
         befehl: { art: 'Befehlskurzfassung', kopf: { art: b.art, bauwerksmodell: kopf }, pruefsumme },
