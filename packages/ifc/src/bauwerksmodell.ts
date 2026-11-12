@@ -12,6 +12,7 @@ import type {
   Pruefbefund,
   Strukturknoten,
 } from '@tethys/vertrag';
+import { alsMenge } from '@tethys/dezimal';
 import { istGlobalId } from './globalid';
 import { dateiOeffnen, inhaltLesen } from './lesen';
 import type { GelesenerInhalt } from './lesen';
@@ -44,13 +45,41 @@ function objektDesBefunds(l: Modellleser, b: Gelesen.IfcBefund): number | undefi
   return nummer === null ? undefined : l.daten.index(Number(nummer[1]));
 }
 
-function abbilden(inhalt: GelesenerInhalt): Pick<Bauwerksmodell, 'struktur' | 'bauteile'> {
-  const imModell = new Map<number, IfcGlobalId>();
-  for (const k of inhalt.struktur) if (istGlobalId(k.knoten.globalId)) imModell.set(k.i, k.knoten.globalId);
-  for (const b of inhalt.bauteile) if (istGlobalId(b.bauteil.globalId)) imModell.set(b.i, b.bauteil.globalId);
+/** Name und Instanz eines Objekts für Meldungen, wie im Leser: `Wand 1 (#100)`. */
+function bezeichnung(l: Modellleser, i: number): string {
+  return `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
+}
 
-  const mengen = (gelesen: readonly Gelesen.Bauteilmenge[]): Bauteilmenge[] =>
-    gelesen.flatMap((m) => (m.wert === null ? [] : [{ satz: m.satz, name: m.name, art: m.art, wert: m.wert }]));
+/**
+ * Bildet Struktur und Bauteile ab. Ein Objekt ohne GlobalId in Form fehlt (Befund des Lesers); was dabei sonst wegfällt,
+ * meldet die Abbildung über den Leser (`melde` mit dem betroffenen Objekt), damit die Befunde in einer Liste stehen.
+ */
+function abbilden(
+  inhalt: GelesenerInhalt,
+  imModell: ReadonlyMap<number, IfcGlobalId>,
+): Pick<Bauwerksmodell, 'struktur' | 'bauteile'> {
+  const l = inhalt.leser;
+
+  /** Mengen mit Wert; eine ohne (oder mit einem Wert, der keine `Menge` ist) fällt mit Befund weg, nie 0 (D-53). */
+  const mengen = (i: number, gelesen: readonly Gelesen.Bauteilmenge[]): Bauteilmenge[] => {
+    const aus: Bauteilmenge[] = [];
+    for (const m of gelesen) {
+      if (m.wert !== null && alsMenge(m.wert).ok) {
+        aus.push({ satz: m.satz, name: m.name, art: m.art, wert: m.wert });
+        continue;
+      }
+      const q = inhalt.mengen.instanzOhneWert(m);
+      const grund = m.wert === null ? 'hat keinen Wert' : 'hat einen Wert, der keine gültige Menge ist (zu lang),';
+      l.melde(
+        'fehler',
+        'menge-ohne-wert',
+        `Die Menge ${m.name} (${m.satz ?? 'ohne Mengensatz'}) von ${bezeichnung(l, i)} ${grund} und fehlt im Bauwerksmodell (nie 0).`,
+        l.ort(q ?? i),
+        i,
+      );
+    }
+    return aus;
+  };
 
   const struktur: Strukturknoten[] = [];
   for (const k of inhalt.struktur) {
@@ -61,7 +90,7 @@ function abbilden(inhalt: GelesenerInhalt): Pick<Bauwerksmodell, 'struktur' | 'b
       art: k.knoten.art,
       name: k.knoten.name,
       elternGlobalId: k.eltern === null ? null : (imModell.get(k.eltern) ?? null),
-      mengen: mengen(k.knoten.mengen),
+      mengen: mengen(k.i, k.knoten.mengen),
     });
   }
   const bauteile: Bauteil[] = [];
@@ -79,7 +108,7 @@ function abbilden(inhalt: GelesenerInhalt): Pick<Bauwerksmodell, 'struktur' | 'b
       // Optionale Felder fehlen statt `null` (vertrag v1.6).
       ...(teilVon === undefined ? {} : { teilVonGlobalId: teilVon }),
       ...(kostengruppe === null ? {} : { kostengruppe }),
-      mengen: mengen(b.bauteil.mengen),
+      mengen: mengen(b.i, b.bauteil.mengen),
     });
   }
   return { struktur, bauteile };
@@ -99,13 +128,14 @@ export function bauwerksmodellLesen(
   const datei = dateiOeffnen(bytes, optionen);
   if (!datei.ok) return { bauwerksmodell: null, befunde: [pruefbefund(datei.befund, undefined)] };
   const inhalt = inhaltLesen(datei, 'modell');
-  const { struktur, bauteile } = abbilden(inhalt);
-  const globalIds = new Map<number, IfcGlobalId>();
-  for (const k of inhalt.struktur) if (istGlobalId(k.knoten.globalId)) globalIds.set(k.i, k.knoten.globalId);
-  for (const b of inhalt.bauteile) if (istGlobalId(b.bauteil.globalId)) globalIds.set(b.i, b.bauteil.globalId);
+  // Die Objekte des Modells: Strukturknoten und Bauteile mit GlobalId in Form, je Instanz der Datei.
+  const imModell = new Map<number, IfcGlobalId>();
+  for (const k of inhalt.struktur) if (istGlobalId(k.knoten.globalId)) imModell.set(k.i, k.knoten.globalId);
+  for (const b of inhalt.bauteile) if (istGlobalId(b.bauteil.globalId)) imModell.set(b.i, b.bauteil.globalId);
+  const { struktur, bauteile } = abbilden(inhalt, imModell);
   const befunde = datei.befunde.map((b) => {
     const objekt = objektDesBefunds(inhalt.leser, b);
-    return pruefbefund(b, objekt === undefined ? undefined : globalIds.get(objekt));
+    return pruefbefund(b, objekt === undefined ? undefined : imModell.get(objekt));
   });
   return {
     bauwerksmodell: {

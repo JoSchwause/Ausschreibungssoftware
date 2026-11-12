@@ -111,3 +111,125 @@ describe('bauwerksmodellLesen', () => {
     ]);
   });
 });
+
+describe('Befunde der Abbildung', () => {
+  it('liefert die Befunde des Lesers als Prüfbefund (Quelle ifc-lesen), mit GlobalId, wenn sie ein Objekt betreffen', () => {
+    const lesung = lesen([
+      ...grundgeruest([
+        '#3=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);',
+        "#4=IFCCONVERSIONBASEDUNIT(#30,.AREAUNIT.,'square foot',#31);",
+      ]),
+      '#30=IFCDIMENSIONALEXPONENTS(2,0,0,0,0,0,0);',
+      '#31=IFCMEASUREWITHUNIT(IFCAREAMEASURE(0.09290304),#32);',
+      '#32=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);',
+      `#100=IFCWALL('${gid('wand')}',$,'Wand',$,$,$,$,$,$);`,
+      `#101=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r101')}',$,$,$,(#100),#12);`,
+      `#102=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r102')}',$,$,$,(#100),#11);`,
+      `#103=IFCELEMENTQUANTITY('${gid('q103')}',$,'Qto_WallBaseQuantities',$,$,(#104));`,
+      "#104=IFCQUANTITYAREA('NetSideArea',$,$,100.,$);",
+      `#105=IFCRELDEFINESBYPROPERTIES('${gid('r105')}',$,$,$,(#100),#103);`,
+      `#110=IFCSLAB('${gid('decke')}',$,'Decke',$,$,$,$,$,.FLOOR.);`,
+      `#111=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r111')}',$,$,$,(#110),#12);`,
+    ]);
+    expect(lesung.bauwerksmodell?.bauteile[0]?.mengen).toEqual([
+      { satz: 'Qto_WallBaseQuantities', name: 'NetSideArea', art: 'flaeche', wert: '9.290' },
+    ]);
+    expect(lesung.befunde).toEqual([
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'bauteil-mehrfach-enthalten',
+        meldung: '#100 steht in mehr als einem Strukturknoten; der erste gilt.',
+        ort: { pfad: '#102', zeile: 23, globalId: gid('wand') },
+      },
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'einheit-umgerechnet',
+        meldung: expect.stringContaining('square foot') as string,
+        ort: { pfad: '#4', zeile: 11 },
+      },
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'bauteil-ohne-mengen',
+        meldung: 'Decke (#110) hat keine Mengen (IfcElementQuantity).',
+        ort: { pfad: '#110', zeile: 27, globalId: gid('decke') },
+      },
+    ]);
+  });
+
+  it.each([
+    ['keine IFC-Datei', 'Hallo Welt', 'keine-ifc-datei'],
+    ['ein anderes Schema', ifcText([], { schema: 'IFC4X3' }), 'schema-nicht-unterstuetzt'],
+  ])('weist %s ohne Modell mit genau einem Fehler ab', (_fall, text, code) => {
+    const lesung = bauwerksmodellLesen(bytes(text), KOPF);
+    expect(lesung.bauwerksmodell).toBeNull();
+    expect(lesung.befunde).toEqual([
+      expect.objectContaining({ schwere: 'fehler', quelle: 'ifc-lesen', code }) as unknown,
+    ]);
+  });
+
+  it('lässt eine Menge ohne Wert weg (nie 0), mit einem Befund je Objekt, Mengensatz und Name', () => {
+    const lesung = lesen([
+      ...grundgeruest(['#3=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);']),
+      `#20=IFCELEMENTQUANTITY('${gid('q20')}',$,'Qto_BuildingStoreyBaseQuantities',$,$,(#21,#22));`,
+      "#21=IFCQUANTITYLENGTH('GrossHeight',$,$,3.,$);",
+      "#22=IFCQUANTITYAREA('GrossFloorArea',$,$,120.,$);",
+      `#23=IFCRELDEFINESBYPROPERTIES('${gid('r23')}',$,$,$,(#12),#20);`,
+      `#100=IFCWALL('${gid('wand1')}',$,'Wand 1',$,$,$,$,$,$);`,
+      `#101=IFCWALL('${gid('wand2')}',$,'Wand 2',$,$,$,$,$,$);`,
+      `#102=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r102')}',$,$,$,(#100,#101),#12);`,
+      `#110=IFCWALLTYPE('${gid('typ')}',$,'IW',$,$,(#111),$,$,$,.STANDARD.);`,
+      `#111=IFCELEMENTQUANTITY('${gid('q111')}',$,$,$,$,(#112,#113));`,
+      "#112=IFCQUANTITYLENGTH('Width',$,$,0.24,$);",
+      "#113=IFCQUANTITYLENGTH('Length',$,$,$,$);",
+      `#114=IFCRELDEFINESBYTYPE('${gid('r114')}',$,$,$,(#100,#101),#110);`,
+    ]);
+    const modell = lesung.bauwerksmodell;
+    expect(modell?.struktur[3]?.mengen).toEqual([
+      { satz: 'Qto_BuildingStoreyBaseQuantities', name: 'GrossHeight', art: 'laenge', wert: '3.000' },
+    ]);
+    const breite = { satz: null, name: 'Width', art: 'laenge', wert: '0.240' };
+    expect(modell?.bauteile.map((b) => b.mengen)).toEqual([[breite], [breite]]);
+    expect(lesung.befunde.map((b) => b.code)).toEqual([
+      'einheit-fehlt',
+      'menge-ungueltig',
+      'menge-ohne-wert',
+      'menge-ohne-wert',
+      'menge-ohne-wert',
+    ]);
+    expect(lesung.befunde.slice(2)).toEqual([
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'menge-ohne-wert',
+        meldung:
+          'Die Menge GrossFloorArea (Qto_BuildingStoreyBaseQuantities) von EG (#12) hat keinen Wert und fehlt im Bauwerksmodell (nie 0).',
+        ort: { pfad: '#22', zeile: 19, globalId: gid('eg') },
+      },
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'menge-ohne-wert',
+        meldung:
+          'Die Menge Length (ohne Mengensatz) von Wand 1 (#100) hat keinen Wert und fehlt im Bauwerksmodell (nie 0).',
+        ort: { pfad: '#113', zeile: 27, globalId: gid('wand1') },
+      },
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'menge-ohne-wert',
+        meldung:
+          'Die Menge Length (ohne Mengensatz) von Wand 2 (#101) hat keinen Wert und fehlt im Bauwerksmodell (nie 0).',
+        ort: { pfad: '#113', zeile: 27, globalId: gid('wand2') },
+      },
+    ]);
+  });
+
+  it('weist eine Datei über der Größengrenze ab', () => {
+    const lesung = bauwerksmodellLesen(bytes(ifcText(grundgeruest())), KOPF, { maxBytes: 100 });
+    expect(lesung.bauwerksmodell).toBeNull();
+    expect(lesung.befunde.map((b) => b.code)).toEqual(['eingabe-zu-gross']);
+  });
+});
