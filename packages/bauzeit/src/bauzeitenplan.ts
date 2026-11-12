@@ -205,40 +205,67 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   const vorgaenge = eingabe.vorgaenge;
   const n = vorgaenge.length;
   const befunde: Bauzeitbefund[] = [];
+
+  // --- Gliederung: Kennungen, Eltern, Art ---
+  const indexVon = new Map<VorgangId, number>();
+  vorgaenge.forEach((v, i) => {
+    if (!indexVon.has(v.id)) indexVon.set(v.id, i);
+  });
+  const eltern = vorgaenge.map((v) => (v.elternId === null ? -1 : (indexVon.get(v.elternId) ?? -1)));
+  const hatKinder = new Array<boolean>(n).fill(false);
+  for (const p of eltern) if (p >= 0) hatKinder[p] = true;
+  const art: Vorgangsart[] = vorgaenge.map((v, i) =>
+    hatKinder[i] === true ? 'sammelvorgang' : v.dauer === 0 ? 'meilenstein' : 'vorgang',
+  );
+  const sammel = (i: number): boolean => art[i] === 'sammelvorgang';
+
+  // --- Je Vorgang: Terminvorgabe und Anordnungsbeziehungen ---
+  const kanten: Kante[] = [];
+  vorgaenge.forEach((v, nach) => {
+    if (sammel(nach) && v.fruehesterBeginn !== null) {
+      befunde.push(
+        befund(
+          'terminvorgabe-an-sammelvorgang',
+          `Sammelvorgang ${v.id}: Terminvorgabe nicht gerechnet`,
+          v.id,
+        ),
+      );
+    }
+    for (const b of v.vorgaenger) {
+      const von = indexVon.get(b.vorgaengerId);
+      if (von === undefined) continue;
+      if (sammel(von) || sammel(nach)) {
+        befunde.push(
+          befund(
+            'beziehung-an-sammelvorgang',
+            `Anordnungsbeziehung ${b.vorgaengerId} → ${v.id} an einem Sammelvorgang nicht gerechnet`,
+            v.id,
+            b.vorgaengerId,
+          ),
+        );
+        continue;
+      }
+      kanten.push({ von, nach, art: b.art, abstand: b.abstand });
+    }
+  });
+
   const ohneTermine = (projektbeginn: Datum | null): Bauzeitenplanergebnis => ({
     projektbeginn,
     projektende: null,
-    vorgaenge: vorgaenge.map((v) => ({
-      id: v.id,
-      art: v.dauer === 0 ? 'meilenstein' : 'vorgang',
-      termine: null,
-    })),
+    vorgaenge: vorgaenge.map((v, i) => ({ id: v.id, art: art[i] ?? 'vorgang', termine: null })),
     kritischeWege: [],
     befunde,
   });
-
   const kalender = new Tageskalender(eingabe.kalender);
   const start = tagnummerLesen(eingabe.projektbeginn);
   if (!start.ok) {
-    befunde.push(befund('projektbeginn-ungueltig', start.fehler.meldung));
+    befunde.unshift(befund('projektbeginn-ungueltig', start.fehler.meldung));
     return ohneTermine(null);
   }
   const folge = new Arbeitstagefolge(kalender, start.wert);
   const startTag = folge.tag(0);
   if (startTag === null) return ohneTermine(null);
 
-  const indexVon = new Map<VorgangId, number>();
-  vorgaenge.forEach((v, i) => indexVon.set(v.id, i));
-
-  // Kanten (Vorgänger → Nachfolger) in Eingabereihenfolge der Nachfolger und ihrer Beziehungen.
-  const kanten: Kante[] = [];
-  vorgaenge.forEach((v, nach) => {
-    for (const b of v.vorgaenger) {
-      const von = indexVon.get(b.vorgaengerId);
-      if (von === undefined) continue;
-      kanten.push({ von, nach, art: b.art, abstand: b.abstand });
-    }
-  });
   const aus: Kante[][] = Array.from({ length: n }, () => []);
   const ein: Kante[][] = Array.from({ length: n }, () => []);
   for (const k of kanten) {
@@ -246,11 +273,11 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     ein[k.nach]?.push(k);
   }
 
-  // Topologische Ordnung (Kahn), Startknoten in Eingabereihenfolge.
+  // --- Topologische Ordnung der Vorgänge im Netz (Kahn), Startknoten in Eingabereihenfolge ---
   const offen = new Array<number>(n).fill(0);
   for (const k of kanten) offen[k.nach] = (offen[k.nach] ?? 0) + 1;
   const ordnung: number[] = [];
-  for (let i = 0; i < n; i++) if (offen[i] === 0) ordnung.push(i);
+  for (let i = 0; i < n; i++) if (!sammel(i) && offen[i] === 0) ordnung.push(i);
   for (let p = 0; p < ordnung.length; p++) {
     for (const k of aus[ordnung[p] ?? 0] ?? []) {
       const rest = (offen[k.nach] ?? 0) - 1;
@@ -266,7 +293,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     return tag.ok ? (folge.indexAb(tag.wert) ?? 0) : 0;
   });
 
-  // Vorwärtsrechnung: Anfang a, Ende e = a + dauer (Indizes der Arbeitstagefolge).
+  // --- Vorwärtsrechnung: Anfang a, Ende e = a + dauer (Indizes der Arbeitstagefolge) ---
   const dauer = vorgaenge.map((v) => v.dauer);
   const a = new Array<number>(n).fill(0);
   const e = new Array<number>(n).fill(0);
@@ -282,7 +309,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   let projektende = 0;
   for (const j of ordnung) projektende = Math.max(projektende, e[j] ?? 0);
 
-  // Rückwärtsrechnung vom Projektende: spätester Anfang sa, spätestes Ende se.
+  // --- Rückwärtsrechnung vom Projektende: spätester Anfang sa, spätestes Ende se ---
   const sa = new Array<number>(n).fill(0);
   const se = new Array<number>(n).fill(0);
   for (let p = ordnung.length - 1; p >= 0; p--) {
@@ -301,24 +328,46 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     (zumEnde(k.art) ? (e[k.nach] ?? 0) : (a[k.nach] ?? 0)) -
     ((vomEnde(k.art) ? (e[k.von] ?? 0) : (a[k.von] ?? 0)) + k.abstand);
 
-  const tagText = (index: number): Datum => datumAusTagnummer(folge.tag(index) ?? startTag);
-  const ergebnisse: Vorgangsergebnis[] = vorgaenge.map((v, i) => {
+  // --- Lagen in Tagesindizes (Ende einschließlich), Sammelvorgänge aus ihren Nachfahren ---
+  const lagen: (Lage | null)[] = new Array<Lage | null>(n).fill(null);
+  for (const i of ordnung) {
     const d = dauer[i] ?? 0;
     const gesamtpuffer = (sa[i] ?? 0) - (a[i] ?? 0);
     let freierPuffer = projektende - (e[i] ?? 0);
     for (const k of aus[i] ?? []) freierPuffer = Math.min(freierPuffer, spielraum(k));
+    const lage: Lage = {
+      von: a[i] ?? 0,
+      bis: d === 0 ? (a[i] ?? 0) : (e[i] ?? 0) - 1,
+      spaetVon: sa[i] ?? 0,
+      spaetBis: d === 0 ? (sa[i] ?? 0) : (se[i] ?? 0) - 1,
+      gesamtpuffer,
+      freierPuffer,
+    };
+    lagen[i] = lage;
+    // In alle Sammelvorgänge darüber einrechnen; höchstens n Schritte, auch bei verdrehter Gliederung.
+    for (let p = eltern[i] ?? -1, schritte = 0; p >= 0 && schritte < n; p = eltern[p] ?? -1, schritte++) {
+      lagen[p] = vereinigen(lagen[p] ?? null, lage);
+    }
+  }
+
+  const tagText = (index: number): Datum => datumAusTagnummer(folge.tag(index) ?? startTag);
+  const ergebnisse: Vorgangsergebnis[] = vorgaenge.map((v, i) => {
+    const l = lagen[i] ?? null;
     return {
       id: v.id,
-      art: d === 0 ? 'meilenstein' : 'vorgang',
-      termine: {
-        beginn: tagText(a[i] ?? 0),
-        ende: tagText(d === 0 ? (a[i] ?? 0) : (e[i] ?? 0) - 1),
-        spaetesterBeginn: tagText(sa[i] ?? 0),
-        spaetestesEnde: tagText(d === 0 ? (sa[i] ?? 0) : (se[i] ?? 0) - 1),
-        gesamtpuffer,
-        freierPuffer,
-        kritisch: gesamtpuffer <= 0,
-      },
+      art: art[i] ?? 'vorgang',
+      termine:
+        l === null
+          ? null
+          : {
+              beginn: tagText(l.von),
+              ende: tagText(l.bis),
+              spaetesterBeginn: tagText(l.spaetVon),
+              spaetestesEnde: tagText(l.spaetBis),
+              gesamtpuffer: l.gesamtpuffer,
+              freierPuffer: l.freierPuffer,
+              kritisch: l.gesamtpuffer <= 0,
+            },
     };
   });
 
@@ -332,6 +381,29 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     vorgaenge: ergebnisse,
     kritischeWege,
     befunde,
+  };
+}
+
+/** Lage eines Vorgangs in Tagesindizes der Arbeitstagefolge, Ende einschließlich. */
+interface Lage {
+  readonly von: number;
+  readonly bis: number;
+  readonly spaetVon: number;
+  readonly spaetBis: number;
+  readonly gesamtpuffer: number;
+  readonly freierPuffer: number;
+}
+
+/** Sammelvorgang: frühester Beginn, spätestes Ende, kleinste Puffer (je Lage für sich). */
+function vereinigen(bisher: Lage | null, neu: Lage): Lage {
+  if (bisher === null) return neu;
+  return {
+    von: Math.min(bisher.von, neu.von),
+    bis: Math.max(bisher.bis, neu.bis),
+    spaetVon: Math.min(bisher.spaetVon, neu.spaetVon),
+    spaetBis: Math.max(bisher.spaetBis, neu.spaetBis),
+    gesamtpuffer: Math.min(bisher.gesamtpuffer, neu.gesamtpuffer),
+    freierPuffer: Math.min(bisher.freierPuffer, neu.freierPuffer),
   };
 }
 

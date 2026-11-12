@@ -274,3 +274,95 @@ describe('Puffer und kritischer Weg', () => {
     ]);
   });
 });
+
+describe('Sammelvorgang', () => {
+  // p fasst s und t zusammen; s fasst a (5) und b (3, nach a) zusammen, t fasst x (1) zusammen.
+  // a 0–5 (Mo 04. bis Fr 08.01.), b 5–8 (Mo 11. bis Mi 13.01.), x 0–1 (Mo 04.01.); Projektende 8.
+  // x: spätester Anfang 7 (Mi 13.01.), Gesamtpuffer 7, freier Puffer 8 − 1 = 7.
+  const unter = (elternId: string): Partial<Vorgang> => ({ elternId });
+  const vorgaenge = [
+    vorgang('p', 0),
+    vorgang('s', 99, [], unter('p')),
+    vorgang('a', 5, [], unter('s')),
+    vorgang('b', 3, [ea('a')], unter('s')),
+    vorgang('t', 0, [], unter('p')),
+    vorgang('x', 1, [], unter('t')),
+  ];
+  const e = bauzeitenplanBerechnen(plan(vorgaenge));
+  const v = (id: string) => e.vorgaenge.find((r) => r.id === id);
+
+  it('Beginn = frühester Beginn, Ende = spätestes Ende der Kinder; Dauer ohne Bedeutung', () => {
+    expect(v('s')).toEqual({
+      id: 's',
+      art: 'sammelvorgang',
+      termine: {
+        beginn: '2027-01-04',
+        ende: '2027-01-13',
+        spaetesterBeginn: '2027-01-04',
+        spaetestesEnde: '2027-01-13',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    });
+    expect(v('t')).toEqual({
+      id: 't',
+      art: 'sammelvorgang',
+      termine: {
+        beginn: '2027-01-04',
+        ende: '2027-01-04',
+        spaetesterBeginn: '2027-01-13',
+        spaetestesEnde: '2027-01-13',
+        gesamtpuffer: 7,
+        freierPuffer: 7,
+        kritisch: false,
+      },
+    });
+  });
+
+  it('verschachtelt: der oberste fasst alle Nachfahren zusammen', () => {
+    expect(v('p')?.art).toBe('sammelvorgang');
+    expect(v('p')?.termine).toMatchObject({ beginn: '2027-01-04', ende: '2027-01-13', gesamtpuffer: 0 });
+  });
+
+  it('gehört nie zu einem kritischen Weg', () => {
+    expect(e.kritischeWege).toEqual([['a', 'b']]);
+    expect(e.befunde).toEqual([]);
+  });
+
+  it('eine Anordnungsbeziehung an einem Sammelvorgang ist ein Befund und wird nicht gerechnet', () => {
+    const mit = bauzeitenplanBerechnen(
+      plan([...vorgaenge.slice(0, 5), vorgang('x', 1, [ea('s')], unter('t')), vorgang('y', 2, [ea('t')])]),
+    );
+    expect(lage(mit)['x']).toEqual(['2027-01-04', '2027-01-04']);
+    expect(lage(mit)['y']).toEqual(['2027-01-04', '2027-01-05']);
+    expect(mit.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId])).toEqual([
+      ['beziehung-an-sammelvorgang', 'x', 's'],
+      ['beziehung-an-sammelvorgang', 'y', 't'],
+    ]);
+    const amSammel = bauzeitenplanBerechnen(
+      plan([
+        vorgang('z', 4),
+        ...vorgaenge.slice(0, 1),
+        vorgang('s', 0, [ea('z')], unter('p')),
+        ...vorgaenge.slice(2),
+      ]),
+    );
+    expect(lage(amSammel)['a']).toEqual(['2027-01-04', '2027-01-08']);
+    expect(amSammel.befunde.map((b) => [b.code, b.vorgangId, b.vorgaengerId])).toEqual([
+      ['beziehung-an-sammelvorgang', 's', 'z'],
+    ]);
+  });
+
+  it('eine Terminvorgabe an einem Sammelvorgang ist ein Befund und wird nicht gerechnet', () => {
+    const mit = bauzeitenplanBerechnen(
+      plan([
+        ...vorgaenge.slice(0, 1),
+        vorgang('s', 0, [], { elternId: 'p', fruehesterBeginn: '2027-01-11' }),
+        ...vorgaenge.slice(2),
+      ]),
+    );
+    expect(lage(mit)['a']).toEqual(['2027-01-04', '2027-01-08']);
+    expect(mit.befunde.map((b) => [b.code, b.vorgangId])).toEqual([['terminvorgabe-an-sammelvorgang', 's']]);
+  });
+});
