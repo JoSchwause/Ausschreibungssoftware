@@ -123,6 +123,9 @@ export function anzeigeText(zeile: LvZeile, spalte: LvSpalte, zahlen: GridZahlen
         : '';
     case 'gesamtpreis':
       return zeile.summe === null ? '' : zahlen.formatBetrag(zeile.summe);
+    // v1.5: mechanisch angepasst, Folgeticket 93 (nur lesend; `istBearbeitbar` lässt die Spalte nicht zu)
+    case 'kostengruppe':
+      return k.art === 'position' ? (k.kostengruppe ?? '') : '';
   }
 }
 

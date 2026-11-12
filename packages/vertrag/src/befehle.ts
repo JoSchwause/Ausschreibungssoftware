@@ -282,6 +282,12 @@ export interface LvStandAnlegen {
 }
 
 // --- Felder ändern (Tickets 07, 21) -----------------------------------------------------------------------
+//
+// Fehler eines Feldbefehls (v1.5, D-71.3; im LV und im Auftrags-LV): Hat der Baum des Aggregats keinen Knoten mit der
+// Kennung, `knoten-unbekannt`; trifft der Befehl einen vorhandenen Knoten, der das Feld nicht trägt (eine Gliederung oder
+// einen Hinweistext statt einer Position, eine Position statt eines Hinweistexts), `knotenart-unzulaessig`. Erst danach
+// prüft der Kern den Wert (`ungueltige-eingabe` mit `feld`). Das gilt für jeden Befehl dieses Abschnitts und ebenso für
+// `LeitbeschreibungSetzen` und `OrdnungszahlSetzen`.
 
 export interface KurztextAendern {
   readonly art: 'KurztextAendern';
@@ -374,9 +380,11 @@ export interface PositionsmerkmaleSetzen {
  * (L2); welches Aggregat gemeint ist, sagt im Protokoll `Protokolleintrag.aggregat` (`AggregatBezug`), beim Ausführen der
  * Zustand.
  *
- * Nur an einer Position (eine Kostengruppe je Position; sonst `knoten-unbekannt`). Der Kern prüft die Form der Nummer
- * (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und Datei kommen;
- * ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
+ * Nur an einer Position (eine Kostengruppe je Position). v1.5 (D-71.3): Fehler wie bei jedem Feldbefehl, in beiden
+ * Aggregaten: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten im Baum
+ * `knoten-unbekannt` (bis v1.4 stand hier für beides `knoten-unbekannt`; den Kern stellt Ticket 105 um). Der Kern prüft die
+ * Form der Nummer (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und
+ * Datei kommen; ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
  * (`knoten.geaendert`), Summen unverändert. Kern-Handler Ticket 71.
  */
 export interface KostengruppeSetzen {
@@ -389,7 +397,8 @@ export interface KostengruppeSetzen {
  * Setzt die Textquelle einer Position; `null` entfernt sie (das Feld fehlt danach) (v1.4, Ticket 70 Punkt 5; G-17,
  * D-40). Ein leerer Text `''` ist keine Quelle: Der Kern legt dafür kein Feld ab wie bei `null` (Normalisierung beim
  * Befehl wie `''` bei der Einheit). ChangeSet: die Knotenänderung der Position, Summen unverändert. Kern-Handler
- * Ticket 71, ein Feldbefehl wie `KurztextAendern`.
+ * Ticket 71, ein Feldbefehl wie `KurztextAendern`: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine
+ * Kennung ohne Knoten im Baum `knoten-unbekannt` (v1.5, D-71.3).
  */
 export interface TextquelleSetzen {
   readonly art: 'TextquelleSetzen';
