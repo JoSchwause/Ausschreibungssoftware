@@ -52,7 +52,7 @@ test('10.000 Bauteile: Laden ≤ 20 s und Picken bis zur Hervorhebung ≤ 200 ms
     ladenKomponente.push(bericht?.dauerMs ?? NaN);
   }
 
-  // je zweites Kandidatenbauteil, bis PICKS sichtbare gemessen sind
+  // jedes siebte Kandidatenbauteil (über die Fläche verteilt), bis PICKS sichtbare gemessen sind
   const picken: number[] = [];
   for (const id of kandidaten.filter((_, i) => i % 7 === 0)) {
     if (picken.length >= PICKS) break;

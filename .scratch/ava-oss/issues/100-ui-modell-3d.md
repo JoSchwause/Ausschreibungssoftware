@@ -1,6 +1,6 @@
 # 100: X1b: 3D-Ansicht des Modells im Browser (`ui-modell`)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1b · Paket: `packages/ui-modell` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml` falls
 nötig)
@@ -55,10 +55,10 @@ GlobalId.
 
 ## Acceptance criteria
 
-- [ ] E2E im Prüfstand: Laden, Auswahl über die Eingabe hebt hervor, Klick auf ein Bauteil meldet seine GlobalId, Strg+Klick
+- [x] E2E im Prüfstand: Laden, Auswahl über die Eingabe hebt hervor, Klick auf ein Bauteil meldet seine GlobalId, Strg+Klick
       ergänzt, Ausblenden, Isolieren, Färben, Tastatur, dunkles Schema; Leistungstest mit 10.000 Bauteilen im Budget
-- [ ] Unit-Tests der reinen Teile (Zuordnung `expressID` ↔ GlobalId, Auswahlzustand, Tastenbelegung)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Unit-Tests der reinen Teile (Zuordnung `expressID` ↔ GlobalId, Auswahlzustand, Tastenbelegung)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Budgets anderer Pakete nur allein, siehe Prüfung)
 
 ## Comments
 
@@ -146,3 +146,40 @@ Branch `welle-6/100-ui-modell`. Paket `packages/ui-modell` (`@tethys/ui-modell`)
 - **Einbindung:** `import '@tethys/ui-modell/modellansicht.css'` neben den Tokens; die Komponente füllt ihren Container
   (`width`/`height` 100 %), die App gibt ihm eine Größe. `faerbung` ist eine `ReadonlyMap<GlobalId, Bauteilkennzeichen>`;
   `onAuswahl` meldet nur, die App hält die Auswahl (Baum ↔ 3D).
+
+### Prüfung und Messungen
+
+- **Unit (Vitest, `packages/ui-modell/src`):** 8 Dateien, 57 Tests: Zuordnung expressID ↔ GlobalId und
+  `Bauteilverzeichnis` (auch doppelte GlobalId), Darstellung (Sichtbarkeit, Isolieren, Vorrang der Farben, Klick-Auswahl),
+  Tastenbelegung, Kamera, Geometriesammler (Lage, Normalen, Deckungsgruppen), `geometrieLesen` mit dem echten web-ifc 0.0.78
+  unter Node (Öffnung abgezogen, Raum nicht gezeichnet, Platzhalter ohne Geometrie, kein IFC → `Lesefehler`), Farbrollen
+  (nur Tokens, 3 : 1 hell und dunkel), Texte.
+- **E2E (`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/ui-modell e2e`):** 13/13 grün: Laden mit
+  Bauteilen mit/ohne Geometrie und Name für Screenreader, Auswahl über die Eingabe in der Auswahlfarbe, Klick meldet die
+  GlobalId, Strg+Klick ergänzt, Klick ins Leere hebt auf, Klick auf Glas trifft das Fenster, Ausblenden und Isolieren ohne
+  neues Laden (Ausgeblendetes nicht anklickbar), Färbung nach Kennzeichen aus den Tokens auch nach Umschalten auf dunkel,
+  Tastatur mit sichtbarem Fokus, `F` mit Abstand passend zum Bauteil, Ref-Befehle, Maus (drehen, verschieben, Rad), dunkles
+  Schema von Anfang an, Datei ohne IFC → `onFehler`. Modell: selbst verfasstes kleines IFC 4 (`kleinesModell`), weil
+  `fixtures/ifc/haus-v1.ifc` (Ticket 99) bis zum Abschluss nicht auf `integration/welle-6` lag; der Prüfstand liefert
+  `haus-v1`/`haus-v2` unter `?modell=haus-v1` aus, sobald die Dateien da sind (Vite-Plugin), ein Test dafür fehlt noch.
+- **Leistung (10.000 Bauteile, `e2e/leistung.spec.ts`, Headless-Chromium 153, SwiftShader, 4 Kerne, eigener Erzeuger
+  D-100.10), Budget Laden ≤ 20 s, Picken bis Hervorhebung ≤ 200 ms, je Median:**
+  - erster Stand mit `BatchedMesh` (Last ≈ 12): Laden 2.242 ms (2.403, 1.875, 2.242), Picken **661 ms** (über dem Budget) →
+    D-100.5 bis D-100.7; das Budget blieb unverändert.
+  - nach dem Umbau (Last ≈ 12): Laden 2.045 ms (2.157, 1.771, 2.045), Picken 123 ms (133, 128, 94, 100, 150, 123, 90, 143,
+    115).
+  - Endstand nach dem Merge von `integration/welle-6` (Last ≈ 23,6, andere Agenten liefen): Laden **2.524 ms** (2.665,
+    2.467, 2.524), Picken **147 ms** (150, 148, 118, 154, 156, 147, 134, 143, 118).
+- **Suite** auf dem Endstand (`aed58bf` gemergt): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün (ESLint,
+  Prettier, Paketgrenzen, Lizenzen, Clean-Room), `pnpm typecheck` grün, `pnpm test`: 220 Dateien grün, 1 übersprungen wie
+  zuvor; 6 Leistungsbudgets anderer Pakete fielen nur in der vollen Suite bei Last ≈ 26 auf 4 Kernen: `gaeb/lesen` 1.641 ms
+  (< 1.000), `gaeb/schreiben` 1.080 ms (< 1.000), `kern/k9-leistung` 17,4 ms (< 16), `kern/lv-pruefung-fixtures` 63,0 ms
+  (< 50), `speicher/aufmass-leistung` 159 ms (< 100), `vergabe/leistung` 1.140 ms (< 1.000). Jede Datei allein wiederholt
+  (Last noch ≈ 24): alle grün. Kein Budget gelockert, kein Test übersprungen.
+
+### Offen
+
+- Test mit `fixtures/ifc/haus-v1.ifc` und Leistungsmessung mit `fixtures/ifc/erzeugen.mjs`, sobald Ticket 99 auf
+  `integration/welle-6` liegt (der Prüfstand ist vorbereitet; das Budget prüft heute der eigene Erzeuger, ≈ 4,8 MB statt
+  ≈ 25 MB Text, gleiche Bauteilzahl).
+- Glossarzeile „Modellansicht“ (D-100.1) und die CSP/PWA-Punkte oben für Ticket 114.
