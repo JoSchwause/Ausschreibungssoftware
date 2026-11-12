@@ -881,7 +881,9 @@ export interface BauwerksmodellAnlegen {
 
 /**
  * Benennt das Modell um, das Einzige, was sich nach dem Anlegen ändert; `name` nicht leer (sonst `ungueltige-eingabe`).
- * ChangeSet: nur der Kopf, ohne Struktur und Bauteile (D-45, D-54).
+ * ChangeSet: nur der Kopf, ohne Struktur und Bauteile (D-45, D-54). Der Ausführer bekommt wie jeder den ganzen Zustand, die
+ * App lädt dafür das Modell (`bauwerksmodelle.laden`); Ticket 106 und 114 messen `laden` bei 10.000 Bauteilen (Nachtrag
+ * Review, D-66; Offene Typfrage 6, Ticket 97).
  */
 export interface BauwerksmodellUmbenennen {
   readonly art: 'BauwerksmodellUmbenennen';
@@ -1036,7 +1038,8 @@ export interface MangelangabenSetzen {
 /**
  * Wechselt den Status: hängt `eintrag` an den Verlauf an (Glossar „Mängelverlauf“). Ein Wechsel, den `Mangelstatus` nicht
  * zulässt (auch zum selben Status): `statuswechsel-unzulaessig`; ein Datum vor dem letzten Eintrag: `ungueltige-eingabe`
- * (`feld: 'datum'`). Eine neue Frist (etwa zur Mängelanzeige) setzt die App im selben Undo-Schritt mit `MangelangabenSetzen`.
+ * (`feld: 'datum'`). Eine neue Frist (etwa zur Mängelanzeige) setzt die App im selben Undo-Schritt mit `MangelangabenSetzen`;
+ * seit dem Nachtrag Review (D-66) trägt ein Eintrag `angezeigt` dieselbe Frist auch selbst (`Mangelverlaufseintrag.frist`).
  */
 export interface MangelstatusSetzen {
   readonly art: 'MangelstatusSetzen';

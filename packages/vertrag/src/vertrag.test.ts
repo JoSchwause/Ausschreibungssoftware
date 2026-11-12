@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
+  IFC_GLOBALID_MUSTER,
   NACHKOMMASTELLEN,
   type Angebotsposition,
   type Befehl,
@@ -2065,7 +2066,7 @@ describe('v1.5: reine Daten und Werte vor v1.5', () => {
 // --- v1.6 (Ticket 97) -------------------------------------------------------------------------------------------
 
 /** Form einer GlobalId (22 Zeichen aus dem IFC-Base64-Alphabet, siehe `IfcGlobalId`). */
-const GLOBALID = /^[0-9A-Za-z_$]{22}$/;
+const GLOBALID = IFC_GLOBALID_MUSTER; // Nachtrag Review (D-66): die Konstante aus dem Vertrag
 
 describe('v1.6 Punkt 1: Bauwerksmodell (X1, D-50, D-51, D-53)', () => {
   it('Kennungen: BauwerksmodellId und IfcGlobalId sind Marken, nicht austauschbar mit string oder anderen Kennungen', () => {
@@ -2535,6 +2536,7 @@ describe('v1.6 Punkt 6: Mängel und Bautagebuch (X4, D-57)', () => {
       readonly status: Mangelstatus;
       readonly datum: string;
       readonly bemerkung: string | null;
+      readonly frist?: string; // Nachtrag Review (D-66), additiv
     }>();
   });
 
@@ -2929,5 +2931,37 @@ describe('v1.6 Punkt 9: Beispiele für jeden neuen Befehl; reine Daten; Werte vo
       readonly positionId: PositionId;
       readonly kostengruppe: Kostengruppennummer | null;
     }>();
+  });
+});
+
+describe('v1.6 Nachtrag Review (D-66): Lesarten und additive Felder', () => {
+  it('MUSS 1: der Hinweis auf DIN 276 (Fassung 2008-12) ist kein Teil des Honorarergebnisses', () => {
+    expectTypeOf<Honorarergebnis>().not.toHaveProperty('hinweise');
+    expect(beispielHonorarergebnis.befunde).toEqual([]);
+  });
+
+  it('SOLL 6: das Muster der GlobalId ist eine Konstante des Vertrags ohne Zustand', () => {
+    expect(IFC_GLOBALID_MUSTER.flags).not.toContain('g');
+    for (const id of Object.values(beispielGlobalIds)) expect(IFC_GLOBALID_MUSTER.test(id)).toBe(true);
+    for (const falsch of ['', '1Wand$Aussen_EG_00000', '1Wand$Aussen_EG_0000001', '1Wand-Aussen_EG_000001'])
+      expect(IFC_GLOBALID_MUSTER.test(falsch)).toBe(false);
+  });
+
+  it('SOLL 7: ein Befund zu einer Anordnungsbeziehung nennt sie über den Pfad im Plan', () => {
+    const b = beispielBefundeV16.find((x) => x.quelle === 'terminrechnung');
+    const m = /^\/vorgaenge\[([1-9][0-9]*)\]\/vorgaenger\[([1-9][0-9]*)\]$/.exec(b?.ort.pfad ?? '');
+    const vorgang = beispielBauzeitenplan.vorgaenge[Number(m?.[1]) - 1];
+    expect(vorgang?.id).toBe(b?.ort.vorgangId);
+    expect(vorgang?.vorgaenger[Number(m?.[2]) - 1]).toBeDefined();
+  });
+
+  it('SOLL 10: die Frist einer Mängelanzeige steht am Eintrag `angezeigt` (additiv; ältere Einträge ohne bleiben gültig)', () => {
+    expectTypeOf<Mangelverlaufseintrag['frist']>().toEqualTypeOf<string | undefined>();
+    for (const m of [beispielMangel1, beispielMangel2])
+      for (const e of m.verlauf) if (e.frist !== undefined) expect(e.status).toBe('angezeigt');
+    const alt: Mangelverlaufseintrag = { status: 'offen', datum: '2026-11-20', bemerkung: null };
+    expect(alt).not.toHaveProperty('frist');
+    // Die geltende Frist bleibt am Mangel; die der letzten Anzeige ist bei Mangel 1 dieselbe.
+    expect(beispielMangel1.verlauf.at(-1)?.frist).toBe(beispielMangel1.frist);
   });
 });

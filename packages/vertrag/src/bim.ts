@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Bauwerksmodell (v1.6, Ticket 97 Punkte 1 bis 3; X1, D-50 bis D-53): ein eingelesenes IFC-Modell ohne Geometrie und die
-// Zuordnung seiner Bauteile zu Positionen. Nur Typen. Die Datei liest `ifc` (Tickets 98, 107), die Fachlogik
+// Zuordnung seiner Bauteile zu Positionen. Nur Typen und eine Konstante. Die Datei liest `ifc` (Tickets 98, 107), die Fachlogik
 // (Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich) liegt in `bim` (Ticket 108), die Geometrie nur in
 // `ui-modell` (Ticket 100). Befehle in `befehle.ts`, ChangeSet und Zustand in `changeset.ts`, die Ablage der Bytes in
-// `speicher.ts` (`Modelldateiablage`).
+// `speicher.ts` (`Modelldateiablage`). Einzige Konstante: das Muster einer GlobalId (Nachtrag Review, D-66).
 
 import type { BauwerksmodellId, IfcGlobalId, Kostengruppennummer, ProjektId } from './marken';
 import type { Menge } from './zahlen';
+
+/**
+ * Muster einer GlobalId (Glossar „GlobalId“; Nachtrag Review, D-66): genau 22 Zeichen aus dem IFC-Base64-Alphabet `0-9`,
+ * `A-Z`, `a-z`, `_`, `$`. Die eine Stelle für die Form, die `IfcGlobalId` zusagt: `ifc` (Ticket 107), der Kern (Ticket 105),
+ * `bim` (Ticket 108) und `speicher` (Ticket 106) prüfen damit nach, wie `NACHKOMMASTELLEN` die Skalen festlegt. Ohne Flag
+ * `g`, also ohne Zustand zwischen Aufrufen von `test`.
+ */
+export const IFC_GLOBALID_MUSTER: RegExp = /^[0-9A-Za-z_$]{22}$/;
 
 /**
  * Schema der IFC-Datei laut `FILE_SCHEMA` (v1.6, D-50): IFC 2x3 oder IFC 4. `IFC4` umfasst die Fassungen und Zusätze, die
@@ -157,7 +165,10 @@ export interface BauwerksmodellKopf {
  *   notwendig vor ihren Kindern. Verweise innerhalb des Modells (`elternGlobalId`, `strukturGlobalId`, `teilVonGlobalId`)
  *   nennen ein Objekt desselben Modells (der Ausführer prüft es, siehe `BauwerksmodellAnlegen`).
  * - **Doppelte GlobalIds** sind zulässig: Beide Objekte bleiben (D-50), nichts wird still verworfen; sie sind ein Befund
- *   beim Lesen und in der Modellprüfung (`bim`, D-53), das dort festlegt, wie Zuordnung und Vergleich mit ihnen umgehen.
+ *   beim Lesen und in der Modellprüfung (`bim`, D-53). Nachtrag Review (D-66): Jeder Verweis über eine GlobalId meint dann
+ *   das **erste** Objekt dieser GlobalId in der Reihenfolge der Datei (`struktur` vor `bauteile`): `elternGlobalId`,
+ *   `strukturGlobalId`, `teilVonGlobalId`, `Bauteilzuordnung.globalId`, `Mangel.bauteil`, `Befundort.globalId`; die
+ *   späteren zählen für Zuordnung, Mengen und Vergleich nicht (Befund, keine Sperre).
  * - Bis zu 10.000 Bauteile (D-54): Darum trägt die Liste nur den Kopf und ein Umbenennen nur den Kopf im ChangeSet.
  */
 export interface Bauwerksmodell extends BauwerksmodellKopf {
