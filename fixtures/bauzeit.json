@@ -24,6 +24,7 @@
         "dauer": 0,
         "vorgaenger": [],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -34,6 +35,7 @@
         "dauer": 4,
         "vorgaenger": [],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -44,6 +46,7 @@
         "dauer": 4,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000012", "art": "anfang-anfang", "abstand": 2 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -54,6 +57,7 @@
         "dauer": 5,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000013", "art": "ende-anfang", "abstand": -1 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -64,6 +68,7 @@
         "dauer": 0,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000014", "art": "ende-anfang", "abstand": 0 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -74,6 +79,7 @@
         "dauer": 6,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000015", "art": "ende-anfang", "abstand": 0 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -84,6 +90,7 @@
         "dauer": 2,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000016", "art": "anfang-ende", "abstand": 0 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       },
       {
@@ -94,6 +101,7 @@
         "dauer": 3,
         "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000017", "art": "ende-ende", "abstand": 2 }],
         "fruehesterBeginn": null,
+        "bezug": null,
         "ist": null
       }
     ]
