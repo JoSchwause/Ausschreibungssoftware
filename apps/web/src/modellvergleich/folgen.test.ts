@@ -54,7 +54,13 @@ describe('Folgen für ein LV', () => {
   it('Befunde nennen Position und den Namen des Bauteils im alten Stand', async () => {
     const { lv } = await typischImSpeicher();
     const a = aktualisierungBerechnen(lv, V1, V2);
-    expect(befundeErklaert(a.positionen.flatMap((p) => p.befunde), lv, V1).map((b) => b.meldung)).toEqual([
+    expect(
+      befundeErklaert(
+        a.positionen.flatMap((p) => p.befunde),
+        lv,
+        V1,
+      ).map((b) => b.meldung),
+    ).toEqual([
       '03.0010 Innenwände mauern: Kein Bauteil 0pvziGfz13dL7P$C5SooCO im Modell (im alten Stand: Raumteiler Wohnen)',
     ]);
   });
@@ -70,7 +76,10 @@ describe('Folgen für ein LV', () => {
     expect(neu?.summen.gesamt).toMatchObject(SOLL.mengenAktualisieren.sollwerte.summen);
     for (const v of SOLL.mengenAktualisieren.vordersaetze) {
       const p = neu?.leistungsverzeichnis.knoten.find((k) => k.id === v.positionId);
-      expect(p?.art === 'position' ? [p.menge, p.mengenansatz] : null).toEqual([v.menge, ansatz(v.mengenansatz)]);
+      expect(p?.art === 'position' ? [p.menge, p.mengenansatz] : null).toEqual([
+        v.menge,
+        ansatz(v.mengenansatz),
+      ]);
     }
     // Danach ist nichts mehr zu tun.
     if (neu === null) throw new Error('LV');

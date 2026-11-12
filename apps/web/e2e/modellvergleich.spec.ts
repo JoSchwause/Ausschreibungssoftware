@@ -83,14 +83,26 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   await expect(liste.getByRole('gridcell', { name: 'Raumteiler Wohnen Nord' })).toBeVisible();
   const v2 = new Map(BIM_SOLL.bauteile.v2.map((b) => [b.globalId, b]));
   expect((await gridZeilen(liste)).map((z) => z.slice(0, 4))).toEqual([
-    ...SOLL.vergleich.hinzugefuegt.map((b) => [expect.stringContaining('Hinzugefügt'), b.klasse, b.name, b.geschoss]),
-    ...SOLL.vergleich.entfernt.map((b) => [expect.stringContaining('Entfernt'), b.klasse, b.name, b.geschoss]),
+    ...SOLL.vergleich.hinzugefuegt.map((b) => [
+      expect.stringContaining('Hinzugefügt'),
+      b.klasse,
+      b.name,
+      b.geschoss,
+    ]),
+    ...SOLL.vergleich.entfernt.map((b) => [
+      expect.stringContaining('Entfernt'),
+      b.klasse,
+      b.name,
+      b.geschoss,
+    ]),
     ...SOLL.vergleich.geaendert.map((g) => {
       const b = v2.get(g.globalId);
       return [expect.stringContaining('Geändert'), b?.klasse, b?.name, b?.geschoss];
     }),
   ]);
-  await expect(liste.getByRole('gridcell', { name: 'NetSideArea: 8,649 → 10,024', exact: false })).toBeVisible();
+  await expect(
+    liste.getByRole('gridcell', { name: 'NetSideArea: 8,649 → 10,024', exact: false }),
+  ).toBeVisible();
 
   // 3D: das neue Modell, hinzugefügt und geändert je in eigener Farbe, unverändert in der eigenen.
   await page.waitForFunction(() => window.tethysModell?.darstellung()?.geladen === true, undefined, {
@@ -117,7 +129,13 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   const positionen = folgen.getByRole('treegrid', { name: 'Positionen mit Zuordnungen' });
   const betroffen = (await gridZeilen(positionen)).filter((z) => z.at(-1) === 'ja');
   expect(betroffen.map((z) => [z[0], z[3], z[4], z[5], z[6]])).toEqual(
-    SOLL.betroffenePositionen.map((b) => [b.oz, mengeDe(b.vorher), mengeDe(b.nachher), mengeDe(b.differenz), mengeDe(b.vorher)]),
+    SOLL.betroffenePositionen.map((b) => [
+      b.oz,
+      mengeDe(b.vorher),
+      mengeDe(b.nachher),
+      mengeDe(b.differenz),
+      mengeDe(b.vorher),
+    ]),
   );
 
   // Mengen aktualisieren: Vorschau mit dem Befund für das entfernte Bauteil, dann ein Undo-Schritt.
@@ -146,9 +164,9 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   await page.getByRole('button', { name: /Rückgängig/ }).click();
   await expect(page).toHaveURL(/\/lv\//);
   await leerlauf(page);
-  await expect.poll(async () => (await summen(page))['Netto']).toBe(
-    betragDe(BIM_SOLL.kern.sollwerte.summen['netto'] ?? ''),
-  );
+  await expect
+    .poll(async () => (await summen(page))['Netto'])
+    .toBe(betragDe(BIM_SOLL.kern.sollwerte.summen['netto'] ?? ''));
   await page.goBack();
   await expect(folgen.getByRole('group', { name: 'Netto des LV' })).toContainText(
     betragDe(BIM_SOLL.kern.sollwerte.summen['netto'] ?? ''),

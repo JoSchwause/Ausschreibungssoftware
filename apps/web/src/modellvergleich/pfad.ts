@@ -11,7 +11,11 @@ export interface VergleichRoute {
   readonly altId: BauwerksmodellId | null;
 }
 
-export function vergleichPfad(projektId: ProjektId, neuId: BauwerksmodellId, altId?: BauwerksmodellId): string {
+export function vergleichPfad(
+  projektId: ProjektId,
+  neuId: BauwerksmodellId,
+  altId?: BauwerksmodellId,
+): string {
   const basis = `/projekt/${encodeURIComponent(projektId)}/modelle/${encodeURIComponent(neuId)}/vergleich`;
   return altId === undefined ? basis : `${basis}/${encodeURIComponent(altId)}`;
 }

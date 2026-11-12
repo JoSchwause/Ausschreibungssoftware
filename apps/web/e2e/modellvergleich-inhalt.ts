@@ -50,7 +50,11 @@ export interface BimSoll {
         readonly felder: readonly string[];
         readonly name?: { readonly vorher: string; readonly nachher: string };
         readonly strukturknoten?: { readonly vorher: string; readonly nachher: string };
-        readonly mengen?: readonly { readonly name: string; readonly vorher: string; readonly nachher: string }[];
+        readonly mengen?: readonly {
+          readonly name: string;
+          readonly vorher: string;
+          readonly nachher: string;
+        }[];
       }[];
     };
     readonly betroffenePositionen: readonly {
@@ -62,7 +66,11 @@ export interface BimSoll {
     }[];
     readonly mengenAktualisieren: {
       readonly vordersaetze: readonly FxVordersatz[];
-      readonly befunde: readonly { readonly positionId: string; readonly art: string; readonly globalId: string }[];
+      readonly befunde: readonly {
+        readonly positionId: string;
+        readonly art: string;
+        readonly globalId: string;
+      }[];
       readonly sollwerte: { readonly summen: Record<string, string> };
     };
   };

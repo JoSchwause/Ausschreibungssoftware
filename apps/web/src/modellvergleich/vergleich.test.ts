@@ -35,7 +35,9 @@ describe('Vergleichsansicht v1 → v2', () => {
       a.zeilen.find((z) => z.id === `g-${gid}`)?.zellen['aenderung']?.text;
     expect(aenderung('2eblKqOK$lqqMETwZexG5z')).toBe('Name: Bodenplatte → Bodenplatte WU-Beton');
     expect(aenderung('3C178gmUgMjLVcOGcxq1j2')).toBe('Geschoss: EG → OG');
-    expect(aenderung('2AhrUbBTe1LU5FWu_DQQz5')).toBe('NetSideArea: 19,254 → 20,653; NetVolume: 7,028 → 7,538');
+    expect(aenderung('2AhrUbBTe1LU5FWu_DQQz5')).toBe(
+      'NetSideArea: 19,254 → 20,653; NetVolume: 7,028 → 7,538',
+    );
   });
 
   it('Färbung: hinzugefügt und geändert am neuen Modell; entfernte nur in der Liste', () => {

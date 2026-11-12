@@ -41,7 +41,7 @@ function geschossname(modell: Bauwerksmodell, strukturGlobalId: IfcGlobalId | nu
   for (const k of modell.struktur) if (!erster.has(k.globalId)) erster.set(k.globalId, k);
   const start = erster.get(strukturGlobalId);
   const besucht = new Set<string>();
-  for (let k = start; k !== undefined && !besucht.has(k.globalId); ) {
+  for (let k = start; k !== undefined && !besucht.has(k.globalId);) {
     if (k.art === 'geschoss') return k.name ?? '';
     besucht.add(k.globalId);
     k = k.elternGlobalId === null ? undefined : erster.get(k.elternGlobalId);
@@ -92,17 +92,19 @@ export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Ver
     faerbung.set(g.globalId, 'geaendert');
     const teile: string[] = [];
     for (const f of g.felder) {
-      if (f === 'klasse') teile.push(`${texte.liste.feld.klasse}: ${g.vorher.ifcKlasse} → ${g.nachher.ifcKlasse}`);
+      if (f === 'klasse')
+        teile.push(`${texte.liste.feld.klasse}: ${g.vorher.ifcKlasse} → ${g.nachher.ifcKlasse}`);
       else if (f === 'name') teile.push(`${texte.liste.feld.name}: ${name(g.vorher)} → ${name(g.nachher)}`);
       else if (f === 'strukturknoten')
         teile.push(
           `${texte.liste.feld.strukturknoten}: ${geschossname(alt, g.vorher.strukturGlobalId)} → ${geschossname(neu, g.nachher.strukturGlobalId)}`,
         );
       else
-        for (const m of g.mengen)
-          teile.push(`${m.name}: ${mengeText(m.vorher)} → ${mengeText(m.nachher)}`);
+        for (const m of g.mengen) teile.push(`${m.name}: ${mengeText(m.vorher)} → ${mengeText(m.nachher)}`);
     }
-    zeilen.push(zeile(`g-${g.globalId}`, texte.liste.geaendert, g.nachher, neu, teile.join('; '), 'geaendert'));
+    zeilen.push(
+      zeile(`g-${g.globalId}`, texte.liste.geaendert, g.nachher, neu, teile.join('; '), 'geaendert'),
+    );
   }
   return {
     zusammenfassung: {

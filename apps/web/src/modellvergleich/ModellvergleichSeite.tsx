@@ -17,7 +17,6 @@ import type {
   BauwerksmodellZustand,
   LeistungsverzeichnisId,
   LvUebersicht,
-  LvZustand,
   ProjektId,
 } from '@tethys/vertrag';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -231,7 +230,9 @@ function Folgen({
   lvs: readonly LvUebersicht[];
 }): ReactElement {
   const u = useUmgebung();
-  const [lvId, setLvId] = useState<LeistungsverzeichnisId | undefined>(lvs.length === 1 ? lvs[0]?.id : undefined);
+  const [lvId, setLvId] = useState<LeistungsverzeichnisId | undefined>(
+    lvs.length === 1 ? lvs[0]?.id : undefined,
+  );
   const [lage, setLage] = useState<LvLage>({ art: 'keins' });
 
   useEffect(() => {
@@ -284,13 +285,19 @@ function FolgenDesLv({
   const { speicherfehler, pruefe } = useMeldungen();
   const lvStart = sitzung.zustand;
   const lvId = lvStart?.leistungsverzeichnis.id;
-  useEffect(() => (lvId === undefined ? undefined : befehlswegFuer(u).anmelden(lvId, sitzung)), [u, lvId, sitzung]);
+  useEffect(
+    () => (lvId === undefined ? undefined : befehlswegFuer(u).anmelden(lvId, sitzung)),
+    [u, lvId, sitzung],
+  );
   const lv = useSyncExternalStore(sitzung.abonnieren, sitzung.lesen);
   const [vorschau, setVorschau] = useState(false);
   const ausfuehren = useRef<HTMLButtonElement | null>(null);
 
   const folgen = useMemo(() => (lv === null ? null : folgenansicht(lv, alt, neu)), [lv, alt, neu]);
-  const aktualisierung = useMemo(() => (lv === null ? null : aktualisierungBerechnen(lv, alt, neu)), [lv, alt, neu]);
+  const aktualisierung = useMemo(
+    () => (lv === null ? null : aktualisierungBerechnen(lv, alt, neu)),
+    [lv, alt, neu],
+  );
   if (lv === null || folgen === null || aktualisierung === null) return null;
 
   const betroffen = folgen.zeilen.filter((z) => z.betroffen).length;
@@ -328,7 +335,9 @@ function FolgenDesLv({
               fixierteSpalten={1}
             />
           </div>
-          {befunde.length > 0 ? <BefundListe befunde={befunde} beschriftung={texte.vorschau.befunde} /> : null}
+          {befunde.length > 0 ? (
+            <BefundListe befunde={befunde} beschriftung={texte.vorschau.befunde} />
+          ) : null}
         </>
       )}
       <div className="lv__werkzeuge">

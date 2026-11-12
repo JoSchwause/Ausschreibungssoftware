@@ -92,7 +92,11 @@ export interface Aktualisierung {
  * Was „Mengen aktualisieren“ schreibt (D-116.2): jede Position, die der Vergleich betrifft und deren Ansatz im LV von den
  * Zeilen des neuen Stands abweicht; ohne Zeile bleibt die Position, wie sie ist (nie 0, Q5, D-108.6).
  */
-export function aktualisierungBerechnen(lv: LvZustand, alt: Bauwerksmodell, neu: Bauwerksmodell): Aktualisierung {
+export function aktualisierungBerechnen(
+  lv: LvZustand,
+  alt: Bauwerksmodell,
+  neu: Bauwerksmodell,
+): Aktualisierung {
   const knoten = lv.leistungsverzeichnis.knoten;
   const betroffen = new Set(
     vergleichsfolgenBerechnen(knoten, alt, neu)
