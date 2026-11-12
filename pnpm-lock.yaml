@@ -44,6 +44,9 @@ importers:
       '@tethys/ausgabe':
         specifier: workspace:*
         version: link:../../packages/ausgabe
+      '@tethys/bim':
+        specifier: workspace:*
+        version: link:../../packages/bim
       '@tethys/dezimal':
         specifier: workspace:*
         version: link:../../packages/dezimal
@@ -53,6 +56,9 @@ importers:
       '@tethys/gaeb':
         specifier: workspace:*
         version: link:../../packages/gaeb
+      '@tethys/ifc':
+        specifier: workspace:*
+        version: link:../../packages/ifc
       '@tethys/kern':
         specifier: workspace:*
         version: link:../../packages/kern
@@ -71,6 +77,9 @@ importers:
       '@tethys/ui-grid':
         specifier: workspace:*
         version: link:../../packages/ui-grid
+      '@tethys/ui-modell':
+        specifier: workspace:*
+        version: link:../../packages/ui-modell
       '@tethys/vergabe':
         specifier: workspace:*
         version: link:../../packages/vergabe
