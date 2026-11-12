@@ -1,6 +1,6 @@
 # 98: X1a: IFC lesen (eigener STEP-Leser, IFC 2x3 und IFC 4)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc` (neu; dazu die Zeile in `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml`
 falls nötig)
