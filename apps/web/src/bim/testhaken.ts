@@ -15,6 +15,8 @@ export interface ModellTesthaken {
   gezeichnet(): Promise<void>;
   /** Die Auswahl der App (GlobalIds). */
   auswahl(): readonly string[];
+  /** Die Färbung, die die App der Leinwand gibt (Ticket 115): Kennzeichen je GlobalId. */
+  faerbung(): Readonly<Record<string, string>>;
 }
 
 declare global {
@@ -29,6 +31,7 @@ const AKTIV = import.meta.env.VITE_TESTPFAD === '1';
 export function modellTesthaken(
   ansicht: RefObject<ModellansichtRef | null>,
   auswahl: () => readonly string[],
+  faerbung: () => ReadonlyMap<string, string> = () => new Map(),
 ): () => void {
   if (!AKTIV) return () => undefined;
   const haken: ModellTesthaken = {
@@ -36,6 +39,7 @@ export function modellTesthaken(
     punkt: (g) => ansicht.current?.bildschirmpunkt(g) ?? null,
     gezeichnet: () => ansicht.current?.gezeichnet() ?? Promise.resolve(),
     auswahl,
+    faerbung: () => Object.fromEntries(faerbung()),
   };
   window.tethysModell = haken;
   return () => {

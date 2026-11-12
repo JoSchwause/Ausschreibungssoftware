@@ -104,3 +104,25 @@
 .bim__befund--warnung strong {
   color: var(--tx-color-warning);
 }
+
+/* Ticket 115: Zuordnung, Kennwerte, Vorschauen */
+.bim__positionen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-1);
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: var(--tx-space-3) 0;
+  border: 1px solid var(--tx-color-border);
+  padding: var(--tx-space-2) var(--tx-space-3);
+}
+
+.bim__zuordnungen,
+.bim__zuordnungen ul {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.bim__groesse {
+  display: contents;
+}

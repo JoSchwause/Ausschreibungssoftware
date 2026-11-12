@@ -31,6 +31,13 @@ describe('Auswahl aus dem Baum', () => {
     expect(s2.auswahl).toEqual([gid('W2')]);
     expect(s2.aktiveZeile).toBe(zeile('OG'));
   });
+
+  it('Strg+Klick im Baum ergänzt die Auswahl um die Bauteile der Zeile (Ticket 115)', () => {
+    const s1 = beiZeileAktiv(beiZeileAktiv(AUSWAHL_START, baum, zeile('P')), baum, zeile('W1'));
+    const s2 = beiZeileAktiv(s1, baum, zeile('OG'), true);
+    expect(s2.auswahl).toEqual([gid('W1'), gid('W2')]);
+    expect(beiZeileAktiv(s2, baum, zeile('W1'), true).auswahl).toEqual([gid('W1'), gid('W2')]);
+  });
 });
 
 describe('Auswahl aus der 3D-Ansicht', () => {

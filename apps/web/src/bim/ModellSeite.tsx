@@ -39,6 +39,10 @@ import { vergleichPfad } from '../modellvergleich/pfad'; // Ticket 116
 import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 116
 import { modellTesthaken } from './testhaken';
 import { texte } from './texte';
+import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
+import { useBezug } from './useBezug'; // Ticket 115
+import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
+import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
 import './bim.css';
 
@@ -52,7 +56,7 @@ type Eigenschaftslage =
   | { art: 'laedt'; globalId: string }
   | { art: 'da'; globalId: string; wert: Objekteigenschaften | null };
 
-const KEINE_FAERBUNG = new Map<string, never>();
+const KEINE_FAERBUNG: ReadonlyMap<string, never> = new Map<string, never>();
 
 export function ModellSeite({
   projektId,
@@ -138,6 +142,13 @@ function Arbeitsflaeche({
   const [geschoss, setGeschoss] = useState<string | undefined>(undefined);
   const [klasse, setKlasse] = useState<string | undefined>(undefined);
   const ansicht = useRef<ModellansichtRef | null>(null);
+  // Ticket 115: Bezugs-LV der Zuordnung; die 3D-Ansicht färbt „zugeordnet“/„ohne Zuordnung“ bezogen auf dieses LV.
+  const bezug = useBezug(projektId);
+  const faerbung = useMemo(
+    () => (bezug.bezug === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, bezug.knoten)),
+    [bezug.bezug, bezug.knoten, modell],
+  );
+  const ergaenzen = useRef(false); // Strg/Cmd beim Klick in den Baum ergänzt die Auswahl (Ticket 115)
 
   const zeilen = useMemo(() => sichtbareZeilen(baum, stand.zugeklappt), [baum, stand.zugeklappt]);
   const alleGeschosse = useMemo(() => geschosse(baum), [baum]);
@@ -196,7 +207,17 @@ function Arbeitsflaeche({
   // Prüfzugang nur im Test-Build (VITE_TESTPFAD=1, D-58): Zustand der Leinwand und Auswahl der App, nie Pixel.
   const standRef = useRef(stand);
   standRef.current = stand;
-  useEffect(() => modellTesthaken(ansicht, () => standRef.current.auswahl), []);
+  const faerbungRef = useRef<ReadonlyMap<string, string>>(faerbung); // Ticket 115
+  faerbungRef.current = faerbung;
+  useEffect(
+    () =>
+      modellTesthaken(
+        ansicht,
+        () => standRef.current.auswahl,
+        () => faerbungRef.current,
+      ),
+    [],
+  );
 
   const fokusBauteil = fokus === null ? undefined : modell.bauteile.find((b) => b.globalId === fokus);
   const fokusKnoten = fokus === null ? undefined : modell.struktur.find((k) => k.globalId === fokus);
@@ -298,7 +319,15 @@ function Arbeitsflaeche({
       </div>
 
       <div className="bim__arbeitsflaeche">
-        <div className="lv__grid bim__baum">
+        <div
+          className="lv__grid bim__baum"
+          onPointerDownCapture={(e) => {
+            ergaenzen.current = e.ctrlKey || e.metaKey; // Ticket 115
+          }}
+          onKeyDownCapture={() => {
+            ergaenzen.current = false; // Ticket 115: Tastatur ersetzt die Auswahl wie bisher
+          }}
+        >
           <VergleichsGrid
             beschriftung={texte.baum.beschriftung}
             spalten={BAUM_SPALTEN}
@@ -310,7 +339,9 @@ function Arbeitsflaeche({
               setStand((s) => beiAufklappen(s, zeilenId, auf));
             }}
             onZeileAktiv={(zeilenId) => {
-              setStand((s) => beiZeileAktiv(s, baum, zeilenId));
+              const mehr = ergaenzen.current; // Ticket 115
+              ergaenzen.current = false;
+              setStand((s) => beiZeileAktiv(s, baum, zeilenId, mehr));
             }}
           />
         </div>
@@ -324,7 +355,7 @@ function Arbeitsflaeche({
               auswahl={stand.auswahl}
               ausgeblendet={sicht.ausgeblendet}
               isoliert={sicht.isoliert}
-              faerbung={KEINE_FAERBUNG}
+              faerbung={faerbung}
               onAuswahl={onAuswahl}
               onGeladen={onGeladen}
               onFehler={() => {
@@ -376,6 +407,18 @@ function Arbeitsflaeche({
           )}
         </section>
         <BefundListe befunde={ladebefunde} beschriftung={texte.seite.befunde} onSprung={zurZeile} />
+      </div>
+      {/* Ticket 115: Zuordnung, Aufmaßblatt aus Auswahl, Kennwerte */}
+      <div className="bim__unten">
+        <ZuordnungBereich
+          projektId={projektId}
+          modell={modell}
+          auswahl={stand.auswahl}
+          bezug={bezug}
+          zurZeile={zurZeile}
+          gehe={gehe}
+        />
+        <KennwerteBereich projektId={projektId} modell={modell} gehe={gehe} />
       </div>
     </div>
   );
