@@ -38,9 +38,9 @@ Kein Produktcode. X5 besteht in Welle 6 nur aus einer ADR mit Status `proposed` 
 
 ## Acceptance criteria
 
-- [ ] ADR 0013 (`proposed`), G-57 (*offen*, mit Annahme-Zeile) und der Verweis in `plan.md` stimmen überein; keine Aussage
+- [x] ADR 0013 (`proposed`), G-57 (*offen*, mit Annahme-Zeile) und der Verweis in `plan.md` stimmen überein; keine Aussage
       widerspricht ADR 0001, G-01 oder G-14
-- [ ] `pnpm lint` grün (Prettier über die Markdown-Dateien)
+- [x] `pnpm lint` grün (Prettier über die Markdown-Dateien)
 
 ## Comments
 

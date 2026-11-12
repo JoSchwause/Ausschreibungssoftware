@@ -32,8 +32,8 @@ Beziehungen auf ihn mit; ein Befund zu einer Beziehung trägt `pfad: '/vorgaenge
 
 ## Acceptance criteria
 
-- [ ] Befehle, Umkehrung und Fehler getestet; bestehende Tests des Pakets grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Befehle, Umkehrung und Fehler getestet; bestehende Tests des Pakets grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -143,3 +143,6 @@ Dateien.
 Gemergt mit `db73cc1` (Branch `welle-6/109-bauzeit-befehle`, `4426880`). `bauzeit` auf v1.6-Typen, Befehle mit Anwenden/Umkehren, Befunde
 als `Pruefbefund` (`terminrechnung`, Pfad je Beziehung), `fortschrittVorschlagen`; 1.000 Vorgänge ≤ 4,6 ms je Befehl. Offen: in
 `fixtures/bauzeit.json` heißt das Feld der Sollwerte noch `id` statt `vorgangId` (Test bildet ab).
+
+Suite: im Lauf des Umsetzers nur Leistungsbudgets anderer Pakete unter Last rot (allein grün); im Integrationslauf nach den Merges der
+Stufen 2 und 3 grün (Lint, Typecheck, 3.888 Tests).

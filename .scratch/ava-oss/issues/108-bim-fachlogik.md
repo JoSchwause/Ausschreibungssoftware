@@ -55,8 +55,8 @@ Begriffe aus v1.6 und dem Glossar; neue (z. B. „Mengenübernahme“, „Bezugs
 
 ## Acceptance criteria
 
-- [ ] Golden-, Property- und Leistungstests wie oben; Paketgrenzen-Prüfung kennt `bim`
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Golden-, Property- und Leistungstests wie oben; Paketgrenzen-Prüfung kennt `bim`
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -180,12 +180,6 @@ leer, Gegenrichtung gespiegelt); Leistung (`leistung.test.ts`): Vergleich zweier
 3.338 bestanden, 3 übersprungen, 6 Leistungsbudgets fremder Pakete rot bei Last 25–32 auf 4 Kernen (gaeb `lesen` 2 MB, kern K9,
 speicher Aufmaß 5.000 Zeilen, vergabe Preisspiegel, ausgabe PDF gross, apps/web D-45); jede dieser Dateien allein grün; `node
 --test fixtures` 53/53. Kein Budget gelockert, kein Test übersprungen. `bim` selbst immer grün.
-
-## Answer
-
-Gemergt mit `a693c35` (Branch `welle-6/108-bim`, `f7b2d50`). Paket `bim`: Modellbefehle, Mengenübernahme, Aufmaßblatt aus Auswahl, DIN 277,
-Kostenschätzung über Kennwerte, Kostenkennwerte, Modellvergleich mit Folgen, Zuordnungsprüfung; alle Sollwerte aus `typisch-bim.json`
-unverändert; Vergleich zweier 10k-Modelle 33 ms (Budget 500 ms).
 
 ## Answer
 

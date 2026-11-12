@@ -164,44 +164,47 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 | 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | resolved |
 | 91 | – | Tor M4 | `apps/web/e2e/` | resolved |
 | 92 | – | Behebung des Wellen-Reviews | mehrere (D-47) | resolved |
-| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid` | ready-for-agent (Welle 6) |
-| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | ready-for-agent (Welle 6) |
-| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | ready-for-agent (Welle 6) |
+| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid` | resolved (Welle 6) |
+| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | resolved (Welle 6) |
+| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | resolved (Welle 6) |
 
 # Tickets Welle 6 (Lauf, 2026-11-12)
 
-Schnitt und Reihenfolge: [`../schnitt-welle-6.md`](../schnitt-welle-6.md). Entscheidungen D-49 bis D-59 in
+Schnitt und Reihenfolge: [`../schnitt-welle-6.md`](../schnitt-welle-6.md). Entscheidungen D-49 bis D-68 in
 `../entscheidungen-auto.md`; Tore je Modul in `../plan.md` §4 (D-58). Zuerst die Folgetickets 93–95 (G-05), danach X1–X5,
 Schwerpunkt X1 BIM.
 
 | Nr | Strang | Titel | Paket | Status |
 |---|---|---|---|---|
-| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid`, `apps/web/src/kosten/` | ready-for-agent |
-| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | ready-for-agent |
-| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | ready-for-agent |
-| 96 | U/X2 | `ui-grid`: Balkenspalte | `packages/ui-grid` | ready-for-agent |
-| 97 | F | `vertrag` v1.6: Typen für X1–X4 | `packages/vertrag` | ready-for-agent |
-| 98 | X1a | IFC lesen | `packages/ifc` (neu) | ready-for-agent |
-| 99 | F/X1 | Fixtures IFC-Haus, Erzeuger, Sollwerte X1 | `fixtures/` | ready-for-agent |
-| 100 | X1b | 3D-Leinwand | `packages/ui-modell` (neu) | ready-for-agent |
-| 101 | X3 | HOAI-Rechenkern | `packages/honorar` (neu) | ready-for-agent |
-| 102 | X2 | Terminrechnung | `packages/bauzeit` (neu) | ready-for-agent |
-| 103 | X5 | ADR 0013, G-57 | `docs/adr/`, `grilling.md` | ready-for-agent |
-| 104 | A4 | `erechnung`: gemeinsame Befundliste | `packages/erechnung` | ready-for-agent |
-| 105 | K | Kern v1.5/v1.6 | `packages/kern` | ready-for-agent |
-| 106 | S | Speicher v1.5/v1.6, Migration 6 | `packages/speicher` | ready-for-agent |
-| 107 | X1a | `ifc` → `Bauwerksmodell` | `packages/ifc` | ready-for-agent |
-| 108 | X1c–f | `bim` | `packages/bim` (neu) | ready-for-agent |
-| 109 | X2 | `bauzeit`: Befehle | `packages/bauzeit` | ready-for-agent |
-| 110 | X3 | `honorar`: Befehle | `packages/honorar` | ready-for-agent |
-| 111 | X4 | `bauleitung` | `packages/bauleitung` (neu) | ready-for-agent |
-| 112 | F | Fixtures X2–X4 | `fixtures/` | ready-for-agent |
-| 113 | O | `ausgabe`: PDF X2–X4 | `packages/ausgabe` | ready-for-agent |
-| 114 | X1 | App: Modelle, Baum, 3D | `apps/web/src/bim/` | ready-for-agent |
-| 115 | X1 | App: Zuordnen, Mengen, Kennwerte, Aufmaß | `apps/web/src/bim/` | ready-for-agent |
-| 116 | X1f | App: Modellvergleich | `apps/web/src/modellvergleich/` | ready-for-agent |
+| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid`, `apps/web/src/kosten/` | resolved |
+| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | resolved |
+| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | resolved |
+| 96 | U/X2 | `ui-grid`: Balkenspalte | `packages/ui-grid` | resolved |
+| 97 | F | `vertrag` v1.6: Typen für X1–X4 | `packages/vertrag` | resolved |
+| 98 | X1a | IFC lesen | `packages/ifc` (neu) | resolved |
+| 99 | F/X1 | Fixtures IFC-Haus, Erzeuger, Sollwerte X1 | `fixtures/` | resolved |
+| 100 | X1b | 3D-Leinwand | `packages/ui-modell` (neu) | resolved |
+| 101 | X3 | HOAI-Rechenkern | `packages/honorar` (neu) | resolved |
+| 102 | X2 | Terminrechnung | `packages/bauzeit` (neu) | resolved |
+| 103 | X5 | ADR 0013, G-57 | `docs/adr/`, `grilling.md` | resolved |
+| 104 | A4 | `erechnung`: gemeinsame Befundliste | `packages/erechnung` | resolved |
+| 105 | K | Kern v1.5/v1.6 | `packages/kern` | resolved |
+| 106 | S | Speicher v1.5/v1.6, Migration 6 | `packages/speicher` | resolved |
+| 107 | X1a | `ifc` → `Bauwerksmodell` | `packages/ifc` | resolved |
+| 108 | X1c–f | `bim` | `packages/bim` (neu) | resolved |
+| 109 | X2 | `bauzeit`: Befehle | `packages/bauzeit` | resolved |
+| 110 | X3 | `honorar`: Befehle | `packages/honorar` | resolved |
+| 111 | X4 | `bauleitung` | `packages/bauleitung` (neu) | resolved |
+| 112 | F | Fixtures X2–X4 | `fixtures/` | resolved |
+| 113 | O | `ausgabe`: PDF X2–X4 | `packages/ausgabe` | resolved |
+| 114 | X1 | App: Modelle, Baum, 3D | `apps/web/src/bim/` | resolved |
+| 115 | X1 | App: Zuordnen, Mengen, Kennwerte, Aufmaß | `apps/web/src/bim/` | resolved |
+| 116 | X1f | App: Modellvergleich | `apps/web/src/modellvergleich/` | resolved |
 | 117 | X1 | Tor X1 | `apps/web/e2e/` | ready-for-agent |
-| 118 | X2 | App: Bauzeitenplan, Tor X2 | `apps/web/src/bauzeit/` | ready-for-agent |
-| 119 | X3 | App: Honorar, Tor X3 | `apps/web/src/honorar/` | ready-for-agent |
-| 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | ready-for-agent |
-| 121 | – | App: Folgearbeit v1.5 | `apps/web/src/projekt/`, `auftrag/`, `ausgabe/` | ready-for-agent |
+| 118 | X2 | App: Bauzeitenplan, Tor X2 | `apps/web/src/bauzeit/` | resolved |
+| 119 | X3 | App: Honorar, Tor X3 | `apps/web/src/honorar/` | resolved |
+| 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | resolved |
+| 121 | – | App: Folgearbeit v1.5 | `apps/web/src/projekt/`, `auftrag/`, `ausgabe/` | resolved |
+| 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | ready-for-agent |
+| 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | ready-for-agent (Welle 7) |
+| 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | ready-for-agent (Welle 7) |
