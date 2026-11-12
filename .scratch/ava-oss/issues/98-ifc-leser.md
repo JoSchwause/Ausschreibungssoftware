@@ -108,12 +108,20 @@ die Wörter gleich.
 
 **Tests:** 12 Testdateien, 115 Tests im Paket (Golden je Fall, IFC 2x3 in mm = IFC 4 in m, Sicherheit: Größe, Tiefe
 100.000 ohne Stapelüberlauf, Kreise, fehlende Verweise; Property-Tests: beliebige Bytes, Bytes hinter gültigem Kopf,
-STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m). Ganze Suite nach
-dem letzten Merge von `integration/welle-6` (mit 96 und 101): `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 230 Dateien /
-2.964 Tests grün (3 übersprungen wie vorher), Fixtures 29/29. Im ersten Lauf der Suite fiel nur das Budget aus Ticket 94
-(`packages/speicher/src/aufmass-leistung.test.ts`, von diesem Branch unberührt): 133,7 ms gegen 100 ms bei Lastmittel 19 auf
-4 Kernen; die Datei allein dreimal grün, Mediane 27,2 / 27,0 / 28,0 ms (Setzen, Rückgängig, Wiederholen); der zweite Lauf
-der ganzen Suite grün.
+STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m; zusammen etwa
+1,2 s). Ganze Suite nach dem letzten Merge von `integration/welle-6` (mit 96, 100, 101, 102), Stand `b89cc05`:
+`pnpm lint` 0, `pnpm typecheck` 0; `vitest run --maxWorkers=1` 247 Dateien / 3.151 Tests grün (3 übersprungen wie vorher),
+Fixtures 29/29. Mit der Standardparallelität (`pnpm test`) fielen unter Lastmittel 15 bis 20 auf 4 Kernen nur
+Zeitbudgets fremder Pakete, die dieser Branch nicht berührt; je allein wiederholt grün:
+
+| Budget | volle Suite | Datei allein |
+|---|---|---|
+| `speicher` Aufmaß 5.000 Zeilen (Ticket 94), < 100 ms | 133,7 ms (1 von 5 Läufen) | Mediane 27,2 / 27,0 / 28,0 ms, dreimal grün |
+| `vergabe` Preisspiegel `gross` mit 5 Angeboten, < 1.000 ms | 1.542,9 / 1.190,6 / 1.065,1 ms (3 von 5 Läufen) | 625,0 ms |
+| `apps/web` Undo am Aufmaßblatt 5.000 Zeilen (D-45), < 100 ms | 148,0 / 147,4 ms (2 von 5 Läufen) | Median 46,6 ms (Setzen 64,4 ms) |
+
+Kein Budget gelockert, kein Test übersprungen. Hinweis an den Orchestrator: Mit den neuen Paketen der Welle wächst die Last
+der parallelen Suite; Zeitbudgets, die Wanduhrzeit neben anderen Workern messen, werden dabei wackelig.
 
 **Messung** (einmalig, nicht committet; das Budget prüft Ticket 107): synthetisches IFC-4-Modell, 10.000 Wände mit
 Geometrie-Instanzen, Mengen-, Eigenschafts- und Materialsätzen, 19,6 MB: `ifcLesen` 5 Läufe 1,1 / 1,4 / 1,4 / 1,6 / 1,9 s
