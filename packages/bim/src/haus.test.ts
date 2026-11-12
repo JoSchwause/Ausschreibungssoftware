@@ -4,14 +4,24 @@
 // gerechnet; die Fixture rechnet ihn aus der Geometrie, unabhängig von diesem Paket.
 
 import { describe, expect, it } from 'vitest';
-import type { IfcGlobalId } from '@tethys/vertrag';
+import type { IfcGlobalId, KostenermittlungId, ProjektId } from '@tethys/vertrag';
 import {
   aufmassAusAuswahl,
   bauteileImStrukturknoten,
   din277Berechnen,
+  kostenschaetzungBerechnen,
   mengenuebernahmeBerechnen,
 } from './index';
-import { BIM, KENNUNG, hausModell, nachUebernahme, typischKnoten, zeileAusFixture } from './testhilfe/haus';
+import {
+  BIM,
+  KENNUNG,
+  betrag,
+  hausModell,
+  kg,
+  nachUebernahme,
+  typischKnoten,
+  zeileAusFixture,
+} from './testhilfe/haus';
 import type { FxVordersatz } from './testhilfe/haus';
 
 const v1 = hausModell('v1');
@@ -85,5 +95,30 @@ describe('DIN 277 (D-99.7)', () => {
       { art: 'NRF', wert: soll.nrf, quelle: 'modell' },
     ]);
     expect(d.befunde).toEqual([]);
+  });
+});
+
+describe('Kostenschätzung über Kennwerte (D-99.10)', () => {
+  it('ergibt aus BGF von v1 und den Kennwerten der Fixture deren Einträge und Gesamtbetrag', () => {
+    const soll = BIM.erweitert.kostenschaetzung;
+    const groessen = din277Berechnen(v1);
+    expect(groessen.bgf.wert).toBe(soll.bezugsgroesse.wert);
+    const s = kostenschaetzungBerechnen({
+      id: 'ke-haus' as KostenermittlungId,
+      projektId: 'projekt-1' as ProjektId,
+      name: 'Kostenschätzung aus dem Modell',
+      groessen,
+      kennwerte: soll.kennwerte.map((k) => ({
+        kostengruppe: kg(k.nummer),
+        bezug: 'BGF' as const,
+        kennwert: betrag(k.kennwert),
+      })),
+    });
+    expect(s.befehl.kostenermittlung.stufe).toBe(soll.stufe);
+    expect(
+      s.befehl.kostenermittlung.eintraege.map(({ nummer, betrag: b }) => ({ nummer, betrag: b })),
+    ).toEqual(soll.eintraege.map(({ nummer, betrag: b }) => ({ nummer, betrag: b })));
+    expect(s.gesamt).toBe(soll.gesamt);
+    expect(s.befunde).toEqual([]);
   });
 });

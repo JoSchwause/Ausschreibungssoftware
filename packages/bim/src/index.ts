@@ -22,3 +22,10 @@ export type { AufmassAusAuswahl, Aufmasshinweis, Aufmassvorschlag } from './aufm
 export { aufmassAusAuswahl, bauteileImStrukturknoten } from './aufmass-auswahl';
 export type { Bezugsgroesse, Bezugsgroessenart, Din277Groessen } from './din277';
 export { din277Berechnen } from './din277';
+export type {
+  Kennwertansatz,
+  Kostenkennwertzeile,
+  Kostenschaetzung,
+  Kostenschaetzungsangaben,
+} from './kennwerte';
+export { kostenkennwerteBerechnen, kostenschaetzungBerechnen } from './kennwerte';
