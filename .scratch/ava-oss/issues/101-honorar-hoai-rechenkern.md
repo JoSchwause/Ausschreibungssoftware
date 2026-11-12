@@ -1,6 +1,6 @@
 # 101: X3: HOAI-Rechenkern (`honorar`)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X3 · Paket: `packages/honorar` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: –
@@ -194,3 +194,9 @@ deterministisch. Paket: 9 Testdateien, 133 Tests.
   215 Dateien grün, 1 rot: wieder das Budget in `speicher` (Median Setzen 87,5 ms, Rückgängig 74,0 ms, Wiederholen 124,7 ms);
   die Datei allein grün (26,3 / 26,1 / 26,0 ms). 2.769 Tests grün; `node --test fixtures/*.test.mjs` 29/29.
 - Alle 133 Tests von `honorar` in allen drei Läufen grün.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `e15c76c` (Branch `welle-6/101-honorar`, `f40d1ec`). Paket `honorar`: Tafeln § 35, 52, 56
+und zusätzlich § 40, 44, 48 als Daten (1.240 Zellen gegen die Quelle geprüft), Rechenkette D-56, § 33; 133 Tests. Namen nach
+D-101.10 an Ticket 97 weitergegeben.

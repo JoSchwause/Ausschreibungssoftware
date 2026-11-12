@@ -24,6 +24,9 @@ Herkunft: `plan.md` §2 X2; Tor X2 (`plan.md` §4)
    und Endtermin = Soll → Neuladen → PDF erzeugt (Seitentext enthält Projektende); `x2-kette.test.ts` rechnet denselben Plan ohne
    Oberfläche gegen alle Sollwerte. Dreimal grün; sonst Kettentest plus verkürzte E2E (D-58).
 
+Hinweis aus Ticket 96 (D-96.x): Ein langer Monat verliert beim waagerechten Scrollen seine Beschriftung unter den fixierten
+Spalten (KW bleiben lesbar). Ist das in der App störend, als kleines Folgeticket für `ui-grid` melden, nicht selbst ändern.
+
 ## Grenzen
 
 - Terminrechnung steht in `bauzeit`. `okf/research/` wird nicht gelesen (C3).
