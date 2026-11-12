@@ -251,13 +251,16 @@ function phasenAnsetzen(
   return [...angesetzt.values()].sort((a, c) => a.phase.nummer - c.phase.nummer);
 }
 
-function saetzePruefen(objekt: Honorarobjekt, daten: Leistungsbilddaten, befund: Befundgeber): void {
+function honorarsatzPruefen(objekt: Honorarobjekt, befund: Befundgeber): void {
   if (vergleiche(objekt.honorarsatz, NULL_PROZENT) < 0 || vergleiche(objekt.honorarsatz, HUNDERT) > 0)
     befund(
       'honorarsatz-ausserhalb-spanne',
       'warnung',
       `Honorarsatz ${objekt.honorarsatz} liegt außerhalb von 0 (Basishonorarsatz) bis 100 (oberer Honorarsatz)`,
     );
+}
+
+function umbauzuschlagPruefen(objekt: Honorarobjekt, daten: Leistungsbilddaten, befund: Befundgeber): void {
   const satz = objekt.umbauzuschlagssatz;
   if (satz === null) return;
   negativPruefen({ umbauzuschlagssatz: satz }, befund);
@@ -300,8 +303,9 @@ function objektBerechnen(objekt: Honorarobjekt, index: number, befunde: Honorarb
     kosten.anrechenbareKosten === null
       ? null
       : tafelErmitteln(objekt, kosten.anrechenbareKosten, daten, befund);
+  honorarsatzPruefen(objekt, befund);
   const angesetzt = phasenAnsetzen(objekt, daten, befund);
-  saetzePruefen(objekt, daten, befund);
+  umbauzuschlagPruefen(objekt, daten, befund);
   if (tafel === null) return ohneHonorar(kosten);
 
   const honorar = honorarInSpanne(tafel.spanne, objekt.honorarsatz);

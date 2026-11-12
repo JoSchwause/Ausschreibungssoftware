@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Datentests der Leistungsphasen (Ticket 101, D-56): Namen und Prozentsätze je Leistungsbild, hier ein zweites Mal aus
-// der Quelle abgeschrieben (https://www.gesetze-im-internet.de/hoai_2013/, abgerufen am 2026-11-12).
+// Datentests der Leistungsbilder (Ticket 101, D-56): Namen und Prozentsätze der Leistungsphasen, Grenze des
+// Umbauzuschlags und die Herleitung nach § 33 je Leistungsbild, hier ein zweites Mal aus der Quelle abgeschrieben
+// (https://www.gesetze-im-internet.de/hoai_2013/, abgerufen am 2026-11-12).
 
 import { NULL_PROZENT, addiere } from '@tethys/dezimal';
 import { describe, expect, it } from 'vitest';
@@ -80,5 +81,21 @@ describe.each(ERWARTET)('Leistungsphasen $leistungsbild ($vorschrift HOAI)', (e)
   it('die Prozentsätze ergeben zusammen 100', () => {
     const summe = daten.leistungsphasen.map((p) => p.anteil).reduce((a, b) => addiere(a, b), NULL_PROZENT);
     expect(summe).toBe('100.00');
+  });
+});
+
+describe('Umbauzuschlag und Herleitung nach § 33 je Leistungsbild', () => {
+  it.each<[Leistungsbild, string, string, boolean]>([
+    // § 36 Abs. 1: Gebäude „bis 33 Prozent“; § 36 Abs. 2: Innenräume „bis 50 Prozent“;
+    // § 52 Abs. 4 und § 56 Abs. 5: „bis 50 Prozent“. § 33 gilt für Gebäude und Innenräume.
+    ['gebaeude', '33.00', '§ 36 Abs. 1', true],
+    ['innenraeume', '50.00', '§ 36 Abs. 2', true],
+    ['tragwerksplanung', '50.00', '§ 52 Abs. 4', false],
+    ['technische-ausruestung', '50.00', '§ 56 Abs. 5', false],
+  ])('%s: Umbauzuschlag bis %s nach %s, § 33: %s', (leistungsbild, bis, vorschrift, din276) => {
+    const daten = LEISTUNGSBILDER[leistungsbild];
+    expect(daten.umbauzuschlagBis).toBe(bis);
+    expect(daten.quelleUmbauzuschlag.vorschrift).toBe(vorschrift);
+    expect(daten.kostenNachDin276).toBe(din276);
   });
 });
