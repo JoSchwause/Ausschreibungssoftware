@@ -2,13 +2,14 @@
 // Kalendertage (Ticket 102 Punkt 1): Text `JJJJ-MM-TT`, gerechnet über eine ganze Tageszahl im proleptischen
 // gregorianischen Kalender (Tag 0 = 1970-01-01), nie über `Date`, Uhr oder Zeitzonen. Rein (A2).
 
-import type { Ergebnis } from '@tethys/vertrag';
+import type { Ergebnis, Marke } from '@tethys/vertrag';
 
 /**
- * Kalendertag als Text `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. In Eingaben ungeprüft;
- * die Rechnung prüft ihn mit {@link datumPruefen}. Was die Rechnung liefert, ist immer gültig.
+ * Geprüfter Kalendertag als Text `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. Nur
+ * {@link datumPruefen} und die Rechnung erzeugen ihn. Eingaben tragen Daten als ungeprüften `string`; die Rechnung prüft
+ * sie selbst und meldet Ungültiges als Befund (U5).
  */
-export type Datum = string;
+export type Datum = string & Marke<'Datum'>;
 
 /** ISO-Wochentag: 1 = Montag … 7 = Sonntag. */
 export type Wochentag = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -50,7 +51,7 @@ export function tageImMonat(jahr: number, monat: number): number {
 /** Prüft Form und Existenz eines Kalendertags. Kein Leerraum, keine Zeitangabe. */
 export function datumPruefen(text: string): Ergebnis<Datum, Datumsfehler> {
   const tag = tagnummerLesen(text);
-  if (tag.ok) return { ok: true, wert: text };
+  if (tag.ok) return { ok: true, wert: text as Datum };
   return tag;
 }
 
@@ -58,7 +59,10 @@ export function datumPruefen(text: string): Ergebnis<Datum, Datumsfehler> {
 export function tagnummerLesen(text: string): Ergebnis<Tagnummer, Datumsfehler> {
   const m = FORM.exec(text);
   if (m === null) {
-    return { ok: false, fehler: { code: 'datum-form', meldung: `Kein Datum JJJJ-MM-TT: ${JSON.stringify(text)}` } };
+    return {
+      ok: false,
+      fehler: { code: 'datum-form', meldung: `Kein Datum JJJJ-MM-TT: ${JSON.stringify(text)}` },
+    };
   }
   const jahr = Number(m[1]);
   const monat = Number(m[2]);
@@ -105,7 +109,7 @@ export function zivilAusTagnummer(nummer: Tagnummer): Zivildatum {
 /** Text `JJJJ-MM-TT` einer Tagnummer zwischen 0001-01-01 und 9999-12-31. */
 export function datumAusTagnummer(nummer: Tagnummer): Datum {
   const { jahr, monat, tag } = zivilAusTagnummer(nummer);
-  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}`;
+  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}` as Datum;
 }
 
 /** ISO-Wochentag einer Tagnummer (1970-01-01 war ein Donnerstag). */

@@ -4,3 +4,5 @@
 
 export type { Datum, Datumsfehler, Datumsfehlercode, Wochentag } from './datum';
 export { datumPruefen } from './datum';
+export type { Bundesland, Feiertag, Feiertagskennung, Landesfeiertag } from './feiertage';
+export { BUNDESLAENDER, BUNDESWEITE_FEIERTAGE, LANDESFEIERTAGE, feiertage, ostersonntag } from './feiertage';
