@@ -6,8 +6,8 @@
 import { alsMenge } from '@tethys/dezimal';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { IfcBefundcode, IfcLesung } from './index';
+import { ifcLesen } from './lesen';
+import type { IfcBefundcode, IfcLesung } from './typen';
 import { bytes, gid, grundgeruest, ifcText } from './testhilfen';
 
 const KOPF = "ISO-10303-21;\nHEADER;\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n";

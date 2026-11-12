@@ -3,8 +3,8 @@
 // aus dem IFC-Base64-Alphabet `0-9A-Za-z_$`) → Befund, der Wert bleibt, wie er in der Datei steht.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { IfcLesung } from './index';
+import { ifcLesen } from './lesen';
+import type { IfcLesung } from './typen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Wände im EG mit den gegebenen GlobalIds (als STEP-Parameter), je mit einer Menge. */

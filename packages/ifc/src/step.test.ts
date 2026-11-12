@@ -4,8 +4,8 @@
 // Dateien, die nicht nur ASCII enthalten. Sollwerte von Hand.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { IfcLesung } from './index';
+import { ifcLesen } from './lesen';
+import type { IfcLesung } from './typen';
 import { bytes, codes, gid, grundgeruest, ifcText, latin1 } from './testhilfen';
 
 /** Wand #100 im EG mit Menge; `name` ist der STEP-Parameter des Namens (mit Apostrophen). */

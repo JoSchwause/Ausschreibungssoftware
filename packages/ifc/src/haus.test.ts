@@ -5,8 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { erzeugeModell } from '../../../fixtures/ifc/erzeugen.mjs';
-import { ifcLesen } from './index';
-import type { Bauwerksmodell } from './index';
+import { ifcLesen } from './lesen';
+import type { Bauwerksmodell } from './typen';
 import { bytes, fixtureBytes, fixtureJson } from './testhilfen';
 
 interface Sollmenge {
