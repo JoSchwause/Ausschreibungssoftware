@@ -37,6 +37,7 @@ import type {
   Projekt,
   Rechnung,
 } from './modell';
+import type { Betrag } from './zahlen';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -166,7 +167,8 @@ export interface ProjektRepository {
 /**
  * Ein LV in der Liste des Projekts (v1.3, Ticket 53 Punkt 1): Kennung und Name, ohne Knoten, wie `Projektuebersicht`.
  * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53). v1.4 (Review D-43): dazu
- * `nachtrag?` und `vorlage?` aus dem Kopf.
+ * `nachtrag?` und `vorlage?` aus dem Kopf. v1.5 (Ticket 95 Punkt 5, D-92.4): dazu genau eine Summe, das gespeicherte Netto
+ * nach Nachlass; weitere Summen nicht.
  */
 export interface LvUebersicht {
   readonly id: LeistungsverzeichnisId;
@@ -181,6 +183,15 @@ export interface LvUebersicht {
    * App die Vorlagen eines Projekts, ohne jedes LV zu laden (Ticket 90). `speicher` füllt es aus dem Kopf (Ticket 79).
    */
   readonly vorlage?: true;
+  /**
+   * Das gespeicherte Netto nach Nachlass des LV (v1.5, Ticket 95 Punkt 5; D-92.4, additiv): derselbe Wert wie
+   * `LvZustand.summen.gesamt.nettoNachNachlass` des gespeicherten Stands; `speicher` füllt es aus den gespeicherten Summen
+   * (Ticket 106) und rechnet nichts nach. So zeigt die Projektseite den Wert, ohne jedes LV zu laden (Ticket 121). Fehlt: noch
+   * nicht gerechnet, etwa solange `speicher` es nicht liefert (die App lädt das LV dann wie bisher); nie `null`. Negativ ist
+   * möglich (ein Befund der LV-Prüfung, E-06). Der Name ist der aus `Gesamtsummen`, weil `netto` dort das Netto vor Nachlass
+   * ist (L2). Alternative: siehe Offene Typfragen, Ticket 95.
+   */
+  readonly nettoNachNachlass?: Betrag;
 }
 
 export interface LvRepository {

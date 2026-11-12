@@ -1476,3 +1476,14 @@ export const beispielOzVorschlagAuftragsLv: {
   art: 'titel',
   vorschlag: { ordnungszahl: '02' as Ordnungszahl, ozIndex: null },
 };
+
+/**
+ * Punkt 5 (D-92.4): das Beispiel-LV in der Liste des Projekts nach `beispielChangeSetNachlass` (10 % Nachlass): Netto
+ * 12,35, Nachlass round(12,35 × 10 / 100, 2) = 1,24 (1,235), Netto nach Nachlass 11,11. Die Übersicht trägt 11,11, den Wert
+ * der gespeicherten Summen.
+ */
+export const beispielLvUebersichtNetto: LvUebersicht = {
+  id: lvId,
+  name: beispielLv.name,
+  nettoNachNachlass: '11.11' as Betrag,
+};

@@ -168,6 +168,7 @@ import {
   type Pruefbefund,
   type OzVorschlag,
   type OzVorschlagen,
+  type Gesamtsummen,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -243,6 +244,7 @@ import {
   beispielFehlerKostengruppe,
   beispielBefundeERechnung,
   beispielOzVorschlagAuftragsLv,
+  beispielLvUebersichtNetto,
 } from './beispiele';
 
 /**
@@ -1811,5 +1813,27 @@ describe('v1.5 Punkt 4: Offene Typfragen aus Ticket 70 gesichtet (D-95.4)', () =
     expectTypeOf<Aufmassposition>().not.toHaveProperty('bemerkung');
     expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
     expectTypeOf<Hinweistext>().not.toHaveProperty('textquelle');
+  });
+});
+
+describe('v1.5 Punkt 5: das gespeicherte Netto nach Nachlass in der LV-Übersicht (D-92.4)', () => {
+  it('additiv und optional, ein Betrag; fehlt = noch nicht gerechnet, nie null', () => {
+    expectTypeOf<LvUebersicht['nettoNachNachlass']>().toEqualTypeOf<Betrag | undefined>();
+    const alt: LvUebersicht = { id: beispielLv.id, name: beispielLv.name };
+    expect(alt).not.toHaveProperty('nettoNachNachlass');
+  });
+
+  it('der Name der Gesamtsummen (L2): `netto` hieße dort das Netto vor Nachlass', () => {
+    expectTypeOf<LvUebersicht['nettoNachNachlass']>().toEqualTypeOf<
+      Gesamtsummen['nettoNachNachlass'] | undefined
+    >();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('netto');
+  });
+
+  it('Beispiel: nach 10 % Nachlass trägt die Übersicht 11,11, nicht das Netto 12,35', () => {
+    const gesamt = beispielChangeSetNachlass.summen.gesamt;
+    expect(beispielLvUebersichtNetto.id).toBe(beispielLv.id);
+    expect(beispielLvUebersichtNetto.nettoNachNachlass).toBe(gesamt?.nettoNachNachlass);
+    expect(beispielLvUebersichtNetto.nettoNachNachlass).not.toBe(gesamt?.netto);
   });
 });
