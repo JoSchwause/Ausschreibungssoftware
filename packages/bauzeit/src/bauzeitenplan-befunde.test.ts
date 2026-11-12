@@ -281,5 +281,42 @@ describe('Form der Befunde (Pruefbefund, D-97.11)', () => {
       ['zyklus', 'c', 'vorgaenger'],
     ]);
     expect(e.befunde.every((b) => b.meldung.includes('b → c'))).toBe(true);
+    // Ein Zyklus betrifft den Vorgang, nicht genau eine Beziehung: kein Pfad.
+    expect(e.befunde.map((b) => b.ort.pfad)).toEqual([undefined, undefined]);
+  });
+
+  it('ein Befund zu genau einer Beziehung trägt den Pfad /vorgaenge[n]/vorgaenger[m], beide ab 1 (D-66)', () => {
+    // s ist Sammelvorgang (Kind k). x: 1. Beziehung gültig, 2. auf einen unbekannten Vorgänger, 3. Abstand ungültig.
+    // y: zwei Arten zum selben Vorgänger s, beide am Sammelvorgang. z folgt auf d (Dauer ungültig, ohne Termine).
+    const e = bauzeitenplanBerechnen(
+      plan([
+        vorgang('s', 0),
+        vorgang('k', 1, [], { elternId: 's' }),
+        vorgang('d', -1),
+        vorgang('x', 1, [ea('k'), ea('fehlt'), ea('k', 0.5)]),
+        vorgang('y', 1, [
+          { vorgaengerId: vid('s'), art: 'anfang-anfang', abstand: 0 },
+          { vorgaengerId: vid('s'), art: 'ende-ende', abstand: 0 },
+        ]),
+        vorgang('z', 1, [ea('k'), ea('d')]),
+      ]),
+    );
+    expect(e.befunde.map((b) => [b.code, b.ort])).toEqual([
+      ['dauer-ungueltig', { vorgangId: 'd', feld: 'dauer' }],
+      ['vorgaenger-unbekannt', { vorgangId: 'x', feld: 'vorgaenger', pfad: '/vorgaenge[4]/vorgaenger[2]' }],
+      ['abstand-ungueltig', { vorgangId: 'x', feld: 'vorgaenger', pfad: '/vorgaenge[4]/vorgaenger[3]' }],
+      [
+        'beziehung-an-sammelvorgang',
+        { vorgangId: 'y', feld: 'vorgaenger', pfad: '/vorgaenge[5]/vorgaenger[1]' },
+      ],
+      [
+        'beziehung-an-sammelvorgang',
+        { vorgangId: 'y', feld: 'vorgaenger', pfad: '/vorgaenge[5]/vorgaenger[2]' },
+      ],
+      [
+        'vorgaenger-ohne-termine',
+        { vorgangId: 'z', feld: 'vorgaenger', pfad: '/vorgaenge[6]/vorgaenger[2]' },
+      ],
+    ]);
   });
 });

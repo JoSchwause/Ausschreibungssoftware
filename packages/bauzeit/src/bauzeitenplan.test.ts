@@ -343,8 +343,14 @@ describe('Sammelvorgang', () => {
     expect(lage(mit)['x']).toEqual(['2027-01-04', '2027-01-04']);
     expect(lage(mit)['y']).toEqual(['2027-01-04', '2027-01-05']);
     expect(mit.befunde.map((b) => [b.code, b.ort])).toEqual([
-      ['beziehung-an-sammelvorgang', { vorgangId: 'x', feld: 'vorgaenger' }],
-      ['beziehung-an-sammelvorgang', { vorgangId: 'y', feld: 'vorgaenger' }],
+      [
+        'beziehung-an-sammelvorgang',
+        { vorgangId: 'x', feld: 'vorgaenger', pfad: '/vorgaenge[6]/vorgaenger[1]' },
+      ],
+      [
+        'beziehung-an-sammelvorgang',
+        { vorgangId: 'y', feld: 'vorgaenger', pfad: '/vorgaenge[7]/vorgaenger[1]' },
+      ],
     ]);
     expect(mit.befunde.map((b) => b.meldung)).toEqual([
       expect.stringContaining('s → x') as string,
@@ -360,7 +366,10 @@ describe('Sammelvorgang', () => {
     );
     expect(lage(amSammel)['a']).toEqual(['2027-01-04', '2027-01-08']);
     expect(amSammel.befunde.map((b) => [b.code, b.ort])).toEqual([
-      ['beziehung-an-sammelvorgang', { vorgangId: 's', feld: 'vorgaenger' }],
+      [
+        'beziehung-an-sammelvorgang',
+        { vorgangId: 's', feld: 'vorgaenger', pfad: '/vorgaenge[3]/vorgaenger[1]' },
+      ],
     ]);
   });
 
@@ -389,7 +398,7 @@ describe('unbekannter Vorgänger und Zyklen', () => {
         quelle: 'terminrechnung',
         code: 'vorgaenger-unbekannt',
         meldung: expect.stringContaining('fehlt → b') as string,
-        ort: { vorgangId: 'b', feld: 'vorgaenger' },
+        ort: { vorgangId: 'b', feld: 'vorgaenger', pfad: '/vorgaenge[2]/vorgaenger[1]' },
       },
     ]);
   });

@@ -168,6 +168,8 @@ interface Kante {
   readonly nach: number;
   readonly art: Anordnungsart;
   readonly abstand: number;
+  /** Stelle der Beziehung in `vorgaenger` des Nachfolgers (ab 0), für den Pfad eines Befunds. */
+  readonly stelle: number;
 }
 
 const vomEnde = (art: Anordnungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
@@ -180,6 +182,15 @@ function befund(code: Bauzeitbefundcode, meldung: string, ort: Befundort = {}): 
 /** Ort: ein Vorgang und eines seiner Felder. */
 const am = (vorgangId: VorgangId, feld?: string): Befundort =>
   feld === undefined ? { vorgangId } : { vorgangId, feld };
+/**
+ * Ort eines Befunds zu genau einer Anordnungsbeziehung (Nachtrag Review, D-66): der Nachfolger, `feld: 'vorgaenger'` und
+ * `pfad: '/vorgaenge[n]/vorgaenger[m]'`, beide ab 1 (Stelle im Plan und in `Vorgang.vorgaenger`).
+ */
+const anBeziehung = (vorgangId: VorgangId, vorgang: number, stelle: number): Befundort => ({
+  vorgangId,
+  feld: 'vorgaenger',
+  pfad: `/vorgaenge[${String(vorgang + 1)}]/vorgaenger[${String(stelle + 1)}]`,
+});
 
 /** Die vier Anordnungsarten (auch für die Formprüfung des Ausführers). */
 export const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
@@ -373,11 +384,11 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
       if (problem !== null)
         befunde.push(befund('ist-ungueltig', `Vorgang ${v.id}: ${problem}`, am(v.id, 'ist')));
     }
-    for (const b of v.vorgaenger) {
+    v.vorgaenger.forEach((b, stelle) => {
       const von = indexVon.get(b.vorgaengerId);
       const beziehung = `Anordnungsbeziehung ${b.vorgaengerId} → ${v.id}`;
       const melde = (code: Bauzeitbefundcode, text: string): void => {
-        befunde.push(befund(code, `${beziehung}: ${text}`, am(v.id, 'vorgaenger')));
+        befunde.push(befund(code, `${beziehung}: ${text}`, anBeziehung(v.id, nach, stelle)));
       };
       if (von === undefined) melde('vorgaenger-unbekannt', 'den Vorgänger gibt es nicht');
       else if (!BEZIEHUNGSARTEN.includes(b.art))
@@ -386,8 +397,8 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
         melde('abstand-ungueltig', `Abstand ${String(b.abstand)} ist keine gültige Zahl von Arbeitstagen`);
       } else if (sammel(von) || sammel(nach)) {
         melde('beziehung-an-sammelvorgang', 'an einem Sammelvorgang nicht gerechnet');
-      } else kanten.push({ von, nach, art: b.art, abstand: b.abstand });
-    }
+      } else kanten.push({ von, nach, art: b.art, abstand: b.abstand, stelle });
+    });
   });
 
   // --- Zyklen unter den gültigen Vorgängen: ihre Beteiligten bleiben ohne Termine ---
@@ -452,7 +463,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
         befund(
           'vorgaenger-ohne-termine',
           `Vorgang ${id(k.nach)}: Vorgänger ${id(k.von)} hat keine Termine, die Beziehung entfällt`,
-          am(id(k.nach), 'vorgaenger'),
+          anBeziehung(id(k.nach), k.nach, k.stelle),
         ),
       );
     }
