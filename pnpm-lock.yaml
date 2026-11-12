@@ -193,6 +193,19 @@ importers:
         specifier: workspace:*
         version: link:../vertrag
 
+  packages/ifc:
+    dependencies:
+      '@tethys/dezimal':
+        specifier: workspace:*
+        version: link:../dezimal
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
+    devDependencies:
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/kern:
     dependencies:
       '@tethys/dezimal':

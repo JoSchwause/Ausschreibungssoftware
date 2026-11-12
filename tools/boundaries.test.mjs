@@ -95,6 +95,18 @@ describe('Paketgrenzen (A3)', () => {
     expect(regeln).toEqual(['grenze-packages-erechnung']);
   });
 
+  it('ifc darf vertrag und dezimal importieren, kern nicht; die App darf ifc importieren (Ticket 98, D-50)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/ifc', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/ifc']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/ifc/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-ifc']);
+  });
+
   it('weist Import der App durch ein Paket ab', async () => {
     paket('packages/vertrag', ['@tethys/web']);
     paket('apps/web');
