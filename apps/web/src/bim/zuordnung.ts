@@ -62,6 +62,20 @@ export function mengenartenDerAuswahl(modell: Bauwerksmodell, auswahl: readonly 
 }
 
 /**
+ * Die ausgewählten Bauteile in der Reihenfolge des Modells, jede GlobalId einmal; GlobalIds, die kein Bauteil des Modells
+ * tragen (Strukturknoten, Fremdes), fallen weg. So hängt die Reihenfolge der Ansatzzeilen (D-53) nicht von der Klickfolge ab.
+ */
+export function bauteileInModellreihenfolge(
+  modell: Bauwerksmodell,
+  auswahl: readonly string[],
+): IfcGlobalId[] {
+  const gewaehlt = new Set(auswahl);
+  const aus = new Set<IfcGlobalId>();
+  for (const b of modell.bauteile) if (gewaehlt.has(b.globalId)) aus.add(b.globalId);
+  return [...aus];
+}
+
+/**
  * `BauteileZuordnen` mit der bisherigen Liste der Position und den neuen Paaren dahinter (Reihenfolge der Auswahl); ein Paar,
  * das schon da ist, kommt nicht noch einmal (der Kern wiese es ab, D-105.5). `null`, wenn sich nichts ändert.
  */

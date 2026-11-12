@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { bauteil, gid, hausModell, knoten, menge, modell } from './testhilfen';
 import {
+  bauteileInModellreihenfolge,
   mengenartenDerAuswahl,
   positionenSuchen,
   zuordnenBefehl,
@@ -53,6 +54,23 @@ describe('zuordnenBefehl: bisherige Liste plus neue Paare, ein Befehl', () => {
     const p: Position = { ...position(typischKnoten(), POS_03_0010), bauteile: [z('A', 'Length')] };
     expect(zuordnenBefehl(p, ['A'] as IfcGlobalId[], 'Length')).toBeNull();
     expect(zuordnenBefehl(p, [], 'Length')).toBeNull();
+  });
+});
+
+describe('bauteileInModellreihenfolge', () => {
+  it('ordnet eine Auswahl nach dem Modell, unabhängig von der Klickfolge; Strukturknoten und Fremdes fallen weg', () => {
+    const m = modell(
+      [knoten('EG', 'geschoss', null)],
+      [bauteil('W1', 'EG'), bauteil('W2', 'EG'), bauteil('W3', 'EG')],
+    );
+    expect(bauteileInModellreihenfolge(m, [gid('W3'), gid('EG'), gid('W1'), gid('X'), gid('W3')])).toEqual([
+      gid('W1'),
+      gid('W3'),
+    ]);
+  });
+
+  it('am Haus: die Innenwände des EG in jeder Klickfolge wie die Zuordnung der Fixture (D-99.2)', () => {
+    expect(bauteileInModellreihenfolge(hausModell(), [...IW_EG].reverse())).toEqual(IW_EG);
   });
 });
 

@@ -4,7 +4,7 @@
 // entfernen, Befunde der Zuordnung mit Sprung in den Baum (U5). Dazu „Aufmaßblatt aus Auswahl …“ bei einem Auftrags-LV.
 
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { Bauwerksmodell, IfcGlobalId, Position, PositionId, ProjektId } from '@tethys/vertrag';
+import type { Bauwerksmodell, Position, PositionId, ProjektId } from '@tethys/vertrag';
 import { zuordnungenPruefen } from '@tethys/bim';
 import { useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -14,6 +14,7 @@ import { texte } from './texte';
 import { uebernahmeVorschau } from './uebernahme';
 import type { Bezugsstand } from './useBezug';
 import {
+  bauteileInModellreihenfolge,
   mengenartenDerAuswahl,
   positionenSuchen,
   zuordnenBefehl,
@@ -176,10 +177,9 @@ function ZuordnenDialog({
   const position: Position | undefined = bezug.knoten.find(
     (k): k is Position => k.art === 'position' && k.id === positionId,
   );
+  const bauteile = useMemo(() => bauteileInModellreihenfolge(modell, auswahl), [modell, auswahl]);
   const befehl =
-    position === undefined || mengenart === undefined
-      ? null
-      : zuordnenBefehl(position, auswahl as readonly IfcGlobalId[], mengenart);
+    position === undefined || mengenart === undefined ? null : zuordnenBefehl(position, bauteile, mengenart);
   // Befunde vorab (D-52, D-53): wie die Mengenübernahme die Position nach dem Zuordnen läse.
   const befunde =
     befehl === null || position === undefined
