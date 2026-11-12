@@ -6,14 +6,23 @@ import type {
   Befehlshinweis,
   BefehlsEmpfaenger,
   Einfuegeort,
+  Ergebnis,
   GridIdQuelle,
   GridZahlen,
   KnotenId,
+  Kostengruppennummer,
   LvAnsicht,
   LvBefehl,
   LvSpalte,
   PositionAnlegen,
 } from '@tethys/vertrag';
+
+/**
+ * Lesefunktion der App für die Spalte „KG“ (Ticket 93): getrimmter, nicht leerer Text → Kostengruppennummer oder eine
+ * deutsche Meldung für die Zelle. Die Form prüft nicht das Grid (es darf `kosten` nicht importieren, A3); die App reicht
+ * `kgLesen` aus `kosten` herein. Leeren Text liest das Grid selbst als `null` (Zuordnung entfernen).
+ */
+export type KostengruppeLesen = (text: string) => Ergebnis<Kostengruppennummer, string>;
 
 /** Ziel eines Sprunglinks (Ticket 46, Punkt 8): Ändert sich `nr`, springt das Grid zur Zelle. */
 export interface Sprungziel {

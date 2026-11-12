@@ -5,6 +5,7 @@ import type {
   Einheitspreis,
   BildId,
   ElternId,
+  Kostengruppennummer,
   Langtext,
   LvSpalte,
   LvZeile,
@@ -16,7 +17,7 @@ import type {
   Zuschlag,
   TitelId,
 } from '@tethys/vertrag';
-import { idQuelleAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
+import { idQuelleAttrappe, kostengruppeAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
 import { anzeigeText, befehlAusEingabe, hinweisKlartext, istBearbeitbar } from './eingabe';
 import { planeEinfuegen } from './einfuegen';
 import { parseTsv } from './tsv';
@@ -235,6 +236,55 @@ describe('befehlAusEingabe', () => {
     expect(befehlAusEingabe(titel, 'menge', '1', z)).toEqual({ art: 'schreibgeschuetzt' });
     expect(istBearbeitbar(position, 'ordnungszahl')).toBe(false);
     expect(istBearbeitbar(position, 'gesamtpreis')).toBe(false);
+  });
+});
+
+describe('Spalte „KG“ (Ticket 93): Eingabe', () => {
+  const z = zahlenAttrappe;
+  const lesen = kostengruppeAttrappe;
+  const mitKg: LvZeile = {
+    ...position,
+    knoten: { ...(position.knoten as Position), kostengruppe: '330' as Kostengruppennummer },
+  };
+
+  it('zeigt die Nummer der Position, an der Gliederung nichts; bearbeitbar nur an Positionen', () => {
+    expect(anzeigeText(mitKg, 'kostengruppe', z)).toBe('330');
+    expect(anzeigeText(position, 'kostengruppe', z)).toBe('');
+    expect(anzeigeText(titel, 'kostengruppe', z)).toBe('');
+    expect(istBearbeitbar(position, 'kostengruppe')).toBe(true);
+    expect(istBearbeitbar(titel, 'kostengruppe')).toBe(false);
+  });
+
+  it('eine lesbare Nummer wird KostengruppeSetzen; Leerraum zählt nicht', () => {
+    expect(befehlAusEingabe(position, 'kostengruppe', ' 330 ', z, lesen)).toEqual({
+      art: 'befehl',
+      befehl: { art: 'KostengruppeSetzen', positionId: 'p1', kostengruppe: '330' },
+    });
+    expect(befehlAusEingabe(mitKg, 'kostengruppe', '340', z, lesen)).toMatchObject({
+      befehl: { kostengruppe: '340' },
+    });
+  });
+
+  it('leere Eingabe entfernt die Zuordnung (null); ohne Zuordnung und bei gleicher Nummer keine Änderung', () => {
+    expect(befehlAusEingabe(mitKg, 'kostengruppe', '', z, lesen)).toEqual({
+      art: 'befehl',
+      befehl: { art: 'KostengruppeSetzen', positionId: 'p1', kostengruppe: null },
+    });
+    expect(befehlAusEingabe(position, 'kostengruppe', '  ', z, lesen)).toEqual({ art: 'keine-aenderung' });
+    expect(befehlAusEingabe(mitKg, 'kostengruppe', ' 330', z, lesen)).toEqual({ art: 'keine-aenderung' });
+  });
+
+  it('formwidrige Eingabe ist ein Zellfehler mit der Meldung der Lesefunktion, kein Befehl', () => {
+    expect(befehlAusEingabe(position, 'kostengruppe', '33', z, lesen)).toEqual({
+      art: 'ungueltig',
+      meldung: 'Keine Kostengruppennummer (drei Ziffern, die erste nicht 0).',
+    });
+    expect(befehlAusEingabe(position, 'kostengruppe', '033', z, lesen).art).toBe('ungueltig');
+  });
+
+  it('an einer Gliederung und ohne Lesefunktion schreibgeschützt', () => {
+    expect(befehlAusEingabe(titel, 'kostengruppe', '330', z, lesen)).toEqual({ art: 'schreibgeschuetzt' });
+    expect(befehlAusEingabe(position, 'kostengruppe', '330', z)).toEqual({ art: 'schreibgeschuetzt' });
   });
 });
 
