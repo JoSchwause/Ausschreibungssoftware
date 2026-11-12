@@ -1,6 +1,6 @@
 # 99: Fixtures: IFC-Haus in zwei Ständen, großes Modell, Sollwerte für das Tor X1
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: F, X1 · Paket: `fixtures/` (neuer Ordner `fixtures/ifc/`, dazu `fixtures/README.md`, `fixtures.test.mjs`,
 `REUSE.toml` falls nötig)
@@ -186,3 +186,10 @@ Leistungsbudgets fremder Pakete, die keine Datei dieses Tickets lesen: D-45 in `
 
 **Offen / Hinweise:** keine G-Frage berührt. Für 107/108/117: Die Lesarten D-99.2, D-99.5 bis D-99.10 und D-99.12 sind
 Annahmen dieser Fixture; wählt `bim` andere Befundcodes oder Ausdrucksformen, gelten die Mengen und Beträge trotzdem.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `0ce685f` (Branch `welle-6/99-fixtures-ifc`, `933a15a`). `fixtures/ifc/haus-v1.ifc`,
+`haus-v1-ifc2x3.ifc` (mm), `haus-v2.ifc`, Erzeuger `erzeugen.mjs` (10.000 Bauteile ≈ 21 MB, D-99.3), `typisch-bim.json` mit
+Herleitung (LV nach Übernahme netto 36.068,86; BGF 197,596, BRI 617,485, NRF 166,252; Kostenschätzung 274.302,77; nach v2 netto
+35.894,85). Lesarten D-99.1–D-99.14 bestätigen 107, 108, 117 (u. a. D-99.2: „Wände des EG“ = Innenwände EG → 03.0010).
