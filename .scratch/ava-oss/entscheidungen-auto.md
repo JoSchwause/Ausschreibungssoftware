@@ -639,3 +639,10 @@ Question: Nach dem Merge von 114, 118–121 traf der Lauf das 5-Stunden-Limit ei
 Decision: Beide aus ihrem gespeicherten Stand fortgesetzt (wie D-61/D-65). Nichts gekürzt: X2–X5 sind schon erreicht, offen ist nur der Weg X1 (115, 116, 117).
 Reason: Der restliche Umfang passt ohne Kürzung; die Kürzungsreihenfolge greift erst, wenn X1-Kern gefährdet ist.
 Reversible: yes  Touches: Ablauf
+
+## D-68 Wellen-Review parallel zum Tor X1
+Welle 6 · Tickets 117, 122 · decided by: orchestrator
+Question: Das Wellen-Review (Schritt 6) läuft auf dem Integrationszweig nach allen Merges; 117 fügt nur Tests hinzu. Warten oder parallel?
+Decision: Review jetzt auf `integration/welle-6` @ `6ab5796` (aller Produktcode der Welle, Fixpunkt `79e6680`), parallel zu 117. Die drei Testdateien aus 117 prüft der Orchestrator beim Merge; meldet 117 einen Produktfehler, geht er in das Fix-Ticket 122.
+Reason: Spart eine volle Review-Runde Wartezeit; der Review-Gegenstand ändert sich durch reine Tests nicht.
+Reversible: yes  Touches: Ablauf
