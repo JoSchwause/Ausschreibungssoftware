@@ -25,4 +25,8 @@ export const texte = {
     ohneName: (art: Strukturknoten['art']): string => `${strukturart[art]} ohne Namen`,
     ohneNameBauteil: 'Bauteil ohne Namen',
   },
+  einlesen: {
+    dateiGross: (bytes: number): string =>
+      `Die Datei ist ${Math.round(bytes / 1_000_000).toLocaleString('de-DE')} MB groß. Einlesen und Anzeigen können lange dauern und viel Speicher brauchen.`,
+  },
 } as const;
