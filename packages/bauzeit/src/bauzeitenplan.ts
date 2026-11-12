@@ -8,11 +8,12 @@
 // (Index seines ersten Tages) und das Ende `e = a + dauer` (Index nach seinem letzten Tag, also der Zeitpunkt, an dem er
 // fertig ist); angezeigt wird als Ende der Tag `e − 1`, beim Meilenstein der Tag `a`.
 
+import { alsProzent, vergleiche, vorzeichen } from '@tethys/dezimal';
 import type { Prozent } from '@tethys/vertrag';
-import { KRITISCHE_WEGE_HOECHSTENS } from './annahmen';
+import { HOECHSTWERT_ARBEITSTAGE, KRITISCHE_WEGE_HOECHSTENS } from './annahmen';
 import type { Datum, Tagnummer } from './datum';
 import { LETZTER_TAG, datumAusTagnummer, tagnummerLesen } from './datum';
-import type { Arbeitskalender } from './kalender';
+import type { Arbeitskalender, Kalenderhinweis } from './kalender';
 import { Tageskalender } from './kalender';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
@@ -201,17 +202,122 @@ function befund(
   return { code, vorgangId, vorgaengerId, beteiligte, meldung };
 }
 
+const BEZIEHUNGSARTEN: readonly Beziehungsart[] = [
+  'ende-anfang',
+  'anfang-anfang',
+  'ende-ende',
+  'anfang-ende',
+];
+
+const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
+  Number.isInteger(wert) && wert >= kleinster && wert <= HOECHSTWERT_ARBEITSTAGE;
+
+function hundertProzent(): Prozent {
+  const p = alsProzent('100.00');
+  if (!p.ok) throw new Error(p.fehler.meldung);
+  return p.wert;
+}
+const HUNDERT_PROZENT = hundertProzent();
+
+/** Prüft Ist-Termine und Fortschritt; liefert das Problem als Text oder `null`. */
+function istPruefen(ist: Isttermine): string | null {
+  const beginn = ist.beginn === null ? null : tagnummerLesen(ist.beginn);
+  const ende = ist.ende === null ? null : tagnummerLesen(ist.ende);
+  if (beginn !== null && !beginn.ok) return `Ist-Beginn: ${beginn.fehler.meldung}`;
+  if (ende !== null && !ende.ok) return `Ist-Ende: ${ende.fehler.meldung}`;
+  if (ende !== null && beginn === null) return 'Ist-Ende ohne Ist-Beginn';
+  // Hier sind beide, wenn vorhanden, gültig gelesen.
+  if (beginn?.ok === true && ende?.ok === true && ende.wert < beginn.wert)
+    return 'Ist-Ende liegt vor dem Ist-Beginn';
+  const fortschritt = alsProzent(String(ist.fortschritt));
+  if (!fortschritt.ok) return `Fortschritt: ${fortschritt.fehler.meldung}`;
+  if (vorzeichen(fortschritt.wert) < 0 || vergleiche(fortschritt.wert, HUNDERT_PROZENT) > 0) {
+    return `Fortschritt außerhalb von 0 bis 100 Prozent: ${fortschritt.wert}`;
+  }
+  return null;
+}
+
+function kalenderMeldung(h: Kalenderhinweis): string {
+  switch (h.code) {
+    case 'arbeitstag-ungueltig':
+      return `Kein Wochentag 1 bis 7: ${JSON.stringify(h.wert)}; übergangen`;
+    case 'bundesland-unbekannt':
+      return `Unbekanntes Bundesland ${JSON.stringify(h.wert)}; es gelten nur die bundesweiten Feiertage`;
+    case 'freier-tag-ungueltig':
+      return `Freier Tag ist kein Datum JJJJ-MM-TT: ${JSON.stringify(h.wert)}; übergangen`;
+  }
+}
+
+/**
+ * Kreise in der Gliederung (`elternId`): Jeder Vorgang hat höchstens einen Elternteil, also ist jeder Kreis eine Schleife
+ * von Elternverweisen. Beteiligte aufsteigend, Kreise nach ihrem ersten Beteiligten.
+ */
+function elternKreiseFinden(eltern: readonly number[]): number[][] {
+  const zustand = new Array<number>(eltern.length).fill(0); // 0 offen, 1 auf dem Weg, 2 fertig
+  const kreise: number[][] = [];
+  for (let s = 0; s < eltern.length; s++) {
+    const weg: number[] = [];
+    let i = s;
+    while (i >= 0 && zustand[i] === 0) {
+      zustand[i] = 1;
+      weg.push(i);
+      i = eltern[i] ?? -1;
+    }
+    if (i >= 0 && zustand[i] === 1) kreise.push(weg.slice(weg.indexOf(i)).sort((x, y) => x - y));
+    for (const w of weg) zustand[w] = 2;
+  }
+  return kreise.sort((x, y) => (x[0] ?? 0) - (y[0] ?? 0));
+}
+
 export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeitenplanergebnis {
   const vorgaenge = eingabe.vorgaenge;
   const n = vorgaenge.length;
+  const id = (i: number): VorgangId => vorgaenge[i]?.id ?? '';
+  // Befunde in Rechenreihenfolge: Plan und Kalender; Gliederung; je Vorgang in Eingabereihenfolge (Werte, dann
+  // Beziehungen); Zyklen; Terminvorgaben jenseits des Kalenders; entfallene Beziehungen; Termine jenseits des Kalenders;
+  // kritische Wege.
+  const planBefunde: Bauzeitbefund[] = [];
   const befunde: Bauzeitbefund[] = [];
+
+  // --- Plan und Kalender ---
+  const kalender = new Tageskalender(eingabe.kalender);
+  const start = tagnummerLesen(eingabe.projektbeginn);
+  if (!start.ok) planBefunde.push(befund('projektbeginn-ungueltig', start.fehler.meldung));
+  for (const h of kalender.hinweise) planBefunde.push(befund(h.code, kalenderMeldung(h)));
+  if (!kalender.hatArbeitstage) {
+    planBefunde.push(befund('kalender-ohne-arbeitstage', 'Der Arbeitskalender hat keinen Arbeitstag'));
+  }
 
   // --- Gliederung: Kennungen, Eltern, Art ---
   const indexVon = new Map<VorgangId, number>();
+  const doppelt = new Array<boolean>(n).fill(false);
   vorgaenge.forEach((v, i) => {
-    if (!indexVon.has(v.id)) indexVon.set(v.id, i);
+    if (indexVon.has(v.id)) doppelt[i] = true;
+    else indexVon.set(v.id, i);
   });
-  const eltern = vorgaenge.map((v) => (v.elternId === null ? -1 : (indexVon.get(v.elternId) ?? -1)));
+  const eltern = new Array<number>(n).fill(-1);
+  vorgaenge.forEach((v, i) => {
+    if (doppelt[i] === true) {
+      befunde.push(
+        befund('id-doppelt', `Kennung ${v.id} kommt mehrfach vor; nur der erste Vorgang zählt`, v.id),
+      );
+      return;
+    }
+    if (v.elternId === null) return;
+    const p = indexVon.get(v.elternId);
+    if (p === undefined) {
+      befunde.push(
+        befund('eltern-unbekannt', `Vorgang ${v.id}: Sammelvorgang ${v.elternId} gibt es nicht`, v.id),
+      );
+      return;
+    }
+    eltern[i] = p;
+  });
+  for (const kreis of elternKreiseFinden(eltern)) {
+    for (const i of kreis) eltern[i] = -1;
+    const ids = kreis.map(id);
+    befunde.push(befund('eltern-zyklus', `Kreis in der Gliederung: ${ids.join(' → ')}`, null, null, ids));
+  }
   const hatKinder = new Array<boolean>(n).fill(false);
   for (const p of eltern) if (p >= 0) hatKinder[p] = true;
   const art: Vorgangsart[] = vorgaenge.map((v, i) =>
@@ -219,90 +325,124 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   );
   const sammel = (i: number): boolean => art[i] === 'sammelvorgang';
 
-  // --- Je Vorgang: Terminvorgabe und Anordnungsbeziehungen ---
+  // --- Je Vorgang: Dauer, Terminvorgabe, Ist-Termine, Anordnungsbeziehungen ---
+  const gueltig = new Array<boolean>(n).fill(false);
+  const vorgabeTag = new Array<Tagnummer | null>(n).fill(null);
   const kanten: Kante[] = [];
   vorgaenge.forEach((v, nach) => {
-    if (sammel(nach) && v.fruehesterBeginn !== null) {
-      befunde.push(
-        befund(
-          'terminvorgabe-an-sammelvorgang',
-          `Sammelvorgang ${v.id}: Terminvorgabe nicht gerechnet`,
-          v.id,
-        ),
-      );
+    if (doppelt[nach] === true) return;
+    if (sammel(nach)) {
+      if (v.fruehesterBeginn !== null) {
+        befunde.push(
+          befund(
+            'terminvorgabe-an-sammelvorgang',
+            `Sammelvorgang ${v.id}: Terminvorgabe nicht gerechnet`,
+            v.id,
+          ),
+        );
+      }
+    } else {
+      if (ganzeArbeitstage(v.dauer, 0)) gueltig[nach] = true;
+      else {
+        befunde.push(
+          befund(
+            'dauer-ungueltig',
+            `Vorgang ${v.id}: Dauer ${String(v.dauer)} ist keine gültige Dauer`,
+            v.id,
+          ),
+        );
+      }
+      if (v.fruehesterBeginn !== null) {
+        const tag = tagnummerLesen(v.fruehesterBeginn);
+        if (tag.ok) vorgabeTag[nach] = tag.wert;
+        else befunde.push(befund('terminvorgabe-ungueltig', `Vorgang ${v.id}: ${tag.fehler.meldung}`, v.id));
+      }
+    }
+    if (v.ist !== null) {
+      const problem = istPruefen(v.ist);
+      if (problem !== null) befunde.push(befund('ist-ungueltig', `Vorgang ${v.id}: ${problem}`, v.id));
     }
     for (const b of v.vorgaenger) {
       const von = indexVon.get(b.vorgaengerId);
-      if (von === undefined) {
-        befunde.push(
-          befund(
-            'vorgaenger-unbekannt',
-            `Vorgang ${v.id}: Vorgänger ${b.vorgaengerId} gibt es nicht`,
-            v.id,
-            b.vorgaengerId,
-          ),
-        );
-        continue;
-      }
-      if (sammel(von) || sammel(nach)) {
-        befunde.push(
-          befund(
-            'beziehung-an-sammelvorgang',
-            `Anordnungsbeziehung ${b.vorgaengerId} → ${v.id} an einem Sammelvorgang nicht gerechnet`,
-            v.id,
-            b.vorgaengerId,
-          ),
-        );
-        continue;
-      }
-      kanten.push({ von, nach, art: b.art, abstand: b.abstand });
+      const beziehung = `Anordnungsbeziehung ${b.vorgaengerId} → ${v.id}`;
+      const melde = (code: Bauzeitbefundcode, text: string): void => {
+        befunde.push(befund(code, `${beziehung}: ${text}`, v.id, b.vorgaengerId));
+      };
+      if (von === undefined) melde('vorgaenger-unbekannt', 'den Vorgänger gibt es nicht');
+      else if (!BEZIEHUNGSARTEN.includes(b.art))
+        melde('beziehungsart-unbekannt', `Art ${JSON.stringify(b.art)}`);
+      else if (!ganzeArbeitstage(b.abstand, -HOECHSTWERT_ARBEITSTAGE)) {
+        melde('abstand-ungueltig', `Abstand ${String(b.abstand)} ist keine gültige Zahl von Arbeitstagen`);
+      } else if (sammel(von) || sammel(nach)) {
+        melde('beziehung-an-sammelvorgang', 'an einem Sammelvorgang nicht gerechnet');
+      } else kanten.push({ von, nach, art: b.art, abstand: b.abstand });
     }
   });
 
-  // --- Zyklen: ihre Beteiligten bleiben ohne Termine, Beziehungen von ihnen entfallen ---
+  // --- Zyklen unter den gültigen Vorgängen: ihre Beteiligten bleiben ohne Termine ---
   const imZyklus = new Array<boolean>(n).fill(false);
-  for (const zyklus of zyklenFinden(n, kanten)) {
+  const gueltigeKanten = kanten.filter((k) => gueltig[k.von] === true && gueltig[k.nach] === true);
+  for (const zyklus of zyklenFinden(n, gueltigeKanten)) {
     for (const i of zyklus) imZyklus[i] = true;
-    const ids = zyklus.map((i) => vorgaenge[i]?.id ?? '');
+    const ids = zyklus.map(id);
     befunde.push(
       befund('zyklus', `Zyklus in den Anordnungsbeziehungen: ${ids.join(' → ')}`, null, null, ids),
     );
   }
-  const imNetz = (i: number): boolean => !sammel(i) && imZyklus[i] !== true;
+
+  const ohneTermine = (): Bauzeitenplanergebnis => ({
+    projektbeginn: null,
+    projektende: null,
+    vorgaenge: vorgaenge.map((v, i) => ({ id: v.id, art: art[i] ?? 'vorgang', termine: null })),
+    kritischeWege: [],
+    befunde: [...planBefunde, ...befunde],
+  });
+  if (!start.ok || !kalender.hatArbeitstage) return ohneTermine();
+  const folge = new Arbeitstagefolge(kalender, start.wert);
+  const startTag = folge.tag(0);
+  if (startTag === null) {
+    befunde.push(
+      befund('termin-ausserhalb-kalender', 'Ab dem Projektbeginn gibt es bis 9999-12-31 keinen Arbeitstag'),
+    );
+    return ohneTermine();
+  }
+
+  // --- Netz: gültige Vorgänge außerhalb von Zyklen; Terminvorgabe als Index des ersten Arbeitstags ab dem Datum ---
+  const vorgabe = new Array<number>(n).fill(0);
+  const imNetz = new Array<boolean>(n).fill(false);
+  for (let i = 0; i < n; i++) {
+    if (gueltig[i] !== true || imZyklus[i] === true) continue;
+    const tag = vorgabeTag[i] ?? null;
+    if (tag !== null) {
+      const index = folge.indexAb(tag);
+      if (index === null) {
+        befunde.push(
+          befund(
+            'termin-ausserhalb-kalender',
+            `Vorgang ${id(i)}: ab der Terminvorgabe gibt es bis 9999-12-31 keinen Arbeitstag`,
+            id(i),
+          ),
+        );
+        continue;
+      }
+      vorgabe[i] = index;
+    }
+    imNetz[i] = true;
+  }
   const netzkanten: Kante[] = [];
   for (const k of kanten) {
-    if (imNetz(k.von) && imNetz(k.nach)) netzkanten.push(k);
-    else if (imNetz(k.nach)) {
-      const von = vorgaenge[k.von]?.id ?? '';
-      const nach = vorgaenge[k.nach]?.id ?? '';
+    if (imNetz[k.von] === true && imNetz[k.nach] === true) netzkanten.push(k);
+    else if (imNetz[k.nach] === true) {
       befunde.push(
         befund(
           'vorgaenger-ohne-termine',
-          `Vorgang ${nach}: Vorgänger ${von} hat keine Termine, die Beziehung entfällt`,
-          nach,
-          von,
+          `Vorgang ${id(k.nach)}: Vorgänger ${id(k.von)} hat keine Termine, die Beziehung entfällt`,
+          id(k.nach),
+          id(k.von),
         ),
       );
     }
   }
-
-  const ohneTermine = (projektbeginn: Datum | null): Bauzeitenplanergebnis => ({
-    projektbeginn,
-    projektende: null,
-    vorgaenge: vorgaenge.map((v, i) => ({ id: v.id, art: art[i] ?? 'vorgang', termine: null })),
-    kritischeWege: [],
-    befunde,
-  });
-  const kalender = new Tageskalender(eingabe.kalender);
-  const start = tagnummerLesen(eingabe.projektbeginn);
-  if (!start.ok) {
-    befunde.unshift(befund('projektbeginn-ungueltig', start.fehler.meldung));
-    return ohneTermine(null);
-  }
-  const folge = new Arbeitstagefolge(kalender, start.wert);
-  const startTag = folge.tag(0);
-  if (startTag === null) return ohneTermine(null);
-
   const aus: Kante[][] = Array.from({ length: n }, () => []);
   const ein: Kante[][] = Array.from({ length: n }, () => []);
   for (const k of netzkanten) {
@@ -310,11 +450,11 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     ein[k.nach]?.push(k);
   }
 
-  // --- Topologische Ordnung der Vorgänge im Netz (Kahn), Startknoten in Eingabereihenfolge ---
+  // --- Topologische Ordnung des Netzes (Kahn), Startknoten in Eingabereihenfolge ---
   const offen = new Array<number>(n).fill(0);
   for (const k of netzkanten) offen[k.nach] = (offen[k.nach] ?? 0) + 1;
   const ordnung: number[] = [];
-  for (let i = 0; i < n; i++) if (imNetz(i) && offen[i] === 0) ordnung.push(i);
+  for (let i = 0; i < n; i++) if (imNetz[i] === true && offen[i] === 0) ordnung.push(i);
   for (let p = 0; p < ordnung.length; p++) {
     for (const k of aus[ordnung[p] ?? 0] ?? []) {
       const rest = (offen[k.nach] ?? 0) - 1;
@@ -322,13 +462,6 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
       if (rest === 0) ordnung.push(k.nach);
     }
   }
-
-  // Terminvorgabe „Beginn frühestens“ als Index des ersten Arbeitstags ab dem Datum.
-  const vorgabe = vorgaenge.map((v) => {
-    if (v.fruehesterBeginn === null) return 0;
-    const tag = tagnummerLesen(v.fruehesterBeginn);
-    return tag.ok ? (folge.indexAb(tag.wert) ?? 0) : 0;
-  });
 
   // --- Vorwärtsrechnung: Anfang a, Ende e = a + dauer (Indizes der Arbeitstagefolge) ---
   const dauer = vorgaenge.map((v) => v.dauer);
@@ -366,7 +499,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     ((vomEnde(k.art) ? (e[k.von] ?? 0) : (a[k.von] ?? 0)) + k.abstand);
 
   // --- Lagen in Tagesindizes (Ende einschließlich), Sammelvorgänge aus ihren Nachfahren ---
-  const lagen: (Lage | null)[] = new Array<Lage | null>(n).fill(null);
+  const lagen = new Array<Lage | null>(n).fill(null);
   for (const i of ordnung) {
     const d = dauer[i] ?? 0;
     const gesamtpuffer = (sa[i] ?? 0) - (a[i] ?? 0);
@@ -381,43 +514,51 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
       freierPuffer,
     };
     lagen[i] = lage;
-    // In alle Sammelvorgänge darüber einrechnen; höchstens n Schritte, auch bei verdrehter Gliederung.
-    for (let p = eltern[i] ?? -1, schritte = 0; p >= 0 && schritte < n; p = eltern[p] ?? -1, schritte++) {
-      lagen[p] = vereinigen(lagen[p] ?? null, lage);
-    }
+    // In alle Sammelvorgänge darüber einrechnen (die Gliederung ist nach dem Auflösen der Kreise ein Wald).
+    for (let p = eltern[i] ?? -1; p >= 0; p = eltern[p] ?? -1) lagen[p] = vereinigen(lagen[p] ?? null, lage);
   }
 
-  const tagText = (index: number): Datum => datumAusTagnummer(folge.tag(index) ?? startTag);
+  // --- Termine als Daten; ein Tag nach 9999-12-31 ist ein Befund ---
   const ergebnisse: Vorgangsergebnis[] = vorgaenge.map((v, i) => {
     const l = lagen[i] ?? null;
+    if (l === null) return { id: v.id, art: art[i] ?? 'vorgang', termine: null };
+    const [von, bis, spaetVon, spaetBis] = [l.von, l.bis, l.spaetVon, l.spaetBis].map((k) => folge.tag(k));
+    if (von === undefined || von === null || bis === undefined || bis === null) return ausserhalb(i);
+    if (spaetVon === undefined || spaetVon === null || spaetBis === undefined || spaetBis === null) {
+      return ausserhalb(i);
+    }
     return {
       id: v.id,
       art: art[i] ?? 'vorgang',
-      termine:
-        l === null
-          ? null
-          : {
-              beginn: tagText(l.von),
-              ende: tagText(l.bis),
-              spaetesterBeginn: tagText(l.spaetVon),
-              spaetestesEnde: tagText(l.spaetBis),
-              gesamtpuffer: l.gesamtpuffer,
-              freierPuffer: l.freierPuffer,
-              kritisch: l.gesamtpuffer <= 0,
-            },
+      termine: {
+        beginn: datumAusTagnummer(von),
+        ende: datumAusTagnummer(bis),
+        spaetesterBeginn: datumAusTagnummer(spaetVon),
+        spaetestesEnde: datumAusTagnummer(spaetBis),
+        gesamtpuffer: l.gesamtpuffer,
+        freierPuffer: l.freierPuffer,
+        kritisch: l.gesamtpuffer <= 0,
+      },
     };
   });
+  function ausserhalb(i: number): Vorgangsergebnis {
+    befunde.push(
+      befund('termin-ausserhalb-kalender', `Vorgang ${id(i)}: ein Termin läge nach 9999-12-31`, id(i)),
+    );
+    return { id: id(i), art: art[i] ?? 'vorgang', termine: null };
+  }
 
-  const kritischeWege = kritischeWegeFinden(ordnung, aus, ein, ergebnisse, spielraum, befunde);
+  const kritischeWege = kritischeWegeFinden(ordnung, aus, ein, lagen, id, spielraum, befunde);
   let ende: Datum | null = null;
-  for (const r of ergebnisse)
+  for (const r of ergebnisse) {
     if (r.termine !== null && (ende === null || r.termine.ende > ende)) ende = r.termine.ende;
+  }
   return {
     projektbeginn: datumAusTagnummer(startTag),
     projektende: ende,
     vorgaenge: ergebnisse,
     kritischeWege,
-    befunde,
+    befunde: [...planBefunde, ...befunde],
   };
 }
 
@@ -444,23 +585,27 @@ function vereinigen(bisher: Lage | null, neu: Lage): Lage {
   };
 }
 
-/** Kritische Wege: alle längsten Folgen über kritische Kanten (Spielraum 0 zwischen zwei kritischen Vorgängen). */
+/**
+ * Kritische Wege: alle längsten Folgen über kritische Kanten (Spielraum 0 zwischen zwei kritischen Vorgängen), je von einem
+ * kritischen Vorgang ohne kritischen Vorgänger bis zu einem ohne kritischen Nachfolger.
+ */
 function kritischeWegeFinden(
   ordnung: readonly number[],
   aus: readonly (readonly Kante[])[],
   ein: readonly (readonly Kante[])[],
-  ergebnisse: readonly Vorgangsergebnis[],
+  lagen: readonly (Lage | null)[],
+  id: (i: number) => VorgangId,
   spielraum: (k: Kante) => number,
   befunde: Bauzeitbefund[],
 ): VorgangId[][] {
-  const kritisch = (i: number): boolean => ergebnisse[i]?.termine?.kritisch === true;
+  const kritisch = (i: number): boolean => (lagen[i]?.gesamtpuffer ?? 1) <= 0;
   const kritischeKante = (k: Kante): boolean => kritisch(k.von) && kritisch(k.nach) && spielraum(k) === 0;
   const nachfolger = (i: number): number[] => {
     const ziele = new Set<number>();
     for (const k of aus[i] ?? []) if (kritischeKante(k)) ziele.add(k.nach);
     return [...ziele].sort((x, y) => x - y);
   };
-  const starts = [...ordnung]
+  const starts = ordnung
     .filter((i) => kritisch(i) && !(ein[i] ?? []).some(kritischeKante))
     .sort((x, y) => x - y);
   // Tiefensuche ohne Rekursion; jeder kritische Vorgang erreicht das Projektende, also gibt es keine Sackgassen.
@@ -476,7 +621,7 @@ function kritischeWegeFinden(
       const naechster = naechsterJeTiefe[tiefe] ?? 0;
       if (weiter.length === 0) {
         if (wege.length === KRITISCHE_WEGE_HOECHSTENS) gekuerzt = true;
-        else wege.push(pfad.map((p) => ergebnisse[p]?.id ?? ''));
+        else wege.push(pfad.map(id));
       }
       if (naechster >= weiter.length) {
         pfad.pop();
