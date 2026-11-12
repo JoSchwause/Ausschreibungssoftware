@@ -16,14 +16,13 @@ import {
   type Kostenschaetzung,
 } from '@tethys/bim';
 import { formatiereBetragDe, formatiereMengeDe, parseBetragDe, parseMengeDe } from '@tethys/dezimal';
-import { kostenermittlungBerechnen } from '@tethys/kosten';
+import { kgLesen, kostenermittlungBerechnen } from '@tethys/kosten';
 import { texte } from './texte';
 import type {
   Bauwerksmodell,
   Betrag,
   Kostenermittlungseintrag,
   KostenermittlungId,
-  Kostengruppennummer,
   Menge,
   ProjektId,
 } from '@tethys/vertrag';
@@ -108,12 +107,12 @@ export function kennwerteLesen(zeilen: readonly Kennwertzeile[]): {
     const kg = z.kostengruppe.trim();
     const kw = z.kennwert.trim();
     if (kg === '' && kw === '') return;
-    const kgOk = /^[1-9]\d{2}$/.test(kg);
-    if (!kgOk) fehler.push({ zeile: i, feld: 'kostengruppe', meldung: 'Kostengruppe dreistellig (100–999)' });
+    // Ticket 122: die Form der Kostengruppe liest `kgLesen` aus `kosten` (eine Regel, kein Cast); Texte in `texte.ts`.
+    const k = kgLesen(kg);
+    if (!k.ok) fehler.push({ zeile: i, feld: 'kostengruppe', meldung: texte.kennwerte.fehlerKostengruppe });
     const r = parseBetragDe(kw);
-    if (!r.ok) fehler.push({ zeile: i, feld: 'kennwert', meldung: 'Kennwert in € je Einheit, z. B. 148,30' });
-    if (kgOk && r.ok)
-      ansaetze.push({ kostengruppe: kg as Kostengruppennummer, bezug: z.bezug, kennwert: r.wert });
+    if (!r.ok) fehler.push({ zeile: i, feld: 'kennwert', meldung: texte.kennwerte.fehlerKennwert });
+    if (k.ok && r.ok) ansaetze.push({ kostengruppe: k.wert, bezug: z.bezug, kennwert: r.wert });
   });
   return { ansaetze: fehler.length > 0 ? [] : ansaetze, fehler };
 }
