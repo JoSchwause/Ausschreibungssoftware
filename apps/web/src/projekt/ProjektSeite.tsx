@@ -2,9 +2,8 @@
 // Seite `/projekt/<id>`: Stammdaten des Projekts (umbenennen), seine LVs (anlegen, umbenennen, öffnen) und der Export
 // der Projektdatei. Jede Änderung ist genau ein Befehl durch Kern und Speicher (A5).
 //
-// Die LV-Liste kommt aus `leistungsverzeichnisse.auflisten` (`LvUebersicht`: Name, Nachtragsangaben, Vorlage; D-43), ohne
-// ein LV ganz zu laden (Review Welle 5, P3). Ganz geladen wird ein LV nur, wenn es gebraucht wird: das Netto, sobald seine
-// Zeile sichtbar ist (`LvNetto.tsx`), und der Zustand für Umbenennen und Löschen beim Klick.
+// Die LV-Liste kommt aus `leistungsverzeichnisse.auflisten` (`LvUebersicht`: Name, Nachtragsangaben, Vorlage, Netto nach
+// Nachlass; D-43, D-62), ohne ein LV ganz zu laden. Ganz geladen wird ein LV nur für Umbenennen und Löschen beim Klick.
 
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LeistungsverzeichnisId, LvUebersicht, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
@@ -28,7 +27,7 @@ import { useSicherung } from '../sicherung/SicherungsAnbieter'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Verweis } from '../ui/Verweis';
 import { STANDARD_MWST, lvAnlegenBefehl } from './befehle';
-import { LvNetto, useLvNetto } from './LvNetto';
+import { LvNetto } from './LvNetto';
 import { texte } from './texte';
 import './projekt.css';
 
@@ -98,7 +97,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const u = useUmgebung();
   const { pruefe, speicherfehler } = useMeldungen();
   const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const { netto, nachladen, neu: nettoNeu, stand: nettoStand } = useLvNetto();
 
   const laden = useCallback(async () => {
     const p = await u.speicher.projekte.laden(id);
@@ -108,9 +106,8 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     }
     // Nach Name sortiert liefert der Speicher (Vertrag); ein Fehler lässt die Liste leer wie bisher.
     const lvs = await u.speicher.leistungsverzeichnisse.auflisten(id);
-    nettoNeu();
     setLage({ art: 'da', projekt: p.wert, lvs: lvs.ok ? lvs.wert : [] });
-  }, [u, id, nettoNeu]);
+  }, [u, id]);
 
   /** Das ganze LV für Umbenennen und Löschen, frisch aus dem Speicher; `null` mit Meldung, wenn es nicht geht. */
   const lvLaden = async (lvId: LeistungsverzeichnisId): Promise<LvZustand | null> => {
@@ -295,13 +292,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
                   {vorlageTexte.kennzeichen}
                 </span>
               ) : null}
-              <LvNetto
-                key={nettoStand}
-                id={lv.id}
-                name={lv.name}
-                netto={netto.get(lv.id)}
-                nachladen={nachladen}
-              />
+              <LvNetto name={lv.name} netto={lv.nettoNachNachlass} />
               <Button
                 groesse="sm"
                 aria-label={`${texte.lvs.umbenennen}: ${lv.name}`}
