@@ -1,6 +1,6 @@
 # 119: X3 in der App: Honorarberechnung, Tor X3
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X3 · Ordner: `apps/web/src/honorar/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 119`, D-20); E2E `apps/web/e2e/x3.spec.ts`, Kettentest `apps/web/src/x3-kette.test.ts`
