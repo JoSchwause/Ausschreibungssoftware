@@ -57,3 +57,14 @@ Nicht in diesem Ticket: Anordnungspfeile zwischen Balken, Bearbeiten per Maus, Z
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-96.1 Prüfnähte.** Getestet wird an vier Nähten: (1) das reine Modul `src/zeitleiste.ts` (Vitest: Tagesindex →
+  Pixel, Abschneiden, Meilenstein, Fortschritt, freie Tage, Markierungen, Name für den Screenreader; fängt Rechenfehler,
+  nicht die Darstellung); (2) `VergleichsGrid` im Browser auf der neuen Testseite `e2e/harness/bauzeit.html`
+  (Playwright: Kopf, Lage und Breite, kritisch, Tastatur, Name, Abschneiden, dunkles Schema; fängt DOM, CSS, ARIA und
+  Scrollen); (3) die neuen Farb-Tokens gegen `tokens.css` (Vitest, Kontrast ≥ 3 : 1 für Grafik in hell und dunkel, wie
+  `kennzeichen.test.ts`); (4) `e2e/leistung.spec.ts` (Bildrate wie bisher, dazu eine maschinenunabhängige Zählung der
+  Elemente je Balkenzelle). Grund: Das sind die Nähte, die das Ticket in den Akzeptanzkriterien nennt; im autonomen Lauf
+  gibt es niemanden, der sie vorab bestätigt. Reversible: yes.

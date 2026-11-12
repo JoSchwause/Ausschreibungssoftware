@@ -5,9 +5,15 @@
 import { schreibeTsv } from './tsv';
 import type { Zelle } from './navigation';
 import type { Kennzeichen, KennzeichenText, VergleichsSpalte, VergleichsZelle } from './vergleichTypen';
+import { achse } from './zeitleiste';
 
 /** Standardbreite einer Spalte ohne Angabe, in Pixeln. */
 export const STANDARDBREITE = 120;
+
+/** Breite einer Spalte in Pixeln: eine Balkenspalte so breit wie ihre Achse (Ticket 96), sonst `breite` oder 120. */
+export function spaltenbreite(s: Pick<VergleichsSpalte, 'breite' | 'zeitleiste'>): number {
+  return s.zeitleiste ? achse(s.zeitleiste).breite : (s.breite ?? STANDARDBREITE);
+}
 
 /** Ein rechteckiger Zellbereich als Index-Spannen (beide Enden eingeschlossen). */
 export interface Bereich {
