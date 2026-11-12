@@ -1,6 +1,6 @@
 # 110: X3: `honorar`: Befehle, anrechenbare Kosten aus einer Kostenermittlung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X3 · Paket: `packages/honorar`
 Blocked by: 97, 101 (gleiches Paket)
