@@ -54,6 +54,7 @@ import type {
   Protokolleintrag,
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
+import type { Pruefbefund } from './gaeb';
 import type {
   AngebotId,
   AufmassId,
@@ -1422,4 +1423,28 @@ export const beispielFehlerKostengruppe: readonly [Befehlsfehler, Befehlsfehler]
     knotenId: titelId,
   },
   { code: 'knoten-unbekannt', meldung: 'Kein Knoten mit dieser Kennung.', knotenId: ohneKnotenId },
+];
+
+/**
+ * Punkt 2 (Ticket 76, D-76.4): zwei Befunde beim Lesen der XRechnung (UBL) zur Abschlagsrechnung 2, in der gemeinsamen
+ * Befundliste (erfunden). Ein Befund an einem Element: Der Nettobetrag der zweiten Rechnungsposition hat drei
+ * Nachkommastellen (`37.504`, gelesen als 37,50). Ein Befund einer Summenregel: Die Datei fordert 6,90 (BT-115), Brutto
+ * 59,32 (BT-112) minus bereits gezahlt 53,42 (BT-113, der eingefrorene Zahlbetrag der Rechnung 1) ergibt 5,90; die Regel
+ * hängt an keinem einzelnen Element, darum steht nur der Business Term im Ort.
+ */
+export const beispielBefundeERechnung: readonly [Pruefbefund, Pruefbefund] = [
+  {
+    schwere: 'warnung',
+    quelle: 'erechnung-lesen',
+    code: 'betrag-nicht-kanonisch',
+    meldung: 'BT-131: „37.504“ hat mehr als 2 Nachkommastellen; kaufmännisch gerundet auf 37,50.',
+    ort: { feld: 'BT-131', pfad: '/Invoice/InvoiceLine[2]/LineExtensionAmount' },
+  },
+  {
+    schwere: 'fehler',
+    quelle: 'erechnung-lesen',
+    code: 'zahlbetrag-falsch',
+    meldung: 'BT-115 (Fälliger Zahlbetrag) ist 6,90; BT-112 − BT-113 + BT-114 ergibt 5,90.',
+    ort: { feld: 'BT-115' },
+  },
 ];

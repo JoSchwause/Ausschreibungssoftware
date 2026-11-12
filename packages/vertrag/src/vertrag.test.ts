@@ -163,6 +163,9 @@ import {
   type RechnungChangeSetAnwenden,
   type RechnungChangeSetUmkehren,
   type RechnungRepository,
+  // v1.5
+  type Befundquelle,
+  type Pruefbefund,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -236,6 +239,7 @@ import {
   beispielLvUebersichtNachtrag,
   // v1.5
   beispielFehlerKostengruppe,
+  beispielBefundeERechnung,
 } from './beispiele';
 
 /**
@@ -1717,5 +1721,28 @@ describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenar
     expect(ohneKnoten.code).toBe('knoten-unbekannt');
     expect(ohneKnoten.knotenId).toBeDefined();
     expect(art(ohneKnoten.knotenId)).toBeUndefined();
+  });
+});
+
+describe('v1.5 Punkt 2: Befundquelle für E-Rechnungen (Ticket 76, D-76.4)', () => {
+  it('die gemeinsame Befundliste kennt das Lesen einer E-Rechnung; die übrigen Quellen bleiben', () => {
+    expectTypeOf<Befundquelle>().toEqualTypeOf<
+      'gaeb-lesen' | 'gaeb-pruefung' | 'lv-pruefung' | 'xsd-gegenpruefung' | 'erechnung-lesen'
+    >();
+    expectTypeOf(beispielBefundeERechnung).toEqualTypeOf<readonly [Pruefbefund, Pruefbefund]>();
+  });
+
+  it('Ort: der Business Term in `feld`, das Element (lokale Namen, `[n]` ab 1) in `pfad`, nie ein Knoten', () => {
+    const [wert, regel] = beispielBefundeERechnung;
+    for (const b of beispielBefundeERechnung) {
+      expect(b.quelle).toBe('erechnung-lesen');
+      expect(b.ort.feld).toMatch(/^BT-[0-9]+$/);
+      expect(b.ort).not.toHaveProperty('knotenId');
+      // Zeile und Spalte nur, wenn die Datei kein lesbares XML ist
+      expect(b.ort).not.toHaveProperty('zeile');
+    }
+    expect(wert.ort.pfad).toMatch(/^(\/[A-Za-z][A-Za-z0-9]*(\[[1-9][0-9]*\])?)+$/);
+    // Eine Summenregel betrifft keinen einzelnen Wert der Datei: nur der Business Term.
+    expect(regel.ort).toEqual({ feld: 'BT-115' });
   });
 });
