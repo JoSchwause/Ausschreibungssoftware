@@ -1,6 +1,6 @@
 # 103: X5: ADR 0013 „Sync-Server nach v1“ (Vorschlag) und Grilling-Frage G-57
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X5 · Ort: `docs/adr/0013-sync-server-nach-v1.md` (neu), `.scratch/ava-oss/grilling.md` (G-57),
 `.scratch/ava-oss/plan.md` (§2, Zeile X5)
@@ -47,3 +47,8 @@ Kein Produktcode. X5 besteht in Welle 6 nur aus einer ADR mit Status `proposed` 
 Ergebnis (Agent): ADR 0013 (`proposed`) geschrieben, G-57 (*offen*, mit Annahme-Zeile) im neuen Abschnitt „Stufe 4 — Welle 6“
 in `grilling.md`, Verweis in `plan.md` §2. Kein Code, keine andere ADR geändert. Die vier Hindernisse (E-13, D-36 (8),
 E-14, D-51) stehen im Abschnitt „Hindernisse heute“.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `1c61a8a` (Branch `welle-6/103-x5-adr`). ADR 0013 (`proposed`), G-57 (*offen*, Annahme für
+Demo), Verweis in `plan.md` §2. Tor X5 (Stimmigkeit, D-58): erfüllt; kein Code.
