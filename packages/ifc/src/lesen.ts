@@ -53,7 +53,13 @@ function kopfAngaben(kopf: StepKopf, schemakennung: string): IfcKopf {
  * Lesen (U5); `modell` ist nur `null`, wenn die Datei zu groß, keine IFC-Datei oder in einem anderen Schema ist.
  */
 export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesung {
+  const maxBytes = optionen.maxBytes ?? STANDARD_MAX_BYTES;
   const maxTiefe = optionen.maxTiefe ?? STANDARD_MAX_TIEFE;
+  if (bytes.length > maxBytes)
+    return abweisen(
+      'eingabe-zu-gross',
+      `Die Datei hat ${String(bytes.length)} Bytes; gelesen werden höchstens ${String(maxBytes)} Bytes.`,
+    );
   const modus = textmodusErmitteln(bytes);
   const kopf = kopfLesen(bytes, modus, maxTiefe);
   if (!kopf.ok) return abweisen('keine-ifc-datei', `Keine IFC-Datei: ${kopf.meldung}`, { zeile: kopf.zeile });
