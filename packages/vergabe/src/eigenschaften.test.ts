@@ -114,10 +114,12 @@ describe('Eigenschaften der Angebotsbefehle', () => {
             const cs = erwarteOk(ausfuehren(zustand, b));
             const neu = angebotChangeSetAnwenden(zustand, cs) as AngebotZustand;
             expect(neu.summen).toEqual(angebotSummenBerechnen(z, neu.angebot));
-            // Minimal (A6, Ticket 44): jede Positionssumme im ChangeSet hat sich wirklich geändert.
-            cs.summen.positionen.forEach((p, i) => {
-              expect(p).not.toEqual(cs.summen.vorher?.positionen[i]);
-            });
+            // Minimal (A6, Ticket 44): jede Positionssumme im ChangeSet hat sich wirklich geändert, außer der einer neuen
+            // Angebotsposition (Ticket 72, D-72.3: deren Umkehrung löscht in `speicher` die Summe mit).
+            const neueEintraege = new Set(cs.positionen.hinzugefuegt.map((p) => p.positionId as string));
+            const alt = new Map(cs.summen.vorher.positionen.map((p) => [p.positionId as string, p]));
+            for (const p of cs.summen.positionen)
+              if (!neueEintraege.has(p.positionId)) expect(p).not.toEqual(alt.get(p.positionId));
             const umkehrung = angebotChangeSetUmkehren(cs);
             expect(angebotChangeSetAnwenden(neu, umkehrung)).toEqual(zustand);
             expect(angebotChangeSetUmkehren(umkehrung)).toEqual(cs);

@@ -7,9 +7,11 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { AngebotZustand, LvZustand, Projekt } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { ExcelEinlesen } from '../ausgabe/ExcelEinlesen'; // Ticket 66
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { formatiereBetragDe } from '../lv/zahlen';
+import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Befundliste } from './Befundliste';
 import { DateiNichtLesbar, dateiBytes, naechsterZug } from './datei';
@@ -136,6 +138,14 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
         }}
       />
       <Button onClick={() => datei.current?.click()}>{texte.angebot.knopf}</Button>
+      {/* Ticket 66 */}
+      <ExcelEinlesen
+        zustand={zustand}
+        onAngelegt={() => {
+          setLauf((n) => n + 1);
+          setListeOffen(true);
+        }}
+      />
       <Button
         onClick={() => {
           setListeOffen(true);
@@ -203,13 +213,16 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
         onOffenChange={setListeOffen}
         titel={texte.liste.titel}
         fuss={
-          <Button
-            onClick={() => {
-              setListeOffen(false);
-            }}
-          >
-            {texte.liste.schliessen}
-          </Button>
+          <>
+            {zeilen.length > 0 ? <PreisspiegelLink lvId={lv.id} /> : null} {/* Ticket 63 */}
+            <Button
+              onClick={() => {
+                setListeOffen(false);
+              }}
+            >
+              {texte.liste.schliessen}
+            </Button>
+          </>
         }
       >
         {zeilen.length === 0 ? (

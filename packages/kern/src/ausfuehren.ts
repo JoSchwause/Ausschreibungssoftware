@@ -29,13 +29,22 @@ import {
   kurztextAendern,
   langtextAendern,
   leistungsverzeichnisUmbenennen,
+  textquelleSetzen,
 } from './feld-befehle';
 import { einheitspreisanteileSetzen } from './epa';
-import { auftraggeberSetzen, leitbeschreibungSetzen, vergabeinformationenSetzen } from './kopfdaten-befehle';
+import {
+  auftraggeberSetzen,
+  leitbeschreibungSetzen,
+  nachtragsangabenSetzen,
+  vergabeinformationenSetzen,
+  vorlageSetzen,
+} from './kopfdaten-befehle';
+import { kostengruppeSetzen } from './kostengruppe';
 import { positionsmerkmaleSetzen } from './merkmal-befehle';
 import { leistungsverzeichnisAnlegen, leistungsverzeichnisLoeschen } from './lv-anlegen';
 import { knotenEinfuegen, knotenlisteVerschieben } from './einfuegen-befehle';
 import { lvStandAnlegen } from './lv-stand';
+import { mengenansatzSetzen } from './mengenansatz-befehle';
 import {
   knotenInPapierkorbLegen,
   papierkorbLeeren,
@@ -60,7 +69,7 @@ type Handler<A extends Art> = A extends 'LeistungsverzeichnisAnlegen'
   ? (zustand: null, befehl: BefehlVon<A>) => Antwort
   : (zustand: LvZustand, befehl: BefehlVon<A>) => Antwort;
 
-/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten). Spätere Tickets tragen ihre Handler hier ein. */
+/** Die umgesetzten Befehle (Ticket 05: Baum, Ticket 06: OZ, Ticket 07: Summen, Nachlass, MwSt; Ticket 27: Felder; Ticket 37: Merkmale, EPA; Ticket 41: Kopfdaten; Ticket 56: Mengenansatz; Ticket 71: Kostengruppe, Textquelle, Nachtragsangaben, Vorlage). Spätere Tickets tragen ihre Handler hier ein. */
 export const BEFEHLS_HANDLER = {
   LeistungsverzeichnisAnlegen: (_zustand: null, befehl) => leistungsverzeichnisAnlegen(befehl),
   LeistungsverzeichnisUmbenennen: leistungsverzeichnisUmbenennen,
@@ -94,13 +103,18 @@ export const BEFEHLS_HANDLER = {
   PapierkorbLeeren: papierkorbLeeren,
   KnotenEinfuegen: knotenEinfuegen,
   KnotenlisteVerschieben: knotenlisteVerschieben,
+  MengenansatzSetzen: mengenansatzSetzen,
+  KostengruppeSetzen: kostengruppeSetzen,
+  TextquelleSetzen: textquelleSetzen,
+  NachtragsangabenSetzen: nachtragsangabenSetzen,
+  VorlageSetzen: vorlageSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 
 type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
 
 /**
  * Noch nicht umgesetzte Befehle und das Ticket, das sie umsetzt. Ein Eintrag fällt weg, sobald ein Handler existiert. Seit
- * Ticket 42 (K9) leer: jeder LV-Befehl hat einen Handler. Bringt der Vertrag einen neuen Befehl, verlangt der Typ hier
+ * Ticket 42 (K9) leer, nach Vertrag v1.4 wieder seit Ticket 71: jeder LV-Befehl hat einen Handler. Bringt der Vertrag einen neuen Befehl, verlangt der Typ hier
  * einen Eintrag (`Offen`), bis sein Ticket den Handler liefert.
  */
 type Offen = Exclude<Art, Umgesetzt>;

@@ -2,15 +2,20 @@
 // Browser-Tests des Speichers: echter Worker, SQLite-WASM im OPFS (VFS opfs-sahpool), ohne COOP/COEP-Header.
 // Jeder Test bekommt von Playwright einen frischen Browser-Kontext und damit ein leeres OPFS.
 
-import { expect, test, type Page } from '@playwright/test';
-import type { Menge, Position } from '@tethys/vertrag';
-import type { Pruefstand, PruefSchritt } from '../harness/main';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { chromium, devices, expect, test, type Page } from '@playwright/test';
+import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
+import type { Aufmass, Menge, Position, Projektdatei } from '@tethys/vertrag';
+import type { Phasenmessung, Pruefstand, PruefSchritt } from '../harness/main';
 import { kanonischesJson } from '../src/kanonisch';
 import { anlegenSchritte, eintrag, ladeFixture } from '../src/testhilfe/fixtures';
 import { inhaltMitAllenAltenArten, mitKernSummen } from '../src/testhilfe/inhalt-v1';
 import { SCHEMA_VERSION } from '../src/migrationen';
 import { normalisiere } from '../src/testhilfe/normalisiere';
 import { feldAendern, standAnlegen } from '../src/testhilfe/umkehrung';
+import { LEERES_SUMMENVORHER } from '../src/summenvorher';
 
 const DB = 'e2e';
 const ms = (x: number): string => String(Math.round(x));
@@ -88,6 +93,76 @@ test.describe('Daten überleben ein Neuladen', () => {
   });
 });
 
+test.describe('Neuladen während des Schließens (Ticket 52)', () => {
+  // Wie die App bei `pagehide`: `schliessen` anstoßen, nicht abwarten, sofort neu laden. Der alte Worker schließt
+  // (im WAL mit Checkpoint) und gibt die Dateien frei, während der neue sie schon öffnen will und `gesperrt` bekommt.
+  // Vor `preserveOnInitFailure` löschte der gescheiterte Versuch das Verzeichnis des Pools; gab der alte Worker die
+  // Dateien in diesem Moment frei, war das ganze Projekt weg. Das hängt am Zeitpunkt und an der Last: Unter hoher Last
+  // fiel ein Lauf von drei, auf ruhiger Maschine keiner von acht. Der Test ist eine Wache, kein sicherer Nachweis.
+  test('25 Runden schreiben, Schließen anstoßen, neu laden: jeder Befehl ist noch da', async ({ page }) => {
+    test.setTimeout(240_000);
+    const f = ladeFixture('typisch');
+    const folge = anlegenSchritte(f);
+    const lvId = f.lv.leistungsverzeichnis.id;
+    const positionen = f.lv.leistungsverzeichnis.knoten
+      .filter((k): k is Position => k.art === 'position')
+      .slice(0, 30);
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect((await ps(page, 'anwenden', DB, folge)).ok).toBe(true);
+    let erwartet = folge.length;
+    const menge = (runde: number): Menge => `${String(runde)}.000` as Menge;
+    for (let runde = 1; runde <= 25; runde++) {
+      // 30 Einzeländerungen, damit das WAL beim Schließen etwas zu übertragen hat.
+      const schritte = positionen.map((p, j): PruefSchritt => ({
+        eintrag: eintrag(
+          10_000 + runde * 100 + j,
+          f.projekt.id,
+          { art: 'leistungsverzeichnis', id: lvId },
+          {
+            art: 'MengeAendern',
+            positionId: p.id,
+            menge: menge(runde),
+          },
+        ),
+        changeSet: {
+          art: 'leistungsverzeichnis',
+          leistungsverzeichnisId: lvId,
+          kopf: null,
+          knoten: {
+            hinzugefuegt: [],
+            geaendert: [
+              {
+                vorher: runde === 1 ? p : { ...p, menge: menge(runde - 1) },
+                nachher: { ...p, menge: menge(runde) },
+              },
+            ],
+            entfernt: [],
+          },
+          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
+        },
+      }));
+      expect(await ps(page, 'anwenden', DB, schritte)).toMatchObject({ ok: true });
+      erwartet += schritte.length;
+      await page.evaluate((name) => {
+        void (window as unknown as { pruefstand: Pruefstand }).pruefstand.schliessen(name);
+      }, DB);
+      await page.reload();
+      await expect(page.locator('#status')).toBeVisible();
+      // Wie die App (E-14): bei `gesperrt` erneut versuchen, jedes Mal mit einem neuen Worker; in kurzem Abstand, damit
+      // ein Versuch in die Freigabe durch den alten Worker fällt.
+      let offen = await ps(page, 'oeffnen', DB);
+      for (let versuch = 0; !offen.ok && versuch < 200; versuch++) {
+        expect(offen).toMatchObject({ code: 'gesperrt' });
+        await page.waitForTimeout(20);
+        offen = await ps(page, 'oeffnen', DB);
+      }
+      expect(offen).toEqual({ ok: true });
+      expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(erwartet);
+    }
+  });
+});
+
 test.describe('Leistung', () => {
   test('Laden von gross (5.000 Positionen) aus OPFS unter 2 s', async ({ page }) => {
     const f = ladeFixture('gross');
@@ -111,6 +186,14 @@ test.describe('Leistung', () => {
     test.info().annotations.push({ type: 'messung', description: meldung });
     expect(erstes).toBeLessThan(2000);
     expect(median).toBeLessThan(2000);
+
+    // LV-Übersicht (Ticket 57): eine Abfrage ohne Knoten, über den Worker, Median unter 20 ms.
+    const liste = [...(await ps(page, 'lvListezeit', DB, f.projekt.id, 9))].sort((a, b) => a - b);
+    const listeMedian = liste[Math.floor(liste.length / 2)] ?? Number.NaN;
+    const listeMeldung = `[speicher/opfs] gross: LV-Übersicht (9 Läufe) Median ${ms(listeMedian)} ms, max ${ms(liste.at(-1) ?? Number.NaN)} ms`;
+    console.info(listeMeldung);
+    test.info().annotations.push({ type: 'messung', description: listeMeldung });
+    expect(listeMedian).toBeLessThan(20);
   });
 });
 
@@ -140,7 +223,7 @@ test.describe('Speichern bei jedem Befehl (G-35)', () => {
           leistungsverzeichnisId: lvId,
           kopf: null,
           knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher: { ...vorher, menge } }], entfernt: [] },
-          summen: { positionen: [], gliederungen: [], gesamt: null },
+          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
         },
       };
     });
@@ -153,6 +236,123 @@ test.describe('Speichern bei jedem Befehl (G-35)', () => {
     console.info(meldung);
     test.info().annotations.push({ type: 'messung', description: meldung });
     expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(anlegenSchritte(f).length + 20);
+  });
+});
+
+/** Phasen eines `anwenden` aus der Messung des Mess-Workers (Ticket 52). */
+function phasen(m: Phasenmessung): Record<string, number> {
+  const p = { transaktion: 0, baumpruefung: 0, vorherstand: 0, schreiben: 0, js: 0, antwort: 0 };
+  let sql = 0;
+  for (const [anweisung, t] of Object.entries(m.sql)) {
+    sql += t;
+    if (anweisung.startsWith('BEGIN') || anweisung.startsWith('COMMIT')) p.transaktion += t;
+    else if (/^SELECT (k\.id|k\.eltern_id|eltern_id) FROM knoten/.test(anweisung)) p.baumpruefung += t;
+    else if (anweisung.startsWith('SELECT')) p.vorherstand += t;
+    else p.schreiben += t;
+  }
+  p.js = m.workerMs - sql;
+  p.antwort = m.gesamtMs - m.workerMs;
+  return { gesamt: m.gesamtMs, worker: m.workerMs, ...p };
+}
+
+const medianVon = (werte: readonly number[]): number =>
+  [...werte].sort((a, b) => a - b)[Math.floor(werte.length / 2)] ?? Number.NaN;
+
+/**
+ * Misst `MengeAendern` auf `gross` mit den ChangeSets des Kerns in Phasen (Ticket 52) und gibt die Mediane aus.
+ * `wo` nennt den Browser-Kontext in der Meldung.
+ */
+async function phasenMessen(page: Page, wo: string): Promise<Record<string, number>> {
+  const f = ladeFixture('gross');
+  await start(page);
+  await ps(page, 'oeffnenMessend', DB);
+  // Schreibmodus (D-52.1): WAL mit exklusiver Sperre, Haltbarkeit unverändert (synchronous = FULL).
+  expect(await ps(page, 'schreibmodus', DB)).toEqual({
+    journalMode: 'wal',
+    lockingMode: 'exclusive',
+    synchronous: 2,
+    journalSizeLimit: 4 * 1024 * 1024,
+  });
+  await ps(page, 'anwenden', DB, anlegenSchritte(f));
+
+  // Wie in der App: Der Kern bildet das ChangeSet (ein geänderter Knoten, Summen der Position, ihrer Gliederungen
+  // und des LV) auf dem Stand nach der vorigen Änderung (dessen alte Summen prüft `speicher`, Ticket 57). Jede Änderung
+  // trifft eine andere Position.
+  const lvId = f.lv.leistungsverzeichnis.id;
+  const positionen = f.lv.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position');
+  const AUFWAERMEN = 5;
+  const MESSUNGEN = 21;
+  let stand = f.lv;
+  const folge: PruefSchritt[] = Array.from({ length: AUFWAERMEN + MESSUNGEN }, (_, i) => {
+    const p = positionen[i * 190];
+    if (p === undefined) throw new Error('Position fehlt');
+    const befehl = { art: 'MengeAendern', positionId: p.id, menge: '7.000' as Menge } as const;
+    const cs = lvBefehlAusfuehren(stand, befehl);
+    if (!cs.ok) throw new Error(cs.fehler.meldung);
+    stand = lvChangeSetAnwenden(stand, cs.wert) ?? stand;
+    return {
+      eintrag: eintrag(2000 + i, f.projekt.id, { art: 'leistungsverzeichnis', id: lvId }, befehl),
+      changeSet: cs.wert,
+    };
+  });
+  const r = await ps(page, 'anwendenPhasen', DB, folge);
+  expect(r.ok).toBe(true);
+  const gemessen = r.messungen.slice(AUFWAERMEN).map(phasen);
+  const median: Record<string, number> = {};
+  for (const k of Object.keys(gemessen[0] ?? {})) median[k] = medianVon(gemessen.map((g) => g[k] ?? 0));
+  const meldung =
+    `[speicher/opfs] gross, ${wo}: MengeAendern anwenden in Phasen (${String(MESSUNGEN)} Läufe, Median ms): ` +
+    Object.entries(median)
+      .map(([k, v]) => `${k} ${v.toFixed(1)}`)
+      .join(', ');
+  console.info(meldung);
+  test.info().annotations.push({ type: 'messung', description: meldung });
+  // Je Anweisung (Median ms), die teuersten zuerst: zeigt, wo in einer Phase die Zeit steht.
+  const anweisungen = Object.keys(r.messungen[0]?.sql ?? {})
+    .map((a): [string, number] => [a, medianVon(r.messungen.slice(AUFWAERMEN).map((m) => m.sql[a] ?? 0))])
+    .sort((a, b) => b[1] - a[1]);
+  console.info(anweisungen.map(([a, t]) => `  ${t.toFixed(1).padStart(6)}  ${a}`).join('\n'));
+  // Dateizugriffe im OPFS je Aufruf (Median Anzahl und ms je Methode des Zugriffshandles).
+  const gemesseneLaeufe = r.messungen.slice(AUFWAERMEN);
+  const opfs = [...new Set(gemesseneLaeufe.flatMap((m) => Object.keys(m.opfs)))].map((k) => {
+    const anzahl = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.anzahl ?? 0));
+    const zeit = medianVon(gemesseneLaeufe.map((m) => m.opfs[k]?.ms ?? 0));
+    return `${k} ${String(anzahl)}× ${zeit.toFixed(1)} ms`;
+  });
+  console.info(`[speicher/opfs] Zugriffshandle je anwenden (Median): ${opfs.join(', ')}`);
+  expect(await ps(page, 'protokollAnzahl', DB, f.projekt.id)).toBe(
+    anlegenSchritte(f).length + AUFWAERMEN + MESSUNGEN,
+  );
+  return median;
+}
+
+test.describe('Einzeländerung in Phasen (Ticket 52)', () => {
+  test('MengeAendern auf gross (5.000 Positionen) mit den ChangeSets des Kerns: Phasen von anwenden im OPFS', async ({
+    page,
+  }) => {
+    await phasenMessen(page, 'Testkontext');
+  });
+
+  // Playwright gibt jedem Test einen flüchtigen Kontext wie ein Inkognito-Fenster; dort liegt das OPFS im Speicher des
+  // Browser-Prozesses, und jeder Zugriff des Zugriffshandles ist ein eigener Aufruf über Prozessgrenzen. Ein echtes
+  // Profil (installierte App, normales Fenster) schreibt direkt in die Datei. Zum Vergleich dieselbe Messung dort.
+  test('dieselbe Messung in einem dauerhaften Browser-Profil (wie beim Nutzer)', async ({
+    browserName,
+  }, info) => {
+    const verzeichnis = mkdtempSync(join(tmpdir(), 'tethys-profil-'));
+    const executablePath = process.env['PW_CHROMIUM_PATH'] || undefined;
+    const kontext = await chromium.launchPersistentContext(verzeichnis, {
+      ...devices['Desktop Chrome'],
+      baseURL: String(info.project.use.baseURL),
+      ...(executablePath ? { executablePath } : {}),
+    });
+    try {
+      expect(browserName).toBe('chromium');
+      await phasenMessen(kontext.pages()[0] ?? (await kontext.newPage()), 'dauerhaftes Profil');
+    } finally {
+      await kontext.close();
+      rmSync(verzeichnis, { recursive: true, force: true });
+    }
   });
 });
 
@@ -301,6 +501,60 @@ test.describe('LV-Stand im OPFS (Ticket 43, ADR 0006)', () => {
     });
     // Das LV selbst trägt die spätere Änderung, der Stand nicht.
     expect((await ps(page, 'lvPruefen', DB, lvId, f.lv)).gleich).toBe(false);
+  });
+});
+
+test.describe('Vertrag v1.4 im OPFS (Ticket 79)', () => {
+  test('Projektdatei der Version 5 importieren, Aufmaßblatt ändern, neu laden: Stand und Regeln bleiben', async ({
+    page,
+  }) => {
+    const v5 = readFileSync(new URL('../fixtures/projektdatei-v5.json', import.meta.url), 'utf8');
+    const d = JSON.parse(v5) as Projektdatei;
+    const blatt = d.aufmasse?.[1]?.aufmass as Aufmass; // Blatt 2, in der Schlussrechnung
+    const projekt = d.projekt.id;
+    const aufBlatt = { art: 'aufmass', id: blatt.id } as const;
+    const geaendert: Aufmass = { ...blatt, bezeichnung: 'Blatt 2, Erdarbeiten (erfunden)' };
+    await start(page);
+    await ps(page, 'oeffnen', DB);
+    expect(await ps(page, 'importieren', DB, v5)).toEqual({ ok: true });
+    expect((await ps(page, 'exportieren', DB, projekt)).text === v5).toBe(true);
+    // Ein Blatt in einer Rechnung lässt sich nicht löschen (Q5), ändern schon.
+    const loeschen = await ps(
+      page,
+      'anwendenEinzeln',
+      DB,
+      eintrag(900, projekt, aufBlatt, { art: 'AufmassLoeschen' }),
+      { art: 'aufmass', aufmassId: blatt.id, aufmass: { vorher: blatt, nachher: null } },
+    );
+    expect(loeschen).toMatchObject({ ok: false, code: 'konflikt' });
+    expect(
+      await ps(
+        page,
+        'anwendenEinzeln',
+        DB,
+        eintrag(901, projekt, aufBlatt, {
+          art: 'AufmasskopfSetzen',
+          bezeichnung: geaendert.bezeichnung,
+          datum: null,
+        }),
+        { art: 'aufmass', aufmassId: blatt.id, aufmass: { vorher: blatt, nachher: geaendert } },
+      ),
+    ).toEqual({ ok: true });
+    await ps(page, 'schliessen', DB);
+
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    const nachher = await ps(page, 'exportieren', DB, projekt);
+    if (nachher.text === undefined) throw new Error(`Export fehlgeschlagen: ${JSON.stringify(nachher)}`);
+    const e = JSON.parse(nachher.text) as Projektdatei;
+    expect(e.aufmasse?.map((z) => z.aufmass)).toEqual([d.aufmasse?.[0]?.aufmass, geaendert]);
+    expect(e.rechnungen).toEqual(d.rechnungen);
+    expect(e.kostenermittlungen).toEqual(d.kostenermittlungen);
+    expect(e.protokoll.map((x) => x.befehl.art).slice(-2)).toEqual([
+      'KostenermittlungseintragSetzen',
+      'AufmasskopfSetzen',
+    ]);
   });
 });
 

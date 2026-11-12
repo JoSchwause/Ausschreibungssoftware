@@ -2,7 +2,7 @@
 // Berechnete Werte: Gesamtpreise und Summen. Nur Typen. Die Regeln, welche Positionen eingehen, stehen im Kern.
 
 import type { GliederungId, PositionId } from './marken';
-import type { Betrag } from './zahlen';
+import type { Betrag, Menge } from './zahlen';
 
 /**
  * Ergebnis je Position. `gesamtpreis` ist `null`, wenn kein GP entsteht (z. B. nicht angeboten oder Menge/EP
@@ -92,14 +92,44 @@ export interface Summenvorher {
  * `positionen`/`gliederungen`, sondern in `vorher.entfernt`.
  * `gesamt` ist `null`, wenn sich die Gesamtsummen nicht geändert haben (oder das Aggregat gelöscht wird).
  *
- * `vorher` (v1.1a) trägt die alten Werte. Es ist optional, damit `kern` und `speicher` ohne Änderung weiter
- * übersetzen; fehlt es, ist das ChangeSet nur mit dem Vorzustand umkehrbar (heute `changeSetUmkehren(cs,
- * zustandVorher)` im Kern). Jedes ChangeSet, das der Kern nach dem Folgeticket erzeugt, setzt `vorher`
- * (siehe „Offene Typfragen“, Ticket 24).
+ * `vorher` (v1.1a) trägt die alten Werte. Seit v1.3 (Ticket 53 Punkt 3) Pflicht: Der Kern setzt es seit Ticket 30 in
+ * jedem ChangeSet, `vergabe` ebenso; damit ist jedes ChangeSet allein umkehrbar und `speicher` kann es überall prüfen
+ * (bisher nur beim Löschen eines Aggregats).
  */
 export interface Summenaenderung {
   readonly positionen: readonly Positionssumme[];
   readonly gliederungen: readonly Gliederungssumme[];
   readonly gesamt: Gesamtsummen | null;
-  readonly vorher?: Summenvorher;
+  readonly vorher: Summenvorher;
+}
+
+/**
+ * Leistungsstand einer Rechnung (v1.4, Ticket 70 Punkt 8; D-34 (1)–(3), D-36, D-37; Glossar „Leistungsstand“): die
+ * geprüfte Leistung je Position und die ersten Glieder der Abzugskette, netto. `abrechnung` erzeugt ihn aus Auftrags-LV und
+ * den Aufmaßblättern einer Rechnung (`Rechnung.aufmassIds`), `kosten` liest ihn für die Kostenkontrolle (D-37: „Abrechnung“
+ * je Kostengruppe aus der Rechnung mit der höchsten Nummer), ohne `abrechnung` zu importieren (A3). Nie gespeichert; MwSt,
+ * Umlagen, Einbehalt und Zahlbetrag gehören nicht dazu.
+ *
+ * Lesarten (D-34; vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - `positionen`: genau eine Zeile je Position des Auftrags-LV, in Dokumentreihenfolge des Baums, auch ohne Aufmaß.
+ * - `menge`: die kumulierte Aufmaßmenge, Σ `Aufmassposition.menge` über die Blätter der Rechnung (Zeilen ohne Menge
+ *   zählen nicht); `null`: keine Zeile mit Menge, bei einer Zuschlagsposition immer.
+ * - `gp`: round(`menge` × Vertrags-EP, 2); `0.00`, wenn `menge` oder EP `null` ist (ein fehlender EP ist ein Befund der
+ *   Prüfung). Bedarfspositionen zählen, sobald sie aufgemessen sind. Eine Zuschlagsposition: round(Satz / 100 × Σ `gp`
+ *   ihrer Bezugspositionen, 2) (D-34 (1); ein `Prozent` `'5.00'` heißt 5 %). Eine Zuschlagsposition ohne Satz
+ *   (`Zuschlag.prozentsatz: null`) hat `gp` `0.00`, ein Befund der Prüfung wie ein fehlender EP.
+ * - `leistung` = Σ `gp`. `nachlass` ist der abgezogene Betrag, ≥ 0 wie `Gesamtsummen.nachlass` (Prozent:
+ *   round(`leistung` × Satz / 100, 2) über das ganze Auftrags-LV samt Nachtragspositionen; absolut: in einer
+ *   Abschlagsrechnung anteilig, höchstens der volle Betrag, in der Schlussrechnung voll; D-34 (2)). `nettoNachNachlass` = `leistung` −
+ *   `nachlass`, negativ ist ein Befund (E-06). Die Kostenkontrolle zeigt `nachlass` als eigene, negative Zeile (D-37).
+ */
+export interface Leistungsstand {
+  readonly positionen: readonly {
+    readonly positionId: PositionId;
+    readonly menge: Menge | null;
+    readonly gp: Betrag;
+  }[];
+  readonly leistung: Betrag;
+  readonly nachlass: Betrag;
+  readonly nettoNachNachlass: Betrag;
 }

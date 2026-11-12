@@ -11,6 +11,9 @@ import { gesamtpreis, leseAustausch, vergleiche } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
   Auftraggeber,
+  Auftragnehmer,
+  EpaArt,
+  EpaBezeichnung,
   Bedarf,
   Bezugsposition,
   Einheitspreis,
@@ -43,8 +46,11 @@ import type {
   Zahlenart,
   Zuschlagsbezug,
 } from '@tethys/vertrag';
+import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
+import { KEINE_KATALOGE, katalogeLesen, kostengruppeLesen } from './kostengruppe';
+import type { Kataloge } from './kostengruppe';
 import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
@@ -512,6 +518,7 @@ const POSITION_BEHANDELT: ReadonlySet<string> = new Set([
   'MarkupIt',
   'SumDescr',
   'SubDescr',
+  'CtlgAssign',
 ]);
 /** Eine Zuschlagsposition trägt dieselben Merkmale wie eine Position (F5) plus Bezugsform und Satz. */
 const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
@@ -525,6 +532,7 @@ const ZUSCHLAG_BEHANDELT: ReadonlySet<string> = new Set([
   'ALNGroupNo',
   'ALNSerNo',
   'MarkupIt',
+  'CtlgAssign',
 ]);
 const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
   'SubDNo',
@@ -545,59 +553,55 @@ const ZUSCHLAG_BEHANDELT_X86: ReadonlySet<string> = new Set([...ZUSCHLAG_BEHANDE
 const TEILE_ERLAUBT = /^[0-9A-Za-z_ ]*$/;
 
 /** Ein Feld der Einheitspreisanteile ohne die Bezeichnung des freien Anteils. */
-export type Anteil = Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>;
+export type Anteil = EpaArt;
 
-/** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus `LblUPComp<n>`), und die Bezeichnung des freien Anteils. */
+/** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus den EPA-Bezeichnungen, Index `n - 1`). */
 interface Preisangaben {
   readonly anteile: readonly (Anteil | null)[];
-  readonly freiBezeichnung: string | null;
 }
 
-export const ANTEIL_NACH_BEZEICHNUNG: Readonly<Record<string, Anteil>> = {
-  lohn: 'lohn',
-  stoffe: 'stoffe',
-  material: 'stoffe',
-  geräte: 'geraete',
-  geraete: 'geraete',
-  nachunternehmer: 'nachunternehmer',
-  sonstiges: 'sonstiges',
-};
-const ANTEIL_NACH_TYP: Readonly<Record<string, Anteil>> = {
-  Wages: 'lohn',
-  Materials: 'stoffe',
-  Plant: 'geraete',
-  Miscellaneous: 'sonstiges',
-  Unknown: 'frei',
-};
-
 /**
- * Ordnet `LblUPComp1…6` den Anteilen zu (Ticket 40): zuerst nach der Bezeichnung (Lohn, Stoffe/Material, Geräte,
- * Nachunternehmer, Sonstiges; so schreibt der Export), sonst nach `Type` (Wages, Materials, Plant, Miscellaneous;
- * Unknown ist der freie Anteil mit der Bezeichnung als `freiBezeichnung`). Ein zweiter Anteil derselben Art ist Befund.
+ * `LblUPComp1…6` → EPA-Bezeichnungen (v1.3, Ticket 68, D-28) in X81, X83 und X86. Die Nummer bleibt die der Datei
+ * (nie umnummeriert); ein Platz ohne Beschriftung fehlt in der Liste. Deutung siehe `epa.ts`; ein Widerspruch zwischen
+ * Bezeichnung und `Type` ist Warnung `epa-beschriftung-abweichend`, ein zweiter Anteil derselben Art ist Befund.
+ * `NoUPComps` ist abgeleitet (die höchste belegte Nummer). Ohne Beschriftung: `undefined` (nie `[]`).
  */
-function lesePreisangaben(l: Leser, boqInfo: XmlElement | undefined): Preisangaben {
-  const anteile: (Anteil | null)[] = [];
-  const belegt = new Set<Anteil>();
-  let freiBezeichnung: string | null = null;
-  for (let n = 1; n <= 6; n++) {
-    const el = kind(boqInfo, `LblUPComp${String(n)}`);
-    if (!el) {
-      anteile.push(null);
-      continue;
-    }
+export function leseEpaBezeichnungen(
+  l: Leser,
+  boqInfo: XmlElement | undefined,
+): readonly EpaBezeichnung[] | undefined {
+  const liste: EpaBezeichnung[] = [];
+  const belegt = new Set<EpaArt>();
+  for (const nummer of EPA_NUMMERN) {
+    const el = kind(boqInfo, `LblUPComp${String(nummer)}`);
+    if (!el) continue;
     const bez = wert(el) ?? '';
     const typ = el.attrs.get('Type') ?? '';
-    const anteil = ANTEIL_NACH_BEZEICHNUNG[bez.toLowerCase()] ?? ANTEIL_NACH_TYP[typ] ?? 'frei';
+    const { anteil, vertraeglich } = deuteBeschriftung(bez, typ);
+    if (!vertraeglich)
+      l.melde(
+        'warnung',
+        'epa-beschriftung-abweichend',
+        `LblUPComp${String(nummer)} „${bez}“ hat den Typ ${typ}; der Anteil wird nach der Bezeichnung zugeordnet.`,
+        el,
+      );
     if (belegt.has(anteil)) {
-      l.nichtAbgebildet(el, `BoQInfo/LblUPComp${String(n)}`, 'zweiter Einheitspreisanteil derselben Art');
-      anteile.push(null);
+      l.nichtAbgebildet(
+        el,
+        `BoQInfo/LblUPComp${String(nummer)}`,
+        'zweiter Einheitspreisanteil derselben Art',
+      );
       continue;
     }
     belegt.add(anteil);
-    anteile.push(anteil);
-    if (anteil === 'frei') freiBezeichnung = bez === '' ? null : bez;
+    liste.push({ nummer, anteil, bezeichnung: bez === '' ? null : bez });
   }
-  return { anteile, freiBezeichnung };
+  return liste.length === 0 ? undefined : liste;
+}
+
+/** Index `n - 1` → Art des `UPComp<n>` nach den EPA-Bezeichnungen. */
+export function anteileNachNummer(bez: readonly EpaBezeichnung[] | undefined): (Anteil | null)[] {
+  return EPA_NUMMERN.map((n) => bez?.find((b) => b.nummer === n)?.anteil ?? null);
 }
 
 interface Ebene {
@@ -631,6 +635,7 @@ class Aufbau {
     private readonly trenn: string | null,
     readonly wurzelId: LeistungsverzeichnisId,
     private readonly preise: Preisangaben | null = null,
+    private readonly kataloge: Kataloge = KEINE_KATALOGE,
   ) {}
 
   private reihenfolge(elternId: string): number {
@@ -966,6 +971,7 @@ class Aufbau {
       );
     const texte = this.texte(desc);
     const leitbeschreibung = this.leitbeschreibung(el, id);
+    const kostengruppe = kostengruppeLesen(this.l, el, this.kataloge, id);
 
     const pos: Position = {
       art: 'position',
@@ -982,6 +988,7 @@ class Aufbau {
       einheit,
       einheitspreis,
       epa,
+      ...(kostengruppe === undefined ? {} : { kostengruppe }),
     };
     this.knoten.push(pos);
     this.l.restMelden(el, this.preise ? POSITION_BEHANDELT_X86 : POSITION_BEHANDELT, 'Item');
@@ -1087,6 +1094,8 @@ class Aufbau {
       einheitspreis: null,
       epa: null,
     };
+    const kostengruppe = kostengruppeLesen(this.l, el, this.kataloge, id);
+    if (kostengruppe !== undefined) pos.kostengruppe = kostengruppe;
     this.knoten.push(pos);
     if (bezug.art === 'positionen' && refs.length > 0) this.zuschlaege.push({ pos, refs });
     this.l.restMelden(el, this.preise ? ZUSCHLAG_BEHANDELT_X86 : ZUSCHLAG_BEHANDELT, 'MarkupItem');
@@ -1116,7 +1125,7 @@ class Aufbau {
       if (w === null) continue;
       epa[anteil] = w;
       gesetzt = true;
-      if (anteil === 'frei') epa.freiBezeichnung = preise.freiBezeichnung;
+      // Die Bezeichnung des freien Anteils steht in den EPA-Bezeichnungen des LV, nicht an der Position (D-53.6).
     }
     return gesetzt ? epa : null;
   }
@@ -1212,6 +1221,22 @@ function leseAuftraggeber(l: Leser, own: XmlElement): Auftraggeber {
     plz: textOderNull(adresse, 'PCode'),
     ort: textOderNull(adresse, 'City'),
     vergabenummer: textOderNull(own, 'AwardNo'),
+  };
+}
+
+/**
+ * X86 `CTR` → `Auftragnehmer` (v1.3, Ticket 68): die Felder der Adresse wie beim Auftraggeber. Nicht abgebildet (Befund):
+ * `DPNo`, `AwardNo`, `BidderNo`, weitere Adressfelder und Kontaktangaben.
+ */
+function leseAuftragnehmer(l: Leser, ctr: XmlElement): Auftragnehmer {
+  const adresse = kind(ctr, 'Address');
+  l.restMelden(ctr, new Set(['Address']), 'CTR');
+  if (adresse) l.restMelden(adresse, new Set(['Name1', 'Street', 'PCode', 'City']), 'CTR/Address');
+  return {
+    name: textOderNull(adresse, 'Name1'),
+    strasse: textOderNull(adresse, 'Street'),
+    plz: textOderNull(adresse, 'PCode'),
+    ort: textOderNull(adresse, 'City'),
   };
 }
 
@@ -1336,16 +1361,19 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     if (!['GAEBInfo', 'PrjInfo', 'Award'].includes(k.name)) l.nichtAbgebildet(k, `GAEB/${k.name}`);
   const prj = kind(root, 'PrjInfo');
   if (prj) l.restMelden(prj, new Set(['NamePrj']), 'PrjInfo');
-  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo']), 'Award');
+  const x86 = phase === 'X86';
+  // CTR (Auftragnehmer) gibt es nur in X86 (v1.3, Ticket 68); in anderen Phasen bleibt es Befund `nicht-abgebildet`.
+  l.restMelden(award, new Set(['DP', 'BoQ', 'OWN', 'AwardInfo', ...(x86 ? ['CTR'] : [])]), 'Award');
   const own = kind(award, 'OWN');
+  const ctr = x86 ? kind(award, 'CTR') : undefined;
   const info = kind(award, 'AwardInfo');
   const auftraggeber = own ? leseAuftraggeber(l, own) : undefined;
+  const auftragnehmer = ctr ? leseAuftragnehmer(l, ctr) : undefined;
   const vergabeinformationen = info ? leseVergabeinformationen(l, info) : undefined;
   for (const extra of kinder(award, 'BoQ').slice(1))
     l.nichtAbgebildet(extra, 'Award/BoQ (weiteres)', 'je Datei wird nur ein LV gelesen');
 
   const boqInfo = kind(boq, 'BoQInfo');
-  const x86 = phase === 'X86';
   // Name: Ist `Name` der Anfang von `LblBoQ`, ist er dessen gekürzte Form (so schreibt der Export einen Namen über
   // 20 Zeichen, Ticket 40); dann gilt `LblBoQ`. Sonst bleibt es bei `Name`, und `LblBoQ` ist nicht abgebildet.
   const kurzName = wert(kind(boqInfo, 'Name'));
@@ -1353,18 +1381,9 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
   const langName = lblBoQ && kurzName && lblBoQ.startsWith(kurzName) ? lblBoQ : null;
   const infoBehandelt = new Set(['Name', 'BoQBkdn', 'OutlCompl']);
   if (langName !== null) infoBehandelt.add('LblBoQ');
-  if (x86)
-    for (const n of [
-      'NoUPComps',
-      'LblUPComp1',
-      'LblUPComp2',
-      'LblUPComp3',
-      'LblUPComp4',
-      'LblUPComp5',
-      'LblUPComp6',
-      'Totals',
-    ])
-      infoBehandelt.add(n);
+  for (const n of ['NoUPComps', ...EPA_NUMMERN.map((i) => `LblUPComp${String(i)}`)]) infoBehandelt.add(n);
+  if (x86) infoBehandelt.add('Totals');
+  infoBehandelt.add('Ctlg');
   if (boqInfo) l.restMelden(boqInfo, infoBehandelt, 'BoQInfo');
   else l.melde('warnung', 'oz-maske-ohne-position', 'BoQInfo fehlt; die Gliederung ist unbekannt.', boq);
   const trenn = opt.trennzeichen === undefined ? '.' : opt.trennzeichen;
@@ -1375,8 +1394,10 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     ? leseLvSummen(l, kind(boqInfo, 'Totals'))
     : { mwstAusDatei: null, nachlass: null };
   const wurzelId = opt.ids.leistungsverzeichnis();
-  const preise = x86 ? lesePreisangaben(l, boqInfo) : null;
-  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise);
+  const epaBezeichnungen = leseEpaBezeichnungen(l, boqInfo);
+  const preise = x86 ? { anteile: anteileNachNummer(epaBezeichnungen) } : null;
+  const kataloge = katalogeLesen(l, boqInfo);
+  const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise, kataloge);
   const wurzelEbene: Ebene = { id: wurzelId, teile: [], ozOk: true, tiefe: 0 };
   const bodies = kinder(boq, 'BoQBody');
   if (bodies.length === 0) l.melde('warnung', 'lv-leer', 'Das Leistungsverzeichnis hat keinen BoQBody.', boq);
@@ -1410,6 +1431,8 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     nachlass,
     ...(auftraggeber === undefined ? {} : { auftraggeber }),
     ...(vergabeinformationen === undefined ? {} : { vergabeinformationen }),
+    ...(auftragnehmer === undefined ? {} : { auftragnehmer }),
+    ...(epaBezeichnungen === undefined ? {} : { epaBezeichnungen }),
     wurzelId,
     knoten: aufbau.knoten,
   };

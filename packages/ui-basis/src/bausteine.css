@@ -608,3 +608,24 @@
   padding: 0 var(--tx-space-1);
   border-bottom: 1px solid var(--tx-color-accent);
 }
+
+.tx-langtext__tabelle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2);
+  margin-left: var(--tx-space-2);
+  padding-left: var(--tx-space-2);
+  border-left: 1px solid var(--tx-color-border);
+}
+
+.tx-langtext__tabelle-feld {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-1);
+  font-size: var(--tx-text-sm, 0.875rem);
+}
+
+.tx-langtext__tabelle-zahl {
+  width: 4.5rem;
+}

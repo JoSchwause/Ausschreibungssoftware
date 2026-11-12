@@ -19,6 +19,14 @@ describe('zielZelle', () => {
     expect(zielZelle('End', true, { zeile: 4, spalte: 2 }, r)).toEqual({ zeile: 9, spalte: 3 });
   });
 
+  it('Strg+Pfeil springt an den Rand des Rasters in dieser Richtung (wie Excel in einer vollen Tabelle)', () => {
+    expect(zielZelle('ArrowDown', true, { zeile: 4, spalte: 2 }, r)).toEqual({ zeile: 9, spalte: 2 });
+    expect(zielZelle('ArrowUp', true, { zeile: 4, spalte: 2 }, r)).toEqual({ zeile: 0, spalte: 2 });
+    expect(zielZelle('ArrowRight', true, { zeile: 4, spalte: 1 }, r)).toEqual({ zeile: 4, spalte: 3 });
+    expect(zielZelle('ArrowLeft', true, { zeile: 4, spalte: 2 }, r)).toEqual({ zeile: 4, spalte: 0 });
+    expect(zielZelle('ArrowDown', true, { zeile: 9, spalte: 2 }, r)).toBeNull();
+  });
+
   it('Bild auf/ab springt eine Seite und klemmt an den Enden', () => {
     expect(zielZelle('PageDown', false, { zeile: 4, spalte: 2 }, r)).toEqual({ zeile: 7, spalte: 2 });
     expect(zielZelle('PageDown', false, { zeile: 8, spalte: 2 }, r)).toEqual({ zeile: 9, spalte: 2 });

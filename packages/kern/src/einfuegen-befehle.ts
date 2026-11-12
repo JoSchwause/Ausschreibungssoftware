@@ -17,7 +17,7 @@ import type {
   LvZustand,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { neuvergabe } from './oz-vorschlag';
 import type { Neuvergabe } from './oz-vorschlag';
@@ -57,28 +57,29 @@ function mitOz(k: Knoten, nv: Neuvergabe): Knoten {
 }
 
 /**
- * Prüft die mitgebrachte Liste: nicht leer; bekannte Knotenarten; Kennungen neu (nicht im Baum, nicht im Papierkorb, nicht
- * das LV, nicht doppelt: `id-vergeben`); Eltern vor Kindern; Kinder nur unter Gliederungen, ein Los nur ganz oben;
+ * Prüft eine mitgebrachte Liste von Teilbäumen (`KnotenEinfuegen`, v1.4 auch `NachtragUebernehmen` am Auftrags-LV): nicht
+ * leer; bekannte Knotenarten; Kennungen neu (nicht im Baum `idx`, nicht in `extern` (Papierkorb), nicht die Wurzel `lvId`,
+ * nicht doppelt: `id-vergeben`); Eltern vor Kindern; Kinder nur unter Gliederungen, ein Los nur ganz oben;
  * `reihenfolge` je Elternknoten im Teilbaum dicht 0..n-1; Felder wie beim Anlegen (Hinweistext und Gliederung ohne Menge
- * und Preis; Positionen nach `positionsdatenFehler`, Bezüge auf Liste, Baum oder Papierkorb). Liefert die Wurzeln.
+ * und Preis; Positionen nach `positionsdatenFehler`, Bezüge auf Liste, Baum oder `extern`). Liefert die Wurzeln (die
+ * Knoten, deren Elternknoten nicht in der Liste steht), in Listenreihenfolge; ihre Lage prüft der Aufrufer.
  */
-function listeFehler(
-  z: LvZustand,
+export function listeFehler(
+  lvId: string,
   idx: Baumindex,
+  extern: ReadonlyMap<string, Knoten>,
   liste: readonly Knoten[],
 ): Ergebnis<Knoten[], Befehlsfehler> {
   if (!istListe(liste) || liste.length === 0)
     return nein('ungueltige-eingabe', 'Die Liste der Knoten ist leer.', undefined, 'knoten');
-  const lvId = z.leistungsverzeichnis.id as string;
-  const korb = papierkorbKnoten(z.papierkorb);
   const inListe = new Map<string, Knoten>();
   for (const k of liste) {
     if (!ARTEN.has(k.art)) return nein('ungueltige-eingabe', `Unbekannte Knotenart „${k.art}“.`, k.id, 'art');
-    if (inListe.has(k.id) || idx.byId.has(k.id) || k.id === lvId || korb.has(k.id))
+    if (inListe.has(k.id) || idx.byId.has(k.id) || k.id === lvId || extern.has(k.id))
       return nein('id-vergeben', `Kennung bereits vergeben: ${k.id}`, k.id);
     inListe.set(k.id, k);
   }
-  const knotenVon = (i: string): Knoten | undefined => inListe.get(i) ?? idx.byId.get(i) ?? korb.get(i);
+  const knotenVon = (i: string): Knoten | undefined => inListe.get(i) ?? idx.byId.get(i) ?? extern.get(i);
   const gesehen = new Set<string>();
   const wurzeln: Knoten[] = [];
   const reihen = new Map<string, number[]>();
@@ -137,7 +138,7 @@ function listeFehler(
 export function knotenEinfuegen(z: LvZustand, b: KnotenEinfuegen): Antwort {
   const lv = z.leistungsverzeichnis;
   const idx = indexVon(lv.id, lv.knoten);
-  const geprueft = listeFehler(z, idx, b.knoten);
+  const geprueft = listeFehler(lv.id, idx, papierkorbKnoten(z.papierkorb), b.knoten);
   if (!geprueft.ok) return geprueft;
   const wurzeln = geprueft.wert;
   const ziel = ortAufloesen(idx, b.ort, new Set());
@@ -161,7 +162,7 @@ export function knotenEinfuegen(z: LvZustand, b: KnotenEinfuegen): Antwort {
     });
   const hinzugefuegt = b.knoten.map((k) => {
     const n = mitOz(lage.get(k.id) ?? k, nv);
-    return n.art === 'position' ? positionMitEinheiten(n) : n;
+    return n.art === 'position' ? positionNormal(n) : n;
   });
   return ok(changeSet(z, idx, { hinzugefuegt, geaendert: lageAenderungen(listen, wurzelIds) }, nv));
 }

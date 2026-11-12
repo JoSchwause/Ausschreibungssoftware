@@ -85,9 +85,37 @@ async function messeScrollen(page: Page, pixelProSekunde: number, dauerMs: numbe
   );
 }
 
+// Ticket 74: Die Kosten des schnellen Wischens im Vergleichsgrid wachsen mit den Elementen je Zelle (D-60.10). Diese
+// Zählung hängt nicht an der Maschine: je Zelle nur die Zelle, ihr Text und je Kennzeichen eine Marke; in der Baumspalte
+// einer Position dazu genau ein Element für den Einzug. Die Beschreibung der Kennzeichen steht im `title`.
+test('Vergleich 5.000 Zeilen x 5 Bieter: je Zelle nur Zelle, Text und Marken', async ({ page }) => {
+  await page.goto('/vergleich.html?zeilen=5000&bieter=5');
+  await expect(page.getByRole('treegrid')).toBeVisible();
+  await page.getByRole('treegrid').evaluate((el) => {
+    el.scrollTop = 2000 * 28;
+  });
+  await expect(page.locator('.tx-grid__koerper [role="row"][data-i="2010"]')).toBeAttached();
+  const zellen = await page.locator('.tx-grid__koerper [role="gridcell"]').evaluateAll((els) =>
+    els.map((el) => ({
+      spalte: el.getAttribute('data-spalte') ?? '',
+      position: el.closest('.tx-grid__zeile--position') !== null,
+      elemente: el.querySelectorAll('*').length + 1,
+      marken: el.querySelectorAll('[data-kennzeichen]').length,
+    })),
+  );
+  const ohneBaum = zellen.filter((z) => z.spalte !== 'kurztext');
+  expect(ohneBaum.filter((z) => z.marken > 0).length).toBeGreaterThan(20);
+  expect(ohneBaum.filter((z) => z.elemente !== 2 + z.marken)).toEqual([]);
+  const blaetter = zellen.filter((z) => z.spalte === 'kurztext' && z.position);
+  expect(blaetter.length).toBeGreaterThan(20);
+  expect(blaetter.filter((z) => z.elemente !== 3)).toEqual([]);
+});
+
 const FALLE = [
   { name: 'gross, 5.000 Zeilen', url: '/?fixture=gross' },
   { name: 'gross x2, 10.000 Zeilen', url: '/?fixture=gross&kopien=2' },
+  // Vergleichsgrid (Ticket 60): erfundener Preisspiegel, 5 Bieter und Min/Mittel/Max je EP und GP (20 Spalten)
+  { name: 'Vergleich 5.000 Zeilen x 5 Bieter', url: '/vergleich.html?zeilen=5000&bieter=5' },
 ] as const;
 
 // zwei Geschwindigkeiten: zügiges Lesen (200 Zeilen/s) und ein schneller Wisch (1.000 Zeilen/s)

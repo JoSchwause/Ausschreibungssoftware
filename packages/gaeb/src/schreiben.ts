@@ -13,14 +13,17 @@
 
 import type {
   Auftraggeber,
+  AuftragsLeistungsverzeichnis,
   Betrag,
   Einheitspreisanteile,
+  EpaBezeichnung,
   GaebExport,
   GaebVersion,
   Hinweistext,
   Knoten,
   KnotenId,
   LvInhalt,
+  LvKopf,
   Ordnungszahl,
   OzStelle,
   Position,
@@ -28,14 +31,24 @@ import type {
   Pruefbefund,
   Summenstand,
   Vergabeinformationen,
+  WurzelId,
 } from '@tethys/vertrag';
 import { MAX_GLIEDERUNGSEBENEN, OZ_MAX_LAENGE, PRUEF_GRENZEN, vorkommastellen } from '@tethys/kern';
 import { XmlAusgabe } from './ausgabe';
+import { EPA_ARTEN, TYP_DER_ART, deuteBeschriftung } from './epa';
+import { KG_KATALOGART, KG_KATALOG_ID, KG_KATALOG_NAME, istKostengruppe } from './kostengruppe';
 import type { Attribute } from './ausgabe';
 import { schreibeDetailtext, schreibeEinzeiler, schreibeKurztext } from './text-schreiben';
 import type { TextMelder } from './text-schreiben';
 
 export type ExportPhase = 'X81' | 'X83' | 'X86';
+
+/**
+ * Was der Writer nimmt: den Inhalt eines LV, auch mit den Kopffeldern `nachtrag` und `vorlage` des `LvKopf` (v1.4; GAEB
+ * hat dafür nichts, sie werden mit Warnung verworfen, Ticket 84), oder ein Auftrags-LV (v1.3, Ticket 68).
+ */
+export type SchreibInhalt =
+  (LvInhalt & Partial<Pick<LvKopf, 'nachtrag' | 'vorlage'>>) | AuftragsLeistungsverzeichnis;
 export type ExportVersion = Extract<GaebVersion, '3.2' | '3.3'>;
 
 export interface SchreibOptionen {
@@ -49,8 +62,8 @@ export interface SchreibOptionen {
   readonly summen?: Summenstand;
   /** Basis je Zuschlagsposition (Summe der GP ihrer Bezugspositionen, vom Kern). Für `ITMarkup` in X86. */
   readonly zuschlagsbasen?: ReadonlyMap<PositionId, Betrag>;
-  /** Name des Auftragnehmers für `CTR` in X86 (der Bieter des beauftragten Angebots). */
-  readonly auftragnehmer?: string;
+  // v1.3 (Ticket 68): Der Auftragnehmer für `CTR` kommt aus dem Modell (`LvInhaltKopf.auftragnehmer`), nicht mehr aus
+  // einer Option (Review von Ticket 53: das Modell gewinnt).
 }
 
 /** `GAEBInfo/VersDate` je Version (Schemastand). */
@@ -83,8 +96,9 @@ export const GRENZEN = {
 } as const;
 
 const RNO_ZEICHEN = /^[0-9A-Za-z_]+$/;
-const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
-const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+/** `GAEBInfo/Date` und `Time` (tgDate, tgTime); auch für X31. */
+export const DATUM = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+export const UHRZEIT = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
 
 /** Zahl der Zeichen (Codepunkte), wie das XSD `maxLength` zählt. */
 const zeichen = (s: string): number => Array.from(s).length;
@@ -109,8 +123,17 @@ interface Wahlnummer {
  * Künstliche Wahlnummern (D-16) für Wahlpositionen ohne Gruppen- oder Variantennummer (aus v1 migriert, D-37.1: Wahl).
  * GAEB kennt eine Wahl nur über `ALNGroupNo`/`ALNSerNo`; als gewöhnliches `Item` ginge ihr Betrag beim Wiederlesen ins
  * Netto. Deterministisch: eine Gruppe je Grundposition, eine eigene Gruppe je Wahl ohne Grundposition, nummeriert in
- * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Die Grundposition selbst
- * bleibt, wie sie ist (die Migration erfindet keine Fachdaten). Über 9 Varianten oder 999 Gruppen prüft `merkmale`.
+ * LV-Reihenfolge oberhalb der höchsten belegten Gruppe; Varianten 1..n in LV-Reihenfolge. Über 9 Varianten oder 999
+ * Gruppen prüft `merkmale`.
+ *
+ * Der Leser ordnet eine Alternative nur über die Gruppennummer einer Grundausführung (Variante 0) im selben LV-Bereich
+ * zu (FD 4.5.2, Ticket 22). Damit der Rundweg die Grundposition nicht verliert (Ticket 73), gilt, wenn die Grundposition
+ * unter demselben Elternknoten steht wie die Alternative:
+ * - Hat sie keine eigene Wahl, bekommt sie Variante 0 der neuen Gruppe. Die Summen ändern sich nicht: Variante 0 geht
+ *   ins Netto (`betragsziel`).
+ * - Ist sie schon Variante 0 einer Gruppe, kommt die Alternative in diese Gruppe, mit den Varianten nach der höchsten
+ *   dort belegten.
+ * Das Modell bleibt, wie es ist.
  */
 function kuenstlicheWahlnummern(
   wurzelId: string,
@@ -118,10 +141,17 @@ function kuenstlicheWahlnummern(
   kinder: ReadonlyMap<string, readonly Knoten[]>,
 ): ReadonlyMap<string, Wahlnummer> {
   let hoechste = 0;
+  const nachId = new Map<string, Knoten>();
   for (const k of knoten) {
+    nachId.set(k.id, k);
     const g = k.art === 'position' ? k.merkmale.wahl?.gruppe : null;
     if (typeof g === 'number' && Number.isInteger(g) && g > hoechste) hoechste = g;
   }
+  const hoechsteVariante = (eltern: string, gruppe: number): number =>
+    (kinder.get(eltern) ?? []).reduce((h, s) => {
+      const v = s.art === 'position' && s.merkmale.wahl?.gruppe === gruppe ? s.merkmale.wahl.variante : null;
+      return v !== null && v > h ? v : h;
+    }, 0);
   const aus = new Map<string, Wahlnummer>();
   const gruppeJeGrund = new Map<string, { readonly gruppe: number; varianten: number }>();
   const besuche = (eltern: string): void => {
@@ -129,20 +159,38 @@ function kuenstlicheWahlnummern(
       const w = k.art === 'position' ? k.merkmale.wahl : null;
       if (w !== null && (w.gruppe === null || w.variante === null)) {
         const grund = w.grundpositionId;
+        const gp = grund === null ? undefined : nachId.get(grund);
+        // `undefined`: keine Grundposition, die GAEB dieser Alternative zuordnen kann; `null`: ohne eigene Wahl.
+        const gpWahl = gp?.art === 'position' && gp.elternId === k.elternId ? gp.merkmale.wahl : undefined;
         let g = grund === null ? undefined : gruppeJeGrund.get(grund);
         if (g === undefined) {
-          hoechste += 1;
-          g = { gruppe: hoechste, varianten: 0 };
+          if (gpWahl?.variante === 0 && gpWahl.gruppe !== null)
+            g = { gruppe: gpWahl.gruppe, varianten: hoechsteVariante(k.elternId, gpWahl.gruppe) };
+          else {
+            hoechste += 1;
+            g = { gruppe: hoechste, varianten: 0 };
+          }
           if (grund !== null) gruppeJeGrund.set(grund, g);
         }
         g.varianten += 1;
         aus.set(k.id, { gruppe: g.gruppe, variante: g.varianten });
+        if (gpWahl === null && grund !== null) aus.set(grund, { gruppe: g.gruppe, variante: 0 });
       }
       besuche(k.id);
     }
   };
   besuche(wurzelId);
   return aus;
+}
+
+/**
+ * Was der Writer schreibt: der Inhalt eines LV oder ein Auftrags-LV (v1.3, Ticket 68). Beide tragen denselben Kopf
+ * (`LvInhaltKopf`) und Knoten; die Wurzel des Auftrags-LV ist seine Kennung (`WurzelId`).
+ */
+type Inhalt = Omit<LvInhalt, 'wurzelId'> & { readonly wurzelId: WurzelId };
+
+function alsInhalt(q: LvInhalt | AuftragsLeistungsverzeichnis): Inhalt {
+  return 'wurzelId' in q ? q : { ...q, wurzelId: q.id };
 }
 
 interface Verworfen {
@@ -160,12 +208,15 @@ class Schreiber {
   private readonly ozGesehen = new Set<string>();
   private readonly positionssummen = new Map<string, Betrag | null>();
   private readonly gliederungssummen = new Map<string, Betrag>();
+  /** `true`: BoQInfo trägt `NoUPComps`/`LblUPComp` (aus dem LV, sonst in X86 mit Anteilen die feste Belegung). */
   private readonly mitAnteilen: boolean;
+  /** EPA-Bezeichnungen des LV nach Nummer (v1.3, D-28); `null`: feste Belegung des Writers. */
+  private readonly bezeichnungen: readonly EpaBezeichnung[] | null;
   private readonly kuenstlicheWahl: ReadonlyMap<string, Wahlnummer>;
   private freiBezeichnung: string | null = null;
 
   constructor(
-    private readonly inhalt: LvInhalt,
+    private readonly inhalt: Inhalt,
     private readonly opt: SchreibOptionen,
   ) {
     for (const k of inhalt.knoten) {
@@ -179,8 +230,12 @@ class Schreiber {
       for (const p of opt.summen.positionen) this.positionssummen.set(p.positionId, p.gesamtpreis);
       for (const g of opt.summen.gliederungen) this.gliederungssummen.set(g.gliederungId, g.summe);
     }
+    const b = inhalt.epaBezeichnungen;
+    this.bezeichnungen =
+      b === undefined || b.length === 0 ? null : [...b].sort((x, y) => x.nummer - y.nummer);
     this.mitAnteilen =
-      opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null);
+      this.bezeichnungen !== null ||
+      (opt.phase === 'X86' && inhalt.knoten.some((k) => k.art === 'position' && k.epa !== null));
   }
 
   get x86(): boolean {
@@ -357,22 +412,20 @@ class Schreiber {
         );
       this.auftraggeber(ag);
     }
+    const an = this.inhalt.auftragnehmer;
     if (this.x86) {
-      if (this.opt.auftragnehmer === undefined)
+      if (an === undefined)
         this.melde(
           'warnung',
           'angabe-leer',
-          'X86 verlangt einen Auftragnehmer (CTR); der Aufrufer hat keinen genannt, die Adresse wird leer geschrieben.',
+          'X86 verlangt einen Auftragnehmer (CTR); das LV hat keinen, die Adresse wird leer geschrieben.',
           undefined,
           'auftragnehmer',
         );
       this.aus.element('CTR', [], () => {
-        this.adresse(
-          { name: this.opt.auftragnehmer ?? null, strasse: null, plz: null, ort: null },
-          'auftragnehmer',
-        );
+        this.adresse(an ?? { name: null, strasse: null, plz: null, ort: null }, 'auftragnehmer');
       });
-    }
+    } else if (an !== undefined) this.verwirf('Auftragnehmer (CTR gibt es nur in X86)');
   }
 
   private adresse(ag: Pick<Auftraggeber, 'name' | 'strasse' | 'plz' | 'ort'>, feld: string): void {
@@ -486,6 +539,12 @@ class Schreiber {
       if (m.index) stufe('Index', m.index);
       if (this.mitAnteilen) this.anteilsbezeichnungen();
       if (this.x86 && this.opt.summen) this.lvSummen(this.opt.summen);
+      if (this.inhalt.knoten.some((k) => k.art === 'position' && k.kostengruppe !== undefined))
+        a.element('Ctlg', [], () => {
+          a.blatt('CtlgID', KG_KATALOG_ID);
+          a.blatt('CtlgType', KG_KATALOGART[this.opt.version]);
+          a.blatt('CtlgName', KG_KATALOG_NAME);
+        });
     });
   }
 
@@ -511,7 +570,16 @@ class Schreiber {
 
   // --- Preise (X86) -----------------------------------------------------------------------------------------
 
+  /**
+   * `NoUPComps` und `LblUPComp<n>` (v1.3, Ticket 68, D-28). Mit EPA-Bezeichnungen im LV (X81, X83, X86): genau deren
+   * Nummern, nie umnummeriert; eine Lücke bleibt eine Lücke (das XSD lässt jedes `LblUPComp<n>` weg), `NoUPComps` ist
+   * die höchste Nummer, mindestens 2 (das XSD kennt 1 nicht). Ohne das Feld: die feste Belegung (nur X86 mit Anteilen).
+   */
   private anteilsbezeichnungen(): void {
+    if (this.bezeichnungen !== null) {
+      this.bezeichnungenAusLv(this.bezeichnungen);
+      return;
+    }
     const a = this.aus;
     a.blatt('NoUPComps', '6');
     for (const k of this.inhalt.knoten)
@@ -531,7 +599,53 @@ class Schreiber {
     );
   }
 
+  private bezeichnungenAusLv(liste: readonly EpaBezeichnung[]): void {
+    const a = this.aus;
+    const nummern = new Set(liste.map((e) => e.nummer));
+    const arten = new Set(liste.map((e) => e.anteil));
+    if (nummern.size !== liste.length || arten.size !== liste.length)
+      this.fehler(
+        'wert-ungueltig',
+        'Die EPA-Bezeichnungen nennen eine Nummer oder einen Anteil mehrfach.',
+        undefined,
+        'epaBezeichnungen',
+      );
+    const hoechste = Math.max(2, ...liste.map((e) => e.nummer));
+    a.blatt('NoUPComps', String(hoechste));
+    for (const e of liste) {
+      const name = `LblUPComp${String(e.nummer)}`;
+      const typ = TYP_DER_ART[e.anteil];
+      const text = this.text(e.bezeichnung ?? '', 20, `Die Bezeichnung ${name}`, 'epaBezeichnungen');
+      const gelesen = deuteBeschriftung(text, typ).anteil;
+      if (gelesen !== e.anteil)
+        this.melde(
+          'warnung',
+          'epa-beschriftung-mehrdeutig',
+          `${name} „${text}“ (Type ${typ}) steht für den Anteil ${e.anteil}, wird beim Lesen aber als ${gelesen} ` +
+            'gedeutet: die Bezeichnung nennt eine andere Art, oder GAEB hat für die Art keinen eigenen Typ.',
+          undefined,
+          'epaBezeichnungen',
+        );
+      a.blatt(name, text, [['Type', typ]]);
+    }
+  }
+
   private anteile(epa: Einheitspreisanteile, id: string): void {
+    if (this.bezeichnungen !== null) {
+      const liste = this.bezeichnungen;
+      for (const e of liste) {
+        const w = epa[e.anteil];
+        if (w !== null)
+          this.aus.blatt(
+            `UPComp${String(e.nummer)}`,
+            this.zahl(w, 'einheitspreis', 'Der EP-Anteil', id, 'epa'),
+          );
+      }
+      for (const art of EPA_ARTEN)
+        if (epa[art] !== null && !liste.some((e) => e.anteil === art))
+          this.verwirf('EP-Anteil ohne Nummer in den EPA-Bezeichnungen des LV', id);
+      return;
+    }
     if (epa.freiBezeichnung !== null && epa.freiBezeichnung !== this.freiBezeichnung)
       this.verwirf('Abweichende Bezeichnung des freien EP-Anteils (GAEB kennt eine je LV)', id);
     const werte = [epa.lohn, epa.stoffe, epa.geraete, epa.nachunternehmer, epa.sonstiges, epa.frei];
@@ -751,15 +865,17 @@ class Schreiber {
     const a = this.aus;
     const m = p.merkmale;
     const w = m.wahl;
-    if (w !== null) {
-      const kuenstlich = this.kuenstlicheWahl.get(p.id);
-      const { gruppe, variante } = kuenstlich ?? w;
+    const kuenstlich = this.kuenstlicheWahl.get(p.id);
+    if (w !== null || kuenstlich !== undefined) {
+      const { gruppe, variante } = kuenstlich ?? w ?? { gruppe: null, variante: null };
       if (kuenstlich !== undefined)
         this.melde(
           'warnung',
           'wahl-nummer-vergeben',
-          `Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als Gruppe ${String(kuenstlich.gruppe)}, ` +
-            `Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
+          (w === null
+            ? 'Die Position ist Grundposition einer Wahlposition ohne Gruppen- und Variantennummer; sie wird als '
+            : 'Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als ') +
+            `Gruppe ${String(kuenstlich.gruppe)}, Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
           p.id,
           'merkmale.wahl',
         );
@@ -805,6 +921,7 @@ class Schreiber {
   }
 
   private position(p: Position, ozEltern: string | null, stellen: number): void {
+    if (p.textquelle !== undefined) this.verwirf('Textquelle der Position', p.id);
     const z = p.zuschlag;
     const altform = z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null);
     if (z !== null && !(altform && this.x86)) {
@@ -831,9 +948,27 @@ class Schreiber {
         );
       }
       this.einheit(p.einheit, p.id, 'einheit', this.opt.phase === 'X83');
+      this.kostengruppe(p);
       this.preise(p);
       this.beschreibung(p);
       this.leitbeschreibung(p);
+    });
+  }
+
+  /** Kostengruppe als Zuordnung zum Katalog DIN 276 (Ticket 84); in `Item` hinter `QU`, in `MarkupItem` am Ende. */
+  private kostengruppe(p: Position): void {
+    const kg = p.kostengruppe;
+    if (kg === undefined) return;
+    if (!istKostengruppe(String(kg)))
+      this.fehler(
+        'wert-ungueltig',
+        `Die Kostengruppe „${kg}“ ist keine dreistellige Kostengruppennummer.`,
+        p.id,
+        'kostengruppe',
+      );
+    this.aus.element('CtlgAssign', [], () => {
+      this.aus.blatt('CtlgID', KG_KATALOG_ID);
+      this.aus.blatt('CtlgCode', kg);
     });
   }
 
@@ -954,6 +1089,7 @@ class Schreiber {
         if (gp != null) a.blatt('IT', this.zahl(gp, 'betrag', 'Der Zuschlagsbetrag', p.id, 'gesamtpreis'));
       } else if (z.prozentsatz !== null) this.verwirf('Zuschlagssätze', p.id);
       this.beschreibung(p);
+      this.kostengruppe(p);
     });
   }
 }
@@ -963,14 +1099,14 @@ function kommentar(s: string): string {
 }
 
 /**
- * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
- * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5).
+ * XML-Deklaration und, wenn die eigene Prüfung Fehler fand, der Kommentar „Entwurf: …“ (U5, G-13); auch für X31
+ * (`x31-schreiben.ts`).
  */
-export function schreibeGaeb(inhalt: LvInhalt, optionen: SchreibOptionen): GaebExport {
-  const s = new Schreiber(inhalt, optionen);
-  s.schreibe();
-  s.abschliessen();
-  const fehler = s.befunde.filter((b) => b.schwere === 'fehler');
+export function exportKopf(befunde: readonly Pruefbefund[]): {
+  readonly kopf: string;
+  readonly entwurf: boolean;
+} {
+  const fehler = befunde.filter((b) => b.schwere === 'fehler');
   const entwurf = fehler.length > 0;
   let kopf = '<?xml version="1.0" encoding="UTF-8"?>\n';
   if (entwurf) {
@@ -981,6 +1117,22 @@ export function schreibeGaeb(inhalt: LvInhalt, optionen: SchreibOptionen): GaebE
         ' Die Datei ist nicht zur Weitergabe bestimmt.',
     )} -->\n`;
   }
+  return { kopf, entwurf };
+}
+
+/**
+ * Schreibt ein LV als GAEB DA XML. Wirft nie bei Inhalt: Probleme sind Befunde der eigenen Prüfung; ein Fehler
+ * macht den Export zum Entwurf (`entwurf: true`, Kommentar am Anfang), sperrt ihn aber nicht (U5). Ein Auftrags-LV
+ * (Zuschlag) wird ebenso geschrieben, üblicherweise als X86 mit seinem Auftragnehmer (v1.3, Ticket 68).
+ */
+export function schreibeGaeb(inhalt: SchreibInhalt, optionen: SchreibOptionen): GaebExport {
+  const s = new Schreiber(alsInhalt(inhalt), optionen);
+  // v1.4 (Ticket 84): Kopffelder ohne GAEB-Gegenstück, wenn die App sie mitgibt; nie still verworfen (E-11, Q5).
+  if ('nachtrag' in inhalt) s.verwirf('Nachtragsangaben des LV');
+  if ('vorlage' in inhalt) s.verwirf('Kennzeichen Muster-LV');
+  s.schreibe();
+  s.abschliessen();
+  const { kopf, entwurf } = exportKopf(s.befunde);
   return {
     phase: optionen.phase,
     version: optionen.version,

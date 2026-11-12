@@ -11,9 +11,10 @@ import type {
   Speicherfehlercode,
 } from '@tethys/vertrag';
 import { befehlswegFuer, lvBefehlAnwenden, type Umgebung } from './lv/befehlsweg';
+import { rechnungTestpfad, type RechnungTestpfad } from './rechnung/testpfad'; // Ticket 88
 import type { SpeicherAnbieterProps } from './speicher/SpeicherAnbieter';
 
-export interface Testpfad {
+export interface Testpfad extends RechnungTestpfad /* Ticket 88 */ {
   /** Legt ein LV mit vollem Inhalt an (z. B. die Fixture `gross`); `inhalt.wurzelId` ist die neue Kennung. */
   lvAnlegen(projektId: ProjektId, inhalt: LvInhalt): Promise<{ ok: boolean; id: LeistungsverzeichnisId }>;
   /** Ab jetzt weist `anwenden` mit diesem Code ab, ohne zu schreiben; `null` hebt das auf. */
@@ -54,6 +55,7 @@ function umhuellen(speicher: Speicher): Speicher {
 
 function onBereit(u: Umgebung): void {
   window.tethysTest = {
+    ...rechnungTestpfad(u), // Ticket 88
     async lvAnlegen(projektId, inhalt) {
       const a = await lvBefehlAnwenden(u, projektId, null, {
         art: 'LeistungsverzeichnisAnlegen',

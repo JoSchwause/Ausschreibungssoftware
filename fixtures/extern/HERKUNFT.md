@@ -9,7 +9,8 @@ Regel C4, Entscheidung G-55 Nr. 1. Jede Datei unter `fixtures/extern/` steht hie
 `tools/herkunft.test.mjs` schlägt fehl, wenn eine Datei fehlt, eine Prüfsumme nicht stimmt oder irgendwo eine `.xsd`
 versioniert ist.
 
-**Lizenz und Risiko.** Alle Dateien unten sind amtliche Dateien (BVBS-Prüfdateien, GAEB-Musterdateien). Weder BVBS
+**Lizenz und Risiko.** Alle Dateien der ersten Tabelle sind amtliche Dateien (BVBS-Prüfdateien, GAEB-Musterdateien). Die
+XRechnung-Dateien stehen in einem eigenen Abschnitt weiter unten (Apache-2.0). Weder BVBS
 noch GAEB nennen auf den Quellseiten eine Lizenz. Der Nutzer hat dieses Risiko für genau diese amtlichen Dateien
 ausdrücklich in Kauf genommen (G-55 Nr. 1). Sie sind deshalb mit `LicenseRef-BVBS-GAEB-Pruefdatei` gekennzeichnet
 (Text: `LICENSES/LicenseRef-BVBS-GAEB-Pruefdatei.txt`), **nicht** mit AGPL oder einer anderen freien Lizenz. Auf Anfrage
@@ -44,6 +45,27 @@ Nicht übernommen: Prüfkriterien- und Muster-PDFs (reine Dokumentation), alle S
 | `gaeb/3.1-musterdateien/Musterdatei_3.1_2008-003.X86` | https://www.gaeb.de/wp-content/uploads/2022/11/Musterdateien_GAEB_DA_XML_3.1_2009-12.zip | `81696335235298ebe876186215f868db4cf8374c62d69400d5351e42aa172491` | `Musterdatei_3.1_2008-003.X86` | 2026-11-09 | LicenseRef-BVBS-GAEB-Pruefdatei | ja | `89dee863b44ed4c4a1ffacb942865e21475ae7b603549ee58e4fba4e44dfcae1` |
 | `gaeb/3.1-musterdateien/Musterdatei_3.1_2008-004.X83` | https://www.gaeb.de/wp-content/uploads/2022/11/Musterdateien_GAEB_DA_XML_3.1_2009-12.zip | `81696335235298ebe876186215f868db4cf8374c62d69400d5351e42aa172491` | `Musterdatei_3.1_2008-004.X83` | 2026-11-09 | LicenseRef-BVBS-GAEB-Pruefdatei | ja | `11d949a87213792b532950d7a66973d092b10aba66632bd07c0d264102b6d16b` |
 | `gaeb/3.1-musterdateien/Musterdatei_3.1_2008-004.X86` | https://www.gaeb.de/wp-content/uploads/2022/11/Musterdateien_GAEB_DA_XML_3.1_2009-12.zip | `81696335235298ebe876186215f868db4cf8374c62d69400d5351e42aa172491` | `Musterdatei_3.1_2008-004.X86` | 2026-11-09 | LicenseRef-BVBS-GAEB-Pruefdatei | ja | `99fa9d3cd1cf30c273af7395f98750e65b75de25b27b79a1dc96b4d807218ca7` |
+
+## XRechnung-Testsuite der KoSIT (Ticket 76)
+
+Quelle: Repository `itplr-kosit/xrechnung-testsuite` der Koordinierungsstelle für IT-Standards (KoSIT), Tag
+`v2026-08-31`, Commit `44c3905c69ca236aa3b94c04be1b7e9bd066ba03` (2026-09-01). **Lizenz:** Apache-2.0 laut `LICENSE` des
+Repos (SHA-256 der Datei `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`, Text unter
+`LICENSES/Apache-2.0.txt`); mit AGPL-3.0-or-later verträglich (C4, C5). Die Quelle hat keine `NOTICE`-Datei, die Dateien
+tragen keinen Urhebervermerk. **Unverändert** heißt: Die Bytes sind gleich der Datei unter
+`https://raw.githubusercontent.com/itplr-kosit/xrechnung-testsuite/<Commit>/<Pfad im Repo>`, abgerufen am 2026-11-11
+und gegen einen Klon desselben Commits verglichen. Nur der Ordner weicht ab (flach unter `xrechnung/`).
+
+Auswahl: je eine Rechnung in UBL und CII desselben Geschäftsfalls (01.01a), eine Schlussrechnung Bau (Rechnungsart 877)
+mit Unterpositionen aus der Extension und der umfassende technische CII-Fall (BT-12, BT-13, BT-107, BT-108, BT-114,
+Umsatzsteuer in zweiter Währung). Die übrigen Dateien der Testsuite sind nicht übernommen.
+
+| Datei | Pfad im Repo | Commit | Abruf | Lizenz | Unverändert | SHA-256 |
+|---|---|---|---|---|---|---|
+| `xrechnung/01.01a-INVOICE_ubl.xml` | `src/test/business-cases/standard/01.01a-INVOICE_ubl.xml` | `44c3905c69ca236aa3b94c04be1b7e9bd066ba03` | 2026-11-11 | Apache-2.0 | ja | `74fb09c609d5fba15a8c543060998d3b92858f56a81fb5b0ed244d6794e498d1` |
+| `xrechnung/01.01a-INVOICE_uncefact.xml` | `src/test/business-cases/standard/01.01a-INVOICE_uncefact.xml` | `44c3905c69ca236aa3b94c04be1b7e9bd066ba03` | 2026-11-11 | Apache-2.0 | ja | `727b51982a84c9b406599a7384783570910440ed405c9bb6d918b22442636886` |
+| `xrechnung/04.04a-INVOICE_ubl.xml` | `src/test/business-cases/extension/04.04a-INVOICE_ubl.xml` | `44c3905c69ca236aa3b94c04be1b7e9bd066ba03` | 2026-11-11 | Apache-2.0 | ja | `275929283c921191be88f9c5fcd947432d62e57a14f692d8b9003d6debb37237` |
+| `xrechnung/01.01_comprehensive_test_uncefact.xml` | `src/test/technical-cases/cius/01.01_comprehensive_test_uncefact.xml` | `44c3905c69ca236aa3b94c04be1b7e9bd066ba03` | 2026-11-11 | Apache-2.0 | ja | `655f3d18f71f672b5bd695143e9f59c439f2614ac3d4b1fbdd195993ab7c6c9a` |
 
 ## Nicht erhalten
 

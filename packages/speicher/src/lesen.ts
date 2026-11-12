@@ -9,26 +9,35 @@ import type {
   AngebotId,
   AngebotKopf,
   AngebotZustand,
+  Aufmass,
+  AufmassKopf,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvKopf,
+  AuftragsLvUebersicht,
   AuftragsLvZustand,
   Bieter,
   Betrag,
+  Gliederungssumme,
   Knoten,
+  Kostenermittlung,
+  KostenermittlungUebersicht,
   Leistungsverzeichnis,
   LeistungsverzeichnisId,
   LvKopf,
   LvStand,
   LvStandId,
   LvStandUebersicht,
+  LvUebersicht,
   LvZustand,
   Papierkorbeintrag,
   PapierkorbeintragId,
   PositionId,
+  Positionssumme,
   Projekt,
   ProjektId,
   Protokolleintrag,
+  Rechnung,
   Summenstand,
   Zeitstempel,
 } from '@tethys/vertrag';
@@ -36,6 +45,11 @@ import { abbruch } from './ergebnis';
 import type { Datenbank, SqlZeile } from './sql';
 import {
   angebotspositionAusZeile,
+  aufmassAusZeile,
+  aufmasskopfAusZeile,
+  kostenermittlungAusZeile,
+  kostenermittlungUebersichtAusZeile,
+  rechnungAusZeile,
   ausweisAusZeile,
   bieterId,
   ganzzahl,
@@ -45,6 +59,7 @@ import {
   knotenAusZeile,
   kopfdatenAusZeile,
   lvId,
+  lvKennzeichenAusZeile,
   maskeAusZeile,
   nachlassAusZeile,
   projektId,
@@ -80,6 +95,40 @@ export function listeProjekte(db: Datenbank): { id: ProjektId; name: string }[] 
     .sort((a, b) => NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
+/** Nach Name deutsch verglichen, gleiche Namen nach Kennung (Projekt-, LV-, Auftrags-LV- und Kostenermittlungsliste). */
+const nachName = <T extends { readonly id: string; readonly name: string }>(a: T, b: T): number =>
+  NAMENSVERGLEICH.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/**
+ * LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. v1.4 (D-43): dazu
+ * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein).
+ */
+export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
+  return (
+    db
+      // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
+      .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
+      .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
+      .sort(nachName)
+  );
+}
+
+/** Auftrags-LV-Liste eines Projekts (`AuftragsLvRepository.auflisten`, v1.4): ohne Knoten, sortiert wie die LV-Liste. */
+export function listeAuftragsLvs(db: Datenbank, projekt: ProjektId): AuftragsLvUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, name, leistungsverzeichnis_id, angebot_id FROM auftrags_lv WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map((z) => ({
+      id: text(z, 'id') as AuftragsLeistungsverzeichnisId,
+      name: text(z, 'name'),
+      leistungsverzeichnisId: lvId(z, 'leistungsverzeichnis_id'),
+      angebotId: text(z, 'angebot_id') as AngebotId,
+    }))
+    .sort(nachName);
+}
+
 export function listeIds(db: Datenbank, sql: string, bind: readonly string[]): string[] {
   return db.zeilen(sql, bind).map((z) => text(z, 'id'));
 }
@@ -97,6 +146,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     mwstSatz: text(z, 'mwst_satz') as LvKopf['mwstSatz'],
     nachlass: nachlassAusZeile(z),
     ...kopfdatenAusZeile(z),
+    ...lvKennzeichenAusZeile(z),
   };
 }
 
@@ -130,24 +180,28 @@ export function leseKnoten1(db: Datenbank, aggregatId: string, id: string): Knot
   return z === undefined ? null : knotenAusZeile(z);
 }
 
+export const positionssummeAusZeile = (z: SqlZeile): Positionssumme => ({
+  positionId: text(z, 'position_id') as PositionId,
+  gesamtpreis: textOderNull(z, 'gesamtpreis') as Betrag | null,
+  gehtInSummeEin: z['geht_in_summe'] === 1,
+});
+
+export const gliederungssummeAusZeile = (z: SqlZeile): Gliederungssumme => ({
+  gliederungId: gliederungId(z, 'gliederung_id'),
+  summe: text(z, 'summe') as Betrag,
+  ...ausweisAusZeile(z),
+});
+
 export function leseSummen(db: Datenbank, aggregatId: string): Summenstand | null {
   const gesamt = db.zeilen('SELECT * FROM summe_gesamt WHERE aggregat_id = ?', [aggregatId])[0];
   if (gesamt === undefined) return null;
   return {
     positionen: db
       .zeilen('SELECT * FROM summe_position WHERE aggregat_id = ? ORDER BY position_id', [aggregatId])
-      .map((z) => ({
-        positionId: text(z, 'position_id') as PositionId,
-        gesamtpreis: textOderNull(z, 'gesamtpreis') as Betrag | null,
-        gehtInSummeEin: z['geht_in_summe'] === 1,
-      })),
+      .map(positionssummeAusZeile),
     gliederungen: db
       .zeilen('SELECT * FROM summe_gliederung WHERE aggregat_id = ? ORDER BY gliederung_id', [aggregatId])
-      .map((z) => ({
-        gliederungId: gliederungId(z, 'gliederung_id'),
-        summe: text(z, 'summe') as Betrag,
-        ...ausweisAusZeile(z),
-      })),
+      .map(gliederungssummeAusZeile),
     gesamt: gesamtAusZeile(gesamt),
   };
 }
@@ -289,7 +343,7 @@ export function leseAngebot(db: Datenbank, id: AngebotId): AngebotZustand | null
   return { angebot, summen };
 }
 
-// --- Auftrags-LV (gelesen nur über die Projektdatei: der Vertrag hat kein Repository dafür, Offene Typfrage D) ------
+// --- Auftrags-LV (v1.4: `AuftragsLvRepository`, Ticket 79; vorher nur über die Projektdatei, D-64.2) ---------------
 
 export function leseAuftragsLvKopf(db: Datenbank, id: AuftragsLeistungsverzeichnisId): AuftragsLvKopf | null {
   const z = db.zeilen('SELECT * FROM auftrags_lv WHERE id = ?', [id])[0];
@@ -316,6 +370,62 @@ export function leseAuftragsLv(db: Datenbank, id: AuftragsLeistungsverzeichnisId
   }
   const lv: AuftragsLeistungsverzeichnis = { ...kopf, knoten: leseKnoten(db, id) };
   return { auftragsLeistungsverzeichnis: lv, summen: inKnotenreihenfolge(summen, lv.knoten) };
+}
+
+// --- Aufmaßblatt, Rechnung, Kostenermittlung (Schema 5, v1.4) ----------------------------------------------------------
+
+export function leseAufmass(db: Datenbank, id: string): Aufmass | null {
+  const z = db.zeilen('SELECT * FROM aufmass WHERE id = ?', [id])[0];
+  return z === undefined ? null : aufmassAusZeile(z);
+}
+
+/** Die Köpfe der Blätter eines Auftrags-LV nach Blattnummer (`AufmassRepository.auflisten`), ohne die Zeilen zu lesen. */
+export function listeAufmasse(db: Datenbank, auftragsLvId: string): AufmassKopf[] {
+  return db
+    .zeilen(
+      `SELECT id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum FROM aufmass
+       WHERE auftrags_lv_id = ? ORDER BY nummer`,
+      [auftragsLvId],
+    )
+    .map(aufmasskopfAusZeile);
+}
+
+export function leseRechnung(db: Datenbank, id: string): Rechnung | null {
+  const z = db.zeilen('SELECT * FROM rechnung WHERE id = ?', [id])[0];
+  return z === undefined ? null : rechnungAusZeile(z);
+}
+
+/** Die Rechnungen eines Auftrags-LV, ganz, nach Nummer (`RechnungRepository.auflisten`). */
+export function leseRechnungen(db: Datenbank, auftragsLvId: string): Rechnung[] {
+  return db
+    .zeilen('SELECT * FROM rechnung WHERE auftrags_lv_id = ? ORDER BY nummer', [auftragsLvId])
+    .map(rechnungAusZeile);
+}
+
+export function leseKostenermittlung(db: Datenbank, id: string): Kostenermittlung | null {
+  const z = db.zeilen('SELECT * FROM kostenermittlung WHERE id = ?', [id])[0];
+  return z === undefined ? null : kostenermittlungAusZeile(z);
+}
+
+/** Die Kostenermittlungen eines Projekts ohne Einträge, sortiert wie die LV-Liste. */
+export function listeKostenermittlungen(db: Datenbank, projekt: ProjektId): KostenermittlungUebersicht[] {
+  return db
+    .zeilen('SELECT id, projekt_id, stufe, name FROM kostenermittlung WHERE projekt_id = ? ORDER BY id', [
+      projekt,
+    ])
+    .map(kostenermittlungUebersichtAusZeile)
+    .sort(nachName);
+}
+
+/** Alle Aufmaßblätter, Rechnungen bzw. Kostenermittlungen eines Projekts nach Kennung (Projektdatei). */
+export function aggregateDesProjekts(db: Datenbank, projekt: ProjektId) {
+  const alle = (tabelle: string): SqlZeile[] =>
+    db.zeilen(`SELECT * FROM ${tabelle} WHERE projekt_id = ? ORDER BY id`, [projekt]);
+  return {
+    aufmasse: alle('aufmass').map(aufmassAusZeile),
+    rechnungen: alle('rechnung').map(rechnungAusZeile),
+    kostenermittlungen: alle('kostenermittlung').map(kostenermittlungAusZeile),
+  };
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import { anlegenSchritte, eintrag, ladeFixture, lvLoeschenChangeSet } from './te
 import { imProtokoll, neuerKern, speichere, wert, zaehle } from './testhilfe/node';
 import { ausBaumNehmen, eintragEntfernen, feldAendern, standAnlegen, umkehren } from './testhilfe/umkehrung';
 import type { Datenbank } from './sql';
+import { LEERES_SUMMENVORHER } from './summenvorher';
 
 const typisch = ladeFixture('typisch');
 const P = typisch.projekt.id;
@@ -406,7 +407,7 @@ describe('Papierkorb (S3, Punkt 4)', () => {
           angebotId: a.angebot.id,
           kopf: null,
           positionen: { hinzugefuegt: [], geaendert: [{ vorher: ap, nachher: neu }], entfernt: [] },
-          summen: { positionen: [], gliederungen: [], gesamt: null },
+          summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
         },
       ),
     );

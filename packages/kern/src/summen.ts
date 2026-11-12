@@ -27,7 +27,6 @@ import type {
   Gliederungssumme,
   Knoten,
   Leistungsverzeichnis,
-  LvZustand,
   Nachlass,
   Position,
   PositionId,
@@ -291,6 +290,16 @@ export interface Knotenaenderungen {
   readonly entfernt?: readonly Knoten[];
 }
 
+/**
+ * Was `summenAenderung` vom Zustand liest: den Summenstand, die Knoten (Rückwärtsindex der Bezüge), Nachlass und MwSt-Satz.
+ * Ein `LvZustand` hat es; das Auftrags-LV gibt sein Aggregat an dieselbe Stelle (Ticket 71, ohne Kennung: keine Umdeutung
+ * der Kennung, D-64.4).
+ */
+export interface SummenZustand {
+  readonly summen: Summenstand;
+  readonly leistungsverzeichnis: Pick<Leistungsverzeichnis, 'knoten' | 'nachlass' | 'mwstSatz'>;
+}
+
 export interface SummenEingabe {
   /** Die Knotenänderungen des Befehls; aus ihnen folgen alle Summenänderungen. */
   readonly knoten?: Knotenaenderungen;
@@ -329,7 +338,12 @@ interface Anteilsaenderung {
  * nicht ändert, steht nicht im Ergebnis; `gesamt` ist `null`, wenn die Gesamtsummen gleich bleiben. Die Listen sind nach
  * Kennung geordnet (deterministisch, auch für die Umkehrung).
  */
-export function summenAenderung(z: LvZustand, baum: Baumindex, e: SummenEingabe): Summenaenderung {
+export function summenAenderung(
+  z: SummenZustand,
+  baum: Baumindex,
+  e: SummenEingabe,
+): Omit<Summenaenderung, 'vorher'> {
+  // v1.3: mechanisch angepasst, Folgeticket (Summenaenderung.vorher Pflicht; `vorher` setzt `baueChangeSet`)
   const stand = z.summen;
   const hinzu = e.knoten?.hinzugefuegt ?? [];
   const geaendert = e.knoten?.geaendert ?? [];

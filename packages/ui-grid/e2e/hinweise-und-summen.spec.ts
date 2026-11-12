@@ -88,6 +88,74 @@ test.describe('Befehlshinweise (sperren nie)', () => {
   });
 });
 
+test.describe('Mengenansatz (Ticket 74, D-65.2): neutrales Kennzeichen an der Mengenzelle', () => {
+  // Die Testseite gibt bei `ansatz=1` der 4. und 5. Position einen Mengenansatz; bei `befunde=1` hat die 4. dazu eine
+  // Warnung an der Menge.
+  const positionen = typisch.knoten.filter((k) => k.art === 'position').map((k) => k.kurztext ?? '');
+  const [ohne, mitWarnung, nurAnsatz] = [positionen[0] ?? '', positionen[3] ?? '', positionen[4] ?? ''];
+  const zelle = (page: Page, kurztext: string, spalte: string): Locator =>
+    grid(page)
+      .getByRole('row')
+      .filter({ has: page.getByText(kurztext, { exact: true }) })
+      .locator(`[data-spalte="${spalte}"]`);
+  const marke = (z: Locator): Locator => z.locator('[data-kennzeichen="mengenansatz"]');
+
+  for (const nurlesen of [false, true]) {
+    test(`Position mit Ansatz: Marke ohne Warnstil, Beschreibung in Worten${nurlesen ? ' (schreibgeschützt)' : ''}`, async ({
+      page,
+    }) => {
+      await page.goto(`/?fixture=typisch&ansatz=1&befunde=1${nurlesen ? '&nurlesen=1' : ''}`);
+      const menge = zelle(page, nurAnsatz, 'menge');
+      await expect(marke(menge)).toHaveText('Σ');
+      await expect(marke(menge)).toHaveAttribute('aria-hidden', 'true');
+      await expect(menge).toHaveClass(/tx-grid__zelle--mengenansatz/);
+      await expect(menge).not.toHaveClass(/tx-grid__zelle--warnung|tx-grid__zelle--fehler/);
+      await expect(menge).not.toHaveAttribute('aria-invalid');
+      await expect(menge.locator('.tx-grid__marke')).toHaveCount(0);
+      await expect(menge).toHaveAccessibleDescription(/^Menge aus Mengenansatz/);
+      await expect(menge).toHaveAttribute('title', /^Menge aus Mengenansatz/);
+      // Neutral: Die Zelle sieht aus wie eine Mengenzelle ohne Ansatz, die Marke hat die neutrale Kennzeichenfläche.
+      const flaeche = (z: Locator): Promise<string> =>
+        z.evaluate((el) => {
+          const s = getComputedStyle(el);
+          return `${s.backgroundColor} ${s.boxShadow}`;
+        });
+      expect(await flaeche(menge)).toBe(await flaeche(zelle(page, ohne, 'menge')));
+      const farben = await marke(menge).evaluate((el) => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--tx-color-text-muted)';
+        probe.style.backgroundColor = 'var(--tx-color-surface-sunken)';
+        el.parentElement?.append(probe);
+        const soll = getComputedStyle(probe);
+        const ist = getComputedStyle(el);
+        const ergebnis = {
+          ist: [ist.color, ist.backgroundColor],
+          soll: [soll.color, soll.backgroundColor],
+        };
+        probe.remove();
+        return ergebnis;
+      });
+      expect(farben.ist).toEqual(farben.soll);
+      // Nur an der Mengenzelle und nur an Positionen mit Ansatz.
+      await expect(marke(zelle(page, nurAnsatz, 'kurztext'))).toHaveCount(0);
+      await expect(marke(zelle(page, ohne, 'menge'))).toHaveCount(0);
+      await expect(zelle(page, ohne, 'menge')).not.toHaveClass(/tx-grid__zelle--mengenansatz/);
+    });
+  }
+
+  test('neben einer Warnung: beide Kennzeichen, beide Beschreibungen', async ({ page }) => {
+    await page.goto('/?fixture=typisch&ansatz=1&befunde=1');
+    const menge = zelle(page, mitWarnung, 'menge');
+    await expect(marke(menge)).toHaveText('Σ');
+    await expect(menge).toHaveClass(/tx-grid__zelle--warnung/);
+    await expect(menge).toHaveClass(/tx-grid__zelle--mengenansatz/);
+    await expect(menge.locator('.tx-grid__marke')).toHaveCount(1);
+    await expect(menge).toHaveAccessibleDescription(
+      /^Menge aus Mengenansatz.*Warnung: Die Menge weicht stark von vergleichbaren Positionen ab\./,
+    );
+  });
+});
+
 test.describe('Bedarfs- und Wahlsumme', () => {
   test('ohne Werte erscheinen sie nicht', async ({ page }) => {
     await page.goto('/?fixture=typisch');

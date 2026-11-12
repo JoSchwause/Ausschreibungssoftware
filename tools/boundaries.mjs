@@ -28,8 +28,11 @@ export const ERLAUBT = {
   'packages/vergabe': FACH,
   'packages/mengen': FACH,
   'packages/abrechnung': FACH,
-  'packages/kosten': FACH,
+  // Kostengliederung und Kostenermittlung (Ticket 55, D-24): nur Typen und Dezimalarithmetik, kein Kern.
+  'packages/kosten': ['packages/vertrag', 'packages/dezimal'],
   'packages/ausgabe': FACH,
+  // XRechnung lesen (Ticket 76, D-32): ein Format-Rand wie gaeb, aber ohne Kern und ohne den GAEB-Leser.
+  'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -44,6 +47,7 @@ export const ERLAUBT = {
     'packages/abrechnung',
     'packages/kosten',
     'packages/ausgabe',
+    'packages/erechnung',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],

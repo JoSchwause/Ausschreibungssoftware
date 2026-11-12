@@ -235,6 +235,47 @@ test.describe('Löschen mit Rückfrage', () => {
     await expect(grid(page).locator(':focus')).toHaveCount(1);
   });
 
+  test('Anfangsfokus auf der Bestätigung (Ticket 74, D-26): Enter wirkt nur auf die fokussierte Schaltfläche', async ({
+    page,
+  }) => {
+    await page.goto('/?fixture=typisch&modus=attrappe');
+    await zelle(page, 'Bauzaun stellen', 'kurztext').click();
+    const dialog = page.getByRole('dialog', { name: 'In den Papierkorb legen' });
+    const oeffne = async (): Promise<void> => {
+      await page.keyboard.press('Control+Delete');
+      await expect(dialog).toBeVisible();
+      // Der Dialog setzt den Fokus selbst auf die Bestätigung (Anfangsfokus aus ui-basis), nicht auf das Schließen-Kreuz.
+      await expect(dialog.getByRole('button', { name: 'In den Papierkorb legen' })).toBeFocused();
+    };
+
+    // Enter auf „Abbrechen“ bricht ab.
+    await oeffne();
+    await page.keyboard.press('Shift+Tab');
+    await expect(dialog.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    expect(await befehle(page)).toEqual([]);
+    await expect.poll(() => fokusZeile(page)).toBe('Bauzaun stellen');
+
+    // Enter auf dem Schließen-Kreuz schließt nur, es legt nichts in den Papierkorb.
+    await oeffne();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(dialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    expect(await befehle(page)).toEqual([]);
+    await expect.poll(() => fokusZeile(page)).toBe('Bauzaun stellen');
+
+    // Enter auf der Bestätigung legt die Zeile in den Papierkorb, genau einmal.
+    await oeffne();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    const b = (await befehle(page)) as { art: string; knotenIds: string[] }[];
+    expect(b).toHaveLength(1);
+    expect(b[0]).toMatchObject({ art: 'KnotenInPapierkorbLegen', knotenIds: [idVon('Bauzaun stellen')] });
+  });
+
   test('ein Titel nennt die Zahl der Positionen darunter', async ({ page }) => {
     await page.goto('/?fixture=typisch&modus=attrappe');
     await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
@@ -245,6 +286,29 @@ test.describe('Löschen mit Rückfrage', () => {
     await page.getByRole('button', { name: 'Abbrechen' }).click();
     expect(await befehle(page)).toEqual([]);
     await expect(zelle(page, 'Erd- und Betonarbeiten', 'kurztext')).toBeFocused();
+  });
+
+  test('zugeklappt: ohne Zahl der App „mindestens“, mit positionenZaehlen die genaue Zahl (Ticket 54, Punkt 4)', async ({
+    page,
+  }) => {
+    const titelId = idVon('Erd- und Betonarbeiten');
+    const unter = (id: string): FxKnoten[] =>
+      typisch.filter((k) => k.parentId === id).flatMap((k) => [k, ...unter(k.id)]);
+    const genau = unter(titelId).filter((k) => k.art === 'position').length;
+    const frage = (n: string): string =>
+      `1 Zeile in den Papierkorb legen, darunter 1 Titel mit ${n} ${n === '1' ? 'Position' : 'Positionen'}?`;
+
+    await page.goto('/?fixture=typisch&auf=keine');
+    await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
+    await page.keyboard.press('Control+Delete');
+    await expect(page.getByRole('dialog')).toContainText(frage('mindestens 0'));
+    await page.keyboard.press('Escape');
+
+    await page.goto('/?fixture=typisch&auf=keine&zaehlen=1');
+    await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
+    await page.keyboard.press('Control+Delete');
+    await expect(page.getByRole('dialog')).toContainText(frage(String(genau)));
+    expect(genau).toBeGreaterThan(1);
   });
 });
 

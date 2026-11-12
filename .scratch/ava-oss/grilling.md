@@ -22,7 +22,9 @@ explizit geantwortet), **offen**.
   reine Export. (2026-11-09)
 - **G-04** Erster Schnitt — *entschieden*. **Antwort:** Schnitt A (Vergabe-Kern LPH 6–7). (2026-11-09)
 - **G-05** Module später oder nie — *entschieden*. **Antwort:** X1–X6 später. Auktion nie. Die
-  KI-Assistenz (X6) kommt nach M4, nicht in P8 davor. (2026-11-09)
+  KI-Assistenz (X6) kommt nach M4, nicht in P8 davor. (2026-11-09) **Nachtrag (2026-11-12, Nutzer, nach M4):** Welle 6 =
+  zuerst die Folgetickets 93–95, danach X1–X5. Schwerpunkt ist X1 BIM: dorthin geht der größte Teil der Arbeit (mehrere
+  Stränge, siehe `plan.md` §2 X). X6 (KI-Assistent) ist nicht in Welle 6. Auktion bleibt „nie“.
 - **G-06** Verhaltensgleichheit oder Lücken des Vorbilds schließen — *entschieden*. **Antwort:**
   Lücken schließen. Die Annahme in `docs/regeln.md` (U3, Q5) bleibt. (2026-11-09)
 - **G-07** Projektname — *entschieden (Platzhalter)*. **Antwort:** Arbeitsname **Tethys AVA**. Der
@@ -48,8 +50,11 @@ explizit geantwortet), **offen**.
   danach. (2026-11-09)
 - **G-16** DIN-276-Bezeichnungen, Einheitenkatalog, REB-Formeltexte — *entschieden*. **Antwort:** Im
   Repo nur Nummern. Bezeichnungen und Katalogtexte importiert der Nutzer selbst. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: Kostengruppen-Hierarchie aus den Ziffern abgeleitet, keine Nummernliste
+  im Repo; Summe = eigener Betrag + Kinder (D-24 in `entscheidungen-auto.md`).
 - **G-17** STLB-Bau — *entschieden*. **Antwort:** Im MVP ignorieren. Ein Feld für eine Textquelle
   bleibt vorgehalten. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: Feld `Positionsdaten.textquelle?`, Muster-LV = LV mit `vorlage` (D-36).
 
 ## Stufe 1 — Domänenmodell
 
@@ -76,6 +81,9 @@ explizit geantwortet), **offen**.
   „nicht angeboten“ eigene Kennzeichen, nie Ausreißer (D-05 in `entscheidungen-auto.md`).
 - **G-27** Tiefe der Rechnungsprüfung — *vertagt*. **Antwort:** Eigene Grilling-Runde vor Welle 5.
   A3 bleibt bis dahin offen. (2026-11-09)
+  Annahme für Demo, Mensch bestätigt später: kumulierte Abschlags- und Schlussrechnung mit Abzugskette Leistung → Nachlass →
+  MwSt → Umlagen → Sicherheits- bzw. Gewährleistungseinbehalt → eingefrorene frühere Zahlbeträge (D-34 in
+  `entscheidungen-auto.md`).
 - **G-28** MwSt — *entschieden*. **Antwort:** Ein Satz je LV, kein Satzwechsel in v1. (2026-11-09)
 - **G-29** Lose — *entschieden*. **Antwort:** Im MVP nur gliedernd. Getrennte Vergabe später.
   (2026-11-09)
@@ -155,6 +163,8 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
   Fachdokumentation belegt (D-03 in `entscheidungen-auto.md`).
 - **E-04** Bedarf und Wahl in den Summen — *entschieden*. Vorläufige Regel gilt; getrennte Summenfelder;
   „Wählen“ erst bei der Vergabe (Welle 4); Gruppe und Variante aus GAEB.
+  Annahme für Demo, Mensch bestätigt später: Das Auftrags-LV enthält nur das Beauftragte; gewählte Alternative wird
+  normale Position, Grundposition und nicht gewählte Alternativen entfallen (D-21 in `entscheidungen-auto.md`).
 - **E-05** Positionsart — *entschieden*. Kombinierbare Merkmale (Bedarf, Wahl, Stundenlohn, Pauschal).
 - **E-06** Nachlass-Rundung — *entschieden*. Betrag auf 2 Stellen runden, dann abziehen. Negatives Netto nach
   Nachlass ist ein Befund (K8), keine Sperre.
@@ -188,7 +198,7 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
 | KI-Assistent in P8 und Nicht-Ziel | G-05: X6 nach M4 |
 | EP mit 2 oder 3 Nachkommastellen | G-21: EP 3 gespeichert, Betrag 2 |
 | Kein Ereignisprotokoll (ADR 0006), Recherche „Muss“ | G-24: Nebenbuch, ADR 0009 |
-| „VOB 80“ zweimal belegt | Das `vob80`-Flag der Recherche (§ 2 Abs. 3 VOB/B, Schwellen 110 % und 80 %) ist belegt, `map-kosten.md` Zeile 96. Die zweite Bedeutung („80 % bei strittigen Nachträgen“) habe ich nicht gefunden. Vor A1 klären. |
+| „VOB 80“ zweimal belegt | Das `vob80`-Flag der Recherche (§ 2 Abs. 3 VOB/B, Schwellen 110 % und 80 %) ist belegt, `map-kosten.md` Zeile 96. Die zweite Bedeutung („80 % bei strittigen Nachträgen“) habe ich nicht gefunden. Vor A1 klären. Annahme für Demo, Mensch bestätigt später: zweite Bedeutung vermutlich § 650c Abs. 3 BGB, nicht in v1; Soll/Ist-Schwellen 110 %/90 % nach VOB/B § 2 Abs. 3 (D-35). |
 | Zulage (Vorbild) und Zuschlagsposition (GAEB) | G-22: Zuschlagsposition, GLOSSARY angepasst |
 | Zuschlagsposition als Menge × EP (Kern, Fixtures) und als Prozentzuschlag (GAEB, G-22) | E-03: GAEB-Semantik, Kern und Fixture ändern sich mit K6 |
 | XSD-Validierung nur in CI (Q3/M2) und eigene Prüfung | G-12: ADR 0010 |

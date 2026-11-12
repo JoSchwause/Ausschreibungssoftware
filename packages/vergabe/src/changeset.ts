@@ -2,9 +2,10 @@
 // ChangeSet am Angebot anwenden und umkehren (Ticket 36, Punkt 3). Beides sind reine Funktionen.
 //
 // Darstellung des Zustands: `angebot.positionen` in der Reihenfolge des Hinzufügens (neue Einträge hinten, geänderte am
-// selben Platz); `summen` wie `angebotSummenBerechnen`: `positionen` und `gliederungen` in der Reihenfolge der Knoten
-// des LV, je Position des LV genau ein Eintrag. Ein Angebotsbefehl ändert am Summenstand nur Werte, nie die Liste
-// selbst (außer Anlegen und Löschen); so ersetzt `angebotChangeSetAnwenden` Einträge am selben Arrayindex.
+// selben Platz); `summen` beim Anlegen wie `angebotSummenBerechnen`: `positionen` und `gliederungen` in der Reihenfolge
+// der Knoten des LV, je Position des LV genau ein Eintrag. Ein Angebotsbefehl ändert daran meist nur Werte;
+// `angebotChangeSetAnwenden` ersetzt sie am selben Arrayindex. Ausnahme (Ticket 72): Eine LV-Position, die nach dem
+// Anlegen ins LV kam, hat keinen Eintrag; ihre Summe kommt beim Bepreisen hinten dazu und fällt bei der Umkehrung weg.
 
 import type {
   AngebotChangeSet,
@@ -55,11 +56,58 @@ function ersetze<T>(alt: readonly T[], neu: readonly T[], id: (x: T) => string):
   return aus;
 }
 
+/**
+ * Summen einer Art anwenden (Ticket 72): Einträge mit altem Wert in `alt` werden am selben Index ersetzt; Einträge ohne
+ * alten Wert sind neu (eine LV-Position, die nach dem Anlegen des Angebots ins LV kam) und kommen hinten dazu; Einträge
+ * aus `weg` (`vorher.entfernt`) fallen weg. Ein neuer Eintrag, den es schon gibt, oder ein wegfallender, den es nicht
+ * gibt, ist ein Programmfehler.
+ */
+function summenArtAnwenden<T>(
+  stand: readonly T[],
+  neu: readonly T[],
+  alt: readonly T[],
+  weg: readonly T[],
+  id: (x: T) => string,
+): readonly T[] {
+  const hatAlt = new Set(alt.map(id));
+  const zuErsetzen = neu.filter((n) => hatAlt.has(id(n)));
+  const dazu = neu.filter((n) => !hatAlt.has(id(n)));
+  let aus = ersetze(stand, zuErsetzen, id);
+  if (dazu.length === 0 && weg.length === 0) return aus;
+  const index = indexVon(stand, id);
+  for (const n of dazu)
+    if (index.has(id(n))) throw new Error(`ChangeSet passt nicht zum Zustand: ${id(n)} gibt es schon`);
+  const wegIds = new Set(weg.map(id));
+  for (const w of wegIds) if (!index.has(w)) throw new Error(`ChangeSet passt nicht zum Zustand: ${w} fehlt`);
+  if (wegIds.size > 0) aus = aus.filter((x) => !wegIds.has(id(x)));
+  return [...aus, ...dazu];
+}
+
 function summenAnwenden(alt: Summenstand, s: Summenaenderung): Summenstand {
-  if (s.positionen.length === 0 && s.gliederungen.length === 0 && s.gesamt === null) return alt;
+  const v = s.vorher;
+  if (
+    s.positionen.length === 0 &&
+    s.gliederungen.length === 0 &&
+    s.gesamt === null &&
+    v.entfernt.positionen.length === 0 &&
+    v.entfernt.gliederungen.length === 0
+  )
+    return alt;
   return {
-    positionen: ersetze(alt.positionen, s.positionen, positionsKennung),
-    gliederungen: ersetze(alt.gliederungen, s.gliederungen, gliederungsKennung),
+    positionen: summenArtAnwenden(
+      alt.positionen,
+      s.positionen,
+      v.positionen,
+      v.entfernt.positionen,
+      positionsKennung,
+    ),
+    gliederungen: summenArtAnwenden(
+      alt.gliederungen,
+      s.gliederungen,
+      v.gliederungen,
+      v.entfernt.gliederungen,
+      gliederungsKennung,
+    ),
     gesamt: s.gesamt ?? alt.gesamt,
   };
 }
@@ -121,20 +169,14 @@ export function angebotChangeSetAnwenden(
   };
 }
 
-const LEERES_VORHER = {
-  positionen: [],
-  gliederungen: [],
-  gesamt: null,
-  entfernt: { positionen: [], gliederungen: [] },
-} as const;
-
 /**
  * Kehrt ein ChangeSet um, ohne den Vorzustand zu kennen: alte und neue Stände tauschen, Hinzugefügtes wird entfernt
- * und umgekehrt. Anlegen und Löschen sind Gegenstücke. Doppelte Umkehrung ergibt das ChangeSet.
+ * und umgekehrt; eine Summe ohne alten Wert kommt in `vorher.entfernt` und fällt weg. Anlegen und Löschen sind
+ * Gegenstücke. Doppelte Umkehrung ergibt das ChangeSet (Summen mit altem Wert stehen vor denen ohne).
  */
 export function angebotChangeSetUmkehren(cs: AngebotChangeSet): AngebotChangeSet {
   const s = cs.summen;
-  const v = s.vorher ?? LEERES_VORHER;
+  const v = s.vorher;
   const altP = new Set<string>(v.positionen.map(positionsKennung));
   const altG = new Set<string>(v.gliederungen.map(gliederungsKennung));
   const summen: Summenaenderung = {

@@ -7,6 +7,7 @@ import type { ReactElement } from 'react';
 import type { Row } from '@tanstack/react-table';
 import type { GridZahlen, LvSpalte, LvZeile, Pruefbefund } from '@tethys/vertrag';
 import { Icon } from '@tethys/ui-basis';
+import { Baumeinzug } from './Baumeinzug';
 import { Editor } from './Editor';
 import type { EditorAktionen } from './Editor';
 import { anzeigeText, istBearbeitbar } from './eingabe';
@@ -43,6 +44,8 @@ export interface ZeileProps {
   readonly abgelehnt: ReadonlyMap<LvSpalte, Abgelehnt> | undefined;
   readonly baumspalte: LvSpalte;
   readonly zahlen: GridZahlen;
+  /** Schreibgeschütztes Grid: keine Zelle ist bearbeitbar. */
+  readonly schreibgeschuetzt: boolean;
   readonly editor: EditorAktionen;
 }
 
@@ -78,7 +81,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
     ausgeschnitten,
     bearbeitung,
   } = props;
-  const { abgelehnt, baumspalte, zahlen, editor } = props;
+  const { abgelehnt, baumspalte, zahlen, schreibgeschuetzt, editor } = props;
   const zeile = row.original;
   const k = zeile.knoten;
   const zellen = row.getAllCells();
@@ -111,12 +114,15 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         const spalte = spaltenIds[si];
         if (spalte === undefined) return null;
         const text = anzeigeText(zeile, spalte, zahlen);
-        const bearbeitbar = istBearbeitbar(zeile, spalte);
+        const bearbeitbar = !schreibgeschuetzt && istBearbeitbar(zeile, spalte);
         const hinweise = befunde.get(spalte) ?? [];
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);
         const ungueltig = a !== undefined && a.basis === text ? a : undefined;
+        // Neutrales Kennzeichen (Ticket 74, D-65.2): Die Menge stammt aus einem Mengenansatz. Kein Befund, kein Warnstil.
+        const ansatz = spalte === 'menge' && k.art === 'position' && (k.mengenansatz?.length ?? 0) > 0;
         const beschreibung = [
+          ...(ansatz ? [texte.mengenansatz] : []),
           ...hinweise.map((b) => `${b.schwere === 'fehler' ? texte.fehler : texte.warnung}: ${b.meldung}`),
           ...(ungueltig ? [`${texte.eingabeUngueltig}: ${ungueltig.meldung}`] : []),
         ];
@@ -127,6 +133,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         if (aktiv === spalte) z.push('tx-grid__zelle--aktiv');
         if (hinweise.length > 0) z.push(hatFehler ? 'tx-grid__zelle--fehler' : 'tx-grid__zelle--warnung');
         if (ungueltig) z.push('tx-grid__zelle--ungueltig');
+        if (ansatz) z.push('tx-grid__zelle--mengenansatz');
         if (spalte === 'gesamtpreis' && zeile.gehtInSummeEin === false) z.push('tx-grid__zelle--ohne-summe');
 
         return (
@@ -149,25 +156,11 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
             }
           >
             {spalte === baumspalte ? (
-              <span className="tx-grid__baum" style={{ paddingInlineStart: zeile.tiefe * 16 }}>
-                {zeile.hatUnterknoten ? (
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    data-aufklappen=""
-                    className="tx-grid__knopf"
-                    aria-label={zeile.aufgeklappt ? texte.zuklappen : texte.aufklappen}
-                  >
-                    <Icon
-                      name="pfeilUnten"
-                      groesse={14}
-                      className={zeile.aufgeklappt ? undefined : 'tx-grid__pfeil--zu'}
-                    />
-                  </button>
-                ) : (
-                  <span className="tx-grid__platz" aria-hidden="true" />
-                )}
-              </span>
+              <Baumeinzug
+                tiefe={zeile.tiefe}
+                hatUnterknoten={zeile.hatUnterknoten}
+                aufgeklappt={zeile.aufgeklappt}
+              />
             ) : null}
             {bearbeitung?.spalte === spalte ? (
               <Editor spalte={spalte} entwurf={bearbeitung.entwurf} aktionen={editor} />
@@ -182,6 +175,15 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
                 aria-hidden="true"
                 focusable="false"
               />
+            ) : null}
+            {ansatz && bearbeitung?.spalte !== spalte ? (
+              <span
+                className="tx-grid__kennzeichen tx-grid__kennzeichen--mengenansatz"
+                data-kennzeichen="mengenansatz"
+                aria-hidden="true"
+              >
+                {texte.mengenansatzSymbol}
+              </span>
             ) : null}
             {beschreibung.length > 0 ? (
               <span id={beschreibungsId} className="tx-grid__nur-sr">

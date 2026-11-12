@@ -6,6 +6,8 @@
 // Einfügen „nach X“ (Glossar/Ticket 05, festgelegt und in `baum.test.ts` dokumentiert):
 //  - X ist eine Position oder ein Hinweistext: Elternknoten von X, direkt hinter X.
 //  - X ist eine Gliederung (Los oder Titel): Elternknoten ist X selbst, an erster Stelle (erster Unterknoten).
+// Einfügen „hinter der Gliederung G“ (v1.3, Ticket 56): Elternknoten von G, direkt hinter G (samt Unterbaum), wie „nach“
+// einer Position. G muss eine Gliederung sein (sonst `knotenart-unzulaessig`); G hinter sich selbst ist eine Nullbewegung.
 // Beim Verschieben gilt „nach X“ nachdem der bewegte Knoten aus seiner alten Lage herausgenommen wurde.
 //
 // Summen (Ticket 07, Ticket 37): Jeder Befehl liefert die betroffenen Summen mit. `summenAenderung` leitet sie aus den
@@ -31,9 +33,10 @@ import type {
   TitelId,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { positionMitEinheiten } from './einheit';
+import { positionNormal } from './mengenansatz';
 import { handOzFehler } from './oz-befehle';
 import { nein, ok } from './fehler';
+import { elternArtVon, gliederungFuerHinter } from './platzieren';
 import { positionsdatenFehler, unerlaubtesFeld } from './pruefung';
 import {
   MAX_GLIEDERUNGSEBENEN,
@@ -83,6 +86,14 @@ function zielAufloesen(idx: Baumindex, ort: Einfuegeort, ausser?: string): Ergeb
     const position = geschwister(eltern).findIndex((k) => k.id === x.id);
     // x ist der bewegte Knoten selbst: wird vom Aufrufer als Nullbewegung behandelt, hier nie erreicht.
     return ok({ elternId: eltern, elternArt, index: position + 1 });
+  }
+  if (ort.art === 'hinter-gliederung') {
+    const g = gliederungFuerHinter(idx, ort.gliederungId);
+    if (!g.ok) return g;
+    const eltern = g.wert.elternId;
+    const position = geschwister(eltern).findIndex((k) => k.id === g.wert.id);
+    // g ist der bewegte Knoten selbst: wird vom Aufrufer als Nullbewegung behandelt, hier nie erreicht.
+    return ok({ elternId: eltern, elternArt: elternArtVon(idx, eltern) ?? 'wurzel', index: position + 1 });
   }
   const eltern = ort.elternId;
   let elternArt: ElternArt;
@@ -219,9 +230,11 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const formfehler = positionsdatenFehler(b.daten, b.id, (i) => idx.byId.get(i) ?? korb.get(i));
   if (formfehler) return { ok: false, fehler: formfehler };
   const d = b.daten;
+  // Ein mitgebrachter Mengenansatz bleibt stehen (Ticket 56, D-56.1; Form geprüft in `positionsdatenFehler`, `[]` fällt
+  // in `positionNormal` weg). Ebenso Kostengruppe und Textquelle (v1.4, Ticket 71; `''` als Textquelle fällt weg).
   return ok(
     einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
-      positionMitEinheiten({
+      positionNormal({
         art: 'position',
         id: b.id,
         elternId: t.elternId as ElternId,
@@ -231,12 +244,15 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
         merkmale: d.merkmale,
         zuschlag: d.zuschlag,
         ...(d.leitbeschreibung === undefined ? {} : { leitbeschreibung: d.leitbeschreibung }),
+        ...(d.mengenansatz === undefined ? {} : { mengenansatz: d.mengenansatz }),
         kurztext: d.kurztext,
         langtext: d.langtext,
         menge: d.menge,
         einheit: d.einheit,
         einheitspreis: d.einheitspreis,
         epa: d.epa,
+        ...(d.kostengruppe === undefined ? {} : { kostengruppe: d.kostengruppe }),
+        ...(d.textquelle === undefined ? {} : { textquelle: d.textquelle }),
       }),
     ),
   );
@@ -304,7 +320,11 @@ export function knotenVerschieben(z: LvZustand, b: KnotenVerschieben): ChangeSet
   const istGliederung = knoten.art === 'los' || knoten.art === 'titel';
 
   // „nach sich selbst“: bei einer Position/einem Hinweistext eine Nullbewegung, bei einer Gliederung ein Zyklus.
-  if (b.ziel.art === 'nach' && b.ziel.knotenId === knoten.id && !istGliederung) {
+  // „hinter sich selbst“ (Ticket 56): bei einer Gliederung eine Nullbewegung.
+  if (
+    (b.ziel.art === 'nach' && b.ziel.knotenId === knoten.id && !istGliederung) ||
+    (b.ziel.art === 'hinter-gliederung' && b.ziel.gliederungId === knoten.id && istGliederung)
+  ) {
     return ok(knotenChangeSet(z, idx, {}));
   }
   const ziel = zielAufloesen(idx, b.ziel, knoten.id);

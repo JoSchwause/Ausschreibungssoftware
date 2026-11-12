@@ -12,6 +12,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type {
+  AngebotId,
+  AuftragsLeistungsverzeichnis,
+  AuftragsLeistungsverzeichnisId,
   Betrag,
   Einheitspreis,
   ElternId,
@@ -22,6 +25,7 @@ import type {
   Ordnungszahl,
   Position,
   PositionId,
+  ProjektId,
   Prozent,
   Pruefbefund,
   Summenstand,
@@ -34,9 +38,12 @@ import {
   FIXTURES,
   LV,
   TEST_ERSTELLT,
+  exportInhalt,
   exportOptionen,
   fixtureLv,
+  leereStrukturenLv,
   normiereKennungen,
+  ohneAuftragnehmer,
   position,
   reichesLv,
   testIds,
@@ -50,6 +57,8 @@ const AKTUALISIEREN = process.env['GOLDEN_UPDATE'] === '1';
 const codes = (e: GaebExport): string[] => e.befunde.map((b) => b.code);
 const befund = (e: GaebExport, code: string): Pruefbefund | undefined =>
   e.befunde.find((b) => b.code === code);
+/** XML ohne die Einrückung zwischen Elementen, für Vergleiche über mehrere Zeilen. */
+const kompakt = (xml: string): string => xml.replace(/>\s+</g, '><');
 const verworfen = (e: GaebExport): string[] =>
   e.befunde.filter((b) => b.code === 'export-verworfen').map((b) => b.meldung);
 
@@ -87,7 +96,7 @@ const SUMMEN_LEER: Summenstand = {
 };
 
 function schreibe(
-  inhalt: LvInhalt,
+  inhalt: LvInhalt | AuftragsLeistungsverzeichnis,
   phase: ExportPhase = 'X81',
   extra: Partial<SchreibOptionen> = {},
 ): GaebExport {
@@ -96,7 +105,7 @@ function schreibe(
     version: '3.3',
     erstellt: TEST_ERSTELLT,
     programm: 'Test',
-    ...(phase === 'X86' ? { summen: SUMMEN_LEER, auftragnehmer: 'AN' } : {}),
+    ...(phase === 'X86' ? { summen: SUMMEN_LEER } : {}),
     ...extra,
   });
 }
@@ -154,8 +163,8 @@ describe('Grundform des Exports', () => {
     const { inhalt, summen } = fixtureLv('typisch');
     const n = normiereKennungen(inhalt, summen);
     for (const phase of ['X81', 'X83', 'X86'] as const) {
-      const a = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n)).xml;
-      const b = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.2', n)).xml;
+      const a = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n)).xml;
+      const b = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.2', n)).xml;
       expect(
         b
           .replace(/\/3\.2"/, '/3.3"')
@@ -175,10 +184,10 @@ describe('Golden-Dateien je Fixture und Phase (deterministisch)', () => {
       it(`${name} ${phase} 3.3`, () => {
         const { inhalt, summen, basen } = fixtureLv(name);
         const n = normiereKennungen(inhalt, summen, basen);
-        const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
+        const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
         expect(e.entwurf).toBe(false);
         expect(e.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
-        expect(schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n)).xml).toBe(e.xml);
+        expect(schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n)).xml).toBe(e.xml);
         if (name === 'gross') {
           // 6 MB je Datei: nur die Prüfsumme ist Golden.
           const datei = join(GOLDEN, 'gross.sha256.json');
@@ -531,24 +540,82 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
       ...e.xml.matchAll(/<Item ID="P(\w+)"[^>]*>\s*<ALNGroupNo>(\d+)<\/ALNGroupNo>\s*<ALNSerNo>(\d+)</g),
     ].map((m) => `${m[1] ?? ''}:${m[2] ?? ''}/${m[3] ?? ''}`);
     // Je Grundposition eine Gruppe, Varianten 1..n in LV-Reihenfolge; Wahl ohne Grundposition je eine eigene Gruppe.
-    expect(nummern).toEqual(['w1:8/1', 'n:7/0', 'w2:9/1', 'w3:8/2', 'w4:10/1']);
+    // Die Grundposition g1 (ohne eigene Wahl, gleicher Elternknoten) ist Variante 0 ihrer Gruppe (Ticket 73).
+    expect(nummern).toEqual(['g1:8/0', 'w1:8/1', 'n:7/0', 'w2:9/1', 'w3:8/2', 'w4:10/1']);
     expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => [b.schwere, b.ort])).toEqual(
-      ['w1', 'w2', 'w3', 'w4'].map((id) => ['warnung', { knotenId: id, feld: 'merkmale.wahl' }]),
+      ['g1', 'w1', 'w2', 'w3', 'w4'].map((id) => ['warnung', { knotenId: id, feld: 'merkmale.wahl' }]),
+    );
+    expect(befund(e, 'wahl-nummer-vergeben')?.meldung).toMatch(
+      /^Die Position ist Grundposition .* Variante 0 /,
     );
     expect(verworfen(e).filter((m) => m.startsWith('Wahl'))).toEqual([]);
     expect(e.entwurf).toBe(false);
-    // Wieder gelesen bleiben sie Wahlpositionen: ihr Betrag geht nie still ins Netto (D-37.1).
+    // Wieder gelesen bleiben sie Wahlpositionen: ihr Betrag geht nie still ins Netto (D-37.1). Die Alternativen von g1
+    // verweisen wieder auf sie; w2 und w4 haben keine Grundposition (Warnung des Lesers).
     const gelesen = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent }).inhalt;
     const wahlen = (gelesen?.knoten ?? []).filter(
       (k): k is Position => k.art === 'position' && k.merkmale.wahl !== null,
     );
-    expect(wahlen.map((k) => [k.ordnungszahl, k.merkmale.wahl?.gruppe, k.merkmale.wahl?.variante])).toEqual([
-      ['01.0020', 8, 1],
-      ['01.0030', 7, 0],
-      ['01.0040', 9, 1],
-      ['01.0050', 8, 2],
-      ['01.0060', 10, 1],
+    const g1 = wahlen.find((k) => k.ordnungszahl === '01.0010')?.id;
+    expect(wahlen.map((k) => [k.ordnungszahl, k.merkmale.wahl])).toEqual([
+      ['01.0010', { gruppe: 8, variante: 0, grundpositionId: null }],
+      ['01.0020', { gruppe: 8, variante: 1, grundpositionId: g1 }],
+      ['01.0030', { gruppe: 7, variante: 0, grundpositionId: null }],
+      ['01.0040', { gruppe: 9, variante: 1, grundpositionId: null }],
+      ['01.0050', { gruppe: 8, variante: 2, grundpositionId: g1 }],
+      ['01.0060', { gruppe: 10, variante: 1, grundpositionId: null }],
     ]);
+  });
+
+  it('Grundposition unter einem anderen Elternknoten bleibt ohne Wahlnummer: GAEB ordnet nur im selben LV-Bereich zu (Ticket 73)', () => {
+    const inhalt = lv([
+      position('g1', '01.0010', 0),
+      titel('t2', '02', 1),
+      position('w1', '02.0010', 0, {
+        elternId: 't2' as ElternId,
+        merkmale: {
+          ...p1().merkmale,
+          wahl: { gruppe: null, variante: null, grundpositionId: 'g1' as PositionId },
+        },
+      }),
+    ]);
+    const e = schreibe(inhalt);
+    expect(e.xml).toMatch(/<Item ID="Pg1" RNoPart="0010">\s*<Qty>/);
+    expect(e.xml).toMatch(/<Item ID="Pw1" RNoPart="0010">\s*<ALNGroupNo>1<\/ALNGroupNo>\s*<ALNSerNo>1</);
+    expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => b.ort.knotenId)).toEqual([
+      'w1',
+    ]);
+  });
+
+  it('Wahl ohne Nummer zu einer Grundposition, die schon Variante 0 einer Gruppe ist: nächste Variante dieser Gruppe (Ticket 73)', () => {
+    const wahl = (gruppe: number | null, variante: number | null, grund: string | null) => ({
+      ...p1().merkmale,
+      wahl: { gruppe, variante, grundpositionId: grund as PositionId | null },
+    });
+    // Etwa aus GAEB gelesen (Gruppe 7) und in der App um eine Alternative ohne Nummer ergänzt.
+    const inhalt = lv([
+      position('g', '01.0010', 0, { merkmale: wahl(7, 0, null) }),
+      position('a', '01.0020', 1, { merkmale: wahl(7, 1, 'g') }),
+      position('w', '01.0030', 2, { merkmale: wahl(null, null, 'g') }),
+      position('b', '01.0040', 3, { merkmale: wahl(7, 2, 'g') }),
+    ]);
+    const e = schreibe(inhalt);
+    const nummern = [
+      ...e.xml.matchAll(/<Item ID="P(\w+)"[^>]*>\s*<ALNGroupNo>(\d+)<\/ALNGroupNo>\s*<ALNSerNo>(\d+)</g),
+    ].map((m) => `${m[1] ?? ''}:${m[2] ?? ''}/${m[3] ?? ''}`);
+    // Die höchste Variante der Gruppe unter demselben Elternknoten ist 2 (auch wenn sie erst danach steht).
+    expect(nummern).toEqual(['g:7/0', 'a:7/1', 'w:7/3', 'b:7/2']);
+    expect(e.befunde.filter((b) => b.code === 'wahl-nummer-vergeben').map((b) => b.ort.knotenId)).toEqual([
+      'w',
+    ]);
+    const l = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent });
+    expect(l.befunde.map((b) => b.code)).not.toContain('wahl-ohne-grundposition');
+    const gelesen = (l.inhalt?.knoten ?? []).filter((k): k is Position => k.art === 'position');
+    expect(gelesen.find((k) => k.ordnungszahl === '01.0030')?.merkmale.wahl).toEqual({
+      gruppe: 7,
+      variante: 3,
+      grundpositionId: gelesen.find((k) => k.ordnungszahl === '01.0010')?.id,
+    });
   });
 
   it('künstliche Wahlnummern über 9 Varianten oder 999 Gruppen: Fehler wahl-nummer-ungueltig, kein Rückfall auf eine Position ohne Wahl', () => {
@@ -685,6 +752,246 @@ describe('Verwerfen mit Warnung: nicht abbildbar in Phase oder Version (export-v
   });
 });
 
+// --- v1.3 (Ticket 68) ----------------------------------------------------------------------------------------------
+
+describe('v1.3: Auftragnehmer (CTR) aus dem Modell', () => {
+  const an = { name: 'Beispielbau (erfunden)', strasse: 'Weg 1', plz: '12345', ort: 'Musterstadt' };
+
+  it('X86 schreibt CTR/Address aus LvInhalt.auftragnehmer, ohne Warnung; der Leser liest ihn zurück', () => {
+    const e = schreibe(lv([p1()], { auftragnehmer: an }), 'X86');
+    expect(kompakt(e.xml)).toContain(
+      '<CTR><Address><Name1>Beispielbau (erfunden)</Name1><Street>Weg 1</Street><PCode>12345</PCode>' +
+        '<City>Musterstadt</City></Address></CTR>',
+    );
+    expect(e.befunde.filter((b) => b.ort.feld === 'auftragnehmer')).toEqual([]);
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.auftragnehmer).toEqual(an);
+    expect(l.befunde.filter((b) => b.code === 'nicht-abgebildet')).toEqual([]);
+  });
+
+  it('X86 ohne Auftragnehmer: leere Adresse und Warnung angabe-leer (nur dann)', () => {
+    const e = schreibe(lv([p1()]), 'X86');
+    expect(kompakt(e.xml)).toContain('<CTR><Address><Name1/><Street/><PCode/><City/></Address></CTR>');
+    expect(e.befunde.filter((b) => b.code === 'angabe-leer').map((b) => b.ort.feld)).toEqual([
+      'auftraggeber',
+      'auftragnehmer',
+    ]);
+  });
+
+  it('die Option auftragnehmer gibt es nicht mehr (das Modell gewinnt)', () => {
+    const hatOption: 'auftragnehmer' extends keyof SchreibOptionen ? true : false = false;
+    expect(hatOption).toBe(false);
+  });
+
+  it('X81 und X83 kennen kein CTR: Auftragnehmer verworfen mit Warnung', () => {
+    for (const phase of ['X81', 'X83'] as const) {
+      const e = schreibe(lv([p1()], { auftragnehmer: an }), phase);
+      expect(e.xml).not.toContain('<CTR>');
+      expect(verworfen(e)).toEqual(expect.arrayContaining([expect.stringMatching(/^Auftragnehmer/)]));
+    }
+  });
+
+  it('ein Auftrags-LV wird direkt als X86 geschrieben: Wurzel ist seine Kennung, Auftragnehmer aus seinem Kopf', () => {
+    const alv = 'alv-1' as AuftragsLeistungsverzeichnisId;
+    const auftrag: AuftragsLeistungsverzeichnis = {
+      id: alv,
+      projektId: 'projekt-1' as ProjektId,
+      leistungsverzeichnisId: LV,
+      angebotId: 'angebot-1' as AngebotId,
+      name: 'Auftrag',
+      ozMaske: MASKE,
+      mwstSatz: '19.00' as Prozent,
+      nachlass: null,
+      auftragnehmer: an,
+      knoten: [{ ...titel('t1', '01'), elternId: alv }, p1()],
+    };
+    const e = schreibe(auftrag, 'X86');
+    expect(e.entwurf).toBe(false);
+    expect(e.xml).toContain('<BoQ ID="Lalv1">');
+    expect(e.xml).toContain('<Item ID="Pp1" RNoPart="0010">');
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.auftragnehmer).toEqual(an);
+    expect(l.inhalt?.knoten.map((k) => k.art)).toEqual(['titel', 'position']);
+  });
+
+  it('Name über 40 Zeichen ist ein Fehler am Feld auftragnehmer.name', () => {
+    const e = schreibe(lv([p1()], { auftragnehmer: { ...an, name: 'x'.repeat(41) } }), 'X86');
+    expect(e.befunde.filter((b) => b.schwere === 'fehler').map((b) => [b.code, b.ort.feld])).toEqual([
+      ['wert-zu-lang', 'auftragnehmer.name'],
+    ]);
+  });
+});
+
+describe('v1.3: leere Langtext-Strukturen (D-22 (iii))', () => {
+  it('LV leereStrukturenLv (auch in der XSD-Gegenprüfung): in jeder Phase ohne Fehler, kein leeres ul/ol/table/tr', () => {
+    const n = leereStrukturenLv();
+    for (const phase of ['X81', 'X83', 'X86'] as const) {
+      const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
+      expect(e.entwurf).toBe(false);
+      const x = kompakt(e.xml);
+      expect(x).not.toMatch(/<(ul|ol|table|tr)\/>|<ul><\/ul>|<ol><\/ol>|<table><\/table>|<tr><\/tr>/);
+      expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+        expect.stringMatching(/^leere Liste.*6 Vorkommen/),
+        // je Text (Position, Hinweistext, Unterbeschreibung): 2 Listen, 3 Tabellen (eine nur aus einer leeren Zeile,
+        // eine verschachtelt in einer Zelle), 3 Zeilen ohne Zellen
+        expect.stringMatching(/^leere Tabelle.*9 Vorkommen/),
+        expect.stringMatching(/^leere Tabellenzeile.*9 Vorkommen/),
+      ]);
+    }
+  });
+
+  it('Zeile ohne Zellen entfällt mit Warnung; eine Tabelle nur aus leeren Zeilen entfällt ganz', () => {
+    const e = schreibe(
+      lv([
+        p1({
+          langtext: [
+            {
+              art: 'tabelle',
+              zeilen: [{ zellen: [] }, { zellen: [{ spalten: 1, inhalt: [{ art: 'text', text: 'A' }] }] }],
+            },
+            { art: 'tabelle', zeilen: [{ zellen: [] }, { zellen: [] }] },
+          ],
+        }),
+      ]),
+    );
+    expect(kompakt(e.xml)).toContain('<Text><table><tr><td><span>A</span></td></tr></table></Text>');
+    expect(e.xml.match(/<tr>/g)).toHaveLength(1);
+    expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+      expect.stringMatching(/^leere Tabellenzeile.*3 Vorkommen/),
+      expect.stringMatching(/^leere Tabelle.*1 Vorkommen/),
+    ]);
+  });
+
+  it('leere Strukturen in Listenpunkten, Zellen und Hinweistexten ebenso', () => {
+    const leer: LvInhalt['knoten'][number] = {
+      art: 'hinweis',
+      id: 'h1' as never,
+      elternId: 't1' as ElternId,
+      reihenfolge: 0,
+      text: [
+        {
+          art: 'liste',
+          geordnet: false,
+          punkte: [
+            [
+              { art: 'text', text: 'x' },
+              { art: 'liste', geordnet: true, punkte: [] },
+            ],
+          ],
+        },
+        {
+          art: 'tabelle',
+          zeilen: [{ zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [] }] }] }],
+        },
+      ],
+    };
+    const e = schreibe(lv([{ ...p1(), reihenfolge: 1 }, leer]));
+    expect(e.xml).not.toMatch(/<ol>|<ol\/>|<table\/>/);
+    expect(verworfen(e).filter((m) => m.startsWith('leere'))).toEqual([
+      expect.stringMatching(/^leere Liste/),
+      expect.stringMatching(/^leere Tabelle/),
+    ]);
+    expect(e.entwurf).toBe(false);
+  });
+});
+
+describe('v1.3: EPA-Bezeichnungen (LblUPComp) aus dem LV, nie umnummeriert (D-28)', () => {
+  const ep = (s: string): Einheitspreis => s as Einheitspreis;
+  const epa = {
+    lohn: ep('4.000'),
+    stoffe: ep('3.000'),
+    geraete: null,
+    nachunternehmer: ep('1.000'),
+    sonstiges: null,
+    frei: null,
+    freiBezeichnung: null,
+  };
+  const mitEpa = p1({ einheitspreis: ep('8.000'), epa });
+  const bez: LvInhalt['epaBezeichnungen'] = [
+    { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+    { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+    { nummer: 3, anteil: 'geraete', bezeichnung: null },
+    { nummer: 5, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+  ];
+
+  it('X86: NoUPComps = höchste Nummer, LblUPComp mit Type je Art, Lücke bleibt, UPComp unter derselben Nummer', () => {
+    const e = schreibe(lv([mitEpa], { epaBezeichnungen: bez }), 'X86');
+    expect(kompakt(e.xml)).toContain(
+      '<NoUPComps>5</NoUPComps><LblUPComp1 Type="Materials">Material</LblUPComp1>' +
+        '<LblUPComp2 Type="Wages">Lohn</LblUPComp2><LblUPComp3 Type="Plant"/>' +
+        '<LblUPComp5 Type="Miscellaneous">Nachunternehmer</LblUPComp5>',
+    );
+    expect(e.xml).not.toContain('LblUPComp4');
+    expect(kompakt(e.xml)).toContain(
+      '<UP>8.000</UP><UPComp1>3.000</UPComp1><UPComp2>4.000</UPComp2><UPComp5>1.000</UPComp5>',
+    );
+    expect(e.befunde.filter((b) => b.ort.feld?.startsWith('epa') === true)).toEqual([]);
+    const l = leseGaeb(e.xml, { ids: testIds() });
+    expect(l.inhalt?.epaBezeichnungen).toEqual(bez);
+    expect(l.inhalt?.knoten.find((k) => k.art === 'position')).toMatchObject({ epa });
+  });
+
+  it('X81 und X83 schreiben die Bezeichnungen ebenso (ohne Preise); der Leser liest sie zurück', () => {
+    for (const phase of ['X81', 'X83'] as const) {
+      const e = schreibe(lv([p1({ einheit: 'St' })], { epaBezeichnungen: bez }), phase);
+      expect(kompakt(e.xml)).toContain(
+        '<NoUPComps>5</NoUPComps><LblUPComp1 Type="Materials">Material</LblUPComp1>',
+      );
+      expect(
+        leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '19.00' as Prozent }).inhalt?.epaBezeichnungen,
+      ).toEqual(bez);
+    }
+  });
+
+  it('ohne das Feld: X81/X83 schreiben keine Bezeichnungen, X86 die feste Belegung nur mit Anteilen', () => {
+    expect(schreibe(lv([p1({ einheit: 'St' })]), 'X83').xml).not.toContain('UPComp');
+    expect(schreibe(lv([p1()]), 'X86').xml).not.toContain('UPComp');
+    expect(kompakt(schreibe(lv([mitEpa]), 'X86').xml)).toContain(
+      '<NoUPComps>6</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1>',
+    );
+  });
+
+  it('nur Nummer 1 belegt: NoUPComps 2 (das XSD kennt 1 nicht)', () => {
+    const e = schreibe(
+      lv([p1()], { epaBezeichnungen: [{ nummer: 1, anteil: 'lohn', bezeichnung: 'Lohn' }] }),
+      'X86',
+    );
+    expect(kompakt(e.xml)).toContain('<NoUPComps>2</NoUPComps><LblUPComp1 Type="Wages">Lohn</LblUPComp1>');
+  });
+
+  it('ein Anteil ohne Nummer in den Bezeichnungen wird mit Warnung verworfen, der EP bleibt', () => {
+    const e = schreibe(
+      lv([mitEpa], { epaBezeichnungen: [{ nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' }] }),
+      'X86',
+    );
+    expect(kompakt(e.xml)).toContain('<UP>8.000</UP><UPComp2>4.000</UPComp2><Description>');
+    expect(verworfen(e)).toEqual([
+      expect.stringMatching(/^EP-Anteil ohne Nummer in den EPA-Bezeichnungen.*2 Vorkommen/),
+    ]);
+  });
+
+  it('Bezeichnung über 20 Zeichen ist ein Fehler; Nachunternehmer, der beim Lesen Sonstiges würde, ist eine Warnung', () => {
+    const e = schreibe(
+      lv([p1()], {
+        epaBezeichnungen: [
+          { nummer: 1, anteil: 'lohn', bezeichnung: 'L'.repeat(21) },
+          { nummer: 2, anteil: 'nachunternehmer', bezeichnung: 'Fremdleistung' },
+          { nummer: 3, anteil: 'stoffe', bezeichnung: 'Lohn' },
+        ],
+      }),
+      'X86',
+    );
+    expect(
+      e.befunde.filter((b) => b.ort.feld === 'epaBezeichnungen').map((b) => [b.schwere, b.code]),
+    ).toEqual([
+      ['fehler', 'wert-zu-lang'],
+      ['warnung', 'epa-beschriftung-mehrdeutig'],
+      ['warnung', 'epa-beschriftung-mehrdeutig'],
+    ]);
+    expect(befund(e, 'epa-beschriftung-mehrdeutig')?.meldung).toContain('LblUPComp2');
+  });
+});
+
 describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
   for (const version of ['3.3', '3.2'] as const)
     it(`X86 ${version}: Export → Import gleich, ohne Fehler und ohne Verwerfen; zweiter Export byte-gleich`, () => {
@@ -699,11 +1006,11 @@ describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
       expect(schreibeGaeb(l.inhalt ?? n.inhalt, opt).xml).toBe(e.xml);
     });
 
-  it('X81 und X83: gleich bis auf Preise, Sätze und Nachlass', () => {
+  it('X81 und X83: gleich bis auf Preise, Sätze, Nachlass und Auftragnehmer', () => {
     const r = reichesLv();
     const n = normiereKennungen(r.inhalt);
     for (const phase of ['X81', 'X83'] as const) {
-      const e = schreibeGaeb(n.inhalt, exportOptionen(phase, '3.3', n));
+      const e = schreibeGaeb(exportInhalt(phase, n), exportOptionen(phase, '3.3', n));
       expect(e.entwurf).toBe(false);
       const l = leseGaeb(e.xml, { ids: testIds(), standardMwstSatz: '7.00' as Prozent });
       const ohnePreise = n.inhalt.knoten.map((k) =>
@@ -717,7 +1024,7 @@ describe('Rundweg eines LV mit allen abbildbaren Inhalten', () => {
               zuschlag: k.zuschlag === null ? null : { ...k.zuschlag, prozentsatz: null },
             },
       );
-      expect(l.inhalt).toEqual({ ...n.inhalt, nachlass: null, knoten: ohnePreise });
+      expect(l.inhalt).toEqual({ ...ohneAuftragnehmer(n.inhalt), nachlass: null, knoten: ohnePreise });
     }
   });
 });
@@ -736,6 +1043,22 @@ describe('Der Leser nimmt X86 an (amtliche AVA-X86)', () => {
     expect(l.befunde.map((b) => b.code)).not.toContain('phase-nicht-unterstuetzt');
     expect(l.befunde.map((b) => b.code)).not.toContain('mwst-standardsatz');
     expect(l.inhalt?.mwstSatz).toBe('19.00');
+    // v1.3 (Ticket 68): EPA-Bezeichnungen mit der Nummer der Datei; Material steht dort auf Platz 1.
+    expect(l.inhalt?.epaBezeichnungen).toEqual([
+      { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: 'Geräte' },
+      { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+    ]);
+    expect(ps.find((p) => p.einheitspreis === '27.910')?.epa).toEqual({
+      stoffe: '2.230',
+      lohn: '23.120',
+      geraete: '2.560',
+      nachunternehmer: '0.000',
+      sonstiges: null,
+      frei: null,
+      freiBezeichnung: null,
+    });
     // Positionsnachlass (Item/DiscountPcnt) kennt der Vertrag nicht (G-23): IT weicht dann von Menge × EP ab.
     const abweichend = l.befunde.filter((b) => b.code === 'gesamtpreis-abweichend');
     expect(abweichend.length).toBeGreaterThan(0);

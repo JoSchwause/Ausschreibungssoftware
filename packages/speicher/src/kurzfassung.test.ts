@@ -15,6 +15,7 @@ import {
   ladeFixture,
 } from './testhilfe/fixtures';
 import { neuerKern, wert, zaehle } from './testhilfe/node';
+import { LEERES_SUMMENVORHER } from './summenvorher';
 
 const typisch = ladeFixture('typisch');
 const projektId = typisch.projekt.id;
@@ -141,7 +142,7 @@ describe('Massenbefehle im Protokoll', () => {
         leistungsverzeichnisId: lvId,
         kopf: null,
         knoten: { hinzugefuegt: [], geaendert: [{ vorher, nachher: { ...vorher, menge } }], entfernt: [] },
-        summen: { positionen: [], gliederungen: [], gesamt: null },
+        summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
       },
     );
     const ergebnisse = await Promise.all([

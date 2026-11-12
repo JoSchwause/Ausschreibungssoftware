@@ -9,6 +9,7 @@ import type {
   Angebot,
   AngebotBefehl,
   AngebotBefehlAusfuehren,
+  AngebotChangeSet,
   AngebotId,
   AngebotZustand,
   Angebotsposition,
@@ -17,6 +18,8 @@ import type {
   ElternId,
   Einheitspreis,
   Ergebnis,
+  Gesamtsummen,
+  Gliederungssumme,
   HinweistextId,
   Knoten,
   LeistungsverzeichnisId,
@@ -29,6 +32,7 @@ import type {
   Position,
   PositionId,
   Positionsmerkmale,
+  Positionssumme,
   Projekt,
   ProjektId,
   Prozent,
@@ -239,12 +243,14 @@ interface FxKnoten {
   text?: string;
   positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
   ozIndex?: string;
-  menge?: string;
-  einheit?: string;
-  einheitspreis?: string;
+  // Ticket 51: Fixture-Format, mechanisch: an der Zuschlagsposition `null`, Satz und Bezug stehen in `zuschlag` (Vertragsform)
+  menge?: string | null;
+  einheit?: string | null;
+  einheitspreis?: string | null;
   bedarfMitGesamtbetrag?: boolean;
-  bezugspositionId?: string;
   grundpositionId?: string;
+  zuschlag?: Zuschlag;
+  zuschlagskennzeichen?: boolean; // nur `zuschlag.json` (Ticket 37)
 }
 
 export interface FxLv {
@@ -263,16 +269,29 @@ export interface FxSummen {
   brutto: string;
 }
 
+export interface FxAusweis {
+  summeBedarfOhneGesamtbetrag: string;
+  summeWahl: string;
+}
+
 export interface FxAngebot {
   id: string;
   bieterId: string;
   nachlass: { art: 'prozent' | 'betrag'; wert: string } | null;
-  positionen: { positionId: string; status: 'angeboten' | 'nicht-angeboten'; einheitspreis?: string }[];
+  positionen: {
+    positionId: string;
+    status: 'angeboten' | 'nicht-angeboten';
+    einheitspreis?: string;
+    zuschlagssatz?: string; // Ticket 51: Fixture-Format, mechanisch: Satz des Bieters statt eines EP
+  }[];
   sollwerte: {
     positionen: Record<string, { gp: string | null; inSumme: boolean }>;
     titel: Record<string, { summe: string }>;
     summen: FxSummen;
     nichtAngeboten: string[];
+    // Ticket 51: Fixture-Format, mechanisch: Basis und Betrag je Zuschlagsposition, Bedarfs- und Wahlsumme je Titel und gesamt
+    zuschlaege: Record<string, { basis: string; betrag: string | null }>;
+    ausweise: { gesamt: FxAusweis; titel: Record<string, FxAusweis> };
   };
 }
 
@@ -280,6 +299,10 @@ export interface FxAngebotsset {
   lvId: string;
   bieter: { id: string; name: string }[];
   angebote: FxAngebot[];
+  /** Ticket 69: Bietersummen je Angebot, Titelsummen nach OZ. */
+  preisspiegel: {
+    bieter: { angebotId: string; name: string; summen: FxSummen; titel: Record<string, string> }[];
+  };
 }
 
 function lies(name: string): unknown {
@@ -301,19 +324,13 @@ function fxMerkmale(k: FxKnoten): Positionsmerkmale {
       art === 'wahl'
         ? { gruppe: null, variante: null, grundpositionId: (k.grundpositionId ?? null) as PositionId | null }
         : null,
+    zuschlagskennzeichen: k.zuschlagskennzeichen === true,
   };
 }
 
+// Ticket 51: Fixture-Format, mechanisch: der Zuschlag steht in Vertragsform an der Position (GAEB-Form, Satz und Liste).
 function fxZuschlag(k: FxKnoten): Zuschlag | null {
-  if (k.positionsart !== 'zuschlag') return null;
-  const bezug = k.bezugspositionId;
-  return {
-    prozentsatz: null,
-    bezug: {
-      art: 'positionen',
-      positionen: bezug === undefined ? [] : [{ positionId: bezug as PositionId, teilmenge: null }],
-    },
-  };
+  return k.zuschlag ?? null;
 }
 
 export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
@@ -365,7 +382,7 @@ export function fixtureAlsInhalt(fx: FxLv): LvInhalt {
   };
 }
 
-export function lvAusFixture(name: 'typisch' | 'gross'): { fx: FxLv; zustand: LvZustand } {
+export function lvAusFixture(name: 'typisch' | 'gross' | 'zuschlag'): { fx: FxLv; zustand: LvZustand } {
   const fx = lies(name) as FxLv;
   return { fx, zustand: lvZustandAusInhalt(fx.id, fixtureAlsInhalt(fx)) };
 }
@@ -380,8 +397,132 @@ export function angebotAusFixture(fx: FxAngebot, z: LvZustand): Angebot {
     z,
     fx.bieterId,
     fx.positionen.map((p) =>
-      p.status === 'angeboten' ? ep(p.positionId, p.einheitspreis ?? '') : nichtAngeboten(p.positionId),
+      p.status !== 'angeboten'
+        ? nichtAngeboten(p.positionId)
+        : p.zuschlagssatz !== undefined
+          ? satz(p.positionId, p.zuschlagssatz) // Ticket 51: Fixture-Format, mechanisch
+          : ep(p.positionId, p.einheitspreis ?? ''),
     ),
     fxNachlass(fx.nachlass),
   );
+}
+
+// --- Zeilen in `speicher` (Ticket 72) -----------------------------------------------------------------------------
+
+/**
+ * Die Zeilen eines gespeicherten Angebots je Kennung: Angebotspositionen, Positions- und Gliederungssummen,
+ * Gesamtsummen. `speicher` liest sie nach Kennung, nicht in der Reihenfolge des Hinzufügens; darum Maps.
+ */
+export interface Angebotszeilen {
+  readonly angebotspositionen: ReadonlyMap<string, Angebotsposition>;
+  readonly positionen: ReadonlyMap<string, Positionssumme>;
+  readonly gliederungen: ReadonlyMap<string, Gliederungssumme>;
+  readonly gesamt: Gesamtsummen;
+}
+
+export function angebotszeilen(z: AngebotZustand): Angebotszeilen {
+  return {
+    angebotspositionen: new Map(z.angebot.positionen.map((p) => [p.positionId as string, p])),
+    positionen: new Map(z.summen.positionen.map((p) => [p.positionId as string, p])),
+    gliederungen: new Map(z.summen.gliederungen.map((g) => [g.gliederungId as string, g])),
+    gesamt: z.summen.gesamt,
+  };
+}
+
+/** Gleichheit wie in `speicher`: kanonisches JSON (Schlüssel sortiert, `undefined` fehlt). */
+function kanonisch(x: unknown): string {
+  return JSON.stringify(x, (_k, v: unknown) =>
+    v !== null && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+const zeilengleich = (a: unknown, b: unknown): boolean => kanonisch(a) === kanonisch(b);
+
+function speicherAbbruch(code: 'konflikt' | 'unbekannt' | 'nicht-gefunden', was: string): never {
+  throw new Error(`speicher: ${code}: ${was}`);
+}
+
+/** `pruefeSummenvorher` für eine Summenart eines Angebots (keine entfernten Knoten; D-57.2, D-57.3). */
+function pruefeSummenart<T>(
+  was: string,
+  neu: readonly T[],
+  alt: readonly T[],
+  entfernt: readonly T[],
+  id: (x: T) => string,
+  gespeichert: ReadonlyMap<string, T>,
+): void {
+  const neuIds = new Set(neu.map(id));
+  const altNachId = new Map(alt.map((e) => [id(e), e]));
+  for (const k of altNachId.keys())
+    if (!neuIds.has(k)) speicherAbbruch('unbekannt', `alte ${was}summe ${k} ohne neuen Wert`);
+  for (const k of neuIds) {
+    const g = gespeichert.get(k);
+    const a = altNachId.get(k);
+    if (g !== undefined && (a === undefined || !zeilengleich(g, a)))
+      speicherAbbruch('konflikt', `alte ${was}summe ${k}`);
+  }
+  for (const e of entfernt) {
+    const g = gespeichert.get(id(e));
+    if (g === undefined || !zeilengleich(g, e)) speicherAbbruch('konflikt', `entfernte ${was}summe ${id(e)}`);
+  }
+}
+
+/**
+ * Wendet ein ChangeSet, das ein bestehendes Angebot ändert, so auf die Zeilen an wie `speicher` (`wendeAngebotAn` in
+ * `packages/speicher/src/schreiben.ts`, mit `pruefeSummenvorher` aus `summenvorher.ts`): Vorherstände prüfen (wirft
+ * bei `konflikt` oder `unbekannt`), dann entfernte Angebotspositionen samt ihrer Positionssumme löschen, geänderte
+ * ersetzen, neue einfügen, die Summen des ChangeSets einfügen oder ersetzen (nie löschen), die Gesamtsummen ersetzen.
+ * Der Kopf (Nachlass) gehört nicht zu den Zeilen; Anlegen und Löschen des Angebots bildet das Modell nicht ab.
+ */
+export function speicherAnwenden(zeilen: Angebotszeilen, cs: AngebotChangeSet): Angebotszeilen {
+  if (cs.kopf !== null && (cs.kopf.vorher === null || cs.kopf.nachher === null))
+    throw new Error('Modell: Anlegen und Löschen nicht abgebildet');
+  const p = cs.positionen;
+  const ap = new Map(zeilen.angebotspositionen);
+  for (const e of p.entfernt) {
+    const g = ap.get(e.positionId);
+    if (g === undefined) speicherAbbruch('nicht-gefunden', `Angebotsposition ${e.positionId}`);
+    if (!zeilengleich(g, e)) speicherAbbruch('konflikt', `entfernte Angebotsposition ${e.positionId}`);
+  }
+  for (const { vorher } of p.geaendert) {
+    const g = ap.get(vorher.positionId);
+    if (g === undefined) speicherAbbruch('nicht-gefunden', `Angebotsposition ${vorher.positionId}`);
+    if (!zeilengleich(g, vorher)) speicherAbbruch('konflikt', `Angebotsposition ${vorher.positionId}`);
+  }
+  for (const n of p.hinzugefuegt)
+    if (ap.has(n.positionId)) speicherAbbruch('unbekannt', `Angebotsposition ${n.positionId} gibt es schon`);
+  const s = cs.summen;
+  const v = s.vorher;
+  if (s.gesamt !== null) {
+    if (!zeilengleich(v.gesamt, zeilen.gesamt)) speicherAbbruch('konflikt', 'alte Gesamtsummen');
+  } else if (v.gesamt !== null) speicherAbbruch('unbekannt', 'alte Gesamtsummen ohne neue');
+  pruefeSummenart(
+    'Positions',
+    s.positionen,
+    v.positionen,
+    v.entfernt.positionen,
+    (x) => x.positionId,
+    zeilen.positionen,
+  );
+  pruefeSummenart(
+    'Gliederungs',
+    s.gliederungen,
+    v.gliederungen,
+    v.entfernt.gliederungen,
+    (x) => x.gliederungId,
+    zeilen.gliederungen,
+  );
+
+  const positionen = new Map(zeilen.positionen);
+  for (const e of p.entfernt) {
+    ap.delete(e.positionId);
+    positionen.delete(e.positionId);
+  }
+  for (const { nachher } of p.geaendert) ap.set(nachher.positionId, nachher);
+  for (const n of p.hinzugefuegt) ap.set(n.positionId, n);
+  for (const x of s.positionen) positionen.set(x.positionId, x);
+  const gliederungen = new Map(zeilen.gliederungen);
+  for (const x of s.gliederungen) gliederungen.set(x.gliederungId, x);
+  return { angebotspositionen: ap, positionen, gliederungen, gesamt: s.gesamt ?? zeilen.gesamt };
 }

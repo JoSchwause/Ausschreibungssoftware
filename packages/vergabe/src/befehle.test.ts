@@ -9,7 +9,12 @@ import type {
   LeistungsverzeichnisId,
   ProjektId,
 } from '@tethys/vertrag';
-import { angebotBefehlAusfuehrer, angebotChangeSetAnwenden, angebotSummenBerechnen } from './index';
+import {
+  angebotBefehlAusfuehrer,
+  angebotChangeSetAnwenden,
+  angebotChangeSetUmkehren,
+  angebotSummenBerechnen,
+} from './index';
 import {
   angebot,
   betrag,
@@ -209,12 +214,17 @@ describe('AngebotspositionSetzen', () => {
     expect(cs.summen.gesamt?.netto).toBe('100.00');
   });
 
-  it('nicht angeboten statt kein Eintrag: Position neu, Summen unverändert', () => {
-    const cs = erwarteOk(
-      ausfuehren(start(), { art: 'AngebotspositionSetzen', position: nichtAngeboten('p3') }),
-    );
+  it('nicht angeboten statt kein Eintrag: Position neu, ihre Summe unverändert mitgeführt, sonst nichts', () => {
+    const s = start();
+    const cs = erwarteOk(ausfuehren(s, { art: 'AngebotspositionSetzen', position: nichtAngeboten('p3') }));
     expect(cs.positionen.hinzugefuegt).toEqual([nichtAngeboten('p3')]);
-    expect(cs.summen.positionen).toEqual([]);
+    // Ticket 72 (D-72.3): Die Umkehrung entfernt die Angebotsposition, `speicher` mit ihr die Summe; die Umkehrung
+    // schreibt sie darum zurück.
+    const p3 = s.summen.positionen.find((p) => p.positionId === 'p3');
+    expect(p3).toEqual({ positionId: 'p3', gesamtpreis: null, gehtInSummeEin: false });
+    expect(cs.summen.positionen).toEqual([p3]);
+    expect(cs.summen.vorher.positionen).toEqual([p3]);
+    expect(angebotChangeSetUmkehren(cs).summen.positionen).toEqual([p3]);
     expect(cs.summen.gliederungen).toEqual([]);
     expect(cs.summen.gesamt).toBeNull();
   });
@@ -267,7 +277,7 @@ describe('Nachlass', () => {
       nachlass: '14.00',
       nettoNachNachlass: '126.00',
     });
-    expect(cs.summen.vorher?.gesamt).toEqual(s.summen.gesamt);
+    expect(cs.summen.vorher.gesamt).toEqual(s.summen.gesamt);
   });
 
   it('gleicher Nachlass → leer; Entfernen ohne Nachlass → leer', () => {

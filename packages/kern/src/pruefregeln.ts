@@ -62,6 +62,8 @@ export const PRUEF_ANNAHMEN: Readonly<Record<string, string>> = {
     'GP und Summen liest die Prüfung aus dem Summenstand des Zustands (`LvZustand.summen`), sie rechnet nicht neu',
   reihenfolge:
     'LV-weite Befunde zuerst, dann die Knoten in Dokumentreihenfolge; je Ort nach Code, dann nach Feld',
+  leereStruktur:
+    'langtext-struktur-leer (Ticket 56, D-22 (iii)): Warnung je Text mit einer leeren Liste, einer Tabelle ohne Zeilen oder einer Zeile ohne Zellen, auch verschachtelt; Feld langtext, text (Hinweistext) oder leitbeschreibung (Unterbeschreibungen); eine leere Zelle oder ein leerer Listenpunkt ist kein Befund',
 };
 
 /** Was eine Regel über das LV weiß (einmal je Prüfung gebaut, `lv-pruefung.ts`). */
@@ -321,6 +323,72 @@ export const langtextLeerRegel: Knotenregel = {
     nurWenn(k.art === 'position' && langtextLeer(k.langtext), () =>
       befund('langtext-leer', 'warnung', 'Die Position hat keinen Langtext.', am(k, 'langtext')),
     ),
+};
+
+/** Arten leerer Strukturen im Langtext (v1.3, D-22 (iii), Ticket 56), in fester Reihenfolge für die Meldung. */
+type LeereStruktur = 'liste' | 'tabelle' | 'zeile';
+const LEERE_STRUKTUR_TEXT: Readonly<Record<LeereStruktur, string>> = {
+  liste: 'eine leere Liste',
+  tabelle: 'eine Tabelle ohne Zeilen',
+  zeile: 'eine Tabellenzeile ohne Zellen',
+};
+
+/** Sammelt leere Listen, Tabellen ohne Zeilen und Zeilen ohne Zellen, auch in Listenpunkten und Zellen. */
+function leereStrukturen(inhalt: Langtext | LangtextInnen, aus: Set<LeereStruktur>): void {
+  for (const b of inhalt) {
+    if (b.art === 'liste') {
+      if (b.punkte.length === 0) aus.add('liste');
+      for (const p of b.punkte) leereStrukturen(p, aus);
+    } else if (b.art === 'tabelle') {
+      if (b.zeilen.length === 0) aus.add('tabelle');
+      for (const z of b.zeilen) {
+        if (z.zellen.length === 0) aus.add('zeile');
+        for (const c of z.zellen) leereStrukturen(c.inhalt, aus);
+      }
+    }
+  }
+}
+
+/** Texte eines Knotens mit ihrem Feld (Sprungziel): Langtext und Unterbeschreibungen einer Position, Text eines Hinweises. */
+function texteVon(k: Knoten): readonly (readonly [string, readonly Langtext[]])[] {
+  if (k.art === 'hinweis') return [['text', [k.text]]];
+  if (k.art !== 'position') return [];
+  const unter = k.leitbeschreibung?.unterbeschreibungen ?? [];
+  return unter.length === 0
+    ? [['langtext', [k.langtext]]]
+    : [
+        ['langtext', [k.langtext]],
+        ['leitbeschreibung', unter.map((u) => u.langtext)],
+      ];
+}
+
+/**
+ * Leere Strukturen im Langtext (v1.3, D-22 (iii), Ticket 56): eine leere Liste, eine Tabelle ohne Zeilen oder eine Zeile
+ * ohne Zellen. Der Vertrag lässt sie zu, der Langtext-Editor kann sie nicht darstellen und der GAEB-Writer verwirft sie
+ * mit Warnung (Ticket 68). Ein Befund je Text (`PRUEF_ANNAHMEN.leereStruktur`); eine leere Zelle ist keiner.
+ */
+export const langtextStrukturLeer: Knotenregel = {
+  code: 'langtext-struktur-leer',
+  schwere: 'warnung',
+  pruefe: (k) => {
+    let aus: Pruefbefund[] | null = null;
+    for (const [feld, texte] of texteVon(k)) {
+      const gefunden = new Set<LeereStruktur>();
+      for (const t of texte) leereStrukturen(t, gefunden);
+      if (gefunden.size === 0) continue;
+      const was = (['liste', 'tabelle', 'zeile'] as const).filter((s) => gefunden.has(s));
+      aus ??= [];
+      aus.push(
+        befund(
+          'langtext-struktur-leer',
+          'warnung',
+          `Der Text enthält ${was.map((s) => LEERE_STRUKTUR_TEXT[s]).join(', ')}; der Editor zeigt sie nicht, der GAEB-Export lässt sie weg.`,
+          am(k, feld),
+        ),
+      );
+    }
+    return aus ?? KEINE;
+  },
 };
 
 export const hinweistextLeer: Knotenregel = {
@@ -617,6 +685,7 @@ export const KNOTEN_REGELN: readonly Knotenregel[] = [
   kurztextLeer,
   kurztextZeilenumbruch,
   langtextLeerRegel,
+  langtextStrukturLeer,
   hinweistextLeer,
   gliederungLeer,
   einheitFehlt,

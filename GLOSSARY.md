@@ -44,6 +44,9 @@ Position für Leistungen, deren Notwendigkeit bei Erstellung des LVs noch nicht 
 ### Wahlposition (Alternativposition)
 Alternative Ausführungsvariante zu einer Grundposition (oder einer anderen Wahlposition). Gruppen- und Variantennummer aus GAEB bleiben erhalten; „gewählt“ wird erst bei der Vergabe (E-04). Im Standardzustand fließt der Gesamtpreis einer Wahlposition **nicht** in die LV-Summe ein, bis sich der Auftraggeber im Rahmen der Vergabe aktiv für diese Alternative entscheidet (wodurch sie die zugehörige Grundposition ersetzt).
 
+### Wahlgruppe
+Die Alternativen, unter denen bei der Vergabe höchstens eine gewählt wird, mit den Grundpositionen, die eine gewählte Alternative ersetzt (D-21, D-59.1). Zusammengehörig sind Positionen mit derselben GAEB-Gruppennummer unter demselben Elternknoten und Alternativen mit ihrem Verweis auf die Grundposition; Grundposition ist jedes Mitglied, das keine Alternative ist (Variante 0 oder Ziel des Verweises). Im Code `wahlgruppenBilden` (`packages/vergabe`).
+
 ### Zuschlagsposition
 Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. B. erschwerte Bedingungen) und zusätzlich vergütet wird. Entspricht in GAEB dem Element `MarkupItem`. Die Referenzsoftware nennt sie „Zulage“; im Projekt gilt nur „Zuschlagsposition“ (Entscheidung 2026-11-09). Seit K6 gilt GAEB-Semantik (E-03, D-03): Ihr Betrag ist der Zuschlagssatz auf die Zuschlagsbasis, kaufmännisch auf 2 Stellen gerundet, und geht wie ein GP in die Gliederungssumme und, nach ihren Merkmalen, in Netto, Bedarfs- oder Wahlsumme. Drei Bezugsformen (siehe Zuschlagsbezug): Gliederung, Kennzeichnung, Liste. Eine Zuschlagsposition ist nie Bezugsposition einer anderen. Ohne Satz hat sie keinen Betrag, außer in der Altform. Im Code `Positionsdaten.zuschlag`.
 
@@ -51,7 +54,7 @@ Position, die eine Mehr- oder Zusatzleistung zu Bezugspositionen beschreibt (z. 
 Die Summe der GP der Bezugspositionen einer Zuschlagsposition, auf die der Zuschlagssatz gerechnet wird. Es zählen nur Bezugspositionen mit GP, deren Betrag ins Netto geht (keine Wahl mit Variante ungleich 0, kein Bedarf ohne Gesamtbetrag) und die selbst keine Zuschlagsposition sind; bei einer Teilmenge zählt Teilmenge × EP. Im Code `Zuschlagsbasis.basis` (`zuschlagsbasen`).
 
 ### Altform der Zuschlagsposition
-Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (Fixtures `typisch` und `gross`, gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8); Ticket 51 stellt die Fixtures auf die GAEB-Form um (aus Ticket 44 abgespalten, D-44.2).
+Eine Zuschlagsposition ohne Zuschlagssatz, aber mit eigener Menge und eigenem EP. Sie rechnet wie vor K6 Menge × EP (gespeicherte Projekte der Schemaversion 1; D-10). Die LV-Prüfung meldet sie als Befund (K8). Die Fixtures `typisch`, `gross` und `typisch-angebote` trugen sie bis Ticket 51 und stehen seitdem in der GAEB-Form (Satz und Bezugsform Liste; aus Ticket 44 abgespalten, D-44.2).
 
 ### Stundenlohnposition (Regieposition)
 Position zur Abrechnung von Arbeiten nach Zeitaufwand (Stundenlohnarbeiten) anstelle einer mengenbezogenen Leistungseinheit.
@@ -83,7 +86,7 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
   Ab `vertrag` v1.1b trägt der Langtext die GAEB-abbildbare Teilmenge: Auszeichnung (fett, kursiv, unterstrichen), Absätze, Listen, Tabellen, Bilder und Textergänzungen (E-10).
 
 ### Textergänzung
-Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`.
+Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`. Die Eingabe des Bieters zu einer Textergänzung im Angebot heißt **Bieterergänzung**; das Angebot hält sie noch nicht (Befund beim X84-Import, Offene Typfrage in Ticket 53).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
 - **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
@@ -159,10 +162,13 @@ Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (A
 Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
 
 ### Zuschlagssatz
-Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis.
+Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositionen gerechnet wird (GAEB `Markup`). Im LV steht er an der Zuschlagsposition (`Zuschlag.prozentsatz`), im Angebot ist es der Satz, den der Bieter anbietet (`Angebotsposition.zuschlagssatz`, X84). Ist er im Angebot gesetzt, rechnet das Angebot die Zuschlagsposition mit diesem Satz, nicht mit einem Einheitspreis. Nicht zu verwechseln mit dem Zuschlagssatz der Kalkulation.
 
 ### Auftraggeber (Kopfdaten)
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
+
+### Auftragnehmer (Kopfdaten)
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
@@ -196,6 +202,8 @@ Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
 - **X86**: Auftragserteilung (Vereinbartes Auftrags-LV mit Vertragspreisen).
 - **X89**: Rechnungs-/Abrechnungsdaten.
 - **X31**: Mengenermittlungsdaten (Übergabe von Aufmaßen).
+- **Blankett**: Das LV ohne Preise als Vordruck für Bieter (PDF „ohne Preise“ mit Eingabefeldern, Excel für Bieter). Der Bieter trägt EP und, bei Zuschlagspositionen, den Zuschlagssatz ein.
+- **Excel-Rundlauf**: Der Weg Blankett als `.xlsx` → Bieter füllt EP aus → „Excel einlesen“ legt Bieter und Angebot an. Zugeordnet wird über die versteckte Positions-ID; eine Prüfsumme der LV-Struktur zeigt, ob das LV seit dem Export geändert wurde. Gleichwertig zum X84-Weg, nicht GAEB.
 
 ### BIM (Building Information Modeling) & IFC
 Modellbasierte Arbeitsweise im Bauwesen. Über offene Austauschformate wie **IFC (Industry Foundation Classes)** werden 3D-Bauwerksmodelle mit Bauteileigenschaften (Properties/Quantities) geladen, um Mengen direkt am 3D-Bauteil zu ermitteln (**modellbasierte Mengenermittlung / QTO**) und nachvollziehbar mit LV-Positionen oder Kostengruppen zu verknüpfen.
@@ -225,6 +233,9 @@ Kennzeichen eines Bieterpreises im Preisspiegel (D-05): angeboten, Nullpreis, ni
 ### Bieterzuschlag
 Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sein Zuschlagssatz, die Zuschlagsbasis aus seinen Preisen, der Betrag und das Preiskennzeichen; dazu, ob eine Bezugsposition ohne Preis des Bieters die Basis unvollständig lässt. Im Code `Bieterzuschlag`.
 
+### Zuschlag (Vergabe)
+Die Annahme eines Angebots durch den Auftraggeber (VOB/A § 18), in der App „Zuschlag erteilen“ aus dem Preisspiegel: Aus Ausschreibungs-LV und beauftragtem Angebot entsteht das Auftrags-LV, höchstens eines je LV (D-21). Nicht zu verwechseln mit der Zuschlagsposition (GAEB `MarkupItem`) und den Begriffen, die zu ihr gehören: Zuschlagssatz, Zuschlagsbasis, Zuschlagsbezug, Zuschlagskennzeichen, Bieterzuschlag. Im Code heißt der Zuschlag der Vergabe „Zuschlagserteilung“: `zuschlagErteilen`, `zuschlagsvorschau` und `Zuschlagswarnung` in `packages/vergabe`, in der App `zuschlagserteilungPlanen`, `zuschlagserteilungSpeichern`, `Zuschlagserteilungsplan`, `ZuschlagserteilungDialog`. Ein Bezeichner, der nur „zuschlag“ heißt (`Positionsdaten.zuschlag`, `Bieterpreis.zuschlag`), meint immer die Zuschlagsposition; der Warncode `zuschlagssatz-fehlt` einer `Zuschlagswarnung` meint den Zuschlagssatz einer Zuschlagsposition im Auftrags-LV.
+
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
 
@@ -243,41 +254,122 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 ### DIN 276 (Kosten im Bauwesen)
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
+### Kostengruppe
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`.
+
+### Kostengliederung
+Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
+
+### Kostenermittlung
+Liste von Einträgen (Kostengruppennummer, Nettobetrag mit 2 Stellen, wahlweise Bemerkung), für die je Kostengruppe der **eigene Betrag** und die **Summe** (eigener Betrag plus Summen der Kinder) gebildet werden; die **Gesamtsumme** ist die Summe der Ebene-1-Gruppen. Doppelte Nummern, eigener Betrag neben Kinderbeträgen und negative Beträge sind Befunde, keine Sperre (U5). Gespeichert ist eine Kostenermittlung ein eigenes Aggregat des Projekts mit Name, Kostenermittlungsstufe und Einträgen, je Kostengruppennummer höchstens einer; die Kostenkontrolle nimmt sie als Budget (C3, D-37). Im Code `Kostenermittlung`, `Kostenermittlungseintrag` (gespeichert, geprüft), `Kostenermittlungseingabe` (ungeprüfter Text aus Grid oder CSV, Paket `kosten`), `kostenermittlungBerechnen`, Befehle über `kostenermittlungBefehlAusfuehren`.
+
+### Kostenermittlungsstufe
+Die Stufe einer Kostenermittlung nach DIN 276: Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag oder Kostenfeststellung. Im Code `Kostenermittlungsstufe`.
+
 ### Aufmaß & Mengenermittlung (REB 23.003)
 Nachvollziehbare Berechnung ausgeführter oder geplanter Mengen über geometrische oder freie Rechenansätze (oft nach **REB-Verfahrensbeschreibung 23.003**), die als Nachweis für LV-Vordersätze oder Rechnungspositionen dienen.
 
+### Aufmaßblatt
+Die aufgemessenen Mengen zu einem Auftrags-LV auf einem Blatt: Nummer (ab 1, je Auftrags-LV eindeutig), Bezeichnung, Datum und je Position höchstens eine Aufmaßposition. Mehrere Blätter ergeben zusammen die kumulierte Menge, die eine Rechnung abrechnet. Ein GAEB-X31-Import legt ein Aufmaßblatt an. Im Code `Aufmass` (kurz für das Blatt), `AufmassKopf`. „Aufmaß“ allein ist kein Name für das Blatt, sondern die Tätigkeit (siehe „Aufmaß & Mengenermittlung“).
+
+### Aufmaßposition
+Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (oder keiner) und die Menge dieses Blatts. Die Menge rechnet die App aus dem Mengenansatz (Paket `mengen`); gespeichert werden beide. Im Code `Aufmassposition`.
+
+### Aufmaßbefund
+Befund zu einem Aufmaßblatt gegen sein Auftrags-LV: eine Zeile ohne Position im Auftrags-LV, zu einer Gliederung oder einem Hinweistext, zu einer Zuschlagsposition (wird nicht aufgemessen), zu einer Position ohne Einheitspreis oder ohne Menge, oder ein Blatt eines anderen Auftrags-LV. Ein Aufmaßbefund sperrt nie (U5); Soll/Ist und Rechnung lassen solche Zeilen weg. Im Code `Aufmassbefund`, `aufmassPruefen` (Paket `abrechnung`).
+
+### Rechnung
+Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
+
+### Rechnungsart
+**Abschlagsrechnung** (kumuliert: rechnet die ganze bis dahin aufgemessene Leistung ab und zieht die früheren Zahlbeträge ab) oder **Schlussrechnung** (die letzte; statt des Sicherheitseinbehalts gilt der Gewährleistungseinbehalt, ein absoluter Nachlass zählt voll). Im Code `Rechnungsart` mit `abschlag`, `schluss`.
+
+### Umlage
+Prozentualer Abzug des Auftraggebers vom kumulierten Bruttobetrag einer Rechnung für eine gemeinsam genutzte Leistung (z. B. Bauwesenversicherung, Baustrom), mit Bezeichnung und Satz. Alle Umlagen einer Rechnung werden auf dieselbe Basis gerechnet, nicht aufeinander; sie mindern die Steuerbasis nicht. Im Code `Umlage`.
+
+### Sicherheitseinbehalt / Gewährleistungseinbehalt
+Prozentualer Einbehalt vom kumulierten Bruttobetrag einer Rechnung als Sicherheit des Auftraggebers: in Abschlagsrechnungen der **Sicherheitseinbehalt** (Vertragserfüllung), in der Schlussrechnung stattdessen der **Gewährleistungseinbehalt** (Mängelansprüche). Im Code `Rechnung.sicherheitSatz`, `Rechnung.gewaehrleistungSatz`.
+
+### Zahlbetrag / Freigabe
+**Zahlbetrag**: was der Auftraggeber auf eine Rechnung zahlt, kumuliertes Brutto minus Umlagen, Einbehalt und alle früheren Zahlbeträge; negativ heißt Überzahlung (ein Befund). **Freigabe**: Der Prüfer gibt eine Rechnung mit ihrem Zahlbetrag frei; der Betrag wird dabei eingefroren, damit eine spätere Aufmaßkorrektur eine bezahlte Rechnung nicht still ändert. Freigegeben wird in der Reihenfolge der Rechnungsnummern; eine freigegebene Rechnung ändert sich nur, wenn ihre Freigabe ausdrücklich aufgehoben wird. Im Code `Rechnung.freigabe`, `RechnungFreigeben`, `RechnungsfreigabeAufheben`.
+
+### Leistungsstand
+Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Was dabei auffällt (eine Zeile, die nicht zählt, eine aufgemessene Position ohne Einheitspreis, eine Zuschlagsposition ohne Satz, ein negatives Netto nach Nachlass), ist ein **Leistungsbefund**. Im Code `Leistungsstand`, `leistungsstandBerechnen`, `Leistungsbefund`.
+
+### Rechnungsprüfung / Abzugskette
+Die Prüfung einer Rechnung gegen Auftrags-LV und Aufmaßblätter (D-34): die **Abzugskette** Leistung → Nachlass → Netto nach Nachlass → MwSt → Brutto kumuliert → Umlagen → Einbehalt → frühere Zahlbeträge → Zahlbetrag, jeder Schritt auf 2 Stellen gerundet, dazu der Vergleich mit der Forderung des Auftragnehmers (je Netto, Brutto und Zahlbetrag die **Forderungsdifferenz** = gefordert − geprüft, D-44; nicht die Abweichung der Kostenkontrolle) und **Rechnungsbefunde** (etwa Überzahlung, frühere Rechnung nicht freigegeben, Blatt einer früheren Rechnung fehlt, Schlussrechnung nicht die letzte). Das Ergebnis wird nie gespeichert. Im Code `rechnungPruefen`, `Rechnungspruefung`, `Abzugskette`, `Forderungsvergleich`, `Forderungsdifferenz`, `Rechnungsbefund`, `freigabeMoeglich` (Paket `abrechnung`).
+
+### Soll/Ist
+Vergleich der Menge einer Position im Auftrags-LV (Soll) mit der Summe ihrer Aufmaßblätter (Ist), mit Anteil in Prozent und den Gesamtpreisen beider Seiten, je Gliederung und gesamt summiert. Überschreitet das Ist 110 % der Soll-Menge streng, ist das ein Befund; unter 90 % erst, wenn die Schlussrechnung vorliegt (VOB/B § 2 Abs. 3, D-35; beide Schwellen einstellbar). Im Code `sollIstBerechnen`, `SollIst`, `SollIstBefund` (Paket `abrechnung`).
+
+### Kostenkontrolle
+Vergleich der Kosten eines Projekts je Kostengruppe in vier Spalten, durchgehend netto (D-37): **Budget** (die Kostenermittlung, die der Nutzer wählt, als Baumsummen nach D-24), **Vergabe** (Summe der Gesamtpreise der Positionen der Auftrags-LVs, die ins Netto eingehen, je Kostengruppe der Position), **Abrechnung** (Summe der Gesamtpreise des Leistungsstands der jeweils letzten Rechnung je Auftrags-LV) und **Abweichung** (Vergabe − Budget). Zeilen: die Kostengruppen als Baum (eigener Wert plus Kinder), „ohne Kostengruppe“, „Nachlass“ (negativ, ohne Budget) und Gesamt (Netto nach Nachlass); die Ebene-1-Zeilen, „ohne Kostengruppe“ und „Nachlass“ ergeben auf den Cent das Gesamt. Mehrere Auftrags-LVs werden addiert; Umlagen, Einbehalt und MwSt gehören nicht dazu. Eine Kostengruppe außerhalb der Gliederung des Budgets zählt trotzdem und ist ein Befund. Gerechnet, nie gespeichert. Im Code `kostenkontrolleBerechnen`, `Kostenkontrolle` (Paket `kosten`).
+
 ### Mengenansatz
-Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Im Code `Mengenansatz`, `mengenansatzBerechnen`.
+Folge von Ansatzzeilen, deren Summe eine Menge ergibt (Rechnung im Paket `mengen`). Die Summe ist die Summe der auf 3 Stellen gerundeten Zeilenergebnisse; enthält eine Zeile einen Fehler, gibt es keine Summe. Eine Position kann ihren Mengenansatz tragen; dann ist ihre Menge die Summe, die die App gerechnet hat, und beide werden zusammen gesetzt. Wer die Menge von Hand ändert, entfernt den Ansatz. Im Code `mengenansatzBerechnen`, `Positionsdaten.mengenansatz`, Befehl `MengenansatzSetzen`.
 
 ### Ansatzzeile
-Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile`, `Zeilenergebnis`.
+Eine Zeile eines Mengenansatzes: Zeilennummer, REB-Formel (Nummer) und Rechenausdruck, wahlweise mit einem Variablennamen. Ihr **Zeilenergebnis** ist der Wert des Ausdrucks, kaufmännisch auf 3 Stellen gerundet; spätere Zeilen beziehen sich darauf mit `Z` und Zeilennummer (`Z3`) oder über den Variablennamen. Im Code `Ansatzzeile` (Typ in `vertrag`), `Zeilenergebnis`.
+
+### Textform (einer Ansatzzeile)
+Die Form, in der eine Zeile aus einer GAEB-Mengenermittlung (X31) im Mengenansatz steht, wenn der freie Rechenansatz sie nicht genau abbildet (andere REB-Formel als 91, Kennung wie Hilfswert oder Zwischensumme, Vorzeichen oder Faktor, Verweis außerhalb der Position): Die Formelnummer bleibt, der Ausdruck ist `*` und dahinter die Zeile der Datei im Wortlaut. `mengen` rechnet eine solche Zeile nie (die Menge der Position bleibt leer), sie bleibt aber lesbar erhalten (Q5; D-83.2). Beim X31-Export entfällt eine Position mit einer Zeile in der Textform ganz, mit Warnung (D-83.10). Im Code `x31Lesen` (Paket `gaeb`).
 
 ### REB-Formel
 Rechenvorschrift der REB-Verfahrensbeschreibung 23.003, im Repo nur über ihre **Nummer** bezeichnet (z. B. 91 für den freien Rechenansatz). Formeltexte, Bezeichnungen und Skizzen des Katalogs stehen nicht im Repo; sie importiert der Nutzer (G-16). Im Code `Formel`, Tabelle `FORMELN`.
 
 ### Nachtrag
-Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt.
+Nach Vertragsschluss vereinbarte Leistungsänderung oder zusätzliche Leistung, die mit eigener Nachtragsnummer, eigener Kalkulations-/Prüfhistorie und Bezug zum Hauptauftrag in die Abrechnung einfließt. In v1 (D-35) ist ein Nachtrag ein gewöhnliches Ausschreibungs-LV mit Nachtragsangaben (**Nachtrags-LV**); das **Nachtragsangebot** ist ein gewöhnliches Angebot des Auftragnehmers dazu. Ist der Nachtrag beauftragt, kommen seine Positionen mit ihren Kennungen als eigene Gliederung „Nachtrag <Nummer>“ ins Auftrags-LV; erst dann gehen sie in Aufmaß und Rechnung. Im Code `LvKopf.nachtrag`, Befehl `NachtragUebernehmen`.
+
+### Nachtragsangaben
+Die Angaben, die ein LV zum Nachtrags-LV machen: das Auftrags-LV, zu dem der Nachtrag gehört, die Nachtragsnummer (z. B. `N01`) und der Nachtragsstatus. Im Code `Nachtragsangaben`, Befehl `NachtragsangabenSetzen`.
+
+### Nachtragsstatus
+Stand eines Nachtrags: **angemeldet** (der Auftragnehmer hat die geänderte oder zusätzliche Leistung angezeigt), **angeboten** (das Nachtragsangebot liegt vor), **beauftragt** (vom Auftraggeber beauftragt und ins Auftrags-LV übernommen) oder **abgelehnt**. Nur ein beauftragter Nachtrag geht in eine Rechnung. Im Code `Nachtragsstatus`.
+
+### Nachtrag übernehmen
+Die Übernahme eines beauftragten Nachtrags ins Auftrags-LV: eine neue Gliederung „Nachtrag <Nummer>“ am Ende der obersten Ebene (Los oder Titel wie die Gliederungen dort) mit der nächsten freien Ordnungszahl, darunter der Baum des Nachtrags-LV mit seinen Kennungen und seinen Ordnungszahlen, vor die die Ordnungszahl der neuen Gliederung tritt (`01.0010` → `04.01.0010`), und den Preisen des Nachtragsangebots. Wahl-Alternativen entfallen, ein Los des Nachtrags-LV wird Titel. Weil die neue Gliederung die oberste Stufe der OZ-Maske belegt, bekommt ein Nachtrags-LV beim Anlegen die Maske des Auftrags-LV ohne deren oberste Gliederungsstufe (**Nachtragsmaske**, D-48; ohne Gliederungsstufe bleibt sie gleich); umnummeriert wird bei der Übernahme nie. Was dabei auffällt (nicht angeboten, entfallene Alternativen, ignorierter Nachlass, mehr Gliederungsstufen als die Maske, Ordnungszahl außerhalb der Maske), ist eine **Nachtragswarnung**; der Befehl entsteht trotzdem. Passen Nachtragsstatus und Übernahme nicht zusammen (beauftragt, aber nicht übernommen, oder umgekehrt), ist das ein **Nachtragsbefund**. Im Code `nachtragUebernehmen`, `nachtragsmaske`, `Nachtragswarnung`, `nachtragsbefunde`, `Nachtragsbefund` (Paket `abrechnung`), Befehl `NachtragUebernehmen`.
 
 ---
 
 ## Kalkulation, Stammdaten & Kennwerte
 
 ### Einheitspreisanteile (EPA)
-Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteile (typischerweise Lohn, Stoffe/Material, Geräte, Nachunternehmer, Sonstiges sowie ein frei definierbarer Anteil), deren Summe den Einheitspreis ergibt.
+Aufgliederung eines Einheitspreises (EP) in bis zu sechs Kostenarten-Bestandteile (typischerweise Lohn, Stoffe/Material, Geräte, Nachunternehmer, Sonstiges sowie ein frei definierbarer Anteil), deren Summe den Einheitspreis ergibt. Im Code `Einheitspreisanteile`, ein Anteil `EpaArt`.
+
+### EPA-Bezeichnung
+Die Zuordnung eines nummerierten Anteils der GAEB-Datei (1 bis 6) zu einer Art der Einheitspreisanteile samt der Beschriftung, die das LV ihm gibt (z. B. „Lohn“, „Nachunternehmer“; GAEB `LblUPComp`). Über sie ordnet der Import eines Angebots (X84) die Anteile des Bieters zu; ohne sie gilt die feste Belegung 1 Lohn bis 6 frei. Im Code `EpaBezeichnung`, `LvInhaltKopf.epaBezeichnungen`.
 
 ### Einzelpreiskalkulation (Bottom-Up-Kalkulation / Urkalkulation)
-Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G).
+Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsansätze (Arbeitszeitansätze, Baustoffe, Gerätestunden, Nachunternehmerleistungen) zuzüglich Kostenartenzuschlägen für Baustellengemeinkosten (BGK), Allgemeine Geschäftskosten (AGK) sowie Wagnis und Gewinn (W+G). In der App eine reine Rechnung (Paket `kosten`, D-39): Je Kostenart ist der Anteil (Σ Einzelkosten) × (1 + Zuschlagssatz der Kalkulation / 100), kaufmännisch auf 3 Stellen gerundet; der EP ist die Summe dieser Anteile, sodass „Summe der Anteile = EP“ immer gilt. Das Ergebnis sind Einheitspreisanteile und EP, die die App mit den vorhandenen Befehlen schreibt; die Kalkulation selbst wird nicht gespeichert (D-36). Im Code `einzelpreiskalkulationBerechnen`, `Einzelpreiskalkulation`.
+
+### Kalkulationsansatz
+Eine Zeile der Einzelpreiskalkulation einer Position: Kostenart (eine Art der Einheitspreisanteile, `EpaArt`), freie Bezeichnung, **Ansatzmenge** je Einheit der Position (z. B. 0,450 h je m², 3 Stellen) und Kostensatz. Die **Einzelkosten** der Zeile sind Ansatzmenge × Kostensatz, ungerundet. Bei der Kostenart Lohn zählt die Ansatzmenge als Lohnstunden. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht und ist ein Befund. Im Code `Kalkulationsansatz`, `ansatzmenge`; die Zeile des Formulars in der App, alle Felder als Text, heißt **Kalkulationszeile** (`Kalkulationszeile`), nie Ansatzzeile (die gehört zum Mengenansatz).
+
+### Kostensatz
+Kosten je Einheit eines Kalkulationsansatzes (z. B. 48,500 € je Lohnstunde oder je m² Stein), netto, 3 Stellen wie ein EP. Im Code `kostensatz`.
+
+### Zuschlagssatz der Kalkulation
+Prozentsatz (2 Stellen), mit dem die Zuschlagskalkulation die Einzelkosten einer Kostenart beaufschlagt; ein Satz je Kostenart, der die Zuschläge für Gemeinkosten der Baustelle, Allgemeine Geschäftskosten sowie Wagnis und Gewinn vorab zusammenfasst. Eine Kostenart ohne Satz hat 0 %. Der gerechnete Betrag je Einheit (Einzelkosten × Satz / 100, ungerundet) heißt **Kalkulationszuschlag**. Ausdrücklich nicht der Zuschlagssatz einer Zuschlagsposition (GAEB `MarkupItem`, `Markup`), der auf die Summe von Bezugspositionen gerechnet wird; darum tragen die Bezeichner im Code immer das Wort „Kalkulation“: `Kalkulationszuschlagssaetze`, `kalkulationszuschlagssatz`, `kalkulationszuschlag`.
+
+### Kalkulationsübersicht
+Die Einzelpreiskalkulationen mehrerer Positionen eines LV mit ihren Mengen zusammengerechnet, ohne Baum: je Position EP und GP (kaufmännisch auf 2 Stellen, N2), je Kostenart die Summe der Einzelkosten und die Summe der Anteile × Menge (je Position auf 2 Stellen gerundet), die Herstellkosten und der Mittellohn-Nachweis. Im Code `kalkulationsuebersichtBerechnen`, `Kalkulationsuebersicht`.
+
+### Mittellohn
+Lohnkosten je Lohnstunde über die Lohnzeilen einer Kalkulationsübersicht: Σ (Menge × Einzelkosten Lohn) / Σ (Menge × Lohnstunden je Einheit), exakt gerechnet und einmal kaufmännisch auf 3 Stellen gerundet. Zusammen mit der Summe der **Lohnstunden** (3 Stellen) bildet er den Mittellohn-Nachweis. Im Code `mittellohn`, `lohnstunden`.
 
 ### Herstellkosten & Zuschlagskalkulation
-- **Herstellkosten**: Summe der direkten Einzelkosten der Teilleistungen (EKT) ohne nachgelagerte Gemeinkosten- und Gewinnzuschläge.
-- **Zuschlagskalkulation**: Beaufschlagung der Einzelkosten je Kostenart mit prozentualen Zuschlagssätzen zur Ermittlung des Angebotspreises.
+- **Herstellkosten**: Summe der direkten Einzelkosten der Teilleistungen (EKT) ohne nachgelagerte Gemeinkosten- und Gewinnzuschläge. In der Kalkulationsübersicht die Summe der Einzelkosten aller Kostenarten (`Kalkulationsuebersicht.herstellkosten`).
+- **Zuschlagskalkulation**: Beaufschlagung der Einzelkosten je Kostenart mit prozentualen Zuschlagssätzen der Kalkulation zur Ermittlung des Angebotspreises.
 
 ### Kostenkennwert & Mengenbezugsgrößen (DIN 277)
 Verhältniszahl aus Baukosten (z. B. je Kostengruppe nach DIN 276 oder Leistungsbereich) und einer geometrischen Bezugsgröße des Bauwerks (z. B. Brutto-Grundfläche **BGF**, Brutto-Rauminhalt **BRI** oder Nutzungsfläche **NF** nach **DIN 277**), angegeben etwa in `€/m² BGF`.
 
 ### Muster-LV (MLV) & Rahmenvertrag (RLV)
-- **Muster-LV**: Projektübergreifende Bibliothek geprüfter Standardpositionen, Texte, Kostengruppenzuordnungen und Kalkulationsansätze.
+- **Muster-LV**: Projektübergreifende Bibliothek geprüfter Standardpositionen, Texte, Kostengruppenzuordnungen und Kalkulationsansätze. In v1 ist ein Muster-LV ein gewöhnliches LV mit dem Kennzeichen **Vorlage** (C5, D-36); seine Positionen und Hinweistexte sind die Textbausteine, die man in andere LVs kopiert. Einen eigenen Typ für Textbausteine gibt es nicht. Im Code `LvKopf.vorlage`, Befehl `VorlageSetzen`.
 - **Rahmenvertrag**: Zeitlich befristete Vereinbarung mit einem Auftragnehmer über fest vereinbarte Einheitspreise (ggf. mit Auf-/Abgebotsfaktor) für wiederkehrende Bauunterhaltungs- und Einzelabrufe.
+
+### Textquelle
+Freie Angabe, woher der Text einer Position stammt (z. B. ein Katalog, ein Muster-LV oder eigener Text). Der Text selbst steht in Kurz- und Langtext; ein Katalog wie STLB-Bau wird nicht angebunden (G-17). Im Code `Positionsdaten.textquelle`, Befehl `TextquelleSetzen`.
 
 ---
 
@@ -322,6 +414,9 @@ Chronologische tägliche Dokumentation des Bauablaufs auf der Baustelle (Witteru
 
 ### E-Rechnung (XRechnung & ZUGFeRD)
 Strukturierte elektronische Rechnungsformate nach europäischer Norm **EN 16931** für Bau- und Planerrechnungen (reines XML bei **XRechnung** bzw. hybrides PDF/A-3 mit eingebettetem XML bei **ZUGFeRD**).
+
+### Eingangsrechnung
+Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie sie in der Datei steht: Angaben nach den Business Terms der EN 16931 (BT-1 Rechnungsnummer bis BT-115 Zahlbetrag, Umsatzsteueraufschlüsselung, Positionen mit Unterpositionen der Extension), dazu Befunde. Die Rechenprüfung der Eingangsrechnung prüft nur die Summenregeln der Norm; sie ist nicht die Rechnungsprüfung gegen Aufmaß und Auftrags-LV (Abrechnung). Die App übernimmt daraus Nummer, Datum und geforderte Beträge in eine `Rechnung`. „Abschläge“ und „Zuschläge auf Dokumentenebene“ (BT-107, BT-108) sind Minderungen bzw. Aufschläge der Rechnung, weder Abschlagsrechnung noch Zuschlag (Vergabe). Im Code `Eingangsrechnung`, `xrechnungLesen` (Paket `erechnung`).
 
 ### DACH-Ausschreibungsstandards (STLB-Bau, ÖNORM, SIA / CRB NPK)
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.

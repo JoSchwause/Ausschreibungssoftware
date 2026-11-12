@@ -90,6 +90,79 @@ import {
   type Vergabeinformationen,
   type VergabeinformationenSetzen,
   type Wiederholen,
+  type Ansatzzeile,
+  type Auftragnehmer,
+  type AuftragsLvKopf,
+  type Einheitspreisanteile,
+  type EpaArt,
+  type EpaBezeichnung,
+  type LvInhaltKopf,
+  type LvRepository,
+  type LvUebersicht,
+  type MengenansatzSetzen,
+  type Massenbefehlsart,
+  type Positionsdaten,
+  type Summenvorher,
+  // v1.4
+  type ProjektId,
+  type AngebotId,
+  type AuftragsLeistungsverzeichnisId,
+  type AuftragsLvRepository,
+  type AuftragsLvUebersicht,
+  type AuftragsLvChangeSetAnwenden,
+  type AuftragsLvChangeSetUmkehren,
+  type NachtragUebernehmen,
+  type Nachtragsangaben,
+  type NachtragsangabenSetzen,
+  type Nachtragsstatus,
+  type Kostengruppennummer,
+  type KostengruppeSetzen,
+  type TextquelleSetzen,
+  type VorlageSetzen,
+  type Aufmass,
+  type AufmassAnlegen,
+  type AufmassBefehl,
+  type AufmassChangeSet,
+  type AufmassId,
+  type AufmassKopf,
+  type Aufmassposition,
+  type AufmasspositionSetzen,
+  type AufmassZustand,
+  type Rechnung,
+  type Rechnungsart,
+  type RechnungBefehl,
+  type RechnungChangeSet,
+  type RechnungFreigeben,
+  type RechnungId,
+  type RechnungZustand,
+  type RechnungsangabenSetzen,
+  type Umlage,
+  type Leistungsstand,
+  type Kostenermittlung,
+  type KostenermittlungBefehl,
+  type KostenermittlungChangeSet,
+  type KostenermittlungId,
+  type Kostenermittlungseintrag,
+  type Kostenermittlungsstufe,
+  type KostenermittlungZustand,
+  MASSENBEFEHLSARTEN,
+  type AggregatBezug,
+  type AngebotBefehl,
+  type AufmassBefehlAusfuehren,
+  type AufmassChangeSetAnwenden,
+  type AufmassChangeSetUmkehren,
+  type AufmassRepository,
+  type KostenermittlungBefehlAusfuehren,
+  type KostenermittlungChangeSetAnwenden,
+  type KostenermittlungChangeSetUmkehren,
+  type KostenermittlungRepository,
+  type KostenermittlungUebersicht,
+  type Massenbefehlskopf,
+  type ProjektBefehl,
+  type RechnungBefehlAusfuehren,
+  type RechnungChangeSetAnwenden,
+  type RechnungChangeSetUmkehren,
+  type RechnungRepository,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -117,6 +190,50 @@ import {
   beispielKnotenEinfuegen,
   beispielLvStandChangeSet,
   beispielProtokollRueckgaengig,
+  beispielChangeSetMengenansatz,
+  beispielChangeSetMengeOhneAnsatz,
+  beispielLvKopfV13,
+  beispielMengenansatzMitFehler,
+  beispielMengenansatzSetzen,
+  beispielMengeAendernMitAnsatz,
+  beispielVerschiebenHinterGliederung,
+  // v1.4
+  beispielAuftragsLv,
+  beispielAuftragsLvUebersicht,
+  beispielChangeSetNachtragUebernehmen,
+  beispielNachtragUebernehmen,
+  beispielChangeSetNachtragBeauftragt,
+  beispielNachtragsangabenSetzen,
+  beispielChangeSetKostengruppe,
+  beispielKostengruppeSetzen,
+  beispielChangeSetTextquelle,
+  beispielChangeSetVorlage,
+  beispielTextquelleSetzen,
+  beispielVorlageSetzen,
+  beispielAufmass1,
+  beispielAufmassAnlegen,
+  beispielAufmasspositionSetzen,
+  beispielChangeSetAufmassAnlegen,
+  beispielChangeSetAufmasspositionSetzen,
+  beispielChangeSetFreigabeAufheben,
+  beispielChangeSetRechnungFreigeben,
+  beispielRechnung1,
+  beispielRechnung2,
+  beispielRechnungFreigeben,
+  beispielRechnungsfreigabeAufheben,
+  beispielAuftragsLvMitNachtrag,
+  beispielLeistungsstand,
+  beispielChangeSetKostenermittlungseintrag,
+  beispielKostenermittlung,
+  beispielKostenermittlungseintragSetzen,
+  beispielMassenprotokollAufmass,
+  beispielAufmassBefehle,
+  beispielKostenermittlungsbefehle,
+  beispielKostenermittlungUebersicht,
+  beispielProjektdateiV14,
+  beispielRechnungAnlegen,
+  beispielRechnungsbefehle,
+  beispielLvUebersichtNachtrag,
 } from './beispiele';
 
 /**
@@ -336,12 +453,10 @@ describe('Beispiele kompilieren', () => {
 
 /**
  * Umkehrung eines LV-ChangeSets, nur aus dem ChangeSet gelesen (kein Zustand, kein Kern). Der Test belegt, dass der
- * Vertrag dafür alles trägt; die Umsetzung im Kern ist Sache des Folgetickets. Fehlt `summen.vorher`, ist das
- * ChangeSet nicht ohne Zustand umkehrbar: die Funktion wirft.
+ * Vertrag dafür alles trägt; die Umsetzung im Kern ist Sache des Folgetickets. `summen.vorher` ist seit v1.3 Pflicht.
  */
 function umkehren(cs: LvChangeSet): LvChangeSet {
   const v = cs.summen.vorher;
-  if (v === undefined) throw new Error('keine alten Summen im ChangeSet');
   const alteP = new Set<string>(v.positionen.map((p) => p.positionId));
   const alteG = new Set<string>(v.gliederungen.map((g) => g.gliederungId));
   const summen: Summenaenderung = {
@@ -419,7 +534,7 @@ describe('v1.1a Punkt 1: Summen umkehrbar', () => {
   it('Entfernen stellt Knoten und deren Summen aus dem ChangeSet allein wieder her', () => {
     const neu = umkehren(beispielChangeSetEntfernen);
     expect(neu.knoten.hinzugefuegt).toHaveLength(1);
-    expect(neu.summen.positionen).toEqual(beispielChangeSetEntfernen.summen.vorher?.entfernt.positionen);
+    expect(neu.summen.positionen).toEqual(beispielChangeSetEntfernen.summen.vorher.entfernt.positionen);
     expect(neu.summen.gliederungen[0]?.summe).toBe('22.35');
   });
 
@@ -440,10 +555,11 @@ describe('v1.1a Punkt 1: Summen umkehrbar', () => {
     expect(m.summen.gesamt?.brutto).toBe('14.70');
   });
 
-  it('ein ChangeSet ohne `vorher` ist nicht ohne Zustand umkehrbar', () => {
+  it('v1.3: ein ChangeSet ohne `vorher` ist kein gültiger Wert mehr (Pflichtfeld, Ticket 53 Punkt 3)', () => {
     const { positionen, gliederungen, gesamt } = beispielChangeSet.summen;
-    const ohne: LvChangeSet = { ...beispielChangeSet, summen: { positionen, gliederungen, gesamt } };
-    expect(() => umkehren(ohne)).toThrow();
+    // @ts-expect-error -- seit v1.3 ist `Summenaenderung.vorher` Pflicht
+    const ohne: Summenaenderung = { positionen, gliederungen, gesamt };
+    expect(ohne).not.toHaveProperty('vorher');
   });
 });
 
@@ -490,14 +606,15 @@ describe('v1.1a Punkt 4: Löschen', () => {
     expectTypeOf<ProjektChangeSet['projekt']['nachher']>().toEqualTypeOf<Projekt | null>();
     expectTypeOf<AngebotChangeSet['kopf']>().toEqualTypeOf<Aenderung<AngebotKopf> | null>();
     expect(beispielLoeschChangeSet.knoten.entfernt).toEqual(beispielLv.knoten);
-    expect(beispielLoeschChangeSet.summen.vorher?.entfernt.positionen).toHaveLength(1);
+    expect(beispielLoeschChangeSet.summen.vorher.entfernt.positionen).toHaveLength(1);
   });
 });
 
 describe('v1.1a Punkt 5: Auftrags-LV', () => {
   it('Befehl und ChangeSet legen das Auftrags-LV als Aggregat an', () => {
     expectTypeOf(beispielAuftragsBefehl).toExtend<Befehl>();
-    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<'AuftragsLeistungsverzeichnisAnlegen'>();
+    // v1.4 (Ticket 70 Punkt 2): dazu `NachtragUebernehmen` und `KostengruppeSetzen`, siehe unten
+    expectTypeOf<'AuftragsLeistungsverzeichnisAnlegen'>().toExtend<AuftragsLvBefehl['art']>();
     expectTypeOf(beispielAuftragsChangeSet).toEqualTypeOf<AuftragsLvChangeSet>();
     expectTypeOf<AuftragsLvChangeSet>().toExtend<ChangeSet>();
     expectTypeOf<AuftragsLvZustand>().toHaveProperty('auftragsLeistungsverzeichnis');
@@ -667,7 +784,7 @@ describe('v1.2 Nr. 4: Kopieren, Verschieben, Papierkorb (K9)', () => {
     expect(h.knoten.entfernt).toEqual(eintrag?.knoten);
     expect(eintrag?.knoten[0]?.reihenfolge).toBe(1);
     expect(h.summen.positionen).toHaveLength(0);
-    expect(h.summen.vorher?.entfernt.positionen).toHaveLength(1);
+    expect(h.summen.vorher.entfernt.positionen).toHaveLength(1);
     const w = beispielChangeSetWiederherstellen;
     expect(w.knoten.hinzugefuegt).toEqual(eintrag?.knoten);
     expect(w.papierkorb?.entfernt).toEqual([eintrag]);
@@ -703,8 +820,8 @@ describe('v1.2 Nr. 5: Rückgängig, Wiederholen, LV-Stand (S3)', () => {
     expect(umkehrenV12(zurueck)).toEqual(cs);
   });
 
-  it('Speicher und Projektdatei kennen LV-Stände (optional bis Ticket 43)', () => {
-    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository | undefined>();
+  it('Speicher und Projektdatei kennen LV-Stände (am Speicher Pflicht seit v1.3, in der Datei optional)', () => {
+    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository>();
     expectTypeOf<Projektdatei['lvStaende']>().toEqualTypeOf<readonly LvStand[] | undefined>();
     expectTypeOf<ReturnType<LvStandRepository['laden']>>().toEqualTypeOf<
       Promise<Ergebnis<LvStand, Speicherfehler>>
@@ -769,5 +886,799 @@ describe('v1.2: reine Daten und Werte vor v1.2', () => {
     // die Umkehrung ab v1.2 erfindet keine Felder
     expect(Object.keys(umkehrenV12(cs))).not.toContain('papierkorb');
     expect(Object.keys(umkehrenV12(cs))).not.toContain('lvStand');
+  });
+});
+
+// --- v1.3 (Ticket 53) -------------------------------------------------------------------------------------------
+
+/** Die Position eines Knotens oder `undefined`. */
+const alsPosition = (k: Knoten | undefined): Position | undefined => (k?.art === 'position' ? k : undefined);
+
+describe('v1.3 Punkt 1: LV-Übersicht', () => {
+  it('auflisten liefert Kennung und Name, keine Knoten', () => {
+    expectTypeOf<ReturnType<LvRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly LvUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<LvUebersicht['id']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<LvUebersicht['name']>().toEqualTypeOf<string>();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('knoten');
+  });
+});
+
+describe('v1.3 Punkte 2 und 6: EPA-Bezeichnungen und Auftragnehmer am LV-Kopf', () => {
+  it('EpaArt sind genau die Anteile von Einheitspreisanteile', () => {
+    expectTypeOf<EpaArt>().toEqualTypeOf<Exclude<keyof Einheitspreisanteile, 'freiBezeichnung'>>();
+    expectTypeOf<EpaArt>().toEqualTypeOf<
+      'lohn' | 'stoffe' | 'geraete' | 'nachunternehmer' | 'sonstiges' | 'frei'
+    >();
+    expectTypeOf<EpaBezeichnung['anteil']>().toEqualTypeOf<EpaArt>();
+    expectTypeOf<EpaBezeichnung['nummer']>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6>();
+    expectTypeOf<EpaBezeichnung['bezeichnung']>().toEqualTypeOf<string | null>();
+    expectTypeOf<LvInhaltKopf['epaBezeichnungen']>().toEqualTypeOf<readonly EpaBezeichnung[] | undefined>();
+  });
+
+  it('Auftragnehmer: optional am gemeinsamen Kopf, also auch am Auftrags-LV; alle Felder nullbar', () => {
+    expectTypeOf<LvInhaltKopf['auftragnehmer']>().toEqualTypeOf<Auftragnehmer | undefined>();
+    expectTypeOf<AuftragsLvKopf['auftragnehmer']>().toEqualTypeOf<Auftragnehmer | undefined>();
+    expectTypeOf<Auftragnehmer[keyof Auftragnehmer]>().toEqualTypeOf<string | null>();
+  });
+
+  it('Beispiel (D-53.6): nach Nummer sortiert, Nummer und Art je höchstens einmal, Lücke = nicht zugeordnet', () => {
+    const b = beispielLvKopfV13.epaBezeichnungen ?? [];
+    expect(b.map((e) => e.nummer)).toEqual([1, 2, 4, 5]);
+    expect(b.map((e) => e.anteil)).toEqual(['lohn', 'stoffe', 'nachunternehmer', 'sonstiges']);
+    expect(new Set(b.map((e) => e.nummer)).size).toBe(b.length);
+    expect(new Set(b.map((e) => e.anteil)).size).toBe(b.length);
+    expect(b.find((e) => e.nummer === 5)?.bezeichnung).toBeNull();
+    expect(beispielLvKopfV13.auftragnehmer?.plz).toBeNull();
+  });
+});
+
+describe('v1.3 Punkte 3 und 4: Pflichtfelder', () => {
+  it('Summenaenderung.vorher und Speicher.lvStaende sind Pflicht, Projektdatei.lvStaende bleibt optional', () => {
+    expectTypeOf<Summenaenderung['vorher']>().toEqualTypeOf<Summenvorher>();
+    expectTypeOf<Speicher['lvStaende']>().toEqualTypeOf<LvStandRepository>();
+    expectTypeOf<Projektdatei['lvStaende']>().toEqualTypeOf<readonly LvStand[] | undefined>();
+  });
+});
+
+describe('v1.3 Punkt 5: Einfügen hinter einer Gliederung', () => {
+  it('neue Form nur für Gliederungen; `nach` bleibt unverändert', () => {
+    type Hinter = Extract<Einfuegeort, { art: 'hinter-gliederung' }>;
+    expectTypeOf<Hinter['gliederungId']>().toEqualTypeOf<GliederungId>();
+    expectTypeOf<PositionId>().not.toExtend<Hinter['gliederungId']>();
+    expectTypeOf<Extract<Einfuegeort, { art: 'nach' }>['knotenId']>().toEqualTypeOf<KnotenId>();
+    expectTypeOf<Einfuegeort['art']>().toEqualTypeOf<'nach' | 'anfang' | 'ende' | 'hinter-gliederung'>();
+    expect(beispielVerschiebenHinterGliederung.ziel).toEqual({
+      art: 'hinter-gliederung',
+      gliederungId: '019b76e9-0000-7000-8000-000000000002',
+    });
+  });
+});
+
+describe('v1.3 Punkte 7 und 8: kein Typ für Positionsnachlass und Bieterergänzung, Langtext bleibt weit', () => {
+  it('Angebotsposition unverändert (G-26, Offene Typfrage)', () => {
+    expectTypeOf<Extract<Angebotsposition, { status: 'angeboten' }>>().not.toHaveProperty('nachlass');
+  });
+
+  it('leere Liste, Tabelle ohne Zeilen und Zeile ohne Zellen sind gültige Langtexte (D-22)', () => {
+    const leer: Langtext = [
+      { art: 'liste', geordnet: false, punkte: [] },
+      { art: 'tabelle', zeilen: [] },
+      { art: 'tabelle', zeilen: [{ zellen: [] }] },
+    ];
+    expect(leer).toHaveLength(3);
+  });
+});
+
+describe('v1.3 Punkt 9: Mengenansatz an der Position', () => {
+  it('Ansatzzeile liegt im Vertrag; die Position trägt den Ansatz optional', () => {
+    expectTypeOf<Positionsdaten['mengenansatz']>().toEqualTypeOf<readonly Ansatzzeile[] | undefined>();
+    expectTypeOf<Ansatzzeile>().toEqualTypeOf<{
+      readonly zeile: number;
+      readonly formel: number;
+      readonly ausdruck: string;
+      readonly variable: string | null;
+    }>();
+  });
+
+  it('MengenansatzSetzen ist ein LV-Befehl mit Ansatz (oder null) und gerechneter Menge, kein Massenbefehl', () => {
+    expectTypeOf<MengenansatzSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<MengenansatzSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<MengenansatzSetzen['mengenansatz']>().toEqualTypeOf<readonly Ansatzzeile[] | null>();
+    expectTypeOf<MengenansatzSetzen['menge']>().toEqualTypeOf<Menge | null>();
+    expectTypeOf<'MengenansatzSetzen'>().not.toExtend<Massenbefehlsart>();
+    expect(beispielMengenansatzSetzen.menge).toBe('1.235');
+    // Lesart (b): ein Ansatz mit Fehler kommt ohne Menge
+    expect(beispielMengenansatzMitFehler.menge).toBeNull();
+    expect(beispielMengenansatzMitFehler.mengenansatz).toHaveLength(2);
+  });
+
+  it('ChangeSet: Ansatz und Menge in einer Knotenänderung; die Umkehrung nimmt den Ansatz wieder weg', () => {
+    const g = beispielChangeSetMengenansatz.knoten.geaendert[0];
+    expect(alsPosition(g?.nachher)?.mengenansatz).toEqual(beispielMengenansatzSetzen.mengenansatz);
+    expect(alsPosition(g?.nachher)?.menge).toBe(beispielMengenansatzSetzen.menge);
+    expect(alsPosition(g?.vorher)).not.toHaveProperty('mengenansatz');
+    const zurueck = umkehren(beispielChangeSetMengenansatz);
+    expect(alsPosition(zurueck.knoten.geaendert[0]?.nachher)).not.toHaveProperty('mengenansatz');
+    expect(umkehren(zurueck)).toEqual(beispielChangeSetMengenansatz);
+  });
+
+  it('Lesart (a): ein reiner Mengenbefehl entfernt den Ansatz im selben ChangeSet', () => {
+    expect(beispielMengeAendernMitAnsatz.art).toBe('MengeAendern');
+    const g = beispielChangeSetMengeOhneAnsatz.knoten.geaendert[0];
+    expect(alsPosition(g?.vorher)?.mengenansatz).toHaveLength(2);
+    expect(alsPosition(g?.nachher)).not.toHaveProperty('mengenansatz');
+    expect(alsPosition(g?.nachher)?.menge).toBe(beispielMengeAendernMitAnsatz.menge);
+    expect(beispielChangeSetMengeOhneAnsatz.summen.gesamt?.netto).toBe('10.00');
+    expect(beispielChangeSetMengeOhneAnsatz.summen.vorher.gesamt?.netto).toBe('12.35');
+  });
+});
+
+describe('v1.3: reine Daten und Werte vor v1.3', () => {
+  it('NurDaten deckt die neuen Typen ab', () => {
+    expectTypeOf<NurDaten<MengenansatzSetzen>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvUebersicht>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvInhaltKopf>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Einfuegeort>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+  });
+
+  it('Position ohne Ansatz und Kopf ohne Auftragnehmer und EPA-Bezeichnungen bleiben gültig', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).toBeDefined();
+    expect(p).not.toHaveProperty('mengenansatz');
+    expect(beispielLv).not.toHaveProperty('auftragnehmer');
+    expect(beispielLv).not.toHaveProperty('epaBezeichnungen');
+  });
+});
+
+// --- v1.4 (Ticket 70) -------------------------------------------------------------------------------------------
+
+describe('v1.4 Punkt 1: Auftrags-LV lesen', () => {
+  it('die Übersicht trägt Kennung, Name, LV und Angebot, keine Knoten', () => {
+    expectTypeOf<AuftragsLvUebersicht['id']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AuftragsLvUebersicht['name']>().toEqualTypeOf<string>();
+    expectTypeOf<AuftragsLvUebersicht['leistungsverzeichnisId']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<AuftragsLvUebersicht['angebotId']>().toEqualTypeOf<AngebotId>();
+    expectTypeOf<AuftragsLvUebersicht>().not.toHaveProperty('knoten');
+    expect(beispielAuftragsLvUebersicht).toEqual({
+      id: beispielAuftragsLv.id,
+      name: 'Beispiel',
+      leistungsverzeichnisId: beispielLv.id,
+      angebotId: beispielAuftragsLv.angebotId,
+    });
+  });
+
+  it('das Repository listet je Projekt und lädt den Zustand; am Speicher Pflicht', () => {
+    expectTypeOf<AuftragsLvRepository['auflisten']>().parameter(0).toEqualTypeOf<ProjektId>();
+    expectTypeOf<ReturnType<AuftragsLvRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly AuftragsLvUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<AuftragsLvRepository['laden']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<AuftragsLvRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<AuftragsLvZustand, Speicherfehler>>
+    >();
+    expectTypeOf<Speicher['auftragsLeistungsverzeichnisse']>().toEqualTypeOf<AuftragsLvRepository>();
+  });
+});
+
+/**
+ * Umkehrung eines Auftrags-LV-ChangeSets, nur aus dem ChangeSet (v1.4): gleich gebaut wie beim LV, darum über `umkehren`
+ * mit vertauschtem Kopf. Belegt, dass der Vertrag alles trägt; die Umsetzung liefert der Kern (Ticket 71).
+ */
+function umkehrenAuftragsLv(cs: AuftragsLvChangeSet): AuftragsLvChangeSet {
+  const alsLv = umkehren({
+    art: 'leistungsverzeichnis',
+    leistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId as string as LeistungsverzeichnisId,
+    kopf: null,
+    knoten: cs.knoten,
+    summen: cs.summen,
+  });
+  return {
+    art: cs.art,
+    auftragsLeistungsverzeichnisId: cs.auftragsLeistungsverzeichnisId,
+    kopf: cs.kopf === null ? null : { vorher: cs.kopf.nachher, nachher: cs.kopf.vorher },
+    knoten: alsLv.knoten,
+    summen: alsLv.summen,
+  };
+}
+
+describe('v1.4 Punkt 2: Befehle am Auftrags-LV, Nachtrag übernehmen', () => {
+  it('NachtragUebernehmen ist ein Befehl am Auftrags-LV, nicht am LV, und kein Massenbefehl', () => {
+    expectTypeOf<NachtragUebernehmen['nachtragLvId']>().toEqualTypeOf<LeistungsverzeichnisId>();
+    expectTypeOf<NachtragUebernehmen['knoten']>().toEqualTypeOf<readonly Knoten[]>();
+    expectTypeOf<NachtragUebernehmen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<'NachtragUebernehmen'>().not.toExtend<LvBefehl['art']>();
+    expectTypeOf<'NachtragUebernehmen'>().not.toExtend<Massenbefehlsart>();
+  });
+
+  it('Lesart D-35: genau eine neue Gliederung auf oberster Ebene samt Teilbaum, Eltern vor Kindern', () => {
+    const b = beispielNachtragUebernehmen;
+    const ids = new Set<string>(b.knoten.map((k) => k.id));
+    const wurzeln = b.knoten.filter((k) => !ids.has(k.elternId));
+    expect(wurzeln).toHaveLength(1);
+    expect(wurzeln[0]?.art).toBe('titel');
+    expect(wurzeln[0]?.elternId).toBe(beispielAuftragsLv.id);
+    // hinter dem einen Knoten der obersten Ebene des Auftrags-LV
+    expect(wurzeln[0]?.reihenfolge).toBe(1);
+    const gesehen = new Set<string>([beispielAuftragsLv.id]);
+    for (const k of b.knoten) {
+      expect(gesehen.has(k.elternId)).toBe(true);
+      gesehen.add(k.id);
+    }
+    // keine Kennung des Auftrags-LV kommt noch einmal vor (sonst `id-vergeben`)
+    const vorhanden = new Set<string>(beispielAuftragsLv.knoten.map((k) => k.id));
+    expect(b.knoten.some((k) => vorhanden.has(k.id))).toBe(false);
+  });
+
+  it('Anwenden und Umkehren des Auftrags-LV-ChangeSets sind Signaturen wie beim LV (Ticket 71)', () => {
+    expectTypeOf<AuftragsLvChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: AuftragsLvZustand | null, changeSet: AuftragsLvChangeSet) => AuftragsLvZustand | null
+    >();
+    expectTypeOf<AuftragsLvChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: AuftragsLvChangeSet) => AuftragsLvChangeSet
+    >();
+  });
+
+  it('ChangeSet der Übernahme: neue Knoten und Summen, kein Kopf; die Umkehrung nimmt beides wieder heraus', () => {
+    const cs = beispielChangeSetNachtragUebernehmen;
+    expect(cs.kopf).toBeNull();
+    expect(cs.knoten.hinzugefuegt).toEqual(beispielNachtragUebernehmen.knoten);
+    expect(cs.summen.gesamt?.netto).toBe('62.35');
+    const zurueck = umkehrenAuftragsLv(cs);
+    expect(zurueck.knoten.entfernt).toEqual(beispielNachtragUebernehmen.knoten);
+    expect(zurueck.summen.vorher.entfernt.positionen).toHaveLength(2);
+    expect(zurueck.summen.gesamt?.netto).toBe('12.35');
+    expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 3: Nachtrag (D-35)', () => {
+  it('Nachtragsstatus und Nachtragsangaben', () => {
+    expectTypeOf<Nachtragsstatus>().toEqualTypeOf<'angemeldet' | 'angeboten' | 'beauftragt' | 'abgelehnt'>();
+    expectTypeOf<Nachtragsangaben['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<Nachtragsangaben['nummer']>().toEqualTypeOf<string>();
+    expectTypeOf<Nachtragsangaben['status']>().toEqualTypeOf<Nachtragsstatus>();
+  });
+
+  it('enge Lesart: am LvKopf, nicht am gemeinsamen Kopf (also weder im Import noch am Auftrags-LV)', () => {
+    expectTypeOf<LvKopf['nachtrag']>().toEqualTypeOf<Nachtragsangaben | undefined>();
+    expectTypeOf<LvInhaltKopf>().not.toHaveProperty('nachtrag');
+    expectTypeOf<LvInhalt>().not.toHaveProperty('nachtrag');
+    expectTypeOf<AuftragsLvKopf>().not.toHaveProperty('nachtrag');
+  });
+
+  it('NachtragsangabenSetzen ist ein LV-Befehl; null entfernt die Angaben', () => {
+    expectTypeOf<NachtragsangabenSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<NachtragsangabenSetzen['nachtrag']>().toEqualTypeOf<Nachtragsangaben | null>();
+    expectTypeOf<'NachtragsangabenSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+    expect(beispielNachtragsangabenSetzen.nachtrag?.status).toBe('beauftragt');
+  });
+
+  it('ChangeSet: nur der Kopf; die Umkehrung nimmt den Status zurück', () => {
+    const cs = beispielChangeSetNachtragBeauftragt;
+    expect(cs.kopf?.vorher?.nachtrag?.status).toBe('angeboten');
+    expect(cs.kopf?.nachher?.nachtrag?.status).toBe('beauftragt');
+    expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
+    expect(cs.summen.gesamt).toBeNull();
+    const zurueck = umkehren(cs);
+    expect(zurueck.kopf?.nachher?.nachtrag?.status).toBe('angeboten');
+    expect(umkehren(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
+  it('die Marke Kostengruppennummer liegt im Vertrag; string ist nicht zuweisbar', () => {
+    expectTypeOf<Kostengruppennummer>().toExtend<string>();
+    expectTypeOf<string>().not.toExtend<Kostengruppennummer>();
+    expectTypeOf<Kostengruppennummer>().not.toExtend<Ordnungszahl>();
+    expectTypeOf<Positionsdaten['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+  });
+
+  it('KostengruppeSetzen gilt im LV und im Auftrags-LV, derselbe Typ in beiden Unions', () => {
+    expectTypeOf<KostengruppeSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<KostengruppeSetzen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<Extract<Befehl, { art: 'KostengruppeSetzen' }>>().toEqualTypeOf<KostengruppeSetzen>();
+    expectTypeOf<KostengruppeSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<KostengruppeSetzen['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | null>();
+  });
+
+  it('AuftragsLvBefehl ist genau Anlegen, Nachtrag übernehmen und Kostengruppe setzen (D-36 (4))', () => {
+    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<
+      'AuftragsLeistungsverzeichnisAnlegen' | 'NachtragUebernehmen' | 'KostengruppeSetzen'
+    >();
+  });
+
+  it('ChangeSet: eine Knotenänderung ohne Summen; die Umkehrung nimmt die Kostengruppe wieder weg', () => {
+    const cs = beispielChangeSetKostengruppe;
+    const g = cs.knoten.geaendert[0];
+    expect(alsPosition(g?.vorher)).not.toHaveProperty('kostengruppe');
+    expect(alsPosition(g?.nachher)?.kostengruppe).toBe(beispielKostengruppeSetzen.kostengruppe);
+    expect(cs.summen.gesamt).toBeNull();
+    const zurueck = umkehrenAuftragsLv(cs);
+    expect(alsPosition(zurueck.knoten.geaendert[0]?.nachher)).not.toHaveProperty('kostengruppe');
+    expect(umkehrenAuftragsLv(zurueck)).toEqual(cs);
+  });
+});
+
+describe('v1.4 Punkt 5: Muster-LV und Textquelle (C5, G-17, D-40)', () => {
+  it('Vorlage: am LvKopf, nur true oder fehlt; Textquelle: optional an der Position', () => {
+    expectTypeOf<LvKopf['vorlage']>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<LvInhaltKopf>().not.toHaveProperty('vorlage');
+    expectTypeOf<AuftragsLvKopf>().not.toHaveProperty('vorlage');
+    expectTypeOf<Positionsdaten['textquelle']>().toEqualTypeOf<string | undefined>();
+  });
+
+  it('VorlageSetzen und TextquelleSetzen sind LV-Befehle, nicht am Auftrags-LV', () => {
+    expectTypeOf<VorlageSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<TextquelleSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<VorlageSetzen['vorlage']>().toEqualTypeOf<boolean>();
+    expectTypeOf<TextquelleSetzen['positionId']>().toEqualTypeOf<PositionId>();
+    expectTypeOf<TextquelleSetzen['textquelle']>().toEqualTypeOf<string | null>();
+    expectTypeOf<'VorlageSetzen' | 'TextquelleSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+    expect(beispielVorlageSetzen.vorlage).toBe(true);
+    expect(beispielTextquelleSetzen.textquelle).toBe('Muster-LV Rohbau (erfunden)');
+  });
+
+  it('Review (D-43): die LV-Übersicht trägt Nachtrag und Vorlage additiv, in der Schreibweise des Kopfs', () => {
+    expectTypeOf<LvUebersicht['nachtrag']>().toEqualTypeOf<Nachtragsangaben | undefined>();
+    expectTypeOf<LvUebersicht['vorlage']>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('knoten');
+    const alt: LvUebersicht = { id: beispielLv.id, name: beispielLv.name };
+    expect(alt).not.toHaveProperty('vorlage');
+    expect(beispielLvUebersichtNachtrag.nachtrag?.nummer).toBe('N01');
+    expect(beispielLvUebersichtNachtrag).not.toHaveProperty('vorlage');
+  });
+
+  it('ChangeSets: Vorlage im Kopf, Textquelle an der Position; beide umkehrbar', () => {
+    const v = beispielChangeSetVorlage;
+    expect(v.kopf?.vorher).not.toHaveProperty('vorlage');
+    expect(v.kopf?.nachher?.vorlage).toBe(true);
+    expect(umkehren(umkehren(v))).toEqual(v);
+    const t = beispielChangeSetTextquelle;
+    expect(alsPosition(t.knoten.geaendert[0]?.nachher)?.textquelle).toBe(beispielTextquelleSetzen.textquelle);
+    expect(alsPosition(umkehren(t).knoten.geaendert[0]?.nachher)).not.toHaveProperty('textquelle');
+  });
+});
+
+/** Umkehrung eines ChangeSets, das ein ganzes Aggregat trägt (v1.4, D-36 (8)): `vorher` und `nachher` tauschen. */
+const tauschen = <T>(a: Aenderung<T>): Aenderung<T> => ({ vorher: a.nachher, nachher: a.vorher });
+
+describe('v1.4 Punkt 6: Aufmaßblatt (A2, D-36 (1))', () => {
+  it('Kennung, Kopf und Zeile; die Kennung ist mit keiner anderen austauschbar', () => {
+    expectTypeOf<string>().not.toExtend<AufmassId>();
+    expectTypeOf<AufmassId>().not.toExtend<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AufmassKopf['id']>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<AufmassKopf['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<AufmassKopf['nummer']>().toEqualTypeOf<number>();
+    expectTypeOf<AufmassKopf['datum']>().toEqualTypeOf<string | null>();
+    expectTypeOf<Aufmassposition>().toEqualTypeOf<{
+      readonly positionId: PositionId;
+      readonly mengenansatz: readonly Ansatzzeile[] | null;
+      readonly menge: Menge | null;
+    }>();
+    expectTypeOf<Aufmass>().toExtend<AufmassKopf>();
+    expectTypeOf<Aufmass['positionen']>().toEqualTypeOf<readonly Aufmassposition[]>();
+    expectTypeOf<AufmassZustand['aufmass']>().toEqualTypeOf<Aufmass>();
+  });
+
+  it('Befehle und ChangeSet als ganzes Aggregat', () => {
+    expectTypeOf<AufmassBefehl['art']>().toEqualTypeOf<
+      | 'AufmassAnlegen'
+      | 'AufmasskopfSetzen'
+      | 'AufmasspositionSetzen'
+      | 'AufmasspositionEntfernen'
+      | 'AufmassLoeschen'
+    >();
+    expectTypeOf<AufmassAnlegen['aufmass']>().toEqualTypeOf<Aufmass>();
+    expectTypeOf<AufmasspositionSetzen['position']>().toEqualTypeOf<Aufmassposition>();
+    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
+    expectTypeOf<AufmassChangeSet['art']>().toEqualTypeOf<'aufmass'>();
+  });
+
+  it('Beispiel: Nummer ab 1, je Position höchstens eine Zeile, Ansatz mit gerechneter Menge oder Menge von Hand', () => {
+    const a = beispielAufmass1;
+    expect(a.nummer).toBeGreaterThanOrEqual(1);
+    expect(new Set(a.positionen.map((p) => p.positionId)).size).toBe(a.positionen.length);
+    expect(a.positionen[0]?.mengenansatz).toHaveLength(1);
+    expect(a.positionen[1]?.mengenansatz).toBeNull();
+    expect(a.auftragsLvId).toBe(beispielAuftragsLv.id);
+    expect(beispielAufmassAnlegen.aufmass).toBe(a);
+  });
+
+  it('Anlegen, Zeile setzen und Löschen: Umkehrung durch Tausch, ohne Vorzustand', () => {
+    const anlegen = beispielChangeSetAufmassAnlegen;
+    expect(anlegen.aufmass.vorher).toBeNull();
+    expect(tauschen(anlegen.aufmass)).toEqual({ vorher: beispielAufmass1, nachher: null });
+    const setzen = beispielChangeSetAufmasspositionSetzen;
+    const neu = setzen.aufmass.nachher?.positionen.find(
+      (p) => p.positionId === beispielAufmasspositionSetzen.position.positionId,
+    );
+    expect(neu).toEqual(beispielAufmasspositionSetzen.position);
+    // ersetzt an ihrer Stelle: Reihenfolge der Zeilen bleibt
+    expect(setzen.aufmass.nachher?.positionen.map((p) => p.positionId)).toEqual(
+      setzen.aufmass.vorher?.positionen.map((p) => p.positionId),
+    );
+    expect(tauschen(tauschen(setzen.aufmass))).toEqual(setzen.aufmass);
+  });
+});
+
+describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
+  it('Kennung, Art, Umlage und die Felder der Rechnung', () => {
+    expectTypeOf<string>().not.toExtend<RechnungId>();
+    expectTypeOf<RechnungId>().not.toExtend<AufmassId>();
+    expectTypeOf<Rechnungsart>().toEqualTypeOf<'abschlag' | 'schluss'>();
+    expectTypeOf<Umlage>().toEqualTypeOf<{ readonly bezeichnung: string; readonly satz: Prozent }>();
+    expectTypeOf<Rechnung['auftragsLvId']>().toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<Rechnung['art']>().toEqualTypeOf<Rechnungsart>();
+    // Review (D-44): dazu der geforderte Zahlbetrag (XRechnung BT-115); jeder Wert einzeln nullbar
+    expectTypeOf<Rechnung['gefordert']>().toEqualTypeOf<{
+      readonly netto: Betrag | null;
+      readonly brutto: Betrag | null;
+      readonly zahlbetrag: Betrag | null;
+    } | null>();
+    expectTypeOf<RechnungsangabenSetzen['gefordert']>().toEqualTypeOf<Rechnung['gefordert']>();
+    expectTypeOf<Rechnung['aufmassIds']>().toEqualTypeOf<readonly AufmassId[]>();
+    expectTypeOf<Rechnung['umlagen']>().toEqualTypeOf<readonly Umlage[]>();
+    expectTypeOf<Rechnung['sicherheitSatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Rechnung['gewaehrleistungSatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Rechnung['freigabe']>().toEqualTypeOf<{ readonly zahlbetrag: Betrag } | null>();
+    expectTypeOf<RechnungZustand['rechnung']>().toEqualTypeOf<Rechnung>();
+  });
+
+  it('Befehle; Freigeben trägt den Zahlbetrag, den die App gerechnet hat', () => {
+    expectTypeOf<RechnungBefehl['art']>().toEqualTypeOf<
+      | 'RechnungAnlegen'
+      | 'RechnungsangabenSetzen'
+      | 'RechnungsaufmasseSetzen'
+      | 'RechnungsabzuegeSetzen'
+      | 'RechnungFreigeben'
+      | 'RechnungsfreigabeAufheben'
+      | 'RechnungLoeschen'
+    >();
+    expectTypeOf<RechnungFreigeben['zahlbetrag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<RechnungChangeSet['rechnung']>().toEqualTypeOf<Aenderung<Rechnung>>();
+    expectTypeOf<'rechnung-freigegeben'>().toExtend<Befehlsfehlercode>();
+  });
+
+  it('Beispiel: kumulierte Abschlagsrechnungen; die zweite rechnet alle Blätter ab, die erste ist eingefroren', () => {
+    const r1 = beispielRechnung1;
+    const r2 = beispielRechnung2;
+    expect([r1.nummer, r2.nummer]).toEqual([1, 2]);
+    expect(r1.aufmassIds.every((a) => r2.aufmassIds.includes(a))).toBe(true);
+    expect(r1.freigabe?.zahlbetrag).toBe('53.42');
+    // gefordert: „nichts erfasst“ nur als äußeres null, sonst mindestens ein Wert (D-44)
+    expect(r1.gefordert?.zahlbetrag).toBe('53.42');
+    expect(r2.gefordert).toBeNull();
+    const angaben = beispielRechnungsbefehle[0].gefordert;
+    expect(angaben?.zahlbetrag).toBeNull();
+    expect(angaben?.netto).toBe('49.85');
+    expect(r2.freigabe).toBeNull();
+    expect(r1.gewaehrleistungSatz).toBeNull();
+  });
+
+  it('Freigeben und Freigabe aufheben: Gegenstücke, umkehrbar durch Tausch', () => {
+    const f = beispielChangeSetRechnungFreigeben;
+    expect(f.rechnung.vorher?.freigabe).toBeNull();
+    expect(f.rechnung.nachher?.freigabe).toEqual({ zahlbetrag: beispielRechnungFreigeben.zahlbetrag });
+    expect(tauschen(f.rechnung)).toEqual(beispielChangeSetFreigabeAufheben.rechnung);
+    expect(beispielRechnungsfreigabeAufheben.art).toBe('RechnungsfreigabeAufheben');
+  });
+});
+
+/** Cent eines Betrags (2 Stellen, Punktnotation) als ganze Zahl; nur für Prüfungen im Test, nie für Geld im Code (N1). */
+const cent = (b: Betrag): bigint => BigInt(b.replace('.', ''));
+
+describe('v1.4 Punkt 8: Leistungsstand (D-34, D-37)', () => {
+  it('je Position Menge und GP, dazu Leistung, Nachlass und Netto nach Nachlass; reine Daten', () => {
+    expectTypeOf<Leistungsstand['positionen'][number]>().toEqualTypeOf<{
+      readonly positionId: PositionId;
+      readonly menge: Menge | null;
+      readonly gp: Betrag;
+    }>();
+    expectTypeOf<Leistungsstand['leistung']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Leistungsstand['nachlass']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Leistungsstand['nettoNachNachlass']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<NurDaten<Leistungsstand>>().toEqualTypeOf<true>();
+  });
+
+  it('Beispiel zu Rechnung 2: eine Zeile je Position, Leistung = Σ GP, Netto nach Nachlass = Leistung − Nachlass', () => {
+    const l = beispielLeistungsstand;
+    expect(l.positionen.map((p) => p.positionId)).toEqual(
+      beispielAuftragsLvMitNachtrag.knoten.filter((k) => k.art === 'position').map((k) => k.id),
+    );
+    expect(l.positionen.reduce((s, p) => s + cent(p.gp), 0n)).toBe(cent(l.leistung));
+    expect(cent(l.leistung) - cent(l.nachlass)).toBe(cent(l.nettoNachNachlass));
+    expect(l.positionen.find((p) => p.menge === null)?.gp).toBe('0.00');
+  });
+});
+
+describe('v1.4 Punkt 9: Kostenermittlung (C3, D-36 (3))', () => {
+  it('Kennung, Stufe, Eintrag (kanonischer Betrag) und Aggregat', () => {
+    expectTypeOf<string>().not.toExtend<KostenermittlungId>();
+    expectTypeOf<KostenermittlungId>().not.toExtend<ProjektId>();
+    expectTypeOf<Kostenermittlungsstufe>().toEqualTypeOf<
+      'kostenrahmen' | 'kostenschaetzung' | 'kostenberechnung' | 'kostenanschlag' | 'kostenfeststellung'
+    >();
+    expectTypeOf<Kostenermittlungseintrag['nummer']>().toEqualTypeOf<Kostengruppennummer>();
+    expectTypeOf<Kostenermittlungseintrag['betrag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Kostenermittlungseintrag['bemerkung']>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<Kostenermittlung['projektId']>().toEqualTypeOf<ProjektId>();
+    expectTypeOf<Kostenermittlung['stufe']>().toEqualTypeOf<Kostenermittlungsstufe>();
+    expectTypeOf<Kostenermittlung['eintraege']>().toEqualTypeOf<readonly Kostenermittlungseintrag[]>();
+    expectTypeOf<KostenermittlungZustand['kostenermittlung']>().toEqualTypeOf<Kostenermittlung>();
+  });
+
+  it('Befehle und ChangeSet als ganzes Aggregat', () => {
+    expectTypeOf<KostenermittlungBefehl['art']>().toEqualTypeOf<
+      | 'KostenermittlungAnlegen'
+      | 'KostenermittlungskopfSetzen'
+      | 'KostenermittlungseintragSetzen'
+      | 'KostenermittlungseintragEntfernen'
+      | 'KostenermittlungLoeschen'
+    >();
+    expectTypeOf<KostenermittlungChangeSet['kostenermittlung']>().toEqualTypeOf<
+      Aenderung<Kostenermittlung>
+    >();
+  });
+
+  it('enge Lesart: Nummern eindeutig und aufsteigend; Eintrag setzen fügt an seiner Stelle ein', () => {
+    const nummern = (k: Kostenermittlung | null | undefined): string[] =>
+      (k?.eintraege ?? []).map((e) => e.nummer);
+    const aufsteigend = (n: readonly string[]): boolean => n.every((x, i) => i === 0 || (n[i - 1] ?? '') < x);
+    expect(aufsteigend(nummern(beispielKostenermittlung))).toBe(true);
+    const cs = beispielChangeSetKostenermittlungseintrag;
+    expect(nummern(cs.kostenermittlung.nachher)).toEqual(['330', '340', '350', '410']);
+    expect(aufsteigend(nummern(cs.kostenermittlung.nachher))).toBe(true);
+    expect(tauschen(tauschen(cs.kostenermittlung))).toEqual(cs.kostenermittlung);
+    expect(beispielKostenermittlungseintragSetzen.eintrag).not.toHaveProperty('bemerkung');
+  });
+});
+
+describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektdatei)', () => {
+  type Aggregatarten =
+    | 'projekt'
+    | 'leistungsverzeichnis'
+    | 'angebot'
+    | 'auftrags-leistungsverzeichnis'
+    | 'aufmass'
+    | 'rechnung'
+    | 'kostenermittlung';
+
+  it('AggregatBezug und ChangeSet kennen Aufmaß, Rechnung und Kostenermittlung', () => {
+    expectTypeOf<AggregatBezug['art']>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<ChangeSet['art']>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'aufmass' }>['id']>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'rechnung' }>['id']>().toEqualTypeOf<RechnungId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'kostenermittlung' }>['id']
+    >().toEqualTypeOf<KostenermittlungId>();
+    expectTypeOf<AufmassChangeSet | RechnungChangeSet | KostenermittlungChangeSet>().toExtend<ChangeSet>();
+  });
+
+  it('Befehl umfasst die neuen Befehle; jeder Name gehört zu genau einem Aggregat, außer KostengruppeSetzen', () => {
+    expectTypeOf<AufmassBefehl | RechnungBefehl | KostenermittlungBefehl>().toExtend<Befehl>();
+    expectTypeOf<
+      Extract<
+        AufmassBefehl['art'] | RechnungBefehl['art'] | KostenermittlungBefehl['art'],
+        LvBefehl['art'] | AuftragsLvBefehl['art'] | AngebotBefehl['art'] | ProjektBefehl['art']
+      >
+    >().toEqualTypeOf<never>();
+    expectTypeOf<
+      Extract<AufmassBefehl['art'], RechnungBefehl['art'] | KostenermittlungBefehl['art']>
+    >().toEqualTypeOf<never>();
+    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<'KostengruppeSetzen'>();
+  });
+
+  it('Signaturen für Ausführen, Anwenden und Umkehren je neuem Aggregat', () => {
+    expectTypeOf<AufmassBefehlAusfuehren>().toEqualTypeOf<
+      (zustand: AufmassZustand | null, befehl: AufmassBefehl) => Ergebnis<AufmassChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<AufmassChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: AufmassZustand | null, changeSet: AufmassChangeSet) => AufmassZustand | null
+    >();
+    expectTypeOf<AufmassChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: AufmassChangeSet) => AufmassChangeSet
+    >();
+    expectTypeOf<RechnungBefehlAusfuehren>().toEqualTypeOf<
+      (zustand: RechnungZustand | null, befehl: RechnungBefehl) => Ergebnis<RechnungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<RechnungChangeSetAnwenden>().toEqualTypeOf<
+      (zustand: RechnungZustand | null, changeSet: RechnungChangeSet) => RechnungZustand | null
+    >();
+    expectTypeOf<RechnungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: RechnungChangeSet) => RechnungChangeSet
+    >();
+    expectTypeOf<KostenermittlungBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: KostenermittlungZustand | null,
+        befehl: KostenermittlungBefehl,
+      ) => Ergebnis<KostenermittlungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<KostenermittlungChangeSetAnwenden>().toEqualTypeOf<
+      (
+        zustand: KostenermittlungZustand | null,
+        changeSet: KostenermittlungChangeSet,
+      ) => KostenermittlungZustand | null
+    >();
+    expectTypeOf<KostenermittlungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: KostenermittlungChangeSet) => KostenermittlungChangeSet
+    >();
+  });
+
+  it('Repositories am Speicher (Pflicht): Aufmaßblätter und Rechnungen je Auftrags-LV, Kostenermittlungen je Projekt', () => {
+    expectTypeOf<Speicher['aufmasse']>().toEqualTypeOf<AufmassRepository>();
+    expectTypeOf<Speicher['rechnungen']>().toEqualTypeOf<RechnungRepository>();
+    expectTypeOf<Speicher['kostenermittlungen']>().toEqualTypeOf<KostenermittlungRepository>();
+    expectTypeOf<AufmassRepository['auflisten']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<AufmassRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly AufmassKopf[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<AufmassRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<AufmassZustand, Speicherfehler>>
+    >();
+    expectTypeOf<RechnungRepository['auflisten']>()
+      .parameter(0)
+      .toEqualTypeOf<AuftragsLeistungsverzeichnisId>();
+    expectTypeOf<ReturnType<RechnungRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Rechnung[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<RechnungRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<RechnungZustand, Speicherfehler>>
+    >();
+    expectTypeOf<KostenermittlungRepository['auflisten']>().parameter(0).toEqualTypeOf<ProjektId>();
+    expectTypeOf<ReturnType<KostenermittlungRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly KostenermittlungUebersicht[], Speicherfehler>>
+    >();
+    expectTypeOf<KostenermittlungUebersicht>().toEqualTypeOf<Omit<Kostenermittlung, 'eintraege'>>();
+    expectTypeOf<ReturnType<KostenermittlungRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<KostenermittlungZustand, Speicherfehler>>
+    >();
+  });
+
+  it('Projektdatei: drei optionale Listen, fehlt = leer (wie lvStaende)', () => {
+    expectTypeOf<Projektdatei['aufmasse']>().toEqualTypeOf<readonly AufmassZustand[] | undefined>();
+    expectTypeOf<Projektdatei['rechnungen']>().toEqualTypeOf<readonly RechnungZustand[] | undefined>();
+    expectTypeOf<Projektdatei['kostenermittlungen']>().toEqualTypeOf<
+      readonly KostenermittlungZustand[] | undefined
+    >();
+  });
+
+  it('Massenbefehle: AufmassAnlegen ja (X31), RechnungAnlegen und KostenermittlungAnlegen nein', () => {
+    expect(MASSENBEFEHLSARTEN).toContain('AufmassAnlegen');
+    expect(MASSENBEFEHLSARTEN).not.toContain('KostenermittlungAnlegen');
+    expect(MASSENBEFEHLSARTEN).not.toContain('RechnungAnlegen');
+    expectTypeOf<'KostenermittlungAnlegen' | 'RechnungAnlegen'>().not.toExtend<Massenbefehlsart>();
+    expectTypeOf<
+      Extract<Massenbefehlskopf, { art: 'AufmassAnlegen' }>['aufmass']
+    >().toEqualTypeOf<AufmassKopf>();
+    const b = beispielMassenprotokollAufmass.befehl;
+    expect(b.art === 'Befehlskurzfassung' && b.kopf).toEqual({
+      art: 'AufmassAnlegen',
+      aufmass: {
+        id: beispielAufmass1.id,
+        projektId: beispielAufmass1.projektId,
+        auftragsLvId: beispielAufmass1.auftragsLvId,
+        nummer: 1,
+        bezeichnung: beispielAufmass1.bezeichnung,
+        datum: beispielAufmass1.datum,
+      },
+    });
+    expect(beispielMassenprotokollAufmass.aggregat).toEqual({ art: 'aufmass', id: beispielAufmass1.id });
+  });
+
+  it('IdQuelle liefert die Kennungen der neuen Aggregate', () => {
+    expectTypeOf<ReturnType<IdQuelle['aufmass']>>().toEqualTypeOf<AufmassId>();
+    expectTypeOf<ReturnType<IdQuelle['rechnung']>>().toEqualTypeOf<RechnungId>();
+    expectTypeOf<ReturnType<IdQuelle['kostenermittlung']>>().toEqualTypeOf<KostenermittlungId>();
+  });
+});
+
+describe('v1.4 Punkt 11: Beispiele für jeden neuen Befehl und die Zustände', () => {
+  it('jeder neue Befehl hat ein Beispiel, und jedes Beispiel ist ein Befehl', () => {
+    const beispiele: readonly Befehl[] = [
+      beispielNachtragUebernehmen,
+      beispielNachtragsangabenSetzen,
+      beispielKostengruppeSetzen,
+      beispielVorlageSetzen,
+      beispielTextquelleSetzen,
+      beispielAufmassAnlegen,
+      beispielAufmasspositionSetzen,
+      ...beispielAufmassBefehle,
+      beispielRechnungAnlegen,
+      ...beispielRechnungsbefehle,
+      beispielRechnungFreigeben,
+      beispielRechnungsfreigabeAufheben,
+      beispielKostenermittlungseintragSetzen,
+      ...beispielKostenermittlungsbefehle,
+    ];
+    type Neu =
+      | AufmassBefehl['art']
+      | RechnungBefehl['art']
+      | KostenermittlungBefehl['art']
+      | 'NachtragUebernehmen'
+      | 'NachtragsangabenSetzen'
+      | 'KostengruppeSetzen'
+      | 'VorlageSetzen'
+      | 'TextquelleSetzen';
+    const alle: Record<Neu, true> = {
+      AufmassAnlegen: true,
+      AufmasskopfSetzen: true,
+      AufmasspositionSetzen: true,
+      AufmasspositionEntfernen: true,
+      AufmassLoeschen: true,
+      RechnungAnlegen: true,
+      RechnungsangabenSetzen: true,
+      RechnungsaufmasseSetzen: true,
+      RechnungsabzuegeSetzen: true,
+      RechnungFreigeben: true,
+      RechnungsfreigabeAufheben: true,
+      RechnungLoeschen: true,
+      KostenermittlungAnlegen: true,
+      KostenermittlungskopfSetzen: true,
+      KostenermittlungseintragSetzen: true,
+      KostenermittlungseintragEntfernen: true,
+      KostenermittlungLoeschen: true,
+      NachtragUebernehmen: true,
+      NachtragsangabenSetzen: true,
+      KostengruppeSetzen: true,
+      VorlageSetzen: true,
+      TextquelleSetzen: true,
+    };
+    expect(new Set(beispiele.map((b) => b.art))).toEqual(new Set(Object.keys(alle)));
+    expect(beispielRechnungAnlegen.rechnung.freigabe).toBeNull();
+  });
+
+  it('Projektdatei mit Aufmaßblättern, Rechnungen und Kostenermittlung; Übersicht ohne Einträge', () => {
+    const d = beispielProjektdateiV14;
+    expect(d.aufmasse?.map((a) => a.aufmass.nummer)).toEqual([1, 2]);
+    expect(d.rechnungen?.map((r) => r.rechnung.nummer)).toEqual([1, 2]);
+    expect(d.kostenermittlungen).toHaveLength(1);
+    expect(beispielKostenermittlungUebersicht).not.toHaveProperty('eintraege');
+    // Jede Rechnung verweist nur auf Blätter derselben Datei und desselben Auftrags-LV.
+    const blaetter = new Map(d.aufmasse?.map((a) => [a.aufmass.id, a.aufmass.auftragsLvId]));
+    for (const { rechnung } of d.rechnungen ?? []) {
+      for (const id of rechnung.aufmassIds) expect(blaetter.get(id)).toBe(rechnung.auftragsLvId);
+    }
+  });
+});
+
+describe('v1.4: reine Daten und Werte vor v1.4', () => {
+  it('NurDaten deckt die neuen Typen ab', () => {
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Protokolleintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Aufmass>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Rechnung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Kostenermittlung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<NachtragUebernehmen>>().toEqualTypeOf<true>();
+  });
+
+  it('LV, Position, Projektdatei und Auftrags-LV ohne die neuen Felder bleiben gültig', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).not.toHaveProperty('kostengruppe');
+    expect(p).not.toHaveProperty('textquelle');
+    expect(beispielLv).not.toHaveProperty('nachtrag');
+    expect(beispielLv).not.toHaveProperty('vorlage');
+    const datei: Projektdatei = {
+      schemaVersion: 4,
+      projekt: {
+        id: beispielLv.projektId,
+        name: 'Beispiel',
+        bauherr: { name: 'B', anschrift: null },
+        bieter: [],
+      },
+      leistungsverzeichnisse: [],
+      angebote: [],
+      auftragsLeistungsverzeichnisse: [],
+      protokoll: [],
+    };
+    expect(datei).not.toHaveProperty('aufmasse');
   });
 });

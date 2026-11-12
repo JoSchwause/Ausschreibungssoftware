@@ -19,14 +19,22 @@ import type {
   Pruefbefund,
 } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { KeyboardEvent, MouseEvent, ReactElement } from 'react';
+import type { KeyboardEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { lvAnsichtBauen } from './ansicht';
+import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
 import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
+import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
+import { VorlageUebernehmen } from '../vorlage/VorlageUebernehmen'; // Ticket 90
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
+import { useLvKosten } from '../kosten/useLvKosten'; // Ticket 89
+import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
+import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
+import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
+import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
+import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
@@ -56,9 +64,6 @@ const LEERE_DATEN: Positionsdaten = {
   einheitspreis: null,
   epa: null,
 };
-
-/** Spalten ohne eigene Eingabe im Grid: Ein Doppelklick dort öffnet den Positionsdialog. */
-const OHNE_EINGABE: ReadonlySet<string> = new Set<LvSpalte>(['ordnungszahl', 'positionsart', 'gesamtpreis']);
 
 type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; sitzung: LvSitzung };
 
@@ -145,10 +150,12 @@ function LvBearbeiten({
   const [hinweise, setHinweise] = useState<readonly Befehlshinweis[]>([]);
   const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
   const sprungNr = useRef(0);
-  /** Die aktive Zeile des Grids, wie sie zuletzt über die Auswahl gemeldet wurde. */
+  /** Die aktive Zeile des Grids, wie das Grid sie meldet (`onAktiveZeileChange`). */
   const aktiv = useRef<KnotenId | null>(null);
   const [merkmale, setMerkmale] = useState<Position | null>(null);
   const [dialog, setDialog] = useState<PositionId | null>(null);
+  const [mengenPanel, setMengenPanel] = useState<PositionId | null>(null); // Ticket 65
+  const ansatzFrage = useAnsatzFrage(); // Ticket 65
   const [kopfdaten, setKopfdaten] = useState(false);
   const [papierkorbOffen, setPapierkorbOffen] = useState(false);
   const [staendeOffen, setStaendeOffen] = useState(false);
@@ -165,6 +172,7 @@ function LvBearbeiten({
       }),
     [zustand],
   );
+  // Positionen mit Mengenansatz kennzeichnet das Grid selbst, neutral und ohne Befund (Ticket 74, D-65.2).
   const jeKnoten = useMemo(() => befundeJeKnoten(befunde ?? []), [befunde]);
   const gruppen = useMemo(() => pruefgruppen(befunde ?? [], lv.knoten), [befunde, lv.knoten]);
 
@@ -260,6 +268,19 @@ function LvBearbeiten({
     }
   };
 
+  // Ticket 65: Eine direkte Mengenänderung entfernt den Mengenansatz (D-22 (a)); vorher fragt die App (Q5).
+  const befehlMitFrage = (befehle: readonly LvBefehl[], weiter: () => void): void => {
+    ansatzFrage.vor(sitzung.zustand?.leistungsverzeichnis.knoten ?? [], befehle, weiter);
+  };
+
+  const mengenPanelOeffnen = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'position') setMengenPanel(k.id);
+    else zeige({ titel: mtexte.keinePosition, beschreibung: mtexte.keinePositionText });
+  };
+
+  const kosten = useLvKosten({ lv, aktiv, folge, pruefe }); // Ticket 89: Kostengruppen und EP-Kalkulation
+
   const dialogOeffnen = (): void => {
     const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
     if (k?.art === 'position') setDialog(k.id);
@@ -269,8 +290,10 @@ function LvBearbeiten({
   /** Legt einen Knoten an und setzt die aktive Zelle auf seinen Kurztext. */
   const anlegen = async (befehl: LvBefehl & { id: KnotenId; ort: Einfuegeort }): Promise<void> => {
     // Eine zugeklappte Gliederung, in die der Knoten kommt, wird aufgeklappt, damit er sichtbar ist.
-    const ziel = befehl.ort.art === 'nach' ? befehl.ort.knotenId : befehl.ort.elternId;
-    if (zugeklappt.has(ziel)) {
+    // v1.3: mechanisch angepasst, Folgeticket (hinter-gliederung: neben die Gliederung, nichts aufzuklappen)
+    const ort = befehl.ort;
+    const ziel = ort.art === 'nach' ? ort.knotenId : ort.art === 'hinter-gliederung' ? null : ort.elternId;
+    if (ziel !== null && zugeklappt.has(ziel)) {
       setZugeklappt((alt) => {
         const neu = new Set(alt);
         neu.delete(ziel);
@@ -327,50 +350,24 @@ function LvBearbeiten({
       },
       KeyP: positionAnlegen,
       KeyM: merkmaleOeffnen,
+      KeyE: mengenPanelOeffnen, // Ticket 65
+      ...kosten.tasten, // Ticket 89
     }[e.code];
     if (aktion === undefined) return;
     e.preventDefault();
     aktion();
   };
 
-  /** Zeile im Grid (nicht im Zelleditor) unter dem Ereignisziel, mit ihrem Knoten. */
-  const gridZeile = (ziel: EventTarget): { knotenId: KnotenId; spalte: string | undefined } | null => {
-    if (!(ziel instanceof Element) || ziel.closest('[data-editor]') || !ziel.closest('[role="treegrid"]'))
-      return null;
-    const i = Number(ziel.closest('[data-i]')?.getAttribute('data-i'));
-    const zeile = Number.isNaN(i) ? undefined : ansicht.zeilen[i];
-    if (zeile === undefined) return null;
-    return {
-      knotenId: zeile.knoten.id,
-      spalte: ziel.closest<HTMLElement>('[data-spalte]')?.dataset['spalte'],
-    };
-  };
-  // Strg+Enter auf einer Zeile öffnet den Positionsdialog. Vor dem Grid abgefangen: Das Grid nähme es als Enter.
-  const onKeyDownCapture = (e: KeyboardEvent<HTMLDivElement>): void => {
-    if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-    const z = gridZeile(e.target);
-    if (z === null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    aktiv.current = z.knotenId;
-    dialogOeffnen();
-  };
-  // Doppelklick auf eine Zelle ohne eigene Eingabe (OZ, Art, GP) öffnet den Dialog; die übrigen bearbeitet das Grid.
-  const onDoubleClick = (e: MouseEvent<HTMLDivElement>): void => {
-    const z = gridZeile(e.target);
-    if (z === null || !OHNE_EINGABE.has(z.spalte ?? '')) return;
-    const k = lv.knoten.find((x) => x.id === z.knotenId);
+  // „Zeile öffnen“ des Grids (Strg+Enter, Doppelklick auf eine Zelle ohne Eingabe): nur Positionen haben einen Dialog.
+  const zeileOeffnen = (knotenId: KnotenId): void => {
+    const k = lv.knoten.find((x) => x.id === knotenId);
     if (k?.art === 'position') setDialog(k.id);
+    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
   };
 
   const projektPfad = `/projekt/${lv.projektId}`;
   return (
-    <div
-      className="seite lv"
-      onKeyDown={onKeyDown}
-      onKeyDownCapture={onKeyDownCapture}
-      onDoubleClick={onDoubleClick}
-    >
+    <div className="seite lv" onKeyDown={onKeyDown}>
       <div className="lv__kopf">
         <h1>{lv.name}</h1>
         <a
@@ -383,6 +380,10 @@ function LvBearbeiten({
           {texte.seite.zumProjekt}
         </a>
       </div>
+      {/* Ticket 86 */}
+      {lv.nachtrag === undefined ? null : (
+        <NachtragKopfband sitzung={sitzung} zustand={zustand} nachtrag={lv.nachtrag} gehe={gehe} />
+      )}
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge.leiste}>
         <HistorieKnoepfe />
         <Button
@@ -407,6 +408,10 @@ function LvBearbeiten({
         <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
           {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
         </Button>
+        <Button onClick={mengenPanelOeffnen} aria-keyshortcuts="Control+Alt+E">
+          {mtexte.oeffnen} <Tastenkuerzel tasten={mtexte.tasten} />
+        </Button>
+        {kosten.knoepfe} {/* Ticket 89 */}
         <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
           {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
         </Button>
@@ -441,7 +446,10 @@ function LvBearbeiten({
           {htexte.staende.knopf}
         </Button>
         <GaebAusgeben zustand={zustand} />
+        <LvDrucken zustand={zustand} /> {/* Ticket 66 */}
         <Angebote zustand={zustand} />
+        <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
+        <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">
@@ -452,12 +460,20 @@ function LvBearbeiten({
             beschriftung={texte.seite.grid}
             hinweise={hinweise}
             {...(sprungziel ? { sprungziel } : {})}
-            onBefehl={(b) => void senden(b)}
-            onBefehlsfolge={(bs) => void sendenFolge(bs)}
+            onBefehl={(b) => {
+              befehlMitFrage([b], () => void senden(b)); // Ticket 65
+            }}
+            onBefehlsfolge={(bs) => {
+              befehlMitFrage(bs, () => void sendenFolge(bs)); // Ticket 65
+            }}
             onKopieEinfuegen={kopieEinfuegen}
-            onAuswahlChange={(ids) => {
-              const letzte = ids.at(-1);
-              if (letzte !== undefined) aktiv.current = letzte;
+            positionenZaehlen={(ids) => positionenImTeilbaum(lv.knoten, ids)}
+            onAktiveZeileChange={(knotenId) => {
+              aktiv.current = knotenId;
+            }}
+            onAuswahlChange={kosten.auswahlAendern} // Ticket 89
+            onZeileOeffnen={(knotenId) => {
+              zeileOeffnen(knotenId);
             }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
@@ -497,6 +513,21 @@ function LvBearbeiten({
           pruefe(a);
         }}
       />
+      {/* Ticket 65 */}
+      <MengenPanel
+        position={
+          mengenPanel === null
+            ? null
+            : ((lv.knoten.find((x) => x.id === mengenPanel && x.art === 'position') as
+                Position | undefined) ?? null)
+        }
+        onSchliessen={() => {
+          setMengenPanel(null);
+        }}
+        senden={senden}
+      />
+      {ansatzFrage.dialog}
+      {kosten.dialoge} {/* Ticket 89 */}
       <PapierkorbDialog
         offen={papierkorbOffen}
         onSchliessen={() => {

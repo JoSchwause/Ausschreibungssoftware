@@ -6,6 +6,7 @@ import type {
   AngebotId,
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisId,
+  AuftragsLvBefehl,
   AuftragsLvZustand,
   LeistungsverzeichnisId,
 } from '@tethys/vertrag';
@@ -93,6 +94,23 @@ describe('AuftragsLeistungsverzeichnisAnlegen', () => {
     };
     const e = anlegen(auftragsLv(), z);
     expect(!e.ok && e.fehler.code).toBe('befehl-nicht-zustaendig');
+  });
+});
+
+// Ticket 71: die übrigen Befehle (NachtragUebernehmen, KostengruppeSetzen) in `auftrags-lv-v14.test.ts`.
+describe('Befehle, die nicht zum Auftrags-LV gehören', () => {
+  it('eine unbekannte Befehlsart (etwa aus dem Protokoll) wird mit befehl-nicht-zustaendig abgewiesen', () => {
+    const cs = erwarteOk(anlegen(auftragsLv({ knoten: [] })));
+    const kopf = cs.kopf?.nachher;
+    if (!kopf) throw new Error('kein Kopf');
+    const z: AuftragsLvZustand = {
+      auftragsLeistungsverzeichnis: { ...kopf, knoten: [] },
+      summen: { positionen: [], gliederungen: [], gesamt: cs.summen.gesamt ?? fehlt() },
+    };
+    const fremd = { art: 'LeistungsverzeichnisUmbenennen', name: 'x' } as unknown as AuftragsLvBefehl;
+    const e = auftragsLvBefehlAusfuehren(z, fremd);
+    expect(!e.ok && e.fehler.code).toBe('befehl-nicht-zustaendig');
+    expect(!e.ok && e.fehler.meldung).toContain('LeistungsverzeichnisUmbenennen');
   });
 });
 

@@ -5,7 +5,8 @@ Stand: 2026-11-09, nach der Grilling-Sitzung. Ersetzt `.scratch/ava-mvp/map.md`.
 Klammern).
 
 - Regeln: `docs/regeln.md` (verbindlich, zuerst lesen).
-- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-27, vertagt bis vor Welle 5).
+- Entscheidungen: `.scratch/ava-oss/grilling.md` (alle G-Fragen beantwortet, außer G-27, vertagt bis vor Welle 5; im Lauf
+  „Welle 5“ als Annahme D-34 entschieden, Mensch bestätigt später).
 - Verhalten der Referenzsoftware: `okf/research/` ist lokal und nicht im Repo (G-44). Umsetzende
   Agenten arbeiten mit den Tickets, die das Verhalten in eigenen Worten enthalten (Regel C3).
 
@@ -20,7 +21,8 @@ Klammern).
 | `packages/gaeb` | DA-XML-Modell, Parser, Writer, Phasenprofile, eigene Prüfung (XSD nur CI, ADR 0010) | G |
 | `packages/vergabe` | Bieter, Angebot, Preisspiegel-Rechnung, Zuschlag | V |
 | `packages/mengen` | REB-23.003-Formelparser, Aufmaßblätter, X31 | M |
-| `packages/abrechnung` | Auftrag, Nachträge, Soll/Ist, Rechnungsprüfung, E-Rechnung | A |
+| `packages/abrechnung` | Auftrag, Nachträge, Soll/Ist, Rechnungsprüfung | A |
+| `packages/erechnung` | XRechnung lesen (D-32), später ZUGFeRD/Erzeugen | A |
 | `packages/kosten` | DIN-276-Gliederung (nur Nummern), Kostenermittlung, Kostenkontrolle, EP-Kalkulation | C |
 | `packages/ausgabe` | PDF, Excel | O |
 | `packages/ui-grid`, `packages/ui-basis` | gemeinsames Grid, Tokens, Dialoge, Rich-Text | U |
@@ -75,7 +77,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 **A — Auftrag und Abrechnung** (entschieden: G-15; A3 vertagt, G-27)
 - A1 Nachträge (VOB-80-Regel: Bedeutung klären, siehe grilling.md) · A2 Aufmaßblätter und Soll/Ist
-- A3 Rechnungsprüfung (Abzugskette) — vertagt, Grilling-Runde vor Welle 5
+- A3 Rechnungsprüfung (Abzugskette) — vertagt, Grilling-Runde vor Welle 5; Annahme für Demo D-34 (Welle 5)
 - A4 XRechnung lesen, danach ZUGFeRD/Erzeugen (G-15)
 
 **C — Kosten** (entschieden: G-16, G-17)
@@ -86,9 +88,18 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 **O — Ausgabe**
 - O1 PDF-Druck des LV · O2 Excel-Export/-Import · O3 Druckprofile
 
-**X — Erweiterungen** (G-05: alle später, Auktion nie)
+**X — Erweiterungen** (G-05: alle später, Auktion nie; Nachtrag 2026-11-12: X1–X5 in Welle 6, Schwerpunkt X1)
 - X1 BIM/IFC · X2 Bauzeitenplan · X3 HOAI · X4 Bauleitung (Mängel, Bautagebuch)
-- X5 Bieterportal / Sync-Server · X6 KI-Assistent (nach M4)
+- X5 Bieterportal / Sync-Server · X6 KI-Assistent (nach M4, nicht in Welle 6)
+- **X1 BIM, Schwerpunkt der Welle 6** (mehrere parallele Stränge, Vorschlag zum Schnitt):
+  X1a IFC lesen (Modellbaum, Bauteile mit Eigenschaften und Mengen, IFC 2x3/4) · X1b 3D-Ansicht im Browser (Auswahl,
+  Sichtbarkeit, Isolieren) · X1c Verknüpfung Bauteil (IFC-GlobalId) ↔ LV-Position und Kostengruppe (`vertrag`-Ticket) ·
+  X1d Mengen aus dem Modell (QTO) in Vordersätze und Aufmaßblätter · X1e Kosten aus dem Modell (Kostengruppen,
+  Kennwerte nach DIN 277) · X1f Modellstand und Änderungsvergleich (zwei IFC-Stände).
+  Vor dem Schnitt zu klären: Bibliothek für IFC und 3D-Ansicht samt Lizenz (C5, AGPL-verträglich), Ablage großer IFC-Dateien
+  (OPFS, nicht in der JSON-Projektdatei?), Leistungsbudgets für große Modelle (Q4).
+- X2–X5 je ein Strang. X5 (Bieterportal/Sync-Server) widerspricht ADR 0001 (lokal, ohne Server) sowie G-01 und G-14: vorher
+  eine ADR und eine Grilling-Frage.
 
 ## 3. Wellen
 
@@ -100,7 +111,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 | 3 | K8+K9 · S3 · U4–U6 · G3 · V1+V2 · M1 | **M2: GAEB rein und raus, XSD-valide** |
 | 4 | V3+V4 · O1+O2 · M2 · S4 · C1 | **M3 = MVP: Ausschreibung → Angebote → Zuschlag** |
 | 5 | A1–A4 · M3 · C2–C5 · O3 | **M4: durchgehende Kette LPH 6–8** |
-| 6 | in G-05 gewählte X-Stränge | je Modul (keine gewählt) |
+| 6 | Folgetickets 93–95, danach X1 BIM (Schwerpunkt, mehrere Stränge X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (nach ADR) | je Modul (G-05, Nachtrag 2026-11-12) |
 
 U hängt nur über `vertrag` an K. Deshalb baut U2 gegen Fixtures, bevor K fertig ist.
 
@@ -118,6 +129,11 @@ sind geschnitten, G-06 ist beantwortet. Der Prototyp für das Nutzerinterview (G
   von Hand: Export in einem freien GAEB-Betrachter öffnen.
 - **M3:** E2E importiert zwei X84-Angebote, Preisspiegel-Summen stimmen mit den Sollwerten, der
   Zuschlag erzeugt das Auftrags-LV.
+- **M4** (D-38, Annahme für Demo): E2E auf dem Weg von M3: Nachtrag N01 (Nachtrags-LV, Angebot des AN, beauftragen) →
+  Aufmaßblatt 1 (Formel 91) → Soll/Ist mit Befund > 110 % → Abschlagsrechnung 1 (Prozent-Nachlass, Umlage,
+  Sicherheitseinbehalt) gleich dem Sollwert, freigeben → Aufmaßblatt 2 und Abschlagsrechnung 2 (kumuliert minus
+  eingefrorener Zahlbetrag) → Kostenkontrolle je Kostengruppe gleich den Sollwerten → Neuladen behält alles. Sollwerte
+  hergeleitet in einer Fixture (C4), dazu ein reiner Kettentest ohne Oberfläche mit derselben Fixture.
 - Dauerhaft in der CI: Paketgrenzen, Lizenzprüfung (AGPL-3.0-or-later), Clean-Room-Prüfung,
   Leistungsbudgets (5.000 und 10.000 Positionen), `okf/research/` darf nicht versioniert sein.
 
@@ -153,3 +169,12 @@ Stand 2026-11-09:
     `vertrag` v1.2. Tor M1 erreicht, M2 erfüllt mit gelisteten Unterschieden. Entscheidungen D-01 bis D-19 in
     `entscheidungen-auto.md`. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.2, Merge nach `main`),
     Folgetickets 51–54. Bericht: `.scratch/ava-oss/welle-3-bericht.md`.
+12. ✅ **Lauf „Welle 4“ im Demo-Modus (2026-11-11)** auf dem lokalen Branch `integration/welle-4`: V3+V4, O1+O2, M2, S4, C1 und
+    die Folgetickets 51–54, Tickets 51–69, `vertrag` v1.3. **Tor M3 erreicht** (`apps/web/e2e/m3.spec.ts`). Entscheidungen D-20
+    bis D-30 in `entscheidungen-auto.md`, ADR 0012 als Vorschlag. ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog,
+    `vertrag` v1.3, ADR 0012, Merge nach `main`), Folgetickets 70–75, G-27 vor Welle 5. Bericht: `.scratch/ava-oss/welle-4-bericht.md`.
+13. ✅ **Lauf „Welle 5“ im Demo-Modus (2026-11-11/12)** auf dem lokalen Branch `integration/welle-5` (ab dem Ende von Welle 4, D-31):
+    A1–A4, M3, C2–C5, O3 und die Folgetickets 70–75, Tickets 70–92, `vertrag` v1.4, neue Pakete `abrechnung` und `erechnung`.
+    **Tor M4 erreicht** (Definition in §4, D-38). Entscheidungen D-31 bis D-48 in `entscheidungen-auto.md`; G-27 und „VOB 80“
+    als Annahme (D-34, D-35). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.4, ADR 0012, Merge von Welle 4
+    und 5 nach `main`), Folgetickets 93–95, G-05 für Welle 6. Bericht: `.scratch/ava-oss/welle-5-bericht.md`.

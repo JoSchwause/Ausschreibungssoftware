@@ -1,19 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ToastAnbieter } from '@tethys/ui-basis';
-import type { LeistungsverzeichnisId, LvStandId, ProjektId } from '@tethys/vertrag';
+import type {
+  AuftragsLeistungsverzeichnisId, // Ticket 64
+  LeistungsverzeichnisId,
+  LvStandId,
+  ProjektId,
+} from '@tethys/vertrag';
 import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
+import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
+import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
+import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
+import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
+import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
+import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
+import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 89
+import { kostenRoute } from './kosten/pfad'; // Ticket 89
+import { texte as kostenTexte } from './kosten/texte'; // Ticket 89
 import { LvSeite } from './lv/LvSeite';
 import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
+import { rechnungsadresse } from './rechnung/pfad'; // Ticket 88
+import { RechnungenSeite } from './rechnung/RechnungenSeite'; // Ticket 88
 import { SpeicherAnbieter } from './speicher/SpeicherAnbieter';
+import { AppAktualisierung } from './sicherung/AppAktualisierung'; // Ticket 62
+import { SicherungsAnbieter } from './sicherung/SicherungsAnbieter'; // Ticket 62
 import { testpfad } from './testpfad';
 import { Huelle } from './ui/Huelle';
 import { Platzhalterseite } from './ui/Platzhalterseite';
 import { useRoute } from './ui/route';
 import { texte } from './ui/texte';
+import { PreisspiegelSeite } from './vergabe/PreisspiegelSeite'; // Ticket 63
+import { preisspiegelLvId } from './vergabe/pfad';
 
 // Die Katalogseite gibt es nur im Dev-Server. Für E2E-Tests wird sie mit VITE_KATALOG=1 in einen
 // Build aufgenommen; ein normaler Produktions-Build enthält sie nicht (Konstante wird zur Bauzeit ersetzt).
@@ -28,7 +48,10 @@ const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
 function mitSpeicher(inhalt: ReactElement): ReactElement {
   return (
     <SpeicherAnbieter {...testpfad}>
-      <HistorieAnbieter>{inhalt}</HistorieAnbieter>
+      <SicherungsAnbieter>
+        {/* Ticket 62 */}
+        <HistorieAnbieter>{inhalt}</HistorieAnbieter>
+      </SicherungsAnbieter>
     </SpeicherAnbieter>
   );
 }
@@ -54,6 +77,45 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
       inhalt: mitSpeicher(<ProjektSeite key={id} id={id} gehe={gehe} />),
     };
   }
+  // Ticket 87: Aufmaßblätter und Soll/Ist eines Auftrags-LV
+  const abrechnung = abrechnungsseite(pfad);
+  if (abrechnung !== null) {
+    return {
+      titel: abrechnungTexte.seitentitel,
+      inhalt: mitSpeicher(<AbrechnungSeite key={pfad} seite={abrechnung} gehe={gehe} />),
+    };
+  }
+  // Ticket 88: Rechnungen eines Auftrags-LV (Liste und Prüfansicht); dieselbe Seite, damit der Wechsel nicht neu lädt
+  const rechnungen = rechnungsadresse(pfad);
+  if (rechnungen !== null) {
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<RechnungenSeite key={rechnungen.auftragsLvId} adresse={rechnungen} gehe={gehe} />),
+    };
+  }
+  // Ticket 64: Auftrags-LV eines Projekts
+  const auftrag = /^\/projekt\/([^/]+)\/auftrag\/([^/]+)$/.exec(pfad);
+  if (auftrag?.[1] !== undefined && auftrag[2] !== undefined) {
+    const projektId = decodeURIComponent(auftrag[1]) as ProjektId;
+    const id = decodeURIComponent(auftrag[2]) as AuftragsLeistungsverzeichnisId;
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<AuftragsLvSeite key={id} projektId={projektId} id={id} gehe={gehe} />),
+    };
+  }
+  // Ticket 89: Kostenermittlungen und Kostenkontrolle eines Projekts
+  const kosten = kostenRoute(pfad);
+  if (kosten !== null) {
+    const seite =
+      kosten.art === 'liste' ? (
+        <KostenListeSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
+      ) : kosten.art === 'kontrolle' ? (
+        <KostenkontrolleSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
+      ) : (
+        <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
+      );
+    return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
+  }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {
     const lvId = decodeURIComponent(stand[1]) as LeistungsverzeichnisId;
@@ -61,6 +123,14 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
     return {
       titel: texte.seiten.lv.titel,
       inhalt: mitSpeicher(<LvStandSeite key={standId} lvId={lvId} standId={standId} gehe={gehe} />),
+    };
+  }
+  // Ticket 63: Preisspiegel eines LV
+  const lvId = preisspiegelLvId(pfad);
+  if (lvId !== null) {
+    return {
+      titel: texte.seiten.vergabe.titel,
+      inhalt: mitSpeicher(<PreisspiegelSeite key={lvId} lvId={lvId} gehe={gehe} />),
     };
   }
   const lv = /^\/lv\/([^/]+)$/.exec(pfad);
@@ -119,6 +189,7 @@ export function App(): ReactElement {
   const { titel, inhalt } = waehleSeite({ pfad, gehe });
   return (
     <ToastAnbieter>
+      <AppAktualisierung /> {/* Ticket 62 */}
       <Huelle pfad={pfad} gehe={gehe} mitKatalog={MIT_KATALOG} seitenTitel={titel}>
         {inhalt}
       </Huelle>

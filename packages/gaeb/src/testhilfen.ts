@@ -6,7 +6,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   AngebotId,
+  Aufmass,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
+  AuftragsLvZustand,
   BieterId,
   BildId,
   HinweistextId,
@@ -26,11 +29,13 @@ import type {
   Zeilenumbruch,
 } from '@tethys/vertrag';
 import type {
+  Auftragnehmer,
   Betrag,
   Einheitspreis,
   Einheitspreisanteile,
   ElternId,
   Knoten,
+  Kostengruppennummer,
   LvInhalt,
   Menge,
   Ordnungszahl,
@@ -43,6 +48,7 @@ import type {
 } from '@tethys/vertrag';
 
 import { leseGaeb } from './lesen';
+import { x31Lesen } from './x31';
 import type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
 
 /** Zählende IdQuelle: `position-0001`, `titel-0001` … Gleiche Eingabe ergibt gleiche Kennungen. */
@@ -67,6 +73,10 @@ export function testIds(): IdQuelle {
     hinweistext: () => neu('hinweis') as HinweistextId,
     papierkorbeintrag: () => neu('papierkorb') as ReturnType<IdQuelle['papierkorbeintrag']>,
     lvStand: () => neu('lv-stand') as ReturnType<IdQuelle['lvStand']>,
+    // v1.4: mechanisch angepasst, Folgeticket (Ticket 83: X31 legt Aufmaßblätter an)
+    aufmass: () => neu('aufmass') as ReturnType<IdQuelle['aufmass']>,
+    rechnung: () => neu('rechnung') as ReturnType<IdQuelle['rechnung']>,
+    kostenermittlung: () => neu('kostenermittlung') as ReturnType<IdQuelle['kostenermittlung']>,
   };
 }
 
@@ -127,13 +137,15 @@ interface FxKnoten {
   readonly langtext?: string;
   readonly text?: string;
   readonly positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
-  readonly menge?: string;
-  readonly einheit?: string;
-  readonly einheitspreis?: string;
+  readonly menge?: string | null;
+  readonly einheit?: string | null;
+  readonly einheitspreis?: string | null;
   readonly bedarfMitGesamtbetrag?: boolean;
-  readonly bezugspositionId?: string;
   readonly grundpositionId?: string;
-  /** Nur `zuschlag.json` (Ticket 37): Zuschlag in Vertragsform, Kennzeichen, Einheitspreisanteile. */
+  /**
+   * Zuschlag in Vertragsform (`zuschlag.json` seit Ticket 37; `typisch`, `gross` seit Ticket 51: Fixture-Format,
+   * mechanisch). Kennzeichen und Einheitspreisanteile nur in `zuschlag.json`.
+   */
   readonly zuschlag?: Zuschlag;
   readonly zuschlagskennzeichen?: boolean;
   readonly epa?: Einheitspreisanteile;
@@ -150,13 +162,32 @@ interface FxLv {
     readonly positionen: Readonly<Record<string, { readonly gp: string | null; readonly inSumme: boolean }>>;
     readonly titel: Readonly<Record<string, { readonly summe: string }>>;
     readonly summen: Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
-    /** Nur `zuschlag.json`: Basis und Betrag je Zuschlagsposition (für `ITMarkup` in X86). */
+    /** Basis und Betrag je Zuschlagsposition (für `ITMarkup` in X86); `zuschlag`, seit Ticket 51 auch `typisch`, `gross`. */
     readonly zuschlaege?: Readonly<Record<string, { readonly basis: string; readonly betrag: string }>>;
   };
 }
 
 /** Die Fixtures, die Export, eigene Prüfung, Roundtrip und XSD-Gegenprüfung abdecken (Ticket 40 §6, D-18). */
 export const FIXTURES = ['winzig', 'typisch', 'gross', 'zuschlag'] as const;
+
+/** Kostengruppen, die `mitKostengruppen` reihum vergibt (Ebene 1 bis 3, Ticket 84). */
+export const TEST_KOSTENGRUPPEN = ['300', '330', '341', '420'] as const;
+
+/**
+ * Das LV mit einer Kostengruppe an jeder zweiten Position, reihum aus `TEST_KOSTENGRUPPEN` (Ticket 84). Die Fixtures
+ * tragen keine; die übrigen Positionen bleiben ohne, damit der Rundweg auch „fehlt“ prüft.
+ */
+export function mitKostengruppen(inhalt: LvInhalt): LvInhalt {
+  let n = 0;
+  const knoten = inhalt.knoten.map((k): Knoten => {
+    if (k.art !== 'position') return k;
+    n += 1;
+    if (n % 2 === 0) return k;
+    const kg = TEST_KOSTENGRUPPEN[Math.floor(n / 2) % TEST_KOSTENGRUPPEN.length] ?? '300';
+    return { ...k, kostengruppe: kg as Kostengruppennummer };
+  });
+  return { ...inhalt, knoten };
+}
 export type FixtureName = (typeof FIXTURES)[number];
 
 /** Maske aus der Fixture-Schreibweise `NN.NN.NNNN[I]: Erläuterung`. */
@@ -227,20 +258,7 @@ export function fixtureLv(name: FixtureName): {
         pauschal: false,
         zuschlagskennzeichen: k.zuschlagskennzeichen === true,
       },
-      zuschlag:
-        k.zuschlag ??
-        (art === 'zuschlag'
-          ? {
-              prozentsatz: null,
-              bezug: {
-                art: 'positionen',
-                positionen:
-                  k.bezugspositionId === undefined
-                    ? []
-                    : [{ positionId: k.bezugspositionId as PositionId, teilmenge: null }],
-              },
-            }
-          : null),
+      zuschlag: k.zuschlag ?? null, // Ticket 51: Fixture-Format, mechanisch (keine Altform mehr in den Fixtures)
       kurztext: k.kurztext ?? '',
       langtext: absatz(k.langtext),
       menge: (k.menge ?? null) as Menge | null,
@@ -456,6 +474,75 @@ export function position(
   };
 }
 
+/**
+ * Ein LV mit leeren Langtext-Strukturen (v1.3, D-22 (iii)): leere Liste, Tabelle ohne Zeilen, Zeile ohne Zellen, auch
+ * verschachtelt, in Position, Hinweistext und Unterbeschreibung. Der Writer verwirft sie mit Warnung; die
+ * XSD-Gegenprüfung zeigt, dass der Export gültig bleibt.
+ */
+export function leereStrukturenLv(): Normiert {
+  const leer: Langtext = [
+    { art: 'liste', geordnet: false, punkte: [] },
+    { art: 'tabelle', zeilen: [] },
+    { art: 'tabelle', zeilen: [{ zellen: [] }] },
+    {
+      art: 'liste',
+      geordnet: true,
+      punkte: [
+        [
+          { art: 'text', text: 'Punkt' },
+          { art: 'liste', geordnet: false, punkte: [] },
+        ],
+      ],
+    },
+    {
+      art: 'tabelle',
+      zeilen: [
+        { zellen: [] },
+        { zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [{ zellen: [] }] }] }] },
+      ],
+    },
+  ];
+  const hinweis: Knoten = {
+    art: 'hinweis',
+    id: 'h1' as HinweistextId,
+    elternId: 't1' as ElternId,
+    reihenfolge: 0,
+    text: leer,
+  };
+  const p = position('p1', '01.0010', 1, {
+    langtext: leer,
+    leitbeschreibung: {
+      unterbeschreibungen: [{ nummer: '1', kurztext: 'U', langtext: leer, menge: null, einheit: null }],
+    },
+  });
+  const inhalt: LvInhalt = {
+    name: 'Leere Strukturen',
+    ozMaske: {
+      gliederung: [{ laenge: 2, zeichen: 'numerisch' }],
+      position: { laenge: 4, zeichen: 'numerisch' },
+      index: null,
+      trennzeichen: '.',
+    },
+    mwstSatz: '19.00' as Prozent,
+    nachlass: null,
+    wurzelId: LV,
+    knoten: [titel('t1', '01'), hinweis, p],
+  };
+  const b = (x: string): Betrag => x as Betrag;
+  const summen: Summenstand = {
+    positionen: [{ positionId: 'p1' as PositionId, gesamtpreis: null, gehtInSummeEin: true }],
+    gliederungen: [{ gliederungId: 't1' as TitelId, summe: b('0.00') }],
+    gesamt: {
+      netto: b('0.00'),
+      nachlass: b('0.00'),
+      nettoNachNachlass: b('0.00'),
+      mwst: b('0.00'),
+      brutto: b('0.00'),
+    },
+  };
+  return normiereKennungen(inhalt, summen);
+}
+
 /** Ein LV mit allem, was der Vertrag trägt: Los, Merkmale, Wahl, Zuschläge, Leitbeschreibung, EPA, Langtext, Kopf. */
 export function reichesLv(): {
   inhalt: LvInhalt;
@@ -562,7 +649,8 @@ export function reichesLv(): {
         nachunternehmer: '1.000' as Einheitspreis,
         sonstiges: null,
         frei: '2.000' as Einheitspreis,
-        freiBezeichnung: 'Entsorgung',
+        // v1.3: Die Bezeichnung des freien Anteils steht in `epaBezeichnungen` (D-53.6).
+        freiBezeichnung: null,
       },
     }),
     pos('b', '1.A1.0020', 2, {
@@ -636,6 +724,20 @@ export function reichesLv(): {
       ort: 'Musterstadt',
       vergabenummer: 'V-1',
     },
+    auftragnehmer: {
+      name: 'Beispielbau (erfunden)',
+      strasse: 'Werkstraße 2',
+      plz: '54321',
+      ort: 'Beispielhausen',
+    },
+    // v1.3 (D-28): andere Reihenfolge als die feste Belegung, eine Lücke (5) und eine leere Beschriftung (3).
+    epaBezeichnungen: [
+      { nummer: 1, anteil: 'stoffe', bezeichnung: 'Material' },
+      { nummer: 2, anteil: 'lohn', bezeichnung: 'Lohn' },
+      { nummer: 3, anteil: 'geraete', bezeichnung: null },
+      { nummer: 4, anteil: 'nachunternehmer', bezeichnung: 'Nachunternehmer' },
+      { nummer: 6, anteil: 'frei', bezeichnung: 'Entsorgung' },
+    ],
     vergabeinformationen: {
       eroeffnungsdatum: null,
       eroeffnungszeit: null,
@@ -682,7 +784,7 @@ export function reichesLv(): {
 /** Fester Zeitpunkt der Test-Exporte (A2: die Uhr liefert der Aufrufer). */
 export const TEST_ERSTELLT = { datum: '2026-11-10', zeit: '12:00:00' } as const;
 
-/** Exportoptionen der Tests; X86 bekommt Summen, Zuschlagsbasen und einen erfundenen Auftragnehmer. */
+/** Exportoptionen der Tests; X86 bekommt Summen und Zuschlagsbasen. */
 export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: Normiert): SchreibOptionen {
   return {
     phase,
@@ -691,8 +793,32 @@ export function exportOptionen(phase: ExportPhase, version: ExportVersion, n: No
     programm: 'Tethys AVA (Test)',
     ...(n.summen === undefined ? {} : { summen: n.summen }),
     ...(n.basen === undefined ? {} : { zuschlagsbasen: n.basen }),
-    ...(phase === 'X86' ? { auftragnehmer: 'Auftragnehmer (erfunden)' } : {}),
   };
+}
+
+/** Erfundener Auftragnehmer der X86-Exporte (C4: kein echter Name). */
+export const ERFUNDENER_AUFTRAGNEHMER: Auftragnehmer = {
+  name: 'Auftragnehmer (erfunden)',
+  strasse: null,
+  plz: null,
+  ort: null,
+};
+
+/** Der Inhalt ohne Auftragnehmer: so liest ihn eine X81/X83 wieder (CTR gibt es nur in X86). */
+export function ohneAuftragnehmer(inhalt: LvInhalt): LvInhalt {
+  const kopie = { ...inhalt };
+  Reflect.deleteProperty(kopie, 'auftragnehmer');
+  return kopie;
+}
+
+/**
+ * Der Inhalt, den die Tests in eine Phase schreiben: X86 ist die Auftragserteilung und bekommt den erfundenen
+ * Auftragnehmer, wenn das LV keinen hat (v1.3, Ticket 68: der Auftragnehmer kommt aus dem Modell, nicht aus einer Option).
+ */
+export function exportInhalt(phase: ExportPhase, n: Normiert): LvInhalt {
+  return phase === 'X86' && n.inhalt.auftragnehmer === undefined
+    ? { ...n.inhalt, auftragnehmer: ERFUNDENER_AUFTRAGNEHMER }
+    : n.inhalt;
 }
 
 /** Amtliche 3.3-Dateien, deren gelesener Inhalt als X81/X83 wieder geschrieben wird. */
@@ -724,7 +850,7 @@ export interface Exportfall {
 }
 
 /**
- * Alle Exporte der XSD-Gegenprüfung: jede Fixture und das LV `reichesLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
+ * Alle Exporte der XSD-Gegenprüfung: jede Fixture, `reichesLv` und `leereStrukturenLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
  * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
  */
 export function exportfaelle(): Exportfall[] {
@@ -746,10 +872,114 @@ export function exportfaelle(): Exportfall[] {
   const reich = normiereKennungen(r.inhalt, r.summen, r.basen);
   for (const phase of ['X81', 'X83', 'X86'] as const)
     for (const version of versionen) faelle.push(fall('reich', reich, phase, version));
+  // Ticket 84: Kostengruppen als Katalogzuordnung (Ctlg im BoQInfo, CtlgAssign an Item und MarkupItem).
+  const t = fixtureLv('typisch');
+  const mitKg = normiereKennungen(mitKostengruppen(t.inhalt), t.summen, t.basen);
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('typisch-kg', mitKg, phase, version));
+  const leer = leereStrukturenLv();
+  for (const phase of ['X81', 'X83', 'X86'] as const)
+    for (const version of versionen) faelle.push(fall('leer', leer, phase, version));
   for (const a of AMTLICH_LESBAR) {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)
       for (const version of versionen) faelle.push(fall(a.name, n, phase, version));
+  }
+  return faelle;
+}
+
+// --- Mengenermittlung X31 (Ticket 83) ----------------------------------------------------------------------------
+
+/** Die BVBS-Prüfdatei Mengenermittlung 3.3 (ohne Endung: `.x31` und die X86 mit dem LV dazu). */
+export const BVBS_MENGENERMITTLUNG =
+  'fixtures/extern/bvbs/3.3-mengenermittlung/Pruefdatei_3.3_Mengenermittlung_V-11-06-2021';
+
+const NULL_BETRAG = '0.00' as Betrag;
+
+/** Das Auftrags-LV aus einer X86, wie die App es nach dem Zuschlag hält (Summen sind für X31 ohne Belang). */
+export function auftragsLvAus(bytes: Uint8Array): AuftragsLvZustand {
+  const l = leseGaeb(bytes, { ids: testIds(), standardMwstSatz: TEST_MWST });
+  if (l.inhalt === null) throw new Error('Auftrags-LV nicht lesbar');
+  const { wurzelId, knoten, ...kopf } = l.inhalt;
+  return {
+    auftragsLeistungsverzeichnis: {
+      ...kopf,
+      id: wurzelId as string as AuftragsLeistungsverzeichnisId,
+      projektId: 'projekt-1' as ProjektId,
+      leistungsverzeichnisId: 'lv-1' as LeistungsverzeichnisId,
+      angebotId: 'angebot-1' as AngebotId,
+      knoten,
+    },
+    summen: {
+      positionen: [],
+      gliederungen: [],
+      gesamt: {
+        netto: NULL_BETRAG,
+        nachlass: NULL_BETRAG,
+        nettoNachNachlass: NULL_BETRAG,
+        mwst: NULL_BETRAG,
+        brutto: NULL_BETRAG,
+      },
+    },
+  };
+}
+
+/** Kennung der Position mit dieser OZ (mit Index) im Auftrags-LV. */
+export function positionId(lv: AuftragsLvZustand, oz: string): PositionId {
+  const p = lv.auftragsLeistungsverzeichnis.knoten.find(
+    (k): k is Position => k.art === 'position' && `${k.ordnungszahl ?? ''}${k.ozIndex ?? ''}` === oz,
+  );
+  if (!p) throw new Error(`keine Position ${oz}`);
+  return p.id;
+}
+
+export interface X31Exportfall {
+  readonly datei: string;
+  readonly aufmass: Aufmass;
+  readonly lv: AuftragsLvZustand;
+  readonly version: ExportVersion;
+}
+
+/**
+ * Die X31-Exporte der XSD-Gegenprüfung: das gelesene Blatt der BVBS-Prüfdatei und ein eigenes Blatt (mehrzeiliger
+ * Ausdruck, Bezug, Variable, Menge von Hand, negative Menge) × 3.3/3.2.
+ */
+export function x31Exportfaelle(): X31Exportfall[] {
+  const lv = auftragsLvAus(lesePfad(`${BVBS_MENGENERMITTLUNG}.x86`));
+  const kopf = {
+    id: 'aufmass-1' as AufmassId,
+    projektId: 'projekt-1' as ProjektId,
+    auftragsLvId: lv.auftragsLeistungsverzeichnis.id,
+    nummer: 1,
+    bezeichnung: '',
+    datum: null,
+  };
+  const gelesen = x31Lesen(lesePfad(`${BVBS_MENGENERMITTLUNG}.x31`), lv).aufmass;
+  if (gelesen === null) throw new Error('BVBS-X31 nicht lesbar');
+  const z = (zeile: number, ausdruck: string, variable: string | null = null) => ({
+    zeile,
+    formel: 91,
+    ausdruck,
+    variable,
+  });
+  const eigen: Aufmass = {
+    ...kopf,
+    positionen: [
+      {
+        positionId: positionId(lv, '001.001.0010'),
+        mengenansatz: [
+          z(1, '(12,345 + 23,456 + 34,567 + 45,678) * (1,5 + 2,25) - 7,125 / 3', 'flaeche'),
+          z(2, 'flaeche * 0,5 + Z1'),
+        ],
+        menge: null,
+      },
+      { positionId: positionId(lv, '001.003.0010'), mengenansatz: null, menge: '-12.500' as Menge },
+    ],
+  };
+  const faelle: X31Exportfall[] = [];
+  for (const version of ['3.3', '3.2'] as const) {
+    faelle.push({ datei: `aufmass-bvbs-X31-${version}.x31`, aufmass: { ...kopf, ...gelesen }, lv, version });
+    faelle.push({ datei: `aufmass-eigen-X31-${version}.x31`, aufmass: eigen, lv, version });
   }
   return faelle;
 }

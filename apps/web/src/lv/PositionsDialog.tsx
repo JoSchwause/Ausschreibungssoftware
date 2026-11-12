@@ -9,6 +9,11 @@ import { Auswahl, Button, Dialog, Eingabefeld, LangtextEditor } from '@tethys/ui
 import type { Bedarf, LvBefehl, LvZustand, Position, PositionId } from '@tethys/vertrag';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
+import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
+import { texte as mtexte } from '../mengen/texte'; // Ticket 65
+import { textquelleBefehl } from '../vorlage/logik'; // Ticket 90
+import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
 import type { Ausgang } from './befehlsweg';
 import {
   entwurfBefehle,
@@ -118,6 +123,9 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
   const [kernfehler, setKernfehler] = useState<Feldfehler>({});
   const [laeuft, setLaeuft] = useState(false);
   const [gesendet, setGesendet] = useState(false);
+  const [mengenOffen, setMengenOffen] = useState(false); // Ticket 65
+  const [textquelle, setTextquelle] = useState(position.textquelle ?? ''); // Ticket 90
+  const ansatzFrage = useAnsatzFrage(); // Ticket 65
 
   const setze = <K extends keyof Positionsentwurf>(feld: K, wert: Positionsentwurf[K]): void => {
     setE((alt) => {
@@ -142,8 +150,12 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
 
   const uebernehmen = async (): Promise<void> => {
     if (laeuft) return;
+    const r0 = entwurfBefehle(position, aktuell.current);
+    const tq = textquelleBefehl(position, textquelle); // Ticket 90
+    const r = tq === null ? r0 : { ...r0, befehle: [...r0.befehle, tq] };
+    // Ticket 65: Eine von Hand geänderte Menge entfernt den Mengenansatz (D-22 (a)); vorher fragt die App (Q5).
+    if (!(await ansatzFrage.pruefen(zustand.leistungsverzeichnis.knoten, r.befehle))) return;
     setLaeuft(true);
-    const r = entwurfBefehle(position, aktuell.current);
     const neu: Record<string, string> = {};
     for (const a of await folge(r.befehle)) {
       if (a.ok) continue;
@@ -202,6 +214,14 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
               {feld('ordnungszahl', t.ordnungszahl)}
               {feld('kurztext', t.kurztext)}
             </div>
+            {/* Ticket 90: Textquelle (G-17) */}
+            <Eingabefeld
+              kompakt
+              label={vorlageTexte.textquelle.label}
+              hinweis={vorlageTexte.textquelle.hinweis}
+              value={textquelle}
+              onWertChange={setTextquelle}
+            />
             <div className="lv-dialog__langtext">
               <span className="tx-feld__label">{t.langtext}</span>
               <LangtextEditor
@@ -223,6 +243,20 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
               {feld('menge', t.menge, true)}
               {feld('einheit', t.einheit)}
               {feld('einheitspreis', t.einheitspreis, true)}
+            </div>
+            {/* Ticket 65 */}
+            <div className="lv-dialog__zeile">
+              {(position.mengenansatz ?? []).length > 0 ? (
+                <p className="lv-dialog__hinweis">{mtexte.imDialog.hinweis}</p>
+              ) : null}
+              <Button
+                groesse="sm"
+                onClick={() => {
+                  setMengenOffen(true);
+                }}
+              >
+                {mtexte.imDialog.oeffnen}
+              </Button>
             </div>
           </Bereich>
           <Bereich titel={t.epa} meldung={fehler['epa']}>
@@ -354,6 +388,20 @@ function Inhalt(props: PositionsDialogProps & { position: Position }): ReactElem
           .map(([, m]) => ` ${m}`)
           .join('')}
       </p>
+      {/* Ticket 65: Mengenermittlung über dem Dialog (Portal); Eingaben im Dialog bleiben erhalten. */}
+      <MengenPanel
+        position={mengenOffen ? position : null}
+        onSchliessen={() => {
+          setMengenOffen(false);
+        }}
+        senden={async (b) => {
+          const a = (await folge([b]))[0];
+          if (a === undefined) return false;
+          if (!a.ok) speicherAbweisung(a);
+          return a.ok;
+        }}
+      />
+      {ansatzFrage.dialog}
       <footer className="tx-dialog__fuss">
         <Button onClick={onSchliessen}>{t.abbrechen}</Button>
         <Button type="submit" variante="primaer" disabled={laeuft}>

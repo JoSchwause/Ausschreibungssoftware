@@ -103,7 +103,6 @@ describe('Client über Worker-Host', () => {
     );
     wert(await speicher.anwenden(e, standAnlegen(z, 'stand-1', 'Versand')));
     const staende = speicher.lvStaende;
-    if (staende === undefined) throw new Error('lvStaende fehlt');
     expect(wert(await staende.auflisten(lv))).toEqual([
       { id: 'stand-1', leistungsverzeichnisId: lv, name: 'Versand', angelegt: e.wann },
     ]);
@@ -151,6 +150,14 @@ describe('Client über Worker-Host', () => {
         'angebotLaden',
         'lvStaendeAuflisten',
         'lvStandLaden',
+        'auftragsLvAuflisten',
+        'auftragsLvLaden',
+        'aufmasseAuflisten',
+        'aufmassLaden',
+        'rechnungenAuflisten',
+        'rechnungLaden',
+        'kostenermittlungenAuflisten',
+        'kostenermittlungLaden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',
@@ -184,7 +191,6 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const p = f.projekt.id;
     const lv = f.lv.leistungsverzeichnis.id;
     const staende = s.lvStaende;
-    if (staende === undefined) throw new Error('lvStaende fehlt');
     return [
       fehlercode(await staende.auflisten(lv)),
       fehlercode(await staende.laden('s' as never)),
@@ -293,6 +299,9 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
     expect(Object.keys(speicher).sort()).toEqual([
       'angebote',
       'anwenden',
+      'aufmasse',
+      'auftragsLeistungsverzeichnisse',
+      'kostenermittlungen',
       'leistungsverzeichnisse',
       'lvStaende',
       'migrationsbefunde',
@@ -301,6 +310,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'projektdateiImportieren',
       'projekte',
       'protokoll',
+      'rechnungen',
       'schliessen',
     ]);
   });

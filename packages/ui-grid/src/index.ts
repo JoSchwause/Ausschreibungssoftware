@@ -3,4 +3,19 @@
 // bindet es zusammen mit den Tokens aus @tethys/ui-basis ein.
 
 export { LvGrid } from './LvGrid';
-export type { LvGridProps, Sprungziel } from './typen';
+export type { LvGridBearbeitbar, LvGridProps, LvGridSchreibgeschuetzt, Sprungziel } from './typen';
+
+// Das schreibgeschützte Vergleichsgrid (Ticket 60), z. B. für den Preisspiegel; derselbe Kern wie `LvGrid`.
+export { VergleichsGrid } from './VergleichsGrid';
+export type {
+  Kennzeichen,
+  KennzeichenText,
+  VergleichsGridProps,
+  VergleichsSpalte,
+  VergleichsSpaltengruppe,
+  VergleichsSprungziel,
+  VergleichsSummenzeile,
+  VergleichsZelle,
+  VergleichsZellort,
+  VergleichsZeile,
+} from './vergleichTypen';

@@ -3,7 +3,14 @@ import type { LvZustand, Menge, PositionId, Projekt, Prozent } from '@tethys/ver
 import { describe, expect, it } from 'vitest';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung, zaehlenderSpeicher } from '../testhilfen';
-import { EINZIGER_NUTZER, lvSitzung, projektSitzung, type Umgebung } from './befehlsweg';
+import {
+  EINZIGER_NUTZER,
+  befehlswegFuer,
+  lvSitzung,
+  nachJedemEintrag,
+  projektSitzung,
+  type Umgebung,
+} from './befehlsweg';
 import { ozMaskeLesen } from './ozmaske';
 
 const maske = (() => {
@@ -138,5 +145,32 @@ describe('Befehlsweg: Kern → Speicher → Zustand', () => {
     const { lv } = await mitProjektUndLv(u);
     const r = await lv.befehl({ art: 'NachlassSetzen', nachlass: { art: 'betrag', wert: '10.00' as never } });
     expect(r.ok && r.hinweise.map((h) => h.code)).toEqual(['netto-nach-nachlass-negativ']);
+  });
+});
+
+describe('Befehlsweg: Hörer der geschriebenen Einträge (D-62.2)', () => {
+  it('hört jeden angenommenen Befehl, Rückgängig und Wiederholen, keinen abgewiesenen; Abmelden wirkt', async () => {
+    const speicher = zaehlenderSpeicher(await speicherImSpeicher());
+    const u = testUmgebung(speicher);
+    const gehoert: string[] = [];
+    const abmelden = nachJedemEintrag(u, (e) => gehoert.push(e.befehl.art));
+    const { lv } = await mitProjektUndLv(u);
+    await lv.befehl({ art: 'MwstSatzSetzen', mwstSatz: '7.00' as Prozent });
+    speicher.fehlerAb('speicher-voll');
+    await lv.befehl({ art: 'MwstSatzSetzen', mwstSatz: '19.00' as Prozent });
+    speicher.fehlerAb(null);
+    const weg = befehlswegFuer(u);
+    await weg.rueckgaengig();
+    await weg.wiederholen();
+    expect(gehoert).toEqual([
+      'ProjektAnlegen',
+      'LeistungsverzeichnisAnlegen',
+      'MwstSatzSetzen',
+      'Rueckgaengig',
+      'Wiederholen',
+    ]);
+    abmelden();
+    await lv.befehl({ art: 'MwstSatzSetzen', mwstSatz: '19.00' as Prozent });
+    expect(gehoert).toHaveLength(5);
   });
 });

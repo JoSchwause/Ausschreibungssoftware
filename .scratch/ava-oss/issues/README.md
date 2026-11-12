@@ -100,3 +100,70 @@ Schnitt und Reihenfolge: [`../schnitt-welle-3.md`](../schnitt-welle-3.md). Alle 
 | 52 | S | Einzeländerung bei 5.000 Positionen < 100 ms | `packages/speicher` | ready-for-agent (Welle 4) |
 | 53 | F | `vertrag` v1.3 (**Mensch prüft**) | `packages/vertrag` | ready-for-agent (Welle 4) |
 | 54 | U | `ui-grid`/`ui-basis`: Lücken aus Welle 3 | `packages/ui-grid`, `packages/ui-basis` | ready-for-agent (Welle 4) |
+
+# Tickets Welle 4 (Lauf, 2026-11-11)
+
+Schnitt und Reihenfolge: [`../schnitt-welle-4.md`](../schnitt-welle-4.md). Tickets 51–69 sind auf `integration/welle-4`
+gemergt (Merge-Commit je Ticket im Abschnitt „Answer“); 70–75 sind Folgetickets für Welle 5.
+
+| Nr | Strang | Titel | Paket | Status |
+|---|---|---|---|---|
+| 51 | F | Fixtures auf GAEB-Zuschlagsform | `fixtures/` | resolved |
+| 52 | S | Einzeländerung bei 5.000 Positionen < 100 ms | `packages/speicher` | resolved |
+| 53 | F | `vertrag` v1.3 | `packages/vertrag` | resolved |
+| 54 | U | `ui-grid`/`ui-basis`: Lücken aus Welle 3 | `packages/ui-grid`, `packages/ui-basis` | resolved |
+| 55 | C1 | Kostengliederung und Kostenermittlung | `packages/kosten` (neu) | resolved |
+| 56 | K | Kern v1.3 | `packages/kern` | resolved |
+| 57 | S | Speicher v1.3, Migration 4 | `packages/speicher` | resolved |
+| 58 | O1 | LV-Druck als PDF (ADR 0012) | `packages/ausgabe` | resolved |
+| 59 | V4 | Zuschlag → Auftrags-LV | `packages/vergabe` | resolved |
+| 60 | U2 | Vergleichsgrid | `packages/ui-grid` | resolved |
+| 61 | O2 | Excel-Export und -Rücklauf | `packages/ausgabe` | resolved |
+| 62 | S4 | PWA und Datensicherung | `apps/web` | resolved |
+| 63 | V3 | Preisspiegel-Ansicht | `apps/web` | resolved |
+| 64 | V4 | Zuschlag und Auftrags-LV in der App, E2E M3 | `apps/web` | resolved |
+| 65 | M2 | Mengenermittlungs-Panel | `apps/web` | resolved |
+| 66 | O1/O2 | Drucken und Excel in der App | `apps/web` | resolved |
+| 67 | U | Umwege aus Welle 3 zurückbauen | `apps/web` | resolved |
+| 68 | G | `gaeb` v1.3 | `packages/gaeb` | resolved |
+| 69 | F | X84-Dateien und Preisspiegel-Sollwerte | `fixtures/` | resolved |
+| 70 | F | `vertrag` v1.4: Repository Auftrags-LV (**Mensch prüft**) | `packages/vertrag` | resolved (Welle 5) |
+| 71 | K | Umkehrung für Auftrags-LV | `packages/kern` | resolved (Welle 5) |
+| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved (Welle 5) |
+| 73 | G | Wahlgruppe verliert Grundposition im X83-Rundweg | `packages/gaeb` | resolved (Welle 5) |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved (Welle 5) |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved (Welle 5) |
+
+# Tickets Welle 5 (Lauf, 2026-11-11)
+
+Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entscheidungen D-31 bis D-40 in
+`../entscheidungen-auto.md`. 70 und 71 sind gegenüber Welle 4 erweitert (v1.4).
+
+| Nr | Strang | Titel | Paket | Status |
+|---|---|---|---|---|
+| 70 | F | `vertrag` v1.4 | `packages/vertrag` | resolved |
+| 71 | K | Kern v1.4 | `packages/kern` | resolved |
+| 72 | V | `summen.vorher` bei neuer LV-Position | `packages/vergabe` | resolved |
+| 73 | G | Wahlgruppe im X83-Rundweg | `packages/gaeb` | resolved |
+| 74 | U | `ui-grid`: Restpunkte | `packages/ui-grid` | resolved |
+| 75 | F | Fixtures: Restpunkte | `fixtures/` | resolved |
+| 76 | A4 | XRechnung lesen | `packages/erechnung` (neu) | resolved |
+| 77 | O3 | Druckprofile, Spike getaggtes PDF | `packages/ausgabe` | resolved |
+| 78 | C4 | EP-Kalkulation | `packages/kosten` | resolved |
+| 79 | S | Speicher v1.4, Migration 5 | `packages/speicher` | resolved |
+| 80 | A1+A2 | Nachtrag übernehmen, Aufmaß-Befehle | `packages/abrechnung` (neu) | resolved |
+| 81 | A2+A3 | Soll/Ist, Leistungsstand, Rechnungsprüfung | `packages/abrechnung` | resolved |
+| 82 | C2+C3 | Kostenermittlung, Kostenkontrolle | `packages/kosten` | resolved |
+| 83 | M3 | GAEB X31 | `packages/gaeb` | resolved |
+| 84 | G | `gaeb` v1.4: Kostengruppe | `packages/gaeb` | resolved |
+| 85 | F | Fixture M4 | `fixtures/` | resolved |
+| 86 | A1 | Nachträge in der App | `apps/web/src/auftrag/`, `src/nachtrag/` | resolved |
+| 87 | A2+M3 | Aufmaß, Soll/Ist, X31 in der App | `apps/web/src/abrechnung/` | resolved |
+| 88 | A3+A4 | Rechnungsprüfung, XRechnung in der App | `apps/web/src/rechnung/` | resolved |
+| 89 | C2–C4 | Kosten in der App | `apps/web/src/kosten/` | resolved |
+| 90 | O3+C5 | Druckprofile, Muster-LV in der App | `apps/web/src/ausgabe/`, `src/vorlage/` | resolved |
+| 91 | – | Tor M4 | `apps/web/e2e/` | resolved |
+| 92 | – | Behebung des Wellen-Reviews | mehrere (D-47) | resolved |
+| 93 | U/C2 | `ui-grid`: editierbare KG-Spalte | `packages/ui-grid` | ready-for-agent (Welle 6) |
+| 94 | S/A2 | Aufmaßblatt 5.000 Zeilen: Undo < 100 ms | `packages/speicher` | ready-for-agent (Welle 6) |
+| 95 | F | `vertrag` v1.5: Kleinpunkte | `packages/vertrag` | ready-for-agent (Welle 6) |

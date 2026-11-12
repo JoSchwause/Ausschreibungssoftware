@@ -40,6 +40,8 @@ export function massenbefehlskopf(b: Massenbefehl): Massenbefehlskopf {
       return { art: b.art, angebot: ohne(b.angebot, 'positionen') };
     case 'AuftragsLeistungsverzeichnisAnlegen':
       return { art: b.art, auftragsLeistungsverzeichnis: ohne(b.auftragsLeistungsverzeichnis, 'knoten') };
+    case 'AufmassAnlegen': // v1.4 (D-70.5): das Blatt ohne Zeilen
+      return { art: b.art, aufmass: ohne(b.aufmass, 'positionen') };
   }
 }
 

@@ -5,14 +5,12 @@
 // Redo (Ticket 48) schreiben hier.
 
 import {
-  changeSetUmkehren,
   lvBefehlAusfuehren,
   lvChangeSetAnwenden,
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
-  projektChangeSetUmkehren,
 } from '@tethys/kern';
-import { angebotBefehlAusfuehrer, angebotChangeSetUmkehren } from '@tethys/vergabe';
+import { angebotBefehlAusfuehrer } from '@tethys/vergabe';
 import type {
   Angebot,
   AngebotBefehl,
@@ -32,6 +30,7 @@ import type {
   Speicherfehler,
   Zeitstempel,
 } from '@tethys/vertrag';
+import { umkehren } from '../historie/arten';
 import { Historie, type Teil } from '../historie/historie';
 import { ozErgaenzen } from './ozergaenzen';
 
@@ -57,10 +56,11 @@ export type Ausgang<Z> =
 export const EINZIGER_NUTZER = 'nutzer' as NutzerId;
 
 /** Ein angenommener Befehl samt dem, was der Undo-Stapel von ihm braucht. */
-type Lauf<Z> =
+export type Lauf<Z> =
+  // Ticket 89: exportiert für `kosten/schreiben.ts`
   (Extract<Ausgang<Z>, { ok: true }> & { readonly teil: Teil }) | Extract<Ausgang<Z>, { ok: false }>;
 
-function eintrag(
+export function eintrag( // Ticket 89: exportiert für `kosten/schreiben.ts`
   u: Umgebung,
   projektId: ProjektId,
   aggregat: Protokolleintrag['aggregat'],
@@ -69,14 +69,41 @@ function eintrag(
   return { id: u.ids.protokoll(), projektId, aggregat, wer: u.nutzer, wann: u.uhr(), befehl };
 }
 
-async function speichern<Z>(
+/** Hörer der geschriebenen Protokolleinträge je Umgebung (D-62.2, Review Welle 4): Befehle, Undo, Redo, Zuschlag. */
+const EINTRAGSHOERER = new WeakMap<Umgebung, Set<(e: Protokolleintrag) => void>>();
+
+/**
+ * Meldet jeden Protokolleintrag, den der Speicher angenommen hat, nach dem Schreiben (z. B. zum Zählen für das
+ * automatische Sichern). Rückgabe: Abmelden.
+ */
+export function nachJedemEintrag(u: Umgebung, h: (e: Protokolleintrag) => void): () => void {
+  const menge = EINTRAGSHOERER.get(u) ?? new Set<(e: Protokolleintrag) => void>();
+  menge.add(h);
+  EINTRAGSHOERER.set(u, menge);
+  return () => {
+    menge.delete(h);
+  };
+}
+
+/** Der eine Schreibzugriff der App auf den Speicher (A5): schreibt Eintrag und ChangeSet und meldet den Eintrag. */
+export async function eintragSchreiben(
+  u: Umgebung,
+  e: Protokolleintrag,
+  cs: Parameters<Speicher['anwenden']>[1],
+): ReturnType<Speicher['anwenden']> {
+  const r = await u.speicher.anwenden(e, cs);
+  if (r.ok) for (const h of [...(EINTRAGSHOERER.get(u) ?? [])]) h(e);
+  return r;
+}
+
+export async function speichern<Z>(
   u: Umgebung,
   e: Protokolleintrag,
   cs: Teil['changeSet'],
   neu: () => Z,
-  hinweise: readonly Befehlshinweis[] = cs.hinweise ?? [],
+  hinweise: readonly Befehlshinweis[] = 'hinweise' in cs ? (cs.hinweise ?? []) : [], // Ticket 87–89: Aufmaß, Rechnung, Kostenermittlung haben keine
 ): Promise<Lauf<Z>> {
-  const r = await u.speicher.anwenden(e, cs);
+  const r = await eintragSchreiben(u, e, cs);
   if (!r.ok) return { ok: false, abweisung: { art: 'speicher', fehler: r.fehler } };
   const teil: Teil = { protokollId: e.id, projektId: e.projektId, aggregat: e.aggregat, changeSet: cs };
   return { ok: true, zustand: neu(), hinweise, teil };
@@ -193,13 +220,6 @@ export type Historienausgang =
       readonly fehler: Speicherfehler;
       readonly teile: readonly Teil[];
     };
-
-const umkehren = (cs: Teil['changeSet']): Teil['changeSet'] =>
-  cs.art === 'leistungsverzeichnis'
-    ? changeSetUmkehren(cs)
-    : cs.art === 'angebot'
-      ? angebotChangeSetUmkehren(cs)
-      : projektChangeSetUmkehren(cs);
 
 /**
  * Der eine Schreibweg der App (A5, U7) samt Undo/Redo je Sitzung (ADR 0006). Alle Schreibvorgänge, Befehle wie
@@ -336,7 +356,7 @@ export class Befehlsweg {
     befehl: Protokolleintrag['befehl'],
   ): Promise<Speicherfehler | null> {
     const e = eintrag(this.umgebung, t.projektId, t.aggregat, befehl);
-    const r = await this.umgebung.speicher.anwenden(e, cs);
+    const r = await eintragSchreiben(this.umgebung, e, cs);
     if (!r.ok) return r.fehler;
     if (cs.art === 'leistungsverzeichnis') {
       const anlegen = cs.kopf !== null && cs.kopf.vorher === null;

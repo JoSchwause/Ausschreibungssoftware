@@ -286,3 +286,223 @@ Question: Die Behebung von C1 (D-17) und S4/S6 (D-16) braucht Kern-Funktionen in
 Decision: Beide Kanten in `tools/boundaries.mjs` freigegeben, mit Grund im Kommentar. Kein Aufweichen der Prüfung: A3 sieht `vertrag ← kern ← Fachpakete` vor; Fachpakete untereinander bleiben verboten.
 Reason: Die Liste war enger als Regel A3; die Alternative wären doppelte Fachregeln (genau der Review-Befund).
 Reversible: yes  Touches: tools/boundaries.mjs
+
+## D-20 `apps/web`: ein Schreiber je Ordner statt je Paket
+Welle 4 · Ticket 62–67 · decided by: orchestrator
+Question: Welle 4 hat sechs App-Tickets (S4, V3, V4, M2, O1/O2, Rückbau). Streng nach P2 liefen sie alle nacheinander.
+Decision: In `apps/web` gilt „ein Schreiber je Ordner `src/<strang>/`“ (wie `plan.md` §1 die Ordner vorsieht). Gemeinsame Dateien (`App.tsx`, `main.tsx`, `ui/Huelle.tsx`, `lv/LvSeite.tsx`, `projekt/ProjektSeite.tsx`, `playwright.config.ts`) fasst ein Ticket nur an einer markierten Einhängestelle an; Konflikte dort löst der Merger.
+Reason: Hält die Welle parallel, ohne dass zwei Agenten dieselbe Fachlogik schreiben; die Einhängestellen sind kurz.
+Reversible: yes  Touches: apps/web, docs/regeln.md P2 (nur Lesart, kein Text geändert)
+
+## D-21 Zuschlag → Auftrags-LV: nur das Beauftragte
+Welle 4 · Ticket 59, 64 · decided by: advisor
+Question: Wie bildet das Auftrags-LV den Zuschlag ab, insbesondere das „Wählen“ von Wahlpositionen (E-04)?
+Decision: Reine Funktion in `vergabe` (`zuschlagErteilen(lv, angebot, gewaehlt, neueId)`), Ergebnis ist der vorhandene Befehl `AuftragsLeistungsverzeichnisAnlegen` plus Warnungen; kein neuer Vertragsbefehl. Grundlage ist das gedachte LV des Angebots (EP, Zuschlagssatz und Nachlass des Bieters, MwSt des LV). Eine gewählte Wahlposition wird normal (`wahl: null`); Grundposition (Variante 0) und nicht gewählte Alternativen ihrer Gruppe entfallen. Gruppen ohne Wahl behalten die Grundposition, alle Alternativen entfallen. Bedarf bleibt Bedarf. `reihenfolge` dicht neu je Elternknoten, OZ bleibt (Lücken erlaubt), geleerte Titel bleiben. Listenbezüge von Zuschlagspositionen und `grundpositionId` auf entfallene Positionen werden entfernt (je Warnung), nicht umgelenkt. Mehr als eine Wahl je Gruppe oder eine gewählte Kennung, die keine Alternative ist: Fehler. Nicht angebotene Positionen (auch gewählte): EP `null` mit Warnung, der Zuschlag geht durch (U5). Die App zeigt vor dem Bestätigen die Zahl der entfallenden und unbepreisten Positionen und lehnt einen zweiten Zuschlag zum selben LV ab (Q5).
+Reason: Glossar: Wählen ersetzt die Grundposition; F4 („ersetzt nie“) gilt für das Ausschreibungs-LV, das unverändert bleibt. Gruppe/Variante bleiben über die gemeinsame Positions-ID erhalten (ADR 0011).
+Reversible: yes (Auftrags-LV ist aus LV + Angebot ableitbar)  Touches: packages/vergabe, apps/web
+Annahme für Demo, Mensch bestätigt später (E-04).
+
+## D-22 `vertrag` v1.3: Umfang und Lesarten
+Welle 4 · Ticket 53 · decided by: advisor
+Question: Mengenansatz für M2, Punkte 7 und 8 von Ticket 53, Prüfung statt Nutzer (P9).
+Decision: (i) Neuer Punkt 9: `Ansatzzeile` wandert nach `vertrag` (`mengen` importiert den Typ, mechanisch); `Positionsdaten.mengenansatz?` optional; neuer LvBefehl `MengenansatzSetzen { positionId, mengenansatz | null, menge }`, die App rechnet die Menge mit `mengen`, der Kern speichert beides unausgewertet (kein `kern → mengen`, A3). Lesarten im Typkommentar: ein reiner Mengenbefehl an einer Position mit Ansatz entfernt den Ansatz im selben ChangeSet (die Oberfläche fragt vorher); ein Ansatz mit Fehler kommt mit `menge: null`. Kern-Handler, Speicher und Panel sind Folgetickets (56, 57, 65). (ii) Punkt 7: kein Typ, Offene Typfrage in den Comments, Befund `nachlass-nicht-abgebildet` bleibt (G-26). (iii) Punkt 8: Typ bleibt weit, K8 meldet einen Befund, der GAEB-Writer verwirft mit Warnung. (iv) P9: Opus-Reviewer prüft v1.3 (besonders die nicht additiven Punkte 3, 4, 5 gegen alle Verbraucher), Torvermerk wie D-13 vor den Folgetickets.
+Reason: Nur gespeicherte Menge plus unausgewerteter Ansatz respektiert A3; die zwei Lesarten verhindern Auseinanderlaufen. G-26 ist entschieden.
+Reversible: yes  Touches: packages/vertrag, packages/mengen (mechanisch), Tickets 56, 57, 65
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-23 O1: pdfmake ungetaggt, ADR 0012 als Vorschlag
+Welle 4 · Ticket 58 · decided by: advisor
+Question: W-04 (getaggtes PDF in v1?) ist unbeantwortet und blockiert O1.
+Decision: pdfmake, ungetaggt, für v1; ADR 0012 mit `Status: proposed` („für die Demo umgesetzt, Mensch bestätigt später (W-04)“). pdfmake bleibt hinter dem eigenen `Ausgabemodell`, damit der Renderer tauschbar ist; Weg B des Spikes (Browserdruck) entfällt. O1 druckt Bedarfs- und Wahlsummen getrennt (F4). Vor O3 ein Spike mit einer Bibliothek, die Struktur-Tags schreibt.
+Reason: U8 nennt das PDF nicht; der Browserdruck liefert der App keine Bytes.
+Reversible: yes  Touches: packages/ausgabe, docs/adr/0012
+Annahme für Demo, Mensch bestätigt später (W-04).
+
+## D-24 C1 als reines Paket `kosten`
+Welle 4 · Ticket 55 · decided by: advisor
+Question: Wie weit geht C1 in Welle 4?
+Decision: Neues reines Paket `packages/kosten` (importiert nur `vertrag`, `dezimal`), keine Vertragstypen, keine Speicherung, keine Oberfläche. Keine eingetippte DIN-276-Nummernliste: Ebene und Elternteil aus den Ziffern (X00 → XY0 → XYZ), nur die Form wird geprüft. Bezeichnungen aus einer CSV des Nutzers (reine Funktion Text → Zuordnung). Beträge 2 Stellen; Summe einer Gruppe = eigener Betrag + Summen der Kinder; eigener Betrag und Kinderbeträge zugleich ergibt einen Befund, nie eine Sperre (U5). Speicherung und Zuordnung LV ↔ KG mit C2 (Welle 5).
+Reason: Kein zweites Paket braucht die Typen vor C2 (A4); M3 braucht keine Kosten.
+Reversible: yes  Touches: packages/kosten, tools/boundaries.mjs
+Annahme für Demo, Mensch bestätigt später (G-16: Hierarchie aus den Ziffern, Regel „eigener Betrag + Kinder“).
+
+## D-25 O2: Excel über `fflate` und eigene SpreadsheetML-Schicht
+Welle 4 · Ticket 61 · decided by: orchestrator
+Question: Welche Bibliothek schreibt und liest `.xlsx` für den Bieter-Rundlauf?
+Decision: `fflate` (MIT) für ZIP, eigene kleine Schicht für SpreadsheetML (Schreiben mit festen Stilen, Lesen von Zellwerten inkl. Shared Strings und Inline-Strings). Keine große Excel-Bibliothek. Fällt die Lizenzprüfung für `fflate` durch, darf der Umsetzer eine andere MIT/Apache-Bibliothek wählen und begründen.
+Reason: deterministische Bytes für Golden-Tests, kleines Bündel, keine Node-Polyfills im Browser; der Bedarf (eine Tabelle mit festen Spalten) ist schmal.
+Reversible: yes  Touches: packages/ausgabe
+
+## D-26 Ticket 67 darf `Button` in `ui-basis` einen `ref` geben
+Welle 4 · Ticket 67 (Folge von 54) · decided by: orchestrator
+Question: Der Löschdialog des Grids und App-Dialoge können den neuen Anfangsfokus (54, Punkt 6) nicht auf einen Knopf setzen, weil `Button` keinen `ref` annimmt.
+Decision: Ticket 67 ergänzt `Button` um die Weitergabe des `ref` (benannte Ausnahme von P2, `ui-basis` hat in dieser Phase keinen Schreiber); der Löschdialog in `ui-grid` bleibt bis zu einem späteren Grid-Ticket bei seinem Tastenhandler.
+Reason: Eine Zeile, additiv, kein anderer Schreiber in `ui-basis`.
+Reversible: yes  Touches: packages/ui-basis, apps/web
+
+## D-27 Tor für `vertrag` v1.3
+Welle 4 · Ticket 53 · decided by: orchestrator
+Question: Ist v1.3 stabil genug, damit 56, 57, 59, 65, 68 darauf bauen (statt Prüfung durch den Nutzer, P9, D-22 (iv))?
+Decision: Ja, nach Behebung der Review-Befunde. Opus-Reviewer: „yes-with-fixes“; nicht additive Punkte 3, 4, 5, 9 gegen alle Verbraucher geprüft, kein Verlust außer `PositionAnlegen` mit `mengenansatz` (wird abgewiesen). Befunde 1, 2, 5, 6, 8 behebt Ticket 53, Befund 3 per D-28, Befund 4 als Nachträge „Aus Ticket 53“ in 56, 57, 59, 65, 68; Befund 7 geht an Ticket 68.
+Reason: Alle Befunde eindeutig lösbar; die eine Abwägung (Befund 3) hat der Berater entschieden.
+Reversible: yes  Touches: packages/vertrag, Tickets 56, 57, 59, 65, 68
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-28 EPA-Bezeichnungen mit ausdrücklicher Nummer
+Welle 4 · Ticket 53, 57, 68 · decided by: advisor
+Question: `epaBezeichnungen` als dichte Liste (Eintrag i = `UPComp<i+1>`) kann keine Lücken zeigen; der GAEB-Leser erzeugt aber Lücken.
+Decision: `EpaBezeichnung { nummer: 1..6; anteil: EpaArt; bezeichnung: string | null }`, nach `nummer` sortiert, `nummer` und `anteil` je eindeutig, Feld optional. Fehlende Nummer = Platz nicht belegt; `bezeichnung: null` = Art aus `Type` bekannt, Beschriftung leer; Feld fehlt = heutige feste Belegung des Writers. Writer nummerieren nie um; ob das XSD Lücken in `LblUPComp` zulässt, prüft Ticket 68 (sonst Platzhalter-Beschriftung, keine Umnummerierung).
+Reason: Die Platznummer ist der einzige Schlüssel, der `UPComp<n>` eines Bieters (X84 ohne `LblUPComp`) einer Art zuordnet; eine dichte Liste verschöbe Preise still in eine falsche Art (Q5).
+Reversible: yes (noch nicht gespeichert)  Touches: packages/vertrag, Tickets 57, 68
+
+## D-53.1 Enge Lesarten im Vertrag v1.3
+Welle 4 · Ticket 53 · decided by: implementer
+Question: Wo lässt Ticket 53 (mit D-22) die Typform offen?
+Decision: `LvUebersicht` nur `{ id, name }`, sortiert wie die Projektliste; `Projektdatei.lvStaende` bleibt optional (nur `Speicher.lvStaende` wird Pflicht); neue Ortsform `{ art: 'hinter-gliederung'; gliederungId }` nur für Gliederungen, `nach` unverändert, der Kern weist sie bis Ticket 56 mit `befehl-nicht-zustaendig` ab; `auftragnehmer?` und `epaBezeichnungen?` (geordnet nach `UPComp<n>`) am gemeinsamen `LvInhaltKopf`; `MengenansatzSetzen` setzt die Menge auch beim Entfernen des Ansatzes, `[]` gilt wie `null`; `speicher` weist die neuen Felder bis Ticket 57 mit `unbekannt` ab (Q5). Alternativen als Offene Typfragen 1–8 in Ticket 53.
+Reason: Additiv, wo möglich; nicht Additives (Punkte 3, 4, 5, 9 und die Rückgabe von `auflisten`) nur mit markierter mechanischer Anpassung (W-03 (b)); kein stiller Datenverlust.
+Reversible: yes  Touches: packages/vertrag, mechanische Zeilen in kern, mengen, speicher, vergabe, ui-grid (E2E), apps/web, proto
+Annahme für Demo, Mensch bestätigt später (P9 durch Opus-Review ersetzt, D-22).
+
+## D-29 Q4-Schranke der Einzeländerung im dauerhaften Profil
+Welle 4 · Ticket 52 · decided by: orchestrator
+Question: Ticket 52 prüft „< 100 ms Median bis zur Summenzeile“ hart nur im dauerhaften Browserprofil; im flüchtigen Playwright-Kontext (OPFS über Prozessgrenzen, 1–2 ms je Schreibzugriff) bleibt die alte grobe Schranke. Annehmen?
+Decision: Ja. Das dauerhafte Profil ist der Betrieb des Nutzers (installierte PWA); dort 36–61 ms unter Last 15–22. Der flüchtige Kontext wird weiter gemessen und im Ticket genannt, die harte Schranke dort wäre ein Test der Testumgebung.
+Reason: Q4 meint die Erfahrung des Nutzers; keine Prüfung geschwächt, nur der Messort festgelegt.
+Reversible: yes  Touches: apps/web/e2e/leistung.spec.ts
+
+## D-30 Umfang der Review-Behebung Welle 4
+Welle 4 · Review · decided by: orchestrator
+Question: Welche Befunde des Wellen-Reviews (`review-welle-4.md`) werden in dieser Welle behoben?
+Decision: Behoben in `fix/welle-4-review`: Exportverlust `lvAusgeben` (über einen gemeinsamen Kopfbau, S5), S1, S2 (Zahlformate aus `NACHKOMMASTELLEN`; Exponent-Lesen nach `dezimal`, falls klein, sonst begründet), S3, S4, S6 (soweit Paketgrenzen es erlauben), S7, S8 (Glossar „Zuschlag (Vergabe)“, eindeutige Codes), S9, S10, S11, P1 (Sollwerte Bedarf/Wahl in der Fixture, Test), P5, D-62.2 (Haken am Befehlsweg statt Laufzeit-Hülle, falls ohne Paketänderung möglich). Als Folgetickets: D-57.2 (`vergabe`), D-64.2 (`vertrag`-Repository Auftrags-LV), D-64.4 (Kern-Umkehrung Auftrags-LV), P2, P6. P3/P4 erledigt der Orchestrator beim Abschluss.
+Reason: Alles Behobene liegt in den Paketen der Welle und ändert keinen Vertrag; Vertragsänderungen bleiben eigene Tickets (A4, P9).
+Reversible: yes  Touches: apps/web, packages/ausgabe, packages/gaeb, packages/kosten, packages/dezimal, fixtures, GLOSSARY.md
+
+## D-31 Welle 5 setzt auf dem Ende von Welle 4 auf, nicht auf `main`
+Welle 5 · Ticket – · decided by: orchestrator
+Question: Der Skill verlangt `integration/welle-5` ab `main`; Welle 4 (Tor M3, Tickets 51–69) liegt aber nur auf `claude/relaxed-noether-jy8ohv` (lokal `integration/welle-4`), nicht auf `main`.
+Decision: `integration/welle-5` ab `97bd414` (Ende von Welle 4). `main` wird nicht verändert; der Mensch merged Welle 4 und 5 später nacheinander (oder Welle 5 allein, die Welle 4 enthält).
+Reason: Welle 5 baut auf Auftrags-LV, Preisspiegel und `vertrag` v1.3 aus Welle 4 auf; ab `main` wäre sie nicht lauffähig.
+Reversible: yes  Touches: Branches
+
+## D-32 XRechnung in einem eigenen Paket `erechnung`
+Welle 5 · Ticket 76 · decided by: orchestrator
+Question: `plan.md` §1 legt E-Rechnung in `abrechnung`; dort laufen in dieser Welle schon Aufmaß, Soll/Ist und Rechnungsprüfung nacheinander (ein Schreiber, P2).
+Decision: Neues reines Paket `packages/erechnung` (importiert `vertrag`, `dezimal`), nur Lesen (G-15). `apps/web` darf es importieren. Es ist ein Format-Rand wie `gaeb` (N4), keine Fachrechnung.
+Reason: Hält die Welle parallel; ein Lesepaket ohne Fachregel lässt sich später ohne Verlust in `abrechnung` verschieben.
+Reversible: yes  Touches: packages/erechnung, tools/boundaries.mjs, plan.md §1 (Zeile ergänzt)
+
+## D-33 M3 nur X31 (DA XML), DA11 später
+Welle 5 · Strang M3 · decided by: orchestrator
+Question: `plan.md` nennt „M3 X31/DA11“. DA11 ist das REB-Zeilenformat aus GAEB 90.
+Decision: In Welle 5 nur GAEB DA XML X31 (3.3 und 3.2, G-10) lesen und schreiben. Die REB-Zeilen in `QTakeoff` (gleiches Spaltenformat wie DA11) liest `gaeb` in `Ansatzzeile`n; nur Formel 91 wird gerechnet, andere Formeln bleiben als Text mit Befund. Eine reine DA11-Datei (GAEB 90) folgt mit G4.
+Reason: G-10 stellt GAEB 90/2000 auf „später“; die BVBS-Prüfdatei X31 liegt schon im Repo.
+Reversible: yes  Touches: packages/gaeb
+
+## D-34 G-27: Tiefe der Rechnungsprüfung (Abzugskette)
+Welle 5 · Ticket 81 · decided by: advisor
+Question: G-27 ist vertagt; A3 braucht eine Abzugskette.
+Decision: Kumulierte Abschlagsrechnungen und Schlussrechnung. Jeder Schritt auf 2 Stellen gerundet, dann addiert/abgezogen (N2, N5, E-07): (1) Leistung = Σ round(kumulierte Aufmaßmenge × Vertrags-EP, 2); EP `null` zählt 0 mit Befund; Bedarf zählt, sobald aufgemessen; Zuschlagsposition = round(Satz × Σ geprüfte GP der Bezugspositionen, 2). (2) Nachlass: Prozent = round(Leistung × %, 2) über das ganze Auftrags-LV inkl. Nachtragspositionen; Absolut in Abschlag = min(round(abs × Leistung / Auftrags-LV netto vor Nachlass, 2), abs), Basis 0 → 0 mit Befund; Absolut in Schluss = voller Betrag. (3) Netto nach Nachlass. (4) MwSt = round(Netto n. N. × Satz, 2); Brutto kumuliert. (5) Umlagen je round(Brutto kumuliert × %, 2), alle auf derselben Basis, nicht kaskadiert (nach der MwSt: Gegenforderung des AG, mindert die Steuerbasis nicht). (6) Einbehalt: Abschlag round(Brutto kum. × Sicherheit %, 2), Schluss stattdessen Gewährleistung %. (7) Zahlbetrag = Brutto kum. − Σ Umlagen − Einbehalt − Σ frühere Zahlbeträge; negativ = Befund (Überzahlung). Frühere Zahlbeträge sind **eingefroren** (Befehl `RechnungFreigeben` speichert den geprüften Zahlbetrag); freigeben nur, wenn alle früheren freigegeben sind. Später: tatsächliche Zahlungen, Skonto, Bauabzugsteuer, Vertragsstrafe, Stundenlohnzettel.
+Reason: kleinste Kette, in der eine Schlussrechnung aufgeht; jede Zahl folgt aus N2/N5. Das Einfrieren verhindert, dass eine spätere Aufmaßkorrektur bezahlte Rechnungen still umschreibt.
+Reversible: yes (Parameter, Typen bleiben)  Touches: packages/vertrag, packages/abrechnung, apps/web
+Annahme für Demo, Mensch bestätigt später (G-27).
+
+## D-35 A1: Nachtrag ist ein Ausschreibungs-LV; VOB 80; Soll/Ist-Schwellen
+Welle 5 · Ticket 70, 71, 80, 86 · decided by: advisor
+Question: Wie bildet v1 Nachträge ab, was heißt „VOB 80“, welche Schwellen hat Soll/Ist?
+Decision: Ein Nachtrag ist ein gewöhnliches Ausschreibungs-LV mit `Nachtragsangaben { auftragsLvId, nummer, status: angemeldet | angeboten | beauftragt | abgelehnt }` am Kopf (LvBefehl `NachtragsangabenSetzen`); das Nachtragsangebot ist ein gewöhnliches Angebot mit der `bieterId` des beauftragten Angebots. Reine Funktion `nachtragUebernehmen(auftragsLv, nachtragsLv, angebot, neueIds)` in `abrechnung` liefert den AuftragsLvBefehl `NachtragUebernehmen { nachtragLvId, knoten }` plus Warnungen; `kern` führt ihn aus: eine neue Gliederung „Nachtrag <nummer>“ auf oberster Ebene (Los, wenn dort Lose stehen, sonst Titel; F1) mit nächster freier OZ, darunter der Baum des Nachtrags mit unveränderten PositionIds und EP/EPA des Angebots; nicht angeboten → EP `null` mit Warnung (wie D-21); Wahl-Alternativen entfallen mit Warnung; Fehler: mehr als 5 Ebenen, anderer MwSt-Satz, PositionId schon vorhanden (sperrt auch eine zweite Übernahme); Nachlass des Nachtragsangebots wird mit Warnung ignoriert. Die App führt erst `NachtragUebernehmen`, dann Status `beauftragt` aus. **VOB 80:** die zweite Bedeutung ist vermutlich § 650c Abs. 3 BGB (80 % der angebotenen Mehrvergütung in Abschlagsrechnungen); nicht in v1, ein nicht beauftragter Nachtrag geht nie in eine Rechnung (nur Infozeile). **Soll/Ist (VOB/B § 2 Abs. 3):** Befund bei Ist > 110 % der LV-Menge; bei Ist < 90 % nur mit `abgeschlossen: true` (Schlussrechnung vorhanden); streng verglichen, beide Schwellen einstellbar; kein Befund bei Menge 0/`null` oder Pauschal.
+Reason: nutzt Grid, GAEB und Angebot fast ohne Mehrkosten; 110/90 ist das einzige Paar, das aus der Regel herleitbar ist (C4); die „80“ der Recherche ist unbelegt.
+Reversible: yes (PositionIds bleiben; ein eigenes Aggregat ließe sich später migrieren)  Touches: packages/vertrag, kern, abrechnung, apps/web
+Annahme für Demo, Mensch bestätigt später (Widerspruch „VOB 80“ in grilling.md).
+
+## D-36 Umfang `vertrag` v1.4
+Welle 5 · Ticket 70 · decided by: advisor
+Question: Was aus Welle 5 wird Vertragstyp?
+Decision: (1) Aggregat `Aufmass` (ein Aufmaßblatt je Auftrags-LV; je Position eine Zeile mit Mengenansatz und Menge; Menge rechnet die App mit `mengen`, wie D-22); X31 liest in dieses Aggregat. (2) Aggregat `Rechnung` (Kopf mit Art, Eingang, geforderten Beträgen, `aufmassIds` als vollständige kumulierte Menge, `umlagen`, `sicherheitSatz`, `gewaehrleistungSatz`, `freigabe: { zahlbetrag } | null`); das Prüfergebnis wird gerechnet, nie gespeichert. (3) Aggregat `Kostenermittlung` je Projekt (Typ wandert von `kosten` nach `vertrag`). (4) `Positionsdaten.kostengruppe?` (eine KG je Position), `KostengruppeSetzen` als LvBefehl und als AuftragsLvBefehl. AuftragsLvBefehl ist genau: Anlegen, `NachtragUebernehmen`, `KostengruppeSetzen`. (5) EP-Kalkulation wird nicht gespeichert. (6) `vorlage?` (Muster-LV) und `textquelle?` (G-17); kein Typ für Textbausteine (ein Textbaustein ist ein Hinweistext oder eine Position eines Muster-LV). (7) Druckprofile nicht im Vertrag (Einstellung der App). (8) `AuftragsLvRepository` (Ticket 70) und Repositories für (1)–(3); deren ChangeSets sind ganze Aggregate `{ vorher, nachher }` ohne Summendeltas; ein Migrationsticket in `speicher` (A8). Neu: `Leistungsstand { positionen: { positionId, menge, gp }[], nachlass, nettoNachNachlass }` als Vertragstyp (`abrechnung` erzeugt, `kosten` verbraucht; A3). Kürzungsreihenfolge bei Überlauf: O3 auf zwei feste Profile → M3 nur lesen → A4 nur Kopfsummen → C4 schlicht. A1–A3, C2, C3 werden nie gekürzt (M4). Opus-Review von v1.4 gegen alle Verbraucher vor den Folgetickets (wie D-22 iv).
+Reason: In den Vertrag kommt nur, was zwei Pakete teilen (A4); Einfrieren und Leistungsstand fehlten in der ersten Liste.
+Reversible: yes  Touches: packages/vertrag und mechanische Zeilen in allen Verbrauchern
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-37 C3: Kostenkontrolle ohne Verteilung des Nachlasses
+Welle 5 · Ticket 82 · decided by: advisor
+Question: Wie gehen Nachlass und Positionen ohne Kostengruppe in die Kostenkontrolle ein?
+Decision: Zeilen: Kostengruppen (Baumsummen nach D-24), „ohne Kostengruppe“, „Nachlass“ (negativ, ohne Budget), Gesamt. Vergabe = Σ Positionssummen des Kerns (gerundete GP, nur zählende Positionen nach F4) je KG; Gesamt = Auftrags-LV netto nach Nachlass. Abrechnung = Σ `Leistungsstand.gp` je KG aus der Rechnung mit der höchsten Nummer (freigegeben oder nicht); Nachlasszeile = `Leistungsstand.nachlass`; Gesamt = deren `nettoNachNachlass`. Umlagen, Einbehalt und MwSt gehören nicht dazu. Abweichung = Vergabe − Budget je KG und gesamt. Netto durchgehend. Property-Test: Zeilensumme = Gesamt, auf den Cent.
+Reason: Eine anteilige Verteilung erzeugt Rundungsreste und Zahlen, die kein Beleg zeigt; getrennte Zeilen gehen auf den Cent auf.
+Reversible: yes (verteilte Ansicht später als Anzeigeoption)  Touches: packages/kosten, apps/web
+
+## D-38 Tor M4
+Welle 5 · Ticket 85, 91 · decided by: advisor
+Question: `plan.md` §4 definiert M4 nicht.
+Decision: Eine Playwright-E2E auf dem Weg von M3: LV `typisch` → zwei X84 → Zuschlag → Nachtrag N01 (Nachtrags-LV mit 2 Positionen, Angebot des AN, beauftragen) → Aufmaßblatt 1 (Formel 91, mit einer Nachtragsposition und einer Position > 110 %) → Soll/Ist zeigt den Befund, keinen < 90 % → Abschlagsrechnung 1 mit einer Umlage und Sicherheitseinbehalt, **Prozent**-Nachlass, Zahlbetrag = Sollwert, freigeben → Aufmaßblatt 2 + Abschlagsrechnung 2: Zahlbetrag = kumuliert − eingefrorener Zahlbetrag AR 1; Aufmaßblatt 1 danach ändern ändert AR 2, nicht den eingefrorenen Wert von AR 1 → Kostenkontrolle mit KG-Zuordnung und Kostenberechnung als Budget: Werte je KG, „ohne Kostengruppe“, Nachlass und Gesamt = Sollwerte → Neuladen behält alles. Sollwerte in einer Fixture mit Herleitung (N2, N5, VOB/B § 2 Abs. 3; C4). Dazu ein reiner Kettentest ohne Oberfläche (`vergabe` → `abrechnung` → `kosten`) mit derselben Fixture; ist die E2E wackelig, gelten Kettentest plus verkürzte E2E als Tor. A4, M3, C4, C5, O3 haben eigene Tests, nicht im M4-Weg. Absoluter Nachlass und Schlussrechnung: Golden-Tests in `abrechnung`.
+Reason: Das Tor muss LPH 6–8 mit hergeleiteten Zahlen zeigen; das Einfrieren ist das Verhalten, das ein reiner Summentest übersieht.
+Reversible: yes  Touches: plan.md §4, fixtures, apps/web/e2e
+
+## D-39 C4: Rundung der EP-Kalkulation
+Welle 5 · Ticket 78 · decided by: orchestrator
+Question: Wo wird bei der Zuschlagskalkulation gerundet?
+Decision: Einzelkosten ungerundet; Anteil je Kostenart = Einzelkosten × (1 + Satz/100) kaufmännisch auf 3 Stellen (EP 3, N3); EP = Σ der gerundeten Anteile. Nicht im M4-Weg.
+Reason: So gilt „Summe der Anteile = EP“ (Kernprüfung der EPA) immer; entspricht N2 (Summen aus gerundeten Werten).
+Reversible: yes  Touches: packages/kosten
+
+## D-40 Befehle für Vorlage und Textquelle
+Welle 5 · Ticket 70, 71 · decided by: orchestrator
+Question: D-36 (6) nimmt `vorlage?` und `textquelle?` „nur als Typ“; ohne Befehl kann der Nutzer sie nie setzen (A5).
+Decision: Zwei kleine LvBefehle `VorlageSetzen { vorlage }` und `TextquelleSetzen { positionId, textquelle | null }` in v1.4, Handler im Kern (Ticket 71). Kein Typ für Textbausteine (D-36 bleibt).
+Reason: Ein Feld ohne Befehl wäre nur über Import erreichbar; die Handler sind Feldbefehle wie `KurztextAendern`.
+Reversible: yes  Touches: packages/vertrag, packages/kern
+
+## D-41 D-73.3 angenommen: Alternative ohne Nummern tritt der Gruppe ihrer Grundposition bei
+Welle 5 · Ticket 73 · decided by: orchestrator
+Question: Der Umsetzer von 73 lässt eine Alternative ohne Gruppe/Variante, deren Grundposition schon Variante 0 einer Gruppe ist, dieser Gruppe beitreten, statt eine neue Gruppe ohne Grundposition zu eröffnen; das geht über D-16 hinaus.
+Decision: Angenommen. Die Grundposition wird beim Export als Variante 0 geschrieben (D-73.1, mit Warnung), die Alternative folgt ihr.
+Reason: Betrifft nur die Vergabe künstlicher Nummern im Writer; der Bezug `grundpositionId` bleibt erhalten, Summen ändern sich nicht; umkehrbar und auf `gaeb` begrenzt.
+Reversible: yes  Touches: packages/gaeb
+
+## D-42 Tor für `vertrag` v1.4
+Welle 5 · Ticket 70 · decided by: orchestrator
+Question: Ist v1.4 stabil genug, damit 71 und 79–91 darauf bauen (statt Prüfung durch den Nutzer, P9, D-36)?
+Decision: Ja, nach den Review-Fixes. Opus-Reviewer: „yes-with-fixes“, keine Änderung an Bestandsdaten, Projektdateien oder Protokollen; nicht-additive Stellen markiert und laut abweisend. Fixes in Ticket 70: Freigabe-Invariante (Anlegen einer Rechnung unter einer freigegebenen Nummer → `konflikt`), `LvUebersicht` additiv (D-43), `gefordert` mit Zahlbetrag (D-44), „× Satz / 100“ und Zuschlagsposition ohne Satz in den Lesarten, Glossar „Aufmaßblatt“. Leck `zuschlagErteilen` (`nachtrag`/`vorlage` landen im Kopf des Auftrags-LV): Fehler bei Nachtrags-LV, `vorlage` weglassen – als benannte Ausnahme von P2 im Ticket 70, weil `vergabe` in Welle 5 keinen Schreiber mehr hat (zwei Zeilen und Tests); Kern-Teil in 71, Oberfläche in 86. Übrige Befunde gehen als Nachträge in 71, 80, 82, 83, 86–89.
+Reason: Alle Befunde eindeutig lösbar; zwei Formfragen hat der Berater entschieden (D-43, D-44).
+Reversible: yes  Touches: packages/vertrag, packages/vergabe (D-42-Zeilen), Tickets 71, 79–89
+Annahme für Demo, Mensch bestätigt später (P9).
+
+## D-43 `LvUebersicht` mit Nachtragsangaben und Vorlage
+Welle 5 · Ticket 70, 79, 86, 90 · decided by: advisor
+Question: Die App müsste für das Kennzeichen „Nachtrag N01“, die Nachtragsliste und die Vorlagen jedes LV ganz laden (bis 5.000 Positionen).
+Decision: Additiv `LvUebersicht.nachtrag?: Nachtragsangaben` und `vorlage?: true`, von `speicher` aus dem Kopf gefüllt (fehlt = nein, nie `false`/`null`); kein neuer Repository-Weg; die projektübergreifende Vorlagenliste baut die App aus `projekte.auflisten` + `leistungsverzeichnisse.auflisten`. Test in `speicher`: Übersicht = Kopf nach Setzen und nach Undo.
+Reason: Nur Kopffelder nötig; additiv, wie `AuftragsLvUebersicht`.
+Reversible: yes  Touches: packages/vertrag, packages/speicher, apps/web
+
+## D-44 `Rechnung.gefordert` mit nullbaren Beträgen und Zahlbetrag
+Welle 5 · Ticket 70, 81, 88 · decided by: advisor
+Question: `gefordert: { netto; brutto }` verlangt beide Beträge; die XRechnung liefert BT-109, BT-112, BT-115 je wahlweise.
+Decision: `gefordert: { netto: Betrag | null; brutto: Betrag | null; zahlbetrag: Betrag | null } | null` (`zahlbetrag` = BT-115); äußeres `null` ist die einzige Schreibweise für „nichts erfasst“, ein Objekt mit drei `null` weist der Ausführer ab. Nur Vergleich, nie Grundlage der Prüfung; Ticket 81 meldet keinen Befund für fehlende Forderungen; Ticket 88 zeigt „–“ ohne Differenz und vergleicht bevorzugt den Zahlbetrag.
+Reason: 1:1 zu `erechnung`; der Zahlbetrag ist das Gegenstück zum eingefrorenen `freigabe.zahlbetrag` (D-34 (7)).
+Reversible: yes (noch kein Verbraucher)  Touches: packages/vertrag, abrechnung, apps/web
+
+## D-45 Aufmaßblatt bleibt ganzes Aggregat im ChangeSet
+Welle 5 · Ticket 70, 87 · decided by: orchestrator
+Question: Jede Zeilenänderung trägt das ganze Aufmaßblatt zweimal in die Undo-Historie (Offene Typfrage 6).
+Decision: Bei D-36 (8) bleiben; Ticket 87 misst Zeit und Speicher je Undo-Schritt an einem Blatt mit 5.000 Zeilen (Q4). Nur bei überschrittenem Budget folgt in v1.5 `Aenderungen<Aufmassposition>`.
+Reason: Hält v1.4 klein; ein großes Blatt ist selten, die Messung entscheidet.
+Reversible: yes  Touches: apps/web (Messung)
+
+## D-46 Nach dem Nutzungslimit: Vorrang für den M4-Weg
+Welle 5 · Tickets 84, 87–90 · decided by: orchestrator
+Question: Gegen 19:30 traf der Lauf das 5-Stunden-Limit; alle Agenten standen bis zur Rückstellung um 21:10. Wie weiter, damit das Tor M4 vor einem zweiten Limit erreichbar bleibt?
+Decision: Unterbrochene Agenten aus ihrem gespeicherten Stand fortsetzen (nichts verloren). Zuerst der M4-Weg (71, 79, 80 → 81 → 86, 87, 88, 89 → 91); Ticket 90 (Muster-LV, Kürzungsreihenfolge D-36) erst danach; Ticket 89 auf Sonnet statt Opus (Oberfläche und Anbindung, die Rechnung liegt in `kosten`). Gemergte Branches, die den Integrationsstand schon enthalten, merged der Orchestrator selbst (der Baum ist dann der getestete); zusammengeführte Stände aus getrennten Paketen prüft eine volle Suite im Hintergrund.
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem zweiten Limit fertig ist.
+Reversible: yes  Touches: Ablauf, Modellwahl
+
+## D-47 Umfang der Review-Behebung Welle 5
+Welle 5 · Review · decided by: orchestrator
+Question: Welche Befunde des Wellen-Reviews (`review-welle-5.md`, Standards 12, Spec 7) werden in dieser Welle behoben?
+Decision: Ein Fix-Ticket 92 (Opus): Pflicht P6, S1, S2, S11, P2, P3, P5, P7, S12; Soll S7, S8, S6, S5, S3, S9, S4 (ohne Kalenderlogik), S10, D-86.7. Folgetickets statt Behebung: P1 (echte KG-Spalte im Grid: `ui-grid` braucht eine editierbare Spalte), P4 (Undo am Aufmaßblatt mit 5.000 Zeilen über 100 ms: v1.5 `Aenderungen<Aufmassposition>` oder Vergleich über den gespeicherten Text in `speicher`).
+Reason: Pflichtpunkte sind fachlich falsch, Glossarverstöße (L2) oder Q5; die Sollpunkte sind Aufräumen in Dateien, die jetzt nur noch ein Schreiber hat. P1 und P4 brauchen Vertrags- oder Grid-Arbeit.
+Reversible: yes  Touches: apps/web, packages/abrechnung, kern, gaeb, speicher
+
+## D-48 Maske des Nachtrags-LV ohne oberste Stufe
+Welle 5 · Ticket 92 (Review P6) · decided by: orchestrator
+Question: Ein Nachtrags-LV mit der vollen Maske des Auftrags-LV landet nach der Übernahme eine Stufe zu tief (`04.01.01.0010` gegen `NN.NN.NNNN`), weil die Gliederung „Nachtrag <nummer>“ eine Stufe davorsetzt (D-35, D-80.1).
+Decision: Das Nachtrags-LV bekommt beim Anlegen die Maske des Auftrags-LV ohne deren oberste Gliederungsstufe; `nachtragUebernehmen` warnt, wenn die Tiefe dennoch nicht passt. Hat die Maske keine Gliederungsstufe, bleibt sie gleich, und die Übernahme ergibt einen Maskenbefund (U5). Kein Umnummerieren bei der Übernahme (OZ des Nachtrags bleiben, wie sie mit dem AN vereinbart sind).
+Reason: Die OZ des Nachtrags passen dann mit dem Präfix genau in die Maske; das Nachtragsangebot (X84) referenziert die OZ des Nachtrags-LV, die erhalten bleiben.
+Reversible: yes  Touches: apps/web/src/nachtrag, packages/abrechnung

@@ -2,25 +2,33 @@
 // Seite `/projekt/<id>`: Stammdaten des Projekts (umbenennen), seine LVs (anlegen, umbenennen, öffnen) und der Export
 // der Projektdatei. Jede Änderung ist genau ein Befehl durch Kern und Speicher (A5).
 //
-// Lücke im Vertrag: `leistungsverzeichnisse.auflisten` liefert nur Kennungen, keine Namen. Die Seite lädt deshalb jedes
-// LV ganz (`laden`), um Name und Netto zu zeigen. Bei vielen großen LVs ist das langsam; eine Übersicht mit Namen
-// gehört in ein Vertragsticket.
+// Die LV-Liste kommt aus `leistungsverzeichnisse.auflisten` (`LvUebersicht`: Name, Nachtragsangaben, Vorlage; D-43), ohne
+// ein LV ganz zu laden (Review Welle 5, P3). Ganz geladen wird ein LV nur, wenn es gebraucht wird: das Netto, sobald seine
+// Zeile sichtbar ist (`LvNetto.tsx`), und der Zustand für Umbenennen und Löschen beim Klick.
 
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { LeistungsverzeichnisId, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
+import type { LeistungsverzeichnisId, LvUebersicht, LvZustand, Projekt, ProjektId } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { texte as vorlageTexte } from '../vorlage/texte'; // Ticket 90
+import { AuftragsLvListe } from '../auftrag/AuftragsLvListe'; // Ticket 64
+import { kostenPfad } from '../kosten/pfad'; // Ticket 89
+import { texte as kostenTexte } from '../kosten/texte'; // Ticket 89
+import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { NachtragKennzeichen } from '../nachtrag/NachtragKennzeichen'; // Ticket 86
 import { texte as htexte } from '../historie/texte';
 import { befehlswegFuer, type Ausgang } from '../lv/befehlsweg';
 import { texte as lvTexte } from '../lv/texte';
 import { useMeldungen } from '../lv/meldungen';
 import { STANDARD_MASKE_TEXT, ozMaskeLesen } from '../lv/ozmaske';
-import { formatiereBetragDe, formatiereProzentDe, zahlLesen } from '../lv/zahlen';
+import { formatiereProzentDe, zahlLesen } from '../lv/zahlen';
+import { useSicherung } from '../sicherung/SicherungsAnbieter'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { hrefFuer } from '../ui/route';
+import { Verweis } from '../ui/Verweis';
 import { STANDARD_MWST, lvAnlegenBefehl } from './befehle';
+import { LvNetto, useLvNetto } from './LvNetto';
 import { texte } from './texte';
 import './projekt.css';
 
@@ -28,11 +36,11 @@ export function lvPfad(id: LeistungsverzeichnisId): string {
   return `/lv/${id}`;
 }
 
-type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; projekt: Projekt; lvs: readonly LvZustand[] };
+type Laden =
+  { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; projekt: Projekt; lvs: readonly LvUebersicht[] };
 
 function dateiname(name: string): string {
-  const sauber = name.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'projekt';
-  return `${sauber}.tethys.json`;
+  return `${dateinameSauber(name, ERSATZ_PROJEKT)}.tethys.json`;
 }
 
 function herunterladen(name: string, inhalt: string): void {
@@ -90,6 +98,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const u = useUmgebung();
   const { pruefe, speicherfehler } = useMeldungen();
   const [lage, setLage] = useState<Laden>({ art: 'laedt' });
+  const { netto, nachladen, neu: nettoNeu, stand: nettoStand } = useLvNetto();
 
   const laden = useCallback(async () => {
     const p = await u.speicher.projekte.laden(id);
@@ -97,15 +106,19 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
       setLage({ art: 'fehlt' });
       return;
     }
-    const ids = await u.speicher.leistungsverzeichnisse.auflisten(id);
-    const lvs: LvZustand[] = [];
-    for (const lvId of ids.ok ? ids.wert : []) {
-      const lv = await u.speicher.leistungsverzeichnisse.laden(lvId);
-      if (lv.ok) lvs.push(lv.wert);
-    }
-    lvs.sort((a, b) => a.leistungsverzeichnis.name.localeCompare(b.leistungsverzeichnis.name, 'de'));
-    setLage({ art: 'da', projekt: p.wert, lvs });
-  }, [u, id]);
+    // Nach Name sortiert liefert der Speicher (Vertrag); ein Fehler lässt die Liste leer wie bisher.
+    const lvs = await u.speicher.leistungsverzeichnisse.auflisten(id);
+    nettoNeu();
+    setLage({ art: 'da', projekt: p.wert, lvs: lvs.ok ? lvs.wert : [] });
+  }, [u, id, nettoNeu]);
+
+  /** Das ganze LV für Umbenennen und Löschen, frisch aus dem Speicher; `null` mit Meldung, wenn es nicht geht. */
+  const lvLaden = async (lvId: LeistungsverzeichnisId): Promise<LvZustand | null> => {
+    const r = await u.speicher.leistungsverzeichnisse.laden(lvId);
+    if (r.ok) return r.wert;
+    speicherfehler(r.fehler, texte.lvs.ladeFehler);
+    return null;
+  };
 
   useEffect(() => {
     void laden();
@@ -113,6 +126,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   // Undo/Redo kann Projekt und LVs ändern (auch löschen oder zurückholen): neu laden.
   useEffect(() => befehlswegFuer(u).beiHistorie(() => void laden()), [u, laden]);
   const { zeige } = useToast();
+  const sicherung = useSicherung(); // Ticket 62
   const weg = befehlswegFuer(u);
   // --- Löschen (Ticket 48, Punkt 5) ------------------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState<{ art: 'projekt' } | { art: 'lv'; lv: LvZustand } | null>(null);
@@ -120,7 +134,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   // --- Projekt umbenennen -------------------------------------------------------------------------------------
   const [stammdaten, setStammdaten] = useState<{ name: string; bauherr: string } | null>(null);
   // --- LV umbenennen --------------------------------------------------------------------------------------------
-  const [umbenennen, setUmbenennen] = useState<{ lv: LvZustand; name: string } | null>(null);
+  const [umbenennen, setUmbenennen] = useState<{ lv: LvUebersicht; name: string } | null>(null);
   // --- LV anlegen -----------------------------------------------------------------------------------------------
   const [lvName, setLvName] = useState('');
   const [maske, setMaske] = useState(STANDARD_MASKE_TEXT);
@@ -138,15 +152,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     return (
       <div className="seite projekt">
         <h1>{texte.projekt.nichtGefunden}</h1>
-        <a
-          href={hrefFuer('/')}
-          onClick={(e) => {
-            e.preventDefault();
-            gehe('/');
-          }}
-        >
-          {texte.projekt.zurueck}
-        </a>
+        <Verweis pfad="/" text={texte.projekt.zurueck} gehe={gehe} />
       </div>
     );
   }
@@ -166,7 +172,9 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
 
   const lvUmbenennen = async (): Promise<void> => {
     if (umbenennen === null) return;
-    const a = await weg.lv(projekt.id, umbenennen.lv).befehl({
+    const zustand = await lvLaden(umbenennen.lv.id);
+    if (zustand === null) return;
+    const a = await weg.lv(projekt.id, zustand).befehl({
       art: 'LeistungsverzeichnisUmbenennen',
       name: umbenennen.name.trim(),
     });
@@ -225,6 +233,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
       return;
     }
     herunterladen(dateiname(projekt.name), r.wert);
+    sicherung.exportVermerken(projekt.id); // Ticket 62
   };
 
   const meldung = (feld: 'name' | 'maske' | 'mwst') =>
@@ -256,65 +265,69 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           {htexte.loeschen.projektKnopf}
         </Button>
         <Button onClick={() => void exportieren()}>{texte.projekt.exportieren}</Button>
-        <GaebEinlesen projekt={projekt} onAngelegt={() => void laden()} />
-        <a
+        {/* Ticket 89 */}
+        <Verweis
+          pfad={kostenPfad(projekt.id)}
+          text={kostenTexte.projekt.kosten}
+          gehe={gehe}
           className="tx-button tx-button--schlicht"
-          href={hrefFuer('/')}
-          onClick={(e) => {
-            e.preventDefault();
-            gehe('/');
-          }}
-        >
-          {texte.projekt.zurueck}
-        </a>
+        />
+        <GaebEinlesen projekt={projekt} onAngelegt={() => void laden()} />
+        <Verweis
+          pfad="/"
+          text={texte.projekt.zurueck}
+          gehe={gehe}
+          className="tx-button tx-button--schlicht"
+        />
       </div>
-
       <h2>{texte.lvs.titel}</h2>
       {lvs.length === 0 ? (
         <p>{texte.lvs.leer}</p>
       ) : (
         <ul className="projekt__liste" aria-label={texte.lvs.tabelle}>
-          {lvs.map((z) => {
-            const lv = z.leistungsverzeichnis;
-            return (
-              <li key={lv.id}>
-                <a
-                  href={hrefFuer(lvPfad(lv.id))}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    gehe(lvPfad(lv.id));
-                  }}
-                >
-                  {lv.name}
-                </a>
-                <span className="projekt__betrag" aria-label={`${texte.lvs.netto} ${lv.name}`}>
-                  {formatiereBetragDe(z.summen.gesamt.netto)} €
+          {lvs.map((lv) => (
+            <li key={lv.id}>
+              <Verweis pfad={lvPfad(lv.id)} text={lv.name} gehe={gehe} />
+              <NachtragKennzeichen nachtrag={lv.nachtrag} /> {/* Ticket 86 */}
+              {/* Ticket 90: Kennzeichen Muster-LV */}
+              {lv.vorlage === true ? (
+                <span className="projekt__kennzeichen" data-testid="kennzeichen-vorlage">
+                  {vorlageTexte.kennzeichen}
                 </span>
-                <Button
-                  groesse="sm"
-                  aria-label={`${texte.lvs.umbenennen}: ${lv.name}`}
-                  onClick={() => {
-                    setUmbenennen({ lv: z, name: lv.name });
-                  }}
-                >
-                  {texte.lvs.umbenennen}
-                </Button>
-                <Button
-                  groesse="sm"
-                  variante="gefahr"
-                  aria-label={`${htexte.loeschen.lvKnopf}: ${lv.name}`}
-                  onClick={() => {
-                    setLoeschen({ art: 'lv', lv: z });
-                  }}
-                >
-                  {htexte.loeschen.lvKnopf}
-                </Button>
-              </li>
-            );
-          })}
+              ) : null}
+              <LvNetto
+                key={nettoStand}
+                id={lv.id}
+                name={lv.name}
+                netto={netto.get(lv.id)}
+                nachladen={nachladen}
+              />
+              <Button
+                groesse="sm"
+                aria-label={`${texte.lvs.umbenennen}: ${lv.name}`}
+                onClick={() => {
+                  setUmbenennen({ lv, name: lv.name });
+                }}
+              >
+                {texte.lvs.umbenennen}
+              </Button>
+              <Button
+                groesse="sm"
+                variante="gefahr"
+                aria-label={`${htexte.loeschen.lvKnopf}: ${lv.name}`}
+                onClick={() => {
+                  void lvLaden(lv.id).then((z) => {
+                    if (z !== null) setLoeschen({ art: 'lv', lv: z });
+                  });
+                }}
+              >
+                {htexte.loeschen.lvKnopf}
+              </Button>
+            </li>
+          ))}
         </ul>
       )}
-
+      <AuftragsLvListe projekt={projekt} gehe={gehe} /> {/* Ticket 64 */}
       <form
         className="projekt__formular"
         onSubmit={(e) => void lvAnlegen(e)}
@@ -355,7 +368,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           </Button>
         </div>
       </form>
-
       <Dialog
         offen={loeschen !== null}
         onOffenChange={(o) => {
@@ -387,7 +399,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
             : htexte.loeschen.projektFrage(projekt.name, lvs.length)}
         </p>
       </Dialog>
-
       <FormDialog
         offen={stammdaten !== null}
         titel={texte.projekt.umbenennen}
@@ -411,7 +422,6 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           }}
         />
       </FormDialog>
-
       <FormDialog
         offen={umbenennen !== null}
         titel={texte.lvs.umbenennenTitel}

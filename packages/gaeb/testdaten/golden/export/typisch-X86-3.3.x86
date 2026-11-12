@@ -51,12 +51,12 @@
           <Num>No</Num>
         </BoQBkdn>
         <Totals>
-          <Total>55463.41</Total>
+          <Total>55465.59</Total>
           <DiscountPcnt>2.00</DiscountPcnt>
-          <TotAfterDisc>54354.14</TotAfterDisc>
+          <TotAfterDisc>54356.28</TotAfterDisc>
           <VAT>19.00</VAT>
-          <VATAmount>10327.29</VATAmount>
-          <TotalGross>64681.43</TotalGross>
+          <VATAmount>10327.69</VATAmount>
+          <TotalGross>64683.97</TotalGross>
         </Totals>
       </BoQInfo>
       <BoQBody>
@@ -356,11 +356,14 @@
                   </CompleteText>
                 </Description>
               </Item>
-              <Item ID="Pposition0012" RNoPart="0050" RNoIndex="A">
-                <Qty>38.750</Qty>
-                <QU>m³</QU>
-                <UP>14.300</UP>
-                <IT>554.13</IT>
+              <MarkupItem ID="Pposition0012" RNoPart="0050" RNoIndex="A">
+                <MarkupType>ListInSubQty</MarkupType>
+                <MarkupSubQty>
+                  <RefItem IDRef="Pposition0011"/>
+                </MarkupSubQty>
+                <ITMarkup>6544.88</ITMarkup>
+                <Markup>8.50</Markup>
+                <IT>556.31</IT>
                 <Description>
                   <CompleteText>
                     <DetailTxt>
@@ -379,7 +382,7 @@
                     </OutlineText>
                   </CompleteText>
                 </Description>
-              </Item>
+              </MarkupItem>
               <Item ID="Pposition0013" RNoPart="0060">
                 <Qty>3350.000</Qty>
                 <QU>kg</QU>
@@ -405,6 +408,8 @@
                 </Description>
               </Item>
               <Item ID="Pposition0014" RNoPart="0070">
+                <ALNGroupNo>1</ALNGroupNo>
+                <ALNSerNo>0</ALNSerNo>
                 <Qty>96.000</Qty>
                 <QU>m²</QU>
                 <UP>52.700</UP>
@@ -505,7 +510,7 @@
             </Itemlist>
           </BoQBody>
           <Totals>
-            <Total>25220.24</Total>
+            <Total>25222.42</Total>
           </Totals>
         </BoQCtgy>
         <BoQCtgy ID="Gtitel0003" RNoPart="03">

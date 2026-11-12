@@ -29,6 +29,12 @@ describe('Datum und Uhrzeit am Rand (N4)', () => {
     expect(datumLesen('2026-12-01')).toEqual({ ok: true, wert: '2026-12-01' });
     expect(datumLesen('31.02.2026').ok).toBe(false);
     expect(datumLesen('morgen').ok).toBe(false);
+    // Aus dem Druckdialog (Ticket 66, S3: eine Stelle für Datum in der App)
+    expect(datumLesen(' 1.2.2027 ')).toEqual({ ok: true, wert: '2027-02-01' });
+    expect(datumLesen('30.02.2026').ok).toBe(false);
+    expect(datumLesen('2026-13-01').ok).toBe(false);
+    expect(datumLesen('2026-02-30').ok).toBe(false);
+    expect(datumLesen('').ok).toBe(false);
     expect(datumDe('2026-12-01')).toBe('01.12.2026');
   });
 

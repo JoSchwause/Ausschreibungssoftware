@@ -4,13 +4,17 @@
 
 import type {
   AngebotId,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
   ChangeSet,
+  KostenermittlungId,
   Ergebnis,
   LeistungsverzeichnisId,
   LvStandId,
   Persistenzstatus,
   ProjektId,
   Protokolleintrag,
+  RechnungId,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
@@ -102,6 +106,23 @@ export function speicherUeberTransport(
     lvStaende: {
       auflisten: (lvId: LeistungsverzeichnisId) => aufruf('lvStaendeAuflisten', lvId),
       laden: (id: LvStandId) => aufruf('lvStandLaden', id),
+    },
+    auftragsLeistungsverzeichnisse: {
+      auflisten: (projektId: ProjektId) => aufruf('auftragsLvAuflisten', projektId),
+      laden: (id: AuftragsLeistungsverzeichnisId) => aufruf('auftragsLvLaden', id),
+    },
+    aufmasse: {
+      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) => aufruf('aufmasseAuflisten', auftragsLvId),
+      laden: (id: AufmassId) => aufruf('aufmassLaden', id),
+    },
+    rechnungen: {
+      auflisten: (auftragsLvId: AuftragsLeistungsverzeichnisId) =>
+        aufruf('rechnungenAuflisten', auftragsLvId),
+      laden: (id: RechnungId) => aufruf('rechnungLaden', id),
+    },
+    kostenermittlungen: {
+      auflisten: (projektId: ProjektId) => aufruf('kostenermittlungenAuflisten', projektId),
+      laden: (id: KostenermittlungId) => aufruf('kostenermittlungLaden', id),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,

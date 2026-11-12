@@ -10,14 +10,7 @@
 // geteilt: Das Geschriebene wandert auf den anderen Stapel, der Rest bleibt, wo er war. So passt jeder Stapel immer zum
 // gespeicherten Stand (der Stapel wird nicht beschädigt).
 
-import type {
-  AngebotChangeSet,
-  LvChangeSet,
-  ProjektChangeSet,
-  ProjektId,
-  Protokolleintrag,
-  ProtokollId,
-} from '@tethys/vertrag';
+import type { ChangeSet, ProjektId, Protokolleintrag, ProtokollId } from '@tethys/vertrag';
 
 /** Ein geschriebener Befehl, wie ihn Undo und Redo brauchen. */
 export interface Teil {
@@ -25,7 +18,8 @@ export interface Teil {
   readonly protokollId: ProtokollId;
   readonly projektId: ProjektId;
   readonly aggregat: Protokolleintrag['aggregat'];
-  readonly changeSet: LvChangeSet | ProjektChangeSet | AngebotChangeSet;
+  /** Jede Aggregatart des Vertrags; Umkehrung und Ziel je Art stehen in `arten.ts` (S7). */
+  readonly changeSet: ChangeSet;
 }
 
 /** Ein Undo-Schritt: die Teile in der Reihenfolge, in der sie geschrieben wurden. */

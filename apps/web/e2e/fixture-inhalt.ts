@@ -4,6 +4,7 @@
 // `packages/vertrag/src/fixtures-abbildung.test.ts`.
 
 import { readFileSync } from 'node:fs';
+import { schreibeGaeb } from '../../../packages/gaeb/src/index';
 import type {
   Betrag,
   Einheitspreis,
@@ -19,6 +20,7 @@ import type {
   PositionId,
   Prozent,
   TitelId,
+  Zuschlag,
 } from '@tethys/vertrag';
 
 interface FxKnoten {
@@ -30,12 +32,13 @@ interface FxKnoten {
   readonly kurztext?: string;
   readonly text?: string;
   readonly positionsart?: 'normal' | 'bedarf' | 'wahl' | 'zuschlag';
-  readonly menge?: string;
-  readonly einheit?: string;
-  readonly einheitspreis?: string;
+  // Ticket 51: Fixture-Format, mechanisch: an der Zuschlagsposition `null`, Satz und Bezug stehen in `zuschlag` (Vertragsform)
+  readonly menge?: string | null;
+  readonly einheit?: string | null;
+  readonly einheitspreis?: string | null;
   readonly bedarfMitGesamtbetrag?: boolean;
-  readonly bezugspositionId?: string;
   readonly grundpositionId?: string;
+  readonly zuschlag?: Zuschlag;
 }
 
 interface FxLv {
@@ -64,10 +67,6 @@ function knoten(k: FxKnoten, reihenfolge: number): Knoten {
   const art = k.positionsart ?? 'normal';
   const bedarf = k.bedarfMitGesamtbetrag === true ? 'mit-gesamtbetrag' : 'ohne-gesamtbetrag';
   const grundpositionId = (k.grundpositionId ?? null) as PositionId | null;
-  const bezug =
-    k.bezugspositionId === undefined
-      ? []
-      : [{ positionId: k.bezugspositionId as PositionId, teilmenge: null }];
   return {
     ...lage,
     art: 'position',
@@ -81,8 +80,7 @@ function knoten(k: FxKnoten, reihenfolge: number): Knoten {
       pauschal: false,
       zuschlagskennzeichen: false,
     },
-    zuschlag:
-      art === 'zuschlag' ? { prozentsatz: null, bezug: { art: 'positionen', positionen: bezug } } : null,
+    zuschlag: k.zuschlag ?? null, // Ticket 51: Fixture-Format, mechanisch
     kurztext: k.kurztext ?? '',
     langtext: [],
     menge: (k.menge ?? null) as Menge | null,
@@ -122,4 +120,18 @@ export function fixtureInhalt(name: string): LvInhalt {
       return knoten(k, r);
     }),
   };
+}
+
+/**
+ * Ticket 91 (D-64.1 zurückgenommen, Ticket 73): die Fixture als X83 3.3, geschrieben vom GAEB-Writer der App (`gaeb`),
+ * als Datei für „GAEB einlesen“. Datum und Uhrzeit fest (A2: kein `Date.now()` im Writer), damit die Datei je Lauf gleich ist.
+ */
+export function fixtureAlsX83(name: string): { name: string; mimeType: string; buffer: Buffer } {
+  const e = schreibeGaeb(fixtureInhalt(name), {
+    phase: 'X83',
+    version: '3.3',
+    erstellt: { datum: '2026-11-11', zeit: '12:00:00' },
+    programm: 'Tethys AVA (E2E)',
+  });
+  return { name: `${name}.x83`, mimeType: 'application/xml', buffer: Buffer.from(e.xml, 'utf8') };
 }

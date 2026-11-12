@@ -686,7 +686,7 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9): ZUSTAENDIGES_TICKET ist leer', () => {
+  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9, Ticket 56 den Mengenansatz, Ticket 71 Vertrag v1.4): ZUSTAENDIGES_TICKET ist leer', () => {
     expect(ZUSTAENDIGES_TICKET).toEqual({});
   });
 

@@ -235,6 +235,75 @@ describe('Texte', () => {
     erwarte(bild, 'langtext-leer', 'warnung', []);
   });
 
+  it('langtext-struktur-leer: leere Liste, Tabelle ohne Zeilen, Zeile ohne Zellen, auch verschachtelt (Ticket 56)', () => {
+    const text = [{ art: 'text' as const, text: 'x' }];
+    const z = lv([
+      pos('P1', 0, { langtext: [...text, { art: 'liste', geordnet: false, punkte: [] }] }),
+      pos('P2', 1, { langtext: [{ art: 'tabelle', zeilen: [] }] }),
+      pos('P3', 2, {
+        langtext: [
+          { art: 'tabelle', zeilen: [{ zellen: [{ spalten: 1, inhalt: text } as const] }, { zellen: [] }] },
+        ],
+      }),
+      pos('P4', 3, {
+        langtext: [
+          { art: 'liste', geordnet: true, punkte: [[{ art: 'liste', geordnet: false, punkte: [] }]] },
+        ],
+      }),
+      pos('P5', 4, {
+        langtext: [
+          { art: 'liste', geordnet: false, punkte: [text] },
+          {
+            art: 'tabelle',
+            zeilen: [{ zellen: [{ spalten: 1, inhalt: [{ art: 'tabelle', zeilen: [] }] }] }],
+          },
+          { art: 'liste', geordnet: false, punkte: [] },
+        ],
+      }),
+      {
+        art: 'hinweis',
+        id: id.hinweis('H1'),
+        elternId: id.eltern('T1'),
+        reihenfolge: 5,
+        text: [{ art: 'liste', geordnet: false, punkte: [] }],
+      },
+      pos('P6', 6, {
+        leitbeschreibung: {
+          unterbeschreibungen: [
+            {
+              nummer: '01',
+              kurztext: 'U',
+              langtext: [{ art: 'tabelle', zeilen: [] }],
+              menge: null,
+              einheit: null,
+            },
+          ],
+        },
+      }),
+    ]);
+    // Ein Befund je Text (Sprungziel: Knoten und Feld), auch wenn er mehrere leere Strukturen enthält (P5).
+    erwarte(z, 'langtext-struktur-leer', 'warnung', [
+      { knotenId: 'P1', feld: 'langtext' },
+      { knotenId: 'P2', feld: 'langtext' },
+      { knotenId: 'P3', feld: 'langtext' },
+      { knotenId: 'P4', feld: 'langtext' },
+      { knotenId: 'P5', feld: 'langtext' },
+      { knotenId: 'H1', feld: 'text' },
+      { knotenId: 'P6', feld: 'leitbeschreibung' },
+    ]);
+    expect(mit(z, 'langtext-struktur-leer')[4]?.meldung).toMatch(/Liste.*Tabelle|Tabelle.*Liste/);
+    // Gefüllte Strukturen und leere Zellen sind kein Befund (eine leere Zelle kann der Editor darstellen).
+    const voll = lv([
+      pos('P1', 0, {
+        langtext: [
+          { art: 'liste', geordnet: false, punkte: [text, []] },
+          { art: 'tabelle', zeilen: [{ zellen: [{ spalten: 2, inhalt: [] }] }] },
+        ],
+      }),
+    ]);
+    erwarte(voll, 'langtext-struktur-leer', 'warnung', []);
+  });
+
   it('hinweistext-leer: Hinweistext ohne Text', () => {
     const z = lv([pos('P1', 0), hinweis('H1', 'T1', 1, ''), hinweis('H2', 'T1', 2, 'Vorbemerkung')]);
     erwarte(z, 'hinweistext-leer', 'warnung', [{ knotenId: 'H1', feld: 'text' }]);

@@ -76,7 +76,7 @@ nicht das PDF.
 Bibliothek mit Strukturbaum prüfen lassen (kleiner Spike).
 **Empfehlung:** (a) für v1, als ADR 0012 festhalten; (c) vor O3 nachholen, falls ein Auftraggeber Tags verlangt.
 **Blockiert:** O1 (Welle 4), nicht M1.
-**Antwort:**
+**Antwort:** Annahme für Demo, Mensch bestätigt später: (a) pdfmake ungetaggt, ADR 0012 als Vorschlag (D-23).
 
 ### W-05 Vorläufige Annahmen aus Stufe 1 bestätigen
 

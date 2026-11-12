@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
 import { knotenZuBindung } from './zeilen';
+import { LEERES_SUMMENVORHER } from './summenvorher';
 
 const typisch = ladeFixture('typisch');
 const projektId = typisch.projekt.id;
@@ -93,7 +94,7 @@ function aendern(paare: readonly [Knoten, Knoten][]): LvChangeSet {
       geaendert: paare.map(([vorher, nachher]) => ({ vorher, nachher })),
       entfernt: [],
     },
-    summen: { positionen: [], gliederungen: [], gesamt: null },
+    summen: { positionen: [], gliederungen: [], gesamt: null, vorher: LEERES_SUMMENVORHER },
   };
 }
 

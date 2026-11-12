@@ -20,6 +20,7 @@ import type {
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
+import { mitMengenansatz } from './mengenansatz';
 import { ohneKnoten, indexVon } from './struktur';
 import type { Baumindex } from './struktur';
 import { summenAenderung } from './summen';
@@ -54,7 +55,11 @@ export function positionAendern(z: LvZustand, idx: Baumindex, alt: Position, neu
   return baueChangeSet(z, { geaendert, summen });
 }
 
-/** `null` ist „nicht gesetzt“ und erlaubt; sonst kanonische Schreibweise mit der Skala der Zahlenart. */
+/**
+ * `null` ist „nicht gesetzt“ und erlaubt; sonst kanonische Schreibweise mit der Skala der Zahlenart. Lesart (a) (v1.3,
+ * D-22, Ticket 56): Ändert der Befehl die Menge einer Position mit Mengenansatz, fällt der Ansatz im selben ChangeSet weg
+ * (die Menge ist dann von Hand gesetzt). Dieselbe Menge ändert nichts, auch nicht den Ansatz (D-56.2).
+ */
 export function mengeAendern(z: LvZustand, b: MengeAendern): Antwort {
   const f = positionFinden(z, b.positionId);
   if (!f.ok) return f;
@@ -64,7 +69,7 @@ export function mengeAendern(z: LvZustand, b: MengeAendern): Antwort {
   }
   const { idx, position } = f.wert;
   if (b.menge === position.menge) return ok(baueChangeSet(z, {}));
-  return ok(positionAendern(z, idx, position, { ...position, menge: b.menge }));
+  return ok(positionAendern(z, idx, position, mitMengenansatz({ ...position, menge: b.menge }, null)));
 }
 
 export function einheitspreisAendern(z: LvZustand, b: EinheitspreisAendern): Antwort {

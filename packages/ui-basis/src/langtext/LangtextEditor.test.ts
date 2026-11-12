@@ -156,4 +156,59 @@ describe('LangtextEditor', () => {
     expect(feld.getAttribute('contenteditable')).toBe('false');
     expect(feld.textContent).toContain('Beton C25/30');
   });
+
+  describe('Tabelle einfügen', () => {
+    const knopf = (name: string): HTMLButtonElement => {
+      const k = behaelter.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+      if (!k) throw new Error(`Knopf ${name} fehlt`);
+      return k;
+    };
+    const klick = (el: HTMLElement): void => {
+      act(() => {
+        el.click();
+      });
+    };
+    const setze = (beschriftung: string, wertNeu: string): void => {
+      const el = behaelter.querySelector<HTMLInputElement>(`input[aria-label="${beschriftung}"]`);
+      if (!el) throw new Error(`Feld ${beschriftung} fehlt`);
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(el, wertNeu);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    };
+
+    it('fügt eine Tabelle mit der gewählten Zeilen- und Spaltenzahl ein, formgültig und ohne Absatz davor', () => {
+      const { onBestaetigen, feld } = zeige([]);
+      fokus(feld);
+      klick(knopf('Tabelle einfügen'));
+      setze('Zeilen', '3');
+      setze('Spalten', '2');
+      klick(knopf('Einfügen'));
+      taste(feld, 'Enter', { ctrlKey: true });
+      expect(onBestaetigen).toHaveBeenCalledTimes(1);
+      const zelle = { spalten: 1, inhalt: [] };
+      expect(onBestaetigen).toHaveBeenCalledWith([
+        { art: 'tabelle', zeilen: [0, 1, 2].map(() => ({ zellen: [zelle, zelle] })) },
+      ]);
+    });
+
+    it('klemmt Eingaben außerhalb der Grenzen', () => {
+      const { onBestaetigen, feld } = zeige([]);
+      fokus(feld);
+      klick(knopf('Tabelle einfügen'));
+      setze('Zeilen', '0');
+      setze('Spalten', '999');
+      klick(knopf('Einfügen'));
+      taste(feld, 'Enter', { ctrlKey: true });
+      const t = onBestaetigen.mock.calls[0]?.[0][0];
+      if (t?.art !== 'tabelle') throw new Error('keine Tabelle');
+      expect(t.zeilen).toHaveLength(1);
+      expect(t.zeilen[0]?.zellen).toHaveLength(10);
+    });
+
+    it('bietet das Werkzeug im Nur-Lesen-Modus nicht an', () => {
+      zeige([], true);
+      expect(behaelter.querySelector('button[aria-label="Tabelle einfügen"]')).toBeNull();
+    });
+  });
 });

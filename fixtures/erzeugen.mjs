@@ -2,15 +2,20 @@
 // SPDX-FileCopyrightText: 2026 Tethys AVA contributors
 //
 // Erzeugt die Fixtures v1 (Ticket 19): winzig, typisch, typisch-angebote, gross, handbeispiele; zuschlag (Ticket 37).
+// Seit Ticket 51 tragen typisch, typisch-angebote und gross ihre Zuschlagspositionen in GAEB-Form (Satz und Bezug).
+// Ticket 69: je Bieter eine X84 unter angebote/ und Preisspiegel-Sollwerte in typisch-angebote.json.
+// Ticket 85: typisch-abrechnung.json, die Sollwerte des Tors M4 (D-38): Zuschlag, Nachtrag, Aufmaß, Rechnungen, Kosten.
 // Aufruf: node fixtures/erzeugen.mjs
 // Deterministisch: eigener Seed-PRNG, feste UUIDv7-foermige IDs, keine Zeit, kein Math.random().
 // Geld und Mengen werden nur mit BigInt gerechnet (siehe rechnen.mjs). Alle Texte sind erfunden.
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisser, berechneZuschlagSollwerte,
+  STELLEN, parse, format, gesamtpreis, summen, rundeHalfUp, berechneSollwerte, ausreisserSollwerte,
+  berechneZuschlagSollwerte, berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
+  kumulierteMengen, leistungsstandBerechnen, abschlagsketteBerechnen, sollIstBerechnen, kostenkontrolleBerechnen,
 } from './rechnen.mjs';
 
 const SCHEMA = 'fixture-v1';
@@ -25,7 +30,7 @@ const MASKE_KLEIN =
   'NN.NN.NNNN[I]: zwei Titelebenen zu je zwei Ziffern (die Fixture nutzt eine), Position vier Ziffern, Index ein Buchstabe';
 const MASKE_GROSS =
   'NN.NN.NN.NN.NN.NNNN: fünf Titelebenen zu je zwei Ziffern, Position vier Ziffern, kein Index';
-const AUSREISSER_SCHWELLE = 20; // Prozent, Glossar "Ausreisser" (Standard +-20 %)
+const AUSREISSER_SCHWELLE = 20; // Prozent, Glossar "Ausreisser" (Standard +-20 %, G-26, D-05)
 
 // ---------------------------------------------------------------- PRNG und IDs
 
@@ -120,8 +125,13 @@ function dokumentreihenfolge(wurzelId, knoten) {
   return aus;
 }
 
-/** Baut den LV samt Sollwerten. `eintraege` stehen in Dokumentreihenfolge; Eltern per Schluessel `k`. */
-function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske }) {
+/**
+ * Baut den LV samt Sollwerten. `eintraege` stehen in Dokumentreihenfolge; Eltern per Schluessel `k`. Eine
+ * Zuschlagsposition traegt `zuschlag: { satz, bezug: [Schluessel] }` (GAEB-Form, Bezugsform Liste, Ticket 51) und
+ * keine Menge, Einheit, EP. `gaebForm`: Sollwerte mit `berechneSollwerteGaeb` (Zuschlagsbetraege, Ausweise); sonst
+ * die Sollwerte von Ticket 19 (`winzig`, byte-gleich).
+ */
+function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske, gaebForm = false }) {
   const neueId = idFabrik(seed, startMs);
   const lvId = neueId();
   const idVon = new Map();
@@ -146,8 +156,19 @@ function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske })
       kurztext: e.kurztext, langtext: e.langtext, menge: e.menge, einheit: e.einheit, einheitspreis: e.ep,
     });
     if (e.positionsart === 'bedarf') k.bedarfMitGesamtbetrag = e.bedarfMitGesamtbetrag === true;
-    if (e.bezug) k.bezugspositionId = idVon.get(e.bezug);
     if (e.grund) k.grundpositionId = idVon.get(e.grund);
+    if (e.zuschlag) {
+      k.zuschlag = {
+        prozentsatz: e.zuschlag.satz,
+        bezug: {
+          art: 'positionen',
+          positionen: e.zuschlag.bezug.map((b) => {
+            if (!idVon.has(b)) throw new Error(`Unbekannte Bezugsposition ${b}`);
+            return { positionId: idVon.get(b), teilmenge: null };
+          }),
+        },
+      };
+    }
     return k;
   });
   const lv = {
@@ -162,7 +183,9 @@ function baueLv({ name, seed, startMs, mwstSatz, nachlass, eintraege, ozMaske })
   };
   // Dokumentreihenfolge: Eltern vor Kindern, Geschwister in Arrayreihenfolge. IDs und Werte bleiben, nur die Lage aendert sich.
   lv.knoten = dokumentreihenfolge(lvId, knoten);
-  lv.sollwerte = berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
+  lv.sollwerte = gaebForm
+    ? berechneSollwerteGaeb(lv.knoten, preiseDesLv, nachlass, mwstSatz)
+    : berechneSollwerte(lv.knoten, (k) => parse(k.einheitspreis, STELLEN.ep), nachlass, mwstSatz);
   return lv;
 }
 
@@ -189,10 +212,11 @@ function erzeugeWinzig() {
   return lv;
 }
 
-/** EP in kanonischer Schreibweise (3 Stellen) und Menge (3 Stellen). */
+/** EP in kanonischer Schreibweise (3 Stellen) und Menge (3 Stellen); `null` bleibt `null` (Zuschlagsposition). */
 function kanonisch(e) {
   if (e.art !== 'position') return e;
-  return { ...e, menge: format(parse(e.menge, STELLEN.menge), STELLEN.menge), ep: format(parse(e.ep, STELLEN.ep), STELLEN.ep) };
+  const k = (v, n) => (v === null ? null : format(parse(v, n), n));
+  return { ...e, menge: k(e.menge, STELLEN.menge), ep: k(e.ep, STELLEN.ep) };
 }
 
 // ---------------------------------------------------------------- typisch
@@ -215,8 +239,10 @@ function erzeugeTypisch() {
   e.push(P('p0230', 't2', '02.0030', 'Baugrube verfüllen', 'Arbeitsraum mit gelagertem Aushub verfüllen und verdichten.', '140.000', 'm³', '5.25'));
   e.push(P('p0240', 't2', '02.0040', 'Sauberkeitsschicht', 'Sauberkeitsschicht aus Magerbeton herstellen.', '96.000', 'm²', '11.48'));
   e.push(P('p0250', 't2', '02.0050', 'Fundamente betonieren', 'Streifenfundamente aus Ortbeton herstellen.', '38.750', 'm³', '168.90'));
-  e.push(P('p0250a', 't2', '02.0050', 'Zuschlag Frosteinbau', 'Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.', '38.750', 'm³', '14.30',
-    { positionsart: 'zuschlag', ozIndex: 'A', bezug: 'p0250' }));
+  // GAEB-Form (Ticket 51, E-03): Satz 8,50 % auf die Liste mit 02.0050; Menge, Einheit und EP entfallen.
+  // Betrag = round_half_up(6.544,88 x 8,50 / 100, 2) = 556,31 (vorher Altform 38,750 x 14,30 = 554,13).
+  e.push(P('p0250a', 't2', '02.0050', 'Zuschlag Frosteinbau', 'Mehraufwand für Betonieren bei Frost, zusätzlich zur Position 02.0050.', null, null, null,
+    { positionsart: 'zuschlag', ozIndex: 'A', zuschlag: { satz: '8.50', bezug: ['p0250'] } }));
   e.push(P('p0260', 't2', '02.0060', 'Betonstahl verlegen', 'Betonstahl liefern, schneiden, biegen und verlegen.', '3350.000', 'kg', '1.64'));
   e.push(P('p0270', 't2', '02.0070', 'Bodenplatte herstellen', 'Bodenplatte aus Ortbeton herstellen.', '96.000', 'm²', '52.70'));
   e.push(P('p0270a', 't2', '02.0070', 'Bodenplatte wasserundurchlässig', 'Alternative zur Position 02.0070: Bodenplatte in wasserundurchlässiger Ausführung.', '96.000', 'm²', '61.25',
@@ -243,6 +269,7 @@ function erzeugeTypisch() {
     nachlass: { art: 'prozent', wert: '2.00' },
     ozMaske: MASKE_KLEIN,
     eintraege: e.map(kanonisch),
+    gaebForm: true,
   });
 }
 
@@ -260,12 +287,12 @@ function erzeugeAngebote(lv) {
   const bieterSpec = [
     { name: 'Bieter A', basis: 1000, nachlass: null, nicht: [], faktor: {}, nullEp: [] },
     { name: 'Bieter B', basis: 1060, nachlass: { art: 'prozent', wert: '3.00' }, nicht: ['03.0070'], faktor: {}, nullEp: [] },
-    // Ausreisser: zwei Positionen mit 150 % des Basispreises; 0,000 ist ein angebotener Preis (nicht "nicht angeboten").
+    // Ausreisser: zwei Positionen mit 150 % des Basispreises; 0,000 ist ein angebotener Preis (nicht "nicht angeboten"),
+    // nach D-05 ein Nullpreis und nie Ausreisser.
     { name: 'Bieter C', basis: 930, nachlass: null, nicht: [], faktor: { '02.0050': 1500, '03.0030': 1500 }, nullEp: ['03.0080'] },
   ];
   const lvId = lv.id;
   const bieter = bieterSpec.map((b) => ({ id: neueId(), name: b.name }));
-  const gpMaps = [];
   const angebote = bieterSpec.map((b, i) => {
     const nicht = new Set(b.nicht.map(jeOz));
     const nullEp = new Set(b.nullEp.map(jeOz));
@@ -274,21 +301,33 @@ function erzeugeAngebote(lv) {
       // Zufallsstreuung immer ziehen, damit die Folge nicht von Sonderfaellen abhaengt: -30..+30 Promille
       const streuung = rng.int(61) - 30;
       if (nicht.has(p.id)) return { positionId: p.id, status: 'nicht-angeboten' };
-      if (nullEp.has(p.id)) return { positionId: p.id, status: 'angeboten', einheitspreis: format(0n, STELLEN.ep) };
       const f = BigInt(faktor.get(p.id) ?? b.basis + streuung);
+      if (p.zuschlag) {
+        // Zuschlagsposition (Ticket 51): der Bieter bietet einen Satz statt eines EP (Vertrag v1.2 `zuschlagssatz`),
+        // Satz des LV x Promille / 1000, auf 2 Stellen gerundet. Kein EP in der Fixture (der Platzhalter `0.000`
+        // des Vertrags ist kein Preis; ihn setzt der Testhelfer beim Abbilden).
+        const satz = rundeHalfUp(parse(p.zuschlag.prozentsatz, STELLEN.prozent) * f, STELLEN.prozent + 3, STELLEN.prozent);
+        return { positionId: p.id, status: 'angeboten', zuschlagssatz: format(satz, STELLEN.prozent) };
+      }
+      if (nullEp.has(p.id)) return { positionId: p.id, status: 'angeboten', einheitspreis: format(0n, STELLEN.ep) };
       const ep = rundeHalfUp(parse(p.einheitspreis, STELLEN.ep) * f, STELLEN.ep + 3, STELLEN.ep); // EP x Promille / 1000
       return { positionId: p.id, status: 'angeboten', einheitspreis: format(ep, STELLEN.ep) };
     });
-    const epVon = new Map(zeilen.map((z) => [z.positionId, z.status === 'angeboten' ? parse(z.einheitspreis, STELLEN.ep) : null]));
-    const gpMap = new Map();
-    const soll = berechneSollwerte(lv.knoten, (k) => epVon.get(k.id), b.nachlass, lv.mwstSatz, gpMap);
-    gpMaps.push(gpMap);
+    const preisVon = new Map(zeilen.map((z) => [z.positionId, z.status !== 'angeboten' ? null : {
+      ep: z.einheitspreis === undefined ? null : parse(z.einheitspreis, STELLEN.ep),
+      satz: z.zuschlagssatz === undefined ? null : parse(z.zuschlagssatz, STELLEN.prozent),
+    }]));
+    const soll = berechneSollwerteGaeb(lv.knoten, (k) => preisVon.get(k.id), b.nachlass, lv.mwstSatz);
     return { id: neueId(), bieterId: bieter[i].id, nachlass: b.nachlass, positionen: zeilen, sollwerte: soll };
   });
-  const flags = ausreisser(gpMaps, AUSREISSER_SCHWELLE);
+  // Ticket 75: nach D-05 neu gerechnet (vorher GP-Vergleich mit Nullpreisen und mindestens 3 Werten). Der Schluessel
+  // bleibt, damit Verbraucher ihn weiter finden.
+  const flags = ausreisserSollwerte(lv.knoten, angebote, AUSREISSER_SCHWELLE);
   const ausreisserAnnahmeA7 = {
     schwellePromille: String(AUSREISSER_SCHWELLE * 10),
-    regel: 'Annahme A7 im README: |GP - Mittel| / Mittel > Schwelle; Mittel aus allen Angeboten, die die Position angeboten haben, mindestens 3 Werte.',
+    regel: 'D-05 (README A7): je Position der EP des Bieters, an einer Zuschlagsposition sein Betrag (D-36.1, D-44.1); '
+      + 'Mittel nur über Werte > 0, Nullpreis und „nicht angeboten“ nie Ausreißer; ab 2 Werten > 0 Ausreißer, wenn '
+      + '|Wert - Mittel| / Mittel > Schwelle.',
     jeAngebot: Object.fromEntries(angebote.map((a, i) => [a.id, flags[i]])),
   };
   return {
@@ -299,7 +338,140 @@ function erzeugeAngebote(lv) {
     bieter,
     angebote,
     ausreisserAnnahmeA7,
+    preisspiegel: preisspiegelDerAngebote(lv, bieter, angebote),
   };
+}
+
+/** Dateiname der X84 eines Bieters relativ zu `fixtures/` (Ticket 69): „Bieter A“ -> `angebote/typisch-bieter-a.x84`. */
+const x84Datei = (name) => `angebote/typisch-${name.toLowerCase().replace(/\s+/g, '-')}.x84`;
+
+/**
+ * Preisspiegel-Sollwerte (Ticket 69, additiv): je Bieter Datei, Summen, Bedarfs- und Wahlsumme und Titelsummen (Titel über die OZ, weil ein
+ * per X83 eingelesenes LV andere IDs hat), dazu Rang und virtuelle Bieter fuer alle drei Angebote und jedes Paar
+ * (das Tor M3 liest zwei Dateien ein). Gerechnet in `rechnen.mjs` (`preisspiegelSollwerte`), nie aus `vergabe`.
+ */
+function preisspiegelDerAngebote(lv, bieter, angebote) {
+  const titelOz = new Map(lv.knoten.filter((k) => k.art === 'titel').map((k) => [k.id, k.ordnungszahl]));
+  const auswahlen = [[0, 1, 2], [0, 1], [0, 2], [1, 2]];
+  return {
+    regel: 'Ticket 69, README „Preisspiegel-Sollwerte“: Rang nach Netto nach Nachlass (1, 1, 3); virtuelle Bieter je '
+      + 'eingehender Position über Werte > 0 (EP, an Zuschlagspositionen der Betrag), Mittel = Summe / Anzahl '
+      + 'kaufmännisch auf 3 (EP) bzw. 2 Stellen (Betrag), Netto ohne Nachlass (D-05, D-36.1, D-44.1).',
+    bieter: angebote.map((a, i) => ({
+      angebotId: a.id,
+      bieterId: a.bieterId,
+      name: bieter[i].name,
+      datei: x84Datei(bieter[i].name),
+      summen: a.sollwerte.summen,
+      // Bedarfs- und Wahlsumme des Angebots (F4, Review Welle 4 P1): ausgewiesen, nicht im Netto.
+      ausweise: a.sollwerte.ausweise.gesamt,
+      titel: Object.fromEntries(Object.entries(a.sollwerte.titel).map(([id, t]) => [titelOz.get(id), t.summe])),
+    })),
+    vergleiche: auswahlen.map((ix) => preisspiegelSollwerte(lv.knoten, ix.map((i) => angebote[i]), lv.sollwerte)),
+  };
+}
+
+// ---------------------------------------------------------------- X84 der Angebote (Ticket 69)
+
+// Eigener, kleiner XML-Baustein, unabhaengig vom Writer in `packages/gaeb`. Form nach den amtlichen X84
+// (fixtures/extern/bvbs/3.3-*) und dem X84-Leser (Ticket 45): je Position nur `UP` und `IT`, an der Zuschlagsposition
+// `ITMarkup`, `Markup`, `IT`; „nicht angeboten“ ist eine Zeile ohne `UP` (Ticket 45); der Nachlass des Angebots steht
+// in `BoQInfo/Totals`. Feste Zeitangaben (deterministisch).
+
+const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Element: `inhalt` ist ein Text, eine Liste von Elementen oder fehlt (leeres Element). */
+const xe = (name, inhalt, attrs = {}) => ({ name, inhalt, attrs });
+
+function xmlZeilen(e, einzug = '') {
+  const a = Object.entries(e.attrs).map(([k, v]) => ` ${k}="${xmlEsc(v)}"`).join('');
+  if (e.inhalt === undefined) return [`${einzug}<${e.name}${a}/>`];
+  if (!Array.isArray(e.inhalt)) return [`${einzug}<${e.name}${a}>${xmlEsc(e.inhalt)}</${e.name}>`];
+  return [`${einzug}<${e.name}${a}>`, ...e.inhalt.flatMap((k) => xmlZeilen(k, `${einzug}  `)), `${einzug}</${e.name}>`];
+}
+
+/** BoQBkdn aus der Fixture-Maske `NN.NN.NNNN[I]: …` (wie der X83-Export von `typisch`: Index alphanumerisch). */
+function boqBkdn(ozMaske) {
+  const muster = ozMaske.split(':')[0];
+  const teile = muster.replace('[I]', '').split('.');
+  const stufe = (typ, laenge, num) => xe('BoQBkdn', [xe('Type', typ), xe('Length', String(laenge)), xe('Num', num)]);
+  return [
+    ...teile.slice(0, -1).map((t) => stufe('BoQLevel', t.length, 'Yes')),
+    stufe('Item', teile.at(-1).length, 'Yes'),
+    ...(muster.includes('[I]') ? [stufe('Index', 1, 'No')] : []),
+  ];
+}
+
+/** Eine Angebotsdatei X84 (GAEB DA XML 3.3) zu einem Angebot aus `typisch-angebote.json`. */
+function schreibeX84(lv, angebot, bieterName) {
+  const s = angebot.sollwerte;
+  const zeilen = new Map(angebot.positionen.map((z) => [z.positionId, z]));
+  const kinder = new Map();
+  for (const k of lv.knoten) {
+    if (!kinder.has(k.parentId)) kinder.set(k.parentId, []);
+    kinder.get(k.parentId).push(k);
+  }
+  let nr = 0;
+  const gaebId = (praefix) => `${praefix}${String(++nr).padStart(4, '0')}`;
+  const letzterTeil = (oz) => oz.split('.').at(-1);
+
+  const zeile = (p) => {
+    const attrs = { ID: gaebId('P'), RNoPart: letzterTeil(p.ordnungszahl), ...(p.ozIndex ? { RNoIndex: p.ozIndex } : {}) };
+    const z = zeilen.get(p.id);
+    if (z.status !== 'angeboten') return xe('Item', undefined, attrs);
+    const soll = s.positionen[p.id];
+    if (p.zuschlag) {
+      return xe('MarkupItem', [
+        xe('ITMarkup', s.zuschlaege[p.id].basis), xe('Markup', z.zuschlagssatz), xe('IT', soll.gp),
+      ], attrs);
+    }
+    return xe('Item', [xe('UP', z.einheitspreis), xe('IT', soll.gp)], attrs);
+  };
+  const koerper = (elternId) => {
+    const k = (kinder.get(elternId) ?? []).filter((x) => x.art !== 'hinweis'); // Hinweise traegt das LV, nicht das Angebot
+    const titel = k.filter((x) => x.art === 'titel');
+    if (titel.length > 0 && titel.length < k.length) throw new Error('Titel und Positionen auf einer Ebene');
+    if (titel.length > 0) {
+      return titel.map((t) => {
+        const attrs = { ID: gaebId('G'), RNoPart: letzterTeil(t.ordnungszahl) }; // IDs in Dokumentreihenfolge
+        return xe('BoQCtgy', [xe('BoQBody', koerper(t.id)), xe('Totals', [xe('Total', s.titel[t.id].summe)])], attrs);
+      });
+    }
+    return [xe('Itemlist', k.map(zeile))];
+  };
+
+  const totals = [xe('Total', s.summen.netto)];
+  if (angebot.nachlass) {
+    totals.push(xe(angebot.nachlass.art === 'prozent' ? 'DiscountPcnt' : 'DiscountAmt', angebot.nachlass.wert));
+    totals.push(xe('TotAfterDisc', s.summen.nettoNachNachlass));
+  }
+  totals.push(xe('VAT', lv.mwstSatz), xe('VATAmount', s.summen.mwst), xe('TotalGross', s.summen.brutto));
+
+  const gaeb = xe('GAEB', [
+    xe('GAEBInfo', [
+      xe('Version', '3.3'), xe('VersDate', '2021-05'), xe('Date', '2026-01-01'), xe('Time', '12:00:00'),
+      xe('ProgSystem', 'Tethys AVA Fixtures (fixtures/erzeugen.mjs)'),
+    ]),
+    xe('PrjInfo', [xe('NamePrj', lv.name)]),
+    xe('Award', [
+      xe('DP', '84'),
+      xe('AwardInfo', [xe('Cur', 'EUR'), xe('CurLbl', 'Euro')]),
+      xe('CTR', [xe('Address', [xe('Name1', bieterName)])]),
+      xe('BoQ', [
+        xe('BoQInfo', [xe('Name', lv.name), ...boqBkdn(lv.ozMaske), xe('Totals', totals)]),
+        xe('BoQBody', koerper(lv.id)),
+      ], { ID: 'Q0001' }),
+    ]),
+  ], { xmlns: 'http://www.gaeb.de/GAEB_DA_XML/DA84/3.3' });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${xmlZeilen(gaeb).join('\n')}\n`;
+}
+
+/** Je Bieter eine X84 (Dateiname -> Inhalt). */
+function erzeugeX84(lv, set) {
+  return Object.fromEntries(set.preisspiegel.bieter.map((b) => {
+    const angebot = set.angebote.find((a) => a.id === b.angebotId);
+    return [b.datei, schreibeX84(lv, angebot, b.name)];
+  }));
 }
 
 // ---------------------------------------------------------------- gross
@@ -314,6 +486,8 @@ const EINHEITEN = ['m', 'm²', 'm³', 'St', 'kg', 'h', 'psch'];
 
 function erzeugeGross() {
   const rng = prng('fixtures-v1/gross');
+  // Eigener Strom fuer die Zuschlagssaetze (Ticket 51), damit alle uebrigen Werte gleich bleiben: 1,00 bis 15,00 %.
+  const satzRng = prng('fixtures-v1/gross/zuschlagssatz');
   const wahl = (liste) => liste[rng.int(liste.length)];
   const e = [];
   const ebenen = [5, 3, 3, 3, 3]; // Titel je Ebene: 5 * 3 * 3 * 3 * 3 = 405 Titel der 5. Ebene
@@ -346,8 +520,15 @@ function erzeugeGross() {
       if (art === 'bedarf-ohne') Object.assign(extra, { positionsart: 'bedarf', bedarfMitGesamtbetrag: false });
       else if (art === 'bedarf-mit') Object.assign(extra, { positionsart: 'bedarf', bedarfMitGesamtbetrag: true });
       else if (art === 'wahl') Object.assign(extra, { positionsart: 'wahl', grund: letzteNormal });
-      else if (art === 'zuschlag') Object.assign(extra, { positionsart: 'zuschlag', bezug: letzteNormal });
-      e.push(P(pk, key, `${teile.join('.')}.${String((i + 1) * 10).padStart(4, '0')}`, kurz, lang, menge, wahl(EINHEITEN), ep, extra));
+      else if (art === 'zuschlag') {
+        const satz = format(BigInt(100 + satzRng.int(1401)), STELLEN.prozent);
+        Object.assign(extra, { positionsart: 'zuschlag', zuschlag: { satz, bezug: [letzteNormal] } });
+      }
+      const einheit = wahl(EINHEITEN); // immer ziehen, damit die Folge gleich bleibt
+      const oz = `${teile.join('.')}.${String((i + 1) * 10).padStart(4, '0')}`;
+      // Zuschlagsposition in GAEB-Form (Ticket 51): Menge, Einheit und EP gezogen, aber nicht gesetzt.
+      if (art === 'zuschlag') e.push(P(pk, key, oz, kurz, lang, null, null, null, extra));
+      else e.push(P(pk, key, oz, kurz, lang, menge, einheit, ep, extra));
       if (art === 'normal') letzteNormal = pk;
     }
   });
@@ -359,6 +540,7 @@ function erzeugeGross() {
     nachlass: { art: 'prozent', wert: '1.50' },
     ozMaske: MASKE_GROSS,
     eintraege: e,
+    gaebForm: true,
   });
 }
 
@@ -462,24 +644,314 @@ function erzeugeZuschlag() {
   return lv;
 }
 
+// ---------------------------------------------------------------- M4: Abrechnung zu typisch (Ticket 85)
+
+// Eingaben des M4-Wegs (D-38), alle erfunden. Die Formel-91-Zeilen tragen ihr Ergebnis von Hand (Rechenweg im Kommentar);
+// der Selbsttest rechnet jeden Ausdruck eigens nach. Kostengruppen nur als Nummer, ohne Bezeichnung der Norm (G-16).
+const M4 = {
+  bieter: 'Bieter B', // 3,00 % Nachlass (D-38); keine Wahl gewählt (D-85.1)
+  nachtrag: {
+    nummer: 'N01',
+    titel: 'Zusatzleistungen Gründung (erfunden)',
+    positionen: [
+      {
+        oz: '01.0010', kurztext: 'Bodenaustausch unter Fundamenten', menge: '24.000', einheit: 'm³', ep: '38.437',
+        langtext: 'Nicht tragfähigen Boden unter den Fundamenten ausheben und durch verdichteten Kies ersetzen (erfunden).',
+      },
+      {
+        oz: '01.0020', kurztext: 'Kernbohrung Hausanschluss', menge: '6.000', einheit: 'St', ep: '87.125',
+        langtext: 'Kernbohrung durch die Bodenplatte für die Hausanschlüsse herstellen (erfunden).',
+      },
+    ],
+  },
+  // Kostengruppe je OZ des Auftrags-LV nach dem Nachtrag; fehlt: ohne Kostengruppe (03.0070, 03.0080, 04.01.0020).
+  // Ebene 3 unter verschiedenen Ebene-2-Gruppen (214, 311, 322, 352, 391), eine auf Ebene 2 (340).
+  kostengruppen: {
+    '01.0010': '391', '01.0020': '391', '01.0030': '391', '01.0040': '391', '01.0050': '391', '01.0060': '214',
+    '02.0010': '311', '02.0020': '311', '02.0030': '311', '02.0040': '322', '02.0050': '322', '02.0050A': '322',
+    '02.0060': '322', '02.0070': '322', '02.0080': '322', '02.0090': '322',
+    '03.0010': '340', '03.0020': '340', '03.0030': '352', '03.0040': '340', '03.0050': '340', '03.0060': '352',
+    '04.01.0010': '322',
+  },
+  // Kostenberechnung als Budget (netto), Summe 60.900,00; 330 steht nur im Budget.
+  budget: [
+    ['214', '1100.00'], ['311', '4600.00'], ['322', '21800.00'], ['330', '3000.00', 'nur im Budget (erfunden)'],
+    ['340', '22500.00'], ['352', '2700.00'], ['391', '5200.00'],
+  ],
+  // Zeilen: [Ausdruck, Ergebnis von Hand]; `menge` statt `zeilen`: von Hand ohne Ansatz.
+  blatt1: [
+    { oz: '01.0010', zeilen: [['0,5', '0.500']] }, // halbe Pauschale
+    { oz: '01.0020', zeilen: [['2*(25,5+17,75)', '86.500']] }, // 2 x 43,25
+    { oz: '02.0010', zeilen: [['17*21*0,25', '89.250']] }, // 357 x 0,25
+    { oz: '02.0040', zeilen: [['12*9', '108.000']] }, // 112,50 % von 96,000: Soll/Ist-Befund
+    { oz: '02.0050', zeilen: [['2*(12+9)*0,6*0,8', '20.160'], ['2,5*1,75*0,3', '1.313']] }, // 42 x 0,48; 1,3125 -> 1,313
+    { oz: '04.01.0010', zeilen: [['6*4*0,5', '12.000']] }, // Nachtragsposition
+  ],
+  blatt2: [
+    { oz: '01.0040', zeilen: [['2*3,5', '7.000']] }, // Bedarf, zählt aufgemessen (D-34 (1))
+    { oz: '02.0010', zeilen: [['6*5,5*0,3', '9.900']] }, // 33 x 0,3
+    { oz: '02.0050', zeilen: [['2*(6+4,5)*0,6*0,8', '10.080']] }, // 21 x 0,48
+    { oz: '03.0010', zeilen: [['(12,5+8,25)*2,75*2', '114.125']] }, // 20,75 x 5,5
+    { oz: '04.01.0010', zeilen: [['6*4*0,6', '14.400']] }, // kumuliert 26,400 = genau 110 %, kein Befund (streng)
+    { oz: '04.01.0020', menge: '4.000' }, // von Hand, ohne Ansatz
+  ],
+  // Nach der Freigabe von AR 1: 02.0010 auf Blatt 1 mit 20 m statt 21 m Breite (17 x 20 x 0,25 = 85,000).
+  korrektur: { oz: '02.0010', zeilen: [['17*20*0,25', '85.000']] },
+  umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50' }],
+  sicherheitSatz: '5.00',
+};
+
+/**
+ * Die M4-Fixture (Ticket 85, D-38): Zuschlag an Bieter B (D-21), Nachtrag N01 (D-35), zwei Aufmaßblätter und eine
+ * Korrektur, AR 1 (freigegeben, Zahlbetrag eingefroren) und AR 2 vor und nach der Korrektur (D-34), Soll/Ist und
+ * Kostenkontrolle (D-37). Alle Sollwerte aus `rechnen.mjs`, nie aus `vergabe`, `abrechnung`, `kosten` oder `mengen`.
+ */
+function erzeugeAbrechnung(lv, set) {
+  const neueId = idFabrik('fixtures-v1/typisch-abrechnung', 1767225600000 + 3_000_000);
+  const projektId = neueId();
+  const auftragsLvId = neueId();
+  const nachtragsLvId = neueId();
+  const nachtragTitelId = neueId();
+  const nachtragPosIds = M4.nachtrag.positionen.map(() => neueId());
+  const nachtragsangebotId = neueId();
+  const gliederungId = neueId();
+  const blattIds = [neueId(), neueId()];
+  const rechnungIds = [neueId(), neueId()];
+  const kostenermittlungId = neueId();
+  const MWST = lv.mwstSatz;
+  const oz = (k) => k.ordnungszahl + (k.ozIndex ?? '');
+
+  // 1. Zuschlag (D-21): ohne Wahl entfällt die Alternative, die Grundposition bleibt; Bedarf bleibt Bedarf; die nicht
+  // angebotene Position bekommt keinen Preis. Grundlage sind EP, Zuschlagssatz und Nachlass von Bieter B.
+  const bieter = set.bieter.find((b) => b.name === M4.bieter);
+  const angebot = set.angebote.find((a) => a.bieterId === bieter.id);
+  const entfallen = lv.knoten.filter((k) => k.art === 'position' && k.positionsart === 'wahl').map((k) => k.id);
+  const knotenAuftrag = lv.knoten.filter((k) => !entfallen.includes(k.id));
+  const preis = new Map(angebot.positionen.map((z) => [z.positionId, z.status !== 'angeboten' ? null : {
+    ep: z.einheitspreis === undefined ? null : parse(z.einheitspreis, STELLEN.ep),
+    satz: z.zuschlagssatz === undefined ? null : parse(z.zuschlagssatz, STELLEN.prozent),
+  }]));
+  const sollZuschlag = berechneSollwerteGaeb(knotenAuftrag, (k) => preis.get(k.id), angebot.nachlass, MWST);
+
+  // 2. Nachtrag N01 (D-35): Nachtrags-LV ohne Schätzpreise, Angebot des Auftragnehmers mit EP.
+  const nachtragKnoten = [
+    { id: nachtragTitelId, parentId: nachtragsLvId, art: 'titel', ordnungszahl: '01', kurztext: M4.nachtrag.titel },
+    ...M4.nachtrag.positionen.map((p, i) => ({
+      id: nachtragPosIds[i], parentId: nachtragTitelId, art: 'position', positionsart: 'normal', ordnungszahl: p.oz,
+      kurztext: p.kurztext, langtext: p.langtext, menge: p.menge, einheit: p.einheit, einheitspreis: null,
+    })),
+  ];
+  const nachtragsangebotZeilen = M4.nachtrag.positionen.map((p, i) => ({
+    positionId: nachtragPosIds[i], status: 'angeboten', einheitspreis: p.ep,
+  }));
+  for (const z of nachtragsangebotZeilen) preis.set(z.positionId, { ep: parse(z.einheitspreis, STELLEN.ep), satz: null });
+  // Übernahme (D-35, D-85.2): Titel „Nachtrag N01“ mit der nächsten freien OZ der obersten Stufe ans Ende der obersten
+  // Ebene; darunter der Baum des Nachtrags mit seinen Kennungen, OZ mit dieser davor, EP aus dem Angebot.
+  const oben = lv.knoten.filter((k) => k.art === 'titel' && k.parentId === lv.id);
+  const ozNeu = String(Math.max(...oben.map((k) => Number(k.ordnungszahl))) + 1).padStart(2, '0');
+  const uebernahmeKnoten = [
+    { id: gliederungId, parentId: auftragsLvId, art: 'titel', ordnungszahl: ozNeu, kurztext: `Nachtrag ${M4.nachtrag.nummer}` },
+    ...nachtragKnoten.map((k) => ({
+      ...k,
+      parentId: k.parentId === nachtragsLvId ? gliederungId : k.parentId,
+      ordnungszahl: `${ozNeu}.${k.ordnungszahl}`,
+      ...(k.art === 'position' ? { einheitspreis: format(preis.get(k.id).ep, STELLEN.ep) } : {}),
+    })),
+  ];
+  const knotenNachher = [...knotenAuftrag, ...uebernahmeKnoten];
+  const sollNachtrag = berechneSollwerteGaeb(knotenNachher, (k) => preis.get(k.id), angebot.nachlass, MWST);
+
+  // Positionen des Auftrags-LV nach dem Nachtrag (Dokumentreihenfolge) mit Kostengruppe; Rechengrundlage je Position.
+  const positionen = knotenNachher.filter((k) => k.art === 'position');
+  const posListe = positionen.map((k) => ({
+    positionId: k.id, oz: oz(k), kurztext: k.kurztext, kostengruppe: M4.kostengruppen[oz(k)] ?? null,
+  }));
+  const idVonOz = new Map(posListe.map((p) => [p.oz, p.positionId]));
+  const rechenPositionen = positionen.map((k) => ({
+    id: k.id,
+    ep: preis.get(k.id)?.ep ?? null,
+    zuschlag: k.zuschlag
+      ? { satz: preis.get(k.id).satz, bezug: k.zuschlag.bezug.positionen.map((b) => b.positionId) }
+      : null,
+  }));
+
+  // 3. Kostenberechnung als Budget
+  const kostenermittlung = {
+    id: kostenermittlungId,
+    projektId,
+    stufe: 'kostenberechnung',
+    name: 'Kostenberechnung (erfunden)',
+    eintraege: M4.budget.map(([nummer, betrag, bemerkung]) => (bemerkung ? { nummer, betrag, bemerkung } : { nummer, betrag })),
+  };
+
+  // 4. Aufmaßblätter (Vertragsform, Nummern als Text, D-85.4) und Korrektur
+  const zeile = (r) => {
+    const positionId = idVonOz.get(r.oz);
+    if (!positionId) throw new Error(`Position ${r.oz} fehlt im Auftrags-LV`);
+    if (!r.zeilen) return { positionId, mengenansatz: null, menge: r.menge };
+    const menge = r.zeilen.reduce((s, [, erg]) => s + parse(erg, STELLEN.menge), 0n);
+    return {
+      positionId,
+      mengenansatz: r.zeilen.map(([ausdruck], i) => ({ zeile: String(i + 1), formel: '91', ausdruck, variable: null })),
+      menge: format(menge, STELLEN.menge),
+    };
+  };
+  const ergebnisse = (zeilen) => Object.fromEntries(
+    zeilen.filter((r) => r.zeilen).map((r) => [idVonOz.get(r.oz), r.zeilen.map(([, erg]) => erg)]),
+  );
+  const blatt = (i, datum, zeilen) => ({
+    aufmass: {
+      id: blattIds[i], projektId, auftragsLvId, nummer: String(i + 1), bezeichnung: `Blatt ${i + 1} (erfunden)`, datum,
+      positionen: zeilen.map(zeile),
+    },
+    zeilenergebnisse: ergebnisse(zeilen),
+  });
+  const aufmasse = [blatt(0, '2026-10-28', M4.blatt1), blatt(1, '2026-11-25', M4.blatt2)];
+  const [b1, b2] = aufmasse.map((a) => a.aufmass);
+  const korrigiert = zeile(M4.korrektur);
+  const b1k = { ...b1, positionen: b1.positionen.map((z) => (z.positionId === korrigiert.positionId ? korrigiert : z)) };
+
+  // 5. Rechnungen (Vertragsform) und Prüfung nach D-34; AR 1 freigegeben mit eingefrorenem Zahlbetrag.
+  const leistungsstand = (blaetter) => leistungsstandBerechnen(rechenPositionen, kumulierteMengen(blaetter), angebot.nachlass);
+  const abzuege = { mwstSatz: MWST, umlagen: M4.umlagen, sicherheitSatz: M4.sicherheitSatz };
+  const kette = (ls, frueher) => abschlagsketteBerechnen(ls, { ...abzuege, fruehereZahlbetraege: frueher });
+  const ls1 = leistungsstand([b1]);
+  const kette1 = kette(ls1, 0n);
+  const rechnung = (i, eingang, nummerAn, aufmassIds, freigabe) => ({
+    id: rechnungIds[i], projektId, auftragsLvId, nummer: String(i + 1), art: 'abschlag', eingang,
+    rechnungsnummerAuftragnehmer: nummerAn, gefordert: null, aufmassIds, umlagen: M4.umlagen,
+    sicherheitSatz: M4.sicherheitSatz, gewaehrleistungSatz: null, freigabe,
+  });
+  const rechnungen = [
+    rechnung(0, '2026-10-30', 'AN-2026-017 (erfunden)', [b1.id], { zahlbetrag: kette1.zahlbetrag }),
+    rechnung(1, '2026-11-27', 'AN-2026-023 (erfunden)', [b1.id, b2.id], null),
+  ];
+  const eingefroren = parse(rechnungen[0].freigabe.zahlbetrag, STELLEN.betrag);
+  const ls2v = leistungsstand([b1, b2]);
+  const ls2n = leistungsstand([b1k, b2]);
+  const ar1Neu = kette(leistungsstand([b1k]), 0n);
+  const pruefung = (rechnungId, korr, ls, k) => ({ rechnungId, korrigiert: korr, leistungsstand: ls, kette: k });
+
+  // 6. Soll/Ist (D-35): Soll = Menge des Auftrags-LV
+  const soll = positionen.map((k) => ({ id: k.id, soll: k.menge == null ? null : parse(k.menge, STELLEN.menge) }));
+  const sollIst = (blaetter, korr) => ({
+    aufmassIds: blaetter.map((a) => a.id), korrigiert: korr, ...sollIstBerechnen(soll, kumulierteMengen(blaetter)),
+  });
+
+  // 7. Kostenkontrolle (D-37) für den Stand nach AR 2 (nach der Korrektur, Rechnung mit der höchsten Nummer)
+  const abrechnungGp = new Map(ls2n.positionen.map((z) => [z.positionId, parse(z.gp, STELLEN.betrag)]));
+  const kostenkontrolle = kostenkontrolleBerechnen({
+    budget: kostenermittlung.eintraege,
+    positionen: posListe.map((p) => {
+      const v = sollNachtrag.positionen[p.positionId];
+      return {
+        kostengruppe: p.kostengruppe,
+        vergabe: v.inSumme ? parse(v.gp, STELLEN.betrag) : 0n,
+        abrechnung: abrechnungGp.get(p.positionId),
+      };
+    }),
+    nachlass: {
+      vergabe: parse(sollNachtrag.summen.nachlass, STELLEN.betrag),
+      abrechnung: parse(ls2n.nachlass, STELLEN.betrag),
+    },
+  });
+
+  return {
+    schemaVersion: SCHEMA,
+    art: 'abrechnungsset',
+    regel: 'Ticket 85, README „M4-Abrechnung“: Zuschlag nach D-21, Nachtrag nach D-35 (OZ-Lesart D-85.2), Leistungsstand '
+      + 'und Abzugskette nach D-34 (jeder Schritt kaufmännisch auf 2 Stellen, dann verrechnet; frühere Zahlbeträge '
+      + 'eingefroren), Soll/Ist nach D-35 (VOB/B § 2 Abs. 3, streng > 110 %), Kostenkontrolle nach D-37 (D-85.3).',
+    lvId: lv.id,
+    lvName: lv.name,
+    projektId,
+    zuschlag: {
+      angebotId: angebot.id,
+      bieterId: bieter.id,
+      bieterName: bieter.name,
+      gewaehlt: [],
+      auftragsLvId,
+      nachlass: angebot.nachlass,
+      mwstSatz: MWST,
+      entfallen,
+      ohnePreis: sollZuschlag.nichtAngeboten,
+      sollwerte: sollZuschlag,
+    },
+    nachtrag: {
+      lv: {
+        id: nachtragsLvId,
+        name: `Nachtrag ${M4.nachtrag.nummer} (erfunden)`,
+        ozMaske: MASKE_KLEIN,
+        mwstSatz: MWST,
+        nachlass: null,
+        nachtrag: { auftragsLvId, nummer: M4.nachtrag.nummer, status: 'angeboten' },
+        knoten: nachtragKnoten,
+      },
+      angebot: {
+        id: nachtragsangebotId,
+        bieterId: bieter.id,
+        nachlass: null,
+        positionen: nachtragsangebotZeilen,
+        sollwerte: berechneSollwerteGaeb(nachtragKnoten, (k) => preis.get(k.id) ?? { ep: null, satz: null }, null, MWST),
+      },
+      statusNachUebernahme: 'beauftragt',
+      uebernahme: {
+        art: 'NachtragUebernehmen', nachtragLvId: nachtragsLvId, gliederungReihenfolge: String(oben.length),
+        knoten: uebernahmeKnoten,
+      },
+      sollwerte: sollNachtrag,
+    },
+    positionen: posListe,
+    gliederungen: knotenNachher.filter((k) => k.art === 'titel').map((k) => ({ id: k.id, oz: k.ordnungszahl, kurztext: k.kurztext })),
+    kostenermittlung,
+    aufmasse,
+    korrektur: {
+      aufmassId: b1.id,
+      befehl: { art: 'AufmasspositionSetzen', position: korrigiert },
+      zeilenergebnisse: M4.korrektur.zeilen.map(([, erg]) => erg),
+      aufmassNachher: b1k,
+    },
+    rechnungen,
+    pruefungen: {
+      ar1: pruefung(rechnungIds[0], false, ls1, kette1),
+      ar2VorKorrektur: pruefung(rechnungIds[1], false, ls2v, kette(ls2v, eingefroren)),
+      ar2NachKorrektur: pruefung(rechnungIds[1], true, ls2n, kette(ls2n, eingefroren)),
+    },
+    gegenprobeOhneEinfrieren: {
+      ar1Zahlbetrag: ar1Neu.zahlbetrag,
+      ar2Zahlbetrag: kette(ls2n, parse(ar1Neu.zahlbetrag, STELLEN.betrag)).zahlbetrag,
+    },
+    sollIst: {
+      nachBlatt1: sollIst([b1], false),
+      nachBlatt2: sollIst([b1, b2], false),
+      nachKorrektur: sollIst([b1k, b2], true),
+    },
+    kostenkontrolle: { rechnungId: rechnungIds[1], kostenermittlungId, ...kostenkontrolle },
+  };
+}
+
 // ---------------------------------------------------------------- Ausgabe
 
 /** Liefert Dateiname -> Dateiinhalt. */
 export function erzeugeAlle() {
   const typisch = erzeugeTypisch();
+  const angebote = erzeugeAngebote(typisch);
   return {
     'winzig.json': alsDatei(erzeugeWinzig()),
     'typisch.json': alsDatei(typisch),
-    'typisch-angebote.json': alsDatei(erzeugeAngebote(typisch)),
+    'typisch-angebote.json': alsDatei(angebote),
+    'typisch-abrechnung.json': alsDatei(erzeugeAbrechnung(typisch, angebote)),
     'gross.json': alsDatei(erzeugeGross()),
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),
+    ...erzeugeX84(typisch, angebote),
   };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const ziel = dirname(fileURLToPath(import.meta.url));
   for (const [name, inhalt] of Object.entries(erzeugeAlle())) {
+    mkdirSync(dirname(join(ziel, name)), { recursive: true });
     writeFileSync(join(ziel, name), inhalt, 'utf8');
     console.log(`${name}: ${Buffer.byteLength(inhalt)} Bytes`);
   }

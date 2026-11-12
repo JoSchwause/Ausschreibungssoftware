@@ -7,10 +7,12 @@
 // `Protokolleintrag`. Der Befehlsname im Feld `art` ist der Typname (ASCII, siehe GLOSSARY).
 
 import type {
+  AufmassId,
   ElternId,
   GliederungId,
   HinweistextId,
   KnotenId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LvStandId,
   Ordnungszahl,
@@ -22,31 +24,49 @@ import type {
 import type {
   Angebot,
   Angebotsposition,
+  Ansatzzeile,
   Auftraggeber,
+  Aufmass,
+  Aufmassposition,
   AuftragsLeistungsverzeichnis,
   Bauherr,
   Bieter,
   Einheit,
   Einheitspreisanteile,
   Knoten,
+  Kostenermittlung,
+  Kostenermittlungseintrag,
+  Kostenermittlungsstufe,
   Langtext,
   Leitbeschreibung,
   LvInhalt,
   Nachlass,
+  Nachtragsangaben,
   OzMaske,
   Positionsdaten,
   Positionsmerkmale,
+  Rechnung,
+  Rechnungsart,
+  Umlage,
   Vergabeinformationen,
   Zuschlag,
 } from './modell';
-import type { Einheitspreis, Menge, Prozent } from './zahlen';
+import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
 export type Einfuegeort =
   /** Hinter dem Knoten. Elternknoten: bei einer Position/einem Hinweistext derselbe, bei einem Gliederungsknoten dessen erster Unterknoten (Ticket 05). */
   | { readonly art: 'nach'; readonly knotenId: KnotenId }
   | { readonly art: 'anfang'; readonly elternId: ElternId }
-  | { readonly art: 'ende'; readonly elternId: ElternId };
+  | { readonly art: 'ende'; readonly elternId: ElternId }
+  /**
+   * Hinter der Gliederung samt ihrem Unterbaum, als ihr Geschwister (v1.3, Ticket 53 Punkt 5): Elternknoten ist der
+   * der Gliederung, der Index der nächste hinter ihr. Ergänzt `nach`, das bei einer Gliederung „als erstes Kind“ heißt
+   * und so bleibt (Befehle im Protokoll behalten ihre Bedeutung). Vorläufige Annahme, Entscheidung offen (enge
+   * Lesart): nur für Gliederungen; hinter einer Position oder einem Hinweistext gilt weiter `nach` (eine Schreibweise je
+   * Ort). Die Kern-Logik liefert Ticket 56; bis dahin weist der Kern diese Form mit `befehl-nicht-zustaendig` ab.
+   */
+  | { readonly art: 'hinter-gliederung'; readonly gliederungId: GliederungId };
 
 // --- Projekt ---------------------------------------------------------------------------------------
 
@@ -74,7 +94,8 @@ export interface BieterAnlegen {
  * vollen Stand (`ProjektChangeSet.projekt.vorher`).
  *
  * Gelöscht wird nur das Projekt selbst. Hängen noch LVs, Angebote oder Auftrags-LVs daran, weist `speicher` das
- * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“).
+ * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“). v1.4:
+ * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts.
  */
 export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';
@@ -280,10 +301,36 @@ export interface HinweistextAendern {
   readonly text: Langtext;
 }
 
+/**
+ * Setzt die Menge von Hand. v1.3 (D-22, Lesart (a)): Hat die Position einen Mengenansatz, entfernt der Kern ihn im
+ * selben ChangeSet (Ticket 56); die Menge kommt dann nicht mehr aus dem Ansatz.
+ */
 export interface MengeAendern {
   readonly art: 'MengeAendern';
   readonly positionId: PositionId;
   /** `null`: Menge leeren. */
+  readonly menge: Menge | null;
+}
+
+/**
+ * Setzt den Mengenansatz einer Position und ihre daraus gerechnete Menge in einem Befehl (v1.3, M2; D-22). Die App rechnet
+ * `menge` mit `mengen` (`mengenansatzBerechnen(...).summe`); der Kern legt beides unausgewertet ab und rechnet nie nach
+ * (A3: kein `kern → mengen`). Das ChangeSet ist eine Knotenänderung der Position (`knoten.geaendert`) samt Summen.
+ *
+ * - `mengenansatz: null` entfernt den Ansatz (`Positionsdaten.mengenansatz` fehlt danach); `menge` wird trotzdem
+ *   gesetzt (die App gibt die Menge mit, die stehen bleiben soll). Ein leerer Ansatz `[]` ist keiner: Der Kern legt
+ *   dafür kein Feld ab wie bei `null` (Normalisierung beim Befehl wie `''` bei der Einheit; Ticket 56).
+ * - Lesart (b) (D-22): Ein Ansatz mit Fehler (eine Zeile ohne Ergebnis, `summe: null`) kommt mit `menge: null`; der
+ *   Ansatz wird gespeichert, die Menge ist dann nicht gesetzt (U5: der Fehler sperrt die Eingabe nicht).
+ * - Lesart (a) (D-22): Ein reiner Mengenbefehl (`MengeAendern`) an einer Position mit Ansatz entfernt den Ansatz im
+ *   selben ChangeSet (die Oberfläche fragt vorher); so laufen Menge und Ansatz nie auseinander.
+ *
+ * Kern-Handler Ticket 56, Speicherung Ticket 57, Panel Ticket 65.
+ */
+export interface MengenansatzSetzen {
+  readonly art: 'MengenansatzSetzen';
+  readonly positionId: PositionId;
+  readonly mengenansatz: readonly Ansatzzeile[] | null;
   readonly menge: Menge | null;
 }
 
@@ -320,6 +367,36 @@ export interface PositionsmerkmaleSetzen {
   readonly zuschlag: Zuschlag | null;
 }
 
+/**
+ * Ordnet einer Position eine Kostengruppe zu; `null` entfernt die Zuordnung (das Feld fehlt danach) (v1.4, Ticket 70
+ * Punkt 4; C2, D-36 (4)). Gilt im Ausschreibungs-LV (Zuordnung LV ↔ Kostengruppe) und im Auftrags-LV (Grundlage der
+ * Kostenkontrolle, D-37): **derselbe** Typ steht in `LvBefehl` und in `AuftragsLvBefehl`, ein Name für eine Handlung
+ * (L2); welches Aggregat gemeint ist, sagt im Protokoll `Protokolleintrag.aggregat` (`AggregatBezug`), beim Ausführen der
+ * Zustand.
+ *
+ * Nur an einer Position (eine Kostengruppe je Position; sonst `knoten-unbekannt`). Der Kern prüft die Form der Nummer
+ * (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und Datei kommen;
+ * ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
+ * (`knoten.geaendert`), Summen unverändert. Kern-Handler Ticket 71.
+ */
+export interface KostengruppeSetzen {
+  readonly art: 'KostengruppeSetzen';
+  readonly positionId: PositionId;
+  readonly kostengruppe: Kostengruppennummer | null;
+}
+
+/**
+ * Setzt die Textquelle einer Position; `null` entfernt sie (das Feld fehlt danach) (v1.4, Ticket 70 Punkt 5; G-17,
+ * D-40). Ein leerer Text `''` ist keine Quelle: Der Kern legt dafür kein Feld ab wie bei `null` (Normalisierung beim
+ * Befehl wie `''` bei der Einheit). ChangeSet: die Knotenänderung der Position, Summen unverändert. Kern-Handler
+ * Ticket 71, ein Feldbefehl wie `KurztextAendern`.
+ */
+export interface TextquelleSetzen {
+  readonly art: 'TextquelleSetzen';
+  readonly positionId: PositionId;
+  readonly textquelle: string | null;
+}
+
 // --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
 
 /** Setzt den Auftraggeber des LV als ganzen Wert; `null` entfernt ihn (das Feld fehlt danach am LV). */
@@ -332,6 +409,26 @@ export interface AuftraggeberSetzen {
 export interface VergabeinformationenSetzen {
   readonly art: 'VergabeinformationenSetzen';
   readonly vergabeinformationen: Vergabeinformationen | null;
+}
+
+/**
+ * Setzt die Nachtragsangaben des LV als ganzen Wert; `null` entfernt sie, das LV ist dann kein Nachtrags-LV mehr (das
+ * Feld fehlt danach am `LvKopf`) (v1.4, Ticket 70 Punkt 3; D-35). ChangeSet: nur der Kopf, keine Summen. Der Kern prüft
+ * `nummer` (nicht leer) und `status` (einer der vier Werte), nicht die Kennung des Auftrags-LV und keine Übergänge (siehe
+ * `Nachtragsangaben`). Kern-Handler Ticket 71.
+ */
+export interface NachtragsangabenSetzen {
+  readonly art: 'NachtragsangabenSetzen';
+  readonly nachtrag: Nachtragsangaben | null;
+}
+
+/**
+ * Kennzeichnet das LV als Muster-LV (`true`) oder nimmt das Kennzeichen weg (`false`: das Feld `LvKopf.vorlage` fehlt
+ * danach) (v1.4, Ticket 70 Punkt 5; C5, D-40). ChangeSet: nur der Kopf, keine Summen. Kern-Handler Ticket 71.
+ */
+export interface VorlageSetzen {
+  readonly art: 'VorlageSetzen';
+  readonly vorlage: boolean;
 }
 
 /** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
@@ -413,7 +510,14 @@ export type LvBefehl =
   | LvStandAnlegen
   | AuftraggeberSetzen
   | VergabeinformationenSetzen
-  | LeitbeschreibungSetzen;
+  | LeitbeschreibungSetzen
+  // v1.3
+  | MengenansatzSetzen
+  // v1.4
+  | NachtragsangabenSetzen
+  | KostengruppeSetzen
+  | VorlageSetzen
+  | TextquelleSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -468,8 +572,238 @@ export interface AuftragsLeistungsverzeichnisAnlegen {
   readonly auftragsLeistungsverzeichnis: AuftragsLeistungsverzeichnis;
 }
 
-/** Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). Bis zur Vergabe nur das Anlegen. */
-export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen;
+/**
+ * Übernimmt einen beauftragten Nachtrag in das Auftrags-LV (v1.4, Ticket 70 Punkt 2; D-35, Glossar „Nachtrag“). Den
+ * Befehl baut die reine Funktion `nachtragUebernehmen(auftragsLv, nachtragsLv, angebot, neueIds)` in `abrechnung`
+ * (Ticket 80) aus dem Nachtrags-LV und dem Nachtragsangebot; der Kern führt ihn aus (Ticket 71). Die App schreibt danach am
+ * Nachtrags-LV `NachtragsangabenSetzen` mit Status `beauftragt` (zwei Aggregate, eine Befehlsfolge, D-35).
+ *
+ * Lesart (D-35, enge Lesart im Typ):
+ * - `knoten` ist genau **eine** neue Gliederung auf oberster Ebene des Auftrags-LV samt ihrem Teilbaum, flach, Eltern vor
+ *   Kindern. Die Gliederung heißt „Nachtrag <nummer>“, ist ein Los, wenn auf oberster Ebene Lose stehen, sonst ein Titel
+ *   (F1), hat `elternId` = Kennung des Auftrags-LV und `reihenfolge` = Zahl der Knoten der obersten Ebene (sie kommt ans
+ *   Ende). Darunter steht der Baum des Nachtrags-LV mit den EP und EPA des Nachtragsangebots.
+ * - Der Kern übernimmt die Knoten, wie sie kommen (wie `AuftragsLeistungsverzeichnisAnlegen`, nicht wie
+ *   `KnotenEinfuegen`): Lage, Ordnungszahlen und Preise setzt `nachtragUebernehmen`, der Kern vergibt nichts neu. Eine
+ *   leere Einheit (`''`) legt er als `null` ab (siehe `Einheit`). Abweichungen der OZ von der Maske meldet die
+ *   LV-Prüfung (U5), sie sperren nicht.
+ * - Kennungen: Positionen behalten ihre `PositionId` aus dem Nachtrags-LV (Positionsidentität mit Nachtrags-LV und
+ *   Nachtragsangebot, ADR 0011); Gliederungen und Hinweistexte des Nachtrags behalten ihre Kennung ebenfalls, die neue
+ *   oberste Gliederung hat eine neue aus der `IdQuelle`. Keine Kennung darf im Auftrags-LV schon vorkommen (`id-vergeben`);
+ *   das sperrt auch eine zweite Übernahme desselben Nachtrags.
+ * - Der Kern prüft die Baumregeln wie beim Anlegen: F1 (Lose und Titel nie nebeneinander auf oberster Ebene,
+ *   `knotenart-unzulaessig`), höchstens 5 Gliederungsebenen samt der neuen (`ebene-ueberschritten`), Eltern vor Kindern
+ *   und dichte `reihenfolge` (`ungueltige-eingabe`), genau eine Wurzel des Teilbaums an der genannten Stelle.
+ * - Was der Befehl nicht trägt, prüft `nachtragUebernehmen` vorher (Fehler oder Warnung, nicht der Kern): anderer
+ *   MwSt-Satz als das Auftrags-LV (Fehler), nicht angebotene Position (EP `null` mit Warnung, wie D-21), Wahl-Alternativen
+ *   (entfallen mit Warnung), Nachlass des Nachtragsangebots (ignoriert mit Warnung).
+ * - `nachtragLvId` nennt das Nachtrags-LV für Protokoll und Anzeige; der Kern kennt es nicht und prüft es nicht.
+ *
+ * ChangeSet: `AuftragsLvChangeSet` mit `kopf: null`, den Knoten unter `knoten.hinzugefuegt` und den betroffenen Summen.
+ * Seine Umkehrung (Undo) entfernt die Knoten wieder; verweist dann eine Aufmaßposition auf eine dieser Positionen, weist
+ * `speicher` mit `konflikt` ab (siehe `AuftragsLvChangeSet`). Kein Massenbefehl: ein Nachtrag ist kurz.
+ */
+export interface NachtragUebernehmen {
+  readonly art: 'NachtragUebernehmen';
+  readonly nachtragLvId: LeistungsverzeichnisId;
+  readonly knoten: readonly Knoten[];
+}
+
+/**
+ * Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). v1.4 (D-36 (4)): genau das Anlegen (Zuschlag, D-21), die
+ * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
+ */
+export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen | KostengruppeSetzen;
+
+// --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
+//
+// Der Ausführer sieht nur das Blatt (Signatur `AufmassBefehlAusfuehren`, D-70.3) und prüft die Form; den Bezug zum
+// Auftrags-LV prüft `aufmassPruefen` als Befund (U5), die Eindeutigkeit der Nummer `speicher` (`konflikt`). ChangeSet aller
+// Befehle: `AufmassChangeSet` mit dem ganzen Blatt vorher und nachher (D-36 (8)).
+
+/**
+ * Legt ein Aufmaßblatt an, leer oder mit Zeilen (Erfassung, GAEB-X31-Import; D-33). Zustand `null`. Der Ausführer prüft die
+ * Form: `nummer` ganze Zahl ≥ 1, jede Position höchstens einmal, Mengen kanonisch mit 3 Stellen; einen Ansatz `[]` legt er
+ * als `null` ab (siehe `AufmassKopf`, `Aufmassposition`). Massenbefehl (siehe `MASSENBEFEHLSARTEN`): Ein X31-Import trägt
+ * eine Zeile je Position mit ihren Ansatzzeilen.
+ */
+export interface AufmassAnlegen {
+  readonly art: 'AufmassAnlegen';
+  readonly aufmass: Aufmass;
+}
+
+/** Setzt Bezeichnung und Datum des Blatts; die Nummer bleibt (siehe `AufmassKopf.nummer`). */
+export interface AufmasskopfSetzen {
+  readonly art: 'AufmasskopfSetzen';
+  readonly bezeichnung: string;
+  readonly datum: string | null;
+}
+
+/**
+ * Setzt die Zeile einer Position: ersetzt eine vorhandene Zeile derselben Position an ihrer Stelle, sonst kommt sie ans
+ * Ende. Ansatz und Menge kommen zusammen (die App rechnet die Menge mit `mengen`; Lesarten wie `MengenansatzSetzen`, D-22,
+ * siehe `Aufmassposition`).
+ */
+export interface AufmasspositionSetzen {
+  readonly art: 'AufmasspositionSetzen';
+  readonly position: Aufmassposition;
+}
+
+/** Entfernt die Zeile der Position aus dem Blatt; hat das Blatt keine, `ungueltige-eingabe` (`feld: 'positionId'`). */
+export interface AufmasspositionEntfernen {
+  readonly art: 'AufmasspositionEntfernen';
+  readonly positionId: PositionId;
+}
+
+/**
+ * Löscht das Blatt samt Zeilen. Unumkehrbar im Sinne von Q5 (Bestätigung in der Oberfläche, Undo); das ChangeSet trägt
+ * den vollen Stand (`aufmass.vorher`). Steht das Blatt in einer Rechnung (`Rechnung.aufmassIds`), weist `speicher` mit
+ * `konflikt` ab: Die Rechnung verlöre still einen Teil ihrer Menge.
+ */
+export interface AufmassLoeschen {
+  readonly art: 'AufmassLoeschen';
+}
+
+/** Befehle gegen ein Aufmaßblatt (Zustand: `AufmassZustand`; v1.4, Ticket 70 Punkt 6). */
+export type AufmassBefehl =
+  AufmassAnlegen | AufmasskopfSetzen | AufmasspositionSetzen | AufmasspositionEntfernen | AufmassLoeschen;
+
+// --- Rechnung (v1.4, A3; D-34, D-36 (2); Ausführer in `abrechnung`, Ticket 81) ----------------------------------
+//
+// Der Ausführer sieht nur die Rechnung (Signatur `RechnungBefehlAusfuehren`, D-70.3) und prüft die Form. Was andere
+// Rechnungen braucht, prüft die App vorher (`freigabeMoeglich`, Ticket 81) und `speicher` als `konflikt` (Q5), die übrigen
+// Regeln `rechnungPruefen` als Befund (U5). ChangeSet aller Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher
+// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr
+// weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4).
+
+/**
+ * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
+ * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Hat das Auftrags-LV
+ * schon eine freigegebene Rechnung mit größerer Nummer, weist `speicher` mit `konflikt` ab (Invariante an `Rechnung`).
+ * Kein Massenbefehl.
+ */
+export interface RechnungAnlegen {
+  readonly art: 'RechnungAnlegen';
+  readonly rechnung: Rechnung;
+}
+
+/**
+ * Setzt die Angaben der Rechnung als ganze Werte: Art, Eingang, Rechnungsnummer des Auftragnehmers und geforderte Beträge
+ * (siehe `Rechnung`). `rechnungsart` heißt hier so, weil `art` der Name des Befehls ist.
+ */
+export interface RechnungsangabenSetzen {
+  readonly art: 'RechnungsangabenSetzen';
+  readonly rechnungsart: Rechnungsart;
+  readonly eingang: string | null;
+  readonly rechnungsnummerAuftragnehmer: string | null;
+  readonly gefordert: Rechnung['gefordert'];
+}
+
+/** Setzt die abgerechneten Aufmaßblätter als ganze Liste (vollständige kumulierte Menge, siehe `Rechnung.aufmassIds`). */
+export interface RechnungsaufmasseSetzen {
+  readonly art: 'RechnungsaufmasseSetzen';
+  readonly aufmassIds: readonly AufmassId[];
+}
+
+/** Setzt die Abzüge als ganze Werte: Umlagen und die beiden Einbehaltssätze (siehe `Rechnung`). */
+export interface RechnungsabzuegeSetzen {
+  readonly art: 'RechnungsabzuegeSetzen';
+  readonly umlagen: readonly Umlage[];
+  readonly sicherheitSatz: Prozent | null;
+  readonly gewaehrleistungSatz: Prozent | null;
+}
+
+/**
+ * Gibt die Rechnung mit ihrem Zahlbetrag frei und friert ihn ein (D-34 (7)). Die App rechnet den Zahlbetrag mit
+ * `abrechnung` und gibt ihn mit; der Ausführer rechnet nicht nach (Lesart wie `MengenansatzSetzen`). Nur, wenn alle
+ * früheren Rechnungen (kleinere Nummer) freigegeben sind (D-34 (7)): Die App fragt vorher `freigabeMoeglich`, `speicher`
+ * weist sonst mit `konflikt` ab. Eine schon freigegebene Rechnung weist der Ausführer mit `rechnung-freigegeben` ab.
+ */
+export interface RechnungFreigeben {
+  readonly art: 'RechnungFreigeben';
+  readonly zahlbetrag: Betrag;
+}
+
+/**
+ * Hebt die Freigabe ausdrücklich auf (`freigabe` wird `null`), damit eine falsch freigegebene Rechnung korrigiert werden
+ * kann (D-70.4); das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere
+ * Nummer) freigegeben ist, deren eingefrorener Zahlbetrag diesen abzieht (D-34 (7)): sonst `konflikt` in `speicher`, die
+ * App bietet es dann nicht an. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht
+ * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab.
+ */
+export interface RechnungsfreigabeAufheben {
+  readonly art: 'RechnungsfreigabeAufheben';
+}
+
+/**
+ * Löscht die Rechnung (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Nur eine nicht freigegebene
+ * (sonst `rechnung-freigegeben`). Kommt danach eine freigegebene Rechnung (größere Nummer), weist `speicher` auch ein
+ * ChangeSet ohne Ausführer (Undo des Anlegens) mit `konflikt` ab.
+ */
+export interface RechnungLoeschen {
+  readonly art: 'RechnungLoeschen';
+}
+
+/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7). */
+export type RechnungBefehl =
+  | RechnungAnlegen
+  | RechnungsangabenSetzen
+  | RechnungsaufmasseSetzen
+  | RechnungsabzuegeSetzen
+  | RechnungFreigeben
+  | RechnungsfreigabeAufheben
+  | RechnungLoeschen;
+
+// --- Kostenermittlung (v1.4, C3; D-36 (3); Ausführer in `kosten`, Ticket 82) ------------------------------------
+//
+// ChangeSet aller Befehle: `KostenermittlungChangeSet` mit der ganzen Kostenermittlung vorher und nachher (D-36 (8)). Der
+// Ausführer prüft die Form der Nummern (Regel von `kgLesen`, D-24) und hält die Einträge nach Nummer geordnet und
+// eindeutig (siehe `Kostenermittlung.eintraege`).
+
+/**
+ * Legt eine Kostenermittlung an (Zustand `null`), leer, von Hand oder aus einer CSV des Nutzers. Der Ausführer ordnet die
+ * Einträge nach Nummer und weist doppelte Nummern mit `ungueltige-eingabe` ab. Kein Massenbefehl (D-70.5): höchstens ein
+ * Eintrag je Kostengruppennummer, also höchstens 900 kurze Einträge.
+ */
+export interface KostenermittlungAnlegen {
+  readonly art: 'KostenermittlungAnlegen';
+  readonly kostenermittlung: Kostenermittlung;
+}
+
+/** Setzt Name und Stufe der Kostenermittlung. */
+export interface KostenermittlungskopfSetzen {
+  readonly art: 'KostenermittlungskopfSetzen';
+  readonly name: string;
+  readonly stufe: Kostenermittlungsstufe;
+}
+
+/** Setzt den Eintrag seiner Nummer: ersetzt einen vorhandenen, sonst kommt er an seine Stelle in der Ordnung nach Nummer. */
+export interface KostenermittlungseintragSetzen {
+  readonly art: 'KostenermittlungseintragSetzen';
+  readonly eintrag: Kostenermittlungseintrag;
+}
+
+/** Entfernt den Eintrag der Nummer; gibt es keinen, `ungueltige-eingabe` (`feld: 'nummer'`). */
+export interface KostenermittlungseintragEntfernen {
+  readonly art: 'KostenermittlungseintragEntfernen';
+  readonly nummer: Kostengruppennummer;
+}
+
+/**
+ * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein anderes
+ * Aggregat verweist auf sie (das Budget der Kostenkontrolle wählt die App), also kein `konflikt`.
+ */
+export interface KostenermittlungLoeschen {
+  readonly art: 'KostenermittlungLoeschen';
+}
+
+/** Befehle gegen eine Kostenermittlung (Zustand: `KostenermittlungZustand`; v1.4, Ticket 70 Punkt 9). */
+export type KostenermittlungBefehl =
+  | KostenermittlungAnlegen
+  | KostenermittlungskopfSetzen
+  | KostenermittlungseintragSetzen
+  | KostenermittlungseintragEntfernen
+  | KostenermittlungLoeschen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
@@ -499,8 +833,21 @@ export interface Wiederholen {
 /** Befehle auf der Historie der Sitzung (v1.2). Nicht in `LvBefehl`: kein Kern führt sie aus. */
 export type HistorienBefehl = Rueckgaengig | Wiederholen;
 
-/** Jeder Befehl, den das Befehlsprotokoll aufnimmt. */
-export type Befehl = ProjektBefehl | LvBefehl | AngebotBefehl | AuftragsLvBefehl | HistorienBefehl;
+/**
+ * Jeder Befehl, den das Befehlsprotokoll aufnimmt. v1.4 (Ticket 70 Punkt 10): dazu die Befehle an Aufmaßblatt, Rechnung
+ * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` (LV und Auftrags-LV;
+ * `Protokolleintrag.aggregat` unterscheidet).
+ */
+export type Befehl =
+  | ProjektBefehl
+  | LvBefehl
+  | AngebotBefehl
+  | AuftragsLvBefehl
+  | HistorienBefehl
+  // v1.4
+  | AufmassBefehl
+  | RechnungBefehl
+  | KostenermittlungBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
@@ -514,11 +861,17 @@ export type Befehlsart = Befehl['art'];
  *
  * Eine Liste, kein Merkmal am Befehl, damit der Typ `Befehl` und seine Handler unverändert bleiben. Ein neuer
  * Massenbefehl braucht ein Vertragsticket.
+ *
+ * v1.4 (Ticket 70 Punkt 10, D-70.5): dazu `AufmassAnlegen` (ein X31-Import trägt eine Zeile je Position des Auftrags-LV
+ * samt Ansatzzeilen, wächst also mit dem LV wie `AngebotAnlegen`). Nicht: `NachtragUebernehmen` (ein Nachtrag ist kurz),
+ * `RechnungAnlegen` (keine lange Liste), `KostenermittlungAnlegen` (höchstens ein Eintrag je Kostengruppennummer).
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
   'AngebotAnlegen',
   'AuftragsLeistungsverzeichnisAnlegen',
+  // v1.4
+  'AufmassAnlegen',
 ] as const;
 
 /** Name eines Massenbefehls. */

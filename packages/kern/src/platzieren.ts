@@ -5,7 +5,8 @@
 //
 // Lesart von „nach X“ wie bei `KnotenVerschieben` (`knoten-befehle.ts`): X eine Position oder ein Hinweistext: hinter X
 // unter dessen Elternknoten; X eine Gliederung: deren erste Stelle. Liegt X selbst unter den bewegten Wurzeln, landet die
-// Liste an der Stelle, an der X stand.
+// Liste an der Stelle, an der X stand. „Hinter der Gliederung G“ (v1.3, Ticket 56) wie „nach“ einer Position: hinter G
+// unter deren Elternknoten, ebenso an G's Stelle, wenn G mitbewegt wird.
 
 import type { Befehlsfehler, Einfuegeort, Ergebnis, Knoten, KnotenId, LvZustand } from '@tethys/vertrag';
 import { befehlsfehler, nein, ok } from './fehler';
@@ -39,8 +40,41 @@ export const istListe = (x: unknown): boolean => Array.isArray(x);
 
 type Aenderung = { readonly vorher: Knoten; readonly nachher: Knoten };
 
-const elternArtVon = (idx: Baumindex, eltern: string): ElternArt | undefined =>
+export const elternArtVon = (idx: Baumindex, eltern: string): ElternArt | undefined =>
   eltern === idx.lvId ? 'wurzel' : idx.byId.get(eltern)?.art;
+
+/**
+ * Ziel der Ortsform `hinter-gliederung` (v1.3, Ticket 56): eine vorhandene Gliederung. Unbekannt: `knoten-unbekannt`;
+ * Position oder Hinweistext: `knotenart-unzulaessig` (dafür gilt `nach`, eine Schreibweise je Ort).
+ */
+export function gliederungFuerHinter(idx: Baumindex, gliederungId: string): Ergebnis<Knoten, Befehlsfehler> {
+  const g = idx.byId.get(gliederungId);
+  if (!g) return nein('knoten-unbekannt', `Knoten unbekannt: ${gliederungId}`, gliederungId);
+  if (g.art !== 'los' && g.art !== 'titel')
+    return nein(
+      'knotenart-unzulaessig',
+      `Hinter einer Gliederung: das Ziel ist ein Knoten der Art „${g.art}“; dafür gilt „nach“.`,
+      gliederungId,
+    );
+  return ok(g);
+}
+
+/**
+ * Die Stelle direkt hinter `x` unter dessen Elternknoten, ohne die bewegten Knoten gezählt. Liegt `x` selbst unter den
+ * bewegten, landet die Liste an der Stelle, an der `x` stand.
+ */
+function hinterKnoten(idx: Baumindex, x: Knoten, bewegt: ReadonlySet<string>): Ziel {
+  let index = 0;
+  for (const k of idx.kinder.get(x.elternId) ?? []) {
+    if (k.id === x.id) break;
+    if (!bewegt.has(k.id)) index++;
+  }
+  return {
+    eltern: x.elternId,
+    elternArt: elternArtVon(idx, x.elternId) ?? 'wurzel',
+    index: bewegt.has(x.id) ? index : index + 1,
+  };
+}
 
 /** Löst einen Einfügeort auf. `bewegt`: Kennungen, die ihre alte Stelle verlassen (fehlen beim Zählen). */
 export function ortAufloesen(
@@ -52,16 +86,12 @@ export function ortAufloesen(
     const x = idx.byId.get(ort.knotenId);
     if (!x) return nein('knoten-unbekannt', `Knoten unbekannt: ${ort.knotenId}`, ort.knotenId);
     if (x.art === 'los' || x.art === 'titel') return ok({ eltern: x.id, elternArt: x.art, index: 0 });
-    let index = 0;
-    for (const k of idx.kinder.get(x.elternId) ?? []) {
-      if (k.id === x.id) break;
-      if (!bewegt.has(k.id)) index++;
-    }
-    return ok({
-      eltern: x.elternId,
-      elternArt: elternArtVon(idx, x.elternId) ?? 'wurzel',
-      index: bewegt.has(x.id) ? index : index + 1,
-    });
+    return ok(hinterKnoten(idx, x, bewegt));
+  }
+  if (ort.art === 'hinter-gliederung') {
+    const g = gliederungFuerHinter(idx, ort.gliederungId);
+    if (!g.ok) return g;
+    return ok(hinterKnoten(idx, g.wert, bewegt));
   }
   const eltern = ort.elternId;
   const elternArt = elternArtVon(idx, eltern);

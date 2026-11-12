@@ -8,6 +8,7 @@ import type { Knoten, LvBefehl, Papierkorbeintrag } from '@tethys/vertrag';
 import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { texte } from '../historie/texte';
+import { ozText } from './oztext';
 
 const t = texte.papierkorb;
 
@@ -15,7 +16,7 @@ const t = texte.papierkorb;
 export function eintragZeile(e: Papierkorbeintrag): { oz: string; kurztext: string; positionen: number } {
   const ids = new Set<string>(e.knoten.map((k) => k.id));
   const wurzel: Knoten | undefined = e.knoten.find((k) => !ids.has(k.elternId));
-  const oz = wurzel === undefined || wurzel.art === 'hinweis' ? '' : (wurzel.ordnungszahl ?? '');
+  const oz = wurzel === undefined ? '' : ozText(wurzel);
   const kurztext = wurzel === undefined || wurzel.art === 'hinweis' ? '' : wurzel.kurztext;
   const wurzeln = e.knoten.filter((k) => !ids.has(k.elternId)).length;
   return {

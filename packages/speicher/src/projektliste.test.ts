@@ -3,10 +3,16 @@
 // (de-DE, `Intl.Collator`), gelöschte Projekte fehlen, ein neues Projekt erscheint sofort; die LVs eines Projekts
 // über `leistungsverzeichnisse.auflisten(projektId)`.
 
-import type { Projekt, ProjektId, Protokolleintrag } from '@tethys/vertrag';
+import type { LeistungsverzeichnisId, Projekt, ProjektId, Protokolleintrag } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
-import { anlegenSchritte, eintrag, ladeFixture, projektChangeSet } from './testhilfe/fixtures';
+import {
+  anlegenSchritte,
+  eintrag,
+  ladeFixture,
+  lvAnlegenChangeSet,
+  projektChangeSet,
+} from './testhilfe/fixtures';
 import { neuerKern, wert } from './testhilfe/node';
 import type { SpeicherKern } from './kern';
 
@@ -72,8 +78,41 @@ describe('Projektliste', () => {
       { id: 'p-0', name: 'Zahnarztpraxis' },
     ]);
     expect(wert(await speicher.leistungsverzeichnisse.auflisten(f.projekt.id))).toEqual([
-      f.lv.leistungsverzeichnis.id,
+      { id: f.lv.leistungsverzeichnis.id, name: f.lv.leistungsverzeichnis.name },
     ]);
     expect(wert(await speicher.leistungsverzeichnisse.auflisten('p-0' as ProjektId))).toEqual([]);
+  });
+
+  it('LV-Übersicht: Kennung und Name, nach Name deutsch sortiert, gleiche Namen nach Kennung', async () => {
+    const { kern } = await neuerKern();
+    const f = ladeFixture('winzig');
+    for (const s of anlegenSchritte(f)) wert(await kern.anwenden(s.eintrag, s.changeSet));
+    const lv = f.lv.leistungsverzeichnis;
+    const weiteres = async (id: string, name: string): Promise<void> => {
+      const neu = { ...lv, id: id as LeistungsverzeichnisId, name, knoten: [] };
+      const z = {
+        leistungsverzeichnis: neu,
+        summen: { positionen: [], gliederungen: [], gesamt: f.lv.summen.gesamt },
+      };
+      const e = eintrag(
+        nr++,
+        f.projekt.id,
+        { art: 'leistungsverzeichnis', id: neu.id },
+        {
+          art: 'LeistungsverzeichnisUmbenennen',
+          name,
+        },
+      );
+      wert(await kern.anwenden(e, lvAnlegenChangeSet(z)));
+    };
+    await weiteres('lv-2', 'Ärztehaus');
+    await weiteres('lv-1', 'zebra');
+    await weiteres('lv-0', 'Ärztehaus');
+    expect(wert(kern.lvAuflisten(f.projekt.id))).toEqual([
+      { id: 'lv-0', name: 'Ärztehaus' },
+      { id: 'lv-2', name: 'Ärztehaus' },
+      { id: lv.id, name: lv.name },
+      { id: 'lv-1', name: 'zebra' },
+    ]);
   });
 });

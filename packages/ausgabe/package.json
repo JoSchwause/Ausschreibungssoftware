@@ -5,7 +5,8 @@
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./schriften/*.woff": "./schriften/*.woff"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -14,6 +15,7 @@
   "dependencies": {
     "@tethys/dezimal": "workspace:*",
     "@tethys/vertrag": "workspace:*",
+    "fflate": "0.8.3",
     "pdfmake": "0.3.14"
   },
   "devDependencies": {

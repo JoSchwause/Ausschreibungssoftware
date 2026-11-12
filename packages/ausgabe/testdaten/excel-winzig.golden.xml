@@ -1,0 +1,363 @@
+=== [Content_Types].xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>
+=== _rels/.rels
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>
+=== docProps/app.xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+<Application>Tethys</Application>
+</Properties>
+=== docProps/core.xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<dc:title>Winzig: Handrechnung (erfunden)</dc:title>
+<dc:creator>Tethys</dc:creator>
+<dcterms:created xsi:type="dcterms:W3CDTF">1980-01-01T00:00:00Z</dcterms:created>
+<dcterms:modified xsi:type="dcterms:W3CDTF">1980-01-01T00:00:00Z</dcterms:modified>
+</cp:coreProperties>
+=== xl/_rels/workbook.xml.rels
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>
+=== xl/styles.xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="4">
+<numFmt numFmtId="164" formatCode="#,##0.000"/>
+<numFmt numFmtId="165" formatCode="#,##0.00"/>
+<numFmt numFmtId="166" formatCode="0.00"/>
+<numFmt numFmtId="167" formatCode="#,##0.000"/>
+</numFmts>
+<fonts count="2">
+<font>
+<sz val="10"/>
+<name val="Arial"/>
+<family val="2"/>
+</font>
+<font>
+<b/>
+<sz val="10"/>
+<name val="Arial"/>
+<family val="2"/>
+</font>
+</fonts>
+<fills count="4">
+<fill>
+<patternFill patternType="none"/>
+</fill>
+<fill>
+<patternFill patternType="gray125"/>
+</fill>
+<fill>
+<patternFill patternType="solid">
+<fgColor rgb="FFFFF2CC"/>
+<bgColor indexed="64"/>
+</patternFill>
+</fill>
+<fill>
+<patternFill patternType="solid">
+<fgColor rgb="FFD9D9D9"/>
+<bgColor indexed="64"/>
+</patternFill>
+</fill>
+</fills>
+<borders count="2">
+<border>
+<left/>
+<right/>
+<top/>
+<bottom/>
+<diagonal/>
+</border>
+<border>
+<left/>
+<right/>
+<top/>
+<bottom style="thin">
+<color auto="1"/>
+</bottom>
+<diagonal/>
+</border>
+</borders>
+<cellStyleXfs count="1">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+</cellStyleXfs>
+<cellXfs count="9">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1">
+<alignment wrapText="1"/>
+</xf>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="167" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1">
+<protection locked="0"/>
+</xf>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="166" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1">
+<protection locked="0"/>
+</xf>
+<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1">
+<alignment wrapText="1" vertical="top"/>
+</xf>
+</cellXfs>
+<cellStyles count="1">
+<cellStyle name="Standard" xfId="0" builtinId="0"/>
+</cellStyles>
+</styleSheet>
+=== xl/workbook.xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<bookViews>
+<workbookView/>
+</bookViews>
+<sheets>
+<sheet name="LV" sheetId="1" r:id="rId1"/>
+</sheets>
+<calcPr calcId="191029" fullCalcOnLoad="1"/>
+</workbook>
+=== xl/worksheets/sheet1.xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews>
+<sheetView workbookViewId="0">
+<pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/>
+<selection pane="bottomLeft" activeCell="A4" sqref="A4"/>
+</sheetView>
+</sheetViews>
+<sheetFormatPr defaultRowHeight="15"/>
+<cols>
+<col min="1" max="1" width="12" customWidth="1"/>
+<col min="2" max="2" width="48" customWidth="1"/>
+<col min="3" max="3" width="28" customWidth="1"/>
+<col min="4" max="4" width="12" customWidth="1"/>
+<col min="5" max="5" width="8" customWidth="1"/>
+<col min="6" max="6" width="13" customWidth="1"/>
+<col min="7" max="7" width="14" customWidth="1"/>
+<col min="8" max="8" width="12" customWidth="1"/>
+<col min="9" max="9" width="38" hidden="1" customWidth="1"/>
+</cols>
+<sheetData>
+<row r="1">
+<c r="A1" s="2" t="inlineStr">
+<is>
+<t>Leistungsverzeichnis</t>
+</is>
+</c>
+<c r="B1" s="2" t="inlineStr">
+<is>
+<t>Winzig: Handrechnung (erfunden)</t>
+</is>
+</c>
+</row>
+<row r="2">
+<c r="A2" s="2" t="inlineStr">
+<is>
+<t>LV-ID</t>
+</is>
+</c>
+<c r="B2" s="3" t="inlineStr">
+<is>
+<t>019b76da-a800-727e-984b-1b9791bc2486</t>
+</is>
+</c>
+<c r="C2" s="2" t="inlineStr">
+<is>
+<t>Prüfsumme</t>
+</is>
+</c>
+<c r="D2" s="3" t="inlineStr">
+<is>
+<t>6ca75d9cce43ddaf01b6350d4136a7c95bc47e86e19041df9350d935dea2a0ff</t>
+</is>
+</c>
+</row>
+<row r="3">
+<c r="A3" s="1" t="inlineStr">
+<is>
+<t>OZ</t>
+</is>
+</c>
+<c r="B3" s="1" t="inlineStr">
+<is>
+<t>Kurztext</t>
+</is>
+</c>
+<c r="C3" s="1" t="inlineStr">
+<is>
+<t>Merkmale</t>
+</is>
+</c>
+<c r="D3" s="1" t="inlineStr">
+<is>
+<t>Menge</t>
+</is>
+</c>
+<c r="E3" s="1" t="inlineStr">
+<is>
+<t>Einheit</t>
+</is>
+</c>
+<c r="F3" s="1" t="inlineStr">
+<is>
+<t>EP</t>
+</is>
+</c>
+<c r="G3" s="1" t="inlineStr">
+<is>
+<t>GP</t>
+</is>
+</c>
+<c r="H3" s="1" t="inlineStr">
+<is>
+<t>Zuschlagssatz in %</t>
+</is>
+</c>
+<c r="I3" s="1" t="inlineStr">
+<is>
+<t>Positions-ID</t>
+</is>
+</c>
+</row>
+<row r="4">
+<c r="A4" s="2" t="inlineStr">
+<is>
+<t>01</t>
+</is>
+</c>
+<c r="B4" s="2" t="inlineStr">
+<is>
+<t>Kleine Musterarbeiten</t>
+</is>
+</c>
+<c r="I4" s="3" t="inlineStr">
+<is>
+<t>019b76da-a801-72f5-8596-20c74f02d75c</t>
+</is>
+</c>
+</row>
+<row r="5">
+<c r="A5" s="3" t="inlineStr">
+<is>
+<t>01.0010</t>
+</is>
+</c>
+<c r="B5" s="3" t="inlineStr">
+<is>
+<t>Pflaster verlegen</t>
+</is>
+</c>
+<c r="C5" s="3" t="inlineStr">
+<is>
+<t>
+</t>
+</is>
+</c>
+<c r="D5" s="4">
+<v>1.235</v>
+</c>
+<c r="E5" s="3" t="inlineStr">
+<is>
+<t>m²</t>
+</is>
+</c>
+<c r="F5" s="5"/>
+<c r="G5" s="6">
+<f>IF(F5=&quot;&quot;,&quot;&quot;,ROUND(D5*F5,2))</f>
+</c>
+<c r="I5" s="3" t="inlineStr">
+<is>
+<t>019b76da-a802-7bff-9d9e-7e682fb1fa60</t>
+</is>
+</c>
+</row>
+<row r="6">
+<c r="A6" s="3" t="inlineStr">
+<is>
+<t>01.0020</t>
+</is>
+</c>
+<c r="B6" s="3" t="inlineStr">
+<is>
+<t>Randstein setzen</t>
+</is>
+</c>
+<c r="C6" s="3" t="inlineStr">
+<is>
+<t>
+</t>
+</is>
+</c>
+<c r="D6" s="4">
+<v>3.333</v>
+</c>
+<c r="E6" s="3" t="inlineStr">
+<is>
+<t>m</t>
+</is>
+</c>
+<c r="F6" s="5"/>
+<c r="G6" s="6">
+<f>IF(F6=&quot;&quot;,&quot;&quot;,ROUND(D6*F6,2))</f>
+</c>
+<c r="I6" s="3" t="inlineStr">
+<is>
+<t>019b76da-a803-7621-97fc-e3fb328735e7</t>
+</is>
+</c>
+</row>
+<row r="7">
+<c r="A7" s="3" t="inlineStr">
+<is>
+<t>01.0030</t>
+</is>
+</c>
+<c r="B7" s="3" t="inlineStr">
+<is>
+<t>Fläche abdichten</t>
+</is>
+</c>
+<c r="C7" s="3" t="inlineStr">
+<is>
+<t>
+</t>
+</is>
+</c>
+<c r="D7" s="4">
+<v>5</v>
+</c>
+<c r="E7" s="3" t="inlineStr">
+<is>
+<t>m²</t>
+</is>
+</c>
+<c r="F7" s="5"/>
+<c r="G7" s="6">
+<f>IF(F7=&quot;&quot;,&quot;&quot;,ROUND(D7*F7,2))</f>
+</c>
+<c r="I7" s="3" t="inlineStr">
+<is>
+<t>019b76da-a804-7766-aab7-27531c96e5e2</t>
+</is>
+</c>
+</row>
+</sheetData>
+<sheetProtection sheet="1" objects="1" scenarios="1" formatColumns="0" formatRows="0"/>
+<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+</worksheet>
