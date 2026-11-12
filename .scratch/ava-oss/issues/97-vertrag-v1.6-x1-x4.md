@@ -348,8 +348,57 @@ Nach dem letzten `git merge integration/welle-6` (Merge `9582ba7`, Stand `9b1dd3
 Clean Room; Vitest 250 Dateien bestanden, 1 übersprungen; 3230 Tests bestanden, 3 übersprungen wie zuvor; Fixtures 53/53). Kein
 Budget fiel, keines gelockert. E2E verlangt das Ticket nicht; die App zeichnet nichts Neues.
 
+### Nachtrag Review (D-66)
+
+Opus-Review „yes-with-fixes“ nach dem Merge `e27225a`. Nur Lesarten, additive Felder und Glossar; kein Typ der Verbraucher
+(105–111) ändert sich. Branch `welle-6/97-vertrag-v1.6` nach `git merge integration/welle-6` (Stand `ffe5b1f`), Commit `d37a2d1`.
+
+- **MUSS 1** (`honorar.ts`, `Honorarergebnis.befunde`): Der Hinweis auf § 4 Abs. 1 (DIN 276 in der Fassung 2008-12, D-56) ist
+  nie ein Befund und kein Teil des Honorarergebnisses; App (119) und PDF (113) drucken ihn als festen Text; `befunde: []` in
+  `fixtures/honorar.json` bleibt gültig. Offene Typfrage 11 ist damit entschieden (keine Schwere „Hinweis“).
+- **MUSS 2** (`modell.ts`, `Positionsdaten.bauteile`): je Weg benannt. Kopieren und Einfügen im LV (auch Zwischenablage) und
+  Textbausteine aus einem Muster-LV verwerfen `bauteile`; ein LV-Stand als neues LV übernommen behält sie (eigenes LV, nichts
+  zählt doppelt). Folgearbeit: **105** gibt der Kopierhilfe eine Wahl (Standard: weglassen), **121** übergibt im Weg aus dem
+  LV-Stand „behalten“.
+- **SOLL 3** (`changeset.ts`, `BauwerksmodellChangeSet`): Lesart statt Union: Anlegen oder Löschen ohne `inhalt`, Umbenennen mit
+  `inhalt` oder `inhalt` mit `null` auf der anderen Seite als `kopf` weist `speicher` mit `unbekannt` ab (Folgearbeit **106**).
+  Die Union nach Fall bliebe eine Option (neue Offene Typfrage 14), sie hätte aber Verbraucher in Arbeit (106, 108, 114) gebrochen.
+- **SOLL 5** (`bim.ts`): Bei doppelten GlobalIds meint jeder Verweis das erste Objekt in der Reihenfolge der Datei (`struktur` vor
+  `bauteile`); die späteren zählen für Zuordnung, Mengen und Vergleich nicht (Befund). Folgearbeit **107**, **108**.
+- **SOLL 6** (`bim.ts`, `index.ts`): Konstante `IFC_GLOBALID_MUSTER = /^[0-9A-Za-z_$]{22}$/` (ohne `g`), exportiert wie
+  `NACHKOMMASTELLEN`. Folgearbeit **105–108**: damit nachprüfen statt eigener Muster.
+- **SOLL 7** (`gaeb.ts`, Lesart `terminrechnung`): Ein Befund zu genau einer Anordnungsbeziehung trägt `pfad:
+  '/vorgaenge[n]/vorgaenger[m]'` (ab 1) neben `vorgangId` und `feld: 'vorgaenger'`. Folgearbeit **109**.
+- **SOLL 8** (Glossar „Anrechenbare Kosten“, `honorar.ts`): `AnrechenbareKostenangabe` meint nur die gespeicherte Form im Vertrag;
+  die Eingabe der Rechnung in `honorar` heißt `AnrechenbareKosteneingabe`. Folgearbeit **110**: umbenennen.
+- **SOLL 9** (`gaeb.ts`, Quelle `modell-pruefung`): dazu „Bauteil ohne Geometrie“ (die Modellansicht meldet die GlobalId, die App
+  legt den Befund an). Folgearbeit **114**.
+- **SOLL 10** (`bauleitung.ts`, additiv): `Mangelverlaufseintrag.frist?: string`, nur bei `angezeigt` (sonst
+  `ungueltige-eingabe`); die geltende Frist bleibt `Mangel.frist`. Glossar „Mängelverlauf“ ergänzt; Beispiele und Typtest
+  angepasst. Folgearbeit **111** (Prüfung), **120** (App setzt beide im selben Undo-Schritt), **112** (Fixture darf die Frist
+  am Eintrag `angezeigt` ergänzen, muss aber nicht).
+- **SOLL 11** (`befehle.ts`, `BauwerksmodellUmbenennen`): Offene Typfrage 6 bleibt; **106** und **114** messen
+  `bauwerksmodelle.laden` bei 10.000 Bauteilen.
+
+Neue Offene Typfrage **14**: `BauwerksmodellChangeSet` als Union nach Fall (Anlegen, Umbenennen, Löschen), damit der Typprüfer
+die Regel aus SOLL 3 erzwingt.
+
+Neue Typtests im Abschnitt „v1.6 Nachtrag Review (D-66)“ in `vertrag.test.ts`.
+
+Prüfung: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` nach dem Merge:
+Lint (samt Paketgrenzen, Lizenzen, Clean Room) und Typecheck grün; Vitest 247 Dateien bestanden, 1 übersprungen,
+  3 rot, alle Leistungsbudgets außerhalb von `vertrag` unter Last (Last 19 auf 4 Kernen, Stufe 2 läuft parallel):
+  `kern/lv-pruefung-fixtures` (`lvPruefen(gross)` über 50 ms), `vergabe/leistung` (`preisspiegelBerechnen` 1.441,8 ms gegen
+  1.000 ms), `apps/web/abrechnung/leistung` (Undo am Aufmaßblatt, Median 156,1 ms gegen 100 ms). Je Datei allein wiederholt:
+  alle grün (`lvPruefen(gross)` Median 25,60 ms; `preisspiegelBerechnen` 719,9 ms; Aufmaßblatt Setzen 83,2 ms, Rückgängig
+  65,0 ms, Wiederholen 43,5 ms). 3231 Tests bestanden, 3 übersprungen wie zuvor; Fixtures 53/53 (`node --test` einzeln). Kein
+  Budget gelockert.
+
 ## Answer
 
 Gemergt in `integration/welle-6` mit `e27225a` (Branch `welle-6/97-vertrag-v1.6`, `4232b09`). `vertrag` v1.6: Bauwerksmodell und
 Modelldateiablage, `BauteileZuordnen`, Bauzeitenplan (`Bauzeitenplanergebnis`), Honorarberechnung (`Honorarergebnis`), Mangel und
 Bautagebucheintrag, fünf neue Befundquellen. Abweichungen vom Tickettext angenommen (D-64); Opus-Review läuft parallel zu Stufe 2.
+
+Nachtrag Review (D-66): Lesarten, additive Felder und Glossar nachgezogen, Commit `d37a2d1` auf `welle-6/97-vertrag-v1.6` (nach
+Merge von `integration/welle-6` @ `ffe5b1f`); siehe Abschnitt „Nachtrag Review (D-66)“. Kein Typ der Verbraucher ändert sich.
