@@ -14,26 +14,66 @@
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { bauwerksmodellBefehlAusfuehren, bauwerksmodellChangeSetAnwenden } from '@tethys/bim';
+import { aufmassBefehlAusfuehren, aufmassChangeSetAnwenden, aufmassPruefen } from '@tethys/abrechnung';
+import {
+  bauteileImStrukturknoten,
+  bauwerksmodellBefehlAusfuehren,
+  bauwerksmodellChangeSetAnwenden,
+  din277Berechnen,
+  modellVergleichen,
+} from '@tethys/bim';
 import { bauwerksmodellLesen } from '@tethys/ifc';
-import { lvBefehlAusfuehren, lvChangeSetAnwenden, zuschlagsbasen } from '@tethys/kern';
+import {
+  auftragsLvBefehlAusfuehren,
+  auftragsLvChangeSetAnwenden,
+  lvBefehlAusfuehren,
+  lvChangeSetAnwenden,
+  zuschlagsbasen,
+} from '@tethys/kern';
+import {
+  kostenermittlungBefehlAusfuehren,
+  kostenermittlungBerechnen,
+  kostenermittlungChangeSetAnwenden,
+} from '@tethys/kosten';
 import { mengenansatzBerechnen } from '@tethys/mengen';
+import { zuschlagErteilen } from '@tethys/vergabe';
 import type {
+  Angebot,
+  AngebotId,
+  Angebotsposition,
   Ansatzzeile,
+  Aufmass,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvBefehl,
+  AuftragsLvZustand,
+  Bauteil,
   Bauwerksmodell,
   BauwerksmodellId,
+  BieterId,
+  Einheitspreis,
   Ergebnis,
   IfcGlobalId,
+  KostenermittlungId,
   LvBefehl,
   LvZustand,
+  Nachlass,
   Position,
+  PositionId,
+  Projekt,
   ProjektId,
+  Prozent,
   Pruefbefund,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../e2e/fixture-inhalt';
+import { auswahlDerZeile } from './bim/auswahl';
+import { aufmassBlattBefehl, aufmassVorschau } from './bim/aufmassblatt';
+import { modellbaumBauen } from './bim/baum';
+import { kostenkennwerteZeilen, schaetzungBauen } from './bim/kennwerte';
 import { uebernahmeBefehle, uebernahmeVorschau } from './bim/uebernahme';
 import { bauteileInModellreihenfolge, zuordnenBefehl } from './bim/zuordnung';
+import { aktualisierungBerechnen, folgenansicht } from './modellvergleich/folgen';
 
 // --- Fixtures ------------------------------------------------------------------------------------------------------
 
@@ -74,6 +114,23 @@ interface FxVordersatz {
   readonly zeilenergebnisse: readonly string[];
   readonly menge: string;
 }
+/** Ein Bauteil der Listen „hinzugefügt“ und „entfernt“ des Vergleichs. */
+interface FxListeneintrag {
+  readonly globalId: string;
+  readonly kennung: string;
+  readonly klasse: string;
+  readonly name: string;
+  readonly geschoss: string;
+}
+/** Ein geändertes Bauteil des Vergleichs (README der Fixtures: „Geändert“). */
+interface FxAenderung {
+  readonly globalId: string;
+  readonly kennung: string;
+  readonly felder: readonly string[];
+  readonly name?: { readonly vorher: string; readonly nachher: string };
+  readonly strukturknoten?: { readonly vorher: string; readonly nachher: string };
+  readonly mengen?: readonly { readonly name: string; readonly vorher: string; readonly nachher: string }[];
+}
 interface FxZuordnung {
   readonly positionId: string;
   readonly oz: string;
@@ -113,6 +170,53 @@ interface FxBim {
     readonly sollwerte: FxSollwerte;
   };
   readonly erweitert: {
+    readonly aufmassAusAuswahl: {
+      readonly modell: Stand;
+      readonly auswahl: { readonly art: string; readonly globalId: string; readonly name: string };
+      readonly positionen: readonly (FxVordersatz & { readonly bauteile: readonly string[] })[];
+    };
+    readonly vergleich: {
+      readonly vorher: Stand;
+      readonly nachher: Stand;
+      readonly hinzugefuegt: readonly FxListeneintrag[];
+      readonly entfernt: readonly FxListeneintrag[];
+      readonly geaendert: readonly FxAenderung[];
+    };
+    readonly betroffenePositionen: readonly {
+      readonly positionId: string;
+      readonly oz: string;
+      readonly vorher: string;
+      readonly nachher: string;
+      readonly differenz: string;
+    }[];
+    readonly mengenAktualisieren: {
+      readonly modell: Stand;
+      readonly vordersaetze: readonly FxVordersatz[];
+      readonly befunde: readonly {
+        readonly positionId: string;
+        readonly oz: string;
+        readonly art: string;
+        readonly globalId: string;
+        readonly kennung: string;
+      }[];
+      readonly sollwerte: FxSollwerte;
+    };
+    readonly kostenschaetzung: {
+      readonly stufe: string;
+      readonly name: string;
+      readonly bezugsgroesse: {
+        readonly art: 'BGF' | 'BRI' | 'NRF';
+        readonly wert: string;
+        readonly einheit: string;
+      };
+      readonly kennwerte: readonly { readonly nummer: string; readonly kennwert: string }[];
+      readonly eintraege: readonly {
+        readonly nummer: string;
+        readonly betrag: string;
+        readonly bemerkung: string;
+      }[];
+      readonly gesamt: string;
+    };
     readonly din277: {
       readonly geschosse: readonly {
         readonly globalId: string;
@@ -126,12 +230,41 @@ interface FxBim {
         readonly geschoss: string;
         readonly nrf: string;
       }[];
+      readonly summen: { readonly bgf: string; readonly bri: string; readonly nrf: string };
     };
   };
 }
 
+/** Die Angebote zu `typisch` (Ticket 51, 69) und der Preisspiegel des Tors M3. */
+interface FxAngebote {
+  readonly bieter: readonly { readonly id: string; readonly name: string }[];
+  readonly angebote: readonly {
+    readonly id: string;
+    readonly bieterId: string;
+    readonly nachlass: Nachlass | null;
+    readonly positionen: readonly {
+      readonly positionId: string;
+      readonly status: 'angeboten' | 'nicht-angeboten';
+      readonly einheitspreis?: string;
+      readonly zuschlagssatz?: string;
+    }[];
+  }[];
+  readonly preisspiegel: {
+    readonly bieter: readonly { readonly angebotId: string; readonly name: string }[];
+    readonly vergleiche: readonly {
+      readonly angebotIds: readonly string[];
+      readonly rang: Readonly<Record<string, string>>;
+    }[];
+  };
+}
+
 const BIM = lies('typisch-bim.json') as FxBim;
-const TYPISCH = lies('typisch.json') as { readonly id: string; readonly sollwerte: FxSollwerte };
+const TYPISCH = lies('typisch.json') as {
+  readonly id: string;
+  readonly knoten: readonly { readonly id: string; readonly positionsart?: string }[];
+  readonly sollwerte: FxSollwerte;
+};
+const ANGEBOTE = lies('typisch-angebote.json') as FxAngebote;
 
 function erwarteOk<T, F>(e: Ergebnis<T, F>): T {
   if (!e.ok) throw new Error(`Unerwarteter Fehlerwert: ${JSON.stringify(e.fehler)}`);
@@ -258,6 +391,117 @@ const uebernahme = mengenUebernehmen(zugeordnet, v1.modell);
 const uebernahme2x3 = mengenUebernehmen(zugeordnet, v1Ifc2x3.modell);
 const lvNachV1 = uebernahme.zustand;
 
+// --- 3. `vergabe`: Zuschlag wie in M3 an den Ersten des Paars A+B (Bieter A), ohne Wahl -----------------------------
+
+// Das Paar des Tors M3 und sein Rang (Ticket 69); ohne Wahl bleibt die Grundposition 02.0070 mit ihrer Zuordnung im
+// Auftrags-LV, die Alternative entfällt (D-21).
+const PAAR = ANGEBOTE.preisspiegel.bieter.filter((b) => b.name === 'Bieter A' || b.name === 'Bieter B');
+const RANG =
+  ANGEBOTE.preisspiegel.vergleiche.find(
+    (v) => v.angebotIds.length === 2 && PAAR.every((b) => v.angebotIds.includes(b.angebotId)),
+  )?.rang ?? {};
+const ERSTER = PAAR.find((b) => RANG[b.angebotId] === '1');
+const fxErster = ANGEBOTE.angebote.find((a) => a.id === ERSTER?.angebotId);
+if (fxErster === undefined) throw new Error('Fixture ohne Angebot des Ersten im Paar A+B');
+
+const projekt: Projekt = {
+  id: PROJEKT_ID,
+  name: 'Musterhaus',
+  bauherr: { name: 'Bauherr', anschrift: null },
+  bieter: ANGEBOTE.bieter.map((b) => ({ id: b.id as BieterId, name: b.name })),
+};
+/** Das Angebot der Fixture in Vertragsform (einen Zuschlagssatz bietet der Bieter mit dem Platzhalter-EP an). */
+const angebotErster: Angebot = {
+  id: fxErster.id as AngebotId,
+  projektId: PROJEKT_ID,
+  leistungsverzeichnisId: lvNachV1.leistungsverzeichnis.id,
+  bieterId: fxErster.bieterId as BieterId,
+  nachlass: fxErster.nachlass,
+  positionen: fxErster.positionen.map((p): Angebotsposition => {
+    const positionId = p.positionId as PositionId;
+    if (p.status !== 'angeboten') return { positionId, status: 'nicht-angeboten' };
+    if (p.zuschlagssatz !== undefined)
+      return {
+        positionId,
+        status: 'angeboten',
+        einheitspreis: '0.000' as Einheitspreis,
+        epa: null,
+        zuschlagssatz: p.zuschlagssatz as Prozent,
+      };
+    return {
+      positionId,
+      status: 'angeboten',
+      einheitspreis: (p.einheitspreis ?? '') as Einheitspreis,
+      epa: null,
+    };
+  }),
+};
+
+function auftragsLvAusfuehren(z: AuftragsLvZustand | null, b: AuftragsLvBefehl): AuftragsLvZustand {
+  const danach = auftragsLvChangeSetAnwenden(z, erwarteOk(auftragsLvBefehlAusfuehren(z, b)));
+  if (danach === null) throw new Error(`${b.art} entfernt das Auftrags-LV`);
+  return danach;
+}
+
+const AUFTRAGS_LV_ID = 'auftrag-x1' as AuftragsLeistungsverzeichnisId;
+const zuschlag = erwarteOk(
+  zuschlagErteilen(lvNachV1, angebotErster, projekt, new Set<PositionId>(), AUFTRAGS_LV_ID),
+);
+const auftrag = auftragsLvAusfuehren(null, zuschlag.befehl);
+
+// --- 4. `bim` → `abrechnung`: Aufmaßblatt aus der Auswahl „Geschoss EG“ am Auftrags-LV ------------------------------
+
+// Die Auswahl, wie die Modellseite sie aus der Zeile des Geschosses bildet (Ticket 114, `auswahlDerZeile`).
+const AUSWAHL = BIM.erweitert.aufmassAusAuswahl;
+const baumV1 = modellbaumBauen(v1.modell);
+const egZeile = baumV1.zeileVon(AUSWAHL.auswahl.globalId);
+if (egZeile === undefined) throw new Error('Geschoss der Auswahl fehlt im Baum');
+const auswahlEg = auswahlDerZeile(baumV1, egZeile);
+const aufmassvorschau = aufmassVorschau(auftrag.auftragsLeistungsverzeichnis.knoten, v1.modell, auswahlEg);
+const blattBefehl = aufmassBlattBefehl(
+  { aufmass: () => 'aufmass-x1' as AufmassId },
+  auftrag.auftragsLeistungsverzeichnis,
+  [],
+  { bezeichnung: `Aus Modell ${v1.modell.name}`, datum: '2026-11-12' },
+  aufmassvorschau,
+);
+const blatt: Aufmass | undefined = aufmassChangeSetAnwenden(
+  null,
+  erwarteOk(aufmassBefehlAusfuehren(null, blattBefehl)),
+)?.aufmass;
+
+// --- 5. `bim`: Vergleich v1 → v2, Folgen für das LV, „Mengen aktualisieren“ (nur Ausschreibungs-LV, D-53) ------------
+
+const vergleich = modellVergleichen(v1.modell, v2.modell);
+const folgen = folgenansicht(lvNachV1, v1.modell, v2.modell);
+// Die neuen Ansätze aller Positionen mit Zuordnungen laut v2 (Vorschau „Mengen aus Modell“ mit dem neuen Stand).
+const neueAnsaetze = uebernahmeVorschau(lvNachV1.leistungsverzeichnis.knoten, v2.modell);
+const aktualisierung = aktualisierungBerechnen(lvNachV1, v1.modell, v2.modell);
+const lvNachV2 = aktualisierung.befehle.reduce<LvZustand>((s, b) => lvAusfuehren(s, b), lvNachV1);
+
+// --- 6. DIN 277 und Kostenschätzung über Kennwerte (`bim`, `kosten`) -------------------------------------------------
+
+const KS = BIM.erweitert.kostenschaetzung;
+const groessen = din277Berechnen(v1.modell);
+// Wie der Dialog „Kostenschätzung über Kennwerte“: Kennwerte als Eingabe in de-DE (`bim/kennwerte`, N4).
+const schaetzung = schaetzungBauen({
+  id: 'kostenschaetzung-x1' as KostenermittlungId,
+  projektId: PROJEKT_ID,
+  name: KS.name,
+  groessen,
+  zeilen: KS.kennwerte.map((k) => ({
+    kostengruppe: k.nummer,
+    bezug: KS.bezugsgroesse.art,
+    kennwert: k.kennwert.replace('.', ','),
+  })),
+});
+const ermittlung = schaetzung.schaetzung
+  ? kostenermittlungChangeSetAnwenden(
+      null,
+      erwarteOk(kostenermittlungBefehlAusfuehren(null, schaetzung.schaetzung.befehl)),
+    )?.kostenermittlung
+  : undefined;
+
 // --- Abbildungen in die Form der Fixture ---------------------------------------------------------------------------
 
 /** Die Summen eines LV in der Form der Sollwerte von `typisch.json` (Positionen, Titel, Summen, Zuschläge, Ausweise). */
@@ -330,6 +574,22 @@ const fxBauteilliste = (stand: Stand) =>
     geschoss: b.geschoss,
     mengen: b.mengen.map((q) => ({ name: q.name, art: q.art, wert: q.wert })),
   }));
+
+/** Kennung (`AW-EG-S` …) je GlobalId, über beide Stände (README der Fixtures: die `Tag`-Angabe der Datei). */
+const KENNUNG: ReadonlyMap<string, string> = new Map(
+  [...BIM.bauteile.v1, ...BIM.bauteile.v2].map((b) => [b.globalId, b.kennung]),
+);
+
+/** Ein Bauteil in der Form der Listen „hinzugefügt“ und „entfernt“ der Fixture. */
+const listeneintrag =
+  (m: Bauwerksmodell) =>
+  (b: Bauteil): FxListeneintrag => ({
+    globalId: b.globalId,
+    kennung: KENNUNG.get(b.globalId) ?? '',
+    klasse: b.ifcKlasse,
+    name: b.name ?? '',
+    geschoss: knotenname(m, b.strukturGlobalId) ?? '',
+  });
 
 /** Mengen eines Strukturknotens nach Namen. */
 function knotenmenge(m: Bauwerksmodell, globalId: string, name: string): string | undefined {
@@ -429,5 +689,196 @@ describe('Tor X1: Kette ohne Oberfläche (Sollwerte aus typisch-bim)', () => {
   it('IFC 2x3 liefert dieselben Ansatzzeilen und Vordersätze wie IFC 4', () => {
     expect(uebernahme2x3.vorschau).toEqual(uebernahme.vorschau);
     expect(uebernahme2x3.befehle).toEqual(uebernahme.befehle);
+  });
+
+  it('vergabe: Zuschlag wie M3 an Bieter A ohne Wahl; das Auftrags-LV trägt Zuordnungen und Vordersätze aus v1', () => {
+    expect(ERSTER?.name).toBe('Bieter A');
+    // Ohne Wahl entfällt die Alternative (02.0070 A), sonst nichts; Bieter A hat alles angeboten.
+    const alternativen = TYPISCH.knoten.filter((k) => k.positionsart === 'wahl').map((k) => k.id);
+    expect(zuschlag.warnungen).toEqual([
+      { code: 'positionen-entfallen', anzahl: alternativen.length, positionIds: alternativen },
+    ]);
+    const a = auftrag.auftragsLeistungsverzeichnis;
+    expect([a.id, a.leistungsverzeichnisId, a.angebotId]).toEqual([AUFTRAGS_LV_ID, BIM.lvId, fxErster.id]);
+    const knoten = new Map(a.knoten.map((k) => [k.id as string, k]));
+    for (const f of BIM.zuordnungen) {
+      const k = knoten.get(f.positionId);
+      expect(k?.art === 'position' ? k.bauteile : undefined).toEqual(f.bauteile);
+    }
+    for (const v of BIM.kern.vordersaetze) {
+      const k = knoten.get(v.positionId);
+      expect(k?.art === 'position' ? k.menge : undefined).toBe(v.menge);
+    }
+  });
+
+  it('bim: Aufmaß aus der Auswahl „Geschoss EG“: Bauteile, Zeilen, Zeilenergebnisse und Mengen der Fixture', () => {
+    const imEg = BIM.bauteile.v1.filter((b) => b.geschoss === AUSWAHL.auswahl.name).map((b) => b.globalId);
+    expect([...auswahlEg].sort()).toEqual([...imEg].sort());
+    expect(bauteileImStrukturknoten(v1.modell, AUSWAHL.auswahl.globalId as IfcGlobalId).sort()).toEqual(
+      [...imEg].sort(),
+    );
+    expect(
+      aufmassvorschau.zeilen.map(({ positionId, oz, bauteile, zeilen, menge }) => ({
+        positionId,
+        oz,
+        bauteile,
+        zeilen,
+        menge,
+      })),
+    ).toEqual(
+      AUSWAHL.positionen.map((p) => ({
+        positionId: p.positionId,
+        oz: p.oz,
+        bauteile: p.bauteile,
+        zeilen: p.mengenansatz.map(zeileAusFixture),
+        menge: p.menge,
+      })),
+    );
+    expect(aufmassvorschau.zeilen.map((z) => zeilenergebnisse(z.zeilen))).toEqual(
+      AUSWAHL.positionen.map((p) => p.zeilenergebnisse),
+    );
+    expect(aufmassvorschau.zeilen.flatMap((z) => z.befunde)).toEqual([]);
+    expect(aufmassvorschau.hinweise).toEqual(['bauteil-auf-mehreren-blaettern-nicht-erkennbar']);
+  });
+
+  it('abrechnung: Blatt 1 trägt je Position Ansatz und Menge der Fixture, ohne Befund gegen das Auftrags-LV', () => {
+    if (blatt === undefined) throw new Error('Blatt fehlt');
+    expect([blatt.nummer, blatt.auftragsLvId, blatt.projektId]).toEqual([1, AUFTRAGS_LV_ID, PROJEKT_ID]);
+    expect(blatt.positionen).toEqual(
+      AUSWAHL.positionen.map((p) => ({
+        positionId: p.positionId,
+        mengenansatz: p.mengenansatz.map(zeileAusFixture),
+        menge: p.menge,
+      })),
+    );
+    expect(aufmassPruefen(blatt, auftrag)).toEqual([]);
+  });
+
+  it('bim: Vergleich v1 → v2: hinzugefügt, entfernt und geändert wie die Fixture, ohne Befund', () => {
+    const soll = BIM.erweitert.vergleich;
+    expect([soll.vorher, soll.nachher]).toEqual(['v1', 'v2']);
+    expect(vergleich.hinzugefuegt.map(listeneintrag(v2.modell))).toEqual(soll.hinzugefuegt);
+    expect(vergleich.entfernt.map(listeneintrag(v1.modell))).toEqual(soll.entfernt);
+    expect(
+      vergleich.geaendert.map((a): FxAenderung => ({
+        globalId: a.globalId,
+        kennung: KENNUNG.get(a.globalId) ?? '',
+        felder: a.felder,
+        ...(a.felder.includes('name')
+          ? { name: { vorher: a.vorher.name ?? '', nachher: a.nachher.name ?? '' } }
+          : {}),
+        ...(a.felder.includes('strukturknoten')
+          ? {
+              strukturknoten: {
+                vorher: knotenname(v1.modell, a.vorher.strukturGlobalId) ?? '',
+                nachher: knotenname(v2.modell, a.nachher.strukturGlobalId) ?? '',
+              },
+            }
+          : {}),
+        ...(a.felder.includes('mengen')
+          ? {
+              mengen: a.mengen.map((q) => ({
+                name: q.name,
+                vorher: q.vorher?.wert ?? '',
+                nachher: q.nachher?.wert ?? '',
+              })),
+            }
+          : {}),
+      })),
+    ).toEqual(soll.geaendert);
+    expect(vergleich.anzahlUnveraendert).toBe(
+      BIM.bauteile.v1.length - soll.entfernt.length - soll.geaendert.length,
+    );
+    expect(vergleich.befunde).toEqual([]);
+  });
+
+  it('Folgen für das LV: betroffene Positionen mit Menge laut v1 und v2 und Differenz wie die Fixture', () => {
+    expect(folgen.zeilen.map((z) => z.positionId)).toEqual(BIM.zuordnungen.map((f) => f.positionId));
+    expect(
+      folgen.zeilen
+        .filter((z) => z.betroffen)
+        .map(({ positionId, oz, vorher, nachher, differenz }) => ({
+          positionId,
+          oz,
+          vorher,
+          nachher,
+          differenz,
+        })),
+    ).toEqual(BIM.erweitert.betroffenePositionen);
+    // Im LV steht vor dem Aktualisieren der Vordersatz laut v1.
+    const v1Menge = new Map(BIM.kern.vordersaetze.map((v) => [v.positionId, v.menge]));
+    expect(folgen.zeilen.map((z) => z.imLv)).toEqual(folgen.zeilen.map((z) => v1Menge.get(z.positionId)));
+  });
+
+  it('„Mengen aktualisieren“: neue Ansätze und Befund laut Fixture; nur die betroffenen werden gesetzt, Summen wie die Fixture', () => {
+    const soll = BIM.erweitert.mengenAktualisieren;
+    expect(soll.modell).toBe('v2');
+    expect(
+      neueAnsaetze.zeilen.map(({ positionId, oz, zeilen, nachher }) => ({ positionId, oz, zeilen, nachher })),
+    ).toEqual(soll.vordersaetze.map(vorschauzeile));
+    expect(neueAnsaetze.zeilen.map((z) => zeilenergebnisse(z.zeilen))).toEqual(
+      soll.vordersaetze.map((v) => v.zeilenergebnisse),
+    );
+    expect(
+      neueAnsaetze.zeilen.flatMap((z) =>
+        z.befunde.map((b) => ({
+          positionId: b.ort.knotenId,
+          oz: z.oz,
+          art: b.code,
+          globalId: b.ort.globalId,
+          kennung: KENNUNG.get(b.ort.globalId ?? ''),
+        })),
+      ),
+    ).toEqual(soll.befunde);
+    // D-116.2: geschrieben wird je betroffener Position mit neuen Zeilen ein `MengenansatzSetzen` (Menge aus `mengen`).
+    expect(aktualisierung.befehle.map((b) => [b.positionId, b.menge])).toEqual(
+      BIM.erweitert.betroffenePositionen.map((p) => [p.positionId, p.nachher]),
+    );
+    for (const v of soll.vordersaetze) {
+      expect(position(lvNachV2, v.positionId).mengenansatz).toEqual(v.mengenansatz.map(zeileAusFixture));
+      expect(position(lvNachV2, v.positionId).menge).toBe(v.menge);
+    }
+    expect(wieSollwerte(lvNachV2)).toEqual(soll.sollwerte);
+  });
+
+  it('DIN 277 aus v1: BGF, BRI und NRF der Fixture, Quelle Modell, ohne Befund', () => {
+    const s = BIM.erweitert.din277.summen;
+    expect([groessen.bgf, groessen.bri, groessen.nrf]).toEqual([
+      { art: 'BGF', wert: s.bgf, quelle: 'modell' },
+      { art: 'BRI', wert: s.bri, quelle: 'modell' },
+      { art: 'NRF', wert: s.nrf, quelle: 'modell' },
+    ]);
+    expect(groessen.befunde).toEqual([]);
+    expect(groessen.bgf.wert).toBe(KS.bezugsgroesse.wert);
+  });
+
+  it('Kostenschätzung über Kennwerte: Stufe, Einträge mit Herleitung und Gesamt wie die Fixture; `kosten` rechnet dieselbe Summe', () => {
+    expect(schaetzung.fehler).toEqual([]);
+    expect(schaetzung.schaetzung?.befunde).toEqual([]);
+    if (ermittlung === undefined) throw new Error('Kostenermittlung fehlt');
+    expect([ermittlung.stufe, ermittlung.name, ermittlung.projektId]).toEqual([
+      KS.stufe,
+      KS.name,
+      PROJEKT_ID,
+    ]);
+    expect(ermittlung.eintraege.map(({ nummer, betrag }) => ({ nummer, betrag }))).toEqual(
+      KS.eintraege.map(({ nummer, betrag }) => ({ nummer, betrag })),
+    );
+    // Herleitung in `bemerkung` (D-52): Bezugsgröße und Kennwert der Fixture, in de-DE.
+    const groesse = `${KS.bezugsgroesse.art} ${KS.bezugsgroesse.wert.replace('.', ',')} ${KS.bezugsgroesse.einheit}`;
+    for (const e of ermittlung.eintraege) {
+      const kennwert = KS.kennwerte.find((k) => k.nummer === e.nummer)?.kennwert ?? '';
+      expect(e.bemerkung).toContain(groesse);
+      expect(e.bemerkung).toContain(`${kennwert.replace('.', ',')} €/${KS.bezugsgroesse.einheit}`);
+    }
+    expect(schaetzung.schaetzung?.gesamt).toBe(KS.gesamt);
+    expect(kostenermittlungBerechnen(ermittlung.eintraege).gesamtsumme).toBe(KS.gesamt);
+  });
+
+  it('Kostenkennwerte der neuen Ermittlung: je Kostengruppe wieder der Kennwert der Fixture je m² BGF', () => {
+    const zeilen = kostenkennwerteZeilen(ermittlung?.eintraege ?? [], groessen);
+    expect(KS.kennwerte.map((k) => zeilen.find((z) => z.nummer === k.nummer)?.jeBgf)).toEqual(
+      KS.kennwerte.map((k) => k.kennwert),
+    );
   });
 });
