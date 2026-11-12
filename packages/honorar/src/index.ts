@@ -10,3 +10,5 @@ export type {
   Leistungsphasennummer,
 } from './leistungsbilder';
 export { LEISTUNGSBILDER } from './leistungsbilder';
+export type { Spannenfehler, Tafelinterpolation } from './honorarspanne';
+export { honorarspanneBerechnen } from './honorarspanne';
