@@ -1,6 +1,6 @@
 # 108: X1c–f: `bim`: Modellbefehle, Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1c, X1d, X1e, X1f · Paket: `packages/bim` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: 97
@@ -137,3 +137,46 @@ Begriffe aus v1.6 und dem Glossar; neue (z. B. „Mengenübernahme“, „Bezugs
   samt Befund, Aufmaß EG, BGF/BRI/NRF, Kostenschätzung, Vergleich, betroffene Positionen, D-99.13) kommen ohne Anpassung heraus;
   kein Goldwert geändert. Einzig meine eigene Vermutung über Namen und Reihenfolge der 15 Bauteile ohne Zuordnung war falsch
   (Fenster heißen `F-OG-F` usw.); der Test prüft jetzt die Menge nach D-99.13 und die Reihenfolge des Modells.
+
+### Ergebnis (Branch `welle-6/108-bim`, Basis `integration/welle-6`)
+
+Neues reines Paket `packages/bim` (`@tethys/bim`, importiert nur `vertrag` und `dezimal`), eingetragen in `tools/boundaries.mjs`
+(`apps/web` darf es importieren; `apps/web/package.json` ergänzen die App-Tickets) und im Lockfile. Glossar vorweg: Mengenübernahme,
+Aufmaßblatt aus Auswahl, Bezugsgröße (DIN 277), Kostenschätzung über Kennwerte, Modellvergleich, Modellprüfung. Nach dem Merge
+von D-66 nutzt das Paket `IFC_GLOBALID_MUSTER` und die Lesart „erstes Objekt, Struktur vor Bauteilen“.
+
+**Öffentliche Schnittstelle für 114–117** (alle Funktionen rein; Befunde sind `Pruefbefund` mit Quelle `modell-pruefung`):
+
+- **Befehle (114):** `bauwerksmodellBefehlAusfuehren`, `bauwerksmodellChangeSetAnwenden`, `bauwerksmodellChangeSetUmkehren`
+  (Signaturen aus `vertrag`; Formprüfung D-108.8; Umbenennen ohne Kopie der Listen; ungültige ChangeSet-Form wirft).
+- **Mengenübernahme (115, 116):** `mengenuebernahmeBerechnen(knoten, modell): Mengenuebernahme { positionen, befunde }` und
+  `positionUebernehmen(position, modell): Positionsuebernahme { positionId, zeilen, menge, vorher { mengenansatz, menge },
+  geaendert, befunde }`. Die App baut je Position mit `geaendert` `MengenansatzSetzen { positionId, mengenansatz: zeilen, menge:
+  mengenansatzBerechnen(zeilen).summe }` (nur Ausschreibungs-LV, ein Undo-Schritt). Dazu `EINHEITSREGELN`, `FORMEL_FREIER_ANSATZ`,
+  `MENGENART_STUECK`.
+- **Aufmaß aus Auswahl (115):** `bauteileImStrukturknoten(modell, strukturGlobalId)` (Auswahl „Geschoss“) und
+  `aufmassAusAuswahl(knoten, modell, auswahl): AufmassAusAuswahl { positionen: Aufmassvorschlag[] { positionId, bauteile, zeilen,
+  menge, befunde }, befunde, hinweise }`; die App legt je Vorschlag mit Zeilen eine `Aufmassposition` an (`AufmassAnlegen`) und
+  zeigt `hinweise` (`bauteil-auf-mehreren-blaettern-nicht-erkennbar`).
+- **DIN 277 und Kennwerte (115):** `din277Berechnen(modell, eingaben?): Din277Groessen { bgf, bri, nrf: Bezugsgroesse { art, wert,
+  quelle }, befunde }`; `kostenschaetzungBerechnen({ id, projektId, name, groessen, kennwerte: Kennwertansatz[] }):
+  Kostenschaetzung { befehl: KostenermittlungAnlegen, gesamt, befunde }`; `kostenkennwerteBerechnen(gruppen, groessen):
+  Kostenkennwertzeile[] { nummer, summe, jeBgf, jeBri, jeNrf }` (`gruppen` aus `kostenermittlungBerechnen(...).gruppen`).
+- **Vergleich (116):** `modellVergleichen(alt, neu): Modellvergleich { hinzugefuegt, entfernt, geaendert: Bauteilaenderung[]
+  { globalId, felder, vorher, nachher, mengen: Mengenaenderung[] }, anzahlUnveraendert, befunde }` und
+  `vergleichsfolgenBerechnen(knoten, alt, neu): Vergleichsfolgen { positionen: Vergleichsfolge[] { positionId, vorher, nachher,
+  differenz, betroffen, zeilen, befunde } }`.
+- **Prüfung (115, 114):** `zuordnungenPruefen(knoten, modell): Zuordnungspruefung { befunde, ohneZuordnung }` (3D-Färbung
+  „ohne Zuordnung“) und `bauteileOhneGeometrie(modell, ladebericht.mitGeometrie)`; Codes in `Modellbefundcode` (D-108.3).
+
+**Tests** (10 Dateien, 110 Tests): Befehle (Form, Anwenden, Umkehren, D-66), Mengenübernahme, Aufmaß, DIN 277, Kennwerte,
+Vergleich, Prüfung mit Werten von Hand; Golden `haus.test.ts` mit `typisch-bim.json` für Vordersätze v1, „Mengen aktualisieren“
+mit v2 samt Befund, Aufmaß EG, BGF/BRI/NRF, Kostenschätzung, Vergleich v1 → v2, betroffene Positionen, D-99.13; Property-Tests
+(`eigenschaften.test.ts`: Reihenfolge der Bauteile und Knoten, eine Zeile oder ein Befund je Zuordnung, Vergleich mit sich selbst
+leer, Gegenrichtung gespiegelt); Leistung (`leistung.test.ts`): Vergleich zweier 10k-Modelle, Median 33 ms bei Last 19 (Budget
+500 ms, D-54).
+
+**Suite** nach `git merge integration/welle-6` (D-66, 105, 110 u. a.): `pnpm lint` 0, `pnpm typecheck` 0; `pnpm test` (Vitest):
+3.338 bestanden, 3 übersprungen, 6 Leistungsbudgets fremder Pakete rot bei Last 25–32 auf 4 Kernen (gaeb `lesen` 2 MB, kern K9,
+speicher Aufmaß 5.000 Zeilen, vergabe Preisspiegel, ausgabe PDF gross, apps/web D-45); jede dieser Dateien allein grün; `node
+--test fixtures` 53/53. Kein Budget gelockert, kein Test übersprungen. `bim` selbst immer grün.
