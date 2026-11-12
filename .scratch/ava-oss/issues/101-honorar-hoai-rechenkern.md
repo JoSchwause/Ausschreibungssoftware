@@ -1,6 +1,6 @@
 # 101: X3: HOAI-Rechenkern (`honorar`)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X3 · Paket: `packages/honorar` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: –
