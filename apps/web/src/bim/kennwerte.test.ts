@@ -87,8 +87,15 @@ describe('Kostenschätzung über Kennwerte', () => {
 describe('kostenkennwerteZeilen', () => {
   it('je Kostengruppe der bestehenden Ermittlung Summe je m² BGF und je m³ BRI', () => {
     const { groessen } = groessenLesen(hausModell(), {});
-    const z = kostenkennwerteZeilen([{ nummer: '320' as Kostengruppennummer, betrag: '29303.49' as Betrag }], groessen);
+    const z = kostenkennwerteZeilen(
+      [{ nummer: '320' as Kostengruppennummer, betrag: '29303.49' as Betrag }],
+      groessen,
+    );
     // 29.303,49 / 197,596 = 148,3000… → 148,30; / 617,485 = 47,4558… → 47,46
-    expect(z.find((x) => x.nummer === '320')).toMatchObject({ summe: '29303.49', jeBgf: '148.30', jeBri: '47.46' });
+    expect(z.find((x) => x.nummer === '320')).toMatchObject({
+      summe: '29303.49',
+      jeBgf: '148.30',
+      jeBri: '47.46',
+    });
   });
 });

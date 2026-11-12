@@ -184,7 +184,8 @@ function ZuordnenDialog({
   const befunde =
     befehl === null || position === undefined
       ? []
-      : (uebernahmeVorschau([{ ...position, bauteile: befehl.bauteile ?? [] }], modell).zeilen[0]?.befunde ?? []);
+      : (uebernahmeVorschau([{ ...position, bauteile: befehl.bauteile ?? [] }], modell).zeilen[0]?.befunde ??
+        []);
 
   return (
     <Dialog
@@ -243,7 +244,9 @@ function ZuordnenDialog({
         }))}
         onWertChange={setMengenart}
       />
-      {position !== undefined && mengenart !== undefined && befehl === null ? <p>{t.keineAenderung}</p> : null}
+      {position !== undefined && mengenart !== undefined && befehl === null ? (
+        <p>{t.keineAenderung}</p>
+      ) : null}
       {befehl !== null ? (
         <BefundListe
           befunde={befunde}

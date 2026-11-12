@@ -78,8 +78,12 @@ describe('mengenartenDerAuswahl', () => {
     const m = modell(
       [knoten('EG', 'geschoss', null)],
       [
-        bauteil('W1', 'EG', { mengen: [menge('Length', 'laenge', '3'), menge('NetSideArea', 'flaeche', '8')] }),
-        bauteil('W2', 'EG', { mengen: [menge('NetSideArea', 'flaeche', '9'), menge('NetVolume', 'volumen', '1')] }),
+        bauteil('W1', 'EG', {
+          mengen: [menge('Length', 'laenge', '3'), menge('NetSideArea', 'flaeche', '8')],
+        }),
+        bauteil('W2', 'EG', {
+          mengen: [menge('NetSideArea', 'flaeche', '9'), menge('NetVolume', 'volumen', '1')],
+        }),
         bauteil('W3', 'EG', { mengen: [menge('Gewicht', 'gewicht', '1')] }),
       ],
     );
@@ -93,7 +97,11 @@ describe('mengenartenDerAuswahl', () => {
 
   it('am Haus: die Innenwände des EG haben NetSideArea, alle drei', () => {
     const arten = mengenartenDerAuswahl(hausModell(), IW_EG);
-    expect(arten.find((a) => a.name === 'NetSideArea')).toEqual({ name: 'NetSideArea', einheit: 'm²', anzahl: 3 });
+    expect(arten.find((a) => a.name === 'NetSideArea')).toEqual({
+      name: 'NetSideArea',
+      einheit: 'm²',
+      anzahl: 3,
+    });
     expect(arten.at(-1)).toEqual({ name: 'Stueck', einheit: 'St', anzahl: 3 });
   });
 });

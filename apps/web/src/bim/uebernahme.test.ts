@@ -29,9 +29,15 @@ interface Vordersatz {
 const fx = JSON.parse(
   readFileSync(new URL('../../../../fixtures/typisch-bim.json', import.meta.url), 'utf8'),
 ) as {
-  readonly zuordnungen: readonly { positionId: string; bauteile: { globalId: string; mengenart: string }[] }[];
+  readonly zuordnungen: readonly {
+    positionId: string;
+    bauteile: { globalId: string; mengenart: string }[];
+  }[];
   readonly kern: {
-    readonly torweg: { readonly positionIds: readonly string[]; readonly sollwerte: { summen: { netto: string } } };
+    readonly torweg: {
+      readonly positionIds: readonly string[];
+      readonly sollwerte: { summen: { netto: string } };
+    };
     readonly vordersaetze: readonly Vordersatz[];
     readonly sollwerte: { summen: { netto: string } };
   };
@@ -109,9 +115,9 @@ describe('Mengen aus dem Modell (Torweg X1-Kern)', () => {
     expect(s.zustand?.summen.gesamt.netto).toBe(fx.kern.torweg.sollwerte.summen.netto);
 
     // Nach der Übernahme ist nichts mehr zu tun.
-    expect(uebernahmeBefehle(uebernahmeVorschau(s.zustand?.leistungsverzeichnis.knoten ?? [], hausModell()))).toEqual(
-      [],
-    );
+    expect(
+      uebernahmeBefehle(uebernahmeVorschau(s.zustand?.leistungsverzeichnis.knoten ?? [], hausModell())),
+    ).toEqual([]);
 
     await weg.rueckgaengig();
     expect(pos(s.zustand, POS).menge).toBe('212.400');
@@ -133,7 +139,9 @@ describe('Mengen aus dem Modell (Torweg X1-Kern)', () => {
         if (befehl !== null) expect((await s.befehl(befehl)).ok).toBe(true);
       }
     }
-    const befehle = uebernahmeBefehle(uebernahmeVorschau(s.zustand?.leistungsverzeichnis.knoten ?? [], hausModell()));
+    const befehle = uebernahmeBefehle(
+      uebernahmeVorschau(s.zustand?.leistungsverzeichnis.knoten ?? [], hausModell()),
+    );
     expect(befehle).toHaveLength(fx.kern.vordersaetze.length);
     await s.folge(befehle);
     for (const v of fx.kern.vordersaetze) expect(pos(s.zustand, v.positionId).menge).toBe(v.menge);

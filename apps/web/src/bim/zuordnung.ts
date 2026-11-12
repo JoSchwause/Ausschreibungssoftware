@@ -81,7 +81,10 @@ export function zuordnenBefehl(
 }
 
 /** `BauteileZuordnen` ohne dieses Paar; die leere Liste wird `null`. `null`, wenn die Position das Paar nicht trägt. */
-export function zuordnungEntfernenBefehl(position: Position, paar: Bauteilzuordnung): BauteileZuordnen | null {
+export function zuordnungEntfernenBefehl(
+  position: Position,
+  paar: Bauteilzuordnung,
+): BauteileZuordnen | null {
   const liste = position.bauteile ?? [];
   const rest = liste.filter((x) => !gleich(x, paar));
   if (rest.length === liste.length) return null;

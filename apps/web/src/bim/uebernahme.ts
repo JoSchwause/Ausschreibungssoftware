@@ -61,5 +61,10 @@ export function uebernahmeVorschau(knoten: readonly Knoten[], modell: Bauwerksmo
 export function uebernahmeBefehle(v: Uebernahmevorschau): MengenansatzSetzen[] {
   return v.zeilen
     .filter((z) => z.geaendert && z.zeilen.length > 0)
-    .map((z) => ({ art: 'MengenansatzSetzen', positionId: z.positionId, mengenansatz: z.zeilen, menge: z.nachher }));
+    .map((z) => ({
+      art: 'MengenansatzSetzen',
+      positionId: z.positionId,
+      mengenansatz: z.zeilen,
+      menge: z.nachher,
+    }));
 }

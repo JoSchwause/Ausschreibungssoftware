@@ -71,7 +71,10 @@ export function useBezug(projektId: ProjektId): Bezugsstand {
         u.speicher.auftragsLeistungsverzeichnisse.auflisten(projektId),
       ]);
       const liste: Bezugswahl[] = [
-        ...(lvs.ok ? lvs.wert : []).map((l) => ({ schluessel: `lv:${l.id}`, label: texte.zuordnung.lv(l.name) })),
+        ...(lvs.ok ? lvs.wert : []).map((l) => ({
+          schluessel: `lv:${l.id}`,
+          label: texte.zuordnung.lv(l.name),
+        })),
         ...(auftraege.ok ? auftraege.wert : []).map((a) => ({
           schluessel: `auftrag:${a.id}`,
           label: texte.zuordnung.auftrag(a.name),
@@ -79,7 +82,9 @@ export function useBezug(projektId: ProjektId): Bezugsstand {
       ];
       if (!aktiv) return;
       setWahlen(liste);
-      setSchluessel((s) => (s !== undefined && liste.some((w) => w.schluessel === s) ? s : liste[0]?.schluessel));
+      setSchluessel((s) =>
+        s !== undefined && liste.some((w) => w.schluessel === s) ? s : liste[0]?.schluessel,
+      );
     })();
     return () => {
       aktiv = false;

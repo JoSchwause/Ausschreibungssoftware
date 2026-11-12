@@ -142,7 +142,10 @@ function MengenDialog({
         <Auswahl
           label={t.modell}
           wert={id}
-          optionen={modelle.map((m) => ({ wert: m.id, label: `${m.name} (${m.datei.dateiname}, ${m.eingelesen})` }))}
+          optionen={modelle.map((m) => ({
+            wert: m.id,
+            label: `${m.name} (${m.datei.dateiname}, ${m.eingelesen})`,
+          }))}
           onWertChange={setId}
         />
       )}
@@ -169,7 +172,11 @@ function MengenDialog({
                     {menge(z.vorher, z.einheit)}
                   </td>
                   <td className="bim__zahl" data-wert="nachher">
-                    {z.zeilen.length === 0 ? t.ohneZeile : z.geaendert ? menge(z.nachher, z.einheit) : t.unveraendert}
+                    {z.zeilen.length === 0
+                      ? t.ohneZeile
+                      : z.geaendert
+                        ? menge(z.nachher, z.einheit)
+                        : t.unveraendert}
                   </td>
                   <td>{ansatzText(z.zeilen)}</td>
                   <td>{z.befunde.map((b) => b.meldung).join('; ')}</td>

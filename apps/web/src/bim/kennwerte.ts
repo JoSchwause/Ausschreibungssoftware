@@ -81,7 +81,8 @@ export function kennwerteLesen(zeilen: readonly Kennwertzeile[]): {
     if (!kgOk) fehler.push({ zeile: i, feld: 'kostengruppe', meldung: 'Kostengruppe dreistellig (100–999)' });
     const r = parseBetragDe(kw);
     if (!r.ok) fehler.push({ zeile: i, feld: 'kennwert', meldung: 'Kennwert in € je Einheit, z. B. 148,30' });
-    if (kgOk && r.ok) ansaetze.push({ kostengruppe: kg as Kostengruppennummer, bezug: z.bezug, kennwert: r.wert });
+    if (kgOk && r.ok)
+      ansaetze.push({ kostengruppe: kg as Kostengruppennummer, bezug: z.bezug, kennwert: r.wert });
   });
   return { ansaetze: fehler.length > 0 ? [] : ansaetze, fehler };
 }

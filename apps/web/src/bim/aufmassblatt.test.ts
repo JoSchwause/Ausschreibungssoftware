@@ -5,12 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { aufmassBefehlAusfuehren } from '@tethys/abrechnung';
 import { bauteileImStrukturknoten } from '@tethys/bim';
-import type {
-  AuftragsLeistungsverzeichnisId,
-  IfcGlobalId,
-  Knoten,
-  ProjektId,
-} from '@tethys/vertrag';
+import type { AuftragsLeistungsverzeichnisId, IfcGlobalId, Knoten, ProjektId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { aufmassBlattBefehl, aufmassVorschau } from './aufmassblatt';

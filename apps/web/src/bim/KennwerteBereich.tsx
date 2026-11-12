@@ -65,7 +65,10 @@ export function KennwerteBereich({
   }, [u, projektId, lauf]);
   const gewaehlt = ermittlungen?.find((k) => k.kostenermittlung.id === ermittlung);
   const kk = useMemo(
-    () => (gewaehlt === undefined ? [] : kostenkennwerteZeilen(gewaehlt.kostenermittlung.eintraege, lesung.groessen)),
+    () =>
+      gewaehlt === undefined
+        ? []
+        : kostenkennwerteZeilen(gewaehlt.kostenermittlung.eintraege, lesung.groessen),
     [gewaehlt, lesung.groessen],
   );
   const zahl = (b: Betrag | null): string => (b === null ? '–' : formatiereBetragDe(b));
@@ -296,7 +299,9 @@ function KostenschaetzungDialog({
               </tr>
             </tbody>
           </table>
-          {s.befunde.length > 0 ? <BefundListe befunde={s.befunde} beschriftung={texte.seite.befunde} /> : null}
+          {s.befunde.length > 0 ? (
+            <BefundListe befunde={s.befunde} beschriftung={texte.seite.befunde} />
+          ) : null}
         </>
       )}
     </Dialog>

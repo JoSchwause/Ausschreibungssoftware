@@ -90,7 +90,8 @@ export const texte = {
     liste: 'Zuordnungen',
     leer: 'Im gewählten LV ist noch kein Bauteil zugeordnet.',
     position: (oz: string, kurztext: string): string => `${oz} ${kurztext}`.trim(),
-    paar: (name: string, mengenart: string): string => `${name} · ${mengenart === 'Stueck' ? 'Stück' : mengenart}`,
+    paar: (name: string, mengenart: string): string =>
+      `${name} · ${mengenart === 'Stueck' ? 'Stück' : mengenart}`,
     entfernen: 'Entfernen',
     entfernenVon: (name: string, oz: string): string => `Zuordnung entfernen: ${name} an ${oz}`,
     unbekannt: (globalId: string): string => `${globalId} (nicht im Modell)`,
@@ -114,7 +115,8 @@ export const texte = {
       n === 1 ? '1 Position übernehmen' : `${String(n)} Positionen übernehmen`,
     nichtsZuTun: 'Nichts zu übernehmen',
     abbrechen: 'Abbrechen',
-    uebernommen: (n: number): string => `Mengen an ${String(n)} ${n === 1 ? 'Position' : 'Positionen'} übernommen`,
+    uebernommen: (n: number): string =>
+      `Mengen an ${String(n)} ${n === 1 ? 'Position' : 'Positionen'} übernommen`,
   },
   kennwerte: {
     region: 'Kennwerte',
