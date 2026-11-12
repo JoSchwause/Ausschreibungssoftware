@@ -89,20 +89,6 @@ function lvZiel(projektId: ProjektId, cs: LvChangeSet, rueckwaerts: boolean, pfa
   return pfad === lvPfad ? null : lvPfad;
 }
 
-/**
- * v1.6: mechanisch angepasst, Folgeticket 118, 119, 120 (die Aggregatarten aus vertrag v1.6). Bis die App sie schreibt,
- * entsteht kein solcher Teil; jedes Ticket ersetzt seine Zeile durch Umkehrung (aus `bim`, `bauzeit`, `honorar`,
- * `bauleitung`) und Ziel. Laut statt still (Q5): Wer früher umkehren will, bekommt einen Fehler.
- */
-function erstMitTicket<A extends Art>(ticket: string): Aggregatart<A> {
-  return {
-    umkehren: (cs) => {
-      throw new Error(`Undo für ${cs.art}: erst mit Ticket ${ticket}.`);
-    },
-    ziel: () => null,
-  };
-}
-
 const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   projekt: { umkehren: projektChangeSetUmkehren, ziel: projektZiel },
   leistungsverzeichnis: { umkehren: changeSetUmkehren, ziel: lvZiel },
@@ -111,7 +97,6 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   aufmass: { umkehren: aufmassChangeSetUmkehren, ziel: aufmassZiel },
   rechnung: { umkehren: rechnungChangeSetUmkehren, ziel: rechnungZiel },
   kostenermittlung: { umkehren: kostenermittlungChangeSetUmkehren, ziel: kostenZiel },
-  // v1.6: mechanisch angepasst, Folgeticket (siehe `erstMitTicket`)
   bauwerksmodell: { umkehren: bauwerksmodellChangeSetUmkehren, ziel: bimZiel }, // Ticket 114
   bauzeitenplan: { umkehren: bauzeitenplanChangeSetUmkehren, ziel: bauzeitZiel }, // Ticket 118
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
