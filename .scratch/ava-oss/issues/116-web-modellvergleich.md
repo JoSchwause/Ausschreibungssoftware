@@ -1,6 +1,6 @@
 # 116: X1f in der App: Modellstände vergleichen, Mengen aktualisieren
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1f · Ordner: `apps/web/src/modellvergleich/` (neu); Einhängestellen in `App.tsx` und `bim/` (nur ein Link auf
 der Modellseite, markiert `// Ticket 116`, D-20)
