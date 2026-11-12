@@ -396,7 +396,9 @@ import {
   beispielBauwerksmodell,
   beispielBauwerksmodell2Kopf,
   beispielChangeSetBauteileZuordnen,
+  beispielBauwerksmodellAnlegen,
   beispielBauwerksmodellLoeschen,
+  beispielBauwerksmodellUmbenennen,
   beispielChangeSetBauwerksmodellAnlegen,
   beispielChangeSetBauwerksmodellLoeschen,
   beispielChangeSetBauwerksmodellUmbenennen,
@@ -2836,5 +2838,96 @@ describe('v1.6 Punkt 8: Rand (Protokoll, Unions, Signaturen, Repositories, Proje
     expectTypeOf<ReturnType<IdQuelle['bautagebucheintrag']>>().toEqualTypeOf<BautagebucheintragId>();
     // Eine GlobalId kommt aus der Datei, nie aus der IdQuelle.
     expectTypeOf<ReturnType<IdQuelle[keyof IdQuelle]>>().not.toEqualTypeOf<IfcGlobalId>();
+  });
+});
+
+describe('v1.6 Punkt 9: Beispiele für jeden neuen Befehl; reine Daten; Werte vor v1.6', () => {
+  it('jeder neue Befehl hat ein Beispiel, und jedes Beispiel ist ein Befehl', () => {
+    const beispiele: readonly Befehl[] = [
+      beispielBauwerksmodellAnlegen,
+      beispielBauwerksmodellUmbenennen,
+      beispielBauwerksmodellLoeschen,
+      beispielBauteileZuordnen,
+      ...beispielBauzeitenplanbefehle,
+      beispielVorgangSetzen,
+      beispielVorgangEntfernen,
+      ...beispielHonorarbefehle,
+      ...beispielMangelbefehle,
+      beispielMangelstatusSetzen,
+      ...beispielBautagebuchbefehle,
+    ];
+    type Neu =
+      | BauwerksmodellBefehl['art']
+      | BauzeitenplanBefehl['art']
+      | HonorarberechnungBefehl['art']
+      | MangelBefehl['art']
+      | BautagebucheintragBefehl['art']
+      | 'BauteileZuordnen';
+    const alle: Record<Neu, true> = {
+      BauwerksmodellAnlegen: true,
+      BauwerksmodellUmbenennen: true,
+      BauwerksmodellLoeschen: true,
+      BauteileZuordnen: true,
+      BauzeitenplanAnlegen: true,
+      BauzeitenplankopfSetzen: true,
+      VorgangSetzen: true,
+      VorgangEntfernen: true,
+      BauzeitenplanLoeschen: true,
+      HonorarberechnungAnlegen: true,
+      HonorarberechnungSetzen: true,
+      HonorarberechnungLoeschen: true,
+      MangelAnlegen: true,
+      MangelangabenSetzen: true,
+      MangelstatusSetzen: true,
+      MangelLoeschen: true,
+      BautagebucheintragSetzen: true,
+      BautagebucheintragLoeschen: true,
+    };
+    expect(new Set(beispiele.map((b) => b.art))).toEqual(new Set(Object.keys(alle)));
+  });
+
+  it('jedes neue ChangeSet hat ein Beispiel', () => {
+    const beispiele: readonly ChangeSet[] = [
+      beispielChangeSetBauwerksmodellAnlegen,
+      beispielChangeSetVorgangEntfernen,
+      beispielChangeSetHonorarberechnungSetzen,
+      beispielChangeSetMangelstatus,
+      beispielChangeSetBautagebucheintrag,
+    ];
+    expect(new Set(beispiele.map((c) => c.art))).toEqual(
+      new Set(['bauwerksmodell', 'bauzeitenplan', 'honorarberechnung', 'mangel', 'bautagebucheintrag']),
+    );
+  });
+
+  it('NurDaten deckt die neuen Typen ab (die Bytes der Modelldateien stehen in keinem davon)', () => {
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Protokolleintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Pruefbefund>>().toEqualTypeOf<true>();
+  });
+
+  it('JSON-Rundweg: die neuen Beispiele überstehen JSON unverändert (Protokoll und Projektdatei, G-56)', () => {
+    for (const x of [
+      beispielProjektdateiV16,
+      beispielBauzeitenplanergebnis,
+      beispielHonorarergebnis,
+      beispielBefundeV16,
+    ])
+      expect(JSON.parse(JSON.stringify(x))).toEqual(x);
+  });
+
+  it('Werte vor v1.6 bleiben gültig: v1.6 ist additiv (bis auf die geschlossenen Listen, siehe Comments)', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).not.toHaveProperty('bauteile');
+    const datei: Projektdatei = beispielProjektdateiV14;
+    expect(datei).not.toHaveProperty('modelldateien');
+    const ort: Befundort = { pfad: '/GAEB/Award/BoQ/BoQBody', zeile: 12 };
+    expect(ort).not.toHaveProperty('globalId');
+    expectTypeOf<KostengruppeSetzen>().toEqualTypeOf<{
+      readonly art: 'KostengruppeSetzen';
+      readonly positionId: PositionId;
+      readonly kostengruppe: Kostengruppennummer | null;
+    }>();
   });
 });
