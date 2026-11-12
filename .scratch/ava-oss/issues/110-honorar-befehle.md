@@ -116,6 +116,13 @@ alle Leistungsbudgets außerhalb von `honorar` bei Last 20–23 auf 4 Kernen: `k
 grün im ersten Lauf, `vergabe` (1.125,6 ms) und `apps/web` (102,1 ms) im ersten Lauf rot, im zweiten und dritten Lauf grün.
 Kein Budget gelockert. `node --test fixtures/*.test.mjs` 53/53 (eigens gestartet, weil `pnpm test` nach Vitest abbricht).
 
+Zweiter Lauf nach erneutem `git merge integration/welle-6` @ `aca2dcb` (Nachtrag 97 zu D-66, Glossar nennt
+`AnrechenbareKosteneingabe` wie hier): Lint grün, Typecheck grün; `pnpm test` 247 Dateien grün, 1 übersprungen, 7 rot, alle
+Leistungsbudgets außerhalb von `honorar` bei Last ~30: `gaeb/lesen` 1.621 ms (< 1.000), `kern/k9-leistung` 21,1 ms (< 16),
+`kern/lv-pruefung-fixtures` 205,6 ms (< 50), `kern/mengenansatz-leistung` 21,9 ms (< 16), `speicher/aufmass-leistung` 138,9 ms
+(< 100), `vergabe/leistung` 2.286 ms (< 1.000), `apps/web/src/abrechnung/leistung` 276,4 ms (< 100); 3.297 Tests grün. Jede Datei
+allein nacheinander: alle sieben grün im ersten Lauf. `node --test fixtures/*.test.mjs` 53/53. Kein Budget gelockert.
+
 ### Folgearbeit und offene Fragen
 
 - **Glossar (nicht in diesem Ticket, P2):** Eintrag „Honorarberechnung“ nennt im Code noch `Honorarbefund`; jetzt `Pruefbefund`
