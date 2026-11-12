@@ -8,3 +8,13 @@ export {
   bauwerksmodellChangeSetAnwenden,
   bauwerksmodellChangeSetUmkehren,
 } from './bauwerksmodell-befehle';
+export type { Modellbefundcode } from './befunde';
+export type { Einheitsregel } from './einheiten';
+export { EINHEITSREGELN } from './einheiten';
+export type { Mengenuebernahme, Positionsuebernahme } from './mengenuebernahme';
+export {
+  FORMEL_FREIER_ANSATZ,
+  MENGENART_STUECK,
+  mengenuebernahmeBerechnen,
+  positionUebernehmen,
+} from './mengenuebernahme';
