@@ -1,6 +1,6 @@
 # 115: X1c–e in der App: Bauteile zuordnen, Mengen übernehmen, DIN 277 und Kennwerte, Aufmaß aus Auswahl
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1c, X1d, X1e · Ordner: `apps/web/src/bim/` (nach 114); Einhängestellen in `lv/LvSeite.tsx`,
 `auftrag/AuftragsLvSeite.tsx`, `kosten/` (nur Verweis), `lv/befehlsweg.ts` (markiert `// Ticket 115`, D-20)
@@ -40,9 +40,9 @@ Herkunft: `plan.md` §2 X1c–X1e; Tore X1-Kern und X1-Erweitert (`plan.md` §4,
 
 ## Acceptance criteria
 
-- [ ] Unit-Tests der App-Logik (Befehlsbildung, Zusammenführen der Zuordnungen, Vorschau), E2E `bim-mengen.spec.ts` grün;
+- [x] Unit-Tests der App-Logik (Befehlsbildung, Zusammenführen der Zuordnungen, Vorschau), E2E `bim-mengen.spec.ts` grün;
       `leistung.spec.ts` bleibt grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -103,6 +103,32 @@ Ordner `apps/web/src/bim/` (neu: `zuordnung.ts`, `uebernahme.ts`, `aufmassblatt.
 - **D-115.9 Keine Änderung an `lv/befehlsweg.ts`.** Geschrieben wird über die vorhandenen Sitzungen (`lv`, `auftragsLvSitzung`,
   `aufmassSitzung`, `kostenermittlungSitzung`); die Modellseite meldet ihre LV-Sitzung nicht an, sondern lädt nach
   Rückgängig/Wiederholen neu. Der markierte Haken war daher nicht nötig.
+
+### Prüfung (Zahlen gegen `fixtures/typisch-bim.json` und `typisch.json`)
+
+| Schritt | App | Soll (Fixture) |
+| --- | --- | --- |
+| Färbung vor/nach dem Zuordnen (LV `typisch`) | 30 ohne Zuordnung → 3 zugeordnet, 27 ohne | D-99.2, 30 Bauteile in v1 |
+| 03.0010 Vordersatz (IW-EG-1…3, NetSideArea) | 18,874 + 8,649 + 5,500 = 33,023 m² | `kern.vordersaetze` 33.023 |
+| LV nach der Übernahme (E2E, Unit) | Netto 46.720,96; Nachlass 934,42; nach Nachlass 45.786,54; MwSt 8.699,44; Brutto 54.485,98 | `kern.torweg.sollwerte.summen` |
+| Rückgängig / Wiederholen (ein Schritt) | 212,400 m², Netto 55.465,59 / wieder 33,023, 46.720,96 | `typisch.json` `sollwerte.summen` |
+| Alle sieben Zuordnungen (Unit, Speicher) | sieben Vordersätze, Netto 36.068,86 | `kern.vordersaetze`, `kern.sollwerte` |
+| BGF / BRI / NRF | 197,596 m² / 617,485 m³ / 166,252 m² (aus dem Modell) | `erweitert.din277.summen` |
+| Kostenschätzung, 6 KG je m² BGF | 29.303,49; 79.562,03; 25.973,99; 37.385,16; 19.334,77; 82.743,33; Gesamt 274.302,77 | `erweitert.kostenschaetzung` |
+| Kostenkennwert KG 320 der neuen Ermittlung | 148,30 €/m² BGF (47,46 €/m³ BRI, Unit) | Kennwert 148,30 |
+| Aufmaßblatt aus Auswahl „EG“ (E2E, nach Zuschlag an Bieter A) | Blatt 1, 03.0010 = 33,023 m² | `erweitert.aufmassAusAuswahl` 33.023 |
+| Aufmaßblatt aus Auswahl „EG“ mit allen sieben (Unit) | 98,798; 18,720; 98,638; 39,000; 33,023; 99,938; 1,000 | dieselbe Stelle |
+
+Kein Sollwert angepasst.
+
+- Unit (`apps/web/src/bim`, 11 Dateien, 61 Tests; neu `zuordnung`, `uebernahme`, `kennwerte`, `aufmassblatt`, ein Fall in
+  `auswahl`): grün.
+- E2E nach dem Merge von `integration/welle-6` (mit 116, `7e431f8`), `CI=1 PW_WEB_PORT=4651`: `bim-mengen.spec.ts` 1/1,
+  `bim.spec.ts` 3/3, `modellvergleich.spec.ts` 1/1, `leistung.spec.ts` 3/3 (Median 37 / 27 / App 18 ms) – 8/8 grün.
+- Suite nach dem Merge: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` 0 (ESLint, Prettier, Paketgrenzen, Lizenzen,
+  Clean Room), `pnpm typecheck` 0, `pnpm test`: Vitest 319 Dateien grün, 1 übersprungen wie zuvor, 3.921 Tests bestanden,
+  3 übersprungen; `node --test fixtures` 53/53. Last etwa 2 auf 4 Kernen, kein Budget rot. Kein Budget gelockert, kein Test
+  übersprungen.
 
 ### Offen / Hinweise
 
