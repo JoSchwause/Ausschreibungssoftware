@@ -1,6 +1,6 @@
 # 109: X2: `bauzeit`: Befehle und Vertragstypen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X2 · Paket: `packages/bauzeit`
 Blocked by: 97, 102 (gleiches Paket)
@@ -137,3 +137,9 @@ Dateien.
   16 ms), `vergabe` Preisspiegel (1.074 ms bei 1.000 ms), `apps/web` Undo Aufmaßblatt (Median 131,7 ms bei 100 ms). Keines
   dieser Pakete importiert `bauzeit`; kein Budget angefasst. Alle `bauzeit`-Tests grün (223), auch die Budgets.
 - `node --test "fixtures/*.test.mjs"` einzeln: 53 von 53 grün.
+
+## Answer
+
+Gemergt mit `db73cc1` (Branch `welle-6/109-bauzeit-befehle`, `4426880`). `bauzeit` auf v1.6-Typen, Befehle mit Anwenden/Umkehren, Befunde
+als `Pruefbefund` (`terminrechnung`, Pfad je Beziehung), `fortschrittVorschlagen`; 1.000 Vorgänge ≤ 4,6 ms je Befehl. Offen: in
+`fixtures/bauzeit.json` heißt das Feld der Sollwerte noch `id` statt `vorgangId` (Test bildet ab).
