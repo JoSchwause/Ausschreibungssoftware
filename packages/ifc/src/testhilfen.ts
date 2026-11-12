@@ -1,8 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Nur für Tests: kleine, selbst verfasste IFC-Texte (C4). Produktivcode importiert diese Datei nie (A2, Paketgrenzen).
+// Nur für Tests: kleine, selbst verfasste IFC-Texte (C4) und die Fixtures unter `fixtures/`. Produktivcode importiert
+// diese Datei nie (A2, Paketgrenzen).
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect } from 'vitest';
 import type { IfcLesung } from './index';
+
+const wurzel = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/** Bytes einer Datei unter `fixtures/`, z. B. `ifc/haus-v1.ifc`. */
+export function fixtureBytes(pfad: string): Uint8Array {
+  return new Uint8Array(readFileSync(join(wurzel, 'fixtures', pfad)));
+}
+
+/** Inhalt einer JSON-Datei unter `fixtures/`. */
+export function fixtureJson(pfad: string): unknown {
+  return JSON.parse(readFileSync(join(wurzel, 'fixtures', pfad), 'utf8'));
+}
 
 /** Text als Bytes (UTF-8; für reinen ASCII-Text gleich ASCII). */
 export function bytes(text: string): Uint8Array {
