@@ -401,6 +401,34 @@ function Editor({
   );
 }
 
+/**
+ * Der Entwurf eines Formulars und der gespeicherte Stand: `merke` vermerkt einen Stand, den das Formular selbst in Auftrag gibt;
+ * kommt später ein gespeicherter Stand an, der keiner davon ist (Undo, Redo, anderes Objekt), liest `neuLesen` den Entwurf neu.
+ * `letzter` ist der Stand, der nach allen offenen Aufträgen gelten wird (Doppelaufträge entfallen).
+ */
+function useAbgleich(
+  stand: string,
+  neuLesen: () => void,
+): { merke: (j: string) => void; letzter: (gespeichert: string) => string } {
+  const offen = useRef<string[]>([]);
+  useEffect(() => {
+    const i = offen.current.indexOf(stand);
+    if (i >= 0) {
+      offen.current.splice(0, i + 1);
+      return;
+    }
+    offen.current = [];
+    neuLesen();
+    // nur wenn sich der gespeicherte Stand ändert
+  }, [stand]);
+  return {
+    merke: (j) => {
+      offen.current.push(j);
+    },
+    letzter: (gespeichert) => offen.current.at(-1) ?? gespeichert,
+  };
+}
+
 // --- Name, Nebenkosten, MwSt ----------------------------------------------------------------------------------------------
 
 function Kopf({
@@ -414,17 +442,13 @@ function Kopf({
 }): ReactElement {
   const [f, setF] = useState<KopfFormular>(() => kopfFormularAus(b.name, b.nebenkosten, b.mwstSatz));
   const [fehler, setFehler] = useState<Feldfehler | null>(null);
-  // Von außen geändert (Undo, Redo): der Entwurf folgt dem gespeicherten Stand.
-  useEffect(() => {
-    const r = kopfAus(f);
-    const gleich =
-      r.ok &&
-      r.wert.name === b.name &&
-      r.wert.mwstSatz === b.mwstSatz &&
-      JSON.stringify(r.wert.nebenkosten) === JSON.stringify(b.nebenkosten);
-    if (!gleich) setF(kopfFormularAus(b.name, b.nebenkosten, b.mwstSatz));
-    // nur wenn sich der gespeicherte Stand ändert
-  }, [b.name, b.nebenkosten, b.mwstSatz]);
+  // Von außen geändert (Undo, Redo): der Entwurf folgt dem gespeicherten Stand; Stände, die dieses Formular selbst
+  // gespeichert hat, ändern den Entwurf nicht (er kann inzwischen weiter sein).
+  const stand = JSON.stringify([b.name, b.nebenkosten, b.mwstSatz]);
+  const eigen = useAbgleich(stand, () => {
+    setF(kopfFormularAus(b.name, b.nebenkosten, b.mwstSatz));
+    setFehler(null);
+  });
 
   const uebernehmen = (neu: KopfFormular): void => {
     const r = kopfAus(neu);
@@ -434,6 +458,9 @@ function Kopf({
     }
     setFehler(null);
     const w = r.wert;
+    const j = JSON.stringify([w.name, w.nebenkosten, w.mwstSatz]);
+    if (j === eigen.letzter(stand)) return;
+    eigen.merke(j);
     aendere((alt) => {
       return { ...alt, name: w.name, nebenkosten: w.nebenkosten, mwstSatz: w.mwstSatz };
     });
@@ -522,15 +549,13 @@ function ObjektKarte({
   const vorschlag = kostenermittlungen[0]?.id ?? '';
   const [f, setF] = useState<ObjektFormular>(() => formularAus(objekt, vorschlag));
   const [fehler, setFehler] = useState<Feldfehler | null>(null);
-  // Von außen geändert (Undo, Redo, anderes Objekt an dieser Stelle): der Entwurf folgt dem gespeicherten Stand.
-  useEffect(() => {
-    const r = objektAus(f);
-    if (!r.ok || JSON.stringify(r.wert) !== JSON.stringify(objekt)) {
-      setF(formularAus(objekt, vorschlag));
-      setFehler(null);
-    }
-    // nur wenn sich der gespeicherte Stand ändert
-  }, [objekt]);
+  // Von außen geändert (Undo, Redo, anderes Objekt an dieser Stelle): der Entwurf folgt dem gespeicherten Stand; Stände, die
+  // diese Karte selbst gespeichert hat, ändern den Entwurf nicht (er kann inzwischen weiter sein).
+  const stand = JSON.stringify(objekt);
+  const eigen = useAbgleich(stand, () => {
+    setF(formularAus(objekt, vorschlag));
+    setFehler(null);
+  });
 
   const commit = (neu: ObjektFormular): void => {
     const r = objektAus(neu);
@@ -539,7 +564,10 @@ function ObjektKarte({
       return;
     }
     setFehler(null);
-    if (JSON.stringify(r.wert) !== JSON.stringify(objekt)) uebernehmen(r.wert);
+    const j = JSON.stringify(r.wert);
+    if (j === eigen.letzter(stand)) return;
+    eigen.merke(j);
+    uebernehmen(r.wert);
   };
   /** Auswahl und Schalter: übernehmen und sofort speichern. */
   const sofort = (neu: ObjektFormular): void => {
