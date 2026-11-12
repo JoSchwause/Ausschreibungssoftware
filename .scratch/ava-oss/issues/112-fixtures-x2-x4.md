@@ -1,6 +1,6 @@
 # 112: Fixtures: Sollwerte für die Tore X2, X3, X4
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: F · Paket: `fixtures/`
 Blocked by: 99 (gleicher Ordner); 97 nur für Punkt 3 (Formen der Mängel und des Bautagebuchs)
