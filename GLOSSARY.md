@@ -141,7 +141,7 @@ Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der B
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
 
 ### Prüfbefund
-Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
+Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung, E-Rechnung lesen) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe. Beim Lesen einer E-Rechnung (Quelle `erechnung-lesen`, v1.5) ist der Ort der Business Term der EN 16931, zu dem der Befund gehört (z. B. `BT-115`), und das Element in der Datei; Zeile und Spalte nur, wenn die Datei kein lesbares XML ist. Im Code `Pruefbefund`, `Befundquelle`, `Befundort`.
 
 ### Migrationsbefund
 Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
@@ -178,6 +178,9 @@ Die Kennung des LV (oder Auftrags-LV) selbst, die die Knoten der obersten Ebene 
 
 ### Los-Stufe
 Die oberste Stufe der OZ-Maske, wenn das LV Lose hat. Das Los ist die oberste Gliederungsstufe und zählt zu den höchstens 5 Stufen (F1); Lose und Titel stehen nie nebeneinander auf der obersten Stufe.
+
+### OZ-Vorschlag
+Die Ordnungszahl, die der Kern für einen neuen Knoten an einem Ort vorschlägt, bevor die App oder eine reine Funktion den Befehl baut (der Befehl trägt die OZ dann als Wert): der Teil des Vorgängers unter denselben Geschwistern plus 10 (Position) bzw. plus 1 (Gliederung); passt das nicht, 5, 2 oder 1 mit Befehlshinweis, sonst kein Vorschlag (F2, D-42.3). Er gilt im LV und im Auftrags-LV, jeweils mit der Kennung des eigenen Aggregats als Wurzel (v1.5, D-80.1). Im Code `OzVorschlag`, Signatur `OzVorschlagen`, Funktion `ozVorschlag` (Paket `kern`).
 
 ### Entwurfskennzeichen
 Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.
@@ -255,7 +258,7 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
@@ -376,25 +379,46 @@ Freie Angabe, woher der Text einer Position stammt (z. B. ein Katalog, ein Muste
 ## Planerhonorar (HOAI) & Projektsteuerung
 
 ### HOAI (Honorarordnung für Architekten und Ingenieure)
-Bundesrechtliche Verordnung zur Berechnung der Entgelte für Grundleistungen und Besondere Leistungen der Architekten und Ingenieure in Deutschland.
+Bundesrechtliche Verordnung zur Berechnung der Entgelte für Grundleistungen und Besondere Leistungen der Architekten und Ingenieure in Deutschland. Die App rechnet nach der **HOAI 2021** (Änderungsverordnung BGBl. I 2020 S. 2636): Die Honorartafeln sind Orientierungswerte, das Honorar richtet sich nach der Vereinbarung in Textform (§ 7 Abs. 1). Rechenkern im Paket `honorar` (D-56).
 
 ### Leistungsbild & Leistungsphasen (LP 1 – LP 9)
-Fachliche Gliederung der Planungsleistungen nach Objektkategorien (z. B. Gebäude § 35, Freianlagen § 40, Ingenieurbauwerke § 44, Tragwerksplanung § 52, Technische Ausrüstung § 56 HOAI). Jedes Leistungsbild unterteilt sich in bis zu neun **Leistungsphasen (LP 1 Grundlagenermittlung bis LP 9 Objektbetreuung)** mit gesetzlich definierten Prozentsätzen am Gesamthonorar.
+Fachliche Gliederung der Planungsleistungen nach Objektkategorien (z. B. Gebäude und Innenräume § 34, Freianlagen § 39, Ingenieurbauwerke § 43, Verkehrsanlagen § 47, Tragwerksplanung § 51, Technische Ausrüstung § 55 HOAI; die Honorare stehen im jeweils folgenden Paragraphen). Jedes Leistungsbild unterteilt sich in bis zu neun **Leistungsphasen (LP 1 Grundlagenermittlung bis LP 9 Objektbetreuung)**, die die HOAI mit Prozentsätzen des Honorars bewertet; die Tragwerksplanung hat nur LP 1 bis 6 (§ 51 Abs. 1). Gebäude und Innenräume teilen die Honorartafel (§ 35), bewerten die Leistungsphasen aber verschieden (§ 34 Abs. 3). Beauftragt werden einzelne Leistungsphasen (§ 8 Abs. 1); ein abweichender **Anteil** (§ 8 Abs. 2, z. B. § 51 Abs. 2 bis 4, § 55 Abs. 2) ersetzt den Prozentsatz der HOAI und ist ein Befund. Im Code `Leistungsbild` (`gebaeude`, `innenraeume`, `freianlagen`, `ingenieurbauwerke`, `verkehrsanlagen`, `tragwerksplanung`, `technische-ausruestung`), `Leistungsphase`, `BeauftragteLeistungsphase`, die Daten in `LEISTUNGSBILDER` (Paket `honorar`).
 
 ### Anrechenbare Kosten
-Derjenige Teil der nach DIN 276 ermittelten Netto-Baukosten (insbesondere KG 300 Bauwerk – Baukonstruktionen und KG 400 Bauwerk – Technische Anlagen), der nach den Vorschriften der HOAI als Bemessungsgrundlage in die Honorarberechnung einfließt.
+Derjenige Teil der nach DIN 276 ermittelten Netto-Baukosten (insbesondere KG 300 Bauwerk – Baukonstruktionen und KG 400 Bauwerk – Technische Anlagen), der nach den Vorschriften der HOAI als Bemessungsgrundlage in die Honorarberechnung einfließt; die Umsatzsteuer gehört nicht dazu, und die HOAI meint die DIN 276 in der Fassung 2008-12 (§ 4 Abs. 1). Bei Gebäuden und Innenräumen (§ 33) zählt KG 300 voll; KG 400 zählt, wenn der Auftragnehmer die Technischen Anlagen nicht selbst fachlich plant und überwacht, voll bis 25 % der **sonstigen anrechenbaren Kosten** (KG 300 und die von Hand eingegebenen Kosten nach § 33 Abs. 3, etwa Herrichten oder Ausstattung, soweit der Auftragnehmer sie plant oder überwacht) und zur Hälfte mit dem Teil darüber; die mitzuverarbeitende Bausubstanz kommt von Hand dazu. Jeder Teilbetrag wird kaufmännisch auf 2 Stellen gerundet (D-56). Bei den übrigen Leistungsbildern gibt der Nutzer die anrechenbaren Kosten von Hand ein. Im Code `AnrechenbareKostenangabe`, `KostenNachDin276`, `anrechenbareKostenHerleiten`, `AnrechenbareKostenHerleitung`.
 
 ### Honorarzone (I – V) & Honorarsatz
-- **Honorarzone**: Einstufung des Planungsobjekts nach seinem Schwierigkeitsgrad (von Zone I = sehr geringe Planungsanforderungen bis Zone V = sehr hohe Planungsanforderungen), häufig über ein Punkteschema ermittelt.
-- **Honorarsatz**: Lage innerhalb der Honorarspanne einer Zone zwischen unterem Honorarsatz (Basissatz/Mindestsatz), Viertelsatz (`25 %`), Mittelsatz (`50 %`), Dreiviertelsatz (`75 %`) und oberem Honorarsatz (Höchstsatz `100 %`).
+- **Honorarzone**: Einstufung des Planungsobjekts nach seinem Schwierigkeitsgrad (von Zone I = sehr geringe Planungsanforderungen bis Zone V = sehr hohe Planungsanforderungen; die Technische Ausrüstung kennt nur die Zonen I bis III, § 56 Abs. 1), über Bewertungsmerkmale und gegebenenfalls Bewertungspunkte ermittelt. Der Nutzer wählt die Zone; die App ermittelt sie nicht. Im Code `Honorarzone` (`'I'` bis `'V'`).
+- **Honorarsatz**: Die Lage des Honorars in der Honorarspanne einer Zone, in Prozent der Spanne: Honorar = von + (bis − von) × Honorarsatz / 100, kaufmännisch auf 2 Stellen (D-56). 0 ist der Basishonorarsatz, 100 der obere Honorarsatz. Mindest- und Höchstsatz gibt es seit der HOAI 2021 nicht mehr; „Viertelsatz“, „Mittelsatz“ (50) und „Dreiviertelsatz“ sind nur Bezeichnungen der Praxis, keine Begriffe der HOAI. Ein Honorarsatz unter 0 oder über 100 wird gerechnet und ist ein Befund. Im Code `Honorarobjekt.honorarsatz`, `honorarInSpanne`.
+
+### Basishonorarsatz / oberer Honorarsatz
+Die untere („von“) bzw. obere („bis“) Grenze der Honorarspanne. Ist über die Höhe des Honorars nichts in Textform vereinbart, gilt für Grundleistungen der Basishonorarsatz (§ 7 Abs. 1); der Honorarsatz ist dann 0.
+
+### Honorartafel
+Die Tafel eines Leistungsbilds in der HOAI (z. B. § 35 Abs. 1 für Gebäude und Innenräume): je **Tafelzeile** anrechenbare Kosten in Euro und je Honorarzone eine Honorarspanne. Die Tafeln der HOAI 2021 stehen als Daten im Repo (amtliches Werk nach § 5 Abs. 1 UrhG, D-56), je mit Paragraph, Absatz, Adresse und Abrufdatum. Anrechenbare Kosten unter der ersten oder über der letzten Tafelzeile ergeben kein Honorar (Befund `ausserhalb-honorartafel`, keine Extrapolation; RifT später). Im Code `Honorartafel`, `Tafelzeile`.
+
+### Honorarspanne
+Die Werte „von“ (Basishonorarsatz) und „bis“ (oberer Honorarsatz) einer Honorarzone in einer Tafelzeile, in Euro; in den Tafeln der HOAI 2021 ist „bis“ einer Zone zugleich „von“ der nächsten. Liegen die anrechenbaren Kosten zwischen zwei Tafelzeilen, werden „von“ und „bis“ je für sich linear interpoliert (§ 13): erst multiplizieren, dann teilen, kaufmännisch auf 2 Stellen (D-56). Im Code `Honorarspanne`, `honorarspanneBerechnen`, `Tafelinterpolation` (Tafelzeilen unten und oben mit der interpolierten Spanne).
+
+### Grundhonorar
+Die Summe der Beträge der beauftragten Leistungsphasen eines Honorarobjekts, ohne Umbauzuschlag, Nebenkosten und MwSt: je Leistungsphase Honorar × Anteil / 100, kaufmännisch auf 2 Stellen (D-56). Sind alle Leistungsphasen mit den Sätzen der HOAI beauftragt, weicht es vom Honorar nur um Rundungsreste ab. Das Grundhonorar einer Honorarberechnung ist die Summe über ihre Honorarobjekte. Im Code `Phasenbetrag`, `Objektergebnis.grundhonorar`, `Honorarergebnis.grundhonorar`.
+
+### Nebenkosten
+Die Auslagen des Auftragnehmers neben dem Honorar (§ 14), etwa für Versand, Vervielfältigung oder Fahrten. In einer Honorarberechnung einmal angegeben: als Prozentsatz von Grundhonorar plus Umbauzuschlägen (kaufmännisch auf 2 Stellen) oder als Betrag. Sie gehen ins Netto und damit in die MwSt ein (§ 16 Abs. 1). Im Code `Nebenkostenangabe`, `Honorarergebnis.nebenkosten`.
+
+### Honorarobjekt
+Ein Objekt (§ 2 Abs. 1), dessen Honorar für sich berechnet wird (§ 11 Abs. 1): Bezeichnung, Leistungsbild, Honorarzone, Honorarsatz, anrechenbare Kosten, beauftragte Leistungsphasen und wahlweise ein Umbauzuschlagssatz. Mehrere Honorarobjekte werden je für sich gerechnet und dann summiert; Zusammenfassung und Wiederholungen nach § 11 Abs. 2 bis 4 rechnet die App in v1 nicht (Befund). Im Code `Honorarobjekt`, `Objektergebnis`.
+
+### Honorarberechnung
+Die Honorarobjekte eines Auftrags mit Nebenkosten und MwSt-Satz und das daraus gerechnete **Honorarergebnis**: je Honorarobjekt die anrechenbaren Kosten mit Herleitung, die Tafelzeilen, die Honorarspanne, das Honorar, die Beträge der Leistungsphasen, das Grundhonorar und der Umbauzuschlag; gesamt Grundhonorar, Umbauzuschläge, Nebenkosten, Netto, MwSt (die Umsatzsteuer nach § 16 Abs. 1 auf Netto) und Brutto, dazu die **Honorarbefunde** (U5). Das Ergebnis wird gerechnet, nie gespeichert. Im Code `Honorarberechnung`, `honorarBerechnen`, `Honorarergebnis`, `Honorarbefund` (Paket `honorar`).
 
 ### Bewertungstabellen (Siemon / Simmendinger) & Tafel-Extrapolation (RifT)
 - **Siemon- / Simmendinger-Tabellen**: Anerkannte Split-Tabellen zur Bewertung einzelner Grundleistungen innerhalb einer Leistungsphase, wenn nicht alle Grundleistungen einer Phase übertragen werden.
 - **RifT-Tabelle**: *Richtlinie der Staatlichen Bauverwaltungen* zur Fortschreibung der HOAI-Honorartafeln bei anrechenbaren Kosten oberhalb des regulären Tabellenendwerts.
 
-### Mitverarbeitete Bausubstanz & Umbauzuschlag
-- **Mitverarbeitete Bausubstanz (§ 4 Abs. 3 HOAI)**: Vorhandene, technisch oder gestalterisch mitverarbeitete Bauteile bei Bestandsbauten, die angemessen bei den anrechenbaren Kosten berücksichtigt werden.
-- **Umbau- / Instandsetzungszuschlag (§ 6 Abs. 2 / § 12 HOAI)**: Prozentualer Honorarzuschlag auf das Grundhonorar bei Umbauten, Modernisierungen oder Instandsetzungen.
+### Mitzuverarbeitende Bausubstanz & Umbauzuschlag
+- **Mitzuverarbeitende Bausubstanz (§ 2 Abs. 7, § 4 Abs. 3 HOAI)**: Der Teil des zu planenden Objekts, der bereits durch Bauleistungen hergestellt ist und technisch oder gestalterisch mitverarbeitet wird. Er wird bei den anrechenbaren Kosten angemessen berücksichtigt; Umfang und Wert werden in Textform vereinbart, in der App von Hand eingegeben. Im Code `mitzuverarbeitendeBausubstanz`.
+- **Umbauzuschlag (§ 6 Abs. 2, § 36 HOAI)**: Prozentualer Zuschlag auf das Grundhonorar eines Honorarobjekts bei Umbauten und Modernisierungen, kaufmännisch auf 2 Stellen (D-56). Bei durchschnittlichem Schwierigkeitsgrad bis 33 % (Gebäude § 36 Abs. 1, Freianlagen § 40 Abs. 6, Ingenieurbauwerke § 44 Abs. 6, Verkehrsanlagen § 48 Abs. 6) bzw. bis 50 % (Innenräume § 36 Abs. 2, Tragwerksplanung § 52 Abs. 4, Technische Ausrüstung § 56 Abs. 5); ein höherer Satz ist ein Befund, kein Fehler. Ohne Vereinbarung gelten nach § 6 Abs. 2 Satz 4 20 %; der Rechenkern rechnet ohne Satz keinen Zuschlag, die App bietet 20 % als Vorschlag an, wenn der Nutzer „Umbau“ wählt. Im Code `Honorarobjekt.umbauzuschlagssatz`, `Objektergebnis.umbauzuschlag`.
 
 ### Bauzeitenplan (Gantt) & 4D-BIM / 5D-BIM
 - **Bauzeitenplan**: Zeitliche Ablaufplanung von Vorgängen, Meilensteinen und Abhängigkeiten unter Berücksichtigung von Arbeitszeitkalendern.

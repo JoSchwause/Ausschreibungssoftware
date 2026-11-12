@@ -6,19 +6,20 @@
 // aktive Zelle, Zellauswahl und eine Statusmeldung.
 
 import { useTable } from '@tanstack/react-table';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
+import { Zeitkopf, balkenspaltenbild } from './Balkenspalte';
 import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { features, vergleichsSpaltenDefinitionen } from './tabelle';
 import { meldungZellenKopiert, texte } from './texte';
 import {
-  STANDARDBREITE,
   bereichAlsTsv,
   festeZellklassen,
   fixierteVersaetze,
   normiereBereich,
+  spaltenbreite,
 } from './vergleich';
 import type { Bereich } from './vergleich';
 import type {
@@ -46,21 +47,24 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
   const zh = props.zeilenhoehe ?? 28;
   const spaltenIds = useMemo(() => spalten.map((s) => s.id), [spalten]);
   const baumspalte = props.baumspalte ?? spaltenIds[0];
-  const kopfzeilen = spalten.some((s) => s.gruppe !== undefined) ? 2 : 1;
+  // Balkenspalten (Ticket 96): Achse, Kopfabschnitte und Raster einmal je Spalte, an alle Zeilen gereicht.
+  const achsen = useMemo(
+    () => spalten.map((s) => (s.zeitleiste ? balkenspaltenbild(s.zeitleiste) : null)),
+    [spalten],
+  );
+  const kopfId = useId();
 
   // --- TanStack Table: Spalten- und Kopfmodell (Gruppen); die Zeilen rendert das Grid selbst -------------------
   const columns = useMemo(() => vergleichsSpaltenDefinitionen(spalten), [spalten]);
   const table = useTable({ features, columns, data: KEINE_DATEN, getRowId: (z) => z.id }, () => ({}));
   const kopfgruppen = table.getHeaderGroups();
+  // Kopfzeilen für den Screenreader: die von TanStack (Gruppen). Sichtbar ist der Kopf mit einer Zeitleiste immer
+  // zweizeilig; die Spaltenköpfe reichen dann bis unten.
+  const ariaKopfzeilen = Math.max(1, kopfgruppen.length);
+  const kopfzeilen = achsen.some((a) => a !== null) ? 2 : ariaKopfzeilen;
 
-  const vorlage = useMemo(
-    () => spalten.map((s) => `${String(s.breite ?? STANDARDBREITE)}px`).join(' '),
-    [spalten],
-  );
-  const mindestbreite = useMemo(
-    () => spalten.reduce((summe, s) => summe + (s.breite ?? STANDARDBREITE), 0),
-    [spalten],
-  );
+  const vorlage = useMemo(() => spalten.map((s) => `${String(spaltenbreite(s))}px`).join(' '), [spalten]);
+  const mindestbreite = useMemo(() => spalten.reduce((summe, s) => summe + spaltenbreite(s), 0), [spalten]);
   const fixiert = Math.min(props.fixierteSpalten ?? 0, spalten.length);
   const versaetze = useMemo(() => fixierteVersaetze(spalten, fixiert), [spalten, fixiert]);
   const zellklassen = useMemo(() => festeZellklassen(spalten, versaetze), [spalten, versaetze]);
@@ -281,7 +285,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
 
   // --- Darstellung ----------------------------------------------------------------------------------------------
   // Waagerecht virtualisiert: Bei 20 Spalten halbiert das die Zellen je Zeile beim schnellen Scrollen (D-60.10).
-  const breiten = useMemo(() => spalten.map((s) => s.breite ?? STANDARDBREITE), [spalten]);
+  const breiten = useMemo(() => spalten.map(spaltenbreite), [spalten]);
   const sichtbar = useSichtbareSpalten({
     scroller,
     breiten,
@@ -299,6 +303,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
     sichtbar,
     baumspalte,
     kennzeichenTexte,
+    achsen,
   };
 
   // Der Kopf hängt nicht an der Scrollposition: einmal gebaut, beim Scrollen nicht neu verglichen (Ticket 74).
@@ -329,14 +334,20 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
                 const istGruppe = !h.isPlaceholder && h.subHeaders.length > 0;
                 const spalte = istGruppe ? undefined : spalten[erste];
                 const titel = istGruppe ? (spalten[erste]?.gruppe?.kopf ?? '') : (spalte?.kopf ?? '');
+                const bild = istGruppe ? null : (achsen[erste] ?? null);
                 const links = versaetze[erste] ?? null;
                 const k = ['tx-grid__kopfzelle'];
                 if (istGruppe) k.push('tx-grid__kopfzelle--gruppe');
                 else if (spalte?.ausrichtung === 'rechts' || spalte?.ausrichtung === 'mitte') {
                   k.push(`tx-grid__kopfzelle--${spalte.ausrichtung}`);
                 }
+                if (bild) k.push('tx-grid__kopfzelle--zeitleiste');
                 if (links !== null) k.push('tx-grid__kopfzelle--fixiert');
                 if (erste + h.colSpan === fixiert) k.push('tx-grid__kopfzelle--fixiert-letzte');
+                // Sichtbar reicht ein Spaltenkopf bis zur unteren Kopfzeile, auch wenn nur die Zeitleiste den Kopf
+                // zweizeilig macht; `aria-rowspan` zählt die Kopfzeilen von TanStack.
+                const zeilenspanne = istGruppe ? 1 : kopfzeilen - tiefe;
+                const markierungsId = `${kopfId}-markierungen-${String(erste)}`;
                 return (
                   <div
                     key={h.id}
@@ -344,15 +355,17 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
                     aria-colindex={erste + 1}
                     aria-colspan={h.colSpan > 1 ? h.colSpan : undefined}
                     aria-rowspan={h.rowSpan > 1 ? h.rowSpan : undefined}
+                    aria-label={bild && titel !== '' ? titel : undefined}
+                    aria-describedby={bild && bild.markierungen.length > 0 ? markierungsId : undefined}
                     data-spalte-kopf={istGruppe ? undefined : spalte?.id}
                     className={k.join(' ')}
                     style={{
                       gridColumn: `${String(erste + 1)} / span ${String(h.colSpan)}`,
-                      gridRow: `${String(tiefe + 1)} / span ${String(Math.max(1, h.rowSpan))}`,
+                      gridRow: `${String(tiefe + 1)} / span ${String(Math.max(1, zeilenspanne))}`,
                       ...(links === null ? {} : { left: links }),
                     }}
                   >
-                    {titel}
+                    {bild ? <Zeitkopf bild={bild} beschreibungsId={markierungsId} /> : titel}
                   </div>
                 );
               })}
@@ -361,7 +374,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
         })}
       </div>
     ),
-    [kopfgruppen, kopfzeilen, mindestbreite, spalten, versaetze, fixiert, vorlage, zh],
+    [kopfgruppen, kopfzeilen, mindestbreite, spalten, versaetze, fixiert, vorlage, zh, achsen, kopfId],
   );
 
   return (
@@ -373,7 +386,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
         aria-label={props.beschriftung ?? texte.vergleichBeschriftung}
         aria-multiselectable="true"
         aria-readonly
-        aria-rowcount={kopfzeilen + zeilenIds.length}
+        aria-rowcount={ariaKopfzeilen + zeilenIds.length}
         aria-colcount={spalten.length}
         tabIndex={zeilenIds.length === 0 ? 0 : undefined}
         onKeyDown={onKeyDown}
@@ -401,7 +414,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
                 zellen={z.zellen}
                 baum={z}
                 index={item.index}
-                ariaZeile={kopfzeilen + item.index + 1}
+                ariaZeile={ariaKopfzeilen + item.index + 1}
                 versatz={kern.versatz(item.start)}
                 aktiv={aktivIn(item.index)}
                 auswahl={zeilenAuswahl(item.index)}
@@ -424,7 +437,7 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
                   zellen={s.zellen}
                   baum={null}
                   index={i}
-                  ariaZeile={kopfzeilen + i + 1}
+                  ariaZeile={ariaKopfzeilen + i + 1}
                   versatz={null}
                   aktiv={aktivIn(i)}
                   auswahl={zeilenAuswahl(i)}
