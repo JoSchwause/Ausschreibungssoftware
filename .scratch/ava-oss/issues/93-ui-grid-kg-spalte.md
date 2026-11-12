@@ -79,9 +79,11 @@ Undo-Schritt. Leistungsbudgets des Grids bleiben grün (Q4). Der Dialog aus 89 b
   Nummer schon beim Tippen (`aria-invalid`, `title`) über dieselbe Lesefunktion, ohne zu sperren (U5); `inputMode="numeric"`.**
   Die Funktion reicht das Grid stabil an die memoisierten Zeilen weiter (Verweis auf die aktuelle Lesefunktion). Reversible: yes.
 - **D-93.5** Ansage im schreibgeschützten Grid mit Ausnahme? **„Schreibgeschützt: Nur die Spalte KG lässt sich ändern.“ als
-  Beschreibung des Grids und als Ansage bei jedem anderen Änderungsversuch; das Grid trägt dann kein `aria-readonly`, die Zellen
-  tragen es einzeln (KG-Zellen an Positionen nicht).** Grund: Ein `aria-readonly` am ganzen Grid widerspräche der bearbeitbaren
-  Zelle. Reversible: yes.
+  Beschreibung des Grids und als Ansage bei jedem anderen Änderungsversuch; das Grid behält `aria-readonly="true"`, die
+  KG-Zellen der Positionen heben es für sich mit `aria-readonly="false"` auf (ARIA erlaubt der Zelle, den Wert des Grids zu
+  überschreiben).** Grund: Das Auftrags-LV ist als Ganzes weiter schreibgeschützt (Ticket 54/64; `m3.spec.ts` und
+  `nachtrag.spec.ts` prüfen das am Grid), nur die eine Spalte nicht. Eine erste Fassung ließ `aria-readonly` am Grid weg; die
+  beiden App-E2E fielen darauf, deshalb die Überschreibung je Zelle. Reversible: yes.
 - **D-93.6** Sprung aus dem Prüf-Panel? **`GRID_SPALTEN` in `apps/web/src/lv/pruefung.ts` um `'kostengruppe'` ergänzt (eine
   markierte Zeile, Folgearbeit aus Ticket 95), Test in `lv/pruefung.test.ts`: Ein Befund mit `ort.feld: 'kostengruppe'`
   springt an die Zelle statt in den Positionsdialog.** Das Grid zeigt solche Befunde an der Zelle (E2E im Prüfstand). Reversible: yes.

@@ -889,7 +889,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
         role="treegrid"
         aria-label={props.beschriftung ?? texte.standardBeschriftung}
         aria-multiselectable="true"
-        aria-readonly={nurLesen && !nurKg ? true : undefined}
+        aria-readonly={nurLesen ? true : undefined}
         aria-describedby={nurLesen ? nurLesenId : undefined}
         aria-rowcount={zeilen.length + 1}
         aria-colcount={spalten.length}
@@ -950,6 +950,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
                 baumspalte={baumspalte}
                 zahlen={zahlen}
                 bearbeitbareSpalten={bearbeitbareSpalten}
+                gridSchreibgeschuetzt={nurLesen}
                 editor={editorStabil}
                 kgPruefen={kgPruefen}
               />

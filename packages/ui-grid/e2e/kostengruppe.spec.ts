@@ -263,10 +263,11 @@ test.describe('schreibgeschütztes Grid mit bearbeitbarer Spalte „KG“ (Auftr
   test('nur die KG-Zellen der Positionen sind bearbeitbar; alles andere bleibt schreibgeschützt und wird angesagt', async ({
     page,
   }) => {
-    await expect(grid(page)).not.toHaveAttribute('aria-readonly');
+    // Das Grid bleibt als Ganzes schreibgeschützt; die KG-Zellen der Positionen heben das für sich auf (ARIA).
+    await expect(grid(page)).toHaveAttribute('aria-readonly', 'true');
     await expect(grid(page)).toHaveAccessibleDescription(ANSAGE);
     await expect(zelle(page, 'Bauzaun stellen', 'menge')).toHaveAttribute('aria-readonly', 'true');
-    await expect(kg(page, 'Bauzaun stellen')).not.toHaveAttribute('aria-readonly');
+    await expect(kg(page, 'Bauzaun stellen')).toHaveAttribute('aria-readonly', 'false');
     await expect(kg(page, 'Baustelleneinrichtung und Vorarbeiten')).toHaveAttribute('aria-readonly', 'true');
 
     await zelle(page, 'Bauzaun stellen', 'menge').click();
