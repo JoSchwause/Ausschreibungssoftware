@@ -317,3 +317,58 @@ describe('Objekte ohne GlobalId in Form', () => {
     ]);
   });
 });
+
+describe('Doppelte GlobalIds (D-66)', () => {
+  it('behält beide Objekte; ein Verweis auf ein späteres Objekt entfällt mit Befund, weil er das erste meinen würde', () => {
+    const lesung = lesen([
+      ...grundgeruest(),
+      `#16=IFCBUILDINGSTOREY('${gid('eg')}',$,'OG',$,$,$,$,$,.ELEMENT.,3.);`,
+      `#17=IFCRELAGGREGATES('${gid('r17')}',$,$,$,#11,(#16));`,
+      `#18=IFCSPACE('${gid('raum')}',$,'Raum',$,$,$,$,$,.ELEMENT.,.INTERNAL.,$);`,
+      `#19=IFCRELAGGREGATES('${gid('r19')}',$,$,$,#16,(#18));`,
+      `#100=IFCWALL('${gid('wandA')}',$,'Wand A',$,$,$,$,$,$);`,
+      `#101=IFCWALL('${gid('wandB')}',$,'Wand B',$,$,$,$,$,$);`,
+      `#102=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r102')}',$,$,$,(#100),#16);`,
+      `#103=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r103')}',$,$,$,(#101,#110),#12);`,
+      `#110=IFCSTAIR('${gid('raum')}',$,'Treppe',$,$,$,$,$,.STRAIGHT_RUN_STAIR.);`,
+      `#111=IFCSTAIRFLIGHT('${gid('lauf')}',$,'Lauf',$,$,$,$,$,12,11,0.175,0.28,$);`,
+      `#112=IFCRELAGGREGATES('${gid('r112')}',$,$,$,#110,(#111));`,
+    ]);
+    const modell = lesung.bauwerksmodell;
+    expect(modell?.struktur.map((k) => [k.globalId, k.name, k.elternGlobalId])).toEqual([
+      [gid('projekt'), 'Projekt', null],
+      [gid('grundstueck'), 'Grundstück', gid('projekt')],
+      [gid('gebaeude'), 'Haus', gid('grundstueck')],
+      [gid('eg'), 'EG', gid('gebaeude')],
+      [gid('eg'), 'OG', gid('gebaeude')],
+      [gid('raum'), 'Raum', null],
+    ]);
+    expect(modell?.bauteile.map((b) => [b.globalId, b.name, b.strukturGlobalId, b.teilVonGlobalId])).toEqual([
+      [gid('wandA'), 'Wand A', null, undefined],
+      [gid('wandB'), 'Wand B', gid('eg'), undefined],
+      [gid('raum'), 'Treppe', gid('eg'), undefined],
+      [gid('lauf'), 'Lauf', gid('eg'), undefined],
+    ]);
+    expect(lesung.befunde.map((b) => [b.code, b.ort.pfad])).toEqual([
+      ['globalid-doppelt', '#16'],
+      ['bauteil-ohne-mengen', '#100'],
+      ['bauteil-ohne-mengen', '#101'],
+      ['globalid-doppelt', '#110'],
+      ['bauteil-ohne-mengen', '#110'],
+      ['bauteil-ohne-mengen', '#111'],
+      ['verweis-mehrdeutig', '#18'],
+      ['verweis-mehrdeutig', '#100'],
+      ['verweis-mehrdeutig', '#111'],
+    ]);
+    expect(lesung.befunde[6]).toEqual({
+      schwere: 'warnung',
+      quelle: 'ifc-lesen',
+      code: 'verweis-mehrdeutig',
+      meldung: `Raum (#18) hängt an #16, dessen GlobalId ${gid('eg')} zuerst #12 trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell hat es keine Eltern.`,
+      ort: { pfad: '#18', zeile: 23, globalId: gid('raum') },
+    });
+    expect(lesung.befunde[8]?.meldung).toBe(
+      `Lauf (#111) ist Teil von #110, dessen GlobalId ${gid('raum')} zuerst #18 trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell ist es kein Teil.`,
+    );
+  });
+});

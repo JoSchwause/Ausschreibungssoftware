@@ -59,6 +59,10 @@ function abbilden(
   imModell: ReadonlyMap<number, IfcGlobalId>,
 ): Pick<Bauwerksmodell, 'struktur' | 'bauteile'> {
   const l = inhalt.leser;
+  // Erster Träger jeder GlobalId: Ein Verweis über eine GlobalId meint das erste Objekt in der Reihenfolge der Datei,
+  // `struktur` vor `bauteile` (vertrag v1.6, Nachtrag D-66). `imModell` ist in dieser Reihenfolge gefüllt.
+  const ersterTraeger = new Map<IfcGlobalId, number>();
+  for (const [i, globalId] of imModell) if (!ersterTraeger.has(globalId)) ersterTraeger.set(globalId, i);
 
   /** Mengen mit Wert; eine ohne (oder mit einem Wert, der keine `Menge` ist) fällt mit Befund weg, nie 0 (D-53). */
   const mengen = (i: number, gelesen: readonly Gelesen.Bauteilmenge[]): Bauteilmenge[] => {
@@ -82,8 +86,10 @@ function abbilden(
   };
 
   /**
-   * GlobalId des Ziels eines Verweises von `i` auf die Instanz `ziel`; steht das Ziel nicht im Modell, entfällt der Verweis
-   * mit Befund (`code`, `wie`: wie `i` auf `ziel` verweist, `folge`: was im Modell daraus wird).
+   * GlobalId des Ziels eines Verweises von `i` auf die Instanz `ziel`. Der Verweis entfällt mit Befund, wenn das Ziel nicht
+   * im Modell steht (`code`) oder seine GlobalId zuerst ein anderes Objekt trägt (`verweis-mehrdeutig`): Der Verweis würde
+   * dann dieses meinen, und das Modell sagte etwas, das die Datei nicht sagt. `wie`: wie `i` auf `ziel` verweist, `folge`:
+   * was im Modell daraus wird.
    */
   const verweis = (
     i: number,
@@ -94,7 +100,18 @@ function abbilden(
   ): IfcGlobalId | null => {
     if (ziel === null) return null;
     const globalId = imModell.get(ziel);
-    if (globalId !== undefined) return globalId;
+    const erstes = globalId === undefined ? undefined : ersterTraeger.get(globalId);
+    if (globalId !== undefined && erstes === ziel) return globalId;
+    if (globalId !== undefined && erstes !== undefined) {
+      l.melde(
+        'warnung',
+        'verweis-mehrdeutig',
+        `${bezeichnung(l, i)} ${wie} #${String(l.daten.id(ziel))}, dessen GlobalId ${globalId} zuerst #${String(l.daten.id(erstes))} trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell ${folge}.`,
+        l.ort(i),
+        i,
+      );
+      return null;
+    }
     l.melde(
       'warnung',
       code,
