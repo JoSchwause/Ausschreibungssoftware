@@ -17,7 +17,7 @@ import type {
 } from '@tethys/vertrag';
 import { modellbefund } from './befunde';
 import type { Modellindex } from './form';
-import { modellIndex } from './form';
+import { doppelteInReihenfolge, modellIndex } from './form';
 import { zeilenLesen, zugeordnetePositionen } from './mengenuebernahme';
 
 /** Ein Feld, in dem sich ein Bauteil zwischen zwei Ständen ändern kann (D-53). */
@@ -141,20 +141,15 @@ function aenderung(vorher: Bauteil, nachher: Bauteil): Bauteilaenderung | null {
 }
 
 function doppelte(modell: Bauwerksmodell, index: Modellindex, stand: string): Pruefbefund[] {
-  const gemeldet = new Set<IfcGlobalId>();
-  const befunde: Pruefbefund[] = [];
-  for (const b of modell.bauteile)
-    if (index.doppelteBauteile.has(b.globalId) && !gemeldet.has(b.globalId)) {
-      gemeldet.add(b.globalId);
-      befunde.push(
-        modellbefund(
-          'globalid-doppelt',
-          `GlobalId ${b.globalId} steht im ${stand} Stand mehrfach; verglichen wird das erste Bauteil`,
-          { globalId: b.globalId },
-        ),
-      );
-    }
-  return befunde;
+  return doppelteInReihenfolge(modell, index).map((id) =>
+    modellbefund(
+      'globalid-doppelt',
+      `GlobalId ${id} steht im ${stand} Stand mehrfach; verglichen wird das erste Objekt`,
+      {
+        globalId: id,
+      },
+    ),
+  );
 }
 
 /** Vergleicht zwei Modellstände über die GlobalId (Ticket 108 Punkt 6). */

@@ -156,6 +156,13 @@ describe('positionUebernehmen', () => {
     expect(gleich.geaendert).toBe(false);
   });
 
+  it('nimmt kein Bauteil, dessen GlobalId zuerst ein Strukturknoten trägt (D-66: Struktur vor Bauteilen)', () => {
+    const bm = modell({ bauteile: [bauteil('R1', [menge('Length', '2.000', 'laenge')])] });
+    const u = positionUebernehmen(position('p1', 'm', [zuordnung('R1', 'Length')]), bm);
+    expect(u.zeilen).toEqual([]);
+    expect(codes(u.befunde)).toEqual(['globalid-doppelt', 'bauteil-fehlt']);
+  });
+
   it('ändert nichts, wenn keine Zeile entsteht (die Menge bleibt, nie 0)', () => {
     const u = positionUebernehmen(
       position('p1', 'm', [zuordnung('X', 'Length')], { menge: m('4.000') }),

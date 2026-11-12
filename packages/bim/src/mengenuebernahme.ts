@@ -73,28 +73,20 @@ function wertDerZuordnung(
   index: Modellindex,
   befunde: Pruefbefund[],
 ): Menge | null {
-  const ort = { knotenId: position.id, globalId: z.globalId };
-  const b = index.bauteil.get(z.globalId);
-  if (b === undefined) {
-    befunde.push(
-      modellbefund('bauteil-fehlt', `Bauteil ${z.globalId} steht nicht im Modell`, {
-        ...ort,
-        feld: 'bauteile',
-      }),
-    );
-    return null;
-  }
-  if (index.doppelteBauteile.has(z.globalId))
+  const ort = { knotenId: position.id, globalId: z.globalId, feld: 'bauteile' };
+  if (index.doppelt.has(z.globalId))
     befunde.push(
       modellbefund(
         'globalid-doppelt',
-        `GlobalId ${z.globalId} steht mehrfach im Modell; das erste Bauteil gilt`,
-        {
-          ...ort,
-          feld: 'bauteile',
-        },
+        `GlobalId ${z.globalId} steht mehrfach im Modell; das erste Objekt gilt`,
+        ort,
       ),
     );
+  const b = index.bauteil.get(z.globalId);
+  if (b === undefined) {
+    befunde.push(modellbefund('bauteil-fehlt', `Kein Bauteil ${z.globalId} im Modell`, ort));
+    return null;
+  }
   const regel = einheitsregel(position.einheit);
   const unpassend = (art: string): null => {
     befunde.push(

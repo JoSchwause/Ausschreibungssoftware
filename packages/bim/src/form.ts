@@ -1,33 +1,43 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Gemeinsame Formregeln und Nachschlagen im Bauwerksmodell (Ticket 108). Rein (A2).
+// Nachschlagen im Bauwerksmodell über die GlobalId (Ticket 108). Rein (A2).
 
 import type { Bauteil, Bauwerksmodell, IfcGlobalId, Strukturknoten } from '@tethys/vertrag';
 
 /**
- * Form einer GlobalId (Glossar „GlobalId“, `IfcGlobalId`): genau 22 Zeichen aus `0-9`, `A-Z`, `a-z`, `_`, `$`, wie `ifc`
- * sie prüft (Ticket 98). Vorläufig eigene Kopie, bis `vertrag` die Konstante führt (D-66).
- */
-export const GLOBALID_FORM = /^[0-9A-Za-z_$]{22}$/;
-
-/**
- * Bauteile und Strukturknoten eines Modells nach GlobalId. Kommt eine GlobalId mehrfach vor, gilt das **erste** Objekt in der
- * Reihenfolge des Modells (D-66); die weiteren zählen nur als Doppelte (Befund der Modellprüfung).
+ * Bauteile und Strukturknoten eines Modells nach GlobalId. Kommt eine GlobalId mehrfach vor, meint jeder Verweis das
+ * **erste** Objekt in der Reihenfolge der Datei, `struktur` vor `bauteile` (D-66); die späteren zählen für Zuordnung,
+ * Mengen und Vergleich nicht (Befund der Modellprüfung). Ein Bauteil, dessen GlobalId zuerst ein Strukturknoten trägt, steht
+ * darum nicht in `bauteil`.
  */
 export interface Modellindex {
   readonly bauteil: ReadonlyMap<IfcGlobalId, Bauteil>;
   readonly knoten: ReadonlyMap<IfcGlobalId, Strukturknoten>;
-  /** GlobalIds, die unter den Bauteilen mehr als einmal vorkommen. */
-  readonly doppelteBauteile: ReadonlySet<IfcGlobalId>;
+  /** GlobalIds, die das Modell mehr als einmal trägt (über Struktur und Bauteile). */
+  readonly doppelt: ReadonlySet<IfcGlobalId>;
 }
 
 export function modellIndex(modell: Pick<Bauwerksmodell, 'struktur' | 'bauteile'>): Modellindex {
-  const bauteil = new Map<IfcGlobalId, Bauteil>();
+  const knoten = new Map<IfcGlobalId, Strukturknoten>();
   const doppelt = new Set<IfcGlobalId>();
+  for (const k of modell.struktur) {
+    if (knoten.has(k.globalId)) doppelt.add(k.globalId);
+    else knoten.set(k.globalId, k);
+  }
+  const bauteil = new Map<IfcGlobalId, Bauteil>();
   for (const b of modell.bauteile) {
-    if (bauteil.has(b.globalId)) doppelt.add(b.globalId);
+    if (knoten.has(b.globalId) || bauteil.has(b.globalId)) doppelt.add(b.globalId);
     else bauteil.set(b.globalId, b);
   }
-  const knoten = new Map<IfcGlobalId, Strukturknoten>();
-  for (const k of modell.struktur) if (!knoten.has(k.globalId)) knoten.set(k.globalId, k);
-  return { bauteil, knoten, doppelteBauteile: doppelt };
+  return { bauteil, knoten, doppelt };
+}
+
+/** Die doppelten GlobalIds in der Reihenfolge ihres ersten Vorkommens (Struktur vor Bauteilen), jede einmal. */
+export function doppelteInReihenfolge(
+  modell: Pick<Bauwerksmodell, 'struktur' | 'bauteile'>,
+  index: Modellindex,
+): IfcGlobalId[] {
+  const liste = new Set<IfcGlobalId>();
+  for (const o of [...modell.struktur, ...modell.bauteile])
+    if (index.doppelt.has(o.globalId)) liste.add(o.globalId);
+  return [...liste];
 }

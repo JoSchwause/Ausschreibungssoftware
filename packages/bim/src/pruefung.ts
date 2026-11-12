@@ -5,7 +5,7 @@
 
 import type { Bauwerksmodell, IfcGlobalId, Knoten, Pruefbefund } from '@tethys/vertrag';
 import { modellbefund } from './befunde';
-import { modellIndex } from './form';
+import { doppelteInReihenfolge, modellIndex } from './form';
 import { zeilenLesen, zugeordnetePositionen } from './mengenuebernahme';
 
 export interface Zuordnungspruefung {
@@ -25,27 +25,11 @@ export interface Zuordnungspruefung {
  */
 export function zuordnungenPruefen(knoten: readonly Knoten[], modell: Bauwerksmodell): Zuordnungspruefung {
   const index = modellIndex(modell);
-  const befunde: Pruefbefund[] = [];
-  const gesehen = new Set<IfcGlobalId>();
-  const gemeldet = new Set<IfcGlobalId>();
-  const doppelt = new Set<IfcGlobalId>();
-  for (const o of [...modell.struktur, ...modell.bauteile]) {
-    if (gesehen.has(o.globalId)) doppelt.add(o.globalId);
-    gesehen.add(o.globalId);
-  }
-  for (const o of [...modell.struktur, ...modell.bauteile])
-    if (doppelt.has(o.globalId) && !gemeldet.has(o.globalId)) {
-      gemeldet.add(o.globalId);
-      befunde.push(
-        modellbefund(
-          'globalid-doppelt',
-          `GlobalId ${o.globalId} steht mehrfach im Modell; das erste Objekt gilt`,
-          {
-            globalId: o.globalId,
-          },
-        ),
-      );
-    }
+  const befunde: Pruefbefund[] = doppelteInReihenfolge(modell, index).map((id) =>
+    modellbefund('globalid-doppelt', `GlobalId ${id} steht mehrfach im Modell; das erste Objekt gilt`, {
+      globalId: id,
+    }),
+  );
   const zugeordnet = new Set<IfcGlobalId>();
   for (const p of zugeordnetePositionen(knoten)) {
     for (const z of p.bauteile ?? []) zugeordnet.add(z.globalId);

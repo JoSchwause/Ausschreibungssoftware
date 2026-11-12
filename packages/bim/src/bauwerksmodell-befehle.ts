@@ -6,6 +6,7 @@
 // immer, Struktur und Bauteile nur beim Anlegen und Löschen (D-45, D-54). Rein (A2).
 
 import { alsMenge } from '@tethys/dezimal';
+import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
 import type {
   Bauteil,
   Bauteilmenge,
@@ -22,7 +23,7 @@ import type {
   IfcGlobalId,
   Strukturknoten,
 } from '@tethys/vertrag';
-import { GLOBALID_FORM, modellIndex } from './form';
+import { modellIndex } from './form';
 
 type Antwort = Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>;
 
@@ -49,7 +50,7 @@ const nichtLeer = (w: unknown): boolean => istText(w) && w.trim() !== '';
 /** Ob ein (womöglich falsch getypter) Wert in der Menge steht. */
 const enthaelt = (ids: ReadonlySet<IfcGlobalId>, w: unknown): boolean => ids.has(w as IfcGlobalId);
 const istListe = (w: unknown): boolean => Array.isArray(w);
-const istGlobalId = (w: unknown): boolean => istText(w) && GLOBALID_FORM.test(w);
+const istGlobalId = (w: unknown): boolean => istText(w) && IFC_GLOBALID_MUSTER.test(w);
 
 /** Ein Kalendertag `JJJJ-MM-TT` (gregorianisch, ohne Uhr). */
 function istDatum(w: unknown): boolean {

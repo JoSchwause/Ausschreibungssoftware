@@ -165,6 +165,11 @@ describe('BauwerksmodellAnlegen', () => {
     ],
     ['Ganzes unbekannt', { bauteile: [W('W1', { teilVonGlobalId: gid('X') })] }, 'bauteile'],
     ['Ganzes ist ein Strukturknoten', { bauteile: [W('W1', { teilVonGlobalId: gid('EG') })] }, 'bauteile'],
+    [
+      'Ganzes trägt zuerst ein Strukturknoten (D-66: Struktur vor Bauteilen)',
+      { bauteile: [W('EG'), W('W1', { teilVonGlobalId: gid('EG') })] },
+      'bauteile',
+    ],
     ['Teil von sich selbst', { bauteile: [W('W1', { teilVonGlobalId: gid('W1') })] }, 'bauteile'],
     [
       'Ring der Teile',
