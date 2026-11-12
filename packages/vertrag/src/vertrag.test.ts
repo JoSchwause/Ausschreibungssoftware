@@ -169,6 +169,8 @@ import {
   type OzVorschlag,
   type OzVorschlagen,
   type Gesamtsummen,
+  type LvSpalte,
+  type LvZeile,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -1835,5 +1837,26 @@ describe('v1.5 Punkt 5: das gespeicherte Netto nach Nachlass in der LV-Übersich
     expect(beispielLvUebersichtNetto.id).toBe(beispielLv.id);
     expect(beispielLvUebersichtNetto.nettoNachNachlass).toBe(gesamt?.nettoNachNachlass);
     expect(beispielLvUebersichtNetto.nettoNachNachlass).not.toBe(gesamt?.netto);
+  });
+});
+
+describe('v1.5 Punkt 6: Spalte „KG“ im LV-Grid (D-89.1, Ticket 93)', () => {
+  it('LvSpalte kennt die Kostengruppe; die bisherigen sieben Spalten bleiben', () => {
+    expectTypeOf<LvSpalte>().toEqualTypeOf<
+      | 'ordnungszahl'
+      | 'positionsart'
+      | 'kurztext'
+      | 'menge'
+      | 'einheit'
+      | 'einheitspreis'
+      | 'gesamtpreis'
+      | 'kostengruppe'
+    >();
+  });
+
+  it('die Spalte heißt wie das Feld der Position, das sie zeigt, und wie `Befundort.feld` einer Zelle', () => {
+    expectTypeOf<'kostengruppe'>().toExtend<keyof Positionsdaten>();
+    expectTypeOf<Positionsdaten['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+    expectTypeOf<'kostengruppe'>().toExtend<NonNullable<LvZeile['befunde'][number]['ort']['feld']>>();
   });
 });
