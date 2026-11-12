@@ -13,6 +13,7 @@ import {
   vergleiche,
   vorzeichen,
 } from '@tethys/dezimal';
+import { NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
   AuftragsLvZustand,
   ElternId,
@@ -80,7 +81,7 @@ export function fortschrittVorschlagen(
   const ist = summiereBetraege(
     leistungsstand.positionen.filter((p) => zaehlt.has(p.positionId)).map((p) => p.gp),
   );
-  const anteil = konstante(dividiere(multipliziere(ist, HUNDERT), sollSumme, 2));
+  const anteil = konstante(dividiere(multipliziere(ist, HUNDERT), sollSumme, NACHKOMMASTELLEN.prozent));
   if (vorzeichen(anteil) < 0) return NULL_PROZENT;
   if (vergleiche(anteil, HUNDERT_PROZENT) > 0) return HUNDERT_PROZENT;
   return konstante(alsProzent(anteil as string));
