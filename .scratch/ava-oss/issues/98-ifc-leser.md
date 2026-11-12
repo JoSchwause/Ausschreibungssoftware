@@ -1,6 +1,6 @@
 # 98: X1a: IFC lesen (eigener STEP-Leser, IFC 2x3 und IFC 4)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc` (neu; dazu die Zeile in `tools/boundaries.mjs`, Workspace-Dateien, `REUSE.toml`
 falls nötig)
@@ -77,9 +77,125 @@ die Wörter gleich.
 
 ## Acceptance criteria
 
-- [ ] Golden-Tests je Fall (STEP-Kodierungen, Einheiten mm/m, Umrechnung, Struktur, Bauteile, Typ-Mengen, IFC 2x3 und 4 mit
+- [x] Golden-Tests je Fall (STEP-Kodierungen, Einheiten mm/m, Umrechnung, Struktur, Bauteile, Typ-Mengen, IFC 2x3 und 4 mit
       gleichem Ergebnis), Property-Test (beliebige Bytes), Sicherheitstests (Größe, Tiefe)
-- [ ] Paketgrenzen-Prüfung kennt `ifc`; Lint-Regel N1 gilt für das Paket; Lizenzprüfung grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Paketgrenzen-Prüfung kennt `ifc`; Lint-Regel N1 gilt für das Paket; Lizenzprüfung grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Ergebnis (2026-11-12, Branch `welle-6/98-ifc-leser`)
+
+**Öffentliche Schnittstelle** (`@tethys/ifc`, rein nach A2, importiert nur `vertrag` und `dezimal`):
+
+- `ifcLesen(bytes: Uint8Array, optionen?: { maxBytes?; maxTiefe? }): IfcLesung`; `STANDARD_MAX_BYTES` (500 MiB),
+  `STANDARD_MAX_TIEFE` (64).
+- `IfcLesung { modell: Bauwerksmodell | null; befunde: IfcBefund[] }`; `modell` ist nur `null` bei `eingabe-zu-gross`,
+  `keine-ifc-datei`, `schema-nicht-unterstuetzt` (dann genau ein Befund).
+- `Bauwerksmodell { schema: 'IFC2X3' | 'IFC4'; kopf: IfcKopf; struktur: Strukturknoten[]; bauteile: Bauteil[] }`, beide
+  Listen in der Reihenfolge der Datei.
+- `IfcKopf { beschreibung[]; name; zeitstempel; autoren[]; organisationen[]; praeprozessor; erzeugendesSystem;
+  autorisierung; schemakennung }`.
+- `Strukturknoten { globalId; art: 'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum'; name; elternGlobalId;
+  mengen: Bauteilmenge[] }`.
+- `Bauteil { globalId; ifcKlasse; name; typ; strukturGlobalId; teilVonGlobalId; kostengruppe: Kostengruppennummer | null;
+  mengen: Bauteilmenge[]; eigenschaften: Eigenschaft[]; klassifikationen: Klassifikation[]; materialien: string[] }`.
+- `Bauteilmenge { satz: string | null; name; art: 'laenge' | 'flaeche' | 'volumen' | 'anzahl' | 'gewicht' | 'zeit';
+  wert: Menge | null }` (SI, 3 Stellen). `Eigenschaft { satz; name; werte: { typ; text }[] }`,
+  `Klassifikation { system; kennung; name }`, `IfcGlobalId = string`.
+- `IfcBefund { schwere; code: IfcBefundcode; meldung; ort }` wie `Pruefbefund` ohne `quelle`; `ort.pfad` = `#n`,
+  `ort.zeile`, `ort.feld` (z. B. `GlobalId`). 26 Codes, siehe `typen.ts`.
+
+**Tests:** 12 Testdateien, 115 Tests im Paket (Golden je Fall, IFC 2x3 in mm = IFC 4 in m, Sicherheit: Größe, Tiefe
+100.000 ohne Stapelüberlauf, Kreise, fehlende Verweise; Property-Tests: beliebige Bytes, Bytes hinter gültigem Kopf,
+STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m). Ganze Suite:
+`pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 219 Dateien / 2.752 Tests grün (3 übersprungen wie vorher), Fixtures 29/29.
+
+**Messung** (einmalig, nicht committet; das Budget prüft Ticket 107): synthetisches IFC-4-Modell, 10.000 Wände mit
+Geometrie-Instanzen, Mengen-, Eigenschafts- und Materialsätzen, 19,6 MB: `ifcLesen` 5 Läufe 1,1 / 1,4 / 1,4 / 1,6 / 1,9 s
+CPU, Median 1,4 s, unter Parallellast anderer Agenten, 0 Befunde.
+
+**Hausmodelle aus Ticket 99:** lagen bis zum Abschluss nicht auf `integration/welle-6`; die Golden-Tests mit
+`fixtures/ifc/haus-v1*.ifc` und `haus-v2.ifc` macht Ticket 107 (dort ohnehin Punkt 3).
+
+**Was Ticket 107 abbilden muss** (Vertrag v1.6, Ticket 97):
+
+1. Gleiche Namen: `Bauwerksmodell`, `Strukturknoten`, `Bauteil`, `Bauteilmenge` gibt es dann in `ifc` und `vertrag`; die
+   eigenen Typen umbenennen oder ersetzen (D-59). Die Felder heißen schon wie in Ticket 97.
+2. `Bauteilmenge.wert: Menge | null` → v1.6 kennt nur `Menge`: Mengen ohne Wert weglassen (der Befund steht schon da) oder
+   den Vertrag erweitern; nie 0 einsetzen.
+3. `teilVonGlobalId: null` → Feld weglassen (`teilVonGlobalId?`), `kostengruppe: null` → weglassen (`kostengruppe?`).
+4. `eigenschaften`, `klassifikationen`, `materialien`, `kopf` stehen nicht im Vertrag (D-51): nicht speichern. Die
+   Eigenschaften bei Bedarf (Punkt 2 von 107) können den Index des STEP-Lesers (`datenLesen`) mit `Definitionen` und
+   `Eigenschaftenleser` weiterverwenden, ohne die Bauteile neu zu lesen.
+5. `IfcGlobalId` (hier `string`) → Marke aus v1.6 mit Erzeugungsfunktion in `ifc`; eine nicht wohlgeformte GlobalId hat schon
+   den Befund `globalid-ungueltig` (Wert wie in der Datei, `''` wenn sie fehlt).
+6. `IfcBefund` → `Pruefbefund` mit der Quelle aus v1.6.
+
+### Entscheidungen
+
+**D-98.1 Prüfstellen (TDD).** Frage: An welchen Schnittstellen wird getestet (kein Mensch zur Bestätigung im autonomen
+Lauf)? Entscheidung: Einzige Prüfstelle ist `ifcLesen`; auch STEP-Kodierungen, Zahlen und Einheiten laufen über sie (kleine
+IFC-Texte im Test, C4). Grund: Der STEP-Leser ist Innenleben; so überleben die Tests jeden Umbau.
+
+**D-98.2 Form der eigenen Typen.** Frage: Welche Namen, solange v1.6 fehlt? Entscheidung: Feldnamen wie in Ticket 97
+(`satz`, `elternGlobalId`, `ifcKlasse`, `typ`, `strukturGlobalId`, `teilVonGlobalId`, `kostengruppe`), Typnamen wie im
+Glossar; Abweichungen: `null` statt fehlender Felder, `wert` darf `null` sein, dazu `eigenschaften`, `klassifikationen`,
+`materialien`, `kopf`. Der Typ der Art einer Menge bleibt ohne eigenen Namen (`Bauteilmenge['art']`), weil „Mengenart“ im
+Vertrag den Namen der Menge meint (D-52). Grund: 107 bildet nur ab.
+
+**D-98.3 Schreibweise der Klasse.** Frage: Die Datei schreibt `IFCWALLSTANDARDCASE`, das Ticket `IfcWallStandardCase`.
+Entscheidung: Schreibweise der Spezifikation aus einer Namenstabelle (Produkte und Werttypen aus IFC 2x3 und 4, nur Namen,
+C1); ein unbekannter Name bleibt in Großbuchstaben wie in der Datei. Nie auf eine Oberklasse vereinheitlicht.
+
+**D-98.4 Zwei Schritte im STEP-Leser.** Frage: Wie wird eine 25-MB-Datei schnell und ohne Kopie als Text gelesen?
+Entscheidung: Ein Lauf über die Bytes legt Nummer, Klasse, Lage und Zeile jeder Instanz ab; Parameter werden nur für
+gebrauchte Instanzen zerlegt (ohne Rekursion), die Geometrie nie. Folge: Ein Syntaxfehler in einer Geometrie-Instanz ist
+kein Befund. Grund: Leistung (Messung oben), A2.
+
+**D-98.5 Exponent und exakte Zahl.** Frage: Wie wird `1.E-05` exakt gelesen, ohne `Number`? Entscheidung: Der Gleitkommatext
+wird lexikalisch in die Punktnotation gebracht (der Exponent verschiebt den Punkt; `zahlen.ts`, wie `dezimalLesen` in
+`erechnung`) und über `alsDezimal` geprüft; gerechnet wird nur mit `dezimal` (`multipliziere`, `runden`). Exponent höchstens
+±400, sonst `menge-ungueltig`.
+
+**D-98.6 Einheiten.** Frage: Lesarten, die das Ticket offen lässt. Entscheidung: Präfix vor dem Potenzieren
+(mm² = 10⁻⁶ m²), Gramm = 10⁻³ kg; umgerechnete Einheit = Wert × Faktor ihrer Basiseinheit (höchstens 4 Stufen, gleicher
+Einheitentyp); `einheit-umgerechnet` einmal je Einheit, die eine Menge betrifft (der Winkel des Projekts meldet nichts);
+`einheit-fehlt` einmal je Einheitentyp; `einheit-ungueltig` einmal je Einheit; nennt eine Menge eine eigene Einheit, die
+fehlt, bleibt sie ohne Wert (nie still die des Projekts); Anzahl hat keine Einheit (Stück). Kein `IfcProject`:
+`projekt-fehlt`, Mengen ohne Wert.
+
+**D-98.7 Befunde statt Erfindung.** Frage: Was ist ein Befund, was wird übergangen? Entscheidung: `bauteil-ohne-mengen`
+(Warnung je Bauteil ohne jede Menge: „fehlt eine Menge, ist das ein Befund“), `menge-nicht-gelesen` (z. B.
+`IfcPhysicalComplexQuantity`), `eigenschaft-nicht-gelesen` (andere Arten, ungetypte Werte), `klassifikation-nicht-gelesen`
+(Zuordnung zur `IfcClassification` selbst, 2x3-Notation), `kostengruppe-mehrdeutig` (mehrere verschiedene Vorschläge; der
+erste gilt). Vordefinierte Sätze wie `IfcDoorLiningProperties` sind keine `IfcPropertySet` und werden ohne Befund übergangen
+(sonst ein Befund je Tür).
+
+**D-98.8 Typ und Bauteil.** Frage: Wie wirken Typ und Bauteil zusammen? Entscheidung: Mengen und Eigenschaften des Typs
+(`HasPropertySets` und, IFC 4, Beziehungen am Typ) gelten mit; das Bauteil überschreibt je (Satzname, Name). Reihenfolge:
+Sätze nach ihrer Stelle in der Datei, darin die Liste. Klassifikationen: die eigenen, dann die weiteren des Typs;
+Materialien des Typs nur, wenn das Bauteil keine nennt.
+
+**D-98.9 Struktur und Bauteile.** Frage: Lesarten für unvollständige Bäume. Entscheidung: Jede Instanz der fünf Klassen ist
+ein Strukturknoten; Eltern aus der ersten `IfcRelAggregates`, die ihn nennt, nur wenn die Eltern ein Knoten sind; sonst
+`strukturknoten-ohne-eltern`. Bauteile: enthaltene Produkte und ihre Teile (Breitensuche, kreisfest); ein Teil ohne eigenen
+Behälter erbt den des Ganzen; ein Behälter, der kein Knoten ist (z. B. `IfcExternalSpatialElement`), ergibt
+`strukturGlobalId: null` mit `bauteil-ohne-strukturknoten`; zweimal enthalten: der erste gilt, `bauteil-mehrfach-enthalten`.
+`IfcExternalSpatialElement` und `IfcSpatialZone` sind weder Knoten noch Bauteile.
+
+**D-98.10 Werte der Eigenschaften.** Frage: Wie wird „Wert als Text“ geschrieben? Entscheidung: Typname der Spezifikation;
+Wahrheitswerte `TRUE`/`FALSE`/`UNKNOWN`, ganze Zahlen ohne `+` und führende Nullen, Gleitkommazahlen exakt als Dezimaltext
+ohne Exponent, Binärwerte als Hexziffern; keine Umrechnung von Einheiten.
+
+**D-98.11 Kodierung der Datei.** Frage: Wann UTF-8, wann Latin-1? Entscheidung: Einmal je Datei: nur ASCII ohne Befund;
+sonst gültiges UTF-8 mit `kodierung-utf8` (auch bei Byte-Order-Mark); sonst Latin-1 (ISO 8859-1, ein Byte ein Zeichen) mit
+`kodierung-latin1`. Zeilenumbrüche in Zeichenketten fallen weg, `\N\` und `\F\` auch; `\PB\` bis `\PI\` über die
+ISO-8859-Dekodierer der Plattform (`TextDecoder`), fehlt einer: `zeichenkette-ungueltig`. Eine ungültige Anweisung bleibt als
+Text stehen.
+
+**D-98.12 Grenzen und Schwere.** Frage: Welche Grenzen, welche Schwere? Entscheidung: 500 MiB harte Grenze
+(`eingabe-zu-gross`; die weiche 200-MB-Grenze aus D-51 gehört der App), Tiefe 64 je Instanz (`step-zu-tief`, die Instanz
+fällt weg). Schwere `fehler`, wenn etwas verloren oder mehrdeutig ist (Syntax, fehlender Verweis, Einheit, Menge ohne Zahl,
+GlobalId), sonst `warnung`. Doppelte Instanznummer: die erste gilt (`instanz-doppelt`); abgeschnittene Datei: gelesen bis zur
+letzten vollständigen Instanz (`datei-unvollstaendig`).
