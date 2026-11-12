@@ -1,6 +1,6 @@
 # 108: X1c–f: `bim`: Modellbefehle, Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1c, X1d, X1e, X1f · Paket: `packages/bim` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: 97
