@@ -1,6 +1,6 @@
 # 103: X5: ADR 0013 „Sync-Server nach v1“ (Vorschlag) und Grilling-Frage G-57
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X5 · Ort: `docs/adr/0013-sync-server-nach-v1.md` (neu), `.scratch/ava-oss/grilling.md` (G-57),
 `.scratch/ava-oss/plan.md` (§2, Zeile X5)
