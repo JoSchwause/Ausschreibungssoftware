@@ -1,6 +1,6 @@
 # 94: Aufmaßblatt mit 5.000 Zeilen: Einzeländerung und Undo unter 100 ms
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: S, A2 · Paket: `packages/speicher` (Ausnahme von P2: die Messung in `apps/web/src/abrechnung/leistung.test.ts`
 darf nachgezogen werden, dort schreibt in Stufe 1 niemand)
