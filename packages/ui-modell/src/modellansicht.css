@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/*
+ * Styling der Modellansicht (Ticket 100). Nur Tokens aus @tethys/ui-basis/tokens.css, keine festen Farben (U4).
+ * Die Leinwand liest die Farben der Rollen unten am eigenen Element (hell oder dunkel, je nach data-theme).
+ * „geändert“ (Modellvergleich) und „ohne Zuordnung“ (Zuordnung) teilen sich die Warnfarbe; beide Färbungsarten
+ * erscheinen nie zugleich (D-100.4).
+ */
+
+.tx-modell {
+  --tx-modell-hintergrund: var(--tx-color-surface-sunken);
+  --tx-modell-auswahl: var(--tx-color-focus);
+  --tx-modell-hinzugefuegt: var(--tx-color-success);
+  --tx-modell-entfernt: var(--tx-color-danger);
+  --tx-modell-geaendert: var(--tx-color-warning);
+  --tx-modell-zugeordnet: var(--tx-color-accent);
+  --tx-modell-ohne-zuordnung: var(--tx-color-warning);
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--tx-modell-hintergrund);
+  color: var(--tx-color-text);
+  font-family: var(--tx-font-sans);
+  font-size: var(--tx-font-size-md);
+  line-height: var(--tx-line-height);
+}
+
+.tx-modell__leinwand {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.tx-modell__leinwand:active {
+  cursor: grabbing;
+}
+
+.tx-modell__leinwand:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Laden, Fehler, leeres Modell: Text über der Leinwand */
+.tx-modell__hinweis {
+  position: absolute;
+  inset: auto var(--tx-space-5) var(--tx-space-5) var(--tx-space-5);
+  padding: var(--tx-space-3) var(--tx-space-4);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-raised);
+  box-shadow: var(--tx-shadow-sm);
+  pointer-events: none;
+}
+
+.tx-modell__hinweis--fehler {
+  border-color: var(--tx-color-danger);
+  background: var(--tx-color-danger-subtle);
+  color: var(--tx-color-danger);
+}
+
+/* Nur für Screenreader (Bedienhilfe) */
+.tx-modell__unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

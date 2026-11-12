@@ -24,6 +24,8 @@ export const ERLAUBT = {
   // Der Langtext-Editor (Ticket 34) braucht die Langtext-Typen; sonst bleibt ui-basis ohne Fachwissen.
   'packages/ui-basis': ['packages/vertrag'],
   'packages/ui-grid': ['packages/vertrag', 'packages/ui-basis'],
+  // 3D-Leinwand (Ticket 100, D-50): Geometrie mit web-ifc und three.js, kennt Bauteile nur über die GlobalId.
+  'packages/ui-modell': ['packages/vertrag', 'packages/ui-basis'],
   // Weitere Fachpakete aus plan.md §1: noch nicht angelegt, Grenzen stehen schon fest.
   'packages/vergabe': FACH,
   'packages/mengen': FACH,
@@ -35,6 +37,8 @@ export const ERLAUBT = {
   'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
   // HOAI-Honorarberechnung (Ticket 101, D-56): reine Rechnung mit den Honorartafeln als Daten, kein Kern.
   'packages/honorar': ['packages/vertrag', 'packages/dezimal'],
+  // Terminrechnung des Bauzeitenplans (Ticket 102, D-57): reiner Rechenkern, nur Typen und Dezimalarithmetik, kein Kern.
+  'packages/bauzeit': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -44,6 +48,7 @@ export const ERLAUBT = {
     'packages/gaeb',
     'packages/ui-basis',
     'packages/ui-grid',
+    'packages/ui-modell',
     'packages/vergabe',
     'packages/mengen',
     'packages/abrechnung',
@@ -51,6 +56,7 @@ export const ERLAUBT = {
     'packages/ausgabe',
     'packages/erechnung',
     'packages/honorar',
+    'packages/bauzeit',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],

@@ -1,6 +1,6 @@
 # 96: `ui-grid`: Balkenspalte (Zeitleiste) im Vergleichsgrid
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: U, X2 · Paket: `packages/ui-grid`
 Blocked by: –
@@ -154,3 +154,10 @@ Leistung (Headless-Chromium ohne GPU, 4 Kerne, bis zu 8 Agenten; Bilder/s bei 5.
 
 6-fach gedrosselt (Kontrolle) Bauzeitenplan 26,3 / 11,7 (Vergleich 12,3 / 8,1). Die Balkenspalte liegt damit im Budget
 der bestehenden Leistungstests des Vergleichsgrids (dieselben Prüfungen, keine Schranke gelockert).
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `7bda656` (Branch `welle-6/96-balkenspalte`, `c360ccc`). Balkenspalte im Vergleichsgrid
+(Monats-/KW-Kopf, Vorgang, Sammelvorgang, Meilenstein, Fortschritt, Ist, freie Tage, Marken, kritisch nicht nur über Farbe,
+abgeschnittene Balken mit Kennzeichen). E2E des Pakets 77/77; Leistung 1.000 Zeilen/730 Tage im Budget. Integrationssuite nach
+dem Merge grün bis auf ein lastabhängiges Budget in `vergabe` (allein grün).
