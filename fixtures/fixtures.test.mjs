@@ -2447,3 +2447,176 @@ test('bauzeit: Gegenprobe ohne Land, der Buß- und Bettag ist dann Arbeitstag (T
   assert.deepEqual(geaendert, g.geaendert);
   assert.deepEqual(ohne.kritischeWege, mit.kritischeWege);
 });
+
+// ---------------------------------------------------------------- Ticket 112: Honorar, Tor X3 (honorar.json)
+// Eigene Nachrechnung ohne das Paket `honorar`, nur BigInt in Cent (`rechnen.mjs`): Tafel aus der eigenen Abschrift von § 35
+// Abs. 1, Phasen aus § 34 Abs. 3, Rundungskette D-56. Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const ZONEN = ['I', 'II', 'III', 'IV', 'V'];
+/** Eine Zeile der Abschrift ("1 000 000 |  83 182 | …", ganze Euro, Leerzeichen als Tausendertrenner) → Tafelzeile. */
+function tafelzeileLesen(text) {
+  const zellen = text.split('|').map((z) => z.trim().replaceAll(' ', ''));
+  assert.equal(zellen.length, 1 + 2 * ZONEN.length, text);
+  for (const z of zellen) assert.match(z, /^[1-9]\d*$/, text);
+  const euro = (z) => `${z}.00`;
+  return {
+    anrechenbareKosten: euro(zellen[0]),
+    spannen: Object.fromEntries(ZONEN.map((zone, i) => [zone, { von: euro(zellen[1 + 2 * i]), bis: euro(zellen[2 + 2 * i]) }])),
+  };
+}
+/** Betrag als ganze Cent. */
+const cent = (text) => parse(text, 2);
+/** round_half_up(zaehler / nenner) für nicht negative ganze Zahlen. */
+const geteiltGerundet = (zaehler, nenner) => (2n * zaehler + nenner) / (2n * nenner);
+
+/** Honorarberechnung nach D-56 für ein Objekt Gebäude mit Kosten nach DIN 276 (die Fixture hat genau eines). */
+function honorarNachrechnen(fx) {
+  const { objekte, nebenkosten, mwstSatz } = fx.honorarberechnung;
+  assert.equal(objekte.length, 1);
+  const [o] = objekte;
+  const k = o.anrechenbareKosten;
+  assert.equal(k.art, 'din-276');
+  // § 33: KG 300 + weitere Kosten = sonstige; KG 400 voll bis 25 % davon, darüber zur Hälfte; dazu die Bausubstanz
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  const grenze = prozentVon(sonstige, parse('25.00', 2));
+  const kg400 = cent(k.kg400);
+  assert.equal(k.technischeAnlagenAnteilig, true);
+  const voll = kg400 > grenze ? grenze : kg400;
+  const haelfte = kg400 > grenze ? geteiltGerundet(kg400 - grenze, 2n) : 0n;
+  const ak = sonstige + voll + haelfte + cent(k.mitzuverarbeitendeBausubstanz);
+  // § 35 Abs. 1: die umgebenden Tafelzeilen; § 13: erst multiplizieren, dann teilen, je auf 2 Stellen
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  const iOben = zeilen.findIndex((z) => cent(z.anrechenbareKosten) > ak);
+  assert.ok(iOben > 0 && cent(zeilen[iOben - 1].anrechenbareKosten) < ak, 'streng zwischen zwei Zeilen der Abschrift');
+  const [unten, oben] = [zeilen[iOben - 1], zeilen[iOben]];
+  const u = cent(unten.anrechenbareKosten);
+  const d = cent(oben.anrechenbareKosten) - u;
+  const zone = o.honorarzone;
+  const interpoliert = (w) => {
+    const wu = cent(unten.spannen[zone][w]);
+    return geteiltGerundet(wu * d + (ak - u) * (cent(oben.spannen[zone][w]) - wu), d);
+  };
+  const von = interpoliert('von');
+  const bis = interpoliert('bis');
+  // Honorar = round(von + (bis − von) × Honorarsatz / 100, 2); Honorarsatz mit 2 Stellen
+  const honorar = geteiltGerundet(von * 10_000n + (bis - von) * parse(o.honorarsatz, 2), 10_000n);
+  const satzVon = new Map(fx.leistungsphasen.phasen.map((p) => [p.nummer, p]));
+  const phasen = o.leistungsphasen.map(({ nummer }) => {
+    const p = satzVon.get(nummer);
+    return { nummer, name: p.name, anteil: p.anteil, betrag: format(prozentVon(honorar, parse(p.anteil, 2)), 2) };
+  });
+  const grundhonorar = phasen.reduce((s, p) => s + cent(p.betrag), 0n);
+  const umbauzuschlag = prozentVon(grundhonorar, parse(o.umbauzuschlagssatz, 2));
+  assert.equal(nebenkosten.art, 'prozent');
+  const nk = prozentVon(grundhonorar + umbauzuschlag, parse(nebenkosten.satz, 2));
+  const netto = grundhonorar + umbauzuschlag + nk;
+  const mwst = prozentVon(netto, parse(mwstSatz, 2));
+  const t = (w) => format(w, 2);
+  return {
+    objekte: [{
+      bezeichnung: o.bezeichnung,
+      leistungsbild: o.leistungsbild,
+      honorarzone: zone,
+      anrechenbareKosten: t(ak),
+      herleitung: {
+        kg300: k.kg300,
+        weitereKosten: k.weitereKosten,
+        sonstigeAnrechenbareKosten: t(sonstige),
+        kg400: k.kg400,
+        grenzeTechnischeAnlagen: t(grenze),
+        kg400Voll: t(voll),
+        kg400Haelfte: t(haelfte),
+        mitzuverarbeitendeBausubstanz: k.mitzuverarbeitendeBausubstanz,
+        anrechenbareKosten: t(ak),
+      },
+      tafel: { zeileUnten: unten, zeileOben: oben, spanne: { von: t(von), bis: t(bis) } },
+      honorar: t(honorar),
+      phasen,
+      grundhonorar: t(grundhonorar),
+      umbauzuschlag: t(umbauzuschlag),
+    }],
+    grundhonorar: t(grundhonorar),
+    umbauzuschlaege: t(umbauzuschlag),
+    nebenkosten: t(nk),
+    netto: t(netto),
+    mwst: t(mwst),
+    brutto: t(netto + mwst),
+    befunde: [],
+  };
+}
+
+test('honorar: Abschrift § 35 Abs. 1 und Leistungsphasen § 34 Abs. 3 (Ticket 112, eigene Abschrift)', () => {
+  const fx = laden('honorar.json');
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  assert.deepEqual(zeilen.map((z) => z.anrechenbareKosten), ['1000000.00', '1500000.00']);
+  for (const z of zeilen) {
+    ZONEN.forEach((zone, i) => {
+      assert.ok(cent(z.spannen[zone].von) < cent(z.spannen[zone].bis), `${z.anrechenbareKosten} ${zone}: von < bis`);
+      if (i > 0) assert.equal(z.spannen[zone].von, z.spannen[ZONEN[i - 1]].bis, `bis der Zone davor = von ${zone}`);
+    });
+  }
+  for (const zone of ZONEN) assert.ok(cent(zeilen[0].spannen[zone].bis) < cent(zeilen[1].spannen[zone].bis), 'steigend');
+  // Zweite Abschrift der Zone III (§ 35 Abs. 1): 1.000.000 → 115.675 bis 144.268; 1.500.000 → 165.911 bis 206.923
+  assert.deepEqual(zeilen.map((z) => z.spannen.III), [{ von: '115675.00', bis: '144268.00' }, { von: '165911.00', bis: '206923.00' }]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileUnten, zeilen[0]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileOben, zeilen[1]);
+  const { phasen } = fx.leistungsphasen;
+  assert.deepEqual(phasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(phasen.map((p) => p.anteil), ['2.00', '7.00', '15.00', '3.00', '25.00', '10.00', '4.00', '32.00', '2.00']);
+  assert.equal(format(phasen.reduce((s, p) => s + parse(p.anteil, 2), 0n), 2), '100.00');
+  assert.equal(phasen[7].name, 'Objektüberwachung – Bauüberwachung und Dokumentation'); // Halbgeviertstrich wie in der Quelle
+});
+
+test('honorar: Kostenberechnung ergibt KG 300 und KG 400, die Eingabe deckt das Tor X3 ab (Ticket 112, § 33)', () => {
+  const fx = laden('honorar.json');
+  const ke = fx.kostenermittlung;
+  assert.equal(ke.stufe, 'kostenberechnung');
+  for (const id of [ke.id, ke.projektId, fx.honorarberechnung.id]) assert.match(id, UUID7);
+  assert.equal(ke.projektId, fx.honorarberechnung.projektId);
+  for (const e of ke.eintraege) assert.match(e.nummer, /^[1-9][1-9]0$/, 'nur zweite Ebene, keine Doppelzählung');
+  const summe = (ziffer) => ke.eintraege.filter((e) => e.nummer[0] === ziffer).reduce((s, e) => s + cent(e.betrag), 0n);
+  assert.equal(format(summe('3'), 2), fx.ausKostenermittlung.kg300);
+  assert.equal(format(summe('4'), 2), fx.ausKostenermittlung.kg400);
+  const [o] = fx.honorarberechnung.objekte;
+  assert.equal(o.anrechenbareKosten.kg300, '1011111.10');
+  assert.equal(o.anrechenbareKosten.kg400, '345678.91');
+  assert.equal(o.anrechenbareKosten.kg300, fx.ausKostenermittlung.kg300);
+  assert.equal(o.anrechenbareKosten.kg400, fx.ausKostenermittlung.kg400);
+  assert.equal(o.anrechenbareKosten.weitereKosten, ke.eintraege.find((e) => e.nummer === '610').betrag);
+  assert.deepEqual([o.leistungsbild, o.honorarzone, o.honorarsatz], ['gebaeude', 'III', '50.00']);
+  assert.match(fx.honorarsatzBenannt, /^Honorarsatz 50 %/);
+  assert.deepEqual(o.leistungsphasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.ok(o.leistungsphasen.every((p) => !('anteil' in p)), 'Sätze der HOAI');
+  assert.ok(o.umbauzuschlagssatz !== null && fx.honorarberechnung.nebenkosten.art === 'prozent');
+  assert.equal(fx.honorarberechnung.mwstSatz, '19.00');
+  // KG 400 über 25 % der sonstigen anrechenbaren Kosten: beide Zweige von § 33 Abs. 2
+  const h = fx.sollwerte.objekte[0].herleitung;
+  assert.ok(cent(h.kg400) > cent(h.grenzeTechnischeAnlagen) && cent(h.kg400Haelfte) > 0n);
+});
+
+test('honorar: Sollwerte gleich der eigenen Nachrechnung nach D-56 (Ticket 112)', () => {
+  const fx = laden('honorar.json');
+  assert.deepEqual(honorarNachrechnen(fx), fx.sollwerte);
+  // Von Hand (herleitung): aK 1.373.618,34; von 153.213,18; bis 191.086,11; Honorar 172.149,65; Grundhonorar 172.149,66;
+  // Umbau 43.037,42; Nebenkosten 9.683,42; Netto 224.870,50; MwSt 42.725,40; Brutto 267.595,90.
+  const s = fx.sollwerte;
+  const o = s.objekte[0];
+  assert.deepEqual(
+    [o.anrechenbareKosten, o.tafel.spanne.von, o.tafel.spanne.bis, o.honorar, o.grundhonorar, o.umbauzuschlag],
+    ['1373618.34', '153213.18', '191086.11', '172149.65', '172149.66', '43037.42'],
+  );
+  assert.deepEqual([s.nebenkosten, s.netto, s.mwst, s.brutto], ['9683.42', '224870.50', '42725.40', '267595.90']);
+  // Die Kette rundet sechsmal genau auf der Hälfte: half-up und „half-even“ unterscheiden sich dort (D-56: kaufmännisch)
+  const k = fx.honorarberechnung.objekte[0].anrechenbareKosten;
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  // je exakter Wert in Cent × 10.000 (Prozent mit 2 Stellen): Rest 5.000 heißt genau ein halber Cent
+  const haelften = [
+    sonstige * 2500n, // Grenze 25 %
+    (cent(k.kg400) - cent(o.herleitung.grenzeTechnischeAnlagen)) * 5000n, // Hälfte
+    cent(o.tafel.spanne.von) * 10_000n + (cent(o.tafel.spanne.bis) - cent(o.tafel.spanne.von)) * 5000n, // Honorar
+    cent(o.honorar) * 1000n, // LPH 6 (10 %)
+    cent(o.grundhonorar) * 2500n, // Umbauzuschlag 25 %
+    cent(s.netto) * 1900n, // MwSt
+  ];
+  for (const w of haelften) assert.equal(w % 10_000n, 5000n, 'genau ein halber Cent');
+});

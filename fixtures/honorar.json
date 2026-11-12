@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "honorarberechnung",
+  "regel": "Ticket 112, Tor X3 (D-58), README „Honorar: Tor X3“: HOAI 2021, Rundungskette D-56 (Projektkonvention, weil die HOAI keine Rundung regelt): anrechenbare Kosten nach § 33 je Teilbetrag auf 2 Stellen; § 13 lineare Interpolation von „von“ und „bis“ je für sich, erst multiplizieren, dann teilen, je auf 2 Stellen; Honorar = round(von + (bis − von) × Honorarsatz / 100, 2); je Leistungsphase round(Honorar × Anteil / 100, 2), Grundhonorar = Summe der Phasen; Umbauzuschlag round(Grundhonorar × Satz / 100, 2); Nebenkosten round((Grundhonorar + Umbauzuschlag) × Satz / 100, 2); MwSt (Umsatzsteuer nach § 16 Abs. 1) round(Netto × Satz / 100, 2). Kaufmännisch gerundet (half-up). Eingabe in der Form `Honorarberechnung` des Pakets `honorar` (dazu `id`, `projektId`, `name` aus dem geplanten Vertragstyp, Ticket 97), Sollwerte in der Form `Honorarergebnis`. Sollwerte von Hand hergeleitet (siehe `herleitung`), im Selbsttest eigens nachgerechnet (`fixtures.test.mjs`, ohne Pakete). Alles erfunden.",
+  "quelle": {
+    "vorschrift": "Verordnung über die Honorare für Architekten- und Ingenieurleistungen (HOAI) in der Fassung der Änderungsverordnung BGBl. I 2020 S. 2636: § 13, § 33, § 34 Abs. 3, § 35 Abs. 1, § 36 Abs. 1, § 6 Abs. 1 Nr. 2 und Abs. 2, § 7 Abs. 1, § 14, § 16 Abs. 1",
+    "url": "https://www.gesetze-im-internet.de/hoai_2013/",
+    "abgerufen": "2026-11-12"
+  },
+  "tafel": {
+    "quelle": "§ 35 Abs. 1 HOAI (Honorartafel Gebäude und Innenräume), https://www.gesetze-im-internet.de/hoai_2013/__35.html, abgerufen 2026-11-12; je Zeile anrechenbare Kosten und je Honorarzone I bis V „von“ und „bis“ in Euro",
+    "abschrift": [
+      "1 000 000 |  83 182 |  97 479 |  97 479 | 115 675 | 115 675 | 144 268 | 144 268 | 162 464 | 162 464 | 176 761",
+      "1 500 000 | 119 307 | 139 813 | 139 813 | 165 911 | 165 911 | 206 923 | 206 923 | 233 022 | 233 022 | 253 527"
+    ]
+  },
+  "leistungsphasen": {
+    "quelle": "§ 34 Abs. 3 Nr. 1 bis 9 HOAI, Sätze für Gebäude, https://www.gesetze-im-internet.de/hoai_2013/__34.html, abgerufen 2026-11-12",
+    "phasen": [
+      { "nummer": 1, "name": "Grundlagenermittlung", "anteil": "2.00" },
+      { "nummer": 2, "name": "Vorplanung", "anteil": "7.00" },
+      { "nummer": 3, "name": "Entwurfsplanung", "anteil": "15.00" },
+      { "nummer": 4, "name": "Genehmigungsplanung", "anteil": "3.00" },
+      { "nummer": 5, "name": "Ausführungsplanung", "anteil": "25.00" },
+      { "nummer": 6, "name": "Vorbereitung der Vergabe", "anteil": "10.00" },
+      { "nummer": 7, "name": "Mitwirkung bei der Vergabe", "anteil": "4.00" },
+      { "nummer": 8, "name": "Objektüberwachung – Bauüberwachung und Dokumentation", "anteil": "32.00" },
+      { "nummer": 9, "name": "Objektbetreuung", "anteil": "2.00" }
+    ]
+  },
+  "kostenermittlung": {
+    "id": "019b7a12-c000-7000-8000-000000000002",
+    "projektId": "019b7a12-a000-7000-8000-000000000001",
+    "stufe": "kostenberechnung",
+    "name": "Kostenberechnung Umbau Bürogebäude (erfunden)",
+    "eintraege": [
+      { "nummer": "210", "betrag": "8500.00", "bemerkung": "nicht anrechenbar: plant der Auftragnehmer nicht (§ 33 Abs. 3)" },
+      { "nummer": "310", "betrag": "48765.40" },
+      { "nummer": "320", "betrag": "123456.70" },
+      { "nummer": "330", "betrag": "345678.90" },
+      { "nummer": "340", "betrag": "156789.00" },
+      { "nummer": "350", "betrag": "201234.50" },
+      { "nummer": "360", "betrag": "98765.40" },
+      { "nummer": "390", "betrag": "36421.20" },
+      { "nummer": "410", "betrag": "61234.56" },
+      { "nummer": "420", "betrag": "78901.23" },
+      { "nummer": "430", "betrag": "45678.90" },
+      { "nummer": "440", "betrag": "98765.43" },
+      { "nummer": "450", "betrag": "23456.78" },
+      { "nummer": "480", "betrag": "37642.01" },
+      { "nummer": "520", "betrag": "24000.00", "bemerkung": "nicht anrechenbar für das Leistungsbild Gebäude" },
+      { "nummer": "610", "betrag": "12345.68", "bemerkung": "anrechenbar nach § 33 Abs. 3, weil der Auftragnehmer die Ausstattung plant; von Hand als weitere Kosten übernommen" }
+    ]
+  },
+  "ausKostenermittlung": {
+    "regel": "KG 300 = Summe der Einträge 3xx, KG 400 = Summe der Einträge 4xx (alle Einträge auf der zweiten Ebene, keine Doppelzählung). Die weiteren Kosten nach § 33 Abs. 3 und die mitzuverarbeitende Bausubstanz (§ 4 Abs. 3) gibt der Nutzer von Hand ein (D-56). Grundlage ist die Kostenberechnung (§ 6 Abs. 1 Nr. 2): kein Befund zur Stufe.",
+    "kg300": "1011111.10",
+    "kg400": "345678.91"
+  },
+  "honorarberechnung": {
+    "id": "019b7a12-c000-7000-8000-000000000001",
+    "projektId": "019b7a12-a000-7000-8000-000000000001",
+    "name": "Honorar Objektplanung Umbau Bürogebäude (erfunden)",
+    "objekte": [
+      {
+        "bezeichnung": "Umbau und Erweiterung Bürogebäude (erfunden)",
+        "leistungsbild": "gebaeude",
+        "honorarzone": "III",
+        "honorarsatz": "50.00",
+        "anrechenbareKosten": {
+          "art": "din-276",
+          "kg300": "1011111.10",
+          "kg400": "345678.91",
+          "technischeAnlagenAnteilig": true,
+          "weitereKosten": "12345.68",
+          "mitzuverarbeitendeBausubstanz": "49390.00"
+        },
+        "leistungsphasen": [
+          { "nummer": 1 },
+          { "nummer": 2 },
+          { "nummer": 3 },
+          { "nummer": 4 },
+          { "nummer": 5 },
+          { "nummer": 6 },
+          { "nummer": 7 },
+          { "nummer": 8 },
+          { "nummer": 9 }
+        ],
+        "umbauzuschlagssatz": "25.00"
+      }
+    ],
+    "nebenkosten": { "art": "prozent", "satz": "4.50" },
+    "mwstSatz": "19.00"
+  },
+  "honorarsatzBenannt": "Honorarsatz 50 % (Lage in der Mitte der Honorarspanne; „Mittelsatz“ ist nur eine Bezeichnung der Praxis, kein Begriff der HOAI 2021)",
+  "sollwerte": {
+    "objekte": [
+      {
+        "bezeichnung": "Umbau und Erweiterung Bürogebäude (erfunden)",
+        "leistungsbild": "gebaeude",
+        "honorarzone": "III",
+        "anrechenbareKosten": "1373618.34",
+        "herleitung": {
+          "kg300": "1011111.10",
+          "weitereKosten": "12345.68",
+          "sonstigeAnrechenbareKosten": "1023456.78",
+          "kg400": "345678.91",
+          "grenzeTechnischeAnlagen": "255864.20",
+          "kg400Voll": "255864.20",
+          "kg400Haelfte": "44907.36",
+          "mitzuverarbeitendeBausubstanz": "49390.00",
+          "anrechenbareKosten": "1373618.34"
+        },
+        "tafel": {
+          "zeileUnten": {
+            "anrechenbareKosten": "1000000.00",
+            "spannen": {
+              "I": { "von": "83182.00", "bis": "97479.00" },
+              "II": { "von": "97479.00", "bis": "115675.00" },
+              "III": { "von": "115675.00", "bis": "144268.00" },
+              "IV": { "von": "144268.00", "bis": "162464.00" },
+              "V": { "von": "162464.00", "bis": "176761.00" }
+            }
+          },
+          "zeileOben": {
+            "anrechenbareKosten": "1500000.00",
+            "spannen": {
+              "I": { "von": "119307.00", "bis": "139813.00" },
+              "II": { "von": "139813.00", "bis": "165911.00" },
+              "III": { "von": "165911.00", "bis": "206923.00" },
+              "IV": { "von": "206923.00", "bis": "233022.00" },
+              "V": { "von": "233022.00", "bis": "253527.00" }
+            }
+          },
+          "spanne": { "von": "153213.18", "bis": "191086.11" }
+        },
+        "honorar": "172149.65",
+        "phasen": [
+          { "nummer": 1, "name": "Grundlagenermittlung", "anteil": "2.00", "betrag": "3442.99" },
+          { "nummer": 2, "name": "Vorplanung", "anteil": "7.00", "betrag": "12050.48" },
+          { "nummer": 3, "name": "Entwurfsplanung", "anteil": "15.00", "betrag": "25822.45" },
+          { "nummer": 4, "name": "Genehmigungsplanung", "anteil": "3.00", "betrag": "5164.49" },
+          { "nummer": 5, "name": "Ausführungsplanung", "anteil": "25.00", "betrag": "43037.41" },
+          { "nummer": 6, "name": "Vorbereitung der Vergabe", "anteil": "10.00", "betrag": "17214.97" },
+          { "nummer": 7, "name": "Mitwirkung bei der Vergabe", "anteil": "4.00", "betrag": "6885.99" },
+          { "nummer": 8, "name": "Objektüberwachung – Bauüberwachung und Dokumentation", "anteil": "32.00", "betrag": "55087.89" },
+          { "nummer": 9, "name": "Objektbetreuung", "anteil": "2.00", "betrag": "3442.99" }
+        ],
+        "grundhonorar": "172149.66",
+        "umbauzuschlag": "43037.42"
+      }
+    ],
+    "grundhonorar": "172149.66",
+    "umbauzuschlaege": "43037.42",
+    "nebenkosten": "9683.42",
+    "netto": "224870.50",
+    "mwst": "42725.40",
+    "brutto": "267595.90",
+    "befunde": []
+  },
+  "herleitung": [
+    "„→“ heißt kaufmännisch auf 2 Stellen gerundet, „(.5)“ eine Rundung genau auf der Hälfte (half-up nach oben).",
+    "Kostenermittlung (Stufe Kostenberechnung): KG 300 = 48.765,40 + 123.456,70 + 345.678,90 + 156.789,00 + 201.234,50 + 98.765,40 + 36.421,20 = 1.011.111,10; KG 400 = 61.234,56 + 78.901,23 + 45.678,90 + 98.765,43 + 23.456,78 + 37.642,01 = 345.678,91. KG 210 und 520 zählen nicht; KG 610 kommt über die weiteren Kosten nach § 33 Abs. 3 von Hand.",
+    "§ 33 Abs. 1 und 3: sonstige anrechenbare Kosten = KG 300 1.011.111,10 + weitere Kosten 12.345,68 = 1.023.456,78.",
+    "§ 33 Abs. 2 Nr. 1: Grenze 25 % × 1.023.456,78 = 255.864,195 → 255.864,20 (.5). KG 400 345.678,91 liegt darüber: voll angerechnet 255.864,20.",
+    "§ 33 Abs. 2 Nr. 2: Teil über der Grenze 345.678,91 − 255.864,20 = 89.814,71, zur Hälfte 44.907,355 → 44.907,36 (.5).",
+    "§ 4 Abs. 3: mitzuverarbeitende Bausubstanz 49.390,00 (von Hand). Anrechenbare Kosten = 1.023.456,78 + 255.864,20 + 44.907,36 + 49.390,00 = 1.373.618,34, streng zwischen den Tafelzeilen 1.000.000 und 1.500.000.",
+    "§ 35 Abs. 1, Zone III: Zeile 1.000.000 von 115.675 bis 144.268; Zeile 1.500.000 von 165.911 bis 206.923.",
+    "§ 13 von: 115.675 + (1.373.618,34 − 1.000.000) × (165.911 − 115.675) / 500.000 = 115.675 + 373.618,34 × 50.236 / 500.000 = 115.675 + 18.769.090.928,24 / 500.000 = 115.675 + 37.538,18185648 = 153.213,18185648 → 153.213,18.",
+    "§ 13 bis: 144.268 + 373.618,34 × (206.923 − 144.268) / 500.000 = 144.268 + 373.618,34 × 62.655 / 500.000 = 144.268 + 23.409.057.092,70 / 500.000 = 144.268 + 46.818,1141854 = 191.086,1141854 → 191.086,11.",
+    "Honorar im Honorarsatz 50 %: 153.213,18 + (191.086,11 − 153.213,18) × 50 / 100 = 153.213,18 + 37.872,93 × 0,5 = 153.213,18 + 18.936,465 = 172.149,645 → 172.149,65 (.5).",
+    "Leistungsphasen (§ 34 Abs. 3, Gebäude) je round(172.149,65 × Anteil / 100, 2): LPH 1 2 % 3.442,993 → 3.442,99; LPH 2 7 % 12.050,4755 → 12.050,48; LPH 3 15 % 25.822,4475 → 25.822,45; LPH 4 3 % 5.164,4895 → 5.164,49; LPH 5 25 % 43.037,4125 → 43.037,41; LPH 6 10 % 17.214,965 → 17.214,97 (.5); LPH 7 4 % 6.885,986 → 6.885,99; LPH 8 32 % 55.087,888 → 55.087,89; LPH 9 2 % 3.442,993 → 3.442,99.",
+    "Grundhonorar = 3.442,99 + 12.050,48 + 25.822,45 + 5.164,49 + 43.037,41 + 17.214,97 + 6.885,99 + 55.087,89 + 3.442,99 = 172.149,66 (1 Cent über dem Honorar: Rundungsreste der Phasen).",
+    "Umbauzuschlag (§ 6 Abs. 2, § 36 Abs. 1; 25 % liegt unter 33 %, kein Befund): 172.149,66 × 25 % = 43.037,415 → 43.037,42 (.5).",
+    "Nebenkosten (§ 14) 4,50 % von 172.149,66 + 43.037,42 = 215.187,08: 9.683,4186 → 9.683,42.",
+    "Netto = 172.149,66 + 43.037,42 + 9.683,42 = 224.870,50; MwSt 19 % (§ 16 Abs. 1) = 42.725,395 → 42.725,40 (.5); Brutto = 267.595,90.",
+    "Befunde: keine (Kostenberechnung als Grundlage, Honorarsatz in 0 bis 100, alle Phasen mit dem Satz der HOAI, Umbauzuschlag unter der Grenze, ein Objekt)."
+  ]
+}
