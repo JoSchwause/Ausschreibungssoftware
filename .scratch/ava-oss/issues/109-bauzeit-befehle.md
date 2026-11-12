@@ -22,6 +22,10 @@ Herkunft: Ticket 102 (Rechenkern mit eigenen Typen), Ticket 97 (Vertragstypen)
 4. **Leistung (Q4):** Befehl und Umkehrung an einem Plan mit 1.000 Vorgängen messen und im Ticket nennen (Speicherseite misst
    Ticket 106).
 
+Aus Ticket 97 und dem Review (D-64, D-66): Das Ergebnis heißt `Bauzeitenplanergebnis` (nicht „Terminplan“), je Vorgang
+`vorgangId`; ein unbekannter Vorgänger ist ein Fehler des Ausführers, kein Befund; „Vorgang entfernen“ nimmt Teilbaum und
+Beziehungen auf ihn mit; ein Befund zu einer Beziehung trägt `pfad: '/vorgaenge[n]/vorgaenger[m]'`.
+
 ## Grenzen
 
 - Nur `packages/bauzeit`. `okf/research/` wird nicht gelesen (C3).
