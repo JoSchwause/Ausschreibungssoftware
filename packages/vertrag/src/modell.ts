@@ -448,9 +448,14 @@ export interface Positionsdaten {
    *   Mengenart steht höchstens einmal darin. Ein Bauteil darf mehreren Positionen zugeordnet sein (D-52).
    * - Geändert nur über `BauteileZuordnen` (im LV und im Auftrags-LV). Anlegebefehle (`PositionAnlegen`, `KnotenEinfuegen`,
    *   `LeistungsverzeichnisAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`, `NachtragUebernehmen`) übernehmen sie, wie sie
-   *   kommen (der Kern prüft die Form wie bei `BauteileZuordnen`). **Kopieren verwirft sie** (D-52): Die Kopierhilfe des
-   *   Kerns (Kopieren im LV und Einfügen aus der Zwischenablage, Ticket 42) lässt das Feld weg, damit dasselbe Bauteil nicht
-   *   unbemerkt zweimal gezählt wird. Verschieben, Papierkorb und Wiederherstellen behalten sie, ein LV-Stand trägt sie.
+   *   kommen (der Kern prüft die Form wie bei `BauteileZuordnen`). **Kopieren verwirft sie** (D-52), damit dasselbe Bauteil
+   *   nicht unbemerkt zweimal gezählt wird. Nachtrag Review (D-66), je Weg:
+   *   - Kopieren und Einfügen im selben LV (auch aus der Zwischenablage) und das Übernehmen von Textbausteinen aus einem
+   *     Muster-LV: Die Kopierhilfe des Kerns (Ticket 42) lässt `bauteile` weg.
+   *   - Einen LV-Stand als neues LV übernehmen: Die Zuordnungen **bleiben**, weil das neue LV ein eigenes LV ist und nichts
+   *     doppelt zählt. Dafür bekommt die Kopierhilfe in Ticket 105 eine Wahl (Standard: weglassen); der Weg der App aus dem
+   *     LV-Stand übergibt „behalten“ (Ticket 121).
+   *   Verschieben, Papierkorb und Wiederherstellen behalten sie; ein LV-Stand trägt sie.
    * - Der Zuschlag (`zuschlagErteilen`, D-21) übernimmt sie mit den Positionsdaten ins Auftrags-LV (gemeinsame
    *   Positionsidentität), ebenso `nachtragUebernehmen` aus dem Nachtrags-LV; danach sind beide unabhängig.
    * - Der GAEB-Export schreibt sie nicht (kein GAEB-Element; mit Warnung wie die Textquelle, F6); ein GAEB-Import bringt
