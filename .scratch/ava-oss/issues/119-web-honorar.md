@@ -77,3 +77,9 @@ Haken: `App.tsx`, `projekt/ProjektSeite.tsx` (Verweis „Honorar“), `historie/
   grün: das CPU-Budget `packages/speicher/src/aufmass-leistung.test.ts` (Ticket 94, nicht berührt) maß in der vollen Suite
   `AufmasspositionSetzen` Median 100,3 ms (< 100), allein wiederholt grün; kein Budget gelockert. `node --test "fixtures/*.test.mjs"`
   53/53.
+
+## Answer
+
+Gemergt mit `2e7cbd8` (Branch `welle-6/119-web-honorar`, `1c5a611`). **Tor X3 erreicht:** `x3.spec.ts` dreimal grün vor und nach dem Merge,
+`x3-kette.test.ts` grün; Brutto 267.595,90, anrechenbare Kosten 1.373.618,34, Honorar 172.149,65 über die Oberfläche; DIN-276-Hinweis als
+fester Text; PDF erzeugt.
