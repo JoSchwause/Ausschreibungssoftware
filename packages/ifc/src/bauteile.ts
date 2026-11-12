@@ -93,6 +93,7 @@ export function bauteileLesen(
 
   const bauteile: Bauteil[] = [];
   for (const i of [...struktur.keys()].sort((a, b) => a - b)) {
+    const globalId = l.gepruefteGlobalId(i);
     const s = struktur.get(i) ?? null;
     const strukturGlobalId = s !== null && STRUKTURARTEN.has(l.daten.name(s)) ? l.globalId(s) : null;
     const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
@@ -122,7 +123,7 @@ export function bauteileLesen(
         l.ort(i),
       );
     bauteile.push({
-      globalId: l.globalId(i),
+      globalId,
       ifcKlasse: klassenname(l.daten.name(i)),
       name: l.name(i),
       typ: daten.typname(i),

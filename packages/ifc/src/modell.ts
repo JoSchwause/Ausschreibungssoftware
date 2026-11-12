@@ -17,9 +17,14 @@ export const STRUKTURARTEN: ReadonlyMap<string, Strukturknoten['art']> = new Map
   ['IFCSPACE', 'raum'],
 ]);
 
-/** Gemeinsamer Zustand beim Lesen der Instanzen: Daten, Befunde, aufgelöste Verweise. */
+/** Form einer GlobalId (Glossar): 22 Zeichen aus dem IFC-Base64-Alphabet. */
+const GLOBALID = /^[0-9A-Za-z_$]{22}$/;
+
+/** Gemeinsamer Zustand beim Lesen der Instanzen: Daten, Befunde, aufgelöste Verweise, vergebene GlobalIds. */
 export class Modellleser {
   private readonly fehlendeVerweise = new Set<string>();
+  /** Erste Instanz je wohlgeformter GlobalId der Strukturknoten und Bauteile. */
+  private readonly vergeben = new Map<string, number>();
 
   constructor(
     readonly daten: StepDaten,
@@ -74,6 +79,36 @@ export class Modellleser {
     return text(this.parameter(i)?.[0]) ?? '';
   }
 
+  /**
+   * GlobalId eines Strukturknotens oder Bauteils, geprüft (Ticket 98, Punkt 5): nicht wohlgeformt oder schon vergeben ist
+   * ein Befund; der Wert bleibt, wie er in der Datei steht, und beide Objekte bleiben.
+   */
+  gepruefteGlobalId(i: number): string {
+    const globalId = this.globalId(i);
+    const nummer = `#${String(this.daten.id(i))}`;
+    if (!GLOBALID.test(globalId)) {
+      this.melde(
+        'fehler',
+        'globalid-ungueltig',
+        globalId === ''
+          ? `${nummer} hat keine GlobalId.`
+          : `Die GlobalId „${globalId}“ von ${nummer} ist nicht wohlgeformt (22 Zeichen aus 0-9, A-Z, a-z, _ und $).`,
+        this.ort(i, 'GlobalId'),
+      );
+      return globalId;
+    }
+    const erste = this.vergeben.get(globalId);
+    if (erste === undefined) this.vergeben.set(globalId, i);
+    else
+      this.melde(
+        'fehler',
+        'globalid-doppelt',
+        `Die GlobalId ${globalId} steht bei #${String(this.daten.id(erste))} und ${nummer}; beide bleiben.`,
+        this.ort(i, 'GlobalId'),
+      );
+    return globalId;
+  }
+
   /** `Name` einer `IfcRoot`-Instanz (drittes Attribut). */
   name(i: number): string | null {
     return text(this.parameter(i)?.[2]);
@@ -103,6 +138,7 @@ export function strukturLesen(
   for (const i of indizes) {
     const art = STRUKTURARTEN.get(l.daten.name(i));
     if (art === undefined || l.parameter(i) === null) continue;
+    const globalId = l.gepruefteGlobalId(i);
     const oben = ganzes.get(i);
     const eltern = oben !== undefined && STRUKTURARTEN.has(l.daten.name(oben)) ? l.globalId(oben) : null;
     if (eltern === null && art !== 'projekt')
@@ -112,7 +148,7 @@ export function strukturLesen(
         `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))}) hängt an keinem Strukturknoten (IfcRelAggregates).`,
         l.ort(i),
       );
-    knoten.push({ globalId: l.globalId(i), art, name: l.name(i), elternGlobalId: eltern, mengen: mengen(i) });
+    knoten.push({ globalId, art, name: l.name(i), elternGlobalId: eltern, mengen: mengen(i) });
   }
   return knoten;
 }

@@ -158,7 +158,10 @@ export type IfcBefundcode =
   | 'eigenschaft-nicht-gelesen'
   // Klassifikation:
   | 'klassifikation-nicht-gelesen'
-  | 'kostengruppe-mehrdeutig';
+  | 'kostengruppe-mehrdeutig'
+  // GlobalId der Strukturknoten und Bauteile:
+  | 'globalid-ungueltig'
+  | 'globalid-doppelt';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für
