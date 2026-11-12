@@ -323,7 +323,9 @@ export function DruckProfilFeld({
             ))}
           </ul>
           <p>{t.zurueckHinweis}</p>
-          {zurueckNichtLesbar(zurueck) > 0 ? <p>{t.zurueckNichtLesbar(zurueckNichtLesbar(zurueck))}</p> : null}
+          {zurueckNichtLesbar(zurueck) > 0 ? (
+            <p>{t.zurueckNichtLesbar(zurueckNichtLesbar(zurueck))}</p>
+          ) : null}
           <Button onClick={zurueckSichern}>{t.zurueckSichern}</Button>
           <Button
             variante="gefahr"

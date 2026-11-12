@@ -46,7 +46,9 @@ export const texte = {
       zurueckHinweis:
         'Diese gespeicherten Einträge erscheinen nicht in der Auswahl. Sie bleiben unverändert gespeichert; nichts wird verworfen.',
       zurueckNichtLesbar: (n: number) =>
-        n === 1 ? '1 Eintrag konnte nicht gelesen werden.' : `${String(n)} Einträge konnten nicht gelesen werden.`,
+        n === 1
+          ? '1 Eintrag konnte nicht gelesen werden.'
+          : `${String(n)} Einträge konnten nicht gelesen werden.`,
       zurueckSichern: 'Einträge als Datei sichern',
       zurueckEntfernen: 'Einträge entfernen',
       zurueckEntfernenTitel: 'Nicht verwendete Einträge entfernen?',

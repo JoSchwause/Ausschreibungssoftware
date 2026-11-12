@@ -181,7 +181,7 @@ describe('Papierkorb und Stand', () => {
     };
     const positionen = standAlsLvBefehl(stand, u.ids).inhalt.knoten.filter((k) => k.art === 'position');
     expect(positionen.length).toBeGreaterThan(0);
-    for (const p of positionen) expect(p.art === 'position' && p.bauteile).toEqual(zuordnung);
+    for (const p of positionen) expect(p.bauteile).toEqual(zuordnung);
   });
 
   it('Stand als neues LV: neue Kennungen, gleicher Inhalt, Name mit Stand', async () => {
