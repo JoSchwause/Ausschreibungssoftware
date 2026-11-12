@@ -20,11 +20,11 @@ import type {
   Strukturknoten,
 } from '@tethys/vertrag';
 
-/** Eine GlobalId in Form (22 Zeichen aus dem IFC-Base64-Alphabet) aus einem kurzen Schlüssel. */
+/** Eine GlobalId in Form (22 Zeichen aus dem IFC-Base64-Alphabet) aus einem kurzen Schlüssel aus Buchstaben und Ziffern. */
 export function gid(schluessel: string): IfcGlobalId {
   const rein = schluessel.replace(/[^0-9A-Za-z_$]/g, '_');
   if (rein.length > 22) throw new Error(`Schlüssel zu lang: ${schluessel}`);
-  return rein.padEnd(22, '0') as IfcGlobalId;
+  return rein.padEnd(22, '$') as IfcGlobalId; // `$` kommt in keinem Schlüssel vor: B1 und B10 bleiben verschieden
 }
 
 export const m = (wert: string): Menge => wert as Menge;
