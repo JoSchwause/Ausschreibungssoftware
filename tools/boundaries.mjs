@@ -24,6 +24,8 @@ export const ERLAUBT = {
   // Der Langtext-Editor (Ticket 34) braucht die Langtext-Typen; sonst bleibt ui-basis ohne Fachwissen.
   'packages/ui-basis': ['packages/vertrag'],
   'packages/ui-grid': ['packages/vertrag', 'packages/ui-basis'],
+  // 3D-Leinwand (Ticket 100, D-50): Geometrie mit web-ifc und three.js, kennt Bauteile nur über die GlobalId.
+  'packages/ui-modell': ['packages/vertrag', 'packages/ui-basis'],
   // Weitere Fachpakete aus plan.md §1: noch nicht angelegt, Grenzen stehen schon fest.
   'packages/vergabe': FACH,
   'packages/mengen': FACH,
@@ -42,6 +44,7 @@ export const ERLAUBT = {
     'packages/gaeb',
     'packages/ui-basis',
     'packages/ui-grid',
+    'packages/ui-modell',
     'packages/vergabe',
     'packages/mengen',
     'packages/abrechnung',
