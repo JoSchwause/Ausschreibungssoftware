@@ -16,6 +16,11 @@ export type {
   Vorgangstermine,
 } from './bauzeitenplan';
 export { BAUZEITBEFUNDE, bauzeitenplanBerechnen } from './bauzeitenplan';
+export {
+  bauzeitenplanBefehlAusfuehren,
+  bauzeitenplanChangeSetAnwenden,
+  bauzeitenplanChangeSetUmkehren,
+} from './bauzeitenplan-befehle';
 // Aliase der Vertragstypen v1.6 (Ticket 109): Bis Ticket 102 führte das Paket eigene Typen dieser Namen; Nutzer importieren
 // sie aus `@tethys/vertrag`, das Paket reicht sie für bestehende Importe weiter.
 export type {
