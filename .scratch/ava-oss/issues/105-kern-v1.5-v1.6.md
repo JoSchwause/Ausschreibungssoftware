@@ -1,6 +1,6 @@
 # 105: Kern v1.5/v1.6: einheitlicher Fehlercode, OZ-Vorschlag am Auftrags-LV, `BauteileZuordnen`
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: K, X1c · Paket: `packages/kern` (benannte Ausnahmen von P2, nur wenn nötig und klein: die Stelle in
 `packages/abrechnung`, die heute den OZ-Vorschlag umdeutet (D-80.1), und `zuschlagErteilen` in `packages/vergabe`, falls es
@@ -37,9 +37,9 @@ Herkunft: Ticket 95 (Punkte 1, 3), Ticket 97 (Punkt 3), Berater D-52, D-54
 
 ## Acceptance criteria
 
-- [ ] Unit- und Eigenschaftstests (Fehlercode, OZ-Vorschlag, Zuordnen, Kopieren verwirft, Verschieben behält, Undo, LV-Stand,
+- [x] Unit- und Eigenschaftstests (Fehlercode, OZ-Vorschlag, Zuordnen, Kopieren verwirft, Verschieben behält, Undo, LV-Stand,
       Zuschlag); Leistungstests im Budget
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -114,3 +114,16 @@ Je Punkt ein Commit, test-first: `2466071` (Fehlercode), `cc51f19` (OZ-Vorschlag
   bei der Vorgabe. Der Text für `knotenart-unzulaessig` sollte zu Feldbefehlen passen (siehe 95, 121); `KostengruppeSetzen` an
   einer Gliederung meldet jetzt diesen Code.
 - **Ohne Ticket:** D-66 SHOULD 12 (GAEB-Export verwirft `bauteile` ohne F6-Warnung) bleibt bei der Review-Behebung der Welle.
+
+### Prüfung
+
+Nach dem letzten `git merge integration/welle-6` (Stand `ded65d8`, mit dem Nachtrag Review zu 97, D-66) und dem Wechsel auf
+`IFC_GLOBALID_MUSTER`: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün (samt Paketgrenzen, Lizenzen, Clean Room),
+`pnpm typecheck` grün, `pnpm test`: Vitest 3262 Tests bestanden, 3 übersprungen wie zuvor, Fixtures 53/53; **7 Budgettests
+fielen nur in der vollen Suite** bei Last 38–42 auf 4 Kernen (acht Agenten), keiner in einer von 105 geänderten Datei. Allein
+wiederholt: `gaeb` `lesen` (2 MB: voll 1256 ms) und `angebot` (X84: voll 1029 ms), `kern` `k9-leistung` und
+`lv-pruefung-fixtures` (voll 112,86 ms), `speicher` `aufmass-leistung`, `apps/web` `abrechnung/leistung` allein grün.
+`vergabe` `leistung.test.ts` (`preisspiegelBerechnen`, Budget 1000 ms): voll fehlgeschlagen, allein viermal bei Last 42:
+1038,3 / 1030,3 / bestanden / 1128,4 ms. Der Preisspiegel ruft nur `summenBerechnen`, `positionsSumme`, `positionGehtInSumme`
+und `zuschlagsbasen`, die 105 nicht ändert; ich halte es für Last, bitte bei ruhiger Maschine nachmessen. Kein Budget gelockert,
+kein Test übersprungen.
