@@ -89,10 +89,10 @@ export class Einheiten {
   }
 
   /**
-   * Faktor in die SI-Grundeinheit für eine Menge der Art `art` (Instanz `menge`) mit ihrer eigenen Einheit (`eigene`) oder
+   * Faktor in die SI-Grundeinheit für eine Menge der Art `art` (Index `instanz`) mit ihrer eigenen Einheit (`eigene`) oder
    * der des Projekts. `null` mit Befund, wenn keine Einheit da ist oder sie sich nicht umrechnen lässt.
    */
-  faktor(art: Art, menge: number, eigene: number | null): Dezimal | null {
+  faktor(art: Art, instanz: number, eigene: number | null): Dezimal | null {
     if (art === 'anzahl') return EINS;
     const { typ, zeichen } = EINHEIT[art];
     const u = eigene ?? this.projekt.get(typ);
@@ -103,7 +103,7 @@ export class Einheiten {
           'fehler',
           'einheit-fehlt',
           `Für ${typ} nennt das Projekt keine Einheit (IfcUnitAssignment); Mengen dieser Art bleiben ohne Wert.`,
-          this.l.ort(menge),
+          this.l.ort(instanz),
         );
       }
       return null;
