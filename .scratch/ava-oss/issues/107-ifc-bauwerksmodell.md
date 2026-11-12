@@ -1,6 +1,6 @@
 # 107: X1a: `ifc` bildet auf `Bauwerksmodell` ab, Eigenschaften bei Bedarf, Budgets
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc`
 Blocked by: 97, 98 (gleiches Paket), 99 (Fixtures)
