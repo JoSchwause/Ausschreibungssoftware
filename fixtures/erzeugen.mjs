@@ -17,6 +17,7 @@ import {
   berechneZuschlagSollwerte, berechneSollwerteGaeb, preiseDesLv, preisspiegelSollwerte,
   kumulierteMengen, leistungsstandBerechnen, abschlagsketteBerechnen, sollIstBerechnen, kostenkontrolleBerechnen,
 } from './rechnen.mjs';
+import { hausDateiname, hausIfc } from './ifc/haus.mjs';
 
 const SCHEMA = 'fixture-v1';
 
@@ -945,7 +946,14 @@ export function erzeugeAlle() {
     'handbeispiele.json': alsDatei(erzeugeHandbeispiele()),
     'zuschlag.json': alsDatei(erzeugeZuschlag()),
     ...erzeugeX84(typisch, angebote),
+    ...erzeugeHaus(), // Ticket 99
   };
+}
+
+/** Ticket 99: die Hausdateien des Tors X1 unter ifc/ (Beschreibung und Schreiber in ifc/haus.mjs). */
+function erzeugeHaus() {
+  const dateien = [['v1', 'IFC4']];
+  return Object.fromEntries(dateien.map(([stand, schema]) => [`ifc/${hausDateiname(stand, schema)}`, hausIfc(stand, schema)]));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

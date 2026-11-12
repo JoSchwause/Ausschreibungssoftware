@@ -5,10 +5,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { erzeugeAlle } from './erzeugen.mjs';
+import { erzeugeModell } from './ifc/erzeugen.mjs';
 import {
   parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp, berechneZuschlagSollwerte,
   berechneSollwerteGaeb, preiseDesLv,
@@ -26,7 +29,8 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
   const zweite = erzeugeAlle();
   assert.deepEqual(Object.keys(erste).sort(), [
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
-    'gross.json', 'handbeispiele.json', 'typisch-abrechnung.json', // Ticket 85
+    'gross.json', 'handbeispiele.json', 'ifc/haus-v1.ifc', // Ticket 99
+    'typisch-abrechnung.json', // Ticket 85
     'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
   for (const [name, inhalt] of Object.entries(erste)) {
@@ -1245,4 +1249,364 @@ test('typisch-abrechnung: Kostenkontrolle nach AR 2 (D-37), Zeilensumme = Gesamt
   assert.deepEqual(kk.gesamt, {
     budget: '60900.00', vergabe: '58009.66', abrechnung: '16846.81', abweichung: '-2890.34',
   });
+});
+
+// ---------------------------------------------------------------- Ticket 99: IFC-Haus, großes Modell, Sollwerte X1
+//
+// Eigener kleiner STEP-Leser (ISO 10303-21) nur für diesen Selbsttest, unabhängig von `packages/ifc` und vom Erzeuger:
+// Zeilen `#n=NAME(...);`, Attribute rekursiv, Zeichenketten mit '' sowie \X\ und \X2\ dekodiert. Zahlen bleiben Text und
+// werden exakt als Dezimalwert gerechnet (BigInt), nie über `number` (N1). Die Attributzahl je Klasse steht hier nach den
+// öffentlichen Schemata IFC 4 (ADD2 TC1) und IFC 2x3 (TC1); eine Klasse, die hier fehlt, ist ein Fehler.
+
+const ATTRIBUTZAHL_GEMEINSAM = {
+  IFCPERSON: 8, IFCORGANIZATION: 5, IFCPERSONANDORGANIZATION: 3, IFCAPPLICATION: 4, IFCOWNERHISTORY: 8,
+  IFCSIUNIT: 4, IFCUNITASSIGNMENT: 1, IFCCARTESIANPOINT: 1, IFCDIRECTION: 1, IFCAXIS2PLACEMENT2D: 2,
+  IFCAXIS2PLACEMENT3D: 3, IFCLOCALPLACEMENT: 2, IFCGEOMETRICREPRESENTATIONCONTEXT: 6,
+  IFCGEOMETRICREPRESENTATIONSUBCONTEXT: 10, IFCPROJECT: 9, IFCSITE: 14, IFCBUILDING: 12, IFCBUILDINGSTOREY: 10,
+  IFCSPACE: 11, IFCRELAGGREGATES: 6, IFCRELCONTAINEDINSPATIALSTRUCTURE: 6, IFCSLAB: 9, IFCFOOTING: 9,
+  IFCRELVOIDSELEMENT: 6, IFCRELFILLSELEMENT: 6, IFCPRODUCTDEFINITIONSHAPE: 3, IFCSHAPEREPRESENTATION: 4,
+  IFCEXTRUDEDAREASOLID: 4, IFCRECTANGLEPROFILEDEF: 5, IFCPOLYLINE: 1, IFCELEMENTQUANTITY: 6, IFCRELDEFINESBYPROPERTIES: 6,
+  IFCPROPERTYSET: 5, IFCPROPERTYSINGLEVALUE: 4, IFCWALLTYPE: 10, IFCRELDEFINESBYTYPE: 6, IFCRELASSOCIATESMATERIAL: 6,
+  IFCRELASSOCIATESCLASSIFICATION: 6,
+};
+const ATTRIBUTZAHL = {
+  IFC4: {
+    ...ATTRIBUTZAHL_GEMEINSAM, IFCWALL: 9, IFCWINDOW: 13, IFCDOOR: 13, IFCOPENINGELEMENT: 9, IFCQUANTITYLENGTH: 5,
+    IFCQUANTITYAREA: 5, IFCQUANTITYVOLUME: 5, IFCMATERIAL: 3, IFCCLASSIFICATION: 7, IFCCLASSIFICATIONREFERENCE: 6,
+  },
+  IFC2X3: {
+    ...ATTRIBUTZAHL_GEMEINSAM, IFCWALL: 8, IFCWINDOW: 10, IFCDOOR: 10, IFCOPENINGELEMENT: 8, IFCQUANTITYLENGTH: 4,
+    IFCQUANTITYAREA: 4, IFCQUANTITYVOLUME: 4, IFCMATERIAL: 1, IFCCLASSIFICATION: 4, IFCCLASSIFICATIONREFERENCE: 4,
+  },
+};
+/** Klassen unter IfcRoot: Attribut 1 ist die GlobalId (22 Zeichen IFC-Base64, das erste trägt nur 2 Bit). */
+const IFC_ROOT = new Set([
+  'IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE', 'IFCRELAGGREGATES',
+  'IFCRELCONTAINEDINSPATIALSTRUCTURE', 'IFCWALL', 'IFCSLAB', 'IFCFOOTING', 'IFCWINDOW', 'IFCDOOR', 'IFCOPENINGELEMENT',
+  'IFCRELVOIDSELEMENT', 'IFCRELFILLSELEMENT', 'IFCELEMENTQUANTITY', 'IFCRELDEFINESBYPROPERTIES', 'IFCPROPERTYSET',
+  'IFCWALLTYPE', 'IFCRELDEFINESBYTYPE', 'IFCRELASSOCIATESMATERIAL', 'IFCRELASSOCIATESCLASSIFICATION',
+]);
+const GLOBALID = /^[0-3][0-9A-Za-z_$]{21}$/;
+/** Bauteile im Sinn von Ticket 98: Produkte in einem Strukturknoten, ohne Öffnungen. */
+const BAUTEILKLASSEN = new Set(['IFCWALL', 'IFCSLAB', 'IFCFOOTING', 'IFCWINDOW', 'IFCDOOR']);
+const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
+
+/** Zeichenkette nach ISO 10303-21 dekodieren ('' ist schon aufgelöst): \X2\hhhh…\X0\, \X\hh, \\. */
+function stepDekodieren(s) {
+  const rest = s.replace(/\\X2\\(?:[0-9A-F]{4})+\\X0\\|\\X\\[0-9A-F]{2}|\\\\/g, '');
+  assert.equal(rest.includes('\\'), false, `unbekannte Kodierung: ${s}`);
+  return s.replace(/\\X2\\((?:[0-9A-F]{4})+)\\X0\\|\\X\\([0-9A-F]{2})|\\\\/g, (_, x2, x) => {
+    if (x2) return x2.match(/.{4}/g).map((h) => String.fromCharCode(parseInt(h, 16))).join('');
+    if (x) return String.fromCharCode(parseInt(x, 16));
+    return '\\';
+  });
+}
+
+const RE_ENUM = /\.([A-Z0-9_]+)\./y;
+const RE_REF = /#(\d+)/y;
+const RE_ZAHL = /-?\d+\.\d*(?:E[-+]?\d+)?|-?\d+/y;
+const RE_TYP = /([A-Z0-9_]+)\(/y;
+
+/** Attribute einer Instanz: null ($), {abgeleitet} (*), Text, {enum}, {ref}, {zahl} (Text), Liste, {typ, wert}. */
+function stepAttribute(text, zeile) {
+  let i = 0;
+  const treffer = (re) => {
+    re.lastIndex = i;
+    const m = re.exec(text);
+    if (m) i = re.lastIndex;
+    return m;
+  };
+  const wert = () => {
+    const c = text[i];
+    if (c === '$') { i++; return null; }
+    if (c === '*') { i++; return { abgeleitet: true }; }
+    if (c === "'") {
+      let s = '';
+      for (i++; ; i++) {
+        assert.ok(i < text.length, `Zeichenkette nicht beendet: ${zeile}`);
+        if (text[i] !== "'") s += text[i];
+        else if (text[i + 1] === "'") { s += "'"; i++; }
+        else { i++; return stepDekodieren(s); }
+      }
+    }
+    if (c === '(') {
+      const liste = [];
+      i++;
+      if (text[i] === ')') { i++; return liste; }
+      for (;;) {
+        liste.push(wert());
+        if (text[i] === ')') { i++; return liste; }
+        assert.equal(text[i], ',', zeile);
+        i++;
+      }
+    }
+    let m = treffer(RE_ENUM);
+    if (m) return { enum: m[1] };
+    m = treffer(RE_REF);
+    if (m) return { ref: Number(m[1]) };
+    m = treffer(RE_ZAHL);
+    if (m) return { zahl: m[0] };
+    m = treffer(RE_TYP);
+    assert.ok(m, `unlesbar an Stelle ${i}: ${zeile}`);
+    const w = wert();
+    assert.equal(text[i], ')', zeile);
+    i++;
+    return { typ: m[1], wert: w };
+  };
+  const attr = [];
+  for (;;) {
+    attr.push(wert());
+    if (i === text.length) return attr;
+    assert.equal(text[i], ',', zeile);
+    i++;
+  }
+}
+
+/**
+ * Liest eine IFC-Datei streng als STEP: Kopf (FILE_DESCRIPTION, FILE_NAME mit fester Zeit, FILE_SCHEMA), Datenteil mit
+ * eindeutigen #n, Attributzahl je Klasse nach Schema, GlobalIds gültig und eindeutig, jeder Verweis auflösbar.
+ */
+function stepLesen(text) {
+  const zeilen = text.split('\n');
+  assert.equal(zeilen.pop(), '', 'die Datei endet mit einem Zeilenumbruch');
+  assert.deepEqual(zeilen.slice(0, 2), ['ISO-10303-21;', 'HEADER;']);
+  const kopfEnde = zeilen.indexOf('ENDSEC;');
+  const kopf = zeilen.slice(2, kopfEnde);
+  assert.equal(kopf.length, 3, 'Kopf: FILE_DESCRIPTION, FILE_NAME, FILE_SCHEMA');
+  assert.match(kopf[0], /^FILE_DESCRIPTION\(\('.*'\),'2;1'\);$/);
+  assert.match(kopf[1], /^FILE_NAME\('[a-z0-9-]+\.ifc','2026-11-12T00:00:00',\('.*'\),\('.*'\),'.*','.*',''\);$/);
+  const schema = /^FILE_SCHEMA\(\('(IFC4|IFC2X3)'\)\);$/.exec(kopf[2])?.[1];
+  assert.ok(schema, `Schema: ${kopf[2]}`);
+  assert.equal(zeilen[kopfEnde + 1], 'DATA;');
+  assert.deepEqual(zeilen.slice(-2), ['ENDSEC;', 'END-ISO-10303-21;']);
+  const instanzen = new Map();
+  const globalIds = new Set();
+  for (const zeile of zeilen.slice(kopfEnde + 2, -2)) {
+    const m = /^#(\d+)=([A-Z0-9_]+)\((.*)\);$/.exec(zeile);
+    assert.ok(m, `keine Instanzzeile: ${zeile}`);
+    const nr = Number(m[1]);
+    assert.equal(instanzen.has(nr), false, `#${nr} doppelt`);
+    const attr = stepAttribute(m[3], zeile);
+    assert.equal(attr.length, ATTRIBUTZAHL[schema][m[2]], `${schema}: Attributzahl von ${m[2]} (${zeile})`);
+    if (IFC_ROOT.has(m[2])) {
+      assert.match(attr[0], GLOBALID, zeile);
+      assert.equal(globalIds.has(attr[0]), false, `GlobalId doppelt: ${attr[0]}`);
+      globalIds.add(attr[0]);
+    }
+    instanzen.set(nr, { nr, typ: m[2], attr });
+  }
+  const verweise = (w) => {
+    if (Array.isArray(w)) return w.flatMap(verweise);
+    if (w?.ref !== undefined) return [w.ref];
+    return w?.typ ? verweise(w.wert) : [];
+  };
+  for (const i of instanzen.values()) {
+    for (const r of verweise(i.attr)) assert.ok(instanzen.has(r), `#${i.nr} verweist auf die fehlende #${r}`);
+  }
+  return { schema, kopf, instanzen };
+}
+
+test('IFC-Erzeuger: kleines Modell ist gültiges STEP, Bauteile gleichmäßig auf die Geschosse verteilt (Ticket 99)', () => {
+  const { schema, instanzen } = stepLesen(erzeugeModell({ bauteile: 37, geschosse: 3 }));
+  assert.equal(schema, 'IFC4');
+  const alle = [...instanzen.values()];
+  const von = (typ) => alle.filter((i) => i.typ === typ);
+  const bauteile = alle.filter((i) => BAUTEILKLASSEN.has(i.typ));
+  assert.equal(bauteile.length, 37);
+  const geschosse = von('IFCBUILDINGSTOREY');
+  assert.equal(geschosse.length, 3);
+  // je Geschoss eine Enthaltensbeziehung; 37 = 13 + 12 + 12 (der Rest der Teilung geht an die unteren Geschosse)
+  const enthalten = von('IFCRELCONTAINEDINSPATIALSTRUCTURE');
+  assert.deepEqual(enthalten.map((r) => r.attr[5].ref), geschosse.map((g) => g.nr));
+  assert.deepEqual(enthalten.map((r) => r.attr[4].length), [13, 12, 12]);
+  const enthaltenIn = enthalten.flatMap((r) => r.attr[4].map((e) => e.ref)).sort((a, b) => a - b);
+  assert.deepEqual(enthaltenIn, bauteile.map((b) => b.nr));
+  // jedes Bauteil hat Geometrie (Körper als extrudiertes Rechteck) und genau einen Mengensatz
+  const mengensaetze = new Map();
+  for (const r of von('IFCRELDEFINESBYPROPERTIES')) {
+    if (instanzen.get(r.attr[5].ref).typ !== 'IFCELEMENTQUANTITY') continue;
+    for (const o of r.attr[4]) mengensaetze.set(o.ref, (mengensaetze.get(o.ref) ?? 0) + 1);
+  }
+  for (const b of bauteile) {
+    assert.equal(mengensaetze.get(b.nr), 1, `#${b.nr} ${b.typ}: ein Mengensatz`);
+    const darstellungen = instanzen.get(b.attr[6].ref).attr[2].map((r) => instanzen.get(r.ref));
+    const koerper = darstellungen.filter((x) => x.attr[1] === 'Body');
+    assert.deepEqual(koerper.map((x) => x.attr[2]), ['SweptSolid'], `#${b.nr} ${b.typ}: ein Körper`);
+    assert.equal(instanzen.get(koerper[0].attr[3][0].ref).typ, 'IFCEXTRUDEDAREASOLID');
+  }
+  // Fenster und Türen füllen eine Öffnung, die eine Wand ausspart
+  const fuellt = new Map(von('IFCRELFILLSELEMENT').map((r) => [r.attr[5].ref, r.attr[4].ref]));
+  const spartAus = new Map(von('IFCRELVOIDSELEMENT').map((r) => [r.attr[5].ref, r.attr[4].ref]));
+  for (const b of bauteile.filter((x) => x.typ === 'IFCWINDOW' || x.typ === 'IFCDOOR')) {
+    assert.equal(instanzen.get(spartAus.get(fuellt.get(b.nr))).typ, 'IFCWALL', `#${b.nr} sitzt in einer Wand`);
+  }
+});
+
+test('IFC-Erzeuger: 10.000 Bauteile auf 10 Geschossen, deterministisch (gleicher SHA-256), etwa 25 MB (D-54)', () => {
+  const erster = erzeugeModell();
+  const zweiter = erzeugeModell({ bauteile: 10000, geschosse: 10 });
+  assert.equal(sha256(zweiter), sha256(erster));
+  assert.equal(zweiter, erster);
+  const zaehle = (re) => erster.match(re)?.length ?? 0;
+  assert.equal(zaehle(/^#\d+=IFC(?:WALL|SLAB|FOOTING|WINDOW|DOOR)\(/gm), 10000);
+  assert.equal(zaehle(/^#\d+=IFCBUILDINGSTOREY\(/gm), 10);
+  // je Geschoss 1.000 Bauteile: 166 volle Felder zu 6 (Außenwand, Fenster, Innenwand, Tür, Innenwand, Deckenfeld) + 4
+  assert.equal(zaehle(/^#\d+=IFCWINDOW\(/gm), 1670);
+  assert.equal(zaehle(/^#\d+=IFCSLAB\(/gm), 1660);
+  const megabyte = Buffer.byteLength(erster) / 1e6;
+  assert.ok(megabyte > 18 && megabyte < 30, `${megabyte} MB`);
+  // Verweise (außerhalb von Zeichenketten) zeigen nur auf vorhandene, also frühere Instanzen
+  let hoechste = 0;
+  for (const zeile of erster.split('\n')) {
+    const m = /^#(\d+)=/.exec(zeile);
+    if (!m) continue;
+    const nr = Number(m[1]);
+    assert.equal(nr, hoechste + 1, 'fortlaufend nummeriert');
+    hoechste = nr;
+    for (const r of zeile.slice(m[0].length).replace(/'(?:[^']|'')*'/g, '').matchAll(/#(\d+)/g)) {
+      assert.ok(Number(r[1]) < nr, `#${nr} verweist auf #${r[1]}`);
+    }
+  }
+});
+
+test('IFC-Erzeuger: Kommandozeile liefert denselben Text wie die Funktion', () => {
+  const aus = execFileSync(process.execPath, [datei('ifc/erzeugen.mjs'), '--bauteile', '12', '--geschosse', '2'], {
+    encoding: 'utf8',
+  });
+  assert.equal(aus, erzeugeModell({ bauteile: 12, geschosse: 2 }));
+  assert.throws(() => erzeugeModell({ bauteile: 0 }), /bauteile/);
+});
+
+const ifcDatei = (name) => readFileSync(datei(`ifc/${name}`), 'utf8');
+
+/**
+ * Sicht auf eine gelesene IFC-Datei: Strukturknoten über IfcRelAggregates, Bauteile mit Kennung (Tag), Geschoss
+ * (IfcRelContainedInSpatialStructure), Mengen als Text je Name (IfcElementQuantity), Eigenschaften, Körpermaßen
+ * (Profil XDim, YDim, Tiefe) und Öffnungen (IfcRelVoidsElement, IfcRelFillsElement), Klassifikation, Material, Typ.
+ */
+function modellLesen(text) {
+  const { schema, instanzen } = stepLesen(text);
+  const alle = [...instanzen.values()];
+  const von = (typ) => alle.filter((i) => i.typ === typ);
+  const get = (w) => instanzen.get(w.ref);
+  const teile = (ganzes) =>
+    von('IFCRELAGGREGATES').filter((r) => r.attr[4].ref === ganzes.nr).flatMap((r) => r.attr[5].map(get));
+  const zuordnung = (klasse, wert) => {
+    const karte = new Map();
+    for (const r of von(klasse)) for (const o of r.attr[4]) karte.set(o.ref, wert(get(r.attr[5])));
+    return karte;
+  };
+  const mengen = new Map();
+  const psets = new Map();
+  for (const r of von('IFCRELDEFINESBYPROPERTIES')) {
+    const satz = get(r.attr[5]);
+    for (const o of r.attr[4]) {
+      if (satz.typ === 'IFCELEMENTQUANTITY') {
+        assert.equal(mengen.has(o.ref), false, `#${o.ref}: ein Mengensatz`);
+        mengen.set(o.ref, {
+          satz: satz.attr[2],
+          werte: new Map(satz.attr[5].map(get).map((q) => [q.attr[0], { klasse: q.typ, text: q.attr[3].zahl }])),
+        });
+      } else {
+        if (!psets.has(o.ref)) psets.set(o.ref, new Map());
+        psets.get(o.ref).set(satz.attr[2], new Map(satz.attr[4].map(get).map((p) => [p.attr[0], p.attr[2]])));
+      }
+    }
+  }
+  const quader = (produkt) => {
+    const darstellungen = get(produkt.attr[6]).attr[2].map(get);
+    const koerper = get(darstellungen.find((x) => x.attr[1] === 'Body').attr[3][0]);
+    const profil = get(koerper.attr[0]);
+    return { dx: profil.attr[3].zahl, dy: profil.attr[4].zahl, dz: koerper.attr[3].zahl };
+  };
+  const geschossVon = zuordnung('IFCRELCONTAINEDINSPATIALSTRUCTURE', (g) => g.attr[2]);
+  const kgVon = zuordnung('IFCRELASSOCIATESCLASSIFICATION', (k) => k.attr[1]);
+  const materialVon = zuordnung('IFCRELASSOCIATESMATERIAL', (k) => k.attr[0]);
+  const typVon = zuordnung('IFCRELDEFINESBYTYPE', (k) => k.attr[2]);
+  const oeffnungenVon = new Map();
+  for (const r of von('IFCRELVOIDSELEMENT')) {
+    if (!oeffnungenVon.has(r.attr[4].ref)) oeffnungenVon.set(r.attr[4].ref, []);
+    oeffnungenVon.get(r.attr[4].ref).push(get(r.attr[5]));
+  }
+  const fuellungVon = new Map(von('IFCRELFILLSELEMENT').map((r) => [r.attr[4].ref, get(r.attr[5])]));
+  const bauteile = alle.filter((i) => BAUTEILKLASSEN.has(i.typ)).map((i) => ({
+    nr: i.nr, globalId: i.attr[0], klasse: i.typ, name: i.attr[2], kennung: i.attr[7],
+    geschoss: geschossVon.get(i.nr), kg: kgVon.get(i.nr), material: materialVon.get(i.nr), typ: typVon.get(i.nr),
+    mengen: mengen.get(i.nr), psets: psets.get(i.nr) ?? new Map(), quader: quader(i),
+    oeffnungen: (oeffnungenVon.get(i.nr) ?? []).map((o) => ({
+      name: o.attr[2], quader: quader(o), fuellung: fuellungVon.get(o.nr)?.attr[7] ?? null,
+    })),
+  }));
+  const einheit = (art) => von('IFCSIUNIT').find((u) => u.attr[1].enum === art);
+  return {
+    schema, instanzen, von, get, teile, bauteile, mengen, einheit,
+    bauteil: (kennung) => bauteile.find((b) => b.kennung === kennung),
+  };
+}
+
+test('IFC-Haus v1: IFC 4 in m, Struktur Projekt → Grundstück → Gebäude → EG/OG → Räume, Bauteile (Ticket 99)', () => {
+  const text = ifcDatei('haus-v1.ifc');
+  const m = modellLesen(text);
+  assert.equal(m.schema, 'IFC4');
+  assert.deepEqual(['LENGTHUNIT', 'AREAUNIT', 'VOLUMEUNIT'].map((a) => [m.einheit(a).attr[2], m.einheit(a).attr[3].enum]), [
+    [null, 'METRE'], [null, 'SQUARE_METRE'], [null, 'CUBIC_METRE'],
+  ]);
+  const [projekt] = m.von('IFCPROJECT');
+  assert.equal(projekt.attr[2], 'Musterhaus (erfunden)');
+  const [grundstueck] = m.teile(projekt);
+  const [gebaeude] = m.teile(grundstueck);
+  assert.deepEqual([grundstueck.typ, gebaeude.typ], ['IFCSITE', 'IFCBUILDING']);
+  const geschosse = m.teile(gebaeude);
+  assert.deepEqual(geschosse.map((g) => [g.typ, g.attr[2], g.attr[7], g.attr[9].zahl]), [
+    ['IFCBUILDINGSTOREY', 'EG', 'Erdgeschoss', '0.'], ['IFCBUILDINGSTOREY', 'OG', 'Obergeschoss', '3.'],
+  ]);
+  assert.deepEqual(geschosse.map((g) => m.teile(g).map((r) => `${r.typ} ${r.attr[2]} ${r.attr[7]}`)), [
+    ['IFCSPACE E.01 Wohnen', 'IFCSPACE E.02 Flur', 'IFCSPACE E.03 Küche'],
+    ['IFCSPACE O.01 Schlafen', 'IFCSPACE O.02 Flur', 'IFCSPACE O.03 Kind'],
+  ]);
+  // Bauteile je Geschoss und Klasse in Dateireihenfolge (Kennung = Tag)
+  const kennungen = (g, klasse) => m.bauteile.filter((b) => b.geschoss === g && b.klasse === klasse).map((b) => b.kennung);
+  assert.deepEqual(kennungen('EG', 'IFCFOOTING'), ['FU-S', 'FU-N', 'FU-W', 'FU-O']);
+  assert.deepEqual(kennungen('EG', 'IFCSLAB'), ['PL-EG']);
+  assert.deepEqual(kennungen('EG', 'IFCWALL'), ['AW-EG-S', 'AW-EG-N', 'AW-EG-W', 'AW-EG-O', 'IW-EG-1', 'IW-EG-2', 'IW-EG-3']);
+  assert.deepEqual(kennungen('EG', 'IFCWINDOW'), ['F-EG-S', 'F-EG-N', 'F-EG-W']);
+  assert.deepEqual(kennungen('EG', 'IFCDOOR'), ['T-EG-H', 'T-EG-1']);
+  assert.deepEqual(kennungen('OG', 'IFCSLAB'), ['DE-OG', 'DA-OG']);
+  assert.deepEqual(kennungen('OG', 'IFCWALL'), ['AW-OG-S', 'AW-OG-N', 'AW-OG-W', 'AW-OG-O', 'IW-OG-1', 'IW-OG-2']);
+  assert.deepEqual(kennungen('OG', 'IFCWINDOW'), ['F-OG-S', 'F-OG-F', 'F-OG-N']);
+  assert.deepEqual(kennungen('OG', 'IFCDOOR'), ['T-OG-1', 'T-OG-2']);
+  assert.equal(m.bauteile.length, 30);
+  // Namen mit Umlauten stehen als \X2\…\X0\ in der Datei und werden zum Klartext
+  assert.equal(m.bauteil('AW-EG-S').name, 'Außenwand Süd EG');
+  assert.ok(text.includes("'Au\\X2\\00DF\\X0\\enwand S\\X2\\00FC\\X0\\d EG'"));
+  // Öffnungen: jedes Fenster und jede Tür füllt eine Öffnung in einer Wand; die Bodenplatte hat eine Aussparung ohne Füllung
+  assert.equal(m.von('IFCOPENINGELEMENT').length, 11);
+  const fuellungen = m.bauteile.flatMap((b) => b.oeffnungen.map((o) => [b.klasse, b.kennung, o.fuellung]));
+  assert.deepEqual(fuellungen.filter(([klasse]) => klasse !== 'IFCWALL'), [['IFCSLAB', 'PL-EG', null]]);
+  const gefuellt = fuellungen.filter(([klasse]) => klasse === 'IFCWALL').map(([, , f]) => f).sort();
+  assert.deepEqual(gefuellt, m.bauteile.filter((b) => b.klasse === 'IFCWINDOW' || b.klasse === 'IFCDOOR')
+    .map((b) => b.kennung).sort());
+  assert.deepEqual(m.bauteil('AW-EG-S').oeffnungen.map((o) => o.fuellung), ['F-EG-S', 'T-EG-H']);
+  // Pset_WallCommon an jeder Wand: außen tragend, innen nichttragend; Wandtyp, Material, DIN-276-Kostengruppe
+  for (const b of m.bauteile.filter((x) => x.klasse === 'IFCWALL')) {
+    const aussen = b.kennung.startsWith('AW');
+    const p = b.psets.get('Pset_WallCommon');
+    assert.deepEqual([p.get('IsExternal'), p.get('LoadBearing')], [
+      { typ: 'IFCBOOLEAN', wert: { enum: aussen ? 'T' : 'F' } }, { typ: 'IFCBOOLEAN', wert: { enum: aussen ? 'T' : 'F' } },
+    ], b.kennung);
+    assert.equal(b.kg, aussen ? '331' : '342');
+  }
+  assert.deepEqual(m.bauteil('AW-EG-S').psets.get('Pset_WallCommon').get('AcousticRating'), {
+    typ: 'IFCLABEL', wert: "R'w 52 dB",
+  });
+  assert.deepEqual([m.bauteil('IW-EG-1').typ, m.bauteil('IW-EG-1').material], [
+    'Innenwand Kalksandstein 11,5', 'Mauerwerk Kalksandstein',
+  ]);
+  assert.deepEqual([m.bauteil('IW-OG-1').typ, m.bauteil('IW-OG-1').material], ['Trockenbauwand 10', 'Gipskarton']);
+  const [klassifikation] = m.von('IFCCLASSIFICATION');
+  assert.equal(klassifikation.attr[3], 'DIN 276');
+  assert.deepEqual(['FU-S', 'PL-EG', 'F-EG-S', 'T-EG-H', 'T-EG-1', 'DE-OG', 'DA-OG'].map((k) => m.bauteil(k).kg), [
+    '322', '322', '334', '334', '344', '351', '361',
+  ]);
+  for (const b of m.bauteile) assert.match(b.kg, /^[1-9]\d\d$/, b.kennung);
 });
