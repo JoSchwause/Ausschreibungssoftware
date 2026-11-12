@@ -37,7 +37,6 @@ export type XRechnungBefundcode =
   | 'zahlbetrag-falsch'
   | 'umsatzsteuer-falsch';
 
-
 /** Summen der Rechnung (BG-22). Fehlende Angaben sind `null`. */
 export interface Rechnungssummen {
   /** BT-106 Summe der Nettobeträge der Rechnungspositionen. */
