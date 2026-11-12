@@ -234,6 +234,8 @@ import {
   beispielRechnungAnlegen,
   beispielRechnungsbefehle,
   beispielLvUebersichtNachtrag,
+  // v1.5
+  beispielFehlerKostengruppe,
 } from './beispiele';
 
 /**
@@ -1680,5 +1682,40 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
       protokoll: [],
     };
     expect(datei).not.toHaveProperty('aufmasse');
+  });
+});
+
+// --- v1.5 (Ticket 95) -------------------------------------------------------------------------------------------
+
+describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
+  it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
+    expectTypeOf<Befehlsfehlercode>().toEqualTypeOf<
+      | 'ungueltige-eingabe'
+      | 'knoten-unbekannt'
+      | 'eltern-unbekannt'
+      | 'id-vergeben'
+      | 'zyklus'
+      | 'ebene-ueberschritten'
+      | 'knotenart-unzulaessig'
+      | 'bezug-unbekannt'
+      | 'oz-ungueltig'
+      | 'maske-ungueltig'
+      | 'oz-doppelt'
+      | 'oz-ueberlauf'
+      | 'angebot-unbekannt'
+      | 'befehl-nicht-zustaendig'
+      | 'rechnung-freigegeben'
+    >();
+  });
+
+  it('KostengruppeSetzen an einer Gliederung: knotenart-unzulaessig; an einer Kennung ohne Knoten: knoten-unbekannt', () => {
+    const [anGliederung, ohneKnoten] = beispielFehlerKostengruppe;
+    const art = (id: KnotenId | undefined): Knoten['art'] | undefined =>
+      beispielAuftragsLv.knoten.find((k) => k.id === id)?.art;
+    expect(anGliederung.code).toBe('knotenart-unzulaessig');
+    expect(art(anGliederung.knotenId)).toBe('titel');
+    expect(ohneKnoten.code).toBe('knoten-unbekannt');
+    expect(ohneKnoten.knotenId).toBeDefined();
+    expect(art(ohneKnoten.knotenId)).toBeUndefined();
   });
 });

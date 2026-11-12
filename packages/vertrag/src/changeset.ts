@@ -48,12 +48,22 @@ export type Ergebnis<T, F> =
 /** Grund, aus dem ein Befehl abgewiesen wird. Ein abgewiesener Befehl ändert nichts und erzeugt kein ChangeSet. */
 export type Befehlsfehlercode =
   | 'ungueltige-eingabe' // Form oder Wert unzulässig (z. B. Hinweistext mit Menge/Preis, Skala falsch)
+  /**
+   * Der Baum des Aggregats hat keinen Knoten mit der genannten Kennung (die Kennung der Wurzel ist kein Knoten; eine
+   * Position im Papierkorb steht nicht im Baum). v1.5 (D-71.3): nur dann; trifft ein Befehl einen vorhandenen Knoten der
+   * falschen Art, gilt `knotenart-unzulaessig`.
+   */
   | 'knoten-unbekannt'
   | 'eltern-unbekannt'
   | 'id-vergeben'
   | 'zyklus' // Verschieben unter den eigenen Unterbaum
   | 'ebene-ueberschritten' // mehr als 5 Gliederungsebenen
-  | 'knotenart-unzulaessig' // z. B. Positionen unter einer Position
+  /**
+   * Die Knotenart passt nicht, z. B. Positionen unter einer Position. v1.5 (D-71.3): ebenso, wenn ein Feldbefehl einen
+   * vorhandenen Knoten trifft, der das Feld nicht trägt (etwa eine Gliederung oder einen Hinweistext statt einer Position),
+   * im LV wie im Auftrags-LV; siehe „Felder ändern“ in `befehle.ts`.
+   */
+  | 'knotenart-unzulaessig'
   | 'bezug-unbekannt' // Bezugs- oder Grundposition fehlt
   | 'oz-ungueltig' // Zeichen oder Länge verletzen die Maske
   | 'maske-ungueltig'

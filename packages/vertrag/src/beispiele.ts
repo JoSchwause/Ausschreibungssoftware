@@ -41,6 +41,7 @@ import type {
 import type {
   AufmassChangeSet,
   AuftragsLvChangeSet,
+  Befehlsfehler,
   KostenermittlungChangeSet,
   LvChangeSet,
   RechnungChangeSet,
@@ -1403,3 +1404,22 @@ export const beispielChangeSetTextquelle: LvChangeSet = {
   },
   summen: keineSummen,
 };
+
+// --- v1.5 (Ticket 95) -------------------------------------------------------------------------------------------
+
+/** Eine Kennung, zu der es in keinem Beispiel einen Knoten gibt. */
+const ohneKnotenId = '019b76e9-0000-7000-8000-0000000001ff' as PositionId;
+
+/**
+ * Punkt 1 (D-71.3): die Antworten des Kerns auf `KostengruppeSetzen` am Beispiel-Auftrags-LV, wie bei jedem Feldbefehl und
+ * im LV ebenso: am Titel `01` (eine Gliederung trägt keine Kostengruppe) `knotenart-unzulaessig`, an einer Kennung ohne
+ * Knoten im Baum `knoten-unbekannt`. Die Meldungen sind für Entwickler; die Anzeige baut die App aus dem Code.
+ */
+export const beispielFehlerKostengruppe: readonly [Befehlsfehler, Befehlsfehler] = [
+  {
+    code: 'knotenart-unzulaessig',
+    meldung: 'Eine Kostengruppe trägt nur eine Position, nicht „titel“.',
+    knotenId: titelId,
+  },
+  { code: 'knoten-unbekannt', meldung: 'Kein Knoten mit dieser Kennung.', knotenId: ohneKnotenId },
+];
