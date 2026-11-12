@@ -145,9 +145,29 @@ test('Bauzeitenplan 1.000 Zeilen, 730 Tage: je Balkenzelle eine feste Zahl Eleme
   expect(zellen.filter((z) => z.teile > 0).length).toBeGreaterThan(20);
 });
 
+// Ticket 93: Die Spalte „KG“ hat in der Zeile des LV-Grids nur Zelle und Text, an jeder Zeile, ob mit Nummer oder ohne. Die
+// Zählung hängt nicht an der Maschine; die Messungen unten laufen mit der Spalte (so zeigt sie die App).
+test('gross mit Spalte „KG“: je KG-Zelle nur Zelle und Text', async ({ page }) => {
+  await page.goto('/?fixture=gross&kg=1');
+  await expect(page.getByRole('treegrid')).toBeVisible();
+  await page.getByRole('treegrid').evaluate((el) => {
+    el.scrollTop = 2000 * 28;
+  });
+  await expect(page.locator('.tx-grid__koerper [role="row"][data-i="2010"]')).toBeAttached();
+  const zellen = await page
+    .locator('.tx-grid__koerper [data-spalte="kostengruppe"]')
+    .evaluateAll((els) =>
+      els.map((el) => ({ elemente: el.querySelectorAll('*').length + 1, text: el.textContent })),
+    );
+  expect(zellen.length).toBeGreaterThan(20);
+  expect(zellen.filter((z) => z.text !== '').length).toBeGreaterThan(10);
+  expect(zellen.filter((z) => z.elemente !== 2)).toEqual([]);
+});
+
 const FALLE = [
-  { name: 'gross, 5.000 Zeilen', url: '/?fixture=gross' },
-  { name: 'gross x2, 10.000 Zeilen', url: '/?fixture=gross&kopien=2' },
+  // Ticket 93: mit der Spalte „KG“ am Ende (acht Spalten), wie die App das LV zeigt
+  { name: 'gross mit KG, 5.000 Zeilen', url: '/?fixture=gross&kg=1' },
+  { name: 'gross x2 mit KG, 10.000 Zeilen', url: '/?fixture=gross&kopien=2&kg=1' },
   // Vergleichsgrid (Ticket 60): erfundener Preisspiegel, 5 Bieter und Min/Mittel/Max je EP und GP (20 Spalten)
   { name: 'Vergleich 5.000 Zeilen x 5 Bieter', url: '/vergleich.html?zeilen=5000&bieter=5' },
   // Balkenspalte (Ticket 96): erfundener Bauzeitenplan, Achse 730 Tage zu 16 px (11.680 px breit), 6 Spalten

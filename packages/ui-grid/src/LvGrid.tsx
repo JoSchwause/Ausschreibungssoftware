@@ -8,18 +8,32 @@
 import { useTable } from '@tanstack/react-table';
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ClipboardEvent, FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
-import type { Einfuegeort, KnotenId, LvBefehl, LvSpalte, LvZeile, PositionAnlegen } from '@tethys/vertrag';
+import type {
+  Einfuegeort,
+  KnotenId,
+  KostengruppeSetzen,
+  LvBefehl,
+  LvSpalte,
+  LvZeile,
+  PositionAnlegen,
+} from '@tethys/vertrag';
 import { Button, Dialog } from '@tethys/ui-basis';
 import type { EditorAktionen, Richtung } from './Editor';
-import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
+import {
+  anzeigeText,
+  befehlAusEingabe,
+  istBearbeitbar,
+  istBearbeitbareSpalte,
+  leseKostengruppe,
+} from './eingabe';
 import { Hinweisleiste } from './Hinweisleiste';
-import { leerePositionsdaten, planeEinfuegen } from './einfuegen';
-import type { Einfuegeanker } from './einfuegen';
+import { leerePositionsdaten, planeEinfuegen, planeKostengruppen } from './einfuegen';
+import type { Einfuegeanker, UngueltigeZelle } from './einfuegen';
 import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSprung } from './gridKern';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { SPALTENBREITE, STANDARDSPALTEN, features, spaltenDefinitionen } from './tabelle';
-import { frageLoeschen, meldungEingefuegt, meldungZeilen, texte } from './texte';
+import { frageLoeschen, meldungEingefuegt, meldungKostengruppen, meldungZeilen, texte } from './texte';
 import { parseTsv } from './tsv';
 import type { LvGridProps } from './typen';
 import { Zeile } from './Zeile';
@@ -75,6 +89,14 @@ export function LvGrid(props: LvGridProps): ReactElement {
    */
   const aenderung = props.schreibgeschuetzt === true ? null : props;
   const nurLesen = aenderung === null;
+  /** Ausgang der Spalte „KG“ im schreibgeschützten Grid (Ticket 93), sonst `null`. */
+  const kgAusnahme = props.schreibgeschuetzt === true ? (props.onKostengruppen ?? null) : null;
+  /**
+   * Die Lesefunktion der Spalte „KG“, wenn die Spalte hier bearbeitbar ist: mit Lesefunktion der App, im
+   * schreibgeschützten Grid nur mit `onKostengruppen` (Ticket 93).
+   */
+  const kgLeser = nurLesen && kgAusnahme === null ? undefined : props.kostengruppeLesen;
+  const kgBearbeitbar = kgLeser !== undefined;
   const spalten = props.spalten ?? STANDARDSPALTEN;
   const baumspalte = props.baumspalte ?? 'kurztext';
   const zh = props.zeilenhoehe ?? 28;
@@ -96,6 +118,33 @@ export function LvGrid(props: LvGridProps): ReactElement {
     [spalten],
   );
   const mindestbreite = useMemo(() => spalten.reduce((summe, s) => summe + SPALTENBREITE[s], 0), [spalten]);
+
+  /** Spalten, die sich in diesem Grid bearbeiten lassen (an den passenden Zeilen, `istBearbeitbar`). */
+  const bearbeitbareSpalten = useMemo(
+    (): ReadonlySet<LvSpalte> =>
+      new Set(
+        spalten.filter((s) => istBearbeitbareSpalte(s) && (s === 'kostengruppe' ? kgBearbeitbar : !nurLesen)),
+      ),
+    [spalten, kgBearbeitbar, nurLesen],
+  );
+  /** Schreibgeschützt bis auf die Spalte „KG“ (Ticket 93, z. B. Auftrags-LV). */
+  const nurKg = nurLesen && bearbeitbareSpalten.has('kostengruppe');
+  const schreibschutzText = nurKg ? texte.gridNurKostengruppe : texte.gridSchreibgeschuetzt;
+  // Hinweis zur Form im Editor der Spalte „KG“: stabil für die memoisierten Zeilen, liest immer die aktuelle Funktion.
+  const kgLeserRef = useRef(kgLeser);
+  kgLeserRef.current = kgLeser;
+  const kgPruefen = useMemo(
+    () =>
+      kgBearbeitbar
+        ? (text: string): string | undefined => {
+            const lesen = kgLeserRef.current;
+            if (lesen === undefined) return undefined;
+            const r = leseKostengruppe(text, lesen);
+            return r.ok ? undefined : r.meldung;
+          }
+        : undefined,
+    [kgBearbeitbar],
+  );
 
   // --- flüchtiger Zustand -------------------------------------------------------------------------------------
   const [bearbeitung, setBearbeitung] = useState<Bearbeitung | null>(null);
@@ -148,11 +197,12 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const { aktiveId, fokusAnfrage, scrollAnfrage, raster, zelleVon } = kern;
   const aktiveZeile = aktivIndex >= 0 ? zeilen[aktivIndex] : undefined;
 
-  /** Ob sich die Zelle bearbeiten lässt; im schreibgeschützten Grid keine. */
-  const bearbeitbar = (z: LvZeile, spalte: LvSpalte): boolean => !nurLesen && istBearbeitbar(z, spalte);
+  /** Ob sich die Zelle bearbeiten lässt; im schreibgeschützten Grid keine (außer der Spalte „KG“ mit Ausgang). */
+  const bearbeitbar = (z: LvZeile, spalte: LvSpalte): boolean =>
+    bearbeitbareSpalten.has(spalte) && istBearbeitbar(z, spalte);
   /** Ansage, wenn im schreibgeschützten Grid etwas geändert werden soll. */
   const meldeNurLesen = (): void => {
-    setStatus(texte.gridSchreibgeschuetzt);
+    setStatus(schreibschutzText);
   };
 
   useLayoutEffect(() => {
@@ -209,11 +259,11 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const beginneBearbeitung = (zi: number, spalte: LvSpalte, startText?: string): void => {
     const z = zeilen[zi];
     if (!z) return;
-    if (nurLesen) {
+    if (nurLesen && !bearbeitbareSpalten.has(spalte)) {
       meldeNurLesen();
       return;
     }
-    if (!istBearbeitbar(z, spalte)) {
+    if (!bearbeitbar(z, spalte)) {
       setStatus(texte.schreibgeschuetzt);
       return;
     }
@@ -227,19 +277,26 @@ export function LvGrid(props: LvGridProps): ReactElement {
     });
   };
 
+  /** Eine Eingabe, ein Befehl; im schreibgeschützten Grid nur eine Kostengruppe, als Folge (Ticket 93). */
+  const sendeEingabe = (befehl: LvBefehl): void => {
+    if (aenderung) aenderung.onBefehl(befehl);
+    else if (befehl.art === 'KostengruppeSetzen') kgAusnahme?.([befehl]);
+  };
+
   /** Übernimmt einen Text in eine bestehende Zelle: ein Befehl, keine Änderung oder eine markierte Ablehnung. */
   const uebernimmText = (zi: number, spalte: LvSpalte, text: string): void => {
     const z = zeilen[zi];
     if (!z) return;
-    if (!aenderung) {
-      meldeNurLesen();
+    if (!bearbeitbareSpalten.has(spalte)) {
+      if (nurLesen) meldeNurLesen();
+      else setStatus(texte.schreibgeschuetzt);
       return;
     }
-    const r = befehlAusEingabe(z, spalte, text, zahlen);
+    const r = befehlAusEingabe(z, spalte, text, zahlen, kgLeser);
     switch (r.art) {
       case 'befehl':
         entferneAblehnung(z.knoten.id, spalte);
-        aenderung.onBefehl(r.befehl);
+        sendeEingabe(r.befehl);
         break;
       case 'keine-aenderung':
         entferneAblehnung(z.knoten.id, spalte);
@@ -370,6 +427,53 @@ export function LvGrid(props: LvGridProps): ReactElement {
     if (befehle.length === 0 || !aenderung) return;
     if (aenderung.onBefehlsfolge) aenderung.onBefehlsfolge(befehle);
     else for (const b of befehle) aenderung.onBefehl(b);
+  };
+  /** Kostengruppen aus einer Aktion als eine Folge, auch im schreibgeschützten Grid mit Ausnahme (Ticket 93). */
+  const sendeKostengruppen = (befehle: readonly KostengruppeSetzen[]): void => {
+    if (aenderung) sendeFolge(befehle);
+    else if (befehle.length > 0) kgAusnahme?.(befehle);
+  };
+  /**
+   * Markiert Zellen, deren eingefügter Text nicht gelesen wurde (U5). Basis ist der Anzeigetext der Zeile, wenn sie schon
+   * in der Ansicht steht; eine neue Position ist es noch nicht, ihr Feld ist leer, also auch ihr Anzeigetext.
+   */
+  const markiereUngueltig = (liste: readonly UngueltigeZelle[]): void => {
+    if (liste.length === 0) return;
+    setAbgelehnt((alt) => {
+      const neu = new Map(alt);
+      for (const u of liste) {
+        const zi = indexVonId.get(u.knotenId);
+        const z = zi === undefined ? undefined : zeilen[zi];
+        const basis = z ? anzeigeText(z, u.spalte, zahlen) : '';
+        neu.set(schluessel(u.knotenId, u.spalte), { text: u.text, meldung: u.meldung, basis });
+      }
+      return neu;
+    });
+  };
+  /**
+   * Eine Spalte aus der Zwischenablage in die Spalte „KG“ (Ticket 93, D-93.2): setzt die Kostengruppen der Zeilen ab der
+   * aktiven, statt Positionen anzulegen. `false`, wenn der Block nicht so aussieht (dann gilt das übliche Einfügen).
+   */
+  const fuelleKostengruppen = (matrix: readonly (readonly string[])[]): boolean => {
+    if (
+      aktivSpalte !== 'kostengruppe' ||
+      kgLeser === undefined ||
+      !bearbeitbareSpalten.has('kostengruppe') ||
+      aktivIndex < 0 ||
+      matrix.length === 0 ||
+      matrix.some((z) => z.length !== 1)
+    ) {
+      return false;
+    }
+    if (matrix.length === 1) {
+      uebernimmText(aktivIndex, 'kostengruppe', matrix[0]?.[0] ?? '');
+      return true;
+    }
+    const plan = planeKostengruppen(matrix, aktivIndex, zeilen, kgLeser);
+    sendeKostengruppen(plan.befehle);
+    markiereUngueltig(plan.ungueltig);
+    setStatus(meldungKostengruppen(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
+    return true;
   };
 
   /** Strg+C auch im schreibgeschützten Grid (es ändert nichts); Strg+X nur im bearbeitbaren. */
@@ -670,7 +774,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
     const inhalt = e.clipboardData.getData('text/plain');
     e.preventDefault();
     if (!aenderung) {
-      meldeNurLesen();
+      // Im schreibgeschützten Grid nur eine Spalte in die Spalte „KG“, wenn die App das zulässt (Ticket 93).
+      if (!fuelleKostengruppen(parseTsv(inhalt))) meldeNurLesen();
       return;
     }
     // Eigener Text (zuletzt vom Grid geschrieben): verlustfrei verschieben bzw. kopieren (Ticket 46, Punkt 2).
@@ -713,6 +818,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
       uebernimmText(aktivIndex, aktivSpalte, matrix[0]?.[0] ?? '');
       return;
     }
+    if (!eigen && fuelleKostengruppen(matrix)) return;
     // In ein leeres LV (keine aktive Zeile) wird am Ende der Wurzel eingefügt.
     const einfuegeanker: Einfuegeanker = aktiveZeile
       ? { art: 'nach', knotenId: aktiveZeile.knoten.id }
@@ -725,18 +831,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
       einfuegeanker,
       zahlen,
       aenderung.ids,
+      kgLeser,
     );
     sendeFolge(plan.befehle);
-    if (plan.ungueltig.length > 0) {
-      setAbgelehnt((alt) => {
-        const neu = new Map(alt);
-        for (const u of plan.ungueltig) {
-          // Die neue Position ist noch nicht in der Ansicht. Ihr Feld ist leer (`null`), also ist der Anzeigetext leer.
-          neu.set(schluessel(u.knotenId, u.spalte), { text: u.text, meldung: u.meldung, basis: '' });
-        }
-        return neu;
-      });
-    }
+    markiereUngueltig(plan.ungueltig);
     setStatus(meldungEingefuegt(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
   };
 
@@ -851,8 +949,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
                 abgelehnt={abgelehntJeZeile.get(id)}
                 baumspalte={baumspalte}
                 zahlen={zahlen}
-                schreibgeschuetzt={nurLesen}
+                bearbeitbareSpalten={bearbeitbareSpalten}
+                gridSchreibgeschuetzt={nurLesen}
                 editor={editorStabil}
+                kgPruefen={kgPruefen}
               />
             );
           })}
@@ -861,7 +961,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
       </div>
       {nurLesen ? (
         <span id={nurLesenId} className="tx-grid__nur-sr">
-          {texte.gridSchreibgeschuetzt}
+          {schreibschutzText}
         </span>
       ) : null}
       <Hinweisleiste hinweise={props.hinweise ?? []} onSprung={springeZu} />

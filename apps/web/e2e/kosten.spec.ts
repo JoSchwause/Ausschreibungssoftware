@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 89 (C2–C4): Kostenermittlung anlegen, Kostengruppen an LV-Positionen (mehrere in einem Undo-Schritt), Zuschlag,
 // Kostengruppen am Auftrags-LV, Kostenkontrolle mit Budget und Vergabe, EP-Kalkulation als ein Undo-Schritt. Bedienung nur
-// über Schaltflächen, Felder und Tastatur (U3, U8).
+// über Schaltflächen, Felder und Tastatur (U3, U8). Ticket 93: die Spalte „KG“ im Grid von LV und Auftrags-LV (Eingabe,
+// Zellfehler, Einfügen einer Spalte als ein Undo-Schritt); was der Test dort setzt, nimmt er zurück, damit die Zahlen der
+// Kostenkontrolle unten gelten.
 //
 // Alle erwarteten Zahlen folgen aus der Fixture oder aus den Eingaben des Tests, nicht aus einem Lauf der App:
 //  - Vergabe je Titel: die Titelsummen von Bieter A in `typisch-angebote.json` (`preisspiegel.bieter[].titel`); ohne Wahl
@@ -88,6 +90,14 @@ async function dialogSchliessen(dialog: Locator): Promise<void> {
   await expect(dialog).toBeHidden();
 }
 
+/** Zelle der Spalte „KG“ der Zeile mit dem Kurztext im Grid (Ticket 93). */
+const kgZelle = (grid: Locator, kurztext: string): Locator =>
+  grid
+    .locator('[role="row"]', { has: grid.page().getByText(kurztext, { exact: true }) })
+    .locator('[data-spalte="kostengruppe"]');
+const rueckTiefe = (page: Page): Promise<number | undefined> =>
+  page.evaluate(() => window.tethysTest?.historie().rueck);
+
 /** Kostengruppe der Position mit der OZ in der Liste des Dialogs. */
 const kgDerPosition = (dialog: Locator, oz: string): Locator =>
   dialog
@@ -141,6 +151,47 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(kgDerPosition(dialog, '01.0010')).toHaveText('390');
   await expect(kgDerPosition(dialog, '01.0060')).toHaveText('390');
   await dialogSchliessen(dialog);
+
+  // --- Ticket 93: Spalte „KG“ im LV-Grid --------------------------------------------------------------------------
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const lvGrid = page.getByRole('treegrid', { name: 'Positionen' });
+  await expect(lvGrid.getByRole('columnheader').last()).toHaveText('KG');
+  await expect(kgZelle(lvGrid, 'Bauzaun stellen')).toHaveText('390'); // aus dem Dialog
+  await expect(kgZelle(lvGrid, 'Erd- und Betonarbeiten')).toHaveAttribute('aria-readonly', 'true');
+  // Eine formwidrige Nummer ist ein Zellfehler; gespeichert wird nichts.
+  const rueck = (await rueckTiefe(page)) ?? 0;
+  const oberboden = kgZelle(lvGrid, 'Oberboden abtragen');
+  await oberboden.click();
+  await page.keyboard.type('31');
+  await page.keyboard.press('Enter');
+  await expect(oberboden).toHaveAttribute('aria-invalid', 'true');
+  await expect(oberboden).toContainText('31');
+  await expect(oberboden).toHaveAccessibleDescription(/Keine Kostengruppennummer/);
+  expect(await rueckTiefe(page)).toBe(rueck);
+  // Die Korrektur ist ein Befehl und ein Undo-Schritt.
+  await oberboden.click();
+  await page.keyboard.press('F2');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('310');
+  await page.keyboard.press('Enter');
+  await expect(oberboden).toHaveText('310');
+  await expect(oberboden).not.toHaveAttribute('aria-invalid', 'true');
+  await expect.poll(() => rueckTiefe(page)).toBe(rueck + 1);
+  // Drei Kostengruppen aus Excel (eine Spalte) setzen drei Positionen in einem Undo-Schritt.
+  await kgZelle(lvGrid, 'Baugrube ausheben').click();
+  await page.evaluate((t) => navigator.clipboard.writeText(t), '320\r\n320\r\n320\r\n');
+  await page.keyboard.press('Control+V');
+  for (const k of ['Baugrube ausheben', 'Baugrube verfüllen', 'Sauberkeitsschicht'])
+    await expect(kgZelle(lvGrid, k)).toHaveText('320');
+  await expect.poll(() => rueckTiefe(page)).toBe(rueck + 2);
+  // Ein Rückgängig nimmt alle drei zurück, ein zweites die Eingabe: Titel 02 bleibt ohne Kostengruppe.
+  await page.getByRole('button', { name: /^Rückgängig/ }).click();
+  for (const k of ['Baugrube ausheben', 'Baugrube verfüllen', 'Sauberkeitsschicht'])
+    await expect(kgZelle(lvGrid, k)).toHaveText('');
+  await expect(oberboden).toHaveText('310');
+  await page.getByRole('button', { name: /^Rückgängig/ }).click();
+  await expect(oberboden).toHaveText('');
+  await expect.poll(() => rueckTiefe(page)).toBe(rueck);
 
   // --- C3: Kostenermittlung „Kostenberechnung“ mit drei Einträgen -------------------------------------------------
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
@@ -228,6 +279,39 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(dialog.getByTestId('zuordnung-status')).toHaveText('Kostengruppe an 8 Positionen gesetzt');
   await expect(kgDerPosition(dialog, '03.0080')).toHaveText('340');
   await dialogSchliessen(dialog);
+
+  // --- Ticket 93: Spalte „KG“ im Auftrags-LV: schreibgeschützt bis auf die Kostengruppe --------------------------
+  const auftragGrid = page.getByRole('treegrid', { name: 'Positionen des Auftrags-LV' });
+  await expect(auftragGrid.getByRole('columnheader').last()).toHaveText('KG');
+  await expect(kgZelle(auftragGrid, 'Baustelle einrichten')).toHaveText('390');
+  await auftragGrid
+    .locator('[role="row"]', { has: page.getByText('Oberboden abtragen', { exact: true }) })
+    .locator('[data-spalte="menge"]')
+    .click();
+  await page.keyboard.press('F2');
+  await expect(auftragGrid.getByRole('textbox')).toHaveCount(0);
+  await expect(page.locator('.tx-grid__status')).toHaveText(
+    'Schreibgeschützt: Nur die Spalte KG lässt sich ändern.',
+  );
+  const rueckAuftrag = (await rueckTiefe(page)) ?? 0;
+  await kgZelle(auftragGrid, 'Oberboden abtragen').click();
+  await page.keyboard.type('350');
+  await page.keyboard.press('Enter');
+  await expect(kgZelle(auftragGrid, 'Oberboden abtragen')).toHaveText('350');
+  await kgZelle(auftragGrid, 'Baugrube ausheben').click();
+  await page.evaluate((t) => navigator.clipboard.writeText(t), '350\r\n350\r\n');
+  await page.keyboard.press('Control+V');
+  await expect(kgZelle(auftragGrid, 'Baugrube ausheben')).toHaveText('350');
+  await expect(kgZelle(auftragGrid, 'Baugrube verfüllen')).toHaveText('350');
+  await expect.poll(() => rueckTiefe(page)).toBe(rueckAuftrag + 2);
+  // Rückgängig: erst beide eingefügten (ein Schritt), dann die Eingabe; Titel 02 ist wieder ohne Kostengruppe.
+  await page.getByRole('button', { name: /^Rückgängig/ }).click();
+  await expect(kgZelle(auftragGrid, 'Baugrube ausheben')).toHaveText('');
+  await expect(kgZelle(auftragGrid, 'Baugrube verfüllen')).toHaveText('');
+  await expect(kgZelle(auftragGrid, 'Oberboden abtragen')).toHaveText('350');
+  await page.getByRole('button', { name: /^Rückgängig/ }).click();
+  await expect(kgZelle(auftragGrid, 'Oberboden abtragen')).toHaveText('');
+  await expect.poll(() => rueckTiefe(page)).toBe(rueckAuftrag);
 
   // --- C3: Kostenkontrolle ------------------------------------------------------------------------------------
   await page.getByRole('link', { name: 'Zum Projekt' }).click();

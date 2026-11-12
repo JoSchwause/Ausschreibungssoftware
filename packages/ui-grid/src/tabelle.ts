@@ -22,9 +22,13 @@ export const SPALTENBREITE: Readonly<Record<LvSpalte, number>> = {
   einheit: 84,
   einheitspreis: 120,
   gesamtpreis: 128,
-  kostengruppe: 72, // v1.5: mechanisch angepasst, Folgeticket 93 (nicht in STANDARDSPALTEN)
+  kostengruppe: 72,
 };
 
+/**
+ * Spalten ohne die Angabe `spalten`: die sieben vor `kostengruppe`. Die Spalte „KG“ (Ticket 93) nennt die App selbst, z. B.
+ * `[...STANDARDSPALTEN, 'kostengruppe']`.
+ */
 export const STANDARDSPALTEN: readonly LvSpalte[] = [
   'ordnungszahl',
   'positionsart',
