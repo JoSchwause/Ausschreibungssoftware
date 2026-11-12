@@ -1,0 +1,158 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Bauzeitseiten (Ticket 118). Nur Tokens (U4). */
+
+.bauzeit h2 {
+  margin: var(--tx-space-6) 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-lg);
+}
+
+.bauzeit__formular {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-4);
+  margin: var(--tx-space-3) 0;
+}
+
+.bauzeit__formular > .tx-button {
+  margin-top: 20px;
+}
+
+.bauzeit__tage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-2) var(--tx-space-3);
+  margin: 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-sm);
+  max-width: 42rem;
+}
+
+.bauzeit__tage > .tx-feld__meldung {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.bauzeit__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-1);
+}
+
+.bauzeit__eckdaten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-2) var(--tx-space-6);
+  margin: var(--tx-space-3) 0;
+}
+
+.bauzeit__eckdaten dt {
+  color: var(--tx-color-text-muted);
+}
+
+.bauzeit__eckdaten dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.bauzeit__eckdaten > div {
+  display: flex;
+  gap: var(--tx-space-2);
+}
+
+.bauzeit__haupt {
+  display: flex;
+  gap: var(--tx-space-4);
+  min-height: 360px;
+}
+
+.bauzeit__grid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 320px;
+  max-height: 65vh;
+}
+
+.bauzeit__grid > .tx-grid {
+  flex: 1;
+  min-height: 0;
+}
+
+.bauzeit__befunde {
+  flex: 0 0 18rem;
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-sm);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  overflow: auto;
+  max-height: 65vh;
+}
+
+.bauzeit__befunde h2,
+.bauzeit__befunde h3 {
+  margin: var(--tx-space-2) 0;
+  font-size: var(--tx-font-size-md);
+}
+
+.bauzeit__befunde ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bauzeit__befund {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--tx-space-1);
+  padding: var(--tx-space-1) var(--tx-space-2);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--tx-radius-sm);
+  cursor: pointer;
+}
+
+.bauzeit__befund:hover,
+.bauzeit__befund:focus-visible {
+  border-color: var(--tx-color-accent);
+}
+
+.bauzeit__befund-ort {
+  display: block;
+  font-weight: 600;
+}
+
+.bauzeit__dialog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tx-space-3) var(--tx-space-4);
+}
+
+.bauzeit__dialog fieldset {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-sm);
+}
+
+.bauzeit__beziehung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-3);
+}
+
+.bauzeit__beziehung > .tx-button {
+  margin-top: 20px;
+}
+
+.bauzeit__ist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-3);
+}

@@ -16,6 +16,10 @@ import { BautagebuchSeite } from './bauleitung/BautagebuchSeite'; // Ticket 120
 import { MaengelSeite } from './bauleitung/MaengelSeite'; // Ticket 120
 import { bauleitungRoute } from './bauleitung/pfad'; // Ticket 120
 import { texte as bauleitungTexte } from './bauleitung/texte'; // Ticket 120
+import { BauzeitListeSeite } from './bauzeit/BauzeitListeSeite'; // Ticket 118
+import { BauzeitenplanSeite } from './bauzeit/BauzeitenplanSeite'; // Ticket 118
+import { bauzeitRoute } from './bauzeit/pfad'; // Ticket 118
+import { texte as bauzeitTexte } from './bauzeit/texte'; // Ticket 118
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { HonorarListeSeite } from './honorar/HonorarListeSeite'; // Ticket 119
 import { HonorarSeite } from './honorar/HonorarSeite'; // Ticket 119
@@ -155,6 +159,17 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
             />,
           ),
         };
+  }
+  // Ticket 118: Bauzeitenpläne eines Projekts
+  const bauzeit = bauzeitRoute(pfad);
+  if (bauzeit !== null) {
+    const seite =
+      bauzeit.art === 'liste' ? (
+        <BauzeitListeSeite key={bauzeit.projektId} projektId={bauzeit.projektId} gehe={gehe} />
+      ) : (
+        <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
+      );
+    return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {

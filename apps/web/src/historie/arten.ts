@@ -5,6 +5,7 @@
 
 import { aufmassChangeSetUmkehren, rechnungChangeSetUmkehren } from '@tethys/abrechnung';
 import { bautagebucheintragChangeSetUmkehren, mangelChangeSetUmkehren } from '@tethys/bauleitung'; // Ticket 120
+import { bauzeitenplanChangeSetUmkehren } from '@tethys/bauzeit'; // Ticket 118
 import { auftragsLvChangeSetUmkehren, changeSetUmkehren, projektChangeSetUmkehren } from '@tethys/kern';
 import { honorarberechnungChangeSetUmkehren } from '@tethys/honorar'; // Ticket 119
 import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten';
@@ -14,6 +15,7 @@ import { aufmassZiel } from '../abrechnung/pfad'; // Ticket 87
 import { auftragPfad, auftragZiel } from '../auftrag/ziel'; // Ticket 64, 86
 import { honorarZiel } from '../honorar/pfad'; // Ticket 119
 import { bautagebuchZiel, mangelZiel } from '../bauleitung/pfad'; // Ticket 120
+import { bauzeitZiel } from '../bauzeit/pfad'; // Ticket 118
 import { kostenZiel } from '../kosten/pfad'; // Ticket 89
 import { rechnungZiel } from '../rechnung/pfad'; // Ticket 88
 import type { Teil } from './historie';
@@ -109,7 +111,7 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   kostenermittlung: { umkehren: kostenermittlungChangeSetUmkehren, ziel: kostenZiel },
   // v1.6: mechanisch angepasst, Folgeticket (siehe `erstMitTicket`)
   bauwerksmodell: erstMitTicket('114'),
-  bauzeitenplan: erstMitTicket('118'),
+  bauzeitenplan: { umkehren: bauzeitenplanChangeSetUmkehren, ziel: bauzeitZiel }, // Ticket 118
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
   mangel: { umkehren: mangelChangeSetUmkehren, ziel: mangelZiel }, // Ticket 120
   bautagebucheintrag: { umkehren: bautagebucheintragChangeSetUmkehren, ziel: bautagebuchZiel }, // Ticket 120

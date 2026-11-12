@@ -15,6 +15,8 @@ import { honorarPfad } from '../honorar/pfad'; // Ticket 119
 import { texte as honorarTexte } from '../honorar/texte'; // Ticket 119
 import { bautagebuchPfad, maengelPfad } from '../bauleitung/pfad'; // Ticket 120
 import { texte as bauleitungTexte } from '../bauleitung/texte'; // Ticket 120
+import { bauzeitPfad } from '../bauzeit/pfad'; // Ticket 118
+import { texte as bauzeitTexte } from '../bauzeit/texte'; // Ticket 118
 import { kostenPfad } from '../kosten/pfad'; // Ticket 89
 import { texte as kostenTexte } from '../kosten/texte'; // Ticket 89
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
@@ -290,6 +292,13 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <Verweis
           pfad={bautagebuchPfad(projekt.id)}
           text={bauleitungTexte.projekt.bautagebuch}
+          gehe={gehe}
+          className="tx-button tx-button--schlicht"
+        />
+        {/* Ticket 118 */}
+        <Verweis
+          pfad={bauzeitPfad(projekt.id)}
+          text={bauzeitTexte.projekt.bauzeit}
           gehe={gehe}
           className="tx-button tx-button--schlicht"
         />
