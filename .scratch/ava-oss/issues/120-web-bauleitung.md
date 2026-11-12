@@ -1,6 +1,6 @@
 # 120: X4 in der App: Mängel und Bautagebuch, Tor X4
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X4 · Ordner: `apps/web/src/bauleitung/` (neu); Einhängestellen in `App.tsx`, `projekt/ProjektSeite.tsx`,
 `historie/arten.ts` (markiert `// Ticket 120`, D-20); E2E `apps/web/e2e/x4.spec.ts`, Kettentest `apps/web/src/x4-kette.test.ts`
@@ -61,3 +61,7 @@ Neu `apps/web/src/bauleitung/`: Seiten `MaengelSeite`, `BautagebuchSeite`, Formu
 Prüfung nach `git merge integration/welle-6`: `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` 292 Dateien / 3.767 Tests grün (1 Datei, 3 Tests übersprungen wie zuvor), `node --test` 53/53; `x4.spec.ts` danach erneut grün (4 Läufe insgesamt, alle grün).
 
 Berichtigung zur Prüfung oben: Die volle Suite lief mit 294 Dateien grün und 3 CPU-Budgets rot (3.801 Tests grün, 3 rot): `speicher/v16-leistung` (10.000 Bauteile), `vergabe/leistung` (Preisspiegel gross), `web/abrechnung/leistung` (Undo 5.000 Zeilen, 155 ms > 100). Alle drei Dateien allein wiederholt (`--no-file-parallelism`): 7/7 grün. Kein Budget gelockert, nichts übersprungen; dieser Branch ändert keines dieser Pakete.
+
+## Answer
+
+Gemergt mit `8f0a385` und Nachtrag (Branch `welle-6/120-web-bauleitung`). **Tor X4 erreicht:** `x4.spec.ts` mit fester Uhr (26.11.2026) viermal grün, `x4-kette.test.ts` grün; im Integrationslauf erneut grün. Auftragnehmer heißen im E2E nach den Bietern (Zuschlag setzt den Bieternamen).

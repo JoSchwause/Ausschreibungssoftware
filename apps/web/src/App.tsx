@@ -34,6 +34,8 @@ import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 
 import { kostenRoute } from './kosten/pfad'; // Ticket 89
 import { texte as kostenTexte } from './kosten/texte'; // Ticket 89
 import { LvSeite } from './lv/LvSeite';
+import { vergleichRoute } from './modellvergleich/pfad'; // Ticket 116
+import { texte as vergleichTexte } from './modellvergleich/texte'; // Ticket 116
 import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
@@ -56,6 +58,10 @@ const MIT_KATALOG = import.meta.env.DEV || import.meta.env.VITE_KATALOG === '1';
 const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
 // Ticket 114: die Modellseite bringt three.js und web-ifc mit; ihr Bündel lädt erst beim Öffnen.
 const ModellSeite = lazy(() => import('./bim/ModellSeite').then((m) => ({ default: m.ModellSeite })));
+// Ticket 116: der Modellvergleich bringt ebenfalls three.js mit; eigenes Bündel, lädt erst beim Öffnen.
+const ModellvergleichSeite = lazy(() =>
+  import('./modellvergleich/ModellvergleichSeite').then((m) => ({ default: m.ModellvergleichSeite })),
+);
 
 /**
  * Seiten, die den Speicher brauchen: erst nach dem Öffnen (E-14), sonst eine Meldung; mit Rückgängig und Wiederholen
@@ -175,6 +181,18 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
       );
     return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 116: Vergleich zweier Modellstände (Standard: der Vorgänger)
+  const vergleich = vergleichRoute(pfad);
+  if (vergleich !== null) {
+    return {
+      titel: vergleichTexte.seitentitel,
+      inhalt: mitSpeicher(
+        <Suspense fallback={null}>
+          <ModellvergleichSeite key={pfad} {...vergleich} gehe={gehe} />
+        </Suspense>,
+      ),
+    };
   }
   // Ticket 114: Bauwerksmodelle eines Projekts (Liste) und ein Modell (Baum, 3D, Eigenschaften)
   const bim = bimRoute(pfad);

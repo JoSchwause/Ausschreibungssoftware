@@ -35,6 +35,8 @@ import {
   klassen,
   type Sichtbarkeit,
 } from './sichtbarkeit';
+import { vergleichPfad } from '../modellvergleich/pfad'; // Ticket 116
+import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 116
 import { modellTesthaken } from './testhaken';
 import { texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
@@ -225,6 +227,10 @@ function Arbeitsflaeche({
       <div className="lv__kopf">
         <h1>{modell.name}</h1>
         <Verweis pfad={modellePfad(projektId)} text={texte.seite.zurListe} gehe={gehe} />
+        {/* Ticket 116: Vergleich mit dem Vorgänger */}
+        {modell.vorgaengerId === null ? null : (
+          <Verweis pfad={vergleichPfad(projektId, modell.id)} text={vergleichTexte.link} gehe={gehe} />
+        )}
       </div>
       <div className="lv__werkzeuge bim__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
