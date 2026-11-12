@@ -35,6 +35,8 @@ export const ERLAUBT = {
   'packages/ausgabe': FACH,
   // XRechnung lesen (Ticket 76, D-32): ein Format-Rand wie gaeb, aber ohne Kern und ohne den GAEB-Leser.
   'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
+  // IFC lesen (Ticket 98, D-50): eigener STEP-Leser, ein Format-Rand wie erechnung, ohne Kern.
+  'packages/ifc': ['packages/vertrag', 'packages/dezimal'],
   // HOAI-Honorarberechnung (Ticket 101, D-56): reine Rechnung mit den Honorartafeln als Daten, kein Kern.
   'packages/honorar': ['packages/vertrag', 'packages/dezimal'],
   // Terminrechnung des Bauzeitenplans (Ticket 102, D-57): reiner Rechenkern, nur Typen und Dezimalarithmetik, kein Kern.
@@ -55,6 +57,7 @@ export const ERLAUBT = {
     'packages/kosten',
     'packages/ausgabe',
     'packages/erechnung',
+    'packages/ifc',
     'packages/honorar',
     'packages/bauzeit',
   ],

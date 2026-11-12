@@ -5,6 +5,7 @@
 import type {
   Einheitspreis,
   GridZahlen,
+  Kostengruppennummer,
   Langtext,
   LangtextBaustein,
   LangtextInline,
@@ -15,15 +16,20 @@ import type {
   Textfluss,
 } from '@tethys/vertrag';
 import { artText, texte } from './texte';
+import type { KostengruppeLesen } from './typen';
 
-/** Spalten, die sich bearbeiten lassen (nur bei den passenden Knotenarten). */
-export type BearbeitbareSpalte = 'kurztext' | 'menge' | 'einheit' | 'einheitspreis';
+/**
+ * Spalten, die sich bearbeiten lassen (nur bei den passenden Knotenarten). Die Spalte „KG“ (Ticket 93) nur, wenn die App
+ * eine Lesefunktion hereinreicht (`LvGridProps.kostengruppeLesen`); das prüft das Grid, nicht diese Liste.
+ */
+export type BearbeitbareSpalte = 'kurztext' | 'menge' | 'einheit' | 'einheitspreis' | 'kostengruppe';
 
 const BEARBEITBAR: ReadonlySet<LvSpalte> = new Set<LvSpalte>([
   'kurztext',
   'menge',
   'einheit',
   'einheitspreis',
+  'kostengruppe',
 ]);
 
 /** Spalten, die überhaupt Eingaben annehmen (unabhängig von der Knotenart). */
@@ -39,6 +45,7 @@ export function istBearbeitbar(zeile: LvZeile, spalte: LvSpalte): spalte is Bear
     case 'menge':
     case 'einheit':
     case 'einheitspreis':
+    case 'kostengruppe':
       return art === 'position';
     default:
       return false;
@@ -123,7 +130,6 @@ export function anzeigeText(zeile: LvZeile, spalte: LvSpalte, zahlen: GridZahlen
         : '';
     case 'gesamtpreis':
       return zeile.summe === null ? '' : zahlen.formatBetrag(zeile.summe);
-    // v1.5: mechanisch angepasst, Folgeticket 93 (nur lesend; `istBearbeitbar` lässt die Spalte nicht zu)
     case 'kostengruppe':
       return k.art === 'position' ? (k.kostengruppe ?? '') : '';
   }
@@ -138,13 +144,15 @@ export type Eingabeergebnis =
 /**
  * Macht aus dem Text einer bestehenden Zelle genau einen Befehl. Leerer Text leert die Zelle (`null`, bei Kurztext
  * ein leerer Text). Ein unlesbarer Zahlentext ist kein Befehl, sondern ein Hinweis; die Eingabe bleibt sichtbar
- * markiert (U5), das Grid sperrt nichts.
+ * markiert (U5), das Grid sperrt nichts. Die Spalte „KG“ liest `kostengruppeLesen` (die Form prüft die App, Ticket 93);
+ * ohne die Funktion ist sie schreibgeschützt.
  */
 export function befehlAusEingabe(
   zeile: LvZeile,
   spalte: LvSpalte,
   text: string,
   zahlen: GridZahlen,
+  kostengruppeLesen?: KostengruppeLesen,
 ): Eingabeergebnis {
   if (!istBearbeitbar(zeile, spalte)) return { art: 'schreibgeschuetzt' };
   const k = zeile.knoten;
@@ -190,6 +198,13 @@ export function befehlAusEingabe(
         befehl: { art: 'EinheitspreisAendern', positionId: k.id, einheitspreis: r.wert },
       };
     }
+    case 'kostengruppe': {
+      if (k.art !== 'position' || kostengruppeLesen === undefined) return { art: 'schreibgeschuetzt' };
+      const r = leseKostengruppe(text, kostengruppeLesen);
+      if (!r.ok) return { art: 'ungueltig', meldung: r.meldung };
+      if (r.wert === (k.kostengruppe ?? null)) return { art: 'keine-aenderung' };
+      return { art: 'befehl', befehl: { art: 'KostengruppeSetzen', positionId: k.id, kostengruppe: r.wert } };
+    }
     default:
       return { art: 'schreibgeschuetzt' };
   }
@@ -210,5 +225,13 @@ export function leseEinheitspreis(text: string, zahlen: GridZahlen): Zahlenlesun
   const t = text.trim();
   if (t === '') return { ok: true, wert: null };
   const r = zahlen.parseEinheitspreis(t);
+  return r.ok ? { ok: true, wert: r.wert } : { ok: false, meldung: r.fehler };
+}
+
+/** Text der Spalte „KG“ → Nummer oder Hinweis über die Lesefunktion der App; leer ist `null` (Zuordnung entfernen). */
+export function leseKostengruppe(text: string, lesen: KostengruppeLesen): Zahlenlesung<Kostengruppennummer> {
+  const t = text.trim();
+  if (t === '') return { ok: true, wert: null };
+  const r = lesen(t);
   return r.ok ? { ok: true, wert: r.wert } : { ok: false, meldung: r.fehler };
 }

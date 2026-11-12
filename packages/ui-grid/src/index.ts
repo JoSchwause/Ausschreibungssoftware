@@ -3,7 +3,14 @@
 // bindet es zusammen mit den Tokens aus @tethys/ui-basis ein.
 
 export { LvGrid } from './LvGrid';
-export type { LvGridBearbeitbar, LvGridProps, LvGridSchreibgeschuetzt, Sprungziel } from './typen';
+export { STANDARDSPALTEN } from './tabelle';
+export type {
+  KostengruppeLesen,
+  LvGridBearbeitbar,
+  LvGridProps,
+  LvGridSchreibgeschuetzt,
+  Sprungziel,
+} from './typen';
 
 // Das schreibgeschützte Vergleichsgrid (Ticket 60), z. B. für den Preisspiegel; derselbe Kern wie `LvGrid`. Mit einer
 // Balkenspalte (Ticket 96) zeigt es auch den Bauzeitenplan: `VergleichsSpalte.zeitleiste`, `VergleichsZelle.balken`.

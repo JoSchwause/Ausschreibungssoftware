@@ -1,0 +1,1476 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "bimset",
+  "regel": "Ticket 99, README „BIM: Haus und Tor X1“: Zuordnung am Positionsfeld (D-52), Mengenübernahme nach D-53 (je zugeordnetem Bauteil im gewählten Modell eine Ansatzzeile Formel 91, Wert in SI-Einheit kaufmännisch auf 3 Stellen; Menge = Summe der Zeilen; fehlendes Bauteil: keine Zeile, Befund), GP und Summen nach N2/N5.",
+  "lvId": "019b76e9-ea40-7f8c-a8f8-da06db622e5d",
+  "lvName": "Typisch: Musterhaus (erfunden)",
+  "modelle": [
+    {"stand":"v1","datei":"ifc/haus-v1.ifc","schema":"IFC4","laengeneinheit":"m","sha256":"b4e795a11166357ab4a596adb502c161cabde44810df5f44e385db8866080181"},
+    {"stand":"v1","datei":"ifc/haus-v1-ifc2x3.ifc","schema":"IFC2X3","laengeneinheit":"mm","sha256":"88f7a988a834a35abf74c4a27b1cc3fc1c26c61c5d4355782326c4b7f0e0f76c"},
+    {"stand":"v2","datei":"ifc/haus-v2.ifc","schema":"IFC4","laengeneinheit":"m","sha256":"4ba60e9be1f588d1848393ae0e74cad4e458f5bf43619c806fa30ae854ce3b65"}
+  ],
+  "bauteile": {
+    "v1": [
+      {
+        "globalId": "3cGP7pQPH0PIyo6rcNw0ba",
+        "kennung": "FU-S",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Süd",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"12.225","exakt":"12.225","herleitung":"12,225"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"},
+          {"name":"NetVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"}
+        ]
+      },
+      {
+        "globalId": "3petWNtJ82DqVzTg6RXICh",
+        "kennung": "FU-N",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Nord",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"12.225","exakt":"12.225","herleitung":"12,225"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"},
+          {"name":"NetVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"}
+        ]
+      },
+      {
+        "globalId": "1VNEqs7ugOhg_qs3slNMvf",
+        "kennung": "FU-W",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament West",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.275","exakt":"7.275","herleitung":"7,275"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"},
+          {"name":"NetVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"}
+        ]
+      },
+      {
+        "globalId": "0mI1oBt4NFWx45aZbzTdGA",
+        "kennung": "FU-O",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Ost",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.275","exakt":"7.275","herleitung":"7,275"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"},
+          {"name":"NetVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"}
+        ]
+      },
+      {
+        "globalId": "2eblKqOK$lqqMETwZexG5z",
+        "kennung": "PL-EG",
+        "klasse": "IfcSlab",
+        "name": "Bodenplatte",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.638","exakt":"98.6376","herleitung":"11,99 × 8,24 − AS-PL-EG 0,4 × 0,4 = 98,6376"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.659","exakt":"24.6594","herleitung":"98,6376 × 0,25 = 24,6594"}
+        ]
+      },
+      {
+        "globalId": "1l3nLN5cFF3QXQ8i5cD4LA",
+        "kennung": "AW-EG-S",
+        "klasse": "IfcWall",
+        "name": "Außenwand Süd EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"28.804","exakt":"28.804175","herleitung":"11,99 × 2,75 − F-EG-S 1,26 × 1,385 − T-EG-H 1,135 × 2,135 = 28,804175"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"10.514","exakt":"10.513523875","herleitung":"28,804175 × 0,365 = 10,513523875"}
+        ]
+      },
+      {
+        "globalId": "3VJ2L2BTS21QzYMOdT8Gvt",
+        "kennung": "F-EG-S",
+        "klasse": "IfcWindow",
+        "name": "Fenster Wohnen",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "2SfB21Iy4qbA7B49jQu9do",
+        "kennung": "T-EG-H",
+        "klasse": "IfcDoor",
+        "name": "Haustür",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.135","exakt":"1.135","herleitung":"1,135"},
+          {"name":"Height","art":"laenge","wert":"2.135","exakt":"2.135","herleitung":"2,135"},
+          {"name":"Area","art":"flaeche","wert":"2.423","exakt":"2.423225","herleitung":"1,135 × 2,135 = 2,423225"}
+        ]
+      },
+      {
+        "globalId": "2ecDgrCFDpRrjrBCEyMCfD",
+        "kennung": "AW-EG-N",
+        "klasse": "IfcWall",
+        "name": "Außenwand Nord EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"31.227","exakt":"31.2274","herleitung":"11,99 × 2,75 − F-EG-N 1,26 × 1,385 = 31,2274"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"11.398","exakt":"11.398001","herleitung":"31,2274 × 0,365 = 11,398001"}
+        ]
+      },
+      {
+        "globalId": "0PqKYcwyRjq9_izWghFUuS",
+        "kennung": "F-EG-N",
+        "klasse": "IfcWindow",
+        "name": "Fenster Küche",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "2AhrUbBTe1LU5FWu_DQQz5",
+        "kennung": "AW-EG-W",
+        "klasse": "IfcWall",
+        "name": "Außenwand West EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"19.254","exakt":"19.25365","herleitung":"7,51 × 2,75 − F-EG-W 1,01 × 1,385 = 19,25365"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.028","exakt":"7.02758225","herleitung":"19,25365 × 0,365 = 7,02758225"}
+        ]
+      },
+      {
+        "globalId": "3C178gmUgMjLVcOGcxq1j2",
+        "kennung": "F-EG-W",
+        "klasse": "IfcWindow",
+        "name": "Fenster West",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.010","exakt":"1.01","herleitung":"1,01"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.399","exakt":"1.39885","herleitung":"1,01 × 1,385 = 1,39885"}
+        ]
+      },
+      {
+        "globalId": "0BezMmKBelnIZUUKLEUyIJ",
+        "kennung": "AW-EG-O",
+        "klasse": "IfcWall",
+        "name": "Außenwand Ost EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "31nogOTPLaujT$VUogaKgY",
+        "kennung": "IW-EG-1",
+        "klasse": "IfcWall",
+        "name": "Innenwand Wohnen/Flur",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"18.874","exakt":"18.87365","herleitung":"7,51 × 2,75 − T-EG-1 0,885 × 2,01 = 18,87365"},
+          {"name":"GrossVolume","art":"volumen","wert":"2.375","exakt":"2.3750375","herleitung":"20,6525 × 0,115 = 2,3750375"},
+          {"name":"NetVolume","art":"volumen","wert":"2.170","exakt":"2.17046975","herleitung":"18,87365 × 0,115 = 2,17046975"}
+        ]
+      },
+      {
+        "globalId": "0SMoM2QN3kYPlBLF3ECNPo",
+        "kennung": "T-EG-1",
+        "klasse": "IfcDoor",
+        "name": "Tür Wohnen",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "0hF$HlLZy4_kLE0v2Nc5nl",
+        "kennung": "IW-EG-2",
+        "klasse": "IfcWall",
+        "name": "Innenwand Flur/Küche",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"3.145","exakt":"3.145","herleitung":"3,145"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"8.649","exakt":"8.64875","herleitung":"3,145 × 2,75 = 8,64875"},
+          {"name":"NetSideArea","art":"flaeche","wert":"8.649","exakt":"8.64875","herleitung":"3,145 × 2,75 = 8,64875"},
+          {"name":"GrossVolume","art":"volumen","wert":"0.995","exakt":"0.99460625","herleitung":"8,64875 × 0,115 = 0,99460625"},
+          {"name":"NetVolume","art":"volumen","wert":"0.995","exakt":"0.99460625","herleitung":"8,64875 × 0,115 = 0,99460625"}
+        ]
+      },
+      {
+        "globalId": "0pvziGfz13dL7P$C5SooCO",
+        "kennung": "IW-EG-3",
+        "klasse": "IfcWall",
+        "name": "Raumteiler Wohnen",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"2.000","exakt":"2","herleitung":"2"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"5.500","exakt":"5.5","herleitung":"2 × 2,75 = 5,5"},
+          {"name":"NetSideArea","art":"flaeche","wert":"5.500","exakt":"5.5","herleitung":"2 × 2,75 = 5,5"},
+          {"name":"GrossVolume","art":"volumen","wert":"0.633","exakt":"0.6325","herleitung":"5,5 × 0,115 = 0,6325"},
+          {"name":"NetVolume","art":"volumen","wert":"0.633","exakt":"0.6325","herleitung":"5,5 × 0,115 = 0,6325"}
+        ]
+      },
+      {
+        "globalId": "3d8MQ0hIAqJYXoVDQSMyMa",
+        "kennung": "DE-OG",
+        "klasse": "IfcSlab",
+        "name": "Geschossdecke",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"}
+        ]
+      },
+      {
+        "globalId": "1j3Z3xC6C$kdJyIBOCjZkI",
+        "kennung": "AW-OG-S",
+        "klasse": "IfcWall",
+        "name": "Außenwand Süd OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"29.829","exakt":"29.82855","herleitung":"11,99 × 2,75 − F-OG-S 1,26 × 1,385 − F-OG-F 1,01 × 1,385 = 29,82855"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"10.887","exakt":"10.88742075","herleitung":"29,82855 × 0,365 = 10,88742075"}
+        ]
+      },
+      {
+        "globalId": "3q55eUXrotxrGh4dKyhMZR",
+        "kennung": "F-OG-S",
+        "klasse": "IfcWindow",
+        "name": "Fenster Schlafen",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "3fXqxLoAs3N2K62IUhCYqc",
+        "kennung": "F-OG-F",
+        "klasse": "IfcWindow",
+        "name": "Fenster Flur OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.010","exakt":"1.01","herleitung":"1,01"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.399","exakt":"1.39885","herleitung":"1,01 × 1,385 = 1,39885"}
+        ]
+      },
+      {
+        "globalId": "0uzBWfBKBnRbAkiJG5yaqQ",
+        "kennung": "AW-OG-N",
+        "klasse": "IfcWall",
+        "name": "Außenwand Nord OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"31.227","exakt":"31.2274","herleitung":"11,99 × 2,75 − F-OG-N 1,26 × 1,385 = 31,2274"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"11.398","exakt":"11.398001","herleitung":"31,2274 × 0,365 = 11,398001"}
+        ]
+      },
+      {
+        "globalId": "2eqhvxV1_uwddz4S5zcmuq",
+        "kennung": "F-OG-N",
+        "klasse": "IfcWindow",
+        "name": "Fenster Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "0$lKAvOC6Vx4I81VmRyb_R",
+        "kennung": "AW-OG-W",
+        "klasse": "IfcWall",
+        "name": "Außenwand West OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "1pnvIZZ7N0ciiC4jdk2yPD",
+        "kennung": "AW-OG-O",
+        "klasse": "IfcWall",
+        "name": "Außenwand Ost OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "26o$BFnqMgctALKbCXMaV0",
+        "kennung": "IW-OG-1",
+        "klasse": "IfcWall",
+        "name": "Trockenbauwand Schlafen/Flur",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.100","exakt":"0.1","herleitung":"0,1"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"18.874","exakt":"18.87365","herleitung":"7,51 × 2,75 − T-OG-1 0,885 × 2,01 = 18,87365"},
+          {"name":"GrossVolume","art":"volumen","wert":"2.065","exakt":"2.06525","herleitung":"20,6525 × 0,1 = 2,06525"},
+          {"name":"NetVolume","art":"volumen","wert":"1.887","exakt":"1.887365","herleitung":"18,87365 × 0,1 = 1,887365"}
+        ]
+      },
+      {
+        "globalId": "351hTKGtIpcIY40khlBxNy",
+        "kennung": "T-OG-1",
+        "klasse": "IfcDoor",
+        "name": "Tür Schlafen",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "3O0YMY06pSfrehNyVh185Z",
+        "kennung": "IW-OG-2",
+        "klasse": "IfcWall",
+        "name": "Trockenbauwand Flur/Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"4.785","exakt":"4.785","herleitung":"4,785"},
+          {"name":"Width","art":"laenge","wert":"0.100","exakt":"0.1","herleitung":"0,1"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"13.159","exakt":"13.15875","herleitung":"4,785 × 2,75 = 13,15875"},
+          {"name":"NetSideArea","art":"flaeche","wert":"11.380","exakt":"11.3799","herleitung":"4,785 × 2,75 − T-OG-2 0,885 × 2,01 = 11,3799"},
+          {"name":"GrossVolume","art":"volumen","wert":"1.316","exakt":"1.315875","herleitung":"13,15875 × 0,1 = 1,315875"},
+          {"name":"NetVolume","art":"volumen","wert":"1.138","exakt":"1.13799","herleitung":"11,3799 × 0,1 = 1,13799"}
+        ]
+      },
+      {
+        "globalId": "2o3q5cDlH4ZIwN5QA7MExe",
+        "kennung": "T-OG-2",
+        "klasse": "IfcDoor",
+        "name": "Tür Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "3BpVo1D5LGzpaRj7hzlcOh",
+        "kennung": "DA-OG",
+        "klasse": "IfcSlab",
+        "name": "Dachdecke",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"}
+        ]
+      }
+    ],
+    "v2": [
+      {
+        "globalId": "3cGP7pQPH0PIyo6rcNw0ba",
+        "kennung": "FU-S",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Süd",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"12.225","exakt":"12.225","herleitung":"12,225"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"},
+          {"name":"NetVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"}
+        ]
+      },
+      {
+        "globalId": "3petWNtJ82DqVzTg6RXICh",
+        "kennung": "FU-N",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Nord",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"12.225","exakt":"12.225","herleitung":"12,225"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"},
+          {"name":"NetVolume","art":"volumen","wert":"5.868","exakt":"5.868","herleitung":"12,225 × 0,6 × 0,8 = 5,868"}
+        ]
+      },
+      {
+        "globalId": "1VNEqs7ugOhg_qs3slNMvf",
+        "kennung": "FU-W",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament West",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.275","exakt":"7.275","herleitung":"7,275"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"},
+          {"name":"NetVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"}
+        ]
+      },
+      {
+        "globalId": "0mI1oBt4NFWx45aZbzTdGA",
+        "kennung": "FU-O",
+        "klasse": "IfcFooting",
+        "name": "Streifenfundament Ost",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.275","exakt":"7.275","herleitung":"7,275"},
+          {"name":"Width","art":"laenge","wert":"0.600","exakt":"0.6","herleitung":"0,6"},
+          {"name":"Height","art":"laenge","wert":"0.800","exakt":"0.8","herleitung":"0,8"},
+          {"name":"GrossVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"},
+          {"name":"NetVolume","art":"volumen","wert":"3.492","exakt":"3.492","herleitung":"7,275 × 0,6 × 0,8 = 3,492"}
+        ]
+      },
+      {
+        "globalId": "2eblKqOK$lqqMETwZexG5z",
+        "kennung": "PL-EG",
+        "klasse": "IfcSlab",
+        "name": "Bodenplatte WU-Beton",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.638","exakt":"98.6376","herleitung":"11,99 × 8,24 − AS-PL-EG 0,4 × 0,4 = 98,6376"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.659","exakt":"24.6594","herleitung":"98,6376 × 0,25 = 24,6594"}
+        ]
+      },
+      {
+        "globalId": "1l3nLN5cFF3QXQ8i5cD4LA",
+        "kennung": "AW-EG-S",
+        "klasse": "IfcWall",
+        "name": "Außenwand Süd EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"28.804","exakt":"28.804175","herleitung":"11,99 × 2,75 − F-EG-S 1,26 × 1,385 − T-EG-H 1,135 × 2,135 = 28,804175"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"10.514","exakt":"10.513523875","herleitung":"28,804175 × 0,365 = 10,513523875"}
+        ]
+      },
+      {
+        "globalId": "3VJ2L2BTS21QzYMOdT8Gvt",
+        "kennung": "F-EG-S",
+        "klasse": "IfcWindow",
+        "name": "Fenster Wohnen",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "2SfB21Iy4qbA7B49jQu9do",
+        "kennung": "T-EG-H",
+        "klasse": "IfcDoor",
+        "name": "Haustür",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.135","exakt":"1.135","herleitung":"1,135"},
+          {"name":"Height","art":"laenge","wert":"2.135","exakt":"2.135","herleitung":"2,135"},
+          {"name":"Area","art":"flaeche","wert":"2.423","exakt":"2.423225","herleitung":"1,135 × 2,135 = 2,423225"}
+        ]
+      },
+      {
+        "globalId": "2ecDgrCFDpRrjrBCEyMCfD",
+        "kennung": "AW-EG-N",
+        "klasse": "IfcWall",
+        "name": "Außenwand Nord EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"31.227","exakt":"31.2274","herleitung":"11,99 × 2,75 − F-EG-N 1,26 × 1,385 = 31,2274"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"11.398","exakt":"11.398001","herleitung":"31,2274 × 0,365 = 11,398001"}
+        ]
+      },
+      {
+        "globalId": "0PqKYcwyRjq9_izWghFUuS",
+        "kennung": "F-EG-N",
+        "klasse": "IfcWindow",
+        "name": "Fenster Küche",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "2AhrUbBTe1LU5FWu_DQQz5",
+        "kennung": "AW-EG-W",
+        "klasse": "IfcWall",
+        "name": "Außenwand West EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "0BezMmKBelnIZUUKLEUyIJ",
+        "kennung": "AW-EG-O",
+        "klasse": "IfcWall",
+        "name": "Außenwand Ost EG",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "31nogOTPLaujT$VUogaKgY",
+        "kennung": "IW-EG-1",
+        "klasse": "IfcWall",
+        "name": "Innenwand Wohnen/Flur",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"18.874","exakt":"18.87365","herleitung":"7,51 × 2,75 − T-EG-1 0,885 × 2,01 = 18,87365"},
+          {"name":"GrossVolume","art":"volumen","wert":"2.375","exakt":"2.3750375","herleitung":"20,6525 × 0,115 = 2,3750375"},
+          {"name":"NetVolume","art":"volumen","wert":"2.170","exakt":"2.17046975","herleitung":"18,87365 × 0,115 = 2,17046975"}
+        ]
+      },
+      {
+        "globalId": "0SMoM2QN3kYPlBLF3ECNPo",
+        "kennung": "T-EG-1",
+        "klasse": "IfcDoor",
+        "name": "Tür Wohnen",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "0hF$HlLZy4_kLE0v2Nc5nl",
+        "kennung": "IW-EG-2",
+        "klasse": "IfcWall",
+        "name": "Innenwand Flur/Küche",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"3.645","exakt":"3.645","herleitung":"3,645"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"10.024","exakt":"10.02375","herleitung":"3,645 × 2,75 = 10,02375"},
+          {"name":"NetSideArea","art":"flaeche","wert":"10.024","exakt":"10.02375","herleitung":"3,645 × 2,75 = 10,02375"},
+          {"name":"GrossVolume","art":"volumen","wert":"1.153","exakt":"1.15273125","herleitung":"10,02375 × 0,115 = 1,15273125"},
+          {"name":"NetVolume","art":"volumen","wert":"1.153","exakt":"1.15273125","herleitung":"10,02375 × 0,115 = 1,15273125"}
+        ]
+      },
+      {
+        "globalId": "0TeQ9Tx2uQFaIfj22XJktA",
+        "kennung": "IW-EG-4",
+        "klasse": "IfcWall",
+        "name": "Raumteiler Wohnen Nord",
+        "geschoss": "EG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"2.000","exakt":"2","herleitung":"2"},
+          {"name":"Width","art":"laenge","wert":"0.115","exakt":"0.115","herleitung":"0,115"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"5.500","exakt":"5.5","herleitung":"2 × 2,75 = 5,5"},
+          {"name":"NetSideArea","art":"flaeche","wert":"5.500","exakt":"5.5","herleitung":"2 × 2,75 = 5,5"},
+          {"name":"GrossVolume","art":"volumen","wert":"0.633","exakt":"0.6325","herleitung":"5,5 × 0,115 = 0,6325"},
+          {"name":"NetVolume","art":"volumen","wert":"0.633","exakt":"0.6325","herleitung":"5,5 × 0,115 = 0,6325"}
+        ]
+      },
+      {
+        "globalId": "3d8MQ0hIAqJYXoVDQSMyMa",
+        "kennung": "DE-OG",
+        "klasse": "IfcSlab",
+        "name": "Geschossdecke",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"}
+        ]
+      },
+      {
+        "globalId": "1j3Z3xC6C$kdJyIBOCjZkI",
+        "kennung": "AW-OG-S",
+        "klasse": "IfcWall",
+        "name": "Außenwand Süd OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"29.829","exakt":"29.82855","herleitung":"11,99 × 2,75 − F-OG-S 1,26 × 1,385 − F-OG-F 1,01 × 1,385 = 29,82855"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"10.887","exakt":"10.88742075","herleitung":"29,82855 × 0,365 = 10,88742075"}
+        ]
+      },
+      {
+        "globalId": "3q55eUXrotxrGh4dKyhMZR",
+        "kennung": "F-OG-S",
+        "klasse": "IfcWindow",
+        "name": "Fenster Schlafen",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "3fXqxLoAs3N2K62IUhCYqc",
+        "kennung": "F-OG-F",
+        "klasse": "IfcWindow",
+        "name": "Fenster Flur OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.010","exakt":"1.01","herleitung":"1,01"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.399","exakt":"1.39885","herleitung":"1,01 × 1,385 = 1,39885"}
+        ]
+      },
+      {
+        "globalId": "0uzBWfBKBnRbAkiJG5yaqQ",
+        "kennung": "AW-OG-N",
+        "klasse": "IfcWall",
+        "name": "Außenwand Nord OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"11.990","exakt":"11.99","herleitung":"11,99"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"32.973","exakt":"32.9725","herleitung":"11,99 × 2,75 = 32,9725"},
+          {"name":"NetSideArea","art":"flaeche","wert":"31.227","exakt":"31.2274","herleitung":"11,99 × 2,75 − F-OG-N 1,26 × 1,385 = 31,2274"},
+          {"name":"GrossVolume","art":"volumen","wert":"12.035","exakt":"12.0349625","herleitung":"32,9725 × 0,365 = 12,0349625"},
+          {"name":"NetVolume","art":"volumen","wert":"11.398","exakt":"11.398001","herleitung":"31,2274 × 0,365 = 11,398001"}
+        ]
+      },
+      {
+        "globalId": "2eqhvxV1_uwddz4S5zcmuq",
+        "kennung": "F-OG-N",
+        "klasse": "IfcWindow",
+        "name": "Fenster Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.260","exakt":"1.26","herleitung":"1,26"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.745","exakt":"1.7451","herleitung":"1,26 × 1,385 = 1,7451"}
+        ]
+      },
+      {
+        "globalId": "0$lKAvOC6Vx4I81VmRyb_R",
+        "kennung": "AW-OG-W",
+        "klasse": "IfcWall",
+        "name": "Außenwand West OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"19.254","exakt":"19.25365","herleitung":"7,51 × 2,75 − F-EG-W 1,01 × 1,385 = 19,25365"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.028","exakt":"7.02758225","herleitung":"19,25365 × 0,365 = 7,02758225"}
+        ]
+      },
+      {
+        "globalId": "3C178gmUgMjLVcOGcxq1j2",
+        "kennung": "F-EG-W",
+        "klasse": "IfcWindow",
+        "name": "Fenster West",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"1.010","exakt":"1.01","herleitung":"1,01"},
+          {"name":"Height","art":"laenge","wert":"1.385","exakt":"1.385","herleitung":"1,385"},
+          {"name":"Area","art":"flaeche","wert":"1.399","exakt":"1.39885","herleitung":"1,01 × 1,385 = 1,39885"}
+        ]
+      },
+      {
+        "globalId": "1pnvIZZ7N0ciiC4jdk2yPD",
+        "kennung": "AW-OG-O",
+        "klasse": "IfcWall",
+        "name": "Außenwand Ost OG",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.365","exakt":"0.365","herleitung":"0,365"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"GrossVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"},
+          {"name":"NetVolume","art":"volumen","wert":"7.538","exakt":"7.5381625","herleitung":"20,6525 × 0,365 = 7,5381625"}
+        ]
+      },
+      {
+        "globalId": "26o$BFnqMgctALKbCXMaV0",
+        "kennung": "IW-OG-1",
+        "klasse": "IfcWall",
+        "name": "Trockenbauwand Schlafen/Flur",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"7.510","exakt":"7.51","herleitung":"7,51"},
+          {"name":"Width","art":"laenge","wert":"0.100","exakt":"0.1","herleitung":"0,1"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"20.653","exakt":"20.6525","herleitung":"7,51 × 2,75 = 20,6525"},
+          {"name":"NetSideArea","art":"flaeche","wert":"18.874","exakt":"18.87365","herleitung":"7,51 × 2,75 − T-OG-1 0,885 × 2,01 = 18,87365"},
+          {"name":"GrossVolume","art":"volumen","wert":"2.065","exakt":"2.06525","herleitung":"20,6525 × 0,1 = 2,06525"},
+          {"name":"NetVolume","art":"volumen","wert":"1.887","exakt":"1.887365","herleitung":"18,87365 × 0,1 = 1,887365"}
+        ]
+      },
+      {
+        "globalId": "351hTKGtIpcIY40khlBxNy",
+        "kennung": "T-OG-1",
+        "klasse": "IfcDoor",
+        "name": "Tür Schlafen",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "3O0YMY06pSfrehNyVh185Z",
+        "kennung": "IW-OG-2",
+        "klasse": "IfcWall",
+        "name": "Trockenbauwand Flur/Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Length","art":"laenge","wert":"4.785","exakt":"4.785","herleitung":"4,785"},
+          {"name":"Width","art":"laenge","wert":"0.100","exakt":"0.1","herleitung":"0,1"},
+          {"name":"Height","art":"laenge","wert":"2.750","exakt":"2.75","herleitung":"2,75"},
+          {"name":"GrossSideArea","art":"flaeche","wert":"13.159","exakt":"13.15875","herleitung":"4,785 × 2,75 = 13,15875"},
+          {"name":"NetSideArea","art":"flaeche","wert":"11.380","exakt":"11.3799","herleitung":"4,785 × 2,75 − T-OG-2 0,885 × 2,01 = 11,3799"},
+          {"name":"GrossVolume","art":"volumen","wert":"1.316","exakt":"1.315875","herleitung":"13,15875 × 0,1 = 1,315875"},
+          {"name":"NetVolume","art":"volumen","wert":"1.138","exakt":"1.13799","herleitung":"11,3799 × 0,1 = 1,13799"}
+        ]
+      },
+      {
+        "globalId": "2o3q5cDlH4ZIwN5QA7MExe",
+        "kennung": "T-OG-2",
+        "klasse": "IfcDoor",
+        "name": "Tür Kind",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.885","exakt":"0.885","herleitung":"0,885"},
+          {"name":"Height","art":"laenge","wert":"2.010","exakt":"2.01","herleitung":"2,01"},
+          {"name":"Area","art":"flaeche","wert":"1.779","exakt":"1.77885","herleitung":"0,885 × 2,01 = 1,77885"}
+        ]
+      },
+      {
+        "globalId": "3BpVo1D5LGzpaRj7hzlcOh",
+        "kennung": "DA-OG",
+        "klasse": "IfcSlab",
+        "name": "Dachdecke",
+        "geschoss": "OG",
+        "mengen": [
+          {"name":"Width","art":"laenge","wert":"0.250","exakt":"0.25","herleitung":"0,25"},
+          {"name":"Perimeter","art":"laenge","wert":"40.460","exakt":"40.46","herleitung":"2 × (11,99 + 8,24) = 40,46"},
+          {"name":"GrossArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"NetArea","art":"flaeche","wert":"98.798","exakt":"98.7976","herleitung":"11,99 × 8,24 = 98,7976"},
+          {"name":"GrossVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"},
+          {"name":"NetVolume","art":"volumen","wert":"24.699","exakt":"24.6994","herleitung":"98,7976 × 0,25 = 24,6994"}
+        ]
+      }
+    ]
+  },
+  "zuordnungen": [
+    {
+      "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+      "oz": "02.0040",
+      "kurztext": "Sauberkeitsschicht",
+      "einheit": "m²",
+      "bauteile": [
+        {"globalId":"2eblKqOK$lqqMETwZexG5z","mengenart":"GrossArea"}
+      ],
+      "kennungen": ["PL-EG"]
+    },
+    {
+      "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+      "oz": "02.0050",
+      "kurztext": "Fundamente betonieren",
+      "einheit": "m³",
+      "bauteile": [
+        {"globalId":"3cGP7pQPH0PIyo6rcNw0ba","mengenart":"NetVolume"},
+        {"globalId":"3petWNtJ82DqVzTg6RXICh","mengenart":"NetVolume"},
+        {"globalId":"1VNEqs7ugOhg_qs3slNMvf","mengenart":"NetVolume"},
+        {"globalId":"0mI1oBt4NFWx45aZbzTdGA","mengenart":"NetVolume"}
+      ],
+      "kennungen": ["FU-S","FU-N","FU-W","FU-O"]
+    },
+    {
+      "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+      "oz": "02.0070",
+      "kurztext": "Bodenplatte herstellen",
+      "einheit": "m²",
+      "bauteile": [
+        {"globalId":"2eblKqOK$lqqMETwZexG5z","mengenart":"NetArea"}
+      ],
+      "kennungen": ["PL-EG"]
+    },
+    {
+      "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+      "oz": "02.0080",
+      "kurztext": "Sockel abdichten",
+      "einheit": "m",
+      "bauteile": [
+        {"globalId":"1l3nLN5cFF3QXQ8i5cD4LA","mengenart":"Length"},
+        {"globalId":"2ecDgrCFDpRrjrBCEyMCfD","mengenart":"Length"},
+        {"globalId":"2AhrUbBTe1LU5FWu_DQQz5","mengenart":"Length"},
+        {"globalId":"0BezMmKBelnIZUUKLEUyIJ","mengenart":"Length"}
+      ],
+      "kennungen": ["AW-EG-S","AW-EG-N","AW-EG-W","AW-EG-O"]
+    },
+    {
+      "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+      "oz": "03.0010",
+      "kurztext": "Innenwände mauern",
+      "einheit": "m²",
+      "bauteile": [
+        {"globalId":"31nogOTPLaujT$VUogaKgY","mengenart":"NetSideArea"},
+        {"globalId":"0hF$HlLZy4_kLE0v2Nc5nl","mengenart":"NetSideArea"},
+        {"globalId":"0pvziGfz13dL7P$C5SooCO","mengenart":"NetSideArea"}
+      ],
+      "kennungen": ["IW-EG-1","IW-EG-2","IW-EG-3"]
+    },
+    {
+      "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+      "oz": "03.0020",
+      "kurztext": "Innenputz",
+      "einheit": "m²",
+      "bauteile": [
+        {"globalId":"1l3nLN5cFF3QXQ8i5cD4LA","mengenart":"NetSideArea"},
+        {"globalId":"2ecDgrCFDpRrjrBCEyMCfD","mengenart":"NetSideArea"},
+        {"globalId":"2AhrUbBTe1LU5FWu_DQQz5","mengenart":"NetSideArea"},
+        {"globalId":"0BezMmKBelnIZUUKLEUyIJ","mengenart":"NetSideArea"}
+      ],
+      "kennungen": ["AW-EG-S","AW-EG-N","AW-EG-W","AW-EG-O"]
+    },
+    {
+      "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+      "oz": "03.0050",
+      "kurztext": "Türzargen einbauen",
+      "einheit": "St",
+      "bauteile": [
+        {"globalId":"0SMoM2QN3kYPlBLF3ECNPo","mengenart":"Stueck"},
+        {"globalId":"351hTKGtIpcIY40khlBxNy","mengenart":"Stueck"},
+        {"globalId":"2o3q5cDlH4ZIwN5QA7MExe","mengenart":"Stueck"}
+      ],
+      "kennungen": ["T-EG-1","T-OG-1","T-OG-2"]
+    }
+  ],
+  "kern": {
+    "torweg": {
+      "beschreibung": "E2E des Tors X1-Kern: die gemauerten Innenwände des EG an 03.0010 (NetSideArea), sonst keine.",
+      "positionIds": ["019b76e9-ea55-79cd-926f-7a3b3917032e"],
+      "sollwerte": {
+        "positionen": {
+          "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": {"gp":"1850.00","inSumme":true},
+          "019b76e9-ea43-79e5-a71b-20f7abf907b0": {"gp":"644.43","inSumme":true},
+          "019b76e9-ea44-7a84-a6a6-36868f616703": {"gp":"862.00","inSumme":true},
+          "019b76e9-ea45-74f6-8e75-27856918c88c": {"gp":"586.80","inSumme":false},
+          "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200": {"gp":"1169.97","inSumme":true},
+          "019b76e9-ea47-7e66-80d3-97961e44c237": {"gp":"977.59","inSumme":true},
+          "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": {"gp":"755.51","inSumme":true},
+          "019b76e9-ea4a-78de-9cba-20fdd5149cc1": {"gp":"3129.50","inSumme":true},
+          "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"735.00","inSumme":true},
+          "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1102.08","inSumme":true},
+          "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"6544.88","inSumme":true},
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"556.31","inSumme":true},
+          "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5494.00","inSumme":true},
+          "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5059.20","inSumme":true},
+          "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5880.00","inSumme":false},
+          "019b76e9-ea52-79cb-a520-fb024fa6495b": {"gp":"787.92","inSumme":true},
+          "019b76e9-ea53-7f9f-bacb-47d207700e3e": {"gp":"1058.02","inSumme":true},
+          "019b76e9-ea55-79cd-926f-7a3b3917032e": {"gp":"1609.87","inSumme":true},
+          "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc": {"gp":"8224.13","inSumme":true},
+          "019b76e9-ea57-75e5-a1d0-370693d7b6c3": {"gp":"1923.85","inSumme":true},
+          "019b76e9-ea58-7f8a-870d-926d78ec765a": {"gp":"2183.47","inSumme":true},
+          "019b76e9-ea59-71fa-92ed-4ea48a6b5a62": {"gp":"1210.50","inSumme":true},
+          "019b76e9-ea5a-752f-8a06-76e4507c0c26": {"gp":"525.25","inSumme":true},
+          "019b76e9-ea5b-73f9-9221-62a34eba45ec": {"gp":"133.04","inSumme":true},
+          "019b76e9-ea5c-792b-9c81-2db5b428a9bc": {"gp":"184.44","inSumme":true}
+        },
+        "titel": {
+          "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5503.99"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"25222.42"},
+          "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"15994.55"}
+        },
+        "summen": {"netto":"46720.96","nachlass":"934.42","nettoNachNachlass":"45786.54","mwst":"8699.44","brutto":"54485.98"},
+        "nichtAngeboten": [],
+        "zuschlaege": {
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"6544.88","betrag":"556.31"}
+        },
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"5880.00"},
+          "titel": {
+            "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"0.00"},
+            "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5880.00"},
+            "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
+      }
+    },
+    "vordersaetze": [
+      {
+        "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+        "oz": "02.0040",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"98,798","variable":null}
+        ],
+        "zeilenergebnisse": ["98.798"],
+        "menge": "98.798",
+        "herleitung": ["PL-EG Bodenplatte: GrossArea = 11,99 × 8,24 = 98,7976 → 98,798"]
+      },
+      {
+        "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+        "oz": "02.0050",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"5,868","variable":null},
+          {"zeile":"2","formel":"91","ausdruck":"5,868","variable":null},
+          {"zeile":"3","formel":"91","ausdruck":"3,492","variable":null},
+          {"zeile":"4","formel":"91","ausdruck":"3,492","variable":null}
+        ],
+        "zeilenergebnisse": ["5.868","5.868","3.492","3.492"],
+        "menge": "18.720",
+        "herleitung": ["FU-S Streifenfundament Süd: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-N Streifenfundament Nord: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-W Streifenfundament West: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492","FU-O Streifenfundament Ost: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492"]
+      },
+      {
+        "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+        "oz": "02.0070",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"98,638","variable":null}
+        ],
+        "zeilenergebnisse": ["98.638"],
+        "menge": "98.638",
+        "herleitung": ["PL-EG Bodenplatte: NetArea = 11,99 × 8,24 − AS-PL-EG 0,4 × 0,4 = 98,6376 → 98,638"]
+      },
+      {
+        "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+        "oz": "02.0080",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"11,990","variable":null},
+          {"zeile":"2","formel":"91","ausdruck":"11,990","variable":null},
+          {"zeile":"3","formel":"91","ausdruck":"7,510","variable":null},
+          {"zeile":"4","formel":"91","ausdruck":"7,510","variable":null}
+        ],
+        "zeilenergebnisse": ["11.990","11.990","7.510","7.510"],
+        "menge": "39.000",
+        "herleitung": ["AW-EG-S Außenwand Süd EG: Length = 11,99 → 11,990","AW-EG-N Außenwand Nord EG: Length = 11,99 → 11,990","AW-EG-W Außenwand West EG: Length = 7,51 → 7,510","AW-EG-O Außenwand Ost EG: Length = 7,51 → 7,510"]
+      },
+      {
+        "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+        "oz": "03.0010",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"18,874","variable":null},
+          {"zeile":"2","formel":"91","ausdruck":"8,649","variable":null},
+          {"zeile":"3","formel":"91","ausdruck":"5,500","variable":null}
+        ],
+        "zeilenergebnisse": ["18.874","8.649","5.500"],
+        "menge": "33.023",
+        "herleitung": ["IW-EG-1 Innenwand Wohnen/Flur: NetSideArea = 7,51 × 2,75 − T-EG-1 0,885 × 2,01 = 18,87365 → 18,874","IW-EG-2 Innenwand Flur/Küche: NetSideArea = 3,145 × 2,75 = 8,64875 → 8,649","IW-EG-3 Raumteiler Wohnen: NetSideArea = 2 × 2,75 = 5,5 → 5,500"]
+      },
+      {
+        "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+        "oz": "03.0020",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"28,804","variable":null},
+          {"zeile":"2","formel":"91","ausdruck":"31,227","variable":null},
+          {"zeile":"3","formel":"91","ausdruck":"19,254","variable":null},
+          {"zeile":"4","formel":"91","ausdruck":"20,653","variable":null}
+        ],
+        "zeilenergebnisse": ["28.804","31.227","19.254","20.653"],
+        "menge": "99.938",
+        "herleitung": ["AW-EG-S Außenwand Süd EG: NetSideArea = 11,99 × 2,75 − F-EG-S 1,26 × 1,385 − T-EG-H 1,135 × 2,135 = 28,804175 → 28,804","AW-EG-N Außenwand Nord EG: NetSideArea = 11,99 × 2,75 − F-EG-N 1,26 × 1,385 = 31,2274 → 31,227","AW-EG-W Außenwand West EG: NetSideArea = 7,51 × 2,75 − F-EG-W 1,01 × 1,385 = 19,25365 → 19,254","AW-EG-O Außenwand Ost EG: NetSideArea = 7,51 × 2,75 = 20,6525 → 20,653"]
+      },
+      {
+        "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+        "oz": "03.0050",
+        "mengenansatz": [
+          {"zeile":"1","formel":"91","ausdruck":"1,000","variable":null},
+          {"zeile":"2","formel":"91","ausdruck":"1,000","variable":null},
+          {"zeile":"3","formel":"91","ausdruck":"1,000","variable":null}
+        ],
+        "zeilenergebnisse": ["1.000","1.000","1.000"],
+        "menge": "3.000",
+        "herleitung": ["T-EG-1 Tür Wohnen: Stueck = 1","T-OG-1 Tür Schlafen: Stueck = 1","T-OG-2 Tür Kind: Stueck = 1"]
+      }
+    ],
+    "sollwerte": {
+      "positionen": {
+        "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": {"gp":"1850.00","inSumme":true},
+        "019b76e9-ea43-79e5-a71b-20f7abf907b0": {"gp":"644.43","inSumme":true},
+        "019b76e9-ea44-7a84-a6a6-36868f616703": {"gp":"862.00","inSumme":true},
+        "019b76e9-ea45-74f6-8e75-27856918c88c": {"gp":"586.80","inSumme":false},
+        "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200": {"gp":"1169.97","inSumme":true},
+        "019b76e9-ea47-7e66-80d3-97961e44c237": {"gp":"977.59","inSumme":true},
+        "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": {"gp":"755.51","inSumme":true},
+        "019b76e9-ea4a-78de-9cba-20fdd5149cc1": {"gp":"3129.50","inSumme":true},
+        "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"735.00","inSumme":true},
+        "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1134.20","inSumme":true},
+        "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"3161.81","inSumme":true},
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"268.75","inSumme":true},
+        "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5494.00","inSumme":true},
+        "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5198.22","inSumme":true},
+        "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5880.00","inSumme":false},
+        "019b76e9-ea52-79cb-a520-fb024fa6495b": {"gp":"731.64","inSumme":true},
+        "019b76e9-ea53-7f9f-bacb-47d207700e3e": {"gp":"1058.02","inSumme":true},
+        "019b76e9-ea55-79cd-926f-7a3b3917032e": {"gp":"1609.87","inSumme":true},
+        "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc": {"gp":"1934.80","inSumme":true},
+        "019b76e9-ea57-75e5-a1d0-370693d7b6c3": {"gp":"1923.85","inSumme":true},
+        "019b76e9-ea58-7f8a-870d-926d78ec765a": {"gp":"2183.47","inSumme":true},
+        "019b76e9-ea59-71fa-92ed-4ea48a6b5a62": {"gp":"403.50","inSumme":true},
+        "019b76e9-ea5a-752f-8a06-76e4507c0c26": {"gp":"525.25","inSumme":true},
+        "019b76e9-ea5b-73f9-9221-62a34eba45ec": {"gp":"133.04","inSumme":true},
+        "019b76e9-ea5c-792b-9c81-2db5b428a9bc": {"gp":"184.44","inSumme":true}
+      },
+      "titel": {
+        "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5503.99"},
+        "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"21666.65"},
+        "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"8898.22"}
+      },
+      "summen": {"netto":"36068.86","nachlass":"721.38","nettoNachNachlass":"35347.48","mwst":"6716.02","brutto":"42063.50"},
+      "nichtAngeboten": [],
+      "zuschlaege": {
+        "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"3161.81","betrag":"268.75"}
+      },
+      "ausweise": {
+        "gesamt": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"5880.00"},
+        "titel": {
+          "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"0.00"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5880.00"},
+          "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+        }
+      }
+    }
+  },
+  "erweitert": {
+    "din277": {
+      "regel": "BGF = Σ GrossFloorArea und BRI = Σ GrossVolume der Geschosse (Qto_BuildingStoreyBaseQuantities), NRF = Σ NetFloorArea der Räume (Qto_SpaceBaseQuantities); jede Menge wie gelesen auf 3 Stellen, dann summiert (D-99.7).",
+      "geschosse": [
+        {"globalId":"33rPLj34NY7lWcWpYNxlX9","name":"EG","langname":"Erdgeschoss","bgf":"98.798","bri":"321.092","herleitung":"BGF Außenmaß 11,99 × 8,24 = 98,7976 → 98,798; BRI 98,7976 × 3,25 = 321,0922 → 321,092"},
+        {"globalId":"34wxv75rHyS6qJyJifg0fY","name":"OG","langname":"Obergeschoss","bgf":"98.798","bri":"296.393","herleitung":"BGF Außenmaß 11,99 × 8,24 = 98,7976 → 98,798; BRI 98,7976 × 3 = 296,3928 → 296,393"}
+      ],
+      "raeume": [
+        {"globalId":"131ZtV5anR2P_GkzkHjTGy","name":"E.01","langname":"Wohnen","geschoss":"EG","nrf":"47.646","herleitung":"6,375 × 7,51 − IW-EG-3 2 × 0,115 = 47,64625 → 47,646"},
+        {"globalId":"207RKyWu1nlFpjGp0F3Raa","name":"E.02","langname":"Flur","geschoss":"EG","nrf":"17.339","herleitung":"4,77 × 3,635 = 17,33895 → 17,339"},
+        {"globalId":"010H4d$oxR2923T_GYWPI8","name":"E.03","langname":"Küche","geschoss":"EG","nrf":"17.935","herleitung":"4,77 × 3,76 = 17,9352 → 17,935"},
+        {"globalId":"39_iBpDtBKS8Y4CCcX77aN","name":"O.01","langname":"Schlafen","geschoss":"OG","nrf":"47.876","herleitung":"6,375 × 7,51 = 47,87625 → 47,876"},
+        {"globalId":"1cB12yNS2DtDFVZqpS6CwQ","name":"O.02","langname":"Flur","geschoss":"OG","nrf":"17.393","herleitung":"4,785 × 3,635 = 17,393475 → 17,393"},
+        {"globalId":"1gZmBqqSRaMz_sk2iuwG7u","name":"O.03","langname":"Kind","geschoss":"OG","nrf":"18.063","herleitung":"4,785 × 3,775 = 18,063375 → 18,063"}
+      ],
+      "summen": {"bgf":"197.596","bri":"617.485","nrf":"166.252"},
+      "herleitung": {"bgf":"98,798 + 98,798 = 197,596","bri":"321,092 + 296,393 = 617,485","nrf":"47,646 + 17,339 + 17,935 + 47,876 + 17,393 + 18,063 = 166,252"}
+    },
+    "kostenschaetzung": {
+      "stufe": "kostenschaetzung",
+      "name": "Kostenschätzung aus dem Modell (erfunden)",
+      "bezugsgroesse": {"art":"BGF","wert":"197.596","einheit":"m²"},
+      "kennwerte": [
+        {"nummer":"320","kennwert":"148.30"},
+        {"nummer":"330","kennwert":"402.65"},
+        {"nummer":"340","kennwert":"131.45"},
+        {"nummer":"350","kennwert":"189.20"},
+        {"nummer":"360","kennwert":"97.85"},
+        {"nummer":"400","kennwert":"418.75"}
+      ],
+      "eintraege": [
+        {"nummer":"320","betrag":"29303.49","bemerkung":"Modell: BGF 197,596 m² × 148,30 €/m² (Kennwert erfunden) = 29.303,4868 → 29.303,49"},
+        {"nummer":"330","betrag":"79562.03","bemerkung":"Modell: BGF 197,596 m² × 402,65 €/m² (Kennwert erfunden) = 79.562,0294 → 79.562,03"},
+        {"nummer":"340","betrag":"25973.99","bemerkung":"Modell: BGF 197,596 m² × 131,45 €/m² (Kennwert erfunden) = 25.973,9942 → 25.973,99"},
+        {"nummer":"350","betrag":"37385.16","bemerkung":"Modell: BGF 197,596 m² × 189,20 €/m² (Kennwert erfunden) = 37.385,1632 → 37.385,16"},
+        {"nummer":"360","betrag":"19334.77","bemerkung":"Modell: BGF 197,596 m² × 97,85 €/m² (Kennwert erfunden) = 19.334,7686 → 19.334,77"},
+        {"nummer":"400","betrag":"82743.33","bemerkung":"Modell: BGF 197,596 m² × 418,75 €/m² (Kennwert erfunden) = 82.743,325 → 82.743,33"}
+      ],
+      "gesamt": "274302.77"
+    },
+    "aufmassAusAuswahl": {
+      "modell": "v1",
+      "auswahl": {"art":"geschoss","globalId":"33rPLj34NY7lWcWpYNxlX9","name":"EG"},
+      "positionen": [
+        {
+          "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+          "oz": "02.0040",
+          "bauteile": ["2eblKqOK$lqqMETwZexG5z"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"98,798","variable":null}
+          ],
+          "zeilenergebnisse": ["98.798"],
+          "menge": "98.798",
+          "herleitung": ["PL-EG Bodenplatte: GrossArea = 11,99 × 8,24 = 98,7976 → 98,798"]
+        },
+        {
+          "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+          "oz": "02.0050",
+          "bauteile": ["3cGP7pQPH0PIyo6rcNw0ba","3petWNtJ82DqVzTg6RXICh","1VNEqs7ugOhg_qs3slNMvf","0mI1oBt4NFWx45aZbzTdGA"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"5,868","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"5,868","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"3,492","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"3,492","variable":null}
+          ],
+          "zeilenergebnisse": ["5.868","5.868","3.492","3.492"],
+          "menge": "18.720",
+          "herleitung": ["FU-S Streifenfundament Süd: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-N Streifenfundament Nord: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-W Streifenfundament West: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492","FU-O Streifenfundament Ost: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492"]
+        },
+        {
+          "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+          "oz": "02.0070",
+          "bauteile": ["2eblKqOK$lqqMETwZexG5z"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"98,638","variable":null}
+          ],
+          "zeilenergebnisse": ["98.638"],
+          "menge": "98.638",
+          "herleitung": ["PL-EG Bodenplatte: NetArea = 11,99 × 8,24 − AS-PL-EG 0,4 × 0,4 = 98,6376 → 98,638"]
+        },
+        {
+          "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+          "oz": "02.0080",
+          "bauteile": ["1l3nLN5cFF3QXQ8i5cD4LA","2ecDgrCFDpRrjrBCEyMCfD","2AhrUbBTe1LU5FWu_DQQz5","0BezMmKBelnIZUUKLEUyIJ"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"11,990","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"11,990","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"7,510","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"7,510","variable":null}
+          ],
+          "zeilenergebnisse": ["11.990","11.990","7.510","7.510"],
+          "menge": "39.000",
+          "herleitung": ["AW-EG-S Außenwand Süd EG: Length = 11,99 → 11,990","AW-EG-N Außenwand Nord EG: Length = 11,99 → 11,990","AW-EG-W Außenwand West EG: Length = 7,51 → 7,510","AW-EG-O Außenwand Ost EG: Length = 7,51 → 7,510"]
+        },
+        {
+          "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+          "oz": "03.0010",
+          "bauteile": ["31nogOTPLaujT$VUogaKgY","0hF$HlLZy4_kLE0v2Nc5nl","0pvziGfz13dL7P$C5SooCO"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"18,874","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"8,649","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"5,500","variable":null}
+          ],
+          "zeilenergebnisse": ["18.874","8.649","5.500"],
+          "menge": "33.023",
+          "herleitung": ["IW-EG-1 Innenwand Wohnen/Flur: NetSideArea = 7,51 × 2,75 − T-EG-1 0,885 × 2,01 = 18,87365 → 18,874","IW-EG-2 Innenwand Flur/Küche: NetSideArea = 3,145 × 2,75 = 8,64875 → 8,649","IW-EG-3 Raumteiler Wohnen: NetSideArea = 2 × 2,75 = 5,5 → 5,500"]
+        },
+        {
+          "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+          "oz": "03.0020",
+          "bauteile": ["1l3nLN5cFF3QXQ8i5cD4LA","2ecDgrCFDpRrjrBCEyMCfD","2AhrUbBTe1LU5FWu_DQQz5","0BezMmKBelnIZUUKLEUyIJ"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"28,804","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"31,227","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"19,254","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"20,653","variable":null}
+          ],
+          "zeilenergebnisse": ["28.804","31.227","19.254","20.653"],
+          "menge": "99.938",
+          "herleitung": ["AW-EG-S Außenwand Süd EG: NetSideArea = 11,99 × 2,75 − F-EG-S 1,26 × 1,385 − T-EG-H 1,135 × 2,135 = 28,804175 → 28,804","AW-EG-N Außenwand Nord EG: NetSideArea = 11,99 × 2,75 − F-EG-N 1,26 × 1,385 = 31,2274 → 31,227","AW-EG-W Außenwand West EG: NetSideArea = 7,51 × 2,75 − F-EG-W 1,01 × 1,385 = 19,25365 → 19,254","AW-EG-O Außenwand Ost EG: NetSideArea = 7,51 × 2,75 = 20,6525 → 20,653"]
+        },
+        {
+          "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+          "oz": "03.0050",
+          "bauteile": ["0SMoM2QN3kYPlBLF3ECNPo"],
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"1,000","variable":null}
+          ],
+          "zeilenergebnisse": ["1.000"],
+          "menge": "1.000",
+          "herleitung": ["T-EG-1 Tür Wohnen: Stueck = 1"]
+        }
+      ]
+    },
+    "vergleich": {
+      "vorher": "v1",
+      "nachher": "v2",
+      "hinzugefuegt": [
+        {"globalId":"0TeQ9Tx2uQFaIfj22XJktA","kennung":"IW-EG-4","klasse":"IfcWall","name":"Raumteiler Wohnen Nord","geschoss":"EG"}
+      ],
+      "entfernt": [
+        {"globalId":"0pvziGfz13dL7P$C5SooCO","kennung":"IW-EG-3","klasse":"IfcWall","name":"Raumteiler Wohnen","geschoss":"EG"}
+      ],
+      "geaendert": [
+        {
+          "globalId": "2eblKqOK$lqqMETwZexG5z",
+          "kennung": "PL-EG",
+          "felder": ["name"],
+          "name": {"vorher":"Bodenplatte","nachher":"Bodenplatte WU-Beton"}
+        },
+        {
+          "globalId": "2AhrUbBTe1LU5FWu_DQQz5",
+          "kennung": "AW-EG-W",
+          "felder": ["mengen"],
+          "mengen": [
+            {"name":"NetSideArea","vorher":"19.254","nachher":"20.653"},
+            {"name":"NetVolume","vorher":"7.028","nachher":"7.538"}
+          ]
+        },
+        {
+          "globalId": "3C178gmUgMjLVcOGcxq1j2",
+          "kennung": "F-EG-W",
+          "felder": ["strukturknoten"],
+          "strukturknoten": {"vorher":"EG","nachher":"OG"}
+        },
+        {
+          "globalId": "0hF$HlLZy4_kLE0v2Nc5nl",
+          "kennung": "IW-EG-2",
+          "felder": ["mengen"],
+          "mengen": [
+            {"name":"Length","vorher":"3.145","nachher":"3.645"},
+            {"name":"GrossSideArea","vorher":"8.649","nachher":"10.024"},
+            {"name":"NetSideArea","vorher":"8.649","nachher":"10.024"},
+            {"name":"GrossVolume","vorher":"0.995","nachher":"1.153"},
+            {"name":"NetVolume","vorher":"0.995","nachher":"1.153"}
+          ]
+        },
+        {
+          "globalId": "0$lKAvOC6Vx4I81VmRyb_R",
+          "kennung": "AW-OG-W",
+          "felder": ["mengen"],
+          "mengen": [
+            {"name":"NetSideArea","vorher":"20.653","nachher":"19.254"},
+            {"name":"NetVolume","vorher":"7.538","nachher":"7.028"}
+          ]
+        }
+      ]
+    },
+    "betroffenePositionen": [
+      {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","oz":"03.0010","vorher":"33.023","nachher":"28.898","differenz":"-4.125"},
+      {"positionId":"019b76e9-ea56-7c0b-9ccd-9f1ae20696fc","oz":"03.0020","vorher":"99.938","nachher":"101.337","differenz":"1.399"}
+    ],
+    "mengenAktualisieren": {
+      "modell": "v2",
+      "vordersaetze": [
+        {
+          "positionId": "019b76e9-ea4c-76c8-85b1-626b44c884e5",
+          "oz": "02.0040",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"98,798","variable":null}
+          ],
+          "zeilenergebnisse": ["98.798"],
+          "menge": "98.798",
+          "herleitung": ["PL-EG Bodenplatte WU-Beton: GrossArea = 11,99 × 8,24 = 98,7976 → 98,798"]
+        },
+        {
+          "positionId": "019b76e9-ea4d-711c-ab51-51f1cef5e0df",
+          "oz": "02.0050",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"5,868","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"5,868","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"3,492","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"3,492","variable":null}
+          ],
+          "zeilenergebnisse": ["5.868","5.868","3.492","3.492"],
+          "menge": "18.720",
+          "herleitung": ["FU-S Streifenfundament Süd: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-N Streifenfundament Nord: NetVolume = 12,225 × 0,6 × 0,8 = 5,868 → 5,868","FU-W Streifenfundament West: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492","FU-O Streifenfundament Ost: NetVolume = 7,275 × 0,6 × 0,8 = 3,492 → 3,492"]
+        },
+        {
+          "positionId": "019b76e9-ea50-7801-8694-72bbf397eaf3",
+          "oz": "02.0070",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"98,638","variable":null}
+          ],
+          "zeilenergebnisse": ["98.638"],
+          "menge": "98.638",
+          "herleitung": ["PL-EG Bodenplatte WU-Beton: NetArea = 11,99 × 8,24 − AS-PL-EG 0,4 × 0,4 = 98,6376 → 98,638"]
+        },
+        {
+          "positionId": "019b76e9-ea52-79cb-a520-fb024fa6495b",
+          "oz": "02.0080",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"11,990","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"11,990","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"7,510","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"7,510","variable":null}
+          ],
+          "zeilenergebnisse": ["11.990","11.990","7.510","7.510"],
+          "menge": "39.000",
+          "herleitung": ["AW-EG-S Außenwand Süd EG: Length = 11,99 → 11,990","AW-EG-N Außenwand Nord EG: Length = 11,99 → 11,990","AW-EG-W Außenwand West EG: Length = 7,51 → 7,510","AW-EG-O Außenwand Ost EG: Length = 7,51 → 7,510"]
+        },
+        {
+          "positionId": "019b76e9-ea55-79cd-926f-7a3b3917032e",
+          "oz": "03.0010",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"18,874","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"10,024","variable":null}
+          ],
+          "zeilenergebnisse": ["18.874","10.024"],
+          "menge": "28.898",
+          "herleitung": ["IW-EG-1 Innenwand Wohnen/Flur: NetSideArea = 7,51 × 2,75 − T-EG-1 0,885 × 2,01 = 18,87365 → 18,874","IW-EG-2 Innenwand Flur/Küche: NetSideArea = 3,645 × 2,75 = 10,02375 → 10,024"]
+        },
+        {
+          "positionId": "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc",
+          "oz": "03.0020",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"28,804","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"31,227","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"20,653","variable":null},
+            {"zeile":"4","formel":"91","ausdruck":"20,653","variable":null}
+          ],
+          "zeilenergebnisse": ["28.804","31.227","20.653","20.653"],
+          "menge": "101.337",
+          "herleitung": ["AW-EG-S Außenwand Süd EG: NetSideArea = 11,99 × 2,75 − F-EG-S 1,26 × 1,385 − T-EG-H 1,135 × 2,135 = 28,804175 → 28,804","AW-EG-N Außenwand Nord EG: NetSideArea = 11,99 × 2,75 − F-EG-N 1,26 × 1,385 = 31,2274 → 31,227","AW-EG-W Außenwand West EG: NetSideArea = 7,51 × 2,75 = 20,6525 → 20,653","AW-EG-O Außenwand Ost EG: NetSideArea = 7,51 × 2,75 = 20,6525 → 20,653"]
+        },
+        {
+          "positionId": "019b76e9-ea59-71fa-92ed-4ea48a6b5a62",
+          "oz": "03.0050",
+          "mengenansatz": [
+            {"zeile":"1","formel":"91","ausdruck":"1,000","variable":null},
+            {"zeile":"2","formel":"91","ausdruck":"1,000","variable":null},
+            {"zeile":"3","formel":"91","ausdruck":"1,000","variable":null}
+          ],
+          "zeilenergebnisse": ["1.000","1.000","1.000"],
+          "menge": "3.000",
+          "herleitung": ["T-EG-1 Tür Wohnen: Stueck = 1","T-OG-1 Tür Schlafen: Stueck = 1","T-OG-2 Tür Kind: Stueck = 1"]
+        }
+      ],
+      "befunde": [
+        {"positionId":"019b76e9-ea55-79cd-926f-7a3b3917032e","oz":"03.0010","art":"bauteil-fehlt","globalId":"0pvziGfz13dL7P$C5SooCO","kennung":"IW-EG-3"}
+      ],
+      "sollwerte": {
+        "positionen": {
+          "019b76e9-ea42-7a6c-9180-36c38b8c3b9e": {"gp":"1850.00","inSumme":true},
+          "019b76e9-ea43-79e5-a71b-20f7abf907b0": {"gp":"644.43","inSumme":true},
+          "019b76e9-ea44-7a84-a6a6-36868f616703": {"gp":"862.00","inSumme":true},
+          "019b76e9-ea45-74f6-8e75-27856918c88c": {"gp":"586.80","inSumme":false},
+          "019b76e9-ea46-7fab-ab9a-3aa7d0e2b200": {"gp":"1169.97","inSumme":true},
+          "019b76e9-ea47-7e66-80d3-97961e44c237": {"gp":"977.59","inSumme":true},
+          "019b76e9-ea49-7ea5-9807-78cd9fa2e55e": {"gp":"755.51","inSumme":true},
+          "019b76e9-ea4a-78de-9cba-20fdd5149cc1": {"gp":"3129.50","inSumme":true},
+          "019b76e9-ea4b-7446-af25-e138598df2b7": {"gp":"735.00","inSumme":true},
+          "019b76e9-ea4c-76c8-85b1-626b44c884e5": {"gp":"1134.20","inSumme":true},
+          "019b76e9-ea4d-711c-ab51-51f1cef5e0df": {"gp":"3161.81","inSumme":true},
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"gp":"268.75","inSumme":true},
+          "019b76e9-ea4f-70a0-a8ef-5392c22227fc": {"gp":"5494.00","inSumme":true},
+          "019b76e9-ea50-7801-8694-72bbf397eaf3": {"gp":"5198.22","inSumme":true},
+          "019b76e9-ea51-78b8-8588-e3dc3a1f7da6": {"gp":"5880.00","inSumme":false},
+          "019b76e9-ea52-79cb-a520-fb024fa6495b": {"gp":"731.64","inSumme":true},
+          "019b76e9-ea53-7f9f-bacb-47d207700e3e": {"gp":"1058.02","inSumme":true},
+          "019b76e9-ea55-79cd-926f-7a3b3917032e": {"gp":"1408.78","inSumme":true},
+          "019b76e9-ea56-7c0b-9ccd-9f1ae20696fc": {"gp":"1961.88","inSumme":true},
+          "019b76e9-ea57-75e5-a1d0-370693d7b6c3": {"gp":"1923.85","inSumme":true},
+          "019b76e9-ea58-7f8a-870d-926d78ec765a": {"gp":"2183.47","inSumme":true},
+          "019b76e9-ea59-71fa-92ed-4ea48a6b5a62": {"gp":"403.50","inSumme":true},
+          "019b76e9-ea5a-752f-8a06-76e4507c0c26": {"gp":"525.25","inSumme":true},
+          "019b76e9-ea5b-73f9-9221-62a34eba45ec": {"gp":"133.04","inSumme":true},
+          "019b76e9-ea5c-792b-9c81-2db5b428a9bc": {"gp":"184.44","inSumme":true}
+        },
+        "titel": {
+          "019b76e9-ea41-7576-8947-bf4601b85123": {"summe":"5503.99"},
+          "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summe":"21666.65"},
+          "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summe":"8724.21"}
+        },
+        "summen": {"netto":"35894.85","nachlass":"717.90","nettoNachNachlass":"35176.95","mwst":"6683.62","brutto":"41860.57"},
+        "nichtAngeboten": [],
+        "zuschlaege": {
+          "019b76e9-ea4e-72e6-aa2e-a1ad93edf894": {"basis":"3161.81","betrag":"268.75"}
+        },
+        "ausweise": {
+          "gesamt": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"5880.00"},
+          "titel": {
+            "019b76e9-ea41-7576-8947-bf4601b85123": {"summeBedarfOhneGesamtbetrag":"586.80","summeWahl":"0.00"},
+            "019b76e9-ea48-7e5f-8113-92b1ee0bbcbf": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"5880.00"},
+            "019b76e9-ea54-797f-b0fa-81f37b92bae6": {"summeBedarfOhneGesamtbetrag":"0.00","summeWahl":"0.00"}
+          }
+        }
+      }
+    }
+  }
+}

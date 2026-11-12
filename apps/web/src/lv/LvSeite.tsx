@@ -30,6 +30,7 @@ import { VorlageUebernehmen } from '../vorlage/VorlageUebernehmen'; // Ticket 90
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { useLvKosten } from '../kosten/useLvKosten'; // Ticket 89
+import { kgSpalteImLv } from '../kosten/kgSpalte'; // Ticket 93
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
 import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
@@ -459,6 +460,7 @@ function LvBearbeiten({
             ids={u.ids}
             beschriftung={texte.seite.grid}
             hinweise={hinweise}
+            {...kgSpalteImLv} // Ticket 93: Spalte „KG“
             {...(sprungziel ? { sprungziel } : {})}
             onBefehl={(b) => {
               befehlMitFrage([b], () => void senden(b)); // Ticket 65

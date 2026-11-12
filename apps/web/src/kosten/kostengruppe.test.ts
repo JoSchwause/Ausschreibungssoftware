@@ -2,7 +2,13 @@
 import type { Betrag, Kostengruppennummer, PositionId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import type { Knoten } from '@tethys/vertrag';
-import { inGliederung, kgEingabe, kostengruppenBefehle, positionenInReihenfolge } from './kostengruppe';
+import {
+  inGliederung,
+  kgEingabe,
+  kgZelleLesen,
+  kostengruppenBefehle,
+  positionenInReihenfolge,
+} from './kostengruppe';
 
 const kg = (s: string): Kostengruppennummer => s as Kostengruppennummer;
 const pid = (s: string): PositionId => s as PositionId;
@@ -23,6 +29,21 @@ describe('kgEingabe', () => {
       const r = kgEingabe(s);
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.fehler).toMatch(/drei Ziffern/);
+    }
+  });
+});
+
+describe('kgZelleLesen (Spalte „KG“ im Grid, Ticket 93)', () => {
+  it('liest drei Ziffern über `kgLesen` aus `kosten`', () => {
+    expect(kgZelleLesen('331')).toEqual({ ok: true, wert: '331' });
+  });
+
+  it('eine formwidrige Nummer ist ein Zellfehler mit derselben Meldung wie im Dialog', () => {
+    for (const s of ['33', '3311', '033', 'KG 3']) {
+      expect(kgZelleLesen(s)).toEqual({
+        ok: false,
+        fehler: 'Keine Kostengruppennummer. Erwartet werden drei Ziffern, die erste nicht 0 (z. B. 330).',
+      });
     }
   });
 });

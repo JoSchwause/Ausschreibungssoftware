@@ -19,6 +19,7 @@ import type { ReactElement } from 'react';
 import { AbrechnungVerweise } from '../abrechnung/Verweis'; // Ticket 87
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
+import { useKgSpalteAmAuftrag } from '../kosten/kgSpalte'; // Ticket 93
 import { lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
@@ -144,6 +145,7 @@ function Ansicht({
   const sprungNr = useRef(0);
   const [panelOffen, setPanelOffen] = useState(true);
   const panel = useRef<PruefPanelSteuerung>(null);
+  const kgSpalte = useKgSpalteAmAuftrag(auftrag, neuLaden); // Ticket 93: Spalte „KG“, sonst schreibgeschützt
 
   // Prüfung wie auf der LV-Seite, im Leerlauf (U5); nur lesend: Sprünge gehen zur Zeile, nie in einen Dialog.
   const [befunde, setBefunde] = useState<readonly Pruefbefund[] | null>(null);
@@ -245,6 +247,7 @@ function Ansicht({
             zahlen={gridZahlen}
             beschriftung={t.grid}
             schreibgeschuetzt
+            {...kgSpalte} // Ticket 93
             {...(sprungziel ? { sprungziel } : {})}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
