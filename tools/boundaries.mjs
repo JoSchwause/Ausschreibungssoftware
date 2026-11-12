@@ -33,6 +33,8 @@ export const ERLAUBT = {
   'packages/ausgabe': FACH,
   // XRechnung lesen (Ticket 76, D-32): ein Format-Rand wie gaeb, aber ohne Kern und ohne den GAEB-Leser.
   'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
+  // Terminrechnung des Bauzeitenplans (Ticket 102, D-57): reiner Rechenkern, nur Typen und Dezimalarithmetik, kein Kern.
+  'packages/bauzeit': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -48,6 +50,7 @@ export const ERLAUBT = {
     'packages/kosten',
     'packages/ausgabe',
     'packages/erechnung',
+    'packages/bauzeit',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],
