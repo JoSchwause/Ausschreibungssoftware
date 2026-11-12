@@ -163,7 +163,7 @@ function kostenErmitteln(
   daten: Leistungsbilddaten,
   befund: Befundgeber,
 ): Kosten {
-  if (angabe.art === 'von-hand') return { anrechenbareKosten: angabe.betrag, herleitung: null };
+  if (angabe.art === 'betrag') return { anrechenbareKosten: angabe.betrag, herleitung: null };
   if (!daten.kostenNachDin276) {
     befund(
       'herleitung-nicht-anwendbar',

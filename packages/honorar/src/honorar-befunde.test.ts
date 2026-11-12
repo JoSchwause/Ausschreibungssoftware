@@ -16,7 +16,7 @@ const GEBAEUDE: Honorarobjekt = {
   leistungsbild: 'gebaeude',
   honorarzone: 'III',
   honorarsatz: p('50.00'),
-  anrechenbareKosten: { art: 'von-hand', betrag: b('819756.16') },
+  anrechenbareKosten: { art: 'betrag', betrag: b('819756.16') },
   leistungsphasen: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ nummer: n as 1 })),
   umbauzuschlagssatz: null,
 };
@@ -27,7 +27,7 @@ const TRAGWERK: Honorarobjekt = {
   leistungsbild: 'tragwerksplanung',
   honorarzone: 'II',
   honorarsatz: p('37.50'),
-  anrechenbareKosten: { art: 'von-hand', betrag: b('1111111.11') },
+  anrechenbareKosten: { art: 'betrag', betrag: b('1111111.11') },
   leistungsphasen: [1, 2, 3, 4, 5, 6].map((n) => ({ nummer: n as 1 })),
   umbauzuschlagssatz: null,
 };
@@ -55,7 +55,7 @@ describe('Umbauzuschlag über der Grenze des Leistungsbilds: Hinweis, kein Fehle
       ...(leistungsbild === 'tragwerksplanung' ? TRAGWERK : GEBAEUDE),
       leistungsbild,
       honorarzone: 'II',
-      anrechenbareKosten: { art: 'von-hand', betrag: b('500000.00') },
+      anrechenbareKosten: { art: 'betrag', betrag: b('500000.00') },
       umbauzuschlagssatz: p(satz),
     };
     const e = rechne(objekt);
@@ -86,7 +86,7 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
         art: 'din-276',
         kg300: b('900000.00'),
         kg400: b('300000.00'),
-        technischeAnlagenSelbstGeplant: false,
+        technischeAnlagenAnteilig: true,
         weitereKosten: b('0.00'),
         mitzuverarbeitendeBausubstanz: b('0.00'),
       },
@@ -108,7 +108,7 @@ describe('Befunde, nach denen ein Objekt kein Honorar hat', () => {
   it('meldet auch ohne Honorar die übrigen Befunde des Objekts, in der Folge der Rechnung', () => {
     const e = rechne({
       ...GEBAEUDE,
-      anrechenbareKosten: { art: 'von-hand', betrag: b('26000000.00') },
+      anrechenbareKosten: { art: 'betrag', betrag: b('26000000.00') },
       leistungsphasen: [{ nummer: 1 }, { nummer: 1 }],
       honorarsatz: p('110.00'),
       umbauzuschlagssatz: p('40.00'),
@@ -186,7 +186,7 @@ describe('Honorarsatz und negative Werte', () => {
             art: 'din-276',
             kg300: b('900000.00'),
             kg400: b('-1.00'),
-            technischeAnlagenSelbstGeplant: false,
+            technischeAnlagenAnteilig: true,
             weitereKosten: b('0.00'),
             mitzuverarbeitendeBausubstanz: b('-2.00'),
           },

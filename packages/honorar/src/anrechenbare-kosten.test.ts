@@ -16,13 +16,13 @@ function angabe(teile: {
   kg400: string;
   weitereKosten?: string;
   mitzuverarbeitendeBausubstanz?: string;
-  technischeAnlagenSelbstGeplant?: boolean;
+  technischeAnlagenAnteilig?: boolean;
 }): KostenNachDin276 {
   return {
     art: 'din-276',
     kg300: b(teile.kg300),
     kg400: b(teile.kg400),
-    technischeAnlagenSelbstGeplant: teile.technischeAnlagenSelbstGeplant ?? false,
+    technischeAnlagenAnteilig: teile.technischeAnlagenAnteilig ?? true,
     weitereKosten: b(teile.weitereKosten ?? '0.00'),
     mitzuverarbeitendeBausubstanz: b(teile.mitzuverarbeitendeBausubstanz ?? '0.00'),
   };
@@ -89,7 +89,7 @@ describe('anrechenbareKostenHerleiten (§ 33)', () => {
 
   it('plant und überwacht der Auftragnehmer die Technischen Anlagen selbst, zählt KG 400 hier nicht', () => {
     const h = anrechenbareKostenHerleiten(
-      angabe({ kg300: '500000.00', kg400: '200000.00', technischeAnlagenSelbstGeplant: true }),
+      angabe({ kg300: '500000.00', kg400: '200000.00', technischeAnlagenAnteilig: false }),
     );
     expect([h.kg400Voll, h.kg400Haelfte, h.anrechenbareKosten]).toEqual(['0.00', '0.00', '500000.00']);
   });

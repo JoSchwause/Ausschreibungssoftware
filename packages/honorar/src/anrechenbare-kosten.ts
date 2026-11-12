@@ -14,10 +14,11 @@ export interface KostenNachDin276 {
   /** KG 400 Bauwerk – Technische Anlagen (§ 33 Abs. 2). */
   readonly kg400: Betrag;
   /**
-   * `true`, wenn der Auftragnehmer die Technischen Anlagen selbst fachlich plant und ihre Ausführung fachlich überwacht:
-   * Dann gilt § 33 Abs. 2 nicht, und KG 400 zählt hier nicht (dafür gibt es das Leistungsbild Technische Ausrüstung).
+   * `true` (der übliche Fall): Der Auftragnehmer plant die Technischen Anlagen nicht selbst fachlich oder überwacht ihre
+   * Ausführung nicht fachlich; KG 400 zählt anteilig nach § 33 Abs. 2. `false`: Er plant und überwacht sie selbst; dann
+   * zählt KG 400 hier nicht (dafür gibt es das Leistungsbild Technische Ausrüstung).
    */
-  readonly technischeAnlagenSelbstGeplant: boolean;
+  readonly technischeAnlagenAnteilig: boolean;
   /**
    * Von Hand: die Kosten nach § 33 Abs. 3, soweit anrechenbar (Herrichten, nichtöffentliche Erschließung, Ausstattung,
    * Kunstwerke, die der Auftragnehmer plant, bei deren Beschaffung er mitwirkt oder deren Ausführung oder Einbau er
@@ -28,9 +29,11 @@ export interface KostenNachDin276 {
   readonly mitzuverarbeitendeBausubstanz: Betrag;
 }
 
-/** Die anrechenbaren Kosten eines Honorarobjekts: von Hand oder (Gebäude, Innenräume) aus Kosten nach DIN 276. */
-export type AnrechenbareKostenangabe =
-  { readonly art: 'von-hand'; readonly betrag: Betrag } | KostenNachDin276;
+/**
+ * Die anrechenbaren Kosten eines Honorarobjekts: als Betrag von Hand oder (Gebäude, Innenräume) aus Kosten nach
+ * DIN 276.
+ */
+export type AnrechenbareKostenangabe = { readonly art: 'betrag'; readonly betrag: Betrag } | KostenNachDin276;
 
 /** Die Herleitung nach § 33 Schritt für Schritt, jeder Teilbetrag mit 2 Stellen. */
 export interface AnrechenbareKostenHerleitung {
@@ -41,9 +44,9 @@ export interface AnrechenbareKostenHerleitung {
   readonly kg400: Betrag;
   /** 25 % der sonstigen anrechenbaren Kosten (§ 33 Abs. 2 Nr. 1), kaufmännisch auf 2 Stellen. */
   readonly grenzeTechnischeAnlagen: Betrag;
-  /** Der Teil von KG 400 bis zur Grenze, voll angerechnet (§ 33 Abs. 2 Nr. 1); 0, wenn selbst geplant. */
+  /** Der Teil von KG 400 bis zur Grenze, voll angerechnet (§ 33 Abs. 2 Nr. 1); 0, wenn nicht anteilig. */
   readonly kg400Voll: Betrag;
-  /** Die Hälfte des Teils von KG 400 über der Grenze, kaufmännisch auf 2 Stellen (Nr. 2); 0, wenn selbst geplant. */
+  /** Die Hälfte des Teils von KG 400 über der Grenze, kaufmännisch auf 2 Stellen (Nr. 2); 0, wenn nicht anteilig. */
   readonly kg400Haelfte: Betrag;
   readonly mitzuverarbeitendeBausubstanz: Betrag;
   /** Sonstige anrechenbare Kosten + KG 400 voll + KG 400 zur Hälfte + mitzuverarbeitende Bausubstanz. */
@@ -61,7 +64,7 @@ export function anrechenbareKostenHerleiten(kosten: KostenNachDin276): Anrechenb
   const grenzeTechnischeAnlagen = prozentVon(sonstigeAnrechenbareKosten, GRENZE_TECHNISCHE_ANLAGEN);
   let kg400Voll = NULL_BETRAG;
   let kg400Haelfte = NULL_BETRAG;
-  if (!kosten.technischeAnlagenSelbstGeplant) {
+  if (kosten.technischeAnlagenAnteilig) {
     const ueberGrenze = vergleiche(kosten.kg400, grenzeTechnischeAnlagen) > 0;
     kg400Voll = ueberGrenze ? grenzeTechnischeAnlagen : kosten.kg400;
     if (ueberGrenze) kg400Haelfte = prozentVon(subtrahiere(kosten.kg400, grenzeTechnischeAnlagen), HAELFTE);

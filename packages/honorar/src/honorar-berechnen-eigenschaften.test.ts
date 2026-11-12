@@ -47,9 +47,7 @@ const vollesObjektGen: fc.Arbitrary<Honorarobjekt> = fc
       leistungsbild: fc.constant(leistungsbild),
       honorarzone: fc.constantFrom(...daten.honorartafel.honorarzonen),
       honorarsatz: fc.bigInt({ min: 0n, max: 10_000n }).map(prozent),
-      anrechenbareKosten: fc
-        .bigInt({ min, max })
-        .map((c) => ({ art: 'von-hand' as const, betrag: betrag(c) })),
+      anrechenbareKosten: fc.bigInt({ min, max }).map((c) => ({ art: 'betrag' as const, betrag: betrag(c) })),
       leistungsphasen: fc.constant(daten.leistungsphasen.map((ph) => ({ nummer: ph.nummer }))),
       umbauzuschlagssatz: fc.option(fc.bigInt({ min: 0n, max: 5_000n }).map(prozent), { nil: null }),
     });
@@ -65,7 +63,7 @@ const objektGen: fc.Arbitrary<Honorarobjekt> = fc
   )
   .map(([objekt, kosten, nummern, anteil]) => ({
     ...objekt,
-    ...(kosten === null ? {} : { anrechenbareKosten: { art: 'von-hand' as const, betrag: betrag(kosten) } }),
+    ...(kosten === null ? {} : { anrechenbareKosten: { art: 'betrag' as const, betrag: betrag(kosten) } }),
     leistungsphasen: nummern.map((nummer) =>
       anteil === null ? { nummer } : { nummer, anteil: prozent(anteil) },
     ),

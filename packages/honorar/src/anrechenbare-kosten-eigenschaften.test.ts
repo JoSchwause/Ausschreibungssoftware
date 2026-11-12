@@ -49,7 +49,7 @@ function angabe(t: Teile): KostenNachDin276 {
     art: 'din-276',
     kg300: betrag(t.kg300),
     kg400: betrag(t.kg400),
-    technischeAnlagenSelbstGeplant: t.selbst,
+    technischeAnlagenAnteilig: !t.selbst,
     weitereKosten: betrag(t.weitere),
     mitzuverarbeitendeBausubstanz: betrag(t.bausubstanz),
   };

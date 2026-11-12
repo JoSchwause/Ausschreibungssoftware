@@ -27,7 +27,7 @@ const LPH_1_BIS_9 = phasen(1, 2, 3, 4, 5, 6, 7, 8, 9);
 const LPH_1_BIS_6 = phasen(1, 2, 3, 4, 5, 6);
 
 function vonHand(betrag: string): Honorarobjekt['anrechenbareKosten'] {
-  return { art: 'von-hand', betrag: b(betrag) };
+  return { art: 'betrag', betrag: b(betrag) };
 }
 
 function einObjekt(ergebnis: Honorarergebnis): Objektergebnis {
@@ -61,7 +61,7 @@ const GEBAEUDE: Honorarobjekt = {
     art: 'din-276',
     kg300: b('612345.67'),
     kg400: b('201234.56'),
-    technischeAnlagenSelbstGeplant: false,
+    technischeAnlagenAnteilig: true,
     weitereKosten: b('18000.00'),
     mitzuverarbeitendeBausubstanz: b('10000.00'),
   },
