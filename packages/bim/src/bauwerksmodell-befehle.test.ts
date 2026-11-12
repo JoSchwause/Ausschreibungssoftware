@@ -257,6 +257,26 @@ describe('BauwerksmodellLoeschen', () => {
   });
 });
 
+describe('Anwenden einer ungültigen Form (D-66)', () => {
+  it('wirft bei Anlegen oder Löschen ohne inhalt und bei Umbenennen mit inhalt oder ohne Zustand', () => {
+    const z = angelegt();
+    const anlegeCs = ok(bauwerksmodellBefehlAusfuehren(null, anlegen(modell())));
+    const loeschCs = ok(bauwerksmodellBefehlAusfuehren(z, { art: 'BauwerksmodellLoeschen' }));
+    const umCs = ok(bauwerksmodellBefehlAusfuehren(z, { art: 'BauwerksmodellUmbenennen', name: 'Neu' }));
+    const ohneInhalt = (cs: BauwerksmodellChangeSet): BauwerksmodellChangeSet => ({
+      art: cs.art,
+      bauwerksmodellId: cs.bauwerksmodellId,
+      kopf: cs.kopf,
+    });
+    expect(() => bauwerksmodellChangeSetAnwenden(null, ohneInhalt(anlegeCs))).toThrow();
+    expect(() => bauwerksmodellChangeSetAnwenden(z, ohneInhalt(loeschCs))).toThrow();
+    expect(() =>
+      bauwerksmodellChangeSetAnwenden(z, { ...umCs, inhalt: { vorher: null, nachher: null } }),
+    ).toThrow();
+    expect(() => bauwerksmodellChangeSetAnwenden(null, umCs)).toThrow();
+  });
+});
+
 describe('Umkehren (Undo)', () => {
   it('Anlegen, Umbenennen und Löschen lassen sich umkehren; zweimal umkehren ändert nichts', () => {
     const bm = modell();
