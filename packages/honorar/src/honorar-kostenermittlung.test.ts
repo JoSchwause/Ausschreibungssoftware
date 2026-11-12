@@ -12,6 +12,7 @@ import type {
   Kostenermittlung,
   KostenermittlungId,
   Kostengruppennummer,
+  Kostenermittlungsstufe,
   Leistungsphasennummer,
   ProjektId,
   Prozent,
@@ -102,5 +103,88 @@ describe('Golden-Fall 1 aus Ticket 101 über eine Kostenermittlung', () => {
       '163605.06',
     ]);
     expect(e.befunde).toEqual([]);
+  });
+});
+
+/** Eine weitere Kostenermittlung des Projekts in der Stufe `stufe` (ohne Einträge: nur die Stufe zählt). */
+const weitere = (stufe: Kostenermittlungsstufe, nr: string): Kostenermittlung => ({
+  id: `019b7a12-c000-7000-8000-0000000000${nr}` as KostenermittlungId,
+  projektId: PROJEKT,
+  stufe,
+  name: `Weitere ${stufe}`,
+  eintraege: [],
+});
+
+/** Befunde als Code, Schwere und Ort. */
+const befunde = (kostenermittlungen: readonly Kostenermittlung[]): unknown[] =>
+  honorarBerechnen(BERECHNUNG, kostenermittlungen).befunde.map((x) => [x.code, x.schwere, x.ort]);
+
+describe('Stufe der Kostenermittlung nach § 6 Abs. 1 Nr. 2', () => {
+  const ORT = { pfad: '/objekte[1]', feld: 'anrechenbareKosten' };
+
+  it('Kostenberechnung als Grundlage: kein Befund, auch wenn es andere Stufen im Projekt gibt', () => {
+    expect(
+      befunde([weitere('kostenschaetzung', 'd1'), KOSTENBERECHNUNG, weitere('kostenanschlag', 'd2')]),
+    ).toEqual([]);
+  });
+
+  it('Kostenschätzung ohne Kostenberechnung im Projekt: kein Befund', () => {
+    const schaetzung = { ...KOSTENBERECHNUNG, stufe: 'kostenschaetzung' as const };
+    expect(befunde([schaetzung, weitere('kostenrahmen', 'd1')])).toEqual([]);
+  });
+
+  it('Kostenschätzung, obwohl eine Kostenberechnung im Projekt existiert: Befund, gerechnet wird trotzdem', () => {
+    const schaetzung = { ...KOSTENBERECHNUNG, stufe: 'kostenschaetzung' as const };
+    const e = honorarBerechnen(BERECHNUNG, [schaetzung, weitere('kostenberechnung', 'd1')]);
+    expect(e.befunde.map((x) => [x.code, x.schwere, x.ort])).toEqual([
+      ['kostenberechnung-vorhanden', 'warnung', ORT],
+    ]);
+    expect(e.brutto).toBe('163605.06');
+  });
+
+  it.each<Kostenermittlungsstufe>(['kostenrahmen', 'kostenanschlag', 'kostenfeststellung'])(
+    'eine andere Stufe (%s): Befund, gerechnet wird trotzdem',
+    (stufe) => {
+      const e = honorarBerechnen(BERECHNUNG, [{ ...KOSTENBERECHNUNG, stufe }]);
+      expect(e.befunde.map((x) => [x.code, x.schwere, x.ort])).toEqual([
+        ['kostenermittlungsstufe-abweichend', 'warnung', ORT],
+      ]);
+      expect(e.brutto).toBe('163605.06');
+    },
+  );
+});
+
+describe('Verweis, der sich nicht auflösen lässt', () => {
+  it('die Kostenermittlung wurde nicht übergeben: Befund, kein Honorar für das Objekt', () => {
+    const e = honorarBerechnen(BERECHNUNG, [weitere('kostenberechnung', 'd1')]);
+    expect(e.befunde.map((x) => [x.code, x.schwere, x.ort])).toEqual([
+      ['kostenermittlung-unbekannt', 'fehler', { pfad: '/objekte[1]', feld: 'anrechenbareKosten' }],
+    ]);
+    expect([e.objekte[0]?.anrechenbareKosten, e.objekte[0]?.honorar, e.brutto]).toEqual([null, null, '0.00']);
+  });
+
+  it('ein anderes Leistungsbild als Gebäude oder Innenräume: § 33 ist nicht anwendbar, keine Prüfung der Stufe', () => {
+    const e = honorarBerechnen(
+      {
+        ...BERECHNUNG,
+        objekte: [{ ...OBJEKT, leistungsbild: 'tragwerksplanung', leistungsphasen: [{ nummer: 1 }] }],
+      },
+      [{ ...KOSTENBERECHNUNG, stufe: 'kostenrahmen' }],
+    );
+    expect(e.befunde.map((x) => x.code)).toEqual(['herleitung-nicht-anwendbar']);
+  });
+
+  it('negative Summe einer Kostengruppe: Befund wie bei Beträgen nach DIN 276, gerechnet wie eingegeben', () => {
+    const e = honorarBerechnen(BERECHNUNG, [
+      {
+        ...KOSTENBERECHNUNG,
+        eintraege: [
+          { nummer: kg('310'), betrag: b('900000.00') },
+          { nummer: kg('410'), betrag: b('-1.00') },
+        ],
+      },
+    ]);
+    expect(e.befunde.map((x) => [x.code, x.meldung.split(' ')[0]])).toEqual([['wert-negativ', 'kg400']]);
+    expect(e.objekte[0]?.herleitung?.kg400).toBe('-1.00');
   });
 });

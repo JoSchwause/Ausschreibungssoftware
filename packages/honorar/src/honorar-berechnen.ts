@@ -73,6 +73,8 @@ export type Honorarbefundcode =
   | 'keine-honorartafel' // fehler: Leistungsbild ohne Honorartafel, kein Honorar
   | 'herleitung-nicht-anwendbar' // fehler: § 33 gilt nur für Gebäude und Innenräume, kein Honorar
   | 'kostenermittlung-unbekannt' // fehler: die genannte Kostenermittlung wurde nicht übergeben, kein Honorar
+  | 'kostenermittlungsstufe-abweichend' // warnung: weder Kostenberechnung noch Kostenschätzung (§ 6 Abs. 1 Nr. 2)
+  | 'kostenberechnung-vorhanden' // warnung: Kostenschätzung, obwohl das Projekt eine Kostenberechnung hat (§ 6 Abs. 1 Nr. 2)
   | 'ausserhalb-honorartafel' // fehler: unter der ersten oder über der letzten Tafelzeile, kein Honorar (RifT später)
   | 'honorarzone-unbekannt' // fehler: die Tafel hat diese Honorarzone nicht, kein Honorar
   | 'leistungsphase-unbekannt' // fehler: das Leistungsbild hat diese Leistungsphase nicht; sie zählt nicht
@@ -138,6 +140,39 @@ function kostengruppeSummieren(kostenermittlung: Kostenermittlung, ziffer: '3' |
   );
 }
 
+/**
+ * § 6 Abs. 1 Nr. 2: Grundlage der anrechenbaren Kosten ist die Kostenberechnung, solange sie nicht vorliegt die
+ * Kostenschätzung. Eine andere Stufe oder eine Kostenschätzung neben einer Kostenberechnung des Projekts ist ein Befund;
+ * gerechnet wird trotzdem (U5).
+ */
+function stufePruefen(
+  kostenermittlung: Kostenermittlung,
+  kostenermittlungen: readonly Kostenermittlung[],
+  befund: Befundgeber,
+): void {
+  const { stufe, name } = kostenermittlung;
+  if (stufe === 'kostenberechnung') return;
+  if (stufe === 'kostenschaetzung') {
+    const berechnung = kostenermittlungen.find((k) => k.stufe === 'kostenberechnung');
+    if (berechnung !== undefined)
+      befund(
+        'kostenberechnung-vorhanden',
+        'warnung',
+        'anrechenbareKosten',
+        `Grundlage ist die Kostenschätzung ${JSON.stringify(name)}, obwohl das Projekt die Kostenberechnung ` +
+          `${JSON.stringify(berechnung.name)} hat (§ 6 Abs. 1 Nr. 2)`,
+      );
+    return;
+  }
+  befund(
+    'kostenermittlungsstufe-abweichend',
+    'warnung',
+    'anrechenbareKosten',
+    `Grundlage ist ${JSON.stringify(name)} in der Stufe ${stufe}; nach § 6 Abs. 1 Nr. 2 die Kostenberechnung, ` +
+      'ohne sie die Kostenschätzung',
+  );
+}
+
 /** Die Kosten nach DIN 276 zur Angabe; `null`, wenn sie sich nicht bestimmen lassen (Befund). */
 function kostenNachDin276(
   angabe: Exclude<AnrechenbareKosteneingabe, { readonly art: 'betrag' }>,
@@ -155,6 +190,7 @@ function kostenNachDin276(
     );
     return null;
   }
+  stufePruefen(kostenermittlung, kostenermittlungen, befund);
   return {
     art: 'din-276',
     kg300: kostengruppeSummieren(kostenermittlung, '3'),
