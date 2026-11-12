@@ -3,6 +3,7 @@
 // Ausführer prüft die Form (Fehler); fachlich Auffälliges bleibt ein Befund der Terminrechnung (U5). Sollwerte aus den
 // Lesarten an den Vertragstypen und den Beispielen des Vertrags (Ticket 97).
 
+import { readFileSync } from 'node:fs';
 import type {
   Anordnungsbeziehung,
   Bauzeitenplan,
@@ -359,6 +360,119 @@ describe('VorgangEntfernen: Fehler', () => {
     expect(fehler(zustand(T), { art: 'VorgangEntfernen', vorgangId: vid('fehlt') })).toEqual([
       'knoten-unbekannt',
       'vorgangId',
+    ]);
+  });
+});
+
+describe('BauzeitenplankopfSetzen: Form des Kopfs und Arbeitskalender', () => {
+  const kopf = (weiteres: Record<string, unknown>): BauzeitenplanBefehl => ({
+    art: 'BauzeitenplankopfSetzen',
+    name: T.name,
+    projektbeginn: T.projektbeginn,
+    kalender: T.kalender,
+    ...weiteres,
+  });
+  const kalender = (weiteres: Record<string, unknown>): BauzeitenplanBefehl =>
+    kopf({ kalender: { ...T.kalender, ...weiteres } });
+
+  it('ordnet Arbeitstage und freie Tage (Lesart an Arbeitskalender)', () => {
+    const p = nachher(
+      ok(
+        zustand(T),
+        kalender({ arbeitstage: [5, 1, 3], freieTage: ['2027-12-31', '2027-01-06', '2027-12-24'] }),
+      ),
+    );
+    expect(p.kalender).toEqual({
+      arbeitstage: [1, 3, 5],
+      bundesland: null,
+      freieTage: ['2027-01-06', '2027-12-24', '2027-12-31'],
+    });
+    expect(p.vorgaenge).toBe(T.vorgaenge);
+  });
+
+  it.each<[string, BauzeitenplanBefehl, string]>([
+    ['leerer Name', kopf({ name: '' }), 'name'],
+    ['Name nur aus Leerraum', kopf({ name: '  ' }), 'name'],
+    ['Projektbeginn kein Datum', kopf({ projektbeginn: '2027-02-29' }), 'projektbeginn'],
+    ['kein Arbeitstag', kalender({ arbeitstage: [] }), 'kalender'],
+    ['Wochentag 8', kalender({ arbeitstage: [1, 8] }), 'kalender'],
+    ['Wochentag doppelt', kalender({ arbeitstage: [1, 2, 1] }), 'kalender'],
+    ['unbekanntes Land', kalender({ bundesland: 'XX' }), 'kalender'],
+    ['Länderpräfix', kalender({ bundesland: 'DE-BY' }), 'kalender'],
+    ['freier Tag kein Datum', kalender({ freieTage: ['24.12.2027'] }), 'kalender'],
+    ['freier Tag doppelt', kalender({ freieTage: ['2027-12-24', '2027-12-24'] }), 'kalender'],
+  ])('%s', (_, befehl, feld) => {
+    expect(fehler(zustand(T), befehl)).toEqual(['ungueltige-eingabe', feld]);
+  });
+});
+
+describe('BauzeitenplanAnlegen: Form und Dokumentreihenfolge des ganzen Plans', () => {
+  const anlegen = (plan: Bauzeitenplan): BauzeitenplanBefehl => ({
+    art: 'BauzeitenplanAnlegen',
+    bauzeitenplan: plan,
+  });
+  const mit = (vorgaenge: readonly Vorgang[]): BauzeitenplanBefehl => anlegen(planMit(vorgaenge));
+
+  it('nimmt einen Plan in Dokumentreihenfolge an und ordnet den Kalender', () => {
+    const plan = {
+      ...T,
+      kalender: { arbeitstage: [2, 1], bundesland: 'SN', freieTage: [] },
+    } as Bauzeitenplan;
+    expect(nachher(ok(null, anlegen(plan)))).toEqual({
+      ...T,
+      kalender: { arbeitstage: [1, 2], bundesland: 'SN', freieTage: [] },
+    });
+  });
+
+  it.each<[string, readonly Vorgang[], [string, string]]>([
+    ['doppelte Kennung', [vorgang('A'), vorgang('A')], ['ungueltige-eingabe', 'id']],
+    ['unbekannter Sammelvorgang', [vorgang('A', { elternId: 'fehlt' })], ['eltern-unbekannt', 'elternId']],
+    [
+      'Ring in der Gliederung',
+      [vorgang('A', { elternId: 'B' }), vorgang('B', { elternId: 'A' })],
+      ['zyklus', 'elternId'],
+    ],
+    [
+      'Kind vor seinem Sammelvorgang',
+      [vorgang('A1', { elternId: 'A' }), vorgang('A')],
+      ['ungueltige-eingabe', 'vorgaenge'],
+    ],
+    [
+      'Teilbaum nicht zusammenhängend',
+      [vorgang('A'), vorgang('A1', { elternId: 'A' }), vorgang('B'), vorgang('A2', { elternId: 'A' })],
+      ['ungueltige-eingabe', 'vorgaenge'],
+    ],
+    [
+      'unbekannter Vorgänger',
+      [vorgang('A', { vorgaenger: [ea('fehlt')] })],
+      ['ungueltige-eingabe', 'vorgaenger'],
+    ],
+    ['ungültige Dauer', [vorgang('A', { dauer: -2 })], ['ungueltige-eingabe', 'dauer']],
+  ])('%s', (_, vorgaenge, erwartet) => {
+    expect(fehler(null, mit(vorgaenge))).toEqual(erwartet);
+  });
+
+  it('ein Vorgänger weiter hinten im Plan ist erlaubt (die Reihenfolge ist die Gliederung, nicht die Folge)', () => {
+    expect(
+      ok(null, mit([vorgang('A', { vorgaenger: [ea('B')] }), vorgang('B')])).bauzeitenplan.vorher,
+    ).toBeNull();
+  });
+
+  it('der Plan aus der Fixture des Tors X2 und das Beispiel des Vertrags gehen durch', () => {
+    const fixture = (
+      JSON.parse(readFileSync(new URL('../../../fixtures/bauzeit.json', import.meta.url), 'utf8')) as {
+        plan: Bauzeitenplan;
+      }
+    ).plan;
+    expect(ok(null, anlegen(fixture)).bauzeitenplan.nachher).toEqual(fixture);
+    expect(ok(null, anlegen(beispielBauzeitenplan)).bauzeitenplan.nachher).toEqual(beispielBauzeitenplan);
+  });
+
+  it('Kopf: Name, Projektbeginn, Kalender wie bei BauzeitenplankopfSetzen', () => {
+    expect(fehler(null, anlegen({ ...T, name: '' }))).toEqual(['ungueltige-eingabe', 'name']);
+    expect(fehler(null, anlegen({ ...T, projektbeginn: '' }))).toEqual([
+      'ungueltige-eingabe',
+      'projektbeginn',
     ]);
   });
 });
