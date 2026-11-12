@@ -421,8 +421,41 @@ Die Honorarobjekte eines Auftrags mit Nebenkosten und MwSt-Satz und das daraus g
 - **Umbauzuschlag (§ 6 Abs. 2, § 36 HOAI)**: Prozentualer Zuschlag auf das Grundhonorar eines Honorarobjekts bei Umbauten und Modernisierungen, kaufmännisch auf 2 Stellen (D-56). Bei durchschnittlichem Schwierigkeitsgrad bis 33 % (Gebäude § 36 Abs. 1, Freianlagen § 40 Abs. 6, Ingenieurbauwerke § 44 Abs. 6, Verkehrsanlagen § 48 Abs. 6) bzw. bis 50 % (Innenräume § 36 Abs. 2, Tragwerksplanung § 52 Abs. 4, Technische Ausrüstung § 56 Abs. 5); ein höherer Satz ist ein Befund, kein Fehler. Ohne Vereinbarung gelten nach § 6 Abs. 2 Satz 4 20 %; der Rechenkern rechnet ohne Satz keinen Zuschlag, die App bietet 20 % als Vorschlag an, wenn der Nutzer „Umbau“ wählt. Im Code `Honorarobjekt.umbauzuschlagssatz`, `Objektergebnis.umbauzuschlag`.
 
 ### Bauzeitenplan (Gantt) & 4D-BIM / 5D-BIM
-- **Bauzeitenplan**: Zeitliche Ablaufplanung von Vorgängen, Meilensteinen und Abhängigkeiten unter Berücksichtigung von Arbeitszeitkalendern.
+- **Bauzeitenplan**: Zeitliche Ablaufplanung eines Projekts aus Vorgängen, Sammelvorgängen und Meilensteinen, die über Anordnungsbeziehungen verbunden sind und auf einem Arbeitskalender terminiert werden (D-57). Gespeichert werden nur die Eingaben (Projektbeginn, Arbeitskalender, Vorgänge); Termine, Puffer und kritischer Weg werden gerechnet, nie gespeichert. Die Rechnung heißt **Terminrechnung**: die Vorwärtsrechnung ab dem **Projektbeginn** ergibt die frühe Lage (Beginn und Ende jedes Vorgangs), die Rückwärtsrechnung vom **Projektende** (spätestes Ende der frühen Lage) die späte Lage (spätester Beginn, spätestes Ende). Die Lesarten der Rechnung stehen als `BAUZEIT_ANNAHMEN` im Code. Für die Balkenspalte des Grids (dort `Zeitleiste`) liefert das Paket die **Zeitachse**: Tagesindex je Datum, Monate und Kalenderwochen nach ISO 8601, freie Tage; die Texte formatiert die App. Im Code `bauzeitenplanBerechnen`, `Bauzeitenplaneingabe`, `Vorgangstermine`, `Bauzeitbefund`, `zeitachseBerechnen` (Paket `bauzeit`).
 - **4D-BIM / 5D-BIM**: Verknüpfung von 3D-Bauteilen (IFC-GUIDs), LV-Positionen/Mengen (5D-Kostenverlauf / Mittelabflussplan) und Terminplan-Vorgängen (4D-Bauablaufsimulation).
+
+### Vorgang
+Eine Tätigkeit im Bauzeitenplan mit Bezeichnung, wahlweise Nummer, und einer **Dauer** in ganzen Arbeitstagen (≥ 0). Er belegt die Arbeitstage von seinem Beginn bis zu seinem Ende einschließlich; er beginnt nie vor dem Projektbeginn und nie an einem freien Tag. Ist-Termine (Beginn, Ende) und Fortschritt (in Prozent) trägt der Nutzer von Hand ein; sie werden angezeigt, verschieben in v1 aber nichts. Im Code `Vorgang` (`dauer`, `elternId`, `vorgaenger`, `fruehesterBeginn`, `ist`).
+
+### Sammelvorgang
+Ein Vorgang, der andere Vorgänge zusammenfasst: Er hat Kinder (Vorgänge, deren `elternId` ihn nennt). Seine Termine folgen aus den Kindern (Beginn = frühester Beginn, Ende = spätestes Ende der Kinder); seine Dauer hat keine Bedeutung. Anordnungsbeziehungen und Terminvorgaben an einem Sammelvorgang rechnet v1 nicht, sie sind ein Befund. Im Code `Vorgangsart` `'sammelvorgang'`.
+
+### Meilenstein
+Ein Vorgang mit Dauer 0: ein Zeitpunkt am Anfang seines Arbeitstags, Beginn und Ende sind derselbe Tag. Ein Meilenstein kostet keine Zeit; ein Nachfolger mit Ende-Anfang und Abstand 0 beginnt am Tag des Meilensteins. Im Code `Vorgangsart` `'meilenstein'`.
+
+### Anordnungsbeziehung
+Die Abhängigkeit eines Vorgangs von einem Vorgänger, mit einer von vier **Anordnungsarten** und einem **Abstand** in ganzen Arbeitstagen (auch 0 oder negativ; negativ heißt Überlappung). Der Anfang eines Vorgangs ist der Beginn seines ersten Arbeitstags, sein Ende der Schluss seines letzten:
+- **Ende-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am nächsten Arbeitstag nach dem Ende.
+- **Anfang-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am selben Tag.
+- **Ende-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am selben Tag.
+- **Anfang-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am Arbeitstag vor dessen Beginn.
+
+Im Code `Anordnungsbeziehung` (`vorgaengerId`, `art`: `Anordnungsart` = `'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'`, `abstand`).
+
+### Arbeitskalender
+Die Tage, an denen gearbeitet wird: die **Arbeitstage** der Woche (ISO-Wochentage, 1 = Montag; Standard Montag bis Freitag) ohne die **Feiertage** des gewählten Bundeslands und ohne die **freien Tage** des Plans. Feiertage folgen rein aus Regeln (D-57): die bundesweiten (Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember; Ostern nach der gregorianischen Osterformel) und die landesweiten nach dem Feiertagsgesetz des Landes, je ab dem Jahr, in dem sie gelten. Nur regional geltende Feiertage (etwa Fronleichnam in Teilen Sachsens und Thüringens, Mariä Himmelfahrt in Teilen Bayerns) und einmalige Feiertage trägt der Nutzer als freie Tage ein. Das Bundesland steht als Kürzel nach ISO 3166-2:DE ohne Länderpräfix (`BY`); ohne Land gelten nur die bundesweiten Feiertage. Im Code `Arbeitskalender` (`arbeitstage`, `bundesland`, `freieTage`), `feiertage`, `istArbeitstag`.
+
+### Terminvorgabe
+Eine von Hand gesetzte Grenze für die Lage eines Vorgangs. In v1 gibt es nur „Beginn frühestens“: Der Vorgang beginnt nicht vor diesem Datum, sondern frühestens am ersten Arbeitstag ab dem Datum. Im Code `Vorgang.fruehesterBeginn`.
+
+### Gesamtpuffer
+Die Zahl der Arbeitstage, um die ein Vorgang aus seiner frühen Lage verschoben werden kann, ohne das Projektende zu verschieben: spätester Beginn minus Beginn. Ein Vorgang ist **kritisch**, wenn sein Gesamtpuffer ≤ 0 ist. Ein Sammelvorgang hat den kleinsten Gesamtpuffer seiner Kinder. Im Code `Vorgangstermine.gesamtpuffer`, `Vorgangstermine.kritisch`.
+
+### Freier Puffer
+Die Zahl der Arbeitstage, um die ein Vorgang aus seiner frühen Lage verschoben werden kann, ohne die frühe Lage eines Nachfolgers oder das Projektende zu verschieben; nie größer als der Gesamtpuffer. Ein Sammelvorgang hat den kleinsten freien Puffer seiner Kinder. Im Code `Vorgangstermine.freierPuffer`.
+
+### Kritischer Weg
+Eine Folge kritischer Vorgänge, in der je zwei aufeinanderfolgende durch eine Anordnungsbeziehung ohne Spielraum verbunden sind; sie beginnt am Projektbeginn oder an einer Terminvorgabe und endet am Projektende. Ein Plan kann mehrere kritische Wege haben; Sammelvorgänge gehören nie dazu. Im Code `Bauzeitenplanergebnis.kritischeWege`.
 
 ---
 
