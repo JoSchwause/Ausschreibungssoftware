@@ -1,6 +1,6 @@
 # 97: `vertrag` v1.6: Typen für X1 BIM, X2 Bauzeitenplan, X3 HOAI, X4 Bauleitung
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: 95
@@ -347,3 +347,9 @@ Nach dem letzten `git merge integration/welle-6` (Merge `9582ba7`, Stand `9b1dd3
 `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Lint samt Paketgrenzen, Lizenzen und
 Clean Room; Vitest 250 Dateien bestanden, 1 übersprungen; 3230 Tests bestanden, 3 übersprungen wie zuvor; Fixtures 53/53). Kein
 Budget fiel, keines gelockert. E2E verlangt das Ticket nicht; die App zeichnet nichts Neues.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `e27225a` (Branch `welle-6/97-vertrag-v1.6`, `4232b09`). `vertrag` v1.6: Bauwerksmodell und
+Modelldateiablage, `BauteileZuordnen`, Bauzeitenplan (`Bauzeitenplanergebnis`), Honorarberechnung (`Honorarergebnis`), Mangel und
+Bautagebucheintrag, fünf neue Befundquellen. Abweichungen vom Tickettext angenommen (D-64); Opus-Review läuft parallel zu Stufe 2.
