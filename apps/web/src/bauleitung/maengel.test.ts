@@ -100,17 +100,25 @@ describe('Filter', () => {
   const maengel = [angezeigt(1, '2026-11-20', A1), mangel(2, { auftragsLvId: A2 }), mangel(3)];
 
   it('nach Status', () => {
-    expect(filtern(maengel, { status: 'offen', auftragnehmer: ALLE }, namen).map((m) => m.nummer)).toEqual([2, 3]);
-    expect(filtern(maengel, { status: 'angezeigt', auftragnehmer: ALLE }, namen).map((m) => m.nummer)).toEqual([1]);
+    expect(filtern(maengel, { status: 'offen', auftragnehmer: ALLE }, namen).map((m) => m.nummer)).toEqual([
+      2, 3,
+    ]);
+    expect(
+      filtern(maengel, { status: 'angezeigt', auftragnehmer: ALLE }, namen).map((m) => m.nummer),
+    ).toEqual([1]);
   });
   it('nach Auftragnehmer, auch „ohne“', () => {
-    expect(filtern(maengel, { status: ALLE, auftragnehmer: 'Tiefbau' }, namen).map((m) => m.nummer)).toEqual([2]);
+    expect(filtern(maengel, { status: ALLE, auftragnehmer: 'Tiefbau' }, namen).map((m) => m.nummer)).toEqual([
+      2,
+    ]);
     expect(filtern(maengel, { status: ALLE, auftragnehmer: OHNE }, namen).map((m) => m.nummer)).toEqual([3]);
     expect(filtern(maengel, KEIN_FILTER, namen)).toHaveLength(3);
   });
   it('beschreibt den Filter für den Druck', () => {
     expect(filterBeschreibung(KEIN_FILTER)).toBeNull();
-    expect(filterBeschreibung({ status: 'offen', auftragnehmer: 'Rohbau' })).toBe('Status: offen; Auftragnehmer: Rohbau');
+    expect(filterBeschreibung({ status: 'offen', auftragnehmer: 'Rohbau' })).toBe(
+      'Status: offen; Auftragnehmer: Rohbau',
+    );
   });
 });
 
@@ -136,7 +144,11 @@ describe('Mängelanzeige', () => {
       ],
     });
     const fremd = angezeigt(5, '2026-11-20', A2);
-    const gewaehlt = fuerAnzeige([angezeigt(1, '2026-11-20', A1), wiederOffen, nurOffen, beseitigt, fremd], namen, 'Rohbau');
+    const gewaehlt = fuerAnzeige(
+      [angezeigt(1, '2026-11-20', A1), wiederOffen, nurOffen, beseitigt, fremd],
+      namen,
+      'Rohbau',
+    );
     expect(gewaehlt.map((m) => m.nummer)).toEqual([1, 2]);
   });
 });
@@ -155,8 +167,20 @@ describe('Ansicht', () => {
 
   it('liest die überfälligen Kennungen aus den Befunden der Fristprüfung', () => {
     const befunde: Pruefbefund[] = [
-      { schwere: 'warnung', quelle: 'fristpruefung', code: 'mangel-frist-ueberschritten', meldung: 'x', ort: { mangelId: 'm3' as MangelId, feld: 'frist' } },
-      { schwere: 'warnung', quelle: 'ifc-lesen', code: 'andere', meldung: 'y', ort: { mangelId: 'm9' as MangelId } },
+      {
+        schwere: 'warnung',
+        quelle: 'fristpruefung',
+        code: 'mangel-frist-ueberschritten',
+        meldung: 'x',
+        ort: { mangelId: 'm3' as MangelId, feld: 'frist' },
+      },
+      {
+        schwere: 'warnung',
+        quelle: 'ifc-lesen',
+        code: 'andere',
+        meldung: 'y',
+        ort: { mangelId: 'm9' as MangelId },
+      },
     ];
     expect([...ueberfaelligeIds(befunde)]).toEqual(['m3']);
   });
@@ -216,13 +240,28 @@ describe('Formular', () => {
     const r = mangelAnlegenBefehl(
       ids,
       P,
-      { ...entwurf, nummer: '0', titel: ' ', festgestellt: '31.02.2026', frist: 'bald', globalId: 'kurz', position: '01.0010' },
+      {
+        ...entwurf,
+        nummer: '0',
+        titel: ' ',
+        festgestellt: '31.02.2026',
+        frist: 'bald',
+        globalId: 'kurz',
+        position: '01.0010',
+      },
       new Map(),
       [],
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(Object.keys(r.fehler).sort()).toEqual(['festgestellt', 'frist', 'globalId', 'nummer', 'position', 'titel']);
+    expect(Object.keys(r.fehler).sort()).toEqual([
+      'festgestellt',
+      'frist',
+      'globalId',
+      'nummer',
+      'position',
+      'titel',
+    ]);
   });
 
   it('weist eine vergebene Nummer ab', () => {
@@ -232,7 +271,11 @@ describe('Formular', () => {
 
   it('eine Position braucht ein Auftrags-LV und eine bekannte OZ; ein Bauteil eine GlobalId mit 22 Zeichen', () => {
     const positionen = new Map([['01.0010', 'p1' as PositionId]]);
-    const ok = angabenLesen({ ...entwurf, position: '01.0010', globalId: GID, modellId: 'mod' }, positionen, null);
+    const ok = angabenLesen(
+      { ...entwurf, position: '01.0010', globalId: GID, modellId: 'mod' },
+      positionen,
+      null,
+    );
     expect(ok.ok && ok.wert.positionId).toBe('p1');
     expect(ok.ok && ok.wert.bauteil).toEqual({ bauwerksmodellId: 'mod', globalId: GID });
     const ohne = angabenLesen({ ...entwurf, auftragsLvId: '', position: '01.0010' }, positionen, null);
@@ -247,8 +290,17 @@ describe('Formular', () => {
     expect(gleich).toEqual({ ok: true, wert: null });
     const spaet = mangelAngabenBefehl({ ...entwurfAusMangel(m, ''), festgestellt: '12.11.2026' }, null, m);
     expect(spaet.ok ? null : spaet.fehler.festgestellt).toMatch(/nicht nach dem ersten Verlaufseintrag/);
-    const neu = mangelAngabenBefehl({ ...entwurfAusMangel(m, ''), frist: '04.12.2026', ort: ' Keller ' }, null, m);
-    expect(neu.ok && neu.wert).toMatchObject({ art: 'MangelangabenSetzen', frist: '2026-12-04', ort: 'Keller', titel: 'Mangel 3' });
+    const neu = mangelAngabenBefehl(
+      { ...entwurfAusMangel(m, ''), frist: '04.12.2026', ort: ' Keller ' },
+      null,
+      m,
+    );
+    expect(neu.ok && neu.wert).toMatchObject({
+      art: 'MangelangabenSetzen',
+      frist: '2026-12-04',
+      ort: 'Keller',
+      titel: 'Mangel 3',
+    });
   });
 });
 
@@ -273,7 +325,11 @@ describe('Statusaktionen', () => {
 
   it('„Mangel anzeigen“ setzt Eintrag mit Frist und die Frist am Mangel als zwei Befehle eines Schritts', () => {
     const m = mangel(1, { frist: '2026-11-20' });
-    const r = statusBefehle(m, 'anzeigen', { datum: '11.11.2026', frist: '19.11.2026', bemerkung: ' Anzeige ' });
+    const r = statusBefehle(m, 'anzeigen', {
+      datum: '11.11.2026',
+      frist: '19.11.2026',
+      bemerkung: ' Anzeige ',
+    });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.wert).toEqual([
@@ -304,7 +360,9 @@ describe('Statusaktionen', () => {
     const a = statusBefehle(m, 'anzeigen', { datum: '', frist: '', bemerkung: '' });
     expect(a.ok ? null : Object.keys(a.fehler).sort()).toEqual(['datum', 'frist']);
     const b = statusBefehle(m, 'beseitigt', { datum: '10.11.2026', frist: '', bemerkung: '' });
-    expect(b.ok ? null : b.fehler.datum).toBe('Das Datum liegt vor dem letzten Verlaufseintrag (11.11.2026).');
+    expect(b.ok ? null : b.fehler.datum).toBe(
+      'Das Datum liegt vor dem letzten Verlaufseintrag (11.11.2026).',
+    );
     const c = statusBefehle(m, 'beseitigt', { datum: 'gestern', frist: '', bemerkung: '' });
     expect(c.ok).toBe(false);
   });
@@ -316,6 +374,9 @@ describe('Statusaktionen', () => {
         { status: 'angezeigt', datum: '2026-11-11', bemerkung: null, frist: '2026-11-20' },
       ],
     });
-    expect(verlaufZeilen(m)).toEqual(['10.11.2026: offen – bei der Begehung', '11.11.2026: angezeigt (Frist 20.11.2026)']);
+    expect(verlaufZeilen(m)).toEqual([
+      '10.11.2026: offen – bei der Begehung',
+      '11.11.2026: angezeigt (Frist 20.11.2026)',
+    ]);
   });
 });

@@ -21,7 +21,13 @@ async function aufbau() {
 }
 
 const neuerMangel = (u: ReturnType<typeof testUmgebung>, projekt: Projekt, nummer: number, titel: string) => {
-  const r = mangelAnlegenBefehl(u.ids, projekt.id, { ...leererEntwurf(nummer, '2026-11-10'), titel, frist: '20.11.2026' }, null, []);
+  const r = mangelAnlegenBefehl(
+    u.ids,
+    projekt.id,
+    { ...leererEntwurf(nummer, '2026-11-10'), titel, frist: '20.11.2026' },
+    null,
+    [],
+  );
   if (!r.ok) throw new Error(JSON.stringify(r.fehler));
   return r.wert;
 };
@@ -42,7 +48,9 @@ describe('Mängel durch den Speicher', () => {
     const aus = await mangelSitzung(u, projekt.id, m).folge(stand.wert);
     expect(aus.every((a) => a.ok)).toBe(true);
     expect(weg.historie.tiefe.rueck).toBe(tiefeVor + 1);
-    let jetzt = (await maengelLaden(speicher, projekt.id)).ok ? (await maengelLaden(speicher, projekt.id)) : null;
+    let jetzt = (await maengelLaden(speicher, projekt.id)).ok
+      ? await maengelLaden(speicher, projekt.id)
+      : null;
     expect(jetzt?.ok && jetzt.wert[0]).toMatchObject({
       frist: '2026-11-25',
       verlauf: [
@@ -74,7 +82,10 @@ describe('Mängel durch den Speicher', () => {
     const zweiter = await mangelSitzung(u, projekt.id, null).befehl(neuerMangel(u, projekt, 1, 'Kiesnest'));
     expect(zweiter.ok).toBe(false);
     if (zweiter.ok) return;
-    expect(zweiter.abweisung).toMatchObject({ art: 'befehl', fehler: { code: 'ungueltige-eingabe', feld: 'nummer' } });
+    expect(zweiter.abweisung).toMatchObject({
+      art: 'befehl',
+      fehler: { code: 'ungueltige-eingabe', feld: 'nummer' },
+    });
   });
 
   it('löschen und Rückgängig holt den Mangel samt Verlauf zurück', async () => {
@@ -84,7 +95,9 @@ describe('Mängel durch den Speicher', () => {
     const m = liste.ok ? (liste.wert[0] as Mangel) : null;
     if (m === null) throw new Error('laden');
     expect((await mangelSitzung(u, projekt.id, m).befehl({ art: 'MangelLoeschen' })).ok).toBe(true);
-    expect((await maengelLaden(speicher, projekt.id)).ok && (await maengelLaden(speicher, projekt.id))).toMatchObject({ wert: [] });
+    expect(
+      (await maengelLaden(speicher, projekt.id)).ok && (await maengelLaden(speicher, projekt.id)),
+    ).toMatchObject({ wert: [] });
     await weg.rueckgaengig();
     const danach = await maengelLaden(speicher, projekt.id);
     expect(danach.ok && danach.wert[0]).toEqual(m);
@@ -100,7 +113,14 @@ describe('Bautagebuch durch den Speicher', () => {
       return r.wert;
     };
     const erster = lesen('2026-11-16', 'Mauerwerk');
-    expect((await bautagebuchSitzung(u, projekt.id, null).befehl({ art: 'BautagebucheintragSetzen', eintrag: erster })).ok).toBe(true);
+    expect(
+      (
+        await bautagebuchSitzung(u, projekt.id, null).befehl({
+          art: 'BautagebucheintragSetzen',
+          eintrag: erster,
+        })
+      ).ok,
+    ).toBe(true);
 
     const doppelt = await bautagebuchSitzung(u, projekt.id, null).befehl({
       art: 'BautagebucheintragSetzen',
@@ -120,7 +140,9 @@ describe('Bautagebuch durch den Speicher', () => {
     expect(liste.ok && liste.wert).toEqual([erster]);
 
     // löschen und zurückholen
-    expect((await bautagebuchSitzung(u, projekt.id, erster).befehl({ art: 'BautagebucheintragLoeschen' })).ok).toBe(true);
+    expect(
+      (await bautagebuchSitzung(u, projekt.id, erster).befehl({ art: 'BautagebucheintragLoeschen' })).ok,
+    ).toBe(true);
     liste = await bautagebuchLaden(speicher, projekt.id);
     expect(liste.ok && liste.wert).toEqual([]);
     await weg.rueckgaengig();

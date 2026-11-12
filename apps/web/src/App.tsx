@@ -12,6 +12,10 @@ import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
 import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
+import { BautagebuchSeite } from './bauleitung/BautagebuchSeite'; // Ticket 120
+import { MaengelSeite } from './bauleitung/MaengelSeite'; // Ticket 120
+import { bauleitungRoute } from './bauleitung/pfad'; // Ticket 120
+import { texte as bauleitungTexte } from './bauleitung/texte'; // Ticket 120
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
 import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
@@ -115,6 +119,27 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
       );
     return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 120: Mängel und Bautagebuch eines Projekts
+  const bauleitung = bauleitungRoute(pfad);
+  if (bauleitung !== null) {
+    return bauleitung.art === 'maengel'
+      ? {
+          titel: bauleitungTexte.projekt.maengel,
+          inhalt: mitSpeicher(
+            <MaengelSeite key={`m-${bauleitung.projektId}`} projektId={bauleitung.projektId} gehe={gehe} />,
+          ),
+        }
+      : {
+          titel: bauleitungTexte.projekt.bautagebuch,
+          inhalt: mitSpeicher(
+            <BautagebuchSeite
+              key={`b-${bauleitung.projektId}`}
+              projektId={bauleitung.projektId}
+              gehe={gehe}
+            />,
+          ),
+        };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {

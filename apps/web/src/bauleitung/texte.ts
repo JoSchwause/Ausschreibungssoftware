@@ -50,6 +50,11 @@ export const texte = {
     ueberfaelligText: 'überfällig',
     ueberfaelligBeschreibung: 'Frist überschritten',
     keinWert: '–',
+    auswertung: 'Auswertung zum Stichtag',
+    anzahl: 'Mängel',
+    offen: 'offen',
+    ueberfaellig: 'überfällig',
+    gesamt: 'Gesamt',
     befunde: 'Befunde der Fristprüfung',
     keineBefunde: 'Keine Frist überschritten.',
     befund: (nummer: number, titel: string, frist: string, stichtag: string): string =>
@@ -129,7 +134,8 @@ export const texte = {
     laeuft: 'PDF wird erzeugt …',
     fertig: 'PDF erzeugt',
     fehler: 'Das PDF konnte nicht erzeugt werden:',
-    filterKopf: (status: string, auftragnehmer: string): string => `Status: ${status}; Auftragnehmer: ${auftragnehmer}`,
+    filterKopf: (status: string, auftragnehmer: string): string =>
+      `Status: ${status}; Auftragnehmer: ${auftragnehmer}`,
     ungefiltert: 'Alle Mängel',
   },
   bautagebuch: {
@@ -140,7 +146,8 @@ export const texte = {
     neu: 'Neuer Eintrag',
     bearbeiten: 'Bearbeiten',
     loeschen: 'Löschen',
-    tag: (datum: string, kopfe: number): string => `${datum} – ${String(kopfe)} ${kopfe === 1 ? 'Kopf' : 'Köpfe'}`,
+    tag: (datum: string, kopfe: number): string =>
+      `${datum} – ${String(kopfe)} ${kopfe === 1 ? 'Kopf' : 'Köpfe'}`,
     wetter: 'Wetter',
     ausgewaehlt: (datum: string): string => `Ausgewählt: ${datum}`,
     keinerAusgewaehlt: 'Tag in der Liste wählen, um ihn zu bearbeiten.',

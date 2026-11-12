@@ -5,12 +5,7 @@
 // der Stichtag kommt aus der Uhr der App (A2, `datumAusUhr`).
 
 import { mangelstatus, statuswechselZulaessig, type Auftragnehmerangabe } from '@tethys/bauleitung';
-import type {
-  VergleichsSpalte,
-  VergleichsZelle,
-  VergleichsZeile,
-  KennzeichenText,
-} from '@tethys/ui-grid';
+import type { VergleichsSpalte, VergleichsZelle, VergleichsZeile, KennzeichenText } from '@tethys/ui-grid';
 import {
   IFC_GLOBALID_MUSTER,
   type AuftragsLeistungsverzeichnisId,
@@ -111,9 +106,7 @@ export function fuerAnzeige(
   return maengel.filter((m) => {
     if (m.auftragsLvId === null || namen[m.auftragsLvId] !== auftragnehmer) return false;
     const status = mangelstatus(m);
-    return (
-      (status === 'offen' || status === 'angezeigt') && m.verlauf.some((e) => e.status === 'angezeigt')
-    );
+    return (status === 'offen' || status === 'angezeigt') && m.verlauf.some((e) => e.status === 'angezeigt');
   });
 }
 
@@ -123,7 +116,10 @@ export const KENNZEICHEN_TEXTE: Readonly<Record<string, KennzeichenText>> = {
   hinweis: { symbol: '⚠', beschreibung: texte.maengel.ueberfaelligBeschreibung },
 };
 
-const zelle = (text: string, extra: Omit<VergleichsZelle, 'text'> = {}): VergleichsZelle => ({ text, ...extra });
+const zelle = (text: string, extra: Omit<VergleichsZelle, 'text'> = {}): VergleichsZelle => ({
+  text,
+  ...extra,
+});
 const tag = (d: string | null): string => (d === null ? texte.maengel.keinWert : datumDe(d));
 
 export const SPALTEN: readonly VergleichsSpalte[] = [
@@ -264,7 +260,8 @@ export function angabenLesen(
   const titel = e.titel.trim();
   if (titel === '') fehler.titel = texte.formular.titelFehlt;
   const festgestellt = datumLesen(e.festgestellt);
-  if (e.festgestellt.trim() === '' || !festgestellt.ok) fehler.festgestellt = texte.formular.festgestelltFehlt;
+  if (e.festgestellt.trim() === '' || !festgestellt.ok)
+    fehler.festgestellt = texte.formular.festgestelltFehlt;
   else if (ersterEintrag !== null && festgestellt.wert > ersterEintrag)
     fehler.festgestellt = texte.formular.festgestelltNachVerlauf(datumDe(ersterEintrag));
   let frist: string | null = null;

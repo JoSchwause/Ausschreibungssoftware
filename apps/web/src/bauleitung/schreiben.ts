@@ -59,11 +59,7 @@ export async function bautagebucheintragBefehlAnwenden(
   return speichern(u, e, cs, () => bautagebucheintragChangeSetAnwenden(zustand, cs));
 }
 
-export function mangelSitzung(
-  u: Umgebung,
-  projektId: ProjektId,
-  mangel: Mangel | null,
-): MangelSitzung {
+export function mangelSitzung(u: Umgebung, projektId: ProjektId, mangel: Mangel | null): MangelSitzung {
   return new Sitzung<MangelZustand | null, MangelBefehl>(
     befehlswegFuer(u),
     mangel === null ? null : { mangel },
@@ -93,4 +89,5 @@ export const maengelLaden = (
 export const bautagebuchLaden = (
   speicher: Speicher,
   projektId: ProjektId,
-): Promise<Ergebnis<readonly Bautagebucheintrag[], Speicherfehler>> => speicher.bautagebuch.auflisten(projektId);
+): Promise<Ergebnis<readonly Bautagebucheintrag[], Speicherfehler>> =>
+  speicher.bautagebuch.auflisten(projektId);

@@ -95,7 +95,9 @@ describe('eintragLesen', () => {
 
   it('weist ein zweites Eintrag am selben Datum ab, den eigenen nicht', () => {
     const fremd = eintragLesen(basis, ID, P, [{ id: 'b2' as BautagebucheintragId, datum: '2026-11-16' }]);
-    expect(fremd.ok ? null : fremd.fehler['datum']).toMatch(/Für den 16\.11\.2026 gibt es schon einen Eintrag/);
+    expect(fremd.ok ? null : fremd.fehler['datum']).toMatch(
+      /Für den 16\.11\.2026 gibt es schon einen Eintrag/,
+    );
     const eigen = eintragLesen(basis, ID, P, [{ id: ID, datum: '2026-11-16' }]);
     expect(eigen.ok).toBe(true);
   });
@@ -119,7 +121,13 @@ describe('eintragLesen', () => {
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(Object.keys(r.fehler).sort()).toEqual(['anzahl-1', 'datum', 'firma-0', 'firma-2', 'temperaturMin']);
+    expect(Object.keys(r.fehler).sort()).toEqual([
+      'anzahl-1',
+      'datum',
+      'firma-0',
+      'firma-2',
+      'temperaturMin',
+    ]);
   });
 
   it('eine Temperatur mit Nachkommastelle ist ein Feldfehler', () => {
@@ -130,10 +138,21 @@ describe('eintragLesen', () => {
 
 describe('Anzeige', () => {
   it('Wetter mit Temperaturen und echtem Minuszeichen; Köpfe als Summe', () => {
-    expect(wetterText({ beschreibung: 'Frost', temperaturMin: -3, temperaturMax: 4 })).toBe('Frost, −3 bis 4 °C');
+    expect(wetterText({ beschreibung: 'Frost', temperaturMin: -3, temperaturMax: 4 })).toBe(
+      'Frost, −3 bis 4 °C',
+    );
     expect(wetterText({ beschreibung: null, temperaturMin: null, temperaturMax: 4 })).toBe('höchstens 4 °C');
     expect(wetterText({ beschreibung: null, temperaturMin: null, temperaturMax: null })).toBe('–');
-    expect(koepfe(eintrag('x', '2026-11-16', { arbeitskraefte: [{ firma: 'a', anzahl: 6 }, { firma: 'b', anzahl: 3 }] }))).toBe(9);
+    expect(
+      koepfe(
+        eintrag('x', '2026-11-16', {
+          arbeitskraefte: [
+            { firma: 'a', anzahl: 6 },
+            { firma: 'b', anzahl: 3 },
+          ],
+        }),
+      ),
+    ).toBe(9);
   });
 
   it('eine Zeile je Tag, nach Datum', () => {
