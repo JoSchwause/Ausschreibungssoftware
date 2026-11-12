@@ -17,6 +17,7 @@
     "@tethys/dezimal": "workspace:*",
     "@tethys/erechnung": "workspace:*",
     "@tethys/gaeb": "workspace:*",
+    "@tethys/honorar": "workspace:*",
     "@tethys/kern": "workspace:*",
     "@tethys/kosten": "workspace:*",
     "@tethys/mengen": "workspace:*",

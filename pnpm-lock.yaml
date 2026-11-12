@@ -53,6 +53,9 @@ importers:
       '@tethys/gaeb':
         specifier: workspace:*
         version: link:../../packages/gaeb
+      '@tethys/honorar':
+        specifier: workspace:*
+        version: link:../../packages/honorar
       '@tethys/kern':
         specifier: workspace:*
         version: link:../../packages/kern
