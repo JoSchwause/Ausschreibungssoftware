@@ -223,8 +223,9 @@ Felder und Typen sind optional bzw. neu).
 
 ### Prüfung
 
-Nach `git merge integration/welle-6` (Stand `1859972`, die Tickets 93, 97 und 104–121; nur Ticketdateien):
-`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Lint samt Paketgrenzen, Lizenzen und
-Clean Room; Vitest 205 Dateien bestanden, 1 übersprungen; 2622 Tests bestanden, 3 übersprungen wie zuvor; Fixtures 29/29).
+Nach dem letzten `git merge integration/welle-6` (Stand `ae98b7b`: die Tickets 93, 97 und 104–121 als Dateien, Ticket 94 in
+`speicher` und zwei Logeinträge): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Lint
+samt Paketgrenzen, Lizenzen und Clean Room; Vitest 207 Dateien bestanden, 1 übersprungen; 2634 Tests bestanden, 3 übersprungen
+wie zuvor; Fixtures 29/29). Ein Lauf davor (Stand `1859972`, ohne 94) war ebenso grün (205 Dateien, 2622 Tests).
 Kein Budget fiel, keines gelockert. Die E2E von `ui-grid` verlangt das Ticket nicht und liefen nicht: Die neue Spalte wird nur
 gezeichnet, wenn ein Aufrufer sie in `spalten` nennt (`props.spalten ?? STANDARDSPALTEN`), und das tut niemand.
