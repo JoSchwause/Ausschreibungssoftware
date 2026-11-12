@@ -2151,3 +2151,624 @@ test('typisch-bim: X1-Erweitert, Vergleich v1 → v2, betroffene Positionen, Men
     netto: '35894.85', nachlass: '717.90', nettoNachNachlass: '35176.95', mwst: '6683.62', brutto: '41860.57',
   });
 });
+
+// ---------------------------------------------------------------- Ticket 112: Bauzeitenplan, Tor X2 (bauzeit.json)
+// Eigene Terminrechnung ohne das Paket `bauzeit`: Datum als ganze Tagnummer (Date.UTC nur als reine Kalenderrechnung, nie die
+// Uhr), Feiertage aus eigener Osterformel und Liste, Netzplan mit Zeitpunkten in Arbeitstagen nach den Lesarten von
+// `BAUZEIT_ANNAHMEN` (README „Bauzeitenplan: Tor X2“). Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const TAG_MS = 86_400_000;
+/** "2026-11-02" → Tage seit 1970-01-01; ungültige Daten scheitern. */
+function tagAus(text) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  assert.ok(m, `kein Datum: ${text}`);
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  assert.equal(new Date(t).toISOString().slice(0, 10), text, `ungültiges Datum: ${text}`);
+  return t / TAG_MS;
+}
+const tagText = (n) => new Date(n * TAG_MS).toISOString().slice(0, 10);
+/** ISO-Wochentag, 1 = Montag. */
+const isoWochentag = (n) => ((new Date(n * TAG_MS).getUTCDay() + 6) % 7) + 1;
+
+/** Ostersonntag nach der anonymen gregorianischen Osterformel (Meeus, Jones, Butcher) als Tagnummer. */
+function ostersonntag(jahr) {
+  const a = jahr % 19;
+  const b = Math.floor(jahr / 100);
+  const c = jahr % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+}
+
+/** Gesetzliche Feiertage eines Jahres: bundesweit, dazu Sachsen nach SächsSFG § 1 Abs. 1 (nur die Länder dieser Fixture). */
+function feiertageVon(jahr, land) {
+  const fest = (monat, tag) => Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+  const o = ostersonntag(jahr);
+  // Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember
+  const tage = [fest(1, 1), o - 2, o + 1, fest(5, 1), o + 39, o + 50, fest(10, 3), fest(12, 25), fest(12, 26)];
+  if (land === 'SN') {
+    const tag22 = fest(11, 22);
+    // Reformationsfest; Buß- und Bettag = Mittwoch vor dem 23. November (Fronleichnam gilt in Sachsen nur regional)
+    tage.push(fest(10, 31), tag22 - ((isoWochentag(tag22) - 3 + 7) % 7));
+  } else {
+    assert.equal(land, null, `Land ${land} ist in der Nachrechnung nicht abgebildet`);
+  }
+  return tage;
+}
+
+/** Arbeitstage ab dem Projektbeginn als Tagnummern: Index k = k-ter Arbeitstag (k = 0 der erste). */
+function arbeitstageAb(projektbeginn, kalender, anzahl) {
+  const frei = new Set(kalender.freieTage.map(tagAus));
+  const feiertage = new Map();
+  const istArbeitstag = (n) => {
+    const jahr = new Date(n * TAG_MS).getUTCFullYear();
+    if (!feiertage.has(jahr)) feiertage.set(jahr, new Set(feiertageVon(jahr, kalender.bundesland)));
+    return kalender.arbeitstage.includes(isoWochentag(n)) && !feiertage.get(jahr).has(n) && !frei.has(n);
+  };
+  const tage = [];
+  for (let n = tagAus(projektbeginn); tage.length < anzahl; n += 1) if (istArbeitstag(n)) tage.push(n);
+  return tage;
+}
+
+/** Wiederholt `schritt` (liefert „etwas geändert“), bis nichts mehr ändert; mehr Runden als Vorgänge hieße Zyklus. */
+function bisStabil(runden, schritt) {
+  for (let runde = 0; schritt(); runde += 1) assert.ok(runde <= runden, 'Zyklus');
+}
+
+/**
+ * Terminrechnung (Methode des kritischen Wegs) mit Zeitpunkten: Anfang a = Index des ersten Arbeitstags, Ende e = a + Dauer.
+ * Ende-Anfang a ≥ e(V) + Abstand, Anfang-Anfang a ≥ a(V) + Abstand, Ende-Ende e ≥ e(V) + Abstand, Anfang-Ende e ≥ a(V) +
+ * Abstand; nie vor dem Projektbeginn. Rückwärts vom Projektende E = max e, kein spätes Ende nach E. Gesamtpuffer = spätester
+ * Anfang − Anfang; freier Puffer = kleinster Spielraum zu Nachfolgern in der frühen Lage, höchstens E − e. Sammelvorgang als
+ * Hülle seiner Kinder. Nur für stimmige Pläne ohne Terminvorgabe und ohne Beziehung am Sammelvorgang (die Fixture hat keine).
+ */
+function terminplanNachrechnen(plan) {
+  const tage = arbeitstageAb(plan.projektbeginn, plan.kalender, 400);
+  const tag = (k) => tagText(tage[k]);
+  const kinder = new Map();
+  for (const v of plan.vorgaenge) {
+    if (v.elternId !== null) kinder.set(v.elternId, [...(kinder.get(v.elternId) ?? []), v]);
+  }
+  const blaetter = plan.vorgaenge.filter((v) => !kinder.has(v.id));
+  for (const v of plan.vorgaenge) {
+    assert.equal(v.fruehesterBeginn, null, 'Terminvorgaben bildet die Nachrechnung nicht ab');
+    if (kinder.has(v.id)) assert.deepEqual(v.vorgaenger, [], 'Beziehung am Sammelvorgang bildet die Nachrechnung nicht ab');
+  }
+  const blatt = new Map(blaetter.map((v) => [v.id, v]));
+  const a = new Map(blaetter.map((v) => [v.id, 0]));
+  const e = (id) => a.get(id) + blatt.get(id).dauer;
+  const untergrenze = (v, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return e(p) + b.abstand;
+      case 'anfang-anfang': return a.get(p) + b.abstand;
+      case 'ende-ende': return e(p) + b.abstand - v.dauer;
+      case 'anfang-ende': return a.get(p) + b.abstand - v.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const v of blaetter) {
+      const neu = Math.max(0, ...v.vorgaenger.map((b) => untergrenze(v, b)));
+      if (neu !== a.get(v.id)) {
+        a.set(v.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  const E = Math.max(...blaetter.map((v) => e(v.id)));
+  const nachfolger = (id) => blaetter.flatMap((s) => s.vorgaenger.filter((b) => b.vorgaengerId === id).map((b) => [s, b]));
+  // Rückwärts: spätestes Ende le (Zeitpunkt), spätester Anfang la = le − Dauer
+  const le = new Map(blaetter.map((v) => [v.id, E]));
+  const la = (id) => le.get(id) - blatt.get(id).dauer;
+  const obergrenze = (p, s, b) => {
+    switch (b.art) {
+      case 'ende-anfang': return la(s.id) - b.abstand;
+      case 'anfang-anfang': return la(s.id) - b.abstand + p.dauer;
+      case 'ende-ende': return le.get(s.id) - b.abstand;
+      case 'anfang-ende': return le.get(s.id) - b.abstand + p.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const p of blaetter) {
+      const neu = Math.min(E, ...nachfolger(p.id).map(([s, b]) => obergrenze(p, s, b)));
+      if (neu !== le.get(p.id)) {
+        le.set(p.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  /** Spielraum einer Beziehung in der frühen Lage. */
+  const spielraum = (s, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return a.get(s.id) - (e(p) + b.abstand);
+      case 'anfang-anfang': return a.get(s.id) - (a.get(p) + b.abstand);
+      case 'ende-ende': return e(s.id) - (e(p) + b.abstand);
+      case 'anfang-ende': return e(s.id) - (a.get(p) + b.abstand);
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  const termine = new Map();
+  for (const v of blaetter) {
+    const gesamtpuffer = la(v.id) - a.get(v.id);
+    termine.set(v.id, {
+      beginn: tag(a.get(v.id)),
+      ende: v.dauer > 0 ? tag(e(v.id) - 1) : tag(a.get(v.id)),
+      spaetesterBeginn: tag(la(v.id)),
+      spaetestesEnde: v.dauer > 0 ? tag(le.get(v.id) - 1) : tag(la(v.id)),
+      gesamtpuffer,
+      freierPuffer: Math.min(E - e(v.id), ...nachfolger(v.id).map(([s, b]) => spielraum(s, b))),
+      kritisch: gesamtpuffer <= 0,
+    });
+  }
+  const frueher = (x, y) => (y < x ? y : x);
+  const spaeter = (x, y) => (y > x ? y : x);
+  const huelle = (v) => {
+    if (termine.has(v.id)) return termine.get(v.id);
+    const t = kinder.get(v.id).map(huelle);
+    const h = {
+      beginn: t.map((x) => x.beginn).reduce(frueher),
+      ende: t.map((x) => x.ende).reduce(spaeter),
+      spaetesterBeginn: t.map((x) => x.spaetesterBeginn).reduce(frueher),
+      spaetestesEnde: t.map((x) => x.spaetestesEnde).reduce(spaeter),
+      gesamtpuffer: Math.min(...t.map((x) => x.gesamtpuffer)),
+      freierPuffer: Math.min(...t.map((x) => x.freierPuffer)),
+      kritisch: t.some((x) => x.kritisch),
+    };
+    termine.set(v.id, h);
+    return h;
+  };
+  // Kritische Wege: von einem kritischen Vorgang am Projektbeginn über Beziehungen ohne Spielraum bis zum Projektende
+  const wege = [];
+  const weiter = (weg) => {
+    const letzter = weg[weg.length - 1];
+    if (e(letzter.id) === E) wege.push(weg.map((v) => v.id));
+    for (const [s, b] of nachfolger(letzter.id)) {
+      if (termine.get(s.id).kritisch && spielraum(s, b) === 0) weiter([...weg, s]);
+    }
+  };
+  for (const v of blaetter) if (termine.get(v.id).kritisch && a.get(v.id) === 0) weiter([v]);
+  const art = (v) => (kinder.has(v.id) ? 'sammelvorgang' : v.dauer === 0 ? 'meilenstein' : 'vorgang');
+  const vorgaenge = plan.vorgaenge.map((v) => ({ id: v.id, art: art(v), termine: huelle(v) }));
+  return {
+    ergebnis: {
+      projektbeginn: tag(0),
+      projektende: vorgaenge.map((x) => x.termine.ende).reduce(spaeter),
+      vorgaenge,
+      kritischeWege: wege,
+      befunde: [],
+    },
+    spielraum,
+  };
+}
+
+test('bauzeit: Kalender Sachsen 2026, Ostern und Buß- und Bettag eigens gerechnet (Ticket 112)', () => {
+  // Ostersonntag 2026 = 05.04., 2027 = 28.03., 2019 = 21.04., 2000 = 23.04. (Kirchenkalender)
+  assert.deepEqual([2026, 2027, 2019, 2000].map((j) => tagText(ostersonntag(j))), ['2026-04-05', '2027-03-28', '2019-04-21', '2000-04-23']);
+  assert.deepEqual(feiertageVon(2026, 'SN').map(tagText).sort(), [
+    '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-01', '2026-05-14', '2026-05-25', '2026-10-03', '2026-10-31',
+    '2026-11-18', '2026-12-25', '2026-12-26',
+  ]);
+  // Buß- und Bettag: Mittwoch vor dem 23.11. (2017 fiel er auf den 22.11., 2027 fällt er auf den 17.11.)
+  assert.ok(feiertageVon(2017, 'SN').map(tagText).includes('2017-11-22'));
+  assert.ok(feiertageVon(2027, 'SN').map(tagText).includes('2027-11-17'));
+  const fx = laden('bauzeit.json');
+  assert.equal(fx.plan.kalender.bundesland, 'SN');
+  assert.equal(isoWochentag(tagAus(fx.plan.projektbeginn)), 7, 'Projektbeginn ist ein Sonntag');
+  // Arbeitstage k0 bis k15 wie in der Herleitung
+  assert.deepEqual(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map((n) => tagText(n).slice(5)), [
+    '11-02', '11-03', '11-04', '11-05', '11-06', '11-09', '11-10', '11-11', '11-12', '11-13', '11-16', '11-17', '11-19',
+    '11-20', '11-23', '11-24',
+  ]);
+  assert.match(fx.herleitung[2], /k11 Di 17\.11\., k12 Do 19\.11\./);
+});
+
+test('bauzeit: Eingabe deckt das Tor X2 ab (Ticket 112, plan.md §4)', () => {
+  const fx = laden('bauzeit.json');
+  const { vorgaenge } = fx.plan;
+  assert.ok(vorgaenge.length >= 6 && vorgaenge.length <= 8, '6–8 Vorgänge');
+  const ids = [fx.plan.id, fx.plan.projektId, ...vorgaenge.map((v) => v.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  const bekannt = new Set(vorgaenge.map((v) => v.id));
+  for (const v of vorgaenge) {
+    assert.ok(v.elternId === null || bekannt.has(v.elternId));
+    assert.ok(Number.isInteger(v.dauer) && v.dauer >= 0);
+    for (const b of v.vorgaenger) assert.ok(bekannt.has(b.vorgaengerId) && Number.isInteger(b.abstand));
+  }
+  const beziehungen = vorgaenge.flatMap((v) => v.vorgaenger);
+  assert.deepEqual([...new Set(beziehungen.map((b) => b.art))].sort(), ['anfang-anfang', 'anfang-ende', 'ende-anfang', 'ende-ende']);
+  assert.ok(beziehungen.some((b) => b.abstand === 0) && beziehungen.some((b) => b.abstand < 0), 'Abstand 0 und negativ');
+  const eltern = new Set(vorgaenge.map((v) => v.elternId).filter((x) => x !== null));
+  assert.equal(eltern.size, 1, 'genau ein Sammelvorgang');
+  assert.equal(vorgaenge.filter((v) => v.dauer === 0 && !eltern.has(v.id)).length, 1, 'genau ein Meilenstein');
+  // Jede Anordnungsart bestimmt einen Termin (Spielraum 0 in der frühen Lage): ein Fehler in ihr ändert das Ergebnis
+  const { spielraum } = terminplanNachrechnen(fx.plan);
+  for (const art of ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende']) {
+    assert.ok(vorgaenge.some((s) => s.vorgaenger.some((b) => b.art === art && spielraum(s, b) === 0)), art);
+  }
+});
+
+test('bauzeit: Sollwerte gleich der eigenen Terminrechnung (Ticket 112, BAUZEIT_ANNAHMEN, D-63)', () => {
+  const fx = laden('bauzeit.json');
+  assert.deepEqual(terminplanNachrechnen(fx.plan).ergebnis, fx.sollwerte);
+  // Von Hand (herleitung): Projektende Di 24.11.2026; Meilenstein Mo 16.11. nach dem Ende der Bodenplatte am Fr 13.11.
+  const nach = new Map(fx.plan.vorgaenge.map((v, i) => [v.nummer, fx.sollwerte.vorgaenge[i]]));
+  assert.equal(fx.sollwerte.projektende, '2026-11-24');
+  assert.equal(nach.get('1.3').termine.ende, '2026-11-13');
+  assert.deepEqual([nach.get('2').art, nach.get('2').termine.beginn, nach.get('2').termine.ende], ['meilenstein', '2026-11-16', '2026-11-16']);
+  assert.equal(nach.get('3').termine.beginn, '2026-11-16', 'Nachfolger des Meilensteins beginnt am selben Tag');
+  assert.deepEqual(
+    fx.sollwerte.kritischeWege.map((w) => w.map((id) => fx.plan.vorgaenge.find((v) => v.id === id).nummer)),
+    [['1.1', '1.2', '1.3', '2', '3']],
+  );
+  assert.deepEqual(
+    ['4', '5'].map((n) => [nach.get(n).termine.gesamtpuffer, nach.get(n).termine.freierPuffer]),
+    [[4, 0], [4, 4]],
+    'bei 4 ist der freie Puffer kleiner als der Gesamtpuffer',
+  );
+  // Feiertag und Wochenende auf dem kritischen Weg: freie Tage zwischen seinen Terminen
+  const arbeitstage = new Set(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map(tagText));
+  const imWeg = fx.sollwerte.kritischeWege[0].map((id) => fx.sollwerte.vorgaenge.find((v) => v.id === id).termine);
+  const freiImWeg = [];
+  for (let n = tagAus(imWeg[0].beginn); n <= tagAus(imWeg[imWeg.length - 1].ende); n += 1) {
+    if (!arbeitstage.has(tagText(n))) freiImWeg.push(tagText(n));
+  }
+  assert.deepEqual(freiImWeg, ['2026-11-07', '2026-11-08', '2026-11-14', '2026-11-15', '2026-11-18', '2026-11-21', '2026-11-22']);
+});
+
+test('bauzeit: Gegenprobe ohne Land, der Buß- und Bettag ist dann Arbeitstag (Ticket 112)', () => {
+  const fx = laden('bauzeit.json');
+  const g = fx.gegenprobeOhneLand;
+  const mit = terminplanNachrechnen(fx.plan).ergebnis;
+  const ohne = terminplanNachrechnen({ ...fx.plan, kalender: g.kalender }).ergebnis;
+  assert.equal(ohne.projektende, g.projektende);
+  assert.equal(g.projektende, '2026-11-23'); // von Hand: einen Arbeitstag früher als mit Sachsen
+  const geaendert = [];
+  fx.plan.vorgaenge.forEach((v, i) => {
+    const anders = Object.entries(ohne.vorgaenge[i].termine).filter(([k, x]) => x !== mit.vorgaenge[i].termine[k]);
+    if (anders.length > 0) geaendert.push({ nummer: v.nummer, ...Object.fromEntries(anders) });
+  });
+  assert.deepEqual(geaendert, g.geaendert);
+  assert.deepEqual(ohne.kritischeWege, mit.kritischeWege);
+});
+
+// ---------------------------------------------------------------- Ticket 112: Honorar, Tor X3 (honorar.json)
+// Eigene Nachrechnung ohne das Paket `honorar`, nur BigInt in Cent (`rechnen.mjs`): Tafel aus der eigenen Abschrift von § 35
+// Abs. 1, Phasen aus § 34 Abs. 3, Rundungskette D-56. Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const ZONEN = ['I', 'II', 'III', 'IV', 'V'];
+/** Eine Zeile der Abschrift ("1 000 000 |  83 182 | …", ganze Euro, Leerzeichen als Tausendertrenner) → Tafelzeile. */
+function tafelzeileLesen(text) {
+  const zellen = text.split('|').map((z) => z.trim().replaceAll(' ', ''));
+  assert.equal(zellen.length, 1 + 2 * ZONEN.length, text);
+  for (const z of zellen) assert.match(z, /^[1-9]\d*$/, text);
+  const euro = (z) => `${z}.00`;
+  return {
+    anrechenbareKosten: euro(zellen[0]),
+    spannen: Object.fromEntries(ZONEN.map((zone, i) => [zone, { von: euro(zellen[1 + 2 * i]), bis: euro(zellen[2 + 2 * i]) }])),
+  };
+}
+/** Betrag als ganze Cent. */
+const cent = (text) => parse(text, 2);
+/** round_half_up(zaehler / nenner) für nicht negative ganze Zahlen. */
+const geteiltGerundet = (zaehler, nenner) => (2n * zaehler + nenner) / (2n * nenner);
+
+/** Honorarberechnung nach D-56 für ein Objekt Gebäude mit Kosten nach DIN 276 (die Fixture hat genau eines). */
+function honorarNachrechnen(fx) {
+  const { objekte, nebenkosten, mwstSatz } = fx.honorarberechnung;
+  assert.equal(objekte.length, 1);
+  const [o] = objekte;
+  const k = o.anrechenbareKosten;
+  assert.equal(k.art, 'din-276');
+  // § 33: KG 300 + weitere Kosten = sonstige; KG 400 voll bis 25 % davon, darüber zur Hälfte; dazu die Bausubstanz
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  const grenze = prozentVon(sonstige, parse('25.00', 2));
+  const kg400 = cent(k.kg400);
+  assert.equal(k.technischeAnlagenAnteilig, true);
+  const voll = kg400 > grenze ? grenze : kg400;
+  const haelfte = kg400 > grenze ? geteiltGerundet(kg400 - grenze, 2n) : 0n;
+  const ak = sonstige + voll + haelfte + cent(k.mitzuverarbeitendeBausubstanz);
+  // § 35 Abs. 1: die umgebenden Tafelzeilen; § 13: erst multiplizieren, dann teilen, je auf 2 Stellen
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  const iOben = zeilen.findIndex((z) => cent(z.anrechenbareKosten) > ak);
+  assert.ok(iOben > 0 && cent(zeilen[iOben - 1].anrechenbareKosten) < ak, 'streng zwischen zwei Zeilen der Abschrift');
+  const [unten, oben] = [zeilen[iOben - 1], zeilen[iOben]];
+  const u = cent(unten.anrechenbareKosten);
+  const d = cent(oben.anrechenbareKosten) - u;
+  const zone = o.honorarzone;
+  const interpoliert = (w) => {
+    const wu = cent(unten.spannen[zone][w]);
+    return geteiltGerundet(wu * d + (ak - u) * (cent(oben.spannen[zone][w]) - wu), d);
+  };
+  const von = interpoliert('von');
+  const bis = interpoliert('bis');
+  // Honorar = round(von + (bis − von) × Honorarsatz / 100, 2); Honorarsatz mit 2 Stellen
+  const honorar = geteiltGerundet(von * 10_000n + (bis - von) * parse(o.honorarsatz, 2), 10_000n);
+  const satzVon = new Map(fx.leistungsphasen.phasen.map((p) => [p.nummer, p]));
+  const phasen = o.leistungsphasen.map(({ nummer }) => {
+    const p = satzVon.get(nummer);
+    return { nummer, name: p.name, anteil: p.anteil, betrag: format(prozentVon(honorar, parse(p.anteil, 2)), 2) };
+  });
+  const grundhonorar = phasen.reduce((s, p) => s + cent(p.betrag), 0n);
+  const umbauzuschlag = prozentVon(grundhonorar, parse(o.umbauzuschlagssatz, 2));
+  assert.equal(nebenkosten.art, 'prozent');
+  const nk = prozentVon(grundhonorar + umbauzuschlag, parse(nebenkosten.satz, 2));
+  const netto = grundhonorar + umbauzuschlag + nk;
+  const mwst = prozentVon(netto, parse(mwstSatz, 2));
+  const t = (w) => format(w, 2);
+  return {
+    objekte: [{
+      bezeichnung: o.bezeichnung,
+      leistungsbild: o.leistungsbild,
+      honorarzone: zone,
+      anrechenbareKosten: t(ak),
+      herleitung: {
+        kg300: k.kg300,
+        weitereKosten: k.weitereKosten,
+        sonstigeAnrechenbareKosten: t(sonstige),
+        kg400: k.kg400,
+        grenzeTechnischeAnlagen: t(grenze),
+        kg400Voll: t(voll),
+        kg400Haelfte: t(haelfte),
+        mitzuverarbeitendeBausubstanz: k.mitzuverarbeitendeBausubstanz,
+        anrechenbareKosten: t(ak),
+      },
+      tafel: { zeileUnten: unten, zeileOben: oben, spanne: { von: t(von), bis: t(bis) } },
+      honorar: t(honorar),
+      phasen,
+      grundhonorar: t(grundhonorar),
+      umbauzuschlag: t(umbauzuschlag),
+    }],
+    grundhonorar: t(grundhonorar),
+    umbauzuschlaege: t(umbauzuschlag),
+    nebenkosten: t(nk),
+    netto: t(netto),
+    mwst: t(mwst),
+    brutto: t(netto + mwst),
+    befunde: [],
+  };
+}
+
+test('honorar: Abschrift § 35 Abs. 1 und Leistungsphasen § 34 Abs. 3 (Ticket 112, eigene Abschrift)', () => {
+  const fx = laden('honorar.json');
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  assert.deepEqual(zeilen.map((z) => z.anrechenbareKosten), ['1000000.00', '1500000.00']);
+  for (const z of zeilen) {
+    ZONEN.forEach((zone, i) => {
+      assert.ok(cent(z.spannen[zone].von) < cent(z.spannen[zone].bis), `${z.anrechenbareKosten} ${zone}: von < bis`);
+      if (i > 0) assert.equal(z.spannen[zone].von, z.spannen[ZONEN[i - 1]].bis, `bis der Zone davor = von ${zone}`);
+    });
+  }
+  for (const zone of ZONEN) assert.ok(cent(zeilen[0].spannen[zone].bis) < cent(zeilen[1].spannen[zone].bis), 'steigend');
+  // Zweite Abschrift der Zone III (§ 35 Abs. 1): 1.000.000 → 115.675 bis 144.268; 1.500.000 → 165.911 bis 206.923
+  assert.deepEqual(zeilen.map((z) => z.spannen.III), [{ von: '115675.00', bis: '144268.00' }, { von: '165911.00', bis: '206923.00' }]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileUnten, zeilen[0]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileOben, zeilen[1]);
+  const { phasen } = fx.leistungsphasen;
+  assert.deepEqual(phasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(phasen.map((p) => p.anteil), ['2.00', '7.00', '15.00', '3.00', '25.00', '10.00', '4.00', '32.00', '2.00']);
+  assert.equal(format(phasen.reduce((s, p) => s + parse(p.anteil, 2), 0n), 2), '100.00');
+  assert.equal(phasen[7].name, 'Objektüberwachung – Bauüberwachung und Dokumentation'); // Halbgeviertstrich wie in der Quelle
+});
+
+test('honorar: Kostenberechnung ergibt KG 300 und KG 400, die Eingabe deckt das Tor X3 ab (Ticket 112, § 33)', () => {
+  const fx = laden('honorar.json');
+  const ke = fx.kostenermittlung;
+  assert.equal(ke.stufe, 'kostenberechnung');
+  for (const id of [ke.id, ke.projektId, fx.honorarberechnung.id]) assert.match(id, UUID7);
+  assert.equal(ke.projektId, fx.honorarberechnung.projektId);
+  for (const e of ke.eintraege) assert.match(e.nummer, /^[1-9][1-9]0$/, 'nur zweite Ebene, keine Doppelzählung');
+  const summe = (ziffer) => ke.eintraege.filter((e) => e.nummer[0] === ziffer).reduce((s, e) => s + cent(e.betrag), 0n);
+  assert.equal(format(summe('3'), 2), fx.ausKostenermittlung.kg300);
+  assert.equal(format(summe('4'), 2), fx.ausKostenermittlung.kg400);
+  const [o] = fx.honorarberechnung.objekte;
+  assert.equal(o.anrechenbareKosten.kg300, '1011111.10');
+  assert.equal(o.anrechenbareKosten.kg400, '345678.91');
+  assert.equal(o.anrechenbareKosten.kg300, fx.ausKostenermittlung.kg300);
+  assert.equal(o.anrechenbareKosten.kg400, fx.ausKostenermittlung.kg400);
+  assert.equal(o.anrechenbareKosten.weitereKosten, ke.eintraege.find((e) => e.nummer === '610').betrag);
+  assert.deepEqual([o.leistungsbild, o.honorarzone, o.honorarsatz], ['gebaeude', 'III', '50.00']);
+  assert.match(fx.honorarsatzBenannt, /^Honorarsatz 50 %/);
+  assert.deepEqual(o.leistungsphasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.ok(o.leistungsphasen.every((p) => !('anteil' in p)), 'Sätze der HOAI');
+  assert.ok(o.umbauzuschlagssatz !== null && fx.honorarberechnung.nebenkosten.art === 'prozent');
+  assert.equal(fx.honorarberechnung.mwstSatz, '19.00');
+  // KG 400 über 25 % der sonstigen anrechenbaren Kosten: beide Zweige von § 33 Abs. 2
+  const h = fx.sollwerte.objekte[0].herleitung;
+  assert.ok(cent(h.kg400) > cent(h.grenzeTechnischeAnlagen) && cent(h.kg400Haelfte) > 0n);
+});
+
+test('honorar: Sollwerte gleich der eigenen Nachrechnung nach D-56 (Ticket 112)', () => {
+  const fx = laden('honorar.json');
+  assert.deepEqual(honorarNachrechnen(fx), fx.sollwerte);
+  // Von Hand (herleitung): aK 1.373.618,34; von 153.213,18; bis 191.086,11; Honorar 172.149,65; Grundhonorar 172.149,66;
+  // Umbau 43.037,42; Nebenkosten 9.683,42; Netto 224.870,50; MwSt 42.725,40; Brutto 267.595,90.
+  const s = fx.sollwerte;
+  const o = s.objekte[0];
+  assert.deepEqual(
+    [o.anrechenbareKosten, o.tafel.spanne.von, o.tafel.spanne.bis, o.honorar, o.grundhonorar, o.umbauzuschlag],
+    ['1373618.34', '153213.18', '191086.11', '172149.65', '172149.66', '43037.42'],
+  );
+  assert.deepEqual([s.nebenkosten, s.netto, s.mwst, s.brutto], ['9683.42', '224870.50', '42725.40', '267595.90']);
+  // Die Kette rundet sechsmal genau auf der Hälfte: half-up und „half-even“ unterscheiden sich dort (D-56: kaufmännisch)
+  const k = fx.honorarberechnung.objekte[0].anrechenbareKosten;
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  // je exakter Wert in Cent × 10.000 (Prozent mit 2 Stellen): Rest 5.000 heißt genau ein halber Cent
+  const haelften = [
+    sonstige * 2500n, // Grenze 25 %
+    (cent(k.kg400) - cent(o.herleitung.grenzeTechnischeAnlagen)) * 5000n, // Hälfte
+    cent(o.tafel.spanne.von) * 10_000n + (cent(o.tafel.spanne.bis) - cent(o.tafel.spanne.von)) * 5000n, // Honorar
+    cent(o.honorar) * 1000n, // LPH 6 (10 %)
+    cent(o.grundhonorar) * 2500n, // Umbauzuschlag 25 %
+    cent(s.netto) * 1900n, // MwSt
+  ];
+  for (const w of haelften) assert.equal(w % 10_000n, 5000n, 'genau ein halber Cent');
+});
+
+// ---------------------------------------------------------------- Ticket 112: Bauleitung, Tor X4 (bauleitung.json)
+// Eigene Auswertung ohne das Paket `bauleitung` (Ticket 111): Status = letzter Verlaufseintrag; überfällig = Frist vor dem
+// Stichtag und Status offen oder angezeigt; Bautagebuch je Zeitraum mit beiden Grenzen. Sollwerte von Hand (`herleitung`).
+
+const MANGELSTATUS = ['offen', 'angezeigt', 'beseitigt', 'abgenommen'];
+/** Erlaubte Statuswechsel (Ticket 111 Punkt 1, D-57): offen → angezeigt → beseitigt → abgenommen; beseitigt → offen. */
+const STATUSWECHSEL = new Map([
+  ['offen', ['angezeigt']],
+  ['angezeigt', ['beseitigt']],
+  ['beseitigt', ['abgenommen', 'offen']],
+  ['abgenommen', []],
+]);
+const statusVon = (m) => m.verlauf[m.verlauf.length - 1].status;
+const ueberfaelligAm = (maengel, stichtag) =>
+  maengel.filter((m) => m.frist !== null && m.frist < stichtag && ['offen', 'angezeigt'].includes(statusVon(m)));
+
+function maengelAuswerten(fx, stichtag) {
+  const zaehlen = (liste) => {
+    const jeStatus = Object.fromEntries(MANGELSTATUS.map((s) => [s, liste.filter((m) => statusVon(m) === s).length]));
+    return {
+      anzahl: liste.length,
+      jeStatus,
+      offen: jeStatus.offen + jeStatus.angezeigt,
+      ueberfaellig: ueberfaelligAm(liste, stichtag).length,
+    };
+  };
+  return {
+    stichtag,
+    jeAuftragnehmer: fx.auftraege.map((a) => ({
+      auftragsLvId: a.auftragsLvId,
+      auftragnehmer: a.auftragnehmer,
+      ...zaehlen(fx.maengel.filter((m) => m.auftragsLvId === a.auftragsLvId)),
+    })),
+    gesamt: zaehlen(fx.maengel),
+  };
+}
+
+function bautagebuchAuswerten(eintraege, von, bis) {
+  const imZeitraum = eintraege.filter((e) => von <= e.datum && e.datum <= bis).sort((x, y) => (x.datum < y.datum ? -1 : 1));
+  const jeFirma = new Map();
+  for (const e of imZeitraum) for (const k of e.arbeitskraefte) jeFirma.set(k.firma, (jeFirma.get(k.firma) ?? 0) + k.anzahl);
+  const jeTag = imZeitraum.map((e) => ({ datum: e.datum, arbeitskraefte: e.arbeitskraefte.reduce((s, k) => s + k.anzahl, 0) }));
+  return {
+    von,
+    bis,
+    jeTag,
+    jeFirma: [...jeFirma].sort(([x], [y]) => (x < y ? -1 : 1)).map(([firma, arbeitskraefte]) => ({ firma, arbeitskraefte })),
+    summe: jeTag.reduce((s, t) => s + t.arbeitskraefte, 0),
+  };
+}
+
+test('bauleitung: Mängel und Bautagebuch in der Form von Ticket 97 Punkt 6, Verläufe nach Ticket 111 (Ticket 112)', () => {
+  const fx = laden('bauleitung.json');
+  const ids = [fx.projektId, ...fx.auftraege.map((a) => a.auftragsLvId), ...fx.maengel.map((m) => m.id), ...fx.bautagebuch.map((e) => e.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  // fünf Mängel an zwei Auftragnehmern, je mit Frist und Verlauf
+  assert.equal(fx.maengel.length, 5);
+  assert.equal(fx.auftraege.length, 2);
+  const lvs = new Set(fx.auftraege.map((a) => a.auftragsLvId));
+  assert.deepEqual(new Set(fx.maengel.map((m) => m.auftragsLvId)), lvs);
+  assert.deepEqual(fx.maengel.map((m) => m.nummer), [1, 2, 3, 4, 5]);
+  for (const m of fx.maengel) {
+    assert.equal(m.projektId, fx.projektId);
+    assert.match(m.frist, /^\d{4}-\d{2}-\d{2}$/);
+    tagAus(m.frist);
+    assert.ok(m.verlauf.length >= 1);
+    assert.equal(m.verlauf[0].status, 'offen');
+    assert.equal(m.verlauf[0].datum, m.festgestellt);
+    for (let i = 1; i < m.verlauf.length; i += 1) {
+      const [vorher, jetzt] = [m.verlauf[i - 1], m.verlauf[i]];
+      assert.ok(STATUSWECHSEL.get(vorher.status).includes(jetzt.status), `${m.nummer}: ${vorher.status} → ${jetzt.status}`);
+      assert.ok(tagAus(jetzt.datum) >= tagAus(vorher.datum), `${m.nummer}: Datum nicht vor dem vorigen`);
+    }
+    for (const v of m.verlauf) assert.ok(v.datum <= fx.stichtag, 'alle Verlaufseinträge am oder vor dem Stichtag');
+  }
+  assert.ok(fx.maengel.some((m) => m.verlauf.some((v, i) => i > 0 && v.status === 'offen')), 'beseitigt → offen kommt vor');
+  // drei Bautagebucheinträge mit Arbeitskräften, ein Eintrag je Datum, ganze Zahlen
+  assert.equal(fx.bautagebuch.length, 3);
+  assert.equal(new Set(fx.bautagebuch.map((e) => e.datum)).size, 3);
+  for (const e of fx.bautagebuch) {
+    assert.equal(e.projektId, fx.projektId);
+    tagAus(e.datum);
+    assert.ok(e.arbeitskraefte.length > 0);
+    for (const k of e.arbeitskraefte) assert.ok(k.firma !== '' && Number.isInteger(k.anzahl) && k.anzahl >= 0);
+    const { temperaturMin, temperaturMax } = e.wetter;
+    assert.ok(Number.isInteger(temperaturMin) && Number.isInteger(temperaturMax) && temperaturMin <= temperaturMax);
+  }
+});
+
+test('bauleitung: Fristprüfung zum Stichtag, genau einer überfällig, Frist am Stichtag nicht (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  const s = fx.sollwerte;
+  assert.deepEqual(fx.maengel.map((m) => ({ nummer: m.nummer, status: statusVon(m) })), s.status);
+  assert.equal(Math.max(...fx.maengel.map((m) => m.nummer)) + 1, s.naechsteMangelnummer);
+  const zeile = (m) => ({ mangelId: m.id, nummer: m.nummer, frist: m.frist, status: statusVon(m) });
+  assert.equal(s.fristpruefung.stichtag, fx.stichtag);
+  assert.deepEqual(ueberfaelligAm(fx.maengel, fx.stichtag).map(zeile), s.fristpruefung.ueberfaellig);
+  assert.deepEqual(fx.maengel.filter((m) => m.frist === fx.stichtag).map(zeile), s.fristpruefung.fristAmStichtag);
+  // Von Hand: Stichtag Do 26.11.2026, überfällig nur 3 (Frist 25.11., angezeigt); 5 hat die Frist am Stichtag
+  assert.equal(fx.stichtag, '2026-11-26');
+  assert.deepEqual(s.fristpruefung.ueberfaellig.map((z) => z.nummer), [3]);
+  assert.deepEqual(s.fristpruefung.fristAmStichtag.map((z) => z.nummer), [5]);
+  // Frist vor dem Stichtag, aber beseitigt oder abgenommen: nicht überfällig (1, 4)
+  assert.deepEqual(fx.maengel.filter((m) => m.frist < fx.stichtag).map((m) => [m.nummer, statusVon(m)]), [
+    [1, 'abgenommen'], [3, 'angezeigt'], [4, 'beseitigt'],
+  ]);
+  const g = fx.gegenproben.stichtag20261127;
+  assert.deepEqual(ueberfaelligAm(fx.maengel, g.stichtag).map((m) => m.nummer), g.ueberfaellig);
+});
+
+test('bauleitung: Auswertung der Mängel je Auftragnehmer und des Bautagebuchs je Zeitraum (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  assert.deepEqual(maengelAuswerten(fx, fx.stichtag), fx.sollwerte.auswertungMaengel);
+  const b = fx.sollwerte.auswertungBautagebuch;
+  assert.deepEqual(bautagebuchAuswerten(fx.bautagebuch, b.von, b.bis), b);
+  // Von Hand: 9 + 8 + 9 = 26 = Rohbau 19 + Tiefbau 5 + Elektro 2
+  assert.deepEqual([b.jeTag.map((t) => t.arbeitskraefte), b.jeFirma.map((f) => f.arbeitskraefte), b.summe], [[9, 8, 9], [2, 19, 5], 26]);
+  const g = fx.gegenproben.bautagebuch17bis19;
+  const { jeFirma, summe } = bautagebuchAuswerten(fx.bautagebuch, g.von, g.bis);
+  assert.deepEqual({ jeFirma, summe }, { jeFirma: g.jeFirma, summe: g.summe });
+  assert.equal(g.summe, 17);
+});
+
+test('X2–X4: JSON-Zahlen nur für ganze Zahlen der Typen, Beträge und Prozente als Text (Ticket 112, N1, N3)', () => {
+  // Ganze Zahlen der Vertragstypen (Arbeitstage, Phasennummer, Mangelnummer, Köpfe, Grad, Zähler) stehen als JSON-Zahl, damit die
+  // Eingaben den Typen direkt zuweisbar sind (D-112.2); Dezimalwerte (Betrag, Prozent) als kanonischer Text mit 2 Stellen.
+  const GANZZAHLIG = {
+    'bauzeit.json': ['arbeitstage', 'dauer', 'abstand', 'gesamtpuffer', 'freierPuffer'],
+    'honorar.json': ['nummer'],
+    'bauleitung.json': [
+      'nummer', 'anzahl', 'temperaturMin', 'temperaturMax', 'naechsteMangelnummer', 'arbeitskraefte', 'summe', 'offen',
+      'angezeigt', 'beseitigt', 'abgenommen', 'ueberfaellig',
+    ],
+  };
+  for (const [name, felder] of Object.entries(GANZZAHLIG)) {
+    const pruefe = (v, pfad, feld) => {
+      if (typeof v === 'number') {
+        assert.ok(Number.isInteger(v), `${name}: keine ganze Zahl bei ${pfad}`);
+        assert.ok(felder.includes(feld), `${name}: JSON-Zahl bei ${pfad}`);
+      } else if (Array.isArray(v)) {
+        v.forEach((x, i) => pruefe(x, `${pfad}[${i}]`, feld));
+      } else if (v && typeof v === 'object') {
+        for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`, k);
+      } else if (typeof v === 'string' && name === 'honorar.json' && /^\d+\.\d+$/.test(v)) {
+        assert.match(v, /^\d+\.\d{2}$/, `${name}: Dezimalwert mit 2 Stellen bei ${pfad}`);
+      }
+    };
+    pruefe(laden(name), name, null);
+  }
+});
