@@ -139,7 +139,10 @@ describe('Paketgrenzen (A3)', () => {
     paket('packages/bauleitung', ['@tethys/vertrag', '@tethys/dezimal']);
     paket('apps/web', ['@tethys/bauleitung']);
     expect(await pruefeGrenzen(wurzel)).toEqual([]);
-    datei('packages/bauleitung/src/index.ts', "import '@tethys/kern';\nimport '@tethys/bauzeit';\nexport {};\n");
+    datei(
+      'packages/bauleitung/src/index.ts',
+      "import '@tethys/kern';\nimport '@tethys/bauzeit';\nexport {};\n",
+    );
     const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
     expect(regeln).toEqual(['grenze-packages-bauleitung', 'grenze-packages-bauleitung']);
   });
