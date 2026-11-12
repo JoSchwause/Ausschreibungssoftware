@@ -561,7 +561,63 @@ export function listeBautagebuch(db: Datenbank, projekt: ProjektId): Bautagebuch
     .map(bautagebucheintragAusZeile);
 }
 
+/** Die Aggregate aus v1.6 eines Projekts, je nach Kennung (Projektdatei). */
+export function aggregateV16DesProjekts(db: Datenbank, projekt: ProjektId) {
+  const alle = (tabelle: string): SqlZeile[] =>
+    db.zeilen(`SELECT * FROM ${tabelle} WHERE projekt_id = ? ORDER BY id`, [projekt]);
+  return {
+    bauwerksmodelle: alle('bauwerksmodell').map((z) => {
+      const inhalt = db.zeilen('SELECT * FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?', [
+        text(z, 'id'),
+      ])[0];
+      if (inhalt === undefined)
+        return abbruch(
+          'datei-ungueltig',
+          `Bauwerksmodell ${text(z, 'id')}: Struktur und Bauteile fehlen in der Datenbank.`,
+        );
+      return bauwerksmodellAusZeilen(z, inhalt);
+    }),
+    bauzeitenplaene: alle('bauzeitenplan').map(bauzeitenplanAusZeile),
+    honorarberechnungen: alle('honorarberechnung').map(honorarberechnungAusZeile),
+    maengel: alle('mangel').map(mangelAusZeile),
+    bautagebuch: alle('bautagebucheintrag').map(bautagebucheintragAusZeile),
+  };
+}
+
 // --- Modelldateien (Schema 6, v1.6; D-51) --------------------------------------------------------------------------------
+
+/** Die Hashes der Modelldateien, die die Modelle eines Projekts nennen, aufsteigend, je Hash einmal. */
+const DATEIEN_DES_PROJEKTS = `SELECT DISTINCT datei_hash AS hash FROM bauwerksmodell WHERE projekt_id = ?`;
+
+/** Die abgelegten Modelldateien eines Projekts (komprimiert, wie gespeichert), nach Hash (Projektdatei, D-51). */
+export function modelldateienDesProjekts(
+  db: Datenbank,
+  projekt: ProjektId,
+): { hash: string; inhalt: Uint8Array }[] {
+  return db
+    .zeilen(
+      `SELECT m.hash, m.inhalt FROM modelldatei m WHERE m.hash IN (${DATEIEN_DES_PROJEKTS}) ORDER BY m.hash`,
+      [projekt],
+    )
+    .map((z) => {
+      const inhalt = z['inhalt'];
+      if (!(inhalt instanceof Uint8Array))
+        return abbruch(
+          'datei-ungueltig',
+          `Modelldatei ${text(z, 'hash')}: Die Bytes fehlen in der Datenbank.`,
+        );
+      return { hash: text(z, 'hash'), inhalt };
+    });
+}
+
+/** Zeichen, die die Modelldateien eines Projekts in Base64 bräuchten, ohne sie zu lesen (Grenze des Exports, D-51). */
+export function modelldateiZeichen(db: Datenbank, projekt: ProjektId): number {
+  const n = db.zeilen(
+    `SELECT COALESCE(SUM(((length(inhalt) + 2) / 3) * 4), 0) AS n FROM modelldatei WHERE hash IN (${DATEIEN_DES_PROJEKTS})`,
+    [projekt],
+  )[0]?.['n'];
+  return typeof n === 'number' ? n : 0;
+}
 
 /** Eine abgelegte Modelldatei: Länge der unkomprimierten Bytes und die Bytes mit deflate-raw komprimiert. */
 export interface GespeicherteModelldatei {

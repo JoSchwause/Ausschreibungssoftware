@@ -278,7 +278,7 @@ describe('Migration 2 überführt eine Datenbank der Version 1 ohne Verlust (Q5)
 
     // Ganzer Stand einschließlich Auftrags-LV: Export der migrierten Datenbank = Export nach Import des Modells.
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
+    wert(await frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
     expect(wert(kern.projektdateiExportieren(inhalt.projekt.id))).toBe(
       wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
     );
@@ -352,7 +352,7 @@ describe('Migration 3 überführt eine Datenbank der Version 2 ohne Verlust (Q5)
     // Seit Version 5 liest der Export Tabellen, die es in Version 3 nicht gibt: Die Datenbank geht weiter bis zur
     // aktuellen Version, dann ist die Datei gleich der nach einem frischen Import (D-79.6).
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
+    wert(await frisch.kern.projektdateiImportieren(kanonischesJson(soll)));
     expect(wert(kernAufDb(db).projektdateiExportieren(inhalt.projekt.id))).toBe(
       wert(frisch.kern.projektdateiExportieren(inhalt.projekt.id)),
     );
@@ -375,7 +375,7 @@ describe('Migration 4 überführt eine Datenbank der Version 3 ohne Verlust (Q5)
   it('Datenbank der Version 3 mit Inhalt: Modell und Projektdatei bleiben gleich, die neuen Spalten sind NULL', async () => {
     // Eine Datenbank der Version 3 nachgestellt: die Datei importiert, dann die Spalten von Version 4 entfernt.
     const db = await neueDatenbank();
-    const projekt = wert(kernAufDb(db).projektdateiImportieren(v3));
+    const projekt = wert(await kernAufDb(db).projektdateiImportieren(v3));
     aufSchema4(db); // seit Version 5 zuerst auf 4 (D-79.6)
     aufSchema3(db);
     expect(schemaAbbild(db)).toEqual(SCHEMA_ABBILD[3]);
@@ -400,7 +400,7 @@ describe('Migration 4 überführt eine Datenbank der Version 3 ohne Verlust (Q5)
     }
     // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 3 (Dateimigration).
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(v3));
+    wert(await frisch.kern.projektdateiImportieren(v3));
     expect(wert(kern.projektdateiExportieren(projekt))).toBe(
       wert(frisch.kern.projektdateiExportieren(projekt)),
     );
@@ -456,7 +456,7 @@ describe('Migration 5 überführt eine Datenbank der Version 4 ohne Verlust (Q5)
   /** Eine Datenbank der Version 4 nachgestellt: die Datei importiert, dann alles von Version 5 entfernt (D-79.6). */
   async function datenbankV4(): Promise<{ db: Datenbank; projekt: ProjektId }> {
     const db = await neueDatenbank();
-    const projekt = wert(kernAufDb(db).projektdateiImportieren(v4));
+    const projekt = wert(await kernAufDb(db).projektdateiImportieren(v4));
     aufSchema4(db);
     expect(schemaAbbild(db)).toEqual(SCHEMA_ABBILD[4]);
     return { db, projekt };
@@ -496,7 +496,7 @@ describe('Migration 5 überführt eine Datenbank der Version 4 ohne Verlust (Q5)
     expect(zaehle(db, 'aufmass') + zaehle(db, 'rechnung') + zaehle(db, 'kostenermittlung')).toBe(0);
     // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 4 (Dateimigration).
     const frisch = await neuerKern();
-    wert(frisch.kern.projektdateiImportieren(v4));
+    wert(await frisch.kern.projektdateiImportieren(v4));
     expect(wert(kern.projektdateiExportieren(projekt))).toBe(
       wert(frisch.kern.projektdateiExportieren(projekt)),
     );

@@ -9,6 +9,42 @@
 import { KOSTENGRUPPE_FORM, langtextFormFehler } from '@tethys/kern';
 import { MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
 import type {
+  AnrechenbareKostenangabe,
+  Anordnungsart,
+  Anordnungsbeziehung,
+  Bautagebucheintrag,
+  BautagebucheintragId,
+  BautagebucheintragZustand,
+  Bauteil,
+  Bauteilmenge,
+  Bauteilzuordnung,
+  Bauwerksmodell,
+  BauwerksmodellId,
+  BauwerksmodellZustand,
+  Bauzeitenplan,
+  BauzeitenplanId,
+  BauzeitenplanZustand,
+  BeauftragteLeistungsphase,
+  Bundesland,
+  Honorarberechnung,
+  HonorarberechnungId,
+  HonorarberechnungZustand,
+  Honorarobjekt,
+  Honorarzone,
+  IfcGlobalId,
+  Leistungsbild,
+  Leistungsphasennummer,
+  Mangel,
+  MangelId,
+  Mangelstatus,
+  Mangelverlaufseintrag,
+  MangelZustand,
+  Nebenkostenangabe,
+  Strukturknoten,
+  Vorgang,
+  Vorgangsbezug,
+  VorgangId,
+  Wochentag,
   Angebot,
   AngebotId,
   AngebotKopf,
@@ -487,7 +523,7 @@ function knoten(x: unknown, pfad: string): Knoten {
           'einheitspreis',
           'epa',
         ],
-        ['leitbeschreibung', 'mengenansatz', 'kostengruppe', 'textquelle'],
+        ['leitbeschreibung', 'mengenansatz', 'kostengruppe', 'textquelle', 'bauteile'],
       );
       return {
         ...lage(o),
@@ -510,6 +546,7 @@ function knoten(x: unknown, pfad: string): Knoten {
         ...optional(o, 'mengenansatz', (v) => mengenansatz(v, `${pfad}.mengenansatz`)),
         ...optional(o, 'kostengruppe', (v) => kostengruppe(v, `${pfad}.kostengruppe`)),
         ...optional(o, 'textquelle', (v) => nichtLeer(v, `${pfad}.textquelle`)),
+        ...optional(o, 'bauteile', (v) => bauteilzuordnungen(v, `${pfad}.bauteile`)),
       };
     }
     default:
@@ -946,6 +983,548 @@ function kostenermittlungZustand(x: unknown, pfad: string): KostenermittlungZust
   return { kostenermittlung };
 }
 
+// --- Vertrag v1.6 (Schemaversion 6, Ticket 106; Strenge wie D-79.4) -----------------------------------------------------
+//
+// Die Form, die der Vertrag an den Typen nennt (Felder, Listen der Werte, kanonische Dezimalwerte, GlobalIds in Form, Texte
+// „nie ''“ bzw. „nicht leer“); keine Fachregeln, die der Ausführer prüft (Ring in der Struktur, Statuswechsel, Datumsformat):
+// Strenger als er wäre, ließe Exporte nicht mehr importieren (D-79.4).
+
+const GLOBAL_ID = /^[0-9A-Za-z_$]{22}$/;
+const HASH = /^[0-9a-f]{64}$/;
+
+function globalId(x: unknown, pfad: string): IfcGlobalId {
+  const s = zeichenkette(x, pfad);
+  if (!GLOBAL_ID.test(s)) ungueltig(pfad, `keine GlobalId (22 Zeichen aus 0-9, A-Z, a-z, _, $): „${s}“`);
+  return s as IfcGlobalId;
+}
+
+/** Ganze Zahl, auch negativ (Abstand einer Anordnungsbeziehung, Temperatur). */
+function ganzeZahl(x: unknown, pfad: string): number {
+  if (typeof x !== 'number' || !Number.isSafeInteger(x)) return ungueltig(pfad, 'ganze Zahl erwartet');
+  return x;
+}
+
+const nichtLeerOderNull = (x: unknown, pfad: string): string | null => oderNull(x, (v) => nichtLeer(v, pfad));
+
+/** Liste, die nicht leer ist (der Vertrag kennt sie im Zustand nur so; leer fehlt das Feld). */
+function nichtLeereListe(x: unknown, pfad: string): unknown[] {
+  const l = liste(x, pfad);
+  if (l.length === 0) ungueltig(pfad, 'leere Liste (das Feld fehlt dann)');
+  return l;
+}
+
+/** Bauteilzuordnungen einer Position (v1.6, D-52): nicht leer, GlobalId in Form, Mengenart nicht leer. */
+function bauteilzuordnungen(x: unknown, pfad: string): Bauteilzuordnung[] {
+  return nichtLeereListe(x, pfad).map((z, i): Bauteilzuordnung => {
+    const q = `${pfad}[${String(i)}]`;
+    const o = objekt(z, q, ['globalId', 'mengenart']);
+    return {
+      globalId: globalId(feld(o, 'globalId'), `${q}.globalId`),
+      mengenart: nichtLeer(feld(o, 'mengenart'), `${q}.mengenart`),
+    };
+  });
+}
+
+const MENGENARTEN: readonly Bauteilmenge['art'][] = [
+  'laenge',
+  'flaeche',
+  'volumen',
+  'anzahl',
+  'gewicht',
+  'zeit',
+];
+
+function bauteilmengen(x: unknown, pfad: string): Bauteilmenge[] {
+  return liste(x, pfad).map((m, i): Bauteilmenge => {
+    const q = `${pfad}[${String(i)}]`;
+    const o = objekt(m, q, ['satz', 'name', 'art', 'wert']);
+    return {
+      satz: textOderNull(feld(o, 'satz'), `${q}.satz`),
+      name: nichtLeer(feld(o, 'name'), `${q}.name`),
+      art: aufzaehlung(feld(o, 'art'), `${q}.art`, MENGENARTEN),
+      wert: dezimal(feld(o, 'wert'), `${q}.wert`, 'menge') as Menge,
+    };
+  });
+}
+
+const STRUKTURARTEN: readonly Strukturknoten['art'][] = [
+  'projekt',
+  'grundstueck',
+  'gebaeude',
+  'geschoss',
+  'raum',
+];
+
+function strukturknoten(x: unknown, pfad: string): Strukturknoten {
+  const o = objekt(x, pfad, ['globalId', 'art', 'name', 'elternGlobalId', 'mengen']);
+  return {
+    globalId: globalId(feld(o, 'globalId'), `${pfad}.globalId`),
+    art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, STRUKTURARTEN),
+    name: textOderNull(feld(o, 'name'), `${pfad}.name`),
+    elternGlobalId: oderNull(feld(o, 'elternGlobalId'), (v) => globalId(v, `${pfad}.elternGlobalId`)),
+    mengen: bauteilmengen(feld(o, 'mengen'), `${pfad}.mengen`),
+  };
+}
+
+function bauteil(x: unknown, pfad: string): Bauteil {
+  const o = objekt(
+    x,
+    pfad,
+    ['globalId', 'ifcKlasse', 'name', 'typ', 'strukturGlobalId', 'mengen'],
+    ['teilVonGlobalId', 'kostengruppe'],
+  );
+  return {
+    globalId: globalId(feld(o, 'globalId'), `${pfad}.globalId`),
+    ifcKlasse: nichtLeer(feld(o, 'ifcKlasse'), `${pfad}.ifcKlasse`),
+    name: textOderNull(feld(o, 'name'), `${pfad}.name`),
+    typ: textOderNull(feld(o, 'typ'), `${pfad}.typ`),
+    strukturGlobalId: oderNull(feld(o, 'strukturGlobalId'), (v) => globalId(v, `${pfad}.strukturGlobalId`)),
+    ...optional(o, 'teilVonGlobalId', (v) => globalId(v, `${pfad}.teilVonGlobalId`)),
+    ...optional(o, 'kostengruppe', (v) => kostengruppe(v, `${pfad}.kostengruppe`)),
+    mengen: bauteilmengen(feld(o, 'mengen'), `${pfad}.mengen`),
+  };
+}
+
+function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand {
+  const z = objekt(x, pfad, ['bauwerksmodell']);
+  const p = `${pfad}.bauwerksmodell`;
+  const o = objekt(feld(z, 'bauwerksmodell'), p, [
+    'id',
+    'projektId',
+    'name',
+    'datei',
+    'schema',
+    'vorgaengerId',
+    'eingelesen',
+    'struktur',
+    'bauteile',
+  ]);
+  const d = objekt(feld(o, 'datei'), `${p}.datei`, ['hash', 'dateiname', 'groesse']);
+  const hash = zeichenkette(feld(d, 'hash'), `${p}.datei.hash`);
+  if (!HASH.test(hash)) ungueltig(`${p}.datei.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  const id = zeichenkette(feld(o, 'id'), `${p}.id`) as BauwerksmodellId;
+  const vorgaengerId = oderNull(feld(o, 'vorgaengerId'), (v) =>
+    zeichenkette(v, `${p}.vorgaengerId`),
+  ) as BauwerksmodellId | null;
+  if (vorgaengerId === id) ungueltig(`${p}.vorgaengerId`, 'ein Modell ist nicht sein eigener Vorgänger');
+  const bauwerksmodell: Bauwerksmodell = {
+    id,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    name: nichtLeer(feld(o, 'name'), `${p}.name`),
+    datei: {
+      hash,
+      dateiname: zeichenkette(feld(d, 'dateiname'), `${p}.datei.dateiname`),
+      groesse: ganz(feld(d, 'groesse'), `${p}.datei.groesse`),
+    },
+    schema: aufzaehlung(feld(o, 'schema'), `${p}.schema`, ['IFC2X3', 'IFC4'] as const),
+    vorgaengerId,
+    eingelesen: zeichenkette(feld(o, 'eingelesen'), `${p}.eingelesen`),
+    struktur: liste(feld(o, 'struktur'), `${p}.struktur`).map((k, i) =>
+      strukturknoten(k, `${p}.struktur[${String(i)}]`),
+    ),
+    bauteile: liste(feld(o, 'bauteile'), `${p}.bauteile`).map((b, i) =>
+      bauteil(b, `${p}.bauteile[${String(i)}]`),
+    ),
+  };
+  return { bauwerksmodell };
+}
+
+/** Ein Eintrag von `modelldateien`: Hash und Base64-Text; ob die Bytes zum Hash passen, prüft der Import (Web Crypto). */
+function modelldateiEintrag(x: unknown, pfad: string): { hash: string; inhalt: string } {
+  const o = objekt(x, pfad, ['hash', 'inhalt']);
+  const hash = zeichenkette(feld(o, 'hash'), `${pfad}.hash`);
+  if (!HASH.test(hash)) ungueltig(`${pfad}.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  return { hash, inhalt: zeichenkette(feld(o, 'inhalt'), `${pfad}.inhalt`) };
+}
+
+const ANORDNUNGSARTEN: readonly Anordnungsart[] = [
+  'ende-anfang',
+  'anfang-anfang',
+  'ende-ende',
+  'anfang-ende',
+];
+const BUNDESLAENDER: readonly Bundesland[] = [
+  'BW',
+  'BY',
+  'BE',
+  'BB',
+  'HB',
+  'HH',
+  'HE',
+  'MV',
+  'NI',
+  'NW',
+  'RP',
+  'SL',
+  'SN',
+  'ST',
+  'SH',
+  'TH',
+];
+
+function vorgangsbezug(x: unknown, pfad: string): Vorgangsbezug {
+  const o = objekt(x, pfad, ['art', 'id', 'knotenIds']);
+  const knotenIds = oderNull(feld(o, 'knotenIds'), (v) =>
+    nichtLeereListe(v, `${pfad}.knotenIds`).map(
+      (k, i) => zeichenkette(k, `${pfad}.knotenIds[${String(i)}]`) as GliederungId | PositionId,
+    ),
+  );
+  if (knotenIds !== null) eindeutig(knotenIds, `${pfad}.knotenIds`, 'Knoten');
+  const art = aufzaehlung(feld(o, 'art'), `${pfad}.art`, [
+    'leistungsverzeichnis',
+    'auftrags-leistungsverzeichnis',
+  ] as const);
+  const id = zeichenkette(feld(o, 'id'), `${pfad}.id`);
+  return art === 'leistungsverzeichnis'
+    ? { art, id: id as LeistungsverzeichnisId, knotenIds }
+    : { art, id: id as AuftragsLeistungsverzeichnisId, knotenIds };
+}
+
+function vorgang(x: unknown, pfad: string): Vorgang {
+  const o = objekt(x, pfad, [
+    'id',
+    'nummer',
+    'bezeichnung',
+    'elternId',
+    'dauer',
+    'vorgaenger',
+    'fruehesterBeginn',
+    'bezug',
+    'ist',
+  ]);
+  return {
+    id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as VorgangId,
+    nummer: nichtLeerOderNull(feld(o, 'nummer'), `${pfad}.nummer`),
+    bezeichnung: nichtLeer(feld(o, 'bezeichnung'), `${pfad}.bezeichnung`),
+    elternId: oderNull(feld(o, 'elternId'), (v) => zeichenkette(v, `${pfad}.elternId`)) as VorgangId | null,
+    dauer: ganz(feld(o, 'dauer'), `${pfad}.dauer`),
+    vorgaenger: liste(feld(o, 'vorgaenger'), `${pfad}.vorgaenger`).map((b, i): Anordnungsbeziehung => {
+      const q = `${pfad}.vorgaenger[${String(i)}]`;
+      const bo = objekt(b, q, ['vorgaengerId', 'art', 'abstand']);
+      return {
+        vorgaengerId: zeichenkette(feld(bo, 'vorgaengerId'), `${q}.vorgaengerId`) as VorgangId,
+        art: aufzaehlung(feld(bo, 'art'), `${q}.art`, ANORDNUNGSARTEN),
+        abstand: ganzeZahl(feld(bo, 'abstand'), `${q}.abstand`),
+      };
+    }),
+    fruehesterBeginn: textOderNull(feld(o, 'fruehesterBeginn'), `${pfad}.fruehesterBeginn`),
+    bezug: oderNull(feld(o, 'bezug'), (v) => vorgangsbezug(v, `${pfad}.bezug`)),
+    ist: oderNull(feld(o, 'ist'), (v) => {
+      const q = `${pfad}.ist`;
+      const io = objekt(v, q, ['beginn', 'ende', 'fortschritt']);
+      const ist = {
+        beginn: textOderNull(feld(io, 'beginn'), `${q}.beginn`),
+        ende: textOderNull(feld(io, 'ende'), `${q}.ende`),
+        fortschritt: oderNull(
+          feld(io, 'fortschritt'),
+          (f) => dezimal(f, `${q}.fortschritt`, 'prozent') as Prozent,
+        ),
+      };
+      if (ist.beginn === null && ist.ende === null && ist.fortschritt === null)
+        ungueltig(q, 'alle drei Angaben null (nichts erfasst heißt ist: null)');
+      return ist;
+    }),
+  };
+}
+
+function bauzeitenplanZustand(x: unknown, pfad: string): BauzeitenplanZustand {
+  const z = objekt(x, pfad, ['bauzeitenplan']);
+  const p = `${pfad}.bauzeitenplan`;
+  const o = objekt(feld(z, 'bauzeitenplan'), p, [
+    'id',
+    'projektId',
+    'name',
+    'projektbeginn',
+    'kalender',
+    'vorgaenge',
+  ]);
+  const k = objekt(feld(o, 'kalender'), `${p}.kalender`, ['arbeitstage', 'bundesland', 'freieTage']);
+  const vorgaenge = liste(feld(o, 'vorgaenge'), `${p}.vorgaenge`).map((v, i) =>
+    vorgang(v, `${p}.vorgaenge[${String(i)}]`),
+  );
+  eindeutig(
+    vorgaenge.map((v) => v.id),
+    `${p}.vorgaenge`,
+    'Vorgang',
+  );
+  const bauzeitenplan: Bauzeitenplan = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as BauzeitenplanId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    name: nichtLeer(feld(o, 'name'), `${p}.name`),
+    projektbeginn: zeichenkette(feld(o, 'projektbeginn'), `${p}.projektbeginn`),
+    kalender: {
+      arbeitstage: nichtLeereListe(feld(k, 'arbeitstage'), `${p}.kalender.arbeitstage`).map((t, i) => {
+        const q = `${p}.kalender.arbeitstage[${String(i)}]`;
+        const tag = ganz(t, q);
+        if (tag < 1 || tag > 7) ungueltig(q, 'ISO-Wochentag 1 bis 7 erwartet');
+        return tag as Wochentag;
+      }),
+      bundesland: oderNull(feld(k, 'bundesland'), (v) =>
+        aufzaehlung(v, `${p}.kalender.bundesland`, BUNDESLAENDER),
+      ),
+      freieTage: liste(feld(k, 'freieTage'), `${p}.kalender.freieTage`).map((t, i) =>
+        zeichenkette(t, `${p}.kalender.freieTage[${String(i)}]`),
+      ),
+    },
+    vorgaenge,
+  };
+  return { bauzeitenplan };
+}
+
+const LEISTUNGSBILDER: readonly Leistungsbild[] = [
+  'gebaeude',
+  'innenraeume',
+  'freianlagen',
+  'ingenieurbauwerke',
+  'verkehrsanlagen',
+  'tragwerksplanung',
+  'technische-ausruestung',
+];
+const HONORARZONEN: readonly Honorarzone[] = ['I', 'II', 'III', 'IV', 'V'];
+
+function anrechenbareKosten(x: unknown, pfad: string): AnrechenbareKostenangabe {
+  const art = typeof x === 'object' && x !== null ? (x as Roh)['art'] : undefined;
+  const betrag = (v: unknown, q: string): Betrag => dezimal(v, q, 'betrag') as Betrag;
+  if (art === 'betrag') {
+    const o = objekt(x, pfad, ['art', 'betrag']);
+    return { art, betrag: betrag(feld(o, 'betrag'), `${pfad}.betrag`) };
+  }
+  if (art === 'kostenermittlung') {
+    const o = objekt(x, pfad, [
+      'art',
+      'kostenermittlungId',
+      'technischeAnlagenAnteilig',
+      'weitereKosten',
+      'mitzuverarbeitendeBausubstanz',
+    ]);
+    return {
+      art,
+      kostenermittlungId: zeichenkette(
+        feld(o, 'kostenermittlungId'),
+        `${pfad}.kostenermittlungId`,
+      ) as KostenermittlungId,
+      technischeAnlagenAnteilig: wahrheit(
+        feld(o, 'technischeAnlagenAnteilig'),
+        `${pfad}.technischeAnlagenAnteilig`,
+      ),
+      weitereKosten: betrag(feld(o, 'weitereKosten'), `${pfad}.weitereKosten`),
+      mitzuverarbeitendeBausubstanz: betrag(
+        feld(o, 'mitzuverarbeitendeBausubstanz'),
+        `${pfad}.mitzuverarbeitendeBausubstanz`,
+      ),
+    };
+  }
+  return ungueltig(`${pfad}.art`, 'betrag oder kostenermittlung erwartet');
+}
+
+function honorarobjekt(x: unknown, pfad: string): Honorarobjekt {
+  const o = objekt(x, pfad, [
+    'bezeichnung',
+    'leistungsbild',
+    'honorarzone',
+    'honorarsatz',
+    'anrechenbareKosten',
+    'leistungsphasen',
+    'umbauzuschlagssatz',
+  ]);
+  const prozent = (v: unknown, q: string): Prozent => dezimal(v, q, 'prozent') as Prozent;
+  const phasen = liste(feld(o, 'leistungsphasen'), `${pfad}.leistungsphasen`).map(
+    (l, i): BeauftragteLeistungsphase => {
+      const q = `${pfad}.leistungsphasen[${String(i)}]`;
+      const lo = objekt(l, q, ['nummer'], ['anteil']);
+      const nummer = ganz(feld(lo, 'nummer'), `${q}.nummer`);
+      if (nummer < 1 || nummer > 9) ungueltig(`${q}.nummer`, 'Leistungsphase 1 bis 9 erwartet');
+      return {
+        nummer: nummer as Leistungsphasennummer,
+        ...optional(lo, 'anteil', (v) => prozent(v, `${q}.anteil`)),
+      };
+    },
+  );
+  phasen.forEach((ph, i) => {
+    const vorige = phasen[i - 1];
+    if (vorige !== undefined && vorige.nummer >= ph.nummer)
+      ungueltig(
+        `${pfad}.leistungsphasen[${String(i)}].nummer`,
+        'nach Nummer aufsteigend und eindeutig erwartet',
+      );
+  });
+  return {
+    bezeichnung: nichtLeer(feld(o, 'bezeichnung'), `${pfad}.bezeichnung`),
+    leistungsbild: aufzaehlung(feld(o, 'leistungsbild'), `${pfad}.leistungsbild`, LEISTUNGSBILDER),
+    honorarzone: aufzaehlung(feld(o, 'honorarzone'), `${pfad}.honorarzone`, HONORARZONEN),
+    honorarsatz: prozent(feld(o, 'honorarsatz'), `${pfad}.honorarsatz`),
+    anrechenbareKosten: anrechenbareKosten(feld(o, 'anrechenbareKosten'), `${pfad}.anrechenbareKosten`),
+    leistungsphasen: phasen,
+    umbauzuschlagssatz: oderNull(feld(o, 'umbauzuschlagssatz'), (v) =>
+      prozent(v, `${pfad}.umbauzuschlagssatz`),
+    ),
+  };
+}
+
+function honorarberechnungZustand(x: unknown, pfad: string): HonorarberechnungZustand {
+  const z = objekt(x, pfad, ['honorarberechnung']);
+  const p = `${pfad}.honorarberechnung`;
+  const o = objekt(feld(z, 'honorarberechnung'), p, [
+    'id',
+    'projektId',
+    'name',
+    'objekte',
+    'nebenkosten',
+    'mwstSatz',
+  ]);
+  const nebenkosten = oderNull(feld(o, 'nebenkosten'), (v): Nebenkostenangabe => {
+    const q = `${p}.nebenkosten`;
+    const art = typeof v === 'object' && v !== null ? (v as Roh)['art'] : undefined;
+    if (art === 'prozent') {
+      const no = objekt(v, q, ['art', 'satz']);
+      return { art, satz: dezimal(feld(no, 'satz'), `${q}.satz`, 'prozent') as Prozent };
+    }
+    if (art === 'betrag') {
+      const no = objekt(v, q, ['art', 'betrag']);
+      return { art, betrag: dezimal(feld(no, 'betrag'), `${q}.betrag`, 'betrag') as Betrag };
+    }
+    return ungueltig(`${q}.art`, 'prozent oder betrag erwartet');
+  });
+  const honorarberechnung: Honorarberechnung = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as HonorarberechnungId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    name: nichtLeer(feld(o, 'name'), `${p}.name`),
+    objekte: liste(feld(o, 'objekte'), `${p}.objekte`).map((x2, i) =>
+      honorarobjekt(x2, `${p}.objekte[${String(i)}]`),
+    ),
+    nebenkosten,
+    mwstSatz: dezimal(feld(o, 'mwstSatz'), `${p}.mwstSatz`, 'prozent') as Prozent,
+  };
+  return { honorarberechnung };
+}
+
+const MANGELSTATUS: readonly Mangelstatus[] = ['offen', 'angezeigt', 'beseitigt', 'abgenommen'];
+
+function mangelZustand(x: unknown, pfad: string): MangelZustand {
+  const z = objekt(x, pfad, ['mangel']);
+  const p = `${pfad}.mangel`;
+  const o = objekt(feld(z, 'mangel'), p, [
+    'id',
+    'projektId',
+    'nummer',
+    'titel',
+    'beschreibung',
+    'ort',
+    'auftragsLvId',
+    'positionId',
+    'bauteil',
+    'festgestellt',
+    'frist',
+    'verlauf',
+  ]);
+  const mangel: Mangel = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as MangelId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    nummer: ganzAbEins(feld(o, 'nummer'), `${p}.nummer`),
+    titel: nichtLeer(feld(o, 'titel'), `${p}.titel`),
+    beschreibung: nichtLeerOderNull(feld(o, 'beschreibung'), `${p}.beschreibung`),
+    ort: nichtLeerOderNull(feld(o, 'ort'), `${p}.ort`),
+    auftragsLvId: oderNull(feld(o, 'auftragsLvId'), (v) =>
+      zeichenkette(v, `${p}.auftragsLvId`),
+    ) as AuftragsLeistungsverzeichnisId | null,
+    positionId: oderNull(feld(o, 'positionId'), (v) =>
+      zeichenkette(v, `${p}.positionId`),
+    ) as PositionId | null,
+    bauteil: oderNull(feld(o, 'bauteil'), (v) => {
+      const bo = objekt(v, `${p}.bauteil`, ['bauwerksmodellId', 'globalId']);
+      return {
+        bauwerksmodellId: oderNull(feld(bo, 'bauwerksmodellId'), (w) =>
+          zeichenkette(w, `${p}.bauteil.bauwerksmodellId`),
+        ) as BauwerksmodellId | null,
+        globalId: globalId(feld(bo, 'globalId'), `${p}.bauteil.globalId`),
+      };
+    }),
+    festgestellt: zeichenkette(feld(o, 'festgestellt'), `${p}.festgestellt`),
+    frist: textOderNull(feld(o, 'frist'), `${p}.frist`),
+    verlauf: nichtLeereListe(feld(o, 'verlauf'), `${p}.verlauf`).map((e, i): Mangelverlaufseintrag => {
+      const q = `${p}.verlauf[${String(i)}]`;
+      const eo = objekt(e, q, ['status', 'datum', 'bemerkung']);
+      return {
+        status: aufzaehlung(feld(eo, 'status'), `${q}.status`, MANGELSTATUS),
+        datum: zeichenkette(feld(eo, 'datum'), `${q}.datum`),
+        bemerkung: nichtLeerOderNull(feld(eo, 'bemerkung'), `${q}.bemerkung`),
+      };
+    }),
+  };
+  if (mangel.positionId !== null && mangel.auftragsLvId === null)
+    ungueltig(`${p}.positionId`, 'eine Position nur mit Auftrags-LV');
+  return { mangel };
+}
+
+function bautagebucheintragZustand(x: unknown, pfad: string): BautagebucheintragZustand {
+  const z = objekt(x, pfad, ['bautagebucheintrag']);
+  const p = `${pfad}.bautagebucheintrag`;
+  const o = objekt(feld(z, 'bautagebucheintrag'), p, [
+    'id',
+    'projektId',
+    'datum',
+    'wetter',
+    'arbeitskraefte',
+    'geraete',
+    'leistungen',
+    'behinderungen',
+    'vorkommnisse',
+  ]);
+  const w = objekt(feld(o, 'wetter'), `${p}.wetter`, ['beschreibung', 'temperaturMin', 'temperaturMax']);
+  const firmen = liste(feld(o, 'arbeitskraefte'), `${p}.arbeitskraefte`).map((a, i) => {
+    const q = `${p}.arbeitskraefte[${String(i)}]`;
+    const ao = objekt(a, q, ['firma', 'anzahl']);
+    return {
+      firma: nichtLeer(feld(ao, 'firma'), `${q}.firma`),
+      anzahl: ganz(feld(ao, 'anzahl'), `${q}.anzahl`),
+    };
+  });
+  eindeutig(
+    firmen.map((a) => a.firma),
+    `${p}.arbeitskraefte`,
+    'Firma',
+  );
+  const bautagebucheintrag: Bautagebucheintrag = {
+    id: zeichenkette(feld(o, 'id'), `${p}.id`) as BautagebucheintragId,
+    projektId: zeichenkette(feld(o, 'projektId'), `${p}.projektId`) as ProjektId,
+    datum: zeichenkette(feld(o, 'datum'), `${p}.datum`),
+    wetter: {
+      beschreibung: nichtLeerOderNull(feld(w, 'beschreibung'), `${p}.wetter.beschreibung`),
+      temperaturMin: oderNull(feld(w, 'temperaturMin'), (v) => ganzeZahl(v, `${p}.wetter.temperaturMin`)),
+      temperaturMax: oderNull(feld(w, 'temperaturMax'), (v) => ganzeZahl(v, `${p}.wetter.temperaturMax`)),
+    },
+    arbeitskraefte: firmen,
+    geraete: nichtLeerOderNull(feld(o, 'geraete'), `${p}.geraete`),
+    leistungen: nichtLeerOderNull(feld(o, 'leistungen'), `${p}.leistungen`),
+    behinderungen: nichtLeerOderNull(feld(o, 'behinderungen'), `${p}.behinderungen`),
+    vorkommnisse: nichtLeerOderNull(feld(o, 'vorkommnisse'), `${p}.vorkommnisse`),
+  };
+  return { bautagebucheintrag };
+}
+
+/**
+ * `modelldateien` der Datei (D-51, D-97.5): nach `hash` streng aufsteigend (also je Hash genau einmal) und genau die Hashes, die
+ * die Bauwerksmodelle der Datei nennen: Fehlt einer oder ist einer zu viel, ist die Datei ungültig (nichts halb importiert).
+ */
+function pruefeModelldateien(datei: Projektdatei): void {
+  const eintraege = datei.modelldateien ?? [];
+  eintraege.forEach((e, i) => {
+    const vorige = eintraege[i - 1];
+    if (vorige !== undefined && vorige.hash >= e.hash)
+      ungueltig(
+        `$.modelldateien[${String(i)}].hash`,
+        'nach hash streng aufsteigend erwartet (je Hash ein Eintrag)',
+      );
+  });
+  const da = new Set(eintraege.map((e) => e.hash));
+  const genannt = new Set((datei.bauwerksmodelle ?? []).map((z) => z.bauwerksmodell.datei.hash));
+  for (const h of genannt)
+    if (!da.has(h)) ungueltig('$.modelldateien', `die Bytes der Modelldatei ${h} fehlen`);
+  for (const h of da)
+    if (!genannt.has(h))
+      ungueltig('$.modelldateien', `die Modelldatei ${h} nennt kein Bauwerksmodell der Datei`);
+}
+
 /** Alle Befehlsnamen des Vertrags. Der Typ erzwingt Vollständigkeit: ein neuer Befehl bricht die Übersetzung. */
 const BEFEHLSARTEN: Record<Befehlsart, true> = {
   ProjektAnlegen: true,
@@ -1017,7 +1596,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   KostenermittlungseintragSetzen: true,
   KostenermittlungseintragEntfernen: true,
   KostenermittlungLoeschen: true,
-  // v1.6: mechanisch angepasst, Folgeticket 106 (die Befehle aus vertrag v1.6; `anwenden` weist ihre ChangeSets bis dahin ab)
+  // v1.6 (Ticket 97; gespeichert seit Ticket 106)
   BauwerksmodellAnlegen: true,
   BauwerksmodellUmbenennen: true,
   BauwerksmodellLoeschen: true,
@@ -1061,14 +1640,14 @@ function jsonWert(x: unknown, pfad: string): void {
 /** Hexadezimale Stellen je Prüfsummenalgorithmus (256 bzw. 512 Bit). */
 const PRUEFSUMMENLAENGE: Record<Pruefsummenalgorithmus, number> = { 'sha-256': 64, 'sha-512': 128 };
 
-/** Die lange Liste, die ein Massenbefehlskopf nicht trägt (E-13), je Befehlsart: Feld und Feld darin. */
-const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
-  LeistungsverzeichnisAnlegen: ['inhalt', 'knoten'],
-  AngebotAnlegen: ['angebot', 'positionen'],
-  AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
-  AufmassAnlegen: ['aufmass', 'positionen'],
-  // v1.6: mechanisch angepasst, Folgeticket 106 (der Kopf trägt auch `struktur` nicht; prüfen mit Ticket 106)
-  BauwerksmodellAnlegen: ['bauwerksmodell', 'bauteile'],
+/** Die langen Listen, die ein Massenbefehlskopf nicht trägt (E-13), je Befehlsart: Feld und Felder darin. */
+const LANGE_LISTE: Record<Massenbefehlsart, [string, readonly string[]]> = {
+  LeistungsverzeichnisAnlegen: ['inhalt', ['knoten']],
+  AngebotAnlegen: ['angebot', ['positionen']],
+  AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', ['knoten']],
+  AufmassAnlegen: ['aufmass', ['positionen']],
+  // v1.6 (D-54): das Modell ohne Struktur und Bauteile
+  BauwerksmodellAnlegen: ['bauwerksmodell', ['struktur', 'bauteile']],
 };
 
 /**
@@ -1080,12 +1659,14 @@ function befehlskurzfassung(b: Roh, pfad: string): void {
   objekt(b, pfad, ['art', 'kopf', 'pruefsumme']);
   const kopf = objekt(feld(b, 'kopf'), `${pfad}.kopf`, Object.keys(feld(b, 'kopf') ?? {}));
   const art = aufzaehlung(feld(kopf, 'art'), `${pfad}.kopf.art`, MASSENBEFEHLSARTEN);
-  const [aussen, liste] = LANGE_LISTE[art];
+  const [aussen, listen] = LANGE_LISTE[art];
   const teil = feld(kopf, aussen);
   if (typeof teil !== 'object' || teil === null || Array.isArray(teil))
     ungueltig(`${pfad}.kopf.${aussen}`, 'Objekt erwartet');
-  else if (Object.hasOwn(teil, liste))
-    ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
+  else
+    for (const liste of listen)
+      if (Object.hasOwn(teil, liste))
+        ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
   const q = `${pfad}.pruefsumme`;
   const ps = objekt(feld(b, 'pruefsumme'), q, ['algorithmus', 'wert']);
   const algorithmus = aufzaehlung(feld(ps, 'algorithmus'), `${q}.algorithmus`, [
@@ -1109,6 +1690,11 @@ function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
     'aufmass',
     'rechnung',
     'kostenermittlung',
+    'bauwerksmodell',
+    'bauzeitenplan',
+    'honorarberechnung',
+    'mangel',
+    'bautagebucheintrag',
   ]);
   const befehl = feld(o, 'befehl');
   const b = objekt(
@@ -1180,7 +1766,18 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
       'auftragsLeistungsverzeichnisse',
       'protokoll',
     ],
-    ['lvStaende', 'aufmasse', 'rechnungen', 'kostenermittlungen'],
+    [
+      'lvStaende',
+      'aufmasse',
+      'rechnungen',
+      'kostenermittlungen',
+      'bauwerksmodelle',
+      'modelldateien',
+      'bauzeitenplaene',
+      'honorarberechnungen',
+      'maengel',
+      'bautagebuch',
+    ],
   );
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
   const p = projekt(feld(o, 'projekt'), '$.projekt');
@@ -1214,6 +1811,29 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
         kostenermittlungZustand(x, `$.kostenermittlungen[${String(i)}]`),
       ),
     ),
+    // Schema 6 (v1.6): wie die Listen aus Version 5 nur, wenn es welche gibt.
+    ...optional(o, 'bauwerksmodelle', (v) =>
+      liste(v, '$.bauwerksmodelle').map((x, i) =>
+        bauwerksmodellZustand(x, `$.bauwerksmodelle[${String(i)}]`),
+      ),
+    ),
+    ...optional(o, 'modelldateien', (v) =>
+      liste(v, '$.modelldateien').map((x, i) => modelldateiEintrag(x, `$.modelldateien[${String(i)}]`)),
+    ),
+    ...optional(o, 'bauzeitenplaene', (v) =>
+      liste(v, '$.bauzeitenplaene').map((x, i) => bauzeitenplanZustand(x, `$.bauzeitenplaene[${String(i)}]`)),
+    ),
+    ...optional(o, 'honorarberechnungen', (v) =>
+      liste(v, '$.honorarberechnungen').map((x, i) =>
+        honorarberechnungZustand(x, `$.honorarberechnungen[${String(i)}]`),
+      ),
+    ),
+    ...optional(o, 'maengel', (v) =>
+      liste(v, '$.maengel').map((x, i) => mangelZustand(x, `$.maengel[${String(i)}]`)),
+    ),
+    ...optional(o, 'bautagebuch', (v) =>
+      liste(v, '$.bautagebuch').map((x, i) => bautagebucheintragZustand(x, `$.bautagebuch[${String(i)}]`)),
+    ),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [
@@ -1225,8 +1845,14 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...(datei.aufmasse ?? []).map((z) => z.aufmass.projektId),
     ...(datei.rechnungen ?? []).map((z) => z.rechnung.projektId),
     ...(datei.kostenermittlungen ?? []).map((z) => z.kostenermittlung.projektId),
+    ...(datei.bauwerksmodelle ?? []).map((z) => z.bauwerksmodell.projektId),
+    ...(datei.bauzeitenplaene ?? []).map((z) => z.bauzeitenplan.projektId),
+    ...(datei.honorarberechnungen ?? []).map((z) => z.honorarberechnung.projektId),
+    ...(datei.maengel ?? []).map((z) => z.mangel.projektId),
+    ...(datei.bautagebuch ?? []).map((z) => z.bautagebucheintrag.projektId),
   ].find((id) => id !== p.id);
   if (fremd !== undefined) ungueltig('$', `enthält Daten des fremden Projekts ${fremd}`);
+  pruefeModelldateien(datei);
   pruefeHistorienbezuege(datei.protokoll);
   return datei;
 }

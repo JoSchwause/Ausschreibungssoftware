@@ -565,7 +565,7 @@ describe('Quote, Sperre und Schema (Q5)', () => {
           echt.stapel(sql, bind);
         },
       });
-      const r = kern.projektdateiImportieren(text);
+      const r = await kern.projektdateiImportieren(text);
       expect(r, name).toMatchObject({ ok: false, fehler: { code } });
       expect(zaehle(echt, 'knoten'), name).toBe(0); // Der Import rollt vollständig zurück.
     }

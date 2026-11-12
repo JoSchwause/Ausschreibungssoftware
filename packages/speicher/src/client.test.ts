@@ -234,7 +234,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const { kern } = await neuerKern();
     wert(kern.schliessen());
     expect(fehlercode(kern.projekteAuflisten())).toBe('gesperrt');
-    expect(fehlercode(kern.projektdateiImportieren('{}'))).toBe('gesperrt');
+    expect(fehlercode(await kern.projektdateiImportieren('{}'))).toBe('gesperrt');
     expect(fehlercode(kern.schliessen())).toBe('gesperrt');
   });
 

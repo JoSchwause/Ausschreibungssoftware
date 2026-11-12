@@ -33,17 +33,17 @@ describe('eingefrorene Projektdatei der Schemaversion 3', () => {
 
   it('Import → Export ist byte-gleich (Export-Golden, solange Version 3 aktuell ist); danach stabil', async () => {
     const { kern } = await neuerKern();
-    expect(wert(kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
     const neu = wert(kern.projektdateiExportieren(V2_PROJEKT));
     if (SCHEMA_VERSION === 3) expect(neu === inhalt).toBe(true);
     const zweite = await neuerKern();
-    wert(zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiImportieren(neu));
     expect(wert(zweite.kern.projektdateiExportieren(V2_PROJEKT)) === neu).toBe(true);
   });
 
   it('Rundlauf: Papierkorb, Stand und Angebot auf die Position im Papierkorb kommen nach Import und Laden zurück', async () => {
     const { kern } = await neuerKern();
-    wert(kern.projektdateiImportieren(inhalt));
+    wert(await kern.projektdateiImportieren(inhalt));
     const d = JSON.parse(inhalt) as Projektdatei;
     const lv = wert(kern.lvLaden(V2_LV));
     expect(lv).toEqual(d.leistungsverzeichnisse[0]);
@@ -88,7 +88,7 @@ describe('eingefrorene Projektdatei der Schemaversion 3', () => {
     ['Stände als Objekt', aendere(['lvStaende'], {})],
   ])('%s: datei-ungueltig, nichts übernommen', async (_name, text) => {
     const { kern, db } = await neuerKern();
-    expect(kern.projektdateiImportieren(text)).toMatchObject({
+    expect(await kern.projektdateiImportieren(text)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });
@@ -98,7 +98,7 @@ describe('eingefrorene Projektdatei der Schemaversion 3', () => {
   it('eine Datei der Version 2 mit Papierkorb oder Ständen ist ungültig (die Felder gab es dort nicht)', async () => {
     const { kern } = await neuerKern();
     const alt = aendere(['schemaVersion'], 2);
-    expect(kern.projektdateiImportieren(alt)).toMatchObject({
+    expect(await kern.projektdateiImportieren(alt)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });

@@ -83,9 +83,15 @@ import {
   listeLvs,
   listeProjekte,
   modelldateiGroesse,
+  modelldateiZeichen,
 } from './lesen';
 import { migriere, MIGRATIONEN, type Migration } from './migrationen';
-import { baueProjektdatei, leseProjektdatei, schreibeProjektdatei } from './projektdatei';
+import {
+  baueProjektdatei,
+  leseProjektdatei,
+  pruefeModelldateienDerDatei,
+  schreibeProjektdatei,
+} from './projektdatei';
 import {
   gibUngenutzteModelldateienFrei,
   schreibeModelldatei,
@@ -188,6 +194,12 @@ function istHistorienbefehl(json: string): boolean {
   return art === 'Rueckgaengig' || art === 'Wiederholen';
 }
 
+/**
+ * Grenze der exportierten Projektdatei in Zeichen (D-51, D-106.6): 500.000.000, mit Abstand unter der größten Zeichenkette von
+ * V8 (2^29 − 24 = 536.870.888 Zeichen, „etwa 512 MB Text“), damit der Export laut fehlschlägt, bevor die Laufzeit es tut.
+ */
+export const GRENZE_ZEICHEN = 500_000_000;
+
 const GESCHLOSSEN = (): Ergebnis<never, Speicherfehler> =>
   fehler('gesperrt', 'Der Speicher ist geschlossen; für weitere Aufrufe muss er neu geöffnet werden.');
 
@@ -197,6 +209,8 @@ export class SpeicherKern {
   readonly #migrationen: readonly Migration[];
   /** Befunde der Summen-Neuberechnung beim Öffnen und bei jedem Import einer alten Datei (D-17). */
   readonly #befunde: Migrationsbefund[];
+  /** Höchste Länge der exportierten Projektdatei in Zeichen (D-51); darüber `datei-zu-gross`. */
+  readonly #grenzeZeichen: number;
   #geschlossen = false;
   /** Letzter `anwenden`-Lauf: der nächste wartet auf ihn (Reihenfolge der Aufrufe, ein Schreiber). */
   #reihe: Promise<unknown> = Promise.resolve();
@@ -209,16 +223,26 @@ export class SpeicherKern {
     return this.#geschlossen ? GESCHLOSSEN() : fange(f);
   }
 
-  private constructor(db: Datenbank, migrationen: readonly Migration[], befunde: Migrationsbefund[]) {
+  private constructor(
+    db: Datenbank,
+    migrationen: readonly Migration[],
+    befunde: Migrationsbefund[],
+    grenzeZeichen: number,
+  ) {
     this.#db = db;
     this.#migrationen = migrationen;
     this.#befunde = befunde;
+    this.#grenzeZeichen = grenzeZeichen;
   }
 
-  /** Schaltet Fremdschlüssel ein und bringt das Schema auf den aktuellen Stand (A8). */
+  /**
+   * Schaltet Fremdschlüssel ein, bringt das Schema auf den aktuellen Stand (A8) und gibt ungenutzte Modelldateien frei
+   * (D-97.5). `optionen.grenzeZeichen` nur für Tests (der Export über der Grenze, ohne 500 MB Text zu bauen).
+   */
   static oeffnen(
     db: Datenbank,
     migrationen: readonly Migration[] = MIGRATIONEN,
+    optionen: { readonly grenzeZeichen?: number } = {},
   ): Ergebnis<SpeicherKern, Speicherfehler> {
     const f = fange(() => {
       db.ausfuehren('PRAGMA foreign_keys = ON');
@@ -234,7 +258,7 @@ export class SpeicherKern {
       });
       if (!frei.ok) return frei;
     }
-    return ok(new SpeicherKern(db, migrationen, befunde));
+    return ok(new SpeicherKern(db, migrationen, befunde, optionen.grenzeZeichen ?? GRENZE_ZEICHEN));
   }
 
   /**
@@ -616,20 +640,63 @@ export class SpeicherKern {
 
   // --- Projektdatei -----------------------------------------------------------------------------------------
 
+  /**
+   * Exportiert die Projektdatei. v1.6 (D-51): Würde der Text die Grenze für Zeichenketten erreichen (`grenzeZeichen`, Standard
+   * `GRENZE_ZEICHEN`, unter der Grenze von V8), schlägt der Export mit `datei-zu-gross` fehl und kürzt nie (Q5). Geprüft
+   * wird zuerst die Base64-Länge der Modelldateien (ohne sie zu lesen), dann der fertige Text; wirft die Laufzeit beim Bauen
+   * des Texts selbst (`RangeError`), ist es derselbe Fehler.
+   */
   projektdateiExportieren(projektId: ProjektId): Ergebnis<string, Speicherfehler> {
-    return this.#fange(() =>
-      kanonischesJson(
-        baueProjektdatei(this.#db, projektId, this.#migrationen[this.#migrationen.length - 1]?.version ?? 0),
-      ),
-    );
+    return this.#fange(() => {
+      const grenze = this.#grenzeZeichen;
+      const zuGross = (n: string): never =>
+        abbruch(
+          'datei-zu-gross',
+          `Die Projektdatei würde ${n} Zeichen lang, mehr als ${String(grenze)}; es entsteht keine Datei.`,
+        );
+      const modelle = modelldateiZeichen(this.#db, projektId);
+      if (modelle > grenze) zuGross(`mindestens ${String(modelle)}`);
+      let text: string;
+      try {
+        text = kanonischesJson(
+          baueProjektdatei(
+            this.#db,
+            projektId,
+            this.#migrationen[this.#migrationen.length - 1]?.version ?? 0,
+          ),
+        );
+      } catch (e) {
+        if (e instanceof RangeError) return zuGross('über die Grenze der Laufzeit hinaus');
+        throw e;
+      }
+      if (text.length > grenze) zuGross(String(text.length));
+      return text;
+    });
   }
 
-  /** Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). */
-  projektdateiImportieren(inhalt: string): Ergebnis<ProjektId, Speicherfehler> {
+  /**
+   * Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien
+   * prüft der Import vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei
+   * `datei-ungueltig`. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#importierenDann(inhalt));
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  async #importierenDann(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
     const befunde: Migrationsbefund[] = [];
     const datei = leseProjektdatei(inhalt, this.#migrationen, befunde);
     if (!datei.ok) return datei;
+    let bytes: Awaited<ReturnType<typeof pruefeModelldateienDerDatei>>;
+    try {
+      bytes = await pruefeModelldateienDerDatei(datei.wert);
+    } catch (x) {
+      return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
+    if (this.#geschlossen) return GESCHLOSSEN();
     const r = fange(() =>
       transaktion(this.#db, () => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {
@@ -638,7 +705,7 @@ export class SpeicherKern {
             `Das Projekt ${datei.wert.projekt.id} existiert bereits; es wird nicht überschrieben.`,
           );
         }
-        return schreibeProjektdatei(this.#db, datei.wert);
+        return schreibeProjektdatei(this.#db, datei.wert, bytes);
       }),
     );
     if (r.ok) this.#befunde.push(...befunde);

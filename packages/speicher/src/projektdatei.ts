@@ -4,6 +4,7 @@
 import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
+  Bauwerksmodell,
   Ergebnis,
   LeistungsverzeichnisId,
   Projektdatei,
@@ -13,8 +14,11 @@ import type {
 import { dekodiereProjektdatei } from './dekoder';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
+import { ausBase64, base64, inflateRaw, sha256Hex } from './komprimierung';
 import {
   aggregateDesProjekts,
+  aggregateV16DesProjekts,
+  modelldateienDesProjekts,
   aggregatIds,
   leseAngebot,
   leseAuftragsLv,
@@ -29,7 +33,13 @@ import {
   schreibeProtokolleintrag,
   wendeAngebotAn,
   wendeAufmassAn,
+  schreibeModelldatei,
   wendeAuftragsLvAn,
+  wendeBautagebucheintragAn,
+  wendeBauwerksmodellAn,
+  wendeBauzeitenplanAn,
+  wendeHonorarberechnungAn,
+  wendeMangelAn,
   wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
@@ -48,6 +58,14 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
     wert === null ? abbruch('datei-ungueltig', `${was} verschwand während des Exports.`) : wert;
   const staende = leseLvStaendeDesProjekts(db, id);
   const { aufmasse, rechnungen, kostenermittlungen } = aggregateDesProjekts(db, id);
+  const v16 = aggregateV16DesProjekts(db, id);
+  // Die Bytes stehen, wie sie abgelegt sind (deflate-raw), als Base64 in der Datei (D-51); nichts wird neu komprimiert.
+  const modelldateien = modelldateienDesProjekts(db, id).map((m) => ({
+    hash: m.hash,
+    inhalt: base64(m.inhalt),
+  }));
+  const liste = <K extends string, T>(name: K, werte: readonly T[]): { [P in K]?: readonly T[] } =>
+    (werte.length > 0 ? { [name]: werte } : {}) as { [P in K]?: readonly T[] };
   return {
     schemaVersion,
     projekt,
@@ -69,7 +87,86 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
     ...(kostenermittlungen.length > 0
       ? { kostenermittlungen: kostenermittlungen.map((kostenermittlung) => ({ kostenermittlung })) }
       : {}),
+    // Schema 6 (v1.6): ebenso nur, wenn es welche gibt (eine Datei ohne sie bleibt bis auf die Version gleich, A8);
+    // `modelldateien` nach Hash, genau die, die die Modelle nennen.
+    ...liste(
+      'bauwerksmodelle',
+      v16.bauwerksmodelle.map((bauwerksmodell) => ({ bauwerksmodell })),
+    ),
+    ...liste('modelldateien', modelldateien),
+    ...liste(
+      'bauzeitenplaene',
+      v16.bauzeitenplaene.map((bauzeitenplan) => ({ bauzeitenplan })),
+    ),
+    ...liste(
+      'honorarberechnungen',
+      v16.honorarberechnungen.map((honorarberechnung) => ({ honorarberechnung })),
+    ),
+    ...liste(
+      'maengel',
+      v16.maengel.map((mangel) => ({ mangel })),
+    ),
+    ...liste(
+      'bautagebuch',
+      v16.bautagebuch.map((bautagebucheintrag) => ({ bautagebucheintrag })),
+    ),
   };
+}
+
+/** Die Bytes einer Modelldatei aus der Projektdatei: komprimiert wie in der Datei, dazu die Länge der entpackten Bytes. */
+export interface Dateibytes {
+  readonly groesse: number;
+  readonly komprimiert: Uint8Array;
+}
+
+/**
+ * Prüft die Bytes der Modelldateien einer gelesenen Projektdatei (D-51, Lesart an `Projektdatei.modelldateien`): Base64 mit
+ * Auffüllung, gültiges deflate-raw, SHA-256 der entpackten Bytes gleich `hash`, Länge gleich `datei.groesse` jedes Modells,
+ * das den Hash nennt. Sonst `datei-ungueltig`, bevor irgendetwas geschrieben wird (nichts halb importiert, Q5). Asynchron
+ * (Web Crypto), deshalb vor der Transaktion des Imports.
+ */
+export async function pruefeModelldateienDerDatei(d: Projektdatei): Promise<ReadonlyMap<string, Dateibytes>> {
+  const ergebnis = new Map<string, Dateibytes>();
+  for (const [i, e] of (d.modelldateien ?? []).entries()) {
+    const pfad = `$.modelldateien[${String(i)}].inhalt`;
+    const komprimiert = ausBase64(e.inhalt);
+    if (komprimiert === null)
+      return abbruch('datei-ungueltig', `${pfad}: kein Base64 (RFC 4648, mit Auffüllung)`);
+    let roh: Uint8Array;
+    try {
+      roh = inflateRaw(komprimiert);
+    } catch {
+      return abbruch('datei-ungueltig', `${pfad}: kein deflate-raw (RFC 1951)`);
+    }
+    if ((await sha256Hex(roh)) !== e.hash)
+      abbruch('datei-ungueltig', `${pfad}: Der SHA-256 der entpackten Bytes ist nicht ${e.hash}.`);
+    for (const z of d.bauwerksmodelle ?? [])
+      if (z.bauwerksmodell.datei.hash === e.hash && z.bauwerksmodell.datei.groesse !== roh.length)
+        abbruch(
+          'datei-ungueltig',
+          `Bauwerksmodell ${z.bauwerksmodell.id}: Die Modelldatei hat ${String(roh.length)} Bytes, nicht ${String(z.bauwerksmodell.datei.groesse)}.`,
+        );
+    ergebnis.set(e.hash, { groesse: roh.length, komprimiert });
+  }
+  return ergebnis;
+}
+
+/** Die Modelle in einer Reihenfolge, in der jeder Vorgänger vor seinem Nachfolger steht (sonst in der Reihenfolge der Datei). */
+function vorgaengerZuerst(modelle: readonly Bauwerksmodell[]): Bauwerksmodell[] {
+  const geschrieben = new Set<string>();
+  const folge: Bauwerksmodell[] = [];
+  let rest = [...modelle];
+  while (rest.length > 0) {
+    const bereit = rest.filter((m) => m.vorgaengerId === null || geschrieben.has(m.vorgaengerId));
+    // Ein Vorgänger, den es in der Datei nicht gibt (oder ein Ring): Der erste übrige geht trotzdem, sein Anlegen weist ab.
+    const jetzt = bereit.length > 0 ? bereit : rest.slice(0, 1);
+    for (const m of jetzt) {
+      folge.push(m);
+      geschrieben.add(m.id);
+    }
+    rest = rest.filter((m) => !geschrieben.has(m.id));
+  }
+  return folge;
 }
 
 /**
@@ -137,9 +234,15 @@ export function leseProjektdatei(
  * dieselben Schreibfunktionen wie bei `anwenden` benutzt. Das Protokoll der Datei wird unverändert
  * übernommen; der Import selbst ist kein Befehl und erzeugt keinen Eintrag.
  */
-export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId {
+export function schreibeProjektdatei(
+  db: Datenbank,
+  d: Projektdatei,
+  dateibytes: ReadonlyMap<string, Dateibytes> = new Map(),
+): ProjektId {
   const projektId = d.projekt.id;
   try {
+    // Schema 6 (D-51): zuerst die geprüften Bytes; schon abgelegte bleiben unverändert (gleicher Hash, gleiche Bytes).
+    for (const [hash, b] of dateibytes) schreibeModelldatei(db, hash, b.groesse, b.komprimiert);
     wendeProjektAn(db, { art: 'projekt', projektId, projekt: { vorher: null, nachher: d.projekt } });
     for (const z of d.leistungsverzeichnisse) {
       const { knoten, ...kopf } = z.leistungsverzeichnis;
@@ -211,6 +314,57 @@ export function schreibeProjektdatei(db: Datenbank, d: Projektdatei): ProjektId 
           art: 'kostenermittlung',
           kostenermittlungId: z.kostenermittlung.id,
           kostenermittlung: { vorher: null, nachher: z.kostenermittlung },
+        },
+        projektId,
+      );
+    // Schema 6 (v1.6): Modelle nach den Bytes und vor den Mängeln, Vorgänger zuerst; Honorarberechnungen nach den
+    // Kostenermittlungen, Mängel nach Auftrags-LV und Modellen (starke Verweise, D-97.6).
+    for (const m of vorgaengerZuerst((d.bauwerksmodelle ?? []).map((z) => z.bauwerksmodell))) {
+      const { struktur, bauteile, ...kopf } = m;
+      wendeBauwerksmodellAn(
+        db,
+        {
+          art: 'bauwerksmodell',
+          bauwerksmodellId: m.id,
+          kopf: { vorher: null, nachher: kopf },
+          inhalt: { vorher: null, nachher: { struktur, bauteile } },
+        },
+        projektId,
+      );
+    }
+    for (const z of d.bauzeitenplaene ?? [])
+      wendeBauzeitenplanAn(
+        db,
+        {
+          art: 'bauzeitenplan',
+          bauzeitenplanId: z.bauzeitenplan.id,
+          bauzeitenplan: { vorher: null, nachher: z.bauzeitenplan },
+        },
+        projektId,
+      );
+    for (const z of d.honorarberechnungen ?? [])
+      wendeHonorarberechnungAn(
+        db,
+        {
+          art: 'honorarberechnung',
+          honorarberechnungId: z.honorarberechnung.id,
+          honorarberechnung: { vorher: null, nachher: z.honorarberechnung },
+        },
+        projektId,
+      );
+    for (const z of d.maengel ?? [])
+      wendeMangelAn(
+        db,
+        { art: 'mangel', mangelId: z.mangel.id, mangel: { vorher: null, nachher: z.mangel } },
+        projektId,
+      );
+    for (const z of d.bautagebuch ?? [])
+      wendeBautagebucheintragAn(
+        db,
+        {
+          art: 'bautagebucheintrag',
+          bautagebucheintragId: z.bautagebucheintrag.id,
+          bautagebucheintrag: { vorher: null, nachher: z.bautagebucheintrag },
         },
         projektId,
       );

@@ -131,7 +131,7 @@ describe('Vertrag v1.3: neue Felder speichern', () => {
     const d = JSON.parse(text) as { auftragsLeistungsverzeichnisse: unknown[] };
     expect(d.auftragsLeistungsverzeichnisse[0]).toEqual(auftrag);
     const zweiter = await neuerKern();
-    wert(zweiter.kern.projektdateiImportieren(text));
+    wert(await zweiter.kern.projektdateiImportieren(text));
     expect(wert(zweiter.kern.projektdateiExportieren(P)) === text).toBe(true);
     const geladen = wert(zweiter.kern.lvLaden(lv.id)).leistungsverzeichnis;
     expect(geladen.auftragnehmer).toEqual(AUFTRAGNEHMER);
