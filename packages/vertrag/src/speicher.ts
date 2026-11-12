@@ -167,8 +167,8 @@ export interface ProjektRepository {
 /**
  * Ein LV in der Liste des Projekts (v1.3, Ticket 53 Punkt 1): Kennung und Name, ohne Knoten, wie `Projektuebersicht`.
  * Vorläufige Annahme, Entscheidung offen (enge Lesart): keine Summen (Offene Typfrage, Ticket 53). v1.4 (Review D-43): dazu
- * `nachtrag?` und `vorlage?` aus dem Kopf. v1.5 (Ticket 95 Punkt 5, D-92.4): dazu genau eine Summe, das gespeicherte Netto
- * nach Nachlass; weitere Summen nicht.
+ * `nachtrag?` und `vorlage?` aus dem Kopf. v1.5 (Ticket 95 Punkt 5, D-92.4): davon abweichend genau eine Summe, das
+ * gespeicherte Netto nach Nachlass; weitere Summen nicht.
  */
 export interface LvUebersicht {
   readonly id: LeistungsverzeichnisId;
@@ -213,7 +213,7 @@ export interface AngebotRepository {
 /**
  * Ein Auftrags-LV in der Liste des Projekts (v1.4, Ticket 70 Punkt 1; D-64.2): Kennung, Name und die zwei Aggregate, aus
  * denen es entstand, ohne Knoten. Damit findet die App das Auftrags-LV zu einem LV (höchstens eines, D-21), ohne die ganze
- * Projektdatei zu exportieren. Keine Summen (wie `LvUebersicht`).
+ * Projektdatei zu exportieren. Keine Summen (anders als `LvUebersicht` seit v1.5; Offene Typfrage 3, Ticket 95).
  */
 export interface AuftragsLvUebersicht {
   readonly id: AuftragsLeistungsverzeichnisId;
