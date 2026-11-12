@@ -4,7 +4,7 @@
 // Kostenermittlung, Stufe Kostenschätzung) und die Kostenkennwerte einer bestehenden Kostenermittlung je KG.
 
 import type { Bezugsgroessenart, Din277Groessen } from '@tethys/bim';
-import { formatiereBetragDe, formatiereMengeDe } from '@tethys/dezimal';
+import { formatiereBetragDe } from '@tethys/dezimal';
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { Bauwerksmodell, Betrag, KostenermittlungZustand, ProjektId } from '@tethys/vertrag';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,6 +19,7 @@ import {
   BEZUGSGROESSEN,
   EINHEIT,
   groessenLesen,
+  groessenText,
   kostenkennwerteZeilen,
   schaetzungBauen,
   type Kennwertzeile,
@@ -78,16 +79,19 @@ export function KennwerteBereich({
       <h2>{t.region}</h2>
       <dl className="bim__eigenschaften">
         {BEZUGSGROESSEN.map((art) => {
-          const g = groesse(lesung.groessen, art);
+          const g = groessenText(groesse(lesung.groessen, art)); // Ticket 122 (PC-c3)
           const eingabeMoeglich = groesse(ausModell, art).wert === null;
           return (
             <div key={art} className="bim__groesse" data-groesse={art}>
               <dt>{art}</dt>
               <dd>
-                <span data-wert="wert">
-                  {g.wert === null ? t.fehlt : `${formatiereMengeDe(g.wert)} ${EINHEIT[art]}`}
-                </span>{' '}
-                <span data-wert="quelle">({g.quelle === 'eingabe' ? t.quelleEingabe : t.quelleModell})</span>
+                <span data-wert="wert">{g.wert}</span>
+                {g.quelle === null ? null : (
+                  <>
+                    {' '}
+                    <span data-wert="quelle">{g.quelle}</span>
+                  </>
+                )}
                 {eingabeMoeglich ? (
                   <Eingabefeld
                     kompakt

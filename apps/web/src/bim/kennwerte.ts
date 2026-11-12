@@ -32,6 +32,19 @@ export const BEZUGSGROESSEN: readonly Bezugsgroessenart[] = ['BGF', 'BRI', 'NRF'
 export const EINHEIT: Readonly<Record<Bezugsgroessenart, string>> = { BGF: 'm²', BRI: 'm³', NRF: 'm²' };
 
 /**
+ * Eine Bezugsgröße für die Leiste „Kennwerte“: Wert mit Einheit und in Klammern die Quelle; fehlt die Größe im Modell, steht
+ * nur „fehlt im Modell“, ohne Quelle (Ticket 122, PC-c3: `bim` meldet auch dann `quelle: 'modell'`).
+ */
+export function groessenText(g: Bezugsgroesse): { readonly wert: string; readonly quelle: string | null } {
+  const t = texte.kennwerte;
+  if (g.wert === null) return { wert: t.fehlt, quelle: null };
+  return {
+    wert: `${formatiereMengeDe(g.wert)} ${EINHEIT[g.art]}`,
+    quelle: `(${g.quelle === 'eingabe' ? t.quelleEingabe : t.quelleModell})`,
+  };
+}
+
+/**
  * Die Herleitung eines Betrags der Kostenschätzung für die Bemerkung des Eintrags, etwa „BGF 245,300 m² × 1.250,00 €/m²“;
  * eine Eingabe des Nutzers heißt so. `bim` rechnet, der Rand formatiert (N4, Ticket 122).
  */

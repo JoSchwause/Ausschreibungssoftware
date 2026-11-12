@@ -8,6 +8,7 @@ import type { Betrag, KostenermittlungId, Kostengruppennummer, ProjektId } from 
 import { describe, expect, it } from 'vitest';
 import {
   groessenLesen,
+  groessenText,
   herleitungstext,
   kennwerteLesen,
   kostenkennwerteZeilen,
@@ -46,6 +47,23 @@ describe('groessenLesen', () => {
     expect(g.groessen.bri.quelle).toBe('modell');
     expect(g.groessen.nrf.quelle).toBe('modell');
     expect(Object.keys(g.fehler)).toEqual(['BRI']);
+  });
+});
+
+describe('Anzeige einer Bezugsgröße (Ticket 122, PC-c3)', () => {
+  it('Wert mit Einheit und Quelle; fehlt die Größe im Modell, steht keine Quelle dabei', () => {
+    expect(groessenText({ art: 'BGF', wert: '197.596' as never, quelle: 'modell' })).toEqual({
+      wert: '197,596 m²',
+      quelle: '(aus dem Modell)',
+    });
+    expect(groessenText({ art: 'BRI', wert: '12.000' as never, quelle: 'eingabe' })).toEqual({
+      wert: '12,000 m³',
+      quelle: '(Eingabe)',
+    });
+    expect(groessenText({ art: 'NRF', wert: null, quelle: 'modell' })).toEqual({
+      wert: 'fehlt im Modell',
+      quelle: null,
+    });
   });
 });
 
