@@ -4,10 +4,11 @@
 // von fünf Läufen. Der Plan entsteht deterministisch (linearer Kongruenzgenerator im Test); das Budget wird nie gelockert.
 
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang } from './index';
+import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang, VorgangId } from './index';
 import { STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
 
 const ARTEN: readonly Anordnungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
+const vid = (id: string): VorgangId => id as VorgangId;
 
 /** 20 Sammelvorgänge mit je 49 Kindern (980 Blätter) und genau 2.000 Beziehungen zwischen den Blättern. */
 function grosserPlan(): Bauzeitenplaneingabe {
@@ -19,31 +20,35 @@ function grosserPlan(): Bauzeitenplaneingabe {
   const blaetter = 980;
   const beziehungen: Anordnungsbeziehung[][] = Array.from({ length: blaetter }, () => []);
   for (let i = 1; i < blaetter; i++)
-    beziehungen[i]?.push({ vorgaengerId: `v${String(i - 1)}`, art: 'ende-anfang', abstand: 0 });
+    beziehungen[i]?.push({ vorgaengerId: vid(`v${String(i - 1)}`), art: 'ende-anfang', abstand: 0 });
   for (let k = 0; k < 2000 - (blaetter - 1); k++) {
     const nach = 1 + zufall(blaetter - 1);
     beziehungen[nach]?.push({
-      vorgaengerId: `v${String(zufall(nach))}`,
+      vorgaengerId: vid(`v${String(zufall(nach))}`),
       art: ARTEN[zufall(4)] ?? 'ende-anfang',
       abstand: zufall(6) - 2,
     });
   }
   const sammel: Vorgang[] = Array.from({ length: 20 }, (_, s) => ({
-    id: `s${String(s)}`,
+    id: vid(`s${String(s)}`),
+    nummer: null,
     bezeichnung: `Abschnitt ${String(s)}`,
     elternId: null,
     dauer: 0,
     vorgaenger: [],
     fruehesterBeginn: null,
+    bezug: null,
     ist: null,
   }));
   const vorgaenge: Vorgang[] = Array.from({ length: blaetter }, (_, i) => ({
-    id: `v${String(i)}`,
+    id: vid(`v${String(i)}`),
+    nummer: null,
     bezeichnung: `Vorgang ${String(i)}`,
-    elternId: `s${String(Math.floor(i / 49))}`,
+    elternId: vid(`s${String(Math.floor(i / 49))}`),
     dauer: (i * 7 + 3) % 11,
     vorgaenger: beziehungen[i] ?? [],
     fruehesterBeginn: i % 97 === 0 ? '2027-03-01' : null,
+    bezug: null,
     ist: null,
   }));
   return {
