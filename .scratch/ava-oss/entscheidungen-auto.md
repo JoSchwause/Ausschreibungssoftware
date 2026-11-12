@@ -583,3 +583,10 @@ Question: Wie kommen die Kleinpunkte (95) und die Typen für X1–X4 in den Vert
 Decision: Zwei serielle Vertragstickets: zuerst 95 (`vertrag` v1.5: Kleinpunkte samt `LvSpalte` `'kostengruppe'` für 93; klein, schneller Merge), danach 97 (`vertrag` v1.6: X1–X4 in einem Ticket). Beide prüft ein Opus-Reviewer statt des Nutzers (D-42-Muster), 97 vor Stufe 2. Reihenfolge nach G-05 („zuerst 93–95, danach X1–X5“) und nach Bedingung 1 des Beraters (X1-Typen in eigenem Ticket nach 95). X2–X4 gehen mit X1 in Ticket 97 statt in ein drittes Vertragsticket, weil jedes weitere serielle Vertragsticket die Stufe 2 aller X-Stränge verzögert (Präzedenz D-36). Rechenkerne ohne Vertrag (IFC-Leser, 3D-Leinwand, HOAI, Terminrechnung, Fixtures) laufen sofort in Stufe 1 mit eigenen Typen und stellen in Stufe 2 auf die Vertragstypen um.
 Reason: G-05 legt die Reihenfolge fest; Parallelität bleibt dort, wo der Vertrag nicht gebraucht wird.
 Reversible: yes  Touches: Tickets 93–122, schnitt-welle-6.md
+
+## D-60 Triviale Merges macht der Orchestrator
+Welle 6 · alle Tickets · decided by: orchestrator
+Question: Der Skill sieht für jeden Merge einen Sonnet-Merger mit voller Suite vor. Enthält ein Branch schon den aktuellen Stand von `integration/welle-6` und hat der Umsetzer darauf die volle Suite grün gemeldet, ist der Baum nach dem Merge genau der getestete.
+Decision: Dann merged der Orchestrator selbst (`--no-ff`, Vermerk im Merge-Commit) ohne zweite Suite (wie D-46). Ist der Integrationsstand seit dem letzten Merge des Umsetzers weitergezogen, merged ein Sonnet-Merger und lässt die volle Suite laufen; ist sie rot, nimmt er den Merge zurück, und ein Opus-Umsetzer behebt den Fehler.
+Reason: Spart eine volle Suite je Ticket auf 4 Kernen mit bis zu 8 Agenten, ohne je einen ungetesteten Baum zu mergen.
+Reversible: yes  Touches: Ablauf
