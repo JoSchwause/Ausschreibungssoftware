@@ -28,6 +28,13 @@ const normal = (t: string): string => t.replace(/\s+/g, ' ').trim();
 const text = async (bytes: Promise<Uint8Array>): Promise<string> =>
   normal(alsText(await liesPdf(await bytes)));
 const modellText = (m: Berichtsmodell): string => JSON.stringify(m);
+/** Eine Kennung der App (UUID, A7): Sie gehört nie in einen Druck (L1). */
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+/**
+ * Eine Zahl in kanonischer Form mit Dezimalpunkt, wie Beträge (2 Stellen), Prozente (2) und Mengen (3) in den Paketen stehen
+ * (`40.00`), nicht der Tausenderpunkt der de-DE-Form (`1.000,00`) und kein Datum (N4). Nummern wie `1.2` sind keine Zahl.
+ */
+const KANONISCHE_ZAHL = /(?<![\d.])\d+\.\d{2,3}(?![\d.,])/;
 
 const maengelEingabe = {
   projekt: 'Wohnhaus Testweg (erfunden)',
@@ -198,6 +205,7 @@ describe('Honorarberechnung', () => {
   const eingabe = {
     berechnung: fx.honorarberechnung,
     ergebnis: fx.honorarergebnis,
+    befundtexte: fx.honorarBefundtexte,
     projekt: 'Wohnhaus Testweg (erfunden)',
     datum: '2026-12-01',
   };
@@ -246,15 +254,26 @@ describe('Honorarberechnung', () => {
       '5,00 %',
       '19,00 %',
       // Befund
-      'Umbauzuschlag 40,00 % über 33 %',
+      'Warnung (Objekt 1, Umbauzuschlag): Der Umbauzuschlag von 40,00 % liegt über 33,00 %',
     ])
       expect(t, s).toContain(s);
     expect(t).toContain(normal(DIN276_HINWEIS));
     expect(DIN276_HINWEIS).toContain('DIN 276:2008-12');
   });
 
+  it('Befunde: gedruckt werden die Texte der Seite, nie die Meldungen der Rechnung (kein UUID, keine kanonische Zahl)', async () => {
+    const t = await text(erzeugeHonorarPdf(eingabe, schriften));
+    for (const b of fx.honorarBefundtexte) expect(t, b.text).toContain(normal(b.text));
+    expect(t).toContain('Fehler (Objekt 1, Anrechenbare Kosten): Die gewählte Kostenermittlung');
+    for (const b of fx.honorarergebnis.befunde) expect(t, b.meldung).not.toContain(b.meldung);
+    expect(fx.honorarergebnis.befunde.map((b) => b.meldung).join(' ')).toMatch(UUID);
+    expect(fx.honorarergebnis.befunde.map((b) => b.meldung).join(' ')).toMatch(KANONISCHE_ZAHL);
+    expect(t).not.toMatch(UUID);
+    expect(t).not.toMatch(KANONISCHE_ZAHL);
+  });
+
   it('ohne Befunde steht kein Befundabschnitt, der Hinweis bleibt', () => {
-    const m = baueHonorarModell({ ...eingabe, ergebnis: { ...fx.honorarergebnis, befunde: [] } });
+    const m = baueHonorarModell({ ...eingabe, befundtexte: [] });
     expect(m.abschnitte.map((a) => a.ueberschrift)).not.toContain('Befunde');
     expect(modellText(m)).toContain('DIN 276:2008-12');
   });
@@ -287,6 +306,7 @@ describe('Bauzeitenplan', () => {
   const eingabe = {
     plan: fx.bauzeitenplan,
     ergebnis: fx.bauzeitenergebnis,
+    befundtexte: fx.bauzeitBefundtexte,
     datum: '2026-12-01',
   };
 
@@ -325,9 +345,25 @@ describe('Bauzeitenplan', () => {
       'Meilenstein',
       'Kritischer Weg',
       '1.1 Erdarbeiten',
-      'Anordnungsbeziehung auf den Sammelvorgang',
+      'Warnung (Rohbau fertig): Anordnungsbeziehung mit 1 Rohbau',
     ])
       expect(t, s).toContain(s);
+  });
+
+  it('Befunde: gedruckt werden die Texte der Planseite, nie die Meldungen der Rechnung (kein UUID, keine kanonische Zahl)', async () => {
+    const t = await text(erzeugeBauzeitenplanPdf(eingabe, schriften));
+    for (const b of fx.bauzeitBefundtexte) expect(t, b.text).toContain(normal(b.text));
+    expect(t).toContain('Warnung (1.2 Mauerwerk EG): Ist-Termine oder Fortschritt sind ungültig');
+    for (const b of fx.bauzeitenergebnis.befunde) expect(t, b.meldung).not.toContain(b.meldung);
+    expect(fx.bauzeitenergebnis.befunde.map((b) => b.meldung).join(' ')).toMatch(UUID);
+    expect(fx.bauzeitenergebnis.befunde.map((b) => b.meldung).join(' ')).toMatch(KANONISCHE_ZAHL);
+    expect(t).not.toMatch(UUID);
+    expect(t).not.toMatch(KANONISCHE_ZAHL);
+  });
+
+  it('ohne Befunde steht kein Befundabschnitt', () => {
+    const m = baueBauzeitenplanModell({ ...eingabe, befundtexte: [] });
+    expect(m.abschnitte.map((a) => a.ueberschrift)).not.toContain('Befunde');
   });
 
   it('ein Vorgang ohne Termine (Rechnung abgebrochen) steht mit Strichen da', () => {

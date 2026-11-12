@@ -10,12 +10,15 @@ import type {
   Vorgangsergebnis,
   Wochentag,
 } from '@tethys/vertrag';
-import { KEINE_ANGABE, datumOderStrich, druckdatum } from './bericht';
-import type { BerichtAbschnitt, BerichtZeile, Berichtsmodell } from './bericht';
+import { KEINE_ANGABE, befundZeile, datumOderStrich, druckdatum } from './bericht';
+import type { BerichtAbschnitt, BerichtZeile, Befundtext, Berichtsmodell } from './bericht';
 
 export interface BauzeitenplanEingabe {
   readonly plan: Bauzeitenplan;
-  readonly ergebnis: Bauzeitenplanergebnis;
+  /** Das Ergebnis ohne seine Befunde: Deren Meldungen nennen Vorgänge über ihre Kennung (N4, L1). */
+  readonly ergebnis: Omit<Bauzeitenplanergebnis, 'befunde'>;
+  /** Die Befunde des Ergebnisses mit den Texten der Planseite (Ticket 122, D-122.1); leer: kein Befundabschnitt. */
+  readonly befundtexte: readonly Befundtext[];
   readonly projekt?: string;
   readonly datum?: string;
 }
@@ -123,17 +126,10 @@ export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell
         },
       ],
     });
-  if (ergebnis.befunde.length > 0)
+  if (e.befundtexte.length > 0)
     abschnitte.push({
       ueberschrift: 'Befunde',
-      bloecke: [
-        {
-          art: 'liste',
-          punkte: ergebnis.befunde.map(
-            (b) => `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`,
-          ),
-        },
-      ],
+      bloecke: [{ art: 'liste', punkte: e.befundtexte.map(befundZeile) }],
     });
 
   const k = plan.kalender;

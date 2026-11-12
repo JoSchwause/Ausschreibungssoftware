@@ -4,6 +4,10 @@
 
 import type { Anordnungsart, Bundesland, Wochentag } from '@tethys/vertrag';
 
+/** „mit dem Vorgänger 1 Gründung“ bzw. „mit ihrem Vorgänger“, wenn er nicht bekannt ist. */
+const mitVorgaenger = (vorgaenger: string | null): string =>
+  vorgaenger === null ? 'mit ihrem Vorgänger' : `mit dem Vorgänger ${vorgaenger}`;
+
 export const WOCHENTAGE: readonly Wochentag[] = [1, 2, 3, 4, 5, 6, 7];
 
 export const ANORDNUNGSARTEN: readonly Anordnungsart[] = [
@@ -194,6 +198,53 @@ export const texte = {
     titel: 'Terminrechnung',
     keine: 'Keine Befunde.',
     planweit: 'Plan',
+    /**
+     * Texte der Befunde (Ticket 122): Planseite und PDF zeigen dieselben (D-122.1). Vorgänge stehen mit Nummer und
+     * Bezeichnung, nie mit ihrer Kennung (L1); `null`: nicht bekannt, der Text kommt ohne den Namen aus.
+     */
+    texte: {
+      projektbeginnUngueltig: 'Der Projektbeginn ist kein gültiges Datum; nichts wird gerechnet.',
+      kalenderOhneArbeitstage: 'Der Arbeitskalender hat keinen Arbeitstag; nichts wird gerechnet.',
+      arbeitstagUngueltig:
+        'Ein Arbeitstag des Kalenders ist kein Wochentag (Montag bis Sonntag); er wird übergangen.',
+      bundeslandUnbekannt: (land: string | null): string =>
+        `${land === null ? 'Das Bundesland' : `Das Bundesland „${land}“`} ist unbekannt; es gelten nur die bundesweiten Feiertage.`,
+      freierTagUngueltig: 'Ein freier Tag des Kalenders ist kein gültiges Datum; er wird übergangen.',
+      idDoppelt:
+        'Die Kennung des Vorgangs kommt im Plan mehrfach vor; nur der erste Vorgang mit ihr wird gerechnet.',
+      elternUnbekannt:
+        'Den Sammelvorgang, unter dem der Vorgang steht, gibt es nicht; der Vorgang steht auf der obersten Ebene.',
+      elternZyklus: 'Der Vorgang liegt in einem Kreis der Gliederung; er steht auf der obersten Ebene.',
+      dauerUngueltig:
+        'Die Dauer ist keine ganze Zahl von Arbeitstagen ab 0; der Vorgang bleibt ohne Termine.',
+      terminvorgabeUngueltig: 'Die Terminvorgabe ist kein gültiges Datum; sie wird übergangen.',
+      terminvorgabeAnSammelvorgang:
+        'Eine Terminvorgabe an einem Sammelvorgang rechnet die Terminrechnung nicht; sie wird übergangen.',
+      istUngueltig:
+        'Ist-Termine oder Fortschritt sind ungültig (kein Datum, Ist-Ende ohne oder vor dem Ist-Beginn, Fortschritt außerhalb von 0 bis 100 %); sie verschieben nichts.',
+      vorgaengerUnbekannt:
+        'Den Vorgänger einer Anordnungsbeziehung gibt es nicht; die Beziehung wird übergangen.',
+      anordnungsartUnbekannt: (vorgaenger: string | null): string =>
+        `Die Anordnungsbeziehung ${mitVorgaenger(vorgaenger)} hat eine unbekannte Art; sie wird übergangen.`,
+      abstandUngueltig: (vorgaenger: string | null): string =>
+        `Der Abstand der Anordnungsbeziehung ${mitVorgaenger(vorgaenger)} ist keine ganze Zahl von Arbeitstagen; sie wird übergangen.`,
+      beziehungAnSammelvorgang: (vorgaenger: string | null): string =>
+        `Die Anordnungsbeziehung ${mitVorgaenger(vorgaenger)} betrifft einen Sammelvorgang; die Terminrechnung rechnet sie nicht, sie wird übergangen.`,
+      zyklus:
+        'Der Vorgang liegt in einem Zyklus der Anordnungsbeziehungen; die Beteiligten bleiben ohne Termine.',
+      vorgaengerOhneTermine: (vorgaenger: string | null): string =>
+        `${vorgaenger === null ? 'Der Vorgänger' : `Der Vorgänger ${vorgaenger}`} hat keine Termine; die Anordnungsbeziehung entfällt.`,
+      ausserhalbKalender: {
+        projektbeginn:
+          'Ab dem Projektbeginn gibt es bis zum 31.12.9999 keinen Arbeitstag; nichts wird gerechnet.',
+        terminvorgabe:
+          'Ab der Terminvorgabe gibt es bis zum 31.12.9999 keinen Arbeitstag; der Vorgang bleibt ohne Termine.',
+        vorgang: 'Ein Termin des Vorgangs läge nach dem 31.12.9999; der Vorgang bleibt ohne Termine.',
+      },
+      kritischeWegeGekuerzt: (hoechstens: number): string =>
+        `Es gibt mehr als ${String(hoechstens)} kritische Wege; aufgezählt sind die ersten.`,
+      unbekannt: 'Die Terminrechnung meldet einen Befund ohne eigenen Text.',
+    },
   },
   pdf: {
     knopf: 'Als PDF',

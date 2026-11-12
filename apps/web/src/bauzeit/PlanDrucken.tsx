@@ -14,6 +14,7 @@ import { datumAusUhr } from '../ausgabe/logik';
 import { dateinameSauber } from '../dateiname';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { befundtexteFuerDruck } from './ansicht';
 import type { PlanPdfAntwort } from './pdf-worker';
 import { texte } from './texte';
 
@@ -80,6 +81,8 @@ export function PlanDrucken({
     const auftrag: BauzeitenplanEingabe = {
       plan,
       ergebnis,
+      // Ticket 122: dieselben Befundtexte wie auf der Planseite (D-122.1).
+      befundtexte: befundtexteFuerDruck(plan, ergebnis),
       datum: gelesen.wert,
       ...(projekt === null ? {} : { projekt }),
     };

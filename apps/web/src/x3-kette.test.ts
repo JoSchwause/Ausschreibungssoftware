@@ -26,7 +26,7 @@ import { kostenermittlungAnlegenBefehl } from './kosten/befehle';
 import { kostenermittlungSitzung } from './kosten/schreiben';
 import { projektAnlegenBefehl } from './projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from './testhilfen';
-import { ergebnisAnsicht } from './honorar/ansicht';
+import { befundAnsicht, ergebnisAnsicht } from './honorar/ansicht';
 import { DIN276_HINWEIS } from './honorar/texte';
 import {
   ergebnisBerechnen,
@@ -282,7 +282,12 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
     const ausgabe = await import('@tethys/ausgabe');
     expect(DIN276_HINWEIS).toBe(ausgabe.DIN276_HINWEIS);
     const bytes = await ausgabe.erzeugeHonorarPdf(
-      { berechnung, ergebnis, projekt: 'Bürogebäude' },
+      {
+        berechnung,
+        ergebnis,
+        befundtexte: ergebnis.befunde.map((b) => befundAnsicht(b, { berechnung, ergebnis })),
+        projekt: 'Bürogebäude',
+      },
       schriften(),
     );
     expect(Buffer.from(bytes.subarray(0, 4)).toString('latin1')).toBe('%PDF');
@@ -300,5 +305,24 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
       expect(text).toContain(s);
     }
     expect(text).toContain('DIN 276:2008-12');
+  }, 30_000);
+
+  it('PDF: ein Befund steht mit demselben Text wie auf der Seite, nie mit der Meldung der Rechnung (Ticket 122)', async () => {
+    const a = await aufbau();
+    await berechnungAnlegen(a);
+    const { berechnungen, kostenermittlungen } = await neuGeladen(a);
+    const berechnung = berechnungen[0] as Honorarberechnung;
+    const anschlag = kostenermittlungen.map((k) => ({ ...k, stufe: 'kostenanschlag' as const }));
+    const ergebnis = ergebnisBerechnen(berechnung, anschlag);
+    const seite = ergebnis.befunde.map((b) => befundAnsicht(b, { berechnung, ergebnis }));
+    expect(seite).toHaveLength(1);
+    const ausgabe = await import('@tethys/ausgabe');
+    const bytes = await ausgabe.erzeugeHonorarPdf(
+      { berechnung, ergebnis, befundtexte: seite, projekt: 'Bürogebäude' },
+      schriften(),
+    );
+    const text = alsText(await liesPdf(bytes)).replace(/\s+/g, ' ');
+    expect(text).toContain(`Warnung (Objekt 1, Anrechenbare Kosten): ${seite[0]?.text ?? ''}`);
+    expect(text).not.toContain(ergebnis.befunde[0]?.meldung ?? '');
   }, 30_000);
 });

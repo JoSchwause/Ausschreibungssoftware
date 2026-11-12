@@ -4,12 +4,27 @@
 // rechnet nichts (A2); der Renderer (`bericht-pdf.ts`, pdfmake) liest nur dieses Modell. Das Datum des Drucks und die
 // Kopfdaten kommen aus der Eingabe, das Paket kennt keine Uhr.
 
-import type { Betrag, Prozent } from '@tethys/vertrag';
+import type { Befundschwere, Betrag, Prozent } from '@tethys/vertrag';
 import { formatiereBetragDe, formatiereProzentDe } from '@tethys/dezimal';
 import { datumDe } from './modell';
 
 /** Keine Angabe im Quelldatum: Es steht ein Strich statt einer leeren Zelle (nichts verschwindet still, Q5). */
 export const KEINE_ANGABE = '–';
+
+/**
+ * Ein Befund, wie die App ihn am Bildschirm zeigt (Ticket 122, D-122.1): Ort und Text fertig formatiert (N4, L1). Der
+ * Druck gibt ihn unverändert wieder; die Meldung eines `Pruefbefund` (kanonische Zahlen, Kennungen) druckt er nie.
+ */
+export interface Befundtext {
+  readonly schwere: Befundschwere;
+  /** Wo, z. B. „Objekt 1, Umbauzuschlag“ oder „1.2 Mauerwerk EG“; `null`: die ganze Berechnung bzw. der ganze Plan. */
+  readonly ort: string | null;
+  readonly text: string;
+}
+
+/** Eine Zeile der Befundliste im Druck: „Warnung (Ort): Text“, wie am Bildschirm. */
+export const befundZeile = (b: Befundtext): string =>
+  `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}${b.ort === null ? '' : ` (${b.ort})`}: ${b.text}`;
 
 export interface BerichtFeld {
   readonly bezeichnung: string;
