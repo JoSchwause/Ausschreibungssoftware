@@ -4,13 +4,15 @@
 // gerechnet; die Fixture rechnet ihn aus der Geometrie, unabhängig von diesem Paket.
 
 import { describe, expect, it } from 'vitest';
-import type { IfcGlobalId, KostenermittlungId, ProjektId } from '@tethys/vertrag';
+import type { Bauteil, Bauwerksmodell, IfcGlobalId, KostenermittlungId, ProjektId } from '@tethys/vertrag';
 import {
   aufmassAusAuswahl,
   bauteileImStrukturknoten,
   din277Berechnen,
   kostenschaetzungBerechnen,
   mengenuebernahmeBerechnen,
+  modellVergleichen,
+  vergleichsfolgenBerechnen,
 } from './index';
 import {
   BIM,
@@ -120,5 +122,69 @@ describe('Kostenschätzung über Kennwerte (D-99.10)', () => {
     ).toEqual(soll.eintraege.map(({ nummer, betrag: b }) => ({ nummer, betrag: b })));
     expect(s.gesamt).toBe(soll.gesamt);
     expect(s.befunde).toEqual([]);
+  });
+});
+
+/** Name des Strukturknotens (Geschoss) zu einer GlobalId, wie die Fixture ihn nennt (D-99.8). */
+const knotenname = (bm: Bauwerksmodell, id: IfcGlobalId | null): string | null =>
+  bm.struktur.find((k) => k.globalId === id)?.name ?? null;
+const listeneintrag = (bm: Bauwerksmodell) => (b: Bauteil) => ({
+  globalId: b.globalId,
+  kennung: KENNUNG.get(b.globalId),
+  klasse: b.ifcKlasse,
+  name: b.name,
+  geschoss: knotenname(bm, b.strukturGlobalId),
+});
+
+describe('Modellvergleich v1 → v2 (D-99.8)', () => {
+  it('ergibt hinzugefügt, entfernt und geändert wie die Fixture, ohne Befund', () => {
+    const v = modellVergleichen(v1, v2);
+    const soll = BIM.erweitert.vergleich;
+    expect(v.hinzugefuegt.map(listeneintrag(v2))).toEqual(soll.hinzugefuegt);
+    expect(v.entfernt.map(listeneintrag(v1))).toEqual(soll.entfernt);
+    expect(
+      v.geaendert.map((a) => ({
+        globalId: a.globalId,
+        kennung: KENNUNG.get(a.globalId),
+        felder: a.felder,
+        ...(a.felder.includes('name') ? { name: { vorher: a.vorher.name, nachher: a.nachher.name } } : {}),
+        ...(a.felder.includes('strukturknoten')
+          ? {
+              strukturknoten: {
+                vorher: knotenname(v1, a.vorher.strukturGlobalId),
+                nachher: knotenname(v2, a.nachher.strukturGlobalId),
+              },
+            }
+          : {}),
+        ...(a.felder.includes('mengen')
+          ? {
+              mengen: a.mengen.map((q) => ({
+                name: q.name,
+                vorher: q.vorher?.wert,
+                nachher: q.nachher?.wert,
+              })),
+            }
+          : {}),
+      })),
+    ).toEqual(soll.geaendert);
+    expect(v.anzahlUnveraendert).toBe(v1.bauteile.length - soll.entfernt.length - soll.geaendert.length);
+    expect(v.befunde).toEqual([]);
+  });
+
+  it('betroffene Positionen: Menge laut v1 und v2 und Differenz wie die Fixture', () => {
+    const f = vergleichsfolgenBerechnen(typisch, v1, v2);
+    expect(
+      f.positionen
+        .filter((p) => p.betroffen)
+        .map(({ positionId, vorher, nachher, differenz }) => ({ positionId, vorher, nachher, differenz })),
+    ).toEqual(
+      BIM.erweitert.betroffenePositionen.map(({ positionId, vorher, nachher, differenz }) => ({
+        positionId,
+        vorher,
+        nachher,
+        differenz,
+      })),
+    );
+    expect(f.positionen).toHaveLength(BIM.zuordnungen.length);
   });
 });

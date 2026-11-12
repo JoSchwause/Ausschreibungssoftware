@@ -29,3 +29,12 @@ export type {
   Kostenschaetzungsangaben,
 } from './kennwerte';
 export { kostenkennwerteBerechnen, kostenschaetzungBerechnen } from './kennwerte';
+export type {
+  Bauteilaenderung,
+  Mengenaenderung,
+  Modellvergleich,
+  Vergleichsfeld,
+  Vergleichsfolge,
+  Vergleichsfolgen,
+} from './vergleich';
+export { modellVergleichen, vergleichsfolgenBerechnen } from './vergleich';
