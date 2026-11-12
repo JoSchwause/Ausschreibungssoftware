@@ -1,6 +1,6 @@
 # 110: X3: `honorar`: Befehle, anrechenbare Kosten aus einer Kostenermittlung
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X3 · Paket: `packages/honorar`
 Blocked by: 97, 101 (gleiches Paket)
@@ -132,3 +132,9 @@ allein nacheinander: alle sieben grün im ersten Lauf. `node --test fixtures/*.t
   (ganz); Texte für `kostenermittlung-unbekannt`, `kostenberechnung-vorhanden`, `kostenermittlungsstufe-abweichend`; Formfehler
   kommen mit `feld: 'objekte[n].<feld>'`.
 - **113 (`ausgabe`):** liest `Honorarergebnis.befunde` als `Pruefbefund`.
+
+## Answer
+
+Gemergt mit `9d40c2f` (Branch `welle-6/110-honorar-befehle`, `93cc7f8`). `honorar` auf v1.6-Typen, Befehle, `honorarBerechnen(berechnung,
+kostenermittlungen)` mit § 6-Stufenprüfung (Warnung); `fixtures/honorar.json` über eine Kostenberechnung Brutto 267.595,90 ohne Befund.
+Für die Review-Behebung: Glossareintrag „Honorarberechnung“ nennt noch `Honorarbefund`.
