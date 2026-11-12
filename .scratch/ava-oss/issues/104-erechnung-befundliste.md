@@ -1,6 +1,6 @@
 # 104: `erechnung` nutzt die gemeinsame Befundliste
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: A4 · Paket: `packages/erechnung` (Ausnahme von P2: die markierten Verwendungen der Befunde in
 `apps/web/src/rechnung/` mechanisch nachziehen; dort schreibt in Stufe 1b niemand)
@@ -45,3 +45,8 @@ eine Befundquelle für das Lesen einer XRechnung in der gemeinsamen Befundliste 
 `pnpm lint` und `pnpm typecheck` grün. `pnpm test`: 2634 grün, 2 Leistungsbudgets rot nur in der vollen Suite (CPU geteilt mit anderen Agenten):
 `kern/k9-leistung.test.ts` und `speicher/aufmass-leistung.test.ts`; beide einzeln wiederholt grün, kein Budget gelockert.
 `e2e/rechnung.spec.ts` 1/1 grün.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `cca3329` (Branch `welle-6/104-erechnung-befunde`, `a5f0247`). Befunde von `erechnung` sind
+`Pruefbefund` mit Quelle `erechnung-lesen` (D-95.2); Verhalten unverändert; App ohne Änderung.
