@@ -16,8 +16,8 @@ export const GLOBALID_FORM = /^[0-9A-Za-z_$]{22}$/;
 export interface Modellindex {
   readonly bauteil: ReadonlyMap<IfcGlobalId, Bauteil>;
   readonly knoten: ReadonlyMap<IfcGlobalId, Strukturknoten>;
-  /** GlobalIds, die unter den Bauteilen mehr als einmal vorkommen, in der Reihenfolge ihres ersten Auftretens. */
-  readonly doppelteBauteile: readonly IfcGlobalId[];
+  /** GlobalIds, die unter den Bauteilen mehr als einmal vorkommen. */
+  readonly doppelteBauteile: ReadonlySet<IfcGlobalId>;
 }
 
 export function modellIndex(modell: Pick<Bauwerksmodell, 'struktur' | 'bauteile'>): Modellindex {
@@ -29,5 +29,5 @@ export function modellIndex(modell: Pick<Bauwerksmodell, 'struktur' | 'bauteile'
   }
   const knoten = new Map<IfcGlobalId, Strukturknoten>();
   for (const k of modell.struktur) if (!knoten.has(k.globalId)) knoten.set(k.globalId, k);
-  return { bauteil, knoten, doppelteBauteile: [...doppelt] };
+  return { bauteil, knoten, doppelteBauteile: doppelt };
 }

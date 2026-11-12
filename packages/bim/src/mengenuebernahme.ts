@@ -84,7 +84,7 @@ function wertDerZuordnung(
     );
     return null;
   }
-  if (index.doppelteBauteile.includes(z.globalId))
+  if (index.doppelteBauteile.has(z.globalId))
     befunde.push(
       modellbefund(
         'globalid-doppelt',
