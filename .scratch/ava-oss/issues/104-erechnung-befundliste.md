@@ -29,7 +29,7 @@ eine Befundquelle für das Lesen einer XRechnung in der gemeinsamen Befundliste 
 
 - [ ] Bestehende Golden-Tests von `erechnung` grün mit dem neuen Typ; App-Tests und `apps/web/e2e/rechnung.spec.ts` grün
       (`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test e2e/rechnung.spec.ts`)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 

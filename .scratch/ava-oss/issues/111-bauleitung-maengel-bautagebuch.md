@@ -41,7 +41,7 @@ Aus Ticket 97 und dem Review (D-64, D-66): Befehlsnamen und Fehlercode `statuswe
 ## Acceptance criteria
 
 - [x] Befehle, Umkehrung, Statustabelle, Fristprüfung, Auswertungen getestet; Paketgrenzen-Prüfung kennt `bauleitung`
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -124,3 +124,6 @@ nichts übersprungen; dieser Branch ändert keines dieser Pakete. `bauleitung` s
 
 Gemergt mit `ea16fbb` (Branch `welle-6/111-bauleitung`, `7c191ed`). Paket `bauleitung`: Mangel- und Bautagebuchbefehle, Statustabelle,
 Fristprüfung zum Stichtag (`fristpruefung`), Auswertungen; Fixture `bauleitung.json` passt unverändert, Kettentest gleich den Sollwerten.
+
+Suite: im Lauf des Umsetzers nur Leistungsbudgets anderer Pakete unter Last rot (allein grün); im Integrationslauf nach den Merges der
+Stufen 2 und 3 grün (Lint, Typecheck, 3.888 Tests).
