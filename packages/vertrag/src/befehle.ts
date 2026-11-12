@@ -55,6 +55,7 @@ import type {
 import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
 import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
+import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -996,6 +997,79 @@ export interface HonorarberechnungLoeschen {
 export type HonorarberechnungBefehl =
   HonorarberechnungAnlegen | HonorarberechnungSetzen | HonorarberechnungLoeschen;
 
+// --- Mängel und Bautagebuch (v1.6, X4; D-57; Ausführer in `bauleitung`, Ticket 111) -------------------------------------
+//
+// Kleine Einzelaggregate (D-57). Anders als die übrigen Ausführer sieht der Ausführer hier außer seinem Aggregat den **Bestand**
+// des Projekts (die übrigen Mängel bzw. Bautagebucheinträge), weil er die eindeutige Nummer bzw. das eindeutige Datum prüft
+// (D-57; Signaturen `MangelBefehlAusfuehren`, `BautagebucheintragBefehlAusfuehren`); `speicher` hält beides zusätzlich
+// (`konflikt`, auch für ein Undo ohne Ausführer). ChangeSets: das ganze, kleine Aggregat vorher und nachher.
+
+/**
+ * Legt einen Mangel an (Zustand `null`). Der Ausführer prüft die Form (siehe `Mangel`), den ganzen Verlauf (erster Eintrag
+ * `offen`, jeder weitere ein zulässiger Wechsel, sonst `statuswechsel-unzulaessig`; Daten nicht fallend) und die Nummer gegen
+ * den Bestand. Mit einem Verlauf aus mehreren Einträgen lässt sich ein schon angezeigter Mangel nacherfassen.
+ */
+export interface MangelAnlegen {
+  readonly art: 'MangelAnlegen';
+  readonly mangel: Mangel;
+}
+
+/**
+ * Setzt die Angaben des Mangels als ganze Werte: alles außer Kennung, Projekt, Nummer und Verlauf (die Nummer bleibt fest, der
+ * Verlauf ändert sich nur über `MangelstatusSetzen`). `festgestellt` nach dem Datum des ersten Verlaufseintrags:
+ * `ungueltige-eingabe` (`feld: 'festgestellt'`). Name wie `RechnungsangabenSetzen` (D-97.13).
+ */
+export interface MangelangabenSetzen {
+  readonly art: 'MangelangabenSetzen';
+  readonly titel: string;
+  readonly beschreibung: string | null;
+  readonly ort: string | null;
+  readonly auftragsLvId: Mangel['auftragsLvId'];
+  readonly positionId: Mangel['positionId'];
+  readonly bauteil: Mangel['bauteil'];
+  readonly festgestellt: string;
+  readonly frist: string | null;
+}
+
+/**
+ * Wechselt den Status: hängt `eintrag` an den Verlauf an (Glossar „Mängelverlauf“). Ein Wechsel, den `Mangelstatus` nicht
+ * zulässt (auch zum selben Status): `statuswechsel-unzulaessig`; ein Datum vor dem letzten Eintrag: `ungueltige-eingabe`
+ * (`feld: 'datum'`). Eine neue Frist (etwa zur Mängelanzeige) setzt die App im selben Undo-Schritt mit `MangelangabenSetzen`.
+ */
+export interface MangelstatusSetzen {
+  readonly art: 'MangelstatusSetzen';
+  readonly eintrag: Mangelverlaufseintrag;
+}
+
+/** Löscht den Mangel (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist auf ihn. */
+export interface MangelLoeschen {
+  readonly art: 'MangelLoeschen';
+}
+
+/** Befehle gegen einen Mangel (Zustand: `MangelZustand`; v1.6, Ticket 97 Punkt 6). */
+export type MangelBefehl = MangelAnlegen | MangelangabenSetzen | MangelstatusSetzen | MangelLoeschen;
+
+/**
+ * Setzt einen Bautagebucheintrag: mit Zustand `null` legt er ihn an, sonst ersetzt er den Eintrag des Zustands (gleiche
+ * Kennung und gleiches Projekt, sonst `ungueltige-eingabe`). Ein Datum, das im Bestand schon ein anderer Eintrag trägt:
+ * `ungueltige-eingabe` (`feld: 'datum'`); die App zeigt dazu einen eigenen Hinweis (Ticket 120).
+ */
+export interface BautagebucheintragSetzen {
+  readonly art: 'BautagebucheintragSetzen';
+  readonly eintrag: Bautagebucheintrag;
+}
+
+/** Löscht den Eintrag (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). */
+export interface BautagebucheintragLoeschen {
+  readonly art: 'BautagebucheintragLoeschen';
+}
+
+/**
+ * Befehle gegen einen Bautagebucheintrag (Zustand: `BautagebucheintragZustand`; v1.6, Ticket 97 Punkt 6). Name nach dem
+ * Aggregat wie bei jedem anderen (`MangelBefehl`), nicht nach dem ganzen Bautagebuch (D-97.13).
+ */
+export type BautagebucheintragBefehl = BautagebucheintragSetzen | BautagebucheintragLoeschen;
+
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
 /**
@@ -1042,7 +1116,9 @@ export type Befehl =
   // v1.6 (Ticket 97)
   | BauwerksmodellBefehl
   | BauzeitenplanBefehl
-  | HonorarberechnungBefehl;
+  | HonorarberechnungBefehl
+  | MangelBefehl
+  | BautagebucheintragBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];

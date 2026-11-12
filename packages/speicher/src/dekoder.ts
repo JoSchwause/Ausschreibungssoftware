@@ -1030,6 +1030,12 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   HonorarberechnungAnlegen: true,
   HonorarberechnungSetzen: true,
   HonorarberechnungLoeschen: true,
+  MangelAnlegen: true,
+  MangelangabenSetzen: true,
+  MangelstatusSetzen: true,
+  MangelLoeschen: true,
+  BautagebucheintragSetzen: true,
+  BautagebucheintragLoeschen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

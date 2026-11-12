@@ -76,6 +76,17 @@ import type {
   Tafelzeile,
 } from './honorar';
 import type { HonorarberechnungId } from './marken';
+import type {
+  BautagebucheintragLoeschen,
+  BautagebucheintragSetzen,
+  MangelAnlegen,
+  MangelangabenSetzen,
+  MangelLoeschen,
+  MangelstatusSetzen,
+} from './befehle';
+import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { BautagebucheintragChangeSet, MangelChangeSet } from './changeset';
+import type { BautagebucheintragId, MangelId } from './marken';
 import type { BauzeitenplanChangeSet } from './changeset';
 import type { BauzeitenplanId, VorgangId } from './marken';
 import type {
@@ -2119,4 +2130,119 @@ export const beispielChangeSetHonorarberechnungSetzen: HonorarberechnungChangeSe
       objekte: beispielHonorarbefehle[1].objekte,
     },
   },
+};
+
+const mangel1Id = '019b76e9-0000-7000-8000-000000000501' as MangelId;
+const mangel2Id = '019b76e9-0000-7000-8000-000000000502' as MangelId;
+const tagebuchId = '019b76e9-0000-7000-8000-000000000511' as BautagebucheintragId;
+
+/**
+ * Punkt 6 (D-57): Mangel 1 an der Wand EG des Beispielhauses (in jedem Modellstand, `bauwerksmodellId: null`), Leistung des
+ * Beispiel-Auftrags-LV, Position 01.0010; festgestellt und am selben Tag dem Auftragnehmer mit Frist angezeigt.
+ */
+export const beispielMangel1: Mangel = {
+  id: mangel1Id,
+  projektId: beispielLv.projektId,
+  nummer: 1,
+  titel: 'Putzriss Außenwand',
+  beschreibung: 'Horizontaler Riss über dem Fenster, etwa 40 cm lang (erfunden).',
+  ort: 'EG, Nordwand',
+  auftragsLvId: auftragsId,
+  positionId: posId,
+  bauteil: { bauwerksmodellId: null, globalId: beispielGlobalIds.wandEg },
+  festgestellt: '2026-11-20',
+  frist: '2026-12-04',
+  verlauf: [
+    { status: 'offen', datum: '2026-11-20', bemerkung: null },
+    { status: 'angezeigt', datum: '2026-11-20', bemerkung: 'Mängelanzeige per Brief' },
+  ],
+};
+
+/**
+ * Punkt 6 (D-57): Mangel 2 ohne Auftrags-LV und Bauteil, mit dem erlaubten Rückweg: angezeigt, als beseitigt gemeldet, die
+ * Beseitigung nicht anerkannt (beseitigt → offen). Sein Status ist der letzte Eintrag: `offen`.
+ */
+export const beispielMangel2: Mangel = {
+  id: mangel2Id,
+  projektId: beispielLv.projektId,
+  nummer: 2,
+  titel: 'Tür schleift',
+  beschreibung: null,
+  ort: 'OG, Flur',
+  auftragsLvId: null,
+  positionId: null,
+  bauteil: null,
+  festgestellt: '2026-11-23',
+  frist: '2026-12-11',
+  verlauf: [
+    { status: 'offen', datum: '2026-11-23', bemerkung: null },
+    { status: 'angezeigt', datum: '2026-11-24', bemerkung: null },
+    { status: 'beseitigt', datum: '2026-12-01', bemerkung: 'Meldung des Auftragnehmers' },
+    { status: 'offen', datum: '2026-12-02', bemerkung: 'Schleift weiter' },
+  ],
+};
+
+/** Punkt 6: Mangel 1 ist beseitigt gemeldet; der Wechsel hängt einen Eintrag an. */
+export const beispielMangelstatusSetzen: MangelstatusSetzen = {
+  art: 'MangelstatusSetzen',
+  eintrag: { status: 'beseitigt', datum: '2026-12-03', bemerkung: null },
+};
+
+/** Punkt 6: ChangeSet dazu: der ganze Mangel vorher und nachher, der Verlauf um einen Eintrag länger. */
+export const beispielChangeSetMangelstatus: MangelChangeSet = {
+  art: 'mangel',
+  mangelId: mangel1Id,
+  mangel: {
+    vorher: beispielMangel1,
+    nachher: {
+      ...beispielMangel1,
+      verlauf: [...beispielMangel1.verlauf, beispielMangelstatusSetzen.eintrag],
+    },
+  },
+};
+
+/** Punkt 6: die übrigen Mangelbefehle: Anlegen, Angaben setzen (neue Frist), Löschen. */
+export const beispielMangelbefehle: readonly [MangelAnlegen, MangelangabenSetzen, MangelLoeschen] = [
+  { art: 'MangelAnlegen', mangel: beispielMangel2 },
+  {
+    art: 'MangelangabenSetzen',
+    titel: beispielMangel1.titel,
+    beschreibung: beispielMangel1.beschreibung,
+    ort: beispielMangel1.ort,
+    auftragsLvId: beispielMangel1.auftragsLvId,
+    positionId: beispielMangel1.positionId,
+    bauteil: beispielMangel1.bauteil,
+    festgestellt: beispielMangel1.festgestellt,
+    frist: '2026-12-11',
+  },
+  { art: 'MangelLoeschen' },
+];
+
+/** Punkt 6 (D-57): ein Tag im Bautagebuch, zwei Firmen, ganze Grad Celsius. */
+export const beispielBautagebucheintrag: Bautagebucheintrag = {
+  id: tagebuchId,
+  projektId: beispielLv.projektId,
+  datum: '2026-11-23',
+  wetter: { beschreibung: 'bedeckt, trocken', temperaturMin: -2, temperaturMax: 6 },
+  arbeitskraefte: [
+    { firma: 'Muster Bau GmbH (erfunden)', anzahl: 6 },
+    { firma: 'Elektro Beispiel (erfunden)', anzahl: 2 },
+  ],
+  geraete: 'Turmdrehkran, Minibagger',
+  leistungen: 'Mauerwerk EG Achse 1–3',
+  behinderungen: null,
+  vorkommnisse: 'Besuch der Bauherrin',
+};
+
+/** Punkt 6: Eintrag setzen (Zustand `null`: anlegen) und löschen. */
+export const beispielBautagebuchbefehle: readonly [BautagebucheintragSetzen, BautagebucheintragLoeschen] = [
+  { art: 'BautagebucheintragSetzen', eintrag: beispielBautagebucheintrag },
+  { art: 'BautagebucheintragLoeschen' },
+];
+
+/** Punkt 6: ChangeSet des Anlegens. */
+export const beispielChangeSetBautagebucheintrag: BautagebucheintragChangeSet = {
+  art: 'bautagebucheintrag',
+  bautagebucheintragId: tagebuchId,
+  bautagebucheintrag: { vorher: null, nachher: beispielBautagebucheintrag },
 };

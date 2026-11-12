@@ -17,8 +17,10 @@ import type {
   AuftragsLeistungsverzeichnisId,
   BauwerksmodellId,
   BauzeitenplanId,
+  BautagebucheintragId,
   HonorarberechnungId,
   KnotenId,
+  MangelId,
   KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
@@ -46,6 +48,7 @@ import type { Summenaenderung, Summenstand } from './summen';
 import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from './bim';
 import type { Bauzeitenplan } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
+import type { Bautagebucheintrag, Mangel } from './bauleitung';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -88,7 +91,13 @@ export type Befehlsfehlercode =
    * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
    * Der eingefrorene Zahlbetrag ändert sich nie still.
    */
-  | 'rechnung-freigegeben';
+  | 'rechnung-freigegeben'
+  /**
+   * v1.6 (Ticket 97 Punkt 6, D-57): Der Befehl würde den Status eines Mangels auf eine Weise wechseln, die `Mangelstatus` nicht
+   * zulässt (etwa von `abgenommen` zurück oder zum selben Status). Ein Statuswechsel ist kein Feldwert, deshalb ein eigener
+   * Code wie `rechnung-freigegeben` (D-97.13).
+   */
+  | 'statuswechsel-unzulaessig';
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -196,6 +205,16 @@ export interface BauzeitenplanZustand {
 /** Honorarberechnung als Zustand ihrer Befehle (v1.6, Ticket 97 Punkt 5). Ohne Ergebnis: das rechnet `honorar` (D-56). */
 export interface HonorarberechnungZustand {
   readonly honorarberechnung: Honorarberechnung;
+}
+
+/** Mangel als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 6). Ohne Gerechnetes: „überfällig“ ist ein Befund (D-57). */
+export interface MangelZustand {
+  readonly mangel: Mangel;
+}
+
+/** Bautagebucheintrag als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 6). */
+export interface BautagebucheintragZustand {
+  readonly bautagebucheintrag: Bautagebucheintrag;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -404,6 +423,27 @@ export interface HonorarberechnungChangeSet {
   readonly art: 'honorarberechnung';
   readonly honorarberechnungId: HonorarberechnungId;
   readonly honorarberechnung: Aenderung<Honorarberechnung>;
+}
+
+/**
+ * ChangeSet an einem Mangel (v1.6, Ticket 97 Punkt 6; D-57): der ganze, kleine Mangel vorher und nachher, Lesart wie
+ * `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn die Nummer im Projekt schon vergeben ist oder ein Verweis
+ * (`auftragsLvId`, `bauteil.bauwerksmodellId`) kein Aggregat des Projekts nennt (siehe `Mangel`).
+ */
+export interface MangelChangeSet {
+  readonly art: 'mangel';
+  readonly mangelId: MangelId;
+  readonly mangel: Aenderung<Mangel>;
+}
+
+/**
+ * ChangeSet an einem Bautagebucheintrag (v1.6, Ticket 97 Punkt 6; D-57): der ganze Eintrag vorher und nachher, Lesart wie
+ * `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn das Datum im Projekt schon ein anderer Eintrag trägt.
+ */
+export interface BautagebucheintragChangeSet {
+  readonly art: 'bautagebucheintrag';
+  readonly bautagebucheintragId: BautagebucheintragId;
+  readonly bautagebucheintrag: Aenderung<Bautagebucheintrag>;
 }
 
 /** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */

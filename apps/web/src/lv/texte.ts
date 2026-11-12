@@ -186,6 +186,8 @@ export const texte = {
     'befehl-nicht-zustaendig': 'Diese Änderung passt nicht zum geöffneten Stand.',
     // v1.4: mechanisch angepasst, Folgeticket (Rechnungsprüfung in der App; Texte dort prüfen)
     'rechnung-freigegeben': 'Die Rechnung ist freigegeben. Zuerst die Freigabe aufheben.',
+    // v1.6: mechanisch angepasst, Folgeticket 120 (Mängel in der App; Text dort prüfen)
+    'statuswechsel-unzulaessig': 'Dieser Statuswechsel ist für den Mangel nicht zulässig.',
   } satisfies Record<Befehlsfehlercode, string>,
   speicherfehler: {
     'nicht-gefunden': 'Der Eintrag wurde im Speicher nicht gefunden.',

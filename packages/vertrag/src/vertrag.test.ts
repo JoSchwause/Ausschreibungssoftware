@@ -252,6 +252,32 @@ import {
 } from './beispiele';
 // v1.6 (Ticket 97)
 import type {
+  Bautagebucheintrag,
+  BautagebucheintragBefehl,
+  BautagebucheintragChangeSet,
+  BautagebucheintragId,
+  BautagebucheintragZustand,
+  Mangel,
+  MangelangabenSetzen,
+  MangelBefehl,
+  MangelChangeSet,
+  MangelId,
+  Mangelstatus,
+  MangelstatusSetzen,
+  Mangelverlaufseintrag,
+  MangelZustand,
+} from './index';
+import {
+  beispielBautagebuchbefehle,
+  beispielBautagebucheintrag,
+  beispielChangeSetBautagebucheintrag,
+  beispielChangeSetMangelstatus,
+  beispielMangel1,
+  beispielMangel2,
+  beispielMangelbefehle,
+  beispielMangelstatusSetzen,
+} from './beispiele';
+import type {
   AnrechenbareKostenangabe,
   AnrechenbareKostenHerleitung,
   BeauftragteLeistungsphase,
@@ -1800,7 +1826,8 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
 
 describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
   it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
-    expectTypeOf<Befehlsfehlercode>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`, siehe dort.
+    expectTypeOf<Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig'>>().toEqualTypeOf<
       | 'ungueltige-eingabe'
       | 'knoten-unbekannt'
       | 'eltern-unbekannt'
@@ -2444,5 +2471,110 @@ describe('v1.6 Punkt 5: Honorarberechnung (X3, D-56; Namen wie `honorar`, D-101.
     ]);
     expectTypeOf<NurDaten<Honorarberechnung>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<Honorarergebnis>>().toEqualTypeOf<true>();
+  });
+});
+
+/** Die zulässigen Wechsel des Mangelstatus (Lesart an `Mangelstatus`; die Tabelle des Ausführers liefert Ticket 111). */
+const MANGELWECHSEL: Readonly<Record<Mangelstatus, readonly Mangelstatus[]>> = {
+  offen: ['angezeigt'],
+  angezeigt: ['beseitigt'],
+  beseitigt: ['abgenommen', 'offen'],
+  abgenommen: [],
+};
+
+describe('v1.6 Punkt 6: Mängel und Bautagebuch (X4, D-57)', () => {
+  it('Kennungen, Status und Verlaufseintrag', () => {
+    expectTypeOf<string>().not.toExtend<MangelId>();
+    expectTypeOf<MangelId>().not.toExtend<BautagebucheintragId>();
+    expectTypeOf<Mangelstatus>().toEqualTypeOf<'offen' | 'angezeigt' | 'beseitigt' | 'abgenommen'>();
+    expectTypeOf<Mangelverlaufseintrag>().toEqualTypeOf<{
+      readonly status: Mangelstatus;
+      readonly datum: string;
+      readonly bemerkung: string | null;
+    }>();
+  });
+
+  it('der Verlauf ist die Quelle des Status: kein eigenes Feld, kein gespeichertes „überfällig“', () => {
+    expectTypeOf<Mangel>().not.toHaveProperty('status');
+    expectTypeOf<Mangel>().not.toHaveProperty('ueberfaellig');
+    expectTypeOf<Mangel['bauteil']>().toEqualTypeOf<{
+      readonly bauwerksmodellId: BauwerksmodellId | null;
+      readonly globalId: IfcGlobalId;
+    } | null>();
+    expectTypeOf<Mangel>().not.toHaveProperty('fotos');
+  });
+
+  it('Beispiele: erster Eintrag offen, jeder Wechsel zulässig, Daten nicht fallend und nicht vor der Feststellung', () => {
+    for (const m of [beispielMangel1, beispielMangel2, beispielChangeSetMangelstatus.mangel.nachher]) {
+      if (m === null) throw new Error('Mangel erwartet');
+      expect(m.verlauf[0]?.status).toBe('offen');
+      m.verlauf.forEach((e, i) => {
+        expect(e.datum >= m.festgestellt).toBe(true);
+        const vorher = m.verlauf[i - 1];
+        if (vorher === undefined) return;
+        expect(MANGELWECHSEL[vorher.status]).toContain(e.status);
+        expect(e.datum >= vorher.datum).toBe(true);
+      });
+      if (m.positionId !== null) expect(m.auftragsLvId).not.toBeNull();
+    }
+    expect(beispielMangel2.verlauf.at(-1)?.status).toBe('offen');
+    expect(new Set([beispielMangel1.nummer, beispielMangel2.nummer]).size).toBe(2);
+  });
+
+  it('Befehle: Anlegen, Angaben setzen (ohne Nummer und Verlauf), Status setzen (hängt an), Löschen', () => {
+    expectTypeOf<MangelBefehl['art']>().toEqualTypeOf<
+      'MangelAnlegen' | 'MangelangabenSetzen' | 'MangelstatusSetzen' | 'MangelLoeschen'
+    >();
+    expectTypeOf<Omit<MangelangabenSetzen, 'art'>>().toEqualTypeOf<
+      Omit<Mangel, 'id' | 'projektId' | 'nummer' | 'verlauf'>
+    >();
+    expectTypeOf<MangelstatusSetzen['eintrag']>().toEqualTypeOf<Mangelverlaufseintrag>();
+    expectTypeOf<'statuswechsel-unzulaessig'>().toExtend<Befehlsfehlercode>();
+    const { vorher, nachher } = beispielChangeSetMangelstatus.mangel;
+    expect(nachher?.verlauf.slice(0, -1)).toEqual(vorher?.verlauf);
+    expect(nachher?.verlauf.at(-1)).toEqual(beispielMangelstatusSetzen.eintrag);
+    expect(beispielMangelbefehle.map((b) => b.art)).toEqual([
+      'MangelAnlegen',
+      'MangelangabenSetzen',
+      'MangelLoeschen',
+    ]);
+  });
+
+  it('Bautagebucheintrag: ganze Zahlen für Grad und Köpfe, je Firma eine Zeile, keine Fotos', () => {
+    expectTypeOf<Bautagebucheintrag['wetter']['temperaturMin']>().toEqualTypeOf<number | null>();
+    expectTypeOf<Bautagebucheintrag['arbeitskraefte'][number]>().toEqualTypeOf<{
+      readonly firma: string;
+      readonly anzahl: number;
+    }>();
+    expectTypeOf<Bautagebucheintrag>().not.toHaveProperty('fotos');
+    const e = beispielBautagebucheintrag;
+    const firmen = e.arbeitskraefte.map((a) => a.firma);
+    expect(new Set(firmen).size).toBe(firmen.length);
+    for (const a of e.arbeitskraefte) expect(Number.isSafeInteger(a.anzahl) && a.anzahl >= 0).toBe(true);
+    const { temperaturMin, temperaturMax } = e.wetter;
+    expect(Number.isSafeInteger(temperaturMin) && Number.isSafeInteger(temperaturMax)).toBe(true);
+    expect((temperaturMin ?? 0) <= (temperaturMax ?? 0)).toBe(true);
+  });
+
+  it('Bautagebuchbefehle nach dem Aggregat benannt; kleine ChangeSets je Aggregat', () => {
+    expectTypeOf<BautagebucheintragBefehl['art']>().toEqualTypeOf<
+      'BautagebucheintragSetzen' | 'BautagebucheintragLoeschen'
+    >();
+    expectTypeOf<MangelBefehl | BautagebucheintragBefehl>().toExtend<Befehl>();
+    expectTypeOf<MangelChangeSet['mangel']>().toEqualTypeOf<Aenderung<Mangel>>();
+    expectTypeOf<BautagebucheintragChangeSet['bautagebucheintrag']>().toEqualTypeOf<
+      Aenderung<Bautagebucheintrag>
+    >();
+    expectTypeOf<MangelZustand>().toEqualTypeOf<{ readonly mangel: Mangel }>();
+    expectTypeOf<BautagebucheintragZustand>().toEqualTypeOf<{
+      readonly bautagebucheintrag: Bautagebucheintrag;
+    }>();
+    expect(beispielChangeSetBautagebucheintrag.bautagebucheintrag.vorher).toBeNull();
+    expect(beispielBautagebuchbefehle.map((b) => b.art)).toEqual([
+      'BautagebucheintragSetzen',
+      'BautagebucheintragLoeschen',
+    ]);
+    expectTypeOf<NurDaten<Mangel>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Bautagebucheintrag>>().toEqualTypeOf<true>();
   });
 });

@@ -59,6 +59,10 @@ export type BauzeitenplanId = string & Marke<'BauzeitenplanId'>;
 export type VorgangId = string & Marke<'VorgangId'>;
 /** Kennung einer Honorarberechnung (v1.6, Ticket 97 Punkt 5; X3, D-56): eigenes Aggregat, eindeutig im Projekt. */
 export type HonorarberechnungId = string & Marke<'HonorarberechnungId'>;
+/** Kennung eines Mangels (v1.6, Ticket 97 Punkt 6; X4, D-57): eigenes Aggregat, eindeutig im Projekt (nicht die Nummer). */
+export type MangelId = string & Marke<'MangelId'>;
+/** Kennung eines Bautagebucheintrags (v1.6, Ticket 97 Punkt 6; X4, D-57): eigenes Aggregat, eindeutig im Projekt. */
+export type BautagebucheintragId = string & Marke<'BautagebucheintragId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;

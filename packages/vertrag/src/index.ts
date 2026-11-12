@@ -15,6 +15,7 @@ export type * from './ansicht';
 export type * from './bim';
 export type * from './bauzeit';
 export type * from './honorar';
+export type * from './bauleitung';
 
 export { MASSENBEFEHLSARTEN } from './befehle';
 export { NACHKOMMASTELLEN } from './zahlen';
