@@ -179,8 +179,6 @@ export const texte = {
     istBeginn: 'Ist-Beginn',
     istEnde: 'Ist-Ende',
     fortschritt: 'Fortschritt (%)',
-    vorschlag: (p: string) => `Vorschlag aus dem Leistungsstand: ${p} %`,
-    vorschlagUebernehmen: 'Vorschlag übernehmen',
     speichern: 'Speichern',
     abbrechen: 'Abbrechen',
     fehlerBezeichnung: 'Die Bezeichnung fehlt.',
