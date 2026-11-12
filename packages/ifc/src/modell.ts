@@ -3,6 +3,7 @@
 // IFC-Spezifikation; die hier gelesenen Attribute stehen in IFC 2x3 und IFC 4 an derselben Stelle.
 
 import type { Befundort } from '@tethys/vertrag';
+import { istGlobalId } from './globalid';
 import { befund } from './step';
 import type { StepDaten, StepWert } from './step';
 import type { Bauteilmenge, IfcBefund, IfcBefundcode, Strukturknoten } from './typen';
@@ -16,9 +17,6 @@ export const STRUKTURARTEN: ReadonlyMap<string, Strukturknoten['art']> = new Map
   ['IFCBUILDINGSTOREY', 'geschoss'],
   ['IFCSPACE', 'raum'],
 ]);
-
-/** Form einer GlobalId (Glossar): 22 Zeichen aus dem IFC-Base64-Alphabet. */
-const GLOBALID = /^[0-9A-Za-z_$]{22}$/;
 
 /** Gemeinsamer Zustand beim Lesen der Instanzen: Daten, Befunde, aufgelöste Verweise, vergebene GlobalIds. */
 export class Modellleser {
@@ -86,7 +84,7 @@ export class Modellleser {
   gepruefteGlobalId(i: number): string {
     const globalId = this.globalId(i);
     const nummer = `#${String(this.daten.id(i))}`;
-    if (!GLOBALID.test(globalId)) {
+    if (!istGlobalId(globalId)) {
       this.melde(
         'fehler',
         'globalid-ungueltig',
