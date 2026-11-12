@@ -1,6 +1,6 @@
 # 106: Speicher v1.5/v1.6: Migration 6, Modelldateien, neue Aggregate
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: S · Paket: `packages/speicher`
 Blocked by: 94 (gleiches Paket), 97 (und damit 95)
@@ -167,3 +167,10 @@ Nach dem Merge von `integration/welle-6` (bei `ef749df`, Tickets 105, 108–111,
 `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Lint samt Paketgrenzen, Lizenzen und Clean
 Room; Vitest 292 Dateien bestanden, 1 übersprungen; 3.761 Tests bestanden, 3 übersprungen wie zuvor; `node --test` 53/53).
 `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/speicher e2e`: 18 bestanden.
+
+## Answer
+
+Gemergt mit `9db5b29` (Branch `welle-6/106-speicher`, `16dca80`). Schema 6 mit Migration und Dateimigration 5→6, Modelldateiablage
+(SHA-256, deflate-raw, Freigabe beim Öffnen), alle neuen Aggregate mit Löschregeln und Undo, `nettoNachNachlass`, Projektdatei v6.
+Budgets: 10k-Modell speichern 1,0 s, Export/Import 25-MB-Modell 0,85/1,0 s, Plan-Undo 1.000 Vorgänge ~8 ms. Offen: 25-MB-Modell im
+dauerhaften OPFS-Profil nicht gemessen; Marker in `apps/web/src/lv/texte.ts:202` entfernt Ticket 114.
