@@ -1,6 +1,6 @@
 # 96: `ui-grid`: Balkenspalte (Zeitleiste) im Vergleichsgrid
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: U, X2 · Paket: `packages/ui-grid`
 Blocked by: –
