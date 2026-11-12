@@ -127,6 +127,9 @@ export const texte = {
     quelleEingabe: 'Eingabe',
     fehlt: 'fehlt im Modell',
     eingabe: (art: string, einheit: string): string => `${art} (Eingabe, ${einheit})`,
+    // Ticket 122 (N4): die Herleitung in der Bemerkung eines Eintrags der Kostenschätzung, formatiert am Rand.
+    herleitung: (art: string, wert: string, einheit: string, eingabe: boolean, kennwert: string): string =>
+      `${art} ${wert} ${einheit}${eingabe ? ' (Eingabe)' : ''} × ${kennwert} €/${einheit}`,
     befunde: 'Befunde der Bezugsgrößen',
     schaetzung: 'Kostenschätzung über Kennwerte …',
     schaetzungTitel: 'Kostenschätzung über Kennwerte',

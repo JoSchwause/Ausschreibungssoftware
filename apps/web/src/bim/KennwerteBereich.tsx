@@ -17,6 +17,7 @@ import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { BefundListe } from './BefundListe';
 import {
   BEZUGSGROESSEN,
+  EINHEIT,
   groessenLesen,
   kostenkennwerteZeilen,
   schaetzungBauen,
@@ -25,7 +26,6 @@ import {
 import { texte } from './texte';
 
 const t = texte.kennwerte;
-const EINHEIT: Readonly<Record<Bezugsgroessenart, string>> = { BGF: 'm²', BRI: 'm³', NRF: 'm²' };
 const groesse = (g: Din277Groessen, art: Bezugsgroessenart) =>
   art === 'BGF' ? g.bgf : art === 'BRI' ? g.bri : g.nrf;
 

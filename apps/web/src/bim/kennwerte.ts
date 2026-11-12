@@ -8,16 +8,19 @@ import {
   din277Berechnen,
   kostenkennwerteBerechnen,
   kostenschaetzungBerechnen,
+  type Bezugsgroesse,
   type Bezugsgroessenart,
   type Din277Groessen,
   type Kennwertansatz,
   type Kostenkennwertzeile,
   type Kostenschaetzung,
 } from '@tethys/bim';
-import { parseBetragDe, parseMengeDe } from '@tethys/dezimal';
+import { formatiereBetragDe, formatiereMengeDe, parseBetragDe, parseMengeDe } from '@tethys/dezimal';
 import { kostenermittlungBerechnen } from '@tethys/kosten';
+import { texte } from './texte';
 import type {
   Bauwerksmodell,
+  Betrag,
   Kostenermittlungseintrag,
   KostenermittlungId,
   Kostengruppennummer,
@@ -26,6 +29,21 @@ import type {
 } from '@tethys/vertrag';
 
 export const BEZUGSGROESSEN: readonly Bezugsgroessenart[] = ['BGF', 'BRI', 'NRF'];
+export const EINHEIT: Readonly<Record<Bezugsgroessenart, string>> = { BGF: 'm²', BRI: 'm³', NRF: 'm²' };
+
+/**
+ * Die Herleitung eines Betrags der Kostenschätzung für die Bemerkung des Eintrags, etwa „BGF 245,300 m² × 1.250,00 €/m²“;
+ * eine Eingabe des Nutzers heißt so. `bim` rechnet, der Rand formatiert (N4, Ticket 122).
+ */
+export function herleitungstext(g: Bezugsgroesse, kennwert: Betrag): string {
+  return texte.kennwerte.herleitung(
+    g.art,
+    g.wert === null ? '–' : formatiereMengeDe(g.wert),
+    EINHEIT[g.art],
+    g.quelle === 'eingabe',
+    formatiereBetragDe(kennwert),
+  );
+}
 
 export interface Groessenlesung {
   readonly groessen: Din277Groessen;
@@ -104,6 +122,7 @@ export function schaetzungBauen(angaben: {
       name: angaben.name.trim(),
       groessen: angaben.groessen,
       kennwerte: ansaetze,
+      herleitung: herleitungstext,
     }),
     fehler,
   };

@@ -21,10 +21,17 @@ const groessen = (
   nrf: { art: 'NRF', wert: nrf === null ? null : m(nrf), quelle },
   befunde: [],
 });
+/**
+ * Die Herleitung setzt der Aufrufer (der Rand formatiert, N4, Ticket 122): Hier steht sie in kanonischer Form, damit der Test
+ * sieht, dass `bim` nichts formatiert und genau diesen Text in die Bemerkung schreibt.
+ */
+const herleitung = (g: Bezugsgroesse, kennwert: Betrag): string =>
+  `${g.art}=${g.wert ?? '-'}(${g.quelle})*${kennwert}`;
 const angaben = {
   id: 'ke-1' as KostenermittlungId,
   projektId: 'projekt-1' as ProjektId,
   name: 'Kostenschätzung aus dem Modell',
+  herleitung,
 };
 
 describe('kostenschaetzungBerechnen', () => {
@@ -46,9 +53,9 @@ describe('kostenschaetzungBerechnen', () => {
         name: 'Kostenschätzung aus dem Modell',
         eintraege: [
           // 780,125 × 12,35 = 9.634,54375 → 9.634,54
-          { nummer: '310', betrag: '9634.54', bemerkung: 'BRI 780,125 m³ × 12,35 €/m³' },
+          { nummer: '310', betrag: '9634.54', bemerkung: 'BRI=780.125(modell)*12.35' },
           // 245,3 × 1.250 = 306.625,00
-          { nummer: '330', betrag: '306625.00', bemerkung: 'BGF 245,300 m² × 1.250,00 €/m²' },
+          { nummer: '330', betrag: '306625.00', bemerkung: 'BGF=245.300(modell)*1250.00' },
         ],
       },
     });
@@ -56,7 +63,7 @@ describe('kostenschaetzungBerechnen', () => {
     expect(s.befunde).toEqual([]);
   });
 
-  it('nennt eine Eingabe des Nutzers in der Herleitung und rundet kaufmännisch', () => {
+  it('gibt der Herleitung die Quelle der Größe mit (Eingabe des Nutzers) und rundet kaufmännisch', () => {
     const s = kostenschaetzungBerechnen({
       ...angaben,
       groessen: groessen(null, null, '100.005', 'eingabe'),
@@ -64,7 +71,7 @@ describe('kostenschaetzungBerechnen', () => {
     });
     // 100,005 × 0,5 = 50,0025 → 50,00
     expect(s.befehl.kostenermittlung.eintraege).toEqual([
-      { nummer: '400', betrag: '50.00', bemerkung: 'NRF 100,005 m² (Eingabe) × 0,50 €/m²' },
+      { nummer: '400', betrag: '50.00', bemerkung: 'NRF=100.005(eingabe)*0.50' },
     ]);
   });
 
@@ -82,7 +89,7 @@ describe('kostenschaetzungBerechnen', () => {
       {
         nummer: '330',
         betrag: '1250.00',
-        bemerkung: 'BGF 100,000 m² × 10,00 €/m²; BGF 100,000 m² × 2,50 €/m²',
+        bemerkung: 'BGF=100.000(modell)*10.00; BGF=100.000(modell)*2.50',
       },
     ]);
     expect(s.gesamt).toBe('1250.00');

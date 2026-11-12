@@ -111,6 +111,7 @@ describe('Kostenschätzung über Kennwerte (D-99.10)', () => {
       projektId: 'projekt-1' as ProjektId,
       name: 'Kostenschätzung aus dem Modell',
       groessen,
+      herleitung: () => '',
       kennwerte: soll.kennwerte.map((k) => ({
         kostengruppe: kg(k.nummer),
         bezug: 'BGF' as const,
