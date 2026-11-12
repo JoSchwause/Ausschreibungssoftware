@@ -5,7 +5,9 @@
 // (`Sitzung.folge`); nur im Ausschreibungs-LV (D-53).
 
 import { mengenuebernahmeBerechnen, vergleichsfolgenBerechnen } from '@tethys/bim';
+import { formatiereMengeDe } from '@tethys/dezimal';
 import { mengenansatzBerechnen } from '@tethys/mengen';
+import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type {
   Ansatzzeile,
   Bauwerksmodell,
@@ -17,6 +19,7 @@ import type {
   Pruefbefund,
 } from '@tethys/vertrag';
 import type { Ausgang, LvSitzung } from '../lv/befehlsweg';
+import { texte } from './texte';
 
 export interface Folgezeile {
   readonly positionId: PositionId;
@@ -116,6 +119,40 @@ export function aktualisierungBerechnen(lv: LvZustand, alt: Bauwerksmodell, neu:
     befehle.push({ art: 'MengenansatzSetzen', positionId: u.positionId, mengenansatz: u.zeilen, menge });
   }
   return { positionen: aus, befehle };
+}
+
+export const FOLGEN_SPALTEN: readonly VergleichsSpalte[] = [
+  { id: 'oz', kopf: texte.folgen.oz, breite: 90 },
+  { id: 'kurztext', kopf: texte.folgen.kurztext, breite: 220 },
+  { id: 'einheit', kopf: texte.folgen.einheit, breite: 70 },
+  { id: 'vorher', kopf: texte.folgen.vorher, ausrichtung: 'rechts', breite: 110 },
+  { id: 'nachher', kopf: texte.folgen.nachher, ausrichtung: 'rechts', breite: 110 },
+  { id: 'differenz', kopf: texte.folgen.differenz, ausrichtung: 'rechts', breite: 110 },
+  { id: 'imLv', kopf: texte.folgen.imLv, ausrichtung: 'rechts', breite: 110 },
+  { id: 'betroffen', kopf: texte.folgen.betroffen, breite: 90 },
+];
+
+const mengeText = (m: Menge | null): string => (m === null ? '' : formatiereMengeDe(m));
+
+/** Zeilen des Grids „Positionen mit Zuordnungen“ (Texte am Rand formatiert, N4). */
+export function folgenZeilen(f: Folgenansicht): VergleichsZeile[] {
+  return f.zeilen.map((z) => ({
+    id: z.positionId,
+    art: 'position',
+    tiefe: 0,
+    hatUnterknoten: false,
+    aufgeklappt: false,
+    zellen: {
+      oz: { text: z.oz },
+      kurztext: { text: z.kurztext },
+      einheit: { text: z.einheit },
+      vorher: { text: mengeText(z.vorher) },
+      nachher: { text: mengeText(z.nachher) },
+      differenz: { text: mengeText(z.differenz) },
+      imLv: { text: mengeText(z.imLv) },
+      betroffen: { text: z.betroffen ? texte.folgen.ja : '' },
+    },
+  }));
 }
 
 /**
