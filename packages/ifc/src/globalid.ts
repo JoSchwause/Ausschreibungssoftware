@@ -3,10 +3,8 @@
 // Paket erzeugt sie, wie `kosten` die `Kostengruppennummer`. Wer eine GlobalId aus einem Befehl, dem Protokoll oder einer
 // Datei liest (Kern, `bim`, `speicher`), prüft die Form selbst nach (vertrag).
 
+import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
 import type { Ergebnis, IfcGlobalId } from '@tethys/vertrag';
-
-/** Form einer GlobalId: genau 22 Zeichen aus dem IFC-Base64-Alphabet `0-9`, `A-Z`, `a-z`, `_`, `$`. */
-const FORM = /^[0-9A-Za-z_$]{22}$/;
 
 export interface GlobalIdFehler {
   readonly code: 'globalid-ungueltig';
@@ -14,9 +12,12 @@ export interface GlobalIdFehler {
   readonly meldung: string;
 }
 
-/** Ist `text` eine GlobalId in Form? Der Text bleibt, wie er ist (kein Kürzen von Leerraum, keine Umwandlung). */
+/**
+ * Ist `text` eine GlobalId in Form (`IFC_GLOBALID_MUSTER` des Vertrags, Nachtrag D-66)? Der Text bleibt, wie er ist (kein
+ * Kürzen von Leerraum, keine Umwandlung).
+ */
 export function istGlobalId(text: string): text is IfcGlobalId {
-  return FORM.test(text);
+  return IFC_GLOBALID_MUSTER.test(text);
 }
 
 /**
