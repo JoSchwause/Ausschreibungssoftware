@@ -25,9 +25,15 @@ const WEGE: ReadonlyMap<string, { readonly stelle: number; readonly liste: boole
 const MAX_TIEFE = 8;
 
 export class Materialleser {
-  private readonly vonObjekt = new Map<number, number[]>();
+  private readonly vonObjekt: Map<number, number[]>;
 
-  constructor(private readonly l: Modellleser) {
+  /** Sammelt die Zuordnungen der Datei; mit `vorlage` übernimmt er deren Sammlung und liest mit `l` (wie `Definitionen`). */
+  constructor(
+    private readonly l: Modellleser,
+    vorlage?: Materialleser,
+  ) {
+    this.vonObjekt = vorlage?.vonObjekt ?? new Map<number, number[]>();
+    if (vorlage !== undefined) return;
     for (const r of l.daten.klasse('IFCRELASSOCIATESMATERIAL')) {
       const p = l.parameter(r);
       if (p === null) continue;

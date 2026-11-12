@@ -4,8 +4,8 @@
 // Rechnung in Gleitkomma anders runden würde (1.0005 ist binär 1.000499…; 1000.5 / 1000 ebenso).
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
-import type { IfcLesung } from './index';
+import { ifcLesen } from './lesen';
+import type { IfcLesung } from './typen';
 import { EINHEITEN_SI, bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Wand #100 im EG mit einem Mengensatz #110 aus den gegebenen Mengen (#111 …). */

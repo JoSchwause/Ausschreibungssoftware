@@ -3,7 +3,7 @@
 // einmal in IFC 2x3 mit Längen in mm und den Attributfolgen von 2x3. Nach dem Lesen sind Struktur und Bauteile gleich.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
+import { ifcLesen } from './lesen';
 import { bytes, gid, ifcText } from './testhilfen';
 
 /** Das Haus im Schema `schema`; nur Einheiten und schemaabhängige Attributfolgen unterscheiden sich. */

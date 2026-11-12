@@ -25,7 +25,6 @@ import type {
   AngebotKopf,
   AngebotZustand,
   Angebotsposition,
-  AuftragsLeistungsverzeichnis,
   AuftragsLvZustand,
   Befehlsfehler,
   Befehlsfehlercode,
@@ -34,7 +33,6 @@ import type {
   IdQuelle,
   Knoten,
   KnotenId,
-  LeistungsverzeichnisId,
   Leistungsverzeichnis,
   LvZustand,
   Nachlass,
@@ -152,23 +150,6 @@ function uebernommeneKnoten(l: Leistungsverzeichnis): Eintrag[] {
   };
   besuche(l.id, 1);
   return aus;
-}
-
-/** Das Auftrags-LV als LV-Zustand, nur damit der OZ-Vorschlag des Kerns es lesen kann (die Kennung bleibt dieselbe). */
-function alsLvAnsicht(z: AuftragsLvZustand): LvZustand {
-  const a: AuftragsLeistungsverzeichnis = z.auftragsLeistungsverzeichnis;
-  return {
-    leistungsverzeichnis: {
-      id: a.id as string as LeistungsverzeichnisId,
-      projektId: a.projektId,
-      name: a.name,
-      ozMaske: a.ozMaske,
-      mwstSatz: a.mwstSatz,
-      nachlass: a.nachlass,
-      knoten: a.knoten,
-    },
-    summen: z.summen,
-  };
 }
 
 /** Die Position mit den Preisen des Angebots (wie das gedachte LV in `vergabe`, D-21) und ihre Preiswarnung. */
@@ -321,8 +302,8 @@ export function nachtragUebernehmen(
   const oberste = a.knoten.filter((k) => k.elternId === a.id);
   const alsLos = a.ozMaske.losStufe === true || oberste.some((k) => k.art === 'los');
   const art = alsLos ? 'los' : 'titel';
-  const ozOben =
-    ozVorschlag(alsLvAnsicht(auftragsLv), { art: 'ende', elternId: a.id }, art)?.ordnungszahl ?? null;
+  // Ticket 105 (D-80.1, D-95.3): der Kern schlägt die OZ am Auftrags-LV selbst vor, ohne umgedeutete Kennung.
+  const ozOben = ozVorschlag(auftragsLv, { art: 'ende', elternId: a.id }, art)?.ordnungszahl ?? null;
   const kopfLage = {
     elternId: a.id as ElternId,
     reihenfolge: oberste.length,

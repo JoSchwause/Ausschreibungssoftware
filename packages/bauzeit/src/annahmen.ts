@@ -38,6 +38,8 @@ export const BAUZEIT_ANNAHMEN = {
   zyklus:
     'Vorgänge in einem Zyklus von Anordnungsbeziehungen bleiben ohne Termine (Befund). Ihre Nachfolger werden ohne diese Beziehungen gerechnet, mit Befund.',
   ist: 'Ist-Termine und Fortschritt werden angezeigt, verschieben aber nichts (v1).',
+  fortschritt:
+    'Vorschlag für den Fortschritt eines Vorgangs mit Bezug auf ein Auftrags-LV: Summe der Gesamtpreise des Leistungsstands geteilt durch die Summe der Gesamtpreise der bezogenen Positionen, in Prozent auf zwei Stellen kaufmännisch gerundet. Beide Summen über dieselben Positionen, die in die Summe des Auftrags-LV eingehen (Bedarf ohne Gesamtbetrag und Wahl nicht); höchstens 100, mindestens 0. Der Nutzer übernimmt den Vorschlag.',
   feiertage:
     'Feiertage folgen aus Regeln: bundesweit und landesweit nach den Feiertagsgesetzen der Länder (Stand 2026, Änderungen ab 1995 mit ihrem ersten Jahr). Regionale und einmalige Feiertage sind freie Tage des Plans.',
 } as const;

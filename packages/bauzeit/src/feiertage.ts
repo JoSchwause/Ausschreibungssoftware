@@ -10,27 +10,9 @@
 // Genannt sind die Feiertage mit Namen im Gesetz. Hessen zählt dort alle Sonntage zu den Feiertagen; Sonntage regeln hier
 // die Arbeitstage des Kalenders, nicht die Feiertagsliste.
 
+import type { Bundesland } from '@tethys/vertrag';
 import type { Datum, Tagnummer } from './datum';
 import { datumAusTagnummer, tagnummerAusZivil, wochentagVon } from './datum';
-
-/** Bundesland als Kürzel nach ISO 3166-2:DE ohne das Länderpräfix `DE-` (D-102.3). */
-export type Bundesland =
-  | 'BW'
-  | 'BY'
-  | 'BE'
-  | 'BB'
-  | 'HB'
-  | 'HH'
-  | 'HE'
-  | 'MV'
-  | 'NI'
-  | 'NW'
-  | 'RP'
-  | 'SL'
-  | 'SN'
-  | 'ST'
-  | 'SH'
-  | 'TH';
 
 export type Feiertagskennung =
   | 'neujahr'

@@ -1,91 +1,67 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Terminrechnung des Bauzeitenplans (Ticket 102 Punkt 3 und 4, D-57): Vorwärts- und Rückwärtsrechnung (Methode des
 // kritischen Wegs) in Arbeitstagen des Arbeitskalenders, Gesamtpuffer und freier Puffer, kritische Wege. Die Lesarten
-// stehen in `BAUZEIT_ANNAHMEN`. Eigene Eingabetypen bis zur Umstellung auf die Vertragstypen (Tickets 97, 109). Rein (A2),
-// keine Uhr, kein Zufall. Auffälliges ist ein Befund, nie eine Sperre (U5).
+// stehen in `BAUZEIT_ANNAHMEN`. Ein- und Ausgabe sind die Vertragstypen v1.6 (Ticket 109). Rein (A2), keine Uhr, kein
+// Zufall. Auffälliges ist ein Befund (`Pruefbefund`, Quelle `terminrechnung`), nie eine Sperre (U5).
 //
 // Rechenmodell: Index k = k-ter Arbeitstag ab dem Projektbeginn (k = 0 ist der erste). Ein Vorgang hat den Anfang `a`
 // (Index seines ersten Tages) und das Ende `e = a + dauer` (Index nach seinem letzten Tag, also der Zeitpunkt, an dem er
 // fertig ist); angezeigt wird als Ende der Tag `e − 1`, beim Meilenstein der Tag `a`.
 
 import { alsProzent, vergleiche, vorzeichen } from '@tethys/dezimal';
-import type { Prozent } from '@tethys/vertrag';
+import type {
+  Anordnungsart,
+  Bauzeitenplan,
+  Befundort,
+  Befundschwere,
+  Isttermine,
+  Pruefbefund,
+  Prozent,
+  Bauzeitenplanergebnis as VertragsBauzeitenplanergebnis,
+  VorgangId,
+  Vorgangsart,
+  Vorgangsergebnis as VertragsVorgangsergebnis,
+  Vorgangstermine as VertragsVorgangstermine,
+} from '@tethys/vertrag';
 import { HOECHSTWERT_ARBEITSTAGE, KRITISCHE_WEGE_HOECHSTENS } from './annahmen';
 import type { Datum, Tagnummer } from './datum';
 import { LETZTER_TAG, datumAusTagnummer, tagnummerLesen } from './datum';
-import type { Arbeitskalender, Kalenderhinweis } from './kalender';
+import type { Kalenderhinweis } from './kalender';
 import { Tageskalender } from './kalender';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
+//
+// Eingaben sind die Vertragstypen v1.6 (`Bauzeitenplan`, `Vorgang`, `Anordnungsbeziehung`, `Arbeitskalender`; Ticket 97
+// Punkt 4, Ticket 109). Das Ergebnis ist das `Bauzeitenplanergebnis` des Vertrags, hier mit den Daten als geprüftes `Datum`
+// (D-102.5, D-109.2): zuweisbar an den Vertragstyp, und die App gibt die Daten ohne erneute Prüfung an die Zeitachse.
 
-/** Kennung eines Vorgangs, eindeutig im Plan (A7; die Vertragstypen bringt Ticket 97). */
-export type VorgangId = string;
+/** Was die Terminrechnung vom gespeicherten `Bauzeitenplan` liest (Name aus Ticket 102, D-102.12); der Plan selbst passt. */
+export type Bauzeitenplaneingabe = Pick<Bauzeitenplan, 'projektbeginn' | 'kalender' | 'vorgaenge'>;
 
-export type Anordnungsart = 'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende';
-
-/** Abhängigkeit vom Vorgänger (Glossar „Anordnungsbeziehung“). */
-export interface Anordnungsbeziehung {
-  readonly vorgaengerId: VorgangId;
-  readonly art: Anordnungsart;
-  /** Ganze Arbeitstage, auch 0 oder negativ (Überlappung). */
-  readonly abstand: number;
-}
-
-/** Ist-Termine von Hand (ungeprüfte Daten `JJJJ-MM-TT`); sie verschieben nichts (v1). */
-export interface Isttermine {
-  readonly beginn: string | null;
-  readonly ende: string | null;
-  /** Fortschritt in Prozent, `0.00` bis `100.00` (N1); `null` = nicht erfasst. */
-  readonly fortschritt: Prozent | null;
-}
-
-/** Eingabe eines Vorgangs, ungeprüft (Glossar „Vorgang“). */
-export interface Vorgang {
-  readonly id: VorgangId;
-  /** Anzeige, rechnet nicht mit; fehlt oder `null` = keine (v1.6 plant `string | null`). */
-  readonly nummer?: string | null;
-  readonly bezeichnung: string;
-  /** Sammelvorgang, unter dem der Vorgang steht; `null` = oberste Ebene. */
-  readonly elternId: VorgangId | null;
-  /** Ganze Arbeitstage ≥ 0; 0 = Meilenstein; am Sammelvorgang ohne Bedeutung. */
-  readonly dauer: number;
-  readonly vorgaenger: readonly Anordnungsbeziehung[];
-  /** Terminvorgabe „Beginn frühestens“ (`JJJJ-MM-TT`) oder keine. */
-  readonly fruehesterBeginn: string | null;
-  readonly ist: Isttermine | null;
-}
-
-export interface Bauzeitenplaneingabe {
-  /** Projektbeginn `JJJJ-MM-TT`, ungeprüft. */
-  readonly projektbeginn: string;
-  readonly kalender: Arbeitskalender;
-  readonly vorgaenge: readonly Vorgang[];
-}
-
-export type Vorgangsart = 'vorgang' | 'sammelvorgang' | 'meilenstein';
-
-/** Gerechnete Termine eines Vorgangs (nie gespeichert, D-57). */
-export interface Vorgangstermine {
-  /** Frühe Lage aus der Vorwärtsrechnung: die Termine des Plans. Ende einschließlich. */
+/** `Vorgangstermine` des Vertrags mit geprüften Daten (D-109.2). */
+export interface Vorgangstermine extends VertragsVorgangstermine {
   readonly beginn: Datum;
   readonly ende: Datum;
-  /** Späte Lage aus der Rückwärtsrechnung vom Projektende. */
   readonly spaetesterBeginn: Datum;
   readonly spaetestesEnde: Datum;
-  /** Arbeitstage; nie negativ, solange es nur Terminvorgaben „Beginn frühestens“ gibt. */
-  readonly gesamtpuffer: number;
-  readonly freierPuffer: number;
-  /** Gesamtpuffer ≤ 0. */
-  readonly kritisch: boolean;
 }
 
-export interface Vorgangsergebnis {
-  readonly id: VorgangId;
-  readonly art: Vorgangsart;
-  /** `null`: nicht gerechnet (Befund nennt den Grund). */
+/** `Vorgangsergebnis` des Vertrags mit geprüften Daten (D-109.2). */
+export interface Vorgangsergebnis extends VertragsVorgangsergebnis {
   readonly termine: Vorgangstermine | null;
 }
 
+/** `Bauzeitenplanergebnis` des Vertrags mit geprüften Daten (D-109.2). */
+export interface Bauzeitenplanergebnis extends VertragsBauzeitenplanergebnis {
+  readonly projektbeginn: Datum | null;
+  readonly projektende: Datum | null;
+  readonly vorgaenge: readonly Vorgangsergebnis[];
+}
+
+/**
+ * Codes der Befunde der Terminrechnung (`Pruefbefund.code`, Quelle `terminrechnung`; D-97.11: das Paket führt seine Liste).
+ * Je Code die Folge für die Rechnung; die Schwere steht in {@link BAUZEITBEFUNDE}.
+ */
 export type Bauzeitbefundcode =
   | 'projektbeginn-ungueltig' // nichts wird gerechnet
   | 'kalender-ohne-arbeitstage' // nichts wird gerechnet
@@ -108,29 +84,33 @@ export type Bauzeitbefundcode =
   | 'termin-ausserhalb-kalender' // nach 9999-12-31; ohne Termine
   | 'kritische-wege-gekuerzt'; // mehr als KRITISCHE_WEGE_HOECHSTENS Wege
 
-export interface Bauzeitbefund {
-  readonly code: Bauzeitbefundcode;
-  /** Betroffener Vorgang; `null` bei Befunden über Plan, Kalender oder einen Zyklus. */
-  readonly vorgangId: VorgangId | null;
-  /** Bei Befunden über eine Anordnungsbeziehung ihr Vorgänger, sonst `null`. */
-  readonly vorgaengerId: VorgangId | null;
-  /** Bei `zyklus` und `eltern-zyklus` die Beteiligten in Eingabereihenfolge, sonst leer. */
-  readonly beteiligte: readonly VorgangId[];
-  /** Meldung für Entwickler und Protokoll; die deutsche Anzeige entsteht in der Oberfläche. */
-  readonly meldung: string;
-}
-
-export interface Bauzeitenplanergebnis {
-  /** Erster Arbeitstag ab dem eingegebenen Projektbeginn; `null`, wenn nicht gerechnet werden konnte. */
-  readonly projektbeginn: Datum | null;
-  /** Spätestes Ende der frühen Lage; `null` ohne gerechneten Vorgang. */
-  readonly projektende: Datum | null;
-  /** Je Eingabe ein Ergebnis, in Eingabereihenfolge. */
-  readonly vorgaenge: readonly Vorgangsergebnis[];
-  /** Die kritischen Wege als Folgen von Kennungen, in Eingabereihenfolge ihrer Vorgänge aufgezählt. */
-  readonly kritischeWege: readonly (readonly VorgangId[])[];
-  readonly befunde: readonly Bauzeitbefund[];
-}
+/**
+ * Schwere je Code (D-109.3): `fehler`, wo eine Eingabe die Form verletzt (der Ausführer ließe sie nicht zu; sie kommt nur aus
+ * einer Datei oder einem älteren Stand) oder ein Vorgang ohne Termine bleibt; `warnung`, wo v1 etwas bewusst nicht rechnet
+ * (Sammelvorgang), eine Folge schon gemeldet ist, nur Angezeigtes betroffen ist (Ist-Termine) oder die Aufzählung endet.
+ */
+export const BAUZEITBEFUNDE: Readonly<Record<Bauzeitbefundcode, Befundschwere>> = {
+  'projektbeginn-ungueltig': 'fehler',
+  'kalender-ohne-arbeitstage': 'fehler',
+  'arbeitstag-ungueltig': 'fehler',
+  'bundesland-unbekannt': 'fehler',
+  'freier-tag-ungueltig': 'fehler',
+  'id-doppelt': 'fehler',
+  'eltern-unbekannt': 'fehler',
+  'eltern-zyklus': 'fehler',
+  'dauer-ungueltig': 'fehler',
+  'terminvorgabe-ungueltig': 'fehler',
+  'terminvorgabe-an-sammelvorgang': 'warnung',
+  'ist-ungueltig': 'warnung',
+  'vorgaenger-unbekannt': 'fehler',
+  'anordnungsart-unbekannt': 'fehler',
+  'abstand-ungueltig': 'fehler',
+  'beziehung-an-sammelvorgang': 'warnung',
+  zyklus: 'fehler',
+  'vorgaenger-ohne-termine': 'warnung',
+  'termin-ausserhalb-kalender': 'fehler',
+  'kritische-wege-gekuerzt': 'warnung',
+};
 
 // --- Arbeitstage ------------------------------------------------------------------------------------------------
 
@@ -188,29 +168,40 @@ interface Kante {
   readonly nach: number;
   readonly art: Anordnungsart;
   readonly abstand: number;
+  /** Stelle der Beziehung in `vorgaenger` des Nachfolgers (ab 0), für den Pfad eines Befunds. */
+  readonly stelle: number;
 }
 
 const vomEnde = (art: Anordnungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
 const zumEnde = (art: Anordnungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
 
-function befund(
-  code: Bauzeitbefundcode,
-  meldung: string,
-  vorgangId: VorgangId | null = null,
-  vorgaengerId: VorgangId | null = null,
-  beteiligte: readonly VorgangId[] = [],
-): Bauzeitbefund {
-  return { code, vorgangId, vorgaengerId, beteiligte, meldung };
+/** Ein Befund der Terminrechnung; der Ort nach der Lesart von `Befundort` für `terminrechnung` (D-97.11). */
+function befund(code: Bauzeitbefundcode, meldung: string, ort: Befundort = {}): Pruefbefund {
+  return { schwere: BAUZEITBEFUNDE[code], quelle: 'terminrechnung', code, meldung, ort };
 }
+/** Ort: ein Vorgang und eines seiner Felder. */
+const am = (vorgangId: VorgangId, feld?: string): Befundort =>
+  feld === undefined ? { vorgangId } : { vorgangId, feld };
+/**
+ * Ort eines Befunds zu genau einer Anordnungsbeziehung (Nachtrag Review, D-66): der Nachfolger, `feld: 'vorgaenger'` und
+ * `pfad: '/vorgaenge[n]/vorgaenger[m]'`, beide ab 1 (Stelle im Plan und in `Vorgang.vorgaenger`).
+ */
+const anBeziehung = (vorgangId: VorgangId, vorgang: number, stelle: number): Befundort => ({
+  vorgangId,
+  feld: 'vorgaenger',
+  pfad: `/vorgaenge[${String(vorgang + 1)}]/vorgaenger[${String(stelle + 1)}]`,
+});
 
-const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
+/** Die vier Anordnungsarten (auch für die Formprüfung des Ausführers). */
+export const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
   'ende-anfang',
   'anfang-anfang',
   'ende-ende',
   'anfang-ende',
 ];
 
-const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
+/** Ganze Arbeitstage von `kleinster` bis `HOECHSTWERT_ARBEITSTAGE` (D-102.7; auch für den Ausführer). */
+export const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
   Number.isInteger(wert) && wert >= kleinster && wert <= HOECHSTWERT_ARBEITSTAGE;
 
 function hundertProzent(): Prozent {
@@ -230,8 +221,12 @@ function istPruefen(ist: Isttermine): string | null {
   // Hier sind beide, wenn vorhanden, gültig gelesen.
   if (beginn?.ok === true && ende?.ok === true && ende.wert < beginn.wert)
     return 'Ist-Ende liegt vor dem Ist-Beginn';
-  if (ist.fortschritt === null) return null;
-  const fortschritt = alsProzent(String(ist.fortschritt));
+  return ist.fortschritt === null ? null : fortschrittPruefen(ist.fortschritt);
+}
+
+/** Fortschritt: Prozent mit zwei Stellen (N3), `0.00` bis `100.00` (D-102.6); liefert das Problem oder `null`. */
+export function fortschrittPruefen(wert: Prozent): string | null {
+  const fortschritt = alsProzent(String(wert));
   if (!fortschritt.ok) return `Fortschritt: ${fortschritt.fehler.meldung}`;
   if (vorzeichen(fortschritt.wert) < 0 || vergleiche(fortschritt.wert, HUNDERT_PROZENT) > 0) {
     return `Fortschritt außerhalb von 0 bis 100 Prozent: ${fortschritt.wert}`;
@@ -274,20 +269,25 @@ function elternKreiseFinden(eltern: readonly number[]): number[][] {
 export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeitenplanergebnis {
   const vorgaenge = eingabe.vorgaenge;
   const n = vorgaenge.length;
-  const id = (i: number): VorgangId => vorgaenge[i]?.id ?? '';
+  const id = (i: number): VorgangId => vorgaenge[i]?.id ?? ('' as VorgangId);
   // Befunde in Rechenreihenfolge: Plan und Kalender; Gliederung; je Vorgang in Eingabereihenfolge (Werte, dann
   // Beziehungen); Zyklen; Terminvorgaben jenseits des Kalenders; entfallene Beziehungen; Termine jenseits des Kalenders;
   // kritische Wege.
-  const planBefunde: Bauzeitbefund[] = [];
-  const befunde: Bauzeitbefund[] = [];
+  const planBefunde: Pruefbefund[] = [];
+  const befunde: Pruefbefund[] = [];
 
   // --- Plan und Kalender ---
   const kalender = new Tageskalender(eingabe.kalender);
   const start = tagnummerLesen(eingabe.projektbeginn);
-  if (!start.ok) planBefunde.push(befund('projektbeginn-ungueltig', start.fehler.meldung));
-  for (const h of kalender.hinweise) planBefunde.push(befund(h.code, kalenderMeldung(h)));
+  if (!start.ok) {
+    planBefunde.push(befund('projektbeginn-ungueltig', start.fehler.meldung, { feld: 'projektbeginn' }));
+  }
+  for (const h of kalender.hinweise)
+    planBefunde.push(befund(h.code, kalenderMeldung(h), { feld: 'kalender' }));
   if (!kalender.hatArbeitstage) {
-    planBefunde.push(befund('kalender-ohne-arbeitstage', 'Der Arbeitskalender hat keinen Arbeitstag'));
+    planBefunde.push(
+      befund('kalender-ohne-arbeitstage', 'Der Arbeitskalender hat keinen Arbeitstag', { feld: 'kalender' }),
+    );
   }
 
   // --- Gliederung: Kennungen, Eltern, Art ---
@@ -301,7 +301,11 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   vorgaenge.forEach((v, i) => {
     if (doppelt[i] === true) {
       befunde.push(
-        befund('id-doppelt', `Kennung ${v.id} kommt mehrfach vor; nur der erste Vorgang zählt`, v.id),
+        befund(
+          'id-doppelt',
+          `Kennung ${v.id} kommt mehrfach vor; nur der erste Vorgang zählt`,
+          am(v.id, 'id'),
+        ),
       );
       return;
     }
@@ -309,7 +313,11 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     const p = indexVon.get(v.elternId);
     if (p === undefined) {
       befunde.push(
-        befund('eltern-unbekannt', `Vorgang ${v.id}: Sammelvorgang ${v.elternId} gibt es nicht`, v.id),
+        befund(
+          'eltern-unbekannt',
+          `Vorgang ${v.id}: Sammelvorgang ${v.elternId} gibt es nicht`,
+          am(v.id, 'elternId'),
+        ),
       );
       return;
     }
@@ -318,7 +326,10 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   for (const kreis of elternKreiseFinden(eltern)) {
     for (const i of kreis) eltern[i] = -1;
     const ids = kreis.map(id);
-    befunde.push(befund('eltern-zyklus', `Kreis in der Gliederung: ${ids.join(' → ')}`, null, null, ids));
+    // Je Beteiligter ein Befund (D-97.11); die Meldung nennt den ganzen Kreis.
+    for (const v of ids) {
+      befunde.push(befund('eltern-zyklus', `Kreis in der Gliederung: ${ids.join(' → ')}`, am(v, 'elternId')));
+    }
   }
   const hatKinder = new Array<boolean>(n).fill(false);
   for (const p of eltern) if (p >= 0) hatKinder[p] = true;
@@ -339,7 +350,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
           befund(
             'terminvorgabe-an-sammelvorgang',
             `Sammelvorgang ${v.id}: Terminvorgabe nicht gerechnet`,
-            v.id,
+            am(v.id, 'fruehesterBeginn'),
           ),
         );
       }
@@ -350,25 +361,34 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
           befund(
             'dauer-ungueltig',
             `Vorgang ${v.id}: Dauer ${String(v.dauer)} ist keine gültige Dauer`,
-            v.id,
+            am(v.id, 'dauer'),
           ),
         );
       }
       if (v.fruehesterBeginn !== null) {
         const tag = tagnummerLesen(v.fruehesterBeginn);
         if (tag.ok) vorgabeTag[nach] = tag.wert;
-        else befunde.push(befund('terminvorgabe-ungueltig', `Vorgang ${v.id}: ${tag.fehler.meldung}`, v.id));
+        else {
+          befunde.push(
+            befund(
+              'terminvorgabe-ungueltig',
+              `Vorgang ${v.id}: ${tag.fehler.meldung}`,
+              am(v.id, 'fruehesterBeginn'),
+            ),
+          );
+        }
       }
     }
     if (v.ist !== null) {
       const problem = istPruefen(v.ist);
-      if (problem !== null) befunde.push(befund('ist-ungueltig', `Vorgang ${v.id}: ${problem}`, v.id));
+      if (problem !== null)
+        befunde.push(befund('ist-ungueltig', `Vorgang ${v.id}: ${problem}`, am(v.id, 'ist')));
     }
-    for (const b of v.vorgaenger) {
+    v.vorgaenger.forEach((b, stelle) => {
       const von = indexVon.get(b.vorgaengerId);
       const beziehung = `Anordnungsbeziehung ${b.vorgaengerId} → ${v.id}`;
       const melde = (code: Bauzeitbefundcode, text: string): void => {
-        befunde.push(befund(code, `${beziehung}: ${text}`, v.id, b.vorgaengerId));
+        befunde.push(befund(code, `${beziehung}: ${text}`, anBeziehung(v.id, nach, stelle)));
       };
       if (von === undefined) melde('vorgaenger-unbekannt', 'den Vorgänger gibt es nicht');
       else if (!BEZIEHUNGSARTEN.includes(b.art))
@@ -377,8 +397,8 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
         melde('abstand-ungueltig', `Abstand ${String(b.abstand)} ist keine gültige Zahl von Arbeitstagen`);
       } else if (sammel(von) || sammel(nach)) {
         melde('beziehung-an-sammelvorgang', 'an einem Sammelvorgang nicht gerechnet');
-      } else kanten.push({ von, nach, art: b.art, abstand: b.abstand });
-    }
+      } else kanten.push({ von, nach, art: b.art, abstand: b.abstand, stelle });
+    });
   });
 
   // --- Zyklen unter den gültigen Vorgängen: ihre Beteiligten bleiben ohne Termine ---
@@ -388,14 +408,16 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     for (const i of zyklus) imZyklus[i] = true;
     const ids = zyklus.map(id);
     befunde.push(
-      befund('zyklus', `Zyklus in den Anordnungsbeziehungen: ${ids.join(' → ')}`, null, null, ids),
+      ...ids.map((v) =>
+        befund('zyklus', `Zyklus in den Anordnungsbeziehungen: ${ids.join(' → ')}`, am(v, 'vorgaenger')),
+      ),
     );
   }
 
   const ohneTermine = (): Bauzeitenplanergebnis => ({
     projektbeginn: null,
     projektende: null,
-    vorgaenge: vorgaenge.map((v, i) => ({ id: v.id, art: art[i] ?? 'vorgang', termine: null })),
+    vorgaenge: vorgaenge.map((v, i) => ({ vorgangId: v.id, art: art[i] ?? 'vorgang', termine: null })),
     kritischeWege: [],
     befunde: [...planBefunde, ...befunde],
   });
@@ -404,7 +426,9 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   const startTag = folge.tag(0);
   if (startTag === null) {
     befunde.push(
-      befund('termin-ausserhalb-kalender', 'Ab dem Projektbeginn gibt es bis 9999-12-31 keinen Arbeitstag'),
+      befund('termin-ausserhalb-kalender', 'Ab dem Projektbeginn gibt es bis 9999-12-31 keinen Arbeitstag', {
+        feld: 'projektbeginn',
+      }),
     );
     return ohneTermine();
   }
@@ -422,7 +446,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
           befund(
             'termin-ausserhalb-kalender',
             `Vorgang ${id(i)}: ab der Terminvorgabe gibt es bis 9999-12-31 keinen Arbeitstag`,
-            id(i),
+            am(id(i), 'fruehesterBeginn'),
           ),
         );
         continue;
@@ -439,8 +463,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
         befund(
           'vorgaenger-ohne-termine',
           `Vorgang ${id(k.nach)}: Vorgänger ${id(k.von)} hat keine Termine, die Beziehung entfällt`,
-          id(k.nach),
-          id(k.von),
+          anBeziehung(id(k.nach), k.nach, k.stelle),
         ),
       );
     }
@@ -523,14 +546,14 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   // --- Termine als Daten; ein Tag nach 9999-12-31 ist ein Befund ---
   const ergebnisse: Vorgangsergebnis[] = vorgaenge.map((v, i) => {
     const l = lagen[i] ?? null;
-    if (l === null) return { id: v.id, art: art[i] ?? 'vorgang', termine: null };
+    if (l === null) return { vorgangId: v.id, art: art[i] ?? 'vorgang', termine: null };
     const [von, bis, spaetVon, spaetBis] = [l.von, l.bis, l.spaetVon, l.spaetBis].map((k) => folge.tag(k));
     if (von === undefined || von === null || bis === undefined || bis === null) return ausserhalb(i);
     if (spaetVon === undefined || spaetVon === null || spaetBis === undefined || spaetBis === null) {
       return ausserhalb(i);
     }
     return {
-      id: v.id,
+      vorgangId: v.id,
       art: art[i] ?? 'vorgang',
       termine: {
         beginn: datumAusTagnummer(von),
@@ -545,9 +568,9 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   });
   function ausserhalb(i: number): Vorgangsergebnis {
     befunde.push(
-      befund('termin-ausserhalb-kalender', `Vorgang ${id(i)}: ein Termin läge nach 9999-12-31`, id(i)),
+      befund('termin-ausserhalb-kalender', `Vorgang ${id(i)}: ein Termin läge nach 9999-12-31`, am(id(i))),
     );
-    return { id: id(i), art: art[i] ?? 'vorgang', termine: null };
+    return { vorgangId: id(i), art: art[i] ?? 'vorgang', termine: null };
   }
 
   const kritischeWege = kritischeWegeFinden(ordnung, aus, ein, lagen, id, spielraum, befunde);
@@ -598,7 +621,7 @@ function kritischeWegeFinden(
   lagen: readonly (Lage | null)[],
   id: (i: number) => VorgangId,
   spielraum: (k: Kante) => number,
-  befunde: Bauzeitbefund[],
+  befunde: Pruefbefund[],
 ): VorgangId[][] {
   const kritisch = (i: number): boolean => (lagen[i]?.gesamtpuffer ?? 1) <= 0;
   const kritischeKante = (k: Kante): boolean => kritisch(k.von) && kritisch(k.nach) && spielraum(k) === 0;

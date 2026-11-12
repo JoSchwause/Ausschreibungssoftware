@@ -11,10 +11,20 @@ export interface Satzeintraege<T> {
 }
 
 export class Definitionen {
-  private readonly vonObjekt = new Map<number, number[]>();
-  private readonly typVon = new Map<number, number>();
+  private readonly vonObjekt: Map<number, number[]>;
+  private readonly typVon: Map<number, number>;
 
-  constructor(private readonly l: Modellleser) {
+  /**
+   * Sammelt die Beziehungen der Datei; mit `vorlage` übernimmt sie deren Sammlung und liest mit `l` (der Eigenschaftsindex,
+   * Ticket 107: Beziehungen einmal sammeln, je Abfrage mit eigenem Leser für ihre Befunde).
+   */
+  constructor(
+    private readonly l: Modellleser,
+    vorlage?: Definitionen,
+  ) {
+    this.vonObjekt = vorlage?.vonObjekt ?? new Map<number, number[]>();
+    this.typVon = vorlage?.typVon ?? new Map<number, number>();
+    if (vorlage !== undefined) return;
     for (const r of l.daten.klasse('IFCRELDEFINESBYPROPERTIES')) {
       const p = l.parameter(r);
       if (p === null) continue;

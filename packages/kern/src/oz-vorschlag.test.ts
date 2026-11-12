@@ -1,12 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ozVorschlag (Ticket 42, Punkt 4; W-06, F2): OZ für einen neuen Knoten hinter dem Vorgänger. Zuerst geschrieben (Q1).
 
-import { describe, expect, it } from 'vitest';
-import type { Einfuegeort, LeistungsverzeichnisId, LvZustand, Ordnungszahl, OzMaske } from '@tethys/vertrag';
-import { ozVorschlag } from './index';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type {
+  AngebotId,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvZustand,
+  Einfuegeort,
+  LeistungsverzeichnisId,
+  LvZustand,
+  Ordnungszahl,
+  OzMaske,
+  OzVorschlag as VertragsOzVorschlag,
+  OzVorschlagen,
+} from '@tethys/vertrag';
+import { beispielOzVorschlagAuftragsLv } from '../../vertrag/src/beispiele';
+import { auftragsLvBefehlAusfuehren, auftragsLvChangeSetAnwenden, ozVorschlag } from './index';
+import type { OzVorschlag } from './index';
 import {
   LV_ID,
   PROJEKT_ID,
+  erwarteOk,
   fixtureAlsInhalt,
   fixtureLesen,
   id,
@@ -112,5 +126,58 @@ describe('ozVorschlag nahe dem Überlauf', () => {
     });
     expect(ozVorschlag(ohneOz, ende('T1'), 'position')).toBeNull();
     expect(ozVorschlag(z, ende('T1'), 'titel')).toBeNull();
+  });
+});
+
+// --- Ticket 105 (Vertrag v1.5 Punkt 3, D-80.1, D-95.3): derselbe Vorschlag am Auftrags-LV --------------------------------
+
+/** `fixtures/typisch` als Auftrags-LV (über den Kern angelegt), mit eigener Kennung. */
+const AID = 'auftrags-lv-typisch' as AuftragsLeistungsverzeichnisId;
+function typischAlsAuftragsLv(): AuftragsLvZustand {
+  const inh = fixtureAlsInhalt(fixtureLesen('typisch'));
+  const cs = erwarteOk(
+    auftragsLvBefehlAusfuehren(null, {
+      art: 'AuftragsLeistungsverzeichnisAnlegen',
+      auftragsLeistungsverzeichnis: {
+        name: inh.name,
+        ozMaske: inh.ozMaske,
+        mwstSatz: inh.mwstSatz,
+        nachlass: inh.nachlass,
+        id: AID,
+        projektId: PROJEKT_ID,
+        leistungsverzeichnisId: 'lv-ausschreibung' as LeistungsverzeichnisId,
+        angebotId: 'angebot-1' as AngebotId,
+        knoten: inh.knoten.map((k) => (k.elternId === inh.wurzelId ? { ...k, elternId: id.eltern(AID) } : k)),
+      },
+    }),
+  );
+  const z = auftragsLvChangeSetAnwenden(null, cs);
+  if (z === null) throw new Error('kein Auftrags-LV');
+  return z;
+}
+
+describe('ozVorschlag am Auftrags-LV (OzVorschlagen, D-95.3)', () => {
+  const a = typischAlsAuftragsLv();
+
+  it('erfüllt die Signatur des Vertrags; das Ergebnis ist der Vertragstyp', () => {
+    expectTypeOf(ozVorschlag).toEqualTypeOf<OzVorschlagen>();
+    expectTypeOf<OzVorschlag>().toEqualTypeOf<VertragsOzVorschlag>();
+  });
+
+  it('das Beispiel des Vertrags: Gliederung „Nachtrag N01“ hinter Titel 01 → 02', () => {
+    const b = beispielOzVorschlagAuftragsLv;
+    expect(ozVorschlag(b.zustand, b.ort, b.art)).toEqual(b.vorschlag);
+  });
+
+  it('dieselben Regeln mit Maske und Baum des Auftrags-LV, Wurzel ist seine eigene Kennung', () => {
+    expect(ozVorschlag(a, ende(AID), 'titel')).toEqual(ohneHinweis('04'));
+    expect(ozVorschlag(a, ende(T01), 'position')).toEqual(ohneHinweis('01.0070'));
+    expect(ozVorschlag(a, nach(P01_0020), 'position')).toEqual(ausgewichen('01.0025'));
+    expect(ozVorschlag(a, anfang(AID), 'titel')).toBeNull();
+  });
+
+  it('eine fremde Wurzel (etwa die Kennung des Ausschreibungs-LV) wird nicht umgedeutet: null', () => {
+    expect(ozVorschlag(a, ende(LV_ID), 'titel')).toBeNull();
+    expect(ozVorschlag(a, ende('lv-ausschreibung'), 'titel')).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import type {
   Anordnungsart,
   Bundesland,
   Vorgang,
+  VorgangId,
   Vorgangstermine,
   Wochentag,
 } from './index';
@@ -25,6 +26,7 @@ const tagnr = (text: string): number => {
 };
 const text = (tag: number): string => new Date(tag * MS_JE_TAG).toISOString().slice(0, 10);
 const ARTEN: readonly Anordnungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
+const vid = (id: string): VorgangId => id as VorgangId;
 const vomEnde = (art: Anordnungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
 const zumEnde = (art: Anordnungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
 
@@ -94,24 +96,35 @@ function planAus(
 ): Bauzeitenplaneingabe {
   const p0 = tagnr(projektbeginn);
   const vorgaenge: Vorgang[] = entwuerfe.map((x, i) => ({
-    id: `v${String(i)}`,
+    id: vid(`v${String(i)}`),
+    nummer: null,
     bezeichnung: `Vorgang ${String(i)}`,
-    elternId: x.sammel === null ? null : `s${String(x.sammel)}`,
+    elternId: x.sammel === null ? null : vid(`s${String(x.sammel)}`),
     dauer: x.dauer,
     // Vorgänger nur aus früheren Vorgängen: kein Zyklus.
-    vorgaenger: i === 0 ? [] : x.vorgaenger.map((b) => ({ ...b, vorgaengerId: `v${String(b.von % i)}` })),
+    vorgaenger:
+      i === 0
+        ? []
+        : x.vorgaenger.map((b) => ({
+            art: b.art,
+            abstand: b.abstand,
+            vorgaengerId: vid(`v${String(b.von % i)}`),
+          })),
     fruehesterBeginn: x.vorgabe === null ? null : text(p0 + x.vorgabe),
+    bezug: null,
     ist: null,
   }));
   const sammel = [0, 1, 2]
     .filter((s) => entwuerfe.some((x) => x.sammel === s))
     .map((s): Vorgang => ({
-      id: `s${String(s)}`,
+      id: vid(`s${String(s)}`),
+      nummer: null,
       bezeichnung: `Sammelvorgang ${String(s)}`,
       elternId: null,
       dauer: 1,
       vorgaenger: [],
       fruehesterBeginn: null,
+      bezug: null,
       ist: null,
     }));
   return { projektbeginn, kalender, vorgaenge: [...sammel, ...vorgaenge] };
@@ -149,7 +162,7 @@ function pruefeStimmig(plan: Bauzeitenplaneingabe, ergebnis: Bauzeitenplanergebn
   const termine = new Map<string, Vorgangstermine>();
   for (const v of ergebnis.vorgaenge) {
     expect(v.termine).not.toBeNull();
-    if (v.termine !== null) termine.set(v.id, v.termine);
+    if (v.termine !== null) termine.set(v.vorgangId, v.termine);
   }
   const letztes = Math.max(...[...termine.values()].flatMap((t) => [tagnr(t.ende), tagnr(t.spaetestesEnde)]));
   const { index, ab } = arbeitstagIndex(plan, letztes + 7);
@@ -228,7 +241,7 @@ describe('Eigenschaften der Terminrechnung (stimmige Pläne)', () => {
       fc.property(stimmigerPlan, (plan) => {
         const e = bauzeitenplanBerechnen(plan);
         const vorgang = new Map(plan.vorgaenge.map((v) => [v.id, v]));
-        const termine = new Map(e.vorgaenge.map((v) => [v.id, v]));
+        const termine = new Map(e.vorgaenge.map((v) => [v.vorgangId, v]));
         const aufWeg = new Set<string>();
         expect(e.kritischeWege.length).toBeGreaterThan(0);
         for (const weg of e.kritischeWege) {
@@ -246,7 +259,7 @@ describe('Eigenschaften der Terminrechnung (stimmige Pläne)', () => {
         if (e.befunde.length === 0) {
           for (const v of e.vorgaenge) {
             if (v.art !== 'sammelvorgang' && v.termine?.kritisch === true)
-              expect(aufWeg.has(v.id)).toBe(true);
+              expect(aufWeg.has(v.vorgangId)).toBe(true);
           }
         }
       }),

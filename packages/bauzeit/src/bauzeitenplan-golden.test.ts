@@ -34,11 +34,11 @@
 // Kritischer Weg: A → B → C → D → E → M → G (W hat Puffer).
 
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang } from './index';
+import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang, VorgangId } from './index';
 import { STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
 
 const nach = (vorgaengerId: string, art: Anordnungsart, abstand: number): Anordnungsbeziehung => ({
-  vorgaengerId,
+  vorgaengerId: vorgaengerId as VorgangId,
   art,
   abstand,
 });
@@ -48,12 +48,14 @@ const vorgang = (
   dauer: number,
   vorgaenger: Anordnungsbeziehung[],
 ): Vorgang => ({
-  id,
+  id: id as VorgangId,
+  nummer: null,
   bezeichnung,
   elternId: null,
   dauer,
   vorgaenger,
   fruehesterBeginn: null,
+  bezug: null,
   ist: null,
 });
 
@@ -85,7 +87,7 @@ describe('Golden: Rohbau, Bayern, Mai 2027', () => {
       freierPuffer: 0,
       kritisch: true,
     });
-    expect(e.vorgaenge.map((v) => [v.id, v.art, v.termine])).toEqual([
+    expect(e.vorgaenge.map((v) => [v.vorgangId, v.art, v.termine])).toEqual([
       ['A', 'vorgang', kritisch('2027-05-03', '2027-05-05')],
       ['B', 'vorgang', kritisch('2027-05-07', '2027-05-12')],
       ['C', 'vorgang', kritisch('2027-05-11', '2027-05-18')],
@@ -119,7 +121,7 @@ describe('Golden: Rohbau, Bayern, Mai 2027', () => {
   it('ohne Fronleichnam (Berlin) liegen M und G einen Arbeitstag früher', () => {
     // Do 27.05. wird Arbeitstag Nummer 16: M am Do 27.05., G Do 27.05. bis Di 01.06.
     const berlin = bauzeitenplanBerechnen({ ...ROHBAU, kalender: { ...ROHBAU.kalender, bundesland: 'BE' } });
-    const lage = (id: string) => berlin.vorgaenge.find((v) => v.id === id)?.termine;
+    const lage = (id: string) => berlin.vorgaenge.find((v) => v.vorgangId === id)?.termine;
     expect([lage('M')?.beginn, lage('G')?.beginn, lage('G')?.ende]).toEqual([
       '2027-05-27',
       '2027-05-27',

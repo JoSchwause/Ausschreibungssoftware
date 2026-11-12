@@ -49,10 +49,22 @@ function behaelterLesen(l: Modellleser): Map<number, number | null> {
         'bauteil-mehrfach-enthalten',
         `#${String(l.daten.id(e))} steht in mehr als einem Strukturknoten; der erste gilt.`,
         l.ort(r),
+        e,
       );
     }
   }
   return behaelter;
+}
+
+/**
+ * Ein gelesenes Bauteil mit den Instanzen der Datei: seiner (`i`), der seines Strukturknotens (falls einer) und der seines
+ * Ganzen (falls es ein Teil ist).
+ */
+export interface GelesenesBauteil {
+  readonly i: number;
+  readonly struktur: number | null;
+  readonly teilVon: number | null;
+  readonly bauteil: Bauteil;
 }
 
 /** Bauteile in der Reihenfolge der Datei. */
@@ -60,7 +72,7 @@ export function bauteileLesen(
   l: Modellleser,
   ganzes: ReadonlyMap<number, number>,
   daten: Objektdaten,
-): Bauteil[] {
+): GelesenesBauteil[] {
   const behaelter = behaelterLesen(l);
   const teile = new Map<number, number[]>();
   for (const [teil, oben] of ganzes) {
@@ -91,11 +103,15 @@ export function bauteileLesen(
     }
   }
 
-  const bauteile: Bauteil[] = [];
+  const bauteile: GelesenesBauteil[] = [];
   for (const i of [...struktur.keys()].sort((a, b) => a - b)) {
     const globalId = l.gepruefteGlobalId(i);
-    const s = struktur.get(i) ?? null;
-    const strukturGlobalId = s !== null && STRUKTURARTEN.has(l.daten.name(s)) ? l.globalId(s) : null;
+    const behaelterInstanz = struktur.get(i) ?? null;
+    const s =
+      behaelterInstanz !== null && STRUKTURARTEN.has(l.daten.name(behaelterInstanz))
+        ? behaelterInstanz
+        : null;
+    const strukturGlobalId = s === null ? null : l.globalId(s);
     const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
     if (strukturGlobalId === null)
       l.melde(
@@ -122,7 +138,7 @@ export function bauteileLesen(
         `${bezeichnung} hat mehrere Kostengruppen-Vorschläge (${vorschlaege.join(', ')}); vorgeschlagen wird ${vorschlaege[0] ?? ''}.`,
         l.ort(i),
       );
-    bauteile.push({
+    const bauteil: Bauteil = {
       globalId,
       ifcKlasse: klassenname(l.daten.name(i)),
       name: l.name(i),
@@ -134,7 +150,8 @@ export function bauteileLesen(
       eigenschaften: daten.eigenschaften(i),
       klassifikationen,
       materialien: daten.materialien(i),
-    });
+    };
+    bauteile.push({ i, struktur: s, teilVon: oben ?? null, bauteil });
   }
   return bauteile;
 }

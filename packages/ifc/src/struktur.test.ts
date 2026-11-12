@@ -3,7 +3,7 @@
 // `IfcRelAggregates`, Knoten in der Reihenfolge der Datei. Sollwerte von Hand aus den IFC-Texten unten.
 
 import { describe, expect, it } from 'vitest';
-import { ifcLesen } from './index';
+import { ifcLesen } from './lesen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 describe('Bauwerksstruktur', () => {

@@ -3,22 +3,12 @@
 // mit ihren Prozentsätzen. Nur Namen, Tafelwerte und Prozentsätze, je mit Vorschrift und Abrufdatum; keine Texte der
 // Grundleistungen aus den Anlagen (C1).
 
-import type { Prozent } from '@tethys/vertrag';
+import type { Leistungsbild, Leistungsphasennummer, Prozent } from '@tethys/vertrag';
 import type { Honorartafel, Quelle } from './honorartafeln';
 import { TAFEL_35, TAFEL_40, TAFEL_44, TAFEL_48, TAFEL_52, TAFEL_56, quelle } from './honorartafeln';
 import { prozent } from './konstanten';
 
-/** Leistungsbild der HOAI, für das die App Honorare rechnet. */
-export type Leistungsbild =
-  | 'gebaeude'
-  | 'innenraeume'
-  | 'freianlagen'
-  | 'ingenieurbauwerke'
-  | 'verkehrsanlagen'
-  | 'tragwerksplanung'
-  | 'technische-ausruestung';
-
-export type Leistungsphasennummer = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+// `Leistungsbild` und `Leistungsphasennummer` stehen im Vertrag (v1.6, Ticket 97 Punkt 5; Umstellung Ticket 110).
 
 /** Eine Leistungsphase eines Leistungsbilds mit ihrer Bewertung in Prozent des Honorars. */
 export interface Leistungsphase {

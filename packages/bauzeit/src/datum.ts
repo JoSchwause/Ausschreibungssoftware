@@ -2,7 +2,7 @@
 // Kalendertage (Ticket 102 Punkt 1): Text `JJJJ-MM-TT`, gerechnet über eine ganze Tageszahl im proleptischen
 // gregorianischen Kalender (Tag 0 = 1970-01-01), nie über `Date`, Uhr oder Zeitzonen. Rein (A2).
 
-import type { Ergebnis, Marke } from '@tethys/vertrag';
+import type { Ergebnis, Marke, Wochentag } from '@tethys/vertrag';
 
 /**
  * Geprüfter Kalendertag als Text `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. Nur
@@ -10,9 +10,6 @@ import type { Ergebnis, Marke } from '@tethys/vertrag';
  * sie selbst und meldet Ungültiges als Befund (U5).
  */
 export type Datum = string & Marke<'Datum'>;
-
-/** ISO-Wochentag: 1 = Montag … 7 = Sonntag. */
-export type Wochentag = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type Datumsfehlercode =
   | 'datum-form' // nicht genau `JJJJ-MM-TT` mit Ziffern 0–9

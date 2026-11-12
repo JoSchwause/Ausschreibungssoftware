@@ -2,7 +2,8 @@
 // Honorarberechnung nach HOAI 2021 (Ticket 101, D-56): je Honorarobjekt anrechenbare Kosten, Honorarspanne (§ 13),
 // Honorar im Honorarsatz, Beträge der beauftragten Leistungsphasen, Grundhonorar und Umbauzuschlag; gesamt Nebenkosten
 // (§ 14), Netto, MwSt (Umsatzsteuer nach § 16 Abs. 1) und Brutto. Auffälligkeiten sind Befunde, nie Sperre (U5).
-// Eigene Eingabe- und Ergebnistypen, bis Ticket 97 die Vertragstypen bringt (Umstellung in Ticket 110).
+// Ein- und Ausgabe in den Typen des Vertrags (v1.6, Ticket 97 Punkt 5; Umstellung Ticket 110); die Befunde stehen als
+// `Pruefbefund` mit der Quelle `honorarberechnung` in der gemeinsamen Befundliste (D-97.11).
 // Rein (A2), nur Dezimalarithmetik (N1).
 
 import {
@@ -14,92 +15,66 @@ import {
   vergleiche,
   vorzeichen,
 } from '@tethys/dezimal';
-import type { Befundschwere, Betrag, Prozent } from '@tethys/vertrag';
-import type { AnrechenbareKostenangabe, AnrechenbareKostenHerleitung } from './anrechenbare-kosten';
+import type {
+  AnrechenbareKostenangabe,
+  AnrechenbareKostenHerleitung,
+  Befundort,
+  Befundschwere,
+  Betrag,
+  Honorarergebnis,
+  Honorarobjekt,
+  Kostenermittlung,
+  Leistungsbild,
+  Leistungsphasennummer,
+  Nebenkostenangabe,
+  Objektergebnis,
+  Phasenbetrag,
+  Pruefbefund,
+  Prozent,
+  Tafelinterpolation,
+} from '@tethys/vertrag';
+import type { KostenNachDin276 } from './anrechenbare-kosten';
 import { anrechenbareKostenHerleiten } from './anrechenbare-kosten';
-import type { Honorarzone } from './honorartafeln';
-import type { Tafelinterpolation } from './honorarspanne';
 import { honorarInSpanne, honorarspanneBerechnen } from './honorarspanne';
 import { HUNDERT } from './konstanten';
-import type {
-  Leistungsbild,
-  Leistungsbilddaten,
-  Leistungsphase,
-  Leistungsphasennummer,
-} from './leistungsbilder';
+import type { Leistungsbilddaten, Leistungsphase } from './leistungsbilder';
 import { LEISTUNGSBILDER } from './leistungsbilder';
 
 // --- Eingabe -----------------------------------------------------------------------------------------------------
 
-/** Eine beauftragte Leistungsphase (§ 8 Abs. 1). */
-export interface BeauftragteLeistungsphase {
-  readonly nummer: Leistungsphasennummer;
-  /**
-   * Abweichender Anteil in Prozent des Honorars, etwa nach § 8 Abs. 2 (nicht alle Grundleistungen der Phase), § 51
-   * Abs. 2 bis 4 oder § 55 Abs. 2; fehlt er, gilt der Prozentsatz der HOAI. Eine Abweichung ist ein Befund.
-   */
-  readonly anteil?: Prozent;
+/**
+ * Anrechenbare Kosten, wie `honorarBerechnen` sie annimmt: in gespeicherter Form (`AnrechenbareKostenangabe` des Vertrags:
+ * Betrag von Hand oder Verweis auf eine Kostenermittlung) oder als Beträge nach DIN 276 (`KostenNachDin276`, ungespeichert,
+ * etwa aus einer Datei oder einem Test).
+ */
+export type AnrechenbareKosteneingabe = AnrechenbareKostenangabe | KostenNachDin276;
+
+/** Ein Honorarobjekt, wie `honorarBerechnen` es annimmt: wie gespeichert, die anrechenbaren Kosten auch nach DIN 276. */
+export interface Honorarobjekteingabe extends Omit<Honorarobjekt, 'anrechenbareKosten'> {
+  readonly anrechenbareKosten: AnrechenbareKosteneingabe;
 }
 
-/** Ein Objekt (§ 2 Abs. 1), dessen Honorar für sich berechnet wird (§ 11 Abs. 1). */
-export interface Honorarobjekt {
-  readonly bezeichnung: string;
-  readonly leistungsbild: Leistungsbild;
-  readonly honorarzone: Honorarzone;
-  /** Lage in der Honorarspanne in Prozent: 0 = Basishonorarsatz (Standard nach § 7 Abs. 1), 100 = oberer Honorarsatz. */
-  readonly honorarsatz: Prozent;
-  readonly anrechenbareKosten: AnrechenbareKostenangabe;
-  readonly leistungsphasen: readonly BeauftragteLeistungsphase[];
-  /** Umbauzuschlag in Prozent des Grundhonorars (§ 6 Abs. 2, § 36); `null`: kein Zuschlag. */
-  readonly umbauzuschlagssatz: Prozent | null;
-}
-
-/** Nebenkosten nach § 14: in Prozent von Grundhonorar plus Umbauzuschlägen oder als Betrag. */
-export type Nebenkostenangabe =
-  { readonly art: 'prozent'; readonly satz: Prozent } | { readonly art: 'betrag'; readonly betrag: Betrag };
-
-export interface Honorarberechnung {
-  readonly objekte: readonly Honorarobjekt[];
+/**
+ * Was `honorarBerechnen` rechnet: die Objekte mit Nebenkosten und MwSt-Satz. Eine gespeicherte `Honorarberechnung` des
+ * Vertrags passt unverändert (Kennung, Projekt und Name liest die Rechnung nicht).
+ */
+export interface Honorarberechnungseingabe {
+  readonly objekte: readonly Honorarobjekteingabe[];
   /** `null`: keine Nebenkosten. */
   readonly nebenkosten: Nebenkostenangabe | null;
   /** MwSt-Satz (Umsatzsteuer nach § 16 Abs. 1) auf das Netto aus Honorar und Nebenkosten. */
   readonly mwstSatz: Prozent;
 }
 
-// --- Ergebnis ----------------------------------------------------------------------------------------------------
+// --- Befunde -----------------------------------------------------------------------------------------------------
 
-export interface Phasenbetrag {
-  readonly nummer: Leistungsphasennummer;
-  readonly name: string;
-  /** Der angesetzte Anteil: der Prozentsatz der HOAI oder der abweichende Anteil der Eingabe. */
-  readonly anteil: Prozent;
-  /** round(Honorar × Anteil / 100, 2). */
-  readonly betrag: Betrag;
-}
-
-export interface Objektergebnis {
-  readonly bezeichnung: string;
-  readonly leistungsbild: Leistungsbild;
-  readonly honorarzone: Honorarzone;
-  /** `null`, wenn sie sich nicht bestimmen lassen (Befund). */
-  readonly anrechenbareKosten: Betrag | null;
-  /** Herleitung nach § 33; `null` bei anrechenbaren Kosten von Hand. */
-  readonly herleitung: AnrechenbareKostenHerleitung | null;
-  /** Tafelzeilen unten und oben und die interpolierte Honorarspanne; `null`: kein Honorar für das Objekt (Befund). */
-  readonly tafel: Tafelinterpolation | null;
-  /** Honorar im Honorarsatz, bezogen auf alle Leistungsphasen (100 %); `null` ohne Tafelwert. */
-  readonly honorar: Betrag | null;
-  /** Die angesetzten Leistungsphasen nach Nummer; leer ohne Honorar. */
-  readonly phasen: readonly Phasenbetrag[];
-  /** Summe der Phasenbeträge; 0,00 ohne Honorar. */
-  readonly grundhonorar: Betrag;
-  /** round(Grundhonorar × Umbauzuschlagssatz / 100, 2); 0,00 ohne Satz. */
-  readonly umbauzuschlag: Betrag;
-}
-
+/** Die Codes der Befunde der Honorarberechnung (`Pruefbefund.code` mit der Quelle `honorarberechnung`). */
 export type Honorarbefundcode =
   | 'keine-honorartafel' // fehler: Leistungsbild ohne Honorartafel, kein Honorar
   | 'herleitung-nicht-anwendbar' // fehler: § 33 gilt nur für Gebäude und Innenräume, kein Honorar
+  | 'kostenermittlung-unbekannt' // fehler: die genannte Kostenermittlung wurde nicht übergeben, kein Honorar
+  | 'kostenermittlungsstufe-abweichend' // warnung: weder Kostenberechnung noch Kostenschätzung (§ 6 Abs. 1 Nr. 2)
+  | 'kostenberechnung-vorhanden' // warnung: Kostenschätzung, obwohl das Projekt eine Kostenberechnung hat (§ 6 Abs. 1 Nr. 2)
   | 'ausserhalb-honorartafel' // fehler: unter der ersten oder über der letzten Tafelzeile, kein Honorar (RifT später)
   | 'honorarzone-unbekannt' // fehler: die Tafel hat diese Honorarzone nicht, kein Honorar
   | 'leistungsphase-unbekannt' // fehler: das Leistungsbild hat diese Leistungsphase nicht; sie zählt nicht
@@ -110,36 +85,29 @@ export type Honorarbefundcode =
   | 'wert-negativ' // warnung: negativer Betrag oder Satz; gerechnet wie eingegeben
   | 'mehrere-objekte'; // warnung: je Objekt getrennt gerechnet, § 11 Abs. 2 bis 4 nicht berücksichtigt
 
-export interface Honorarbefund {
-  readonly code: Honorarbefundcode;
-  /** `fehler`: ein Teil der Eingabe geht nicht in die Rechnung ein; `warnung`: gerechnet, aber auffällig. */
-  readonly schwere: Befundschwere;
-  /** Index des Honorarobjekts in der Eingabe; `null` bei Befunden über die ganze Berechnung. */
-  readonly objekt: number | null;
-  /** Meldung für Entwickler und Protokoll; die deutsche Anzeige entsteht in der Oberfläche. */
-  readonly meldung: string;
-}
+/** Feld eines Honorarobjekts oder der Berechnung, an dem ein Befund hängt (`Befundort.feld`); `null`: kein Feld. */
+type Befundfeld = keyof Honorarobjekt | 'nebenkosten' | 'mwstSatz' | null;
 
-export interface Honorarergebnis {
-  /** In der Reihenfolge der Eingabe. */
-  readonly objekte: readonly Objektergebnis[];
-  /** Summe der Grundhonorare der Objekte. */
-  readonly grundhonorar: Betrag;
-  /** Summe der Umbauzuschläge der Objekte. */
-  readonly umbauzuschlaege: Betrag;
-  readonly nebenkosten: Betrag;
-  /** Grundhonorar + Umbauzuschläge + Nebenkosten. */
-  readonly netto: Betrag;
-  /** round(Netto × MwSt-Satz / 100, 2) (§ 16 Abs. 1). */
-  readonly mwst: Betrag;
-  readonly brutto: Betrag;
-  /** Erst die Befunde je Objekt in Eingabereihenfolge, je Objekt in der Folge der Rechnung, dann die übrigen. */
-  readonly befunde: readonly Honorarbefund[];
+/** Nimmt einen Befund auf. */
+type Befundgeber = (
+  code: Honorarbefundcode,
+  schwere: Befundschwere,
+  feld: Befundfeld,
+  meldung: string,
+) => void;
+
+/** Befunde zum Objekt an Stelle `objekt` (ab 0; im Pfad ab 1, D-97.11) bzw. zur ganzen Berechnung (`null`). */
+function befundgeber(befunde: Pruefbefund[], objekt: number | null): Befundgeber {
+  return (code, schwere, feld, meldung) => {
+    const ort: Befundort = {
+      ...(objekt === null ? {} : { pfad: `/objekte[${String(objekt + 1)}]` }),
+      ...(feld === null ? {} : { feld }),
+    };
+    befunde.push({ schwere, quelle: 'honorarberechnung', code, meldung, ort });
+  };
 }
 
 // --- Rechnen -----------------------------------------------------------------------------------------------------
-
-type Befundgeber = (code: Honorarbefundcode, schwere: Befundschwere, meldung: string) => void;
 
 /** Die Daten des Leistungsbilds; `undefined` für einen Wert, den es nicht gibt (ungeprüfte Eingabe). */
 function datenZu(leistungsbild: string): Leistungsbilddaten | undefined {
@@ -148,9 +116,14 @@ function datenZu(leistungsbild: string): Leistungsbilddaten | undefined {
     : undefined;
 }
 
-function negativPruefen(werte: Readonly<Record<string, Betrag | Prozent>>, befund: Befundgeber): void {
-  for (const [feld, wert] of Object.entries(werte))
-    if (vorzeichen(wert) < 0) befund('wert-negativ', 'warnung', `${feld} ist negativ: ${wert}`);
+/** Je negativen Wert ein Befund am Feld `feld`; die Meldung nennt den Wert beim Namen. */
+function negativPruefen(
+  werte: Readonly<Record<string, Betrag | Prozent>>,
+  feld: Befundfeld,
+  befund: Befundgeber,
+): void {
+  for (const [name, wert] of Object.entries(werte))
+    if (vorzeichen(wert) < 0) befund('wert-negativ', 'warnung', feld, `${name} ist negativ: ${wert}`);
 }
 
 interface Kosten {
@@ -158,9 +131,80 @@ interface Kosten {
   readonly herleitung: AnrechenbareKostenHerleitung | null;
 }
 
+const KEINE_KOSTEN: Kosten = { anrechenbareKosten: null, herleitung: null };
+
+/** Summe der Einträge einer Kostengruppe der ersten Ebene (`'3'`: 300 bis 399): eigener Betrag plus Kinder (D-24). */
+function kostengruppeSummieren(kostenermittlung: Kostenermittlung, ziffer: '3' | '4'): Betrag {
+  return summiereBetraege(
+    kostenermittlung.eintraege.filter((e) => e.nummer.startsWith(ziffer)).map((e) => e.betrag),
+  );
+}
+
+/**
+ * § 6 Abs. 1 Nr. 2: Grundlage der anrechenbaren Kosten ist die Kostenberechnung, solange sie nicht vorliegt die
+ * Kostenschätzung. Eine andere Stufe oder eine Kostenschätzung neben einer Kostenberechnung des Projekts ist ein Befund;
+ * gerechnet wird trotzdem (U5).
+ */
+function stufePruefen(
+  kostenermittlung: Kostenermittlung,
+  kostenermittlungen: readonly Kostenermittlung[],
+  befund: Befundgeber,
+): void {
+  const { stufe, name } = kostenermittlung;
+  if (stufe === 'kostenberechnung') return;
+  if (stufe === 'kostenschaetzung') {
+    const berechnung = kostenermittlungen.find((k) => k.stufe === 'kostenberechnung');
+    if (berechnung !== undefined)
+      befund(
+        'kostenberechnung-vorhanden',
+        'warnung',
+        'anrechenbareKosten',
+        `Grundlage ist die Kostenschätzung ${JSON.stringify(name)}, obwohl das Projekt die Kostenberechnung ` +
+          `${JSON.stringify(berechnung.name)} hat (§ 6 Abs. 1 Nr. 2)`,
+      );
+    return;
+  }
+  befund(
+    'kostenermittlungsstufe-abweichend',
+    'warnung',
+    'anrechenbareKosten',
+    `Grundlage ist ${JSON.stringify(name)} in der Stufe ${stufe}; nach § 6 Abs. 1 Nr. 2 die Kostenberechnung, ` +
+      'ohne sie die Kostenschätzung',
+  );
+}
+
+/** Die Kosten nach DIN 276 zur Angabe; `null`, wenn sie sich nicht bestimmen lassen (Befund). */
+function kostenNachDin276(
+  angabe: Exclude<AnrechenbareKosteneingabe, { readonly art: 'betrag' }>,
+  kostenermittlungen: readonly Kostenermittlung[],
+  befund: Befundgeber,
+): KostenNachDin276 | null {
+  if (angabe.art === 'din-276') return angabe;
+  const kostenermittlung = kostenermittlungen.find((k) => k.id === angabe.kostenermittlungId);
+  if (kostenermittlung === undefined) {
+    befund(
+      'kostenermittlung-unbekannt',
+      'fehler',
+      'anrechenbareKosten',
+      `Kostenermittlung ${angabe.kostenermittlungId} wurde nicht übergeben; kein Honorar`,
+    );
+    return null;
+  }
+  stufePruefen(kostenermittlung, kostenermittlungen, befund);
+  return {
+    art: 'din-276',
+    kg300: kostengruppeSummieren(kostenermittlung, '3'),
+    kg400: kostengruppeSummieren(kostenermittlung, '4'),
+    technischeAnlagenAnteilig: angabe.technischeAnlagenAnteilig,
+    weitereKosten: angabe.weitereKosten,
+    mitzuverarbeitendeBausubstanz: angabe.mitzuverarbeitendeBausubstanz,
+  };
+}
+
 function kostenErmitteln(
-  angabe: AnrechenbareKostenangabe,
+  angabe: AnrechenbareKosteneingabe,
   daten: Leistungsbilddaten,
+  kostenermittlungen: readonly Kostenermittlung[],
   befund: Befundgeber,
 ): Kosten {
   if (angabe.art === 'betrag') return { anrechenbareKosten: angabe.betrag, herleitung: null };
@@ -168,25 +212,29 @@ function kostenErmitteln(
     befund(
       'herleitung-nicht-anwendbar',
       'fehler',
+      'anrechenbareKosten',
       `Anrechenbare Kosten nach § 33 nur für Gebäude und Innenräume, nicht für ${daten.bezeichnung}; kein Honorar`,
     );
-    return { anrechenbareKosten: null, herleitung: null };
+    return KEINE_KOSTEN;
   }
+  const kosten = kostenNachDin276(angabe, kostenermittlungen, befund);
+  if (kosten === null) return KEINE_KOSTEN;
   negativPruefen(
     {
-      kg300: angabe.kg300,
-      kg400: angabe.kg400,
-      weitereKosten: angabe.weitereKosten,
-      mitzuverarbeitendeBausubstanz: angabe.mitzuverarbeitendeBausubstanz,
+      kg300: kosten.kg300,
+      kg400: kosten.kg400,
+      weitereKosten: kosten.weitereKosten,
+      mitzuverarbeitendeBausubstanz: kosten.mitzuverarbeitendeBausubstanz,
     },
+    'anrechenbareKosten',
     befund,
   );
-  const herleitung = anrechenbareKostenHerleiten(angabe);
+  const herleitung = anrechenbareKostenHerleiten(kosten);
   return { anrechenbareKosten: herleitung.anrechenbareKosten, herleitung };
 }
 
 function tafelErmitteln(
-  objekt: Honorarobjekt,
+  objekt: Honorarobjekteingabe,
   anrechenbareKosten: Betrag,
   daten: Leistungsbilddaten,
   befund: Befundgeber,
@@ -194,17 +242,24 @@ function tafelErmitteln(
   const tafel = daten.honorartafel;
   const e = honorarspanneBerechnen(tafel, objekt.honorarzone, anrechenbareKosten);
   if (e.ok) return e.wert;
-  const erste = tafel.zeilen[0]?.anrechenbareKosten ?? '';
-  const letzte = tafel.zeilen[tafel.zeilen.length - 1]?.anrechenbareKosten ?? '';
-  befund(
-    e.fehler,
-    'fehler',
-    e.fehler === 'ausserhalb-honorartafel'
-      ? `Anrechenbare Kosten ${anrechenbareKosten} außerhalb der Honorartafel ${tafel.quelle.vorschrift} ` +
-          `(${erste} bis ${letzte}); kein Honorar, keine Extrapolation`
-      : `Honorarzone ${objekt.honorarzone} nicht in der Honorartafel ${tafel.quelle.vorschrift} ` +
-          `(${tafel.honorarzonen.join(', ')}); kein Honorar`,
-  );
+  if (e.fehler === 'ausserhalb-honorartafel') {
+    const erste = tafel.zeilen[0]?.anrechenbareKosten ?? '';
+    const letzte = tafel.zeilen[tafel.zeilen.length - 1]?.anrechenbareKosten ?? '';
+    befund(
+      e.fehler,
+      'fehler',
+      'anrechenbareKosten',
+      `Anrechenbare Kosten ${anrechenbareKosten} außerhalb der Honorartafel ${tafel.quelle.vorschrift} ` +
+        `(${erste} bis ${letzte}); kein Honorar, keine Extrapolation`,
+    );
+  } else
+    befund(
+      e.fehler,
+      'fehler',
+      'honorarzone',
+      `Honorarzone ${objekt.honorarzone} nicht in der Honorartafel ${tafel.quelle.vorschrift} ` +
+        `(${tafel.honorarzonen.join(', ')}); kein Honorar`,
+    );
   return null;
 }
 
@@ -215,7 +270,7 @@ interface AngesetztePhase {
 
 /** Die beauftragten Leistungsphasen, die das Leistungsbild kennt, je einmal, nach Nummer. */
 function phasenAnsetzen(
-  objekt: Honorarobjekt,
+  objekt: Honorarobjekteingabe,
   daten: Leistungsbilddaten,
   befund: Befundgeber,
 ): AngesetztePhase[] {
@@ -227,6 +282,7 @@ function phasenAnsetzen(
       befund(
         'leistungsphase-unbekannt',
         'fehler',
+        'leistungsphasen',
         `Leistungsphase ${n} gibt es bei ${daten.bezeichnung} nicht; sie zählt nicht`,
       );
       continue;
@@ -235,6 +291,7 @@ function phasenAnsetzen(
       befund(
         'leistungsphase-doppelt',
         'fehler',
+        'leistungsphasen',
         `Leistungsphase ${n} ist mehrfach beauftragt; sie zählt einmal`,
       );
       continue;
@@ -244,6 +301,7 @@ function phasenAnsetzen(
       befund(
         'anteil-abweichend',
         'warnung',
+        'leistungsphasen',
         `Leistungsphase ${n}: Anteil ${anteil} statt ${phase.anteil} nach ${daten.quelleLeistungsphasen.vorschrift}`,
       );
     angesetzt.set(phase.nummer, { phase, anteil });
@@ -251,31 +309,38 @@ function phasenAnsetzen(
   return [...angesetzt.values()].sort((a, c) => a.phase.nummer - c.phase.nummer);
 }
 
-function honorarsatzPruefen(objekt: Honorarobjekt, befund: Befundgeber): void {
+function honorarsatzPruefen(objekt: Honorarobjekteingabe, befund: Befundgeber): void {
   if (vergleiche(objekt.honorarsatz, NULL_PROZENT) < 0 || vergleiche(objekt.honorarsatz, HUNDERT) > 0)
     befund(
       'honorarsatz-ausserhalb-spanne',
       'warnung',
+      'honorarsatz',
       `Honorarsatz ${objekt.honorarsatz} liegt außerhalb von 0 (Basishonorarsatz) bis 100 (oberer Honorarsatz)`,
     );
 }
 
-function umbauzuschlagPruefen(objekt: Honorarobjekt, daten: Leistungsbilddaten, befund: Befundgeber): void {
+function umbauzuschlagPruefen(
+  objekt: Honorarobjekteingabe,
+  daten: Leistungsbilddaten,
+  befund: Befundgeber,
+): void {
   const satz = objekt.umbauzuschlagssatz;
   if (satz === null) return;
-  negativPruefen({ umbauzuschlagssatz: satz }, befund);
+  negativPruefen({ umbauzuschlagssatz: satz }, 'umbauzuschlagssatz', befund);
   if (vergleiche(satz, daten.umbauzuschlagBis) > 0)
     befund(
       'umbauzuschlag-ueber-grenze',
       'warnung',
+      'umbauzuschlagssatz',
       `Umbauzuschlag ${satz} % über ${daten.umbauzuschlagBis} % (${daten.quelleUmbauzuschlag.vorschrift})`,
     );
 }
 
-function objektBerechnen(objekt: Honorarobjekt, index: number, befunde: Honorarbefund[]): Objektergebnis {
-  const befund: Befundgeber = (code, schwere, meldung) => {
-    befunde.push({ code, schwere, objekt: index, meldung });
-  };
+function objektBerechnen(
+  objekt: Honorarobjekteingabe,
+  kostenermittlungen: readonly Kostenermittlung[],
+  befund: Befundgeber,
+): Objektergebnis {
   const ohneHonorar = (kosten: Kosten): Objektergebnis => ({
     bezeichnung: objekt.bezeichnung,
     leistungsbild: objekt.leistungsbild,
@@ -293,12 +358,13 @@ function objektBerechnen(objekt: Honorarobjekt, index: number, befunde: Honorarb
     befund(
       'keine-honorartafel',
       'fehler',
+      'leistungsbild',
       `Leistungsbild ${JSON.stringify(objekt.leistungsbild)} hat keine Honorartafel; kein Honorar`,
     );
-    return ohneHonorar({ anrechenbareKosten: null, herleitung: null });
+    return ohneHonorar(KEINE_KOSTEN);
   }
   // Befunde in der Folge der Rechnung, auch wenn das Objekt am Ende kein Honorar hat.
-  const kosten = kostenErmitteln(objekt.anrechenbareKosten, daten, befund);
+  const kosten = kostenErmitteln(objekt.anrechenbareKosten, daten, kostenermittlungen, befund);
   const tafel =
     kosten.anrechenbareKosten === null
       ? null
@@ -330,17 +396,24 @@ function objektBerechnen(objekt: Honorarobjekt, index: number, befunde: Honorarb
   };
 }
 
-/** Honorarberechnung nach HOAI 2021 mit der Rundungskette aus D-56. */
-export function honorarBerechnen(berechnung: Honorarberechnung): Honorarergebnis {
-  const befunde: Honorarbefund[] = [];
-  const objekte = berechnung.objekte.map((objekt, index) => objektBerechnen(objekt, index, befunde));
-  const gesamt: Befundgeber = (code, schwere, meldung) => {
-    befunde.push({ code, schwere, objekt: null, meldung });
-  };
+/**
+ * Honorarberechnung nach HOAI 2021 mit der Rundungskette aus D-56. `kostenermittlungen`: die Kostenermittlungen des
+ * Projekts mit ihren Einträgen (A2: die App lädt sie); daraus löst die Rechnung die Verweise der Honorarobjekte auf.
+ */
+export function honorarBerechnen(
+  berechnung: Honorarberechnungseingabe,
+  kostenermittlungen: readonly Kostenermittlung[] = [],
+): Honorarergebnis {
+  const befunde: Pruefbefund[] = [];
+  const objekte = berechnung.objekte.map((objekt, index) =>
+    objektBerechnen(objekt, kostenermittlungen, befundgeber(befunde, index)),
+  );
+  const gesamt = befundgeber(befunde, null);
   if (objekte.length > 1)
     gesamt(
       'mehrere-objekte',
       'warnung',
+      null,
       `${String(objekte.length)} Honorarobjekte je für sich gerechnet und summiert (§ 11 Abs. 1); ` +
         'Zusammenfassung und Wiederholungen nach § 11 Abs. 2 bis 4 sind nicht berücksichtigt',
     );
@@ -349,13 +422,13 @@ export function honorarBerechnen(berechnung: Honorarberechnung): Honorarergebnis
   const angabe = berechnung.nebenkosten;
   let nebenkosten = NULL_BETRAG;
   if (angabe?.art === 'prozent') {
-    negativPruefen({ nebenkostensatz: angabe.satz }, gesamt);
+    negativPruefen({ nebenkostensatz: angabe.satz }, 'nebenkosten', gesamt);
     nebenkosten = prozentVon(addiere(grundhonorar, umbauzuschlaege), angabe.satz);
   } else if (angabe?.art === 'betrag') {
-    negativPruefen({ nebenkosten: angabe.betrag }, gesamt);
+    negativPruefen({ nebenkosten: angabe.betrag }, 'nebenkosten', gesamt);
     nebenkosten = angabe.betrag;
   }
-  negativPruefen({ mwstSatz: berechnung.mwstSatz }, gesamt);
+  negativPruefen({ mwstSatz: berechnung.mwstSatz }, 'mwstSatz', gesamt);
   const netto = summiereBetraege([grundhonorar, umbauzuschlaege, nebenkosten]);
   const mwst = prozentVon(netto, berechnung.mwstSatz);
   return {

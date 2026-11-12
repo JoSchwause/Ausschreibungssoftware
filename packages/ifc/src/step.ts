@@ -547,6 +547,12 @@ export interface StepDaten {
   klasse(name: string): readonly number[];
   /** Parameter der Instanz, beim ersten Aufruf zerlegt; `null` (mit Befund), wenn sie nicht lesbar ist. */
   parameter(i: number): readonly StepWert[] | null;
+  /**
+   * Befunde beim Zerlegen der Instanz (Syntax, Tiefe, Zeichenketten), in ihrer Reihenfolge; leer, solange sie nicht zerlegt
+   * ist. Gemeldet werden sie vom Leser, der die Parameter braucht (`Modellleser.parameter`), damit jeder Leser sie einmal
+   * meldet: der Eigenschaftsindex je Abfrage (Ticket 107).
+   */
+  zerlegungsbefunde(i: number): readonly IfcBefund[];
 }
 
 /** Liest den Abschnitt `DATA` ab `pos` (hinter dem Kopf). Befunde landen in `befunde`. */
@@ -672,7 +678,9 @@ export function datenLesen(
   }
 
   const zerlegt = new Map<number, readonly StepWert[] | null>();
+  const zerlegungsbefunde = new Map<number, IfcBefund[]>();
   const keine: readonly number[] = [];
+  const keineBefunde: readonly IfcBefund[] = [];
   return {
     anzahl: ids.length,
     id: (i) => ids[i] ?? -1,
@@ -687,19 +695,20 @@ export function datenLesen(
       const name = namen[i] ?? '';
       const ort = { pfad: `#${String(id)}`, zeile: zeilen[i] ?? 0 };
       let werte: readonly StepWert[] | null = null;
+      const gemeldet: IfcBefund[] = [];
       if (name !== '') {
         const ergebnis = zerlegen(b, anfang[i] ?? 0, ende[i] ?? 0, modus, maxTiefe, (grund) =>
-          befunde.push(befund('warnung', 'zeichenkette-ungueltig', `#${String(id)}: ${grund}.`, ort)),
+          gemeldet.push(befund('warnung', 'zeichenkette-ungueltig', `#${String(id)}: ${grund}.`, ort)),
         );
         if (ergebnis.ok) {
           if (leerraumUeberspringen(b, ergebnis.ende, ende[i] ?? 0) === (ende[i] ?? 0))
             werte = ergebnis.werte;
           else
-            befunde.push(
+            gemeldet.push(
               befund('fehler', 'step-syntaxfehler', `#${String(id)}: Text nach der Parameterliste.`, ort),
             );
         } else
-          befunde.push(
+          gemeldet.push(
             befund(
               'fehler',
               ergebnis.zuTief ? 'step-zu-tief' : 'step-syntaxfehler',
@@ -708,8 +717,10 @@ export function datenLesen(
             ),
           );
       }
+      if (gemeldet.length > 0) zerlegungsbefunde.set(i, gemeldet);
       zerlegt.set(i, werte);
       return werte;
     },
+    zerlegungsbefunde: (i) => zerlegungsbefunde.get(i) ?? keineBefunde,
   };
 }

@@ -2,10 +2,10 @@
 // Property-Tests der Honorarberechnung (Ticket 101, Q1). Das Orakel rechnet in ganzen Cent bzw. Hundertsteln (`bigint`),
 // die kaufmännische Rundung hier von Hand (halbe Einheit vom Nullpunkt weg).
 
-import type { Betrag, Prozent } from '@tethys/vertrag';
+import type { Betrag, Leistungsbild, Leistungsphasennummer, Prozent } from '@tethys/vertrag';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Honorarberechnung, Honorarobjekt, Leistungsbild, Leistungsphasennummer } from './index';
+import type { Honorarberechnungseingabe, Honorarobjekteingabe } from './index';
 import { LEISTUNGSBILDER, honorarBerechnen } from './index';
 
 const runs = { numRuns: 200 };
@@ -35,7 +35,7 @@ const anteilVon = (wert: bigint, satz: bigint): bigint => rundeHalbAuf(wert * sa
 const LEISTUNGSBILD_LISTE = Object.keys(LEISTUNGSBILDER) as Leistungsbild[];
 
 /** Ein Honorarobjekt mit anrechenbaren Kosten von Hand innerhalb der Tafel und allen Phasen mit den Sätzen der HOAI. */
-const vollesObjektGen: fc.Arbitrary<Honorarobjekt> = fc
+const vollesObjektGen: fc.Arbitrary<Honorarobjekteingabe> = fc
   .constantFrom(...LEISTUNGSBILD_LISTE)
   .chain((leistungsbild) => {
     const daten = LEISTUNGSBILDER[leistungsbild];
@@ -54,7 +54,7 @@ const vollesObjektGen: fc.Arbitrary<Honorarobjekt> = fc
   });
 
 /** Ein beliebiges Objekt: auch außerhalb der Tafel, mit Teilen der Phasen und abweichenden Anteilen. */
-const objektGen: fc.Arbitrary<Honorarobjekt> = fc
+const objektGen: fc.Arbitrary<Honorarobjekteingabe> = fc
   .tuple(
     vollesObjektGen,
     fc.option(fc.bigInt({ min: 0n, max: 10n ** 11n }), { freq: 4 }),
@@ -69,7 +69,7 @@ const objektGen: fc.Arbitrary<Honorarobjekt> = fc
     ),
   }));
 
-const berechnungGen: fc.Arbitrary<Honorarberechnung> = fc.record({
+const berechnungGen: fc.Arbitrary<Honorarberechnungseingabe> = fc.record({
   objekte: fc.array(objektGen, { maxLength: 4 }),
   nebenkosten: fc.oneof(
     fc.constant(null),
