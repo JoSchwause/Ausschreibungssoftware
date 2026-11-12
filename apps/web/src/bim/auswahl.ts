@@ -3,6 +3,8 @@
 // (`ui-modell`, D-100). Zeile aktiv → ihre Bauteile ausgewählt (Strukturknoten: alle darunter); Klick im 3D → Auswahl und
 // Sprung zur Zeile (`sprungziel`), Strg+Klick ergänzt. Der Sprung lässt das Grid die Zeile als aktiv melden; diese eine
 // erwartete Meldung ändert die Auswahl nicht, sonst ersetzte sie die Auswahl aus dem 3D (D-114.4).
+// Per Tastatur (Ticket 122, U3, D-122.2): Die Tasten bewegen nur die aktive Zeile, die Auswahl bleibt; die Leertaste wählt die
+// aktive Zeile (wie ein Klick), Strg+Leertaste nimmt sie in die Auswahl auf oder heraus (wie Strg+Klick).
 
 import type { VergleichsSprungziel } from '@tethys/ui-grid';
 import { vorfahren, type Modellbaum } from './baum';
@@ -85,4 +87,56 @@ export function beiAufklappen(stand: Auswahlstand, zeilenId: string, aufgeklappt
   if (aufgeklappt) zugeklappt.delete(zeilenId);
   else zugeklappt.add(zeilenId);
   return { ...stand, zugeklappt };
+}
+
+/** Die Tasten eines `KeyboardEvent`, soweit die Auswahl sie braucht. */
+export interface Taste {
+  readonly key: string;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly altKey: boolean;
+  readonly shiftKey: boolean;
+}
+
+/** Leertaste allein: Die Bauteile der aktiven Zeile werden die Auswahl (wie ein Klick). */
+export const istWaehltaste = (t: Taste): boolean =>
+  t.key === ' ' && !t.ctrlKey && !t.metaKey && !t.altKey && !t.shiftKey;
+
+/** Strg+Leertaste (auf dem Mac auch Cmd+Leertaste): die aktive Zeile in die Auswahl aufnehmen oder herausnehmen. */
+export const istUmschalttaste = (t: Taste): boolean =>
+  t.key === ' ' && (t.ctrlKey || t.metaKey) && !t.altKey && !t.shiftKey;
+
+/**
+ * Die Tastatur hat die aktive Zeile bewegt (Pfeile, Tab, Pos1/Ende, Bild auf/ab): Die Auswahl bleibt, nur die Eigenschaften
+ * folgen der Zeile. So verlässt man den Baum per Tastatur, ohne eine Mehrfachauswahl zu verlieren (U3).
+ */
+export const beiTastenfokus = (stand: Auswahlstand, zeilenId: string | null): Auswahlstand => ({
+  ...stand,
+  aktiveZeile: zeilenId,
+  erwartet: null,
+});
+
+/** Leertaste: die Bauteile der aktiven Zeile (und darunter) ersetzen die Auswahl. Ohne aktive Zeile ändert sich nichts. */
+export function zeileWaehlen(stand: Auswahlstand, baum: Modellbaum): Auswahlstand {
+  const zeilenId = stand.aktiveZeile;
+  if (zeilenId === undefined || zeilenId === null) return stand;
+  return { ...stand, auswahl: auswahlDerZeile(baum, zeilenId) };
+}
+
+/**
+ * Strg+Leertaste: Sind alle Bauteile der aktiven Zeile gewählt, fallen sie aus der Auswahl; sonst kommen die fehlenden dazu.
+ * Die übrige Auswahl bleibt. Ohne aktive Zeile ändert sich nichts.
+ */
+export function auswahlUmschalten(stand: Auswahlstand, baum: Modellbaum): Auswahlstand {
+  const zeilenId = stand.aktiveZeile;
+  if (zeilenId === undefined || zeilenId === null) return stand;
+  const zeile = auswahlDerZeile(baum, zeilenId);
+  if (zeile.length === 0) return stand;
+  const gewaehlt = new Set(stand.auswahl);
+  const alle = zeile.every((g) => gewaehlt.has(g));
+  const weg = new Set(zeile);
+  const auswahl = alle
+    ? stand.auswahl.filter((g) => !weg.has(g))
+    : [...new Set([...stand.auswahl, ...zeile])];
+  return { ...stand, auswahl };
 }

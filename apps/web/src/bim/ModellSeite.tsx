@@ -19,7 +19,18 @@ import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Verweis } from '../ui/Verweis';
-import { AUSWAHL_START, beiAufklappen, beiKlick3d, beiZeileAktiv, type Auswahlstand } from './auswahl';
+import {
+  AUSWAHL_START,
+  auswahlUmschalten,
+  beiAufklappen,
+  beiKlick3d,
+  beiTastenfokus,
+  beiZeileAktiv,
+  istUmschalttaste,
+  istWaehltaste,
+  zeileWaehlen,
+  type Auswahlstand,
+} from './auswahl';
 import { BAUM_SPALTEN, globalIdDerZeile, modellbaumBauen, sichtbareZeilen } from './baum';
 import { BefundListe } from './BefundListe';
 import { geometriebefunde } from './befunde';
@@ -148,7 +159,9 @@ function Arbeitsflaeche({
     () => (bezug.bezug === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, bezug.knoten)),
     [bezug.bezug, bezug.knoten, modell],
   );
-  const ergaenzen = useRef(false); // Strg/Cmd beim Klick in den Baum ergänzt die Auswahl (Ticket 115)
+  // Woher der nächste Wechsel der aktiven Zeile kommt: Ein Klick wählt (Strg/Cmd+Klick ergänzt, Ticket 115), eine Taste bewegt
+  // nur den Fokus (Ticket 122, U3: Leertaste und Strg+Leertaste wählen).
+  const herkunft = useRef<'klick' | 'klick-ergaenzen' | 'taste' | null>(null);
 
   const zeilen = useMemo(() => sichtbareZeilen(baum, stand.zugeklappt), [baum, stand.zugeklappt]);
   const alleGeschosse = useMemo(() => geschosse(baum), [baum]);
@@ -318,14 +331,27 @@ function Arbeitsflaeche({
         </span>
       </div>
 
+      <p className="bim__hinweis" id="bim-baum-tasten">
+        {texte.baum.tasten}
+      </p>
       <div className="bim__arbeitsflaeche">
         <div
           className="lv__grid bim__baum"
           onPointerDownCapture={(e) => {
-            ergaenzen.current = e.ctrlKey || e.metaKey; // Ticket 115
+            herkunft.current = e.ctrlKey || e.metaKey ? 'klick-ergaenzen' : 'klick'; // Ticket 115
           }}
           onKeyDownCapture={() => {
-            ergaenzen.current = false; // Ticket 115: Tastatur ersetzt die Auswahl wie bisher
+            herkunft.current = 'taste'; // Ticket 122 (U3)
+          }}
+          onKeyDown={(e) => {
+            // Ticket 122 (U3): Leertaste wählt die aktive Zeile, Strg+Leertaste nimmt sie auf oder heraus.
+            if (istWaehltaste(e)) {
+              e.preventDefault();
+              setStand((s) => zeileWaehlen(s, baum));
+            } else if (istUmschalttaste(e)) {
+              e.preventDefault();
+              setStand((s) => auswahlUmschalten(s, baum));
+            }
           }}
         >
           <VergleichsGrid
@@ -339,9 +365,13 @@ function Arbeitsflaeche({
               setStand((s) => beiAufklappen(s, zeilenId, auf));
             }}
             onZeileAktiv={(zeilenId) => {
-              const mehr = ergaenzen.current; // Ticket 115
-              ergaenzen.current = false;
-              setStand((s) => beiZeileAktiv(s, baum, zeilenId, mehr));
+              const h = herkunft.current; // Ticket 115, 122
+              herkunft.current = null;
+              setStand((s) =>
+                h === 'taste'
+                  ? beiTastenfokus(s, zeilenId)
+                  : beiZeileAktiv(s, baum, zeilenId, h === 'klick-ergaenzen'),
+              );
             }}
           />
         </div>

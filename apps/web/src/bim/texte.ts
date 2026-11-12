@@ -24,6 +24,9 @@ export const texte = {
     ohneStruktur: 'Ohne Strukturknoten',
     ohneName: (art: Strukturknoten['art']): string => `${strukturart[art]} ohne Namen`,
     ohneNameBauteil: 'Bauteil ohne Namen',
+    // Ticket 122 (U3): die Mehrfachauswahl per Tastatur, sichtbar über dem Baum.
+    tasten:
+      'Auswahl im Baum: Klick oder Leertaste wählt die Zeile, Strg+Klick oder Strg+Leertaste nimmt sie dazu oder wieder heraus; Pfeiltasten und Tab bewegen nur den Fokus.',
   },
   liste: {
     titel: (projekt: string): string => `Modelle: ${projekt}`,
