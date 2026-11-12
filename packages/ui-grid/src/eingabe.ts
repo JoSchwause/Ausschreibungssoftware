@@ -229,10 +229,7 @@ export function leseEinheitspreis(text: string, zahlen: GridZahlen): Zahlenlesun
 }
 
 /** Text der Spalte „KG“ → Nummer oder Hinweis über die Lesefunktion der App; leer ist `null` (Zuordnung entfernen). */
-export function leseKostengruppe(
-  text: string,
-  lesen: KostengruppeLesen,
-): Zahlenlesung<Kostengruppennummer> {
+export function leseKostengruppe(text: string, lesen: KostengruppeLesen): Zahlenlesung<Kostengruppennummer> {
   const t = text.trim();
   if (t === '') return { ok: true, wert: null };
   const r = lesen(t);

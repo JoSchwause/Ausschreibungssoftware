@@ -25,8 +25,10 @@ import type {
   GridZahlen,
   KnotenId,
   Kostengruppennummer,
+  KostengruppeSetzen,
   LvBefehl,
   LvSpalte,
+  LvZeile,
   Menge,
   PositionId,
   Positionsdaten,
@@ -91,7 +93,7 @@ export function planeEinfuegen(
     let einheit: Einheit | null = null;
     let einheitspreis: Einheitspreis | null = null;
     let kostengruppe: Kostengruppennummer | null = null;
-    zeile.forEach((text, offset) => {
+    for (const [offset, text] of zeile.entries()) {
       const spalte = spalten[ersteSpalte + offset];
       if (
         spalte === undefined ||
@@ -99,7 +101,7 @@ export function planeEinfuegen(
         (spalte === 'kostengruppe' && kostengruppeLesen === undefined)
       ) {
         uebersprungen++;
-        return;
+        continue;
       }
       switch (spalte) {
         case 'kurztext':
@@ -130,7 +132,7 @@ export function planeEinfuegen(
           break;
         }
       }
-    });
+    }
     // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog. Die Kostengruppe
     // fehlt, wenn keine gelesen wurde (nie `null` im Zustand).
     const daten: Positionsdaten = {
@@ -144,5 +146,46 @@ export function planeEinfuegen(
     befehle.push({ art: 'PositionAnlegen', id, ort, daten });
     ort = { art: 'nach', knotenId: id };
   }
+  return { befehle, ungueltig, uebersprungen };
+}
+
+export interface Kostengruppenplan {
+  readonly befehle: readonly KostengruppeSetzen[];
+  readonly ungueltig: readonly UngueltigeZelle[];
+  readonly uebersprungen: number;
+}
+
+/**
+ * Eine einzelne Spalte aus der Zwischenablage in die Spalte „KG“ (Ticket 93, D-93.2): Die Werte gehen Zeile für Zeile auf
+ * die sichtbaren Zeilen ab `ab`, wie Excel in eine Spalte einfügt; es entsteht keine Position. Je Position, deren
+ * Kostengruppe sich ändert, ein `KostengruppeSetzen` (leer: `null`, Zuordnung entfernen); eine formwidrige Nummer verwirft
+ * nur ihre Zelle (`ungueltig`). Eine Nummer auf einer Gliederung, einem Hinweistext oder hinter der letzten Zeile wird
+ * übersprungen und gezählt; eine leere Zelle dort nicht, sie ginge ohnehin nirgends hin (so passt eine mit Strg+C kopierte
+ * Spalte, in der Gliederungen leer sind, wieder auf dieselben Zeilen). Zellen rechts der ersten Spalte gibt es hier nicht.
+ */
+export function planeKostengruppen(
+  matrix: readonly (readonly string[])[],
+  ab: number,
+  zeilen: readonly LvZeile[],
+  lesen: KostengruppeLesen,
+): Kostengruppenplan {
+  const befehle: KostengruppeSetzen[] = [];
+  const ungueltig: UngueltigeZelle[] = [];
+  let uebersprungen = 0;
+  matrix.forEach((zellen, offset) => {
+    const text = zellen[0] ?? '';
+    const k = zeilen[ab + offset]?.knoten;
+    if (k?.art !== 'position') {
+      if (text.trim() !== '') uebersprungen++;
+      return;
+    }
+    const r = leseKostengruppe(text, lesen);
+    if (!r.ok) {
+      ungueltig.push({ knotenId: k.id, spalte: 'kostengruppe', text, meldung: r.meldung });
+      return;
+    }
+    if (r.wert === (k.kostengruppe ?? null)) return;
+    befehle.push({ art: 'KostengruppeSetzen', positionId: k.id, kostengruppe: r.wert });
+  });
   return { befehle, ungueltig, uebersprungen };
 }

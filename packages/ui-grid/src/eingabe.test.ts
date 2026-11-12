@@ -5,6 +5,7 @@ import type {
   Einheitspreis,
   BildId,
   ElternId,
+  HinweistextId,
   Kostengruppennummer,
   Langtext,
   LvSpalte,
@@ -19,7 +20,7 @@ import type {
 } from '@tethys/vertrag';
 import { idQuelleAttrappe, kostengruppeAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
 import { anzeigeText, befehlAusEingabe, hinweisKlartext, istBearbeitbar } from './eingabe';
-import { planeEinfuegen } from './einfuegen';
+import { planeEinfuegen, planeKostengruppen } from './einfuegen';
 import { parseTsv } from './tsv';
 
 const position: LvZeile = {
@@ -381,7 +382,9 @@ describe('planeEinfuegen', () => {
     expect(plan.befehle[1]).toMatchObject({ daten: { kurztext: 'B', menge: '2.000' } });
     expect(plan.befehle[1]).not.toHaveProperty('daten.kostengruppe');
     expect(plan.befehle[2]).not.toHaveProperty('daten.kostengruppe');
-    expect(plan.ungueltig.map((u) => [u.knotenId, u.spalte, u.text])).toEqual([['neu-2', 'kostengruppe', '33']]);
+    expect(plan.ungueltig.map((u) => [u.knotenId, u.spalte, u.text])).toEqual([
+      ['neu-2', 'kostengruppe', '33'],
+    ]);
     // je Zeile die Gesamtpreis-Zelle
     expect(plan.uebersprungen).toBe(3);
   });
@@ -410,5 +413,61 @@ describe('planeEinfuegen', () => {
     );
     expect(plan.befehle[0]).toMatchObject({ ort: { art: 'ende', elternId: 'lv' } });
     expect(plan.befehle[1]).toMatchObject({ ort: { art: 'nach', knotenId: 'neu-1' } });
+  });
+});
+
+describe('planeKostengruppen (Ticket 93): eine Spalte in die Spalte „KG“ der vorhandenen Zeilen', () => {
+  const pos = (id: string, kostengruppe?: string): LvZeile => ({
+    ...position,
+    knoten: {
+      ...(position.knoten as Position),
+      id: id as PositionId,
+      ...(kostengruppe === undefined ? {} : { kostengruppe: kostengruppe as Kostengruppennummer }),
+    },
+  });
+  const hinweis: LvZeile = {
+    ...titel,
+    knoten: {
+      art: 'hinweis',
+      id: 'h1' as HinweistextId,
+      elternId: 't1' as ElternId,
+      reihenfolge: 3,
+      text: [],
+    },
+    hatUnterknoten: false,
+    summe: null,
+  };
+  // Titel, p1 ohne KG, p2 mit 330, Hinweistext, p3 mit 310
+  const zeilen: readonly LvZeile[] = [titel, pos('p1'), pos('p2', '330'), hinweis, pos('p3', '310')];
+
+  it('Zeile für Zeile ab der aktiven: ein Befehl je geänderter Position, gleiche Nummer ohne Befehl', () => {
+    const plan = planeKostengruppen(parseTsv('340\r\n330\r\n\r\n320\r\n'), 1, zeilen, kostengruppeAttrappe);
+    expect(plan.befehle).toEqual([
+      { art: 'KostengruppeSetzen', positionId: 'p1', kostengruppe: '340' },
+      { art: 'KostengruppeSetzen', positionId: 'p3', kostengruppe: '320' },
+    ]);
+    expect(plan.ungueltig).toEqual([]);
+    expect(plan.uebersprungen).toBe(0);
+  });
+
+  it('leer entfernt die Zuordnung; eine formwidrige Nummer verwirft nur ihre Zelle', () => {
+    const plan = planeKostengruppen(parseTsv('3x0\n\n\n33'), 1, zeilen, kostengruppeAttrappe);
+    expect(plan.befehle).toEqual([{ art: 'KostengruppeSetzen', positionId: 'p2', kostengruppe: null }]);
+    expect(plan.ungueltig).toEqual([
+      { knotenId: 'p1', spalte: 'kostengruppe', text: '3x0', meldung: expect.any(String) as string },
+      { knotenId: 'p3', spalte: 'kostengruppe', text: '33', meldung: expect.any(String) as string },
+    ]);
+  });
+
+  it('eine Nummer auf einer Gliederung, einem Hinweistext oder hinter der letzten Zeile wird übersprungen und gezählt', () => {
+    const plan = planeKostengruppen(
+      parseTsv('300\n340\n330\n350\n310\n360\n'),
+      0,
+      zeilen,
+      kostengruppeAttrappe,
+    );
+    expect(plan.befehle).toEqual([{ art: 'KostengruppeSetzen', positionId: 'p1', kostengruppe: '340' }]);
+    // Titel (300), Hinweistext (350), hinter dem Ende (360)
+    expect(plan.uebersprungen).toBe(3);
   });
 });
