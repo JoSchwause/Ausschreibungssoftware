@@ -1,6 +1,6 @@
 # 99: Fixtures: IFC-Haus in zwei Ständen, großes Modell, Sollwerte für das Tor X1
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: F, X1 · Paket: `fixtures/` (neuer Ordner `fixtures/ifc/`, dazu `fixtures/README.md`, `fixtures.test.mjs`,
 `REUSE.toml` falls nötig)
@@ -59,10 +59,10 @@ Dateien.
 
 ## Acceptance criteria
 
-- [ ] Die drei IFC-Dateien sind gültiges STEP (ein Test liest sie zeilenweise und prüft Kopf, Schema, eindeutige `#n`, alle
+- [x] Die drei IFC-Dateien sind gültiges STEP (ein Test liest sie zeilenweise und prüft Kopf, Schema, eindeutige `#n`, alle
       Verweise auflösbar), der Erzeuger ist deterministisch
-- [ ] `typisch-bim.json` mit Herleitung; `node --test "fixtures/*.test.mjs"` grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] `typisch-bim.json` mit Herleitung; `node --test "fixtures/*.test.mjs"` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -133,3 +133,54 @@ Dateien.
 - **D-99.14 Bytes und Typen.** `fixtures/ifc/.gitattributes` mit `*.ifc -text` (der SHA-256 der Dateien ist Sollwert,
   D-51); `fixtures/ifc/erzeugen.d.mts` deklariert `erzeugeModell` für TypeScript-Tests (100, 107), geprüft mit `tsc --strict`
   an einer Probedatei. Reversible: yes.
+
+### Ergebnis (2026-11-12, Branch `welle-6/99-fixtures-ifc`)
+
+**Dateien** (alle unter `fixtures/`, nur dort, P2): `ifc/haus-v1.ifc` (IFC 4, m, 66.723 Bytes), `ifc/haus-v1-ifc2x3.ifc`
+(IFC 2x3, mm), `ifc/haus-v2.ifc` (IFC 4, zweiter Stand), `typisch-bim.json` (Sollwerte), `ifc/erzeugen.mjs` +
+`ifc/erzeugen.d.mts` (großes Modell, Funktion `erzeugeModell` und Kommandozeile), `ifc/schreiben.mjs` (STEP-Schreiber,
+Mengen aus der Geometrie), `ifc/haus.mjs` (Haus v1/v2), `ifc/sollwerte.mjs` (Sollwerte), `ifc/.gitattributes`; dazu
+`erzeugen.mjs` (`erzeugeAlle` schreibt die Hausdateien und `typisch-bim.json`), `fixtures.test.mjs` (13 neue Tests, eigener
+STEP-Leser), `README.md` (Abschnitt „BIM: Haus und Tor X1“, Dateien, JSON-Form). `REUSE.toml` braucht keinen Eintrag
+(`**` deckt `.ifc`).
+
+**Haus:** 11,99 × 8,24 m, EG und OG, 6 Räume, 30 Bauteile (4 Streifenfundamente, 3 Platten, 13 Wände, 6 Fenster,
+4 Türen), 11 Öffnungen; Kennung = `Tag` (README-Tabelle). v2: IW-EG-3 entfernt, IW-EG-4 neu, IW-EG-2 +0,50 m, F-EG-W ins OG,
+PL-EG umbenannt.
+
+**Zuordnung zu `typisch`** (Positions-IDs in `typisch-bim.json`, Form `{ globalId, mengenart }`, D-52):
+
+| OZ | Position | Bauteile | Mengenart | Menge v1 | GP |
+|---|---|---|---|---|---|
+| 02.0040 | Sauberkeitsschicht (m²) | PL-EG | GrossArea | 98,798 | 1.134,20 |
+| 02.0050 | Fundamente betonieren (m³), Zuschlag 02.0050 A | FU-S, FU-N, FU-W, FU-O | NetVolume | 18,720 | 3.161,81 (+ 268,75) |
+| 02.0070 | Bodenplatte herstellen (m²) | PL-EG | NetArea | 98,638 | 5.198,22 |
+| 02.0080 | Sockel abdichten (m) | AW-EG-S, -N, -W, -O | Length | 39,000 | 731,64 |
+| 03.0010 | Innenwände mauern (m²), Torweg | IW-EG-1, -2, -3 | NetSideArea | 33,023 | 1.609,87 |
+| 03.0020 | Innenputz (m²) | AW-EG-S, -N, -W, -O | NetSideArea | 99,938 | 1.934,80 |
+| 03.0050 | Türzargen einbauen (St) | T-EG-1, T-OG-1, T-OG-2 | Stueck | 3,000 | 403,50 |
+
+**Wichtige Sollwerte:** LV nach der Übernahme Netto 36.068,86, Nachlass 721,38, Netto n. N. 35.347,48, MwSt 6.716,02,
+Brutto 42.063,50; Torweg (nur 03.0010) Netto 46.720,96, Brutto 54.485,98. BGF 197,596, BRI 617,485, NRF 166,252;
+Kostenschätzung gesamt 274.302,77 (6 KG, KG 400 82.743,325 → 82.743,33). Aufmaßblatt aus Auswahl EG: wie die Vordersätze,
+03.0050 nur 1,000. Vergleich v1 → v2: entfernt IW-EG-3, neu IW-EG-4, geändert PL-EG (Name), AW-EG-W und AW-OG-W (Mengen),
+F-EG-W (Geschoss), IW-EG-2 (Mengen); betroffen 03.0010 −4,125 und 03.0020 +1,399; nach „Mengen aktualisieren“ Netto
+35.894,85, Brutto 41.860,57, Befund `bauteil-fehlt` für IW-EG-3 an 03.0010. SHA-256 der drei Dateien in `modelle`.
+
+**Großes Modell:** `node fixtures/ifc/erzeugen.mjs [--bauteile N] [--geschosse G] [--aus datei]`; 10.000 Bauteile auf
+10 Geschossen = 21.048.563 Bytes, etwa 0,8 s, immer derselbe SHA-256 (D-99.3).
+
+**Gegenprobe mit web-ifc 0.0.78** (Ticket 100; aus dessen Worktree nur gelesen, Skript im Scratchpad, nichts im Repo): alle
+drei Hausdateien und ein erzeugtes Modell mit 600 Bauteilen laden; jedes Bauteil hat Geometrie, Wände mit Öffnungen werden
+ausgeschnitten (bis 52 Dreiecke statt 12), die Aussparung der Bodenplatte ebenso; Räume liefert `StreamAllMeshes` wie
+üblich nicht.
+
+**Suite** nach `git merge integration/welle-6` (Stand `c42e389`): `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün,
+`pnpm typecheck` grün, `pnpm test` grün (Vitest 218 Dateien, 2.848 Tests bestanden, 3 übersprungen; `node --test
+"fixtures/*.test.mjs"` 42/42, etwa 2,4 s). Ein erster Lauf der ganzen Suite bei Last 16–19 auf 4 Kernen fiel nur im
+Leistungsbudget D-45 von `apps/web/src/abrechnung/leistung.test.ts` (fremdes Paket, liest keine Datei dieses Tickets):
+Rückgängig Median 109,4 ms > 100 ms; die Datei allein: Rückgängig 28,7 ms, Befehl 30,1 ms, Wiederholen 27,0 ms; der zweite
+volle Lauf war ganz grün. Kein Budget gelockert, kein Test übersprungen.
+
+**Offen / Hinweise:** keine G-Frage berührt. Für 107/108/117: Die Lesarten D-99.2, D-99.5 bis D-99.10 und D-99.12 sind
+Annahmen dieser Fixture; wählt `bim` andere Befundcodes oder Ausdrucksformen, gelten die Mengen und Beträge trotzdem.
