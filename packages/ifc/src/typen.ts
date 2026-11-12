@@ -143,8 +143,11 @@ export type IfcBefundcode =
   | 'instanz-doppelt'
   | 'zeichenkette-ungueltig'
   | 'verweis-fehlt'
-  // Bauwerksstruktur:
-  | 'strukturknoten-ohne-eltern';
+  // Bauwerksstruktur und Bauteile:
+  | 'strukturknoten-ohne-eltern'
+  | 'bauteil-mehrfach-enthalten'
+  | 'bauteil-ohne-strukturknoten'
+  | 'bauteil-ohne-mengen';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für

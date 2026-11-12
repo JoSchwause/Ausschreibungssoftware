@@ -130,7 +130,10 @@ const HEX = /^[0-9A-Fa-f]+$/;
  * `\S\`, `\P?\`, `\X\hh`, `\X2\…\X0\`, `\X4\…\X0\`; `\N\`, `\F\` und Zeilenumbrüche entfallen. Eine ungültige Anweisung
  * bleibt als Text stehen und ergibt `fehler`.
  */
-export function zeichenketteEntschluesseln(roh: string): { readonly text: string; readonly fehler: string | null } {
+export function zeichenketteEntschluesseln(roh: string): {
+  readonly text: string;
+  readonly fehler: string | null;
+} {
   if (!/['\\\r\n]/.test(roh)) return { text: roh, fehler: null };
   let aus = '';
   let fehler: string | null = null;
@@ -416,7 +419,8 @@ function zerlegen(
         p++;
         continue;
       }
-      if (c !== KLAMMER_ZU) return nein(`Unerwartetes Zeichen „${String.fromCharCode(c)}“ statt „,“ oder „)“.`);
+      if (c !== KLAMMER_ZU)
+        return nein(`Unerwartetes Zeichen „${String.fromCharCode(c)}“ statt „,“ oder „)“.`);
     }
     if (c === KLAMMER_ZU) {
       if (erwarteWert && nachKomma) return nein('Wert fehlt vor „)“.');
@@ -684,7 +688,10 @@ export function datenLesen(
           let q = ergebnis.ende;
           while (q < (ende[i] ?? 0) && [SP, LF, CR, TAB, FF, VT].includes(b[q] ?? 0)) q++;
           if (q === (ende[i] ?? 0)) werte = ergebnis.werte;
-          else befunde.push(befund('fehler', 'step-syntaxfehler', `#${String(id)}: Text nach der Parameterliste.`, ort));
+          else
+            befunde.push(
+              befund('fehler', 'step-syntaxfehler', `#${String(id)}: Text nach der Parameterliste.`, ort),
+            );
         } else
           befunde.push(
             befund(

@@ -42,7 +42,8 @@ describe('Schema', () => {
   );
 
   it('weist einen Kopf ohne FILE_SCHEMA als „keine IFC-Datei“ ab', () => {
-    const text = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n";
+    const text =
+      "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n";
     expect(abgewiesen(ifcLesen(bytes(text)))).toBe('keine-ifc-datei');
   });
 

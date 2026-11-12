@@ -27,7 +27,13 @@ describe('Bauwerksstruktur', () => {
         elternGlobalId: gid('projekt'),
         mengen: [],
       },
-      { globalId: gid('gebaeude'), art: 'gebaeude', name: 'Haus', elternGlobalId: gid('grundstueck'), mengen: [] },
+      {
+        globalId: gid('gebaeude'),
+        art: 'gebaeude',
+        name: 'Haus',
+        elternGlobalId: gid('grundstueck'),
+        mengen: [],
+      },
       { globalId: gid('eg'), art: 'geschoss', name: 'EG', elternGlobalId: gid('gebaeude'), mengen: [] },
       { globalId: gid('kueche'), art: 'raum', name: '0.01', elternGlobalId: gid('eg'), mengen: [] },
     ]);
@@ -56,7 +62,9 @@ describe('Bauwerksstruktur', () => {
 
   it('meldet einen Knoten ohne Eltern und behält ihn', () => {
     const lesung = ifcLesen(
-      bytes(ifcText([...grundgeruest(), `#20=IFCBUILDINGSTOREY('${gid('og')}',$,'OG',$,$,$,$,$,.ELEMENT.,3.);`])),
+      bytes(
+        ifcText([...grundgeruest(), `#20=IFCBUILDINGSTOREY('${gid('og')}',$,'OG',$,$,$,$,$,.ELEMENT.,3.);`]),
+      ),
     );
     expect(lesung.modell?.struktur.at(-1)).toEqual({
       globalId: gid('og'),

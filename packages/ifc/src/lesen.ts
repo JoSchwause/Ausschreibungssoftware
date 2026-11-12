@@ -2,6 +2,7 @@
 // IFC lesen (Ticket 98): STEP-Datei prüfen, Kopf und Schema lesen, dann Struktur, Bauteile, Mengen, Eigenschaften,
 // Klassifikation und Material aus den Instanzen holen. Rein (A2): Bytes rein, Werte und Befunde raus.
 
+import { bauteileLesen } from './bauteile';
 import { Modellleser, strukturLesen, zerlegungLesen } from './modell';
 import { befund, datenLesen, kopfLesen, textmodusErmitteln } from './step';
 import type { StepKopf } from './step';
@@ -51,7 +52,8 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const kopf = kopfLesen(bytes, modus, maxTiefe);
   if (!kopf.ok) return abweisen('keine-ifc-datei', `Keine IFC-Datei: ${kopf.meldung}`, { zeile: kopf.zeile });
   const schemaEintrag = kopf.kopf.get('FILE_SCHEMA');
-  if (schemaEintrag === undefined) return abweisen('keine-ifc-datei', 'Keine IFC-Datei: Der Kopf nennt kein FILE_SCHEMA.');
+  if (schemaEintrag === undefined)
+    return abweisen('keine-ifc-datei', 'Keine IFC-Datei: Der Kopf nennt kein FILE_SCHEMA.');
   const schemakennung = liste(schemaEintrag[0])
     .map((w) => (w.art === 'text' ? w.wert : ''))
     .join(',');
@@ -69,8 +71,9 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const leser = new Modellleser(daten, befunde);
   const ganzes = zerlegungLesen(leser);
   const struktur = strukturLesen(leser, ganzes);
+  const bauteile = bauteileLesen(leser, ganzes);
   return {
-    modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur, bauteile: [] },
+    modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur, bauteile },
     befunde,
   };
 }
