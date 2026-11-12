@@ -252,8 +252,10 @@ import {
 } from './beispiele';
 // v1.6 (Ticket 97)
 import type {
+  BauteileZuordnen,
   Bauteil,
   Bauteilmenge,
+  Bauteilzuordnung,
   Bauwerksmodell,
   BauwerksmodellAnlegen,
   BauwerksmodellBefehl,
@@ -268,10 +270,14 @@ import type {
   Modelldatei,
   Modelldateiablage,
   Strukturknoten,
+  Titel,
 } from './index';
 import {
+  beispielBauteileEntfernen,
+  beispielBauteileZuordnen,
   beispielBauwerksmodell,
   beispielBauwerksmodell2Kopf,
+  beispielChangeSetBauteileZuordnen,
   beispielBauwerksmodellLoeschen,
   beispielChangeSetBauwerksmodellAnlegen,
   beispielChangeSetBauwerksmodellLoeschen,
@@ -1232,7 +1238,8 @@ describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
   });
 
   it('AuftragsLvBefehl ist genau Anlegen, Nachtrag übernehmen und Kostengruppe setzen (D-36 (4))', () => {
-    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 3): dazu `BauteileZuordnen`, siehe dort.
+    expectTypeOf<Exclude<AuftragsLvBefehl['art'], 'BauteileZuordnen'>>().toEqualTypeOf<
       'AuftragsLeistungsverzeichnisAnlegen' | 'NachtragUebernehmen' | 'KostengruppeSetzen'
     >();
   });
@@ -1515,7 +1522,10 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     expectTypeOf<
       Extract<AufmassBefehl['art'], RechnungBefehl['art'] | KostenermittlungBefehl['art']>
     >().toEqualTypeOf<never>();
-    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<'KostengruppeSetzen'>();
+    // v1.6 (Ticket 97 Punkt 3): ebenso `BauteileZuordnen`.
+    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<
+      'KostengruppeSetzen' | 'BauteileZuordnen'
+    >();
   });
 
   it('Signaturen für Ausführen, Anwenden und Umkehren je neuem Aggregat', () => {
@@ -2087,5 +2097,60 @@ describe('v1.6 Punkt 2: Modelldateien (D-51)', () => {
 
   it('ein eigener Fehlercode für einen Export über der Grenze für Zeichenketten (kürzt nie, D-51)', () => {
     expectTypeOf<'datei-zu-gross'>().toExtend<Speicherfehlercode>();
+  });
+});
+
+describe('v1.6 Punkt 3: Zuordnung Bauteil ↔ Position (X1c, D-52)', () => {
+  it('Bauteilzuordnung: GlobalId und Mengenart; kein Modell, kein Mengensatz (enge Lesart)', () => {
+    expectTypeOf<Bauteilzuordnung>().toEqualTypeOf<{
+      readonly globalId: IfcGlobalId;
+      readonly mengenart: string;
+    }>();
+    expectTypeOf<Bauteilzuordnung>().not.toHaveProperty('bauwerksmodellId');
+    expectTypeOf<Bauteilzuordnung>().not.toHaveProperty('satz');
+  });
+
+  it('an der Position optional (fehlt = keine), geordnet; ein Hinweistext und eine Gliederung tragen keine', () => {
+    expectTypeOf<Positionsdaten['bauteile']>().toEqualTypeOf<readonly Bauteilzuordnung[] | undefined>();
+    expectTypeOf<Hinweistext>().not.toHaveProperty('bauteile');
+    expectTypeOf<Titel>().not.toHaveProperty('bauteile');
+    expect(alsPosition(beispielLv.knoten.find((k) => k.art === 'position'))).not.toHaveProperty('bauteile');
+  });
+
+  it('BauteileZuordnen: ganze Liste oder null, ein Typ im LV und im Auftrags-LV (wie KostengruppeSetzen)', () => {
+    expectTypeOf<BauteileZuordnen>().toEqualTypeOf<{
+      readonly art: 'BauteileZuordnen';
+      readonly positionId: PositionId;
+      readonly bauteile: readonly Bauteilzuordnung[] | null;
+    }>();
+    expectTypeOf<BauteileZuordnen>().toExtend<LvBefehl>();
+    expectTypeOf<BauteileZuordnen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<'BauteileZuordnen'>().not.toExtend<Massenbefehlsart>();
+    // D-53: Nach dem Zuschlag führt der Weg zur Menge nur über das Aufmaßblatt, nicht über den Mengenansatz.
+    expectTypeOf<'MengenansatzSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+  });
+
+  it('Beispiel: zwei Wände, je die Länge; dasselbe Paar steht nur einmal; null entfernt', () => {
+    const liste = beispielBauteileZuordnen.bauteile ?? [];
+    const paare = liste.map((z) => `${z.globalId}|${z.mengenart}`);
+    expect(new Set(paare).size).toBe(paare.length);
+    const modell = new Set(beispielBauwerksmodell.bauteile.map((b) => b.globalId));
+    for (const z of liste) {
+      expect(z.globalId).toMatch(GLOBALID);
+      expect(modell).toContain(z.globalId);
+    }
+    expect(beispielBauteileEntfernen.bauteile).toBeNull();
+  });
+
+  it('ChangeSet: eine Knotenänderung der Position ohne Summen; die Umkehrung nimmt die Zuordnungen weg', () => {
+    const [g] = beispielChangeSetBauteileZuordnen.knoten.geaendert;
+    expect(g?.vorher).not.toHaveProperty('bauteile');
+    expect(g?.nachher).toEqual({ ...g?.vorher, bauteile: beispielBauteileZuordnen.bauteile });
+    expect(beispielChangeSetBauteileZuordnen.summen.positionen).toEqual([]);
+    expect(beispielChangeSetBauteileZuordnen.kopf).toBeNull();
+  });
+
+  it('offene Typfrage (D-53): eine Ansatzzeile nennt keine GlobalId', () => {
+    expectTypeOf<Ansatzzeile>().not.toHaveProperty('globalId');
   });
 });

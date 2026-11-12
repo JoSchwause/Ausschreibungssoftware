@@ -36,6 +36,7 @@ import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { protokollform } from './kurzfassung';
+import { pruefeV16 } from './vertrag-v16'; // v1.6: mechanisch angepasst, Folgeticket 106
 import {
   leseAngebot,
   leseAufmass,
@@ -367,6 +368,7 @@ export class SpeicherKern {
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
+        pruefeV16(changeSet); // v1.6: mechanisch angepasst, Folgeticket 106
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
         switch (changeSet.art) {
           case 'projekt':

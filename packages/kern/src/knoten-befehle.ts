@@ -223,6 +223,14 @@ export function gliederungAnlegen(z: LvZustand, b: GliederungAnlegen): ChangeSet
 }
 
 export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErgebnis {
+  // v1.6: mechanisch angepasst, Folgeticket 105 (Bauteilzuordnungen: abweisen statt still verwerfen, Q5)
+  if (b.daten.bauteile !== undefined)
+    return nein(
+      'befehl-nicht-zustaendig',
+      'PositionAnlegen mit Bauteilzuordnungen: erst Ticket 105.',
+      b.id,
+      'bauteile',
+    );
   const idx = indexVon(z.leistungsverzeichnis.id, z.leistungsverzeichnis.knoten);
   const ziel = einfuegenPruefen(z, idx, b.id, b.ort, 'position');
   if (!ziel.ok) return ziel;

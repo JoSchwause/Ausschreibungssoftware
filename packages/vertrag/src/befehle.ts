@@ -51,7 +51,7 @@ import type {
   Vergabeinformationen,
   Zuschlag,
 } from './modell';
-import type { Bauwerksmodell } from './bim';
+import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -407,6 +407,26 @@ export interface TextquelleSetzen {
   readonly textquelle: string | null;
 }
 
+/**
+ * Setzt die Bauteilzuordnungen einer Position als **ganze Liste** (v1.6, Ticket 97 Punkt 3; X1c, D-52; Glossar
+ * „Bauteilzuordnung“), wie `MengenansatzSetzen` den ganzen Ansatz; `null` entfernt sie (das Feld fehlt danach), ein leeres
+ * `[]` ebenso (Normalisierung beim Befehl wie bei `MengenansatzSetzen`). Gilt im Ausschreibungs-LV und im Auftrags-LV:
+ * **derselbe** Typ steht in `LvBefehl` und in `AuftragsLvBefehl` (wie `KostengruppeSetzen`, D-70.1); welches Aggregat gemeint
+ * ist, sagt im Protokoll `Protokolleintrag.aggregat`, beim Ausführen der Zustand.
+ *
+ * Fehler (Lesart des Kerns, vorläufige Annahme, Entscheidung offen): wie jeder Feldbefehl (v1.5, D-71.3) eine Gliederung oder
+ * ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten `knoten-unbekannt`; danach `ungueltige-eingabe` mit
+ * `feld: 'bauteile'` für eine GlobalId nicht in Form (siehe `IfcGlobalId`), eine leere Mengenart oder dasselbe Paar aus
+ * GlobalId und Mengenart zweimal. Der Kern prüft keine GlobalId gegen ein Modell (A3); hängende Zuordnungen meldet die App
+ * (Befund). ChangeSet: die Knotenänderung der Position (`knoten.geaendert`), Summen unverändert. Kein Massenbefehl, auch
+ * nicht mit 5.000 Zuordnungen (D-54 misst Befehl und Undo in Ticket 105; Offene Typfrage, Ticket 97). Kern-Handler Ticket 105.
+ */
+export interface BauteileZuordnen {
+  readonly art: 'BauteileZuordnen';
+  readonly positionId: PositionId;
+  readonly bauteile: readonly Bauteilzuordnung[] | null;
+}
+
 // --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
 
 /** Setzt den Auftraggeber des LV als ganzen Wert; `null` entfernt ihn (das Feld fehlt danach am LV). */
@@ -527,7 +547,9 @@ export type LvBefehl =
   | NachtragsangabenSetzen
   | KostengruppeSetzen
   | VorlageSetzen
-  | TextquelleSetzen;
+  | TextquelleSetzen
+  // v1.6
+  | BauteileZuordnen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -621,9 +643,16 @@ export interface NachtragUebernehmen {
 
 /**
  * Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). v1.4 (D-36 (4)): genau das Anlegen (Zuschlag, D-21), die
- * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
+ * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV. v1.6 (Ticket 97
+ * Punkt 3, D-52): dazu die Bauteilzuordnungen einer Position. `MengenansatzSetzen` bleibt ein reiner LV-Befehl: Nach dem
+ * Zuschlag führt der Weg vom Modell zur Menge nur über das Aufmaßblatt (D-53).
  */
-export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen | KostengruppeSetzen;
+export type AuftragsLvBefehl =
+  | AuftragsLeistungsverzeichnisAnlegen
+  | NachtragUebernehmen
+  | KostengruppeSetzen
+  // v1.6
+  | BauteileZuordnen;
 
 // --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
 //
@@ -894,8 +923,8 @@ export type HistorienBefehl = Rueckgaengig | Wiederholen;
 
 /**
  * Jeder Befehl, den das Befehlsprotokoll aufnimmt. v1.4 (Ticket 70 Punkt 10): dazu die Befehle an Aufmaßblatt, Rechnung
- * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` (LV und Auftrags-LV;
- * `Protokolleintrag.aggregat` unterscheidet).
+ * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` und (v1.6)
+ * `BauteileZuordnen` (je LV und Auftrags-LV; `Protokolleintrag.aggregat` unterscheidet).
  */
 export type Befehl =
   | ProjektBefehl

@@ -58,7 +58,12 @@ import type {
   Protokolleintrag,
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
-import type { BauwerksmodellAnlegen, BauwerksmodellLoeschen, BauwerksmodellUmbenennen } from './befehle';
+import type {
+  BauteileZuordnen,
+  BauwerksmodellAnlegen,
+  BauwerksmodellLoeschen,
+  BauwerksmodellUmbenennen,
+} from './befehle';
 import type { Bauwerksmodell, BauwerksmodellKopf, Modelldatei } from './bim';
 import type { BauwerksmodellChangeSet } from './changeset';
 import type { BauwerksmodellId, IfcGlobalId } from './marken';
@@ -1706,4 +1711,38 @@ export const beispielBauwerksmodell2Kopf: BauwerksmodellKopf = {
   schema: 'IFC4',
   vorgaengerId: modell1Id,
   eingelesen: '2026-11-19',
+};
+
+/**
+ * Punkt 3 (D-52, D-53): Die Beispielposition (Einheit m) übernimmt die Längen der beiden Außenwände. Die Zuordnung nennt kein
+ * Modell; in dieser Reihenfolge baut `bim` die Ansatzzeilen (5,000 m und 5,000 m, Ticket 108).
+ */
+export const beispielBauteileZuordnen: BauteileZuordnen = {
+  art: 'BauteileZuordnen',
+  positionId: posId,
+  bauteile: [
+    { globalId: beispielGlobalIds.wandEg, mengenart: 'Length' },
+    { globalId: beispielGlobalIds.wandOg, mengenart: 'Length' },
+  ],
+};
+
+/** Punkt 3: ChangeSet im LV: eine Knotenänderung der Position, Summen unverändert. */
+export const beispielChangeSetBauteileZuordnen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      { vorher: position, nachher: { ...position, bauteile: beispielBauteileZuordnen.bauteile ?? [] } },
+    ],
+    entfernt: [],
+  },
+  summen: keineSummen,
+};
+
+/** Punkt 3: `null` (oder `[]`) entfernt alle Zuordnungen; das Feld fehlt danach. Im Auftrags-LV derselbe Befehl. */
+export const beispielBauteileEntfernen: BauteileZuordnen = {
+  art: 'BauteileZuordnen',
+  positionId: posId,
+  bauteile: null,
 };

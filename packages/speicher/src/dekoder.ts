@@ -1021,6 +1021,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   BauwerksmodellAnlegen: true,
   BauwerksmodellUmbenennen: true,
   BauwerksmodellLoeschen: true,
+  BauteileZuordnen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {

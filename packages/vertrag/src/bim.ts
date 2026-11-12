@@ -167,3 +167,24 @@ export interface Bauwerksmodell extends BauwerksmodellKopf {
 
 /** Was ein Bauwerksmodell aus der Datei trägt (v1.6): Struktur und Bauteile, unveränderlich nach dem Anlegen. */
 export type BauwerksmodellInhalt = Pick<Bauwerksmodell, 'struktur' | 'bauteile'>;
+
+// --- Zuordnung Bauteil ↔ Position (v1.6, Ticket 97 Punkt 3; X1c, D-52, D-53) ---------------------------------------
+
+/**
+ * Bauteilzuordnung (Glossar; v1.6, Ticket 97 Punkt 3, D-52): ein Bauteil, dessen Menge eine Position übernimmt. Steht an der
+ * Position (`Positionsdaten.bauteile`), im Ausschreibungs-LV wie im Auftrags-LV; gesetzt mit `BauteileZuordnen`.
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - Sie nennt **kein Modell**: Sie gilt für jeden Modellstand, in dem ein Bauteil mit dieser GlobalId steht (GlobalIds
+ *   bleiben über Stände gleich, D-53). Steht die GlobalId im gewählten Modell nicht, ist das eine hängende Zuordnung: ein
+ *   Befund der App bzw. von `bim` (Quelle `modell-pruefung`), keine Sperre und kein Fehler des Kerns (A3: der Kern kennt keine
+ *   Modelle).
+ * - `mengenart` (Glossar „Mengenart“) ist der Name einer Bauteilmenge, wie er im Modell steht (`Bauteilmenge.name`, z. B.
+ *   `NetVolume`), oder fest `'Stueck'`: dann zählt jedes Bauteil 1, auch wenn ein Modell eine Menge dieses Namens hätte.
+ *   Nicht leer. Den Mengensatz nennt sie nicht: Trägt das Bauteil den Namen in zwei Sätzen, ist die Mengenart mehrdeutig
+ *   (Befund in `bim`, nie eine Wahl nach Gutdünken). Alternative: `satz` in der Zuordnung (Offene Typfrage, Ticket 97).
+ */
+export interface Bauteilzuordnung {
+  readonly globalId: IfcGlobalId;
+  readonly mengenart: string;
+}

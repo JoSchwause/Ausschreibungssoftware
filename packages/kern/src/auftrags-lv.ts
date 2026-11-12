@@ -199,6 +199,8 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
       return nachtragUebernehmen(zustand, befehl);
     case 'KostengruppeSetzen':
       return kostengruppeSetzen(zustand, befehl);
+    case 'BauteileZuordnen': // v1.6: mechanisch angepasst, Folgeticket 105
+      return nein('befehl-nicht-zustaendig', 'BauteileZuordnen am Auftrags-LV: erst Ticket 105.');
     default:
       return nein('befehl-nicht-zustaendig', `Befehl ${art} gehört nicht zum Auftrags-LV.`);
   }
