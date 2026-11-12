@@ -346,7 +346,8 @@ describe('KostengruppeSetzen im Auftrags-LV (D-70.1)', () => {
   it('Fehler: Kostengruppe an Gliederung, falsche Form, kein Zustand', () => {
     const z = zustand();
     const titel = fx.knoten.find((k) => k.art === 'titel')?.id ?? '';
-    expect(fehler(z, setze(titel, '391')).code).toBe('knoten-unbekannt');
+    expect(fehler(z, setze(titel, '391')).code).toBe('knotenart-unzulaessig'); // D-71.3, Ticket 105
+    expect(fehler(z, setze('gibt-es-nicht', '391')).code).toBe('knoten-unbekannt');
     expect(fehler(z, setze(erstePosition, '39')).code).toBe('ungueltige-eingabe');
     expect(fehler(null, setze(erstePosition, '391')).code).toBe('befehl-nicht-zustaendig');
   });

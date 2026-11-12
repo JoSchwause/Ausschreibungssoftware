@@ -24,8 +24,8 @@ export type Positionswechsel = { readonly vorher: Position; readonly nachher: Po
  * Was `KostengruppeSetzen` an der Position ändert, im LV wie im Auftrags-LV. `knotenVon` liefert den Knoten zur Kennung
  * im Baum des Aggregats.
  *
- * - Nur an einer Position. Eine Gliederung, ein Hinweistext oder eine unbekannte Kennung ist keine bekannte Position:
- *   `knoten-unbekannt` (Wortlaut des Vertrags an `KostengruppeSetzen`; D-71.3).
+ * - Nur an einer Position: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten im Baum
+ *   `knoten-unbekannt` (wie jeder Feldbefehl; Vertrag v1.5, D-71.3, D-95.1; Ticket 105).
  * - Form der Nummer nach `KOSTENGRUPPE_FORM` (`positionsfelder.ts`), sonst `ungueltige-eingabe` mit `feld: 'kostengruppe'`.
  * - `null` entfernt das Feld (es fehlt danach); derselbe Wert ist keine Änderung.
  */
@@ -34,12 +34,11 @@ export function kostengruppeWechsel(
   b: KostengruppeSetzen,
 ): Ergebnis<Positionswechsel, Befehlsfehler> {
   const k = knotenVon(b.positionId);
-  if (k?.art !== 'position')
+  if (k === undefined) return nein('knoten-unbekannt', `Knoten unbekannt: ${b.positionId}`, b.positionId);
+  if (k.art !== 'position')
     return nein(
-      'knoten-unbekannt',
-      k === undefined
-        ? `Position unbekannt: ${b.positionId}`
-        : `Eine Kostengruppe trägt nur eine Position, nicht „${k.art}“: ${b.positionId}`,
+      'knotenart-unzulaessig',
+      `Nur eine Position trägt eine Kostengruppe, nicht „${k.art}“.`,
       b.positionId,
     );
   if (b.kostengruppe !== null) {

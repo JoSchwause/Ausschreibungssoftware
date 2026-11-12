@@ -12,12 +12,13 @@
 
 import type {
   Befehlshinweis,
-  Einfuegeort,
   Knoten,
   LvZustand,
   Ordnungszahl,
   OzMaske,
   OzStelle,
+  OzVorschlag,
+  OzVorschlagen,
 } from '@tethys/vertrag';
 import { befehlshinweis } from './hinweise';
 import { nummeriere } from './oz-befehle';
@@ -36,14 +37,6 @@ import { ortAufloesen } from './platzieren';
 import { ebenenbeitrag } from './regeln';
 import { ebenenBis, indexVon, unterbaum } from './struktur';
 import type { Baumindex } from './struktur';
-
-/** Ergebnis von `ozVorschlag`. `ozIndex` ist für einen neuen Knoten immer `null`. */
-export interface OzVorschlag {
-  readonly ordnungszahl: Ordnungszahl;
-  readonly ozIndex: string | null;
-  /** `oz-schritt-ausgewichen`, wenn der Standardschritt nicht passte. */
-  readonly hinweis?: Befehlshinweis;
-}
 
 type OzArt = 'position' | 'gliederung';
 
@@ -153,20 +146,20 @@ function vorschlagIn(
  * Vorschlag für die OZ eines neuen Knotens der Art `art` am Ort `ort` (W-06): die App ruft ihn vor `PositionAnlegen` bzw.
  * `GliederungAnlegen` und gibt die OZ im Befehl mit (Befehle bleiben reine Daten). `null`: kein Platz, ein ungültiger Ort,
  * eine ungültige Maske, ein Elternknoten ohne lesbare OZ oder eine Stufe, die die Maske nicht hat.
+ *
+ * Seit Vertrag v1.5 (`OzVorschlagen`, D-80.1, D-95.3; Ticket 105) auch am Auftrags-LV: dieselbe Regel mit Maske und Baum des
+ * übergebenen Aggregats; Wurzel ist dessen eigene Kennung (eine andere Kennung als `elternId` ist ein unbekannter Ort).
  */
-export function ozVorschlag(
-  zustand: LvZustand,
-  ort: Einfuegeort,
-  art: 'position' | 'titel' | 'los',
-): OzVorschlag | null {
-  const lv = zustand.leistungsverzeichnis;
-  const idx = indexVon(lv.id, lv.knoten);
+export const ozVorschlag: OzVorschlagen = (zustand, ort, art) => {
+  const a =
+    'leistungsverzeichnis' in zustand ? zustand.leistungsverzeichnis : zustand.auftragsLeistungsverzeichnis;
+  const idx = indexVon(a.id, a.knoten);
   const ziel = ortAufloesen(idx, ort, new Set());
   if (!ziel.ok) return null;
-  const r = rahmen(lv.ozMaske, idx, ziel.wert.eltern, art);
+  const r = rahmen(a.ozMaske, idx, ziel.wert.eltern, art);
   if (r === null) return null;
   return vorschlagIn(r, idx.kinder.get(ziel.wert.eltern) ?? [], ziel.wert.index, new Set());
-}
+};
 
 /** Neue OZ der Wurzeln und ihrer Unterbäume (Kennung → OZ oder `null`) und die Hinweise der Vergabe. */
 export interface Neuvergabe {

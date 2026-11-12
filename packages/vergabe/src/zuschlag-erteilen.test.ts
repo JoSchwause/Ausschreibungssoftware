@@ -8,8 +8,10 @@ import type {
   AuftragsLeistungsverzeichnisAnlegen,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvChangeSet,
+  Bauteilzuordnung,
   Einheitspreis,
   Einheitspreisanteile,
+  IfcGlobalId,
   Knoten,
   LeistungsverzeichnisId,
   LvZustand,
@@ -665,5 +667,27 @@ describe('zuschlagsvorschau', () => {
       fehler: { code: 'ungueltige-eingabe', feld: 'gewaehlt', knotenId: 'b2' },
     });
     expect(v.wahlgruppen.map((g) => g.gewaehlt)).toEqual([null, 'b1', null]);
+  });
+});
+
+// Ticket 105 (Vertrag v1.6, D-52): Der Zuschlag übernimmt die Bauteilzuordnungen mit den Positionsdaten ins Auftrags-LV
+// (gemeinsame Positionsidentität); der Kern nimmt sie an, danach steht dieselbe Liste an derselben Position.
+describe('zuschlagErteilen: Bauteilzuordnungen (Ticket 105)', () => {
+  it('kommen mit der Position ins Auftrags-LV, unverändert und in derselben Reihenfolge', () => {
+    const bauteile: readonly Bauteilzuordnung[] = [
+      { globalId: '1Wand$Aussen_EG_000001' as IfcGlobalId, mengenart: 'NetVolume' },
+      { globalId: '0Decke_OG_____________' as IfcGlobalId, mengenart: 'Stueck' },
+    ];
+    const z = lv('lv-bauteile', [
+      titel('t1', 'lv-bauteile', 0),
+      { ...position('p1', 't1', 0, '2.000'), bauteile },
+      position('p2', 't1', 1, '3.000'),
+    ]);
+    const a = angebot('angebot-bauteile', z, 'bieter-1', [ep('p1', '10.000'), ep('p2', '5.000')]);
+    const { befehl } = erwarteOk(zuschlagErteilen(z, a, projekt(['bieter-1']), OHNE_WAHL, NEUE_ID));
+    const cs = imKern(befehl);
+    const nachher = cs.knoten.hinzugefuegt.filter((k) => k.art === 'position');
+    expect(nachher.find((k) => k.id === 'p1')).toMatchObject({ bauteile });
+    expect(nachher.find((k) => k.id === 'p2')).not.toHaveProperty('bauteile');
   });
 });
