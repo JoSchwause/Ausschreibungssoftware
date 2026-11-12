@@ -1,6 +1,6 @@
 # 107: X1a: `ifc` bildet auf `Bauwerksmodell` ab, Eigenschaften bei Bedarf, Budgets
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: X1a · Paket: `packages/ifc`
 Blocked by: 97, 98 (gleiches Paket), 99 (Fixtures)
@@ -171,3 +171,9 @@ hinzugefügt, entfernt und geändert (Felder, Mengen vorher/nachher) gleich `erw
 - **114 (App):** Im Worker `bauwerksmodellLesen` mit dem Kopf der App, danach `eigenschaftsindexBauen` aus denselben Bytes für
   die Eigenschaftsleiste (Bauen etwa so teuer wie das Lesen, Abfragen 0,05 ms); GlobalIds aus `ui-modell` mit
   `globalIdLesen` zur Marke machen. Die Befunde haben `quelle: 'ifc-lesen'` und, wo ein Objekt gemeint ist, `ort.globalId`.
+
+## Answer
+
+Gemergt mit `610fef5` (Branch `welle-6/107-ifc-modell`, `bee0321`). `bauwerksmodellLesen(bytes, kopf)` → `Bauwerksmodell` + Befunde
+(`ifc-lesen`), Eigenschaften bei Bedarf über einen Index, `globalIdLesen`; Ringe und doppelte GlobalIds mit Befund (D-107.6: Verweis auf
+ein späteres Duplikat entfällt mit Befund). 10.000 Bauteile: 1,78 s CPU (Budget 5 s).
