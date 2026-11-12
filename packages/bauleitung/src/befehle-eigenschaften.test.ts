@@ -112,10 +112,12 @@ const mangelBefehlGen: fc.Arbitrary<MangelBefehl> = fc.oneof(
       festgestellt,
       frist,
     })),
-  fc.tuple(statusGen, datumGen, textGen).map(([status, datum, bemerkung]): MangelBefehl => ({
-    art: 'MangelstatusSetzen',
-    eintrag: { status, datum, bemerkung },
-  })),
+  fc
+    .tuple(statusGen, datumGen, textGen, fc.option(datumGen, { nil: undefined }))
+    .map(([status, datum, bemerkung, frist]): MangelBefehl => ({
+      art: 'MangelstatusSetzen',
+      eintrag: frist === undefined ? { status, datum, bemerkung } : { status, datum, bemerkung, frist },
+    })),
   fc.constant<MangelBefehl>({ art: 'MangelLoeschen' }),
 );
 
@@ -135,7 +137,7 @@ describe('Eigenschaften der Mangelbefehle', () => {
     );
   });
 
-  it('ein angenommener Mangel hat einen Verlauf nach der Statustabelle, nicht fallend, ab der Feststellung; angelegt mit freier Nummer', () => {
+  it('ein angenommener Mangel hat einen Verlauf nach der Statustabelle, nicht fallend, ab der Feststellung, Frist nur bei angezeigt; angelegt mit freier Nummer', () => {
     fc.assert(
       fc.property(zustandGen, mangelBefehlGen, bestandGen, (zustand, befehl, bestand) => {
         const antwort = mangelBefehlAusfuehren(zustand, befehl, bestand);
@@ -145,6 +147,7 @@ describe('Eigenschaften der Mangelbefehle', () => {
         for (const e of m.verlauf) {
           expect(statuswechselZulaessig(vorher?.status ?? null, e.status)).toBe(true);
           expect(e.datum >= (vorher?.datum ?? m.festgestellt)).toBe(true);
+          if (e.frist !== undefined) expect(e.status).toBe('angezeigt');
           vorher = e;
         }
         // Die Nummer prüft nur das Anlegen; danach ist sie fest (der Bestand des Generators passt nicht zum Zustand).

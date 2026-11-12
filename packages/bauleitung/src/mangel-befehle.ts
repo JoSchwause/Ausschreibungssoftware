@@ -64,7 +64,8 @@ function angabenLesen(a: Mangelangaben): Mangelangaben | Abweisung {
 
 /**
  * Prüft einen Verlaufseintrag als Nachfolger von `vorheriger` (`null`: erster Eintrag) und gibt ihn in Speicherform zurück.
- * Reihenfolge: Form, dann Statuswechsel, dann Datum gegen den vorigen Eintrag.
+ * Reihenfolge: Form (die Frist der Mängelanzeige nur bei `angezeigt`, D-66), dann Statuswechsel, dann Datum gegen den vorigen
+ * Eintrag.
  */
 function eintragLesen(
   e: Mangelverlaufseintrag,
@@ -76,6 +77,10 @@ function eintragLesen(
     return nein('ungueltige-eingabe', `Kein Kalendertag: ${JSON.stringify(e.datum)}`, 'datum');
   const bemerkung = textOderNull(e.bemerkung);
   if (bemerkung === undefined) return nein('ungueltige-eingabe', 'Die Bemerkung ist kein Text', 'bemerkung');
+  if (e.frist !== undefined && e.status !== 'angezeigt')
+    return nein('ungueltige-eingabe', `Eine Frist gehört nur zu angezeigt, nicht zu ${e.status}`, 'frist');
+  if (e.frist !== undefined && !istKalendertag(e.frist))
+    return nein('ungueltige-eingabe', `Kein Kalendertag: ${JSON.stringify(e.frist)}`, 'frist');
   const von = vorheriger?.status ?? null;
   if (!statuswechselZulaessig(von, e.status))
     return nein(
@@ -91,7 +96,7 @@ function eintragLesen(
       `${e.datum} liegt vor dem vorigen Eintrag (${vorheriger.datum})`,
       'datum',
     );
-  // Weitere Felder des Eintrags bleiben (D-111.9: `frist?` kommt mit dem Nachtrag zu Ticket 97, D-66; Q5).
+  // Kopie statt Neubau: `frist` (D-66) und spätere additive Felder bleiben (D-111.9, Q5).
   return { ...e, bemerkung };
 }
 

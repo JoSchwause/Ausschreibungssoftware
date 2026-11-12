@@ -226,8 +226,7 @@ describe('MangelstatusSetzen (Statusverlauf)', () => {
     expect(fehler(setzen(abgenommen, 'abgenommen', '2026-11-24'))).toEqual(unzulaessig);
   });
 
-  it('übernimmt weitere Felder des Eintrags unverändert (die Frist der Mängelanzeige, D-66; Q5)', () => {
-    // `Mangelverlaufseintrag.frist?` kommt mit dem Nachtrag zu Ticket 97; bis dahin nur als zusätzliches Feld.
+  it('übernimmt die Frist der Mängelanzeige in den Eintrag (D-66)', () => {
     const eintrag = {
       status: 'angezeigt',
       datum: '2026-11-11',
@@ -236,6 +235,53 @@ describe('MangelstatusSetzen (Statusverlauf)', () => {
     } as const;
     const cs = wert(mangelBefehlAusfuehren(zustand(mangel(1)), { art: 'MangelstatusSetzen', eintrag }, []));
     expect(cs.mangel.nachher?.verlauf.at(-1)).toEqual(eintrag);
+  });
+
+  it('weist eine Frist im Eintrag ab, wenn der Status nicht angezeigt ist oder sie kein Kalendertag ist (D-66)', () => {
+    const beseitigt = mangel(1, {
+      verlauf: [
+        { status: 'offen', datum: '2026-11-10', bemerkung: null },
+        { status: 'angezeigt', datum: '2026-11-11', bemerkung: null, frist: '2026-11-20' },
+      ],
+    });
+    expect(
+      fehler(
+        mangelBefehlAusfuehren(
+          zustand(beseitigt),
+          {
+            art: 'MangelstatusSetzen',
+            eintrag: { status: 'beseitigt', datum: '2026-11-19', bemerkung: null, frist: '2026-11-30' },
+          },
+          [],
+        ),
+      ),
+    ).toEqual({ code: 'ungueltige-eingabe', feld: 'frist' });
+    expect(
+      fehler(
+        mangelBefehlAusfuehren(
+          zustand(mangel(2)),
+          {
+            art: 'MangelstatusSetzen',
+            eintrag: { status: 'angezeigt', datum: '2026-11-11', bemerkung: null, frist: '20.11.2026' },
+          },
+          [],
+        ),
+      ),
+    ).toEqual({ code: 'ungueltige-eingabe', feld: 'frist' });
+    expect(
+      fehler(
+        mangelBefehlAusfuehren(
+          null,
+          {
+            art: 'MangelAnlegen',
+            mangel: mangel(3, {
+              verlauf: [{ status: 'offen', datum: '2026-11-10', bemerkung: null, frist: '2026-11-20' }],
+            }),
+          },
+          [],
+        ),
+      ),
+    ).toEqual({ code: 'ungueltige-eingabe', feld: 'frist' });
   });
 
   it('weist ein Datum vor dem letzten Eintrag ab; derselbe Tag ist zulässig', () => {

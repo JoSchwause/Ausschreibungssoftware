@@ -524,7 +524,7 @@ Die Prüfung der Mängel eines Projekts zu einem Stichtag, den die App übergibt
 Der Tag, bis zu dem der Auftragnehmer einen Mangel beseitigen soll; ohne Frist ist ein Mangel nie überfällig. Am Tag der Frist selbst ist er noch nicht überfällig, erst am Tag danach. Eine neue Frist (etwa nach abgelehnter Nachbesserung) ersetzt die alte. Im Code `Mangel.frist`.
 
 ### Mängelanzeige
-Die Mitteilung eines Mangels an den Auftragnehmer mit der Aufforderung, ihn bis zu einer Frist zu beseitigen. Im Mängelverlauf der Wechsel von **offen** zu **angezeigt**; die Frist setzt die App im selben Undo-Schritt in die Angaben des Mangels. Im Code `MangelstatusSetzen` mit Status `angezeigt`.
+Die Mitteilung eines Mangels an den Auftragnehmer mit der Aufforderung, ihn bis zu einer Frist zu beseitigen. Im Mängelverlauf der Wechsel von **offen** zu **angezeigt**; der Eintrag trägt die Frist dieser Anzeige, und die App setzt sie im selben Undo-Schritt als geltende Frist in die Angaben des Mangels. Im Code `MangelstatusSetzen` mit Status `angezeigt` und `Mangelverlaufseintrag.frist`.
 
 ### Stichtag
 Der Tag, zu dem die Fristprüfung und die Mängelauswertung rechnen. Die App übergibt ihn (in der Regel das heutige Datum); das Paket `bauleitung` liest keine Uhr (A2).
