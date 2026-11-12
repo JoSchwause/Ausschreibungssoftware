@@ -61,7 +61,7 @@ Je Punkt ein Commit, test-first: `2466071` (Fehlercode), `cc51f19` (OZ-Vorschlag
    das Beispiel `beispielOzVorschlagAuftragsLv` des Vertrags, `typisch` als Auftrags-LV (dieselben Sollwerte wie im LV), eine
    fremde Wurzel → `null`. Nebenbei (wie D-95 bittet) der veraltete Kommentar zu Typfrage 8 in `rechnung-pruefen.ts`.
 3. **`BauteileZuordnen` (D-52, D-97.7).** Neu `bauteile.ts` (`bauteileWechsel`, geteilt von LV und Auftrags-LV wie bei der
-   Kostengruppe); Form, Gleichheit und Normalform in `positionsfelder.ts` (`GLOBAL_ID_FORM`, `bauteileFehler`, `bauteileGleich`,
+   Kostengruppe); Form, Gleichheit und Normalform in `positionsfelder.ts` (`bauteileFehler` mit `IFC_GLOBALID_MUSTER` aus dem Vertrag, `bauteileGleich`,
    `positionMitBauteilen`); `positionNormal` lässt `[]` weg; `positionsdatenFehler` prüft `bauteile` (damit alle Anlegebefehle:
    `PositionAnlegen`, LV und Auftrags-LV anlegen, `KnotenEinfuegen`, `NachtragUebernehmen`). `kopieBauen(…, optionen?)` mit
    `KopieOptionen { bauteile?: 'verwerfen' | 'behalten' }`, Vorgabe `verwerfen` (D-66 MUST 2). Alle v1.6-Marker in `kern` sind
@@ -86,9 +86,8 @@ Je Punkt ein Commit, test-first: `2466071` (Fehlercode), `cc51f19` (OZ-Vorschlag
   Auftrags-LV): **`null`** wie jeder unbekannte Ort. Grund: Lesart an `OzVorschlagen` („wird nie umgedeutet“).
 - **D-105.3** Wo prüft der Kern die Form der Zuordnungen? **An einer Stelle (`bauteileFehler`), aufgerufen von
   `BauteileZuordnen` und `positionsdatenFehler`.** Damit prüfen alle Anlegebefehle gleich (Lesart an `Positionsdaten.bauteile`),
-  und `PositionsmerkmaleSetzen`, das die ganze Position prüft, auch. Die GlobalId-Form ist eine eigene kleine Regel
-  (`GLOBAL_ID_FORM`), weil der Kern `ifc` nicht importiert (A3, wie `KOSTENGRUPPE_FORM`). Bringt der Vertrag ein Muster
-  (D-66 SHOULD 7, `IFC_GLOBALID_MUSTER`), nimmt der Kern dieses.
+  und `PositionsmerkmaleSetzen`, das die ganze Position prüft, auch. Die GlobalId-Form ist `IFC_GLOBALID_MUSTER` aus dem
+  Vertrag (Nachtrag Review D-66, nach dem Merge übernommen statt einer eigenen Kopie im Kern).
 - **D-105.4** Wann ist eine Liste „derselbe Wert“? **Gleiche Paare in gleicher Reihenfolge**; `null`, `[]` und fehlend sind
   gleich. Eine neue Reihenfolge ist eine Änderung (ChangeSet), weil `bim` die Ansatzzeilen in dieser Reihenfolge baut (D-53).
 - **D-105.5** Doppelt ist nur **dasselbe Paar**: dieselbe GlobalId mit zwei Mengenarten (auch `Stueck` neben `NetVolume`) und

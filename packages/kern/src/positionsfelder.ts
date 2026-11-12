@@ -5,6 +5,7 @@
 // (`positionNormal`), die Kopierhilfe und die Befehle (`KostengruppeSetzen`, `TextquelleSetzen`, `BauteileZuordnen`) fragen
 // hier.
 
+import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
 import type { Bauteilzuordnung, Position } from '@tethys/vertrag';
 
 /**
@@ -43,15 +44,9 @@ export function positionMitTextquelle(p: Position): Position {
 }
 
 /**
- * Form einer GlobalId (Vertrag `IfcGlobalId`, Glossar „GlobalId“): genau 22 Zeichen aus dem IFC-Base64-Alphabet `0-9`, `A-Z`,
- * `a-z`, `_`, `$`. Eine eigene kleine Prüfung, weil der Kern `ifc` nicht importiert (A3); der Kern prüft nach, weil Befehle
- * und Knoten auch aus Protokoll und Datei kommen. Gegen ein Modell prüft er nie (D-52).
- */
-export const GLOBAL_ID_FORM = /^[0-9A-Za-z_$]{22}$/;
-
-/**
  * Formfehler einer Liste von Bauteilzuordnungen als Meldung, sonst `null` (Vertrag `BauteileZuordnen`, D-97.7): eine Liste
- * von Objekten, je GlobalId in Form (`GLOBAL_ID_FORM`) und Mengenart als nicht leerer Text (Leerraum bleibt Text, U5), kein
+ * von Objekten, je GlobalId in Form (`IFC_GLOBALID_MUSTER` des Vertrags, D-66; gegen
+ * ein Modell prüft der Kern nie, A3) und Mengenart als nicht leerer Text (Leerraum bleibt Text, U5), kein
  * Paar aus GlobalId und Mengenart zweimal. `[]` ist in Form (die Normalform lässt es weg).
  */
 export function bauteileFehler(wert: unknown): string | null {
@@ -61,7 +56,7 @@ export function bauteileFehler(wert: unknown): string | null {
     if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
       return 'Eine Bauteilzuordnung ist ein Objekt mit GlobalId und Mengenart.';
     const b = roh as Partial<Record<keyof Bauteilzuordnung, unknown>>;
-    if (typeof b.globalId !== 'string' || !GLOBAL_ID_FORM.test(b.globalId))
+    if (typeof b.globalId !== 'string' || !IFC_GLOBALID_MUSTER.test(b.globalId))
       return 'Die GlobalId einer Bauteilzuordnung hat 22 Zeichen aus 0-9, A-Z, a-z, _ und $ (Glossar „GlobalId“).';
     if (typeof b.mengenart !== 'string' || b.mengenart === '')
       return 'Die Mengenart einer Bauteilzuordnung ist ein nicht leerer Text.';
