@@ -39,11 +39,21 @@ export function auswahlDerZeile(baum: Modellbaum, zeilenId: string): string[] {
   return [...aus];
 }
 
-/** Das Grid meldet eine neue aktive Zeile (`onZeileAktiv`). Die erste Meldung nach dem Laden wählt nichts (D-114.4). */
-export function beiZeileAktiv(stand: Auswahlstand, baum: Modellbaum, zeilenId: string | null): Auswahlstand {
+/**
+ * Das Grid meldet eine neue aktive Zeile (`onZeileAktiv`). Die erste Meldung nach dem Laden wählt nichts (D-114.4).
+ * `hinzufuegen` (Strg/Cmd beim Klick, Ticket 115): die Bauteile der Zeile ergänzen die Auswahl.
+ */
+export function beiZeileAktiv(
+  stand: Auswahlstand,
+  baum: Modellbaum,
+  zeilenId: string | null,
+  hinzufuegen = false,
+): Auswahlstand {
   if (stand.aktiveZeile === undefined || zeilenId === null || zeilenId === stand.erwartet)
     return { ...stand, aktiveZeile: zeilenId, erwartet: null };
-  return { ...stand, aktiveZeile: zeilenId, erwartet: null, auswahl: auswahlDerZeile(baum, zeilenId) };
+  const neu = auswahlDerZeile(baum, zeilenId);
+  const auswahl = hinzufuegen ? [...new Set([...stand.auswahl, ...neu])] : neu;
+  return { ...stand, aktiveZeile: zeilenId, erwartet: null, auswahl };
 }
 
 /** Klick in der 3D-Ansicht: `[]` ist ein Klick ins Leere; `hinzufuegen` bei Strg/Cmd. */
