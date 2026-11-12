@@ -1,6 +1,6 @@
 # 106: Speicher v1.5/v1.6: Migration 6, Modelldateien, neue Aggregate
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: S · Paket: `packages/speicher`
 Blocked by: 94 (gleiches Paket), 97 (und damit 95)
