@@ -2344,7 +2344,7 @@ function terminplanNachrechnen(plan) {
   };
   for (const v of blaetter) if (termine.get(v.id).kritisch && a.get(v.id) === 0) weiter([v]);
   const art = (v) => (kinder.has(v.id) ? 'sammelvorgang' : v.dauer === 0 ? 'meilenstein' : 'vorgang');
-  const vorgaenge = plan.vorgaenge.map((v) => ({ id: v.id, art: art(v), termine: huelle(v) }));
+  const vorgaenge = plan.vorgaenge.map((v) => ({ vorgangId: v.id, art: art(v), termine: huelle(v) }));
   return {
     ergebnis: {
       projektbeginn: tag(0),
@@ -2424,7 +2424,7 @@ test('bauzeit: Sollwerte gleich der eigenen Terminrechnung (Ticket 112, BAUZEIT_
   );
   // Feiertag und Wochenende auf dem kritischen Weg: freie Tage zwischen seinen Terminen
   const arbeitstage = new Set(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map(tagText));
-  const imWeg = fx.sollwerte.kritischeWege[0].map((id) => fx.sollwerte.vorgaenge.find((v) => v.id === id).termine);
+  const imWeg = fx.sollwerte.kritischeWege[0].map((id) => fx.sollwerte.vorgaenge.find((v) => v.vorgangId === id).termine);
   const freiImWeg = [];
   for (let n = tagAus(imWeg[0].beginn); n <= tagAus(imWeg[imWeg.length - 1].ende); n += 1) {
     if (!arbeitstage.has(tagText(n))) freiImWeg.push(tagText(n));

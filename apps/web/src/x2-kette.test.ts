@@ -59,7 +59,11 @@ const fx = JSON.parse(readFileSync(new URL('../../../fixtures/bauzeit.json', imp
   readonly sollwerte: {
     readonly projektbeginn: string;
     readonly projektende: string;
-    readonly vorgaenge: readonly { readonly id: string; readonly art: string; readonly termine: FxTermine }[];
+    readonly vorgaenge: readonly {
+      readonly vorgangId: string;
+      readonly art: string;
+      readonly termine: FxTermine;
+    }[];
     readonly kritischeWege: readonly (readonly string[])[];
     readonly befunde: readonly unknown[];
   };
@@ -132,7 +136,9 @@ describe('Tor X2: Bauzeitenplan aus der Fixture über die Wege der App', () => {
     expect(e.projektende).toBe(s.projektende);
     expect(
       e.vorgaenge.map((r) => ({ nummer: nummer.get(r.vorgangId), art: r.art, termine: r.termine })),
-    ).toEqual(s.vorgaenge.map((r) => ({ nummer: nummerVonFx.get(r.id), art: r.art, termine: r.termine })));
+    ).toEqual(
+      s.vorgaenge.map((r) => ({ nummer: nummerVonFx.get(r.vorgangId), art: r.art, termine: r.termine })),
+    );
     expect(e.kritischeWege.map((w) => w.map((id) => nummer.get(id)))).toEqual(
       s.kritischeWege.map((w) => w.map((id) => nummerVonFx.get(id))),
     );

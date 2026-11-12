@@ -410,7 +410,7 @@ streng wie die Hausdateien.
 
 `bauzeit.json` trägt einen Plan in der Form `Bauzeitenplaneingabe` des Pakets `bauzeit` (dazu `id`, `projektId`, `name` und
 je Vorgang `bezug: null` aus dem geplanten Vertragstyp `Bauzeitenplan` v1.6) und die Sollwerte in der Form
-`Bauzeitenplanergebnis` (je Vorgang `id`, `art`, `termine`; v1.6 nennt die Kennung `vorgangId`, Ticket 109 bildet ab). Die
+`Bauzeitenplanergebnis` des Vertrags v1.6 (je Vorgang `vorgangId`, `art`, `termine`; bis Ticket 122 hieß der Schlüssel `id`). Die
 Lesarten sind die von `BAUZEIT_ANNAHMEN` (Ticket 102, D-102.2, D-63): Ende ist der letzte Arbeitstag einschließlich,
 Ende-Anfang 0 heißt Beginn am nächsten Arbeitstag, ein Meilenstein liegt am Anfang seines Tages und sein Nachfolger mit
 Ende-Anfang 0 beginnt am selben Tag. Kalender: Sachsen (`SN`), Montag bis Freitag; der Buß- und Bettag (Mi 18.11.2026, nur

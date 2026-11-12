@@ -111,42 +111,42 @@
     "projektende": "2026-11-24",
     "vorgaenge": [
       {
-        "id": "019b7a12-b000-7000-8000-000000000011",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000011",
         "art": "sammelvorgang",
         "termine": { "beginn": "2026-11-02", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-02", "spaetestesEnde": "2026-11-13", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000012",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000012",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-02", "ende": "2026-11-05", "spaetesterBeginn": "2026-11-02", "spaetestesEnde": "2026-11-05", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000013",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000013",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-04", "ende": "2026-11-09", "spaetesterBeginn": "2026-11-04", "spaetestesEnde": "2026-11-09", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000014",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000014",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-09", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-09", "spaetestesEnde": "2026-11-13", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000015",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000015",
         "art": "meilenstein",
         "termine": { "beginn": "2026-11-16", "ende": "2026-11-16", "spaetesterBeginn": "2026-11-16", "spaetestesEnde": "2026-11-16", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000016",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000016",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-16", "ende": "2026-11-24", "spaetesterBeginn": "2026-11-16", "spaetestesEnde": "2026-11-24", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000017",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000017",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-12", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-19", "spaetestesEnde": "2026-11-20", "gesamtpuffer": 4, "freierPuffer": 0, "kritisch": false }
       },
       {
-        "id": "019b7a12-b000-7000-8000-000000000018",
+        "vorgangId": "019b7a12-b000-7000-8000-000000000018",
         "art": "vorgang",
         "termine": { "beginn": "2026-11-13", "ende": "2026-11-17", "spaetesterBeginn": "2026-11-20", "spaetestesEnde": "2026-11-24", "gesamtpuffer": 4, "freierPuffer": 4, "kritisch": false }
       }
