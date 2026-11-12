@@ -112,7 +112,8 @@ export function formularAus(o: Honorarobjekt, vorschlagKostenermittlung = ''): O
     kostenermittlungId: a.art === 'kostenermittlung' ? a.kostenermittlungId : vorschlagKostenermittlung,
     technischeAnlagenAnteilig: a.art === 'kostenermittlung' ? a.technischeAnlagenAnteilig : true,
     weitereKosten: a.art === 'kostenermittlung' ? formatiereBetragDe(a.weitereKosten) : NULL_BETRAG_DE,
-    bausubstanz: a.art === 'kostenermittlung' ? formatiereBetragDe(a.mitzuverarbeitendeBausubstanz) : NULL_BETRAG_DE,
+    bausubstanz:
+      a.art === 'kostenermittlung' ? formatiereBetragDe(a.mitzuverarbeitendeBausubstanz) : NULL_BETRAG_DE,
     phasen: phasenDes(o.leistungsbild).map((p) => {
       const g = gewaehlt.get(p.nummer);
       return {
@@ -123,7 +124,9 @@ export function formularAus(o: Honorarobjekt, vorschlagKostenermittlung = ''): O
     }),
     umbau: o.umbauzuschlagssatz !== null,
     umbauzuschlagssatz:
-      o.umbauzuschlagssatz === null ? formatiereProzentDe(UMBAUZUSCHLAG_VORSCHLAG as Prozent) : formatiereProzentDe(o.umbauzuschlagssatz),
+      o.umbauzuschlagssatz === null
+        ? formatiereProzentDe(UMBAUZUSCHLAG_VORSCHLAG as Prozent)
+        : formatiereProzentDe(o.umbauzuschlagssatz),
   };
 }
 
@@ -140,7 +143,8 @@ function lesen<A extends 'betrag' | 'prozent'>(
 
 /** Das gespeicherte Objekt aus dem Formular; der erste unlesbare Wert ist ein Feldfehler. */
 export function objektAus(f: ObjektFormular): Ergebnis<Honorarobjekt, Feldfehler> {
-  if (f.bezeichnung.trim() === '') return { ok: false, fehler: { feld: 'bezeichnung', meldung: texte.fehler.bezeichnung } };
+  if (f.bezeichnung.trim() === '')
+    return { ok: false, fehler: { feld: 'bezeichnung', meldung: texte.fehler.bezeichnung } };
   const satz = lesen('prozent', 'honorarsatz', f.honorarsatz);
   if (!satz.ok) return satz;
 
@@ -211,7 +215,9 @@ export function leistungsbildWechseln(f: ObjektFormular, neu: Leistungsbild): Ob
     ...f,
     leistungsbild: neu,
     honorarzone: zonen.includes(f.honorarzone) ? f.honorarzone : (zonen[zonen.length - 1] ?? f.honorarzone),
-    phasen: lbDaten.leistungsphasen.map((p) => alt.get(p.nummer) ?? { nummer: p.nummer, beauftragt: true, anteil: '' }),
+    phasen: lbDaten.leistungsphasen.map(
+      (p) => alt.get(p.nummer) ?? { nummer: p.nummer, beauftragt: true, anteil: '' },
+    ),
     // § 33 gilt nur für Gebäude und Innenräume: sonst von Hand
     kostenart: lbDaten.kostenNachDin276 ? f.kostenart : 'betrag',
   };

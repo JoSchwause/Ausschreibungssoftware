@@ -103,7 +103,12 @@ export const texte = {
     phasen: 'Leistungsphasen',
     phaseBeauftragt: (nummer: number) => `Leistungsphase ${String(nummer)} beauftragt`,
     phaseAnteil: (nummer: number) => `Anteil Leistungsphase ${String(nummer)} (%)`,
-    phasenKopf: { beauftragt: 'Beauftragt', phase: 'Leistungsphase', standard: 'Satz der HOAI', anteil: 'Anteil (%)' },
+    phasenKopf: {
+      beauftragt: 'Beauftragt',
+      phase: 'Leistungsphase',
+      standard: 'Satz der HOAI',
+      anteil: 'Anteil (%)',
+    },
     umbau: 'Umbau (Umbauzuschlag nach § 6 Abs. 2)',
     umbauSatz: 'Umbauzuschlag (% des Grundhonorars)',
     umbauHinweis: 'Vorschlag 20 %',

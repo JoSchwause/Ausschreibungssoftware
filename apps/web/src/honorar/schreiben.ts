@@ -46,7 +46,9 @@ export function honorarberechnungSitzung(
   projektId: ProjektId,
   zustand: HonorarberechnungZustand | null,
 ): HonorarberechnungSitzung {
-  return new Sitzung(befehlswegFuer(u), zustand, (z, b) => honorarberechnungBefehlAnwenden(u, projektId, z, b));
+  return new Sitzung(befehlswegFuer(u), zustand, (z, b) =>
+    honorarberechnungBefehlAnwenden(u, projektId, z, b),
+  );
 }
 
 /** Die Honorarberechnungen des Projekts ganz geladen, in der Reihenfolge der Liste (Name, dann Kennung). */
@@ -93,6 +95,13 @@ export function honorarberechnungNeu(
 ): HonorarberechnungBefehl {
   return {
     art: 'HonorarberechnungAnlegen',
-    honorarberechnung: { id: ids.honorarberechnung(), projektId, name: name.trim(), objekte, nebenkosten, mwstSatz },
+    honorarberechnung: {
+      id: ids.honorarberechnung(),
+      projektId,
+      name: name.trim(),
+      objekte,
+      nebenkosten,
+      mwstSatz,
+    },
   };
 }

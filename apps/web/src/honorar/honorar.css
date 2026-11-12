@@ -1,0 +1,101 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Honorarseiten (Ticket 119). Nur Tokens (U4). */
+
+.honorar h2 {
+  margin: var(--tx-space-6) 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-lg);
+}
+
+.honorar h3 {
+  margin: var(--tx-space-4) 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-md, 1rem);
+}
+
+.honorar__formular {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--tx-space-4);
+  margin: var(--tx-space-3) 0;
+}
+
+.honorar__formular > .tx-button {
+  margin-top: 20px;
+}
+
+.honorar__objekt {
+  max-width: 1100px;
+  margin: var(--tx-space-4) 0;
+  padding: var(--tx-space-4);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-raised);
+}
+
+.honorar__objekt > h3:first-child {
+  margin-top: 0;
+}
+
+.honorar__schalter {
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+  margin: var(--tx-space-2) 0;
+}
+
+.honorar__tabelle {
+  border-collapse: collapse;
+  margin: var(--tx-space-2) 0 var(--tx-space-4);
+  min-width: 480px;
+}
+
+.honorar__tabelle th,
+.honorar__tabelle td {
+  padding: var(--tx-space-1) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.honorar__tabelle thead th {
+  color: var(--tx-color-text-muted);
+  font-weight: var(--tx-weight-medium);
+}
+
+.honorar__tabelle td.honorar__zahl,
+.honorar__tabelle th.honorar__zahl {
+  text-align: right;
+  font-family: var(--tx-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.honorar__tabelle tr.honorar__summe th,
+.honorar__tabelle tr.honorar__summe td {
+  font-weight: var(--tx-weight-medium);
+  border-top: 1px solid var(--tx-color-border-strong);
+}
+
+.honorar__phasen td .tx-feld {
+  margin: 0;
+}
+
+.honorar__befunde {
+  margin: 0;
+  padding-left: var(--tx-space-5);
+}
+
+.honorar__befund--fehler {
+  color: var(--tx-color-danger);
+}
+
+.honorar__befund--warnung {
+  color: var(--tx-color-warning);
+}
+
+.honorar__hinweis {
+  max-width: 72ch;
+  padding: var(--tx-space-3);
+  border-left: 3px solid var(--tx-color-border-strong);
+  background: var(--tx-color-surface-raised);
+}

@@ -173,7 +173,9 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
     const a = await aufbau();
     await berechnungAnlegen(a);
     const { berechnungen, kostenermittlungen } = await neuGeladen(a);
-    const ansicht = ergebnisAnsicht(ergebnisBerechnen(berechnungen[0] as Honorarberechnung, kostenermittlungen));
+    const ansicht = ergebnisAnsicht(
+      ergebnisBerechnen(berechnungen[0] as Honorarberechnung, kostenermittlungen),
+    );
     const o = ansicht.objekte[0];
     expect(o?.herleitung?.map((z) => z.wert)).toEqual([
       '1.011.111,10 €',
@@ -253,7 +255,9 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
     const { berechnungen, kostenermittlungen } = await neuGeladen(a);
     const anschlag = kostenermittlungen.map((k) => ({ ...k, stufe: 'kostenanschlag' as const }));
     const e = ergebnisBerechnen(berechnungen[0] as Honorarberechnung, anschlag);
-    expect(e.befunde.map((b) => [b.code, b.schwere])).toEqual([['kostenermittlungsstufe-abweichend', 'warnung']]);
+    expect(e.befunde.map((b) => [b.code, b.schwere])).toEqual([
+      ['kostenermittlungsstufe-abweichend', 'warnung'],
+    ]);
     expect(e.brutto).toBe(SOLL.brutto);
   });
 
@@ -262,7 +266,9 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
     await berechnungAnlegen(a);
     const z = await a.speicher.kostenermittlungen.laden(a.kostenermittlungId);
     if (!z.ok) throw new Error('laden');
-    const r = await kostenermittlungSitzung(a.u, a.projekt.id, z.wert).befehl({ art: 'KostenermittlungLoeschen' });
+    const r = await kostenermittlungSitzung(a.u, a.projekt.id, z.wert).befehl({
+      art: 'KostenermittlungLoeschen',
+    });
     expect(r.ok).toBe(false);
     expect((await neuGeladen(a)).kostenermittlungen).toHaveLength(1);
   });
@@ -275,10 +281,22 @@ describe('Tor X3: Honorarberechnung aus der Kostenberechnung', () => {
     const ergebnis = ergebnisBerechnen(berechnung, kostenermittlungen);
     const ausgabe = await import('@tethys/ausgabe');
     expect(DIN276_HINWEIS).toBe(ausgabe.DIN276_HINWEIS);
-    const bytes = await ausgabe.erzeugeHonorarPdf({ berechnung, ergebnis, projekt: 'Bürogebäude' }, schriften());
+    const bytes = await ausgabe.erzeugeHonorarPdf(
+      { berechnung, ergebnis, projekt: 'Bürogebäude' },
+      schriften(),
+    );
     expect(Buffer.from(bytes.subarray(0, 4)).toString('latin1')).toBe('%PDF');
     const text = alsText(await liesPdf(bytes)).replace(/\s+/g, ' ');
-    for (const s of ['267.595,90', '224.870,50', '1.373.618,34', '172.149,65', '172.149,66', '43.037,42', '9.683,42', '42.725,40']) {
+    for (const s of [
+      '267.595,90',
+      '224.870,50',
+      '1.373.618,34',
+      '172.149,65',
+      '172.149,66',
+      '43.037,42',
+      '9.683,42',
+      '42.725,40',
+    ]) {
       expect(text).toContain(s);
     }
     expect(text).toContain('DIN 276:2008-12');

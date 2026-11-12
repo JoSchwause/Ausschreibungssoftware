@@ -13,6 +13,10 @@ import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
+import { HonorarListeSeite } from './honorar/HonorarListeSeite'; // Ticket 119
+import { HonorarSeite } from './honorar/HonorarSeite'; // Ticket 119
+import { honorarRoute } from './honorar/pfad'; // Ticket 119
+import { texte as honorarTexte } from './honorar/texte'; // Ticket 119
 import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
 import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
 import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 89
@@ -115,6 +119,17 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
       );
     return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 119: Honorarberechnungen eines Projekts (Liste und Berechnung)
+  const honorar = honorarRoute(pfad);
+  if (honorar !== null) {
+    const seite =
+      honorar.art === 'liste' ? (
+        <HonorarListeSeite key={honorar.projektId} projektId={honorar.projektId} gehe={gehe} />
+      ) : (
+        <HonorarSeite key={honorar.id} projektId={honorar.projektId} id={honorar.id} gehe={gehe} />
+      );
+    return { titel: honorarTexte.projekt.honorar, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {
