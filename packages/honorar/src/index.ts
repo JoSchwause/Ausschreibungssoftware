@@ -3,5 +3,10 @@
 // Rein (A2); importiert nur `vertrag` und `dezimal` (A3).
 
 export type { Honorarspanne, Honorartafel, Honorarzone, Quelle, Tafelzeile } from './honorartafeln';
-export type { Leistungsbild, Leistungsbilddaten } from './leistungsbilder';
+export type {
+  Leistungsbild,
+  Leistungsbilddaten,
+  Leistungsphase,
+  Leistungsphasennummer,
+} from './leistungsbilder';
 export { LEISTUNGSBILDER } from './leistungsbilder';
