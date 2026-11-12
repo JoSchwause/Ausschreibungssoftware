@@ -139,7 +139,7 @@ describe('Werte eines Vorgangs', () => {
     expect([beginn(e, 'b'), beginn(e, 'c')]).toEqual(['2027-01-04', '2027-01-04']);
     expect(codes(e)).toEqual([
       ['abstand-ungueltig', 'b', 'a'],
-      ['beziehungsart-unbekannt', 'c', 'a'],
+      ['anordnungsart-unbekannt', 'c', 'a'],
     ]);
   });
 
@@ -150,12 +150,17 @@ describe('Werte eines Vorgangs', () => {
   });
 
   it('Ist-Termine verschieben nichts; Unstimmiges ist ein Befund', () => {
-    const ist = (beginnText: string | null, ende: string | null, fortschritt: string): Partial<Vorgang> => ({
-      ist: { beginn: beginnText, ende, fortschritt: fortschritt as Prozent },
+    const ist = (
+      beginnText: string | null,
+      ende: string | null,
+      fortschritt: string | null,
+    ): Partial<Vorgang> => ({
+      ist: { beginn: beginnText, ende, fortschritt: fortschritt as Prozent | null },
     });
     const e = bauzeitenplanBerechnen(
       plan([
         vorgang('a', 2, [], ist('2027-01-11', null, '40.00')),
+        vorgang('g', 2, [], ist('2027-01-04', null, null)), // begonnen, Fortschritt nicht erfasst: stimmig
         vorgang('b', 2, [], ist('2027-01-32', null, '0.00')),
         vorgang('c', 2, [], ist('2027-01-08', '2027-01-05', '100.00')),
         vorgang('d', 2, [], ist(null, null, '100.01')),

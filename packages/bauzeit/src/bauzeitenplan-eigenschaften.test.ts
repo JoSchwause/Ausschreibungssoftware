@@ -10,7 +10,7 @@ import type {
   Arbeitskalender,
   Bauzeitenplaneingabe,
   Bauzeitenplanergebnis,
-  Beziehungsart,
+  Anordnungsart,
   Bundesland,
   Vorgang,
   Vorgangstermine,
@@ -24,9 +24,9 @@ const tagnr = (text: string): number => {
   return Date.UTC(j, m - 1, t) / MS_JE_TAG;
 };
 const text = (tag: number): string => new Date(tag * MS_JE_TAG).toISOString().slice(0, 10);
-const ARTEN: readonly Beziehungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
-const vomEnde = (art: Beziehungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
-const zumEnde = (art: Beziehungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
+const ARTEN: readonly Anordnungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
+const vomEnde = (art: Anordnungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
+const zumEnde = (art: Anordnungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
 
 /** Arbeitstag-Prüfung des Orakels: Wochentag aus `Date`, freie Tage, Feiertage des Landes. */
 function arbeitstagOrakel(k: Arbeitskalender): (tag: number) => boolean {
@@ -67,7 +67,7 @@ interface Entwurf {
   readonly dauer: number;
   readonly vorgaenger: readonly {
     readonly von: number;
-    readonly art: Beziehungsart;
+    readonly art: Anordnungsart;
     readonly abstand: number;
   }[];
   readonly vorgabe: number | null; // Tage nach dem Projektbeginn

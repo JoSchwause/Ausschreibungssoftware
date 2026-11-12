@@ -15,7 +15,7 @@ export type {
   Bauzeitbefundcode,
   Bauzeitenplaneingabe,
   Bauzeitenplanergebnis,
-  Beziehungsart,
+  Anordnungsart,
   Isttermine,
   Vorgang,
   VorgangId,

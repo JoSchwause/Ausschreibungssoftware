@@ -21,12 +21,12 @@ import { Tageskalender } from './kalender';
 /** Kennung eines Vorgangs, eindeutig im Plan (A7; die Vertragstypen bringt Ticket 97). */
 export type VorgangId = string;
 
-export type Beziehungsart = 'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende';
+export type Anordnungsart = 'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende';
 
 /** Abhängigkeit vom Vorgänger (Glossar „Anordnungsbeziehung“). */
 export interface Anordnungsbeziehung {
   readonly vorgaengerId: VorgangId;
-  readonly art: Beziehungsart;
+  readonly art: Anordnungsart;
   /** Ganze Arbeitstage, auch 0 oder negativ (Überlappung). */
   readonly abstand: number;
 }
@@ -35,14 +35,15 @@ export interface Anordnungsbeziehung {
 export interface Isttermine {
   readonly beginn: string | null;
   readonly ende: string | null;
-  /** Fortschritt in Prozent, `0.00` bis `100.00` (N1). */
-  readonly fortschritt: Prozent;
+  /** Fortschritt in Prozent, `0.00` bis `100.00` (N1); `null` = nicht erfasst. */
+  readonly fortschritt: Prozent | null;
 }
 
 /** Eingabe eines Vorgangs, ungeprüft (Glossar „Vorgang“). */
 export interface Vorgang {
   readonly id: VorgangId;
-  readonly nummer?: string;
+  /** Anzeige, rechnet nicht mit; fehlt oder `null` = keine (v1.6 plant `string | null`). */
+  readonly nummer?: string | null;
   readonly bezeichnung: string;
   /** Sammelvorgang, unter dem der Vorgang steht; `null` = oberste Ebene. */
   readonly elternId: VorgangId | null;
@@ -99,7 +100,7 @@ export type Bauzeitbefundcode =
   | 'terminvorgabe-an-sammelvorgang' // übergangen (v1)
   | 'ist-ungueltig' // nur gemeldet; Ist-Termine verschieben nichts
   | 'vorgaenger-unbekannt' // Beziehung übergangen
-  | 'beziehungsart-unbekannt' // Beziehung übergangen
+  | 'anordnungsart-unbekannt' // Beziehung übergangen
   | 'abstand-ungueltig' // Beziehung übergangen
   | 'beziehung-an-sammelvorgang' // Beziehung übergangen (v1)
   | 'zyklus' // die Beteiligten bleiben ohne Termine
@@ -185,12 +186,12 @@ class Arbeitstagefolge {
 interface Kante {
   readonly von: number;
   readonly nach: number;
-  readonly art: Beziehungsart;
+  readonly art: Anordnungsart;
   readonly abstand: number;
 }
 
-const vomEnde = (art: Beziehungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
-const zumEnde = (art: Beziehungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
+const vomEnde = (art: Anordnungsart): boolean => art === 'ende-anfang' || art === 'ende-ende';
+const zumEnde = (art: Anordnungsart): boolean => art === 'ende-ende' || art === 'anfang-ende';
 
 function befund(
   code: Bauzeitbefundcode,
@@ -202,7 +203,7 @@ function befund(
   return { code, vorgangId, vorgaengerId, beteiligte, meldung };
 }
 
-const BEZIEHUNGSARTEN: readonly Beziehungsart[] = [
+const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
   'ende-anfang',
   'anfang-anfang',
   'ende-ende',
@@ -229,6 +230,7 @@ function istPruefen(ist: Isttermine): string | null {
   // Hier sind beide, wenn vorhanden, gültig gelesen.
   if (beginn?.ok === true && ende?.ok === true && ende.wert < beginn.wert)
     return 'Ist-Ende liegt vor dem Ist-Beginn';
+  if (ist.fortschritt === null) return null;
   const fortschritt = alsProzent(String(ist.fortschritt));
   if (!fortschritt.ok) return `Fortschritt: ${fortschritt.fehler.meldung}`;
   if (vorzeichen(fortschritt.wert) < 0 || vergleiche(fortschritt.wert, HUNDERT_PROZENT) > 0) {
@@ -370,7 +372,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
       };
       if (von === undefined) melde('vorgaenger-unbekannt', 'den Vorgänger gibt es nicht');
       else if (!BEZIEHUNGSARTEN.includes(b.art))
-        melde('beziehungsart-unbekannt', `Art ${JSON.stringify(b.art)}`);
+        melde('anordnungsart-unbekannt', `Art ${JSON.stringify(b.art)}`);
       else if (!ganzeArbeitstage(b.abstand, -HOECHSTWERT_ARBEITSTAGE)) {
         melde('abstand-ungueltig', `Abstand ${String(b.abstand)} ist keine gültige Zahl von Arbeitstagen`);
       } else if (sammel(von) || sammel(nach)) {

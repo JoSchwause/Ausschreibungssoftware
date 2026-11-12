@@ -4,10 +4,10 @@
 // von fünf Läufen. Der Plan entsteht deterministisch (linearer Kongruenzgenerator im Test); das Budget wird nie gelockert.
 
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Beziehungsart, Vorgang } from './index';
+import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang } from './index';
 import { STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
 
-const ARTEN: readonly Beziehungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
+const ARTEN: readonly Anordnungsart[] = ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende'];
 
 /** 20 Sammelvorgänge mit je 49 Kindern (980 Blätter) und genau 2.000 Beziehungen zwischen den Blättern. */
 function grosserPlan(): Bauzeitenplaneingabe {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Golden-Test der Terminrechnung (Ticket 102 Punkt 6, C4, Q1): Rohbau mit 8 Vorgängen, allen vier Beziehungsarten, Abstand 0
+// Golden-Test der Terminrechnung (Ticket 102 Punkt 6, C4, Q1): Rohbau mit 8 Vorgängen, allen vier Anordnungsarten, Abstand 0
 // und −1, einem Meilenstein, Feiertagen und Wochenenden auf dem kritischen Weg. Alle Sollwerte sind unten von Hand
 // hergeleitet, aus den Lesarten in `BAUZEIT_ANNAHMEN` und den Feiertagsregeln (Bayern), nicht aus der Implementierung.
 //
@@ -34,10 +34,10 @@
 // Kritischer Weg: A → B → C → D → E → M → G (W hat Puffer).
 
 import { describe, expect, it } from 'vitest';
-import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Beziehungsart, Vorgang } from './index';
+import type { Anordnungsbeziehung, Bauzeitenplaneingabe, Anordnungsart, Vorgang } from './index';
 import { STANDARD_ARBEITSTAGE, bauzeitenplanBerechnen } from './index';
 
-const nach = (vorgaengerId: string, art: Beziehungsart, abstand: number): Anordnungsbeziehung => ({
+const nach = (vorgaengerId: string, art: Anordnungsart, abstand: number): Anordnungsbeziehung => ({
   vorgaengerId,
   art,
   abstand,

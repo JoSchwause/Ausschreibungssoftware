@@ -410,13 +410,13 @@ Ein Vorgang, der andere Vorgänge zusammenfasst: Er hat Kinder (Vorgänge, deren
 Ein Vorgang mit Dauer 0: ein Zeitpunkt am Anfang seines Arbeitstags, Beginn und Ende sind derselbe Tag. Ein Meilenstein kostet keine Zeit; ein Nachfolger mit Ende-Anfang und Abstand 0 beginnt am Tag des Meilensteins. Im Code `Vorgangsart` `'meilenstein'`.
 
 ### Anordnungsbeziehung
-Die Abhängigkeit eines Vorgangs von einem Vorgänger, mit einer von vier **Arten** und einem **Abstand** in ganzen Arbeitstagen (auch 0 oder negativ; negativ heißt Überlappung). Der Anfang eines Vorgangs ist der Beginn seines ersten Arbeitstags, sein Ende der Schluss seines letzten:
+Die Abhängigkeit eines Vorgangs von einem Vorgänger, mit einer von vier **Anordnungsarten** und einem **Abstand** in ganzen Arbeitstagen (auch 0 oder negativ; negativ heißt Überlappung). Der Anfang eines Vorgangs ist der Beginn seines ersten Arbeitstags, sein Ende der Schluss seines letzten:
 - **Ende-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am nächsten Arbeitstag nach dem Ende.
 - **Anfang-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am selben Tag.
 - **Ende-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am selben Tag.
 - **Anfang-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am Arbeitstag vor dessen Beginn.
 
-Im Code `Anordnungsbeziehung` (`vorgaengerId`, `art`: `'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'`, `abstand`).
+Im Code `Anordnungsbeziehung` (`vorgaengerId`, `art`: `Anordnungsart` = `'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'`, `abstand`).
 
 ### Arbeitskalender
 Die Tage, an denen gearbeitet wird: die **Arbeitstage** der Woche (ISO-Wochentage, 1 = Montag; Standard Montag bis Freitag) ohne die **Feiertage** des gewählten Bundeslands und ohne die **freien Tage** des Plans. Feiertage folgen rein aus Regeln (D-57): die bundesweiten (Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember; Ostern nach der gregorianischen Osterformel) und die landesweiten nach dem Feiertagsgesetz des Landes, je ab dem Jahr, in dem sie gelten. Nur regional geltende Feiertage (etwa Fronleichnam in Teilen Sachsens und Thüringens, Mariä Himmelfahrt in Teilen Bayerns) und einmalige Feiertage trägt der Nutzer als freie Tage ein. Das Bundesland steht als Kürzel nach ISO 3166-2:DE ohne Länderpräfix (`BY`); ohne Land gelten nur die bundesweiten Feiertage. Im Code `Arbeitskalender` (`arbeitstage`, `bundesland`, `freieTage`), `feiertage`, `istArbeitstag`.
