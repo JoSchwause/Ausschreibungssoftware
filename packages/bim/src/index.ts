@@ -20,3 +20,5 @@ export {
 } from './mengenuebernahme';
 export type { AufmassAusAuswahl, Aufmasshinweis, Aufmassvorschlag } from './aufmass-auswahl';
 export { aufmassAusAuswahl, bauteileImStrukturknoten } from './aufmass-auswahl';
+export type { Bezugsgroesse, Bezugsgroessenart, Din277Groessen } from './din277';
+export { din277Berechnen } from './din277';

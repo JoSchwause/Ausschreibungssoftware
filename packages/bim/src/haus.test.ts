@@ -5,7 +5,12 @@
 
 import { describe, expect, it } from 'vitest';
 import type { IfcGlobalId } from '@tethys/vertrag';
-import { aufmassAusAuswahl, bauteileImStrukturknoten, mengenuebernahmeBerechnen } from './index';
+import {
+  aufmassAusAuswahl,
+  bauteileImStrukturknoten,
+  din277Berechnen,
+  mengenuebernahmeBerechnen,
+} from './index';
 import { BIM, KENNUNG, hausModell, nachUebernahme, typischKnoten, zeileAusFixture } from './testhilfe/haus';
 import type { FxVordersatz } from './testhilfe/haus';
 
@@ -67,5 +72,18 @@ describe('Aufmaßblatt aus Auswahl (D-99.9)', () => {
       })),
     ).toEqual(soll.positionen.map((p) => ({ ...sollVordersatz(p), bauteile: p.bauteile })));
     expect(a.befunde).toEqual([]);
+  });
+});
+
+describe('DIN 277 (D-99.7)', () => {
+  it('ergibt aus v1 BGF, BRI und NRF der Fixture, Quelle Modell, ohne Befund', () => {
+    const d = din277Berechnen(v1);
+    const soll = BIM.erweitert.din277.summen;
+    expect([d.bgf, d.bri, d.nrf]).toEqual([
+      { art: 'BGF', wert: soll.bgf, quelle: 'modell' },
+      { art: 'BRI', wert: soll.bri, quelle: 'modell' },
+      { art: 'NRF', wert: soll.nrf, quelle: 'modell' },
+    ]);
+    expect(d.befunde).toEqual([]);
   });
 });
