@@ -118,6 +118,27 @@ export function aktualisierungBerechnen(lv: LvZustand, alt: Bauwerksmodell, neu:
   return { positionen: aus, befehle };
 }
 
+/**
+ * Befunde aus `bim` für die Anzeige: vorn OZ und Kurztext der Position, hinten der Name des Bauteils im alten Stand (ein
+ * entferntes Bauteil kennt der neue Stand nicht mehr).
+ */
+export function befundeErklaert(
+  befunde: readonly Pruefbefund[],
+  lv: LvZustand,
+  alt: Bauwerksmodell,
+): Pruefbefund[] {
+  const p = positionen(lv);
+  const namen = new Map<string, string>();
+  for (const b of alt.bauteile) if (b.name !== null && !namen.has(b.globalId)) namen.set(b.globalId, b.name);
+  return befunde.map((b) => {
+    const pos = b.ort.knotenId === undefined ? undefined : p.get(b.ort.knotenId);
+    const vorn = pos === undefined ? '' : `${oz(pos)} ${pos.kurztext}: `;
+    const name = b.ort.globalId === undefined ? undefined : namen.get(b.ort.globalId);
+    const hinten = name === undefined ? '' : ` (im alten Stand: ${name})`;
+    return { ...b, meldung: `${vorn}${b.meldung}${hinten}` };
+  });
+}
+
 /** Schreibt die Befehle als einen Undo-Schritt; `ok`, wenn alle angenommen sind. */
 export async function mengenAktualisieren(
   sitzung: LvSitzung,

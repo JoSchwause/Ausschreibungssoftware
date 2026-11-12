@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ansatz, BIM_SOLL } from '../../e2e/modellvergleich-inhalt';
-import { aktualisierungBerechnen, folgenansicht, mengenAktualisieren } from './folgen';
+import { aktualisierungBerechnen, befundeErklaert, folgenansicht, mengenAktualisieren } from './folgen';
 import { typischImSpeicher, V1, V2 } from './testhilfen';
 
 const SOLL = BIM_SOLL.erweitert;
@@ -48,6 +48,14 @@ describe('Folgen für ein LV', () => {
     expect(a.positionen.map((p) => [p.oz, p.vorher, p.nachher])).toEqual([
       ['03.0010', '33.023', '28.898'],
       ['03.0020', '99.938', '101.337'],
+    ]);
+  });
+
+  it('Befunde nennen Position und den Namen des Bauteils im alten Stand', async () => {
+    const { lv } = await typischImSpeicher();
+    const a = aktualisierungBerechnen(lv, V1, V2);
+    expect(befundeErklaert(a.positionen.flatMap((p) => p.befunde), lv, V1).map((b) => b.meldung)).toEqual([
+      '03.0010 Innenwände mauern: Kein Bauteil 0pvziGfz13dL7P$C5SooCO im Modell (im alten Stand: Raumteiler Wohnen)',
     ]);
   });
 
