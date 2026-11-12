@@ -139,9 +139,39 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
   unbearbeitbar werden. Für 123: Der Vertragstext zur Quelle `fristpruefung` („ein überfälliger Mangel“) nennt den zweiten Code
   noch nicht.
 
+- **D-122.6 Sprung aus einem Dialog (Punkt 10).** Frage: Der gemeinsame `Dialog` (`ui-basis`) gab beim Schließen den Fokus an
+  seinen Auslöser zurück und nahm damit jedem Sprung aus dem Dialog („Zur Position“, auch „Im Baum zeigen“ im Zuordnen-Dialog)
+  den Fokus. Entscheidung: **Der Dialog gibt den Fokus nur zurück, wenn nichts anderes ihn hat** (WAI-ARIA: „unless the workflow
+  moves focus“), mit Test in `ui-basis`. Grund: ohne das kein Sprung aus einer Vorschau; eine kleine, allgemeine Regel statt
+  Zeitgebern in der App. `ui-basis` ist im Ticket nicht genannt; außer diesem Ticket schreibt dort in dieser Phase niemand.
+- **D-122.7 Sprungziel einer hängenden Zuordnung (Punkt 10).** Auf der Modellseite fokussiert „Zur Position“ den Eintrag der
+  Position in der Liste „Zuordnungen“ (dort lässt sich das hängende Paar entfernen); in der Vorschau „Mengen aus Modell …“
+  schließt es den Dialog und springt im LV zur Menge der Position (Vorfahren aufgeklappt, über den vorhandenen Sprung der
+  LV-Seite). Grund: Die LV-Seite hat keinen Sprung über die Adresse; die Liste der Zuordnungen ist der Ort, an dem man die
+  hängende Zuordnung behebt.
+- **D-122.8 Frühere Stände (Punkt 11, PC-a6).** „Alle früheren Stände“ ist die Kette der Vorgänger (`vorgaengerId`), der nächste
+  zuerst und vorgewählt; andere Modelle des Projekts gehören nicht dazu. Ein Stand außerhalb der Kette (Adresse von Hand) bleibt
+  wählbar. Der Vorgänger behält die kurze Adresse ohne `<alt>`.
+- **D-122.9 Prüfstand mit dem D-54-Modell (Punkt 15a).** Der Test erzeugt das Modell in Node (`fixtures/ifc/erzeugen.mjs`, in
+  Specs erlaubt) und reicht es der Testseite über `page.route` unter `modelle/d54.ifc`; die Vite-Konfiguration darf `fixtures/`
+  nicht importieren (A3). Picken misst weiter das eigene große Modell des Prüfstands (bekannte GlobalIds).
+
+### Budgets aus Punkt 15 (D-54), gemessen 2026-11-13 auf 4 Kernen, Last etwa 1 (allein, keine anderen Läufe)
+
+| Budget | Messung | Grenze | Ergebnis |
+|---|---|---|---|
+| (a) 3D laden, D-54-Modell (`erzeugen.mjs`, 10.000 Bauteile, 21 MB), Headless-Chromium mit SwiftShader | Median 3.061 ms (3.161, 2.851, 3.061) | 20 s | grün |
+| (a) 3D laden und picken, eigenes 10.000-Bauteile-Modell des Prüfstands (zum Vergleich) | Laden Median 1.426 ms, Picken Median 63 ms | 20 s / 200 ms | grün |
+| (a) `haus-v1.ifc` im Prüfstand (Ticket 100 §6) | 30 Bauteile mit Geometrie, Laden 765 ms, Klick wählt | – | grün |
+| (b) `BauteileZuordnen` 5.000 Zuordnungen samt Undo über den Speicherweg (Kern ausführen + `SpeicherKern.anwenden`, Umkehren + anwenden), LV `gross` | Median 39,6 ms (min 33,8, max 56,8; zuordnen 16,6, Rückgängig 22,7) | 100 ms | grün |
+| (c) Modellbaum 10.000 Zeilen im `VergleichsGrid` (Scrolltest wie die übrigen Grids) | 60 fps im Mittel bei 5.600 und 28.000 px/s, schlechtestes Bild 16,8 ms, kein Bild > 33 ms | wie die Grid-Budgets | grün |
+
 ### Stand
 
 - Punkt 1 erledigt (`52cb8fe`), Punkt 2 erledigt (`da0fa55`), Punkt 3 erledigt (`df536b4`), Punkt 4 erledigt (`b9402ce`),
   Punkt 5 erledigt (`b50d65d`), Punkt 6 erledigt (`b4e7e17`), Punkt 7 erledigt (`7b36e4d`), Punkt 8 erledigt (`1334c09`).
+- Punkt 9 erledigt (`6d8cdc6`), Punkt 10 erledigt (`327436b`), Punkt 11 erledigt (PC-c2 `74c9530`, PC-c3 `03bcbb1`,
+  PC-a6 `b627e5b`), Punkt 12 erledigt (`0e2682b`), Punkt 13 erledigt (`012f29a`), Punkt 14 erledigt (`80d8317`), Punkt 15
+  erledigt (PA1 `cf8e922`, PA2 `c34ffd1`, PC-a4 `c97843c`).
 - `integration/welle-6` mit Ticket 117 gemergt (`e2923a9`).
 
