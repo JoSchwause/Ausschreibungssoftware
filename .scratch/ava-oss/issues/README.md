@@ -200,7 +200,7 @@ Schwerpunkt X1 BIM.
 | 114 | X1 | App: Modelle, Baum, 3D | `apps/web/src/bim/` | resolved |
 | 115 | X1 | App: Zuordnen, Mengen, Kennwerte, Aufmaß | `apps/web/src/bim/` | resolved |
 | 116 | X1f | App: Modellvergleich | `apps/web/src/modellvergleich/` | resolved |
-| 117 | X1 | Tor X1 | `apps/web/e2e/` | ready-for-agent |
+| 117 | X1 | Tor X1 | `apps/web/e2e/` | resolved |
 | 118 | X2 | App: Bauzeitenplan, Tor X2 | `apps/web/src/bauzeit/` | resolved |
 | 119 | X3 | App: Honorar, Tor X3 | `apps/web/src/honorar/` | resolved |
 | 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | resolved |
