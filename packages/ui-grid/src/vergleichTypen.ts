@@ -23,6 +23,67 @@ export interface VergleichsZelle {
   readonly kennzeichen?: readonly Kennzeichen[];
   /** Zusatztext beim Überfahren und für den Screenreader, hinter den Beschreibungen der Kennzeichen. */
   readonly tooltip?: string;
+  /** Balken der Zelle; wirkt nur in einer Spalte mit `zeitleiste` (Ticket 96). Der Text steht rechts neben dem Balken. */
+  readonly balken?: Balken;
+}
+
+// --- Balkenspalte (Ticket 96), z. B. für den Bauzeitenplan --------------------------------------------------------
+// Das Grid rechnet nie mit Kalendern oder Daten: Alle Lagen sind Tagesindizes (ganze Zahl ab 0 = erster Tag der Achse),
+// alle Texte kommen fertig formatiert vom Aufrufer (N4), wie die Zelltexte. Ein Tagesindex ist eine Grenze: Der Balken
+// `vonTag: 2, bisTag: 5` beginnt am Anfang von Tag 2 und endet am Anfang von Tag 5, deckt also die Tage 2, 3 und 4.
+
+/** Ein Abschnitt der Zeitachse im Kopf, z. B. ein Monat oder eine Kalenderwoche. */
+export interface Zeitabschnitt {
+  /** Fertiger Text, z. B. „Januar 2027“ oder „KW 3“. */
+  readonly text: string;
+  readonly vonTag: number;
+  /** Exklusiv. Ein Abschnitt, der über die Achse hinausreicht, wird abgeschnitten. */
+  readonly bisTag: number;
+}
+
+/** Senkrechte Linie über die ganze Balkenspalte, z. B. ein Stichtag. */
+export interface Zeitmarkierung {
+  /** Die Linie steht am Anfang dieses Tages, wie der linke Rand eines Balkens mit diesem `vonTag`. */
+  readonly tag: number;
+  /** Art der Linie, z. B. `stichtag`; aus Kleinbuchstaben, Ziffern und Bindestrich wird eine CSS-Klasse. */
+  readonly art: string;
+  /** Fertiger Text für Tooltip und Screenreader, z. B. „Stichtag 01.03.2027“. */
+  readonly beschreibung: string;
+}
+
+/** Die Zeitachse einer Balkenspalte. Die Spalte ist `tage × pixelJeTag` breit; `breite` der Spalte gilt dann nicht. */
+export interface Zeitleiste {
+  /** Zahl der Tage der Achse, mindestens 1. */
+  readonly tage: number;
+  /** Standard 16. Die App wählt den Maßstab (kein Zoom im Grid). */
+  readonly pixelJeTag?: number;
+  /** Obere Kopfzeile, z. B. Monate; ohne `unterkopf` über die volle Höhe des Kopfes. */
+  readonly kopf: readonly Zeitabschnitt[];
+  /** Untere Kopfzeile, z. B. Kalenderwochen oder Tage. */
+  readonly unterkopf?: readonly Zeitabschnitt[];
+  /** Tagesindizes, die schattiert werden, z. B. Wochenenden und Feiertage. */
+  readonly freieTage?: readonly number[];
+  readonly markierungen?: readonly Zeitmarkierung[];
+}
+
+/** Vorgang als Balken, Sammelvorgang als schmale Klammer, Meilenstein als Raute bei `vonTag`. */
+export type Balkenart = 'vorgang' | 'sammelvorgang' | 'meilenstein';
+
+/** Der Balken einer Zelle in einer Spalte mit `zeitleiste`. Liegt er (teils) außerhalb der Achse, wird er abgeschnitten
+ * und bekommt am Rand ein Kennzeichen; nichts verschwindet still (Q5). */
+export interface Balken {
+  readonly vonTag: number;
+  /** Exklusiv; gleich `vonTag` bei einem Meilenstein. */
+  readonly bisTag: number;
+  readonly art: Balkenart;
+  /** Kritisch: anders gefärbt und zusätzlich gemustert (Vorgang) oder gerahmt (Sammelvorgang, Meilenstein), U8. */
+  readonly kritisch?: boolean;
+  /** Fertiger Anteil 0 bis 100, von links gefüllt. */
+  readonly fortschritt?: number;
+  /** Ist-Termine als zweiter, schmaler Balken unter dem Balken. */
+  readonly ist?: { readonly vonTag: number; readonly bisTag: number };
+  /** Pflicht: Tooltip und Name für den Screenreader, z. B. „12.01.2027 bis 23.01.2027, 10 Arbeitstage, kritisch“. */
+  readonly beschreibung: string;
 }
 
 /** Spaltengruppe für den zweizeiligen Kopf, z. B. ein Bieter über seinen Spalten EP und GP. */
@@ -42,6 +103,12 @@ export interface VergleichsSpalte {
   readonly ausrichtung?: 'links' | 'rechts' | 'mitte';
   /** Breite in Pixeln; Standard 120. */
   readonly breite?: number;
+  /**
+   * Macht die Spalte zur Balkenspalte (Ticket 96): Zeitachse im Kopf, je Zelle ein `balken`. Die Breite ist dann
+   * `tage × pixelJeTag`; `breite` und `gruppe` gelten nicht (die Achse braucht beide Kopfzeilen). `kopf` ist der
+   * zugängliche Name der Spalte.
+   */
+  readonly zeitleiste?: Zeitleiste;
 }
 
 /**
