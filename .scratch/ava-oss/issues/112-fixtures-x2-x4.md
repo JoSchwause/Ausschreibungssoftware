@@ -1,6 +1,6 @@
 # 112: Fixtures: Sollwerte für die Tore X2, X3, X4
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: F · Paket: `fixtures/`
 Blocked by: 99 (gleicher Ordner); 97 nur für Punkt 3 (Formen der Mängel und des Bautagebuchs)
@@ -106,3 +106,10 @@ Suite (Branch `welle-6/112-fixtures-x2-x4` nach Merge von `integration/welle-6` 
 `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint` grün (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean-Room);
 `pnpm typecheck` grün; `pnpm test`: Vitest 248 Dateien grün, 1 übersprungen, 3.169 Tests grün, 3 übersprungen;
 `node --test "fixtures/*.test.mjs"` 53 von 53 grün.
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `4ab82fd` (Branch `welle-6/112-fixtures-x2-x4`, `8f8ca6b`). `bauzeit.json` (Sachsen 2026,
+Projektende 24.11.2026, Buß- und Bettag und drei Wochenenden auf dem kritischen Weg), `honorar.json` (aK 1.373.618,34, Brutto
+267.595,90; sechs Rundungen genau auf dem halben Cent), `bauleitung.json` (Stichtag 26.11.2026, genau Mangel 3 überfällig). Punkt 3
+nach dem Text von Ticket 97 (D-112.5); weicht v1.6 ab, passen 111/120 die Datei an.
