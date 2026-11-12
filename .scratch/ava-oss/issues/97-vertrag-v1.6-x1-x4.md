@@ -1,6 +1,6 @@
 # 97: `vertrag` v1.6: Typen für X1 BIM, X2 Bauzeitenplan, X3 HOAI, X4 Bauleitung
 
-Status: ready-for-agent
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: 95
@@ -114,8 +114,236 @@ Mängelverlauf, Bautagebucheintrag.
 
 ## Acceptance criteria
 
-- [ ] Typen mit Kommentar im Stil von `vertrag`; Lesarten D-50 bis D-57 am Typ; Offene Typfragen unter Comments
-- [ ] Jede mechanische Anpassung markiert, Liste in den Comments; Folgearbeit je Paket als Stichpunkt für die Tickets 105–121
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Typen mit Kommentar im Stil von `vertrag`; Lesarten D-50 bis D-57 am Typ; Offene Typfragen unter Comments
+- [x] Jede mechanische Anpassung markiert, Liste in den Comments; Folgearbeit je Paket als Stichpunkt für die Tickets 105–121
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Ergebnis (Branch `welle-6/97-vertrag-v1.6`, Basis `integration/welle-6`)
+
+Typen, Lesarten, Beispiele und Typtests in `packages/vertrag/src/`: neu `bim.ts` (X1), `bauzeit.ts` (X2), `honorar.ts` (X3),
+`bauleitung.ts` (X4); erweitert `marken.ts`, `modell.ts`, `befehle.ts`, `changeset.ts`, `speicher.ts`, `gaeb.ts`, `index.ts`,
+`beispiele.ts`, `vertrag.test.ts`, `inhaltsmodell.test.ts`; `GLOSSARY.md`; dazu die markierten mechanischen Zeilen (Liste unten).
+Die Modelltypen der vier Module stehen in eigenen Dateien, weil `modell.ts` schon rund 1.000 Zeilen hat; Befehle, ChangeSets,
+Signaturen und Repositories bleiben, wo sie seit v1.1 stehen. Je Punkt ein Commit (1–9), das Glossar vorweg; zwischendurch
+dreimal `integration/welle-6` gemergt (Tickets 96, 98–102, 112 gemergt). Kein Rechenwert, keine Fixture, kein Golden geändert.
+
+### Je Punkt: Datei und Typ
+
+1. **Bauwerksmodell** (`4144dd8`). `marken.ts`: `BauwerksmodellId`, `IfcGlobalId` (Formzusage, D-97.4). `bim.ts`: `IfcSchema`,
+   `Modelldatei { hash, dateiname, groesse }`, `Bauteilmenge { satz, name, art, wert: Menge }`, `Strukturknoten`, `Bauteil`
+   (`teilVonGlobalId?`, `kostengruppe?`; keine Eigenschaften, Klassifikationen, Materialien, D-51), `BauwerksmodellKopf`,
+   `Bauwerksmodell`, `BauwerksmodellInhalt`. `befehle.ts`: `BauwerksmodellAnlegen { bauwerksmodell }` (Massenbefehl),
+   `BauwerksmodellUmbenennen { name }`, `BauwerksmodellLoeschen`, `BauwerksmodellBefehl` (D-97.2). `changeset.ts`:
+   `BauwerksmodellZustand`, `BauwerksmodellChangeSet { kopf; inhalt? }` (D-97.3). `speicher.ts`: `Massenbefehlskopf` mit dem Kopf.
+2. **Modelldateien** (`489306e`). `speicher.ts`: `Modelldateiablage { ablegen, laden, vorhanden }` an `Speicher.modelldateien`
+   mit den Lesarten (idempotent, `konflikt` beim Anlegen ohne Bytes, Freigabe beim Öffnen, D-97.5); `Projektdatei.bauwerksmodelle?`,
+   `.modelldateien?` (deflate-raw, Base64, vollständig, Hash der entpackten Bytes); `Speicherfehlercode` + `datei-zu-gross`.
+3. **Zuordnung Bauteil ↔ Position** (`26672c1`). `bim.ts`: `Bauteilzuordnung { globalId, mengenart }`; `modell.ts`:
+   `Positionsdaten.bauteile?`; `befehle.ts`: `BauteileZuordnen { positionId, bauteile | null }` als ein Typ in `LvBefehl` und
+   `AuftragsLvBefehl` (D-97.7). `zuschlagErteilen` (vergabe) und `nachtragUebernehmen` (abrechnung) übernehmen das Feld schon
+   (`{ ...k }`); geprüft, keine Folgearbeit in `vergabe`.
+4. **Bauzeitenplan** (`ec025b1`). `marken.ts`: `BauzeitenplanId`, `VorgangId`. `bauzeit.ts`: `Wochentag`, `Bundesland`,
+   `Arbeitskalender`, `Anordnungsart`, `Anordnungsbeziehung`, `Isttermine`, `Vorgangsbezug` (D-97.8), `Vorgang`,
+   `BauzeitenplanKopf`, `Bauzeitenplan`; gerechnet `Vorgangsart`, `Vorgangstermine`, `Vorgangsergebnis`,
+   `Bauzeitenplanergebnis` (D-97.10). `befehle.ts`: `BauzeitenplanAnlegen`, `BauzeitenplankopfSetzen`, `VorgangSetzen { vorgang,
+   nach }`, `VorgangEntfernen`, `BauzeitenplanLoeschen` (D-97.9). `changeset.ts`: `BauzeitenplanZustand`,
+   `BauzeitenplanChangeSet` (ganzes Aggregat). Das Beispielergebnis ist beim Schreiben gegen `bauzeitenplanBerechnen` geprüft.
+5. **Honorarberechnung** (`f81934b`). `marken.ts`: `HonorarberechnungId`. `honorar.ts`: `Leistungsbild`, `Honorarzone`
+   (`'I'`–`'V'`), `Leistungsphasennummer`, `BeauftragteLeistungsphase`, `AnrechenbareKostenangabe` (`betrag` oder
+   `kostenermittlung`), `Honorarobjekt`, `Nebenkostenangabe`, `Honorarberechnung`; gerechnet `Honorarspanne`, `Tafelzeile`,
+   `Tafelinterpolation`, `AnrechenbareKostenHerleitung`, `Phasenbetrag`, `Objektergebnis`, `Honorarergebnis` (D-97.12).
+   `befehle.ts`: `HonorarberechnungAnlegen`, `HonorarberechnungSetzen`, `HonorarberechnungLoeschen`; Lesart `konflikt` an
+   `KostenermittlungLoeschen`. `changeset.ts`: Zustand, ChangeSet. Das Beispielergebnis ist der Golden-Fall 1 aus Ticket 101,
+   mit `honorarBerechnen` gerechnet.
+6. **Mängel und Bautagebuch** (`f5f385f`). `marken.ts`: `MangelId`, `BautagebucheintragId`. `bauleitung.ts`: `Mangelstatus`,
+   `Mangelverlaufseintrag`, `Mangel`, `Bautagebucheintrag`. `befehle.ts`: `MangelAnlegen`, `MangelangabenSetzen`,
+   `MangelstatusSetzen { eintrag }`, `MangelLoeschen`, `BautagebucheintragSetzen`, `BautagebucheintragLoeschen`, `MangelBefehl`,
+   `BautagebucheintragBefehl` (D-97.13). `changeset.ts`: Zustände, ChangeSets; `Befehlsfehlercode` + `statuswechsel-unzulaessig`.
+7. **Befundquellen** (`aadf8ab`). `gaeb.ts`: `Befundquelle` + `ifc-lesen`, `modell-pruefung`, `terminrechnung`,
+   `honorarberechnung`, `fristpruefung`; `Befundort` + `globalId?`, `vorgangId?`, `mangelId?` und je Quelle eine Lesart (D-97.11).
+8. **Rand** (`4a7da46`). `AggregatBezug` und `ChangeSet` um die fünf Aggregate; `Befehl` (je Punkt erweitert); Signaturen
+   `…BefehlAusfuehren`, `…ChangeSetAnwenden`, `…ChangeSetUmkehren` je Aggregat (Mangel und Bautagebucheintrag mit Bestand, D-57);
+   `BauwerksmodellUebersicht` (Kopf + `anzahlBauteile`), `BauwerksmodellRepository`, `BauzeitenplanUebersicht`,
+   `BauzeitenplanRepository`, `HonorarberechnungUebersicht`, `HonorarberechnungRepository`, `MangelRepository` (ganz, nach
+   Nummer), `BautagebuchRepository` (ganz, nach Datum), alle Pflicht am `Speicher`; `Projektdatei.bauzeitenplaene?`,
+   `.honorarberechnungen?`, `.maengel?`, `.bautagebuch?`; `konflikt`-Lesarten an `Speicher` und `ProjektLoeschen` (D-97.6);
+   `IdQuelle` + `bauwerksmodell()`, `bauzeitenplan()`, `vorgang()`, `honorarberechnung()`, `mangel()`, `bautagebucheintrag()`.
+9. **Beispiele und Typtests** (`f508219` und je Punkt): Abschnitte „v1.6 Punkt 1“ bis „Punkt 9“ in `vertrag.test.ts`; jeder neue
+   Befehl und jedes neue ChangeSet hat ein Beispiel; `NurDaten` über `Befehl`, `ChangeSet`, `Protokolleintrag`, `Projektdatei`;
+   JSON-Rundweg; Werte vor v1.6 bleiben gültig. Die Tests aus v1.4/v1.5, die geschlossene Listen ganz nennen (`AggregatBezug`,
+   `ChangeSet`, `AuftragsLvBefehl`, `Befehlsfehlercode`, `Befundquelle`, `MASSENBEFEHLSARTEN`), prüfen jetzt den alten Teil
+   (`Exclude<…>`) mit einem Verweis auf v1.6.
+
+**Glossar** (`0ed603e`, `5c0087e`, `f162bef`, `75a5139`, `6f85996`): die Einträge aus 98 und 102 wortgleich übernommen (D-97.1);
+neu Modellstand, Modelldatei, Modellansicht (für Ticket 100), Bauteilzuordnung, Mengenart, Vorgangsbezug, Mangel, Mangelstatus,
+Mängelverlauf, Fristprüfung, Bautagebucheintrag; NRF beim Kostenkennwert; die neuen Quellen beim Prüfbefund; gespeicherte Form
+bei „Anrechenbare Kosten“ und „Honorarberechnung“.
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-97.0** Welche Nähte werden getestet? **Die öffentliche Typfläche von `@tethys/vertrag`** (`expectTypeOf`, geprüft von
+  `pnpm typecheck`) und die Stimmigkeit der Beispiele zur Laufzeit; für die mechanischen Zeilen je eine Testdatei
+  `vertrag-v16.test.ts` in `kern` und `speicher` (Abweisen statt still verwerfen). Grund: wie D-95.0; `vertrag` hat keine Logik.
+  Die Beispielergebnisse von X2 und X3 habe ich beim Schreiben mit `bauzeit` und `honorar` nachgerechnet (Wegwerftest, nicht
+  im Branch), damit die Vertragsbeispiele keine zweite Lesart der Rechnung erfinden.
+- **D-97.1** Glossar vor dem Merge von 98/102? **Ihre Einträge wortgleich übernommen** (Cherry-Pick der Glossar-Commits
+  `d3a5d84`, `ea4fb6b`, Glossarteil von `2f4f902`), meine Einträge daneben. Grund: L2 verlangt die Begriffe vor dem Code; gleiche
+  Zeilen mergen später ohne Konflikt (beim Merge von 98 trat nur am Rand meines Blocks einer auf, aufgelöst).
+- **D-97.2** Befehle am Bauwerksmodell: **Feld `bauwerksmodell` statt `modell`** (wie `AufmassAnlegen.aufmass`,
+  `RechnungAnlegen.rechnung`), **Umbenennen und Löschen ohne `id`** (der Zustand und `Protokolleintrag.aggregat` nennen das
+  Aggregat, wie bei jedem Befehl seit v1.1). Grund: L2, eine Schreibweise; Abweichung vom Arbeitsnamen im Ticket.
+- **D-97.3** ChangeSet des Bauwerksmodells: **`kopf: Aenderung<BauwerksmodellKopf>` immer, `inhalt?: Aenderung<Struktur und
+  Bauteile>` nur beim Anlegen und Löschen**, Umkehrung durch Tausch in beiden. Grund: Umbenennen und Undo kopieren keine
+  10.000 Bauteile (D-45, D-54); die Form gleicht `LvChangeSet` (Kopf + Inhalt); `speicher` vergleicht beim Umbenennen und Löschen
+  nur den Kopf, weil der Inhalt unveränderlich ist.
+- **D-97.4** X1-Formen: **`IfcGlobalId` sagt die Form zu**; ein Objekt der Datei ohne GlobalId in Form kommt nicht ins Modell
+  (Befund, Bytes bleiben). **`Bauteilmenge.wert: Menge`** ohne `null` (vom Orchestrator bestätigt: 107 lässt Mengen ohne Wert
+  mit Befund weg, nie 0). `teilVonGlobalId?` und `kostengruppe?` optional wie im Ticket (in `ifc` `| null`, 107 bildet ab).
+  Doppelte GlobalIds bleiben (D-50). Verweise innerhalb des Modells nennen ein Objekt desselben Modells. Die Liste trägt
+  `anzahlBauteile` (Ticket 114 zeigt sie), sonst nur den Kopf.
+- **D-97.5** Modelldateien: **Ablage am `Speicher`, kein Befehl, idempotent; Freigabe ungenutzter Bytes nur beim Öffnen**
+  (eine Sitzung je Datenbank, E-14), weil Undo nur in der Sitzung lebt (ADR 0006); `konflikt` für ein Anlegen, dessen Hash
+  nicht (in dieser Größe) abgelegt ist; Projektdatei vollständig (jeder genannte Hash genau einmal, sonst `datei-ungueltig`);
+  eigener Code **`datei-zu-gross`** für den Export über der Grenze für Zeichenketten (106 verlangt „eigener Fehler“).
+- **D-97.6** Löschregeln, stark oder schwach: **stark (`konflikt`)**: Mangel → Auftrags-LV und → Bauwerksmodell, Modell →
+  Vorgänger (also kein Löschen eines Stands mit Nachfolger), Honorarberechnung → Kostenermittlung, Projekt mit den neuen
+  Aggregaten; **schwach (Befund der App)**: `Vorgangsbezug`, `Mangel.positionId`, Bauteilzuordnung gegen ein Modell. Grund:
+  stark ist die enge, umkehrbare Lesart (später lockern braucht keine Migration) und schützt rechtlich wichtige Bezüge
+  (Auftragnehmer eines Mangels, Grundlage des Honorars, Q5); schwach, wo ein starker Verweis die Arbeit am LV sperren würde
+  (Bauzeitenplan) oder der Kern ihn nicht kennen darf (A3).
+- **D-97.7** Bauteilzuordnung: **ohne Modell und ohne Mengensatz**, `[]` wie `null`, der Kern prüft die Form (GlobalId, Mengenart
+  nicht leer, kein Paar doppelt); **Kopieren verwirft** über die Kopierhilfe des Kerns, Anlegebefehle übernehmen, was sie
+  bringen; kein Massenbefehl (D-54 misst in 105). Bis 105/106 weisen Kern und `speicher` Zuordnungen laut ab.
+- **D-97.8** `Vorgangsbezug`: **Union nach Aggregatart (`leistungsverzeichnis` | `auftrags-leistungsverzeichnis`) mit Kennung und
+  `knotenIds: (GliederungId | PositionId)[] | null`**, `null` = das ganze LV (auch spätere Nachträge), nie leer; ein Bezug je
+  Vorgang. Grund: Ein Gewerk ist oft ein ganzes Auftrags-LV; die Art wählt das Repository; Hinweistexte sind kein Bezug.
+- **D-97.9** Bauzeitenplan: **Dokumentreihenfolge** (Sammelvorgang vor seinem zusammenhängenden Teilbaum), `VorgangSetzen
+  { vorgang, nach }` (Geschwister, hinter dem er steht; `null` = erster), `VorgangEntfernen` entfernt Teilbaum **und** die
+  Beziehungen darauf (nie ein hängender Verweis), ein unbekannter Vorgänger ist ein **Fehler** des Ausführers (kein
+  Befund), Zyklus und Beziehung an einem Sammelvorgang bleiben Befunde (U5); Codes `eltern-unbekannt`, `zyklus`,
+  `knoten-unbekannt` wiederverwendet; Kalenderlisten geordnet; kein Massenbefehl.
+- **D-97.10** Ergebnis der Terminrechnung: **`Bauzeitenplanergebnis` statt `Terminplan`** (Form D-102.12: `projektbeginn`,
+  `projektende`, `vorgaenge: Vorgangsergebnis[]`, `kritischeWege`, `befunde`). Grund: „Terminplan“ ist im Bauwesen ein Synonym
+  für Bauzeitenplan (L2), das Glossar (aus 102) und `bauzeit` nennen es so, parallel zu `Honorarergebnis`. **Je Vorgang
+  `vorgangId`** (in `bauzeit` `id`) wie jede Ergebniszeile des Vertrags (`Positionssumme.positionId`). Daten als `string`.
+- **D-97.11** Befunde der neuen Module: **in der gemeinsamen Befundliste (`Pruefbefund`)** mit fünf neuen Quellen statt eigener
+  Befundtypen im Vertrag (wie `erechnung` seit v1.5/104); `Befundort` additiv um `globalId`, `vorgangId`, `mangelId`; das
+  Honorarobjekt (ohne Kennung) über `pfad: '/objekte[n]'` in der Schreibweise der E-Rechnung. Ein Zyklus ergibt je Vorgang
+  einen Befund. Codes bleiben Text; die Pakete führen ihre Listen (`Honorarbefundcode`, `Bauzeitbefundcode`) weiter.
+- **D-97.12** Honorar: **Namen und Formen von `honorar` (D-101.10)**: `Honorarzone` `'I'`–`'V'`, `weitereKosten`,
+  `mitzuverarbeitendeBausubstanz`, `technischeAnlagenAnteilig`, `umbauzuschlagssatz`, Phasen als `{ nummer, anteil? }`,
+  `art: 'betrag'`. Gespeichert wird statt der `din-276`-Beträge der **Verweis** `{ art: 'kostenermittlung', kostenermittlungId,
+  … }` (110 löst ihn auf). Der Ausführer prüft nur die Form; Honorarsatz außerhalb 0–100, Zone oder Phase, die das
+  Leistungsbild nicht hat, negative Beträge und zu hoher Umbauzuschlag sind **Befunde** (U5, D-101.3 bis D-101.5), abweichend
+  vom Text von 110 („Sätze 0–100“, „Honorarzone im Bereich“ als Fehler).
+- **D-97.13** Bauleitung: Die Ausführer bekommen den **Bestand** (`Pick<Mangel, 'id' | 'nummer'>[]` bzw. `Pick<…, 'id' |
+  'datum'>[]`, D-57); doppelte Nummer bzw. Datum: `ungueltige-eingabe` mit `feld`; ein unzulässiger Statuswechsel: **neuer Code
+  `statuswechsel-unzulaessig`** (Ticket 111 nennt ihn; zustandsabhängig wie `rechnung-freigegeben`). Namen
+  `MangelangabenSetzen` (wie `RechnungsangabenSetzen`), `MangelstatusSetzen { eintrag }`, `BautagebucheintragBefehl` (nach dem
+  Aggregat, nicht `BautagebuchBefehl`). Zulässige Wechsel genau nach D-57; Nummer fest nach dem Anlegen.
+- **D-97.14** Pflicht oder optional am Rand: **`IdQuelle`-Methoden und Repositories Pflicht** (wie D-70.11), mit Platzhaltern in
+  `speicher` (`unbekannt`) und der App; die Undo-Tabelle der App (`historie/arten.ts`) wirft für die neuen Arten bis 114/118–120
+  einen Fehler, statt still nichts zu tun (Q5).
+
+### Offene Typfragen (enge Lesart im Typ; Alternative hier)
+
+1. **`IfcGlobalId` mit Formzusage** (D-97.4): Objekte mit abweichender GlobalId fallen aus dem Modell. Alternative: Marke ohne
+   Formzusage (Wert wie in der Datei, nicht leer), dann bleiben solche Bauteile zuordenbar.
+2. **`Bauteilmenge.wert` ohne `null`.** Alternative: `Menge | null` wie im Leser (sichtbar „Menge ohne Einheit“ im Modellbaum).
+3. **Bauteilzuordnung ohne Mengensatz** (mehrdeutig = Befund). Alternative: `satz?: string` in der Zuordnung.
+4. **`Ansatzzeile` ohne GlobalId** (D-53): Zeilen folgen der Reihenfolge von `bauteile`; dasselbe Bauteil auf zwei Aufmaßblättern
+   ist nicht erkennbar. Alternative: `Ansatzzeile.globalId?` (dann auch in `mengen`, X31 und `speicher` zu bedenken).
+5. **`BauteileZuordnen` kein Massenbefehl**: Bei 5.000 Zuordnungen steht jede Änderung ganz im Protokoll. Alternative:
+   Massenbefehl oder ein Befehl, der nur hinzufügt/entfernt (Messung in 105/106).
+6. **Umbenennen eines Modells braucht den geladenen Zustand** (10.000 Bauteile). Alternative: Ausführer mit dem Kopf als Zustand.
+7. **Modell mit Nachfolger nicht löschbar** (D-97.6). Alternative: löschen erlaubt, `vorgaengerId` hängt (Befund), dann lassen
+   sich alte Stände entfernen, ohne die neuen zu löschen.
+8. **Ein Bezug je Vorgang** (D-97.8). Alternative: `bezuege: Vorgangsbezug[]` (ein Vorgang über mehrere Auftrags-LVs).
+9. **Unbekannter Vorgänger als Fehler** (D-97.9, gegen den Text von 109). Alternative: annehmen und als Befund rechnen.
+10. **Honorarobjekte ohne Kennung**, Befunde über `/objekte[n]` (D-97.11). Alternative: `Honorarobjekt.id` (Marke, IdQuelle)
+    oder `Befundort.objekt?: number`.
+11. **Keine Befundschwere „Hinweis“**: Der Hinweis auf DIN 276 in der Fassung 2008-12 (D-56) ist ein fester Text der App bzw.
+    eine `warnung`. Alternative: `Befundschwere` + `'hinweis'` (geschlossene Liste, mechanische Zeilen in `ausgabe` und App).
+12. **Mangelstatus streng nach D-57**: kein direkter Wechsel offen → beseitigt, kein angezeigt → offen. Alternative: weitere
+    Wechsel mit Grund (die Tabelle steht in `bauleitung`, der Vertrag nennt sie nur).
+13. **Gespeicherte Honorarberechnung nur mit Betrag oder Verweis**: keine Variante mit KG-300/400-Beträgen von Hand.
+    Alternative: dritte Variante `din-276` wie die Eingabe der Rechnung (Fixture 112 nutzt diese Form, siehe unten).
+
+### Mechanische Anpassungen außerhalb von `vertrag` (markiert `// v1.6: mechanisch angepasst, Folgeticket …`)
+
+`grep -rn "v1.6: mechanisch angepasst"` findet alle (Zeilen nach dem Stand dieses Branches).
+
+| Datei | Zeile | Was | Folgeticket |
+|---|---|---|---|
+| `packages/kern/src/ausfuehren.ts` | 123 | `ZUSTAENDIGES_TICKET.BauteileZuordnen: 'Ticket 105'` (der Typ verlangt den Eintrag) | 105 |
+| `packages/kern/src/knoten-befehle.ts` | 226–232 | `positionAnlegen` mit `daten.bauteile` → `befehl-nicht-zustaendig` (sonst still verworfen, Q5) | 105 |
+| `packages/kern/src/auftrags-lv.ts` | 202–203 | `BauteileZuordnen` am Auftrags-LV → `befehl-nicht-zustaendig` | 105 |
+| `packages/kern/src/baum.test.ts` | 689–692 | `ZUSTAENDIGES_TICKET` nennt nur `BauteileZuordnen` | 105 |
+| `packages/kern/src/vertrag-v16.test.ts` | neu | die drei Abweisungen | 105 |
+| `packages/speicher/src/vertrag-v16.ts` | neu | `pruefeV16` (Zusicherung): ChangeSets der neuen Aggregate und Positionen mit `bauteile` → `unbekannt` | 106 |
+| `packages/speicher/src/vertrag-v16.test.ts` | neu | Abweisungen, Ablage und Repositories `unbekannt`, kein Protokolleintrag | 106 |
+| `packages/speicher/src/kern.ts` | 39, 77 | Import und Aufruf von `pruefeV16` in `pruefeBezug` | 106 |
+| `packages/speicher/src/client.ts` | 93–96, 132–144 | `erstV16`; `modelldateien` und fünf Repositories antworten `unbekannt` (nach `schliessen` `gesperrt`) | 106 |
+| `packages/speicher/src/client.test.ts` | 304–313 | erwartete Schlüssel des Speichers | 106 |
+| `packages/speicher/src/dekoder.ts` | 1020–1041, 1070–1071 | `BEFEHLSARTEN` um die 21 neuen Befehle; `LANGE_LISTE.BauwerksmodellAnlegen` (prüft nur `bauteile`) | 106 |
+| `packages/speicher/src/kurzfassung.ts` | 45–46 | `massenbefehlskopf` für `BauwerksmodellAnlegen` (ohne Struktur und Bauteile) | 106 |
+| `packages/speicher/src/testhilfe/umkehrung.ts` | 109–110, 116–118 | `umkehren` wirft für die neuen Arten; `mitLeeremVorher` lässt Aggregate ohne Summen | 106 |
+| `packages/speicher/src/testhilfe/v14.ts` | 158–168 | `aggregatVon` für die neuen Arten | 106 |
+| `packages/gaeb/src/testhilfen.ts` | 80–86 | Test-`IdQuelle`: sechs neue Kennungen | – |
+| `apps/web/src/lv/ids.ts` | 79–85 | `appIdQuelle`: sechs neue Kennungen (UUIDv7) | 114, 118–120 |
+| `apps/web/src/lv/texte.ts` | 189–190, 202–203 | Texte für `statuswechsel-unzulaessig` und `datei-zu-gross` | 120, 106 |
+| `apps/web/src/historie/arten.ts` | 85–97, 106–111 | `erstMitTicket`: Undo der neuen Arten wirft, Ziel `null` | 114, 118, 119, 120 |
+
+Sonst brauchte nichts eine Zeile: `vergabe`, `abrechnung`, `kosten`, `mengen`, `ausgabe`, `erechnung`, `ui-grid`, `ui-modell`,
+`ifc`, `bauzeit`, `honorar` und `proto` übersetzen unverändert (nichts ist erschöpfend über `Befundquelle` oder `Befundort`;
+`zuschlagErteilen` und `nachtragUebernehmen` reichen `bauteile` per `{ ...k }` weiter).
+
+### Folgetickets: was sie liefern müssen
+
+- **105 (`kern`):** Handler `BauteileZuordnen` (LV und Auftrags-LV, Lesarten am Typ: Knotenart, Form der GlobalId, Mengenart
+  nicht leer, kein Paar doppelt, `[]` wie `null`); `positionAnlegen` und Kopie: Anlegebefehle übernehmen `bauteile`, die
+  **Kopierhilfe** (`kopie.ts`, Zeile 70 `{ ...k }`) lässt das Feld weg; alle Marker in `kern` entfernen, `ZUSTAENDIGES_TICKET`
+  wieder leer, `vertrag-v16.test.ts` ersetzen. Zuschlag und Nachtragsübernahme reichen das Feld schon weiter (Test genügt).
+- **106 (`speicher`):** Migration 6 nach den Typen (Kopf des Modells getrennt, `anzahlBauteile` beim Anlegen), Ablage nach
+  `Modelldateiablage` (Freigabe beim Öffnen), Projektdatei nach den Lesarten an `Projektdatei.modelldateien`, alle
+  `konflikt`-Regeln aus dem Kommentar an `Speicher` (D-97.6), Code `datei-zu-gross`; `LANGE_LISTE` für zwei Listen
+  (`struktur`, `bauteile`); alle Marker in `speicher` sowie `vertrag-v16.ts` samt Test löschen; der Dekoder des Protokolls
+  braucht die fünf neuen `aggregat.art`.
+- **107 (`ifc`):** Abbildung auf `Bauwerksmodell`: `teilVonGlobalId`/`kostengruppe` `null` → Feld weglassen; Mengen ohne Wert
+  weglassen (Befund); Objekte ohne GlobalId in Form weglassen (Befund, Verweise darauf `null`); Klassifikationen, Materialien
+  und Eigenschaften nicht übernehmen; `IfcBefund` → `Pruefbefund` mit `quelle: 'ifc-lesen'`, Ort wie heute, dazu `globalId`.
+- **108 (`bim`):** Ausführer nach den Lesarten an `BauwerksmodellAnlegen` (Form, interne Verweise, kein Ring, Doppelte erlaubt),
+  `…ChangeSetAnwenden` mit Kopf und Inhalt; Befunde mit `quelle: 'modell-pruefung'` und dem Ort aus `Befundort`.
+- **109 (`bauzeit`):** Umstellung: `Vorgangsergebnis.id` → `vorgangId`; `Bauzeitbefund` → `Pruefbefund` (`terminrechnung`,
+  `vorgangId`, `feld`, je Zyklusmitglied ein Befund); `Vorgang.bezug` kommt dazu (nur durchreichen); Ausführer nach D-97.9
+  (Dokumentreihenfolge, `nach`, Entfernen mit Teilbaum und Beziehungen, unbekannter Vorgänger = `ungueltige-eingabe`); die
+  geplanten Namen `Terminplan`/`kritischerWeg` heißen `Bauzeitenplanergebnis`/`kritischeWege` (wie das Paket schon).
+- **110 (`honorar`):** Umstellung auf die Vertragstypen; die gespeicherte Variante `kostenermittlung` auflösen (KG-Summen aus der
+  Kostenermittlung, D-24) und auf die Eingabe `din-276` abbilden (der Name `AnrechenbareKostenangabe` ist im Vertrag die
+  gespeicherte Form; die Rechnungseingabe in `honorar` braucht einen anderen Namen oder `Extract<…> | KostenNachDin276`);
+  `Honorarbefund` → `Pruefbefund` (`honorarberechnung`, `pfad: '/objekte[n]'` ab 1, `feld`); Formprüfung nach D-97.12 (Werte
+  außerhalb der HOAI sind Befunde, nicht Fehler); Stufenprüfung als Befund.
+- **111 (`bauleitung`):** Ausführer mit Bestand nach den Signaturen; Statustabelle genau nach `Mangelstatus`; Code
+  `statuswechsel-unzulaessig`; Fristprüfung als `Pruefbefund` (`fristpruefung`, `mangelId`, `feld: 'frist'`); Befehle heißen
+  `MangelangabenSetzen`, `MangelstatusSetzen { eintrag }`, `BautagebucheintragBefehl`.
+- **112 (Fixtures):** `bauleitung.json` und `bauzeit.json` passen schon zu den Typen. `honorar.json` trägt die
+  `honorarberechnung` mit `art: 'din-276'` (Rechnungseingabe); gespeichert heißt sie `{ art: 'kostenermittlung',
+  kostenermittlungId: <id der Kostenermittlung der Datei>, technischeAnlagenAnteilig, weitereKosten,
+  mitzuverarbeitendeBausubstanz }` (Ticket 110/119 bilden ab oder die Fixture ergänzt die gespeicherte Form).
+- **113 (`ausgabe`):** liest `Bauzeitenplanergebnis` (nicht `Terminplan`), `Honorarergebnis`, `Mangel`, `Bautagebucheintrag` und
+  `Pruefbefund`; der Status eines Mangels ist der letzte Verlaufseintrag.
+- **114–120 (App):** je Modul die Zeile in `historie/arten.ts` durch Umkehrung und Ziel ersetzen; Repositories und Ablage nutzen,
+  sobald 106 gemergt ist; Mängel setzen `bauteil.bauwerksmodellId` nur, wenn ein bestimmter Stand gemeint ist (D-97.6: sonst
+  blockiert er das Löschen alter Stände); Texte für `statuswechsel-unzulaessig` und `datei-zu-gross` prüfen; Hinweis zur
+  DIN-276-Fassung als fester Text (Offene Typfrage 11).
+- **Ohne Ticket in Welle 6:** `gaeb` sollte `bauteile` beim Export mit Warnung verwerfen wie `textquelle` (F6); heute fällt das
+  Feld still weg, weil der Writer es nicht kennt.
+
+### Prüfung
+
+Nach dem letzten `git merge integration/welle-6` (Merge `9582ba7`, Stand `9b1dd3c`: Tickets 96, 98–103, 112 gemergt):
+`NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Lint samt Paketgrenzen, Lizenzen und
+Clean Room; Vitest 250 Dateien bestanden, 1 übersprungen; 3230 Tests bestanden, 3 übersprungen wie zuvor; Fixtures 53/53). Kein
+Budget fiel, keines gelockert. E2E verlangt das Ticket nicht; die App zeichnet nichts Neues.

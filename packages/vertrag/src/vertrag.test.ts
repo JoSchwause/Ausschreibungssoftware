@@ -2,6 +2,8 @@
 // Typtests für `vertrag` (Ticket 02). Sie laufen im Typprüfer (`pnpm typecheck`); zur Laufzeit prüft vitest
 // nur die Konstantentabelle und die Beispiele.
 
+import { createHash } from 'node:crypto';
+import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   NACHKOMMASTELLEN,
@@ -247,6 +249,162 @@ import {
   beispielBefundeERechnung,
   beispielOzVorschlagAuftragsLv,
   beispielLvUebersichtNetto,
+} from './beispiele';
+// v1.6 (Ticket 97)
+import type {
+  Bautagebucheintrag,
+  BautagebucheintragBefehl,
+  BautagebucheintragChangeSet,
+  BautagebucheintragId,
+  BautagebucheintragZustand,
+  Mangel,
+  MangelangabenSetzen,
+  MangelBefehl,
+  MangelChangeSet,
+  MangelId,
+  Mangelstatus,
+  MangelstatusSetzen,
+  Mangelverlaufseintrag,
+  MangelZustand,
+} from './index';
+import type {
+  Befundort,
+  BautagebuchRepository,
+  BautagebucheintragBefehlAusfuehren,
+  BautagebucheintragChangeSetAnwenden,
+  BautagebucheintragChangeSetUmkehren,
+  BauwerksmodellBefehlAusfuehren,
+  BauwerksmodellChangeSetAnwenden,
+  BauwerksmodellChangeSetUmkehren,
+  BauwerksmodellRepository,
+  BauwerksmodellUebersicht,
+  BauzeitenplanBefehlAusfuehren,
+  BauzeitenplanChangeSetAnwenden,
+  BauzeitenplanChangeSetUmkehren,
+  BauzeitenplanRepository,
+  BauzeitenplanUebersicht,
+  HonorarberechnungBefehlAusfuehren,
+  HonorarberechnungChangeSetAnwenden,
+  HonorarberechnungChangeSetUmkehren,
+  HonorarberechnungId,
+  HonorarberechnungRepository,
+  HonorarberechnungUebersicht,
+  MangelBefehlAusfuehren,
+  MangelChangeSetAnwenden,
+  MangelChangeSetUmkehren,
+  MangelRepository,
+} from './index';
+import {
+  beispielBauwerksmodellUebersicht,
+  beispielBefundeV16,
+  beispielMassenprotokollBauwerksmodell,
+  beispielProjektdateiV16,
+  beispielProtokollBauteileZuordnen,
+} from './beispiele';
+import {
+  beispielBautagebuchbefehle,
+  beispielBautagebucheintrag,
+  beispielChangeSetBautagebucheintrag,
+  beispielChangeSetMangelstatus,
+  beispielMangel1,
+  beispielMangel2,
+  beispielMangelbefehle,
+  beispielMangelstatusSetzen,
+} from './beispiele';
+import type {
+  AnrechenbareKostenangabe,
+  AnrechenbareKostenHerleitung,
+  BeauftragteLeistungsphase,
+  Honorarberechnung,
+  HonorarberechnungBefehl,
+  HonorarberechnungChangeSet,
+  HonorarberechnungSetzen,
+  HonorarberechnungZustand,
+  Honorarergebnis,
+  Honorarobjekt,
+  Honorarspanne,
+  Honorarzone,
+  Leistungsbild,
+  Leistungsphasennummer,
+  Nebenkostenangabe,
+  Objektergebnis,
+  Phasenbetrag,
+  Tafelinterpolation,
+  Tafelzeile,
+} from './index';
+import {
+  beispielChangeSetHonorarberechnungSetzen,
+  beispielHonorarbefehle,
+  beispielHonorarberechnung,
+  beispielHonorarergebnis,
+  beispielKostenberechnungHoai,
+} from './beispiele';
+import type {
+  Anordnungsart,
+  Anordnungsbeziehung,
+  Arbeitskalender,
+  Bauzeitenplan,
+  BauzeitenplanBefehl,
+  BauzeitenplanChangeSet,
+  Bauzeitenplanergebnis,
+  BauzeitenplanId,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanZustand,
+  Bundesland,
+  Isttermine,
+  Vorgang,
+  Vorgangsart,
+  Vorgangsbezug,
+  Vorgangsergebnis,
+  VorgangSetzen,
+  Vorgangstermine,
+  VorgangId,
+  Wochentag,
+} from './index';
+import {
+  beispielBauzeitenplan,
+  beispielBauzeitenplanbefehle,
+  beispielBauzeitenplanergebnis,
+  beispielChangeSetVorgangEntfernen,
+  beispielVorgangEntfernen,
+  beispielVorgangSetzen,
+} from './beispiele';
+import type {
+  BauteileZuordnen,
+  Bauteil,
+  Bauteilmenge,
+  Bauteilzuordnung,
+  Bauwerksmodell,
+  BauwerksmodellAnlegen,
+  BauwerksmodellBefehl,
+  BauwerksmodellChangeSet,
+  BauwerksmodellId,
+  BauwerksmodellInhalt,
+  BauwerksmodellKopf,
+  BauwerksmodellUmbenennen,
+  BauwerksmodellZustand,
+  IfcGlobalId,
+  IfcSchema,
+  Modelldatei,
+  Modelldateiablage,
+  Strukturknoten,
+  Titel,
+} from './index';
+import {
+  beispielBauteileEntfernen,
+  beispielBauteileZuordnen,
+  beispielBauwerksmodell,
+  beispielBauwerksmodell2Kopf,
+  beispielChangeSetBauteileZuordnen,
+  beispielBauwerksmodellAnlegen,
+  beispielBauwerksmodellLoeschen,
+  beispielBauwerksmodellUmbenennen,
+  beispielChangeSetBauwerksmodellAnlegen,
+  beispielChangeSetBauwerksmodellLoeschen,
+  beispielChangeSetBauwerksmodellUmbenennen,
+  beispielGlobalIds,
+  beispielModelldatei,
+  beispielModelldateiInProjektdatei,
 } from './beispiele';
 
 /**
@@ -1200,7 +1358,8 @@ describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
   });
 
   it('AuftragsLvBefehl ist genau Anlegen, Nachtrag übernehmen und Kostengruppe setzen (D-36 (4))', () => {
-    expectTypeOf<AuftragsLvBefehl['art']>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 3): dazu `BauteileZuordnen`, siehe dort.
+    expectTypeOf<Exclude<AuftragsLvBefehl['art'], 'BauteileZuordnen'>>().toEqualTypeOf<
       'AuftragsLeistungsverzeichnisAnlegen' | 'NachtragUebernehmen' | 'KostengruppeSetzen'
     >();
   });
@@ -1462,8 +1621,10 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     | 'kostenermittlung';
 
   it('AggregatBezug und ChangeSet kennen Aufmaß, Rechnung und Kostenermittlung', () => {
-    expectTypeOf<AggregatBezug['art']>().toEqualTypeOf<Aggregatarten>();
-    expectTypeOf<ChangeSet['art']>().toEqualTypeOf<Aggregatarten>();
+    // v1.6 (Ticket 97 Punkt 8): dazu fünf Aggregate, siehe dort.
+    type Neu16 = 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag';
+    expectTypeOf<Exclude<AggregatBezug['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
+    expectTypeOf<Exclude<ChangeSet['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
     expectTypeOf<Extract<AggregatBezug, { art: 'aufmass' }>['id']>().toEqualTypeOf<AufmassId>();
     expectTypeOf<Extract<AggregatBezug, { art: 'rechnung' }>['id']>().toEqualTypeOf<RechnungId>();
     expectTypeOf<
@@ -1483,7 +1644,10 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     expectTypeOf<
       Extract<AufmassBefehl['art'], RechnungBefehl['art'] | KostenermittlungBefehl['art']>
     >().toEqualTypeOf<never>();
-    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<'KostengruppeSetzen'>();
+    // v1.6 (Ticket 97 Punkt 3): ebenso `BauteileZuordnen`.
+    expectTypeOf<Extract<LvBefehl['art'], AuftragsLvBefehl['art']>>().toEqualTypeOf<
+      'KostengruppeSetzen' | 'BauteileZuordnen'
+    >();
   });
 
   it('Signaturen für Ausführen, Anwenden und Umkehren je neuem Aggregat', () => {
@@ -1700,7 +1864,8 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
 
 describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
   it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
-    expectTypeOf<Befehlsfehlercode>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`, siehe dort.
+    expectTypeOf<Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig'>>().toEqualTypeOf<
       | 'ungueltige-eingabe'
       | 'knoten-unbekannt'
       | 'eltern-unbekannt'
@@ -1733,7 +1898,13 @@ describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenar
 
 describe('v1.5 Punkt 2: Befundquelle für E-Rechnungen (Ticket 76, D-76.4)', () => {
   it('die gemeinsame Befundliste kennt das Lesen einer E-Rechnung; die übrigen Quellen bleiben', () => {
-    expectTypeOf<Befundquelle>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 7): dazu die Quellen der Module X1 bis X4, siehe dort.
+    expectTypeOf<
+      Exclude<
+        Befundquelle,
+        'ifc-lesen' | 'modell-pruefung' | 'terminrechnung' | 'honorarberechnung' | 'fristpruefung'
+      >
+    >().toEqualTypeOf<
       'gaeb-lesen' | 'gaeb-pruefung' | 'lv-pruefung' | 'xsd-gegenpruefung' | 'erechnung-lesen'
     >();
     expectTypeOf(beispielBefundeERechnung).toEqualTypeOf<readonly [Pruefbefund, Pruefbefund]>();
@@ -1883,6 +2054,876 @@ describe('v1.5: reine Daten und Werte vor v1.5', () => {
       ort: { pfad: '/GAEB/Award/BoQ/BoQBody', zeile: 12 },
     };
     expect(befund.ort).not.toHaveProperty('feld');
+    expectTypeOf<KostengruppeSetzen>().toEqualTypeOf<{
+      readonly art: 'KostengruppeSetzen';
+      readonly positionId: PositionId;
+      readonly kostengruppe: Kostengruppennummer | null;
+    }>();
+  });
+});
+
+// --- v1.6 (Ticket 97) -------------------------------------------------------------------------------------------
+
+/** Form einer GlobalId (22 Zeichen aus dem IFC-Base64-Alphabet, siehe `IfcGlobalId`). */
+const GLOBALID = /^[0-9A-Za-z_$]{22}$/;
+
+describe('v1.6 Punkt 1: Bauwerksmodell (X1, D-50, D-51, D-53)', () => {
+  it('Kennungen: BauwerksmodellId und IfcGlobalId sind Marken, nicht austauschbar mit string oder anderen Kennungen', () => {
+    expectTypeOf<string>().not.toExtend<BauwerksmodellId>();
+    expectTypeOf<string>().not.toExtend<IfcGlobalId>();
+    expectTypeOf<IfcGlobalId>().not.toExtend<BauwerksmodellId>();
+    expectTypeOf<BauwerksmodellId>().not.toExtend<ProjektId>();
+    expectTypeOf<IfcGlobalId>().not.toExtend<KnotenId>();
+    for (const id of Object.values(beispielGlobalIds)) expect(id).toMatch(GLOBALID);
+  });
+
+  it('Schema, Modelldatei und Bauteilmenge in der Form des Tickets', () => {
+    expectTypeOf<IfcSchema>().toEqualTypeOf<'IFC2X3' | 'IFC4'>();
+    expectTypeOf<Modelldatei>().toEqualTypeOf<{
+      readonly hash: string;
+      readonly dateiname: string;
+      readonly groesse: number;
+    }>();
+    expectTypeOf<Bauteilmenge['art']>().toEqualTypeOf<
+      'laenge' | 'flaeche' | 'volumen' | 'anzahl' | 'gewicht' | 'zeit'
+    >();
+    // Nur Mengen mit Wert (enge Lesart): eine Menge ohne Zahl oder Einheit kommt nicht ins Modell.
+    expectTypeOf<Bauteilmenge['wert']>().toEqualTypeOf<Menge>();
+    expect(beispielModelldatei.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('D-51: ein Bauteil trägt keine Eigenschaften, Klassifikationen oder Materialien; Teil und KG-Vorschlag optional', () => {
+    expectTypeOf<Bauteil>().not.toHaveProperty('eigenschaften');
+    expectTypeOf<Bauteil>().not.toHaveProperty('klassifikationen');
+    expectTypeOf<Bauteil>().not.toHaveProperty('materialien');
+    expectTypeOf<Bauteil['teilVonGlobalId']>().toEqualTypeOf<IfcGlobalId | undefined>();
+    expectTypeOf<Bauteil['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+    expectTypeOf<Strukturknoten['art']>().toEqualTypeOf<
+      'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum'
+    >();
+  });
+
+  it('Kopf und Inhalt: der Kopf trägt weder Struktur noch Bauteile; zusammen sind sie das Modell', () => {
+    expectTypeOf<BauwerksmodellKopf>().not.toHaveProperty('struktur');
+    expectTypeOf<BauwerksmodellKopf>().not.toHaveProperty('bauteile');
+    expectTypeOf<BauwerksmodellKopf & BauwerksmodellInhalt>().toExtend<Bauwerksmodell>();
+    expectTypeOf<Bauwerksmodell>().toExtend<BauwerksmodellKopf & BauwerksmodellInhalt>();
+    expectTypeOf<BauwerksmodellKopf['vorgaengerId']>().toEqualTypeOf<BauwerksmodellId | null>();
+    expectTypeOf<BauwerksmodellZustand>().toEqualTypeOf<{ readonly bauwerksmodell: Bauwerksmodell }>();
+  });
+
+  it('Beispiel: Verweise innerhalb des Modells nennen ein Objekt desselben Modells (Lesart des Ausführers)', () => {
+    const m = beispielBauwerksmodell;
+    const knoten = new Set(m.struktur.map((k) => k.globalId));
+    const bauteile = new Set(m.bauteile.map((b) => b.globalId));
+    for (const k of m.struktur) if (k.elternGlobalId !== null) expect(knoten).toContain(k.elternGlobalId);
+    for (const b of m.bauteile) {
+      if (b.strukturGlobalId !== null) expect(knoten).toContain(b.strukturGlobalId);
+      if (b.teilVonGlobalId !== undefined) expect(bauteile).toContain(b.teilVonGlobalId);
+      for (const menge of b.mengen) expect(menge.wert).toMatch(/^-?(0|[1-9][0-9]*)\.[0-9]{3}$/);
+    }
+    // Optionale Felder fehlen statt `null` zu sein.
+    expect(m.bauteile.find((b) => b.globalId === beispielGlobalIds.wandOg)).not.toHaveProperty(
+      'kostengruppe',
+    );
+    expect(m.bauteile.find((b) => b.globalId === beispielGlobalIds.wandOg)).not.toHaveProperty(
+      'teilVonGlobalId',
+    );
+    expect(beispielBauwerksmodell2Kopf.vorgaengerId).toBe(m.id);
+  });
+
+  it('Befehle: Anlegen (Massenbefehl), Umbenennen, Löschen; das Feld heißt wie das Aggregat', () => {
+    expectTypeOf<BauwerksmodellBefehl['art']>().toEqualTypeOf<
+      'BauwerksmodellAnlegen' | 'BauwerksmodellUmbenennen' | 'BauwerksmodellLoeschen'
+    >();
+    expectTypeOf<BauwerksmodellBefehl>().toExtend<Befehl>();
+    expectTypeOf<BauwerksmodellAnlegen['bauwerksmodell']>().toEqualTypeOf<Bauwerksmodell>();
+    expectTypeOf<BauwerksmodellUmbenennen>().toEqualTypeOf<{
+      readonly art: 'BauwerksmodellUmbenennen';
+      readonly name: string;
+    }>();
+    expect(MASSENBEFEHLSARTEN).toContain('BauwerksmodellAnlegen');
+    expectTypeOf<'BauwerksmodellUmbenennen' | 'BauwerksmodellLoeschen'>().not.toExtend<Massenbefehlsart>();
+    expectTypeOf<
+      Extract<Massenbefehlskopf, { art: 'BauwerksmodellAnlegen' }>['bauwerksmodell']
+    >().toEqualTypeOf<BauwerksmodellKopf>();
+  });
+
+  it('ChangeSet: Anlegen und Löschen tragen Kopf und Inhalt, Umbenennen nur den Kopf (D-45, D-54)', () => {
+    expectTypeOf<BauwerksmodellChangeSet['art']>().toEqualTypeOf<'bauwerksmodell'>();
+    expectTypeOf<BauwerksmodellChangeSet['kopf']>().toEqualTypeOf<Aenderung<BauwerksmodellKopf>>();
+    expectTypeOf<BauwerksmodellChangeSet['inhalt']>().toEqualTypeOf<
+      Aenderung<BauwerksmodellInhalt> | undefined
+    >();
+    const umbenennen = beispielChangeSetBauwerksmodellUmbenennen;
+    expect(umbenennen).not.toHaveProperty('inhalt');
+    expect(umbenennen.kopf.vorher).not.toHaveProperty('bauteile');
+    expect({ ...umbenennen.kopf.vorher, name: '' }).toEqual({ ...umbenennen.kopf.nachher, name: '' });
+    const anlegen = beispielChangeSetBauwerksmodellAnlegen;
+    expect({ ...anlegen.kopf.nachher, ...anlegen.inhalt?.nachher }).toEqual(beispielBauwerksmodell);
+  });
+
+  it('Umkehrung ohne Vorzustand: Tausch von vorher und nachher macht aus dem Anlegen das Löschen', () => {
+    const tausch = <T>(a: Aenderung<T>): Aenderung<T> => ({ vorher: a.nachher, nachher: a.vorher });
+    const cs = beispielChangeSetBauwerksmodellAnlegen;
+    expect({
+      ...cs,
+      kopf: tausch(cs.kopf),
+      ...(cs.inhalt === undefined ? {} : { inhalt: tausch(cs.inhalt) }),
+    }).toEqual(beispielChangeSetBauwerksmodellLoeschen);
+    expect(beispielBauwerksmodellLoeschen).toEqual({ art: 'BauwerksmodellLoeschen' });
+  });
+
+  it('D-51: die Bytes stehen nie im Aggregat oder ChangeSet (nur Daten, kein Uint8Array)', () => {
+    expectTypeOf<NurDaten<Bauwerksmodell>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauwerksmodellChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauwerksmodellBefehl>>().toEqualTypeOf<true>();
+    expectTypeOf<Uint8Array>().not.toExtend<Modelldatei[keyof Modelldatei]>();
+  });
+});
+
+describe('v1.6 Punkt 2: Modelldateien (D-51)', () => {
+  it('eine inhaltsadressierte Ablage am Speicher, kein Befehl: ablegen liefert den Hash, laden die Bytes', () => {
+    expectTypeOf<Speicher['modelldateien']>().toEqualTypeOf<Modelldateiablage>();
+    expectTypeOf<Modelldateiablage['ablegen']>().parameter(0).toEqualTypeOf<Uint8Array>();
+    expectTypeOf<ReturnType<Modelldateiablage['ablegen']>>().toEqualTypeOf<
+      Promise<Ergebnis<Modelldatei['hash'], Speicherfehler>>
+    >();
+    expectTypeOf<Modelldateiablage['laden']>().parameter(0).toEqualTypeOf<Modelldatei['hash']>();
+    expectTypeOf<ReturnType<Modelldateiablage['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<Uint8Array, Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<Modelldateiablage['vorhanden']>>().toEqualTypeOf<
+      Promise<Ergebnis<boolean, Speicherfehler>>
+    >();
+    // Ablegen ist kein Befehl: Es gibt keinen Befehlsnamen dafür.
+    expectTypeOf<Extract<Befehlsart, `Modelldatei${string}`>>().toEqualTypeOf<never>();
+  });
+
+  it('Projektdatei: Modelle und Modelldateien optional (fehlt = keine); die Bytes als deflate-raw in Base64', () => {
+    expectTypeOf<Projektdatei['bauwerksmodelle']>().toEqualTypeOf<
+      readonly BauwerksmodellZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['modelldateien']>().toEqualTypeOf<
+      readonly { readonly hash: string; readonly inhalt: string }[] | undefined
+    >();
+  });
+
+  it('Beispiel: verglichen wird der SHA-256 der entpackten Bytes, nie der komprimierte Text', () => {
+    const { hash, inhalt } = beispielModelldateiInProjektdatei;
+    const bytes = inflateRawSync(Buffer.from(inhalt, 'base64'));
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(hash);
+    expect(bytes.length).toBe(beispielModelldatei.groesse);
+    expect(hash).toBe(beispielBauwerksmodell.datei.hash);
+    // Ein anderer Packer liefert anderen Text für dieselben Bytes: Der Hash bleibt derselbe.
+    const anders = deflateRawSync(bytes, { level: 1 }).toString('base64');
+    expect(
+      createHash('sha256')
+        .update(inflateRawSync(Buffer.from(anders, 'base64')))
+        .digest('hex'),
+    ).toBe(hash);
+  });
+
+  it('ein eigener Fehlercode für einen Export über der Grenze für Zeichenketten (kürzt nie, D-51)', () => {
+    expectTypeOf<'datei-zu-gross'>().toExtend<Speicherfehlercode>();
+  });
+});
+
+describe('v1.6 Punkt 3: Zuordnung Bauteil ↔ Position (X1c, D-52)', () => {
+  it('Bauteilzuordnung: GlobalId und Mengenart; kein Modell, kein Mengensatz (enge Lesart)', () => {
+    expectTypeOf<Bauteilzuordnung>().toEqualTypeOf<{
+      readonly globalId: IfcGlobalId;
+      readonly mengenart: string;
+    }>();
+    expectTypeOf<Bauteilzuordnung>().not.toHaveProperty('bauwerksmodellId');
+    expectTypeOf<Bauteilzuordnung>().not.toHaveProperty('satz');
+  });
+
+  it('an der Position optional (fehlt = keine), geordnet; ein Hinweistext und eine Gliederung tragen keine', () => {
+    expectTypeOf<Positionsdaten['bauteile']>().toEqualTypeOf<readonly Bauteilzuordnung[] | undefined>();
+    expectTypeOf<Hinweistext>().not.toHaveProperty('bauteile');
+    expectTypeOf<Titel>().not.toHaveProperty('bauteile');
+    expect(alsPosition(beispielLv.knoten.find((k) => k.art === 'position'))).not.toHaveProperty('bauteile');
+  });
+
+  it('BauteileZuordnen: ganze Liste oder null, ein Typ im LV und im Auftrags-LV (wie KostengruppeSetzen)', () => {
+    expectTypeOf<BauteileZuordnen>().toEqualTypeOf<{
+      readonly art: 'BauteileZuordnen';
+      readonly positionId: PositionId;
+      readonly bauteile: readonly Bauteilzuordnung[] | null;
+    }>();
+    expectTypeOf<BauteileZuordnen>().toExtend<LvBefehl>();
+    expectTypeOf<BauteileZuordnen>().toExtend<AuftragsLvBefehl>();
+    expectTypeOf<'BauteileZuordnen'>().not.toExtend<Massenbefehlsart>();
+    // D-53: Nach dem Zuschlag führt der Weg zur Menge nur über das Aufmaßblatt, nicht über den Mengenansatz.
+    expectTypeOf<'MengenansatzSetzen'>().not.toExtend<AuftragsLvBefehl['art']>();
+  });
+
+  it('Beispiel: zwei Wände, je die Länge; dasselbe Paar steht nur einmal; null entfernt', () => {
+    const liste = beispielBauteileZuordnen.bauteile ?? [];
+    const paare = liste.map((z) => `${z.globalId}|${z.mengenart}`);
+    expect(new Set(paare).size).toBe(paare.length);
+    const modell = new Set(beispielBauwerksmodell.bauteile.map((b) => b.globalId));
+    for (const z of liste) {
+      expect(z.globalId).toMatch(GLOBALID);
+      expect(modell).toContain(z.globalId);
+    }
+    expect(beispielBauteileEntfernen.bauteile).toBeNull();
+  });
+
+  it('ChangeSet: eine Knotenänderung der Position ohne Summen; die Umkehrung nimmt die Zuordnungen weg', () => {
+    const [g] = beispielChangeSetBauteileZuordnen.knoten.geaendert;
+    expect(g?.vorher).not.toHaveProperty('bauteile');
+    expect(g?.nachher).toEqual({ ...g?.vorher, bauteile: beispielBauteileZuordnen.bauteile });
+    expect(beispielChangeSetBauteileZuordnen.summen.positionen).toEqual([]);
+    expect(beispielChangeSetBauteileZuordnen.kopf).toBeNull();
+  });
+
+  it('offene Typfrage (D-53): eine Ansatzzeile nennt keine GlobalId', () => {
+    expectTypeOf<Ansatzzeile>().not.toHaveProperty('globalId');
+  });
+});
+
+describe('v1.6 Punkt 4: Bauzeitenplan (X2, D-57)', () => {
+  it('Kennungen, Wochentag, Bundesland (16 Kürzel ohne DE-), Arbeitskalender und Anordnungsart', () => {
+    expectTypeOf<string>().not.toExtend<BauzeitenplanId>();
+    expectTypeOf<VorgangId>().not.toExtend<BauzeitenplanId>();
+    expectTypeOf<Wochentag>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6 | 7>();
+    const laender: Record<Bundesland, true> = {
+      BW: true,
+      BY: true,
+      BE: true,
+      BB: true,
+      HB: true,
+      HH: true,
+      HE: true,
+      MV: true,
+      NI: true,
+      NW: true,
+      RP: true,
+      SL: true,
+      SN: true,
+      ST: true,
+      SH: true,
+      TH: true,
+    };
+    expect(Object.keys(laender)).toHaveLength(16);
+    expectTypeOf<Arbeitskalender>().toEqualTypeOf<{
+      readonly arbeitstage: readonly Wochentag[];
+      readonly bundesland: Bundesland | null;
+      readonly freieTage: readonly string[];
+    }>();
+    expectTypeOf<Anordnungsart>().toEqualTypeOf<
+      'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'
+    >();
+    expectTypeOf<Anordnungsbeziehung>().toEqualTypeOf<{
+      readonly vorgaengerId: VorgangId;
+      readonly art: Anordnungsart;
+      readonly abstand: number;
+    }>();
+  });
+
+  it('Vorgang: nur Eingaben; Nummer, Terminvorgabe, Bezug und Ist nullbar; nichts Gerechnetes', () => {
+    expectTypeOf<Vorgang['nummer']>().toEqualTypeOf<string | null>();
+    expectTypeOf<Vorgang['elternId']>().toEqualTypeOf<VorgangId | null>();
+    expectTypeOf<Vorgang['bezug']>().toEqualTypeOf<Vorgangsbezug | null>();
+    expectTypeOf<Vorgang['ist']>().toEqualTypeOf<Isttermine | null>();
+    expectTypeOf<Isttermine['fortschritt']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Vorgang>().not.toHaveProperty('termine');
+    expectTypeOf<Vorgang>().not.toHaveProperty('beginn');
+    expectTypeOf<Bauzeitenplan>().not.toHaveProperty('kritischeWege');
+  });
+
+  it('Vorgangsbezug: LV oder Auftrags-LV wie im AggregatBezug, ganz (null) oder Positionen und Gliederungen', () => {
+    expectTypeOf<Vorgangsbezug['art']>().toEqualTypeOf<
+      'leistungsverzeichnis' | 'auftrags-leistungsverzeichnis'
+    >();
+    expectTypeOf<NonNullable<Vorgangsbezug['knotenIds']>[number]>().toEqualTypeOf<
+      GliederungId | PositionId
+    >();
+    expectTypeOf<HinweistextId>().not.toExtend<NonNullable<Vorgangsbezug['knotenIds']>[number]>();
+    const [rohbau, , mauerwerk] = beispielBauzeitenplan.vorgaenge;
+    expect(rohbau?.bezug?.knotenIds).toBeNull();
+    expect(mauerwerk?.bezug?.knotenIds).toHaveLength(1);
+  });
+
+  it('Beispiel: Dokumentreihenfolge, Vorgänger und Eltern im Plan, Kennungen eindeutig', () => {
+    const v = beispielBauzeitenplan.vorgaenge;
+    const ids = v.map((x) => x.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    v.forEach((x, i) => {
+      if (x.elternId !== null) expect(ids.indexOf(x.elternId)).toBeLessThan(i);
+      for (const b of x.vorgaenger) expect(ids).toContain(b.vorgaengerId);
+      expect(Number.isSafeInteger(x.dauer) && x.dauer >= 0).toBe(true);
+    });
+    expect(beispielBauzeitenplan.kalender.arbeitstage).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('Ergebnis: je Vorgang Art und Termine (oder null), mehrere kritische Wege möglich, Befunde der gemeinsamen Liste', () => {
+    expectTypeOf<Bauzeitenplanergebnis['vorgaenge'][number]>().toEqualTypeOf<Vorgangsergebnis>();
+    expectTypeOf<Vorgangsergebnis['termine']>().toEqualTypeOf<Vorgangstermine | null>();
+    expectTypeOf<Vorgangsart>().toEqualTypeOf<'vorgang' | 'sammelvorgang' | 'meilenstein'>();
+    expectTypeOf<Bauzeitenplanergebnis['kritischeWege']>().toEqualTypeOf<readonly (readonly VorgangId[])[]>();
+    expectTypeOf<Bauzeitenplanergebnis['befunde']>().toEqualTypeOf<readonly Pruefbefund[]>();
+    const e = beispielBauzeitenplanergebnis;
+    expect(e.vorgaenge.map((x) => x.vorgangId)).toEqual(beispielBauzeitenplan.vorgaenge.map((x) => x.id));
+    const meilenstein = e.vorgaenge.find((x) => x.art === 'meilenstein')?.termine;
+    expect(meilenstein?.beginn).toBe(meilenstein?.ende);
+    expect(e.projektende).toBe(meilenstein?.ende);
+    // Sammelvorgänge gehören nie zum kritischen Weg.
+    const sammel = new Set(e.vorgaenge.filter((x) => x.art === 'sammelvorgang').map((x) => x.vorgangId));
+    for (const weg of e.kritischeWege) for (const id of weg) expect(sammel.has(id)).toBe(false);
+  });
+
+  it('Befehle: Anlegen, Kopf setzen, Vorgang setzen (mit Lage), Vorgang entfernen, Löschen; kein Massenbefehl', () => {
+    expectTypeOf<BauzeitenplanBefehl['art']>().toEqualTypeOf<
+      | 'BauzeitenplanAnlegen'
+      | 'BauzeitenplankopfSetzen'
+      | 'VorgangSetzen'
+      | 'VorgangEntfernen'
+      | 'BauzeitenplanLoeschen'
+    >();
+    expectTypeOf<BauzeitenplanBefehl>().toExtend<Befehl>();
+    expectTypeOf<VorgangSetzen['nach']>().toEqualTypeOf<VorgangId | null>();
+    expectTypeOf<BauzeitenplankopfSetzen>().toEqualTypeOf<{
+      readonly art: 'BauzeitenplankopfSetzen';
+      readonly name: string;
+      readonly projektbeginn: string;
+      readonly kalender: Arbeitskalender;
+    }>();
+    expectTypeOf<'BauzeitenplanAnlegen'>().not.toExtend<Massenbefehlsart>();
+    const { vorgang, nach } = beispielVorgangSetzen;
+    const geschwister = beispielBauzeitenplan.vorgaenge.filter((x) => x.elternId === vorgang.elternId);
+    expect(geschwister.map((x) => x.id)).toContain(nach);
+  });
+
+  it('ChangeSet als ganzer Plan; Entfernen nimmt die Beziehungen auf den Vorgang mit, die Umkehrung durch Tausch', () => {
+    expectTypeOf<BauzeitenplanChangeSet['bauzeitenplan']>().toEqualTypeOf<Aenderung<Bauzeitenplan>>();
+    expectTypeOf<BauzeitenplanZustand>().toEqualTypeOf<{ readonly bauzeitenplan: Bauzeitenplan }>();
+    const { vorher, nachher } = beispielChangeSetVorgangEntfernen.bauzeitenplan;
+    const weg = beispielVorgangEntfernen.vorgangId;
+    expect(vorher?.vorgaenge.some((x) => x.id === weg)).toBe(true);
+    expect(nachher?.vorgaenge.some((x) => x.id === weg)).toBe(false);
+    for (const x of nachher?.vorgaenge ?? [])
+      expect(x.vorgaenger.map((b) => b.vorgaengerId)).not.toContain(weg);
+    expect(beispielBauzeitenplanbefehle.map((b) => b.art)).toEqual([
+      'BauzeitenplanAnlegen',
+      'BauzeitenplankopfSetzen',
+      'BauzeitenplanLoeschen',
+    ]);
+  });
+
+  it('die vertraglichen Eingaben passen in die Form, die `bauzeit` rechnet (reine Daten)', () => {
+    expectTypeOf<NurDaten<Bauzeitenplan>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Bauzeitenplanergebnis>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauzeitenplanBefehl>>().toEqualTypeOf<true>();
+  });
+});
+
+describe('v1.6 Punkt 5: Honorarberechnung (X3, D-56; Namen wie `honorar`, D-101.10)', () => {
+  it('Leistungsbilder, Honorarzonen in der Schreibweise der HOAI, Leistungsphasen 1 bis 9', () => {
+    expectTypeOf<Leistungsbild>().toEqualTypeOf<
+      | 'gebaeude'
+      | 'innenraeume'
+      | 'freianlagen'
+      | 'ingenieurbauwerke'
+      | 'verkehrsanlagen'
+      | 'tragwerksplanung'
+      | 'technische-ausruestung'
+    >();
+    expectTypeOf<Honorarzone>().toEqualTypeOf<'I' | 'II' | 'III' | 'IV' | 'V'>();
+    expectTypeOf<Leistungsphasennummer>().toEqualTypeOf<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>();
+    expectTypeOf<BeauftragteLeistungsphase>().toEqualTypeOf<{
+      readonly nummer: Leistungsphasennummer;
+      readonly anteil?: Prozent;
+    }>();
+  });
+
+  it('anrechenbare Kosten: Betrag von Hand oder Verweis auf eine Kostenermittlung mit den Angaben nach § 33', () => {
+    expectTypeOf<AnrechenbareKostenangabe['art']>().toEqualTypeOf<'betrag' | 'kostenermittlung'>();
+    type AusKostenermittlung = Extract<AnrechenbareKostenangabe, { art: 'kostenermittlung' }>;
+    expectTypeOf<AusKostenermittlung['kostenermittlungId']>().toEqualTypeOf<KostenermittlungId>();
+    expectTypeOf<AusKostenermittlung['technischeAnlagenAnteilig']>().toEqualTypeOf<boolean>();
+    expectTypeOf<AusKostenermittlung['weitereKosten']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<AusKostenermittlung['mitzuverarbeitendeBausubstanz']>().toEqualTypeOf<Betrag>();
+    // Gespeichert wird der Verweis, nie die Beträge der Kostengruppen.
+    expectTypeOf<AusKostenermittlung>().not.toHaveProperty('kg300');
+  });
+
+  it('Honorarobjekt und Honorarberechnung: Umbauzuschlagssatz (Prozent) neben dem Ergebnis Umbauzuschlag (Betrag)', () => {
+    expectTypeOf<Honorarobjekt['umbauzuschlagssatz']>().toEqualTypeOf<Prozent | null>();
+    expectTypeOf<Objektergebnis['umbauzuschlag']>().toEqualTypeOf<Betrag>();
+    expectTypeOf<Honorarobjekt>().not.toHaveProperty('umbauzuschlag');
+    expectTypeOf<Honorarberechnung['nebenkosten']>().toEqualTypeOf<Nebenkostenangabe | null>();
+    expectTypeOf<Honorarberechnung>().not.toHaveProperty('ergebnis');
+    expectTypeOf<HonorarberechnungZustand>().toEqualTypeOf<{
+      readonly honorarberechnung: Honorarberechnung;
+    }>();
+  });
+
+  it('Beispiel: der Verweis nennt eine Kostenberechnung (§ 6 Abs. 1 Nr. 2); Phasen aufsteigend, je einmal', () => {
+    const [objekt] = beispielHonorarberechnung.objekte;
+    const k = objekt?.anrechenbareKosten;
+    expect(k?.art === 'kostenermittlung' && k.kostenermittlungId).toBe(beispielKostenberechnungHoai.id);
+    expect(beispielKostenberechnungHoai.stufe).toBe('kostenberechnung');
+    expect(objekt?.leistungsphasen.map((p) => p.nummer)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('Ergebnis (Form wie `honorar`): Kette Grundhonorar + Zuschläge + Nebenkosten = Netto, Befunde in der gemeinsamen Liste', () => {
+    expectTypeOf<Honorarergebnis['befunde']>().toEqualTypeOf<readonly Pruefbefund[]>();
+    expectTypeOf<Tafelzeile['spannen']>().toEqualTypeOf<
+      Readonly<Partial<Record<Honorarzone, Honorarspanne>>>
+    >();
+    expectTypeOf<Tafelinterpolation>().toEqualTypeOf<{
+      readonly zeileUnten: Tafelzeile;
+      readonly zeileOben: Tafelzeile;
+      readonly spanne: Honorarspanne;
+    }>();
+    expectTypeOf<Objektergebnis['herleitung']>().toEqualTypeOf<AnrechenbareKostenHerleitung | null>();
+    expectTypeOf<Objektergebnis['phasen']>().toEqualTypeOf<readonly Phasenbetrag[]>();
+    const e = beispielHonorarergebnis;
+    const cent = (b: string): number => Math.round(Number(b) * 100);
+    expect(cent(e.netto)).toBe(cent(e.grundhonorar) + cent(e.umbauzuschlaege) + cent(e.nebenkosten));
+    expect(cent(e.brutto)).toBe(cent(e.netto) + cent(e.mwst));
+    const [o] = e.objekte;
+    expect(o?.phasen.reduce((s, p) => s + cent(p.betrag), 0)).toBe(cent(o?.grundhonorar ?? '0'));
+    const h = o?.herleitung;
+    expect(cent(h?.sonstigeAnrechenbareKosten ?? '0')).toBe(
+      cent(h?.kg300 ?? '0') + cent(h?.weitereKosten ?? '0'),
+    );
+  });
+
+  it('Befehle: Anlegen, Setzen (ganzer Inhalt), Löschen; ChangeSet als ganzes Aggregat; kein Massenbefehl', () => {
+    expectTypeOf<HonorarberechnungBefehl['art']>().toEqualTypeOf<
+      'HonorarberechnungAnlegen' | 'HonorarberechnungSetzen' | 'HonorarberechnungLoeschen'
+    >();
+    expectTypeOf<HonorarberechnungBefehl>().toExtend<Befehl>();
+    expectTypeOf<Omit<HonorarberechnungSetzen, 'art'>>().toEqualTypeOf<
+      Omit<Honorarberechnung, 'id' | 'projektId'>
+    >();
+    expectTypeOf<HonorarberechnungChangeSet['honorarberechnung']>().toEqualTypeOf<
+      Aenderung<Honorarberechnung>
+    >();
+    expectTypeOf<'HonorarberechnungAnlegen'>().not.toExtend<Massenbefehlsart>();
+    const { vorher, nachher } = beispielChangeSetHonorarberechnungSetzen.honorarberechnung;
+    expect(nachher?.id).toBe(vorher?.id);
+    expect(nachher?.objekte[0]?.honorarsatz).toBe('25.00');
+    expect(beispielHonorarbefehle.map((b) => b.art)).toEqual([
+      'HonorarberechnungAnlegen',
+      'HonorarberechnungSetzen',
+      'HonorarberechnungLoeschen',
+    ]);
+    expectTypeOf<NurDaten<Honorarberechnung>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Honorarergebnis>>().toEqualTypeOf<true>();
+  });
+});
+
+/** Die zulässigen Wechsel des Mangelstatus (Lesart an `Mangelstatus`; die Tabelle des Ausführers liefert Ticket 111). */
+const MANGELWECHSEL: Readonly<Record<Mangelstatus, readonly Mangelstatus[]>> = {
+  offen: ['angezeigt'],
+  angezeigt: ['beseitigt'],
+  beseitigt: ['abgenommen', 'offen'],
+  abgenommen: [],
+};
+
+describe('v1.6 Punkt 6: Mängel und Bautagebuch (X4, D-57)', () => {
+  it('Kennungen, Status und Verlaufseintrag', () => {
+    expectTypeOf<string>().not.toExtend<MangelId>();
+    expectTypeOf<MangelId>().not.toExtend<BautagebucheintragId>();
+    expectTypeOf<Mangelstatus>().toEqualTypeOf<'offen' | 'angezeigt' | 'beseitigt' | 'abgenommen'>();
+    expectTypeOf<Mangelverlaufseintrag>().toEqualTypeOf<{
+      readonly status: Mangelstatus;
+      readonly datum: string;
+      readonly bemerkung: string | null;
+    }>();
+  });
+
+  it('der Verlauf ist die Quelle des Status: kein eigenes Feld, kein gespeichertes „überfällig“', () => {
+    expectTypeOf<Mangel>().not.toHaveProperty('status');
+    expectTypeOf<Mangel>().not.toHaveProperty('ueberfaellig');
+    expectTypeOf<Mangel['bauteil']>().toEqualTypeOf<{
+      readonly bauwerksmodellId: BauwerksmodellId | null;
+      readonly globalId: IfcGlobalId;
+    } | null>();
+    expectTypeOf<Mangel>().not.toHaveProperty('fotos');
+  });
+
+  it('Beispiele: erster Eintrag offen, jeder Wechsel zulässig, Daten nicht fallend und nicht vor der Feststellung', () => {
+    for (const m of [beispielMangel1, beispielMangel2, beispielChangeSetMangelstatus.mangel.nachher]) {
+      if (m === null) throw new Error('Mangel erwartet');
+      expect(m.verlauf[0]?.status).toBe('offen');
+      m.verlauf.forEach((e, i) => {
+        expect(e.datum >= m.festgestellt).toBe(true);
+        const vorher = m.verlauf[i - 1];
+        if (vorher === undefined) return;
+        expect(MANGELWECHSEL[vorher.status]).toContain(e.status);
+        expect(e.datum >= vorher.datum).toBe(true);
+      });
+      if (m.positionId !== null) expect(m.auftragsLvId).not.toBeNull();
+    }
+    expect(beispielMangel2.verlauf.at(-1)?.status).toBe('offen');
+    expect(new Set([beispielMangel1.nummer, beispielMangel2.nummer]).size).toBe(2);
+  });
+
+  it('Befehle: Anlegen, Angaben setzen (ohne Nummer und Verlauf), Status setzen (hängt an), Löschen', () => {
+    expectTypeOf<MangelBefehl['art']>().toEqualTypeOf<
+      'MangelAnlegen' | 'MangelangabenSetzen' | 'MangelstatusSetzen' | 'MangelLoeschen'
+    >();
+    expectTypeOf<Omit<MangelangabenSetzen, 'art'>>().toEqualTypeOf<
+      Omit<Mangel, 'id' | 'projektId' | 'nummer' | 'verlauf'>
+    >();
+    expectTypeOf<MangelstatusSetzen['eintrag']>().toEqualTypeOf<Mangelverlaufseintrag>();
+    expectTypeOf<'statuswechsel-unzulaessig'>().toExtend<Befehlsfehlercode>();
+    const { vorher, nachher } = beispielChangeSetMangelstatus.mangel;
+    expect(nachher?.verlauf.slice(0, -1)).toEqual(vorher?.verlauf);
+    expect(nachher?.verlauf.at(-1)).toEqual(beispielMangelstatusSetzen.eintrag);
+    expect(beispielMangelbefehle.map((b) => b.art)).toEqual([
+      'MangelAnlegen',
+      'MangelangabenSetzen',
+      'MangelLoeschen',
+    ]);
+  });
+
+  it('Bautagebucheintrag: ganze Zahlen für Grad und Köpfe, je Firma eine Zeile, keine Fotos', () => {
+    expectTypeOf<Bautagebucheintrag['wetter']['temperaturMin']>().toEqualTypeOf<number | null>();
+    expectTypeOf<Bautagebucheintrag['arbeitskraefte'][number]>().toEqualTypeOf<{
+      readonly firma: string;
+      readonly anzahl: number;
+    }>();
+    expectTypeOf<Bautagebucheintrag>().not.toHaveProperty('fotos');
+    const e = beispielBautagebucheintrag;
+    const firmen = e.arbeitskraefte.map((a) => a.firma);
+    expect(new Set(firmen).size).toBe(firmen.length);
+    for (const a of e.arbeitskraefte) expect(Number.isSafeInteger(a.anzahl) && a.anzahl >= 0).toBe(true);
+    const { temperaturMin, temperaturMax } = e.wetter;
+    expect(Number.isSafeInteger(temperaturMin) && Number.isSafeInteger(temperaturMax)).toBe(true);
+    expect((temperaturMin ?? 0) <= (temperaturMax ?? 0)).toBe(true);
+  });
+
+  it('Bautagebuchbefehle nach dem Aggregat benannt; kleine ChangeSets je Aggregat', () => {
+    expectTypeOf<BautagebucheintragBefehl['art']>().toEqualTypeOf<
+      'BautagebucheintragSetzen' | 'BautagebucheintragLoeschen'
+    >();
+    expectTypeOf<MangelBefehl | BautagebucheintragBefehl>().toExtend<Befehl>();
+    expectTypeOf<MangelChangeSet['mangel']>().toEqualTypeOf<Aenderung<Mangel>>();
+    expectTypeOf<BautagebucheintragChangeSet['bautagebucheintrag']>().toEqualTypeOf<
+      Aenderung<Bautagebucheintrag>
+    >();
+    expectTypeOf<MangelZustand>().toEqualTypeOf<{ readonly mangel: Mangel }>();
+    expectTypeOf<BautagebucheintragZustand>().toEqualTypeOf<{
+      readonly bautagebucheintrag: Bautagebucheintrag;
+    }>();
+    expect(beispielChangeSetBautagebucheintrag.bautagebucheintrag.vorher).toBeNull();
+    expect(beispielBautagebuchbefehle.map((b) => b.art)).toEqual([
+      'BautagebucheintragSetzen',
+      'BautagebucheintragLoeschen',
+    ]);
+    expectTypeOf<NurDaten<Mangel>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Bautagebucheintrag>>().toEqualTypeOf<true>();
+  });
+});
+
+describe('v1.6 Punkt 7: Befundquellen der Module X1 bis X4 in der gemeinsamen Befundliste (D-97.11)', () => {
+  it('fünf neue Quellen; die Ergebnisse von Terminrechnung und Honorarberechnung tragen Prüfbefunde', () => {
+    expectTypeOf<
+      'ifc-lesen' | 'modell-pruefung' | 'terminrechnung' | 'honorarberechnung' | 'fristpruefung'
+    >().toExtend<Befundquelle>();
+    expectTypeOf<Bauzeitenplanergebnis['befunde'][number]>().toEqualTypeOf<Pruefbefund>();
+    expectTypeOf<Honorarergebnis['befunde'][number]>().toEqualTypeOf<Pruefbefund>();
+  });
+
+  it('der Ort kennt additiv GlobalId, Vorgang und Mangel als Sprungziel; alles Bisherige bleibt', () => {
+    expectTypeOf<Befundort['globalId']>().toEqualTypeOf<IfcGlobalId | undefined>();
+    expectTypeOf<Befundort['vorgangId']>().toEqualTypeOf<VorgangId | undefined>();
+    expectTypeOf<Befundort['mangelId']>().toEqualTypeOf<MangelId | undefined>();
+    expectTypeOf<Befundort['knotenId']>().toEqualTypeOf<KnotenId | undefined>();
+    expectTypeOf<Befundort['pfad']>().toEqualTypeOf<string | undefined>();
+  });
+
+  it('Beispiel: je Quelle der Ort nach ihrer Lesart', () => {
+    const nach = new Map(beispielBefundeV16.map((b) => [b.quelle, b.ort]));
+    expect(nach.get('ifc-lesen')?.pfad).toMatch(/^#[1-9][0-9]*$/);
+    expect(nach.get('modell-pruefung')?.knotenId).toBeDefined();
+    expect(nach.get('modell-pruefung')?.globalId).toMatch(GLOBALID);
+    expect(nach.get('terminrechnung')?.vorgangId).toBeDefined();
+    expect(nach.get('honorarberechnung')?.pfad).toMatch(/^\/objekte\[[1-9][0-9]*\]$/);
+    expect(nach.get('fristpruefung')).toEqual({ mangelId: beispielMangel1.id, feld: 'frist' });
+    for (const b of beispielBefundeV16) expect(b.ort).not.toHaveProperty('spalte');
+  });
+});
+
+describe('v1.6 Punkt 8: Rand (Protokoll, Unions, Signaturen, Repositories, Projektdatei, Kennungen)', () => {
+  type Neu = 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag';
+
+  it('AggregatBezug und ChangeSet kennen die fünf neuen Aggregate mit ihren Kennungen', () => {
+    expectTypeOf<Neu>().toExtend<AggregatBezug['art']>();
+    expectTypeOf<Extract<ChangeSet['art'], Neu>>().toEqualTypeOf<Neu>();
+    expectTypeOf<Exclude<AggregatBezug['art'], ChangeSet['art']>>().toEqualTypeOf<never>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'bauwerksmodell' }>['id']>().toEqualTypeOf<BauwerksmodellId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'bauzeitenplan' }>['id']>().toEqualTypeOf<BauzeitenplanId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'honorarberechnung' }>['id']
+    >().toEqualTypeOf<HonorarberechnungId>();
+    expectTypeOf<Extract<AggregatBezug, { art: 'mangel' }>['id']>().toEqualTypeOf<MangelId>();
+    expectTypeOf<
+      Extract<AggregatBezug, { art: 'bautagebucheintrag' }>['id']
+    >().toEqualTypeOf<BautagebucheintragId>();
+  });
+
+  it('jeder Befehlsname gehört zu genau einem Aggregat, außer KostengruppeSetzen und BauteileZuordnen', () => {
+    type Alt =
+      | LvBefehl['art']
+      | AuftragsLvBefehl['art']
+      | AngebotBefehl['art']
+      | ProjektBefehl['art']
+      | AufmassBefehl['art']
+      | RechnungBefehl['art']
+      | KostenermittlungBefehl['art'];
+    type Neu16 =
+      | BauwerksmodellBefehl['art']
+      | BauzeitenplanBefehl['art']
+      | HonorarberechnungBefehl['art']
+      | MangelBefehl['art']
+      | BautagebucheintragBefehl['art'];
+    expectTypeOf<Extract<Neu16, Alt>>().toEqualTypeOf<never>();
+    expectTypeOf<
+      Extract<BauwerksmodellBefehl['art'], BauzeitenplanBefehl['art'] | HonorarberechnungBefehl['art']>
+    >().toEqualTypeOf<never>();
+    expectTypeOf<Extract<MangelBefehl['art'], BautagebucheintragBefehl['art']>>().toEqualTypeOf<never>();
+  });
+
+  it('Signaturen je neuem Aggregat; Mangel und Bautagebuch bekommen den Bestand (D-57)', () => {
+    expectTypeOf<BauwerksmodellBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BauwerksmodellZustand | null,
+        befehl: BauwerksmodellBefehl,
+      ) => Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<BauwerksmodellChangeSetAnwenden>().toEqualTypeOf<
+      (
+        zustand: BauwerksmodellZustand | null,
+        changeSet: BauwerksmodellChangeSet,
+      ) => BauwerksmodellZustand | null
+    >();
+    expectTypeOf<BauwerksmodellChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BauwerksmodellChangeSet) => BauwerksmodellChangeSet
+    >();
+    expectTypeOf<BauzeitenplanBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BauzeitenplanZustand | null,
+        befehl: BauzeitenplanBefehl,
+      ) => Ergebnis<BauzeitenplanChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<BauzeitenplanChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BauzeitenplanChangeSet) => BauzeitenplanChangeSet
+    >();
+    expectTypeOf<ReturnType<BauzeitenplanChangeSetAnwenden>>().toEqualTypeOf<BauzeitenplanZustand | null>();
+    expectTypeOf<HonorarberechnungBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: HonorarberechnungZustand | null,
+        befehl: HonorarberechnungBefehl,
+      ) => Ergebnis<HonorarberechnungChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<
+      ReturnType<HonorarberechnungChangeSetAnwenden>
+    >().toEqualTypeOf<HonorarberechnungZustand | null>();
+    expectTypeOf<HonorarberechnungChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: HonorarberechnungChangeSet) => HonorarberechnungChangeSet
+    >();
+    expectTypeOf<MangelBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: MangelZustand | null,
+        befehl: MangelBefehl,
+        bestand: readonly Pick<Mangel, 'id' | 'nummer'>[],
+      ) => Ergebnis<MangelChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<ReturnType<MangelChangeSetAnwenden>>().toEqualTypeOf<MangelZustand | null>();
+    expectTypeOf<MangelChangeSetUmkehren>().toEqualTypeOf<(changeSet: MangelChangeSet) => MangelChangeSet>();
+    expectTypeOf<BautagebucheintragBefehlAusfuehren>().toEqualTypeOf<
+      (
+        zustand: BautagebucheintragZustand | null,
+        befehl: BautagebucheintragBefehl,
+        bestand: readonly Pick<Bautagebucheintrag, 'id' | 'datum'>[],
+      ) => Ergebnis<BautagebucheintragChangeSet, Befehlsfehler>
+    >();
+    expectTypeOf<
+      ReturnType<BautagebucheintragChangeSetAnwenden>
+    >().toEqualTypeOf<BautagebucheintragZustand | null>();
+    expectTypeOf<BautagebucheintragChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: BautagebucheintragChangeSet) => BautagebucheintragChangeSet
+    >();
+    // Der ganze Bestand (wie `MangelRepository.auflisten` ihn liefert) passt als Parameter.
+    expectTypeOf<readonly Mangel[]>().toExtend<Parameters<MangelBefehlAusfuehren>[2]>();
+    expectTypeOf<readonly Bautagebucheintrag[]>().toExtend<
+      Parameters<BautagebucheintragBefehlAusfuehren>[2]
+    >();
+  });
+
+  it('Repositories am Speicher (Pflicht): Modellliste ohne Struktur und Bauteile, Mängel und Bautagebuch ganz', () => {
+    expectTypeOf<Speicher['bauwerksmodelle']>().toEqualTypeOf<BauwerksmodellRepository>();
+    expectTypeOf<Speicher['bauzeitenplaene']>().toEqualTypeOf<BauzeitenplanRepository>();
+    expectTypeOf<Speicher['honorarberechnungen']>().toEqualTypeOf<HonorarberechnungRepository>();
+    expectTypeOf<Speicher['maengel']>().toEqualTypeOf<MangelRepository>();
+    expectTypeOf<Speicher['bautagebuch']>().toEqualTypeOf<BautagebuchRepository>();
+    expectTypeOf<BauwerksmodellUebersicht>().not.toHaveProperty('bauteile');
+    expectTypeOf<BauwerksmodellUebersicht>().not.toHaveProperty('struktur');
+    expectTypeOf<BauwerksmodellUebersicht['anzahlBauteile']>().toEqualTypeOf<number>();
+    expectTypeOf<ReturnType<BauwerksmodellRepository['laden']>>().toEqualTypeOf<
+      Promise<Ergebnis<BauwerksmodellZustand, Speicherfehler>>
+    >();
+    expectTypeOf<BauzeitenplanUebersicht>().not.toHaveProperty('vorgaenge');
+    expectTypeOf<HonorarberechnungUebersicht>().toEqualTypeOf<Omit<Honorarberechnung, 'objekte'>>();
+    expectTypeOf<ReturnType<MangelRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Mangel[], Speicherfehler>>
+    >();
+    expectTypeOf<ReturnType<BautagebuchRepository['auflisten']>>().toEqualTypeOf<
+      Promise<Ergebnis<readonly Bautagebucheintrag[], Speicherfehler>>
+    >();
+    for (const r of [
+      expectTypeOf<BauwerksmodellRepository['auflisten']>(),
+      expectTypeOf<BauzeitenplanRepository['auflisten']>(),
+      expectTypeOf<HonorarberechnungRepository['auflisten']>(),
+      expectTypeOf<MangelRepository['auflisten']>(),
+      expectTypeOf<BautagebuchRepository['auflisten']>(),
+    ])
+      r.parameter(0).toEqualTypeOf<ProjektId>();
+    expect(beispielBauwerksmodellUebersicht).not.toHaveProperty('bauteile');
+    expect(beispielBauwerksmodellUebersicht.anzahlBauteile).toBe(4);
+  });
+
+  it('Projektdatei: sechs optionale Listen (fehlt = keine); eine Datei ohne sie bleibt gültig', () => {
+    expectTypeOf<Projektdatei['bauzeitenplaene']>().toEqualTypeOf<
+      readonly BauzeitenplanZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['honorarberechnungen']>().toEqualTypeOf<
+      readonly HonorarberechnungZustand[] | undefined
+    >();
+    expectTypeOf<Projektdatei['maengel']>().toEqualTypeOf<readonly MangelZustand[] | undefined>();
+    expectTypeOf<Projektdatei['bautagebuch']>().toEqualTypeOf<
+      readonly BautagebucheintragZustand[] | undefined
+    >();
+    const d = beispielProjektdateiV16;
+    // Jeder Hash, den ein Modell nennt, steht in der Datei, je einmal (vollständig, D-51).
+    const hashes = (d.modelldateien ?? []).map((m) => m.hash);
+    expect(new Set(hashes).size).toBe(hashes.length);
+    for (const { bauwerksmodell } of d.bauwerksmodelle ?? [])
+      expect(hashes).toContain(bauwerksmodell.datei.hash);
+    // Der Verweis der Honorarberechnung nennt eine Kostenermittlung derselben Datei (sonst `konflikt`).
+    const kosten = new Set((d.kostenermittlungen ?? []).map((k) => k.kostenermittlung.id));
+    for (const { honorarberechnung } of d.honorarberechnungen ?? [])
+      for (const o of honorarberechnung.objekte)
+        if (o.anrechenbareKosten.art === 'kostenermittlung')
+          expect(kosten.has(o.anrechenbareKosten.kostenermittlungId)).toBe(true);
+    expect(beispielProjektdateiV14).not.toHaveProperty('bauwerksmodelle');
+  });
+
+  it('Protokoll: das Modell als Kurzfassung ohne Struktur und Bauteile; BauteileZuordnen mit dem LV als Aggregat', () => {
+    const b = beispielMassenprotokollBauwerksmodell.befehl;
+    expect(b.art).toBe('Befehlskurzfassung');
+    expect(b.art === 'Befehlskurzfassung' && b.kopf.art).toBe('BauwerksmodellAnlegen');
+    expect(JSON.stringify(b)).not.toContain('bauteile');
+    expect(beispielMassenprotokollBauwerksmodell.aggregat).toEqual({
+      art: 'bauwerksmodell',
+      id: beispielBauwerksmodell.id,
+    });
+    expect(beispielProtokollBauteileZuordnen.aggregat.art).toBe('leistungsverzeichnis');
+  });
+
+  it('IdQuelle liefert die Kennungen der neuen Aggregate und der Vorgänge', () => {
+    expectTypeOf<ReturnType<IdQuelle['bauwerksmodell']>>().toEqualTypeOf<BauwerksmodellId>();
+    expectTypeOf<ReturnType<IdQuelle['bauzeitenplan']>>().toEqualTypeOf<BauzeitenplanId>();
+    expectTypeOf<ReturnType<IdQuelle['vorgang']>>().toEqualTypeOf<VorgangId>();
+    expectTypeOf<ReturnType<IdQuelle['honorarberechnung']>>().toEqualTypeOf<HonorarberechnungId>();
+    expectTypeOf<ReturnType<IdQuelle['mangel']>>().toEqualTypeOf<MangelId>();
+    expectTypeOf<ReturnType<IdQuelle['bautagebucheintrag']>>().toEqualTypeOf<BautagebucheintragId>();
+    // Eine GlobalId kommt aus der Datei, nie aus der IdQuelle.
+    expectTypeOf<ReturnType<IdQuelle[keyof IdQuelle]>>().not.toEqualTypeOf<IfcGlobalId>();
+  });
+});
+
+describe('v1.6 Punkt 9: Beispiele für jeden neuen Befehl; reine Daten; Werte vor v1.6', () => {
+  it('jeder neue Befehl hat ein Beispiel, und jedes Beispiel ist ein Befehl', () => {
+    const beispiele: readonly Befehl[] = [
+      beispielBauwerksmodellAnlegen,
+      beispielBauwerksmodellUmbenennen,
+      beispielBauwerksmodellLoeschen,
+      beispielBauteileZuordnen,
+      ...beispielBauzeitenplanbefehle,
+      beispielVorgangSetzen,
+      beispielVorgangEntfernen,
+      ...beispielHonorarbefehle,
+      ...beispielMangelbefehle,
+      beispielMangelstatusSetzen,
+      ...beispielBautagebuchbefehle,
+    ];
+    type Neu =
+      | BauwerksmodellBefehl['art']
+      | BauzeitenplanBefehl['art']
+      | HonorarberechnungBefehl['art']
+      | MangelBefehl['art']
+      | BautagebucheintragBefehl['art']
+      | 'BauteileZuordnen';
+    const alle: Record<Neu, true> = {
+      BauwerksmodellAnlegen: true,
+      BauwerksmodellUmbenennen: true,
+      BauwerksmodellLoeschen: true,
+      BauteileZuordnen: true,
+      BauzeitenplanAnlegen: true,
+      BauzeitenplankopfSetzen: true,
+      VorgangSetzen: true,
+      VorgangEntfernen: true,
+      BauzeitenplanLoeschen: true,
+      HonorarberechnungAnlegen: true,
+      HonorarberechnungSetzen: true,
+      HonorarberechnungLoeschen: true,
+      MangelAnlegen: true,
+      MangelangabenSetzen: true,
+      MangelstatusSetzen: true,
+      MangelLoeschen: true,
+      BautagebucheintragSetzen: true,
+      BautagebucheintragLoeschen: true,
+    };
+    expect(new Set(beispiele.map((b) => b.art))).toEqual(new Set(Object.keys(alle)));
+  });
+
+  it('jedes neue ChangeSet hat ein Beispiel', () => {
+    const beispiele: readonly ChangeSet[] = [
+      beispielChangeSetBauwerksmodellAnlegen,
+      beispielChangeSetVorgangEntfernen,
+      beispielChangeSetHonorarberechnungSetzen,
+      beispielChangeSetMangelstatus,
+      beispielChangeSetBautagebucheintrag,
+    ];
+    expect(new Set(beispiele.map((c) => c.art))).toEqual(
+      new Set(['bauwerksmodell', 'bauzeitenplan', 'honorarberechnung', 'mangel', 'bautagebucheintrag']),
+    );
+  });
+
+  it('NurDaten deckt die neuen Typen ab (die Bytes der Modelldateien stehen in keinem davon)', () => {
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<ChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Protokolleintrag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Projektdatei>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Pruefbefund>>().toEqualTypeOf<true>();
+  });
+
+  it('JSON-Rundweg: die neuen Beispiele überstehen JSON unverändert (Protokoll und Projektdatei, G-56)', () => {
+    for (const x of [
+      beispielProjektdateiV16,
+      beispielBauzeitenplanergebnis,
+      beispielHonorarergebnis,
+      beispielBefundeV16,
+    ])
+      expect(JSON.parse(JSON.stringify(x))).toEqual(x);
+  });
+
+  it('Werte vor v1.6 bleiben gültig: v1.6 ist additiv (bis auf die geschlossenen Listen, siehe Comments)', () => {
+    const p = alsPosition(beispielLv.knoten.find((k) => k.art === 'position'));
+    expect(p).not.toHaveProperty('bauteile');
+    const datei: Projektdatei = beispielProjektdateiV14;
+    expect(datei).not.toHaveProperty('modelldateien');
+    const ort: Befundort = { pfad: '/GAEB/Award/BoQ/BoQBody', zeile: 12 };
+    expect(ort).not.toHaveProperty('globalId');
     expectTypeOf<KostengruppeSetzen>().toEqualTypeOf<{
       readonly art: 'KostengruppeSetzen';
       readonly positionId: PositionId;

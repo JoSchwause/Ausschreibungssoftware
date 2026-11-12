@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // GAEB-neutrale Austauschtypen, nur soweit `gaeb` (G1) und die Oberfläche sie brauchen. Keine XML-Elemente.
 
-import type { KnotenId } from './marken';
+import type { IfcGlobalId, KnotenId, MangelId, VorgangId } from './marken';
 import type { LvInhalt } from './modell';
 
 /** Austauschphase (Glossar „GAEB-Austauschphasen“). v1 unterstützt davon X81, X83, X84, X86. */
@@ -22,9 +22,32 @@ export type Befundschwere = 'warnung' | 'fehler';
  * UBL oder CII, `xrechnungLesen` in `erechnung`; ein späterer ZUGFeRD-Leser meldet unter derselben Quelle). So legt
  * `erechnung` seine Befunde in die gemeinsame Befundliste statt in einen eigenen Befundtyp (Umstellung Ticket 104). Den
  * Ort eines solchen Befunds beschreibt `Befundort`.
+ *
+ * v1.6 (Ticket 97 Punkt 7; D-97.11): die Quellen der Module X1 bis X4, damit ihre Befunde in der gemeinsamen Befundliste
+ * stehen (Prüfpanel mit Sprunglink, U5; PDF in `ausgabe`) statt in eigenen Befundtypen:
+ * - `ifc-lesen`: das Lesen einer IFC-Datei (`ifc`, Tickets 98, 107), etwa eine Menge ohne Einheit oder eine doppelte GlobalId.
+ * - `modell-pruefung`: die Prüfungen rund um das Bauwerksmodell in `bim` (Ticket 108): hängende Zuordnungen, Mengenart fehlt
+ *   oder ist mehrdeutig, Einheit passt nicht zur Position, Geschossmengen für DIN 277 fehlen, doppelte GlobalIds und geringe
+ *   Überdeckung zweier Modellstände.
+ * - `terminrechnung`: die Terminrechnung eines Bauzeitenplans (`bauzeit`, Tickets 102, 109), etwa ein Zyklus oder eine
+ *   Anordnungsbeziehung an einem Sammelvorgang.
+ * - `honorarberechnung`: die Honorarberechnung (`honorar`, Tickets 101, 110), etwa außerhalb der Honorartafel oder eine
+ *   Kostenermittlung der falschen Stufe.
+ * - `fristpruefung`: die Fristprüfung der Mängel zu einem Stichtag (`bauleitung`, Ticket 111): ein überfälliger Mangel.
+ * Codes bleiben Text (`Pruefbefund.code`); jedes Paket führt seine Liste der Codes selbst.
  */
 export type Befundquelle =
-  'gaeb-lesen' | 'gaeb-pruefung' | 'lv-pruefung' | 'xsd-gegenpruefung' | 'erechnung-lesen';
+  | 'gaeb-lesen'
+  | 'gaeb-pruefung'
+  | 'lv-pruefung'
+  | 'xsd-gegenpruefung'
+  | 'erechnung-lesen'
+  // v1.6
+  | 'ifc-lesen'
+  | 'modell-pruefung'
+  | 'terminrechnung'
+  | 'honorarberechnung'
+  | 'fristpruefung';
 
 /**
  * Ort eines Befunds: in der Datei (Pfad, Zeile, Spalte) und/oder im Modell (Knoten, Feld).
@@ -36,6 +59,22 @@ export type Befundquelle =
  * Datei kein lesbares XML ist; `knotenId` nie (eine E-Rechnung hat keine Knoten). Ein Befund zur Datei als Ganzes (fremdes
  * Wurzelelement, Unterposition ohne Oberposition) hat nur den Pfad. Der Business Term heißt in UBL und CII gleich, der
  * Pfad nicht: Wer Befunde zuordnet oder vergleicht, nimmt `feld`. Alternative: siehe Offene Typfragen, Ticket 95.
+ *
+ * v1.6 (Ticket 97 Punkt 7; D-97.11), additiv drei Kennungen als Sprungziel und je Quelle eine Lesart (vorläufige Annahme,
+ * Entscheidung offen, enge Lesart; was eine Quelle nicht nennt, fehlt):
+ * - `ifc-lesen`: `pfad` ist die Instanz der Datei (`#123`), `zeile` ihre Zeile, `feld` das Attribut (z. B. `GlobalId`);
+ *   `globalId`, wenn der Befund ein Objekt mit GlobalId in Form betrifft. Ein Befund zur Datei als Ganzes hat keinen Ort.
+ * - `modell-pruefung`: `globalId` das Bauteil oder der Strukturknoten, `knotenId` die Position einer Zuordnung (beide, wenn
+ *   eine Zuordnung hängt), `feld` das betroffene Feld (`bauteile`, `mengenart`); ein Befund über zwei Modellstände
+ *   (Überdeckung) hat keinen Ort.
+ * - `terminrechnung`: `vorgangId` der Vorgang, `feld` sein Feld (`dauer`, `vorgaenger`, `fruehesterBeginn`, `elternId`,
+ *   `ist`); ein Zyklus ergibt je beteiligtem Vorgang einen Befund. Ein Befund zum Plan hat nur `feld` (`projektbeginn`,
+ *   `kalender`) oder keinen Ort.
+ * - `honorarberechnung`: `pfad` das Honorarobjekt als Pfad im Aggregat in der Schreibweise wie bei der E-Rechnung,
+ *   `/objekte[n]` (ab 1), dazu `feld` sein Feld (`honorarsatz`, `anrechenbareKosten`, `leistungsphasen`,
+ *   `umbauzuschlagssatz`); ein Befund zur ganzen Berechnung hat nur `feld` (`nebenkosten`, `mwstSatz`) oder keinen Ort.
+ *   Honorarobjekte haben keine Kennung (Offene Typfrage, Ticket 97).
+ * - `fristpruefung`: `mangelId` der Mangel, `feld: 'frist'`.
  */
 export interface Befundort {
   /**
@@ -50,6 +89,12 @@ export interface Befundort {
    * Feld des Knotens oder der Grid-Spalte, z. B. `menge`. Bei einer E-Rechnung (v1.5) der Business Term, z. B. `BT-115`.
    */
   readonly feld?: string;
+  /** v1.6: das Bauteil oder der Strukturknoten eines Bauwerksmodells (Quellen `ifc-lesen`, `modell-pruefung`). */
+  readonly globalId?: IfcGlobalId;
+  /** v1.6: der Vorgang eines Bauzeitenplans (Quelle `terminrechnung`). */
+  readonly vorgangId?: VorgangId;
+  /** v1.6: der Mangel (Quelle `fristpruefung`). */
+  readonly mangelId?: MangelId;
 }
 
 /** Prüfbefund: Warnung oder Fehler mit Quelle und Ort. Sperrt nie die Eingabe (U5). */

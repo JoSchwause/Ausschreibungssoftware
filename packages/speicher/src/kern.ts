@@ -36,6 +36,7 @@ import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { protokollform } from './kurzfassung';
+import { pruefeV16 } from './vertrag-v16'; // v1.6: mechanisch angepasst, Folgeticket 106
 import {
   leseAngebot,
   leseAufmass,
@@ -73,6 +74,7 @@ import type { Migrationsbefund } from './summenmigration';
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
+  pruefeV16(cs); // v1.6: mechanisch angepasst, Folgeticket 106 (Teile aus v1.6: `unbekannt`, bevor der Bezug zählt)
   const erwartet =
     cs.art === 'projekt'
       ? { art: 'projekt', id: cs.projektId as string }

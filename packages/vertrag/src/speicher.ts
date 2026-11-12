@@ -6,21 +6,31 @@ import type {
   AngebotZustand,
   AufmassZustand,
   AuftragsLvZustand,
+  BautagebucheintragZustand,
+  BauwerksmodellZustand,
+  BauzeitenplanZustand,
   ChangeSet,
   Ergebnis,
+  HonorarberechnungZustand,
   KostenermittlungZustand,
   LvStand,
   LvStandUebersicht,
   LvZustand,
+  MangelZustand,
   RechnungZustand,
 } from './changeset';
 import type {
   AngebotId,
   AufmassId,
   AuftragsLeistungsverzeichnisId,
+  BautagebucheintragId,
+  BauwerksmodellId,
+  BauzeitenplanId,
+  HonorarberechnungId,
   KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
+  MangelId,
   NutzerId,
   ProjektId,
   ProtokollId,
@@ -38,13 +48,19 @@ import type {
   Rechnung,
 } from './modell';
 import type { Betrag } from './zahlen';
+import type { BauwerksmodellKopf, Modelldatei } from './bim';
+import type { BauzeitenplanKopf } from './bauzeit';
+import type { Honorarberechnung } from './honorar';
+import type { Bautagebucheintrag, Mangel } from './bauleitung';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
 /**
  * Aggregat, auf das ein Befehl wirkt. `art` ist dieselbe wie `ChangeSet.art` des Aggregats. v1.4 (Ticket 70 Punkt 10):
  * dazu Aufmaßblatt, Rechnung und Kostenermittlung; `KostengruppeSetzen` steht mit `leistungsverzeichnis` oder
- * `auftrags-leistungsverzeichnis` im Protokoll.
+ * `auftrags-leistungsverzeichnis` im Protokoll. v1.6 (Ticket 97 Punkt 8): dazu Bauwerksmodell, Bauzeitenplan,
+ * Honorarberechnung, Mangel und Bautagebucheintrag; `BauteileZuordnen` steht wie `KostengruppeSetzen` mit dem LV oder dem
+ * Auftrags-LV im Protokoll.
  */
 export type AggregatBezug =
   | { readonly art: 'projekt'; readonly id: ProjektId }
@@ -54,7 +70,13 @@ export type AggregatBezug =
   // v1.4
   | { readonly art: 'aufmass'; readonly id: AufmassId }
   | { readonly art: 'rechnung'; readonly id: RechnungId }
-  | { readonly art: 'kostenermittlung'; readonly id: KostenermittlungId };
+  | { readonly art: 'kostenermittlung'; readonly id: KostenermittlungId }
+  // v1.6
+  | { readonly art: 'bauwerksmodell'; readonly id: BauwerksmodellId }
+  | { readonly art: 'bauzeitenplan'; readonly id: BauzeitenplanId }
+  | { readonly art: 'honorarberechnung'; readonly id: HonorarberechnungId }
+  | { readonly art: 'mangel'; readonly id: MangelId }
+  | { readonly art: 'bautagebucheintrag'; readonly id: BautagebucheintragId };
 
 /**
  * Prüfsumme über einen vollständigen Befehl (v1.1b, Punkt 7; E-13). Der Algorithmus ist ein Feld, damit er
@@ -102,6 +124,11 @@ export type Massenbefehlskopf =
       readonly art: 'AufmassAnlegen';
       /** Das Aufmaßblatt ohne `positionen` (v1.4, Ticket 70 Punkt 10). */
       readonly aufmass: AufmassKopf;
+    }
+  | {
+      readonly art: 'BauwerksmodellAnlegen';
+      /** Das Bauwerksmodell ohne `struktur` und `bauteile` (v1.6, Ticket 97 Punkt 1, D-54). */
+      readonly bauwerksmodell: BauwerksmodellKopf;
     };
 
 /**
@@ -144,7 +171,12 @@ export type Speicherfehlercode =
   | 'datei-ungueltig' // Projektdatei nicht lesbar oder nicht schemakonform
   | 'schema-zu-neu' // Projektdatei stammt von einer neueren Version
   | 'migration-fehlgeschlagen'
-  | 'unbekannt';
+  | 'unbekannt'
+  /**
+   * v1.6 (Ticket 97 Punkt 2, D-51): Die Projektdatei würde die Grenze für Zeichenketten der Laufzeit überschreiten (etwa
+   * 512 MB Text, meist wegen großer Modelldateien). Der Export schlägt laut fehl und kürzt nie (Q5); es entsteht keine Datei.
+   */
+  | 'datei-zu-gross';
 
 /** Speicherfehler als Wert: nie stiller Datenverlust (Q5). */
 export interface Speicherfehler {
@@ -279,6 +311,95 @@ export interface KostenermittlungRepository {
   laden(id: KostenermittlungId): Promise<Ergebnis<KostenermittlungZustand, Speicherfehler>>;
 }
 
+/**
+ * Ablage der Modelldateien (v1.6, Ticket 97 Punkt 2; D-51; Glossar „Modelldatei“): die Bytes der IFC-Dateien,
+ * inhaltsadressiert über den SHA-256 der unkomprimierten Bytes (`Modelldatei.hash`). Kein Repository eines Aggregats und kein
+ * Befehl: Ablegen schreibt keinen Protokolleintrag und kein ChangeSet und gehört nicht zur Undo-Historie. Die Ablage gehört
+ * zum ganzen Speicher, nicht zu einem Projekt: Dieselbe Datei in zwei Projekten liegt einmal ab. Bis Ticket 106 antwortet
+ * `speicher` auf alle drei Aufrufe mit `unbekannt`.
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - `ablegen` ist idempotent: Dieselben Bytes ergeben denselben Hash und liegen nur einmal ab; ein zweites Ablegen ist kein
+ *   Fehler. Eine Größengrenze prüft die Ablage nicht (über etwa 200 MB ist die Datei ein Befund der App, keine Sperre, D-51);
+ *   ist die Quote erschöpft, `speicher-voll`.
+ * - Die App legt die Bytes ab, **bevor** sie `BauwerksmodellAnlegen` schreibt. Ein ChangeSet, das ein Modell anlegt
+ *   (`kopf.vorher: null`), dessen `datei.hash` keine abgelegten Bytes nennt oder dessen `datei.groesse` nicht deren Länge
+ *   ist, weist `speicher.anwenden` mit `konflikt` ab (Q5: kein Modell ohne Datei).
+ * - Bytes bleiben, solange ein Bauwerksmodell irgendeines Projekts ihren Hash nennt. **Freigabe:** Bytes, die kein Modell
+ *   nennt, entfernt `speicher` nur beim Öffnen des Speichers (Beginn einer Sitzung; eine Sitzung je Datenbank, E-14), nie
+ *   während einer Sitzung: Die Undo-Historie lebt nur in der Sitzung (ADR 0006), und ein Undo von `BauwerksmodellLoeschen`
+ *   oder ein Wiederholen des Anlegens findet die Bytes so noch. Ebenso fallen beim nächsten Öffnen abgelegte Bytes weg, deren
+ *   Anlegen nie geschrieben wurde (etwa ein abgebrochenes Einlesen).
+ * - `laden` liefert die Bytes unverändert (dieselben, die abgelegt wurden); ein Hash ohne Bytes: `nicht-gefunden`.
+ */
+export interface Modelldateiablage {
+  ablegen(bytes: Uint8Array): Promise<Ergebnis<Modelldatei['hash'], Speicherfehler>>;
+  laden(hash: Modelldatei['hash']): Promise<Ergebnis<Uint8Array, Speicherfehler>>;
+  vorhanden(hash: Modelldatei['hash']): Promise<Ergebnis<boolean, Speicherfehler>>;
+}
+
+// --- Repositories der Aggregate aus v1.6 (Ticket 97 Punkt 8) -----------------------------------------------------------
+//
+// Nur lesend (A5): geschrieben wird über `Speicher.anwenden`. Bis Ticket 106 antwortet `speicher` auf jeden Aufruf mit
+// `unbekannt`. Unbekanntes Projekt: `nicht-gefunden`; Sortierungen am Aufruf.
+
+/**
+ * Ein Bauwerksmodell in der Liste des Projekts (v1.6, Ticket 97 Punkt 8, D-51, D-54): der Kopf **ohne** Struktur und Bauteile,
+ * dazu die Zahl der Bauteile (die Liste zeigt sie, Ticket 114), damit die Liste kein Modell mit 10.000 Bauteilen lädt.
+ * `anzahlBauteile` ist `bauteile.length` des gespeicherten Modells; `speicher` hält sie beim Anlegen fest.
+ */
+export interface BauwerksmodellUebersicht extends BauwerksmodellKopf {
+  readonly anzahlBauteile: number;
+}
+
+/** Bauwerksmodelle des Projekts (v1.6, Ticket 97 Punkt 8). */
+export interface BauwerksmodellRepository {
+  /**
+   * Die Modelle des Projekts als Übersicht, sortiert wie die LV-Liste (Name de-DE, gleiche Namen nach Kennung). Die Folge der
+   * Stände ergibt sich aus `vorgaengerId`, nicht aus der Ordnung.
+   */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly BauwerksmodellUebersicht[], Speicherfehler>>;
+  /** Das ganze Modell samt Struktur und Bauteilen, ohne die Bytes (die liegen in der `Modelldateiablage`). */
+  laden(id: BauwerksmodellId): Promise<Ergebnis<BauwerksmodellZustand, Speicherfehler>>;
+}
+
+/** Ein Bauzeitenplan in der Liste des Projekts (v1.6, Ticket 97 Punkt 8): der Kopf ohne Vorgänge. */
+export type BauzeitenplanUebersicht = BauzeitenplanKopf;
+
+/** Bauzeitenpläne des Projekts (v1.6, Ticket 97 Punkt 8, D-57: mehrere je Projekt). */
+export interface BauzeitenplanRepository {
+  /** Die Pläne des Projekts ohne Vorgänge, sortiert wie die LV-Liste (Name de-DE, gleiche Namen nach Kennung). */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly BauzeitenplanUebersicht[], Speicherfehler>>;
+  laden(id: BauzeitenplanId): Promise<Ergebnis<BauzeitenplanZustand, Speicherfehler>>;
+}
+
+/** Eine Honorarberechnung in der Liste des Projekts (v1.6, Ticket 97 Punkt 8): ohne Honorarobjekte. */
+export type HonorarberechnungUebersicht = Omit<Honorarberechnung, 'objekte'>;
+
+/** Honorarberechnungen des Projekts (v1.6, Ticket 97 Punkt 8). */
+export interface HonorarberechnungRepository {
+  /** Die Honorarberechnungen des Projekts ohne Objekte, sortiert wie die LV-Liste (Name de-DE, gleiche nach Kennung). */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly HonorarberechnungUebersicht[], Speicherfehler>>;
+  laden(id: HonorarberechnungId): Promise<Ergebnis<HonorarberechnungZustand, Speicherfehler>>;
+}
+
+/** Mängel des Projekts (v1.6, Ticket 97 Punkt 8, D-57). */
+export interface MangelRepository {
+  /**
+   * Die Mängel des Projekts **ganz**, nach `nummer` aufsteigend: Sie sind klein, und Liste, Fristprüfung und Ausführer (der
+   * Bestand, `MangelBefehlAusfuehren`) brauchen alle (wie `RechnungRepository.auflisten`, D-70.10).
+   */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly Mangel[], Speicherfehler>>;
+  laden(id: MangelId): Promise<Ergebnis<MangelZustand, Speicherfehler>>;
+}
+
+/** Das Bautagebuch des Projekts: seine Einträge (v1.6, Ticket 97 Punkt 8, D-57). */
+export interface BautagebuchRepository {
+  /** Die Einträge des Projekts **ganz**, nach `datum` aufsteigend (je Datum höchstens einer). */
+  auflisten(projektId: ProjektId): Promise<Ergebnis<readonly Bautagebucheintrag[], Speicherfehler>>;
+  laden(id: BautagebucheintragId): Promise<Ergebnis<BautagebucheintragZustand, Speicherfehler>>;
+}
+
 /** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
 export interface LvStandRepository {
   /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
@@ -317,6 +438,21 @@ export interface Persistenzstatus {
  * - auf ein Auftrags-LV, Aufmaßblatt oder eine Kennung verweist, die es im Projekt nicht gibt (Nachtragsangaben,
  *   `auftragsLvId`, `aufmassIds`);
  * - eine Blatt- oder Rechnungsnummer doppelt vergäbe (je Auftrags-LV eindeutig).
+ *
+ * v1.6 (Ticket 97 Punkt 8; Q5): dazu die ChangeSets von Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel und
+ * Bautagebucheintrag und ChangeSets von LV und Auftrags-LV mit Bauteilzuordnungen (bis Ticket 106 `unbekannt`). `konflikt`
+ * auch, wenn ein ChangeSet (auch als Undo)
+ * - das Projekt löscht, solange eines dieser Aggregate daran hängt (wie bei LVs und Kostenermittlungen);
+ * - ein Bauwerksmodell anlegt, dessen Modelldatei nicht (in dieser Größe) abgelegt ist oder dessen `vorgaengerId` kein Modell
+ *   des Projekts ist (siehe `Modelldateiablage`, `BauwerksmodellKopf`);
+ * - ein Bauwerksmodell löscht, das ein anderes als Vorgänger nennt oder auf das ein Mangel verweist;
+ * - eine Kostenermittlung löscht, auf die eine Honorarberechnung verweist, oder eine Honorarberechnung schreibt, die auf eine
+ *   Kostenermittlung verweist, die es im Projekt nicht gibt;
+ * - einen Mangel schreibt, dessen Nummer im Projekt vergeben ist oder dessen Auftrags-LV oder Modell es im Projekt nicht gibt;
+ *   ein Auftrags-LV löscht, auf das ein Mangel verweist;
+ * - einen Bautagebucheintrag schreibt, dessen Datum im Projekt schon ein anderer trägt.
+ * Schwache Verweise prüft `speicher` nicht (Befunde der App): Vorgangsbezug auf ein LV und seine Knoten, `Mangel.positionId`,
+ * Bauteilzuordnungen gegen ein Modell.
  */
 export interface Speicher {
   readonly projekte: ProjektRepository;
@@ -335,6 +471,21 @@ export interface Speicher {
   readonly rechnungen: RechnungRepository;
   /** Kostenermittlungen (v1.4, Ticket 70 Punkt 10; Pflicht). `speicher` liefert sie mit Ticket 79, bis dahin `unbekannt`. */
   readonly kostenermittlungen: KostenermittlungRepository;
+  /**
+   * Die Bytes der Modelldateien (v1.6, Ticket 97 Punkt 2, D-51; Pflicht wie die Repositories). `speicher` liefert sie mit
+   * Ticket 106, bis dahin `unbekannt`.
+   */
+  readonly modelldateien: Modelldateiablage;
+  /** Bauwerksmodelle (v1.6, Ticket 97 Punkt 8; Pflicht). `speicher` liefert sie mit Ticket 106, bis dahin `unbekannt`. */
+  readonly bauwerksmodelle: BauwerksmodellRepository;
+  /** Bauzeitenpläne (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
+  readonly bauzeitenplaene: BauzeitenplanRepository;
+  /** Honorarberechnungen (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
+  readonly honorarberechnungen: HonorarberechnungRepository;
+  /** Mängel (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
+  readonly maengel: MangelRepository;
+  /** Das Bautagebuch (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
+  readonly bautagebuch: BautagebuchRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -380,4 +531,33 @@ export interface Projektdatei {
   readonly aufmasse?: readonly AufmassZustand[];
   readonly rechnungen?: readonly RechnungZustand[];
   readonly kostenermittlungen?: readonly KostenermittlungZustand[];
+  /**
+   * Bauwerksmodelle des Projekts (v1.6, Ticket 97 Punkt 2; D-51). Vorläufige Annahme, Entscheidung offen (enge Lesart, wie
+   * `aufmasse`): optional, fehlt = keine; `speicher` lässt ein leeres Feld weg. Die Migration (Schema 6) liefert Ticket 106.
+   */
+  readonly bauwerksmodelle?: readonly BauwerksmodellZustand[];
+  /**
+   * Die Bytes der Modelldateien, die die Bauwerksmodelle dieser Datei nennen (v1.6, Ticket 97 Punkt 2; D-51), damit eine
+   * Sicherung eine einzige Datei bleibt. Optional, fehlt = keine (nur mit `bauwerksmodelle`). Lesarten (vorläufige Annahme,
+   * Entscheidung offen, enge Lesart):
+   * - Je Hash genau ein Eintrag, nach `hash` aufsteigend (kanonische Datei); `hash` ist der SHA-256 der unkomprimierten
+   *   Bytes, `inhalt` die Bytes, mit deflate-raw (RFC 1951) komprimiert und Base64-kodiert (RFC 4648, mit Auffüllung).
+   * - Vollständig und nur das Nötige: Der Export schreibt genau die Hashes, die die Modelle der Datei nennen. Fehlt beim
+   *   Import ein genannter Hash oder ist der SHA-256 der entpackten Bytes nicht `hash`, weist der Import die ganze Datei mit
+   *   `datei-ungueltig` ab (nichts wird halb importiert, Q5); Bytes, die schon abgelegt sind, bleiben unverändert.
+   * - Prüfsummen und Tests vergleichen den SHA-256 der unkomprimierten Bytes, nie den Text `inhalt`: deflate ist zwischen
+   *   Implementierungen nicht byte-stabil (D-51). Darum ist die Datei mit Modellen nur bis auf `inhalt` byte-stabil.
+   * - Nähert sich der Export der Grenze für Zeichenketten (etwa 512 MB Text), schlägt er mit `datei-zu-gross` fehl und kürzt
+   *   nie (D-51).
+   */
+  readonly modelldateien?: readonly { readonly hash: Modelldatei['hash']; readonly inhalt: string }[];
+  /**
+   * Bauzeitenpläne, Honorarberechnungen, Mängel und Bautagebucheinträge des Projekts (v1.6, Ticket 97 Punkt 8). Vorläufige
+   * Annahme, Entscheidung offen (enge Lesart, wie `aufmasse`): optional, fehlt = keine; `speicher` lässt leere Felder weg, so
+   * bleibt eine Datei ohne sie bis auf die Schemaversion gleich (A8; Migration 6, Ticket 106).
+   */
+  readonly bauzeitenplaene?: readonly BauzeitenplanZustand[];
+  readonly honorarberechnungen?: readonly HonorarberechnungZustand[];
+  readonly maengel?: readonly MangelZustand[];
+  readonly bautagebuch?: readonly BautagebucheintragZustand[];
 }

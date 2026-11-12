@@ -90,6 +90,11 @@ export function speicherUeberTransport(
   const aufruf = <T>(methode: RpcMethode, ...args: unknown[]): Promise<Ergebnis<T, Speicherfehler>> =>
     senden(methode, args) as Promise<Ergebnis<T, Speicherfehler>>;
 
+  // v1.6: mechanisch angepasst, Folgeticket 106 (vertrag v1.6 verlangt die Ablage der Modelldateien und die Repositories
+  // der neuen Aggregate; bis Ticket 106 antworten sie `unbekannt`, nach `schliessen` wie alle anderen `gesperrt`).
+  const erstV16 = (was: string): Promise<Ergebnis<never, Speicherfehler>> =>
+    Promise.resolve(zu ? geschlossen() : fehler('unbekannt', `${was}: erst mit Ticket 106 (vertrag v1.6).`));
+
   return {
     projekte: {
       auflisten: () => aufruf('projekteAuflisten'),
@@ -124,6 +129,21 @@ export function speicherUeberTransport(
       auflisten: (projektId: ProjektId) => aufruf('kostenermittlungenAuflisten', projektId),
       laden: (id: KostenermittlungId) => aufruf('kostenermittlungLaden', id),
     },
+    modelldateien: {
+      // v1.6: mechanisch angepasst, Folgeticket 106
+      ablegen: () => erstV16('Modelldateien ablegen'),
+      laden: () => erstV16('Modelldateien laden'),
+      vorhanden: () => erstV16('Modelldateien prüfen'),
+    },
+    // v1.6: mechanisch angepasst, Folgeticket 106 (Repositories der neuen Aggregate)
+    bauwerksmodelle: { auflisten: () => erstV16('Bauwerksmodelle'), laden: () => erstV16('Bauwerksmodell') },
+    bauzeitenplaene: { auflisten: () => erstV16('Bauzeitenpläne'), laden: () => erstV16('Bauzeitenplan') },
+    honorarberechnungen: {
+      auflisten: () => erstV16('Honorarberechnungen'),
+      laden: () => erstV16('Honorarberechnung'),
+    },
+    maengel: { auflisten: () => erstV16('Mängel'), laden: () => erstV16('Mangel') },
+    bautagebuch: { auflisten: () => erstV16('Bautagebuch'), laden: () => erstV16('Bautagebucheintrag') },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),

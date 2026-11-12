@@ -30,6 +30,39 @@ export type AufmassId = string & Marke<'AufmassId'>;
 export type RechnungId = string & Marke<'RechnungId'>;
 /** Kennung einer Kostenermittlung (v1.4, Ticket 70 Punkt 9): eigenes Aggregat, eindeutig im Projekt. */
 export type KostenermittlungId = string & Marke<'KostenermittlungId'>;
+/**
+ * Kennung eines Bauwerksmodells (v1.6, Ticket 97 Punkt 1; X1, D-51): eigenes Aggregat, eindeutig im Projekt. Jeder Import
+ * einer IFC-Datei ist ein neues Bauwerksmodell mit neuer Kennung (D-53); sie ist nicht die GlobalId des `IfcProject`.
+ */
+export type BauwerksmodellId = string & Marke<'BauwerksmodellId'>;
+
+/**
+ * GlobalId eines Objekts im Bauwerksmodell (Glossar „GlobalId“; v1.6, Ticket 97 Punkt 1, D-50): genau 22 Zeichen aus dem
+ * IFC-Base64-Alphabet `0-9`, `A-Z`, `a-z`, `_`, `$`. Anders als die übrigen Kennungen vergibt sie nicht die App, sondern
+ * das Autorenwerkzeug; sie bleibt über Modellstände hinweg gleich, solange das Werkzeug sie nicht neu vergibt (D-53), und
+ * verknüpft Bauteile zwischen zwei Ständen, zwischen Leser und 3D-Ansicht und mit Positionen (D-52).
+ *
+ * Erzeugt nur im Paket `ifc` aus der Datei (Ticket 107), wie `Kostengruppennummer` in `kosten`; wer eine GlobalId aus einem
+ * Befehl, dem Protokoll oder einer Datei liest (Kern, `bim`, `speicher`), prüft die Form selbst nach. Vorläufige Annahme,
+ * Entscheidung offen (enge Lesart): Ein Wert dieser Marke hat immer die Form. Ein Objekt der Datei, dessen GlobalId sie nicht
+ * hat (oder das keine hat), kommt nicht ins Bauwerksmodell (Befund beim Lesen, Quelle `ifc-lesen`; die Bytes bleiben in der
+ * Modelldatei, Q5). Alternative: siehe Offene Typfragen, Ticket 97.
+ */
+export type IfcGlobalId = string & Marke<'IfcGlobalId'>;
+
+/** Kennung eines Bauzeitenplans (v1.6, Ticket 97 Punkt 4; X2, D-57): eigenes Aggregat, eindeutig im Projekt. */
+export type BauzeitenplanId = string & Marke<'BauzeitenplanId'>;
+/**
+ * Kennung eines Vorgangs (v1.6, Ticket 97 Punkt 4): eindeutig im Bauzeitenplan, kein Aggregat. Sie bleibt beim Ersetzen des
+ * Vorgangs (`VorgangSetzen`) gleich; Anordnungsbeziehungen und Kinder verweisen über sie.
+ */
+export type VorgangId = string & Marke<'VorgangId'>;
+/** Kennung einer Honorarberechnung (v1.6, Ticket 97 Punkt 5; X3, D-56): eigenes Aggregat, eindeutig im Projekt. */
+export type HonorarberechnungId = string & Marke<'HonorarberechnungId'>;
+/** Kennung eines Mangels (v1.6, Ticket 97 Punkt 6; X4, D-57): eigenes Aggregat, eindeutig im Projekt (nicht die Nummer). */
+export type MangelId = string & Marke<'MangelId'>;
+/** Kennung eines Bautagebucheintrags (v1.6, Ticket 97 Punkt 6; X4, D-57): eigenes Aggregat, eindeutig im Projekt. */
+export type BautagebucheintragId = string & Marke<'BautagebucheintragId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;
@@ -103,4 +136,16 @@ export interface IdQuelle {
   rechnung(): RechnungId;
   /** v1.4: für `KostenermittlungAnlegen`. */
   kostenermittlung(): KostenermittlungId;
+  /** v1.6 (Ticket 97): für `BauwerksmodellAnlegen` (nicht die GlobalId; die stammt aus der Datei). */
+  bauwerksmodell(): BauwerksmodellId;
+  /** v1.6: für `BauzeitenplanAnlegen`. */
+  bauzeitenplan(): BauzeitenplanId;
+  /** v1.6: für einen neuen Vorgang (`VorgangSetzen`). */
+  vorgang(): VorgangId;
+  /** v1.6: für `HonorarberechnungAnlegen`. */
+  honorarberechnung(): HonorarberechnungId;
+  /** v1.6: für `MangelAnlegen`. */
+  mangel(): MangelId;
+  /** v1.6: für einen neuen Bautagebucheintrag (`BautagebucheintragSetzen`). */
+  bautagebucheintrag(): BautagebucheintragId;
 }

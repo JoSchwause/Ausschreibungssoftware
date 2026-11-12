@@ -24,6 +24,7 @@ import type {
   TitelId,
 } from './marken';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
+import type { Bauteilzuordnung } from './bim';
 
 // --- Texte ---------------------------------------------------------------------------------
 
@@ -437,6 +438,25 @@ export interface Positionsdaten {
    * bringen sie mit. Hinweistexte tragen keine (Offene Typfrage, Ticket 70; in v1.5 vertagt, D-95.4).
    */
   readonly textquelle?: string;
+  /**
+   * Die Bauteile, deren Mengen die Position übernimmt (v1.6, Ticket 97 Punkt 3; X1c, D-52, D-53; Glossar
+   * „Bauteilzuordnung“). Fehlt: keine; nie `[]` im Zustand (eine leere Liste ist keine, siehe `BauteileZuordnen`). Wirkt auf
+   * keine Summe des Kerns; Gliederungen und Hinweistexte tragen keine.
+   *
+   * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+   * - Geordnet: In dieser Reihenfolge baut `bim` die Ansatzzeilen der Mengenübernahme (D-53); dasselbe Paar aus GlobalId und
+   *   Mengenart steht höchstens einmal darin. Ein Bauteil darf mehreren Positionen zugeordnet sein (D-52).
+   * - Geändert nur über `BauteileZuordnen` (im LV und im Auftrags-LV). Anlegebefehle (`PositionAnlegen`, `KnotenEinfuegen`,
+   *   `LeistungsverzeichnisAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`, `NachtragUebernehmen`) übernehmen sie, wie sie
+   *   kommen (der Kern prüft die Form wie bei `BauteileZuordnen`). **Kopieren verwirft sie** (D-52): Die Kopierhilfe des
+   *   Kerns (Kopieren im LV und Einfügen aus der Zwischenablage, Ticket 42) lässt das Feld weg, damit dasselbe Bauteil nicht
+   *   unbemerkt zweimal gezählt wird. Verschieben, Papierkorb und Wiederherstellen behalten sie, ein LV-Stand trägt sie.
+   * - Der Zuschlag (`zuschlagErteilen`, D-21) übernimmt sie mit den Positionsdaten ins Auftrags-LV (gemeinsame
+   *   Positionsidentität), ebenso `nachtragUebernehmen` aus dem Nachtrags-LV; danach sind beide unabhängig.
+   * - Der GAEB-Export schreibt sie nicht (kein GAEB-Element; mit Warnung wie die Textquelle, F6); ein GAEB-Import bringt
+   *   keine mit.
+   */
+  readonly bauteile?: readonly Bauteilzuordnung[];
 }
 
 /**
