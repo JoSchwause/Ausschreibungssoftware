@@ -1,6 +1,6 @@
 # 105: Kern v1.5/v1.6: einheitlicher Fehlercode, OZ-Vorschlag am Auftrags-LV, `BauteileZuordnen`
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: K, X1c · Paket: `packages/kern` (benannte Ausnahmen von P2, nur wenn nötig und klein: die Stelle in
 `packages/abrechnung`, die heute den OZ-Vorschlag umdeutet (D-80.1), und `zuschlagErteilen` in `packages/vergabe`, falls es
