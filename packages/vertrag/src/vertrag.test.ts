@@ -267,6 +267,8 @@ import type {
   Mangelverlaufseintrag,
   MangelZustand,
 } from './index';
+import type { Befundort } from './index';
+import { beispielBefundeV16 } from './beispiele';
 import {
   beispielBautagebuchbefehle,
   beispielBautagebucheintrag,
@@ -1860,7 +1862,13 @@ describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenar
 
 describe('v1.5 Punkt 2: Befundquelle für E-Rechnungen (Ticket 76, D-76.4)', () => {
   it('die gemeinsame Befundliste kennt das Lesen einer E-Rechnung; die übrigen Quellen bleiben', () => {
-    expectTypeOf<Befundquelle>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 7): dazu die Quellen der Module X1 bis X4, siehe dort.
+    expectTypeOf<
+      Exclude<
+        Befundquelle,
+        'ifc-lesen' | 'modell-pruefung' | 'terminrechnung' | 'honorarberechnung' | 'fristpruefung'
+      >
+    >().toEqualTypeOf<
       'gaeb-lesen' | 'gaeb-pruefung' | 'lv-pruefung' | 'xsd-gegenpruefung' | 'erechnung-lesen'
     >();
     expectTypeOf(beispielBefundeERechnung).toEqualTypeOf<readonly [Pruefbefund, Pruefbefund]>();
@@ -2576,5 +2584,34 @@ describe('v1.6 Punkt 6: Mängel und Bautagebuch (X4, D-57)', () => {
     ]);
     expectTypeOf<NurDaten<Mangel>>().toEqualTypeOf<true>();
     expectTypeOf<NurDaten<Bautagebucheintrag>>().toEqualTypeOf<true>();
+  });
+});
+
+describe('v1.6 Punkt 7: Befundquellen der Module X1 bis X4 in der gemeinsamen Befundliste (D-97.11)', () => {
+  it('fünf neue Quellen; die Ergebnisse von Terminrechnung und Honorarberechnung tragen Prüfbefunde', () => {
+    expectTypeOf<
+      'ifc-lesen' | 'modell-pruefung' | 'terminrechnung' | 'honorarberechnung' | 'fristpruefung'
+    >().toExtend<Befundquelle>();
+    expectTypeOf<Bauzeitenplanergebnis['befunde'][number]>().toEqualTypeOf<Pruefbefund>();
+    expectTypeOf<Honorarergebnis['befunde'][number]>().toEqualTypeOf<Pruefbefund>();
+  });
+
+  it('der Ort kennt additiv GlobalId, Vorgang und Mangel als Sprungziel; alles Bisherige bleibt', () => {
+    expectTypeOf<Befundort['globalId']>().toEqualTypeOf<IfcGlobalId | undefined>();
+    expectTypeOf<Befundort['vorgangId']>().toEqualTypeOf<VorgangId | undefined>();
+    expectTypeOf<Befundort['mangelId']>().toEqualTypeOf<MangelId | undefined>();
+    expectTypeOf<Befundort['knotenId']>().toEqualTypeOf<KnotenId | undefined>();
+    expectTypeOf<Befundort['pfad']>().toEqualTypeOf<string | undefined>();
+  });
+
+  it('Beispiel: je Quelle der Ort nach ihrer Lesart', () => {
+    const nach = new Map(beispielBefundeV16.map((b) => [b.quelle, b.ort]));
+    expect(nach.get('ifc-lesen')?.pfad).toMatch(/^#[1-9][0-9]*$/);
+    expect(nach.get('modell-pruefung')?.knotenId).toBeDefined();
+    expect(nach.get('modell-pruefung')?.globalId).toMatch(GLOBALID);
+    expect(nach.get('terminrechnung')?.vorgangId).toBeDefined();
+    expect(nach.get('honorarberechnung')?.pfad).toMatch(/^\/objekte\[[1-9][0-9]*\]$/);
+    expect(nach.get('fristpruefung')).toEqual({ mangelId: beispielMangel1.id, feld: 'frist' });
+    for (const b of beispielBefundeV16) expect(b.ort).not.toHaveProperty('spalte');
   });
 });

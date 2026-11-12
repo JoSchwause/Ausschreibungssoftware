@@ -2246,3 +2246,52 @@ export const beispielChangeSetBautagebucheintrag: BautagebucheintragChangeSet = 
   bautagebucheintragId: tagebuchId,
   bautagebucheintrag: { vorher: null, nachher: beispielBautagebucheintrag },
 };
+
+/**
+ * Punkt 7 (D-97.11): je neuer Quelle ein Befund in der gemeinsamen Befundliste, mit dem Ort nach der Lesart an `Befundort`
+ * (Codes erfunden; die Listen der Codes führen die Pakete):
+ * - `ifc-lesen`: eine Menge der Wand EG ohne Einheit in der Datei (Instanz `#412`, Zeile 233), die deshalb nicht ins Modell
+ *   kommt (nie 0, D-53);
+ * - `modell-pruefung`: eine hängende Zuordnung an der Beispielposition (die GlobalId steht im ersten Modellstand nicht);
+ * - `terminrechnung`: der Meilenstein mit einer Beziehung auf einen Sammelvorgang;
+ * - `honorarberechnung`: das erste Honorarobjekt mit einem Umbauzuschlag über der Grenze von 33 %;
+ * - `fristpruefung`: Mangel 1 zum Stichtag 2026-12-07 überfällig (Frist 2026-12-04, Status angezeigt).
+ */
+export const beispielBefundeV16: readonly [Pruefbefund, Pruefbefund, Pruefbefund, Pruefbefund, Pruefbefund] =
+  [
+    {
+      schwere: 'warnung',
+      quelle: 'ifc-lesen',
+      code: 'einheit-fehlt',
+      meldung: '#412: NetVolume ohne Einheit; die Menge kommt nicht ins Modell.',
+      ort: { pfad: '#412', zeile: 233, feld: 'Unit', globalId: beispielGlobalIds.wandEg },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'modell-pruefung',
+      code: 'zuordnung-haengt',
+      meldung: 'Die GlobalId 4Treppe_EG_00000000001 steht im gewählten Modell nicht.',
+      ort: { knotenId: posId, globalId: gid('4Treppe_EG_00000000001'), feld: 'bauteile' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'terminrechnung',
+      code: 'beziehung-an-sammelvorgang',
+      meldung: 'Anordnungsbeziehung auf den Sammelvorgang „Rohbau“ wird nicht gerechnet.',
+      ort: { vorgangId: fertig, feld: 'vorgaenger' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'honorarberechnung',
+      code: 'umbauzuschlag-ueber-grenze',
+      meldung: 'Umbauzuschlag 40,00 % über 33 % (§ 36 Abs. 1).',
+      ort: { pfad: '/objekte[1]', feld: 'umbauzuschlagssatz' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'fristpruefung',
+      code: 'mangel-frist-ueberschritten',
+      meldung: 'Mangel 1: Frist 2026-12-04 zum Stichtag 2026-12-07 überschritten.',
+      ort: { mangelId: mangel1Id, feld: 'frist' },
+    },
+  ];
