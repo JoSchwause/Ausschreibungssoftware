@@ -1,6 +1,6 @@
 # 102: X2: Terminrechnung des Bauzeitenplans (`bauzeit`)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: X2 · Paket: `packages/bauzeit` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: –
