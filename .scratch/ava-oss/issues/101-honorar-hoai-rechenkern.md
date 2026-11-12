@@ -190,4 +190,7 @@ deterministisch. Paket: 9 Testdateien, 133 Tests.
 - `pnpm test` (Lauf 2, Last ~10–16): 214 Dateien grün, 2 rot, beide Leistungsbudgets außerhalb von `honorar`: wieder
   `vergabe` (1.094,6 ms) und `packages/speicher/src/aufmass-leistung.test.ts` (Ticket 94; Median `AufmasspositionSetzen`
   105,4 ms, Rückgängig 72,9 ms, Wiederholen 64,6 ms). Die Datei allein: grün (34,6 / 38,2 / 32,6 ms). 2.766 Tests grün.
-- Alle 133 Tests von `honorar` in beiden Läufen grün.
+- Lauf 3 nach erneutem Merge von `integration/welle-6` @ `f42f417` (nur `erechnung` neu): Lint und Typecheck grün; `pnpm test`
+  215 Dateien grün, 1 rot: wieder das Budget in `speicher` (Median Setzen 87,5 ms, Rückgängig 74,0 ms, Wiederholen 124,7 ms);
+  die Datei allein grün (26,3 / 26,1 / 26,0 ms). 2.769 Tests grün; `node --test fixtures/*.test.mjs` 29/29.
+- Alle 133 Tests von `honorar` in allen drei Läufen grün.
