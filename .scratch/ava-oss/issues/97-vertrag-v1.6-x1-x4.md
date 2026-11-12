@@ -1,6 +1,6 @@
 # 97: `vertrag` v1.6: Typen für X1 BIM, X2 Bauzeitenplan, X3 HOAI, X4 Bauleitung
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 6 · Strang: F · Paket: `packages/vertrag` (dazu nur mechanische, markierte Zeilen in den Paketen, die die Typen nutzen)
 Blocked by: 95
