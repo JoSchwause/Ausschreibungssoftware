@@ -295,8 +295,9 @@ export interface AuftragsLvChangeSet {
  * ChangeSet an einem Aufmaßblatt (v1.4, Ticket 70 Punkt 6; D-36 (8)): das ganze Blatt vorher und nachher, ohne Summen.
  * `aufmass.vorher: null` legt an, `nachher: null` löscht (der volle Stand steht dann in `vorher`), beide gesetzt ändern.
  * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` (Undo, ADR 0006). Bewusst grob: Auch eine einzelne
- * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70). In v1.5 vertagt (D-95.4): Ticket 94 misst ein Blatt
- * mit 5.000 Zeilen und versucht zuerst die Lösung in `speicher` (D-45, D-47).
+ * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70). v1.5 (D-95.4): Es bleibt dabei; Ticket 94 hält das
+ * Budget mit einer Lösung in `speicher` (Einzeländerung, Undo und Redo bei 5.000 Zeilen unter 100 ms, D-45), ein
+ * `Aenderungen<Aufmassposition>` ist nicht nötig.
  */
 export interface AufmassChangeSet {
   readonly art: 'aufmass';

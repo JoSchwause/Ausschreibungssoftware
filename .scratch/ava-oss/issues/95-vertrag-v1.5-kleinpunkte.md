@@ -83,8 +83,9 @@ keine Projektdatei ändert sich; kein Rechenwert, keine Fixture, kein Golden ge�
    `OzVorschlagen = (zustand: LvZustand | AuftragsLvZustand, ort: Einfuegeort, art: 'position' | 'titel' | 'los') =>
    OzVorschlag | null` mit Lesart (D-95.3). Beispiel `beispielOzVorschlagAuftragsLv` (Gliederung „Nachtrag N01“ → `02`).
 4. **Offene Typfragen aus Ticket 70.** `modell.ts`: Lesart „kumuliert“ an `Rechnung.gefordert`; „in v1.5 vertagt“ an
-   `Rechnung.eingang`, `Positionsdaten.textquelle`, `Aufmassposition` und (`changeset.ts`) `AufmassChangeSet`; der veraltete
-   Kommentar an `Kostenermittlungseintrag` ist berichtigt; eine Verweiszeile in Ticket 70. Ergebnis je Frage: D-95.4.
+   `Rechnung.eingang`, `Positionsdaten.textquelle` und `Aufmassposition`; `changeset.ts`: „bleibt“ an `AufmassChangeSet`
+   (Ticket 94); der veraltete Kommentar an `Kostenermittlungseintrag` ist berichtigt; eine Verweiszeile in Ticket 70.
+   Ergebnis je Frage: D-95.4.
 5. **Netto in der LV-Übersicht (D-92.4).** `speicher.ts`: `LvUebersicht.nettoNachNachlass?: Betrag` (Name: D-95.5). Beispiel
    `beispielLvUebersichtNetto` (nach 10 % Nachlass 11,11, nicht das Netto 12,35).
 6. **Spalte „KG“ (D-89.1).** `ansicht.ts`: `LvSpalte` + `'kostengruppe'` mit Lesart; `ui-grid` mechanisch (Tabelle unten).
@@ -124,9 +125,10 @@ Typtests in `vertrag.test.ts`, Abschnitte „v1.5 Punkt 1“ bis „Punkt 6“ u
     nur mit einem zweiten Befehl, weil `TextquelleSetzen.positionId` eine Position nennt.
   - 5 (Kostengruppe nur an Positionen): **bleibt.** Eine Quelle je Wert; die Kostenkontrolle (D-37), die Bauteile (D-52: die KG
     eines Bauteils ist die seiner Position) und die Spalte „KG“ (Ticket 93) arbeiten je Position.
-  - 6 (ganzes Aufmaßblatt im ChangeSet): **vertagt.** Ticket 94 misst und versucht zuerst die Lösung in `speicher` (D-45,
-    D-47); `Aenderungen<Aufmassposition>` wäre nicht additiv (Form des ChangeSets, Protokoll, Undo) und käme nur auf Meldung
-    von 94 in einem eigenen Vertragsticket.
+  - 6 (ganzes Aufmaßblatt im ChangeSet): **bleibt.** Ticket 94 (gemergt während dieses Tickets) hält das Budget mit einer
+    Lösung in `speicher`: Einzeländerung, Undo und Redo bei 5.000 Zeilen 25–31 ms statt 63–71 ms (D-45 erledigt).
+    `Aenderungen<Aufmassposition>` wäre nicht additiv (Form des ChangeSets, Protokoll, Undo) und ist nicht nötig. (Eine erste
+    Fassung dieses Tickets hatte „vertagt bis Ticket 94“.)
   - 7 (Blatt- und Rechnungsnummer fest): **bleibt.** Die Reihenfolge der Rechnungen hängt an der Nummer (D-34 (7)); korrigiert
     wird über Löschen und Neuanlegen.
   - 8 (ist `gefordert` kumuliert?): **entschieden, nur als Lesart:** `netto` und `brutto` sind kumuliert wie die
@@ -137,8 +139,8 @@ Typtests in `vertrag.test.ts`, Abschnitte „v1.5 Punkt 1“ bis „Punkt 6“ u
     Vorschlag aus der vorigen Rechnung.
   - 10 (Bemerkung je Aufmaßposition): **vertagt.** Textzeilen einer X31 stehen in der Textform der Ansatzzeile (D-83.2); in
     Welle 6 braucht niemand das Feld. Ein neues optionales Feld ginge heute still verloren: `abrechnung` baut Blatt und Zeile
-    kanonisch nur aus den Vertragsfeldern (D-80.5), `speicher` hält Spalten; es bräuchte also mechanische Zeilen in beiden (in
-    `speicher` arbeitet gerade Ticket 94). Die Herkunft einer Zeile aus dem Modell (D-53) entscheidet Ticket 97.
+    kanonisch nur aus den Vertragsfeldern (D-80.5), `speicher` hält Spalten; es bräuchte also mechanische Zeilen in beiden.
+    Die Herkunft einer Zeile aus dem Modell (D-53) entscheidet Ticket 97.
   - 11 (Nummern der Kostenermittlung eindeutig): **bleibt.** `kosten` fasst Doppelte beim Anlegen zusammen (Befund, Ticket 82).
   - 12 (zwei Typen `Kostenermittlungseintrag`): **erledigt** durch Ticket 82 (`Kostenermittlungseingabe`); Kommentar berichtigt.
   - 13 (keine Herkunft am übernommenen Nachtragsknoten): **bleibt.** `nachtragsbefunde` erkennt Übernahmen an den
@@ -173,7 +175,7 @@ Typtests in `vertrag.test.ts`, Abschnitte „v1.5 Punkt 1“ bis „Punkt 6“ u
    die Projektseite heute zeigt); `AuftragsLvUebersicht` bleibt ohne Summe.
 4. **Kein eigener Code für „Feld an der falschen Knotenart“** (D-95.1). Alternative: `keine-position` o. ä. (ein neues Glied
    der geschlossenen Liste, mechanische Zeilen in der App).
-5. Aus Ticket 70 weiter offen, vertagt mit Grund (D-95.4): 4, 6, 10, 15.
+5. Aus Ticket 70 weiter offen, vertagt mit Grund (D-95.4): 4, 10, 15.
 
 ### Mechanische Anpassungen außerhalb von `vertrag` (markiert `// v1.5: mechanisch angepasst, Folgeticket 93`)
 

@@ -1810,11 +1810,14 @@ describe('v1.5 Punkt 4: Offene Typfragen aus Ticket 70 gesichtet (D-95.4)', () =
     }>();
   });
 
-  it('vertagt: kein Rechnungsdatum (15), keine Bemerkung je Aufmaßposition (10), das Blatt bleibt ganzes Aggregat (6)', () => {
+  it('vertagt: kein Rechnungsdatum (15), keine Bemerkung je Aufmaßposition (10), keine Textquelle am Hinweistext (4)', () => {
     expectTypeOf<Rechnung>().not.toHaveProperty('rechnungsdatum');
     expectTypeOf<Aufmassposition>().not.toHaveProperty('bemerkung');
-    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
     expectTypeOf<Hinweistext>().not.toHaveProperty('textquelle');
+  });
+
+  it('Typfrage 6 entschieden: das Aufmaßblatt bleibt ganzes Aggregat im ChangeSet (Ticket 94 hält das Budget)', () => {
+    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
   });
 });
 
