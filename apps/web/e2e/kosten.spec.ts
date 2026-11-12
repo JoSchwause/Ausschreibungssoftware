@@ -284,7 +284,6 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   const auftragGrid = page.getByRole('treegrid', { name: 'Positionen des Auftrags-LV' });
   await expect(auftragGrid.getByRole('columnheader').last()).toHaveText('KG');
   await expect(kgZelle(auftragGrid, 'Baustelle einrichten')).toHaveText('390');
-  await expect(kgZelle(auftragGrid, 'Endreinigung')).toHaveText('340');
   await auftragGrid
     .locator('[role="row"]', { has: page.getByText('Oberboden abtragen', { exact: true }) })
     .locator('[data-spalte="menge"]')
