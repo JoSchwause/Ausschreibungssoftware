@@ -1,6 +1,6 @@
 # 93: `ui-grid`: editierbare Spalte für die Kostengruppe im LV-Grid
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: U, C2 · Paket: `packages/ui-grid`, danach `apps/web/src/kosten/` und die Einhängestellen in
 `apps/web/src/lv/LvSeite.tsx`, `apps/web/src/auftrag/AuftragsLvSeite.tsx` (markiert `// Ticket 93`, D-20)
@@ -37,8 +37,8 @@ Undo-Schritt. Leistungsbudgets des Grids bleiben grün (Q4). Der Dialog aus 89 b
 
 ## Acceptance criteria
 
-- [ ] Spalte in `ui-grid` getestet (Unit + E2E des Pakets); App stellt um; `leistung.spec.ts` (Paket und App) grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün, dazu
+- [x] Spalte in `ui-grid` getestet (Unit + E2E des Pakets); App stellt um; `leistung.spec.ts` (Paket und App) grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün, dazu
       `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/ui-grid e2e` und die genannten App-E2E
 
 ## Comments
@@ -100,3 +100,44 @@ Undo-Schritt. Leistungsbudgets des Grids bleiben grün (Q4). Der Dialog aus 89 b
   kein Test übersprungen. Reversible: yes.
 - **D-93.10** Glossar? **Kein neuer Eintrag.** „Spalte KG“ steht seit v1.5 unter „Kostengruppe“; `KostengruppeLesen` ist ein
   technischer Typ der Oberfläche wie `GridZahlen`. Reversible: yes.
+
+### Umsetzung (Branch `welle-6/93-kg-spalte`)
+
+- **`ui-grid`:** `eingabe.ts` (Spalte bearbeitbar an Positionen, `befehlAusEingabe` → `KostengruppeSetzen` über die
+  Lesefunktion, `leseKostengruppe`), `einfuegen.ts` (`planeEinfuegen` bringt die KG mit, neu `planeKostengruppen`), `LvGrid.tsx`
+  (bearbeitbare Spalten je Grid, Ausnahme im schreibgeschützten Grid, Einfügen einer Spalte, Markierung mit Basis der Zeile),
+  `Zeile.tsx`/`Editor.tsx` (Bearbeitbarkeit je Spalte, `aria-readonly="false"` an der KG-Zelle im schreibgeschützten Grid,
+  Hinweis beim Tippen), `typen.ts` (`kostengruppeLesen`, `onKostengruppen`, `KostengruppeLesen`), `texte.ts`
+  (`gridNurKostengruppe`, `meldungKostengruppen`), `index.ts` (`STANDARDSPALTEN`, `KostengruppeLesen`). Die drei Marker aus
+  Ticket 95 sind ersetzt. Prüfstand: Parameter `kg=1`, `KostengruppeSetzen` in `befehle-anwenden.ts`, Attrappe
+  `kostengruppeAttrappe`.
+- **App:** `kosten/kgSpalte.ts` (neu: `SPALTEN_MIT_KG`, `kgSpalteImLv`, `useKgSpalteAmAuftrag`), `kosten/kostengruppe.ts`
+  (`kgZelleLesen`), `kosten/KostengruppenAmAuftrag.tsx` (`useKostengruppenAmAuftrag`, D-93.8); Einhängestellen `// Ticket 93`
+  in `lv/LvSeite.tsx` (Import, eine Zeile am Grid), `auftrag/AuftragsLvSeite.tsx` (Import, Hook, eine Zeile am Grid) und
+  `lv/pruefung.ts` (`GRID_SPALTEN`, D-93.6). Der Dialog aus Ticket 89 bleibt.
+- **Tests:** `ui-grid/src/eingabe.test.ts` (+10: Eingabe, Einfügen neuer Positionen, Füllen einer Spalte),
+  `ui-grid/e2e/kostengruppe.spec.ts` (9: Anzeige und Lage, Enter/F2/Tab/Entf/Tippen, Zellfehler und Escape, Einfügen einer
+  Spalte als Folge, Excel-Zeilen mit KG, Tastatur und waagerechtes Scrollen bei 820 px, Prüfhinweis an der Zelle,
+  schreibgeschütztes Grid mit Ausnahme: Ansage und Folgen), `ui-grid/e2e/leistung.spec.ts` (Zählung je KG-Zelle, LV-Fälle mit
+  Spalte), `apps/web/src/kosten/kostengruppe.test.ts` (+2), `apps/web/src/lv/pruefung.test.ts` (+1), `apps/web/e2e/kosten.spec.ts`
+  (LV: Zellfehler, Eingabe = ein Undo-Schritt, drei KG aus einer Spalte = ein Undo-Schritt; Auftrags-LV: Menge bleibt
+  schreibgeschützt mit Ansage, Eingabe und Einfügen als AuftragsLvBefehl, Rückgängig je Aktion; alles zurückgenommen, damit
+  die Zahlen der Kostenkontrolle gelten).
+
+### Ergebnis (nach `git merge integration/welle-6`, Stand `45216f3`)
+
+- `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test`: grün (Lint samt Paketgrenzen, Lizenzen,
+  Clean Room; Vitest 235 Dateien bestanden, 1 übersprungen, 3.048 Tests bestanden, 3 übersprungen; Fixture-Tests 42/42).
+- `CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/ui-grid e2e`: 87 bestanden (davor, ohne den Merge,
+  ebenso 87).
+- App-E2E (`CI=1`, eigener Port): `kosten.spec.ts`, `leistung.spec.ts`, dazu `m3`, `nachtrag`, `lv`, `undo`: 15 bestanden. Ein
+  Lauf davor hatte `m3` und `nachtrag` rot (sie prüfen `aria-readonly` am Grid des Auftrags-LV); behoben mit D-93.5, nicht
+  an den Tests.
+- Leistung `ui-grid` (Headless-Chromium ohne GPU, 4 Kerne, bis zu 8 Agenten), Mittel bei 5.600 / 28.000 px/s: ohne Spalte
+  (vorher, gleicher Code ohne `kg=1`) 5.000 Zeilen 55 / 56,2 fps, 10.000 Zeilen 58,2 / 54,2 fps; mit Spalte im Lauf nach dem
+  Merge 60 / 59,2 fps und 60 / 59,4 fps (0 Bilder > 33 ms). Ein Lauf unter Last davor hatte 56 / 42,5 fps mit einem
+  Einzelbild von 1.067 ms und lief grün; die Schwankung kommt von der geteilten Maschine. Keine Schranke geändert.
+- Leistung App: Mengenänderung bei 5.000 Positionen Median 31 ms (dauerhaftes Profil), Undo 31 ms, flüchtiger Kontext 66 ms;
+  alles unter 100 ms.
+
+Offen: der Hinweis „KG außerhalb der Gliederung“ an der Zelle (D-93.7, möglicher Folgeauftrag); sonst nichts.
