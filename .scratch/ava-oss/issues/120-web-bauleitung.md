@@ -59,3 +59,5 @@ Neu `apps/web/src/bauleitung/`: Seiten `MaengelSeite`, `BautagebuchSeite`, Formu
 **Gate X4: bestanden.** `x4.spec.ts` (feste Uhr 26.11.2026) dreimal grün hintereinander (je ~33 s), Kettentest grün; genau Mangel 3 überfällig, Mangel 5 (Frist am Stichtag) nicht, Auswertung je Auftragnehmer 3/2/1 und 2/1/0, Bautagebuch 9/8/9, 2/19/5, Summe 26, beide Gegenproben, drei PDFs, Neuladen.
 
 Prüfung nach `git merge integration/welle-6`: `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` 292 Dateien / 3.767 Tests grün (1 Datei, 3 Tests übersprungen wie zuvor), `node --test` 53/53; `x4.spec.ts` danach erneut grün (4 Läufe insgesamt, alle grün).
+
+Berichtigung zur Prüfung oben: Die volle Suite lief mit 294 Dateien grün und 3 CPU-Budgets rot (3.801 Tests grün, 3 rot): `speicher/v16-leistung` (10.000 Bauteile), `vergabe/leistung` (Preisspiegel gross), `web/abrechnung/leistung` (Undo 5.000 Zeilen, 155 ms > 100). Alle drei Dateien allein wiederholt (`--no-file-parallelism`): 7/7 grün. Kein Budget gelockert, nichts übersprungen; dieser Branch ändert keines dieser Pakete.
