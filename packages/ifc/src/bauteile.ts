@@ -107,7 +107,10 @@ export function bauteileLesen(
   for (const i of [...struktur.keys()].sort((a, b) => a - b)) {
     const globalId = l.gepruefteGlobalId(i);
     const behaelterInstanz = struktur.get(i) ?? null;
-    const s = behaelterInstanz !== null && STRUKTURARTEN.has(l.daten.name(behaelterInstanz)) ? behaelterInstanz : null;
+    const s =
+      behaelterInstanz !== null && STRUKTURARTEN.has(l.daten.name(behaelterInstanz))
+        ? behaelterInstanz
+        : null;
     const strukturGlobalId = s === null ? null : l.globalId(s);
     const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
     if (strukturGlobalId === null)

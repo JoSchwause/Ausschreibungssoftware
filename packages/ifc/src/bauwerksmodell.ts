@@ -51,6 +51,36 @@ function bezeichnung(l: Modellleser, i: number): string {
 }
 
 /**
+ * Bricht die Ringe eines Verweises auf, den jedes Objekt höchstens einmal hat (`ziel`, je Instanz; ein Ziel ist selbst eines
+ * der `objekte`): Je Ring verliert das erste Objekt in der Reihenfolge der Datei seinen Verweis (D-66). Liefert die Ringe,
+ * jeden beginnend beim aufgebrochenen Objekt. Jedes Objekt wird einmal besucht.
+ */
+function ringeAufbrechen(objekte: readonly number[], ziel: Map<number, number | null>): number[][] {
+  const fertig = new Set<number>();
+  const ringe: number[][] = [];
+  for (const start of objekte) {
+    const pfad: number[] = [];
+    const stelle = new Map<number, number>();
+    let n: number | null = start;
+    while (n !== null && !fertig.has(n) && !stelle.has(n)) {
+      stelle.set(n, pfad.length);
+      pfad.push(n);
+      n = ziel.get(n) ?? null;
+    }
+    const anfang = n === null ? undefined : stelle.get(n);
+    if (anfang !== undefined) {
+      const ring = pfad.slice(anfang);
+      const erstes = ring.reduce((a, b) => Math.min(a, b));
+      const ab = ring.indexOf(erstes);
+      ringe.push([...ring.slice(ab), ...ring.slice(0, ab)]);
+      ziel.set(erstes, null);
+    }
+    for (const p of pfad) fertig.add(p);
+  }
+  return ringe;
+}
+
+/**
  * Bildet Struktur und Bauteile ab. Ein Objekt ohne GlobalId in Form fehlt (Befund des Lesers); was dabei sonst wegfällt,
  * meldet die Abbildung über den Leser (`melde` mit dem betroffenen Objekt), damit die Befunde in einer Liste stehen.
  */
@@ -73,7 +103,8 @@ function abbilden(
         continue;
       }
       const q = inhalt.mengen.instanzOhneWert(m);
-      const grund = m.wert === null ? 'hat keinen Wert' : 'hat einen Wert, der keine gültige Menge ist (zu lang),';
+      const grund =
+        m.wert === null ? 'hat keinen Wert' : 'hat einen Wert, der keine gültige Menge ist (zu lang),';
       l.melde(
         'fehler',
         'menge-ohne-wert',
@@ -86,10 +117,10 @@ function abbilden(
   };
 
   /**
-   * GlobalId des Ziels eines Verweises von `i` auf die Instanz `ziel`. Der Verweis entfällt mit Befund, wenn das Ziel nicht
-   * im Modell steht (`code`) oder seine GlobalId zuerst ein anderes Objekt trägt (`verweis-mehrdeutig`): Der Verweis würde
-   * dann dieses meinen, und das Modell sagte etwas, das die Datei nicht sagt. `wie`: wie `i` auf `ziel` verweist, `folge`:
-   * was im Modell daraus wird.
+   * Das Ziel eines Verweises von `i` auf die Instanz `ziel`, wenn das Modell es über seine GlobalId nennen kann. Der Verweis
+   * entfällt mit Befund, wenn das Ziel nicht im Modell steht (`code`) oder seine GlobalId zuerst ein anderes Objekt trägt
+   * (`verweis-mehrdeutig`): Der Verweis würde dann dieses meinen, und das Modell sagte etwas, das die Datei nicht sagt.
+   * `wie`: wie `i` auf `ziel` verweist, `folge`: was im Modell daraus wird.
    */
   const verweis = (
     i: number,
@@ -97,11 +128,11 @@ function abbilden(
     code: Gelesen.IfcBefundcode,
     wie: string,
     folge: string,
-  ): IfcGlobalId | null => {
+  ): number | null => {
     if (ziel === null) return null;
     const globalId = imModell.get(ziel);
     const erstes = globalId === undefined ? undefined : ersterTraeger.get(globalId);
-    if (globalId !== undefined && erstes === ziel) return globalId;
+    if (globalId !== undefined && erstes === ziel) return ziel;
     if (globalId !== undefined && erstes !== undefined) {
       l.melde(
         'warnung',
@@ -122,43 +153,80 @@ function abbilden(
     return null;
   };
 
-  const struktur: Strukturknoten[] = [];
-  for (const k of inhalt.struktur) {
-    const globalId = imModell.get(k.i);
-    if (globalId === undefined) continue;
-    struktur.push({
-      globalId,
-      art: k.knoten.art,
-      name: k.knoten.name,
-      elternGlobalId: verweis(k.i, k.eltern, 'strukturknoten-ohne-eltern', 'hängt an', 'hat es keine Eltern'),
-      mengen: mengen(k.i, k.knoten.mengen),
+  /** Bricht die Ringe eines Verweises auf und meldet je Ring das Objekt, das seinen Verweis verliert. */
+  const ringe = (
+    ziel: Map<number, number | null>,
+    code: Gelesen.IfcBefundcode,
+    wie: string,
+    folge: string,
+  ): void => {
+    for (const ring of ringeAufbrechen([...ziel.keys()], ziel)) {
+      const erstes = ring[0] ?? -1;
+      const kette = [...ring, erstes].map((r) => `#${String(l.daten.id(r))}`).join(' → ');
+      l.melde(
+        'fehler',
+        code,
+        `${bezeichnung(l, erstes)} ${wie} (Ring ${kette}); im Modell ${folge}.`,
+        l.ort(erstes),
+        erstes,
+      );
+    }
+  };
+  const globalIdVon = (ziel: number | null | undefined): IfcGlobalId | null =>
+    ziel === null || ziel === undefined ? null : (imModell.get(ziel) ?? null);
+
+  /** Die Objekte einer Art, die im Modell stehen, mit ihrer GlobalId. */
+  const imModellMit = <T extends { readonly i: number }>(liste: readonly T[]) =>
+    liste.flatMap((o) => {
+      const globalId = imModell.get(o.i);
+      return globalId === undefined ? [] : [{ ...o, globalId }];
     });
-  }
-  const bauteile: Bauteil[] = [];
-  for (const b of inhalt.bauteile) {
-    const globalId = imModell.get(b.i);
-    if (globalId === undefined) continue;
-    const strukturGlobalId = verweis(
+
+  const knoten = imModellMit(inhalt.struktur);
+  const eltern = new Map<number, number | null>();
+  for (const k of knoten)
+    eltern.set(k.i, verweis(k.i, k.eltern, 'strukturknoten-ohne-eltern', 'hängt an', 'hat es keine Eltern'));
+  ringe(eltern, 'strukturknoten-ring', 'hängt über seine Eltern an sich selbst', 'hat es keine Eltern');
+  const struktur: Strukturknoten[] = knoten.map((k) => ({
+    globalId: k.globalId,
+    art: k.knoten.art,
+    name: k.knoten.name,
+    elternGlobalId: globalIdVon(eltern.get(k.i)),
+    mengen: mengen(k.i, k.knoten.mengen),
+  }));
+
+  const teile = imModellMit(inhalt.bauteile);
+  const strukturVon = new Map<number, number | null>();
+  const ganzes = new Map<number, number | null>();
+  for (const b of teile) {
+    strukturVon.set(
       b.i,
-      b.struktur,
-      'bauteil-ohne-strukturknoten',
-      'steht in',
-      'steht es in keinem Strukturknoten',
+      verweis(
+        b.i,
+        b.struktur,
+        'bauteil-ohne-strukturknoten',
+        'steht in',
+        'steht es in keinem Strukturknoten',
+      ),
     );
-    const teilVon = verweis(b.i, b.teilVon, 'bauteil-ohne-ganzes', 'ist Teil von', 'ist es kein Teil');
+    ganzes.set(b.i, verweis(b.i, b.teilVon, 'bauteil-ohne-ganzes', 'ist Teil von', 'ist es kein Teil'));
+  }
+  ringe(ganzes, 'bauteil-ring', 'ist über das Ganze Teil von sich selbst', 'ist es kein Teil');
+  const bauteile: Bauteil[] = teile.map((b) => {
+    const teilVon = globalIdVon(ganzes.get(b.i));
     const kostengruppe = b.bauteil.kostengruppe;
-    bauteile.push({
-      globalId,
+    return {
+      globalId: b.globalId,
       ifcKlasse: b.bauteil.ifcKlasse,
       name: b.bauteil.name,
       typ: b.bauteil.typ,
-      strukturGlobalId,
+      strukturGlobalId: globalIdVon(strukturVon.get(b.i)),
       // Optionale Felder fehlen statt `null` (vertrag v1.6).
       ...(teilVon === null ? {} : { teilVonGlobalId: teilVon }),
       ...(kostengruppe === null ? {} : { kostengruppe }),
       mengen: mengen(b.i, b.bauteil.mengen),
-    });
-  }
+    };
+  });
   return { struktur, bauteile };
 }
 

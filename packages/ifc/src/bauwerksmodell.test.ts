@@ -41,7 +41,13 @@ const STRUKTUR = [
     elternGlobalId: gid('projekt'),
     mengen: [],
   },
-  { globalId: gid('gebaeude'), art: 'gebaeude', name: 'Haus', elternGlobalId: gid('grundstueck'), mengen: [] },
+  {
+    globalId: gid('gebaeude'),
+    art: 'gebaeude',
+    name: 'Haus',
+    elternGlobalId: gid('grundstueck'),
+    mengen: [],
+  },
   { globalId: gid('eg'), art: 'geschoss', name: 'EG', elternGlobalId: gid('gebaeude'), mengen: [] },
 ];
 
@@ -258,7 +264,14 @@ describe('Objekte ohne GlobalId in Form', () => {
       ['Raum', null],
     ]);
     expect(modell?.bauteile).toStrictEqual([
-      { globalId: gid('wand'), ifcKlasse: 'IfcWall', name: 'Wand', typ: null, strukturGlobalId: null, mengen: [] },
+      {
+        globalId: gid('wand'),
+        ifcKlasse: 'IfcWall',
+        name: 'Wand',
+        typ: null,
+        strukturGlobalId: null,
+        mengen: [],
+      },
       {
         globalId: gid('lauf'),
         ifcKlasse: 'IfcStairFlight',
@@ -370,5 +383,63 @@ describe('Doppelte GlobalIds (D-66)', () => {
     expect(lesung.befunde[8]?.meldung).toBe(
       `Lauf (#111) ist Teil von #110, dessen GlobalId ${gid('raum')} zuerst #18 trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell ist es kein Teil.`,
     );
+  });
+});
+
+describe('Ringe (D-66)', () => {
+  it('bricht Ringe in der Struktur und bei den Teilen am ersten Objekt des Rings auf, mit Befund', () => {
+    const lesung = lesen([
+      ...grundgeruest(),
+      `#16=IFCBUILDING('${gid('a')}',$,'A',$,$,$,$,$,.ELEMENT.,$,$,$);`,
+      `#17=IFCBUILDINGSTOREY('${gid('b')}',$,'B',$,$,$,$,$,.ELEMENT.,0.);`,
+      `#18=IFCRELAGGREGATES('${gid('r18')}',$,$,$,#16,(#17));`,
+      `#19=IFCRELAGGREGATES('${gid('r19')}',$,$,$,#17,(#16));`,
+      `#20=IFCSPACE('${gid('c')}',$,'C',$,$,$,$,$,.ELEMENT.,.INTERNAL.,$);`,
+      `#21=IFCRELAGGREGATES('${gid('r21')}',$,$,$,#20,(#20));`,
+      `#100=IFCWALL('${gid('x')}',$,'X',$,$,$,$,$,$);`,
+      `#101=IFCBUILDINGELEMENTPART('${gid('y')}',$,'Y',$,$,$,$,$,$);`,
+      `#102=IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid('r102')}',$,$,$,(#100),#12);`,
+      `#103=IFCRELAGGREGATES('${gid('r103')}',$,$,$,#100,(#101));`,
+      `#104=IFCRELAGGREGATES('${gid('r104')}',$,$,$,#101,(#100));`,
+      `#110=IFCELEMENTQUANTITY('${gid('q110')}',$,'Qto',$,$,(#111));`,
+      "#111=IFCQUANTITYLENGTH('Length',$,$,1.,$);",
+      `#112=IFCRELDEFINESBYPROPERTIES('${gid('r112')}',$,$,$,(#100,#101),#110);`,
+    ]);
+    const modell = lesung.bauwerksmodell;
+    expect(modell?.struktur.slice(4).map((k) => [k.name, k.elternGlobalId])).toEqual([
+      ['A', null],
+      ['B', gid('a')],
+      ['C', null],
+    ]);
+    expect(modell?.bauteile.map((b) => [b.name, b.strukturGlobalId, b.teilVonGlobalId])).toEqual([
+      ['X', gid('eg'), undefined],
+      ['Y', gid('eg'), gid('x')],
+    ]);
+    expect(lesung.befunde).toEqual([
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'strukturknoten-ring',
+        meldung:
+          'A (#16) hängt über seine Eltern an sich selbst (Ring #16 → #17 → #16); im Modell hat es keine Eltern.',
+        ort: { pfad: '#16', zeile: 21, globalId: gid('a') },
+      },
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'strukturknoten-ring',
+        meldung:
+          'C (#20) hängt über seine Eltern an sich selbst (Ring #20 → #20); im Modell hat es keine Eltern.',
+        ort: { pfad: '#20', zeile: 25, globalId: gid('c') },
+      },
+      {
+        schwere: 'fehler',
+        quelle: 'ifc-lesen',
+        code: 'bauteil-ring',
+        meldung:
+          'X (#100) ist über das Ganze Teil von sich selbst (Ring #100 → #101 → #100); im Modell ist es kein Teil.',
+        ort: { pfad: '#100', zeile: 27, globalId: gid('x') },
+      },
+    ]);
   });
 });

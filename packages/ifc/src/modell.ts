@@ -45,7 +45,13 @@ export class Modellleser {
   }
 
   /** Meldet einen Befund; `objekt` ist das betroffene Objekt, wenn es nicht die Instanz von `ort` ist. */
-  melde(schwere: IfcBefund['schwere'], code: IfcBefundcode, meldung: string, ort: Befundort, objekt?: number): void {
+  melde(
+    schwere: IfcBefund['schwere'],
+    code: IfcBefundcode,
+    meldung: string,
+    ort: Befundort,
+    objekt?: number,
+  ): void {
     const b = befund(schwere, code, meldung, ort);
     this.befunde.push(b);
     if (objekt !== undefined) this.objektVon.set(b, objekt);
@@ -98,7 +104,9 @@ export class Modellleser {
     const globalId = this.globalId(i);
     const nummer = `#${String(this.daten.id(i))}`;
     if (!istGlobalId(globalId)) {
-      const folge = this.ohneGlobalIdEntfaellt ? ' Ohne GlobalId in Form steht es nicht im Bauwerksmodell.' : '';
+      const folge = this.ohneGlobalIdEntfaellt
+        ? ' Ohne GlobalId in Form steht es nicht im Bauwerksmodell.'
+        : '';
       this.melde(
         'fehler',
         'globalid-ungueltig',
