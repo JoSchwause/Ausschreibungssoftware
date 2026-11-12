@@ -163,6 +163,14 @@ import {
   type RechnungChangeSetAnwenden,
   type RechnungChangeSetUmkehren,
   type RechnungRepository,
+  // v1.5
+  type Befundquelle,
+  type Pruefbefund,
+  type OzVorschlag,
+  type OzVorschlagen,
+  type Gesamtsummen,
+  type LvSpalte,
+  type LvZeile,
 } from './index';
 import {
   beispielAnlegenChangeSet,
@@ -234,6 +242,11 @@ import {
   beispielRechnungAnlegen,
   beispielRechnungsbefehle,
   beispielLvUebersichtNachtrag,
+  // v1.5
+  beispielFehlerKostengruppe,
+  beispielBefundeERechnung,
+  beispielOzVorschlagAuftragsLv,
+  beispielLvUebersichtNetto,
 } from './beispiele';
 
 /**
@@ -1680,5 +1693,200 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
       protokoll: [],
     };
     expect(datei).not.toHaveProperty('aufmasse');
+  });
+});
+
+// --- v1.5 (Ticket 95) -------------------------------------------------------------------------------------------
+
+describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
+  it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
+    expectTypeOf<Befehlsfehlercode>().toEqualTypeOf<
+      | 'ungueltige-eingabe'
+      | 'knoten-unbekannt'
+      | 'eltern-unbekannt'
+      | 'id-vergeben'
+      | 'zyklus'
+      | 'ebene-ueberschritten'
+      | 'knotenart-unzulaessig'
+      | 'bezug-unbekannt'
+      | 'oz-ungueltig'
+      | 'maske-ungueltig'
+      | 'oz-doppelt'
+      | 'oz-ueberlauf'
+      | 'angebot-unbekannt'
+      | 'befehl-nicht-zustaendig'
+      | 'rechnung-freigegeben'
+    >();
+  });
+
+  it('KostengruppeSetzen an einer Gliederung: knotenart-unzulaessig; an einer Kennung ohne Knoten: knoten-unbekannt', () => {
+    const [anGliederung, ohneKnoten] = beispielFehlerKostengruppe;
+    const art = (id: KnotenId | undefined): Knoten['art'] | undefined =>
+      beispielAuftragsLv.knoten.find((k) => k.id === id)?.art;
+    expect(anGliederung.code).toBe('knotenart-unzulaessig');
+    expect(art(anGliederung.knotenId)).toBe('titel');
+    expect(ohneKnoten.code).toBe('knoten-unbekannt');
+    expect(ohneKnoten.knotenId).toBeDefined();
+    expect(art(ohneKnoten.knotenId)).toBeUndefined();
+  });
+});
+
+describe('v1.5 Punkt 2: Befundquelle für E-Rechnungen (Ticket 76, D-76.4)', () => {
+  it('die gemeinsame Befundliste kennt das Lesen einer E-Rechnung; die übrigen Quellen bleiben', () => {
+    expectTypeOf<Befundquelle>().toEqualTypeOf<
+      'gaeb-lesen' | 'gaeb-pruefung' | 'lv-pruefung' | 'xsd-gegenpruefung' | 'erechnung-lesen'
+    >();
+    expectTypeOf(beispielBefundeERechnung).toEqualTypeOf<readonly [Pruefbefund, Pruefbefund]>();
+  });
+
+  it('Ort: der Business Term in `feld`, das Element (lokale Namen, `[n]` ab 1) in `pfad`, nie ein Knoten', () => {
+    const [wert, regel] = beispielBefundeERechnung;
+    for (const b of beispielBefundeERechnung) {
+      expect(b.quelle).toBe('erechnung-lesen');
+      expect(b.ort.feld).toMatch(/^BT-[0-9]+$/);
+      expect(b.ort).not.toHaveProperty('knotenId');
+      // Zeile und Spalte nur, wenn die Datei kein lesbares XML ist
+      expect(b.ort).not.toHaveProperty('zeile');
+    }
+    expect(wert.ort.pfad).toMatch(/^(\/[A-Za-z][A-Za-z0-9]*(\[[1-9][0-9]*\])?)+$/);
+    // Eine Summenregel betrifft keinen einzelnen Wert der Datei: nur der Business Term.
+    expect(regel.ort).toEqual({ feld: 'BT-115' });
+  });
+});
+
+/**
+ * Die Wurzel eines Zustands, wie sie der OZ-Vorschlag liest (v1.5): aus beiden Aggregaten ohne Umdeutung einer Kennung (kein
+ * `as`). Belegt, dass die Signatur ohne die Leseansicht aus D-80.1 umsetzbar ist; die Umsetzung liefert der Kern (Ticket 105).
+ */
+const wurzelVon = (z: Parameters<OzVorschlagen>[0]): WurzelId =>
+  'leistungsverzeichnis' in z ? z.leistungsverzeichnis.id : z.auftragsLeistungsverzeichnis.id;
+
+describe('v1.5 Punkt 3: OZ-Vorschlag des Kerns, auch für das Auftrags-LV (D-80.1)', () => {
+  it('Signatur am Rand wie die übrigen Kern-Signaturen: LV oder Auftrags-LV, Ort und Knotenart ohne Hinweistext', () => {
+    expectTypeOf<OzVorschlagen>().toEqualTypeOf<
+      (
+        zustand: LvZustand | AuftragsLvZustand,
+        ort: Einfuegeort,
+        art: 'position' | 'titel' | 'los',
+      ) => OzVorschlag | null
+    >();
+    expectTypeOf<Parameters<OzVorschlagen>[2]>().toEqualTypeOf<Exclude<Knoten['art'], 'hinweis'>>();
+    expectTypeOf<OzVorschlag>().toEqualTypeOf<{
+      readonly ordnungszahl: Ordnungszahl;
+      readonly ozIndex: string | null;
+      readonly hinweis?: Befehlshinweis;
+    }>();
+    expectTypeOf<NurDaten<OzVorschlag>>().toEqualTypeOf<true>();
+  });
+
+  it('ohne umgedeutete Kennung: das Auftrags-LV ist selbst Wurzel und Elternknoten des Orts', () => {
+    expectTypeOf<AuftragsLeistungsverzeichnisId>().toExtend<ElternId>();
+    expectTypeOf<AuftragsLvZustand>().toExtend<Parameters<OzVorschlagen>[0]>();
+    const { zustand, ort, art } = beispielOzVorschlagAuftragsLv;
+    expect(wurzelVon(zustand)).toBe(beispielAuftragsLv.id);
+    expect(ort).toEqual({ art: 'ende', elternId: beispielAuftragsLv.id });
+    expect(art).toBe('titel');
+  });
+
+  it('Beispiel: die Gliederung „Nachtrag N01“ bekommt hinter dem Titel 01 den Vorschlag 02 (D-42.3: Vorgänger + 1)', () => {
+    const { vorschlag } = beispielOzVorschlagAuftragsLv;
+    const neu = beispielNachtragUebernehmen.knoten.find((k) => k.elternId === beispielAuftragsLv.id);
+    expect(neu?.art === 'titel' ? neu.ordnungszahl : undefined).toBe(vorschlag.ordnungszahl);
+    expect(vorschlag).toEqual({ ordnungszahl: '02', ozIndex: null });
+  });
+});
+
+describe('v1.5 Punkt 4: Offene Typfragen aus Ticket 70 gesichtet (D-95.4)', () => {
+  it('Typfrage 8 entschieden: Netto und Brutto der Forderung sind kumuliert wie die Abzugskette (D-34 (1))', () => {
+    // Rechnung 2 rechnet Blatt 1 und 2 ab: gefordert ist die ganze Leistung bis dahin, nicht der Zuwachs seit Rechnung 1.
+    const gefordert = beispielRechnungsbefehle[0].gefordert;
+    expect(gefordert?.netto).toBe(beispielLeistungsstand.nettoNachNachlass);
+    expect(gefordert?.netto).not.toBe(beispielRechnung1.gefordert?.netto);
+    // kein Kennzeichen „kumuliert“ am Typ
+    expectTypeOf<NonNullable<Rechnung['gefordert']>>().toEqualTypeOf<{
+      readonly netto: Betrag | null;
+      readonly brutto: Betrag | null;
+      readonly zahlbetrag: Betrag | null;
+    }>();
+  });
+
+  it('vertagt: kein Rechnungsdatum (15), keine Bemerkung je Aufmaßposition (10), keine Textquelle am Hinweistext (4)', () => {
+    expectTypeOf<Rechnung>().not.toHaveProperty('rechnungsdatum');
+    expectTypeOf<Aufmassposition>().not.toHaveProperty('bemerkung');
+    expectTypeOf<Hinweistext>().not.toHaveProperty('textquelle');
+  });
+
+  it('Typfrage 6 entschieden: das Aufmaßblatt bleibt ganzes Aggregat im ChangeSet (Ticket 94 hält das Budget)', () => {
+    expectTypeOf<AufmassChangeSet['aufmass']>().toEqualTypeOf<Aenderung<Aufmass>>();
+  });
+});
+
+describe('v1.5 Punkt 5: das gespeicherte Netto nach Nachlass in der LV-Übersicht (D-92.4)', () => {
+  it('additiv und optional, ein Betrag; fehlt = noch nicht gerechnet, nie null', () => {
+    expectTypeOf<LvUebersicht['nettoNachNachlass']>().toEqualTypeOf<Betrag | undefined>();
+    const alt: LvUebersicht = { id: beispielLv.id, name: beispielLv.name };
+    expect(alt).not.toHaveProperty('nettoNachNachlass');
+  });
+
+  it('der Name der Gesamtsummen (L2): `netto` hieße dort das Netto vor Nachlass', () => {
+    expectTypeOf<LvUebersicht['nettoNachNachlass']>().toEqualTypeOf<
+      Gesamtsummen['nettoNachNachlass'] | undefined
+    >();
+    expectTypeOf<LvUebersicht>().not.toHaveProperty('netto');
+  });
+
+  it('Beispiel: nach 10 % Nachlass trägt die Übersicht 11,11, nicht das Netto 12,35', () => {
+    const gesamt = beispielChangeSetNachlass.summen.gesamt;
+    expect(beispielLvUebersichtNetto.id).toBe(beispielLv.id);
+    expect(beispielLvUebersichtNetto.nettoNachNachlass).toBe(gesamt?.nettoNachNachlass);
+    expect(beispielLvUebersichtNetto.nettoNachNachlass).not.toBe(gesamt?.netto);
+  });
+});
+
+describe('v1.5 Punkt 6: Spalte „KG“ im LV-Grid (D-89.1, Ticket 93)', () => {
+  it('LvSpalte kennt die Kostengruppe; die bisherigen sieben Spalten bleiben', () => {
+    expectTypeOf<LvSpalte>().toEqualTypeOf<
+      | 'ordnungszahl'
+      | 'positionsart'
+      | 'kurztext'
+      | 'menge'
+      | 'einheit'
+      | 'einheitspreis'
+      | 'gesamtpreis'
+      | 'kostengruppe'
+    >();
+  });
+
+  it('die Spalte heißt wie das Feld der Position, das sie zeigt, und wie `Befundort.feld` einer Zelle', () => {
+    expectTypeOf<'kostengruppe'>().toExtend<keyof Positionsdaten>();
+    expectTypeOf<Positionsdaten['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+    expectTypeOf<'kostengruppe'>().toExtend<NonNullable<LvZeile['befunde'][number]['ort']['feld']>>();
+  });
+});
+
+describe('v1.5: reine Daten und Werte vor v1.5', () => {
+  it('NurDaten deckt die neuen und geänderten Typen ab', () => {
+    expectTypeOf<NurDaten<OzVorschlag>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<LvUebersicht>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Pruefbefund>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<Befehl>>().toEqualTypeOf<true>();
+  });
+
+  it('jeder Wert aus v1.4 bleibt gültig: v1.5 ist additiv oder eine Lesart, kein Befehl ändert sich', () => {
+    const uebersicht: LvUebersicht = beispielLvUebersichtNachtrag;
+    expect(uebersicht).not.toHaveProperty('nettoNachNachlass');
+    const befund: Pruefbefund = {
+      schwere: 'warnung',
+      quelle: 'gaeb-lesen',
+      code: 'dezimalkomma',
+      meldung: 'Dezimalkomma statt Punkt (erfunden).',
+      ort: { pfad: '/GAEB/Award/BoQ/BoQBody', zeile: 12 },
+    };
+    expect(befund.ort).not.toHaveProperty('feld');
+    expectTypeOf<KostengruppeSetzen>().toEqualTypeOf<{
+      readonly art: 'KostengruppeSetzen';
+      readonly positionId: PositionId;
+      readonly kostengruppe: Kostengruppennummer | null;
+    }>();
   });
 });

@@ -379,6 +379,18 @@ export function leseAufmass(db: Datenbank, id: string): Aufmass | null {
   return z === undefined ? null : aufmassAusZeile(z);
 }
 
+/** Ein gespeichertes Blatt mit seinen Zeilen als gespeicherter kanonischer Text (`kanonischKompakt`), nicht geparst. */
+export interface AufmassText {
+  readonly kopf: AufmassKopf;
+  readonly positionen: string;
+}
+
+/** Das Blatt für den Vergleich mit `vorher` (Ticket 94): Die Zeilen bleiben Text, geparst wird nichts. */
+export function leseAufmassText(db: Datenbank, id: string): AufmassText | null {
+  const z = db.zeilen('SELECT * FROM aufmass WHERE id = ?', [id])[0];
+  return z === undefined ? null : { kopf: aufmasskopfAusZeile(z), positionen: text(z, 'positionen') };
+}
+
 /** Die Köpfe der Blätter eines Auftrags-LV nach Blattnummer (`AufmassRepository.auflisten`), ohne die Zeilen zu lesen. */
 export function listeAufmasse(db: Datenbank, auftragsLvId: string): AufmassKopf[] {
   return db

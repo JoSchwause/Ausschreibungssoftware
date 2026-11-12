@@ -28,6 +28,35 @@ export function kanonischKompakt(wert: unknown): string {
   return JSON.stringify(sortiere(wert, '$'));
 }
 
+/**
+ * Kompakte kanonische Form einer Liste, gleich `kanonischKompakt(liste)`, Element für Element mit Merkliste (Ticket 94):
+ * Ein Element, das als dasselbe Objekt schon einmal geschrieben wurde, wird nicht noch einmal sortiert. Die Merkliste gilt
+ * nur, solange niemand die Elemente ändert, also innerhalb eines Aufrufs von `anwenden` (ChangeSets sind unveränderlich).
+ */
+export function kanonischeListe(
+  liste: readonly unknown[],
+  merkliste: WeakMap<object, string>,
+  pfad = '$',
+): string {
+  const teile: string[] = [];
+  for (let i = 0; i < liste.length; i++) {
+    // Eine Lücke schreibt `JSON.stringify` als `null`, wie in `kanonischKompakt`.
+    if (!(i in liste)) {
+      teile.push('null');
+      continue;
+    }
+    const element = liste[i];
+    const objekt = typeof element === 'object' && element !== null ? element : null;
+    let text = objekt === null ? undefined : merkliste.get(objekt);
+    if (text === undefined) {
+      text = JSON.stringify(sortiere(element, `${pfad}[${String(i)}]`));
+      if (objekt !== null) merkliste.set(objekt, text);
+    }
+    teile.push(text);
+  }
+  return `[${teile.join(',')}]`;
+}
+
 /** Kanonische Form der Projektdatei: zwei Leerzeichen Einrückung, abschließender Zeilenumbruch. */
 export function kanonischesJson(wert: unknown): string {
   return `${JSON.stringify(sortiere(wert, '$'), null, 2)}\n`;

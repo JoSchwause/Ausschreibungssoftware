@@ -10,9 +10,24 @@ import type { Knoten } from './modell';
 import type { Betrag, Einheitspreis, Menge } from './zahlen';
 import type { Gesamtsummen } from './summen';
 
-/** Spalten des LV-Grids. */
+/**
+ * Spalten des LV-Grids. Eine geschlossene Liste: Ein neuer Wert zieht `ui-grid` mit (Breite, Titel, Anzeigetext je Spalte).
+ *
+ * v1.5 (Ticket 95 Punkt 6; D-89.1, C2): dazu `kostengruppe`, die Spalte „KG“ mit der Kostengruppe der Position
+ * (`Positionsdaten.kostengruppe`, Glossar „Kostengruppe“); Gliederungen und Hinweistexte haben dort keinen Wert. Geändert
+ * wird sie mit `KostengruppeSetzen` (im LV und im Auftrags-LV); ein Prüfhinweis zu ihr trägt `ort.feld: 'kostengruppe'`.
+ * Bis Ticket 93 gehört sie nicht zu den Standardspalten von `ui-grid` und lässt sich dort nicht bearbeiten.
+ */
 export type LvSpalte =
-  'ordnungszahl' | 'positionsart' | 'kurztext' | 'menge' | 'einheit' | 'einheitspreis' | 'gesamtpreis';
+  | 'ordnungszahl'
+  | 'positionsart'
+  | 'kurztext'
+  | 'menge'
+  | 'einheit'
+  | 'einheitspreis'
+  | 'gesamtpreis'
+  // v1.5
+  | 'kostengruppe';
 
 /** Eine sichtbare Zeile des LV-Baums. */
 export interface LvZeile {
