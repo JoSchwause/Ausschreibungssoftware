@@ -30,6 +30,25 @@ export type AufmassId = string & Marke<'AufmassId'>;
 export type RechnungId = string & Marke<'RechnungId'>;
 /** Kennung einer Kostenermittlung (v1.4, Ticket 70 Punkt 9): eigenes Aggregat, eindeutig im Projekt. */
 export type KostenermittlungId = string & Marke<'KostenermittlungId'>;
+/**
+ * Kennung eines Bauwerksmodells (v1.6, Ticket 97 Punkt 1; X1, D-51): eigenes Aggregat, eindeutig im Projekt. Jeder Import
+ * einer IFC-Datei ist ein neues Bauwerksmodell mit neuer Kennung (D-53); sie ist nicht die GlobalId des `IfcProject`.
+ */
+export type BauwerksmodellId = string & Marke<'BauwerksmodellId'>;
+
+/**
+ * GlobalId eines Objekts im Bauwerksmodell (Glossar „GlobalId“; v1.6, Ticket 97 Punkt 1, D-50): genau 22 Zeichen aus dem
+ * IFC-Base64-Alphabet `0-9`, `A-Z`, `a-z`, `_`, `$`. Anders als die übrigen Kennungen vergibt sie nicht die App, sondern
+ * das Autorenwerkzeug; sie bleibt über Modellstände hinweg gleich, solange das Werkzeug sie nicht neu vergibt (D-53), und
+ * verknüpft Bauteile zwischen zwei Ständen, zwischen Leser und 3D-Ansicht und mit Positionen (D-52).
+ *
+ * Erzeugt nur im Paket `ifc` aus der Datei (Ticket 107), wie `Kostengruppennummer` in `kosten`; wer eine GlobalId aus einem
+ * Befehl, dem Protokoll oder einer Datei liest (Kern, `bim`, `speicher`), prüft die Form selbst nach. Vorläufige Annahme,
+ * Entscheidung offen (enge Lesart): Ein Wert dieser Marke hat immer die Form. Ein Objekt der Datei, dessen GlobalId sie nicht
+ * hat (oder das keine hat), kommt nicht ins Bauwerksmodell (Befund beim Lesen, Quelle `ifc-lesen`; die Bytes bleiben in der
+ * Modelldatei, Q5). Alternative: siehe Offene Typfragen, Ticket 97.
+ */
+export type IfcGlobalId = string & Marke<'IfcGlobalId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;

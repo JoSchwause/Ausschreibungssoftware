@@ -15,6 +15,7 @@ import type {
   AngebotId,
   AufmassId,
   AuftragsLeistungsverzeichnisId,
+  BauwerksmodellId,
   KnotenId,
   KostenermittlungId,
   LeistungsverzeichnisId,
@@ -40,6 +41,7 @@ import type {
   Rechnung,
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
+import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from './bim';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -169,6 +171,14 @@ export interface RechnungZustand {
 /** Kostenermittlung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 9). Ihre Summen rechnet `kosten` bei Bedarf (D-24). */
 export interface KostenermittlungZustand {
   readonly kostenermittlung: Kostenermittlung;
+}
+
+/**
+ * Bauwerksmodell als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 1). Ohne die Bytes der Datei (D-51) und ohne Gerechnetes
+ * (Kennwerte, Vergleich, Mengen für Positionen rechnet `bim` bei Bedarf, Ticket 108).
+ */
+export interface BauwerksmodellZustand {
+  readonly bauwerksmodell: Bauwerksmodell;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -332,6 +342,27 @@ export interface KostenermittlungChangeSet {
   readonly art: 'kostenermittlung';
   readonly kostenermittlungId: KostenermittlungId;
   readonly kostenermittlung: Aenderung<Kostenermittlung>;
+}
+
+/**
+ * ChangeSet an einem Bauwerksmodell (v1.6, Ticket 97 Punkt 1; D-45, D-51, D-54). Ein Modell hat bis zu 10.000 Bauteile und
+ * ändert nach dem Anlegen nur seinen Namen. Darum trägt das ChangeSet den Kopf immer, Struktur und Bauteile aber nur, wenn
+ * das Modell entsteht oder verschwindet (Lesart, vorläufige Annahme, Entscheidung offen):
+ * - Anlegen: `kopf.vorher` und `inhalt.vorher` sind `null`, `nachher` der neue Stand.
+ * - Löschen: `kopf.nachher` und `inhalt.nachher` sind `null`, `vorher` der volle Stand (für Undo).
+ * - Umbenennen: `kopf` mit beiden Ständen, die sich nur im `name` unterscheiden; `inhalt` fehlt. So kopieren weder das
+ *   Umbenennen noch sein Undo die Bauteile.
+ *
+ * `inhalt` ist also genau dann gesetzt, wenn eine Seite von `kopf` `null` ist, und dann auf derselben Seite `null`.
+ * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` in `kopf` und `inhalt` (Undo, ADR 0006). Die Bytes der
+ * Datei stehen nie darin (D-51), nur ihre Angaben (`kopf.….datei`). Weil Struktur und Bauteile sich nie ändern, vergleicht
+ * `speicher` beim Umbenennen und Löschen nur den Kopf mit dem gespeicherten Stand (Ticket 106).
+ */
+export interface BauwerksmodellChangeSet {
+  readonly art: 'bauwerksmodell';
+  readonly bauwerksmodellId: BauwerksmodellId;
+  readonly kopf: Aenderung<BauwerksmodellKopf>;
+  readonly inhalt?: Aenderung<BauwerksmodellInhalt>;
 }
 
 /** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */

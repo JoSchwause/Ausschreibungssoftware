@@ -248,6 +248,34 @@ import {
   beispielOzVorschlagAuftragsLv,
   beispielLvUebersichtNetto,
 } from './beispiele';
+// v1.6 (Ticket 97)
+import type {
+  Bauteil,
+  Bauteilmenge,
+  Bauwerksmodell,
+  BauwerksmodellAnlegen,
+  BauwerksmodellBefehl,
+  BauwerksmodellChangeSet,
+  BauwerksmodellId,
+  BauwerksmodellInhalt,
+  BauwerksmodellKopf,
+  BauwerksmodellUmbenennen,
+  BauwerksmodellZustand,
+  IfcGlobalId,
+  IfcSchema,
+  Modelldatei,
+  Strukturknoten,
+} from './index';
+import {
+  beispielBauwerksmodell,
+  beispielBauwerksmodell2Kopf,
+  beispielBauwerksmodellLoeschen,
+  beispielChangeSetBauwerksmodellAnlegen,
+  beispielChangeSetBauwerksmodellLoeschen,
+  beispielChangeSetBauwerksmodellUmbenennen,
+  beispielGlobalIds,
+  beispielModelldatei,
+} from './beispiele';
 
 /**
  * Die Teile von T, die keine Daten sind (Funktion, Date …); `never`, wenn T nur aus Daten besteht. Seit v1.1b ist
@@ -1888,5 +1916,125 @@ describe('v1.5: reine Daten und Werte vor v1.5', () => {
       readonly positionId: PositionId;
       readonly kostengruppe: Kostengruppennummer | null;
     }>();
+  });
+});
+
+// --- v1.6 (Ticket 97) -------------------------------------------------------------------------------------------
+
+/** Form einer GlobalId (22 Zeichen aus dem IFC-Base64-Alphabet, siehe `IfcGlobalId`). */
+const GLOBALID = /^[0-9A-Za-z_$]{22}$/;
+
+describe('v1.6 Punkt 1: Bauwerksmodell (X1, D-50, D-51, D-53)', () => {
+  it('Kennungen: BauwerksmodellId und IfcGlobalId sind Marken, nicht austauschbar mit string oder anderen Kennungen', () => {
+    expectTypeOf<string>().not.toExtend<BauwerksmodellId>();
+    expectTypeOf<string>().not.toExtend<IfcGlobalId>();
+    expectTypeOf<IfcGlobalId>().not.toExtend<BauwerksmodellId>();
+    expectTypeOf<BauwerksmodellId>().not.toExtend<ProjektId>();
+    expectTypeOf<IfcGlobalId>().not.toExtend<KnotenId>();
+    for (const id of Object.values(beispielGlobalIds)) expect(id).toMatch(GLOBALID);
+  });
+
+  it('Schema, Modelldatei und Bauteilmenge in der Form des Tickets', () => {
+    expectTypeOf<IfcSchema>().toEqualTypeOf<'IFC2X3' | 'IFC4'>();
+    expectTypeOf<Modelldatei>().toEqualTypeOf<{
+      readonly hash: string;
+      readonly dateiname: string;
+      readonly groesse: number;
+    }>();
+    expectTypeOf<Bauteilmenge['art']>().toEqualTypeOf<
+      'laenge' | 'flaeche' | 'volumen' | 'anzahl' | 'gewicht' | 'zeit'
+    >();
+    // Nur Mengen mit Wert (enge Lesart): eine Menge ohne Zahl oder Einheit kommt nicht ins Modell.
+    expectTypeOf<Bauteilmenge['wert']>().toEqualTypeOf<Menge>();
+    expect(beispielModelldatei.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('D-51: ein Bauteil trägt keine Eigenschaften, Klassifikationen oder Materialien; Teil und KG-Vorschlag optional', () => {
+    expectTypeOf<Bauteil>().not.toHaveProperty('eigenschaften');
+    expectTypeOf<Bauteil>().not.toHaveProperty('klassifikationen');
+    expectTypeOf<Bauteil>().not.toHaveProperty('materialien');
+    expectTypeOf<Bauteil['teilVonGlobalId']>().toEqualTypeOf<IfcGlobalId | undefined>();
+    expectTypeOf<Bauteil['kostengruppe']>().toEqualTypeOf<Kostengruppennummer | undefined>();
+    expectTypeOf<Strukturknoten['art']>().toEqualTypeOf<
+      'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum'
+    >();
+  });
+
+  it('Kopf und Inhalt: der Kopf trägt weder Struktur noch Bauteile; zusammen sind sie das Modell', () => {
+    expectTypeOf<BauwerksmodellKopf>().not.toHaveProperty('struktur');
+    expectTypeOf<BauwerksmodellKopf>().not.toHaveProperty('bauteile');
+    expectTypeOf<BauwerksmodellKopf & BauwerksmodellInhalt>().toExtend<Bauwerksmodell>();
+    expectTypeOf<Bauwerksmodell>().toExtend<BauwerksmodellKopf & BauwerksmodellInhalt>();
+    expectTypeOf<BauwerksmodellKopf['vorgaengerId']>().toEqualTypeOf<BauwerksmodellId | null>();
+    expectTypeOf<BauwerksmodellZustand>().toEqualTypeOf<{ readonly bauwerksmodell: Bauwerksmodell }>();
+  });
+
+  it('Beispiel: Verweise innerhalb des Modells nennen ein Objekt desselben Modells (Lesart des Ausführers)', () => {
+    const m = beispielBauwerksmodell;
+    const knoten = new Set(m.struktur.map((k) => k.globalId));
+    const bauteile = new Set(m.bauteile.map((b) => b.globalId));
+    for (const k of m.struktur) if (k.elternGlobalId !== null) expect(knoten).toContain(k.elternGlobalId);
+    for (const b of m.bauteile) {
+      if (b.strukturGlobalId !== null) expect(knoten).toContain(b.strukturGlobalId);
+      if (b.teilVonGlobalId !== undefined) expect(bauteile).toContain(b.teilVonGlobalId);
+      for (const menge of b.mengen) expect(menge.wert).toMatch(/^-?(0|[1-9][0-9]*)\.[0-9]{3}$/);
+    }
+    // Optionale Felder fehlen statt `null` zu sein.
+    expect(m.bauteile.find((b) => b.globalId === beispielGlobalIds.wandOg)).not.toHaveProperty(
+      'kostengruppe',
+    );
+    expect(m.bauteile.find((b) => b.globalId === beispielGlobalIds.wandOg)).not.toHaveProperty(
+      'teilVonGlobalId',
+    );
+    expect(beispielBauwerksmodell2Kopf.vorgaengerId).toBe(m.id);
+  });
+
+  it('Befehle: Anlegen (Massenbefehl), Umbenennen, Löschen; das Feld heißt wie das Aggregat', () => {
+    expectTypeOf<BauwerksmodellBefehl['art']>().toEqualTypeOf<
+      'BauwerksmodellAnlegen' | 'BauwerksmodellUmbenennen' | 'BauwerksmodellLoeschen'
+    >();
+    expectTypeOf<BauwerksmodellBefehl>().toExtend<Befehl>();
+    expectTypeOf<BauwerksmodellAnlegen['bauwerksmodell']>().toEqualTypeOf<Bauwerksmodell>();
+    expectTypeOf<BauwerksmodellUmbenennen>().toEqualTypeOf<{
+      readonly art: 'BauwerksmodellUmbenennen';
+      readonly name: string;
+    }>();
+    expect(MASSENBEFEHLSARTEN).toContain('BauwerksmodellAnlegen');
+    expectTypeOf<'BauwerksmodellUmbenennen' | 'BauwerksmodellLoeschen'>().not.toExtend<Massenbefehlsart>();
+    expectTypeOf<
+      Extract<Massenbefehlskopf, { art: 'BauwerksmodellAnlegen' }>['bauwerksmodell']
+    >().toEqualTypeOf<BauwerksmodellKopf>();
+  });
+
+  it('ChangeSet: Anlegen und Löschen tragen Kopf und Inhalt, Umbenennen nur den Kopf (D-45, D-54)', () => {
+    expectTypeOf<BauwerksmodellChangeSet['art']>().toEqualTypeOf<'bauwerksmodell'>();
+    expectTypeOf<BauwerksmodellChangeSet['kopf']>().toEqualTypeOf<Aenderung<BauwerksmodellKopf>>();
+    expectTypeOf<BauwerksmodellChangeSet['inhalt']>().toEqualTypeOf<
+      Aenderung<BauwerksmodellInhalt> | undefined
+    >();
+    const umbenennen = beispielChangeSetBauwerksmodellUmbenennen;
+    expect(umbenennen).not.toHaveProperty('inhalt');
+    expect(umbenennen.kopf.vorher).not.toHaveProperty('bauteile');
+    expect({ ...umbenennen.kopf.vorher, name: '' }).toEqual({ ...umbenennen.kopf.nachher, name: '' });
+    const anlegen = beispielChangeSetBauwerksmodellAnlegen;
+    expect({ ...anlegen.kopf.nachher, ...anlegen.inhalt?.nachher }).toEqual(beispielBauwerksmodell);
+  });
+
+  it('Umkehrung ohne Vorzustand: Tausch von vorher und nachher macht aus dem Anlegen das Löschen', () => {
+    const tausch = <T>(a: Aenderung<T>): Aenderung<T> => ({ vorher: a.nachher, nachher: a.vorher });
+    const cs = beispielChangeSetBauwerksmodellAnlegen;
+    expect({
+      ...cs,
+      kopf: tausch(cs.kopf),
+      ...(cs.inhalt === undefined ? {} : { inhalt: tausch(cs.inhalt) }),
+    }).toEqual(beispielChangeSetBauwerksmodellLoeschen);
+    expect(beispielBauwerksmodellLoeschen).toEqual({ art: 'BauwerksmodellLoeschen' });
+  });
+
+  it('D-51: die Bytes stehen nie im Aggregat oder ChangeSet (nur Daten, kein Uint8Array)', () => {
+    expectTypeOf<NurDaten<Bauwerksmodell>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauwerksmodellChangeSet>>().toEqualTypeOf<true>();
+    expectTypeOf<NurDaten<BauwerksmodellBefehl>>().toEqualTypeOf<true>();
+    expectTypeOf<Uint8Array>().not.toExtend<Modelldatei[keyof Modelldatei]>();
   });
 });

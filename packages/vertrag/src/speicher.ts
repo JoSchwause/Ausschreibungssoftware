@@ -38,6 +38,7 @@ import type {
   Rechnung,
 } from './modell';
 import type { Betrag } from './zahlen';
+import type { BauwerksmodellKopf } from './bim';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -102,6 +103,11 @@ export type Massenbefehlskopf =
       readonly art: 'AufmassAnlegen';
       /** Das Aufmaßblatt ohne `positionen` (v1.4, Ticket 70 Punkt 10). */
       readonly aufmass: AufmassKopf;
+    }
+  | {
+      readonly art: 'BauwerksmodellAnlegen';
+      /** Das Bauwerksmodell ohne `struktur` und `bauteile` (v1.6, Ticket 97 Punkt 1, D-54). */
+      readonly bauwerksmodell: BauwerksmodellKopf;
     };
 
 /**

@@ -51,6 +51,7 @@ import type {
   Vergabeinformationen,
   Zuschlag,
 } from './modell';
+import type { Bauwerksmodell } from './bim';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -814,6 +815,55 @@ export type KostenermittlungBefehl =
   | KostenermittlungseintragEntfernen
   | KostenermittlungLoeschen;
 
+// --- Bauwerksmodell (v1.6, X1; D-50, D-51, D-53; Ausführer in `bim`, Ticket 108) ---------------------------------------
+//
+// Der Ausführer sieht nur das Modell (Signatur `BauwerksmodellBefehlAusfuehren`) und prüft die Form (`ungueltige-eingabe`
+// mit `feld`); Verweise auf andere Aggregate und auf die Ablage der Bytes hält `speicher` (`konflikt`, Q5). ChangeSet:
+// `BauwerksmodellChangeSet` (Kopf immer, Struktur und Bauteile nur beim Anlegen und Löschen).
+
+/**
+ * Legt ein Bauwerksmodell an (Zustand `null`): aus dem Leseergebnis von `ifc` (Ticket 107) und den Angaben der App (Kennung,
+ * Name, Modelldatei, Vorgänger, Tag des Einlesens). Vorher legt die App die Bytes ab (`Speicher.modelldateien.ablegen`);
+ * nennt `bauwerksmodell.datei` keine abgelegten Bytes dieser Länge, weist `speicher` mit `konflikt` ab (D-51), ebenso einen
+ * Vorgänger, den es im Projekt nicht gibt.
+ *
+ * **Massenbefehl** (siehe `MASSENBEFEHLSARTEN`): Ein Modell hat bis zu 10.000 Bauteile (D-54); im Protokoll steht der Kopf
+ * ohne Struktur und Bauteile.
+ *
+ * Der Ausführer prüft die Form: `hash` 64 Hexziffern klein, `groesse` ganze Zahl ≥ 0, `schema` einer der Werte, `eingelesen`
+ * ein gültiges Datum, `name` nicht leer, `vorgaengerId` nicht die eigene Kennung, jede GlobalId in Form (siehe `IfcGlobalId`),
+ * jede Menge mit nicht leerem Namen und kanonischem Wert (3 Stellen), Verweise innerhalb des Modells auf ein Objekt desselben
+ * Modells (`elternGlobalId` und `strukturGlobalId` auf einen Strukturknoten, `teilVonGlobalId` auf ein Bauteil), die
+ * Struktur ohne Ring. Doppelte GlobalIds weist er nicht ab (D-50: beide bleiben; ein Befund beim Lesen und in der
+ * Modellprüfung). Der Befehl heißt im Feld wie das Aggregat (`bauwerksmodell`), wie jedes Anlegen eines Aggregats (D-97.2).
+ */
+export interface BauwerksmodellAnlegen {
+  readonly art: 'BauwerksmodellAnlegen';
+  readonly bauwerksmodell: Bauwerksmodell;
+}
+
+/**
+ * Benennt das Modell um, das Einzige, was sich nach dem Anlegen ändert; `name` nicht leer (sonst `ungueltige-eingabe`).
+ * ChangeSet: nur der Kopf, ohne Struktur und Bauteile (D-45, D-54).
+ */
+export interface BauwerksmodellUmbenennen {
+  readonly art: 'BauwerksmodellUmbenennen';
+  readonly name: string;
+}
+
+/**
+ * Löscht das Modell samt Struktur und Bauteilen. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich (D-51); das
+ * ChangeSet trägt den vollen Stand für Undo. `speicher` weist mit `konflikt` ab, solange ein anderes Modell dieses als
+ * Vorgänger nennt oder ein Mangel auf es verweist (`Mangel.bauteil.bauwerksmodellId`). Die Bytes der Datei bleiben in der
+ * Ablage, bis kein Modell sie mehr nennt (siehe `Modelldateiablage`); so findet ein Undo in derselben Sitzung sie wieder.
+ */
+export interface BauwerksmodellLoeschen {
+  readonly art: 'BauwerksmodellLoeschen';
+}
+
+/** Befehle gegen ein Bauwerksmodell (Zustand: `BauwerksmodellZustand`; v1.6, Ticket 97 Punkt 1). */
+export type BauwerksmodellBefehl = BauwerksmodellAnlegen | BauwerksmodellUmbenennen | BauwerksmodellLoeschen;
+
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
 /**
@@ -856,7 +906,9 @@ export type Befehl =
   // v1.4
   | AufmassBefehl
   | RechnungBefehl
-  | KostenermittlungBefehl;
+  | KostenermittlungBefehl
+  // v1.6 (Ticket 97)
+  | BauwerksmodellBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
@@ -874,6 +926,9 @@ export type Befehlsart = Befehl['art'];
  * v1.4 (Ticket 70 Punkt 10, D-70.5): dazu `AufmassAnlegen` (ein X31-Import trägt eine Zeile je Position des Auftrags-LV
  * samt Ansatzzeilen, wächst also mit dem LV wie `AngebotAnlegen`). Nicht: `NachtragUebernehmen` (ein Nachtrag ist kurz),
  * `RechnungAnlegen` (keine lange Liste), `KostenermittlungAnlegen` (höchstens ein Eintrag je Kostengruppennummer).
+ *
+ * v1.6 (Ticket 97 Punkt 1, D-54): dazu `BauwerksmodellAnlegen` (bis zu 10.000 Bauteile; der Kopf ist das Modell ohne
+ * Struktur und Bauteile).
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
@@ -881,6 +936,8 @@ export const MASSENBEFEHLSARTEN = [
   'AuftragsLeistungsverzeichnisAnlegen',
   // v1.4
   'AufmassAnlegen',
+  // v1.6 (Ticket 97 Punkt 1, D-54): bis zu 10.000 Bauteile; der Kopf ohne Struktur und Bauteile
+  'BauwerksmodellAnlegen',
 ] as const;
 
 /** Name eines Massenbefehls. */

@@ -58,6 +58,10 @@ import type {
   Protokolleintrag,
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
+import type { BauwerksmodellAnlegen, BauwerksmodellLoeschen, BauwerksmodellUmbenennen } from './befehle';
+import type { Bauwerksmodell, BauwerksmodellKopf, Modelldatei } from './bim';
+import type { BauwerksmodellChangeSet } from './changeset';
+import type { BauwerksmodellId, IfcGlobalId } from './marken';
 import type { Pruefbefund } from './gaeb';
 import type {
   AngebotId,
@@ -1486,4 +1490,208 @@ export const beispielLvUebersichtNetto: LvUebersicht = {
   id: lvId,
   name: beispielLv.name,
   nettoNachNachlass: '11.11' as Betrag,
+};
+
+// --- v1.6 (Ticket 97) -------------------------------------------------------------------------------------------
+
+/** Eine GlobalId (22 Zeichen aus `0-9A-Za-z_$`), hier lesbar erfunden; erzeugt wird sie sonst nur in `ifc`. */
+const gid = (text: string): IfcGlobalId => text as IfcGlobalId;
+const mng = (wert: string): Menge => wert as Menge;
+
+const modell1Id = '019b76e9-0000-7000-8000-000000000201' as BauwerksmodellId;
+const modell2Id = '019b76e9-0000-7000-8000-000000000202' as BauwerksmodellId;
+
+/** GlobalIds des Beispielhauses: Projekt, Gebäude, Geschosse, ein Raum, zwei Wände, ein Fenster, ein Teil einer Wand. */
+export const beispielGlobalIds = {
+  projekt: gid('0Haus000000000Projekt0'),
+  gebaeude: gid('0Haus00000000Gebaeude0'),
+  eg: gid('0Haus000000000000000EG'),
+  og: gid('0Haus000000000000000OG'),
+  raum: gid('0Haus0000000000Raum001'),
+  wandEg: gid('1Wand$Aussen_EG_000001'),
+  wandOg: gid('1Wand$Aussen_OG_000001'),
+  fenster: gid('2Fenster_EG_0000000001'),
+  daemmung: gid('3Teil_Daemmung_EG_0001'),
+} as const;
+const g = beispielGlobalIds;
+
+/**
+ * Punkt 1 (D-51): die Datei des ersten Stands, wie die App sie abgelegt hat. Der Hash ist erfunden (64 Hexziffern, klein);
+ * sonst ist er der SHA-256 der unkomprimierten Bytes.
+ */
+export const beispielModelldatei: Modelldatei = {
+  hash: '5f2b9c0d4e6a8b1c3d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c',
+  dateiname: 'haus-v1.ifc',
+  groesse: 48213,
+};
+
+/**
+ * Punkt 1 (D-50, D-51, D-53): das Beispielhaus als Bauwerksmodell, erster Stand. Struktur und Bauteile in der Reihenfolge der
+ * Datei; Mengen in SI-Einheiten mit 3 Stellen (die Wand EG: 5,000 m lang, 2,750 m hoch, 0,240 m dick, also Fläche
+ * 13,750 m² und Volumen 3,300 m³). Die Dämmung ist ein Teil der Wand EG und steht deshalb im Geschoss der Wand. Die Wand EG
+ * trägt einen Kostengruppen-Vorschlag aus der Datei (331), das Fenster keine Mengen. Eigenschaften stehen nicht darin (D-51).
+ */
+export const beispielBauwerksmodell: Bauwerksmodell = {
+  id: modell1Id,
+  projektId: beispielLv.projektId,
+  name: 'Haus, Entwurf',
+  datei: beispielModelldatei,
+  schema: 'IFC4',
+  vorgaengerId: null,
+  eingelesen: '2026-11-12',
+  struktur: [
+    { globalId: g.projekt, art: 'projekt', name: 'Haus', elternGlobalId: null, mengen: [] },
+    { globalId: g.gebaeude, art: 'gebaeude', name: 'Haus', elternGlobalId: g.projekt, mengen: [] },
+    {
+      globalId: g.eg,
+      art: 'geschoss',
+      name: 'EG',
+      elternGlobalId: g.gebaeude,
+      mengen: [
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossFloorArea',
+          art: 'flaeche',
+          wert: mng('120.000'),
+        },
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossVolume',
+          art: 'volumen',
+          wert: mng('360.000'),
+        },
+      ],
+    },
+    {
+      globalId: g.og,
+      art: 'geschoss',
+      name: 'OG',
+      elternGlobalId: g.gebaeude,
+      mengen: [
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossFloorArea',
+          art: 'flaeche',
+          wert: mng('110.500'),
+        },
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossVolume',
+          art: 'volumen',
+          wert: mng('320.450'),
+        },
+      ],
+    },
+    {
+      globalId: g.raum,
+      art: 'raum',
+      name: '0.01',
+      elternGlobalId: g.eg,
+      mengen: [
+        { satz: 'Qto_SpaceBaseQuantities', name: 'NetFloorArea', art: 'flaeche', wert: mng('24.180') },
+      ],
+    },
+  ],
+  bauteile: [
+    {
+      globalId: g.wandEg,
+      ifcKlasse: 'IfcWallStandardCase',
+      name: 'Außenwand EG Nord',
+      typ: 'AW 24',
+      strukturGlobalId: g.eg,
+      kostengruppe: '331' as Kostengruppennummer,
+      mengen: [
+        { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: mng('5.000') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetSideArea', art: 'flaeche', wert: mng('13.750') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetVolume', art: 'volumen', wert: mng('3.300') },
+      ],
+    },
+    {
+      globalId: g.wandOg,
+      ifcKlasse: 'IfcWallStandardCase',
+      name: 'Außenwand OG Nord',
+      typ: 'AW 24',
+      strukturGlobalId: g.og,
+      mengen: [
+        { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: mng('5.000') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetSideArea', art: 'flaeche', wert: mng('12.500') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetVolume', art: 'volumen', wert: mng('3.000') },
+      ],
+    },
+    {
+      globalId: g.fenster,
+      ifcKlasse: 'IfcWindow',
+      name: 'Fenster EG 1',
+      typ: null,
+      strukturGlobalId: g.eg,
+      mengen: [],
+    },
+    {
+      globalId: g.daemmung,
+      ifcKlasse: 'IfcBuildingElementPart',
+      name: 'Dämmung',
+      typ: null,
+      strukturGlobalId: g.eg,
+      teilVonGlobalId: g.wandEg,
+      mengen: [
+        { satz: 'Qto_BuildingElementPartQuantities', name: 'NetVolume', art: 'volumen', wert: mng('0.825') },
+      ],
+    },
+  ],
+};
+
+const { struktur: modell1Struktur, bauteile: modell1Bauteile, ...modell1Kopf } = beispielBauwerksmodell;
+
+/** Punkt 1: Anlegen (ein Massenbefehl, D-54); die App hat die Bytes vorher abgelegt (`beispielModelldatei.hash`). */
+export const beispielBauwerksmodellAnlegen: BauwerksmodellAnlegen = {
+  art: 'BauwerksmodellAnlegen',
+  bauwerksmodell: beispielBauwerksmodell,
+};
+
+/** Punkt 1: ChangeSet des Anlegens: Kopf und Inhalt, beide mit `vorher: null`. */
+export const beispielChangeSetBauwerksmodellAnlegen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: null, nachher: modell1Kopf },
+  inhalt: { vorher: null, nachher: { struktur: modell1Struktur, bauteile: modell1Bauteile } },
+};
+
+/** Punkt 1: Umbenennen. */
+export const beispielBauwerksmodellUmbenennen: BauwerksmodellUmbenennen = {
+  art: 'BauwerksmodellUmbenennen',
+  name: 'Haus, Entwurf (Stand 1)',
+};
+
+/** Punkt 1 (D-45, D-54): ChangeSet des Umbenennens: nur der Kopf, ohne Struktur und Bauteile. */
+export const beispielChangeSetBauwerksmodellUmbenennen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: modell1Kopf, nachher: { ...modell1Kopf, name: beispielBauwerksmodellUmbenennen.name } },
+};
+
+/** Punkt 1: Löschen (Q5: nur nach Bestätigung) und sein ChangeSet mit dem vollen Stand. */
+export const beispielBauwerksmodellLoeschen: BauwerksmodellLoeschen = { art: 'BauwerksmodellLoeschen' };
+export const beispielChangeSetBauwerksmodellLoeschen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: modell1Kopf, nachher: null },
+  inhalt: { vorher: { struktur: modell1Struktur, bauteile: modell1Bauteile }, nachher: null },
+};
+
+/**
+ * Punkt 1 (D-53): der zweite Stand derselben Planung, nur der Kopf: eine neue Datei, Vorgänger ist der erste Stand. Seine
+ * Bauteile gleicht `bim` über die GlobalId mit denen des Vorgängers ab (Ticket 108).
+ */
+export const beispielBauwerksmodell2Kopf: BauwerksmodellKopf = {
+  id: modell2Id,
+  projektId: beispielLv.projektId,
+  name: 'Haus, Entwurf (Stand 2)',
+  datei: {
+    hash: '0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9',
+    dateiname: 'haus-v2.ifc',
+    groesse: 49870,
+  },
+  schema: 'IFC4',
+  vorgaengerId: modell1Id,
+  eingelesen: '2026-11-19',
 };

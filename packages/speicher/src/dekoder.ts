@@ -1017,6 +1017,10 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   KostenermittlungseintragSetzen: true,
   KostenermittlungseintragEntfernen: true,
   KostenermittlungLoeschen: true,
+  // v1.6: mechanisch angepasst, Folgeticket 106 (Bauwerksmodell; `anwenden` weist sein ChangeSet bis dahin ab)
+  BauwerksmodellAnlegen: true,
+  BauwerksmodellUmbenennen: true,
+  BauwerksmodellLoeschen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {
@@ -1048,6 +1052,8 @@ const LANGE_LISTE: Record<Massenbefehlsart, [string, string]> = {
   AngebotAnlegen: ['angebot', 'positionen'],
   AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', 'knoten'],
   AufmassAnlegen: ['aufmass', 'positionen'],
+  // v1.6: mechanisch angepasst, Folgeticket 106 (der Kopf trägt auch `struktur` nicht; prüfen mit Ticket 106)
+  BauwerksmodellAnlegen: ['bauwerksmodell', 'bauteile'],
 };
 
 /**
