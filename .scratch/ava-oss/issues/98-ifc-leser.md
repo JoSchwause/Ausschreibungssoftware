@@ -108,8 +108,12 @@ die Wörter gleich.
 
 **Tests:** 12 Testdateien, 115 Tests im Paket (Golden je Fall, IFC 2x3 in mm = IFC 4 in m, Sicherheit: Größe, Tiefe
 100.000 ohne Stapelüberlauf, Kreise, fehlende Verweise; Property-Tests: beliebige Bytes, Bytes hinter gültigem Kopf,
-STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m). Ganze Suite:
-`pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 219 Dateien / 2.752 Tests grün (3 übersprungen wie vorher), Fixtures 29/29.
+STEP-Bausteine, verstümmelte Modelle mit Determinismus und bekannten Codes, Orakel in `bigint` für mm → m). Ganze Suite nach
+dem letzten Merge von `integration/welle-6` (mit 96 und 101): `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 230 Dateien /
+2.964 Tests grün (3 übersprungen wie vorher), Fixtures 29/29. Im ersten Lauf der Suite fiel nur das Budget aus Ticket 94
+(`packages/speicher/src/aufmass-leistung.test.ts`, von diesem Branch unberührt): 133,7 ms gegen 100 ms bei Lastmittel 19 auf
+4 Kernen; die Datei allein dreimal grün, Mediane 27,2 / 27,0 / 28,0 ms (Setzen, Rückgängig, Wiederholen); der zweite Lauf
+der ganzen Suite grün.
 
 **Messung** (einmalig, nicht committet; das Budget prüft Ticket 107): synthetisches IFC-4-Modell, 10.000 Wände mit
 Geometrie-Instanzen, Mengen-, Eigenschafts- und Materialsätzen, 19,6 MB: `ifcLesen` 5 Läufe 1,1 / 1,4 / 1,4 / 1,6 / 1,9 s
