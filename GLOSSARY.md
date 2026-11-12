@@ -512,13 +512,31 @@ Chronologische tägliche Dokumentation des Bauablaufs auf der Baustelle (Witteru
 Ein festgestellter Ausführungsmangel eines Projekts (D-57): Nummer (ab 1, je Projekt eindeutig), Titel, Beschreibung, Ort als freier Text, wahlweise das Auftrags-LV (und damit der Auftragnehmer) mit einer Position daraus, wahlweise ein Bauteil (GlobalId, wahlweise eines bestimmten Bauwerksmodells), Tag der Feststellung, Frist zur Beseitigung und der Mängelverlauf. Eigenes Aggregat; keine Fotos in v1.6. Im Code `Mangel`, Befehle `MangelAnlegen`, `MangelangabenSetzen`, `MangelstatusSetzen`, `MangelLoeschen`.
 
 ### Mangelstatus
-Stand eines Mangels: **offen** (festgestellt), **angezeigt** (dem Auftragnehmer mit Frist zur Beseitigung angezeigt), **beseitigt** (die Beseitigung ist gemeldet), **abgenommen** (der Auftraggeber hat die Beseitigung abgenommen). Zulässig sind die Wechsel offen → angezeigt → beseitigt → abgenommen und beseitigt → offen (Beseitigung nicht anerkannt); jeden anderen Wechsel weist der Befehl ab. Im Code `Mangelstatus`, Fehlercode `statuswechsel-unzulaessig`.
+Stand eines Mangels: **offen** (festgestellt), **angezeigt** (dem Auftragnehmer mit Frist zur Beseitigung angezeigt), **beseitigt** (die Beseitigung ist gemeldet), **abgenommen** (der Auftraggeber hat die Beseitigung abgenommen). Zulässig sind die Wechsel offen → angezeigt → beseitigt → abgenommen und beseitigt → offen (Beseitigung nicht anerkannt); jeden anderen Wechsel weist der Befehl ab. Im Code `Mangelstatus`, Fehlercode `statuswechsel-unzulaessig`; die Tabelle der zulässigen Wechsel steht im Paket `bauleitung` (`MANGELSTATUSWECHSEL`, Ticket 111).
 
 ### Mängelverlauf
 Die Folge der Statuswechsel eines Mangels mit Datum und wahlweise Bemerkung, ältester zuerst, mit nicht fallenden Daten. Er ist die Quelle des Status: Der Status eines Mangels ist der seines letzten Eintrags; ein Statuswechsel hängt einen Eintrag an, nichts wird überschrieben. Der erste Eintrag ist `offen`. Im Code `Mangel.verlauf`, `Mangelverlaufseintrag`.
 
 ### Fristprüfung
-Die Prüfung der Mängel eines Projekts zu einem Stichtag, den die App übergibt (A2): Ein Mangel mit einer Frist vor dem Stichtag und dem Status offen oder angezeigt ist **überfällig** (Prüfbefund, Quelle `fristpruefung`); eine Frist am Stichtag ist nicht überfällig. Im Code Paket `bauleitung` (Ticket 111).
+Die Prüfung der Mängel eines Projekts zu einem Stichtag, den die App übergibt (A2): Ein Mangel mit einer Frist vor dem Stichtag und dem Status offen oder angezeigt ist **überfällig** (Prüfbefund, Quelle `fristpruefung`); eine Frist am Stichtag ist nicht überfällig. Es zählt der Status des Mangels (sein letzter Verlaufseintrag), nicht der Stand am Stichtag. Im Code `fristPruefen` (Paket `bauleitung`, Ticket 111), Befundcode `mangel-frist-ueberschritten`.
+
+### Frist (Mängelbeseitigung)
+Der Tag, bis zu dem der Auftragnehmer einen Mangel beseitigen soll; ohne Frist ist ein Mangel nie überfällig. Am Tag der Frist selbst ist er noch nicht überfällig, erst am Tag danach. Eine neue Frist (etwa nach abgelehnter Nachbesserung) ersetzt die alte. Im Code `Mangel.frist`.
+
+### Mängelanzeige
+Die Mitteilung eines Mangels an den Auftragnehmer mit der Aufforderung, ihn bis zu einer Frist zu beseitigen. Im Mängelverlauf der Wechsel von **offen** zu **angezeigt**; die Frist setzt die App im selben Undo-Schritt in die Angaben des Mangels. Im Code `MangelstatusSetzen` mit Status `angezeigt`.
+
+### Stichtag
+Der Tag, zu dem die Fristprüfung und die Mängelauswertung rechnen. Die App übergibt ihn (in der Regel das heutige Datum); das Paket `bauleitung` liest keine Uhr (A2).
+
+### Mangelnummer
+Die laufende Nummer eines Mangels, ab 1, je Projekt eindeutig und nach dem Anlegen fest. Die App schlägt die höchste vorhandene Nummer + 1 vor; Lücken nach dem Löschen werden nicht aufgefüllt. Im Code `Mangel.nummer`, `naechsteMangelnummer` (Paket `bauleitung`).
+
+### Mängelauswertung
+Die Zahlen der Mängel eines Projekts zu einem Stichtag, je Auftrags-LV mit dem Namen seines Auftragnehmers und gesamt: Anzahl, Anzahl je Mangelstatus, **offen** (Status offen oder angezeigt, also noch nicht als beseitigt gemeldet; dieselbe Menge, die die Fristprüfung betrachtet) und **überfällig** (laut Fristprüfung). Den Namen des Auftragnehmers je Auftrags-LV übergibt die App (`Auftragnehmerangabe`). Mängel ohne Auftrags-LV stehen in einer eigenen Zeile. Im Code `maengelAuswerten`, `Maengelauswertung`.
+
+### Bautagebuchauswertung
+Die Arbeitskräfte des Bautagebuchs in einem Zeitraum (beide Grenzen eingeschlossen): je Tag mit Eintrag und je Firma die Summe der Köpfe sowie die Summe über den Zeitraum (Kopftage). Tage ohne Eintrag fehlen. Im Code `bautagebuchAuswerten`, `Bautagebuchauswertung`.
 
 ### Bautagebucheintrag
 Der Eintrag des Bautagebuchs zu einem Tag eines Projekts, höchstens einer je Projekt und Datum (D-57): Wetter (Beschreibung, tiefste und höchste Temperatur in ganzen Grad Celsius), Arbeitskräfte je Firma (Zahl der Köpfe), Geräte, ausgeführte Leistungen, Behinderungen und besondere Vorkommnisse als Text. Eigenes Aggregat; keine Fotos in v1.6. Das **Bautagebuch** eines Projekts ist die Liste seiner Einträge nach Datum. Im Code `Bautagebucheintrag`, Befehle `BautagebucheintragSetzen`, `BautagebucheintragLoeschen`, `Speicher.bautagebuch`.
