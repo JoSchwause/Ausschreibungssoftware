@@ -1,6 +1,6 @@
 # 111: X4: `bauleitung`: Mängel und Bautagebuch
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: X4 · Paket: `packages/bauleitung` (neu; dazu `tools/boundaries.mjs`, Workspace-Dateien)
 Blocked by: 97
@@ -40,7 +40,7 @@ Aus Ticket 97 und dem Review (D-64, D-66): Befehlsnamen und Fehlercode `statuswe
 
 ## Acceptance criteria
 
-- [ ] Befehle, Umkehrung, Statustabelle, Fristprüfung, Auswertungen getestet; Paketgrenzen-Prüfung kennt `bauleitung`
+- [x] Befehle, Umkehrung, Statustabelle, Fristprüfung, Auswertungen getestet; Paketgrenzen-Prüfung kennt `bauleitung`
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
@@ -108,3 +108,14 @@ Folgearbeit: **120** (App) nutzt `fristPruefen` mit dem heutigen Datum, `maengel
 Auftrags-LV und setzt bei der Mängelanzeige `Mangelverlaufseintrag.frist` und `Mangel.frist` im selben Undo-Schritt;
 `historie/arten.ts` kann die Umkehrungen aus diesem Paket nehmen. **113** (PDF) kann `maengelAuswerten` und
 `bautagebuchAuswerten` lesen.
+
+### Prüfung
+
+Nach dem letzten `git merge integration/welle-6` (Stand `aca2dcb`, mit dem Nachtrag zu 97): `NODE_OPTIONS=--max-old-space-size=8192
+pnpm lint` grün (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room), `pnpm typecheck` grün, `node --test "fixtures/*.test.mjs"`
+53/53. `pnpm test` (Vitest): 252 Dateien bestanden, 1 übersprungen, 6 rot, 3.285 Tests bestanden, 3 übersprungen; rot waren nur
+Leistungsbudgets anderer Pakete bei Lastmittel 20–45 auf 4 Kernen (volle Suite: `gaeb/lesen` 1.708 ms < 1.000,
+`kern/lv-pruefung-fixtures` 84,7 ms < 50, `kern/mengenansatz-leistung` 26,6 ms < 16, `speicher/aufmass-leistung` 163 ms < 100,
+`vergabe/leistung` 4.227 ms < 1.000, `web/abrechnung/leistung` 114 ms < 100; in früheren Läufen ebenso `gaeb/schreiben`,
+`kern/k9-leistung`, `kern/summen-leistung`). **Jede Datei allein wiederholt: alle grün** (Lastmittel 19). Kein Budget gelockert,
+nichts übersprungen; dieser Branch ändert keines dieser Pakete. `bauleitung` selbst: 8 Dateien, 56 Tests grün.
