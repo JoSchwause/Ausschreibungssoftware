@@ -147,7 +147,14 @@ export type IfcBefundcode =
   | 'strukturknoten-ohne-eltern'
   | 'bauteil-mehrfach-enthalten'
   | 'bauteil-ohne-strukturknoten'
-  | 'bauteil-ohne-mengen';
+  | 'bauteil-ohne-mengen'
+  // Einheiten und Mengen:
+  | 'projekt-fehlt'
+  | 'einheit-fehlt'
+  | 'einheit-ungueltig'
+  | 'einheit-umgerechnet'
+  | 'menge-ungueltig'
+  | 'menge-nicht-gelesen';
 
 /**
  * Befund beim Lesen einer IFC-Datei. Gleicher Aufbau wie `Pruefbefund` aus `vertrag`, aber ohne `quelle` (die Quelle für

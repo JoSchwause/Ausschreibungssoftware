@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ifcLesen } from './index';
-import { abgewiesen, bytes, ifcText } from './testhilfen';
+import { abgewiesen, bytes, codes, ifcText } from './testhilfen';
 
 describe('Keine IFC-Datei', () => {
   it.each([
@@ -67,7 +67,8 @@ describe('Kopf', () => {
       'END-ISO-10303-21;',
     ].join('\n');
     const lesung = ifcLesen(bytes(text));
-    expect(lesung.befunde).toEqual([]);
+    // Der Abschnitt DATA ist leer: kein IfcProject, sonst kein Befund.
+    expect(codes(lesung)).toEqual(['projekt-fehlt']);
     expect(lesung.modell?.kopf).toEqual({
       beschreibung: ['ViewDefinition [ReferenceView_V1.2]', 'Zweite Zeile'],
       name: 'Haus EG.ifc',

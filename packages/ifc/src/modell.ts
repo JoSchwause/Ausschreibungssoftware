@@ -5,7 +5,7 @@
 import type { Befundort } from '@tethys/vertrag';
 import { befund } from './step';
 import type { StepDaten, StepWert } from './step';
-import type { IfcBefund, IfcBefundcode, Strukturknoten } from './typen';
+import type { Bauteilmenge, IfcBefund, IfcBefundcode, Strukturknoten } from './typen';
 import { liste, text, verweis } from './werte';
 
 /** Klassen der Bauwerksstruktur und ihre Art (Ticket 98, Punkt 4). */
@@ -93,7 +93,11 @@ export function zerlegungLesen(l: Modellleser): ReadonlyMap<number, number> {
 }
 
 /** Strukturknoten in der Reihenfolge der Datei (Ticket 98, Punkt 4). */
-export function strukturLesen(l: Modellleser, ganzes: ReadonlyMap<number, number>): Strukturknoten[] {
+export function strukturLesen(
+  l: Modellleser,
+  ganzes: ReadonlyMap<number, number>,
+  mengen: (i: number) => Bauteilmenge[],
+): Strukturknoten[] {
   const indizes = [...STRUKTURARTEN.keys()].flatMap((k) => l.daten.klasse(k)).sort((a, b) => a - b);
   const knoten: Strukturknoten[] = [];
   for (const i of indizes) {
@@ -108,7 +112,7 @@ export function strukturLesen(l: Modellleser, ganzes: ReadonlyMap<number, number
         `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))}) hängt an keinem Strukturknoten (IfcRelAggregates).`,
         l.ort(i),
       );
-    knoten.push({ globalId: l.globalId(i), art, name: l.name(i), elternGlobalId: eltern, mengen: [] });
+    knoten.push({ globalId: l.globalId(i), art, name: l.name(i), elternGlobalId: eltern, mengen: mengen(i) });
   }
   return knoten;
 }

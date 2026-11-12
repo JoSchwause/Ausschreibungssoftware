@@ -3,6 +3,9 @@
 // Klassifikation und Material aus den Instanzen holen. Rein (A2): Bytes rein, Werte und Befunde raus.
 
 import { bauteileLesen } from './bauteile';
+import { Definitionen } from './definitionen';
+import { Einheiten } from './einheiten';
+import { Mengenleser } from './mengen';
 import { Modellleser, strukturLesen, zerlegungLesen } from './modell';
 import { befund, datenLesen, kopfLesen, textmodusErmitteln } from './step';
 import type { StepKopf } from './step';
@@ -69,9 +72,12 @@ export function ifcLesen(bytes: Uint8Array, optionen: IfcOptionen = {}): IfcLesu
   const daten = datenLesen(bytes, kopf, modus, maxTiefe, befunde);
   if (daten === null) return abweisen('keine-ifc-datei', 'Keine IFC-Datei: Der Abschnitt „DATA;“ fehlt.');
   const leser = new Modellleser(daten, befunde);
+  const einheiten = new Einheiten(leser);
   const ganzes = zerlegungLesen(leser);
-  const struktur = strukturLesen(leser, ganzes);
-  const bauteile = bauteileLesen(leser, ganzes);
+  const mengenleser = new Mengenleser(leser, einheiten, new Definitionen(leser));
+  const mengen = (i: number) => mengenleser.mengen(i);
+  const struktur = strukturLesen(leser, ganzes, mengen);
+  const bauteile = bauteileLesen(leser, ganzes, mengen);
   return {
     modell: { schema, kopf: kopfAngaben(kopf.kopf, schemakennung), struktur, bauteile },
     befunde,

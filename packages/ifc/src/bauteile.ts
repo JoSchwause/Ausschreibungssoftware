@@ -5,7 +5,7 @@
 import { klassenname } from './klassen';
 import { STRUKTURARTEN } from './modell';
 import type { Modellleser } from './modell';
-import type { Bauteil } from './typen';
+import type { Bauteil, Bauteilmenge } from './typen';
 
 /** Keine Bauteile (Ticket 98, Punkt 5), dazu die räumlichen Elemente, die keine Strukturknoten sind. */
 const KEINE_BAUTEILE = new Set([
@@ -46,7 +46,11 @@ function behaelterLesen(l: Modellleser): Map<number, number | null> {
 }
 
 /** Bauteile in der Reihenfolge der Datei. */
-export function bauteileLesen(l: Modellleser, ganzes: ReadonlyMap<number, number>): Bauteil[] {
+export function bauteileLesen(
+  l: Modellleser,
+  ganzes: ReadonlyMap<number, number>,
+  mengenVon: (i: number) => Bauteilmenge[],
+): Bauteil[] {
   const behaelter = behaelterLesen(l);
   const teile = new Map<number, number[]>();
   for (const [teil, oben] of ganzes) {
@@ -90,7 +94,7 @@ export function bauteileLesen(l: Modellleser, ganzes: ReadonlyMap<number, number
         l.ort(i),
       );
     const oben = teilVon.get(i);
-    const mengen: Bauteil['mengen'] = [];
+    const mengen = mengenVon(i);
     if (mengen.length === 0)
       l.melde(
         'warnung',
