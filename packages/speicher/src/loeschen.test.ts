@@ -147,7 +147,7 @@ describe('existiert-bereits (v1.1a, Punkt 3)', () => {
     const { kern, db } = await mitTypisch();
     const text = wert(kern.projektdateiExportieren(projektId));
     const knoten = zaehle(db, 'knoten');
-    const r = kern.projektdateiImportieren(text);
+    const r = await kern.projektdateiImportieren(text);
     expect(code(r)).toBe('existiert-bereits');
     expect(zaehle(db, 'knoten')).toBe(knoten);
   });
@@ -357,7 +357,7 @@ describe('Auftrags-LV (v1.1a, Punkt 5)', () => {
     ]);
 
     const { kern: b } = await neuerKern();
-    wert(b.projektdateiImportieren(text1));
+    wert(await b.projektdateiImportieren(text1));
     expect(wert(b.projektdateiExportieren(projektId)) === text1).toBe(true);
   });
 

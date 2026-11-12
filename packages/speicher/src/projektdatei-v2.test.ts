@@ -34,18 +34,18 @@ describe('eingefrorene Projektdatei der Schemaversion 2', () => {
 
   it('Import → Export ist byte-gleich (Export-Golden, solange Version 2 aktuell ist); danach stabil', async () => {
     const { kern } = await neuerKern();
-    expect(wert(kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
     const neu = wert(kern.projektdateiExportieren(V2_PROJEKT));
     expect((JSON.parse(neu) as { schemaVersion: number }).schemaVersion).toBe(SCHEMA_VERSION);
     if (SCHEMA_VERSION === 2) expect(neu === inhalt).toBe(true);
     const zweite = await neuerKern();
-    wert(zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiImportieren(neu));
     expect(wert(zweite.kern.projektdateiExportieren(V2_PROJEKT)) === neu).toBe(true);
   });
 
   it('Rundlauf: jede Position und Angebotsposition kommt nach Speichern und Laden unverändert zurück', async () => {
     const { kern } = await neuerKern();
-    wert(kern.projektdateiImportieren(inhalt));
+    wert(await kern.projektdateiImportieren(inhalt));
     const lv = wert(kern.lvLaden(V2_LV));
     expect(lv).toEqual(normalisiere(v2.lv));
     for (const k of v2.lv.leistungsverzeichnis.knoten)
@@ -214,7 +214,7 @@ describe('Prüfung der neuen Felder beim Import: nichts wird halb übernommen (Q
     ['losStufe als Text', aendere([...lv, 'ozMaske', 'losStufe'], 'ja')],
   ])('%s: datei-ungueltig', async (_name, text) => {
     const { kern, db } = await neuerKern();
-    expect(kern.projektdateiImportieren(text)).toMatchObject({
+    expect(await kern.projektdateiImportieren(text)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });

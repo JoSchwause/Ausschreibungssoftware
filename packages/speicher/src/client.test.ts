@@ -158,6 +158,20 @@ describe('Client über Worker-Host', () => {
         'rechnungLaden',
         'kostenermittlungenAuflisten',
         'kostenermittlungLaden',
+        // v1.6 (Ticket 106)
+        'bauwerksmodelleAuflisten',
+        'bauwerksmodellLaden',
+        'bauzeitenplaeneAuflisten',
+        'bauzeitenplanLaden',
+        'honorarberechnungenAuflisten',
+        'honorarberechnungLaden',
+        'maengelAuflisten',
+        'mangelLaden',
+        'bautagebuchAuflisten',
+        'bautagebucheintragLaden',
+        'modelldateiAblegen',
+        'modelldateiLaden',
+        'modelldateiVorhanden',
         'anwenden',
         'protokoll',
         'projektdateiExportieren',
@@ -220,7 +234,7 @@ describe('Nach schliessen (v1.1a, Punkt 3): jeder Aufruf ist ein Fehlerwert, kei
     const { kern } = await neuerKern();
     wert(kern.schliessen());
     expect(fehlercode(kern.projekteAuflisten())).toBe('gesperrt');
-    expect(fehlercode(kern.projektdateiImportieren('{}'))).toBe('gesperrt');
+    expect(fehlercode(await kern.projektdateiImportieren('{}'))).toBe('gesperrt');
     expect(fehlercode(kern.schliessen())).toBe('gesperrt');
   });
 
@@ -301,16 +315,16 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'anwenden',
       'aufmasse',
       'auftragsLeistungsverzeichnisse',
-      'bautagebuch', // v1.6: mechanisch angepasst, Folgeticket 106
+      'bautagebuch',
       'bauwerksmodelle',
       'bauzeitenplaene',
       'honorarberechnungen',
       'kostenermittlungen',
       'leistungsverzeichnisse',
       'lvStaende',
-      'maengel', // v1.6: mechanisch angepasst, Folgeticket 106
+      'maengel',
       'migrationsbefunde',
-      'modelldateien', // v1.6: mechanisch angepasst, Folgeticket 106
+      'modelldateien',
       'persistenzstatus',
       'projektdateiExportieren',
       'projektdateiImportieren',

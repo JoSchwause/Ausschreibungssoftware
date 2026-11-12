@@ -37,17 +37,17 @@ describe('eingefrorene Projektdatei der Schemaversion 4', () => {
 
   it('Import → Export ist byte-gleich (Export-Golden, solange Version 4 aktuell ist); danach stabil', async () => {
     const { kern } = await neuerKern();
-    expect(wert(kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
     const neu = wert(kern.projektdateiExportieren(V2_PROJEKT));
     if (SCHEMA_VERSION === 4) expect(neu === inhalt).toBe(true);
     const zweite = await neuerKern();
-    wert(zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiImportieren(neu));
     expect(wert(zweite.kern.projektdateiExportieren(V2_PROJEKT)) === neu).toBe(true);
   });
 
   it('Rundlauf: Mengenansatz, EPA-Bezeichnungen und Auftragnehmer kommen nach Import und Laden zurück', async () => {
     const { kern } = await neuerKern();
-    wert(kern.projektdateiImportieren(inhalt));
+    wert(await kern.projektdateiImportieren(inhalt));
     const d = JSON.parse(inhalt) as Projektdatei;
     const lv = wert(kern.lvLaden(V2_LV));
     expect(lv).toEqual(d.leistungsverzeichnisse.find((z) => z.leistungsverzeichnis.id === V2_LV));
@@ -68,7 +68,7 @@ describe('eingefrorene Projektdatei der Schemaversion 4', () => {
   it('die eingefrorenen Dateien der Versionen 1 bis 3 öffnen weiter und bleiben, wie sie waren', async () => {
     for (const v of [1, 2, 3]) {
       const { kern } = await neuerKern();
-      const projekt = wert(kern.projektdateiImportieren(lese(v)));
+      const projekt = wert(await kern.projektdateiImportieren(lese(v)));
       const neu = JSON.parse(wert(kern.projektdateiExportieren(projekt))) as { schemaVersion: number };
       expect(neu.schemaVersion).toBe(SCHEMA_VERSION);
     }
@@ -113,7 +113,7 @@ describe('eingefrorene Projektdatei der Schemaversion 4', () => {
     ['Auftragnehmer mit Vergabenummer', aendere([...auftragnehmer, 'vergabenummer'], null)],
   ])('%s: datei-ungueltig, nichts übernommen', async (_name, text) => {
     const { kern, db } = await neuerKern();
-    expect(kern.projektdateiImportieren(text)).toMatchObject({
+    expect(await kern.projektdateiImportieren(text)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });
@@ -126,7 +126,7 @@ describe('eingefrorene Projektdatei der Schemaversion 4', () => {
     const lv = (alt['leistungsverzeichnisse'] as Record<string, Record<string, unknown>>[])[0];
     if (lv?.['leistungsverzeichnis'] === undefined) throw new Error('kein LV');
     lv['leistungsverzeichnis']['epaBezeichnungen'] = EPA_BEZEICHNUNGEN;
-    expect(kern.projektdateiImportieren(JSON.stringify(alt))).toMatchObject({
+    expect(await kern.projektdateiImportieren(JSON.stringify(alt))).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });

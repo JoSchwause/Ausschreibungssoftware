@@ -155,7 +155,7 @@ export function aggregatVon(cs: ChangeSet): Protokolleintrag['aggregat'] {
       return { art: cs.art, id: cs.rechnungId };
     case 'kostenermittlung':
       return { art: cs.art, id: cs.kostenermittlungId };
-    // v1.6: mechanisch angepasst, Folgeticket 106
+    // v1.6
     case 'bauwerksmodell':
       return { art: cs.art, id: cs.bauwerksmodellId };
     case 'bauzeitenplan':

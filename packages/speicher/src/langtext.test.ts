@@ -120,7 +120,7 @@ describe('Langtext speichern, laden, exportieren, importieren (v1.1b)', () => {
 
     const text1 = wert(kern.projektdateiExportieren(projektId));
     const { kern: b } = await neuerKern();
-    wert(b.projektdateiImportieren(text1));
+    wert(await b.projektdateiImportieren(text1));
     const importiert = wert(b.lvLaden(lvId));
     expect(importiert).toEqual(geladen);
     expect(wert(b.projektdateiExportieren(projektId)) === text1).toBe(true);
@@ -241,7 +241,7 @@ describe('Projektdatei-Dekoder liest Langtext streng (datei-ungueltig mit Pfad)'
     const k = d.leistungsverzeichnisse[0]?.leistungsverzeichnis.knoten[index] ?? never();
     aendere(k.langtext);
     const { kern } = await neuerKern();
-    const r = kern.projektdateiImportieren(JSON.stringify(d));
+    const r = await kern.projektdateiImportieren(JSON.stringify(d));
     expect(r).toMatchObject({ ok: false, fehler: { code: 'datei-ungueltig' } });
     expect(!r.ok && r.fehler.meldung).toContain(
       `$.leistungsverzeichnisse[0].leistungsverzeichnis.knoten[${String(index)}]${pfad}`,

@@ -19,6 +19,7 @@ import { dateiAuf2 } from './dateimigration2';
 import { dateiAuf3 } from './dateimigration3';
 import { dateiAuf4 } from './dateimigration4';
 import { dateiAuf5 } from './dateimigration5';
+import { dateiAuf6 } from './dateimigration6';
 import type { Datenbank } from './sql';
 import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
@@ -377,6 +378,129 @@ CREATE TABLE kostenermittlung (
 CREATE INDEX kostenermittlung_projekt ON kostenermittlung (projekt_id);
 ${PROTOKOLL_V5}`;
 
+// --- Version 6 (Ticket 106, `vertrag` v1.5/v1.6) ----------------------------------------------------------------------
+//
+// (1) `knoten.bauteile` (Bauteilzuordnungen der Position, kanonisches JSON, `NULL` = fehlt; CHECK wie `mengenansatz`).
+// Papierkorb und LV-Stände halten Knoten schon als JSON. Wirkt auf keine Summe: keine Neuberechnung (D-17).
+//
+// (2) Modelldateien (D-51): `modelldatei` hält die Bytes inhaltsadressiert (`hash` = SHA-256 der unkomprimierten Bytes,
+// `groesse` ihre Länge, `inhalt` mit deflate-raw komprimiert), außerhalb jedes Aggregats; sie gehört dem ganzen Speicher,
+// nicht einem Projekt (dieselbe Datei in zwei Projekten liegt einmal ab).
+//
+// (3) Bauwerksmodell (D-51, D-54): Kopf und Inhalt in getrennten Tabellen. `bauwerksmodell` hält den Kopf (klein; `auflisten`
+// und Umbenennen lesen und schreiben nur ihn) samt `anzahl_bauteile` für die Übersicht, `bauwerksmodell_inhalt` Struktur und
+// Bauteile als kanonisches JSON (bis 10.000 Bauteile; nach dem Anlegen unveränderlich). Fremdschlüssel auf die Modelldatei
+// (keine Bytes werden freigegeben, die ein Modell nennt) und auf den Vorgänger.
+//
+// (4) Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag: ganze Aggregate im ChangeSet (D-57) wie Aufmaßblatt und
+// Rechnung in Version 5 (D-79.1): Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel, der Rest als kanonisches JSON.
+// `mangel` trägt `auftrags_lv_id` und `bauwerksmodell_id` (aus `bauteil`) als Spalten mit Fremdschlüssel und Index, damit das
+// Löschen eines Auftrags-LV oder Modells die Verweise ohne `json_each` findet; `UNIQUE (projekt_id, nummer)` bzw.
+// `UNIQUE (projekt_id, datum)` hält Nummer und Datum je Projekt eindeutig (`konflikt` prüft `speicher` vorher selbst).
+//
+// (5) `protokoll.aggregat_art` kennt die fünf neuen Arten: neu anlegen und umkopieren wie in Version 5; `seq` und Zähler
+// bleiben.
+const PROTOKOLL_V6 = `
+CREATE TABLE protokoll_v6 (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  aggregat_art TEXT NOT NULL CHECK (aggregat_art IN
+    ('projekt', 'leistungsverzeichnis', 'angebot', 'auftrags-leistungsverzeichnis', 'aufmass', 'rechnung',
+     'kostenermittlung', 'bauwerksmodell', 'bauzeitenplan', 'honorarberechnung', 'mangel', 'bautagebucheintrag')),
+  aggregat_id TEXT NOT NULL,
+  wer TEXT NOT NULL,
+  wann TEXT NOT NULL,
+  befehl TEXT NOT NULL
+) STRICT;
+
+INSERT INTO protokoll_v6 (seq, id, projekt_id, aggregat_art, aggregat_id, wer, wann, befehl)
+SELECT seq, id, projekt_id, aggregat_art, aggregat_id, wer, wann, befehl FROM protokoll ORDER BY seq;
+
+INSERT INTO sqlite_sequence (name, seq)
+SELECT 'protokoll_v6', seq FROM sqlite_sequence
+WHERE name = 'protokoll' AND NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'protokoll_v6');
+UPDATE sqlite_sequence
+SET seq = (SELECT MAX(seq) FROM sqlite_sequence WHERE name IN ('protokoll', 'protokoll_v6'))
+WHERE name = 'protokoll_v6';
+
+DROP TABLE protokoll;
+ALTER TABLE protokoll_v6 RENAME TO protokoll;
+CREATE INDEX protokoll_projekt ON protokoll (projekt_id, seq);
+`;
+
+const SCHEMA_V6 = `
+ALTER TABLE knoten ADD COLUMN bauteile TEXT CHECK (bauteile IS NULL OR art = 'position');
+
+CREATE TABLE modelldatei (
+  hash TEXT NOT NULL PRIMARY KEY CHECK (length(hash) = 64),
+  groesse INTEGER NOT NULL CHECK (groesse >= 0),
+  inhalt BLOB NOT NULL
+) STRICT;
+
+CREATE TABLE bauwerksmodell (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  name TEXT NOT NULL,
+  datei_hash TEXT NOT NULL REFERENCES modelldatei (hash),
+  datei_name TEXT NOT NULL,
+  datei_groesse INTEGER NOT NULL CHECK (datei_groesse >= 0),
+  schema TEXT NOT NULL CHECK (schema IN ('IFC2X3', 'IFC4')),
+  vorgaenger_id TEXT REFERENCES bauwerksmodell (id),
+  eingelesen TEXT NOT NULL,
+  anzahl_bauteile INTEGER NOT NULL CHECK (anzahl_bauteile >= 0)
+) STRICT;
+CREATE INDEX bauwerksmodell_projekt ON bauwerksmodell (projekt_id);
+CREATE INDEX bauwerksmodell_datei ON bauwerksmodell (datei_hash);
+CREATE INDEX bauwerksmodell_vorgaenger ON bauwerksmodell (vorgaenger_id);
+
+CREATE TABLE bauwerksmodell_inhalt (
+  bauwerksmodell_id TEXT NOT NULL PRIMARY KEY REFERENCES bauwerksmodell (id),
+  struktur TEXT NOT NULL,
+  bauteile TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE bauzeitenplan (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  name TEXT NOT NULL,
+  projektbeginn TEXT NOT NULL,
+  kalender TEXT NOT NULL,
+  vorgaenge TEXT NOT NULL
+) STRICT;
+CREATE INDEX bauzeitenplan_projekt ON bauzeitenplan (projekt_id);
+
+CREATE TABLE honorarberechnung (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  name TEXT NOT NULL,
+  nebenkosten TEXT,
+  mwst_satz TEXT NOT NULL,
+  objekte TEXT NOT NULL
+) STRICT;
+CREATE INDEX honorarberechnung_projekt ON honorarberechnung (projekt_id);
+
+CREATE TABLE mangel (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  nummer INTEGER NOT NULL CHECK (nummer >= 1),
+  auftrags_lv_id TEXT REFERENCES auftrags_lv (id),
+  bauwerksmodell_id TEXT REFERENCES bauwerksmodell (id),
+  angaben TEXT NOT NULL,
+  UNIQUE (projekt_id, nummer)
+) STRICT;
+CREATE INDEX mangel_auftrags_lv ON mangel (auftrags_lv_id);
+CREATE INDEX mangel_bauwerksmodell ON mangel (bauwerksmodell_id);
+
+CREATE TABLE bautagebucheintrag (
+  id TEXT NOT NULL PRIMARY KEY,
+  projekt_id TEXT NOT NULL REFERENCES projekt (id),
+  datum TEXT NOT NULL,
+  angaben TEXT NOT NULL,
+  UNIQUE (projekt_id, datum)
+) STRICT;
+${PROTOKOLL_V6}`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -419,6 +543,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V5);
     },
     datei: dateiAuf5,
+  },
+  {
+    version: 6,
+    name: 'Vertrag v1.6: Bauteilzuordnung, Modelldatei, Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel, Bautagebuch',
+    hoch: (db) => {
+      db.skript(SCHEMA_V6);
+    },
+    datei: dateiAuf6,
   },
 ];
 

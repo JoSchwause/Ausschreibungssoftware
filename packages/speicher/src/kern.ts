@@ -12,6 +12,21 @@ import type {
   AufmassId,
   AufmassKopf,
   AufmassZustand,
+  BauwerksmodellId,
+  BauwerksmodellUebersicht,
+  BauwerksmodellZustand,
+  Bautagebucheintrag,
+  BautagebucheintragId,
+  BautagebucheintragZustand,
+  BauzeitenplanId,
+  BauzeitenplanUebersicht,
+  BauzeitenplanZustand,
+  HonorarberechnungId,
+  HonorarberechnungUebersicht,
+  HonorarberechnungZustand,
+  Mangel,
+  MangelId,
+  MangelZustand,
   ChangeSet,
   KostenermittlungId,
   KostenermittlungUebersicht,
@@ -35,35 +50,60 @@ import type {
 import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
+import { deflateRaw, inflateRaw, sha256Hex } from './komprimierung';
 import { protokollform } from './kurzfassung';
-import { pruefeV16 } from './vertrag-v16'; // v1.6: mechanisch angepasst, Folgeticket 106
 import {
   leseAngebot,
   leseAufmass,
   leseAuftragsLv,
+  leseBautagebucheintrag,
+  leseBauwerksmodell,
+  leseBauzeitenplan,
+  leseHonorarberechnung,
+  leseMangel,
   leseKostenermittlung,
   leseLv,
   leseLvKopf,
   leseLvStaende,
   leseLvStand,
+  leseModelldatei,
   leseProjekt,
   leseProtokoll,
   leseRechnung,
   leseRechnungen,
   listeAufmasse,
   listeAuftragsLvs,
+  listeBautagebuch,
+  listeBauwerksmodelle,
+  listeBauzeitenplaene,
+  listeHonorarberechnungen,
+  listeMaengel,
   listeIds,
   listeKostenermittlungen,
   listeLvs,
   listeProjekte,
+  modelldateiGroesse,
+  modelldateiZeichen,
 } from './lesen';
 import { migriere, MIGRATIONEN, type Migration } from './migrationen';
-import { baueProjektdatei, leseProjektdatei, schreibeProjektdatei } from './projektdatei';
 import {
+  baueProjektdatei,
+  leseProjektdatei,
+  pruefeModelldateienDerDatei,
+  schreibeProjektdatei,
+} from './projektdatei';
+import {
+  gibUngenutzteModelldateienFrei,
+  schreibeModelldatei,
   schreibeProtokolleintrag,
   wendeAngebotAn,
   wendeAufmassAn,
   wendeAuftragsLvAn,
+  wendeBautagebucheintragAn,
+  wendeBauwerksmodellAn,
+  wendeBauzeitenplanAn,
+  wendeHonorarberechnungAn,
+  wendeMangelAn,
   wendeKostenermittlungAn,
   wendeLvAn,
   wendeProjektAn,
@@ -72,23 +112,39 @@ import {
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
 
+/** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
+function aggregatDes(cs: ChangeSet): { art: string; id: string } {
+  switch (cs.art) {
+    case 'projekt':
+      return { art: cs.art, id: cs.projektId };
+    case 'leistungsverzeichnis':
+      return { art: cs.art, id: cs.leistungsverzeichnisId };
+    case 'angebot':
+      return { art: cs.art, id: cs.angebotId };
+    case 'auftrags-leistungsverzeichnis':
+      return { art: cs.art, id: cs.auftragsLeistungsverzeichnisId };
+    case 'aufmass':
+      return { art: cs.art, id: cs.aufmassId };
+    case 'rechnung':
+      return { art: cs.art, id: cs.rechnungId };
+    case 'kostenermittlung':
+      return { art: cs.art, id: cs.kostenermittlungId };
+    case 'bauwerksmodell':
+      return { art: cs.art, id: cs.bauwerksmodellId };
+    case 'bauzeitenplan':
+      return { art: cs.art, id: cs.bauzeitenplanId };
+    case 'honorarberechnung':
+      return { art: cs.art, id: cs.honorarberechnungId };
+    case 'mangel':
+      return { art: cs.art, id: cs.mangelId };
+    case 'bautagebucheintrag':
+      return { art: cs.art, id: cs.bautagebucheintragId };
+  }
+}
+
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
-  pruefeV16(cs); // v1.6: mechanisch angepasst, Folgeticket 106 (Teile aus v1.6: `unbekannt`, bevor der Bezug zählt)
-  const erwartet =
-    cs.art === 'projekt'
-      ? { art: 'projekt', id: cs.projektId as string }
-      : cs.art === 'leistungsverzeichnis'
-        ? { art: 'leistungsverzeichnis', id: cs.leistungsverzeichnisId as string }
-        : cs.art === 'angebot'
-          ? { art: 'angebot', id: cs.angebotId as string }
-          : cs.art === 'auftrags-leistungsverzeichnis'
-            ? { art: 'auftrags-leistungsverzeichnis', id: cs.auftragsLeistungsverzeichnisId as string }
-            : cs.art === 'aufmass'
-              ? { art: 'aufmass', id: cs.aufmassId as string }
-              : cs.art === 'rechnung'
-                ? { art: 'rechnung', id: cs.rechnungId as string }
-                : { art: 'kostenermittlung', id: cs.kostenermittlungId as string };
+  const erwartet = aggregatDes(cs);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
       'unbekannt',
@@ -138,6 +194,12 @@ function istHistorienbefehl(json: string): boolean {
   return art === 'Rueckgaengig' || art === 'Wiederholen';
 }
 
+/**
+ * Grenze der exportierten Projektdatei in Zeichen (D-51, D-106.6): 500.000.000, mit Abstand unter der größten Zeichenkette von
+ * V8 (2^29 − 24 = 536.870.888 Zeichen, „etwa 512 MB Text“), damit der Export laut fehlschlägt, bevor die Laufzeit es tut.
+ */
+export const GRENZE_ZEICHEN = 500_000_000;
+
 const GESCHLOSSEN = (): Ergebnis<never, Speicherfehler> =>
   fehler('gesperrt', 'Der Speicher ist geschlossen; für weitere Aufrufe muss er neu geöffnet werden.');
 
@@ -147,6 +209,8 @@ export class SpeicherKern {
   readonly #migrationen: readonly Migration[];
   /** Befunde der Summen-Neuberechnung beim Öffnen und bei jedem Import einer alten Datei (D-17). */
   readonly #befunde: Migrationsbefund[];
+  /** Höchste Länge der exportierten Projektdatei in Zeichen (D-51); darüber `datei-zu-gross`. */
+  readonly #grenzeZeichen: number;
   #geschlossen = false;
   /** Letzter `anwenden`-Lauf: der nächste wartet auf ihn (Reihenfolge der Aufrufe, ein Schreiber). */
   #reihe: Promise<unknown> = Promise.resolve();
@@ -159,16 +223,31 @@ export class SpeicherKern {
     return this.#geschlossen ? GESCHLOSSEN() : fange(f);
   }
 
-  private constructor(db: Datenbank, migrationen: readonly Migration[], befunde: Migrationsbefund[]) {
+  /** Ist der Speicher geschlossen? (Als Methode, damit eine Prüfung nach `await` nicht als überflüssig gilt.) */
+  #istGeschlossen(): boolean {
+    return this.#geschlossen;
+  }
+
+  private constructor(
+    db: Datenbank,
+    migrationen: readonly Migration[],
+    befunde: Migrationsbefund[],
+    grenzeZeichen: number,
+  ) {
     this.#db = db;
     this.#migrationen = migrationen;
     this.#befunde = befunde;
+    this.#grenzeZeichen = grenzeZeichen;
   }
 
-  /** Schaltet Fremdschlüssel ein und bringt das Schema auf den aktuellen Stand (A8). */
+  /**
+   * Schaltet Fremdschlüssel ein, bringt das Schema auf den aktuellen Stand (A8) und gibt ungenutzte Modelldateien frei
+   * (D-97.5). `optionen.grenzeZeichen` nur für Tests (der Export über der Grenze, ohne 500 MB Text zu bauen).
+   */
   static oeffnen(
     db: Datenbank,
     migrationen: readonly Migration[] = MIGRATIONEN,
+    optionen: { readonly grenzeZeichen?: number } = {},
   ): Ergebnis<SpeicherKern, Speicherfehler> {
     const f = fange(() => {
       db.ausfuehren('PRAGMA foreign_keys = ON');
@@ -177,7 +256,14 @@ export class SpeicherKern {
     const befunde: Migrationsbefund[] = [];
     const m = migriere(db, migrationen, befunde);
     if (!m.ok) return m;
-    return ok(new SpeicherKern(db, migrationen, befunde));
+    // Beginn einer Sitzung: Bytes, die kein Modell nennt, werden frei (D-97.5); erst ab Schema 6 gibt es die Ablage.
+    if (m.wert >= 6) {
+      const frei = fange(() => {
+        gibUngenutzteModelldateienFrei(db);
+      });
+      if (!frei.ok) return frei;
+    }
+    return ok(new SpeicherKern(db, migrationen, befunde, optionen.grenzeZeichen ?? GRENZE_ZEICHEN));
   }
 
   /**
@@ -334,6 +420,147 @@ export class SpeicherKern {
     });
   }
 
+  // --- Aggregate aus v1.6 (Ticket 106) -----------------------------------------------------------------------------------
+
+  /** `BauwerksmodellRepository.auflisten`: die Köpfe mit der Zahl der Bauteile, ohne Struktur und Bauteile zu lesen. */
+  bauwerksmodelleAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly BauwerksmodellUebersicht[], Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return listeBauwerksmodelle(this.#db, projektId);
+    });
+  }
+
+  /** `BauwerksmodellRepository.laden`: das ganze Modell, ohne die Bytes der Datei. */
+  bauwerksmodellLaden(id: BauwerksmodellId): Ergebnis<BauwerksmodellZustand, Speicherfehler> {
+    return this.#fange(() => {
+      const bauwerksmodell = leseBauwerksmodell(this.#db, id);
+      return bauwerksmodell === null
+        ? abbruch('nicht-gefunden', `Bauwerksmodell ${id} ist nicht vorhanden.`)
+        : { bauwerksmodell };
+    });
+  }
+
+  /** Liest ein Aggregat oder bricht mit `nicht-gefunden` ab. */
+  #eines<T, K extends string>(
+    lesen: () => T | null,
+    was: string,
+    schluessel: K,
+  ): Ergebnis<{ readonly [P in K]: T }, Speicherfehler> {
+    return this.#fange(() => {
+      const wert = lesen();
+      return wert === null
+        ? abbruch('nicht-gefunden', `${was} ist nicht vorhanden.`)
+        : ({ [schluessel]: wert } as { readonly [P in K]: T });
+    });
+  }
+
+  /** Eine Liste des Projekts; unbekanntes Projekt: `nicht-gefunden`. */
+  #liste<T>(projektId: ProjektId, f: () => T): Ergebnis<T, Speicherfehler> {
+    return this.#fange(() => {
+      this.#projektDa(projektId);
+      return f();
+    });
+  }
+
+  /** `BauzeitenplanRepository.auflisten`: die Pläne ohne Vorgänge, nach Name. */
+  bauzeitenplaeneAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly BauzeitenplanUebersicht[], Speicherfehler> {
+    return this.#liste(projektId, () => listeBauzeitenplaene(this.#db, projektId));
+  }
+
+  bauzeitenplanLaden(id: BauzeitenplanId): Ergebnis<BauzeitenplanZustand, Speicherfehler> {
+    return this.#eines(() => leseBauzeitenplan(this.#db, id), `Bauzeitenplan ${id}`, 'bauzeitenplan');
+  }
+
+  /** `HonorarberechnungRepository.auflisten`: ohne Objekte, nach Name. */
+  honorarberechnungenAuflisten(
+    projektId: ProjektId,
+  ): Ergebnis<readonly HonorarberechnungUebersicht[], Speicherfehler> {
+    return this.#liste(projektId, () => listeHonorarberechnungen(this.#db, projektId));
+  }
+
+  honorarberechnungLaden(id: HonorarberechnungId): Ergebnis<HonorarberechnungZustand, Speicherfehler> {
+    return this.#eines(
+      () => leseHonorarberechnung(this.#db, id),
+      `Honorarberechnung ${id}`,
+      'honorarberechnung',
+    );
+  }
+
+  /** `MangelRepository.auflisten`: die Mängel ganz, nach Nummer. */
+  maengelAuflisten(projektId: ProjektId): Ergebnis<readonly Mangel[], Speicherfehler> {
+    return this.#liste(projektId, () => listeMaengel(this.#db, projektId));
+  }
+
+  mangelLaden(id: MangelId): Ergebnis<MangelZustand, Speicherfehler> {
+    return this.#eines(() => leseMangel(this.#db, id), `Mangel ${id}`, 'mangel');
+  }
+
+  /** `BautagebuchRepository.auflisten`: die Einträge ganz, nach Datum. */
+  bautagebuchAuflisten(projektId: ProjektId): Ergebnis<readonly Bautagebucheintrag[], Speicherfehler> {
+    return this.#liste(projektId, () => listeBautagebuch(this.#db, projektId));
+  }
+
+  bautagebucheintragLaden(id: BautagebucheintragId): Ergebnis<BautagebucheintragZustand, Speicherfehler> {
+    return this.#eines(
+      () => leseBautagebucheintrag(this.#db, id),
+      `Bautagebucheintrag ${id}`,
+      'bautagebucheintrag',
+    );
+  }
+
+  // --- Modelldateien (`Modelldateiablage`, v1.6; D-51) ------------------------------------------------------------------
+
+  /**
+   * `Modelldateiablage.ablegen`: SHA-256 der unkomprimierten Bytes (Web Crypto, asynchron vor der Transaktion), dann die Bytes
+   * mit deflate-raw komprimiert ablegen. Idempotent; schon abgelegte Bytes werden nicht noch einmal komprimiert. Kein Befehl:
+   * kein Protokolleintrag, kein ChangeSet. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  modelldateiAblegen(bytes: Uint8Array): Promise<Ergebnis<string, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#ablegenDann(bytes));
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  async #ablegenDann(bytes: Uint8Array): Promise<Ergebnis<string, Speicherfehler>> {
+    if (this.#geschlossen) return GESCHLOSSEN();
+    if (!(bytes instanceof Uint8Array))
+      return fehler('unbekannt', 'Modelldateiablage: ablegen erwartet die Bytes der Datei (Uint8Array).');
+    let hash: string;
+    try {
+      hash = await sha256Hex(bytes);
+    } catch (x) {
+      return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
+    return this.#fange(() => {
+      if (modelldateiGroesse(this.#db, hash) === null)
+        transaktion(this.#db, () => {
+          schreibeModelldatei(this.#db, hash, bytes.length, deflateRaw(bytes));
+        });
+      return hash;
+    });
+  }
+
+  /** `Modelldateiablage.laden`: die abgelegten Bytes unverändert; ein Hash ohne Bytes: `nicht-gefunden`. */
+  modelldateiLaden(hash: string): Ergebnis<Uint8Array, Speicherfehler> {
+    return this.#fange(() => {
+      const d = leseModelldatei(this.#db, hash);
+      if (d === null) return abbruch('nicht-gefunden', `Die Modelldatei ${hash} ist nicht abgelegt.`);
+      const bytes = inflateRaw(d.inhalt);
+      if (bytes.length !== d.groesse)
+        abbruch('datei-ungueltig', `Modelldatei ${hash}: Die Länge der Bytes passt nicht zur Ablage.`);
+      return bytes;
+    });
+  }
+
+  /** `Modelldateiablage.vorhanden`. */
+  modelldateiVorhanden(hash: string): Ergebnis<boolean, Speicherfehler> {
+    return this.#fange(() => modelldateiGroesse(this.#db, hash) !== null);
+  }
+
   protokoll(projektId: ProjektId): Ergebnis<readonly Protokolleintrag[], Speicherfehler> {
     return this.#fange(() => {
       if (leseProjekt(this.#db, projektId) === null)
@@ -392,6 +619,21 @@ export class SpeicherKern {
           case 'kostenermittlung':
             wendeKostenermittlungAn(this.#db, changeSet, eintrag.projektId);
             break;
+          case 'bauwerksmodell':
+            wendeBauwerksmodellAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'bauzeitenplan':
+            wendeBauzeitenplanAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'honorarberechnung':
+            wendeHonorarberechnungAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'mangel':
+            wendeMangelAn(this.#db, changeSet, eintrag.projektId);
+            break;
+          case 'bautagebucheintrag':
+            wendeBautagebucheintragAn(this.#db, changeSet, eintrag.projektId);
+            break;
         }
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
         // gehören könnte (siehe `wendeProjektAn`, D-31.1).
@@ -403,20 +645,64 @@ export class SpeicherKern {
 
   // --- Projektdatei -----------------------------------------------------------------------------------------
 
+  /**
+   * Exportiert die Projektdatei. v1.6 (D-51): Würde der Text die Grenze für Zeichenketten erreichen (`grenzeZeichen`, Standard
+   * `GRENZE_ZEICHEN`, unter der Grenze von V8), schlägt der Export mit `datei-zu-gross` fehl und kürzt nie (Q5). Geprüft
+   * wird zuerst die Base64-Länge der Modelldateien (ohne sie zu lesen), dann der fertige Text; wirft die Laufzeit beim Bauen
+   * des Texts selbst (`RangeError`), ist es derselbe Fehler.
+   */
   projektdateiExportieren(projektId: ProjektId): Ergebnis<string, Speicherfehler> {
-    return this.#fange(() =>
-      kanonischesJson(
-        baueProjektdatei(this.#db, projektId, this.#migrationen[this.#migrationen.length - 1]?.version ?? 0),
-      ),
-    );
+    return this.#fange(() => {
+      const grenze = this.#grenzeZeichen;
+      const zuGross = (n: string): never =>
+        abbruch(
+          'datei-zu-gross',
+          `Die Projektdatei würde ${n} Zeichen lang, mehr als ${String(grenze)}; es entsteht keine Datei.`,
+        );
+      const modelle = modelldateiZeichen(this.#db, projektId);
+      if (modelle > grenze) zuGross(`mindestens ${String(modelle)}`);
+      let text: string;
+      try {
+        text = kanonischesJson(
+          baueProjektdatei(
+            this.#db,
+            projektId,
+            this.#migrationen[this.#migrationen.length - 1]?.version ?? 0,
+          ),
+        );
+      } catch (e) {
+        if (e instanceof RangeError) return zuGross('über die Grenze der Laufzeit hinaus');
+        throw e;
+      }
+      if (text.length > grenze) zuGross(String(text.length));
+      return text;
+    });
   }
 
-  /** Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). */
-  projektdateiImportieren(inhalt: string): Ergebnis<ProjektId, Speicherfehler> {
+  /**
+   * Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien
+   * prüft der Import vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei
+   * `datei-ungueltig`. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#importierenDann(inhalt));
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  async #importierenDann(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
     const befunde: Migrationsbefund[] = [];
     const datei = leseProjektdatei(inhalt, this.#migrationen, befunde);
     if (!datei.ok) return datei;
+    let bytes: Awaited<ReturnType<typeof pruefeModelldateienDerDatei>>;
+    try {
+      bytes = await pruefeModelldateienDerDatei(datei.wert);
+    } catch (x) {
+      return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
+    // Während des Wartens auf die Prüfsummen kann `schliessen` gekommen sein (es läuft nicht in der Reihe).
+    if (this.#istGeschlossen()) return GESCHLOSSEN();
     const r = fange(() =>
       transaktion(this.#db, () => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {
@@ -425,7 +711,7 @@ export class SpeicherKern {
             `Das Projekt ${datei.wert.projekt.id} existiert bereits; es wird nicht überschrieben.`,
           );
         }
-        return schreibeProjektdatei(this.#db, datei.wert);
+        return schreibeProjektdatei(this.#db, datei.wert, bytes);
       }),
     );
     if (r.ok) this.#befunde.push(...befunde);

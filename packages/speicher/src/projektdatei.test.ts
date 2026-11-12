@@ -42,7 +42,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Export → Import → Ex
     expect((JSON.parse(text1) as { schemaVersion: number }).schemaVersion).toBe(SCHEMA_VERSION);
 
     const b = await neuerKern();
-    expect(wert(b.kern.projektdateiImportieren(text1))).toBe(f.projekt.id);
+    expect(wert(await b.kern.projektdateiImportieren(text1))).toBe(f.projekt.id);
     const text2 = wert(b.kern.projektdateiExportieren(f.projekt.id));
     expect(text2 === text1).toBe(true); // `toBe` auf große Texte würde bei Abweichung riesige Diffs drucken
     expect(wert(b.kern.lvLaden(f.lv.leistungsverzeichnis.id))).toEqual(normalisiere(f.lv));
@@ -57,7 +57,7 @@ describe.each(['winzig', 'typisch', 'gross'] as const)('Export → Import → Ex
     await speichere(kern, anlegenSchritte(f));
     const text = wert(kern.projektdateiExportieren(f.projekt.id));
     const vorher = zaehle(db, 'knoten');
-    const r = kern.projektdateiImportieren(text);
+    const r = await kern.projektdateiImportieren(text);
     expect(r).toMatchObject({ ok: false, fehler: { code: 'existiert-bereits' } });
     expect(!r.ok && r.fehler.meldung).toContain('existiert bereits');
     expect(zaehle(db, 'knoten')).toBe(vorher);
@@ -80,7 +80,7 @@ describe('eingefrorene Projektdatei der Schemaversion 1', () => {
 
   it('wird vom aktuellen Stand geöffnet; Inhalt und Fachwerte stimmen', async () => {
     const { kern, db } = await neuerKern();
-    const id = wert(kern.projektdateiImportieren(inhalt));
+    const id = wert(await kern.projektdateiImportieren(inhalt));
     expect(id).toBe('projekt-winzig');
     expect(wert(kern.projektLaden(id))).toEqual({
       id: 'projekt-winzig',
@@ -126,13 +126,13 @@ describe('eingefrorene Projektdatei der Schemaversion 1', () => {
 
   it('exportiert im aktuellen Format; in Version 1 ist der Export byte-gleich der eingefrorenen Datei', async () => {
     const { kern } = await neuerKern();
-    const id = wert(kern.projektdateiImportieren(inhalt));
+    const id = wert(await kern.projektdateiImportieren(inhalt));
     const neu = wert(kern.projektdateiExportieren(id));
     expect((JSON.parse(neu) as { schemaVersion: number }).schemaVersion).toBe(SCHEMA_VERSION);
     if (SCHEMA_VERSION === 1) expect(neu === inhalt).toBe(true);
     // Der Export lässt sich wieder importieren und ist dann stabil.
     const zweite = await neuerKern();
-    wert(zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiImportieren(neu));
     expect(wert(zweite.kern.projektdateiExportieren(id)) === neu).toBe(true);
   });
 });
@@ -210,7 +210,7 @@ describe('Prüfung beim Import: nichts wird halb übernommen (Q5)', () => {
 
   it.each(faelle)('%s', async (_name, text, code) => {
     const { kern, db } = await neuerKern();
-    const r = kern.projektdateiImportieren(text);
+    const r = await kern.projektdateiImportieren(text);
     expect(r).toMatchObject({ ok: false, fehler: { code } });
     for (const t of [
       'projekt',
@@ -299,7 +299,7 @@ describe('Projekt-Kennung', () => {
     await speichere(a.kern, anlegenSchritte(f));
     const b = await neuerKern();
     const id: ProjektId = wert(
-      b.kern.projektdateiImportieren(wert(a.kern.projektdateiExportieren(f.projekt.id))),
+      await b.kern.projektdateiImportieren(wert(a.kern.projektdateiExportieren(f.projekt.id))),
     );
     expect(id).toBe(f.projekt.id);
   });

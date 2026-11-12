@@ -49,17 +49,17 @@ describe('eingefrorene Projektdatei der Schemaversion 5', () => {
 
   it('Import → Export ist byte-gleich (Export-Golden, solange Version 5 aktuell ist); danach stabil', async () => {
     const { kern } = await neuerKern();
-    expect(wert(kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
     const neu = wert(kern.projektdateiExportieren(V2_PROJEKT));
     if (SCHEMA_VERSION === 5) expect(neu === inhalt).toBe(true);
     const zweite = await neuerKern();
-    wert(zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiImportieren(neu));
     expect(wert(zweite.kern.projektdateiExportieren(V2_PROJEKT)) === neu).toBe(true);
   });
 
   it('Rundlauf: alles aus v1.4 kommt nach Import über die Repositories zurück', async () => {
     const { kern } = await neuerKern();
-    wert(kern.projektdateiImportieren(inhalt));
+    wert(await kern.projektdateiImportieren(inhalt));
     const s = speicherUeberTransport(direktTransport(kern), null);
     const d = JSON.parse(inhalt) as Projektdatei;
     const lv = wert(await s.leistungsverzeichnisse.laden(V2_LV));
@@ -109,7 +109,7 @@ describe('eingefrorene Projektdatei der Schemaversion 5', () => {
   it('die eingefrorenen Dateien der Versionen 1 bis 4 öffnen weiter und exportieren in der aktuellen Version', async () => {
     for (const v of [1, 2, 3, 4]) {
       const { kern } = await neuerKern();
-      const projekt = wert(kern.projektdateiImportieren(lese(v)));
+      const projekt = wert(await kern.projektdateiImportieren(lese(v)));
       const neu = JSON.parse(wert(kern.projektdateiExportieren(projekt))) as Record<string, unknown>;
       expect(neu['schemaVersion']).toBe(SCHEMA_VERSION);
       for (const liste of ['aufmasse', 'rechnungen', 'kostenermittlungen'])
@@ -124,7 +124,7 @@ describe('eingefrorene Projektdatei der Schemaversion 5', () => {
       JSON.stringify({ ...JSON.parse(lese(4)), kostenermittlungen: d['kostenermittlungen'] }),
     ]) {
       const { kern } = await neuerKern();
-      expect(kern.projektdateiImportieren(text)).toMatchObject({
+      expect(await kern.projektdateiImportieren(text)).toMatchObject({
         ok: false,
         fehler: { code: 'datei-ungueltig' },
       });

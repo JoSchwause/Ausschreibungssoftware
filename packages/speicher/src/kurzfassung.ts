@@ -42,7 +42,7 @@ export function massenbefehlskopf(b: Massenbefehl): Massenbefehlskopf {
       return { art: b.art, auftragsLeistungsverzeichnis: ohne(b.auftragsLeistungsverzeichnis, 'knoten') };
     case 'AufmassAnlegen': // v1.4 (D-70.5): das Blatt ohne Zeilen
       return { art: b.art, aufmass: ohne(b.aufmass, 'positionen') };
-    case 'BauwerksmodellAnlegen': // v1.6: mechanisch angepasst, Folgeticket 106 (das Modell ohne Struktur und Bauteile)
+    case 'BauwerksmodellAnlegen': // v1.6 (D-54): das Modell ohne Struktur und Bauteile
       return { art: b.art, bauwerksmodell: ohne(ohne(b.bauwerksmodell, 'struktur'), 'bauteile') };
   }
 }

@@ -4,6 +4,14 @@
 // `reihenfolge`), Summen und Angebotspositionen nach Kennung, Protokoll nach Eintragsreihenfolge.
 
 import type {
+  Bautagebucheintrag,
+  Bauwerksmodell,
+  BauwerksmodellUebersicht,
+  Bauzeitenplan,
+  BauzeitenplanKopf,
+  Honorarberechnung,
+  HonorarberechnungUebersicht,
+  Mangel,
   Angebot,
   Angebotsposition,
   AngebotId,
@@ -47,6 +55,14 @@ import {
   angebotspositionAusZeile,
   aufmassAusZeile,
   aufmasskopfAusZeile,
+  bautagebucheintragAusZeile,
+  bauwerksmodellAusZeilen,
+  bauwerksmodellUebersichtAusZeile,
+  bauzeitenplanAusZeile,
+  bauzeitenplanKopfAusZeile,
+  honorarberechnungAusZeile,
+  honorarberechnungUebersichtAusZeile,
+  mangelAusZeile,
   kostenermittlungAusZeile,
   kostenermittlungUebersichtAusZeile,
   rechnungAusZeile,
@@ -101,14 +117,27 @@ const nachName = <T extends { readonly id: string; readonly name: string }>(a: T
 
 /**
  * LV-Liste eines Projekts (`LvRepository.auflisten`, v1.3): sortiert wie die Projektliste. v1.4 (D-43): dazu
- * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein).
+ * `nachtrag` und `vorlage` aus dem Kopf (fehlt = nein). v1.5 (D-95.5, Ticket 106): dazu `nettoNachNachlass` aus der
+ * gespeicherten Zeile in `summe_gesamt`, nie gerechnet; ohne Zeile fehlt das Feld (nie `null`).
  */
 export function listeLvs(db: Datenbank, projekt: ProjektId): LvUebersicht[] {
   return (
     db
-      // `*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
-      .zeilen('SELECT * FROM leistungsverzeichnis WHERE projekt_id = ? ORDER BY id', [projekt])
-      .map((z) => ({ id: lvId(z, 'id'), name: text(z, 'name'), ...lvKennzeichenAusZeile(z) }))
+      // `l.*` statt der Spaltennamen: liest auch eine Datenbank vor Schema 5 (Migrationstests), die Köpfe sind klein.
+      .zeilen(
+        `SELECT l.*, s.netto_nach_nachlass AS uebersicht_netto_nach_nachlass FROM leistungsverzeichnis l
+         LEFT JOIN summe_gesamt s ON s.aggregat_id = l.id WHERE l.projekt_id = ? ORDER BY l.id`,
+        [projekt],
+      )
+      .map((z): LvUebersicht => {
+        const netto = textOderNull(z, 'uebersicht_netto_nach_nachlass') as Betrag | null;
+        return {
+          id: lvId(z, 'id'),
+          name: text(z, 'name'),
+          ...lvKennzeichenAusZeile(z),
+          ...(netto === null ? {} : { nettoNachNachlass: netto }),
+        };
+      })
       .sort(nachName)
   );
 }
@@ -438,6 +467,177 @@ export function aggregateDesProjekts(db: Datenbank, projekt: ProjektId) {
     rechnungen: alle('rechnung').map(rechnungAusZeile),
     kostenermittlungen: alle('kostenermittlung').map(kostenermittlungAusZeile),
   };
+}
+
+// --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54) -----------------------------------------------------------------------
+
+/** Kopf eines Bauwerksmodells und die Zahl seiner Bauteile (`BauwerksmodellUebersicht`), ohne den Inhalt zu lesen. */
+export function leseBauwerksmodellKopf(db: Datenbank, id: string): BauwerksmodellUebersicht | null {
+  const z = db.zeilen('SELECT * FROM bauwerksmodell WHERE id = ?', [id])[0];
+  return z === undefined ? null : bauwerksmodellUebersichtAusZeile(z);
+}
+
+export function leseBauwerksmodell(db: Datenbank, id: string): Bauwerksmodell | null {
+  const z = db.zeilen('SELECT * FROM bauwerksmodell WHERE id = ?', [id])[0];
+  if (z === undefined) return null;
+  const inhalt = db.zeilen('SELECT * FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?', [id])[0];
+  if (inhalt === undefined)
+    return abbruch('datei-ungueltig', `Bauwerksmodell ${id}: Struktur und Bauteile fehlen in der Datenbank.`);
+  return bauwerksmodellAusZeilen(z, inhalt);
+}
+
+/** Die Modelle eines Projekts als Übersicht (Kopf und Zahl der Bauteile), sortiert wie die LV-Liste; ohne den Inhalt. */
+export function listeBauwerksmodelle(db: Datenbank, projekt: ProjektId): BauwerksmodellUebersicht[] {
+  return db
+    .zeilen('SELECT * FROM bauwerksmodell WHERE projekt_id = ? ORDER BY id', [projekt])
+    .map(bauwerksmodellUebersichtAusZeile)
+    .sort(nachName);
+}
+
+// --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
+
+const eine = <T>(db: Datenbank, tabelle: string, id: string, aus: (z: SqlZeile) => T): T | null => {
+  const z = db.zeilen(`SELECT * FROM ${tabelle} WHERE id = ?`, [id])[0];
+  return z === undefined ? null : aus(z);
+};
+
+export const leseBauzeitenplan = (db: Datenbank, id: string): Bauzeitenplan | null =>
+  eine(db, 'bauzeitenplan', id, bauzeitenplanAusZeile);
+
+/** Ein gespeicherter Plan mit seinen Vorgängen als gespeicherter kanonischer Text, nicht geparst (wie `AufmassText`). */
+export interface BauzeitenplanText {
+  readonly kopf: BauzeitenplanKopf;
+  readonly vorgaenge: string;
+}
+
+export const leseBauzeitenplanText = (db: Datenbank, id: string): BauzeitenplanText | null =>
+  eine(db, 'bauzeitenplan', id, (z) => ({
+    kopf: bauzeitenplanKopfAusZeile(z),
+    vorgaenge: text(z, 'vorgaenge'),
+  }));
+
+/** Die Pläne eines Projekts ohne Vorgänge, sortiert wie die LV-Liste. */
+export function listeBauzeitenplaene(db: Datenbank, projekt: ProjektId): BauzeitenplanKopf[] {
+  return db
+    .zeilen(
+      'SELECT id, projekt_id, name, projektbeginn, kalender FROM bauzeitenplan WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map(bauzeitenplanKopfAusZeile)
+    .sort(nachName);
+}
+
+export const leseHonorarberechnung = (db: Datenbank, id: string): Honorarberechnung | null =>
+  eine(db, 'honorarberechnung', id, honorarberechnungAusZeile);
+
+/** Die Honorarberechnungen eines Projekts ohne Objekte, sortiert wie die LV-Liste. */
+export function listeHonorarberechnungen(db: Datenbank, projekt: ProjektId): HonorarberechnungUebersicht[] {
+  return db
+    .zeilen(
+      'SELECT id, projekt_id, name, nebenkosten, mwst_satz FROM honorarberechnung WHERE projekt_id = ? ORDER BY id',
+      [projekt],
+    )
+    .map(honorarberechnungUebersichtAusZeile)
+    .sort(nachName);
+}
+
+export const leseMangel = (db: Datenbank, id: string): Mangel | null =>
+  eine(db, 'mangel', id, mangelAusZeile);
+
+/** Die Mängel eines Projekts, ganz, nach Nummer (`MangelRepository.auflisten`). */
+export function listeMaengel(db: Datenbank, projekt: ProjektId): Mangel[] {
+  return db
+    .zeilen('SELECT * FROM mangel WHERE projekt_id = ? ORDER BY nummer', [projekt])
+    .map(mangelAusZeile);
+}
+
+export const leseBautagebucheintrag = (db: Datenbank, id: string): Bautagebucheintrag | null =>
+  eine(db, 'bautagebucheintrag', id, bautagebucheintragAusZeile);
+
+/** Die Einträge eines Projekts, ganz, nach Datum (`BautagebuchRepository.auflisten`; je Datum höchstens einer). */
+export function listeBautagebuch(db: Datenbank, projekt: ProjektId): Bautagebucheintrag[] {
+  return db
+    .zeilen('SELECT * FROM bautagebucheintrag WHERE projekt_id = ? ORDER BY datum', [projekt])
+    .map(bautagebucheintragAusZeile);
+}
+
+/** Die Aggregate aus v1.6 eines Projekts, je nach Kennung (Projektdatei). */
+export function aggregateV16DesProjekts(db: Datenbank, projekt: ProjektId) {
+  const alle = (tabelle: string): SqlZeile[] =>
+    db.zeilen(`SELECT * FROM ${tabelle} WHERE projekt_id = ? ORDER BY id`, [projekt]);
+  return {
+    bauwerksmodelle: alle('bauwerksmodell').map((z) => {
+      const inhalt = db.zeilen('SELECT * FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id = ?', [
+        text(z, 'id'),
+      ])[0];
+      if (inhalt === undefined)
+        return abbruch(
+          'datei-ungueltig',
+          `Bauwerksmodell ${text(z, 'id')}: Struktur und Bauteile fehlen in der Datenbank.`,
+        );
+      return bauwerksmodellAusZeilen(z, inhalt);
+    }),
+    bauzeitenplaene: alle('bauzeitenplan').map(bauzeitenplanAusZeile),
+    honorarberechnungen: alle('honorarberechnung').map(honorarberechnungAusZeile),
+    maengel: alle('mangel').map(mangelAusZeile),
+    bautagebuch: alle('bautagebucheintrag').map(bautagebucheintragAusZeile),
+  };
+}
+
+// --- Modelldateien (Schema 6, v1.6; D-51) --------------------------------------------------------------------------------
+
+/** Die Hashes der Modelldateien, die die Modelle eines Projekts nennen, aufsteigend, je Hash einmal. */
+const DATEIEN_DES_PROJEKTS = `SELECT DISTINCT datei_hash AS hash FROM bauwerksmodell WHERE projekt_id = ?`;
+
+/** Die abgelegten Modelldateien eines Projekts (komprimiert, wie gespeichert), nach Hash (Projektdatei, D-51). */
+export function modelldateienDesProjekts(
+  db: Datenbank,
+  projekt: ProjektId,
+): { hash: string; inhalt: Uint8Array }[] {
+  return db
+    .zeilen(
+      `SELECT m.hash, m.inhalt FROM modelldatei m WHERE m.hash IN (${DATEIEN_DES_PROJEKTS}) ORDER BY m.hash`,
+      [projekt],
+    )
+    .map((z) => {
+      const inhalt = z['inhalt'];
+      if (!(inhalt instanceof Uint8Array))
+        return abbruch(
+          'datei-ungueltig',
+          `Modelldatei ${text(z, 'hash')}: Die Bytes fehlen in der Datenbank.`,
+        );
+      return { hash: text(z, 'hash'), inhalt };
+    });
+}
+
+/** Zeichen, die die Modelldateien eines Projekts in Base64 bräuchten, ohne sie zu lesen (Grenze des Exports, D-51). */
+export function modelldateiZeichen(db: Datenbank, projekt: ProjektId): number {
+  const n = db.zeilen(
+    `SELECT COALESCE(SUM(((length(inhalt) + 2) / 3) * 4), 0) AS n FROM modelldatei WHERE hash IN (${DATEIEN_DES_PROJEKTS})`,
+    [projekt],
+  )[0]?.['n'];
+  return typeof n === 'number' ? n : 0;
+}
+
+/** Eine abgelegte Modelldatei: Länge der unkomprimierten Bytes und die Bytes mit deflate-raw komprimiert. */
+export interface GespeicherteModelldatei {
+  readonly groesse: number;
+  readonly inhalt: Uint8Array;
+}
+
+export function leseModelldatei(db: Datenbank, hash: string): GespeicherteModelldatei | null {
+  const z = db.zeilen('SELECT groesse, inhalt FROM modelldatei WHERE hash = ?', [hash])[0];
+  if (z === undefined) return null;
+  const inhalt = z['inhalt'];
+  if (!(inhalt instanceof Uint8Array))
+    return abbruch('datei-ungueltig', `Modelldatei ${hash}: Die Bytes fehlen in der Datenbank.`);
+  return { groesse: ganzzahl(z, 'groesse'), inhalt };
+}
+
+/** Länge der abgelegten unkomprimierten Bytes, ohne sie zu lesen; `null`: nicht abgelegt. */
+export function modelldateiGroesse(db: Datenbank, hash: string): number | null {
+  const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [hash])[0];
+  return z === undefined ? null : ganzzahl(z, 'groesse');
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------

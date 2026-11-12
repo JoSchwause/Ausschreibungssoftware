@@ -147,7 +147,7 @@ describe('Rueckgaengig und Wiederholen im Protokoll (S3, Punkt 2)', () => {
     await schreibe(kern, { art: 'Wiederholen', protokollId: original.id }, cs);
     const text = wert(kern.projektdateiExportieren(P));
     const { kern: zweiter } = await neuerKern();
-    wert(zweiter.projektdateiImportieren(text));
+    wert(await zweiter.projektdateiImportieren(text));
     expect(wert(zweiter.projektdateiExportieren(P)) === text).toBe(true);
   });
 
@@ -192,7 +192,7 @@ describe('Rueckgaengig und Wiederholen im Protokoll (S3, Punkt 2)', () => {
     const d = JSON.parse(wert(kern.projektdateiExportieren(P))) as { protokoll: Record<string, unknown>[] };
     aendere(d.protokoll);
     const { kern: zweiter } = await neuerKern();
-    expect(zweiter.projektdateiImportieren(JSON.stringify(d))).toMatchObject({
+    expect(await zweiter.projektdateiImportieren(JSON.stringify(d))).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });
@@ -363,7 +363,7 @@ describe('Papierkorb (S3, Punkt 4)', () => {
     const { kern } = await mitKorb();
     const text = wert(kern.projektdateiExportieren(P));
     const { kern: zweiter } = await neuerKern();
-    wert(zweiter.projektdateiImportieren(text));
+    wert(await zweiter.projektdateiImportieren(text));
     expect(wert(zweiter.lvLaden(LV))).toEqual(lv(kern));
     expect(wert(zweiter.projektdateiExportieren(P)) === text).toBe(true);
   });

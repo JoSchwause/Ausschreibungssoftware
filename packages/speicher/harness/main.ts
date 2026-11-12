@@ -292,6 +292,34 @@ const harness = {
     return hole(name).persistenzstatus();
   },
 
+  /** Legt `text` als Bytes einer Modelldatei ab (Ticket 106, D-51) und liefert den Hash. */
+  async modelldateiAblegen(name: string, text: string): Promise<Kurz & { hash?: string }> {
+    const r = await hole(name).modelldateien.ablegen(new TextEncoder().encode(text));
+    return r.ok ? { ok: true, hash: r.wert } : kurz(r);
+  },
+
+  /** Ist die Modelldatei abgelegt, und welchen SHA-256 haben die Bytes, die `laden` liefert? */
+  async modelldateiPruefen(name: string, hash: string): Promise<{ vorhanden: boolean; sha: string | null }> {
+    const s = hole(name);
+    const da = await s.modelldateien.vorhanden(hash);
+    const bytes = await s.modelldateien.laden(hash);
+    if (!bytes.ok) return { vorhanden: da.ok && da.wert, sha: null };
+    const h = await crypto.subtle.digest('SHA-256', bytes.wert as Uint8Array<ArrayBuffer>);
+    return {
+      vorhanden: da.ok && da.wert,
+      sha: [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join(''),
+    };
+  },
+
+  /** Die Modelle des Projekts: Kennung und Zahl der Bauteile (`BauwerksmodellRepository.auflisten`). */
+  async bauwerksmodelle(
+    name: string,
+    projekt: ProjektId,
+  ): Promise<{ id: string; anzahlBauteile: number }[] | Kurz> {
+    const r = await hole(name).bauwerksmodelle.auflisten(projekt);
+    return r.ok ? r.wert.map((m) => ({ id: m.id, anzahlBauteile: m.anzahlBauteile })) : kurz(r);
+  },
+
   /** Öffnet die Datenbank ein zweites Mal (zweiter Worker): zeigt die Sperre des OPFS-SAH-Pools. */
   async zweitesMalOeffnen(name: string): Promise<Kurz> {
     const r = await speicherOeffnen({ worker: neuerWorker(), datenbank: name, verwaltung: null });
