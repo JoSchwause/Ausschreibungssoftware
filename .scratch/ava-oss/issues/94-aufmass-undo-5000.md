@@ -1,6 +1,6 @@
 # 94: Aufmaßblatt mit 5.000 Zeilen: Einzeländerung und Undo unter 100 ms
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: S, A2 · Paket: `packages/speicher` (Ausnahme von P2: die Messung in `apps/web/src/abrechnung/leistung.test.ts`
 darf nachgezogen werden, dort schreibt in Stufe 1 niemand)
@@ -152,3 +152,9 @@ kanonische Form (Merkliste für die Zeilen, die `nachher` mit `vorher` teilt, au
 ändert. 5.000 Zeilen: Einzeländerung, Undo und Redo je etwa 25–31 ms statt 63–71 ms (Leerlauf), unter Last 32–42 ms. Neuer
 Budgettest `speicher/src/aufmass-leistung.test.ts` (100 ms, Median); die App-Messung D-45 prüft jetzt dasselbe Budget statt 1 s.
 Entscheidungen D-94.1 bis D-94.6. Offen: Schreibkosten des 1-MiB-Satzes im OPFS des dauerhaften Profils (nicht gemessen).
+
+## Answer
+
+Gemergt in `integration/welle-6` mit `79cf746` (Branch `welle-6/94-aufmass-undo`, `3076f0e`). Kleine Lösung reicht: Befehl, Undo
+und Redo am Blatt mit 5.000 Zeilen 25–31 ms (vorher 63–71 ms); `vertrag` unverändert, kein `Aenderungen<Aufmassposition>` nötig
+(D-45 erledigt). Offen: Messung im dauerhaften OPFS-Profil (Zeile mit ~1 MiB Text).
