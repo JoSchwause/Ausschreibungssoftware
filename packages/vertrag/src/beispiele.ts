@@ -2155,7 +2155,7 @@ export const beispielMangel1: Mangel = {
   frist: '2026-12-04',
   verlauf: [
     { status: 'offen', datum: '2026-11-20', bemerkung: null },
-    { status: 'angezeigt', datum: '2026-11-20', bemerkung: 'Mängelanzeige per Brief' },
+    { status: 'angezeigt', datum: '2026-11-20', bemerkung: 'Mängelanzeige per Brief', frist: '2026-12-04' },
   ],
 };
 
@@ -2177,7 +2177,7 @@ export const beispielMangel2: Mangel = {
   frist: '2026-12-11',
   verlauf: [
     { status: 'offen', datum: '2026-11-23', bemerkung: null },
-    { status: 'angezeigt', datum: '2026-11-24', bemerkung: null },
+    { status: 'angezeigt', datum: '2026-11-24', bemerkung: null, frist: '2026-12-11' },
     { status: 'beseitigt', datum: '2026-12-01', bemerkung: 'Meldung des Auftragnehmers' },
     { status: 'offen', datum: '2026-12-02', bemerkung: 'Schleift weiter' },
   ],
@@ -2279,7 +2279,7 @@ export const beispielBefundeV16: readonly [Pruefbefund, Pruefbefund, Pruefbefund
       quelle: 'terminrechnung',
       code: 'beziehung-an-sammelvorgang',
       meldung: 'Anordnungsbeziehung auf den Sammelvorgang „Rohbau“ wird nicht gerechnet.',
-      ort: { vorgangId: fertig, feld: 'vorgaenger' },
+      ort: { vorgangId: fertig, feld: 'vorgaenger', pfad: '/vorgaenge[4]/vorgaenger[1]' },
     },
     {
       schwere: 'warnung',
