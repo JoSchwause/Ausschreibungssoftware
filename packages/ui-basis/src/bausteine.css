@@ -469,12 +469,12 @@ a.tx-verweisknopf {
 /* ---------- Toast ---------- */
 
 /*
- * Oben rechts unter der Kopfzeile (40 px), wo die Seiten nur ihren Titel haben (Ticket 142): unten stehen Summenfuß,
- * Nachlass und MwSt und die Bieterübersicht, die eine Meldung nicht überdecken darf.
+ * Oben rechts, über dem rechten Teil der Kopfzeile und neben dem Seitentitel (Ticket 142): Unten stehen Summenfuß,
+ * Nachlass und MwSt und die Bieterübersicht, darunter die Werkzeugleiste; beides darf eine Meldung nicht überdecken.
  */
 .tx-toast-bereich {
   position: fixed;
-  top: calc(40px + var(--tx-space-3));
+  top: var(--tx-space-2);
   right: var(--tx-space-5);
   z-index: 80;
   display: flex;

@@ -12,6 +12,7 @@ export const texte = {
       'Zu diesem Leistungsverzeichnis gibt es noch keine Angebote. Angebote lassen sich auf der LV-Seite einlesen (X84).',
     oeffnen: 'Preisspiegel',
     werkzeuge: 'Werkzeuge des Preisspiegels',
+    summen: 'Summen',
   },
   spalten: {
     oz: 'OZ',

@@ -3,7 +3,7 @@
 // über die Sitzung durch Kern und Speicher (A5, U7); angezeigt wird erst der gespeicherte Stand (Q5).
 
 import { kopieBauen, lvPruefen } from '@tethys/kern';
-import { Button, Tastenkuerzel, useToast } from '@tethys/ui-basis';
+import { Button, Tastenkuerzel, useToast, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
   Befehlshinweis,
@@ -18,7 +18,7 @@ import type {
   Positionsdaten,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
@@ -45,7 +45,7 @@ import { MerkmaleDialog } from './MerkmaleDialog';
 import { useMeldungen } from './meldungen';
 import { PapierkorbDialog } from './PapierkorbDialog';
 import { PositionsDialog } from './PositionsDialog';
-import { PruefPanel, type PruefPanelSteuerung } from './PruefPanel';
+import { PruefKnopf, PruefPanel, type PruefPanelSteuerung } from './PruefPanel';
 import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from './pruefung';
 import { StaendeDialog } from './StaendeDialog';
 import { SummenFelder } from './SummenFelder';
@@ -161,8 +161,12 @@ function LvBearbeiten({
   const [kopfdaten, setKopfdaten] = useState(false);
   const [papierkorbOffen, setPapierkorbOffen] = useState(false);
   const [staendeOffen, setStaendeOffen] = useState(false);
-  const [panelOffen, setPanelOffen] = useState(true);
+  // Ticket 142: Das Prüf-Panel ist zu, bis der Nutzer es öffnet (Schaltfläche „Prüfung“ oder F8); so hat das Grid die
+  // ganze Breite und zeigt EP und GP bei 1280 px.
+  const [panelOffen, setPanelOffen] = useState(false);
   const panel = useRef<PruefPanelSteuerung>(null);
+  const pruefKnopf = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const { zeige } = useToast();
 
   // Formale LV-Prüfung (U5): nach jedem angenommenen Befehl neu, entkoppelt im nächsten Leerlauf, nie im Tastendruck.
@@ -386,82 +390,93 @@ function LvBearbeiten({
       {lv.nachtrag === undefined ? null : (
         <NachtragKopfband sitzung={sitzung} zustand={zustand} nachtrag={lv.nachtrag} gehe={gehe} />
       )}
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge.leiste}>
+      {/* Ticket 142: Werkzeugleiste in Gruppen, bei 1280 px eine Zeile. */}
+      <Werkzeugleiste beschriftung={texte.werkzeuge.leiste}>
         <HistorieKnoepfe />
-        <Button
-          onClick={() => {
-            titelAnlegen(false);
-          }}
-          aria-keyshortcuts="Control+Alt+T"
-        >
-          {texte.werkzeuge.titelAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenTitel} />
-        </Button>
-        <Button
-          onClick={() => {
-            titelAnlegen(true);
-          }}
-          aria-keyshortcuts="Control+Alt+U"
-        >
-          {texte.werkzeuge.untertitelAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenUntertitel} />
-        </Button>
-        <Button onClick={positionAnlegen} aria-keyshortcuts="Control+Alt+P">
-          {texte.werkzeuge.positionAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenPosition} />
-        </Button>
-        <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
-          {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
-        </Button>
-        <Button onClick={mengenPanelOeffnen} aria-keyshortcuts="Control+Alt+E">
-          {mtexte.oeffnen} <Tastenkuerzel tasten={mtexte.tasten} />
-        </Button>
-        {kosten.knoepfe} {/* Ticket 89 */}
-        <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
-          {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
-        </Button>
-        <Button onClick={umnummerieren}>{texte.werkzeuge.umnummerieren}</Button>
-        <Button
-          onClick={() => {
-            setKopfdaten(true);
-          }}
-        >
-          {texte.kopfdaten.oeffnen}
-        </Button>
-        <Button
-          onClick={() => {
-            panel.current?.fokussieren();
-          }}
-          aria-keyshortcuts="F8"
-        >
-          {texte.pruefung.titel} <Tastenkuerzel tasten={texte.pruefung.tasten} />
-        </Button>
-        <Button
-          onClick={() => {
-            setPapierkorbOffen(true);
-          }}
-        >
-          {htexte.papierkorb.knopf} ({papierkorb.length})
-        </Button>
-        <Button
-          onClick={() => {
-            setStaendeOffen(true);
-          }}
-        >
-          {htexte.staende.knopf}
-        </Button>
-        <GaebAusgeben zustand={zustand} />
-        <LvDrucken zustand={zustand} /> {/* Ticket 66 */}
-        <Angebote zustand={zustand} />
-        <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
-        <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
-        <MengenAusModell
-          zustand={zustand}
-          folge={folge}
-          pruefe={pruefe}
-          zurPosition={(knotenId) => {
-            pruefSprung({ ort: { knotenId, feld: 'menge' } }); // Ticket 122: Sprung zur Menge der Position
-          }}
-        />{' '}
-        {/* Ticket 115 */}
-      </div>
+        <Werkzeuggruppe titel={texte.werkzeuge.gruppen.einfuegen}>
+          <Button
+            onClick={() => {
+              titelAnlegen(false);
+            }}
+            aria-keyshortcuts="Control+Alt+T"
+          >
+            {texte.werkzeuge.titelAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenTitel} />
+          </Button>
+          <Button
+            onClick={() => {
+              titelAnlegen(true);
+            }}
+            aria-keyshortcuts="Control+Alt+U"
+          >
+            {texte.werkzeuge.untertitelAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenUntertitel} />
+          </Button>
+          <Button onClick={positionAnlegen} aria-keyshortcuts="Control+Alt+P">
+            {texte.werkzeuge.positionAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenPosition} />
+          </Button>
+          <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
+        </Werkzeuggruppe>
+        <Werkzeuggruppe titel={texte.werkzeuge.gruppen.bearbeiten}>
+          <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
+            {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
+          </Button>
+          <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
+            {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
+          </Button>
+          <Button onClick={mengenPanelOeffnen} aria-keyshortcuts="Control+Alt+E">
+            {mtexte.oeffnen} <Tastenkuerzel tasten={mtexte.tasten} />
+          </Button>
+          <MengenAusModell
+            zustand={zustand}
+            folge={folge}
+            pruefe={pruefe}
+            zurPosition={(knotenId) => {
+              pruefSprung({ ort: { knotenId, feld: 'menge' } }); // Ticket 122: Sprung zur Menge der Position
+            }}
+          />{' '}
+          {/* Ticket 115 */}
+          {kosten.knoepfe} {/* Ticket 89 */}
+        </Werkzeuggruppe>
+        <Werkzeuggruppe titel={texte.werkzeuge.gruppen.lv}>
+          <Button
+            onClick={() => {
+              setKopfdaten(true);
+            }}
+          >
+            {texte.kopfdaten.oeffnen}
+          </Button>
+          <Button onClick={umnummerieren}>{texte.werkzeuge.umnummerieren}</Button>
+          <Button
+            onClick={() => {
+              setPapierkorbOffen(true);
+            }}
+          >
+            {htexte.papierkorb.knopf} ({papierkorb.length})
+          </Button>
+          <Button
+            onClick={() => {
+              setStaendeOffen(true);
+            }}
+          >
+            {htexte.staende.knopf}
+          </Button>
+        </Werkzeuggruppe>
+        <Werkzeuggruppe titel={texte.werkzeuge.gruppen.ausgabe}>
+          <GaebAusgeben zustand={zustand} />
+          <LvDrucken zustand={zustand} /> {/* Ticket 66 */}
+        </Werkzeuggruppe>
+        <Werkzeuggruppe titel={texte.werkzeuge.gruppen.angebote}>
+          <Angebote zustand={zustand} />
+          <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
+        </Werkzeuggruppe>
+        <PruefKnopf
+          knopf={pruefKnopf}
+          panelId={panelId}
+          gruppen={gruppen}
+          geprueft={befunde !== null}
+          offen={panelOffen}
+          onOffenChange={setPanelOffen}
+        />
+      </Werkzeugleiste>
       <div className="lv__haupt">
         <div className="lv__grid">
           <LvGrid
@@ -469,6 +484,8 @@ function LvBearbeiten({
             zahlen={gridZahlen}
             ids={u.ids}
             beschriftung={texte.seite.grid}
+            spaltenbreitenSchluessel="lv"
+            ozMaske={lv.ozMaske}
             hinweise={hinweise}
             {...kgSpalteImLv} // Ticket 93: Spalte „KG“
             {...(sprungziel ? { sprungziel } : {})}
@@ -499,11 +516,13 @@ function LvBearbeiten({
         </div>
         <PruefPanel
           ref={panel}
+          id={panelId}
           gruppen={gruppen}
           geprueft={befunde !== null}
           offen={panelOffen}
           onOffenChange={setPanelOffen}
           onSprung={pruefSprung}
+          zurueck={pruefKnopf}
         />
       </div>
       <SummenFelder lv={lv} senden={senden} />
