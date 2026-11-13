@@ -1,6 +1,6 @@
 # 150: App: Projektangaben, LV-Stände, Einstellungen, Kopie-Import
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E8, E10, E15 · Paket/Ordner: `apps/web/src/projekt/`, `historie/`, `sicherung/`, `ausgabe/` (Druckprofile), `kosten/bezeichnungen.ts` (nur Speicherweg)
 Blocked by: 137, 139, 147
