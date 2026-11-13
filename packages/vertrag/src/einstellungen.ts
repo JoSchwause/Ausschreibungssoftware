@@ -4,12 +4,16 @@
 // Repository und der Block der Projektdatei in `speicher.ts`.
 //
 // Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart; D-73, D-127):
-// - Ein einziges, globales Aggregat ohne Kennung und ohne Projekt. Seine Befehle stehen **nicht** im Befehlsprotokoll eines
-//   Projekts und nicht in dessen Undo-Historie (ein `Protokolleintrag` gehört zu einem Projekt, ADR 0009); sie sind trotzdem
-//   Befehle mit ChangeSet (A5), geschrieben über `EinstellungenRepository.anwenden`. Q5: Entfernen eines Druckprofils fragt die
-//   Oberfläche vorher; das ChangeSet bleibt durch Tausch umkehrbar.
-// - Die Projektdatei (Schema 7) trägt eine Kopie als optionalen Block `Projektdatei.einstellungen`; das Einlesen füllt nur
-//   Fehlendes je Schlüssel (D-73, siehe dort).
+// - Ein einziges, globales Aggregat ohne Kennung und ohne Projekt. Seine Befehle stehen nicht im Befehlsprotokoll und nicht in
+//   der Undo-Historie eines Projekts (D-73), aber wie jeder Befehl in einem Protokoll (A5, ADR 0009 ohne Ausnahme; Nachtrag
+//   Review D-82, M1): im **Einstellungsprotokoll** (`EinstellungenProtokolleintrag`), geschrieben mit dem ChangeSet in einer
+//   Transaktion (`EinstellungenRepository.anwenden`).
+// - Die App führt für die Einstellungen ein eigenes Rückgängig in der Sitzung, getrennt von dem des Projekts (D-82): Die
+//   Umkehrung ist das getauschte ChangeSet (`EinstellungenChangeSetUmkehren`), protokolliert als `Rueckgaengig` bzw.
+//   `Wiederholen` mit der Kennung des ursprünglichen Eintrags. Q5: Entfernen eines Druckprofils fragt die Oberfläche vorher.
+// - Die Projektdatei (Schema 7) trägt eine Kopie als optionalen Block `Projektdatei.einstellungen`, nicht das
+//   Einstellungsprotokoll. Das Einlesen füllt nur Fehlendes je Schlüssel (D-73), als protokollierter Befehl
+//   `EinstellungenUebernehmen` (siehe `ProjektdateiEinleseoptionen.einstellungsuebernahme`).
 
 import type { Kostengruppennummer } from './marken';
 import type { Anschrift } from './modell';

@@ -55,7 +55,7 @@ import type {
   LvInhaltKopf,
   LvKopf,
   PreisspiegelEinstellungen,
-  PreisspiegeleinstellungenSetzen,
+  PreisspiegelEinstellungenSetzen,
   // E15 Einstellungen
   ChangeSet,
   Druckprofil,
@@ -75,6 +75,14 @@ import type {
   Speicher,
   Speicherfehler,
   KnotenId,
+  // Nachtrag D-82
+  Befehlshinweiscode,
+  EinstellungenChangeSetUmkehren,
+  EinstellungenProtokolleintrag,
+  HistorienBefehl,
+  NutzerId,
+  ProtokollId,
+  Zeitstempel,
   // E6, Ticket 123
   Bauteilmenge,
   Bauteilmengenart,
@@ -100,11 +108,15 @@ import {
 import {
   beispielBieterangabenSetzen,
   beispielChangeSetBueroSetzen,
+  beispielChangeSetBueroSetzenUmgekehrt,
+  beispielEinstellungenUebernehmen,
+  beispielEinstellungsprotokoll,
+  beispielHinweisKalkulationEntfernt,
   beispielChangeSetLvStandLoeschen,
   beispielChangeSetLvStandUmbenennen,
   beispielFehlerZuschlagZuruecknehmen,
   beispielKalkulationSetzen,
-  beispielPreisspiegeleinstellungenSetzen,
+  beispielPreisspiegelEinstellungenSetzen,
   beispielProjektangabenSetzen,
   beispielProjektdateiV17a,
   beispielProjektMitAngaben,
@@ -230,6 +242,12 @@ describe('v1.7a E9: Kalkulationsangaben an der Position', () => {
     expect(b.kalkulation?.ansaetze.map((a) => a.art)).toEqual(['lohn', 'stoffe']);
     expect(JSON.parse(JSON.stringify(b))).toEqual(b);
   });
+
+  it('Nachtrag D-82 S4: ein Befehl, der die Kalkulation entfernt, meldet es mit einem Hinweis an der Position', () => {
+    expectTypeOf<'kalkulation-entfernt'>().toExtend<Befehlshinweiscode>();
+    const h = beispielHinweisKalkulationEntfernt;
+    expect(h).toMatchObject({ code: 'kalkulation-entfernt', knotenId: beispielKalkulationSetzen.positionId });
+  });
 });
 
 describe('v1.7a E10: Stammdaten von Projekt, Bieter und Büro', () => {
@@ -297,11 +315,11 @@ describe('v1.7a E15: Preisspiegel-Einstellungen am LV', () => {
     expectTypeOf<LvKopf['preisspiegel']>().toEqualTypeOf<PreisspiegelEinstellungen | undefined>();
     expectTypeOf<'preisspiegel'>().not.toExtend<keyof LvInhaltKopf>();
     expectTypeOf<'preisspiegel'>().not.toExtend<keyof AuftragsLvKopf>();
-    expectTypeOf<PreisspiegeleinstellungenSetzen>().toEqualTypeOf<{
-      readonly art: 'PreisspiegeleinstellungenSetzen';
+    expectTypeOf<PreisspiegelEinstellungenSetzen>().toEqualTypeOf<{
+      readonly art: 'PreisspiegelEinstellungenSetzen';
       readonly einstellungen: PreisspiegelEinstellungen | null;
     }>();
-    expectTypeOf<PreisspiegeleinstellungenSetzen>().toExtend<LvBefehl>();
+    expectTypeOf<PreisspiegelEinstellungenSetzen>().toExtend<LvBefehl>();
   });
 });
 
@@ -322,21 +340,58 @@ describe('v1.7a E15: Einstellungen als globales Aggregat (D-73)', () => {
 
   it('Befehle außerhalb des Projektprotokolls: nicht in `Befehl`, ChangeSet nicht in `ChangeSet`', () => {
     expectTypeOf<EinstellungenBefehl['art']>().toEqualTypeOf<
-      'BueroSetzen' | 'DruckprofilSetzen' | 'DruckprofilEntfernen' | 'KostengruppenbezeichnungenSetzen'
+      | 'BueroSetzen'
+      | 'DruckprofilSetzen'
+      | 'DruckprofilEntfernen'
+      | 'KostengruppenbezeichnungenSetzen'
+      | 'EinstellungenUebernehmen'
     >();
     expectTypeOf<Extract<Befehl['art'], EinstellungenBefehl['art']>>().toEqualTypeOf<never>();
     expectTypeOf<Extract<ChangeSet['art'], 'einstellungen'>>().toEqualTypeOf<never>();
     expectTypeOf<EinstellungenBefehlAusfuehren>().toEqualTypeOf<
       (zustand: Einstellungen, befehl: EinstellungenBefehl) => Ergebnis<EinstellungenChangeSet, Befehlsfehler>
     >();
+    expectTypeOf<EinstellungenChangeSetUmkehren>().toEqualTypeOf<
+      (changeSet: EinstellungenChangeSet) => EinstellungenChangeSet
+    >();
     const alle: Record<EinstellungenBefehl['art'], true> = {
       BueroSetzen: true,
       DruckprofilSetzen: true,
       DruckprofilEntfernen: true,
       KostengruppenbezeichnungenSetzen: true,
+      EinstellungenUebernehmen: true,
     };
     expect(new Set(beispieleEinstellungenbefehle.map((b) => b.art))).toEqual(new Set(Object.keys(alle)));
     expect(beispielChangeSetBueroSetzen.einstellungen.vorher).toEqual(LEERE_EINSTELLUNGEN);
+  });
+
+  it('Nachtrag D-82 M1: jeder Befehl an den Einstellungen steht im Einstellungsprotokoll, auch das Rückgängig', () => {
+    expectTypeOf<EinstellungenProtokolleintrag>().toEqualTypeOf<{
+      readonly id: ProtokollId;
+      readonly wer: NutzerId;
+      readonly wann: Zeitstempel;
+      readonly befehl: EinstellungenBefehl | HistorienBefehl;
+    }>();
+    expectTypeOf<EinstellungenRepository['anwenden']>().toEqualTypeOf<
+      (
+        eintrag: EinstellungenProtokolleintrag,
+        changeSet: EinstellungenChangeSet,
+      ) => Promise<Ergebnis<void, Speicherfehler>>
+    >();
+    expectTypeOf<EinstellungenRepository['protokoll']>().toEqualTypeOf<
+      () => Promise<Ergebnis<readonly EinstellungenProtokolleintrag[], Speicherfehler>>
+    >();
+    // kein Projekt, kein Aggregat: das Einstellungsprotokoll gehört zum Gerät
+    expectTypeOf<'projektId' | 'aggregat'>().not.toExtend<keyof EinstellungenProtokolleintrag>();
+    const [setzen, rueckgaengig] = beispielEinstellungsprotokoll;
+    expect(rueckgaengig.befehl).toEqual({ art: 'Rueckgaengig', protokollId: setzen.id });
+    for (const e of beispielEinstellungsprotokoll) expect(JSON.parse(JSON.stringify(e))).toEqual(e);
+    // die Umkehrung ist das getauschte ChangeSet
+    const cs = beispielChangeSetBueroSetzen.einstellungen;
+    expect(beispielChangeSetBueroSetzenUmgekehrt.einstellungen).toEqual({
+      vorher: cs.nachher,
+      nachher: cs.vorher,
+    });
   });
 
   it('eigenes Repository (optional am Speicher), Block in der Projektdatei, Einlesen als Kopie', () => {
@@ -367,6 +422,11 @@ describe('v1.7a E15: Einstellungen als globales Aggregat (D-73)', () => {
     expectTypeOf<ProjektdateiEinleseoptionen['alsKopie']>().toEqualTypeOf<
       { readonly ids: IdQuelle; readonly name: string } | undefined
     >();
+    // Nachtrag D-82 M1: die Übernahme der Einstellungen ist ein protokollierter Befehl; der Aufrufer gibt dessen Kopf
+    expectTypeOf<ProjektdateiEinleseoptionen['einstellungsuebernahme']>().toEqualTypeOf<
+      Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'> | undefined
+    >();
+    expect(beispielEinstellungenUebernehmen.einstellungen).toEqual(beispielProjektdateiV17a.einstellungen);
     const x = beispielProjektdateiV17a;
     expect(JSON.parse(JSON.stringify(x))).toEqual(x);
     // Dateien bis Schema 6 bleiben gültig: kein Block
@@ -436,14 +496,14 @@ describe('v1.7a: Beispiele für E9, E10, E15 sind Befehle und reine Daten', () =
       beispielKalkulationSetzen,
       beispielProjektangabenSetzen,
       beispielBieterangabenSetzen,
-      beispielPreisspiegeleinstellungenSetzen,
+      beispielPreisspiegelEinstellungenSetzen,
     ];
     for (const b of beispiele) expect(JSON.parse(JSON.stringify(b))).toEqual(b);
     expect(beispiele.map((b) => b.art)).toEqual([
       'KalkulationSetzen',
       'ProjektangabenSetzen',
       'BieterangabenSetzen',
-      'PreisspiegeleinstellungenSetzen',
+      'PreisspiegelEinstellungenSetzen',
     ]);
   });
 });

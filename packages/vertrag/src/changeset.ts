@@ -162,7 +162,14 @@ export type Befehlshinweiscode =
    * v1.2, U5: `LeistungsverzeichnisAnlegen` (GAEB-Import) nahm eine OZ-Maske an, die der Kern beanstandet
    * (`maskePruefen`). Der Befehl wird ausgeführt; der Befund kommt als Hinweis mit (Ticket 30).
    */
-  | 'oz-maske-ungueltig';
+  | 'oz-maske-ungueltig'
+  /**
+   * v1.7a Nachtrag (Review D-82, S4): Der Befehl hat die Kalkulationsangaben einer Position im selben ChangeSet entfernt
+   * (`EinheitspreisAendern` oder `EinheitspreisanteileSetzen` an einer Position mit Kalkulation, Lesart (a); oder
+   * `PositionsmerkmaleSetzen`, das die Position zur Zuschlagsposition macht, S3). `knotenId` ist die Position. Die Oberfläche
+   * fragt vorher; der Hinweis sagt danach, was geschah.
+   */
+  | 'kalkulation-entfernt';
 
 /**
  * Hinweis zu einem angenommenen Befehl. Der Befehl wird trotzdem ausgeführt und liefert sein ChangeSet; ein Hinweis
@@ -359,12 +366,20 @@ export interface LvChangeSet {
    * dessen Umkehrung. Gesetzt nur zusammen mit `lvStand`, und dann ist es auf derselben Seite `null` wie `lvStand`:
    * - `LvStandLoeschen`: `lvStand: { vorher: Kopf, nachher: null }`, `lvStandInhalt: { vorher: { angelegt, zustand },
    *   nachher: null }`.
-   * - Dessen Umkehrung (Undo): beides mit `vorher: null`; `speicher` legt **genau diesen** Stand ab (mit seinem `angelegt`)
-   *   und friert nichts neu ein.
-   * - `LvStandAnlegen`, seine Umkehrung und `LvStandUmbenennen` tragen es nie: Fehlt es bei `lvStand.vorher: null`, friert
-   *   `speicher` den gespeicherten Stand des LV ein wie bisher (D-12).
-   * Ein ChangeSet, das diese Regel verletzt, weist `speicher.anwenden` mit `unbekannt` ab und schreibt nichts (wie D-66 beim
-   * Bauwerksmodell).
+   * - Dessen Umkehrung (Undo): beides mit `vorher: null`; `speicher` legt **genau diesen** Stand ab (mit seinem `angelegt`,
+   *   also wieder an seinem Platz in `LvStandRepository.auflisten`, Review D-82 S1) und friert nichts neu ein.
+   * - `LvStandAnlegen`, seine Umkehrung und `LvStandUmbenennen` tragen es nie.
+   *
+   * Einfrieren nur auf ausdrücklichen Befehl (v1.7a Nachtrag, Review D-82 M2): Ein ChangeSet mit `lvStand.vorher: null` **ohne**
+   * `lvStandInhalt` friert den gespeicherten Stand des LV nur ein, wenn der Protokolleintrag `LvStandAnlegen` ist oder ein
+   * `Wiederholen`, dessen ursprünglicher Eintrag `LvStandAnlegen` ist (D-12); jedes andere solche ChangeSet weist
+   * `speicher.anwenden` mit `unbekannt` ab. Ebenso entfernt eines mit `lvStand.nachher: null` ohne `lvStandInhalt` einen Stand nur
+   * als `Rueckgaengig` eines `LvStandAnlegen`. Ein ChangeSet, das die Regeln dieses Felds verletzt, weist `speicher.anwenden` mit
+   * `unbekannt` ab und schreibt nichts (wie D-66 beim Bauwerksmodell).
+   *
+   * Umkehrung (Undo ohne Vorzustand): `changeSetUmkehren` des Kerns tauscht `vorher` und `nachher` in `lvStand` **und** in
+   * `lvStandInhalt` (Review D-82 M2; Eigenschaftstest in Ticket 137: Löschen und Undo ergeben einen Stand, der dem
+   * ursprünglichen gleicht, `angelegt` eingeschlossen).
    */
   readonly lvStandInhalt?: Aenderung<LvStandInhalt>;
 }
@@ -552,10 +567,12 @@ export type AngebotBefehlAusfuehren = (
  * dieses Bieters), Anzahl je Art (siehe `Verweisanzahl`). Nur `BieterLoeschen` liest sie; fehlen sie dort,
  * `ungueltige-eingabe`. Optional, damit jeder Aufruf mit zwei Argumenten gültig bleibt.
  *
- * Zuständigkeit in v1.7a (Schnitt der Welle 7, D-127.17): Die drei Bieterbefehle (`BieterUmbenennen`, `BieterangabenSetzen`,
- * `BieterLoeschen`) führt `vergabe` aus (Ticket 138) mit einer Funktion dieses Typs, die alle übrigen Projektbefehle an den
- * Kern weiterreicht (`vergabe → kern` ist erlaubt, A3); `ProjektangabenSetzen` führt der Kern aus (Ticket 137). Der Kern weist
- * die Bieterbefehle mit `befehl-nicht-zustaendig` ab; die App nimmt für Projektbefehle die Funktion aus `vergabe`.
+ * Zuständigkeit in v1.7a (Schnitt der Welle 7, D-127.17; Review D-82 S9): Die drei Bieterbefehle (`BieterUmbenennen`,
+ * `BieterangabenSetzen`, `BieterLoeschen`) führt `vergabe` aus (Ticket 138), mit schmalen exportierten Funktionen, die
+ * `BieterLoeschen` nur **mit** Verweisen annehmen (Pflichtparameter dort); der optionale Parameter dieses Typs bleibt nur, damit
+ * Aufrufe mit zwei Argumenten gültig bleiben (A8). Die Normalisierung der Bieterangaben ist eine Funktion des Kerns (Ticket 137
+ * exportiert sie, `vergabe` nutzt sie). `ProjektangabenSetzen` und `BieterAnlegen` führt der Kern aus (Ticket 137); die
+ * Bieterbefehle weist er mit `befehl-nicht-zustaendig` ab.
  */
 export type ProjektBefehlAusfuehren = (
   zustand: Projekt | null,
@@ -568,9 +585,9 @@ export type ProjektBefehlAusfuehren = (
  * Rechnungen, Mängel; siehe `ZuschlagZuruecknehmen`). Nur `ZuschlagZuruecknehmen` liest sie; optional wie bei
  * `ProjektBefehlAusfuehren`.
  *
- * Zuständigkeit in v1.7a (D-127.17): `ZuschlagZuruecknehmen` führt `vergabe` aus (Ticket 138; der Zuschlag gehört zur
- * Vergabe), mit einer Funktion dieses Typs, die alle übrigen Befehle an den Kern weiterreicht; der Kern weist ihn mit
- * `befehl-nicht-zustaendig` ab.
+ * Zuständigkeit in v1.7a (D-127.17; Review D-82 S9): `ZuschlagZuruecknehmen` führt `vergabe` aus (Ticket 138; der Zuschlag
+ * gehört zur Vergabe), mit einer schmalen exportierten Funktion, die die Verweise verlangt (Pflichtparameter dort); der Kern
+ * weist den Befehl mit `befehl-nicht-zustaendig` ab. Die Umkehrung (Undo) ist die des Kerns (`AuftragsLvChangeSetUmkehren`).
  */
 export type AuftragsLvBefehlAusfuehren = (
   zustand: AuftragsLvZustand | null,
@@ -743,8 +760,9 @@ export type BautagebucheintragChangeSetUmkehren = (
 
 /**
  * ChangeSet an den Einstellungen (v1.7a): die ganzen Einstellungen vorher und nachher; umkehrbar durch Tausch. Nicht Teil von
- * `ChangeSet` (kein Projekt, kein Protokolleintrag, D-73); geschrieben über `EinstellungenRepository.anwenden`, das mit
- * `konflikt` abweist, wenn `vorher` nicht dem gespeicherten Stand gleicht.
+ * `ChangeSet` (kein Projekt, D-73); geschrieben über `EinstellungenRepository.anwenden` zusammen mit seinem Eintrag im
+ * Einstellungsprotokoll (Nachtrag Review D-82, M1), das mit `konflikt` abweist, wenn `vorher` nicht dem gespeicherten Stand
+ * gleicht.
  */
 export interface EinstellungenChangeSet {
   readonly art: 'einstellungen';
@@ -759,6 +777,13 @@ export type EinstellungenBefehlAusfuehren = (
   zustand: Einstellungen,
   befehl: EinstellungenBefehl,
 ) => Ergebnis<EinstellungenChangeSet, Befehlsfehler>;
+
+/**
+ * Kehrt ein ChangeSet der Einstellungen um (v1.7a Nachtrag, D-82 M1): `vorher` und `nachher` getauscht. Für das eigene
+ * Rückgängig der Einstellungen in der Sitzung (die App schreibt die Umkehrung mit einem `Rueckgaengig`-Eintrag im
+ * Einstellungsprotokoll, ein Wiederholen das Original mit `Wiederholen`). Liefert `kern` (Ticket 137).
+ */
+export type EinstellungenChangeSetUmkehren = (changeSet: EinstellungenChangeSet) => EinstellungenChangeSet;
 
 // --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
 
