@@ -44,7 +44,14 @@ const SATZLAENGE = 80;
 
 const UNBEKANNT = { format: null, version: null, phase: null, phasenquelle: null } as const;
 
-const ohneBom = (s: string): string => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
+/** Der Anfang des Texts ohne Byte-Order-Mark, ohne den ganzen Text zu kopieren. */
+const kopfVon = (text: string): string => {
+  const start = text.charCodeAt(0) === 0xfeff ? 1 : 0;
+  return text.slice(start, start + KOPF_ZEICHEN);
+};
+
+/** Beginnt der Text (nach Leerraum) mit `<`? Dann liest ihn der XML-Weg (DA XML oder ein fremdes XML). */
+export const siehtAusWieXml = (text: string): boolean => /^\s*</.test(kopfVon(text));
 
 /** Umlaute und ß in CP437/850 (ä ö ü Ä Ö Ü ß) und in ISO-8859-1. */
 const DOS_UMLAUTE: ReadonlySet<number> = new Set([0x84, 0x94, 0x81, 0x8e, 0x99, 0x9a, 0xe1]);
@@ -95,11 +102,14 @@ function xmlKopf(kopf: string): Kopfangaben | null {
 
 // --- GAEB 90 und GAEB 2000 --------------------------------------------------------------------------------------
 
+/** Das Zeichen, mit dem DOS-Dateien enden können (Strg+Z). */
+const DOS_ENDE = String.fromCharCode(0x1a);
+
 /** Die Zeilen des Anfangs; eine vom Abschneiden zerteilte letzte Zeile, Leerzeilen am Ende und ein DOS-Dateiende fallen weg. */
 function zeilen(kopf: string, abgeschnitten: boolean): string[] {
   const z = kopf.split(/\r\n|\n|\r/);
   if (abgeschnitten) z.pop();
-  while (z.length > 0 && /^[\s\u001a]*$/.test(z.at(-1) ?? '')) z.pop();
+  while (z.length > 0 && (z.at(-1) ?? '').replaceAll(DOS_ENDE, '').trim() === '') z.pop();
   return z;
 }
 
@@ -128,17 +138,22 @@ export function dateiartAusText(
   bytes: Uint8Array | null,
   kodierung: string | null,
 ): GaebDateiart {
-  const inhalt = ohneBom(text);
-  const kopf = inhalt.slice(0, KOPF_ZEICHEN);
+  const kopf = kopfVon(text);
   if (/^\s*</.test(kopf)) {
     const k = xmlKopf(kopf);
     if (k === null) return { ...UNBEKANNT, kodierung };
     const e = erkenneKopf(k, dateiname);
-    return { format: 'da-xml', version: e.versionText, phase: e.phase, phasenquelle: e.phasenquelle, kodierung };
+    return {
+      format: 'da-xml',
+      version: e.versionText,
+      phase: e.phase,
+      phasenquelle: e.phasenquelle,
+      kodierung,
+    };
   }
   const geschaetzt =
     bytes === null ? null : kodierung?.startsWith('utf-16') === true ? kodierung : zeichensatz(bytes);
-  const z = zeilen(kopf, inhalt.length > KOPF_ZEICHEN);
+  const z = zeilen(kopf, text.length - (text.charCodeAt(0) === 0xfeff ? 1 : 0) > KOPF_ZEICHEN);
   const endung = phaseAusEndung(dateiname);
   const nachEndung = { phase: endung, phasenquelle: endung === null ? null : ('endung' as const) };
   if (istGaeb2000(z)) {

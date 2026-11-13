@@ -13,7 +13,7 @@ const MUSTER_31 = 'fixtures/extern/gaeb/3.1-musterdateien/Musterdatei_3.1_2008-0
 /** Kleinste DA-XML-Datei mit wählbarem Namensraum, Version und Award/DP. */
 const mini = (ns: string | null, version: string | null, dp: string | null): string =>
   `<?xml version="1.0" encoding="UTF-8"?>\n<GAEB${ns === null ? '' : ` xmlns="${ns}"`}>` +
-  `${version === null ? '' : `<GAEBInfo><Version>${version}</Version></GAEBInfo>`}` +
+  (version === null ? '' : `<GAEBInfo><Version>${version}</Version></GAEBInfo>`) +
   `<PrjInfo><NamePrj>Test</NamePrj></PrjInfo><Award>${dp === null ? '' : `<DP>${dp}</DP>`}<BoQ/></Award></GAEB>`;
 
 /** Ein Satz einer Datei mit fester Satzlänge: Satzart (2 Stellen), Inhalt, Satznummer in den letzten 6 Stellen; 80 Zeichen. */
@@ -138,7 +138,10 @@ describe('GAEB 90 (feste Satzlänge, Satzarten)', () => {
   });
 
   it('kein GAEB 90: zu lange Sätze, keine Satzart vorn oder kein Kopfsatz', () => {
-    const lang = gaeb90().replace(satz('02', 'Projekt Muster', 3), `${satz('02', 'Projekt Muster', 3)}überlang`);
+    const lang = gaeb90().replace(
+      satz('02', 'Projekt Muster', 3),
+      `${satz('02', 'Projekt Muster', 3)}überlang`,
+    );
     expect(erkenneGaebDatei(bytes(lang), 'x.d83').format).toBeNull();
     const ohneKopf = gaeb90().split('\r\n').slice(1).join('\r\n');
     expect(erkenneGaebDatei(bytes(ohneKopf), 'x.d83').format).toBeNull();

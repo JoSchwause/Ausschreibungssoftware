@@ -5,7 +5,7 @@
 // gelesen; ungültige Bytes (typisch: Latin-1-Datei, die UTF-8 deklariert) führen zu einem Befund und zum Lesen
 // als Windows-1252, nie zu einem Abbruch.
 
-import type { Pruefbefund } from '@tethys/vertrag';
+import type { GaebBefund, GaebBefundcode } from './befunde';
 
 export interface Dekodierung {
   readonly text: string;
@@ -14,10 +14,10 @@ export interface Dekodierung {
    * z. B. `iso-8859-1`) oder `windows-1252`, wenn die Bytes kein gültiges UTF-8 sind.
    */
   readonly kodierung: string;
-  readonly befunde: readonly Pruefbefund[];
+  readonly befunde: readonly GaebBefund[];
 }
 
-const befund = (code: string, meldung: string): Pruefbefund => ({
+const befund = (code: GaebBefundcode, meldung: string): GaebBefund => ({
   schwere: 'warnung',
   quelle: 'gaeb-lesen',
   code,
@@ -36,7 +36,7 @@ function deklaration(bytes: Uint8Array): string | null {
 }
 
 export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
-  const befunde: Pruefbefund[] = [];
+  const befunde: GaebBefund[] = [];
   if (bytes[0] === 0xff && bytes[1] === 0xfe)
     return { text: ohneBom(new TextDecoder('utf-16le').decode(bytes)), kodierung: 'utf-16le', befunde };
   if (bytes[0] === 0xfe && bytes[1] === 0xff)
@@ -63,7 +63,11 @@ export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
     }
   }
   try {
-    return { text: ohneBom(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), kodierung: 'utf-8', befunde };
+    return {
+      text: ohneBom(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
+      kodierung: 'utf-8',
+      befunde,
+    };
   } catch {
     befunde.push(
       befund(
@@ -71,6 +75,10 @@ export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
         'Die Datei enthält Bytes, die kein gültiges UTF-8 sind; sie wird als Windows-1252 gelesen.',
       ),
     );
-    return { text: ohneBom(new TextDecoder('windows-1252').decode(bytes)), kodierung: 'windows-1252', befunde };
+    return {
+      text: ohneBom(new TextDecoder('windows-1252').decode(bytes)),
+      kodierung: 'windows-1252',
+      befunde,
+    };
   }
 }

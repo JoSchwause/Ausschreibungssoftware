@@ -15,9 +15,11 @@ import type {
   AngebotId,
   Angebotsposition,
   BieterId,
+  Bieterangaben,
   Einheitspreis,
   Einheitspreisanteile,
   EpaBezeichnung,
+  GaebFormat,
   GaebPhase,
   GaebVersion,
   Knoten,
@@ -28,8 +30,10 @@ import type {
   Position,
   PositionId,
   Prozent,
-  Pruefbefund,
 } from '@tethys/vertrag';
+import { phaseAbweisen } from './abweisung';
+import { deutsch, zahlwert } from './befunde';
+import type { GaebBefund } from './befunde';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
@@ -43,14 +47,30 @@ export interface AngebotLeseOptionen extends VorlaufOptionen {
   readonly bieterId: BieterId;
 }
 
+/**
+ * Der Bieter, wie die Angebotsdatei ihn nennt (`CTR/Address`): Name aus `Name1` bis `Name4` und, wo die Datei sie trägt, die
+ * Angaben (Ticket 136, E10, D-82 S7) in der Form von `BieterAnlegen`: Anschrift aus `Street`, `PCode`, `City`, Ansprechperson
+ * aus `Contact`, Telefon aus `Phone`, E-Mail aus `Email`. Leer wird `null`; ohne jede Angabe fehlt `angaben`.
+ */
+export interface Bietervorschlag {
+  /** Leer, wenn die Datei Angaben, aber keinen Namen trägt (Befund `bieter-name-fehlt`). */
+  readonly name: string;
+  readonly angaben?: Bieterangaben;
+}
+
 export interface AngebotLesung {
   /** `null`: nichts zu übernehmen (andere Phase oder Version, unlesbar, kein LV in der Datei). */
   readonly befehl: AngebotAnlegen | null;
-  /** Namensvorschlag aus `CTR/Address` (`Name1` bis `Name4`); die App legt damit den Bieter an, falls er fehlt. */
-  readonly bieter: { readonly name: string } | null;
+  /**
+   * Vorschlag für den Bieter aus `CTR/Address`; die App legt damit den Bieter an, falls er fehlt (`BieterAnlegen` mit
+   * `angaben`), und überschreibt einen vorhandenen nicht (D-82). `null`: Die Datei nennt weder Namen noch Angaben.
+   */
+  readonly bieter: Bietervorschlag | null;
   readonly phase: GaebPhase | null;
   readonly version: GaebVersion | null;
-  readonly befunde: readonly Pruefbefund[];
+  /** Herkunftsformat (Ticket 136); fehlt, wenn die Datei keine GAEB-Datei ist. */
+  readonly format?: GaebFormat;
+  readonly befunde: readonly GaebBefund[];
 }
 
 interface Anteilsangaben {
@@ -203,10 +223,13 @@ class Angebotsaufbau {
     for (const k of lv.knoten) {
       if (k.art === 'position') {
         if (k.ordnungszahl === null) continue;
+        l.ozBekannt(k.id, ozVon(k));
         const s = `${k.ordnungszahl}|${k.ozIndex ?? ''}`;
         if (!this.positionen.has(s)) this.positionen.set(s, k);
-      } else if ((k.art === 'titel' || k.art === 'los') && k.ordnungszahl !== null)
+      } else if ((k.art === 'titel' || k.art === 'los') && k.ordnungszahl !== null) {
+        l.ozBekannt(k.id, k.ordnungszahl);
         if (!this.gliederungen.has(k.ordnungszahl)) this.gliederungen.set(k.ordnungszahl, k);
+      }
     }
   }
 
@@ -233,23 +256,28 @@ class Angebotsaufbau {
     this.l.restMelden(totals, TOTALS_BEHANDELT, 'BoQCtgy/Totals');
     const oz = teile === null ? null : teile.join(this.trenn);
     const knoten = oz === null ? undefined : this.gliederungen.get(oz);
-    this.nachlassMelden(totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id);
-    pauschalsummeMelden(this.l, totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id);
+    this.nachlassMelden(totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id, oz);
+    pauschalsummeMelden(this.l, totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id, oz);
   }
 
   /** `DiscountPcnt`/`DiscountAmt` an Position oder Gliederung: im Angebot nicht abbildbar (G-26, D-10 Nr. 3). */
-  private nachlassMelden(el: XmlElement, wo: string, knotenId: string | undefined): void {
+  private nachlassMelden(el: XmlElement, wo: string, knotenId: string | undefined, oz: string | null): void {
     for (const name of ['DiscountPcnt', 'DiscountAmt'] as const) {
       const d = kind(el, name);
       if (!d) continue;
-      const roh = wert(d) ?? '';
-      const angabe = name === 'DiscountPcnt' ? `${roh} %` : `${roh} €`;
+      const nachlass = zahlwert(name === 'DiscountPcnt' ? 'prozent' : 'betrag', wert(d) ?? '');
       this.l.melde(
         'fehler',
         'nachlass-nicht-abgebildet',
-        `Nachlass ${angabe} ${wo}: Ein Angebot hat genau einen Nachlass (G-26); der Preis wird ohne diesen Nachlass übernommen.`,
+        `Nachlass ${deutsch(nachlass)} ${wo}: Ein Angebot hat genau einen Nachlass für das ganze Angebot; der Preis wird ` +
+          'ohne diesen Nachlass übernommen.',
         d,
-        { ...(knotenId === undefined ? {} : { knotenId }), feld: 'nachlass' },
+        {
+          ...(knotenId === undefined ? {} : { knotenId }),
+          ...(knotenId === undefined && oz !== null ? { oz } : {}),
+          feld: 'nachlass',
+          werte: { nachlass },
+        },
       );
     }
   }
@@ -265,8 +293,9 @@ class Angebotsaufbau {
             'bieterergaenzung-nicht-abgebildet',
             e,
             (n) =>
-              `${String(n)} ${n === 1 ? 'Textergänzung' : 'Textergänzungen'} des Bieters (TextComplement Kind="Bidder") ${n === 1 ? 'wird' : 'werden'} ` +
-              'nicht übernommen; das Angebot hat dafür kein Feld.',
+              `${String(n)} ${n === 1 ? 'Textergänzung' : 'Textergänzungen'} des Bieters ${n === 1 ? 'wird' : 'werden'} ` +
+              'nicht übernommen; ein Angebot hält nur Preise.',
+            { nichtUebernommen: 'Textergänzungen des Bieters' },
           );
         continue;
       }
@@ -294,6 +323,7 @@ class Angebotsaufbau {
         'position-unbekannt',
         `Die Position ${anzeige} der Angebotsdatei gibt es im LV nicht; die Zeile wird nicht übernommen.`,
         el,
+        oz === null ? {} : { oz: anzeige },
       );
       return;
     }
@@ -309,18 +339,18 @@ class Angebotsaufbau {
     }
     const zuschlagszeile = el.name === 'MarkupItem';
     this.ergaenzungen(el);
-    this.nachlassMelden(el, `an der Position ${anzeige}`, p.id);
+    this.nachlassMelden(el, `an der Position ${anzeige}`, p.id, anzeige);
     if (zuschlagszeile !== (p.zuschlag !== null)) {
-      const angabe = zuschlagszeile
-        ? `einen Zuschlagssatz (${wert(kind(el, 'Markup')) ?? 'ohne Markup'})`
-        : `einen Einheitspreis (${wert(kind(el, 'UP')) ?? 'ohne UP'})`;
+      const roh = wert(kind(el, zuschlagszeile ? 'Markup' : 'UP'));
+      const w = roh === null ? null : zahlwert(zuschlagszeile ? 'prozent' : 'einheitspreis', roh);
+      const angabe = `${zuschlagszeile ? 'einen Zuschlagssatz' : 'einen Einheitspreis'}${w === null ? '' : ` (${deutsch(w)})`}`;
       this.l.melde(
         'fehler',
         'zuschlag-art-abweichend',
         `Die Position ${anzeige} ist im LV ${p.zuschlag === null ? 'keine' : 'eine'} Zuschlagsposition, die Angebotsdatei ` +
           `trägt dort ${angabe}; die Zeile wird nicht übernommen.`,
         el,
-        { knotenId: p.id },
+        { knotenId: p.id, ...(w === null ? {} : { werte: { wert: w } }) },
       );
       this.zeilen.set(p.id, null);
       return;
@@ -334,15 +364,18 @@ class Angebotsaufbau {
     // Eine Menge in der Angebotszeile ist die des Bieters (z. B. bei „Menge vom Bieter festzulegen“, QtyTBD im LV). Das
     // Angebot hält nur Preise; Befund an der Position, denn ihr GP weicht dann von der Datei ab (Ticket 129).
     const qtyEl = kind(el, 'Qty');
-    if (qtyEl)
+    if (qtyEl) {
+      const bietermenge = zahlwert('menge', wert(qtyEl) ?? '');
+      const lvMenge = p.menge === null ? null : zahlwert('menge', p.menge);
       this.l.melde(
         'warnung',
         'bietermenge-nicht-abgebildet',
-        `Die Position ${ozVon(p)} trägt eine Menge des Bieters (${wert(qtyEl) ?? ''}). Ein Angebot übernimmt nur Preise; ` +
-          `es gilt die Menge des LV (${p.menge ?? 'ohne Menge'}).`,
+        `Die Position ${ozVon(p)} trägt eine Menge des Bieters (${deutsch(bietermenge)}). Ein Angebot übernimmt nur Preise; ` +
+          `es gilt die Menge des LV (${lvMenge === null ? 'ohne Menge' : deutsch(lvMenge)}).`,
         qtyEl,
-        { knotenId: p.id, feld: 'menge' },
+        { knotenId: p.id, feld: 'menge', werte: { bietermenge, ...(lvMenge === null ? {} : { lvMenge }) } },
       );
+    }
     for (const sub of kinder(el, 'SubDescr')) this.l.restMelden(sub, new Set(['SubDNo']), 'Item/SubDescr');
     const upEl = kind(el, 'UP');
     const ep = upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null;
@@ -419,14 +452,18 @@ class Angebotsaufbau {
     const ohneSumme = betragsziel(p) !== 'netto';
     if (ohneSumme && vergleiche(it, '0.00' as typeof it) === 0) return;
     const soll = gesamtpreis(p.menge, ep);
-    if (vergleiche(it, soll) !== 0)
+    if (vergleiche(it, soll) !== 0) {
+      const datei = { art: 'betrag', wert: it } as const;
+      const gerechnet = { art: 'betrag', wert: soll } as const;
       this.l.melde(
         'warnung',
         'gp-abweichend',
-        `Der Gesamtpreis der Angebotsdatei (IT) ${it} weicht von Menge des LV × EP = ${soll} ab.`,
+        `Der Gesamtpreis der Angebotsdatei (${deutsch(datei)}) weicht von Menge des LV × EP (${deutsch(gerechnet)}) ab; ` +
+          'gerechnet wird mit Menge × EP.',
         itEl,
-        { knotenId: p.id, feld: 'gesamtpreis' },
+        { knotenId: p.id, feld: 'gesamtpreis', werte: { datei, gerechnet } },
       );
+    }
   }
 
   abschliessen(): void {
@@ -435,10 +472,11 @@ class Angebotsaufbau {
       this.l.melde(
         'warnung',
         'epa-nicht-abgebildet',
-        `${n === 1 ? '1 Wert' : `${String(n)} Werte`} der Einheitspreisanteile (UPComp) ${n === 1 ? 'lässt' : 'lassen'} ` +
+        `${n === 1 ? '1 Wert' : `${String(n)} Werte`} der Einheitspreisanteile ${n === 1 ? 'lässt' : 'lassen'} ` +
           `sich keinem Anteil zuordnen (${[...this.epaGruende].sort().join('; ')}) und ${n === 1 ? 'wird' : 'werden'} ` +
           'nicht übernommen; der Einheitspreis bleibt.',
         this.epaErst ?? undefined,
+        { werte: { anzahl: { art: 'anzahl', wert: n } } },
       );
   }
 
@@ -468,15 +506,27 @@ const ozVon = (p: Position): string => `${p.ordnungszahl ?? '(ohne OZ)'}${p.ozIn
  * `TotalLSUM`: eine Pauschalsumme des Bieters für eine Gliederung oder das LV. Das Angebot hält nur Preise je Position;
  * Befund, denn die Summen rechnen dann aus den Positionen und weichen von der Datei ab (Ticket 129).
  */
-function pauschalsummeMelden(l: Leser, totals: XmlElement, wo: string, knotenId: string | undefined): void {
+function pauschalsummeMelden(
+  l: Leser,
+  totals: XmlElement,
+  wo: string,
+  knotenId: string | undefined,
+  oz: string | null,
+): void {
   const el = kind(totals, 'TotalLSUM');
   if (!el) return;
+  const pauschalsumme = zahlwert('betrag', wert(el) ?? '');
   l.melde(
     'warnung',
     'pauschalsumme-nicht-abgebildet',
-    `Pauschalsumme ${wert(el) ?? ''} ${wo}: Ein Angebot hält nur Preise je Position; die Summe wird aus den Positionen gerechnet.`,
+    `Pauschalsumme ${deutsch(pauschalsumme)} ${wo}: Ein Angebot hält nur Preise je Position; die Summe wird aus den ` +
+      'Positionen gerechnet.',
     el,
-    knotenId === undefined ? {} : { knotenId },
+    {
+      ...(knotenId === undefined ? {} : { knotenId }),
+      ...(knotenId === undefined && oz !== null ? { oz } : {}),
+      werte: { pauschalsumme },
+    },
   );
 }
 
@@ -484,14 +534,15 @@ function pauschalsummeMelden(l: Leser, totals: XmlElement, wo: string, knotenId:
 function leseAngebotsnachlass(l: Leser, totals: XmlElement | undefined): Nachlass | null {
   if (!totals) return null;
   l.restMelden(totals, TOTALS_BEHANDELT, 'BoQInfo/Totals');
-  pauschalsummeMelden(l, totals, 'des LV', undefined);
+  pauschalsummeMelden(l, totals, 'des LV', undefined, null);
   const dp = kind(totals, 'DiscountPcnt');
   const da = kind(totals, 'DiscountAmt');
   if (dp && da)
     l.melde(
       'fehler',
       'nachlass-nicht-abgebildet',
-      'Das LV trägt Nachlass in Prozent und als Betrag; übernommen wird der Prozentnachlass (G-26: genau einer).',
+      'Die Datei trägt einen Nachlass in Prozent und einen als Betrag; ein Angebot hat genau einen, übernommen wird der in ' +
+        'Prozent.',
       da,
       { feld: 'nachlass' },
     );
@@ -506,30 +557,48 @@ function leseAngebotsnachlass(l: Leser, totals: XmlElement | undefined): Nachlas
   return null;
 }
 
-/** `CTR/Address/Name1…4` → Namensvorschlag; übrige Angaben des Bieters sind Befund (`nicht-abgebildet`). */
-function leseBieter(l: Leser, award: XmlElement): { readonly name: string } | null {
+const NAMEN = ['Name1', 'Name2', 'Name3', 'Name4'] as const;
+/** `CTR/Address` → Bieterangaben (Ticket 136, E10): die Felder, die `Bieterangaben` hält. */
+const ANGABEN_FELDER = ['Street', 'PCode', 'City', 'Contact', 'Phone', 'Email'] as const;
+
+/**
+ * `CTR/Address` → Bietervorschlag (Ticket 136, D-82 S7): Name aus `Name1…4`, Angaben aus `Street`, `PCode`, `City`,
+ * `Contact`, `Phone`, `Email`; leer wird `null`, eine Anschrift ganz ohne Werte `null`, Angaben ganz ohne Werte fehlen
+ * (Normalisierung wie D-127.4). Übrige Angaben zum Bieter (Land, Fax, Nummern) sind Befund (`nicht-abgebildet`).
+ */
+function leseBieter(l: Leser, award: XmlElement): Bietervorschlag | null {
   const ctr = kind(award, 'CTR');
   const adresse = kind(ctr, 'Address');
-  const namen = ['Name1', 'Name2', 'Name3', 'Name4'];
   const melde = (el: XmlElement, behandelt: readonly string[], bez: string): void => {
     for (const k of elementKinder(el))
       if (!behandelt.includes(k.name) && textInhalt(k).trim() !== '')
-        l.nichtAbgebildet(k, `${bez}/${k.name}`, 'Angabe zum Bieter, der Bieter hat nur einen Namen');
+        l.nichtAbgebildet(k, `${bez}/${k.name}`, 'für diese Angabe zum Bieter gibt es kein Feld');
   };
   if (ctr) melde(ctr, ['Address'], 'CTR');
-  if (adresse) melde(adresse, namen, 'CTR/Address');
-  const name = namen
-    .map((n) => wert(kind(adresse, n)) ?? '')
+  if (adresse) melde(adresse, [...NAMEN, ...ANGABEN_FELDER], 'CTR/Address');
+  const feld = (name: (typeof ANGABEN_FELDER)[number]): string | null => wert(kind(adresse, name)) || null;
+  const strasse = feld('Street');
+  const plz = feld('PCode');
+  const ort = feld('City');
+  const angaben: Bieterangaben = {
+    anschrift: strasse === null && plz === null && ort === null ? null : { strasse, plz, ort },
+    ansprechperson: feld('Contact'),
+    email: feld('Email'),
+    telefon: feld('Phone'),
+  };
+  const mitAngaben = Object.values(angaben).some((w) => w !== null);
+  const name = NAMEN.map((n) => wert(kind(adresse, n)) ?? '')
     .filter((n) => n !== '')
     .join(' ');
-  if (name !== '') return { name };
-  l.melde(
-    'warnung',
-    'bieter-name-fehlt',
-    'Die Angebotsdatei nennt keinen Bieternamen (CTR/Address/Name1…4).',
-    ctr ?? award,
-  );
-  return null;
+  if (name === '')
+    l.melde(
+      'warnung',
+      'bieter-name-fehlt',
+      'Die Angebotsdatei nennt keinen Namen des Bieters (CTR/Address/Name1…4).',
+      ctr ?? award,
+    );
+  if (name === '' && !mitAngaben) return null;
+  return { name, ...(mitAngaben ? { angaben } : {}) };
 }
 
 /**
@@ -538,24 +607,28 @@ function leseBieter(l: Leser, award: XmlElement): { readonly name: string } | nu
  * Dateiinhalt. Andere Phasen liest `leseGaeb` (Fehler `phase-nicht-unterstuetzt`).
  */
 export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOptionen): AngebotLesung {
-  const v = vorlauf(eingabe, opt, null);
+  const v = vorlauf(eingabe, opt, null, 'angebot');
   if (!v.bereit)
-    return { befehl: null, bieter: null, phase: v.phase, version: v.version, befunde: v.befunde };
+    return {
+      befehl: null,
+      bieter: null,
+      phase: v.phase,
+      version: v.version,
+      ...(v.format === undefined ? {} : { format: v.format }),
+      befunde: v.befunde,
+    };
   const l = v.leser;
   const ergebnis = (befehl: AngebotAnlegen | null, bieter: AngebotLesung['bieter']): AngebotLesung => ({
     befehl,
     bieter,
     phase: v.phase,
     version: v.version,
-    befunde: [...v.vorlauf, ...l.befunde],
+    format: v.format,
+    befunde: [...v.vorlauf, ...l.ozBefunde()],
   });
   if (v.phase !== 'X84') {
-    l.melde(
-      'fehler',
-      'phase-nicht-unterstuetzt',
-      `Die Phase ${v.phase ?? '(unbekannt)'} ist kein Angebot; hier wird nur X84 gelesen (andere Phasen liest leseGaeb).`,
-      v.wurzel,
-    );
+    const a = phaseAbweisen(v.phase, 'angebot');
+    l.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, v.wurzel, { werte: a.werte });
     return ergebnis(null, null);
   }
   const award = kind(v.wurzel, 'Award');

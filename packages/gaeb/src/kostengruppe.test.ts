@@ -68,10 +68,12 @@ describe('Kostengruppe lesen (Ticket 84)', () => {
       ['2.1.5.10', '344'],
     ]);
     // Die Zuordnungen zu den übrigen Katalogen bleiben Befund.
-    expect(l.befunde.map((b) => b.meldung).filter((m) => m.includes('CtlgAssign'))).toEqual([
-      expect.stringContaining('Item/CtlgAssign (work category)'),
-      expect.stringContaining('Item/CtlgAssign (locality)'),
-      expect.stringContaining('Item/CtlgAssign (cost unit)'),
+    expect(
+      l.befunde.map((b) => String(b.werte?.['element']?.wert)).filter((m) => m.includes('CtlgAssign')),
+    ).toEqual([
+      'Item/CtlgAssign (work category)',
+      'Item/CtlgAssign (locality)',
+      'Item/CtlgAssign (cost unit)',
     ]);
   });
 
@@ -87,10 +89,9 @@ describe('Kostengruppe lesen (Ticket 84)', () => {
     );
     const ort = lies(datei((x) => x.replace('cost group DIN 276 2018-12', 'locality')));
     expect(positionen(ort.inhalt)[0]?.kostengruppe).toBeUndefined();
-    expect(ort.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung)).toEqual([
-      expect.stringContaining('BoQInfo/Ctlg (locality)'),
-      expect.stringContaining('Item/CtlgAssign (locality)'),
-    ]);
+    expect(
+      ort.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.werte?.['element']?.wert),
+    ).toEqual(['BoQInfo/Ctlg (locality)', 'Item/CtlgAssign (locality)']);
   });
 
   it('ein Code, der keine Kostengruppennummer ist, eine Aufteilung und eine zweite Kostengruppe: Befund', () => {

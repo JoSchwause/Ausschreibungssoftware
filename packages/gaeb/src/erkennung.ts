@@ -5,6 +5,7 @@
 // die leichte Erkennung ohne Parser (`dateiart.ts`, Kopf aus dem Anfang der Datei, Ticket 136).
 
 import type { GaebPhase, GaebVersion } from '@tethys/vertrag';
+import type { GaebBefundcode } from './befunde';
 import { elementKinder, textInhalt } from './xml';
 import type { XmlElement } from './xml';
 
@@ -32,7 +33,7 @@ export interface Erkennung {
 
 export interface ErkennungsBefund {
   readonly schwere: 'warnung' | 'fehler';
-  readonly code: string;
+  readonly code: GaebBefundcode;
   readonly meldung: string;
   readonly element?: XmlElement;
 }
@@ -190,8 +191,7 @@ export function erkenneKopf(kopf: Kopfangaben, dateiname: string | undefined): E
       meldung: 'Die Austauschphase ist weder aus Namensraum, Award/DP noch aus der Dateiendung erkennbar.',
     });
   const phase = phaseText !== null && PHASEN.has(phaseText as GaebPhase) ? (phaseText as GaebPhase) : null;
-  const phasenquelle: Phasenquelle | null =
-    phase === null ? null : primaer !== null ? 'inhalt' : 'endung';
+  const phasenquelle: Phasenquelle | null = phase === null ? null : primaer !== null ? 'inhalt' : 'endung';
 
   const stand = versionText === null ? 'unbekannt' : klassifiziere(versionText);
   const version = versionText === null ? null : (GELESEN.get(versionText) ?? null);
