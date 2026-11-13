@@ -1,6 +1,6 @@
 # 130: `ui-grid`: Spaltenbreiten, OZ-Breite, Höhe, Kürzeltabelle
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: U · Paket/Ordner: `packages/ui-grid`
 Blocked by: –
@@ -26,12 +26,12 @@ Herkunft: umfang §3 E3 (Grid-Teil), B-07, B-09 (Kürzeltabelle), Ticket 123 Pun
 
 ## Acceptance criteria
 
-- [ ] Unit- und Prüfstand-E2E für 1–5 (`pnpm --filter @tethys/ui-grid e2e`)
-- [ ] App-Verbraucher (LV, Auftrags-LV, Preisspiegel, Aufmaß, Kosten, BIM-Baum) bauen und ihre E2E bleiben grün; App-Anpassung
+- [x] Unit- und Prüfstand-E2E für 1–5 (`pnpm --filter @tethys/ui-grid e2e`)
+- [x] App-Verbraucher (LV, Auftrags-LV, Preisspiegel, Aufmaß, Kosten, BIM-Baum) bauen und ihre E2E bleiben grün; App-Anpassung
   nur, wo die Schnittstelle es erzwingt (Ordnerbesitz bleibt bei 142)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -79,3 +79,16 @@ Herkunft: umfang §3 E3 (Grid-Teil), B-07, B-09 (Kürzeltabelle), Ticket 123 Pun
   (`--tx-grid-vorlage`, `--tx-grid-breite`), nicht mehr als Eigenschaft je Zeile**: Eine Breitenänderung zeichnet die
   memoisierten Zeilen nicht neu. Reversible: yes.
 - **D-130.11** Vergleichsgrid? **Keine ziehbaren Breiten** (B-07 betrifft das LV-Grid; dort setzt die App die Breiten). Reversible: yes.
+
+### Ergebnis (nach `git merge integration/welle-7`)
+
+- `pnpm lint` (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room) und `pnpm typecheck` grün. `pnpm test`: 3.987 bestanden,
+  3 übersprungen, 6 rot: nur CPU-Budgets in `gaeb`, `kern`, `speicher` (nicht angefasst) unter Last (bis zu 8 Agenten, Last
+  ~35); dieselben 5 Dateien allein danach 81/81 grün. Keine Schranke geändert.
+- `pnpm --filter @tethys/ui-grid e2e`: 99 bestanden, 3 übersprungen (Bildschirmfotos wie bisher), davon neu
+  `arbeitsflaeche.spec.ts` 11. Leistung unter Last (Mittel, 5.600 / 28.000 px/s): 5.000 Zeilen mit KG 53,4 / 48,4 fps,
+  10.000 Zeilen 53,2 / 47 fps; Vergleich, Bauzeitenplan und Modellbaum ebenfalls im Budget.
+- App-E2E (`lv`, `preisspiegel`, `aufmass`, `kosten`, `m3`, `bim`, `nachtrag`, `leistung`): 17 bestanden. App unverändert
+  (alle neuen Eigenschaften sind optional).
+
+Offen für 142: `spaltenbreitenSchluessel` und `ozMaske` an den LV-Grids der App setzen (D-130.6).
