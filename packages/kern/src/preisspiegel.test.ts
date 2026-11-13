@@ -3,7 +3,7 @@
 // Zuerst geschrieben (Q1).
 
 import { describe, expect, it } from 'vitest';
-import type { LvBefehl, LvInhalt, PreisspiegelEinstellungen, Prozent } from '@tethys/vertrag';
+import type { LvBefehl, PreisspiegelEinstellungen, Prozent } from '@tethys/vertrag';
 import { changeSetUmkehren, lvBefehlAusfuehren } from './index';
 import { KEINE_SUMMEN, LV_ID, anwenden, erwarteOk, lvMit, posKnoten } from './testhilfen';
 
@@ -32,8 +32,10 @@ const fehler = (einstellungen: unknown): [string, string | undefined] | null => 
 describe('PreisspiegeleinstellungenSetzen', () => {
   it('setzt die Einstellungen am Kopf; nur der Kopf, keine Knoten, keine Summen', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(zustand, setzen(EIGENE)));
-    const { knoten: _k, ...kopf } = zustand.leistungsverzeichnis;
-    expect(cs.kopf).toEqual({ vorher: kopf, nachher: { ...kopf, preisspiegel: EIGENE } });
+    const kopf = { ...zustand.leistungsverzeichnis, knoten: undefined };
+    expect({ ...cs.kopf?.vorher, knoten: undefined }).toEqual(kopf);
+    expect(cs.kopf?.vorher).not.toHaveProperty('knoten');
+    expect(cs.kopf?.nachher).toEqual({ ...cs.kopf?.vorher, preisspiegel: EIGENE });
     expect(cs.knoten).toEqual({ hinzugefuegt: [], geaendert: [], entfernt: [] });
     expect(cs.summen).toEqual(KEINE_SUMMEN);
     const neu = anwenden(zustand, cs);
@@ -104,7 +106,7 @@ describe('PreisspiegeleinstellungenSetzen', () => {
         art: 'LeistungsverzeichnisAnlegen',
         id: LV_ID,
         projektId: kopf.projektId,
-        inhalt: { ...kopf, wurzelId: LV_ID, knoten } as LvInhalt,
+        inhalt: { ...kopf, wurzelId: LV_ID, knoten },
       }),
     );
     expect(cs.kopf?.nachher).not.toHaveProperty('preisspiegel');

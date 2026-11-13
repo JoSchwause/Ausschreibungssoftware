@@ -2,8 +2,9 @@
 // LvStandAnlegen (Ticket 42, Punkt 6): das ChangeSet trägt nur den Kopf des Stands; den Zustand friert `speicher` ein.
 // Zuerst geschrieben (Q1).
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { LvStand, LvStandBefehl, LvStandId, Zeitstempel } from '@tethys/vertrag';
+import type { LvChangeSet, LvStand, LvStandBefehl, LvStandId, Zeitstempel } from '@tethys/vertrag';
 import {
   ZUSTAENDIGES_TICKET,
   changeSetUmkehren,
@@ -151,5 +152,72 @@ describe('LV-Stand umbenennen und löschen', () => {
       lvStandId: STAND,
     } as unknown as LvStandBefehl);
     expect(e.ok ? null : e.fehler.code).toBe('befehl-nicht-zustaendig');
+  });
+});
+
+// Eigenschaft (Review D-82, M2): Löschen und Undo ergeben einen Stand, der dem ursprünglichen gleicht, `angelegt`
+// eingeschlossen; Umbenennen und Undo den ursprünglichen Kopf. Der Stand wird hier so aus der Umkehrung gebaut, wie `speicher`
+// ihn ablegt: Kopf aus `lvStand.nachher`, Zeitpunkt und Zustand aus `lvStandInhalt.nachher`.
+describe('Eigenschaft: Undo eines Stand-Befehls stellt den Stand her', () => {
+  const zustandArb = fc
+    .array(fc.tuple(fc.integer({ min: 0, max: 999_999 }), fc.integer({ min: 0, max: 99_999_999 })), {
+      maxLength: 6,
+    })
+    .map((zeilen) =>
+      lvMit(
+        zeilen.map(([m, e], i) =>
+          posKnoten(`P${String(i)}`, LV_ID, i, (m / 1000).toFixed(3), (e / 1000).toFixed(3)),
+        ),
+      ),
+    );
+  const standArb = fc
+    .record({
+      name: fc.string({ minLength: 1 }).filter((n) => n.trim() !== ''),
+      angelegt: fc
+        .date({
+          min: new Date('2000-01-01T00:00:00Z'),
+          max: new Date('2099-12-31T23:59:59Z'),
+          noInvalidDate: true,
+        })
+        .map((d) => d.toISOString() as Zeitstempel),
+      zustand: zustandArb,
+    })
+    .map((r): LvStand => ({ id: STAND, leistungsverzeichnisId: LV_ID, ...r }));
+
+  /** Der Stand, den `speicher` aus einem ChangeSet mit `lvStand.nachher` und `lvStandInhalt.nachher` ablegt. */
+  const abgelegt = (cs: LvChangeSet): LvStand | null => {
+    const kopf = cs.lvStand?.nachher;
+    const inhalt = cs.lvStandInhalt?.nachher;
+    return kopf && inhalt ? { ...kopf, ...inhalt } : null;
+  };
+
+  it('LvStandLoeschen, dann die Umkehrung: derselbe Stand (tief gleich, mit angelegt)', () => {
+    fc.assert(
+      fc.property(standArb, (stand) => {
+        const cs = erwarteOk(lvStandBefehlAusfuehren(stand, { art: 'LvStandLoeschen', lvStandId: STAND }));
+        expect(abgelegt(cs)).toBeNull();
+        expect(abgelegt(changeSetUmkehren(cs))).toEqual(stand);
+        expect(changeSetUmkehren(changeSetUmkehren(cs))).toEqual(cs);
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  it('LvStandUmbenennen, dann die Umkehrung: der ursprüngliche Kopf, kein Inhalt', () => {
+    fc.assert(
+      fc.property(standArb, fc.string({ minLength: 1 }), (stand, name) => {
+        fc.pre(name.trim() !== '' && name !== stand.name);
+        const cs = erwarteOk(
+          lvStandBefehlAusfuehren(stand, { art: 'LvStandUmbenennen', lvStandId: STAND, name }),
+        );
+        const u = changeSetUmkehren(cs);
+        expect(u.lvStand).toEqual({
+          vorher: { id: STAND, leistungsverzeichnisId: LV_ID, name },
+          nachher: { id: STAND, leistungsverzeichnisId: LV_ID, name: stand.name },
+        });
+        expect(u).not.toHaveProperty('lvStandInhalt');
+      }),
+      { numRuns: 100 },
+    );
   });
 });
