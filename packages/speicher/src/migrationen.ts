@@ -514,8 +514,12 @@ ${PROTOKOLL_V6}`;
 // nachher), gelesen und geschrieben werden sie nur als Ganzes, und sie sind klein. Ein neues optionales Feld der Einstellungen
 // braucht so keine Migration. Fehlt die Zeile, gelten `LEERE_EINSTELLUNGEN`.
 //
-// (3) Keine neue Aggregatart: `LvStandUmbenennen` und `LvStandLoeschen` stehen mit ihrem LV im Protokoll (D-127.1), die
-// Einstellungen gar nicht (D-127.8); `protokoll.aggregat_art` bleibt, wie es ist.
+// (3) Das Einstellungsprotokoll (Review D-82 M1: A5 und ADR 0009 ohne Ausnahme): je Befehl an den Einstellungen ein Eintrag,
+// geschrieben mit dem ChangeSet in einer Transaktion, ohne Projekt und ohne Aggregat (es gibt nur eines). `seq` hält die
+// Reihenfolge des Schreibens wie beim Befehlsprotokoll; der Befehl steht als kanonisches JSON.
+//
+// (4) Keine neue Aggregatart: `LvStandUmbenennen` und `LvStandLoeschen` stehen mit ihrem LV im Protokoll (D-127.1), die Befehle
+// an den Einstellungen in ihrem eigenen; `protokoll.aggregat_art` bleibt, wie es ist.
 const SCHEMA_V7 = `
 ALTER TABLE projekt ADD COLUMN angaben TEXT;
 ALTER TABLE bieter ADD COLUMN angaben TEXT;
@@ -525,6 +529,14 @@ ALTER TABLE knoten ADD COLUMN kalkulation TEXT CHECK (kalkulation IS NULL OR art
 CREATE TABLE einstellungen (
   id INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
   inhalt TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE einstellungen_protokoll (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  wer TEXT NOT NULL,
+  wann TEXT NOT NULL,
+  befehl TEXT NOT NULL
 ) STRICT;
 `;
 
@@ -581,7 +593,7 @@ export const MIGRATIONEN: readonly Migration[] = [
   },
   {
     version: 7,
-    name: 'Vertrag v1.7a: Projekt- und Bieterangaben, Preisspiegel-Einstellungen, Kalkulation, Einstellungen',
+    name: 'Vertrag v1.7a: Projekt- und Bieterangaben, Preisspiegel, Kalkulation, Einstellungen und ihr Protokoll',
     hoch: (db) => {
       db.skript(SCHEMA_V7);
     },

@@ -155,6 +155,7 @@ const SCHEMA_ABBILD: Record<number, { tabellen: string[]; indizes: string }> = {
       'bauzeitenplan: id:TEXT!* projekt_id:TEXT! name:TEXT! projektbeginn:TEXT! kalender:TEXT! vorgaenge:TEXT!',
       'bieter: projekt_id:TEXT!* id:TEXT!* name:TEXT! reihenfolge:INTEGER! angaben:TEXT',
       'einstellungen: id:INTEGER!* inhalt:TEXT!',
+      'einstellungen_protokoll: seq:INTEGER* id:TEXT! wer:TEXT! wann:TEXT! befehl:TEXT!',
       'honorarberechnung: id:TEXT!* projekt_id:TEXT! name:TEXT! nebenkosten:TEXT mwst_satz:TEXT! objekte:TEXT!',
       'knoten: aggregat_id:TEXT!* id:TEXT!* art:TEXT! eltern_id:TEXT! reihenfolge:INTEGER! ordnungszahl:TEXT oz_index:TEXT kurztext:TEXT merkmale:TEXT zuschlag:TEXT leitbeschreibung:TEXT text_json:TEXT menge:TEXT einheit:TEXT einheitspreis:TEXT epa:TEXT mengenansatz:TEXT kostengruppe:TEXT textquelle:TEXT bauteile:TEXT kalkulation:TEXT',
       'kostenermittlung: id:TEXT!* projekt_id:TEXT! stufe:TEXT! name:TEXT! eintraege:TEXT!',
@@ -782,7 +783,7 @@ describe('Migration 7 überführt eine Datenbank der Version 6 ohne Verlust (Q5)
       ['knoten', 'kalkulation'],
     ] as const)
       expect(zaehle(db, `${t} WHERE ${s} IS NOT NULL`), `${t}.${s}`).toBe(0);
-    expect(zaehle(db, 'einstellungen')).toBe(0);
+    expect(zaehle(db, 'einstellungen') + zaehle(db, 'einstellungen_protokoll')).toBe(0);
     // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 6 (Dateimigration).
     const frisch = await neuerKern();
     wert(await frisch.kern.projektdateiImportieren(v6));
