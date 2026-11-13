@@ -108,9 +108,8 @@ import {
   schreibeProtokolleintrag,
   schreibeEinstellungsprotokolleintrag,
   wendeEinstellungenAn,
-  type Schreibanlass,
 } from './schreiben';
-import { transaktion, type Datenbank } from './sql';
+import { transaktion, type Datenbank, type SqlZeile } from './sql';
 import type { Migrationsbefund } from './summenmigration';
 
 /**
@@ -130,8 +129,10 @@ export interface Einleseoptionen {
 function pruefeEinstellungshistorie(db: Datenbank, e: EinstellungenProtokolleintrag): void {
   const b = e.befehl;
   if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
-  const z = db.zeilen('SELECT befehl FROM einstellungen_protokoll WHERE id = ?', [b.protokollId])[0];
-  if (z === undefined || istHistorienbefehl(String(z['befehl'])))
+  const z = db.zeilen(`SELECT ${ARTEN_DES_BEFEHLS} FROM einstellungen_protokoll WHERE id = ?`, [
+    b.protokollId,
+  ])[0];
+  if (z === undefined || istHistorienbefehl(z))
     abbruch(
       'konflikt',
       `Konflikt: ${b.art} verweist auf ${b.protokollId}, keinen ursprünglichen Befehl im Einstellungsprotokoll; ` +
@@ -163,19 +164,20 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
  * Ausnahme (D-31.1): Ein ChangeSet, das das Projekt anlegt, findet den Eintrag nicht mehr, weil das Löschen des Projekts
  * sein Protokoll mitnahm. Sein Verweis wird nicht geprüft.
  */
-function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet): void {
+function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet): string | null {
   const b = e.befehl;
-  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
-  if (cs.art === 'projekt' && cs.projekt.vorher === null) return;
-  const z = db.zeilen('SELECT projekt_id, aggregat_art, aggregat_id, befehl FROM protokoll WHERE id = ?', [
-    b.protokollId,
-  ])[0];
+  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return null;
+  if (cs.art === 'projekt' && cs.projekt.vorher === null) return null;
+  const z = db.zeilen(
+    `SELECT projekt_id, aggregat_art, aggregat_id, ${ARTEN_DES_BEFEHLS} FROM protokoll WHERE id = ?`,
+    [b.protokollId],
+  )[0];
   const passt =
     z !== undefined &&
     z['projekt_id'] === e.projektId &&
     z['aggregat_art'] === e.aggregat.art &&
     z['aggregat_id'] === e.aggregat.id &&
-    !istHistorienbefehl(String(z['befehl']));
+    !istHistorienbefehl(z);
   if (!passt) {
     abbruch(
       'konflikt',
@@ -183,29 +185,29 @@ function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet)
         `${e.aggregat.id} in diesem Projekt; es wurde nichts geschrieben.`,
     );
   }
+  return artDesBefehls(z);
 }
 
 /**
- * Der Anlass, aus dem `anwenden` ein ChangeSet schreibt (`Schreibanlass`): Zeitpunkt und Art des Befehls, bei `Rueckgaengig`
- * und `Wiederholen` die Art des ursprünglichen Befehls (der Verweis ist mit `pruefeHistorienbezug` schon geprüft).
+ * Die Art eines gespeicherten Befehls ohne ihn ganz zu lesen (ein Befehl kann groß sein, etwa 5.000 Bauteilzuordnungen): SQLite
+ * liest `art` und bei einer Kurzfassung `kopf.art` aus dem JSON.
  */
-function anlassVon(db: Datenbank, e: Protokolleintrag): Schreibanlass {
-  const b = e.befehl;
-  const art = b.art === 'Befehlskurzfassung' ? b.kopf.art : b.art;
-  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen')
-    return { wann: e.wann, befehl: art, ursprung: null };
-  const z = db.zeilen('SELECT befehl FROM protokoll WHERE id = ?', [b.protokollId])[0];
-  const original =
-    z === undefined ? null : (JSON.parse(String(z['befehl'])) as { art?: unknown; kopf?: { art?: unknown } });
-  const ursprung = original?.art === 'Befehlskurzfassung' ? original.kopf?.art : original?.art;
-  return { wann: e.wann, befehl: art, ursprung: typeof ursprung === 'string' ? ursprung : null };
+const ARTEN_DES_BEFEHLS = `json_extract(befehl, '$.art') AS befehlsart, json_extract(befehl, '$.kopf.art') AS kopfart`;
+
+/** Die Art des Befehls einer Zeile mit `ARTEN_DES_BEFEHLS`; bei einer Kurzfassung die des Massenbefehls. */
+function artDesBefehls(z: SqlZeile | undefined): string | null {
+  const art = z?.['befehlsart'] === 'Befehlskurzfassung' ? z['kopfart'] : z?.['befehlsart'];
+  return typeof art === 'string' ? art : null;
 }
 
-/** Ist der gespeicherte Befehl (JSON) ein `Rueckgaengig` oder `Wiederholen`? */
-function istHistorienbefehl(json: string): boolean {
-  const art = (JSON.parse(json) as { art?: unknown }).art;
-  return art === 'Rueckgaengig' || art === 'Wiederholen';
+/** Ist der gespeicherte Befehl der Zeile (mit `ARTEN_DES_BEFEHLS`) ein `Rueckgaengig` oder `Wiederholen`? */
+function istHistorienbefehl(z: SqlZeile): boolean {
+  return z['befehlsart'] === 'Rueckgaengig' || z['befehlsart'] === 'Wiederholen';
 }
+
+/** Die Art des Befehls eines Eintrags; bei einer Kurzfassung die des Massenbefehls. */
+const befehlsart = (e: Protokolleintrag): string =>
+  e.befehl.art === 'Befehlskurzfassung' ? e.befehl.kopf.art : e.befehl.art;
 
 /**
  * Grenze der exportierten Projektdatei in Zeichen (D-51, D-106.6): 500.000.000, mit Abstand unter der größten Zeichenkette von
@@ -609,8 +611,13 @@ export class SpeicherKern {
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
-        pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        wendeAn(this.#db, changeSet, eintrag.projektId, anlassVon(this.#db, eintrag));
+        // Der Anlass des Schreibens (`Schreibanlass`): bei Rückgängig und Wiederholen mit der Art des ursprünglichen Befehls.
+        const ursprung = pruefeHistorienbezug(this.#db, eintrag, changeSet);
+        wendeAn(this.#db, changeSet, eintrag.projektId, {
+          wann: eintrag.wann,
+          befehl: befehlsart(eintrag),
+          ursprung,
+        });
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
         // gehören könnte (siehe `wendeProjektAn`, D-31.1).
         const projektGeloescht = changeSet.art === 'projekt' && changeSet.projekt.nachher === null;
