@@ -70,3 +70,9 @@ eine Seite den Knopf ohne Projekt).
 - **D-146.7** Aus 129: `keinX84` nennt jetzt „Angebotsabgabe (X84) im Format GAEB DA XML 3.1, 3.2 oder 3.3“ und erscheint nur noch,
   wenn der Leser keinen eigenen Satz liefert; der Kommentar an `Lesevorschau.uebernehmbar` (`gaeb.ts`) und die Doku von `lvLesen`
   und `angebotLesen` nennen 3.1.
+- **D-146.8** Nach dem Merge von 147 (D-90, Auftrag des Orchestrators): `GaebWeg` in `apps/web/src/hilfe/Willkommen.tsx` nutzt
+  jetzt `GaebEinlesen` mit `projekt={null}`; das Projekt entsteht erst bei „Übernehmen“ (Name aus der Datei), Abbrechen lässt
+  nichts zurück. Knopf „GAEB-Datei einlesen …“ (mit „…“, weil eine Dateiauswahl folgt). E2E `erster-start.spec.ts` prüft beides
+  (Abbrechen → Neuladen → Begrüßung; Übernehmen → Projektseite mit dem Namen aus der Datei und dem LV). Die Texte
+  `start.gaeb.projektname`, `angelegt`, `zumProjekt` in `hilfe/texte.ts` werden nicht mehr gebraucht (nicht entfernt: nur die
+  Komponente war freigegeben; für 159).

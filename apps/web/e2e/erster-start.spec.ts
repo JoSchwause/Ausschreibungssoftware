@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 147 (E2, Punkt 4): erster Start → Beispielprojekt laden → die Projektseite zeigt LV, Angebote und Auftrags-LV; die
-// Hilfeseiten sind erreichbar; die Statuszeile zeigt Speicherzustand und letzte Sicherung; „GAEB-Datei einlesen“ legt ein
-// Projekt an und öffnet das Einlesen. Nur Schaltflächen, Verweise und Tastatur, keine Testhaken. Die erwarteten Zahlen stehen
+// Hilfeseiten sind erreichbar; die Statuszeile zeigt Speicherzustand und letzte Sicherung; „GAEB-Datei einlesen“ legt das
+// Projekt erst beim Übernehmen an (Ticket 146). Nur Schaltflächen, Verweise und Tastatur, keine Testhaken. Die erwarteten Zahlen stehen
 // in den Fixtures, nie aus einem Lauf der App.
 
 import { readFileSync } from 'node:fs';
@@ -156,20 +156,33 @@ test('Statuszeile: Speicherzustand und letzte Sicherung; Hinweis zu den Daten be
   await expect(page.getByRole('heading', { level: 3, name: 'Dauerhafter Speicher' })).toBeVisible();
 });
 
-test('„GAEB-Datei einlesen“ aus der Begrüßung legt ein Projekt an und öffnet das Einlesen', async ({
+test('„GAEB-Datei einlesen“ aus der Begrüßung: Abbrechen lässt nichts zurück, Übernehmen legt Projekt und LV an', async ({
   page,
 }) => {
   await page.goto('/');
   const start = page.getByRole('region', { name: 'Willkommen bei Tethys AVA' });
-  const [auswahl] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    start.getByRole('button', { name: 'GAEB-Datei einlesen …' }).click(),
-  ]);
-  await auswahl.setFiles(fixtureAlsX83('typisch'));
+  const waehlen = async (): Promise<void> => {
+    const [auswahl] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      start.getByRole('button', { name: 'GAEB-Datei einlesen …' }).click(),
+    ]);
+    await auswahl.setFiles(fixtureAlsX83('typisch'));
+  };
   const dialog = page.getByRole('dialog', { name: 'GAEB-Datei einlesen' });
+
+  // Abbrechen: kein Projekt, die Begrüßung bleibt.
+  await waehlen();
   await expect(dialog.getByTestId('anzahl-positionen')).toHaveText('25');
+  await dialog.getByRole('button', { name: 'Schließen' }).first().click();
+  await expect(dialog).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Willkommen bei Tethys AVA' })).toBeVisible();
+
+  // Übernehmen: Name des Projekts aus der Datei (änderbar), dann die Projektseite mit dem LV.
+  await waehlen();
+  await expect(dialog.getByLabel('Name des Projekts')).toHaveValue(TYPISCH.name);
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Neues Projekt' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: TYPISCH.name })).toBeVisible();
   await expect(
     page
       .getByRole('list', { name: 'Leistungsverzeichnisse', exact: true })

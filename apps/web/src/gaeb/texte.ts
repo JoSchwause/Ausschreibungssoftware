@@ -43,7 +43,7 @@ export const texte = {
   },
   einlesen: {
     knopf: 'GAEB einlesen',
-    knopfOhneProjekt: 'GAEB-Datei einlesen',
+    knopfOhneProjekt: 'GAEB-Datei einlesen …',
     titel: 'GAEB-Datei einlesen',
     neuesProjekt: 'Neues Projekt',
     projektname: 'Name des Projekts',
