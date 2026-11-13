@@ -116,7 +116,7 @@ export const texte = {
   // Ticket 115: Zuordnung, Mengen aus dem Modell, Kennwerte, Aufmaßblatt aus Auswahl
   zuordnung: {
     region: 'Zuordnung zu Positionen',
-    bezug: 'LV für Zuordnung',
+    zuordnungsLv: 'LV für Zuordnung',
     lv: (name: string): string => `LV: ${name}`,
     auftrag: (name: string): string => `Auftrags-LV: ${name}`,
     keinLv: 'Das Projekt hat noch kein LV.',

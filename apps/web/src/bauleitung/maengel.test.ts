@@ -231,9 +231,23 @@ describe('Auswahl der Position und des Bauteils', () => {
     const modell = {
       struktur: [{ globalId: 'g-eg', art: 'geschoss', name: 'EG', elternGlobalId: null, mengen: [] }],
       bauteile: [
-        { globalId: 'w1', ifcKlasse: 'IfcWall', name: 'Wand Nord', typ: null, strukturGlobalId: 'g-eg', mengen: [] },
+        {
+          globalId: 'w1',
+          ifcKlasse: 'IfcWall',
+          name: 'Wand Nord',
+          typ: null,
+          strukturGlobalId: 'g-eg',
+          mengen: [],
+        },
         { globalId: 'x1', ifcKlasse: 'IfcFooBar', name: null, typ: null, strukturGlobalId: null, mengen: [] },
-        { globalId: 'w1', ifcKlasse: 'IfcSlab', name: 'doppelt', typ: null, strukturGlobalId: null, mengen: [] },
+        {
+          globalId: 'w1',
+          ifcKlasse: 'IfcSlab',
+          name: 'doppelt',
+          typ: null,
+          strukturGlobalId: null,
+          mengen: [],
+        },
       ],
     } as unknown as Pick<Bauwerksmodell, 'bauteile' | 'struktur'>;
     expect(bauteilwahl(modell)).toEqual([
@@ -243,7 +257,10 @@ describe('Auswahl der Position und des Bauteils', () => {
   });
 
   it('eine lange Liste zeigt höchstens die Grenze, gefiltert nach dem Suchtext; die gewählte bleibt sichtbar', () => {
-    const liste = Array.from({ length: 5 }, (_, i) => ({ wert: `p${String(i)}`, label: `01.00${String(i)}0 Wand ${String(i)}` }));
+    const liste = Array.from({ length: 5 }, (_, i) => ({
+      wert: `p${String(i)}`,
+      label: `01.00${String(i)}0 Wand ${String(i)}`,
+    }));
     expect(suchauswahl(liste, '', '', 10)).toEqual({ optionen: liste, treffer: 5 });
     expect(suchauswahl(liste, '', '', 2)).toEqual({ optionen: liste.slice(0, 2), treffer: 5 });
     expect(suchauswahl(liste, 'WAND 3', '', 2)).toEqual({ optionen: [liste[3]], treffer: 1 });
@@ -254,7 +271,13 @@ describe('Auswahl der Position und des Bauteils', () => {
   it('der neueste Stand ist der zuletzt eingelesene', () => {
     const m = (id: string, eingelesen: string) =>
       ({ id: id as BauwerksmodellId, eingelesen }) as unknown as BauwerksmodellUebersicht;
-    expect(neuesterStand([m('a', '2026-11-01T10:00:00Z'), m('b', '2026-11-03T10:00:00Z'), m('c', '2026-11-02T10:00:00Z')])).toBe('b');
+    expect(
+      neuesterStand([
+        m('a', '2026-11-01T10:00:00Z'),
+        m('b', '2026-11-03T10:00:00Z'),
+        m('c', '2026-11-02T10:00:00Z'),
+      ]),
+    ).toBe('b');
     expect(neuesterStand([])).toBeNull();
   });
 });
@@ -330,7 +353,11 @@ describe('Formular', () => {
 
   it('eine Position braucht ein Auftrags-LV und muss darin stehen; ein Bauteil eine GlobalId mit 22 Zeichen', () => {
     const positionen = new Set(['p1' as PositionId]);
-    const ok = angabenLesen({ ...entwurf, positionId: 'p1', globalId: GID, modellId: 'mod' }, positionen, null);
+    const ok = angabenLesen(
+      { ...entwurf, positionId: 'p1', globalId: GID, modellId: 'mod' },
+      positionen,
+      null,
+    );
     expect(ok.ok && ok.wert.positionId).toBe('p1');
     expect(ok.ok && ok.wert.bauteil).toEqual({ bauwerksmodellId: 'mod', globalId: GID });
     const ohne = angabenLesen({ ...entwurf, auftragsLvId: '', positionId: 'p1' }, positionen, null);

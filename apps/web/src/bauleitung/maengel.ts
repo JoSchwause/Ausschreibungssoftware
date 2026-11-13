@@ -246,7 +246,8 @@ export function suchauswahl(
   grenze: number,
 ): { readonly optionen: readonly Auswahlwert[]; readonly treffer: number } {
   const s = suche.trim().toLocaleLowerCase('de-DE');
-  const passend = s === '' ? optionen : optionen.filter((o) => o.label.toLocaleLowerCase('de-DE').includes(s));
+  const passend =
+    s === '' ? optionen : optionen.filter((o) => o.label.toLocaleLowerCase('de-DE').includes(s));
   const gezeigt = passend.slice(0, grenze);
   const gewaehlt = optionen.find((o) => o.wert === wert);
   if (gewaehlt !== undefined && !gezeigt.includes(gewaehlt)) gezeigt.push(gewaehlt);

@@ -158,7 +158,10 @@ export function MangelFormular({
           onWertChange={(w) => {
             setE((alt) => ({ ...alt, modellId: w === KEINE ? '' : w }));
           }}
-          optionen={[{ wert: KEINE, label: f.jedesModell }, ...modelle.map((m) => ({ wert: m.id, label: m.name }))]}
+          optionen={[
+            { wert: KEINE, label: f.jedesModell },
+            ...modelle.map((m) => ({ wert: m.id, label: m.name })),
+          ]}
         />
         <Suchauswahl
           label={f.bauteil}

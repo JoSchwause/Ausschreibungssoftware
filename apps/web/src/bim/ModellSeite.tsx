@@ -50,7 +50,7 @@ import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 11
 import { modellTesthaken } from './testhaken';
 import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
-import { useBezug } from './useBezug'; // Ticket 115
+import { useZuordnungsLv } from './zuordnungsLv'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
 import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
@@ -130,10 +130,10 @@ function Arbeitsflaeche({
   const [klasse, setKlasse] = useState<string | undefined>(undefined);
   const ansicht = useRef<ModellansichtRef | null>(null);
   // Ticket 115: Bezugs-LV der Zuordnung; die 3D-Ansicht färbt „zugeordnet“/„ohne Zuordnung“ bezogen auf dieses LV.
-  const bezug = useBezug(projektId);
+  const zuordnungsLv = useZuordnungsLv(projektId);
   const faerbung = useMemo(
-    () => (bezug.bezug === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, bezug.knoten)),
-    [bezug.bezug, bezug.knoten, modell],
+    () => (zuordnungsLv.lv === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, zuordnungsLv.knoten)),
+    [zuordnungsLv.lv, zuordnungsLv.knoten, modell],
   );
   // Woher der nächste Wechsel der aktiven Zeile kommt: Ein Klick wählt (Strg/Cmd+Klick ergänzt, Ticket 115), eine Taste bewegt
   // nur den Fokus (Ticket 122, U3: Leertaste und Strg+Leertaste wählen).
@@ -426,7 +426,7 @@ function Arbeitsflaeche({
           projektId={projektId}
           modell={modell}
           auswahl={stand.auswahl}
-          bezug={bezug}
+          zuordnungsLv={zuordnungsLv}
           zurZeile={zurZeile}
           gehe={gehe}
         />
