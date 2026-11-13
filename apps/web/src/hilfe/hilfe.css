@@ -166,6 +166,11 @@
   background: var(--tx-color-accent-subtle);
 }
 
+/* In der Begrüßung so breit wie die drei Wege darüber. */
+.hilfe-start .hilfe-hinweis {
+  max-width: none;
+}
+
 .hilfe-hinweis p {
   margin: 0 0 var(--tx-space-2);
 }
