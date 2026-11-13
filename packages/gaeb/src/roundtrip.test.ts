@@ -18,8 +18,10 @@ import type { LvInhalt, Position } from '@tethys/vertrag';
 import { leseGaeb, schreibeGaeb } from './index';
 import type { ExportPhase, ExportVersion } from './index';
 import {
+  AMTLICH_31,
   AMTLICH_LESBAR,
   FIXTURES,
+  amtlich31Lv,
   amtlichLv,
   exportInhalt,
   exportOptionen,
@@ -80,9 +82,15 @@ function phasenform(inhalt: LvInhalt, phase: ExportPhase): LvInhalt {
     const p: Position = { ...ohneTextquelle, einheitspreis: null, epa: null };
     return p.zuschlag === null ? p : { ...p, zuschlag: { ...p.zuschlag, prozentsatz: null } };
   });
-  // X81/X83 kennen kein CTR: Der Auftragnehmer wird mit Warnung verworfen (v1.3, Ticket 68).
+  // X81/X83 kennen kein CTR: Der Auftragnehmer wird mit Warnung verworfen (v1.3, Ticket 68). AwardInfo in X86 kennt
+  // Eröffnungstermin und Abgabeort nicht; der Writer verwirft sie mit Warnung (zuerst sichtbar an den 3.1-Musterdateien,
+  // Ticket 129).
+  const vi = inhalt.vergabeinformationen;
   return {
     ...(x86 ? inhalt : ohneAuftragnehmer(inhalt)),
+    ...(x86 && vi !== undefined
+      ? { vergabeinformationen: { ...vi, eroeffnungsdatum: null, eroeffnungszeit: null, abgabeort: null } }
+      : {}),
     knoten,
     ...(x86 ? {} : { nachlass: null }),
     ...(x86 && inhalt.auftraggeber === undefined
@@ -236,6 +244,17 @@ describe('Wahlgruppe im Rundweg (Ticket 73)', () => {
         variante: 1,
         grundpositionId: grund?.id,
       });
+    });
+});
+
+describe('Roundtrip der 3.1-Musterdateien: 3.1 → Modell → 3.3 → Modell (Ticket 129)', () => {
+  // Geschrieben wird nur 3.2 und 3.3 (G-10); ein 3.1-Import geht als 3.3 in derselben Phase hinaus und liest sich gleich.
+  for (const datei of AMTLICH_31)
+    it(`${datei} als ${datei.slice(-3)} 3.3`, () => {
+      const { n, phase } = amtlich31Lv(datei);
+      const r = rundweg(n, phase, '3.3');
+      expect(r.gelesen).toEqual(erwartet(exportInhalt(phase, n), phase, []));
+      expect(r.zweiter).toBe(r.erster);
     });
 });
 
