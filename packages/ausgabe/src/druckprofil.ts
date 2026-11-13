@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Druckprofile (Ticket 77, O3): ein benanntes Bündel von Druckeinstellungen für den LV-Druck. Der Typ lebt hier, nicht im
-// Vertrag (D-36 (7)): Die App speichert ein Profil als Einstellung des Nutzers, als JSON (`druckprofilAlsJson`). Alles hier ist
-// rein (A2): Ein Profil wird auf `PdfOptionen` abgebildet, das Modell und der Renderer lesen nur diese Optionen.
+// Druckprofile (Ticket 77, O3): ein benanntes Bündel von Druckeinstellungen für den LV-Druck und die Berichte. Der Typ lebt
+// seit vertrag v1.7a im Vertrag (D-127.8, gleich gebaut): eigene Profile sind Teil der `Einstellungen`; hier stehen die
+// mitgelieferten Profile, die Abbildung auf `PdfOptionen` und das JSON-Format der Profildatei. Alles hier ist rein (A2).
 
+import type { Druckprofil, LangtextUmfang } from '@tethys/vertrag';
 import type { PdfOptionen } from './pdf';
-import type { LangtextUmfang } from './modell';
+
+export type { Druckprofil };
 
 export { ersetzePlatzhalter } from './platzhalter';
 export type { PlatzhalterWerte } from './platzhalter';
@@ -12,24 +14,6 @@ export type { PlatzhalterWerte } from './platzhalter';
 /** Version des JSON-Formats; wird bei einer inkompatiblen Änderung erhöht. */
 export const DRUCKPROFIL_SCHEMAVERSION = 1;
 
-export interface Druckprofil {
-  /** Name, unter dem der Nutzer das Profil wählt. */
-  readonly name: string;
-  /** `false`: Blankett für Bieter, kein Preis im Druck (auch keine Titelsummen, kein Schlussblock). */
-  readonly mitPreisen: boolean;
-  /** Langtext voll, gar nicht (nur Kurztext) oder gekürzt auf die ersten `anzahl` Zeilen. */
-  readonly langtext: LangtextUmfang;
-  readonly titelsummen: boolean;
-  /** Netto, Nachlass, MwSt, Brutto sowie Bedarfs- und Wahlsumme getrennt (F4). */
-  readonly schlussblock: boolean;
-  /** Kopf mit Projekt, Bauherr, Auftraggeber, Vergabeinformationen und LV-Name; aus: nur der LV-Name. */
-  readonly deckblatt: boolean;
-  /** Freier Text im Seitenkopf mit Platzhaltern `{seite}`, `{seiten}`, `{datum}`, `{lv}`; `null`: Vorgabe. */
-  readonly kopfzeile: string | null;
-  /** Freier Text im Seitenfuß mit denselben Platzhaltern; `null`: „Stand: Datum“ und „Seite x von y“. */
-  readonly fusszeile: string | null;
-  readonly seitenrand: 'normal' | 'eng';
-}
 
 /** Ein Profil mit den Vorgabewerten (entspricht dem Druck ohne Profil). */
 export function neuesDruckprofil(name: string): Druckprofil {

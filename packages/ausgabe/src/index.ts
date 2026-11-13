@@ -67,4 +67,4 @@ export {
   erzeugeHonorarPdf,
   erzeugeMaengelanzeigePdf,
   erzeugeMaengellistePdf,
-} from './x2x4-pdf';
+} from './bericht-einstiege';

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Öffentliche Einstiege der Ausgaben X2 bis X4 (Ticket 113): Eingabe der Domänentypen → Berichtsmodell → PDF-Bytes.
+// Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF-Bytes (Ticket 113, ADR 0012).
 
 import { erzeugeBerichtPdf } from './bericht-pdf';
 import { baueBautagebuchModell } from './bautagebuch-druck';

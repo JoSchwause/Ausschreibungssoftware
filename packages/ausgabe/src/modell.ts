@@ -19,6 +19,7 @@ import type {
   HinweistextId,
   Knoten,
   Langtext,
+  LangtextUmfang,
   LvZustand,
   Position,
   PositionId,
@@ -132,12 +133,8 @@ export interface Ausgabemodell {
   readonly summen: SummenBlock | null;
 }
 
-/** Wie viel vom Langtext ins Modell kommt (Druckprofil, Ticket 77). */
-export type LangtextUmfang =
-  | { readonly art: 'voll' }
-  | { readonly art: 'kein' }
-  /** Die ersten `anzahl` Zeilen (Absatz, Listenpunkt, Tabellenzeile; ein Zeilenumbruch im Absatz zählt mit). */
-  | { readonly art: 'zeilen'; readonly anzahl: number };
+/** Wie viel vom Langtext ins Modell kommt (Druckprofil, Ticket 77); der Typ steht seit v1.7a im Vertrag (D-127.8). */
+export type { LangtextUmfang };
 
 export interface ModellOptionen {
   /** Vorgabe `true`. `false`: Blankett, EP, GP, Titelsummen und Schlussblock entfallen. */

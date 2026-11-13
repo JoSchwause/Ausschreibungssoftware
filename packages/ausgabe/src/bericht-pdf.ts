@@ -2,12 +2,11 @@
 // PDF-Renderer für das `Berichtsmodell` (Ticket 113, ADR 0012): pdfmake, ungetaggt, A4 hoch, Noto Sans. Bytes statt Dialog;
 // bei gleicher Eingabe gleiche Bytes (das Erzeugungsdatum kommt aus dem Modell, keine Uhr).
 
-import pdfMake from 'pdfmake';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { BerichtAbschnitt, BerichtBlock, Berichtsmodell } from './bericht';
+import { SCHRIFT, erzeugungsdatum, pdfBytes } from './pdfmake';
 import type { Schriften } from './schriften';
 
-const SCHRIFT = 'NotoSans';
 const GRAU = '#555555';
 const RAENDER = [40, 50, 40, 46] as const;
 const EINRUECKUNG = 10;
@@ -112,11 +111,6 @@ function abschnitt(a: BerichtAbschnitt, erster: boolean): Content[] {
   return [kopf, ...(anfang === undefined ? [] : [anfang]), ...rest];
 }
 
-function erzeugungsdatum(erstellt: string | null): Date {
-  const d = erstellt === null ? new Date(0) : new Date(`${erstellt}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? new Date(0) : d;
-}
-
 function dokument(m: Berichtsmodell): TDocumentDefinitions {
   const stand = erzeugungsdatum(m.erstellt);
   const inhalt: Content[] = [
@@ -154,18 +148,6 @@ function dokument(m: Berichtsmodell): TDocumentDefinitions {
 }
 
 /** Erzeugt das PDF eines `Berichtsmodell` als Bytes. */
-export async function erzeugeBerichtPdf(modell: Berichtsmodell, schriften: Schriften): Promise<Uint8Array> {
-  pdfMake.setUrlAccessPolicy(() => false);
-  const nodeSeitig = pdfMake as { setLocalAccessPolicy?: (f: (pfad: string) => boolean) => void };
-  nodeSeitig.setLocalAccessPolicy?.(() => false);
-  pdfMake.setFonts({
-    [SCHRIFT]: {
-      normal: schriften.normal,
-      bold: schriften.fett,
-      italics: schriften.kursiv ?? schriften.normal,
-      bolditalics: schriften.fettKursiv ?? schriften.fett,
-    },
-  });
-  const puffer = await pdfMake.createPdf(dokument(modell)).getBuffer();
-  return new Uint8Array(puffer);
+export function erzeugeBerichtPdf(modell: Berichtsmodell, schriften: Schriften): Promise<Uint8Array> {
+  return pdfBytes(dokument(modell), schriften);
 }

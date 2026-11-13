@@ -3,13 +3,13 @@
 // Server. pdfmake bleibt hinter dem Modell; wer den Renderer tauscht, ändert nur diese Datei. Die Ausgabe ist
 // ungetaggt (kein Strukturbaum); das PDF trägt Sprache und Titel.
 
-import pdfMake from 'pdfmake';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { LvZustand } from '@tethys/vertrag';
 import { baueAusgabemodell } from './modell';
 import type { AusgabeZeile, Ausgabemodell, ModellOptionen, PositionZeile } from './modell';
 import { ersetzePlatzhalter } from './platzhalter';
 import type { DruckBlock, DruckLauf } from './langtext';
+import { SCHRIFT, erzeugungsdatum, pdfBytes } from './pdfmake';
 import type { Schriften } from './schriften';
 
 // Spaltenbreiten in pt (A4 hoch, 40 pt Rand links/rechts = 515 pt Satzbreite).
@@ -18,7 +18,6 @@ const EINRUECKUNG = 62;
 const SEITENBREITE = 595.28; // A4 in pt
 /** Seitenränder `[links, oben, rechts, unten]` in pt. */
 const RAENDER = { normal: [40, 62, 40, 46], eng: [28, 56, 28, 40] } as const;
-const SCHRIFT = 'NotoSans';
 const GRAU = '#555555';
 
 type Zelle =
@@ -261,12 +260,6 @@ function kopfBlock(m: Ausgabemodell): Content {
   };
 }
 
-/** Erzeugungsdatum des PDF: aus der Eingabe, sonst fest (keine Uhr, A2), damit gleiche Eingaben gleiche Bytes ergeben. */
-function erzeugungsdatum(datum: string | undefined): Date {
-  const d = datum === undefined ? new Date(0) : new Date(`${datum}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? new Date(0) : d;
-}
-
 /** Baut die Dokumentdefinition. Titel und der Anfang ihres ersten Kindes stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */
 function dokument(modell: Ausgabemodell, optionen: PdfOptionen): TDocumentDefinitions {
   const { datum } = optionen;
@@ -362,25 +355,10 @@ export interface PdfOptionen extends ModellOptionen {
  * Erzeugt das PDF des LV als Bytes: Kopf, Gliederung mit Positionen und Langtext, Titelsummen, Schlussblöcke, Seitenkopf
  * und -fuß mit „Seite x von y“. `mitPreisen: false` druckt das Blankett für Bieter. Das Datum kommt als Eingabe.
  */
-export async function erzeugePdf(
+export function erzeugePdf(
   zustand: LvZustand,
   schriften: Schriften,
   optionen: PdfOptionen = {},
 ): Promise<Uint8Array> {
-  // Das Dokument braucht weder Netz noch Dateisystem: Zugriffe sperren (pdfmake warnt sonst unter Node, und ein
-  // Bild-/Schrift-URL im Dokument würde nachgeladen). `setLocalAccessPolicy` gibt es nur in der Node-Ausgabe.
-  pdfMake.setUrlAccessPolicy(() => false);
-  const nodeSeitig = pdfMake as { setLocalAccessPolicy?: (f: (pfad: string) => boolean) => void };
-  nodeSeitig.setLocalAccessPolicy?.(() => false);
-  pdfMake.setFonts({
-    [SCHRIFT]: {
-      normal: schriften.normal,
-      bold: schriften.fett,
-      italics: schriften.kursiv ?? schriften.normal,
-      bolditalics: schriften.fettKursiv ?? schriften.fett,
-    },
-  });
-  const modell = baueAusgabemodell(zustand, optionen);
-  const puffer = await pdfMake.createPdf(dokument(modell, optionen)).getBuffer();
-  return new Uint8Array(puffer);
+  return pdfBytes(dokument(baueAusgabemodell(zustand, optionen), optionen), schriften);
 }
