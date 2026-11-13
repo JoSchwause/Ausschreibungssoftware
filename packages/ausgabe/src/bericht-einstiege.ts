@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF-Bytes (Ticket 113, ADR 0012).
+// Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF- bzw. Excel-Bytes (Tickets 113, 141;
+// ADR 0012).
 
+import { berichtAlsExcel } from './bericht-excel';
 import { erzeugeBerichtPdf } from './bericht-pdf';
 import { baueBautagebuchModell } from './bautagebuch-druck';
 import type { BautagebuchEingabe } from './bautagebuch-druck';
@@ -10,6 +12,8 @@ import { baueHonorarModell } from './honorar-druck';
 import type { HonorarEingabe } from './honorar-druck';
 import { baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 import type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
+import { bauePreisspiegelModell } from './preisspiegel-druck';
+import type { PreisspiegelEingabe } from './preisspiegel-druck';
 import type { Schriften } from './schriften';
 
 export const erzeugeMaengellistePdf = (e: MaengellisteEingabe, s: Schriften): Promise<Uint8Array> =>
@@ -22,3 +26,10 @@ export const erzeugeHonorarPdf = (e: HonorarEingabe, s: Schriften): Promise<Uint
   erzeugeBerichtPdf(baueHonorarModell(e), s);
 export const erzeugeBauzeitenplanPdf = (e: BauzeitenplanEingabe, s: Schriften): Promise<Uint8Array> =>
   erzeugeBerichtPdf(baueBauzeitenplanModell(e), s);
+
+// Kernkette (Ticket 141)
+export const erzeugePreisspiegelPdf = (e: PreisspiegelEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(bauePreisspiegelModell(e), s);
+/** Alle Bieter nebeneinander in einer Tabelle (im Druck je Seite höchstens `BIETER_JE_TABELLE`). */
+export const preisspiegelAlsExcel = (e: PreisspiegelEingabe): Uint8Array =>
+  berichtAlsExcel(bauePreisspiegelModell(e, Number.POSITIVE_INFINITY));

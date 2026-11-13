@@ -8,23 +8,8 @@ import type { Betrag, Einheitspreis } from '@tethys/vertrag';
 import { berichtAlsExcel } from './bericht-excel';
 import { wert } from './bericht';
 import type { Berichtsmodell } from './bericht';
+import { excelZeilen as zeilen } from './testhilfe/kernkette';
 import { leseXlsx } from './xlsx';
-import type { GeleseneZelle } from './xlsx';
-
-/** Die gelesenen Zeilen als Texte je Zelle (Zahlen in Punktnotation, wie die Datei sie trägt). */
-function zeilen(bytes: Uint8Array): string[][] {
-  const lesung = leseXlsx(bytes);
-  if (!lesung.ok) throw new Error(lesung.meldung);
-  const max = Math.max(...lesung.zeilen.keys());
-  return Array.from({ length: max }, (_, i) => {
-    const z = lesung.zeilen.get(i + 1) ?? new Map<number, GeleseneZelle>();
-    const breite = z.size === 0 ? 0 : Math.max(...z.keys()) + 1;
-    return Array.from({ length: breite }, (_, s) => {
-      const w = z.get(s)?.wert;
-      return w === undefined || w.art === 'leer' ? '' : w.text;
-    });
-  });
-}
 
 const modell: Berichtsmodell = {
   titel: 'Soll/Ist: Probe [1]',

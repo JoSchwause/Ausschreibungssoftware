@@ -12,6 +12,8 @@ export interface Textstueck {
 export interface PdfInhalt {
   readonly seiten: readonly (readonly Textstueck[])[];
   readonly schriftnamen: readonly string[];
+  /** Breite und Höhe jeder Seite in pt. */
+  readonly formate: readonly { readonly breite: number; readonly hoehe: number }[];
 }
 
 export async function liesPdf(bytes: Uint8Array): Promise<PdfInhalt> {
@@ -19,8 +21,11 @@ export async function liesPdf(bytes: Uint8Array): Promise<PdfInhalt> {
   const dok = await aufgabe.promise;
   const seiten: Textstueck[][] = [];
   const schriftnamen = new Set<string>();
+  const formate: { breite: number; hoehe: number }[] = [];
   for (let nr = 1; nr <= dok.numPages; nr++) {
     const seite = await dok.getPage(nr);
+    const { width, height } = seite.getViewport({ scale: 1 });
+    formate.push({ breite: Math.round(width), hoehe: Math.round(height) });
     const inhalt = await seite.getTextContent();
     const stuecke: Textstueck[] = [];
     for (const item of inhalt.items) {
@@ -31,7 +36,7 @@ export async function liesPdf(bytes: Uint8Array): Promise<PdfInhalt> {
     seiten.push(stuecke);
   }
   await aufgabe.destroy();
-  return { seiten, schriftnamen: [...schriftnamen] };
+  return { seiten, schriftnamen: [...schriftnamen], formate };
 }
 
 /** Gezeichnete Bilder je Seite mit ihrer Größe auf dem Papier in pt (aus der Transformationsmatrix vor dem Zeichnen). */

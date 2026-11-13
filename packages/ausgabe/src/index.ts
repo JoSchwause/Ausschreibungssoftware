@@ -50,17 +50,26 @@ export type { Schriften } from './schriften';
 export { excelRuecklaufLesen, lvAlsExcel, strukturPruefsumme } from './excel';
 export type { ExcelBefund, ExcelBefundcode, ExcelDatei, ExcelOptionen, ExcelRuecklauf } from './excel';
 
-// Ausgaben X2 bis X4 (Ticket 113): Berichtsmodell und PDF für Mängelliste, Mängelanzeige, Bautagebuch, Honorarberechnung, Bauzeitenplan.
+// Berichte (Tickets 113, 141): Berichtsmodell, PDF und Excel für Mängelliste, Mängelanzeige, Bautagebuch, Honorarberechnung,
+// Bauzeitenplan und die Ausgaben der Kernkette (Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Rechnungsprüfung).
 export type {
   BerichtAbschnitt,
   BerichtBlock,
   BerichtFeld,
+  BerichtSeite,
   BerichtSpalte,
+  BerichtWert,
+  BerichtZahl,
   BerichtZeile,
+  BerichtZelle,
   Berichtsmodell,
   Befundtext,
 } from './bericht';
 export { erzeugeBerichtPdf } from './bericht-pdf';
+export { berichtAlsExcel } from './bericht-excel';
+export type { ProjektKopf } from './koepfe';
+export { BIETER_JE_TABELLE, bauePreisspiegelModell } from './preisspiegel-druck';
+export type { PreisspiegelEingabe } from './preisspiegel-druck';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
 export { baueBautagebuchModell } from './bautagebuch-druck';
@@ -75,4 +84,6 @@ export {
   erzeugeHonorarPdf,
   erzeugeMaengelanzeigePdf,
   erzeugeMaengellistePdf,
+  erzeugePreisspiegelPdf,
+  preisspiegelAlsExcel,
 } from './bericht-einstiege';

@@ -36,7 +36,8 @@ function text(t: string, stil: Stil = STIL.text): Zelle {
   return { wert: { art: 'text', text: kurz }, stil };
 }
 
-function wertZelle(w: BerichtWert, fett: boolean): Zelle {
+function wertZelle(w: BerichtWert, fett: boolean): Zelle | null {
+  if (w.zahl === undefined && w.text === '') return null;
   return w.zahl === undefined
     ? text(w.text, fett ? STIL.titel : STIL.text)
     : { wert: { art: 'zahl', dezimal: w.zahl.wert }, stil: ZAHLSTIL[w.zahl.art] };
