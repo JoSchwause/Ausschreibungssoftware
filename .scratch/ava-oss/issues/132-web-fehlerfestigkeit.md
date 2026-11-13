@@ -1,6 +1,6 @@
 # 132: App: Fehlergrenze, Browserprüfung, Meldungs-Testhilfe
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E13 · Paket/Ordner: neu `apps/web/src/fehler/`, `apps/web/src/main.tsx`, `apps/web/src/speicher/`, `apps/web/e2e/hilfen.ts` und Meldungsprüfungen in `apps/web/e2e/*.spec.ts`
 Blocked by: –
