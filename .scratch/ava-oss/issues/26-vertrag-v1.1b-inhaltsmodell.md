@@ -1,6 +1,6 @@
 # 26: `vertrag` v1.1b „Inhaltsmodell“ (**Mensch prüft vor Merge**)
 
-Status: ready-for-human (umgesetzt, PR #7, gestapelt auf #4; wartet auf die Prüfung des Nutzers, P9)
+Status: resolved (PR #7 gemergt; der Merge gilt als Prüfung, D-02)
 Type: task
 Welle: 2 · Strang: F · Paket: `packages/vertrag`
 Blocked by: 24

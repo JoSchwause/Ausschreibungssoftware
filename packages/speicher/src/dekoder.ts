@@ -125,6 +125,7 @@ import type {
   Zuschlag,
   Zuschlagsbezug,
 } from '@tethys/vertrag';
+import { AGGREGATART_NAMEN } from './aggregatarten';
 import { abbruch } from './ergebnis';
 
 // --- Grundbausteine ----------------------------------------------------------------------------------------------
@@ -1687,20 +1688,7 @@ function befehlskurzfassung(b: Roh, pfad: string): void {
 function protokolleintrag(x: unknown, pfad: string): Protokolleintrag {
   const o = objekt(x, pfad, ['id', 'projektId', 'aggregat', 'wer', 'wann', 'befehl']);
   const ag = objekt(feld(o, 'aggregat'), `${pfad}.aggregat`, ['art', 'id']);
-  const art = aufzaehlung(feld(ag, 'art'), `${pfad}.aggregat.art`, [
-    'projekt',
-    'leistungsverzeichnis',
-    'angebot',
-    'auftrags-leistungsverzeichnis',
-    'aufmass',
-    'rechnung',
-    'kostenermittlung',
-    'bauwerksmodell',
-    'bauzeitenplan',
-    'honorarberechnung',
-    'mangel',
-    'bautagebucheintrag',
-  ]);
+  const art = aufzaehlung(feld(ag, 'art'), `${pfad}.aggregat.art`, AGGREGATART_NAMEN);
   const befehl = feld(o, 'befehl');
   const b = objekt(
     befehl,

@@ -42,6 +42,8 @@ jobs:
 
       - run: pnpm --filter @tethys/web exec playwright install --with-deps chromium
       - run: pnpm e2e
+      # Build mit Basis-Pfad (GitHub Pages, G-53): lädt die App unter `/<Repository>/`?
+      - run: pnpm --filter @tethys/web run probe:basispfad
 
       - name: REUSE-Lint
         run: |
