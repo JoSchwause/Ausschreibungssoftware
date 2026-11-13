@@ -772,3 +772,10 @@ Question: X80, X87 und X88 werden jetzt abgewiesen; der Satz nennt nur die Phase
 Decision: Nicht aus dem Gedächtnis. Ticket 144 darf die Bedeutung aus einer frei zugänglichen Beschreibung (gaeb.de, D-71) übernehmen und dann Glossar und Satz ergänzen; sonst bleibt es bei der Nummer. Die Erkennung von GAEB 90/2000 (D-136.2) prüfen 144/145 gegen die Formatbeschreibung.
 Reason: C1 und D-71: keine Behauptung ohne Quelle; die Abweisung selbst ist richtig.
 Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, Ticket 144
+
+## D-87 Rückfragen aus 137 und 139
+Welle 7 · Tickets 137, 139 (Folge 128, 159) · decided by: orchestrator
+Question: (1) Leerer Name beim Umbenennen eines LV-Stands: Vertragstext sagt „wie bei `LvStandAnlegen`“, Kern weist leere Namen ab (D-137.1). (2) D-127.14 nennt `oz-ungueltig`, der Kern behält die vorhandenen Codes von `OzMaskeSetzen` (D-137.10). (3) Reste außerhalb der Pakete.
+Decision: (1) Abweisen wie `LvStandAnlegen`; (2) vorhandene Codes behalten (Tests und Oberfläche bauen darauf). Beide Vertragstexte berichtigt der laufende Vertragsschreiber 128 nebenbei (nur Kommentar). (3) Gesammelt für die Review-Behebung 159: `vergabe` und `gaeb` nutzen `bieterangabenNormalisieren` aus `kern`; `speicher` nutzt den Ausführer `EinstellungenUebernehmen` aus `kern` statt eigener Kopie (`uebernimmEinstellungenDerDatei`); `speicher` und `gaeb` importieren `KOSTENGRUPPENNUMMER_MUSTER` aus `vertrag` statt des Kern-Alias `KOSTENGRUPPE_FORM`; die Ausnahme für `createSyncAccessHandle` in `apps/web/e2e-basispfad/basispfad.spec.ts:14` entfällt (D-139.9).
+Reason: Beides sind Lesarten ohne Wirkung auf Beträge; die Reste sind Einzeiler in fremden Paketen (P2), gebündelt statt verstreut.
+Reversible: yes  Touches: packages/vertrag (Kommentare), Ticket 159
