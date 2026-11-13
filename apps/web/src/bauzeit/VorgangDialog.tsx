@@ -2,18 +2,38 @@
 // Formular eines Vorgangs (Ticket 118): Bezeichnung, Nummer, Sammelvorgang, Dauer, Terminvorgabe, Anordnungsbeziehungen mit
 // Art und Abstand, Bezug auf ein LV, Ist-Termine und Fortschritt. Ein Vorgänger wird aus dem Plan gewählt, nie getippt
 // (D-64). Fehler stehen am Feld, der Entwurf bleibt (U5). Speichern ist ein `VorgangSetzen` (ein Undo-Schritt).
+// Ticket 155: Der Bezug kann einzelne Gliederungen und Positionen nennen; bei einem Auftrags-LV schlägt das Formular den
+// Fortschritt aus dem Leistungsstand vor (D-109.7), übernommen wird er nur auf Knopfdruck.
 
+import { formatiereProzentDe } from '@tethys/dezimal';
 import { Auswahl, Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
-import type { Anordnungsart, Bauzeitenplan, ProjektId, VorgangId, Vorgangsbezug } from '@tethys/vertrag';
-import { useEffect, useState } from 'react';
+import type {
+  Anordnungsart,
+  AuftragsLeistungsverzeichnisId,
+  Bauzeitenplan,
+  GliederungId,
+  Knoten,
+  LeistungsverzeichnisId,
+  PositionId,
+  ProjektId,
+  VorgangId,
+  Vorgangsbezug,
+} from '@tethys/vertrag';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
+import { abrechnungLaden, type Abrechnungsstand } from '../abrechnung/aufmass';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { teilbaum, type Feldfehler, type Vorgangsentwurf } from './befehle';
+import { fortschrittAusAbrechnung, knotenFiltern, knotenwahl, type Knotenwahl } from './bezug';
 import { vorgangName } from './ansicht';
 import { ANORDNUNGSARTEN, texte } from './texte';
 
 const OBEN = 'oben';
 const KEIN = 'kein';
+const GANZ = 'ganz';
+const KNOTEN = 'knoten';
+/** So viele Knoten zeigt die Wahl höchstens auf einmal (die gewählten immer dazu). */
+const KNOTENGRENZE = 100;
 const t = texte.vorgang;
 
 interface LvWahl {
@@ -65,6 +85,105 @@ function useLvWahl(projektId: ProjektId, aktiv: boolean): readonly LvWahl[] {
   return wahl;
 }
 
+/** Das bezogene LV: seine Knoten und, bei einem Auftrags-LV, die Blätter für den Leistungsstand. */
+interface BezugsLv {
+  readonly knoten: readonly Knoten[];
+  readonly abrechnung: Abrechnungsstand | null;
+}
+
+/** Lädt das LV des Bezugs, solange der Dialog offen ist; `null`: lädt noch (oder kein Bezug). */
+function useBezugsLv(bezug: Vorgangsbezug | null, aktiv: boolean): BezugsLv | null {
+  const u = useUmgebung();
+  const art = bezug?.art ?? null;
+  const id = bezug?.id ?? null;
+  const [lv, setLv] = useState<BezugsLv | null>(null);
+  useEffect(() => {
+    if (!aktiv || art === null || id === null) return;
+    let lebt = true;
+    setLv(null);
+    void (async (): Promise<BezugsLv> => {
+      if (art === 'leistungsverzeichnis') {
+        const r = await u.speicher.leistungsverzeichnisse.laden(id as LeistungsverzeichnisId);
+        return { knoten: r.ok ? r.wert.leistungsverzeichnis.knoten : [], abrechnung: null };
+      }
+      const r = await abrechnungLaden(u.speicher, id as AuftragsLeistungsverzeichnisId);
+      return r.ok
+        ? { knoten: r.wert.auftrag.auftragsLeistungsverzeichnis.knoten, abrechnung: r.wert }
+        : { knoten: [], abrechnung: null };
+    })().then((x) => {
+      if (lebt) setLv(x);
+    });
+    return () => {
+      lebt = false;
+    };
+  }, [u, art, id, aktiv]);
+  return lv;
+}
+
+/** Die Wahl einzelner Gliederungen und Positionen: Suchfeld und Kontrollkästchen, eingerückt nach der Tiefe im LV. */
+function KnotenWahl({
+  liste,
+  gewaehlt,
+  meldung,
+  onAendern,
+}: {
+  liste: readonly Knotenwahl[] | null;
+  gewaehlt: readonly (GliederungId | PositionId)[];
+  meldung: string | undefined;
+  onAendern: (ids: readonly (GliederungId | PositionId)[]) => void;
+}): ReactElement {
+  const [suche, setSuche] = useState('');
+  const menge = useMemo(() => new Set<string>(gewaehlt), [gewaehlt]);
+  const gefiltert = useMemo(
+    () => (liste === null ? null : knotenFiltern(liste, suche, menge, KNOTENGRENZE)),
+    [liste, suche, menge],
+  );
+  const bekannt = useMemo(() => new Set<string>(liste?.map((k) => k.id) ?? []), [liste]);
+  const unbekannt = liste === null ? 0 : gewaehlt.filter((id) => !bekannt.has(id)).length;
+  return (
+    <fieldset className="bauzeit__knotenwahl">
+      <legend>{t.knoten}</legend>
+      {gefiltert === null ? (
+        <p aria-busy="true">{t.knotenLaedt}</p>
+      ) : (
+        <>
+          <Eingabefeld
+            label={t.knotenSuchen}
+            value={suche}
+            hinweis={
+              gefiltert.treffer > KNOTENGRENZE
+                ? t.knotenTreffer(KNOTENGRENZE, gefiltert.treffer)
+                : t.knotenSuchHinweis
+            }
+            onWertChange={setSuche}
+          />
+          <p role="status">{t.knotenGewaehlt(gewaehlt.length)}</p>
+          <ul className="bauzeit__knoten" aria-label={t.knoten}>
+            {gefiltert.zeilen.map((k) => (
+              <li key={k.id} style={{ paddingInlineStart: `calc(var(--tx-space-4) * ${String(k.tiefe)})` }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={menge.has(k.id)}
+                    onChange={(ev) => {
+                      onAendern(ev.target.checked ? [...gewaehlt, k.id] : gewaehlt.filter((x) => x !== k.id));
+                    }}
+                  />
+                  {k.label}
+                </label>
+              </li>
+            ))}
+          </ul>
+          {unbekannt > 0 ? <p role="note">{t.knotenUnbekannt(unbekannt)}</p> : null}
+        </>
+      )}
+      <p className="tx-feld__meldung" role="status">
+        {meldung ?? ''}
+      </p>
+    </fieldset>
+  );
+}
+
 export function VorgangDialog({
   plan,
   anfang,
@@ -103,12 +222,20 @@ export function VorgangDialog({
     .map((v) => ({ wert: v.id, label: vorgangName(v) }));
   const bezugOptionen = [
     { wert: KEIN, label: t.keinBezug },
-    ...lvWahl.map((w) =>
-      e.bezug !== null && w.wert === bezugSchluessel(e.bezug) && e.bezug.knotenIds !== null
-        ? { wert: w.wert, label: `${w.label} (${t.bezugTeil})` }
-        : { wert: w.wert, label: w.label },
-    ),
+    ...lvWahl.map((w) => ({ wert: w.wert, label: w.label })),
   ];
+  const bezugsLv = useBezugsLv(e.bezug, offen);
+  const knotenliste = useMemo(() => (bezugsLv === null ? null : knotenwahl(bezugsLv.knoten)), [bezugsLv]);
+  // `undefined`: der Leistungsstand lädt noch; `null`: kein Vorschlag.
+  const vorschlag =
+    e.bezug?.art !== 'auftrags-leistungsverzeichnis'
+      ? null
+      : bezugsLv?.abrechnung == null
+        ? undefined
+        : fortschrittAusAbrechnung(e.bezug, bezugsLv.abrechnung);
+  const knotenSetzen = (knotenIds: Vorgangsbezug['knotenIds']): void => {
+    if (e.bezug !== null) setE({ ...e, bezug: { ...e.bezug, knotenIds } });
+  };
 
   const beziehungAendern = (i: number, teil: Partial<Vorgangsentwurf['beziehungen'][number]>): void => {
     setE({ ...e, beziehungen: e.beziehungen.map((b, j) => (j === i ? { ...b, ...teil } : b)) });
@@ -204,6 +331,28 @@ export function VorgangDialog({
               : bezugOptionen
           }
         />
+        {e.bezug === null ? null : (
+          <Auswahl
+            label={t.umfang}
+            wert={e.bezug.knotenIds === null ? GANZ : KNOTEN}
+            onWertChange={(w) => {
+              if (w === GANZ) knotenSetzen(null);
+              else if (e.bezug?.knotenIds === null) knotenSetzen([]);
+            }}
+            optionen={[
+              { wert: GANZ, label: t.umfangGanz },
+              { wert: KNOTEN, label: t.umfangKnoten },
+            ]}
+          />
+        )}
+        {e.bezug?.knotenIds == null ? null : (
+          <KnotenWahl
+            liste={knotenliste}
+            gewaehlt={e.bezug.knotenIds}
+            meldung={meldung('bezugKnoten').meldung}
+            onAendern={knotenSetzen}
+          />
+        )}
         <fieldset>
           <legend>{t.beziehungen}</legend>
           {e.beziehungen.length === 0 ? <p>{t.keineBeziehungen}</p> : null}
@@ -286,6 +435,27 @@ export function VorgangDialog({
               {...meldung('fortschritt')}
             />
           </div>
+          {e.bezug === null ? null : e.bezug.art === 'leistungsverzeichnis' ? (
+            <p className="bauzeit__vorschlag">{t.vorschlagNurAuftrag}</p>
+          ) : vorschlag === undefined ? (
+            <p className="bauzeit__vorschlag" aria-busy="true">
+              {t.vorschlagLaedt}
+            </p>
+          ) : vorschlag === null ? (
+            <p className="bauzeit__vorschlag">{t.keinVorschlag}</p>
+          ) : (
+            <p className="bauzeit__vorschlag">
+              <span data-testid="fortschritt-vorschlag">{t.vorschlag(formatiereProzentDe(vorschlag))}</span>{' '}
+              <Button
+                groesse="sm"
+                onClick={() => {
+                  setE({ ...e, fortschritt: formatiereProzentDe(vorschlag) });
+                }}
+              >
+                {t.vorschlagUebernehmen}
+              </Button>
+            </p>
+          )}
         </fieldset>
       </form>
     </Dialog>

@@ -184,7 +184,6 @@ export const texte = {
     beziehungHinzufuegen: 'Vorgänger hinzufügen',
     bezug: 'Bezug auf LV',
     keinBezug: '– kein Bezug –',
-    bezugTeil: 'ausgewählte Knoten',
     // Ticket 155 (Ticket 124 §2, §5): einzelne Knoten und Fortschritt aus dem Leistungsstand
     umfang: 'Umfang des Bezugs',
     umfangGanz: 'Das ganze LV',

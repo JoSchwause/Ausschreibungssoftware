@@ -248,6 +248,9 @@ export function vorgangSetzenBefehl(
     else if (vorgaengerOk) vorgaenger.push({ vorgaengerId: vid, art: b.art, abstand: Number(abstand) + 0 });
   });
 
+  // Ticket 155: „ausgewählte Knoten“ braucht mindestens einen (der Ausführer weist eine leere Liste ab).
+  if (e.bezug?.knotenIds?.length === 0) fehler.push({ feld: 'bezugKnoten', meldung: t.knotenFehlen });
+
   const istBeginn = datumOderLeer(e.istBeginn, 'istBeginn', fehler);
   const istEnde = datumOderLeer(e.istEnde, 'istEnde', fehler);
   const fortschritt = fortschrittLesen(e.fortschritt, fehler);

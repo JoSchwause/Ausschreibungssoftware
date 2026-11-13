@@ -20,6 +20,7 @@ import {
   vorgangVerschiebenBefehl,
   vorgangsentwurf,
   type Kopfentwurf,
+  type Vorgangsentwurf,
 } from './befehle';
 
 const p = 'p1' as ProjektId;
@@ -274,6 +275,29 @@ describe('Entfernen fragt nach, wenn Kinder oder Nachfolger mitgehen (Q5)', () =
     expect(vorgangEntfernenFrage(p3, id('a'))).toEqual({ kinder: 1, nachfolger: 1 });
     expect(vorgangEntfernenFrage(p3, id('a1'))).toEqual({ kinder: 0, nachfolger: 1 });
     expect(vorgangEntfernenFrage(p3, id('b'))).toBeNull();
+  });
+});
+
+describe('Bezug auf einzelne Knoten (Ticket 155)', () => {
+  const pl = plan([]);
+  const entwurf = { ...leererVorgangsentwurf(), bezeichnung: 'Mauern', dauer: '5' };
+  const bezug = (knotenIds: readonly string[] | null) =>
+    ({ art: 'auftrags-leistungsverzeichnis', id: 'a1', knotenIds }) as Vorgangsentwurf['bezug'];
+
+  it('nimmt die gewählten Knoten in den Befehl', () => {
+    const r = vorgangSetzenBefehl(pl, { ...entwurf, bezug: bezug(['t1', 'p9']) }, () => id('neu'));
+    expect(r.ok && r.wert.vorgang.bezug).toEqual({
+      art: 'auftrags-leistungsverzeichnis',
+      id: 'a1',
+      knotenIds: ['t1', 'p9'],
+    });
+  });
+
+  it('„ausgewählte Knoten“ ohne Knoten ist ein Feldfehler, kein Befehl', () => {
+    const r = vorgangSetzenBefehl(pl, { ...entwurf, bezug: bezug([]) }, () => id('neu'));
+    expect(r.ok ? null : r.fehler).toEqual([
+      { feld: 'bezugKnoten', meldung: 'Bitte mindestens eine Gliederung oder Position wählen.' },
+    ]);
   });
 });
 

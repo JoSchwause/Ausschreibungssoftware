@@ -3,7 +3,7 @@
 // Leistungsstand. Das Auftrags-LV ist `typisch` mit dem Angebot von Bieter A (wie in der Abrechnung); erwartet wird, was
 // aus der Regel D-109.7 folgt: alles aufgemessen = 100 %, nichts = 0 %.
 
-import type { Aufmass, AufmassId, Knoten, Menge, Vorgangsbezug } from '@tethys/vertrag';
+import type { Aufmass, AufmassId, Knoten, Vorgangsbezug } from '@tethys/vertrag';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { mitAuftrag, type Aufbau } from '../abrechnung/testhilfen';
 import { fortschrittAusAbrechnung, knotenFiltern, knotenwahl } from './bezug';
@@ -27,7 +27,7 @@ function blatt(positionen: readonly Knoten[]): Aufmass {
     datum: null,
     positionen: positionen.flatMap((p) =>
       p.art === 'position' && p.menge !== null
-        ? [{ positionId: p.id, mengenansatz: null, menge: p.menge as Menge }]
+        ? [{ positionId: p.id, mengenansatz: null, menge: p.menge }]
         : [],
     ),
   };
