@@ -35,7 +35,7 @@ function istBauteilklasse(name: string): boolean {
 /** Behälter jedes enthaltenen Produkts (`RelatedElements` → `RelatingStructure`); `null`, wenn der Verweis fehlt. */
 function behaelterLesen(l: Modellleser): Map<number, number | null> {
   const behaelter = new Map<number, number | null>();
-  for (const r of l.daten.klasse('IFCRELCONTAINEDINSPATIALSTRUCTURE')) {
+  for (const r of l.instanzen('IFCRELCONTAINEDINSPATIALSTRUCTURE')) {
     const p = l.parameter(r);
     if (p === null) continue;
     const struktur = l.ziel(r, p[5]);
@@ -47,7 +47,7 @@ function behaelterLesen(l: Modellleser): Map<number, number | null> {
       l.melde(
         'warnung',
         'bauteil-mehrfach-enthalten',
-        `#${String(l.daten.id(e))} steht in mehr als einem Strukturknoten; der erste gilt.`,
+        `#${String(l.nummer(e))} steht in mehr als einem Strukturknoten; der erste gilt.`,
         l.ort(r),
         e,
       );
@@ -86,14 +86,14 @@ export function bauteileLesen(
   const teilVon = new Map<number, number>();
   const offen: number[] = [];
   for (const [e, s] of behaelter) {
-    if (!istBauteilklasse(l.daten.name(e)) || l.parameter(e) === null) continue;
+    if (!istBauteilklasse(l.klasseVon(e)) || l.parameter(e) === null) continue;
     struktur.set(e, s);
     offen.push(e);
   }
   for (let k = 0; k < offen.length; k++) {
     const oben = offen[k] ?? -1;
     for (const t of teile.get(oben) ?? []) {
-      if (struktur.has(t) || !istBauteilklasse(l.daten.name(t)) || l.parameter(t) === null) {
+      if (struktur.has(t) || !istBauteilklasse(l.klasseVon(t)) || l.parameter(t) === null) {
         if (struktur.has(t) && !teilVon.has(t) && t !== oben) teilVon.set(t, oben);
         continue;
       }
@@ -108,11 +108,9 @@ export function bauteileLesen(
     const globalId = l.gepruefteGlobalId(i);
     const behaelterInstanz = struktur.get(i) ?? null;
     const s =
-      behaelterInstanz !== null && STRUKTURARTEN.has(l.daten.name(behaelterInstanz))
-        ? behaelterInstanz
-        : null;
+      behaelterInstanz !== null && STRUKTURARTEN.has(l.klasseVon(behaelterInstanz)) ? behaelterInstanz : null;
     const strukturGlobalId = s === null ? null : l.globalId(s);
-    const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
+    const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.nummer(i))})`;
     if (strukturGlobalId === null)
       l.melde(
         'warnung',
@@ -140,7 +138,7 @@ export function bauteileLesen(
       );
     const bauteil: StepBauteil = {
       globalId,
-      ifcKlasse: klassenname(l.daten.name(i)),
+      ifcKlasse: klassenname(l.klasseVon(i)),
       name: l.name(i),
       typ: daten.typname(i),
       strukturGlobalId,
