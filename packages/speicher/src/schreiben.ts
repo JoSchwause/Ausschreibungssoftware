@@ -93,7 +93,10 @@ import {
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
   LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
   lvKennzeichenSpalten,
+  lvPreisspiegelSpalte,
+  angabenSpalte,
   kostenermittlungZeile,
   nachlassSpalten,
   rechnungZeile,
@@ -118,8 +121,15 @@ import {
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
-/** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
-const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
+/**
+ * Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`) und die
+ * Preisspiegel-Einstellungen (Schema 7, v1.7a; `lvPreisspiegelSpalte`).
+ */
+const LV_KOPF_SPALTEN: readonly string[] = [
+  ...KOPFDATEN_SPALTEN,
+  ...LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
+];
 const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
 
 // --- Zeilen nach Spaltennamen (Ticket 135, SA7) ------------------------------------------------------------------------
@@ -216,19 +226,35 @@ function pruefeLoeschSummen(db: Datenbank, aggregatId: string, s: Summenaenderun
 
 // --- Projekt ----------------------------------------------------------------------------------------------------
 
+/**
+ * Schreibt die Bieter des Projekts (Reihenfolge, Name, seit Schema 7 die Angaben). Ein Bieter, der wegfällt, darf kein Angebot
+ * haben (v1.7a, D-127.2: `BieterLoeschen` nur ohne Angebot; ebenso als Undo von `BieterAnlegen`): sonst `konflikt` mit den
+ * Angeboten, bevor etwas geschrieben ist.
+ */
 function schreibeBieter(db: Datenbank, p: Projekt): void {
-  db.stapel(
-    `INSERT INTO bieter (projekt_id, id, name, reihenfolge) VALUES (?, ?, ?, ?)
-     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge`,
-    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i]),
-  );
   const behalten = new Set(p.bieter.map((b) => b.id as string));
-  for (const z of db.zeilen('SELECT id FROM bieter WHERE projekt_id = ?', [p.id])) {
-    const id = z['id'];
-    if (typeof id === 'string' && !behalten.has(id)) {
-      db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
-    }
+  const weg = db
+    .zeilen('SELECT id FROM bieter WHERE projekt_id = ? ORDER BY id', [p.id])
+    .map((z) => String(z['id']))
+    .filter((id) => !behalten.has(id));
+  for (const id of weg) {
+    const angebote = db
+      .zeilen('SELECT id FROM angebot WHERE projekt_id = ? AND bieter_id = ? ORDER BY id', [p.id, id])
+      .map((z) => String(z['id']));
+    if (angebote.length > 0)
+      abbruch(
+        'konflikt',
+        `Konflikt: Bieter ${id} lässt sich nicht entfernen, solange Angebote auf ihn verweisen (${angebote.join(', ')}); ` +
+          'es wurde nichts geschrieben.',
+      );
   }
+  db.stapel(
+    `INSERT INTO bieter (projekt_id, id, name, reihenfolge, angaben) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge,
+       angaben = excluded.angaben`,
+    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i, angabenSpalte(`Bieter ${b.id}`, b.angaben)]),
+  );
+  for (const id of weg) db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
 }
 
 /** Kopftabelle eines Aggregats, das an einem Projekt hängt, und sein Name in der Meldung (`AGGREGATARTEN`). */
@@ -257,24 +283,21 @@ export function wendeProjektAn(
   if (nachher.id !== cs.projektId)
     return abbruch('unbekannt', 'ChangeSet: projektId und Projekt.id weichen ab.');
   const gespeichert = leseProjekt(db, cs.projektId);
+  const angaben = angabenSpalte(`Projekt ${nachher.id}`, nachher.angaben); // Schema 7 (v1.7a)
   if (vorher === null) {
     if (gespeichert !== null) return konflikt(`Projekt ${cs.projektId} existiert bereits, das ChangeSet`);
-    db.ausfuehren('INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift) VALUES (?, ?, ?, ?)', [
-      nachher.id,
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-    ]);
+    db.ausfuehren(
+      'INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift, angaben) VALUES (?, ?, ?, ?, ?)',
+      [nachher.id, nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben],
+    );
   } else {
     if (gespeichert === null)
       return abbruch('nicht-gefunden', `Projekt ${cs.projektId} ist nicht vorhanden.`);
     if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
-    db.ausfuehren('UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ? WHERE id = ?', [
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-      nachher.id,
-    ]);
+    db.ausfuehren(
+      'UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ?, angaben = ? WHERE id = ?',
+      [nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben, nachher.id],
+    );
   }
   schreibeBieter(db, nachher);
 }
@@ -477,7 +500,11 @@ export function wendeLvAn(
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
-    const kopfdaten = [...kopfdatenSpalten(nachher), ...lvKennzeichenSpalten(nachher)];
+    const kopfdaten = [
+      ...kopfdatenSpalten(nachher),
+      ...lvKennzeichenSpalten(nachher),
+      lvPreisspiegelSpalte(nachher),
+    ];
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {

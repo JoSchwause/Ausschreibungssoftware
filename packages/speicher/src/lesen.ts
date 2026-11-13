@@ -25,6 +25,7 @@ import type {
   AuftragsLvUebersicht,
   AuftragsLvZustand,
   Bieter,
+  Bieterangaben,
   Betrag,
   Gliederungssumme,
   Knoten,
@@ -43,6 +44,7 @@ import type {
   PositionId,
   Positionssumme,
   Projekt,
+  Projektangaben,
   ProjektId,
   Protokolleintrag,
   Rechnung,
@@ -76,6 +78,8 @@ import {
   kopfdatenAusZeile,
   lvId,
   lvKennzeichenAusZeile,
+  lvPreisspiegelAusZeile,
+  angabenAusZeile,
   maskeAusZeile,
   nachlassAusZeile,
   projektId,
@@ -88,12 +92,17 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
   if (kopf === undefined) return null;
   const bieter = db
     .zeilen('SELECT * FROM bieter WHERE projekt_id = ? ORDER BY reihenfolge, id', [id])
-    .map((z): Bieter => ({ id: bieterId(z, 'id'), name: text(z, 'name') }));
+    .map((z): Bieter => ({
+      id: bieterId(z, 'id'),
+      name: text(z, 'name'),
+      ...angabenAusZeile<Bieterangaben>(z), // Schema 7 (v1.7a)
+    }));
   return {
     id,
     name: text(kopf, 'name'),
     bauherr: { name: text(kopf, 'bauherr_name'), anschrift: textOderNull(kopf, 'bauherr_anschrift') },
     bieter,
+    ...angabenAusZeile<Projektangaben>(kopf), // Schema 7 (v1.7a)
   };
 }
 
@@ -176,6 +185,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     nachlass: nachlassAusZeile(z),
     ...kopfdatenAusZeile(z),
     ...lvKennzeichenAusZeile(z),
+    ...lvPreisspiegelAusZeile(z), // Schema 7 (v1.7a)
   };
 }
 

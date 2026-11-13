@@ -58,6 +58,10 @@ function aendere(text: string, pfad: (string | number)[], wert2: unknown): strin
 
 const ungueltig = { ok: false, fehler: { code: 'datei-ungueltig' } };
 
+/** Der Export eines Stands der Version 6 in der aktuellen Version: gleich bis auf die Versionsnummer (seit Version 7). */
+const alsAktuell = (text: string): string =>
+  text.replace('"schemaVersion": 6', `"schemaVersion": ${String(SCHEMA_VERSION)}`);
+
 describe('eingefrorene Projektdatei der Schemaversion 6', () => {
   it('die Datei ist unverändert (Prüfsumme), kanonisch, und ihre Modelldateien entpacken zu den genannten Hashes', () => {
     expect(sha(inhalt)).toBe(SHA256);
@@ -158,7 +162,9 @@ describe('eingefrorene Projektdatei der Schemaversion 6', () => {
       bemerkung: null,
       frist: '2026-12-04',
     });
-    expect(wert(kern.projektdateiExportieren(V2_PROJEKT))).toBe(kanonischesJson(JSON.parse(text)));
+    expect(wert(kern.projektdateiExportieren(V2_PROJEKT))).toBe(
+      alsAktuell(kanonischesJson(JSON.parse(text))),
+    );
   });
 
   it('schon abgelegte Bytes bleiben beim Import unverändert; ein zweiter Import desselben Projekts: existiert-bereits', async () => {
@@ -357,13 +363,14 @@ describe('Grenze des Exports (D-51, datei-zu-gross)', () => {
   });
 
   it('übersteigt erst der ganze Text die Grenze: ebenso datei-zu-gross; knapp darüber geht es', async () => {
-    const kern = await kernMitGrenze(inhalt.length - 1);
+    const erwartet = alsAktuell(inhalt);
+    const kern = await kernMitGrenze(erwartet.length - 1);
     expect(kern.projektdateiExportieren(V2_PROJEKT)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-zu-gross' },
     });
-    const genau = await kernMitGrenze(inhalt.length);
-    expect(wert(genau.projektdateiExportieren(V2_PROJEKT))).toBe(inhalt);
+    const genau = await kernMitGrenze(erwartet.length);
+    expect(wert(genau.projektdateiExportieren(V2_PROJEKT))).toBe(erwartet);
   });
 
   it('ein Projekt ohne Modelle ist von den Bytes anderer Projekte nicht betroffen', async () => {
