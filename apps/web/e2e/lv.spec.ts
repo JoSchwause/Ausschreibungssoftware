@@ -12,6 +12,7 @@ import {
   summen,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -19,11 +20,11 @@ const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as F
 async function lvMitZweiPositionen(page: Page): Promise<void> {
   await projektAnlegen(page, 'Schule', 'Kreis');
   await lvAnlegen(page, 'Außenanlagen');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await page.keyboard.type('Wege');
   await page.keyboard.press('Enter');
   // Position über die Schaltfläche (nicht das Tastenkürzel).
-  await neueZeile(page, () => page.getByRole('button', { name: /^Position anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Position anlegen/));
   await page.keyboard.type(p('01.0050').kurztext);
   await page.keyboard.press('Tab');
   await positionTippen(page, p('01.0060'));

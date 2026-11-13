@@ -27,6 +27,7 @@ import {
   tippe,
   zeilen,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 // --- Fixture -------------------------------------------------------------------------------------------------------
 
@@ -378,6 +379,7 @@ async function rechnungOeffnen(page: Page, nummer: number): Promise<void> {
   ).toBeVisible();
 }
 
+/** Ein Verweis in der Werkzeugleiste des Aufmaßblatts (am Auftrags-LV stehen die Verweise im Menü „Abrechnung“). */
 const toolbarLink = (page: Page, name: string): Locator =>
   page.getByRole('toolbar').getByRole('link', { name, exact: true });
 
@@ -408,7 +410,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   }
 
   // --- Zuschlag an Bieter B ohne Wahl (D-21, D-85.1): Alternative entfällt, 03.0070 ohne Preis ----------------------
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${BIETER}` })
@@ -431,7 +433,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
     page.getByRole('heading', { level: 1, name: 'Nachtrag N01 – Zusatzleistungen Gründung' }),
   ).toBeVisible();
   const nachtragsLvId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await tippe(page, N01_TITEL?.kurztext ?? '', 'Enter');
   for (const p of N01_POSITIONEN) {
     await neueZeile(page, () => page.keyboard.press('Control+Alt+KeyP'));
@@ -555,7 +557,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   const ar1 = fx.pruefungen.ar1;
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Aufmaß').click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await expect(page.getByRole('heading', { level: 1, name: /^Aufmaß – / })).toBeVisible();
   const blatt1Pfad = await blattErfassen(page, 0);
 
@@ -567,7 +569,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   // --- Abschlagsrechnung 1: Kette wie die Fixture, Zahlbetrag 8.874,40; freigeben friert ihn ein -------------------
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Rechnungen').click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
   await rechnungAnlegen(page, 0, 1);
   await kettePruefen(page, ar1.kette, []);
@@ -583,13 +585,13 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   // --- Aufmaßblatt 2 und Abschlagsrechnung 2: kumuliert minus eingefrorener Zahlbetrag von AR 1 --------------------
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Aufmaß').click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await blattErfassen(page, 1);
   await toolbarLink(page, 'Soll/Ist').click();
   await sollIstPruefen(page, fx.sollIst.nachBlatt2);
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Rechnungen').click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await rechnungAnlegen(page, 1, 2);
   await kettePruefen(page, fx.pruefungen.ar2VorKorrektur.kette, [1]);
   await expect(page.getByTestId('freigabe')).toHaveText('Offen (nicht freigegeben)');
@@ -616,7 +618,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
 
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Rechnungen').click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await rechnungOeffnen(page, 2);
   await kettePruefen(page, fx.pruefungen.ar2NachKorrektur.kette, [1]);
   await rechnungOeffnen(page, 1);
@@ -643,7 +645,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   await kostenkontrollePruefen(page, true);
   await page.goto(auftragPfad);
   await auftragsLvPruefen(page, fx.nachtrag.sollwerte.summen);
-  await toolbarLink(page, 'Rechnungen').click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await rechnungOeffnen(page, 2);
   await page.reload();
   await kettePruefen(page, fx.pruefungen.ar2NachKorrektur.kette, [1]);
