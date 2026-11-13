@@ -4,7 +4,7 @@
 import type { LvSpalte, Position } from '@tethys/vertrag';
 
 export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
-  ordnungszahl: 'Ordnungszahl',
+  ordnungszahl: 'OZ',
   positionsart: 'Art',
   kurztext: 'Kurztext',
   menge: 'Menge',
@@ -74,7 +74,7 @@ export const texte = {
   mengenansatz: 'Menge aus Mengenansatz. Eine direkte Änderung der Menge entfernt den Mengenansatz',
   bild: '[Bild]',
   listenpunkt: '• ',
-  zellentrenner: ' | ',
+  zellentrenner: ' · ',
   leereErgaenzung: '…',
   leereZwischenablage: 'Die Zwischenablage enthält keinen Text.',
   loeschenTitel: 'In den Papierkorb legen',

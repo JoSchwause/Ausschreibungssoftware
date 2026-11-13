@@ -18,9 +18,9 @@ export const texte = {
     nameFehlt: 'Bitte einen Projektnamen eingeben.',
   },
   importieren: {
-    knopf: 'Projektdatei importieren',
-    erfolg: 'Projekt importiert',
-    fehler: 'Import nicht möglich',
+    knopf: 'Projektdatei einlesen',
+    erfolg: 'Projekt eingelesen',
+    fehler: 'Einlesen nicht möglich',
   },
   projekt: {
     laden: 'Das Projekt wird geladen …',
@@ -28,11 +28,11 @@ export const texte = {
     zurueck: 'Zur Projektliste',
     bauherr: 'Bauherr',
     stammdaten: 'Stammdaten',
-    umbenennen: 'Projekt umbenennen',
+    umbenennen: 'Stammdaten ändern',
     speichern: 'Speichern',
     abbrechen: 'Abbrechen',
-    exportieren: 'Projektdatei exportieren',
-    exportFehler: 'Export nicht möglich',
+    exportieren: 'Projektdatei sichern',
+    exportFehler: 'Sichern nicht möglich',
   },
   lvs: {
     titel: 'Leistungsverzeichnisse',

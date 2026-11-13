@@ -65,15 +65,15 @@ export const texte = {
       `${String(betroffen)} von ${String(alle)} Positionen mit Zuordnungen betroffen.`,
     netto: 'Netto des LV',
     aktualisieren: 'Mengen aktualisieren …',
-    nichtsZuTun: 'Die Vordersätze des LV entsprechen dem neuen Stand.',
+    nichtsZuTun: 'Die Mengen des LV entsprechen dem neuen Stand.',
   },
   vorschau: {
     titel: 'Mengen aktualisieren',
     text: (n: number): string =>
       n === 1
-        ? 'Der Vordersatz einer Position wird aus dem neuen Stand gesetzt (ein Schritt zum Rückgängigmachen).'
-        : `Die Vordersätze von ${String(n)} Positionen werden aus dem neuen Stand gesetzt (ein Schritt zum Rückgängigmachen).`,
-    beschriftung: 'Vorschau der Vordersätze',
+        ? 'Die Menge einer Position wird aus dem neuen Stand gesetzt (ein Schritt zum Rückgängigmachen).'
+        : `Die Mengen von ${String(n)} Positionen werden aus dem neuen Stand gesetzt (ein Schritt zum Rückgängigmachen).`,
+    beschriftung: 'Vorschau der Mengen',
     position: 'Position',
     alt: 'Menge bisher',
     neu: 'Menge neu',

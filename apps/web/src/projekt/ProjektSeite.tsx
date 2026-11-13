@@ -136,7 +136,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   // --- Löschen (Ticket 48, Punkt 5) ------------------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState<{ art: 'projekt' } | { art: 'lv'; lv: LvZustand } | null>(null);
 
-  // --- Projekt umbenennen -------------------------------------------------------------------------------------
+  // --- Stammdaten ändern -------------------------------------------------------------------------------------
   const [stammdaten, setStammdaten] = useState<{ name: string; bauherr: string } | null>(null);
   // --- LV umbenennen --------------------------------------------------------------------------------------------
   const [umbenennen, setUmbenennen] = useState<{ lv: LvUebersicht; name: string } | null>(null);

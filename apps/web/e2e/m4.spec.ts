@@ -324,8 +324,8 @@ async function rechnungAnlegen(page: Page, index: number, blaetter: number): Pro
   const r = fx.rechnungen[index];
   const umlage = r?.umlagen[0];
   if (r === undefined || umlage === undefined) throw new Error(`Fixture ohne Rechnung ${String(index + 1)}`);
-  await rechnungsWerkzeuge(page).getByRole('button', { name: 'Neue Rechnung' }).click();
-  const dialog = page.getByRole('dialog', { name: `Neue Rechnung ${r.nummer}` });
+  await rechnungsWerkzeuge(page).getByRole('button', { name: 'Rechnung anlegen' }).click();
+  const dialog = page.getByRole('dialog', { name: `Rechnung ${r.nummer} anlegen` });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Eingangsdatum').fill(datumDe(r.eingang));
   await dialog.getByLabel('Rechnungsnummer des Auftragnehmers').fill(r.rechnungsnummerAuftragnehmer);
@@ -426,7 +426,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   await page.getByRole('button', { name: 'Nachtrag anlegen' }).click();
   const anlegen = page.getByRole('dialog', { name: 'Nachtrag anlegen' });
   await anlegen.getByLabel('Bezeichnung').fill('Zusatzleistungen Gründung');
-  await anlegen.getByRole('button', { name: 'Anlegen' }).click();
+  await anlegen.getByRole('button', { name: 'Nachtrag anlegen' }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Nachtrag N01 – Zusatzleistungen Gründung' }),
   ).toBeVisible();
@@ -497,7 +497,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   await page.getByRole('link', { name: 'Kosten', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Kosten – Musterhaus' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(fx.kostenermittlung.name);
-  await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  await page.getByRole('button', { name: 'Kostenermittlung anlegen', exact: true }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: `Kostenermittlung – ${fx.kostenermittlung.name}` }),
   ).toBeVisible();

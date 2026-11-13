@@ -203,7 +203,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
     /\/projekt\/[^/]+\/modelle$/,
   );
   await page.getByLabel('Name', { exact: true }).fill('Kostenberechnung');
-  await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  await page.getByRole('button', { name: 'Kostenermittlung anlegen', exact: true }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Kostenermittlung – Kostenberechnung' }),
   ).toBeVisible();

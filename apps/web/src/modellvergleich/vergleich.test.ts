@@ -5,6 +5,7 @@
 import type { BauwerksmodellId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { BIM_SOLL } from '../../e2e/modellvergleich-inhalt';
+import { ifcKlassenName } from '../bim/texte';
 import { V1, V2 } from './testhilfen';
 import { fruehereStaende, vergleichsansicht } from './vergleich';
 
@@ -25,11 +26,11 @@ describe('Vergleichsansicht v1 → v2', () => {
       z.zellen['geschoss']?.text,
     ]);
     expect(tabelle).toEqual([
-      ...SOLL.hinzugefuegt.map((b) => ['Hinzugefügt', b.klasse, b.name, b.geschoss]),
-      ...SOLL.entfernt.map((b) => ['Entfernt', b.klasse, b.name, b.geschoss]),
+      ...SOLL.hinzugefuegt.map((b) => ['Hinzugefügt', ifcKlassenName(b.klasse), b.name, b.geschoss]),
+      ...SOLL.entfernt.map((b) => ['Entfernt', ifcKlassenName(b.klasse), b.name, b.geschoss]),
       ...SOLL.geaendert.map((g) => {
         const b = BIM_SOLL.bauteile.v2.find((x) => x.globalId === g.globalId);
-        return ['Geändert', b?.klasse, b?.name, b?.geschoss];
+        return ['Geändert', b === undefined ? undefined : ifcKlassenName(b.klasse), b?.name, b?.geschoss];
       }),
     ]);
     const aenderung = (gid: string): string | undefined =>

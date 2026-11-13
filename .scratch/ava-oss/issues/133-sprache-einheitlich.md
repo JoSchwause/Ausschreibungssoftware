@@ -37,3 +37,13 @@ Läuft parallel zu 131 und 132, die in `ui/`, `projekt/` und den Specs arbeiten:
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+- D-133.1 OZ/Ordnungszahl: Beschriftung, Spaltenkopf und Feldname „OZ“ (Grid, Merkmale-Dialog), im Satz „Ordnungszahl“. Grund: kurz in Tabellen, gleich wie in `historie` und `bim`; der Test lehnt „Ordnungszahl“ als ganze Beschriftung ab.
+- D-133.2 Menge/Vordersatz: „Menge“; „Vordersatz“ ist ein Wort der Vorbild-Software und fällt in allen Texten weg (Glossar angepasst).
+- D-133.3 MwSt/Umsatzsteuer: „MwSt“. Ausnahme „Umsatzsteuer (BT-110)“ in der XRechnung-Vorschau, weil das der Name des Feldes der EN 16931 ist; BT-Nummern bleiben (Normkennung, keine Code-Kennung).
+- D-133.4 Projektdatei: Die Datei heißt „Projektdatei“, die Handlung „sichern“ („Projektdatei sichern“, „Jetzt sichern“); Bereich und Dialog heißen „Sicherung“. Das Druckprofil folgt: „Profil sichern“ / „Profil einlesen“. Grund: „sichern“ steht schon in der Erinnerung und im Dialog; ein zweites Wort „exportieren“ für dieselbe Handlung entfällt.
+- D-133.5 einlesen statt importieren, auch in Meldungen („Projekt eingelesen“, „Einlesen nicht möglich“, „Sichern nicht möglich“ statt „Export nicht möglich“).
+- D-133.6 Anlegen: Jede Schaltfläche trägt den Gegenstand („Honorarberechnung anlegen“, „Bauzeitenplan anlegen“, „Kostenermittlung anlegen“, „Nachtrag anlegen“, „Rechnung anlegen“, „Bauteile zuordnen …“). „Projekt umbenennen“ (ändert auch den Bauherrn) heißt „Stammdaten ändern“.
+- D-133.7 Schaltflächen mit „…“: Namen der Funktionen, die einen Dialog mit gleichem Namen öffnen („Mengenermittlung …“, „Mengen aus Modell …“, „Aufmaßblatt aus Auswahl …“, „Kostenschätzung über Kennwerte …“, „Mengen aktualisieren …“, „Neuer Stand …“) bleiben; das Verb steht dann im Dialog. Nur „Zuordnen …“ (Verb ohne Gegenstand) wurde ergänzt. „…“ immer mit Leerzeichen davor (Test).
+- D-133.8 „€“, Trennzeichen, Anrede: „€“ nur als Zeichen mit Leerzeichen hinter der Zahl (Test lehnt „EUR“, „Euro“, „5€“ ab); Seitentitel bleiben „Seite – Projekt“ (Halbgeviertstrich), Zellen im Klartext trennt „ · “ statt „ | “. „Sie“-Texte bleiben, wo sie direkt anreden (L4 erlaubt „Sie“); die „du“-Texte und alle Imperative der 2. Person Singular in `kosten`, `honorar`, `bauzeit` sind unpersönlich umformuliert, der Test prüft Pronomen und eine Liste solcher Imperative.
+- D-133.9 IFC-Klassen: Tabelle `IFC_KLASSEN` und `ifcKlassenName` in `apps/web/src/bim/texte.ts` (nur Anzeige: Baum, Eigenschaften, Klassenauswahl, Vergleich); unbekannte Klassen unverändert. Die Auswahl nennt „Wand (IfcWall): 3“ statt „IfcWall (3)“. Regel- und Kennungsreste in Nutzertexten (Paketname im Bausteinkatalog, „(F1)“, „(Regel U5)“) entfernt.

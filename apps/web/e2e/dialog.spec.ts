@@ -180,7 +180,7 @@ test('Prüf-Panel: Befunde gruppiert, Sprung zur Zelle und in den Dialog; behobe
 
   // Zweite Position: OZ von Hand auf die der ersten, Einheit leeren (beides im Dialog).
   const dialog = await dialogAuf(page, 2);
-  await dialog.getByRole('textbox', { name: 'Ordnungszahl' }).fill('01.0010');
+  await dialog.getByRole('textbox', { name: 'OZ' }).fill('01.0010');
   await dialog.getByRole('textbox', { name: 'Einheit', exact: true }).fill('');
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(dialog).toHaveCount(0);

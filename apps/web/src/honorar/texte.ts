@@ -107,7 +107,7 @@ export const texte = {
   fehler: {
     name: 'Der Name fehlt.',
     bezeichnung: 'Die Bezeichnung fehlt.',
-    kostenermittlung: 'Wähle eine Kostenermittlung des Projekts.',
+    kostenermittlung: 'Bitte eine Kostenermittlung des Projekts wählen.',
   },
   seite: {
     titel: (projekt: string) => `Honorar – ${projekt}`,
@@ -115,11 +115,11 @@ export const texte = {
     nichtGefunden: 'Projekt nicht gefunden',
     zumProjekt: 'Zum Projekt',
     liste: 'Honorarberechnungen des Projekts',
-    leer: 'Noch keine Honorarberechnung. Lege eine an, um ein Honorar nach HOAI zu berechnen.',
+    leer: 'Noch keine Honorarberechnung. Für ein Honorar nach HOAI zuerst eine Honorarberechnung anlegen.',
     anlegenTitel: 'Honorarberechnung anlegen',
     name: 'Name',
     nameFehlt: 'Der Name fehlt.',
-    anlegen: 'Anlegen',
+    anlegen: 'Honorarberechnung anlegen',
     werkzeuge: 'Werkzeuge der Honorarseite',
     brutto: (name: string) => `Brutto ${name}`,
   },

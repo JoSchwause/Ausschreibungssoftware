@@ -8,7 +8,9 @@
 // - „…“ steht mit Leerzeichen davor („Ordner wählen …“), nie als „...“ und nie am Wort klebend; auf Schaltflächen nur,
 //   wenn ein Dialog oder eine Dateiauswahl folgt (nicht prüfbar, in den Texten durchgesehen).
 // - „€“ ist das einzige Währungszeichen (kein „EUR“, kein „Euro“) und steht mit Leerzeichen hinter der Zahl.
-// - Ein Trennzeichen in Titeln und Zeilen mit zwei Teilen: der Doppelpunkt („Projekt „A“: …“), nie „ - “ oder „ | “.
+// - Ein Trennzeichen je Fall: Seitentitel „Kosten – Musterhaus“ (Halbgeviertstrich), Zeilen mit zwei Teilen mit
+//   Doppelpunkt („Projekt „A“: …“); nie „ - “ oder „ | “ (Zellen eines Textes trennt „ · “).
+// - IFC-Klassen erscheinen mit deutschem Namen und der Klasse in Klammern („Fundament (IfcFooting)“, `bim/texte.ts`).
 // - Spaltenkopf „OZ“, Fließtext „Ordnungszahl“ (nie „Ordnungszahl“ als ganze Beschriftung).
 // - Schaltflächen: Verb mit Gegenstand („Projekt anlegen“, nie nur „Anlegen“).
 
@@ -78,8 +80,12 @@ interface Regel {
 const REGELN: readonly Regel[] = [
   // L4: unpersönlich oder „Sie“
   { name: 'du-Form (L4)', muster: /\b(?:du|dich|dir|dein\w*)\b/i },
+  {
+    name: 'Imperativ der 2. Person Singular (L4)',
+    muster: /(?:^|[.:;!?] )(?:Lege|Wähle|Gib|Trage|Füge|Klicke|Nimm|Öffne|Setze|Tippe|Drücke|Ziehe|Ändere|Lies|Prüfe)\b/,
+  },
   // L2: ein Begriff je Sache (Entscheidungen D-133.1 bis D-133.7)
-  { name: 'Vordersatz (Begriff: Menge)', muster: /Vordersatz/ },
+  { name: 'Vordersatz (Begriff: Menge)', muster: /Vordersätz|Vordersatz/ },
   { name: 'Umsatzsteuer als Beschriftung (Begriff: MwSt)', muster: /Umsatzsteuer(?! \(BT-\d+\))/ },
   { name: 'Datensicherung (Begriff: Sicherung)', muster: /Datensicherung/ },
   { name: 'Projektdatei exportieren (Begriff: Projektdatei sichern)', muster: /Projektdatei (?:ex|im)portieren/ },
@@ -137,6 +143,8 @@ describe('Test des Tests', () => {
   it('schlägt bei einem eingefügten „du“ an', () => {
     expect(verstoesse('Die Bezeichnungen bringst du selbst mit.')).toHaveLength(1);
     expect(verstoesse('Dein Projekt wurde gesichert.')).toHaveLength(1);
+    expect(verstoesse('Noch keine Honorarberechnung. Lege eine an.')).toHaveLength(1);
+    expect(verstoesse('Wähle zuerst eine Position.')).toHaveLength(1);
     expect(verstoesse('Die Bezeichnungen werden mitgebracht.')).toEqual([]);
     expect(verstoesse('Bitte Sie sich anmelden.')).toEqual([]);
   });
@@ -144,6 +152,7 @@ describe('Test des Tests', () => {
   it('schlägt bei abgewählten Doppelbegriffen, Kennungen und Schreibweisen an', () => {
     for (const schlecht of [
       'Vordersatz neu',
+      'Die Vordersätze werden gesetzt',
       'Datensicherung',
       'Projektdatei importieren',
       'Import abgeschlossen',
@@ -179,5 +188,14 @@ describe('Test des Tests', () => {
     ]) {
       expect(verstoesse(gut), gut).toEqual([]);
     }
+  });
+});
+
+describe('IFC-Klassen in der Anzeige', () => {
+  it('nennen den deutschen Namen und die Klasse in Klammern; Unbekanntes bleibt unverändert', async () => {
+    const { ifcKlassenName } = await import('./bim/texte');
+    expect(ifcKlassenName('IfcFooting')).toBe('Fundament (IfcFooting)');
+    expect(ifcKlassenName('IfcWall')).toBe('Wand (IfcWall)');
+    expect(ifcKlassenName('IfcZukunft')).toBe('IfcZukunft');
   });
 });

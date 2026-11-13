@@ -98,7 +98,7 @@ test('Eigenes Profil: anlegen, bleibt nach dem Neuladen, exportieren, löschen, 
 
   const [export_] = await Promise.all([
     page.waitForEvent('download'),
-    dialog.getByRole('button', { name: 'Profil exportieren' }).click(),
+    dialog.getByRole('button', { name: 'Profil sichern' }).click(),
   ]);
   expect(export_.suggestedFilename()).toBe('Bieter ohne Preise.druckprofil.json');
   const json = readFileSync(await export_.path(), 'utf8');

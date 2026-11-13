@@ -49,7 +49,7 @@ import {
 import { vergleichPfad } from '../modellvergleich/pfad'; // Ticket 116
 import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 116
 import { modellTesthaken } from './testhaken';
-import { texte } from './texte';
+import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
 import { useBezug } from './useBezug'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
@@ -306,7 +306,7 @@ function Arbeitsflaeche({
             wert={klasse}
             optionen={alleKlassen.map((k) => ({
               wert: k.klasse,
-              label: `${k.klasse} (${String(k.anzahl)})`,
+              label: `${ifcKlassenName(k.klasse)}: ${String(k.anzahl)}`,
             }))}
             onWertChange={setKlasse}
           />
@@ -410,7 +410,7 @@ function Arbeitsflaeche({
                 <dt>{texte.seite.globalId}</dt>
                 <dd>{fokus}</dd>
                 <dt>{texte.seite.klasse}</dt>
-                <dd>{fokusBauteil?.ifcKlasse ?? (fokusKnoten ? texte.strukturart[fokusKnoten.art] : '')}</dd>
+                <dd>{fokusBauteil ? ifcKlassenName(fokusBauteil.ifcKlasse) : (fokusKnoten ? texte.strukturart[fokusKnoten.art] : '')}</dd>
                 {fokusBauteil?.typ ? (
                   <>
                     <dt>{texte.seite.typ}</dt>

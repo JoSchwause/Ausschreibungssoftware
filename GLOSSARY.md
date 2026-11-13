@@ -89,7 +89,7 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
 Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`. Die Eingabe des Bieters zu einer Textergänzung im Angebot heißt **Bieterergänzung**; das Angebot hält sie noch nicht (Befund beim X84-Import, Offene Typfrage in Ticket 53).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
-- **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
+- **Menge**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen. „Vordersatz“ ist ein Wort der Vorbild-Software und erscheint in der Oberfläche nicht (D-133.2).
 - **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`). Eine leere Eingabe ist keine Einheit: Ein Befehl darf eine leere Zeichenkette tragen, gespeichert wird „keine Einheit“ (`null`); im Zustand steht nie eine leere Einheit (D-06).
 - **Einheitspreis (EP)**: Netto-Preis pro Einheit, mit 3 Nachkommastellen gespeichert (Entscheidung G-21).
 - **Gesamtpreis (GP)**: Produkt aus Menge × EP, kaufmännisch auf 2 Nachkommastellen (Cent) gerundet.
@@ -248,7 +248,7 @@ Die Verknüpfung einer Position (im Ausschreibungs-LV oder Auftrags-LV) mit eine
 Welche Menge eine Position von einem zugeordneten Bauteil übernimmt: der Name einer Bauteilmenge, wie er im Modell steht (z. B. `NetVolume`), oder fest `Stueck` (jedes Bauteil zählt 1, in der Oberfläche „Stück“). Nicht die Art einer Bauteilmenge (Länge, Fläche, Volumen, Anzahl, Gewicht, Zeit; im Code `Bauteilmenge.art`). Trägt ein Bauteil denselben Namen in zwei Mengensätzen, ist die Mengenart an ihm mehrdeutig (Befund). Im Code `Bauteilzuordnung.mengenart`.
 
 ### Mengenübernahme
-Der Vordersatz einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
+Die Menge einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
 
 ### Aufmaßblatt aus Auswahl
 Ein neues Aufmaßblatt zu einem Auftrags-LV aus einer Auswahl von Bauteilen eines Bauwerksmodells (X1d, D-53): je Position mit mindestens einem zugeordneten, ausgewählten Bauteil eine Aufmaßposition mit den Ansatzzeilen nur der ausgewählten Bauteile (Regeln wie bei der Mengenübernahme), angelegt mit `AufmassAnlegen`. Dasselbe Bauteil auf zwei Blättern ist nicht erkennbar, weil eine Ansatzzeile keine GlobalId trägt. Die Auswahl „Geschoss“ sind alle Bauteile, die im Geschoss oder in einem Strukturknoten darunter (etwa einem Raum) stehen. Im Code `aufmassAusAuswahl`, `AufmassAusAuswahl`, `Aufmassvorschlag`, `Aufmasshinweis`, `bauteileImStrukturknoten` (Paket `bim`).
@@ -569,3 +569,29 @@ Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie si
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.
 - **ÖNORM B 2063 / A 2063**: Österreichische Standards für Leistungsbeschreibungen, Aufmaß und elektronischen AVA-Datenaustausch (`.onlv` / `.onlb`).
 - **SIA 451 & CRB NPK**: Schweizerischer Datenaustauschstandard (**SIA 451**) und **Normpositionen-Katalog (NPK)** der Schweizerischen Zentralstelle für Baurationalisierung (CRB) inklusive Baukostenplan (**BKP / eBKP**).
+
+---
+
+## Sprache der Oberfläche (Ticket 133, L2, L4)
+
+Eine Benennung je Sache in allen Texten der Oberfläche (`texte.ts` in `apps/web/src/*` und `packages/ui-*`). Der Sprachtest
+`apps/web/src/sprache.test.ts` prüft die abgewählten Benennungen, die Anrede und die Schreibung; die Gründe stehen in den
+Entscheidungen D-133.1 bis D-133.9 im Ticket 133.
+
+| Sache | Benennung in der Oberfläche | Nicht mehr |
+|---|---|---|
+| Ordnungszahl | Beschriftung, Spaltenkopf und Feldname **OZ**; im Satz **Ordnungszahl** („Die Ordnungszahl passt nicht zur OZ-Maske.“) | „Ordnungszahl“ als alleinige Beschriftung |
+| Mehrwertsteuer | **MwSt** („MwSt-Satz“, Spalte „MwSt“) | „Umsatzsteuer“ (nur in „Umsatzsteuer (BT-110)“, dem Namen des Feldes der EN 16931) |
+| Geplante Menge einer Position | **Menge** | „Vordersatz“ |
+| Projektdatei schreiben | Die Datei heißt **Projektdatei**, die Handlung **sichern** („Projektdatei sichern“, „Jetzt sichern“); der Dialog und der Bereich heißen **Sicherung** | „Datensicherung“, „Projektdatei exportieren“ |
+| Datei lesen | **einlesen** („Projektdatei einlesen“, „Profil einlesen“, „Excel einlesen“) | „importieren“, „Import“ |
+| Profil schreiben (Druckprofil) | **Profil sichern** | „Profil exportieren“ |
+| Neues Objekt | Verb mit Gegenstand: „Projekt anlegen“, „Rechnung anlegen“, „Nachtrag anlegen“ | „Anlegen“ allein, „Neue Rechnung“ |
+| Projektangaben ändern | „Stammdaten ändern“ (ändert Name und Bauherr) | „Projekt umbenennen“ |
+| IFC-Klasse | deutscher Name, Klasse in Klammern: „Fundament (IfcFooting)“; unbekannte Klassen stehen unverändert da | rohe Klasse allein |
+
+Schreibung: Anrede unpersönlich, wo nötig „Sie“, nie „du“ und nie ein Imperativ der 2. Person Singular (L4). „…“ mit
+Leerzeichen davor und nur auf Schaltflächen, die einen Dialog oder eine Dateiauswahl öffnen. „€“ als einziges
+Währungszeichen, mit Leerzeichen hinter der Zahl; Beträge in Eingabefeldern tragen „(netto, €)“ im Namen. Ein Trennzeichen:
+Seitentitel „Seite – Projekt“ mit Halbgeviertstrich, Zeilen mit zwei Teilen mit Doppelpunkt, Zellen eines Klartextes mit
+„ · “. Keine Ticketnummern, Regel- oder Entscheidungskennungen und keine Paketnamen in Nutzertexten (L5).
