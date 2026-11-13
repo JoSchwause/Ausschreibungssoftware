@@ -247,11 +247,11 @@ test('X1: zuordnen, Mengen übernehmen, Undo/Redo, Kennwerte, Kostenschätzung, 
     .getByRole('button', { name: 'Zuschlag erteilen', exact: true })
     .click();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
+  // Ticket 155: „Aufmaß aus Modell“ öffnet den einzigen Stand mit dem Auftrags-LV als „LV für Zuordnung“ vorgewählt
   await page.getByRole('link', { name: 'Aufmaß aus Modell' }).click();
-  await page.getByRole('link', { name: 'haus-v1' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'haus-v1' })).toBeVisible();
 
-  await waehle(page, zuordnung, 'LV für Zuordnung', /^Auftrags-LV: /);
+  await expect(zuordnung.getByRole('combobox', { name: 'LV für Zuordnung' })).toHaveText(/^Auftrags-LV: /);
   await expect(zuordnung.getByText('3 Bauteile zugeordnet, 27 ohne Zuordnung')).toBeVisible();
   await baumzelle(page, FX.erweitert.aufmassAusAuswahl.auswahl.name).click();
   await expect.poll(() => page.evaluate(() => window.tethysModell?.auswahl().length)).toBe(17);

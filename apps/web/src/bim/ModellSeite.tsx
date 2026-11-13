@@ -34,7 +34,7 @@ import { BAUM_SPALTEN, globalIdDerZeile, modellbaumBauen, sichtbareZeilen } from
 import { BefundListe } from './BefundListe';
 import { geometriebefunde } from './befunde';
 import { IfcArbeiter } from './ifc-arbeiter';
-import { modellePfad } from './pfad';
+import { auftragAusAdresse, modellePfad } from './pfad';
 import { bauwerksmodellLaden } from './schreiben';
 import {
   ALLES_SICHTBAR,
@@ -50,7 +50,7 @@ import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 11
 import { modellTesthaken } from './testhaken';
 import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
-import { useZuordnungsLv } from './zuordnungsLv'; // Ticket 115
+import { auftragSchluessel, useZuordnungsLv } from './zuordnungsLv'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
 import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
@@ -130,7 +130,12 @@ function Arbeitsflaeche({
   const [klasse, setKlasse] = useState<string | undefined>(undefined);
   const ansicht = useRef<ModellansichtRef | null>(null);
   // Ticket 115: Bezugs-LV der Zuordnung; die 3D-Ansicht färbt „zugeordnet“/„ohne Zuordnung“ bezogen auf dieses LV.
-  const zuordnungsLv = useZuordnungsLv(projektId);
+  // Ticket 155: „Aufmaß aus Modell“ wählt das Auftrags-LV über die Adresse vor.
+  const [vorwahl] = useState(() => {
+    const a = auftragAusAdresse(window.location.search);
+    return a === null ? undefined : auftragSchluessel(a);
+  });
+  const zuordnungsLv = useZuordnungsLv(projektId, vorwahl);
   const faerbung = useMemo(
     () => (zuordnungsLv.lv === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, zuordnungsLv.knoten)),
     [zuordnungsLv.lv, zuordnungsLv.knoten, modell],

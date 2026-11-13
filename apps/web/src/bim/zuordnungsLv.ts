@@ -43,6 +43,9 @@ export interface ZuordnungsLvStand {
   readonly senden: (befehle: readonly BauteileZuordnen[]) => Promise<boolean>;
 }
 
+/** Der Schlüssel eines Auftrags-LV in der Wahl (`auftrag:<id>`). */
+export const auftragSchluessel = (id: string): string => `auftrag:${id}`;
+
 export function knotenDes(lv: ZuordnungsLv | null): readonly Knoten[] {
   if (lv === null) return [];
   return lv.art === 'lv'
@@ -62,11 +65,18 @@ export function zuordnungsLvWahlen(
     ...lvs
       .filter((l) => l.vorlage !== true)
       .map((l) => ({ schluessel: `lv:${l.id}`, label: texte.zuordnung.lv(l.name) })),
-    ...auftraege.map((a) => ({ schluessel: `auftrag:${a.id}`, label: texte.zuordnung.auftrag(a.name) })),
+    ...auftraege.map((a) => ({
+      schluessel: auftragSchluessel(a.id),
+      label: texte.zuordnung.auftrag(a.name),
+    })),
   ];
 }
 
-export function useZuordnungsLv(projektId: ProjektId): ZuordnungsLvStand {
+/**
+ * `vorwahl`: das LV, das beim Öffnen gewählt ist (Schlüssel `auftrag:<id>`, „Aufmaß aus Modell“, Ticket 155); fehlt es in der
+ * Liste, das erste.
+ */
+export function useZuordnungsLv(projektId: ProjektId, vorwahl?: string): ZuordnungsLvStand {
   const u = useUmgebung();
   const { pruefe } = useMeldungen();
   const [wahlen, setWahlen] = useState<readonly ZuordnungsLvWahl[] | null>(null);
@@ -92,14 +102,15 @@ export function useZuordnungsLv(projektId: ProjektId): ZuordnungsLvStand {
       const liste = zuordnungsLvWahlen(lvs.ok ? lvs.wert : [], auftraege.ok ? auftraege.wert : []);
       if (!abo.aktiv) return;
       setWahlen(liste);
-      setSchluessel((s) =>
-        s !== undefined && liste.some((w) => w.schluessel === s) ? s : liste[0]?.schluessel,
-      );
+      setSchluessel((s) => {
+        if (s !== undefined && liste.some((w) => w.schluessel === s)) return s;
+        return liste.find((w) => w.schluessel === vorwahl)?.schluessel ?? liste[0]?.schluessel;
+      });
     })();
     return () => {
       abo.aktiv = false;
     };
-  }, [u, projektId, lauf]);
+  }, [u, projektId, lauf, vorwahl]);
 
   useEffect(() => {
     let aktiv = true;
