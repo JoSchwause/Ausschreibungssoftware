@@ -1,6 +1,6 @@
 # 131: App: Seitengerüst und Navigation
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: U, E1 · Paket/Ordner: `apps/web/src/ui/`, `projekt/`, `App.tsx`; Seitengerüst-Umstellung in `bim/`, `modellvergleich/`, `bauzeit/`, `honorar/`, `bauleitung/` (nur Gerüst, keine Fachänderung)
 Blocked by: –
