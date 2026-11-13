@@ -39,3 +39,5 @@ Herkunft: `../review-welle-6.md` (Ermessenspunkte, die Vertrag oder viele Dateie
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+- Welle 7 (D-76): aufgeteilt. Punkt 1, 5, 8 (`MENGENART_STUECK`), 9 → 127; Punkt 2 → 135; Punkt 3, 7 (`bauzeit`), 8 (Paketteile) → 140; Punkt 4 → 131 (Honorar-PDF im Worker → 155); Punkt 6 → 130; Punkt 7 (`ausgabe`) → 141; Punkt 8 (App-Teile) → 155.
