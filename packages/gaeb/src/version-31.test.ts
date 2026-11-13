@@ -18,11 +18,10 @@ import type {
   LvInhalt,
   Position,
   ProjektId,
-  Pruefbefund,
   Summenstand,
 } from '@tethys/vertrag';
 import { leseAngebot, leseGaeb } from './index';
-import type { AngebotLesung } from './index';
+import type { AngebotLesung, GaebBefund } from './index';
 import { lesePfad, testIds, TEST_MWST } from './testhilfen';
 import { elementKinder, parseXml, textInhalt } from './xml';
 import type { XmlElement } from './xml';
@@ -89,7 +88,7 @@ function wurzelVon(d: string): XmlElement {
 
 interface Gelesen {
   readonly inhalt: LvInhalt;
-  readonly befunde: readonly Pruefbefund[];
+  readonly befunde: readonly GaebBefund[];
   readonly summen: Summenstand;
   readonly positionen: readonly Position[];
   readonly gliederungen: readonly Knoten[];
@@ -348,9 +347,14 @@ describe('GAEB DA XML 3.1: Angebot X84', () => {
         });
     expect(an('bietermenge-nicht-abgebildet')).toEqual(['1.10.30.10', '1.10.40.10', '1.10.40.30']);
     expect(g.befunde.find((b) => b.code === 'bietermenge-nicht-abgebildet')?.meldung).toBe(
-      'Die Position 1.10.30.10 trägt eine Menge des Bieters (10.000). Ein Angebot übernimmt nur Preise; es gilt die Menge des LV (ohne Menge).',
+      'Die Position 1.10.30.10 trägt eine Menge des Bieters (10,000). Ein Angebot übernimmt nur Preise; es gilt die Menge des LV (ohne Menge).',
     );
+    expect(g.befunde.find((b) => b.code === 'bietermenge-nicht-abgebildet')?.werte).toEqual({
+      bietermenge: { art: 'menge', wert: '10.000' },
+    });
     expect(an('pauschalsumme-nicht-abgebildet')).toEqual(['1.20']);
-    expect(g.lesung.befunde.map((b) => b.meldung).filter((m) => m.includes('Element Item/Qty '))).toEqual([]);
+    expect(g.lesung.befunde.map((b) => b.werte?.['element']?.wert).filter((m) => m === 'Item/Qty')).toEqual(
+      [],
+    );
   });
 });

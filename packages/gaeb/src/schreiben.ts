@@ -386,7 +386,7 @@ class Schreiber {
       if (!this.opt.summen)
         this.fehler(
           'pflichtelement-fehlt',
-          'X86 verlangt Gesamtbeträge (Totals); der Aufrufer hat keinen Summenstand übergeben.',
+          'X86 verlangt Gesamtbeträge (Totals); für die Ausgabe liegen keine Summen vor.',
           undefined,
           'summen',
         );
@@ -875,7 +875,7 @@ class Schreiber {
           (w === null
             ? 'Die Position ist Grundposition einer Wahlposition ohne Gruppen- und Variantennummer; sie wird als '
             : 'Die Wahlposition hat keine Gruppen- und Variantennummer; sie wird als ') +
-            `Gruppe ${String(kuenstlich.gruppe)}, Variante ${String(kuenstlich.variante)} geschrieben (künstlich vergeben, D-16).`,
+            `Gruppe ${String(kuenstlich.gruppe)}, Variante ${String(kuenstlich.variante)} geschrieben (beim Ausgeben vergeben).`,
           p.id,
           'merkmale.wahl',
         );
@@ -1071,7 +1071,7 @@ class Schreiber {
         if (basis === undefined)
           this.fehler(
             'pflichtelement-fehlt',
-            'X86 verlangt die Basis der Zuschlagsposition (ITMarkup); der Aufrufer hat keine übergeben.',
+            'X86 verlangt die Basis der Zuschlagsposition (ITMarkup); für die Ausgabe liegt keine vor.',
             p.id,
             'zuschlag',
           );
