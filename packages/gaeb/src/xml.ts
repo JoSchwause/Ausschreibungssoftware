@@ -16,7 +16,8 @@
 // Toleranz: ungeschlossene Elemente, unerwartete Schließ-Tags, fehlende Anführungszeichen, bare `&` und
 // abgeschnittene Dateien ergeben Befunde, der bis dahin gelesene Baum bleibt erhalten.
 
-import type { Befundort, Pruefbefund } from '@tethys/vertrag';
+import type { Befundort } from '@tethys/vertrag';
+import type { GaebBefund, GaebBefundcode } from './befunde';
 
 export interface XmlElement {
   /** Lokaler Name ohne Präfix. */
@@ -42,7 +43,7 @@ export interface XmlOptionen {
 
 export interface XmlErgebnis {
   readonly wurzel: XmlElement | null;
-  readonly befunde: readonly Pruefbefund[];
+  readonly befunde: readonly GaebBefund[];
   /** `true`: Die Datei wurde aus Sicherheitsgründen zurückgewiesen; `wurzel` ist `null`. */
   readonly abgelehnt: boolean;
   /** Zeile und Spalte (1-basiert) zu einer Position der Eingabe. */
@@ -101,7 +102,7 @@ export function textInhalt(e: XmlElement): string {
 export function parseXml(text: string, optionen: XmlOptionen = {}): XmlErgebnis {
   const maxTiefe = optionen.maxTiefe ?? STANDARD_MAX_TIEFE;
   const blatt = optionen.blattNamen;
-  const befunde: Pruefbefund[] = [];
+  const befunde: GaebBefund[] = [];
   const stapel: Baumelement[] = [];
   const n = text.length;
   let wurzel: Baumelement | null = null;
@@ -133,8 +134,8 @@ export function parseXml(text: string, optionen: XmlOptionen = {}): XmlErgebnis 
   };
 
   const melde = (
-    schwere: Pruefbefund['schwere'],
-    code: string,
+    schwere: GaebBefund['schwere'],
+    code: GaebBefundcode,
     meldung: string,
     offset: number,
     element?: XmlElement,

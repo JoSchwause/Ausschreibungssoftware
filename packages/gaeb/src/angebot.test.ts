@@ -15,10 +15,9 @@ import type {
   Leistungsverzeichnis,
   Position,
   ProjektId,
-  Pruefbefund,
 } from '@tethys/vertrag';
 import { leseAngebot, leseGaeb } from './index';
-import type { AngebotLesung } from './index';
+import type { AngebotLesung, GaebBefund } from './index';
 import { TEST_MWST, fixtureLv, lesePfad, leseTestdatei, testIds } from './testhilfen';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
@@ -45,8 +44,8 @@ const lies = (bytes: Uint8Array | string, lv: Leistungsverzeichnis, dateiname?: 
     ...(dateiname === undefined ? {} : { dateiname }),
   });
 
-const codes = (l: { befunde: readonly Pruefbefund[] }): string[] => l.befunde.map((b) => b.code);
-const mitCode = (l: AngebotLesung, code: string): Pruefbefund[] => l.befunde.filter((b) => b.code === code);
+const codes = (l: { befunde: readonly GaebBefund[] }): string[] => l.befunde.map((b) => b.code);
+const mitCode = (l: AngebotLesung, code: string): GaebBefund[] => l.befunde.filter((b) => b.code === code);
 
 /** Angebotsposition zur OZ (mit Index ohne Trenner dahinter, wie `Position.ozIndex`). */
 function zeile(
@@ -65,7 +64,7 @@ function zeile(
 }
 
 /** OZ des Knotens, an dem ein Befund hängt. */
-function ozVon(lv: Leistungsverzeichnis, b: Pruefbefund): string | null {
+function ozVon(lv: Leistungsverzeichnis, b: GaebBefund): string | null {
   const k = lv.knoten.find((x) => x.id === b.ort.knotenId);
   return k && k.art !== 'hinweis'
     ? `${k.ordnungszahl ?? ''}${k.art === 'position' ? (k.ozIndex ?? '') : ''}`
@@ -161,8 +160,14 @@ describe('BVBS AVA X84 gegen das LV aus der X81', () => {
   it('gp-abweichend genau an 1.30.10.30 (900,00 gegen 855,00) und 1.10.10.60', () => {
     const b = mitCode(l, 'gp-abweichend');
     expect(b.map((x) => ozVon(lv, x))).toEqual(['1.10.10.60', '1.30.10.30']);
-    expect(b[1]?.meldung).toContain('855.00');
-    expect(b[1]?.meldung).toContain('900.00');
+    // Ticket 136: Werte als Daten, im Text deutsch (N4).
+    expect(b[1]?.werte).toEqual({
+      datei: { art: 'betrag', wert: '855.00' },
+      gerechnet: { art: 'betrag', wert: '900.00' },
+    });
+    expect(b[1]?.meldung).toContain('855,00 €');
+    expect(b[1]?.meldung).toContain('900,00 €');
+    expect(b.map((x) => x.oz)).toEqual(['1.10.10.60', '1.30.10.30']);
   });
 
   it('nachlass-nicht-abgebildet an 1.10.10.60, 1.30.10.30 und den Gliederungen 1.10.10, 1.10.15, 1.10.20, 1.10', () => {
@@ -176,13 +181,21 @@ describe('BVBS AVA X84 gegen das LV aus der X81', () => {
       '1.10',
       '1.30.10.30',
     ]);
-    expect(b[1]?.meldung).toContain('10.00 %');
-    expect(b[3]?.meldung).toContain('-5.00 %');
-    expect(b[4]?.meldung).toContain('10000.00');
+    expect(b.map((x) => x.werte?.['nachlass'])).toEqual([
+      { art: 'prozent', wert: '10.00' },
+      { art: 'prozent', wert: '10.00' },
+      { art: 'prozent', wert: '10.00' },
+      { art: 'prozent', wert: '-5.00' },
+      { art: 'betrag', wert: '10000.00' },
+      { art: 'prozent', wert: '5.00' },
+    ]);
+    expect(b[1]?.meldung).toContain('10,00 %');
+    expect(b[3]?.meldung).toContain('-5,00 %');
+    expect(b[4]?.meldung).toContain('10.000,00 €');
   });
 
   it('Bietername aus CTR (Name1 bis Name4) als Vorschlag', () => {
-    expect(l.bieter).toEqual({ name: 'Maler + Lackierer Pinsel und Co KG' });
+    expect(l.bieter?.name).toBe('Maler + Lackierer Pinsel und Co KG');
   });
 
   it('leere Bieterergänzungen (Empty="Yes") sind kein Befund', () => {
@@ -222,8 +235,16 @@ describe('BVBS Bauausführung X84 gegen das LV aus der X83', () => {
     expect(zeile(l, lv, '002.001.0020')).toMatchObject({ status: 'angeboten', einheitspreis: '2.000' });
   });
 
-  it('Bietername aus CTR', () => {
-    expect(l.bieter).toEqual({ name: 'BVBS' });
+  it('Bietername aus CTR, die Angaben wie in der Datei (Ticket 136)', () => {
+    expect(l.bieter).toEqual({
+      name: 'BVBS',
+      angaben: {
+        anschrift: { strasse: 'k.A.', plz: 'k.A.', ort: 'k.A.' },
+        ansprechperson: null,
+        email: null,
+        telefon: null,
+      },
+    });
   });
 
   it('IT 0.00 an der Alternativposition 001.002.0050 ist kein gp-abweichend', () => {
@@ -428,7 +449,11 @@ describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
       mitCode(l, 'zuschlag-art-abweichend')
         .map((b) => b.meldung)
         .join(' '),
-    ).toMatch(/3\.000.*5\.00/);
+    ).toMatch(/3,000.*5,00 %/);
+    expect(mitCode(l, 'zuschlag-art-abweichend').map((b) => b.werte?.['wert'])).toEqual([
+      { art: 'einheitspreis', wert: '3.000' },
+      { art: 'prozent', wert: '5.00' },
+    ]);
   });
 
   it('IT 0,00 an einer Wahl ohne Gruppe/Variante (aus v1) ist kein gp-abweichend: dieselbe Regel wie der Kern (D-16, S4)', () => {
@@ -448,7 +473,7 @@ describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
     const text = new TextDecoder()
       .decode(leseTestdatei('x84/fehler.x84'))
       .replace('<IT>125.00</IT>', '<IT>0.00</IT>');
-    const abweichend = (x: AngebotLesung): Pruefbefund[] =>
+    const abweichend = (x: AngebotLesung): GaebBefund[] =>
       mitCode(x, 'gp-abweichend').filter((b) => b.ort.knotenId === p.id);
     expect(abweichend(lies(text, ohneNummer))).toEqual([]);
     // Gegenprobe: dieselbe Zeile an der Normalposition weicht ab.
@@ -491,8 +516,12 @@ describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
   it('gp-abweichend nennt beide Werte', () => {
     const b = mitCode(l, 'gp-abweichend');
     expect(b).toHaveLength(1);
-    expect(b[0]?.meldung).toContain('95.00');
-    expect(b[0]?.meldung).toContain('100.00');
+    expect(b[0]?.werte).toEqual({
+      datei: { art: 'betrag', wert: '95.00' },
+      gerechnet: { art: 'betrag', wert: '100.00' },
+    });
+    expect(b[0]?.meldung).toContain('95,00 €');
+    expect(b[0]?.meldung).toContain('100,00 €');
   });
 
   it('Nachlass in den Totals des LV wird Angebot.nachlass', () => {
@@ -503,8 +532,16 @@ describe('Fehlerdatei fehler.x84 gegen lv.x83', () => {
     expect(mitCode(l, 'bieterergaenzung-nicht-abgebildet')).toHaveLength(1);
   });
 
-  it('Bietername aus Name1 und Name2', () => {
-    expect(l.bieter).toEqual({ name: 'Muster Bau GmbH' });
+  it('Bietername aus Name1 und Name2, die Straße als Angabe (Ticket 136)', () => {
+    expect(l.bieter).toEqual({
+      name: 'Muster Bau GmbH',
+      angaben: {
+        anschrift: { strasse: 'Testweg 1', plz: null, ort: null },
+        ansprechperson: null,
+        email: null,
+        telefon: null,
+      },
+    });
   });
 
   it('Golden', () => {

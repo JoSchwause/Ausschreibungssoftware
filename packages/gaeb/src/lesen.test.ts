@@ -363,11 +363,13 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
         abnahmeart: null,
         gewaehrleistung: null,
       });
-      const nicht = l.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung);
-      expect(nicht.some((m) => m.includes('Award/OWN '))).toBe(false);
-      expect(nicht.some((m) => m.includes('Award/AwardInfo '))).toBe(false);
-      expect(nicht.some((m) => m.includes('OWN/DPNo'))).toBe(true);
-      expect(nicht.some((m) => m.includes('AwardInfo/Cur '))).toBe(true);
+      const nicht = l.befunde
+        .filter((b) => b.code === 'nicht-abgebildet')
+        .map((b) => b.werte?.['element']?.wert);
+      expect(nicht).not.toContain('Award/OWN');
+      expect(nicht).not.toContain('Award/AwardInfo');
+      expect(nicht).toContain('OWN/DPNo');
+      expect(nicht).toContain('AwardInfo/Cur');
     });
 
     it('Texterstellung X81: ohne OWN fehlt der Auftraggeber', () => {
@@ -663,9 +665,8 @@ describe('Version und Phase: Reihenfolge Namensraum, GAEBInfo/Version, Award/DP,
     expect(l.inhalt).toBeNull();
     const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
     expect(b?.schwere).toBe('fehler');
-    expect(b?.meldung).toBe(
-      'GAEB DA XML 3.0 wird nicht gelesen; gelesen werden die Versionen 3.1, 3.2 und 3.3.',
-    );
+    // Ticket 136: der Satz sagt auch, was stattdessen geht (abweisung.test.ts).
+    expect(b?.meldung).toContain('Gelesen werden die Versionen 3.1, 3.2 und 3.3');
   });
 
   it('fremder Namensraum und fremdes Wurzelelement', () => {
@@ -916,16 +917,23 @@ describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereich
     expect(amBereich(l)).toEqual([
       [
         'nachlass-nicht-abgebildet',
-        'Nachlass 10.00 % der Gliederung 1: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.',
+        'Nachlass 10,00 % der Gliederung 1: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.',
       ],
       [
         'pauschalsumme-nicht-abgebildet',
-        'Pauschalsumme 15.00 der Gliederung 1: Eine Pauschalsumme für eine Gliederung ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.',
+        'Pauschalsumme 15,00 € der Gliederung 1: Eine Pauschalsumme für eine Gliederung wird nicht übernommen; die Summe wird aus den Positionen gerechnet.',
       ],
       [
         'mwst-satz-abweichend',
-        'Steuersatz 7.00 % der Gliederung 1 weicht vom Satz des LV (19.00 %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.',
+        'Steuersatz 7,00 % der Gliederung 1 weicht vom Satz des LV (19,00 %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.',
       ],
+    ]);
+    // Ticket 136: dieselben Werte als Daten, die OZ der Gliederung am Befund.
+    const titel = knoten(l).find((k) => k.art === 'titel');
+    expect(l.befunde.filter((b) => b.ort.knotenId === titel?.id).map((b) => [b.oz, b.werte])).toEqual([
+      ['1', { nachlass: { art: 'prozent', wert: '10.00' } }],
+      ['1', { pauschalsumme: { art: 'betrag', wert: '15.00' } }],
+      ['1', { satz: { art: 'prozent', wert: '7.00' }, satzLv: { art: 'prozent', wert: '19.00' } }],
     ]);
   });
 
@@ -937,7 +945,7 @@ describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereich
       ),
     );
     expect(amBereich(l).map(([c, m]) => [c, m.split(':')[0]])).toEqual([
-      ['nachlass-nicht-abgebildet', 'Nachlass 5.00 € der Gliederung 1'],
+      ['nachlass-nicht-abgebildet', 'Nachlass 5,00 € der Gliederung 1'],
     ]);
   });
 
@@ -981,8 +989,9 @@ describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereich
     const l = lies(x86(bereich('', ''), '<Total>20.00</Total><TotalLSUM>18.00</TotalLSUM><VAT>19.00</VAT>'));
     const b = l.befunde.find((x) => x.code === 'pauschalsumme-nicht-abgebildet');
     expect(b?.meldung).toBe(
-      'Pauschalsumme 18.00 des LV: Eine Pauschalsumme ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.',
+      'Pauschalsumme 18,00 € des LV: Eine Pauschalsumme wird nicht übernommen; die Summe wird aus den Positionen gerechnet.',
     );
+    expect(b?.werte).toEqual({ pauschalsumme: { art: 'betrag', wert: '18.00' } });
     expect(b?.schwere).toBe('warnung');
   });
 });
