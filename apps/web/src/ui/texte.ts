@@ -40,10 +40,28 @@ export const texte = {
       zuDunkel: 'Zum dunklen Modus wechseln',
       zuHell: 'Zum hellen Modus wechseln',
     },
+    // Ticket 147 (B-30): Speicherstatus und letzte Sicherung statt „Bereit“
     status: {
-      bereit: 'Bereit',
+      name: 'Statuszeile',
       modusHell: 'Hell',
       modusDunkel: 'Dunkel',
+      speicher: {
+        dauerhaft: 'Speicher: dauerhaft',
+        nichtDauerhaft: 'Speicher: nicht dauerhaft',
+        unbekannt: 'Speicher: unbekannt',
+      },
+      speicherHinweis: {
+        dauerhaft:
+          'Der Browser hält die Daten dauerhaft und löscht sie nicht von sich aus. Eine Sicherung als Projektdatei schützt trotzdem vor dem Verlust des Geräts.',
+        nichtDauerhaft:
+          'Der Browser darf die Daten bei knappem Speicherplatz löschen. Die Projekte deshalb regelmäßig als Projektdatei sichern.',
+        unbekannt:
+          'Der Browser gibt nicht an, ob er die Daten dauerhaft hält. Die Projekte deshalb regelmäßig als Projektdatei sichern.',
+      },
+      sicherung: (zeit: string): string => `Letzte Sicherung: ${zeit}`,
+      sicherungVon: (zeit: string, projekt: string): string => `Letzte Sicherung: ${zeit} (${projekt})`,
+      nichtGesichert: 'Noch nicht gesichert',
+      keineSicherung: 'Noch keine Sicherung',
     },
     zuSchmal: {
       titel: 'Fenster zu schmal.',
