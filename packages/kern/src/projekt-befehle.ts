@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen.
+// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen;
+// seit Vertrag v1.7a (Ticket 137, D-127.5) ProjektangabenSetzen und Bieterangaben beim Anlegen (D-127.4). Die Bieterbefehle
+// `BieterUmbenennen`, `BieterangabenSetzen` und `BieterLoeschen` führt die Vergabe aus (D-127.17); sie nimmt Form und
+// Normalform der Bieterangaben von hier (`angaben.ts`, D-82 S9).
 // `(Projekt | null, Befehl) → Ergebnis<ProjektChangeSet, Befehlsfehler>`: rein, ohne Uhr und Zufall (A2); alle Kennungen
 // bringt der Befehl mit. Das ChangeSet trägt den ganzen alten und neuen Stand (`projekt.vorher`/`nachher`); damit ist es
 // ohne Vorzustand umkehrbar (`projektChangeSetUmkehren`).
 //
 // Text wird unverändert übernommen (U5): ein leerer Projekt- oder Bietername ist erlaubt, wie `FELD_ANNAHMEN`. Geprüft
-// wird nur die Form (Typ der Felder, nicht leere Kennungen) und die Eindeutigkeit der Bieter-ID.
+// wird nur die Form (Typ der Felder, nicht leere Kennungen) und die Eindeutigkeit der Bieter-ID. Angaben (v1.7a) kommen in
+// die Normalform von `angaben.ts` (`''` → `null`, ganz leer: das Feld fehlt).
 
 import type {
   Bauherr,
@@ -15,7 +19,10 @@ import type {
   ProjektBefehlAusfuehren,
   ProjektChangeSet,
 } from '@tethys/vertrag';
+import { bieterMitAngaben, bieterangabenFehler, projektangabenFehler, projektangabenNormal } from './angaben';
 import { nein, ok } from './fehler';
+import { gleicherWert } from './merkmal-befehle';
+import { mitFeld } from './struktur';
 
 /** Fehlertext zur Form des Bauherrn oder `null`. */
 function bauherrFehler(b: unknown): string | null {
@@ -48,8 +55,9 @@ const changeSet = (projekt: Projekt, vorher: Projekt | null, nachher: Projekt | 
 
 /**
  * Führt einen Projektbefehl aus. `ProjektAnlegen` braucht `zustand === null`, jeder andere Befehl ein Projekt; sonst
- * `befehl-nicht-zustaendig`. `ProjektStammdatenSetzen` mit denselben Werten liefert `vorher` gleich `nachher` (keine
- * Änderung). `ProjektLoeschen`: `nachher: null`, `vorher` ist der volle Stand samt Bietern; ob noch LVs oder Angebote
+ * `befehl-nicht-zustaendig`. `ProjektStammdatenSetzen` und `ProjektangabenSetzen` mit denselben Werten liefern `vorher`
+ * gleich `nachher` (keine Änderung); `ProjektStammdatenSetzen` lässt die Angaben stehen. `verweise` (v1.7a) liest der Kern
+ * nicht: Kein Projektbefehl des Kerns löscht etwas, auf das verwiesen wird. `ProjektLoeschen`: `nachher: null`, `vorher` ist der volle Stand samt Bietern; ob noch LVs oder Angebote
  * am Projekt hängen, prüft `speicher` (`konflikt`).
  */
 export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl) => {
@@ -81,7 +89,7 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       if (typeof b !== 'object' || b === null) {
         return nein('ungueltige-eingabe', 'bieter muss ein Objekt sein.', undefined, 'bieter');
       }
-      const { id, name } = b as { id?: unknown; name?: unknown };
+      const { id, name, angaben } = b as { id?: unknown; name?: unknown; angaben?: unknown };
       if (!istKennung(id)) {
         return nein(
           'ungueltige-eingabe',
@@ -93,21 +101,34 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       if (typeof name !== 'string') {
         return nein('ungueltige-eingabe', 'bieter.name muss ein Text sein.', undefined, 'bieter.name');
       }
+      if (angaben !== undefined) {
+        const a = bieterangabenFehler(angaben, 'bieter.angaben');
+        if (a !== null) return nein('ungueltige-eingabe', a.meldung, undefined, a.feld);
+      }
       if (zustand.bieter.some((x) => x.id === id)) {
         return nein('id-vergeben', `Bieter-ID bereits vergeben: ${String(id)}`, undefined, 'bieter.id');
       }
-      const neu: Bieter = { id: befehl.bieter.id, name: befehl.bieter.name };
+      const neu: Bieter = bieterMitAngaben(
+        { id: befehl.bieter.id, name: befehl.bieter.name },
+        befehl.bieter.angaben ?? null,
+      );
       return ok(changeSet(zustand, zustand, { ...zustand, bieter: [...zustand.bieter, neu] }));
     }
     case 'ProjektLoeschen':
       return ok(changeSet(zustand, zustand, null));
-    // Vertrag v1.7a (Ticket 127), mechanisch: Projektangaben liefert Ticket 137 hier; die Bieterbefehle führt `vergabe` aus
-    // (Ticket 138, D-127.17) und bleiben hier abgewiesen.
-    case 'ProjektangabenSetzen':
-      return nein(
-        'befehl-nicht-zustaendig',
-        `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt (Ticket 137).`,
+    case 'ProjektangabenSetzen': {
+      const f = stammdatenFehler(befehl.name, befehl.bauherr);
+      if (f !== null) return { ok: false, fehler: f };
+      const a = projektangabenFehler(befehl.angaben, 'angaben');
+      if (a !== null) return nein('ungueltige-eingabe', a.meldung, undefined, a.feld);
+      const neu = mitFeld(
+        { ...zustand, name: befehl.name, bauherr: befehl.bauherr },
+        'angaben',
+        projektangabenNormal(befehl.angaben),
       );
+      return ok(changeSet(zustand, zustand, gleicherWert(zustand, neu) ? zustand : neu));
+    }
+    // Die Bieterbefehle führt die Vergabe aus (D-127.17); der Kern weist sie dauerhaft ab.
     case 'BieterUmbenennen':
     case 'BieterLoeschen':
     case 'BieterangabenSetzen':

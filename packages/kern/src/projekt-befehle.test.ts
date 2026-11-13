@@ -2,8 +2,23 @@
 // Ticket 30, Punkt 11: Projektbefehle (ADR 0011). Zuerst geschrieben (Q1).
 
 import { describe, expect, it } from 'vitest';
-import type { Bauherr, Bieter, BieterId, Projekt, ProjektBefehl, ProjektId } from '@tethys/vertrag';
-import { projektBefehlAusfuehren, projektChangeSetAnwenden, projektChangeSetUmkehren } from './index';
+import type {
+  Bauherr,
+  Bieter,
+  Bieterangaben,
+  BieterId,
+  Projekt,
+  Projektangaben,
+  ProjektBefehl,
+  ProjektId,
+} from '@tethys/vertrag';
+import {
+  bieterangabenFehler,
+  bieterangabenNormal,
+  projektBefehlAusfuehren,
+  projektChangeSetAnwenden,
+  projektChangeSetUmkehren,
+} from './index';
 import { erwarteOk } from './testhilfen';
 
 const PID = 'projekt-1' as ProjektId;
@@ -117,5 +132,172 @@ describe('ProjektLoeschen', () => {
 
   it('ohne Zustand: befehl-nicht-zustaendig', () => {
     expect(fehlercode(null, { art: 'ProjektLoeschen' })).toBe('befehl-nicht-zustaendig');
+  });
+});
+
+// --- Vertrag v1.7a (Ticket 137; E10, D-127.4, D-127.5) -------------------------------------------------------------------
+
+const ANGABEN: Projektangaben = {
+  nummer: '2026-017',
+  ort: 'Musterstadt',
+  baustelle: { strasse: 'Schulweg 3', plz: '12345', ort: 'Musterstadt' },
+};
+
+const setzeAngaben = (
+  angaben: Projektangaben | null,
+  name = 'Schule',
+  bh: Bauherr = bauherr,
+): ProjektBefehl => ({
+  art: 'ProjektangabenSetzen',
+  name,
+  bauherr: bh,
+  angaben,
+});
+
+describe('ProjektangabenSetzen', () => {
+  it('setzt Name, Bauherr und Angaben in einem Schritt; Bieter bleiben; Undo stellt alles her', () => {
+    const p0 = wende(projekt(), { art: 'BieterAnlegen', bieter: bieter('b1') });
+    const neuerBauherr: Bauherr = { name: 'Landkreis', anschrift: 'Kreishaus' };
+    const p1 = wende(p0, setzeAngaben(ANGABEN, 'Turnhalle', neuerBauherr));
+    expect(p1).toEqual({
+      id: PID,
+      name: 'Turnhalle',
+      bauherr: neuerBauherr,
+      bieter: [bieter('b1')],
+      angaben: ANGABEN,
+    });
+  });
+
+  it("'' wird null, eine leere Anschrift null, ganz leere Angaben fehlen; null entfernt sie", () => {
+    const p1 = wende(
+      projekt(),
+      setzeAngaben({ nummer: '', ort: 'Ort', baustelle: { strasse: '', plz: null, ort: '' } }),
+    );
+    expect(p1?.angaben).toEqual({ nummer: null, ort: 'Ort', baustelle: null });
+    const p2 = wende(p1, setzeAngaben({ nummer: '', ort: '', baustelle: { strasse: '', plz: '', ort: '' } }));
+    expect(p2).not.toHaveProperty('angaben');
+    const p3 = wende(wende(p2, setzeAngaben(ANGABEN)), setzeAngaben(null));
+    expect(p3).toEqual(projekt());
+  });
+
+  it('Leerraum bleibt Text (U5), die Nummer ist freier Text', () => {
+    const p = wende(projekt(), setzeAngaben({ nummer: ' 007a ', ort: ' ', baustelle: null }));
+    expect(p?.angaben).toEqual({ nummer: ' 007a ', ort: ' ', baustelle: null });
+  });
+
+  it('dieselben Werte: nachher ist der Zustand selbst (keine Änderung)', () => {
+    const p = wende(projekt(), setzeAngaben(ANGABEN));
+    if (p === null) throw new Error('Projekt fehlt');
+    const cs = erwarteOk(projektBefehlAusfuehren(p, setzeAngaben(structuredClone(ANGABEN))));
+    expect(cs.projekt.nachher).toBe(p);
+    const ohne = erwarteOk(projektBefehlAusfuehren(projekt(), setzeAngaben(null)));
+    expect(ohne.projekt.vorher).toEqual(ohne.projekt.nachher);
+  });
+
+  it('ProjektStammdatenSetzen lässt die Angaben unverändert', () => {
+    const p = wende(wende(projekt(), setzeAngaben(ANGABEN)), {
+      art: 'ProjektStammdatenSetzen',
+      name: 'Neu',
+      bauherr,
+    });
+    expect(p?.angaben).toEqual(ANGABEN);
+  });
+
+  it('nur die Felder des Vertrags landen am Projekt', () => {
+    const mehr = { ...ANGABEN, extra: 1, baustelle: { ...ANGABEN.baustelle, land: 'DE' } } as Projektangaben;
+    expect(wende(projekt(), setzeAngaben(mehr))?.angaben).toEqual(ANGABEN);
+  });
+
+  it('ohne Zustand: befehl-nicht-zustaendig; Form: ungueltige-eingabe mit dem Feld', () => {
+    expect(fehlercode(null, setzeAngaben(ANGABEN))).toBe('befehl-nicht-zustaendig');
+    const feld = (b: ProjektBefehl): string | undefined => {
+      const e = projektBefehlAusfuehren(projekt(), b);
+      return e.ok ? undefined : `${e.fehler.code} ${e.fehler.feld ?? ''}`;
+    };
+    expect(feld(setzeAngaben(ANGABEN, 3 as unknown as string))).toBe('ungueltige-eingabe name');
+    expect(feld(setzeAngaben(ANGABEN, 'x', { name: 1 } as unknown as Bauherr))).toBe(
+      'ungueltige-eingabe bauherr',
+    );
+    expect(feld(setzeAngaben('x' as unknown as Projektangaben))).toBe('ungueltige-eingabe angaben');
+    expect(feld(setzeAngaben({ ...ANGABEN, nummer: 7 } as unknown as Projektangaben))).toBe(
+      'ungueltige-eingabe angaben.nummer',
+    );
+    expect(feld(setzeAngaben({ ...ANGABEN, baustelle: 'x' } as unknown as Projektangaben))).toBe(
+      'ungueltige-eingabe angaben.baustelle',
+    );
+    expect(
+      feld(
+        setzeAngaben({
+          ...ANGABEN,
+          baustelle: { strasse: null, plz: 1, ort: null },
+        } as unknown as Projektangaben),
+      ),
+    ).toBe('ungueltige-eingabe angaben.baustelle.plz');
+  });
+});
+
+const KONTAKT: Bieterangaben = {
+  anschrift: { strasse: 'Werkstraße 1', plz: '54321', ort: 'Bauhausen' },
+  ansprechperson: 'Frau Muster',
+  email: 'info@example.org',
+  telefon: '0123 456',
+};
+
+describe('BieterAnlegen mit Angaben (D-127.4)', () => {
+  it('legt die Angaben am Bieter ab, normalisiert', () => {
+    const p = wende(projekt(), {
+      art: 'BieterAnlegen',
+      bieter: {
+        ...bieter('b1'),
+        angaben: { ...KONTAKT, telefon: '', anschrift: { strasse: '', plz: '', ort: '' } },
+      },
+    });
+    expect(p?.bieter).toEqual([{ ...bieter('b1'), angaben: { ...KONTAKT, telefon: null, anschrift: null } }]);
+  });
+
+  it('ganz leere Angaben: das Feld fehlt; Fremdfelder fallen weg', () => {
+    const leer: Bieterangaben = { anschrift: null, ansprechperson: '', email: null, telefon: '' };
+    const p = wende(projekt(), { art: 'BieterAnlegen', bieter: { ...bieter('b1'), angaben: leer } });
+    expect(p?.bieter[0]).toEqual(bieter('b1'));
+    const q = wende(projekt(), {
+      art: 'BieterAnlegen',
+      bieter: { ...bieter('b2'), angaben: KONTAKT, extra: 1 } as Bieter,
+    });
+    expect(q?.bieter[0]).toEqual({ ...bieter('b2'), angaben: KONTAKT });
+  });
+
+  it('Angaben außer Form: ungueltige-eingabe mit dem Feld', () => {
+    const e = projektBefehlAusfuehren(projekt(), {
+      art: 'BieterAnlegen',
+      bieter: { ...bieter('b1'), angaben: { ...KONTAKT, email: 5 } as unknown as Bieterangaben },
+    });
+    expect(e.ok ? null : [e.fehler.code, e.fehler.feld]).toEqual([
+      'ungueltige-eingabe',
+      'bieter.angaben.email',
+    ]);
+  });
+});
+
+describe('Normalisierer der Bieterangaben (für die Vergabe, D-82 S9)', () => {
+  it("'' wird null, eine leere Anschrift null, ganz leere Angaben null (das Feld fehlt dann)", () => {
+    expect(bieterangabenNormal(KONTAKT)).toEqual(KONTAKT);
+    expect(
+      bieterangabenNormal({ ...KONTAKT, email: '', anschrift: { strasse: '', plz: null, ort: '' } }),
+    ).toEqual({
+      ...KONTAKT,
+      email: null,
+      anschrift: null,
+    });
+    expect(bieterangabenNormal({ anschrift: null, ansprechperson: '', email: '', telefon: null })).toBeNull();
+    expect(bieterangabenNormal(null)).toBeNull();
+  });
+
+  it('die Form prüft jedes Feld mit dem Pfad, den der Aufrufer vorgibt', () => {
+    expect(bieterangabenFehler(KONTAKT, 'angaben')).toBeNull();
+    expect(bieterangabenFehler([], 'angaben')?.feld).toBe('angaben');
+    expect(bieterangabenFehler({ ...KONTAKT, telefon: undefined }, 'angaben')?.feld).toBe('angaben.telefon');
+    expect(
+      bieterangabenFehler({ ...KONTAKT, anschrift: { strasse: 1, plz: null, ort: null } }, 'angaben')?.feld,
+    ).toBe('angaben.anschrift.strasse');
   });
 });

@@ -38,6 +38,9 @@ export {
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
 } from './projekt-befehle';
+// Vertrag v1.7a (Ticket 137): Form und Normalform der Bieterangaben für die Bieterbefehle der Vergabe (D-127.4, D-82 S9).
+export { bieterMitAngaben, bieterangabenFehler, bieterangabenNormal } from './angaben';
+export type { Formfehler } from './positionsfelder';
 export { baumfehler, mengenansatzFehler, pruefeLvInvarianten } from './pruefung';
 // Baumhilfen für Fachpakete und App (Review Welle 5, S9): Kinder je Elternknoten nach `reihenfolge`, Dokumentreihenfolge.
 export { gruppiere as kinderJeEltern, praeorder as dokumentreihenfolge } from './struktur';
