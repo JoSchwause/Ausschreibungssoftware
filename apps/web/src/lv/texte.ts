@@ -146,6 +146,9 @@ export const texte = {
     zeitUngueltig: 'Keine gültige Uhrzeit. Erwartet wird z. B. 10:30.',
     gewaehrleistungUngueltig: 'Dauer als ganze Zahl und Einheit, z. B. 5 und Jahre.',
   },
+  kgHinweis: {
+    ausserhalb: (nr: string) => `Kostengruppe ${nr} liegt in keiner Kostenermittlung des Projekts.`,
+  },
   summen: {
     bereich: 'Nachlass und MwSt',
     nachlass: 'Nachlass',
