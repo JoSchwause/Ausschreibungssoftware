@@ -1,6 +1,6 @@
 # 127: `vertrag` v1.7a: Bedienung, Stammdaten, Einstellungen, Konstanten
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: F · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`; mechanische Folgezeilen in Verbrauchern nur, wo der Typcheck es erzwingt)
 Blocked by: –
