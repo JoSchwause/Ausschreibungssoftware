@@ -181,7 +181,7 @@ describe('Tor X4: Mängel und Bautagebuch, Kette ohne Oberfläche', () => {
         const jetzt = liste.ok ? liste.wert.find((x) => x.id === id) : undefined;
         if (jetzt === undefined) throw new Error('Mangel fehlt');
         const b = mangelAngabenBefehl(
-          { ...entwurfAusMangel(jetzt, ''), frist: datumDeFx(m.frist) },
+          { ...entwurfAusMangel(jetzt), frist: datumDeFx(m.frist) },
           null,
           jetzt,
         );

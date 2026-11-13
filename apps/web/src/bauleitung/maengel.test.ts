@@ -3,6 +3,9 @@
 
 import type {
   AuftragsLeistungsverzeichnisId,
+  Bauwerksmodell,
+  BauwerksmodellId,
+  BauwerksmodellUebersicht,
   IdQuelle,
   Knoten,
   Mangel,
@@ -30,7 +33,10 @@ import {
   mangelAngabenBefehl,
   maengelZeilen,
   namenJeAuftrag,
-  positionenNachOz,
+  bauteilwahl,
+  neuesterStand,
+  positionswahl,
+  suchauswahl,
   statusBefehle,
   fristbefundText,
   ueberfaelligeIds,
@@ -205,17 +211,51 @@ describe('Ansicht', () => {
   });
 });
 
-describe('Positionen', () => {
-  it('findet eine Position über ihre OZ mit Index', () => {
+describe('Auswahl der Position und des Bauteils', () => {
+  it('bietet die Positionen des Auftrags-LV mit OZ (samt Index) und Kurztext an, in der Reihenfolge des LV', () => {
     const k = [
-      { art: 'titel', id: 't' },
-      { art: 'position', id: 'p1', ordnungszahl: '01.0010', ozIndex: null },
-      { art: 'position', id: 'p2', ordnungszahl: '01.0020', ozIndex: 'A' },
+      { art: 'titel', id: 't', kurztext: 'Rohbau' },
+      { art: 'position', id: 'p1', ordnungszahl: '01.0010', ozIndex: null, kurztext: 'Mauerwerk' },
+      { art: 'hinweistext', id: 'h' },
+      { art: 'position', id: 'p2', ordnungszahl: '01.0020', ozIndex: 'A', kurztext: 'Putz' },
+      { art: 'position', id: 'p3', ordnungszahl: null, ozIndex: null, kurztext: '' },
     ] as unknown as Knoten[];
-    const m = positionenNachOz(k);
-    expect(m.get('01.0010')).toBe('p1');
-    expect(m.get('01.0020A')).toBe('p2');
-    expect(m.has('01.0020')).toBe(false);
+    expect(positionswahl(k)).toEqual([
+      { wert: 'p1', label: '01.0010 Mauerwerk' },
+      { wert: 'p2', label: '01.0020A Putz' },
+      { wert: 'p3', label: 'Position ohne OZ' },
+    ]);
+  });
+
+  it('bietet die Bauteile eines Modells mit Name, Klasse und Strukturknoten an, jede GlobalId einmal', () => {
+    const modell = {
+      struktur: [{ globalId: 'g-eg', art: 'geschoss', name: 'EG', elternGlobalId: null, mengen: [] }],
+      bauteile: [
+        { globalId: 'w1', ifcKlasse: 'IfcWall', name: 'Wand Nord', typ: null, strukturGlobalId: 'g-eg', mengen: [] },
+        { globalId: 'x1', ifcKlasse: 'IfcFooBar', name: null, typ: null, strukturGlobalId: null, mengen: [] },
+        { globalId: 'w1', ifcKlasse: 'IfcSlab', name: 'doppelt', typ: null, strukturGlobalId: null, mengen: [] },
+      ],
+    } as unknown as Pick<Bauwerksmodell, 'bauteile' | 'struktur'>;
+    expect(bauteilwahl(modell)).toEqual([
+      { wert: 'w1', label: 'Wand Nord · Wand (IfcWall) · EG' },
+      { wert: 'x1', label: 'Ohne Namen · IfcFooBar' },
+    ]);
+  });
+
+  it('eine lange Liste zeigt höchstens die Grenze, gefiltert nach dem Suchtext; die gewählte bleibt sichtbar', () => {
+    const liste = Array.from({ length: 5 }, (_, i) => ({ wert: `p${String(i)}`, label: `01.00${String(i)}0 Wand ${String(i)}` }));
+    expect(suchauswahl(liste, '', '', 10)).toEqual({ optionen: liste, treffer: 5 });
+    expect(suchauswahl(liste, '', '', 2)).toEqual({ optionen: liste.slice(0, 2), treffer: 5 });
+    expect(suchauswahl(liste, 'WAND 3', '', 2)).toEqual({ optionen: [liste[3]], treffer: 1 });
+    expect(suchauswahl(liste, 'wand 3', 'p4', 2)).toEqual({ optionen: [liste[3], liste[4]], treffer: 1 });
+    expect(suchauswahl(liste, '', 'fremd', 2).optionen).toEqual(liste.slice(0, 2));
+  });
+
+  it('der neueste Stand ist der zuletzt eingelesene', () => {
+    const m = (id: string, eingelesen: string) =>
+      ({ id: id as BauwerksmodellId, eingelesen }) as unknown as BauwerksmodellUebersicht;
+    expect(neuesterStand([m('a', '2026-11-01T10:00:00Z'), m('b', '2026-11-03T10:00:00Z'), m('c', '2026-11-02T10:00:00Z')])).toBe('b');
+    expect(neuesterStand([])).toBeNull();
   });
 });
 
@@ -266,9 +306,9 @@ describe('Formular', () => {
         festgestellt: '31.02.2026',
         frist: 'bald',
         globalId: 'kurz',
-        position: '01.0010',
+        positionId: 'p1',
       },
-      new Map(),
+      new Set(),
       [],
     );
     expect(r.ok).toBe(false);
@@ -278,7 +318,7 @@ describe('Formular', () => {
       'frist',
       'globalId',
       'nummer',
-      'position',
+      'positionId',
       'titel',
     ]);
   });
@@ -288,29 +328,27 @@ describe('Formular', () => {
     expect(r.ok ? null : r.fehler.nummer).toMatch(/schon vergeben/);
   });
 
-  it('eine Position braucht ein Auftrags-LV und eine bekannte OZ; ein Bauteil eine GlobalId mit 22 Zeichen', () => {
-    const positionen = new Map([['01.0010', 'p1' as PositionId]]);
-    const ok = angabenLesen(
-      { ...entwurf, position: '01.0010', globalId: GID, modellId: 'mod' },
-      positionen,
-      null,
-    );
+  it('eine Position braucht ein Auftrags-LV und muss darin stehen; ein Bauteil eine GlobalId mit 22 Zeichen', () => {
+    const positionen = new Set(['p1' as PositionId]);
+    const ok = angabenLesen({ ...entwurf, positionId: 'p1', globalId: GID, modellId: 'mod' }, positionen, null);
     expect(ok.ok && ok.wert.positionId).toBe('p1');
     expect(ok.ok && ok.wert.bauteil).toEqual({ bauwerksmodellId: 'mod', globalId: GID });
-    const ohne = angabenLesen({ ...entwurf, auftragsLvId: '', position: '01.0010' }, positionen, null);
-    expect(ohne.ok ? null : ohne.fehler.position).toMatch(/braucht ein Auftrags-LV/);
+    const ohne = angabenLesen({ ...entwurf, auftragsLvId: '', positionId: 'p1' }, positionen, null);
+    expect(ohne.ok ? null : ohne.fehler.positionId).toMatch(/braucht ein Auftrags-LV/);
+    const fremd = angabenLesen({ ...entwurf, positionId: 'p9' }, positionen, null);
+    expect(fremd.ok ? null : fremd.fehler.positionId).toMatch(/nicht \(mehr\) im gewählten Auftrags-LV/);
     const jedes = angabenLesen({ ...entwurf, globalId: GID }, null, null);
     expect(jedes.ok && jedes.wert.bauteil).toEqual({ bauwerksmodellId: null, globalId: GID });
   });
 
   it('beim Bearbeiten liegt die Feststellung nicht nach dem ersten Verlaufseintrag; ohne Änderung kein Befehl', () => {
     const m = angezeigt(3, '2026-11-25', A1);
-    const gleich = mangelAngabenBefehl(entwurfAusMangel(m, ''), null, m);
+    const gleich = mangelAngabenBefehl(entwurfAusMangel(m), null, m);
     expect(gleich).toEqual({ ok: true, wert: null });
-    const spaet = mangelAngabenBefehl({ ...entwurfAusMangel(m, ''), festgestellt: '12.11.2026' }, null, m);
+    const spaet = mangelAngabenBefehl({ ...entwurfAusMangel(m), festgestellt: '12.11.2026' }, null, m);
     expect(spaet.ok ? null : spaet.fehler.festgestellt).toMatch(/nicht nach dem ersten Verlaufseintrag/);
     const neu = mangelAngabenBefehl(
-      { ...entwurfAusMangel(m, ''), frist: '04.12.2026', ort: ' Keller ' },
+      { ...entwurfAusMangel(m), frist: '04.12.2026', ort: ' Keller ' },
       null,
       m,
     );

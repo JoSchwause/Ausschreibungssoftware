@@ -26,6 +26,7 @@ import { kontrollePfad, kostenPfad } from './pfad';
 import { kostenermittlungSitzung } from './schreiben';
 import { STUFEN, texte } from './texte';
 import { Verweis } from '../ui/Verweis';
+import { HonorarVerweise } from '../honorar/HonorarVerweise'; // Ticket 155: Verweis zum Honorar
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './kosten.css';
@@ -215,6 +216,7 @@ function Editor({
         <h1>{texte.editor.titel(k.name)}</h1>
         <Verweis pfad={kostenPfad(k.projektId)} text={t.zurueck} gehe={gehe} />
         <Verweis pfad={kontrollePfad(k.projektId)} text={texte.seite.zurKontrolle} gehe={gehe} />
+        <HonorarVerweise projektId={k.projektId} kostenermittlungId={k.id} gehe={gehe} />
       </div>
       <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
