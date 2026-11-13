@@ -146,8 +146,9 @@ export interface Befehlsfehler {
   readonly verweise?: readonly Verweisanzahl[];
   /**
    * v1.7a (Ticket 127, für Ticket 137 Punkt 6): alle betroffenen Knoten, wenn es mehrere sind, in Dokumentreihenfolge, etwa
-   * die Ordnungszahlen, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`). `knotenId` ist dann der erste davon. Fehlt:
-   * höchstens ein Knoten (`knotenId`); nie leer.
+   * die Knoten, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`, mit den Codes `maske-ungueltig`, `oz-ueberlauf` oder
+   * `knotenart-unzulaessig` des ersten Knotens; D-87). `knotenId` ist dann der erste davon. Fehlt: höchstens ein Knoten
+   * (`knotenId`); nie leer.
    */
   readonly knotenIds?: readonly KnotenId[];
 }

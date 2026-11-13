@@ -365,8 +365,9 @@ export interface LvStandAnlegen {
 // die nicht die des übergebenen Stands ist: `befehl-nicht-zustaendig`.
 
 /**
- * Benennt einen LV-Stand um. Der Name darf leer sein wie bei `LvStandAnlegen` (U5). ChangeSet: `lvStand` mit beiden Köpfen,
- * die sich nur im `name` unterscheiden; `lvStandInhalt` fehlt.
+ * Benennt einen LV-Stand um. Der Name darf nicht leer sein (Leerraum zählt als leer), wie bei `LvStandAnlegen`: sonst
+ * `ungueltige-eingabe` (`feld: 'name'`; D-87, D-137.1). ChangeSet: `lvStand` mit beiden Köpfen, die sich nur im `name`
+ * unterscheiden; `lvStandInhalt` fehlt.
  */
 export interface LvStandUmbenennen {
   readonly art: 'LvStandUmbenennen';
@@ -616,7 +617,12 @@ export interface LeitbeschreibungSetzen {
 
 // --- Ordnungszahl (Ticket 06) -----------------------------------------------------------------------------
 
-/** Setzt die Maske; der Kern liefert alle dadurch umnummerierten Knoten im selben ChangeSet. */
+/**
+ * Setzt die Maske; der Kern liefert alle dadurch umnummerierten Knoten im selben ChangeSet. Passen Knoten nicht zur neuen
+ * Maske, bleibt es bei den vorhandenen Codes (`maske-ungueltig`, `oz-ueberlauf`, an der Los-Stufe `knotenart-unzulaessig`;
+ * D-87, D-137.10): Code, Meldung und `knotenId` sind die des ersten Knotens, `Befehlsfehler.knotenIds` nennt alle in
+ * Dokumentreihenfolge, wenn es mehrere sind (D-127.14).
+ */
 export interface OzMaskeSetzen {
   readonly art: 'OzMaskeSetzen';
   readonly maske: OzMaske;
