@@ -1359,8 +1359,8 @@ describe('v1.4 Punkt 4: Kostengruppe der Position (C2)', () => {
   });
 
   it('AuftragsLvBefehl ist genau Anlegen, Nachtrag übernehmen und Kostengruppe setzen (D-36 (4))', () => {
-    // v1.6 (Ticket 97 Punkt 3): dazu `BauteileZuordnen`, siehe dort.
-    expectTypeOf<Exclude<AuftragsLvBefehl['art'], 'BauteileZuordnen'>>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 3): dazu `BauteileZuordnen`; v1.7a (Ticket 127): dazu `ZuschlagZuruecknehmen`, siehe dort.
+    expectTypeOf<Exclude<AuftragsLvBefehl['art'], 'BauteileZuordnen' | 'ZuschlagZuruecknehmen'>>().toEqualTypeOf<
       'AuftragsLeistungsverzeichnisAnlegen' | 'NachtragUebernehmen' | 'KostengruppeSetzen'
     >();
   });
@@ -1865,8 +1865,8 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
 
 describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
   it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
-    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`, siehe dort.
-    expectTypeOf<Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig'>>().toEqualTypeOf<
+    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`; v1.7a (Ticket 127): `verweise-vorhanden`, siehe dort.
+    expectTypeOf<Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig' | 'verweise-vorhanden'>>().toEqualTypeOf<
       | 'ungueltige-eingabe'
       | 'knoten-unbekannt'
       | 'eltern-unbekannt'

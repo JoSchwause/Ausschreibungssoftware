@@ -8,6 +8,7 @@
 
 import type {
   AufmassId,
+  BieterId,
   ElternId,
   GliederungId,
   HinweistextId,
@@ -108,7 +109,39 @@ export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';
 }
 
-export type ProjektBefehl = ProjektAnlegen | ProjektStammdatenSetzen | BieterAnlegen | ProjektLoeschen;
+/**
+ * Benennt einen Bieter des Projekts um (v1.7a, Ticket 127; E8). Ein leerer Name ist erlaubt wie bei `BieterAnlegen` (U5).
+ * Ein Bieter, den das Projekt nicht hat: `ungueltige-eingabe` (`feld: 'bieterId'`). ChangeSet: das ganze Projekt vorher und
+ * nachher (`ProjektChangeSet`), wie jeder Projektbefehl.
+ */
+export interface BieterUmbenennen {
+  readonly art: 'BieterUmbenennen';
+  readonly bieterId: BieterId;
+  readonly name: string;
+}
+
+/**
+ * Entfernt einen Bieter aus dem Projekt (v1.7a, Ticket 127; E8), **nur ohne Angebot**. Der Ausführer bekommt die Verweise
+ * auf den Bieter als dritten Parameter (`ProjektBefehlAusfuehren`, `verweise`: die Angebote des Bieters als
+ * `{ art: 'angebot', anzahl }`); ist die Anzahl größer als 0, weist er mit `verweise-vorhanden` ab und nennt sie in
+ * `Befehlsfehler.verweise` (Verweissperre, Q5). Fehlt `verweise`, weist er mit `ungueltige-eingabe` (`feld: 'verweise'`)
+ * ab: Ohne Bestand ist das Löschen nicht prüfbar. `speicher` weist ein ChangeSet, das einen Bieter mit Angebot entfernt, mit
+ * `konflikt` ab (auch als Undo von `BieterAnlegen`). Ein Bieter, den das Projekt nicht hat: `ungueltige-eingabe`
+ * (`feld: 'bieterId'`). Undo stellt ihn an seiner Stelle in `Projekt.bieter` wieder her (ganzes Projekt im ChangeSet).
+ */
+export interface BieterLoeschen {
+  readonly art: 'BieterLoeschen';
+  readonly bieterId: BieterId;
+}
+
+export type ProjektBefehl =
+  | ProjektAnlegen
+  | ProjektStammdatenSetzen
+  | BieterAnlegen
+  | ProjektLoeschen
+  // v1.7a
+  | BieterUmbenennen
+  | BieterLoeschen;
 
 // --- Leistungsverzeichnis: Anlegen und Stammdaten ------------------------------------------------------
 
@@ -287,6 +320,37 @@ export interface LvStandAnlegen {
   readonly id: LvStandId;
   readonly name: string;
 }
+
+// --- LV-Stand umbenennen und löschen (v1.7a, Ticket 127; E8) -------------------------------------------------------
+//
+// Ein LV-Stand bleibt im Inhalt unveränderlich; neu ist nur sein Name und dass er entfernt werden kann (sonst ließe sich
+// ein LV mit Ständen nie löschen, D-12). Kein `LvBefehl`: Der Ausführer des LV sieht keine Stände. Eigener Ausführer
+// `LvStandBefehlAusfuehren` (Kern, Ticket 137) mit dem ganzen Stand als Zustand; das ChangeSet ist ein `LvChangeSet` des LV,
+// dem der Stand gehört (`kopf: null`, keine Knoten, leere Summen), im Protokoll mit diesem LV als Aggregat. Eine Kennung,
+// die nicht die des übergebenen Stands ist: `befehl-nicht-zustaendig`.
+
+/**
+ * Benennt einen LV-Stand um. Der Name darf leer sein wie bei `LvStandAnlegen` (U5). ChangeSet: `lvStand` mit beiden Köpfen,
+ * die sich nur im `name` unterscheiden; `lvStandInhalt` fehlt.
+ */
+export interface LvStandUmbenennen {
+  readonly art: 'LvStandUmbenennen';
+  readonly lvStandId: LvStandId;
+  readonly name: string;
+}
+
+/**
+ * Löscht einen LV-Stand. Unumkehrbar im Sinne von Q5 (Bestätigung in der Oberfläche); das ChangeSet trägt den ganzen Stand
+ * (`lvStand.vorher` den Kopf, `lvStandInhalt.vorher` Zeitpunkt und Zustand), damit Undo ihn unverändert, mit seinem
+ * `angelegt`, wieder ablegt (siehe `LvChangeSet.lvStandInhalt`). Nichts verweist auf einen Stand; es gibt keine Sperre.
+ */
+export interface LvStandLoeschen {
+  readonly art: 'LvStandLoeschen';
+  readonly lvStandId: LvStandId;
+}
+
+/** Befehle an einem gespeicherten LV-Stand (v1.7a; Zustand: `LvStand`, Ausführer `LvStandBefehlAusfuehren`). */
+export type LvStandBefehl = LvStandUmbenennen | LvStandLoeschen;
 
 // --- Felder ändern (Tickets 07, 21) -----------------------------------------------------------------------
 //
@@ -658,7 +722,32 @@ export type AuftragsLvBefehl =
   | NachtragUebernehmen
   | KostengruppeSetzen
   // v1.6
-  | BauteileZuordnen;
+  | BauteileZuordnen
+  // v1.7a
+  | ZuschlagZuruecknehmen;
+
+/**
+ * Nimmt den Zuschlag zurück: löscht das Auftrags-LV (v1.7a, Ticket 127; E8, D-74; Glossar „Zuschlag zurücknehmen“). Danach
+ * lassen sich Angebot, LV und Projekt wieder löschen (Q5: kein Projekt bleibt unlöschbar).
+ *
+ * - Sperre (D-74): Der Ausführer bekommt die Verweise auf das Auftrags-LV als dritten Parameter
+ *   (`AuftragsLvBefehlAusfuehren`, `verweise`): Nachtrags-LVs (`Nachtragsangaben.auftragsLvId`), Aufmaßblätter, Rechnungen
+ *   und Mängel (`Mangel.auftragsLvId`), je Art die Anzahl. Ist eine davon größer als 0, weist er mit `verweise-vorhanden` ab
+ *   und nennt alle Arten mit Anzahl > 0 in `Befehlsfehler.verweise` (Reihenfolge: nachtrag, aufmass, rechnung, mangel); die
+ *   App sagt damit, was zuerst zu entfernen ist. Andere Arten (`angebot`) liest er nicht. Fehlt `verweise`:
+ *   `ungueltige-eingabe` (`feld: 'verweise'`). `speicher` hält dieselbe Sperre als `konflikt` (seit v1.4/v1.6), auch für ein
+ *   Undo.
+ * - Bauzeitenplan und Kostenkontrolle sperren nicht und werden nicht angefasst (D-74): Ein Vorgang behält seinen schwachen
+ *   Bezug (Befund der Terminrechnung bzw. der App), Undo stellt alles her.
+ * - ChangeSet wie `LeistungsverzeichnisLoeschen`: `kopf.vorher` der ganze Kopf, `kopf.nachher: null`, alle Knoten unter
+ *   `knoten.entfernt`, alle Summen unter `summen.vorher.entfernt`, `summen.vorher.gesamt` gesetzt. Die Umkehrung legt das
+ *   Auftrags-LV mit derselben Kennung wieder an.
+ * - Angebot, LV und Nachtragsangaben bleiben unverändert; einen Status „Zuschlag erteilt“ gibt es nicht (der Zuschlag ist das
+ *   Bestehen des Auftrags-LV, D-21).
+ */
+export interface ZuschlagZuruecknehmen {
+  readonly art: 'ZuschlagZuruecknehmen';
+}
 
 // --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
 //
@@ -1123,7 +1212,9 @@ export type Befehl =
   | BauzeitenplanBefehl
   | HonorarberechnungBefehl
   | MangelBefehl
-  | BautagebucheintragBefehl;
+  | BautagebucheintragBefehl
+  // v1.7a (Ticket 127): im Protokoll mit dem LV des Stands als Aggregat
+  | LvStandBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];

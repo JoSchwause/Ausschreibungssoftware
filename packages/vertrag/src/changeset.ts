@@ -12,6 +12,7 @@ import type {
   HonorarberechnungBefehl,
   KostenermittlungBefehl,
   LvBefehl,
+  LvStandBefehl,
   MangelBefehl,
   ProjektBefehl,
   RechnungBefehl,
@@ -102,7 +103,30 @@ export type Befehlsfehlercode =
    * zulässt (etwa von `abgenommen` zurück oder zum selben Status). Ein Statuswechsel ist kein Feldwert, deshalb ein eigener
    * Code wie `rechnung-freigegeben` (D-97.13).
    */
-  | 'statuswechsel-unzulaessig';
+  | 'statuswechsel-unzulaessig'
+  /**
+   * v1.7a (Ticket 127, E8, D-74; Glossar „Verweissperre“): Der Befehl würde etwas löschen, auf das noch andere Aggregate
+   * verweisen (`BieterLoeschen`: Angebote; `ZuschlagZuruecknehmen`: Nachträge, Aufmaßblätter, Rechnungen, Mängel). Art und
+   * Anzahl stehen in `Befehlsfehler.verweise`, damit die Oberfläche sagt, was zuerst zu entfernen ist (Q5).
+   */
+  | 'verweise-vorhanden';
+
+/**
+ * Art eines Verweises, der ein Löschen sperrt (v1.7a, Ticket 127; Glossar „Verweissperre“). `nachtrag` zählt Nachtrags-LVs
+ * (LVs mit `Nachtragsangaben.auftragsLvId`), die übrigen Arten die Aggregate ihres Namens.
+ */
+export type Verweisart = 'angebot' | 'nachtrag' | 'aufmass' | 'rechnung' | 'mangel';
+
+/**
+ * Anzahl der Verweise einer Art (v1.7a). Als Eingabe eines Ausführers (`verweise` bei `ProjektBefehlAusfuehren`,
+ * `AuftragsLvBefehlAusfuehren`) zählt die App sie aus den Listen des Speichers: jede Art höchstens einmal, eine fehlende Art
+ * zählt 0. Im Fehler (`Befehlsfehler.verweise`) stehen nur Arten mit `anzahl` > 0. `anzahl` ist eine ganze Zahl ≥ 0 (eine
+ * Anzahl; N1 gilt nicht).
+ */
+export interface Verweisanzahl {
+  readonly art: Verweisart;
+  readonly anzahl: number;
+}
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -111,6 +135,8 @@ export interface Befehlsfehler {
   readonly knotenId?: KnotenId;
   /** Betroffenes Feld, z. B. `menge`. */
   readonly feld?: string;
+  /** v1.7a: nur beim Code `verweise-vorhanden`: die sperrenden Verweise (Anzahl > 0), nie leer. Fehlt sonst. */
+  readonly verweise?: readonly Verweisanzahl[];
 }
 
 // --- Hinweise aus angenommenen Befehlen (v1.1a, Punkt 10) ------------------------------------------------------
@@ -245,6 +271,12 @@ export interface LvStand extends LvStandKopf {
 /** LV-Stand ohne den Zustand, für Listen (`LvStandRepository.auflisten`). */
 export type LvStandUebersicht = Omit<LvStand, 'zustand'>;
 
+/**
+ * Was ein LV-Stand über seinen Kopf hinaus trägt (v1.7a, Ticket 127): Zeitpunkt des Anlegens und eingefrorener Zustand. Steht
+ * im ChangeSet von `LvStandLoeschen` (`LvChangeSet.lvStandInhalt`), damit Undo den Stand unverändert wieder ablegt.
+ */
+export type LvStandInhalt = Pick<LvStand, 'angelegt' | 'zustand'>;
+
 // --- ChangeSet -----------------------------------------------------------------------------------------------
 
 /**
@@ -308,8 +340,25 @@ export interface LvChangeSet {
    * Stand des LV in derselben Transaktion ein. `nachher: null` kommt nur als Umkehrung vor: der Stand entfällt.
    * Ein `Wiederholen` danach friert den dann gespeicherten Stand neu ein, mit neuem `angelegt` (D-12). Ein Stand wird
    * nie geändert (beide Seiten gesetzt kommt nicht vor).
+   *
+   * v1.7a (Ticket 127, E8): Beide Seiten gesetzt heißt nun `LvStandUmbenennen` (die Köpfe unterscheiden sich nur im `name`;
+   * der Inhalt des Stands bleibt). `nachher: null` kommt außer als Umkehrung des Anlegens von `LvStandLoeschen`; dann ist
+   * `lvStandInhalt` gesetzt (siehe dort).
    */
   readonly lvStand?: Aenderung<LvStandKopf>;
+  /**
+   * Inhalt eines gelöschten oder wiederhergestellten LV-Stands (v1.7a, Ticket 127, E8). Fehlt außer bei `LvStandLoeschen` und
+   * dessen Umkehrung. Gesetzt nur zusammen mit `lvStand`, und dann ist es auf derselben Seite `null` wie `lvStand`:
+   * - `LvStandLoeschen`: `lvStand: { vorher: Kopf, nachher: null }`, `lvStandInhalt: { vorher: { angelegt, zustand },
+   *   nachher: null }`.
+   * - Dessen Umkehrung (Undo): beides mit `vorher: null`; `speicher` legt **genau diesen** Stand ab (mit seinem `angelegt`)
+   *   und friert nichts neu ein.
+   * - `LvStandAnlegen`, seine Umkehrung und `LvStandUmbenennen` tragen es nie: Fehlt es bei `lvStand.vorher: null`, friert
+   *   `speicher` den gespeicherten Stand des LV ein wie bisher (D-12).
+   * Ein ChangeSet, das diese Regel verletzt, weist `speicher.anwenden` mit `unbekannt` ab und schreibt nichts (wie D-66 beim
+   * Bauwerksmodell).
+   */
+  readonly lvStandInhalt?: Aenderung<LvStandInhalt>;
 }
 
 export interface AngebotChangeSet {
@@ -490,15 +539,36 @@ export type AngebotBefehlAusfuehren = (
   befehl: AngebotBefehl,
 ) => Ergebnis<AngebotChangeSet, Befehlsfehler>;
 
+/**
+ * v1.7a (Ticket 127, E8): `verweise` sind die Verweise auf das Ziel eines löschenden Befehls (`BieterLoeschen`: die Angebote
+ * dieses Bieters), Anzahl je Art (siehe `Verweisanzahl`). Nur `BieterLoeschen` liest sie; fehlen sie dort,
+ * `ungueltige-eingabe`. Optional, damit jeder Aufruf mit zwei Argumenten gültig bleibt.
+ */
 export type ProjektBefehlAusfuehren = (
   zustand: Projekt | null,
   befehl: ProjektBefehl,
+  verweise?: readonly Verweisanzahl[],
 ) => Ergebnis<ProjektChangeSet, Befehlsfehler>;
 
+/**
+ * v1.7a (Ticket 127, E8, D-74): `verweise` sind die Verweise des Projekts auf dieses Auftrags-LV (Nachträge, Aufmaßblätter,
+ * Rechnungen, Mängel; siehe `ZuschlagZuruecknehmen`). Nur `ZuschlagZuruecknehmen` liest sie; optional wie bei
+ * `ProjektBefehlAusfuehren`.
+ */
 export type AuftragsLvBefehlAusfuehren = (
   zustand: AuftragsLvZustand | null,
   befehl: AuftragsLvBefehl,
+  verweise?: readonly Verweisanzahl[],
 ) => Ergebnis<AuftragsLvChangeSet, Befehlsfehler>;
+
+/**
+ * Führt einen Befehl an einem gespeicherten LV-Stand aus (v1.7a, Ticket 127, E8): rein (A2). Die App lädt den Stand
+ * (`LvStandRepository.laden`) und schreibt das ChangeSet mit dem LV des Stands als Aggregat. Liefert `kern` (Ticket 137).
+ */
+export type LvStandBefehlAusfuehren = (
+  stand: LvStand,
+  befehl: LvStandBefehl,
+) => Ergebnis<LvChangeSet, Befehlsfehler>;
 
 /**
  * Wendet ein ChangeSet auf einen Zustand an (reine Funktion). `null` als Zustand: das Aggregat entsteht erst

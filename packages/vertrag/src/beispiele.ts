@@ -141,6 +141,16 @@ import type {
 } from './marken';
 import type { Gesamtsummen, Leistungsstand } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
+// v1.7a (Ticket 127)
+import type {
+  BieterLoeschen,
+  BieterUmbenennen,
+  LvStandLoeschen,
+  LvStandUmbenennen,
+  ZuschlagZuruecknehmen,
+} from './befehle';
+import type { LvStand } from './changeset';
+import type { BieterId } from './marken';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
 const titelId = '019b76e9-0000-7000-8000-000000000002' as TitelId;
@@ -2354,3 +2364,107 @@ export const beispielProjektdateiV16: Projektdatei = {
   maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
   bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
 };
+
+// --- v1.7a (Ticket 127) ---------------------------------------------------------------------------------------------
+
+const leereSummen = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+} as const;
+
+/** E8: der Stand aus `beispielLvStandChangeSet`, wie `speicher` ihn eingefroren hat (Zustand: das Beispiel-LV). */
+export const beispielLvStand: LvStand = {
+  id: '019b76e9-0000-7000-8000-000000000080' as LvStandId,
+  leistungsverzeichnisId: lvId,
+  name: 'Stand vor Versand',
+  angelegt: '2026-11-13T09:00:00.000Z' as Zeitstempel,
+  zustand: {
+    leistungsverzeichnis: beispielLv,
+    summen: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: {
+        netto: '12.35' as Betrag,
+        nachlass: '0.00' as Betrag,
+        nettoNachNachlass: '12.35' as Betrag,
+        mwst: '2.35' as Betrag,
+        brutto: '14.70' as Betrag,
+      },
+    },
+  },
+};
+
+const standKopf = {
+  id: beispielLvStand.id,
+  leistungsverzeichnisId: beispielLvStand.leistungsverzeichnisId,
+  name: beispielLvStand.name,
+};
+
+export const beispielLvStandUmbenennen: LvStandUmbenennen = {
+  art: 'LvStandUmbenennen',
+  lvStandId: beispielLvStand.id,
+  name: 'Stand nach Versand',
+};
+
+export const beispielLvStandLoeschen: LvStandLoeschen = { art: 'LvStandLoeschen', lvStandId: beispielLvStand.id };
+
+/** E8: Umbenennen trägt nur die Köpfe (gleiche Kennung, anderer Name); kein Inhalt, keine Knoten, keine Summen. */
+export const beispielChangeSetLvStandUmbenennen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: leereSummen,
+  lvStand: { vorher: standKopf, nachher: { ...standKopf, name: beispielLvStandUmbenennen.name } },
+};
+
+/** E8: Löschen trägt den ganzen Stand (Kopf und Inhalt auf der Seite `vorher`); Undo legt genau ihn wieder ab. */
+export const beispielChangeSetLvStandLoeschen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: leereSummen,
+  lvStand: { vorher: standKopf, nachher: null },
+  lvStandInhalt: {
+    vorher: { angelegt: beispielLvStand.angelegt, zustand: beispielLvStand.zustand },
+    nachher: null,
+  },
+};
+
+const bieterId = '019b76e9-0000-7000-8000-000000000701' as BieterId;
+
+export const beispielBieterUmbenennen: BieterUmbenennen = {
+  art: 'BieterUmbenennen',
+  bieterId,
+  name: 'Muster Bau GmbH',
+};
+
+export const beispielBieterLoeschen: BieterLoeschen = { art: 'BieterLoeschen', bieterId };
+
+export const beispielZuschlagZuruecknehmen: ZuschlagZuruecknehmen = { art: 'ZuschlagZuruecknehmen' };
+
+/** E8 (D-74): Die Sperre beim Zurücknehmen des Zuschlags nennt nur Arten mit Anzahl > 0, in fester Reihenfolge. */
+export const beispielFehlerZuschlagZuruecknehmen: Befehlsfehler = {
+  code: 'verweise-vorhanden',
+  meldung: 'ZuschlagZuruecknehmen: Auf das Auftrags-LV verweisen 2 Aufmaßblätter und 1 Rechnung.',
+  verweise: [
+    { art: 'aufmass', anzahl: 2 },
+    { art: 'rechnung', anzahl: 1 },
+  ],
+};
+
+/** E8: je neuem Befehl ein Beispiel. */
+export const beispieleV17aE8: readonly [
+  LvStandUmbenennen,
+  LvStandLoeschen,
+  BieterUmbenennen,
+  BieterLoeschen,
+  ZuschlagZuruecknehmen,
+] = [
+  beispielLvStandUmbenennen,
+  beispielLvStandLoeschen,
+  beispielBieterUmbenennen,
+  beispielBieterLoeschen,
+  beispielZuschlagZuruecknehmen,
+];
