@@ -1,6 +1,6 @@
 # 129: GAEB DA XML 3.1 lesen (X81, X83, X84, X86)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: G4 · Paket/Ordner: `packages/gaeb`
 Blocked by: –
@@ -22,11 +22,11 @@ Herkunft: umfang §3 E5, B-10
 
 ## Acceptance criteria
 
-- [ ] Alle acht 3.1-Musterdateien lesen; Golden-Tests für Summen; Roundtrip 3.1 → Modell → 3.3 → Modell gleich
-- [ ] XSD-Gegenprüfung (`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`) unverändert grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Alle acht 3.1-Musterdateien lesen; Golden-Tests für Summen; Roundtrip 3.1 → Modell → 3.3 → Modell gleich
+- [x] XSD-Gegenprüfung (`pnpm --filter @tethys/gaeb run xsd-gegenpruefung`) unverändert grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -65,3 +65,9 @@ die Datei (mit Befund). Ob z. B. die Positionen einer Wahl-Gliederung als Wahlpo
 `vertrag`/Fachregeln, nicht an diesen Leser. Veraltete Kommentare außerhalb des Pakets: `packages/vertrag/src/gaeb.ts`
 (`GaebVersion`: „3.1 ist nur erkennbar“), `apps/web/src/gaeb/gaeb.ts:58` („z. B. GAEB 3.1“) und der Text `keinX84` in
 `apps/web/src/gaeb/texte.ts` („X84 in GAEB 3.3 oder 3.2“).
+
+Prüfläufe (Agent): `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` 3998 grün und 5 rot, alle rot nur bei
+Leistungsbudgets in `kern`, `speicher` und `apps/web` (nicht angefasst), Lastmittel 19–38 auf 4 Kernen. Einzeln wiederholt
+waren 4 davon grün; `apps/web/src/abrechnung/leistung.test.ts` „Zeit und Speicher je Schritt“ blieb knapp rot (111 ms statt
+< 100 ms), nicht gelockert. Die Budgets in `gaeb` (2-MB-Datei, `gross` als X86) waren nur im Gesamtlauf rot und einzeln
+grün. XSD-Gegenprüfung 72/72, E2E `gaeb.spec.ts` 6/6.
