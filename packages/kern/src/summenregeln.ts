@@ -131,6 +131,13 @@ export function nachlassFehler(nachlass: Nachlass): string | null {
   return null;
 }
 
+/**
+ * Ein Satz von 0,00 bis 100,00, beide Grenzen eingeschlossen: die Grenzen von prozentualem Nachlass und MwSt-Satz, seit
+ * Vertrag v1.7a auch der Schwellen des Preisspiegels (`PreisspiegeleinstellungenSetzen`, D-127.7).
+ */
+export const prozentImBereich = (satz: Prozent): boolean =>
+  vorzeichen(satz) >= 0 && vergleiche(satz, HUNDERT_PROZENT) <= 0;
+
 /** (4) Zulässigkeit eines MwSt-Satzes: 0 bis 100 (zusätzliche vorläufige Annahme, Entscheidung offen). */
 export function mwstSatzFehler(satz: Prozent): string | null {
   if (vorzeichen(satz) < 0) return 'Ein MwSt-Satz ist nicht negativ.';

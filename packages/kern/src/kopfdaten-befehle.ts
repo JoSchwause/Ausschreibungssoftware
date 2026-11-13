@@ -7,8 +7,9 @@
 // (`ungueltige-eingabe`); Inhalte prüft der Kern nicht (U5), fehlende Pflichtangaben einer Vergabe sind kein Fehler.
 // Normalisierungen: `''` als Einheit einer Unterbeschreibung wird `null` (Vertrag v1.2, D-06, wie Ticket 30); von den
 // Nachtragsangaben landen genau ihre drei Felder im Kopf; `vorlage: false` entfernt das Feld (nie `false` im Zustand).
+// Seit Vertrag v1.7a (Ticket 137, D-127.7) auch PreisspiegeleinstellungenSetzen: genau die vier Felder der Einstellungen.
 
-import { alsMenge } from '@tethys/dezimal';
+import { alsMenge, alsProzent, vergleiche } from '@tethys/dezimal';
 import type {
   AuftraggeberSetzen,
   Befehlsfehler,
@@ -22,6 +23,9 @@ import type {
   NachtragsangabenSetzen,
   Nachtragsstatus,
   Position,
+  PreisspiegelEinstellungen,
+  PreisspiegeleinstellungenSetzen,
+  Prozent,
   VergabeinformationenSetzen,
   VorlageSetzen,
 } from '@tethys/vertrag';
@@ -30,6 +34,7 @@ import { einheitNormal } from './einheit';
 import { nein, ok } from './fehler';
 import { gleicherWert } from './merkmal-befehle';
 import { mitFeld, ohneKnoten } from './struktur';
+import { prozentImBereich } from './summenregeln';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 
@@ -132,6 +137,47 @@ const nachtragsangabenNormal = (n: Nachtragsangaben): Nachtragsangaben => ({
   status: n.status,
 });
 
+const PREISSPIEGEL_SAETZE = ['ausreisserSchwelle', 'abcSchwelleA', 'abcSchwelleB'] as const;
+const ABC_BEZUEGE: ReadonlySet<unknown> = new Set<PreisspiegelEinstellungen['abcBezug']>(['mittel', 'schaetzpreis']);
+
+/**
+ * Form der Preisspiegel-Einstellungen (Vertrag `PreisspiegelEinstellungen`, D-127.7): jeder Satz ein kanonisches `Prozent`
+ * von `0.00` bis `100.00`, `abcSchwelleA` ≤ `abcSchwelleB` (sonst ist der Fehler an `abcSchwelleB`), `abcBezug` einer der
+ * beiden Werte. Das Feld ist der Pfad im Befehl (`einstellungen.…`, D-137.3).
+ */
+function preisspiegelFehler(wert: unknown): Formfehler | null {
+  const pfad = 'einstellungen';
+  if (!istObjekt(wert))
+    return { feld: pfad, meldung: 'Die Preisspiegel-Einstellungen müssen ein Objekt oder null sein.' };
+  for (const f of PREISSPIEGEL_SAETZE) {
+    const v = wert[f];
+    const e = typeof v === 'string' ? alsProzent(v) : null;
+    if (e === null || !e.ok)
+      return {
+        feld: `${pfad}.${f}`,
+        meldung: e?.ok === false ? e.fehler.meldung : `${f} muss ein Prozentsatz sein.`,
+      };
+    if (!prozentImBereich(e.wert))
+      return { feld: `${pfad}.${f}`, meldung: `${f} liegt zwischen 0 und 100 %.` };
+  }
+  if (vergleiche(wert['abcSchwelleA'] as Prozent, wert['abcSchwelleB'] as Prozent) > 0)
+    return {
+      feld: `${pfad}.abcSchwelleB`,
+      meldung: 'Die Grenze der Klasse B ist mindestens die Grenze der Klasse A.',
+    };
+  if (!ABC_BEZUEGE.has(wert['abcBezug']))
+    return { feld: `${pfad}.abcBezug`, meldung: 'Der Bezug der ABC-Klassen ist „mittel“ oder „schaetzpreis“.' };
+  return null;
+}
+
+/** Genau die vier Felder der Einstellungen (was ein Aufrufer mehr mitbringt, landet nicht im Kopf). */
+const preisspiegelNormal = (e: PreisspiegelEinstellungen): PreisspiegelEinstellungen => ({
+  ausreisserSchwelle: e.ausreisserSchwelle,
+  abcSchwelleA: e.abcSchwelleA,
+  abcSchwelleB: e.abcSchwelleB,
+  abcBezug: e.abcBezug,
+});
+
 function leitbeschreibungFehler(wert: unknown): Formfehler | null {
   const pfad = 'leitbeschreibung.unterbeschreibungen';
   if (!istObjekt(wert))
@@ -176,7 +222,7 @@ const leitbeschreibungNormal = (l: Leitbeschreibung): Leitbeschreibung =>
  */
 function kopfSetzen<W>(
   z: LvZustand,
-  feld: 'auftraggeber' | 'vergabeinformationen' | 'nachtrag' | 'vorlage',
+  feld: 'auftraggeber' | 'vergabeinformationen' | 'nachtrag' | 'vorlage' | 'preisspiegel',
   roh: W | null,
   formfehler: (w: unknown) => Formfehler | null,
   normal: (w: W) => unknown = (w) => w,
@@ -210,6 +256,13 @@ export function vorlageSetzen(z: LvZustand, b: VorlageSetzen): Antwort {
     return nein('ungueltige-eingabe', 'vorlage ist true oder false.', undefined, 'vorlage');
   return kopfSetzen(z, 'vorlage', b.vorlage ? true : null, () => null);
 }
+
+/**
+ * `PreisspiegeleinstellungenSetzen` (Vertrag v1.7a, D-127.7): die Einstellungen als ganzer Wert am Kopf; `null` entfernt
+ * sie (dann gelten die Standardwerte der Vergabe). Nur Kopf, keine Summen.
+ */
+export const preisspiegeleinstellungenSetzen = (z: LvZustand, b: PreisspiegeleinstellungenSetzen): Antwort =>
+  kopfSetzen(z, 'preisspiegel', b.einstellungen, preisspiegelFehler, preisspiegelNormal);
 
 export function leitbeschreibungSetzen(z: LvZustand, b: LeitbeschreibungSetzen): Antwort {
   const k = z.leistungsverzeichnis.knoten.find((n) => n.id === b.positionId);
