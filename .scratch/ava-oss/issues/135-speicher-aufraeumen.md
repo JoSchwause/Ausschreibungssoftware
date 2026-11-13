@@ -1,6 +1,6 @@
 # 135: `speicher`: eine Tabelle je ChangeSet-Art
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: S · Paket/Ordner: `packages/speicher`
 Blocked by: –
