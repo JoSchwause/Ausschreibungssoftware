@@ -1,6 +1,6 @@
 # 144: GAEB 90 lesen (.d81/.d83/.d84/.d86) und Formatvergleich
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: G4, E6 · Paket/Ordner: `packages/gaeb`, neu `fixtures/gaeb-formate/` (+ `fixtures/extern/HERKUNFT.md`, `REUSE.toml` für die neuen Dateien)
 Blocked by: 136
