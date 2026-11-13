@@ -106,7 +106,10 @@ vorläufige Annahmen, enge Lesart; dieselben Texte stehen an den Typen). Alles a
   antworten `befehl-nicht-zustaendig` bis 143 (an einer freigegebenen Rechnung greift vorher wie bisher
   `rechnung-freigegeben`); speicher `BEFEHLSARTEN`: die sechs Namen; App `lv/texte.ts`: Text zu `zahlungen-vorhanden`
   (152 prüft ihn); `IdQuelle.zahlung` in `apps/web/src/lv/ids.ts` und `packages/gaeb/src/testhilfen.ts`. Nicht erzwungen und
-  darum nicht hier: der Dekoder in `speicher` liest die neuen Felder noch nicht (139), der Ausführer kanonisiert sie noch
-  nicht (143).
+  darum nicht hier: Der Ausführer kanonisiert die Felder noch nicht (143). **Offen für `speicher`:** Der Dekoder aus 139
+  (`rechnungZustand`) lässt nur die Schlüssel bis v1.7a zu und weist eine Rechnung mit Vertragsstrafe, Skonto,
+  Bauabzugsteuer oder Zahlungen ab; nach D-139.2 braucht es keine SQL-Migration, nur den Dekoder, die Prüfung in der
+  Dateimigration und den `konflikt` aus D-128.7 (Zahlungen ⇒ Freigabe). 139 ist erledigt, 143 hat `speicher` nicht im
+  Paketschnitt: braucht einen Schreiber (Orchestrator).
 - **D-128.12 Nicht geändert.** `Speicher.einstellungen` bleibt optional (offene Frage 1 aus 127): 139 ist nicht gemergt, eine
   Pflicht jetzt bräche den Typcheck von `speicher`. Gehört in die nächste Vertragsversion nach 139.

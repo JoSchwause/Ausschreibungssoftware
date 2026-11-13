@@ -323,6 +323,9 @@ Ausreißer-Schwelle, die beiden ABC-Schwellen und der Bezug der ABC-Klasse eines
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
 
+### Vergabevorschlag
+Das Schriftstück, mit dem der Planer dem Auftraggeber vorschlägt, welcher Bieter den Zuschlag erhalten soll (D-88): die Bieter in ihrem Rang mit den geprüften Summen der Angebote und eine frei geschriebene Begründung, dazu Absender (Büro) und Projekt. Es rechnet nichts selbst und ist noch nicht der Zuschlag; die App gibt es als PDF aus. Im Code `VergabevorschlagEingabe`, `erzeugeVergabevorschlagPdf` (Paket `ausgabe`).
+
 ### ABC-Klasse
 Einteilung der Positionen eines Preisspiegels nach ihrem Anteil an der Summe: absteigend nach Gesamtpreis sortiert bilden die Positionen bis zu einer einstellbaren Schwelle (Standard 80 %) die Klasse A, bis zur zweiten Schwelle (Standard 95 %) die Klasse B, der Rest die Klasse C. Bezug ist der GP eines virtuellen Bieters (Standard: Mittel). Im Code `AbcKlasse`.
 
