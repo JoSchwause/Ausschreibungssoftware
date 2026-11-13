@@ -37,7 +37,7 @@ import {
   auftraggeberSetzen,
   leitbeschreibungSetzen,
   nachtragsangabenSetzen,
-  preisspiegeleinstellungenSetzen,
+  preisspiegelEinstellungenSetzen,
   vergabeinformationenSetzen,
   vorlageSetzen,
 } from './kopfdaten-befehle';
@@ -112,7 +112,7 @@ export const BEFEHLS_HANDLER = {
   NachtragsangabenSetzen: nachtragsangabenSetzen,
   VorlageSetzen: vorlageSetzen,
   BauteileZuordnen: bauteileZuordnen,
-  PreisspiegeleinstellungenSetzen: preisspiegeleinstellungenSetzen,
+  PreisspiegelEinstellungenSetzen: preisspiegelEinstellungenSetzen,
   KalkulationSetzen: kalkulationSetzen,
 } satisfies { [A in Art]?: Handler<A> };
 

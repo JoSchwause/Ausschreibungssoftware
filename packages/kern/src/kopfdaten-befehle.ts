@@ -7,7 +7,7 @@
 // (`ungueltige-eingabe`); Inhalte prüft der Kern nicht (U5), fehlende Pflichtangaben einer Vergabe sind kein Fehler.
 // Normalisierungen: `''` als Einheit einer Unterbeschreibung wird `null` (Vertrag v1.2, D-06, wie Ticket 30); von den
 // Nachtragsangaben landen genau ihre drei Felder im Kopf; `vorlage: false` entfernt das Feld (nie `false` im Zustand).
-// Seit Vertrag v1.7a (Ticket 137, D-127.7) auch PreisspiegeleinstellungenSetzen: genau die vier Felder der Einstellungen.
+// Seit Vertrag v1.7a (Ticket 137, D-127.7) auch PreisspiegelEinstellungenSetzen: genau die vier Felder der Einstellungen.
 
 import { alsMenge, alsProzent, vergleiche } from '@tethys/dezimal';
 import type {
@@ -24,7 +24,7 @@ import type {
   Nachtragsstatus,
   Position,
   PreisspiegelEinstellungen,
-  PreisspiegeleinstellungenSetzen,
+  PreisspiegelEinstellungenSetzen,
   Prozent,
   VergabeinformationenSetzen,
   VorlageSetzen,
@@ -264,10 +264,10 @@ export function vorlageSetzen(z: LvZustand, b: VorlageSetzen): Antwort {
 }
 
 /**
- * `PreisspiegeleinstellungenSetzen` (Vertrag v1.7a, D-127.7): die Einstellungen als ganzer Wert am Kopf; `null` entfernt
+ * `PreisspiegelEinstellungenSetzen` (Vertrag v1.7a, D-127.7): die Einstellungen als ganzer Wert am Kopf; `null` entfernt
  * sie (dann gelten die Standardwerte der Vergabe). Nur Kopf, keine Summen.
  */
-export const preisspiegeleinstellungenSetzen = (z: LvZustand, b: PreisspiegeleinstellungenSetzen): Antwort =>
+export const preisspiegelEinstellungenSetzen = (z: LvZustand, b: PreisspiegelEinstellungenSetzen): Antwort =>
   kopfSetzen(z, 'preisspiegel', b.einstellungen, preisspiegelFehler, preisspiegelNormal);
 
 export function leitbeschreibungSetzen(z: LvZustand, b: LeitbeschreibungSetzen): Antwort {

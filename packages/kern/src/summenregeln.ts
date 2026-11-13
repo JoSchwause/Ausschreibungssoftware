@@ -133,7 +133,7 @@ export function nachlassFehler(nachlass: Nachlass): string | null {
 
 /**
  * Ein Satz von 0,00 bis 100,00, beide Grenzen eingeschlossen: die Grenzen von prozentualem Nachlass und MwSt-Satz, seit
- * Vertrag v1.7a auch der Schwellen des Preisspiegels (`PreisspiegeleinstellungenSetzen`, D-127.7).
+ * Vertrag v1.7a auch der Schwellen des Preisspiegels (`PreisspiegelEinstellungenSetzen`, D-127.7).
  */
 export const prozentImBereich = (satz: Prozent): boolean =>
   vorzeichen(satz) >= 0 && vergleiche(satz, HUNDERT_PROZENT) <= 0;

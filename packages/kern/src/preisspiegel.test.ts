@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// PreisspiegeleinstellungenSetzen (Vertrag v1.7a, D-127.7; Ticket 137): die Einstellungen des Preisspiegels am Kopf des LV.
+// PreisspiegelEinstellungenSetzen (Vertrag v1.7a, D-127.7; Ticket 137): die Einstellungen des Preisspiegels am Kopf des LV.
 // Zuerst geschrieben (Q1).
 
 import { describe, expect, it } from 'vitest';
@@ -17,7 +17,7 @@ const EIGENE: PreisspiegelEinstellungen = {
 };
 
 const setzen = (einstellungen: PreisspiegelEinstellungen | null): LvBefehl => ({
-  art: 'PreisspiegeleinstellungenSetzen',
+  art: 'PreisspiegelEinstellungenSetzen',
   einstellungen,
 });
 
@@ -29,7 +29,7 @@ const fehler = (einstellungen: unknown): [string, string | undefined] | null => 
   return e.ok ? null : [e.fehler.code, e.fehler.feld];
 };
 
-describe('PreisspiegeleinstellungenSetzen', () => {
+describe('PreisspiegelEinstellungenSetzen', () => {
   it('setzt die Einstellungen am Kopf; nur der Kopf, keine Knoten, keine Summen', () => {
     const cs = erwarteOk(lvBefehlAusfuehren(zustand, setzen(EIGENE)));
     const kopf = { ...zustand.leistungsverzeichnis, knoten: undefined };
