@@ -57,7 +57,7 @@ Entscheidungen im Demo-Modus (eng gelesen; die Lesarten D-127.1 bis D-127.17 und
   kommt (A3).
 - **D-137.6 Lesart (a) nur bei einer Änderung.** `EinheitspreisAendern` und `EinheitspreisanteileSetzen` entfernen die Kalkulation
   nur, wenn sie etwas ändern; derselbe EP bzw. dieselben Anteile lassen sie stehen (wie D-56.2). Menge, Texte und Merkmale ohne
-  Zuschlag lassen sie stehen (sie gilt je Einheit). Der Hinweis `kalkulation-entfernt` (D-82 S4) folgt mit dem Vertragsnachtrag.
+  Zuschlag lassen sie stehen (sie gilt je Einheit).
 - **D-137.7 LV aus einem Stand.** `LeistungsverzeichnisAnlegen` lässt ein zur Laufzeit mitgebrachtes `preisspiegel` weg (D-127.7);
   `nachtrag` und `vorlage` bleiben wie bisher (nicht Teil dieses Tickets).
 - **D-137.8 Angaben an einer Stelle (`angaben.ts`).** `''` → `null`, leere Anschrift → `null`, ganz leere Angaben → Feld fehlt;
@@ -82,4 +82,15 @@ Entscheidungen im Demo-Modus (eng gelesen; die Lesarten D-127.1 bis D-127.17 und
 - **D-137.12 Doppelungen (122 Punkt 20).** `kostengruppeWechsel` und `bauteileWechsel` laufen über `positionsfeldWechsel`;
   `positionMitBauteilen` und die neue `positionMitKalkulation` über `mitFeld`; `ANTEILE` liegt in `positionsfelder.ts`
   (weitergereicht aus `epa.ts`).
-
+- **D-137.13 Hinweis `kalkulation-entfernt` (D-82 S4).** Nur wenn der Befehl eine vorhandene Kalkulation tatsächlich entfernt
+  (`EinheitspreisAendern`, `EinheitspreisanteileSetzen`, `PositionsmerkmaleSetzen` mit Zuschlag), mit `knotenId` der Position
+  und `feld: 'kalkulation'`; die Meldung nennt den Grund (Preis von Hand oder Zuschlagsposition). Die Umkehrung trägt wie jede
+  keine Hinweise.
+- **D-137.14 `EinstellungenUebernehmen` (D-127.8, D-127.9).** Der ganze Block wird geprüft wie bei den einzelnen Befehlen, mit
+  Pfaden unter `einstellungen.` (etwa `einstellungen.druckprofile.seitenrand`); doppelte Profilnamen in der Datei sind außer
+  Form (`einstellungen.druckprofile.name`, die Namen sind die Kennung). Übernommenes kommt in Normalform; übernimmt der Befehl
+  nichts, ist `nachher` der Zustand selbst (`speicher` schreibt dann keinen Eintrag).
+- **D-137.15 Last.** Unter Volllast (Lastmittel 13 bis 19 auf 4 Kernen) liefen im Gesamtlauf zwei Eigenschaftstests des Kerns
+  (`eigenschaften.test.ts`, `summen-eigenschaften.test.ts`) in die 5-s-Grenze von Vitest und drei Leistungsbudgets in
+  `speicher` (Aufmaßblatt, Modell 10.000 Bauteile, BauteileZuordnen) über ihre Grenze; einzeln laufen alle grün, und die
+  Eigenschaftstests brauchen mit dem Kern vor diesem Ticket gleich lang (2,4 s/3,3 s gegen 2,6 s/3,4 s). Nichts gelockert.
