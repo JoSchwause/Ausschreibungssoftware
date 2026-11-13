@@ -296,11 +296,15 @@ function lvStandUebersichtAusZeile(z: SqlZeile): LvStandUebersicht {
   };
 }
 
-/** Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst). */
+/**
+ * Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst): nach `angelegt`, bei gleichem
+ * Zeitpunkt nach der Reihenfolge des Schreibens (D-82 S1). So steht ein wiederhergestellter Stand wieder an seinem Platz.
+ */
 export function leseLvStaende(db: Datenbank, lv: string): LvStandUebersicht[] {
   return db
     .zeilen(
-      'SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ? ORDER BY seq',
+      `SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ?
+       ORDER BY angelegt, seq`,
       [lv],
     )
     .map(lvStandUebersichtAusZeile);
@@ -313,12 +317,12 @@ export function leseLvStand(db: Datenbank, id: string): LvStand | null {
     : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
 }
 
-/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei). */
+/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei, S1). */
 export function leseLvStaendeDesProjekts(db: Datenbank, projektId: ProjektId): LvStand[] {
   return db
     .zeilen(
       `SELECT s.* FROM lv_stand s JOIN leistungsverzeichnis l ON l.id = s.leistungsverzeichnis_id
-       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.seq`,
+       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.angelegt, s.seq`,
       [projektId],
     )
     .map((z) => ({ ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand }));

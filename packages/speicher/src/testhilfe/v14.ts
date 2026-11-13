@@ -33,6 +33,7 @@ import {
   type FixtureDaten,
 } from './fixtures';
 import { neuerKern, speichere } from './node';
+import { befehlFuer } from './umkehrung';
 
 export const F: FixtureDaten = ladeFixture('typisch');
 export const P = F.projekt.id;
@@ -174,7 +175,10 @@ let nr = 500;
 /** Wendet ein ChangeSet mit einem passenden Protokolleintrag an (Befehl wie angegeben, sonst ein kurzer Platzhalter). */
 export function anwenden(kern: SpeicherKern, cs: ChangeSet, befehl?: Protokolleintrag['befehl']) {
   nr += 1;
-  return kern.anwenden(eintrag(nr, P, aggregatVon(cs), befehl ?? { art: 'AufmassLoeschen' }), cs);
+  return kern.anwenden(
+    eintrag(nr, P, aggregatVon(cs), befehl ?? befehlFuer(cs, { art: 'AufmassLoeschen' })),
+    cs,
+  );
 }
 
 /** Projekt, LV, drei Angebote und das Auftrags-LV des Fixtures `typisch`. */

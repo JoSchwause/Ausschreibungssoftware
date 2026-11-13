@@ -143,6 +143,18 @@ function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet)
   }
 }
 
+/**
+ * Darf der Befehl des Eintrags einen LV-Stand einfrieren (D-82 M2)? Nur `LvStandAnlegen` und ein `Wiederholen`, das auf ein
+ * `LvStandAnlegen` verweist (der Verweis ist mit `pruefeHistorienbezug` schon geprüft).
+ */
+function friertStandEin(db: Datenbank, e: Protokolleintrag): boolean {
+  const b = e.befehl;
+  if (b.art === 'LvStandAnlegen') return true;
+  if (b.art !== 'Wiederholen') return false;
+  const z = db.zeilen('SELECT befehl FROM protokoll WHERE id = ?', [b.protokollId])[0];
+  return z !== undefined && (JSON.parse(String(z['befehl'])) as { art?: unknown }).art === 'LvStandAnlegen';
+}
+
 /** Ist der gespeicherte Befehl (JSON) ein `Rueckgaengig` oder `Wiederholen`? */
 function istHistorienbefehl(json: string): boolean {
   const art = (JSON.parse(json) as { art?: unknown }).art;
@@ -552,7 +564,10 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        wendeAn(this.#db, changeSet, eintrag.projektId, eintrag.wann);
+        wendeAn(this.#db, changeSet, eintrag.projektId, {
+          wann: eintrag.wann,
+          standEinfrieren: friertStandEin(this.#db, eintrag),
+        });
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
         // gehören könnte (siehe `wendeProjektAn`, D-31.1).
         const projektGeloescht = changeSet.art === 'projekt' && changeSet.projekt.nachher === null;

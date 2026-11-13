@@ -8,7 +8,7 @@
 // Aufmaßblätter vor Rechnungen, Kostenermittlungen vor Honorarberechnungen, Auftrags-LV und Modelle vor Mängeln). Dieselbe
 // Reihenfolge nennt der Dekoder als erlaubte Arten im Protokoll.
 
-import type { Bauwerksmodell, ChangeSet, Projektdatei, ProjektId, Zeitstempel } from '@tethys/vertrag';
+import type { Bauwerksmodell, ChangeSet, Projektdatei, ProjektId } from '@tethys/vertrag';
 import type { Datenbank } from './sql';
 import { LEERES_SUMMENVORHER } from './summenvorher';
 import {
@@ -26,6 +26,7 @@ import {
   wendeProjektAn,
   wendeRechnungAn,
   type AbhaengigeTabelle,
+  type Schreibanlass,
 } from './schreiben';
 
 /** Die Art eines Aggregats, wie in `ChangeSet` und `AggregatBezug`. */
@@ -42,8 +43,8 @@ interface Aggregatart<A extends Art> {
   readonly bezeichnung: string;
   /** Die Kennung des Aggregats, auf das das ChangeSet wirkt (`AggregatBezug.id`). */
   kennung(cs: ChangeSetDer<A>): string;
-  /** Schreibt das ChangeSet (in der Transaktion des Aufrufers); `wann` ist der Zeitpunkt des Protokolleintrags. */
-  anwenden(db: Datenbank, cs: ChangeSetDer<A>, projektId: ProjektId, wann: Zeitstempel | undefined): void;
+  /** Schreibt das ChangeSet (in der Transaktion des Aufrufers); `anlass` sagt, aus welchem Protokolleintrag es kommt. */
+  anwenden(db: Datenbank, cs: ChangeSetDer<A>, projektId: ProjektId, anlass: Schreibanlass): void;
   /** Schreibt alle Aggregate dieser Art aus einer geprüften Projektdatei (Import, Reihenfolge innerhalb der Art). */
   ausDatei(db: Datenbank, d: Projektdatei, projektId: ProjektId): void;
 }
@@ -67,8 +68,8 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
     tabelle: 'leistungsverzeichnis',
     bezeichnung: 'LV',
     kennung: (cs) => cs.leistungsverzeichnisId,
-    anwenden: (db, cs, projektId, wann) => {
-      wendeLvAn(db, cs, projektId, wann);
+    anwenden: (db, cs, projektId, anlass) => {
+      wendeLvAn(db, cs, projektId, anlass);
     },
     ausDatei: (db, d, projektId) => {
       for (const z of d.leistungsverzeichnisse) {
@@ -307,13 +308,8 @@ export function aggregatDes(cs: ChangeSet): { art: Art; id: string } {
 }
 
 /** Schreibt ein ChangeSet über den Eintrag seiner Art (in der Transaktion des Aufrufers). */
-export function wendeAn(
-  db: Datenbank,
-  cs: ChangeSet,
-  projektId: ProjektId,
-  wann: Zeitstempel | undefined,
-): void {
-  eintragZu(cs).anwenden(db, cs, projektId, wann);
+export function wendeAn(db: Datenbank, cs: ChangeSet, projektId: ProjektId, anlass: Schreibanlass): void {
+  eintragZu(cs).anwenden(db, cs, projektId, anlass);
 }
 
 /** Schreibt alle Aggregate einer geprüften Projektdatei, Art für Art in der Reihenfolge der Tabelle. */
