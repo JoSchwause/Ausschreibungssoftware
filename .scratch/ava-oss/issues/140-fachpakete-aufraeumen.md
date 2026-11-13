@@ -1,6 +1,6 @@
 # 140: Fachpakete aufräumen (Ticket 123, Rest)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `packages/ifc`, `bim`, `bauzeit`, `bauleitung`, `ui-modell`
 Blocked by: 127
