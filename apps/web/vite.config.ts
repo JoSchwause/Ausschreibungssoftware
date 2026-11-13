@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
@@ -33,7 +35,42 @@ function inhaltsrichtlinie(): Plugin {
   };
 }
 
+// Ticket 134 (G-53): Basis-Pfad für GitHub Pages (`/<repo>/`), Standard `/`. `VITE_BASE` darf mit oder ohne Schrägstriche
+// angegeben werden; Manifest, Service Worker, Worker- und Bündeladressen folgen `base`.
+function basisPfad(roh: string | undefined): string {
+  const sauber = (roh ?? '').trim().replace(/^\/+|\/+$/g, '');
+  return sauber === '' ? '/' : `/${sauber}/`;
+}
+
+// Ticket 134 (D-78): Version aus `package.json`; Build-Stand = kurzer Commit-Hash und Commit-Datum (kein `Date.now()`).
+const version = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+).version;
+
+function git(...args: string[]): string {
+  try {
+    return (
+      execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() ||
+      'unbekannt'
+    );
+  } catch {
+    return 'unbekannt';
+  }
+}
+
+const buildStand = {
+  commit: git('rev-parse', '--short=7', 'HEAD'),
+  datum: git('show', '-s', '--format=%cs', 'HEAD'),
+};
+
 export default defineConfig({
+  base: basisPfad(process.env['VITE_BASE']),
+  // Die Probe des Basis-Pfads baut in ein eigenes Verzeichnis (`playwright.basispfad.config.ts`).
+  build: { outDir: process.env['VITE_OUTDIR'] || 'dist' },
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_BUILD__: JSON.stringify(buildStand),
+  },
   plugins: [
     react(),
     inhaltsrichtlinie(), // Ticket 114
