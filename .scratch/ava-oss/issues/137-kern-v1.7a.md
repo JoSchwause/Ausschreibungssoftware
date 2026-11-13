@@ -22,6 +22,7 @@ oder Eigenschaftstests wie bisher, inklusive Umkehrung (Undo-ChangeSet).
 5. Preisspiegel-Einstellungen am LV setzen (LV-Befehl, Undo).
 6. Prüfen, dass `HinweistextAnlegen/Aendern` und `OzMaskeSetzen` (mit Prüfung vorhandener OZ, F2) für die Bedienung taugen
    (Fehlercodes für „Maske passt nicht zu vorhandenen OZ“ mit Liste).
+8. **Aus dem Review (D-82):** M2 – `changeSetUmkehren` tauscht `lvStandInhalt`; Eigenschaftstest: Löschen und Undo ergeben einen Stand, der dem ursprünglichen gleicht (`angelegt` eingeschlossen). S3 – `KalkulationSetzen` an einer Zuschlagsposition → `knotenart-unzulaessig`; `PositionsmerkmaleSetzen` mit Zuschlag entfernt die Kalkulation im selben ChangeSet. S4 – Hinweis `kalkulation-entfernt` mit `knotenId`, wenn ein Preisbefehl die Kalkulation entfernt. M1 – Einstellungs-ChangeSets sind umkehrbar (Funktion für das Sitzungs-Undo der App). S9 – den Normalisierer der Bieterangaben exportieren (`vergabe` nutzt ihn). S5 – Befehlsname `PreisspiegelEinstellungenSetzen`, sobald der Vertragsnachtrag gemergt ist.
 7. Ticket 123 §8: die `kern`-Doppelungen aus 122 Punkt 20; die Konstanten aus 127 nutzen.
 
 ## Acceptance criteria
