@@ -61,8 +61,8 @@ export const texte = {
     zumProjekt: 'Zum Projekt',
     zumPreisspiegel: 'Zum Preisspiegel',
     werkzeuge: 'Werkzeuge des Auftrags-LV',
+    gruppen: { ausgabe: 'Ausgabe', abrechnung: 'Abrechnung' },
     grid: 'Positionen des Auftrags-LV',
-    pruefung: 'Prüfung',
   },
   ausgabe: {
     knopf: 'GAEB X86 ausgeben',

@@ -12,6 +12,8 @@ export { Auswahl } from './Auswahl';
 export type { AuswahlOption, AuswahlProps } from './Auswahl';
 export { Dialog } from './Dialog';
 export type { DialogProps } from './Dialog';
+export { Werkzeuggruppe, Werkzeugleiste, Werkzeugverweis } from './Werkzeugleiste';
+export type { WerkzeuggruppeProps, WerkzeugleisteProps, WerkzeugverweisProps } from './Werkzeugleiste';
 export { Tabs } from './Tabs';
 export type { Reiter, TabsProps } from './Tabs';
 export { Tooltip } from './Tooltip';

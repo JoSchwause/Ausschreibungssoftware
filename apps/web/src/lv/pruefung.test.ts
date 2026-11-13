@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Knoten, KnotenId, Pruefbefund } from '@tethys/vertrag';
 import { describe, expect, it, vi } from 'vitest';
-import { befundeJeKnoten, pruefgruppen, sprungZu, imLeerlauf } from './pruefung';
+import { befundeJeKnoten, pruefgruppen, pruefstand, sprungZu, imLeerlauf } from './pruefung';
 
 const LV = 'lv';
 const k = (id: string, art: Knoten['art'], elternId: string, oz: string | null, kurztext = ''): Knoten =>
@@ -43,6 +43,17 @@ describe('Prüf-Panel', () => {
 
   it('leere Gruppen fallen weg', () => {
     expect(pruefgruppen([], KNOTEN)).toEqual([]);
+  });
+
+  it('Stand für die Schaltfläche der Werkzeugleiste: Zahl aller Befunde und die schwerste Schwere', () => {
+    const warnung = b('einheit-fehlt', 'warnung', { knotenId: 'p1' as KnotenId, feld: 'einheit' });
+    const fehler = b('oz-doppelt', 'fehler', { knotenId: 'p1' as KnotenId, feld: 'ordnungszahl' });
+    expect(pruefstand(pruefgruppen([], KNOTEN))).toEqual({ anzahl: 0, schwerste: null });
+    expect(pruefstand(pruefgruppen([warnung, warnung], KNOTEN))).toEqual({ anzahl: 2, schwerste: 'warnung' });
+    expect(pruefstand(pruefgruppen([warnung, fehler, warnung], KNOTEN))).toEqual({
+      anzahl: 3,
+      schwerste: 'fehler',
+    });
   });
 
   it('verteilt die Befunde auf die Knoten (für die Zellen des Grids)', () => {
