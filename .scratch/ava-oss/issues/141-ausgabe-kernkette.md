@@ -1,6 +1,6 @@
 # 141: `ausgabe`: Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Bilder, Köpfe
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: O · Paket/Ordner: `packages/ausgabe`
 Blocked by: 127
