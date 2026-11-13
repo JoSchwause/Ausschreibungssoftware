@@ -11,6 +11,7 @@ import type {
   Einstellungen,
   EinstellungenBefehlAusfuehren,
   EinstellungenChangeSet,
+  EinstellungenChangeSetUmkehren,
   Kostengruppenbezeichnung,
   LangtextUmfang,
 } from '@tethys/vertrag';
@@ -104,6 +105,53 @@ const bezeichnungenNormal = (liste: readonly Kostengruppenbezeichnung[]): Kosten
     .map((b) => ({ nummer: b.nummer, bezeichnung: b.bezeichnung }))
     .sort((a, b) => (a.nummer < b.nummer ? -1 : a.nummer > b.nummer ? 1 : 0));
 
+/**
+ * Form eines ganzen Einstellungsblocks (`EinstellungenUebernehmen`, Vertrag v1.7a Nachtrag): Büro, jedes Profil und die
+ * Bezeichnungen wie bei ihren Befehlen, die Pfade unter `einstellungen`; die Profilnamen eindeutig (sie sind die Kennung).
+ */
+function einstellungenFehler(wert: unknown): Formfehler | null {
+  const pfad = 'einstellungen';
+  if (!istObjekt(wert)) return { feld: pfad, meldung: 'Die Einstellungen sind ein Objekt.' };
+  const buero = bueroFehler(wert['buero'], `${pfad}.buero`);
+  if (buero !== null) return buero;
+  const profile = wert['druckprofile'];
+  if (!Array.isArray(profile))
+    return { feld: `${pfad}.druckprofile`, meldung: 'Die Druckprofile sind eine Liste.' };
+  const namen = new Set<unknown>();
+  for (const p of profile as readonly unknown[]) {
+    const f = druckprofilFehler(p, `${pfad}.druckprofile`);
+    if (f !== null) return f;
+    const name = (p as Record<string, unknown>)['name'];
+    if (namen.has(name))
+      return {
+        feld: `${pfad}.druckprofile.name`,
+        meldung: `Das Druckprofil „${String(name)}“ steht doppelt.`,
+      };
+    namen.add(name);
+  }
+  return bezeichnungenFehler(wert['kostengruppenbezeichnungen'], `${pfad}.kostengruppenbezeichnungen`);
+}
+
+/**
+ * Die Einstellungen nach der Übernahme aus einer Projektdatei (D-73): Büro nur, wenn lokal keines; jedes Profil, dessen Name
+ * lokal fehlt, in der Reihenfolge der Datei ans Ende; jede Bezeichnung, deren Nummer lokal fehlt, an ihre Stelle nach Nummer.
+ * Nichts Vorhandenes wird überschrieben.
+ */
+function uebernommen(lokal: Einstellungen, datei: Einstellungen): Einstellungen {
+  const namen = new Set(lokal.druckprofile.map((p) => p.name));
+  const neueProfile = datei.druckprofile.filter((p) => !namen.has(p.name)).map(druckprofilNormal);
+  const nummern = new Set<string>(lokal.kostengruppenbezeichnungen.map((b) => b.nummer));
+  const neueBezeichnungen = datei.kostengruppenbezeichnungen.filter((b) => !nummern.has(b.nummer));
+  return {
+    buero: lokal.buero ?? (datei.buero === null ? null : bueroNormal(datei.buero)),
+    druckprofile: neueProfile.length === 0 ? lokal.druckprofile : [...lokal.druckprofile, ...neueProfile],
+    kostengruppenbezeichnungen:
+      neueBezeichnungen.length === 0
+        ? lokal.kostengruppenbezeichnungen
+        : bezeichnungenNormal([...lokal.kostengruppenbezeichnungen, ...neueBezeichnungen]),
+  };
+}
+
 const changeSet = (vorher: Einstellungen, nachher: Einstellungen): EinstellungenChangeSet => ({
   art: 'einstellungen',
   einstellungen: { vorher, nachher: gleicherWert(vorher, nachher) ? vorher : nachher },
@@ -120,6 +168,8 @@ const formfehler = (f: Formfehler): ReturnType<EinstellungenBefehlAusfuehren> =>
  * - `DruckprofilSetzen`: ersetzt das Profil gleichen Namens an seiner Stelle, sonst ans Ende.
  * - `DruckprofilEntfernen`: gibt es kein Profil dieses Namens, `ungueltige-eingabe` mit `feld: 'name'`.
  * - `KostengruppenbezeichnungenSetzen`: die ganze Liste, nach Nummer geordnet.
+ * - `EinstellungenUebernehmen` (v1.7a Nachtrag, D-82 M1): füllt aus einem Block der Projektdatei nur, was lokal fehlt
+ *   (`uebernommen`); übernimmt er nichts, ist `nachher` der Zustand selbst.
  */
 export const einstellungenBefehlAusfuehren: EinstellungenBefehlAusfuehren = (zustand, befehl) => {
   const art: string = befehl.art;
@@ -165,13 +215,18 @@ export const einstellungenBefehlAusfuehren: EinstellungenBefehlAusfuehren = (zus
         }),
       );
     }
+    case 'EinstellungenUebernehmen': {
+      const f = einstellungenFehler(befehl.einstellungen);
+      if (f !== null) return formfehler(f);
+      return ok(changeSet(zustand, uebernommen(zustand, befehl.einstellungen)));
+    }
     default:
       return nein('befehl-nicht-zustaendig', `Befehl ${art} gehört nicht zu den Einstellungen.`);
   }
 };
 
 /** Die Umkehrung (Sitzungs-Undo der App, D-82 M1): vorher und nachher getauscht. */
-export const einstellungenChangeSetUmkehren = (cs: EinstellungenChangeSet): EinstellungenChangeSet => ({
+export const einstellungenChangeSetUmkehren: EinstellungenChangeSetUmkehren = (cs) => ({
   art: cs.art,
   einstellungen: { vorher: cs.einstellungen.nachher, nachher: cs.einstellungen.vorher },
 });

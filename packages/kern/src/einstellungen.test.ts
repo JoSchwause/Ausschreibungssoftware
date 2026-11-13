@@ -200,6 +200,75 @@ describe('KostengruppenbezeichnungenSetzen', () => {
   });
 });
 
+// Vertrag v1.7a Nachtrag (D-82 M1, D-73): Einstellungen aus einer Projektdatei übernehmen, nur was lokal fehlt, nie
+// überschreiben.
+describe('EinstellungenUebernehmen', () => {
+  const lokal: Einstellungen = {
+    buero: BUERO,
+    druckprofile: [profil('A'), profil('B')],
+    kostengruppenbezeichnungen: [kg('100', 'Grundstück lokal'), kg('300', 'Bauwerk lokal')],
+  };
+  const datei: Einstellungen = {
+    buero: { ...BUERO, name: 'Anderes Büro' },
+    druckprofile: [profil('C', { mitPreisen: false }), profil('A', { deckblatt: false }), profil('D')],
+    kostengruppenbezeichnungen: [kg('200', 'Erschließung'), kg('300', 'Bauwerk Datei'), kg('400', 'Technik')],
+  };
+  const uebernehmen = (e: unknown): EinstellungenBefehl => ({
+    art: 'EinstellungenUebernehmen',
+    einstellungen: e as Einstellungen,
+  });
+
+  it('füllt nur, was lokal fehlt: Profile in der Reihenfolge der Datei ans Ende, Bezeichnungen an ihre Stelle', () => {
+    const z = wende(lokal, uebernehmen(datei));
+    expect(z).toEqual({
+      buero: BUERO,
+      druckprofile: [profil('A'), profil('B'), profil('C', { mitPreisen: false }), profil('D')],
+      kostengruppenbezeichnungen: [
+        kg('100', 'Grundstück lokal'),
+        kg('200', 'Erschließung'),
+        kg('300', 'Bauwerk lokal'),
+        kg('400', 'Technik'),
+      ],
+    });
+  });
+
+  it('ein lokal leeres Büro kommt aus der Datei (in Normalform); leere Einstellungen werden ganz gefüllt', () => {
+    const mitLeerem = { ...datei, buero: { ...BUERO, telefon: '' } };
+    const z = wende(LEERE_EINSTELLUNGEN, uebernehmen(mitLeerem));
+    expect(z.buero).toEqual({ ...BUERO, telefon: null });
+    expect(z.druckprofile.map((p) => p.name)).toEqual(['C', 'A', 'D']);
+    expect(z.kostengruppenbezeichnungen.map((b) => b.nummer)).toEqual(['200', '300', '400']);
+  });
+
+  it('nichts zu übernehmen: nachher ist der Zustand selbst', () => {
+    const cs = erwarteOk(einstellungenBefehlAusfuehren(lokal, uebernehmen(lokal)));
+    expect(cs.einstellungen.nachher).toBe(lokal);
+    const leer = erwarteOk(einstellungenBefehlAusfuehren(lokal, uebernehmen(LEERE_EINSTELLUNGEN)));
+    expect(leer.einstellungen.nachher).toBe(lokal);
+  });
+
+  it('Form wie bei den einzelnen Befehlen, mit dem Pfad im Block; doppelte Profilnamen sind außer Form', () => {
+    const faelle: [unknown, string][] = [
+      ['x', 'einstellungen'],
+      [{ ...datei, buero: { ...BUERO, name: '' } }, 'einstellungen.buero.name'],
+      [{ ...datei, druckprofile: 'x' }, 'einstellungen.druckprofile'],
+      [{ ...datei, druckprofile: [profil('')] }, 'einstellungen.druckprofile.name'],
+      [{ ...datei, druckprofile: [profil('A'), profil('A')] }, 'einstellungen.druckprofile.name'],
+      [
+        { ...datei, druckprofile: [{ ...profil('E'), seitenrand: 'x' }] },
+        'einstellungen.druckprofile.seitenrand',
+      ],
+      [
+        { ...datei, kostengruppenbezeichnungen: [kg('300', 'a'), kg('300', 'b')] },
+        'einstellungen.kostengruppenbezeichnungen.nummer',
+      ],
+      [{ ...datei, kostengruppenbezeichnungen: null }, 'einstellungen.kostengruppenbezeichnungen'],
+    ];
+    for (const [e, feld] of faelle)
+      expect(fehler(lokal, uebernehmen(e)), feld).toEqual(['ungueltige-eingabe', feld]);
+  });
+});
+
 describe('Einstellungsbefehle allgemein', () => {
   it('eine unbekannte Befehlsart: befehl-nicht-zustaendig', () => {
     expect(fehler(LEERE_EINSTELLUNGEN, { art: 'ProjektLoeschen' })?.[0]).toBe('befehl-nicht-zustaendig');
