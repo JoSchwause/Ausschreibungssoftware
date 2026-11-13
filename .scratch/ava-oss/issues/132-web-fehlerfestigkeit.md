@@ -1,6 +1,6 @@
 # 132: App: Fehlergrenze, Browserprüfung, Meldungs-Testhilfe
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: E13 · Paket/Ordner: neu `apps/web/src/fehler/`, `apps/web/src/main.tsx`, `apps/web/src/speicher/`, `apps/web/e2e/hilfen.ts` und Meldungsprüfungen in `apps/web/e2e/*.spec.ts`
 Blocked by: –
@@ -27,11 +27,13 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
 
 ## Acceptance criteria
 
-- [ ] Fehlergrenze mit Test; Startprüfung mit Unit-Test (Fähigkeiten simuliert)
+- [x] Fehlergrenze mit Test; Startprüfung mit Unit-Test (Fähigkeiten simuliert)
 - [ ] Keine Meldungsprüfung mehr ohne die Hilfe (grep im Ticket belegt); volle Web-E2E zweimal hintereinander grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+  (teilweise: Hilfe und grep erfüllt; zweimal grün nur vor dem Merge von 131/133, danach fällt allein die vorbestehende
+  Flake `bim-tastatur.spec.ts:135`, siehe Ergebnis)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -69,3 +71,12 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   `nachtrag.spec.ts:170` (in B-38 genannt) ist ein fester Hinweis auf der Preisspiegelseite, kein Toast; unverändert.
 - Offen (nicht in diesem Ticket, P2): `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50` zeigen ebenfalls den
   Rohtext der Ausnahme beim PDF; die Ordner gehören anderen Tickets.
+- **Ergebnis** (Stand nach Merge der Integrationsspitze `c3e9255`): `pnpm lint` und `pnpm typecheck` grün; `pnpm test`
+  grün bei geringer Last (4106 Tests), unter Last (Lastmittel über 20 auf 4 Kernen) fallen nur Leistungsbudgets fremder
+  Pakete (`kern` K9 und LV-Prüfung, `speicher` Aufmaß und X1, `vergabe` Preisspiegel, `abrechnung` D-45); einzeln
+  wiederholt alle grün, nichts gelockert. Volle Web-E2E: Läufe 1 und 2 (vor 131/133) je 90/90 grün; danach Läufe 3 und 7
+  je 92/92 grün, Läufe 4, 6 und 8 je 91/92, Lauf 5 90/92. Gefallen ist dabei jedes Mal nur
+  `bim-tastatur.spec.ts:135` (Fokus auf der Option „NetSideArea …“ in der Mengenart-Auswahl), in Lauf 5 zusätzlich das
+  Leistungsbudget `leistung.spec.ts:178` unter Lastmittel 31. Die Flake ist vorbestehend: auf `integration/welle-7` ohne
+  die Änderungen dieses Tickets fiel der Spec mit `--repeat-each 4` zweimal; keine Seitenfehler (`pageerror`), das
+  Fehlerband erschien nicht. Keine Meldungsprüfung fiel in einem der acht Läufe.
