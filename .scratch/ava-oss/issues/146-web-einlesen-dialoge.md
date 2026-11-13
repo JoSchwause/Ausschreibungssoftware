@@ -1,6 +1,6 @@
 # 146: App: Einlesen-Dialoge in Nutzersprache
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E7 · Paket/Ordner: `apps/web/src/gaeb/`; in `abrechnung/` (X31), `rechnung/` (XRechnung), `bim/` (IFC) nur die Befundanzeige der Einlese-Dialoge
 Blocked by: 136, 131, 137, 139 (D-82, S7: Bieterangaben werden erst mit Kern und Speicher gehalten)
