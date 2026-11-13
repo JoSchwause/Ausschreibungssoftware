@@ -20,6 +20,7 @@ import { dateiAuf3 } from './dateimigration3';
 import { dateiAuf4 } from './dateimigration4';
 import { dateiAuf5 } from './dateimigration5';
 import { dateiAuf6 } from './dateimigration6';
+import { dateiAuf7 } from './dateimigration7';
 import type { Datenbank } from './sql';
 import { summenDerDatenbankNeuRechnen, type Migrationsbefund } from './summenmigration';
 
@@ -501,6 +502,44 @@ CREATE TABLE bautagebucheintrag (
 ) STRICT;
 ${PROTOKOLL_V6}`;
 
+// --- Version 7 (Ticket 139, `vertrag` v1.7a) --------------------------------------------------------------------------
+//
+// (1) Neue optionale Felder als kanonisches JSON, `NULL` = fehlt (wie in Version 4 bis 6): `angaben` an Projekt (E10,
+// `Projektangaben`) und Bieter (`Bieterangaben`), `preisspiegel` am Kopf des Ausschreibungs-LV (E15; das Auftrags-LV trägt es
+// nie, D-127.7), `kalkulation` an der Position (E9; CHECK wie `mengenansatz`). Papierkorb und LV-Stände halten Knoten und Kopf
+// schon als JSON. Keines der Felder ändert eine Summe: keine Neuberechnung (D-17).
+//
+// (2) Die Einstellungen des Geräts (E15, D-73): ein globales Aggregat ohne Kennung und ohne Projekt, außerhalb des Protokolls.
+// Eine Zeile (`id = 1`), der ganze Wert als kanonisches JSON: Das ChangeSet trägt die Einstellungen immer ganz (vorher,
+// nachher), gelesen und geschrieben werden sie nur als Ganzes, und sie sind klein. Ein neues optionales Feld der Einstellungen
+// braucht so keine Migration. Fehlt die Zeile, gelten `LEERE_EINSTELLUNGEN`.
+//
+// (3) Das Einstellungsprotokoll (Review D-82 M1: A5 und ADR 0009 ohne Ausnahme): je Befehl an den Einstellungen ein Eintrag,
+// geschrieben mit dem ChangeSet in einer Transaktion, ohne Projekt und ohne Aggregat (es gibt nur eines). `seq` hält die
+// Reihenfolge des Schreibens wie beim Befehlsprotokoll; der Befehl steht als kanonisches JSON.
+//
+// (4) Keine neue Aggregatart: `LvStandUmbenennen` und `LvStandLoeschen` stehen mit ihrem LV im Protokoll (D-127.1), die Befehle
+// an den Einstellungen in ihrem eigenen; `protokoll.aggregat_art` bleibt, wie es ist.
+const SCHEMA_V7 = `
+ALTER TABLE projekt ADD COLUMN angaben TEXT;
+ALTER TABLE bieter ADD COLUMN angaben TEXT;
+ALTER TABLE leistungsverzeichnis ADD COLUMN preisspiegel TEXT;
+ALTER TABLE knoten ADD COLUMN kalkulation TEXT CHECK (kalkulation IS NULL OR art = 'position');
+
+CREATE TABLE einstellungen (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+  inhalt TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE einstellungen_protokoll (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  wer TEXT NOT NULL,
+  wann TEXT NOT NULL,
+  befehl TEXT NOT NULL
+) STRICT;
+`;
+
 export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
@@ -551,6 +590,14 @@ export const MIGRATIONEN: readonly Migration[] = [
       db.skript(SCHEMA_V6);
     },
     datei: dateiAuf6,
+  },
+  {
+    version: 7,
+    name: 'Vertrag v1.7a: Projekt- und Bieterangaben, Preisspiegel, Kalkulation, Einstellungen und ihr Protokoll',
+    hoch: (db) => {
+      db.skript(SCHEMA_V7);
+    },
+    datei: dateiAuf7,
   },
 ];
 

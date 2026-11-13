@@ -13,6 +13,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Aufmass, AuftragsLeistungsverzeichnisId, ProjektId } from '@tethys/vertrag';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, erwarteMeldung, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import {
   M4_BIETER,
   M4_NACHTRAG_LV,
@@ -40,7 +41,7 @@ async function blattAnlegen(page: Page, aufmass: Aufmass): Promise<void> {
 async function listeNeuLaden(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'Zum Auftrags-LV' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Rechnungen' }).click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
 }
 
@@ -108,7 +109,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await expect(angebote.getByRole('row', { name: new RegExp(M4_BIETER) })).toBeVisible();
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${M4_BIETER}` })
@@ -130,7 +131,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   await blattAnlegen(page, m4Blatt(0, projektId, auftragsLvId));
 
   // Zur Rechnungsliste über den Link des Auftrags-LV.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Rechnungen' }).click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
   await expect(page.getByText('Noch keine Rechnung erfasst.')).toBeVisible();
 

@@ -1,24 +1,40 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Positionsfelder aus Vertrag v1.4 (Ticket 71): Form der Kostengruppe (C2, D-36 (4)) und der Textquelle (G-17, D-40) und
-// die Normalform der Textquelle; seit Vertrag v1.6 (Ticket 105) Form und Normalform der Bauteilzuordnungen (X1c, D-52). Ein
-// Blatt ohne Abhängigkeiten im Kern: Prüfung (`positionsdatenFehler`), Normalform mitgebrachter Positionen
-// (`positionNormal`), die Kopierhilfe und die Befehle (`KostengruppeSetzen`, `TextquelleSetzen`, `BauteileZuordnen`) fragen
+// die Normalform der Textquelle; seit Vertrag v1.6 (Ticket 105) Form und Normalform der Bauteilzuordnungen (X1c, D-52); seit
+// Vertrag v1.7a (Ticket 137, D-127.6) Form und Normalform der Kalkulationsangaben (E9). Ein Blatt im Kern (es braucht nur
+// `mitFeld` aus `struktur.ts`): Prüfung (`positionsdatenFehler`), Normalform mitgebrachter Positionen (`positionNormal`), die
+// Kopierhilfe und die Befehle (`KostengruppeSetzen`, `TextquelleSetzen`, `BauteileZuordnen`, `KalkulationSetzen`) fragen
 // hier.
 
-import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
-import type { Bauteilzuordnung, Position } from '@tethys/vertrag';
+import { alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
+import { IFC_GLOBALID_MUSTER, KOSTENGRUPPENNUMMER_MUSTER } from '@tethys/vertrag';
+import type {
+  Bauteilzuordnung,
+  EpaArt,
+  Kalkulationsangaben,
+  Kalkulationsansatz,
+  Kalkulationszuschlagssaetze,
+  Position,
+  Prozent,
+} from '@tethys/vertrag';
+import { mitFeld } from './struktur';
+
+/** Die sechs Kostenarten der Einheitspreisanteile (`EpaArt`), in Reihenfolge des Vertrags. */
+export const ANTEILE = ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei'] as const;
+export type Anteil = (typeof ANTEILE)[number];
+const KOSTENARTEN: ReadonlySet<unknown> = new Set<EpaArt>(ANTEILE);
 
 /**
  * Form der Kostengruppennummer (Glossar „Kostengruppe“, D-24; Vertrag `Kostengruppennummer`): genau drei Ziffern, die erste
- * nicht 0, also `100` bis `999`. Eine eigene kleine Prüfung, weil der Kern `kosten` nicht importiert (A3); erzeugt wird die
- * Nummer weiter nur von `kgLesen` in `kosten`. Der Kern prüft nach, weil Befehle und Knoten auch aus Protokoll und Datei
- * kommen (Vertrag `KostengruppeSetzen`; Nachtrag D-42 an Ticket 71; D-71.2).
+ * nicht 0, also `100` bis `999`. Seit Vertrag v1.7a die Konstante des Vertrags (`KOSTENGRUPPENNUMMER_MUSTER`, D-127.12),
+ * hier unter dem alten Namen, bis `speicher` und `gaeb` sie selbst aus dem Vertrag nehmen. Der Kern prüft nach, weil Befehle
+ * und Knoten auch aus Protokoll und Datei kommen (Vertrag `KostengruppeSetzen`; Nachtrag D-42 an Ticket 71; D-71.2).
  */
-export const KOSTENGRUPPE_FORM = /^[1-9][0-9]{2}$/;
+export const KOSTENGRUPPE_FORM: RegExp = KOSTENGRUPPENNUMMER_MUSTER;
 
 /** Formfehler einer Kostengruppennummer als Meldung, sonst `null`. */
 export function kostengruppeFehler(wert: unknown): string | null {
-  return typeof wert === 'string' && KOSTENGRUPPE_FORM.test(wert)
+  return typeof wert === 'string' && KOSTENGRUPPENNUMMER_MUSTER.test(wert)
     ? null
     : 'Die Kostengruppe ist eine dreistellige Nummer von 100 bis 999 (Glossar „Kostengruppe“).';
 }
@@ -89,13 +105,108 @@ export function bauteileGleich(
  * Die Position mit den Bauteilzuordnungen `bauteile`: `null`, `undefined` und `[]` entfernen das Feld (nie `[]` im Zustand,
  * Vertrag `Positionsdaten.bauteile`), sonst steht die Liste dort.
  */
-export function positionMitBauteilen(
+export const positionMitBauteilen = (
   p: Position,
   bauteile: readonly Bauteilzuordnung[] | null | undefined,
-): Position {
-  if (bauteile !== null && bauteile !== undefined && bauteile.length > 0) return { ...p, bauteile };
-  if (!('bauteile' in p)) return p;
-  const ohne: { -readonly [K in keyof Position]?: Position[K] } = { ...p };
-  delete ohne.bauteile;
-  return ohne as Position;
+): Position =>
+  mitFeld(
+    p,
+    'bauteile',
+    bauteile !== null && bauteile !== undefined && bauteile.length > 0 ? bauteile : null,
+  );
+
+// --- Kalkulationsangaben (Vertrag v1.7a, Ticket 137, D-127.6) ---------------------------------------------------------
+
+/** Formfehler mit dem Pfad des Felds (`kalkulation.ansaetze.art` …) und einer Meldung. */
+export interface Formfehler {
+  readonly feld: string;
+  readonly meldung: string;
 }
+
+const istObjekt = (w: unknown): w is Record<string, unknown> =>
+  typeof w === 'object' && w !== null && !Array.isArray(w);
+
+/** Ein Text, der die Prüfung `pruefe` besteht, oder `null`. */
+const zahlOderNull = (w: unknown, pruefe: (t: string) => { readonly ok: boolean }): boolean =>
+  w === null || (typeof w === 'string' && pruefe(w).ok);
+
+/**
+ * Form der Kalkulationsangaben (Vertrag `KalkulationSetzen`, D-127.6): ein Objekt mit einer Liste `ansaetze` (je Ansatz eine
+ * Kostenart, die Bezeichnung als Text, Ansatzmenge kanonisch mit 3 Stellen oder `null`, Kostensatz kanonisch mit 3 Stellen
+ * oder `null`) und `zuschlagssaetze` als Objekt (Schlüssel eine Kostenart, Wert kanonisch mit 2 Stellen). Ob die Werte zu
+ * einem sinnvollen Preis führen, prüft der Kern nicht: negative Werte und Sätze unter −100 % sind Befunde der Kalkulation in
+ * `kosten`, keine Sperre (U5). Die Felder heißen nach dem Pfad im Befehl, ohne Zeilennummer.
+ */
+export function kalkulationFehler(wert: unknown): Formfehler | null {
+  const pfad = 'kalkulation';
+  if (!istObjekt(wert)) return { feld: pfad, meldung: 'Die Kalkulation ist ein Objekt oder null.' };
+  const ansaetze = wert['ansaetze'];
+  if (!Array.isArray(ansaetze))
+    return { feld: `${pfad}.ansaetze`, meldung: 'Die Kalkulationsansätze sind eine Liste.' };
+  for (const roh of ansaetze as readonly unknown[]) {
+    const zeile = `${pfad}.ansaetze`;
+    if (!istObjekt(roh)) return { feld: zeile, meldung: 'Ein Kalkulationsansatz ist ein Objekt.' };
+    if (!KOSTENARTEN.has(roh['art']))
+      return {
+        feld: `${zeile}.art`,
+        meldung: `Keine Kostenart der Einheitspreisanteile: ${String(roh['art'])}`,
+      };
+    if (typeof roh['bezeichnung'] !== 'string')
+      return {
+        feld: `${zeile}.bezeichnung`,
+        meldung: 'Die Bezeichnung eines Kalkulationsansatzes ist ein Text.',
+      };
+    if (!zahlOderNull(roh['ansatzmenge'], alsMenge))
+      return {
+        feld: `${zeile}.ansatzmenge`,
+        meldung: 'Die Ansatzmenge ist null oder eine Menge mit 3 Stellen.',
+      };
+    if (!zahlOderNull(roh['kostensatz'], alsEinheitspreis))
+      return {
+        feld: `${zeile}.kostensatz`,
+        meldung: 'Der Kostensatz ist null oder ein Preis mit 3 Stellen.',
+      };
+  }
+  const saetze = wert['zuschlagssaetze'];
+  if (!istObjekt(saetze))
+    return { feld: `${pfad}.zuschlagssaetze`, meldung: 'Die Zuschlagssätze sind ein Objekt je Kostenart.' };
+  for (const [art, satz] of Object.entries(saetze)) {
+    const feld = `${pfad}.zuschlagssaetze.${art}`;
+    if (!KOSTENARTEN.has(art)) return { feld, meldung: `Keine Kostenart der Einheitspreisanteile: ${art}` };
+    if (typeof satz !== 'string' || !alsProzent(satz).ok)
+      return { feld, meldung: 'Ein Zuschlagssatz ist ein Prozentsatz mit 2 Stellen.' };
+  }
+  return null;
+}
+
+/**
+ * Normalform geprüfter Kalkulationsangaben: genau die Felder des Vertrags (was ein Aufrufer mehr mitbringt, fällt weg), die
+ * Sätze in Reihenfolge der Kostenarten. Ohne Ansatz und ohne Satz ist es keine Kalkulation: `null` (das Feld fehlt dann an
+ * der Position, D-127.6). Ein Satz `0.00` zählt als Satz (der Kern legt ab, was kommt).
+ */
+export function kalkulationNormal(k: Kalkulationsangaben): Kalkulationsangaben | null {
+  const ansaetze = k.ansaetze.map((a): Kalkulationsansatz => ({
+    art: a.art,
+    bezeichnung: a.bezeichnung,
+    ansatzmenge: a.ansatzmenge,
+    kostensatz: a.kostensatz,
+  }));
+  const saetze: Partial<Record<EpaArt, Prozent>> = {};
+  for (const art of ANTEILE) {
+    const satz = k.zuschlagssaetze[art];
+    if (satz !== undefined) saetze[art] = satz;
+  }
+  if (ansaetze.length === 0 && Object.keys(saetze).length === 0) return null;
+  const zuschlagssaetze: Kalkulationszuschlagssaetze = saetze;
+  return { ansaetze, zuschlagssaetze };
+}
+
+/** Die Position mit der Kalkulation `kalkulation`; `null` und `undefined` entfernen das Feld (es fehlt danach). */
+export const positionMitKalkulation = (
+  p: Position,
+  kalkulation: Kalkulationsangaben | null | undefined,
+): Position => mitFeld(p, 'kalkulation', kalkulation ?? null);
+
+/** Ist `k` leer (kein Ansatz, kein Satz)? Eine solche Kalkulation steht nie im Zustand. */
+export const kalkulationLeer = (k: Kalkulationsangaben): boolean =>
+  k.ansaetze.length === 0 && Object.keys(k.zuschlagssaetze).length === 0;

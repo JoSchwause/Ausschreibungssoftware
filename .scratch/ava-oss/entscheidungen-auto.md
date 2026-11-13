@@ -758,3 +758,38 @@ Question: Der Vertragsnachtrag führt `EinstellungenUebernehmen { einstellungen 
 Decision: Ja. Folgt aus M1 (D-82): Auch die Übernahme ist eine Änderung der Einstellungen und braucht einen Protokolleintrag; sie füllt nur Fehlendes (D-73). Ausführung in `kern` (137), Schreiben in `speicher` (139), Aufruf in der App (150). Der Vertragsnachtrag ist gemergt; `vertrag` v1.7a gilt damit als geprüft (Opus-Review statt Nutzer, P9), der Nutzer prüft nach der Welle.
 Reason: ADR 0009 ohne Ausnahme; keine Wirkung auf Beträge.
 Reversible: yes  Touches: packages/vertrag, kern, speicher, apps/web/src/projekt
+
+## D-85 Zweites Nutzungslimit (5 Stunden, bis 22:20 UTC)
+Welle 7 · Tickets 128, 132, 136, 137, 139, 141, 142 · decided by: orchestrator
+Question: Gegen 21:30 UTC brachen sieben laufende Agenten am 5-Stunden-Limit ab; 140 war fertig.
+Decision: 140 gemergt; um 22:20 UTC alle sieben aus ihrem gespeicherten Stand fortgesetzt (wie D-81), nachdem der Nutzer „continue“ schrieb. Der freie Platz geht an 147 (P, Weg zum Tor E: Beispielprojekt); 155 (S) folgt beim nächsten freien Platz. Offene Punkte aus 140 (D-140.3, D-140.7: GlobalId-Typ in `ui-modell`, Durchreichung von `MENGENART_STUECK` aus `bim`) gehen an 155, weil sie die App mitändern.
+Reason: Kein Verlust; P-Tickets zuerst, falls das Limit erneut greift.
+Reversible: yes  Touches: Ablauf, Ticket 155
+
+## D-86 Phasen X80, X87, X88 ohne Bedeutung im Glossar
+Welle 7 · Ticket 136 (D-136.3) · decided by: orchestrator
+Question: X80, X87 und X88 werden jetzt abgewiesen; der Satz nennt nur die Phasennummer, weil das Glossar ihre Bedeutung nicht kennt. Bedeutung eintragen?
+Decision: Nicht aus dem Gedächtnis. Ticket 144 darf die Bedeutung aus einer frei zugänglichen Beschreibung (gaeb.de, D-71) übernehmen und dann Glossar und Satz ergänzen; sonst bleibt es bei der Nummer. Die Erkennung von GAEB 90/2000 (D-136.2) prüfen 144/145 gegen die Formatbeschreibung.
+Reason: C1 und D-71: keine Behauptung ohne Quelle; die Abweisung selbst ist richtig.
+Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, Ticket 144
+
+## D-87 Rückfragen aus 137 und 139
+Welle 7 · Tickets 137, 139 (Folge 128, 159) · decided by: orchestrator
+Question: (1) Leerer Name beim Umbenennen eines LV-Stands: Vertragstext sagt „wie bei `LvStandAnlegen`“, Kern weist leere Namen ab (D-137.1). (2) D-127.14 nennt `oz-ungueltig`, der Kern behält die vorhandenen Codes von `OzMaskeSetzen` (D-137.10). (3) Reste außerhalb der Pakete.
+Decision: (1) Abweisen wie `LvStandAnlegen`; (2) vorhandene Codes behalten (Tests und Oberfläche bauen darauf). Beide Vertragstexte berichtigt der laufende Vertragsschreiber 128 nebenbei (nur Kommentar). (3) Gesammelt für die Review-Behebung 159: `vergabe` und `gaeb` nutzen `bieterangabenNormalisieren` aus `kern`; `speicher` nutzt den Ausführer `EinstellungenUebernehmen` aus `kern` statt eigener Kopie (`uebernimmEinstellungenDerDatei`); `speicher` und `gaeb` importieren `KOSTENGRUPPENNUMMER_MUSTER` aus `vertrag` statt des Kern-Alias `KOSTENGRUPPE_FORM`; die Ausnahme für `createSyncAccessHandle` in `apps/web/e2e-basispfad/basispfad.spec.ts:14` entfällt (D-139.9).
+Reason: Beides sind Lesarten ohne Wirkung auf Beträge; die Reste sind Einzeiler in fremden Paketen (P2), gebündelt statt verstreut.
+Reversible: yes  Touches: packages/vertrag (Kommentare), Ticket 159
+
+## D-88 Rückfragen aus 141 (Ausgaben der Kernkette)
+Welle 7 · Ticket 141 (Folge 128, 153) · decided by: orchestrator
+Question: (1) ADR 0012 sagt noch „Berichte nur PDF“ und „LV-PDF ohne Bilder“; E11/E12 verlangen Excel für Berichte und Bilder im LV-PDF. (2) „Vergabevorschlag“ fehlt im Glossar (L2). (3) Die Excel-Golden-Datei des LV hat zwei gesperrte Zahlformate mehr (D-141.13).
+Decision: (1) Kein Widerspruch zur Entscheidung der ADR (pdfmake, ungetaggt in v1, Renderer liest nur ein druckfertiges Modell); die Folgen-Abschnitte bekommen einen datierten Nachtrag „Welle 7: Excel für Berichte aus dem `Berichtsmodell`, Bilder aus dem Langtext im LV-PDF (G-61, E11/E12)“. Das schreibt 153 als nächster Schreiber in `ausgabe`. (2) Der Vertragsschreiber 128 trägt „Vergabevorschlag“ ins Glossar ein. (3) Angenommen; die Werte der Zellen bleiben gleich.
+Reason: Der Umfang aus G-61 ist vom Nutzer entschieden; die ADR wird nachgeführt, nicht umgestoßen.
+Reversible: yes  Touches: docs/adr/0012-*, GLOSSARY.md, Tickets 128, 153
+
+## D-89 Prüf-Panel beim Laden zu, auch mit Befunden
+Welle 7 · Ticket 142 (D-142.4) · decided by: orchestrator
+Question: E3 sagt „Prüf-Panel einklappbar, ohne Befunde zu“. Mit offenem Panel passen EP und GP bei 1280 px nicht (`typisch` hat 26 Warnungen, die BVBS-X83 2 Fehler); das Ziel „15 Zeilen samt EP und GP“ wäre nicht erreichbar. Der Umsetzer lässt das Panel beim Laden immer zu, die Schaltfläche „Prüfung“ zeigt die Anzahl, F8 öffnet.
+Decision: Bestätigt. Das messbare Ziel aus E3 geht vor dem Nebensatz; die Anzahl auf der Schaltfläche hält U5 (Probleme sichtbar, Sprung möglich). Die übrigen Seiten mit Schaltflächenreihen (Honorar, Rechnung, Abrechnung, Bauzeit, BIM, Bauleitung, Kosten, Modellvergleich) stellen in ihren Ordner-Tickets auf die `Werkzeuggruppe` um, soweit billig; `abrechnung/Verweis.tsx` ist unbenutzt und entfällt in 152.
+Reason: Tor E Punkt 1 verlangt die Sicht bei 1280×800.
+Reversible: yes  Touches: apps/web/src/lv, Tickets 152, 154, 155

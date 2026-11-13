@@ -90,6 +90,16 @@ const LV_FELDBEFEHLE: Readonly<Record<string, Feldbefehl<LvBefehl>>> = {
     bauen: (k, w) => ({ art: 'TextquelleSetzen', positionId: id.pos(k), textquelle: w as null }),
     traegt: NUR_POSITION,
   },
+  KalkulationSetzen: {
+    bauen: (k, w) => ({
+      art: 'KalkulationSetzen',
+      positionId: id.pos(k),
+      kalkulation: w as null,
+      einheitspreis: w as null,
+      epa: w as null,
+    }),
+    traegt: NUR_POSITION,
+  },
   LeitbeschreibungSetzen: {
     bauen: (k, w) => ({ art: 'LeitbeschreibungSetzen', positionId: id.pos(k), leitbeschreibung: w as null }),
     traegt: NUR_POSITION,
@@ -226,6 +236,7 @@ describe('Fehlercode der Feldbefehle (D-71.3): Knoten vor Wert', () => {
         'EinheitspreisAendern',
         'EinheitspreisanteileSetzen',
         'HinweistextAendern',
+        'KalkulationSetzen',
         'KostengruppeSetzen',
         'KurztextAendern',
         'LangtextAendern',

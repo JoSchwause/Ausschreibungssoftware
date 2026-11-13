@@ -17,7 +17,8 @@ describe('MwSt-Standard des Lesers', () => {
     const b = mwstBefunde(l);
     expect(b).toHaveLength(1);
     expect(b[0]).toMatchObject({ schwere: 'warnung', quelle: 'gaeb-lesen', code: 'mwst-standardsatz' });
-    expect(b[0]?.meldung).toContain('19.00');
+    expect(b[0]?.meldung).toContain('19,00 %');
+    expect(b[0]?.werte).toEqual({ satz: { art: 'prozent', wert: '19.00' } });
   });
 
   it('mit Satz: dessen Wert, kein Befund zum Standardsatz', () => {

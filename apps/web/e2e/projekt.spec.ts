@@ -14,6 +14,7 @@ import {
   fixture,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p0020 = typisch.knoten.find((k) => k.ordnungszahl === '01.0020') as FxPosition;
@@ -72,7 +73,7 @@ test('Projektdatei sichern und in einem frischen Speicher einlesen: gleiche Summ
 }) => {
   await projektAnlegen(page, 'Exportprojekt', 'Bauherr X');
   await lvAnlegen(page, 'Zaun');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await page.keyboard.type('Einfriedung');
   await page.keyboard.press('Enter');
   await positionTippen(page, p0020);

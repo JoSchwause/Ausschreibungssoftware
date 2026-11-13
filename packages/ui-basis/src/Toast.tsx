@@ -39,7 +39,7 @@ export interface ToastAnbieterProps {
   schliessenLabel?: string;
 }
 
-/** Stellt `useToast()` bereit und rendert die Meldungen unten rechts. F8 springt in den Bereich. */
+/** Stellt `useToast()` bereit und rendert die Meldungen oben rechts. F8 springt in den Bereich. */
 export function ToastAnbieter({
   children,
   bereichLabel = 'Meldungen ({hotkey})',

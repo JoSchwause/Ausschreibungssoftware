@@ -59,11 +59,12 @@ export function pruefeNachtragsbezuege(db: Datenbank, projektId: ProjektId): voi
  * aus einem LV-Kopf übernommen), gingen sie beim Speichern still verloren (Q5): `unbekannt` (D-79.3).
  */
 export function pruefeAuftragsLvKopf(kopf: AuftragsLvKopf): void {
-  for (const feld of ['nachtrag', 'vorlage'])
+  // v1.7a (D-127.7): die Preisspiegel-Einstellungen ebenso nur am Ausschreibungs-LV (das Auftrags-LV hat keine Spalte dafür).
+  for (const feld of ['nachtrag', 'vorlage', 'preisspiegel'])
     if ((kopf as unknown as Record<string, unknown>)[feld] !== undefined)
       abbruch(
         'unbekannt',
-        `Auftrags-LV ${kopf.id}: Das Feld ${feld} gibt es nur am Kopf eines LV (Vertrag v1.4).`,
+        `Auftrags-LV ${kopf.id}: Das Feld ${feld} gibt es nur am Kopf eines LV (Vertrag v1.4, v1.7a).`,
       );
 }
 

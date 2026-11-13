@@ -18,14 +18,15 @@ import { positionNormal } from './mengenansatz';
 import { nein, ok } from './fehler';
 import { anlegeHinweise } from './hinweise';
 import { baumfehler, inhaltKopfFehler } from './pruefung';
-import { kanonisch, ohneKnoten, ohneWurzel } from './struktur';
+import { kanonisch, mitFeld, ohneKnoten, ohneWurzel } from './struktur';
 import { LEERES_SUMMENVORHER, summenBerechnen, summenDerKnoten } from './summen';
 
 /**
  * Prüft und legt an. Ticket 30: `inhalt.wurzelId` muss `id` sein (`ungueltige-eingabe`, `feld: 'inhalt.wurzelId'`);
  * Knoten der obersten Ebene mit anderer `elternId` weisen die Baumregeln ab. `''` als Einheit wird `null` (v1.2). Eine
  * Maske, die `maskeFehler` beanstandet, wird angenommen (U5, GAEB-Import) und als Hinweis `oz-maske-ungueltig`
- * gemeldet; ein negatives Netto nach Nachlass als Hinweis `netto-nach-nachlass-negativ`.
+ * gemeldet; ein negatives Netto nach Nachlass als Hinweis `netto-nach-nachlass-negativ`. Preisspiegel-Einstellungen
+ * (v1.7a) kommen nie aus dem Inhalt.
  */
 export function leistungsverzeichnisAnlegen(
   b: LeistungsverzeichnisAnlegen,
@@ -43,8 +44,10 @@ export function leistungsverzeichnisAnlegen(
   if (kopfFehler) return { ok: false, fehler: kopfFehler };
   const [erster] = baumfehler(b.id, inhalt.knoten);
   if (erster) return { ok: false, fehler: erster };
-  // Die Wurzel ist die Kennung des LV und kein Feld des Kopfs (`LvKopf` hat keine `wurzelId`).
-  const stamm = ohneWurzel(ohneKnoten(inhalt));
+  // Die Wurzel ist die Kennung des LV und kein Feld des Kopfs (`LvKopf` hat keine `wurzelId`). Preisspiegel-Einstellungen
+  // gehören nicht zum Inhalt (D-127.7): Ein LV aus einem LV-Stand bringt sie nicht mit, auch wenn der Aufrufer sie zur
+  // Laufzeit im Inhalt hat; die App setzt sie im selben Schritt, wenn sie sie behalten will.
+  const stamm = mitFeld(ohneWurzel(ohneKnoten(inhalt)), 'preisspiegel', null);
   const knoten = kanonisch(
     b.id,
     inhalt.knoten.map((k) => (k.art === 'position' ? positionNormal(k) : k)),

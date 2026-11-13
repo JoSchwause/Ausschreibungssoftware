@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { ifcKlassenName } from '../src/bim/texte';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { betragDe, leerlauf, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import {
   BIM,
   baumzelle,
@@ -105,7 +106,7 @@ async function zuschlagWieM3(page: Page): Promise<void> {
     await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
     await expect(liste).toBeHidden();
   }
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   const name = ERSTER?.name ?? '';
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
@@ -207,7 +208,7 @@ test('Tor X1-Erweitert: DIN 277, Kostenschätzung, Zuschlag, Aufmaß aus Auswahl
     await expect(zelle(auftragsGrid, 'ordnungszahl', v.oz, 'menge')).toHaveText(mengeDe(v.menge));
 
   // --- Aufmaßblatt aus Auswahl „Geschoss EG“ am Auftrags-LV = Sollmengen ---------------------------------------------
-  await page.getByRole('link', { name: 'Aufmaß aus Modell' }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß aus Modell');
   await page.getByRole('link', { name: 'haus-v1' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'haus-v1' })).toBeVisible();
   await waehle(page, zuordnung, 'LV für Zuordnung', /^Auftrags-LV: /);

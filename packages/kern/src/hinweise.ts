@@ -32,6 +32,21 @@ export const HINWEIS_ANNAHMEN: { readonly status: string; readonly nettoNegativ:
     'netto-nach-nachlass-negativ einmal je ChangeSet, wenn summen.gesamt gesetzt und nettoNachNachlass negativ ist (jedes Mal, nicht nur beim Übergang)',
 };
 
+/**
+ * v1.7a (D-82 S4): Der Befehl hat die Kalkulation der Position im selben ChangeSet entfernt, weil ein Preis von Hand gesetzt
+ * wurde (`EinheitspreisAendern`, `EinheitspreisanteileSetzen`, Lesart (a)) oder weil die Position zur Zuschlagsposition wurde
+ * (`PositionsmerkmaleSetzen`, S3). Die Oberfläche fragt vorher; der Hinweis sagt danach, was geschah.
+ */
+export const kalkulationEntferntHinweis = (positionId: string, grund: 'preis' | 'zuschlag'): Befehlshinweis =>
+  befehlshinweis(
+    'kalkulation-entfernt',
+    grund === 'preis'
+      ? `Die Kalkulation der Position ${positionId} entfällt: Der Preis ist von Hand gesetzt.`
+      : `Die Kalkulation der Position ${positionId} entfällt: Eine Zuschlagsposition trägt keine.`,
+    positionId,
+    'kalkulation',
+  );
+
 /** N5, E-06: negatives Netto nach Nachlass ist ein Befund, keine Sperre; höchstens ein Hinweis je ChangeSet. */
 export function nettoHinweise(gesamt: Gesamtsummen | null): Befehlshinweis[] {
   if (gesamt === null || vergleiche(gesamt.nettoNachNachlass, NULL_BETRAG) >= 0) return [];

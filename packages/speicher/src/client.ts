@@ -10,6 +10,8 @@ import type {
   BauwerksmodellId,
   BauzeitenplanId,
   ChangeSet,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   HonorarberechnungId,
   MangelId,
   KostenermittlungId,
@@ -17,6 +19,8 @@ import type {
   LeistungsverzeichnisId,
   LvStandId,
   Persistenzstatus,
+  ProjektdateiEinleseergebnis,
+  ProjektdateiEinleseoptionen,
   ProjektId,
   Protokolleintrag,
   RechnungId,
@@ -25,6 +29,7 @@ import type {
 } from '@tethys/vertrag';
 import { fehler } from './ergebnis';
 import { fehlerAusAusnahme } from './fehler';
+import { kennungenZiehen, type Kennungsbedarf } from './kennungen';
 import type { SpeicherKern } from './kern';
 import type { OeffnenOptionen, RpcAnfrage, RpcAntwort, RpcMethode, WorkerLike } from './rpc';
 import type { Migrationsbefund } from './summenmigration';
@@ -155,6 +160,13 @@ export function speicherUeberTransport(
       auflisten: (projektId: ProjektId) => aufruf('bautagebuchAuflisten', projektId),
       laden: (id: BautagebucheintragId) => aufruf('bautagebucheintragLaden', id),
     },
+    // v1.7a (Ticket 139): die Einstellungen des Geräts
+    einstellungen: {
+      laden: () => aufruf('einstellungenLaden'),
+      anwenden: (eintrag: EinstellungenProtokolleintrag, changeSet: EinstellungenChangeSet) =>
+        aufruf('einstellungenAnwenden', eintrag, changeSet),
+      protokoll: () => aufruf('einstellungenProtokoll'),
+    },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
     protokoll: (projektId: ProjektId) => aufruf('protokoll', projektId),
@@ -169,6 +181,27 @@ export function speicherUeberTransport(
     },
     projektdateiExportieren: (projektId: ProjektId) => aufruf('projektdateiExportieren', projektId),
     projektdateiImportieren: (inhalt: string) => aufruf('projektdateiImportieren', inhalt),
+    // v1.7a (Ticket 139, D-127.10): Die `IdQuelle` kommt nicht über die Grenze zum Worker; der Client fragt erst den Bedarf an
+    // Kennungen ab, zieht sie hier und schickt sie als Daten mit.
+    projektdateiEinlesen: async (
+      inhalt: string,
+      optionen?: ProjektdateiEinleseoptionen,
+    ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> => {
+      const kopie = optionen?.alsKopie;
+      // Der Kopf der Übernahme der Einstellungen ist Daten und geht so mit (D-82 M1).
+      const uebernahme =
+        optionen?.einstellungsuebernahme === undefined
+          ? {}
+          : { einstellungsuebernahme: optionen.einstellungsuebernahme };
+      if (kopie === undefined) return aufruf('projektdateiEinlesen', inhalt, uebernahme);
+      const bedarf = await aufruf<Kennungsbedarf>('projektdateiKennungsbedarf', inhalt);
+      if (!bedarf.ok) return bedarf;
+      const kennungen = kennungenZiehen(bedarf.wert, kopie.ids);
+      return aufruf('projektdateiEinlesen', inhalt, {
+        ...uebernahme,
+        alsKopie: { kennungen, name: kopie.name },
+      });
+    },
     migrationsbefunde: () => aufruf('migrationsbefunde'),
     schliessen: async () => {
       if (zu) return geschlossen();

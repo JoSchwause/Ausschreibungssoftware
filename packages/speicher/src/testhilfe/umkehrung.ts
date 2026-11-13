@@ -8,6 +8,7 @@ import type {
   Aenderung,
   Aenderungen,
   AngebotChangeSet,
+  Befehl,
   AufmassChangeSet,
   BauwerksmodellChangeSet,
   BauzeitenplanChangeSet,
@@ -82,6 +83,8 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         summen: summenUmkehren(cs.summen),
         ...(cs.papierkorb === undefined ? {} : { papierkorb: sammlungUmkehren(cs.papierkorb) }),
         ...(cs.lvStand === undefined ? {} : { lvStand: tausche(cs.lvStand) }),
+        // v1.7a (D-127.1, D-82 M2): der Inhalt eines gelöschten Stands wechselt die Seite mit seinem Kopf.
+        ...(cs.lvStandInhalt === undefined ? {} : { lvStandInhalt: tausche(cs.lvStandInhalt) }),
       };
     case 'angebot':
       return {
@@ -139,6 +142,17 @@ export function umkehren(cs: ChangeSet): ChangeSet {
         bautagebucheintrag: tausche(cs.bautagebucheintrag),
       };
   }
+}
+
+/**
+ * Der Befehl, mit dem ein Test ein ChangeSet ins Protokoll schreibt: Ein ChangeSet, das einen LV-Stand einfriert, kommt nur von
+ * `LvStandAnlegen` (D-82 M2), also dieser Befehl; sonst `sonst` (die Tests prüfen den Befehl dort nicht).
+ */
+export function befehlFuer(cs: ChangeSet, sonst: Befehl): Befehl {
+  const s = cs.art === 'leistungsverzeichnis' && cs.lvStandInhalt === undefined ? cs.lvStand : undefined;
+  return s?.vorher === null && s.nachher !== null
+    ? { art: 'LvStandAnlegen', id: s.nachher.id, name: s.nachher.name }
+    : sonst;
 }
 
 /** Ein Anlegen-ChangeSet (`kopf.vorher: null`) mit leerem `summen.vorher`: so ist es ohne Vorzustand umkehrbar. */

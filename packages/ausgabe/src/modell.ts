@@ -13,30 +13,35 @@ import {
   vorzeichen,
 } from '@tethys/dezimal';
 import type {
-  Bauherr,
   Betrag,
+  Buero,
   GliederungId,
   HinweistextId,
   Knoten,
   Langtext,
+  LangtextUmfang,
   LvZustand,
   Position,
   PositionId,
   Zuschlag,
 } from '@tethys/vertrag';
+import { Kopffelder, absenderZeilen, projektFelder, verbinde } from './koepfe';
+import type { KopfFeld, ProjektKopf } from './koepfe';
 import { kuerzeBloecke } from './kuerzen';
 import { langtextAlsBloecke } from './langtext';
 import type { DruckBlock } from './langtext';
 
-export interface KopfFeld {
-  readonly bezeichnung: string;
-  readonly wert: string;
-}
+export type { KopfFeld, ProjektKopf };
 
 /** Kopf bzw. Deckblatt: nur gesetzte Angaben (E-11). */
 export interface Kopf {
   readonly lvName: string;
-  /** Projekt, Bauherr, Auftraggeber und Vergabeinformationen als Bezeichnung und Wert, in fester Reihenfolge. */
+  /** Das Büro als Absender (E10), je Angabe eine Zeile; leer: kein Büro oder kein Deckblatt. */
+  readonly absender: readonly string[];
+  /**
+   * Projekt mit Projektangaben, Bauherr, Auftraggeber, Auftragnehmer und Vergabeinformationen als Bezeichnung und Wert, in
+   * fester Reihenfolge.
+   */
   readonly felder: readonly KopfFeld[];
 }
 
@@ -132,20 +137,18 @@ export interface Ausgabemodell {
   readonly summen: SummenBlock | null;
 }
 
-/** Wie viel vom Langtext ins Modell kommt (Druckprofil, Ticket 77). */
-export type LangtextUmfang =
-  | { readonly art: 'voll' }
-  | { readonly art: 'kein' }
-  /** Die ersten `anzahl` Zeilen (Absatz, Listenpunkt, Tabellenzeile; ein Zeilenumbruch im Absatz zählt mit). */
-  | { readonly art: 'zeilen'; readonly anzahl: number };
+/** Wie viel vom Langtext ins Modell kommt (Druckprofil, Ticket 77); der Typ steht seit v1.7a im Vertrag (D-127.8). */
+export type { LangtextUmfang };
 
 export interface ModellOptionen {
   /** Vorgabe `true`. `false`: Blankett, EP, GP, Titelsummen und Schlussblock entfallen. */
   readonly mitPreisen?: boolean;
   /** Druckdatum als `JJJJ-MM-TT`. */
   readonly datum?: string;
-  /** Projekt des LV (der `LvZustand` kennt nur die `projektId`). */
-  readonly projekt?: { readonly name: string; readonly bauherr: Bauherr };
+  /** Projekt des LV mit seinen Projektangaben (der `LvZustand` kennt nur die `projektId`); ein `Projekt` passt. */
+  readonly projekt?: ProjektKopf;
+  /** Das Büro als Absender im Kopf (Einstellungen, E10); `null` oder fehlt: kein Absender. */
+  readonly buero?: Buero | null;
   /** Vorgabe `{ art: 'voll' }`. Gilt für Positionen und Unterbeschreibungen; Hinweistexte bleiben stehen. */
   readonly langtext?: LangtextUmfang;
   /** Vorgabe `true`. `false`: keine Titelsummen (ohne Preise ohnehin keine). */
@@ -176,25 +179,20 @@ const DAUEREINHEITEN: Record<string, readonly [string, string]> = {
   Days: ['Tag', 'Tage'],
 };
 
-const verbinde = (teile: readonly (string | null | undefined)[], mit = ', '): string =>
-  teile.filter((t): t is string => t !== null && t !== undefined && t.trim() !== '').join(mit);
-
 function baueKopf(zustand: LvZustand, optionen: ModellOptionen): Kopf {
   const lv = zustand.leistungsverzeichnis;
-  const felder: KopfFeld[] = [];
+  const k = new Kopffelder();
+  k.felder.push(...projektFelder(optionen.projekt));
   const feld = (bezeichnung: string, wert: string | null | undefined): void => {
-    if (wert !== null && wert !== undefined && wert.trim() !== '') felder.push({ bezeichnung, wert });
+    k.feld(bezeichnung, wert);
   };
-  const { projekt } = optionen;
-  if (projekt) {
-    feld('Projekt', projekt.name);
-    feld('Bauherr', verbinde([projekt.bauherr.name, projekt.bauherr.anschrift]));
-  }
   const ag = lv.auftraggeber;
   if (ag) {
     feld('Auftraggeber', verbinde([ag.name, ag.strasse, verbinde([ag.plz, ag.ort], ' ')]));
     feld('Vergabenummer', ag.vergabenummer);
   }
+  const an = lv.auftragnehmer;
+  if (an) feld('Auftragnehmer', verbinde([an.name, an.strasse, verbinde([an.plz, an.ort], ' ')]));
   const v = lv.vergabeinformationen;
   if (v) {
     feld(
@@ -216,7 +214,7 @@ function baueKopf(zustand: LvZustand, optionen: ModellOptionen): Kopf {
       feld('Gewährleistung', `${String(dauer)} ${namen ? (dauer === 1 ? namen[0] : namen[1]) : einheit}`);
     }
   }
-  return { lvName: lv.name, felder };
+  return { lvName: lv.name, absender: absenderZeilen(optionen.buero), felder: k.felder };
 }
 
 // --- Modell ------------------------------------------------------------------------------------
@@ -397,7 +395,10 @@ export function baueAusgabemodell(zustand: LvZustand, optionen: ModellOptionen =
   };
   return {
     name: lv.name,
-    kopf: optionen.deckblatt === false ? { lvName: lv.name, felder: [] } : baueKopf(zustand, optionen),
+    kopf:
+      optionen.deckblatt === false
+        ? { lvName: lv.name, absender: [], felder: [] }
+        : baueKopf(zustand, optionen),
     datum: optionen.datum === undefined ? null : datumDe(optionen.datum),
     mitPreisen,
     zeilen,

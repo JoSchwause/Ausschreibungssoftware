@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const executablePath = process.env['PW_CHROMIUM_PATH'] || undefined;
 test.use({
@@ -169,7 +170,7 @@ test('X1: zuordnen, Mengen übernehmen, Undo/Redo, Kennwerte, Kostenschätzung, 
   const grid = page.getByRole('treegrid', { name: /Positionen/ }).first();
   await expect(zelle(grid, 'ordnungszahl', OZ, 'menge')).toHaveText('212,400');
   await expect.poll(() => summen(page)).toMatchObject(summenDe(TYPISCH.sollwerte.summen));
-  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  await werkzeug(page, 'Bearbeiten', 'Mengen aus Modell …');
   const mengen = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
   const vorschau = mengen.getByRole('table', { name: 'Vorschau der Mengenübernahme' });
   const zeile = vorschau.getByRole('row').filter({ hasText: OZ });
@@ -237,7 +238,7 @@ test('X1: zuordnen, Mengen übernehmen, Undo/Redo, Kennwerte, Kostenschätzung, 
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await expect(angebote.getByRole('row', { name: /Bieter A/ })).toBeVisible();
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: 'Zuschlag erteilen: Bieter A' })
@@ -247,7 +248,7 @@ test('X1: zuordnen, Mengen übernehmen, Undo/Redo, Kennwerte, Kostenschätzung, 
     .getByRole('button', { name: 'Zuschlag erteilen', exact: true })
     .click();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
-  await page.getByRole('link', { name: 'Aufmaß aus Modell' }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß aus Modell');
   await page.getByRole('link', { name: 'haus-v1' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'haus-v1' })).toBeVisible();
 

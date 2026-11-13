@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
 import type { BildId, Langtext } from '@tethys/vertrag';
-import { bloeckeAlsText, langtextAlsBloecke } from './langtext';
+import { BILDMARKE, MAX_BILD_BYTES, bloeckeAlsText, langtextAlsBloecke } from './langtext';
+import type { DruckBlock } from './langtext';
+import { kuerzeBloecke } from './kuerzen';
+import { bild as bildAus, jpegBase64, pngBase64 } from './testhilfe/bilder';
 
 const bild = { id: 'bild-1' as BildId, medientyp: 'image/png', daten: 'iVBORw0KGgo=' };
 
@@ -114,5 +117,56 @@ describe('bloeckeAlsText', () => {
       langtextAlsBloecke([{ art: 'liste', geordnet: false, punkte: [[{ art: 'text', text: 'a' }]] }]),
     );
     expect(text).toBe('- a');
+  });
+});
+
+describe('Bilder im Langtext', () => {
+  const nurBild = (daten: string, medientyp = 'image/png'): DruckBlock[] =>
+    langtextAlsBloecke([{ art: 'bild', bild: bildAus(daten, medientyp) }]);
+
+  it('macht aus einem PNG einen Bildblock mit Pixelmaßen an seiner Stelle im Absatz', () => {
+    const b = langtextAlsBloecke([
+      {
+        art: 'absatz',
+        inhalt: [
+          { art: 'text', text: 'Vorher ' },
+          { art: 'bild', bild: bildAus(pngBase64(3, 2)) },
+          { art: 'text', text: ' nachher' },
+        ],
+      },
+    ]);
+    expect(b.map((x) => x.art)).toEqual(['absatz', 'bild', 'absatz']);
+    expect(b[1]).toMatchObject({ art: 'bild', breite: 3, hoehe: 2 });
+    expect(b[1]?.art === 'bild' && b[1].daten.startsWith('data:image/png;base64,iVBOR')).toBe(true);
+    expect(bloeckeAlsText(b)).toBe(`Vorher \n${BILDMARKE}\n nachher`);
+  });
+
+  it('erkennt ein JPEG am Inhalt, auch wenn der Medientyp etwas anderes sagt', () => {
+    const [b] = nurBild(jpegBase64(640, 480), 'application/octet-stream');
+    expect(b).toMatchObject({ art: 'bild', breite: 640, hoehe: 480 });
+    expect(b?.art === 'bild' && b.daten.startsWith('data:image/jpeg;base64,')).toBe(true);
+  });
+
+  it('lässt ein unvollständiges, fremdes oder zu großes Bild als Marke stehen (Q5)', () => {
+    const marke = [{ art: 'absatz', laeufe: [{ text: BILDMARKE, kursiv: true }] }];
+    expect(nurBild('iVBORw0KGgo=')).toEqual(marke); // nur die PNG-Signatur
+    expect(nurBild(Buffer.from('GIF89a\x01\x00\x01\x00').toString('base64'), 'image/gif')).toEqual(marke);
+    expect(nurBild('kein base64!')).toEqual(marke);
+    const kaputt = Buffer.from(pngBase64(2, 2), 'base64');
+    const stelle = kaputt.indexOf('IDAT') + 6;
+    kaputt.writeUInt8((kaputt[stelle] ?? 0) ^ 0xff, stelle); // Bilddaten verändert: Prüfsumme stimmt nicht mehr
+    expect(nurBild(kaputt.toString('base64'))).toEqual(marke);
+    expect(nurBild('A'.repeat(Math.ceil((MAX_BILD_BYTES * 4) / 3) + 8))).toEqual(marke);
+  });
+
+  it('zählt ein Bild beim Kürzen als eine Zeile', () => {
+    const b = langtextAlsBloecke([
+      { art: 'absatz', inhalt: [{ art: 'text', text: 'Eins' }] },
+      { art: 'bild', bild: bildAus(pngBase64(2, 2)) },
+      { art: 'absatz', inhalt: [{ art: 'text', text: 'Drei' }] },
+    ]);
+    expect(kuerzeBloecke(b, 2).map((x) => x.art)).toEqual(['absatz', 'bild', 'absatz']);
+    expect(bloeckeAlsText(kuerzeBloecke(b, 2))).toBe(`Eins\n${BILDMARKE}\n[…]`);
+    expect(bloeckeAlsText(kuerzeBloecke(b, 1))).toBe('Eins\n[…]');
   });
 });

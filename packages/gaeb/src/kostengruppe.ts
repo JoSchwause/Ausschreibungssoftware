@@ -68,7 +68,7 @@ export function katalogeLesen(l: Leser, boqInfo: XmlElement | undefined): Katalo
           '2006, 2008 und 2018 der DIN 276. Seine Zuordnungen werden nicht als Kostengruppe übernommen.',
         c,
       );
-    else l.nichtAbgebildet(c, `BoQInfo/Ctlg (${art})`, 'Katalog, den der Vertrag nicht kennt');
+    else l.nichtAbgebildet(c, `BoQInfo/Ctlg (${art})`, 'übernommen werden nur Kostengruppen nach DIN 276');
   }
   return { kostengruppen, andere };
 }
@@ -94,8 +94,8 @@ export function kostengruppeLesen(
         a,
         `${el.name}/CtlgAssign (${art ?? 'ohne Katalog'})`,
         art === undefined
-          ? 'Zuordnung zu einem Katalog, den BoQInfo nicht nennt'
-          : 'Zuordnung zu diesem Katalog',
+          ? 'der Katalog steht nicht im Kopf des Leistungsverzeichnisses'
+          : 'übernommen werden nur Zuordnungen zu Kostengruppen nach DIN 276',
       );
       continue;
     }

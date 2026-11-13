@@ -20,6 +20,7 @@ Reihenfolge = Priorität (bei Zeitnot von hinten kürzen und im Ticket vermerken
 4. **123 Rest:** Honorar-PDF im Worker; `modellvergleich/folgen.ts` und `bim/uebernahme.ts` zusammenlegen;
    `ModellvergleichSeite.tsx:397` → `bim/darstellung.ts`; `bim/einlesen.ts` → `datumAusUhr`; `MengenAusModell.tsx:145` →
    `datumDe`; Text aus `BauzeitenplanSeite.tsx:396` nach `texte.ts`; `useBezug` umbenennen.
+7. **Aus 140 (D-140.3, D-140.7):** `ui-modell` nimmt `IfcGlobalId` statt `string` (neue Abhängigkeit `ui-modell → vertrag`, Lockfile) zusammen mit den Aufrufern in `apps/web/src/bim/`, `modellvergleich/`; die App importiert `MENGENART_STUECK` aus `@tethys/vertrag`, danach entfällt die Durchreichung in `bim/index.ts`. Die betroffenen Dateien nennt D-140.7 in `140-fachpakete-aufraeumen.md`.
 5. **124 §4:** Preisspiegel-Budget (`vergabe`) auf ruhiger Maschine messen, Wert ins Ticket (nichts lockern).
 6. **K:** „Mangel aus Bauteil“ in der Modellansicht; Befund „KG im Modell weicht ab“.
 

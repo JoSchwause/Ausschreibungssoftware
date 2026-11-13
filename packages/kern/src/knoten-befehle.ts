@@ -232,7 +232,7 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
   const d = b.daten;
   // Ein mitgebrachter Mengenansatz bleibt stehen (Ticket 56, D-56.1; Form geprüft in `positionsdatenFehler`, `[]` fällt
   // in `positionNormal` weg). Ebenso Kostengruppe und Textquelle (v1.4, Ticket 71; `''` als Textquelle fällt weg) und die
-  // Bauteilzuordnungen (v1.6, Ticket 105; `[]` fällt weg).
+  // Bauteilzuordnungen (v1.6, Ticket 105; `[]` fällt weg) und die Kalkulation (v1.7a, Ticket 137; leer fällt sie weg).
   return ok(
     einfuegenChangeSet(z, idx, ziel.wert, (t): Position =>
       positionNormal({
@@ -255,6 +255,7 @@ export function positionAnlegen(z: LvZustand, b: PositionAnlegen): ChangeSetErge
         ...(d.kostengruppe === undefined ? {} : { kostengruppe: d.kostengruppe }),
         ...(d.textquelle === undefined ? {} : { textquelle: d.textquelle }),
         ...(d.bauteile === undefined ? {} : { bauteile: d.bauteile }),
+        ...(d.kalkulation === undefined ? {} : { kalkulation: d.kalkulation }),
       }),
     ),
   );

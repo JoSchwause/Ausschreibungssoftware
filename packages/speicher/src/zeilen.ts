@@ -12,8 +12,11 @@ import type {
   Bauzeitenplan,
   BauzeitenplanId,
   BauzeitenplanKopf,
+  Bieter,
   Honorarberechnung,
   HonorarberechnungId,
+  Kalkulationsangaben,
+  Projekt,
   HonorarberechnungUebersicht,
   Honorarobjekt,
   Mangel,
@@ -117,6 +120,35 @@ export function nachlassAusZeile(z: SqlZeile): Nachlass | null {
 
 export const maskeAusZeile = (z: SqlZeile): OzMaske => jsonLesen(text(z, 'oz_maske'), 'oz_maske') as OzMaske;
 
+// --- Projekt- und Bieterangaben (Schema 7, v1.7a) -----------------------------------------------------------------
+
+/** Ein Objekt, dessen Felder alle `null` sind (eine Anschrift oder Angaben ohne jeden Teil). */
+const ganzNull = (o: unknown): boolean =>
+  typeof o === 'object' && o !== null && !Array.isArray(o) && Object.values(o).every((w) => w === null);
+
+/**
+ * `angaben` an Projekt oder Bieter (Schema 7, v1.7a, D-127.4/D-127.5) als kanonisches JSON, `NULL` = fehlt. Angaben oder eine
+ * Anschrift, deren Teile alle `null` sind, kennt der Vertrag nicht (dann fehlt der Block bzw. die Anschrift ist `null`): sie
+ * blieben gespeichert, ließen sich aber nicht mehr als Projektdatei einlesen (Q5), also `unbekannt` wie `bauteile: []`.
+ */
+export function angabenSpalte(was: string, angaben: object | undefined): SqlWert {
+  if (angaben === undefined) return null;
+  if (ganzNull(angaben) || Object.values(angaben).some(ganzNull))
+    abbruch(
+      'unbekannt',
+      `${was}: angaben ohne jeden Teil gibt es nicht (Vertrag v1.7a: dann fehlt das Feld bzw. null).`,
+    );
+  return jsonOderNull(angaben);
+}
+
+/** `angaben` aus der Zeile des Projekts: das Feld, oder gar keines bei `NULL`. */
+export const projektangabenAusZeile = (z: SqlZeile): Pick<Projekt, 'angaben'> =>
+  optionalesFeld(z, 'angaben', 'angaben');
+
+/** `angaben` aus der Zeile eines Bieters: das Feld, oder gar keines bei `NULL`. */
+export const bieterangabenAusZeile = (z: SqlZeile): Pick<Bieter, 'angaben'> =>
+  optionalesFeld(z, 'angaben', 'angaben');
+
 // --- Knoten -----------------------------------------------------------------------------------------------------
 
 export const KNOTEN_SPALTEN = [
@@ -140,6 +172,7 @@ export const KNOTEN_SPALTEN = [
   'kostengruppe', // Schema 5 (v1.4)
   'textquelle', // Schema 5 (v1.4)
   'bauteile', // Schema 6 (v1.6)
+  'kalkulation', // Schema 7 (v1.7a)
 ] as const;
 
 // --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
@@ -208,6 +241,17 @@ export function lvKennzeichenSpalten(k: LvKopf): [SqlWert, SqlWert] {
   return [jsonOderNull(k.nachtrag), v === true ? 1 : null];
 }
 
+/**
+ * Preisspiegel-Einstellungen des LV (Schema 7, v1.7a, D-127.7): kanonisches JSON, `NULL` = fehlt (die Standardwerte gelten).
+ * Nur am Kopf des Ausschreibungs-LV und nicht in der LV-Übersicht, darum getrennt von `lvKennzeichenAusZeile`.
+ */
+export const LV_PREISSPIEGEL_SPALTE = 'preisspiegel';
+
+export const lvPreisspiegelSpalte = (k: LvKopf): SqlWert => jsonOderNull(k.preisspiegel);
+
+export const lvPreisspiegelAusZeile = (z: SqlZeile): Pick<LvKopf, 'preisspiegel'> =>
+  optionalesFeld(z, LV_PREISSPIEGEL_SPALTE, 'preisspiegel');
+
 export function lvKennzeichenAusZeile(z: SqlZeile): Pick<LvKopf, 'nachtrag' | 'vorlage'> {
   const nachtrag = jsonSpalte(z, 'nachtrag') as Nachtragsangaben | null;
   return {
@@ -240,6 +284,20 @@ function bauteileSpalte(k: Extract<Knoten, { art: 'position' }>): SqlWert {
   return jsonOderNull(b);
 }
 
+/**
+ * Kalkulationsangaben einer Position (Schema 7, v1.7a) als kanonisches JSON, `NULL` = fehlt. „Nie leer im Zustand“ (Vertrag:
+ * ohne Ansatz und ohne Satz fehlt das Feld): eine leere bliebe gespeichert, ließe sich aber nicht mehr als Projektdatei
+ * einlesen (Q5), also `unbekannt` wie `bauteile: []`.
+ */
+function kalkulationSpalte(k: Extract<Knoten, { art: 'position' }>): SqlWert {
+  const kalk: unknown = k.kalkulation;
+  if (kalk === undefined || kalk === null) return null;
+  const { ansaetze, zuschlagssaetze } = kalk as Partial<Kalkulationsangaben>;
+  if ((ansaetze ?? []).length === 0 && Object.keys(zuschlagssaetze ?? {}).length === 0)
+    abbruch('unbekannt', `Position ${k.id}: kalkulation ist nie leer (Vertrag v1.7a: das Feld fehlt dann).`);
+  return jsonOderNull(kalk);
+}
+
 export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   const kopf: SqlWert[] = [aggregatId, k.id, k.art, k.elternId, k.reihenfolge];
   switch (k.art) {
@@ -250,6 +308,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ordnungszahl,
         null,
         k.kurztext,
+        null,
         null,
         null,
         null,
@@ -281,6 +340,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
+        null,
       ];
     case 'position':
       return [
@@ -300,6 +360,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.kostengruppe ?? null,
         k.textquelle ?? null,
         bauteileSpalte(k),
+        kalkulationSpalte(k),
       ];
   }
 }
@@ -358,6 +419,7 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         ...optionalerText(z, 'kostengruppe'),
         ...optionalerText(z, 'textquelle'),
         ...(optionalesFeld(z, 'bauteile', 'bauteile') as { bauteile?: readonly Bauteilzuordnung[] }),
+        ...(optionalesFeld(z, 'kalkulation', 'kalkulation') as { kalkulation?: Kalkulationsangaben }),
       };
     }
     default:

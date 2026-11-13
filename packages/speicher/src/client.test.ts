@@ -177,6 +177,12 @@ describe('Client über Worker-Host', () => {
         'projektdateiExportieren',
         'projektdateiImportieren',
         'migrationsbefunde',
+        // v1.7a (Ticket 139)
+        'einstellungenLaden',
+        'einstellungenAnwenden',
+        'einstellungenProtokoll',
+        'projektdateiEinlesen',
+        'projektdateiKennungsbedarf',
       ].sort(),
     );
     const w = falscherWorker(imSpeicher);
@@ -318,6 +324,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'bautagebuch',
       'bauwerksmodelle',
       'bauzeitenplaene',
+      'einstellungen',
       'honorarberechnungen',
       'kostenermittlungen',
       'leistungsverzeichnisse',
@@ -326,6 +333,7 @@ describe('Kein direkter Tabellenschreibzugriff (A5)', () => {
       'migrationsbefunde',
       'modelldateien',
       'persistenzstatus',
+      'projektdateiEinlesen',
       'projektdateiExportieren',
       'projektdateiImportieren',
       'projekte',
