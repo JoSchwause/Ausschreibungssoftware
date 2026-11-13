@@ -660,3 +660,59 @@ Question: Ticket 117 verlangte „LV `typisch` per X83 wie M3/M4“; der Umsetze
 Decision: Ja. Der Tickettext war falsch: Eine X83 trägt keine Einheitspreise und keinen Nachlass, das LV-Netto wäre 0,00 und „Vordersatz und LV-Netto = Soll“ (`plan.md` §4, D-58) unerfüllbar. X86 ergibt genau die Summen von `typisch.json`; `plan.md` §4 nennt für X1 kein Format und bleibt. Auch D-117.3 (Zuschlag an A ohne Wahl, sonst fiele 02.0070 aus dem Aufmaßblatt) und D-117.5 (Fenster 1440 × 2000 wie M4) bestätigt.
 Reason: Die Tor-Definition (Zahlen gleich den Sollwerten) geht vor dem Weg im Tickettext; M3/M4 prüfen die Vergabe, X1 die Mengen am bepreisten LV.
 Reversible: yes  Touches: apps/web/e2e/x1-*.spec.ts
+
+## D-71 Ticket 125 ohne Lieferung: eigene Testdateien
+Welle 7 · Tickets 125, 144, 145 · decided by: advisor
+Question: Ticket 125 (echte Testdateien) ist `ready-for-human` geblieben, der Sitzung hängt nichts an. Was tun mit E6 (GAEB 90/2000)?
+Decision: E6 wird gebaut, GAEB 90 fest, GAEB 2000 nur, wenn eine frei zugängliche Formatbeschreibung erreichbar ist (gaeb.de, BVBS, Herstellerhilfen; nur gelesen, eigener Code, keine Normtexte oder fremden Parser, C1); sonst sofort gekürzt (steht ohnehin vor GAEB 90 in §4) und nur die klare Abweisung aus E7. Testdateien von Hand nach Formatbeschreibung, Herkunftsvermerk „nicht aus AVA-Software“, REUSE. Unbekannte Satzarten/Schlüsselwörter sind Befunde; der Zeichensatz von GAEB 90 wird am Inhalt erkannt und als Befund gemeldet. Jeder Import in diesen Formaten zeigt einen festen Hinweis „nicht an Dateien aus anderer Software geprüft, Summen vergleichen“. 125 bleibt `ready-for-human` mit Kommentar; der Bericht nennt beide Formate als ungeprüft.
+Reason: G-61 verlangt beide Formate; ohne echte Dateien prüft der Test nur das eigene Verständnis, daher Hinweis statt Abbruch.
+Reversible: yes  Touches: packages/gaeb, fixtures/gaeb-formate, apps/web/src/gaeb
+
+## D-72 A5: Lage von Vertragsstrafe, Skonto und Bauabzugsteuer in der Abzugskette
+Welle 7 · Tickets 128, 143, 152, 153 · decided by: advisor
+Question: Wo sitzen Skonto, Bauabzugsteuer (§ 48 EStG) und Vertragsstrafe in der Kette D-34, auf welcher Basis, wann ist Skonto verwirklicht?
+Decision: Leistung → Nachlass → MwSt → Brutto kum. → Umlagen → **Vertragsstrafe** (fester Bruttobetrag mit Grund, ohne MwSt-Wirkung, kumuliert geführt, Vorschlag aus der Vorrechnung wie der Einbehalt) → Einbehalt (Basis bleibt Brutto kum.) → frühere eingefrorene Zahlbeträge → **Zahlbetrag** (eingefroren, unverändert D-34) → **Skonto** (möglich = round(Zahlbetrag × Satz, 2), 0 bei Zahlbetrag ≤ 0; Satz und Frist in Kalendertagen an der Rechnung; Frist ab `eingang`, Eingangstag zählt nicht, keine Wochenendverschiebung; ohne `eingang` kein Skonto, Befund) → **Bauabzugsteuer** (Schalter an der Rechnung, Standard aus; Satz 15 als Konstante; round((Zahlbetrag − verwirklichtes Skonto) × 15 %, 2), Ausweis „an das Finanzamt“, mindert nur die Auszahlung) → Auszahlung an AN → Zahlungen → offen. Skonto ist verwirklicht, wenn Σ Zahlungen bis Fristende ≥ Auszahlung im Skontofall; beide Szenarien werden gerechnet und angezeigt („bei Zahlung bis …: …, danach: …“). Offen = Zahlbetrag − verwirklichtes Skonto − Bauabzugsteuer − Σ Zahlungen. Zahlungen nur auf freigegebene Rechnungen; Freigabe aufheben gesperrt, solange Zahlungen bestehen (Q5). Neue Felder per Migration `null`, alte Ergebnisse unverändert (A8).
+Reason: Der eingefrorene Zahlbetrag bleibt die einzige Größe, die Folgerechnungen lesen; Skonto und Steuer sind Erfüllung, keine Kürzung der Forderung.
+Reversible: yes (Risiko: § 48 EStG zählt Aufrechnungen zur Gegenleistung; v1 lässt Umlagen und Vertragsstrafe aus der Basis – auf die Seite „Annahmen“ und als unsicher in den Bericht)  Touches: packages/vertrag, abrechnung, ausgabe, fixtures, apps/web/src/rechnung
+
+## D-73 Einstellungen als globales Aggregat, in der Projektdatei als optionaler Block
+Welle 7 · Tickets 127, 137, 139, 150 · decided by: advisor
+Question: Wo liegen Büroangaben, Druckprofile und KG-Bezeichnungen (bisher `localStorage`) und wie kommen sie in die Sicherung?
+Decision: Ein globales Aggregat `Einstellungen` mit eigenem Repository, außerhalb der Projekt-Undo-Historie. Projektdatei Schema 7 trägt es als optionalen Block; das Einlesen füllt nur Fehlendes je Schlüssel (Büro nur, wenn lokal leer; Druckprofil nur bei fehlender Kennung; KG-Bezeichnung nur bei fehlender Nummer) und der Dialog nennt, was übernommen und was belassen wurde (Q5). `localStorage` wird einmalig übernommen, wenn der Speicher leer ist; die alten Schlüssel bleiben. Preisspiegel-Einstellungen als optionales Feld am LV mit LV-Befehl (Undo, wandert mit dem LV-Stand); fehlend = Standardwerte nach D-05. **Ändert D-36 (7)** („Druckprofile nicht im Vertrag“), gedeckt durch E15.
+Reason: ADR 0001 (ein Nutzer, ein Gerät) und „einmal für alle Projekte“ (E10); getrennte Datei würde die Sicherung zu zwei Dateien machen.
+Reversible: yes  Touches: packages/vertrag, kern, speicher, apps/web
+
+## D-74 Zuschlag zurücknehmen: was sperrt
+Welle 7 · Tickets 127, 138, 149 · decided by: advisor
+Question: Sperren Verweise der Vorschau-Module das Zurücknehmen des Zuschlags?
+Decision: Sperre bei Nachträgen, Aufmaßblättern, Rechnungen **und Mängeln** (v1.6: `speicher` weist das Entfernen eines Auftrags-LV mit Mangelverweis mit `konflikt` ab); die Sperre nennt Art und Anzahl und sagt, wie man sie löst. Bauzeitenplan (schwacher Verweis, v1.6) sperrt nicht und wird nicht aufgeräumt: der Vorgang behält den Bezug, der vorhandene Befund erscheint, Undo stellt alles her; der Bestätigungsdialog nennt die Vorgänge. Kostenkontrolle wird gerechnet, sperrt nicht; der Dialog sagt, dass die Auftragswerte dort entfallen.
+Reason: Ein Mangel heißt, dass gebaut wird; ihn im selben Befehl zu ändern wäre Datenverlust (Q5) und bräche v1.6.
+Reversible: yes  Touches: packages/vertrag, vergabe, speicher, apps/web/src/vergabe
+
+## D-75 M4 streng zuletzt; Formelauswahl
+Welle 7 · Ticket 157 · decided by: advisor
+Question: M4 vorab streichen? Welche Formeln?
+Decision: Nicht vorab streichen (G-61), aber erst starten, wenn alle P- und S-Tickets gemergt sind und das Tor grün ist. Quelle: die amtliche BVBS-Prüfdatei `fixtures/extern/bvbs/3.3-mengenermittlung/*.x31` (Nummer, Name, Parameterlage); Formeln sind Elementargeometrie, Sollwerte selbst hergeleitet (C4), kein REB-Text. Stufe 1: 04, 05, 01, 31; Stufe 2: 02, 03, 07, 13, 30. Nicht: 22/23/25, 08–12, 14, 15, 20, 21, 32, 00. Nur Belegtes umsetzen, sonst Befund „Formel nicht umgesetzt“ mit erhaltener Nummer.
+Reason: Kürzungsreihenfolge (§4) nennt M4 zuerst; eine falsch gelesene Parameterreihenfolge ergäbe still falsche Mengen.
+Reversible: yes  Touches: packages/mengen, gaeb, apps/web/src/mengen
+
+## D-76 Schnitt der Welle 7
+Welle 7 · alle · decided by: orchestrator
+Question: Wie wird `umfang-welle-7.md` §3 in Tickets geschnitten?
+Decision: Tickets 127–159 nach `schnitt-welle-7.md`. App-Tickets werden je Ordner gebündelt (ein Schreiber je Ordner, D-20), nicht je E-Punkt; Ticket 123 und 124 gehen in 127 (Vertragsteil), 131 (Seitengerüst), 135 (`speicher`), 140 (Fachpakete), 155 (Vorschau-Module, samt 124) auf. Integrationsbranch `integration/welle-7` ab `4eefd7d` (= `origin/main`; der lokale Ref `main` ist veraltet, wie D-49).
+Reason: Weniger Übergaben und Konflikte in `apps/web`; die Reihenfolge in §4 (vertrag zuerst, gaeb E5→E7→E6, ausgabe E11→E12, ui-grid E3→E4, E1/E3 vor den Seiten-Tickets) bleibt.
+Reversible: yes  Touches: Ablauf, issues/
+
+## D-77 Browserprüfung ohne Firefox und Safari
+Welle 7 · Ticket 132 · decided by: orchestrator
+Question: E13 verlangt, Firefox und Safari vorher zu messen. In der Sitzung gibt es nur Chromium; `playwright install` ist hier untersagt.
+Decision: Die Startprüfung erkennt Fähigkeiten (OPFS, Worker, Module-Worker, `crypto.subtle`, File-API u. a.), nicht Browsernamen. Die Meldung nennt „geprüft: aktuelle Chromium-Browser (Chrome, Edge)“ und Firefox/Safari als „nicht geprüft“. Die Messung in Firefox und Safari wird Teil der Handprüfungen (Ticket 126) und steht im Bericht als offen.
+Reason: „Nicht raten“ (E13) heißt hier: nur Gemessenes behaupten.
+Reversible: yes  Touches: apps/web/src/fehler, Ticket 126
+
+## D-78 Versionsnummer 0.7.0
+Welle 7 · Ticket 134 · decided by: orchestrator
+Question: `apps/web/package.json` trägt `0.0.0`; die Seite „Über“ braucht eine Version.
+Decision: `0.7.0` für den Stand nach Welle 7 (0.x bis zur Veröffentlichung, G-59), Build-Stand = kurzer Commit-Hash und Datum über `define` in Vite, ohne `Date.now()` im Fachcode.
+Reason: Lesbar für die Demo, keine Versprechen einer 1.0.
+Reversible: yes  Touches: package.json, apps/web/package.json, apps/web/vite.config
