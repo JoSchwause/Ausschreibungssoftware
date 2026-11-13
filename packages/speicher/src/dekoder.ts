@@ -1786,7 +1786,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   LvStandUmbenennen: true,
   LvStandLoeschen: true,
   KalkulationSetzen: true,
-  PreisspiegeleinstellungenSetzen: true,
+  PreisspiegelEinstellungenSetzen: true,
   ZuschlagZuruecknehmen: true,
 };
 
