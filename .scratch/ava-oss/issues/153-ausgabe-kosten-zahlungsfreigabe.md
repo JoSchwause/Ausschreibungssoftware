@@ -54,3 +54,15 @@ Herkunft: umfang §3 E12, E11 (A5-Zeilen)
   (der Bauzeitenplan hat ohnehin keinen Excel-Einstieg). Ohne berechnete Termine steht ein Satz statt des Plans.
 - **D-153.7** Kritischer Weg im PDF: **Trenner „›“ statt „→“.** Der Pfeil fehlt im Latin-Teil von Noto Sans und erschien als
   leeres Kästchen (bei der Sichtprüfung des PDF gefunden); am Bildschirm bleibt „→“.
+
+### Zwischenstand (Branch `welle-7/153-ausgabe-kosten`)
+
+- Erledigt: Punkt 1 (Kostenermittlung, Kostenkontrolle als PDF und Excel), Punkt 4 (Nachtrag ADR 0012, D-88), Punkt 3 (K,
+  Balkenplan). `pnpm lint` und `pnpm typecheck` grün; `ausgabe` 21 von 23 Dateien grün, rot nur die zwei Laufzeitmessungen des
+  unveränderten LV-Drucks unter `messung/` (Last um 18 auf 4 Kernen; nicht Teil des Wurzellaufs).
+- Offen: Punkt 2 (A5-Zeilen der Zahlungsfreigabe) wartet auf den Merge von 128 (`Zahlungsstand`, `BAUABZUGSTEUER_SATZ`,
+  `Rechnung.vertragsstrafe/skonto/bauabzugsteuer/zahlungen` aus `vertrag` v1.7b). Geplant: Vertragsstrafe (mit Grund) als
+  Abzug zwischen Umlagen und Einbehalt (`kette.vertragsstrafe`, optional bis 143); Abschnitt „Zahlungsfreigabe“ mit beiden
+  Fällen nebeneinander („bei Zahlung bis TT.MM.JJJJ“ / „danach“: Zahlbetrag, Skonto, Bauabzugsteuer 15,00 % an das Finanzamt,
+  Auszahlung an den Auftragnehmer), dann der geltende Fall, die Zahlungen nach Datum, Summe der Zahlungen und „Offen“;
+  `pruefung.zahlungsstand` optional, ohne ihn bleibt der Druck wie bisher.
