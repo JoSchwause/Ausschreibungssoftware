@@ -56,8 +56,19 @@
 
 .projekt__werkzeuge {
   display: flex;
-  gap: var(--tx-space-3);
-  margin-top: var(--tx-space-6);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-5);
+  margin-top: var(--tx-space-4);
+}
+
+/* Ticket 131: Aktionen in Gruppen, durch Abstand und eine feine Linie getrennt */
+.projekt__gruppe {
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+  padding-right: var(--tx-space-5);
+  border-right: 1px solid var(--tx-color-border);
 }
 
 .projekt__datei {
@@ -76,4 +87,82 @@
 
 .projekt__leise {
   color: var(--tx-color-text-muted);
+}
+
+/* ---------- Übersicht (Ticket 131) ---------- */
+
+.projekt__abschnitt {
+  margin-top: var(--tx-space-5);
+}
+
+.projekt__abschnitt h3 {
+  margin: var(--tx-space-5) 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-md);
+}
+
+.projekt__liste .projekt__vergabe a,
+.projekt__liste--leise a {
+  flex: none;
+}
+
+.projekt__vergabe {
+  color: var(--tx-color-text-muted);
+  white-space: nowrap;
+}
+
+.projekt__name {
+  flex: 1;
+  font-weight: var(--tx-weight-medium);
+}
+
+.projekt__zurueck {
+  margin-left: auto;
+}
+
+.projekt__spalten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-6);
+}
+
+.projekt__verweise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projekt__verweise a {
+  color: var(--tx-color-accent-text);
+}
+
+.projekt__menue {
+  z-index: 50;
+  min-width: 180px;
+  padding: var(--tx-space-1);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-raised);
+  box-shadow: var(--tx-shadow-md);
+}
+
+.projekt__menuepunkt {
+  display: flex;
+  align-items: center;
+  height: var(--tx-control-height);
+  padding: 0 var(--tx-space-3);
+  border-radius: var(--tx-radius-sm);
+  cursor: default;
+  outline: none;
+  user-select: none;
+}
+
+.projekt__menuepunkt[data-highlighted] {
+  background: var(--tx-color-surface-hover);
+}
+
+.projekt__menuepunkt--gefahr {
+  color: var(--tx-color-danger);
 }

@@ -12,6 +12,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.2.1",
     "@tethys/abrechnung": "workspace:*",
     "@tethys/ausgabe": "workspace:*",
     "@tethys/bauleitung": "workspace:*",
