@@ -58,16 +58,17 @@ describe.skipIf(!sofficeVorhanden())('Excel der Berichte in LibreOffice', { time
         join(ordner, aus),
         ...Object.keys(dateien).map((n) => join(ordner, n)),
       ],
-      { stdio: 'ignore', timeout: 180_000 },
+      { stdio: 'ignore', timeout: 110_000 },
     );
   }
 
+  // Das Wandeln braucht unter Last deutlich länger als die Vorgabe für Hooks (10 s); die Grenze gilt wie für die Tests.
   beforeAll(() => {
     ordner = mkdtempSync(join(tmpdir(), 'tethys-bericht-'));
     for (const [name, bytes] of Object.entries(dateien)) writeFileSync(join(ordner, name), bytes);
     wandeln('csv', 'csv');
     wandeln('xlsx:Calc MS Excel 2007 XML', 'xlsx');
-  });
+  }, 240_000);
   afterAll(() => {
     rmSync(ordner, { recursive: true, force: true });
   });

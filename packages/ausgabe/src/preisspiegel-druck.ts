@@ -18,6 +18,7 @@ import type {
   Knoten,
   LvZustand,
   PositionId,
+  PreisspiegelEinstellungen,
   Prozent,
 } from '@tethys/vertrag';
 import { KEINE_ANGABE, berichtSeite, druckdatum, wert, zelle } from './bericht';
@@ -55,12 +56,8 @@ interface Vergleichspreis {
  * steht hier, weil Fachpakete einander nicht importieren (A3).
  */
 interface Preisspiegeldaten {
-  readonly einstellungen: {
-    readonly ausreisserSchwelle: Prozent;
-    readonly abcSchwelleA: Prozent;
-    readonly abcSchwelleB: Prozent;
-    readonly abcBezug: 'mittel' | 'schaetzpreis';
-  };
+  /** Die Einstellungen, mit denen gerechnet wurde (Typ seit v1.7a im Vertrag). */
+  readonly einstellungen: PreisspiegelEinstellungen;
   readonly zeilen: readonly {
     readonly positionId: PositionId;
     readonly gehtInSummeEin: boolean;
