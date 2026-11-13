@@ -177,7 +177,7 @@ describe('Projektdatei: Kurzfassung im Protokoll', () => {
   it('Export → Import → Export ist byte-gleich, die Kurzfassungen kommen unverändert zurück', async () => {
     const text = await exportText();
     const b = await neuerKern();
-    wert(b.kern.projektdateiImportieren(text));
+    wert(await b.kern.projektdateiImportieren(text));
     expect(wert(b.kern.projektdateiExportieren(projektId)) === text).toBe(true);
     expect(
       wert(b.kern.protokoll(projektId)).filter((e) => e.befehl.art === 'Befehlskurzfassung'),
@@ -208,7 +208,7 @@ describe('Projektdatei: Kurzfassung im Protokoll', () => {
     if (k?.['art'] !== 'Befehlskurzfassung') throw new Error('Kurzfassung erwartet');
     aendere(k);
     const { kern, db } = await neuerKern();
-    expect(kern.projektdateiImportieren(JSON.stringify(d))).toMatchObject({
+    expect(await kern.projektdateiImportieren(JSON.stringify(d))).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });
@@ -221,6 +221,6 @@ describe('Projektdatei: Kurzfassung im Protokoll', () => {
     if (k === undefined) throw new Error('Eintrag fehlt');
     k['pruefsumme'] = { algorithmus: 'sha-512', wert: 'f'.repeat(128) };
     const { kern } = await neuerKern();
-    expect(kern.projektdateiImportieren(JSON.stringify(d)).ok).toBe(true);
+    expect((await kern.projektdateiImportieren(JSON.stringify(d))).ok).toBe(true);
   });
 });

@@ -6,11 +6,13 @@
 //  - `NachtragUebernehmen` (D-35, D-70.6): ein Teilbaum ans Ende der obersten Ebene, wie mitgebracht; Summen nur für den
 //    neuen Teilbaum und die Gesamtsumme (A6).
 //  - `KostengruppeSetzen` (D-70.1): dieselbe Handlung wie im LV (`kostengruppeWechsel`), Summen unverändert.
+//  - `BauteileZuordnen` (v1.6, Ticket 105, D-52): dieselbe Handlung wie im LV (`bauteileWechsel`), Summen unverändert.
 // Anwenden und Umkehren der ChangeSets: `changeset.ts` (`auftragsLvChangeSetAnwenden`, `auftragsLvChangeSetUmkehren`).
 
 import type {
   AuftragsLeistungsverzeichnis,
   AuftragsLeistungsverzeichnisAnlegen,
+  BauteileZuordnen,
   AuftragsLvBefehlAusfuehren,
   AuftragsLvChangeSet,
   AuftragsLvKopf,
@@ -21,6 +23,7 @@ import type {
   KostengruppeSetzen,
   NachtragUebernehmen,
 } from '@tethys/vertrag';
+import { bauteileWechsel } from './bauteile';
 import { baueAuftragsChangeSet } from './changeset';
 import { listeFehler } from './einfuegen-befehle';
 import { nein, ok } from './fehler';
@@ -180,9 +183,18 @@ function kostengruppeSetzen(z: AuftragsLvZustand, b: KostengruppeSetzen): Antwor
   return ok(baueAuftragsChangeSet(z, w.wert === null ? {} : { geaendert: [w.wert] }));
 }
 
+/** `BauteileZuordnen` im Auftrags-LV: dieselbe Prüfung wie im LV (`bauteileWechsel`), Summen unverändert. */
+function bauteileZuordnen(z: AuftragsLvZustand, b: BauteileZuordnen): Antwort {
+  const a = z.auftragsLeistungsverzeichnis;
+  const idx = indexVon(a.id, a.knoten);
+  const w = bauteileWechsel((i) => idx.byId.get(i), b);
+  if (!w.ok) return w;
+  return ok(baueAuftragsChangeSet(z, w.wert === null ? {} : { geaendert: [w.wert] }));
+}
+
 /**
  * Führt einen Befehl am Auftrags-LV aus: `(Zustand, Befehl) → ChangeSet` oder Fehlerwert (A5), rein und deterministisch
- * (A2). `AuftragsLeistungsverzeichnisAnlegen` braucht `zustand === null`, die anderen beiden einen Zustand; sonst
+ * (A2). `AuftragsLeistungsverzeichnisAnlegen` braucht `zustand === null`, die anderen einen Zustand; sonst
  * `befehl-nicht-zustaendig` („Befehl passt nicht zum übergebenen Zustand“), ebenso für eine unbekannte Befehlsart (Protokoll).
  */
 export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, befehl) => {
@@ -199,6 +211,8 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
       return nachtragUebernehmen(zustand, befehl);
     case 'KostengruppeSetzen':
       return kostengruppeSetzen(zustand, befehl);
+    case 'BauteileZuordnen':
+      return bauteileZuordnen(zustand, befehl);
     default:
       return nein('befehl-nicht-zustaendig', `Befehl ${art} gehört nicht zum Auftrags-LV.`);
   }

@@ -24,6 +24,8 @@ export const ERLAUBT = {
   // Der Langtext-Editor (Ticket 34) braucht die Langtext-Typen; sonst bleibt ui-basis ohne Fachwissen.
   'packages/ui-basis': ['packages/vertrag'],
   'packages/ui-grid': ['packages/vertrag', 'packages/ui-basis'],
+  // 3D-Leinwand (Ticket 100, D-50): Geometrie mit web-ifc und three.js, kennt Bauteile nur über die GlobalId.
+  'packages/ui-modell': ['packages/vertrag', 'packages/ui-basis'],
   // Weitere Fachpakete aus plan.md §1: noch nicht angelegt, Grenzen stehen schon fest.
   'packages/vergabe': FACH,
   'packages/mengen': FACH,
@@ -33,6 +35,17 @@ export const ERLAUBT = {
   'packages/ausgabe': FACH,
   // XRechnung lesen (Ticket 76, D-32): ein Format-Rand wie gaeb, aber ohne Kern und ohne den GAEB-Leser.
   'packages/erechnung': ['packages/vertrag', 'packages/dezimal'],
+  // IFC lesen (Ticket 98, D-50): eigener STEP-Leser, ein Format-Rand wie erechnung, ohne Kern.
+  'packages/ifc': ['packages/vertrag', 'packages/dezimal'],
+  // HOAI-Honorarberechnung (Ticket 101, D-56): reine Rechnung mit den Honorartafeln als Daten, kein Kern.
+  'packages/honorar': ['packages/vertrag', 'packages/dezimal'],
+  // Terminrechnung des Bauzeitenplans (Ticket 102, D-57): reiner Rechenkern, nur Typen und Dezimalarithmetik, kein Kern.
+  'packages/bauzeit': ['packages/vertrag', 'packages/dezimal'],
+  // Mängel und Bautagebuch (Ticket 111, D-57): Befehle, Fristprüfung und Auswertungen, rein, nur Typen, kein Kern.
+  'packages/bauleitung': ['packages/vertrag', 'packages/dezimal'],
+  // Fachlogik am Bauwerksmodell (Ticket 108, D-50): Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich;
+  // baut Befehle und Ansatzzeilen als Daten, rechnet keine Mengenansätze (kein `mengen`, kein Kern, A3).
+  'packages/bim': ['packages/vertrag', 'packages/dezimal'],
   // Die App darf alle Pakete einbinden.
   'apps/web': [
     'packages/vertrag',
@@ -42,12 +55,18 @@ export const ERLAUBT = {
     'packages/gaeb',
     'packages/ui-basis',
     'packages/ui-grid',
+    'packages/ui-modell',
     'packages/vergabe',
     'packages/mengen',
     'packages/abrechnung',
     'packages/kosten',
     'packages/ausgabe',
     'packages/erechnung',
+    'packages/ifc',
+    'packages/honorar',
+    'packages/bauzeit',
+    'packages/bauleitung',
+    'packages/bim',
   ],
   // Fixtures sind reine Daten und importieren nichts.
   fixtures: [],

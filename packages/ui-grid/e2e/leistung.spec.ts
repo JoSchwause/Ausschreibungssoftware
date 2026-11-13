@@ -34,6 +34,15 @@ async function messeScrollen(page: Page, pixelProSekunde: number, dauerMs: numbe
         if (!el) throw new Error('kein Grid');
         el.scrollTop = 0;
         const zeilen = Number(el.getAttribute('aria-rowcount')) - 1;
+        // Am Ende kehrt der Wisch mit gleicher Geschwindigkeit um (hin und her): So misst auch ein kürzeres Grid
+        // (1.000 Zeilen, Ticket 96) die ganze Dauer, statt am Ende stillzustehen. Die Grids mit 5.000 und mehr Zeilen
+        // erreichen das Ende höchstens in den letzten Bildern; für sie bleibt die Messung, wie sie war.
+        const ende = Math.max(0, el.scrollHeight - el.clientHeight);
+        const lage = (weg: number): number => {
+          if (ende === 0) return 0;
+          const p = weg % (2 * ende);
+          return p <= ende ? p : 2 * ende - p;
+        };
         const abstaende: number[] = [];
         let start = 0;
         let letztes = 0;
@@ -55,7 +64,7 @@ async function messeScrollen(page: Page, pixelProSekunde: number, dauerMs: numbe
           vorherigeErste = erste;
           const vergangen = t - start;
           if (vergangen < dauer) {
-            el.scrollTop = (vergangen / 1000) * geschwindigkeit;
+            el.scrollTop = lage((vergangen / 1000) * geschwindigkeit);
             requestAnimationFrame(bild);
             return;
           }
@@ -111,11 +120,60 @@ test('Vergleich 5.000 Zeilen x 5 Bieter: je Zelle nur Zelle, Text und Marken', a
   expect(blaetter.filter((z) => z.elemente !== 3)).toEqual([]);
 });
 
+// Ticket 96: Eine Balkenzelle hat eine feste Zahl Elemente, gleich wie lang die Achse ist und wie viele freie Tage sie
+// hat: Zelle, Text, das Raster (ein SVG mit einem Pfad für alle freien Tage und einem je Art der Markierungen), dazu
+// Balken, Ist-Balken und Randkennzeichen, soweit vorhanden. Die Zählung hängt nicht an der Maschine.
+test('Bauzeitenplan 1.000 Zeilen, 730 Tage: je Balkenzelle eine feste Zahl Elemente', async ({ page }) => {
+  await page.goto('/bauzeit.html?zeilen=1000&tage=730');
+  await expect(page.getByRole('treegrid')).toBeVisible();
+  await page.getByRole('treegrid').evaluate((el) => {
+    el.scrollTop = 500 * 28;
+  });
+  await expect(page.locator('.tx-grid__koerper [role="row"][data-i="510"]')).toBeAttached();
+  const zellen = await page.locator('.tx-grid__koerper [data-spalte="balken"]').evaluateAll((els) =>
+    els.map((el) => ({
+      elemente: el.querySelectorAll('*').length + 1,
+      teile: el.querySelectorAll('[data-balken], [data-balkenrand], [data-kennzeichen]').length,
+      pfade: el.querySelectorAll('svg path').length,
+    })),
+  );
+  expect(zellen.length).toBeGreaterThan(20);
+  // 730 Tage mit gut 200 freien Tagen: trotzdem zwei Pfade (freie Tage, Stichtag) je Zelle
+  expect(zellen.filter((z) => z.pfade !== 2)).toEqual([]);
+  // Zelle, Text, SVG und zwei Pfade, dazu je Balken, Ist-Balken und Kennzeichen ein Element
+  expect(zellen.filter((z) => z.elemente !== 5 + z.teile)).toEqual([]);
+  expect(zellen.filter((z) => z.teile > 0).length).toBeGreaterThan(20);
+});
+
+// Ticket 93: Die Spalte „KG“ hat in der Zeile des LV-Grids nur Zelle und Text, an jeder Zeile, ob mit Nummer oder ohne. Die
+// Zählung hängt nicht an der Maschine; die Messungen unten laufen mit der Spalte (so zeigt sie die App).
+test('gross mit Spalte „KG“: je KG-Zelle nur Zelle und Text', async ({ page }) => {
+  await page.goto('/?fixture=gross&kg=1');
+  await expect(page.getByRole('treegrid')).toBeVisible();
+  await page.getByRole('treegrid').evaluate((el) => {
+    el.scrollTop = 2000 * 28;
+  });
+  await expect(page.locator('.tx-grid__koerper [role="row"][data-i="2010"]')).toBeAttached();
+  const zellen = await page
+    .locator('.tx-grid__koerper [data-spalte="kostengruppe"]')
+    .evaluateAll((els) =>
+      els.map((el) => ({ elemente: el.querySelectorAll('*').length + 1, text: el.textContent })),
+    );
+  expect(zellen.length).toBeGreaterThan(20);
+  expect(zellen.filter((z) => z.text !== '').length).toBeGreaterThan(10);
+  expect(zellen.filter((z) => z.elemente !== 2)).toEqual([]);
+});
+
 const FALLE = [
-  { name: 'gross, 5.000 Zeilen', url: '/?fixture=gross' },
-  { name: 'gross x2, 10.000 Zeilen', url: '/?fixture=gross&kopien=2' },
+  // Ticket 93: mit der Spalte „KG“ am Ende (acht Spalten), wie die App das LV zeigt
+  { name: 'gross mit KG, 5.000 Zeilen', url: '/?fixture=gross&kg=1' },
+  { name: 'gross x2 mit KG, 10.000 Zeilen', url: '/?fixture=gross&kopien=2&kg=1' },
   // Vergleichsgrid (Ticket 60): erfundener Preisspiegel, 5 Bieter und Min/Mittel/Max je EP und GP (20 Spalten)
   { name: 'Vergleich 5.000 Zeilen x 5 Bieter', url: '/vergleich.html?zeilen=5000&bieter=5' },
+  // Balkenspalte (Ticket 96): erfundener Bauzeitenplan, Achse 730 Tage zu 16 px (11.680 px breit), 6 Spalten
+  { name: 'Bauzeitenplan 1.000 Zeilen, 730 Tage', url: '/bauzeit.html?zeilen=1000&tage=730' },
+  // Modellbaum (Ticket 122, D-54): Baum der Modellseite mit 10.000 Zeilen in 5 Ebenen, 6 Spalten, Mengen mit Tooltip
+  { name: 'Modellbaum 10.000 Zeilen', url: '/modellbaum.html?zeilen=10000' },
 ] as const;
 
 // zwei Geschwindigkeiten: zügiges Lesen (200 Zeilen/s) und ein schneller Wisch (1.000 Zeilen/s)

@@ -5,8 +5,14 @@ import type {
   AngebotBefehl,
   AufmassBefehl,
   AuftragsLvBefehl,
+  BautagebucheintragBefehl,
+  BauwerksmodellBefehl,
+  BauzeitenplanBefehl,
+  Einfuegeort,
+  HonorarberechnungBefehl,
   KostenermittlungBefehl,
   LvBefehl,
+  MangelBefehl,
   ProjektBefehl,
   RechnungBefehl,
 } from './befehle';
@@ -14,10 +20,16 @@ import type {
   AngebotId,
   AufmassId,
   AuftragsLeistungsverzeichnisId,
+  BauwerksmodellId,
+  BauzeitenplanId,
+  BautagebucheintragId,
+  HonorarberechnungId,
   KnotenId,
+  MangelId,
   KostenermittlungId,
   LeistungsverzeichnisId,
   LvStandId,
+  Ordnungszahl,
   ProjektId,
   RechnungId,
   Zeitstempel,
@@ -38,6 +50,10 @@ import type {
   Rechnung,
 } from './modell';
 import type { Summenaenderung, Summenstand } from './summen';
+import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from './bim';
+import type { Bauzeitenplan } from './bauzeit';
+import type { Honorarberechnung } from './honorar';
+import type { Bautagebucheintrag, Mangel } from './bauleitung';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -48,12 +64,22 @@ export type Ergebnis<T, F> =
 /** Grund, aus dem ein Befehl abgewiesen wird. Ein abgewiesener Befehl ändert nichts und erzeugt kein ChangeSet. */
 export type Befehlsfehlercode =
   | 'ungueltige-eingabe' // Form oder Wert unzulässig (z. B. Hinweistext mit Menge/Preis, Skala falsch)
+  /**
+   * Der Baum des Aggregats hat keinen Knoten mit der genannten Kennung (die Kennung der Wurzel ist kein Knoten; eine
+   * Position im Papierkorb steht nicht im Baum). v1.5 (D-71.3): nur dann; trifft ein Befehl einen vorhandenen Knoten der
+   * falschen Art, gilt `knotenart-unzulaessig`.
+   */
   | 'knoten-unbekannt'
   | 'eltern-unbekannt'
   | 'id-vergeben'
   | 'zyklus' // Verschieben unter den eigenen Unterbaum
   | 'ebene-ueberschritten' // mehr als 5 Gliederungsebenen
-  | 'knotenart-unzulaessig' // z. B. Positionen unter einer Position
+  /**
+   * Die Knotenart passt nicht, z. B. Positionen unter einer Position. v1.5 (D-71.3): ebenso, wenn ein Feldbefehl einen
+   * vorhandenen Knoten trifft, der das Feld nicht trägt (etwa eine Gliederung oder einen Hinweistext statt einer Position),
+   * im LV wie im Auftrags-LV; siehe „Felder ändern“ in `befehle.ts`.
+   */
+  | 'knotenart-unzulaessig'
   | 'bezug-unbekannt' // Bezugs- oder Grundposition fehlt
   | 'oz-ungueltig' // Zeichen oder Länge verletzen die Maske
   | 'maske-ungueltig'
@@ -70,7 +96,13 @@ export type Befehlsfehlercode =
    * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
    * Der eingefrorene Zahlbetrag ändert sich nie still.
    */
-  | 'rechnung-freigegeben';
+  | 'rechnung-freigegeben'
+  /**
+   * v1.6 (Ticket 97 Punkt 6, D-57): Der Befehl würde den Status eines Mangels auf eine Weise wechseln, die `Mangelstatus` nicht
+   * zulässt (etwa von `abgenommen` zurück oder zum selben Status). Ein Statuswechsel ist kein Feldwert, deshalb ein eigener
+   * Code wie `rechnung-freigegeben` (D-97.13).
+   */
+  | 'statuswechsel-unzulaessig';
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -157,6 +189,37 @@ export interface RechnungZustand {
 /** Kostenermittlung als Zustand ihrer Befehle (v1.4, Ticket 70 Punkt 9). Ihre Summen rechnet `kosten` bei Bedarf (D-24). */
 export interface KostenermittlungZustand {
   readonly kostenermittlung: Kostenermittlung;
+}
+
+/**
+ * Bauwerksmodell als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 1). Ohne die Bytes der Datei (D-51) und ohne Gerechnetes
+ * (Kennwerte, Vergleich, Mengen für Positionen rechnet `bim` bei Bedarf, Ticket 108).
+ */
+export interface BauwerksmodellZustand {
+  readonly bauwerksmodell: Bauwerksmodell;
+}
+
+/**
+ * Bauzeitenplan als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 4). Ohne Termine: Die rechnet `bauzeit` bei Bedarf
+ * (`Bauzeitenplanergebnis`, D-57), gespeichert werden nur die Eingaben.
+ */
+export interface BauzeitenplanZustand {
+  readonly bauzeitenplan: Bauzeitenplan;
+}
+
+/** Honorarberechnung als Zustand ihrer Befehle (v1.6, Ticket 97 Punkt 5). Ohne Ergebnis: das rechnet `honorar` (D-56). */
+export interface HonorarberechnungZustand {
+  readonly honorarberechnung: Honorarberechnung;
+}
+
+/** Mangel als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 6). Ohne Gerechnetes: „überfällig“ ist ein Befund (D-57). */
+export interface MangelZustand {
+  readonly mangel: Mangel;
+}
+
+/** Bautagebucheintrag als Zustand seiner Befehle (v1.6, Ticket 97 Punkt 6). */
+export interface BautagebucheintragZustand {
+  readonly bautagebucheintrag: Bautagebucheintrag;
 }
 
 // --- LV-Stand (v1.2, S3; ADR 0006) -----------------------------------------------------------------------------
@@ -283,7 +346,9 @@ export interface AuftragsLvChangeSet {
  * ChangeSet an einem Aufmaßblatt (v1.4, Ticket 70 Punkt 6; D-36 (8)): das ganze Blatt vorher und nachher, ohne Summen.
  * `aufmass.vorher: null` legt an, `nachher: null` löscht (der volle Stand steht dann in `vorher`), beide gesetzt ändern.
  * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` (Undo, ADR 0006). Bewusst grob: Auch eine einzelne
- * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70).
+ * Zeile trägt das ganze Blatt (D-36 (8); Offene Typfrage, Ticket 70). v1.5 (D-95.4): Es bleibt dabei; Ticket 94 hält das
+ * Budget mit einer Lösung in `speicher` (Einzeländerung, Undo und Redo bei 5.000 Zeilen unter 100 ms, D-45), ein
+ * `Aenderungen<Aufmassposition>` ist nicht nötig.
  */
 export interface AufmassChangeSet {
   readonly art: 'aufmass';
@@ -312,7 +377,8 @@ export interface RechnungChangeSet {
 
 /**
  * ChangeSet an einer Kostenermittlung (v1.4, Ticket 70 Punkt 9; D-36 (8)): die ganze Kostenermittlung vorher und nachher,
- * Lesart wie `AufmassChangeSet`.
+ * Lesart wie `AufmassChangeSet`. v1.6 (Ticket 97 Punkt 5): Löscht es eine Kostenermittlung, auf die eine Honorarberechnung
+ * verweist, weist `speicher` mit `konflikt` ab (auch ohne Ausführer, als Undo).
  */
 export interface KostenermittlungChangeSet {
   readonly art: 'kostenermittlung';
@@ -320,7 +386,81 @@ export interface KostenermittlungChangeSet {
   readonly kostenermittlung: Aenderung<Kostenermittlung>;
 }
 
-/** Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. */
+/**
+ * ChangeSet an einem Bauwerksmodell (v1.6, Ticket 97 Punkt 1; D-45, D-51, D-54). Ein Modell hat bis zu 10.000 Bauteile und
+ * ändert nach dem Anlegen nur seinen Namen. Darum trägt das ChangeSet den Kopf immer, Struktur und Bauteile aber nur, wenn
+ * das Modell entsteht oder verschwindet (Lesart, vorläufige Annahme, Entscheidung offen):
+ * - Anlegen: `kopf.vorher` und `inhalt.vorher` sind `null`, `nachher` der neue Stand.
+ * - Löschen: `kopf.nachher` und `inhalt.nachher` sind `null`, `vorher` der volle Stand (für Undo).
+ * - Umbenennen: `kopf` mit beiden Ständen, die sich nur im `name` unterscheiden; `inhalt` fehlt. So kopieren weder das
+ *   Umbenennen noch sein Undo die Bauteile.
+ *
+ * `inhalt` ist also genau dann gesetzt, wenn eine Seite von `kopf` `null` ist, und dann auf derselben Seite `null`.
+ * Umkehrbar ohne Vorzustand durch Tausch von `vorher` und `nachher` in `kopf` und `inhalt` (Undo, ADR 0006). Die Bytes der
+ * Datei stehen nie darin (D-51), nur ihre Angaben (`kopf.….datei`). Weil Struktur und Bauteile sich nie ändern, vergleicht
+ * `speicher` beim Umbenennen und Löschen nur den Kopf mit dem gespeicherten Stand (Ticket 106).
+ *
+ * Nachtrag Review (D-66): Hält ein ChangeSet diese Regel nicht ein (Anlegen oder Löschen ohne `inhalt`, Umbenennen mit
+ * `inhalt`, `inhalt` mit `null` auf der anderen Seite als `kopf`), weist `speicher.anwenden` es mit `unbekannt` ab und schreibt
+ * nichts (auch nicht als Undo). Die Form bleibt ein Typ mit optionalem `inhalt` statt einer Union nach Fall, damit die
+ * Verbraucher (Tickets 106, 108, 114) unverändert bleiben (Offene Typfrage 14, Ticket 97).
+ */
+export interface BauwerksmodellChangeSet {
+  readonly art: 'bauwerksmodell';
+  readonly bauwerksmodellId: BauwerksmodellId;
+  readonly kopf: Aenderung<BauwerksmodellKopf>;
+  readonly inhalt?: Aenderung<BauwerksmodellInhalt>;
+}
+
+/**
+ * ChangeSet an einem Bauzeitenplan (v1.6, Ticket 97 Punkt 4; D-57): der ganze Plan vorher und nachher, Lesart wie
+ * `AufmassChangeSet` (Anlegen `vorher: null`, Löschen `nachher: null`, Umkehrung durch Tausch). Ein Plan ist eine
+ * Recheneinheit und bleibt ein Aggregat; Ticket 106 misst Speichern und Undo bei 1.000 Vorgängen (D-45-Muster), über dem
+ * Budget folgt `Aenderungen<Vorgang>` in einem Vertragsticket.
+ */
+export interface BauzeitenplanChangeSet {
+  readonly art: 'bauzeitenplan';
+  readonly bauzeitenplanId: BauzeitenplanId;
+  readonly bauzeitenplan: Aenderung<Bauzeitenplan>;
+}
+
+/**
+ * ChangeSet an einer Honorarberechnung (v1.6, Ticket 97 Punkt 5; D-56): die ganze Honorarberechnung vorher und nachher, Lesart
+ * wie `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn ein Objekt auf eine Kostenermittlung verweist, die es im
+ * Projekt nicht gibt.
+ */
+export interface HonorarberechnungChangeSet {
+  readonly art: 'honorarberechnung';
+  readonly honorarberechnungId: HonorarberechnungId;
+  readonly honorarberechnung: Aenderung<Honorarberechnung>;
+}
+
+/**
+ * ChangeSet an einem Mangel (v1.6, Ticket 97 Punkt 6; D-57): der ganze, kleine Mangel vorher und nachher, Lesart wie
+ * `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn die Nummer im Projekt schon vergeben ist oder ein Verweis
+ * (`auftragsLvId`, `bauteil.bauwerksmodellId`) kein Aggregat des Projekts nennt (siehe `Mangel`).
+ */
+export interface MangelChangeSet {
+  readonly art: 'mangel';
+  readonly mangelId: MangelId;
+  readonly mangel: Aenderung<Mangel>;
+}
+
+/**
+ * ChangeSet an einem Bautagebucheintrag (v1.6, Ticket 97 Punkt 6; D-57): der ganze Eintrag vorher und nachher, Lesart wie
+ * `AufmassChangeSet`. `speicher` weist mit `konflikt` ab, wenn das Datum im Projekt schon ein anderer Eintrag trägt.
+ */
+export interface BautagebucheintragChangeSet {
+  readonly art: 'bautagebucheintrag';
+  readonly bautagebucheintragId: BautagebucheintragId;
+  readonly bautagebucheintrag: Aenderung<Bautagebucheintrag>;
+}
+
+/**
+ * Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. v1.6
+ * (Ticket 97 Punkt 8): dazu Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel und Bautagebucheintrag; bis Ticket 106
+ * weist `speicher` sie mit `unbekannt` ab.
+ */
 export type ChangeSet =
   | ProjektChangeSet
   | LvChangeSet
@@ -329,7 +469,13 @@ export type ChangeSet =
   // v1.4
   | AufmassChangeSet
   | RechnungChangeSet
-  | KostenermittlungChangeSet;
+  | KostenermittlungChangeSet
+  // v1.6
+  | BauwerksmodellChangeSet
+  | BauzeitenplanChangeSet
+  | HonorarberechnungChangeSet
+  | MangelChangeSet
+  | BautagebucheintragChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -425,3 +571,122 @@ export type KostenermittlungChangeSetAnwenden = (
 export type KostenermittlungChangeSetUmkehren = (
   changeSet: KostenermittlungChangeSet,
 ) => KostenermittlungChangeSet;
+
+// --- Signaturen der Aggregate aus v1.6 (Ticket 97 Punkt 8) ------------------------------------------------------------
+//
+// Wie bei den Aggregaten aus v1.4: Ausführen ist rein und deterministisch (A2) und prüft die Form; Anwenden mit `null` als
+// Zustand heißt „entsteht erst“, `null` als Ergebnis „wird gelöscht“; Umkehren tauscht `vorher` und `nachher` (beim
+// Bauwerksmodell in `kopf` und `inhalt`). Ausnahme (D-57): Die Ausführer von Mangel und Bautagebucheintrag bekommen den
+// **Bestand** des Projekts (die gespeicherten Mängel bzw. Einträge, der eigene darf darin stehen und zählt nicht), weil sie
+// die eindeutige Nummer bzw. das eindeutige Datum prüfen; sie brauchen davon nur Kennung und Nummer bzw. Datum. Liefern:
+// `bim` (Bauwerksmodell, Ticket 108), `bauzeit` (Ticket 109), `honorar` (Ticket 110), `bauleitung` (Mangel,
+// Bautagebucheintrag, Ticket 111).
+
+export type BauwerksmodellBefehlAusfuehren = (
+  zustand: BauwerksmodellZustand | null,
+  befehl: BauwerksmodellBefehl,
+) => Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>;
+
+/**
+ * Wendet ein ChangeSet des Bauwerksmodells an: Anlegen und Löschen mit Kopf und Inhalt, Umbenennen nur mit dem Kopf (der Inhalt
+ * des Zustands bleibt).
+ */
+export type BauwerksmodellChangeSetAnwenden = (
+  zustand: BauwerksmodellZustand | null,
+  changeSet: BauwerksmodellChangeSet,
+) => BauwerksmodellZustand | null;
+
+export type BauwerksmodellChangeSetUmkehren = (changeSet: BauwerksmodellChangeSet) => BauwerksmodellChangeSet;
+
+export type BauzeitenplanBefehlAusfuehren = (
+  zustand: BauzeitenplanZustand | null,
+  befehl: BauzeitenplanBefehl,
+) => Ergebnis<BauzeitenplanChangeSet, Befehlsfehler>;
+
+export type BauzeitenplanChangeSetAnwenden = (
+  zustand: BauzeitenplanZustand | null,
+  changeSet: BauzeitenplanChangeSet,
+) => BauzeitenplanZustand | null;
+
+export type BauzeitenplanChangeSetUmkehren = (changeSet: BauzeitenplanChangeSet) => BauzeitenplanChangeSet;
+
+export type HonorarberechnungBefehlAusfuehren = (
+  zustand: HonorarberechnungZustand | null,
+  befehl: HonorarberechnungBefehl,
+) => Ergebnis<HonorarberechnungChangeSet, Befehlsfehler>;
+
+export type HonorarberechnungChangeSetAnwenden = (
+  zustand: HonorarberechnungZustand | null,
+  changeSet: HonorarberechnungChangeSet,
+) => HonorarberechnungZustand | null;
+
+export type HonorarberechnungChangeSetUmkehren = (
+  changeSet: HonorarberechnungChangeSet,
+) => HonorarberechnungChangeSet;
+
+export type MangelBefehlAusfuehren = (
+  zustand: MangelZustand | null,
+  befehl: MangelBefehl,
+  bestand: readonly Pick<Mangel, 'id' | 'nummer'>[],
+) => Ergebnis<MangelChangeSet, Befehlsfehler>;
+
+export type MangelChangeSetAnwenden = (
+  zustand: MangelZustand | null,
+  changeSet: MangelChangeSet,
+) => MangelZustand | null;
+
+export type MangelChangeSetUmkehren = (changeSet: MangelChangeSet) => MangelChangeSet;
+
+export type BautagebucheintragBefehlAusfuehren = (
+  zustand: BautagebucheintragZustand | null,
+  befehl: BautagebucheintragBefehl,
+  bestand: readonly Pick<Bautagebucheintrag, 'id' | 'datum'>[],
+) => Ergebnis<BautagebucheintragChangeSet, Befehlsfehler>;
+
+export type BautagebucheintragChangeSetAnwenden = (
+  zustand: BautagebucheintragZustand | null,
+  changeSet: BautagebucheintragChangeSet,
+) => BautagebucheintragZustand | null;
+
+export type BautagebucheintragChangeSetUmkehren = (
+  changeSet: BautagebucheintragChangeSet,
+) => BautagebucheintragChangeSet;
+
+// --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
+
+/**
+ * Vorschlag des Kerns für die Ordnungszahl eines neuen Knotens (Glossar „OZ-Vorschlag“). Kein Befehl und kein ChangeSet: Wer
+ * einen Befehl baut (die App, `nachtragUebernehmen` in `abrechnung`), fragt vorher und legt die OZ als Wert in den Befehl
+ * (Befehle bleiben reine Daten). `ozIndex` ist für einen neuen Knoten immer `null`. `hinweis` ist gesetzt
+ * (`oz-schritt-ausgewichen`), wenn der Standardschritt nicht passte (F2, D-42.3); ihn reicht der Aufrufer weiter oder
+ * verwirft ihn, gespeichert wird er nie. v1.5: aus `kern` in den Vertrag übernommen, gleich gebaut; der Kern führt bis
+ * Ticket 105 noch seinen eigenen Typ dieses Namens.
+ */
+export interface OzVorschlag {
+  readonly ordnungszahl: Ordnungszahl;
+  readonly ozIndex: string | null;
+  readonly hinweis?: Befehlshinweis;
+}
+
+/**
+ * OZ-Vorschlag für einen neuen Knoten der Art `art` am Ort `ort` (v1.5, Ticket 95 Punkt 3; D-80.1), rein und deterministisch
+ * (A2). `null`: kein Vorschlag (kein Platz, ein Ort, den es im Baum nicht gibt, eine ungültige Maske, ein Elternknoten ohne
+ * lesbare OZ oder eine Stufe, die die Maske nicht hat); die OZ bleibt dann leer, die LV-Prüfung meldet sie (U5, K8).
+ *
+ * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - Eine Regel für LV und Auftrags-LV (D-42.3), mit Maske und Baum des übergebenen Aggregats. Wurzel ist dessen eigene
+ *   Kennung (`WurzelId`): `LvZustand.leistungsverzeichnis.id` bzw. `AuftragsLvZustand.auftragsLeistungsverzeichnis.id`, im
+ *   `ort` als `elternId`. Eine Kennung des Auftrags-LV wird dafür nie als LV-Kennung umgedeutet (so liest
+ *   `nachtragUebernehmen` heute, D-80.1, bis der Kern diese Signatur liefert).
+ * - Am Auftrags-LV legt kein Befehl einen einzelnen Knoten an oder nummeriert um (`AuftragsLvBefehl`). Der Vorschlag dient
+ *   dort `nachtragUebernehmen` (Ticket 80): Die Gliederung „Nachtrag <nummer>“ bekommt die OZ für
+ *   `{ art: 'ende', elternId: <Kennung des Auftrags-LV> }` (D-35, D-80.1).
+ *
+ * Liefert `kern` (Ticket 105; heute `ozVorschlag` nur mit `LvZustand`). Erweitert er den ersten Parameter seiner Funktion auf
+ * beide Zustände, bleibt jeder heutige Aufruf gültig.
+ */
+export type OzVorschlagen = (
+  zustand: LvZustand | AuftragsLvZustand,
+  ort: Einfuegeort,
+  art: 'position' | 'titel' | 'los',
+) => OzVorschlag | null;

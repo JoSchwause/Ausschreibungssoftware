@@ -85,6 +85,15 @@ export function wendeAn(knoten: readonly Knoten[], befehle: readonly LvBefehl[])
           k.id === b.positionId && k.art === 'position' ? { ...k, einheitspreis: b.einheitspreis } : k,
         );
         break;
+      case 'KostengruppeSetzen':
+        liste = liste.map((k) => {
+          if (k.id !== b.positionId || k.art !== 'position') return k;
+          // `null` entfernt das Feld (nie `null` im Zustand)
+          return b.kostengruppe === null
+            ? (Object.fromEntries(Object.entries(k).filter(([f]) => f !== 'kostengruppe')) as Position)
+            : { ...k, kostengruppe: b.kostengruppe };
+        });
+        break;
       case 'PositionAnlegen': {
         let elternId: Position['elternId'];
         let index: number;

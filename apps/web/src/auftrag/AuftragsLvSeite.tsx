@@ -19,6 +19,7 @@ import type { ReactElement } from 'react';
 import { AbrechnungVerweise } from '../abrechnung/Verweis'; // Ticket 87
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
+import { useKgSpalteAmAuftrag } from '../kosten/kgSpalte'; // Ticket 93
 import { lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
@@ -34,6 +35,8 @@ import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
 import { texte } from './texte';
 import { Verweis } from '../ui/Verweis';
+import { modellePfad } from '../bim/pfad'; // Ticket 115
+import { texte as bimTexte } from '../bim/texte'; // Ticket 115
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './auftrag.css';
@@ -144,6 +147,7 @@ function Ansicht({
   const sprungNr = useRef(0);
   const [panelOffen, setPanelOffen] = useState(true);
   const panel = useRef<PruefPanelSteuerung>(null);
+  const kgSpalte = useKgSpalteAmAuftrag(auftrag, neuLaden); // Ticket 93: Spalte „KG“, sonst schreibgeschützt
 
   // Prüfung wie auf der LV-Seite, im Leerlauf (U5); nur lesend: Sprünge gehen zur Zeile, nie in einen Dialog.
   const [befunde, setBefunde] = useState<readonly Pruefbefund[] | null>(null);
@@ -226,6 +230,8 @@ function Ansicht({
         <AbrechnungVerweise projektId={kopf.projektId} auftragsLvId={kopf.id} gehe={gehe} /> {/* Ticket 87 */}
         {/* Ticket 88 */}
         <Verweis pfad={rechnungenPfad(kopf.projektId, kopf.id)} text={rechnungTexte.liste.link} gehe={gehe} />
+        {/* Ticket 115: nach dem Zuschlag Mengen aus dem Modell nur über „Aufmaßblatt aus Auswahl“ (D-53) */}
+        <Verweis pfad={modellePfad(kopf.projektId)} text={bimTexte.aufmass.ausAuftrag} gehe={gehe} />
         <button
           type="button"
           className="tx-button tx-button--sekundaer"
@@ -245,6 +251,7 @@ function Ansicht({
             zahlen={gridZahlen}
             beschriftung={t.grid}
             schreibgeschuetzt
+            {...kgSpalte} // Ticket 93
             {...(sprungziel ? { sprungziel } : {})}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {

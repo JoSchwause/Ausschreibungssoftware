@@ -4,7 +4,7 @@
 // Eine Änderung der Felder gilt für den Druck, auch ohne zu speichern; Befunde beim Import sperren nie (U5).
 
 import type { Druckprofil, DruckprofilBefund } from '@tethys/ausgabe';
-import { Auswahl, Button, Eingabefeld, useToast } from '@tethys/ui-basis';
+import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { DateiNichtLesbar, dateiBytes, herunterladen } from '../gaeb/datei';
@@ -16,11 +16,14 @@ import {
   ablageLesen,
   alleProfile,
   dateinameProfil,
+  dateinameZurueck,
   profilAendern,
   profilAnlegen,
   profilGleich,
   profilImportieren,
   profilLoeschen,
+  zurueckAlsDatei,
+  zurueckNichtLesbar,
   zeilenLesen,
   type Werkzeug,
   type Zurueckgehalten,
@@ -77,6 +80,8 @@ export function DruckProfilFeld({
   gesperrt,
 }: DruckProfilFeldProps): ReactElement {
   const { zeige } = useToast();
+  const [zurueck, setZurueck] = useState<readonly Zurueckgehalten[]>(anfang.zurueck);
+  const [entfernenFrage, setEntfernenFrage] = useState(false);
   const [eigene, setEigene] = useState<Druckprofil[]>(anfang.eigene);
   const [gewaehlt, setGewaehlt] = useState(anfang.name);
   const [neuerName, setNeuerName] = useState('');
@@ -95,7 +100,7 @@ export function DruckProfilFeld({
 
   const merke = (neu: Druckprofil[]): void => {
     setEigene(neu);
-    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(neu, anfang.zurueck));
+    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(neu, zurueck));
   };
   const uebernehme = (p: Druckprofil): void => {
     setGewaehlt(p.name);
@@ -136,6 +141,16 @@ export function DruckProfilFeld({
     setNeuerName('');
     setFehler(null);
     zeige({ titel: t.gespeichert(name), art: 'erfolg' });
+  };
+  // Ticket 121 (D-92.6, Q5): zurückgehaltene Einträge sichern; entfernen erst nach Bestätigung.
+  const zurueckSichern = (): void => {
+    herunterladen(dateinameZurueck(), zurueckAlsDatei(zurueck), 'application/json');
+  };
+  const zurueckEntfernen = (): void => {
+    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(eigene, []));
+    setZurueck([]);
+    setEntfernenFrage(false);
+    zeige({ titel: t.zurueckEntfernt, art: 'erfolg' });
   };
   const loeschen = (): void => {
     const name = gewaehlt;
@@ -296,10 +311,10 @@ export function DruckProfilFeld({
         <Button onClick={() => datei.current?.click()}>{t.importieren}</Button>
       </div>
       {fehler !== null ? <p role="alert">{fehler}</p> : null}
-      {anfang.zurueck.length > 0 ? (
+      {zurueck.length > 0 ? (
         <div role="region" aria-label={t.zurueckgehalten}>
           <ul>
-            {anfang.zurueck.map((z, i) => (
+            {zurueck.map((z, i) => (
               <li key={`${z.grund}-${String(i)}`}>
                 {z.name === null || z.grund === 'unlesbar'
                   ? t.zurueckGrund.unlesbar
@@ -308,8 +323,40 @@ export function DruckProfilFeld({
             ))}
           </ul>
           <p>{t.zurueckHinweis}</p>
+          {zurueckNichtLesbar(zurueck) > 0 ? (
+            <p>{t.zurueckNichtLesbar(zurueckNichtLesbar(zurueck))}</p>
+          ) : null}
+          <Button onClick={zurueckSichern}>{t.zurueckSichern}</Button>
+          <Button
+            variante="gefahr"
+            onClick={() => {
+              setEntfernenFrage(true);
+            }}
+          >
+            {t.zurueckEntfernen}
+          </Button>
         </div>
       ) : null}
+      <Dialog
+        offen={entfernenFrage}
+        onOffenChange={setEntfernenFrage}
+        titel={t.zurueckEntfernenTitel}
+        beschreibung={t.zurueckEntfernenFrage(zurueck.length)}
+        fuss={
+          <>
+            <Button
+              onClick={() => {
+                setEntfernenFrage(false);
+              }}
+            >
+              {texte.pdf.abbrechen}
+            </Button>
+            <Button variante="gefahr" onClick={zurueckEntfernen}>
+              {t.zurueckEntfernenBestaetigen}
+            </Button>
+          </>
+        }
+      />
       {befunde.length > 0 ? (
         <div role="region" aria-label={t.befunde}>
           <ul>

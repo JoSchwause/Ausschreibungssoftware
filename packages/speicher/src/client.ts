@@ -6,7 +6,12 @@ import type {
   AngebotId,
   AufmassId,
   AuftragsLeistungsverzeichnisId,
+  BautagebucheintragId,
+  BauwerksmodellId,
+  BauzeitenplanId,
   ChangeSet,
+  HonorarberechnungId,
+  MangelId,
   KostenermittlungId,
   Ergebnis,
   LeistungsverzeichnisId,
@@ -123,6 +128,32 @@ export function speicherUeberTransport(
     kostenermittlungen: {
       auflisten: (projektId: ProjektId) => aufruf('kostenermittlungenAuflisten', projektId),
       laden: (id: KostenermittlungId) => aufruf('kostenermittlungLaden', id),
+    },
+    modelldateien: {
+      ablegen: (bytes: Uint8Array) => aufruf('modelldateiAblegen', bytes),
+      laden: (hash: string) => aufruf('modelldateiLaden', hash),
+      vorhanden: (hash: string) => aufruf('modelldateiVorhanden', hash),
+    },
+    // v1.6 (Ticket 106): die Repositories der neuen Aggregate
+    bauwerksmodelle: {
+      auflisten: (projektId: ProjektId) => aufruf('bauwerksmodelleAuflisten', projektId),
+      laden: (id: BauwerksmodellId) => aufruf('bauwerksmodellLaden', id),
+    },
+    bauzeitenplaene: {
+      auflisten: (projektId: ProjektId) => aufruf('bauzeitenplaeneAuflisten', projektId),
+      laden: (id: BauzeitenplanId) => aufruf('bauzeitenplanLaden', id),
+    },
+    honorarberechnungen: {
+      auflisten: (projektId: ProjektId) => aufruf('honorarberechnungenAuflisten', projektId),
+      laden: (id: HonorarberechnungId) => aufruf('honorarberechnungLaden', id),
+    },
+    maengel: {
+      auflisten: (projektId: ProjektId) => aufruf('maengelAuflisten', projektId),
+      laden: (id: MangelId) => aufruf('mangelLaden', id),
+    },
+    bautagebuch: {
+      auflisten: (projektId: ProjektId) => aufruf('bautagebuchAuflisten', projektId),
+      laden: (id: BautagebucheintragId) => aufruf('bautagebucheintragLaden', id),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,

@@ -12,13 +12,30 @@ import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
 import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
+import { BautagebuchSeite } from './bauleitung/BautagebuchSeite'; // Ticket 120
+import { MaengelSeite } from './bauleitung/MaengelSeite'; // Ticket 120
+import { bauleitungRoute } from './bauleitung/pfad'; // Ticket 120
+import { texte as bauleitungTexte } from './bauleitung/texte'; // Ticket 120
+import { BauzeitListeSeite } from './bauzeit/BauzeitListeSeite'; // Ticket 118
+import { BauzeitenplanSeite } from './bauzeit/BauzeitenplanSeite'; // Ticket 118
+import { bauzeitRoute } from './bauzeit/pfad'; // Ticket 118
+import { texte as bauzeitTexte } from './bauzeit/texte'; // Ticket 118
+import { ModellListeSeite } from './bim/ModellListeSeite'; // Ticket 114
+import { bimRoute } from './bim/pfad'; // Ticket 114
+import { texte as bimTexte } from './bim/texte'; // Ticket 114
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
+import { HonorarListeSeite } from './honorar/HonorarListeSeite'; // Ticket 119
+import { HonorarSeite } from './honorar/HonorarSeite'; // Ticket 119
+import { honorarRoute } from './honorar/pfad'; // Ticket 119
+import { texte as honorarTexte } from './honorar/texte'; // Ticket 119
 import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
 import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
 import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 89
 import { kostenRoute } from './kosten/pfad'; // Ticket 89
 import { texte as kostenTexte } from './kosten/texte'; // Ticket 89
 import { LvSeite } from './lv/LvSeite';
+import { vergleichRoute } from './modellvergleich/pfad'; // Ticket 116
+import { texte as vergleichTexte } from './modellvergleich/texte'; // Ticket 116
 import { LvStandSeite } from './lv/LvStandSeite';
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
@@ -39,6 +56,12 @@ import { preisspiegelLvId } from './vergabe/pfad';
 // Build aufgenommen; ein normaler Produktions-Build enthält sie nicht (Konstante wird zur Bauzeit ersetzt).
 const MIT_KATALOG = import.meta.env.DEV || import.meta.env.VITE_KATALOG === '1';
 const Katalog = MIT_KATALOG ? lazy(() => import('./katalog/Katalog')) : null;
+// Ticket 114: die Modellseite bringt three.js und web-ifc mit; ihr Bündel lädt erst beim Öffnen.
+const ModellSeite = lazy(() => import('./bim/ModellSeite').then((m) => ({ default: m.ModellSeite })));
+// Ticket 116: der Modellvergleich bringt ebenfalls three.js mit; eigenes Bündel, lädt erst beim Öffnen.
+const ModellvergleichSeite = lazy(() =>
+  import('./modellvergleich/ModellvergleichSeite').then((m) => ({ default: m.ModellvergleichSeite })),
+);
 
 /**
  * Seiten, die den Speicher brauchen: erst nach dem Öffnen (E-14), sonst eine Meldung; mit Rückgängig und Wiederholen
@@ -115,6 +138,74 @@ function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => voi
         <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
       );
     return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 119: Honorarberechnungen eines Projekts (Liste und Berechnung)
+  const honorar = honorarRoute(pfad);
+  if (honorar !== null) {
+    const seite =
+      honorar.art === 'liste' ? (
+        <HonorarListeSeite key={honorar.projektId} projektId={honorar.projektId} gehe={gehe} />
+      ) : (
+        <HonorarSeite key={honorar.id} projektId={honorar.projektId} id={honorar.id} gehe={gehe} />
+      );
+    return { titel: honorarTexte.projekt.honorar, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 120: Mängel und Bautagebuch eines Projekts
+  const bauleitung = bauleitungRoute(pfad);
+  if (bauleitung !== null) {
+    return bauleitung.art === 'maengel'
+      ? {
+          titel: bauleitungTexte.projekt.maengel,
+          inhalt: mitSpeicher(
+            <MaengelSeite key={`m-${bauleitung.projektId}`} projektId={bauleitung.projektId} gehe={gehe} />,
+          ),
+        }
+      : {
+          titel: bauleitungTexte.projekt.bautagebuch,
+          inhalt: mitSpeicher(
+            <BautagebuchSeite
+              key={`b-${bauleitung.projektId}`}
+              projektId={bauleitung.projektId}
+              gehe={gehe}
+            />,
+          ),
+        };
+  }
+  // Ticket 118: Bauzeitenpläne eines Projekts
+  const bauzeit = bauzeitRoute(pfad);
+  if (bauzeit !== null) {
+    const seite =
+      bauzeit.art === 'liste' ? (
+        <BauzeitListeSeite key={bauzeit.projektId} projektId={bauzeit.projektId} gehe={gehe} />
+      ) : (
+        <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
+      );
+    return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
+  }
+  // Ticket 116: Vergleich zweier Modellstände (Standard: der Vorgänger)
+  const vergleich = vergleichRoute(pfad);
+  if (vergleich !== null) {
+    return {
+      titel: vergleichTexte.seitentitel,
+      inhalt: mitSpeicher(
+        <Suspense fallback={null}>
+          <ModellvergleichSeite key={pfad} {...vergleich} gehe={gehe} />
+        </Suspense>,
+      ),
+    };
+  }
+  // Ticket 114: Bauwerksmodelle eines Projekts (Liste) und ein Modell (Baum, 3D, Eigenschaften)
+  const bim = bimRoute(pfad);
+  if (bim !== null) {
+    const seite =
+      bim.art === 'liste' ? (
+        <ModellListeSeite key={bim.projektId} projektId={bim.projektId} gehe={gehe} />
+      ) : (
+        <Suspense fallback={null}>
+          <ModellSeite key={bim.id} projektId={bim.projektId} id={bim.id} gehe={gehe} />
+        </Suspense>
+      );
+    return { titel: bimTexte.liste.modelle, inhalt: mitSpeicher(seite) };
   }
   const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
   if (stand?.[1] !== undefined && stand[2] !== undefined) {

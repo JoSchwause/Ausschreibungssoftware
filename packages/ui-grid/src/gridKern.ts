@@ -158,7 +158,10 @@ export function useGridKern<S extends string>(o: GridKernOptionen<S>): GridKern<
 
   const fokusGesperrt = o.fokusGesperrt ?? false;
   const fixierteSpalten = o.fixierteSpalten ?? 0;
-  /** Waagerecht: die Zelle ganz in den Sichtbereich, rechts von den fixierten Spalten (Fokus ohne Browser-Scrollen). */
+  /**
+   * Waagerecht: die Zelle in den Sichtbereich rechts von den fixierten Spalten (Fokus ohne Browser-Scrollen). Nennt die
+   * Zelle ein Ziel in sich (`data-sichtziel`, z. B. den Balken einer Balkenspalte, Ticket 96), zählt dieses.
+   */
   const zeigeWaagerecht = (el: HTMLElement): void => {
     const sc = scroller.current;
     if (!sc || aktivSpaltenIndex < fixierteSpalten) return;
@@ -169,10 +172,11 @@ export function useGridKern<S extends string>(o: GridKernOptionen<S>): GridKern<
         ? rand.left
         : (el.parentElement?.querySelector(`[data-spalte="${letzteFixierte}"]`)?.getBoundingClientRect()
             .right ?? rand.left);
-    const box = el.getBoundingClientRect();
-    if (box.left < fixiertBis) sc.scrollLeft -= fixiertBis - box.left;
-    else if (box.right > rand.left + sc.clientWidth)
-      sc.scrollLeft += box.right - (rand.left + sc.clientWidth);
+    const ziel = el.querySelector<HTMLElement>('[data-sichtziel]');
+    const box = (ziel ?? el).getBoundingClientRect();
+    const rechts = rand.left + sc.clientWidth;
+    const versatz = waagerechterVersatz(box.left, box.right, fixiertBis, rechts, ziel === null);
+    if (versatz !== 0) sc.scrollLeft += versatz;
   };
   useLayoutEffect(() => {
     if (!fokusAnfrage.current || fokusGesperrt || aktivIndex < 0 || aktivSpalte === undefined) return;
@@ -240,6 +244,30 @@ export function useSprung<S extends string>(
     const si = sprung.spalte === undefined ? -1 : spalten.indexOf(sprung.spalte);
     springe({ zeile: zi, spalte: si >= 0 ? si : kern.aktivSpaltenIndex });
   });
+}
+
+/**
+ * Um wie viel Pixel `scrollLeft` wachsen muss, damit ein Ziel `[links, rechts]` im Sichtbereich `[sichtLinks,
+ * sichtRechts]` erscheint, mit möglichst wenig Bewegung (wie `scrollIntoView` mit `inline: 'nearest'`): Ein Ziel, das
+ * passt, kommt gerade so in Sicht. Ein breiteres Ziel zeigt seinen Anfang, liegt sein Anfang links außerhalb, sein Ende;
+ * überdeckt es den Sichtbereich, bleibt alles stehen. Mit `teilsGenuegt` bleibt ein breiteres Ziel auch stehen, solange
+ * ein Teil von ihm sichtbar ist (eine Zelle der Balkenspalte ohne Balken, Ticket 96). Für schmale Zellen wie bisher.
+ */
+export function waagerechterVersatz(
+  links: number,
+  rechts: number,
+  sichtLinks: number,
+  sichtRechts: number,
+  teilsGenuegt = false,
+): number {
+  const breiter = rechts - links > sichtRechts - sichtLinks;
+  if (teilsGenuegt && breiter && rechts > sichtLinks && links < sichtRechts) return 0;
+  const linksDraussen = links < sichtLinks;
+  const rechtsDraussen = rechts > sichtRechts;
+  if (linksDraussen && rechtsDraussen) return 0;
+  if ((linksDraussen && !breiter) || (rechtsDraussen && breiter)) return links - sichtLinks;
+  if (linksDraussen || rechtsDraussen) return rechts - sichtRechts;
+  return 0;
 }
 
 /** Tasten, die die aktive Zelle bewegen (`zielZelle`). */

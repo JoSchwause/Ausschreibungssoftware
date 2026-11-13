@@ -66,7 +66,7 @@ describe('Projektdatei mit Vertrag v1.4', () => {
     expect(d.rechnungen?.map((z) => z.rechnung.id)).toEqual(['rechnung-a', 'rechnung-z']);
     expect(d.kostenermittlungen?.map((z) => z.kostenermittlung.id)).toEqual(['ke-1']);
     const zweite = await neuerKern();
-    expect(wert(zweite.kern.projektdateiImportieren(text))).toBe(P);
+    expect(wert(await zweite.kern.projektdateiImportieren(text))).toBe(P);
     expect(wert(zweite.kern.projektdateiExportieren(P)) === text).toBe(true);
     expect(wert(zweite.kern.rechnungenAuflisten(AUFTRAG)).map((r) => r.nummer)).toEqual([1, 2]);
     expect(wert(zweite.kern.lvLaden(F.lv.leistungsverzeichnis.id))).toEqual(
@@ -162,7 +162,7 @@ describe('Projektdatei mit Vertrag v1.4', () => {
   ])('%s: datei-ungueltig, nichts übernommen', async (_name, aenderung) => {
     const text = aenderung(await datei());
     const { kern, db } = await neuerKern();
-    expect(kern.projektdateiImportieren(text)).toMatchObject({
+    expect(await kern.projektdateiImportieren(text)).toMatchObject({
       ok: false,
       fehler: { code: 'datei-ungueltig' },
     });

@@ -1,0 +1,48 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Vergleichsseite (Ticket 116); Grundlayout aus `bim.css` und `lv.css`. */
+
+.vergleich__zahlen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tx-space-2) var(--tx-space-5);
+  margin: 0;
+}
+
+.vergleich__zahlen div {
+  display: flex;
+  gap: var(--tx-space-2);
+}
+
+.vergleich__zahlen dt {
+  color: var(--tx-color-text-muted);
+}
+
+.vergleich__zahlen dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.vergleich__folgen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+}
+
+.vergleich__folgengrid {
+  height: 300px;
+}
+
+.vergleich__legende {
+  margin: var(--tx-space-1) 0 0;
+  color: var(--tx-color-text-muted);
+}
+
+.vergleich__vorschau td.bim__zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vergleich__arbeitsflaeche {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  height: 48vh;
+}

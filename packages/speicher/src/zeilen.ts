@@ -6,6 +6,28 @@
 import type {
   Angebotsposition,
   Ansatzzeile,
+  Arbeitskalender,
+  Bautagebucheintrag,
+  BautagebucheintragId,
+  Bauzeitenplan,
+  BauzeitenplanId,
+  BauzeitenplanKopf,
+  Honorarberechnung,
+  HonorarberechnungId,
+  HonorarberechnungUebersicht,
+  Honorarobjekt,
+  Mangel,
+  MangelId,
+  Nebenkostenangabe,
+  Vorgang,
+  Bauteil,
+  Bauteilzuordnung,
+  Bauwerksmodell,
+  BauwerksmodellId,
+  BauwerksmodellKopf,
+  BauwerksmodellUebersicht,
+  IfcSchema,
+  Strukturknoten,
   Aufmass,
   AufmassId,
   AufmassKopf,
@@ -117,6 +139,7 @@ export const KNOTEN_SPALTEN = [
   'mengenansatz', // Schema 4 (v1.3)
   'kostengruppe', // Schema 5 (v1.4)
   'textquelle', // Schema 5 (v1.4)
+  'bauteile', // Schema 6 (v1.6)
 ] as const;
 
 // --- JSON-Spalten (Schema 2): kanonisch kompakt geschrieben, `NULL` = fehlt ----------------------------------------
@@ -205,6 +228,18 @@ export function ausweisAusZeile(
   };
 }
 
+/**
+ * Bauteilzuordnungen einer Position (Schema 6, v1.6) als kanonisches JSON, `NULL` = fehlt. Eine leere Liste kennt der Vertrag im
+ * Zustand nicht („nie `[]`“, `Positionsdaten.bauteile`): Sie bliebe gespeichert, ließe sich aber nicht mehr als Projektdatei
+ * importieren (Q5), also `unbekannt` wie `vorlage: false` (D-79.3).
+ */
+function bauteileSpalte(k: Extract<Knoten, { art: 'position' }>): SqlWert {
+  const b: unknown = k.bauteile;
+  if (Array.isArray(b) && b.length === 0)
+    abbruch('unbekannt', `Position ${k.id}: bauteile ist nie leer (Vertrag v1.6: das Feld fehlt dann).`);
+  return jsonOderNull(b);
+}
+
 export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
   const kopf: SqlWert[] = [aggregatId, k.id, k.art, k.elternId, k.reihenfolge];
   switch (k.art) {
@@ -215,6 +250,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         k.ordnungszahl,
         null,
         k.kurztext,
+        null,
         null,
         null,
         null,
@@ -244,6 +280,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         null,
         null,
         null,
+        null,
       ];
     case 'position':
       return [
@@ -262,6 +299,7 @@ export function knotenZuBindung(aggregatId: string, k: Knoten): SqlWert[] {
         jsonOderNull(k.mengenansatz),
         k.kostengruppe ?? null,
         k.textquelle ?? null,
+        bauteileSpalte(k),
       ];
   }
 }
@@ -319,6 +357,7 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
         ...(optionalesFeld(z, 'mengenansatz', 'mengenansatz') as { mengenansatz?: readonly Ansatzzeile[] }),
         ...optionalerText(z, 'kostengruppe'),
         ...optionalerText(z, 'textquelle'),
+        ...(optionalesFeld(z, 'bauteile', 'bauteile') as { bauteile?: readonly Bauteilzuordnung[] }),
       };
     }
     default:
@@ -423,6 +462,153 @@ export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
   k.name,
   kanonischKompakt(k.eintraege),
 ];
+
+/** Flache Kopie von `o` ohne die Felder `k` (Kopf eines Aggregats ohne seine lange Liste). */
+export function ohne<T extends object, K extends keyof T>(o: T, ...k: readonly K[]): Omit<T, K> {
+  const kopie: Partial<T> = { ...o };
+  for (const f of k) Reflect.deleteProperty(kopie, f);
+  return kopie as Omit<T, K>;
+}
+
+// --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54) ---------------------------------------------------------------------
+//
+// Der Kopf steht in Spalten (`bauwerksmodell`), Struktur und Bauteile als kanonisches JSON in `bauwerksmodell_inhalt`.
+
+export function bauwerksmodellUebersichtAusZeile(z: SqlZeile): BauwerksmodellUebersicht {
+  return {
+    id: text(z, 'id') as BauwerksmodellId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    datei: {
+      hash: text(z, 'datei_hash'),
+      dateiname: text(z, 'datei_name'),
+      groesse: ganzzahl(z, 'datei_groesse'),
+    },
+    schema: text(z, 'schema') as IfcSchema,
+    vorgaengerId: textOderNull(z, 'vorgaenger_id') as BauwerksmodellId | null,
+    eingelesen: text(z, 'eingelesen'),
+    anzahlBauteile: ganzzahl(z, 'anzahl_bauteile'),
+  };
+}
+
+export function bauwerksmodellAusZeilen(kopf: SqlZeile, inhalt: SqlZeile): Bauwerksmodell {
+  return {
+    ...ohne(bauwerksmodellUebersichtAusZeile(kopf), 'anzahlBauteile'),
+    struktur: jsonLesen(text(inhalt, 'struktur'), 'struktur') as Strukturknoten[],
+    bauteile: jsonLesen(text(inhalt, 'bauteile'), 'bauteile') as Bauteil[],
+  };
+}
+
+/** Spalten `id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id, eingelesen, anzahl_bauteile`. */
+export const bauwerksmodellWerte = (k: BauwerksmodellKopf, anzahlBauteile: number): SqlWert[] => [
+  k.id,
+  k.projektId,
+  k.name,
+  k.datei.hash,
+  k.datei.dateiname,
+  k.datei.groesse,
+  k.schema,
+  k.vorgaengerId,
+  k.eingelesen,
+  anzahlBauteile,
+];
+
+// --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
+//
+// Wie Aufmaßblatt und Rechnung (D-79.1): Kopfspalten zum Suchen, Sortieren und für Fremdschlüssel, der Rest als kanonisches
+// JSON. Gelesen ist das Aggregat kanonisch gleich dem geschriebenen.
+
+export function bauzeitenplanKopfAusZeile(z: SqlZeile): BauzeitenplanKopf {
+  return {
+    id: text(z, 'id') as BauzeitenplanId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    projektbeginn: text(z, 'projektbeginn'),
+    kalender: jsonLesen(text(z, 'kalender'), 'kalender') as Arbeitskalender,
+  };
+}
+
+export const bauzeitenplanAusZeile = (z: SqlZeile): Bauzeitenplan => ({
+  ...bauzeitenplanKopfAusZeile(z),
+  vorgaenge: jsonLesen(text(z, 'vorgaenge'), 'vorgaenge') as Vorgang[],
+});
+
+/** Spalten `id, projekt_id, name, projektbeginn, kalender, vorgaenge` (die Vorgänge schon als kanonischer Text). */
+export const bauzeitenplanWerte = (b: BauzeitenplanKopf, vorgaenge: string): SqlWert[] => [
+  b.id,
+  b.projektId,
+  b.name,
+  b.projektbeginn,
+  kanonischKompakt(b.kalender),
+  vorgaenge,
+];
+
+export function honorarberechnungUebersichtAusZeile(z: SqlZeile): HonorarberechnungUebersicht {
+  return {
+    id: text(z, 'id') as HonorarberechnungId,
+    projektId: projektId(z),
+    name: text(z, 'name'),
+    nebenkosten: jsonSpalte(z, 'nebenkosten') as Nebenkostenangabe | null,
+    mwstSatz: text(z, 'mwst_satz') as Prozent,
+  };
+}
+
+export const honorarberechnungAusZeile = (z: SqlZeile): Honorarberechnung => ({
+  ...honorarberechnungUebersichtAusZeile(z),
+  objekte: jsonLesen(text(z, 'objekte'), 'objekte') as Honorarobjekt[],
+});
+
+/** Spalten `id, projekt_id, name, nebenkosten, mwst_satz, objekte`. */
+export const honorarberechnungWerte = (h: Honorarberechnung): SqlWert[] => [
+  h.id,
+  h.projektId,
+  h.name,
+  jsonOderNull(h.nebenkosten),
+  h.mwstSatz,
+  kanonischKompakt(h.objekte),
+];
+
+/** Die Angaben eines Mangels: alles außer den Kopfspalten (`id`, `projektId`, `nummer`). */
+type Mangelangaben = Omit<Mangel, 'id' | 'projektId' | 'nummer'>;
+
+export const mangelAusZeile = (z: SqlZeile): Mangel => ({
+  ...(jsonLesen(text(z, 'angaben'), 'angaben') as Mangelangaben),
+  id: text(z, 'id') as MangelId,
+  projektId: projektId(z),
+  nummer: ganzzahl(z, 'nummer'),
+});
+
+/**
+ * Spalten `id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben`. Auftrags-LV und Modell stehen zusätzlich in
+ * eigenen Spalten (Fremdschlüssel, Index), damit ihr Löschen die Verweise ohne `json_each` findet.
+ */
+export function mangelWerte(m: Mangel): SqlWert[] {
+  const { id, projektId: projekt, nummer, ...angaben } = m;
+  return [
+    id,
+    projekt,
+    nummer,
+    m.auftragsLvId,
+    m.bauteil?.bauwerksmodellId ?? null,
+    kanonischKompakt(angaben),
+  ];
+}
+
+/** Die Angaben eines Bautagebucheintrags: alles außer den Kopfspalten (`id`, `projektId`, `datum`). */
+type Tagebuchangaben = Omit<Bautagebucheintrag, 'id' | 'projektId' | 'datum'>;
+
+export const bautagebucheintragAusZeile = (z: SqlZeile): Bautagebucheintrag => ({
+  ...(jsonLesen(text(z, 'angaben'), 'angaben') as Tagebuchangaben),
+  id: text(z, 'id') as BautagebucheintragId,
+  projektId: projektId(z),
+  datum: text(z, 'datum'),
+});
+
+/** Spalten `id, projekt_id, datum, angaben`. */
+export function bautagebucheintragWerte(t: Bautagebucheintrag): SqlWert[] {
+  const { id, projektId: projekt, datum, ...angaben } = t;
+  return [id, projekt, datum, kanonischKompakt(angaben)];
+}
 
 // --- Summen ---------------------------------------------------------------------------------------------------
 

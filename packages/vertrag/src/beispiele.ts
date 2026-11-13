@@ -6,6 +6,7 @@
 
 import type {
   AngebotLoeschen,
+  Einfuegeort,
   AufmassAnlegen,
   AufmasskopfSetzen,
   AufmassLoeschen,
@@ -41,8 +42,12 @@ import type {
 import type {
   AufmassChangeSet,
   AuftragsLvChangeSet,
+  AuftragsLvZustand,
+  Befehlsfehler,
   KostenermittlungChangeSet,
   LvChangeSet,
+  OzVorschlag,
+  OzVorschlagen,
   RechnungChangeSet,
 } from './changeset';
 import type {
@@ -53,6 +58,48 @@ import type {
   Protokolleintrag,
 } from './speicher';
 import type { LvAnsicht } from './ansicht';
+import type {
+  BauzeitenplanAnlegen,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanLoeschen,
+  VorgangEntfernen,
+  VorgangSetzen,
+} from './befehle';
+import type { Bauzeitenplan, Bauzeitenplanergebnis } from './bauzeit';
+import type { HonorarberechnungAnlegen, HonorarberechnungLoeschen, HonorarberechnungSetzen } from './befehle';
+import type { HonorarberechnungChangeSet } from './changeset';
+import type {
+  Honorarberechnung,
+  Honorarergebnis,
+  Honorarobjekt,
+  Leistungsphasennummer,
+  Tafelzeile,
+} from './honorar';
+import type { HonorarberechnungId } from './marken';
+import type {
+  BautagebucheintragLoeschen,
+  BautagebucheintragSetzen,
+  MangelAnlegen,
+  MangelangabenSetzen,
+  MangelLoeschen,
+  MangelstatusSetzen,
+} from './befehle';
+import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { BautagebucheintragChangeSet, MangelChangeSet } from './changeset';
+import type { BautagebucheintragId, MangelId } from './marken';
+import type { BauwerksmodellUebersicht } from './speicher';
+import type { BauzeitenplanChangeSet } from './changeset';
+import type { BauzeitenplanId, VorgangId } from './marken';
+import type {
+  BauteileZuordnen,
+  BauwerksmodellAnlegen,
+  BauwerksmodellLoeschen,
+  BauwerksmodellUmbenennen,
+} from './befehle';
+import type { Bauwerksmodell, BauwerksmodellKopf, Modelldatei } from './bim';
+import type { BauwerksmodellChangeSet } from './changeset';
+import type { BauwerksmodellId, IfcGlobalId } from './marken';
+import type { Pruefbefund } from './gaeb';
 import type {
   AngebotId,
   AufmassId,
@@ -1402,4 +1449,908 @@ export const beispielChangeSetTextquelle: LvChangeSet = {
     entfernt: [],
   },
   summen: keineSummen,
+};
+
+// --- v1.5 (Ticket 95) -------------------------------------------------------------------------------------------
+
+/** Eine Kennung, zu der es in keinem Beispiel einen Knoten gibt. */
+const ohneKnotenId = '019b76e9-0000-7000-8000-0000000001ff' as PositionId;
+
+/**
+ * Punkt 1 (D-71.3): die Antworten des Kerns auf `KostengruppeSetzen` am Beispiel-Auftrags-LV, wie bei jedem Feldbefehl und
+ * im LV ebenso: am Titel `01` (eine Gliederung trägt keine Kostengruppe) `knotenart-unzulaessig`, an einer Kennung ohne
+ * Knoten im Baum `knoten-unbekannt`. Die Meldungen sind für Entwickler; die Anzeige baut die App aus dem Code.
+ */
+export const beispielFehlerKostengruppe: readonly [Befehlsfehler, Befehlsfehler] = [
+  {
+    code: 'knotenart-unzulaessig',
+    meldung: 'Eine Kostengruppe trägt nur eine Position, nicht „titel“.',
+    knotenId: titelId,
+  },
+  { code: 'knoten-unbekannt', meldung: 'Kein Knoten mit dieser Kennung.', knotenId: ohneKnotenId },
+];
+
+/**
+ * Punkt 2 (Ticket 76, D-76.4): zwei Befunde beim Lesen der XRechnung (UBL) zur Abschlagsrechnung 2, in der gemeinsamen
+ * Befundliste (erfunden). Ein Befund an einem Element: Der Nettobetrag der zweiten Rechnungsposition hat drei
+ * Nachkommastellen (`37.504`, gelesen als 37,50). Ein Befund einer Summenregel: Die Datei fordert 6,90 (BT-115), Brutto
+ * 59,32 (BT-112) minus bereits gezahlt 53,42 (BT-113, der eingefrorene Zahlbetrag der Rechnung 1) ergibt 5,90; die Regel
+ * hängt an keinem einzelnen Element, darum steht nur der Business Term im Ort.
+ */
+export const beispielBefundeERechnung: readonly [Pruefbefund, Pruefbefund] = [
+  {
+    schwere: 'warnung',
+    quelle: 'erechnung-lesen',
+    code: 'betrag-nicht-kanonisch',
+    meldung: 'BT-131: „37.504“ hat mehr als 2 Nachkommastellen; kaufmännisch gerundet auf 37,50.',
+    ort: { feld: 'BT-131', pfad: '/Invoice/InvoiceLine[2]/LineExtensionAmount' },
+  },
+  {
+    schwere: 'fehler',
+    quelle: 'erechnung-lesen',
+    code: 'zahlbetrag-falsch',
+    meldung: 'BT-115 (Fälliger Zahlbetrag) ist 6,90; BT-112 − BT-113 + BT-114 ergibt 5,90.',
+    ort: { feld: 'BT-115' },
+  },
+];
+
+/**
+ * Punkt 3 (D-80.1): der OZ-Vorschlag für die Gliederung „Nachtrag N01“ am Beispiel-Auftrags-LV, Aufruf und Ergebnis. Zustand
+ * und Ort nennen die Kennung des Auftrags-LV selbst (keine umgedeutete LV-Kennung). Hinter dem Titel `01`, dem einzigen
+ * Knoten der obersten Ebene, ist der Vorschlag `02` (Vorgänger + 1, D-42.3): die OZ, die `beispielNachtragUebernehmen` trägt.
+ */
+export const beispielOzVorschlagAuftragsLv: {
+  readonly zustand: AuftragsLvZustand;
+  readonly ort: Einfuegeort;
+  readonly art: Parameters<OzVorschlagen>[2];
+  readonly vorschlag: OzVorschlag;
+} = {
+  zustand: {
+    auftragsLeistungsverzeichnis: beispielAuftragsLv,
+    summen: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: g1235,
+    },
+  },
+  ort: { art: 'ende', elternId: auftragsId },
+  art: 'titel',
+  vorschlag: { ordnungszahl: '02' as Ordnungszahl, ozIndex: null },
+};
+
+/**
+ * Punkt 5 (D-92.4): das Beispiel-LV in der Liste des Projekts nach `beispielChangeSetNachlass` (10 % Nachlass): Netto
+ * 12,35, Nachlass round(12,35 × 10 / 100, 2) = 1,24 (1,235), Netto nach Nachlass 11,11. Die Übersicht trägt 11,11, den Wert
+ * der gespeicherten Summen.
+ */
+export const beispielLvUebersichtNetto: LvUebersicht = {
+  id: lvId,
+  name: beispielLv.name,
+  nettoNachNachlass: '11.11' as Betrag,
+};
+
+// --- v1.6 (Ticket 97) -------------------------------------------------------------------------------------------
+
+/** Eine GlobalId (22 Zeichen aus `0-9A-Za-z_$`), hier lesbar erfunden; erzeugt wird sie sonst nur in `ifc`. */
+const gid = (text: string): IfcGlobalId => text as IfcGlobalId;
+const mng = (wert: string): Menge => wert as Menge;
+
+const modell1Id = '019b76e9-0000-7000-8000-000000000201' as BauwerksmodellId;
+const modell2Id = '019b76e9-0000-7000-8000-000000000202' as BauwerksmodellId;
+
+/** GlobalIds des Beispielhauses: Projekt, Gebäude, Geschosse, ein Raum, zwei Wände, ein Fenster, ein Teil einer Wand. */
+export const beispielGlobalIds = {
+  projekt: gid('0Haus000000000Projekt0'),
+  gebaeude: gid('0Haus00000000Gebaeude0'),
+  eg: gid('0Haus000000000000000EG'),
+  og: gid('0Haus000000000000000OG'),
+  raum: gid('0Haus0000000000Raum001'),
+  wandEg: gid('1Wand$Aussen_EG_000001'),
+  wandOg: gid('1Wand$Aussen_OG_000001'),
+  fenster: gid('2Fenster_EG_0000000001'),
+  daemmung: gid('3Teil_Daemmung_EG_0001'),
+} as const;
+const g = beispielGlobalIds;
+
+/**
+ * Punkte 1 und 2 (D-51): die Datei des ersten Stands, wie die App sie abgelegt hat: Hash (SHA-256 der unkomprimierten
+ * Bytes), Name und Größe. Die Bytes des Beispiels sind nur der Rahmen einer IFC-Datei (Kopf ohne Instanzen, 215 Bytes,
+ * siehe `beispielModelldateiInProjektdatei`); sie stehen für die Datei des Beispielhauses.
+ */
+export const beispielModelldatei: Modelldatei = {
+  hash: '95a2a75b559104a32534f6136c61766cfd482a33619764008759cd963e5ec33b',
+  dateiname: 'haus-v1.ifc',
+  groesse: 215,
+};
+
+/**
+ * Punkt 2 (D-51): dieselbe Datei als Eintrag der Projektdatei: `inhalt` sind die Bytes, mit deflate-raw komprimiert (hier mit
+ * Python `zlib`, Stufe 9) und Base64-kodiert. Eine andere Implementierung darf anders komprimieren; verglichen wird nur der
+ * SHA-256 der entpackten Bytes mit `hash`.
+ */
+export const beispielModelldateiInProjektdatei: NonNullable<Projektdatei['modelldateien']>[number] = {
+  hash: beispielModelldatei.hash,
+  inhalt:
+    'VU/LCsIwELz3K7xtCo1kU/FgTiFJacC2YooXESnaYi4t+Px9Ux+IMMwyM8wua11FkaUspRxFlBupzVpEmV2avTZOre2qtlVJCGx8+9Bt53t/9UM/2aphOB9934xqzHYQJ8AFQvypl7IwBE7N7ULvOPXdAULO+JwiUuQ1sgUbAQmBUH0RwBvfFU7lppDhuM3UDOJgm1I7o0SkZS1/Kkxq/x55Ag==',
+};
+
+/**
+ * Punkt 1 (D-50, D-51, D-53): das Beispielhaus als Bauwerksmodell, erster Stand. Struktur und Bauteile in der Reihenfolge der
+ * Datei; Mengen in SI-Einheiten mit 3 Stellen (die Wand EG: 5,000 m lang, 2,750 m hoch, 0,240 m dick, also Fläche
+ * 13,750 m² und Volumen 3,300 m³). Die Dämmung ist ein Teil der Wand EG und steht deshalb im Geschoss der Wand. Die Wand EG
+ * trägt einen Kostengruppen-Vorschlag aus der Datei (331), das Fenster keine Mengen. Eigenschaften stehen nicht darin (D-51).
+ */
+export const beispielBauwerksmodell: Bauwerksmodell = {
+  id: modell1Id,
+  projektId: beispielLv.projektId,
+  name: 'Haus, Entwurf',
+  datei: beispielModelldatei,
+  schema: 'IFC4',
+  vorgaengerId: null,
+  eingelesen: '2026-11-12',
+  struktur: [
+    { globalId: g.projekt, art: 'projekt', name: 'Haus', elternGlobalId: null, mengen: [] },
+    { globalId: g.gebaeude, art: 'gebaeude', name: 'Haus', elternGlobalId: g.projekt, mengen: [] },
+    {
+      globalId: g.eg,
+      art: 'geschoss',
+      name: 'EG',
+      elternGlobalId: g.gebaeude,
+      mengen: [
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossFloorArea',
+          art: 'flaeche',
+          wert: mng('120.000'),
+        },
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossVolume',
+          art: 'volumen',
+          wert: mng('360.000'),
+        },
+      ],
+    },
+    {
+      globalId: g.og,
+      art: 'geschoss',
+      name: 'OG',
+      elternGlobalId: g.gebaeude,
+      mengen: [
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossFloorArea',
+          art: 'flaeche',
+          wert: mng('110.500'),
+        },
+        {
+          satz: 'Qto_BuildingStoreyBaseQuantities',
+          name: 'GrossVolume',
+          art: 'volumen',
+          wert: mng('320.450'),
+        },
+      ],
+    },
+    {
+      globalId: g.raum,
+      art: 'raum',
+      name: '0.01',
+      elternGlobalId: g.eg,
+      mengen: [
+        { satz: 'Qto_SpaceBaseQuantities', name: 'NetFloorArea', art: 'flaeche', wert: mng('24.180') },
+      ],
+    },
+  ],
+  bauteile: [
+    {
+      globalId: g.wandEg,
+      ifcKlasse: 'IfcWallStandardCase',
+      name: 'Außenwand EG Nord',
+      typ: 'AW 24',
+      strukturGlobalId: g.eg,
+      kostengruppe: '331' as Kostengruppennummer,
+      mengen: [
+        { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: mng('5.000') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetSideArea', art: 'flaeche', wert: mng('13.750') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetVolume', art: 'volumen', wert: mng('3.300') },
+      ],
+    },
+    {
+      globalId: g.wandOg,
+      ifcKlasse: 'IfcWallStandardCase',
+      name: 'Außenwand OG Nord',
+      typ: 'AW 24',
+      strukturGlobalId: g.og,
+      mengen: [
+        { satz: 'Qto_WallBaseQuantities', name: 'Length', art: 'laenge', wert: mng('5.000') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetSideArea', art: 'flaeche', wert: mng('12.500') },
+        { satz: 'Qto_WallBaseQuantities', name: 'NetVolume', art: 'volumen', wert: mng('3.000') },
+      ],
+    },
+    {
+      globalId: g.fenster,
+      ifcKlasse: 'IfcWindow',
+      name: 'Fenster EG 1',
+      typ: null,
+      strukturGlobalId: g.eg,
+      mengen: [],
+    },
+    {
+      globalId: g.daemmung,
+      ifcKlasse: 'IfcBuildingElementPart',
+      name: 'Dämmung',
+      typ: null,
+      strukturGlobalId: g.eg,
+      teilVonGlobalId: g.wandEg,
+      mengen: [
+        { satz: 'Qto_BuildingElementPartQuantities', name: 'NetVolume', art: 'volumen', wert: mng('0.825') },
+      ],
+    },
+  ],
+};
+
+const { struktur: modell1Struktur, bauteile: modell1Bauteile, ...modell1Kopf } = beispielBauwerksmodell;
+
+/** Punkt 1: Anlegen (ein Massenbefehl, D-54); die App hat die Bytes vorher abgelegt (`beispielModelldatei.hash`). */
+export const beispielBauwerksmodellAnlegen: BauwerksmodellAnlegen = {
+  art: 'BauwerksmodellAnlegen',
+  bauwerksmodell: beispielBauwerksmodell,
+};
+
+/** Punkt 1: ChangeSet des Anlegens: Kopf und Inhalt, beide mit `vorher: null`. */
+export const beispielChangeSetBauwerksmodellAnlegen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: null, nachher: modell1Kopf },
+  inhalt: { vorher: null, nachher: { struktur: modell1Struktur, bauteile: modell1Bauteile } },
+};
+
+/** Punkt 1: Umbenennen. */
+export const beispielBauwerksmodellUmbenennen: BauwerksmodellUmbenennen = {
+  art: 'BauwerksmodellUmbenennen',
+  name: 'Haus, Entwurf (Stand 1)',
+};
+
+/** Punkt 1 (D-45, D-54): ChangeSet des Umbenennens: nur der Kopf, ohne Struktur und Bauteile. */
+export const beispielChangeSetBauwerksmodellUmbenennen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: modell1Kopf, nachher: { ...modell1Kopf, name: beispielBauwerksmodellUmbenennen.name } },
+};
+
+/** Punkt 1: Löschen (Q5: nur nach Bestätigung) und sein ChangeSet mit dem vollen Stand. */
+export const beispielBauwerksmodellLoeschen: BauwerksmodellLoeschen = { art: 'BauwerksmodellLoeschen' };
+export const beispielChangeSetBauwerksmodellLoeschen: BauwerksmodellChangeSet = {
+  art: 'bauwerksmodell',
+  bauwerksmodellId: modell1Id,
+  kopf: { vorher: modell1Kopf, nachher: null },
+  inhalt: { vorher: { struktur: modell1Struktur, bauteile: modell1Bauteile }, nachher: null },
+};
+
+/**
+ * Punkt 1 (D-53): der zweite Stand derselben Planung, nur der Kopf: eine neue Datei, Vorgänger ist der erste Stand. Seine
+ * Bauteile gleicht `bim` über die GlobalId mit denen des Vorgängers ab (Ticket 108).
+ */
+export const beispielBauwerksmodell2Kopf: BauwerksmodellKopf = {
+  id: modell2Id,
+  projektId: beispielLv.projektId,
+  name: 'Haus, Entwurf (Stand 2)',
+  datei: {
+    hash: '0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9',
+    dateiname: 'haus-v2.ifc',
+    groesse: 49870,
+  },
+  schema: 'IFC4',
+  vorgaengerId: modell1Id,
+  eingelesen: '2026-11-19',
+};
+
+/**
+ * Punkt 3 (D-52, D-53): Die Beispielposition (Einheit m) übernimmt die Längen der beiden Außenwände. Die Zuordnung nennt kein
+ * Modell; in dieser Reihenfolge baut `bim` die Ansatzzeilen (5,000 m und 5,000 m, Ticket 108).
+ */
+export const beispielBauteileZuordnen: BauteileZuordnen = {
+  art: 'BauteileZuordnen',
+  positionId: posId,
+  bauteile: [
+    { globalId: beispielGlobalIds.wandEg, mengenart: 'Length' },
+    { globalId: beispielGlobalIds.wandOg, mengenart: 'Length' },
+  ],
+};
+
+/** Punkt 3: ChangeSet im LV: eine Knotenänderung der Position, Summen unverändert. */
+export const beispielChangeSetBauteileZuordnen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: {
+    hinzugefuegt: [],
+    geaendert: [
+      { vorher: position, nachher: { ...position, bauteile: beispielBauteileZuordnen.bauteile ?? [] } },
+    ],
+    entfernt: [],
+  },
+  summen: keineSummen,
+};
+
+/** Punkt 3: `null` (oder `[]`) entfernt alle Zuordnungen; das Feld fehlt danach. Im Auftrags-LV derselbe Befehl. */
+export const beispielBauteileEntfernen: BauteileZuordnen = {
+  art: 'BauteileZuordnen',
+  positionId: posId,
+  bauteile: null,
+};
+
+const planId = '019b76e9-0000-7000-8000-000000000301' as BauzeitenplanId;
+const vg = (n: string): VorgangId => `019b76e9-0000-7000-8000-00000000031${n}` as VorgangId;
+const rohbau = vg('0');
+const erdarbeiten = vg('1');
+const mauerwerk = vg('2');
+const fertig = vg('3');
+const dach = vg('4');
+
+/**
+ * Punkt 4 (D-57): ein Plan mit dem Sammelvorgang „Rohbau“, darin Erdarbeiten (5 Arbeitstage), Mauerwerk EG (10 Arbeitstage,
+ * Ende-Anfang nach den Erdarbeiten) und dem Meilenstein „Rohbau fertig“ (Ende-Anfang nach dem Mauerwerk). Dokumentreihenfolge:
+ * der Sammelvorgang vor seinen Kindern. Das Mauerwerk bezieht sich auf die Beispielposition des Auftrags-LV, der Rohbau auf das
+ * ganze Auftrags-LV (auch auf spätere Nachträge).
+ */
+export const beispielBauzeitenplan: Bauzeitenplan = {
+  id: planId,
+  projektId: beispielLv.projektId,
+  name: 'Rohbau (erfunden)',
+  projektbeginn: '2026-11-16',
+  kalender: { arbeitstage: [1, 2, 3, 4, 5], bundesland: 'BY', freieTage: ['2026-12-24', '2026-12-31'] },
+  vorgaenge: [
+    {
+      id: rohbau,
+      nummer: '1',
+      bezeichnung: 'Rohbau',
+      elternId: null,
+      dauer: 0,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: { art: 'auftrags-leistungsverzeichnis', id: auftragsId, knotenIds: null },
+      ist: null,
+    },
+    {
+      id: erdarbeiten,
+      nummer: '1.1',
+      bezeichnung: 'Erdarbeiten',
+      elternId: rohbau,
+      dauer: 5,
+      vorgaenger: [],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: { beginn: '2026-11-16', ende: null, fortschritt: '40.00' as Prozent },
+    },
+    {
+      id: mauerwerk,
+      nummer: '1.2',
+      bezeichnung: 'Mauerwerk EG',
+      elternId: rohbau,
+      dauer: 10,
+      vorgaenger: [{ vorgaengerId: erdarbeiten, art: 'ende-anfang', abstand: 0 }],
+      fruehesterBeginn: null,
+      bezug: { art: 'auftrags-leistungsverzeichnis', id: auftragsId, knotenIds: [posId] },
+      ist: null,
+    },
+    {
+      id: fertig,
+      nummer: null,
+      bezeichnung: 'Rohbau fertig',
+      elternId: rohbau,
+      dauer: 0,
+      vorgaenger: [{ vorgaengerId: mauerwerk, art: 'ende-anfang', abstand: 0 }],
+      fruehesterBeginn: null,
+      bezug: null,
+      ist: null,
+    },
+  ],
+};
+
+/**
+ * Punkt 4 (D-57, D-63): das Ergebnis der Terminrechnung zum Beispielplan, von Hand hergeleitet nach `BAUZEIT_ANNAHMEN`
+ * (Mo–Fr, Bayern, im Zeitraum kein Feiertag): Erdarbeiten Mo 16.11. bis Fr 20.11.; Mauerwerk am nächsten Arbeitstag nach dem
+ * Ende, Mo 23.11., zehn Arbeitstage bis Fr 04.12.; der Meilenstein am nächsten Arbeitstag nach dem Mauerwerk, Mo 07.12., am
+ * Anfang seines Tages (Beginn = Ende). Projektende 07.12.; alles liegt auf einem kritischen Weg, kein Puffer. Der
+ * Sammelvorgang reicht vom frühesten Beginn bis zum spätesten Ende seiner Kinder und gehört nie zum kritischen Weg. Beim
+ * Schreiben gegen `bauzeitenplanBerechnen` (Paket `bauzeit`, Stand Ticket 102) geprüft: gleich bis auf den Namen `vorgangId`.
+ */
+export const beispielBauzeitenplanergebnis: Bauzeitenplanergebnis = {
+  projektbeginn: '2026-11-16',
+  projektende: '2026-12-07',
+  vorgaenge: [
+    {
+      vorgangId: rohbau,
+      art: 'sammelvorgang',
+      termine: {
+        beginn: '2026-11-16',
+        ende: '2026-12-07',
+        spaetesterBeginn: '2026-11-16',
+        spaetestesEnde: '2026-12-07',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: erdarbeiten,
+      art: 'vorgang',
+      termine: {
+        beginn: '2026-11-16',
+        ende: '2026-11-20',
+        spaetesterBeginn: '2026-11-16',
+        spaetestesEnde: '2026-11-20',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: mauerwerk,
+      art: 'vorgang',
+      termine: {
+        beginn: '2026-11-23',
+        ende: '2026-12-04',
+        spaetesterBeginn: '2026-11-23',
+        spaetestesEnde: '2026-12-04',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+    {
+      vorgangId: fertig,
+      art: 'meilenstein',
+      termine: {
+        beginn: '2026-12-07',
+        ende: '2026-12-07',
+        spaetesterBeginn: '2026-12-07',
+        spaetestesEnde: '2026-12-07',
+        gesamtpuffer: 0,
+        freierPuffer: 0,
+        kritisch: true,
+      },
+    },
+  ],
+  kritischeWege: [[erdarbeiten, mauerwerk, fertig]],
+  befunde: [],
+};
+
+/**
+ * Punkt 4: einen Vorgang „Dach“ anlegen, im Rohbau hinter dem Mauerwerk (`nach`), fünf Arbeitstage nach dessen Anfang
+ * beginnend (Anfang-Anfang mit Abstand 5).
+ */
+export const beispielVorgangSetzen: VorgangSetzen = {
+  art: 'VorgangSetzen',
+  vorgang: {
+    id: dach,
+    nummer: '1.3',
+    bezeichnung: 'Dach',
+    elternId: rohbau,
+    dauer: 5,
+    vorgaenger: [{ vorgaengerId: mauerwerk, art: 'anfang-anfang', abstand: 5 }],
+    fruehesterBeginn: null,
+    bezug: null,
+    ist: null,
+  },
+  nach: mauerwerk,
+};
+
+/** Punkt 4: das Mauerwerk entfernen; die Beziehung des Meilensteins auf das Mauerwerk fällt im selben ChangeSet weg. */
+export const beispielVorgangEntfernen: VorgangEntfernen = { art: 'VorgangEntfernen', vorgangId: mauerwerk };
+export const beispielChangeSetVorgangEntfernen: BauzeitenplanChangeSet = {
+  art: 'bauzeitenplan',
+  bauzeitenplanId: planId,
+  bauzeitenplan: {
+    vorher: beispielBauzeitenplan,
+    nachher: {
+      ...beispielBauzeitenplan,
+      vorgaenge: beispielBauzeitenplan.vorgaenge
+        .filter((v) => v.id !== mauerwerk)
+        .map((v) => (v.id === fertig ? { ...v, vorgaenger: [] } : v)),
+    },
+  },
+};
+
+/** Punkt 4: die übrigen Befehle am Plan (Anlegen, Kopf setzen, Löschen). */
+export const beispielBauzeitenplanbefehle: readonly [
+  BauzeitenplanAnlegen,
+  BauzeitenplankopfSetzen,
+  BauzeitenplanLoeschen,
+] = [
+  { art: 'BauzeitenplanAnlegen', bauzeitenplan: { ...beispielBauzeitenplan, vorgaenge: [] } },
+  {
+    art: 'BauzeitenplankopfSetzen',
+    name: beispielBauzeitenplan.name,
+    projektbeginn: '2026-11-23',
+    kalender: { ...beispielBauzeitenplan.kalender, arbeitstage: [1, 2, 3, 4, 5, 6] },
+  },
+  { art: 'BauzeitenplanLoeschen' },
+];
+
+const honorarId = '019b76e9-0000-7000-8000-000000000401' as HonorarberechnungId;
+const hoaiKostenberechnungId = '019b76e9-0000-7000-8000-000000000402' as KostenermittlungId;
+const btr = (wert: string): Betrag => wert as Betrag;
+const pz = (wert: string): Prozent => wert as Prozent;
+
+/** Punkt 5 (D-56): eine Kostenberechnung mit KG 300 und KG 400, die Grundlage der anrechenbaren Kosten (§ 6 Abs. 1 Nr. 2). */
+export const beispielKostenberechnungHoai: Kostenermittlung = {
+  id: hoaiKostenberechnungId,
+  projektId: beispielLv.projektId,
+  stufe: 'kostenberechnung',
+  name: 'Kostenberechnung Umbau (erfunden)',
+  eintraege: [
+    { nummer: kg('300'), betrag: btr('612345.67') },
+    { nummer: kg('400'), betrag: btr('201234.56') },
+  ],
+};
+
+/**
+ * Punkt 5 (D-56, D-101.10): eine Honorarberechnung mit einem Objekt, Gebäude, Honorarzone III, Honorarsatz 50 (in der Praxis
+ * „Mittelsatz“), anrechenbare Kosten aus der Kostenberechnung nach § 33 mit 18.000,00 € weiteren Kosten (Abs. 3) und
+ * 10.000,00 € mitzuverarbeitender Bausubstanz, LPH 1 bis 9 zu den Sätzen der HOAI, Umbauzuschlag 20 %, Nebenkosten 5 %,
+ * MwSt 19 % (der Golden-Fall 1 aus Ticket 101).
+ */
+export const beispielHonorarberechnung: Honorarberechnung = {
+  id: honorarId,
+  projektId: beispielLv.projektId,
+  name: 'Architekt, LPH 1–9 (erfunden)',
+  objekte: [
+    {
+      bezeichnung: 'Umbau Wohnhaus',
+      leistungsbild: 'gebaeude',
+      honorarzone: 'III',
+      honorarsatz: pz('50.00'),
+      anrechenbareKosten: {
+        art: 'kostenermittlung',
+        kostenermittlungId: hoaiKostenberechnungId,
+        technischeAnlagenAnteilig: true,
+        weitereKosten: btr('18000.00'),
+        mitzuverarbeitendeBausubstanz: btr('10000.00'),
+      },
+      leistungsphasen: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((nummer) => ({
+        nummer: nummer as Leistungsphasennummer,
+      })),
+      umbauzuschlagssatz: pz('20.00'),
+    },
+  ],
+  nebenkosten: { art: 'prozent', satz: pz('5.00') },
+  mwstSatz: pz('19.00'),
+};
+
+const spannen = (...z: readonly [string, string, string, string, string, string]): Tafelzeile['spannen'] => ({
+  I: { von: btr(z[0]), bis: btr(z[1]) },
+  II: { von: btr(z[1]), bis: btr(z[2]) },
+  III: { von: btr(z[2]), bis: btr(z[3]) },
+  IV: { von: btr(z[3]), bis: btr(z[4]) },
+  V: { von: btr(z[4]), bis: btr(z[5]) },
+});
+
+/**
+ * Punkt 5 (D-56): das Ergebnis zu `beispielHonorarberechnung` mit der Herleitung nach § 33 (Grenze 25 % von 630.345,67 =
+ * 157.586,42; KG 400 darüber zur Hälfte 21.824,07), den Tafelzeilen 750.000 € und 1.000.000 € aus § 35 Abs. 1 (amtliches Werk,
+ * D-56), der interpolierten Spanne der Zone III (97.111,33 bis 121.116,04), dem Honorar im Honorarsatz 50 (109.113,69) und den
+ * Phasen (Summe 109.113,68, ein Cent Rundungsrest). Beim Schreiben gegen `honorarBerechnen` (Paket `honorar`, Ticket 101) mit
+ * den Beträgen der Kostenberechnung geprüft.
+ */
+export const beispielHonorarergebnis: Honorarergebnis = {
+  objekte: [
+    {
+      bezeichnung: 'Umbau Wohnhaus',
+      leistungsbild: 'gebaeude',
+      honorarzone: 'III',
+      anrechenbareKosten: btr('819756.16'),
+      herleitung: {
+        kg300: btr('612345.67'),
+        weitereKosten: btr('18000.00'),
+        sonstigeAnrechenbareKosten: btr('630345.67'),
+        kg400: btr('201234.56'),
+        grenzeTechnischeAnlagen: btr('157586.42'),
+        kg400Voll: btr('157586.42'),
+        kg400Haelfte: btr('21824.07'),
+        mitzuverarbeitendeBausubstanz: btr('10000.00'),
+        anrechenbareKosten: btr('819756.16'),
+      },
+      tafel: {
+        zeileUnten: {
+          anrechenbareKosten: btr('750000.00'),
+          spannen: spannen('64666.00', '75781.00', '89927.00', '112156.00', '126301.00', '137416.00'),
+        },
+        zeileOben: {
+          anrechenbareKosten: btr('1000000.00'),
+          spannen: spannen('83182.00', '97479.00', '115675.00', '144268.00', '162464.00', '176761.00'),
+        },
+        spanne: { von: btr('97111.33'), bis: btr('121116.04') },
+      },
+      honorar: btr('109113.69'),
+      phasen: [
+        { nummer: 1, name: 'Grundlagenermittlung', anteil: pz('2.00'), betrag: btr('2182.27') },
+        { nummer: 2, name: 'Vorplanung', anteil: pz('7.00'), betrag: btr('7637.96') },
+        { nummer: 3, name: 'Entwurfsplanung', anteil: pz('15.00'), betrag: btr('16367.05') },
+        { nummer: 4, name: 'Genehmigungsplanung', anteil: pz('3.00'), betrag: btr('3273.41') },
+        { nummer: 5, name: 'Ausführungsplanung', anteil: pz('25.00'), betrag: btr('27278.42') },
+        { nummer: 6, name: 'Vorbereitung der Vergabe', anteil: pz('10.00'), betrag: btr('10911.37') },
+        { nummer: 7, name: 'Mitwirkung bei der Vergabe', anteil: pz('4.00'), betrag: btr('4364.55') },
+        {
+          nummer: 8,
+          name: 'Objektüberwachung – Bauüberwachung und Dokumentation',
+          anteil: pz('32.00'),
+          betrag: btr('34916.38'),
+        },
+        { nummer: 9, name: 'Objektbetreuung', anteil: pz('2.00'), betrag: btr('2182.27') },
+      ],
+      grundhonorar: btr('109113.68'),
+      umbauzuschlag: btr('21822.74'),
+    },
+  ],
+  grundhonorar: btr('109113.68'),
+  umbauzuschlaege: btr('21822.74'),
+  nebenkosten: btr('6546.82'),
+  netto: btr('137483.24'),
+  mwst: btr('26121.82'),
+  brutto: btr('163605.06'),
+  befunde: [],
+};
+
+const honorarObjekt = beispielHonorarberechnung.objekte[0] as Honorarobjekt;
+
+/** Punkt 5: Anlegen, den ganzen Inhalt setzen (Honorarsatz 25 statt 50, LPH 8 mit vereinbartem Anteil 30 %), Löschen. */
+export const beispielHonorarbefehle: readonly [
+  HonorarberechnungAnlegen,
+  HonorarberechnungSetzen,
+  HonorarberechnungLoeschen,
+] = [
+  { art: 'HonorarberechnungAnlegen', honorarberechnung: beispielHonorarberechnung },
+  {
+    art: 'HonorarberechnungSetzen',
+    name: beispielHonorarberechnung.name,
+    objekte: [
+      {
+        ...honorarObjekt,
+        honorarsatz: pz('25.00'),
+        leistungsphasen: honorarObjekt.leistungsphasen.map((p) =>
+          p.nummer === 8 ? { nummer: 8, anteil: pz('30.00') } : p,
+        ),
+      },
+    ],
+    nebenkosten: beispielHonorarberechnung.nebenkosten,
+    mwstSatz: beispielHonorarberechnung.mwstSatz,
+  },
+  { art: 'HonorarberechnungLoeschen' },
+];
+
+/** Punkt 5: ChangeSet des Setzens: die ganze Honorarberechnung vorher und nachher. */
+export const beispielChangeSetHonorarberechnungSetzen: HonorarberechnungChangeSet = {
+  art: 'honorarberechnung',
+  honorarberechnungId: honorarId,
+  honorarberechnung: {
+    vorher: beispielHonorarberechnung,
+    nachher: {
+      ...beispielHonorarberechnung,
+      name: beispielHonorarbefehle[1].name,
+      objekte: beispielHonorarbefehle[1].objekte,
+    },
+  },
+};
+
+const mangel1Id = '019b76e9-0000-7000-8000-000000000501' as MangelId;
+const mangel2Id = '019b76e9-0000-7000-8000-000000000502' as MangelId;
+const tagebuchId = '019b76e9-0000-7000-8000-000000000511' as BautagebucheintragId;
+
+/**
+ * Punkt 6 (D-57): Mangel 1 an der Wand EG des Beispielhauses (in jedem Modellstand, `bauwerksmodellId: null`), Leistung des
+ * Beispiel-Auftrags-LV, Position 01.0010; festgestellt und am selben Tag dem Auftragnehmer mit Frist angezeigt.
+ */
+export const beispielMangel1: Mangel = {
+  id: mangel1Id,
+  projektId: beispielLv.projektId,
+  nummer: 1,
+  titel: 'Putzriss Außenwand',
+  beschreibung: 'Horizontaler Riss über dem Fenster, etwa 40 cm lang (erfunden).',
+  ort: 'EG, Nordwand',
+  auftragsLvId: auftragsId,
+  positionId: posId,
+  bauteil: { bauwerksmodellId: null, globalId: beispielGlobalIds.wandEg },
+  festgestellt: '2026-11-20',
+  frist: '2026-12-04',
+  verlauf: [
+    { status: 'offen', datum: '2026-11-20', bemerkung: null },
+    { status: 'angezeigt', datum: '2026-11-20', bemerkung: 'Mängelanzeige per Brief', frist: '2026-12-04' },
+  ],
+};
+
+/**
+ * Punkt 6 (D-57): Mangel 2 ohne Auftrags-LV und Bauteil, mit dem erlaubten Rückweg: angezeigt, als beseitigt gemeldet, die
+ * Beseitigung nicht anerkannt (beseitigt → offen). Sein Status ist der letzte Eintrag: `offen`.
+ */
+export const beispielMangel2: Mangel = {
+  id: mangel2Id,
+  projektId: beispielLv.projektId,
+  nummer: 2,
+  titel: 'Tür schleift',
+  beschreibung: null,
+  ort: 'OG, Flur',
+  auftragsLvId: null,
+  positionId: null,
+  bauteil: null,
+  festgestellt: '2026-11-23',
+  frist: '2026-12-11',
+  verlauf: [
+    { status: 'offen', datum: '2026-11-23', bemerkung: null },
+    { status: 'angezeigt', datum: '2026-11-24', bemerkung: null, frist: '2026-12-11' },
+    { status: 'beseitigt', datum: '2026-12-01', bemerkung: 'Meldung des Auftragnehmers' },
+    { status: 'offen', datum: '2026-12-02', bemerkung: 'Schleift weiter' },
+  ],
+};
+
+/** Punkt 6: Mangel 1 ist beseitigt gemeldet; der Wechsel hängt einen Eintrag an. */
+export const beispielMangelstatusSetzen: MangelstatusSetzen = {
+  art: 'MangelstatusSetzen',
+  eintrag: { status: 'beseitigt', datum: '2026-12-03', bemerkung: null },
+};
+
+/** Punkt 6: ChangeSet dazu: der ganze Mangel vorher und nachher, der Verlauf um einen Eintrag länger. */
+export const beispielChangeSetMangelstatus: MangelChangeSet = {
+  art: 'mangel',
+  mangelId: mangel1Id,
+  mangel: {
+    vorher: beispielMangel1,
+    nachher: {
+      ...beispielMangel1,
+      verlauf: [...beispielMangel1.verlauf, beispielMangelstatusSetzen.eintrag],
+    },
+  },
+};
+
+/** Punkt 6: die übrigen Mangelbefehle: Anlegen, Angaben setzen (neue Frist), Löschen. */
+export const beispielMangelbefehle: readonly [MangelAnlegen, MangelangabenSetzen, MangelLoeschen] = [
+  { art: 'MangelAnlegen', mangel: beispielMangel2 },
+  {
+    art: 'MangelangabenSetzen',
+    titel: beispielMangel1.titel,
+    beschreibung: beispielMangel1.beschreibung,
+    ort: beispielMangel1.ort,
+    auftragsLvId: beispielMangel1.auftragsLvId,
+    positionId: beispielMangel1.positionId,
+    bauteil: beispielMangel1.bauteil,
+    festgestellt: beispielMangel1.festgestellt,
+    frist: '2026-12-11',
+  },
+  { art: 'MangelLoeschen' },
+];
+
+/** Punkt 6 (D-57): ein Tag im Bautagebuch, zwei Firmen, ganze Grad Celsius. */
+export const beispielBautagebucheintrag: Bautagebucheintrag = {
+  id: tagebuchId,
+  projektId: beispielLv.projektId,
+  datum: '2026-11-23',
+  wetter: { beschreibung: 'bedeckt, trocken', temperaturMin: -2, temperaturMax: 6 },
+  arbeitskraefte: [
+    { firma: 'Muster Bau GmbH (erfunden)', anzahl: 6 },
+    { firma: 'Elektro Beispiel (erfunden)', anzahl: 2 },
+  ],
+  geraete: 'Turmdrehkran, Minibagger',
+  leistungen: 'Mauerwerk EG Achse 1–3',
+  behinderungen: null,
+  vorkommnisse: 'Besuch der Bauherrin',
+};
+
+/** Punkt 6: Eintrag setzen (Zustand `null`: anlegen) und löschen. */
+export const beispielBautagebuchbefehle: readonly [BautagebucheintragSetzen, BautagebucheintragLoeschen] = [
+  { art: 'BautagebucheintragSetzen', eintrag: beispielBautagebucheintrag },
+  { art: 'BautagebucheintragLoeschen' },
+];
+
+/** Punkt 6: ChangeSet des Anlegens. */
+export const beispielChangeSetBautagebucheintrag: BautagebucheintragChangeSet = {
+  art: 'bautagebucheintrag',
+  bautagebucheintragId: tagebuchId,
+  bautagebucheintrag: { vorher: null, nachher: beispielBautagebucheintrag },
+};
+
+/**
+ * Punkt 7 (D-97.11): je neuer Quelle ein Befund in der gemeinsamen Befundliste, mit dem Ort nach der Lesart an `Befundort`
+ * (Codes erfunden; die Listen der Codes führen die Pakete):
+ * - `ifc-lesen`: eine Menge der Wand EG ohne Einheit in der Datei (Instanz `#412`, Zeile 233), die deshalb nicht ins Modell
+ *   kommt (nie 0, D-53);
+ * - `modell-pruefung`: eine hängende Zuordnung an der Beispielposition (die GlobalId steht im ersten Modellstand nicht);
+ * - `terminrechnung`: der Meilenstein mit einer Beziehung auf einen Sammelvorgang;
+ * - `honorarberechnung`: das erste Honorarobjekt mit einem Umbauzuschlag über der Grenze von 33 %;
+ * - `fristpruefung`: Mangel 1 zum Stichtag 2026-12-07 überfällig (Frist 2026-12-04, Status angezeigt).
+ */
+export const beispielBefundeV16: readonly [Pruefbefund, Pruefbefund, Pruefbefund, Pruefbefund, Pruefbefund] =
+  [
+    {
+      schwere: 'warnung',
+      quelle: 'ifc-lesen',
+      code: 'einheit-fehlt',
+      meldung: '#412: NetVolume ohne Einheit; die Menge kommt nicht ins Modell.',
+      ort: { pfad: '#412', zeile: 233, feld: 'Unit', globalId: beispielGlobalIds.wandEg },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'modell-pruefung',
+      code: 'zuordnung-haengt',
+      meldung: 'Die GlobalId 4Treppe_EG_00000000001 steht im gewählten Modell nicht.',
+      ort: { knotenId: posId, globalId: gid('4Treppe_EG_00000000001'), feld: 'bauteile' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'terminrechnung',
+      code: 'beziehung-an-sammelvorgang',
+      meldung: 'Anordnungsbeziehung auf den Sammelvorgang „Rohbau“ wird nicht gerechnet.',
+      ort: { vorgangId: fertig, feld: 'vorgaenger', pfad: '/vorgaenge[4]/vorgaenger[1]' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'honorarberechnung',
+      code: 'umbauzuschlag-ueber-grenze',
+      meldung: 'Umbauzuschlag 40,00 % über 33 % (§ 36 Abs. 1).',
+      ort: { pfad: '/objekte[1]', feld: 'umbauzuschlagssatz' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'fristpruefung',
+      code: 'mangel-frist-ueberschritten',
+      meldung: 'Mangel 1: Frist 2026-12-04 zum Stichtag 2026-12-07 überschritten.',
+      ort: { mangelId: mangel1Id, feld: 'frist' },
+    },
+  ];
+
+/**
+ * Punkt 8 (E-13, D-54): `BauwerksmodellAnlegen` im Protokoll als Kurzfassung: der Kopf ohne Struktur und Bauteile, dazu die
+ * Prüfsumme über den ganzen Befehl (hier ein Platzhalter).
+ */
+export const beispielMassenprotokollBauwerksmodell: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000601' as ProtokollId,
+  projektId: beispielLv.projektId,
+  aggregat: { art: 'bauwerksmodell', id: beispielBauwerksmodell.id },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-12T10:00:00.000Z' as Zeitstempel,
+  befehl: {
+    art: 'Befehlskurzfassung',
+    kopf: { art: 'BauwerksmodellAnlegen', bauwerksmodell: modell1Kopf },
+    pruefsumme: { algorithmus: 'sha-256', wert: '0'.repeat(64) },
+  },
+};
+
+/** Punkt 8 (D-52): `BauteileZuordnen` im Protokoll, mit dem LV als Aggregat (im Auftrags-LV dessen Kennung). */
+export const beispielProtokollBauteileZuordnen: Protokolleintrag = {
+  id: '019b76e9-0000-7000-8000-000000000602' as ProtokollId,
+  projektId: beispielLv.projektId,
+  aggregat: { art: 'leistungsverzeichnis', id: lvId },
+  wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+  wann: '2026-11-12T10:05:00.000Z' as Zeitstempel,
+  befehl: beispielBauteileZuordnen,
+};
+
+/** Punkt 8 (D-51, D-54): das Beispielmodell in der Liste des Projekts: der Kopf und die Zahl der Bauteile. */
+export const beispielBauwerksmodellUebersicht: BauwerksmodellUebersicht = {
+  ...modell1Kopf,
+  anzahlBauteile: beispielBauwerksmodell.bauteile.length,
+};
+
+/**
+ * Punkt 8: eine Projektdatei mit allen Listen aus v1.6 (Schemaversion 6 bringt Ticket 106). Die Modelldatei steht einmal,
+ * nach Hash; die Kostenberechnung, auf die die Honorarberechnung verweist, steht mit in der Datei.
+ */
+export const beispielProjektdateiV16: Projektdatei = {
+  schemaVersion: 6,
+  projekt: {
+    id: beispielLv.projektId,
+    name: 'Beispiel',
+    bauherr: { name: 'Beispiel', anschrift: null },
+    bieter: [],
+  },
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [beispielMassenprotokollBauwerksmodell],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenberechnungHoai }],
+  bauwerksmodelle: [{ bauwerksmodell: beispielBauwerksmodell }],
+  modelldateien: [beispielModelldateiInProjektdatei],
+  bauzeitenplaene: [{ bauzeitenplan: beispielBauzeitenplan }],
+  honorarberechnungen: [{ honorarberechnung: beispielHonorarberechnung }],
+  maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
+  bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
 };

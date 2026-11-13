@@ -9,6 +9,7 @@ import type {
   Ergebnis,
   GridIdQuelle,
   GridZahlen,
+  Kostengruppennummer,
   Menge,
   PositionId,
 } from '@tethys/vertrag';
@@ -50,6 +51,16 @@ export const zahlenAttrappe: GridZahlen = {
   formatEinheitspreis: (wert) => formatiereDeDE(wert),
   formatBetrag: (wert: Betrag) => formatiereDeDE(wert),
 };
+
+/**
+ * Lesefunktion für die Spalte „KG“ (Ticket 93): drei Ziffern, die erste nicht 0. Die App steckt `kgLesen` aus `kosten` ein;
+ * das Grid darf `kosten` nicht importieren (A3). Leeren Text bekommt sie nie (das Grid macht daraus `null`).
+ */
+export function kostengruppeAttrappe(text: string): Ergebnis<Kostengruppennummer, string> {
+  return /^[1-9]\d\d$/.test(text)
+    ? { ok: true, wert: text as Kostengruppennummer }
+    : { ok: false, fehler: 'Keine Kostengruppennummer (drei Ziffern, die erste nicht 0).' };
+}
 
 /** Fortlaufende Kennungen `neu-1`, `neu-2` … (die App nimmt später UUIDv7, A7). */
 export function idQuelleAttrappe(): GridIdQuelle {

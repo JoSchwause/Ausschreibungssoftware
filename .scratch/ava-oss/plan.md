@@ -25,6 +25,12 @@ Klammern).
 | `packages/erechnung` | XRechnung lesen (D-32), später ZUGFeRD/Erzeugen | A |
 | `packages/kosten` | DIN-276-Gliederung (nur Nummern), Kostenermittlung, Kostenkontrolle, EP-Kalkulation | C |
 | `packages/ausgabe` | PDF, Excel | O |
+| `packages/ifc` | IFC lesen (eigener STEP-Leser, IFC 2x3/4), Abbildung auf `Bauwerksmodell` (D-50) | X1 |
+| `packages/bim` | Mengenübernahme, Aufmaß aus Auswahl, DIN-277-Größen und Kennwerte, Modellvergleich (D-50) | X1 |
+| `packages/ui-modell` | 3D-Leinwand (web-ifc, three.js), nur Anzeige (D-50) | X1 |
+| `packages/bauzeit` | Bauzeitenplan: Arbeitskalender, Terminrechnung, kritischer Weg (D-57) | X2 |
+| `packages/honorar` | HOAI-Honorarberechnung (D-56) | X3 |
+| `packages/bauleitung` | Mängel, Bautagebuch (D-57) | X4 |
 | `packages/ui-grid`, `packages/ui-basis` | gemeinsames Grid, Tokens, Dialoge, Rich-Text | U |
 | `apps/web` | PWA-Hülle, Routing, Fachansichten (ein Ordner `src/<strang>/` je Strang) | U + je Strang |
 | `fixtures/` | selbst verfasste LVs und GAEB-Dateien mit Sollwerten, anonymisierte echte LVs (G-52) | F |
@@ -99,7 +105,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
   Vor dem Schnitt zu klären: Bibliothek für IFC und 3D-Ansicht samt Lizenz (C5, AGPL-verträglich), Ablage großer IFC-Dateien
   (OPFS, nicht in der JSON-Projektdatei?), Leistungsbudgets für große Modelle (Q4).
 - X2–X5 je ein Strang. X5 (Bieterportal/Sync-Server) widerspricht ADR 0001 (lokal, ohne Server) sowie G-01 und G-14: vorher
-  eine ADR und eine Grilling-Frage.
+  eine ADR und eine Grilling-Frage (ADR 0013 als Vorschlag, G-57 offen; kein Code in Welle 6).
 
 ## 3. Wellen
 
@@ -134,6 +140,23 @@ sind geschnitten, G-06 ist beantwortet. Der Prototyp für das Nutzerinterview (G
   Sicherheitseinbehalt) gleich dem Sollwert, freigeben → Aufmaßblatt 2 und Abschlagsrechnung 2 (kumuliert minus
   eingefrorener Zahlbetrag) → Kostenkontrolle je Kostengruppe gleich den Sollwerten → Neuladen behält alles. Sollwerte
   hergeleitet in einer Fixture (C4), dazu ein reiner Kettentest ohne Oberfläche mit derselben Fixture.
+- **Tore der Welle 6 je Modul** (D-58, Annahme für Demo): je Modul eine Playwright-E2E und ein reiner Kettentest auf derselben
+  Fixture; ist die E2E wackelig, gelten Kettentest plus verkürzte E2E (wie D-38). Sollwerte in `fixtures/` mit Herleitung (C4).
+  - **X1-Kern:** IFC 4 (`fixtures/ifc/haus-v1.ifc`) einlesen → Baum zeigt Geschosse und Bauteile, die 3D-Ansicht zeichnet; Auswahl
+    im Baum hebt im 3D hervor, ein Klick im 3D wählt im Baum (geprüft über Testhaken bzw. Auswahlzustand, nie über Pixel);
+    Eigenschaften (Pset) sichtbar → Wände des EG einer Position von `typisch` zuordnen → Mengen übernehmen: Vordersatz und
+    LV-Netto = Sollwerte → Neuladen behält alles samt 3D. IFC 2x3 liefert dieselben Mengen (Unit-Test); Budgets D-54.
+  - **X1-Erweitert:** DIN-277-Größen (BGF, BRI, NRF) und Kostenschätzung über Kennwerte = Soll → Zuschlag → „Aufmaßblatt aus
+    Auswahl“ (EG) = Sollmengen → Stand 2 (`haus-v2.ifc`) einlesen → Vergleich (hinzugefügt, entfernt, geändert) und betroffene
+    Positionen mit Mengendifferenz = Soll → „Mengen aktualisieren“ = neue Vordersätze laut Soll.
+  - **X2:** Bauzeitenplan mit 6–8 Vorgängen, allen vier Beziehungsarten, einem Abstand 0 oder negativ, einem Meilenstein, einem
+    Feiertag und einem Wochenende auf dem kritischen Weg → kritischer Weg und Endtermin = Soll → Neuladen → PDF.
+  - **X3:** Gebäude, Honorarzone III, Honorarsatz 50 % (so benannt), anrechenbare Kosten aus einer Kostenberechnung nach § 33 mit
+    KG 400 über 25 % (beide Zweige), streng zwischen zwei Tafelzeilen, LPH 1–9, Umbauzuschlag, Nebenkosten, USt = Soll →
+    Neuladen → PDF; außerhalb der Tafel = Befund als Unit-Test.
+  - **X4:** Mängel mit Frist und Statusverlauf, einer überfällig zum Stichtag (von der App übergeben, in Playwright feste Uhr) =
+    Befund → Bautagebuch für 3 Tage → Mängelliste und Bautagebuch als PDF → Neuladen.
+  - **X5:** ADR 0013 `proposed`, G-57 offen mit Annahme-Zeile, `plan.md` §2 X5 verweist auf beide; kein Code (D-55).
 - Dauerhaft in der CI: Paketgrenzen, Lizenzprüfung (AGPL-3.0-or-later), Clean-Room-Prüfung,
   Leistungsbudgets (5.000 und 10.000 Positionen), `okf/research/` darf nicht versioniert sein.
 
@@ -178,3 +201,10 @@ Stand 2026-11-09:
     **Tor M4 erreicht** (Definition in §4, D-38). Entscheidungen D-31 bis D-48 in `entscheidungen-auto.md`; G-27 und „VOB 80“
     als Annahme (D-34, D-35). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.4, ADR 0012, Merge von Welle 4
     und 5 nach `main`), Folgetickets 93–95, G-05 für Welle 6. Bericht: `.scratch/ava-oss/welle-5-bericht.md`.
+14. ✅ **Lauf „Welle 6“ im Demo-Modus (2026-11-12/13)** auf dem lokalen Branch `integration/welle-6` (ab `79e6680`, D-49): die
+    Folgetickets 93–95, danach X1 BIM (X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (G-05, Nachtrag 2026-11-12), Tickets 93–122, `vertrag` v1.5
+    und v1.6, neue Pakete `ifc`, `bim`, `ui-modell`, `bauzeit`, `honorar`, `bauleitung`, Projektdatei Schema 6. **Tore X1-Kern,
+    X1-Erweitert, X2, X3, X4 und X5 erreicht** (Definition in §4, D-58). Entscheidungen D-49 bis D-70 in `entscheidungen-auto.md`;
+    G-57 offen mit Annahme (ADR 0013 als Vorschlag). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag`
+    v1.5/v1.6, ADR 0013, HOAI-Tafeln gegen die amtliche Fassung, Merge nach `main`), Folgetickets 123/124. Bericht:
+    `.scratch/ava-oss/welle-6-bericht.md`.

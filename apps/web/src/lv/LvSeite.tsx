@@ -30,10 +30,12 @@ import { VorlageUebernehmen } from '../vorlage/VorlageUebernehmen'; // Ticket 90
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { useLvKosten } from '../kosten/useLvKosten'; // Ticket 89
+import { kgSpalteImLv } from '../kosten/kgSpalte'; // Ticket 93
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
 import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
 import { MengenPanel } from '../mengen/MengenPanel'; // Ticket 65
+import { MengenAusModell } from '../bim/MengenAusModell'; // Ticket 115
 import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
@@ -249,7 +251,7 @@ function LvBearbeiten({
   };
 
   /** Sprunglink aus dem Prüf-Panel: Vorfahren aufklappen, dann zur Zelle bzw. in den Positionsdialog. */
-  const pruefSprung = (b: Pruefbefund): void => {
+  const pruefSprung = (b: Pick<Pruefbefund, 'ort'>): void => {
     const s = sprungZu(b, lv.knoten);
     if (s.aufklappen.some((id) => zugeklappt.has(id))) {
       setZugeklappt((alt) => {
@@ -450,6 +452,15 @@ function LvBearbeiten({
         <Angebote zustand={zustand} />
         <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
         <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
+        <MengenAusModell
+          zustand={zustand}
+          folge={folge}
+          pruefe={pruefe}
+          zurPosition={(knotenId) => {
+            pruefSprung({ ort: { knotenId, feld: 'menge' } }); // Ticket 122: Sprung zur Menge der Position
+          }}
+        />{' '}
+        {/* Ticket 115 */}
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">
@@ -459,6 +470,7 @@ function LvBearbeiten({
             ids={u.ids}
             beschriftung={texte.seite.grid}
             hinweise={hinweise}
+            {...kgSpalteImLv} // Ticket 93: Spalte „KG“
             {...(sprungziel ? { sprungziel } : {})}
             onBefehl={(b) => {
               befehlMitFrage([b], () => void senden(b)); // Ticket 65

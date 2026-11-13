@@ -96,10 +96,12 @@ describe('Vertrag v1.4: Felder am LV-Kopf', () => {
     const gesetzt = wert(kern.lvLaden(n.leistungsverzeichnis.id));
     expect(gesetzt.leistungsverzeichnis.nachtrag).toEqual(NACHTRAG);
     const uebersicht = () => wert(kern.lvAuflisten(P)).find((u) => u.id === n.leistungsverzeichnis.id);
+    const netto = { nettoNachNachlass: n.summen.gesamt.nettoNachNachlass }; // v1.5 (Ticket 106)
     expect(uebersicht()).toEqual({
       id: n.leistungsverzeichnis.id,
       name: n.leistungsverzeichnis.name,
       nachtrag: NACHTRAG,
+      ...netto,
     });
 
     const beauftragt = kopfAendern(gesetzt, { nachtrag: { ...NACHTRAG, status: 'beauftragt' } }, '1.00');
@@ -108,7 +110,11 @@ describe('Vertrag v1.4: Felder am LV-Kopf', () => {
     await schreibe(kern, umkehren(beauftragt));
     await schreibe(kern, umkehren(setzen));
     expect(wert(kern.lvLaden(n.leistungsverzeichnis.id))).toEqual(n);
-    expect(uebersicht()).toEqual({ id: n.leistungsverzeichnis.id, name: n.leistungsverzeichnis.name });
+    expect(uebersicht()).toEqual({
+      id: n.leistungsverzeichnis.id,
+      name: n.leistungsverzeichnis.name,
+      ...netto,
+    });
   });
 
   it('Muster-LV: vorlage setzen und per Undo entfernen; die LV-Übersicht trägt vorlage: true oder nichts (D-43)', async () => {
@@ -116,10 +122,11 @@ describe('Vertrag v1.4: Felder am LV-Kopf', () => {
     const setzen = kopfAendern(f.lv, { vorlage: true }, f.lv.summen.gesamt.netto);
     await schreibe(kern, setzen);
     expect(wert(kern.lvLaden(lv.id)).leistungsverzeichnis.vorlage).toBe(true);
-    expect(wert(kern.lvAuflisten(P))).toEqual([{ id: lv.id, name: lv.name, vorlage: true }]);
+    const netto = { nettoNachNachlass: f.lv.summen.gesamt.nettoNachNachlass }; // v1.5 (Ticket 106)
+    expect(wert(kern.lvAuflisten(P))).toEqual([{ id: lv.id, name: lv.name, vorlage: true, ...netto }]);
     await schreibe(kern, umkehren(setzen));
     expect(wert(kern.lvLaden(lv.id))).toEqual(f.lv);
-    expect(wert(kern.lvAuflisten(P))).toEqual([{ id: lv.id, name: lv.name }]);
+    expect(wert(kern.lvAuflisten(P))).toEqual([{ id: lv.id, name: lv.name, ...netto }]);
   });
 
   it('ein LV mit Nachtragsangaben und Vorlage anlegen und über die Speicher-Schnittstelle laden', async () => {

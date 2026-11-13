@@ -11,6 +11,7 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
   einheit: 'Einheit',
   einheitspreis: 'Einheitspreis',
   gesamtpreis: 'Gesamtpreis',
+  kostengruppe: 'KG',
 };
 
 /**
@@ -49,6 +50,8 @@ export const texte = {
   nichtInSumme: 'Geht nicht in die Summe ein',
   schreibgeschuetzt: 'Diese Zelle lässt sich nicht bearbeiten.',
   gridSchreibgeschuetzt: 'Schreibgeschützt: Hier lässt sich nichts ändern.',
+  /** Schreibgeschütztes Grid mit bearbeitbarer Spalte „KG“ (Ticket 93, z. B. Auftrags-LV). */
+  gridNurKostengruppe: 'Schreibgeschützt: Nur die Spalte KG lässt sich ändern.',
   summen: 'Summen',
   summeNetto: 'Netto',
   summeNachlass: 'Nachlass',
@@ -88,6 +91,20 @@ export const texte = {
   positionAngelegt: 'Neue Position angelegt.',
   vergleichBeschriftung: 'Vergleich',
   vergleichLeer: 'Keine Zeilen vorhanden.',
+  /** Kennzeichen am Rand der Balkenspalte (Ticket 96): Der Balken reicht über den dargestellten Zeitraum hinaus. */
+  balkenVorher: 'beginnt vor dem dargestellten Zeitraum',
+  balkenNachher: 'endet nach dem dargestellten Zeitraum',
+  balkenGanzVorher: 'liegt vor dem dargestellten Zeitraum',
+  balkenGanzNachher: 'liegt nach dem dargestellten Zeitraum',
+  istVorher: 'Ist-Termine beginnen vor dem dargestellten Zeitraum',
+  istNachher: 'Ist-Termine enden nach dem dargestellten Zeitraum',
+  istGanzVorher: 'Ist-Termine liegen vor dem dargestellten Zeitraum',
+  istGanzNachher: 'Ist-Termine liegen nach dem dargestellten Zeitraum',
+  /** Symbole der Randkennzeichen: wohin der Balken weitergeht. */
+  balkenVorherSymbol: '◀',
+  balkenNachherSymbol: '▶',
+  /** Zugängliche Beschreibung des Kopfes einer Balkenspalte mit Markierungen, z. B. „Markierungen: Stichtag …“. */
+  markierungen: 'Markierungen',
 } as const;
 
 /** Ansage nach Strg+C im Vergleichsgrid, z. B. „1 Zelle kopiert.“ oder „3 × 2 Zellen kopiert.“. */
@@ -132,6 +149,33 @@ export function meldungEingefuegt(positionen: number, ungueltig: number, uebersp
       uebersprungen === 1
         ? '1 Zelle in schreibgeschützter Spalte übersprungen'
         : `${String(uebersprungen)} Zellen in schreibgeschützten Spalten übersprungen`,
+    );
+  }
+  return teile.join(', ') + '.';
+}
+
+/**
+ * Ansage nach dem Einfügen einer Spalte in die Spalte „KG“ (Ticket 93), z. B. „2 Kostengruppen geändert, 1 Zelle ungültig
+ * (markiert).“
+ */
+export function meldungKostengruppen(geaendert: number, ungueltig: number, uebersprungen: number): string {
+  const teile = [
+    geaendert === 0
+      ? 'Keine Kostengruppe geändert'
+      : geaendert === 1
+        ? '1 Kostengruppe geändert'
+        : `${String(geaendert)} Kostengruppen geändert`,
+  ];
+  if (ungueltig > 0) {
+    teile.push(
+      ungueltig === 1 ? '1 Zelle ungültig (markiert)' : `${String(ungueltig)} Zellen ungültig (markiert)`,
+    );
+  }
+  if (uebersprungen > 0) {
+    teile.push(
+      uebersprungen === 1
+        ? '1 Zelle ohne Position übersprungen'
+        : `${String(uebersprungen)} Zellen ohne Position übersprungen`,
     );
   }
   return teile.join(', ') + '.';

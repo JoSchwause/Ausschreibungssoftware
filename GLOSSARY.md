@@ -141,7 +141,7 @@ Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der B
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
 
 ### Prüfbefund
-Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe.
+Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung, E-Rechnung lesen) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe. Beim Lesen einer E-Rechnung (Quelle `erechnung-lesen`, v1.5) ist der Ort der Business Term der EN 16931, zu dem der Befund gehört (z. B. `BT-115`), und das Element in der Datei; Zeile und Spalte nur, wenn die Datei kein lesbares XML ist. Weitere Quellen (v1.6): IFC lesen (`ifc-lesen`, Ort: die Instanz der Datei wie `#123` mit ihrer Zeile), Modellprüfung (`modell-pruefung`, Paket `bim`: das Bauteil über seine GlobalId, die Position über ihre Kennung), Terminrechnung (`terminrechnung`: der Vorgang), Honorarberechnung (`honorarberechnung`: das Honorarobjekt als Pfad `/objekte[n]`, ab 1) und Fristprüfung (`fristpruefung`: der Mangel). Im Code `Pruefbefund`, `Befundquelle`, `Befundort`.
 
 ### Migrationsbefund
 Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angebot, Auftrags-LV) nicht mit dem Kern neu rechnen konnte, weil der Kern dessen Altdaten abweist. Daten und gespeicherte Summen bleiben unverändert, die Migration läuft weiter (D-17, Q5). Im Code `Migrationsbefund`, `migrationsbefunde()`.
@@ -179,6 +179,9 @@ Die Kennung des LV (oder Auftrags-LV) selbst, die die Knoten der obersten Ebene 
 ### Los-Stufe
 Die oberste Stufe der OZ-Maske, wenn das LV Lose hat. Das Los ist die oberste Gliederungsstufe und zählt zu den höchstens 5 Stufen (F1); Lose und Titel stehen nie nebeneinander auf der obersten Stufe.
 
+### OZ-Vorschlag
+Die Ordnungszahl, die der Kern für einen neuen Knoten an einem Ort vorschlägt, bevor die App oder eine reine Funktion den Befehl baut (der Befehl trägt die OZ dann als Wert): der Teil des Vorgängers unter denselben Geschwistern plus 10 (Position) bzw. plus 1 (Gliederung); passt das nicht, 5, 2 oder 1 mit Befehlshinweis, sonst kein Vorschlag (F2, D-42.3). Er gilt im LV und im Auftrags-LV, jeweils mit der Kennung des eigenen Aggregats als Wurzel (v1.5, D-80.1). Im Code `OzVorschlag`, Signatur `OzVorschlagen`, Funktion `ozVorschlag` (Paket `kern`).
+
 ### Entwurfskennzeichen
 Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Export wird gewarnt und als Entwurf gekennzeichnet, nicht gesperrt.
 
@@ -207,6 +210,60 @@ Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
 
 ### BIM (Building Information Modeling) & IFC
 Modellbasierte Arbeitsweise im Bauwesen. Über offene Austauschformate wie **IFC (Industry Foundation Classes)** werden 3D-Bauwerksmodelle mit Bauteileigenschaften (Properties/Quantities) geladen, um Mengen direkt am 3D-Bauteil zu ermitteln (**modellbasierte Mengenermittlung / QTO**) und nachvollziehbar mit LV-Positionen oder Kostengruppen zu verknüpfen.
+
+### Bauwerksmodell
+Ein eingelesenes IFC-Modell (IFC 2x3 oder IFC 4, Datei im STEP-Format `.ifc`), unveränderlich: Bauwerksstruktur und Bauteile mit ihren Mengen, ohne Geometrie. Jedes Einlesen ergibt ein neues Bauwerksmodell; ein neuer Stand nennt seinen Vorgänger. Im Code `Bauwerksmodell`, gelesen von `bauwerksmodellLesen` (Paket `ifc`; innen die Lesung der Datei als `StepBauwerksmodell`).
+
+### Bauwerksstruktur / Strukturknoten
+Die räumliche Gliederung eines Bauwerksmodells: Projekt → Grundstück → Gebäude → Geschoss → Raum (IFC `IfcProject`, `IfcSite`, `IfcBuilding`, `IfcBuildingStorey`, `IfcSpace`, verbunden über `IfcRelAggregates`). Ein **Strukturknoten** ist ein Knoten dieser Gliederung mit GlobalId, Art (`projekt`, `grundstueck`, `gebaeude`, `geschoss`, `raum`), Name, Elternknoten und eigenen Bauteilmengen (z. B. Brutto-Grundfläche eines Geschosses, Netto-Raumfläche eines Raums).
+
+### Bauteil
+Ein Produkt des Bauwerksmodells mit GlobalId (Wand, Decke, Fenster, Tür …), das in einem Strukturknoten steht (`IfcRelContainedInSpatialStructure`), oder ein Teil eines solchen Produkts (`IfcRelAggregates`, mit Verweis auf das Ganze). Öffnungen, virtuelle Elemente, Beschriftungen und Raster sind keine Bauteile. Ein Bauteil trägt seine IFC-Klasse, wie sie in der Datei steht (z. B. `IfcWallStandardCase`), Name, Typname, Bauteilmengen, Eigenschaften, Klassifikationen (System, Kennung, Name) und Materialnamen. Eine dreistellige Nummer aus einer Klassifikation mit „276“ im Namen ist ein **Kostengruppen-Vorschlag**, keine Zuordnung.
+
+### GlobalId
+Die Kennung eines Objekts in IFC: 22 Zeichen aus dem IFC-Base64-Alphabet (`0-9`, `A-Z`, `a-z`, `_`, `$`). Über sie werden Bauteile zwischen zwei Modellständen, zwischen Leser und 3D-Ansicht und mit LV-Positionen verknüpft. Doppelte oder nicht wohlgeformte GlobalIds sind ein Befund; beide Objekte bleiben. Im Bauwerksmodell (v1.6) meint jeder Verweis bei einer doppelten GlobalId das erste Objekt in der Reihenfolge der Datei. Im Code `IfcGlobalId`, Muster `IFC_GLOBALID_MUSTER` (Paket `vertrag`).
+
+### Mengensatz
+Eine benannte Gruppe von Bauteilmengen in IFC (`IfcElementQuantity`, z. B. `Qto_WallBaseQuantities`), am Bauteil oder an seinem Typ. Eine Menge am Bauteil überschreibt die gleichnamige Menge desselben Mengensatzes am Typ. Im Code `satz` einer Bauteilmenge.
+
+### Bauteilmenge
+Eine Menge eines Bauteils oder Strukturknotens aus einem Mengensatz: Name, wie er im Modell steht (z. B. `NetVolume`), Art (`laenge`, `flaeche`, `volumen`, `anzahl`, `gewicht`, `zeit`) und Wert in der SI-Grundeinheit (m, m², m³, Stück, kg, s), exakt umgerechnet und erst am Ende kaufmännisch auf 3 Stellen gerundet. Fehlt die Einheit, bleibt die Menge ohne Wert (nie 0). Eine Bauteilmenge wird nie aus der Geometrie berechnet. Derselbe Name in zwei Mengensätzen eines Bauteils ergibt zwei Bauteilmengen.
+
+### Eigenschaftssatz
+Eine benannte Gruppe von Eigenschaften in IFC (`IfcPropertySet`, z. B. `Pset_WallCommon` mit `IsExternal`), am Bauteil oder an seinem Typ; das Bauteil überschreibt den Typ wie beim Mengensatz. Eine Eigenschaft hat einen Namen und Werte als Text mit IFC-Typname (z. B. `IfcBoolean`, `IfcLengthMeasure`). Eigenschaften werden nicht im Bauwerksmodell gespeichert, sondern bei Bedarf aus der Datei gelesen (D-51).
+
+### Modellstand
+Ein Bauwerksmodell als Stand einer Folge (D-53): Wer eine neue Fassung derselben Planung einliest, legt ein neues Bauwerksmodell an, das seinen **Vorgänger** nennt; zwei Stände werden über die GlobalId verglichen. Ein Bauwerksmodell ändert sich nach dem Anlegen nicht mehr, nur sein Name; das Datum des Einlesens setzt die App. Ein Stand, den ein anderer als Vorgänger nennt oder auf den ein Mangel verweist, lässt sich nicht löschen (v1.6, Q5). Im Code `Bauwerksmodell.vorgaengerId`, `Bauwerksmodell.eingelesen`, Befehle `BauwerksmodellAnlegen`, `BauwerksmodellUmbenennen`, `BauwerksmodellLoeschen`.
+
+### Modelldatei
+Die IFC-Datei eines Bauwerksmodells, unverändert als Bytes abgelegt und über den SHA-256 ihrer unkomprimierten Bytes angesprochen (64 Hexziffern, klein; inhaltsadressiert, D-51). Die Bytes stehen nie in einem Aggregat, einem ChangeSet oder der Undo-Historie; das Bauwerksmodell trägt nur Hash, Dateinamen und Größe. Gleiche Bytes liegen nur einmal ab und bleiben, solange ein Bauwerksmodell sie nennt. In der Projektdatei stehen sie komprimiert (deflate-raw, Base64), damit eine Sicherung eine einzige Datei bleibt; verglichen wird immer der SHA-256 der unkomprimierten Bytes. Eigenschaften und Klassifikationen der Bauteile liest die App bei Bedarf aus diesen Bytes. Im Code `Modelldatei` (`hash`, `dateiname`, `groesse`), `Modelldateiablage` (`Speicher.modelldateien`).
+
+### Modellansicht
+Die 3D-Ansicht eines Bauwerksmodells im Browser: Sie zeichnet die Geometrie aus der Modelldatei (web-ifc und three.js, nur im Paket `ui-modell`, D-50) und zeigt nur an, sie ändert nichts. Bauteile kennt sie nur über ihre GlobalId: Die Auswahl geht als Liste von GlobalIds hinein und heraus, so gleicht die App sie mit dem Modellbaum ab; Bauteile ohne Geometrie meldet sie als Befund. Im Code `Modellansicht` (Paket `ui-modell`).
+
+### Bauteilzuordnung
+Die Verknüpfung einer Position (im Ausschreibungs-LV oder Auftrags-LV) mit einem Bauteil über dessen GlobalId und die Mengenart, die die Position vom Bauteil übernimmt (D-52). Eine Position trägt eine geordnete Liste von Zuordnungen; ein Bauteil darf mehreren Positionen zugeordnet sein, dasselbe Paar aus GlobalId und Mengenart an einer Position nur einmal. Die Zuordnung nennt kein Modell, sie gilt für jeden Modellstand, in dem das Bauteil steht; eine GlobalId, die im gewählten Modell fehlt, ist eine **hängende Zuordnung** (Befund, keine Sperre). Die Kostengruppe eines Bauteils ist die seiner Position. Kopieren einer Position verwirft ihre Zuordnungen, Verschieben behält sie; ein LV-Stand trägt sie, der Zuschlag übernimmt sie ins Auftrags-LV. Im Code `Bauteilzuordnung`, `Positionsdaten.bauteile`, Befehl `BauteileZuordnen`.
+
+### Mengenart
+Welche Menge eine Position von einem zugeordneten Bauteil übernimmt: der Name einer Bauteilmenge, wie er im Modell steht (z. B. `NetVolume`), oder fest `Stueck` (jedes Bauteil zählt 1, in der Oberfläche „Stück“). Nicht die Art einer Bauteilmenge (Länge, Fläche, Volumen, Anzahl, Gewicht, Zeit; im Code `Bauteilmenge.art`). Trägt ein Bauteil denselben Namen in zwei Mengensätzen, ist die Mengenart an ihm mehrdeutig (Befund). Im Code `Bauteilzuordnung.mengenart`.
+
+### Mengenübernahme
+Der Vordersatz einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
+
+### Aufmaßblatt aus Auswahl
+Ein neues Aufmaßblatt zu einem Auftrags-LV aus einer Auswahl von Bauteilen eines Bauwerksmodells (X1d, D-53): je Position mit mindestens einem zugeordneten, ausgewählten Bauteil eine Aufmaßposition mit den Ansatzzeilen nur der ausgewählten Bauteile (Regeln wie bei der Mengenübernahme), angelegt mit `AufmassAnlegen`. Dasselbe Bauteil auf zwei Blättern ist nicht erkennbar, weil eine Ansatzzeile keine GlobalId trägt. Die Auswahl „Geschoss“ sind alle Bauteile, die im Geschoss oder in einem Strukturknoten darunter (etwa einem Raum) stehen. Im Code `aufmassAusAuswahl`, `AufmassAusAuswahl`, `Aufmassvorschlag`, `Aufmasshinweis`, `bauteileImStrukturknoten` (Paket `bim`).
+
+### Bezugsgröße (DIN 277)
+BGF, BRI oder NRF eines Bauwerks als Grundlage von Kostenkennwerten (X1e): aus dem Bauwerksmodell die Summe der Mengen `GrossFloorArea` (BGF) bzw. `GrossVolume` (BRI) aller Geschosse und `NetFloorArea` aller Räume (NRF), je wie gelesen auf 3 Stellen, oder vom Nutzer eingegeben. Jede Bezugsgröße nennt ihre Quelle (`modell` oder `eingabe`); eine Eingabe geht dem Modell vor. Fehlt die Menge an einem Geschoss oder Raum, gibt das Modell keine Größe, sondern einen Befund (kein Ersatz, etwa aus den Räumen). Im Code `Bezugsgroesse`, `Bezugsgroessenart`, `Din277Groessen`, `din277Berechnen` (Paket `bim`).
+
+### Kostenschätzung über Kennwerte
+Eine Kostenermittlung der Stufe Kostenschätzung aus Bezugsgrößen und Kennwerten, die der Nutzer je Kostengruppe vorgibt (Bezug BGF, BRI oder NRF, Kennwert in € je Einheit der Bezugsgröße, 2 Stellen; nie aus einem Katalog, C1; D-52): Betrag = round(Bezugsgröße × Kennwert, 2), die Herleitung steht in der Bemerkung des Eintrags; angelegt mit `KostenermittlungAnlegen`. Umgekehrt sind die **Kostenkennwerte** einer bestehenden Kostenermittlung je Kostengruppe ihre Summe geteilt durch BGF, BRI bzw. NRF, kaufmännisch auf 2 Stellen (nur Anzeige). Im Code `Kennwertansatz`, `Kostenschaetzungsangaben`, `Kostenschaetzung`, `kostenschaetzungBerechnen`, `Kostenkennwertzeile`, `kostenkennwerteBerechnen` (Paket `bim`).
+
+### Modellvergleich
+Der Vergleich zweier Modellstände über die GlobalId (X1f, D-53): Bauteile **hinzugefügt** (nur im neuen Stand), **entfernt** (nur im alten) und **geändert** (Klasse, Name, Strukturknoten oder Mengen; Mengen mit altem und neuem Wert). Eine GlobalId, die in einem der beiden Stände mehrfach vorkommt, wird nicht verglichen (Befund). Teilen die Stände weniger als die Hälfte der GlobalIds des kleineren Stands, meldet der Vergleich eine **geringe Überdeckung**: Das Autorenwerkzeug hat die GlobalIds vielleicht neu vergeben. Die **Folgen** eines Vergleichs für ein LV sind je Position mit Bauteilzuordnungen die Menge laut altem und neuem Stand und die Differenz; eine Position ist **betroffen**, wenn ihre Ansatzzeilen sich ändern. „Mengen aktualisieren“ schreibt die Ansatzzeilen des neuen Stands mit `MengenansatzSetzen` (nur im Ausschreibungs-LV). Im Code `modellVergleichen`, `Modellvergleich`, `Bauteilaenderung`, `Mengenaenderung`, `Vergleichsfeld`, `vergleichsfolgenBerechnen`, `Vergleichsfolgen`, `Vergleichsfolge` (Paket `bim`).
+
+### Modellprüfung
+Die Prüfung der Bauteilzuordnungen eines LV gegen ein gewähltes Bauwerksmodell (Quelle `modell-pruefung`, Paket `bim`): hängende Zuordnungen, fehlende oder mehrdeutige Mengen und unpassende Einheiten wie bei der Mengenübernahme, dazu jede GlobalId, die im Modell mehrfach vorkommt; die Bauteile ohne Zuordnung werden gezählt, sind aber kein Befund. Dazu meldet sie Bauteile, die die Modellansicht nicht zeichnen konnte (`bauteil-ohne-geometrie`, D-66). Im Code `zuordnungenPruefen`, `Zuordnungspruefung`, `bauteileOhneGeometrie`.
 
 ---
 
@@ -255,7 +312,7 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
@@ -362,7 +419,7 @@ Lohnkosten je Lohnstunde über die Lohnzeilen einer Kalkulationsübersicht: Σ (
 - **Zuschlagskalkulation**: Beaufschlagung der Einzelkosten je Kostenart mit prozentualen Zuschlagssätzen der Kalkulation zur Ermittlung des Angebotspreises.
 
 ### Kostenkennwert & Mengenbezugsgrößen (DIN 277)
-Verhältniszahl aus Baukosten (z. B. je Kostengruppe nach DIN 276 oder Leistungsbereich) und einer geometrischen Bezugsgröße des Bauwerks (z. B. Brutto-Grundfläche **BGF**, Brutto-Rauminhalt **BRI** oder Nutzungsfläche **NF** nach **DIN 277**), angegeben etwa in `€/m² BGF`.
+Verhältniszahl aus Baukosten (z. B. je Kostengruppe nach DIN 276 oder Leistungsbereich) und einer geometrischen Bezugsgröße des Bauwerks (z. B. Brutto-Grundfläche **BGF**, Brutto-Rauminhalt **BRI** Nutzungsfläche **NF** oder Netto-Raumfläche **NRF** nach **DIN 277**), angegeben etwa in `€/m² BGF`. Die **Netto-Raumfläche (NRF)** ist die Summe der Grundflächen aller Räume eines Bauwerks (Nutzungs-, Technik- und Verkehrsflächen), also die BGF ohne die Grundflächen der Konstruktion. Aus einem Bauwerksmodell: BGF aus den Brutto-Grundflächen der Geschosse, BRI aus deren Brutto-Rauminhalten, NRF aus den Netto-Grundflächen der Räume (Ticket 108); jede Größe mit ihrer Quelle (Modell oder Eingabe).
 
 ### Muster-LV (MLV) & Rahmenvertrag (RLV)
 - **Muster-LV**: Projektübergreifende Bibliothek geprüfter Standardpositionen, Texte, Kostengruppenzuordnungen und Kalkulationsansätze. In v1 ist ein Muster-LV ein gewöhnliches LV mit dem Kennzeichen **Vorlage** (C5, D-36); seine Positionen und Hinweistexte sind die Textbausteine, die man in andere LVs kopiert. Einen eigenen Typ für Textbausteine gibt es nicht. Im Code `LvKopf.vorlage`, Befehl `VorlageSetzen`.
@@ -376,29 +433,86 @@ Freie Angabe, woher der Text einer Position stammt (z. B. ein Katalog, ein Muste
 ## Planerhonorar (HOAI) & Projektsteuerung
 
 ### HOAI (Honorarordnung für Architekten und Ingenieure)
-Bundesrechtliche Verordnung zur Berechnung der Entgelte für Grundleistungen und Besondere Leistungen der Architekten und Ingenieure in Deutschland.
+Bundesrechtliche Verordnung zur Berechnung der Entgelte für Grundleistungen und Besondere Leistungen der Architekten und Ingenieure in Deutschland. Die App rechnet nach der **HOAI 2021** (Änderungsverordnung BGBl. I 2020 S. 2636): Die Honorartafeln sind Orientierungswerte, das Honorar richtet sich nach der Vereinbarung in Textform (§ 7 Abs. 1). Rechenkern im Paket `honorar` (D-56).
 
 ### Leistungsbild & Leistungsphasen (LP 1 – LP 9)
-Fachliche Gliederung der Planungsleistungen nach Objektkategorien (z. B. Gebäude § 35, Freianlagen § 40, Ingenieurbauwerke § 44, Tragwerksplanung § 52, Technische Ausrüstung § 56 HOAI). Jedes Leistungsbild unterteilt sich in bis zu neun **Leistungsphasen (LP 1 Grundlagenermittlung bis LP 9 Objektbetreuung)** mit gesetzlich definierten Prozentsätzen am Gesamthonorar.
+Fachliche Gliederung der Planungsleistungen nach Objektkategorien (z. B. Gebäude und Innenräume § 34, Freianlagen § 39, Ingenieurbauwerke § 43, Verkehrsanlagen § 47, Tragwerksplanung § 51, Technische Ausrüstung § 55 HOAI; die Honorare stehen im jeweils folgenden Paragraphen). Jedes Leistungsbild unterteilt sich in bis zu neun **Leistungsphasen (LP 1 Grundlagenermittlung bis LP 9 Objektbetreuung)**, die die HOAI mit Prozentsätzen des Honorars bewertet; die Tragwerksplanung hat nur LP 1 bis 6 (§ 51 Abs. 1). Gebäude und Innenräume teilen die Honorartafel (§ 35), bewerten die Leistungsphasen aber verschieden (§ 34 Abs. 3). Beauftragt werden einzelne Leistungsphasen (§ 8 Abs. 1); ein abweichender **Anteil** (§ 8 Abs. 2, z. B. § 51 Abs. 2 bis 4, § 55 Abs. 2) ersetzt den Prozentsatz der HOAI und ist ein Befund. Im Code `Leistungsbild` (`gebaeude`, `innenraeume`, `freianlagen`, `ingenieurbauwerke`, `verkehrsanlagen`, `tragwerksplanung`, `technische-ausruestung`), `Leistungsphase`, `BeauftragteLeistungsphase`, die Daten in `LEISTUNGSBILDER` (Paket `honorar`).
 
 ### Anrechenbare Kosten
-Derjenige Teil der nach DIN 276 ermittelten Netto-Baukosten (insbesondere KG 300 Bauwerk – Baukonstruktionen und KG 400 Bauwerk – Technische Anlagen), der nach den Vorschriften der HOAI als Bemessungsgrundlage in die Honorarberechnung einfließt.
+Derjenige Teil der nach DIN 276 ermittelten Netto-Baukosten (insbesondere KG 300 Bauwerk – Baukonstruktionen und KG 400 Bauwerk – Technische Anlagen), der nach den Vorschriften der HOAI als Bemessungsgrundlage in die Honorarberechnung einfließt; die Umsatzsteuer gehört nicht dazu, und die HOAI meint die DIN 276 in der Fassung 2008-12 (§ 4 Abs. 1). Bei Gebäuden und Innenräumen (§ 33) zählt KG 300 voll; KG 400 zählt, wenn der Auftragnehmer die Technischen Anlagen nicht selbst fachlich plant und überwacht, voll bis 25 % der **sonstigen anrechenbaren Kosten** (KG 300 und die von Hand eingegebenen Kosten nach § 33 Abs. 3, etwa Herrichten oder Ausstattung, soweit der Auftragnehmer sie plant oder überwacht) und zur Hälfte mit dem Teil darüber; die mitzuverarbeitende Bausubstanz kommt von Hand dazu. Jeder Teilbetrag wird kaufmännisch auf 2 Stellen gerundet (D-56). Bei den übrigen Leistungsbildern gibt der Nutzer die anrechenbaren Kosten von Hand ein. Gespeichert (v1.6) stehen sie als **Anrechenbare-Kosten-Angabe**: Betrag von Hand oder Verweis auf eine Kostenermittlung des Projekts, aus deren KG 300 und KG 400 die Rechnung § 33 anwendet; eine so genannte Kostenermittlung lässt sich nicht löschen (Q5). Die Rechnung selbst nimmt als **Anrechenbare-Kosten-Eingabe** den Betrag oder die Beträge von KG 300 und KG 400 (der Verweis ist dann aufgelöst, Ticket 110). Im Code `AnrechenbareKostenangabe` (nur die gespeicherte Form, Paket `vertrag`), `AnrechenbareKosteneingabe` (die Eingabe der Rechnung, Paket `honorar`), `KostenNachDin276`, `anrechenbareKostenHerleiten`, `AnrechenbareKostenHerleitung`.
 
 ### Honorarzone (I – V) & Honorarsatz
-- **Honorarzone**: Einstufung des Planungsobjekts nach seinem Schwierigkeitsgrad (von Zone I = sehr geringe Planungsanforderungen bis Zone V = sehr hohe Planungsanforderungen), häufig über ein Punkteschema ermittelt.
-- **Honorarsatz**: Lage innerhalb der Honorarspanne einer Zone zwischen unterem Honorarsatz (Basissatz/Mindestsatz), Viertelsatz (`25 %`), Mittelsatz (`50 %`), Dreiviertelsatz (`75 %`) und oberem Honorarsatz (Höchstsatz `100 %`).
+- **Honorarzone**: Einstufung des Planungsobjekts nach seinem Schwierigkeitsgrad (von Zone I = sehr geringe Planungsanforderungen bis Zone V = sehr hohe Planungsanforderungen; die Technische Ausrüstung kennt nur die Zonen I bis III, § 56 Abs. 1), über Bewertungsmerkmale und gegebenenfalls Bewertungspunkte ermittelt. Der Nutzer wählt die Zone; die App ermittelt sie nicht. Im Code `Honorarzone` (`'I'` bis `'V'`).
+- **Honorarsatz**: Die Lage des Honorars in der Honorarspanne einer Zone, in Prozent der Spanne: Honorar = von + (bis − von) × Honorarsatz / 100, kaufmännisch auf 2 Stellen (D-56). 0 ist der Basishonorarsatz, 100 der obere Honorarsatz. Mindest- und Höchstsatz gibt es seit der HOAI 2021 nicht mehr; „Viertelsatz“, „Mittelsatz“ (50) und „Dreiviertelsatz“ sind nur Bezeichnungen der Praxis, keine Begriffe der HOAI. Ein Honorarsatz unter 0 oder über 100 wird gerechnet und ist ein Befund. Im Code `Honorarobjekt.honorarsatz`, `honorarInSpanne`.
+
+### Basishonorarsatz / oberer Honorarsatz
+Die untere („von“) bzw. obere („bis“) Grenze der Honorarspanne. Ist über die Höhe des Honorars nichts in Textform vereinbart, gilt für Grundleistungen der Basishonorarsatz (§ 7 Abs. 1); der Honorarsatz ist dann 0.
+
+### Honorartafel
+Die Tafel eines Leistungsbilds in der HOAI (z. B. § 35 Abs. 1 für Gebäude und Innenräume): je **Tafelzeile** anrechenbare Kosten in Euro und je Honorarzone eine Honorarspanne. Die Tafeln der HOAI 2021 stehen als Daten im Repo (amtliches Werk nach § 5 Abs. 1 UrhG, D-56), je mit Paragraph, Absatz, Adresse und Abrufdatum. Anrechenbare Kosten unter der ersten oder über der letzten Tafelzeile ergeben kein Honorar (Befund `ausserhalb-honorartafel`, keine Extrapolation; RifT später). Im Code `Honorartafel`, `Tafelzeile`.
+
+### Honorarspanne
+Die Werte „von“ (Basishonorarsatz) und „bis“ (oberer Honorarsatz) einer Honorarzone in einer Tafelzeile, in Euro; in den Tafeln der HOAI 2021 ist „bis“ einer Zone zugleich „von“ der nächsten. Liegen die anrechenbaren Kosten zwischen zwei Tafelzeilen, werden „von“ und „bis“ je für sich linear interpoliert (§ 13): erst multiplizieren, dann teilen, kaufmännisch auf 2 Stellen (D-56). Im Code `Honorarspanne`, `honorarspanneBerechnen`, `Tafelinterpolation` (Tafelzeilen unten und oben mit der interpolierten Spanne).
+
+### Grundhonorar
+Die Summe der Beträge der beauftragten Leistungsphasen eines Honorarobjekts, ohne Umbauzuschlag, Nebenkosten und MwSt: je Leistungsphase Honorar × Anteil / 100, kaufmännisch auf 2 Stellen (D-56). Sind alle Leistungsphasen mit den Sätzen der HOAI beauftragt, weicht es vom Honorar nur um Rundungsreste ab. Das Grundhonorar einer Honorarberechnung ist die Summe über ihre Honorarobjekte. Im Code `Phasenbetrag`, `Objektergebnis.grundhonorar`, `Honorarergebnis.grundhonorar`.
+
+### Nebenkosten
+Die Auslagen des Auftragnehmers neben dem Honorar (§ 14), etwa für Versand, Vervielfältigung oder Fahrten. In einer Honorarberechnung einmal angegeben: als Prozentsatz von Grundhonorar plus Umbauzuschlägen (kaufmännisch auf 2 Stellen) oder als Betrag. Sie gehen ins Netto und damit in die MwSt ein (§ 16 Abs. 1). Im Code `Nebenkostenangabe`, `Honorarergebnis.nebenkosten`.
+
+### Honorarobjekt
+Ein Objekt (§ 2 Abs. 1), dessen Honorar für sich berechnet wird (§ 11 Abs. 1): Bezeichnung, Leistungsbild, Honorarzone, Honorarsatz, anrechenbare Kosten, beauftragte Leistungsphasen und wahlweise ein Umbauzuschlagssatz. Mehrere Honorarobjekte werden je für sich gerechnet und dann summiert; Zusammenfassung und Wiederholungen nach § 11 Abs. 2 bis 4 rechnet die App in v1 nicht (Befund). Im Code `Honorarobjekt`, `Objektergebnis`.
+
+### Honorarberechnung
+Die Honorarobjekte eines Auftrags mit Nebenkosten und MwSt-Satz und das daraus gerechnete **Honorarergebnis**: je Honorarobjekt die anrechenbaren Kosten mit Herleitung, die Tafelzeilen, die Honorarspanne, das Honorar, die Beträge der Leistungsphasen, das Grundhonorar und der Umbauzuschlag; gesamt Grundhonorar, Umbauzuschläge, Nebenkosten, Netto, MwSt (die Umsatzsteuer nach § 16 Abs. 1 auf Netto) und Brutto, dazu die Befunde der Rechnung (Prüfbefunde, U5). Das Ergebnis wird gerechnet, nie gespeichert. Im Code `Honorarberechnung`, `honorarBerechnen`, `Honorarergebnis`, die Befunde als `Pruefbefund` mit den Codes `Honorarbefundcode` (Paket `honorar`). Gespeichert ist eine Honorarberechnung ein eigenes Aggregat des Projekts mit Namen (v1.6, D-56); im Vertrag trägt das Honorarergebnis Prüfbefunde mit der Quelle `honorarberechnung`.
 
 ### Bewertungstabellen (Siemon / Simmendinger) & Tafel-Extrapolation (RifT)
 - **Siemon- / Simmendinger-Tabellen**: Anerkannte Split-Tabellen zur Bewertung einzelner Grundleistungen innerhalb einer Leistungsphase, wenn nicht alle Grundleistungen einer Phase übertragen werden.
 - **RifT-Tabelle**: *Richtlinie der Staatlichen Bauverwaltungen* zur Fortschreibung der HOAI-Honorartafeln bei anrechenbaren Kosten oberhalb des regulären Tabellenendwerts.
 
-### Mitverarbeitete Bausubstanz & Umbauzuschlag
-- **Mitverarbeitete Bausubstanz (§ 4 Abs. 3 HOAI)**: Vorhandene, technisch oder gestalterisch mitverarbeitete Bauteile bei Bestandsbauten, die angemessen bei den anrechenbaren Kosten berücksichtigt werden.
-- **Umbau- / Instandsetzungszuschlag (§ 6 Abs. 2 / § 12 HOAI)**: Prozentualer Honorarzuschlag auf das Grundhonorar bei Umbauten, Modernisierungen oder Instandsetzungen.
+### Mitzuverarbeitende Bausubstanz & Umbauzuschlag
+- **Mitzuverarbeitende Bausubstanz (§ 2 Abs. 7, § 4 Abs. 3 HOAI)**: Der Teil des zu planenden Objekts, der bereits durch Bauleistungen hergestellt ist und technisch oder gestalterisch mitverarbeitet wird. Er wird bei den anrechenbaren Kosten angemessen berücksichtigt; Umfang und Wert werden in Textform vereinbart, in der App von Hand eingegeben. Im Code `mitzuverarbeitendeBausubstanz`.
+- **Umbauzuschlag (§ 6 Abs. 2, § 36 HOAI)**: Prozentualer Zuschlag auf das Grundhonorar eines Honorarobjekts bei Umbauten und Modernisierungen, kaufmännisch auf 2 Stellen (D-56). Bei durchschnittlichem Schwierigkeitsgrad bis 33 % (Gebäude § 36 Abs. 1, Freianlagen § 40 Abs. 6, Ingenieurbauwerke § 44 Abs. 6, Verkehrsanlagen § 48 Abs. 6) bzw. bis 50 % (Innenräume § 36 Abs. 2, Tragwerksplanung § 52 Abs. 4, Technische Ausrüstung § 56 Abs. 5); ein höherer Satz ist ein Befund, kein Fehler. Ohne Vereinbarung gelten nach § 6 Abs. 2 Satz 4 20 %; der Rechenkern rechnet ohne Satz keinen Zuschlag, die App bietet 20 % als Vorschlag an, wenn der Nutzer „Umbau“ wählt. Im Code `Honorarobjekt.umbauzuschlagssatz`, `Objektergebnis.umbauzuschlag`.
 
 ### Bauzeitenplan (Gantt) & 4D-BIM / 5D-BIM
-- **Bauzeitenplan**: Zeitliche Ablaufplanung von Vorgängen, Meilensteinen und Abhängigkeiten unter Berücksichtigung von Arbeitszeitkalendern.
+- **Bauzeitenplan**: Zeitliche Ablaufplanung eines Projekts aus Vorgängen, Sammelvorgängen und Meilensteinen, die über Anordnungsbeziehungen verbunden sind und auf einem Arbeitskalender terminiert werden (D-57). Gespeichert werden nur die Eingaben (Projektbeginn, Arbeitskalender, Vorgänge); Termine, Puffer und kritischer Weg werden gerechnet, nie gespeichert. Die Rechnung heißt **Terminrechnung**: die Vorwärtsrechnung ab dem **Projektbeginn** ergibt die frühe Lage (Beginn und Ende jedes Vorgangs), die Rückwärtsrechnung vom **Projektende** (spätestes Ende der frühen Lage) die späte Lage (spätester Beginn, spätestes Ende). Die Lesarten der Rechnung stehen als `BAUZEIT_ANNAHMEN` im Code. Für die Balkenspalte des Grids (dort `Zeitleiste`) liefert das Paket die **Zeitachse**: Tagesindex je Datum, Monate und Kalenderwochen nach ISO 8601, freie Tage; die Texte formatiert die App. Im Code `bauzeitenplanBerechnen`, `Bauzeitenplaneingabe`, `Vorgangstermine`, die Befunde als `Pruefbefund` (Quelle `terminrechnung`) mit den Codes `Bauzeitbefundcode` und ihrer Schwere in `BAUZEITBEFUNDE`, `zeitachseBerechnen` (Paket `bauzeit`).
 - **4D-BIM / 5D-BIM**: Verknüpfung von 3D-Bauteilen (IFC-GUIDs), LV-Positionen/Mengen (5D-Kostenverlauf / Mittelabflussplan) und Terminplan-Vorgängen (4D-Bauablaufsimulation).
+
+### Vorgang
+Eine Tätigkeit im Bauzeitenplan mit Bezeichnung, wahlweise Nummer, und einer **Dauer** in ganzen Arbeitstagen (≥ 0). Er belegt die Arbeitstage von seinem Beginn bis zu seinem Ende einschließlich; er beginnt nie vor dem Projektbeginn und nie an einem freien Tag. Ist-Termine (Beginn, Ende) und Fortschritt (in Prozent) trägt der Nutzer von Hand ein; sie werden angezeigt, verschieben in v1 aber nichts. Im Code `Vorgang` (`dauer`, `elternId`, `vorgaenger`, `fruehesterBeginn`, `ist`).
+
+### Sammelvorgang
+Ein Vorgang, der andere Vorgänge zusammenfasst: Er hat Kinder (Vorgänge, deren `elternId` ihn nennt). Seine Termine folgen aus den Kindern (Beginn = frühester Beginn, Ende = spätestes Ende der Kinder); seine Dauer hat keine Bedeutung. Anordnungsbeziehungen und Terminvorgaben an einem Sammelvorgang rechnet v1 nicht, sie sind ein Befund. Im Code `Vorgangsart` `'sammelvorgang'`.
+
+### Meilenstein
+Ein Vorgang mit Dauer 0: ein Zeitpunkt am Anfang seines Arbeitstags, Beginn und Ende sind derselbe Tag. Ein Meilenstein kostet keine Zeit; ein Nachfolger mit Ende-Anfang und Abstand 0 beginnt am Tag des Meilensteins. Im Code `Vorgangsart` `'meilenstein'`.
+
+### Anordnungsbeziehung
+Die Abhängigkeit eines Vorgangs von einem Vorgänger, mit einer von vier **Anordnungsarten** und einem **Abstand** in ganzen Arbeitstagen (auch 0 oder negativ; negativ heißt Überlappung). Der Anfang eines Vorgangs ist der Beginn seines ersten Arbeitstags, sein Ende der Schluss seines letzten:
+- **Ende-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am nächsten Arbeitstag nach dem Ende.
+- **Anfang-Anfang**: Der Nachfolger beginnt frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am selben Tag.
+- **Ende-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Ende des Vorgängers; Abstand 0 heißt am selben Tag.
+- **Anfang-Ende**: Der Nachfolger endet frühestens Abstand Arbeitstage nach dem Anfang des Vorgängers; Abstand 0 heißt am Arbeitstag vor dessen Beginn.
+
+Im Code `Anordnungsbeziehung` (`vorgaengerId`, `art`: `Anordnungsart` = `'ende-anfang' | 'anfang-anfang' | 'ende-ende' | 'anfang-ende'`, `abstand`).
+
+### Arbeitskalender
+Die Tage, an denen gearbeitet wird: die **Arbeitstage** der Woche (ISO-Wochentage, 1 = Montag; Standard Montag bis Freitag) ohne die **Feiertage** des gewählten Bundeslands und ohne die **freien Tage** des Plans. Feiertage folgen rein aus Regeln (D-57): die bundesweiten (Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember; Ostern nach der gregorianischen Osterformel) und die landesweiten nach dem Feiertagsgesetz des Landes, je ab dem Jahr, in dem sie gelten. Nur regional geltende Feiertage (etwa Fronleichnam in Teilen Sachsens und Thüringens, Mariä Himmelfahrt in Teilen Bayerns) und einmalige Feiertage trägt der Nutzer als freie Tage ein. Das Bundesland steht als Kürzel nach ISO 3166-2:DE ohne Länderpräfix (`BY`); ohne Land gelten nur die bundesweiten Feiertage. Im Code `Arbeitskalender` (`arbeitstage`, `bundesland`, `freieTage`), `feiertage`, `istArbeitstag`.
+
+### Terminvorgabe
+Eine von Hand gesetzte Grenze für die Lage eines Vorgangs. In v1 gibt es nur „Beginn frühestens“: Der Vorgang beginnt nicht vor diesem Datum, sondern frühestens am ersten Arbeitstag ab dem Datum. Im Code `Vorgang.fruehesterBeginn`.
+
+### Gesamtpuffer
+Die Zahl der Arbeitstage, um die ein Vorgang aus seiner frühen Lage verschoben werden kann, ohne das Projektende zu verschieben: spätester Beginn minus Beginn. Ein Vorgang ist **kritisch**, wenn sein Gesamtpuffer ≤ 0 ist. Ein Sammelvorgang hat den kleinsten Gesamtpuffer seiner Kinder. Im Code `Vorgangstermine.gesamtpuffer`, `Vorgangstermine.kritisch`.
+
+### Freier Puffer
+Die Zahl der Arbeitstage, um die ein Vorgang aus seiner frühen Lage verschoben werden kann, ohne die frühe Lage eines Nachfolgers oder das Projektende zu verschieben; nie größer als der Gesamtpuffer. Ein Sammelvorgang hat den kleinsten freien Puffer seiner Kinder. Im Code `Vorgangstermine.freierPuffer`.
+
+### Kritischer Weg
+Eine Folge kritischer Vorgänge, in der je zwei aufeinanderfolgende durch eine Anordnungsbeziehung ohne Spielraum verbunden sind; sie beginnt am Projektbeginn oder an einer Terminvorgabe und endet am Projektende. Ein Plan kann mehrere kritische Wege haben; Sammelvorgänge gehören nie dazu. Im Code `Bauzeitenplanergebnis.kritischeWege`.
+
+### Vorgangsbezug
+Der Bezug eines Vorgangs auf ein Ausschreibungs-LV oder Auftrags-LV: das ganze LV (auch mit später hinzukommenden Knoten, etwa einem übernommenen Nachtrag) oder ausgewählte Knoten darin (Positionen oder Gliederungen samt ihren Positionen). Er geht nicht in die Terminrechnung ein; er zeigt, welche Leistung ein Vorgang umfasst, und aus dem Leistungsstand eines Auftrags-LV schlägt die App den Fortschritt vor. Fehlt das LV oder ein bezogener Knoten, ist das ein Befund der App: Ein LV wird nie wegen eines Bauzeitenplans gesperrt. Im Code `Vorgang.bezug`, `Vorgangsbezug`.
 
 ---
 
@@ -411,6 +525,39 @@ Chronologische tägliche Dokumentation des Bauablaufs auf der Baustelle (Witteru
 - **Mängelmanagement**: Erfassung, Verortung, Fristüberwachung, Mängelanzeige und Freigabeprüfung von Ausführungsmängeln oder offenen Restleistungen (Tickets).
 - **Plan-Pinning**: Grafische Verortung eines Mangels über X/Y-Koordinaten auf einem 2D-Bauplan (PDF).
 - **BCF (BIM Collaboration Format)**: Offener buildingSMART-Standard zum Austausch modellbasierter Mängel und Aufgaben inklusive 3D-Kameraposition (Viewpoint), Schnittebenen und betroffener IFC-GUIDs.
+
+### Mangel
+Ein festgestellter Ausführungsmangel eines Projekts (D-57): Nummer (ab 1, je Projekt eindeutig), Titel, Beschreibung, Ort als freier Text, wahlweise das Auftrags-LV (und damit der Auftragnehmer) mit einer Position daraus, wahlweise ein Bauteil (GlobalId, wahlweise eines bestimmten Bauwerksmodells), Tag der Feststellung, Frist zur Beseitigung und der Mängelverlauf. Eigenes Aggregat; keine Fotos in v1.6. Im Code `Mangel`, Befehle `MangelAnlegen`, `MangelangabenSetzen`, `MangelstatusSetzen`, `MangelLoeschen`.
+
+### Mangelstatus
+Stand eines Mangels: **offen** (festgestellt), **angezeigt** (dem Auftragnehmer mit Frist zur Beseitigung angezeigt), **beseitigt** (die Beseitigung ist gemeldet), **abgenommen** (der Auftraggeber hat die Beseitigung abgenommen). Zulässig sind die Wechsel offen → angezeigt → beseitigt → abgenommen und beseitigt → offen (Beseitigung nicht anerkannt); jeden anderen Wechsel weist der Befehl ab. Im Code `Mangelstatus`, Fehlercode `statuswechsel-unzulaessig`; die Tabelle der zulässigen Wechsel steht im Paket `bauleitung` (`MANGELSTATUSWECHSEL`, Ticket 111).
+
+### Mängelverlauf
+Die Folge der Statuswechsel eines Mangels mit Datum und wahlweise Bemerkung, ältester zuerst, mit nicht fallenden Daten. Er ist die Quelle des Status: Der Status eines Mangels ist der seines letzten Eintrags; ein Statuswechsel hängt einen Eintrag an, nichts wird überschrieben. Der erste Eintrag ist `offen`. Ein Eintrag `angezeigt` trägt die Frist dieser Mängelanzeige, damit sie nach einem Wiederöffnen im Verlauf bleibt; die geltende Frist steht am Mangel. Im Code `Mangel.verlauf`, `Mangelverlaufseintrag` (`frist`).
+
+### Fristprüfung
+Die Prüfung der Mängel eines Projekts zu einem Stichtag, den die App übergibt (A2): Ein Mangel mit einer Frist vor dem Stichtag und dem Status offen oder angezeigt ist **überfällig** (Prüfbefund, Quelle `fristpruefung`); eine Frist am Stichtag ist nicht überfällig. Es zählt der Status des Mangels (sein letzter Verlaufseintrag), nicht der Stand am Stichtag. Ein angezeigter Mangel ohne Frist (`Mangel.frist` leer) kann nie überfällig werden; auch er ist ein Befund (Warnung), keine Sperre (U5, Ticket 122). Im Code `fristPruefen` (Paket `bauleitung`, Ticket 111), Befundcodes `mangel-frist-ueberschritten` (überfällig) und `mangel-angezeigt-ohne-frist`.
+
+### Frist (Mängelbeseitigung)
+Der Tag, bis zu dem der Auftragnehmer einen Mangel beseitigen soll; ohne Frist ist ein Mangel nie überfällig. Am Tag der Frist selbst ist er noch nicht überfällig, erst am Tag danach. Eine neue Frist (etwa nach abgelehnter Nachbesserung) ersetzt die alte. Im Code `Mangel.frist`.
+
+### Mängelanzeige
+Die Mitteilung eines Mangels an den Auftragnehmer mit der Aufforderung, ihn bis zu einer Frist zu beseitigen. Im Mängelverlauf der Wechsel von **offen** zu **angezeigt**; der Eintrag trägt die Frist dieser Anzeige, und die App setzt sie im selben Undo-Schritt als geltende Frist in die Angaben des Mangels. Im Code `MangelstatusSetzen` mit Status `angezeigt` und `Mangelverlaufseintrag.frist`.
+
+### Stichtag
+Der Tag, zu dem die Fristprüfung und die Mängelauswertung rechnen. Die App übergibt ihn (in der Regel das heutige Datum); das Paket `bauleitung` liest keine Uhr (A2).
+
+### Mangelnummer
+Die laufende Nummer eines Mangels, ab 1, je Projekt eindeutig und nach dem Anlegen fest. Die App schlägt die höchste vorhandene Nummer + 1 vor; Lücken nach dem Löschen werden nicht aufgefüllt. Im Code `Mangel.nummer`, `naechsteMangelnummer` (Paket `bauleitung`).
+
+### Mängelauswertung
+Die Zahlen der Mängel eines Projekts zu einem Stichtag, je Auftrags-LV mit dem Namen seines Auftragnehmers und gesamt: Anzahl, Anzahl je Mangelstatus, **offen** (Status offen oder angezeigt, also noch nicht als beseitigt gemeldet; dieselbe Menge, die die Fristprüfung betrachtet) und **überfällig** (laut Fristprüfung). Den Namen des Auftragnehmers je Auftrags-LV übergibt die App (`Auftragnehmerangabe`). Mängel ohne Auftrags-LV stehen in einer eigenen Zeile. Im Code `maengelAuswerten`, `Maengelauswertung`.
+
+### Bautagebuchauswertung
+Die Arbeitskräfte des Bautagebuchs in einem Zeitraum (beide Grenzen eingeschlossen): je Tag mit Eintrag und je Firma die Summe der Köpfe sowie die Summe über den Zeitraum (Kopftage). Tage ohne Eintrag fehlen. Im Code `bautagebuchAuswerten`, `Bautagebuchauswertung`.
+
+### Bautagebucheintrag
+Der Eintrag des Bautagebuchs zu einem Tag eines Projekts, höchstens einer je Projekt und Datum (D-57): Wetter (Beschreibung, tiefste und höchste Temperatur in ganzen Grad Celsius), Arbeitskräfte je Firma (Zahl der Köpfe), Geräte, ausgeführte Leistungen, Behinderungen und besondere Vorkommnisse als Text. Eigenes Aggregat; keine Fotos in v1.6. Das **Bautagebuch** eines Projekts ist die Liste seiner Einträge nach Datum. Im Code `Bautagebucheintrag`, Befehle `BautagebucheintragSetzen`, `BautagebucheintragLoeschen`, `Speicher.bautagebuch`.
 
 ### E-Rechnung (XRechnung & ZUGFeRD)
 Strukturierte elektronische Rechnungsformate nach europäischer Norm **EN 16931** für Bau- und Planerrechnungen (reines XML bei **XRechnung** bzw. hybrides PDF/A-3 mit eingebettetem XML bei **ZUGFeRD**).

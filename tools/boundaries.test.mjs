@@ -95,6 +95,58 @@ describe('Paketgrenzen (A3)', () => {
     expect(regeln).toEqual(['grenze-packages-erechnung']);
   });
 
+  it('ifc darf vertrag und dezimal importieren, kern nicht; die App darf ifc importieren (Ticket 98, D-50)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/ifc', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/ifc']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/ifc/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-ifc']);
+  });
+
+  it('honorar darf vertrag und dezimal importieren, kern nicht; die App darf honorar importieren (Ticket 101, D-56)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/honorar', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/honorar']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/honorar/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-honorar']);
+  });
+
+  it('bauzeit darf vertrag und dezimal importieren, die App darf bauzeit importieren, kern nicht (Ticket 102)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/bauzeit', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/bauzeit']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei('packages/bauzeit/src/index.ts', "import '@tethys/kern';\nexport {};\n");
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-bauzeit']);
+  });
+
+  it('bauleitung darf vertrag und dezimal importieren, die App darf bauleitung importieren, kern und bauzeit nicht (Ticket 111)', async () => {
+    paket('packages/vertrag');
+    paket('packages/dezimal', ['@tethys/vertrag']);
+    paket('packages/kern', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/bauzeit', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('packages/bauleitung', ['@tethys/vertrag', '@tethys/dezimal']);
+    paket('apps/web', ['@tethys/bauleitung']);
+    expect(await pruefeGrenzen(wurzel)).toEqual([]);
+    datei(
+      'packages/bauleitung/src/index.ts',
+      "import '@tethys/kern';\nimport '@tethys/bauzeit';\nexport {};\n",
+    );
+    const regeln = (await pruefeGrenzen(wurzel)).map((v) => v.split(':')[0]);
+    expect(regeln).toEqual(['grenze-packages-bauleitung', 'grenze-packages-bauleitung']);
+  });
+
   it('weist Import der App durch ein Paket ab', async () => {
     paket('packages/vertrag', ['@tethys/web']);
     paket('apps/web');

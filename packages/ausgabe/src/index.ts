@@ -41,3 +41,30 @@ export type { PdfOptionen } from './pdf';
 export type { Schriften } from './schriften';
 export { excelRuecklaufLesen, lvAlsExcel, strukturPruefsumme } from './excel';
 export type { ExcelBefund, ExcelBefundcode, ExcelDatei, ExcelOptionen, ExcelRuecklauf } from './excel';
+
+// Ausgaben X2 bis X4 (Ticket 113): Berichtsmodell und PDF für Mängelliste, Mängelanzeige, Bautagebuch, Honorarberechnung, Bauzeitenplan.
+export type {
+  BerichtAbschnitt,
+  BerichtBlock,
+  BerichtFeld,
+  BerichtSpalte,
+  BerichtZeile,
+  Berichtsmodell,
+  Befundtext,
+} from './bericht';
+export { erzeugeBerichtPdf } from './bericht-pdf';
+export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
+export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
+export { baueBautagebuchModell } from './bautagebuch-druck';
+export type { BautagebuchEingabe } from './bautagebuch-druck';
+export { DIN276_HINWEIS, baueHonorarModell } from './honorar-druck';
+export type { HonorarEingabe } from './honorar-druck';
+export { baueBauzeitenplanModell } from './bauzeit-druck';
+export type { BauzeitenplanEingabe } from './bauzeit-druck';
+export {
+  erzeugeBautagebuchPdf,
+  erzeugeBauzeitenplanPdf,
+  erzeugeHonorarPdf,
+  erzeugeMaengelanzeigePdf,
+  erzeugeMaengellistePdf,
+} from './x2x4-pdf';

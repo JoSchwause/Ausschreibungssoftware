@@ -44,9 +44,19 @@ export interface ZeileProps {
   readonly abgelehnt: ReadonlyMap<LvSpalte, Abgelehnt> | undefined;
   readonly baumspalte: LvSpalte;
   readonly zahlen: GridZahlen;
-  /** Schreibgeschütztes Grid: keine Zelle ist bearbeitbar. */
-  readonly schreibgeschuetzt: boolean;
+  /**
+   * Spalten, die sich in diesem Grid bearbeiten lassen (an passenden Zeilen, `istBearbeitbar`); im schreibgeschützten
+   * Grid keine oder nur die Spalte „KG“ (Ticket 93). Stabil halten (Memo).
+   */
+  readonly bearbeitbareSpalten: ReadonlySet<LvSpalte>;
+  /**
+   * Das Grid ist als Ganzes schreibgeschützt (`aria-readonly` am Grid). Eine bearbeitbare Zelle darin (Spalte „KG“,
+   * Ticket 93) hebt das für sich mit `aria-readonly="false"` auf.
+   */
+  readonly gridSchreibgeschuetzt: boolean;
   readonly editor: EditorAktionen;
+  /** Hinweis zur Form des Entwurfs in der Spalte „KG“ (Editor); stabil halten. */
+  readonly kgPruefen?: ((text: string) => string | undefined) | undefined;
 }
 
 const NUMERISCH: ReadonlySet<LvSpalte> = new Set<LvSpalte>(['menge', 'einheitspreis', 'gesamtpreis']);
@@ -81,7 +91,8 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
     ausgeschnitten,
     bearbeitung,
   } = props;
-  const { abgelehnt, baumspalte, zahlen, schreibgeschuetzt, editor } = props;
+  const { abgelehnt, baumspalte, zahlen, bearbeitbareSpalten, gridSchreibgeschuetzt, editor, kgPruefen } =
+    props;
   const zeile = row.original;
   const k = zeile.knoten;
   const zellen = row.getAllCells();
@@ -114,7 +125,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         const spalte = spaltenIds[si];
         if (spalte === undefined) return null;
         const text = anzeigeText(zeile, spalte, zahlen);
-        const bearbeitbar = !schreibgeschuetzt && istBearbeitbar(zeile, spalte);
+        const bearbeitbar = bearbeitbareSpalten.has(spalte) && istBearbeitbar(zeile, spalte);
         const hinweise = befunde.get(spalte) ?? [];
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);
@@ -144,7 +155,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
             data-spalte={spalte}
             aria-colindex={si + 1}
             tabIndex={tabbar === spalte ? 0 : -1}
-            aria-readonly={bearbeitbar ? undefined : true}
+            aria-readonly={bearbeitbar ? (gridSchreibgeschuetzt ? false : undefined) : true}
             aria-invalid={hatFehler || ungueltig ? true : undefined}
             aria-describedby={beschreibung.length > 0 ? beschreibungsId : undefined}
             title={
@@ -163,7 +174,12 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
               />
             ) : null}
             {bearbeitung?.spalte === spalte ? (
-              <Editor spalte={spalte} entwurf={bearbeitung.entwurf} aktionen={editor} />
+              <Editor
+                spalte={spalte}
+                entwurf={bearbeitung.entwurf}
+                aktionen={editor}
+                pruefen={spalte === 'kostengruppe' ? kgPruefen : undefined}
+              />
             ) : (
               <span className="tx-grid__text">{ungueltig ? ungueltig.text : text}</span>
             )}

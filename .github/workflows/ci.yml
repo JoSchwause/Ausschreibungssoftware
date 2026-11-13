@@ -24,8 +24,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Lint = ESLint (inkl. Regel N1), Prettier, Paketgrenzen (A3), Lizenzprüfung (C5), Clean-Room (C2)
+      # Lint = ESLint (inkl. Regel N1), Prettier, Paketgrenzen (A3), Lizenzprüfung (C5), Clean-Room (C2).
+      # Das typgestützte ESLint über alle Projekte braucht seit Welle 6 etwa 5 GB, mehr als der Standard-Heap von Node auf dem
+      # Runner (etwa 4 GB); derselbe Wert wie im Befehl der Regeln und Tickets.
       - run: pnpm lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
       - run: pnpm typecheck
       - run: pnpm test
 

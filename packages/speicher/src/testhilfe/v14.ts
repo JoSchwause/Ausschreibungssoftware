@@ -155,6 +155,17 @@ export function aggregatVon(cs: ChangeSet): Protokolleintrag['aggregat'] {
       return { art: cs.art, id: cs.rechnungId };
     case 'kostenermittlung':
       return { art: cs.art, id: cs.kostenermittlungId };
+    // v1.6
+    case 'bauwerksmodell':
+      return { art: cs.art, id: cs.bauwerksmodellId };
+    case 'bauzeitenplan':
+      return { art: cs.art, id: cs.bauzeitenplanId };
+    case 'honorarberechnung':
+      return { art: cs.art, id: cs.honorarberechnungId };
+    case 'mangel':
+      return { art: cs.art, id: cs.mangelId };
+    case 'bautagebucheintrag':
+      return { art: cs.art, id: cs.bautagebucheintragId };
   }
 }
 

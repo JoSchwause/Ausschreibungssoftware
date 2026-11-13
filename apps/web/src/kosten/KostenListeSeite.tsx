@@ -17,6 +17,7 @@ import { kontrollePfad, kostenermittlungPfad } from './pfad';
 import { kostenermittlungSitzung, kostenermittlungenLaden } from './schreiben';
 import { STUFEN, texte } from './texte';
 import { Verweis } from '../ui/Verweis';
+import { modellePfad } from '../bim/pfad'; // Ticket 122
 import '../lv/lv.css';
 import './kosten.css';
 
@@ -107,6 +108,15 @@ export function KostenListeSeite({
           gehe={gehe}
           className="tx-button tx-button--schlicht"
         />
+        {/* Ticket 122 (PC-a5): Verweis auf die Kennwerte der Modellseite (Ticket 115, nur Verweis) */}
+        <span title={texte.seite.zuDenKennwertenTitel}>
+          <Verweis
+            pfad={modellePfad(projekt.id)}
+            text={texte.seite.zuDenKennwerten}
+            gehe={gehe}
+            className="tx-button tx-button--schlicht"
+          />
+        </span>
       </div>
       {ermittlungen.length === 0 ? (
         <p>{texte.seite.leer}</p>

@@ -46,11 +46,14 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    // Zwei Testseiten: das LV-Grid (index.html) und das Vergleichsgrid (vergleich.html, Ticket 60).
+    // Vier Testseiten: das LV-Grid (index.html), das Vergleichsgrid (vergleich.html, Ticket 60), die Balkenspalte im
+    // Vergleichsgrid (bauzeit.html, Ticket 96) und der Modellbaum mit 10.000 Zeilen (modellbaum.html, Ticket 122, D-54).
     rolldownOptions: {
       input: {
         index: fileURLToPath(new URL('./e2e/harness/index.html', import.meta.url)),
         vergleich: fileURLToPath(new URL('./e2e/harness/vergleich.html', import.meta.url)),
+        bauzeit: fileURLToPath(new URL('./e2e/harness/bauzeit.html', import.meta.url)),
+        modellbaum: fileURLToPath(new URL('./e2e/harness/modellbaum.html', import.meta.url)),
       },
     },
   },

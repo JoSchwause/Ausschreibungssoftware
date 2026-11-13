@@ -76,6 +76,20 @@ export function ablageLesen(w: Werkzeug, text: string | null): Ablage {
 export const ablageAlsText = (eigene: readonly Druckprofil[], zurueck: readonly Zurueckgehalten[]): string =>
   JSON.stringify([...eigene, ...zurueck.map((z) => z.roh)]);
 
+/** Zahl der zurückgehaltenen Einträge, die sich gar nicht als Druckprofil lesen ließen (Ticket 121). */
+export const zurueckNichtLesbar = (zurueck: readonly Zurueckgehalten[]): number =>
+  zurueck.filter((z) => z.grund === 'unlesbar').length;
+
+/** Die Sicherungsdatei der zurückgehaltenen Einträge: alle unverändert, als JSON-Liste (Q5, D-92.6, Ticket 121). */
+export const zurueckAlsDatei = (zurueck: readonly Zurueckgehalten[]): string =>
+  JSON.stringify(
+    zurueck.map((z) => z.roh),
+    null,
+    2,
+  );
+
+export const dateinameZurueck = (): string => 'Druckprofile-nicht-gelesen.json';
+
 export type ProfilFehler = 'name-leer' | 'name-standard' | 'name-vergeben';
 
 export type ProfilErgebnis =

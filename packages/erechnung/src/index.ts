@@ -8,7 +8,6 @@ export type {
   Rechnungsposition,
   Rechnungssummen,
   Umsatzsteueraufschluesselung,
-  XRechnungBefund,
   XRechnungBefundcode,
   XRechnungLesung,
   XRechnungOptionen,

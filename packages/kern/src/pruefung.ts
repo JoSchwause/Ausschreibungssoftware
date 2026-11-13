@@ -16,7 +16,7 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { befehlsfehler } from './fehler';
-import { kostengruppeFehler, textquelleFehler } from './positionsfelder';
+import { bauteileFehler, kostengruppeFehler, textquelleFehler } from './positionsfelder';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
 import type { ElternArt } from './regeln';
 
@@ -53,7 +53,9 @@ export function unerlaubtesFeld(
  *  5. doppelte Bezugsposition in derselben Liste (`zuschlag.bezug.positionen`);
  *  6. Mengenansatz in falscher Form (`mengenansatz`, `mengenansatzFehler`; Ticket 56);
  *  7. Kostengruppe nicht `100` bis `999` (`kostengruppe`) und Textquelle, die kein Text ist (`textquelle`; Vertrag v1.4,
- *     Ticket 71). Eine leere Textquelle ist kein Fehler: `positionNormal` lässt sie weg (D-71.4).
+ *     Ticket 71). Eine leere Textquelle ist kein Fehler: `positionNormal` lässt sie weg (D-71.4);
+ *  8. Bauteilzuordnungen außer Form (`bauteile`, `bauteileFehler`; Vertrag v1.6, Ticket 105): wie bei `BauteileZuordnen`.
+ *     Eine leere Liste ist kein Fehler: `positionNormal` lässt sie weg.
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -83,6 +85,10 @@ export function positionsdatenFehler(
   if (daten.textquelle !== undefined) {
     const t = textquelleFehler(daten.textquelle);
     if (t !== null) return feld('textquelle', t);
+  }
+  if (daten.bauteile !== undefined) {
+    const b = bauteileFehler(daten.bauteile);
+    if (b !== null) return feld('bauteile', b);
   }
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))

@@ -66,6 +66,14 @@ describe('Sprunglink', () => {
     });
   });
 
+  // Ticket 93: Die Spalte „KG“ steht im Grid; ein Befund zur Kostengruppe springt an ihre Zelle, nicht in den Dialog.
+  it('Kostengruppe: Zelle der Spalte „KG“', () => {
+    expect(
+      sprungZu(b('kg-ausserhalb', 'warnung', { knotenId: 'p1' as KnotenId, feld: 'kostengruppe' }), KNOTEN)
+        .ziel,
+    ).toEqual({ art: 'zelle', knotenId: 'p1', spalte: 'kostengruppe' });
+  });
+
   it('Feld ohne Spalte im Grid (oder ohne Feld) an einer Position: öffnet den Positionsdialog', () => {
     expect(
       sprungZu(b('langtext-leer', 'warnung', { knotenId: 'p1' as KnotenId, feld: 'langtext' }), KNOTEN),

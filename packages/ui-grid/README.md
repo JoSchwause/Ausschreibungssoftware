@@ -119,20 +119,20 @@ import type { VergleichsSpalte, VergleichsZeile, VergleichsSummenzeile } from '@
 />;
 ```
 
-| Eigenschaft                   | Bedeutung                                                                                                                                                                                                                                                                                                                                    |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `spalten`                     | `{ id, kopf, gruppe?, ausrichtung?, breite? }` in Anzeigereihenfolge. Aufeinanderfolgende Spalten mit derselben `gruppe.id` teilen sich einen Gruppenkopf (zweizeiliger Kopf); `ausrichtung` `links` (Standard), `rechts`, `mitte`; `breite` in px, Standard 120. Die Breite muss Text und Marken fassen, sonst wird der Text abgeschnitten. |
-| `zeilen`                      | `{ id, art: 'gliederung' \| 'position', tiefe, hatUnterknoten, aufgeklappt, zellen }`; `zellen` je Spalten-`id`, fehlende Zellen bleiben leer. Virtualisiert.                                                                                                                                                                                |
-| `summen`                      | `{ id, zellen }`: feste Zeilen unter dem Körper, kleben am unteren Rand, per Tastatur erreichbar, gehören zur Auswahl. Die Beschriftung („Netto“) ist eine Zelle wie jede andere. Kennungen eindeutig gegenüber `zeilen`.                                                                                                                    |
-| Zelle                         | `{ text, kennzeichen?, tooltip? }`. `kennzeichen` in Anzeigereihenfolge; `tooltip` steht hinter den Beschreibungen der Kennzeichen (z. B. „Mittel 12,17“).                                                                                                                                                                                   |
-| `kennzeichenTexte`            | `{ [kennzeichen]: { symbol, beschreibung } }` für eigene Kennzeichen (z. B. ABC-Klasse) oder statt der eingebauten.                                                                                                                                                                                                                          |
-| `fixierteSpalten`             | Zahl der linken Spalten, die beim waagerechten Scrollen stehen bleiben; Standard 0.                                                                                                                                                                                                                                                          |
-| `baumspalte`                  | Spalte mit Einzug und Auf-/Zuklappknopf; Standard die erste.                                                                                                                                                                                                                                                                                 |
-| `onAufklappen`                | `(zeilenId, aufgeklappt)`; der Aufklappzustand gehört der App.                                                                                                                                                                                                                                                                               |
-| `onZeileAktiv`                | `(zeilenId \| null)` nach dem Rendern, sobald sich die Zeile der aktiven Zelle ändert (auch eine Summenzeile; ohne Klick die erste Zeile).                                                                                                                                                                                                   |
-| `onZelleAktiv`                | `({ zeilenId, spalte } \| null)` bei jedem Wechsel der aktiven Zelle, auch nur der Spalte.                                                                                                                                                                                                                                                   |
-| `sprungziel`                  | `{ zeilenId, spalte?, nr }` wie beim `LvGrid`: Jede neue `nr` scrollt zur Zelle und fokussiert sie; eine zugeklappte Zeile übergeht das Grid.                                                                                                                                                                                                |
-| `beschriftung`, `zeilenhoehe` | zugänglicher Name (Standard „Vergleich“), Zeilenhöhe (Standard 28).                                                                                                                                                                                                                                                                          |
+| Eigenschaft                   | Bedeutung                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spalten`                     | `{ id, kopf, gruppe?, ausrichtung?, breite?, zeitleiste? }` in Anzeigereihenfolge (`zeitleiste`: Balkenspalte, siehe unten). Aufeinanderfolgende Spalten mit derselben `gruppe.id` teilen sich einen Gruppenkopf (zweizeiliger Kopf); `ausrichtung` `links` (Standard), `rechts`, `mitte`; `breite` in px, Standard 120. Die Breite muss Text und Marken fassen, sonst wird der Text abgeschnitten. |
+| `zeilen`                      | `{ id, art: 'gliederung' \| 'position', tiefe, hatUnterknoten, aufgeklappt, zellen }`; `zellen` je Spalten-`id`, fehlende Zellen bleiben leer. Virtualisiert.                                                                                                                                                                                                                                       |
+| `summen`                      | `{ id, zellen }`: feste Zeilen unter dem Körper, kleben am unteren Rand, per Tastatur erreichbar, gehören zur Auswahl. Die Beschriftung („Netto“) ist eine Zelle wie jede andere. Kennungen eindeutig gegenüber `zeilen`.                                                                                                                                                                           |
+| Zelle                         | `{ text, kennzeichen?, tooltip?, balken? }` (`balken` nur in einer Balkenspalte). `kennzeichen` in Anzeigereihenfolge; `tooltip` steht hinter den Beschreibungen der Kennzeichen (z. B. „Mittel 12,17“).                                                                                                                                                                                            |
+| `kennzeichenTexte`            | `{ [kennzeichen]: { symbol, beschreibung } }` für eigene Kennzeichen (z. B. ABC-Klasse) oder statt der eingebauten.                                                                                                                                                                                                                                                                                 |
+| `fixierteSpalten`             | Zahl der linken Spalten, die beim waagerechten Scrollen stehen bleiben; Standard 0.                                                                                                                                                                                                                                                                                                                 |
+| `baumspalte`                  | Spalte mit Einzug und Auf-/Zuklappknopf; Standard die erste.                                                                                                                                                                                                                                                                                                                                        |
+| `onAufklappen`                | `(zeilenId, aufgeklappt)`; der Aufklappzustand gehört der App.                                                                                                                                                                                                                                                                                                                                      |
+| `onZeileAktiv`                | `(zeilenId \| null)` nach dem Rendern, sobald sich die Zeile der aktiven Zelle ändert (auch eine Summenzeile; ohne Klick die erste Zeile).                                                                                                                                                                                                                                                          |
+| `onZelleAktiv`                | `({ zeilenId, spalte } \| null)` bei jedem Wechsel der aktiven Zelle, auch nur der Spalte.                                                                                                                                                                                                                                                                                                          |
+| `sprungziel`                  | `{ zeilenId, spalte?, nr }` wie beim `LvGrid`: Jede neue `nr` scrollt zur Zelle und fokussiert sie; eine zugeklappte Zeile übergeht das Grid.                                                                                                                                                                                                                                                       |
+| `beschriftung`, `zeilenhoehe` | zugänglicher Name (Standard „Vergleich“), Zeilenhöhe (Standard 28).                                                                                                                                                                                                                                                                                                                                 |
 
 Eingebaute Kennzeichen (offene Vereinigung `Kennzeichen`, jedes andere ist erlaubt): `hoch` ▲ „Ausreißer nach oben“,
 `niedrig` ▼ „Ausreißer nach unten“, `min` „niedrigster Preis“, `max` „höchster Preis“, `nicht-angeboten` – „nicht
@@ -151,3 +151,66 @@ Umschalt+Enter eine Zeile weiter / zurück), Auf-/Zuklappen wie im `LvGrid`. Zel
 Umschalt+Klick ziehen ein Rechteck auf, Strg+A wählt alles, Escape hebt die Auswahl auf. Strg+C kopiert das Rechteck
 (sonst die aktive Zelle) als TSV wie aus Excel: nur die Anzeigetexte, ohne Kennzeichen und Kopf. Änderungsversuche
 (Tippen, F2, Entf, Strg+X/V) ändern nichts und werden in der Live-Region angesagt.
+
+### Balkenspalte (Ticket 96)
+
+Eine Spalte mit `zeitleiste` macht aus dem Vergleichsgrid einen Balkenplan, z. B. den Bauzeitenplan: Zeitachse im
+Kopf, je Zeile ein Balken (`VergleichsZelle.balken`). Kein zweites Grid (U2). Das Grid rechnet nie mit Kalendern oder
+Daten: Alle Lagen sind **Tagesindizes** (ganze Zahl ab 0 = erster Tag der Achse), alle Texte kommen fertig formatiert
+(N4). Ein Tagesindex ist eine Grenze: `vonTag: 2, bisTag: 5` deckt die Tage 2, 3 und 4. Ein Meilenstein hat
+`bisTag = vonTag` und steht als Raute auf der Grenze `vonTag`, eine Markierung als Linie auf der Grenze `tag`.
+
+```tsx
+const zeitplan: VergleichsSpalte = {
+  id: 'balken',
+  kopf: 'Zeitplan', // zugänglicher Name der Spalte
+  zeitleiste: {
+    tage: 730, // Breite tage × pixelJeTag = 11.680 px; `breite` und `gruppe` der Spalte gelten nicht
+    pixelJeTag: 16,
+    kopf: [{ text: 'Januar 2027', vonTag: 0, bisTag: 31 } /* … */],
+    unterkopf: [{ text: 'KW 53', vonTag: -4, bisTag: 3 } /* … über den Rand: geschnitten */],
+    freieTage: [0, 1, 2, 8, 9 /* … */], // schattiert
+    markierungen: [{ tag: 90, art: 'stichtag', beschreibung: 'Stichtag 01.04.2027' }],
+  },
+};
+const zelle: VergleichsZelle = {
+  text: 'Fa. Muster Bau', // steht rechts vom Balken
+  balken: {
+    vonTag: 10,
+    bisTag: 22,
+    art: 'vorgang', // 'vorgang' | 'sammelvorgang' | 'meilenstein'
+    kritisch: true,
+    fortschritt: 40, // 0–100
+    ist: { vonTag: 11, bisTag: 23 },
+    beschreibung: '11.01.2027 bis 22.01.2027, 10 Arbeitstage, kritisch', // Pflicht: Tooltip und Name
+  },
+};
+```
+
+| Teil          | Darstellung                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Kopf          | Zweizeilig: `kopf` oben, `unterkopf` unten; ohne `unterkopf` füllt `kopf` die Höhe. Die übrigen Spaltenköpfe reichen über beide Zeilen, Spaltengruppen bleiben wie bisher. Abschnitte, die über die Achse reichen, werden geschnitten.           |
+| Vorgang       | Balken mit Rand; `fortschritt` füllt den Anteil des ganzen Balkens von links, auch wenn er abgeschnitten ist.                                                                                                                                    |
+| Sammelvorgang | Schmale Klammer mit Füßen; ein abgeschnittenes Ende bleibt offen.                                                                                                                                                                                |
+| Meilenstein   | Raute auf `vonTag`.                                                                                                                                                                                                                              |
+| `kritisch`    | Eigene Farbe und zusätzlich schraffiert (Vorgang, Sammelvorgang) bzw. gerahmt (Meilenstein): nicht nur Farbe (U8).                                                                                                                               |
+| `ist`         | Schmaler Balken unter dem Balken.                                                                                                                                                                                                                |
+| Abgeschnitten | Was über die Achse reicht, wird abgeschnitten und bekommt am Rand der Achse die Marke ◀ bzw. ▶ (Tooltip: Beschreibung und Rand); ein Balken ganz außerhalb hat nur die Marke (Q5). Der Name nennt es („beginnt vor dem dargestellten Zeitraum“). |
+| Freie Tage    | Schattiert, in jeder Zeile und im Kopf.                                                                                                                                                                                                          |
+| Markierungen  | Senkrechte Linie über die Spalte, Fähnchen mit Tooltip im Kopf; die Beschreibungen sind die zugängliche Beschreibung des Spaltenkopfs. Eine `art` aus `[a-z0-9-]` wird zur Klasse `tx-grid__markierung--<art>`.                                  |
+
+Bedienung: Die Balkenzelle ist eine normale Zelle (Tastatur, Auswahl, Strg+C kopiert ihren Text, `onZelleAktiv`). Ihr
+Name (`aria-label`) ist Zelltext, `beschreibung` und, was abgeschnitten ist; `beschreibung` ist auch der Tooltip des
+Balkens. Der Fokus per Tastatur holt den Balken (oder seine Randmarke) waagerecht in Sicht; in einer Zelle ohne Balken
+bleibt die Ansicht stehen, solange die Achse zu sehen ist. Nicht enthalten: Ziehen mit der Maus (Bearbeiten in der App
+über Formulare und Befehle, A5), Zoom (die App wählt `pixelJeTag`), Anordnungspfeile.
+
+Farben: eigene Tokens in `grid.css` (`--tx-grid-balken`, `--tx-grid-balken-rand`, `--tx-grid-balken-kritisch`,
+`--tx-grid-balken-kritisch-rand`, `--tx-grid-balken-ist`, `--tx-grid-sammelvorgang`, `--tx-grid-meilenstein`,
+`--tx-grid-markierung`, `--tx-grid-freier-tag`), jedes ein Verweis auf ein Token aus ui-basis; Kontrast der Grafik
+mindestens 3 : 1 in hell und dunkel (`src/balkenfarben.test.ts`).
+
+Leistung: Was für alle Zeilen gleich ist (Achse, Kopf, Raster), entsteht einmal je Spalte. Eine Balkenzelle hat eine
+feste Zahl Elemente (Zelle, Text, ein SVG mit einem Pfad für alle freien Tage und einem je Art der Markierungen, dazu
+Balken, Ist-Balken und Randmarken), gleich wie lang die Achse ist. `e2e/leistung.spec.ts` zählt das und misst 1.000
+Zeilen auf einer Achse von 730 Tagen.

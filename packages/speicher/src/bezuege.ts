@@ -4,7 +4,18 @@
 // ChangeSet (auch ohne Ausführer, als Undo) einen Verweis ins Leere oder eine Regel über mehrere Aggregate verletzen würde.
 // Der Kern sieht immer nur ein Aggregat (D-70.3); was nie verletzt sein darf, hält `speicher`.
 
-import type { Aufmass, AuftragsLvKopf, Knoten, LvKopf, ProjektId, Rechnung } from '@tethys/vertrag';
+import type {
+  Aufmass,
+  AuftragsLvKopf,
+  Bautagebucheintrag,
+  BauwerksmodellKopf,
+  Honorarberechnung,
+  Knoten,
+  Mangel,
+  LvKopf,
+  ProjektId,
+  Rechnung,
+} from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import type { Datenbank } from './sql';
 
@@ -184,5 +195,108 @@ export function pruefeFreigabereihenfolge(db: Datenbank, auftragsLvId: string): 
     konflikt(
       `Rechnung ${String(z['frei'])} wäre freigegeben, die frühere Rechnung ${String(z['offen'])} nicht ` +
         '(die freigegebenen Rechnungen sind stets die mit den kleinsten Nummern, D-34 (7))',
+    );
+}
+
+// --- Bauwerksmodell (v1.6, Ticket 106; D-51, D-97.6) -------------------------------------------------------------------
+
+/**
+ * Anlegen: Die Modelldatei ist in genau dieser Größe abgelegt (kein Modell ohne Datei, D-51), und der Vorgänger ist ein
+ * Bauwerksmodell desselben Projekts (D-53).
+ */
+export function pruefeBauwerksmodellAnlegen(db: Datenbank, k: BauwerksmodellKopf): void {
+  const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [k.datei.hash])[0];
+  if (z === undefined)
+    konflikt(`Bauwerksmodell ${k.id} nennt die Modelldatei ${k.datei.hash}, die nicht abgelegt ist`);
+  else if (z['groesse'] !== k.datei.groesse)
+    konflikt(
+      `Bauwerksmodell ${k.id} nennt die Modelldatei ${k.datei.hash} mit ${String(k.datei.groesse)} Bytes, ` +
+        `abgelegt sind ${String(z['groesse'])}`,
+    );
+  const vorgaenger = k.vorgaengerId;
+  if (
+    vorgaenger !== null &&
+    db.zeilen('SELECT 1 AS da FROM bauwerksmodell WHERE id = ? AND projekt_id = ?', [vorgaenger, k.projektId])
+      .length === 0
+  )
+    konflikt(`Bauwerksmodell ${k.id} nennt den Vorgänger ${vorgaenger}, den es im Projekt nicht gibt`);
+}
+
+// --- Honorarberechnung, Mangel, Bautagebucheintrag (v1.6, Ticket 106; D-97.6) ---------------------------------------------
+
+/** Jede Kostenermittlung, auf die ein Honorarobjekt verweist, gibt es im Projekt (D-56, Lesart an `AnrechenbareKostenangabe`). */
+export function pruefeHonorarbezuege(db: Datenbank, h: Honorarberechnung): void {
+  for (const o of h.objekte) {
+    const k = o.anrechenbareKosten;
+    if (
+      k.art === 'kostenermittlung' &&
+      db.zeilen('SELECT 1 AS da FROM kostenermittlung WHERE id = ? AND projekt_id = ?', [
+        k.kostenermittlungId,
+        h.projektId,
+      ]).length === 0
+    )
+      konflikt(
+        `Honorarberechnung ${h.id} verweist auf die Kostenermittlung ${k.kostenermittlungId}, die es im Projekt nicht gibt`,
+      );
+  }
+}
+
+/** Löschen einer Kostenermittlung: Keine Honorarberechnung verweist darauf (Q5). */
+export function pruefeKostenermittlungLoeschen(db: Datenbank, id: string): void {
+  const z = db.zeilen(
+    `SELECT h.id FROM honorarberechnung h, json_each(h.objekte) o
+     WHERE json_extract(o.value, '$.anrechenbareKosten.kostenermittlungId') = ? ORDER BY h.id LIMIT 1`,
+    [id],
+  )[0];
+  if (z !== undefined)
+    konflikt(
+      `Kostenermittlung ${id} lässt sich nicht löschen, solange die Honorarberechnung ${String(z['id'])} darauf verweist`,
+    );
+}
+
+/**
+ * Mangel schreiben: Die Nummer hat im Projekt kein anderer Mangel; das Auftrags-LV und das Modell des Bauteils gibt es im
+ * Projekt (starke Verweise, D-97.6). `positionId` ist ein schwacher Verweis und wird nicht geprüft.
+ */
+export function pruefeMangel(db: Datenbank, m: Mangel): void {
+  const da = db.zeilen('SELECT id FROM mangel WHERE projekt_id = ? AND nummer = ? AND id <> ?', [
+    m.projektId,
+    m.nummer,
+    m.id,
+  ])[0];
+  if (da !== undefined)
+    konflikt(`Die Mangelnummer ${String(m.nummer)} hat im Projekt schon ${String(da['id'])}`);
+  if (m.auftragsLvId !== null && !auftragsLvImProjekt(db, m.auftragsLvId, m.projektId))
+    konflikt(`Mangel ${m.id} verweist auf das Auftrags-LV ${m.auftragsLvId}, das es im Projekt nicht gibt`);
+  const modell = m.bauteil?.bauwerksmodellId ?? null;
+  if (
+    modell !== null &&
+    db.zeilen('SELECT 1 AS da FROM bauwerksmodell WHERE id = ? AND projekt_id = ?', [modell, m.projektId])
+      .length === 0
+  )
+    konflikt(`Mangel ${m.id} verweist auf das Bauwerksmodell ${modell}, das es im Projekt nicht gibt`);
+}
+
+/** Bautagebucheintrag schreiben: Das Datum trägt im Projekt kein anderer Eintrag (D-57). */
+export function pruefeBautagebucheintrag(db: Datenbank, t: Bautagebucheintrag): void {
+  const da = db.zeilen('SELECT id FROM bautagebucheintrag WHERE projekt_id = ? AND datum = ? AND id <> ?', [
+    t.projektId,
+    t.datum,
+    t.id,
+  ])[0];
+  if (da !== undefined)
+    konflikt(`Das Datum ${t.datum} trägt im Projekt schon der Eintrag ${String(da['id'])}`);
+}
+
+/** Löschen: Kein späterer Stand nennt das Modell als Vorgänger, kein Mangel verweist darauf (D-97.6, D-64). */
+export function pruefeBauwerksmodellLoeschen(db: Datenbank, id: string): void {
+  const z = db.zeilen(
+    `SELECT 'Bauwerksmodell' AS art, id FROM bauwerksmodell WHERE vorgaenger_id = ?1
+     UNION ALL SELECT 'Mangel', id FROM mangel WHERE bauwerksmodell_id = ?1 ORDER BY 1, 2 LIMIT 1`,
+    [id],
+  )[0];
+  if (z !== undefined)
+    konflikt(
+      `Bauwerksmodell ${id} lässt sich nicht löschen, solange ${String(z['art'])} ${String(z['id'])} darauf verweist`,
     );
 }

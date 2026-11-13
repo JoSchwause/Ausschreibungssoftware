@@ -8,4 +8,4 @@
 | 3 | done | Branch `integration/welle-3` (lokal, nicht auf `main`), Tickets 29–50 resolved, Tor M2 „erfüllt mit gelisteten Unterschieden“ (D-18), Bericht `welle-3-bericht.md` |
 | 4 | done | Branch `integration/welle-4` (lokal), Tickets 51–69 resolved, **Tor M3 erreicht** (`apps/web/e2e/m3.spec.ts`), Bericht `welle-4-bericht.md` |
 | 5 | done | Branch `integration/welle-5` (lokal, ab Ende Welle 4, D-31), Tickets 70–92 resolved, **Tor M4 erreicht** (`apps/web/e2e/m4.spec.ts`, `apps/web/src/m4-kette.test.ts`), Bericht `welle-5-bericht.md` |
-| 6 | open | Umfang (G-05, Nachtrag 2026-11-12): zuerst Folgetickets 93–95, danach X1–X5, Schwerpunkt X1 BIM (`plan.md` §2 X); Eintritt siehe `welle-5-bericht.md` |
+| 6 | done | Branch `integration/welle-6` (lokal, ab `79e6680` = Merge von PR #10, D-49), Tickets 93–122 resolved, **Tore X1-Kern, X1-Erweitert, X2, X3, X4, X5 erreicht** (D-58; `apps/web/e2e/x1-kern.spec.ts`, `x1-erweitert.spec.ts`, `x2`–`x4.spec.ts`, Kettentests `apps/web/src/x1`–`x4-kette.test.ts`, ADR 0013/G-57), Folgetickets 123/124, Bericht `welle-6-bericht.md` |

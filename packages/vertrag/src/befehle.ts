@@ -20,6 +20,7 @@ import type {
   PositionId,
   ProjektId,
   ProtokollId,
+  VorgangId,
 } from './marken';
 import type {
   Angebot,
@@ -51,6 +52,10 @@ import type {
   Vergabeinformationen,
   Zuschlag,
 } from './modell';
+import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
+import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
+import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
+import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -95,7 +100,9 @@ export interface BieterAnlegen {
  *
  * Gelöscht wird nur das Projekt selbst. Hängen noch LVs, Angebote oder Auftrags-LVs daran, weist `speicher` das
  * ChangeSet mit `konflikt` ab; sie werden vorher mit eigenen Löschbefehlen entfernt (siehe „Offene Typfragen“). v1.4:
- * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts.
+ * ebenso Kostenermittlungen, Aufmaßblätter und Rechnungen des Projekts. v1.6 (Ticket 97 Punkt 8): ebenso Bauwerksmodelle,
+ * Bauzeitenpläne, Honorarberechnungen, Mängel und Bautagebucheinträge (die Bytes der Modelldateien gibt `speicher` frei,
+ * sobald kein Modell sie mehr nennt, siehe `Modelldateiablage`).
  */
 export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';
@@ -282,6 +289,12 @@ export interface LvStandAnlegen {
 }
 
 // --- Felder ändern (Tickets 07, 21) -----------------------------------------------------------------------
+//
+// Fehler eines Feldbefehls (v1.5, D-71.3; im LV und im Auftrags-LV): Hat der Baum des Aggregats keinen Knoten mit der
+// Kennung, `knoten-unbekannt`; trifft der Befehl einen vorhandenen Knoten, der das Feld nicht trägt (eine Gliederung oder
+// einen Hinweistext statt einer Position, eine Position statt eines Hinweistexts), `knotenart-unzulaessig`. Erst danach
+// prüft der Kern den Wert (`ungueltige-eingabe` mit `feld`). Das gilt für jeden Befehl dieses Abschnitts und ebenso für
+// `LeitbeschreibungSetzen` und `OrdnungszahlSetzen`.
 
 export interface KurztextAendern {
   readonly art: 'KurztextAendern';
@@ -374,9 +387,11 @@ export interface PositionsmerkmaleSetzen {
  * (L2); welches Aggregat gemeint ist, sagt im Protokoll `Protokolleintrag.aggregat` (`AggregatBezug`), beim Ausführen der
  * Zustand.
  *
- * Nur an einer Position (eine Kostengruppe je Position; sonst `knoten-unbekannt`). Der Kern prüft die Form der Nummer
- * (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und Datei kommen;
- * ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
+ * Nur an einer Position (eine Kostengruppe je Position). v1.5 (D-71.3): Fehler wie bei jedem Feldbefehl, in beiden
+ * Aggregaten: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten im Baum
+ * `knoten-unbekannt` (bis v1.4 stand hier für beides `knoten-unbekannt`; den Kern stellt Ticket 105 um). Der Kern prüft die
+ * Form der Nummer (drei Ziffern, die erste nicht 0; D-24) mit `ungueltige-eingabe` nach, weil Befehle auch aus Protokoll und
+ * Datei kommen; ob die Gruppe in einer Kostenermittlung vorkommt, prüft er nicht. ChangeSet: die Knotenänderung der Position
  * (`knoten.geaendert`), Summen unverändert. Kern-Handler Ticket 71.
  */
 export interface KostengruppeSetzen {
@@ -389,12 +404,33 @@ export interface KostengruppeSetzen {
  * Setzt die Textquelle einer Position; `null` entfernt sie (das Feld fehlt danach) (v1.4, Ticket 70 Punkt 5; G-17,
  * D-40). Ein leerer Text `''` ist keine Quelle: Der Kern legt dafür kein Feld ab wie bei `null` (Normalisierung beim
  * Befehl wie `''` bei der Einheit). ChangeSet: die Knotenänderung der Position, Summen unverändert. Kern-Handler
- * Ticket 71, ein Feldbefehl wie `KurztextAendern`.
+ * Ticket 71, ein Feldbefehl wie `KurztextAendern`: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine
+ * Kennung ohne Knoten im Baum `knoten-unbekannt` (v1.5, D-71.3).
  */
 export interface TextquelleSetzen {
   readonly art: 'TextquelleSetzen';
   readonly positionId: PositionId;
   readonly textquelle: string | null;
+}
+
+/**
+ * Setzt die Bauteilzuordnungen einer Position als **ganze Liste** (v1.6, Ticket 97 Punkt 3; X1c, D-52; Glossar
+ * „Bauteilzuordnung“), wie `MengenansatzSetzen` den ganzen Ansatz; `null` entfernt sie (das Feld fehlt danach), ein leeres
+ * `[]` ebenso (Normalisierung beim Befehl wie bei `MengenansatzSetzen`). Gilt im Ausschreibungs-LV und im Auftrags-LV:
+ * **derselbe** Typ steht in `LvBefehl` und in `AuftragsLvBefehl` (wie `KostengruppeSetzen`, D-70.1); welches Aggregat gemeint
+ * ist, sagt im Protokoll `Protokolleintrag.aggregat`, beim Ausführen der Zustand.
+ *
+ * Fehler (Lesart des Kerns, vorläufige Annahme, Entscheidung offen): wie jeder Feldbefehl (v1.5, D-71.3) eine Gliederung oder
+ * ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten `knoten-unbekannt`; danach `ungueltige-eingabe` mit
+ * `feld: 'bauteile'` für eine GlobalId nicht in Form (siehe `IfcGlobalId`), eine leere Mengenart oder dasselbe Paar aus
+ * GlobalId und Mengenart zweimal. Der Kern prüft keine GlobalId gegen ein Modell (A3); hängende Zuordnungen meldet die App
+ * (Befund). ChangeSet: die Knotenänderung der Position (`knoten.geaendert`), Summen unverändert. Kein Massenbefehl, auch
+ * nicht mit 5.000 Zuordnungen (D-54 misst Befehl und Undo in Ticket 105; Offene Typfrage, Ticket 97). Kern-Handler Ticket 105.
+ */
+export interface BauteileZuordnen {
+  readonly art: 'BauteileZuordnen';
+  readonly positionId: PositionId;
+  readonly bauteile: readonly Bauteilzuordnung[] | null;
 }
 
 // --- Kopfdaten bearbeiten (v1.2, D-02, D-07; Kern-Handler Ticket 41, Oberfläche Ticket 47) -------------------
@@ -517,7 +553,9 @@ export type LvBefehl =
   | NachtragsangabenSetzen
   | KostengruppeSetzen
   | VorlageSetzen
-  | TextquelleSetzen;
+  | TextquelleSetzen
+  // v1.6
+  | BauteileZuordnen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -611,9 +649,16 @@ export interface NachtragUebernehmen {
 
 /**
  * Befehle gegen ein Auftrags-LV (Zustand: `AuftragsLvZustand`). v1.4 (D-36 (4)): genau das Anlegen (Zuschlag, D-21), die
- * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV.
+ * Übernahme eines Nachtrags und die Kostengruppe einer Position; sonst ändert nichts das Auftrags-LV. v1.6 (Ticket 97
+ * Punkt 3, D-52): dazu die Bauteilzuordnungen einer Position. `MengenansatzSetzen` bleibt ein reiner LV-Befehl: Nach dem
+ * Zuschlag führt der Weg vom Modell zur Menge nur über das Aufmaßblatt (D-53).
  */
-export type AuftragsLvBefehl = AuftragsLeistungsverzeichnisAnlegen | NachtragUebernehmen | KostengruppeSetzen;
+export type AuftragsLvBefehl =
+  | AuftragsLeistungsverzeichnisAnlegen
+  | NachtragUebernehmen
+  | KostengruppeSetzen
+  // v1.6
+  | BauteileZuordnen;
 
 // --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
 //
@@ -790,8 +835,10 @@ export interface KostenermittlungseintragEntfernen {
 }
 
 /**
- * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein anderes
- * Aggregat verweist auf sie (das Budget der Kostenkontrolle wählt die App), also kein `konflikt`.
+ * Löscht die Kostenermittlung samt Einträgen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Das Budget der
+ * Kostenkontrolle wählt die App, es verweist nicht auf sie. v1.6 (Ticket 97 Punkt 5, D-56): Verweist eine Honorarberechnung
+ * auf sie (`AnrechenbareKostenangabe` mit `art: 'kostenermittlung'`), weist `speicher` mit `konflikt` ab (Q5): Die
+ * Honorarberechnung verlöre still ihre Grundlage.
  */
 export interface KostenermittlungLoeschen {
   readonly art: 'KostenermittlungLoeschen';
@@ -804,6 +851,229 @@ export type KostenermittlungBefehl =
   | KostenermittlungseintragSetzen
   | KostenermittlungseintragEntfernen
   | KostenermittlungLoeschen;
+
+// --- Bauwerksmodell (v1.6, X1; D-50, D-51, D-53; Ausführer in `bim`, Ticket 108) ---------------------------------------
+//
+// Der Ausführer sieht nur das Modell (Signatur `BauwerksmodellBefehlAusfuehren`) und prüft die Form (`ungueltige-eingabe`
+// mit `feld`); Verweise auf andere Aggregate und auf die Ablage der Bytes hält `speicher` (`konflikt`, Q5). ChangeSet:
+// `BauwerksmodellChangeSet` (Kopf immer, Struktur und Bauteile nur beim Anlegen und Löschen).
+
+/**
+ * Legt ein Bauwerksmodell an (Zustand `null`): aus dem Leseergebnis von `ifc` (Ticket 107) und den Angaben der App (Kennung,
+ * Name, Modelldatei, Vorgänger, Tag des Einlesens). Vorher legt die App die Bytes ab (`Speicher.modelldateien.ablegen`);
+ * nennt `bauwerksmodell.datei` keine abgelegten Bytes dieser Länge, weist `speicher` mit `konflikt` ab (D-51), ebenso einen
+ * Vorgänger, den es im Projekt nicht gibt.
+ *
+ * **Massenbefehl** (siehe `MASSENBEFEHLSARTEN`): Ein Modell hat bis zu 10.000 Bauteile (D-54); im Protokoll steht der Kopf
+ * ohne Struktur und Bauteile.
+ *
+ * Der Ausführer prüft die Form: `hash` 64 Hexziffern klein, `groesse` ganze Zahl ≥ 0, `schema` einer der Werte, `eingelesen`
+ * ein gültiges Datum, `name` nicht leer, `vorgaengerId` nicht die eigene Kennung, jede GlobalId in Form (siehe `IfcGlobalId`),
+ * jede Menge mit nicht leerem Namen und kanonischem Wert (3 Stellen), Verweise innerhalb des Modells auf ein Objekt desselben
+ * Modells (`elternGlobalId` und `strukturGlobalId` auf einen Strukturknoten, `teilVonGlobalId` auf ein Bauteil), die
+ * Struktur ohne Ring. Doppelte GlobalIds weist er nicht ab (D-50: beide bleiben; ein Befund beim Lesen und in der
+ * Modellprüfung). Der Befehl heißt im Feld wie das Aggregat (`bauwerksmodell`), wie jedes Anlegen eines Aggregats (D-97.2).
+ */
+export interface BauwerksmodellAnlegen {
+  readonly art: 'BauwerksmodellAnlegen';
+  readonly bauwerksmodell: Bauwerksmodell;
+}
+
+/**
+ * Benennt das Modell um, das Einzige, was sich nach dem Anlegen ändert; `name` nicht leer (sonst `ungueltige-eingabe`).
+ * ChangeSet: nur der Kopf, ohne Struktur und Bauteile (D-45, D-54). Der Ausführer bekommt wie jeder den ganzen Zustand, die
+ * App lädt dafür das Modell (`bauwerksmodelle.laden`); Ticket 106 und 114 messen `laden` bei 10.000 Bauteilen (Nachtrag
+ * Review, D-66; Offene Typfrage 6, Ticket 97).
+ */
+export interface BauwerksmodellUmbenennen {
+  readonly art: 'BauwerksmodellUmbenennen';
+  readonly name: string;
+}
+
+/**
+ * Löscht das Modell samt Struktur und Bauteilen. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich (D-51); das
+ * ChangeSet trägt den vollen Stand für Undo. `speicher` weist mit `konflikt` ab, solange ein anderes Modell dieses als
+ * Vorgänger nennt oder ein Mangel auf es verweist (`Mangel.bauteil.bauwerksmodellId`). Die Bytes der Datei bleiben in der
+ * Ablage, bis kein Modell sie mehr nennt (siehe `Modelldateiablage`); so findet ein Undo in derselben Sitzung sie wieder.
+ */
+export interface BauwerksmodellLoeschen {
+  readonly art: 'BauwerksmodellLoeschen';
+}
+
+/** Befehle gegen ein Bauwerksmodell (Zustand: `BauwerksmodellZustand`; v1.6, Ticket 97 Punkt 1). */
+export type BauwerksmodellBefehl = BauwerksmodellAnlegen | BauwerksmodellUmbenennen | BauwerksmodellLoeschen;
+
+// --- Bauzeitenplan (v1.6, X2; D-57; Ausführer in `bauzeit`, Ticket 109) ------------------------------------------------
+//
+// Der Ausführer sieht nur den Plan (Signatur `BauzeitenplanBefehlAusfuehren`) und prüft die Form (`ungueltige-eingabe` mit
+// `feld`; Lesarten an `Bauzeitenplan`, `Vorgang`, `Anordnungsbeziehung`, `Arbeitskalender`, `Isttermine`). Fachliche
+// Auffälligkeiten (Zyklus über Anordnungsbeziehungen, Beziehung oder Terminvorgabe an einem Sammelvorgang) sind Befunde der
+// Terminrechnung, keine Fehler (U5). ChangeSet aller Befehle: `BauzeitenplanChangeSet` mit dem ganzen Plan vorher und nachher
+// (D-57; Ticket 106 misst Undo bei 1.000 Vorgängen, über dem Budget folgt `Aenderungen<Vorgang>`).
+
+/**
+ * Legt einen Bauzeitenplan an (Zustand `null`), leer oder mit Vorgängen (etwa als Kopie eines Plans oder aus einer Fixture).
+ * Der Ausführer prüft die Form aller Teile und die Dokumentreihenfolge der Vorgänge (siehe `Bauzeitenplan`); doppelte
+ * Kennungen von Vorgängen: `ungueltige-eingabe`. Kein Massenbefehl (D-97.9): Ein Plan entsteht meist leer und wächst über
+ * `VorgangSetzen`.
+ */
+export interface BauzeitenplanAnlegen {
+  readonly art: 'BauzeitenplanAnlegen';
+  readonly bauzeitenplan: Bauzeitenplan;
+}
+
+/** Setzt Name, Projektbeginn und Arbeitskalender des Plans als ganze Werte; die Vorgänge bleiben. */
+export interface BauzeitenplankopfSetzen {
+  readonly art: 'BauzeitenplankopfSetzen';
+  readonly name: string;
+  readonly projektbeginn: string;
+  readonly kalender: Arbeitskalender;
+}
+
+/**
+ * Setzt einen Vorgang: legt ihn an (seine Kennung steht noch nicht im Plan) oder ersetzt den Vorgang mit dieser Kennung, und
+ * legt seine Lage fest (Lesart, vorläufige Annahme, Entscheidung offen):
+ * - Lage: unter `vorgang.elternId` direkt hinter dem Geschwister `nach` (ein Vorgang mit derselben `elternId`, sonst
+ *   `ungueltige-eingabe` mit `feld: 'nach'`); `nach: null` heißt als erstes Kind (bzw. als erster Vorgang der obersten Ebene).
+ *   Beim Ersetzen zieht der Teilbaum des Vorgangs mit; wer ihn nicht verschieben will, nennt das Geschwister, hinter dem er
+ *   schon steht.
+ * - Die Kinder eines ersetzten Vorgangs bleiben seine Kinder; seine Kennung ändert sich nie.
+ * - Anordnungsbeziehungen nennen nur Vorgänge, die nach dem Befehl im Plan stehen (sonst `ungueltige-eingabe`); einen
+ *   Vorgänger, den es noch nicht gibt, setzt die App nach dessen Anlegen.
+ */
+export interface VorgangSetzen {
+  readonly art: 'VorgangSetzen';
+  readonly vorgang: Vorgang;
+  readonly nach: VorgangId | null;
+}
+
+/**
+ * Entfernt einen Vorgang samt seinem Teilbaum (Lesart wie `KnotenLoeschen`, vorläufige Annahme, Entscheidung offen) und
+ * im selben ChangeSet jede Anordnungsbeziehung anderer Vorgänge, die einen entfernten Vorgang nennt, damit nie ein Verweis
+ * hängt. Eine Kennung ohne Vorgang im Plan: `knoten-unbekannt` (ein Vorgang ist ein Knoten des Plans). Q5: Hat der Vorgang
+ * Kinder oder Nachfolger, fragt die Oberfläche nach; das ChangeSet trägt den ganzen Plan vorher (Undo).
+ */
+export interface VorgangEntfernen {
+  readonly art: 'VorgangEntfernen';
+  readonly vorgangId: VorgangId;
+}
+
+/** Löscht den Plan samt Vorgängen (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist darauf. */
+export interface BauzeitenplanLoeschen {
+  readonly art: 'BauzeitenplanLoeschen';
+}
+
+/** Befehle gegen einen Bauzeitenplan (Zustand: `BauzeitenplanZustand`; v1.6, Ticket 97 Punkt 4). */
+export type BauzeitenplanBefehl =
+  BauzeitenplanAnlegen | BauzeitenplankopfSetzen | VorgangSetzen | VorgangEntfernen | BauzeitenplanLoeschen;
+
+// --- Honorarberechnung (v1.6, X3; D-56; Ausführer in `honorar`, Ticket 110) --------------------------------------------
+//
+// Der Ausführer sieht nur die Honorarberechnung (Signatur `HonorarberechnungBefehlAusfuehren`) und prüft die Form
+// (`ungueltige-eingabe` mit `feld`); was die HOAI anders vorsieht, ist ein Befund der Rechnung (siehe `Honorarobjekt`, U5). Den
+// Verweis auf eine Kostenermittlung hält `speicher` (`konflikt`, Q5). ChangeSet aller Befehle: `HonorarberechnungChangeSet`
+// mit der ganzen Honorarberechnung vorher und nachher.
+
+/** Legt eine Honorarberechnung an (Zustand `null`), leer oder mit Objekten. Kein Massenbefehl (wenige, kurze Objekte). */
+export interface HonorarberechnungAnlegen {
+  readonly art: 'HonorarberechnungAnlegen';
+  readonly honorarberechnung: Honorarberechnung;
+}
+
+/**
+ * Setzt den ganzen Inhalt der Honorarberechnung (Name, Objekte, Nebenkosten, MwSt-Satz) als ganze Werte; Kennung und Projekt
+ * bleiben. Ein Befehl für jede Änderung im Formular (ein Undo-Schritt), auch das Umbenennen.
+ */
+export interface HonorarberechnungSetzen {
+  readonly art: 'HonorarberechnungSetzen';
+  readonly name: string;
+  readonly objekte: readonly Honorarobjekt[];
+  readonly nebenkosten: Nebenkostenangabe | null;
+  readonly mwstSatz: Prozent;
+}
+
+/** Löscht die Honorarberechnung (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist darauf. */
+export interface HonorarberechnungLoeschen {
+  readonly art: 'HonorarberechnungLoeschen';
+}
+
+/** Befehle gegen eine Honorarberechnung (Zustand: `HonorarberechnungZustand`; v1.6, Ticket 97 Punkt 5). */
+export type HonorarberechnungBefehl =
+  HonorarberechnungAnlegen | HonorarberechnungSetzen | HonorarberechnungLoeschen;
+
+// --- Mängel und Bautagebuch (v1.6, X4; D-57; Ausführer in `bauleitung`, Ticket 111) -------------------------------------
+//
+// Kleine Einzelaggregate (D-57). Anders als die übrigen Ausführer sieht der Ausführer hier außer seinem Aggregat den **Bestand**
+// des Projekts (die übrigen Mängel bzw. Bautagebucheinträge), weil er die eindeutige Nummer bzw. das eindeutige Datum prüft
+// (D-57; Signaturen `MangelBefehlAusfuehren`, `BautagebucheintragBefehlAusfuehren`); `speicher` hält beides zusätzlich
+// (`konflikt`, auch für ein Undo ohne Ausführer). ChangeSets: das ganze, kleine Aggregat vorher und nachher.
+
+/**
+ * Legt einen Mangel an (Zustand `null`). Der Ausführer prüft die Form (siehe `Mangel`), den ganzen Verlauf (erster Eintrag
+ * `offen`, jeder weitere ein zulässiger Wechsel, sonst `statuswechsel-unzulaessig`; Daten nicht fallend) und die Nummer gegen
+ * den Bestand. Mit einem Verlauf aus mehreren Einträgen lässt sich ein schon angezeigter Mangel nacherfassen.
+ */
+export interface MangelAnlegen {
+  readonly art: 'MangelAnlegen';
+  readonly mangel: Mangel;
+}
+
+/**
+ * Setzt die Angaben des Mangels als ganze Werte: alles außer Kennung, Projekt, Nummer und Verlauf (die Nummer bleibt fest, der
+ * Verlauf ändert sich nur über `MangelstatusSetzen`). `festgestellt` nach dem Datum des ersten Verlaufseintrags:
+ * `ungueltige-eingabe` (`feld: 'festgestellt'`). Name wie `RechnungsangabenSetzen` (D-97.13).
+ */
+export interface MangelangabenSetzen {
+  readonly art: 'MangelangabenSetzen';
+  readonly titel: string;
+  readonly beschreibung: string | null;
+  readonly ort: string | null;
+  readonly auftragsLvId: Mangel['auftragsLvId'];
+  readonly positionId: Mangel['positionId'];
+  readonly bauteil: Mangel['bauteil'];
+  readonly festgestellt: string;
+  readonly frist: string | null;
+}
+
+/**
+ * Wechselt den Status: hängt `eintrag` an den Verlauf an (Glossar „Mängelverlauf“). Ein Wechsel, den `Mangelstatus` nicht
+ * zulässt (auch zum selben Status): `statuswechsel-unzulaessig`; ein Datum vor dem letzten Eintrag: `ungueltige-eingabe`
+ * (`feld: 'datum'`). Eine neue Frist (etwa zur Mängelanzeige) setzt die App im selben Undo-Schritt mit `MangelangabenSetzen`;
+ * seit dem Nachtrag Review (D-66) trägt ein Eintrag `angezeigt` dieselbe Frist auch selbst (`Mangelverlaufseintrag.frist`).
+ */
+export interface MangelstatusSetzen {
+  readonly art: 'MangelstatusSetzen';
+  readonly eintrag: Mangelverlaufseintrag;
+}
+
+/** Löscht den Mangel (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). Kein Aggregat verweist auf ihn. */
+export interface MangelLoeschen {
+  readonly art: 'MangelLoeschen';
+}
+
+/** Befehle gegen einen Mangel (Zustand: `MangelZustand`; v1.6, Ticket 97 Punkt 6). */
+export type MangelBefehl = MangelAnlegen | MangelangabenSetzen | MangelstatusSetzen | MangelLoeschen;
+
+/**
+ * Setzt einen Bautagebucheintrag: mit Zustand `null` legt er ihn an, sonst ersetzt er den Eintrag des Zustands (gleiche
+ * Kennung und gleiches Projekt, sonst `ungueltige-eingabe`). Ein Datum, das im Bestand schon ein anderer Eintrag trägt:
+ * `ungueltige-eingabe` (`feld: 'datum'`); die App zeigt dazu einen eigenen Hinweis (Ticket 120).
+ */
+export interface BautagebucheintragSetzen {
+  readonly art: 'BautagebucheintragSetzen';
+  readonly eintrag: Bautagebucheintrag;
+}
+
+/** Löscht den Eintrag (Q5: Bestätigung, Undo; das ChangeSet trägt den vollen Stand). */
+export interface BautagebucheintragLoeschen {
+  readonly art: 'BautagebucheintragLoeschen';
+}
+
+/**
+ * Befehle gegen einen Bautagebucheintrag (Zustand: `BautagebucheintragZustand`; v1.6, Ticket 97 Punkt 6). Name nach dem
+ * Aggregat wie bei jedem anderen (`MangelBefehl`), nicht nach dem ganzen Bautagebuch (D-97.13).
+ */
+export type BautagebucheintragBefehl = BautagebucheintragSetzen | BautagebucheintragLoeschen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
@@ -835,8 +1105,8 @@ export type HistorienBefehl = Rueckgaengig | Wiederholen;
 
 /**
  * Jeder Befehl, den das Befehlsprotokoll aufnimmt. v1.4 (Ticket 70 Punkt 10): dazu die Befehle an Aufmaßblatt, Rechnung
- * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` (LV und Auftrags-LV;
- * `Protokolleintrag.aggregat` unterscheidet).
+ * und Kostenermittlung. Jeder Befehlsname gehört zu genau einem Aggregat, außer `KostengruppeSetzen` und (v1.6)
+ * `BauteileZuordnen` (je LV und Auftrags-LV; `Protokolleintrag.aggregat` unterscheidet).
  */
 export type Befehl =
   | ProjektBefehl
@@ -847,7 +1117,13 @@ export type Befehl =
   // v1.4
   | AufmassBefehl
   | RechnungBefehl
-  | KostenermittlungBefehl;
+  | KostenermittlungBefehl
+  // v1.6 (Ticket 97)
+  | BauwerksmodellBefehl
+  | BauzeitenplanBefehl
+  | HonorarberechnungBefehl
+  | MangelBefehl
+  | BautagebucheintragBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
@@ -865,6 +1141,9 @@ export type Befehlsart = Befehl['art'];
  * v1.4 (Ticket 70 Punkt 10, D-70.5): dazu `AufmassAnlegen` (ein X31-Import trägt eine Zeile je Position des Auftrags-LV
  * samt Ansatzzeilen, wächst also mit dem LV wie `AngebotAnlegen`). Nicht: `NachtragUebernehmen` (ein Nachtrag ist kurz),
  * `RechnungAnlegen` (keine lange Liste), `KostenermittlungAnlegen` (höchstens ein Eintrag je Kostengruppennummer).
+ *
+ * v1.6 (Ticket 97 Punkt 1, D-54): dazu `BauwerksmodellAnlegen` (bis zu 10.000 Bauteile; der Kopf ist das Modell ohne
+ * Struktur und Bauteile).
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
@@ -872,6 +1151,8 @@ export const MASSENBEFEHLSARTEN = [
   'AuftragsLeistungsverzeichnisAnlegen',
   // v1.4
   'AufmassAnlegen',
+  // v1.6 (Ticket 97 Punkt 1, D-54): bis zu 10.000 Bauteile; der Kopf ohne Struktur und Bauteile
+  'BauwerksmodellAnlegen',
 ] as const;
 
 /** Name eines Massenbefehls. */

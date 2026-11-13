@@ -62,7 +62,7 @@ async function eineAenderung(kern: SpeicherKern, z: LvZustand): Promise<void> {
 describe('Summen nach Migration 2 (D-17)', () => {
   it('Dateiweg: das eingefrorene v1-Projekt hat danach die vollständigen Summen des Kerns, auch nach einer Änderung', async () => {
     const { kern } = await neuerKern();
-    const projektId = wert(kern.projektdateiImportieren(V1));
+    const projektId = wert(await kern.projektdateiImportieren(V1));
     pruefeAlleSummen(kern, projektId);
     const lv = wert(kern.lvLaden(V1_LV as never));
     expect(lv.summen.gesamt).toMatchObject({ summeBedarfOhneGesamtbetrag: '0.00', summeWahl: '0.00' });
@@ -117,7 +117,7 @@ describe('Summen nach Migration 2 (D-17)', () => {
     const vorher = JSON.parse(V1) as { leistungsverzeichnisse: { summen: Summenstand }[] };
 
     const { kern } = await neuerKern();
-    const projektId = wert(kern.projektdateiImportieren(kaputt));
+    const projektId = wert(await kern.projektdateiImportieren(kaputt));
     const lv = wert(kern.lvLaden(V1_LV as never));
     expect(lv.leistungsverzeichnis.knoten).toHaveLength(5);
     expect(lv.summen.gesamt).toEqual(vorher.leistungsverzeichnisse[0]?.summen.gesamt);

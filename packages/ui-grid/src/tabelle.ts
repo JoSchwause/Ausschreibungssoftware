@@ -6,7 +6,7 @@
 import { columnSizingFeature, createColumnHelper, tableFeatures } from '@tanstack/react-table';
 import type { LvSpalte, LvZeile } from '@tethys/vertrag';
 import { SPALTENTITEL } from './texte';
-import { STANDARDBREITE } from './vergleich';
+import { spaltenbreite } from './vergleich';
 import type { VergleichsSpalte, VergleichsZeile } from './vergleichTypen';
 
 export const features = tableFeatures({ columnSizingFeature });
@@ -22,8 +22,13 @@ export const SPALTENBREITE: Readonly<Record<LvSpalte, number>> = {
   einheit: 84,
   einheitspreis: 120,
   gesamtpreis: 128,
+  kostengruppe: 72,
 };
 
+/**
+ * Spalten ohne die Angabe `spalten`: die sieben vor `kostengruppe`. Die Spalte „KG“ (Ticket 93) nennt die App selbst, z. B.
+ * `[...STANDARDSPALTEN, 'kostengruppe']`.
+ */
 export const STANDARDSPALTEN: readonly LvSpalte[] = [
   'ordnungszahl',
   'positionsart',
@@ -45,17 +50,19 @@ const vergleichsHelfer = createColumnHelper<typeof features, VergleichsZeile>();
 /**
  * Spaltenmodell des Vergleichsgrids: aufeinanderfolgende Spalten derselben Gruppe werden eine Gruppenspalte (zweizeiliger
  * Kopf); TanStack liefert daraus die Kopfzeilen mit `colSpan` und `rowSpan`. Die Kennung einer Gruppenspalte ist
- * `gruppe:<Index der ersten Spalte>`, damit eine Gruppe, die zweimal vorkommt, eindeutig bleibt.
+ * `gruppe:<Index der ersten Spalte>`, damit eine Gruppe, die zweimal vorkommt, eindeutig bleibt. Eine Balkenspalte
+ * (Ticket 96) gehört nie zu einer Gruppe: Ihre Achse braucht beide Kopfzeilen.
  */
 export function vergleichsSpaltenDefinitionen(spalten: readonly VergleichsSpalte[]) {
   const ergebnis: ReturnType<typeof vergleichsHelfer.group>[] = [];
   const blatt = (s: VergleichsSpalte) =>
-    vergleichsHelfer.display({ id: s.id, header: s.kopf, size: s.breite ?? STANDARDBREITE });
+    vergleichsHelfer.display({ id: s.id, header: s.kopf, size: spaltenbreite(s) });
+  const gruppeVon = (s: VergleichsSpalte | undefined) => (s?.zeitleiste ? undefined : s?.gruppe);
   let i = 0;
   while (i < spalten.length) {
     const s = spalten[i];
     if (s === undefined) break;
-    const gruppe = s.gruppe;
+    const gruppe = gruppeVon(s);
     if (gruppe === undefined) {
       ergebnis.push(blatt(s));
       i++;
@@ -63,7 +70,7 @@ export function vergleichsSpaltenDefinitionen(spalten: readonly VergleichsSpalte
     }
     const start = i;
     const kinder = [];
-    while (i < spalten.length && spalten[i]?.gruppe?.id === gruppe.id) {
+    while (i < spalten.length && gruppeVon(spalten[i])?.id === gruppe.id) {
       const k = spalten[i];
       if (k !== undefined) kinder.push(blatt(k));
       i++;

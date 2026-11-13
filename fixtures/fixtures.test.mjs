@@ -5,10 +5,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { erzeugeAlle } from './erzeugen.mjs';
+import { erzeugeModell } from './ifc/erzeugen.mjs';
 import {
   parse, format, gesamtpreis, prozentVon, summen, rundeHalfUp, berechneZuschlagSollwerte,
   berechneSollwerteGaeb, preiseDesLv,
@@ -26,8 +29,9 @@ test('(a) Erzeugung ist deterministisch und byte-identisch mit den eingecheckten
   const zweite = erzeugeAlle();
   assert.deepEqual(Object.keys(erste).sort(), [
     'angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84', 'angebote/typisch-bieter-c.x84', // Ticket 69
-    'gross.json', 'handbeispiele.json', 'typisch-abrechnung.json', // Ticket 85
-    'typisch-angebote.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
+    'gross.json', 'handbeispiele.json', 'ifc/haus-v1-ifc2x3.ifc', 'ifc/haus-v1.ifc', 'ifc/haus-v2.ifc', // Ticket 99
+    'typisch-abrechnung.json', // Ticket 85
+    'typisch-angebote.json', 'typisch-bim.json', 'typisch.json', 'winzig.json', 'zuschlag.json',
   ]);
   for (const [name, inhalt] of Object.entries(erste)) {
     assert.equal(inhalt, zweite[name], `${name}: zweite Erzeugung weicht ab`);
@@ -1245,4 +1249,1526 @@ test('typisch-abrechnung: Kostenkontrolle nach AR 2 (D-37), Zeilensumme = Gesamt
   assert.deepEqual(kk.gesamt, {
     budget: '60900.00', vergabe: '58009.66', abrechnung: '16846.81', abweichung: '-2890.34',
   });
+});
+
+// ---------------------------------------------------------------- Ticket 99: IFC-Haus, großes Modell, Sollwerte X1
+//
+// Eigener kleiner STEP-Leser (ISO 10303-21) nur für diesen Selbsttest, unabhängig von `packages/ifc` und vom Erzeuger:
+// Zeilen `#n=NAME(...);`, Attribute rekursiv, Zeichenketten mit '' sowie \X\ und \X2\ dekodiert. Zahlen bleiben Text und
+// werden exakt als Dezimalwert gerechnet (BigInt), nie über `number` (N1). Die Attributzahl je Klasse steht hier nach den
+// öffentlichen Schemata IFC 4 (ADD2 TC1) und IFC 2x3 (TC1); eine Klasse, die hier fehlt, ist ein Fehler.
+
+const ATTRIBUTZAHL_GEMEINSAM = {
+  IFCPERSON: 8, IFCORGANIZATION: 5, IFCPERSONANDORGANIZATION: 3, IFCAPPLICATION: 4, IFCOWNERHISTORY: 8,
+  IFCSIUNIT: 4, IFCUNITASSIGNMENT: 1, IFCCARTESIANPOINT: 1, IFCDIRECTION: 1, IFCAXIS2PLACEMENT2D: 2,
+  IFCAXIS2PLACEMENT3D: 3, IFCLOCALPLACEMENT: 2, IFCGEOMETRICREPRESENTATIONCONTEXT: 6,
+  IFCGEOMETRICREPRESENTATIONSUBCONTEXT: 10, IFCPROJECT: 9, IFCSITE: 14, IFCBUILDING: 12, IFCBUILDINGSTOREY: 10,
+  IFCSPACE: 11, IFCRELAGGREGATES: 6, IFCRELCONTAINEDINSPATIALSTRUCTURE: 6, IFCSLAB: 9, IFCFOOTING: 9,
+  IFCRELVOIDSELEMENT: 6, IFCRELFILLSELEMENT: 6, IFCPRODUCTDEFINITIONSHAPE: 3, IFCSHAPEREPRESENTATION: 4,
+  IFCEXTRUDEDAREASOLID: 4, IFCRECTANGLEPROFILEDEF: 5, IFCPOLYLINE: 1, IFCELEMENTQUANTITY: 6, IFCRELDEFINESBYPROPERTIES: 6,
+  IFCPROPERTYSET: 5, IFCPROPERTYSINGLEVALUE: 4, IFCWALLTYPE: 10, IFCRELDEFINESBYTYPE: 6, IFCRELASSOCIATESMATERIAL: 6,
+  IFCRELASSOCIATESCLASSIFICATION: 6,
+};
+const ATTRIBUTZAHL = {
+  IFC4: {
+    ...ATTRIBUTZAHL_GEMEINSAM, IFCWALL: 9, IFCWINDOW: 13, IFCDOOR: 13, IFCOPENINGELEMENT: 9, IFCQUANTITYLENGTH: 5,
+    IFCQUANTITYAREA: 5, IFCQUANTITYVOLUME: 5, IFCMATERIAL: 3, IFCCLASSIFICATION: 7, IFCCLASSIFICATIONREFERENCE: 6,
+  },
+  IFC2X3: {
+    ...ATTRIBUTZAHL_GEMEINSAM, IFCWALL: 8, IFCWINDOW: 10, IFCDOOR: 10, IFCOPENINGELEMENT: 8, IFCQUANTITYLENGTH: 4,
+    IFCQUANTITYAREA: 4, IFCQUANTITYVOLUME: 4, IFCMATERIAL: 1, IFCCLASSIFICATION: 4, IFCCLASSIFICATIONREFERENCE: 4,
+  },
+};
+/** Klassen unter IfcRoot: Attribut 1 ist die GlobalId (22 Zeichen IFC-Base64, das erste trägt nur 2 Bit). */
+const IFC_ROOT = new Set([
+  'IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE', 'IFCRELAGGREGATES',
+  'IFCRELCONTAINEDINSPATIALSTRUCTURE', 'IFCWALL', 'IFCSLAB', 'IFCFOOTING', 'IFCWINDOW', 'IFCDOOR', 'IFCOPENINGELEMENT',
+  'IFCRELVOIDSELEMENT', 'IFCRELFILLSELEMENT', 'IFCELEMENTQUANTITY', 'IFCRELDEFINESBYPROPERTIES', 'IFCPROPERTYSET',
+  'IFCWALLTYPE', 'IFCRELDEFINESBYTYPE', 'IFCRELASSOCIATESMATERIAL', 'IFCRELASSOCIATESCLASSIFICATION',
+]);
+const GLOBALID = /^[0-3][0-9A-Za-z_$]{21}$/;
+/** Bauteile im Sinn von Ticket 98: Produkte in einem Strukturknoten, ohne Öffnungen. */
+const BAUTEILKLASSEN = new Set(['IFCWALL', 'IFCSLAB', 'IFCFOOTING', 'IFCWINDOW', 'IFCDOOR']);
+const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
+
+/** Zeichenkette nach ISO 10303-21 dekodieren ('' ist schon aufgelöst): \X2\hhhh…\X0\, \X\hh, \\. */
+function stepDekodieren(s) {
+  const rest = s.replace(/\\X2\\(?:[0-9A-F]{4})+\\X0\\|\\X\\[0-9A-F]{2}|\\\\/g, '');
+  assert.equal(rest.includes('\\'), false, `unbekannte Kodierung: ${s}`);
+  return s.replace(/\\X2\\((?:[0-9A-F]{4})+)\\X0\\|\\X\\([0-9A-F]{2})|\\\\/g, (_, x2, x) => {
+    if (x2) return x2.match(/.{4}/g).map((h) => String.fromCharCode(parseInt(h, 16))).join('');
+    if (x) return String.fromCharCode(parseInt(x, 16));
+    return '\\';
+  });
+}
+
+const RE_ENUM = /\.([A-Z0-9_]+)\./y;
+const RE_REF = /#(\d+)/y;
+const RE_ZAHL = /-?\d+\.\d*(?:E[-+]?\d+)?|-?\d+/y;
+const RE_TYP = /([A-Z0-9_]+)\(/y;
+
+/** Attribute einer Instanz: null ($), {abgeleitet} (*), Text, {enum}, {ref}, {zahl} (Text), Liste, {typ, wert}. */
+function stepAttribute(text, zeile) {
+  let i = 0;
+  const treffer = (re) => {
+    re.lastIndex = i;
+    const m = re.exec(text);
+    if (m) i = re.lastIndex;
+    return m;
+  };
+  const wert = () => {
+    const c = text[i];
+    if (c === '$') { i++; return null; }
+    if (c === '*') { i++; return { abgeleitet: true }; }
+    if (c === "'") {
+      let s = '';
+      for (i++; ; i++) {
+        assert.ok(i < text.length, `Zeichenkette nicht beendet: ${zeile}`);
+        if (text[i] !== "'") s += text[i];
+        else if (text[i + 1] === "'") { s += "'"; i++; }
+        else { i++; return stepDekodieren(s); }
+      }
+    }
+    if (c === '(') {
+      const liste = [];
+      i++;
+      if (text[i] === ')') { i++; return liste; }
+      for (;;) {
+        liste.push(wert());
+        if (text[i] === ')') { i++; return liste; }
+        assert.equal(text[i], ',', zeile);
+        i++;
+      }
+    }
+    let m = treffer(RE_ENUM);
+    if (m) return { enum: m[1] };
+    m = treffer(RE_REF);
+    if (m) return { ref: Number(m[1]) };
+    m = treffer(RE_ZAHL);
+    if (m) return { zahl: m[0] };
+    m = treffer(RE_TYP);
+    assert.ok(m, `unlesbar an Stelle ${i}: ${zeile}`);
+    const w = wert();
+    assert.equal(text[i], ')', zeile);
+    i++;
+    return { typ: m[1], wert: w };
+  };
+  const attr = [];
+  for (;;) {
+    attr.push(wert());
+    if (i === text.length) return attr;
+    assert.equal(text[i], ',', zeile);
+    i++;
+  }
+}
+
+/**
+ * Liest eine IFC-Datei streng als STEP: Kopf (FILE_DESCRIPTION, FILE_NAME mit fester Zeit, FILE_SCHEMA), Datenteil mit
+ * eindeutigen #n, Attributzahl je Klasse nach Schema, GlobalIds gültig und eindeutig, jeder Verweis auflösbar.
+ */
+function stepLesen(text) {
+  const zeilen = text.split('\n');
+  assert.equal(zeilen.pop(), '', 'die Datei endet mit einem Zeilenumbruch');
+  assert.deepEqual(zeilen.slice(0, 2), ['ISO-10303-21;', 'HEADER;']);
+  const kopfEnde = zeilen.indexOf('ENDSEC;');
+  const kopf = zeilen.slice(2, kopfEnde);
+  assert.equal(kopf.length, 3, 'Kopf: FILE_DESCRIPTION, FILE_NAME, FILE_SCHEMA');
+  assert.match(kopf[0], /^FILE_DESCRIPTION\(\('.*'\),'2;1'\);$/);
+  assert.match(kopf[1], /^FILE_NAME\('[a-z0-9-]+\.ifc','2026-11-12T00:00:00',\('.*'\),\('.*'\),'.*','.*',''\);$/);
+  const schema = /^FILE_SCHEMA\(\('(IFC4|IFC2X3)'\)\);$/.exec(kopf[2])?.[1];
+  assert.ok(schema, `Schema: ${kopf[2]}`);
+  assert.equal(zeilen[kopfEnde + 1], 'DATA;');
+  assert.deepEqual(zeilen.slice(-2), ['ENDSEC;', 'END-ISO-10303-21;']);
+  const instanzen = new Map();
+  const globalIds = new Set();
+  for (const zeile of zeilen.slice(kopfEnde + 2, -2)) {
+    const m = /^#(\d+)=([A-Z0-9_]+)\((.*)\);$/.exec(zeile);
+    assert.ok(m, `keine Instanzzeile: ${zeile}`);
+    const nr = Number(m[1]);
+    assert.equal(instanzen.has(nr), false, `#${nr} doppelt`);
+    const attr = stepAttribute(m[3], zeile);
+    assert.equal(attr.length, ATTRIBUTZAHL[schema][m[2]], `${schema}: Attributzahl von ${m[2]} (${zeile})`);
+    if (IFC_ROOT.has(m[2])) {
+      assert.match(attr[0], GLOBALID, zeile);
+      assert.equal(globalIds.has(attr[0]), false, `GlobalId doppelt: ${attr[0]}`);
+      globalIds.add(attr[0]);
+    }
+    instanzen.set(nr, { nr, typ: m[2], attr });
+  }
+  const verweise = (w) => {
+    if (Array.isArray(w)) return w.flatMap(verweise);
+    if (w?.ref !== undefined) return [w.ref];
+    return w?.typ ? verweise(w.wert) : [];
+  };
+  for (const i of instanzen.values()) {
+    for (const r of verweise(i.attr)) assert.ok(instanzen.has(r), `#${i.nr} verweist auf die fehlende #${r}`);
+  }
+  return { schema, kopf, instanzen };
+}
+
+test('IFC-Erzeuger: kleines Modell ist gültiges STEP, Bauteile gleichmäßig auf die Geschosse verteilt (Ticket 99)', () => {
+  const { schema, instanzen } = stepLesen(erzeugeModell({ bauteile: 37, geschosse: 3 }));
+  assert.equal(schema, 'IFC4');
+  const alle = [...instanzen.values()];
+  const von = (typ) => alle.filter((i) => i.typ === typ);
+  const bauteile = alle.filter((i) => BAUTEILKLASSEN.has(i.typ));
+  assert.equal(bauteile.length, 37);
+  const geschosse = von('IFCBUILDINGSTOREY');
+  assert.equal(geschosse.length, 3);
+  // je Geschoss eine Enthaltensbeziehung; 37 = 13 + 12 + 12 (der Rest der Teilung geht an die unteren Geschosse)
+  const enthalten = von('IFCRELCONTAINEDINSPATIALSTRUCTURE');
+  assert.deepEqual(enthalten.map((r) => r.attr[5].ref), geschosse.map((g) => g.nr));
+  assert.deepEqual(enthalten.map((r) => r.attr[4].length), [13, 12, 12]);
+  const enthaltenIn = enthalten.flatMap((r) => r.attr[4].map((e) => e.ref)).sort((a, b) => a - b);
+  assert.deepEqual(enthaltenIn, bauteile.map((b) => b.nr));
+  // jedes Bauteil hat Geometrie (Körper als extrudiertes Rechteck) und genau einen Mengensatz
+  const mengensaetze = new Map();
+  for (const r of von('IFCRELDEFINESBYPROPERTIES')) {
+    if (instanzen.get(r.attr[5].ref).typ !== 'IFCELEMENTQUANTITY') continue;
+    for (const o of r.attr[4]) mengensaetze.set(o.ref, (mengensaetze.get(o.ref) ?? 0) + 1);
+  }
+  for (const b of bauteile) {
+    assert.equal(mengensaetze.get(b.nr), 1, `#${b.nr} ${b.typ}: ein Mengensatz`);
+    const darstellungen = instanzen.get(b.attr[6].ref).attr[2].map((r) => instanzen.get(r.ref));
+    const koerper = darstellungen.filter((x) => x.attr[1] === 'Body');
+    assert.deepEqual(koerper.map((x) => x.attr[2]), ['SweptSolid'], `#${b.nr} ${b.typ}: ein Körper`);
+    assert.equal(instanzen.get(koerper[0].attr[3][0].ref).typ, 'IFCEXTRUDEDAREASOLID');
+  }
+  // Fenster und Türen füllen eine Öffnung, die eine Wand ausspart
+  const fuellt = new Map(von('IFCRELFILLSELEMENT').map((r) => [r.attr[5].ref, r.attr[4].ref]));
+  const spartAus = new Map(von('IFCRELVOIDSELEMENT').map((r) => [r.attr[5].ref, r.attr[4].ref]));
+  for (const b of bauteile.filter((x) => x.typ === 'IFCWINDOW' || x.typ === 'IFCDOOR')) {
+    assert.equal(instanzen.get(spartAus.get(fuellt.get(b.nr))).typ, 'IFCWALL', `#${b.nr} sitzt in einer Wand`);
+  }
+});
+
+test('IFC-Erzeuger: 10.000 Bauteile auf 10 Geschossen, deterministisch (gleicher SHA-256), etwa 25 MB (D-54)', () => {
+  const erster = erzeugeModell();
+  const zweiter = erzeugeModell({ bauteile: 10000, geschosse: 10 });
+  assert.equal(sha256(zweiter), sha256(erster));
+  assert.equal(zweiter, erster);
+  const zaehle = (re) => erster.match(re)?.length ?? 0;
+  assert.equal(zaehle(/^#\d+=IFC(?:WALL|SLAB|FOOTING|WINDOW|DOOR)\(/gm), 10000);
+  assert.equal(zaehle(/^#\d+=IFCBUILDINGSTOREY\(/gm), 10);
+  // je Geschoss 1.000 Bauteile: 166 volle Felder zu 6 (Außenwand, Fenster, Innenwand, Tür, Innenwand, Deckenfeld) + 4
+  assert.equal(zaehle(/^#\d+=IFCWINDOW\(/gm), 1670);
+  assert.equal(zaehle(/^#\d+=IFCSLAB\(/gm), 1660);
+  const megabyte = Buffer.byteLength(erster) / 1e6;
+  assert.ok(megabyte > 18 && megabyte < 30, `${megabyte} MB`);
+  // Verweise (außerhalb von Zeichenketten) zeigen nur auf vorhandene, also frühere Instanzen
+  let hoechste = 0;
+  for (const zeile of erster.split('\n')) {
+    const m = /^#(\d+)=/.exec(zeile);
+    if (!m) continue;
+    const nr = Number(m[1]);
+    assert.equal(nr, hoechste + 1, 'fortlaufend nummeriert');
+    hoechste = nr;
+    for (const r of zeile.slice(m[0].length).replace(/'(?:[^']|'')*'/g, '').matchAll(/#(\d+)/g)) {
+      assert.ok(Number(r[1]) < nr, `#${nr} verweist auf #${r[1]}`);
+    }
+  }
+});
+
+test('IFC-Erzeuger: Kommandozeile liefert denselben Text wie die Funktion', () => {
+  const aus = execFileSync(process.execPath, [datei('ifc/erzeugen.mjs'), '--bauteile', '12', '--geschosse', '2'], {
+    encoding: 'utf8',
+  });
+  assert.equal(aus, erzeugeModell({ bauteile: 12, geschosse: 2 }));
+  assert.throws(() => erzeugeModell({ bauteile: 0 }), /bauteile/);
+});
+
+const ifcDatei = (name) => readFileSync(datei(`ifc/${name}`), 'utf8');
+
+/** Exakter Dezimalwert `{ w, s }` aus STEP- oder JSON-Zahltext ("11.99", "3.", "-0.1175"); Rechnung nur mit BigInt. */
+function dz(text) {
+  const m = /^(-?)(\d+)\.?(\d*)$/.exec(text);
+  assert.ok(m, `keine Dezimalzahl: ${text}`);
+  const w = BigInt(m[2] + m[3]);
+  return { w: m[1] ? -w : w, s: m[3].length };
+}
+const dzMal = (...xs) => xs.reduce((a, b) => ({ w: a.w * b.w, s: a.s + b.s }));
+const dzPlus = (a, b) => {
+  const s = Math.max(a.s, b.s);
+  return { w: a.w * 10n ** BigInt(s - a.s) + b.w * 10n ** BigInt(s - b.s), s };
+};
+const dzMinus = (a, b) => dzPlus(a, { w: -b.w, s: b.s });
+/** Kanonischer Text ohne nachlaufende Nullen ("32.9725", "3", "-4.125"). */
+function dzText(a) {
+  let { w, s } = a;
+  while (s > 0 && w % 10n === 0n) { w /= 10n; s--; }
+  const z = (w < 0n ? -w : w).toString().padStart(s + 1, '0');
+  return `${w < 0n ? '-' : ''}${s === 0 ? z : `${z.slice(0, -s)}.${z.slice(-s)}`}`;
+}
+/** Kaufmännisch auf 3 Stellen (Menge, N3), nur für Werte ≥ 0. */
+const dz3 = (a) => format(rundeHalfUp(a.w, a.s, 3), 3);
+/** Länge aus der Datei in m: Faktor "1" (Datei in m) oder "1000" (Datei in mm, exakt durch 1000). */
+const inMeter = (text, faktor) => ({ ...dz(text), s: dz(text).s + (faktor === '1000' ? 3 : 0) });
+/** Mengen in SI-Einheit als `[Name, Text]`: Längen umgerechnet, Flächen in m², Volumen in m³ wie gelesen. */
+const mengenInSi = (werte, faktor) => [...werte].map(([name, q]) => [
+  name, dzText(q.klasse === 'IFCQUANTITYLENGTH' ? inMeter(q.text, faktor) : dz(q.text)),
+]);
+
+/**
+ * Sicht auf eine gelesene IFC-Datei: Strukturknoten über IfcRelAggregates, Bauteile mit Kennung (Tag), Geschoss
+ * (IfcRelContainedInSpatialStructure), Mengen als Text je Name (IfcElementQuantity), Eigenschaften, Körpermaßen
+ * (Profil XDim, YDim, Tiefe) und Öffnungen (IfcRelVoidsElement, IfcRelFillsElement), Klassifikation, Material, Typ.
+ */
+function modellLesen(text) {
+  const { schema, instanzen } = stepLesen(text);
+  const alle = [...instanzen.values()];
+  const von = (typ) => alle.filter((i) => i.typ === typ);
+  const get = (w) => instanzen.get(w.ref);
+  const teile = (ganzes) =>
+    von('IFCRELAGGREGATES').filter((r) => r.attr[4].ref === ganzes.nr).flatMap((r) => r.attr[5].map(get));
+  const zuordnung = (klasse, wert) => {
+    const karte = new Map();
+    for (const r of von(klasse)) for (const o of r.attr[4]) karte.set(o.ref, wert(get(r.attr[5])));
+    return karte;
+  };
+  const mengen = new Map();
+  const psets = new Map();
+  for (const r of von('IFCRELDEFINESBYPROPERTIES')) {
+    const satz = get(r.attr[5]);
+    for (const o of r.attr[4]) {
+      if (satz.typ === 'IFCELEMENTQUANTITY') {
+        assert.equal(mengen.has(o.ref), false, `#${o.ref}: ein Mengensatz`);
+        mengen.set(o.ref, {
+          satz: satz.attr[2],
+          werte: new Map(satz.attr[5].map(get).map((q) => [q.attr[0], { klasse: q.typ, text: q.attr[3].zahl }])),
+        });
+      } else {
+        if (!psets.has(o.ref)) psets.set(o.ref, new Map());
+        psets.get(o.ref).set(satz.attr[2], new Map(satz.attr[4].map(get).map((p) => [p.attr[0], p.attr[2]])));
+      }
+    }
+  }
+  const quader = (produkt) => {
+    const darstellungen = get(produkt.attr[6]).attr[2].map(get);
+    const koerper = get(darstellungen.find((x) => x.attr[1] === 'Body').attr[3][0]);
+    const profil = get(koerper.attr[0]);
+    return { dx: profil.attr[3].zahl, dy: profil.attr[4].zahl, dz: koerper.attr[3].zahl };
+  };
+  const geschossVon = zuordnung('IFCRELCONTAINEDINSPATIALSTRUCTURE', (g) => g.attr[2]);
+  const kgVon = zuordnung('IFCRELASSOCIATESCLASSIFICATION', (k) => k.attr[1]);
+  const materialVon = zuordnung('IFCRELASSOCIATESMATERIAL', (k) => k.attr[0]);
+  const typVon = zuordnung('IFCRELDEFINESBYTYPE', (k) => k.attr[2]);
+  const oeffnungenVon = new Map();
+  for (const r of von('IFCRELVOIDSELEMENT')) {
+    if (!oeffnungenVon.has(r.attr[4].ref)) oeffnungenVon.set(r.attr[4].ref, []);
+    oeffnungenVon.get(r.attr[4].ref).push(get(r.attr[5]));
+  }
+  const fuellungVon = new Map(von('IFCRELFILLSELEMENT').map((r) => [r.attr[4].ref, get(r.attr[5])]));
+  const bauteile = alle.filter((i) => BAUTEILKLASSEN.has(i.typ)).map((i) => ({
+    nr: i.nr, globalId: i.attr[0], klasse: i.typ, name: i.attr[2], kennung: i.attr[7],
+    geschoss: geschossVon.get(i.nr), kg: kgVon.get(i.nr), material: materialVon.get(i.nr), typ: typVon.get(i.nr),
+    mengen: mengen.get(i.nr), psets: psets.get(i.nr) ?? new Map(), quader: quader(i),
+    oeffnungen: (oeffnungenVon.get(i.nr) ?? []).map((o) => ({
+      name: o.attr[2], quader: quader(o), fuellung: fuellungVon.get(o.nr)?.attr[7] ?? null,
+    })),
+  }));
+  const einheit = (art) => von('IFCSIUNIT').find((u) => u.attr[1].enum === art);
+  return {
+    schema, instanzen, von, get, teile, bauteile, mengen, einheit,
+    bauteil: (kennung) => bauteile.find((b) => b.kennung === kennung),
+  };
+}
+
+test('IFC-Haus v1: IFC 4 in m, Struktur Projekt → Grundstück → Gebäude → EG/OG → Räume, Bauteile (Ticket 99)', () => {
+  const text = ifcDatei('haus-v1.ifc');
+  const m = modellLesen(text);
+  assert.equal(m.schema, 'IFC4');
+  assert.deepEqual(['LENGTHUNIT', 'AREAUNIT', 'VOLUMEUNIT'].map((a) => [m.einheit(a).attr[2], m.einheit(a).attr[3].enum]), [
+    [null, 'METRE'], [null, 'SQUARE_METRE'], [null, 'CUBIC_METRE'],
+  ]);
+  const [projekt] = m.von('IFCPROJECT');
+  assert.equal(projekt.attr[2], 'Musterhaus (erfunden)');
+  const [grundstueck] = m.teile(projekt);
+  const [gebaeude] = m.teile(grundstueck);
+  assert.deepEqual([grundstueck.typ, gebaeude.typ], ['IFCSITE', 'IFCBUILDING']);
+  const geschosse = m.teile(gebaeude);
+  assert.deepEqual(geschosse.map((g) => [g.typ, g.attr[2], g.attr[7], g.attr[9].zahl]), [
+    ['IFCBUILDINGSTOREY', 'EG', 'Erdgeschoss', '0.'], ['IFCBUILDINGSTOREY', 'OG', 'Obergeschoss', '3.'],
+  ]);
+  assert.deepEqual(geschosse.map((g) => m.teile(g).map((r) => `${r.typ} ${r.attr[2]} ${r.attr[7]}`)), [
+    ['IFCSPACE E.01 Wohnen', 'IFCSPACE E.02 Flur', 'IFCSPACE E.03 Küche'],
+    ['IFCSPACE O.01 Schlafen', 'IFCSPACE O.02 Flur', 'IFCSPACE O.03 Kind'],
+  ]);
+  // Bauteile je Geschoss und Klasse in Dateireihenfolge (Kennung = Tag)
+  const kennungen = (g, klasse) => m.bauteile.filter((b) => b.geschoss === g && b.klasse === klasse).map((b) => b.kennung);
+  assert.deepEqual(kennungen('EG', 'IFCFOOTING'), ['FU-S', 'FU-N', 'FU-W', 'FU-O']);
+  assert.deepEqual(kennungen('EG', 'IFCSLAB'), ['PL-EG']);
+  assert.deepEqual(kennungen('EG', 'IFCWALL'), ['AW-EG-S', 'AW-EG-N', 'AW-EG-W', 'AW-EG-O', 'IW-EG-1', 'IW-EG-2', 'IW-EG-3']);
+  assert.deepEqual(kennungen('EG', 'IFCWINDOW'), ['F-EG-S', 'F-EG-N', 'F-EG-W']);
+  assert.deepEqual(kennungen('EG', 'IFCDOOR'), ['T-EG-H', 'T-EG-1']);
+  assert.deepEqual(kennungen('OG', 'IFCSLAB'), ['DE-OG', 'DA-OG']);
+  assert.deepEqual(kennungen('OG', 'IFCWALL'), ['AW-OG-S', 'AW-OG-N', 'AW-OG-W', 'AW-OG-O', 'IW-OG-1', 'IW-OG-2']);
+  assert.deepEqual(kennungen('OG', 'IFCWINDOW'), ['F-OG-S', 'F-OG-F', 'F-OG-N']);
+  assert.deepEqual(kennungen('OG', 'IFCDOOR'), ['T-OG-1', 'T-OG-2']);
+  assert.equal(m.bauteile.length, 30);
+  // Namen mit Umlauten stehen als \X2\…\X0\ in der Datei und werden zum Klartext
+  assert.equal(m.bauteil('AW-EG-S').name, 'Außenwand Süd EG');
+  assert.ok(text.includes("'Au\\X2\\00DF\\X0\\enwand S\\X2\\00FC\\X0\\d EG'"));
+  // Öffnungen: jedes Fenster und jede Tür füllt eine Öffnung in einer Wand; die Bodenplatte hat eine Aussparung ohne Füllung
+  assert.equal(m.von('IFCOPENINGELEMENT').length, 11);
+  const fuellungen = m.bauteile.flatMap((b) => b.oeffnungen.map((o) => [b.klasse, b.kennung, o.fuellung]));
+  assert.deepEqual(fuellungen.filter(([klasse]) => klasse !== 'IFCWALL'), [['IFCSLAB', 'PL-EG', null]]);
+  const gefuellt = fuellungen.filter(([klasse]) => klasse === 'IFCWALL').map(([, , f]) => f).sort();
+  assert.deepEqual(gefuellt, m.bauteile.filter((b) => b.klasse === 'IFCWINDOW' || b.klasse === 'IFCDOOR')
+    .map((b) => b.kennung).sort());
+  assert.deepEqual(m.bauteil('AW-EG-S').oeffnungen.map((o) => o.fuellung), ['F-EG-S', 'T-EG-H']);
+  // Pset_WallCommon an jeder Wand: außen tragend, innen nichttragend; Wandtyp, Material, DIN-276-Kostengruppe
+  for (const b of m.bauteile.filter((x) => x.klasse === 'IFCWALL')) {
+    const aussen = b.kennung.startsWith('AW');
+    const p = b.psets.get('Pset_WallCommon');
+    assert.deepEqual([p.get('IsExternal'), p.get('LoadBearing')], [
+      { typ: 'IFCBOOLEAN', wert: { enum: aussen ? 'T' : 'F' } }, { typ: 'IFCBOOLEAN', wert: { enum: aussen ? 'T' : 'F' } },
+    ], b.kennung);
+    assert.equal(b.kg, aussen ? '331' : '342');
+  }
+  assert.deepEqual(m.bauteil('AW-EG-S').psets.get('Pset_WallCommon').get('AcousticRating'), {
+    typ: 'IFCLABEL', wert: "R'w 52 dB",
+  });
+  assert.deepEqual([m.bauteil('IW-EG-1').typ, m.bauteil('IW-EG-1').material], [
+    'Innenwand Kalksandstein 11,5', 'Mauerwerk Kalksandstein',
+  ]);
+  assert.deepEqual([m.bauteil('IW-OG-1').typ, m.bauteil('IW-OG-1').material], ['Trockenbauwand 10', 'Gipskarton']);
+  const [klassifikation] = m.von('IFCCLASSIFICATION');
+  assert.equal(klassifikation.attr[3], 'DIN 276');
+  assert.deepEqual(['FU-S', 'PL-EG', 'F-EG-S', 'T-EG-H', 'T-EG-1', 'DE-OG', 'DA-OG'].map((k) => m.bauteil(k).kg), [
+    '322', '322', '334', '334', '344', '351', '361',
+  ]);
+  for (const b of m.bauteile) assert.match(b.kg, /^[1-9]\d\d$/, b.kennung);
+});
+
+/**
+ * Prüft jede Menge eines Hauses gegen seine Geometrie, exakt: Wand und Fundament Länge/Dicke/Höhe aus dem Profil (die
+ * längere Seite ist die Länge) und der Tiefe; Seitenfläche brutto Länge × Höhe, netto minus Σ Breite × Höhe der
+ * Öffnungskörper; Volumen = Seitenfläche × Dicke. Platte: Fläche dx × dy, netto minus Aussparungen, Volumen × Dicke.
+ * Fenster und Tür: Breite und Höhe ihrer Öffnung, Fläche = Breite × Höhe, gleich OverallWidth/OverallHeight. Räume:
+ * Bruttofläche = Profil; Geschosse: Volumen = Fläche × Bruttohöhe. `faktor`: Länge der Datei je m ("1" oder "1000").
+ */
+function mengenGegenGeometrie(m, faktor) {
+  const inM = (text) => inMeter(text, faktor);
+  const menge = (werte, name) => {
+    const q = werte.get(name);
+    assert.ok(q, `Menge ${name} fehlt`);
+    return q.klasse === 'IFCQUANTITYLENGTH' ? inM(q.text) : dz(q.text);
+  };
+  const gleich = (ist, soll, text) => assert.equal(dzText(ist), dzText(soll), text);
+  const laengs = (q) => dzMinus(inM(q.dx), inM(q.dy)).w > 0n;
+  for (const b of m.bauteile) {
+    const w = b.mengen.werte;
+    const [x, y, h] = [b.quader.dx, b.quader.dy, b.quader.dz].map(inM);
+    const t = (name) => `${b.kennung} ${name}`;
+    if (b.klasse === 'IFCWALL' || b.klasse === 'IFCFOOTING') {
+      const [l, dicke] = laengs(b.quader) ? [x, y] : [y, x];
+      gleich(menge(w, 'Length'), l, t('Length'));
+      gleich(menge(w, 'Width'), dicke, t('Width'));
+      gleich(menge(w, 'Height'), h, t('Height'));
+      if (b.klasse === 'IFCFOOTING') {
+        for (const n of ['GrossVolume', 'NetVolume']) gleich(menge(w, n), dzMal(l, dicke, h), t(n));
+        continue;
+      }
+      const brutto = dzMal(l, h);
+      const netto = b.oeffnungen
+        .map((o) => dzMal(inM(laengs(b.quader) ? o.quader.dx : o.quader.dy), inM(o.quader.dz)))
+        .reduce(dzMinus, brutto);
+      gleich(menge(w, 'GrossSideArea'), brutto, t('GrossSideArea'));
+      gleich(menge(w, 'NetSideArea'), netto, t('NetSideArea'));
+      gleich(menge(w, 'GrossVolume'), dzMal(brutto, dicke), t('GrossVolume'));
+      gleich(menge(w, 'NetVolume'), dzMal(netto, dicke), t('NetVolume'));
+    } else if (b.klasse === 'IFCSLAB') {
+      const brutto = dzMal(x, y);
+      const netto = b.oeffnungen.map((o) => dzMal(inM(o.quader.dx), inM(o.quader.dy))).reduce(dzMinus, brutto);
+      gleich(menge(w, 'Width'), h, t('Width'));
+      gleich(menge(w, 'Perimeter'), dzMal(dz('2'), dzPlus(x, y)), t('Perimeter'));
+      gleich(menge(w, 'GrossArea'), brutto, t('GrossArea'));
+      gleich(menge(w, 'NetArea'), netto, t('NetArea'));
+      gleich(menge(w, 'GrossVolume'), dzMal(brutto, h), t('GrossVolume'));
+      gleich(menge(w, 'NetVolume'), dzMal(netto, h), t('NetVolume'));
+    } else {
+      const wirt = m.bauteile.find((x2) => x2.oeffnungen.some((o) => o.fuellung === b.kennung));
+      const oeffnung = wirt.oeffnungen.find((o) => o.fuellung === b.kennung);
+      const breite = inM(laengs(wirt.quader) ? oeffnung.quader.dx : oeffnung.quader.dy);
+      const hoehe = inM(oeffnung.quader.dz);
+      gleich(menge(w, 'Width'), breite, t('Width'));
+      gleich(menge(w, 'Height'), hoehe, t('Height'));
+      gleich(menge(w, 'Area'), dzMal(breite, hoehe), t('Area'));
+      const produkt = m.instanzen.get(b.nr);
+      gleich(inM(produkt.attr[8].zahl), hoehe, t('OverallHeight'));
+      gleich(inM(produkt.attr[9].zahl), breite, t('OverallWidth'));
+    }
+  }
+  for (const raum of m.von('IFCSPACE')) {
+    const p = m.get(m.get(m.get(raum.attr[6]).attr[2][0]).attr[3][0]);
+    const profil = m.get(p.attr[0]);
+    gleich(menge(m.mengen.get(raum.nr).werte, 'GrossFloorArea'), dzMal(inM(profil.attr[3].zahl), inM(profil.attr[4].zahl)));
+  }
+  for (const g of m.von('IFCBUILDINGSTOREY')) {
+    const w = m.mengen.get(g.nr).werte;
+    gleich(menge(w, 'GrossVolume'), dzMal(menge(w, 'GrossFloorArea'), menge(w, 'GrossHeight')), g.attr[2]);
+  }
+}
+
+test('IFC-Haus v1: Mengen passen zur Geometrie (Netto = Brutto − Öffnung), von Hand nachgerechnet (C4)', () => {
+  const m = modellLesen(ifcDatei('haus-v1.ifc'));
+  mengenGegenGeometrie(m, '1');
+  const t = (k, name) => m.bauteil(k).mengen.werte.get(name).text;
+  // Außenwand Süd EG: 11,99 × 2,75 = 32,9725; Fenster 1,26 × 1,385 = 1,7451 und Haustür 1,135 × 2,135 = 2,423225,
+  // zusammen 4,168325; netto 28,804175; Volumen × 0,365: 12,0349625 und 10,513523875.
+  assert.deepEqual(['GrossSideArea', 'NetSideArea', 'GrossVolume', 'NetVolume'].map((n) => t('AW-EG-S', n)), [
+    '32.9725', '28.804175', '12.0349625', '10.513523875',
+  ]);
+  assert.equal(t('AW-EG-O', 'NetSideArea'), '20.6525'); // 7,51 × 2,75 ohne Öffnung; 3 Stellen: 20,653 (.5 aufgerundet)
+  assert.equal(t('IW-EG-1', 'NetSideArea'), '18.87365'); // 20,6525 − Tür 0,885 × 2,01 = 1,77885
+  assert.equal(t('IW-EG-2', 'NetSideArea'), '8.64875'); // 3,145 × 2,75
+  assert.equal(t('IW-EG-3', 'NetSideArea'), '5.5'); // 2 × 2,75
+  assert.deepEqual(['GrossArea', 'NetArea'].map((n) => t('PL-EG', n)), ['98.7976', '98.6376']); // 11,99 × 8,24 − 0,4 × 0,4
+  assert.deepEqual(['FU-S', 'FU-N', 'FU-W', 'FU-O'].map((k) => t(k, 'NetVolume')), ['5.868', '5.868', '3.492', '3.492']);
+  assert.equal(t('T-EG-1', 'Area'), '1.77885');
+  // Räume: Lichtmaß; Wohnen netto ohne die Grundfläche des Raumteilers 2 × 0,115 = 0,23 (D-99.6)
+  const raum = (name) => {
+    const r = m.von('IFCSPACE').find((x) => x.attr[2] === name);
+    return ['GrossFloorArea', 'NetFloorArea'].map((n) => m.mengen.get(r.nr).werte.get(n).text);
+  };
+  assert.deepEqual(raum('E.01'), ['47.87625', '47.64625']); // 6,375 × 7,51
+  assert.deepEqual(raum('E.02'), ['17.33895', '17.33895']); // 4,77 × 3,635
+  assert.deepEqual(raum('O.03'), ['18.063375', '18.063375']); // 4,785 × 3,775
+  // Geschosse: BGF aus dem Außenmaß 11,99 × 8,24 = 98,7976; BRI EG × 3,25 (−0,25 bis 3,00), OG × 3,00 (3,00 bis 6,00)
+  const geschoss = (name) => {
+    const g = m.von('IFCBUILDINGSTOREY').find((x) => x.attr[2] === name);
+    return ['GrossHeight', 'GrossFloorArea', 'GrossVolume'].map((n) => m.mengen.get(g.nr).werte.get(n).text);
+  };
+  assert.deepEqual(geschoss('EG'), ['3.25', '98.7976', '321.0922']);
+  assert.deepEqual(geschoss('OG'), ['3.', '98.7976', '296.3928']);
+});
+
+test('IFC-Haus v1 in IFC 2x3: Längen in mm, nach Umrechnung dieselben Mengen und GlobalIds wie IFC 4 (Ticket 99)', () => {
+  const text = ifcDatei('haus-v1-ifc2x3.ifc');
+  const drei = modellLesen(text);
+  const vier = modellLesen(ifcDatei('haus-v1.ifc'));
+  assert.equal(drei.schema, 'IFC2X3');
+  const einheiten = (m) => ['LENGTHUNIT', 'AREAUNIT', 'VOLUMEUNIT'].map((a) => [m.einheit(a).attr[2]?.enum ?? null, m.einheit(a).attr[3].enum]);
+  assert.deepEqual(einheiten(drei), [['MILLI', 'METRE'], [null, 'SQUARE_METRE'], [null, 'CUBIC_METRE']]);
+  mengenGegenGeometrie(drei, '1000');
+  // Gleicher Inhalt: Bauteile mit GlobalId, Klasse, Name, Kennung, Geschoss, KG, Material, Typ, Eigenschaften, Mengen in m
+  const bauteile = (m, faktor) => m.bauteile.map((b) => ({
+    globalId: b.globalId, klasse: b.klasse, name: b.name, kennung: b.kennung, geschoss: b.geschoss, kg: b.kg,
+    material: b.material, typ: b.typ, satz: b.mengen.satz, mengen: mengenInSi(b.mengen.werte, faktor),
+    psets: [...b.psets].map(([satz, werte]) => [satz, [...werte].map(([n, w]) => [n, w.typ, w.wert.zahl ?? w.wert])]),
+    oeffnungen: b.oeffnungen.map((o) => [o.name, o.fuellung]),
+  }));
+  assert.deepEqual(bauteile(drei, '1000'), bauteile(vier, '1'));
+  // Strukturknoten mit denselben GlobalIds; Raum- und Geschossmengen in m gleich
+  const knoten = (m, faktor) => ['IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE'].flatMap((typ) =>
+    m.von(typ).map((k) => [typ, k.attr[0], k.attr[2], m.mengen.has(k.nr) ? mengenInSi(m.mengen.get(k.nr).werte, faktor) : null]));
+  assert.deepEqual(knoten(drei, '1000'), knoten(vier, '1'));
+  // Beispiel: Außenwand Süd EG, Länge 11990 mm = 11,99 m; Seitenfläche in m² wie in IFC 4
+  const aw = drei.bauteil('AW-EG-S').mengen.werte;
+  assert.deepEqual([aw.get('Length').text, aw.get('NetSideArea').text], ['11990.', '28.804175']);
+  assert.equal(drei.von('IFCBUILDINGSTOREY')[1].attr[9].zahl, '3000.');
+  // IFC 2x3 schreibt Umlaute als \X\hh (Latin-1), IFC 4 als \X2\hhhh\X0\
+  assert.ok(text.includes("'Au\\X\\DFenwand S\\X\\FCd EG'"));
+});
+
+/** Vergleich zweier gelesener Stände über die GlobalId (D-53): entfernt, hinzugefügt, geändert (Felder je Bauteil). */
+function staendeVergleichen(alt, neu) {
+  const a = new Map(alt.bauteile.map((b) => [b.globalId, b]));
+  const b = new Map(neu.bauteile.map((x) => [x.globalId, x]));
+  const geaendert = [];
+  for (const [id, vorher] of a) {
+    const nachher = b.get(id);
+    if (!nachher) continue;
+    const felder = [];
+    if (vorher.klasse !== nachher.klasse) felder.push('klasse');
+    if (vorher.name !== nachher.name) felder.push('name');
+    if (vorher.geschoss !== nachher.geschoss) felder.push('strukturknoten');
+    const mengen = [...vorher.mengen.werte].filter(([n, q]) => nachher.mengen.werte.get(n)?.text !== q.text);
+    if (mengen.length > 0) felder.push(`mengen ${mengen.map(([n]) => n).join(' ')}`);
+    if (felder.length > 0) geaendert.push([vorher.kennung, ...felder]);
+  }
+  return {
+    entfernt: [...a.keys()].filter((id) => !b.has(id)).map((id) => a.get(id).kennung),
+    hinzugefuegt: [...b.keys()].filter((id) => !a.has(id)).map((id) => b.get(id).kennung),
+    geaendert,
+  };
+}
+
+test('IFC-Haus v2: eine Wand entfernt, eine neu, eine länger, ein Fenster im OG, eine umbenannt, sonst gleich (Ticket 99)', () => {
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v2 = modellLesen(ifcDatei('haus-v2.ifc'));
+  assert.equal(v2.schema, 'IFC4');
+  mengenGegenGeometrie(v2, '1');
+  assert.deepEqual(staendeVergleichen(v1, v2), {
+    entfernt: ['IW-EG-3'],
+    hinzugefuegt: ['IW-EG-4'],
+    geaendert: [
+      ['PL-EG', 'name'],
+      ['AW-EG-W', 'mengen NetSideArea NetVolume'],
+      ['F-EG-W', 'strukturknoten'],
+      ['IW-EG-2', 'mengen Length GrossSideArea NetSideArea GrossVolume NetVolume'],
+      ['AW-OG-W', 'mengen NetSideArea NetVolume'],
+    ],
+  });
+  assert.equal(v2.bauteil('PL-EG').name, 'Bodenplatte WU-Beton');
+  // IW-EG-2 um 0,50 m länger: 3,645 × 2,75 = 10,02375 (vorher 8,64875)
+  assert.deepEqual(['Length', 'NetSideArea'].map((n) => v2.bauteil('IW-EG-2').mengen.werte.get(n).text), ['3.645', '10.02375']);
+  // Das Fenster West sitzt mit seiner Öffnung (gleiche GlobalId) jetzt in der Westwand des OG
+  assert.deepEqual(v2.bauteil('AW-EG-W').oeffnungen, []);
+  assert.deepEqual(v2.bauteil('AW-OG-W').oeffnungen.map((o) => o.fuellung), ['F-EG-W']);
+  const oeffnungsId = (m) => m.von('IFCOPENINGELEMENT').find((o) => o.attr[2] === 'Öffnung F-EG-W').attr[0];
+  assert.equal(oeffnungsId(v2), oeffnungsId(v1));
+  assert.deepEqual(['NetSideArea', 'NetVolume'].map((n) => v2.bauteil('AW-EG-W').mengen.werte.get(n).text), [
+    '20.6525', '7.5381625',
+  ]);
+  // Der neue Raumteiler: gleiche Art und Maße wie der entfernte, andere Lage; Strukturknoten und ihre Mengen bleiben
+  const neu = v2.bauteil('IW-EG-4');
+  assert.deepEqual([neu.klasse, neu.name, neu.geschoss, neu.typ, neu.mengen.werte.get('NetSideArea').text], [
+    'IFCWALL', 'Raumteiler Wohnen Nord', 'EG', 'Innenwand Kalksandstein 11,5', '5.5',
+  ]);
+  const knoten = (m) => ['IFCPROJECT', 'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE'].flatMap((typ) =>
+    m.von(typ).map((k) => [k.attr[0], k.attr[2], m.mengen.has(k.nr) ? mengenInSi(m.mengen.get(k.nr).werte, '1') : null]));
+  assert.deepEqual(knoten(v2), knoten(v1));
+});
+
+// ---------------------------------------------------------------- Ticket 99: Sollwerte des Tors X1 (typisch-bim.json)
+//
+// Gegenrechnung jeder Zahl aus den IFC-Texten (eigener Leser oben, Abgleich über die GlobalId) und aus `typisch.json`,
+// nur mit parse/format/gesamtpreis/prozentVon/summen (N2, N5), nie aus `ifc`, `bim`, `kern` oder `mengen`; dazu von Hand.
+
+const BIM = 'typisch-bim.json';
+/** Einheit der Position je Art der Menge (D-53: passt die Einheit nicht, ist das ein Befund, nie 0). */
+const EINHEIT_JE_MENGE = { IFCQUANTITYLENGTH: 'm', IFCQUANTITYAREA: 'm²', IFCQUANTITYVOLUME: 'm³' };
+const komma = (t) => t.replace('.', ',');
+
+/** Wert einer Ansatzzeile (D-53): die Menge des Bauteils in SI-Einheit, kaufmännisch auf 3 Stellen; `Stueck` = 1. */
+function zeilenwert(m, faktor, { globalId, mengenart }) {
+  const b = m.bauteile.find((x) => x.globalId === globalId);
+  assert.ok(b, `Bauteil ${globalId} fehlt im Modell`);
+  if (mengenart === 'Stueck') return '1.000';
+  const q = b.mengen.werte.get(mengenart);
+  assert.ok(q, `${b.kennung}: Menge ${mengenart} fehlt`);
+  return dz3(q.klasse === 'IFCQUANTITYLENGTH' ? inMeter(q.text, faktor) : dz(q.text));
+}
+
+/** Vordersatz eigens aus dem Modell: je zugeordnetem Bauteil, das im Modell steht, eine Zeile Formel 91 (D-53). */
+function vordersatzGegen(m, faktor, z, auswahl = null) {
+  const bauteile = z.bauteile.filter((b) => m.bauteile.some((x) => x.globalId === b.globalId)
+    && (auswahl === null || auswahl.has(b.globalId)));
+  const werte = bauteile.map((b) => zeilenwert(m, faktor, b));
+  return {
+    positionId: z.positionId,
+    oz: z.oz,
+    mengenansatz: werte.map((w, i) => ({ zeile: String(i + 1), formel: '91', ausdruck: komma(w), variable: null })),
+    menge: format(werte.reduce((s, w) => s + parse(w, 3), 0n), 3),
+  };
+}
+const ohneHerleitung = ({ positionId, oz, mengenansatz, menge }) => ({ positionId, oz, mengenansatz, menge });
+
+/**
+ * LV `typisch` mit neuen Mengen (Map Positions-ID → Menge), eigens gerechnet: GP = round(Menge × EP, 2) (N2); die
+ * Zuschlagsposition 02.0050 A = round(Basis × 8,50 %, 2) auf den GP ihrer Bezugsposition (R1, R5); Netto = Σ GP der
+ * Positionen, die ins Netto gehen; Nachlass, MwSt, Brutto nach N2/N5.
+ */
+function lvMitMengen(lv, mengen) {
+  const gp = new Map();
+  const positionen = lv.knoten.filter((k) => k.art === 'position');
+  for (const k of positionen.filter((x) => x.positionsart !== 'zuschlag')) {
+    gp.set(k.id, gesamtpreis(parse(mengen.get(k.id) ?? k.menge, 3), parse(k.einheitspreis, 3)));
+  }
+  for (const k of positionen.filter((x) => x.positionsart === 'zuschlag')) {
+    const basis = k.zuschlag.bezug.positionen.reduce((s, b) => s + gp.get(b.positionId), 0n);
+    gp.set(k.id, prozentVon(basis, parse(k.zuschlag.prozentsatz, 2)));
+  }
+  const netto = positionen.filter((k) => lv.sollwerte.positionen[k.id].inSumme).reduce((s, k) => s + gp.get(k.id), 0n);
+  return { gp: new Map([...gp].map(([id, w]) => [id, format(w, 2)])), summen: summen(netto, lv.nachlass, lv.mwstSatz) };
+}
+
+/** Prüft Sollwerte eines LV nach neuen Mengen: eigene Gegenrechnung und `berechneSollwerteGaeb` (Titelsummen, Ausweise). */
+function lvSollwerteGegen(lv, sollwerte, mengen) {
+  const gegen = lvMitMengen(lv, mengen);
+  assert.deepEqual(sollwerte.summen, gegen.summen);
+  for (const [id, gp] of gegen.gp) assert.equal(sollwerte.positionen[id].gp, gp, id);
+  const knoten = lv.knoten.map((k) => (mengen.has(k.id) ? { ...k, menge: mengen.get(k.id) } : k));
+  assert.deepEqual(sollwerte, berechneSollwerteGaeb(knoten, preiseDesLv, lv.nachlass, lv.mwstSatz));
+}
+
+test('typisch-bim: Zuordnung Bauteil ↔ Position von typisch, Mengenart passend zur Einheit (D-52, Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  assert.deepEqual([fx.schemaVersion, fx.art, fx.lvId, fx.lvName], ['fixture-v1', 'bimset', lv.id, lv.name]);
+  // Modelldateien mit SHA-256 der Bytes (D-51)
+  assert.deepEqual(fx.modelle.map((x) => [x.stand, x.datei, x.schema, x.laengeneinheit]), [
+    ['v1', 'ifc/haus-v1.ifc', 'IFC4', 'm'], ['v1', 'ifc/haus-v1-ifc2x3.ifc', 'IFC2X3', 'mm'], ['v2', 'ifc/haus-v2.ifc', 'IFC4', 'm'],
+  ]);
+  for (const x of fx.modelle) assert.equal(x.sha256, sha256(readFileSync(datei(x.datei), 'utf8')), x.datei);
+  const knoten = new Map(lv.knoten.map((k) => [k.id, k]));
+  const kennung = new Map(v1.bauteile.map((b) => [b.globalId, b.kennung]));
+  const uebersicht = fx.zuordnungen.map((z) => {
+    const k = knoten.get(z.positionId);
+    assert.deepEqual([z.oz, z.kurztext, z.einheit], [k.ordnungszahl, k.kurztext, k.einheit]);
+    assert.deepEqual(z.kennungen, z.bauteile.map((b) => kennung.get(b.globalId)));
+    // dasselbe Paar (GlobalId, Mengenart) nie zweimal an einer Position (D-52)
+    assert.equal(new Set(z.bauteile.map((b) => `${b.globalId}/${b.mengenart}`)).size, z.bauteile.length);
+    for (const b of z.bauteile) {
+      assert.deepEqual(Object.keys(b), ['globalId', 'mengenart']); // Form von `Positionsdaten.bauteile` (D-52)
+      const bauteil = v1.bauteile.find((x) => x.globalId === b.globalId);
+      const einheit = b.mengenart === 'Stueck' ? 'St' : EINHEIT_JE_MENGE[bauteil.mengen.werte.get(b.mengenart).klasse];
+      assert.equal(einheit, z.einheit, `${z.oz} ${bauteil.kennung} ${b.mengenart}`);
+    }
+    return [z.oz, z.bauteile[0].mengenart, z.kennungen.join(' ')];
+  });
+  // Von Hand: welche Bauteile des Hauses an welcher Position von typisch (README „BIM: Haus und Tor X1“)
+  assert.deepEqual(uebersicht, [
+    ['02.0040', 'GrossArea', 'PL-EG'],
+    ['02.0050', 'NetVolume', 'FU-S FU-N FU-W FU-O'],
+    ['02.0070', 'NetArea', 'PL-EG'],
+    ['02.0080', 'Length', 'AW-EG-S AW-EG-N AW-EG-W AW-EG-O'],
+    ['03.0010', 'NetSideArea', 'IW-EG-1 IW-EG-2 IW-EG-3'],
+    ['03.0020', 'NetSideArea', 'AW-EG-S AW-EG-N AW-EG-W AW-EG-O'],
+    ['03.0050', 'Stueck', 'T-EG-1 T-OG-1 T-OG-2'],
+  ]);
+});
+
+test('typisch-bim: X1-Kern, Ansatzzeilen gleich den Mengen im IFC-Text, LV-Summen nach N2/N5, von Hand (Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v1ifc2x3 = modellLesen(ifcDatei('haus-v1-ifc2x3.ifc'));
+  const k = fx.kern;
+  assert.deepEqual(k.vordersaetze.map(ohneHerleitung), fx.zuordnungen.map((z) => vordersatzGegen(v1, '1', z)));
+  // IFC 2x3 in mm liefert dieselben Zeilen (Umrechnung exakt, D-53)
+  assert.deepEqual(fx.zuordnungen.map((z) => vordersatzGegen(v1ifc2x3, '1000', z)), k.vordersaetze.map(ohneHerleitung));
+  for (const v of k.vordersaetze) {
+    // Zeilenergebnis = Formel 91 des Ausdrucks; Menge = Summe der gerundeten Zeilen; je Zeile eine Herleitung
+    assert.deepEqual(v.zeilenergebnisse, v.mengenansatz.map((a) => formel91(a.ausdruck)), v.oz);
+    assert.equal(v.herleitung.length, v.mengenansatz.length, v.oz);
+  }
+  // Von Hand (Herleitung in der README): 03.0010 Innenwände des EG, NetSideArea: 7,51 × 2,75 − Tür 0,885 × 2,01 =
+  // 18,87365 → 18,874; 3,145 × 2,75 = 8,64875 → 8,649; 2 × 2,75 = 5,500; Menge 33,023.
+  const vs = (oz) => k.vordersaetze.find((v) => v.oz === oz);
+  assert.deepEqual(vs('03.0010').mengenansatz.map((a) => a.ausdruck), ['18,874', '8,649', '5,500']);
+  // 03.0020 Außenwände des EG: 28,804175 → 28,804; 31,2274 → 31,227; 19,25365 → 19,254; 20,6525 → 20,653 (.5 auf)
+  assert.deepEqual(vs('03.0020').mengenansatz.map((a) => a.ausdruck), ['28,804', '31,227', '19,254', '20,653']);
+  assert.deepEqual(k.vordersaetze.map((v) => [v.oz, v.menge]), [
+    ['02.0040', '98.798'], // 11,99 × 8,24 = 98,7976
+    ['02.0050', '18.720'], // 2 × 12,225 × 0,6 × 0,8 + 2 × 7,275 × 0,6 × 0,8 = 2 × 5,868 + 2 × 3,492
+    ['02.0070', '98.638'], // 98,7976 − 0,4 × 0,4 = 98,6376
+    ['02.0080', '39.000'], // 11,99 + 11,99 + 7,51 + 7,51
+    ['03.0010', '33.023'],
+    ['03.0020', '99.938'],
+    ['03.0050', '3.000'], // drei Innentüren je 1 Stück
+  ]);
+  // LV nach der Übernahme: GP und Summen (N2, N5)
+  const mengen = new Map(k.vordersaetze.map((v) => [v.positionId, v.menge]));
+  lvSollwerteGegen(lv, k.sollwerte, mengen);
+  const gp = (oz, index = '') => k.sollwerte.positionen[
+    lv.knoten.find((x) => x.ordnungszahl === oz && (x.ozIndex ?? '') === index).id].gp;
+  // 33,023 × 48,750 = 1.609,87125 → 1.609,87; 18,720 × 168,900 = 3.161,808 → 3.161,81; Zuschlag 3.161,81 × 8,50 % =
+  // 268,75385 → 268,75; 98,798 × 11,480 = 1.134,20104 → 1.134,20; 98,638 × 52,700 = 5.198,2226 → 5.198,22;
+  // 39,000 × 18,760 = 731,64; 99,938 × 19,360 = 1.934,79968 → 1.934,80; 3,000 × 134,500 = 403,50.
+  assert.deepEqual(
+    [gp('03.0010'), gp('02.0050'), gp('02.0050', 'A'), gp('02.0040'), gp('02.0070'), gp('02.0080'), gp('03.0020'), gp('03.0050')],
+    ['1609.87', '3161.81', '268.75', '1134.20', '5198.22', '731.64', '1934.80', '403.50'],
+  );
+  // Netto 55.465,59 − 33.839,52 (bisherige GP samt Zuschlag) + 14.442,79 = 36.068,86; Nachlass 2 % = 721,3772 → 721,38;
+  // Netto n. N. 35.347,48; MwSt 19 % = 6.716,0212 → 6.716,02; Brutto 42.063,50.
+  assert.deepEqual(k.sollwerte.summen, {
+    netto: '36068.86', nachlass: '721.38', nettoNachNachlass: '35347.48', mwst: '6716.02', brutto: '42063.50',
+  });
+  // Torweg der E2E (D-99.2): nur die Innenwände des EG an 03.0010, Netto 55.465,59 − 10.354,50 + 1.609,87 = 46.720,96;
+  // Nachlass 934,4192 → 934,42; Netto n. N. 45.786,54; MwSt 8.699,4426 → 8.699,44; Brutto 54.485,98.
+  const tor = k.torweg;
+  assert.deepEqual(tor.positionIds, [fx.zuordnungen.find((z) => z.oz === '03.0010').positionId]);
+  lvSollwerteGegen(lv, tor.sollwerte, new Map([[tor.positionIds[0], vs('03.0010').menge]]));
+  assert.deepEqual(tor.sollwerte.summen, {
+    netto: '46720.96', nachlass: '934.42', nettoNachNachlass: '45786.54', mwst: '8699.44', brutto: '54485.98',
+  });
+});
+
+test('typisch-bim: Bauteile v1 und v2 mit Mengen auf 3 Stellen, exakt und hergeleitet, gleich dem IFC-Text (Ticket 99)', () => {
+  const fx = laden(BIM);
+  for (const [stand, name] of [['v1', 'haus-v1.ifc'], ['v2', 'haus-v2.ifc']]) {
+    const m = modellLesen(ifcDatei(name));
+    const klasse = (k) => `Ifc${k.slice(3, 4)}${k.slice(4).toLowerCase()}`;
+    assert.deepEqual(fx.bauteile[stand].map(({ globalId, kennung, klasse: kl, name: n, geschoss, mengen }) => ({
+      globalId, kennung, klasse: kl, name: n, geschoss, mengen: mengen.map((q) => [q.name, q.wert, q.exakt]),
+    })), m.bauteile.map((b) => ({
+      globalId: b.globalId, kennung: b.kennung, klasse: klasse(b.klasse), name: b.name, geschoss: b.geschoss,
+      mengen: [...b.mengen.werte].map(([n, q]) => [n, dz3(dz(q.text)), dzText(dz(q.text))]),
+    })), stand);
+    for (const b of fx.bauteile[stand]) for (const q of b.mengen) assert.match(q.herleitung, /= -?[\d.,]+$|^[\d,]+$/, `${b.kennung} ${q.name}`);
+  }
+});
+
+const summe3 = (werte) => format(werte.reduce((s, w) => s + parse(w, 3), 0n), 3);
+/** Menge mit Vorzeichen auf 3 Stellen ("-4.125"), gerundet wird nie ein negativer Wert. */
+const mitVz3 = (w) => (w < 0n ? `-${format(-w, 3)}` : format(w, 3));
+
+test('typisch-bim: X1-Erweitert, BGF, BRI, NRF aus Geschoss- und Raummengen, Kostenschätzung über Kennwerte (Ticket 99)', () => {
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const { din277, kostenschaetzung: ks } = fx.erweitert;
+  const menge = (k, name) => dz3(dz(v1.mengen.get(k.nr).werte.get(name).text));
+  const geschosse = v1.von('IFCBUILDINGSTOREY');
+  const raeume = v1.von('IFCSPACE');
+  // Je Geschoss BGF (GrossFloorArea) und BRI (GrossVolume), je Raum NRF (NetFloorArea), je auf 3 Stellen, dann summiert
+  assert.deepEqual(din277.geschosse.map((g) => [g.globalId, g.name, g.bgf, g.bri]), geschosse.map((g) => [
+    g.attr[0], g.attr[2], menge(g, 'GrossFloorArea'), menge(g, 'GrossVolume'),
+  ]));
+  const geschossVon = new Map(geschosse.flatMap((g) => v1.teile(g).map((r) => [r.nr, g.attr[2]])));
+  assert.deepEqual(din277.raeume.map((r) => [r.globalId, r.name, r.langname, r.geschoss, r.nrf]), raeume.map((r) => [
+    r.attr[0], r.attr[2], r.attr[7], geschossVon.get(r.nr), menge(r, 'NetFloorArea'),
+  ]));
+  assert.deepEqual(din277.summen, {
+    bgf: summe3(din277.geschosse.map((g) => g.bgf)), bri: summe3(din277.geschosse.map((g) => g.bri)),
+    nrf: summe3(din277.raeume.map((r) => r.nrf)),
+  });
+  // Von Hand: BGF 98,7976 → 98,798 je Geschoss, 197,596; BRI 321,0922 → 321,092 und 296,3928 → 296,393, 617,485;
+  // NRF 47,646 (Wohnen netto ohne Raumteiler) + 17,339 + 17,935 + 47,876 + 17,393 + 18,063 = 166,252.
+  assert.deepEqual(din277.summen, { bgf: '197.596', bri: '617.485', nrf: '166.252' });
+  assert.deepEqual(din277.raeume.map((r) => r.nrf), ['47.646', '17.339', '17.935', '47.876', '17.393', '18.063']);
+  // Kostenschätzung (D-52): je KG Betrag = round(BGF × Kennwert, 2); Kennwerte erfunden, € je m² BGF (C1)
+  assert.deepEqual([ks.stufe, ks.bezugsgroesse], ['kostenschaetzung', { art: 'BGF', wert: din277.summen.bgf, einheit: 'm²' }]);
+  assert.deepEqual(ks.eintraege.map((x) => x.nummer), ks.kennwerte.map((x) => x.nummer));
+  ks.eintraege.forEach((x, i) => {
+    const kennwert = ks.kennwerte[i].kennwert;
+    assert.match(kennwert, /^\d+\.\d{2}$/);
+    assert.match(x.nummer, /^[1-9]\d\d$/);
+    assert.equal(x.betrag, format(rundeHalfUp(parse(ks.bezugsgroesse.wert, 3) * parse(kennwert, 2), 5, 2), 2), x.nummer);
+    assert.ok(x.bemerkung.includes('BGF 197,596 m²'), x.bemerkung);
+  });
+  assert.equal(ks.gesamt, format(ks.eintraege.reduce((s, x) => s + parse(x.betrag, 2), 0n), 2));
+  // Von Hand: 197,596 × 148,30 = 29.303,4868 → 29.303,49; 197,596 × 418,75 = 82.743,325 → 82.743,33 (.5 aufgerundet)
+  assert.deepEqual(ks.eintraege.map((x) => [x.nummer, x.betrag]), [
+    ['320', '29303.49'], ['330', '79562.03'], ['340', '25973.99'], ['350', '37385.16'], ['360', '19334.77'],
+    ['400', '82743.33'],
+  ]);
+  assert.equal(ks.gesamt, '274302.77');
+});
+
+test('typisch-bim: X1-Erweitert, Aufmaßblatt aus Auswahl „Geschoss EG“ je zugeordneter Position (D-53, Ticket 99)', () => {
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const a = fx.erweitert.aufmassAusAuswahl;
+  const eg = v1.von('IFCBUILDINGSTOREY').find((g) => g.attr[2] === 'EG');
+  assert.deepEqual([a.modell, a.auswahl], ['v1', { art: 'geschoss', globalId: eg.attr[0], name: 'EG' }]);
+  // ausgewählt sind alle Bauteile im EG (17); je zugeordneter Position mit ausgewählten Bauteilen eine Zeile
+  const auswahl = new Set(v1.bauteile.filter((b) => b.geschoss === 'EG').map((b) => b.globalId));
+  assert.equal(auswahl.size, 17);
+  const gegen = fx.zuordnungen.map((z) => vordersatzGegen(v1, '1', z, auswahl)).filter((v) => v.mengenansatz.length > 0);
+  assert.deepEqual(a.positionen.map(ohneHerleitung), gegen);
+  for (const p of a.positionen) {
+    const z = fx.zuordnungen.find((x) => x.positionId === p.positionId);
+    assert.deepEqual(p.bauteile, z.bauteile.map((b) => b.globalId).filter((id) => auswahl.has(id)), p.oz);
+  }
+  // Von Hand: alles wie der Vordersatz, nur 03.0050 zählt allein die Tür des EG (T-EG-1): 1,000 statt 3,000
+  assert.deepEqual(a.positionen.map((p) => [p.oz, p.menge]), [
+    ['02.0040', '98.798'], ['02.0050', '18.720'], ['02.0070', '98.638'], ['02.0080', '39.000'], ['03.0010', '33.023'],
+    ['03.0020', '99.938'], ['03.0050', '1.000'],
+  ]);
+});
+
+test('typisch-bim: X1-Erweitert, Vergleich v1 → v2, betroffene Positionen, Mengen aktualisieren mit v2 (D-53, Ticket 99)', () => {
+  const lv = laden('typisch.json');
+  const fx = laden(BIM);
+  const v1 = modellLesen(ifcDatei('haus-v1.ifc'));
+  const v2 = modellLesen(ifcDatei('haus-v2.ifc'));
+  const { vergleich, betroffenePositionen, mengenAktualisieren: ma } = fx.erweitert;
+  // Vergleich über die GlobalId: Klasse, Name, Strukturknoten (Geschoss) und Mengen (auf 3 Stellen, wie gelesen)
+  const klasse = (k) => `Ifc${k.slice(3, 4)}${k.slice(4).toLowerCase()}`;
+  const kopf = (b) => ({ globalId: b.globalId, kennung: b.kennung, klasse: klasse(b.klasse), name: b.name, geschoss: b.geschoss });
+  const nachId = (m) => new Map(m.bauteile.map((b) => [b.globalId, b]));
+  const [a, b] = [nachId(v1), nachId(v2)];
+  assert.deepEqual([vergleich.vorher, vergleich.nachher], ['v1', 'v2']);
+  assert.deepEqual(vergleich.entfernt, [...a.values()].filter((x) => !b.has(x.globalId)).map(kopf));
+  assert.deepEqual(vergleich.hinzugefuegt, [...b.values()].filter((x) => !a.has(x.globalId)).map(kopf));
+  const geaendert = [];
+  for (const vorher of a.values()) {
+    const nachher = b.get(vorher.globalId);
+    if (!nachher) continue;
+    const g = { globalId: vorher.globalId, kennung: vorher.kennung, felder: [] };
+    if (vorher.klasse !== nachher.klasse) {
+      g.felder.push('klasse');
+      g.klasse = { vorher: klasse(vorher.klasse), nachher: klasse(nachher.klasse) };
+    }
+    if (vorher.name !== nachher.name) {
+      g.felder.push('name');
+      g.name = { vorher: vorher.name, nachher: nachher.name };
+    }
+    if (vorher.geschoss !== nachher.geschoss) {
+      g.felder.push('strukturknoten');
+      g.strukturknoten = { vorher: vorher.geschoss, nachher: nachher.geschoss };
+    }
+    const mengen = [...vorher.mengen.werte].map(([n, q]) => ({
+      name: n, vorher: dz3(dz(q.text)), nachher: dz3(dz(nachher.mengen.werte.get(n).text)),
+    })).filter((x) => x.vorher !== x.nachher);
+    if (mengen.length > 0) {
+      g.felder.push('mengen');
+      g.mengen = mengen;
+    }
+    if (g.felder.length > 0) geaendert.push(g);
+  }
+  assert.deepEqual(vergleich.geaendert, geaendert);
+  // Von Hand: entfernt IW-EG-3, neu IW-EG-4; IW-EG-2 3,145 → 3,645 m (8,64875 → 10,02375 m²); Westwand EG ohne, Westwand
+  // OG mit dem Fenster 1,01 × 1,385 = 1,39885 m² (19,25365 ↔ 20,6525); Fenster West EG → OG; Bodenplatte umbenannt.
+  assert.deepEqual(vergleich.geaendert.map((g) => [g.kennung, ...g.felder]), [
+    ['PL-EG', 'name'], ['AW-EG-W', 'mengen'], ['F-EG-W', 'strukturknoten'], ['IW-EG-2', 'mengen'], ['AW-OG-W', 'mengen'],
+  ]);
+  assert.deepEqual(vergleich.geaendert[3].mengen.map((x) => [x.name, x.vorher, x.nachher]), [
+    ['Length', '3.145', '3.645'], ['GrossSideArea', '8.649', '10.024'], ['NetSideArea', '8.649', '10.024'],
+    ['GrossVolume', '0.995', '1.153'], ['NetVolume', '0.995', '1.153'],
+  ]);
+  assert.deepEqual([vergleich.entfernt.map((x) => x.kennung), vergleich.hinzugefuegt.map((x) => x.kennung)], [
+    ['IW-EG-3'], ['IW-EG-4'],
+  ]);
+  // Mengen aktualisieren mit v2 (D-53): Zeilen nur für Bauteile im gewählten Modell; fehlt eines, Befund, nie 0
+  assert.equal(ma.modell, 'v2');
+  assert.deepEqual(ma.vordersaetze.map(ohneHerleitung), fx.zuordnungen.map((z) => vordersatzGegen(v2, '1', z)));
+  const p0010 = fx.zuordnungen.find((z) => z.oz === '03.0010');
+  assert.deepEqual(ma.befunde, [{
+    positionId: p0010.positionId, oz: '03.0010', art: 'bauteil-fehlt', globalId: p0010.bauteile[2].globalId, kennung: 'IW-EG-3',
+  }]);
+  assert.deepEqual(ma.vordersaetze.find((v) => v.oz === '03.0010').mengenansatz.map((x) => x.ausdruck), ['18,874', '10,024']);
+  lvSollwerteGegen(lv, ma.sollwerte, new Map(ma.vordersaetze.map((v) => [v.positionId, v.menge])));
+  // Betroffene Positionen: Vordersatz mit v2 anders als mit v1, Differenz = nachher − vorher
+  const vorher = new Map(fx.kern.vordersaetze.map((v) => [v.positionId, v]));
+  assert.deepEqual(betroffenePositionen, ma.vordersaetze
+    .filter((v) => JSON.stringify(v.mengenansatz) !== JSON.stringify(vorher.get(v.positionId).mengenansatz))
+    .map((v) => ({
+      positionId: v.positionId, oz: v.oz, vorher: vorher.get(v.positionId).menge, nachher: v.menge,
+      differenz: mitVz3(parse(v.menge, 3) - parse(vorher.get(v.positionId).menge, 3)),
+    })));
+  // Von Hand: 03.0010 18,874 + 10,024 = 28,898 (vorher 33,023), −4,125; 03.0020 28,804 + 31,227 + 20,653 + 20,653 =
+  // 101,337 (vorher 99,938), +1,399. LV: 28,898 × 48,750 = 1.408,7775 → 1.408,78; 101,337 × 19,360 = 1.961,88432 →
+  // 1.961,88; Netto 36.068,86 − 1.609,87 − 1.934,80 + 1.408,78 + 1.961,88 = 35.894,85; Nachlass 717,897 → 717,90;
+  // Netto n. N. 35.176,95; MwSt 6.683,6205 → 6.683,62; Brutto 41.860,57.
+  assert.deepEqual(betroffenePositionen.map((p) => [p.oz, p.vorher, p.nachher, p.differenz]), [
+    ['03.0010', '33.023', '28.898', '-4.125'], ['03.0020', '99.938', '101.337', '1.399'],
+  ]);
+  assert.deepEqual(ma.sollwerte.summen, {
+    netto: '35894.85', nachlass: '717.90', nettoNachNachlass: '35176.95', mwst: '6683.62', brutto: '41860.57',
+  });
+});
+
+// ---------------------------------------------------------------- Ticket 112: Bauzeitenplan, Tor X2 (bauzeit.json)
+// Eigene Terminrechnung ohne das Paket `bauzeit`: Datum als ganze Tagnummer (Date.UTC nur als reine Kalenderrechnung, nie die
+// Uhr), Feiertage aus eigener Osterformel und Liste, Netzplan mit Zeitpunkten in Arbeitstagen nach den Lesarten von
+// `BAUZEIT_ANNAHMEN` (README „Bauzeitenplan: Tor X2“). Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const TAG_MS = 86_400_000;
+/** "2026-11-02" → Tage seit 1970-01-01; ungültige Daten scheitern. */
+function tagAus(text) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  assert.ok(m, `kein Datum: ${text}`);
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  assert.equal(new Date(t).toISOString().slice(0, 10), text, `ungültiges Datum: ${text}`);
+  return t / TAG_MS;
+}
+const tagText = (n) => new Date(n * TAG_MS).toISOString().slice(0, 10);
+/** ISO-Wochentag, 1 = Montag. */
+const isoWochentag = (n) => ((new Date(n * TAG_MS).getUTCDay() + 6) % 7) + 1;
+
+/** Ostersonntag nach der anonymen gregorianischen Osterformel (Meeus, Jones, Butcher) als Tagnummer. */
+function ostersonntag(jahr) {
+  const a = jahr % 19;
+  const b = Math.floor(jahr / 100);
+  const c = jahr % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+}
+
+/** Gesetzliche Feiertage eines Jahres: bundesweit, dazu Sachsen nach SächsSFG § 1 Abs. 1 (nur die Länder dieser Fixture). */
+function feiertageVon(jahr, land) {
+  const fest = (monat, tag) => Date.UTC(jahr, monat - 1, tag) / TAG_MS;
+  const o = ostersonntag(jahr);
+  // Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, 3. Oktober, 25. und 26. Dezember
+  const tage = [fest(1, 1), o - 2, o + 1, fest(5, 1), o + 39, o + 50, fest(10, 3), fest(12, 25), fest(12, 26)];
+  if (land === 'SN') {
+    const tag22 = fest(11, 22);
+    // Reformationsfest; Buß- und Bettag = Mittwoch vor dem 23. November (Fronleichnam gilt in Sachsen nur regional)
+    tage.push(fest(10, 31), tag22 - ((isoWochentag(tag22) - 3 + 7) % 7));
+  } else {
+    assert.equal(land, null, `Land ${land} ist in der Nachrechnung nicht abgebildet`);
+  }
+  return tage;
+}
+
+/** Arbeitstage ab dem Projektbeginn als Tagnummern: Index k = k-ter Arbeitstag (k = 0 der erste). */
+function arbeitstageAb(projektbeginn, kalender, anzahl) {
+  const frei = new Set(kalender.freieTage.map(tagAus));
+  const feiertage = new Map();
+  const istArbeitstag = (n) => {
+    const jahr = new Date(n * TAG_MS).getUTCFullYear();
+    if (!feiertage.has(jahr)) feiertage.set(jahr, new Set(feiertageVon(jahr, kalender.bundesland)));
+    return kalender.arbeitstage.includes(isoWochentag(n)) && !feiertage.get(jahr).has(n) && !frei.has(n);
+  };
+  const tage = [];
+  for (let n = tagAus(projektbeginn); tage.length < anzahl; n += 1) if (istArbeitstag(n)) tage.push(n);
+  return tage;
+}
+
+/** Wiederholt `schritt` (liefert „etwas geändert“), bis nichts mehr ändert; mehr Runden als Vorgänge hieße Zyklus. */
+function bisStabil(runden, schritt) {
+  for (let runde = 0; schritt(); runde += 1) assert.ok(runde <= runden, 'Zyklus');
+}
+
+/**
+ * Terminrechnung (Methode des kritischen Wegs) mit Zeitpunkten: Anfang a = Index des ersten Arbeitstags, Ende e = a + Dauer.
+ * Ende-Anfang a ≥ e(V) + Abstand, Anfang-Anfang a ≥ a(V) + Abstand, Ende-Ende e ≥ e(V) + Abstand, Anfang-Ende e ≥ a(V) +
+ * Abstand; nie vor dem Projektbeginn. Rückwärts vom Projektende E = max e, kein spätes Ende nach E. Gesamtpuffer = spätester
+ * Anfang − Anfang; freier Puffer = kleinster Spielraum zu Nachfolgern in der frühen Lage, höchstens E − e. Sammelvorgang als
+ * Hülle seiner Kinder. Nur für stimmige Pläne ohne Terminvorgabe und ohne Beziehung am Sammelvorgang (die Fixture hat keine).
+ */
+function terminplanNachrechnen(plan) {
+  const tage = arbeitstageAb(plan.projektbeginn, plan.kalender, 400);
+  const tag = (k) => tagText(tage[k]);
+  const kinder = new Map();
+  for (const v of plan.vorgaenge) {
+    if (v.elternId !== null) kinder.set(v.elternId, [...(kinder.get(v.elternId) ?? []), v]);
+  }
+  const blaetter = plan.vorgaenge.filter((v) => !kinder.has(v.id));
+  for (const v of plan.vorgaenge) {
+    assert.equal(v.fruehesterBeginn, null, 'Terminvorgaben bildet die Nachrechnung nicht ab');
+    if (kinder.has(v.id)) assert.deepEqual(v.vorgaenger, [], 'Beziehung am Sammelvorgang bildet die Nachrechnung nicht ab');
+  }
+  const blatt = new Map(blaetter.map((v) => [v.id, v]));
+  const a = new Map(blaetter.map((v) => [v.id, 0]));
+  const e = (id) => a.get(id) + blatt.get(id).dauer;
+  const untergrenze = (v, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return e(p) + b.abstand;
+      case 'anfang-anfang': return a.get(p) + b.abstand;
+      case 'ende-ende': return e(p) + b.abstand - v.dauer;
+      case 'anfang-ende': return a.get(p) + b.abstand - v.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const v of blaetter) {
+      const neu = Math.max(0, ...v.vorgaenger.map((b) => untergrenze(v, b)));
+      if (neu !== a.get(v.id)) {
+        a.set(v.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  const E = Math.max(...blaetter.map((v) => e(v.id)));
+  const nachfolger = (id) => blaetter.flatMap((s) => s.vorgaenger.filter((b) => b.vorgaengerId === id).map((b) => [s, b]));
+  // Rückwärts: spätestes Ende le (Zeitpunkt), spätester Anfang la = le − Dauer
+  const le = new Map(blaetter.map((v) => [v.id, E]));
+  const la = (id) => le.get(id) - blatt.get(id).dauer;
+  const obergrenze = (p, s, b) => {
+    switch (b.art) {
+      case 'ende-anfang': return la(s.id) - b.abstand;
+      case 'anfang-anfang': return la(s.id) - b.abstand + p.dauer;
+      case 'ende-ende': return le.get(s.id) - b.abstand;
+      case 'anfang-ende': return le.get(s.id) - b.abstand + p.dauer;
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  bisStabil(blaetter.length, () => {
+    let geaendert = false;
+    for (const p of blaetter) {
+      const neu = Math.min(E, ...nachfolger(p.id).map(([s, b]) => obergrenze(p, s, b)));
+      if (neu !== le.get(p.id)) {
+        le.set(p.id, neu);
+        geaendert = true;
+      }
+    }
+    return geaendert;
+  });
+  /** Spielraum einer Beziehung in der frühen Lage. */
+  const spielraum = (s, b) => {
+    const p = b.vorgaengerId;
+    switch (b.art) {
+      case 'ende-anfang': return a.get(s.id) - (e(p) + b.abstand);
+      case 'anfang-anfang': return a.get(s.id) - (a.get(p) + b.abstand);
+      case 'ende-ende': return e(s.id) - (e(p) + b.abstand);
+      case 'anfang-ende': return e(s.id) - (a.get(p) + b.abstand);
+      default: throw new Error(`Anordnungsart ${b.art}`);
+    }
+  };
+  const termine = new Map();
+  for (const v of blaetter) {
+    const gesamtpuffer = la(v.id) - a.get(v.id);
+    termine.set(v.id, {
+      beginn: tag(a.get(v.id)),
+      ende: v.dauer > 0 ? tag(e(v.id) - 1) : tag(a.get(v.id)),
+      spaetesterBeginn: tag(la(v.id)),
+      spaetestesEnde: v.dauer > 0 ? tag(le.get(v.id) - 1) : tag(la(v.id)),
+      gesamtpuffer,
+      freierPuffer: Math.min(E - e(v.id), ...nachfolger(v.id).map(([s, b]) => spielraum(s, b))),
+      kritisch: gesamtpuffer <= 0,
+    });
+  }
+  const frueher = (x, y) => (y < x ? y : x);
+  const spaeter = (x, y) => (y > x ? y : x);
+  const huelle = (v) => {
+    if (termine.has(v.id)) return termine.get(v.id);
+    const t = kinder.get(v.id).map(huelle);
+    const h = {
+      beginn: t.map((x) => x.beginn).reduce(frueher),
+      ende: t.map((x) => x.ende).reduce(spaeter),
+      spaetesterBeginn: t.map((x) => x.spaetesterBeginn).reduce(frueher),
+      spaetestesEnde: t.map((x) => x.spaetestesEnde).reduce(spaeter),
+      gesamtpuffer: Math.min(...t.map((x) => x.gesamtpuffer)),
+      freierPuffer: Math.min(...t.map((x) => x.freierPuffer)),
+      kritisch: t.some((x) => x.kritisch),
+    };
+    termine.set(v.id, h);
+    return h;
+  };
+  // Kritische Wege: von einem kritischen Vorgang am Projektbeginn über Beziehungen ohne Spielraum bis zum Projektende
+  const wege = [];
+  const weiter = (weg) => {
+    const letzter = weg[weg.length - 1];
+    if (e(letzter.id) === E) wege.push(weg.map((v) => v.id));
+    for (const [s, b] of nachfolger(letzter.id)) {
+      if (termine.get(s.id).kritisch && spielraum(s, b) === 0) weiter([...weg, s]);
+    }
+  };
+  for (const v of blaetter) if (termine.get(v.id).kritisch && a.get(v.id) === 0) weiter([v]);
+  const art = (v) => (kinder.has(v.id) ? 'sammelvorgang' : v.dauer === 0 ? 'meilenstein' : 'vorgang');
+  const vorgaenge = plan.vorgaenge.map((v) => ({ vorgangId: v.id, art: art(v), termine: huelle(v) }));
+  return {
+    ergebnis: {
+      projektbeginn: tag(0),
+      projektende: vorgaenge.map((x) => x.termine.ende).reduce(spaeter),
+      vorgaenge,
+      kritischeWege: wege,
+      befunde: [],
+    },
+    spielraum,
+  };
+}
+
+test('bauzeit: Kalender Sachsen 2026, Ostern und Buß- und Bettag eigens gerechnet (Ticket 112)', () => {
+  // Ostersonntag 2026 = 05.04., 2027 = 28.03., 2019 = 21.04., 2000 = 23.04. (Kirchenkalender)
+  assert.deepEqual([2026, 2027, 2019, 2000].map((j) => tagText(ostersonntag(j))), ['2026-04-05', '2027-03-28', '2019-04-21', '2000-04-23']);
+  assert.deepEqual(feiertageVon(2026, 'SN').map(tagText).sort(), [
+    '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-01', '2026-05-14', '2026-05-25', '2026-10-03', '2026-10-31',
+    '2026-11-18', '2026-12-25', '2026-12-26',
+  ]);
+  // Buß- und Bettag: Mittwoch vor dem 23.11. (2017 fiel er auf den 22.11., 2027 fällt er auf den 17.11.)
+  assert.ok(feiertageVon(2017, 'SN').map(tagText).includes('2017-11-22'));
+  assert.ok(feiertageVon(2027, 'SN').map(tagText).includes('2027-11-17'));
+  const fx = laden('bauzeit.json');
+  assert.equal(fx.plan.kalender.bundesland, 'SN');
+  assert.equal(isoWochentag(tagAus(fx.plan.projektbeginn)), 7, 'Projektbeginn ist ein Sonntag');
+  // Arbeitstage k0 bis k15 wie in der Herleitung
+  assert.deepEqual(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map((n) => tagText(n).slice(5)), [
+    '11-02', '11-03', '11-04', '11-05', '11-06', '11-09', '11-10', '11-11', '11-12', '11-13', '11-16', '11-17', '11-19',
+    '11-20', '11-23', '11-24',
+  ]);
+  assert.match(fx.herleitung[2], /k11 Di 17\.11\., k12 Do 19\.11\./);
+});
+
+test('bauzeit: Eingabe deckt das Tor X2 ab (Ticket 112, plan.md §4)', () => {
+  const fx = laden('bauzeit.json');
+  const { vorgaenge } = fx.plan;
+  assert.ok(vorgaenge.length >= 6 && vorgaenge.length <= 8, '6–8 Vorgänge');
+  const ids = [fx.plan.id, fx.plan.projektId, ...vorgaenge.map((v) => v.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  const bekannt = new Set(vorgaenge.map((v) => v.id));
+  for (const v of vorgaenge) {
+    assert.ok(v.elternId === null || bekannt.has(v.elternId));
+    assert.ok(Number.isInteger(v.dauer) && v.dauer >= 0);
+    for (const b of v.vorgaenger) assert.ok(bekannt.has(b.vorgaengerId) && Number.isInteger(b.abstand));
+  }
+  const beziehungen = vorgaenge.flatMap((v) => v.vorgaenger);
+  assert.deepEqual([...new Set(beziehungen.map((b) => b.art))].sort(), ['anfang-anfang', 'anfang-ende', 'ende-anfang', 'ende-ende']);
+  assert.ok(beziehungen.some((b) => b.abstand === 0) && beziehungen.some((b) => b.abstand < 0), 'Abstand 0 und negativ');
+  const eltern = new Set(vorgaenge.map((v) => v.elternId).filter((x) => x !== null));
+  assert.equal(eltern.size, 1, 'genau ein Sammelvorgang');
+  assert.equal(vorgaenge.filter((v) => v.dauer === 0 && !eltern.has(v.id)).length, 1, 'genau ein Meilenstein');
+  // Jede Anordnungsart bestimmt einen Termin (Spielraum 0 in der frühen Lage): ein Fehler in ihr ändert das Ergebnis
+  const { spielraum } = terminplanNachrechnen(fx.plan);
+  for (const art of ['ende-anfang', 'anfang-anfang', 'ende-ende', 'anfang-ende']) {
+    assert.ok(vorgaenge.some((s) => s.vorgaenger.some((b) => b.art === art && spielraum(s, b) === 0)), art);
+  }
+});
+
+test('bauzeit: Sollwerte gleich der eigenen Terminrechnung (Ticket 112, BAUZEIT_ANNAHMEN, D-63)', () => {
+  const fx = laden('bauzeit.json');
+  assert.deepEqual(terminplanNachrechnen(fx.plan).ergebnis, fx.sollwerte);
+  // Von Hand (herleitung): Projektende Di 24.11.2026; Meilenstein Mo 16.11. nach dem Ende der Bodenplatte am Fr 13.11.
+  const nach = new Map(fx.plan.vorgaenge.map((v, i) => [v.nummer, fx.sollwerte.vorgaenge[i]]));
+  assert.equal(fx.sollwerte.projektende, '2026-11-24');
+  assert.equal(nach.get('1.3').termine.ende, '2026-11-13');
+  assert.deepEqual([nach.get('2').art, nach.get('2').termine.beginn, nach.get('2').termine.ende], ['meilenstein', '2026-11-16', '2026-11-16']);
+  assert.equal(nach.get('3').termine.beginn, '2026-11-16', 'Nachfolger des Meilensteins beginnt am selben Tag');
+  assert.deepEqual(
+    fx.sollwerte.kritischeWege.map((w) => w.map((id) => fx.plan.vorgaenge.find((v) => v.id === id).nummer)),
+    [['1.1', '1.2', '1.3', '2', '3']],
+  );
+  assert.deepEqual(
+    ['4', '5'].map((n) => [nach.get(n).termine.gesamtpuffer, nach.get(n).termine.freierPuffer]),
+    [[4, 0], [4, 4]],
+    'bei 4 ist der freie Puffer kleiner als der Gesamtpuffer',
+  );
+  // Feiertag und Wochenende auf dem kritischen Weg: freie Tage zwischen seinen Terminen
+  const arbeitstage = new Set(arbeitstageAb(fx.plan.projektbeginn, fx.plan.kalender, 16).map(tagText));
+  const imWeg = fx.sollwerte.kritischeWege[0].map((id) => fx.sollwerte.vorgaenge.find((v) => v.vorgangId === id).termine);
+  const freiImWeg = [];
+  for (let n = tagAus(imWeg[0].beginn); n <= tagAus(imWeg[imWeg.length - 1].ende); n += 1) {
+    if (!arbeitstage.has(tagText(n))) freiImWeg.push(tagText(n));
+  }
+  assert.deepEqual(freiImWeg, ['2026-11-07', '2026-11-08', '2026-11-14', '2026-11-15', '2026-11-18', '2026-11-21', '2026-11-22']);
+});
+
+test('bauzeit: Gegenprobe ohne Land, der Buß- und Bettag ist dann Arbeitstag (Ticket 112)', () => {
+  const fx = laden('bauzeit.json');
+  const g = fx.gegenprobeOhneLand;
+  const mit = terminplanNachrechnen(fx.plan).ergebnis;
+  const ohne = terminplanNachrechnen({ ...fx.plan, kalender: g.kalender }).ergebnis;
+  assert.equal(ohne.projektende, g.projektende);
+  assert.equal(g.projektende, '2026-11-23'); // von Hand: einen Arbeitstag früher als mit Sachsen
+  const geaendert = [];
+  fx.plan.vorgaenge.forEach((v, i) => {
+    const anders = Object.entries(ohne.vorgaenge[i].termine).filter(([k, x]) => x !== mit.vorgaenge[i].termine[k]);
+    if (anders.length > 0) geaendert.push({ nummer: v.nummer, ...Object.fromEntries(anders) });
+  });
+  assert.deepEqual(geaendert, g.geaendert);
+  assert.deepEqual(ohne.kritischeWege, mit.kritischeWege);
+});
+
+// ---------------------------------------------------------------- Ticket 112: Honorar, Tor X3 (honorar.json)
+// Eigene Nachrechnung ohne das Paket `honorar`, nur BigInt in Cent (`rechnen.mjs`): Tafel aus der eigenen Abschrift von § 35
+// Abs. 1, Phasen aus § 34 Abs. 3, Rundungskette D-56. Die Sollwerte der Datei sind von Hand hergeleitet (`herleitung`).
+
+const ZONEN = ['I', 'II', 'III', 'IV', 'V'];
+/** Eine Zeile der Abschrift ("1 000 000 |  83 182 | …", ganze Euro, Leerzeichen als Tausendertrenner) → Tafelzeile. */
+function tafelzeileLesen(text) {
+  const zellen = text.split('|').map((z) => z.trim().replaceAll(' ', ''));
+  assert.equal(zellen.length, 1 + 2 * ZONEN.length, text);
+  for (const z of zellen) assert.match(z, /^[1-9]\d*$/, text);
+  const euro = (z) => `${z}.00`;
+  return {
+    anrechenbareKosten: euro(zellen[0]),
+    spannen: Object.fromEntries(ZONEN.map((zone, i) => [zone, { von: euro(zellen[1 + 2 * i]), bis: euro(zellen[2 + 2 * i]) }])),
+  };
+}
+/** Betrag als ganze Cent. */
+const cent = (text) => parse(text, 2);
+/** round_half_up(zaehler / nenner) für nicht negative ganze Zahlen. */
+const geteiltGerundet = (zaehler, nenner) => (2n * zaehler + nenner) / (2n * nenner);
+
+/** Honorarberechnung nach D-56 für ein Objekt Gebäude mit Kosten nach DIN 276 (die Fixture hat genau eines). */
+function honorarNachrechnen(fx) {
+  const { objekte, nebenkosten, mwstSatz } = fx.honorarberechnung;
+  assert.equal(objekte.length, 1);
+  const [o] = objekte;
+  const k = o.anrechenbareKosten;
+  assert.equal(k.art, 'din-276');
+  // § 33: KG 300 + weitere Kosten = sonstige; KG 400 voll bis 25 % davon, darüber zur Hälfte; dazu die Bausubstanz
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  const grenze = prozentVon(sonstige, parse('25.00', 2));
+  const kg400 = cent(k.kg400);
+  assert.equal(k.technischeAnlagenAnteilig, true);
+  const voll = kg400 > grenze ? grenze : kg400;
+  const haelfte = kg400 > grenze ? geteiltGerundet(kg400 - grenze, 2n) : 0n;
+  const ak = sonstige + voll + haelfte + cent(k.mitzuverarbeitendeBausubstanz);
+  // § 35 Abs. 1: die umgebenden Tafelzeilen; § 13: erst multiplizieren, dann teilen, je auf 2 Stellen
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  const iOben = zeilen.findIndex((z) => cent(z.anrechenbareKosten) > ak);
+  assert.ok(iOben > 0 && cent(zeilen[iOben - 1].anrechenbareKosten) < ak, 'streng zwischen zwei Zeilen der Abschrift');
+  const [unten, oben] = [zeilen[iOben - 1], zeilen[iOben]];
+  const u = cent(unten.anrechenbareKosten);
+  const d = cent(oben.anrechenbareKosten) - u;
+  const zone = o.honorarzone;
+  const interpoliert = (w) => {
+    const wu = cent(unten.spannen[zone][w]);
+    return geteiltGerundet(wu * d + (ak - u) * (cent(oben.spannen[zone][w]) - wu), d);
+  };
+  const von = interpoliert('von');
+  const bis = interpoliert('bis');
+  // Honorar = round(von + (bis − von) × Honorarsatz / 100, 2); Honorarsatz mit 2 Stellen
+  const honorar = geteiltGerundet(von * 10_000n + (bis - von) * parse(o.honorarsatz, 2), 10_000n);
+  const satzVon = new Map(fx.leistungsphasen.phasen.map((p) => [p.nummer, p]));
+  const phasen = o.leistungsphasen.map(({ nummer }) => {
+    const p = satzVon.get(nummer);
+    return { nummer, name: p.name, anteil: p.anteil, betrag: format(prozentVon(honorar, parse(p.anteil, 2)), 2) };
+  });
+  const grundhonorar = phasen.reduce((s, p) => s + cent(p.betrag), 0n);
+  const umbauzuschlag = prozentVon(grundhonorar, parse(o.umbauzuschlagssatz, 2));
+  assert.equal(nebenkosten.art, 'prozent');
+  const nk = prozentVon(grundhonorar + umbauzuschlag, parse(nebenkosten.satz, 2));
+  const netto = grundhonorar + umbauzuschlag + nk;
+  const mwst = prozentVon(netto, parse(mwstSatz, 2));
+  const t = (w) => format(w, 2);
+  return {
+    objekte: [{
+      bezeichnung: o.bezeichnung,
+      leistungsbild: o.leistungsbild,
+      honorarzone: zone,
+      anrechenbareKosten: t(ak),
+      herleitung: {
+        kg300: k.kg300,
+        weitereKosten: k.weitereKosten,
+        sonstigeAnrechenbareKosten: t(sonstige),
+        kg400: k.kg400,
+        grenzeTechnischeAnlagen: t(grenze),
+        kg400Voll: t(voll),
+        kg400Haelfte: t(haelfte),
+        mitzuverarbeitendeBausubstanz: k.mitzuverarbeitendeBausubstanz,
+        anrechenbareKosten: t(ak),
+      },
+      tafel: { zeileUnten: unten, zeileOben: oben, spanne: { von: t(von), bis: t(bis) } },
+      honorar: t(honorar),
+      phasen,
+      grundhonorar: t(grundhonorar),
+      umbauzuschlag: t(umbauzuschlag),
+    }],
+    grundhonorar: t(grundhonorar),
+    umbauzuschlaege: t(umbauzuschlag),
+    nebenkosten: t(nk),
+    netto: t(netto),
+    mwst: t(mwst),
+    brutto: t(netto + mwst),
+    befunde: [],
+  };
+}
+
+test('honorar: Abschrift § 35 Abs. 1 und Leistungsphasen § 34 Abs. 3 (Ticket 112, eigene Abschrift)', () => {
+  const fx = laden('honorar.json');
+  const zeilen = fx.tafel.abschrift.map(tafelzeileLesen);
+  assert.deepEqual(zeilen.map((z) => z.anrechenbareKosten), ['1000000.00', '1500000.00']);
+  for (const z of zeilen) {
+    ZONEN.forEach((zone, i) => {
+      assert.ok(cent(z.spannen[zone].von) < cent(z.spannen[zone].bis), `${z.anrechenbareKosten} ${zone}: von < bis`);
+      if (i > 0) assert.equal(z.spannen[zone].von, z.spannen[ZONEN[i - 1]].bis, `bis der Zone davor = von ${zone}`);
+    });
+  }
+  for (const zone of ZONEN) assert.ok(cent(zeilen[0].spannen[zone].bis) < cent(zeilen[1].spannen[zone].bis), 'steigend');
+  // Zweite Abschrift der Zone III (§ 35 Abs. 1): 1.000.000 → 115.675 bis 144.268; 1.500.000 → 165.911 bis 206.923
+  assert.deepEqual(zeilen.map((z) => z.spannen.III), [{ von: '115675.00', bis: '144268.00' }, { von: '165911.00', bis: '206923.00' }]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileUnten, zeilen[0]);
+  assert.deepEqual(fx.sollwerte.objekte[0].tafel.zeileOben, zeilen[1]);
+  const { phasen } = fx.leistungsphasen;
+  assert.deepEqual(phasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(phasen.map((p) => p.anteil), ['2.00', '7.00', '15.00', '3.00', '25.00', '10.00', '4.00', '32.00', '2.00']);
+  assert.equal(format(phasen.reduce((s, p) => s + parse(p.anteil, 2), 0n), 2), '100.00');
+  assert.equal(phasen[7].name, 'Objektüberwachung – Bauüberwachung und Dokumentation'); // Halbgeviertstrich wie in der Quelle
+});
+
+test('honorar: Kostenberechnung ergibt KG 300 und KG 400, die Eingabe deckt das Tor X3 ab (Ticket 112, § 33)', () => {
+  const fx = laden('honorar.json');
+  const ke = fx.kostenermittlung;
+  assert.equal(ke.stufe, 'kostenberechnung');
+  for (const id of [ke.id, ke.projektId, fx.honorarberechnung.id]) assert.match(id, UUID7);
+  assert.equal(ke.projektId, fx.honorarberechnung.projektId);
+  for (const e of ke.eintraege) assert.match(e.nummer, /^[1-9][1-9]0$/, 'nur zweite Ebene, keine Doppelzählung');
+  const summe = (ziffer) => ke.eintraege.filter((e) => e.nummer[0] === ziffer).reduce((s, e) => s + cent(e.betrag), 0n);
+  assert.equal(format(summe('3'), 2), fx.ausKostenermittlung.kg300);
+  assert.equal(format(summe('4'), 2), fx.ausKostenermittlung.kg400);
+  const [o] = fx.honorarberechnung.objekte;
+  assert.equal(o.anrechenbareKosten.kg300, '1011111.10');
+  assert.equal(o.anrechenbareKosten.kg400, '345678.91');
+  assert.equal(o.anrechenbareKosten.kg300, fx.ausKostenermittlung.kg300);
+  assert.equal(o.anrechenbareKosten.kg400, fx.ausKostenermittlung.kg400);
+  assert.equal(o.anrechenbareKosten.weitereKosten, ke.eintraege.find((e) => e.nummer === '610').betrag);
+  assert.deepEqual([o.leistungsbild, o.honorarzone, o.honorarsatz], ['gebaeude', 'III', '50.00']);
+  assert.match(fx.honorarsatzBenannt, /^Honorarsatz 50 %/);
+  assert.deepEqual(o.leistungsphasen.map((p) => p.nummer), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.ok(o.leistungsphasen.every((p) => !('anteil' in p)), 'Sätze der HOAI');
+  assert.ok(o.umbauzuschlagssatz !== null && fx.honorarberechnung.nebenkosten.art === 'prozent');
+  assert.equal(fx.honorarberechnung.mwstSatz, '19.00');
+  // KG 400 über 25 % der sonstigen anrechenbaren Kosten: beide Zweige von § 33 Abs. 2
+  const h = fx.sollwerte.objekte[0].herleitung;
+  assert.ok(cent(h.kg400) > cent(h.grenzeTechnischeAnlagen) && cent(h.kg400Haelfte) > 0n);
+});
+
+test('honorar: Sollwerte gleich der eigenen Nachrechnung nach D-56 (Ticket 112)', () => {
+  const fx = laden('honorar.json');
+  assert.deepEqual(honorarNachrechnen(fx), fx.sollwerte);
+  // Von Hand (herleitung): aK 1.373.618,34; von 153.213,18; bis 191.086,11; Honorar 172.149,65; Grundhonorar 172.149,66;
+  // Umbau 43.037,42; Nebenkosten 9.683,42; Netto 224.870,50; MwSt 42.725,40; Brutto 267.595,90.
+  const s = fx.sollwerte;
+  const o = s.objekte[0];
+  assert.deepEqual(
+    [o.anrechenbareKosten, o.tafel.spanne.von, o.tafel.spanne.bis, o.honorar, o.grundhonorar, o.umbauzuschlag],
+    ['1373618.34', '153213.18', '191086.11', '172149.65', '172149.66', '43037.42'],
+  );
+  assert.deepEqual([s.nebenkosten, s.netto, s.mwst, s.brutto], ['9683.42', '224870.50', '42725.40', '267595.90']);
+  // Die Kette rundet sechsmal genau auf der Hälfte: half-up und „half-even“ unterscheiden sich dort (D-56: kaufmännisch)
+  const k = fx.honorarberechnung.objekte[0].anrechenbareKosten;
+  const sonstige = cent(k.kg300) + cent(k.weitereKosten);
+  // je exakter Wert in Cent × 10.000 (Prozent mit 2 Stellen): Rest 5.000 heißt genau ein halber Cent
+  const haelften = [
+    sonstige * 2500n, // Grenze 25 %
+    (cent(k.kg400) - cent(o.herleitung.grenzeTechnischeAnlagen)) * 5000n, // Hälfte
+    cent(o.tafel.spanne.von) * 10_000n + (cent(o.tafel.spanne.bis) - cent(o.tafel.spanne.von)) * 5000n, // Honorar
+    cent(o.honorar) * 1000n, // LPH 6 (10 %)
+    cent(o.grundhonorar) * 2500n, // Umbauzuschlag 25 %
+    cent(s.netto) * 1900n, // MwSt
+  ];
+  for (const w of haelften) assert.equal(w % 10_000n, 5000n, 'genau ein halber Cent');
+});
+
+// ---------------------------------------------------------------- Ticket 112: Bauleitung, Tor X4 (bauleitung.json)
+// Eigene Auswertung ohne das Paket `bauleitung` (Ticket 111): Status = letzter Verlaufseintrag; überfällig = Frist vor dem
+// Stichtag und Status offen oder angezeigt; Bautagebuch je Zeitraum mit beiden Grenzen. Sollwerte von Hand (`herleitung`).
+
+const MANGELSTATUS = ['offen', 'angezeigt', 'beseitigt', 'abgenommen'];
+/** Erlaubte Statuswechsel (Ticket 111 Punkt 1, D-57): offen → angezeigt → beseitigt → abgenommen; beseitigt → offen. */
+const STATUSWECHSEL = new Map([
+  ['offen', ['angezeigt']],
+  ['angezeigt', ['beseitigt']],
+  ['beseitigt', ['abgenommen', 'offen']],
+  ['abgenommen', []],
+]);
+const statusVon = (m) => m.verlauf[m.verlauf.length - 1].status;
+const ueberfaelligAm = (maengel, stichtag) =>
+  maengel.filter((m) => m.frist !== null && m.frist < stichtag && ['offen', 'angezeigt'].includes(statusVon(m)));
+
+function maengelAuswerten(fx, stichtag) {
+  const zaehlen = (liste) => {
+    const jeStatus = Object.fromEntries(MANGELSTATUS.map((s) => [s, liste.filter((m) => statusVon(m) === s).length]));
+    return {
+      anzahl: liste.length,
+      jeStatus,
+      offen: jeStatus.offen + jeStatus.angezeigt,
+      ueberfaellig: ueberfaelligAm(liste, stichtag).length,
+    };
+  };
+  return {
+    stichtag,
+    jeAuftragnehmer: fx.auftraege.map((a) => ({
+      auftragsLvId: a.auftragsLvId,
+      auftragnehmer: a.auftragnehmer,
+      ...zaehlen(fx.maengel.filter((m) => m.auftragsLvId === a.auftragsLvId)),
+    })),
+    gesamt: zaehlen(fx.maengel),
+  };
+}
+
+function bautagebuchAuswerten(eintraege, von, bis) {
+  const imZeitraum = eintraege.filter((e) => von <= e.datum && e.datum <= bis).sort((x, y) => (x.datum < y.datum ? -1 : 1));
+  const jeFirma = new Map();
+  for (const e of imZeitraum) for (const k of e.arbeitskraefte) jeFirma.set(k.firma, (jeFirma.get(k.firma) ?? 0) + k.anzahl);
+  const jeTag = imZeitraum.map((e) => ({ datum: e.datum, arbeitskraefte: e.arbeitskraefte.reduce((s, k) => s + k.anzahl, 0) }));
+  return {
+    von,
+    bis,
+    jeTag,
+    jeFirma: [...jeFirma].sort(([x], [y]) => (x < y ? -1 : 1)).map(([firma, arbeitskraefte]) => ({ firma, arbeitskraefte })),
+    summe: jeTag.reduce((s, t) => s + t.arbeitskraefte, 0),
+  };
+}
+
+test('bauleitung: Mängel und Bautagebuch in der Form von Ticket 97 Punkt 6, Verläufe nach Ticket 111 (Ticket 112)', () => {
+  const fx = laden('bauleitung.json');
+  const ids = [fx.projektId, ...fx.auftraege.map((a) => a.auftragsLvId), ...fx.maengel.map((m) => m.id), ...fx.bautagebuch.map((e) => e.id)];
+  for (const id of ids) assert.match(id, UUID7);
+  assert.equal(new Set(ids).size, ids.length);
+  // fünf Mängel an zwei Auftragnehmern, je mit Frist und Verlauf
+  assert.equal(fx.maengel.length, 5);
+  assert.equal(fx.auftraege.length, 2);
+  const lvs = new Set(fx.auftraege.map((a) => a.auftragsLvId));
+  assert.deepEqual(new Set(fx.maengel.map((m) => m.auftragsLvId)), lvs);
+  assert.deepEqual(fx.maengel.map((m) => m.nummer), [1, 2, 3, 4, 5]);
+  for (const m of fx.maengel) {
+    assert.equal(m.projektId, fx.projektId);
+    assert.match(m.frist, /^\d{4}-\d{2}-\d{2}$/);
+    tagAus(m.frist);
+    assert.ok(m.verlauf.length >= 1);
+    assert.equal(m.verlauf[0].status, 'offen');
+    assert.equal(m.verlauf[0].datum, m.festgestellt);
+    for (let i = 1; i < m.verlauf.length; i += 1) {
+      const [vorher, jetzt] = [m.verlauf[i - 1], m.verlauf[i]];
+      assert.ok(STATUSWECHSEL.get(vorher.status).includes(jetzt.status), `${m.nummer}: ${vorher.status} → ${jetzt.status}`);
+      assert.ok(tagAus(jetzt.datum) >= tagAus(vorher.datum), `${m.nummer}: Datum nicht vor dem vorigen`);
+    }
+    for (const v of m.verlauf) assert.ok(v.datum <= fx.stichtag, 'alle Verlaufseinträge am oder vor dem Stichtag');
+  }
+  assert.ok(fx.maengel.some((m) => m.verlauf.some((v, i) => i > 0 && v.status === 'offen')), 'beseitigt → offen kommt vor');
+  // drei Bautagebucheinträge mit Arbeitskräften, ein Eintrag je Datum, ganze Zahlen
+  assert.equal(fx.bautagebuch.length, 3);
+  assert.equal(new Set(fx.bautagebuch.map((e) => e.datum)).size, 3);
+  for (const e of fx.bautagebuch) {
+    assert.equal(e.projektId, fx.projektId);
+    tagAus(e.datum);
+    assert.ok(e.arbeitskraefte.length > 0);
+    for (const k of e.arbeitskraefte) assert.ok(k.firma !== '' && Number.isInteger(k.anzahl) && k.anzahl >= 0);
+    const { temperaturMin, temperaturMax } = e.wetter;
+    assert.ok(Number.isInteger(temperaturMin) && Number.isInteger(temperaturMax) && temperaturMin <= temperaturMax);
+  }
+});
+
+test('bauleitung: Fristprüfung zum Stichtag, genau einer überfällig, Frist am Stichtag nicht (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  const s = fx.sollwerte;
+  assert.deepEqual(fx.maengel.map((m) => ({ nummer: m.nummer, status: statusVon(m) })), s.status);
+  assert.equal(Math.max(...fx.maengel.map((m) => m.nummer)) + 1, s.naechsteMangelnummer);
+  const zeile = (m) => ({ mangelId: m.id, nummer: m.nummer, frist: m.frist, status: statusVon(m) });
+  assert.equal(s.fristpruefung.stichtag, fx.stichtag);
+  assert.deepEqual(ueberfaelligAm(fx.maengel, fx.stichtag).map(zeile), s.fristpruefung.ueberfaellig);
+  assert.deepEqual(fx.maengel.filter((m) => m.frist === fx.stichtag).map(zeile), s.fristpruefung.fristAmStichtag);
+  // Von Hand: Stichtag Do 26.11.2026, überfällig nur 3 (Frist 25.11., angezeigt); 5 hat die Frist am Stichtag
+  assert.equal(fx.stichtag, '2026-11-26');
+  assert.deepEqual(s.fristpruefung.ueberfaellig.map((z) => z.nummer), [3]);
+  assert.deepEqual(s.fristpruefung.fristAmStichtag.map((z) => z.nummer), [5]);
+  // Frist vor dem Stichtag, aber beseitigt oder abgenommen: nicht überfällig (1, 4)
+  assert.deepEqual(fx.maengel.filter((m) => m.frist < fx.stichtag).map((m) => [m.nummer, statusVon(m)]), [
+    [1, 'abgenommen'], [3, 'angezeigt'], [4, 'beseitigt'],
+  ]);
+  const g = fx.gegenproben.stichtag20261127;
+  assert.deepEqual(ueberfaelligAm(fx.maengel, g.stichtag).map((m) => m.nummer), g.ueberfaellig);
+});
+
+test('bauleitung: Auswertung der Mängel je Auftragnehmer und des Bautagebuchs je Zeitraum (Ticket 112, Ticket 111)', () => {
+  const fx = laden('bauleitung.json');
+  assert.deepEqual(maengelAuswerten(fx, fx.stichtag), fx.sollwerte.auswertungMaengel);
+  const b = fx.sollwerte.auswertungBautagebuch;
+  assert.deepEqual(bautagebuchAuswerten(fx.bautagebuch, b.von, b.bis), b);
+  // Von Hand: 9 + 8 + 9 = 26 = Rohbau 19 + Tiefbau 5 + Elektro 2
+  assert.deepEqual([b.jeTag.map((t) => t.arbeitskraefte), b.jeFirma.map((f) => f.arbeitskraefte), b.summe], [[9, 8, 9], [2, 19, 5], 26]);
+  const g = fx.gegenproben.bautagebuch17bis19;
+  const { jeFirma, summe } = bautagebuchAuswerten(fx.bautagebuch, g.von, g.bis);
+  assert.deepEqual({ jeFirma, summe }, { jeFirma: g.jeFirma, summe: g.summe });
+  assert.equal(g.summe, 17);
+});
+
+test('X2–X4: JSON-Zahlen nur für ganze Zahlen der Typen, Beträge und Prozente als Text (Ticket 112, N1, N3)', () => {
+  // Ganze Zahlen der Vertragstypen (Arbeitstage, Phasennummer, Mangelnummer, Köpfe, Grad, Zähler) stehen als JSON-Zahl, damit die
+  // Eingaben den Typen direkt zuweisbar sind (D-112.2); Dezimalwerte (Betrag, Prozent) als kanonischer Text mit 2 Stellen.
+  const GANZZAHLIG = {
+    'bauzeit.json': ['arbeitstage', 'dauer', 'abstand', 'gesamtpuffer', 'freierPuffer'],
+    'honorar.json': ['nummer'],
+    'bauleitung.json': [
+      'nummer', 'anzahl', 'temperaturMin', 'temperaturMax', 'naechsteMangelnummer', 'arbeitskraefte', 'summe', 'offen',
+      'angezeigt', 'beseitigt', 'abgenommen', 'ueberfaellig',
+    ],
+  };
+  for (const [name, felder] of Object.entries(GANZZAHLIG)) {
+    const pruefe = (v, pfad, feld) => {
+      if (typeof v === 'number') {
+        assert.ok(Number.isInteger(v), `${name}: keine ganze Zahl bei ${pfad}`);
+        assert.ok(felder.includes(feld), `${name}: JSON-Zahl bei ${pfad}`);
+      } else if (Array.isArray(v)) {
+        v.forEach((x, i) => pruefe(x, `${pfad}[${i}]`, feld));
+      } else if (v && typeof v === 'object') {
+        for (const [k, x] of Object.entries(v)) pruefe(x, `${pfad}.${k}`, k);
+      } else if (typeof v === 'string' && name === 'honorar.json' && /^\d+\.\d+$/.test(v)) {
+        assert.match(v, /^\d+\.\d{2}$/, `${name}: Dezimalwert mit 2 Stellen bei ${pfad}`);
+      }
+    };
+    pruefe(laden(name), name, null);
+  }
 });

@@ -1,0 +1,196 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "bauzeitenplan",
+  "regel": "Ticket 112, Tor X2 (D-58), README „Bauzeitenplan: Tor X2“: Terminrechnung nach den Lesarten von `BAUZEIT_ANNAHMEN` (Paket `bauzeit`, Ticket 102: D-102.2, D-102.8, D-102.9, D-102.11; D-63). Gerechnet wird in ganzen Arbeitstagen; Ende ist der letzte Arbeitstag einschließlich; Ende-Anfang mit Abstand 0 heißt Beginn am nächsten Arbeitstag nach dem Ende; ein Meilenstein liegt am Anfang seines Tages (Beginn = Ende), sein Nachfolger mit Ende-Anfang 0 beginnt am selben Tag. Eingabe in der Form `Bauzeitenplaneingabe` des Pakets `bauzeit` (dazu `id`, `projektId`, `name` aus dem geplanten Vertragstyp `Bauzeitenplan`, Ticket 97), Sollwerte in der Form `Bauzeitenplanergebnis`. Sollwerte von Hand hergeleitet (siehe `herleitung`), im Selbsttest eigens nachgerechnet (`fixtures.test.mjs`, ohne Pakete). Alles erfunden.",
+  "kalenderquelle": {
+    "bundesland": "SN",
+    "vorschrift": "Gesetz über Sonn- und Feiertage im Freistaat Sachsen (SächsSFG) § 1 Abs. 1: Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, Fronleichnam (nur in Regionen nach Rechtsverordnung, also nicht landesweit), 3. Oktober, Reformationsfest (31. Oktober), Buß- und Bettag, 25. und 26. Dezember",
+    "url": "https://revosax.sachsen.de/vorschrift/3997-SaechsSFG",
+    "abgerufen": "2026-11-12",
+    "bussUndBettag": "Das Gesetz nennt kein Datum. Lesart: der Mittwoch vor dem 23. November, gleichbedeutend mit dem Mittwoch vor dem letzten Sonntag vor dem 1. Advent (§ 2 Nr. 2 SächsSFG: Totensonntag). 2026: 1. Advent So 29.11., Totensonntag So 22.11., Buß- und Bettag Mi 18.11.2026."
+  },
+  "plan": {
+    "id": "019b7a12-b000-7000-8000-000000000001",
+    "projektId": "019b7a12-a000-7000-8000-000000000001",
+    "name": "Anbau Lagerhalle: Gründung und Rohbau (erfunden)",
+    "projektbeginn": "2026-11-01",
+    "kalender": { "arbeitstage": [1, 2, 3, 4, 5], "bundesland": "SN", "freieTage": [] },
+    "vorgaenge": [
+      {
+        "id": "019b7a12-b000-7000-8000-000000000011",
+        "nummer": "1",
+        "bezeichnung": "Gründung",
+        "elternId": null,
+        "dauer": 0,
+        "vorgaenger": [],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000012",
+        "nummer": "1.1",
+        "bezeichnung": "Erdarbeiten",
+        "elternId": "019b7a12-b000-7000-8000-000000000011",
+        "dauer": 4,
+        "vorgaenger": [],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000013",
+        "nummer": "1.2",
+        "bezeichnung": "Streifenfundamente",
+        "elternId": "019b7a12-b000-7000-8000-000000000011",
+        "dauer": 4,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000012", "art": "anfang-anfang", "abstand": 2 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000014",
+        "nummer": "1.3",
+        "bezeichnung": "Bodenplatte",
+        "elternId": "019b7a12-b000-7000-8000-000000000011",
+        "dauer": 5,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000013", "art": "ende-anfang", "abstand": -1 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000015",
+        "nummer": "2",
+        "bezeichnung": "Gründung abgenommen",
+        "elternId": null,
+        "dauer": 0,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000014", "art": "ende-anfang", "abstand": 0 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000016",
+        "nummer": "3",
+        "bezeichnung": "Mauerwerk Erdgeschoss",
+        "elternId": null,
+        "dauer": 6,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000015", "art": "ende-anfang", "abstand": 0 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000017",
+        "nummer": "4",
+        "bezeichnung": "Witterungsschutz Bodenplatte",
+        "elternId": null,
+        "dauer": 2,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000016", "art": "anfang-ende", "abstand": 0 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      },
+      {
+        "id": "019b7a12-b000-7000-8000-000000000018",
+        "nummer": "5",
+        "bezeichnung": "Arbeitsraum verfüllen",
+        "elternId": null,
+        "dauer": 3,
+        "vorgaenger": [{ "vorgaengerId": "019b7a12-b000-7000-8000-000000000017", "art": "ende-ende", "abstand": 2 }],
+        "fruehesterBeginn": null,
+        "bezug": null,
+        "ist": null
+      }
+    ]
+  },
+  "sollwerte": {
+    "projektbeginn": "2026-11-02",
+    "projektende": "2026-11-24",
+    "vorgaenge": [
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000011",
+        "art": "sammelvorgang",
+        "termine": { "beginn": "2026-11-02", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-02", "spaetestesEnde": "2026-11-13", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000012",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-02", "ende": "2026-11-05", "spaetesterBeginn": "2026-11-02", "spaetestesEnde": "2026-11-05", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000013",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-04", "ende": "2026-11-09", "spaetesterBeginn": "2026-11-04", "spaetestesEnde": "2026-11-09", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000014",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-09", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-09", "spaetestesEnde": "2026-11-13", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000015",
+        "art": "meilenstein",
+        "termine": { "beginn": "2026-11-16", "ende": "2026-11-16", "spaetesterBeginn": "2026-11-16", "spaetestesEnde": "2026-11-16", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000016",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-16", "ende": "2026-11-24", "spaetesterBeginn": "2026-11-16", "spaetestesEnde": "2026-11-24", "gesamtpuffer": 0, "freierPuffer": 0, "kritisch": true }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000017",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-12", "ende": "2026-11-13", "spaetesterBeginn": "2026-11-19", "spaetestesEnde": "2026-11-20", "gesamtpuffer": 4, "freierPuffer": 0, "kritisch": false }
+      },
+      {
+        "vorgangId": "019b7a12-b000-7000-8000-000000000018",
+        "art": "vorgang",
+        "termine": { "beginn": "2026-11-13", "ende": "2026-11-17", "spaetesterBeginn": "2026-11-20", "spaetestesEnde": "2026-11-24", "gesamtpuffer": 4, "freierPuffer": 4, "kritisch": false }
+      }
+    ],
+    "kritischeWege": [
+      [
+        "019b7a12-b000-7000-8000-000000000012",
+        "019b7a12-b000-7000-8000-000000000013",
+        "019b7a12-b000-7000-8000-000000000014",
+        "019b7a12-b000-7000-8000-000000000015",
+        "019b7a12-b000-7000-8000-000000000016"
+      ]
+    ],
+    "befunde": []
+  },
+  "gegenprobeOhneLand": {
+    "regel": "Derselbe Plan mit `bundesland: null` (nur die bundesweiten Feiertage): Der 18.11.2026 ist dann Arbeitstag. Bis einschließlich 17.11. liegen die Arbeitstage gleich, danach einen Kalendertag früher; die Arbeitstag-Indizes, Puffer und der kritische Weg bleiben gleich.",
+    "kalender": { "arbeitstage": [1, 2, 3, 4, 5], "bundesland": null, "freieTage": [] },
+    "projektende": "2026-11-23",
+    "geaendert": [
+      { "nummer": "3", "ende": "2026-11-23", "spaetestesEnde": "2026-11-23" },
+      { "nummer": "4", "spaetesterBeginn": "2026-11-18", "spaetestesEnde": "2026-11-19" },
+      { "nummer": "5", "spaetesterBeginn": "2026-11-19", "spaetestesEnde": "2026-11-23" }
+    ]
+  },
+  "herleitung": [
+    "Kalender Sachsen 2026, Montag bis Freitag. Im Zeitraum liegen die Wochenenden 07./08., 14./15., 21./22.11. und der Buß- und Bettag Mi 18.11.2026 (nur Sachsen); Allerheiligen gilt in Sachsen nicht und fällt 2026 ohnehin auf einen Sonntag.",
+    "Projektbeginn So 01.11.2026 ist kein Arbeitstag: Der Plan beginnt am ersten Arbeitstag danach, Mo 02.11.2026 (BAUZEIT_ANNAHMEN.projektbeginn).",
+    "Arbeitstage k ab Projektbeginn: k0 Mo 02.11., k1 Di 03.11., k2 Mi 04.11., k3 Do 05.11., k4 Fr 06.11., k5 Mo 09.11., k6 Di 10.11., k7 Mi 11.11., k8 Do 12.11., k9 Fr 13.11., k10 Mo 16.11., k11 Di 17.11., k12 Do 19.11., k13 Fr 20.11., k14 Mo 23.11., k15 Di 24.11.",
+    "Rechenmodell: Anfang a = Index des ersten Tages, Ende e = a + Dauer (Zeitpunkt nach dem letzten Tag). Angezeigt: Beginn = Tag a, Ende = Tag e − 1, beim Meilenstein Tag a. Ende-Anfang: a ≥ e(V) + Abstand; Anfang-Anfang: a ≥ a(V) + Abstand; Ende-Ende: e ≥ e(V) + Abstand; Anfang-Ende: e ≥ a(V) + Abstand.",
+    "Vorwärts: 1.1 Erdarbeiten a = 0, e = 4: 02.11. bis 05.11.",
+    "Vorwärts: 1.2 Streifenfundamente, Anfang-Anfang 1.1 + 2: a ≥ 0 + 2 = 2, e = 6: Mi 04.11. bis Mo 09.11. (über das Wochenende 07./08.11.).",
+    "Vorwärts: 1.3 Bodenplatte, Ende-Anfang 1.2 − 1 (Überlappung): a ≥ 6 − 1 = 5, e = 10: Mo 09.11. (letzter Tag von 1.2) bis Fr 13.11.",
+    "Vorwärts: 2 Gründung abgenommen (Meilenstein), Ende-Anfang 1.3 + 0: a = e ≥ 10: Mo 16.11. (D-63: nach einem Vorgang, der am Freitag endet, steht der Meilenstein am Montag).",
+    "Vorwärts: 3 Mauerwerk Erdgeschoss, Ende-Anfang 2 + 0: a ≥ 10 (Meilenstein kostet keine Zeit: Beginn am selben Tag), e = 16: Mo 16.11., Di 17.11., (Mi 18.11. Buß- und Bettag), Do 19.11., Fr 20.11., (Wochenende), Mo 23.11., Di 24.11.: Ende Di 24.11.",
+    "Vorwärts: 4 Witterungsschutz Bodenplatte, Anfang-Ende 3 + 0: e ≥ a(3) + 0 = 10, also a ≥ 10 − 2 = 8, e = 10: Do 12.11. bis Fr 13.11. (endet am Arbeitstag vor dem Beginn von 3).",
+    "Vorwärts: 5 Arbeitsraum verfüllen, Ende-Ende 4 + 2: e ≥ 10 + 2 = 12, also a ≥ 12 − 3 = 9: Fr 13.11. bis Di 17.11.",
+    "Projektende: größtes e = 16 (Vorgang 3), angezeigt Di 24.11.2026.",
+    "Rückwärts (spätestes Ende LE ≤ 16 für alle): 5: LE 16, LA 13 (Fr 20.11. bis Di 24.11.). 4: Ende-Ende zu 5: e(4) ≤ LE(5) − 2 = 14, LA 12 (Do 19.11. bis Fr 20.11.). 3: LE 16, LA 10; Anfang-Ende zu 4 verlangt a(3) ≤ LE(4) − 0 = 14, erfüllt. 2: e ≤ LA(3) = 10, LA = LE = 10 (Mo 16.11.). 1.3: e ≤ LA(2) = 10, LA 5. 1.2: e ≤ LA(1.3) + 1 = 6, LA 2. 1.1: a ≤ LA(1.2) − 2 = 0, LE 4.",
+    "Gesamtpuffer = LA − a: 1.1, 1.2, 1.3, 2, 3 je 0 (kritisch); 4: 12 − 8 = 4; 5: 13 − 9 = 4.",
+    "Freier Puffer = kleinster Spielraum zu einem Nachfolger in der frühen Lage, höchstens Projektende − e: 4 → 5 (Ende-Ende + 2): e(5) − (e(4) + 2) = 12 − 12 = 0; 5 ohne Nachfolger: 16 − 12 = 4; 3 → 4 (Anfang-Ende): e(4) − a(3) = 0; die kritischen Vorgänge je 0.",
+    "Sammelvorgang 1 Gründung (Kinder 1.1, 1.2, 1.3): Beginn = frühester Beginn 02.11., Ende = spätestes Ende 13.11., späte Lage ebenso als Hülle (02.11. bis 13.11.), Puffer = kleinster Puffer der Kinder (0/0), kritisch, weil ein Kind kritisch ist; nie auf dem kritischen Weg (D-102.9).",
+    "Kritischer Weg: 1.1 → 1.2 (Anfang-Anfang, Spielraum 2 − 0 − 2 = 0) → 1.3 (Ende-Anfang −1, Spielraum 5 − (6 − 1) = 0) → 2 (Ende-Anfang 0, Spielraum 10 − 10 = 0) → 3 (Ende-Anfang 0, Spielraum 10 − 10 = 0); beginnt am Projektbeginn (a = 0), endet am Projektende (e = 16). Auf ihm liegen die Wochenenden 07./08.11. (in 1.2), 14./15.11. (vor dem Meilenstein) und 21./22.11. (in 3) sowie der Feiertag 18.11. (in 3). 3 → 4 ist kein kritischer Übergang (4 hat Puffer).",
+    "Alle vier Anordnungsarten bestimmen je einen Termin: Anfang-Anfang (1.2), Ende-Anfang mit Abstand −1 (1.3) und 0 (2, 3), Anfang-Ende (4), Ende-Ende (5). Befunde: keine.",
+    "Gegenprobe ohne Land: Der 18.11. wird Arbeitstag, k12 = Mi 18.11., k13 = Do 19.11., k14 = Fr 20.11., k15 = Mo 23.11.; 3 endet Mo 23.11., Projektende 23.11.2026; 4 spät 18.11. bis 19.11., 5 spät 19.11. bis 23.11.; alles andere gleich."
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "bauleitung",
+  "regel": "Ticket 112, Tor X4 (D-58), README „Bauleitung: Tor X4“: Mängel und Bautagebuch nach D-57 und Ticket 111. Status eines Mangels = letzter Eintrag seines Verlaufs; erlaubte Wechsel offen → angezeigt → beseitigt → abgenommen und beseitigt → offen; Verlaufsdaten nie vor dem vorigen. Überfällig zu einem Stichtag (von der App übergeben, A2) = Frist vor dem Stichtag (streng) und Status offen oder angezeigt (Befund `mangel-frist-ueberschritten`); Frist am Stichtag ist nicht überfällig. Der Auftragnehmer eines Mangels folgt aus seinem Auftrags-LV (die App übergibt ihn, hier `auftraege`). Bautagebuch: ein Eintrag je Projekt und Datum; Auswertung je Zeitraum (beide Grenzen eingeschlossen) Arbeitskräfte je Tag und je Firma. Formen nach dem Text von Ticket 97 Punkt 6 (`Mangel`, `Mangelverlaufseintrag`, `Bautagebucheintrag`), weil `vertrag` v1.6 beim Schreiben noch nicht gemergt war. Sollwerte von Hand hergeleitet (siehe `herleitung`), im Selbsttest eigens nachgerechnet (`fixtures.test.mjs`, ohne Pakete). Alles erfunden.",
+  "projektId": "019b7a12-a000-7000-8000-000000000001",
+  "auftraege": [
+    { "auftragsLvId": "019b7a12-d000-7000-8000-000000000021", "auftragnehmer": "Rohbau Muster GmbH (erfunden)" },
+    { "auftragsLvId": "019b7a12-d000-7000-8000-000000000022", "auftragnehmer": "Tiefbau Beispiel KG (erfunden)" }
+  ],
+  "maengel": [
+    {
+      "id": "019b7a12-d000-7000-8000-000000000031",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "nummer": 1,
+      "titel": "Kiesnest am Streifenfundament Süd",
+      "beschreibung": "Kiesnest etwa 20 × 15 cm an der Außenseite, Bewehrung nicht sichtbar (erfunden)",
+      "ort": "Streifenfundament Süd, Achse 2",
+      "auftragsLvId": "019b7a12-d000-7000-8000-000000000021",
+      "positionId": null,
+      "bauteil": null,
+      "festgestellt": "2026-11-10",
+      "frist": "2026-11-20",
+      "verlauf": [
+        { "status": "offen", "datum": "2026-11-10", "bemerkung": "bei der Begehung festgestellt" },
+        { "status": "angezeigt", "datum": "2026-11-11", "bemerkung": "Mängelanzeige an den Auftragnehmer" },
+        { "status": "beseitigt", "datum": "2026-11-19", "bemerkung": null },
+        { "status": "abgenommen", "datum": "2026-11-23", "bemerkung": "Beseitigung geprüft" }
+      ]
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000032",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "nummer": 2,
+      "titel": "Grundleitung mit Gegengefälle",
+      "beschreibung": null,
+      "ort": "Grundleitung zwischen Schacht 1 und 2",
+      "auftragsLvId": "019b7a12-d000-7000-8000-000000000022",
+      "positionId": null,
+      "bauteil": null,
+      "festgestellt": "2026-11-12",
+      "frist": "2026-12-04",
+      "verlauf": [
+        { "status": "offen", "datum": "2026-11-12", "bemerkung": null },
+        { "status": "angezeigt", "datum": "2026-11-12", "bemerkung": "Frist zuerst 19.11.2026" },
+        { "status": "beseitigt", "datum": "2026-11-19", "bemerkung": null },
+        { "status": "offen", "datum": "2026-11-23", "bemerkung": "Nachbesserung bei der Kamerabefahrung abgelehnt; neue Frist 04.12.2026" }
+      ]
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000033",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "nummer": 3,
+      "titel": "Riss in der Bodenplatte",
+      "beschreibung": "Riss etwa 1,2 m lang, Breite bis 0,3 mm (erfunden)",
+      "ort": "Bodenplatte, Achse B",
+      "auftragsLvId": "019b7a12-d000-7000-8000-000000000021",
+      "positionId": null,
+      "bauteil": null,
+      "festgestellt": "2026-11-16",
+      "frist": "2026-11-25",
+      "verlauf": [
+        { "status": "offen", "datum": "2026-11-16", "bemerkung": null },
+        { "status": "angezeigt", "datum": "2026-11-17", "bemerkung": "Mängelanzeige an den Auftragnehmer" }
+      ]
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000034",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "nummer": 4,
+      "titel": "Arbeitsraum nicht lagenweise verdichtet",
+      "beschreibung": null,
+      "ort": "Arbeitsraum Ost",
+      "auftragsLvId": "019b7a12-d000-7000-8000-000000000022",
+      "positionId": null,
+      "bauteil": null,
+      "festgestellt": "2026-11-17",
+      "frist": "2026-11-24",
+      "verlauf": [
+        { "status": "offen", "datum": "2026-11-17", "bemerkung": null },
+        { "status": "angezeigt", "datum": "2026-11-17", "bemerkung": null },
+        { "status": "beseitigt", "datum": "2026-11-25", "bemerkung": "einen Tag nach der Frist beseitigt" }
+      ]
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000035",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "nummer": 5,
+      "titel": "Sperrbahn unter der ersten Steinlage fehlt",
+      "beschreibung": null,
+      "ort": "Mauerwerk Erdgeschoss, Achse A",
+      "auftragsLvId": "019b7a12-d000-7000-8000-000000000021",
+      "positionId": null,
+      "bauteil": null,
+      "festgestellt": "2026-11-19",
+      "frist": "2026-11-26",
+      "verlauf": [
+        { "status": "offen", "datum": "2026-11-19", "bemerkung": null },
+        { "status": "angezeigt", "datum": "2026-11-20", "bemerkung": "Mängelanzeige an den Auftragnehmer" }
+      ]
+    }
+  ],
+  "bautagebuch": [
+    {
+      "id": "019b7a12-d000-7000-8000-000000000041",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "datum": "2026-11-16",
+      "wetter": { "beschreibung": "bedeckt, trocken", "temperaturMin": 2, "temperaturMax": 8 },
+      "arbeitskraefte": [
+        { "firma": "Rohbau Muster GmbH (erfunden)", "anzahl": 6 },
+        { "firma": "Tiefbau Beispiel KG (erfunden)", "anzahl": 3 }
+      ],
+      "geraete": "Mobilkran, Rüttelplatte",
+      "leistungen": "Mauerwerk Erdgeschoss begonnen; Arbeitsraum Ost verfüllt",
+      "behinderungen": null,
+      "vorkommnisse": "Gründung abgenommen; Riss in der Bodenplatte festgestellt (Mangel 3)"
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000042",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "datum": "2026-11-17",
+      "wetter": { "beschreibung": "Regen ab Mittag", "temperaturMin": 3, "temperaturMax": 6 },
+      "arbeitskraefte": [
+        { "firma": "Rohbau Muster GmbH (erfunden)", "anzahl": 6 },
+        { "firma": "Tiefbau Beispiel KG (erfunden)", "anzahl": 2 }
+      ],
+      "geraete": "Mobilkran",
+      "leistungen": "Mauerwerk Erdgeschoss Achse A und B",
+      "behinderungen": "Regen ab 13 Uhr, Mauerarbeiten zwei Stunden unterbrochen",
+      "vorkommnisse": "Mängel 3 und 4 angezeigt"
+    },
+    {
+      "id": "019b7a12-d000-7000-8000-000000000043",
+      "projektId": "019b7a12-a000-7000-8000-000000000001",
+      "datum": "2026-11-19",
+      "wetter": { "beschreibung": "Frost am Morgen, später sonnig", "temperaturMin": -3, "temperaturMax": 4 },
+      "arbeitskraefte": [
+        { "firma": "Rohbau Muster GmbH (erfunden)", "anzahl": 7 },
+        { "firma": "Elektro Probe OHG (erfunden)", "anzahl": 2 }
+      ],
+      "geraete": null,
+      "leistungen": "Mauerwerk Erdgeschoss Achse C; Erdungsanlage verlegt",
+      "behinderungen": "Arbeitsbeginn wegen Frost erst um 9 Uhr",
+      "vorkommnisse": "Sperrbahn unter der ersten Steinlage fehlt (Mangel 5)"
+    }
+  ],
+  "stichtag": "2026-11-26",
+  "sollwerte": {
+    "naechsteMangelnummer": 6,
+    "status": [
+      { "nummer": 1, "status": "abgenommen" },
+      { "nummer": 2, "status": "offen" },
+      { "nummer": 3, "status": "angezeigt" },
+      { "nummer": 4, "status": "beseitigt" },
+      { "nummer": 5, "status": "angezeigt" }
+    ],
+    "fristpruefung": {
+      "stichtag": "2026-11-26",
+      "ueberfaellig": [
+        { "mangelId": "019b7a12-d000-7000-8000-000000000033", "nummer": 3, "frist": "2026-11-25", "status": "angezeigt" }
+      ],
+      "fristAmStichtag": [
+        { "mangelId": "019b7a12-d000-7000-8000-000000000035", "nummer": 5, "frist": "2026-11-26", "status": "angezeigt" }
+      ]
+    },
+    "auswertungMaengel": {
+      "stichtag": "2026-11-26",
+      "jeAuftragnehmer": [
+        {
+          "auftragsLvId": "019b7a12-d000-7000-8000-000000000021",
+          "auftragnehmer": "Rohbau Muster GmbH (erfunden)",
+          "anzahl": 3,
+          "jeStatus": { "offen": 0, "angezeigt": 2, "beseitigt": 0, "abgenommen": 1 },
+          "offen": 2,
+          "ueberfaellig": 1
+        },
+        {
+          "auftragsLvId": "019b7a12-d000-7000-8000-000000000022",
+          "auftragnehmer": "Tiefbau Beispiel KG (erfunden)",
+          "anzahl": 2,
+          "jeStatus": { "offen": 1, "angezeigt": 0, "beseitigt": 1, "abgenommen": 0 },
+          "offen": 1,
+          "ueberfaellig": 0
+        }
+      ],
+      "gesamt": {
+        "anzahl": 5,
+        "jeStatus": { "offen": 1, "angezeigt": 2, "beseitigt": 1, "abgenommen": 1 },
+        "offen": 3,
+        "ueberfaellig": 1
+      }
+    },
+    "auswertungBautagebuch": {
+      "von": "2026-11-16",
+      "bis": "2026-11-20",
+      "jeTag": [
+        { "datum": "2026-11-16", "arbeitskraefte": 9 },
+        { "datum": "2026-11-17", "arbeitskraefte": 8 },
+        { "datum": "2026-11-19", "arbeitskraefte": 9 }
+      ],
+      "jeFirma": [
+        { "firma": "Elektro Probe OHG (erfunden)", "arbeitskraefte": 2 },
+        { "firma": "Rohbau Muster GmbH (erfunden)", "arbeitskraefte": 19 },
+        { "firma": "Tiefbau Beispiel KG (erfunden)", "arbeitskraefte": 5 }
+      ],
+      "summe": 26
+    }
+  },
+  "gegenproben": {
+    "stichtag20261127": {
+      "regel": "Einen Tag später ist auch Mangel 5 (Frist 26.11.) überfällig; 4 bleibt beseitigt, 1 abgenommen, 2 hat die Frist 04.12.",
+      "stichtag": "2026-11-27",
+      "ueberfaellig": [3, 5]
+    },
+    "bautagebuch17bis19": {
+      "regel": "Zeitraum 17.11. bis 19.11.2026, beide Grenzen eingeschlossen; der 18.11. (Buß- und Bettag in Sachsen) hat keinen Eintrag.",
+      "von": "2026-11-17",
+      "bis": "2026-11-19",
+      "jeFirma": [
+        { "firma": "Elektro Probe OHG (erfunden)", "arbeitskraefte": 2 },
+        { "firma": "Rohbau Muster GmbH (erfunden)", "arbeitskraefte": 13 },
+        { "firma": "Tiefbau Beispiel KG (erfunden)", "arbeitskraefte": 2 }
+      ],
+      "summe": 17
+    }
+  },
+  "herleitung": [
+    "Status = letzter Verlaufseintrag: 1 offen → angezeigt → beseitigt → abgenommen; 2 offen → angezeigt → beseitigt → offen (Nachbesserung abgelehnt, erlaubt), neue Frist 04.12.; 3 offen → angezeigt; 4 offen → angezeigt → beseitigt; 5 offen → angezeigt. Alle Verlaufsdaten liegen am oder vor dem 25.11., also vor dem Stichtag.",
+    "Fristprüfung zum Stichtag Do 26.11.2026: 1 Frist 20.11. vor dem Stichtag, aber abgenommen: nicht überfällig. 2 Frist 04.12. nach dem Stichtag: nicht überfällig. 3 Frist 25.11. vor dem Stichtag, Status angezeigt: überfällig. 4 Frist 24.11. vor dem Stichtag, aber beseitigt (am 25.11., einen Tag zu spät; zum Stichtag zählt der Status): nicht überfällig. 5 Frist 26.11. = Stichtag, nicht davor: nicht überfällig. Genau einer überfällig: 3.",
+    "Je Auftragnehmer über das Auftrags-LV: Rohbau Muster GmbH hat 1, 3, 5 (abgenommen, angezeigt, angezeigt): 3 Mängel, offen (offen oder angezeigt) 2, überfällig 1. Tiefbau Beispiel KG hat 2, 4 (offen, beseitigt): 2 Mängel, offen 1, überfällig 0. Gesamt 5; offen 1, angezeigt 2, beseitigt 1, abgenommen 1; offen 3; überfällig 1.",
+    "Nächste Mangelnummer: höchste Nummer 5 + 1 = 6.",
+    "Bautagebuch 16.11. bis 20.11.2026: 16.11. 6 + 3 = 9; 17.11. 6 + 2 = 8; 18.11. kein Eintrag (Buß- und Bettag); 19.11. 7 + 2 = 9; 20.11. kein Eintrag. Je Firma: Rohbau 6 + 6 + 7 = 19, Tiefbau 3 + 2 = 5, Elektro 2; Summe 9 + 8 + 9 = 26 = 19 + 5 + 2. Firmen nach Namen sortiert.",
+    "Gegenproben: Stichtag 27.11.: überfällig 3 und 5. Zeitraum 17.11. bis 19.11.: Rohbau 6 + 7 = 13, Tiefbau 2, Elektro 2, Summe 8 + 9 = 17."
+  ]
+}

@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Nur für Tests: stellt aus einer Datenbank der Version 5 eine der Version 4 nach (Migrationstest 4 → 5). Die Spalten von
 // Migration 5 dürfen dafür nur `NULL` enthalten und ihre Tabellen nur leer sein; sie werden entfernt, `protokoll` bekommt
-// die CHECK-Regel der Version 1 zurück (Zeilen, `seq` und Zähler bleiben), die Version wird zurückgesetzt.
+// die CHECK-Regel der Version 1 zurück (Zeilen, `seq` und Zähler bleiben), die Version wird zurückgesetzt. Seit Version 6
+// geht es zuerst auf Version 5 (`aufSchema5`, wie D-79.6).
 
 import type { Datenbank } from '../sql';
+import { aufSchema5 } from './schema5';
 
 const anzahl = (db: Datenbank, sql: string): unknown => db.zeilen(sql)[0]?.['n'];
 
 export function aufSchema4(db: Datenbank): void {
+  aufSchema5(db);
   for (const [tabelle, spalte] of [
     ['leistungsverzeichnis', 'nachtrag'],
     ['leistungsverzeichnis', 'vorlage'],

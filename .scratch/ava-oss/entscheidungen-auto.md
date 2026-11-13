@@ -506,3 +506,157 @@ Question: Ein Nachtrags-LV mit der vollen Maske des Auftrags-LV landet nach der 
 Decision: Das Nachtrags-LV bekommt beim Anlegen die Maske des Auftrags-LV ohne deren oberste Gliederungsstufe; `nachtragUebernehmen` warnt, wenn die Tiefe dennoch nicht passt. Hat die Maske keine Gliederungsstufe, bleibt sie gleich, und die Übernahme ergibt einen Maskenbefund (U5). Kein Umnummerieren bei der Übernahme (OZ des Nachtrags bleiben, wie sie mit dem AN vereinbart sind).
 Reason: Die OZ des Nachtrags passen dann mit dem Präfix genau in die Maske; das Nachtragsangebot (X84) referenziert die OZ des Nachtrags-LV, die erhalten bleiben.
 Reversible: yes  Touches: apps/web/src/nachtrag, packages/abrechnung
+
+## D-49 Integrationsbranch ab dem Merge von PR #10
+Welle 6 · Ticket – · decided by: orchestrator
+Question: Der Skill verlangt `integration/welle-6` ab `main`; der lokale Ref `main` steht auf `f04bc7e` (Welle 0/1), der Sitzungsbranch auf `79e6680` (Merge von PR #10 „Welle 4 und 5“).
+Decision: `integration/welle-6` ab `79e6680`, also dem Stand von `main` nach PR #10. Der veraltete lokale Ref bleibt unberührt, keine Remote-Operation.
+Reason: Welle 6 baut auf Welle 5 (Tor M4) auf; `79e6680` ist der gemergte `main`.
+Reversible: yes  Touches: Branches
+
+## D-50 X1: IFC-Leser, 3D-Ansicht und Paketschnitt
+Welle 6 · Ticket 98, 100, 107, 108, 114 · decided by: advisor (Paket `bim`: orchestrator)
+Question: Welche Bibliotheken für IFC und 3D (C5), und wie wird X1 auf Pakete geschnitten?
+Decision: Eigener reiner TS-Leser für IFC-SPF (IFC 2x3 und 4) in `packages/ifc` (nur Inhalt: Struktur, Bauteile, Eigenschaften, Mengen, Einheiten; importiert nur `vertrag`, `dezimal`). Geometrie nur in `packages/ui-modell` (neu) mit web-ifc 0.0.78 (MPL-2.0, WASM, Single-Thread im Worker, gebündelt, kein CDN) und three.js 0.186.1 (MIT), genau gepinnt; `ui-modell` hält nur die Leinwand und importiert `vertrag`, `ui-basis`. Der Modellbaum bleibt in der App auf `ui-grid` (U2). Beide Leser gleichen über die GlobalId ab; Bauteile ohne Geometrie sind ein Befund. Die Fachlogik (Mengenübernahme, Aufmaß aus Auswahl, Kennwerte, Vergleichsfolgen) liegt in einem eigenen reinen Paket `packages/bim` (`vertrag`, `dezimal`), damit `ifc` und `bim` in Stufe 2 parallel laufen (Teil des Orchestrators).
+Reason: Deterministische, in Node testbare Datenlese (A2, Q1); WASM nur am UI-Rand; @thatopen bringt einen schweren Abhängigkeitsbaum, xeokit nähme Baum und Picken aus der Hand (U1, U2).
+Reversible: yes  Touches: packages/ifc, packages/ui-modell, packages/bim, tools/boundaries.mjs, plan.md §1
+
+## D-51 X1: Ablage der IFC-Datei
+Welle 6 · Ticket 97, 106 · decided by: advisor
+Question: Wo liegen die Bytes einer IFC-Datei und die gelesenen Modelldaten (Q5, A8, G-56, ADR 0002)?
+Decision: Die Bytes liegen inhaltsadressiert in einer eigenen Tabelle (SHA-256 der unkomprimierten Bytes → BLOB), außerhalb von Aggregat, ChangeSet und Undo-Historie; in der JSON-Projektdatei (Schema 6) als deflate + Base64, damit eine Sicherung eine Datei bleibt. Das unveränderliche Aggregat `Bauwerksmodell` trägt nur Hash, Größe, Dateiname und die gelesenen Daten (Struktur, Bauteile mit Mengen); Eigenschaften liest die App bei Bedarf aus den Bytes, sie werden nicht gespeichert. Eine Datei über etwa 200 MB ist ein Befund, keine Sperre; nähert sich der Export der Grenze für Zeichenketten (etwa 512 MB Text), schlägt er laut fehl und kürzt nie. Tests der kanonischen Datei vergleichen den SHA-256 der unkomprimierten Bytes (deflate ist nicht byte-stabil zwischen Implementierungen). Ein Modell löschen braucht eine Bestätigung (Q5); seine Bytes bleiben, bis kein Modell sie mehr nennt.
+Reason: ZIP überginge G-56 und ADR 0002; eine getrennte .ifc neben der JSON-Datei ist Datenverlust, den der Nutzer zu spät bemerkt (Q5).
+Reversible: yes  Touches: packages/vertrag, packages/speicher, apps/web
+
+## D-52 X1c: Zuordnung Bauteil ↔ Position am Positionsfeld
+Welle 6 · Ticket 97, 105, 108, 115 · decided by: advisor
+Question: Wo steht die Verknüpfung Bauteil ↔ LV-Position und Kostengruppe?
+Decision: `Positionsdaten.bauteile?: readonly { globalId; mengenart }[]`, gesetzt mit `BauteileZuordnen { positionId; bauteile | null }` (ganze Liste, wie `MengenansatzSetzen`) als LvBefehl und als AuftragsLvBefehl (Vorbild `KostengruppeSetzen`, D-36 (4)); mit dem Zuschlag über die gemeinsame Positions-ID im Auftrags-LV. Der Kern prüft keine GlobalIds (A3); hängende Zuordnungen meldet die App als Befund. Ein Bauteil darf mehreren Positionen zugeordnet sein; dasselbe Paar (GlobalId, Mengenart) zweimal an einer Position wird abgewiesen. Kopieren einer Position verwirft ihre Zuordnungen, Verschieben behält sie. `mengenart` ist der Name der Menge, wie er im Modell steht, dazu fest `Stueck`. Die Kostengruppe eines Bauteils ist die seiner Position. Kosten aus dem Modell ohne neuen Typ: Betrag = round(Bezugsgröße × Kennwert, 2) je KG, geschrieben mit `KostenermittlungAnlegen`, Herleitung in `bemerkung`; Bezugsgrößen aus den Mengensätzen des Modells oder vom Nutzer, Quelle sichtbar; keine lizenzierten Kennwerte im Repo (C1).
+Reason: Kein neues Aggregat; das ChangeSet bleibt je Knoten (A6) und fährt mit LV-Stand, Kopie und Zuschlag mit.
+Reversible: yes  Touches: packages/vertrag, packages/kern, packages/bim, apps/web
+
+## D-53 X1d/X1f: Modellstände und Mengenübernahme
+Welle 6 · Ticket 97, 107, 108, 115, 116 · decided by: advisor
+Question: Wie werden Modellstände verglichen und Mengen ins LV übernommen?
+Decision: Jeder Import ist ein neues, unveränderliches `Bauwerksmodell` mit `vorgaengerId`; Vergleich über die GlobalId (hinzugefügt, entfernt, geändert: Klasse, Name, Strukturknoten, Mengen). Vordersatz aus dem Modell: je zugeordnetem Bauteil, das im gewählten Modell steht, eine Ansatzzeile (Formel 91, Wert kaufmännisch auf 3 Stellen) in der Reihenfolge von `bauteile`, geschrieben mit `MengenansatzSetzen` (nachvollziehbar, ein Undo-Schritt); die Menge rechnet die App mit `mengen` (D-22). `MengenansatzSetzen` ist kein AuftragsLvBefehl: nach dem Zuschlag führt der Weg nur über das Aufmaßblatt („Aufmaßblatt aus Auswahl“: je zugeordneter Position die Summe der ausgewählten Bauteile, `AufmassAnlegen`); das wird nicht nebenbei erweitert. Einheiten werden exakt in Dezimal umgerechnet. Fehlende Menge oder eine Einheit, die nicht zur Position passt: Befund, nie 0. Doppelte GlobalIds und geringe Überdeckung zweier Stände: Befund. Offene Typfragen: `Ansatzzeile` hat kein Feld für die GlobalId (Zeilen folgen der Reihenfolge von `bauteile`); dasselbe Bauteil auf zwei Aufmaßblättern ist deshalb nicht erkennbar.
+Reason: Ein Ansatz ist nachvollziehbar und ein Undo-Schritt und passt zur Teilung von D-22.
+Reversible: yes  Touches: packages/vertrag, packages/ifc, packages/bim, apps/web
+
+## D-54 X1: Leistungsbudgets
+Welle 6 · Ticket 99, 100, 105, 106, 107, 108 · decided by: advisor
+Question: Welche Budgets (Q4) gelten für große Modelle?
+Decision: Synthetisches IFC-4-Modell mit 10.000 Bauteilen (etwa 25 MB) aus einem deterministischen Erzeuger in `fixtures/ifc/` (keine Datei im Repo): Lesen und Abbilden ≤ 5 s CPU in Node; Vergleich zweier 10k-Modelle ≤ 500 ms; Speichern eines Modells (ein Massenbefehl) ≤ 3 s; Projektdatei-Export und -Import mit einem 25-MB-Modell je ≤ 10 s; eine einzelne LV-Änderung in einem Projekt mit 10k-Modell bleibt in den bestehenden Budgets; `BauteileZuordnen` an einer Position mit 5.000 Zuordnungen samt Undo ≤ 100 ms; Baum mit 10k Zeilen über die bestehenden Grid-Budgets; 3D in Headless-Chromium: Laden ≤ 20 s, Picken bis Hervorhebung ≤ 200 ms, je Median mehrerer Läufe, CPU-Raycast, keine Bildraten-Schranke.
+Reason: Die Kosten aus Welle 5 kamen vom Neuschreiben großer Aggregate (D-45); die Liste prüft auch, dass ein Modell im Projekt andere Befehle nicht bremst.
+Reversible: yes  Touches: Tests in ifc, ui-modell, kern, speicher, bim, apps/web
+
+## D-55 X5 in Welle 6: nur ADR 0013 und G-57
+Welle 6 · Ticket 103 · decided by: advisor
+Question: Was von X5 (Bieterportal/Sync-Server) läuft in Welle 6, wo ADR 0001, G-01 und G-14 entschieden sind?
+Decision: Nur ADR 0013 mit Status `proposed` (optionaler, selbst betriebener Sync-Server nach v1; die PWA bleibt lokal voll nutzbar), darin die heutigen Hindernisse ausdrücklich als Hindernisse (Protokoll wegen E-13 nicht nachspielbar, ganze Aggregate in ChangeSets, ein Tab je Datenbank nach E-14); G-14 bleibt bindend, also kein Bieterportal; die neue Grilling-Frage G-57 fragt nur „Sync-Server nach v1, ja oder nein, in welcher Form“. Kein Produktcode.
+Reason: Ein Server überginge ADR 0001 und G-01; ein Datei-Abgleich wäre Mehrbenutzer durch die Hintertür und bräuchte Zusammenführungsregeln, die E-13 und ganze Aggregate noch nicht tragen.
+Reversible: yes  Touches: docs/adr/0013, grilling.md, plan.md §2
+
+## D-56 X3: HOAI-Tafeln im Repo und Rundungskette
+Welle 6 · Ticket 101, 110, 112, 119 · decided by: advisor
+Question: Woher kommen Honorartafeln und Rechenregeln (C1, C4), und wie wird gerundet?
+Decision: Die Honorartafeln der HOAI 2021 (amtliches Werk, § 5 Abs. 1 UrhG) stehen als Daten im Repo: zuerst § 35 (Gebäude und Innenräume), § 52 (Tragwerksplanung), § 56 (Technische Ausrüstung), § 40/44/48 nur bei Zeit; nur Tafelwerte sowie Namen und Sätze der Leistungsphasen mit § und Absatz, keine Grundleistungstexte. Datentest: Zeilen streng steigend, „bis“ der Zone n = „von“ der Zone n+1, erste und letzte Zeile gegen die Quelle. § 13 lineare Interpolation (erst multiplizieren, dann teilen). **Projektkonvention, weil die HOAI keine Rundung regelt:** von und bis je auf 2 Stellen; Honorar = round(von + (bis − von) × Honorarsatz/100, 2); je Phase round(Honorar × Anteil/100, 2); Umbauzuschlag round(Σ Phasen × %, 2); Nebenkosten round((Σ + Zuschlag) × %, 2) oder Betrag; USt round(Netto × Satz, 2) auf Honorar plus Nebenkosten (§ 16 Abs. 1). Honorarsatz in Prozent der Spanne, Standard 0 = Basishonorarsatz (§ 7 Abs. 1); „Mittelsatz“ ist keine HOAI-Bezeichnung. Anrechenbare Kosten für Gebäude und Innenräume nach § 33 (KG 300 voll; KG 400, wenn der Auftragnehmer sie nicht plant oder überwacht: voll bis 25 % der sonstigen anrechenbaren Kosten, darüber zur Hälfte; „sonstige“ = KG 300 plus ein Betrag nach Abs. 3 von Hand; mitzuverarbeitende Bausubstanz nach § 4 Abs. 3 von Hand). Grundlage nach § 6 Abs. 1 Nr. 2 ist die Kostenberechnung, ohne sie die Kostenschätzung, jede andere Stufe ein Befund; Hinweis, dass § 4 Abs. 1 auf DIN 276 in der Fassung 2008-12 verweist. Außerhalb der Tafel ein Befund (keine Extrapolation, RifT später). Umbauzuschlag über 33 % (Gebäude) bzw. 50 % (Innenräume): Hinweis. Nebenkosten als Prozent oder Betrag (§ 14).
+Reason: Tafeln vom Nutzer machten Sollwerte und Tor X3 von Nutzerdaten abhängig; die Tafel ist öffentliches Recht und klein.
+Reversible: yes  Touches: packages/honorar, packages/vertrag, fixtures, apps/web
+
+## D-57 X2/X4: Formen im Vertrag
+Welle 6 · Ticket 97, 102, 106, 109, 111 · decided by: advisor
+Question: Welche Aggregate tragen Bauzeitenplan, Mängel und Bautagebuch?
+Decision: X2: ein Aggregat `Bauzeitenplan` je Plan (mehrere je Projekt); gespeichert werden nur die Eingaben (Vorgänge mit Dauer in Arbeitstagen, 0 = Meilenstein; Anordnungsbeziehungen Ende-Anfang, Anfang-Anfang, Ende-Ende, Anfang-Ende mit Abstand in Arbeitstagen; Sammelvorgang über `elternId`; Terminvorgabe „frühestens“; Bezug auf LV-Knoten; Ist-Termine und Fortschritt von Hand; Arbeitskalender mit Wochentagen, Bundesland und freien Tagen); Termine, Puffer und kritischer Weg werden gerechnet, nie gespeichert; Feiertage rein aus Regeln (Osterformel, Land), regionale über freie Tage. ChangeSet als ganzes Aggregat nur mit Messung bei 1.000 Vorgängen je Undo-Schritt (D-45); über dem Budget `Aenderungen<Vorgang>`. X4: Einzelaggregate `Mangel` (je Projekt nummeriert; Ort, wahlweise Auftrags-LV, Position, GlobalId; festgestellt, Frist; der Verlauf ist die Quelle, der Status sein letzter Eintrag; offen → angezeigt → beseitigt → abgenommen, beseitigt → offen erlaubt) und `Bautagebucheintrag` (einer je Projekt und Datum); kleine ChangeSets; keine Fotos in Welle 6; überfällig ist ein Befund zu einem Stichtag, den die App übergibt (A2). Der Ausführer prüft eindeutige Nummer bzw. eindeutiges Datum gegen den Bestand. Eine nummerierte Migration samt Schemaversion (A8).
+Reason: Einzelaggregate vermeiden die Undo-Kosten aus D-45 bei Listen ohne Obergrenze; ein Plan ist eine Recheneinheit und bleibt ein Aggregat.
+Reversible: yes  Touches: packages/vertrag, packages/bauzeit, packages/bauleitung, packages/speicher
+
+## D-58 Tore der Welle 6 je Modul
+Welle 6 · Tickets 99, 112, 117–120 · decided by: advisor
+Question: `plan.md` §3 nennt für Welle 6 als Tor „je Modul“, §4 definiert aber keines.
+Decision: Je Modul eine E2E und ein reiner Kettentest auf derselben Fixture; ist die E2E wackelig, gelten Kettentest plus verkürzte E2E (wie D-38). X1 geteilt in **X1-Kern** und **X1-Erweitert**; Einzelheiten aller Tore in `plan.md` §4. Sollwerte in `fixtures/` mit Herleitung (C4). X5: Stimmigkeit von ADR 0013, G-57 und `plan.md`.
+Reason: Die Tore zeigen hergeleitete Zahlen auf den Wegen, die ein Summentest übersieht; die Teilung von X1 verhindert, dass ein wackeliger Schritt das ganze Tor blockiert.
+Reversible: yes  Touches: plan.md §4, fixtures, apps/web/e2e
+
+## D-59 Schnitt der Welle 6: zwei serielle Vertragstickets in der Reihenfolge von G-05
+Welle 6 · Ticket 95, 97 · decided by: orchestrator
+Question: Wie kommen die Kleinpunkte (95) und die Typen für X1–X4 in den Vertrag (A4, P9), und in welcher Reihenfolge?
+Decision: Zwei serielle Vertragstickets: zuerst 95 (`vertrag` v1.5: Kleinpunkte samt `LvSpalte` `'kostengruppe'` für 93; klein, schneller Merge), danach 97 (`vertrag` v1.6: X1–X4 in einem Ticket). Beide prüft ein Opus-Reviewer statt des Nutzers (D-42-Muster), 97 vor Stufe 2. Reihenfolge nach G-05 („zuerst 93–95, danach X1–X5“) und nach Bedingung 1 des Beraters (X1-Typen in eigenem Ticket nach 95). X2–X4 gehen mit X1 in Ticket 97 statt in ein drittes Vertragsticket, weil jedes weitere serielle Vertragsticket die Stufe 2 aller X-Stränge verzögert (Präzedenz D-36). Rechenkerne ohne Vertrag (IFC-Leser, 3D-Leinwand, HOAI, Terminrechnung, Fixtures) laufen sofort in Stufe 1 mit eigenen Typen und stellen in Stufe 2 auf die Vertragstypen um.
+Reason: G-05 legt die Reihenfolge fest; Parallelität bleibt dort, wo der Vertrag nicht gebraucht wird.
+Reversible: yes  Touches: Tickets 93–122, schnitt-welle-6.md
+
+## D-60 Triviale Merges macht der Orchestrator
+Welle 6 · alle Tickets · decided by: orchestrator
+Question: Der Skill sieht für jeden Merge einen Sonnet-Merger mit voller Suite vor. Enthält ein Branch schon den aktuellen Stand von `integration/welle-6` und hat der Umsetzer darauf die volle Suite grün gemeldet, ist der Baum nach dem Merge genau der getestete.
+Decision: Dann merged der Orchestrator selbst (`--no-ff`, Vermerk im Merge-Commit) ohne zweite Suite (wie D-46). Ist der Integrationsstand seit dem letzten Merge des Umsetzers weitergezogen, merged ein Sonnet-Merger und lässt die volle Suite laufen; ist sie rot, nimmt er den Merge zurück, und ein Opus-Umsetzer behebt den Fehler.
+Reason: Spart eine volle Suite je Ticket auf 4 Kernen mit bis zu 8 Agenten, ohne je einen ungetesteten Baum zu mergen.
+Reversible: yes  Touches: Ablauf
+
+## D-61 Nach dem ersten Nutzungslimit: alle Agenten aus ihrem Stand fortsetzen
+Welle 6 · Tickets 95, 96, 98–103 · decided by: orchestrator
+Question: Kurz vor 13:10 traf der Lauf das 5-Stunden-Limit; alle acht laufenden Agenten (95, 96, 98, 99, 100, 101, 102, 103) standen, nur 94 war fertig und gemergt. Wie weiter?
+Decision: Um 13:10 alle acht aus ihrem gespeicherten Stand fortgesetzt (nichts verloren, unkommittierte Arbeit lag im Worktree), mit der Bitte, ab jetzt klein und oft zu committen; 95 zuerst, weil 97 und damit die ganze Stufe 2 an ihm hängt. Trifft der Lauf das Limit erneut, gilt dasselbe, mit Vorrang für den Weg 95 → 97 → Stufe 2 und X1-Kern (Kürzungsreihenfolge in `schnitt-welle-6.md`).
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist (wie D-46).
+Reversible: yes  Touches: Ablauf
+
+## D-62 Projektseite zeigt das Netto nach Nachlass
+Welle 6 · Ticket 95, 106, 121 · decided by: orchestrator
+Question: Ticket 95 nennt das neue Feld `LvUebersicht.nettoNachNachlass` statt `netto` (D-95.5: `Gesamtsummen.netto` ist das Netto vor Nachlass, L2). Die Projektseite zeigt bisher unter „Netto“ das Netto vor Nachlass; mit dem neuen Feld änderte sich die Zahl bei LVs mit Nachlass.
+Decision: Name `nettoNachNachlass` angenommen; die Spalte der Projektseite zeigt dieses Feld und heißt „Netto nach Nachlass“ (Ticket 121). Kein zweites Feld `netto` im Vertrag.
+Reason: Das Netto nach Nachlass ist die Zahl, die für ein LV in der Übersicht zählt; ein zweites Feld wäre eine weitere Vertragsänderung ohne Nutzen. Umbenennen der Spalte macht die geänderte Zahl ehrlich.
+Reversible: yes  Touches: apps/web/src/projekt, Tickets 106, 121
+
+## D-63 Meilenstein am Beginn seines Tages
+Welle 6 · Ticket 102, 109, 112, 118 · decided by: orchestrator
+Question: Ticket 102 (D-102.2) legt einen Meilenstein an den Beginn seines Tages; ein Fertigstellungs-Meilenstein nach einem Vorgang, der am Freitag endet, steht deshalb am Montag. Annehmen?
+Decision: Ja für v1, einheitlich mit „Ende-Anfang mit Abstand 0 = nächster Arbeitstag“; die Lesart steht in `BAUZEIT_ANNAHMEN` und wird in der Oberfläche (Ticket 118) als Tooltip erklärt. Eine eigene Art „Ende-Meilenstein“ (am Ende des Vortags) ist ein späteres Ticket, falls das Büro es so erwartet.
+Reason: Eine Regel ohne Sonderfall; Fixtures (112) und Tor X2 hängen an genau einer Lesart; umkehrbar ohne Datenänderung (gespeichert werden nur Eingaben).
+Reversible: yes  Touches: packages/bauzeit, fixtures, apps/web/src/bauzeit
+
+## D-64 Tor für `vertrag` v1.6: Merge sofort, Review parallel zu Stufe 2
+Welle 6 · Ticket 97 (Folge: 105–113) · decided by: orchestrator
+Question: v1.6 ist fertig und grün. Review vor Stufe 2 (D-42-Muster, etwa eine Stunde Leerlauf für acht Stränge) oder parallel? Dazu die Abweichungen von 97 vom Tickettext und die offene Typfrage 7 (D-97.6).
+Decision: Merge sofort (`e27225a`); ein Opus-Reviewer prüft v1.5 und v1.6 gegen alle Verbraucher, während die Stufe 2 läuft; Pflichtbefunde behebt der Umsetzer von 97 in einem Nachtrag, betroffene Stufe-2-Umsetzer bekommen eine Nachricht. Angenommen: Ergebnis X2 heißt `Bauzeitenplanergebnis` (nicht „Terminplan“, L2), je Vorgang `vorgangId`; unbekannter Vorgänger ist ein Fehler des Ausführers, „Vorgang entfernen“ nimmt Teilbaum und Beziehungen auf ihn mit; von der HOAI nicht vorgesehene Werte sind Befunde, keine Fehler (U5); alle Ergebnisse tragen `Pruefbefund` mit den Quellen `ifc-lesen`, `modell-pruefung`, `terminrechnung`, `honorarberechnung`, `fristpruefung`; Modellbefehle mit dem Feld `bauwerksmodell`, ohne `id` bei Umbenennen und Löschen; neue Fehlercodes `statuswechsel-unzulaessig`, `datei-zu-gross`. **D-97.6 bestätigt:** Ein Modell lässt sich nicht löschen, solange ein späterer Stand es als Vorgänger nennt oder ein Mangel darauf zeigt (`konflikt`, Q5). Die Eingabeform von `fixtures/honorar.json` (Beträge nach DIN 276) bildet 110/119 auf die gespeicherte Form (Verweis auf eine Kostenermittlung) ab.
+Reason: Die Befunde früherer Vertragsreviews waren eng und additiv (D-12, D-42); acht Stränge eine Stunde warten zu lassen, kostet mehr als ein Nachtrag. Die Abweichungen folgen Regeln (L2, U5, Q5) und sind umkehrbar.
+Reversible: yes  Touches: packages/vertrag, Tickets 105–121
+
+## D-65 Zweites Nutzungslimit (etwa 14:50–18:10)
+Welle 6 · Tickets 105–111, Review v1.6 · decided by: orchestrator
+Question: Kurz nach dem Start der Stufe 2 traf der Lauf erneut das 5-Stunden-Limit; der Reviewer von v1.6 und die Umsetzer 105–111 standen bis 18:10.
+Decision: Um 18:13 alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-61). Trifft der Lauf das Limit ein drittes Mal, gilt die Kürzungsreihenfolge aus `schnitt-welle-6.md`; der Weg X1-Kern (105, 106, 107, 108 Mengenübernahme, 114, 115, 117) hat Vorrang vor X2–X4-Oberflächen, und der Bericht nennt, was offen bleibt.
+Reason: Gesamtaufwand bleibt gleich; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist.
+Reversible: yes  Touches: Ablauf
+
+## D-66 Review von `vertrag` v1.5/v1.6: „ja mit Korrekturen“
+Welle 6 · Ticket 97 (Folge: 105–121) · decided by: orchestrator
+Question: Der Opus-Reviewer (statt des Nutzers, P9) urteilt „yes-with-fixes“: 2 MUST, 11 SHOULD, keine Typänderung nötig. Was wird wo behoben?
+Decision: Nachtrag zu Ticket 97 (derselbe Umsetzer, nur Lesarten, additive Felder, Glossar): MUST 1 – der Hinweis „HOAI § 4 Abs. 1 verweist auf DIN 276:2008-12“ ist nie ein Befund und nicht Teil des `Honorarergebnis`, App und PDF drucken ihn als festen Text; MUST 2 – „Kopieren verwirft Zuordnungen“ gilt für Kopieren/Einfügen im LV und die Übernahme aus einem Muster-LV, „LV-Stand als neues LV“ behält sie (Kern 105 bekommt eine Option, App 121 eine Zeile); dazu die SHOULD 3, 5–10 (Lesart Anlegen ohne Inhalt, erster Treffer bei doppelten GlobalIds, `IFC_GLOBALID_MUSTER`, Pfad für Beziehungsbefunde, eigener Glossarname der Honorar-Eingabe, Befund „Bauteil ohne Geometrie“, `Mangelverlaufseintrag.frist?`). SHOULD 4 (Ringe in Struktur und Teilen mit Befund aufbrechen) geht an 107; SHOULD 11 (Laden eines 10k-Modells) messen 106/114; SHOULD 12 (GAEB-Export verwirft `bauteile` ohne F6-Warnung) geht in die Review-Behebung der Welle; SHOULD 13 (alte Namen in Tickettexten) erledigt durch Hinweise in 107, 109–111, 113, 118–121.
+Reason: Alle Befunde sind eng und additiv; die Stufe-2-Umsetzer bekommen die zwei MUST sofort als Nachricht.
+Reversible: yes  Touches: packages/vertrag, GLOSSARY.md, Tickets 105–121
+
+## D-67 Drittes Nutzungslimit (bis 23:10)
+Welle 6 · Tickets 115, 116 · decided by: orchestrator
+Question: Nach dem Merge von 114, 118–121 traf der Lauf das 5-Stunden-Limit ein drittes Mal; 115 (Zuordnung) und 116 (Modellvergleich) standen.
+Decision: Beide aus ihrem gespeicherten Stand fortgesetzt (wie D-61/D-65). Nichts gekürzt: X2–X5 sind schon erreicht, offen ist nur der Weg X1 (115, 116, 117).
+Reason: Der restliche Umfang passt ohne Kürzung; die Kürzungsreihenfolge greift erst, wenn X1-Kern gefährdet ist.
+Reversible: yes  Touches: Ablauf
+
+## D-68 Wellen-Review parallel zum Tor X1
+Welle 6 · Tickets 117, 122 · decided by: orchestrator
+Question: Das Wellen-Review (Schritt 6) läuft auf dem Integrationszweig nach allen Merges; 117 fügt nur Tests hinzu. Warten oder parallel?
+Decision: Review jetzt auf `integration/welle-6` @ `6ab5796` (aller Produktcode der Welle, Fixpunkt `79e6680`), parallel zu 117. Die drei Testdateien aus 117 prüft der Orchestrator beim Merge; meldet 117 einen Produktfehler, geht er in das Fix-Ticket 122.
+Reason: Spart eine volle Review-Runde Wartezeit; der Review-Gegenstand ändert sich durch reine Tests nicht.
+Reversible: yes  Touches: Ablauf
+
+## D-69 Umfang der Review-Behebung Welle 6
+Welle 6 · Review · decided by: orchestrator
+Question: Welche Befunde des Wellen-Reviews (`review-welle-6.md`: Standards 8 hart + rund 45 Ermessen, Spec 24) werden in dieser Welle behoben, welche bestätigt, welche werden Folgetickets?
+Decision: Ein Fix-Ticket 122 (Opus). **Pflicht:** alle harten Standards-Befunde (SA1 N4 im `bim`-Vermerk → Formatierung an den Rand; SA2 und SB1/PB5 Glossar und doppelte Typnamen in `ifc`; SB2 Skala `prozent`; SB3/PB1 PDFs drucken de-DE-Texte statt Rohmeldungen, gleich wie am Bildschirm; SB4 `IFC_GLOBALID_MUSTER`; SC1/PC-c1 U3 Mehrfachauswahl per Tastatur; SC2 A2 Köpfe je Tag aus `bautagebuchAuswerten`), dazu PA1/PA2/PC-a4 (Budgets D-54 messen, rot wird gemeldet, nie gelockert), PB4, PB6, PB9, PC-a1, PC-a6, PC-c2, PC-c3, SA12 (Entpackgrenze beim Einlesen) und der offene Punkt aus D-66 (SOLL 12: GAEB-Export meldet verworfene `bauteile` als F6-Warnung). **Soll:** PC-a2 (Bezug auf LV-Knoten im Vorgangsdialog), PC-a5, PB8 prüfen, die billigen Ermessenspunkte (Liste im Ticket). **Bestätigt, keine Änderung:** D-107.6 (PA6: Verweis auf ein späteres Duplikat entfällt mit Befund; das ist die Lesart des Vertrags „erster Treffer“, ohne etwas zu erfinden, Q5 durch den Befund), D-100.3 (PA4: lesende Prüfmethoden am Ref; die App gibt sie nur in Testbuilds frei, und so wird die ausgelieferte Komponente geprüft), PA5 (`jeNrf`, leerer Dateiname abgewiesen), D-111.8 (PB2: Zeile je Auftrags-LV; die unabhängig geschriebene Fixture hat dieselbe Form), D-113.1 (PB3: `Berichtsmodell` neben dem `Ausgabemodell`; ADR 0012 regelt den LV-Druck, ihre Naht-Regel – der Renderer liest nur ein druckfertiges Modell – gilt auch hier; der Mensch bestätigt mit W-04), D-114.7 (PC-a3: Geometriebefunde erst nach dem Zeichnen, daher auf der Modellseite), D-121.2 (Entfernen zurückgehaltener Druckprofile nur nach Rückfrage und mit Sicherungsdatei, Q5), Rückgängig einer Zuordnung führt auf die LV-Seite (die Daten liegen im LV, wie D-116.3). PA3 und PB7 (Haken und Antworten in Tickets) erledigt der Orchestrator. **Folgetickets:** 123 (Aufräumen: Konstanten für KG-Form, Hash, Mengen-/Struktur-/Schemaarten in `vertrag`, weil `bim`/`ifc` den Kern nicht importieren dürfen; Repeated Switches über `ChangeSet['art']` in `speicher`; Positionskopplung in `schreiben.ts`; Seitengerüst, Pfade, Schreibweg, `Feldfehler` und Schriftlader der neuen App-Ordner, Honorar-PDF im Worker; gemeinsamer `Datum`-Typ; KG-Ausnahme in `ui-grid`; restliche Namen) und 124 (Fachliches: D-118.3 Vorgang verschieben, D-118.7 Fortschritt aus dem Leistungsstand, D-93.7 Hinweis an der Zelle, Neumessung Preisspiegel-Budget auf ruhiger Maschine).
+Reason: Wie D-47: Pflicht ist, was eine Regel, ein ADR, den Vertrag oder das Ticket verletzt oder Zahlen falsch zeigt; die Bestätigungen haben tragfähige Gründe in ihren Tickets und widersprechen keiner Regel. Was `vertrag` braucht (A4/P9) oder viele Dateien umbaut, wird ein eigenes Ticket statt eines Nebenbei-Umbaus kurz vor Wellenende.
+Reversible: yes  Touches: packages/bim, ifc, ui-modell, speicher, kern, bauzeit, honorar, bauleitung, ausgabe, gaeb, ui-grid, fixtures, apps/web, GLOSSARY.md
+
+## D-70 Tor X1: LV `typisch` per X86 statt X83
+Welle 6 · Ticket 117 · decided by: orchestrator
+Question: Ticket 117 verlangte „LV `typisch` per X83 wie M3/M4“; der Umsetzer liest X86 (D-117.1). Bestätigen?
+Decision: Ja. Der Tickettext war falsch: Eine X83 trägt keine Einheitspreise und keinen Nachlass, das LV-Netto wäre 0,00 und „Vordersatz und LV-Netto = Soll“ (`plan.md` §4, D-58) unerfüllbar. X86 ergibt genau die Summen von `typisch.json`; `plan.md` §4 nennt für X1 kein Format und bleibt. Auch D-117.3 (Zuschlag an A ohne Wahl, sonst fiele 02.0070 aus dem Aufmaßblatt) und D-117.5 (Fenster 1440 × 2000 wie M4) bestätigt.
+Reason: Die Tor-Definition (Zahlen gleich den Sollwerten) geht vor dem Weg im Tickettext; M3/M4 prüfen die Vergabe, X1 die Mengen am bepreisten LV.
+Reversible: yes  Touches: apps/web/e2e/x1-*.spec.ts

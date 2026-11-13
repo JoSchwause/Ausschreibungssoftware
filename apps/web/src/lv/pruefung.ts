@@ -64,6 +64,7 @@ const GRID_SPALTEN: ReadonlySet<string> = new Set<LvSpalte>([
   'einheit',
   'einheitspreis',
   'gesamtpreis',
+  'kostengruppe', // Ticket 93: die Spalte „KG“ auf LV-Seite und Auftrags-LV
 ]);
 
 export type Sprungziel =
@@ -82,7 +83,7 @@ export interface Sprung {
  * einer Position öffnet ein Feld ohne Spalte (Langtext, Zuschlag, …) oder ein Befund ohne Feld (Zuschlag, Wahl) den
  * Positionsdialog; LV-weite Befunde nennen ihr Feld.
  */
-export function sprungZu(b: Pruefbefund, knoten: readonly Knoten[]): Sprung {
+export function sprungZu(b: Pick<Pruefbefund, 'ort'>, knoten: readonly Knoten[]): Sprung {
   const id = b.ort.knotenId;
   const feld = b.ort.feld;
   if (id === undefined)
