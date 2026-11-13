@@ -7,6 +7,7 @@
   /* Füllt die restliche Höhe des Elternelements (Ticket 130): als Flex-Element einer Spalte wie mit fester Höhe. Nur der
      Scrollbereich schrumpft; Hinweise, Status und Summenfuß behalten ihre Höhe und bleiben sichtbar. */
   flex: 1 1 auto;
+  box-sizing: border-box;
   height: 100%;
   min-height: 0;
   border: 1px solid var(--tx-color-border-strong);
