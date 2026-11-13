@@ -1,6 +1,6 @@
 # 147: App: Erster Start, Beispielprojekt, Hilfe, Speicherstatus
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E2 · Paket/Ordner: neu `apps/web/src/hilfe/`, `apps/web/src/ui/` (Statuszeile), `projekt/ProjektlisteSeite.tsx`; Beispielprojekt-Daten aus `fixtures/` (nur lesen, über den Build eingebunden)
 Blocked by: 131, 134, 130
