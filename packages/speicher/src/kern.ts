@@ -47,6 +47,7 @@ import type {
   Protokolleintrag,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { aggregatDes, wendeAn } from './aggregatarten';
 import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
@@ -92,55 +93,9 @@ import {
   pruefeModelldateienDerDatei,
   schreibeProjektdatei,
 } from './projektdatei';
-import {
-  gibUngenutzteModelldateienFrei,
-  schreibeModelldatei,
-  schreibeProtokolleintrag,
-  wendeAngebotAn,
-  wendeAufmassAn,
-  wendeAuftragsLvAn,
-  wendeBautagebucheintragAn,
-  wendeBauwerksmodellAn,
-  wendeBauzeitenplanAn,
-  wendeHonorarberechnungAn,
-  wendeMangelAn,
-  wendeKostenermittlungAn,
-  wendeLvAn,
-  wendeProjektAn,
-  wendeRechnungAn,
-} from './schreiben';
+import { gibUngenutzteModelldateienFrei, schreibeModelldatei, schreibeProtokolleintrag } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
-
-/** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
-function aggregatDes(cs: ChangeSet): { art: string; id: string } {
-  switch (cs.art) {
-    case 'projekt':
-      return { art: cs.art, id: cs.projektId };
-    case 'leistungsverzeichnis':
-      return { art: cs.art, id: cs.leistungsverzeichnisId };
-    case 'angebot':
-      return { art: cs.art, id: cs.angebotId };
-    case 'auftrags-leistungsverzeichnis':
-      return { art: cs.art, id: cs.auftragsLeistungsverzeichnisId };
-    case 'aufmass':
-      return { art: cs.art, id: cs.aufmassId };
-    case 'rechnung':
-      return { art: cs.art, id: cs.rechnungId };
-    case 'kostenermittlung':
-      return { art: cs.art, id: cs.kostenermittlungId };
-    case 'bauwerksmodell':
-      return { art: cs.art, id: cs.bauwerksmodellId };
-    case 'bauzeitenplan':
-      return { art: cs.art, id: cs.bauzeitenplanId };
-    case 'honorarberechnung':
-      return { art: cs.art, id: cs.honorarberechnungId };
-    case 'mangel':
-      return { art: cs.art, id: cs.mangelId };
-    case 'bautagebucheintrag':
-      return { art: cs.art, id: cs.bautagebucheintragId };
-  }
-}
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -597,44 +552,7 @@ export class SpeicherKern {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
         pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        switch (changeSet.art) {
-          case 'projekt':
-            wendeProjektAn(this.#db, changeSet);
-            break;
-          case 'leistungsverzeichnis':
-            wendeLvAn(this.#db, changeSet, eintrag.projektId, eintrag.wann);
-            break;
-          case 'angebot':
-            wendeAngebotAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'auftrags-leistungsverzeichnis':
-            wendeAuftragsLvAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'aufmass':
-            wendeAufmassAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'rechnung':
-            wendeRechnungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'kostenermittlung':
-            wendeKostenermittlungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bauwerksmodell':
-            wendeBauwerksmodellAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bauzeitenplan':
-            wendeBauzeitenplanAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'honorarberechnung':
-            wendeHonorarberechnungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'mangel':
-            wendeMangelAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bautagebucheintrag':
-            wendeBautagebucheintragAn(this.#db, changeSet, eintrag.projektId);
-            break;
-        }
+        wendeAn(this.#db, changeSet, eintrag.projektId, eintrag.wann);
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
         // gehören könnte (siehe `wendeProjektAn`, D-31.1).
         const projektGeloescht = changeSet.art === 'projekt' && changeSet.projekt.nachher === null;
