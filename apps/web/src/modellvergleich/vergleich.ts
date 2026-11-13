@@ -101,7 +101,9 @@ export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Ver
     const teile: string[] = [];
     for (const f of g.felder) {
       if (f === 'klasse')
-        teile.push(`${texte.liste.feld.klasse}: ${ifcKlassenName(g.vorher.ifcKlasse)} → ${ifcKlassenName(g.nachher.ifcKlasse)}`);
+        teile.push(
+          `${texte.liste.feld.klasse}: ${ifcKlassenName(g.vorher.ifcKlasse)} → ${ifcKlassenName(g.nachher.ifcKlasse)}`,
+        );
       else if (f === 'name') teile.push(`${texte.liste.feld.name}: ${name(g.vorher)} → ${name(g.nachher)}`);
       else if (f === 'strukturknoten')
         teile.push(

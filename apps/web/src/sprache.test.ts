@@ -53,8 +53,12 @@ function zeichenfolgen(quelltext: string): string[] {
   const quelle = ts.createSourceFile('texte.ts', quelltext, ts.ScriptTarget.Latest, true);
   const gefunden: string[] = [];
   const besuche = (knoten: ts.Node): void => {
-    if (ts.isImportDeclaration(knoten) || ts.isExportDeclaration(knoten) || ts.isLiteralTypeNode(knoten)) return;
-    if (ts.isPropertyAssignment(knoten) && (ts.isStringLiteral(knoten.name) || ts.isNoSubstitutionTemplateLiteral(knoten.name))) {
+    if (ts.isImportDeclaration(knoten) || ts.isExportDeclaration(knoten) || ts.isLiteralTypeNode(knoten))
+      return;
+    if (
+      ts.isPropertyAssignment(knoten) &&
+      (ts.isStringLiteral(knoten.name) || ts.isNoSubstitutionTemplateLiteral(knoten.name))
+    ) {
       besuche(knoten.initializer);
       return;
     }
@@ -82,13 +86,17 @@ const REGELN: readonly Regel[] = [
   { name: 'du-Form (L4)', muster: /\b(?:du|dich|dir|dein\w*)\b/i },
   {
     name: 'Imperativ der 2. Person Singular (L4)',
-    muster: /(?:^|[.:;!?] )(?:Lege|Wähle|Gib|Trage|Füge|Klicke|Nimm|Öffne|Setze|Tippe|Drücke|Ziehe|Ändere|Lies|Prüfe)\b/,
+    muster:
+      /(?:^|[.:;!?] )(?:Lege|Wähle|Gib|Trage|Füge|Klicke|Nimm|Öffne|Setze|Tippe|Drücke|Ziehe|Ändere|Lies|Prüfe)\b/,
   },
   // L2: ein Begriff je Sache (Entscheidungen D-133.1 bis D-133.7)
   { name: 'Vordersatz (Begriff: Menge)', muster: /Vordersätz|Vordersatz/ },
   { name: 'Umsatzsteuer als Beschriftung (Begriff: MwSt)', muster: /Umsatzsteuer(?! \(BT-\d+\))/ },
   { name: 'Datensicherung (Begriff: Sicherung)', muster: /Datensicherung/ },
-  { name: 'Projektdatei exportieren (Begriff: Projektdatei sichern)', muster: /Projektdatei (?:ex|im)portieren/ },
+  {
+    name: 'Projektdatei exportieren (Begriff: Projektdatei sichern)',
+    muster: /Projektdatei (?:ex|im)portieren/,
+  },
   { name: 'importieren/Import (Begriff: einlesen)', muster: /\b[Ii]mport\w*/ },
   { name: 'Anlegen ohne Gegenstand', muster: /^Anlegen$/ },
   { name: 'Neue Rechnung (Begriff: Rechnung anlegen)', muster: /Neue Rechnung/ },

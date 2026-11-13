@@ -410,7 +410,13 @@ function Arbeitsflaeche({
                 <dt>{texte.seite.globalId}</dt>
                 <dd>{fokus}</dd>
                 <dt>{texte.seite.klasse}</dt>
-                <dd>{fokusBauteil ? ifcKlassenName(fokusBauteil.ifcKlasse) : (fokusKnoten ? texte.strukturart[fokusKnoten.art] : '')}</dd>
+                <dd>
+                  {fokusBauteil
+                    ? ifcKlassenName(fokusBauteil.ifcKlasse)
+                    : fokusKnoten
+                      ? texte.strukturart[fokusKnoten.art]
+                      : ''}
+                </dd>
                 {fokusBauteil?.typ ? (
                   <>
                     <dt>{texte.seite.typ}</dt>
