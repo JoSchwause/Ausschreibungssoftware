@@ -52,21 +52,21 @@ const blatt = { hatUnterknoten: false, aufgeklappt: false };
 
 describe('klappAbsicht', () => {
   it('Pfeil rechts/links in der Baumspalte klappt eine Zeile mit Unterknoten auf bzw. zu', () => {
-    expect(klappAbsicht(taste('ArrowRight'), zu, true)).toBe(true);
-    expect(klappAbsicht(taste('ArrowLeft'), auf, true)).toBe(false);
+    expect(klappAbsicht(taste('ArrowRight'), zu, true, 'lv')).toBe(true);
+    expect(klappAbsicht(taste('ArrowLeft'), auf, true, 'lv')).toBe(false);
   });
 
   it('steht die Zeile schon so, außerhalb der Baumspalte, ohne Unterknoten oder mit Umschalter: keine Absicht', () => {
-    expect(klappAbsicht(taste('ArrowRight'), auf, true)).toBeNull();
-    expect(klappAbsicht(taste('ArrowRight'), zu, false)).toBeNull();
-    expect(klappAbsicht(taste('ArrowRight'), blatt, true)).toBeNull();
-    expect(klappAbsicht(taste('ArrowRight', { shiftKey: true }), zu, true)).toBeNull();
-    expect(klappAbsicht(taste('ArrowRight', { ctrlKey: true }), zu, true)).toBeNull();
-    expect(klappAbsicht(taste('ArrowDown'), zu, true)).toBeNull();
+    expect(klappAbsicht(taste('ArrowRight'), auf, true, 'lv')).toBeNull();
+    expect(klappAbsicht(taste('ArrowRight'), zu, false, 'lv')).toBeNull();
+    expect(klappAbsicht(taste('ArrowRight'), blatt, true, 'lv')).toBeNull();
+    expect(klappAbsicht(taste('ArrowRight', { shiftKey: true }), zu, true, 'lv')).toBeNull();
+    expect(klappAbsicht(taste('ArrowRight', { ctrlKey: true }), zu, true, 'lv')).toBeNull();
+    expect(klappAbsicht(taste('ArrowDown'), zu, true, 'lv')).toBeNull();
   });
 
   it('Alt+Pfeil rechts/links klappt überall in der Zeile', () => {
-    expect(klappAbsicht(taste('ArrowRight', { altKey: true }), zu, false)).toBe(true);
-    expect(klappAbsicht(taste('ArrowLeft', { altKey: true }), auf, false)).toBe(false);
+    expect(klappAbsicht(taste('ArrowRight', { altKey: true }), zu, false, 'lv')).toBe(true);
+    expect(klappAbsicht(taste('ArrowLeft', { altKey: true }), auf, false, 'lv')).toBe(false);
   });
 });

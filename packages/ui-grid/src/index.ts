@@ -4,6 +4,12 @@
 
 export { LvGrid } from './LvGrid';
 export { STANDARDSPALTEN } from './tabelle';
+// Die Tastenkürzel der Grids (Ticket 130): Die Grids binden sie aus dieser Tabelle, die App erzeugt daraus die Hilfeseite.
+export { GRID_KUERZEL } from './kuerzel';
+export type { Gridart, Kuerzel, KuerzelAktion, Kuerzelbereich } from './kuerzel';
+// Spaltenbreiten (Ticket 130): je Grid unter dem Schlüssel des Aufrufers gemerkt, Standard `localStorage`.
+export { lokalerSpaltenbreitenSpeicher } from './useSpaltenbreiten';
+export type { Spaltenbreiten, SpaltenbreitenSpeicher } from './useSpaltenbreiten';
 export type {
   KostengruppeLesen,
   LvGridBearbeitbar,

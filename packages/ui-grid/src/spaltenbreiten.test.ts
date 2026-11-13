@@ -28,7 +28,13 @@ function position(oz: string, index: string | null, menge: string | null = null)
       reihenfolge: 0,
       ordnungszahl: oz as Ordnungszahl,
       ozIndex: index,
-      merkmale: { bedarf: null, wahl: null, stundenlohn: false, pauschal: false, zuschlagskennzeichen: false },
+      merkmale: {
+        bedarf: null,
+        wahl: null,
+        stundenlohn: false,
+        pauschal: false,
+        zuschlagskennzeichen: false,
+      },
       zuschlag: null,
       kurztext: 'Bauzaun',
       langtext: [],
@@ -74,8 +80,11 @@ describe('Mindestbreite der OZ-Spalte', () => {
 
   it('eine OZ, die länger ist als die Maske, verbreitert die Spalte', () => {
     const nurMaske = mindestbreiten([], zahlenAttrappe, maske([2], 4, true)).ordnungszahl ?? 0;
-    const mitHandOz = mindestbreiten([position('001.001.00101', null)], zahlenAttrappe, maske([2], 4, true))
-      .ordnungszahl;
+    const mitHandOz = mindestbreiten(
+      [position('001.001.00101', null)],
+      zahlenAttrappe,
+      maske([2], 4, true),
+    ).ordnungszahl;
     expect(mitHandOz).toBeGreaterThan(nurMaske);
   });
 });

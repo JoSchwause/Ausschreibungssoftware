@@ -4,6 +4,9 @@
 .tx-grid {
   display: flex;
   flex-direction: column;
+  /* Füllt die restliche Höhe des Elternelements (Ticket 130): als Flex-Element einer Spalte wie mit fester Höhe. Nur der
+     Scrollbereich schrumpft; Hinweise, Status und Summenfuß behalten ihre Höhe und bleiben sichtbar. */
+  flex: 1 1 auto;
   height: 100%;
   min-height: 0;
   border: 1px solid var(--tx-color-border-strong);
@@ -44,6 +47,7 @@
 }
 
 .tx-grid__kopfzelle {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 0 var(--tx-space-3);
@@ -60,6 +64,53 @@
 .tx-grid__kopfzelle--einheitspreis,
 .tx-grid__kopfzelle--gesamtpreis {
   justify-content: flex-end;
+}
+
+/* Kopftext des LV-Grids: Ellipse, falls die Spalte schmaler ist als ihr Titel. */
+.tx-grid__kopftext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ziehgriff am rechten Rand jeder Kopfzelle (Ticket 130): Ziehen ändert die Breite, Doppelklick setzt sie zurück. */
+.tx-grid__ziehgriff {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.tx-grid__ziehgriff:hover,
+.tx-grid__ziehgriff:active {
+  box-shadow: inset -2px 0 0 var(--tx-color-accent);
+}
+
+/* LV-Grid: Raster und Mindestbreite aller Zeilen aus zwei Variablen am Scrollbereich (Spaltenbreiten, Ticket 130). */
+.tx-grid--lv .tx-grid__kopfzeile,
+.tx-grid--lv .tx-grid__zeile {
+  grid-template-columns: var(--tx-grid-vorlage);
+  min-width: var(--tx-grid-breite);
+}
+
+.tx-grid--lv .tx-grid__zeile {
+  width: 100%;
+}
+
+.tx-grid--lv .tx-grid__kopf,
+.tx-grid--lv .tx-grid__koerper {
+  min-width: var(--tx-grid-breite);
+}
+
+/* Unter dem Scrollbereich: behalten ihre Höhe, auch wenn wenig Platz ist. */
+.tx-grid > .tx-grid__hinweise,
+.tx-grid > .tx-grid__status,
+.tx-grid > .tx-grid__summen {
+  flex: none;
 }
 
 /* ---------- Körper ---------- */

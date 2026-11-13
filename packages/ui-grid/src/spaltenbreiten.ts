@@ -67,16 +67,18 @@ interface Zahlspalte {
   readonly text: (z: LvZeile, zahlen: GridZahlen) => string;
 }
 
-const ZAHLSPALTEN: readonly Zahlspalte[] = (['menge', 'einheitspreis', 'gesamtpreis'] as const).map((spalte) => ({
-  spalte,
-  wert: (z: LvZeile): string | null => {
-    const k = z.knoten;
-    if (spalte === 'gesamtpreis') return z.summe;
-    if (k.art !== 'position') return null;
-    return spalte === 'menge' ? k.menge : k.einheitspreis;
-  },
-  text: (z: LvZeile, zahlen: GridZahlen): string => anzeigeText(z, spalte, zahlen),
-}));
+const ZAHLSPALTEN: readonly Zahlspalte[] = (['menge', 'einheitspreis', 'gesamtpreis'] as const).map(
+  (spalte) => ({
+    spalte,
+    wert: (z: LvZeile): string | null => {
+      const k = z.knoten;
+      if (spalte === 'gesamtpreis') return z.summe;
+      if (k.art !== 'position') return null;
+      return spalte === 'menge' ? k.menge : k.einheitspreis;
+    },
+    text: (z: LvZeile, zahlen: GridZahlen): string => anzeigeText(z, spalte, zahlen),
+  }),
+);
 
 /** Die breitesten Zeichen einer Stelle der OZ-Maske: Ziffern bzw. ein breiter Buchstabe. */
 function stellenmuster(laenge: number, zeichen: string): string {
@@ -114,7 +116,8 @@ export function mindestbreiten(
     for (const s of ZAHLSPALTEN) {
       const w = s.wert(z);
       const bisher = laengste.get(s);
-      if (w !== null && (bisher === undefined || w.length > (s.wert(bisher)?.length ?? 0))) laengste.set(s, z);
+      if (w !== null && (bisher === undefined || w.length > (s.wert(bisher)?.length ?? 0)))
+        laengste.set(s, z);
     }
     if (k.art === 'position' && (k.mengenansatz?.length ?? 0) > 0) ansatz = true;
     for (const b of z.befunde) if (b.ort.feld !== undefined) marken.add(b.ort.feld);
