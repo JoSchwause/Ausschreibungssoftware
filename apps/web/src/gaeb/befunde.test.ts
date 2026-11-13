@@ -121,16 +121,15 @@ describe('befundeZusammenfassen', () => {
   it('eine abgewiesene Datei: der Satz steht vorn und nicht noch einmal in Gruppen und Einzelheiten', () => {
     const satz =
       'Die Datei ist ein Nebenangebot (X85). Nebenangebote werden nicht eingelesen. Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.';
-    const z = befundeZusammenfassen([
-      {
-        schwere: 'fehler',
-        quelle: 'gaeb-lesen',
-        code: 'phase-nicht-unterstuetzt',
-        meldung: satz,
-        ort: { pfad: '/GAEB', zeile: 3 },
-        werte: { phase: { art: 'text', wert: 'X85' } },
-      } satisfies GaebBefund,
-    ]);
+    const x85: GaebBefund = {
+      schwere: 'fehler',
+      quelle: 'gaeb-lesen',
+      code: 'phase-nicht-unterstuetzt',
+      meldung: satz,
+      ort: { pfad: '/GAEB', zeile: 3 },
+      werte: { phase: { art: 'text', wert: 'X85' } },
+    };
+    const z = befundeZusammenfassen([x85]);
     expect(z.abweisung).toBe(satz);
     expect(z.gruppen).toEqual([]);
     expect(z.einzelheiten).toEqual([]);
@@ -138,16 +137,15 @@ describe('befundeZusammenfassen', () => {
   });
 
   it('Anzahl aus den Werten: ein Befund für 68 Vorkommen zählt 68', () => {
-    const z = befundeZusammenfassen([
-      {
-        schwere: 'warnung',
-        quelle: 'gaeb-lesen',
-        code: 'bild-ungueltig',
-        meldung: 'Bilder sind nicht lesbar (1.200 Vorkommen).',
-        ort: {},
-        werte: { anzahl: { art: 'anzahl', wert: 1200 } },
-      } satisfies GaebBefund,
-    ]);
+    const bilder: GaebBefund = {
+      schwere: 'warnung',
+      quelle: 'gaeb-lesen',
+      code: 'bild-ungueltig',
+      meldung: 'Bilder sind nicht lesbar (1.200 Vorkommen).',
+      ort: {},
+      werte: { anzahl: { art: 'anzahl', wert: 1200 } },
+    };
+    const z = befundeZusammenfassen([bilder]);
     expect(z.gruppen).toEqual([
       { schwere: 'warnung', titel: 'Bild nicht lesbar', anzahl: 1200, oz: [], werte: null },
     ]);
