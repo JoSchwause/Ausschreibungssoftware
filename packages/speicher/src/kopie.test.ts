@@ -4,7 +4,7 @@
 // geteilt. Geprüft an der eingefrorenen Datei der Version 6, die jede Aggregatart und jede Art von Verweis trägt.
 
 import { readFileSync } from 'node:fs';
-import type { Projektdatei, Speicher } from '@tethys/vertrag';
+import type { NutzerId, Projektdatei, ProtokollId, Speicher, Zeitstempel } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport, type Transport } from './client';
 import type { SpeicherKern } from './kern';
@@ -218,6 +218,42 @@ describe('Projektdatei als Kopie einlesen (D-127.10)', () => {
     expect(r).toMatchObject({ ok: false, fehler: { code: 'datei-ungueltig' } });
     expect(ids.gezogen()).toEqual([]);
     expect(wert(kern.projekteAuflisten())).toHaveLength(1);
+  });
+
+  it('die Datei der Version 7 als Kopie mit Übernahme der Einstellungen: Angaben, Preisspiegel, Kalkulation und Stände bleiben', async () => {
+    const v7 = readFileSync(new URL('../fixtures/projektdatei-v7.json', import.meta.url), 'utf8');
+    const original7 = JSON.parse(v7) as Projektdatei;
+    const { kern } = await neuerKern();
+    const s = speicherUeberTransport(ueberGrenze(direktTransport(kern)), null);
+    wert(await s.projektdateiImportieren(v7));
+    const kopf = {
+      id: 'uebernahme-kopie' as ProtokollId,
+      wer: 'nutzer-1' as NutzerId,
+      wann: original7.protokoll[0]?.wann ?? ('' as Zeitstempel),
+    };
+    const r = wert(
+      await einlesen(s, v7, {
+        alsKopie: { ids: zaehlendeIds('k7'), name: 'Kopie 7' },
+        einstellungsuebernahme: kopf,
+      }),
+    );
+    expect(r.einstellungen?.uebernommen).toHaveLength(5);
+    const kopie = JSON.parse(wert(await s.projektdateiExportieren(r.projektId))) as Projektdatei;
+    expect(kopie.projekt.angaben).toEqual(original7.projekt.angaben);
+    expect(kopie.projekt.bieter).toEqual(original7.projekt.bieter);
+    const mit = <T>(
+      d: Projektdatei,
+      f: (z: Projektdatei['leistungsverzeichnisse'][number]) => T | undefined,
+    ): T[] => d.leistungsverzeichnisse.map(f).filter((x): x is T => x !== undefined);
+    expect(mit(kopie, (z) => z.leistungsverzeichnis.preisspiegel)).toEqual(
+      mit(original7, (z) => z.leistungsverzeichnis.preisspiegel),
+    );
+    expect((kopie.lvStaende ?? []).map((st) => [st.name, st.angelegt]).sort()).toEqual(
+      (original7.lvStaende ?? []).map((st) => [st.name, st.angelegt]).sort(),
+    );
+    const alt = new Set(globaleKennungen(original7));
+    expect(zeichenketten({ ...kopie, protokoll: [] }).filter((x) => alt.has(x))).toEqual([]);
+    expect(wert(await s.protokoll(r.projektId))).toEqual([]);
   });
 
   it('reicht der Vorrat an Kennungen nicht (Programmfehler): unbekannt, nichts geschrieben', async () => {
