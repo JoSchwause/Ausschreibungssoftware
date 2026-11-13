@@ -20,7 +20,8 @@ type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
  * `KalkulationSetzen`:
  * - Knoten vor Wert wie jeder Feldbefehl (D-71.3): unbekannte Kennung `knoten-unbekannt`, Gliederung oder Hinweistext
  *   `knotenart-unzulaessig`. Eine Zuschlagsposition (mit Satz oder in der Altform) trägt keine Kalkulation: ebenfalls
- *   `knotenart-unzulaessig`, auch mit `kalkulation: null` (D-82 S3; der Befehl gehört nicht zu ihr).
+ *   `knotenart-unzulaessig` mit `feld: 'kalkulation'`, auch mit `kalkulation: null` (D-82 S3; der Befehl gehört nicht zu
+ *   ihr).
  * - Form (`ungueltige-eingabe` mit `feld`): Kalkulation nach `kalkulationFehler`, `einheitspreis` und `epa` wie bei ihren
  *   Feldbefehlen. Ob EP und EPA zur Kalkulation passen, prüft der Kern nicht.
  * - `kalkulation: null` und eine leere Kalkulation entfernen das Feld; EP und EPA werden in jedem Fall gesetzt, wie sie kommen
@@ -32,7 +33,12 @@ export function kalkulationSetzen(z: LvZustand, b: KalkulationSetzen): Antwort {
   if (!f.ok) return f;
   const { idx, position } = f.wert;
   if (position.zuschlag !== null)
-    return nein('knotenart-unzulaessig', 'Eine Zuschlagsposition trägt keine Kalkulation.', position.id);
+    return nein(
+      'knotenart-unzulaessig',
+      'Eine Zuschlagsposition trägt keine Kalkulation.',
+      position.id,
+      'kalkulation',
+    );
   if (b.kalkulation !== null) {
     const k = kalkulationFehler(b.kalkulation);
     if (k !== null) return nein('ungueltige-eingabe', k.meldung, position.id, k.feld);

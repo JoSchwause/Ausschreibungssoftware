@@ -161,9 +161,10 @@ describe('KalkulationSetzen', () => {
   it('Zuschlagsposition, mit Satz oder in der Altform: knotenart-unzulaessig (D-82 S3), vor der Form', () => {
     const z = basis();
     for (const kennung of ['Z', 'ZA']) {
-      expect(fehler(z, setzen(kennung, KALKULATION, null, null))?.[0], kennung).toBe('knotenart-unzulaessig');
-      expect(fehler(z, setzen(kennung, null, null, null))?.[0], kennung).toBe('knotenart-unzulaessig');
-      expect(fehler(z, setzen(kennung, 'x' as unknown as null))?.[0], kennung).toBe('knotenart-unzulaessig');
+      const erwartet = ['knotenart-unzulaessig', 'kalkulation'];
+      expect(fehler(z, setzen(kennung, KALKULATION, null, null)), kennung).toEqual(erwartet);
+      expect(fehler(z, setzen(kennung, null, null, null)), kennung).toEqual(erwartet);
+      expect(fehler(z, setzen(kennung, 'x' as unknown as null)), kennung).toEqual(erwartet);
     }
   });
 
