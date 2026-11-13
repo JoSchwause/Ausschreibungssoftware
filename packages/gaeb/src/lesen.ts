@@ -1723,7 +1723,8 @@ export function vorlauf(
         format: 'gaeb-90',
         befunde,
         satzdatei: {
-          text: zeichensatz === null || typeof eingabe === 'string' ? inhalt : dekodiereMit(eingabe, zeichensatz),
+          text:
+            zeichensatz === null || typeof eingabe === 'string' ? inhalt : dekodiereMit(eingabe, zeichensatz),
           zeichensatz,
           phase: art.phase,
           phasenquelle: art.phasenquelle,

@@ -121,7 +121,12 @@ const NUMERISCH = (laenge: number): OzStelle => ({ laenge, zeichen: 'numerisch' 
  * höchstens ein `I`, unbelegte Stellen `0` (oder leer) am Ende. Nur der Index ist alphanumerisch. Eine ungültige Maske ist
  * ein Fehler; dann gilt das ganze OZ-Feld als Positionsnummer.
  */
-function leseMaske90(roh: string, trenn: string | null, m: Zeilenmelder, zeile: number | null): Maskenbereiche {
+function leseMaske90(
+  roh: string,
+  trenn: string | null,
+  m: Zeilenmelder,
+  zeile: number | null,
+): Maskenbereiche {
   const ersatz: Maskenbereiche = {
     maske: { gliederung: [], position: NUMERISCH(9), index: null, trennzeichen: trenn },
     stufen: [],
@@ -129,7 +134,8 @@ function leseMaske90(roh: string, trenn: string | null, m: Zeilenmelder, zeile: 
     index: null,
   };
   const laeufe: { zeichen: string; anfang: number; laenge: number }[] = [];
-  for (const [i, c] of [...roh].entries()) {
+  for (let i = 0; i < roh.length; i++) {
+    const c = roh.charAt(i);
     const z = c === ' ' ? '0' : c.toUpperCase();
     const letzter = laeufe.at(-1);
     if (letzter && letzter.zeichen === z) letzter.laenge += 1;
@@ -142,7 +148,8 @@ function leseMaske90(roh: string, trenn: string | null, m: Zeilenmelder, zeile: 
   const fremd = belegt.filter((l) => !/^[1-9PI]$/.test(l.zeichen));
   const reihenfolge = belegt.map((l) => l.zeichen).join('');
   const erwartet = `${stufen.map((_, i) => String(i + 1)).join('')}P${idx.length === 1 ? 'I' : ''}`;
-  const ungenutztInnen = laeufe.findIndex((l) => l.zeichen === '0') < laeufe.findLastIndex((l) => l.zeichen !== '0');
+  const ersteLuecke = laeufe.findIndex((l) => l.zeichen === '0');
+  const ungenutztInnen = ersteLuecke >= 0 && ersteLuecke < laeufe.findLastIndex((l) => l.zeichen !== '0');
   const indexLaenge = idx[0]?.laenge ?? 1;
   if (
     fremd.length > 0 ||
@@ -252,10 +259,16 @@ function festzahl<Z extends Zahlenart>(
   const ganz = voll.slice(0, voll.length - nach).replace(/^0+(?=[0-9])/, '');
   const r = leseAustausch(art, nach === 0 ? ganz : `${ganz}.${voll.slice(voll.length - nach)}`);
   if (!r.ok) {
-    m.melde('fehler', 'dezimal-ungueltig', `Wert „${ziffern}“ ist keine lesbare Zahl: ${r.fehler.meldung}`, s.zeile, {
-      feld,
-      werte: { wert: text(ziffern) },
-    });
+    m.melde(
+      'fehler',
+      'dezimal-ungueltig',
+      `Wert „${ziffern}“ ist keine lesbare Zahl: ${r.fehler.meldung}`,
+      s.zeile,
+      {
+        feld,
+        werte: { wert: text(ziffern) },
+      },
+    );
     return null;
   }
   return r.wert;
@@ -280,26 +293,38 @@ function langtextAus(zeilen: readonly string[]): Langtext {
   return absaetze.map((a) => ({
     art: 'absatz',
     inhalt: a.flatMap((z, i) =>
-      i === 0 ? [{ art: 'text', text: z } as const] : [{ art: 'umbruch' } as const, { art: 'text', text: z } as const],
+      i === 0
+        ? [{ art: 'text', text: z } as const]
+        : [{ art: 'umbruch' } as const, { art: 'text', text: z } as const],
     ),
   }));
 }
 
 // --- Blöcke ------------------------------------------------------------------------------------------------
 
-/** Sätze, die zum Satz davor gehören (Texte, Preise, Bezeichnung der Gliederung, vertragliche Regelungen). */
-const FOLGESAETZE: ReadonlySet<string> = new Set(['12', '22', '23', '25', '26', '30', 'T1', 'T9']);
+/** Sätze, die zu einem Satz davor gehören (Texte, Preise, Bezeichnung der Gliederung, vertragliche Regelungen), und zu welchem. */
+const FOLGE_ZU: Readonly<Record<string, readonly string[]>> = {
+  '12': ['11'],
+  '22': ['21'],
+  '23': ['21'],
+  '30': ['21'],
+  '25': ['21', '20', '24'],
+  '26': ['21', '20', '24'],
+  T1: ['T0'],
+  T9: ['T0'],
+};
 
 interface Block {
   readonly kopf: Satz;
   readonly folge: Satz[];
 }
 
+/** Fasst einen Satz mit seinen Folgesätzen zusammen; ein Folgesatz ohne passenden Satz davor ist ein eigener Block. */
 function bloecke(saetze: readonly Satz[]): Block[] {
   const ergebnis: Block[] = [];
   for (const s of saetze) {
     const letzter = ergebnis.at(-1);
-    if (letzter && FOLGESAETZE.has(s.art)) letzter.folge.push(s);
+    if (letzter && FOLGE_ZU[s.art]?.includes(letzter.kopf.art)) letzter.folge.push(s);
     else ergebnis.push({ kopf: s, folge: [] });
   }
   return ergebnis;
@@ -314,6 +339,12 @@ const NICHT_UEBERNOMMEN: Readonly<Record<string, string>> = {
   '22': 'Preisangabe der Satzart 22',
   '24': 'Unterbeschreibung',
   '30': 'Einheitspreisanteile',
+  '12': 'Bezeichnung ohne Gliederung',
+  '23': 'Preisangabe ohne Position',
+  '25': 'Text ohne Position',
+  '26': 'Text ohne Position',
+  T1: 'vertragliche Regelungen ohne Beginn',
+  T9: 'vertragliche Regelungen ohne Beginn',
 };
 
 /** Abgeleitete Sätze: Die App rechnet die Summen selbst (wie `Totals` in DA XML). */
@@ -377,8 +408,12 @@ function uebrig(s: Satz, m: Zeilenmelder): void {
   if (bez !== undefined) m.nichtUebernommen(s.zeile, bez);
   else if (/^[78][0-9]$/.test(s.art)) m.nichtUebernommen(s.zeile, `freie Angaben der Satzart ${s.art}`);
   else
-    m.sammle(`satzart|${s.art}`, 'satzart-unbekannt', s.zeile, (n) =>
-      `${n === 1 ? 'Ein Satz' : `${String(n)} Sätze`} der Satzart „${s.art}“ ${n === 1 ? 'ist' : 'sind'} in der ` +
+    m.sammle(
+      `satzart|${s.art}`,
+      'satzart-unbekannt',
+      s.zeile,
+      (n) =>
+        `${n === 1 ? 'Ein Satz' : `${String(n)} Sätze`} der Satzart „${s.art}“ ${n === 1 ? 'ist' : 'sind'} in der ` +
         `Formatbeschreibung nicht belegt und ${n === 1 ? 'wird' : 'werden'} nicht übernommen.`,
       { werte: { satzart: text(s.art) } },
     );
@@ -468,7 +503,14 @@ function preiseAus(folge: readonly Satz[], m: Zeilenmelder): Preise {
   const zehntel = stellen(satz, 23, 23);
   const ep = leer(epRoh)
     ? null
-    : festzahl('einheitspreis', epRoh.trim() + (zehntel === ' ' ? '0' : zehntel), 3, satz, m, 'einheitspreis');
+    : festzahl(
+        'einheitspreis',
+        epRoh.trim() + (zehntel === ' ' ? '0' : zehntel),
+        3,
+        satz,
+        m,
+        'einheitspreis',
+      );
   const gb = festzahl('betrag', stellen(satz, 25, 36), 2, satz, m, 'gesamtpreis');
   if (!leer(stellen(satz, 12, 12) + stellen(satz, 24, 24) + stellen(satz, 37, 74)))
     m.nichtUebernommen(satz.zeile, 'weitere Angaben zum Preis einer Position');
@@ -490,17 +532,20 @@ class Lv90 {
     const s = b.kopf;
     switch (s.art) {
       case '11':
-        return this.gliederung(b);
+        this.gliederung(b);
+        return;
       case '31':
-        return this.aufbau.schliesse(zerlegeOz(s, this.k.bereiche, this.m, false).teile, s.zeile);
+        this.aufbau.schliesse(zerlegeOz(s, this.k.bereiche, this.m, false).teile, s.zeile);
+        return;
       case '20':
-        return this.hinweis(b);
+        this.hinweis(b);
+        return;
       case '21':
-        return this.position(b);
+        this.position(b);
+        return;
       default:
-        if (ABGELEITET.has(s.art)) return;
-        uebrig(s, this.m);
-        for (const f of b.folge) uebrig(f, this.m);
+        // Folgesätze (Texte einer Unterbeschreibung, eines unbekannten Satzes) gehören zu dem, was schon gemeldet ist.
+        if (!ABGELEITET.has(s.art)) uebrig(s, this.m);
     }
   }
 
@@ -522,7 +567,12 @@ class Lv90 {
         s.zeile,
       );
     else if (kennzeichen !== 'N' && kennzeichen !== ' ')
-      this.m.melde('warnung', 'enum-ungueltig', `Kennzeichen „${kennzeichen}“ der Gliederung ist unbekannt.`, s.zeile);
+      this.m.melde(
+        'warnung',
+        'enum-ungueltig',
+        `Kennzeichen „${kennzeichen}“ der Gliederung ist unbekannt.`,
+        s.zeile,
+      );
     if (!leer(stellen(s, 13, 74))) this.m.nichtUebernommen(s.zeile, 'weitere Angaben zur Gliederung');
     this.aufbau.oeffne(oz.teile, kurz, s.zeile);
     for (const f of b.folge) if (f.art !== '12') uebrig(f, this.m);
@@ -530,7 +580,8 @@ class Lv90 {
 
   /** Satz 20 mit Langtext (26); ohne Langtext trägt der Kurztext (25) den Hinweis. */
   private hinweis(b: Block): void {
-    if (!leer(stellen(b.kopf, 3, 74))) this.m.nichtUebernommen(b.kopf.zeile, 'weitere Angaben zum Hinweistext');
+    if (!leer(stellen(b.kopf, 3, 74)))
+      this.m.nichtUebernommen(b.kopf.zeile, 'weitere Angaben zum Hinweistext');
     const lang = b.folge.filter((f) => f.art === '26').map(textVon);
     const kurz = b.folge.filter((f) => f.art === '25');
     let zeilen = lang;
@@ -550,17 +601,34 @@ class Lv90 {
     const wahl = wahlAus(p1);
     const bedarf = bedarfAus(p2);
     if (wahl === undefined)
-      this.m.melde('warnung', 'enum-ungueltig', `Positionsart „${p1}“ (Stelle 12) ist unbekannt; gelesen als normale Position.`, s.zeile);
+      this.m.melde(
+        'warnung',
+        'enum-ungueltig',
+        `Positionsart „${p1}“ (Stelle 12) ist unbekannt; gelesen als normale Position.`,
+        s.zeile,
+      );
     if (bedarf === undefined)
-      this.m.melde('warnung', 'enum-ungueltig', `Positionsart „${p2}“ (Stelle 13) ist unbekannt; gelesen als normale Position.`, s.zeile);
+      this.m.melde(
+        'warnung',
+        'enum-ungueltig',
+        `Positionsart „${p2}“ (Stelle 13) ist unbekannt; gelesen als normale Position.`,
+        s.zeile,
+      );
     // Stelle 14: in allen Beispielen „N“; eine Bedeutung anderer Werte ist nicht belegt (D-144.5).
     if (p3 !== 'N' && p3 !== ' ')
-      this.m.nichtUebernommen(s.zeile, 'Positionsart in Stelle 14', `der Wert „${p3}“ ist in der Formatbeschreibung nicht belegt`);
+      this.m.nichtUebernommen(
+        s.zeile,
+        'Positionsart in Stelle 14',
+        `der Wert „${p3}“ ist in der Formatbeschreibung nicht belegt`,
+      );
     if (!leer(stellen(s, 15, 23) + stellen(s, 39, 74)))
       this.m.nichtUebernommen(s.zeile, 'weitere Angaben zur Position');
     const menge = festzahl('menge', stellen(s, 24, 34), 3, s, this.m, 'menge');
     const einheit = stellen(s, 35, 38).trim() || null;
-    const kurz = b.folge.filter((f) => f.art === '25').map(textVon).filter((t) => t !== '');
+    const kurz = b.folge
+      .filter((f) => f.art === '25')
+      .map(textVon)
+      .filter((t) => t !== '');
     const lang = b.folge.filter((f) => f.art === '26').map(textVon);
     const preise = preiseAus(b.folge, this.m);
     for (const f of b.folge) if (!['23', '25', '26'].includes(f.art)) uebrig(f, this.m);
@@ -579,11 +647,23 @@ class Lv90 {
     });
     const ort = { knotenId: pos.id };
     if (menge === null)
-      this.m.melde('warnung', 'menge-fehlt', 'Die Position hat keine Menge.', s.zeile, { ...ort, feld: 'menge' });
+      this.m.melde('warnung', 'menge-fehlt', 'Die Position hat keine Menge.', s.zeile, {
+        ...ort,
+        feld: 'menge',
+      });
     if (einheit === null)
-      this.m.melde('warnung', 'einheit-fehlt', 'Die Position hat keine Mengeneinheit.', s.zeile, { ...ort, feld: 'einheit' });
+      this.m.melde('warnung', 'einheit-fehlt', 'Die Position hat keine Mengeneinheit.', s.zeile, {
+        ...ort,
+        feld: 'einheit',
+      });
     if (kurz.length === 0 && lang.every((z) => z === ''))
-      this.m.melde('warnung', 'beschreibung-fehlt', 'Die Position hat weder Kurz- noch Langtext.', s.zeile, ort);
+      this.m.melde(
+        'warnung',
+        'beschreibung-fehlt',
+        'Die Position hat weder Kurz- noch Langtext.',
+        s.zeile,
+        ort,
+      );
     if (menge !== null && preise.ep !== null && preise.gb !== null) {
       const soll = gesamtpreis(menge, preise.ep);
       if (vergleiche(preise.gb, soll) !== 0) {
@@ -644,7 +724,8 @@ export function leseGaeb90Lv(
 
   const x86 = d.phase === 'X86';
   const name = kopf.name ?? kopf.projekt?.text ?? opt.dateiname ?? 'Leistungsverzeichnis';
-  if (kopf.projekt !== null && kopf.name !== null) m.nichtUebernommen(kopf.projekt.zeile, 'Projektbezeichnung');
+  if (kopf.projekt !== null && kopf.name !== null)
+    m.nichtUebernommen(kopf.projekt.zeile, 'Projektbezeichnung');
   if (kopf.bieter !== null && !x86) m.nichtUebernommen(null, 'Angaben zum Bieter');
   const auftraggeber: Auftraggeber | undefined =
     kopf.auftraggeber === null
@@ -687,7 +768,17 @@ export interface Gaeb90AngebotErgebnis {
 }
 
 /** Sätze des LV (Gliederung, Texte, Mengen) und abgeleitete Summen: Ein Angebot übernimmt nur Preise. */
-const IM_ANGEBOT_UEBERGANGEN: ReadonlySet<string> = new Set(['11', '12', '20', '21', '25', '26', '31', '32', '99']);
+const IM_ANGEBOT_UEBERGANGEN: ReadonlySet<string> = new Set([
+  '11',
+  '12',
+  '20',
+  '21',
+  '25',
+  '26',
+  '31',
+  '32',
+  '99',
+]);
 
 const ozVon = (p: Position): string => `${p.ordnungszahl ?? '(ohne OZ)'}${p.ozIndex ?? ''}`;
 
@@ -731,7 +822,8 @@ export function leseGaeb90Angebot(
       return;
     }
     const oz = zerlegeOz(s, kopf.bereiche, m, true);
-    const anzeige = oz.teile === null ? stellen(s, 3, 11).trim() : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
+    const anzeige =
+      oz.teile === null ? stellen(s, 3, 11).trim() : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
     const p = oz.teile === null ? undefined : imLv.get(`${oz.teile.join(trenn ?? '')}|${oz.index ?? ''}`);
     if (!p) {
       m.melde(
@@ -773,7 +865,10 @@ export function leseGaeb90Angebot(
     if (preise.gb !== null && p.menge !== null) {
       const soll = gesamtpreis(p.menge, preise.ep);
       const ohneSumme = betragsziel(p) !== 'netto';
-      if (!(ohneSumme && vergleiche(preise.gb, '0.00' as Betrag) === 0) && vergleiche(preise.gb, soll) !== 0) {
+      if (
+        !(ohneSumme && vergleiche(preise.gb, '0.00' as Betrag) === 0) &&
+        vergleiche(preise.gb, soll) !== 0
+      ) {
         const datei = { art: 'betrag', wert: preise.gb } as const;
         const gerechnet = { art: 'betrag', wert: soll } as const;
         m.melde(
@@ -808,4 +903,3 @@ export function leseGaeb90Angebot(
   if (kopf.auftraggeber !== null) m.nichtUebernommen(null, 'Angaben zum Auftraggeber');
   return { phase: d.phase, positionen, bietername: kopf.bieter, befunde: m.ergebnis() };
 }
-

@@ -1,0 +1,62 @@
+00        86L                                                 11PPPPI0090 000001
+01GerÑteschuppen Bauhof                   13.11.26                        000002
+02Muster-Neubau GerÑteschuppen                                            000003
+03Gemeinde Musterdorf                                                     000004
+04Musterbau GmbH                                                          000005
+08EUR   Euro                                                              000006
+20                                                                        000007
+26   Vorbemerkung zum Leistungsverzeichnis                                000008
+26   Die Zufahrt erfolgt Åber den Wirtschaftsweg.                         000009
+1101       N                                                              000010
+12Erdarbeiten                                                             000011
+21010010   NNN         00000125500m2                                      000012
+23010010    00000004350 000000054593                                      000013
+25Oberboden abtragen                                                      000014
+26   Oberboden abtragen und seitlich lagern.                              000015
+26   - Dicke bis 30 cm                                                    000016
+26   - Lagerung auf der Baustelle                                         000017
+21010020   NNN         00000048250m3                                      000018
+23010020    00000018900 000000091193                                      000019
+25Baugrube ausheben                                                       000020
+26   Baugrube ausheben, Boden der Klassen 3 bis 5,                        000021
+26   Aushub seitlich lagern.                                              000022
+21010030   NEN         00000010000h                                       000023
+23010030    00000065000                                                   000024
+25Wasserhaltung (Bedarf)                                                  000025
+26   Wasserhaltung mit Tauchpumpe, nur auf Anordnung.                     000026
+21010040   NMN         00000012000m3                                      000027
+23010040    00000032500 000000039000                                      000028
+25Bodenaustausch (Bedarf mit Gesamtbetrag)                                000029
+26   Nicht tragfÑhigen Boden gegen Kies austauschen.                      000030
+20                                                                        000031
+26   Abfuhr von Boden nach gesonderter Vereinbarung.                      000032
+3101                                                                      000033
+3201        000000184786                                                  000034
+1102       N                                                              000035
+12Rohbau                                                                  000036
+21020010   GNN         00000018400m3                                      000037
+23020010    00000185000 000000340400                                      000038
+25Streifenfundament C25/30                                                000039
+26   Streifenfundament aus Beton C25/30, unbewehrt.                       000040
+21020020   ANN         00000018400m3                                      000041
+23020020    00000198500                                                   000042
+25Streifenfundament C30/37 (Wahl)                                         000043
+26   Wie vor, jedoch Beton C30/37.                                        000044
+21020030   NNN         00000086750m2                                      000045
+23020030    00000072150 000000625901                                      000046
+25Mauerwerk KS 17,5 cm                                                    000047
+26   Kalksandstein-Mauerwerk, Wanddicke 17,5 cm,                          000048
+26   Mîrtelgruppe IIa.                                                    000049
+26                                                                        000050
+26   AusfÅhrung nach Plan.                                                000051
+21020040   NNN         00000020000h                                       000052
+23020040    00000058000 000000116000                                      000053
+25Facharbeiter im Stundenlohn                                             000054
+26   Stundenlohnarbeiten, Facharbeiter.                                   000055
+21020050   NNN         00000001000psch                                    000056
+23020050    00002450000 000000245000                                      000057
+25Baustelleneinrichtung                                                   000058
+26   Baustelle einrichten und rÑumen.                                     000059
+3102                                                                      000060
+3202        000001327301                                                  000061
+99000001512087       1900000001799384                                00009000062

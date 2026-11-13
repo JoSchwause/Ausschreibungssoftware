@@ -144,7 +144,12 @@ describe('GAEB 90 (feste Satzlänge, Satzarten)', () => {
   });
 
   it('vertragliche Regelungen (T0 … T9) vor dem Satz 00 sind erlaubt', () => {
-    const mitT = [satz('T0', '', 1), satz('T1', 'Vorbemerkungen', 2), satz('T9', '', 3), satz('00', '        86L', 4)];
+    const mitT = [
+      satz('T0', '', 1),
+      satz('T1', 'Vorbemerkungen', 2),
+      satz('T9', '', 3),
+      satz('00', '        86L', 4),
+    ];
     const d = erkenneGaebDatei(bytes(mitT.join('\r\n')), 'lv.d86');
     expect([d.format, d.phase, d.phasenquelle]).toEqual(['gaeb-90', 'X86', 'inhalt']);
   });

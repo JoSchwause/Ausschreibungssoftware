@@ -203,7 +203,10 @@ describe('Versionen und Formate', () => {
         'stammt, kann sie in der Regel als GAEB DA XML ausgeben (Endung .x83). Bei der Abrechnung wird eine ' +
         'Mengenermittlung im Format GAEB DA XML eingelesen (Endung .x31).',
     );
-    expect(b.werte).toEqual({ format: { art: 'text', wert: 'GAEB 90' }, phase: { art: 'text', wert: 'X83' } });
+    expect(b.werte).toEqual({
+      format: { art: 'text', wert: 'GAEB 90' },
+      phase: { art: 'text', wert: 'X83' },
+    });
     nutzersprache(b.meldung);
   });
 

@@ -37,6 +37,15 @@ precedence = "override"
 SPDX-FileCopyrightText = "BVBS e.V. und GAEB (Herausgeber der amtlichen Prüf- und Musterdateien), keine Lizenz genannt"
 SPDX-License-Identifier = "LicenseRef-BVBS-GAEB-Pruefdatei"
 
+# Testdateien des Formatvergleichs (Ticket 144, C4, D-71): von Hand nach Formatbeschreibung geschrieben, nicht aus
+# AVA-Software; dieselbe Lizenz wie das Repo. Eigener Eintrag, weil die Formate (GAEB 90, XML ohne Kopfkommentar) keinen
+# Dateikopf tragen. Herkunft: fixtures/gaeb-formate/HERKUNFT.md.
+[[annotations]]
+path = "fixtures/gaeb-formate/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Tethys AVA contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # Schriftdateien der PDF-Ausgabe (Ticket 28): Noto Sans, Latin-Teilmenge als WOFF, aus dem npm-Paket
 # @fontsource/noto-sans 5.3.0 (Dateien files/noto-sans-latin-{400,700}-normal.woff). Lizenz laut LICENSE des Pakets:
 # SIL Open Font License 1.1, Urheber laut dessen Kopfzeile "The Noto Project Authors". Die Dateien liegen so vor,
