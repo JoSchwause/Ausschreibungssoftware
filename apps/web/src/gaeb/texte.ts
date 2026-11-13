@@ -3,7 +3,8 @@
 
 import type { GaebPhase, GaebVersion } from '@tethys/vertrag';
 
-const zahl = (n: number, eins: string, viele: string): string => `${String(n)} ${n === 1 ? eins : viele}`;
+const zahl = (n: number, eins: string, viele: string): string =>
+  `${n.toLocaleString('de-DE')} ${n === 1 ? eins : viele}`;
 
 export const texte = {
   befunde: {
@@ -11,7 +12,33 @@ export const texte = {
     gruppeFehler: 'Fehler',
     gruppeWarnungen: 'Warnungen',
     liste: 'Befunde der Datei',
-    ort: (zeile: number) => `Zeile ${String(zeile)}`,
+    ort: (zeile: number) => `Zeile ${zeile.toLocaleString('de-DE')}`,
+    // „Befunde beim Einlesen“: Zusammenfassung, Gruppen, Einzelheiten
+    anzahl: (fehler: number, warnungen: number) =>
+      [
+        fehler > 0 ? zahl(fehler, 'Fehler', 'Fehler') : null,
+        warnungen > 0 ? zahl(warnungen, 'Warnung', 'Warnungen') : null,
+      ]
+        .filter((t) => t !== null)
+        .join(', '),
+    nichtUebernommen: 'Nicht übernommen',
+    fehler: 'Fehler',
+    warnung: 'Warnung',
+    vorkommen: (n: number) => `${n.toLocaleString('de-DE')} Vorkommen`,
+    oz: (oz: readonly string[]) => `OZ ${oz.join(', ')}`,
+    einzelheiten: (n: number) => `Einzelheiten (${n.toLocaleString('de-DE')})`,
+    abgewiesen: 'Datei nicht eingelesen',
+    /** Namen der Werte, wenn ein Befund mehrere Zahlen trägt. */
+    wertnamen: {
+      datei: 'Datei',
+      gerechnet: 'gerechnet',
+      satz: 'Satz',
+      satzLv: 'Satz des Leistungsverzeichnisses',
+      bietermenge: 'Bieter',
+      lvMenge: 'Leistungsverzeichnis',
+      nachlass: 'Nachlass',
+      pauschalsumme: 'Pauschalsumme',
+    } as Readonly<Record<string, string>>,
   },
   einlesen: {
     knopf: 'GAEB einlesen',
@@ -67,7 +94,11 @@ export const texte = {
     erfolg: 'Angebot angelegt',
     liest: 'Die Datei wird gelesen …',
     keinX84: (phase: GaebPhase | null, version: GaebVersion | null) =>
-      `Erwartet wird eine X84 in GAEB 3.3 oder 3.2; die Datei ist ${phase ?? 'unbekannt'} ${version ?? ''}.`.trim(),
+      `Erwartet wird eine Angebotsabgabe (X84) im Format GAEB DA XML 3.1, 3.2 oder 3.3; ${
+        phase === null
+          ? 'die Austauschphase der Datei ist nicht erkennbar'
+          : `die Datei gehört zur Phase ${phase}${version === null ? '' : ` (Version ${version})`}`
+      }.`,
   },
   liste: {
     knopf: (n: number) => `Angebote (${String(n)})`,
