@@ -21,6 +21,7 @@
 import type {
   Aenderung,
   Aenderungen,
+  Angebotsposition,
   AngebotChangeSet,
   Aufmass,
   AufmassChangeSet,
@@ -75,16 +76,17 @@ import {
   type AufmassText,
   type BauzeitenplanText,
 } from './lesen';
-import type { Datenbank, SqlWert } from './sql';
+import type { Datenbank, Spaltenwerte, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
 import {
-  angebotspositionWerte,
-  aufmassWerte,
-  bautagebucheintragWerte,
-  bauwerksmodellWerte,
-  bauzeitenplanWerte,
-  honorarberechnungWerte,
-  mangelWerte,
+  ANGEBOTSPOSITION_SPALTEN,
+  angebotspositionZeile,
+  aufmassZeile,
+  bautagebucheintragZeile,
+  bauwerksmodellZeile,
+  bauzeitenplanZeile,
+  honorarberechnungZeile,
+  mangelZeile,
   ohne,
   KNOTEN_SPALTEN,
   knotenZuBindung,
@@ -92,9 +94,9 @@ import {
   kopfdatenSpalten,
   LV_KENNZEICHEN_SPALTEN,
   lvKennzeichenSpalten,
-  kostenermittlungWerte,
+  kostenermittlungZeile,
   nachlassSpalten,
-  rechnungWerte,
+  rechnungZeile,
 } from './zeilen';
 import {
   pruefeAufmassAnlegen,
@@ -119,6 +121,39 @@ const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
 /** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
 const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
 const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
+
+// --- Zeilen nach Spaltennamen (Ticket 135, SA7) ------------------------------------------------------------------------
+//
+// Eine Zeile ist ein Objekt Spalte → Wert (`zeilen.ts`). INSERT und UPDATE binden jeden Wert über den Namen seiner Spalte;
+// welche Spalten ein UPDATE schreibt, steht als Namen beim Aufrufer, nicht als Stelle in einem Tupel. Tabellen- und
+// Spaltennamen sind Konstanten im Code, nie Eingaben.
+
+/** Die Werte der Spalten `namen`, in ihrer Reihenfolge (Bindungsliste). */
+export function spaltenwerte<S extends string>(zeile: Spaltenwerte<S>, namen: readonly S[]): SqlWert[] {
+  return namen.map((n) => zeile[n]);
+}
+
+/** `INSERT INTO tabelle (…) VALUES (…)` mit allen Spalten der Zeile, in der Reihenfolge ihrer Schlüssel. */
+export function einfuegen(db: Datenbank, tabelle: string, zeile: Spaltenwerte): void {
+  const namen = Object.keys(zeile);
+  db.ausfuehren(
+    `INSERT INTO ${tabelle} (${namen.join(', ')}) VALUES (${namen.map(() => '?').join(', ')})`,
+    Object.values(zeile),
+  );
+}
+
+/** `UPDATE tabelle SET … WHERE id = ?`: nur die Spalten `namen` der Zeile, die Kennung aus ihrer Spalte `id`. */
+export function aendern<S extends string>(
+  db: Datenbank,
+  tabelle: string,
+  zeile: Spaltenwerte<S | 'id'>,
+  namen: readonly S[],
+): void {
+  db.ausfuehren(`UPDATE ${tabelle} SET ${namen.map((n) => `${n} = ?`).join(', ')} WHERE id = ?`, [
+    ...spaltenwerte(zeile, namen),
+    zeile.id,
+  ]);
+}
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
 
@@ -726,6 +761,12 @@ function loescheLv(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
 
 // --- Angebot ---------------------------------------------------------------------------------------------------
 
+/** Die Spalten einer Angebotsposition nach Namen (`ANGEBOTSPOSITION_SPALTEN`), der Schlüssel am Ende bzw. am Anfang. */
+const ANGEBOTSPOSITION_AENDERN = `UPDATE angebotsposition SET ${ANGEBOTSPOSITION_SPALTEN.map((s) => `${s} = ?`).join(', ')}
+  WHERE angebot_id = ? AND position_id = ?`;
+const ANGEBOTSPOSITION_EINFUEGEN = `INSERT INTO angebotsposition (angebot_id, position_id, ${ANGEBOTSPOSITION_SPALTEN.join(', ')})
+  VALUES (?, ?, ${ANGEBOTSPOSITION_SPALTEN.map(() => '?').join(', ')})`;
+
 function pruefeAngebotsposition(db: Datenbank, lvId: string, positionId: string): void {
   const z = db.zeilen("SELECT 1 AS da FROM knoten WHERE aggregat_id = ? AND id = ? AND art = 'position'", [
     lvId,
@@ -820,15 +861,15 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     'DELETE FROM summe_position WHERE aggregat_id = ? AND position_id = ?',
     p.entfernt.map((e) => schluessel(e.positionId)),
   );
+  const werte = (n: Angebotsposition): SqlWert[] =>
+    spaltenwerte(angebotspositionZeile(n), ANGEBOTSPOSITION_SPALTEN);
   db.stapel(
-    `UPDATE angebotsposition SET status = ?, einheitspreis = ?, epa = ?, zuschlagssatz = ?
-     WHERE angebot_id = ? AND position_id = ?`,
-    p.geaendert.map(({ nachher }): SqlWert[] => [...angebotspositionWerte(nachher), id, nachher.positionId]),
+    ANGEBOTSPOSITION_AENDERN,
+    p.geaendert.map(({ nachher }): SqlWert[] => [...werte(nachher), id, nachher.positionId]),
   );
   db.stapel(
-    `INSERT INTO angebotsposition (angebot_id, position_id, status, einheitspreis, epa, zuschlagssatz)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    p.hinzugefuegt.map((n): SqlWert[] => [id, n.positionId, ...angebotspositionWerte(n)]),
+    ANGEBOTSPOSITION_EINFUEGEN,
+    p.hinzugefuegt.map((n): SqlWert[] => [id, n.positionId, ...werte(n)]),
   );
   wendeSummenAn(db, id, cs.summen);
 }
@@ -1111,11 +1152,7 @@ export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: P
   if (vorher === null) {
     pruefeNummer(nachher.nummer, was);
     pruefeAufmassAnlegen(db, nachher);
-    db.ausfuehren(
-      `INSERT INTO aufmass (id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      aufmassWerte(nachher),
-    );
+    einfuegen(db, 'aufmass', aufmassZeile(nachher));
     return;
   }
   // `vorher` ist der gespeicherte Stand (oben geprüft); Nummer und Auftrags-LV bleiben fest.
@@ -1153,12 +1190,9 @@ export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId:
     pruefeRechnungAnlegen(db, nachher);
   }
   pruefeRechnungsaufmasse(db, nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO rechnung (id, projekt_id, auftrags_lv_id, nummer, angaben) VALUES (?, ?, ?, ?, ?)',
-      rechnungWerte(nachher),
-    );
-  else db.ausfuehren('UPDATE rechnung SET angaben = ? WHERE id = ?', [rechnungWerte(nachher)[4] ?? null, id]);
+  const zeile = rechnungZeile(nachher);
+  if (vorher === null) einfuegen(db, 'rechnung', zeile);
+  else aendern(db, 'rechnung', zeile, ['angaben']); // Auftrags-LV und Nummer bleiben fest (oben geprüft)
   pruefeFreigabereihenfolge(db, nachher.auftragsLvId);
 }
 
@@ -1180,18 +1214,10 @@ export function wendeKostenermittlungAn(
   if (vorher === null) {
     if (leseProjekt(db, projektId) === null)
       abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
-    db.ausfuehren(
-      'INSERT INTO kostenermittlung (id, projekt_id, stufe, name, eintraege) VALUES (?, ?, ?, ?, ?)',
-      kostenermittlungWerte(nachher),
-    );
+    einfuegen(db, 'kostenermittlung', kostenermittlungZeile(nachher));
     return;
   }
-  db.ausfuehren('UPDATE kostenermittlung SET stufe = ?, name = ?, eintraege = ? WHERE id = ?', [
-    nachher.stufe,
-    nachher.name,
-    kanonischKompakt(nachher.eintraege),
-    id,
-  ]);
+  aendern(db, 'kostenermittlung', kostenermittlungZeile(nachher), ['stufe', 'name', 'eintraege']);
 }
 
 // --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54, D-97.3) ------------------------------------------------------------------
@@ -1246,11 +1272,7 @@ export function wendeBauwerksmodellAn(
     if (leseProjekt(db, projektId) === null)
       abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
     pruefeBauwerksmodellAnlegen(db, nachher);
-    db.ausfuehren(
-      `INSERT INTO bauwerksmodell (id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id,
-                                   eingelesen, anzahl_bauteile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      bauwerksmodellWerte(nachher, neu.bauteile.length),
-    );
+    einfuegen(db, 'bauwerksmodell', bauwerksmodellZeile(nachher, neu.bauteile.length));
     db.ausfuehren(
       'INSERT INTO bauwerksmodell_inhalt (bauwerksmodell_id, struktur, bauteile) VALUES (?, ?, ?)',
       [id, kanonischKompakt(neu.struktur), kanonischKompakt(neu.bauteile)],
@@ -1318,19 +1340,15 @@ export function wendeBauzeitenplanAn(db: Datenbank, cs: BauzeitenplanChangeSet, 
   const vorgaenge = zeilentext(nachher.vorgaenge, merkliste);
   if (vorher === null) {
     projektDa(db, projektId);
-    db.ausfuehren(
-      'INSERT INTO bauzeitenplan (id, projekt_id, name, projektbeginn, kalender, vorgaenge) VALUES (?, ?, ?, ?, ?, ?)',
-      bauzeitenplanWerte(nachher, vorgaenge),
-    );
+    einfuegen(db, 'bauzeitenplan', bauzeitenplanZeile(nachher, vorgaenge));
     return;
   }
   // `vorher` ist der gespeicherte Stand (oben geprüft); geschrieben wird nur, was sich ändert.
   if (!gleich(planKopf(vorher), planKopf(nachher)))
-    db.ausfuehren('UPDATE bauzeitenplan SET name = ?, projektbeginn = ?, kalender = ? WHERE id = ?', [
-      nachher.name,
-      nachher.projektbeginn,
-      kanonischKompakt(nachher.kalender),
-      id,
+    aendern(db, 'bauzeitenplan', bauzeitenplanZeile(nachher, vorgaenge), [
+      'name',
+      'projektbeginn',
+      'kalender',
     ]);
   if (vorgaenge !== gespeichert?.vorgaenge)
     db.ausfuehren('UPDATE bauzeitenplan SET vorgaenge = ? WHERE id = ?', [vorgaenge, id]);
@@ -1358,17 +1376,9 @@ export function wendeHonorarberechnungAn(
   }
   if (vorher === null) projektDa(db, projektId);
   pruefeHonorarbezuege(db, nachher);
-  const w = honorarberechnungWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO honorarberechnung (id, projekt_id, name, nebenkosten, mwst_satz, objekte) VALUES (?, ?, ?, ?, ?, ?)',
-      w,
-    );
-  else
-    db.ausfuehren(
-      'UPDATE honorarberechnung SET name = ?, nebenkosten = ?, mwst_satz = ?, objekte = ? WHERE id = ?',
-      [...w.slice(2), id],
-    );
+  const zeile = honorarberechnungZeile(nachher);
+  if (vorher === null) einfuegen(db, 'honorarberechnung', zeile);
+  else aendern(db, 'honorarberechnung', zeile, ['name', 'nebenkosten', 'mwst_satz', 'objekte']);
 }
 
 /** Mangel anlegen, ändern oder löschen; die Nummer bleibt fest (D-97.13), Auftrags-LV und Modell hält `speicher` (D-97.6). */
@@ -1385,17 +1395,9 @@ export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: Pro
     projektDa(db, projektId);
   }
   pruefeMangel(db, nachher);
-  const w = mangelWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO mangel (id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben) VALUES (?, ?, ?, ?, ?, ?)',
-      w,
-    );
-  else
-    db.ausfuehren('UPDATE mangel SET auftrags_lv_id = ?, bauwerksmodell_id = ?, angaben = ? WHERE id = ?', [
-      ...w.slice(3),
-      id,
-    ]);
+  const zeile = mangelZeile(nachher);
+  if (vorher === null) einfuegen(db, 'mangel', zeile);
+  else aendern(db, 'mangel', zeile, ['auftrags_lv_id', 'bauwerksmodell_id', 'angaben']); // die Nummer bleibt fest
 }
 
 /** Bautagebucheintrag anlegen, ändern oder löschen; je Projekt und Datum höchstens einer (D-57). */
@@ -1420,11 +1422,9 @@ export function wendeBautagebucheintragAn(
   }
   if (vorher === null) projektDa(db, projektId);
   pruefeBautagebucheintrag(db, nachher);
-  const w = bautagebucheintragWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren('INSERT INTO bautagebucheintrag (id, projekt_id, datum, angaben) VALUES (?, ?, ?, ?)', w);
-  else
-    db.ausfuehren('UPDATE bautagebucheintrag SET datum = ?, angaben = ? WHERE id = ?', [...w.slice(2), id]);
+  const zeile = bautagebucheintragZeile(nachher);
+  if (vorher === null) einfuegen(db, 'bautagebucheintrag', zeile);
+  else aendern(db, 'bautagebucheintrag', zeile, ['datum', 'angaben']);
 }
 
 const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf =>
