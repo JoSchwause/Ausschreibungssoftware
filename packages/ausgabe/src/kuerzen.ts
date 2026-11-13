@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Langtext auf die ersten n Zeilen kürzen (Druckprofil „Langtext gekürzt“, Ticket 77). Rein darstellend. Eine Zeile ist ein
-// Absatz, ein Listenpunkt oder eine Tabellenzeile; jeder Zeilenumbruch im Absatz zählt mit. Der Schnitt bleibt sichtbar (Q5).
+// Absatz, ein Listenpunkt, eine Tabellenzeile oder ein Bild; jeder Zeilenumbruch im Absatz zählt mit. Der Schnitt bleibt
+// sichtbar (Q5).
 
 import type { DruckAbsatz, DruckBlock, DruckLauf } from './langtext';
 
@@ -65,6 +66,10 @@ function nimmZeilen(bloecke: readonly DruckBlock[], n: number): Ergebnis {
         aus.push(b);
         break;
       }
+      case 'bild':
+        aus.push(b);
+        rest -= 1;
+        break;
       case 'tabelle': {
         const zeilen = b.zeilen.slice(0, rest);
         const ganz = zeilen.length === b.zeilen.length;

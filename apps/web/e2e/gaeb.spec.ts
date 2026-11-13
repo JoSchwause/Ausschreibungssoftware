@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { projektAnlegen } from './hilfen';
+import { erwartePunkt, werkzeug } from './werkzeuge';
 
 const AVA = 'fixtures/extern/bvbs/3.3-ava/BVBS_Pruefdatei_3.3_AVA_V-11-06-2021';
 const pfad = (rel: string): string => new URL(`../../../${rel}`, import.meta.url).pathname;
@@ -100,7 +101,7 @@ test('typisch als X83 3.3 ausgeben: Datei wird heruntergeladen, die eigene Prüf
   page,
 }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'GAEB ausgeben' }).click();
+  await werkzeug(page, 'Ausgabe', 'GAEB ausgeben');
   const dialog = page.getByRole('dialog', { name: 'GAEB-Datei ausgeben' });
   await expect(dialog.getByText('Die eigene Prüfung fand keine Fehler.')).toBeVisible();
   await expect(dialog.getByTestId('ausgabe-dateiname')).toHaveText('Typisch Musterhaus erfunden.x83');
@@ -116,7 +117,7 @@ test('typisch als X83 3.3 ausgeben: Datei wird heruntergeladen, die eigene Prüf
 
 test('Eine Einheit über 4 Zeichen macht den Export zum Entwurf; er geschieht trotzdem', async ({ page }) => {
   await typischOeffnen(page, 'Stunden');
-  await page.getByRole('button', { name: 'GAEB ausgeben' }).click();
+  await werkzeug(page, 'Ausgabe', 'GAEB ausgeben');
   const dialog = page.getByRole('dialog', { name: 'GAEB-Datei ausgeben' });
   await expect(dialog.getByRole('alert')).toContainText('Entwurf');
   await expect(dialog.getByTestId('ausgabe-dateiname')).toHaveText('Typisch Musterhaus erfunden_Entwurf.x83');
@@ -134,7 +135,7 @@ test('X84 zum eingelesenen BVBS-LV: Bieter wird angelegt, Angebot erscheint mit 
   await bvbsEinlesen(page);
   await page.getByRole('link', { name: 'BVBS GAEB AVA' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'BVBS GAEB AVA' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Angebote (0)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (0)');
 
   await page.getByLabel('Angebotsdatei wählen').setInputFiles(pfad(`${AVA}.X84`));
   const dialog = page.getByRole('dialog', { name: 'Angebot (X84) einlesen' });
@@ -154,14 +155,14 @@ test('X84 zum eingelesenen BVBS-LV: Bieter wird angelegt, Angebot erscheint mit 
   await expect(zeile.getByRole('cell').nth(1)).toHaveText('1.421.024.428,85');
   await expect(zeile.getByRole('cell').nth(3)).toHaveText('1.691.019.070,33');
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await expect(page.getByRole('button', { name: 'Angebote (1)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (1)');
 
   // Bieter und Angebot sind ein Schritt: ein Rückgängig nimmt beide zurück.
   await page
     .getByRole('button', { name: /Rückgängig/ })
     .first()
     .click();
-  await expect(page.getByRole('button', { name: 'Angebote (0)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (0)');
 });
 
 const BAUAUSFUEHRUNG =

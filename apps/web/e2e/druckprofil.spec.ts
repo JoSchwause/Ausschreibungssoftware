@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const projektIdAusUrl = (page: Page): string =>
   decodeURIComponent(new URL(page.url()).pathname.split('/').at(-1) ?? '');
@@ -49,7 +50,7 @@ test('Druckprofil wählen: Ausschreibung ohne Preise, Kostenanschlag und Auftrag
   page,
 }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
 
   await profilWaehlen(page, 'Ausschreibung mit Langtext ohne Preise');
@@ -58,12 +59,12 @@ test('Druckprofil wählen: Ausschreibung ohne Preise, Kostenanschlag und Auftrag
   expect(ohne).toContain('Typisch: Musterhaus (erfunden)');
   expect(ohne).not.toContain(NETTO);
 
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   await expect(dialog.getByRole('combobox', { name: 'Druckprofil' })).toContainText('ohne Preise'); // zuletzt gewählt
   await profilWaehlen(page, 'Kostenanschlag mit Preisen, nur Kurztext');
   expect(await pdfText(page)).toContain(NETTO);
 
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   await profilWaehlen(page, 'Auftrags-LV mit Preisen');
   expect(await pdfText(page)).toContain(NETTO);
 });
@@ -72,7 +73,7 @@ test('Eigenes Profil: anlegen, bleibt nach dem Neuladen, exportieren, löschen, 
   page,
 }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
 
   // Ein Standardprofil lässt sich nicht löschen; die Kopie unter eigenem Namen schon.
@@ -86,14 +87,14 @@ test('Eigenes Profil: anlegen, bleibt nach dem Neuladen, exportieren, löschen, 
   expect(await pdfText(page)).not.toContain(NETTO);
 
   // Ein vergebener Name wird abgewiesen, nichts wird überschrieben.
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   await dialog.getByLabel('Name des Profils').fill('Bieter ohne Preise');
   await dialog.getByRole('button', { name: 'Als neues Profil speichern' }).click();
   await expect(dialog.getByRole('alert')).toContainText('schon vergeben');
 
   // Als Einstellung des Nutzers: nach dem Neuladen noch da und gewählt.
   await page.reload();
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   await expect(dialog.getByRole('combobox', { name: 'Druckprofil' })).toContainText('Bieter ohne Preise');
 
   const [export_] = await Promise.all([
@@ -141,7 +142,7 @@ test('Unlesbare und doppelte gespeicherte Profile: Hinweis im Dialog, beim Speic
   });
 
   // Ein gültiges eigenes Profil über die Oberfläche; der unlesbare Eintrag 42 bleibt dahinter stehen.
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await dialog.getByLabel('Name des Profils').fill('Mein Profil');
   await dialog.getByRole('button', { name: 'Als neues Profil speichern' }).click();
@@ -157,7 +158,7 @@ test('Unlesbare und doppelte gespeicherte Profile: Hinweis im Dialog, beim Speic
   );
 
   await page.reload();
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const hinweis = dialog.getByRole('region', { name: 'Nicht verwendete gespeicherte Profile' });
   await expect(hinweis).toContainText('Ein weiteres gespeichertes Profil heißt „Mein Profil“.');
   await expect(hinweis).toContainText('lässt sich nicht als Druckprofil lesen');

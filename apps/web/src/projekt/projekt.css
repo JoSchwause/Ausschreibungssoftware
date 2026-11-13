@@ -137,32 +137,3 @@
 .projekt__verweise a {
   color: var(--tx-color-accent-text);
 }
-
-.projekt__menue {
-  z-index: 50;
-  min-width: 180px;
-  padding: var(--tx-space-1);
-  border: 1px solid var(--tx-color-border);
-  border-radius: var(--tx-radius-md);
-  background: var(--tx-color-surface-raised);
-  box-shadow: var(--tx-shadow-md);
-}
-
-.projekt__menuepunkt {
-  display: flex;
-  align-items: center;
-  height: var(--tx-control-height);
-  padding: 0 var(--tx-space-3);
-  border-radius: var(--tx-radius-sm);
-  cursor: default;
-  outline: none;
-  user-select: none;
-}
-
-.projekt__menuepunkt[data-highlighted] {
-  background: var(--tx-color-surface-hover);
-}
-
-.projekt__menuepunkt--gefahr {
-  color: var(--tx-color-danger);
-}

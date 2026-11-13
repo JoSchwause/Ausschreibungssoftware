@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { ifcKlassenName } from '../src/bim/texte';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { betragDe, leerlauf, projektAnlegen, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import { BIM_SOLL, typischNachUebernahme } from './modellvergleich-inhalt';
 
 // WebGL 2 in Headless-Chromium ohne GPU: ANGLE auf SwiftShader, wie in `bim.spec.ts` (D-100.11).
@@ -205,7 +206,7 @@ test('Hängende Zuordnung: Sprung zur Position auf der Modellseite und in der Vo
 
   // LV-Seite: „Mengen aus Modell …“ mit v2 zeigt denselben Befund; „Zur Position“ schließt und springt zur Menge.
   await page.goto(`/lv/${typischNachUebernahme().wurzelId}`);
-  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  await werkzeug(page, 'Bearbeiten', 'Mengen aus Modell …');
   const dialog = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
   await dialog.getByRole('combobox', { name: 'Modell', exact: true }).click();
   await page.getByRole('option', { name: /^haus-v2/ }).click();
