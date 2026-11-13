@@ -434,6 +434,26 @@ describe('übrige Satzarten, Satzlänge und Satznummer', () => {
     expect(positionen(l.inhalt.knoten)[0]?.langtext).toEqual([]);
   });
 
+  it('Folgesätze ohne passenden Satz davor (Preis, Text, Bezeichnung) sind „nicht übernommen“', () => {
+    const l = inhaltVon(
+      datei(
+        ...KOPF(),
+        satz('23', [3, '01000010'], [13, '0000001000']),
+        satz('26', [6, 'verwaister Text']),
+        satz('12', [3, 'Bezeichnung']),
+        ...pos('01000010', 'NNN', '00000001000', 'St', 'Tür'),
+      ),
+    );
+    expect(nichtUebernommen(l.befunde)).toEqual(
+      expect.arrayContaining([
+        'Preisangabe ohne Position',
+        'Text ohne Position',
+        'Bezeichnung ohne Gliederung',
+      ]),
+    );
+    expect(codes(l.befunde)).not.toContain('satzart-unbekannt');
+  });
+
   it('falsche Satzlänge und nicht fortlaufende Satznummern sind je ein zusammengefasster Befund', () => {
     const zeilen = datei(
       ...KOPF(),
