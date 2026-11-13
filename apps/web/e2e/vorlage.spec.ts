@@ -59,7 +59,7 @@ test('Muster-LV kennzeichnen, in anderes LV übernehmen, Textquelle sichtbar, R�
   await lvAnlegen(page, 'Neubau Süd', 'NN.NNNN');
   expect(await zeilenZahl(page)).toBe(0);
 
-  await page.getByRole('button', { name: 'Aus Vorlage übernehmen…' }).click();
+  await page.getByRole('button', { name: 'Aus Vorlage übernehmen …' }).click();
   const dialog = page.getByRole('dialog', { name: 'Aus Vorlage übernehmen' });
   await dialog.getByRole('combobox', { name: 'Muster-LV' }).click();
   await page.getByRole('option', { name: 'Wohnhaus: Muster Rohbau' }).click();
@@ -117,7 +117,7 @@ test('Ohne Muster-LV sagt der Dialog es; die Kennzeichnung lässt sich zurückne
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
   await expect(page.getByTestId('kennzeichen-vorlage')).toHaveCount(0);
   await lvAnlegen(page, 'Neubau Nord', 'NN.NNNN');
-  await page.getByRole('button', { name: 'Aus Vorlage übernehmen…' }).click();
+  await page.getByRole('button', { name: 'Aus Vorlage übernehmen …' }).click();
   await expect(page.getByRole('dialog', { name: 'Aus Vorlage übernehmen' })).toContainText(
     'Es gibt noch kein Muster-LV',
   );

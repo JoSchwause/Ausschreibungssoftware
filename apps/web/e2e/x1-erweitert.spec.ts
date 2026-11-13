@@ -10,6 +10,7 @@
 // aus einem Lauf der App. Die 3D-Ansicht prüft der Prüfzugang `window.tethysModell` (Test-Build), nie Pixel (D-58).
 
 import { readFileSync } from 'node:fs';
+import { ifcKlassenName } from '../src/bim/texte';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { betragDe, leerlauf, summen } from './hilfen';
 import {
@@ -267,11 +268,26 @@ test('Tor X1-Erweitert: DIN 277, Kostenschätzung, Zuschlag, Aufmaß aus Auswahl
   await expect
     .poll(async () => (await gridZeilen(aenderungen)).map((z) => z.slice(0, 4)))
     .toEqual([
-      ...v.hinzugefuegt.map((b) => [expect.stringContaining('Hinzugefügt'), b.klasse, b.name, b.geschoss]),
-      ...v.entfernt.map((b) => [expect.stringContaining('Entfernt'), b.klasse, b.name, b.geschoss]),
+      ...v.hinzugefuegt.map((b) => [
+        expect.stringContaining('Hinzugefügt'),
+        ifcKlassenName(b.klasse),
+        b.name,
+        b.geschoss,
+      ]),
+      ...v.entfernt.map((b) => [
+        expect.stringContaining('Entfernt'),
+        ifcKlassenName(b.klasse),
+        b.name,
+        b.geschoss,
+      ]),
       ...v.geaendert.map((g) => {
         const b = v2.get(g.globalId);
-        return [expect.stringContaining('Geändert'), b?.klasse, b?.name, b?.geschoss];
+        return [
+          expect.stringContaining('Geändert'),
+          b === undefined ? undefined : ifcKlassenName(b.klasse),
+          b?.name,
+          b?.geschoss,
+        ];
       }),
     ]);
 
@@ -306,7 +322,7 @@ test('Tor X1-Erweitert: DIN 277, Kostenschätzung, Zuschlag, Aufmaß aus Auswahl
   await folgen.getByRole('button', { name: 'Mengen aktualisieren …' }).click();
   const vorschau = page.getByRole('dialog', { name: 'Mengen aktualisieren' });
   await expect(vorschau).toContainText(
-    `Die Vordersätze von ${String(SOLL.betroffenePositionen.length)} Positionen werden aus dem neuen Stand gesetzt`,
+    `Die Mengen von ${String(SOLL.betroffenePositionen.length)} Positionen werden aus dem neuen Stand gesetzt`,
   );
   // Der Befund für das entfernte Bauteil (`bauteil-fehlt`), mit seinem Namen im alten Stand (D-116.5).
   for (const b of ma.befunde) {
@@ -324,7 +340,7 @@ test('Tor X1-Erweitert: DIN 277, Kostenschätzung, Zuschlag, Aufmaß aus Auswahl
     .poll(async () => (await gridZeilen(positionen)).map((z) => [z[0], z[6]]))
     .toEqual(BIM.zuordnungen.map((z) => [z.oz, mengeDe(neu.get(z.oz) ?? '')]));
   await expect(folgen.getByRole('button', { name: 'Mengen aktualisieren …' })).toBeDisabled();
-  await expect(folgen).toContainText('Die Vordersätze des LV entsprechen dem neuen Stand.');
+  await expect(folgen).toContainText('Die Mengen des LV entsprechen dem neuen Stand.');
 
   // LV-Seite (nach Neuladen): Vordersätze, GP und Summen laut Soll.
   await page.goto(lvPfad);
