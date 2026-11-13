@@ -1,6 +1,6 @@
 # 147: App: Erster Start, Beispielprojekt, Hilfe, Speicherstatus
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: E2 · Paket/Ordner: neu `apps/web/src/hilfe/`, `apps/web/src/ui/` (Statuszeile), `projekt/ProjektlisteSeite.tsx`; Beispielprojekt-Daten aus `fixtures/` (nur lesen, über den Build eingebunden)
 Blocked by: 131, 134, 130
@@ -25,10 +25,10 @@ Herkunft: umfang §3 E2, §5, B-02, B-30
 
 ## Acceptance criteria
 
-- [ ] Punkte 1–4; Annahmen-Seite nennt alle Punkte aus §5
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Punkte 1–4; Annahmen-Seite nennt alle Punkte aus §5
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -68,3 +68,9 @@ Entscheidungen im Demo-Modus (Branch `welle-7/147-erster-start`):
   sich der Abschnitt „Mengenermittlung“.
 - **D-147.9** Quelltext-Verweis auf „Über“: `https://github.com/JoSchwause/Ausschreibungssoftware` (Konstante in
   `hilfe/texte.ts`; bei Umbenennung vor der Veröffentlichung mitändern).
+
+Ergebnis (nach dem Merge von `integration/welle-7`, samt 142): `pnpm lint` und `pnpm typecheck` grün. `pnpm test`: 4406 grün, 6 rot,
+alle Leistungsbudgets unter Last (Lastmittel 16 bis 25 auf 4 Kernen; `kern` lv-pruefung, `speicher` v16-leistung und
+aufmass-leistung, `vergabe` leistung, web `abrechnung/leistung`), keine Datei dieses Tickets, nichts gelockert. Fixture-Selbsttest
+53 grün. E2E `erster-start.spec.ts` 4/4 grün; dazu `start`, `huelle`, `projekt`, `sicherung`, `navigation` (14) grün. Nach dem
+Merge von 142 öffnet das E2E die Angebote über das Menü „Angebote“ (`erwartePunkt`).

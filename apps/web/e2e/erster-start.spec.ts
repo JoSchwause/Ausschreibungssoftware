@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { fixtureAlsX83 } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { erwartePunkt } from './werkzeuge';
 
 const lies = (pfad: string): unknown =>
   JSON.parse(readFileSync(new URL(`../../../${pfad}`, import.meta.url), 'utf8'));
@@ -67,7 +68,7 @@ test('Erster Start: Begrüßung mit drei Wegen; das Beispielprojekt zeigt LV, An
   // Die Angebote auf der Seite des LV
   await lvs.getByRole('link', { name: TYPISCH.name, exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: TYPISCH.name })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Angebote (3)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (3)');
 });
 
 test('Hilfe: Erste Schritte, Daten und Sicherung, Tastenkürzel, Annahmen und Über sind erreichbar', async ({
