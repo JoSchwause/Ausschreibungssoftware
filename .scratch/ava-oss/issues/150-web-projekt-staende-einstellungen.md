@@ -17,6 +17,7 @@ Herkunft: umfang §3 E8, E10, E15, B-16, B-20, B-25, B-29
 4. **Einstellungen im Speicher:** Druckprofile und KG-Bezeichnungen aus `localStorage` einmalig übernehmen (wenn der Speicher
    leer ist; alte Schlüssel bleiben), danach nur noch über die Einstellungen lesen/schreiben.
 6. **Aus dem Review (D-82):** S6 – „Als neues LV übernehmen“ (`historie/`) hängt `PreisspiegelEinstellungenSetzen` an die Befehlsfolge, wenn der Stand Einstellungen trägt. S8 – `localStorage` nur übernehmen, solange das Einstellungsprotokoll leer ist. M1 – Einstellungen haben ein eigenes Sitzungs-Undo (Strg+Z auf den Einstellungsseiten), getrennt von der Projekthistorie.
+7. **Aus 138:** Projektbefehle über `projektBefehlAusfuehren` aus `@tethys/vergabe` (leitet an `kern` weiter), damit Bieterbefehle denselben Weg nehmen.
 5. **Projektdatei einlesen, wenn das Projekt schon da ist:** Wahl „als Kopie einlesen“ oder Abbrechen; der Dialog nennt, welche
    Einstellungen übernommen und welche belassen wurden.
 
