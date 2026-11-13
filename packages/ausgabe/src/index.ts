@@ -71,6 +71,8 @@ export type { ProjektKopf } from './koepfe';
 export { BIETER_JE_TABELLE, bauePreisspiegelModell } from './preisspiegel-druck';
 export type { PreisspiegelEingabe } from './preisspiegel-druck';
 export { baueVergabevorschlagModell } from './vergabevorschlag-druck';
+export { baueAufmassblattModell } from './aufmass-druck';
+export type { AufmassblattEingabe } from './aufmass-druck';
 export type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
@@ -81,6 +83,8 @@ export type { HonorarEingabe } from './honorar-druck';
 export { baueBauzeitenplanModell } from './bauzeit-druck';
 export type { BauzeitenplanEingabe } from './bauzeit-druck';
 export {
+  aufmassblattAlsExcel,
+  erzeugeAufmassblattPdf,
   erzeugeBautagebuchPdf,
   erzeugeBauzeitenplanPdf,
   erzeugeHonorarPdf,

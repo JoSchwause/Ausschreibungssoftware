@@ -4,13 +4,20 @@
 
 import type {
   AngebotId,
+  Aufmass,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
+  AuftragsLvZustand,
   Betrag,
   Bieter,
   BieterId,
   Buero,
   Einheitspreis,
   GliederungId,
+  LvZustand,
+  Menge,
   PositionId,
+  ProjektId,
   Prozent,
 } from '@tethys/vertrag';
 import type { PreisspiegelEingabe } from '../preisspiegel-druck';
@@ -205,3 +212,62 @@ export function excelZeilen(bytes: Uint8Array): string[][] {
     });
   });
 }
+
+/** Ein Auftrags-LV aus einem LV (gleiche Knoten und Summen), mit Auftragnehmer; wie nach dem Zuschlag an Bieter A. */
+export function auftragsLvAus(zustand: LvZustand): AuftragsLvZustand {
+  const lv = zustand.leistungsverzeichnis;
+  return {
+    auftragsLeistungsverzeichnis: {
+      ...lv,
+      id: lv.id as string as AuftragsLeistungsverzeichnisId,
+      leistungsverzeichnisId: lv.id,
+      angebotId: A,
+      auftragnehmer: { name: 'Beispielbau GmbH', strasse: 'Werkweg 2', plz: '20000', ort: 'Musterort' },
+    },
+    summen: zustand.summen,
+  };
+}
+
+const m = (t: string): Menge => t as Menge;
+
+/**
+ * Aufmaßblatt 3 über `winzig`: 01.0010 mit Ansatz (Variable, Bezug), 01.0020 mit einem Ansatz, dessen Zeile einen Fehler hat
+ * (keine Menge), 01.0030 von Hand, dazu eine Zeile zu einer Position, die das Auftrags-LV nicht kennt.
+ */
+export const AUFMASS: Aufmass = {
+  id: 'aufmass-3' as AufmassId,
+  projektId: 'projekt-1' as ProjektId,
+  auftragsLvId: 'auftrags-lv' as AuftragsLeistungsverzeichnisId,
+  nummer: 3,
+  bezeichnung: 'Pflasterflächen Hof',
+  datum: '2026-11-10',
+  positionen: [
+    { positionId: WINZIG.p3, mengenansatz: null, menge: m('4.000') },
+    {
+      positionId: WINZIG.p1,
+      mengenansatz: [
+        { zeile: 1, formel: 91, ausdruck: '2,5*0,4', variable: 'A' },
+        { zeile: 2, formel: 91, ausdruck: 'A-0,765', variable: null },
+      ],
+      menge: m('1.235'),
+    },
+    {
+      positionId: WINZIG.p2,
+      mengenansatz: [{ zeile: 1, formel: 91, ausdruck: '3,333/0', variable: null }],
+      menge: null,
+    },
+    { positionId: 'fremd' as PositionId, mengenansatz: null, menge: m('1.000') },
+  ],
+};
+
+/** Zeilenergebnisse, wie `mengen` sie zu den Ansätzen von `AUFMASS` rechnet. */
+export const AUFMASS_ERGEBNISSE = [
+  {
+    positionId: WINZIG.p1,
+    zeilen: [
+      { zeile: 1, menge: m('1.000') },
+      { zeile: 2, menge: m('0.235') },
+    ],
+  },
+  { positionId: WINZIG.p2, zeilen: [{ zeile: 1, menge: null }] },
+] as const;

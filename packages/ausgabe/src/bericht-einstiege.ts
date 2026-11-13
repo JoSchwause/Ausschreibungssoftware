@@ -2,6 +2,8 @@
 // Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF- bzw. Excel-Bytes (Tickets 113, 141;
 // ADR 0012).
 
+import { baueAufmassblattModell } from './aufmass-druck';
+import type { AufmassblattEingabe } from './aufmass-druck';
 import { berichtAlsExcel } from './bericht-excel';
 import { erzeugeBerichtPdf } from './bericht-pdf';
 import { baueBautagebuchModell } from './bautagebuch-druck';
@@ -37,3 +39,7 @@ export const preisspiegelAlsExcel = (e: PreisspiegelEingabe): Uint8Array =>
   berichtAlsExcel(bauePreisspiegelModell(e, Number.POSITIVE_INFINITY));
 export const erzeugeVergabevorschlagPdf = (e: VergabevorschlagEingabe, s: Schriften): Promise<Uint8Array> =>
   erzeugeBerichtPdf(baueVergabevorschlagModell(e), s);
+export const erzeugeAufmassblattPdf = (e: AufmassblattEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(baueAufmassblattModell(e), s);
+export const aufmassblattAlsExcel = (e: AufmassblattEingabe): Uint8Array =>
+  berichtAlsExcel(baueAufmassblattModell(e));
