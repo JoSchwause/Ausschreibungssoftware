@@ -55,8 +55,12 @@ test('Seitenleiste, Brotkrumen und Titel folgen dem Projekt; 1280 × 800 ohne wa
   // „Projekt löschen“ steht im Menü, nicht zwischen den Verweisen.
   await expect(page.getByRole('button', { name: 'Projekt löschen' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-  await expect(page.getByRole('menuitem', { name: 'Projekt löschen' })).toBeVisible();
+  const loeschen = page.getByRole('menuitem', { name: 'Projekt löschen' });
+  await expect(loeschen).toBeVisible();
   await page.keyboard.press('Escape');
+  // Das Menü gibt den Fokus an „Weitere Aktionen“ zurück; erst danach weiter, sonst landen Tasten dort.
+  await expect(loeschen).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Weitere Aktionen' })).toBeFocused();
 
   // Ein LV: Krumen bis zum LV, markiert ist „Leistungsverzeichnisse“, wie die dritte Krume.
   await lvAnlegen(page, 'Rohbau');
