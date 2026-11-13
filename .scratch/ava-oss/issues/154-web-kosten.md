@@ -13,6 +13,7 @@ Herkunft: umfang §3 E9, E12, E2 (B-14)
 
 1. **EP-Kalkulation:** Ansätze und Zuschlagssätze werden an der Position gespeichert, der Dialog öffnet mit ihnen (B-19); Undo.
 2. **Ausgaben:** Kostenermittlung und Kostenkontrolle als PDF und Excel mit Vorschau.
+4. **Aus 131 (D-131.1):** `kosten/pfad.ts` auf den Pfadbaukasten in `apps/web/src/ui/` umstellen.
 3. **B-14:** Hinweis und Verweis zum Einlesen der KG-Bezeichnungen, solange keine vorhanden sind.
 
 ## Acceptance criteria

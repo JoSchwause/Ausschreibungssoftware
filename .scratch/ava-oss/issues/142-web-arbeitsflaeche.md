@@ -21,6 +21,7 @@ Herkunft: umfang §3 E3, B-05, B-06, B-08
 5. **Ziel als Test (E2E):** bei 1280×800 zeigt die LV-Seite mit `typisch` (oder der BVBS-X83) mindestens 15 Zeilen und die
    Spalten EP und GP ohne waagerechtes Rollen; Auftrags-LV und Preisspiegel ohne waagerechten Überlauf.
 6. **Aus 130:** an jedem `LvGrid` `spaltenbreitenSchluessel` (ein Schlüssel je Seite, z. B. `lv`, `auftrags-lv`, `lv-stand`) und `ozMaske={lv.ozMaske}` setzen; sonst merkt die App keine Breiten und misst die OZ nur aus sichtbaren Zeilen. Kürzel siehe `GRID_KUERZEL` (D-130.4: Alt+Umschalt+Pfeil ändert die Spaltenbreite).
+8. **Aus 131 (D-131.7):** 131 nutzt `@radix-ui/react-dropdown-menu` direkt in `apps/web` (Projektseite, Menü „Weitere Aktionen“). Der gemeinsame Menübaustein gehört nach `ui-basis`; die Projektseite stellt darauf um (Abhängigkeit dann in `ui-basis`).
 7. Specs nachziehen, die Schaltflächen der alten Leiste suchen (Rolle `menuitem` statt `button` usw.).
 
 ## Acceptance criteria

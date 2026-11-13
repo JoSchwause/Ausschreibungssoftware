@@ -11,7 +11,7 @@ Herkunft: umfang §3 E8, E10, E15, B-16, B-20, B-25, B-29
 
 ## What to build
 
-1. **„Projektangaben“** statt „Projekt umbenennen“: Name, Bauherr, Nummer, Ort, Anschrift der Baustelle.
+1. **„Projektangaben“** statt „Stammdaten ändern“ (Name nach 133, D-133.x; Befehl `ProjektangabenSetzen` nach D-127.5): Name, Bauherr, Nummer, Ort, Anschrift der Baustelle.
 2. **Büro (Absender)** einmal für alle Projekte (Einstellungen, D-73), erreichbar über die Projektliste/Hilfe-Leiste.
 3. **LV-Stand umbenennen und löschen** (Bestätigung, Undo).
 4. **Einstellungen im Speicher:** Druckprofile und KG-Bezeichnungen aus `localStorage` einmalig übernehmen (wenn der Speicher
