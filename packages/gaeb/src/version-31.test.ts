@@ -10,8 +10,19 @@ import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { addiere, subtrahiere, vergleiche } from '@tethys/dezimal';
 import { summenBerechnen } from '@tethys/kern';
-import type { Betrag, Knoten, LvInhalt, Position, Pruefbefund, Summenstand } from '@tethys/vertrag';
-import { leseGaeb } from './index';
+import type {
+  AngebotId,
+  Betrag,
+  BieterId,
+  Knoten,
+  LvInhalt,
+  Position,
+  ProjektId,
+  Pruefbefund,
+  Summenstand,
+} from '@tethys/vertrag';
+import { leseAngebot, leseGaeb } from './index';
+import type { AngebotLesung } from './index';
 import { lesePfad, testIds, TEST_MWST } from './testhilfen';
 import { elementKinder, parseXml, textInhalt } from './xml';
 import type { XmlElement } from './xml';
@@ -151,6 +162,12 @@ const SOLL_ABWEICHUNGEN: Readonly<Record<string, { positionen: readonly string[]
   'Musterdatei_3.1_2008-003.X86': { positionen: [], bereiche: 682 },
   // Bereich 2 mit 7 % statt 19 %.
   'Musterdatei_3.1_2008-004.X86': { positionen: [], bereiche: 1 },
+  // Das Angebot zum LV der Musterdatei 001 (X83): die Abweichungen der 001.X86 und drei Positionen mit einer Menge des
+  // Bieters (1.10.30.10, 1.10.40.10, 1.10.40.30; im LV „Menge vom Bieter“ ohne Menge).
+  'Musterdatei_3.1_2008-001.X84': {
+    positionen: ['1.10.10.60', '1.10.30.10', '1.10.40.10', '1.10.40.30', '1.30.10.30', '1.30.10.40'],
+    bereiche: 6,
+  },
 };
 
 /**
@@ -159,70 +176,178 @@ const SOLL_ABWEICHUNGEN: Readonly<Record<string, { positionen: readonly string[]
  * diese Beträge: an jedem Bereich und am LV ist eigene Summe − Datei = Σ Abweichungen darunter. Ohne Abweichung sind
  * auch Steuersatz und Brutto die der Datei.
  */
+/** Item/MarkupItem und BoQCtgy einer Datei in Dokumentreihenfolge. */
+function elementeVon(w: XmlElement): { readonly items: XmlElement[]; readonly bereiche: XmlElement[] } {
+  const items: XmlElement[] = [];
+  const bereiche: XmlElement[] = [];
+  const sammle = (e: XmlElement): void => {
+    if (e.name === 'Item' || e.name === 'MarkupItem') items.push(e);
+    else {
+      if (e.name === 'BoQCtgy') bereiche.push(e);
+      for (const k of elementKinder(e)) sammle(k);
+    }
+  };
+  sammle(w);
+  return { items, bereiche };
+}
+
+/**
+ * `lvDatei`: Datei des LV, wenn die geprüfte Datei ein Angebot ist. Eine X84 trägt nicht, ob eine Position entfällt
+ * (`NotAppl`) oder ein Bereich eine Wahl ist (`ALNBSerNo`); das steht im LV und gilt für die Summen der X84 genauso.
+ */
+function pruefeSummen(d: string, g: Gelesen, lvDatei: string = d): void {
+  const soll = SOLL_ABWEICHUNGEN[d];
+  expect(soll, 'Datei in SOLL_ABWEICHUNGEN').toBeDefined();
+  const gp = new Map(g.summen.positionen.map((s) => [s.positionId as string, s]));
+  const gs = new Map(g.summen.gliederungen.map((s) => [s.gliederungId as string, s.summe]));
+  const befundAn = (id: string): boolean => g.befunde.some((b) => b.ort.knotenId === id);
+  const boq = kind(kind(wurzelVon(d), 'Award'), 'BoQ');
+  const lvTotals = kind(kind(boq, 'BoQInfo'), 'Totals');
+  const lvVat = wert(kind(lvTotals, 'VAT'));
+  const lv = elementeVon(wurzelVon(lvDatei));
+
+  const positionsAbweichung: string[] = [];
+  let bereichsAbweichung = 0;
+  let iPos = 0;
+  let iBer = 0;
+  /** Σ Abweichungen im Teilbaum (Positionen in der Summe und Bereiche); prüft dabei jeden Bereich. */
+  const pruefe = (e: XmlElement): Betrag => {
+    if (e.name === 'Item' || e.name === 'MarkupItem') {
+      const entfaellt = wert(kind(lv.items[iPos], 'NotAppl')) === 'Yes';
+      const p = g.positionen[iPos++] as Position;
+      const s = gp.get(p.id);
+      const it = wert(kind(e, 'IT'));
+      const eigen = s?.gesamtpreis ?? NULL;
+      if (it === null || gleich(eigen, it)) return NULL;
+      positionsAbweichung.push(ozVon(p));
+      expect(befundAn(p.id) || p.zuschlag !== null, `${ozVon(p)}: Abweichung ohne Befund`).toBe(true);
+      // Ohne eigenen GP (keine Menge im LV) zählt die Datei ihren IT, die App nichts; eine entfallende Position zählt
+      // die Datei nicht.
+      if (s?.gesamtpreis != null && s.gehtInSummeEin === false) return NULL;
+      return subtrahiere(eigen, entfaellt ? NULL : betrag(it));
+    }
+    if (e.name !== 'BoQCtgy') return elementKinder(e).reduce((a, k) => addiere(a, pruefe(k)), NULL);
+    const lvBereich = lv.bereiche[iBer];
+    const k = g.gliederungen[iBer++] as Knoten;
+    const darunter = elementKinder(e).reduce((a, x) => addiere(a, pruefe(x)), NULL);
+    const totals = kind(e, 'Totals');
+    const total = wert(kind(totals, 'Total'));
+    if (total === null) return darunter;
+    expect(
+      vergleiche(subtrahiere(gs.get(k.id) ?? NULL, betrag(total)), darunter),
+      `${ozVon(k)}: eigene Summe − Datei = Abweichungen darunter`,
+    ).toBe(0);
+    // Ein Bereich als Wahl (ALNBSerNo ≠ 0) zählt in der Datei nicht im übergeordneten Bereich.
+    const wahl = (wert(kind(lvBereich, 'ALNBSerNo')) ?? '0') !== '0';
+    const eigen = wahl ? betrag(total) : subtrahiere(betrag(total), betrag(nachBereich(totals) ?? total));
+    const vat = wert(kind(totals, 'VAT'));
+    const fremderSatz = vat !== null && lvVat !== null && !gleich(vat, lvVat);
+    if (vergleiche(eigen, NULL) !== 0 || fremderSatz) {
+      bereichsAbweichung += 1;
+      expect(befundAn(k.id), `${ozVon(k)}: Abweichung des Bereichs ohne Befund`).toBe(true);
+    }
+    return addiere(darunter, eigen);
+  };
+  const alle = kinderVon(boq, 'BoQBody').reduce((a, b) => addiere(a, pruefe(b)), NULL);
+  expect(iPos).toBe(g.positionen.length);
+  expect(iBer).toBe(g.gliederungen.length);
+  expect({ positionen: positionsAbweichung, bereiche: bereichsAbweichung }).toEqual(soll);
+
+  const lvTotal = wert(kind(lvTotals, 'Total'));
+  expect(lvTotal).not.toBeNull();
+  expect(
+    vergleiche(subtrahiere(g.summen.gesamt.netto, betrag(lvTotal ?? '')), alle),
+    'LV: eigene Summe − Datei = alle Abweichungen',
+  ).toBe(0);
+  if (vergleiche(alle, NULL) === 0 && bereichsAbweichung === 0) {
+    expect(gleich(g.inhalt.mwstSatz, lvVat)).toBe(true);
+    expect(gleich(g.summen.gesamt.brutto, wert(kind(lvTotals, 'TotalGross')))).toBe(true);
+  }
+}
+
 describe('GAEB DA XML 3.1: Summen wie in der Datei bis auf die ausgewiesenen Abweichungen', () => {
   for (const d of LV_DATEIEN.filter((x) => x.endsWith('.X86')))
     it(`${d}: GP, Bereichssummen und LV-Summe`, () => {
-      const g = gelesen(d);
-      const soll = SOLL_ABWEICHUNGEN[d];
-      expect(soll, 'Datei in SOLL_ABWEICHUNGEN').toBeDefined();
-      const gp = new Map(g.summen.positionen.map((s) => [s.positionId as string, s]));
-      const gs = new Map(g.summen.gliederungen.map((s) => [s.gliederungId as string, s.summe]));
-      const befundAn = (id: string): boolean => g.befunde.some((b) => b.ort.knotenId === id);
-      const boq = kind(kind(wurzelVon(d), 'Award'), 'BoQ');
-      const lvTotals = kind(kind(boq, 'BoQInfo'), 'Totals');
-      const lvVat = wert(kind(lvTotals, 'VAT'));
-
-      const positionsAbweichung: string[] = [];
-      let bereichsAbweichung = 0;
-      let iPos = 0;
-      let iBer = 0;
-      /** Σ Abweichungen im Teilbaum (Positionen in der Summe und Bereiche); prüft dabei jeden Bereich. */
-      const pruefe = (e: XmlElement): Betrag => {
-        if (e.name === 'Item' || e.name === 'MarkupItem') {
-          const p = g.positionen[iPos++] as Position;
-          const s = gp.get(p.id);
-          const it = wert(kind(e, 'IT'));
-          const eigen = s?.gesamtpreis ?? NULL;
-          if (it === null || gleich(eigen, it)) return NULL;
-          positionsAbweichung.push(ozVon(p));
-          expect(befundAn(p.id) || p.zuschlag !== null, `${ozVon(p)}: Abweichung ohne Befund`).toBe(true);
-          return s?.gehtInSummeEin === false ? NULL : subtrahiere(eigen, betrag(it));
-        }
-        if (e.name !== 'BoQCtgy') return elementKinder(e).reduce((a, k) => addiere(a, pruefe(k)), NULL);
-        const k = g.gliederungen[iBer++] as Knoten;
-        const darunter = elementKinder(e).reduce((a, x) => addiere(a, pruefe(x)), NULL);
-        const totals = kind(e, 'Totals');
-        const total = wert(kind(totals, 'Total'));
-        if (total === null) return darunter;
-        expect(
-          vergleiche(subtrahiere(gs.get(k.id) ?? NULL, betrag(total)), darunter),
-          `${ozVon(k)}: eigene Summe − Datei = Abweichungen darunter`,
-        ).toBe(0);
-        // Ein Bereich als Wahl (ALNBSerNo ≠ 0) zählt in der Datei nicht im übergeordneten Bereich.
-        const wahl = (wert(kind(e, 'ALNBSerNo')) ?? '0') !== '0';
-        const eigen = wahl ? betrag(total) : subtrahiere(betrag(total), betrag(nachBereich(totals) ?? total));
-        const vat = wert(kind(totals, 'VAT'));
-        const fremderSatz = vat !== null && lvVat !== null && !gleich(vat, lvVat);
-        if (vergleiche(eigen, NULL) !== 0 || fremderSatz) {
-          bereichsAbweichung += 1;
-          expect(befundAn(k.id), `${ozVon(k)}: Abweichung des Bereichs ohne Befund`).toBe(true);
-        }
-        return addiere(darunter, eigen);
-      };
-      const alle = kinderVon(boq, 'BoQBody').reduce((a, b) => addiere(a, pruefe(b)), NULL);
-      expect(iPos).toBe(g.positionen.length);
-      expect(iBer).toBe(g.gliederungen.length);
-      expect({ positionen: positionsAbweichung, bereiche: bereichsAbweichung }).toEqual(soll);
-
-      const lvTotal = wert(kind(lvTotals, 'Total'));
-      expect(lvTotal).not.toBeNull();
-      expect(
-        vergleiche(subtrahiere(g.summen.gesamt.netto, betrag(lvTotal ?? '')), alle),
-        'LV: eigene Summe − Datei = alle Abweichungen',
-      ).toBe(0);
-      if (vergleiche(alle, NULL) === 0 && bereichsAbweichung === 0) {
-        expect(gleich(g.inhalt.mwstSatz, lvVat)).toBe(true);
-        expect(gleich(g.summen.gesamt.brutto, wert(kind(lvTotals, 'TotalGross')))).toBe(true);
-      }
+      pruefeSummen(d, gelesen(d));
     });
+});
+
+// --- Angebot X84 ------------------------------------------------------------------------------------------------
+
+const X84 = 'Musterdatei_3.1_2008-001.X84';
+
+/**
+ * Das Angebot gegen das LV der Musterdatei 001 (3.1, X83). Die Summen rechnen wie bei der Vergabe über ein gedachtes LV:
+ * die Knoten des LV mit dem EP des Angebots, an einer Zuschlagsposition mit dem Satz des Bieters (R7). Die Regel steht
+ * in `vergabe`, das `gaeb` nicht importiert; hier ist sie in wenigen Zeilen nachgebaut.
+ */
+function angebotGelesen(): Gelesen & { readonly lesung: AngebotLesung } {
+  const lvLesung = gelesen('Musterdatei_3.1_2008-001.X83');
+  const lv = lvLesung.inhalt;
+  const { wurzelId, knoten, ...kopf } = lv;
+  const lesung = leseAngebot(lesePfad(pfad(X84)), {
+    lv: { ...kopf, id: wurzelId, projektId: 'projekt-1' as ProjektId, knoten },
+    angebotId: 'angebot-1' as AngebotId,
+    bieterId: 'bieter-1' as BieterId,
+    dateiname: X84,
+  });
+  const nachId = new Map((lesung.befehl?.angebot.positionen ?? []).map((a) => [a.positionId as string, a]));
+  const gedacht = knoten.map((k): Knoten => {
+    if (k.art !== 'position') return k;
+    const a = nachId.get(k.id);
+    const ep = a?.status === 'angeboten' ? a.einheitspreis : null;
+    const satz = a?.status === 'angeboten' ? (a.zuschlagssatz ?? null) : null;
+    return k.zuschlag === null
+      ? { ...k, einheitspreis: ep }
+      : { ...k, einheitspreis: satz === null ? ep : null, zuschlag: { ...k.zuschlag, prozentsatz: satz } };
+  });
+  const nachlass = lesung.befehl?.angebot.nachlass ?? null;
+  const inhalt: LvInhalt = { ...lv, knoten: gedacht, nachlass };
+  return {
+    lesung,
+    inhalt,
+    // Was das LV nicht abbildet (die Wahl des Bereichs 1.10.40), meldet schon das Einlesen des LV.
+    befunde: [...lvLesung.befunde, ...lesung.befunde],
+    summen: summenBerechnen({ id: wurzelId, knoten: gedacht, nachlass, mwstSatz: lv.mwstSatz }),
+    positionen: gedacht.filter((k): k is Position => k.art === 'position'),
+    gliederungen: gedacht.filter((k) => k.art === 'titel' || k.art === 'los'),
+  };
+}
+
+describe('GAEB DA XML 3.1: Angebot X84', () => {
+  it(`${X84}: gelesen als 3.1 gegen das LV der Musterdatei 001, jede Position mit dem EP der Datei`, () => {
+    const g = angebotGelesen();
+    expect([g.lesung.phase, g.lesung.version]).toEqual(['X84', '3.1']);
+    expect(g.lesung.befehl).not.toBeNull();
+    expect(g.lesung.bieter?.name).toBe('Maler + Lackierer Pinsel und Co KG');
+    const items: XmlElement[] = [];
+    const sammle = (e: XmlElement): void => {
+      if (e.name === 'Item' || e.name === 'MarkupItem') items.push(e);
+      else for (const k of elementKinder(e)) sammle(k);
+    };
+    sammle(wurzelVon(X84));
+    expect(g.positionen).toHaveLength(items.length);
+    items.forEach((el, i) => {
+      const p = g.positionen[i] as Position;
+      expect(gleich(p.einheitspreis, wert(kind(el, 'UP'))), `${ozVon(p)} EP`).toBe(true);
+    });
+  });
+
+  it(`${X84}: Summen wie in der Datei bis auf die ausgewiesenen Abweichungen`, () => {
+    pruefeSummen(X84, angebotGelesen(), 'Musterdatei_3.1_2008-001.X83');
+  });
+
+  it(`${X84}: Menge des Bieters und Pauschalsumme eines Bereichs sind Befunde am Knoten`, () => {
+    const g = angebotGelesen();
+    const an = (code: string): string[] =>
+      g.befunde
+        .filter((b) => b.code === code)
+        .map((b) => ozVon(g.inhalt.knoten.find((k) => k.id === b.ort.knotenId) ?? g.positionen[0]!));
+    expect(an('bietermenge-nicht-abgebildet')).toEqual(['1.10.30.10', '1.10.40.10', '1.10.40.30']);
+    expect(g.befunde.find((b) => b.code === 'bietermenge-nicht-abgebildet')?.meldung).toBe(
+      'Die Position 1.10.30.10 trägt eine Menge des Bieters (10.000). Ein Angebot übernimmt nur Preise; es gilt die Menge des LV (ohne Menge).',
+    );
+    expect(an('pauschalsumme-nicht-abgebildet')).toEqual(['1.20']);
+    expect(g.lesung.befunde.map((b) => b.meldung).filter((m) => m.includes('Element Item/Qty '))).toEqual([]);
+  });
 });
