@@ -2,7 +2,8 @@
 // Lädt die Namen der Brotkrumen einer Seite aus dem Speicher (Ticket 131): Projekt, LV, Auftrags-LV, Blatt, Rechnung … Steht
 // unterhalb von `SpeicherAnbieter` neben der Seite und meldet den Stand an die Hülle über einen kleinen Speicher, damit nur
 // Kopfzeile und Seitenleiste neu zeichnen, nie die Seite. Neu geladen wird nach jedem Befehl, der einen Namen ändern kann,
-// und nach Rückgängig/Wiederholen.
+// und nach Rückgängig/Wiederholen. Ticket 147: meldet von hier aus auch den Stand der Statuszeile (`statusmelder.ts`), weil
+// nur diese Stelle der Hülle unterhalb von Speicher und Sicherung steht.
 
 import type {
   LeistungsverzeichnisId,
@@ -23,6 +24,7 @@ import {
   type Navigationsstand,
   type Ort,
 } from './navigation';
+import { useStatusmeldung } from './statusmelder';
 import { texte } from './texte';
 
 /** Der gemeldete Stand je Adresse; die Hülle liest ihn mit `useSyncExternalStore`. */
@@ -165,6 +167,7 @@ export function OrtLader({
   speicher: Navigationsspeicher;
 }): null {
   const u = useUmgebung();
+  useStatusmeldung(); // Ticket 147
   const [lauf, setLauf] = useState(0);
   useEffect(() => {
     const neu = (): void => {
