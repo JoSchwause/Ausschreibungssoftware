@@ -1,6 +1,6 @@
 # 122: Behebung des Wellen-Reviews Welle 6
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 6 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 117
 nur dieses Ticket; 117 schreibt `apps/web/e2e/x1-kern.spec.ts`, `apps/web/e2e/x1-erweitert.spec.ts`,
@@ -210,3 +210,12 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
   `modellvergleich`, `x1-kern`, `x1-erweitert` nochmals 6/6 grün. `ui-modell` alle 15 grün (D-54-Modell Laden Median 2.822 ms
   bei Last 3,4); `ui-grid/e2e/leistung.spec.ts` 8/8 grün. Kein Test übersprungen oder gelockert, kein Budget geändert.
 
+
+## Answer
+
+Gemergt mit `0e979bd` (Branch `welle-6/122-fix-review`, `7eee234`, enthält `integration/welle-6` mit 117). Alle Pflichtpunkte 1–15
+erledigt (je Befund ein Commit, Liste unter „Stand“); Soll: 17 erledigt, 18 geprüft (trifft nicht zu), 19 teilweise, 16 und 20 an
+die Tickets 124 bzw. 123. Budgets aus D-54 jetzt alle gemessen und grün (3D mit dem D-54-Modell 3,1 s / 20 s; `BauteileZuordnen`
+5.000 samt Undo über den Speicherweg 39,6 ms / 100 ms; Modellbaum 10.000 Zeilen 60 fps). Abschlusslauf des Orchestrators auf dem
+Kopf nach dem Merge (ruhige Maschine): Lint, Typecheck grün; 3.976 Tests grün (3 übersprungen wie zuvor), Fixtures 53/53; E2E
+`ui-grid` 88 (3 übersprungen), `ui-modell` 15, `speicher` 18, `web` 90 grün; XSD-Gegenprüfung 58/58; Tor-E2E X1–X4 dreimal grün.

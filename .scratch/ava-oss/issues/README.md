@@ -170,7 +170,7 @@ Schnitt und Reihenfolge: [`../schnitt-welle-5.md`](../schnitt-welle-5.md). Entsc
 
 # Tickets Welle 6 (Lauf, 2026-11-12)
 
-Schnitt und Reihenfolge: [`../schnitt-welle-6.md`](../schnitt-welle-6.md). Entscheidungen D-49 bis D-68 in
+Schnitt und Reihenfolge: [`../schnitt-welle-6.md`](../schnitt-welle-6.md). Entscheidungen D-49 bis D-70 in
 `../entscheidungen-auto.md`; Tore je Modul in `../plan.md` §4 (D-58). Zuerst die Folgetickets 93–95 (G-05), danach X1–X5,
 Schwerpunkt X1 BIM.
 
@@ -205,6 +205,6 @@ Schwerpunkt X1 BIM.
 | 119 | X3 | App: Honorar, Tor X3 | `apps/web/src/honorar/` | resolved |
 | 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | resolved |
 | 121 | – | App: Folgearbeit v1.5 | `apps/web/src/projekt/`, `auftrag/`, `ausgabe/` | resolved |
-| 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | ready-for-agent |
+| 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | resolved |
 | 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | ready-for-agent (Welle 7) |
 | 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | ready-for-agent (Welle 7) |

@@ -201,3 +201,10 @@ Stand 2026-11-09:
     **Tor M4 erreicht** (Definition in §4, D-38). Entscheidungen D-31 bis D-48 in `entscheidungen-auto.md`; G-27 und „VOB 80“
     als Annahme (D-34, D-35). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.4, ADR 0012, Merge von Welle 4
     und 5 nach `main`), Folgetickets 93–95, G-05 für Welle 6. Bericht: `.scratch/ava-oss/welle-5-bericht.md`.
+14. ✅ **Lauf „Welle 6“ im Demo-Modus (2026-11-12/13)** auf dem lokalen Branch `integration/welle-6` (ab `79e6680`, D-49): die
+    Folgetickets 93–95, danach X1 BIM (X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (G-05, Nachtrag 2026-11-12), Tickets 93–122, `vertrag` v1.5
+    und v1.6, neue Pakete `ifc`, `bim`, `ui-modell`, `bauzeit`, `honorar`, `bauleitung`, Projektdatei Schema 6. **Tore X1-Kern,
+    X1-Erweitert, X2, X3, X4 und X5 erreicht** (Definition in §4, D-58). Entscheidungen D-49 bis D-70 in `entscheidungen-auto.md`;
+    G-57 offen mit Annahme (ADR 0013 als Vorschlag). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag`
+    v1.5/v1.6, ADR 0013, HOAI-Tafeln gegen die amtliche Fassung, Merge nach `main`), Folgetickets 123/124. Bericht:
+    `.scratch/ava-oss/welle-6-bericht.md`.
