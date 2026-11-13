@@ -27,4 +27,13 @@ export type * from './einstellungen';
 export { MASSENBEFEHLSARTEN } from './befehle';
 export { NACHKOMMASTELLEN } from './zahlen';
 export { IFC_GLOBALID_MUSTER } from './bim';
+// v1.7a (Ticket 127; Ticket 123 Punkte 1, 5, 8)
+export {
+  BAUTEILMENGENARTEN,
+  IFC_SCHEMATA,
+  MENGENART_STUECK,
+  MODELLDATEI_HASH_MUSTER,
+  STRUKTURKNOTENARTEN,
+} from './bim';
+export { KALENDERDATUM_MUSTER, KOSTENGRUPPENNUMMER_MUSTER } from './marken';
 export { LEERE_EINSTELLUNGEN } from './einstellungen';

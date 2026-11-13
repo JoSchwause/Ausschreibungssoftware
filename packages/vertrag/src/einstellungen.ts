@@ -31,9 +31,7 @@ export interface Buero {
  * `anzahl` Zeilen (Absatz, Listenpunkt, Tabellenzeile; ein Zeilenumbruch im Absatz zählt mit), `anzahl` ganze Zahl ≥ 1.
  */
 export type LangtextUmfang =
-  | { readonly art: 'voll' }
-  | { readonly art: 'kein' }
-  | { readonly art: 'zeilen'; readonly anzahl: number };
+  { readonly art: 'voll' } | { readonly art: 'kein' } | { readonly art: 'zeilen'; readonly anzahl: number };
 
 /**
  * Druckprofil (v1.7a, Ticket 127, E15; Glossar „Druckprofil“): gleich gebaut wie in `ausgabe` (Ticket 90), das den Typ ab

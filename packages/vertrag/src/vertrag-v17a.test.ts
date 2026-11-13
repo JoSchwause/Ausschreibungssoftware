@@ -71,8 +71,28 @@ import type {
   Projektdatei,
   ProjektdateiEinleseoptionen,
   Speicher,
+  // E6, Ticket 123
+  Bauteilmenge,
+  Bauteilmengenart,
+  GaebExport,
+  GaebFormat,
+  GaebLesung,
+  GaebPhase,
+  GaebVersion,
+  IfcSchema,
+  Kalenderdatum,
+  Strukturknoten,
 } from './index';
-import { LEERE_EINSTELLUNGEN } from './index';
+import {
+  BAUTEILMENGENARTEN,
+  IFC_SCHEMATA,
+  KALENDERDATUM_MUSTER,
+  KOSTENGRUPPENNUMMER_MUSTER,
+  LEERE_EINSTELLUNGEN,
+  MENGENART_STUECK,
+  MODELLDATEI_HASH_MUSTER,
+  STRUKTURKNOTENARTEN,
+} from './index';
 import {
   beispielBieterangabenSetzen,
   beispielChangeSetBueroSetzen,
@@ -248,7 +268,12 @@ describe('v1.7a E10: Stammdaten von Projekt, Bieter und Büro', () => {
     }>();
     expectTypeOf<ProjektangabenSetzen | BieterangabenSetzen>().toExtend<ProjektBefehl>();
     // ältere Projekte und Bieter (ohne Angaben) bleiben gültig
-    const alt: Projekt = { id: '1' as ProjektId, name: 'A', bauherr: { name: 'B', anschrift: null }, bieter: [] };
+    const alt: Projekt = {
+      id: '1' as ProjektId,
+      name: 'A',
+      bauherr: { name: 'B', anschrift: null },
+      bieter: [],
+    };
     expect(alt).not.toHaveProperty('angaben');
     expect(beispielProjektMitAngaben.angaben?.baustelle?.ort).toBe('Musterstadt');
   });
@@ -329,6 +354,54 @@ describe('v1.7a E15: Einstellungen als globales Aggregat (D-73)', () => {
       protokoll: [],
     };
     expect(alt).not.toHaveProperty('einstellungen');
+  });
+});
+
+describe('v1.7a E6: Herkunftsformat beim Lesen; alle Austauschphasen erkennbar', () => {
+  it('Format optional am Leseergebnis (fehlt: DA XML wie bisher), Version nur bei DA XML', () => {
+    expectTypeOf<GaebFormat>().toEqualTypeOf<'da-xml' | 'gaeb-90' | 'gaeb-2000'>();
+    expectTypeOf<GaebLesung['format']>().toEqualTypeOf<GaebFormat | undefined>();
+    expectTypeOf<'X80' | 'X87' | 'X88'>().toExtend<GaebPhase>();
+    expectTypeOf<GaebExport['version']>().toEqualTypeOf<GaebVersion>();
+    const l: GaebLesung = { phase: 'X83', version: null, format: 'gaeb-90', inhalt: null, befunde: [] };
+    expect(l.format).toBe('gaeb-90');
+  });
+});
+
+describe('v1.7a Ticket 123: Konstanten neben den Typen, gemeinsamer Datumstyp', () => {
+  it('Muster der Kostengruppennummer und des Modelldatei-Hashs (ohne Flag g)', () => {
+    expect(KOSTENGRUPPENNUMMER_MUSTER.flags).toBe('');
+    expect(['100', '330', '999'].every((x) => KOSTENGRUPPENNUMMER_MUSTER.test(x))).toBe(true);
+    expect(['099', '1000', '33', '3a0', ' 330'].some((x) => KOSTENGRUPPENNUMMER_MUSTER.test(x))).toBe(false);
+    expect(MODELLDATEI_HASH_MUSTER.flags).toBe('');
+    expect(MODELLDATEI_HASH_MUSTER.test('0123456789abcdef'.repeat(4))).toBe(true);
+    expect(MODELLDATEI_HASH_MUSTER.test('0123456789ABCDEF'.repeat(4))).toBe(false);
+    expect(MODELLDATEI_HASH_MUSTER.test('0'.repeat(63))).toBe(false);
+  });
+
+  it('Listen der Mengen-, Struktur- und Schemaarten decken genau die Typen ab', () => {
+    expectTypeOf<(typeof BAUTEILMENGENARTEN)[number]>().toEqualTypeOf<Bauteilmenge['art']>();
+    expectTypeOf<Bauteilmengenart>().toEqualTypeOf<Bauteilmenge['art']>();
+    expectTypeOf<(typeof STRUKTURKNOTENARTEN)[number]>().toEqualTypeOf<Strukturknoten['art']>();
+    expectTypeOf<(typeof IFC_SCHEMATA)[number]>().toEqualTypeOf<IfcSchema>();
+    expect(BAUTEILMENGENARTEN).toEqual(['laenge', 'flaeche', 'volumen', 'anzahl', 'gewicht', 'zeit']);
+    expect(STRUKTURKNOTENARTEN).toEqual(['projekt', 'grundstueck', 'gebaeude', 'geschoss', 'raum']);
+    expect(IFC_SCHEMATA).toEqual(['IFC2X3', 'IFC4']);
+  });
+
+  it('MENGENART_STUECK ist der feste Wert „jedes Bauteil zählt 1“ einer Bauteilzuordnung', () => {
+    expect(MENGENART_STUECK).toBe('Stueck');
+    expectTypeOf(MENGENART_STUECK).toEqualTypeOf<'Stueck'>();
+  });
+
+  it('Kalenderdatum: Marke über Text `JJJJ-MM-TT`; das Muster prüft nur die Form', () => {
+    expectTypeOf<Kalenderdatum>().toExtend<string>();
+    expectTypeOf<string>().not.toExtend<Kalenderdatum>();
+    expect(KALENDERDATUM_MUSTER.flags).toBe('');
+    expect(KALENDERDATUM_MUSTER.test('2026-11-13')).toBe(true);
+    expect(
+      ['2026-1-13', '26-11-13', '2026-11-13T00:00', ' 2026-11-13'].some((x) => KALENDERDATUM_MUSTER.test(x)),
+    ).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Markentypen (Branded Types) und Kennungen. Nur Typen, kein Laufzeitcode.
+// Markentypen (Branded Types) und Kennungen. Nur Typen und (v1.7a) die Muster zweier Formen, kein weiterer Laufzeitcode.
 
 declare const marke: unique symbol;
 
@@ -106,6 +106,32 @@ export type Ordnungszahl = string & Marke<'Ordnungszahl'>;
  * Wer eine Nummer aus einem Befehl oder einer Datei liest (Kern, `speicher`), prüft die Form selbst nach.
  */
 export type Kostengruppennummer = string & Marke<'Kostengruppennummer'>;
+
+/**
+ * Kalenderdatum (v1.7a, Ticket 127 / Ticket 123 Punkt 5; Glossar „Kalenderdatum“): ein **geprüfter** Kalendertag als Text
+ * `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender, ohne Uhrzeit und Zeitzone (A2). Der gemeinsame
+ * Typ für `bauzeit` und `bauleitung` (bisher `Datum` in `bauzeit` und ungemarkter Text in `bauleitung`); sie stellen in
+ * Ticket 140 auf ihn um.
+ *
+ * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127): Erzeugt wird die Marke nur von einer Prüffunktion eines
+ * Fachpakets (Form nach `KALENDERDATUM_MUSTER` **und** einen Tag, den es gibt); der Vertrag hat keine Logik. Die gespeicherten
+ * Felder der Aggregate (`Vorgang.fruehesterBeginn`, `Mangel.festgestellt`, `Bautagebucheintrag.datum`, …) bleiben in v1.7a
+ * ungemarkter Text, wie Eingaben ihn tragen (die Ausführer prüfen ihn und melden Ungültiges, U5); sonst bräche jeder
+ * Erzeuger dieser Werte. Wer gerechnete Termine liefert, darf sie als `Kalenderdatum` liefern.
+ */
+export type Kalenderdatum = string & Marke<'Kalenderdatum'>;
+
+/**
+ * Form eines Kalenderdatums `JJJJ-MM-TT` (v1.7a, Ticket 123 Punkt 5): nur die Form, nicht ob es den Tag gibt (`2026-02-30`
+ * passt). Ohne Flag `g` wie `IFC_GLOBALID_MUSTER`.
+ */
+export const KALENDERDATUM_MUSTER: RegExp = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Form einer Kostengruppennummer (v1.7a, Ticket 123 Punkt 1): genau drei Ziffern, die erste nicht 0 (D-24). Die eine Stelle,
+ * an der Kern, `speicher`, `bim`, `ifc` und `kosten` die Form nachprüfen. Ohne Flag `g`.
+ */
+export const KOSTENGRUPPENNUMMER_MUSTER: RegExp = /^[1-9][0-9]{2}$/;
 
 /**
  * Quelle für neue Kennungen. Wird von außen in Kern, Parser und Oberfläche gereicht (A2: kein Zufall,

@@ -2418,7 +2418,10 @@ export const beispielLvStandUmbenennen: LvStandUmbenennen = {
   name: 'Stand nach Versand',
 };
 
-export const beispielLvStandLoeschen: LvStandLoeschen = { art: 'LvStandLoeschen', lvStandId: beispielLvStand.id };
+export const beispielLvStandLoeschen: LvStandLoeschen = {
+  art: 'LvStandLoeschen',
+  lvStandId: beispielLvStand.id,
+};
 
 /** E8: Umbenennen trägt nur die Köpfe (gleiche Kennung, anderer Name); kein Inhalt, keine Knoten, keine Summen. */
 export const beispielChangeSetLvStandUmbenennen: LvChangeSet = {
@@ -2495,7 +2498,12 @@ export const beispielKalkulationSetzen: KalkulationSetzen = {
         ansatzmenge: '0.450' as Menge,
         kostensatz: '48.500' as Einheitspreis,
       },
-      { art: 'stoffe', bezeichnung: 'Stein', ansatzmenge: '1.000' as Menge, kostensatz: '30.000' as Einheitspreis },
+      {
+        art: 'stoffe',
+        bezeichnung: 'Stein',
+        ansatzmenge: '1.000' as Menge,
+        kostensatz: '30.000' as Einheitspreis,
+      },
     ],
     zuschlagssaetze: { lohn: '15.00' as Prozent, stoffe: '10.00' as Prozent },
   },
@@ -2596,7 +2604,10 @@ export const beispieleEinstellungenbefehle: readonly [
   { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
   { art: 'DruckprofilSetzen', druckprofil: beispielEinstellungen.druckprofile[0] as Druckprofil },
   { art: 'DruckprofilEntfernen', name: 'Kurz für Bauherr' },
-  { art: 'KostengruppenbezeichnungenSetzen', bezeichnungen: beispielEinstellungen.kostengruppenbezeichnungen },
+  {
+    art: 'KostengruppenbezeichnungenSetzen',
+    bezeichnungen: beispielEinstellungen.kostengruppenbezeichnungen,
+  },
 ];
 
 /** E15: das ChangeSet von `BueroSetzen` auf leeren Einstellungen. */
