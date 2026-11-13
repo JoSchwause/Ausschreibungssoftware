@@ -1,6 +1,6 @@
 # 139: Speicher v1.7: Migration 7, Projektdatei Schema 7, Einstellungen, Einlesen als Kopie
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: S · Paket/Ordner: `packages/speicher`
 Blocked by: 127, 135
@@ -25,10 +25,10 @@ Herkunft: umfang §3 E8 (Projektdatei als Kopie, Zuschlag zurücknehmen), E15, E
 
 ## Acceptance criteria
 
-- [ ] Migrationstest 6 → 7, Projektdatei 1–6 → 7, Kopie-Import mit Verweisprüfung; Budgets grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Migrationstest 6 → 7, Projektdatei 1–6 → 7, Kopie-Import mit Verweisprüfung; Budgets grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -91,3 +91,12 @@ Herkunft: umfang §3 E8 (Projektdatei als Kopie, Zuschlag zurücknehmen), E15, E
   Die eingefrorene Datei der Version 7 entsteht aus `schritteV7` (Projekt- und Bieterangaben, Bieter angelegt und umbenannt,
   Preisspiegel, Kalkulation, Stand umbenannt, Stand angelegt, gelöscht und per Undo zurück, Einstellungen); erzeugt nach der
   Umbenennung zu `PreisspiegelEinstellungenSetzen` (D-82 S5).
+- D-139.12 Prüfung: `pnpm lint` grün, `pnpm typecheck` grün. `pnpm test`: 4190 grün, 5 rot, alle Leistungsbudgets unter Last
+  (Load 27–33 auf 4 Kernen, mehrere Agenten): `speicher` Aufmaßblatt (Median 144–229 ms), Modell 10.000 Bauteile (5,3–7,2 s, davon
+  das Ablegen samt SHA-256 4,5–4,8 s), BauteileZuordnen samt Undo (130–143 ms); `vergabe` Preisspiegel, `apps/web` Aufmaß-Undo
+  (nicht in diesem Paket; wie D-134.6, D-135.6). Gegenprobe A/B gleichzeitig unter derselben Last, alter Stand von
+  `integration/welle-7` gegen diesen: Aufmaß 213/186/183 ms gegen 160/229/228 ms und 106/100/161 ms gegen 118/109/101 ms,
+  BauteileZuordnen samt Undo 183 ms gegen 143 ms, also kein Unterschied über das Rauschen hinaus. Bei Load 3 liefen beide
+  `speicher`-Budgetdateien grün (6/6). Kein Budget gelockert. E2E: `speicher` 19/19 grün (neu: keine Konsolenmeldung bei
+  `gesperrt`; der Test „Version 6 importieren“ vergleicht den Export nun in der aktuellen Version), `apps/web` `start`, `huelle`,
+  `sicherung`, `projekt`, `undo`, `lv` 21/21 grün. Keine Nutzertexte geändert.
