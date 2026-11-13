@@ -16,16 +16,18 @@ export interface Abweisung {
 }
 
 /**
- * Was eine Datei der Phase ist (Glossar „GAEB-Austauschphasen“). X80, X87 und X88 nennt das Glossar nicht; der Satz nennt
- * dort nur die Phase (D-136.3).
+ * Was eine Datei der Phase ist (Glossar „GAEB-Austauschphasen“). X80 und X87 seit Ticket 144 nach der frei zugänglichen
+ * Fachdokumentation DA XML 3.3 auf gaeb.de (D-86); X88 nennt sie nicht, der Satz nennt dort nur die Phase (D-136.3).
  */
 const WAS: Readonly<Partial<Record<GaebPhase, string>>> = {
+  X80: 'ein Austausch universeller LV-Daten',
   X81: 'eine Leistungsbeschreibung',
   X82: 'ein Kostenansatz',
   X83: 'eine Angebotsaufforderung',
   X84: 'eine Angebotsabgabe',
   X85: 'ein Nebenangebot',
   X86: 'eine Auftragserteilung',
+  X87: 'eine Auftragsbestätigung',
   X89: 'eine Rechnung',
   X31: 'eine Mengenermittlung',
 };
@@ -39,8 +41,11 @@ const ERWARTET: Readonly<Record<Leserart, string>> = {
 };
 
 const ERWARTET_FORMAT: Readonly<Record<Leserart, string>> = {
-  lv: 'Eingelesen werden Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86).',
-  angebot: 'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML eingelesen (Endung .x84).',
+  lv:
+    'Eingelesen werden Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86) und GAEB 90 ' +
+    '(Endungen .d81, .d83 und .d86).',
+  angebot:
+    'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
   mengenermittlung:
     'Bei der Abrechnung wird eine Mengenermittlung im Format GAEB DA XML eingelesen (Endung .x31).',
 };
@@ -81,7 +86,7 @@ export function phaseAbweisen(phase: GaebPhase | null, leser: Leserart): Abweisu
   };
 }
 
-/** GAEB 90 oder GAEB 2000: erkannt, aber (noch) nicht gelesen. */
+/** GAEB 90 oder GAEB 2000: erkannt, aber in diesem Leser nicht gelesen (GAEB 90 lesen seit Ticket 144 LV und Angebot). */
 export function formatAbweisen(
   format: 'gaeb-90' | 'gaeb-2000',
   phase: GaebPhase | null,

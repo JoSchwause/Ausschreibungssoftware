@@ -62,9 +62,10 @@ function nutzersprache(meldung: string): void {
 describe('LV-Leser: jede Phase X80 bis X89 und X31', () => {
   const GELESEN = ['X81', 'X83', 'X86'];
   const SATZ: Readonly<Record<string, string>> = {
+    // X80 und X87: Bedeutung nach der Fachdokumentation DA XML 3.3 auf gaeb.de (Ticket 144, D-86).
     X80:
-      'Die Datei gehört zur Austauschphase X80; Dateien dieser Phase werden nicht eingelesen. ' +
-      'Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.',
+      'Die Datei ist ein Austausch universeller LV-Daten (X80). Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 ' +
+      'und X86.',
     X82: 'Die Datei ist ein Kostenansatz (X82). Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.',
     X84:
       'Die Datei ist eine Angebotsabgabe (X84). Ein Angebot wird bei dem Leistungsverzeichnis eingelesen, auf das es sich ' +
@@ -72,9 +73,7 @@ describe('LV-Leser: jede Phase X80 bis X89 und X31', () => {
     X85:
       'Die Datei ist ein Nebenangebot (X85). Nebenangebote werden nicht eingelesen. Eingelesen werden ' +
       'Leistungsverzeichnisse der Phasen X81, X83 und X86.',
-    X87:
-      'Die Datei gehört zur Austauschphase X87; Dateien dieser Phase werden nicht eingelesen. ' +
-      'Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.',
+    X87: 'Die Datei ist eine Auftragsbestätigung (X87). Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.',
     X88:
       'Die Datei gehört zur Austauschphase X88; Dateien dieser Phase werden nicht eingelesen. ' +
       'Eingelesen werden Leistungsverzeichnisse der Phasen X81, X83 und X86.',
@@ -185,22 +184,27 @@ describe('Versionen und Formate', () => {
     expect(l.format).toBe('da-xml');
   });
 
-  it('GAEB 90: erkannt und mit Satz abgewiesen, nicht als „kein XML“', () => {
+  it('GAEB 90 wird als LV gelesen (Ticket 144); Angebots- und Mengenleser weisen eine GAEB-90-LV-Datei mit Satz ab', () => {
     for (const l of [lies(GAEB_90, 'lv.d83'), lies(new TextEncoder().encode(GAEB_90), 'lv.D83')]) {
-      expect([l.format, l.phase, l.version, l.inhalt]).toEqual(['gaeb-90', 'X83', null, null]);
-      expect(l.befunde.map((b) => b.code)).toEqual(['format-nicht-unterstuetzt']);
-      const b = einziger(l.befunde, 'format-nicht-unterstuetzt');
-      expect(b.schwere).toBe('fehler');
-      expect(b.meldung).toBe(
-        'Die Datei ist im Format GAEB 90 (Phase X83). Dieses Format wird nicht gelesen; die Software, aus der die Datei ' +
-          'stammt, kann sie in der Regel als GAEB DA XML ausgeben (Endung .x83). Eingelesen werden Leistungsverzeichnisse ' +
-          'im Format GAEB DA XML (Endungen .x81, .x83 und .x86).',
-      );
-      expect(b.werte).toEqual({
-        format: { art: 'text', wert: 'GAEB 90' },
-        phase: { art: 'text', wert: 'X83' },
-      });
+      expect([l.format, l.phase, l.version]).toEqual(['gaeb-90', 'X83', null]);
+      expect(l.befunde.map((b) => b.code)).not.toContain('format-nicht-unterstuetzt');
     }
+    const a = angebot(GAEB_90, 'lv.d83');
+    expect([a.format, a.befehl]).toEqual(['gaeb-90', null]);
+    expect(einziger(a.befunde, 'phase-nicht-unterstuetzt').meldung).toBe(
+      'Die Datei ist eine Angebotsaufforderung (X83). Ein Leistungsverzeichnis wird als GAEB-Datei in ein Projekt ' +
+        'eingelesen. Als Angebot wird eine Angebotsabgabe (X84) eingelesen.',
+    );
+    const m = x31Lesen(GAEB_90, AUFTRAG, { dateiname: 'm.d83' });
+    expect([m.format, m.aufmass]).toEqual(['gaeb-90', null]);
+    const b = einziger(m.befunde, 'format-nicht-unterstuetzt');
+    expect(b.meldung).toBe(
+      'Die Datei ist im Format GAEB 90 (Phase X83). Dieses Format wird nicht gelesen; die Software, aus der die Datei ' +
+        'stammt, kann sie in der Regel als GAEB DA XML ausgeben (Endung .x83). Bei der Abrechnung wird eine ' +
+        'Mengenermittlung im Format GAEB DA XML eingelesen (Endung .x31).',
+    );
+    expect(b.werte).toEqual({ format: { art: 'text', wert: 'GAEB 90' }, phase: { art: 'text', wert: 'X83' } });
+    nutzersprache(b.meldung);
   });
 
   it('GAEB 2000 in allen drei Lesern: erkannt und mit Satz abgewiesen', () => {
@@ -214,7 +218,9 @@ describe('Versionen und Formate', () => {
     const am = einziger(a.befunde, 'format-nicht-unterstuetzt').meldung;
     expect(am).toContain('im Format GAEB 2000 (Phase X83)');
     expect(
-      am.endsWith('Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML eingelesen (Endung .x84).'),
+      am.endsWith(
+        'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
+      ),
     ).toBe(true);
     const m = x31Lesen(GAEB_2000, AUFTRAG, { dateiname: 'm.p31' });
     expect([m.format, m.aufmass]).toEqual(['gaeb-2000', null]);
@@ -228,7 +234,8 @@ describe('Versionen und Formate', () => {
     expect(l.befunde.map((b) => b.code)).toEqual(['dateiart-unbekannt']);
     expect(l.befunde[0]?.meldung).toBe(
       'Die Datei ist keine GAEB-Datei (weder GAEB DA XML noch GAEB 90 oder GAEB 2000). Eingelesen werden ' +
-        'Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86).',
+        'Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86) und GAEB 90 (Endungen .d81, .d83 und ' +
+        '.d86).',
     );
   });
 
@@ -237,7 +244,7 @@ describe('Versionen und Formate', () => {
     const b = einziger(l.befunde, 'wurzel-unerwartet');
     expect(b.meldung).toBe(
       'Die Datei ist eine XML-Datei, aber keine GAEB-Datei (ihr oberstes Element heißt „Invoice“). Als Angebot wird eine ' +
-        'Angebotsabgabe im Format GAEB DA XML eingelesen (Endung .x84).',
+        'Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
     );
     expect(b.werte).toEqual({ element: { art: 'text', wert: 'Invoice' } });
   });

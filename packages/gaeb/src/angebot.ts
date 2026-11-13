@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// GAEB DA XML 3.3/3.2/3.1, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13). Rein (A2):
+// GAEB DA XML 3.3/3.2/3.1, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13); GAEB 90 (.d84) über
+// `gaeb90.ts` (Ticket 144). Rein (A2):
 // Kennungen bringt der Aufrufer, kein I/O, keine Uhr. Tolerant: Was nicht passt, wird Befund, nichts geht still
 // verloren (Q5). Zuordnung zum LV allein über die Ordnungszahl (A7); die GAEB-`ID` ist kein Schlüssel.
 //
@@ -35,6 +36,7 @@ import { phaseAbweisen } from './abweisung';
 import { deutsch, zahlwert } from './befunde';
 import type { GaebBefund } from './befunde';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
+import { leseGaeb90Angebot } from './gaeb90';
 import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
 import { elementKinder, textInhalt } from './xml';
@@ -607,7 +609,33 @@ function leseBieter(l: Leser, award: XmlElement): Bietervorschlag | null {
  * Dateiinhalt. Andere Phasen liest `leseGaeb` (Fehler `phase-nicht-unterstuetzt`).
  */
 export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOptionen): AngebotLesung {
-  const v = vorlauf(eingabe, opt, null, 'angebot');
+  const v = vorlauf(eingabe, opt, null, 'angebot', true);
+  if (!v.bereit && v.satzdatei !== undefined) {
+    // GAEB 90 (.d84, Ticket 144): nur Preise je OZ; Bieter aus dem Satz 04, kein Nachlass.
+    const g = leseGaeb90Angebot(v.satzdatei, opt.lv, gleicheMaske);
+    const { lv } = opt;
+    return {
+      befehl:
+        g.positionen === null
+          ? null
+          : {
+              art: 'AngebotAnlegen',
+              angebot: {
+                id: opt.angebotId,
+                projektId: lv.projektId,
+                leistungsverzeichnisId: lv.id,
+                bieterId: opt.bieterId,
+                nachlass: null,
+                positionen: g.positionen,
+              },
+            },
+      bieter: g.bietername === null ? null : { name: g.bietername },
+      phase: g.phase,
+      version: null,
+      format: 'gaeb-90',
+      befunde: g.befunde,
+    };
+  }
   if (!v.bereit)
     return {
       befehl: null,

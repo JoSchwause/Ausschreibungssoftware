@@ -55,13 +55,17 @@ import { anzahl, angabeZu, deutsch, text, zahlwert } from './befunde';
 import type { Befundwerte, GaebBefund, GaebBefundcode, Rollen } from './befunde';
 import { dateiartAusText, siehtAusWieXml } from './dateiart';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
-import { erkenne } from './erkennung';
+import { erkenne, phaseAusEndung } from './erkennung';
+import { leseGaeb90Lv } from './gaeb90';
+import type { Gaeb90Datei } from './gaeb90';
 import { dekodiereBytes } from './kodierung';
 import { KEINE_KATALOGE, katalogeLesen, kostengruppeLesen } from './kostengruppe';
 import type { Kataloge } from './kostengruppe';
 import { langtextLeer, leseKurztext, leseLangtext } from './text';
 import type { Textergebnis } from './text';
 import { STANDARD_MAX_TIEFE, elementKinder, parseXml, textInhalt } from './xml';
+import { dekodiereMit } from './zeichensatz';
+import type { Zeichensatz } from './zeichensatz';
 import type { XmlElement, XmlErgebnis } from './xml';
 
 export interface LeseOptionen {
@@ -1627,6 +1631,8 @@ export type Vorlauf =
       /** Fehlt, wenn die Datei keine GAEB-Datei ist. */
       readonly format?: GaebFormat;
       readonly befunde: readonly GaebBefund[];
+      /** Gesetzt, wenn der Aufrufer GAEB 90 liest und die Datei GAEB 90 ist (Ticket 144): der dekodierte Text zum Weiterlesen. */
+      readonly satzdatei?: Gaeb90Datei;
     }
   | {
       readonly bereit: true;
@@ -1659,6 +1665,7 @@ export function vorlauf(
   opt: VorlaufOptionen,
   ids: IdQuelle | null,
   leserart: Leserart,
+  gaeb90Lesen = false,
 ): Vorlauf {
   const befunde: GaebBefund[] = [];
   const fertig = (
@@ -1707,6 +1714,23 @@ export function vorlauf(
       typeof eingabe === 'string' ? null : eingabe,
       kodierung,
     );
+    if (art.format === 'gaeb-90' && gaeb90Lesen) {
+      const zeichensatz = typeof eingabe === 'string' ? null : (art.kodierung as Zeichensatz);
+      return {
+        bereit: false,
+        phase: art.phase,
+        version: null,
+        format: 'gaeb-90',
+        befunde,
+        satzdatei: {
+          text: zeichensatz === null || typeof eingabe === 'string' ? inhalt : dekodiereMit(eingabe, zeichensatz),
+          zeichensatz,
+          phase: art.phase,
+          phasenquelle: art.phasenquelle,
+          endungsphase: phaseAusEndung(opt.dateiname),
+        },
+      };
+    }
     if (art.format === 'gaeb-90' || art.format === 'gaeb-2000')
       return fertig(art.phase, null, art.format, [
         dateibefund('format-nicht-unterstuetzt', formatAbweisen(art.format, art.phase, leserart)),
@@ -1760,7 +1784,11 @@ export function vorlauf(
  * Dateiart; jede Abweisung mit einem Satz, was die Datei ist und was stattdessen geht, Ticket 136). X84 liest `leseAngebot`.
  */
 export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
-  const v = vorlauf(eingabe, opt, opt.ids, 'lv');
+  const v = vorlauf(eingabe, opt, opt.ids, 'lv', true);
+  if (!v.bereit && v.satzdatei !== undefined) {
+    const g = leseGaeb90Lv(v.satzdatei, opt);
+    return { phase: g.phase, version: null, format: 'gaeb-90', inhalt: g.inhalt, befunde: g.befunde };
+  }
   if (!v.bereit)
     return {
       phase: v.phase,
