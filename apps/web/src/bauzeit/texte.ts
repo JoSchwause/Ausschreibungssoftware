@@ -184,7 +184,29 @@ export const texte = {
     beziehungHinzufuegen: 'Vorgänger hinzufügen',
     bezug: 'Bezug auf LV',
     keinBezug: '– kein Bezug –',
-    bezugTeil: 'ausgewählte Knoten (bleibt erhalten)',
+    bezugTeil: 'ausgewählte Knoten',
+    // Ticket 155 (Ticket 124 §2, §5): einzelne Knoten und Fortschritt aus dem Leistungsstand
+    umfang: 'Umfang des Bezugs',
+    umfangGanz: 'Das ganze LV',
+    umfangKnoten: 'Ausgewählte Gliederungen und Positionen',
+    knoten: 'Gliederungen und Positionen des Bezugs',
+    knotenSuchen: 'Gliederung oder Position suchen',
+    knotenSuchHinweis: 'Teil der OZ oder des Texts eingeben.',
+    knotenTreffer: (gezeigt: number, alle: number): string =>
+      `${String(gezeigt)} von ${String(alle)} Treffern gezeigt; die Suche eingrenzen.`,
+    knotenGewaehlt: (n: number): string => (n === 1 ? '1 Knoten gewählt' : `${String(n)} Knoten gewählt`),
+    knotenOhneText: 'Ohne OZ und Text',
+    knotenLaedt: 'Das LV wird geladen …',
+    knotenFehlen: 'Bitte mindestens eine Gliederung oder Position wählen.',
+    knotenUnbekannt: (n: number): string =>
+      n === 1
+        ? '1 gewählter Knoten steht nicht mehr im LV.'
+        : `${String(n)} gewählte Knoten stehen nicht mehr im LV.`,
+    vorschlag: (wert: string): string => `Vorschlag aus dem Leistungsstand: ${wert} %`,
+    vorschlagLaedt: 'Der Leistungsstand wird gerechnet …',
+    keinVorschlag: 'Kein Vorschlag: Die bezogenen Positionen haben keinen Auftragswert.',
+    vorschlagNurAuftrag: 'Einen Vorschlag gibt es nur bei einem Bezug auf ein Auftrags-LV.',
+    vorschlagUebernehmen: 'Vorschlag übernehmen',
     ist: 'Ist-Termine und Fortschritt',
     istBeginn: 'Ist-Beginn',
     istEnde: 'Ist-Ende',

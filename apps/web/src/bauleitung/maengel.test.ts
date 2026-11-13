@@ -216,7 +216,7 @@ describe('Auswahl der Position und des Bauteils', () => {
     const k = [
       { art: 'titel', id: 't', kurztext: 'Rohbau' },
       { art: 'position', id: 'p1', ordnungszahl: '01.0010', ozIndex: null, kurztext: 'Mauerwerk' },
-      { art: 'hinweistext', id: 'h' },
+      { art: 'hinweis', id: 'h' },
       { art: 'position', id: 'p2', ordnungszahl: '01.0020', ozIndex: 'A', kurztext: 'Putz' },
       { art: 'position', id: 'p3', ordnungszahl: null, ozIndex: null, kurztext: '' },
     ] as unknown as Knoten[];
