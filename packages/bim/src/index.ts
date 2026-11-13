@@ -12,12 +12,7 @@ export type { Modellbefundcode } from './befunde';
 export type { Einheitsregel } from './einheiten';
 export { EINHEITSREGELN } from './einheiten';
 export type { Mengenuebernahme, Positionsuebernahme } from './mengenuebernahme';
-export {
-  FORMEL_FREIER_ANSATZ,
-  MENGENART_STUECK,
-  mengenuebernahmeBerechnen,
-  positionUebernehmen,
-} from './mengenuebernahme';
+export { FORMEL_FREIER_ANSATZ, mengenuebernahmeBerechnen, positionUebernehmen } from './mengenuebernahme';
 export type { AufmassAusAuswahl, Aufmasshinweis, Aufmassvorschlag } from './aufmass-auswahl';
 export { aufmassAusAuswahl, bauteileImStrukturknoten } from './aufmass-auswahl';
 export type { Bezugsgroesse, Bezugsgroessenart, Din277Groessen } from './din277';
@@ -40,3 +35,5 @@ export type {
 export { modellVergleichen, vergleichsfolgenBerechnen } from './vergleich';
 export type { Zuordnungspruefung } from './pruefung';
 export { bauteileOhneGeometrie, zuordnungenPruefen } from './pruefung';
+// Die Konstante liegt seit v1.7a im Vertrag; die App liest sie weiter hier (Ticket 140).
+export { MENGENART_STUECK } from '@tethys/vertrag';

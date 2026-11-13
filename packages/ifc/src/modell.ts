@@ -41,8 +41,23 @@ export class Modellleser {
     private readonly ohneGlobalIdEntfaellt = false,
   ) {}
 
+  /** Nummer der Instanz mit Index `i` in der Datei (der Teil nach `#`). */
+  nummer(i: number): number {
+    return this.daten.id(i);
+  }
+
+  /** Klassenname der Instanz mit Index `i`, wie ihn die Datei schreibt (Großbuchstaben, z. B. `IFCWALL`). */
+  klasseVon(i: number): string {
+    return this.daten.name(i);
+  }
+
+  /** Indizes aller Instanzen der Klasse `klasse` (Großbuchstaben) in Dateireihenfolge. */
+  instanzen(klasse: string): readonly number[] {
+    return this.daten.klasse(klasse);
+  }
+
   ort(i: number, feld?: string): Befundort {
-    const ort = { pfad: `#${String(this.daten.id(i))}`, zeile: this.daten.zeile(i) };
+    const ort = { pfad: `#${String(this.nummer(i))}`, zeile: this.daten.zeile(i) };
     return feld === undefined ? ort : { ...ort, feld };
   }
 
@@ -82,7 +97,7 @@ export class Modellleser {
       this.melde(
         'fehler',
         'verweis-fehlt',
-        `#${String(this.daten.id(von))} verweist auf #${String(id)}; diese Instanz fehlt in der Datei.`,
+        `#${String(this.nummer(von))} verweist auf #${String(id)}; diese Instanz fehlt in der Datei.`,
         this.ort(von),
       );
     }
@@ -110,7 +125,7 @@ export class Modellleser {
    */
   gepruefteGlobalId(i: number): string {
     const globalId = this.globalId(i);
-    const nummer = `#${String(this.daten.id(i))}`;
+    const nummer = `#${String(this.nummer(i))}`;
     if (!istGlobalId(globalId)) {
       const folge = this.ohneGlobalIdEntfaellt
         ? ' Ohne GlobalId in Form steht es nicht im Bauwerksmodell.'
@@ -132,7 +147,7 @@ export class Modellleser {
       this.melde(
         'fehler',
         'globalid-doppelt',
-        `Die GlobalId ${globalId} steht bei #${String(this.daten.id(erste))} und ${nummer}; beide bleiben.`,
+        `Die GlobalId ${globalId} steht bei #${String(this.nummer(erste))} und ${nummer}; beide bleiben.`,
         this.ort(i, 'GlobalId'),
       );
     return globalId;
@@ -147,7 +162,7 @@ export class Modellleser {
 /** Ganzes zu jedem Teil aus `IfcRelAggregates` (RelatingObject, RelatedObjects); die erste Beziehung gilt. */
 export function zerlegungLesen(l: Modellleser): ReadonlyMap<number, number> {
   const ganzes = new Map<number, number>();
-  for (const r of l.daten.klasse('IFCRELAGGREGATES')) {
+  for (const r of l.instanzen('IFCRELAGGREGATES')) {
     const p = l.parameter(r);
     if (p === null) continue;
     const oben = l.ziel(r, p[4]);
@@ -169,20 +184,20 @@ export function strukturLesen(
   ganzes: ReadonlyMap<number, number>,
   mengen: (i: number) => StepBauteilmenge[],
 ): GelesenerKnoten[] {
-  const indizes = [...STRUKTURARTEN.keys()].flatMap((k) => l.daten.klasse(k)).sort((a, b) => a - b);
+  const indizes = [...STRUKTURARTEN.keys()].flatMap((k) => l.instanzen(k)).sort((a, b) => a - b);
   const knoten: GelesenerKnoten[] = [];
   for (const i of indizes) {
-    const art = STRUKTURARTEN.get(l.daten.name(i));
+    const art = STRUKTURARTEN.get(l.klasseVon(i));
     if (art === undefined || l.parameter(i) === null) continue;
     const globalId = l.gepruefteGlobalId(i);
     const oben = ganzes.get(i);
-    const elternInstanz = oben !== undefined && STRUKTURARTEN.has(l.daten.name(oben)) ? oben : null;
+    const elternInstanz = oben !== undefined && STRUKTURARTEN.has(l.klasseVon(oben)) ? oben : null;
     const eltern = elternInstanz === null ? null : l.globalId(elternInstanz);
     if (eltern === null && art !== 'projekt')
       l.melde(
         'warnung',
         'strukturknoten-ohne-eltern',
-        `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))}) hängt an keinem Strukturknoten (IfcRelAggregates).`,
+        `${l.name(i) ?? l.globalId(i)} (#${String(l.nummer(i))}) hängt an keinem Strukturknoten (IfcRelAggregates).`,
         l.ort(i),
       );
     knoten.push({

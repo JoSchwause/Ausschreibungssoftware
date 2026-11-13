@@ -34,7 +34,7 @@ export class Materialleser {
   ) {
     this.vonObjekt = vorlage?.vonObjekt ?? new Map<number, number[]>();
     if (vorlage !== undefined) return;
-    for (const r of l.daten.klasse('IFCRELASSOCIATESMATERIAL')) {
+    for (const r of l.instanzen('IFCRELASSOCIATESMATERIAL')) {
       const p = l.parameter(r);
       if (p === null) continue;
       const m = l.ziel(r, p[5]);
@@ -61,7 +61,7 @@ export class Materialleser {
       besucht.add(m);
       const p = this.l.parameter(m);
       if (p === null) return;
-      const klasse = this.l.daten.name(m);
+      const klasse = this.l.klasseVon(m);
       if (klasse === 'IFCMATERIAL') {
         const name = text(p[0]);
         if (name !== null && !namen.includes(name)) namen.push(name);
