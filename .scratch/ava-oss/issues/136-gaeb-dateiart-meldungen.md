@@ -1,6 +1,6 @@
 # 136: `gaeb`: Dateiart erkennen, Meldungen, Bieteranschrift
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: G4, E7, E10 · Paket/Ordner: `packages/gaeb`
 Blocked by: 129, 127
