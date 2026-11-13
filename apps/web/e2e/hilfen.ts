@@ -160,17 +160,18 @@ export async function leerlauf(page: Page): Promise<void> {
 }
 
 /**
- * B-38: die sichtbare Meldung (Toast), die `text` enthält. Die Toast-Region kündigt jede Meldung zusätzlich für etwa eine
- * Sekunde in einem unsichtbaren Ansageknoten an („Meldung“, Titel und Text, Rolle `status`); eine Suche über die ganze
- * Seite träfe dann zwei Elemente, und der Test fiele je nach Zeitpunkt. Gesucht wird deshalb nur unter den Einträgen der
- * Region „Meldungen“. Stehen dort mehrere passende Meldungen, gilt die neueste.
+ * B-38: alle sichtbaren Meldungen (Toasts), z. B. um ihre Lage zu prüfen. Die Toast-Region kündigt jede Meldung zusätzlich
+ * für etwa eine Sekunde in einem unsichtbaren Ansageknoten an („Meldung“, Titel und Text, Rolle `status`); eine Suche über
+ * die ganze Seite träfe dann zwei Elemente, und der Test fiele je nach Zeitpunkt. Gesucht wird deshalb nur unter den
+ * Einträgen der Region „Meldungen“.
  */
+export function meldungen(page: Page): Locator {
+  return page.getByRole('region', { name: /^Meldungen/ }).getByRole('listitem');
+}
+
+/** B-38: die sichtbare Meldung (Toast), die `text` enthält (siehe `meldungen`); bei mehreren passenden die neueste. */
 export function meldung(page: Page, text: string | RegExp): Locator {
-  return page
-    .getByRole('region', { name: /^Meldungen/ })
-    .getByRole('listitem')
-    .filter({ hasText: text })
-    .last();
+  return meldungen(page).filter({ hasText: text }).last();
 }
 
 /** Wartet, bis eine Meldung (Toast) mit `text` sichtbar ist (B-38, siehe `meldung`). */
