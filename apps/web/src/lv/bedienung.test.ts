@@ -64,7 +64,12 @@ async function kleinesLv() {
   };
   const position = async (aktiv: KnotenId, d: Positionsdaten) => {
     const id = u.ids.position();
-    await s.befehl({ art: 'PositionAnlegen', id, ort: positionOrt(zustand(s).leistungsverzeichnis, aktiv), daten: d });
+    await s.befehl({
+      art: 'PositionAnlegen',
+      id,
+      ort: positionOrt(zustand(s).leistungsverzeichnis, aktiv),
+      daten: d,
+    });
     return id;
   };
   const t01 = await titel(false, null, 'Rohbau');
@@ -171,10 +176,9 @@ describe('OZ-Maske ändern: Vorschau mit Prüfung der vorhandenen OZ', () => {
 
 describe('Hinweis „KG außerhalb der Gliederung“ an der Zelle', () => {
   const ermittlung = (...nummern: string[]): Pick<Kostenermittlung, 'eintraege'> =>
-    ({ eintraege: nummern.map((nummer) => ({ nummer, betrag: '1.00', bemerkung: null })) }) as unknown as Pick<
-      Kostenermittlung,
-      'eintraege'
-    >;
+    ({
+      eintraege: nummern.map((nummer) => ({ nummer, betrag: '1.00', bemerkung: null })),
+    }) as unknown as Pick<Kostenermittlung, 'eintraege'>;
 
   it('eine Warnung an der Spalte KG je Position, deren Kostengruppe in keiner Kostenermittlung liegt', async () => {
     const { s, p2, p3 } = await kleinesLv();

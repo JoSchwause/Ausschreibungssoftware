@@ -31,6 +31,56 @@ export const texte = {
     tastenMerkmale: ['Strg', 'Alt', 'M'],
     keinePosition: 'Merkmale gibt es nur an Positionen',
     keinePositionText: 'Bitte zuerst eine Position im Grid wählen.',
+    hinweistextAnlegen: 'Hinweistext anlegen',
+    hinweistextAendern: 'Hinweistext ändern',
+    tastenHinweistext: ['Strg', 'Alt', 'H'],
+    ozMaske: 'OZ-Maske ändern',
+    /** „Position bearbeiten“ ohne gewählte Zeile. */
+    keineZeile: 'Keine Position gewählt',
+    /** „Position bearbeiten“ an einem Titel oder Los: Sie werden im Grid bearbeitet. */
+    gliederungOhneDialog: 'Titel werden im Grid bearbeitet',
+    gliederungOhneDialogText:
+      'OZ und Kurztext eines Titels oder Loses lassen sich direkt in der Zeile ändern.',
+    keinHinweistext: 'Kein Hinweistext gewählt',
+    keinHinweistextText: 'Bitte zuerst einen Hinweistext im Grid wählen.',
+  },
+  hinweistext: {
+    titelAnlegen: 'Hinweistext anlegen',
+    titelAendern: 'Hinweistext ändern',
+    text: 'Text',
+    lage: 'Lage',
+    vortext: 'Vortext (am Anfang der Gliederung)',
+    nachtext: 'Nachtext (am Ende der Gliederung)',
+    hinter: 'Hinter der gewählten Zeile',
+    gliederung: (name: string) => `Gliederung: ${name}`,
+    obersteEbene: 'Gliederung: oberste Ebene des LV',
+    leer: 'Bitte einen Text eingeben.',
+  },
+  ozMaske: {
+    titel: 'OZ-Maske ändern',
+    feld: 'OZ-Maske',
+    hinweis:
+      'N steht für eine Ziffer, A für ein Zeichen, Punkte trennen die Stufen, [I] am Ende für den Index.',
+    losStufe: 'Oberste Stufe ist das Los',
+    vorschau: 'Vorschau',
+    gleich: 'Die Maske ist unverändert.',
+    bleibt: 'Die Ordnungszahlen bleiben gleich.',
+    neu: (n: number) =>
+      n === 1 ? '1 Ordnungszahl ändert sich:' : `${String(n)} Ordnungszahlen ändern sich:`,
+    weitere: (n: number) => `und ${String(n)} weitere`,
+    konflikt: {
+      'maske-ungueltig': 'Für diese Zeilen hat die neue Maske keine Stufe:',
+      'oz-ueberlauf': 'Für diese Zeilen hat die neue Maske keinen Platz mehr:',
+      'knotenart-unzulaessig':
+        'Mit der Los-Stufe stehen auf der obersten Ebene nur Lose. Dort stehen diese Titel:',
+    } as Readonly<Record<string, string>>,
+    konfliktAllgemein: 'Für diese Zeilen passt die neue Maske nicht:',
+    abgewiesen: 'So lässt sich die Maske nicht übernehmen. Das LV bleibt unverändert.',
+    ohneOz: '(ohne OZ)',
+  },
+  kalkulation: {
+    entfernt: 'Kalkulation entfernt',
+    rueckgaengig: 'Rückgängig',
   },
   merkmale: {
     titel: 'Merkmale',

@@ -39,7 +39,7 @@ export function ozMaskeVorschau(zustand: LvZustand, maske: OzMaske): OzMaskenvor
   const knoten = zustand.leistungsverzeichnis.knoten;
   if (!r.ok) {
     const ids = r.fehler.knotenIds ?? (r.fehler.knotenId === undefined ? [] : [r.fehler.knotenId]);
-    const nachId = new Map(knoten.map((k) => [k.id, k]));
+    const nachId = new Map<string, Knoten>(knoten.map((k) => [k.id, k]));
     return {
       art: 'abgewiesen',
       code: r.fehler.code,
