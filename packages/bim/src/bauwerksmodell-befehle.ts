@@ -6,7 +6,15 @@
 // immer, Struktur und Bauteile nur beim Anlegen und Löschen (D-45, D-54). Rein (A2).
 
 import { alsMenge } from '@tethys/dezimal';
-import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
+import {
+  BAUTEILMENGENARTEN,
+  IFC_GLOBALID_MUSTER,
+  IFC_SCHEMATA,
+  KALENDERDATUM_MUSTER,
+  KOSTENGRUPPENNUMMER_MUSTER,
+  MODELLDATEI_HASH_MUSTER,
+  STRUKTURKNOTENARTEN,
+} from '@tethys/vertrag';
 import type {
   Bauteil,
   Bauteilmenge,
@@ -27,19 +35,9 @@ import { modellIndex } from './form';
 
 type Antwort = Ergebnis<BauwerksmodellChangeSet, Befehlsfehler>;
 
-const HASH = /^[0-9a-f]{64}$/;
-const DATUM = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
-const KOSTENGRUPPE = /^[1-9][0-9]{2}$/;
-const SCHEMATA: ReadonlySet<string> = new Set(['IFC2X3', 'IFC4']);
-const MENGENARTEN: ReadonlySet<string> = new Set([
-  'laenge',
-  'flaeche',
-  'volumen',
-  'anzahl',
-  'gewicht',
-  'zeit',
-]);
-const KNOTENARTEN: ReadonlySet<string> = new Set(['projekt', 'grundstueck', 'gebaeude', 'geschoss', 'raum']);
+const SCHEMATA: ReadonlySet<string> = new Set(IFC_SCHEMATA);
+const MENGENARTEN: ReadonlySet<string> = new Set(BAUTEILMENGENARTEN);
+const KNOTENARTEN: ReadonlySet<string> = new Set(STRUKTURKNOTENARTEN);
 
 function nein(code: Befehlsfehlercode, meldung: string, feld?: string): Antwort {
   return { ok: false, fehler: feld === undefined ? { code, meldung } : { code, meldung, feld } };
@@ -54,10 +52,8 @@ const istGlobalId = (w: unknown): boolean => istText(w) && IFC_GLOBALID_MUSTER.t
 
 /** Ein Kalendertag `JJJJ-MM-TT` (gregorianisch, ohne Uhr). */
 function istDatum(w: unknown): boolean {
-  if (!istText(w)) return false;
-  const t = DATUM.exec(w);
-  if (!t) return false;
-  const [jahr, monat, tag] = [Number(t[1]), Number(t[2]), Number(t[3])];
+  if (!istText(w) || !KALENDERDATUM_MUSTER.test(w)) return false;
+  const [jahr = 0, monat = 0, tag = 0] = w.split('-').map(Number);
   const schalt = (jahr % 4 === 0 && jahr % 100 !== 0) || jahr % 400 === 0;
   const tage = [31, schalt ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][monat - 1];
   return tage !== undefined && tag >= 1 && tag <= tage;
@@ -136,7 +132,7 @@ function bauteilFehler(
     return `${was}: Strukturknoten ${String(b.strukturGlobalId)} steht nicht in der Struktur`;
   if ('teilVonGlobalId' in b && !enthaelt(bauteile, b.teilVonGlobalId))
     return `${was}: Ganzes ${String(b.teilVonGlobalId)} ist kein Bauteil des Modells`;
-  if ('kostengruppe' in b && !(istText(b.kostengruppe) && KOSTENGRUPPE.test(b.kostengruppe)))
+  if ('kostengruppe' in b && !(istText(b.kostengruppe) && KOSTENGRUPPENNUMMER_MUSTER.test(b.kostengruppe)))
     return `${was}: Kostengruppe nicht in Form: ${JSON.stringify(b.kostengruppe)}`;
   const q = mengenFehler(b.mengen);
   return q ? `${was}: ${q}` : null;
@@ -160,7 +156,7 @@ function modellFehler(bm: Bauwerksmodell): Antwort | null {
   const u = (meldung: string, feld: string) => nein('ungueltige-eingabe', meldung, feld);
   if (!nichtLeer(bm.name)) return u('Der Name ist leer', 'name');
   const d = bm.datei;
-  if (!istText(d.hash) || !HASH.test(d.hash))
+  if (!istText(d.hash) || !MODELLDATEI_HASH_MUSTER.test(d.hash))
     return u(`Hash nicht 64 Hexziffern klein: ${JSON.stringify(d.hash)}`, 'datei.hash');
   if (!nichtLeer(d.dateiname)) return u('Der Dateiname ist leer', 'datei.dateiname');
   if (!Number.isSafeInteger(d.groesse) || d.groesse < 0)

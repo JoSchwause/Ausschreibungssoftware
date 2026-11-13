@@ -95,7 +95,7 @@ export function eigenschaftsindexBauen(
           q.melde(
             'warnung',
             'globalid-doppelt',
-            `Die GlobalId ${globalId} tragen ${String(alle.length)} Objekte (${alle.map((n) => `#${String(q.daten.id(n))}`).join(', ')}); gezeigt werden die Angaben des ersten.`,
+            `Die GlobalId ${globalId} tragen ${String(alle.length)} Objekte (${alle.map((n) => `#${String(q.nummer(n))}`).join(', ')}); gezeigt werden die Angaben des ersten.`,
             q.ort(i, 'GlobalId'),
           );
         const typ = d.typ(i);
