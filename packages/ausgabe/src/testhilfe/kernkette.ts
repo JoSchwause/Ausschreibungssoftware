@@ -19,9 +19,12 @@ import type {
   PositionId,
   ProjektId,
   Prozent,
+  Rechnung,
+  RechnungId,
 } from '@tethys/vertrag';
 import type { PreisspiegelEingabe } from '../preisspiegel-druck';
 import type { SollIstEingabe } from '../soll-ist-druck';
+import type { RechnungspruefungEingabe } from '../rechnung-druck';
 import type { ProjektKopf } from '../koepfe';
 import { leseXlsx } from '../xlsx';
 import type { GeleseneZelle } from '../xlsx';
@@ -309,4 +312,52 @@ export const SOLL_IST: SollIstEingabe['sollIst'] = {
   gliederungen: [{ gliederungId: WINZIG.titel, gpSoll: b('2565.00'), gpIst: b('28.68') }],
   gesamt: { gpSoll: b('2565.00'), gpIst: b('28.68') },
   befunde: [{ code: 'ueber-schwelle', positionId: WINZIG.p1, anteil: pz('121.46') }],
+};
+
+/** Abschlagsrechnung 2 zu den Blättern 3 und 9 (Blatt 9 kennt die Eingabe nicht), mit Umlage, Sicherheitseinbehalt und Forderung. */
+export const RECHNUNG: Rechnung = {
+  id: 'rechnung-2' as RechnungId,
+  projektId: 'projekt-1' as ProjektId,
+  auftragsLvId: 'auftrags-lv' as AuftragsLeistungsverzeichnisId,
+  nummer: 2,
+  art: 'abschlag',
+  eingang: '2026-11-12',
+  rechnungsnummerAuftragnehmer: 'AR-0815',
+  gefordert: { netto: b('30.00'), brutto: null, zahlbetrag: b('20.00') },
+  aufmassIds: ['aufmass-9' as AufmassId, 'aufmass-3' as AufmassId],
+  umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: pz('0.50') }],
+  sicherheitSatz: pz('5.00'),
+  gewaehrleistungSatz: null,
+  freigabe: null,
+};
+
+/** Das Prüfergebnis zu `RECHNUNG`, wie `abrechnung` es rechnen würde (D-34, jeder Schritt auf 2 Stellen). */
+export const PRUEFUNG: RechnungspruefungEingabe['pruefung'] = {
+  leistungsstand: {
+    positionen: [
+      { positionId: WINZIG.p1, menge: m('1.500'), gp: b('15.00') },
+      { positionId: WINZIG.p2, menge: m('3.000'), gp: b('13.68') },
+      { positionId: WINZIG.p3, menge: null, gp: b('0.00') },
+    ],
+    leistung: b('28.68'),
+    nachlass: b('0.00'),
+    nettoNachNachlass: b('28.68'),
+  },
+  kette: {
+    leistung: b('28.68'),
+    nachlass: b('0.00'),
+    nettoNachNachlass: b('28.68'),
+    mwst: b('5.45'),
+    bruttoKumuliert: b('34.13'),
+    umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: pz('0.50'), betrag: b('0.17') }],
+    einbehalt: { art: 'sicherheit', satz: pz('5.00'), betrag: b('1.71') },
+    fruehere: [{ rechnungId: 'rechnung-1' as RechnungId, nummer: 1, zahlbetrag: b('10.00') }],
+    fruehereZahlbetraege: b('10.00'),
+    zahlbetrag: b('22.25'),
+  },
+  forderung: {
+    netto: { gefordert: b('30.00'), geprueft: b('28.68'), differenz: b('1.32') },
+    brutto: null,
+    zahlbetrag: { gefordert: b('20.00'), geprueft: b('22.25'), differenz: b('-2.25') },
+  },
 };
