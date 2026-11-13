@@ -1,6 +1,6 @@
 # 148: App: LV-Bedienung (Hinweistext, OZ-Maske, Texte, KG-Hinweis)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: U, E8 · Paket/Ordner: `apps/web/src/lv/`
 Blocked by: 137, 139, 142
