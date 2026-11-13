@@ -25,6 +25,14 @@ Herkunft: `../review-welle-6.md` (Ermessenspunkte, die Vertrag oder viele Dateie
 7. Restliche Namen: drei `Lage`-Typen in `bauzeit`, Hüllfunktionen in `ausgabe/x2x4-pdf.ts`, `bericht-pdf.ts` gegen `pdf.ts`
    (Erzeugungsdatum, Zugriffsregel, Schriften), was 122 als Soll nicht schaffte.
 
+8. **Rest aus Ticket 122** (Sollpunkte 19 und 20, siehe dort unter „Sollpunkte“): `MENGENART_STUECK` (Konstante nach `vertrag`,
+   `bim/texte.ts` liegt im Hauptbündel); `modellvergleich/folgen.ts` und `bim/uebernahme.ts` zusammenlegen;
+   `ModellvergleichSeite.tsx:397` → `bim/darstellung.ts`; `bim/einlesen.ts` → `datumAusUhr`; `MengenAusModell.tsx:145` →
+   `datumDe`; Text aus `BauzeitenplanSeite.tsx:396` nach `texte.ts`; `useBezug` umbenennen (L2); alle Stichpunkte aus 122
+   Punkt 20 (`kern`-Doppelungen, `bezuege.ts`, GlobalIds in `ui-modell`, Test-Exporte in `ifc`, Prozentkonstanten und Namen in
+   `bauzeit`, `LEISTUNGSBILDER`, „offen“-Prädikat, `ui-grid/texte.ts`).
+9. **Vertragstext:** die Quelle `fristpruefung` nennt auch `mangel-angezeigt-ohne-frist` (D-122.5).
+
 ## Acceptance criteria
 
 - [ ] Keine Verhaltensänderung: alle Goldens und E2E unverändert grün

@@ -17,9 +17,12 @@ Herkunft: offene Punkte der Tickets 93 und 118, Bericht Welle 6
 4. **Messung:** Preisspiegel-Budget (`vergabe`) auf ruhiger Maschine neu messen (in Welle 6 unter Last wackelig); Ergebnis im
    Ticket, nichts gelockert.
 
+5. **Bezug auf LV-Knoten im Vorgangsdialog** (Ticket 118 §2, Review PC-a2, in 122 nicht erreicht): nicht nur ganzes LV oder
+   Auftrags-LV, sondern einzelne Knoten wählbar (`bauzeit/VorgangDialog.tsx:44,54`), Voraussetzung für Punkt 2.
+
 ## Acceptance criteria
 
-- [ ] Unit- und E2E-Tests für 1–3 grün; Messwert aus 4 im Ticket
+- [ ] Unit- und E2E-Tests für 1–3 und 5 grün; Messwert aus 4 im Ticket
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
