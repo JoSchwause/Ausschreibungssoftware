@@ -22,6 +22,7 @@ import type {
   ProjektId,
   ProtokollId,
   VorgangId,
+  ZahlungId,
 } from './marken';
 import type {
   Angebot,
@@ -63,6 +64,7 @@ import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './hono
 import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
 import type { Buero, Druckprofil, Einstellungen, Kostengruppenbezeichnung } from './einstellungen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
+import type { Skonto, Vertragsstrafe, Zahlung } from './zahlung';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
 export type Einfuegeort =
@@ -884,14 +886,16 @@ export type AufmassBefehl =
 // Der Ausführer sieht nur die Rechnung (Signatur `RechnungBefehlAusfuehren`, D-70.3) und prüft die Form. Was andere
 // Rechnungen braucht, prüft die App vorher (`freigabeMoeglich`, Ticket 81) und `speicher` als `konflikt` (Q5), die übrigen
 // Regeln `rechnungPruefen` als Befund (U5). ChangeSet aller Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher
-// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr
-// weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4).
+// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben` und (v1.7b) die Zahlungsbefehle;
+// jeden anderen Befehl an ihr weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4, D-128.7).
 
 /**
  * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
  * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Hat das Auftrags-LV
  * schon eine freigegebene Rechnung mit größerer Nummer, weist `speicher` mit `konflikt` ab (Invariante an `Rechnung`).
- * Kein Massenbefehl.
+ * Kein Massenbefehl. v1.7b (D-128.3): Vertragsstrafe, Skonto und Bauabzugsteuer darf die Rechnung mitbringen (die App
+ * schlägt sie aus der vorigen Rechnung vor), Form wie bei ihren Befehlen; `zahlungen` nie (eine neue Rechnung ist nicht
+ * freigegeben): sonst `ungueltige-eingabe` (`feld: 'zahlungen'`).
  */
 export interface RechnungAnlegen {
   readonly art: 'RechnungAnlegen';
@@ -940,7 +944,9 @@ export interface RechnungFreigeben {
  * kann (D-70.4); das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere
  * Nummer) freigegeben ist, deren eingefrorener Zahlbetrag diesen abzieht (D-34 (7)): sonst `konflikt` in `speicher`, die
  * App bietet es dann nicht an. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht
- * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab.
+ * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab. v1.7b (D-72, Q5): Hat die Rechnung Zahlungen, weist
+ * der Ausführer mit `zahlungen-vorhanden` ab (erst die Zahlungen löschen); `speicher` hält dieselbe Regel als `konflikt`,
+ * auch für das Undo von `RechnungFreigeben` (Invariante an `Rechnung`).
  */
 export interface RechnungsfreigabeAufheben {
   readonly art: 'RechnungsfreigabeAufheben';
@@ -955,7 +961,61 @@ export interface RechnungLoeschen {
   readonly art: 'RechnungLoeschen';
 }
 
-/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7). */
+// v1.7b (Ticket 128; A5, D-72; Ausführer in `abrechnung`, Ticket 143): Vertragsstrafe, Skonto und Bauabzugsteuer setzen nur
+// an einer nicht freigegebenen Rechnung (sie gelten für die Zahlungsfreigabe, die mit der Freigabe entsteht; sonst
+// `rechnung-freigegeben`). Zahlungen erfassen, ändern und löschen nur an einer freigegebenen (sonst `ungueltige-eingabe` mit
+// `feld: 'freigabe'`, wie `RechnungsfreigabeAufheben` an einer nicht freigegebenen). Kein Befehl ändert den eingefrorenen
+// Zahlbetrag.
+
+/**
+ * Setzt die Vertragsstrafe als ganzen Wert (siehe `Rechnung.vertragsstrafe`, `Vertragsstrafe`); `null` entfernt sie. Sie
+ * ändert den Zahlbetrag, darum nur vor der Freigabe.
+ */
+export interface VertragsstrafeSetzen {
+  readonly art: 'VertragsstrafeSetzen';
+  readonly vertragsstrafe: Vertragsstrafe | null;
+}
+
+/** Setzt den Skonto als ganzen Wert (Satz und Skontofrist, siehe `Skonto`); `null` entfernt ihn. */
+export interface SkontoSetzen {
+  readonly art: 'SkontoSetzen';
+  readonly skonto: Skonto | null;
+}
+
+/** Schaltet die Bauabzugsteuer ein (`true`) oder aus (`false`: danach fehlt `Rechnung.bauabzugsteuer`). */
+export interface BauabzugsteuerSetzen {
+  readonly art: 'BauabzugsteuerSetzen';
+  readonly bauabzugsteuer: boolean;
+}
+
+/**
+ * Erfasst eine Zahlung am Ende von `Rechnung.zahlungen`; die Kennung kommt aus `IdQuelle.zahlung` (A7). Hat die Rechnung
+ * schon eine Zahlung mit dieser Kennung: `id-vergeben`. Form siehe `Zahlung`.
+ */
+export interface ZahlungErfassen {
+  readonly art: 'ZahlungErfassen';
+  readonly zahlung: Zahlung;
+}
+
+/**
+ * Ersetzt Datum und Betrag der Zahlung mit derselben Kennung, an ihrer Stelle. Keine Zahlung mit dieser Kennung:
+ * `ungueltige-eingabe` (`feld: 'zahlungId'`). Form wie `ZahlungErfassen`.
+ */
+export interface ZahlungAendern {
+  readonly art: 'ZahlungAendern';
+  readonly zahlung: Zahlung;
+}
+
+/**
+ * Löscht eine Zahlung (Q5: Bestätigung, Undo; das ChangeSet trägt die ganze Rechnung). Mit der letzten Zahlung entfällt das
+ * Feld `zahlungen`. Keine Zahlung mit dieser Kennung: `ungueltige-eingabe` (`feld: 'zahlungId'`).
+ */
+export interface ZahlungLoeschen {
+  readonly art: 'ZahlungLoeschen';
+  readonly zahlungId: ZahlungId;
+}
+
+/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7; v1.7b, Ticket 128: sechs neue). */
 export type RechnungBefehl =
   | RechnungAnlegen
   | RechnungsangabenSetzen
@@ -963,7 +1023,14 @@ export type RechnungBefehl =
   | RechnungsabzuegeSetzen
   | RechnungFreigeben
   | RechnungsfreigabeAufheben
-  | RechnungLoeschen;
+  | RechnungLoeschen
+  // v1.7b (Ticket 128; A5, D-72)
+  | VertragsstrafeSetzen
+  | SkontoSetzen
+  | BauabzugsteuerSetzen
+  | ZahlungErfassen
+  | ZahlungAendern
+  | ZahlungLoeschen;
 
 // --- Kostenermittlung (v1.4, C3; D-36 (3); Ausführer in `kosten`, Ticket 82) ------------------------------------
 //
