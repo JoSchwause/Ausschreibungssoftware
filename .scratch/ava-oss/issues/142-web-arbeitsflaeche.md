@@ -1,6 +1,6 @@
 # 142: App: Arbeitsfläche und Werkzeugleiste
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: U, E3 · Paket/Ordner: `apps/web/src/lv/`, `auftrag/`, `vergabe/` (Layout), `packages/ui-basis` (Werkzeugleiste, Menü)
 Blocked by: 130, 131
