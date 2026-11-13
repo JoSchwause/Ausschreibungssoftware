@@ -40,3 +40,5 @@ der Demo.
 - [ ] Was fehlt, ist unter `## Comments` vermerkt; die Welle nennt dann im Bericht, was ungeprüft blieb
 
 ## Comments
+
+- Welle 7 (2026-11-13, Orchestrator): nichts geliefert, der Sitzung hing nichts an. Die Welle nutzt selbst geschriebene Dateien (D-71); der Bericht nennt GAEB 90/2000, echte LVs und IFC aus Autorenwerkzeugen als ungeprüft.
