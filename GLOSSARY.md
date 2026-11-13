@@ -174,7 +174,7 @@ Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositione
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
 
 ### Auftragnehmer (Kopfdaten)
-Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts und seinen Bieterangaben: Eine X86 füllt nur den Auftragnehmer, Telefon, E-Mail und Ansprechperson daraus bleiben ein Befund beim Einlesen. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift (Straße, PLZ, Ort; GAEB `CTR`, X86). Steht am LV-Kopf des Auftrags-LV; im Ausschreibungs-LV fehlt er. Gesetzt beim Zuschlag aus dem Namen und der Anschrift des bezuschlagten Bieters (aus seinen Bieterangaben, D-83): eine Kopie zum Zeitpunkt des Zuschlags, die eine spätere Änderung am Bieter nicht nachzieht. Oder beim Einlesen einer X86-Datei aus deren Angaben. Nicht dasselbe wie der `Bieter` des Projekts: Eine X86 füllt nur den Auftragnehmer, nie die Bieterangaben; Telefon, E-Mail und Ansprechperson aus einer X86 bleiben ein Befund beim Einlesen. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.

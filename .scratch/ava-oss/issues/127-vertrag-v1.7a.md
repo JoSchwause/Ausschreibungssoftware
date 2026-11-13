@@ -90,9 +90,12 @@ gelten unverändert.
   Bieterangaben { anschrift: Anschrift | null, ansprechperson, email, telefon }`; `BieterAnlegen` darf `angaben` mitbringen
   und bleibt im Kern (137). **S7:** Nur ein X84 bringt Bieterangaben (gaeb 136: `AngebotLesung.bieter.angaben`); ein X86 füllt
   nur `LvInhaltKopf.auftragnehmer` (Name, Straße, PLZ, Ort), seine Kontaktangaben bleiben ein Befund; ein Bieter, den das
-  Projekt schon hat, wird beim Einlesen nicht überschrieben, die App bietet `BieterangabenSetzen` an (149). Unbekannte
+  Projekt schon hat, wird beim Einlesen nicht überschrieben, die App bietet `BieterangabenSetzen` an (149). **D-83:** In die
+  Gegenrichtung kopiert der Zuschlag (`zuschlagErteilen`, 138 gemergt) Name und Anschrift des bezuschlagten Bieters in
+  `LvInhaltKopf.auftragnehmer` des Auftrags-LV, als Kopie zum Zeitpunkt des Zuschlags (eine spätere Änderung am Bieter zieht
+  nicht nach); Kommentar am `Auftragnehmer` und Glossar „Auftragnehmer“ sagen das jetzt. Unbekannte
   `bieterId` → `ungueltige-eingabe` (`feld: 'bieterId'`). Normalisierung (eine Funktion des Kerns, 137 exportiert sie,
-  `vergabe` nutzt sie): `''` → `null`, Anschrift ganz `null` → `null`, Angaben ganz `null` → Feld fehlt. Kein Formatcheck für
+  `vergabe` nutzt sie; bis zur Review-Behebung 159 eine lokale Kopie in `vergabe`, D-83): `''` → `null`, Anschrift ganz `null` → `null`, Angaben ganz `null` → Feld fehlt. Kein Formatcheck für
   E-Mail/Telefon (U5).
 - **D-127.5 Projektangaben (E10).** `Projekt.angaben?: Projektangaben { nummer, ort, baustelle: Anschrift | null }`
   (Name und Bauherr bleiben am Projekt). `ProjektangabenSetzen { name, bauherr, angaben | null }` ersetzt in der App
@@ -110,8 +113,8 @@ gelten unverändert.
   `zuschlag ≠ null` entfernt eine vorhandene Kalkulation im selben ChangeSet; ein Anlege- oder Kopierbefehl mit Zuschlag und
   Kalkulation → `ungueltige-eingabe` (`feld: 'kalkulation'`). **S4:** Wer die Kalkulation so entfernt, meldet den
   Befehlshinweis `kalkulation-entfernt` mit `knotenId` der Position (neu in der geschlossenen Liste). Anlegen und Kopieren
-  nehmen sie sonst mit (Muster-LV); `zuschlagErteilen` (vergabe 138) und `nachtragUebernehmen` (abrechnung, mit 143) lassen
-  sie weg; der GAEB-Export schreibt sie nicht, ohne Warnung (die EPA tragen das Ergebnis).
+  nehmen sie sonst mit (Muster-LV); `zuschlagErteilen` (vergabe 138, umgesetzt und durch D-83 bestätigt) und
+  `nachtragUebernehmen` (abrechnung, mit 143) lassen sie weg; der GAEB-Export schreibt sie nicht, ohne Warnung (die EPA tragen das Ergebnis).
 - **D-127.7 Preisspiegel-Einstellungen (E15, D-73; Nachtrag D-82 S5, S6).** `LvKopf.preisspiegel?:
   PreisspiegelEinstellungen` (Form wie `vergabe`: `ausreisserSchwelle`, `abcSchwelleA`, `abcSchwelleB`, `abcBezug: 'mittel' |
   'schaetzpreis'`), LV-Befehl **`PreisspiegelEinstellungenSetzen`** `{ einstellungen | null }` (S5: umbenannt von
@@ -200,7 +203,8 @@ gelten unverändert.
   ChangeSet-Formen gleich bleiben.
 - **D-127.18 Nachtrag aus dem Review (D-82), Übersicht.** M1 → D-127.8, D-127.9 (Einstellungsprotokoll, protokollierte
   Übernahme mit `EinstellungenUebernehmen`); M2, S1 → D-127.1; S3, S4 → D-127.6; S5 → D-127.5, D-127.7; S6 → D-127.7; S7 →
-  D-127.4 (Kommentar am `Auftragnehmer` berichtigt); S8 → D-127.8; S9 → D-127.17; S10 → D-127.10. Alles additiv oder Lesart, bis
+  D-127.4 (Kommentar am `Auftragnehmer` berichtigt; dazu D-83: der Zuschlag kopiert Name und Anschrift des Bieters in den
+  Auftragnehmer, Glossar „Auftragnehmer“ berichtigt); S8 → D-127.8; S9 → D-127.17; S10 → D-127.10. Alles additiv oder Lesart, bis
   auf drei Stellen, die noch kein Verbraucher in `integration/welle-7` nutzt: der Name `PreisspiegelEinstellungenSetzen` (137 hat
   den alten Namen auf seinem Zweig), `EinstellungenRepository.anwenden(eintrag, changeSet)` (139 baut es erst) und das neue
   Mitglied `EinstellungenUebernehmen` der geschlossenen Union `EinstellungenBefehl` (137 braucht dafür einen Fall).

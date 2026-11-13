@@ -597,7 +597,8 @@ export interface Bieterangaben {
  * Angebot (`BieterLoeschen`). `BieterAnlegen` darf `angaben` mitbringen; der Kern normalisiert sie wie bei
  * `BieterangabenSetzen`. Woher (v1.7a Nachtrag, Review D-82 S7): nur ein X84 bringt Bieterangaben mit (Ticket 136); ein X86
  * füllt nur `LvInhaltKopf.auftragnehmer`, nie die Angaben eines Bieters. Ein Bieter, den das Projekt schon hat, wird beim
- * Einlesen nicht überschrieben; trägt die Datei andere Angaben, bietet die App `BieterangabenSetzen` an (Ticket 149).
+ * Einlesen nicht überschrieben; trägt die Datei andere Angaben, bietet die App `BieterangabenSetzen` an (Ticket 149). In die
+ * Gegenrichtung kopiert der Zuschlag Name und Anschrift des bezuschlagten Bieters in den `Auftragnehmer` des Auftrags-LV (D-83).
  */
 export interface Bieter {
   readonly id: BieterId;
@@ -651,8 +652,13 @@ export interface Auftraggeber {
  * hat, mit den Adressfeldern, die die Dateien in `CTR/Address` zeigen (`Name1`, `Street`, `PCode`, `City`). Jedes Feld
  * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt (Telefon, E-Mail, Ansprechperson),
  * `DPNo`, `AwardNo` und weitere Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts (Offene Typfrage, Ticket 53).
- * v1.7a Nachtrag (Review D-82 S7): Seit v1.7a trägt der `Bieter` eigene `Bieterangaben`; ein X86 füllt trotzdem **nur** diesen
- * Auftragnehmer am LV-Kopf, nie die Angaben eines Bieters, und seine Kontaktangaben bleiben ein Befund beim Import.
+ *
+ * v1.7a Nachtrag (Review D-82 S7; D-83): Der `Bieter` trägt seit v1.7a eigene `Bieterangaben`. Woher der Auftragnehmer kommt:
+ * - Zuschlag (`zuschlagErteilen` in `vergabe`, Ticket 138): `name` ist der Name des bezuschlagten Bieters, `strasse`, `plz`,
+ *   `ort` die Teile seiner `Bieterangaben.anschrift` (`null`, wo sie fehlen). Eine Kopie zum Zeitpunkt des Zuschlags: Eine
+ *   spätere Änderung am Bieter ändert das Auftrags-LV nicht.
+ * - X86 (Ticket 136): füllt **nur** diesen Auftragnehmer am LV-Kopf, nie die Angaben eines Bieters; seine Kontaktangaben
+ *   bleiben ein Befund beim Import.
  */
 export interface Auftragnehmer {
   readonly name: string | null;
@@ -698,7 +704,8 @@ export interface LvInhaltKopf {
   readonly vergabeinformationen?: Vergabeinformationen;
   /**
    * Fehlt: keine Angabe (v1.3, Ticket 53 Punkt 6). Gehört zur Auftragserteilung (X86, Auftrags-LV): Der X86-Leser legt
-   * `CTR` hier ab, der Writer schreibt es zurück (Ticket 68). Vorläufige Annahme, Entscheidung offen (enge Lesart): am
+   * `CTR` hier ab, der Writer schreibt es zurück (Ticket 68); der Zuschlag setzt es aus Name und Anschrift des bezuschlagten
+   * Bieters (v1.7a, D-83; siehe `Auftragnehmer`). Vorläufige Annahme, Entscheidung offen (enge Lesart): am
    * gemeinsamen Kopf, weil Leser und Writer mit `LvInhalt` arbeiten; ein Ausschreibungs-LV trägt es nicht (der Typ
    * verbietet es nicht). Alternative: nur am `AuftragsLvKopf` (Offene Typfrage, Ticket 53).
    */
