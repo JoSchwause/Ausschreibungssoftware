@@ -236,8 +236,9 @@ export function bauePreisspiegelModell(
   for (let i = 0; i < summen.length; i += Math.max(1, bieterJeTabelle))
     gruppen.push(summen.slice(i, i + Math.max(1, bieterJeTabelle)).map((_, j) => i + j));
   if (gruppen.length === 0) gruppen.push([]);
-  const hatBedarf = summen.some((s) => s.gesamt.summeBedarfOhneGesamtbetrag !== undefined);
-  const hatWahl = summen.some((s) => s.gesamt.summeWahl !== undefined);
+  // Bedarfs- und Wahlsumme getrennt vom Netto (F4), wie im LV-Druck nur, wenn das LV solche Positionen hat.
+  const hatBedarf = lv.knoten.some((k) => k.art === 'position' && k.merkmale.bedarf === 'ohne-gesamtbetrag');
+  const hatWahl = lv.knoten.some((k) => k.art === 'position' && k.merkmale.wahl !== null);
 
   const positionsTabelle = (
     indizes: readonly number[],

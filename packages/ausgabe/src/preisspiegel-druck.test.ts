@@ -4,13 +4,13 @@
 // (`testhilfe/kernkette.ts`), der Druck rechnet nichts.
 
 import { describe, expect, it } from 'vitest';
-import type { AngebotId, BieterId } from '@tethys/vertrag';
+import type { AngebotId, Betrag, BieterId } from '@tethys/vertrag';
 import { neuesDruckprofil } from './druckprofil';
 import { bauePreisspiegelModell, erzeugePreisspiegelPdf, preisspiegelAlsExcel } from './index';
 import type { BerichtBlock, BerichtZelle, PreisspiegelEingabe } from './index';
 import { alsText, liesPdf } from './pdftext';
 import { schriftenAusDateien } from './schriften-node';
-import { fixtureZustand } from './testhilfe/bau';
+import { fixtureZustand, mitInhalt, positionenAendern } from './testhilfe/bau';
 import { BIETER, BUERO, PREISSPIEGEL, PROJEKT, WINZIG, excelZeilen } from './testhilfe/kernkette';
 
 const schriften = schriftenAusDateien();
@@ -265,5 +265,49 @@ describe('Preisspiegel: Positionen ohne Zeile', () => {
       ['–', '–'],
       ['–', '–'],
     ]);
+  });
+});
+
+describe('Preisspiegel: Bedarf', () => {
+  it('setzt den GP einer Bedarfsposition in Klammern und weist die Bedarfssumme getrennt vom Netto aus (F4)', () => {
+    const lv = mitInhalt(zustand, (i) =>
+      positionenAendern(
+        i,
+        (p) => p.id === WINZIG.p2,
+        (p) => ({ ...p, merkmale: { ...p.merkmale, bedarf: 'ohne-gesamtbetrag' } }),
+      ),
+    );
+    const ps: PreisspiegelEingabe['preisspiegel'] = {
+      ...PREISSPIEGEL,
+      zeilen: PREISSPIEGEL.zeilen.map((z) =>
+        z.positionId === WINZIG.p2 ? { ...z, gehtInSummeEin: false } : z,
+      ),
+      bietersummen: PREISSPIEGEL.bietersummen.map((s) => ({
+        ...s,
+        gesamt: { ...s.gesamt, summeBedarfOhneGesamtbetrag: '16.67' as Betrag },
+      })),
+    };
+    const m = bauePreisspiegelModell({ ...eingabe, lv, preisspiegel: ps });
+    const [t] = tabellen(m.abschnitte[1]?.bloecke ?? []);
+    const zeile = (name: string) => t?.zeilen.find((z) => texte(z.zellen[1])[0] === name)?.zellen.map(texte);
+    expect(
+      t?.zeilen
+        .find((z) => z.zellen[0] === '01.0020')
+        ?.zellen.slice(1, 7)
+        .map(texte),
+    ).toEqual([
+      ['Randstein setzen', 'nicht in der Summe'],
+      ['3,333'],
+      ['m'],
+      ['C'],
+      ['4,560', '(15,20)'],
+      ['5,000', '(16,67)'],
+    ]);
+    expect(
+      zeile('Bedarfssumme (nicht im Netto)')
+        ?.slice(6, 9)
+        .map((z) => z[1]),
+    ).toEqual(['16,67', '16,67', '16,67']);
+    expect(zeile('Wahlsumme (nicht im Netto)')).toBeUndefined();
   });
 });
