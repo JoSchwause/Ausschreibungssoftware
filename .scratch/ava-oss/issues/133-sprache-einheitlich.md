@@ -1,6 +1,6 @@
 # 133: Einheitliche Sprache und Sprachtest
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E14 · Paket/Ordner: `apps/web/src/*/texte.ts`, `packages/ui-*/src/texte.ts`, `GLOSSARY.md`, neu `apps/web/src/sprache.test.ts`; Textstellen außerhalb von `texte.ts` nur, wo dort Nutzertext fest steht
 Blocked by: –
