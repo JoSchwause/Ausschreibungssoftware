@@ -1,6 +1,6 @@
 # 139: Speicher v1.7: Migration 7, Projektdatei Schema 7, Einstellungen, Einlesen als Kopie
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: S · Paket/Ordner: `packages/speicher`
 Blocked by: 127, 135
