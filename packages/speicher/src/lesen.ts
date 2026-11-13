@@ -4,6 +4,8 @@
 // `reihenfolge`), Summen und Angebotspositionen nach Kennung, Protokoll nach Eintragsreihenfolge.
 
 import type {
+  Einstellungen,
+  EinstellungenProtokolleintrag,
   Bautagebucheintrag,
   Bauwerksmodell,
   BauwerksmodellUebersicht,
@@ -49,6 +51,7 @@ import type {
   Summenstand,
   Zeitstempel,
 } from '@tethys/vertrag';
+import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import type { Datenbank, SqlZeile } from './sql';
 import {
@@ -76,6 +79,9 @@ import {
   kopfdatenAusZeile,
   lvId,
   lvKennzeichenAusZeile,
+  lvPreisspiegelAusZeile,
+  bieterangabenAusZeile,
+  projektangabenAusZeile,
   maskeAusZeile,
   nachlassAusZeile,
   projektId,
@@ -88,12 +94,17 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
   if (kopf === undefined) return null;
   const bieter = db
     .zeilen('SELECT * FROM bieter WHERE projekt_id = ? ORDER BY reihenfolge, id', [id])
-    .map((z): Bieter => ({ id: bieterId(z, 'id'), name: text(z, 'name') }));
+    .map((z): Bieter => ({
+      id: bieterId(z, 'id'),
+      name: text(z, 'name'),
+      ...bieterangabenAusZeile(z), // Schema 7 (v1.7a)
+    }));
   return {
     id,
     name: text(kopf, 'name'),
     bauherr: { name: text(kopf, 'bauherr_name'), anschrift: textOderNull(kopf, 'bauherr_anschrift') },
     bieter,
+    ...projektangabenAusZeile(kopf), // Schema 7 (v1.7a)
   };
 }
 
@@ -176,6 +187,7 @@ export function leseLvKopf(db: Datenbank, id: LeistungsverzeichnisId): LvKopf | 
     nachlass: nachlassAusZeile(z),
     ...kopfdatenAusZeile(z),
     ...lvKennzeichenAusZeile(z),
+    ...lvPreisspiegelAusZeile(z), // Schema 7 (v1.7a)
   };
 }
 
@@ -286,11 +298,15 @@ function lvStandUebersichtAusZeile(z: SqlZeile): LvStandUebersicht {
   };
 }
 
-/** Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst). */
+/**
+ * Die LV-Stände eines LV ohne Zustand, in der Reihenfolge des Anlegens (ältester zuerst): nach `angelegt`, bei gleichem
+ * Zeitpunkt nach der Reihenfolge des Schreibens (D-82 S1). So steht ein wiederhergestellter Stand wieder an seinem Platz.
+ */
 export function leseLvStaende(db: Datenbank, lv: string): LvStandUebersicht[] {
   return db
     .zeilen(
-      'SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ? ORDER BY seq',
+      `SELECT id, leistungsverzeichnis_id, name, angelegt FROM lv_stand WHERE leistungsverzeichnis_id = ?
+       ORDER BY angelegt, seq`,
       [lv],
     )
     .map(lvStandUebersichtAusZeile);
@@ -303,12 +319,12 @@ export function leseLvStand(db: Datenbank, id: string): LvStand | null {
     : { ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand };
 }
 
-/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei). */
+/** Alle LV-Stände eines Projekts mit Zustand, nach LV-Kennung und dann in der Reihenfolge des Anlegens (Projektdatei, S1). */
 export function leseLvStaendeDesProjekts(db: Datenbank, projektId: ProjektId): LvStand[] {
   return db
     .zeilen(
       `SELECT s.* FROM lv_stand s JOIN leistungsverzeichnis l ON l.id = s.leistungsverzeichnis_id
-       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.seq`,
+       WHERE l.projekt_id = ? ORDER BY s.leistungsverzeichnis_id, s.angelegt, s.seq`,
       [projektId],
     )
     .map((z) => ({ ...lvStandUebersichtAusZeile(z), zustand: jsonSpalte(z, 'zustand') as LvZustand }));
@@ -638,6 +654,27 @@ export function leseModelldatei(db: Datenbank, hash: string): GespeicherteModell
 export function modelldateiGroesse(db: Datenbank, hash: string): number | null {
   const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [hash])[0];
   return z === undefined ? null : ganzzahl(z, 'groesse');
+}
+
+// --- Einstellungen (Schema 7, v1.7a) ------------------------------------------------------------------------------
+
+/** Die Einstellungen des Geräts; ohne gespeicherte Zeile `LEERE_EINSTELLUNGEN` (D-127.8). */
+export function leseEinstellungen(db: Datenbank): Einstellungen {
+  const z = db.zeilen('SELECT inhalt FROM einstellungen WHERE id = 1')[0];
+  return z === undefined ? LEERE_EINSTELLUNGEN : (jsonSpalte(z, 'inhalt') as Einstellungen);
+}
+
+/** Das Einstellungsprotokoll in der Reihenfolge des Schreibens, ältester Eintrag zuerst (D-82 M1, D-127.8). */
+export function leseEinstellungsprotokoll(db: Datenbank): EinstellungenProtokolleintrag[] {
+  return db.zeilen('SELECT id, wer, wann, befehl FROM einstellungen_protokoll ORDER BY seq').map(
+    (z) =>
+      ({
+        id: text(z, 'id'),
+        wer: text(z, 'wer'),
+        wann: text(z, 'wann'),
+        befehl: jsonSpalte(z, 'befehl'),
+      }) as EinstellungenProtokolleintrag,
+  );
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------
