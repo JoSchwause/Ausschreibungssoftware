@@ -11,6 +11,7 @@ import { Baumeinzug } from './Baumeinzug';
 import { Editor } from './Editor';
 import type { EditorAktionen } from './Editor';
 import { anzeigeText, istBearbeitbar } from './eingabe';
+import type { Eingabeart } from './schreibrechte';
 import { texte } from './texte';
 import type { features } from './tabelle';
 
@@ -32,8 +33,6 @@ export interface ZeileProps {
   readonly index: number;
   readonly versatz: number;
   readonly hoehe: number;
-  readonly vorlage: string;
-  readonly breite: number;
   /** Zelle mit `tabindex="0"` (roving tabindex), sonst `null`. */
   readonly tabbar: LvSpalte | null;
   readonly aktiv: LvSpalte | null;
@@ -55,9 +54,11 @@ export interface ZeileProps {
    */
   readonly gridSchreibgeschuetzt: boolean;
   readonly editor: EditorAktionen;
-  /** Hinweis zur Form des Entwurfs in der Spalte „KG“ (Editor); stabil halten. */
-  readonly kgPruefen?: ((text: string) => string | undefined) | undefined;
+  /** Eingabeart je bearbeitbarer Spalte für den Editor (`eingabeart`); stabil halten. */
+  readonly eingabearten: ReadonlyMap<LvSpalte, Eingabeart>;
 }
+
+const KEINE_EINGABEART: Eingabeart = { inputMode: 'text' };
 
 const NUMERISCH: ReadonlySet<LvSpalte> = new Set<LvSpalte>(['menge', 'einheitspreis', 'gesamtpreis']);
 
@@ -78,20 +79,8 @@ function befundeJeSpalte(
 }
 
 function ZeileKomponente(props: ZeileProps): ReactElement {
-  const {
-    row,
-    index,
-    versatz,
-    hoehe,
-    vorlage,
-    breite,
-    tabbar,
-    aktiv,
-    ausgewaehlt,
-    ausgeschnitten,
-    bearbeitung,
-  } = props;
-  const { abgelehnt, baumspalte, zahlen, bearbeitbareSpalten, gridSchreibgeschuetzt, editor, kgPruefen } =
+  const { row, index, versatz, hoehe, tabbar, aktiv, ausgewaehlt, ausgeschnitten, bearbeitung } = props;
+  const { abgelehnt, baumspalte, zahlen, bearbeitbareSpalten, gridSchreibgeschuetzt, editor, eingabearten } =
     props;
   const zeile = row.original;
   const k = zeile.knoten;
@@ -115,10 +104,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
       aria-selected={ausgewaehlt}
       style={{
         height: hoehe,
-        width: '100%',
-        minWidth: breite,
         transform: `translateY(${String(versatz)}px)`,
-        gridTemplateColumns: vorlage,
       }}
     >
       {zellen.map((zelle, si) => {
@@ -178,7 +164,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
                 spalte={spalte}
                 entwurf={bearbeitung.entwurf}
                 aktionen={editor}
-                pruefen={spalte === 'kostengruppe' ? kgPruefen : undefined}
+                art={eingabearten.get(spalte) ?? KEINE_EINGABEART}
               />
             ) : (
               <span className="tx-grid__text">{ungueltig ? ungueltig.text : text}</span>

@@ -15,6 +15,19 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
 };
 
 /**
+ * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, nur die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie
+ * die OZ selbst (Ticket 130). Der zugängliche Name bleibt der volle Titel.
+ */
+export const SPALTENKOPF: Readonly<Record<LvSpalte, string>> = { ...SPALTENTITEL, ordnungszahl: 'OZ' };
+
+/** Ansage nach dem Ändern einer Spaltenbreite per Tastatur, z. B. „Spalte Menge: 140 Pixel breit.“ */
+export function meldungBreite(spalte: string, breite: number | null): string {
+  return breite === null
+    ? `Spalte ${spalte}: Standardbreite.`
+    : `Spalte ${spalte}: ${String(breite)} Pixel breit.`;
+}
+
+/**
  * Text der Spalte „Art“: alle gesetzten Merkmale einer Position in fester Reihenfolge (Zuschlag, Wahl, Bedarf,
  * Stundenlohn, pauschal), getrennt durch „, “; ohne Merkmal „Normal“ (F5, E-05). Die Wahl nennt Gruppe und Variante,
  * soweit bekannt (`Wahl 1.2`, nur Gruppe: `Wahl 1`). Das Zuschlagskennzeichen ist kein eigener Eintrag: Es ist eine

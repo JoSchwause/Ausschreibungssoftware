@@ -24,6 +24,11 @@
 //                           erfundenen Kostengruppen 310, 320 und keine (dann wieder 310 …). Mit befunde=1 dazu ein
 //                           Prüfhinweis an der KG der 9. Position; mit nurlesen=1 bleibt die Spalte „KG“ bearbeitbar
 //                           (onKostengruppen; Folgen in window.__harness.folgen)
+//   breit=1                 lange Inhalte (Ticket 130): die 1. Position mit OZ 001.001.00101, die 2. mit 001.001.0010
+//                           und Index A, die 3. mit der Menge 12.345.678,012
+//   maske=1                 OZ-Maske mit drei Ziffern je Titelstufe, fünfstelliger Position und Index (Ticket 130)
+//   merken=<Schlüssel>      Spaltenbreiten unter diesem Schlüssel merken (localStorage, Ticket 130)
+//   ohnehuelle=1            das Grid direkt als Flex-Element der Seite statt in einer Hülle mit fester Höhe
 //   Die aktive Zeile (onAktiveZeileChange) steht immer in window.__harness.aktiveZeilen (jede Meldung).
 
 import '@tethys/ui-basis/tokens.css';
@@ -36,10 +41,12 @@ import type {
   Betrag,
   Knoten,
   KnotenId,
+  Menge,
   LvBefehl,
   Kostengruppennummer,
   LvSpalte,
   Ordnungszahl,
+  OzMaske,
   Pruefbefund,
 } from '@tethys/vertrag';
 import type { LvGridProps, Sprungziel } from '../../src/index';
@@ -80,8 +87,35 @@ function mitKostengruppen(knoten: readonly Knoten[]): readonly Knoten[] {
     return kg ? { ...k, kostengruppe: kg as Kostengruppennummer } : k;
   });
 }
+/** Lange Inhalte (Ticket 130): zwei lange OZ, die sich nur hinten unterscheiden, und eine achtstellige Menge. */
+function mitLangenInhalten(knoten: readonly Knoten[]): readonly Knoten[] {
+  let n = 0;
+  return knoten.map((k) => {
+    if (k.art !== 'position') return k;
+    n++;
+    if (n === 1) return { ...k, ordnungszahl: '001.001.00101' as Ordnungszahl, ozIndex: null };
+    if (n === 2) return { ...k, ordnungszahl: '001.001.0010' as Ordnungszahl, ozIndex: 'A' };
+    if (n === 3) return { ...k, menge: '12345678.012' as Menge };
+    return k;
+  });
+}
 const mitAnsatz0 = params.get('ansatz') === '1' ? mitAnsatz(modell0.knoten) : modell0.knoten;
-const knoten0 = mitKg ? mitKostengruppen(mitAnsatz0) : mitAnsatz0;
+const mitKg0 = mitKg ? mitKostengruppen(mitAnsatz0) : mitAnsatz0;
+const knoten0 = params.get('breit') === '1' ? mitLangenInhalten(mitKg0) : mitKg0;
+const ozMaske: OzMaske | undefined =
+  params.get('maske') === '1'
+    ? {
+        gliederung: [
+          { laenge: 3, zeichen: 'numerisch' },
+          { laenge: 3, zeichen: 'numerisch' },
+        ],
+        position: { laenge: 5, zeichen: 'numerisch' },
+        index: { laenge: 1, zeichen: 'alphanumerisch' },
+        trennzeichen: '.',
+      }
+    : undefined;
+const merken = params.get('merken') ?? undefined;
+const ohneHuelle = params.get('ohnehuelle') === '1';
 const spalten: readonly LvSpalte[] | undefined = mitKg ? [...STANDARDSPALTEN, 'kostengruppe'] : undefined;
 
 /** Beispiel-Prüfhinweise (erfunden), damit sich die Darstellung ansehen lässt. */
@@ -230,6 +264,8 @@ function Seite() {
     },
     onAuswahlChange: setAuswahl,
     ...(spalten ? { spalten, kostengruppeLesen: kostengruppeAttrappe } : {}),
+    ...(ozMaske ? { ozMaske } : {}),
+    ...(merken ? { spaltenbreitenSchluessel: merken } : {}),
     onAktiveZeileChange: (id: KnotenId | null) => {
       window.__harness.aktiveZeilen.push(id);
     },
@@ -253,7 +289,7 @@ function Seite() {
       <button type="button" className="tx-button tx-button--sm">
         Davor
       </button>
-      <div className="seite__grid">
+      <div className={ohneHuelle ? 'seite__ohne-huelle' : 'seite__grid'}>
         {params.get('nurlesen') === '1' ? (
           <LvGrid
             {...gemeinsam}
@@ -317,6 +353,7 @@ style.textContent = `
   .seite > button { align-self: flex-start; }
   .seite__titel { margin: 0; font-size: var(--tx-font-size-lg); }
   .seite__grid { flex: 1 1 auto; min-height: 0; }
+  .seite__ohne-huelle { display: contents; }
 `;
 document.head.append(style);
 window.__harness = {

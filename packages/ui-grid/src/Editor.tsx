@@ -5,7 +5,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
 import type { LvSpalte } from '@tethys/vertrag';
-import { pruefeZahlformatDeDE } from '@tethys/ui-basis';
+import type { Eingabeart } from './schreibrechte';
 import { SPALTENTITEL } from './texte';
 
 export type Richtung = 'unten' | 'oben' | 'rechts' | 'links' | 'keine';
@@ -25,16 +25,11 @@ export interface EditorProps {
   spalte: LvSpalte;
   entwurf: string;
   aktionen: EditorAktionen;
-  /**
-   * Hinweis zur Form des Entwurfs für Spalten ohne Zahlenformat, z. B. die Spalte „KG“ (Ticket 93): eine Meldung oder
-   * `undefined`. Wie beim Zahlenformat nur eine Markierung, keine Sperre.
-   */
-  pruefen?: ((text: string) => string | undefined) | undefined;
+  /** Tastatur und Hinweis zur Form des Entwurfs (`eingabeart`); der Hinweis ist nur eine Markierung, keine Sperre. */
+  art: Eingabeart;
 }
 
-const ZAHLSPALTEN: ReadonlySet<LvSpalte> = new Set<LvSpalte>(['menge', 'einheitspreis']);
-
-export function Editor({ spalte, entwurf, aktionen, pruefen }: EditorProps): ReactElement {
+export function Editor({ spalte, entwurf, aktionen, art }: EditorProps): ReactElement {
   const ref = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -44,8 +39,7 @@ export function Editor({ spalte, entwurf, aktionen, pruefen }: EditorProps): Rea
     el.setSelectionRange(n, n);
   }, []);
 
-  const pruefung = ZAHLSPALTEN.has(spalte) ? pruefeZahlformatDeDE(entwurf) : { gueltig: true as const };
-  const meldung = pruefung.gueltig ? pruefen?.(entwurf) : pruefung.meldung;
+  const meldung = art.pruefen?.(entwurf);
 
   return (
     <input
@@ -54,7 +48,7 @@ export function Editor({ spalte, entwurf, aktionen, pruefen }: EditorProps): Rea
       className={meldung ? 'tx-grid__editor tx-grid__editor--hinweis' : 'tx-grid__editor'}
       type="text"
       value={entwurf}
-      inputMode={ZAHLSPALTEN.has(spalte) ? 'decimal' : spalte === 'kostengruppe' ? 'numeric' : 'text'}
+      inputMode={art.inputMode}
       spellCheck={false}
       autoComplete="off"
       aria-label={SPALTENTITEL[spalte]}
