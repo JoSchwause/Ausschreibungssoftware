@@ -392,6 +392,35 @@ test.describe('Fehlerwerte statt stillem Verlust (Q5)', () => {
     expect(await ps(page, 'zweitesMalOeffnen', DB)).toEqual({ ok: true });
   });
 
+  test('gesperrt meldet nichts in der Konsole: die Probe des Pools kommt SQLite zuvor (Befund aus Ticket 134)', async ({
+    page,
+  }) => {
+    const meldungen: string[] = [];
+    const mitschreiben = (m: { type(): string; text(): string }): void => {
+      if (m.type() === 'error' || m.type() === 'warning') meldungen.push(m.text());
+    };
+    page.on('console', mitschreiben);
+    page.on('worker', (w) => {
+      w.on('console', mitschreiben);
+    });
+    await start(page);
+    expect(await ps(page, 'oeffnen', DB)).toEqual({ ok: true });
+    expect(await ps(page, 'zweitesMalOeffnen', DB)).toMatchObject({ ok: false, code: 'gesperrt' });
+    // Wie beim Neuladen: Schließen anstoßen, nicht abwarten, sofort neu laden und öffnen, bis es geht (wie die App).
+    await page.evaluate((name) => {
+      void (window as unknown as { pruefstand: Pruefstand }).pruefstand.schliessen(name);
+    }, DB);
+    await page.reload();
+    await expect(page.locator('#status')).toBeVisible();
+    let offen = await ps(page, 'oeffnen', DB);
+    for (let versuch = 0; !offen.ok && versuch < 200; versuch++) {
+      await page.waitForTimeout(20);
+      offen = await ps(page, 'oeffnen', DB);
+    }
+    expect(offen).toEqual({ ok: true });
+    expect(meldungen.filter((m) => /Access Handle|createSyncAccessHandle|opfs-sahpool/i.test(m))).toEqual([]);
+  });
+
   test('ein ChangeSet, das nicht zum gespeicherten Stand passt, wird mit Fehlerwert abgewiesen; auch nach Neuladen steht nichts davon da', async ({
     page,
   }) => {
