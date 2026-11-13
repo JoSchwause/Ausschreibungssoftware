@@ -13,6 +13,7 @@ import type {
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
+import { positionMitKalkulation } from './positionsfelder';
 import { positionsdatenFehler } from './pruefung';
 import { positionAendern, positionFinden } from './summen-befehle';
 import { papierkorbKnoten } from './struktur';
@@ -37,7 +38,9 @@ export function positionsmerkmaleSetzen(z: LvZustand, b: PositionsmerkmaleSetzen
   const f = positionFinden(z, b.positionId);
   if (!f.ok) return f;
   const { idx, position } = f.wert;
-  const neu: Position = { ...position, merkmale: b.merkmale, zuschlag: b.zuschlag };
+  // Eine Zuschlagsposition trägt nie eine Kalkulation (v1.7a, D-82 S3): Mit Zuschlag entfällt sie im selben ChangeSet.
+  const gesetzt: Position = { ...position, merkmale: b.merkmale, zuschlag: b.zuschlag };
+  const neu = b.zuschlag === null ? gesetzt : positionMitKalkulation(gesetzt, null);
   // Ein Bezug darf auf eine Position im Papierkorb zeigen (v1.2, D-12); er zählt dann nichts.
   const korb = papierkorbKnoten(z.papierkorb);
   const formfehler = positionsdatenFehler(neu, position.id, (i) => idx.byId.get(i) ?? korb.get(i));

@@ -57,7 +57,8 @@ export function unerlaubtesFeld(
  *  8. Bauteilzuordnungen außer Form (`bauteile`, `bauteileFehler`; Vertrag v1.6, Ticket 105): wie bei `BauteileZuordnen`.
  *     Eine leere Liste ist kein Fehler: `positionNormal` lässt sie weg;
  *  9. Kalkulationsangaben außer Form (`kalkulation…`, `kalkulationFehler`; Vertrag v1.7a, Ticket 137, D-127.6): wie bei
- *     `KalkulationSetzen`. Eine leere Kalkulation ist kein Fehler: `positionNormal` lässt sie weg.
+ *     `KalkulationSetzen`. Eine leere Kalkulation ist kein Fehler: `positionNormal` lässt sie weg. Eine Zuschlagsposition
+ *     trägt keine Kalkulation (`kalkulation`, D-82 S3).
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -137,6 +138,8 @@ export function positionsdatenFehler(
       return feld('merkmale', 'Eine Zuschlagsposition ist weder pauschal noch Stundenlohn.');
     if (daten.merkmale.zuschlagskennzeichen)
       return feld('merkmale.zuschlagskennzeichen', 'Eine Zuschlagsposition ist nie Basis eines Zuschlags.');
+    if (daten.kalkulation !== undefined)
+      return feld('kalkulation', 'Eine Zuschlagsposition trägt keine Kalkulation.');
   }
   const wahl = daten.merkmale.wahl;
   if (wahl !== null) {

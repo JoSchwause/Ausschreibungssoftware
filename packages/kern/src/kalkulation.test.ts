@@ -72,6 +72,7 @@ function basis(): LvZustand {
     posKnoten('P1', 'T1', 0, '2.000', '10.000'),
     posKnoten('P2', 'T1', 1, '1.000', '5.000'),
     posKnoten('Z', 'T1', 2, null, null, { zuschlag: zuschlagAuf('gliederung', '5.00') }),
+    posKnoten('ZA', 'T1', 3, '1.000', '7.000', { zuschlag: zuschlagAuf('gliederung', null) }),
   ]);
 }
 
@@ -157,11 +158,13 @@ describe('KalkulationSetzen', () => {
     expect(fehler(z, setzen('gibt-es-nicht', KALKULATION))?.[0]).toBe('knoten-unbekannt');
   });
 
-  it('Zuschlagsposition mit Satz: knotenart-unzulaessig (sie hat keinen EP, D-137.4); null bleibt erlaubt', () => {
+  it('Zuschlagsposition, mit Satz oder in der Altform: knotenart-unzulaessig (D-82 S3), vor der Form', () => {
     const z = basis();
-    expect(fehler(z, setzen('Z', KALKULATION, null, null))?.[0]).toBe('knotenart-unzulaessig');
-    expect(fehler(z, setzen('Z', null, null, EPA))?.[0]).toBe('knotenart-unzulaessig');
-    expect(fehler(z, setzen('Z', null, null, null))).toBeNull();
+    for (const kennung of ['Z', 'ZA']) {
+      expect(fehler(z, setzen(kennung, KALKULATION, null, null))?.[0], kennung).toBe('knotenart-unzulaessig');
+      expect(fehler(z, setzen(kennung, null, null, null))?.[0], kennung).toBe('knotenart-unzulaessig');
+      expect(fehler(z, setzen(kennung, 'x' as unknown as null))?.[0], kennung).toBe('knotenart-unzulaessig');
+    }
   });
 
   it('Form: ungueltige-eingabe mit dem Feld', () => {
@@ -260,6 +263,25 @@ describe('Lesart (a): ein reiner Preisbefehl entfernt die Kalkulation (D-127.6)'
     });
     expect(position(z, 'P1').kalkulation).toEqual(KALKULATION);
   });
+
+  it('Merkmale mit Zuschlag machen die Position zur Zuschlagsposition: die Kalkulation entfällt im selben ChangeSet (D-82 S3)', () => {
+    const z = mit();
+    for (const zuschlag of [zuschlagAuf('gliederung', null), zuschlagAuf('gliederung', '3.00')]) {
+      const cs = erwarteOk(
+        lvBefehlAusfuehren(z, {
+          art: 'PositionsmerkmaleSetzen',
+          positionId: id.pos('P1'),
+          merkmale: merkmale(),
+          zuschlag,
+        }),
+      );
+      expect(cs.knoten.geaendert).toHaveLength(1);
+      const neu = anwenden(z, cs);
+      expect(position(neu, 'P1')).not.toHaveProperty('kalkulation');
+      expect(position(neu, 'P1').zuschlag).toEqual(zuschlag);
+      expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
+    }
+  });
 });
 
 describe('Anlegen und Kopieren nehmen die Kalkulation mit (Muster-LV, D-127.6)', () => {
@@ -279,6 +301,17 @@ describe('Anlegen und Kopieren nehmen die Kalkulation mit (Muster-LV, D-127.6)',
       'ungueltige-eingabe',
       'kalkulation.ansaetze',
     ]);
+  });
+
+  it('eine Zuschlagsposition trägt nie eine Kalkulation: Anlegen damit ist ungueltige-eingabe (D-82 S3)', () => {
+    const z = basis();
+    const e = lvBefehlAusfuehren(z, {
+      art: 'PositionAnlegen',
+      id: id.pos('P9'),
+      ort: { art: 'ende', elternId: id.eltern('T1') },
+      daten: positionsdaten('Neu', { kalkulation: KALKULATION, zuschlag: zuschlagAuf('gliederung', null) }),
+    });
+    expect(e.ok ? null : [e.fehler.code, e.fehler.feld]).toEqual(['ungueltige-eingabe', 'kalkulation']);
   });
 
   it('LeistungsverzeichnisAnlegen bringt sie mit; die Invariantenprüfung kennt ihre Form', () => {
