@@ -9,7 +9,7 @@ import { baueAusgabemodell } from './modell';
 import type { AusgabeZeile, Ausgabemodell, ModellOptionen, PositionZeile } from './modell';
 import { ersetzePlatzhalter } from './platzhalter';
 import type { DruckBlock, DruckLauf } from './langtext';
-import { SCHRIFT, erzeugungsdatum, pdfBytes } from './pdfmake';
+import { SCHRIFT, briefkopf, erzeugungsdatum, pdfBytes } from './pdfmake';
 import type { Schriften } from './schriften';
 
 // Spaltenbreiten in pt (A4 hoch, 40 pt Rand links/rechts = 515 pt Satzbreite).
@@ -245,7 +245,7 @@ function summenKnoten(m: NonNullable<Ausgabemodell['summen']>): Content {
 }
 
 function kopfBlock(m: Ausgabemodell): Content {
-  return {
+  return briefkopf(m.kopf.absender, {
     margin: [0, 0, 0, 10],
     stack: [
       { text: m.kopf.lvName, bold: true, fontSize: 14, margin: [0, 0, 0, 6] },
@@ -257,7 +257,7 @@ function kopfBlock(m: Ausgabemodell): Content {
         margin: [0, 0, 0, 1],
       })),
     ],
-  };
+  });
 }
 
 /** Baut die Dokumentdefinition. Titel und der Anfang ihres ersten Kindes stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */

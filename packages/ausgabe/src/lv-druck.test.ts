@@ -174,6 +174,33 @@ describe('Kopf, Kopf- und Fußzeile', () => {
       expect(t, s).toContain(s);
   });
 
+  it('druckt das Büro als Absender rechts oben und die Projektangaben im Kopf', async () => {
+    const { zustand } = fixtureZustand('winzig');
+    const inhalt = await liesPdf(
+      await erzeugePdf(zustand, schriften, {
+        projekt: {
+          name: 'Neubau Beispiel',
+          angaben: { nummer: 'P-2026-07', ort: 'Beispielstadt', baustelle: null },
+        },
+        buero: {
+          name: 'Planungsbüro Beispiel',
+          anschrift: { strasse: 'Planweg 1', plz: '10002', ort: 'Beispielstadt' },
+          telefon: null,
+          email: 'info@example.org',
+        },
+      }),
+    );
+    const t = normal(alsText(inhalt));
+    for (const s of ['Planungsbüro Beispiel', 'Planweg 1', '10002 Beispielstadt', 'E-Mail info@example.org'])
+      expect(t, s).toContain(s);
+    expect(t).toContain('Projektnummer P-2026-07');
+    const erste = inhalt.seiten[0] ?? [];
+    const absender = erste.find((s) => s.text === 'Planungsbüro Beispiel');
+    const lvName = erste.find((s) => s.text === zustand.leistungsverzeichnis.name);
+    expect(absender?.x ?? 0).toBeGreaterThan(300);
+    expect(lvName?.x ?? 999).toBeLessThan(100);
+  });
+
   it('trägt „Seite x von y“ und das übergebene Datum auf jeder Seite', async () => {
     const { zustand } = fixtureZustand('typisch');
     const inhalt = await liesPdf(await erzeugePdf(zustand, schriften, { datum: '2026-11-11' }));

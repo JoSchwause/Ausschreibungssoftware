@@ -4,11 +4,31 @@
 // aus der Eingabe (keine Uhr, A2). Gleiche Dokumentdefinition, gleiche Bytes.
 
 import pdfMake from 'pdfmake';
-import type { TDocumentDefinitions } from 'pdfmake/interfaces';
+import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { Schriften } from './schriften';
 
 /** Name der eingebetteten Schriftfamilie in jeder Dokumentdefinition. */
 export const SCHRIFT = 'NotoSans';
+
+/**
+ * Kopf der ersten Seite: links der Inhalt (Titel und Angaben), rechts oben der Absender (das Büro, E10) in kleiner Schrift.
+ * Ohne Absender bleibt der Inhalt allein.
+ */
+export function briefkopf(absender: readonly string[], inhalt: Content): Content {
+  if (absender.length === 0) return inhalt;
+  return {
+    columns: [
+      { width: '*', stack: [inhalt] },
+      {
+        width: 170,
+        stack: absender.map((z, i): Content => ({ text: z, ...(i === 0 ? { bold: true } : {}) })),
+        fontSize: 7,
+        alignment: 'right',
+      },
+    ],
+    columnGap: 12,
+  };
+}
 
 /** Erzeugungsdatum des PDF aus `JJJJ-MM-TT`; ohne oder mit ungültiger Angabe fest der 01.01.1970 (gleiche Bytes). */
 export function erzeugungsdatum(iso: string | null | undefined): Date {

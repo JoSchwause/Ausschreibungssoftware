@@ -45,10 +45,11 @@ export const STANDARD_DRUCKPROFILE: readonly Druckprofil[] = [
   neuesDruckprofil('Auftrags-LV mit Preisen'),
 ];
 
-/** Datum und Projekt gehören nicht zum Profil; die App gibt sie beim Drucken mit. */
+/** Datum, Projekt und Büro gehören nicht zum Profil; die App gibt sie beim Drucken mit. */
 export interface DruckEingabe {
   readonly datum?: string;
   readonly projekt?: PdfOptionen['projekt'];
+  readonly buero?: PdfOptionen['buero'];
 }
 
 /** Bildet ein Profil auf die Optionen von `erzeugePdf` (und `baueAusgabemodell`) ab. */
@@ -64,6 +65,7 @@ export function profilAlsOptionen(profil: Druckprofil, eingabe: DruckEingabe = {
     ...(profil.fusszeile === null ? {} : { fusszeile: profil.fusszeile }),
     ...(eingabe.datum === undefined ? {} : { datum: eingabe.datum }),
     ...(eingabe.projekt === undefined ? {} : { projekt: eingabe.projekt }),
+    ...(eingabe.buero === undefined ? {} : { buero: eingabe.buero }),
   };
 }
 
