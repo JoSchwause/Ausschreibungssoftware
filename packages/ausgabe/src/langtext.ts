@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Langtext (F6) als druckfertige Blöcke: Absätze aus Textläufen mit Auszeichnung, Listen, Tabellen. Die Textergänzung
-// wird zu einer markierten Lücke oder zum eingesetzten Wert. Rein darstellend, ohne Rechnung; jeder Renderer (PDF, später
-// Excel) liest diese Blöcke, nicht den Vertragstyp.
+// Langtext (F6) als druckfertige Blöcke: Absätze aus Textläufen mit Auszeichnung, Listen, Tabellen und Bilder. Die
+// Textergänzung wird zu einer markierten Lücke oder zum eingesetzten Wert. Rein darstellend, ohne Rechnung; jeder Renderer
+// (PDF, später Excel) liest diese Blöcke, nicht den Vertragstyp.
 
-import type { Langtext, LangtextBaustein, LangtextInnen, LangtextInline, Textfluss } from '@tethys/vertrag';
+import type {
+  Bild,
+  Langtext,
+  LangtextBaustein,
+  LangtextInnen,
+  LangtextInline,
+  Textfluss,
+} from '@tethys/vertrag';
+import { druckbild } from './bild';
+
+export { MAX_BILD_BYTES } from './bild';
 
 /** Textlauf mit Auszeichnung. Ein `\n` im Text ist ein Zeilenumbruch. */
 export interface DruckLauf {
@@ -34,12 +44,30 @@ export interface DruckTabelle {
   readonly zeilen: readonly { readonly zellen: readonly DruckZelle[] }[];
 }
 
-export type DruckBlock = DruckAbsatz | DruckListe | DruckTabelle;
+/**
+ * Ein Bild aus dem Langtext (B-22) als eigener Block an seiner Stelle; ein Bild mitten im Absatz teilt ihn. Nur ein
+ * vollständiges PNG oder JPEG bis `MAX_BILD_BYTES` wird ein Bildblock; die Größe auf dem Papier begrenzt der Renderer.
+ */
+export interface DruckBild {
+  readonly art: 'bild';
+  /** `data:`-Adresse (PNG oder JPEG). */
+  readonly daten: string;
+  /** Maße in Pixeln. */
+  readonly breite: number;
+  readonly hoehe: number;
+}
+
+export type DruckBlock = DruckAbsatz | DruckListe | DruckTabelle | DruckBild;
 
 /** Lücke einer leeren Textergänzung: der Bieter oder Ausschreibende füllt sie aus. */
 export const LUECKE = '[______]';
-/** Marke für ein Bild im Text: Bilder druckt v1 nicht, ihr Fehlen soll aber sichtbar sein. */
+/**
+ * Marke für ein Bild, das der Druck nicht setzen kann (kein vollständiges PNG oder JPEG, zu groß), und für Bilder in reinen
+ * Textausgaben: Ihr Fehlen soll sichtbar sein (Q5).
+ */
 export const BILDMARKE = '[Abbildung]';
+
+const BILDMARKE_LAUF: DruckLauf = { text: BILDMARKE, kursiv: true };
 
 function lauf(text: string, aus: { fett?: true; kursiv?: true; unterstrichen?: true }): DruckLauf {
   return {
@@ -56,15 +84,14 @@ function flussLaeufe(fluss: Textfluss): DruckLauf[] {
   );
 }
 
-function inlineLaeufe(b: LangtextInline): DruckLauf[] {
-  switch (b.art) {
-    case 'text':
-      return b.text === '' ? [] : [lauf(b.text, b)];
-    case 'umbruch':
-      return [{ text: '\n' }];
-    case 'bild':
-      return [{ text: BILDMARKE, kursiv: true }];
-  }
+/** Bildblock, oder `null`, wenn der Druck das Bild nicht setzen kann (dann steht die Marke im Text). */
+function bildBlock(b: Bild): DruckBild | null {
+  const d = druckbild(b.daten);
+  return d === null ? null : { art: 'bild', ...d };
+}
+
+function inlineLaeufe(b: Exclude<LangtextInline, { art: 'bild' }>): DruckLauf[] {
+  return b.art === 'umbruch' ? [{ text: '\n' }] : b.text === '' ? [] : [lauf(b.text, b)];
 }
 
 /** Blöcke eines Langtexts oder des Inhalts eines Listenpunkts bzw. einer Zelle. */
@@ -75,21 +102,36 @@ export function langtextAlsBloecke(langtext: Langtext | LangtextInnen): DruckBlo
     if (laufend.length > 0) bloecke.push({ art: 'absatz', laeufe: laufend });
     laufend = [];
   };
+  /** Ein Textbaustein im laufenden Absatz; ein druckbares Bild beendet ihn und steht als eigener Block. */
+  const inline = (b: LangtextInline): void => {
+    if (b.art !== 'bild') {
+      laufend.push(...inlineLaeufe(b));
+      return;
+    }
+    const bild = bildBlock(b.bild);
+    if (bild === null) laufend.push(BILDMARKE_LAUF);
+    else {
+      abschliessen();
+      bloecke.push(bild);
+    }
+  };
   for (const b of langtext as readonly LangtextBaustein[]) {
     switch (b.art) {
       case 'text':
       case 'umbruch':
       case 'bild':
-        laufend.push(...inlineLaeufe(b));
+        inline(b);
         break;
-      case 'absatz':
+      case 'absatz': {
         abschliessen();
-        bloecke.push(
-          ...(b.inhalt.length === 0
-            ? []
-            : [{ art: 'absatz' as const, laeufe: b.inhalt.flatMap(inlineLaeufe) }]),
-        );
+        const vorher = bloecke.length;
+        b.inhalt.forEach(inline);
+        // Ein Absatz mit Inhalt, aber ohne Text (etwa nur leere Läufe) bleibt als leerer Absatz stehen, wie bisher.
+        if (laufend.length === 0 && bloecke.length === vorher && b.inhalt.length > 0)
+          bloecke.push({ art: 'absatz', laeufe: [] });
+        abschliessen();
         break;
+      }
       case 'liste':
         abschliessen();
         bloecke.push({ art: 'liste', geordnet: b.geordnet, punkte: b.punkte.map(langtextAlsBloecke) });
@@ -152,6 +194,9 @@ export function bloeckeAlsText(bloecke: readonly DruckBlock[]): string {
       case 'tabelle':
         for (const z of b.zeilen)
           zeilen.push(z.zellen.map((c) => bloeckeAlsText(c.inhalt).replace(/\n/g, ' ')).join(' | '));
+        break;
+      case 'bild':
+        zeilen.push(BILDMARKE);
         break;
     }
   }
