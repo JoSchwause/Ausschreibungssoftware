@@ -39,7 +39,7 @@ export {
   projektChangeSetUmkehren,
 } from './projekt-befehle';
 // Vertrag v1.7a (Ticket 137): Form und Normalform der Bieterangaben für die Bieterbefehle der Vergabe (D-127.4, D-82 S9).
-export { bieterMitAngaben, bieterangabenFehler, bieterangabenNormal } from './angaben';
+export { bieterMitAngaben, bieterangabenFehler, bieterangabenNormalisieren } from './angaben';
 // Vertrag v1.7a (Ticket 137, D-127.8): Befehle an den Einstellungen; die Umkehrung für das Sitzungs-Undo (D-82 M1).
 export {
   einstellungenBefehlAusfuehren,

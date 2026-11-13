@@ -14,7 +14,7 @@ import type {
 } from '@tethys/vertrag';
 import {
   bieterangabenFehler,
-  bieterangabenNormal,
+  bieterangabenNormalisieren,
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
@@ -280,16 +280,18 @@ describe('BieterAnlegen mit Angaben (D-127.4)', () => {
 
 describe('Normalisierer der Bieterangaben (für die Vergabe, D-82 S9)', () => {
   it("'' wird null, eine leere Anschrift null, ganz leere Angaben null (das Feld fehlt dann)", () => {
-    expect(bieterangabenNormal(KONTAKT)).toEqual(KONTAKT);
+    expect(bieterangabenNormalisieren(KONTAKT)).toEqual(KONTAKT);
     expect(
-      bieterangabenNormal({ ...KONTAKT, email: '', anschrift: { strasse: '', plz: null, ort: '' } }),
+      bieterangabenNormalisieren({ ...KONTAKT, email: '', anschrift: { strasse: '', plz: null, ort: '' } }),
     ).toEqual({
       ...KONTAKT,
       email: null,
       anschrift: null,
     });
-    expect(bieterangabenNormal({ anschrift: null, ansprechperson: '', email: '', telefon: null })).toBeNull();
-    expect(bieterangabenNormal(null)).toBeNull();
+    expect(
+      bieterangabenNormalisieren({ anschrift: null, ansprechperson: '', email: '', telefon: null }),
+    ).toBeNull();
+    expect(bieterangabenNormalisieren(null)).toBeNull();
   });
 
   it('die Form prüft jedes Feld mit dem Pfad, den der Aufrufer vorgibt', () => {

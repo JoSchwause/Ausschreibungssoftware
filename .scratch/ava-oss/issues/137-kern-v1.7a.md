@@ -62,7 +62,7 @@ Entscheidungen im Demo-Modus (eng gelesen; die Lesarten D-127.1 bis D-127.17 und
   `nachtrag` und `vorlage` bleiben wie bisher (nicht Teil dieses Tickets).
 - **D-137.8 Angaben an einer Stelle (`angaben.ts`).** `''` → `null`, leere Anschrift → `null`, ganz leere Angaben → Feld fehlt;
   Leerraum bleibt Text, kein Format von E-Mail, Telefon oder PLZ (U5); ein fehlendes Feld ist ein Formfehler. Für `vergabe`
-  exportiert (D-82 S9): `bieterangabenFehler(wert, pfad)`, `bieterangabenNormal`, `bieterMitAngaben`. Der Kern liest
+  exportiert (D-82 S9): `bieterangabenFehler(wert, pfad)`, `bieterangabenNormalisieren` (Name wie in `vergabe`), `bieterMitAngaben`. Der Kern liest
   `verweise` bei Projektbefehlen nicht (kein Kernbefehl löscht etwas mit Verweisen); `ZuschlagZuruecknehmen` weist er
   ausdrücklich ab (D-127.17).
 - **D-137.9 Einstellungen.** Ein Name (Büro, Druckprofil) und eine KG-Bezeichnung sind leer, wenn nur Leerraum; derselbe Wert

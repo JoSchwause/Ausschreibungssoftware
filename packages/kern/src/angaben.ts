@@ -85,7 +85,7 @@ export function bieterangabenFehler(wert: unknown, pfad: string): Formfehler | n
  * Normalform der Bieterangaben (D-127.4): `''` → `null`, eine leere Anschrift `null`; ganz leere Angaben `null` (das Feld
  * fehlt dann am Bieter, siehe `bieterMitAngaben`). Für `vergabe` exportiert (D-82 S9).
  */
-export function bieterangabenNormal(a: Bieterangaben | null): Bieterangaben | null {
+export function bieterangabenNormalisieren(a: Bieterangaben | null): Bieterangaben | null {
   if (a === null) return null;
   const n: Bieterangaben = {
     anschrift: anschriftNormal(a.anschrift),
@@ -100,7 +100,7 @@ export function bieterangabenNormal(a: Bieterangaben | null): Bieterangaben | nu
 
 /** Der Bieter mit den normalisierten Angaben `angaben`; ohne Angaben fehlt das Feld (nie `null`). */
 export const bieterMitAngaben = (b: Bieter, angaben: Bieterangaben | null): Bieter =>
-  mitFeld(b, 'angaben', bieterangabenNormal(angaben));
+  mitFeld(b, 'angaben', bieterangabenNormalisieren(angaben));
 
 /** Form des Büros (Vertrag `Buero`) an der Stelle `pfad`: Name nicht leer (Leerraum zählt als leer), sonst wie oben. */
 export function bueroFehler(wert: unknown, pfad: string): Formfehler | null {
