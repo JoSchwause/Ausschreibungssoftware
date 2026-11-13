@@ -6,8 +6,17 @@
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
 // Sache des Kerns.
 
-import { KOSTENGRUPPE_FORM, langtextFormFehler } from '@tethys/kern';
-import { IFC_GLOBALID_MUSTER, MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
+import { langtextFormFehler } from '@tethys/kern';
+import {
+  BAUTEILMENGENARTEN,
+  IFC_GLOBALID_MUSTER,
+  IFC_SCHEMATA,
+  KOSTENGRUPPENNUMMER_MUSTER,
+  MASSENBEFEHLSARTEN,
+  MODELLDATEI_HASH_MUSTER,
+  NACHKOMMASTELLEN,
+  STRUKTURKNOTENARTEN,
+} from '@tethys/vertrag';
 import type {
   AnrechenbareKostenangabe,
   Anordnungsart,
@@ -785,11 +794,11 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
 
 /**
  * Kostengruppennummer `100` bis `999` (Marke in `vertrag`: Wer sie aus einer Datei liest, prüft die Form nach); die
- * Formregel ist die des Kerns (`KOSTENGRUPPE_FORM`, S3).
+ * Formregel steht in `vertrag` (`KOSTENGRUPPENNUMMER_MUSTER`, v1.7a).
  */
 function kostengruppe(x: unknown, pfad: string): Kostengruppennummer {
   const s = zeichenkette(x, pfad);
-  if (!KOSTENGRUPPE_FORM.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
+  if (!KOSTENGRUPPENNUMMER_MUSTER.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
   return s as Kostengruppennummer;
 }
 
@@ -990,8 +999,6 @@ function kostenermittlungZustand(x: unknown, pfad: string): KostenermittlungZust
 // „nie ''“ bzw. „nicht leer“); keine Fachregeln, die der Ausführer prüft (Ring in der Struktur, Statuswechsel, Datumsformat):
 // Strenger als er wäre, ließe Exporte nicht mehr importieren (D-79.4).
 
-const HASH = /^[0-9a-f]{64}$/;
-
 function globalId(x: unknown, pfad: string): IfcGlobalId {
   const s = zeichenkette(x, pfad);
   if (!IFC_GLOBALID_MUSTER.test(s))
@@ -1026,15 +1033,6 @@ function bauteilzuordnungen(x: unknown, pfad: string): Bauteilzuordnung[] {
   });
 }
 
-const MENGENARTEN: readonly Bauteilmenge['art'][] = [
-  'laenge',
-  'flaeche',
-  'volumen',
-  'anzahl',
-  'gewicht',
-  'zeit',
-];
-
 function bauteilmengen(x: unknown, pfad: string): Bauteilmenge[] {
   return liste(x, pfad).map((m, i): Bauteilmenge => {
     const q = `${pfad}[${String(i)}]`;
@@ -1042,25 +1040,17 @@ function bauteilmengen(x: unknown, pfad: string): Bauteilmenge[] {
     return {
       satz: textOderNull(feld(o, 'satz'), `${q}.satz`),
       name: nichtLeer(feld(o, 'name'), `${q}.name`),
-      art: aufzaehlung(feld(o, 'art'), `${q}.art`, MENGENARTEN),
+      art: aufzaehlung(feld(o, 'art'), `${q}.art`, BAUTEILMENGENARTEN),
       wert: dezimal(feld(o, 'wert'), `${q}.wert`, 'menge') as Menge,
     };
   });
 }
 
-const STRUKTURARTEN: readonly Strukturknoten['art'][] = [
-  'projekt',
-  'grundstueck',
-  'gebaeude',
-  'geschoss',
-  'raum',
-];
-
 function strukturknoten(x: unknown, pfad: string): Strukturknoten {
   const o = objekt(x, pfad, ['globalId', 'art', 'name', 'elternGlobalId', 'mengen']);
   return {
     globalId: globalId(feld(o, 'globalId'), `${pfad}.globalId`),
-    art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, STRUKTURARTEN),
+    art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, STRUKTURKNOTENARTEN),
     name: textOderNull(feld(o, 'name'), `${pfad}.name`),
     elternGlobalId: oderNull(feld(o, 'elternGlobalId'), (v) => globalId(v, `${pfad}.elternGlobalId`)),
     mengen: bauteilmengen(feld(o, 'mengen'), `${pfad}.mengen`),
@@ -1102,7 +1092,8 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
   ]);
   const d = objekt(feld(o, 'datei'), `${p}.datei`, ['hash', 'dateiname', 'groesse']);
   const hash = zeichenkette(feld(d, 'hash'), `${p}.datei.hash`);
-  if (!HASH.test(hash)) ungueltig(`${p}.datei.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  if (!MODELLDATEI_HASH_MUSTER.test(hash))
+    ungueltig(`${p}.datei.hash`, '64 hexadezimale Stellen (klein) erwartet');
   const id = zeichenkette(feld(o, 'id'), `${p}.id`) as BauwerksmodellId;
   const vorgaengerId = oderNull(feld(o, 'vorgaengerId'), (v) =>
     zeichenkette(v, `${p}.vorgaengerId`),
@@ -1117,7 +1108,7 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
       dateiname: zeichenkette(feld(d, 'dateiname'), `${p}.datei.dateiname`),
       groesse: ganz(feld(d, 'groesse'), `${p}.datei.groesse`),
     },
-    schema: aufzaehlung(feld(o, 'schema'), `${p}.schema`, ['IFC2X3', 'IFC4'] as const),
+    schema: aufzaehlung(feld(o, 'schema'), `${p}.schema`, IFC_SCHEMATA),
     vorgaengerId,
     eingelesen: zeichenkette(feld(o, 'eingelesen'), `${p}.eingelesen`),
     struktur: liste(feld(o, 'struktur'), `${p}.struktur`).map((k, i) =>
@@ -1134,7 +1125,8 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
 function modelldateiEintrag(x: unknown, pfad: string): { hash: string; inhalt: string } {
   const o = objekt(x, pfad, ['hash', 'inhalt']);
   const hash = zeichenkette(feld(o, 'hash'), `${pfad}.hash`);
-  if (!HASH.test(hash)) ungueltig(`${pfad}.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  if (!MODELLDATEI_HASH_MUSTER.test(hash))
+    ungueltig(`${pfad}.hash`, '64 hexadezimale Stellen (klein) erwartet');
   return { hash, inhalt: zeichenkette(feld(o, 'inhalt'), `${pfad}.inhalt`) };
 }
 
