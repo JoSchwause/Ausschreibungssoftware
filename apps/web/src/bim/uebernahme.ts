@@ -13,15 +13,11 @@ import type {
   Knoten,
   Menge,
   MengenansatzSetzen,
-  PositionId,
   Pruefbefund,
 } from '@tethys/vertrag';
+import type { Zeilenkopf } from '../ui/zeilenkopf';
 
-export interface Uebernahmezeile {
-  readonly positionId: PositionId;
-  readonly oz: string;
-  readonly kurztext: string;
-  readonly einheit: string;
+export interface Uebernahmezeile extends Zeilenkopf {
   /** Der gespeicherte Vordersatz. */
   readonly vorher: Menge | null;
   /** Die Menge aus den neuen Zeilen, gerechnet mit `mengen`; `null` ohne Zeile. */

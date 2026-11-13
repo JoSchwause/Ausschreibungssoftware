@@ -22,7 +22,8 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import { befehlswegFuer, eintrag, speichern, Sitzung, type Lauf, type Umgebung } from '../lv/befehlsweg';
+import type { Lauf, Sitzung, Umgebung } from '../lv/befehlsweg';
+import { befehlSchreiben, fachSitzung } from '../ui/schreibweg';
 import { kostenermittlungenLaden } from '../kosten/schreiben';
 import { STANDARD_MWST } from '../projekt/befehle';
 
@@ -35,11 +36,14 @@ export async function honorarberechnungBefehlAnwenden(
   zustand: HonorarberechnungZustand | null,
   befehl: HonorarberechnungBefehl,
 ): Promise<Lauf<HonorarberechnungZustand | null>> {
-  const r = honorarberechnungBefehlAusfuehren(zustand, befehl);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
-  const cs = r.wert;
-  const e = eintrag(u, projektId, { art: 'honorarberechnung', id: cs.honorarberechnungId }, befehl);
-  return speichern(u, e, cs, () => honorarberechnungChangeSetAnwenden(zustand, cs));
+  return befehlSchreiben(
+    u,
+    projektId,
+    befehl,
+    honorarberechnungBefehlAusfuehren(zustand, befehl),
+    (cs) => ({ art: 'honorarberechnung', id: cs.honorarberechnungId }),
+    (cs) => honorarberechnungChangeSetAnwenden(zustand, cs),
+  );
 }
 
 export function honorarberechnungSitzung(
@@ -47,9 +51,7 @@ export function honorarberechnungSitzung(
   projektId: ProjektId,
   zustand: HonorarberechnungZustand | null,
 ): HonorarberechnungSitzung {
-  return new Sitzung(befehlswegFuer(u), zustand, (z, b) =>
-    honorarberechnungBefehlAnwenden(u, projektId, z, b),
-  );
+  return fachSitzung(u, projektId, zustand, honorarberechnungBefehlAnwenden);
 }
 
 /** Die Honorarberechnungen des Projekts ganz geladen, in der Reihenfolge der Liste (Name, dann Kennung). */

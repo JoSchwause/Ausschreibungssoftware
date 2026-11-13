@@ -31,6 +31,7 @@ import { befehlswegFuer, lvSitzung, type LvSitzung } from '../lv/befehlsweg';
 import { datumDe } from '../lv/kopfdaten';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import {
   aktualisierungBerechnen,
@@ -47,9 +48,7 @@ import '../lv/lv.css';
 import '../bim/bim.css';
 import './modellvergleich.css';
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
+type Geladen =
   | { art: 'ohne-vorgaenger'; neu: BauwerksmodellZustand }
   | {
       art: 'da';
@@ -78,18 +77,15 @@ export function ModellvergleichSeite({
   altId: BauwerksmodellId | null;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
+  // Ohne Neuladen nach Rückgängig/Wiederholen, wie bisher: die Seite ändert selbst kein Modell.
+  const { lage: seitenlage } = useSeitenladen(
+    async (u): Promise<Geladen | null> => {
       const neu = await bauwerksmodellLaden(u.speicher, neuId);
-      if (neu === null) return { art: 'fehlt' };
+      if (neu === null) return null;
       const vorher = altId ?? neu.bauwerksmodell.vorgaengerId;
       if (vorher === null) return { art: 'ohne-vorgaenger', neu };
       const alt = await bauwerksmodellLaden(u.speicher, vorher);
-      if (alt === null) return { art: 'fehlt' };
+      if (alt === null) return null;
       const b = await u.speicher.modelldateien.laden(neu.bauwerksmodell.datei.hash);
       const l = await u.speicher.leistungsverzeichnisse.auflisten(projektId);
       const m = await u.speicher.bauwerksmodelle.auflisten(projektId);
@@ -105,26 +101,28 @@ export function ModellvergleichSeite({
           ? kette
           : [...kette, { ...alt.bauwerksmodell, anzahlBauteile: alt.bauwerksmodell.bauteile.length }],
       };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, neuId, altId]);
+    },
+    [projektId, neuId, altId],
+    { beiHistorie: false },
+  );
 
-  if (lage.art === 'laedt') {
+  if (seitenlage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.laden}</p>
-      </div>
+      <Ladeansicht
+        lage={seitenlage}
+        laden={texte.laden}
+        nichtGefunden={texte.nichtGefunden}
+        mitHistorie={false}
+        zusatz={<Verweis pfad={modellePfad(projektId)} text={texte.zurListe} gehe={gehe} />}
+      />
     );
   }
+  const lage = seitenlage.wert;
   if (lage.art !== 'da') {
     return (
       <div className="seite">
-        <h1>{lage.art === 'fehlt' ? texte.nichtGefunden : texte.seitentitel}</h1>
-        {lage.art === 'ohne-vorgaenger' ? <p>{texte.ohneVorgaenger}</p> : null}
+        <h1>{texte.seitentitel}</h1>
+        <p>{texte.ohneVorgaenger}</p>
         <div className="lv__werkzeuge">
           <Verweis pfad={modellePfad(projektId)} text={texte.zurListe} gehe={gehe} />
         </div>
