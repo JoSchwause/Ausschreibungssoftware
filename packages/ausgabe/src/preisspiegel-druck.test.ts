@@ -4,7 +4,7 @@
 // (`testhilfe/kernkette.ts`), der Druck rechnet nichts.
 
 import { describe, expect, it } from 'vitest';
-import type { AngebotId, Betrag, BieterId } from '@tethys/vertrag';
+import type { AngebotId, Betrag, BieterId, PositionId, Prozent } from '@tethys/vertrag';
 import { neuesDruckprofil } from './druckprofil';
 import { bauePreisspiegelModell, erzeugePreisspiegelPdf, preisspiegelAlsExcel } from './index';
 import type { BerichtBlock, BerichtZelle, PreisspiegelEingabe } from './index';
@@ -264,6 +264,54 @@ describe('Preisspiegel: Positionen ohne Zeile', () => {
     expect(z?.zellen.slice(5, 7).map(texte)).toEqual([
       ['–', '–'],
       ['–', '–'],
+    ]);
+  });
+});
+
+describe('Preisspiegel: Zuschlagsposition', () => {
+  it('zeigt an der Stelle des EP den Zuschlagssatz des Bieters, den Betrag als GP und eine unvollständige Basis', () => {
+    const { zustand: zlv } = fixtureZustand('zuschlag');
+    const positionId = '019b780b-d512-7afc-a38a-16292f4694cd' as PositionId;
+    const [summeA] = PREISSPIEGEL.bietersummen;
+    if (summeA === undefined) throw new Error('Testdaten ohne Bietersumme');
+    const ps: PreisspiegelEingabe['preisspiegel'] = {
+      ...PREISSPIEGEL,
+      bietersummen: [summeA],
+      gliederungen: [],
+      zeilen: [
+        {
+          positionId,
+          gehtInSummeEin: true,
+          zuschlagsposition: true,
+          schaetzpreis: {
+            einheitspreis: null,
+            gesamtpreis: '12.00' as Betrag,
+            zuschlag: { satz: '10.00' as Prozent },
+          },
+          bieter: [
+            {
+              angebotId: summeA.angebotId,
+              kennzeichen: 'angeboten',
+              einheitspreis: null,
+              gesamtpreis: '6.00' as Betrag,
+              ausreisser: null,
+              zuschlag: { satz: '5.00' as Prozent, basisUnvollstaendig: true },
+            },
+          ],
+          min: { einheitspreis: null, gesamtpreis: '6.00' as Betrag },
+          mittel: { einheitspreis: null, gesamtpreis: '6.00' as Betrag },
+          max: { einheitspreis: null, gesamtpreis: '6.00' as Betrag },
+          abcKlasse: null,
+        },
+      ],
+    };
+    const m = bauePreisspiegelModell({ ...eingabe, lv: zlv, preisspiegel: ps });
+    const [t] = tabellen(m.abschnitte[1]?.bloecke ?? []);
+    const z = t?.zeilen.find((r) => r.zellen[0] === '01.03.0030');
+    expect(z?.zellen.slice(5, 8).map(texte)).toEqual([
+      ['10,00 %', '12,00'],
+      ['5,00 %', '6,00', 'Basis unvollständig'],
+      ['–', '6,00'],
     ]);
   });
 });
