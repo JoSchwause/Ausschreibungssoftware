@@ -751,3 +751,17 @@ Question: Der Zuschlag schreibt jetzt die Angaben des Bieters (Anschrift) in `Lv
 Decision: Ja. Der Auftragnehmer ist der bezuschlagte Bieter; das X86 trägt so Name und Anschrift, wie es E10 verlangt. Die Kalkulation gehört zur Ausschreibung (D-127.6). Der Glossareintrag „Auftragnehmer“ („hat nur einen Namen“) wird im Vertragsnachtrag zu 127 berichtigt. Der Normalisierer der Bieterangaben liegt vorerst als lokale Kopie in `vergabe` (`bieterangaben.ts`); die Umstellung auf den Export aus `kern` (137) ist eine Zeile und geht in die Review-Behebung (159).
 Reason: Keine Wirkung auf Beträge; schließt B-20 für das Auftrags-LV.
 Reversible: yes  Touches: packages/vergabe, GLOSSARY.md, Ticket 159
+
+## D-84 Übernahme der Einstellungen aus einer Projektdatei ist ein protokollierter Befehl
+Welle 7 · Ticket 127 (Nachtrag, D-127.18) · decided by: orchestrator
+Question: Der Vertragsnachtrag führt `EinstellungenUebernehmen { einstellungen }` ein: Das Einlesen einer Projektdatei ändert die Einstellungen und wird deshalb protokolliert (ADR 0009); `projektdateiEinlesen` schreibt den Eintrag nur mit dem Kopf aus der Option `einstellungsuebernahme`, `projektdateiImportieren` übernimmt keine Einstellungen mehr. Bestätigen?
+Decision: Ja. Folgt aus M1 (D-82): Auch die Übernahme ist eine Änderung der Einstellungen und braucht einen Protokolleintrag; sie füllt nur Fehlendes (D-73). Ausführung in `kern` (137), Schreiben in `speicher` (139), Aufruf in der App (150). Der Vertragsnachtrag ist gemergt; `vertrag` v1.7a gilt damit als geprüft (Opus-Review statt Nutzer, P9), der Nutzer prüft nach der Welle.
+Reason: ADR 0009 ohne Ausnahme; keine Wirkung auf Beträge.
+Reversible: yes  Touches: packages/vertrag, kern, speicher, apps/web/src/projekt
+
+## D-85 Zweites Nutzungslimit (5 Stunden, bis 22:20 UTC)
+Welle 7 · Tickets 128, 132, 136, 137, 139, 141, 142 · decided by: orchestrator
+Question: Gegen 21:30 UTC brachen sieben laufende Agenten am 5-Stunden-Limit ab; 140 war fertig.
+Decision: 140 gemergt; um 22:20 UTC alle sieben aus ihrem gespeicherten Stand fortgesetzt (wie D-81), nachdem der Nutzer „continue“ schrieb. Der freie Platz geht an 147 (P, Weg zum Tor E: Beispielprojekt); 155 (S) folgt beim nächsten freien Platz. Offene Punkte aus 140 (D-140.3, D-140.7: GlobalId-Typ in `ui-modell`, Durchreichung von `MENGENART_STUECK` aus `bim`) gehen an 155, weil sie die App mitändern.
+Reason: Kein Verlust; P-Tickets zuerst, falls das Limit erneut greift.
+Reversible: yes  Touches: Ablauf, Ticket 155

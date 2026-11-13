@@ -28,6 +28,7 @@ import type { Datum, Tagnummer } from './datum';
 import { LETZTER_TAG, datumAusTagnummer, tagnummerLesen } from './datum';
 import type { Kalenderhinweis } from './kalender';
 import { Tageskalender } from './kalender';
+import { HUNDERT_PROZENT } from './prozent';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
 //
@@ -203,13 +204,6 @@ export const BEZIEHUNGSARTEN: readonly Anordnungsart[] = [
 /** Ganze Arbeitstage von `kleinster` bis `HOECHSTWERT_ARBEITSTAGE` (D-102.7; auch für den Ausführer). */
 export const ganzeArbeitstage = (wert: number, kleinster: number): boolean =>
   Number.isInteger(wert) && wert >= kleinster && wert <= HOECHSTWERT_ARBEITSTAGE;
-
-function hundertProzent(): Prozent {
-  const p = alsProzent('100.00');
-  if (!p.ok) throw new Error(p.fehler.meldung);
-  return p.wert;
-}
-const HUNDERT_PROZENT = hundertProzent();
 
 /** Prüft Ist-Termine und Fortschritt; liefert das Problem als Text oder `null`. */
 function istPruefen(ist: Isttermine): string | null {
@@ -524,13 +518,13 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
     ((vomEnde(k.art) ? (e[k.von] ?? 0) : (a[k.von] ?? 0)) + k.abstand);
 
   // --- Lagen in Tagesindizes (Ende einschließlich), Sammelvorgänge aus ihren Nachfahren ---
-  const lagen = new Array<Lage | null>(n).fill(null);
+  const lagen = new Array<Vorgangslage | null>(n).fill(null);
   for (const i of ordnung) {
     const d = dauer[i] ?? 0;
     const gesamtpuffer = (sa[i] ?? 0) - (a[i] ?? 0);
     let freierPuffer = projektende - (e[i] ?? 0);
     for (const k of aus[i] ?? []) freierPuffer = Math.min(freierPuffer, spielraum(k));
-    const lage: Lage = {
+    const lage: Vorgangslage = {
       von: a[i] ?? 0,
       bis: d === 0 ? (a[i] ?? 0) : (e[i] ?? 0) - 1,
       spaetVon: sa[i] ?? 0,
@@ -588,7 +582,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
 }
 
 /** Lage eines Vorgangs in Tagesindizes der Arbeitstagefolge, Ende einschließlich. */
-interface Lage {
+interface Vorgangslage {
   readonly von: number;
   readonly bis: number;
   readonly spaetVon: number;
@@ -598,7 +592,7 @@ interface Lage {
 }
 
 /** Sammelvorgang: frühester Beginn, spätestes Ende, kleinste Puffer (je Lage für sich). */
-function vereinigen(bisher: Lage | null, neu: Lage): Lage {
+function vereinigen(bisher: Vorgangslage | null, neu: Vorgangslage): Vorgangslage {
   if (bisher === null) return neu;
   return {
     von: Math.min(bisher.von, neu.von),
@@ -618,7 +612,7 @@ function kritischeWegeFinden(
   ordnung: readonly number[],
   aus: readonly (readonly Kante[])[],
   ein: readonly (readonly Kante[])[],
-  lagen: readonly (Lage | null)[],
+  lagen: readonly (Vorgangslage | null)[],
   id: (i: number) => VorgangId,
   spielraum: (k: Kante) => number,
   befunde: Pruefbefund[],
