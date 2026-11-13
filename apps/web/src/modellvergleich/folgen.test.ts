@@ -90,3 +90,21 @@ describe('Folgen für ein LV', () => {
     expect(sitzung.zustand?.summen.gesamt.netto).toBe(BIM_SOLL.kern.sollwerte.summen['netto']);
   });
 });
+
+describe('OZ in den Folgen (Ticket 122)', () => {
+  it('die OZ einer Position steht wie überall in der App, Index ohne Leerzeichen (`ozText`)', async () => {
+    const { lv } = await typischImSpeicher();
+    const ziel = BIM_SOLL.zuordnungen[0]?.positionId;
+    const mitIndex = {
+      ...lv,
+      leistungsverzeichnis: {
+        ...lv.leistungsverzeichnis,
+        knoten: lv.leistungsverzeichnis.knoten.map((k) =>
+          k.art === 'position' && k.id === ziel ? { ...k, ozIndex: 'A' } : k,
+        ),
+      },
+    };
+    const f = folgenansicht(mitIndex, V1, V2);
+    expect(f.zeilen.find((z) => z.positionId === ziel)?.oz).toBe(`${BIM_SOLL.zuordnungen[0]?.oz ?? ''}A`);
+  });
+});

@@ -4,6 +4,7 @@
 // App mit `mengen` (D-22); geschrieben wird alles als **ein** Undo-Schritt (`Sitzung.folge`). Im Auftrags-LV gibt es diesen
 // Weg nicht (D-53, `MengenansatzSetzen` ist kein AuftragsLvBefehl).
 
+import { ozText } from '../lv/oztext';
 import { mengenuebernahmeBerechnen } from '@tethys/bim';
 import { mengenansatzBerechnen } from '@tethys/mengen';
 import type {
@@ -44,7 +45,7 @@ export function uebernahmeVorschau(knoten: readonly Knoten[], modell: Bauwerksmo
     const position = p?.art === 'position' ? p : null;
     return {
       positionId: u.positionId,
-      oz: position?.ordnungszahl ?? '',
+      oz: position === null ? '' : ozText(position), // Ticket 122: mit Index, wie überall in der App
       kurztext: position?.kurztext ?? '',
       einheit: position?.einheit ?? '',
       vorher: position?.menge ?? null,

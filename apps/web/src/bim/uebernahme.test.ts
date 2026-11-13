@@ -177,3 +177,23 @@ describe('Vorschau mit Befunden', () => {
     expect(uebernahmeBefehle(v)).toEqual([]);
   });
 });
+
+describe('OZ in der Vorschau (Ticket 122)', () => {
+  it('die OZ einer Position steht wie überall in der App, mit Index (`ozText`)', () => {
+    const inhalt = fixtureInhalt('typisch');
+    const zuordnung = fx.zuordnungen.find((x) => x.positionId === POS);
+    const knoten = inhalt.knoten.map((k) =>
+      k.art === 'position' && k.id === POS
+        ? {
+            ...k,
+            ozIndex: 'A',
+            bauteile: (zuordnung?.bauteile ?? []).map((b) => ({
+              globalId: b.globalId as IfcGlobalId,
+              mengenart: 'NetSideArea',
+            })),
+          }
+        : k,
+    );
+    expect(uebernahmeVorschau(knoten, hausModell()).zeilen.map((z) => z.oz)).toEqual(['03.0010A']);
+  });
+});
