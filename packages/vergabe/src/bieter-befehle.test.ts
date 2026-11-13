@@ -162,3 +162,91 @@ describe('BieterangabenSetzen', () => {
     expect(fehler(null, befehl(angaben))).toMatchObject({ code: 'befehl-nicht-zustaendig' });
   });
 });
+
+describe('BieterLoeschen', () => {
+  const loeschen = (bieterId: string): ProjektBefehl => ({ art: 'BieterLoeschen', bieterId: b(bieterId) });
+
+  it('ohne Angebot: entfernt den Bieter; Undo stellt ihn an seiner Stelle wieder her', () => {
+    const mit: Projekt = {
+      ...proj,
+      bieter: proj.bieter.map((x) =>
+        x.id === 'b-b' ? { ...x, angaben: { anschrift: null, ansprechperson: 'Frau X', email: null, telefon: null } } : x,
+      ),
+    };
+    const cs = erwarteOk(projektBefehlAusfuehren(mit, loeschen('b-b'), [{ art: 'angebot', anzahl: 0 }]));
+    expect(cs.projekt.vorher).toBe(mit);
+    const neu = erwarteUmkehrbar(mit, cs);
+    expect(neu.bieter.map((x) => x.id)).toEqual(['b-a', 'b-c']);
+    expect(neu.name).toBe(mit.name);
+  });
+
+  it('fehlende Art zählt 0; andere Arten liest der Befehl nicht', () => {
+    expect(projektBefehlAusfuehren(proj, loeschen('b-a'), []).ok).toBe(true);
+    expect(projektBefehlAusfuehren(proj, loeschen('b-a'), [{ art: 'nachtrag', anzahl: 3 }]).ok).toBe(true);
+  });
+
+  it('mit Angeboten → verweise-vorhanden mit Art und Anzahl (Verweissperre)', () => {
+    const f = fehler(proj, loeschen('b-a'), [
+      { art: 'rechnung', anzahl: 1 },
+      { art: 'angebot', anzahl: 2 },
+    ]);
+    expect(f.code).toBe('verweise-vorhanden');
+    expect(f.verweise).toEqual([{ art: 'angebot', anzahl: 2 }]);
+    expect(f.feld).toBeUndefined();
+  });
+
+  it('ohne verweise → ungueltige-eingabe, feld verweise (ohne Bestand nicht prüfbar)', () => {
+    expect(fehler(proj, loeschen('b-a'))).toMatchObject({ code: 'ungueltige-eingabe', feld: 'verweise' });
+  });
+
+  it('verweise in falscher Form → ungueltige-eingabe, feld verweise', () => {
+    const falsch: unknown[] = [
+      [{ art: 'angebot', anzahl: -1 }],
+      [{ art: 'angebot', anzahl: 1.5 }],
+      [{ art: 'angebot', anzahl: '1' }],
+      [{ art: 'angebot', anzahl: 0 }, { art: 'angebot', anzahl: 0 }],
+      [{ art: 'bauzeitenplan', anzahl: 0 }],
+      'keine Liste',
+    ];
+    for (const v of falsch)
+      expect(fehler(proj, loeschen('b-a'), v as Verweisanzahl[])).toMatchObject({
+        code: 'ungueltige-eingabe',
+        feld: 'verweise',
+      });
+  });
+
+  it('unbekannter Bieter → ungueltige-eingabe, feld bieterId; ohne Projekt → nicht zuständig', () => {
+    expect(fehler(proj, loeschen('b-x'), [])).toMatchObject({ code: 'ungueltige-eingabe', feld: 'bieterId' });
+    expect(fehler(null, loeschen('b-a'), [])).toMatchObject({ code: 'befehl-nicht-zustaendig' });
+  });
+});
+
+describe('übrige Projektbefehle gehen an den Kern', () => {
+  it('ProjektAnlegen, BieterAnlegen, ProjektStammdatenSetzen, ProjektLoeschen: dasselbe Ergebnis wie im Kern', () => {
+    const anlegen: ProjektBefehl = {
+      art: 'ProjektAnlegen',
+      id: 'p-neu' as ProjektId,
+      name: 'Neu',
+      bauherr: { name: 'B', anschrift: null },
+    };
+    const neu = projektChangeSetAnwenden(null, erwarteOk(projektBefehlAusfuehren(null, anlegen))) as Projekt;
+    expect(neu).toEqual({ id: 'p-neu', name: 'Neu', bauherr: { name: 'B', anschrift: null }, bieter: [] });
+    const mitBieter = projektChangeSetAnwenden(
+      neu,
+      erwarteOk(projektBefehlAusfuehren(neu, { art: 'BieterAnlegen', bieter: { id: b('b-1'), name: 'Eins' } })),
+    ) as Projekt;
+    expect(mitBieter.bieter).toEqual([{ id: 'b-1', name: 'Eins' }]);
+    expect(
+      fehler(mitBieter, { art: 'BieterAnlegen', bieter: { id: b('b-1'), name: 'Doppelt' } }),
+    ).toMatchObject({ code: 'id-vergeben' });
+    const stamm = erwarteOk(
+      projektBefehlAusfuehren(mitBieter, {
+        art: 'ProjektStammdatenSetzen',
+        name: 'Anders',
+        bauherr: { name: 'B', anschrift: null },
+      }),
+    );
+    expect(stamm.projekt.nachher?.name).toBe('Anders');
+    expect(erwarteOk(projektBefehlAusfuehren(mitBieter, { art: 'ProjektLoeschen' })).projekt.nachher).toBeNull();
+  });
+});

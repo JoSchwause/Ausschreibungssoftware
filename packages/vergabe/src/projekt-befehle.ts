@@ -17,6 +17,7 @@ import type {
   ProjektBefehlAusfuehren,
   ProjektChangeSet,
 } from '@tethys/vertrag';
+import { verweissperre } from './verweise';
 
 type Antwort = Ergebnis<ProjektChangeSet, Befehlsfehler>;
 
@@ -122,6 +123,14 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       if (!n.ok) return nein('ungueltige-eingabe', `${n.feld}: Form der Bieterangaben stimmt nicht.`, n.feld);
       const alt = zustand.bieter[i] as Bieter;
       return ersetzt(zustand, i, mitAngaben(alt, n.wert), gleicheAngaben(alt.angaben ?? null, n.wert));
+    }
+    case 'BieterLoeschen': {
+      if (zustand === null) return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+      const i = stelle(zustand, befehl.bieterId, befehl.art);
+      if (typeof i !== 'number') return i;
+      const sperre = verweissperre(befehl.art, `den Bieter ${String(befehl.bieterId)}`, verweise, ['angebot']);
+      if (sperre !== null) return { ok: false, fehler: sperre };
+      return geaendert(zustand, { ...zustand, bieter: zustand.bieter.filter((_, j) => j !== i) });
     }
     default:
       return imKern(zustand, befehl, verweise);
