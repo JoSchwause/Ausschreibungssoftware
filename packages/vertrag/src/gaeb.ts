@@ -26,8 +26,8 @@ export type GaebPhase =
   | 'X88';
 
 /**
- * GAEB DA XML Version. Geschrieben werden nur `3.2` und `3.3` (G-10). `3.1` war bis v1.6 nur erkennbar; ab Welle 7 liest der
- * Leser sie (E5, Ticket 129), als Export-Version bleibt sie kein Ziel. GAEB 90 und GAEB 2000 haben keine DA-XML-Version; das
+ * GAEB DA XML Version. Gelesen werden `3.1`, `3.2` und `3.3` (`3.1` seit Ticket 129, E5; bis dahin nur erkannt), geschrieben
+ * nur `3.2` und `3.3` (G-10): Als Export-Version ist `3.1` kein Ziel. GAEB 90 und GAEB 2000 haben keine DA-XML-Version; das
  * Format nennt `GaebFormat` (v1.7a).
  */
 export type GaebVersion = '3.1' | '3.2' | '3.3';

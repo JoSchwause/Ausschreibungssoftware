@@ -1,6 +1,6 @@
 # 127: `vertrag` v1.7a: Bedienung, Stammdaten, Einstellungen, Konstanten
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: F · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`; mechanische Folgezeilen in Verbrauchern nur, wo der Typcheck es erzwingt)
 Blocked by: –
@@ -41,11 +41,11 @@ Nicht hier: A5 (Skonto, Bauabzugsteuer, Vertragsstrafe, Zahlungen) folgt in 128.
 
 ## Acceptance criteria
 
-- [ ] Alle Punkte 1–7 als Typen/Konstanten mit Tests; alte Fixtures und Projektdateien typprüfen weiter
-- [ ] `## Comments` listet jede Lesart (D-127.x) für die Verbraucher-Tickets 135–155
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Alle Punkte 1–7 als Typen/Konstanten mit Tests; alte Fixtures und Projektdateien typprüfen weiter
+- [x] `## Comments` listet jede Lesart (D-127.x) für die Verbraucher-Tickets 135–155
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
