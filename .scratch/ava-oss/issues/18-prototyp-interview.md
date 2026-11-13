@@ -1,6 +1,6 @@
 # 18: Klickbarer Prototyp für das Nutzerinterview
 
-Status: ready-for-human (Prototyp gebaut 2026-11-10 auf Branch `proto/interview`; Interview steht aus, siehe W-06)
+Status: ready-for-human (Prototyp liegt unter `proto/interview/` auf `main`; bleibt außerhalb der Wellen. Das Interview findet nach G-59 als Sitzung mit dem Büro im Probebetrieb statt, siehe Ticket 126)
 Type: prototype
 Blocked by: -
 Regeln: `docs/regeln.md` C1, C4, L1, L3, U3, U4, U5 (Architekturregeln A/P gelten nicht, siehe Grenzen)

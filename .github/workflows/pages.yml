@@ -1,0 +1,59 @@
+name: Pages
+
+# Baut die App aus `main` mit dem Basis-Pfad `/<Repository>/` und veröffentlicht sie auf GitHub Pages (G-53).
+# Das Einschalten von Pages (Einstellungen → Pages → Quelle „GitHub Actions“) ist eine Handaufgabe (Ticket 126);
+# bis dahin schlägt nur der Schritt „deploy-pages“ fehl, der Bau läuft.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Ein Stand nach dem anderen; ein laufendes Veröffentlichen wird nicht abgebrochen.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # Version aus "packageManager" in package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `VITE_BASE` ist der Basis-Pfad (Standard `/`): Manifest, Service Worker, Worker- und Bündeladressen folgen ihm.
+      - name: Bauen mit Basis-Pfad
+        run: pnpm build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      # GitHub Pages kennt keine Weiterleitung auf die Startseite; `404.html` ist dieselbe Seite, die App liest den Pfad selbst.
+      - name: 404.html als Rückfall für Adressen unterhalb des Basis-Pfads
+        run: cp apps/web/dist/index.html apps/web/dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  veroeffentlichen:
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
