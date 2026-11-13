@@ -101,7 +101,7 @@ export function einheitspreisanteileSetzen(z: LvZustand, b: Einheitspreisanteile
     return ok(baueChangeSet(z, {}));
   // Lesart (a) (v1.7a, D-127.6): ein reiner Preisbefehl entfernt die Kalkulation (die Oberfläche fragt vorher).
   const neu: Position = positionMitKalkulation({ ...position, epa: b.epa, einheitspreis }, null);
-  return ok(positionAendern(z, idx, position, neu));
+  return ok(positionAendern(z, idx, position, neu, 'preis'));
 }
 
 // --- Anteilsummen je Ebene (altes Ticket 17) ----------------------------------------------------------------------

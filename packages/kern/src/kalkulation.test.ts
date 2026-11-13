@@ -82,6 +82,12 @@ const position = (z: LvZustand, kennung: string): Position => {
   return k;
 };
 
+/** Der Hinweis, wenn ein Befehl die Kalkulation von P1 entfernt (D-82 S4). */
+const HINWEIS_P1 = expect.objectContaining({
+  code: 'kalkulation-entfernt',
+  knotenId: id.pos('P1'),
+}) as unknown;
+
 const fehler = (z: LvZustand, b: LvBefehl): [string, string | undefined] | null => {
   const e = lvBefehlAusfuehren(z, b);
   return e.ok ? null : [e.fehler.code, e.fehler.feld];
@@ -224,16 +230,47 @@ describe('Lesart (a): ein reiner Preisbefehl entfernt die Kalkulation (D-127.6)'
     expect(position(neu, 'P1')).not.toHaveProperty('kalkulation');
     expect(position(neu, 'P1').einheitspreis).toBe('60.000');
     expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
+    // D-82 S4: der Befehl sagt, dass die Kalkulation entfallen ist; die Umkehrung trägt keine Hinweise.
+    expect(cs.hinweise).toEqual([HINWEIS_P1]);
+    expect(changeSetUmkehren(cs)).not.toHaveProperty('hinweise');
   });
 
-  it('EinheitspreisanteileSetzen entfernt sie ebenso', () => {
-    const neu = wende(mit(), {
-      art: 'EinheitspreisanteileSetzen',
-      positionId: id.pos('P1'),
-      epa: { ...EPA, lohn: ep('26.000') },
-    });
+  it('EinheitspreisanteileSetzen entfernt sie ebenso, mit Hinweis', () => {
+    const z = mit();
+    const cs = erwarteOk(
+      lvBefehlAusfuehren(z, {
+        art: 'EinheitspreisanteileSetzen',
+        positionId: id.pos('P1'),
+        epa: { ...EPA, lohn: ep('26.000') },
+      }),
+    );
+    const neu = anwenden(z, cs);
     expect(position(neu, 'P1')).not.toHaveProperty('kalkulation');
     expect(position(neu, 'P1').einheitspreis).toBe('59.000');
+    expect(cs.hinweise).toEqual([HINWEIS_P1]);
+  });
+
+  it('ohne Kalkulation kein Hinweis', () => {
+    const z = basis();
+    const a = erwarteOk(
+      lvBefehlAusfuehren(z, {
+        art: 'EinheitspreisAendern',
+        positionId: id.pos('P1'),
+        einheitspreis: ep('60.000'),
+      }),
+    );
+    const b = erwarteOk(
+      lvBefehlAusfuehren(z, { art: 'EinheitspreisanteileSetzen', positionId: id.pos('P1'), epa: EPA }),
+    );
+    const c = erwarteOk(
+      lvBefehlAusfuehren(z, {
+        art: 'PositionsmerkmaleSetzen',
+        positionId: id.pos('P2'),
+        merkmale: merkmale(),
+        zuschlag: zuschlagAuf('gliederung', null),
+      }),
+    );
+    for (const cs of [a, b, c]) expect(cs).not.toHaveProperty('hinweise');
   });
 
   it('derselbe EP oder dieselben Anteile ändern nichts, auch nicht die Kalkulation', () => {
@@ -250,6 +287,8 @@ describe('Lesart (a): ein reiner Preisbefehl entfernt die Kalkulation (D-127.6)'
     );
     expect(a.knoten.geaendert).toEqual([]);
     expect(b.knoten.geaendert).toEqual([]);
+    expect(a).not.toHaveProperty('hinweise');
+    expect(b).not.toHaveProperty('hinweise');
   });
 
   it('Menge, Kurztext und Merkmale lassen die Kalkulation stehen (sie gilt je Einheit)', () => {
@@ -281,6 +320,7 @@ describe('Lesart (a): ein reiner Preisbefehl entfernt die Kalkulation (D-127.6)'
       expect(position(neu, 'P1')).not.toHaveProperty('kalkulation');
       expect(position(neu, 'P1').zuschlag).toEqual(zuschlag);
       expect(anwenden(neu, changeSetUmkehren(cs))).toEqual(z);
+      expect(cs.hinweise).toEqual([HINWEIS_P1]);
     }
   });
 });

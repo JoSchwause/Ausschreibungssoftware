@@ -58,5 +58,5 @@ export function positionsmerkmaleSetzen(z: LvZustand, b: PositionsmerkmaleSetzen
   }
   if (gleicherWert(position.merkmale, b.merkmale) && gleicherWert(position.zuschlag, b.zuschlag))
     return ok(baueChangeSet(z, {}));
-  return ok(positionAendern(z, idx, position, neu));
+  return ok(positionAendern(z, idx, position, neu, 'zuschlag'));
 }
