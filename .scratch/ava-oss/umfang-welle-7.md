@@ -116,6 +116,12 @@ Jeder Befund ist in §3 einem Punkt zugeordnet oder steht in §6 („nach Welle 
 | B-36 | Kein Deployment (G-53: GitHub Pages). `README.md` sagt „Stand: Aufbau“. | `.github/workflows/`, `README.md` |
 | B-37 | Veraltete Dokumente: `okf/project/overview.md` und Ticketstände 02, 18, 24, 26; ADR 0012 und 0013 `proposed`; Regeln mit [NEU] nie bestätigt. (In dieser Sitzung berichtigt: `welle-status.md`, `plan.md` §5, `AGENTS.md`, Regel P5.) | wie genannt |
 
+### Tests
+
+| Nr | Befund | Beleg |
+|---|---|---|
+| B-38 | E2E-Tests suchen Meldungstexte ohne Eingrenzung. Die Toast-Region kündigt jede Meldung kurz zusätzlich in einem unsichtbaren Knoten an („Meldung“ + Titel + Text); `getByText` trifft dann zwei Elemente und Playwright bricht ab. Je nach Zeitpunkt fällt der Test (CI-Lauf 43426398337 zu PR #12: `x3.spec.ts:344`; lokal 1 von 10 Läufen). Die eine Stelle ist mit PR #12 behoben; dieselbe Gefahr besteht an `umwege.spec.ts:87` und `nachtrag.spec.ts:170`, andere Stellen behelfen sich mit `.first()`. | `apps/web/e2e/*.spec.ts`, `packages/ui-basis/src/Toast.tsx` |
+
 ## 3. Umfang
 
 Priorität: **P** = Pflicht, wird nie gekürzt · **S** = Soll · **K** = Kann, wird zuerst gekürzt. „`vertrag`“ nennt, ob der
@@ -230,13 +236,15 @@ Punkt eine Vertragsänderung braucht (v1.7, eigene serielle Tickets nach P9, Opu
 
 - PDF und Excel für Kostenermittlung und Kostenkontrolle. Bauzeitenplan-PDF mit Balken: **K**.
 
-### E13 Fehlerfestigkeit · P · `apps/web/src/ui/`, `speicher/` · B-23, B-24, B-26
+### E13 Fehlerfestigkeit · P · `apps/web/src/ui/`, `speicher/`, `apps/web/e2e/` · B-23, B-24, B-26, B-38
 
 - Fehlergrenze und Auffangen unbehandelter Fehler: eine Seite mit „Projektdatei sichern“, „Neu laden“ und aufklappbaren
   Einzelheiten statt einer leeren Seite.
 - Prüfung beim Start: Was der Browser können muss; die Meldung nennt, welche Browser gehen (Firefox und Safari vorher messen
   und das Ergebnis schreiben, nicht raten).
 - Die in B-26 genannten Texte; alle Fehlermeldungen deutsch und mit einem nächsten Schritt.
+- Tests: eine gemeinsame Hilfe für Meldungen in `apps/web/e2e/hilfen.ts` (sucht in der sichtbaren Meldung, nicht im
+  Ansageknoten); alle Stellen, die Meldungstexte prüfen, stellen darauf um, die Behelfe mit `.first()` entfallen (B-38).
 
 ### E14 Einheitliche Sprache · P · `apps/web/src/*/texte.ts`, `packages/ui-*`, `GLOSSARY.md` · B-27, B-28
 

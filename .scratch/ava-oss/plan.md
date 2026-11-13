@@ -248,7 +248,7 @@ Stand 2026-11-09:
     HOAI-Tafeln gegen die amtliche Fassung (Ticket 126), Folgetickets 123/124 (Welle 7), G-57.
 15. ✅ **Welle 6 auf `main` und Runde vor Welle 7 (2026-11-13):** PR #11 (Welle 6) ist vom Nutzer gemergt (`6bb709e`); damit
     liegen Welle 0 bis 6 auf `main`. Der Stand wurde aus Sicht einer Umsteigerin durchgesehen (drei Lesedurchgänge und eine
-    Begehung der laufenden App); Befunde B-01 bis B-37 und der Umfang der Welle 7 stehen in
+    Begehung der laufenden App); Befunde B-01 bis B-38 und der Umfang der Welle 7 stehen in
     `.scratch/ava-oss/umfang-welle-7.md`. Der Nutzer hat G-58 bis G-64 entschieden (`grilling.md`, Stufe 5): Die Annahmen
     D-01 bis D-70 und `vertrag` v1.2 bis v1.6 gelten für v1; Welle 7 ist die letzte Welle vor Demo und Probebetrieb im Büro;
     die Module aus Welle 6 bleiben als „Vorschau“ sichtbar; dazu vier größere Lücken (GAEB 90/2000, Abzüge und Zahlungen,

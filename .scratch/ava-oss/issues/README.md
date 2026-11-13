@@ -213,6 +213,6 @@ Schwerpunkt X1 BIM.
 
 ## Welle 7
 
-Umfang, Befunde (B-01 bis B-37), Kürzungsreihenfolge und Tor E: `../umfang-welle-7.md` (verbindlich für den Schnitt).
+Umfang, Befunde (B-01 bis B-38), Kürzungsreihenfolge und Tor E: `../umfang-welle-7.md` (verbindlich für den Schnitt).
 Entscheidungen: `../grilling.md`, Stufe 5 (G-58 bis G-64). Die Tickets der Welle schneidet der Orchestrator ab Nr. 127;
 123 und 124 gehören zur Welle, 125 und 126 sind Aufgaben für den Nutzer.
