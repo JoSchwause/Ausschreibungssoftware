@@ -1,6 +1,6 @@
 # 151: App: Auftrags-LV (Langtext, Excel) und geführter Nachtrag
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: A1, E9 · Paket/Ordner: `apps/web/src/auftrag/`, `nachtrag/`
 Blocked by: 142
