@@ -4,7 +4,7 @@
 
 import type { Mangel, Pruefbefund } from '@tethys/vertrag';
 import { istKalendertag } from './datum';
-import { mangelstatus } from './mangelstatus';
+import { istOffenerStatus, mangelstatus } from './mangelstatus';
 
 /**
  * Codes der Befunde dieses Pakets (Quelle `fristpruefung`); die Liste führt das Paket selbst (D-97.11). Nur
@@ -29,8 +29,7 @@ export function stichtagPruefen(stichtag: string): void {
  */
 export function istUeberfaellig(mangel: Pick<Mangel, 'frist' | 'verlauf'>, stichtag: string): boolean {
   if (mangel.frist === null || mangel.frist >= stichtag) return false;
-  const status = mangelstatus(mangel);
-  return status === 'offen' || status === 'angezeigt';
+  return istOffenerStatus(mangelstatus(mangel));
 }
 
 /**

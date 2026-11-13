@@ -108,9 +108,7 @@ export function bauteileLesen(
     const globalId = l.gepruefteGlobalId(i);
     const behaelterInstanz = struktur.get(i) ?? null;
     const s =
-      behaelterInstanz !== null && STRUKTURARTEN.has(l.klasseVon(behaelterInstanz))
-        ? behaelterInstanz
-        : null;
+      behaelterInstanz !== null && STRUKTURARTEN.has(l.klasseVon(behaelterInstanz)) ? behaelterInstanz : null;
     const strukturGlobalId = s === null ? null : l.globalId(s);
     const bezeichnung = `${l.name(i) ?? l.globalId(i)} (#${String(l.nummer(i))})`;
     if (strukturGlobalId === null)
