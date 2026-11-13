@@ -9,6 +9,8 @@ Klammern).
   „Welle 5“ als Annahme D-34 entschieden, Mensch bestätigt später).
 - Verhalten der Referenzsoftware: `okf/research/` ist lokal und nicht im Repo (G-44). Umsetzende
   Agenten arbeiten mit den Tickets, die das Verhalten in eigenen Worten enthalten (Regel C3).
+- **Welle 7:** Umfang, Befunde, Kürzungsreihenfolge und Tor stehen in `.scratch/ava-oss/umfang-welle-7.md` (verbindlich für
+  den Schnitt). Entscheidungen des Nutzers dazu: `grilling.md`, Stufe 5 (G-58 bis G-64). Offen ist nur G-57 (vertagt).
 
 ## 1. Zielstruktur (pnpm-Monorepo)
 
@@ -71,6 +73,8 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 **G — GAEB** (entschieden: G-10, G-11, G-12/ADR 0010, G-13)
 - G1 XML-Modell und Parser X81/X83 · G2 Writer X81/X83/X86 mit eigener Prüfung und XSD-Gegenprüfung
   in der CI (ADR 0010) · G3 Import X84 → Angebot · G4 weitere Versionen und Phasen (GAEB 90/2000)
+- G4 in Welle 7 (G-61): DA XML 3.1 lesen (E5), GAEB 90 und GAEB 2000 lesen (E6), Dateiart erkennen und verständliche
+  Meldungen (E7). Geschrieben werden weiter nur 3.2 und 3.3 (G-10).
 
 **V — Vergabe** (entschieden: G-14, G-26)
 - V1 Bieter, Angebot, Bietersummen · V2 Preisspiegel-Rechnung (virtuelle Bieter Min/Mittel/Max,
@@ -80,11 +84,13 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 
 **M — Mengen**
 - M1 REB-Formelparser (Formel 91 zuerst) · M2 Mengenermittlungs-Panel · M3 X31/DA11
+- M4 weitere nummerierte REB-Formeln (Welle 7, G-61; wird bei Überlauf zuerst gestrichen)
 
 **A — Auftrag und Abrechnung** (entschieden: G-15; A3 vertagt, G-27)
 - A1 Nachträge (VOB-80-Regel: Bedeutung klären, siehe grilling.md) · A2 Aufmaßblätter und Soll/Ist
 - A3 Rechnungsprüfung (Abzugskette) — vertagt, Grilling-Runde vor Welle 5; Annahme für Demo D-34 (Welle 5)
 - A4 XRechnung lesen, danach ZUGFeRD/Erzeugen (G-15)
+- A5 Skonto, Bauabzugsteuer, Vertragsstrafe und Zahlungen in der Rechnungsprüfung (Welle 7, G-61; ergänzt D-34)
 
 **C — Kosten** (entschieden: G-16, G-17)
 - C1 Kostengliederung (nur Nummern, Bezeichnungen importiert) und Kostenermittlung
@@ -107,6 +113,27 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 - X2–X5 je ein Strang. X5 (Bieterportal/Sync-Server) widerspricht ADR 0001 (lokal, ohne Server) sowie G-01 und G-14: vorher
   eine ADR und eine Grilling-Frage (ADR 0013 als Vorschlag, G-57 offen; kein Code in Welle 6).
 
+**E — Einführungsreife** (Welle 7; entschieden: G-58 bis G-64; Einzelheiten und Belege in `umfang-welle-7.md`)
+- Ziel: Ein Büro bekommt die Software gezeigt und probiert sie aus (G-59). Maßstab ist eine Planerin, die von einem anderen
+  AVA-Programm umsteigt. Keine neuen Module; die Module aus Welle 6 bleiben sichtbar als „Vorschau“ (G-60).
+- E1 Navigation (Seitenleiste folgt dem Projekt, Brotkrumen, Projektseite als Übersicht, Kennzeichen „Vorschau“)
+- E2 Erster Start und Hilfe (Beispielprojekt, „Erste Schritte“, Tastenkürzel, Seite „Annahmen“ nach G-62, „Über“)
+- E3 Arbeitsfläche (Werkzeugleiste in Gruppen, Grid füllt die Höhe, Spaltenbreiten; Ziel bei 1280×800: 15 Zeilen, EP und GP sichtbar)
+- E4 Suchen, Filtern, Kontextmenü im Grid
+- E5 DA XML 3.1 lesen · E6 GAEB 90 und GAEB 2000 lesen · E7 Meldungen beim Einlesen in Nutzersprache (Strang G, G4)
+- E8 Fehlende Bedienung (Hinweistext, Angebot löschen und berichtigen, OZ-Maske; LV-Stand, Bieter, Zuschlag zurücknehmen)
+- E9 Abläufe (Auftrags-LV-Seite, Nachtrag geführt, Kalkulationsansätze speichern)
+- E10 Stammdaten für Projekt, Bieter und Büro (G-61)
+- E11 Ausgaben der Kernkette (Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Rechnungsprüfung mit Zahlungsfreigabe;
+  Bilder im LV-PDF, Vorschau) · E12 Ausgaben der Kosten
+- E13 Fehlerfestigkeit (Fehlergrenze, Browserprüfung, Speicherstatus)
+- E14 Einheitliche Sprache (Anrede nach L4, ein Begriff je Sache, Sprachtest)
+- E15 Einstellungen in Projektdatei und Sicherung (Migration 7, Schema 7)
+- E16 Vorschau-Module anbinden (Tickets 123 und 124, Auswahl statt Handeingabe)
+- E17 Bereitstellung (GitHub Pages, G-53) und Dokumente
+- Dazu aus anderen Strängen: A5 (Abzüge und Zahlungen), M4 (weitere REB-Formeln).
+- `vertrag` v1.7 zuerst und seriell (P9): Teil a für E8, E9, E10, E15 und Ticket 123, Teil b für A5.
+
 ## 3. Wellen
 
 | Welle | Parallel laufende Agenten | Tor zur nächsten Welle |
@@ -118,6 +145,7 @@ Entscheidungen sind in Klammern vermerkt. Alle genannten G-Fragen sind beantwort
 | 4 | V3+V4 · O1+O2 · M2 · S4 · C1 | **M3 = MVP: Ausschreibung → Angebote → Zuschlag** |
 | 5 | A1–A4 · M3 · C2–C5 · O3 | **M4: durchgehende Kette LPH 6–8** |
 | 6 | Folgetickets 93–95, danach X1 BIM (Schwerpunkt, mehrere Stränge X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (nach ADR) | je Modul (G-05, Nachtrag 2026-11-12) |
+| 7 | `vertrag` v1.7 und Tickets 123/124, dann E1–E17 ‖ G4 (E5–E7) ‖ A5 ‖ M4 (Umfang und Kürzungsreihenfolge: `umfang-welle-7.md`) | **Tor E: Einführungsreife** (danach Demo und Probebetrieb im Büro, G-59) |
 
 U hängt nur über `vertrag` an K. Deshalb baut U2 gegen Fixtures, bevor K fertig ist.
 
@@ -157,6 +185,16 @@ sind geschnitten, G-06 ist beantwortet. Der Prototyp für das Nutzerinterview (G
   - **X4:** Mängel mit Frist und Statusverlauf, einer überfällig zum Stichtag (von der App übergeben, in Playwright feste Uhr) =
     Befund → Bautagebuch für 3 Tage → Mängelliste und Bautagebuch als PDF → Neuladen.
   - **X5:** ADR 0013 `proposed`, G-57 offen mit Annahme-Zeile, `plan.md` §2 X5 verweist auf beide; kein Code (D-55).
+- **Tor E „Einführungsreife“** (Welle 7, vom Nutzer bestätigt mit G-59 bis G-61; Wortlaut in `umfang-welle-7.md` §4):
+  1. `apps/web/e2e/umsteiger.spec.ts` bei 1280×800, ohne Testhaken und ohne getippte Adressen nach dem Start: erster Start →
+     Beispielprojekt laden → neues Projekt aus der amtlichen BVBS-X83 → LV-Seite zeigt mindestens 15 Zeilen samt EP und GP →
+     zwei X84 → Preisspiegel mit PDF → Zuschlag → Nachtrag anlegen und beauftragen → Aufmaßblatt → Rechnung mit Skonto prüfen
+     und freigeben, Zahlungsfreigabe als PDF → Kostenkontrolle → Projektdatei sichern → Projekt löschen → Sicherung einlesen →
+     dieselben Werte.
+  2. Kein waagerechter Überlauf bei 1280 px auf allen Routen.
+  3. Dasselbe LV als XML 3.3, XML 3.1, GAEB 90 und GAEB 2000 ergibt dasselbe Modell (ohne die gekürzten Formate).
+  4. Sprachtest (E14) grün; die Fehlergrenze (E13) hat einen Test.
+  5. Alle früheren Tore (M1–M4, X1–X4) bleiben grün, kein Leistungsbudget gelockert.
 - Dauerhaft in der CI: Paketgrenzen, Lizenzprüfung (AGPL-3.0-or-later), Clean-Room-Prüfung,
   Leistungsbudgets (5.000 und 10.000 Positionen), `okf/research/` darf nicht versioniert sein.
 
@@ -205,6 +243,15 @@ Stand 2026-11-09:
     Folgetickets 93–95, danach X1 BIM (X1a–X1f) ‖ X2 ‖ X3 ‖ X4 ‖ X5 (G-05, Nachtrag 2026-11-12), Tickets 93–122, `vertrag` v1.5
     und v1.6, neue Pakete `ifc`, `bim`, `ui-modell`, `bauzeit`, `honorar`, `bauleitung`, Projektdatei Schema 6. **Tore X1-Kern,
     X1-Erweitert, X2, X3, X4 und X5 erreicht** (Definition in §4, D-58). Entscheidungen D-49 bis D-70 in `entscheidungen-auto.md`;
-    G-57 offen mit Annahme (ADR 0013 als Vorschlag). ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag`
-    v1.5/v1.6, ADR 0013, HOAI-Tafeln gegen die amtliche Fassung, Merge nach `main`), Folgetickets 123/124. Bericht:
-    `.scratch/ava-oss/welle-6-bericht.md`.
+    G-57 offen mit Annahme (ADR 0013 als Vorschlag). Bericht: `.scratch/ava-oss/welle-6-bericht.md`. **Erledigt am
+    2026-11-13:** Merge nach `main` (PR #11), Entscheidungslog und `vertrag` v1.5/v1.6 angenommen (G-58, G-62). ⏳ **Offen:**
+    HOAI-Tafeln gegen die amtliche Fassung (Ticket 126), Folgetickets 123/124 (Welle 7), G-57.
+15. ✅ **Welle 6 auf `main` und Runde vor Welle 7 (2026-11-13):** PR #11 (Welle 6) ist vom Nutzer gemergt (`6bb709e`); damit
+    liegen Welle 0 bis 6 auf `main`. Der Stand wurde aus Sicht einer Umsteigerin durchgesehen (drei Lesedurchgänge und eine
+    Begehung der laufenden App); Befunde B-01 bis B-37 und der Umfang der Welle 7 stehen in
+    `.scratch/ava-oss/umfang-welle-7.md`. Der Nutzer hat G-58 bis G-64 entschieden (`grilling.md`, Stufe 5): Die Annahmen
+    D-01 bis D-70 und `vertrag` v1.2 bis v1.6 gelten für v1; Welle 7 ist die letzte Welle vor Demo und Probebetrieb im Büro;
+    die Module aus Welle 6 bleiben als „Vorschau“ sichtbar; dazu vier größere Lücken (GAEB 90/2000, Abzüge und Zahlungen,
+    Stammdaten, REB-Formeln). Zurückgeschrieben: Strang E, A5, M4, G4 in §2, Welle 7 in §3, Tor E in §4, Regel L4 und P5 in
+    `docs/regeln.md`, `welle-status.md`, `AGENTS.md`. ⏳ **Offen:** Ticket 125 (Testdateien vom Nutzer, vor Welle 7), danach
+    `/implement-welle 7`; Ticket 126 (GitHub Pages einschalten, Handprüfungen, Sitzung mit dem Büro); G-57.

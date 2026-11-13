@@ -208,3 +208,11 @@ Schwerpunkt X1 BIM.
 | 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | resolved |
 | 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | ready-for-agent (Welle 7) |
 | 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | ready-for-agent (Welle 7) |
+| 125 | F, G4, X1 | Echte Testdateien für Welle 7 bereitstellen (G-64) | `fixtures/extern/umsteiger/` oder Anhang an die Sitzung | ready-for-human (vor Welle 7) |
+| 126 | E17, alle | GitHub Pages einschalten, Handprüfungen, Sitzung mit dem Büro (G-02, G-59, G-62) | Repo-Einstellungen, gehostete App | ready-for-human |
+
+## Welle 7
+
+Umfang, Befunde (B-01 bis B-37), Kürzungsreihenfolge und Tor E: `../umfang-welle-7.md` (verbindlich für den Schnitt).
+Entscheidungen: `../grilling.md`, Stufe 5 (G-58 bis G-64). Die Tickets der Welle schneidet der Orchestrator ab Nr. 127;
+123 und 124 gehören zur Welle, 125 und 126 sind Aufgaben für den Nutzer.
