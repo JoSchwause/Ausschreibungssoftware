@@ -27,6 +27,7 @@ import {
   tippe,
   zeilen,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 // --- Fixture -------------------------------------------------------------------------------------------------------
 
@@ -408,7 +409,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
   }
 
   // --- Zuschlag an Bieter B ohne Wahl (D-21, D-85.1): Alternative entfällt, 03.0070 ohne Preis ----------------------
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${BIETER}` })
@@ -431,7 +432,7 @@ test('Tor M4: Zuschlag → Nachtrag → Aufmaß → Soll/Ist → AR 1 frei → A
     page.getByRole('heading', { level: 1, name: 'Nachtrag N01 – Zusatzleistungen Gründung' }),
   ).toBeVisible();
   const nachtragsLvId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await tippe(page, N01_TITEL?.kurztext ?? '', 'Enter');
   for (const p of N01_POSITIONEN) {
     await neueZeile(page, () => page.keyboard.press('Control+Alt+KeyP'));

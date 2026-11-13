@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const wurzel = new URL('../../../fixtures/', import.meta.url);
 const datei = (rel: string): string => new URL(rel, wurzel).pathname;
@@ -53,7 +54,7 @@ async function auftragAnlegen(page: Page): Promise<void> {
   const liste = page.getByRole('dialog', { name: 'Angebote' });
   await expect(liste.getByRole('row', { name: /Bieter A/ })).toBeVisible();
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: 'Zuschlag erteilen: Bieter A' })
@@ -114,7 +115,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await auftragAnlegen(page);
 
   // Aufmaß: noch kein Blatt; „Neues Aufmaßblatt“ fragt Bezeichnung und Datum und öffnet Blatt 1.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Aufmaß', exact: true }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await expect(page.getByRole('heading', { level: 1, name: /^Aufmaß – / })).toBeVisible();
   await expect(page.getByText('Noch kein Aufmaßblatt.')).toBeVisible();
   await page.getByRole('button', { name: 'Neues Aufmaßblatt' }).click();
@@ -151,7 +152,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await expect(page).toHaveURL(new RegExp(`${blattPfad}$`));
 
   // Soll/Ist: Ist, Differenz, %, GP und der Befund über 110 %, per Tastatur erreichbar.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Soll/Ist' }).click();
+  await werkzeug(page, 'Abrechnung', 'Soll/Ist');
   await expect(page.getByRole('heading', { level: 1, name: /^Soll\/Ist – / })).toBeVisible();
   await sollIstPruefen(page, true);
   await page.getByRole('region', { name: 'Befunde', exact: true }).getByRole('button').focus();
@@ -232,7 +233,7 @@ test('Menge ohne Ansatz, Blattkopf ändern, Zeile entfernen und Blatt löschen, 
 }) => {
   test.setTimeout(120_000);
   await auftragAnlegen(page);
-  await page.getByRole('toolbar').getByRole('link', { name: 'Aufmaß', exact: true }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await page.getByRole('button', { name: 'Neues Aufmaßblatt' }).click();
   await page.keyboard.press('Enter'); // ohne Bezeichnung und Datum
   await expect(page.getByRole('heading', { level: 1, name: 'Aufmaßblatt 1' })).toBeVisible();

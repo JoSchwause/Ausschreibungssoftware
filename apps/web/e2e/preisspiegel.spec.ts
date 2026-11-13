@@ -108,8 +108,14 @@ test('Preisspiegel aus der Angebotsliste: Summen und Rang je Bieter wie die Fixt
     await expect(zeile.getByTestId('brutto')).toHaveText(betragDe(b.summen.brutto));
   }
 
-  // Dieselben Werte in den Summenzeilen des Grids, per Tastatur erreichbar.
+  // Dieselben Werte in den Summenzeilen des Grids, per Tastatur erreichbar. Der Summenblock ist eingeklappt, bis er
+  // geöffnet wird (Ticket 142).
   const a = BIETER.find((b) => RANG[b.angebotId] === '1') as FxBieter;
+  await expect(grid(page).getByRole('row', { name: /Netto nach Nachlass/ })).toHaveCount(0);
+  const summenKnopf = page.getByRole('toolbar').getByRole('button', { name: 'Summen' });
+  await expect(summenKnopf).toHaveAttribute('aria-expanded', 'false');
+  await summenKnopf.click();
+  await expect(summenKnopf).toHaveAttribute('aria-expanded', 'true');
   await zurZelle(page, 'Netto nach Nachlass', a.name, 'gp');
   await expect(detail(page).getByTestId('detail-wert')).toHaveText(
     `Netto nach Nachlass ${betragDe(a.summen.nettoNachNachlass)}`,

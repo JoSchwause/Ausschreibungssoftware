@@ -19,6 +19,7 @@ import {
   zeilen,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const position = (oz: string, index?: string): FxPosition => {
@@ -131,7 +132,7 @@ test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben 
   await lvAnlegen(page, 'Rohbau');
 
   // Titel 01 über die Schaltfläche, Untertitel und zweiten Untertitel über die Tastenkürzel.
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await tippe(page, 'Baustelleneinrichtung', 'Enter');
   await neueZeile(page, () => page.keyboard.press('Control+Alt+KeyU'));
   await tippe(page, 'Einrichten', 'Enter');
@@ -145,7 +146,7 @@ test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben 
   await page.keyboard.press('ArrowDown');
   for (const p of unter0102) await positionTippen(page, p);
 
-  await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  await werkzeug(page, 'LV', 'Umnummerieren');
   await expect.poll(() => zeilen(page)).toEqual(ERWARTET_ZEILEN.map(([oz, kt, s]) => [oz, kt, s]));
 
   // Nachlass 2,00 % an der Summenzeile.
@@ -168,7 +169,7 @@ test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben 
   await positionTippen(page, wahl);
   await merkmaleSetzen(page, 8, ['Bedarf ohne Gesamtbetrag', 'Stundenlohn']);
   await merkmaleSetzen(page, 9, ['Wahlposition']);
-  await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  await werkzeug(page, 'LV', 'Umnummerieren');
   await expect.poll(() => zeilen(page)).toEqual(ERWARTET_ZEILEN_MERKMALE);
   await expect.poll(() => arten(page)).toEqual(ERWARTET_ARTEN);
   await expect.poll(() => summen(page)).toMatchObject({ ...ERWARTET_SUMMEN, ...ERWARTET_AUSWEISE });
@@ -202,7 +203,7 @@ test('M1: LV anlegen, rechnen, speichern – nach dem Neuladen stehen dieselben 
   await expect(dialog.locator('[data-wert="betrag"]')).toHaveText('214,76');
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(dialog).toHaveCount(0);
-  await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  await werkzeug(page, 'LV', 'Umnummerieren');
   await expect.poll(() => zeilen(page)).toEqual(ERWARTET_ZEILEN_ZUSCHLAG);
   await expect.poll(() => summen(page)).toMatchObject(ERWARTET_SUMMEN_ZUSCHLAG);
   await expect.poll(async () => (await arten(page)).at(-1)).toBe('Zuschlag');
