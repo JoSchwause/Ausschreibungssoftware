@@ -330,3 +330,66 @@ describe('AngebotLoeschen', () => {
     expect(angebotChangeSetAnwenden(s, cs)).toBeNull();
   });
 });
+
+// Ticket 138 Punkt 4 (E8, D-127.14): Die vorhandenen Befehle tragen die Bedienung „einzelne Angebotspreise erfassen und
+// berichtigen, Nachlass setzen und entfernen, Angebot löschen“; jeder Schritt lässt sich mit einem Rückgängig-Schritt
+// zurücknehmen. Mengen: p1 10, p2 5, p3 2; MwSt 19 %.
+describe('Bedienung eines Angebots (Ticket 138)', () => {
+  it('erfassen, berichtigen, auf nicht angeboten berichtigen, Nachlass setzen und entfernen, löschen; jeweils Undo', () => {
+    let s: AngebotZustand = start(); // p1 10 × 10,000 = 100,00; p2 5 × 8,000 = 40,00
+    const schritt = (befehl: AngebotBefehl): AngebotZustand => {
+      const cs = erwarteOk(ausfuehren(s, befehl));
+      const neu = angebotChangeSetAnwenden(s, cs);
+      if (neu === null) throw new Error('Angebot fehlt');
+      expect(angebotChangeSetAnwenden(neu, angebotChangeSetUmkehren(cs))).toEqual(s);
+      s = neu;
+      return neu;
+    };
+    const gesamt = (): Record<string, string> => ({
+      netto: s.summen.gesamt.netto,
+      nachlass: s.summen.gesamt.nachlass,
+      nettoNachNachlass: s.summen.gesamt.nettoNachNachlass,
+      mwst: s.summen.gesamt.mwst,
+      brutto: s.summen.gesamt.brutto,
+    });
+    expect(s.summen.gesamt.netto).toBe('140.00');
+
+    schritt({ art: 'AngebotspositionSetzen', position: ep('p3', '4.500') }); // + 2 × 4,500 = 9,00
+    expect(s.summen.gesamt.netto).toBe('149.00');
+    schritt({ art: 'AngebotspositionSetzen', position: ep('p2', '7.500') }); // p2 jetzt 37,50
+    expect(s.summen.gesamt.netto).toBe('146.50');
+    schritt({ art: 'AngebotspositionSetzen', position: nichtAngeboten('p1') }); // p1 entfällt
+    expect(s.summen.gesamt.netto).toBe('46.50');
+    expect(s.summen.positionen.find((p) => p.positionId === 'p1')?.gesamtpreis).toBeNull();
+
+    // 10 % von 46,50 = 4,65; 41,85; MwSt 19 % = 7,9515 → 7,95; Brutto 49,80.
+    schritt({ art: 'AngebotsNachlassSetzen', nachlass: prozent('10.00') });
+    expect(gesamt()).toEqual({
+      netto: '46.50',
+      nachlass: '4.65',
+      nettoNachNachlass: '41.85',
+      mwst: '7.95',
+      brutto: '49.80',
+    });
+    // Ein Betrag ersetzt den Prozentsatz: 46,50 − 6,50 = 40,00; MwSt 7,60; Brutto 47,60.
+    schritt({ art: 'AngebotsNachlassSetzen', nachlass: betrag('6.50') });
+    expect(gesamt()).toMatchObject({
+      nachlass: '6.50',
+      nettoNachNachlass: '40.00',
+      mwst: '7.60',
+      brutto: '47.60',
+    });
+    schritt({ art: 'AngebotsNachlassEntfernen' });
+    expect(s.angebot.nachlass).toBeNull();
+    expect(gesamt()).toMatchObject({
+      nachlass: '0.00',
+      nettoNachNachlass: '46.50',
+      mwst: '8.84',
+      brutto: '55.34',
+    });
+
+    const loeschen = erwarteOk(ausfuehren(s, { art: 'AngebotLoeschen' }));
+    expect(angebotChangeSetAnwenden(s, loeschen)).toBeNull();
+    expect(angebotChangeSetAnwenden(null, angebotChangeSetUmkehren(loeschen))).toEqual(s);
+  });
+});

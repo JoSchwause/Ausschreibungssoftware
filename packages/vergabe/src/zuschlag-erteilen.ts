@@ -14,6 +14,7 @@ import type {
   KnotenId,
   Leistungsverzeichnis,
   LvZustand,
+  Position,
   PositionId,
   Projekt,
   WurzelId,
@@ -86,6 +87,9 @@ export function zuschlagErteilen(
   const wahl = wahlAufloesen(wahlgruppenBilden(l.knoten), gewaehlt);
   if (!wahl.ok) return wahl;
   const { knoten, warnungen } = auftragsKnoten(lv, a, wahl.wert, neueId);
+  // v1.7a (E10): Die Anschrift aus den Bieterangaben wird zur Anschrift des Auftragnehmers (eine Kopie zum Zeitpunkt des
+  // Zuschlags, wie der Name; spätere Änderungen am Bieter ändern das Auftrags-LV nicht).
+  const anschrift = bieter.angaben?.anschrift ?? null;
   return {
     ok: true,
     wert: {
@@ -100,7 +104,12 @@ export function zuschlagErteilen(
           leistungsverzeichnisId: lvId,
           angebotId: a.id,
           nachlass: a.nachlass,
-          auftragnehmer: { name: bieter.name, strasse: null, plz: null, ort: null },
+          auftragnehmer: {
+            name: bieter.name,
+            strasse: anschrift?.strasse ?? null,
+            plz: anschrift?.plz ?? null,
+            ort: anschrift?.ort ?? null,
+          },
           knoten,
         },
       },
@@ -327,7 +336,10 @@ function auftragsKnoten(
           },
         };
     }
-    return { ...k, ...lage, merkmale, zuschlag, epa };
+    // v1.7a (D-127.6): Die Kalkulationsangaben bleiben im Ausschreibungs-LV; die Preise kommen aus dem Angebot.
+    const neu: { -readonly [F in keyof Position]?: Position[F] } = { ...k, ...lage, merkmale, zuschlag, epa };
+    delete neu.kalkulation;
+    return neu as Position;
   });
   return { knoten, warnungen };
 }

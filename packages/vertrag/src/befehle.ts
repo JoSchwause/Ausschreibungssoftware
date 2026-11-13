@@ -61,7 +61,7 @@ import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
 import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
 import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
-import type { Buero, Druckprofil, Kostengruppenbezeichnung } from './einstellungen';
+import type { Buero, Druckprofil, Einstellungen, Kostengruppenbezeichnung } from './einstellungen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -567,9 +567,12 @@ export interface VorlageSetzen {
 /**
  * Setzt die Preisspiegel-Einstellungen des LV als ganzen Wert; `null` entfernt sie, dann gelten die Standardwerte (v1.7a,
  * Ticket 127; E15, D-73). ChangeSet: nur der Kopf, keine Summen. Der Kern prüft die Form (siehe `PreisspiegelEinstellungen`).
+ * Name wie der Typ des Werts (v1.7a Nachtrag, Review D-82 S5; bis dahin `PreisspiegeleinstellungenSetzen`, das in keinem
+ * Protokoll steht). Ein LV, das aus einem LV-Stand neu entsteht, bekommt die Einstellungen des Stands nur über diesen Befehl,
+ * den die App an die Befehlsfolge hängt (Review D-82 S6, Ticket 150).
  */
-export interface PreisspiegeleinstellungenSetzen {
-  readonly art: 'PreisspiegeleinstellungenSetzen';
+export interface PreisspiegelEinstellungenSetzen {
+  readonly art: 'PreisspiegelEinstellungenSetzen';
   readonly einstellungen: PreisspiegelEinstellungen | null;
 }
 
@@ -589,6 +592,10 @@ export interface PreisspiegeleinstellungenSetzen {
  *   zur Kalkulation passen, prüft er nicht.
  * - Fehler wie jeder Feldbefehl (D-71.3): Gliederung oder Hinweistext `knotenart-unzulaessig`, unbekannte Kennung
  *   `knoten-unbekannt`. Nur im Ausschreibungs-LV (nicht in `AuftragsLvBefehl`).
+ * - Zuschlagsposition (v1.7a Nachtrag, Review D-82 S3): An einer Position mit `zuschlag !== null` weist der Kern mit
+ *   `knotenart-unzulaessig` ab (`feld: 'kalkulation'`), auch mit `kalkulation: null`: Ihr Betrag folgt aus den Bezugspositionen,
+ *   nicht aus einem kalkulierten EP. Invariante: Eine Zuschlagsposition trägt nie `kalkulation` (siehe
+ *   `Positionsdaten.kalkulation`).
  */
 export interface KalkulationSetzen {
   readonly art: 'KalkulationSetzen';
@@ -689,7 +696,7 @@ export type LvBefehl =
   | BauteileZuordnen
   // v1.7a
   | KalkulationSetzen
-  | PreisspiegeleinstellungenSetzen;
+  | PreisspiegelEinstellungenSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -1237,9 +1244,10 @@ export type BautagebucheintragBefehl = BautagebucheintragSetzen | Bautagebuchein
 // --- Einstellungen (v1.7a, Ticket 127; E10, E15, D-73; Ausführer in `kern`, Ticket 137) -------------------------------
 //
 // Befehle am globalen Aggregat `Einstellungen` (siehe `einstellungen.ts`): nicht im `Befehl` eines Projekts, nicht im
-// Befehlsprotokoll eines Projekts, nicht in dessen Undo-Historie (D-73). Der Ausführer (`EinstellungenBefehlAusfuehren`) prüft
-// die Form (`ungueltige-eingabe` mit `feld`); ChangeSet: `EinstellungenChangeSet` mit den ganzen Einstellungen vorher und
-// nachher.
+// Befehlsprotokoll und nicht in der Undo-Historie eines Projekts (D-73), sondern im Einstellungsprotokoll
+// (`EinstellungenProtokolleintrag`; Nachtrag Review D-82, M1: A5 und ADR 0009 gelten ohne Ausnahme). Der Ausführer
+// (`EinstellungenBefehlAusfuehren`) prüft die Form (`ungueltige-eingabe` mit `feld`); ChangeSet: `EinstellungenChangeSet` mit
+// den ganzen Einstellungen vorher und nachher.
 
 /** Setzt das Büro als ganzen Wert; `null` entfernt es. Leerer Name: `ungueltige-eingabe` (`feld: 'buero.name'`). */
 export interface BueroSetzen {
@@ -1273,9 +1281,36 @@ export interface KostengruppenbezeichnungenSetzen {
   readonly bezeichnungen: readonly Kostengruppenbezeichnung[];
 }
 
-/** Befehle an den Einstellungen (v1.7a; Zustand: `Einstellungen`). Nicht Teil von `Befehl` (D-73). */
+/**
+ * Übernimmt die Einstellungen aus einer Projektdatei nach D-73 (v1.7a Nachtrag, D-82 M1): füllt nur, was lokal fehlt, und
+ * überschreibt nie. `einstellungen` ist der Block der Datei (`Projektdatei.einstellungen`), unverändert.
+ *
+ * - Büro: nur, wenn lokal keines gesetzt ist (`buero: null`).
+ * - Druckprofile: jedes Profil der Datei, dessen Name lokal fehlt, kommt in der Reihenfolge der Datei ans Ende.
+ * - Kostengruppenbezeichnungen: jede Bezeichnung der Datei, deren Nummer lokal fehlt, kommt an ihre Stelle in der Ordnung
+ *   nach Nummer.
+ *
+ * Die Form prüft der Ausführer wie bei den einzelnen Befehlen. Was übernommen und was belassen wurde, folgt aus dem ChangeSet
+ * (vorher und nachher je Schlüssel). Geschrieben wird der Befehl beim Einlesen einer Projektdatei von `speicher`
+ * (`Speicher.projektdateiEinlesen` mit `einstellungsuebernahme`) in derselben Transaktion wie das Projekt; nur, wenn er etwas
+ * übernimmt. Er gehört nicht zum Rückgängig der Einstellungen in der Sitzung: Er überschreibt nichts (Q5).
+ */
+export interface EinstellungenUebernehmen {
+  readonly art: 'EinstellungenUebernehmen';
+  readonly einstellungen: Einstellungen;
+}
+
+/**
+ * Befehle an den Einstellungen (v1.7a; Zustand: `Einstellungen`). Nicht Teil von `Befehl` (D-73); protokolliert im
+ * Einstellungsprotokoll (`EinstellungenProtokolleintrag`, D-82 M1).
+ */
 export type EinstellungenBefehl =
-  BueroSetzen | DruckprofilSetzen | DruckprofilEntfernen | KostengruppenbezeichnungenSetzen;
+  | BueroSetzen
+  | DruckprofilSetzen
+  | DruckprofilEntfernen
+  | KostengruppenbezeichnungenSetzen
+  // v1.7a Nachtrag (D-82 M1)
+  | EinstellungenUebernehmen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

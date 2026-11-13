@@ -5,6 +5,7 @@
 // beide über die Vertragstypen, ohne die Pakete zu importieren (A3).
 
 import {
+  NULL_PROZENT,
   alsDezimal,
   alsProzent,
   dividiere,
@@ -23,14 +24,13 @@ import type {
   Prozent,
   Vorgangsbezug,
 } from '@tethys/vertrag';
+import { HUNDERT_PROZENT } from './prozent';
 
 function konstante<T>(e: { ok: true; wert: T } | { ok: false; fehler: { meldung: string } }): T {
   if (!e.ok) throw new Error(e.fehler.meldung);
   return e.wert;
 }
 const HUNDERT = konstante(alsDezimal('100.00'));
-const NULL_PROZENT = konstante(alsProzent('0.00'));
-const HUNDERT_PROZENT = konstante(alsProzent('100.00'));
 
 /** Die Positionen, für die der Bezug steht: `null` alle, sonst die genannten und alle unter genannten Gliederungen. */
 function bezogenePositionen(
