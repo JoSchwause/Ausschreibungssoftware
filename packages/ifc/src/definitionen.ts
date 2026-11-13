@@ -25,7 +25,7 @@ export class Definitionen {
     this.vonObjekt = vorlage?.vonObjekt ?? new Map<number, number[]>();
     this.typVon = vorlage?.typVon ?? new Map<number, number>();
     if (vorlage !== undefined) return;
-    for (const r of l.daten.klasse('IFCRELDEFINESBYPROPERTIES')) {
+    for (const r of l.instanzen('IFCRELDEFINESBYPROPERTIES')) {
       const p = l.parameter(r);
       if (p === null) continue;
       // IFC 4 erlaubt statt eines Satzes ein `IfcPropertySetDefinitionSet`, einen getypten Wert mit einer Liste.
@@ -40,7 +40,7 @@ export class Definitionen {
         else liste.push(...saetze);
       }
     }
-    for (const r of l.daten.klasse('IFCRELDEFINESBYTYPE')) {
+    for (const r of l.instanzen('IFCRELDEFINESBYTYPE')) {
       const p = l.parameter(r);
       if (p === null) continue;
       const typ = l.ziel(r, p[5]);

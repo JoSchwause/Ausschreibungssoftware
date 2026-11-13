@@ -39,7 +39,7 @@ export class Mengenleser {
     const { eigene, vomTyp } = this.definitionen.saetze(i);
     const lesen = (saetze: readonly number[]) =>
       saetze
-        .filter((s) => this.l.daten.name(s) === 'IFCELEMENTQUANTITY')
+        .filter((s) => this.l.klasseVon(s) === 'IFCELEMENTQUANTITY')
         .map((s) => ({ pos: s, eintraege: this.satz(s) }));
     return zusammenfuehren(lesen(eigene), lesen(vomTyp));
   }
@@ -66,8 +66,8 @@ export class Mengenleser {
   }
 
   private menge(q: number, satz: string | null): StepBauteilmenge | null {
-    const klasse = this.l.daten.name(q);
-    const nummer = `#${String(this.l.daten.id(q))}`;
+    const klasse = this.l.klasseVon(q);
+    const nummer = `#${String(this.l.nummer(q))}`;
     const art = MENGENARTEN.get(klasse);
     if (art === undefined) {
       this.l.melde(
