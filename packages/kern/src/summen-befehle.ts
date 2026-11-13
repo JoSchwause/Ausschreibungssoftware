@@ -7,6 +7,7 @@
 import { alsBetrag, alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
 import type {
   Befehlsfehler,
+  Befehlshinweis,
   Ergebnis,
   EinheitspreisAendern,
   LvChangeSet,
@@ -20,7 +21,9 @@ import type {
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
+import { kalkulationEntferntHinweis } from './hinweise';
 import { mitMengenansatz } from './mengenansatz';
+import { positionMitKalkulation } from './positionsfelder';
 import { ohneKnoten, indexVon } from './struktur';
 import type { Baumindex } from './struktur';
 import { summenAenderung } from './summen';
@@ -47,12 +50,24 @@ export function positionFinden(
 
 /**
  * Position ändern; die Summen folgen aus der Knotenänderung (GP, Ziel, und die Zuschlagspositionen, deren Bereich oder
- * Liste die Position enthält). `summenAenderung` nennt nur Werte, die sich ändern.
+ * Liste die Position enthält). `summenAenderung` nennt nur Werte, die sich ändern. `hinweise` gehen in das ChangeSet (vor dem
+ * Hinweis zum Netto). Entfällt dabei die Kalkulation der Position (v1.7a, D-82 S4), kommt der Hinweis
+ * `kalkulation-entfernt` dazu; `grund` sagt, warum (ohne `grund` kein solcher Hinweis).
  */
-export function positionAendern(z: LvZustand, idx: Baumindex, alt: Position, neu: Position): LvChangeSet {
+export function positionAendern(
+  z: LvZustand,
+  idx: Baumindex,
+  alt: Position,
+  neu: Position,
+  grund?: 'preis' | 'zuschlag',
+): LvChangeSet {
   const geaendert = [{ vorher: alt, nachher: neu }];
   const summen = summenAenderung(z, idx, { knoten: { geaendert } });
-  return baueChangeSet(z, { geaendert, summen });
+  const hinweise: Befehlshinweis[] =
+    grund !== undefined && alt.kalkulation !== undefined && neu.kalkulation === undefined
+      ? [kalkulationEntferntHinweis(alt.id, grund)]
+      : [];
+  return baueChangeSet(z, hinweise.length === 0 ? { geaendert, summen } : { geaendert, summen, hinweise });
 }
 
 /**
@@ -81,7 +96,10 @@ export function einheitspreisAendern(z: LvZustand, b: EinheitspreisAendern): Ant
   }
   const { idx, position } = f.wert;
   if (b.einheitspreis === position.einheitspreis) return ok(baueChangeSet(z, {}));
-  return ok(positionAendern(z, idx, position, { ...position, einheitspreis: b.einheitspreis }));
+  // Lesart (a) (v1.7a, D-127.6): Ein von Hand gesetzter EP entfernt die Kalkulation im selben ChangeSet (wie `MengeAendern`
+  // den Mengenansatz); derselbe EP ändert nichts, auch nicht die Kalkulation.
+  const neu = positionMitKalkulation({ ...position, einheitspreis: b.einheitspreis }, null);
+  return ok(positionAendern(z, idx, position, neu, 'preis'));
 }
 
 function gleicherNachlass(a: Nachlass | null, b: Nachlass | null): boolean {

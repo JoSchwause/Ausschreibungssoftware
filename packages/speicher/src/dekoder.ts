@@ -6,9 +6,28 @@
 // Befehle im Protokoll werden nur auf `art` und JSON-Tauglichkeit geprüft; ihre fachliche Form zu prüfen ist
 // Sache des Kerns.
 
-import { KOSTENGRUPPE_FORM, langtextFormFehler } from '@tethys/kern';
-import { IFC_GLOBALID_MUSTER, MASSENBEFEHLSARTEN, NACHKOMMASTELLEN } from '@tethys/vertrag';
+import { langtextFormFehler } from '@tethys/kern';
+import {
+  BAUTEILMENGENARTEN,
+  IFC_GLOBALID_MUSTER,
+  IFC_SCHEMATA,
+  KOSTENGRUPPENNUMMER_MUSTER,
+  MASSENBEFEHLSARTEN,
+  MODELLDATEI_HASH_MUSTER,
+  NACHKOMMASTELLEN,
+  STRUKTURKNOTENARTEN,
+} from '@tethys/vertrag';
 import type {
+  Anschrift,
+  Bieterangaben,
+  Druckprofil,
+  Einstellungen,
+  Kalkulationsangaben,
+  Kalkulationsansatz,
+  Kostengruppenbezeichnung,
+  LangtextUmfang,
+  PreisspiegelEinstellungen,
+  Projektangaben,
   AnrechenbareKostenangabe,
   Anordnungsart,
   Anordnungsbeziehung,
@@ -126,6 +145,7 @@ import type {
   Zuschlagsbezug,
 } from '@tethys/vertrag';
 import { AGGREGATART_NAMEN } from './aggregatarten';
+import { einstellungenFormfehler } from './einstellungen';
 import { abbruch } from './ergebnis';
 
 // --- Grundbausteine ----------------------------------------------------------------------------------------------
@@ -524,7 +544,7 @@ function knoten(x: unknown, pfad: string): Knoten {
           'einheitspreis',
           'epa',
         ],
-        ['leitbeschreibung', 'mengenansatz', 'kostengruppe', 'textquelle', 'bauteile'],
+        ['leitbeschreibung', 'mengenansatz', 'kostengruppe', 'textquelle', 'bauteile', 'kalkulation'],
       );
       return {
         ...lage(o),
@@ -548,6 +568,7 @@ function knoten(x: unknown, pfad: string): Knoten {
         ...optional(o, 'kostengruppe', (v) => kostengruppe(v, `${pfad}.kostengruppe`)),
         ...optional(o, 'textquelle', (v) => nichtLeer(v, `${pfad}.textquelle`)),
         ...optional(o, 'bauteile', (v) => bauteilzuordnungen(v, `${pfad}.bauteile`)),
+        ...optional(o, 'kalkulation', (v) => kalkulationsangaben(v, `${pfad}.kalkulation`)),
       };
     }
     default:
@@ -612,7 +633,7 @@ function summenstand(x: unknown, pfad: string): Summenstand {
 // --- Aggregate --------------------------------------------------------------------------------------------------------
 
 function projekt(x: unknown, pfad: string): Projekt {
-  const o = objekt(x, pfad, ['id', 'name', 'bauherr', 'bieter']);
+  const o = objekt(x, pfad, ['id', 'name', 'bauherr', 'bieter'], ['angaben']);
   const bh = objekt(feld(o, 'bauherr'), `${pfad}.bauherr`, ['name', 'anschrift']);
   return {
     id: zeichenkette(feld(o, 'id'), `${pfad}.id`) as ProjektId,
@@ -623,13 +644,165 @@ function projekt(x: unknown, pfad: string): Projekt {
     },
     bieter: liste(feld(o, 'bieter'), `${pfad}.bieter`).map((b, i): Bieter => {
       const q = `${pfad}.bieter[${String(i)}]`;
-      const bo = objekt(b, q, ['id', 'name']);
+      const bo = objekt(b, q, ['id', 'name'], ['angaben']);
       return {
         id: zeichenkette(feld(bo, 'id'), `${q}.id`) as BieterId,
         name: zeichenkette(feld(bo, 'name'), `${q}.name`),
+        ...optional(bo, 'angaben', (v) => bieterangaben(v, `${q}.angaben`)),
+      };
+    }),
+    ...optional(o, 'angaben', (v) => projektangaben(v, `${pfad}.angaben`)),
+  };
+}
+
+// --- v1.7a (Schema 7): Angaben, Preisspiegel-Einstellungen, Kalkulation, Einstellungen ------------------------------------
+//
+// Die Form, die der Vertrag an den Typen nennt (Felder, Texte „nie ''“, kanonische Dezimalwerte, Aufzählungen, „nie leer“ bzw.
+// „sind alle null, fehlt der Block“, eindeutige Schlüssel der Einstellungen); keine Fachregeln, die der Ausführer prüft
+// (Bereich der Sätze, A ≤ B), damit jeder Export sich wieder einlesen lässt (D-79.4).
+
+const alleNull = (o: object): boolean => Object.values(o).every((w) => w === null);
+
+/** Eine Anschrift (v1.7a): Teile nullbar, nie `''`, nie alle `null` (dann ist die Anschrift selbst `null`). */
+function anschrift(x: unknown, pfad: string): Anschrift {
+  const o = objekt(x, pfad, ['strasse', 'plz', 'ort']);
+  const a: Anschrift = {
+    strasse: nichtLeerOderNull(feld(o, 'strasse'), `${pfad}.strasse`),
+    plz: nichtLeerOderNull(feld(o, 'plz'), `${pfad}.plz`),
+    ort: nichtLeerOderNull(feld(o, 'ort'), `${pfad}.ort`),
+  };
+  return alleNull(a) ? ungueltig(pfad, 'Anschrift ohne jeden Teil (sie ist dann null)') : a;
+}
+
+function projektangaben(x: unknown, pfad: string): Projektangaben {
+  const o = objekt(x, pfad, ['nummer', 'ort', 'baustelle']);
+  const a: Projektangaben = {
+    nummer: nichtLeerOderNull(feld(o, 'nummer'), `${pfad}.nummer`),
+    ort: nichtLeerOderNull(feld(o, 'ort'), `${pfad}.ort`),
+    baustelle: oderNull(feld(o, 'baustelle'), (v) => anschrift(v, `${pfad}.baustelle`)),
+  };
+  return alleNull(a) ? ungueltig(pfad, 'Angaben ohne jeden Teil (das Feld fehlt dann)') : a;
+}
+
+function bieterangaben(x: unknown, pfad: string): Bieterangaben {
+  const o = objekt(x, pfad, ['anschrift', 'ansprechperson', 'email', 'telefon']);
+  const a: Bieterangaben = {
+    anschrift: oderNull(feld(o, 'anschrift'), (v) => anschrift(v, `${pfad}.anschrift`)),
+    ansprechperson: nichtLeerOderNull(feld(o, 'ansprechperson'), `${pfad}.ansprechperson`),
+    email: nichtLeerOderNull(feld(o, 'email'), `${pfad}.email`),
+    telefon: nichtLeerOderNull(feld(o, 'telefon'), `${pfad}.telefon`),
+  };
+  return alleNull(a) ? ungueltig(pfad, 'Angaben ohne jeden Teil (das Feld fehlt dann)') : a;
+}
+
+function preisspiegelEinstellungen(x: unknown, pfad: string): PreisspiegelEinstellungen {
+  const o = objekt(x, pfad, ['ausreisserSchwelle', 'abcSchwelleA', 'abcSchwelleB', 'abcBezug']);
+  const satz = (n: string): Prozent => dezimal(feld(o, n), `${pfad}.${n}`, 'prozent') as Prozent;
+  return {
+    ausreisserSchwelle: satz('ausreisserSchwelle'),
+    abcSchwelleA: satz('abcSchwelleA'),
+    abcSchwelleB: satz('abcSchwelleB'),
+    abcBezug: aufzaehlung(feld(o, 'abcBezug'), `${pfad}.abcBezug`, ['mittel', 'schaetzpreis'] as const),
+  };
+}
+
+/** Kalkulationsangaben einer Position (v1.7a, E9): nie leer (ohne Ansatz und ohne Satz fehlt das Feld). */
+function kalkulationsangaben(x: unknown, pfad: string): Kalkulationsangaben {
+  const o = objekt(x, pfad, ['ansaetze', 'zuschlagssaetze']);
+  const ansaetze = liste(feld(o, 'ansaetze'), `${pfad}.ansaetze`).map((a, i): Kalkulationsansatz => {
+    const q = `${pfad}.ansaetze[${String(i)}]`;
+    const ao = objekt(a, q, ['art', 'bezeichnung', 'ansatzmenge', 'kostensatz']);
+    return {
+      art: aufzaehlung(feld(ao, 'art'), `${q}.art`, EPA_ARTEN),
+      bezeichnung: zeichenkette(feld(ao, 'bezeichnung'), `${q}.bezeichnung`),
+      ansatzmenge: oderNull(feld(ao, 'ansatzmenge'), (v) => dezimal(v, `${q}.ansatzmenge`, 'menge') as Menge),
+      kostensatz: oderNull(
+        feld(ao, 'kostensatz'),
+        (v) => dezimal(v, `${q}.kostensatz`, 'einheitspreis') as Einheitspreis,
+      ),
+    };
+  });
+  const so = objekt(feld(o, 'zuschlagssaetze'), `${pfad}.zuschlagssaetze`, [], EPA_ARTEN);
+  const zuschlagssaetze: Partial<Record<EpaArt, Prozent>> = {};
+  for (const art of EPA_ARTEN)
+    if (Object.hasOwn(so, art))
+      zuschlagssaetze[art] = dezimal(feld(so, art), `${pfad}.zuschlagssaetze.${art}`, 'prozent') as Prozent;
+  if (ansaetze.length === 0 && Object.keys(zuschlagssaetze).length === 0)
+    ungueltig(pfad, 'leere Kalkulation (das Feld fehlt dann)');
+  return { ansaetze, zuschlagssaetze };
+}
+
+function langtextUmfang(x: unknown, pfad: string): LangtextUmfang {
+  const art = typeof x === 'object' && x !== null ? (x as Roh)['art'] : undefined;
+  if (art === 'zeilen') {
+    const o = objekt(x, pfad, ['art', 'anzahl']);
+    return { art: 'zeilen', anzahl: ganzAbEins(feld(o, 'anzahl'), `${pfad}.anzahl`) };
+  }
+  const o = objekt(x, pfad, ['art']);
+  return { art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, ['voll', 'kein'] as const) };
+}
+
+function druckprofil(x: unknown, pfad: string): Druckprofil {
+  const o = objekt(x, pfad, [
+    'name',
+    'mitPreisen',
+    'langtext',
+    'titelsummen',
+    'schlussblock',
+    'deckblatt',
+    'kopfzeile',
+    'fusszeile',
+    'seitenrand',
+  ]);
+  return {
+    name: nichtLeer(feld(o, 'name'), `${pfad}.name`),
+    mitPreisen: wahrheit(feld(o, 'mitPreisen'), `${pfad}.mitPreisen`),
+    langtext: langtextUmfang(feld(o, 'langtext'), `${pfad}.langtext`),
+    titelsummen: wahrheit(feld(o, 'titelsummen'), `${pfad}.titelsummen`),
+    schlussblock: wahrheit(feld(o, 'schlussblock'), `${pfad}.schlussblock`),
+    deckblatt: wahrheit(feld(o, 'deckblatt'), `${pfad}.deckblatt`),
+    kopfzeile: textOderNull(feld(o, 'kopfzeile'), `${pfad}.kopfzeile`),
+    fusszeile: textOderNull(feld(o, 'fusszeile'), `${pfad}.fusszeile`),
+    seitenrand: aufzaehlung(feld(o, 'seitenrand'), `${pfad}.seitenrand`, ['normal', 'eng'] as const),
+  };
+}
+
+/**
+ * Der Block `einstellungen` (Schema 7, D-73, D-127.9): nie leer (gleichen sie `LEERE_EINSTELLUNGEN`, fehlt der Block),
+ * Druckprofilnamen eindeutig, Kostengruppen nach Nummer geordnet und eindeutig (die Schlüssel der Übernahme).
+ */
+function einstellungen(x: unknown, pfad: string): Einstellungen {
+  const o = objekt(x, pfad, ['buero', 'druckprofile', 'kostengruppenbezeichnungen']);
+  const e: Einstellungen = {
+    buero: oderNull(feld(o, 'buero'), (v) => {
+      const q = `${pfad}.buero`;
+      const bo = objekt(v, q, ['name', 'anschrift', 'telefon', 'email']);
+      return {
+        name: nichtLeer(feld(bo, 'name'), `${q}.name`),
+        anschrift: oderNull(feld(bo, 'anschrift'), (a) => anschrift(a, `${q}.anschrift`)),
+        telefon: nichtLeerOderNull(feld(bo, 'telefon'), `${q}.telefon`),
+        email: nichtLeerOderNull(feld(bo, 'email'), `${q}.email`),
+      };
+    }),
+    druckprofile: liste(feld(o, 'druckprofile'), `${pfad}.druckprofile`).map((d, i) =>
+      druckprofil(d, `${pfad}.druckprofile[${String(i)}]`),
+    ),
+    kostengruppenbezeichnungen: liste(
+      feld(o, 'kostengruppenbezeichnungen'),
+      `${pfad}.kostengruppenbezeichnungen`,
+    ).map((k, i): Kostengruppenbezeichnung => {
+      const q = `${pfad}.kostengruppenbezeichnungen[${String(i)}]`;
+      const ko = objekt(k, q, ['nummer', 'bezeichnung']);
+      return {
+        nummer: kostengruppe(feld(ko, 'nummer'), `${q}.nummer`),
+        bezeichnung: nichtLeer(feld(ko, 'bezeichnung'), `${q}.bezeichnung`),
       };
     }),
   };
+  if (e.buero === null && e.druckprofile.length === 0 && e.kostengruppenbezeichnungen.length === 0)
+    ungueltig(pfad, 'leere Einstellungen (der Block fehlt dann)');
+  const befund = einstellungenFormfehler(e);
+  return befund === null ? e : ungueltig(pfad, befund);
 }
 
 /** Ein Papierkorbeintrag (Schema 3): Kennung, Nummer ab 1 und die Knoten mit alter Lage. */
@@ -654,7 +827,7 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     feld(z, 'leistungsverzeichnis'),
     p,
     ['id', 'projektId', 'name', 'ozMaske', 'mwstSatz', 'nachlass', 'knoten'],
-    [...KOPFDATEN, 'nachtrag', 'vorlage'],
+    [...KOPFDATEN, 'nachtrag', 'vorlage', 'preisspiegel'],
   );
   const lv: Leistungsverzeichnis = {
     id: zeichenkette(feld(o, 'id'), `${p}.id`) as LeistungsverzeichnisId,
@@ -666,6 +839,7 @@ function lvZustand(x: unknown, pfad: string): LvZustand {
     ...kopfdaten(o, p),
     ...optional(o, 'nachtrag', (v) => nachtragsangaben(v, `${p}.nachtrag`)),
     ...optional(o, 'vorlage', (v) => nurWahr(v, `${p}.vorlage`)),
+    ...optional(o, 'preisspiegel', (v) => preisspiegelEinstellungen(v, `${p}.preisspiegel`)),
     knoten: liste(feld(o, 'knoten'), `${p}.knoten`).map((k, i) => knoten(k, `${p}.knoten[${String(i)}]`)),
   };
   return {
@@ -785,11 +959,11 @@ function angebotZustand(x: unknown, pfad: string): AngebotZustand {
 
 /**
  * Kostengruppennummer `100` bis `999` (Marke in `vertrag`: Wer sie aus einer Datei liest, prüft die Form nach); die
- * Formregel ist die des Kerns (`KOSTENGRUPPE_FORM`, S3).
+ * Formregel steht in `vertrag` (`KOSTENGRUPPENNUMMER_MUSTER`, v1.7a).
  */
 function kostengruppe(x: unknown, pfad: string): Kostengruppennummer {
   const s = zeichenkette(x, pfad);
-  if (!KOSTENGRUPPE_FORM.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
+  if (!KOSTENGRUPPENNUMMER_MUSTER.test(s)) ungueltig(pfad, `keine Kostengruppennummer: „${s}“`);
   return s as Kostengruppennummer;
 }
 
@@ -990,8 +1164,6 @@ function kostenermittlungZustand(x: unknown, pfad: string): KostenermittlungZust
 // „nie ''“ bzw. „nicht leer“); keine Fachregeln, die der Ausführer prüft (Ring in der Struktur, Statuswechsel, Datumsformat):
 // Strenger als er wäre, ließe Exporte nicht mehr importieren (D-79.4).
 
-const HASH = /^[0-9a-f]{64}$/;
-
 function globalId(x: unknown, pfad: string): IfcGlobalId {
   const s = zeichenkette(x, pfad);
   if (!IFC_GLOBALID_MUSTER.test(s))
@@ -1026,15 +1198,6 @@ function bauteilzuordnungen(x: unknown, pfad: string): Bauteilzuordnung[] {
   });
 }
 
-const MENGENARTEN: readonly Bauteilmenge['art'][] = [
-  'laenge',
-  'flaeche',
-  'volumen',
-  'anzahl',
-  'gewicht',
-  'zeit',
-];
-
 function bauteilmengen(x: unknown, pfad: string): Bauteilmenge[] {
   return liste(x, pfad).map((m, i): Bauteilmenge => {
     const q = `${pfad}[${String(i)}]`;
@@ -1042,25 +1205,17 @@ function bauteilmengen(x: unknown, pfad: string): Bauteilmenge[] {
     return {
       satz: textOderNull(feld(o, 'satz'), `${q}.satz`),
       name: nichtLeer(feld(o, 'name'), `${q}.name`),
-      art: aufzaehlung(feld(o, 'art'), `${q}.art`, MENGENARTEN),
+      art: aufzaehlung(feld(o, 'art'), `${q}.art`, BAUTEILMENGENARTEN),
       wert: dezimal(feld(o, 'wert'), `${q}.wert`, 'menge') as Menge,
     };
   });
 }
 
-const STRUKTURARTEN: readonly Strukturknoten['art'][] = [
-  'projekt',
-  'grundstueck',
-  'gebaeude',
-  'geschoss',
-  'raum',
-];
-
 function strukturknoten(x: unknown, pfad: string): Strukturknoten {
   const o = objekt(x, pfad, ['globalId', 'art', 'name', 'elternGlobalId', 'mengen']);
   return {
     globalId: globalId(feld(o, 'globalId'), `${pfad}.globalId`),
-    art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, STRUKTURARTEN),
+    art: aufzaehlung(feld(o, 'art'), `${pfad}.art`, STRUKTURKNOTENARTEN),
     name: textOderNull(feld(o, 'name'), `${pfad}.name`),
     elternGlobalId: oderNull(feld(o, 'elternGlobalId'), (v) => globalId(v, `${pfad}.elternGlobalId`)),
     mengen: bauteilmengen(feld(o, 'mengen'), `${pfad}.mengen`),
@@ -1102,7 +1257,8 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
   ]);
   const d = objekt(feld(o, 'datei'), `${p}.datei`, ['hash', 'dateiname', 'groesse']);
   const hash = zeichenkette(feld(d, 'hash'), `${p}.datei.hash`);
-  if (!HASH.test(hash)) ungueltig(`${p}.datei.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  if (!MODELLDATEI_HASH_MUSTER.test(hash))
+    ungueltig(`${p}.datei.hash`, '64 hexadezimale Stellen (klein) erwartet');
   const id = zeichenkette(feld(o, 'id'), `${p}.id`) as BauwerksmodellId;
   const vorgaengerId = oderNull(feld(o, 'vorgaengerId'), (v) =>
     zeichenkette(v, `${p}.vorgaengerId`),
@@ -1117,7 +1273,7 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
       dateiname: zeichenkette(feld(d, 'dateiname'), `${p}.datei.dateiname`),
       groesse: ganz(feld(d, 'groesse'), `${p}.datei.groesse`),
     },
-    schema: aufzaehlung(feld(o, 'schema'), `${p}.schema`, ['IFC2X3', 'IFC4'] as const),
+    schema: aufzaehlung(feld(o, 'schema'), `${p}.schema`, IFC_SCHEMATA),
     vorgaengerId,
     eingelesen: zeichenkette(feld(o, 'eingelesen'), `${p}.eingelesen`),
     struktur: liste(feld(o, 'struktur'), `${p}.struktur`).map((k, i) =>
@@ -1134,7 +1290,8 @@ function bauwerksmodellZustand(x: unknown, pfad: string): BauwerksmodellZustand 
 function modelldateiEintrag(x: unknown, pfad: string): { hash: string; inhalt: string } {
   const o = objekt(x, pfad, ['hash', 'inhalt']);
   const hash = zeichenkette(feld(o, 'hash'), `${pfad}.hash`);
-  if (!HASH.test(hash)) ungueltig(`${pfad}.hash`, '64 hexadezimale Stellen (klein) erwartet');
+  if (!MODELLDATEI_HASH_MUSTER.test(hash))
+    ungueltig(`${pfad}.hash`, '64 hexadezimale Stellen (klein) erwartet');
   return { hash, inhalt: zeichenkette(feld(o, 'inhalt'), `${pfad}.inhalt`) };
 }
 
@@ -1787,6 +1944,7 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
       'honorarberechnungen',
       'maengel',
       'bautagebuch',
+      'einstellungen',
     ],
   );
   if (feld(o, 'schemaVersion') !== version) ungueltig('$.schemaVersion', `erwartet ${String(version)}`);
@@ -1844,6 +2002,8 @@ export function dekodiereProjektdatei(roh: unknown, version: number): Projektdat
     ...optional(o, 'bautagebuch', (v) =>
       liste(v, '$.bautagebuch').map((x, i) => bautagebucheintragZustand(x, `$.bautagebuch[${String(i)}]`)),
     ),
+    // Schema 7 (v1.7a, D-127.9): die Einstellungen des Geräts als optionaler Block.
+    ...optional(o, 'einstellungen', (v) => einstellungen(v, '$.einstellungen')),
   };
   // Alle Teile gehören zum Projekt der Datei.
   const fremd = [

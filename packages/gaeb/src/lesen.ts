@@ -6,11 +6,14 @@
 // Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments; seit v1.1b (Ticket 32) zusätzlich alle
 // Positionsmerkmale unabhängig (F5), Wahl mit Gruppe und Variante, Zuschlag in allen drei Bezugsformen, Langtext
 // (`text.ts`), Kopfdaten (`OWN`, `AwardInfo`) und Leitbeschreibung (`SumDescr`/`SubDescr`). Was `vertrag` nicht halten kann, wird nicht
-// still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …).
+// still verworfen, sondern als Befund gemeldet (`nicht-abgebildet`, `formatierung-verworfen`, …). Seit Ticket 136 sind die
+// Befunde strukturiert (`befunde.ts`: Werte als Daten, OZ, Gruppe „Nicht übernommen“), jede Abweisung hat einen Satz
+// (`abweisung.ts`), und die Dateiart wird am Inhalt erkannt (`dateiart.ts`).
 
 import { gesamtpreis, leseAustausch, vergleiche } from '@tethys/dezimal';
 import type { Austauschhinweiscode, Zahl } from '@tethys/dezimal';
 import type {
+  GaebFormat,
   Auftraggeber,
   Auftragnehmer,
   EpaArt,
@@ -39,7 +42,6 @@ import type {
   PositionId,
   Positionsmerkmale,
   Prozent,
-  Pruefbefund,
   Titel,
   Unterbeschreibung,
   Vergabeinformationen,
@@ -47,6 +49,11 @@ import type {
   Zahlenart,
   Zuschlagsbezug,
 } from '@tethys/vertrag';
+import { formatAbweisen, fremdesXml, phaseAbweisen, unbekannteDatei, versionAbweisen } from './abweisung';
+import type { Abweisung, Leserart } from './abweisung';
+import { anzahl, angabeZu, deutsch, text, zahlwert } from './befunde';
+import type { Befundwerte, GaebBefund, GaebBefundcode, Rollen } from './befunde';
+import { dateiartAusText, siehtAusWieXml } from './dateiart';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { erkenne } from './erkennung';
 import { dekodiereBytes } from './kodierung';
@@ -78,9 +85,12 @@ export interface LeseOptionen {
 
 /**
  * Ergebnis des Lesers. Die Wurzelkennung, unter der die obersten Knoten hängen, steht seit v1.1a nur noch in
- * `inhalt.wurzelId`.
+ * `inhalt.wurzelId`. Seit Ticket 136 mit strukturierten Befunden (`GaebBefund`) und dem Herkunftsformat (`format`, fehlt nur,
+ * wenn die Datei keine GAEB-Datei ist).
  */
-export type GaebLesungErgebnis = GaebLesung;
+export interface GaebLesungErgebnis extends GaebLesung {
+  readonly befunde: readonly GaebBefund[];
+}
 
 /** E-19: MwSt-Satz, wenn der Aufrufer keinen liefert (X81/X83 tragen keinen). */
 export const STANDARD_MWST_SATZ = '19.00' as Prozent;
@@ -163,9 +173,25 @@ export const wert = (e: XmlElement | undefined): string | null => (e ? textInhal
 interface Aggregat {
   anzahl: number;
   readonly erstes: XmlElement | null;
-  readonly code: string;
+  readonly code: GaebBefundcode;
   readonly meldung: (anzahl: number) => string;
+  readonly angaben: Sammelangaben;
 }
+
+/** Was ein Befund außer Code, Meldung und Element mitbringt (Ticket 136). */
+export interface Befundangaben {
+  readonly knotenId?: PositionId | string;
+  readonly feld?: string;
+  /** Werte als Daten (siehe `BEFUNDTEXTE`). */
+  readonly werte?: Befundwerte;
+  /** OZ zur Anzeige, wenn der Befund an keinem Knoten mit bekannter OZ hängt (z. B. eine Zeile ohne Position im LV). */
+  readonly oz?: string;
+  /** Bezeichnung für die Gruppe „Nicht übernommen“. */
+  readonly nichtUebernommen?: string;
+}
+
+/** Angaben eines zusammengefassten Befunds; die Anzahl ergänzt `abschliessen` als Wert `anzahl`. */
+export type Sammelangaben = Pick<Befundangaben, 'werte' | 'nichtUebernommen'>;
 
 const HINWEIS_TEXT: Readonly<Record<Austauschhinweiscode, string | null>> = {
   'leerraum-entfernt': 'enthält überflüssigen Leerraum',
@@ -180,17 +206,23 @@ const HINWEIS_TEXT: Readonly<Record<Austauschhinweiscode, string | null>> = {
 
 /** Der eigentliche Leser, ein Aufruf je Datei. Auch der Angebotsleser (X84, `angebot.ts`) meldet über ihn. */
 export class Leser {
-  readonly befunde: Pruefbefund[] = [];
+  readonly befunde: GaebBefund[] = [];
   private readonly aggregate = new Map<string, Aggregat>();
+  /** Knotenkennung → OZ zur Anzeige (Ticket 136): ergänzt `oz` an den Befunden dieses Knotens. */
+  private readonly ozJeKnoten = new Map<string, string>();
   private begrenzt = false;
   private formatKnoten = 0;
   private readonly formatArten = new Set<string>();
   private formatErst: XmlElement | null = null;
 
-  /** `ids`: `null`, wenn der Aufrufer keine Texte liest (X84); dann werfen `kurztext` und `langtext`. */
+  /**
+   * `ids`: `null`, wenn der Aufrufer keine Texte liest (X84); dann werfen `kurztext` und `langtext`. `rollen`: wessen Angabe
+   * `CTR` ist (im LV der Auftragnehmer, im Angebot der Bieter).
+   */
   constructor(
     private readonly xml: XmlErgebnis,
     private readonly ids: IdQuelle | null,
+    readonly rollen?: Rollen,
   ) {}
 
   private idQuelle(): IdQuelle {
@@ -200,10 +232,7 @@ export class Leser {
 
   // --- Befunde -------------------------------------------------------------------------------------------
 
-  ort(
-    el: XmlElement | undefined,
-    extra: { knotenId?: PositionId | string; feld?: string } = {},
-  ): Pruefbefund['ort'] {
+  ort(el: XmlElement | undefined, extra: Pick<Befundangaben, 'knotenId' | 'feld'> = {}): GaebBefund['ort'] {
     if (!el)
       return {
         ...(extra.knotenId ? { knotenId: extra.knotenId as PositionId } : {}),
@@ -220,11 +249,11 @@ export class Leser {
   }
 
   melde(
-    schwere: Pruefbefund['schwere'],
-    code: string,
+    schwere: GaebBefund['schwere'],
+    code: GaebBefundcode,
     meldung: string,
     el?: XmlElement,
-    extra: { knotenId?: PositionId | string; feld?: string } = {},
+    angaben: Befundangaben = {},
   ): void {
     if (this.befunde.length >= MAX_BEFUNDE) {
       if (!this.begrenzt) {
@@ -233,38 +262,77 @@ export class Leser {
           schwere: 'warnung',
           quelle: 'gaeb-lesen',
           code: 'befunde-begrenzt',
-          meldung: `Weitere Befunde des Lesers werden nicht mehr aufgezeichnet (Grenze ${String(MAX_BEFUNDE)}).`,
+          meldung: `Weitere Befunde werden nicht mehr aufgezeichnet (höchstens ${String(MAX_BEFUNDE)}).`,
           ort: {},
         });
       }
       return;
     }
-    this.befunde.push({ schwere, quelle: 'gaeb-lesen', code, meldung, ort: this.ort(el, extra) });
+    const { werte, oz, nichtUebernommen } = angaben;
+    this.befunde.push({
+      schwere,
+      quelle: 'gaeb-lesen',
+      code,
+      meldung,
+      ort: this.ort(el, angaben),
+      ...(werte === undefined || Object.keys(werte).length === 0 ? {} : { werte }),
+      ...(oz === undefined ? {} : { oz }),
+      ...(nichtUebernommen === undefined ? {} : { nichtUebernommen }),
+    });
+  }
+
+  /** Merkt die OZ eines Knotens für die Befunde an ihm (`ozBefunde`). */
+  ozBekannt(knotenId: string, oz: string | null): void {
+    if (oz !== null && oz !== '') this.ozJeKnoten.set(knotenId, oz);
+  }
+
+  /** Die Befunde, jeder an einem Knoten mit bekannter OZ mit dieser OZ (Ticket 136). */
+  ozBefunde(): GaebBefund[] {
+    return this.befunde.map((b) => {
+      const oz = b.ort.knotenId === undefined ? undefined : this.ozJeKnoten.get(b.ort.knotenId);
+      return b.oz !== undefined || oz === undefined ? b : { ...b, oz };
+    });
   }
 
   /** Fasst gleichartige Befunde einer Datei zu einem zusammen (Anzahl, erster Ort). */
   aggregiere(
     schluessel: string,
-    code: string,
+    code: GaebBefundcode,
     el: XmlElement | null,
     meldung: (anzahl: number) => string,
+    angaben: Sammelangaben = {},
   ): void {
     const vorhanden = this.aggregate.get(schluessel);
     if (vorhanden) vorhanden.anzahl += 1;
-    else this.aggregate.set(schluessel, { anzahl: 1, erstes: el, code, meldung });
+    else this.aggregate.set(schluessel, { anzahl: 1, erstes: el, code, meldung, angaben });
   }
 
-  nichtAbgebildet(el: XmlElement, bezeichnung: string, grundVorgabe?: string): void {
-    const grund =
-      grundVorgabe ??
-      (bezeichnung.endsWith('AddText')
-        ? 'Zusatztext des LV mit darin eingebetteten Bildern; der Vertrag hat dafür kein Feld'
-        : 'nicht im Vertrag abbildbar');
+  /**
+   * Eine Angabe der Datei, die nicht übernommen wird (Gruppe „Nicht übernommen“, Ticket 136). `bezeichnung` ist ihr Pfad in
+   * der Datei (`PrjInfo/LblPrj`), `grund` sagt bei Bedarf, warum; `angabe` ersetzt die Bezeichnung für Nutzer.
+   */
+  nichtAbgebildet(el: XmlElement, bezeichnung: string, grund?: string, angabe?: string): void {
+    const schluessel = `nicht-abgebildet|${bezeichnung}`;
+    const vorhanden = this.aggregate.get(schluessel);
+    if (vorhanden) {
+      vorhanden.anzahl += 1;
+      return;
+    }
+    const name = angabe ?? angabeZu(bezeichnung, this.rollen);
+    // `BoQInfo/Ctlg (locality)`: der Zusatz in Klammern (die Art des Katalogs) steht als Name hinter der Bezeichnung.
+    const [, pfad = bezeichnung, zusatz] = /^(.*?)(?: \((.*)\))?$/.exec(bezeichnung) ?? [];
+    const was =
+      name === bezeichnung
+        ? `Die Angabe ${bezeichnung}`
+        : `${name}${zusatz === undefined ? '' : ` „${zusatz}“`} (${pfad})`;
     this.aggregiere(
-      `nicht-abgebildet|${bezeichnung}`,
+      schluessel,
       'nicht-abgebildet',
       el,
-      (n) => `Element ${bezeichnung} (${grund}) wird nicht übernommen, ${String(n)} Vorkommen.`,
+      (n) =>
+        `${was} wird nicht übernommen${grund === undefined ? '' : `: ${grund}`}` +
+        `${n > 1 ? ` (${String(n)} Vorkommen)` : ''}.`,
+      { werte: { element: text(bezeichnung) }, nichtUebernommen: name },
     );
   }
 
@@ -281,9 +349,11 @@ export class Leser {
         quelle: 'gaeb-lesen',
         code: 'formatierung-verworfen',
         meldung:
-          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wurde Formatierung verworfen, die der Vertrag nicht abbildet ` +
+          `In ${String(this.formatKnoten)} ${this.formatKnoten === 1 ? 'Text' : 'Texten'} wird Formatierung nicht übernommen ` +
           `(${[...this.formatArten].sort().join('; ')}). Der Text bleibt ohne diese Formatierung erhalten.`,
         ort: this.ort(this.formatErst ?? undefined),
+        werte: { anzahl: anzahl(this.formatKnoten), arten: text([...this.formatArten].sort().join('; ')) },
+        nichtUebernommen: 'Textformatierung',
       });
     for (const a of this.aggregate.values())
       this.befunde.push({
@@ -292,6 +362,8 @@ export class Leser {
         code: a.code,
         meldung: a.meldung(a.anzahl),
         ort: this.ort(a.erstes ?? undefined),
+        werte: { ...a.angaben.werte, anzahl: anzahl(a.anzahl) },
+        ...(a.angaben.nichtUebernommen === undefined ? {} : { nichtUebernommen: a.angaben.nichtUebernommen }),
       });
   }
 
@@ -330,19 +402,19 @@ export class Leser {
         'dezimal-ungueltig',
         `Wert „${roh.trim()}“ ist keine lesbare Zahl: ${r.fehler.meldung}`,
         el,
-        { knotenId, feld },
+        { knotenId, feld, werte: { wert: text(roh.trim()) } },
       );
       return null;
     }
     for (const h of r.hinweise) {
-      const text = HINWEIS_TEXT[h.code];
-      if (text !== null)
+      const hinweis = HINWEIS_TEXT[h.code];
+      if (hinweis !== null)
         this.melde(
           h.code === 'gerundet' ? 'fehler' : 'warnung',
           h.code,
-          `Wert „${h.original.trim()}“ ${text}.`,
+          `Wert „${h.original.trim()}“ ${hinweis}.`,
           el,
-          { knotenId, feld },
+          { knotenId, feld, werte: { wert: text(h.original.trim()) } },
         );
     }
     return r.wert;
@@ -696,11 +768,7 @@ class Aufbau {
           this.positionsliste(k, eltern);
           break;
         default:
-          this.l.nichtAbgebildet(
-            k,
-            `BoQBody/${k.name}`,
-            k.name === 'LotGrp' ? 'Losgruppen kennt der Vertrag nicht' : 'nicht im Vertrag abbildbar',
-          );
+          this.l.nichtAbgebildet(k, `BoQBody/${k.name}`);
       }
     }
   }
@@ -762,6 +830,7 @@ class Aufbau {
       id = titel.id;
     }
     this.l.restMelden(el, this.preise ? KATEGORIE_BEHANDELT_X86 : KATEGORIE_BEHANDELT, 'BoQCtgy');
+    this.l.ozBekannt(id, gemeinsam.ordnungszahl);
     const name = gemeinsam.ordnungszahl ?? `„${kurz}“`;
     this.gliederungswahl(el, id, name);
     if (this.preise) this.gliederungssummen(kind(el, 'Totals'), id, name);
@@ -791,7 +860,7 @@ class Aufbau {
         'Eine Wahl gibt es nur an einzelnen Positionen; die Positionen der Gliederung werden ohne Wahl gelesen' +
         (grund ? '.' : ' und gehen in die Summen ein.'),
       gruppeEl ?? varianteEl,
-      { knotenId: id },
+      { knotenId: id, werte: { gruppe: text(gruppe), variante: text(variante) } },
     );
   }
 
@@ -807,36 +876,46 @@ class Aufbau {
     const ort = { knotenId: id };
     const pct = kind(totals, 'DiscountPcnt');
     const amt = kind(totals, 'DiscountAmt');
-    const nachlass = pct ? `${wert(pct) ?? ''} %` : amt ? `${wert(amt) ?? ''} €` : null;
+    const nachlass = pct
+      ? zahlwert('prozent', wert(pct) ?? '')
+      : amt
+        ? zahlwert('betrag', wert(amt) ?? '')
+        : null;
     if (nachlass !== null)
       this.l.melde(
         'warnung',
         'nachlass-nicht-abgebildet',
-        `Nachlass ${nachlass} der Gliederung ${name}: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.`,
+        `Nachlass ${deutsch(nachlass)} der Gliederung ${name}: Ein Nachlass gilt nur für das ganze LV; die Summen werden ` +
+          'ohne diesen Nachlass gerechnet.',
         pct ?? amt,
-        ort,
+        { ...ort, werte: { nachlass } },
       );
     const pauschal = kind(totals, 'TotalLSUM');
-    if (pauschal)
+    if (pauschal) {
+      const pauschalsumme = zahlwert('betrag', wert(pauschal) ?? '');
       this.l.melde(
         'warnung',
         'pauschalsumme-nicht-abgebildet',
-        `Pauschalsumme ${wert(pauschal) ?? ''} der Gliederung ${name}: Eine Pauschalsumme für eine Gliederung ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
+        `Pauschalsumme ${deutsch(pauschalsumme)} der Gliederung ${name}: Eine Pauschalsumme für eine Gliederung wird nicht ` +
+          'übernommen; die Summe wird aus den Positionen gerechnet.',
         pauschal,
-        ort,
+        { ...ort, werte: { pauschalsumme } },
       );
+    }
     const vat = kind(totals, 'VAT');
-    const satz = wert(vat);
+    const roh = wert(vat);
     const lv = this.preise.mwstSatz;
-    if (vat && satz !== null && lv !== null) {
-      const z = leseAustausch('prozent', satz);
-      if (z.ok && vergleiche(z.wert, lv) !== 0)
+    if (vat && roh !== null && lv !== null) {
+      const satz = zahlwert('prozent', roh);
+      const satzLv = { art: 'prozent', wert: lv } as const;
+      if (satz.art === 'prozent' && vergleiche(satz.wert, lv) !== 0)
         this.l.melde(
           'warnung',
           'mwst-satz-abweichend',
-          `Steuersatz ${satz} % der Gliederung ${name} weicht vom Satz des LV (${lv} %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.`,
+          `Steuersatz ${deutsch(satz)} der Gliederung ${name} weicht vom Satz des LV (${deutsch(satzLv)}) ab; ein LV hat ` +
+            'genau einen Steuersatz, es gilt der des LV.',
           vat,
-          ort,
+          { ...ort, werte: { satz, satzLv } },
         );
     }
   }
@@ -850,7 +929,11 @@ class Aufbau {
     // Ein Detailtext ohne Inhalt (auch nur leere Absätze) gilt als fehlend; dann trägt der Kurztext den Hinweis.
     if (langtextLeer(text)) text = this.l.langtext(outline);
     else if (outline && textInhalt(outline).trim() !== '')
-      this.l.nichtAbgebildet(outline, 'Remark/OutlineText', 'Kurztext des Hinweistexts ohne Entsprechung');
+      this.l.nichtAbgebildet(
+        outline,
+        'Remark/OutlineText',
+        'ein Hinweistext hat einen Text, übernommen wird der ausführliche',
+      );
     const h: Hinweistext = {
       art: 'hinweis',
       id: this.ids.hinweistext(),
@@ -875,13 +958,7 @@ class Aufbau {
           this.hinweis(k, eltern);
           break;
         default:
-          this.l.nichtAbgebildet(
-            k,
-            `Itemlist/${k.name}`,
-            k.name === 'PerfDescr'
-              ? 'Ausführungsbeschreibungen kennt der Vertrag nicht'
-              : 'nicht im Vertrag abbildbar',
-          );
+          this.l.nichtAbgebildet(k, `Itemlist/${k.name}`);
       }
     }
   }
@@ -935,6 +1012,7 @@ class Aufbau {
         );
       else this.ozGesehen.add(schluessel);
     }
+    this.l.ozBekannt(id, ordnungszahl === null ? null : `${ordnungszahl}${ozIndex ?? ''}`);
     return { ordnungszahl, ozIndex };
   }
 
@@ -1198,7 +1276,7 @@ class Aufbau {
       if (!komp) continue;
       const anteil = preise.anteile[i] ?? null;
       if (anteil === null) {
-        this.l.nichtAbgebildet(komp, `Item/${name}`, 'Einheitspreisanteil ohne Bezeichnung im BoQInfo');
+        this.l.nichtAbgebildet(komp, `Item/${name}`, 'der Anteil hat im Kopf des LV keine Bezeichnung');
         continue;
       }
       const w = this.l.zahl('einheitspreis', komp, id, 'epa');
@@ -1218,14 +1296,18 @@ class Aufbau {
     const it = leseAustausch('betrag', roh);
     if (!it.ok) return;
     const soll = gesamtpreis(menge, ep);
-    if (vergleiche(it.wert, soll) !== 0)
+    if (vergleiche(it.wert, soll) !== 0) {
+      const datei = { art: 'betrag', wert: it.wert } as const;
+      const gerechnet = { art: 'betrag', wert: soll } as const;
       this.l.melde(
         'warnung',
         'gesamtpreis-abweichend',
-        `Der Gesamtpreis (IT) ${roh} weicht von Menge × EP = ${soll} ab; die Summen rechnet die App selbst.`,
+        `Der Gesamtpreis der Datei (${deutsch(datei)}) weicht von Menge × EP (${deutsch(gerechnet)}) ab; gerechnet wird ` +
+          'mit Menge × EP.',
         itEl,
-        { knotenId: id, feld: 'gesamtpreis' },
+        { knotenId: id, feld: 'gesamtpreis', werte: { datei, gerechnet } },
       );
+    }
   }
 
   /** Löst die Verweise der Zuschlagspositionen (`ListInSubQty`) auf, nachdem alle Positionen gelesen sind. */
@@ -1396,13 +1478,17 @@ function leseLvSummen(
   );
   // Eine Pauschalsumme des LV ist eine eigene Angabe, keine abgeleitete (Ticket 129).
   const pauschal = kind(totals, 'TotalLSUM');
-  if (pauschal)
+  if (pauschal) {
+    const pauschalsumme = zahlwert('betrag', wert(pauschal) ?? '');
     l.melde(
       'warnung',
       'pauschalsumme-nicht-abgebildet',
-      `Pauschalsumme ${wert(pauschal) ?? ''} des LV: Eine Pauschalsumme ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
+      `Pauschalsumme ${deutsch(pauschalsumme)} des LV: Eine Pauschalsumme wird nicht übernommen; die Summe wird aus den ` +
+        'Positionen gerechnet.',
       pauschal,
+      { werte: { pauschalsumme } },
     );
+  }
   const vat = kind(totals, 'VAT');
   const mwstAusDatei = vat ? l.zahl('prozent', vat, '', 'mwstSatz') : null;
   const dp = kind(totals, 'DiscountPcnt');
@@ -1496,21 +1582,15 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
   const mwstSatz = mwstAusDatei ?? opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
   if (mwstAusDatei !== null) {
     // X86 trägt den Satz in BoQInfo/Totals/VAT.
-  } else if (opt.standardMwstSatz === undefined) {
-    l.melde(
-      'warnung',
-      'mwst-standardsatz',
-      `X81/X83 tragen keinen Steuersatz und der Aufrufer lieferte keinen; der Standardsatz ${STANDARD_MWST_SATZ} % wird eingesetzt.`,
-      undefined,
-      { feld: 'mwstSatz' },
-    );
   } else {
+    const satz = { art: 'prozent', wert: mwstSatz } as const;
     l.melde(
       'warnung',
-      'mwst-ersatzwert',
-      `X81/X83 tragen keinen Steuersatz; der vom Aufrufer gelieferte Satz ${opt.standardMwstSatz} % wird eingesetzt.`,
+      opt.standardMwstSatz === undefined ? 'mwst-standardsatz' : 'mwst-ersatzwert',
+      `Die Datei trägt keinen Steuersatz (eine Leistungsbeschreibung oder Angebotsaufforderung hat keinen); eingesetzt wird ` +
+        `${opt.standardMwstSatz === undefined ? 'der Standardsatz' : 'der voreingestellte Satz'} von ${deutsch(satz)}.`,
       undefined,
-      { feld: 'mwstSatz' },
+      { feld: 'mwstSatz', werte: { satz } },
     );
   }
   return {
@@ -1531,7 +1611,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
 
 const LESBARE_PHASEN: ReadonlySet<GaebPhase> = new Set<GaebPhase>(['X81', 'X83', 'X86']);
 
-/** Gemeinsame Optionen des Vorlaufs (Größe, Kodierung, XML, Erkennung) für `leseGaeb` und `leseAngebot`. */
+/** Gemeinsame Optionen des Vorlaufs (Größe, Kodierung, XML, Erkennung) für `leseGaeb`, `leseAngebot` und `x31Lesen`. */
 export interface VorlaufOptionen {
   readonly dateiname?: string;
   readonly maxBytes?: number;
@@ -1544,29 +1624,55 @@ export type Vorlauf =
       readonly bereit: false;
       readonly phase: GaebLesung['phase'];
       readonly version: GaebLesung['version'];
-      readonly befunde: readonly Pruefbefund[];
+      /** Fehlt, wenn die Datei keine GAEB-Datei ist. */
+      readonly format?: GaebFormat;
+      readonly befunde: readonly GaebBefund[];
     }
   | {
       readonly bereit: true;
       readonly phase: GaebPhase | null;
       readonly version: GaebLesung['version'];
+      readonly format: 'da-xml';
       readonly wurzel: XmlElement;
       readonly leser: Leser;
-      /** Befunde vor dem Leser (Größe, Kodierung, XML); das Ergebnis ist `[...vorlauf, ...leser.befunde]`. */
-      readonly vorlauf: readonly Pruefbefund[];
+      /** Befunde vor dem Leser (Größe, Kodierung, XML); das Ergebnis ist `[...vorlauf, ...leser.ozBefunde()]`. */
+      readonly vorlauf: readonly GaebBefund[];
     };
 
+/** Ein Befund ohne Ort in der Datei (die Datei als Ganzes). */
+const dateibefund = (code: GaebBefundcode, a: Abweisung): GaebBefund => ({
+  schwere: 'fehler',
+  quelle: 'gaeb-lesen',
+  code,
+  meldung: a.meldung,
+  ort: {},
+  ...(Object.keys(a.werte).length === 0 ? {} : { werte: a.werte }),
+});
+
 /**
- * Prüft Größe, dekodiert, parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und
- * Phase. Nicht gelesene Versionen (älter als 3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer.
+ * Prüft Größe, dekodiert, erkennt die Dateiart am Inhalt (Ticket 136: GAEB 90, GAEB 2000 und Unbekanntes enden hier mit einem
+ * Satz), parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und Phase. Nicht gelesene
+ * Versionen (älter als 3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer (`phaseAbweisen`).
  */
-export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids: IdQuelle | null): Vorlauf {
-  const befunde: Pruefbefund[] = [];
+export function vorlauf(
+  eingabe: Uint8Array | string,
+  opt: VorlaufOptionen,
+  ids: IdQuelle | null,
+  leserart: Leserart,
+): Vorlauf {
+  const befunde: GaebBefund[] = [];
   const fertig = (
     phase: GaebLesung['phase'],
     version: GaebLesung['version'],
-    weitere: readonly Pruefbefund[] = [],
-  ): Vorlauf => ({ bereit: false, phase, version, befunde: [...befunde, ...weitere] });
+    format: GaebFormat | null,
+    weitere: readonly GaebBefund[] = [],
+  ): Vorlauf => ({
+    bereit: false,
+    phase,
+    version,
+    ...(format === null ? {} : { format }),
+    befunde: [...befunde, ...weitere],
+  });
 
   const groesse = eingabe.length;
   const maxBytes = opt.maxBytes ?? STANDARD_MAX_BYTES;
@@ -1575,47 +1681,59 @@ export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids:
       schwere: 'fehler',
       quelle: 'gaeb-lesen',
       code: 'datei-zu-gross',
-      meldung: `Die Eingabe ist ${String(groesse)} Bytes groß; zulässig sind höchstens ${String(maxBytes)}. Sie wird nicht gelesen.`,
+      meldung: `Die Datei ist ${String(groesse)} Bytes groß; gelesen werden höchstens ${String(maxBytes)}.`,
       ort: {},
+      werte: { groesse: anzahl(groesse), hoechstens: anzahl(maxBytes) },
     });
-    return fertig(null, null);
+    return fertig(null, null, null);
   }
 
-  let text: string;
-  if (typeof eingabe === 'string') text = eingabe.charCodeAt(0) === 0xfeff ? eingabe.slice(1) : eingabe;
+  let inhalt: string;
+  let kodierung: string | null = null;
+  const kodierungsbefunde: GaebBefund[] = [];
+  if (typeof eingabe === 'string') inhalt = eingabe.charCodeAt(0) === 0xfeff ? eingabe.slice(1) : eingabe;
   else {
     const d = dekodiereBytes(eingabe);
-    text = d.text;
-    befunde.push(...d.befunde);
+    inhalt = d.text;
+    kodierung = d.kodierung;
+    kodierungsbefunde.push(...d.befunde);
   }
 
-  const xml = parseXml(text, { maxTiefe: opt.maxTiefe ?? STANDARD_MAX_TIEFE, blattNamen: BLATTNAMEN });
+  // Dateiart am Inhalt (Ticket 136): Nur DA XML geht weiter; die Endung ist nur ein Hinweis auf die Phase.
+  if (!siehtAusWieXml(inhalt)) {
+    const art = dateiartAusText(
+      inhalt,
+      opt.dateiname,
+      typeof eingabe === 'string' ? null : eingabe,
+      kodierung,
+    );
+    if (art.format === 'gaeb-90' || art.format === 'gaeb-2000')
+      return fertig(art.phase, null, art.format, [
+        dateibefund('format-nicht-unterstuetzt', formatAbweisen(art.format, art.phase, leserart)),
+      ]);
+    return fertig(null, null, null, [dateibefund('dateiart-unbekannt', unbekannteDatei(leserart))]);
+  }
+  befunde.push(...kodierungsbefunde);
+
+  const xml = parseXml(inhalt, { maxTiefe: opt.maxTiefe ?? STANDARD_MAX_TIEFE, blattNamen: BLATTNAMEN });
   befunde.push(...xml.befunde);
   const root = xml.wurzel;
-  if (xml.abgelehnt || root === null) return fertig(null, null);
+  if (xml.abgelehnt || root === null) return fertig(null, null, null);
 
-  const l = new Leser(xml, ids);
+  const l = new Leser(xml, ids, leserart === 'angebot' ? { ctr: 'des Bieters' } : undefined);
   if (root.name !== 'GAEB') {
-    l.melde(
-      'fehler',
-      'wurzel-unerwartet',
-      `Das Wurzelelement heißt „${root.name}“, erwartet wird GAEB.`,
-      root,
-    );
-    return fertig(null, null, l.befunde);
+    const a = fremdesXml(root.name, leserart);
+    l.melde('fehler', 'wurzel-unerwartet', a.meldung, root, { werte: a.werte });
+    return fertig(null, null, null, l.befunde);
   }
 
   const erk = erkenne(root, opt.dateiname);
   for (const b of erk.befunde) l.melde(b.schwere, b.code, b.meldung, b.element);
 
   if (erk.stand === 'bekannt-nicht-unterstuetzt') {
-    l.melde(
-      'fehler',
-      'version-nicht-unterstuetzt',
-      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden die Versionen 3.1, 3.2 und 3.3.`,
-      root,
-    );
-    return fertig(erk.phase, erk.version, l.befunde);
+    const a = versionAbweisen(erk.versionText ?? '');
+    l.melde('fehler', 'version-nicht-unterstuetzt', a.meldung, root, { werte: a.werte });
+    return fertig(erk.phase, erk.version, 'da-xml', l.befunde);
   }
   if (erk.stand === 'unbekannt')
     l.melde(
@@ -1623,32 +1741,45 @@ export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids:
       'version-unbekannt',
       `Die Version ${erk.versionText === null ? '(ohne Angabe)' : `„${erk.versionText}“`} ist unbekannt; die Datei wird wie 3.3 gelesen.`,
       root,
+      erk.versionText === null ? {} : { werte: { version: text(erk.versionText) } },
     );
-  return { bereit: true, phase: erk.phase, version: erk.version, wurzel: root, leser: l, vorlauf: befunde };
+  return {
+    bereit: true,
+    phase: erk.phase,
+    version: erk.version,
+    format: 'da-xml',
+    wurzel: root,
+    leser: l,
+    vorlauf: befunde,
+  };
 }
 
 /**
  * Liest eine GAEB-DA-XML-Datei (3.3, 3.2, 3.1) der Phase X81, X83 oder X86. Wirft nie bei Dateiinhalt: Probleme sind
- * Befunde; `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder
- * Phase). X84 liest `leseAngebot`.
+ * Befunde; `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version, Phase oder
+ * Dateiart; jede Abweisung mit einem Satz, was die Datei ist und was stattdessen geht, Ticket 136). X84 liest `leseAngebot`.
  */
 export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebLesungErgebnis {
-  const v = vorlauf(eingabe, opt, opt.ids);
-  if (!v.bereit) return { phase: v.phase, version: v.version, inhalt: null, befunde: v.befunde };
+  const v = vorlauf(eingabe, opt, opt.ids, 'lv');
+  if (!v.bereit)
+    return {
+      phase: v.phase,
+      version: v.version,
+      ...(v.format === undefined ? {} : { format: v.format }),
+      inhalt: null,
+      befunde: v.befunde,
+    };
   const l = v.leser;
   const ergebnis = (inhalt: LvInhalt | null): GaebLesungErgebnis => ({
     phase: v.phase,
     version: v.version,
+    format: v.format,
     inhalt,
-    befunde: [...v.vorlauf, ...l.befunde],
+    befunde: [...v.vorlauf, ...l.ozBefunde()],
   });
   if (v.phase !== null && !LESBARE_PHASEN.has(v.phase)) {
-    l.melde(
-      'fehler',
-      'phase-nicht-unterstuetzt',
-      `Die Phase ${v.phase} wird in diesem Leser nicht gelesen (nur X81, X83 und X86).`,
-      v.wurzel,
-    );
+    const a = phaseAbweisen(v.phase, 'lv');
+    l.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, v.wurzel, { werte: a.werte });
     return ergebnis(null);
   }
 

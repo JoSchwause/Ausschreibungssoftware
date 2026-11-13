@@ -6,12 +6,17 @@ import type {
   AuftragsLeistungsverzeichnisId,
   Ergebnis,
   LeistungsverzeichnisId,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Projektdatei,
+  ProjektdateiEinleseergebnis,
   ProjektId,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
 import { schreibeAggregateDerDatei } from './aggregatarten';
 import { dekodiereProjektdatei } from './dekoder';
+import { einstellungenUebernehmen, einstellungsbericht } from './einstellungen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { ausBase64, base64, inflateRawHoechstens, sha256Hex } from './komprimierung';
@@ -22,13 +27,19 @@ import {
   aggregatIds,
   leseAngebot,
   leseAuftragsLv,
+  leseEinstellungen,
   leseLv,
   leseLvStaendeDesProjekts,
   leseProjekt,
   leseProtokoll,
 } from './lesen';
 import type { Migration } from './migrationen';
-import { schreibeModelldatei, schreibeProtokolleintrag } from './schreiben';
+import {
+  schreibeEinstellungsprotokolleintrag,
+  schreibeModelldatei,
+  schreibeProtokolleintrag,
+  wendeEinstellungenAn,
+} from './schreiben';
 import { pruefeNachtragsbezuege } from './bezuege';
 import type { Datenbank } from './sql';
 import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
@@ -49,6 +60,12 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
   }));
   const liste = <K extends string, T>(name: K, werte: readonly T[]): { [P in K]?: readonly T[] } =>
     (werte.length > 0 ? { [name]: werte } : {}) as { [P in K]?: readonly T[] };
+  // Schema 7 (v1.7a, D-127.9): die Einstellungen des Geräts als Block, außer sie sind leer. Vor Schema 7 gibt es keine.
+  const einstellungen = schemaVersion >= 7 ? leseEinstellungen(db) : LEERE_EINSTELLUNGEN;
+  const ohneEinstellungen =
+    einstellungen.buero === null &&
+    einstellungen.druckprofile.length === 0 &&
+    einstellungen.kostengruppenbezeichnungen.length === 0;
   return {
     schemaVersion,
     projekt,
@@ -93,6 +110,7 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
       'bautagebuch',
       v16.bautagebuch.map((bautagebucheintrag) => ({ bautagebucheintrag })),
     ),
+    ...(ohneEinstellungen ? {} : { einstellungen }),
   };
 }
 
@@ -202,6 +220,34 @@ export function leseProjektdatei(
   const neu = summenDerDateiNeuRechnen(datei.wert);
   befunde.push(...neu.befunde);
   return { ok: true, wert: neu.datei };
+}
+
+/**
+ * Übernimmt den Block `einstellungen` einer geprüften Projektdatei als protokollierten Befehl `EinstellungenUebernehmen`
+ * (D-73, D-127.9, D-82 M1), in der Transaktion des Aufrufers: nur, was je Schlüssel lokal fehlt; nie überschrieben. `kopf` ist
+ * der Kopf des Eintrags im Einstellungsprotokoll (`ProjektdateiEinleseoptionen.einstellungsuebernahme`). `null`: Die Datei
+ * trägt keinen Block oder der Aufruf keinen Kopf; dann bleiben die Einstellungen unberührt. Geschrieben werden Einstellungen und
+ * Eintrag nur, wenn etwas übernommen wird; der Bericht folgt aus dem ChangeSet.
+ */
+export function uebernimmEinstellungenDerDatei(
+  db: Datenbank,
+  d: Projektdatei,
+  kopf: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'> | undefined,
+): ProjektdateiEinleseergebnis['einstellungen'] {
+  if (d.einstellungen === undefined || kopf === undefined) return null;
+  const befehl = { art: 'EinstellungenUebernehmen', einstellungen: d.einstellungen } as const;
+  const vorher = leseEinstellungen(db);
+  // Die Regel des Ausführers im Kern (Ticket 137); bis zu dessen Merge nach derselben Regel hier (`einstellungenUebernehmen`).
+  const cs: EinstellungenChangeSet = {
+    art: 'einstellungen',
+    einstellungen: { vorher, nachher: einstellungenUebernehmen(vorher, befehl.einstellungen) },
+  };
+  const bericht = einstellungsbericht(d.einstellungen, cs);
+  if (bericht.uebernommen.length > 0) {
+    wendeEinstellungenAn(db, cs);
+    schreibeEinstellungsprotokolleintrag(db, { ...kopf, befehl });
+  }
+  return bericht;
 }
 
 /**

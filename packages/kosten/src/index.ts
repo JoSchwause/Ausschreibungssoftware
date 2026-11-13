@@ -30,7 +30,7 @@ export type {
   Kalkulationszuschlagssaetze,
   Kostenartnachweis,
 } from './kalkulation';
-export { einzelpreiskalkulationBerechnen } from './kalkulation';
+export { einzelpreiskalkulationBerechnen, kalkulationBerechnen } from './kalkulation';
 export type {
   Kalkulationsposition,
   Kalkulationsuebersicht,

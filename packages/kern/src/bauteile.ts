@@ -12,10 +12,20 @@ import type {
   LvZustand,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { nein, ok } from './fehler';
-import type { Positionswechsel } from './kostengruppe';
+import { ok } from './fehler';
+import { positionsfeldWechsel } from './positionsfeld';
+import type { Positionsfeld, Positionswechsel } from './positionsfeld';
 import { bauteileFehler, bauteileGleich, positionMitBauteilen } from './positionsfelder';
 import { indexVon } from './struktur';
+
+const BAUTEILE: Positionsfeld<BauteileZuordnen> = {
+  name: 'Bauteilzuordnungen',
+  feld: 'bauteile',
+  wert: (b) => b.bauteile,
+  formfehler: bauteileFehler,
+  gleich: (p, b) => bauteileGleich(p.bauteile, b.bauteile),
+  setzen: (p, b) => positionMitBauteilen(p, b.bauteile),
+};
 
 /**
  * Was `BauteileZuordnen` an der Position ändert, im LV wie im Auftrags-LV. `knotenVon` liefert den Knoten zur Kennung im Baum
@@ -26,26 +36,12 @@ import { indexVon } from './struktur';
  * - Form der Liste nach `bauteileFehler` (GlobalId in Form, Mengenart nicht leer, kein Paar doppelt), sonst
  *   `ungueltige-eingabe` mit `feld: 'bauteile'`. Keine Prüfung gegen ein Modell (A3).
  * - Die Liste ersetzt die alte ganz; `null` und `[]` entfernen das Feld; dieselbe Liste ist keine Änderung.
+ * Ablauf: `positionsfeldWechsel` (gemeinsam mit `KostengruppeSetzen`).
  */
-export function bauteileWechsel(
+export const bauteileWechsel = (
   knotenVon: (kennung: string) => Knoten | undefined,
   b: BauteileZuordnen,
-): Ergebnis<Positionswechsel, Befehlsfehler> {
-  const k = knotenVon(b.positionId);
-  if (k === undefined) return nein('knoten-unbekannt', `Knoten unbekannt: ${b.positionId}`, b.positionId);
-  if (k.art !== 'position')
-    return nein(
-      'knotenart-unzulaessig',
-      `Nur eine Position trägt Bauteilzuordnungen, nicht „${k.art}“.`,
-      b.positionId,
-    );
-  if (b.bauteile !== null) {
-    const f = bauteileFehler(b.bauteile);
-    if (f !== null) return nein('ungueltige-eingabe', f, b.positionId, 'bauteile');
-  }
-  if (bauteileGleich(k.bauteile, b.bauteile)) return ok(null);
-  return ok({ vorher: k, nachher: positionMitBauteilen(k, b.bauteile) });
-}
+): Ergebnis<Positionswechsel, Befehlsfehler> => positionsfeldWechsel(knotenVon, b, BAUTEILE);
 
 /** `BauteileZuordnen` im Ausschreibungs-LV: die Knotenänderung der Position, Summen unverändert. */
 export function bauteileZuordnen(z: LvZustand, b: BauteileZuordnen): Ergebnis<LvChangeSet, Befehlsfehler> {

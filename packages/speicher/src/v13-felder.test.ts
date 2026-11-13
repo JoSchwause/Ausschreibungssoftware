@@ -15,7 +15,14 @@ import {
   lvAnlegenChangeSet,
 } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
-import { ausBaumNehmen, feldAendern, kopfAendern, standAnlegen, umkehren } from './testhilfe/umkehrung';
+import {
+  befehlFuer,
+  ausBaumNehmen,
+  feldAendern,
+  kopfAendern,
+  standAnlegen,
+  umkehren,
+} from './testhilfe/umkehrung';
 import { ANSATZ, AUFTRAGNEHMER, EPA_BEZEICHNUNGEN } from './testhilfe/v13';
 
 const f = ladeFixture('typisch');
@@ -44,7 +51,10 @@ async function schreibe(kern: SpeicherKern, cs: ChangeSet): Promise<void> {
       ? ({ art: cs.art, id: cs.auftragsLeistungsverzeichnisId } as const)
       : ({ art: 'leistungsverzeichnis', id: lv.id } as const);
   wert(
-    await kern.anwenden(eintrag(nr, P, aggregat, { art: 'LeistungsverzeichnisUmbenennen', name: 'x' }), cs),
+    await kern.anwenden(
+      eintrag(nr, P, aggregat, befehlFuer(cs, { art: 'LeistungsverzeichnisUmbenennen', name: 'x' })),
+      cs,
+    ),
   );
 }
 
