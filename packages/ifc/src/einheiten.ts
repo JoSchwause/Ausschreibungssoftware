@@ -70,7 +70,7 @@ export class Einheiten {
   private readonly fehlendGemeldet = new Set<string>();
 
   constructor(private readonly l: Modellleser) {
-    const projekt = l.daten.klasse('IFCPROJECT')[0];
+    const projekt = l.instanzen('IFCPROJECT')[0];
     if (projekt === undefined) {
       l.melde(
         'fehler',
@@ -113,7 +113,7 @@ export class Einheiten {
     if (bekannt !== undefined) return bekannt;
     const ergebnis = this.umrechnung(u, typ, 0);
     let faktor: Dezimal | null = null;
-    const einheit = `${klassenname(this.l.daten.name(u))} #${String(this.l.daten.id(u))}`;
+    const einheit = `${klassenname(this.l.klasseVon(u))} #${String(this.l.nummer(u))}`;
     if (!ergebnis.ok)
       this.l.melde(
         'fehler',
@@ -142,7 +142,7 @@ export class Einheiten {
     if (p === null) return nein('nicht lesbar');
     const einheitentyp = aufzaehlung(p[1]);
     if (einheitentyp !== typ) return nein(`sie ist ${einheitentyp ?? 'ohne Typ'}, gebraucht wird ${typ}`);
-    const klasse = this.l.daten.name(u);
+    const klasse = this.l.klasseVon(u);
     if (klasse === 'IFCSIUNIT') {
       const name = aufzaehlung(p[3]) ?? '';
       const si = SI_EINHEITEN.get(name);
@@ -157,7 +157,7 @@ export class Einheiten {
     }
     if (klasse === 'IFCCONVERSIONBASEDUNIT') {
       const mass = this.l.ziel(u, p[3]);
-      if (mass === null || this.l.daten.name(mass) !== 'IFCMEASUREWITHUNIT')
+      if (mass === null || this.l.klasseVon(mass) !== 'IFCMEASUREWITHUNIT')
         return nein('ohne Umrechnungsfaktor (IfcMeasureWithUnit)');
       const pm = this.l.parameter(mass);
       const wert = zahlwert(pm?.[0]);

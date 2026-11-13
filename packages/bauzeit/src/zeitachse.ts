@@ -101,16 +101,17 @@ export function tagesindex(achse: Zeitachse, datum: Datum): number {
   return tagnummer(datum) - tagnummer(achse.von);
 }
 
+/** Lage eines Balkens auf der Achse in Tagesindizes (`bisTag` exklusiv). */
+export interface Balkenlage {
+  readonly vonTag: number;
+  readonly bisTag: number;
+}
+
 /**
  * Lage eines Balkens auf der Achse: `bisTag` exklusiv, also Index des Endes + 1, weil das Ende eines Vorgangs sein letzter
  * Arbeitstag ist; beim Meilenstein `bisTag = vonTag` (Ticket 96).
  */
-export function balkenlage(
-  achse: Zeitachse,
-  beginn: Datum,
-  ende: Datum,
-  art: Vorgangsart,
-): { readonly vonTag: number; readonly bisTag: number } {
+export function balkenlage(achse: Zeitachse, beginn: Datum, ende: Datum, art: Vorgangsart): Balkenlage {
   const vonTag = tagesindex(achse, beginn);
   return { vonTag, bisTag: art === 'meilenstein' ? vonTag : tagesindex(achse, ende) + 1 };
 }

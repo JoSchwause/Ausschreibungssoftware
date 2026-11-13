@@ -37,7 +37,7 @@ function objektDesBefunds(l: Modellleser, b: Gelesen.IfcBefund): number | undefi
 
 /** Name und Instanz eines Objekts für Meldungen, wie im Leser: `Wand 1 (#100)`. */
 function bezeichnung(l: Modellleser, i: number): string {
-  return `${l.name(i) ?? l.globalId(i)} (#${String(l.daten.id(i))})`;
+  return `${l.name(i) ?? l.globalId(i)} (#${String(l.nummer(i))})`;
 }
 
 /**
@@ -127,7 +127,7 @@ function abbilden(
       l.melde(
         'warnung',
         'verweis-mehrdeutig',
-        `${bezeichnung(l, i)} ${wie} #${String(l.daten.id(ziel))}, dessen GlobalId ${globalId} zuerst #${String(l.daten.id(erstes))} trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell ${folge}.`,
+        `${bezeichnung(l, i)} ${wie} #${String(l.nummer(ziel))}, dessen GlobalId ${globalId} zuerst #${String(l.nummer(erstes))} trägt (ein Verweis meint im Bauwerksmodell das erste Objekt); im Modell ${folge}.`,
         l.ort(i),
         i,
       );
@@ -136,7 +136,7 @@ function abbilden(
     l.melde(
       'warnung',
       code,
-      `${bezeichnung(l, i)} ${wie} #${String(l.daten.id(ziel))}, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell ${folge}.`,
+      `${bezeichnung(l, i)} ${wie} #${String(l.nummer(ziel))}, das nicht im Bauwerksmodell steht (keine GlobalId in Form oder nicht lesbar); im Modell ${folge}.`,
       l.ort(i),
       i,
     );
@@ -152,7 +152,7 @@ function abbilden(
   ): void => {
     for (const ring of ringeAufbrechen([...ziel.keys()], ziel)) {
       const erstes = ring[0] ?? -1;
-      const kette = [...ring, erstes].map((r) => `#${String(l.daten.id(r))}`).join(' → ');
+      const kette = [...ring, erstes].map((r) => `#${String(l.nummer(r))}`).join(' → ');
       l.melde(
         'fehler',
         code,

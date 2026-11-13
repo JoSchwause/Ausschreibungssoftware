@@ -25,6 +25,11 @@ export function istMangelstatus(wert: unknown): wert is Mangelstatus {
   return typeof wert === 'string' && (MANGELSTATUS as readonly string[]).includes(wert);
 }
 
+/** Ist der Mangel noch offen im weiteren Sinn: offen oder angezeigt (noch nicht als beseitigt gemeldet)? */
+export function istOffenerStatus(status: Mangelstatus): boolean {
+  return status === 'offen' || status === 'angezeigt';
+}
+
 /**
  * Darf der Verlauf von `von` nach `nach` wechseln? `von: null` heißt: `nach` wäre der erste Eintrag des Verlaufs; der muss
  * `offen` sein.
