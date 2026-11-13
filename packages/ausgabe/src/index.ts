@@ -73,6 +73,8 @@ export type { PreisspiegelEingabe } from './preisspiegel-druck';
 export { baueVergabevorschlagModell } from './vergabevorschlag-druck';
 export { baueAufmassblattModell } from './aufmass-druck';
 export type { AufmassblattEingabe } from './aufmass-druck';
+export { baueSollIstModell } from './soll-ist-druck';
+export type { SollIstEingabe } from './soll-ist-druck';
 export type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
@@ -91,6 +93,8 @@ export {
   erzeugeMaengelanzeigePdf,
   erzeugeMaengellistePdf,
   erzeugePreisspiegelPdf,
+  erzeugeSollIstPdf,
   erzeugeVergabevorschlagPdf,
   preisspiegelAlsExcel,
+  sollIstAlsExcel,
 } from './bericht-einstiege';

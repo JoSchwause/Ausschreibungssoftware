@@ -21,6 +21,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import type { PreisspiegelEingabe } from '../preisspiegel-druck';
+import type { SollIstEingabe } from '../soll-ist-druck';
 import type { ProjektKopf } from '../koepfe';
 import { leseXlsx } from '../xlsx';
 import type { GeleseneZelle } from '../xlsx';
@@ -271,3 +272,41 @@ export const AUFMASS_ERGEBNISSE = [
   },
   { positionId: WINZIG.p2, zeilen: [{ zeile: 1, menge: null }] },
 ] as const;
+
+const pz = (t: string): Prozent => t as Prozent;
+
+/** Soll/Ist über `winzig`, wie `abrechnung` es rechnen würde: 01.0010 über der Schwelle, 01.0030 noch ohne Aufmaß. */
+export const SOLL_IST: SollIstEingabe['sollIst'] = {
+  zeilen: [
+    {
+      positionId: WINZIG.p1,
+      soll: m('1.235'),
+      ist: m('1.500'),
+      differenz: m('0.265'),
+      anteil: pz('121.46'),
+      gpSoll: b('12.35'),
+      gpIst: b('15.00'),
+    },
+    {
+      positionId: WINZIG.p2,
+      soll: m('3.333'),
+      ist: m('3.000'),
+      differenz: m('-0.333'),
+      anteil: pz('90.01'),
+      gpSoll: b('15.20'),
+      gpIst: b('13.68'),
+    },
+    {
+      positionId: WINZIG.p3,
+      soll: m('5.000'),
+      ist: m('0.000'),
+      differenz: m('-5.000'),
+      anteil: pz('0.00'),
+      gpSoll: b('2537.45'),
+      gpIst: b('0.00'),
+    },
+  ],
+  gliederungen: [{ gliederungId: WINZIG.titel, gpSoll: b('2565.00'), gpIst: b('28.68') }],
+  gesamt: { gpSoll: b('2565.00'), gpIst: b('28.68') },
+  befunde: [{ code: 'ueber-schwelle', positionId: WINZIG.p1, anteil: pz('121.46') }],
+};

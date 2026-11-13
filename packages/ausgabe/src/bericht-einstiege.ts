@@ -17,6 +17,8 @@ import type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck
 import { bauePreisspiegelModell } from './preisspiegel-druck';
 import type { PreisspiegelEingabe } from './preisspiegel-druck';
 import type { Schriften } from './schriften';
+import { baueSollIstModell } from './soll-ist-druck';
+import type { SollIstEingabe } from './soll-ist-druck';
 import { baueVergabevorschlagModell } from './vergabevorschlag-druck';
 import type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 
@@ -43,3 +45,6 @@ export const erzeugeAufmassblattPdf = (e: AufmassblattEingabe, s: Schriften): Pr
   erzeugeBerichtPdf(baueAufmassblattModell(e), s);
 export const aufmassblattAlsExcel = (e: AufmassblattEingabe): Uint8Array =>
   berichtAlsExcel(baueAufmassblattModell(e));
+export const erzeugeSollIstPdf = (e: SollIstEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(baueSollIstModell(e), s);
+export const sollIstAlsExcel = (e: SollIstEingabe): Uint8Array => berichtAlsExcel(baueSollIstModell(e));
