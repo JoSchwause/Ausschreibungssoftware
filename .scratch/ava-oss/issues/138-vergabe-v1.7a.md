@@ -1,6 +1,6 @@
 # 138: Vergabe v1.7a: Bieter umbenennen und löschen, Zuschlag zurücknehmen, Bieter-Stammdaten
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: V · Paket/Ordner: `packages/vergabe`
 Blocked by: 127
