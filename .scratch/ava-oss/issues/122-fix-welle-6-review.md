@@ -173,5 +173,24 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
 - Punkt 9 erledigt (`6d8cdc6`), Punkt 10 erledigt (`327436b`), Punkt 11 erledigt (PC-c2 `74c9530`, PC-c3 `03bcbb1`,
   PC-a6 `b627e5b`), Punkt 12 erledigt (`0e2682b`), Punkt 13 erledigt (`012f29a`), Punkt 14 erledigt (`80d8317`), Punkt 15
   erledigt (PA1 `cf8e922`, PA2 `c34ffd1`, PC-a4 `c97843c`).
-- `integration/welle-6` mit Ticket 117 gemergt (`e2923a9`).
+- `integration/welle-6` mit Ticket 117 gemergt (`e2923a9`). `x1-kette.test.ts` brauchte keine Änderung (D-122.3).
+
+### Sollpunkte
+
+- **16 PC-a2** (Bezug auf LV-Knoten im Vorgangsdialog): nicht erreicht, für Ticket 124.
+- **17 PC-a5**: erledigt (`a28d177`): Verweis „Kennwerte aus dem Modell“ in der Werkzeugleiste der Kostenseite auf die Modelle
+  des Projekts (die Kennwerte stehen je Modell; ein bestimmtes Modell kennt die Kostenseite nicht).
+- **18 PB8**: geprüft, **trifft nicht zu**, keine Änderung. `lage(weg)` ist bis zum Ende des Scrollbereichs gleich dem alten
+  `scrollTop = weg`; danach blieb die alte Messung am Ende stehen (keine neuen Zeilen, weniger Arbeit), die neue kehrt um (neue
+  Zeilen). Die alten Fälle (5.000 und 10.000 Zeilen) erreichen das Ende bei 5.600 px/s nie und bei 28.000 px/s frühestens im
+  letzten Bild; sie messen also dieselbe Arbeit, nie weniger.
+- **19 App, Ermessen (SC)**: erledigt `kgLesen` und Texte in `bim/kennwerte.ts` (`d4f2c02`), „Stück“ ausdrücklich statt
+  `arten.at(-1)` (`d65b7c1`), `STANDARD_MWST` in `honorar/schreiben.ts` (`6a43e38`), benannte Vorgabe der Zone (`0e7af1b`),
+  OZ in Vorschau und Folgen (`89074b4`; Frage :50 gegen :47 beantwortet: **keine** war richtig – die Übernahme ließ den Index
+  weg, der Vergleich setzte ihn mit Leerzeichen; richtig ist die eine OZ der App, `lv/oztext.ts` `ozText`, „02.0070A“).
+  **Nicht umgesetzt:** `MENGENART_STUECK` in `bim/texte.ts` (die Datei liegt im Hauptbündel, `App.tsx`; der Import zöge `bim`
+  hinein – die Konstante gehört nach `vertrag`, Ticket 123); für 123 offen: Zusammenlegen von `folgen.ts` und `uebernahme.ts`,
+  `ModellvergleichSeite.tsx:397` → `darstellung.ts`, `einlesen.ts` → `datumAusUhr`, `MengenAusModell.tsx:145` → `datumDe`,
+  Text aus `BauzeitenplanSeite.tsx:396` nach `texte.ts`, Umbenennen von `useBezug`.
+- **20 Pakete, Ermessen (SA, SB)**: nicht erreicht, für Ticket 123 (alle Stichpunkte der Liste bleiben offen).
 
