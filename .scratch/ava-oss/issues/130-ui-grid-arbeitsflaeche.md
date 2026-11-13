@@ -1,6 +1,6 @@
 # 130: `ui-grid`: Spaltenbreiten, OZ-Breite, Höhe, Kürzeltabelle
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: U · Paket/Ordner: `packages/ui-grid`
 Blocked by: –
