@@ -1,6 +1,6 @@
 # 129: GAEB DA XML 3.1 lesen (X81, X83, X84, X86)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: G4 · Paket/Ordner: `packages/gaeb`
 Blocked by: –
