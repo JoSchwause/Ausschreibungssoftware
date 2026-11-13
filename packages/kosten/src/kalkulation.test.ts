@@ -7,7 +7,7 @@
 import { alsEinheitspreis, alsMenge, alsProzent } from '@tethys/dezimal';
 import type { Einheitspreis, EpaArt, Menge, Prozent } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { einzelpreiskalkulationBerechnen } from './index';
+import { einzelpreiskalkulationBerechnen, kalkulationBerechnen } from './index';
 import type { Kalkulationsansatz } from './index';
 
 function menge(text: string): Menge {
@@ -203,5 +203,30 @@ describe('einzelpreiskalkulationBerechnen: Befunde, nie Sperre (U5)', () => {
       lohnstundenJeEinheit: '0.000',
       befunde: [],
     });
+  });
+});
+
+// Vertrag v1.7a (Ticket 137, D-127.6): Die Position trägt ihre Kalkulationsangaben; `kalkulationBerechnen` rechnet aus genau
+// diesem gespeicherten Wert. Beispiel wie `beispielKalkulationSetzen` im Vertrag:
+// Lohn 0,450 × 48,500 = 21,825; × 1,15 = 25,09875 → 25,099. Stoffe 1,000 × 30,000 = 30,000; × 1,10 = 33,000. EP = 58,099.
+describe('kalkulationBerechnen: aus den gespeicherten Kalkulationsangaben der Position', () => {
+  it('rechnet wie einzelpreiskalkulationBerechnen mit Ansätzen und Sätzen der Angaben', () => {
+    const angaben = {
+      ansaetze: [z('lohn', 'Mauern', '0.450', '48.500'), z('stoffe', 'Stein', '1.000', '30.000')],
+      zuschlagssaetze: { lohn: prozent('15.00'), stoffe: prozent('10.00') },
+    };
+    const r = kalkulationBerechnen(angaben);
+    expect(r.einheitspreis).toBe('58.099');
+    expect(r.anteile).toEqual({
+      lohn: '25.099',
+      stoffe: '33.000',
+      geraete: null,
+      nachunternehmer: null,
+      sonstiges: null,
+      frei: null,
+      freiBezeichnung: null,
+    });
+    expect(kalkulationBerechnen(angaben, 'Eigenleistung').anteile.freiBezeichnung).toBe('Eigenleistung');
+    expect(r).toEqual(einzelpreiskalkulationBerechnen(angaben.ansaetze, angaben.zuschlagssaetze));
   });
 });

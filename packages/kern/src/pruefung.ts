@@ -16,7 +16,7 @@ import type {
   Positionsdaten,
 } from '@tethys/vertrag';
 import { befehlsfehler } from './fehler';
-import { bauteileFehler, kostengruppeFehler, textquelleFehler } from './positionsfelder';
+import { bauteileFehler, kalkulationFehler, kostengruppeFehler, textquelleFehler } from './positionsfelder';
 import { MAX_GLIEDERUNGSEBENEN, darfKinderHaben, ebenenbeitrag, losErlaubtUnter } from './regeln';
 import type { ElternArt } from './regeln';
 
@@ -55,7 +55,10 @@ export function unerlaubtesFeld(
  *  7. Kostengruppe nicht `100` bis `999` (`kostengruppe`) und Textquelle, die kein Text ist (`textquelle`; Vertrag v1.4,
  *     Ticket 71). Eine leere Textquelle ist kein Fehler: `positionNormal` lässt sie weg (D-71.4);
  *  8. Bauteilzuordnungen außer Form (`bauteile`, `bauteileFehler`; Vertrag v1.6, Ticket 105): wie bei `BauteileZuordnen`.
- *     Eine leere Liste ist kein Fehler: `positionNormal` lässt sie weg.
+ *     Eine leere Liste ist kein Fehler: `positionNormal` lässt sie weg;
+ *  9. Kalkulationsangaben außer Form (`kalkulation…`, `kalkulationFehler`; Vertrag v1.7a, Ticket 137, D-127.6): wie bei
+ *     `KalkulationSetzen`. Eine leere Kalkulation ist kein Fehler: `positionNormal` lässt sie weg. Eine Zuschlagsposition
+ *     trägt keine Kalkulation (`kalkulation`, D-82 S3).
  * Mehr wird nicht abgewiesen (U5): Teilmenge größer als die Menge, leere Bezugsliste und fehlender Satz sind Befunde der
  * LV-Prüfung (K8, Ticket 41).
  */
@@ -89,6 +92,10 @@ export function positionsdatenFehler(
   if (daten.bauteile !== undefined) {
     const b = bauteileFehler(daten.bauteile);
     if (b !== null) return feld('bauteile', b);
+  }
+  if (daten.kalkulation !== undefined) {
+    const k = kalkulationFehler(daten.kalkulation);
+    if (k !== null) return feld(k.feld, k.meldung);
   }
   const roh: unknown = daten.merkmale;
   if (typeof roh !== 'object' || roh === null || Array.isArray(roh))
@@ -131,6 +138,8 @@ export function positionsdatenFehler(
       return feld('merkmale', 'Eine Zuschlagsposition ist weder pauschal noch Stundenlohn.');
     if (daten.merkmale.zuschlagskennzeichen)
       return feld('merkmale.zuschlagskennzeichen', 'Eine Zuschlagsposition ist nie Basis eines Zuschlags.');
+    if (daten.kalkulation !== undefined)
+      return feld('kalkulation', 'Eine Zuschlagsposition trägt keine Kalkulation.');
   }
   const wahl = daten.merkmale.wahl;
   if (wahl !== null) {

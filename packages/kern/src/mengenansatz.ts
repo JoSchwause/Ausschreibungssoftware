@@ -4,7 +4,12 @@
 
 import type { Ansatzzeile, Position } from '@tethys/vertrag';
 import { positionMitEinheiten } from './einheit';
-import { positionMitBauteilen, positionMitTextquelle } from './positionsfelder';
+import {
+  kalkulationLeer,
+  positionMitBauteilen,
+  positionMitKalkulation,
+  positionMitTextquelle,
+} from './positionsfelder';
 
 /**
  * Die Position mit dem Mengenansatz `ansatz`: `null`, `undefined` und `[]` entfernen das Feld (ein leerer Ansatz ist
@@ -20,11 +25,12 @@ export function mitMengenansatz(p: Position, ansatz: readonly Ansatzzeile[] | nu
 /**
  * Normalform einer mitgebrachten Position (Anlegen, LV-Anlegen, Einfügen, Auftrags-LV, Nachtragsübernahme): `''` als
  * Einheit wird `null` (`positionMitEinheiten`, v1.2), ein leerer Ansatz `[]` fällt weg, eine leere Textquelle `''` auch
- * (`positionMitTextquelle`, v1.4), ebenso eine leere Liste von Bauteilzuordnungen (v1.6, Ticket 105). Ändert sich nichts,
- * kommt dasselbe Objekt zurück.
+ * (`positionMitTextquelle`, v1.4), ebenso eine leere Liste von Bauteilzuordnungen (v1.6, Ticket 105) und eine leere
+ * Kalkulation (v1.7a, Ticket 137, D-127.6). Ändert sich nichts, kommt dasselbe Objekt zurück.
  */
 export function positionNormal(p: Position): Position {
   const e = positionMitTextquelle(positionMitEinheiten(p));
   const m = e.mengenansatz?.length === 0 ? mitMengenansatz(e, null) : e;
-  return m.bauteile?.length === 0 ? positionMitBauteilen(m, null) : m;
+  const b = m.bauteile?.length === 0 ? positionMitBauteilen(m, null) : m;
+  return b.kalkulation !== undefined && kalkulationLeer(b.kalkulation) ? positionMitKalkulation(b, null) : b;
 }

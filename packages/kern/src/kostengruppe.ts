@@ -10,15 +10,22 @@ import type {
   KostengruppeSetzen,
   LvChangeSet,
   LvZustand,
-  Position,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { nein, ok } from './fehler';
+import { ok } from './fehler';
+import { positionsfeldWechsel } from './positionsfeld';
+import type { Positionsfeld, Positionswechsel } from './positionsfeld';
 import { kostengruppeFehler } from './positionsfelder';
 import { indexVon, mitFeld } from './struktur';
 
-/** Die Änderung einer Position durch einen Feldbefehl; `null`: derselbe Wert, nichts ändert sich. */
-export type Positionswechsel = { readonly vorher: Position; readonly nachher: Position } | null;
+const KOSTENGRUPPE: Positionsfeld<KostengruppeSetzen> = {
+  name: 'eine Kostengruppe',
+  feld: 'kostengruppe',
+  wert: (b) => b.kostengruppe,
+  formfehler: kostengruppeFehler,
+  gleich: (p, b) => (p.kostengruppe ?? null) === b.kostengruppe,
+  setzen: (p, b) => mitFeld(p, 'kostengruppe', b.kostengruppe),
+};
 
 /**
  * Was `KostengruppeSetzen` an der Position ändert, im LV wie im Auftrags-LV. `knotenVon` liefert den Knoten zur Kennung
@@ -26,28 +33,14 @@ export type Positionswechsel = { readonly vorher: Position; readonly nachher: Po
  *
  * - Nur an einer Position: eine Gliederung oder ein Hinweistext `knotenart-unzulaessig`, eine Kennung ohne Knoten im Baum
  *   `knoten-unbekannt` (wie jeder Feldbefehl; Vertrag v1.5, D-71.3, D-95.1; Ticket 105).
- * - Form der Nummer nach `KOSTENGRUPPE_FORM` (`positionsfelder.ts`), sonst `ungueltige-eingabe` mit `feld: 'kostengruppe'`.
+ * - Form der Nummer nach `KOSTENGRUPPENNUMMER_MUSTER` (Vertrag, `kostengruppeFehler`), sonst `ungueltige-eingabe` mit
+ *   `feld: 'kostengruppe'`. Ablauf: `positionsfeldWechsel` (gemeinsam mit `BauteileZuordnen`).
  * - `null` entfernt das Feld (es fehlt danach); derselbe Wert ist keine Änderung.
  */
-export function kostengruppeWechsel(
+export const kostengruppeWechsel = (
   knotenVon: (kennung: string) => Knoten | undefined,
   b: KostengruppeSetzen,
-): Ergebnis<Positionswechsel, Befehlsfehler> {
-  const k = knotenVon(b.positionId);
-  if (k === undefined) return nein('knoten-unbekannt', `Knoten unbekannt: ${b.positionId}`, b.positionId);
-  if (k.art !== 'position')
-    return nein(
-      'knotenart-unzulaessig',
-      `Nur eine Position trägt eine Kostengruppe, nicht „${k.art}“.`,
-      b.positionId,
-    );
-  if (b.kostengruppe !== null) {
-    const f = kostengruppeFehler(b.kostengruppe);
-    if (f !== null) return nein('ungueltige-eingabe', f, b.positionId, 'kostengruppe');
-  }
-  if ((k.kostengruppe ?? null) === b.kostengruppe) return ok(null);
-  return ok({ vorher: k, nachher: mitFeld(k, 'kostengruppe', b.kostengruppe) });
-}
+): Ergebnis<Positionswechsel, Befehlsfehler> => positionsfeldWechsel(knotenVon, b, KOSTENGRUPPE);
 
 /** `KostengruppeSetzen` im Ausschreibungs-LV: die Knotenänderung der Position, Summen unverändert. */
 export function kostengruppeSetzen(
