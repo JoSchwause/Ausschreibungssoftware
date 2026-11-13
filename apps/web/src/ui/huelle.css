@@ -65,6 +65,7 @@ body {
   padding: var(--tx-space-3);
   border-right: 1px solid var(--tx-color-border);
   background: var(--tx-color-surface-raised);
+  overflow-y: auto;
 }
 
 .huelle__marke {
@@ -91,9 +92,33 @@ body {
 }
 
 .huelle__trenner {
-  margin-top: var(--tx-space-4);
-  padding-top: var(--tx-space-4);
+  margin-top: var(--tx-space-3);
+  padding-top: var(--tx-space-3);
   border-top: 1px solid var(--tx-color-border);
+}
+
+/* Gruppen der Seitenleiste bei geöffnetem Projekt (Ticket 131): „Aufträge“ und „Vorschau“. */
+.huelle__gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-1);
+  margin-top: var(--tx-space-2);
+}
+
+.huelle__gruppenname {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--tx-space-3);
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+  font-weight: var(--tx-weight-medium);
+}
+
+.huelle__eintrag--unter {
+  height: calc(var(--tx-control-height) - 4px);
+  padding-left: var(--tx-space-5);
+  font-weight: var(--tx-weight-normal);
 }
 
 .huelle__eintrag {
@@ -145,10 +170,82 @@ body {
   background: var(--tx-color-surface);
 }
 
-.huelle__ort {
+/* Brotkrumen (Ticket 131): Projekte › Projekt › Bereich › Gegenstand › Seite; die letzte ist die Seite selbst. */
+.huelle__pfad {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--tx-space-4);
+  min-width: 0;
+}
+
+.huelle__krumen {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.huelle__krumen li {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.huelle__krumen li + li::before {
+  content: '›';
+  margin: 0 var(--tx-space-2);
+  color: var(--tx-color-text-muted);
+}
+
+.huelle__krume {
+  color: var(--tx-color-text-muted);
+  text-decoration: none;
+}
+
+.huelle__krume:hover {
+  color: var(--tx-color-text);
+  text-decoration: underline;
+}
+
+.huelle__krume:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: 1px;
+}
+
+.huelle__krume--hier {
+  color: var(--tx-color-text);
   font-size: var(--tx-font-size-lg);
   font-weight: var(--tx-weight-bold);
+}
+
+/* Kennzeichen „Vorschau“ der Module aus Welle 6 (G-60), in Seitenleiste und Kopfzeile. */
+.huelle__vorschau {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--tx-space-2);
+  min-width: 0;
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.huelle__vorschautext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.huelle__plakette--vorschau {
+  flex: none;
+  margin-left: 0;
+  border-color: var(--tx-color-warning);
+  color: var(--tx-color-warning);
 }
 
 /* ---------- Arbeitsfläche ---------- */

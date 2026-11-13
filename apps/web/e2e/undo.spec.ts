@@ -253,7 +253,8 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
   await expect(lvListe).toContainText('Dach');
 
   // Projekt löschen, solange es ein LV hat: verständliche Meldung, nichts gelöscht.
-  await page.getByRole('button', { name: 'Projekt löschen' }).click();
+  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
   await page
     .getByRole('dialog', { name: 'Projekt löschen' })
     .getByRole('button', { name: 'Endgültig löschen' })
@@ -270,7 +271,8 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
   await expect(lvListe).toHaveCount(0);
 
   // Ein leeres Projekt löschen und zurückholen.
-  await page.getByRole('button', { name: 'Projekt löschen' }).click();
+  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
   await page
     .getByRole('dialog', { name: 'Projekt löschen' })
     .getByRole('button', { name: 'Endgültig löschen' })

@@ -22,7 +22,8 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import { befehlswegFuer, eintrag, speichern, Sitzung, type Lauf, type Umgebung } from '../lv/befehlsweg';
+import type { Lauf, Sitzung, Umgebung } from '../lv/befehlsweg';
+import { befehlSchreiben, fachSitzung } from '../ui/schreibweg';
 
 export type MangelSitzung = Sitzung<MangelZustand | null, MangelBefehl>;
 export type BautagebuchSitzung = Sitzung<BautagebucheintragZustand | null, BautagebucheintragBefehl>;
@@ -36,11 +37,14 @@ export async function mangelBefehlAnwenden(
 ): Promise<Lauf<MangelZustand | null>> {
   const bestand = await u.speicher.maengel.auflisten(projektId);
   if (!bestand.ok) return { ok: false, abweisung: { art: 'speicher', fehler: bestand.fehler } };
-  const r = mangelBefehlAusfuehren(zustand, befehl, bestand.wert);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
-  const cs = r.wert;
-  const e = eintrag(u, projektId, { art: 'mangel', id: cs.mangelId }, befehl);
-  return speichern(u, e, cs, () => mangelChangeSetAnwenden(zustand, cs));
+  return befehlSchreiben(
+    u,
+    projektId,
+    befehl,
+    mangelBefehlAusfuehren(zustand, befehl, bestand.wert),
+    (cs) => ({ art: 'mangel', id: cs.mangelId }),
+    (cs) => mangelChangeSetAnwenden(zustand, cs),
+  );
 }
 
 /** Ein Befehl am Bautagebucheintrag durch den Ausführer und den Speicher. `zustand` ist `null` beim Anlegen. */
@@ -52,19 +56,18 @@ export async function bautagebucheintragBefehlAnwenden(
 ): Promise<Lauf<BautagebucheintragZustand | null>> {
   const bestand = await u.speicher.bautagebuch.auflisten(projektId);
   if (!bestand.ok) return { ok: false, abweisung: { art: 'speicher', fehler: bestand.fehler } };
-  const r = bautagebucheintragBefehlAusfuehren(zustand, befehl, bestand.wert);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
-  const cs = r.wert;
-  const e = eintrag(u, projektId, { art: 'bautagebucheintrag', id: cs.bautagebucheintragId }, befehl);
-  return speichern(u, e, cs, () => bautagebucheintragChangeSetAnwenden(zustand, cs));
+  return befehlSchreiben(
+    u,
+    projektId,
+    befehl,
+    bautagebucheintragBefehlAusfuehren(zustand, befehl, bestand.wert),
+    (cs) => ({ art: 'bautagebucheintrag', id: cs.bautagebucheintragId }),
+    (cs) => bautagebucheintragChangeSetAnwenden(zustand, cs),
+  );
 }
 
 export function mangelSitzung(u: Umgebung, projektId: ProjektId, mangel: Mangel | null): MangelSitzung {
-  return new Sitzung<MangelZustand | null, MangelBefehl>(
-    befehlswegFuer(u),
-    mangel === null ? null : { mangel },
-    (z, b) => mangelBefehlAnwenden(u, projektId, z, b),
-  );
+  return fachSitzung(u, projektId, mangel === null ? null : { mangel }, mangelBefehlAnwenden);
 }
 
 export function bautagebuchSitzung(
@@ -72,10 +75,11 @@ export function bautagebuchSitzung(
   projektId: ProjektId,
   bautagebucheintrag: Bautagebucheintrag | null,
 ): BautagebuchSitzung {
-  return new Sitzung<BautagebucheintragZustand | null, BautagebucheintragBefehl>(
-    befehlswegFuer(u),
+  return fachSitzung(
+    u,
+    projektId,
     bautagebucheintrag === null ? null : { bautagebucheintrag },
-    (z, b) => bautagebucheintragBefehlAnwenden(u, projektId, z, b),
+    bautagebucheintragBefehlAnwenden,
   );
 }
 

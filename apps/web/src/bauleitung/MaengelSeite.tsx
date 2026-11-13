@@ -22,10 +22,11 @@ import { auftragsLvsLaden } from '../auftrag/auftrag';
 import { datumAusUhr } from '../ausgabe/logik';
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer, type Ausgang } from '../lv/befehlsweg';
+import type { Ausgang } from '../lv/befehlsweg';
 import { datumDe } from '../lv/kopfdaten';
 import { abweisungText, useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { bautagebuchPfad } from './pfad';
 import {
@@ -77,7 +78,6 @@ interface Stand {
   /** Der Stichtag der Fristprüfung: heute nach der Uhr der App. */
   readonly stichtag: string;
 }
-type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; stand: Stand };
 
 type Dialogart =
   | { readonly art: 'neu' }
@@ -111,70 +111,29 @@ export function MaengelSeite({
   projektId: ProjektId;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
+  // Undo und Redo können Mängel anlegen, ändern oder löschen: das Gerüst lädt neu.
+  const { lage, neuLaden } = useSeitenladen(
+    async (u): Promise<Stand | null> => {
       const p = await u.speicher.projekte.laden(projektId);
       const m = await maengelLaden(u.speicher, projektId);
       const a = await auftragsLvsLaden(u.speicher, projektId);
       const mod = await u.speicher.bauwerksmodelle.auflisten(projektId);
-      if (!p.ok || !m.ok || !a.ok) return { art: 'fehlt' };
+      if (!p.ok || !m.ok || !a.ok) return null;
       return {
-        art: 'da',
-        stand: {
-          projekt: p.wert,
-          maengel: m.wert,
-          auftraege: a.wert,
-          modelle: mod.ok ? mod.wert : [],
-          stichtag: datumAusUhr(u.uhr()),
-        },
+        projekt: p.wert,
+        maengel: m.wert,
+        auftraege: a.wert,
+        modelle: mod.ok ? mod.wert : [],
+        stichtag: datumAusUhr(u.uhr()),
       };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, lauf]);
-  // Undo und Redo können Mängel anlegen, ändern oder löschen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+    },
+    [projektId],
   );
 
-  if (lage.art === 'laedt') {
-    return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
-    );
+  if (lage.art !== 'da') {
+    return <Ladeansicht lage={lage} laden={texte.seite.laden} nichtGefunden={texte.seite.nichtGefunden} />;
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.seite.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <Maengel
-      stand={lage.stand}
-      gehe={gehe}
-      neuLaden={() => {
-        setLauf((n) => n + 1);
-      }}
-    />
-  );
+  return <Maengel stand={lage.wert} gehe={gehe} neuLaden={neuLaden} />;
 }
 
 function Maengel({

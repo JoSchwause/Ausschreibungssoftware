@@ -12,7 +12,8 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
-import { befehlswegFuer, eintrag, speichern, Sitzung, type Lauf, type Umgebung } from '../lv/befehlsweg';
+import type { Lauf, Sitzung, Umgebung } from '../lv/befehlsweg';
+import { befehlSchreiben, fachSitzung } from '../ui/schreibweg';
 
 export type BauzeitenplanSitzung = Sitzung<BauzeitenplanZustand | null, BauzeitenplanBefehl>;
 
@@ -23,11 +24,14 @@ export async function bauzeitenplanBefehlAnwenden(
   zustand: BauzeitenplanZustand | null,
   befehl: BauzeitenplanBefehl,
 ): Promise<Lauf<BauzeitenplanZustand | null>> {
-  const r = bauzeitenplanBefehlAusfuehren(zustand, befehl);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
-  const cs = r.wert;
-  const e = eintrag(u, projektId, { art: 'bauzeitenplan', id: cs.bauzeitenplanId }, befehl);
-  return speichern(u, e, cs, () => bauzeitenplanChangeSetAnwenden(zustand, cs));
+  return befehlSchreiben(
+    u,
+    projektId,
+    befehl,
+    bauzeitenplanBefehlAusfuehren(zustand, befehl),
+    (cs) => ({ art: 'bauzeitenplan', id: cs.bauzeitenplanId }),
+    (cs) => bauzeitenplanChangeSetAnwenden(zustand, cs),
+  );
 }
 
 export function bauzeitenplanSitzung(
@@ -35,7 +39,7 @@ export function bauzeitenplanSitzung(
   projektId: ProjektId,
   zustand: BauzeitenplanZustand | null,
 ): BauzeitenplanSitzung {
-  return new Sitzung(befehlswegFuer(u), zustand, (z, b) => bauzeitenplanBefehlAnwenden(u, projektId, z, b));
+  return fachSitzung(u, projektId, zustand, bauzeitenplanBefehlAnwenden);
 }
 
 /** Die Bauzeitenpläne des Projekts (nur Köpfe), nach Name, dann Kennung. */

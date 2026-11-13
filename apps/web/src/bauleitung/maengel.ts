@@ -30,6 +30,7 @@ import {
 } from '@tethys/vertrag';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { ozText } from '../lv/oztext';
+import type { Feldfehlerkarte } from '../ui/feldfehler';
 import { STATUS_TEXT, texte } from './texte';
 
 // --- Auftragnehmer ---------------------------------------------------------------------------------------------------
@@ -232,7 +233,7 @@ export interface MangelEntwurf {
 }
 
 export type MangelFeld = keyof MangelEntwurf;
-export type Feldfehler = Partial<Record<MangelFeld, string>>;
+export type Feldfehler = Feldfehlerkarte<MangelFeld>;
 
 export function leererEntwurf(nummer: number, heute: string): MangelEntwurf {
   return {

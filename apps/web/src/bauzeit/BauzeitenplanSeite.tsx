@@ -11,9 +11,9 @@ import type { BauzeitenplanId, BauzeitenplanZustand, ProjektId, VorgangId } from
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { planAnsicht, vorgangName, type Befundgruppe } from './ansicht';
 import {
@@ -40,8 +40,10 @@ import './bauzeit.css';
 
 const t = texte.plan;
 
-type Laden =
-  { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; sitzung: BauzeitenplanSitzung; projekt: string | null };
+interface Geladen {
+  sitzung: BauzeitenplanSitzung;
+  projekt: string | null;
+}
 
 export function BauzeitenplanSeite({
   projektId,
@@ -53,64 +55,42 @@ export function BauzeitenplanSeite({
   gehe: (pfad: string) => void;
 }): ReactElement {
   const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void Promise.all([u.speicher.bauzeitenplaene.laden(id), u.speicher.projekte.laden(projektId)]).then(
-      ([r, p]) => {
-        if (!aktiv) return;
-        if (!r.ok) {
-          setLage({ art: 'fehlt' });
-          return;
+  // Undo und Redo können den Plan ändern oder entfernen: das Gerüst lädt neu.
+  const { lage } = useSeitenladen(
+    async ({ speicher }) => {
+      const [r, p] = await Promise.all([
+        speicher.bauzeitenplaene.laden(id),
+        speicher.projekte.laden(projektId),
+      ]);
+      return r.ok ? { zustand: r.wert, projekt: p.ok ? p.wert.name : null } : null;
+    },
+    [id, projektId],
+    {
+      // Dieselbe Sitzung behalten (Undo/Redo schreibt den neuen Stand hinein), damit kein Befehl auf einem alten Stand läuft.
+      alsWert: (neu, alt: Geladen | null): Geladen => {
+        if (alt !== null) {
+          alt.sitzung.setze(neu.zustand);
+          return alt;
         }
-        setLage((alt) => {
-          // Dieselbe Sitzung behalten (Undo/Redo schreibt den neuen Stand hinein), damit kein Befehl auf einem alten Stand läuft.
-          if (alt.art === 'da') {
-            alt.sitzung.setze(r.wert);
-            return alt;
-          }
-          return {
-            art: 'da',
-            sitzung: bauzeitenplanSitzung(u, r.wert.bauzeitenplan.projektId, r.wert),
-            projekt: p.ok ? p.wert.name : null,
-          };
-        });
+        return {
+          sitzung: bauzeitenplanSitzung(u, neu.zustand.bauzeitenplan.projektId, neu.zustand),
+          projekt: neu.projekt,
+        };
       },
-    );
-    return () => {
-      aktiv = false;
-    };
-  }, [u, id, projektId, lauf]);
-  // Undo und Redo können den Plan ändern oder entfernen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+    },
   );
 
-  if (lage.art === 'laedt') {
+  if (lage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{t.laden}</p>
-      </div>
+      <Ladeansicht
+        lage={lage}
+        laden={t.laden}
+        nichtGefunden={t.nichtGefunden}
+        zusatz={<Verweis pfad={bauzeitPfad(projektId)} text={t.zurueck} gehe={gehe} />}
+      />
     );
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{t.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-          <Verweis pfad={bauzeitPfad(projektId)} text={t.zurueck} gehe={gehe} />
-        </div>
-      </div>
-    );
-  }
-  return <Planseite sitzung={lage.sitzung} projekt={lage.projekt} gehe={gehe} />;
+  return <Planseite sitzung={lage.wert.sitzung} projekt={lage.wert.projekt} gehe={gehe} />;
 }
 
 function Planseite({

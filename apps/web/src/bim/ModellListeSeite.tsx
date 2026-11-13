@@ -11,13 +11,13 @@ import type {
   ProjektId,
   Pruefbefund,
 } from '@tethys/vertrag';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { datumDe } from '../lv/kopfdaten';
 import { abweisungText, useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { BefundListe } from './BefundListe';
 import { modellEinlesen } from './einlesen';
@@ -28,10 +28,10 @@ import { texte } from './texte';
 import '../lv/lv.css';
 import './bim.css';
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | { art: 'da'; projekt: Projekt; modelle: readonly BauwerksmodellUebersicht[] };
+interface Stand {
+  projekt: Projekt;
+  modelle: readonly BauwerksmodellUebersicht[];
+}
 
 type Ergebnis =
   | { art: 'laeuft'; datei: string }
@@ -46,11 +46,15 @@ export function ModellListeSeite({
 }): ReactElement {
   const u = useUmgebung();
   const { pruefe, speicherfehler } = useMeldungen();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-  const neuLaden = useCallback(() => {
-    setLauf((n) => n + 1);
-  }, []);
+  // Undo und Redo legen Modelle an, benennen sie um oder löschen sie: das Gerüst lädt neu.
+  const { lage, neuLaden } = useSeitenladen(
+    async ({ speicher }): Promise<Stand | null> => {
+      const p = await speicher.projekte.laden(projektId);
+      const m = await speicher.bauwerksmodelle.auflisten(projektId);
+      return p.ok && m.ok ? { projekt: p.wert, modelle: m.wert } : null;
+    },
+    [projektId],
+  );
   const datei = useRef<HTMLInputElement>(null);
   const [vorgaenger, setVorgaenger] = useState<BauwerksmodellId | null>(null);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
@@ -62,40 +66,10 @@ export function ModellListeSeite({
   const [loeschen, setLoeschen] = useState<BauwerksmodellUebersicht | null>(null);
   const abbrechenRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const p = await u.speicher.projekte.laden(projektId);
-      const m = await u.speicher.bauwerksmodelle.auflisten(projektId);
-      return p.ok && m.ok ? { art: 'da', projekt: p.wert, modelle: m.wert } : { art: 'fehlt' };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, lauf]);
-  // Undo und Redo legen Modelle an, benennen sie um oder löschen sie: neu laden.
-  useEffect(() => befehlswegFuer(u).beiHistorie(neuLaden), [u, neuLaden]);
-
-  if (lage.art === 'laedt') {
-    return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.liste.laden}</p>
-      </div>
-    );
+  if (lage.art !== 'da') {
+    return <Ladeansicht lage={lage} laden={texte.liste.laden} nichtGefunden={texte.liste.nichtGefunden} />;
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.liste.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-        </div>
-      </div>
-    );
-  }
-  const { projekt, modelle } = lage;
+  const { projekt, modelle } = lage.wert;
   const nameVon = (id: BauwerksmodellId | null): string =>
     id === null ? texte.liste.keinVorgaenger : (modelle.find((m) => m.id === id)?.name ?? id);
 

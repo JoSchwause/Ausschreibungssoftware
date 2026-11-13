@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Minimales Routing über die History-API: genug für drei Platzhalterseiten und den Katalog.
-// Ein Router-Paket kommt erst mit echten Fachseiten.
+// Minimales Routing über die History-API; welche Seite zu einer Adresse gehört, steht in `App.tsx`.
 
 import { useCallback, useSyncExternalStore } from 'react';
 
