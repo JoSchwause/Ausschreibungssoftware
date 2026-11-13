@@ -9,6 +9,11 @@ import type { Pruefbefund } from '@tethys/vertrag';
 
 export interface Dekodierung {
   readonly text: string;
+  /**
+   * Die Kodierung, mit der gelesen wurde (Ticket 136): `utf-8`, `utf-16le`, `utf-16be`, die deklarierte (klein geschrieben,
+   * z. B. `iso-8859-1`) oder `windows-1252`, wenn die Bytes kein gültiges UTF-8 sind.
+   */
+  readonly kodierung: string;
   readonly befunde: readonly Pruefbefund[];
 }
 
@@ -33,9 +38,9 @@ function deklaration(bytes: Uint8Array): string | null {
 export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
   const befunde: Pruefbefund[] = [];
   if (bytes[0] === 0xff && bytes[1] === 0xfe)
-    return { text: ohneBom(new TextDecoder('utf-16le').decode(bytes)), befunde };
+    return { text: ohneBom(new TextDecoder('utf-16le').decode(bytes)), kodierung: 'utf-16le', befunde };
   if (bytes[0] === 0xfe && bytes[1] === 0xff)
-    return { text: ohneBom(new TextDecoder('utf-16be').decode(bytes)), befunde };
+    return { text: ohneBom(new TextDecoder('utf-16be').decode(bytes)), kodierung: 'utf-16be', befunde };
 
   const mitBom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
   const erklaert = mitBom ? 'utf-8' : deklaration(bytes);
@@ -43,7 +48,11 @@ export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
 
   if (!utf8) {
     try {
-      return { text: ohneBom(new TextDecoder(erklaert, { fatal: false }).decode(bytes)), befunde };
+      return {
+        text: ohneBom(new TextDecoder(erklaert, { fatal: false }).decode(bytes)),
+        kodierung: erklaert,
+        befunde,
+      };
     } catch {
       befunde.push(
         befund(
@@ -54,7 +63,7 @@ export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
     }
   }
   try {
-    return { text: ohneBom(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), befunde };
+    return { text: ohneBom(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), kodierung: 'utf-8', befunde };
   } catch {
     befunde.push(
       befund(
@@ -62,6 +71,6 @@ export function dekodiereBytes(bytes: Uint8Array): Dekodierung {
         'Die Datei enthält Bytes, die kein gültiges UTF-8 sind; sie wird als Windows-1252 gelesen.',
       ),
     );
-    return { text: ohneBom(new TextDecoder('windows-1252').decode(bytes)), befunde };
+    return { text: ohneBom(new TextDecoder('windows-1252').decode(bytes)), kodierung: 'windows-1252', befunde };
   }
 }
