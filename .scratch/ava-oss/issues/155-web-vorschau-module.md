@@ -1,6 +1,6 @@
 # 155: App: Vorschau-Module anbinden (E16, Tickets 123/124 Rest)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: X1–X4, E16 · Paket/Ordner: `apps/web/src/bauzeit/`, `bauleitung/`, `honorar/`, `bim/`, `modellvergleich/`, `packages/bim` (Hinweis Doppelmessung)
 Blocked by: 131, 140
