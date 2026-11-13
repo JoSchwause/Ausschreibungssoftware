@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF- bzw. Excel-Bytes (Tickets 113, 141;
+// Öffentliche Einstiege der Berichte: Eingabe der Domänentypen → Berichtsmodell → PDF- bzw. Excel-Bytes (Tickets 113, 141,
+// 153;
 // ADR 0012).
 
 import { baueAufmassblattModell } from './aufmass-druck';
@@ -12,6 +13,8 @@ import { baueBauzeitenplanModell } from './bauzeit-druck';
 import type { BauzeitenplanEingabe } from './bauzeit-druck';
 import { baueHonorarModell } from './honorar-druck';
 import type { HonorarEingabe } from './honorar-druck';
+import { baueKostenermittlungModell, baueKostenkontrolleModell } from './kosten-druck';
+import type { KostenermittlungEingabe, KostenkontrolleEingabe } from './kosten-druck';
 import { baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 import type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
 import { bauePreisspiegelModell } from './preisspiegel-druck';
@@ -52,3 +55,13 @@ export const erzeugeSollIstPdf = (e: SollIstEingabe, s: Schriften): Promise<Uint
 export const sollIstAlsExcel = (e: SollIstEingabe): Uint8Array => berichtAlsExcel(baueSollIstModell(e));
 export const erzeugeRechnungspruefungPdf = (e: RechnungspruefungEingabe, s: Schriften): Promise<Uint8Array> =>
   erzeugeBerichtPdf(baueRechnungspruefungModell(e), s);
+
+// Kosten (Ticket 153)
+export const erzeugeKostenermittlungPdf = (e: KostenermittlungEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(baueKostenermittlungModell(e), s);
+export const kostenermittlungAlsExcel = (e: KostenermittlungEingabe): Uint8Array =>
+  berichtAlsExcel(baueKostenermittlungModell(e));
+export const erzeugeKostenkontrollePdf = (e: KostenkontrolleEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(baueKostenkontrolleModell(e), s);
+export const kostenkontrolleAlsExcel = (e: KostenkontrolleEingabe): Uint8Array =>
+  berichtAlsExcel(baueKostenkontrolleModell(e));

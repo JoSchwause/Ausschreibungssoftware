@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Die Excel-Dateien der Berichte (Ticket 141) in LibreOffice: Preisspiegel, Aufmaßblatt und Soll/Ist öffnen sich (Ausgabe
+// Die Excel-Dateien der Berichte (Tickets 141, 153) in LibreOffice: Preisspiegel, Aufmaßblatt, Soll/Ist, Kostenermittlung
+// und Kostenkontrolle öffnen sich (Ausgabe
 // als CSV), und eine von LibreOffice neu gespeicherte Datei trägt dieselben Zahlen. Läuft nur, wenn `soffice` vorhanden
 // ist; sonst übersprungen (die CI hat es nicht), wie der Test des LV-Exports.
 import { execFileSync } from 'node:child_process';
@@ -9,7 +10,13 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Prozent } from '@tethys/vertrag';
-import { aufmassblattAlsExcel, preisspiegelAlsExcel, sollIstAlsExcel } from './index';
+import {
+  aufmassblattAlsExcel,
+  kostenermittlungAlsExcel,
+  kostenkontrolleAlsExcel,
+  preisspiegelAlsExcel,
+  sollIstAlsExcel,
+} from './index';
 import { fixtureZustand } from './testhilfe/bau';
 import {
   AUFMASS,
@@ -20,6 +27,12 @@ import {
   auftragsLvAus,
   excelZeilen,
 } from './testhilfe/kernkette';
+import {
+  BEZEICHNUNGEN,
+  KOSTENERMITTLUNG,
+  KOSTENERMITTLUNG_ERGEBNIS,
+  KOSTENKONTROLLE,
+} from './testhilfe/kosten';
 
 function sofficeVorhanden(): boolean {
   try {
@@ -41,6 +54,16 @@ describe.skipIf(!sofficeVorhanden())('Excel der Berichte in LibreOffice', { time
       auftragsLv,
       sollIst: SOLL_IST,
       optionen: { oberSchwelle: '110.00' as Prozent },
+    }),
+    'kostenermittlung.xlsx': kostenermittlungAlsExcel({
+      kostenermittlung: KOSTENERMITTLUNG,
+      ergebnis: KOSTENERMITTLUNG_ERGEBNIS,
+      bezeichnungen: BEZEICHNUNGEN,
+    }),
+    'kostenkontrolle.xlsx': kostenkontrolleAlsExcel({
+      kontrolle: KOSTENKONTROLLE,
+      budget: { name: KOSTENERMITTLUNG.name, stufe: KOSTENERMITTLUNG.stufe },
+      bezeichnungen: BEZEICHNUNGEN,
     }),
   };
 
@@ -79,6 +102,8 @@ describe.skipIf(!sofficeVorhanden())('Excel der Berichte in LibreOffice', { time
     expect(csv('preisspiegel.xlsx')).toContain('Probe & Söhne KG EP');
     expect(csv('aufmass.xlsx')).toContain('OZ,Kurztext,Zeile,Formel,Ansatz,Ergebnis,Menge');
     expect(csv('sollist.xlsx')).toContain('OZ,Kurztext,Einh.,Soll,Ist,Differenz');
+    expect(csv('kostenermittlung.xlsx')).toContain('KG,Bezeichnung,Eigener Betrag,Summe,Bemerkung');
+    expect(csv('kostenkontrolle.xlsx')).toContain('KG,Bezeichnung,Budget,Vergabe,Abrechnung,Abweichung');
   });
 
   it('trägt nach dem Speichern in LibreOffice dieselben Zellen', () => {
