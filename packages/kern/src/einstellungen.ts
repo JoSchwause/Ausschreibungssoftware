@@ -32,8 +32,7 @@ const SEITENRAENDER: ReadonlySet<unknown> = new Set<Druckprofil['seitenrand']>([
  * Schalter Wahrheitswerte, der Langtext `voll`, `kein` oder `zeilen` mit `anzahl` als ganzer Zahl ab 1, Kopf- und Fußzeile
  * Text oder `null`, Seitenrand `normal` oder `eng`. Ob der Name einem mitgelieferten Profil gleicht, weiß der Kern nicht.
  */
-function druckprofilFehler(wert: unknown): Formfehler | null {
-  const pfad = 'druckprofil';
+function druckprofilFehler(wert: unknown, pfad = 'druckprofil'): Formfehler | null {
   if (!istObjekt(wert)) return { feld: pfad, meldung: 'Das Druckprofil ist ein Objekt.' };
   if (!istName(wert['name']))
     return { feld: `${pfad}.name`, meldung: 'Ein Druckprofil braucht einen Namen.' };
@@ -79,8 +78,7 @@ function druckprofilNormal(p: Druckprofil): Druckprofil {
  * Form der Kostengruppenbezeichnungen: eine Liste von Objekten, Nummer nach `KOSTENGRUPPENNUMMER_MUSTER` und höchstens
  * einmal, Bezeichnung nicht leer (Leerraum zählt als leer). Felder ohne Zeilennummer.
  */
-function bezeichnungenFehler(wert: unknown): Formfehler | null {
-  const pfad = 'bezeichnungen';
+function bezeichnungenFehler(wert: unknown, pfad = 'bezeichnungen'): Formfehler | null {
   if (!Array.isArray(wert)) return { feld: pfad, meldung: 'Die Kostengruppenbezeichnungen sind eine Liste.' };
   const gesehen = new Set<string>();
   for (const roh of wert as readonly unknown[]) {
