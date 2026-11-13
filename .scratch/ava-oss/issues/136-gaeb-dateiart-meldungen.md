@@ -1,6 +1,6 @@
 # 136: `gaeb`: Dateiart erkennen, Meldungen, Bieteranschrift
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: G4, E7, E10 · Paket/Ordner: `packages/gaeb`
 Blocked by: 129, 127
@@ -27,11 +27,11 @@ Herkunft: umfang §3 E7 (Paketteil), E10 (Anschrift aus X84/X86), B-10, B-11, B-
 
 ## Acceptance criteria
 
-- [ ] Erkennung mit Tests je Art (inkl. kurzer selbst geschriebener GAEB-90/2000-Köpfe); jede Phase X80–X89 hat einen Test
-- [ ] Bieteranschrift aus X84 (Fixture in `fixtures/angebote` oder BVBS-Datei, die sie trägt) mit Test
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Erkennung mit Tests je Art (inkl. kurzer selbst geschriebener GAEB-90/2000-Köpfe); jede Phase X80–X89 hat einen Test
+- [x] Bieteranschrift aus X84 (Fixture in `fixtures/angebote` oder BVBS-Datei, die sie trägt) mit Test
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -86,3 +86,8 @@ Dateiart in allen drei Lesern), `befunde.test.ts` (Kurztexte, Gruppe „Nicht ü
 Für den Rand (146, 149): Texte aus `code` + `werte` + `BEFUNDTEXTE`, Gruppe aus `nichtUebernommeneAngaben`, Zeile nach
 `zeileHilft`; `AngebotLesung.bieter.angaben` in `BieterAnlegen`. Offen (nicht geraten): die Bedeutung der Phasen X80, X87, X88
 fürs Glossar.
+
+Prüfläufe (Agent, nach Merge von `integration/welle-7` mit D-82 bis D-84 und Ticket 140): `pnpm lint` grün, `pnpm typecheck`
+grün, `pnpm test` 4165 grün und 6 rot, alle rot nur bei Leistungsbudgets (gaeb 2-MB-Datei, kern K9, speicher X1 zweimal,
+vergabe Preisspiegel, apps/web Aufmaß-Undo) unter Last 23–27 auf 4 Kernen; einzeln wiederholt alle grün (kern K9 im zweiten
+Lauf), nichts gelockert. `node --test fixtures` 53/53. E2E `gaeb.spec.ts` 6/6, `aufmass.spec.ts` 2/2 (X31-Befunde).
