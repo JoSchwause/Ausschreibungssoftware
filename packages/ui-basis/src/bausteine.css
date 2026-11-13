@@ -396,12 +396,86 @@
   color: inherit;
 }
 
+/* ---------- Werkzeugleiste und Menü (Ticket 142) ---------- */
+
+/* Eine Zeile ab 1280 px (U6); darunter bricht sie um, statt waagerecht zu überlaufen. */
+.tx-werkzeugleiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2);
+}
+
+.tx-werkzeuggruppe {
+  gap: var(--tx-space-2);
+}
+
+.tx-werkzeuggruppe--pfeil {
+  padding-right: var(--tx-space-3);
+}
+
+.tx-werkzeuggruppe[data-state='open'] {
+  background: var(--tx-color-surface-hover);
+}
+
+a.tx-verweisknopf {
+  text-decoration: none;
+}
+
+.tx-menue {
+  z-index: 60;
+  min-width: 200px;
+  padding: var(--tx-space-1);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-raised);
+  box-shadow: var(--tx-shadow-md);
+  font-family: var(--tx-font-sans);
+}
+
+.tx-menue__punkt {
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-5);
+  height: var(--tx-control-height);
+  padding: 0 var(--tx-space-3);
+  border-radius: var(--tx-radius-sm);
+  color: var(--tx-color-text);
+  font-size: var(--tx-font-size-md);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+  user-select: none;
+}
+
+.tx-menue__punkt[data-highlighted] {
+  background: var(--tx-color-surface-hover);
+  box-shadow: inset 0 0 0 2px var(--tx-color-focus);
+}
+
+.tx-menue__punkt[data-disabled] {
+  opacity: 0.55;
+}
+
+.tx-menue__punkt--gefahr {
+  color: var(--tx-color-danger);
+}
+
+.tx-menue__punkt .tx-kbd-gruppe {
+  margin-left: auto;
+}
+
 /* ---------- Toast ---------- */
 
+/*
+ * Oben rechts unter der Kopfzeile (40 px), wo die Seiten nur ihren Titel haben (Ticket 142): unten stehen Summenfuß,
+ * Nachlass und MwSt und die Bieterübersicht, die eine Meldung nicht überdecken darf.
+ */
 .tx-toast-bereich {
   position: fixed;
+  top: calc(40px + var(--tx-space-3));
   right: var(--tx-space-5);
-  bottom: calc(var(--tx-space-5) + 24px);
   z-index: 80;
   display: flex;
   flex-direction: column;

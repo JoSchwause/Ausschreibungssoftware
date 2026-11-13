@@ -6,8 +6,7 @@
 //
 // Die Listen kommen aus den Repositories (`projektstandLaden`), ohne ein LV ganz zu laden (D-43, D-62).
 
-import * as Menue from '@radix-ui/react-dropdown-menu';
-import { Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
+import { Button, Dialog, Eingabefeld, Werkzeuggruppe } from '@tethys/ui-basis';
 import type { ProjektId } from '@tethys/vertrag';
 import { useState } from 'react';
 import type { ReactElement } from 'react';
@@ -239,23 +238,16 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <div className="projekt__gruppe">
           <GaebEinlesen projekt={projekt} onAngelegt={neuLaden} />
         </div>
-        <Menue.Root modal={false}>
-          <Menue.Trigger asChild>
-            <Button aria-label={t.weitere}>…</Button>
-          </Menue.Trigger>
-          <Menue.Portal>
-            <Menue.Content className="projekt__menue" align="end" sideOffset={4}>
-              <Menue.Item
-                className="projekt__menuepunkt projekt__menuepunkt--gefahr"
-                onSelect={() => {
-                  setLoeschen(true);
-                }}
-              >
-                {htexte.loeschen.projektKnopf}
-              </Menue.Item>
-            </Menue.Content>
-          </Menue.Portal>
-        </Menue.Root>
+        <Werkzeuggruppe titel="…" beschriftung={t.weitere} ausrichtung="end" pfeil={false}>
+          <Button
+            variante="gefahr"
+            onClick={() => {
+              setLoeschen(true);
+            }}
+          >
+            {htexte.loeschen.projektKnopf}
+          </Button>
+        </Werkzeuggruppe>
       </div>
       <LvAbschnitt stand={stand} neuLaden={neuLaden} gehe={gehe} />
       <AuftragsAbschnitt stand={stand} gehe={gehe} />
