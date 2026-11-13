@@ -765,3 +765,10 @@ Question: Gegen 21:30 UTC brachen sieben laufende Agenten am 5-Stunden-Limit ab;
 Decision: 140 gemergt; um 22:20 UTC alle sieben aus ihrem gespeicherten Stand fortgesetzt (wie D-81), nachdem der Nutzer „continue“ schrieb. Der freie Platz geht an 147 (P, Weg zum Tor E: Beispielprojekt); 155 (S) folgt beim nächsten freien Platz. Offene Punkte aus 140 (D-140.3, D-140.7: GlobalId-Typ in `ui-modell`, Durchreichung von `MENGENART_STUECK` aus `bim`) gehen an 155, weil sie die App mitändern.
 Reason: Kein Verlust; P-Tickets zuerst, falls das Limit erneut greift.
 Reversible: yes  Touches: Ablauf, Ticket 155
+
+## D-86 Phasen X80, X87, X88 ohne Bedeutung im Glossar
+Welle 7 · Ticket 136 (D-136.3) · decided by: orchestrator
+Question: X80, X87 und X88 werden jetzt abgewiesen; der Satz nennt nur die Phasennummer, weil das Glossar ihre Bedeutung nicht kennt. Bedeutung eintragen?
+Decision: Nicht aus dem Gedächtnis. Ticket 144 darf die Bedeutung aus einer frei zugänglichen Beschreibung (gaeb.de, D-71) übernehmen und dann Glossar und Satz ergänzen; sonst bleibt es bei der Nummer. Die Erkennung von GAEB 90/2000 (D-136.2) prüfen 144/145 gegen die Formatbeschreibung.
+Reason: C1 und D-71: keine Behauptung ohne Quelle; die Abweisung selbst ist richtig.
+Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, Ticket 144
