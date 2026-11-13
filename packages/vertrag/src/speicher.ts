@@ -30,6 +30,7 @@ import type {
   HonorarberechnungId,
   IdQuelle,
   KostenermittlungId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LvStandId,
   MangelId,
@@ -429,8 +430,9 @@ export interface EinstellungenRepository {
 }
 
 /**
- * Wie eine Projektdatei eingelesen wird (v1.7a, Ticket 127; E8 „Projektdatei einlesen, wenn das Projekt schon da ist“).
- * Ohne Optionen wie bisher: ein vorhandenes Projekt derselben Kennung ergibt `existiert-bereits`.
+ * Wie eine Projektdatei eingelesen wird (v1.7a, Ticket 127; E8 „Projektdatei einlesen, wenn das Projekt schon da ist“;
+ * `Speicher.projektdateiEinlesen`). Ohne Optionen wie bisher: ein vorhandenes Projekt derselben Kennung ergibt
+ * `existiert-bereits`.
  */
 export interface ProjektdateiEinleseoptionen {
   /**
@@ -439,7 +441,8 @@ export interface ProjektdateiEinleseoptionen {
    * eine neue Kennung aus `ids` und biegt alle Verweise zwischen ihnen um (`projektId`, `leistungsverzeichnisId`,
    * `angebotId`, `auftragsLvId`, `aufmassIds`, Nachtragsangaben, Vorgänger eines Modells, Verweise von Honorar, Mangel und
    * Vorgang). Kennungen innerhalb eines Aggregats (Knoten, Positionen, Vorgänge, Bieter, Papierkorbeinträge, Bilder) bleiben:
-   * Sie sind nur je Aggregat bzw. Projekt eindeutig (Positionsidentität, ADR 0011). Das Projekt heißt `name`.
+   * Sie sind nur je Aggregat bzw. Projekt eindeutig (Positionsidentität, ADR 0011), die Kopie ist also ohne Überschneidung
+   * mit dem Original. Das Projekt heißt `name` (die App schlägt „<Name> (Kopie)“ vor).
    *
    * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127): Das Befehlsprotokoll der Datei kommt **nicht** mit:
    * Seine Befehle nennen die alten Kennungen. Die Kopie beginnt mit leerem Protokoll; die Datei selbst bleibt die Quelle der
@@ -447,6 +450,30 @@ export interface ProjektdateiEinleseoptionen {
    * Einstellungen der Datei gelten wie beim gewöhnlichen Einlesen (nur Fehlendes, D-73).
    */
   readonly alsKopie?: { readonly ids: IdQuelle; readonly name: string };
+}
+
+/**
+ * Ein Eintrag der Einstellungen, wie die Übernahme aus einer Projektdatei ihn nennt (v1.7a, D-73): das Büro, ein Druckprofil
+ * (über seinen Namen) oder eine Kostengruppenbezeichnung (über ihre Nummer).
+ */
+export type Einstellungsschluessel =
+  | { readonly art: 'buero' }
+  | { readonly art: 'druckprofil'; readonly name: string }
+  | { readonly art: 'kostengruppenbezeichnung'; readonly nummer: Kostengruppennummer };
+
+/**
+ * Ergebnis von `Speicher.projektdateiEinlesen` (v1.7a): das eingelesene Projekt (bei einer Kopie die neue Kennung) und was
+ * aus dem Block `einstellungen` der Datei wurde. `einstellungen: null`: Die Datei trägt keinen Block (Schema bis 6). Sonst
+ * `uebernommen` (lokal fehlte der Eintrag, er steht nun in den Einstellungen) und `belassen` (lokal gab es ihn schon; der
+ * Wert der Datei wurde nicht übernommen, auch wenn er gleich war), je in der Reihenfolge der Datei: Büro, Druckprofile,
+ * Kostengruppenbezeichnungen. Der Dialog nennt beides (Q5).
+ */
+export interface ProjektdateiEinleseergebnis {
+  readonly projektId: ProjektId;
+  readonly einstellungen: {
+    readonly uebernommen: readonly Einstellungsschluessel[];
+    readonly belassen: readonly Einstellungsschluessel[];
+  } | null;
 }
 
 /** Zustand der Persistenz des Browser-Speichers (Spec §9). */
@@ -537,15 +564,18 @@ export interface Speicher {
   persistenzstatus(): Promise<Persistenzstatus>;
   /** Exportiert die Projektdatei (JSON, G-56). Byte-stabil: kanonische Schlüsselreihenfolge. */
   projektdateiExportieren(projektId: ProjektId): Promise<Ergebnis<string, Speicherfehler>>;
+  /** Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. */
+  projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>>;
   /**
-   * Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. v1.7a (Ticket 127, E8):
-   * `optionen` additiv (siehe `ProjektdateiEinleseoptionen`); ein Speicher, der sie noch nicht kennt, bleibt zuweisbar. Ab
-   * Schema 7 übernimmt der Import den Block `einstellungen` nach D-73 (siehe `Projektdatei.einstellungen`).
+   * Liest eine Projektdatei ein wie `projektdateiImportieren`, wahlweise als Kopie, und berichtet, was aus dem Block
+   * `einstellungen` übernommen und was belassen wurde (v1.7a, Ticket 127; E8, E15, D-73). Optional, damit ein Speicher vor
+   * Ticket 139 gültig bleibt; liefert `speicher` es, nimmt die App es statt `projektdateiImportieren` (das ohne Optionen
+   * dasselbe tut und gültig bleibt). Ohne `optionen` ergibt ein vorhandenes Projekt derselben Kennung `existiert-bereits`.
    */
-  projektdateiImportieren(
+  projektdateiEinlesen?(
     inhalt: string,
     optionen?: ProjektdateiEinleseoptionen,
-  ): Promise<Ergebnis<ProjektId, Speicherfehler>>;
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>>;
   /**
    * Schließt den Speicher und gibt seine Betriebsmittel frei (v1.1a), z. B. die OPFS-Handles des Workers. Danach
    * sind keine weiteren Aufrufe zulässig; ein neuer Speicher wird mit einem neuen Öffnen erzeugt (das Öffnen liegt
@@ -620,9 +650,8 @@ export interface Projektdatei {
    * - Das Einlesen füllt nur **Fehlendes je Schlüssel** und überschreibt nie: das Büro nur, wenn lokal keines gesetzt ist; ein
    *   Druckprofil nur, wenn lokal keines dieses Namens besteht; eine Kostengruppenbezeichnung nur, wenn lokal keine dieser
    *   Nummer besteht.
-   * - Was übernommen und was belassen wurde, nennt der Dialog (Q5); `speicher` liefert es mit dem Ergebnis des Imports oder die
-   *   App vergleicht vorher und nachher (Ticket 139/150 entscheiden die Schnittstelle, ohne Vertragsänderung: die App kann
-   *   `einstellungen.laden` vor und nach dem Import vergleichen).
+   * - Was übernommen und was belassen wurde, liefert `Speicher.projektdateiEinlesen` (`ProjektdateiEinleseergebnis`); der
+   *   Dialog nennt es (Q5).
    * - Die Übernahme ist kein Befehl eines Projekts und steht in keinem Protokoll (D-73).
    */
   readonly einstellungen?: Einstellungen;

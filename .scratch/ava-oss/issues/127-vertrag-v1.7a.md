@@ -71,16 +71,18 @@ gelten unverändert.
   dieselbe Sperre zusätzlich als `konflikt` (auch für ein Undo, etwa von `BieterAnlegen` bei bestehendem Angebot). `nachtrag`
   zählt jedes LV mit `nachtrag.auftragsLvId` auf das Auftrags-LV, gleich welcher Status. Die App (149/150) baut den Text aus Art
   und Anzahl (L4/L5); `lv/texte.ts` hat dafür vorerst einen allgemeinen Satz.
-- **D-127.3 Zuschlag zurücknehmen (E8, D-74).** `ZuschlagZuruecknehmen {}` ist ein `AuftragsLvBefehl` (kern 137 führt aus).
-  ChangeSet wie `LeistungsverzeichnisLoeschen` (Kopf vorher, alle Knoten entfernt, alle Summen in `summen.vorher`). Sperren
-  nur Nachträge, Aufmaßblätter, Rechnungen, Mängel; Bauzeitenplan und Kostenkontrolle nicht (der Dialog in 149 nennt die
-  Vorgänge und dass die Auftragswerte der Kostenkontrolle entfallen). Angebot, LV und Nachtragsangaben bleiben. `vergabe` (138)
-  darf eine reine Zählhilfe für die Verweise anbieten; nötig ist sie nicht.
+- **D-127.3 Zuschlag zurücknehmen (E8, D-74).** `ZuschlagZuruecknehmen {}` ist ein `AuftragsLvBefehl`; ausgeführt von
+  `vergabe` (138, siehe D-127.17). ChangeSet wie `LeistungsverzeichnisLoeschen` (Kopf vorher, alle Knoten entfernt, alle
+  Summen in `summen.vorher`). Sperren nur Nachträge, Aufmaßblätter, Rechnungen, Mängel; Bauzeitenplan und Kostenkontrolle
+  nicht (der Dialog in 149 nennt die Vorgänge und dass die Auftragswerte der Kostenkontrolle entfallen). Angebot, LV und
+  Nachtragsangaben bleiben; einen „Zuschlagsvermerk“ gibt es im Modell nicht (der Zuschlag ist das Bestehen des Auftrags-LV,
+  D-21), 138 hat also nichts weiter zu entfernen.
 - **D-127.4 Bieter (E8, E10).** `BieterUmbenennen { bieterId, name }`, `BieterangabenSetzen { bieterId, angaben |
-  null }`, `BieterLoeschen { bieterId }` sind Projektbefehle (ganzes Projekt im ChangeSet); ein Dialog, der Name und Angaben
-  ändert, schreibt beide als Befehlsfolge. `Bieter.angaben?: Bieterangaben { anschrift: Anschrift | null, ansprechperson,
+  null }`, `BieterLoeschen { bieterId }` sind Projektbefehle (ganzes Projekt im ChangeSet), ausgeführt von `vergabe` (138,
+  D-127.17); ein Dialog, der Name und Angaben ändert, schreibt beide als Befehlsfolge. `Bieter.angaben?: Bieterangaben { anschrift: Anschrift | null, ansprechperson,
   email, telefon }`; `BieterAnlegen` darf `angaben` mitbringen (gaeb 136 füllt die Anschrift aus X84/X86). Unbekannte
-  `bieterId` → `ungueltige-eingabe` (`feld: 'bieterId'`). Normalisierung im Kern: `''` → `null`, Anschrift ganz `null` →
+  `bieterId` → `ungueltige-eingabe` (`feld: 'bieterId'`). `BieterAnlegen` mit `angaben` bleibt im Kern (137), mit derselben
+  Normalisierung. Normalisierung im Ausführer: `''` → `null`, Anschrift ganz `null` →
   `null`, Angaben ganz `null` → Feld fehlt. Kein Formatcheck für E-Mail/Telefon (U5).
 - **D-127.5 Projektangaben (E10).** `Projekt.angaben?: Projektangaben { nummer, ort, baustelle: Anschrift | null }`
   (Name und Bauherr bleiben am Projekt). `ProjektangabenSetzen { name, bauherr, angaben | null }` ersetzt in der App
@@ -93,7 +95,7 @@ gelten unverändert.
   `MengenansatzSetzen`), der Kern rechnet nicht nach (A3). Leer (kein Ansatz, kein Satz) → Feld fehlt. **Lesart (a) wie D-22:**
   `EinheitspreisAendern` und `EinheitspreisanteileSetzen` an einer Position mit Kalkulation entfernen sie im selben ChangeSet
   (kern 137; die Oberfläche fragt vorher). Anlegen und Kopieren nehmen sie mit (Muster-LV); `zuschlagErteilen` (vergabe 138)
-  und `nachtragUebernehmen` (abrechnung) lassen sie weg; der GAEB-Export schreibt sie nicht, ohne Warnung (die EPA tragen das
+  und `nachtragUebernehmen` (abrechnung, mit 143) lassen sie weg; der GAEB-Export schreibt sie nicht, ohne Warnung (die EPA tragen das
   Ergebnis).
 - **D-127.7 Preisspiegel-Einstellungen (E15, D-73).** `LvKopf.preisspiegel?: PreisspiegelEinstellungen` (Form wie
   `vergabe`: `ausreisserSchwelle`, `abcSchwelleA`, `abcSchwelleB`, `abcBezug: 'mittel' | 'schaetzpreis'`), LV-Befehl
@@ -111,13 +113,17 @@ gelten unverändert.
   (`laden` ohne Daten = `LEERE_EINSTELLUNGEN`, `anwenden` mit `konflikt` bei abweichendem `vorher`) als **optionales**
   `Speicher.einstellungen` (speicher 139 liefert es). Übernahme aus `localStorage`: einmalig durch die App (150), solange leer.
 - **D-127.9 Projektdatei Schema 7 (E15).** Optionaler Block `Projektdatei.einstellungen` (fehlt bei leeren Einstellungen);
-  Einlesen füllt nur Fehlendes je Schlüssel (Büro, Profilname, KG-Nummer) und überschreibt nie. Was übernommen wurde, zeigt die
-  App durch Vergleich von `einstellungen.laden` vor und nach dem Import; dafür gibt es kein Vertragsfeld.
-- **D-127.10 Projektdatei als Kopie einlesen (E8).** `projektdateiImportieren(inhalt, optionen?)` mit
-  `ProjektdateiEinleseoptionen.alsKopie: { ids: IdQuelle, name }`: neue Kennungen für Projekt und jedes Aggregat, Verweise
-  zwischen ihnen umgebogen, Kennungen innerhalb eines Aggregats (Knoten, Bieter, Vorgänge …) bleiben. **Das Protokoll kommt
-  nicht mit** (seine Befehle nennen die alten Kennungen); Modelldateien werden geteilt. Ohne Optionen wie bisher
-  (`existiert-bereits`).
+  Einlesen füllt nur Fehlendes je Schlüssel (Büro, Profilname, KG-Nummer) und überschreibt nie. Den Bericht liefert das neue,
+  optionale `Speicher.projektdateiEinlesen(inhalt, optionen?)` als `ProjektdateiEinleseergebnis { projektId, einstellungen:
+  { uebernommen, belassen } | null }` mit `Einstellungsschluessel` (`buero` | `druckprofil` + name |
+  `kostengruppenbezeichnung` + nummer); „belassen“ heißt: lokal schon vorhanden, auch bei gleichem Wert. `null`: Datei ohne
+  Block. `projektdateiImportieren(inhalt)` bleibt unverändert gültig (= Einlesen ohne Optionen, ohne Bericht).
+- **D-127.10 Projektdatei als Kopie einlesen (E8).** `projektdateiEinlesen(inhalt, { alsKopie: { ids: IdQuelle, name } })`:
+  neue Kennungen für Projekt und jedes Aggregat (alles, was `speicher` global schlüsselt), Verweise zwischen ihnen
+  umgebogen; Kennungen innerhalb eines Aggregats (Knoten, Bieter, Papierkorbeinträge, Vorgänge …) bleiben, weil `speicher` sie
+  je Aggregat bzw. Projekt schlüsselt; so überschneidet sich die Kopie nie mit dem Original. Den Namen gibt die App (Vorschlag
+  „<Name> (Kopie)“). **Das Protokoll kommt nicht mit** (seine Befehle nennen die alten Kennungen); Modelldateien werden
+  geteilt (inhaltsadressiert). Ohne Optionen wie bisher (`existiert-bereits`).
 - **D-127.11 Herkunftsformat (E6, E7).** `GaebFormat = 'da-xml' | 'gaeb-90' | 'gaeb-2000'`, `GaebLesung.format?` (fehlt =
   DA XML); `version` ist bei GAEB 90/2000 `null`. `GaebPhase` um `X80`, `X87`, `X88` erweitert (nur zum Benennen beim
   Abweisen); GAEB 90/2000 nennen die Phase mit derselben Nummer (`.d83` → `X83`). Nicht am LV gespeichert (nur Information im
@@ -132,15 +138,26 @@ gelten unverändert.
   darauf.
 - **D-127.14 Vorhandene Befehle reichen für die Bedienung (E8).** `HinweistextAnlegen`/`HinweistextAendern`,
   `AngebotLoeschen`, `AngebotspositionSetzen` (auch zum Berichtigen auf „nicht angeboten“), `AngebotsNachlassSetzen`/
-  `AngebotsNachlassEntfernen`, `OzMaskeSetzen` (der Kern liefert die umnummerierten Knoten): keine Lücke im Vertrag.
+  `AngebotsNachlassEntfernen`, `OzMaskeSetzen` (der Kern liefert die umnummerierten Knoten): keine neuen Befehle. Für 137
+  Punkt 6 (Fehler mit Liste der OZ, die nicht zur neuen Maske passen) gibt es additiv `Befehlsfehler.knotenIds` (alle
+  betroffenen Knoten in Dokumentreihenfolge, `knotenId` = der erste); der Code bleibt einer der vorhandenen (`oz-ungueltig`).
 - **D-127.15 Form der Lieferung.** Version im Kopf von `index.ts` vermerkt (keine Konstante). Typtests in einer eigenen Datei
   `vertrag-v17a.test.ts` (die alte hat 3.000 Zeilen); in `vertrag.test.ts` nur die zwei geschlossenen Listen
   (`AuftragsLvBefehl`, `Befehlsfehlercode`) ergänzt. Beispiele in `beispiele.ts`.
 - **D-127.16 Mechanische Folgezeilen (vom Typcheck erzwungen).** kern: `ZUSTAENDIGES_TICKET` nennt `KalkulationSetzen` und
-  `PreisspiegeleinstellungenSetzen` (Ticket 137), `baum.test.ts` erwartet das; `projektBefehlAusfuehren` weist die vier neuen
-  Projektbefehle mit `befehl-nicht-zustaendig` ab. speicher: `BEFEHLSARTEN` kennt die neun neuen Namen. App: Text zu
-  `verweise-vorhanden` in `lv/texte.ts`. Nicht vom Typcheck erzwungen und darum nicht hier: `speicher` weist ChangeSets mit
-  `lvStandInhalt` noch nicht ab (kann vor 137 nicht entstehen).
+  `PreisspiegeleinstellungenSetzen` (Ticket 137), `baum.test.ts` erwartet das (137 leert es wieder); `projektBefehlAusfuehren`
+  weist die vier neuen Projektbefehle mit `befehl-nicht-zustaendig` ab (`ProjektangabenSetzen` bis 137, die Bieterbefehle
+  dauerhaft, D-127.17); `ZuschlagZuruecknehmen` fällt im Auftrags-LV schon in den `default`-Zweig. speicher: `BEFEHLSARTEN`
+  kennt die neun neuen Namen. App: Text zu `verweise-vorhanden` in `lv/texte.ts`. Nicht vom Typcheck erzwungen und darum nicht
+  hier: `speicher` weist ChangeSets mit `lvStandInhalt` noch nicht ab (kann vor 137 nicht entstehen).
+- **D-127.17 Zuständigkeit der Ausführer nach dem Schnitt.** 137 nimmt „Bieter und Zuschlag“ ausdrücklich aus (→ 138,
+  `vergabe`). Darum: `vergabe` liefert je eine Funktion vom Typ `ProjektBefehlAusfuehren` und `AuftragsLvBefehlAusfuehren`,
+  die `BieterUmbenennen`, `BieterangabenSetzen`, `BieterLoeschen` bzw. `ZuschlagZuruecknehmen` selbst ausführt und alles
+  andere an `kern` weiterreicht (`vergabe → kern` ist erlaubt, A3); die App (149/150) ruft für Projekt- und Auftrags-LV-Befehle
+  diese Funktionen auf. Der Kern führt `ProjektangabenSetzen`, `BieterAnlegen` mit `angaben`, `KalkulationSetzen`,
+  `PreisspiegeleinstellungenSetzen`, `LvStandBefehl` und `EinstellungenBefehl` aus (137). Die Umkehrung (Undo) ist für alle
+  dieselbe wie bisher (`projektChangeSetUmkehren`, `auftragsLvChangeSetUmkehren` im Kern), weil die ChangeSet-Formen gleich
+  bleiben.
 
 Offene Fragen für den Nutzer (P9): (1) Einstellungen ohne Protokolleintrag weichen von A5/ADR 0009 („jeder Befehl im
 Protokoll“) ab, weil das Protokoll je Projekt geführt wird (D-73 „außerhalb der Projekt-Undo-Historie“). (2)

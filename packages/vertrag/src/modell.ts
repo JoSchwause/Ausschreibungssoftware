@@ -575,7 +575,7 @@ export interface Anschrift {
 
 /**
  * Bieterangaben (v1.7a, Ticket 127, E10; Glossar „Bieter“): Kontaktdaten eines Bieters. Jedes Feld nullbar, nie `''`
- * (Normalisierung im Kern wie bei `Anschrift`); sind alle `null`, fehlt der Block am Bieter (eine Schreibweise für „keine
+ * (Normalisierung im Ausführer wie bei `Anschrift`); sind alle `null`, fehlt der Block am Bieter (eine Schreibweise für „keine
  * Angaben“). Der Kern prüft kein Format von E-Mail oder Telefon (U5).
  */
 export interface Bieterangaben {

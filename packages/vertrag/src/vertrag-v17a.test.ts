@@ -70,7 +70,11 @@ import type {
   LangtextUmfang,
   Projektdatei,
   ProjektdateiEinleseoptionen,
+  ProjektdateiEinleseergebnis,
+  Einstellungsschluessel,
   Speicher,
+  Speicherfehler,
+  KnotenId,
   // E6, Ticket 123
   Bauteilmenge,
   Bauteilmengenart,
@@ -169,6 +173,8 @@ describe('v1.7a E8: neue Befehle für die Bedienung', () => {
     expectTypeOf<Verweisart>().toEqualTypeOf<'angebot' | 'nachtrag' | 'aufmass' | 'rechnung' | 'mangel'>();
     expectTypeOf<'verweise-vorhanden'>().toExtend<Befehlsfehlercode>();
     expectTypeOf<Befehlsfehler['verweise']>().toEqualTypeOf<readonly Verweisanzahl[] | undefined>();
+    // additiv für Fehler über mehrere Knoten (OZ-Maske, Ticket 137)
+    expectTypeOf<Befehlsfehler['knotenIds']>().toEqualTypeOf<readonly KnotenId[] | undefined>();
     const f = beispielFehlerZuschlagZuruecknehmen;
     expect(f.code).toBe('verweise-vorhanden');
     expect(f.verweise).toEqual([
@@ -336,9 +342,28 @@ describe('v1.7a E15: Einstellungen als globales Aggregat (D-73)', () => {
   it('eigenes Repository (optional am Speicher), Block in der Projektdatei, Einlesen als Kopie', () => {
     expectTypeOf<Speicher['einstellungen']>().toEqualTypeOf<EinstellungenRepository | undefined>();
     expectTypeOf<Projektdatei['einstellungen']>().toEqualTypeOf<Einstellungen | undefined>();
-    expectTypeOf<Parameters<Speicher['projektdateiImportieren']>>().toEqualTypeOf<
-      [inhalt: string, optionen?: ProjektdateiEinleseoptionen]
+    // `projektdateiImportieren` bleibt unverändert; neu und optional: Einlesen mit Optionen und Bericht (D-73)
+    expectTypeOf<Parameters<Speicher['projektdateiImportieren']>>().toEqualTypeOf<[inhalt: string]>();
+    expectTypeOf<NonNullable<Speicher['projektdateiEinlesen']>>().toEqualTypeOf<
+      (
+        inhalt: string,
+        optionen?: ProjektdateiEinleseoptionen,
+      ) => Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>>
     >();
+    expectTypeOf<Einstellungsschluessel['art']>().toEqualTypeOf<
+      'buero' | 'druckprofil' | 'kostengruppenbezeichnung'
+    >();
+    const bericht: ProjektdateiEinleseergebnis = {
+      projektId: '1' as ProjektId,
+      einstellungen: {
+        uebernommen: [{ art: 'druckprofil', name: 'Kurz für Bauherr' }],
+        belassen: [
+          { art: 'buero' },
+          { art: 'kostengruppenbezeichnung', nummer: '300' as Kostengruppennummer },
+        ],
+      },
+    };
+    expect(JSON.parse(JSON.stringify(bericht))).toEqual(bericht);
     expectTypeOf<ProjektdateiEinleseoptionen['alsKopie']>().toEqualTypeOf<
       { readonly ids: IdQuelle; readonly name: string } | undefined
     >();

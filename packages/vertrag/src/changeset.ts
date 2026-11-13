@@ -139,6 +139,12 @@ export interface Befehlsfehler {
   readonly feld?: string;
   /** v1.7a: nur beim Code `verweise-vorhanden`: die sperrenden Verweise (Anzahl > 0), nie leer. Fehlt sonst. */
   readonly verweise?: readonly Verweisanzahl[];
+  /**
+   * v1.7a (Ticket 127, für Ticket 137 Punkt 6): alle betroffenen Knoten, wenn es mehrere sind, in Dokumentreihenfolge, etwa
+   * die Ordnungszahlen, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`). `knotenId` ist dann der erste davon. Fehlt:
+   * höchstens ein Knoten (`knotenId`); nie leer.
+   */
+  readonly knotenIds?: readonly KnotenId[];
 }
 
 // --- Hinweise aus angenommenen Befehlen (v1.1a, Punkt 10) ------------------------------------------------------
@@ -545,6 +551,11 @@ export type AngebotBefehlAusfuehren = (
  * v1.7a (Ticket 127, E8): `verweise` sind die Verweise auf das Ziel eines löschenden Befehls (`BieterLoeschen`: die Angebote
  * dieses Bieters), Anzahl je Art (siehe `Verweisanzahl`). Nur `BieterLoeschen` liest sie; fehlen sie dort,
  * `ungueltige-eingabe`. Optional, damit jeder Aufruf mit zwei Argumenten gültig bleibt.
+ *
+ * Zuständigkeit in v1.7a (Schnitt der Welle 7, D-127.17): Die drei Bieterbefehle (`BieterUmbenennen`, `BieterangabenSetzen`,
+ * `BieterLoeschen`) führt `vergabe` aus (Ticket 138) mit einer Funktion dieses Typs, die alle übrigen Projektbefehle an den
+ * Kern weiterreicht (`vergabe → kern` ist erlaubt, A3); `ProjektangabenSetzen` führt der Kern aus (Ticket 137). Der Kern weist
+ * die Bieterbefehle mit `befehl-nicht-zustaendig` ab; die App nimmt für Projektbefehle die Funktion aus `vergabe`.
  */
 export type ProjektBefehlAusfuehren = (
   zustand: Projekt | null,
@@ -556,6 +567,10 @@ export type ProjektBefehlAusfuehren = (
  * v1.7a (Ticket 127, E8, D-74): `verweise` sind die Verweise des Projekts auf dieses Auftrags-LV (Nachträge, Aufmaßblätter,
  * Rechnungen, Mängel; siehe `ZuschlagZuruecknehmen`). Nur `ZuschlagZuruecknehmen` liest sie; optional wie bei
  * `ProjektBefehlAusfuehren`.
+ *
+ * Zuständigkeit in v1.7a (D-127.17): `ZuschlagZuruecknehmen` führt `vergabe` aus (Ticket 138; der Zuschlag gehört zur
+ * Vergabe), mit einer Funktion dieses Typs, die alle übrigen Befehle an den Kern weiterreicht; der Kern weist ihn mit
+ * `befehl-nicht-zustaendig` ab.
  */
 export type AuftragsLvBefehlAusfuehren = (
   zustand: AuftragsLvZustand | null,
