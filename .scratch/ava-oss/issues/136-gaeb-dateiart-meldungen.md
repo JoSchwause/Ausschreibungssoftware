@@ -22,6 +22,7 @@ Herkunft: umfang §3 E7 (Paketteil), E10 (Anschrift aus X84/X86), B-10, B-11, B-
    „Vertrag“ und ohne Kennungen. Bestehende Befundtexte im Paket entsprechend.
 4. **E10:** X84 und X86 lesen die Anschrift des Bieters (Name, Straße, PLZ, Ort, Telefon, E-Mail, Ansprechperson), wo die Datei
    sie trägt, in die Felder aus 127.
+6. **Aus dem Review (D-82, S7):** X84-Angaben des Bieters in `AngebotLesung.bieter.angaben?: Bieterangaben` (eigener Typ in `gaeb`), daraus `BieterAnlegen`. X86 füllt nur `LvInhaltKopf.auftragnehmer` (Name, Straße, PLZ, Ort); Telefon, E-Mail und Ansprechperson aus X86 bleiben ein Befund.
 5. Gleiche Behandlung für X31 (`x31.ts`): Befunde strukturiert.
 
 ## Acceptance criteria
