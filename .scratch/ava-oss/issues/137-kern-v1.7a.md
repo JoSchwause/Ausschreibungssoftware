@@ -1,6 +1,6 @@
 # 137: Kern v1.7a: neue Befehle, Kalkulationsansätze, Projektangaben, Einstellungen
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: K · Paket/Ordner: `packages/kern` (+ `packages/kosten`, falls die Kalkulationsansätze dort gerechnet werden)
 Blocked by: 127
@@ -27,10 +27,10 @@ oder Eigenschaftstests wie bisher, inklusive Umkehrung (Undo-ChangeSet).
 
 ## Acceptance criteria
 
-- [ ] Jeder neue Befehl mit Test und Umkehrung; Einzeländerung < 16 ms bei 5.000 Positionen unverändert
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Jeder neue Befehl mit Test und Umkehrung; Einzeländerung < 16 ms bei 5.000 Positionen unverändert
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -94,3 +94,9 @@ Entscheidungen im Demo-Modus (eng gelesen; die Lesarten D-127.1 bis D-127.17 und
   (`eigenschaften.test.ts`, `summen-eigenschaften.test.ts`) in die 5-s-Grenze von Vitest und drei Leistungsbudgets in
   `speicher` (Aufmaßblatt, Modell 10.000 Bauteile, BauteileZuordnen) über ihre Grenze; einzeln laufen alle grün, und die
   Eigenschaftstests brauchen mit dem Kern vor diesem Ticket gleich lang (2,4 s/3,3 s gegen 2,6 s/3,4 s). Nichts gelockert.
+- **Abschluss (Lauf am Ende, nach dem Merge von `integration/welle-7` mit 127-Nachtrag, 138 und 140).** Lint und Typen grün.
+  `pnpm test`: 4.188 grün, 6 rot, alle sechs Leistungsbudgets unter Volllast (Lastmittel über 20 auf 4 Kernen: Kern
+  Bauteilzuordnungen, `speicher` Aufmaßblatt, Modell 10.000 Bauteile und BauteileZuordnen, `vergabe` Preisspiegel, App
+  Aufmaß-Undo); einzeln nacheinander laufen alle sieben Budgetdateien grün (D-137.15), nichts gelockert. E2E `kosten`, `lv`,
+  `projekt`, `preisspiegel`: 10 von 10 grün.
+
