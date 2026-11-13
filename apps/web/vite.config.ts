@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
@@ -32,6 +33,40 @@ function inhaltsrichtlinie(): Plugin {
         injectTo: 'head-prepend',
       },
     ],
+  };
+}
+
+// Ticket 147: Die Daten des Beispielprojekts kommen beim Bauen aus den Fixtures (nur gelesen) in ein eigenes Bündel, das
+// erst „Beispielprojekt laden“ nachlädt. Der Produktivcode importiert keine Fixture-Datei (Grenze `fixtures-nur-in-tests`);
+// er sieht nur dieses Modul mit den Dateien als Text. Eine IFC-Datei ist nach ISO 10303-21 reiner ASCII-Text.
+const BEISPIELPROJEKT = 'virtual:tethys-beispielprojekt';
+
+function beispielprojekt(): Plugin {
+  const aufgeloest = `\0${BEISPIELPROJEKT}`;
+  const fixtures = new URL('../../fixtures/', import.meta.url);
+  const dateien = {
+    lv: 'typisch.json',
+    angebote: 'typisch-angebote.json',
+    abrechnung: 'typisch-abrechnung.json',
+    modell: 'ifc/haus-v1.ifc',
+  } as const;
+  const text = (datei: string): string => readFileSync(new URL(datei, fixtures), 'utf8');
+  // JSON ohne Einrückung: dieselben Daten, ein kleineres Bündel.
+  const json = (datei: string): string => JSON.stringify(JSON.parse(text(datei)));
+  return {
+    name: 'tethys-beispielprojekt',
+    resolveId: (id) => (id === BEISPIELPROJEKT ? aufgeloest : null),
+    load(id) {
+      if (id !== aufgeloest) return null;
+      for (const datei of Object.values(dateien)) this.addWatchFile(fileURLToPath(new URL(datei, fixtures)));
+      return [
+        `export const lv = ${JSON.stringify(json(dateien.lv))};`,
+        `export const angebote = ${JSON.stringify(json(dateien.angebote))};`,
+        `export const abrechnung = ${JSON.stringify(json(dateien.abrechnung))};`,
+        `export const modellDateiname = ${JSON.stringify(dateien.modell.split('/').at(-1))};`,
+        `export const modell = ${JSON.stringify(text(dateien.modell))};`,
+      ].join('\n');
+    },
   };
 }
 
@@ -74,6 +109,7 @@ export default defineConfig({
   plugins: [
     react(),
     inhaltsrichtlinie(), // Ticket 114
+    beispielprojekt(), // Ticket 147
     // Ticket 62: installierbar und offline (Manifest + Service Worker). Der Service Worker entsteht nur im Build
     // (`devOptions` bleibt aus), damit der Dev-Server und die Tests nicht von einem Zwischenspeicher gestört werden.
     // `prompt`: Ein neuer Stand wird nicht still mitten in der Arbeit aktiviert, die App fragt (`src/sicherung/pwa.ts`).
