@@ -8,7 +8,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureAlsX83 } from './fixture-inhalt';
 import { gaebEinlesen, neueZeile, projektAnlegen } from './hilfen';
-import { werkzeugleiste } from './werkzeuge';
+import { werkzeug, werkzeugleiste } from './werkzeuge';
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -185,8 +185,11 @@ test('Preisspiegel und Auftrags-LV ohne waagerechten Überlauf; der Gesamtpreis 
 }) => {
   await projektAnlegen(page, 'Musterhaus', 'Bauherr');
   await gaebEinlesen(page, fixtureAlsX83('typisch'), TYPISCH);
+  // Wie ein Nutzer: „Angebot einlesen“ aus dem Menü öffnet die Dateiauswahl (die Aktion läuft nach dem Schließen).
   for (const b of ['angebote/typisch-bieter-a.x84', 'angebote/typisch-bieter-b.x84']) {
-    await page.getByLabel('Angebotsdatei wählen').setInputFiles(datei(b));
+    const wahl = page.waitForEvent('filechooser');
+    await werkzeug(page, 'Angebote', 'Angebot einlesen');
+    await (await wahl).setFiles(datei(b));
     const einlesen = page.getByRole('dialog', { name: 'Angebot (X84) einlesen' });
     await einlesen.getByRole('button', { name: 'Übernehmen' }).click();
     const liste = page.getByRole('dialog', { name: 'Angebote' });

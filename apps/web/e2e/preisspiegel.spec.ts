@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 interface FxBieter {
   readonly angebotId: string;
@@ -136,7 +137,7 @@ test('Ausreißer und „nicht angeboten“ sichtbar und per Tastatur erreichbar;
     .getByRole('button', { name: 'Schließen', exact: true })
     .last()
     .click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await expect(grid(page)).toBeVisible();
 
   // Fixture: Annahme A7 nennt Bieter C an 02.0050 als Ausreißer (EP 253,350); Bieter B hat 03.0070 nicht angeboten.

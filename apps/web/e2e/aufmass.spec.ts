@@ -152,7 +152,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await expect(page).toHaveURL(new RegExp(`${blattPfad}$`));
 
   // Soll/Ist: Ist, Differenz, %, GP und der Befund über 110 %, per Tastatur erreichbar.
-  await werkzeug(page, 'Abrechnung', 'Soll/Ist');
+  await page.getByRole('toolbar').getByRole('link', { name: 'Soll/Ist' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /^Soll\/Ist – / })).toBeVisible();
   await sollIstPruefen(page, true);
   await page.getByRole('region', { name: 'Befunde', exact: true }).getByRole('button').focus();
