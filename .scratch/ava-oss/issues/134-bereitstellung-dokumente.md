@@ -1,6 +1,6 @@
 # 134: Bereitstellung (GitHub Pages) und Dokumente
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: E17 · Paket/Ordner: `.github/workflows/`, `apps/web/vite.config.*`, `package.json`, `apps/web/package.json`, `README.md`, `CONTRIBUTING.md`, `docs/adr/0012*`, `okf/` (nicht `okf/research/`), Tickets 02, 18, 24, 26
 Blocked by: –
