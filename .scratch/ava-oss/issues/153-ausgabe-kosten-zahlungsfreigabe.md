@@ -1,6 +1,6 @@
 # 153: `ausgabe`: Kostenermittlung, Kostenkontrolle, Zahlungsfreigabe mit A5
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: O, E12 · Paket/Ordner: `packages/ausgabe`
 Blocked by: 141, 128
