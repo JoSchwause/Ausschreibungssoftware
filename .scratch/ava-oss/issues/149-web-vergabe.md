@@ -16,6 +16,7 @@ Herkunft: umfang §3 E8, E10, E11, E15 (Preisspiegel-Einstellungen am LV), B-15,
 2. **Bieter umbenennen, löschen** (nur ohne Angebot; Sperrtext), **Bieter-Stammdaten** (Anschrift, Ansprechperson, E-Mail,
    Telefon) bearbeiten; aus X84 gefüllte Anschrift sichtbar.
 6. **Aus dem Review (D-82, S7):** Ein vorhandener Bieter wird beim Einlesen eines X84 nicht überschrieben; trägt die Datei andere Angaben, bietet die App `BieterangabenSetzen` an. Die schmalen Funktionen aus `vergabe` (S9) verlangen die Verweise; die App zählt sie.
+7. **Aus 138 (D-138.1, D-138.7):** `projektBefehlAusfuehren` und `auftragsLvBefehlAusfuehren` aus `@tethys/vergabe` statt aus `@tethys/kern` nutzen; für Bieter löschen und Zuschlag zurücknehmen `bieterLoeschen` bzw. `zuschlagZuruecknehmen` mit den aus dem Speicher gezählten Verweisen aufrufen.
 3. **Zuschlag zurücknehmen** (D-74): Bestätigungsdialog nennt Vorgänge im Bauzeitenplan und die entfallenden Werte der
    Kostenkontrolle; Sperre nennt Nachträge, Aufmaßblätter, Rechnungen, Mängel und wie man sie löst. Danach ist das Projekt
    wieder löschbar (Q5).
