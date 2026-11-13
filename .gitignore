@@ -10,7 +10,6 @@ okf/research/
 # Abhängigkeiten und Build-Ausgaben
 node_modules/
 dist/
-dist-basispfad/
 playwright-report/
 test-results/
 *.tsbuildinfo

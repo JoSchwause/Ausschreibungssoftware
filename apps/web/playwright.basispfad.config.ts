@@ -18,7 +18,7 @@ export default defineConfig({
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   webServer: {
-    command: `VITE_OUTDIR=dist-basispfad VITE_BASE=/tethys-probe/ pnpm exec vite build && VITE_OUTDIR=dist-basispfad VITE_BASE=/tethys-probe/ pnpm exec vite preview --port ${port}`,
+    command: `VITE_OUTDIR=dist/basispfad VITE_BASE=/tethys-probe/ pnpm exec vite build && VITE_OUTDIR=dist/basispfad VITE_BASE=/tethys-probe/ pnpm exec vite preview --port ${port}`,
     url: `http://localhost:${port}/tethys-probe/`,
     reuseExistingServer: false,
     timeout: 120_000,
