@@ -166,6 +166,11 @@ export function angebotLesen(
 const gleichNamig = (a: string, b: string): boolean =>
   a.trim().toLocaleLowerCase('de') === b.trim().toLocaleLowerCase('de');
 
+/** Ob das Projekt einen Bieter dieses Namens hat (Groß-/Kleinschreibung und Ränder egal); er wird wiederverwendet. */
+export function bieterVorhanden(projekt: Projekt, bieterName: string): boolean {
+  return bieterName.trim() !== '' && projekt.bieter.some((b) => gleichNamig(b.name, bieterName));
+}
+
 export interface Angebotsplan {
   /** `null`: Der Bieter ist im Projekt schon da (gleicher Name, Groß-/Kleinschreibung und Ränder egal). */
   readonly neuerBieter: Bieter | null;

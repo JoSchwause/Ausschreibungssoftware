@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Deutsche Texte der Rechnungen (Ticket 88, L1). Keine Übersetzung in v1.
 
+import type { XRechnungBefundcode } from '@tethys/erechnung';
 import type { Rechnungsart } from '@tethys/vertrag';
 
 const nummern = (xs: readonly number[]): string => xs.map(String).join(', ');
@@ -178,7 +179,6 @@ export const texte = {
     brutto: 'Brutto (BT-112)',
     zahlbetrag: 'Zahlbetrag (BT-115)',
     befunde: 'Befunde der Datei',
-    keineBefunde: 'Keine Befunde.',
     artWaehlen: 'Als welche Rechnungsart übernehmen?',
     artFehlt: 'Bitte die Rechnungsart wählen.',
     ziel: 'Übernehmen in',
@@ -189,6 +189,30 @@ export const texte = {
     schliessen: 'Schließen',
     uebernehmen: 'Übernehmen',
     erfolg: 'XRechnung übernommen',
+    /** Kurztext je Befund beim Einlesen (ohne Codes, L5); die ausführliche Meldung steht in den Einzelheiten. */
+    kurztexte: {
+      'eingabe-zu-gross': 'Datei zu groß',
+      'xml-doctype': 'Dokumenttyp-Angabe abgewiesen',
+      'xml-entitaet': 'Unbekanntes Sonderzeichen',
+      'xml-zu-tief': 'Zu tief verschachtelt',
+      'xml-ungueltig': 'Kein lesbares XML',
+      'keine-xrechnung': 'Keine XRechnung',
+      'spezifikation-unbekannt': 'Spezifikation nicht erkannt',
+      'pflichtangabe-fehlt': 'Pflichtangabe fehlt',
+      'datum-ungueltig': 'Datum ungültig',
+      'zahl-ungueltig': 'Zahl nicht lesbar',
+      'betrag-nicht-kanonisch': 'Betrag gerundet',
+      'menge-zu-viele-stellen': 'Menge mit mehr Nachkommastellen',
+      'preis-zu-viele-stellen': 'Preis mit mehr Nachkommastellen',
+      'satz-zu-viele-stellen': 'Steuersatz mit mehr Nachkommastellen',
+      'waehrung-nicht-eur': 'Andere Währung als €',
+      'unterposition-ohne-oberposition': 'Unterposition ohne Oberposition',
+      'summe-positionen-falsch': 'Summe der Positionen stimmt nicht',
+      'netto-falsch': 'Netto stimmt nicht',
+      'brutto-falsch': 'Brutto stimmt nicht',
+      'zahlbetrag-falsch': 'Zahlbetrag stimmt nicht',
+      'umsatzsteuer-falsch': 'MwSt stimmt nicht',
+    } satisfies Record<XRechnungBefundcode, string>,
   },
   meldung: {
     gespeichert: (nummer: number) => `Rechnung ${String(nummer)} gespeichert`,

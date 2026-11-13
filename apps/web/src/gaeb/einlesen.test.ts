@@ -19,8 +19,8 @@ describe('projektVorschlag', () => {
   it('Name aus dem LV; Bauherr leer, wenn die Datei keinen Auftraggeber mit Namen trägt', () => {
     const v = lvLesen(datei(`${AVA}.X81`), 'BVBS.X81', appIdQuelle());
     if (v.inhalt === null) throw new Error('Inhalt');
-    const { auftraggeber: _, ...ohneAuftraggeber } = v.inhalt;
-    expect(projektVorschlag({ inhalt: ohneAuftraggeber }, 'BVBS.X81')).toEqual({
+    const ohneAuftraggeber = { ...v.inhalt, auftraggeber: { ...v.inhalt.auftraggeber, name: null } };
+    expect(projektVorschlag({ inhalt: ohneAuftraggeber } as never, 'BVBS.X81')).toEqual({
       name: 'BVBS GAEB AVA',
       bauherr: '',
     });

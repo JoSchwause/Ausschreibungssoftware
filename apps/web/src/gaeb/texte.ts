@@ -27,7 +27,8 @@ export const texte = {
     vorkommen: (n: number) => `${n.toLocaleString('de-DE')} Vorkommen`,
     oz: (oz: readonly string[]) => `OZ ${oz.join(', ')}`,
     einzelheiten: (n: number) => `Einzelheiten (${n.toLocaleString('de-DE')})`,
-    abgewiesen: 'Datei nicht eingelesen',
+    einzelheitenListe: 'Einzelheiten der Befunde',
+    zusammenfassung: 'Weitere Befunde',
     /** Namen der Werte, wenn ein Befund mehrere Zahlen trägt. */
     wertnamen: {
       datei: 'Datei',
@@ -42,7 +43,15 @@ export const texte = {
   },
   einlesen: {
     knopf: 'GAEB einlesen',
+    knopfOhneProjekt: 'GAEB-Datei einlesen',
     titel: 'GAEB-Datei einlesen',
+    neuesProjekt: 'Neues Projekt',
+    projektname: 'Name des Projekts',
+    bauherr: 'Bauherr',
+    neuesProjektHinweis:
+      'Übernehmen legt ein Projekt mit diesem Namen an und liest das Leistungsverzeichnis hinein.',
+    bauherrHinweis: 'Vorschlag aus dem Auftraggeber der Datei; später änderbar.',
+    erfolgProjekt: 'Projekt angelegt',
     datei: 'GAEB-Datei wählen',
     liest: 'Die Datei wird gelesen …',
     uebernehmen: 'Übernehmen',
@@ -84,6 +93,13 @@ export const texte = {
     datei: 'Angebotsdatei wählen',
     bieter: 'Bieter',
     bieterHinweis: 'Name aus der Datei; ein Bieter dieses Namens im Projekt wird wiederverwendet.',
+    bieterVorhanden:
+      'Ein Bieter dieses Namens ist schon im Projekt; seine Angaben bleiben unverändert, die Angaben der Datei werden nicht übernommen.',
+    angaben: 'Angaben zum Bieter aus der Datei',
+    anschrift: 'Anschrift',
+    ansprechperson: 'Ansprechperson',
+    telefon: 'Telefon',
+    email: 'E-Mail',
     bieterFehlt: 'Bitte einen Bieternamen eingeben.',
     uebernehmen: 'Übernehmen',
     schliessen: 'Schließen',

@@ -148,7 +148,11 @@ describe('BVBS AVA: X81 und X84 einlesen, Bietersummen mit vergabe', () => {
     expect(x84.bieterAngaben).toEqual(angaben);
     // Auch unter einem geänderten Namen gehören die Angaben zum Bieter der Datei.
     const plan = angebotAnlegenPlan(x84, 'Pinsel und Co KG', projekt, u.ids);
-    expect(plan?.neuerBieter).toEqual({ id: expect.any(String) as string, name: 'Pinsel und Co KG', angaben });
+    expect(plan?.neuerBieter).toEqual({
+      id: expect.any(String) as string,
+      name: 'Pinsel und Co KG',
+      angaben,
+    });
     if (plan === null) throw new Error('Plan');
     expect((await weg.angebotAnlegen(projekt, lv, plan.neuerBieter, plan.angebot)).ok).toBe(true);
     const p = await u.speicher.projekte.laden(projekt.id);

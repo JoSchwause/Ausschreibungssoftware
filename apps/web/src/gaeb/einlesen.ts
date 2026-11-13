@@ -28,7 +28,10 @@ export type ProjektAusGaeb =
 const ohneEndung = (dateiname: string): string => dateiname.replace(/\.[^.]*$/, '').trim();
 
 /** Name: der des LV, sonst der Dateiname ohne Endung. Bauherr: der Name des Auftraggebers, sonst leer. */
-export function projektVorschlag(vorschau: Pick<Lesevorschau, 'inhalt'>, dateiname: string): Projektvorschlag {
+export function projektVorschlag(
+  vorschau: Pick<Lesevorschau, 'inhalt'>,
+  dateiname: string,
+): Projektvorschlag {
   const lvName = vorschau.inhalt?.name.trim() ?? '';
   return {
     name: lvName === '' ? ohneEndung(dateiname) : lvName,
@@ -51,7 +54,11 @@ export function projektAusGaebAnlegen(
     const teile: Teil[] = [];
     try {
       const name = angaben.name.trim() === '' ? inhalt.name.trim() : angaben.name.trim();
-      const p = await projektBefehlAnwenden(u, null, projektAnlegenBefehl(u.ids, name, angaben.bauherr.trim()));
+      const p = await projektBefehlAnwenden(
+        u,
+        null,
+        projektAnlegenBefehl(u.ids, name, angaben.bauherr.trim()),
+      );
       if (!p.ok) return p;
       teile.push(p.teil);
       if (p.zustand === null) throw new Error('projektAusGaebAnlegen: Projekt fehlt');

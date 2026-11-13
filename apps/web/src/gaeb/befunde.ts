@@ -84,11 +84,15 @@ export function wertDeutsch(w: Befundwert): string {
 
 /** Die Zahlen eines Befunds als Text: ein Wert allein, mehrere mit ihrem Namen. Texte und Anzahlen stehen nicht hier. */
 function zahlenText(b: Pruefbefund): string | null {
-  const werte = Object.entries(alsGaeb(b).werte ?? {}).filter(([, w]) => w.art !== 'text' && w.art !== 'anzahl');
+  const werte = Object.entries(alsGaeb(b).werte ?? {}).filter(
+    ([, w]) => w.art !== 'text' && w.art !== 'anzahl',
+  );
   if (werte.length === 0) return null;
   if (werte.length === 1) return werte[0] === undefined ? null : wertDeutsch(werte[0][1]);
   const namen: Readonly<Record<string, string>> = texte.befunde.wertnamen;
-  const teile = werte.filter(([n]) => namen[n] !== undefined).map(([n, w]) => `${namen[n] ?? n} ${wertDeutsch(w)}`);
+  const teile = werte
+    .filter(([n]) => namen[n] !== undefined)
+    .map(([n, w]) => `${namen[n] ?? n} ${wertDeutsch(w)}`);
   return teile.length === 0 ? null : teile.join(', ');
 }
 
@@ -97,12 +101,20 @@ function vorkommen(b: Pruefbefund): number {
   return a?.art === 'anzahl' ? a.wert : 1;
 }
 
+const abweisender = (befunde: readonly Pruefbefund[]): Pruefbefund | undefined =>
+  befunde.find((b) => istGaebLesen(b) && ABWEISUNGEN.has(b.code));
+
+/** Der Satz, mit dem ein GAEB-Leser die Datei abweist; `null`, wenn er sie liest. */
+export function abweisungssatz(befunde: readonly Pruefbefund[]): string | null {
+  return abweisender(befunde)?.meldung ?? null;
+}
+
 /** Fasst die Befunde eines Einlesens für Nutzer zusammen (Kurztexte: Standard die der GAEB-Leser). */
 export function befundeZusammenfassen(
   befunde: readonly Pruefbefund[],
   kurztexte: Kurztexte = BEFUNDTEXTE,
 ): Befundzusammenfassung {
-  const abgewiesen = befunde.find((b) => istGaebLesen(b) && ABWEISUNGEN.has(b.code));
+  const abgewiesen = abweisender(befunde);
   const rest = befunde.filter((b) => b !== abgewiesen);
   const titel = (b: Pruefbefund): string => kurztexte[b.code] ?? b.meldung;
 
@@ -120,7 +132,10 @@ export function befundeZusammenfassen(
     else g.b.push(b);
   }
   const alle = [...gruppen.values()];
-  const geordnet = [...alle.filter((g) => g.schwere === 'fehler'), ...alle.filter((g) => g.schwere !== 'fehler')];
+  const geordnet = [
+    ...alle.filter((g) => g.schwere === 'fehler'),
+    ...alle.filter((g) => g.schwere !== 'fehler'),
+  ];
 
   return {
     fehler: befunde.filter((b) => b.schwere === 'fehler').length,
@@ -142,14 +157,12 @@ export function befundeZusammenfassen(
         werte: b.length === 1 ? zahlenText(erster) : null,
       };
     }),
-    einzelheiten: rest.map(
-      (b): Einzelheit => ({
-        schwere: b.schwere,
-        titel: titel(b),
-        meldung: kurztexte[b.code] === undefined ? null : b.meldung,
-        oz: alsGaeb(b).oz ?? null,
-        zeile: zeileVon(b),
-      }),
-    ),
+    einzelheiten: rest.map((b): Einzelheit => ({
+      schwere: b.schwere,
+      titel: titel(b),
+      meldung: kurztexte[b.code] === undefined ? null : b.meldung,
+      oz: alsGaeb(b).oz ?? null,
+      zeile: zeileVon(b),
+    })),
   };
 }

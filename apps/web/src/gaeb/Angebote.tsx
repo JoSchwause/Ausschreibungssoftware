@@ -5,7 +5,7 @@
 
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { AngebotZustand, LvZustand, Projekt } from '@tethys/vertrag';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { ExcelEinlesen } from '../ausgabe/ExcelEinlesen'; // Ticket 66
 import { befehlswegFuer } from '../lv/befehlsweg';
@@ -13,9 +13,16 @@ import { useMeldungen } from '../lv/meldungen';
 import { formatiereBetragDe } from '../lv/zahlen';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { Befundliste } from './Befundliste';
-import { DateiNichtLesbar, dateiBytes, naechsterZug } from './datei';
-import { angebotAnlegenPlan, angebotLesen, bietersummen, type Angebotsvorschau } from './gaeb';
+import { BefundeBeimEinlesen } from './BefundeBeimEinlesen';
+import { abweisungssatz } from './befunde';
+import { DateiNichtLesbar, GAEB_ENDUNGEN, dateiBytes, naechsterZug } from './datei';
+import {
+  angebotAnlegenPlan,
+  angebotLesen,
+  bieterVorhanden,
+  bietersummen,
+  type Angebotsvorschau,
+} from './gaeb';
 import { texte } from './texte';
 import './gaeb.css';
 
@@ -127,7 +134,7 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
       <input
         ref={datei}
         type="file"
-        accept=".x84,.xml,.X84"
+        accept={GAEB_ENDUNGEN}
         className="gaeb__datei"
         aria-label={texte.angebot.datei}
         tabIndex={-1}
@@ -202,8 +209,16 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
             ) : (
               <p>{texte.angebot.leer}</p>
             )}
-            {v.phase !== 'X84' ? <p>{texte.angebot.keinX84(v.phase, v.version)}</p> : null}
-            <Befundliste befunde={v.befunde} />
+            {v.uebernehmbar && v.bieterAngaben !== undefined ? (
+              <BieterangabenDerDatei
+                vorschau={v}
+                vorhanden={stand !== null && bieterVorhanden(stand.projekt, lage.bieter)}
+              />
+            ) : null}
+            {v.phase !== 'X84' && abweisungssatz(v.befunde) === null ? (
+              <p>{texte.angebot.keinX84(v.phase, v.version)}</p>
+            ) : null}
+            <BefundeBeimEinlesen befunde={v.befunde} />
           </div>
         ) : null}
       </Dialog>
@@ -251,5 +266,44 @@ export function Angebote({ zustand }: { zustand: LvZustand }): ReactElement {
         )}
       </Dialog>
     </>
+  );
+}
+
+/** Anschrift und Kontakt aus der Datei; bei einem vorhandenen Bieter der Hinweis, dass sie nicht übernommen werden. */
+function BieterangabenDerDatei({
+  vorschau,
+  vorhanden,
+}: {
+  vorschau: Angebotsvorschau;
+  vorhanden: boolean;
+}): ReactElement | null {
+  const a = vorschau.bieterAngaben;
+  if (a === undefined) return null;
+  const t = texte.angebot;
+  const ort =
+    a.anschrift === null ? '' : [a.anschrift.plz, a.anschrift.ort].filter((x) => x !== null).join(' ');
+  const anschrift =
+    a.anschrift === null ? null : [a.anschrift.strasse ?? '', ort].filter((x) => x !== '').join(', ');
+  const zeilen: readonly (readonly [string, string | null])[] = [
+    [t.anschrift, anschrift],
+    [t.ansprechperson, a.ansprechperson],
+    [t.telefon, a.telefon],
+    [t.email, a.email],
+  ];
+  return (
+    <section aria-label={t.angaben}>
+      <h3 className="gaeb__unterkopf">{t.angaben}</h3>
+      <dl className="gaeb__zahlen" data-testid="bieterangaben">
+        {zeilen.map(([dt, dd]) =>
+          dd === null || dd === '' ? null : (
+            <Fragment key={dt}>
+              <dt>{dt}</dt>
+              <dd>{dd}</dd>
+            </Fragment>
+          ),
+        )}
+      </dl>
+      {vorhanden ? <p className="gaeb__hinweis">{t.bieterVorhanden}</p> : null}
+    </section>
   );
 }
