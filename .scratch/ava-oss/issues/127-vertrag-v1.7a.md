@@ -49,3 +49,100 @@ Nicht hier: A5 (Skonto, Bauabzugsteuer, Vertragsstrafe, Zahlungen) folgt in 128.
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+Lesarten von `vertrag` v1.7a für die Verbraucher (Demo-Modus, vorläufige Annahmen, enge Lesart; dieselben Texte stehen an den
+Typen). Alles ist additiv oder optional: Projekte, Projektdateien (Schema 1–6), Protokolle und Fixtures vor v1.7a typprüfen und
+gelten unverändert.
+
+- **D-127.1 LV-Stand umbenennen und löschen (E8).** Frage: Der LV-Ausführer sieht keine Stände; wie entsteht das ChangeSet,
+  und wie macht Undo ein Löschen rückgängig? Entscheidung: eigene Gruppe `LvStandBefehl` (`LvStandUmbenennen { lvStandId,
+  name }`, `LvStandLoeschen { lvStandId }`), **nicht** in `LvBefehl`, aber in `Befehl`; eigener Ausführer
+  `LvStandBefehlAusfuehren(stand: LvStand, befehl)` (kern, 137), fremde `lvStandId` → `befehl-nicht-zustaendig`. ChangeSet ist
+  ein `LvChangeSet` des LV des Stands (`kopf: null`, keine Knoten, leere Summen), im Protokoll mit diesem LV als Aggregat.
+  Umbenennen: `lvStand` mit beiden Köpfen. Löschen: `lvStand.nachher: null` **und** neu `lvStandInhalt: { vorher: { angelegt,
+  zustand }, nachher: null }`; dessen Umkehrung legt `speicher` (139) genau diesen Stand mit seinem `angelegt` ab, statt neu
+  einzufrieren; `lvStandInhalt` fehlt bei Anlegen/Umbenennen; Verstöße → `unbekannt`. App (150) lädt den Stand mit
+  `lvStaende.laden`. Grund: Q5 (Undo ohne Vorzustand) und D-12 (ein LV mit Ständen war sonst unlöschbar).
+- **D-127.2 Verweissperre (E8, D-74).** Neuer Fehlercode `verweise-vorhanden` mit `Befehlsfehler.verweise:
+  Verweisanzahl[]` (`{ art: 'angebot' | 'nachtrag' | 'aufmass' | 'rechnung' | 'mangel', anzahl }`, nur Anzahl > 0, nie leer,
+  Reihenfolge nachtrag, aufmass, rechnung, mangel). `ProjektBefehlAusfuehren` und `AuftragsLvBefehlAusfuehren` bekommen einen
+  **optionalen** dritten Parameter `verweise` (Aufrufe mit zwei Argumenten bleiben gültig); die App zählt aus den Listen des
+  Speichers. Fehlt er bei `BieterLoeschen`/`ZuschlagZuruecknehmen`: `ungueltige-eingabe` (`feld: 'verweise'`). `speicher` hält
+  dieselbe Sperre zusätzlich als `konflikt` (auch für ein Undo, etwa von `BieterAnlegen` bei bestehendem Angebot). `nachtrag`
+  zählt jedes LV mit `nachtrag.auftragsLvId` auf das Auftrags-LV, gleich welcher Status. Die App (149/150) baut den Text aus Art
+  und Anzahl (L4/L5); `lv/texte.ts` hat dafür vorerst einen allgemeinen Satz.
+- **D-127.3 Zuschlag zurücknehmen (E8, D-74).** `ZuschlagZuruecknehmen {}` ist ein `AuftragsLvBefehl` (kern 137 führt aus).
+  ChangeSet wie `LeistungsverzeichnisLoeschen` (Kopf vorher, alle Knoten entfernt, alle Summen in `summen.vorher`). Sperren
+  nur Nachträge, Aufmaßblätter, Rechnungen, Mängel; Bauzeitenplan und Kostenkontrolle nicht (der Dialog in 149 nennt die
+  Vorgänge und dass die Auftragswerte der Kostenkontrolle entfallen). Angebot, LV und Nachtragsangaben bleiben. `vergabe` (138)
+  darf eine reine Zählhilfe für die Verweise anbieten; nötig ist sie nicht.
+- **D-127.4 Bieter (E8, E10).** `BieterUmbenennen { bieterId, name }`, `BieterangabenSetzen { bieterId, angaben |
+  null }`, `BieterLoeschen { bieterId }` sind Projektbefehle (ganzes Projekt im ChangeSet); ein Dialog, der Name und Angaben
+  ändert, schreibt beide als Befehlsfolge. `Bieter.angaben?: Bieterangaben { anschrift: Anschrift | null, ansprechperson,
+  email, telefon }`; `BieterAnlegen` darf `angaben` mitbringen (gaeb 136 füllt die Anschrift aus X84/X86). Unbekannte
+  `bieterId` → `ungueltige-eingabe` (`feld: 'bieterId'`). Normalisierung im Kern: `''` → `null`, Anschrift ganz `null` →
+  `null`, Angaben ganz `null` → Feld fehlt. Kein Formatcheck für E-Mail/Telefon (U5).
+- **D-127.5 Projektangaben (E10).** `Projekt.angaben?: Projektangaben { nummer, ort, baustelle: Anschrift | null }`
+  (Name und Bauherr bleiben am Projekt). `ProjektangabenSetzen { name, bauherr, angaben | null }` ersetzt in der App
+  `ProjektStammdatenSetzen`; dieses bleibt gültig (alte Protokolle) und lässt `angaben` unverändert. `Anschrift { strasse,
+  plz, ort }` wie `Auftraggeber`; `Bauherr.anschrift` bleibt freier Text. Normalisierung wie D-127.4.
+- **D-127.6 Kalkulationsangaben (E9).** `Positionsdaten.kalkulation?: Kalkulationsangaben { ansaetze:
+  Kalkulationsansatz[], zuschlagssaetze: Kalkulationszuschlagssaetze }`; `Kalkulationsansatz` und
+  `Kalkulationszuschlagssaetze` sind aus `kosten` gewandert und gleich gebaut (kosten stellt in 137 um). Befehl
+  `KalkulationSetzen { positionId, kalkulation | null, einheitspreis, epa }` nur im LV: trägt das Ergebnis mit (wie
+  `MengenansatzSetzen`), der Kern rechnet nicht nach (A3). Leer (kein Ansatz, kein Satz) → Feld fehlt. **Lesart (a) wie D-22:**
+  `EinheitspreisAendern` und `EinheitspreisanteileSetzen` an einer Position mit Kalkulation entfernen sie im selben ChangeSet
+  (kern 137; die Oberfläche fragt vorher). Anlegen und Kopieren nehmen sie mit (Muster-LV); `zuschlagErteilen` (vergabe 138)
+  und `nachtragUebernehmen` (abrechnung) lassen sie weg; der GAEB-Export schreibt sie nicht, ohne Warnung (die EPA tragen das
+  Ergebnis).
+- **D-127.7 Preisspiegel-Einstellungen (E15, D-73).** `LvKopf.preisspiegel?: PreisspiegelEinstellungen` (Form wie
+  `vergabe`: `ausreisserSchwelle`, `abcSchwelleA`, `abcSchwelleB`, `abcBezug: 'mittel' | 'schaetzpreis'`), LV-Befehl
+  `PreisspiegeleinstellungenSetzen { einstellungen | null }`, Kopf-ChangeSet. Fehlt = `PREISSPIEGEL_STANDARD` in `vergabe`
+  (bleibt dort). Kern prüft: kanonische `Prozent` 0,00–100,00, A ≤ B. Am `LvKopf` (wie `nachtrag`/`vorlage`): nie aus GAEB,
+  nie am Auftrags-LV, nicht in `LvUebersicht`; ein LV aus einem LV-Stand (`LeistungsverzeichnisAnlegen`) bringt es nicht mit.
+- **D-127.8 Einstellungen (E15, D-73).** Globales Aggregat `Einstellungen { buero: Buero | null, druckprofile:
+  Druckprofil[], kostengruppenbezeichnungen: Kostengruppenbezeichnung[] }`, ohne Kennung; Konstante `LEERE_EINSTELLUNGEN`.
+  Befehle `BueroSetzen`, `DruckprofilSetzen` (ersetzt gleichen Namens an seiner Stelle, sonst ans Ende),
+  `DruckprofilEntfernen { name }`, `KostengruppenbezeichnungenSetzen` (ganze Liste) als `EinstellungenBefehl`, **nicht** in
+  `Befehl`; `EinstellungenChangeSet` (ganz vorher/nachher) **nicht** in `ChangeSet`; Ausführer `EinstellungenBefehlAusfuehren`
+  (kern 137). Kein Protokolleintrag, keine Undo-Historie. Kennung eines Druckprofils ist sein Name; die Standardprofile von
+  `ausgabe` stehen nie darin; `Druckprofil`/`LangtextUmfang` sind aus `ausgabe` gewandert (gleich gebaut, ausgabe stellt in 141
+  um). KG-Bezeichnungen nach Nummer sortiert, eindeutig, nicht leer. `EinstellungenRepository { laden, anwenden }`
+  (`laden` ohne Daten = `LEERE_EINSTELLUNGEN`, `anwenden` mit `konflikt` bei abweichendem `vorher`) als **optionales**
+  `Speicher.einstellungen` (speicher 139 liefert es). Übernahme aus `localStorage`: einmalig durch die App (150), solange leer.
+- **D-127.9 Projektdatei Schema 7 (E15).** Optionaler Block `Projektdatei.einstellungen` (fehlt bei leeren Einstellungen);
+  Einlesen füllt nur Fehlendes je Schlüssel (Büro, Profilname, KG-Nummer) und überschreibt nie. Was übernommen wurde, zeigt die
+  App durch Vergleich von `einstellungen.laden` vor und nach dem Import; dafür gibt es kein Vertragsfeld.
+- **D-127.10 Projektdatei als Kopie einlesen (E8).** `projektdateiImportieren(inhalt, optionen?)` mit
+  `ProjektdateiEinleseoptionen.alsKopie: { ids: IdQuelle, name }`: neue Kennungen für Projekt und jedes Aggregat, Verweise
+  zwischen ihnen umgebogen, Kennungen innerhalb eines Aggregats (Knoten, Bieter, Vorgänge …) bleiben. **Das Protokoll kommt
+  nicht mit** (seine Befehle nennen die alten Kennungen); Modelldateien werden geteilt. Ohne Optionen wie bisher
+  (`existiert-bereits`).
+- **D-127.11 Herkunftsformat (E6, E7).** `GaebFormat = 'da-xml' | 'gaeb-90' | 'gaeb-2000'`, `GaebLesung.format?` (fehlt =
+  DA XML); `version` ist bei GAEB 90/2000 `null`. `GaebPhase` um `X80`, `X87`, `X88` erweitert (nur zum Benennen beim
+  Abweisen); GAEB 90/2000 nennen die Phase mit derselben Nummer (`.d83` → `X83`). Nicht am LV gespeichert (nur Information im
+  Einlesedialog, 146).
+- **D-127.12 Konstanten (Ticket 123 Punkte 1, 8).** `KOSTENGRUPPENNUMMER_MUSTER`, `MODELLDATEI_HASH_MUSTER`,
+  `BAUTEILMENGENARTEN` (Typ `Bauteilmengenart`), `STRUKTURKNOTENARTEN`, `IFC_SCHEMATA` (`IfcSchema` daraus abgeleitet, dieselbe
+  Union), `MENGENART_STUECK = 'Stueck' as const`. Die Verbraucher (`speicher` 135/139, `kern`/`kosten` 137, `bim`/`ifc` 140,
+  App 155) ersetzen ihre Kopien.
+- **D-127.13 Kalenderdatum (Ticket 123 Punkt 5).** Marke `Kalenderdatum` (geprüfter Tag `JJJJ-MM-TT`) und
+  `KALENDERDATUM_MUSTER` (nur die Form). Die gespeicherten Datumsfelder der Aggregate bleiben ungemarkter Text (sonst bräche
+  jeder Erzeuger); `bauzeit.Datum` wird in 140 zum Alias von `Kalenderdatum`, `bauleitung.istKalendertag` zum Typwächter
+  darauf.
+- **D-127.14 Vorhandene Befehle reichen für die Bedienung (E8).** `HinweistextAnlegen`/`HinweistextAendern`,
+  `AngebotLoeschen`, `AngebotspositionSetzen` (auch zum Berichtigen auf „nicht angeboten“), `AngebotsNachlassSetzen`/
+  `AngebotsNachlassEntfernen`, `OzMaskeSetzen` (der Kern liefert die umnummerierten Knoten): keine Lücke im Vertrag.
+- **D-127.15 Form der Lieferung.** Version im Kopf von `index.ts` vermerkt (keine Konstante). Typtests in einer eigenen Datei
+  `vertrag-v17a.test.ts` (die alte hat 3.000 Zeilen); in `vertrag.test.ts` nur die zwei geschlossenen Listen
+  (`AuftragsLvBefehl`, `Befehlsfehlercode`) ergänzt. Beispiele in `beispiele.ts`.
+- **D-127.16 Mechanische Folgezeilen (vom Typcheck erzwungen).** kern: `ZUSTAENDIGES_TICKET` nennt `KalkulationSetzen` und
+  `PreisspiegeleinstellungenSetzen` (Ticket 137), `baum.test.ts` erwartet das; `projektBefehlAusfuehren` weist die vier neuen
+  Projektbefehle mit `befehl-nicht-zustaendig` ab. speicher: `BEFEHLSARTEN` kennt die neun neuen Namen. App: Text zu
+  `verweise-vorhanden` in `lv/texte.ts`. Nicht vom Typcheck erzwungen und darum nicht hier: `speicher` weist ChangeSets mit
+  `lvStandInhalt` noch nicht ab (kann vor 137 nicht entstehen).
+
+Offene Fragen für den Nutzer (P9): (1) Einstellungen ohne Protokolleintrag weichen von A5/ADR 0009 („jeder Befehl im
+Protokoll“) ab, weil das Protokoll je Projekt geführt wird (D-73 „außerhalb der Projekt-Undo-Historie“). (2)
+`Speicher.einstellungen` wird nach 139 Pflicht (nächste Vertragsversion, etwa 128). (3) Lesart (a) für die Kalkulation ändert
+die Wirkung der EP-Befehle an Positionen mit Kalkulation (es gibt noch keine).
