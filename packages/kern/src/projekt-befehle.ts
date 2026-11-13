@@ -101,6 +101,15 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
     }
     case 'ProjektLoeschen':
       return ok(changeSet(zustand, zustand, null));
+    // Vertrag v1.7a (Ticket 127), mechanisch bis Ticket 137
+    case 'BieterUmbenennen':
+    case 'BieterLoeschen':
+    case 'ProjektangabenSetzen':
+    case 'BieterangabenSetzen':
+      return nein(
+        'befehl-nicht-zustaendig',
+        `Befehl ${befehl.art} ist im Kern noch nicht umgesetzt (Ticket 137).`,
+      );
   }
 };
 
