@@ -7,6 +7,8 @@ import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
 import type { Virtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { kuerzelAktion } from './kuerzel';
+import type { Gridart, Tastendruck } from './kuerzel';
 import type { Raster, Zelle } from './navigation';
 
 /** Die aktive Zelle, gehalten über die Kennungen von Zeile und Spalte. */
@@ -270,42 +272,24 @@ export function waagerechterVersatz(
   return 0;
 }
 
-/** Tasten, die die aktive Zelle bewegen (`zielZelle`). */
-export const NAVIGATIONSTASTEN: ReadonlySet<string> = new Set([
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'Home',
-  'End',
-  'PageUp',
-  'PageDown',
-]);
-
-/** Die Tasten eines Ereignisses, soweit das Auf- und Zuklappen sie braucht. */
-export interface Tastendruck {
-  readonly key: string;
-  readonly altKey: boolean;
-  readonly ctrlKey: boolean;
-  readonly metaKey: boolean;
-  readonly shiftKey: boolean;
-}
-
 /**
- * Auf- oder Zuklappen per Tastatur in beiden Grids: Alt+Pfeil rechts/links überall in der Zeile, Pfeil rechts/links
- * ohne Umschalter in der Baumspalte, wenn die Zeile Unterknoten hat und nicht schon so steht. Liefert den gewünschten
- * Zustand (`true` = aufgeklappt) oder `null`, wenn die Taste kein Klappen ist. Mit Alt ist sie immer ein Klappen
- * (auch ohne Wirkung), damit der Browser nicht zurückblättert.
+ * Auf- oder Zuklappen per Tastatur in beiden Grids: die Kürzel „aufklappen“/„zuklappen“ (Alt+Pfeil rechts/links) überall
+ * in der Zeile, Pfeil rechts/links ohne Umschalter in der Baumspalte, wenn die Zeile Unterknoten hat und nicht schon so
+ * steht. Liefert den gewünschten Zustand (`true` = aufgeklappt) oder `null`, wenn die Taste kein Klappen ist. Das Kürzel
+ * ist immer ein Klappen (auch ohne Wirkung), damit der Browser nicht zurückblättert.
  */
 export function klappAbsicht(
   e: Tastendruck,
   zeile: { readonly hatUnterknoten: boolean; readonly aufgeklappt: boolean },
   inBaumspalte: boolean,
+  grid: Gridart,
 ): boolean | null {
-  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return null;
+  const aktion = kuerzelAktion(e, grid);
+  if (aktion === 'aufklappen') return true;
+  if (aktion === 'zuklappen') return false;
+  if (aktion !== 'zelle-wechseln' || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return null;
+  if (!inBaumspalte || !zeile.hatUnterknoten) return null;
   const auf = e.key === 'ArrowRight';
-  if (e.altKey) return auf;
-  if (e.ctrlKey || e.metaKey || e.shiftKey || !inBaumspalte || !zeile.hatUnterknoten) return null;
   return zeile.aufgeklappt === auf ? null : auf;
 }
 

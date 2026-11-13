@@ -15,8 +15,10 @@ import type {
   LvAnsicht,
   LvBefehl,
   LvSpalte,
+  OzMaske,
   PositionAnlegen,
 } from '@tethys/vertrag';
+import type { SpaltenbreitenSpeicher } from './useSpaltenbreiten';
 
 /**
  * Lesefunktion der App für die Spalte „KG“ (Ticket 93): getrimmter, nicht leerer Text → Kostengruppennummer oder eine
@@ -52,6 +54,18 @@ interface LvGridGemeinsam {
    * zeigt die Spalte die Nummer nur an. Im schreibgeschützten Grid wirkt sie nur zusammen mit `onKostengruppen`.
    */
   readonly kostengruppeLesen?: KostengruppeLesen;
+  /**
+   * OZ-Maske des LV (Ticket 130): Die Spalte „Ordnungszahl“ wird so breit wie die breiteste OZ, die die Maske zulässt,
+   * samt Index. Ohne Maske (und für längere, von Hand vergebene OZ) zählt die längste OZ der Zeilen.
+   */
+  readonly ozMaske?: OzMaske;
+  /**
+   * Schlüssel, unter dem das Grid die Spaltenbreiten merkt, die der Nutzer zieht (Ticket 130), z. B. `lv` oder
+   * `auftrags-lv`: je Grid einer. Ohne Schlüssel gelten gezogene Breiten nur, solange das Grid steht.
+   */
+  readonly spaltenbreitenSchluessel?: string;
+  /** Wo die Spaltenbreiten gemerkt werden; Standard `localStorage` (Fehler beim Lesen oder Schreiben werden übergangen). */
+  readonly spaltenbreitenSpeicher?: SpaltenbreitenSpeicher;
   /** Zahlenränder (N4); die App schließt sie an `dezimal` an. */
   readonly zahlen: GridZahlen;
   /** Sprung zu einer Zelle (Prüf-Links). Steht die Zeile nicht in der Ansicht (zugeklappt), tut das Grid nichts. */

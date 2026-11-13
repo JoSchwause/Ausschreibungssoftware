@@ -9,7 +9,8 @@ import { useTable } from '@tanstack/react-table';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { Zeitkopf, balkenspaltenbild } from './Balkenspalte';
-import { NAVIGATIONSTASTEN, klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
+import { klappAbsicht, useGridKern, useSichtbareSpalten, useSprung } from './gridKern';
+import { NAVIGATIONSTASTEN, kuerzelAktion } from './kuerzel';
 import { tabZiel, zielZelle } from './navigation';
 import type { Zelle } from './navigation';
 import { features, vergleichsSpaltenDefinitionen } from './tabelle';
@@ -194,24 +195,25 @@ export function VergleichsGrid(props: VergleichsGridProps): ReactElement {
     const strg = e.ctrlKey || e.metaKey;
     const von: Zelle = { zeile: zi, spalte: si };
 
-    const klappen = klappAbsicht(e, zeilen[zi] ?? OHNE_BAUM, spalte === baumspalte);
+    const klappen = klappAbsicht(e, zeilen[zi] ?? OHNE_BAUM, spalte === baumspalte, 'vergleich');
     if (klappen !== null) {
       e.preventDefault();
       klappe(zi, klappen);
       return;
     }
+    const aktion = kuerzelAktion(e, 'vergleich');
+    if (aktion === 'kopieren') {
+      e.preventDefault();
+      kopiere();
+      return;
+    }
+    if (aktion === 'alles-auswaehlen') {
+      e.preventDefault();
+      waehleAlles();
+      return;
+    }
     if (strg && !e.altKey) {
       const taste = e.key.toLowerCase();
-      if (taste === 'c') {
-        e.preventDefault();
-        kopiere();
-        return;
-      }
-      if (taste === 'a') {
-        e.preventDefault();
-        waehleAlles();
-        return;
-      }
       if (taste === 'x' || taste === 'v') {
         e.preventDefault();
         setStatus(texte.gridSchreibgeschuetzt);

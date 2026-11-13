@@ -19,6 +19,7 @@ Herkunft: umfang §3 E8 (Projektdatei als Kopie, Zuschlag zurücknehmen), E15, E
    Verweise konsistent umgeschrieben, Modelldateien mit), Name mit Zusatz „(Kopie)“.
 4. Speicherung der neuen Befehle aus 137/138 (falls generisch über ChangeSets schon abgedeckt, nur Tests); Zuschlag zurücknehmen
    über den bestehenden `konflikt`-Weg bei Mangelverweisen (v1.6).
+6. **Befund aus 134:** nach einem Neuladen meldet die App einmal `createSyncAccessHandle … another open Access Handle`, weil der alte Speicher-Worker die OPFS-Datei noch hält. Ursache prüfen (Worker beim `pagehide` schließen oder Wiederholung mit Wartezeit), Test.
 5. Ältere Projektdateien (Schema 1–6) öffnen weiter (A8): Tests mit den vorhandenen Projektdatei-Fixtures.
 
 ## Acceptance criteria

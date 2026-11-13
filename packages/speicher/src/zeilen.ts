@@ -69,7 +69,7 @@ import type {
 } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import { kanonischKompakt } from './kanonisch';
-import type { SqlWert, SqlZeile } from './sql';
+import type { SqlWert, SqlZeile, Spaltenwerte } from './sql';
 
 // --- Hilfen zum Lesen einer Zeile -----------------------------------------------------------------------------
 
@@ -367,11 +367,21 @@ export function knotenAusZeile(z: SqlZeile): Knoten {
 
 // --- Angebotspositionen -------------------------------------------------------------------------------------
 
-/** Spalten `status`, `einheitspreis`, `epa`, `zuschlagssatz` einer Angebotsposition. */
-export function angebotspositionWerte(p: Angebotsposition): [SqlWert, SqlWert, SqlWert, SqlWert] {
+/** Die Spalten einer Angebotsposition außer ihrem Schlüssel (`angebot_id`, `position_id`). */
+export const ANGEBOTSPOSITION_SPALTEN = ['status', 'einheitspreis', 'epa', 'zuschlagssatz'] as const;
+
+/** Die Werte der `ANGEBOTSPOSITION_SPALTEN` einer Angebotsposition. */
+export function angebotspositionZeile(
+  p: Angebotsposition,
+): Spaltenwerte<(typeof ANGEBOTSPOSITION_SPALTEN)[number]> {
   return p.status === 'angeboten'
-    ? ['angeboten', p.einheitspreis, p.epa === null ? null : kanonischKompakt(p.epa), p.zuschlagssatz ?? null]
-    : ['nicht-angeboten', null, null, null];
+    ? {
+        status: 'angeboten',
+        einheitspreis: p.einheitspreis,
+        epa: p.epa === null ? null : kanonischKompakt(p.epa),
+        zuschlagssatz: p.zuschlagssatz ?? null,
+      }
+    : { status: 'nicht-angeboten', einheitspreis: null, epa: null, zuschlagssatz: null };
 }
 
 export function angebotspositionAusZeile(z: SqlZeile): Angebotsposition {
@@ -410,16 +420,17 @@ export const aufmassAusZeile = (z: SqlZeile): Aufmass => ({
   positionen: jsonLesen(text(z, 'positionen'), 'positionen') as Aufmassposition[],
 });
 
-/** Spalten `id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen`. */
-export const aufmassWerte = (a: Aufmass): SqlWert[] => [
-  a.id,
-  a.projektId,
-  a.auftragsLvId,
-  a.nummer,
-  a.bezeichnung,
-  a.datum,
-  kanonischKompakt(a.positionen),
-];
+/** Die Zeile eines Aufmaßblatts. */
+export const aufmassZeile = (a: Aufmass) =>
+  ({
+    id: a.id,
+    projekt_id: a.projektId,
+    auftrags_lv_id: a.auftragsLvId,
+    nummer: a.nummer,
+    bezeichnung: a.bezeichnung,
+    datum: a.datum,
+    positionen: kanonischKompakt(a.positionen),
+  }) satisfies Spaltenwerte;
 
 /** Die Angaben einer Rechnung: alles außer den Kopfspalten (`id`, `projektId`, `auftragsLvId`, `nummer`). */
 type Rechnungsangaben = Omit<Rechnung, 'id' | 'projektId' | 'auftragsLvId' | 'nummer'>;
@@ -434,10 +445,16 @@ export function rechnungAusZeile(z: SqlZeile): Rechnung {
   };
 }
 
-/** Spalten `id, projekt_id, auftrags_lv_id, nummer, angaben`. */
-export function rechnungWerte(r: Rechnung): SqlWert[] {
+/** Die Zeile einer Rechnung: Kopfspalten und die übrigen Angaben als JSON. */
+export function rechnungZeile(r: Rechnung) {
   const { id, projektId: projekt, auftragsLvId, nummer, ...angaben } = r;
-  return [id, projekt, auftragsLvId, nummer, kanonischKompakt(angaben)];
+  return {
+    id,
+    projekt_id: projekt,
+    auftrags_lv_id: auftragsLvId,
+    nummer,
+    angaben: kanonischKompakt(angaben),
+  } satisfies Spaltenwerte;
 }
 
 export function kostenermittlungUebersichtAusZeile(z: SqlZeile): KostenermittlungUebersicht {
@@ -454,14 +471,15 @@ export const kostenermittlungAusZeile = (z: SqlZeile): Kostenermittlung => ({
   eintraege: jsonLesen(text(z, 'eintraege'), 'eintraege') as Kostenermittlungseintrag[],
 });
 
-/** Spalten `id, projekt_id, stufe, name, eintraege`. */
-export const kostenermittlungWerte = (k: Kostenermittlung): SqlWert[] => [
-  k.id,
-  k.projektId,
-  k.stufe,
-  k.name,
-  kanonischKompakt(k.eintraege),
-];
+/** Die Zeile einer Kostenermittlung. */
+export const kostenermittlungZeile = (k: Kostenermittlung) =>
+  ({
+    id: k.id,
+    projekt_id: k.projektId,
+    stufe: k.stufe,
+    name: k.name,
+    eintraege: kanonischKompakt(k.eintraege),
+  }) satisfies Spaltenwerte;
 
 /** Flache Kopie von `o` ohne die Felder `k` (Kopf eines Aggregats ohne seine lange Liste). */
 export function ohne<T extends object, K extends keyof T>(o: T, ...k: readonly K[]): Omit<T, K> {
@@ -499,19 +517,20 @@ export function bauwerksmodellAusZeilen(kopf: SqlZeile, inhalt: SqlZeile): Bauwe
   };
 }
 
-/** Spalten `id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id, eingelesen, anzahl_bauteile`. */
-export const bauwerksmodellWerte = (k: BauwerksmodellKopf, anzahlBauteile: number): SqlWert[] => [
-  k.id,
-  k.projektId,
-  k.name,
-  k.datei.hash,
-  k.datei.dateiname,
-  k.datei.groesse,
-  k.schema,
-  k.vorgaengerId,
-  k.eingelesen,
-  anzahlBauteile,
-];
+/** Die Kopfzeile eines Bauwerksmodells (Struktur und Bauteile stehen in `bauwerksmodell_inhalt`). */
+export const bauwerksmodellZeile = (k: BauwerksmodellKopf, anzahlBauteile: number) =>
+  ({
+    id: k.id,
+    projekt_id: k.projektId,
+    name: k.name,
+    datei_hash: k.datei.hash,
+    datei_name: k.datei.dateiname,
+    datei_groesse: k.datei.groesse,
+    schema: k.schema,
+    vorgaenger_id: k.vorgaengerId,
+    eingelesen: k.eingelesen,
+    anzahl_bauteile: anzahlBauteile,
+  }) satisfies Spaltenwerte;
 
 // --- Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag (Schema 6, v1.6; D-57) -----------------------------------
 //
@@ -533,15 +552,16 @@ export const bauzeitenplanAusZeile = (z: SqlZeile): Bauzeitenplan => ({
   vorgaenge: jsonLesen(text(z, 'vorgaenge'), 'vorgaenge') as Vorgang[],
 });
 
-/** Spalten `id, projekt_id, name, projektbeginn, kalender, vorgaenge` (die Vorgänge schon als kanonischer Text). */
-export const bauzeitenplanWerte = (b: BauzeitenplanKopf, vorgaenge: string): SqlWert[] => [
-  b.id,
-  b.projektId,
-  b.name,
-  b.projektbeginn,
-  kanonischKompakt(b.kalender),
-  vorgaenge,
-];
+/** Die Zeile eines Bauzeitenplans (die Vorgänge schon als kanonischer Text). */
+export const bauzeitenplanZeile = (b: BauzeitenplanKopf, vorgaenge: string) =>
+  ({
+    id: b.id,
+    projekt_id: b.projektId,
+    name: b.name,
+    projektbeginn: b.projektbeginn,
+    kalender: kanonischKompakt(b.kalender),
+    vorgaenge,
+  }) satisfies Spaltenwerte;
 
 export function honorarberechnungUebersichtAusZeile(z: SqlZeile): HonorarberechnungUebersicht {
   return {
@@ -558,15 +578,16 @@ export const honorarberechnungAusZeile = (z: SqlZeile): Honorarberechnung => ({
   objekte: jsonLesen(text(z, 'objekte'), 'objekte') as Honorarobjekt[],
 });
 
-/** Spalten `id, projekt_id, name, nebenkosten, mwst_satz, objekte`. */
-export const honorarberechnungWerte = (h: Honorarberechnung): SqlWert[] => [
-  h.id,
-  h.projektId,
-  h.name,
-  jsonOderNull(h.nebenkosten),
-  h.mwstSatz,
-  kanonischKompakt(h.objekte),
-];
+/** Die Zeile einer Honorarberechnung. */
+export const honorarberechnungZeile = (h: Honorarberechnung) =>
+  ({
+    id: h.id,
+    projekt_id: h.projektId,
+    name: h.name,
+    nebenkosten: jsonOderNull(h.nebenkosten),
+    mwst_satz: h.mwstSatz,
+    objekte: kanonischKompakt(h.objekte),
+  }) satisfies Spaltenwerte;
 
 /** Die Angaben eines Mangels: alles außer den Kopfspalten (`id`, `projektId`, `nummer`). */
 type Mangelangaben = Omit<Mangel, 'id' | 'projektId' | 'nummer'>;
@@ -579,19 +600,19 @@ export const mangelAusZeile = (z: SqlZeile): Mangel => ({
 });
 
 /**
- * Spalten `id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben`. Auftrags-LV und Modell stehen zusätzlich in
- * eigenen Spalten (Fremdschlüssel, Index), damit ihr Löschen die Verweise ohne `json_each` findet.
+ * Die Zeile eines Mangels. Auftrags-LV und Modell stehen zusätzlich in eigenen Spalten (Fremdschlüssel, Index), damit ihr
+ * Löschen die Verweise ohne `json_each` findet.
  */
-export function mangelWerte(m: Mangel): SqlWert[] {
+export function mangelZeile(m: Mangel) {
   const { id, projektId: projekt, nummer, ...angaben } = m;
-  return [
+  return {
     id,
-    projekt,
+    projekt_id: projekt,
     nummer,
-    m.auftragsLvId,
-    m.bauteil?.bauwerksmodellId ?? null,
-    kanonischKompakt(angaben),
-  ];
+    auftrags_lv_id: m.auftragsLvId,
+    bauwerksmodell_id: m.bauteil?.bauwerksmodellId ?? null,
+    angaben: kanonischKompakt(angaben),
+  } satisfies Spaltenwerte;
 }
 
 /** Die Angaben eines Bautagebucheintrags: alles außer den Kopfspalten (`id`, `projektId`, `datum`). */
@@ -604,10 +625,10 @@ export const bautagebucheintragAusZeile = (z: SqlZeile): Bautagebucheintrag => (
   datum: text(z, 'datum'),
 });
 
-/** Spalten `id, projekt_id, datum, angaben`. */
-export function bautagebucheintragWerte(t: Bautagebucheintrag): SqlWert[] {
+/** Die Zeile eines Bautagebucheintrags. */
+export function bautagebucheintragZeile(t: Bautagebucheintrag) {
   const { id, projektId: projekt, datum, ...angaben } = t;
-  return [id, projekt, datum, kanonischKompakt(angaben)];
+  return { id, projekt_id: projekt, datum, angaben: kanonischKompakt(angaben) } satisfies Spaltenwerte;
 }
 
 // --- Summen ---------------------------------------------------------------------------------------------------
