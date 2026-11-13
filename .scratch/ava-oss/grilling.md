@@ -3,7 +3,8 @@
 Stand: 2026-11-09. Sitzung in vier Runden geführt. Antworten sind unten je Frage eingetragen
 (`**Antwort:**`). Die Rückschreibung in `plan.md`, `docs/regeln.md`, `GLOSSARY.md` und die ADRs
 0008–0011 ist erledigt. Alle Fragen sind beantwortet, außer **G-27** (vertagt, eigene Runde vor Welle 5).
-G-06, G-54, G-55 und G-56 sind am 2026-11-09 geschlossen worden.
+G-06, G-54, G-55 und G-56 sind am 2026-11-09 geschlossen worden. **Nachtrag 2026-11-13:** Stufe 5 (G-58 bis G-64, Runde vor
+Welle 7) ist beantwortet; G-27 gilt für v1 wie angenommen (G-62). Offen ist nur **G-57** (vertagt bis nach der Demo).
 
 Status je Frage: **entschieden**, **vertagt**, **Annahme** (Standard übernommen, Nutzer hat nicht
 explizit geantwortet), **offen**.
@@ -17,6 +18,8 @@ explizit geantwortet), **offen**.
   öffentliche Community vor M3. (2026-11-09) **Nachtrag (2026-11-09):** Erst ein Prototyp, an dem sich
   die Fragen später klären lassen. Das Interview hat keinen festen Termin mehr („vor Welle 3“ entfällt
   als Tor); der Prototyp ist der Anlass.
+  **Nachtrag (2026-11-13, Nutzer):** Das Interview fand bisher nicht statt. Die Demo mit Probebetrieb nach Welle 7 ist
+  zugleich das Interview (G-59); Leitfaden ist die Seite „Annahmen“ der App (G-62) und Ticket 126.
 - **G-03** Schutz vor Datenverlust — *entschieden*. **Antwort:** Export-Erinnerung und optionaler
   Sicherungsordner über die File System Access API (nur Chromium). In anderen Browsern bleibt der
   reine Export. (2026-11-09)
@@ -127,7 +130,9 @@ explizit geantwortet), **offen**.
   anonymisiertes echtes LV liegen im Repo. Damit ist Arbeit in Cloud-Sessions möglich. Anonymisierung:
   Namen, Adressen, Firmennamen, Projektbezeichnung und Aktenzeichen werden entfernt. Mengen und EP
   bleiben. (2026-11-09)
-- **G-53** Hosting — *entschieden*. **Antwort:** GitHub Pages. (2026-11-09)
+- **G-53** Hosting — *entschieden*. **Antwort:** GitHub Pages. (2026-11-09) **Nachtrag (2026-11-13):** Der
+  Deploy-Workflow fehlt noch und entsteht in Welle 7 (E17); das Einschalten von GitHub Pages in den Repo-Einstellungen
+  ist eine Aufgabe des Nutzers (Ticket 126).
 - **G-55** Fremde Testdateien im Repo — *entschieden*. Folgt aus der Testdaten-Recherche
   (`okf/research/standards/test-data-sources.md`, lokal). **Antwort (2026-11-09):**
   1. **Amtliche Dateien** (BVBS-Prüfdateien, GAEB-Musterdateien 3.1): werden unverändert ins Repo
@@ -193,6 +198,39 @@ Befunde und Wortlaut der Fragen: `.scratch/ava-oss/next-decisions.md`. Alle bean
   (Datei-Abgleich zwischen Installationen oder selbst betriebener Server)? Grundlage ist ADR 0013 (`proposed`);
   G-14 bleibt bindend, ein Bieterportal steht nicht zur Wahl.
   Annahme für Demo, Mensch bestätigt später: ADR 0013 als Vorschlag, kein Code in Welle 6 (D-55 in entscheidungen-auto.md).
+  **Nachtrag (2026-11-13, Nutzer):** vertagt bis nach der Demo mit dem Büro. Kein Server und kein Abgleich in Welle 7;
+  ADR 0013 bleibt `proposed`.
+
+## Stufe 5 — Runde vor Welle 7 (G-58 bis G-64, 2026-11-13)
+
+Anlass: Welle 7 soll die letzte Welle sein, bevor die Software gezeigt und benutzt wird. Befunde und Umfang:
+`.scratch/ava-oss/umfang-welle-7.md`. Alle vom Nutzer beantwortet.
+
+- **G-58** Ausgangsstand für Welle 7 — *entschieden*. **Antwort:** PR #11 (Welle 6) ist nach `main` gemergt (vom Nutzer,
+  `6bb709e`). Mit dem Merge gelten die Entscheidungen D-01 bis D-70 und `vertrag` v1.2 bis v1.6 als Ausgangsstand; die
+  Prüfung nach P9 ist für diese Versionen damit erledigt.
+- **G-59** Was „zeigen und benutzen“ heißt — *entschieden*. **Antwort:** Demo und Probebetrieb in einem Büro: eine
+  gehostete Adresse (GitHub Pages, G-53), ein Beispielprojekt und eine kurze Anleitung „Erste Schritte“. Die Sitzung mit
+  dem Büro ist zugleich das Interview aus G-02. Keine öffentliche Ankündigung; der Arbeitsname bleibt (G-07), die
+  Rechtsprüfung (G-42, G-44) bleibt Voraussetzung erst für eine Veröffentlichung.
+- **G-60** Module aus Welle 6 (Modelle/BIM, Bauzeitenplan, Honorar, Mängel, Bautagebuch) — *entschieden*. **Antwort:**
+  Sie bleiben sichtbar, in einer eigenen Gruppe der Navigation mit dem Kennzeichen „Vorschau“. Die Arbeit der Welle 7 geht
+  vor allem in die Kernkette LV → Vergabe → Abrechnung → Kosten; die Folgetickets 123 und 124 werden trotzdem erledigt.
+- **G-61** Größere Lücken in Welle 7 — *entschieden*. **Antwort:** Alle vier kommen in die Welle: GAEB 90 und GAEB 2000
+  lesen; Skonto, Bauabzugsteuer, Vertragsstrafe und Zahlungen in der Rechnungsprüfung (ergänzt D-34); Stammdaten für Bieter
+  und Projekt; weitere REB-Formeln über die 91 hinaus. Bei Überlauf fallen zuerst die REB-Formeln weg; die weitere
+  Kürzungsreihenfolge steht in `umfang-welle-7.md` §4. Ohnehin im Umfang: DA XML 3.1 lesen, Ausgaben für Preisspiegel, Aufmaß,
+  Rechnungsprüfung und Kosten, die fehlende Bedienung zum Löschen und Berichtigen.
+- **G-62** Umgang mit den Annahmen der Agenten — *entschieden*. **Antwort:** Sie gelten für v1. Die App bekommt eine
+  Hilfeseite „Annahmen“, die die fachlich wichtigen in einfachen Sätzen nennt (unter anderem D-05 Preisspiegel, D-21
+  Zuschlag, D-34 Abzugskette, D-35 Nachtrag und Soll/Ist, D-37 Kostenkontrolle, D-56 Honorar). Die Sitzung mit dem Büro
+  prüft genau diese Liste. G-26, G-27 und „VOB 80“ gelten damit für v1 wie angenommen; ob das Büro sie bestätigt, zeigt die
+  Sitzung. ADR 0012 wird in Welle 7 `accepted` (ungetaggtes PDF in v1, `Berichtsmodell` neben dem `Ausgabemodell`).
+- **G-63** Anrede in der Oberfläche — *entschieden*. **Antwort:** Unpersönlich („Noch keine Projekte.“, „Bitte eine Datei
+  wählen.“); wo eine direkte Anrede nötig ist, „Sie“. Kein „du“. Regel L4 in `docs/regeln.md`.
+- **G-64** Echte Testdateien — *entschieden*. **Antwort:** Der Nutzer stellt sie vor dem Start der Welle 7 bereit
+  (Ticket 125): GAEB-Dateien in DA XML, GAEB 90 und GAEB 2000, LVs aus dem Büro, eine IFC-Datei aus einem
+  Autorenwerkzeug. Selbst getippte LVs dürfen mit Herkunftsvermerk ins Repo; echte Bürodateien nur anonymisiert (C4, G-52).
 
 ## Widersprüche (Stand nach der Sitzung)
 

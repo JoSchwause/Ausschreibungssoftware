@@ -341,5 +341,8 @@ test('X3: Honorarberechnung aus der Kostenberechnung mit allen Sollwerten, Undo,
     .getByRole('dialog', { name: 'Kostenermittlung löschen' })
     .getByRole('button', { name: 'Löschen' })
     .click();
-  await expect(page.getByText('Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.')).toBeVisible();
+  // Genauer Treffer: Die Meldung steht kurz auch im unsichtbaren Ansageknoten der Toast-Region („Meldung …“ davor).
+  await expect(
+    page.getByText('Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.', { exact: true }),
+  ).toBeVisible();
 });

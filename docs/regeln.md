@@ -80,6 +80,10 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
   (G-22).
 - **L3** [NEU] Interne Bezeichner der Referenzsoftware (Feld-, Controller- und Aktionsnamen aus
   der Recherche) erscheinen nie in Code, Tests oder Commits.
+- **L4** [ENTSCHIEDEN, G-63] Anrede in der Oberfläche: unpersönlich („Noch keine Projekte.“, „Bitte eine Datei wählen.“).
+  Wo eine direkte Anrede nötig ist, „Sie“. Kein „du“.
+- **L5** [NEU] Texte für Nutzer nennen keine Ticketnummern, keine Kennungen aus dem Code und keine Paketnamen
+  (Befunde B-10 und B-12 in `.scratch/ava-oss/umfang-welle-7.md`).
 
 ## Clean Room und Lizenzen
 
@@ -144,7 +148,7 @@ Verbindlich für jede Sitzung und jeden Agenten. Arbeitsplan: `.scratch/ava-oss/
 - **P4** [ENTSCHIEDEN, G-51] Höchstens 8 Agenten gleichzeitig, mit kleinen Zwischen-Commits. Kein
   Zieltermin für M3.
 - **P5** Ein Ticket, das an einer offenen G-Frage hängt, ist `needs-info`. Es wird nicht geraten (im Demo-Modus `/implement-welle` entscheiden stattdessen die Agenten und protokollieren, siehe `.claude/skills/implement-welle/SKILL.md`).
-  Offen ist derzeit nur G-27 (vertagt bis vor Welle 5).
+  Offen ist derzeit nur G-57 (Sync-Server, vertagt bis nach der Demo). G-27 gilt für v1 wie in D-34 angenommen (G-62).
 - **P6** Sitzungen, die die Realität des Projekts ändern, aktualisieren das OKF und schreiben eine
   Übergabenotiz.
 - **P7** [ENTSCHIEDEN, G-50, E-17] Ein Review-Agent prüft jeden PR. Der Nutzer prüft Verträge, ADRs und

@@ -1,6 +1,6 @@
 ## Regeln und Plan
 
-Vor jeder Arbeit lesen: `docs/regeln.md` (verbindliche Entwurfs- und Umsetzungsregeln). Arbeitsplan mit Strängen und Wellen: `.scratch/ava-oss/plan.md`. Offene Entscheidungen: `.scratch/ava-oss/grilling.md` und, für die Runde vor Welle 2, `.scratch/ava-oss/next-decisions.md` sowie, für den Zwischenstand von Welle 2, `.scratch/ava-oss/next-decisions-welle-2.md`; ein Ticket, das an einer offenen G-Frage hängt, wird nicht geraten, sondern auf `needs-info` gesetzt.
+Vor jeder Arbeit lesen: `docs/regeln.md` (verbindliche Entwurfs- und Umsetzungsregeln). Arbeitsplan mit Strängen und Wellen: `.scratch/ava-oss/plan.md`. Entscheidungen: `.scratch/ava-oss/grilling.md` (Stufe 5: Runde vor Welle 7) und, für den Zwischenstand von Welle 2, `.scratch/ava-oss/next-decisions-welle-2.md`. Umfang der Welle 7 mit Befunden, Kürzungsreihenfolge und Tor: `.scratch/ava-oss/umfang-welle-7.md` (verbindlich für den Schnitt). Ein Ticket, das an einer offenen G-Frage hängt, wird nicht geraten, sondern auf `needs-info` gesetzt.
 
 ## Demo-Modus
 
