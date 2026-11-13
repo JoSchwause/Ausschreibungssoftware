@@ -149,18 +149,20 @@ import type {
   BueroSetzen,
   DruckprofilEntfernen,
   DruckprofilSetzen,
+  EinstellungenUebernehmen,
   KalkulationSetzen,
   KostengruppenbezeichnungenSetzen,
   LvStandLoeschen,
   LvStandUmbenennen,
-  PreisspiegeleinstellungenSetzen,
+  PreisspiegelEinstellungenSetzen,
   ProjektangabenSetzen,
   ZuschlagZuruecknehmen,
 } from './befehle';
-import type { EinstellungenChangeSet, LvStand } from './changeset';
+import type { Befehlshinweis, EinstellungenChangeSet, LvStand } from './changeset';
 import type { Druckprofil, Einstellungen } from './einstellungen';
 import type { BieterId } from './marken';
 import type { Projekt } from './modell';
+import type { EinstellungenProtokolleintrag } from './speicher';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
 const titelId = '019b76e9-0000-7000-8000-000000000002' as TitelId;
@@ -2557,8 +2559,8 @@ export const beispielBieterangabenSetzen: BieterangabenSetzen = {
 };
 
 /** E15: Preisspiegel-Einstellungen mit enger Ausreißer-Schwelle und Bezug Schätzpreis. */
-export const beispielPreisspiegeleinstellungenSetzen: PreisspiegeleinstellungenSetzen = {
-  art: 'PreisspiegeleinstellungenSetzen',
+export const beispielPreisspiegelEinstellungenSetzen: PreisspiegelEinstellungenSetzen = {
+  art: 'PreisspiegelEinstellungenSetzen',
   einstellungen: {
     ausreisserSchwelle: '15.00' as Prozent,
     abcSchwelleA: '80.00' as Prozent,
@@ -2594,12 +2596,19 @@ export const beispielEinstellungen: Einstellungen = {
   ],
 };
 
+/** Nachtrag D-82 M1: die Übernahme der Einstellungen einer Projektdatei, mit dem Block der Datei unverändert. */
+export const beispielEinstellungenUebernehmen: EinstellungenUebernehmen = {
+  art: 'EinstellungenUebernehmen',
+  einstellungen: beispielEinstellungen,
+};
+
 /** E15: je Befehl an den Einstellungen ein Beispiel. */
 export const beispieleEinstellungenbefehle: readonly [
   BueroSetzen,
   DruckprofilSetzen,
   DruckprofilEntfernen,
   KostengruppenbezeichnungenSetzen,
+  EinstellungenUebernehmen,
 ] = [
   { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
   { art: 'DruckprofilSetzen', druckprofil: beispielEinstellungen.druckprofile[0] as Druckprofil },
@@ -2608,6 +2617,7 @@ export const beispieleEinstellungenbefehle: readonly [
     art: 'KostengruppenbezeichnungenSetzen',
     bezeichnungen: beispielEinstellungen.kostengruppenbezeichnungen,
   },
+  beispielEinstellungenUebernehmen,
 ];
 
 /** E15: das ChangeSet von `BueroSetzen` auf leeren Einstellungen. */
@@ -2617,6 +2627,44 @@ export const beispielChangeSetBueroSetzen: EinstellungenChangeSet = {
     vorher: { buero: null, druckprofile: [], kostengruppenbezeichnungen: [] },
     nachher: { buero: beispielEinstellungen.buero, druckprofile: [], kostengruppenbezeichnungen: [] },
   },
+};
+
+/** Nachtrag D-82 M1: die Umkehrung für das Rückgängig der Einstellungen in der Sitzung: das getauschte ChangeSet. */
+export const beispielChangeSetBueroSetzenUmgekehrt: EinstellungenChangeSet = {
+  art: 'einstellungen',
+  einstellungen: {
+    vorher: beispielChangeSetBueroSetzen.einstellungen.nachher,
+    nachher: beispielChangeSetBueroSetzen.einstellungen.vorher,
+  },
+};
+
+/**
+ * Nachtrag D-82 M1: das Einstellungsprotokoll nach „Büro setzen“ und dessen Rückgängig; das `Rueckgaengig` nennt den Eintrag des
+ * ursprünglichen Befehls und wird mit `beispielChangeSetBueroSetzenUmgekehrt` geschrieben.
+ */
+export const beispielEinstellungsprotokoll: readonly [
+  EinstellungenProtokolleintrag,
+  EinstellungenProtokolleintrag,
+] = [
+  {
+    id: '019b76e9-0000-7000-8000-000000000801' as ProtokollId,
+    wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+    wann: '2026-11-13T10:00:00.000Z' as Zeitstempel,
+    befehl: { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
+  },
+  {
+    id: '019b76e9-0000-7000-8000-000000000802' as ProtokollId,
+    wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+    wann: '2026-11-13T10:01:00.000Z' as Zeitstempel,
+    befehl: { art: 'Rueckgaengig', protokollId: '019b76e9-0000-7000-8000-000000000801' as ProtokollId },
+  },
+];
+
+/** Nachtrag D-82 S4: der Hinweis, wenn ein Preisbefehl die Kalkulationsangaben der Position entfernt hat. */
+export const beispielHinweisKalkulationEntfernt: Befehlshinweis = {
+  code: 'kalkulation-entfernt',
+  meldung: 'EinheitspreisAendern: Die Kalkulationsangaben der Position wurden entfernt.',
+  knotenId: posId,
 };
 
 /** E15: eine Projektdatei der Schemaversion 7 mit dem Block der Einstellungen (Schema 7 bringt Ticket 139). */
