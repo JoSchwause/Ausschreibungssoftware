@@ -6,6 +6,7 @@ export type { Bieterzuschlag } from './summen';
 export { angebotBefehlAusfuehrer } from './befehle';
 export { angebotChangeSetAnwenden, angebotChangeSetUmkehren } from './changeset';
 export { projektBefehlAusfuehren } from './projekt-befehle';
+export { auftragsLvBefehlAusfuehren } from './zuschlag-zuruecknehmen';
 export { PREISSPIEGEL_ANNAHMEN, PREISSPIEGEL_STANDARD, preisspiegelBerechnen } from './preisspiegel';
 export type {
   AbcBezug,
