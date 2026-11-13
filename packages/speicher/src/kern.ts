@@ -44,6 +44,7 @@ import type {
   LvUebersicht,
   LvZustand,
   Projekt,
+  ProjektdateiEinleseergebnis,
   ProjektId,
   Projektuebersicht,
   Protokolleintrag,
@@ -95,7 +96,10 @@ import {
   leseProjektdatei,
   pruefeModelldateienDerDatei,
   schreibeProjektdatei,
+  uebernimmEinstellungenDerDatei,
 } from './projektdatei';
+import type { Kennungsbedarf, Kennungsvorrat } from './kennungen';
+import { alsKopie, kennungsbedarf } from './kopie';
 import {
   gibUngenutzteModelldateienFrei,
   schreibeModelldatei,
@@ -104,6 +108,14 @@ import {
 } from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
+
+/**
+ * Optionen von `SpeicherKern.projektdateiEinlesen`: wie `ProjektdateiEinleseoptionen` des Vertrags, die Kennungen der Kopie aber
+ * als Daten (`Kennungsvorrat`), weil die `IdQuelle` nicht über die Grenze zum Worker kommt (der Client zieht sie, `client.ts`).
+ */
+export interface Einleseoptionen {
+  readonly alsKopie?: { readonly kennungen: Kennungsvorrat; readonly name: string };
+}
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
 function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
@@ -644,20 +656,53 @@ export class SpeicherKern {
   }
 
   /**
-   * Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien
-   * prüft der Import vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei
-   * `datei-ungueltig`. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   * Importiert atomar (`Speicher.projektdateiImportieren`): wie `projektdateiEinlesen` ohne Optionen, ohne Bericht. Existiert
+   * das Projekt schon, wird nichts überschrieben (Q5).
    */
-  projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
-    const lauf = this.#reihe.then(() => this.#importierenDann(inhalt));
+  async projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+    const r = await this.projektdateiEinlesen(inhalt);
+    return r.ok ? ok(r.wert.projektId) : r;
+  }
+
+  /**
+   * Wie viele neue Kennungen je Art eine Kopie der Datei braucht (v1.7a, D-127.10). Der Client zieht sie aus der `IdQuelle` der
+   * App und gibt sie `projektdateiEinlesen` mit (Funktionen kommen nicht über die Grenze zum Worker). Liest die Datei wie das
+   * Einlesen selbst (gleiche Fehler), schreibt nichts.
+   */
+  projektdateiKennungsbedarf(inhalt: string): Ergebnis<Kennungsbedarf, Speicherfehler> {
+    if (this.#geschlossen) return GESCHLOSSEN();
+    const datei = leseProjektdatei(inhalt, this.#migrationen);
+    return datei.ok ? this.#fange(() => kennungsbedarf(datei.wert)) : datei;
+  }
+
+  /**
+   * `Speicher.projektdateiEinlesen` (v1.7a, D-127.9, D-127.10): liest atomar ein, wahlweise als Kopie (neue Kennungen aus
+   * `optionen.alsKopie.kennungen`, siehe `kopie.ts`), und übernimmt aus dem Block `einstellungen` nur Fehlendes je Schlüssel. Der
+   * Bericht sagt, was übernommen und was belassen wurde (`null`: die Datei trägt keinen Block). Ohne Kopie und mit vorhandenem
+   * Projekt derselben Kennung: `existiert-bereits`, nichts geschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien prüft das
+   * Einlesen vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei `datei-ungueltig`.
+   * Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  projektdateiEinlesen(
+    inhalt: string,
+    optionen: Einleseoptionen = {},
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#einlesenDann(inhalt, optionen));
     this.#reihe = lauf;
     return lauf;
   }
 
-  async #importierenDann(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+  async #einlesenDann(
+    inhalt: string,
+    optionen: Einleseoptionen,
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
     const befunde: Migrationsbefund[] = [];
-    const datei = leseProjektdatei(inhalt, this.#migrationen, befunde);
+    const gelesen = leseProjektdatei(inhalt, this.#migrationen, befunde);
+    if (!gelesen.ok) return gelesen;
+    const kopie = optionen.alsKopie;
+    const datei =
+      kopie === undefined ? gelesen : fange(() => alsKopie(gelesen.wert, kopie.kennungen, kopie.name));
     if (!datei.ok) return datei;
     let bytes: Awaited<ReturnType<typeof pruefeModelldateienDerDatei>>;
     try {
@@ -668,14 +713,15 @@ export class SpeicherKern {
     // Während des Wartens auf die Prüfsummen kann `schliessen` gekommen sein (es läuft nicht in der Reihe).
     if (this.#istGeschlossen()) return GESCHLOSSEN();
     const r = fange(() =>
-      transaktion(this.#db, () => {
+      transaktion(this.#db, (): ProjektdateiEinleseergebnis => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {
           abbruch(
             'existiert-bereits',
             `Das Projekt ${datei.wert.projekt.id} existiert bereits; es wird nicht überschrieben.`,
           );
         }
-        return schreibeProjektdatei(this.#db, datei.wert, bytes);
+        const projektId = schreibeProjektdatei(this.#db, datei.wert, bytes);
+        return { projektId, einstellungen: uebernimmEinstellungenDerDatei(this.#db, datei.wert) };
       }),
     );
     if (r.ok) this.#befunde.push(...befunde);

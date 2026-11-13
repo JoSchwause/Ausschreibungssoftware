@@ -4,21 +4,7 @@
 // Papierkorb, LV-Stand. Die neuen Projektbefehle (Bieter umbenennen, Angaben setzen, löschen) gehen als ganzes Projekt über den
 // bestehenden Weg; einen Bieter mit Angebot entfernt kein ChangeSet (`konflikt`, D-127.2), auch nicht als Undo.
 
-import type {
-  Bieter,
-  BieterId,
-  Bieterangaben,
-  ChangeSet,
-  Einheitspreis,
-  Kalkulationsangaben,
-  Knoten,
-  Menge,
-  Position,
-  PreisspiegelEinstellungen,
-  Projekt,
-  Projektangaben,
-  Prozent,
-} from '@tethys/vertrag';
+import type { Bieter, BieterId, ChangeSet, Knoten, Position, Projekt } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import type { SpeicherKern } from './kern';
@@ -30,6 +16,7 @@ import {
   ladeFixture,
 } from './testhilfe/fixtures';
 import { neuerKern, speichere, wert } from './testhilfe/node';
+import { BIETERANGABEN, KALKULATION, PREISSPIEGEL, PROJEKTANGABEN } from './testhilfe/v17';
 import {
   befehlFuer,
   ausBaumNehmen,
@@ -47,36 +34,6 @@ if (angebot === undefined) throw new Error('typisch hat Angebote');
 
 const positionen = (k: readonly Knoten[]): Position[] => k.filter((x): x is Position => x.art === 'position');
 const erste = positionen(lv.knoten)[0] as Position;
-
-export const PROJEKTANGABEN: Projektangaben = {
-  nummer: 'P-2026-017',
-  ort: 'Musterstadt',
-  baustelle: { strasse: 'Am Bauplatz 3', plz: '12345', ort: 'Musterstadt' },
-};
-export const BIETERANGABEN: Bieterangaben = {
-  anschrift: { strasse: 'Werkstraße 7', plz: '54321', ort: null },
-  ansprechperson: 'Frau Beispiel (erfunden)',
-  email: 'angebot@example.org',
-  telefon: null,
-};
-export const PREISSPIEGEL: PreisspiegelEinstellungen = {
-  ausreisserSchwelle: '15.00' as Prozent,
-  abcSchwelleA: '70.00' as Prozent,
-  abcSchwelleB: '90.00' as Prozent,
-  abcBezug: 'schaetzpreis',
-};
-export const KALKULATION: Kalkulationsangaben = {
-  ansaetze: [
-    {
-      art: 'lohn',
-      bezeichnung: 'Facharbeiter',
-      ansatzmenge: '0.450' as Menge,
-      kostensatz: '48.500' as Einheitspreis,
-    },
-    { art: 'stoffe', bezeichnung: 'Mörtel', ansatzmenge: null, kostensatz: '3.200' as Einheitspreis },
-  ],
-  zuschlagssaetze: { lohn: '12.50' as Prozent, stoffe: '8.00' as Prozent },
-};
 
 let nr = 100;
 async function versuche(kern: SpeicherKern, cs: ChangeSet) {

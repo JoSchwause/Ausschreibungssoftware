@@ -18,6 +18,8 @@ import type {
   LeistungsverzeichnisId,
   LvStandId,
   Persistenzstatus,
+  ProjektdateiEinleseergebnis,
+  ProjektdateiEinleseoptionen,
   ProjektId,
   Protokolleintrag,
   RechnungId,
@@ -26,6 +28,7 @@ import type {
 } from '@tethys/vertrag';
 import { fehler } from './ergebnis';
 import { fehlerAusAusnahme } from './fehler';
+import { kennungenZiehen, type Kennungsbedarf } from './kennungen';
 import type { SpeicherKern } from './kern';
 import type { OeffnenOptionen, RpcAnfrage, RpcAntwort, RpcMethode, WorkerLike } from './rpc';
 import type { Migrationsbefund } from './summenmigration';
@@ -175,6 +178,19 @@ export function speicherUeberTransport(
     },
     projektdateiExportieren: (projektId: ProjektId) => aufruf('projektdateiExportieren', projektId),
     projektdateiImportieren: (inhalt: string) => aufruf('projektdateiImportieren', inhalt),
+    // v1.7a (Ticket 139, D-127.10): Die `IdQuelle` kommt nicht über die Grenze zum Worker; der Client fragt erst den Bedarf an
+    // Kennungen ab, zieht sie hier und schickt sie als Daten mit.
+    projektdateiEinlesen: async (
+      inhalt: string,
+      optionen?: ProjektdateiEinleseoptionen,
+    ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> => {
+      const kopie = optionen?.alsKopie;
+      if (kopie === undefined) return aufruf('projektdateiEinlesen', inhalt);
+      const bedarf = await aufruf<Kennungsbedarf>('projektdateiKennungsbedarf', inhalt);
+      if (!bedarf.ok) return bedarf;
+      const kennungen = kennungenZiehen(bedarf.wert, kopie.ids);
+      return aufruf('projektdateiEinlesen', inhalt, { alsKopie: { kennungen, name: kopie.name } });
+    },
     migrationsbefunde: () => aufruf('migrationsbefunde'),
     schliessen: async () => {
       if (zu) return geschlossen();

@@ -3,42 +3,12 @@
 // Undo-Historie jedes Projekts. `laden` liefert `LEERE_EINSTELLUNGEN`, solange nichts geschrieben ist; `anwenden` schreibt ein
 // ChangeSet ganz oder gar nicht und weist einen abweichenden Vorherstand mit `konflikt` ab (Q5).
 
-import {
-  LEERE_EINSTELLUNGEN,
-  type Druckprofil,
-  type Einstellungen,
-  type EinstellungenChangeSet,
-  type Kostengruppennummer,
-} from '@tethys/vertrag';
+import { LEERE_EINSTELLUNGEN, type Einstellungen, type EinstellungenChangeSet } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import { anlegenSchritte, eintrag, ladeFixture } from './testhilfe/fixtures';
 import { kernAufDb, neuerKern, speichere, wert } from './testhilfe/node';
-
-export const DRUCKPROFIL: Druckprofil = {
-  name: 'Bieterversand (erfunden)',
-  mitPreisen: false,
-  langtext: { art: 'zeilen', anzahl: 3 },
-  titelsummen: false,
-  schlussblock: false,
-  deckblatt: true,
-  kopfzeile: '{lv}',
-  fusszeile: null,
-  seitenrand: 'eng',
-};
-export const EINSTELLUNGEN: Einstellungen = {
-  buero: {
-    name: 'Planungsbüro Beispiel (erfunden)',
-    anschrift: { strasse: 'Hauptstraße 1', plz: '12345', ort: 'Musterstadt' },
-    telefon: '0123 4567',
-    email: null,
-  },
-  druckprofile: [DRUCKPROFIL, { ...DRUCKPROFIL, name: 'Mit Preisen (erfunden)', mitPreisen: true }],
-  kostengruppenbezeichnungen: [
-    { nummer: '330' as Kostengruppennummer, bezeichnung: 'Außenwände (eigene Bezeichnung)' },
-    { nummer: '340' as Kostengruppennummer, bezeichnung: 'Innenwände (eigene Bezeichnung)' },
-  ],
-};
+import { DRUCKPROFIL, EINSTELLUNGEN } from './testhilfe/v17';
 
 const aendern = (vorher: Einstellungen, nachher: Einstellungen): EinstellungenChangeSet => ({
   art: 'einstellungen',

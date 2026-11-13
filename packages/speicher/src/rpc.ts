@@ -44,6 +44,8 @@ export const RPC_METHODEN = [
   // v1.7a (Ticket 139)
   'einstellungenLaden',
   'einstellungenAnwenden',
+  'projektdateiEinlesen',
+  'projektdateiKennungsbedarf',
 ] as const;
 
 export type RpcMethode = (typeof RPC_METHODEN)[number];

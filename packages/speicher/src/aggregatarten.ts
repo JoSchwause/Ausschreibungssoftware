@@ -9,6 +9,7 @@
 // Reihenfolge nennt der Dekoder als erlaubte Arten im Protokoll.
 
 import type { Bauwerksmodell, ChangeSet, Projektdatei, ProjektId } from '@tethys/vertrag';
+import type { Kennungsquelle } from './kennungen';
 import type { Datenbank } from './sql';
 import { LEERES_SUMMENVORHER } from './summenvorher';
 import {
@@ -47,7 +48,19 @@ interface Aggregatart<A extends Art> {
   anwenden(db: Datenbank, cs: ChangeSetDer<A>, projektId: ProjektId, anlass: Schreibanlass): void;
   /** Schreibt alle Aggregate dieser Art aus einer geprüften Projektdatei (Import, Reihenfolge innerhalb der Art). */
   ausDatei(db: Datenbank, d: Projektdatei, projektId: ProjektId): void;
+  /**
+   * Die Kennungen dieser Art in der Datei, die `speicher` global schlüsselt, mit der Methode der `IdQuelle`, die eine neue zieht
+   * (Einlesen als Kopie, D-127.10). Beim LV gehören die LV-Stände dazu (sie sind keine eigene Art eines ChangeSets).
+   */
+  kennungen(d: Projektdatei): readonly (readonly [Kennungsquelle, string])[];
 }
+
+/** Die Kennungen einer Liste der Datei, alle mit derselben Quelle. */
+const je = <T>(
+  quelle: Kennungsquelle,
+  liste: readonly T[] | undefined,
+  id: (e: T) => string,
+): (readonly [Kennungsquelle, string])[] => (liste ?? []).map((e) => [quelle, id(e)] as const);
 
 /** Ein ganzes Aggregat neu anlegen: `vorher: null`. */
 const neu = <T>(nachher: T): { readonly vorher: null; readonly nachher: T } => ({ vorher: null, nachher });
@@ -63,6 +76,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
     ausDatei: (db, d, projektId) => {
       wendeProjektAn(db, { art: 'projekt', projektId, projekt: neu(d.projekt) }, abhaengigeDesProjekts());
     },
+    kennungen: (d) => [['projekt', d.projekt.id]],
   },
   leistungsverzeichnis: {
     tabelle: 'leistungsverzeichnis',
@@ -94,6 +108,10 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
       // Die Stände gehören zum LV und kommen gleich danach (Schema 3).
       for (const s of d.lvStaende ?? []) schreibeLvStand(db, s);
     },
+    kennungen: (d) => [
+      ...je('leistungsverzeichnis', d.leistungsverzeichnisse, (z) => z.leistungsverzeichnis.id),
+      ...je('lvStand', d.lvStaende, (s) => s.id),
+    ],
   },
   angebot: {
     tabelle: 'angebot',
@@ -118,6 +136,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
         );
       }
     },
+    kennungen: (d) => je('angebot', d.angebote, (z) => z.angebot.id),
   },
   'auftrags-leistungsverzeichnis': {
     tabelle: 'auftrags_lv',
@@ -142,6 +161,12 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
         );
       }
     },
+    kennungen: (d) =>
+      je(
+        'auftragsLeistungsverzeichnis',
+        d.auftragsLeistungsverzeichnisse,
+        (z) => z.auftragsLeistungsverzeichnis.id,
+      ),
   },
   // Schema 5 (v1.4): Blätter vor Rechnungen (`aufmassIds`).
   aufmass: {
@@ -155,6 +180,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
       for (const z of d.aufmasse ?? [])
         wendeAufmassAn(db, { art: 'aufmass', aufmassId: z.aufmass.id, aufmass: neu(z.aufmass) }, projektId);
     },
+    kennungen: (d) => je('aufmass', d.aufmasse, (z) => z.aufmass.id),
   },
   rechnung: {
     tabelle: 'rechnung',
@@ -173,6 +199,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
           projektId,
         );
     },
+    kennungen: (d) => je('rechnung', d.rechnungen, (z) => z.rechnung.id),
   },
   kostenermittlung: {
     tabelle: 'kostenermittlung',
@@ -193,6 +220,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
           projektId,
         );
     },
+    kennungen: (d) => je('kostenermittlung', d.kostenermittlungen, (z) => z.kostenermittlung.id),
   },
   // Schema 6 (v1.6): Modelle nach den Bytes (die schreibt der Import vorab) und vor den Mängeln, Vorgänger zuerst;
   // Honorarberechnungen nach den Kostenermittlungen, Mängel nach Auftrags-LV und Modellen (starke Verweise, D-97.6).
@@ -218,6 +246,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
         );
       }
     },
+    kennungen: (d) => je('bauwerksmodell', d.bauwerksmodelle, (z) => z.bauwerksmodell.id),
   },
   bauzeitenplan: {
     tabelle: 'bauzeitenplan',
@@ -238,6 +267,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
           projektId,
         );
     },
+    kennungen: (d) => je('bauzeitenplan', d.bauzeitenplaene, (z) => z.bauzeitenplan.id),
   },
   honorarberechnung: {
     tabelle: 'honorarberechnung',
@@ -258,6 +288,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
           projektId,
         );
     },
+    kennungen: (d) => je('honorarberechnung', d.honorarberechnungen, (z) => z.honorarberechnung.id),
   },
   mangel: {
     tabelle: 'mangel',
@@ -270,6 +301,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
       for (const z of d.maengel ?? [])
         wendeMangelAn(db, { art: 'mangel', mangelId: z.mangel.id, mangel: neu(z.mangel) }, projektId);
     },
+    kennungen: (d) => je('mangel', d.maengel, (z) => z.mangel.id),
   },
   bautagebucheintrag: {
     tabelle: 'bautagebucheintrag',
@@ -290,6 +322,7 @@ export const AGGREGATARTEN: { readonly [A in Art]: Aggregatart<A> } = {
           projektId,
         );
     },
+    kennungen: (d) => je('bautagebucheintrag', d.bautagebuch, (z) => z.bautagebucheintrag.id),
   },
 };
 
