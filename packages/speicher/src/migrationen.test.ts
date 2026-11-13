@@ -17,6 +17,7 @@ import { schreibeInSchema1 } from './testhilfe/schema1';
 import { aufSchema3 } from './testhilfe/schema3';
 import { aufSchema4 } from './testhilfe/schema4';
 import { aufSchema5 } from './testhilfe/schema5';
+import { aufSchema6 } from './testhilfe/schema6';
 import type { Datenbank } from './sql';
 
 /** Soll-Schema je Version: `tabelle: spalte:TYP[!=NOT NULL][*=Schlüssel]` und die Indizes. Nie rückwirkend ändern. */
@@ -131,6 +132,38 @@ const SCHEMA_ABBILD: Record<number, { tabellen: string[]; indizes: string }> = {
       'modelldatei: hash:TEXT!* groesse:INTEGER! inhalt:BLOB!',
       'papierkorb_eintrag: leistungsverzeichnis_id:TEXT!* id:TEXT!* nummer:INTEGER! knoten:TEXT!',
       'projekt: id:TEXT!* name:TEXT! bauherr_name:TEXT! bauherr_anschrift:TEXT',
+      'protokoll: seq:INTEGER* id:TEXT! projekt_id:TEXT! aggregat_art:TEXT! aggregat_id:TEXT! wer:TEXT! wann:TEXT! befehl:TEXT!',
+      'rechnung: id:TEXT!* projekt_id:TEXT! auftrags_lv_id:TEXT! nummer:INTEGER! angaben:TEXT!',
+      'summe_gesamt: aggregat_id:TEXT!* netto:TEXT! nachlass:TEXT! netto_nach_nachlass:TEXT! mwst:TEXT! brutto:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_gliederung: aggregat_id:TEXT!* gliederung_id:TEXT!* summe:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
+      'summe_position: aggregat_id:TEXT!* position_id:TEXT!* gesamtpreis:TEXT geht_in_summe:INTEGER!',
+    ],
+    indizes:
+      'angebot_lv,bauwerksmodell_datei,bauwerksmodell_projekt,bauwerksmodell_vorgaenger,bauzeitenplan_projekt,' +
+      'honorarberechnung_projekt,knoten_eltern,kostenermittlung_projekt,leistungsverzeichnis_projekt,lv_stand_lv,' +
+      'mangel_auftrags_lv,mangel_bauwerksmodell,protokoll_projekt',
+  },
+  7: {
+    tabellen: [
+      'angebot: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! bieter_id:TEXT! nachlass_art:TEXT nachlass_wert:TEXT',
+      'angebotsposition: angebot_id:TEXT!* position_id:TEXT!* status:TEXT! einheitspreis:TEXT epa:TEXT zuschlagssatz:TEXT',
+      'aufmass: id:TEXT!* projekt_id:TEXT! auftrags_lv_id:TEXT! nummer:INTEGER! bezeichnung:TEXT! datum:TEXT positionen:TEXT!',
+      'auftrags_lv: id:TEXT!* projekt_id:TEXT! leistungsverzeichnis_id:TEXT! angebot_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT auftragnehmer:TEXT epa_bezeichnungen:TEXT',
+      'bautagebucheintrag: id:TEXT!* projekt_id:TEXT! datum:TEXT! angaben:TEXT!',
+      'bauwerksmodell: id:TEXT!* projekt_id:TEXT! name:TEXT! datei_hash:TEXT! datei_name:TEXT! datei_groesse:INTEGER! schema:TEXT! vorgaenger_id:TEXT eingelesen:TEXT! anzahl_bauteile:INTEGER!',
+      'bauwerksmodell_inhalt: bauwerksmodell_id:TEXT!* struktur:TEXT! bauteile:TEXT!',
+      'bauzeitenplan: id:TEXT!* projekt_id:TEXT! name:TEXT! projektbeginn:TEXT! kalender:TEXT! vorgaenge:TEXT!',
+      'bieter: projekt_id:TEXT!* id:TEXT!* name:TEXT! reihenfolge:INTEGER! angaben:TEXT',
+      'einstellungen: id:INTEGER!* inhalt:TEXT!',
+      'honorarberechnung: id:TEXT!* projekt_id:TEXT! name:TEXT! nebenkosten:TEXT mwst_satz:TEXT! objekte:TEXT!',
+      'knoten: aggregat_id:TEXT!* id:TEXT!* art:TEXT! eltern_id:TEXT! reihenfolge:INTEGER! ordnungszahl:TEXT oz_index:TEXT kurztext:TEXT merkmale:TEXT zuschlag:TEXT leitbeschreibung:TEXT text_json:TEXT menge:TEXT einheit:TEXT einheitspreis:TEXT epa:TEXT mengenansatz:TEXT kostengruppe:TEXT textquelle:TEXT bauteile:TEXT kalkulation:TEXT',
+      'kostenermittlung: id:TEXT!* projekt_id:TEXT! stufe:TEXT! name:TEXT! eintraege:TEXT!',
+      'leistungsverzeichnis: id:TEXT!* projekt_id:TEXT! name:TEXT! oz_maske:TEXT! mwst_satz:TEXT! nachlass_art:TEXT nachlass_wert:TEXT auftraggeber:TEXT vergabeinformationen:TEXT auftragnehmer:TEXT epa_bezeichnungen:TEXT nachtrag:TEXT vorlage:INTEGER preisspiegel:TEXT',
+      'lv_stand: seq:INTEGER* id:TEXT! leistungsverzeichnis_id:TEXT! name:TEXT! angelegt:TEXT! zustand:TEXT!',
+      'mangel: id:TEXT!* projekt_id:TEXT! nummer:INTEGER! auftrags_lv_id:TEXT bauwerksmodell_id:TEXT angaben:TEXT!',
+      'modelldatei: hash:TEXT!* groesse:INTEGER! inhalt:BLOB!',
+      'papierkorb_eintrag: leistungsverzeichnis_id:TEXT!* id:TEXT!* nummer:INTEGER! knoten:TEXT!',
+      'projekt: id:TEXT!* name:TEXT! bauherr_name:TEXT! bauherr_anschrift:TEXT angaben:TEXT',
       'protokoll: seq:INTEGER* id:TEXT! projekt_id:TEXT! aggregat_art:TEXT! aggregat_id:TEXT! wer:TEXT! wann:TEXT! befehl:TEXT!',
       'rechnung: id:TEXT!* projekt_id:TEXT! auftrags_lv_id:TEXT! nummer:INTEGER! angaben:TEXT!',
       'summe_gesamt: aggregat_id:TEXT!* netto:TEXT! nachlass:TEXT! netto_nach_nachlass:TEXT! mwst:TEXT! brutto:TEXT! summe_bedarf_ohne_gb:TEXT summe_wahl:TEXT',
@@ -610,7 +643,7 @@ describe('Migration 6 überführt eine Datenbank der Version 5 ohne Verlust (Q5)
     const seqV5 = db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq');
 
     const kern = kernAufDb(db);
-    expect(aktuelleVersion(db)).toBe(6);
+    expect(aktuelleVersion(db)).toBe(SCHEMA_VERSION); // seit Version 7 weiter bis zur aktuellen (D-79.6)
     expect(tabellen.map((t) => zaehle(db, t))).toEqual(zeilenV5);
     expect(db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq')).toEqual(seqV5);
     expect(wert(kern.protokoll(projekt))).toEqual(protokoll);
@@ -698,6 +731,116 @@ describe('Migration 6 überführt eine Datenbank der Version 5 ohne Verlust (Q5)
       [position([...stand, 'leistungsverzeichnis', 'knoten']), 'bauteile', zuordnung, 'bauteile'],
       [['protokoll', 0, 'aggregat'], 'art', 'mangel', 'mangel'],
       [['protokoll', 1, 'befehl'], 'art', 'BauteileZuordnen', 'BauteileZuordnen'],
+    ] as [Pfad, string, unknown, string][]) {
+      expect(() => datei(mit(pfad, feld, w)), `${pfad.join('.')}.${feld}`).toThrow(new RegExp(meldung));
+    }
+  });
+});
+
+describe('Migration 7 überführt eine Datenbank der Version 6 ohne Verlust (Q5)', () => {
+  const v6 = readFileSync(new URL('../fixtures/projektdatei-v6.json', import.meta.url), 'utf8');
+
+  /** Eine Datenbank der Version 6 nachgestellt: die Datei importiert, dann alles von Version 7 entfernt (D-79.6). */
+  async function datenbankV6(): Promise<{ db: Datenbank; projekt: ProjektId }> {
+    const db = await neueDatenbank();
+    const projekt = wert(await kernAufDb(db).projektdateiImportieren(v6));
+    aufSchema6(db);
+    expect(schemaAbbild(db)).toEqual(SCHEMA_ABBILD[6]);
+    return { db, projekt };
+  }
+
+  it('Datenbank der Version 6 mit Inhalt: Modell, Protokoll und Projektdatei bleiben gleich, die neuen Teile sind leer', async () => {
+    const { db, projekt } = await datenbankV6();
+    const alt = kernAufDb(db, bis(6));
+    const lvs = wert(alt.lvAuflisten(projekt));
+    const vorher = lvs.map((l) => wert(alt.lvLaden(l.id)));
+    const projektVorher = wert(alt.projektLaden(projekt));
+    const protokoll = wert(alt.protokoll(projekt));
+    const tabellen = [
+      'projekt',
+      'bieter',
+      'knoten',
+      'protokoll',
+      'lv_stand',
+      'leistungsverzeichnis',
+      'mangel',
+    ];
+    const zeilenV6 = tabellen.map((t) => zaehle(db, t));
+    const seqV6 = db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq');
+
+    const kern = kernAufDb(db);
+    expect(aktuelleVersion(db)).toBe(SCHEMA_VERSION);
+    expect(tabellen.map((t) => zaehle(db, t))).toEqual(zeilenV6);
+    expect(db.zeilen('SELECT seq, id FROM protokoll ORDER BY seq')).toEqual(seqV6);
+    expect(wert(kern.protokoll(projekt))).toEqual(protokoll);
+    expect(wert(kern.projektLaden(projekt))).toEqual(projektVorher);
+    expect(lvs.map((l) => wert(kern.lvLaden(l.id)))).toEqual(vorher);
+    for (const [t, s] of [
+      ['projekt', 'angaben'],
+      ['bieter', 'angaben'],
+      ['leistungsverzeichnis', 'preisspiegel'],
+      ['knoten', 'kalkulation'],
+    ] as const)
+      expect(zaehle(db, `${t} WHERE ${s} IS NOT NULL`), `${t}.${s}`).toBe(0);
+    expect(zaehle(db, 'einstellungen')).toBe(0);
+    // Ganzer Stand: Export der migrierten Datenbank = Export nach Import der Datei der Version 6 (Dateimigration).
+    const frisch = await neuerKern();
+    wert(await frisch.kern.projektdateiImportieren(v6));
+    expect(wert(kern.projektdateiExportieren(projekt))).toBe(
+      wert(frisch.kern.projektdateiExportieren(projekt)),
+    );
+  });
+
+  it('kalkulation gibt es nur an Positionen; die Einstellungen sind eine einzige Zeile', async () => {
+    const db = await neueDatenbank();
+    expect(migriere(db).ok).toBe(true);
+    expect(() => {
+      db.skript(`INSERT INTO knoten (aggregat_id, id, art, eltern_id, reihenfolge, kurztext, kalkulation)
+                 VALUES ('a', 't', 'titel', 'a', 0, 'k', '{}')`);
+    }).toThrow(/CHECK/);
+    db.skript("INSERT INTO einstellungen (id, inhalt) VALUES (1, '{}')");
+    expect(() => {
+      db.skript("INSERT INTO einstellungen (id, inhalt) VALUES (2, '{}')");
+    }).toThrow(/CHECK/);
+  });
+
+  it('Dateimigration 6 → 7 lässt den Inhalt gleich und weist das Neue in einer Datei der Version 6 ab', () => {
+    const datei = MIGRATIONEN.find((x) => x.version === 7)?.datei;
+    if (datei == null) throw new Error('keine Dateimigration 7');
+    const roh = JSON.parse(v6) as Record<string, unknown>;
+    expect(datei(roh)).toEqual(roh);
+    type Pfad = (string | number)[];
+    const bei = (d: unknown, pfad: Pfad): Record<string | number, unknown> => {
+      let o = d as Record<string | number, unknown>;
+      for (const s of pfad) o = o[s] as Record<string | number, unknown>;
+      return o;
+    };
+    const mit = (pfad: Pfad, feld: string, w: unknown): Record<string, unknown> => {
+      const d = JSON.parse(v6) as Record<string, unknown>;
+      bei(d, pfad)[feld] = w;
+      return d;
+    };
+    const position = (liste: Pfad): Pfad => [
+      ...liste,
+      (bei(roh, liste) as unknown as { art: string }[]).findIndex((k) => k.art === 'position'),
+    ];
+    const lv: Pfad = ['leistungsverzeichnisse', 0, 'leistungsverzeichnis'];
+    const auftrag: Pfad = ['auftragsLeistungsverzeichnisse', 0, 'auftragsLeistungsverzeichnis'];
+    const stand: Pfad = ['lvStaende', 0, 'zustand'];
+    const korb: Pfad = ['leistungsverzeichnisse', 0, 'papierkorb', 0, 'knoten'];
+    const kalkulation = { ansaetze: [], zuschlagssaetze: {} };
+    for (const [pfad, feld, w, meldung] of [
+      [[], 'einstellungen', {}, 'einstellungen'],
+      [['projekt'], 'angaben', {}, 'angaben'],
+      [['projekt', 'bieter', 0], 'angaben', {}, 'angaben'],
+      [lv, 'preisspiegel', {}, 'preisspiegel'],
+      [[...stand, 'leistungsverzeichnis'], 'preisspiegel', {}, 'preisspiegel'],
+      [position([...lv, 'knoten']), 'kalkulation', kalkulation, 'kalkulation'],
+      [position([...auftrag, 'knoten']), 'kalkulation', kalkulation, 'kalkulation'],
+      [position(korb), 'kalkulation', kalkulation, 'kalkulation'],
+      [position([...stand, 'leistungsverzeichnis', 'knoten']), 'kalkulation', kalkulation, 'kalkulation'],
+      [['protokoll', 1, 'befehl'], 'art', 'LvStandLoeschen', 'LvStandLoeschen'],
+      [['protokoll', 1, 'befehl'], 'art', 'ZuschlagZuruecknehmen', 'ZuschlagZuruecknehmen'],
     ] as [Pfad, string, unknown, string][]) {
       expect(() => datei(mit(pfad, feld, w)), `${pfad.join('.')}.${feld}`).toThrow(new RegExp(meldung));
     }
