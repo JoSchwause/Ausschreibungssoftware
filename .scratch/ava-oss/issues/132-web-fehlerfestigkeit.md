@@ -35,3 +35,22 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+- **D-132.1** Was zeigt ein unbehandelter Fehler im Hintergrund (`error`, `unhandledrejection`)? Entscheidung: Ein
+  Band über der weiterlaufenden App (gleiche Knöpfe und Einzelheiten wie die Fehlerseite, dazu „Weiterarbeiten“); nur ein
+  Renderfehler ersetzt die App durch die Fehlerseite. Grund: Im Hintergrund bleibt die Seite sichtbar und bedienbar, jeder
+  Befehl ist schon gespeichert (U7); die App wegzunehmen hieße, bei einem harmlosen Fremdfehler die Arbeit zu
+  unterbrechen. Die Chromium-Meldung „ResizeObserver loop …“ wird übergangen.
+- **D-132.2** Wie kommt die Fehlerseite an Speicher und Projekt, obwohl sie über allen Anbietern steht? Entscheidung:
+  `SpeicherAnbieter` meldet den offenen Speicher in `fehler/notfall.ts` an und ab; das Projekt kommt aus der Adresse
+  (`…/projekt/<id>…`). Der Download nutzt den Dateinamen der Sicherung (`<Projekt>-<Datum>.tethys.json`). Grund: kein
+  Eingriff in die Seiten oder in `ui/route.ts` (Ticket 131).
+- **D-132.3** Module-Worker-Erkennung ohne Worker-Start: Der Browser liest die Option `type` beim Umwandeln der
+  Argumente; eine absichtlich ungültige Adresse lässt den Aufruf danach scheitern. Grund: die Inhaltsrichtlinie
+  (`worker-src 'self'`) verbietet `blob:`/`data:`-Worker, und es entsteht kein Netzverkehr.
+- **D-132.4** Öffnen des Speichers scheitert: eigene Meldungen je Fehlercode in `speicher/texte.ts` (Ursache, nächster
+  Schritt, Einzelheiten aufklappbar) statt der allgemeinen Speicherfehlertexte aus `lv/texte.ts`. Die Meldung zu
+  `gesperrt` nennt zusätzlich das private Fenster, weil der Speicher verweigerten Ablagezugriff ebenfalls als `gesperrt`
+  meldet.
+- Offen (nicht in diesem Ticket, P2): `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50` zeigen ebenfalls den
+  Rohtext der Ausnahme beim PDF; die Ordner gehören anderen Tickets.
