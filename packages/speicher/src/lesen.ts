@@ -4,6 +4,7 @@
 // `reihenfolge`), Summen und Angebotspositionen nach Kennung, Protokoll nach Eintragsreihenfolge.
 
 import type {
+  Einstellungen,
   Bautagebucheintrag,
   Bauwerksmodell,
   BauwerksmodellUebersicht,
@@ -51,6 +52,7 @@ import type {
   Summenstand,
   Zeitstempel,
 } from '@tethys/vertrag';
+import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
 import { abbruch } from './ergebnis';
 import type { Datenbank, SqlZeile } from './sql';
 import {
@@ -652,6 +654,14 @@ export function leseModelldatei(db: Datenbank, hash: string): GespeicherteModell
 export function modelldateiGroesse(db: Datenbank, hash: string): number | null {
   const z = db.zeilen('SELECT groesse FROM modelldatei WHERE hash = ?', [hash])[0];
   return z === undefined ? null : ganzzahl(z, 'groesse');
+}
+
+// --- Einstellungen (Schema 7, v1.7a) ------------------------------------------------------------------------------
+
+/** Die Einstellungen des Geräts; ohne gespeicherte Zeile `LEERE_EINSTELLUNGEN` (D-127.8). */
+export function leseEinstellungen(db: Datenbank): Einstellungen {
+  const z = db.zeilen('SELECT inhalt FROM einstellungen WHERE id = 1')[0];
+  return z === undefined ? LEERE_EINSTELLUNGEN : (jsonSpalte(z, 'inhalt') as Einstellungen);
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import type {
   BauwerksmodellId,
   BauzeitenplanId,
   ChangeSet,
+  EinstellungenChangeSet,
   HonorarberechnungId,
   MangelId,
   KostenermittlungId,
@@ -154,6 +155,11 @@ export function speicherUeberTransport(
     bautagebuch: {
       auflisten: (projektId: ProjektId) => aufruf('bautagebuchAuflisten', projektId),
       laden: (id: BautagebucheintragId) => aufruf('bautagebucheintragLaden', id),
+    },
+    // v1.7a (Ticket 139): die Einstellungen des Geräts
+    einstellungen: {
+      laden: () => aufruf('einstellungenLaden'),
+      anwenden: (changeSet: EinstellungenChangeSet) => aufruf('einstellungenAnwenden', changeSet),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,

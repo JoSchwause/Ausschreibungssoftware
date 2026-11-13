@@ -28,6 +28,8 @@ import type {
   MangelId,
   MangelZustand,
   ChangeSet,
+  Einstellungen,
+  EinstellungenChangeSet,
   KostenermittlungId,
   KostenermittlungUebersicht,
   KostenermittlungZustand,
@@ -58,6 +60,7 @@ import {
   leseAufmass,
   leseAuftragsLv,
   leseBautagebucheintrag,
+  leseEinstellungen,
   leseBauwerksmodell,
   leseBauzeitenplan,
   leseHonorarberechnung,
@@ -93,7 +96,12 @@ import {
   pruefeModelldateienDerDatei,
   schreibeProjektdatei,
 } from './projektdatei';
-import { gibUngenutzteModelldateienFrei, schreibeModelldatei, schreibeProtokolleintrag } from './schreiben';
+import {
+  gibUngenutzteModelldateienFrei,
+  schreibeModelldatei,
+  schreibeProtokolleintrag,
+  wendeEinstellungenAn,
+} from './schreiben';
 import { transaktion, type Datenbank } from './sql';
 import type { Migrationsbefund } from './summenmigration';
 
@@ -574,6 +582,29 @@ export class SpeicherKern {
         if (!projektGeloescht) schreibeProtokolleintrag(this.#db, eintrag);
       });
     });
+  }
+
+  // --- Einstellungen des Geräts (v1.7a, D-73, D-127.8; `EinstellungenRepository`) ---------------------------------------
+
+  /** `EinstellungenRepository.laden`: ohne gespeicherte Einstellungen `LEERE_EINSTELLUNGEN` (kein `nicht-gefunden`). */
+  einstellungenLaden(): Ergebnis<Einstellungen, Speicherfehler> {
+    return this.#fange(() => leseEinstellungen(this.#db));
+  }
+
+  /**
+   * `EinstellungenRepository.anwenden`: das ChangeSet in einer Transaktion, `konflikt` bei abweichendem Vorherstand. Läuft in
+   * der Reihe von `anwenden` (ein Schreiber).
+   */
+  einstellungenAnwenden(changeSet: EinstellungenChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
+    const lauf = this.#reihe.then(() =>
+      this.#fange(() => {
+        transaktion(this.#db, () => {
+          wendeEinstellungenAn(this.#db, changeSet);
+        });
+      }),
+    );
+    this.#reihe = lauf;
+    return lauf;
   }
 
   // --- Projektdatei -----------------------------------------------------------------------------------------

@@ -19,6 +19,8 @@
 // kaskadiert, sondern mit `konflikt` abgewiesen.
 
 import type {
+  Einstellungen,
+  EinstellungenChangeSet,
   Aenderung,
   Aenderungen,
   Angebotsposition,
@@ -60,6 +62,7 @@ import {
   leseAufmassText,
   leseAuftragsLvKopf,
   leseBautagebucheintrag,
+  leseEinstellungen,
   leseBauwerksmodellKopf,
   leseBauzeitenplanText,
   leseHonorarberechnung,
@@ -78,6 +81,7 @@ import {
 } from './lesen';
 import type { Datenbank, Spaltenwerte, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
+import { einstellungenFormfehler } from './einstellungen';
 import {
   ANGEBOTSPOSITION_SPALTEN,
   angebotspositionZeile,
@@ -1487,6 +1491,29 @@ export function wendeHonorarberechnungAn(
 }
 
 /** Mangel anlegen, ändern oder löschen; die Nummer bleibt fest (D-97.13), Auftrags-LV und Modell hält `speicher` (D-97.6). */
+/**
+ * Schreibt ein ChangeSet an den Einstellungen des Geräts (v1.7a, D-73, D-127.8): ganz vorher und nachher. Weicht `vorher` vom
+ * gespeicherten Stand ab, `konflikt` (Q5); eine Form, die sich nicht mehr als Projektdatei einlesen ließe (doppelter Name eines
+ * Druckprofils, Kostengruppen ungeordnet oder doppelt), `unbekannt`. Kein Projekt, kein Protokolleintrag eines Projekts.
+ */
+export function wendeEinstellungenAn(db: Datenbank, cs: EinstellungenChangeSet): void {
+  if ((cs as { art?: unknown }).art !== 'einstellungen')
+    abbruch('unbekannt', 'ChangeSet: Die Einstellungen nehmen nur ChangeSets der Art einstellungen an.');
+  const { vorher, nachher } = cs.einstellungen;
+  if (!gleich(leseEinstellungen(db), vorher)) konflikt('der Vorherstand der Einstellungen');
+  const befund = einstellungenFormfehler(nachher);
+  if (befund !== null) abbruch('unbekannt', `ChangeSet: ${befund}`);
+  schreibeEinstellungen(db, nachher);
+}
+
+/** Legt die Einstellungen ab (eine Zeile, der ganze Wert als kanonisches JSON; Schema 7). */
+export function schreibeEinstellungen(db: Datenbank, e: Einstellungen): void {
+  db.ausfuehren(
+    `INSERT INTO einstellungen (id, inhalt) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET inhalt = excluded.inhalt`,
+    [kanonischKompakt(e)],
+  );
+}
+
 export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: ProjektId): void {
   const id = cs.mangelId;
   const { vorher, nachher } = cs.mangel;
