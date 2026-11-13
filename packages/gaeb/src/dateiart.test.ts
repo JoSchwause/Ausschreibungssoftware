@@ -137,6 +137,23 @@ describe('GAEB 90 (feste Satzlänge, Satzarten)', () => {
     expect(erkenneGaebDatei(bytes(gaeb90('Rohbau Gebäude')), 'lv.d81').kodierung).toBe('utf-8');
   });
 
+  it('die Datenart in den Stellen 11 und 12 des Satzes 00 ist die Phase (Ticket 144, berichtigt D-136.2)', () => {
+    const mitDa = [satz('00', '        83L', 1), satz('01', 'Rohbau', 2), satz('99', '', 3)].join('\r\n');
+    const d = erkenneGaebDatei(bytes(mitDa), 'lv.d81');
+    expect([d.format, d.phase, d.phasenquelle]).toEqual(['gaeb-90', 'X83', 'inhalt']);
+  });
+
+  it('vertragliche Regelungen (T0 … T9) vor dem Satz 00 sind erlaubt', () => {
+    const mitT = [satz('T0', '', 1), satz('T1', 'Vorbemerkungen', 2), satz('T9', '', 3), satz('00', '        86L', 4)];
+    const d = erkenneGaebDatei(bytes(mitT.join('\r\n')), 'lv.d86');
+    expect([d.format, d.phase, d.phasenquelle]).toEqual(['gaeb-90', 'X86', 'inhalt']);
+  });
+
+  it('ohne Satznummer in den Stellen 75 bis 80 kein GAEB 90', () => {
+    const ohneNummer = gaeb90().replace(/[0-9]{6}\r\n/g, 'abcdef\r\n');
+    expect(erkenneGaebDatei(bytes(ohneNummer), 'x.d83').format).toBeNull();
+  });
+
   it('kein GAEB 90: zu lange Sätze, keine Satzart vorn oder kein Kopfsatz', () => {
     const lang = gaeb90().replace(
       satz('02', 'Projekt Muster', 3),
