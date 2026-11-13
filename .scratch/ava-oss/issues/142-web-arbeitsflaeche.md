@@ -1,6 +1,6 @@
 # 142: App: Arbeitsfläche und Werkzeugleiste
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: U, E3 · Paket/Ordner: `apps/web/src/lv/`, `auftrag/`, `vergabe/` (Layout), `packages/ui-basis` (Werkzeugleiste, Menü)
 Blocked by: 130, 131
@@ -26,10 +26,10 @@ Herkunft: umfang §3 E3, B-05, B-06, B-08
 
 ## Acceptance criteria
 
-- [ ] E2E aus Punkt 5; alle Web-E2E grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E aus Punkt 5; alle Web-E2E grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -73,3 +73,18 @@ Entscheidungen im Demo-Modus (Branch `welle-7/142-arbeitsflaeche`):
   Roving-Tabindex, damit bestehende Tab-Wege bleiben).
 - **D-142.12** Specs: Hilfe `e2e/werkzeuge.ts` (eigene Datei, um `hilfen.ts` von 132 nicht zu berühren); in 21 Specs nur die
   Zeilen der Leiste, des Prüf-Panels und der Summen geändert, keine Meldungsprüfung.
+
+Ergebnis (nach `git merge integration/welle-7`, Stand `c3e9255`):
+
+- `pnpm lint` (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room) und `pnpm typecheck` grün.
+- `pnpm test`: 4.120 bestanden, 3 übersprungen, 6 rot: nur CPU-Budgets in `kern` (lvPruefen gross), `speicher`
+  (aufmass-leistung, v16-leistung ×2), `vergabe` (preisspiegelBerechnen) und `apps/web/src/abrechnung/leistung.test.ts`
+  (ohne React, keine von 142 berührte Datei) bei Last 26–33 auf 4 Kernen; allein wiederholt fielen 4 davon erneut bei Last
+  30. Keine Schranke geändert.
+- Volle Web-E2E: 96/96 grün (13,8 min), darunter neu `e2e/arbeitsflaeche.spec.ts` (4 Fälle). Ein erster Lauf vor dem Merge
+  zeigte 3 rote Specs, alle an Schritten, die noch die alte Leiste suchten (behoben).
+
+Folgearbeit (fremde Ordner, P2): `abrechnung/Verweis.tsx` ist ungenutzt (Ticket der Abrechnung); die übrigen Seiten mit
+`lv__werkzeuge` (honorar, rechnung, abrechnung, bauzeit, bim, bauleitung, kosten, modellvergleich) können auf
+`Werkzeugleiste`/`Werkzeuggruppe` umstellen; die Katalogseite kann den Baustein zeigen. Hinweis für Specs: Radix setzt den
+Fokus im Menü nach Pfeiltasten über einen Zeitgeber; Specs warten je Schritt auf den Fokus.
