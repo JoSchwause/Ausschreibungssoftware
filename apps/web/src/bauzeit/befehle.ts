@@ -27,13 +27,11 @@ import type {
 } from '@tethys/vertrag';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { zahlLesen } from '../lv/zahlen';
+import type { Feldfehler } from '../ui/feldfehler';
 import { texte } from './texte';
 
-export interface Feldfehler {
-  /** Name des Felds, bei Beziehungen `beziehung-<i>-vorgaenger` bzw. `beziehung-<i>-abstand` (ab 0). */
-  readonly feld: string;
-  readonly meldung: string;
-}
+/** Feldnamen: die des Formulars, bei Beziehungen `beziehung-<i>-vorgaenger` bzw. `beziehung-<i>-abstand` (ab 0). */
+export type { Feldfehler };
 
 type Gelesen<T> = Ergebnis<T, readonly Feldfehler[]>;
 

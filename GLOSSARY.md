@@ -15,6 +15,12 @@ Der dreistufige Prozess zur Planung, Beauftragung und Abrechnung von Bauleistung
 ### Projekt
 Die oberste organisatorische Einheit eines Bauvorhabens, der Bauherr, Projektstammdaten, Kostenstrukturen (z. B. nach DIN 276), BIM-Teilmodelle und mehrere Leistungsverzeichnisse (LVs) zugeordnet sind.
 
+### Projektangaben
+Die Stammdaten eines Projekts, die der Nutzer im Dialog „Projektangaben“ pflegt: Name, Bauherr, **Projektnummer**, **Ort** (der Bauort als freier Text, z. B. „Musterstadt“) und **Anschrift der Baustelle** (vertrag v1.7a). Nummer, Ort und Baustelle sind wahlweise; was fehlt, steht nicht im Projekt. Sie erscheinen in den Köpfen der PDFs. Im Code `Projekt.angaben` (Typ `Projektangaben`: Nummer, Ort, Baustelle; Name und Bauherr stehen wie bisher am `Projekt`), Befehl `ProjektangabenSetzen`.
+
+### Anschrift
+Postanschrift aus Straße (mit Hausnummer), Postleitzahl und Ort, jedes Teil wahlweise (wie `Auftraggeber` und `Auftragnehmer` am LV, GAEB `Address`). Eine Anschrift ohne jedes Teil gibt es nicht; dann fehlt sie. Die Anschrift des Bauherrn bleibt ein freier Text (`Bauherr.anschrift`). Im Code `Anschrift`.
+
 ### Leistungsverzeichnis (LV)
 Strukturierte Aufstellung aller zu erbringenden Bauleistungen eines Gewerks oder Fachbereichs. Ein LV gliedert sich hierarchisch in Gliederungsebenen (Lose, Titel/Abschnitte) und Einzelpositionen.
 
@@ -89,7 +95,7 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
 Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`. Die Eingabe des Bieters zu einer Textergänzung im Angebot heißt **Bieterergänzung**; das Angebot hält sie noch nicht (Befund beim X84-Import, Offene Typfrage in Ticket 53).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
-- **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
+- **Menge**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen. „Vordersatz“ ist ein Wort der Vorbild-Software und erscheint in der Oberfläche nicht (D-133.2).
 - **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`). Eine leere Eingabe ist keine Einheit: Ein Befehl darf eine leere Zeichenkette tragen, gespeichert wird „keine Einheit“ (`null`); im Zustand steht nie eine leere Einheit (D-06).
 - **Einheitspreis (EP)**: Netto-Preis pro Einheit, mit 3 Nachkommastellen gespeichert (Entscheidung G-21).
 - **Gesamtpreis (GP)**: Produkt aus Menge × EP, kaufmännisch auf 2 Nachkommastellen (Cent) gerundet.
@@ -111,7 +117,7 @@ Oberbegriff für Los und Titel im LV-Baum. Eine Gliederung hat Ordnungszahl und 
 Die Preise eines Bieters zu den Positionen eines Ausschreibungs-LV. Ein Angebot trägt höchstens einen eigenen Nachlass und verweist auf die Positionen über deren Positionsidentität. Der MwSt-Satz ist der des LV.
 
 ### Bieter
-Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels.
+Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels. Ab vertrag v1.7a trägt ein Bieter wahlweise **Bieterangaben**: Anschrift, Ansprechperson, E-Mail und Telefon; eine X84 oder X86 füllt die Anschrift, wo die Datei sie trägt. Ein Bieter lässt sich umbenennen und, solange er kein Angebot hat, löschen. Im Code `Bieter.angaben` (Typ `Bieterangaben`), Befehle `BieterUmbenennen`, `BieterangabenSetzen`, `BieterLoeschen`.
 
 ### Auftrags-Leistungsverzeichnis
 Das nach dem Zuschlag aus Ausschreibungs-LV und beauftragtem Angebot entstehende LV mit den Vertragspreisen. Eigenes Aggregat mit den Positions-IDs der Ausschreibung (ADR 0011).
@@ -156,7 +162,7 @@ Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich au
 Ablage gelöschter Knoten eines LV, aus der sie sich wiederherstellen lassen. Ein Papierkorbeintrag hält die Knoten eines Löschvorgangs samt Unterbäumen und ihrer alten Lage; beim Wiederherstellen behalten sie ihre Kennungen (Positionsidentität). Positionen im Papierkorb gehen in keine Summe ein. Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, bis die Position zurückkommt; erst das endgültige Entfernen löst sie. Endgültig entfernt wird ein Eintrag nur ausdrücklich und nicht, solange ein Angebot auf eine seiner Positionen verweist (Q5). Im Code `Papierkorbeintrag`, `LvZustand.papierkorb`, `KnotenInPapierkorbLegen`.
 
 ### LV-Stand
-Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`.
+Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`. Ab vertrag v1.7a lässt sich ein LV-Stand umbenennen und löschen (`LvStandUmbenennen`, `LvStandLoeschen`); sein Inhalt bleibt dabei unverändert, das Löschen ist per Rückgängig umkehrbar.
 
 ### Rückgängig / Wiederholen (Undo/Redo)
 Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
@@ -188,12 +194,27 @@ Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Expo
 ### Schreibweise im Code
 Bezeichner und Befehlsnamen im Code folgen dem Glossar, aber ASCII-transliteriert: ä = ae, ö = oe, ü = ue, ß = ss (z. B. `KnotenLoeschen`, `Ausreisser`). Technische Begriffe ohne Fachbezug bleiben englisch.
 
+### Einstellungen
+Was für alle Projekte eines Geräts gilt und nicht zu einem Projekt gehört (vertrag v1.7a, D-73): das Büro, die eigenen Druckprofile und die Bezeichnungen der Kostengruppen. Ein eigenes Aggregat außerhalb der Undo-Historie und des Befehlsprotokolls eines Projekts; die Projektdatei trägt eine Kopie, damit eine Sicherung eine Datei bleibt. Beim Einlesen ergänzt sie nur Fehlendes und überschreibt nichts. Im Code `Einstellungen`, `EinstellungenRepository`, Befehle `BueroSetzen`, `DruckprofilSetzen`, `DruckprofilEntfernen`, `KostengruppenbezeichnungenSetzen`.
+
+### Büro
+Das Planungsbüro, das die App nutzt, als Absender in den Köpfen der PDFs: Name, Anschrift, Telefon und E-Mail. Teil der Einstellungen, einmal für alle Projekte. Im Code `Buero`.
+
+### Druckprofil
+Eine benannte Auswahl, wie ein LV gedruckt wird (mit oder ohne Preise, Umfang des Langtexts, Titelsummen, Schlussblock, Deckblatt, Kopf- und Fußzeile, Seitenrand). Die mitgelieferten Profile stehen fest in der App; eigene Profile sind Teil der Einstellungen, ihre Kennung ist ihr Name. Im Code `Druckprofil`, `LangtextUmfang`.
+
+### Kalenderdatum
+Ein geprüfter Kalendertag in der Form `JJJJ-MM-TT` (Jahr 0001 bis 9999 im gregorianischen Kalender, ohne Uhrzeit und Zeitzone), wie ihn Bauzeitenplan, Mängel und Bautagebuch führen. Ein Datum aus einer Eingabe ist zunächst ungeprüfter Text; erst die Prüfung macht ein Kalenderdatum daraus. Im Code `Kalenderdatum` (Marke), Muster `KALENDERDATUM_MUSTER` (nur die Form).
+
+### Verweissperre
+Der Grund, aus dem ein Löschen abgewiesen wird, weil noch etwas darauf verweist, mit Art und Anzahl der Verweise (z. B. „2 Aufmaßblätter, 1 Rechnung“), damit die Meldung sagen kann, was zuerst zu entfernen ist (Q5). Betrifft das Löschen eines Bieters (Angebote) und das Zurücknehmen des Zuschlags (Nachträge, Aufmaßblätter, Rechnungen, Mängel). Im Code Fehlercode `verweise-vorhanden` mit `Befehlsfehler.verweise` (`Verweisanzahl`, `Verweisart`).
+
 ---
 
 ## Datenaustausch (GAEB) & BIM
 
 ### GAEB (Gemeinsamer Ausschuss Elektronik im Bauwesen)
-Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000).
+Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000). Das **Herkunftsformat** einer eingelesenen Datei (DA XML mit Version, GAEB 90 oder GAEB 2000) nennt das Leseergebnis zur Information (vertrag v1.7a); im Code `GaebLesung.format` (`GaebFormat`) neben `GaebLesung.version`.
 
 ### GAEB-Austauschphasen (X81 – X89)
 Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
@@ -248,7 +269,7 @@ Die Verknüpfung einer Position (im Ausschreibungs-LV oder Auftrags-LV) mit eine
 Welche Menge eine Position von einem zugeordneten Bauteil übernimmt: der Name einer Bauteilmenge, wie er im Modell steht (z. B. `NetVolume`), oder fest `Stueck` (jedes Bauteil zählt 1, in der Oberfläche „Stück“). Nicht die Art einer Bauteilmenge (Länge, Fläche, Volumen, Anzahl, Gewicht, Zeit; im Code `Bauteilmenge.art`). Trägt ein Bauteil denselben Namen in zwei Mengensätzen, ist die Mengenart an ihm mehrdeutig (Befund). Im Code `Bauteilzuordnung.mengenart`.
 
 ### Mengenübernahme
-Der Vordersatz einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
+Die Menge einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
 
 ### Aufmaßblatt aus Auswahl
 Ein neues Aufmaßblatt zu einem Auftrags-LV aus einer Auswahl von Bauteilen eines Bauwerksmodells (X1d, D-53): je Position mit mindestens einem zugeordneten, ausgewählten Bauteil eine Aufmaßposition mit den Ansatzzeilen nur der ausgewählten Bauteile (Regeln wie bei der Mengenübernahme), angelegt mit `AufmassAnlegen`. Dasselbe Bauteil auf zwei Blättern ist nicht erkennbar, weil eine Ansatzzeile keine GlobalId trägt. Die Auswahl „Geschoss“ sind alle Bauteile, die im Geschoss oder in einem Strukturknoten darunter (etwa einem Raum) stehen. Im Code `aufmassAusAuswahl`, `AufmassAusAuswahl`, `Aufmassvorschlag`, `Aufmasshinweis`, `bauteileImStrukturknoten` (Paket `bim`).
@@ -293,6 +314,12 @@ Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sei
 ### Zuschlag (Vergabe)
 Die Annahme eines Angebots durch den Auftraggeber (VOB/A § 18), in der App „Zuschlag erteilen“ aus dem Preisspiegel: Aus Ausschreibungs-LV und beauftragtem Angebot entsteht das Auftrags-LV, höchstens eines je LV (D-21). Nicht zu verwechseln mit der Zuschlagsposition (GAEB `MarkupItem`) und den Begriffen, die zu ihr gehören: Zuschlagssatz, Zuschlagsbasis, Zuschlagsbezug, Zuschlagskennzeichen, Bieterzuschlag. Im Code heißt der Zuschlag der Vergabe „Zuschlagserteilung“: `zuschlagErteilen`, `zuschlagsvorschau` und `Zuschlagswarnung` in `packages/vergabe`, in der App `zuschlagserteilungPlanen`, `zuschlagserteilungSpeichern`, `Zuschlagserteilungsplan`, `ZuschlagserteilungDialog`. Ein Bezeichner, der nur „zuschlag“ heißt (`Positionsdaten.zuschlag`, `Bieterpreis.zuschlag`), meint immer die Zuschlagsposition; der Warncode `zuschlagssatz-fehlt` einer `Zuschlagswarnung` meint den Zuschlagssatz einer Zuschlagsposition im Auftrags-LV.
 
+### Zuschlag zurücknehmen
+Das Auftrags-LV eines erteilten Zuschlags wieder entfernen, etwa nach einem Irrtum; danach lassen sich Angebot, LV und Projekt wieder löschen (vertrag v1.7a, D-74). Gesperrt, solange Nachträge, Aufmaßblätter, Rechnungen oder Mängel auf das Auftrags-LV verweisen (Verweissperre mit Art und Anzahl). Ein Bauzeitenplan und die Kostenkontrolle sperren nicht: Ein Vorgang behält seinen Bezug und zeigt einen Befund, die Auftragswerte der Kostenkontrolle entfallen. Per Rückgängig umkehrbar. Im Code Befehl `ZuschlagZuruecknehmen`.
+
+### Preisspiegel-Einstellungen
+Ausreißer-Schwelle, die beiden ABC-Schwellen und der Bezug der ABC-Klasse eines Preisspiegels. Sie gehören zum Ausschreibungs-LV, gehen mit dessen LV-Ständen und sind per Rückgängig umkehrbar; fehlen sie, gelten die Standardwerte (20 %, 80 %, 95 %, Bezug Mittel; D-05). Im Code `LvKopf.preisspiegel` (Typ `PreisspiegelEinstellungen`), Befehl `PreisspiegeleinstellungenSetzen`.
+
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
 
@@ -312,7 +339,7 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`. Ab vertrag v1.7a gehören die eingelesenen Bezeichnungen als **Kostengruppenbezeichnungen** zu den Einstellungen (eine je Nummer) und damit in die Sicherung; die Texte bringt weiter der Nutzer mit. Im Code `Kostengruppenbezeichnung`, Muster der Nummer `KOSTENGRUPPENNUMMER_MUSTER`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
@@ -401,6 +428,9 @@ Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsa
 
 ### Kalkulationsansatz
 Eine Zeile der Einzelpreiskalkulation einer Position: Kostenart (eine Art der Einheitspreisanteile, `EpaArt`), freie Bezeichnung, **Ansatzmenge** je Einheit der Position (z. B. 0,450 h je m², 3 Stellen) und Kostensatz. Die **Einzelkosten** der Zeile sind Ansatzmenge × Kostensatz, ungerundet. Bei der Kostenart Lohn zählt die Ansatzmenge als Lohnstunden. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht und ist ein Befund. Im Code `Kalkulationsansatz`, `ansatzmenge`; die Zeile des Formulars in der App, alle Felder als Text, heißt **Kalkulationszeile** (`Kalkulationszeile`), nie Ansatzzeile (die gehört zum Mengenansatz).
+
+### Kalkulationsangaben
+Die gespeicherten Eingaben der Einzelpreiskalkulation einer Position im Ausschreibungs-LV (vertrag v1.7a): ihre Kalkulationsansätze und die Zuschlagssätze der Kalkulation je Kostenart. Aus ihnen rechnet die App EP und Einheitspreisanteile; der Befehl trägt beides zusammen, damit Kalkulation und Preis nie auseinanderlaufen. Ein Kopieren nimmt sie mit; der Zuschlag (Auftrags-LV) und ein GAEB-Export nicht. Im Code `Positionsdaten.kalkulation` (Typ `Kalkulationsangaben`), Befehl `KalkulationSetzen`.
 
 ### Kostensatz
 Kosten je Einheit eines Kalkulationsansatzes (z. B. 48,500 € je Lohnstunde oder je m² Stein), netto, 3 Stellen wie ein EP. Im Code `kostensatz`.
@@ -569,3 +599,29 @@ Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie si
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.
 - **ÖNORM B 2063 / A 2063**: Österreichische Standards für Leistungsbeschreibungen, Aufmaß und elektronischen AVA-Datenaustausch (`.onlv` / `.onlb`).
 - **SIA 451 & CRB NPK**: Schweizerischer Datenaustauschstandard (**SIA 451**) und **Normpositionen-Katalog (NPK)** der Schweizerischen Zentralstelle für Baurationalisierung (CRB) inklusive Baukostenplan (**BKP / eBKP**).
+
+---
+
+## Sprache der Oberfläche (Ticket 133, L2, L4)
+
+Eine Benennung je Sache in allen Texten der Oberfläche (`texte.ts` in `apps/web/src/*` und `packages/ui-*`). Der Sprachtest
+`apps/web/src/sprache.test.ts` prüft die abgewählten Benennungen, die Anrede und die Schreibung; die Gründe stehen in den
+Entscheidungen D-133.1 bis D-133.9 im Ticket 133.
+
+| Sache | Benennung in der Oberfläche | Nicht mehr |
+|---|---|---|
+| Ordnungszahl | Beschriftung, Spaltenkopf und Feldname **OZ**; im Satz **Ordnungszahl** („Die Ordnungszahl passt nicht zur OZ-Maske.“) | „Ordnungszahl“ als alleinige Beschriftung |
+| Mehrwertsteuer | **MwSt** („MwSt-Satz“, Spalte „MwSt“) | „Umsatzsteuer“ (nur in „Umsatzsteuer (BT-110)“, dem Namen des Feldes der EN 16931) |
+| Geplante Menge einer Position | **Menge** | „Vordersatz“ |
+| Projektdatei schreiben | Die Datei heißt **Projektdatei**, die Handlung **sichern** („Projektdatei sichern“, „Jetzt sichern“); der Dialog und der Bereich heißen **Sicherung** | „Datensicherung“, „Projektdatei exportieren“ |
+| Datei lesen | **einlesen** („Projektdatei einlesen“, „Profil einlesen“, „Excel einlesen“) | „importieren“, „Import“ |
+| Profil schreiben (Druckprofil) | **Profil sichern** | „Profil exportieren“ |
+| Neues Objekt | Verb mit Gegenstand: „Projekt anlegen“, „Rechnung anlegen“, „Nachtrag anlegen“ | „Anlegen“ allein, „Neue Rechnung“ |
+| Projektangaben ändern | „Stammdaten ändern“ (ändert Name und Bauherr) | „Projekt umbenennen“ |
+| IFC-Klasse | deutscher Name, Klasse in Klammern: „Fundament (IfcFooting)“; unbekannte Klassen stehen unverändert da | rohe Klasse allein |
+
+Schreibung: Anrede unpersönlich, wo nötig „Sie“, nie „du“ und nie ein Imperativ der 2. Person Singular (L4). „…“ mit
+Leerzeichen davor und nur auf Schaltflächen, die einen Dialog oder eine Dateiauswahl öffnen. „€“ als einziges
+Währungszeichen, mit Leerzeichen hinter der Zahl; Beträge in Eingabefeldern tragen „(netto, €)“ im Namen. Ein Trennzeichen:
+Seitentitel „Seite – Projekt“ mit Halbgeviertstrich, Zeilen mit zwei Teilen mit Doppelpunkt, Zellen eines Klartextes mit
+„ · “. Keine Ticketnummern, Regel- oder Entscheidungskennungen und keine Paketnamen in Nutzertexten (L5).

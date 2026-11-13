@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Bauwerksmodell (v1.6, Ticket 97 Punkte 1 bis 3; X1, D-50 bis D-53): ein eingelesenes IFC-Modell ohne Geometrie und die
-// Zuordnung seiner Bauteile zu Positionen. Nur Typen und eine Konstante. Die Datei liest `ifc` (Tickets 98, 107), die Fachlogik
+// Zuordnung seiner Bauteile zu Positionen. Nur Typen und Konstanten. Die Datei liest `ifc` (Tickets 98, 107), die Fachlogik
 // (Mengenübernahme, Aufmaß aus Auswahl, DIN 277, Kennwerte, Vergleich) liegt in `bim` (Ticket 108), die Geometrie nur in
 // `ui-modell` (Ticket 100). Befehle in `befehle.ts`, ChangeSet und Zustand in `changeset.ts`, die Ablage der Bytes in
-// `speicher.ts` (`Modelldateiablage`). Einzige Konstante: das Muster einer GlobalId (Nachtrag Review, D-66).
+// `speicher.ts` (`Modelldateiablage`). Konstanten: das Muster einer GlobalId (D-66), v1.7a Listen und Formen aus Ticket 123.
 
 import type { BauwerksmodellId, IfcGlobalId, Kostengruppennummer, ProjektId } from './marken';
 import type { Menge } from './zahlen';
@@ -17,11 +17,42 @@ import type { Menge } from './zahlen';
 export const IFC_GLOBALID_MUSTER: RegExp = /^[0-9A-Za-z_$]{22}$/;
 
 /**
+ * Die Schemata einer IFC-Datei als Liste (v1.7a, Ticket 123 Punkt 1): die Werte von `IfcSchema`, aus der `IfcSchema` abgeleitet
+ * ist, damit Leser und Prüfer (`ifc`, `speicher`) keine eigene Liste führen.
+ */
+export const IFC_SCHEMATA = ['IFC2X3', 'IFC4'] as const;
+
+/**
  * Schema der IFC-Datei laut `FILE_SCHEMA` (v1.6, D-50): IFC 2x3 oder IFC 4. `IFC4` umfasst die Fassungen und Zusätze, die
  * `ifc` als IFC 4 liest (z. B. `IFC4X0_ADD2`, Ticket 98); eine Datei in einem anderen Schema ergibt kein Bauwerksmodell (Fehler
- * beim Lesen). Eine geschlossene Liste: Ein weiteres Schema braucht ein Vertragsticket.
+ * beim Lesen). Eine geschlossene Liste: Ein weiteres Schema braucht ein Vertragsticket. v1.7a: abgeleitet aus `IFC_SCHEMATA`.
  */
-export type IfcSchema = 'IFC2X3' | 'IFC4';
+export type IfcSchema = (typeof IFC_SCHEMATA)[number];
+
+/**
+ * Form des Hashs einer Modelldatei (v1.7a, Ticket 123 Punkt 1): SHA-256 als 64 Hexziffern in Kleinbuchstaben (siehe
+ * `Modelldatei.hash`). Ohne Flag `g`.
+ */
+export const MODELLDATEI_HASH_MUSTER: RegExp = /^[0-9a-f]{64}$/;
+
+/**
+ * Die Arten einer Bauteilmenge als Liste (v1.7a, Ticket 123 Punkt 1), in der Reihenfolge der IFC-Klassen
+ * (`IfcQuantityLength` … `IfcQuantityTime`); `Bauteilmengenart` ist daraus abgeleitet.
+ */
+export const BAUTEILMENGENARTEN = ['laenge', 'flaeche', 'volumen', 'anzahl', 'gewicht', 'zeit'] as const;
+
+/** Art einer Bauteilmenge (v1.7a benannt; vorher nur am Feld `Bauteilmenge.art`). Nicht die Mengenart einer Zuordnung. */
+export type Bauteilmengenart = (typeof BAUTEILMENGENARTEN)[number];
+
+/** Die Arten eines Strukturknotens als Liste (v1.7a, Ticket 123 Punkt 1), von außen nach innen. */
+export const STRUKTURKNOTENARTEN = ['projekt', 'grundstueck', 'gebaeude', 'geschoss', 'raum'] as const;
+
+/**
+ * Die feste Mengenart „Stück“ einer Bauteilzuordnung (v1.7a, Ticket 123 Punkt 8; Glossar „Mengenart“): Jedes Bauteil zählt 1,
+ * auch wenn ein Modell eine Menge dieses Namens hätte (siehe `Bauteilzuordnung.mengenart`). Bisher in `bim`; `bim` und die App
+ * nehmen sie ab Ticket 140/155 von hier. In der Oberfläche heißt sie „Stück“.
+ */
+export const MENGENART_STUECK = 'Stueck' as const;
 
 /**
  * Die Datei eines Bauwerksmodells (Glossar „Modelldatei“; v1.6, Ticket 97 Punkt 2, D-51): nur, was das Aggregat über die
@@ -69,7 +100,7 @@ export interface Bauteilmenge {
   /** Name der Menge, wie er im Modell steht, z. B. `NetVolume`; nicht leer. Auf ihn verweist `Bauteilzuordnung.mengenart`. */
   readonly name: string;
   /** Art nach der IFC-Klasse der Menge (`IfcQuantityLength` … `IfcQuantityTime`); sie bestimmt die Einheit von `wert`. */
-  readonly art: 'laenge' | 'flaeche' | 'volumen' | 'anzahl' | 'gewicht' | 'zeit';
+  readonly art: Bauteilmengenart;
   readonly wert: Menge;
 }
 
@@ -79,7 +110,7 @@ export interface Bauteilmenge {
  */
 export interface Strukturknoten {
   readonly globalId: IfcGlobalId;
-  readonly art: 'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum';
+  readonly art: (typeof STRUKTURKNOTENARTEN)[number];
   /** `Name` der Datei (bei Räumen oft die Raumnummer); `null`: keiner. */
   readonly name: string | null;
   /**

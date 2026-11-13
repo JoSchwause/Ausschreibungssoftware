@@ -25,7 +25,7 @@ export const texte = {
     gewaehrleistungSatz: 'Gewährleistungseinbehalt',
   },
   formular: {
-    titelNeu: (nummer: number) => `Neue Rechnung ${String(nummer)}`,
+    titelNeu: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
     titelBearbeiten: (nummer: number) => `Rechnung ${String(nummer)} bearbeiten`,
     angaben: 'Angaben des Auftragnehmers',
     gefordert: 'Gefordert (nur zum Vergleich, nicht geprüft)',
@@ -61,7 +61,7 @@ export const texte = {
     offen: 'offen',
     freigegeben: 'freigegeben',
     oeffnen: (nummer: number) => `Rechnung ${String(nummer)} öffnen`,
-    neu: 'Neue Rechnung',
+    neu: 'Rechnung anlegen',
     zumAuftrag: 'Zum Auftrags-LV',
     zurListe: 'Zur Rechnungsliste',
     werkzeuge: 'Werkzeuge der Rechnungen',
@@ -79,7 +79,7 @@ export const texte = {
     leistung: 'Leistung (kumuliert)',
     nachlass: 'Nachlass',
     nettoNachNachlass: 'Netto nach Nachlass',
-    mwst: 'Umsatzsteuer',
+    mwst: 'MwSt',
     bruttoKumuliert: 'Brutto kumuliert',
     umlage: (bezeichnung: string, satz: string) => `Umlage ${bezeichnung} (${satz} %)`,
     sicherheit: (satz: string | null) =>
@@ -182,7 +182,7 @@ export const texte = {
     artWaehlen: 'Als welche Rechnungsart übernehmen?',
     artFehlt: 'Bitte die Rechnungsart wählen.',
     ziel: 'Übernehmen in',
-    neueRechnung: (nummer: number) => `Neue Rechnung ${String(nummer)}`,
+    neueRechnung: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
     vorhandene: (nummer: number) => `Rechnung ${String(nummer)} (offen)`,
     uebernimmt:
       'Übernommen werden Rechnungsnummer, Rechnungsdatum als Eingangsdatum, Art und die geforderten Beträge – ungeprüft, nur zum Vergleich.',

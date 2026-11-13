@@ -10,7 +10,8 @@ import type {
   ProjektId,
   Speicher,
 } from '@tethys/vertrag';
-import { befehlswegFuer, eintrag, speichern, Sitzung, type Lauf, type Umgebung } from '../lv/befehlsweg';
+import type { Lauf, Sitzung, Umgebung } from '../lv/befehlsweg';
+import { befehlSchreiben, fachSitzung } from '../ui/schreibweg';
 
 export type BauwerksmodellSitzung = Sitzung<BauwerksmodellZustand | null, BauwerksmodellBefehl>;
 
@@ -21,11 +22,14 @@ export async function bauwerksmodellBefehlAnwenden(
   zustand: BauwerksmodellZustand | null,
   befehl: BauwerksmodellBefehl,
 ): Promise<Lauf<BauwerksmodellZustand | null>> {
-  const r = bauwerksmodellBefehlAusfuehren(zustand, befehl);
-  if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
-  const cs = r.wert;
-  const e = eintrag(u, projektId, { art: 'bauwerksmodell', id: cs.bauwerksmodellId }, befehl);
-  return speichern(u, e, cs, () => bauwerksmodellChangeSetAnwenden(zustand, cs));
+  return befehlSchreiben(
+    u,
+    projektId,
+    befehl,
+    bauwerksmodellBefehlAusfuehren(zustand, befehl),
+    (cs) => ({ art: 'bauwerksmodell', id: cs.bauwerksmodellId }),
+    (cs) => bauwerksmodellChangeSetAnwenden(zustand, cs),
+  );
 }
 
 export function bauwerksmodellSitzung(
@@ -33,7 +37,7 @@ export function bauwerksmodellSitzung(
   projektId: ProjektId,
   zustand: BauwerksmodellZustand | null,
 ): BauwerksmodellSitzung {
-  return new Sitzung(befehlswegFuer(u), zustand, (z, b) => bauwerksmodellBefehlAnwenden(u, projektId, z, b));
+  return fachSitzung(u, projektId, zustand, bauwerksmodellBefehlAnwenden);
 }
 
 /** Das ganze Modell; `null`, wenn es nicht (mehr) da ist. */

@@ -12,7 +12,7 @@ export const texte = {
       `Zu diesem Nachtrag liegt kein Angebot des Auftragnehmers${auftragnehmer === null ? '' : ` (${auftragnehmer})`} vor. Das Angebot entsteht wie jedes andere: X84 oder Excel einlesen, Bieter = Auftragnehmer.`,
     schonUebernommen:
       'Der Nachtrag ist schon übernommen: Seine Positionen stehen bereits im Auftrags-LV. Rückgängig nimmt eine Übernahme zurück.',
-    zuTief: 'Unter der Gliederung „Nachtrag“ hätte das Auftrags-LV mehr als 5 Gliederungsebenen (F1).',
+    zuTief: 'Unter der Gliederung „Nachtrag“ hätte das Auftrags-LV mehr als 5 Gliederungsebenen.',
     andereMwst:
       'Der MwSt-Satz des Nachtrags-LV ist nicht der des Auftrags-LV; so lässt er sich nicht übernehmen.',
     keinNachtrag: 'Das LV ist kein Nachtrags-LV.',
@@ -34,7 +34,7 @@ export const texte = {
     bezeichnung: 'Bezeichnung',
     hinweis: 'Der Name des LV wird „Nachtrag <Nummer> – <Bezeichnung>“.',
     abbrechen: 'Abbrechen',
-    anlegen: 'Anlegen',
+    anlegen: 'Nachtrag anlegen',
     angelegt: (nummer: string) => `Nachtrag ${nummer} angelegt`,
   },
   band: {

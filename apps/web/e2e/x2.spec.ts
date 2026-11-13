@@ -80,12 +80,15 @@ async function waehle(page: Page, bereich: Locator, feld: string, option: string
 
 async function planAnlegen(page: Page, projekt: string, planName: string): Promise<void> {
   await projektAnlegen(page, projekt, 'Bauherr (erfunden)');
-  await page.getByRole('link', { name: 'Bauzeitenpläne' }).click();
+  await page
+    .getByRole('navigation', { name: 'Hauptnavigation' })
+    .getByRole('link', { name: 'Bauzeitenpläne' })
+    .click();
   const form = page.getByRole('form', { name: 'Bauzeitenplan anlegen' });
   await form.getByLabel('Name').fill(planName);
   await form.getByLabel('Projektbeginn').fill(de(fx.plan.projektbeginn));
   await waehle(page, form, 'Bundesland (Feiertage)', 'Sachsen');
-  await form.getByRole('button', { name: 'Anlegen' }).click();
+  await form.getByRole('button', { name: 'Bauzeitenplan anlegen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Bauzeitenplan: ${planName}` })).toBeVisible();
 }
 

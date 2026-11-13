@@ -16,6 +16,7 @@ Herkunft: umfang §3 E7 (App-Teil), B-10 bis B-12
    Kopfdaten nicht als 14 Einzelzeilen. Texte aus den Codes und Werten (136).
 2. Eingesetzt in den Dialogen GAEB einlesen, Angebot (X84) einlesen, X31, XRechnung, IFC.
 3. Dateidialog bietet alle GAEB-Endungen an (`.x8*`, `.d8*`, `.p8*`, Groß/Klein); abgewiesene Dateien zeigen den Satz aus 136.
+5. **Aus 129:** veraltete Texte `apps/web/src/gaeb/gaeb.ts:58` und `keinX84` in `gaeb/texte.ts` („X84 in GAEB 3.3 oder 3.2“) auf den Stand nach 3.1 bringen.
 4. GAEB einlesen ohne offenes Projekt legt das Projekt an (Weg für 147 „GAEB-Datei einlesen“): Funktion bereitstellen.
 
 ## Acceptance criteria

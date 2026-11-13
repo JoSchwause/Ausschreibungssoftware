@@ -14,10 +14,11 @@ import { auftragsLvsLaden } from '../auftrag/auftrag';
 import { datumAusUhr } from '../ausgabe/logik';
 import { ERSATZ_PROJEKT, dateinameSauber } from '../dateiname';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer, type Ausgang } from '../lv/befehlsweg';
+import type { Ausgang } from '../lv/befehlsweg';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { abweisungText, useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { EintragFormular } from './EintragFormular';
 import { auftragnehmerAngaben, auftragnehmerNamen } from './maengel';
@@ -48,7 +49,6 @@ interface Stand {
   /** Heute nach der Uhr der App (`JJJJ-MM-TT`). */
   readonly heute: string;
 }
-type Laden = { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; stand: Stand };
 type Dialogart = 'neu' | 'bearbeiten' | 'loeschen' | 'pdf';
 
 export function BautagebuchSeite({
@@ -58,63 +58,22 @@ export function BautagebuchSeite({
   projektId: ProjektId;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
+  // Undo und Redo können Einträge anlegen, ändern oder löschen: das Gerüst lädt neu.
+  const { lage, neuLaden } = useSeitenladen(
+    async (u): Promise<Stand | null> => {
       const p = await u.speicher.projekte.laden(projektId);
       const e = await bautagebuchLaden(u.speicher, projektId);
       const a = await auftragsLvsLaden(u.speicher, projektId);
-      if (!p.ok || !e.ok || !a.ok) return { art: 'fehlt' };
-      return {
-        art: 'da',
-        stand: { projekt: p.wert, eintraege: e.wert, auftraege: a.wert, heute: datumAusUhr(u.uhr()) },
-      };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, lauf]);
-  // Undo und Redo können Einträge anlegen, ändern oder löschen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+      if (!p.ok || !e.ok || !a.ok) return null;
+      return { projekt: p.wert, eintraege: e.wert, auftraege: a.wert, heute: datumAusUhr(u.uhr()) };
+    },
+    [projektId],
   );
 
-  if (lage.art === 'laedt') {
-    return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
-    );
+  if (lage.art !== 'da') {
+    return <Ladeansicht lage={lage} laden={texte.seite.laden} nichtGefunden={texte.seite.nichtGefunden} />;
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.seite.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <Tagebuch
-      stand={lage.stand}
-      gehe={gehe}
-      neuLaden={() => {
-        setLauf((n) => n + 1);
-      }}
-    />
-  );
+  return <Tagebuch stand={lage.wert} gehe={gehe} neuLaden={neuLaden} />;
 }
 
 function Tagebuch({

@@ -114,7 +114,7 @@ test('U3: drei Wände nur mit Tasten wählen und zuordnen (Leertaste, Strg+Leert
   expect(await auswahl(page)).toEqual([...WAENDE].sort());
 
   // --- Zuordnen nur mit Tasten ---------------------------------------------------------------------------------------
-  const zuordnen = zuordnung.getByRole('button', { name: 'Zuordnen …' });
+  const zuordnen = zuordnung.getByRole('button', { name: 'Bauteile zuordnen …' });
   await tabBis(page, zuordnen);
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', { name: '3 Bauteile zuordnen' });

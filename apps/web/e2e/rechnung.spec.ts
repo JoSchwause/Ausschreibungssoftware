@@ -75,8 +75,8 @@ async function kettePruefen(page: Page, k: FxKette, frueher: readonly number[]):
 const werkzeuge = (page: Page): Locator => page.getByRole('toolbar', { name: 'Werkzeuge der Rechnungen' });
 
 async function neueRechnung(page: Page, nummer: number, eingang: string, rnr: string): Promise<Locator> {
-  await werkzeuge(page).getByRole('button', { name: 'Neue Rechnung' }).click();
-  const dialog = page.getByRole('dialog', { name: `Neue Rechnung ${String(nummer)}` });
+  await werkzeuge(page).getByRole('button', { name: 'Rechnung anlegen' }).click();
+  const dialog = page.getByRole('dialog', { name: `Rechnung ${String(nummer)} anlegen` });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Eingangsdatum').fill(eingang);
   await dialog.getByLabel('Rechnungsnummer des Auftragnehmers').fill(rnr);

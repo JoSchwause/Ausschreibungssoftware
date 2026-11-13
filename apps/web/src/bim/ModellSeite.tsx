@@ -16,8 +16,7 @@ import { formatiereMengeDe } from '@tethys/dezimal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
-import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import {
   AUSWAHL_START,
@@ -49,7 +48,7 @@ import {
 import { vergleichPfad } from '../modellvergleich/pfad'; // Ticket 116
 import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 116
 import { modellTesthaken } from './testhaken';
-import { texte } from './texte';
+import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
 import { useBezug } from './useBezug'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
@@ -57,10 +56,10 @@ import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
 import './bim.css';
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | { art: 'da'; zustand: BauwerksmodellZustand; bytes: Uint8Array | null };
+interface Geladen {
+  zustand: BauwerksmodellZustand;
+  bytes: Uint8Array | null;
+}
 
 type Eigenschaftslage =
   | { art: 'keine' }
@@ -78,59 +77,36 @@ export function ModellSeite({
   id: BauwerksmodellId;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const z = await bauwerksmodellLaden(u.speicher, id);
-      if (z === null) return { art: 'fehlt' };
-      const b = await u.speicher.modelldateien.laden(z.bauwerksmodell.datei.hash);
-      return { art: 'da', zustand: z, bytes: b.ok ? b.wert : null };
-    })().then((l) => {
-      if (!aktiv) return;
+  const { lage } = useSeitenladen(
+    async ({ speicher }): Promise<Geladen | null> => {
+      const z = await bauwerksmodellLaden(speicher, id);
+      if (z === null) return null;
+      const b = await speicher.modelldateien.laden(z.bauwerksmodell.datei.hash);
+      return { zustand: z, bytes: b.ok ? b.wert : null };
+    },
+    [id],
+    {
       // Ein Undo/Redo (Umbenennen) lädt neu; dieselben Bytes behalten, damit die 3D-Ansicht nicht neu lädt.
-      setLage((alt) =>
-        l.art === 'da' &&
-        alt.art === 'da' &&
-        alt.zustand.bauwerksmodell.datei.hash === l.zustand.bauwerksmodell.datei.hash
-          ? { ...l, bytes: alt.bytes }
-          : l,
-      );
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, id, lauf]);
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+      alsWert: (neu, alt) =>
+        alt !== null && alt.zustand.bauwerksmodell.datei.hash === neu.zustand.bauwerksmodell.datei.hash
+          ? { ...neu, bytes: alt.bytes }
+          : neu,
+    },
   );
 
-  if (lage.art === 'laedt') {
+  if (lage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
+      <Ladeansicht
+        lage={lage}
+        laden={texte.seite.laden}
+        nichtGefunden={texte.seite.nichtGefunden}
+        zusatz={<Verweis pfad={modellePfad(projektId)} text={texte.seite.zurListe} gehe={gehe} />}
+      />
     );
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.seite.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-          <Verweis pfad={modellePfad(projektId)} text={texte.seite.zurListe} gehe={gehe} />
-        </div>
-      </div>
-    );
-  }
-  return <Arbeitsflaeche projektId={projektId} zustand={lage.zustand} bytes={lage.bytes} gehe={gehe} />;
+  return (
+    <Arbeitsflaeche projektId={projektId} zustand={lage.wert.zustand} bytes={lage.wert.bytes} gehe={gehe} />
+  );
 }
 
 function Arbeitsflaeche({
@@ -306,7 +282,7 @@ function Arbeitsflaeche({
             wert={klasse}
             optionen={alleKlassen.map((k) => ({
               wert: k.klasse,
-              label: `${k.klasse} (${String(k.anzahl)})`,
+              label: `${ifcKlassenName(k.klasse)}: ${String(k.anzahl)}`,
             }))}
             onWertChange={setKlasse}
           />
@@ -410,7 +386,13 @@ function Arbeitsflaeche({
                 <dt>{texte.seite.globalId}</dt>
                 <dd>{fokus}</dd>
                 <dt>{texte.seite.klasse}</dt>
-                <dd>{fokusBauteil?.ifcKlasse ?? (fokusKnoten ? texte.strukturart[fokusKnoten.art] : '')}</dd>
+                <dd>
+                  {fokusBauteil
+                    ? ifcKlassenName(fokusBauteil.ifcKlasse)
+                    : fokusKnoten
+                      ? texte.strukturart[fokusKnoten.art]
+                      : ''}
+                </dd>
                 {fokusBauteil?.typ ? (
                   <>
                     <dt>{texte.seite.typ}</dt>

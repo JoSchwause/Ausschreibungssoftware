@@ -21,12 +21,9 @@ import type {
 } from '@tethys/vertrag';
 import type { Ausgang, LvSitzung } from '../lv/befehlsweg';
 import { texte } from './texte';
+import type { Zeilenkopf } from '../ui/zeilenkopf';
 
-export interface Folgezeile {
-  readonly positionId: PositionId;
-  readonly oz: string;
-  readonly kurztext: string;
-  readonly einheit: string;
+export interface Folgezeile extends Zeilenkopf {
   /** Menge laut altem bzw. neuem Stand (Summe der Zeilen aus `bim`); `null`, wenn keine Zeile entsteht. */
   readonly vorher: Menge | null;
   readonly nachher: Menge | null;

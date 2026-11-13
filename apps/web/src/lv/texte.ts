@@ -46,7 +46,7 @@ export const texte = {
     ganzzahl: 'Erwartet wird eine ganze Zahl ab 0.',
     nichtUebernommen: 'Markierte Felder wurden nicht übernommen.',
     texte: 'Texte',
-    ordnungszahl: 'Ordnungszahl',
+    ordnungszahl: 'OZ',
     kurztext: 'Kurztext',
     langtext: 'Langtext',
     mengeUndPreis: 'Menge und Preis',
@@ -188,6 +188,7 @@ export const texte = {
     'rechnung-freigegeben': 'Die Rechnung ist freigegeben. Zuerst die Freigabe aufheben.',
     // v1.6: mechanisch angepasst, Folgeticket 120 (Mängel in der App; Text dort prüfen)
     'statuswechsel-unzulaessig': 'Dieser Statuswechsel ist für den Mangel nicht zulässig.',
+    'verweise-vorhanden': 'Es verweisen noch andere Einträge darauf. Diese bitte zuerst entfernen.',
   } satisfies Record<Befehlsfehlercode, string>,
   speicherfehler: {
     'nicht-gefunden': 'Der Eintrag wurde im Speicher nicht gefunden.',

@@ -16,16 +16,12 @@ import type {
   IfcGlobalId,
   Knoten,
   Menge,
-  PositionId,
   Pruefbefund,
 } from '@tethys/vertrag';
 import { neuesBlatt } from '../abrechnung/aufmass';
+import type { Zeilenkopf } from '../ui/zeilenkopf';
 
-export interface Aufmassvorschauzeile {
-  readonly positionId: PositionId;
-  readonly oz: string;
-  readonly kurztext: string;
-  readonly einheit: string;
+export interface Aufmassvorschauzeile extends Zeilenkopf {
   /** Die ausgewählten, zugeordneten GlobalIds (auch die ohne Zeile). */
   readonly bauteile: readonly IfcGlobalId[];
   readonly zeilen: readonly Ansatzzeile[];

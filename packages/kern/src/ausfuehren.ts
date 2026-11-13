@@ -122,7 +122,11 @@ type Umgesetzt = keyof typeof BEFEHLS_HANDLER;
  */
 type Offen = Exclude<Art, Umgesetzt>;
 export const ZUSTAENDIGES_TICKET: { readonly [A in Offen]: string } & Readonly<Partial<Record<Art, string>>> =
-  {};
+  {
+    // Vertrag v1.7a (Ticket 127), mechanisch bis Ticket 137
+    KalkulationSetzen: 'Ticket 137',
+    PreisspiegeleinstellungenSetzen: 'Ticket 137',
+  };
 
 const istUmgesetzt = (art: Art): art is Umgesetzt => Object.hasOwn(BEFEHLS_HANDLER, art);
 

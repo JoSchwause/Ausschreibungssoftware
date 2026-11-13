@@ -10,6 +10,7 @@ import type {
   BauwerksmodellZustand,
   BauzeitenplanZustand,
   ChangeSet,
+  EinstellungenChangeSet,
   Ergebnis,
   HonorarberechnungZustand,
   KostenermittlungZustand,
@@ -27,7 +28,9 @@ import type {
   BauwerksmodellId,
   BauzeitenplanId,
   HonorarberechnungId,
+  IdQuelle,
   KostenermittlungId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LvStandId,
   MangelId,
@@ -52,6 +55,7 @@ import type { BauwerksmodellKopf, Modelldatei } from './bim';
 import type { BauzeitenplanKopf } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { Einstellungen } from './einstellungen';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -409,6 +413,69 @@ export interface LvStandRepository {
   laden(id: LvStandId): Promise<Ergebnis<LvStand, Speicherfehler>>;
 }
 
+/**
+ * Die Einstellungen des Geräts (v1.7a, Ticket 127; E15, D-73; Glossar „Einstellungen“): ein globales Aggregat außerhalb jedes
+ * Projekts, seiner Undo-Historie und seines Protokolls. Liefert `speicher` mit Ticket 139.
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - `laden` liefert `LEERE_EINSTELLUNGEN`, solange nie etwas geschrieben wurde (kein `nicht-gefunden`).
+ * - `anwenden` schreibt ein ChangeSet in einer Transaktion; weicht `vorher` vom gespeicherten Stand ab, `konflikt` (Q5). Kein
+ *   Protokolleintrag (D-73).
+ * - Übernahme aus dem Browserspeicher (`localStorage`, D-73): einmalig durch die App, solange der Speicher leer ist, als
+ *   gewöhnliche Befehle; die alten Schlüssel bleiben stehen.
+ */
+export interface EinstellungenRepository {
+  laden(): Promise<Ergebnis<Einstellungen, Speicherfehler>>;
+  anwenden(changeSet: EinstellungenChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
+}
+
+/**
+ * Wie eine Projektdatei eingelesen wird (v1.7a, Ticket 127; E8 „Projektdatei einlesen, wenn das Projekt schon da ist“;
+ * `Speicher.projektdateiEinlesen`). Ohne Optionen wie bisher: ein vorhandenes Projekt derselben Kennung ergibt
+ * `existiert-bereits`.
+ */
+export interface ProjektdateiEinleseoptionen {
+  /**
+   * Als Kopie einlesen: `speicher` vergibt dem Projekt und **jedem Aggregat** der Datei (LV, Angebot, Auftrags-LV, LV-Stand,
+   * Aufmaßblatt, Rechnung, Kostenermittlung, Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag)
+   * eine neue Kennung aus `ids` und biegt alle Verweise zwischen ihnen um (`projektId`, `leistungsverzeichnisId`,
+   * `angebotId`, `auftragsLvId`, `aufmassIds`, Nachtragsangaben, Vorgänger eines Modells, Verweise von Honorar, Mangel und
+   * Vorgang). Kennungen innerhalb eines Aggregats (Knoten, Positionen, Vorgänge, Bieter, Papierkorbeinträge, Bilder) bleiben:
+   * Sie sind nur je Aggregat bzw. Projekt eindeutig (Positionsidentität, ADR 0011), die Kopie ist also ohne Überschneidung
+   * mit dem Original. Das Projekt heißt `name` (die App schlägt „<Name> (Kopie)“ vor).
+   *
+   * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127): Das Befehlsprotokoll der Datei kommt **nicht** mit:
+   * Seine Befehle nennen die alten Kennungen. Die Kopie beginnt mit leerem Protokoll; die Datei selbst bleibt die Quelle der
+   * Geschichte (die App sagt das im Dialog). Modelldateien (Bytes) sind inhaltsadressiert und werden geteilt, nicht kopiert.
+   * Einstellungen der Datei gelten wie beim gewöhnlichen Einlesen (nur Fehlendes, D-73).
+   */
+  readonly alsKopie?: { readonly ids: IdQuelle; readonly name: string };
+}
+
+/**
+ * Ein Eintrag der Einstellungen, wie die Übernahme aus einer Projektdatei ihn nennt (v1.7a, D-73): das Büro, ein Druckprofil
+ * (über seinen Namen) oder eine Kostengruppenbezeichnung (über ihre Nummer).
+ */
+export type Einstellungsschluessel =
+  | { readonly art: 'buero' }
+  | { readonly art: 'druckprofil'; readonly name: string }
+  | { readonly art: 'kostengruppenbezeichnung'; readonly nummer: Kostengruppennummer };
+
+/**
+ * Ergebnis von `Speicher.projektdateiEinlesen` (v1.7a): das eingelesene Projekt (bei einer Kopie die neue Kennung) und was
+ * aus dem Block `einstellungen` der Datei wurde. `einstellungen: null`: Die Datei trägt keinen Block (Schema bis 6). Sonst
+ * `uebernommen` (lokal fehlte der Eintrag, er steht nun in den Einstellungen) und `belassen` (lokal gab es ihn schon; der
+ * Wert der Datei wurde nicht übernommen, auch wenn er gleich war), je in der Reihenfolge der Datei: Büro, Druckprofile,
+ * Kostengruppenbezeichnungen. Der Dialog nennt beides (Q5).
+ */
+export interface ProjektdateiEinleseergebnis {
+  readonly projektId: ProjektId;
+  readonly einstellungen: {
+    readonly uebernommen: readonly Einstellungsschluessel[];
+    readonly belassen: readonly Einstellungsschluessel[];
+  } | null;
+}
+
 /** Zustand der Persistenz des Browser-Speichers (Spec §9). */
 export interface Persistenzstatus {
   readonly angefragt: boolean;
@@ -486,6 +553,12 @@ export interface Speicher {
   readonly maengel: MangelRepository;
   /** Das Bautagebuch (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
   readonly bautagebuch: BautagebuchRepository;
+  /**
+   * Die Einstellungen des Geräts (v1.7a, Ticket 127, E15, D-73). Optional, damit ein Speicher vor Ticket 139 gültig bleibt
+   * (A8: additiv); fehlt es, liest die App weiter den Browserspeicher. Pflicht spätestens mit der nächsten Vertragsversion
+   * nach Ticket 139.
+   */
+  readonly einstellungen?: EinstellungenRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
@@ -493,6 +566,16 @@ export interface Speicher {
   projektdateiExportieren(projektId: ProjektId): Promise<Ergebnis<string, Speicherfehler>>;
   /** Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. */
   projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>>;
+  /**
+   * Liest eine Projektdatei ein wie `projektdateiImportieren`, wahlweise als Kopie, und berichtet, was aus dem Block
+   * `einstellungen` übernommen und was belassen wurde (v1.7a, Ticket 127; E8, E15, D-73). Optional, damit ein Speicher vor
+   * Ticket 139 gültig bleibt; liefert `speicher` es, nimmt die App es statt `projektdateiImportieren` (das ohne Optionen
+   * dasselbe tut und gültig bleibt). Ohne `optionen` ergibt ein vorhandenes Projekt derselben Kennung `existiert-bereits`.
+   */
+  projektdateiEinlesen?(
+    inhalt: string,
+    optionen?: ProjektdateiEinleseoptionen,
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>>;
   /**
    * Schließt den Speicher und gibt seine Betriebsmittel frei (v1.1a), z. B. die OPFS-Handles des Workers. Danach
    * sind keine weiteren Aufrufe zulässig; ein neuer Speicher wird mit einem neuen Öffnen erzeugt (das Öffnen liegt
@@ -560,4 +643,16 @@ export interface Projektdatei {
   readonly honorarberechnungen?: readonly HonorarberechnungZustand[];
   readonly maengel?: readonly MangelZustand[];
   readonly bautagebuch?: readonly BautagebucheintragZustand[];
+  /**
+   * Kopie der Einstellungen des Geräts beim Export (v1.7a, Ticket 127, E15, D-73; Schema 7, Ticket 139), damit eine Sicherung
+   * eine Datei bleibt. Optional, fehlt = keine (Dateien bis Schema 6; `speicher` lässt den Block weg, wenn die Einstellungen
+   * `LEERE_EINSTELLUNGEN` gleichen). Lesarten (D-73; vorläufige Annahme, Entscheidung offen):
+   * - Das Einlesen füllt nur **Fehlendes je Schlüssel** und überschreibt nie: das Büro nur, wenn lokal keines gesetzt ist; ein
+   *   Druckprofil nur, wenn lokal keines dieses Namens besteht; eine Kostengruppenbezeichnung nur, wenn lokal keine dieser
+   *   Nummer besteht.
+   * - Was übernommen und was belassen wurde, liefert `Speicher.projektdateiEinlesen` (`ProjektdateiEinleseergebnis`); der
+   *   Dialog nennt es (Q5).
+   * - Die Übernahme ist kein Befehl eines Projekts und steht in keinem Protokoll (D-73).
+   */
+  readonly einstellungen?: Einstellungen;
 }

@@ -37,6 +37,14 @@ export function istBearbeitbareSpalte(spalte: LvSpalte): spalte is BearbeitbareS
   return BEARBEITBAR.has(spalte);
 }
 
+/**
+ * Ob eine Spalte Eingaben annimmt, wenn das Grid Eingaben überhaupt annimmt: die Spalte „KG“ nur mit Lesefunktion der App
+ * (Ticket 93), die übrigen bearbeitbaren Spalten immer. Die eine Stelle für diese Bedingung (`schreibrechte`, Einfügen).
+ */
+export function nimmtEingabe(spalte: LvSpalte, kostengruppeLesen: KostengruppeLesen | undefined): boolean {
+  return istBearbeitbareSpalte(spalte) && (spalte !== 'kostengruppe' || kostengruppeLesen !== undefined);
+}
+
 export function istBearbeitbar(zeile: LvZeile, spalte: LvSpalte): spalte is BearbeitbareSpalte {
   const art = zeile.knoten.art;
   switch (spalte) {

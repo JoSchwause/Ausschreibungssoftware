@@ -4,7 +4,7 @@
 import type { LvSpalte, Position } from '@tethys/vertrag';
 
 export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
-  ordnungszahl: 'Ordnungszahl',
+  ordnungszahl: 'OZ',
   positionsart: 'Art',
   kurztext: 'Kurztext',
   menge: 'Menge',
@@ -13,6 +13,19 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
   gesamtpreis: 'Gesamtpreis',
   kostengruppe: 'KG',
 };
+
+/**
+ * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, nur die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie
+ * die OZ selbst (Ticket 130). Der zugängliche Name bleibt der volle Titel.
+ */
+export const SPALTENKOPF: Readonly<Record<LvSpalte, string>> = { ...SPALTENTITEL, ordnungszahl: 'OZ' };
+
+/** Ansage nach dem Ändern einer Spaltenbreite per Tastatur, z. B. „Spalte Menge: 140 Pixel breit.“ */
+export function meldungBreite(spalte: string, breite: number | null): string {
+  return breite === null
+    ? `Spalte ${spalte}: Standardbreite.`
+    : `Spalte ${spalte}: ${String(breite)} Pixel breit.`;
+}
 
 /**
  * Text der Spalte „Art“: alle gesetzten Merkmale einer Position in fester Reihenfolge (Zuschlag, Wahl, Bedarf,
@@ -74,7 +87,7 @@ export const texte = {
   mengenansatz: 'Menge aus Mengenansatz. Eine direkte Änderung der Menge entfernt den Mengenansatz',
   bild: '[Bild]',
   listenpunkt: '• ',
-  zellentrenner: ' | ',
+  zellentrenner: ' · ',
   leereErgaenzung: '…',
   leereZwischenablage: 'Die Zwischenablage enthält keinen Text.',
   loeschenTitel: 'In den Papierkorb legen',

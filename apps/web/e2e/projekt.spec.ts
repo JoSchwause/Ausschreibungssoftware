@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Projektliste und Projektseite (Ticket 39, Punkt 3): anlegen, umbenennen, öffnen; LV anlegen, umbenennen, öffnen;
-// Projektdatei exportieren und in einem frischen Speicher (neuer Browser-Kontext, leeres OPFS) importieren.
+// Projektdatei sichern und in einem frischen Speicher (neuer Browser-Kontext, leeres OPFS) importieren.
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
@@ -26,10 +26,10 @@ test('Projekte nach Name; Projekt und LV anlegen, umbenennen und öffnen', async
   const liste = page.getByRole('list', { name: 'Projekte' });
   await expect(liste.getByRole('link')).toHaveText(['Amtsgericht', 'Zeppelinhalle']);
 
-  // Projekt umbenennen (ProjektStammdatenSetzen).
+  // Stammdaten ändern (ProjektStammdatenSetzen).
   await liste.getByRole('link', { name: 'Zeppelinhalle' }).click();
-  await page.getByRole('button', { name: 'Projekt umbenennen' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Projekt umbenennen' });
+  await page.getByRole('button', { name: 'Stammdaten ändern' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Stammdaten ändern' });
   await dialog.getByLabel('Projektname').fill('Bürgerhaus');
   await dialog.getByLabel('Projektname').press('Enter');
   await expect(dialog).toHaveCount(0);
@@ -66,7 +66,7 @@ test('Eine ungültige OZ-Maske wird am Feld gemeldet, nichts wird angelegt', asy
   await expect(page.getByText('Noch keine Leistungsverzeichnisse.')).toBeVisible();
 });
 
-test('Projektdatei exportieren und in einem frischen Speicher importieren: gleiche Summen', async ({
+test('Projektdatei sichern und in einem frischen Speicher einlesen: gleiche Summen', async ({
   page,
   browser,
 }) => {
@@ -84,7 +84,7 @@ test('Projektdatei exportieren und in einem frischen Speicher importieren: gleic
   await expect(page.getByLabel('Netto nach Nachlass Zaun')).toHaveText('644,43 €');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Projektdatei exportieren' }).click(),
+    page.getByRole('button', { name: 'Projektdatei sichern' }).click(),
   ]);
   const pfad = await download.path();
   const inhalt = readFileSync(pfad, 'utf8');
@@ -95,7 +95,7 @@ test('Projektdatei exportieren und in einem frischen Speicher importieren: gleic
   const neu = await kontext.newPage();
   await neu.goto('/');
   await expect(neu.getByText('Noch keine Projekte.')).toBeVisible();
-  await neu.getByLabel('Projektdatei importieren').setInputFiles({
+  await neu.getByLabel('Projektdatei einlesen').setInputFiles({
     name: 'Exportprojekt.tethys.json',
     mimeType: 'application/json',
     buffer: Buffer.from(inhalt),
@@ -106,7 +106,7 @@ test('Projektdatei exportieren und in einem frischen Speicher importieren: gleic
 
   // Ein zweiter Import desselben Projekts: Meldung statt stiller Überschreibung.
   await neu.goto('/');
-  await neu.getByLabel('Projektdatei importieren').setInputFiles({
+  await neu.getByLabel('Projektdatei einlesen').setInputFiles({
     name: 'Exportprojekt.tethys.json',
     mimeType: 'application/json',
     buffer: Buffer.from(inhalt),

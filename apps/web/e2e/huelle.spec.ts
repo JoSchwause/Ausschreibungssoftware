@@ -1,21 +1,21 @@
 import { expect, test } from '@playwright/test';
 
-test('Navigation wechselt per Tastatur zwischen Projekt, LV und Vergabe', async ({ page }) => {
+test('Navigation ohne Projekt: Projekte und Hilfe, per Tastatur erreichbar', async ({ page }) => {
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Hauptnavigation' });
-  await expect(nav.getByRole('link', { name: 'Projekt' })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('link', { name: 'Projekte' })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('link')).toHaveText(['Projekte', 'Hilfe', /Katalog/]);
 
-  await nav.getByRole('link', { name: 'LV' }).focus();
+  await nav.getByRole('link', { name: 'Hilfe' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/lv$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'LV' })).toHaveAttribute('aria-current', 'page');
-
-  await nav.getByRole('link', { name: 'Vergabe' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Vergabe' })).toBeVisible();
+  await expect(page).toHaveURL(/\/hilfe$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Hilfe' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Hilfe' })).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveTitle('Hilfe – Tethys AVA');
 
   await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Projekte' })).toHaveAttribute('aria-current', 'page');
 });
 
 test('Unbekannte Adresse zeigt eine deutsche Fehlerseite statt einer leeren Fläche', async ({ page }) => {

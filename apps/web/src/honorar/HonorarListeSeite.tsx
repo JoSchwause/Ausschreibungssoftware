@@ -5,12 +5,12 @@
 import { formatiereBetragDe } from '@tethys/dezimal';
 import { Button, Eingabefeld } from '@tethys/ui-basis';
 import type { Honorarberechnung, Kostenermittlung, Projekt, ProjektId } from '@tethys/vertrag';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { honorarberechnungPfad } from './pfad';
 import {
@@ -25,15 +25,11 @@ import '../lv/lv.css';
 import '../projekt/projekt.css';
 import './honorar.css';
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | {
-      art: 'da';
-      projekt: Projekt;
-      berechnungen: readonly Honorarberechnung[];
-      kostenermittlungen: readonly Kostenermittlung[];
-    };
+interface Stand {
+  projekt: Projekt;
+  berechnungen: readonly Honorarberechnung[];
+  kostenermittlungen: readonly Kostenermittlung[];
+}
 
 export function HonorarListeSeite({
   projektId,
@@ -44,59 +40,30 @@ export function HonorarListeSeite({
 }): ReactElement {
   const u = useUmgebung();
   const { pruefe } = useMeldungen();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
   const [name, setName] = useState('');
   const [nameFehlt, setNameFehlt] = useState(false);
 
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const p = await u.speicher.projekte.laden(projektId);
-      const h = await honorarberechnungenLaden(u.speicher, projektId);
-      const k = await kostenermittlungenDesProjekts(u.speicher, projektId);
+  // Undo und Redo können Berechnungen anlegen, ändern oder löschen: das Gerüst lädt neu.
+  const { lage } = useSeitenladen(
+    async ({ speicher }): Promise<Stand | null> => {
+      const p = await speicher.projekte.laden(projektId);
+      const h = await honorarberechnungenLaden(speicher, projektId);
+      const k = await kostenermittlungenDesProjekts(speicher, projektId);
       return p.ok && h.ok && k.ok
         ? {
-            art: 'da',
             projekt: p.wert,
             berechnungen: h.wert.map((z) => z.honorarberechnung),
             kostenermittlungen: k.wert,
           }
-        : { art: 'fehlt' };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, lauf]);
-  // Undo und Redo können Berechnungen anlegen, ändern oder löschen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+        : null;
+    },
+    [projektId],
   );
 
-  if (lage.art === 'laedt') {
-    return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
-    );
+  if (lage.art !== 'da') {
+    return <Ladeansicht lage={lage} laden={texte.seite.laden} nichtGefunden={texte.seite.nichtGefunden} />;
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.seite.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-        </div>
-      </div>
-    );
-  }
-  const { projekt, berechnungen, kostenermittlungen } = lage;
+  const { projekt, berechnungen, kostenermittlungen } = lage.wert;
 
   const anlegen = async (e: SyntheticEvent): Promise<void> => {
     e.preventDefault();
