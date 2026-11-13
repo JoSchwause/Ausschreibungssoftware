@@ -4,14 +4,40 @@
 import type { IfcGlobalId, KnotenId, MangelId, VorgangId } from './marken';
 import type { LvInhalt } from './modell';
 
-/** Austauschphase (Glossar „GAEB-Austauschphasen“). v1 unterstützt davon X81, X83, X84, X86. */
-export type GaebPhase = 'X81' | 'X82' | 'X83' | 'X84' | 'X85' | 'X86' | 'X89' | 'X31';
+/**
+ * Austauschphase (Glossar „GAEB-Austauschphasen“). v1 unterstützt davon X81, X83, X84, X86 (und X31 als Aufmaß).
+ *
+ * v1.7a (Ticket 127, E7): dazu `X80`, `X87`, `X88`, damit der Leser jede Phase benennen kann, die er abweist (eine Meldung je
+ * Phase, B-11); sie ergeben nie einen Inhalt. Für GAEB 90 und GAEB 2000 (E6) nennt der Leser die Phase mit derselben Nummer
+ * (`.d83`, `.p83` → `X83`).
+ */
+export type GaebPhase =
+  | 'X81'
+  | 'X82'
+  | 'X83'
+  | 'X84'
+  | 'X85'
+  | 'X86'
+  | 'X89'
+  | 'X31'
+  // v1.7a
+  | 'X80'
+  | 'X87'
+  | 'X88';
 
 /**
- * GAEB DA XML Version. GAEB 90 und 2000 sind kein Ziel von v1. `3.1` ist nur erkennbar (v1.1a): Eine 3.1-Datei
- * liefert einen Befund und keinen Inhalt (Ticket 22, G4); als Export-Version ist `3.1` kein Ziel.
+ * GAEB DA XML Version. Gelesen werden `3.1`, `3.2` und `3.3` (`3.1` seit Ticket 129, E5; bis dahin nur erkannt), geschrieben
+ * nur `3.2` und `3.3` (G-10): Als Export-Version ist `3.1` kein Ziel. GAEB 90 und GAEB 2000 haben keine DA-XML-Version; das
+ * Format nennt `GaebFormat` (v1.7a).
  */
 export type GaebVersion = '3.1' | '3.2' | '3.3';
+
+/**
+ * Herkunftsformat einer eingelesenen Datei (v1.7a, Ticket 127; E6, G-61; Glossar „GAEB“): GAEB DA XML (mit `GaebVersion`),
+ * GAEB 90 (`.d8x`, Satzformat) oder GAEB 2000 (`.p8x`, Schlüsselwortformat). Nur Information: Es ändert nichts am Modell, die
+ * Oberfläche zeigt es beim Einlesen (mit dem festen Hinweis aus D-71 bei GAEB 90 und 2000). Geschrieben wird nur DA XML.
+ */
+export type GaebFormat = 'da-xml' | 'gaeb-90' | 'gaeb-2000';
 
 export type Befundschwere = 'warnung' | 'fehler';
 
@@ -34,7 +60,8 @@ export type Befundschwere = 'warnung' | 'fehler';
  *   Anordnungsbeziehung an einem Sammelvorgang.
  * - `honorarberechnung`: die Honorarberechnung (`honorar`, Tickets 101, 110), etwa außerhalb der Honorartafel oder eine
  *   Kostenermittlung der falschen Stufe.
- * - `fristpruefung`: die Fristprüfung der Mängel zu einem Stichtag (`bauleitung`, Ticket 111): ein überfälliger Mangel.
+ * - `fristpruefung`: die Fristprüfung der Mängel zu einem Stichtag (`bauleitung`, Ticket 111): ein überfälliger Mangel, und
+ *   (v1.7a, Ticket 123 Punkt 9, D-122.5) ein angezeigter Mangel ohne Frist (Code `mangel-angezeigt-ohne-frist`).
  * Codes bleiben Text (`Pruefbefund.code`); jedes Paket führt seine Liste der Codes selbst.
  */
 export type Befundquelle =
@@ -117,7 +144,14 @@ export interface Pruefbefund {
  */
 export interface GaebLesung {
   readonly phase: GaebPhase | null;
+  /** Die DA-XML-Version; `null` bei GAEB 90 und GAEB 2000 und wenn sie nicht erkennbar ist. */
   readonly version: GaebVersion | null;
+  /**
+   * Herkunftsformat (v1.7a, Ticket 127, E6; additiv). Fehlt: DA XML (so lesen alle Leser vor Ticket 144). Ein Leser für GAEB 90
+   * oder GAEB 2000 setzt es immer; der DA-XML-Leser darf `'da-xml'` setzen. `null` gibt es nicht: Eine Datei, deren Format
+   * nicht erkennbar ist, ergibt einen Befund und `inhalt: null` (das Feld fehlt dann).
+   */
+  readonly format?: GaebFormat;
   readonly inhalt: LvInhalt | null;
   readonly befunde: readonly Pruefbefund[];
 }

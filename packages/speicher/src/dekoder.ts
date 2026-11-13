@@ -1621,6 +1621,16 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   MangelLoeschen: true,
   BautagebucheintragSetzen: true,
   BautagebucheintragLoeschen: true,
+  // v1.7a (Ticket 127; mechanisch, gespeichert ab Ticket 139)
+  BieterUmbenennen: true,
+  BieterLoeschen: true,
+  ProjektangabenSetzen: true,
+  BieterangabenSetzen: true,
+  LvStandUmbenennen: true,
+  LvStandLoeschen: true,
+  KalkulationSetzen: true,
+  PreisspiegeleinstellungenSetzen: true,
+  ZuschlagZuruecknehmen: true,
 };
 
 function jsonWert(x: unknown, pfad: string): void {
