@@ -1,6 +1,6 @@
 # 138: Vergabe v1.7a: Bieter umbenennen und löschen, Zuschlag zurücknehmen, Bieter-Stammdaten
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: V · Paket/Ordner: `packages/vergabe`
 Blocked by: 127
@@ -22,10 +22,10 @@ Herkunft: umfang §3 E8, E10; B-16
 
 ## Acceptance criteria
 
-- [ ] Tests je Befehl inkl. Sperren und Umkehrung; Preisspiegel-Goldens unverändert
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Tests je Befehl inkl. Sperren und Umkehrung; Preisspiegel-Goldens unverändert
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -75,3 +75,9 @@ Umsetzung (Demo-Modus, Entscheidungen der Agentin; Lesarten D-127.2 bis D-127.4,
   `projekt-befehle.ts` durch den Import aus `@tethys/kern` ersetzen und die lokale Fassung löschen (die Tests in
   `bieter-befehle.test.ts` bleiben unverändert und sichern den Tausch). Vorschlag für 137: dieselbe Signatur, dann ist der Tausch
   eine Importzeile.
+
+Abschluss (2026-11-13): Lint, Typen grün; `pnpm test` 4114 grün, 3 rot nur unter Parallellast (Last ≈ 18 auf 4 Kernen):
+`speicher` `aufmass-leistung.test.ts` (100,4 ms gegen 100 ms), `v16-leistung.test.ts` (4,0 s gegen 3 s) und `apps/web`
+`abrechnung/leistung.test.ts` (106 ms gegen 100 ms); einzeln wiederholt alle drei grün, nicht gelockert, keine Datei aus diesem
+Ticket. E2E `m3.spec.ts` (Zuschlag aus X84) und `preisspiegel.spec.ts` grün (4/4). Texte für Nutzer: keine neuen (die
+`meldung` der Fehler ist Entwicklertext, D-138.2).
