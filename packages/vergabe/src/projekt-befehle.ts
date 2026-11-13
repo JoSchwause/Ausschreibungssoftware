@@ -52,15 +52,22 @@ const ANSCHRIFTFELDER = ['strasse', 'plz', 'ort'] as const;
 const istObjekt = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && !Array.isArray(x);
 
-/** Ein Feld: Text oder `null`; `''` wird `null`. Sonst der Name des Felds als Fehler. */
-function textNormal(
+type Formergebnis<T> = { ok: true; wert: T } | { ok: false; feld: string };
+
+/** Die Textfelder `felder` von `objekt`: Text oder `null`, `''` wird `null`; sonst das erste Feld mit falscher Form. */
+function felderNormal<F extends string>(
   objekt: Record<string, unknown>,
-  feld: string,
+  felder: readonly F[],
   pfad: string,
-): string | null | { feld: string } {
-  const w = objekt[feld];
-  if (w === null || w === '') return null;
-  return typeof w === 'string' ? w : { feld: `${pfad}.${feld}` };
+): Formergebnis<Record<F, string | null>> {
+  const wert = {} as Record<F, string | null>;
+  for (const f of felder) {
+    const w = objekt[f];
+    if (w === null || w === '') wert[f] = null;
+    else if (typeof w === 'string') wert[f] = w;
+    else return { ok: false, feld: `${pfad}.${f}` };
+  }
+  return { ok: true, wert };
 }
 
 /**
@@ -68,30 +75,20 @@ function textNormal(
  * `null`, Angaben ohne jedes Feld `null` (der Block fehlt dann am Bieter). Kein Formatcheck für E-Mail und Telefon (U5);
  * Text bleibt sonst unverändert. Fehler: das Feld, dessen Form nicht stimmt.
  */
-function angabenNormal(a: unknown): { ok: true; wert: Bieterangaben | null } | { ok: false; feld: string } {
+function angabenNormal(a: unknown): Formergebnis<Bieterangaben | null> {
   if (a === null) return { ok: true, wert: null };
   if (!istObjekt(a)) return { ok: false, feld: 'angaben' };
   let anschrift: Anschrift | null = null;
   if (a.anschrift !== null) {
     if (!istObjekt(a.anschrift)) return { ok: false, feld: 'angaben.anschrift' };
-    const teile: Record<string, string | null> = {};
-    for (const f of ANSCHRIFTFELDER) {
-      const t = textNormal(a.anschrift, f, 'angaben.anschrift');
-      if (t !== null && typeof t === 'object') return { ok: false, feld: t.feld };
-      teile[f] = t;
-    }
-    if (ANSCHRIFTFELDER.some((f) => teile[f] !== null)) anschrift = teile as unknown as Anschrift;
+    const teile = felderNormal(a.anschrift, ANSCHRIFTFELDER, 'angaben.anschrift');
+    if (!teile.ok) return teile;
+    if (ANSCHRIFTFELDER.some((f) => teile.wert[f] !== null)) anschrift = teile.wert;
   }
-  const texte: Record<string, string | null> = {};
-  for (const f of TEXTFELDER) {
-    const t = textNormal(a, f, 'angaben');
-    if (t !== null && typeof t === 'object') return { ok: false, feld: t.feld };
-    texte[f] = t;
-  }
-  const { ansprechperson = null, email = null, telefon = null } = texte;
-  if (anschrift === null && ansprechperson === null && email === null && telefon === null)
-    return { ok: true, wert: null };
-  return { ok: true, wert: { anschrift, ansprechperson, email, telefon } };
+  const texte = felderNormal(a, TEXTFELDER, 'angaben');
+  if (!texte.ok) return texte;
+  if (anschrift === null && TEXTFELDER.every((f) => texte.wert[f] === null)) return { ok: true, wert: null };
+  return { ok: true, wert: { anschrift, ...texte.wert } };
 }
 
 const gleicheAnschrift = (x: Anschrift | null, y: Anschrift | null): boolean =>
