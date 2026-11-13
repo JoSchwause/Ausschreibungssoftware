@@ -70,6 +70,8 @@ export { berichtAlsExcel } from './bericht-excel';
 export type { ProjektKopf } from './koepfe';
 export { BIETER_JE_TABELLE, bauePreisspiegelModell } from './preisspiegel-druck';
 export type { PreisspiegelEingabe } from './preisspiegel-druck';
+export { baueVergabevorschlagModell } from './vergabevorschlag-druck';
+export type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
 export { baueBautagebuchModell } from './bautagebuch-druck';
@@ -85,5 +87,6 @@ export {
   erzeugeMaengelanzeigePdf,
   erzeugeMaengellistePdf,
   erzeugePreisspiegelPdf,
+  erzeugeVergabevorschlagPdf,
   preisspiegelAlsExcel,
 } from './bericht-einstiege';

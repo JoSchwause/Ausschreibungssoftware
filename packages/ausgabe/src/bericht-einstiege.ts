@@ -15,6 +15,8 @@ import type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck
 import { bauePreisspiegelModell } from './preisspiegel-druck';
 import type { PreisspiegelEingabe } from './preisspiegel-druck';
 import type { Schriften } from './schriften';
+import { baueVergabevorschlagModell } from './vergabevorschlag-druck';
+import type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 
 export const erzeugeMaengellistePdf = (e: MaengellisteEingabe, s: Schriften): Promise<Uint8Array> =>
   erzeugeBerichtPdf(baueMaengellisteModell(e), s);
@@ -33,3 +35,5 @@ export const erzeugePreisspiegelPdf = (e: PreisspiegelEingabe, s: Schriften): Pr
 /** Alle Bieter nebeneinander in einer Tabelle (im Druck je Seite höchstens `BIETER_JE_TABELLE`). */
 export const preisspiegelAlsExcel = (e: PreisspiegelEingabe): Uint8Array =>
   berichtAlsExcel(bauePreisspiegelModell(e, Number.POSITIVE_INFINITY));
+export const erzeugeVergabevorschlagPdf = (e: VergabevorschlagEingabe, s: Schriften): Promise<Uint8Array> =>
+  erzeugeBerichtPdf(baueVergabevorschlagModell(e), s);
