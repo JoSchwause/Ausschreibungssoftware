@@ -1,6 +1,6 @@
 # 137: Kern v1.7a: neue Befehle, Kalkulationsansätze, Projektangaben, Einstellungen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: K · Paket/Ordner: `packages/kern` (+ `packages/kosten`, falls die Kalkulationsansätze dort gerechnet werden)
 Blocked by: 127
