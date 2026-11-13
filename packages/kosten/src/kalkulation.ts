@@ -2,8 +2,10 @@
 // Einzelpreiskalkulation (Ticket 78, C4): Zuschlagskalkulation je Kostenart. Aus den Kalkulationsansätzen einer Position
 // und einem Zuschlagssatz der Kalkulation je Kostenart entstehen Einheitspreisanteile und EP. Rundung nach D-39:
 // Einzelkosten ungerundet, Anteil kaufmännisch auf 3 Stellen (EP 3, N3), EP = Σ der gerundeten Anteile. Rein (A2), nur
-// Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes und die Reihenfolge der Kostenarten. Nicht
-// gespeichert (D-36 (5)).
+// Dezimalarithmetik aus `dezimal` (N1); `number` nur für Zeilenindizes und die Reihenfolge der Kostenarten. Seit Vertrag
+// v1.7a (Ticket 137, D-127.6) trägt die Position die Eingaben (`Positionsdaten.kalkulation`, Typen aus `vertrag`);
+// `kalkulationBerechnen` rechnet aus genau diesem gespeicherten Wert, das Ergebnis selbst wird nie gespeichert (die
+// Position trägt EP und EPA, `KalkulationSetzen`).
 //
 // Kein Überlaufbefund und kein eigener Grenzwert (D-78.4): `dezimal` rechnet auf BigInt und läuft nie über. Ob ein EP
 // oder Anteil in das GAEB-Zahlformat passt, ist eine Grenze des Kerns (`PRUEF_GRENZEN`); seine LV-Prüfung meldet sie
@@ -20,22 +22,23 @@ import {
   vergleiche,
   vorzeichen,
 } from '@tethys/dezimal';
-import type { Dezimal, Einheitspreis, Einheitspreisanteile, EpaArt, Menge, Prozent } from '@tethys/vertrag';
+import type {
+  Dezimal,
+  Einheitspreis,
+  Einheitspreisanteile,
+  EpaArt,
+  Kalkulationsangaben,
+  Kalkulationsansatz,
+  Kalkulationszuschlagssaetze,
+  Menge,
+  Prozent,
+} from '@tethys/vertrag';
 
 // --- Schnittstelle ---------------------------------------------------------------------------------------------
 
-/** Eine Zeile der Einzelpreiskalkulation (Glossar „Kalkulationsansatz“). */
-export interface Kalkulationsansatz {
-  readonly art: EpaArt;
-  readonly bezeichnung: string;
-  /** Ansatzmenge je Einheit der Position (z. B. 0.450 h je m²); bei `lohn` Lohnstunden. `null`: fehlt. */
-  readonly ansatzmenge: Menge | null;
-  /** Kostensatz je Einheit des Ansatzes (z. B. 48.500 € je h). `null`: fehlt. */
-  readonly kostensatz: Einheitspreis | null;
-}
-
-/** Zuschlagssatz der Kalkulation je Kostenart; eine fehlende Kostenart hat 0 %. */
-export type Kalkulationszuschlagssaetze = Readonly<Partial<Record<EpaArt, Prozent>>>;
+// Eine Zeile der Einzelpreiskalkulation (Glossar „Kalkulationsansatz“) und die Zuschlagssätze je Kostenart (eine fehlende
+// Kostenart hat 0 %) stehen seit Vertrag v1.7a im Vertrag (D-127.6); hier weitergereicht, damit die Einstiegspunkte bleiben.
+export type { Kalkulationsansatz, Kalkulationszuschlagssaetze };
 
 /** Nachweis einer Kostenart, die einen Anteil hat. */
 export interface Kostenartnachweis {
@@ -192,4 +195,16 @@ export function einzelpreiskalkulationBerechnen(
     lohnstundenJeEinheit,
     befunde,
   };
+}
+
+/**
+ * Rechnet die Einzelpreiskalkulation aus den gespeicherten Kalkulationsangaben einer Position (Vertrag v1.7a,
+ * `Positionsdaten.kalkulation`, D-127.6): dieselbe Rechnung wie `einzelpreiskalkulationBerechnen` mit deren Ansätzen und
+ * Sätzen. EP und Anteile des Ergebnisses gibt die App mit `KalkulationSetzen` an die Position.
+ */
+export function kalkulationBerechnen(
+  angaben: Kalkulationsangaben,
+  freiBezeichnung: string | null = null,
+): Einzelpreiskalkulation {
+  return einzelpreiskalkulationBerechnen(angaben.ansaetze, angaben.zuschlagssaetze, freiBezeichnung);
 }
