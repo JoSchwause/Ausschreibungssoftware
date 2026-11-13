@@ -15,6 +15,7 @@ Herkunft: umfang §3 E12, E11 (A5-Zeilen)
    eigene Zeile, D-37).
 2. **Rechnungsprüfung/Zahlungsfreigabe** um die A5-Zeilen (Vertragsstrafe, Skonto beider Szenarien, Bauabzugsteuer „an das
    Finanzamt“, Auszahlung, Zahlungen, offen) ergänzen.
+4. **ADR 0012 nachführen (D-88):** datierter Nachtrag in den Folgen: Excel für Berichte aus dem `Berichtsmodell` (D-141.2), Bilder aus dem Langtext im LV-PDF (D-141.5); die Entscheidung selbst bleibt.
 3. **K:** Bauzeitenplan-PDF mit Balken – nur, wenn Zeit bleibt; sonst im Ticket als gekürzt vermerken.
 
 ## Acceptance criteria
