@@ -54,7 +54,57 @@ describe('Kopf', () => {
     const { zustand } = fixtureZustand('winzig');
     const m = baueAusgabemodell(zustand);
     expect(m.kopf.felder).toEqual([]);
+    expect(m.kopf.absender).toEqual([]);
     expect(m.datum).toBeNull();
+  });
+
+  it('nennt das Büro als Absender, die Projektangaben und den Auftragnehmer, soweit vorhanden', () => {
+    const { zustand } = fixtureZustand('winzig');
+    const z = mitInhalt(zustand, (i) => ({
+      ...i,
+      auftragnehmer: { name: 'Beispielbau GmbH', strasse: 'Werkweg 2', plz: '20000', ort: 'Musterort' },
+    }));
+    const m = baueAusgabemodell(z, {
+      projekt: {
+        name: 'Neubau Beispiel',
+        bauherr,
+        angaben: {
+          nummer: 'P-2026-07',
+          ort: 'Beispielstadt',
+          baustelle: { strasse: 'Baustraße 9', plz: '10001', ort: null },
+        },
+      },
+      buero: {
+        name: 'Planungsbüro Beispiel',
+        anschrift: { strasse: 'Planweg 1', plz: '10002', ort: 'Beispielstadt' },
+        telefon: '030 1234',
+        email: null,
+      },
+    });
+    expect(m.kopf.absender).toEqual([
+      'Planungsbüro Beispiel',
+      'Planweg 1',
+      '10002 Beispielstadt',
+      'Telefon 030 1234',
+    ]);
+    expect(m.kopf.felder).toEqual([
+      { bezeichnung: 'Projekt', wert: 'Neubau Beispiel' },
+      { bezeichnung: 'Projektnummer', wert: 'P-2026-07' },
+      { bezeichnung: 'Ort', wert: 'Beispielstadt' },
+      { bezeichnung: 'Baustelle', wert: 'Baustraße 9, 10001' },
+      { bezeichnung: 'Bauherr', wert: 'Beispiel-Bauherr GmbH, Beispielweg 3, 10000 Beispielstadt' },
+      { bezeichnung: 'Auftragnehmer', wert: 'Beispielbau GmbH, Werkweg 2, 20000 Musterort' },
+    ]);
+  });
+
+  it('druckt ohne Deckblatt weder Absender noch Angaben', () => {
+    const { zustand } = fixtureZustand('winzig');
+    const m = baueAusgabemodell(zustand, {
+      deckblatt: false,
+      projekt: { name: 'Neubau Beispiel', bauherr },
+      buero: { name: 'Planungsbüro Beispiel', anschrift: null, telefon: null, email: null },
+    });
+    expect(m.kopf).toEqual({ lvName: zustand.leistungsverzeichnis.name, absender: [], felder: [] });
   });
 });
 

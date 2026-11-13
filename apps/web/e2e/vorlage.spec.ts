@@ -12,6 +12,7 @@ import {
   projektAnlegen,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -28,14 +29,14 @@ const zeilenZahl = (page: Page): Promise<number> =>
 async function musterAnlegen(page: Page): Promise<void> {
   await projektAnlegen(page, 'Wohnhaus', 'Bauherr');
   await lvAnlegen(page, 'Muster Rohbau', 'NN.NNNN');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await page.keyboard.type('Erdarbeiten');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
   await positionTippen(page, p('01.0010'));
   await positionTippen(page, p('01.0020'));
   await leerlauf(page);
-  await page.getByRole('button', { name: 'LV-Angaben' }).click();
+  await werkzeug(page, 'LV', 'LV-Angaben');
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('checkbox', { name: 'Als Muster-LV (Vorlage) kennzeichnen' }).check();
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
@@ -59,7 +60,7 @@ test('Muster-LV kennzeichnen, in anderes LV übernehmen, Textquelle sichtbar, R�
   await lvAnlegen(page, 'Neubau Süd', 'NN.NNNN');
   expect(await zeilenZahl(page)).toBe(0);
 
-  await page.getByRole('button', { name: 'Aus Vorlage übernehmen …' }).click();
+  await werkzeug(page, 'Einfügen', 'Aus Vorlage übernehmen …');
   const dialog = page.getByRole('dialog', { name: 'Aus Vorlage übernehmen' });
   await dialog.getByRole('combobox', { name: 'Muster-LV' }).click();
   await page.getByRole('option', { name: 'Wohnhaus: Muster Rohbau' }).click();
@@ -107,7 +108,7 @@ test('Muster-LV kennzeichnen, in anderes LV übernehmen, Textquelle sichtbar, R�
 
 test('Ohne Muster-LV sagt der Dialog es; die Kennzeichnung lässt sich zurücknehmen', async ({ page }) => {
   await musterAnlegen(page);
-  await page.getByRole('button', { name: 'LV-Angaben' }).click();
+  await werkzeug(page, 'LV', 'LV-Angaben');
   const angaben = page.getByRole('dialog');
   await angaben.getByRole('checkbox', { name: 'Als Muster-LV (Vorlage) kennzeichnen' }).uncheck();
   await angaben.getByRole('button', { name: 'Übernehmen' }).click();
@@ -117,7 +118,7 @@ test('Ohne Muster-LV sagt der Dialog es; die Kennzeichnung lässt sich zurückne
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
   await expect(page.getByTestId('kennzeichen-vorlage')).toHaveCount(0);
   await lvAnlegen(page, 'Neubau Nord', 'NN.NNNN');
-  await page.getByRole('button', { name: 'Aus Vorlage übernehmen …' }).click();
+  await werkzeug(page, 'Einfügen', 'Aus Vorlage übernehmen …');
   await expect(page.getByRole('dialog', { name: 'Aus Vorlage übernehmen' })).toContainText(
     'Es gibt noch kein Muster-LV',
   );
@@ -125,6 +126,6 @@ test('Ohne Muster-LV sagt der Dialog es; die Kennzeichnung lässt sich zurückne
 
 test('GAEB-Export eines Muster-LV warnt, dass das Kennzeichen verworfen wird (D-84.4)', async ({ page }) => {
   await musterAnlegen(page);
-  await page.getByRole('button', { name: 'GAEB ausgeben' }).click();
+  await werkzeug(page, 'Ausgabe', 'GAEB ausgeben');
   await expect(page.getByRole('dialog')).toContainText('Kennzeichen Muster-LV');
 });

@@ -117,7 +117,14 @@ a.tx-button {
 /* Ticket 64: Bieterübersicht mit „Zuschlag erteilen“ und dem Hinweis auf ein schon erteiltes Auftrags-LV. */
 .preisspiegel__vergabe {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: var(--tx-space-2);
-  max-width: 50%;
+  /* Ticket 142: so breit wie die Bieterübersicht; die Detailleiste nimmt den Rest (kein waagerechter Überlauf). */
+  max-width: 100%;
+}
+
+.preisspiegel__bieter td,
+.preisspiegel__bieter th[scope='row'] {
+  white-space: nowrap;
 }

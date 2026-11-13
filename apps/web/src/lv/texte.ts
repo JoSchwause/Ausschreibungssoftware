@@ -13,6 +13,13 @@ export const texte = {
   },
   werkzeuge: {
     leiste: 'Werkzeuge des Leistungsverzeichnisses',
+    gruppen: {
+      einfuegen: 'Einfügen',
+      bearbeiten: 'Bearbeiten',
+      lv: 'LV',
+      ausgabe: 'Ausgabe',
+      angebote: 'Angebote',
+    },
     titelAnlegen: 'Titel anlegen',
     untertitelAnlegen: 'Untertitel anlegen',
     positionAnlegen: 'Position anlegen',
@@ -105,6 +112,7 @@ export const texte = {
   pruefung: {
     panel: 'Prüfung des LV',
     titel: 'Prüfung',
+    ausblenden: 'Prüfung ausblenden',
     tasten: ['F8'],
     keineBefunde: 'Keine Befunde.',
     lvWeit: 'LV',

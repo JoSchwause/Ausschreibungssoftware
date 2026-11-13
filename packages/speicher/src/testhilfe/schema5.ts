@@ -2,13 +2,15 @@
 // Nur für Tests: stellt aus einer Datenbank der Version 6 eine der Version 5 nach (Migrationstest 5 → 6). Die Spalte von
 // Migration 6 darf dafür nur `NULL` enthalten und ihre Tabellen nur leer sein; sie werden entfernt, `protokoll` bekommt die
 // CHECK-Regel der Version 5 zurück (Zeilen, `seq` und Zähler bleiben), die Version wird zurückgesetzt. Eine Datenbank, die
-// schon Version 5 hat, bleibt, wie sie ist.
+// schon Version 5 hat, bleibt, wie sie ist. Seit Version 7 geht es zuerst auf Version 6 (`aufSchema6`, wie D-79.6).
 
 import type { Datenbank } from '../sql';
+import { aufSchema6 } from './schema6';
 
 const anzahl = (db: Datenbank, sql: string): unknown => db.zeilen(sql)[0]?.['n'];
 
 export function aufSchema5(db: Datenbank): void {
+  aufSchema6(db);
   if (db.zeilen('PRAGMA user_version')[0]?.['user_version'] !== 6) return;
   if (anzahl(db, 'SELECT COUNT(*) AS n FROM knoten WHERE bauteile IS NOT NULL') !== 0)
     throw new Error('knoten.bauteile ist gesetzt; die Datenbank passt nicht zu Version 5.');

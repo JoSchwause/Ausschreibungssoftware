@@ -133,6 +133,17 @@ describe('Deckblatt', () => {
     expect(aus).not.toContain('Neubau Beispiel');
     expect(aus).toContain(z.leistungsverzeichnis.name);
   });
+
+  it('nimmt Büro und Projektangaben aus der Druckeingabe in den Kopf', () => {
+    const z = zustandMitLangtext();
+    const optionen = profilAlsOptionen(neuesDruckprofil('Mit Kopf'), {
+      projekt: { name: 'Neubau Beispiel', angaben: { nummer: 'P-7', ort: null, baustelle: null } },
+      buero: { name: 'Planungsbüro Beispiel', anschrift: null, telefon: null, email: null },
+    });
+    const kopf = baueAusgabemodell(z, optionen).kopf;
+    expect(kopf.absender).toEqual(['Planungsbüro Beispiel']);
+    expect(kopf.felder).toContainEqual({ bezeichnung: 'Projektnummer', wert: 'P-7' });
+  });
 });
 
 describe('Kopf- und Fußzeile', () => {

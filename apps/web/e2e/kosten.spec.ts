@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const wurzel = new URL('../../../fixtures/', import.meta.url);
 const fx = JSON.parse(readFileSync(new URL('typisch-angebote.json', wurzel), 'utf8')) as {
@@ -70,8 +71,10 @@ function zelle(grid: Locator, nummer: string, spalte: string): Locator {
     .locator(`[data-spalte="${spalte}"] .tx-grid__text`);
 }
 
-async function kgDialogOeffnen(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: /^Kostengruppen/ }).click();
+/** Der Dialog „Kostengruppen zuordnen“: auf der LV-Seite im Menü „Bearbeiten“, am Auftrags-LV eine Schaltfläche. */
+async function kgDialogOeffnen(page: Page, ort: 'lv' | 'auftrag' = 'lv'): Promise<Locator> {
+  if (ort === 'lv') await werkzeug(page, 'Bearbeiten', /^Kostengruppen/);
+  else await page.getByRole('button', { name: /^Kostengruppen/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Kostengruppen zuordnen' });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -264,7 +267,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(liste.getByRole('row', { name: new RegExp(BIETER_A.name) })).toBeVisible();
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(liste).toBeHidden();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${BIETER_A.name}` })
@@ -274,7 +277,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
 
   // --- C2 am Auftrags-LV: die Kostengruppe 390 kam mit dem Zuschlag, Titel 03 bekommt 340 ----------------------
-  dialog = await kgDialogOeffnen(page);
+  dialog = await kgDialogOeffnen(page, 'auftrag');
   await expect(kgDerPosition(dialog, '01.0010')).toHaveText('390');
   await expect(kgDerPosition(dialog, '03.0010')).toHaveText('–');
   await dialog.getByLabel('Kostengruppe (dreistellig)').fill('340');
@@ -363,7 +366,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   const ep = zeile.locator('[data-spalte="einheitspreis"] .tx-grid__text');
   await expect(gp).toHaveText(betragDe('644.43')); // 86,500 × 7,450 = 644,425
   await zeile.locator('[data-spalte="kurztext"]').click();
-  await page.getByRole('button', { name: /^Kalkulieren/ }).click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
   const kalk = page.getByRole('dialog', { name: /^EP kalkulieren: 01\.0020/ });
   await expect(kalk.getByTestId('kalkulation-nicht-gespeichert')).toContainText('nicht gespeichert');
   await kalk.getByLabel('Ansatzmenge 1').fill('0,450');
@@ -390,7 +393,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(gp).toHaveText(betragDe('3212.00'));
   // Die Ansätze wurden nicht gespeichert: Der Dialog beginnt leer.
   await zeile.locator('[data-spalte="kurztext"]').click();
-  await page.getByRole('button', { name: /^Kalkulieren/ }).click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
   await expect(page.getByRole('dialog', { name: /^EP kalkulieren/ }).getByLabel('Ansatzmenge 1')).toHaveValue(
     '',
   );

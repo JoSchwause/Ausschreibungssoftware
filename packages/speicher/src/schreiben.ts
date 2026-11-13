@@ -19,6 +19,9 @@
 // kaskadiert, sondern mit `konflikt` abgewiesen.
 
 import type {
+  Einstellungen,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Aenderung,
   Aenderungen,
   Angebotsposition,
@@ -60,6 +63,7 @@ import {
   leseAufmassText,
   leseAuftragsLvKopf,
   leseBautagebucheintrag,
+  leseEinstellungen,
   leseBauwerksmodellKopf,
   leseBauzeitenplanText,
   leseHonorarberechnung,
@@ -78,6 +82,7 @@ import {
 } from './lesen';
 import type { Datenbank, Spaltenwerte, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
+import { einstellungenFormfehler } from './einstellungen';
 import {
   ANGEBOTSPOSITION_SPALTEN,
   angebotspositionZeile,
@@ -93,7 +98,10 @@ import {
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
   LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
   lvKennzeichenSpalten,
+  lvPreisspiegelSpalte,
+  angabenSpalte,
   kostenermittlungZeile,
   nachlassSpalten,
   rechnungZeile,
@@ -118,8 +126,15 @@ import {
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
-/** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
-const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
+/**
+ * Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`) und die
+ * Preisspiegel-Einstellungen (Schema 7, v1.7a; `lvPreisspiegelSpalte`).
+ */
+const LV_KOPF_SPALTEN: readonly string[] = [
+  ...KOPFDATEN_SPALTEN,
+  ...LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
+];
 const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
 
 // --- Zeilen nach Spaltennamen (Ticket 135, SA7) ------------------------------------------------------------------------
@@ -216,19 +231,35 @@ function pruefeLoeschSummen(db: Datenbank, aggregatId: string, s: Summenaenderun
 
 // --- Projekt ----------------------------------------------------------------------------------------------------
 
+/**
+ * Schreibt die Bieter des Projekts (Reihenfolge, Name, seit Schema 7 die Angaben). Ein Bieter, der wegfällt, darf kein Angebot
+ * haben (v1.7a, D-127.2: `BieterLoeschen` nur ohne Angebot; ebenso als Undo von `BieterAnlegen`): sonst `konflikt` mit den
+ * Angeboten, bevor etwas geschrieben ist.
+ */
 function schreibeBieter(db: Datenbank, p: Projekt): void {
-  db.stapel(
-    `INSERT INTO bieter (projekt_id, id, name, reihenfolge) VALUES (?, ?, ?, ?)
-     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge`,
-    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i]),
-  );
   const behalten = new Set(p.bieter.map((b) => b.id as string));
-  for (const z of db.zeilen('SELECT id FROM bieter WHERE projekt_id = ?', [p.id])) {
-    const id = z['id'];
-    if (typeof id === 'string' && !behalten.has(id)) {
-      db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
-    }
+  const weg = db
+    .zeilen('SELECT id FROM bieter WHERE projekt_id = ? ORDER BY id', [p.id])
+    .map((z) => String(z['id']))
+    .filter((id) => !behalten.has(id));
+  for (const id of weg) {
+    const angebote = db
+      .zeilen('SELECT id FROM angebot WHERE projekt_id = ? AND bieter_id = ? ORDER BY id', [p.id, id])
+      .map((z) => String(z['id']));
+    if (angebote.length > 0)
+      abbruch(
+        'konflikt',
+        `Konflikt: Bieter ${id} lässt sich nicht entfernen, solange Angebote auf ihn verweisen (${angebote.join(', ')}); ` +
+          'es wurde nichts geschrieben.',
+      );
   }
+  db.stapel(
+    `INSERT INTO bieter (projekt_id, id, name, reihenfolge, angaben) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge,
+       angaben = excluded.angaben`,
+    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i, angabenSpalte(`Bieter ${b.id}`, b.angaben)]),
+  );
+  for (const id of weg) db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
 }
 
 /** Kopftabelle eines Aggregats, das an einem Projekt hängt, und sein Name in der Meldung (`AGGREGATARTEN`). */
@@ -257,24 +288,21 @@ export function wendeProjektAn(
   if (nachher.id !== cs.projektId)
     return abbruch('unbekannt', 'ChangeSet: projektId und Projekt.id weichen ab.');
   const gespeichert = leseProjekt(db, cs.projektId);
+  const angaben = angabenSpalte(`Projekt ${nachher.id}`, nachher.angaben); // Schema 7 (v1.7a)
   if (vorher === null) {
     if (gespeichert !== null) return konflikt(`Projekt ${cs.projektId} existiert bereits, das ChangeSet`);
-    db.ausfuehren('INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift) VALUES (?, ?, ?, ?)', [
-      nachher.id,
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-    ]);
+    db.ausfuehren(
+      'INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift, angaben) VALUES (?, ?, ?, ?, ?)',
+      [nachher.id, nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben],
+    );
   } else {
     if (gespeichert === null)
       return abbruch('nicht-gefunden', `Projekt ${cs.projektId} ist nicht vorhanden.`);
     if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
-    db.ausfuehren('UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ? WHERE id = ?', [
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-      nachher.id,
-    ]);
+    db.ausfuehren(
+      'UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ?, angaben = ? WHERE id = ?',
+      [nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben, nachher.id],
+    );
   }
   schreibeBieter(db, nachher);
 }
@@ -448,14 +476,35 @@ export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenst
 // --- Leistungsverzeichnis ------------------------------------------------------------------------------------
 
 /**
- * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `wann` ist der Zeitpunkt des
- * Protokolleintrags; ein LV-Stand bekommt ihn als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
+ * Woher ein ChangeSet kommt, das `anwenden` schreibt (nicht der Import): Zeitpunkt und Befehlsart des Protokolleintrags, bei
+ * `Rueckgaengig` und `Wiederholen` dazu die Art des ursprünglichen Befehls (`ursprung`, sonst `null`). Daran hängt, was ein
+ * LV-Stand ohne seinen Inhalt (`lvStandInhalt`) bedeuten darf (D-82 M2): einfrieren nur bei `LvStandAnlegen` und dessen
+ * `Wiederholen`, entfernen nur als `Rueckgaengig` eines `LvStandAnlegen`. Alles andere ist ein Programmfehler und wird nicht
+ * still zu einem neuen oder fehlenden Stand.
+ */
+export interface Schreibanlass {
+  readonly wann: Zeitstempel;
+  readonly befehl: string;
+  readonly ursprung: string | null;
+}
+
+/** Friert der Befehl des Anlasses einen LV-Stand ein? (`LvStandAnlegen` oder dessen `Wiederholen`, D-82 M2) */
+const friertEin = (a: Schreibanlass): boolean =>
+  a.befehl === 'LvStandAnlegen' || (a.befehl === 'Wiederholen' && a.ursprung === 'LvStandAnlegen');
+
+/** Nimmt der Befehl des Anlasses einen eingefrorenen Stand ohne seinen Inhalt zurück? (Rückgängig von `LvStandAnlegen`) */
+const nimmtAnlegenZurueck = (a: Schreibanlass): boolean =>
+  a.befehl === 'Rueckgaengig' && a.ursprung === 'LvStandAnlegen';
+
+/**
+ * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `anlass` fehlt nur beim Import;
+ * ein eingefrorener LV-Stand bekommt `anlass.wann` als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
  */
 export function wendeLvAn(
   db: Datenbank,
   cs: LvChangeSet,
   projektId: ProjektId,
-  wann?: Zeitstempel,
+  anlass?: Schreibanlass,
   /** v1.4: Verweis der Nachtragsangaben prüfen; der Import prüft alle am Ende (das Auftrags-LV kommt dort später). */
   nachtragPruefen = true,
 ): void {
@@ -477,7 +526,11 @@ export function wendeLvAn(
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
-    const kopfdaten = [...kopfdatenSpalten(nachher), ...lvKennzeichenSpalten(nachher)];
+    const kopfdaten = [
+      ...kopfdatenSpalten(nachher),
+      ...lvKennzeichenSpalten(nachher),
+      lvPreisspiegelSpalte(nachher),
+    ];
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {
@@ -530,7 +583,7 @@ export function wendeLvAn(
   wendeSummenAn(db, id, cs.summen);
   if (cs.papierkorb !== undefined) wendePapierkorbAn(db, id, cs.papierkorb);
   if (cs.papierkorb !== undefined || cs.knoten.hinzugefuegt.length > 0) pruefePapierkorb(db, id, cs);
-  if (cs.lvStand !== undefined) wendeLvStandAn(db, id, cs.lvStand, wann);
+  wendeLvStandAn(db, id, cs, anlass);
 }
 
 // --- Papierkorb (Schema 3) ---------------------------------------------------------------------------------------
@@ -649,38 +702,111 @@ function imPapierkorb(db: Datenbank, lvId: string, positionId: string): boolean 
 const LV_STAND_SCHREIBEN = `INSERT INTO lv_stand (id, leistungsverzeichnis_id, name, angelegt, zustand) VALUES (?, ?, ?, ?, ?)`;
 
 /**
- * `vorher: null`: friert den gespeicherten Stand des LV ein (nach den übrigen Teilen dieses ChangeSets, in derselben
- * Transaktion), `angelegt` = `wann`. `nachher: null` (nur als Umkehrung): Der Stand muss genau so gespeichert sein
- * und entfällt. Ein Stand wird nie geändert; beide Seiten gesetzt ist ein Programmfehler.
+ * Der LV-Stand eines ChangeSets (`lvStand`, `lvStandInhalt`; v1.2, v1.7a D-127.1). Vier Formen, sonst `unbekannt` und nichts
+ * geschrieben:
+ * - `vorher: null` ohne Inhalt (`LvStandAnlegen` und dessen `Wiederholen`, D-82 M2): friert den gespeicherten Stand des LV ein
+ *   (nach den übrigen Teilen dieses ChangeSets, in derselben Transaktion), `angelegt` = Zeitpunkt des Eintrags.
+ * - `vorher: null` mit Inhalt (Umkehrung von `LvStandLoeschen`): legt genau diesen Stand mit seinem `angelegt` ab, friert
+ *   nichts ein; nach `angelegt` geordnet steht er wieder an seinem Platz (D-82 S1).
+ * - `nachher: null` (Umkehrung des Anlegens; mit Inhalt `LvStandLoeschen`): Der Stand muss genau so gespeichert sein, mit
+ *   Inhalt auch mit diesem `angelegt` und Zustand (sonst `konflikt`), und entfällt.
+ * - beide Seiten (`LvStandUmbenennen`, ohne Inhalt): gleiche Kennung und gleiches LV, nur der Name ändert sich.
  */
 function wendeLvStandAn(
   db: Datenbank,
   lvId: LeistungsverzeichnisId,
-  s: Aenderung<LvStandKopf>,
-  wann: Zeitstempel | undefined,
+  cs: LvChangeSet,
+  anlass: Schreibanlass | undefined,
 ): void {
+  const s = cs.lvStand;
+  const inhalt = cs.lvStandInhalt;
+  if (s === undefined) {
+    if (inhalt !== undefined) abbruch('unbekannt', 'ChangeSet: lvStandInhalt ohne lvStand (Vertrag v1.7a).');
+    return;
+  }
   const { vorher, nachher } = s;
-  if (vorher !== null && nachher !== null)
-    return abbruch('unbekannt', 'ChangeSet: Ein LV-Stand wird nie geändert (ADR 0006).');
+  if (
+    inhalt !== undefined &&
+    ((vorher === null) === (nachher === null) ||
+      (inhalt.vorher === null) !== (vorher === null) ||
+      (inhalt.nachher === null) !== (nachher === null))
+  )
+    return abbruch(
+      'unbekannt',
+      'ChangeSet: lvStandInhalt steht nur beim Löschen eines Stands und seiner Umkehrung, auf derselben Seite wie lvStand.',
+    );
+  if (vorher !== null && nachher !== null) {
+    standUmbenennen(db, lvId, vorher, nachher);
+    return;
+  }
   if (nachher !== null) {
     if (nachher.leistungsverzeichnisId !== lvId)
       return abbruch('unbekannt', 'ChangeSet: Der LV-Stand gehört zu einem anderen LV.');
-    if (wann === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
     if (leseLvStand(db, nachher.id) !== null)
       return konflikt(`LV-Stand ${nachher.id} existiert bereits, das ChangeSet`);
+    if (inhalt?.nachher != null) {
+      if (inhalt.nachher.zustand.leistungsverzeichnis.id !== lvId)
+        return abbruch('unbekannt', 'ChangeSet: Der Zustand des LV-Stands gehört zu einem anderen LV.');
+      schreibeLvStand(db, { ...nachher, ...inhalt.nachher });
+      return;
+    }
+    if (anlass === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
+    if (!friertEin(anlass))
+      return abbruch(
+        'unbekannt',
+        `ChangeSet: Ein LV-Stand ohne seinen Inhalt entsteht nur über LvStandAnlegen oder dessen Wiederholen (${nachher.id}).`,
+      );
     const zustand = leseLv(db, lvId);
     if (zustand === null)
       return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
-    db.ausfuehren(LV_STAND_SCHREIBEN, [nachher.id, lvId, nachher.name, wann, kanonischKompakt(zustand)]);
+    db.ausfuehren(LV_STAND_SCHREIBEN, [
+      nachher.id,
+      lvId,
+      nachher.name,
+      anlass.wann,
+      kanonischKompakt(zustand),
+    ]);
     return;
   }
   if (vorher === null) return abbruch('unbekannt', 'ChangeSet: LV-Stand ohne vorher und nachher.');
+  if (inhalt === undefined && (anlass === undefined || !nimmtAnlegenZurueck(anlass)))
+    return abbruch(
+      'unbekannt',
+      `ChangeSet: Ein LV-Stand ohne seinen Inhalt entfällt nur als Rückgängig von LvStandAnlegen (${vorher.id}).`,
+    );
+  const gespeichert = gespeicherterStand(db, lvId, vorher);
+  if (
+    inhalt?.vorher != null &&
+    !gleich({ angelegt: gespeichert.angelegt, zustand: gespeichert.zustand }, inhalt.vorher)
+  )
+    return konflikt(`der Inhalt des LV-Stands ${vorher.id}`);
+  db.ausfuehren('DELETE FROM lv_stand WHERE id = ?', [vorher.id]);
+}
+
+/** Der gespeicherte Stand zum Kopf `vorher`: fehlt er, `nicht-gefunden`; weicht sein Kopf ab, `konflikt`. */
+function gespeicherterStand(db: Datenbank, lvId: LeistungsverzeichnisId, vorher: LvStandKopf): LvStand {
   const gespeichert = leseLvStand(db, vorher.id);
   if (gespeichert === null) return abbruch('nicht-gefunden', `LV-Stand ${vorher.id} ist nicht vorhanden.`);
   const { id, leistungsverzeichnisId, name } = gespeichert;
   if (!gleich({ id, leistungsverzeichnisId, name }, vorher) || leistungsverzeichnisId !== lvId)
     return konflikt(`der LV-Stand ${vorher.id}`);
-  db.ausfuehren('DELETE FROM lv_stand WHERE id = ?', [vorher.id]);
+  return gespeichert;
+}
+
+/** `LvStandUmbenennen` (v1.7a): Kennung und LV bleiben, der Inhalt des Stands bleibt unverändert (ADR 0006). */
+function standUmbenennen(
+  db: Datenbank,
+  lvId: LeistungsverzeichnisId,
+  vorher: LvStandKopf,
+  nachher: LvStandKopf,
+): void {
+  if (nachher.id !== vorher.id || nachher.leistungsverzeichnisId !== vorher.leistungsverzeichnisId)
+    abbruch(
+      'unbekannt',
+      `ChangeSet: Ein LV-Stand wechselt beim Umbenennen weder Kennung noch LV (${vorher.id}).`,
+    );
+  gespeicherterStand(db, lvId, vorher);
+  db.ausfuehren('UPDATE lv_stand SET name = ? WHERE id = ?', [nachher.name, vorher.id]);
 }
 
 /** Schreibt einen LV-Stand aus der Projektdatei unverändert (Import; der Stand ist schon eingefroren). */
@@ -738,7 +864,7 @@ function loescheLv(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
      ORDER BY 1, 2`,
     id,
   );
-  if (cs.lvStand !== undefined)
+  if (cs.lvStand !== undefined || cs.lvStandInhalt !== undefined)
     return abbruch('unbekannt', `ChangeSet: Das Löschen von LV ${id} legt einen Stand an.`);
   // Der Papierkorb geht im ChangeSet mit (`papierkorb.entfernt`, Vertrag `LeistungsverzeichnisLoeschen`); fehlt ein
   // Eintrag darin, ist das ChangeSet unvollständig (`konflikt`), nie still verworfen.
@@ -1382,6 +1508,39 @@ export function wendeHonorarberechnungAn(
 }
 
 /** Mangel anlegen, ändern oder löschen; die Nummer bleibt fest (D-97.13), Auftrags-LV und Modell hält `speicher` (D-97.6). */
+/**
+ * Schreibt ein ChangeSet an den Einstellungen des Geräts (v1.7a, D-73, D-127.8): ganz vorher und nachher. Weicht `vorher` vom
+ * gespeicherten Stand ab, `konflikt` (Q5); eine Form, die sich nicht mehr als Projektdatei einlesen ließe (doppelter Name eines
+ * Druckprofils, Kostengruppen ungeordnet oder doppelt), `unbekannt`. Kein Projekt, kein Protokolleintrag eines Projekts.
+ */
+export function wendeEinstellungenAn(db: Datenbank, cs: EinstellungenChangeSet): void {
+  if ((cs as { art?: unknown }).art !== 'einstellungen')
+    abbruch('unbekannt', 'ChangeSet: Die Einstellungen nehmen nur ChangeSets der Art einstellungen an.');
+  const { vorher, nachher } = cs.einstellungen;
+  if (!gleich(leseEinstellungen(db), vorher)) konflikt('der Vorherstand der Einstellungen');
+  const befund = einstellungenFormfehler(nachher);
+  if (befund !== null) abbruch('unbekannt', `ChangeSet: ${befund}`);
+  schreibeEinstellungen(db, nachher);
+}
+
+/** Schreibt einen Eintrag des Einstellungsprotokolls (Schema 7, D-82 M1); in der Transaktion seines ChangeSets. */
+export function schreibeEinstellungsprotokolleintrag(db: Datenbank, e: EinstellungenProtokolleintrag): void {
+  db.ausfuehren('INSERT INTO einstellungen_protokoll (id, wer, wann, befehl) VALUES (?, ?, ?, ?)', [
+    e.id,
+    e.wer,
+    e.wann,
+    kanonischKompakt(e.befehl),
+  ]);
+}
+
+/** Legt die Einstellungen ab (eine Zeile, der ganze Wert als kanonisches JSON; Schema 7). */
+function schreibeEinstellungen(db: Datenbank, e: Einstellungen): void {
+  db.ausfuehren(
+    `INSERT INTO einstellungen (id, inhalt) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET inhalt = excluded.inhalt`,
+    [kanonischKompakt(e)],
+  );
+}
+
 export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: ProjektId): void {
   const id = cs.mangelId;
   const { vorher, nachher } = cs.mangel;

@@ -21,6 +21,7 @@ import type {
   Aufmass,
   Aufmassposition,
   AuftragsLvZustand,
+  GaebFormat,
   GaebPhase,
   GaebVersion,
   Menge,
@@ -28,8 +29,10 @@ import type {
   OzStelle,
   Position,
   PositionId,
-  Pruefbefund,
 } from '@tethys/vertrag';
+import { phaseAbweisen } from './abweisung';
+import { anzahl, text } from './befunde';
+import type { GaebBefund } from './befunde';
 import { kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Leser, VorlaufOptionen } from './lesen';
 import { FORMEL_91, VERWEIS, rebZeileZerlegen } from './reb';
@@ -45,7 +48,9 @@ export interface X31Lesung {
   readonly aufmass: X31Aufmass | null;
   readonly phase: GaebPhase | null;
   readonly version: GaebVersion | null;
-  readonly befunde: readonly Pruefbefund[];
+  /** Herkunftsformat (Ticket 136); fehlt, wenn die Datei keine GAEB-Datei ist. */
+  readonly format?: GaebFormat;
+  readonly befunde: readonly GaebBefund[];
 }
 
 /** Ein Vorkommen einer Position in der Datei: ihre Zeilen und ihre Menge (`Qty`). */
@@ -87,6 +92,7 @@ class Aufmassaufbau {
   ) {
     for (const k of knoten)
       if (k.art === 'position' && k.ordnungszahl !== null) {
+        l.ozBekannt(k.id, OZ(k));
         const s = `${k.ordnungszahl}|${k.ozIndex ?? ''}`;
         if (!this.positionen.has(s)) this.positionen.set(s, k);
       }
@@ -127,6 +133,7 @@ class Aufmassaufbau {
         `Die Position ${oz === null ? '(ohne OZ)' : `${oz}${index}`} der Mengenermittlung gibt es im Auftrags-LV nicht; ` +
           'ihre Zeilen werden nicht übernommen.',
         el,
+        oz === null ? {} : { oz: `${oz}${index}` },
       );
       return;
     }
@@ -166,6 +173,7 @@ class Aufmassaufbau {
             qt,
             (n) =>
               `${String(n)} ${n === 1 ? 'Zeile trägt' : 'Zeilen tragen'} Angaben in den Spalten 1–12 oder 76–80; sie werden nicht übernommen.`,
+            { nichtUebernommen: 'Angaben am Rand einer Aufmaßzeile' },
           );
         eintrag.zeilen.push({ zeile, el: qt });
       }
@@ -285,7 +293,10 @@ class Ansatzbau {
           `${[...this.formeln].sort().join(', ')} ${this.formelZeilen === 1 ? 'steht' : 'stehen'} als Text im Aufmaßblatt; ` +
           'umgesetzt ist nur Formel 91, die Menge der Position wird nicht gerechnet.',
         this.el,
-        ort,
+        {
+          ...ort,
+          werte: { anzahl: anzahl(this.formelZeilen), formeln: text([...this.formeln].sort().join(', ')) },
+        },
       );
     if (this.textformZeilen > 0)
       this.l.melde(
@@ -295,7 +306,7 @@ class Ansatzbau {
           `${this.textformZeilen === 1 ? 'steht' : 'stehen'} als Text im Aufmaßblatt (${[...this.gruende].join('; ')}); ` +
           'die Menge der Position wird nicht gerechnet.',
         this.el,
-        ort,
+        { ...ort, werte: { anzahl: anzahl(this.textformZeilen) } },
       );
     if (this.offeneAusdruecke > 0)
       this.l.melde(
@@ -304,7 +315,7 @@ class Ansatzbau {
         `Position ${oz}: ${String(this.offeneAusdruecke)} ${this.offeneAusdruecke === 1 ? 'Ausdruck endet' : 'Ausdrücke enden'} ` +
           'ohne „=“; übernommen wird, was dasteht.',
         this.el,
-        ort,
+        { ...ort, werte: { anzahl: anzahl(this.offeneAusdruecke) } },
       );
     if (this.bemerkungen.length > 0)
       this.l.melde(
@@ -313,7 +324,7 @@ class Ansatzbau {
         `Position ${oz}: ${String(this.bemerkungen.length)} ${this.bemerkungen.length === 1 ? 'Text wird' : 'Texte werden'} ` +
           `nicht übernommen, das Aufmaßblatt hat kein Feld für Bemerkungen: ${zitat(this.bemerkungen)}.`,
         this.el,
-        ort,
+        { ...ort, werte: { anzahl: anzahl(this.bemerkungen.length), texte: text(zitat(this.bemerkungen)) } },
       );
   }
 }
@@ -337,8 +348,8 @@ function aufmassposition(l: Leser, eintraege: readonly Eintrag[]): Aufmasspositi
         'menge-nicht-uebernommen',
         mengen[0]?.el ?? null,
         (n) =>
-          `${String(n)} ${n === 1 ? 'Position trägt' : 'Positionen tragen'} eine Menge (Qty) neben den Zeilen; übernommen ` +
-          'werden die Zeilen, die Menge rechnet die App.',
+          `${String(n)} ${n === 1 ? 'Position trägt' : 'Positionen tragen'} eine Menge neben den Aufmaßzeilen; übernommen ` +
+          'werden die Zeilen, die Menge wird daraus gerechnet.',
       );
     return { positionId: p.id, mengenansatz: bau.zeilen, menge: null };
   }
@@ -348,10 +359,10 @@ function aufmassposition(l: Leser, eintraege: readonly Eintrag[]): Aufmasspositi
     l.melde(
       'fehler',
       'menge-mehrfach',
-      `Position ${OZ(p)}: ${String(mengen.length)} Mengen (Qty) ohne Zeilen; eine Aufmaßzeile trägt eine Menge, ` +
-        'keine wird übernommen.',
+      `Position ${OZ(p)}: ${String(mengen.length)} Mengen ohne Aufmaßzeilen; welche gilt, ist offen, keine wird ` +
+        'übernommen.',
       einzige.el,
-      { knotenId: p.id },
+      { knotenId: p.id, werte: { anzahl: anzahl(mengen.length) } },
     );
     return null;
   }
@@ -371,29 +382,38 @@ export function x31Lesen(
   auftragsLv: AuftragsLvZustand,
   opt: VorlaufOptionen = {},
 ): X31Lesung {
-  const v = vorlauf(eingabe, opt, null);
-  if (!v.bereit) return { aufmass: null, phase: v.phase, version: v.version, befunde: v.befunde };
+  const v = vorlauf(eingabe, opt, null, 'mengenermittlung');
+  if (!v.bereit)
+    return {
+      aufmass: null,
+      phase: v.phase,
+      version: v.version,
+      ...(v.format === undefined ? {} : { format: v.format }),
+      befunde: v.befunde,
+    };
   const l = v.leser;
   const ergebnis = (aufmass: X31Aufmass | null): X31Lesung => ({
     aufmass,
     phase: v.phase,
     version: v.version,
-    befunde: [...v.vorlauf, ...l.befunde],
+    format: v.format,
+    befunde: [...v.vorlauf, ...l.ozBefunde()],
   });
   if (v.phase !== 'X31') {
-    l.melde(
-      'fehler',
-      'phase-nicht-unterstuetzt',
-      `Die Phase ${v.phase ?? '(unbekannt)'} ist keine Mengenermittlung; hier wird nur X31 gelesen.`,
-      v.wurzel,
-    );
+    const a = phaseAbweisen(v.phase, 'mengenermittlung');
+    l.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, v.wurzel, { werte: a.werte });
     l.abschliessen();
     return ergebnis(null);
   }
   const qd = kind(v.wurzel, 'QtyDeterm');
   const boq = kind(qd, 'BoQ');
   if (!qd || !boq) {
-    l.melde('fehler', 'lv-fehlt', 'Die Datei enthält kein LV (QtyDeterm/BoQ).', qd ?? v.wurzel);
+    l.melde(
+      'fehler',
+      'lv-fehlt',
+      'Die Datei enthält kein Leistungsverzeichnis (QtyDeterm/BoQ).',
+      qd ?? v.wurzel,
+    );
     l.abschliessen();
     return ergebnis(null);
   }

@@ -14,6 +14,7 @@ import {
   tippe,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const wand: FxPosition = {
   id: 'x',
@@ -36,7 +37,7 @@ const frage = (page: Page) => page.getByRole('dialog', { name: 'Mengenansatz wir
 async function positionAnlegen(page: Page): Promise<void> {
   await projektAnlegen(page, 'Rathaus', 'Stadt');
   await lvAnlegen(page, 'Rohbau', 'NN.NNNN');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Position anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Position anlegen/));
   await tippe(page, wand.kurztext);
   await tippe(page, eingabeDe(wand.menge));
   await tippe(page, wand.einheit);

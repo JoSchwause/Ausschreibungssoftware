@@ -13,6 +13,7 @@ import {
   projektAnlegen,
   type FxPosition,
 } from './hilfen';
+import { pruefungEinblenden, werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -28,13 +29,13 @@ const text = (page: Page, zeile: number, spalte: string) =>
 async function lvMitZweiPositionen(page: Page): Promise<void> {
   await projektAnlegen(page, 'Rathaus', 'Stadt');
   await lvAnlegen(page, 'Innenausbau', 'NN.NNNN');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await page.keyboard.type('Trockenbau');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
   await positionTippen(page, p('01.0010'));
   await positionTippen(page, p('01.0020'));
-  await page.getByRole('button', { name: 'Umnummerieren' }).click();
+  await werkzeug(page, 'LV', 'Umnummerieren');
   // Neue Positionen haben ihre OZ schon aus dem Vorschlag (Ticket 48); erst nach allen Befehlen ist der Stand ruhig.
   await leerlauf(page);
   await expect(text(page, 2, 'ordnungszahl')).toHaveText('01.0020');
@@ -82,11 +83,12 @@ test('Langtext mit Auszeichnung und die LV-Angaben bleiben nach dem Neuladen gle
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(dialog).toHaveCount(0);
   // Der Langtext-Befund der Position ist weg.
-  const panel = page.getByRole('complementary', { name: 'Prüfung des LV' });
+  // Das Prüf-Panel ist zu, bis es eingeblendet wird (Ticket 142).
+  const panel = await pruefungEinblenden(page);
   await expect(panel.locator('[data-pruefeintrag][data-code="langtext-leer"]')).toHaveCount(1);
 
   // LV-Angaben: Auftraggeber und Eröffnungstermin (Eingabe de-DE), Enter übernimmt.
-  await page.getByRole('button', { name: 'LV-Angaben' }).click();
+  await werkzeug(page, 'LV', 'LV-Angaben');
   dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: 'Auftraggeber: Name' }).fill('Stadt Musterstadt');
   await dialog.getByRole('textbox', { name: 'Auftraggeber: Ort' }).fill('Musterstadt');
@@ -101,7 +103,7 @@ test('Langtext mit Auszeichnung und die LV-Angaben bleiben nach dem Neuladen gle
   await expect.poll(() => langtextHtml(page)).toBe(vorher);
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(dialog).toHaveCount(0);
-  await page.getByRole('button', { name: 'LV-Angaben' }).click();
+  await werkzeug(page, 'LV', 'LV-Angaben');
   dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('textbox', { name: 'Auftraggeber: Name' })).toHaveValue('Stadt Musterstadt');
   await expect(dialog.getByRole('textbox', { name: 'Auftraggeber: Ort' })).toHaveValue('Musterstadt');
@@ -173,7 +175,8 @@ test('Prüf-Panel: Befunde gruppiert, Sprung zur Zelle und in den Dialog; behobe
   page,
 }) => {
   await lvMitZweiPositionen(page);
-  const panel = page.getByRole('complementary', { name: 'Prüfung des LV' });
+  // Das Prüf-Panel ist zu, bis es eingeblendet wird (Ticket 142).
+  const panel = await pruefungEinblenden(page);
   const eintraege = (code: string) => panel.locator(`[data-pruefeintrag][data-code="${code}"]`);
   await expect(eintraege('langtext-leer')).toHaveCount(2);
   await expect(eintraege('einheit-fehlt')).toHaveCount(0);
@@ -189,7 +192,8 @@ test('Prüf-Panel: Befunde gruppiert, Sprung zur Zelle und in den Dialog; behobe
   await expect(eintraege('einheit-fehlt')).toHaveCount(1);
   await expect(eintraege('oz-doppelt')).toHaveCount(2);
   await expect(panel.getByRole('heading', { name: 'Fehler (2)' })).toBeVisible();
-  await expect(panel.locator('.lv-pruefung__zahl')).toHaveText('5');
+  // Die Zahl steht auf der Schaltfläche „Prüfung“ der Werkzeugleiste.
+  await expect(page.locator('.lv-pruefung__zahl')).toHaveText('5');
   // Dieselben Befunde an den Zellen des Grids.
   await expect(zelle(page, 2, 'einheit')).toHaveClass(/tx-grid__zelle--warnung/);
   await expect(zelle(page, 2, 'ordnungszahl')).toHaveClass(/tx-grid__zelle--fehler/);
@@ -229,7 +233,8 @@ test('F8 setzt den Fokus sofort ins Prüf-Panel; ein Wechsel gleich danach bleib
   page,
 }) => {
   await lvMitZweiPositionen(page);
-  const panel = page.getByRole('complementary', { name: 'Prüfung des LV' });
+  // Das Prüf-Panel ist zu, bis es eingeblendet wird (Ticket 142).
+  const panel = await pruefungEinblenden(page);
   // Die Prüfung läuft im Leerlauf nach; erst wenn das Panel ihren Endstand zeigt (nur die zwei fehlenden Langtexte,
   // kein Befund mehr aus dem Tippen), baut sie die Liste nicht mehr um.
   await expect(panel.locator('[data-pruefeintrag]')).toHaveText([/keinen Langtext/, /keinen Langtext/]);

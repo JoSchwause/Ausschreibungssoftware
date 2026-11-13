@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureAlsX83 } from './fixture-inhalt';
 import { betragDe, gaebEinlesen, projektAnlegen, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 type Summen = Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
 interface FxBieter {
@@ -140,7 +141,7 @@ test('Tor M3: zwei X84, Preisspiegel wie die Sollwerte, Zuschlag mit Wahl erzeug
   }
 
   // Preisspiegel: Netto, Netto nach Nachlass, Brutto und Rang je Bieter wie die Fixture.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await preisspiegelPruefen(page);
 
   // Zuschlag an den Erstplatzierten, mit der Alternative 02.0070 A.
