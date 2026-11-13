@@ -213,6 +213,12 @@ export const texte = {
     anlegen: 'Aufmaßblatt anlegen',
     abbrechen: 'Abbrechen',
     angelegt: (n: number): string => `Aufmaßblatt ${String(n)} angelegt`,
+    // Ticket 155: Position schon auf einem anderen Blatt (Bauteile vielleicht doppelt gemessen)
+    schonAufgemessen: 'Schon aufgemessen',
+    schonAuf: (oz: string, blaetter: string): string =>
+      `${oz} steht schon auf ${blaetter}. Ob dieselben Bauteile darin aufgemessen sind, bitte dort prüfen.`,
+    blatt: (nummer: number, menge: string | null): string =>
+      menge === null ? `Blatt ${String(nummer)}` : `Blatt ${String(nummer)} (${menge})`,
   },
   seite: {
     laden: 'Modell wird geladen …',

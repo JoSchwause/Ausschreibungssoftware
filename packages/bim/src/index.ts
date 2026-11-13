@@ -13,8 +13,13 @@ export type { Einheitsregel } from './einheiten';
 export { EINHEITSREGELN } from './einheiten';
 export type { Mengenuebernahme, Positionsuebernahme } from './mengenuebernahme';
 export { FORMEL_FREIER_ANSATZ, mengenuebernahmeBerechnen, positionUebernehmen } from './mengenuebernahme';
-export type { AufmassAusAuswahl, Aufmasshinweis, Aufmassvorschlag } from './aufmass-auswahl';
-export { aufmassAusAuswahl, bauteileImStrukturknoten } from './aufmass-auswahl';
+export type {
+  AufmassAusAuswahl,
+  Aufmasshinweis,
+  Aufmassueberschneidung,
+  Aufmassvorschlag,
+} from './aufmass-auswahl';
+export { aufmassAusAuswahl, aufmassUeberschneidungen, bauteileImStrukturknoten } from './aufmass-auswahl';
 export type { Bezugsgroesse, Bezugsgroessenart, Din277Groessen } from './din277';
 export { din277Berechnen } from './din277';
 export type {

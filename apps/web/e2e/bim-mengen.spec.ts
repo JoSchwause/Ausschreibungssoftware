@@ -269,4 +269,17 @@ test('X1: zuordnen, Mengen übernehmen, Undo/Redo, Kennwerte, Kostenschätzung, 
   ).toBeVisible();
   const blatt = page.getByRole('treegrid', { name: 'Positionen des Aufmaßblatts' });
   await expect(zelle(blatt, 'oz', OZ, 'blattmenge')).toHaveText(mengeDe(AUFMASS?.menge ?? ''));
+
+  // Ticket 155: dieselbe Auswahl noch einmal – die Vorschau nennt das Blatt, auf dem die Position schon steht.
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'haus-v1' })).toBeVisible();
+  await expect(zuordnung.getByRole('combobox', { name: 'LV für Zuordnung' })).toHaveText(/^Auftrags-LV: /);
+  await baumzelle(page, FX.erweitert.aufmassAusAuswahl.auswahl.name).click();
+  await expect.poll(() => page.evaluate(() => window.tethysModell?.auswahl().length)).toBe(17);
+  await zuordnung.getByRole('button', { name: 'Aufmaßblatt aus Auswahl …' }).click();
+  const zweites = page.getByRole('dialog', { name: 'Aufmaßblatt aus Auswahl' });
+  await expect(zweites.getByRole('list', { name: 'Schon aufgemessen' })).toContainText(
+    `${OZ} steht schon auf Blatt 1 (${mengeDe(AUFMASS?.menge ?? '')} m²).`,
+  );
+  await zweites.getByRole('button', { name: 'Abbrechen' }).click();
 });
