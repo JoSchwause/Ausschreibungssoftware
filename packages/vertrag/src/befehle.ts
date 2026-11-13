@@ -893,7 +893,7 @@ export type AufmassBefehl =
  * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
  * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Hat das Auftrags-LV
  * schon eine freigegebene Rechnung mit größerer Nummer, weist `speicher` mit `konflikt` ab (Invariante an `Rechnung`).
- * Kein Massenbefehl. v1.7b (D-128.3): Vertragsstrafe, Skonto und Bauabzugsteuer darf die Rechnung mitbringen (die App
+ * Kein Massenbefehl. v1.7b (D-128.7): Vertragsstrafe, Skonto und Bauabzugsteuer darf die Rechnung mitbringen (die App
  * schlägt sie aus der vorigen Rechnung vor), Form wie bei ihren Befehlen; `zahlungen` nie (eine neue Rechnung ist nicht
  * freigegeben): sonst `ungueltige-eingabe` (`feld: 'zahlungen'`).
  */

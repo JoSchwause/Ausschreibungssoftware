@@ -83,7 +83,9 @@ describe('v1.7b: Vertragsstrafe, Skonto und Bauabzugsteuer an der Rechnung (D-72
     const umlage = anteil(brutto, '0.50' as Prozent);
     const einbehalt = anteil(brutto, '5.00' as Prozent);
     expect([umlage, einbehalt]).toEqual([30, 297]);
-    expect(brutto - umlage - cent(r.vertragsstrafe?.betrag ?? ('0.00' as Betrag)) - einbehalt - 5_342).toBe(163);
+    expect(brutto - umlage - cent(r.vertragsstrafe?.betrag ?? ('0.00' as Betrag)) - einbehalt - 5_342).toBe(
+      163,
+    );
   });
 });
 
@@ -104,14 +106,26 @@ describe('v1.7b: Zahlungen je Rechnung (D-72, Q5)', () => {
       readonly art: 'VertragsstrafeSetzen';
       readonly vertragsstrafe: Vertragsstrafe | null;
     }>();
-    expectTypeOf<SkontoSetzen>().toEqualTypeOf<{ readonly art: 'SkontoSetzen'; readonly skonto: Skonto | null }>();
+    expectTypeOf<SkontoSetzen>().toEqualTypeOf<{
+      readonly art: 'SkontoSetzen';
+      readonly skonto: Skonto | null;
+    }>();
     expectTypeOf<BauabzugsteuerSetzen>().toEqualTypeOf<{
       readonly art: 'BauabzugsteuerSetzen';
       readonly bauabzugsteuer: boolean;
     }>();
-    expectTypeOf<ZahlungErfassen>().toEqualTypeOf<{ readonly art: 'ZahlungErfassen'; readonly zahlung: Zahlung }>();
-    expectTypeOf<ZahlungAendern>().toEqualTypeOf<{ readonly art: 'ZahlungAendern'; readonly zahlung: Zahlung }>();
-    expectTypeOf<ZahlungLoeschen>().toEqualTypeOf<{ readonly art: 'ZahlungLoeschen'; readonly zahlungId: ZahlungId }>();
+    expectTypeOf<ZahlungErfassen>().toEqualTypeOf<{
+      readonly art: 'ZahlungErfassen';
+      readonly zahlung: Zahlung;
+    }>();
+    expectTypeOf<ZahlungAendern>().toEqualTypeOf<{
+      readonly art: 'ZahlungAendern';
+      readonly zahlung: Zahlung;
+    }>();
+    expectTypeOf<ZahlungLoeschen>().toEqualTypeOf<{
+      readonly art: 'ZahlungLoeschen';
+      readonly zahlungId: ZahlungId;
+    }>();
     type Neu =
       | VertragsstrafeSetzen
       | SkontoSetzen
@@ -146,8 +160,8 @@ describe('v1.7b: Zahlungen je Rechnung (D-72, Q5)', () => {
     expect(nachher?.zahlungen).toHaveLength(1);
     expect(vorher?.freigabe).not.toBeNull();
     expect(nachher?.freigabe).toEqual(vorher?.freigabe);
-    const { zahlungen: _z, ...ohneZahlungen } = nachher ?? beispielRechnung1;
-    expect(ohneZahlungen).toEqual(vorher);
+    expect(vorher).toEqual(beispielRechnung1);
+    expect(nachher).toEqual({ ...beispielRechnung1, zahlungen: nachher?.zahlungen });
     expect(beispielChangeSetZahlungErfassen.rechnungId).toBe(beispielRechnung1.id);
   });
 
@@ -208,7 +222,9 @@ describe('v1.7b: Zahlungsstand, gerechnet und nie gespeichert (D-72)', () => {
     const steuerMit = anteil(zahlbetrag - skonto, BAUABZUGSTEUER_SATZ);
     const steuerOhne = anteil(zahlbetrag, BAUABZUGSTEUER_SATZ);
     expect([skonto, steuerMit, steuerOhne]).toEqual([160, 777, 801]);
-    expect([z.mitSkonto, z.ohneSkonto].map((s) => [s.skonto, s.bauabzugsteuer, s.auszahlung].map(cent))).toEqual([
+    expect(
+      [z.mitSkonto, z.ohneSkonto].map((s) => [s.skonto, s.bauabzugsteuer, s.auszahlung].map(cent)),
+    ).toEqual([
       [skonto, steuerMit, zahlbetrag - skonto - steuerMit],
       [0, steuerOhne, zahlbetrag - steuerOhne],
     ]);
@@ -233,7 +249,11 @@ describe('v1.7b: Zahlungsstand, gerechnet und nie gespeichert (D-72)', () => {
       | { readonly code: 'skonto-ohne-eingang' }
       | { readonly code: 'zahlungen-ueber-auszahlung'; readonly offen: Betrag }
     >();
-    expect(beispielZahlungsbefunde.map((b) => b.code)).toEqual(['skonto-ohne-eingang', 'zahlungen-ueber-auszahlung']);
-    for (const b of beispielZahlungsbefunde) if (b.code === 'zahlungen-ueber-auszahlung') expect(cent(b.offen)).toBeLessThan(0);
+    expect(beispielZahlungsbefunde.map((b) => b.code)).toEqual([
+      'skonto-ohne-eingang',
+      'zahlungen-ueber-auszahlung',
+    ]);
+    for (const b of beispielZahlungsbefunde)
+      if (b.code === 'zahlungen-ueber-auszahlung') expect(cent(b.offen)).toBeLessThan(0);
   });
 });
