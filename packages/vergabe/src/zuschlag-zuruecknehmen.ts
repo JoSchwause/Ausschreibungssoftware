@@ -95,7 +95,10 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
   if (zustand === null)
     return {
       ok: false,
-      fehler: { code: 'befehl-nicht-zustaendig', meldung: `${befehl.art}: kein Auftrags-LV als Zustand übergeben.` },
+      fehler: {
+        code: 'befehl-nicht-zustaendig',
+        meldung: `${befehl.art}: kein Auftrags-LV als Zustand übergeben.`,
+      },
     };
   return zuschlagZuruecknehmen(zustand, verweise);
 };

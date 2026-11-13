@@ -50,7 +50,9 @@ describe('BieterUmbenennen', () => {
   });
 
   it('leerer Name ist erlaubt (U5); gleicher Name → vorher gleich nachher', () => {
-    const leer = erwarteOk(projektBefehlAusfuehren(proj, { art: 'BieterUmbenennen', bieterId: b('b-a'), name: '' }));
+    const leer = erwarteOk(
+      projektBefehlAusfuehren(proj, { art: 'BieterUmbenennen', bieterId: b('b-a'), name: '' }),
+    );
     expect(leer.projekt.nachher?.bieter[0]?.name).toBe('');
     const gleich = erwarteOk(
       projektBefehlAusfuehren(proj, { art: 'BieterUmbenennen', bieterId: b('b-a'), name: 'Bieter b-a' }),
@@ -61,9 +63,17 @@ describe('BieterUmbenennen', () => {
   it('behält die Bieterangaben', () => {
     const mit: Projekt = {
       ...proj,
-      bieter: [{ id: b('b-a'), name: 'A', angaben: { anschrift: null, ansprechperson: 'Frau X', email: null, telefon: null } }],
+      bieter: [
+        {
+          id: b('b-a'),
+          name: 'A',
+          angaben: { anschrift: null, ansprechperson: 'Frau X', email: null, telefon: null },
+        },
+      ],
     };
-    const cs = erwarteOk(projektBefehlAusfuehren(mit, { art: 'BieterUmbenennen', bieterId: b('b-a'), name: 'B' }));
+    const cs = erwarteOk(
+      projektBefehlAusfuehren(mit, { art: 'BieterUmbenennen', bieterId: b('b-a'), name: 'B' }),
+    );
     expect(cs.projekt.nachher?.bieter[0]).toEqual({ ...mit.bieter[0], name: 'B' });
   });
 
@@ -101,10 +111,21 @@ describe('BieterangabenSetzen', () => {
   it("normalisiert: '' → null, Anschrift ohne Teil → null, Angaben ohne Feld → Block fehlt", () => {
     const neu = erwarteUmkehrbar(
       proj,
-      setzen(proj, { anschrift: { strasse: '', plz: '', ort: '' }, ansprechperson: 'Herr Y', email: '', telefon: '' }),
+      setzen(proj, {
+        anschrift: { strasse: '', plz: '', ort: '' },
+        ansprechperson: 'Herr Y',
+        email: '',
+        telefon: '',
+      }),
     );
-    expect(neu.bieter[1]?.angaben).toEqual({ anschrift: null, ansprechperson: 'Herr Y', email: null, telefon: null });
-    const teil = setzen(proj, { ...angaben, anschrift: { strasse: '', plz: '12345', ort: null } }).projekt.nachher;
+    expect(neu.bieter[1]?.angaben).toEqual({
+      anschrift: null,
+      ansprechperson: 'Herr Y',
+      email: null,
+      telefon: null,
+    });
+    const teil = setzen(proj, { ...angaben, anschrift: { strasse: '', plz: '12345', ort: null } }).projekt
+      .nachher;
     expect(teil?.bieter[1]?.angaben?.anschrift).toEqual({ strasse: null, plz: '12345', ort: null });
     const leer = setzen(proj, {
       anschrift: { strasse: null, plz: '', ort: null },
@@ -144,7 +165,10 @@ describe('BieterangabenSetzen', () => {
       bieterId,
       angaben: a as Bieterangaben,
     });
-    expect(fehler(proj, befehl(angaben, b('b-x')))).toMatchObject({ code: 'ungueltige-eingabe', feld: 'bieterId' });
+    expect(fehler(proj, befehl(angaben, b('b-x')))).toMatchObject({
+      code: 'ungueltige-eingabe',
+      feld: 'bieterId',
+    });
     expect(fehler(proj, befehl('Text'))).toMatchObject({ code: 'ungueltige-eingabe', feld: 'angaben' });
     expect(fehler(proj, befehl({ ...angaben, email: 5 }))).toMatchObject({
       code: 'ungueltige-eingabe',
@@ -156,7 +180,9 @@ describe('BieterangabenSetzen', () => {
     expect(fehler(proj, befehl({ ...angaben, anschrift: 'Hauptstraße 1' }))).toMatchObject({
       feld: 'angaben.anschrift',
     });
-    expect(fehler(proj, befehl({ ...angaben, anschrift: { strasse: null, plz: 12345, ort: null } }))).toMatchObject({
+    expect(
+      fehler(proj, befehl({ ...angaben, anschrift: { strasse: null, plz: 12345, ort: null } })),
+    ).toMatchObject({
       feld: 'angaben.anschrift.plz',
     });
     expect(fehler(null, befehl(angaben))).toMatchObject({ code: 'befehl-nicht-zustaendig' });
@@ -170,7 +196,9 @@ describe('BieterLoeschen', () => {
     const mit: Projekt = {
       ...proj,
       bieter: proj.bieter.map((x) =>
-        x.id === 'b-b' ? { ...x, angaben: { anschrift: null, ansprechperson: 'Frau X', email: null, telefon: null } } : x,
+        x.id === 'b-b'
+          ? { ...x, angaben: { anschrift: null, ansprechperson: 'Frau X', email: null, telefon: null } }
+          : x,
       ),
     };
     const cs = erwarteOk(projektBefehlAusfuehren(mit, loeschen('b-b'), [{ art: 'angebot', anzahl: 0 }]));
@@ -204,7 +232,10 @@ describe('BieterLoeschen', () => {
       [{ art: 'angebot', anzahl: -1 }],
       [{ art: 'angebot', anzahl: 1.5 }],
       [{ art: 'angebot', anzahl: '1' }],
-      [{ art: 'angebot', anzahl: 0 }, { art: 'angebot', anzahl: 0 }],
+      [
+        { art: 'angebot', anzahl: 0 },
+        { art: 'angebot', anzahl: 0 },
+      ],
       [{ art: 'bauzeitenplan', anzahl: 0 }],
       'keine Liste',
     ];
@@ -233,7 +264,9 @@ describe('übrige Projektbefehle gehen an den Kern', () => {
     expect(neu).toEqual({ id: 'p-neu', name: 'Neu', bauherr: { name: 'B', anschrift: null }, bieter: [] });
     const mitBieter = projektChangeSetAnwenden(
       neu,
-      erwarteOk(projektBefehlAusfuehren(neu, { art: 'BieterAnlegen', bieter: { id: b('b-1'), name: 'Eins' } })),
+      erwarteOk(
+        projektBefehlAusfuehren(neu, { art: 'BieterAnlegen', bieter: { id: b('b-1'), name: 'Eins' } }),
+      ),
     ) as Projekt;
     expect(mitBieter.bieter).toEqual([{ id: 'b-1', name: 'Eins' }]);
     expect(
@@ -247,6 +280,8 @@ describe('übrige Projektbefehle gehen an den Kern', () => {
       }),
     );
     expect(stamm.projekt.nachher?.name).toBe('Anders');
-    expect(erwarteOk(projektBefehlAusfuehren(mitBieter, { art: 'ProjektLoeschen' })).projekt.nachher).toBeNull();
+    expect(
+      erwarteOk(projektBefehlAusfuehren(mitBieter, { art: 'ProjektLoeschen' })).projekt.nachher,
+    ).toBeNull();
   });
 });

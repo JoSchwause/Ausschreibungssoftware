@@ -44,12 +44,20 @@ const z = lv('lv-1', [
   zuschlagsposition('z1', 't2', 1, liste('p1', 'p3')),
 ]);
 const proj = projekt(['b-a']);
-const a = angebot('a1', z, 'b-a', [ep('p1', '10.000'), ep('p2', '8.000'), ep('p3', '4.500'), satz('z1', '5.00')], prozent('2.00'));
+const a = angebot(
+  'a1',
+  z,
+  'b-a',
+  [ep('p1', '10.000'), ep('p2', '8.000'), ep('p3', '4.500'), satz('z1', '5.00')],
+  prozent('2.00'),
+);
 const zuruecknehmen: AuftragsLvBefehl = { art: 'ZuschlagZuruecknehmen' };
 
 /** Ein Auftrags-LV aus dem Zuschlag, angelegt vom Kern. */
 function auftrag(): AuftragsLvZustand {
-  const { befehl } = erwarteOk(zuschlagErteilen(z, a, proj, new Set(), 'auftrag-1' as AuftragsLeistungsverzeichnisId));
+  const { befehl } = erwarteOk(
+    zuschlagErteilen(z, a, proj, new Set(), 'auftrag-1' as AuftragsLeistungsverzeichnisId),
+  );
   const s = auftragsLvChangeSetAnwenden(null, erwarteOk(imKern(null, befehl)));
   if (s === null) throw new Error('Auftrags-LV fehlt');
   return s;
@@ -65,7 +73,8 @@ function fehler(
   return e.fehler;
 }
 
-const sortiert = <T>(xs: readonly T[], id: (x: T) => string): T[] => [...xs].sort((x, y) => (id(x) < id(y) ? -1 : 1));
+const sortiert = <T>(xs: readonly T[], id: (x: T) => string): T[] =>
+  [...xs].sort((x, y) => (id(x) < id(y) ? -1 : 1));
 
 describe('ZuschlagZuruecknehmen', () => {
   it('ohne Verweise: Kopf vorher, nachher null; alle Knoten entfernt; alle Summen in summen.vorher', () => {
@@ -140,7 +149,9 @@ describe('ZuschlagZuruecknehmen', () => {
 
 describe('übrige Befehle am Auftrags-LV gehen an den Kern', () => {
   it('AuftragsLeistungsverzeichnisAnlegen und KostengruppeSetzen: dasselbe Ergebnis wie im Kern', () => {
-    const { befehl } = erwarteOk(zuschlagErteilen(z, a, proj, new Set(), 'auftrag-1' as AuftragsLeistungsverzeichnisId));
+    const { befehl } = erwarteOk(
+      zuschlagErteilen(z, a, proj, new Set(), 'auftrag-1' as AuftragsLeistungsverzeichnisId),
+    );
     expect(auftragsLvBefehlAusfuehren(null, befehl)).toEqual(imKern(null, befehl));
     const s = auftrag();
     const kg: AuftragsLvBefehl = {

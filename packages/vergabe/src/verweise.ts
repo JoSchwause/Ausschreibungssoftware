@@ -16,7 +16,11 @@ const WORT: { readonly [A in Verweisart]: readonly [string, string] } = {
   mangel: ['Mangel', 'Mängel'],
 };
 
-const ungueltig = (meldung: string): Befehlsfehler => ({ code: 'ungueltige-eingabe', meldung, feld: 'verweise' });
+const ungueltig = (meldung: string): Befehlsfehler => ({
+  code: 'ungueltige-eingabe',
+  meldung,
+  feld: 'verweise',
+});
 
 /**
  * Prüft die Verweise für einen löschenden Befehl. `sperrend` sind die Arten, die ihn sperren, in der Reihenfolge, in der
@@ -38,10 +42,13 @@ export function verweissperre(
   if (!Array.isArray(verweise)) return ungueltig(`${befehl}: verweise muss eine Liste sein.`);
   const anzahl = new Map<Verweisart, number>();
   for (const v of verweise as readonly unknown[]) {
-    if (typeof v !== 'object' || v === null) return ungueltig(`${befehl}: Jeder Verweis muss ein Objekt sein.`);
+    if (typeof v !== 'object' || v === null)
+      return ungueltig(`${befehl}: Jeder Verweis muss ein Objekt sein.`);
     const { art, anzahl: n } = v as { art?: unknown; anzahl?: unknown };
-    if (!ARTEN.includes(art as Verweisart)) return ungueltig(`${befehl}: Unbekannte Verweisart ${String(art)}.`);
-    if (anzahl.has(art as Verweisart)) return ungueltig(`${befehl}: Verweisart ${String(art)} steht zweimal.`);
+    if (!ARTEN.includes(art as Verweisart))
+      return ungueltig(`${befehl}: Unbekannte Verweisart ${String(art)}.`);
+    if (anzahl.has(art as Verweisart))
+      return ungueltig(`${befehl}: Verweisart ${String(art)} steht zweimal.`);
     if (typeof n !== 'number' || !Number.isInteger(n) || n < 0)
       return ungueltig(`${befehl}: Die Anzahl der Art ${String(art)} muss eine ganze Zahl ≥ 0 sein.`);
     anzahl.set(art as Verweisart, n);
@@ -51,11 +58,13 @@ export function verweissperre(
     return n > 0 ? [{ art, anzahl: n }] : [];
   });
   if (vorhanden.length === 0) return null;
-  const teile = vorhanden.map(({ art, anzahl: n }) => `${n} ${WORT[art][n === 1 ? 0 : 1]}`);
-  const liste = teile.length === 1 ? teile[0] : `${teile.slice(0, -1).join(', ')} und ${teile[teile.length - 1]}`;
+  const teile = vorhanden.map(({ art, anzahl: n }) => `${String(n)} ${WORT[art][n === 1 ? 0 : 1]}`);
+  const letzter = teile.pop() ?? '';
+  const liste = teile.length === 0 ? letzter : `${teile.join(', ')} und ${letzter}`;
+  const verb = vorhanden.length === 1 && vorhanden[0]?.anzahl === 1 ? 'verweist' : 'verweisen';
   return {
     code: 'verweise-vorhanden',
-    meldung: `${befehl}: Auf ${ziel} ${vorhanden.length === 1 && vorhanden[0]?.anzahl === 1 ? 'verweist' : 'verweisen'} ${liste}.`,
+    meldung: `${befehl}: Auf ${ziel} ${verb} ${liste}.`,
     verweise: vorhanden,
   };
 }

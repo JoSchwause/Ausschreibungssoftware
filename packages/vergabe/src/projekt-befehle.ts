@@ -33,7 +33,9 @@ const geaendert = (vorher: Projekt, nachher: Projekt): Antwort => ({
 /** Die Stelle des Bieters in `Projekt.bieter` oder ein Fehlerwert (`feld: 'bieterId'`). */
 function stelle(projekt: Projekt, bieterId: BieterId, art: string): number | Antwort {
   const i = projekt.bieter.findIndex((x) => x.id === bieterId);
-  return i >= 0 ? i : nein('ungueltige-eingabe', `${art}: Bieter ${String(bieterId)} gibt es im Projekt nicht.`, 'bieterId');
+  return i >= 0
+    ? i
+    : nein('ungueltige-eingabe', `${art}: Bieter ${String(bieterId)} gibt es im Projekt nicht.`, 'bieterId');
 }
 
 /** Ersetzt den Bieter an Stelle `i`; ist er unverändert, bleibt das Projekt dasselbe (vorher gleich nachher). */
@@ -51,7 +53,11 @@ const istObjekt = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && !Array.isArray(x);
 
 /** Ein Feld: Text oder `null`; `''` wird `null`. Sonst der Name des Felds als Fehler. */
-function textNormal(objekt: Record<string, unknown>, feld: string, pfad: string): string | null | { feld: string } {
+function textNormal(
+  objekt: Record<string, unknown>,
+  feld: string,
+  pfad: string,
+): string | null | { feld: string } {
   const w = objekt[feld];
   if (w === null || w === '') return null;
   return typeof w === 'string' ? w : { feld: `${pfad}.${feld}` };
@@ -93,12 +99,17 @@ const gleicheAnschrift = (x: Anschrift | null, y: Anschrift | null): boolean =>
 
 const gleicheAngaben = (x: Bieterangaben | null, y: Bieterangaben | null): boolean =>
   x === y ||
-  (x !== null && y !== null && gleicheAnschrift(x.anschrift, y.anschrift) && TEXTFELDER.every((f) => x[f] === y[f]));
+  (x !== null &&
+    y !== null &&
+    gleicheAnschrift(x.anschrift, y.anschrift) &&
+    TEXTFELDER.every((f) => x[f] === y[f]));
 
 /** Der Bieter mit diesen Angaben; `null` lässt das Feld weg (nie `angaben: null`, Vertrag). */
 function mitAngaben(bieter: Bieter, angaben: Bieterangaben | null): Bieter {
-  const { angaben: _alt, ...rest } = bieter;
-  return angaben === null ? rest : { ...rest, angaben };
+  if (angaben !== null) return { ...bieter, angaben };
+  const kopie: { -readonly [K in keyof Bieter]?: Bieter[K] } = { ...bieter };
+  delete kopie.angaben;
+  return kopie as Bieter;
 }
 
 /**
@@ -108,15 +119,18 @@ function mitAngaben(bieter: Bieter, angaben: Bieterangaben | null): Bieter {
 export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl, verweise) => {
   switch (befehl.art) {
     case 'BieterUmbenennen': {
-      if (zustand === null) return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+      if (zustand === null)
+        return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
       const i = stelle(zustand, befehl.bieterId, befehl.art);
       if (typeof i !== 'number') return i;
-      if (typeof befehl.name !== 'string') return nein('ungueltige-eingabe', 'name muss ein Text sein.', 'name');
+      if (typeof befehl.name !== 'string')
+        return nein('ungueltige-eingabe', 'name muss ein Text sein.', 'name');
       const alt = zustand.bieter[i] as Bieter;
       return ersetzt(zustand, i, { ...alt, name: befehl.name }, alt.name === befehl.name);
     }
     case 'BieterangabenSetzen': {
-      if (zustand === null) return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+      if (zustand === null)
+        return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
       const i = stelle(zustand, befehl.bieterId, befehl.art);
       if (typeof i !== 'number') return i;
       const n = angabenNormal(befehl.angaben);
@@ -125,10 +139,13 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       return ersetzt(zustand, i, mitAngaben(alt, n.wert), gleicheAngaben(alt.angaben ?? null, n.wert));
     }
     case 'BieterLoeschen': {
-      if (zustand === null) return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+      if (zustand === null)
+        return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
       const i = stelle(zustand, befehl.bieterId, befehl.art);
       if (typeof i !== 'number') return i;
-      const sperre = verweissperre(befehl.art, `den Bieter ${String(befehl.bieterId)}`, verweise, ['angebot']);
+      const sperre = verweissperre(befehl.art, `den Bieter ${String(befehl.bieterId)}`, verweise, [
+        'angebot',
+      ]);
       if (sperre !== null) return { ok: false, fehler: sperre };
       return geaendert(zustand, { ...zustand, bieter: zustand.bieter.filter((_, j) => j !== i) });
     }
