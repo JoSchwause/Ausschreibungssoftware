@@ -11,6 +11,7 @@ import { schreibeGaeb } from '../../../packages/gaeb/src/index';
 import { lvBefehlAusfuehren, lvChangeSetAnwenden, zuschlagsbasen } from '../../../packages/kern/src/index';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, gaebEinlesen, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 // --- Sollwerte -----------------------------------------------------------------------------------------------------
 
@@ -299,7 +300,7 @@ export const lvGrid = (page: Page): Locator => page.getByRole('treegrid', { name
 
 /** „Mengen aus Modell …“ auf der LV-Seite: Vorschau mit `n` geänderten Positionen, dann übernehmen (ein Undo-Schritt). */
 export async function mengenAusModell(page: Page, soll: readonly FxVordersatz[]): Promise<void> {
-  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  await werkzeug(page, 'Bearbeiten', 'Mengen aus Modell …');
   const dialog = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
   const vorschau = dialog.getByRole('table', { name: 'Vorschau der Mengenübernahme' });
   for (const v of soll) {

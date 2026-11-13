@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // App-Hülle: Seitenleiste links mit Wortmarke, Kopfzeile mit Brotkrumen, Arbeitsfläche, Statuszeile. Seit Ticket 131 folgt
 // die Seitenleiste dem geöffneten Projekt; Kopfzeile, markierter Eintrag und Fenstertitel kommen aus demselben
-// Navigationsstand (`navigation.ts`), damit sie nie auseinanderlaufen (B-04).
+// Navigationsstand (`navigation.ts`), damit sie nie auseinanderlaufen (B-04). Ticket 147: Die Statuszeile zeigt, ob der
+// Browser die Daten dauerhaft hält, und die letzte Sicherung (B-30); der Speicherzustand verweist auf die Hilfe dazu.
 
 import { Icon, Tooltip } from '@tethys/ui-basis';
 import type { IconName } from '@tethys/ui-basis';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { MouseEvent, ReactElement, ReactNode } from 'react';
+import { hilfePfad } from '../hilfe/pfad';
 import { useZuSchmal } from './mindestbreite';
 import { useModus } from './modus';
 import {
@@ -23,6 +25,7 @@ import {
 } from './navigation';
 import type { Navigationsspeicher } from './OrtLader';
 import { hrefFuer } from './route';
+import { sicherungAnzeige, speicherAnzeige, statuszeile } from './statuszeile';
 import { texte } from './texte';
 import './huelle.css';
 
@@ -136,8 +139,28 @@ export function Huelle({ pfad, gehe, mitKatalog, ort, navigation, children }: Hu
   useEffect(() => {
     document.title = stand.titel;
   }, [stand.titel]);
+  const status = useSyncExternalStore(statuszeile.abonnieren, statuszeile.lesen);
+  // Bis der Speicher antwortet (etwa auf der Hilfeseite, die ihn nicht braucht), fragt die Hülle den Browser selbst.
+  useEffect(() => {
+    if (statuszeile.lesen().dauerhaft !== undefined) return;
+    const verwaltung = (navigator as Partial<Navigator>).storage;
+    if (typeof verwaltung?.persisted !== 'function') {
+      statuszeile.melden({ dauerhaft: null });
+      return;
+    }
+    verwaltung.persisted().then(
+      (p) => {
+        if (statuszeile.lesen().dauerhaft === undefined) statuszeile.melden({ dauerhaft: p });
+      },
+      () => {
+        if (statuszeile.lesen().dauerhaft === undefined) statuszeile.melden({ dauerhaft: null });
+      },
+    );
+  }, []);
 
   const { bereich, projekt } = stand;
+  const speicher = speicherAnzeige(status.dauerhaft);
+  const sicherung = sicherungAnzeige(status.sicherungen, projekt?.id ?? null);
   const projektEintrag = (b: Projektbereich, eingerueckt: boolean): ReactElement | null =>
     projekt === null ? null : (
       <Eintrag
@@ -254,8 +277,18 @@ export function Huelle({ pfad, gehe, mitKatalog, ort, navigation, children }: Hu
         <main className="huelle__arbeit" aria-label={texte.huelle.arbeitsflaeche}>
           {children}
         </main>
-        <footer className="huelle__status">
-          <span>{texte.huelle.status.bereit}</span>
+        <footer className="huelle__status" aria-label={texte.huelle.status.name}>
+          {speicher === null ? null : (
+            <a
+              className="huelle__status-teil huelle__status-verweis"
+              href={hrefFuer(hilfePfad('daten'))}
+              title={speicher.hinweis}
+              onClick={klickHandler(gehe, hilfePfad('daten'))}
+            >
+              {speicher.text}
+            </a>
+          )}
+          {sicherung === null ? null : <span className="huelle__status-teil">{sicherung}</span>}
           <span className="huelle__status-rechts">
             {modus === 'hell' ? texte.huelle.status.modusHell : texte.huelle.status.modusDunkel}
           </span>

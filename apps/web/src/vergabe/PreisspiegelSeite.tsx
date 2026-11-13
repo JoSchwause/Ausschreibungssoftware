@@ -7,7 +7,7 @@
 import type { PreisspiegelEinstellungen } from '@tethys/vergabe';
 import { PREISSPIEGEL_STANDARD } from '@tethys/vergabe';
 import { VergleichsGrid, type VergleichsZellort } from '@tethys/ui-grid';
-import { Button } from '@tethys/ui-basis';
+import { Button, Icon, Werkzeugleiste } from '@tethys/ui-basis';
 import type {
   AngebotZustand,
   AuftragsLvZustand,
@@ -40,6 +40,9 @@ import { texte } from './texte';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './vergabe.css';
+
+/** Eingeklappter Summenblock: das Grid ohne Summenzeilen. */
+const KEINE_SUMMEN: readonly never[] = [];
 
 interface Stand {
   readonly lv: LvZustand;
@@ -139,6 +142,10 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
   const [ort, setOrt] = useState<VergleichsZellort | null>(null);
   const [erteilenAn, setErteilenAn] = useState<Anbieter | null>(null);
   const vergebenId = useId();
+  // Ticket 142: Der Summenblock des Grids ist eingeklappt, bis der Nutzer ihn öffnet; die Summen je Bieter stehen in der
+  // Bieterübersicht. So zeigt das Grid bei 1280×800 Positionen statt nur Summen.
+  const [summenOffen, setSummenOffen] = useState(false);
+  const gridId = useId();
 
   // Die Rechnung nur bei neuem Stand oder neuen Einstellungen; Spalten und Aufklappen bauen nur die Ansicht neu.
   const preisspiegel = useMemo(
@@ -183,9 +190,21 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
         </h1>
         <Verweis pfad={lvPfad} text={texte.seite.zumLv} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
-      </div>
+        {anbieter.length === 0 ? null : (
+          <Button
+            aria-expanded={summenOffen}
+            aria-controls={gridId}
+            onClick={() => {
+              setSummenOffen((o) => !o);
+            }}
+          >
+            {texte.seite.summen}
+            <Icon name={summenOffen ? 'pfeilOben' : 'pfeilUnten'} groesse={14} />
+          </Button>
+        )}
+      </Werkzeugleiste>
       <Einstellungen
         einstellungen={einstellungen}
         onEinstellungen={setEinstellungen}
@@ -196,12 +215,12 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
         <p>{texte.seite.keineAngebote}</p>
       ) : (
         <>
-          <div className="lv__grid preisspiegel__grid">
+          <div className="lv__grid preisspiegel__grid" id={gridId}>
             <VergleichsGrid
               beschriftung={texte.seite.grid}
               spalten={ansicht.spalten}
               zeilen={ansicht.zeilen}
-              summen={ansicht.summen}
+              summen={summenOffen ? ansicht.summen : KEINE_SUMMEN}
               kennzeichenTexte={ansicht.kennzeichenTexte}
               fixierteSpalten={2}
               baumspalte="kurztext"
