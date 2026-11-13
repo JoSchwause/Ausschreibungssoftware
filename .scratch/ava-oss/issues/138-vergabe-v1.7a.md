@@ -36,8 +36,9 @@ Umsetzung (Demo-Modus, Entscheidungen der Agentin; Lesarten D-127.2 bis D-127.4,
   `@tethys/vergabe` exportiert `projektBefehlAusfuehren` (Typ `ProjektBefehlAusfuehren`) und `auftragsLvBefehlAusfuehren` (Typ
   `AuftragsLvBefehlAusfuehren`), gleichnamig mit denen des Kerns; sie führen `BieterUmbenennen`, `BieterangabenSetzen`,
   `BieterLoeschen` bzw. `ZuschlagZuruecknehmen` selbst aus und reichen alles andere samt `verweise` unverändert an den Kern.
-  Getestet wird nur an diesen beiden Funktionen und an `zuschlagErteilen`/`angebotBefehlAusfuehrer`. Grund: Für die App (149/150)
-  ändert sich nur die Importquelle; die Umkehrung bleibt die des Kerns (D-127.17).
+  Dazu die schmalen Funktionen aus D-138.7. Getestet wird nur an diesen öffentlichen Funktionen und an
+  `zuschlagErteilen`/`angebotBefehlAusfuehrer`. Grund: Für die App (149/150) ändert sich nur die Importquelle; die Umkehrung
+  bleibt die des Kerns (D-127.17).
 - **D-138.2 Verweissperre.** Frage: Reihenfolge der Prüfungen und Umgang mit schlecht geformten `verweise`? Entscheidung: erst
   Zustand (`befehl-nicht-zustaendig`), dann `bieterId` (`ungueltige-eingabe`, `feld: 'bieterId'`), dann `verweise`: fehlt oder
   keine Liste, unbekannte Art, Art doppelt, Anzahl keine ganze Zahl ≥ 0 → `ungueltige-eingabe` mit `feld: 'verweise'`; danach
@@ -48,8 +49,8 @@ Umsetzung (Demo-Modus, Entscheidungen der Agentin; Lesarten D-127.2 bis D-127.4,
 - **D-138.3 Bieterangaben.** Frage: Wie streng ist die Form, und wann ist nichts geändert? Entscheidung: `angaben` ist Objekt oder
   `null`; jedes Textfeld Text oder `null` (fehlend ist ein Fehler mit `feld: 'angaben.<feld>'`), `anschrift` Objekt oder `null`;
   `''` → `null`, kein Kürzen von Leerzeichen, kein Formatcheck (U5). Ist der normalisierte Wert gleich dem gespeicherten (oder
-  bleibt der Name gleich), liefert der Befehl `vorher` gleich `nachher` wie `ProjektStammdatenSetzen`. Die Normalisierung liegt in
-  `vergabe`; der Kern (137) braucht dieselbe für `BieterAnlegen` mit `angaben` (Doppelung, siehe Bericht). Grund: D-127.4.
+  bleibt der Name gleich), liefert der Befehl `vorher` gleich `nachher` wie `ProjektStammdatenSetzen`. Die Normalisierung liegt
+  vorerst lokal in `vergabe` (siehe D-138.7). Grund: D-127.4.
 - **D-138.4 Form des ChangeSets beim Zurücknehmen.** Frage: Welcher Kopf geht in `kopf.vorher`? Entscheidung: alles außer den
   Knoten (wie `ohneKnoten` bei `LeistungsverzeichnisLoeschen`), damit die Umkehrung genau den gespeicherten Stand anlegt; Knoten
   wie gespeichert unter `knoten.entfernt`, die Summen aller Knoten nach Kennung sortiert unter `summen.vorher.entfernt`,
@@ -62,3 +63,15 @@ Umsetzung (Demo-Modus, Entscheidungen der Agentin; Lesarten D-127.2 bis D-127.4,
   Ein Ablauftest belegt erfassen, berichtigen, auf „nicht angeboten“ berichtigen, Nachlass als Prozent, dann als Betrag setzen
   und entfernen, löschen, jeder Schritt mit Rückgängig, mit Sollwerten von Hand. Einen Eintrag ganz zu entfernen („kein
   Eintrag“) gibt es nicht; die Berichtigung ist „nicht angeboten“.
+- **D-138.7 Review D-82, S9 (Punkt 5).** Frage: Wie verlangt die Schnittstelle die Verweise, und woher kommt die Normalisierung?
+  Entscheidung: zusätzlich zu den Verteilern die schmalen Funktionen `bieterLoeschen(projekt, befehl, verweise)` und
+  `zuschlagZuruecknehmen(auftragsLv, befehl, verweise)` mit nicht nullbarem Zustand und **Pflicht**-`verweise` im Typ (ein
+  Aufruf ohne ist ein Typfehler, belegt mit `@ts-expect-error` im Test); die App ruft für diese beiden Befehle sie. Die Verteiler
+  behalten den optionalen Parameter der Vertragstypen und liefern mit Verweisen dasselbe Ergebnis (Test), ohne Verweise zur
+  Laufzeit `ungueltige-eingabe` (`feld: 'verweise'`). Die Normalisierung der Bieterangaben steht als eigene, nicht exportierte
+  Datei `bieterangaben.ts` (`bieterangabenNormalisieren(angaben | null) → angaben | null`, getrennt von der Formprüfung
+  `bieterangabenFormfehler`), weil 137 beim Abschluss noch nicht gemergt ist.
+  **Folgeschritt (offen):** Sobald 137 den Normalisierer aus `kern` exportiert, `bieterangabenNormalisieren` in
+  `projekt-befehle.ts` durch den Import aus `@tethys/kern` ersetzen und die lokale Fassung löschen (die Tests in
+  `bieter-befehle.test.ts` bleiben unverändert und sichern den Tausch). Vorschlag für 137: dieselbe Signatur, dann ist der Tausch
+  eine Importzeile.
