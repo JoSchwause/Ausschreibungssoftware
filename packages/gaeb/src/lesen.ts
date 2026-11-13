@@ -543,7 +543,8 @@ const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
 ]);
 const BESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set(['CompleteText']);
 const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'OutlineText']);
-const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody']);
+/** `ALNBGroupNo`/`ALNBSerNo` meldet `Aufbau.bereichswahl` am Bereich. */
+const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody', 'ALNBGroupNo', 'ALNBSerNo']);
 /** X86: `Totals` der Bereiche sind abgeleitete Werte; der Kern rechnet sie neu (Ticket 40). */
 const KATEGORIE_BEHANDELT_X86: ReadonlySet<string> = new Set([...KATEGORIE_BEHANDELT, 'Totals']);
 export const ANTEILE = ['UPComp1', 'UPComp2', 'UPComp3', 'UPComp4', 'UPComp5', 'UPComp6'] as const;
@@ -558,6 +559,8 @@ export type Anteil = EpaArt;
 /** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus den EPA-Bezeichnungen, Index `n - 1`). */
 interface Preisangaben {
   readonly anteile: readonly (Anteil | null)[];
+  /** `BoQInfo/Totals/VAT` des LV, `null`: keiner. Ein Bereich mit anderem Satz ist ein Befund. */
+  readonly mwstSatz: Prozent | null;
 }
 
 /**
@@ -726,6 +729,7 @@ class Aufbau {
         el,
       );
       this.l.restMelden(el, KATEGORIE_BEHANDELT, 'BoQCtgy');
+      this.bereichswahl(el, eltern.id, this.oz(teile, ozOk) ?? `„${kurz}“`);
       const flach: Ebene = { id: eltern.id, teile, ozOk, tiefe };
       for (const b of kinder(el, 'BoQBody')) this.koerper(b, flach);
       return;
@@ -757,8 +761,83 @@ class Aufbau {
       id = titel.id;
     }
     this.l.restMelden(el, this.preise ? KATEGORIE_BEHANDELT_X86 : KATEGORIE_BEHANDELT, 'BoQCtgy');
+    const name = gemeinsam.ordnungszahl ?? `„${kurz}“`;
+    this.bereichswahl(el, id, name);
+    if (this.preise) this.bereichssummen(kind(el, 'Totals'), id, name);
     const naechste: Ebene = { id, teile, ozOk, tiefe };
     for (const b of kinder(el, 'BoQBody')) this.koerper(b, naechste);
+  }
+
+  /**
+   * `ALNBGroupNo`/`ALNBSerNo`: der ganze Bereich ist Teil einer Wahl (Variante 0 die Grundausführung, sonst eine
+   * Alternative). Der Vertrag kennt Wahl nur an der Position (F4); die Positionen des Bereichs werden ohne Wahl gelesen
+   * und gehen in die Summen ein. Befund am Bereich, denn bei einer Alternative weichen die Summen dann von der Datei ab
+   * (Ticket 129).
+   */
+  private bereichswahl(el: XmlElement, id: string, name: string): void {
+    const gruppeEl = kind(el, 'ALNBGroupNo');
+    const varianteEl = kind(el, 'ALNBSerNo');
+    if (!gruppeEl && !varianteEl) return;
+    const gruppe = wert(gruppeEl) ?? '–';
+    const variante = wert(varianteEl) ?? '0';
+    const grund = /^0+$/.test(variante);
+    this.l.melde(
+      'warnung',
+      'bereichswahl-nicht-abgebildet',
+      (grund
+        ? `Der Bereich ${name} ist die Grundausführung einer Wahl (Gruppe ${gruppe}). `
+        : `Der Bereich ${name} ist eine Wahl (Gruppe ${gruppe}, Variante ${variante}). `) +
+        'Eine Wahl gibt es nur an einzelnen Positionen; die Positionen des Bereichs werden ohne Wahl gelesen' +
+        (grund ? '.' : ' und gehen in die Summen ein.'),
+      gruppeEl ?? varianteEl,
+      { knotenId: id },
+    );
+  }
+
+  /**
+   * X86, `Totals` eines Bereichs: Die Beträge sind abgeleitet und werden neu gerechnet (Ticket 40). Was dort eine eigene
+   * Angabe ist und der Vertrag nicht kennt, ist ein Befund am Bereich (U5, Q5): ein Nachlass (`DiscountPcnt`,
+   * `DiscountAmt`; Nachlass nur am LV, N5), eine Pauschalsumme (`TotalLSUM`) und ein Steuersatz, der von dem des LV
+   * abweicht (`VAT`; ein Satz je LV, G-28). Die Summen der App weichen dann um genau diese Angaben von der Datei ab
+   * (Ticket 129).
+   */
+  private bereichssummen(totals: XmlElement | undefined, id: string, name: string): void {
+    if (!totals || !this.preise) return;
+    const ort = { knotenId: id };
+    const pct = kind(totals, 'DiscountPcnt');
+    const amt = kind(totals, 'DiscountAmt');
+    const nachlass = pct ? `${wert(pct) ?? ''} %` : amt ? `${wert(amt) ?? ''} €` : null;
+    if (nachlass !== null)
+      this.l.melde(
+        'warnung',
+        'nachlass-nicht-abgebildet',
+        `Nachlass ${nachlass} des Bereichs ${name}: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.`,
+        pct ?? amt,
+        ort,
+      );
+    const pauschal = kind(totals, 'TotalLSUM');
+    if (pauschal)
+      this.l.melde(
+        'warnung',
+        'pauschalsumme-nicht-abgebildet',
+        `Pauschalsumme ${wert(pauschal) ?? ''} des Bereichs ${name}: Eine Pauschalsumme für einen Bereich ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
+        pauschal,
+        ort,
+      );
+    const vat = kind(totals, 'VAT');
+    const satz = wert(vat);
+    const lv = this.preise.mwstSatz;
+    if (vat && satz !== null && lv !== null) {
+      const z = leseAustausch('prozent', satz);
+      if (z.ok && vergleiche(z.wert, lv) !== 0)
+        this.l.melde(
+          'warnung',
+          'mwst-satz-abweichend',
+          `Steuersatz ${satz} % des Bereichs ${name} weicht vom Satz des LV (${lv} %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.`,
+          vat,
+          ort,
+        );
+    }
   }
 
   private hinweis(el: XmlElement, eltern: Ebene): void {
@@ -1290,7 +1369,7 @@ function leseVergabeinformationen(l: Leser, info: XmlElement): Vergabeinformatio
 /**
  * X86, `BoQInfo/Totals`: Steuersatz (`VAT`) und Nachlass (`DiscountPcnt` bzw. `DiscountAmt`) gehören zum LV und
  * werden übernommen. Die Beträge (`Total`, `TotAfterDisc`, `VATAmount`, `TotalGross` …) sind abgeleitet; die App
- * rechnet sie selbst und übernimmt sie nicht (Ticket 40).
+ * rechnet sie selbst und übernimmt sie nicht (Ticket 40). Eine Pauschalsumme (`TotalLSUM`) ist ein Befund (Ticket 129).
  */
 function leseLvSummen(
   l: Leser,
@@ -1314,6 +1393,15 @@ function leseLvSummen(
     ]),
     'Totals',
   );
+  // Eine Pauschalsumme des LV ist eine eigene Angabe, keine abgeleitete (Ticket 129).
+  const pauschal = kind(totals, 'TotalLSUM');
+  if (pauschal)
+    l.melde(
+      'warnung',
+      'pauschalsumme-nicht-abgebildet',
+      `Pauschalsumme ${wert(pauschal) ?? ''} des LV: Eine Pauschalsumme ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
+      pauschal,
+    );
   const vat = kind(totals, 'VAT');
   const mwstAusDatei = vat ? l.zahl('prozent', vat, '', 'mwstSatz') : null;
   const dp = kind(totals, 'DiscountPcnt');
@@ -1395,7 +1483,7 @@ function baueInhalt(root: XmlElement, opt: LeseOptionen, l: Leser, phase: GaebPh
     : { mwstAusDatei: null, nachlass: null };
   const wurzelId = opt.ids.leistungsverzeichnis();
   const epaBezeichnungen = leseEpaBezeichnungen(l, boqInfo);
-  const preise = x86 ? { anteile: anteileNachNummer(epaBezeichnungen) } : null;
+  const preise = x86 ? { anteile: anteileNachNummer(epaBezeichnungen), mwstSatz: mwstAusDatei } : null;
   const kataloge = katalogeLesen(l, boqInfo);
   const aufbau = new Aufbau(l, opt.ids, maske, stufen, trenn, wurzelId, preise, kataloge);
   const wurzelEbene: Ebene = { id: wurzelId, teile: [], ozOk: true, tiefe: 0 };
@@ -1523,7 +1611,7 @@ export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids:
     l.melde(
       'fehler',
       'version-nicht-unterstuetzt',
-      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden 3.3 und 3.2 (3.1 folgt mit Ticket G4).`,
+      `GAEB DA XML ${erk.versionText ?? ''} wird nicht gelesen; gelesen werden die Versionen 3.1, 3.2 und 3.3.`,
       root,
     );
     return fertig(erk.phase, erk.version, l.befunde);

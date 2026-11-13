@@ -350,10 +350,15 @@ describe('X84 der Angebote zu typisch (fixtures/angebote, Ticket 69) gegen das L
 describe('was leseAngebot nicht liest', () => {
   const lv = lvAus(lesePfad(AVA_X81));
 
-  it('Musterdatei 3.1 (X84): kein Befehl, Befund version-nicht-unterstuetzt (G4)', () => {
-    const l = lies(lesePfad('fixtures/extern/gaeb/3.1-musterdateien/Musterdatei_3.1_2008-001.X84'), lv);
+  // Die Musterdatei 3.1 (X84) liest `version-31.test.ts` (Ticket 129).
+  it('älter als 3.1: kein Befehl, Befund version-nicht-unterstuetzt', () => {
+    const alt = new TextDecoder()
+      .decode(lesePfad('fixtures/extern/gaeb/3.1-musterdateien/Musterdatei_3.1_2008-001.X84'))
+      .replace('xmlns="http://www.gaeb.de/GAEB_DA_XML/200407"', '')
+      .replace('<Version>3.1</Version>', '<Version>3.0</Version>');
+    const l = lies(alt, lv);
     expect(l.befehl).toBeNull();
-    expect(l.version).toBe('3.1');
+    expect(l.version).toBeNull();
     expect(codes(l)).toContain('version-nicht-unterstuetzt');
   });
 
