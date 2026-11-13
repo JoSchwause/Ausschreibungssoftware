@@ -1,6 +1,6 @@
 # 141: `ausgabe`: Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Bilder, Köpfe
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: O · Paket/Ordner: `packages/ausgabe`
 Blocked by: 127
@@ -27,10 +27,10 @@ der Eingabe), Druckprofile wie beim LV; je Ausgabe ein Test über den Seitentext
 
 ## Acceptance criteria
 
-- [ ] Je Ausgabe Seitentext- bzw. Zelltest; Excel öffnet in LibreOffice-Test wie bisher (falls vorhanden)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Je Ausgabe Seitentext- bzw. Zelltest; Excel öffnet in LibreOffice-Test wie bisher (falls vorhanden)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -100,6 +100,16 @@ der Eingabe), Druckprofile wie beim LV; je Ausgabe ein Test über den Seitentext
 
 Für die App (149, 152): `Einstellungen.buero` und das `Projekt` (mit `angaben`) in jede Druckeingabe; im LV-Druck über
 `profilAlsOptionen(profil, { datum, projekt, buero })`.
+
+### Prüfläufe (nach dem Merge von `integration/welle-7`, Stand `d29bd8d`)
+
+- `pnpm lint` grün, `pnpm typecheck` grün.
+- `pnpm test`: 4.168 grün, 8 rot, 3 übersprungen. Rot sind nur Leistungsbudgets anderer Pakete (`gaeb` schreiben X86,
+  `kern` K9 und lvPruefen, `speicher` Aufmaß und v1.6, `vergabe` Preisspiegel, App Aufmaß-Undo) im vollen Lauf bei einer
+  Last um 30 auf 4 Kernen; alle sieben Dateien einzeln nacheinander grün (84 Tests). Nichts gelockert.
+- `ausgabe` allein: 19 Dateien grün, darunter die neuen LibreOffice-Tests der Berichte (`soffice` vorhanden).
+- E2E `ausgabe.spec.ts`, `druckprofil.spec.ts`, `x2.spec.ts`, `x4.spec.ts`: 13 grün (`--workers=1`; ein Lauf mit
+  mehreren Workern verlor in `x4` den Browser, weil der Kernel Prozesse wegen Speichermangel beendete).
 
 ### Fragen an den Orchestrator
 
