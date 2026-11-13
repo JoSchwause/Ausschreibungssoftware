@@ -119,6 +119,12 @@ export const texte = {
     vorgangBearbeiten: 'Vorgang bearbeiten',
     vorgangEntfernen: 'Vorgang entfernen',
     keinVorgangGewaehlt: 'Erst einen Vorgang im Grid wählen.',
+    // Ticket 155 (D-118.3): Verschieben innerhalb einer Ebene, ein Undo-Schritt
+    nachOben: 'Nach oben',
+    nachUnten: 'Nach unten',
+    tastenNachOben: ['Alt', '↑'],
+    tastenNachUnten: ['Alt', '↓'],
+    randErreicht: 'Der Vorgang steht schon am Rand seiner Ebene.',
     kopf: 'Name und Arbeitskalender',
     kopfSpeichern: 'Übernehmen',
     loeschen: 'Bauzeitenplan löschen',
@@ -196,6 +202,7 @@ export const texte = {
   befunde: {
     panel: 'Befunde der Terminrechnung',
     titel: 'Terminrechnung',
+    schwere: { fehler: 'Fehler', warnung: 'Warnungen' },
     keine: 'Keine Befunde.',
     planweit: 'Plan',
     /**

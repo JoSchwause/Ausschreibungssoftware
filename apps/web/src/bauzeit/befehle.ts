@@ -278,6 +278,31 @@ export function vorgangSetzenBefehl(
   };
 }
 
+/** Richtung beim Verschieben innerhalb einer Ebene. */
+export type Verschieberichtung = 'hoch' | 'runter';
+
+/**
+ * Verschiebt einen Vorgang innerhalb seiner Ebene um einen Platz (D-118.3, Ticket 155): ein `VorgangSetzen` mit dem
+ * unveränderten Vorgang und neuer Lage, also ein Undo-Schritt; Untervorgänge ziehen mit (D-97.9). `null`: Der Vorgang steht
+ * schon am Rand seiner Ebene oder ist unbekannt.
+ */
+export function vorgangVerschiebenBefehl(
+  plan: Bauzeitenplan,
+  id: VorgangId,
+  richtung: Verschieberichtung,
+): VorgangSetzen | null {
+  const vorgang = plan.vorgaenge.find((v) => v.id === id);
+  if (vorgang === undefined) return null;
+  const geschwister = plan.vorgaenge.filter((v) => v.elternId === vorgang.elternId);
+  const i = geschwister.findIndex((v) => v.id === id);
+  if (richtung === 'runter') {
+    const naechstes = geschwister[i + 1];
+    return naechstes === undefined ? null : { art: 'VorgangSetzen', vorgang, nach: naechstes.id };
+  }
+  if (i <= 0) return null;
+  return { art: 'VorgangSetzen', vorgang, nach: geschwister[i - 2]?.id ?? null };
+}
+
 export function vorgangEntfernenBefehl(vorgangId: VorgangId): VorgangEntfernen {
   return { art: 'VorgangEntfernen', vorgangId };
 }

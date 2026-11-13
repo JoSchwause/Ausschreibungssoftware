@@ -9,6 +9,7 @@ import type {
   Vorgang,
   VorgangId,
 } from '@tethys/vertrag';
+import { bauzeitenplanBefehlAusfuehren, bauzeitenplanChangeSetAnwenden } from '@tethys/bauzeit';
 import { describe, expect, it } from 'vitest';
 import {
   kopfBefehl,
@@ -16,6 +17,7 @@ import {
   planAnlegenBefehl,
   vorgangEntfernenFrage,
   vorgangSetzenBefehl,
+  vorgangVerschiebenBefehl,
   vorgangsentwurf,
   type Kopfentwurf,
 } from './befehle';
@@ -272,5 +274,73 @@ describe('Entfernen fragt nach, wenn Kinder oder Nachfolger mitgehen (Q5)', () =
     expect(vorgangEntfernenFrage(p3, id('a'))).toEqual({ kinder: 1, nachfolger: 1 });
     expect(vorgangEntfernenFrage(p3, id('a1'))).toEqual({ kinder: 0, nachfolger: 1 });
     expect(vorgangEntfernenFrage(p3, id('b'))).toBeNull();
+  });
+});
+
+describe('Vorgang verschieben (Ticket 155, D-118.3)', () => {
+  // Dokumentreihenfolge: A, A1, A2, B, C; A1 und A2 unter A.
+  const a = v({ id: id('A') });
+  const a1 = v({ id: id('A1'), elternId: id('A') });
+  const a2 = v({ id: id('A2'), elternId: id('A') });
+  const b = v({ id: id('B'), nummer: '2' });
+  const c = v({ id: id('C') });
+  const pl = plan([a, a1, a2, b, c]);
+
+  it('nach unten: hinter das nächste Geschwister derselben Ebene, der Vorgang selbst unverändert', () => {
+    expect(vorgangVerschiebenBefehl(pl, id('B'), 'runter')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: b,
+      nach: 'C',
+    });
+    expect(vorgangVerschiebenBefehl(pl, id('A'), 'runter')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: a,
+      nach: 'B',
+    });
+    expect(vorgangVerschiebenBefehl(pl, id('A1'), 'runter')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: a1,
+      nach: 'A2',
+    });
+  });
+
+  it('nach oben: hinter das Geschwister vor dem vorigen, als erstes ohne `nach`', () => {
+    expect(vorgangVerschiebenBefehl(pl, id('C'), 'hoch')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: c,
+      nach: 'A',
+    });
+    expect(vorgangVerschiebenBefehl(pl, id('B'), 'hoch')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: b,
+      nach: null,
+    });
+    expect(vorgangVerschiebenBefehl(pl, id('A2'), 'hoch')).toEqual({
+      art: 'VorgangSetzen',
+      vorgang: a2,
+      nach: null,
+    });
+  });
+
+  it('der Ausführer stellt die Reihenfolge um, Untervorgänge ziehen mit', () => {
+    const reihe = (richtung: 'hoch' | 'runter', vid: string): string[] => {
+      const b = vorgangVerschiebenBefehl(pl, id(vid), richtung);
+      if (b === null) throw new Error('kein Befehl');
+      const cs = bauzeitenplanBefehlAusfuehren({ bauzeitenplan: pl }, b);
+      if (!cs.ok) throw new Error(JSON.stringify(cs.fehler));
+      return (
+        bauzeitenplanChangeSetAnwenden({ bauzeitenplan: pl }, cs.wert)?.bauzeitenplan.vorgaenge ?? []
+      ).map((x) => x.id);
+    };
+    expect(reihe('runter', 'A')).toEqual(['B', 'A', 'A1', 'A2', 'C']);
+    expect(reihe('hoch', 'C')).toEqual(['A', 'A1', 'A2', 'C', 'B']);
+    expect(reihe('runter', 'A1')).toEqual(['A', 'A2', 'A1', 'B', 'C']);
+  });
+
+  it('am Rand der Ebene und für einen unbekannten Vorgang kein Befehl', () => {
+    expect(vorgangVerschiebenBefehl(pl, id('A'), 'hoch')).toBeNull();
+    expect(vorgangVerschiebenBefehl(pl, id('C'), 'runter')).toBeNull();
+    expect(vorgangVerschiebenBefehl(pl, id('A2'), 'runter')).toBeNull();
+    expect(vorgangVerschiebenBefehl(pl, id('X'), 'hoch')).toBeNull();
   });
 });
