@@ -45,3 +45,12 @@ Herkunft: umfang §3 E12, E11 (A5-Zeilen)
   Abrechnung als „–“ mit dem Satz der Seite.** Hinweise der Kostenkontrolle kommen als fertige Texte (`hinweise`), weil ihre
   Schwere „hinweis“ nicht in `Befundtext` passt.
 - **D-153.5** Seite: **A4 hoch** (sechs Spalten passen), `{lv}` = Name der Kostenermittlung bzw. „Kostenkontrolle“.
+- **D-153.6** Bauzeitenplan-Balken (K): **neuer Block `balkenplan` im `Berichtsmodell` (Achse in Abschnitten, je Zeile ein
+  Balken mit Lage als Anteil 0 bis 1), als eigener Abschnitt „Balkenplan“ zwischen Tabelle und kritischem Weg.** Die Lage
+  bestimmt das Modell aus den Terminen der Terminrechnung in Kalendertagen (Beginn bis Ende des letzten Tages, Meilenstein an
+  seinem Tag); das ist Satz, keine Fachrechnung, und ohne Uhr (A2). Achse je Monat, ab 15 Monaten je Jahr; ein Abschnitt unter
+  24 pt bleibt unbeschriftet. Kritisch dunkel, sonst grau, Sammelvorgang schmal, Meilenstein als Raute; „kritisch ja/nein“
+  steht weiter als Text in der Tabelle (nicht nur Farbe). A4 hoch, Achse 300 pt. Excel schreibt beim Balkenplan nur die Namen
+  (der Bauzeitenplan hat ohnehin keinen Excel-Einstieg). Ohne berechnete Termine steht ein Satz statt des Plans.
+- **D-153.7** Kritischer Weg im PDF: **Trenner „›“ statt „→“.** Der Pfeil fehlt im Latin-Teil von Noto Sans und erschien als
+  leeres Kästchen (bei der Sichtprüfung des PDF gefunden); am Bildschirm bleibt „→“.
