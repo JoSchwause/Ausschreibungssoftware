@@ -15,6 +15,7 @@ import type {
   IfcGlobalId,
   Pruefbefund,
 } from '@tethys/vertrag';
+import { ifcKlassenName } from '../bim/texte';
 import { texte } from './texte';
 
 export interface Vergleichszusammenfassung {
@@ -76,7 +77,7 @@ function zeile(
     aufgeklappt: false,
     zellen: {
       art: { text: art, kennzeichen: [kennzeichen] },
-      klasse: { text: b.ifcKlasse },
+      klasse: { text: ifcKlassenName(b.ifcKlasse) },
       name: { text: name(b) },
       geschoss: { text: geschossname(modell, b.strukturGlobalId) },
       aenderung: { text: aenderung },
@@ -100,7 +101,9 @@ export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Ver
     const teile: string[] = [];
     for (const f of g.felder) {
       if (f === 'klasse')
-        teile.push(`${texte.liste.feld.klasse}: ${g.vorher.ifcKlasse} → ${g.nachher.ifcKlasse}`);
+        teile.push(
+          `${texte.liste.feld.klasse}: ${ifcKlassenName(g.vorher.ifcKlasse)} → ${ifcKlassenName(g.nachher.ifcKlasse)}`,
+        );
       else if (f === 'name') teile.push(`${texte.liste.feld.name}: ${name(g.vorher)} → ${name(g.nachher)}`);
       else if (f === 'strukturknoten')
         teile.push(

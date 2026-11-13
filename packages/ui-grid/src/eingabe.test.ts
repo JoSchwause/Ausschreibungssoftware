@@ -188,7 +188,7 @@ describe('hinweisKlartext', () => {
       { art: 'text', text: 'Ende' },
     ];
     expect(hinweisKlartext(text)).toBe(
-      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff | Menge Kies | 3 t ' +
+      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff · Menge Kies · 3 t ' +
         'Fabrikat: … oder gleichwertig Farbe RAL 7016 [Bild] Ende',
     );
   });

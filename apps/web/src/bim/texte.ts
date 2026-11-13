@@ -11,6 +11,50 @@ const strukturart: Record<Strukturknoten['art'], string> = {
   raum: 'Raum',
 };
 
+/**
+ * Deutsche Namen der IFC-Klassen (nur Anzeige, Ticket 133): „Fundament (IfcFooting)“. Die Klasse bleibt in Klammern
+ * stehen, weil Planer und Modellprogramme sie so nennen; gespeichert und verglichen wird immer die Klasse selbst.
+ */
+const IFC_KLASSEN: Readonly<Record<string, string>> = {
+  IfcBeam: 'Träger',
+  IfcBuildingElementProxy: 'Allgemeines Bauteil',
+  IfcChimney: 'Schornstein',
+  IfcColumn: 'Stütze',
+  IfcCovering: 'Bekleidung',
+  IfcCurtainWall: 'Vorhangfassade',
+  IfcDoor: 'Tür',
+  IfcFooting: 'Fundament',
+  IfcMember: 'Stab',
+  IfcOpeningElement: 'Öffnung',
+  IfcPile: 'Pfahl',
+  IfcPlate: 'Platte',
+  IfcRailing: 'Geländer',
+  IfcRamp: 'Rampe',
+  IfcRampFlight: 'Rampenlauf',
+  IfcRoof: 'Dach',
+  IfcSlab: 'Decke',
+  IfcStair: 'Treppe',
+  IfcStairFlight: 'Treppenlauf',
+  IfcWall: 'Wand',
+  IfcWallStandardCase: 'Wand (Standardfall)',
+  IfcWindow: 'Fenster',
+  IfcFurnishingElement: 'Einrichtung',
+  IfcDistributionElement: 'Technisches Element',
+  IfcFlowSegment: 'Leitung',
+  IfcFlowTerminal: 'Auslass',
+  IfcSpace: 'Raum',
+  IfcBuildingStorey: 'Geschoss',
+  IfcBuilding: 'Gebäude',
+  IfcSite: 'Grundstück',
+  IfcProject: 'Projekt',
+};
+
+/** Der Anzeigename einer IFC-Klasse: „Fundament (IfcFooting)“; eine unbekannte Klasse steht unverändert da. */
+export function ifcKlassenName(klasse: string): string {
+  const name = IFC_KLASSEN[klasse];
+  return name === undefined ? klasse : `${name} (${klasse})`;
+}
+
 export const texte = {
   strukturart,
   baum: {
@@ -77,7 +121,7 @@ export const texte = {
     auftrag: (name: string): string => `Auftrags-LV: ${name}`,
     keinLv: 'Das Projekt hat noch kein LV.',
     laedt: 'LV wird geladen …',
-    zuordnen: 'Zuordnen …',
+    zuordnen: 'Bauteile zuordnen …',
     titel: (n: number): string => `${String(n)} ${n === 1 ? 'Bauteil' : 'Bauteile'} zuordnen`,
     suche: 'Position suchen (OZ oder Kurztext)',
     positionen: 'Positionen',
@@ -110,7 +154,7 @@ export const texte = {
     keinModell: 'Das Projekt hat noch kein Modell.',
     laedt: 'Modell wird geladen …',
     vorschau: 'Vorschau der Mengenübernahme',
-    spalten: ['OZ', 'Kurztext', 'Vordersatz bisher', 'Vordersatz neu', 'Ansatzzeilen', 'Befunde'],
+    spalten: ['OZ', 'Kurztext', 'Menge bisher', 'Menge neu', 'Ansatzzeilen', 'Befunde'],
     keinePosition: 'Keine Position dieses LV hat zugeordnete Bauteile.',
     unveraendert: 'unverändert',
     ohneZeile: 'keine Zeile',

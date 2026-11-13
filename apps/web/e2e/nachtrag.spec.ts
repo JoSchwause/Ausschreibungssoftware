@@ -112,7 +112,7 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await page.getByRole('button', { name: 'Nachtrag anlegen' }).click();
   const anlegen = page.getByRole('dialog', { name: 'Nachtrag anlegen' });
   await anlegen.getByLabel('Bezeichnung').fill('Zusatzleistungen Gründung');
-  await anlegen.getByRole('button', { name: 'Anlegen' }).click();
+  await anlegen.getByRole('button', { name: 'Nachtrag anlegen' }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Nachtrag N01 – Zusatzleistungen Gründung' }),
   ).toBeVisible();

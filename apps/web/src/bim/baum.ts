@@ -8,7 +8,7 @@
 import { formatiereMengeDe } from '@tethys/dezimal';
 import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type { Bauteil, Bauteilmenge, Bauwerksmodell, IfcGlobalId, Strukturknoten } from '@tethys/vertrag';
-import { texte } from './texte';
+import { ifcKlassenName, texte } from './texte';
 
 /** Zeile der Gruppe „Ohne Strukturknoten“ (Bauteile, deren Strukturknoten die Datei nicht nennt). */
 export const OHNE_STRUKTUR = 'ohne-struktur';
@@ -132,7 +132,7 @@ function zellen(k: Baumknoten): VergleichsZeile['zellen'] {
     case 'bauteil':
       return {
         name: { text: k.bauteil.name ?? texte.baum.ohneNameBauteil },
-        klasse: { text: k.bauteil.ifcKlasse },
+        klasse: { text: ifcKlassenName(k.bauteil.ifcKlasse) },
         typ: { text: k.bauteil.typ ?? '' },
         ...mengenzellen(k.bauteil.mengen),
       };

@@ -88,7 +88,7 @@ async function planAnlegen(page: Page, projekt: string, planName: string): Promi
   await form.getByLabel('Name').fill(planName);
   await form.getByLabel('Projektbeginn').fill(de(fx.plan.projektbeginn));
   await waehle(page, form, 'Bundesland (Feiertage)', 'Sachsen');
-  await form.getByRole('button', { name: 'Anlegen' }).click();
+  await form.getByRole('button', { name: 'Bauzeitenplan anlegen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Bauzeitenplan: ${planName}` })).toBeVisible();
 }
 

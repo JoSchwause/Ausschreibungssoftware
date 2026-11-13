@@ -168,7 +168,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const weg = befehlswegFuer(u);
   // --- Löschen des Projekts (Ticket 48, Punkt 5) ------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState(false);
-  // --- Projekt umbenennen -------------------------------------------------------------------------------------
+  // --- Stammdaten ändern -------------------------------------------------------------------------------------
   const [stammdaten, setStammdaten] = useState<{ name: string; bauherr: string } | null>(null);
 
   if (lage.art !== 'da') {

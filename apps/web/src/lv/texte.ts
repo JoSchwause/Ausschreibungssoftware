@@ -46,7 +46,7 @@ export const texte = {
     ganzzahl: 'Erwartet wird eine ganze Zahl ab 0.',
     nichtUebernommen: 'Markierte Felder wurden nicht übernommen.',
     texte: 'Texte',
-    ordnungszahl: 'Ordnungszahl',
+    ordnungszahl: 'OZ',
     kurztext: 'Kurztext',
     langtext: 'Langtext',
     mengeUndPreis: 'Menge und Preis',

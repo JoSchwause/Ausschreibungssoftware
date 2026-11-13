@@ -101,8 +101,8 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
   const id = projektId(page);
   await page.getByRole('link', { name: 'Zur Projektliste' }).click();
 
-  await page.getByRole('button', { name: 'Datensicherung' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Datensicherung' });
+  await page.getByRole('button', { name: 'Sicherung' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sicherung' });
   await expect(dialog.getByText('Kein Ordner gewählt')).toBeVisible();
   await dialog.getByRole('button', { name: 'Ordner wählen …' }).click();
   await expect(dialog.getByText('Ordner: sicherungsordner-test')).toBeVisible();

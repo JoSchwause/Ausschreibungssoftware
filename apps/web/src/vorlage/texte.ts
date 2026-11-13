@@ -12,7 +12,7 @@ export const texte = {
     hinweis: 'Woher der Text stammt, frei, z. B. „Muster-LV Hochbau 2026“. Leer: keine Angabe.',
   },
   uebernehmen: {
-    knopf: 'Aus Vorlage übernehmen…',
+    knopf: 'Aus Vorlage übernehmen …',
     titel: 'Aus Vorlage übernehmen',
     vorlage: 'Muster-LV',
     laedt: 'Die Muster-LVs werden gesucht …',
