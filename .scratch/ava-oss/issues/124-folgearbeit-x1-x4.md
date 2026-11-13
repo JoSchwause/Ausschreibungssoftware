@@ -26,3 +26,5 @@ Herkunft: offene Punkte der Tickets 93 und 118, Bericht Welle 6
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+- Welle 7 (D-76): aufgeteilt. Punkt 3 → 148; Punkte 1, 2, 4, 5 → 155.
