@@ -20,6 +20,9 @@ export const STIL = {
   betrag: 6,
   eingabeSatz: 7,
   textUmbruch: 8,
+  /** Einheitspreis und Prozent ohne Eingabe (gesperrt, ohne Hinterlegung), für Berichte. */
+  einheitspreis: 9,
+  prozent: 10,
 } as const;
 export type Stil = (typeof STIL)[keyof typeof STIL];
 
@@ -155,8 +158,9 @@ const zahlformat = (ganz: string, stellen: number): string =>
   stellen === 0 ? ganz : `${ganz}.${'0'.repeat(stellen)}`;
 
 /**
- * Feste Stile in der Reihenfolge von `STIL`. Zahlformate: 164 Menge, 165 Betrag, 166 Prozent, 167 Einheitspreis. Eingabezellen (`eingabePreis`, `eingabeSatz`) sind entsperrt und
- * hinterlegt; alle anderen sind gesperrt (Vorgabe von SpreadsheetML).
+ * Feste Stile in der Reihenfolge von `STIL`. Zahlformate: 164 Menge, 165 Betrag, 166 Prozent, 167 Einheitspreis.
+ * Eingabezellen (`eingabePreis`, `eingabeSatz`) sind entsperrt und hinterlegt; alle anderen sind gesperrt (Vorgabe von
+ * SpreadsheetML).
  */
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -182,7 +186,7 @@ const STYLES_XML =
   '<border><left/><right/><top/><bottom style="thin"><color auto="1"/></bottom><diagonal/></border>' +
   '</borders>' +
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="9">' +
+  '<cellXfs count="11">' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
   '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment wrapText="1"/></xf>' +
   '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
@@ -192,6 +196,8 @@ const STYLES_XML =
   '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '<xf numFmtId="166" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1" applyProtection="1"><protection locked="0"/></xf>' +
   '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
+  '<xf numFmtId="167" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+  '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '</cellXfs>' +
   '<cellStyles count="1"><cellStyle name="Standard" xfId="0" builtinId="0"/></cellStyles>' +
   '</styleSheet>';
