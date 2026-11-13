@@ -143,14 +143,24 @@ import type { Gesamtsummen, Leistungsstand } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 // v1.7a (Ticket 127)
 import type {
+  BieterangabenSetzen,
   BieterLoeschen,
   BieterUmbenennen,
+  BueroSetzen,
+  DruckprofilEntfernen,
+  DruckprofilSetzen,
+  KalkulationSetzen,
+  KostengruppenbezeichnungenSetzen,
   LvStandLoeschen,
   LvStandUmbenennen,
+  PreisspiegeleinstellungenSetzen,
+  ProjektangabenSetzen,
   ZuschlagZuruecknehmen,
 } from './befehle';
-import type { LvStand } from './changeset';
+import type { EinstellungenChangeSet, LvStand } from './changeset';
+import type { Druckprofil, Einstellungen } from './einstellungen';
 import type { BieterId } from './marken';
+import type { Projekt } from './modell';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
 const titelId = '019b76e9-0000-7000-8000-000000000002' as TitelId;
@@ -2468,3 +2478,143 @@ export const beispieleV17aE8: readonly [
   beispielBieterLoeschen,
   beispielZuschlagZuruecknehmen,
 ];
+
+/**
+ * E9: Kalkulation der Beispielposition (Mauerwerk je m²) mit Lohn und Stoffen, Zuschlagssätze für beide. EP und EPA hat die
+ * App mit `kosten` gerechnet (D-39): Lohn 0,450 h × 48,500 = 21,825 × 1,15 = 25,09875 → 25,099; Stoffe 1,000 × 30,000 = 30,000
+ * × 1,10 = 33,000; EP = 58,099.
+ */
+export const beispielKalkulationSetzen: KalkulationSetzen = {
+  art: 'KalkulationSetzen',
+  positionId: posId,
+  kalkulation: {
+    ansaetze: [
+      {
+        art: 'lohn',
+        bezeichnung: 'Mauern',
+        ansatzmenge: '0.450' as Menge,
+        kostensatz: '48.500' as Einheitspreis,
+      },
+      { art: 'stoffe', bezeichnung: 'Stein', ansatzmenge: '1.000' as Menge, kostensatz: '30.000' as Einheitspreis },
+    ],
+    zuschlagssaetze: { lohn: '15.00' as Prozent, stoffe: '10.00' as Prozent },
+  },
+  einheitspreis: '58.099' as Einheitspreis,
+  epa: {
+    lohn: '25.099' as Einheitspreis,
+    stoffe: '33.000' as Einheitspreis,
+    geraete: null,
+    nachunternehmer: null,
+    sonstiges: null,
+    frei: null,
+    freiBezeichnung: null,
+  },
+};
+
+/** E10: ein Projekt mit Projektangaben und einem Bieter mit Bieterangaben (erfundene Werte). */
+export const beispielProjektMitAngaben: Projekt = {
+  id: beispielLv.projektId,
+  name: 'Neubau Kita',
+  bauherr: { name: 'Gemeinde Musterstadt', anschrift: 'Rathausplatz 1, 12345 Musterstadt' },
+  bieter: [
+    {
+      id: bieterId,
+      name: 'Muster Bau GmbH',
+      angaben: {
+        anschrift: { strasse: 'Hauptstraße 5', plz: '12345', ort: 'Musterstadt' },
+        ansprechperson: 'Frau Beispiel',
+        email: 'angebot@example.org',
+        telefon: null,
+      },
+    },
+  ],
+  angaben: {
+    nummer: '2026-014',
+    ort: 'Musterstadt',
+    baustelle: { strasse: 'Am Anger 3', plz: '12345', ort: 'Musterstadt' },
+  },
+};
+
+export const beispielProjektangabenSetzen: ProjektangabenSetzen = {
+  art: 'ProjektangabenSetzen',
+  name: beispielProjektMitAngaben.name,
+  bauherr: beispielProjektMitAngaben.bauherr,
+  angaben: beispielProjektMitAngaben.angaben ?? null,
+};
+
+export const beispielBieterangabenSetzen: BieterangabenSetzen = {
+  art: 'BieterangabenSetzen',
+  bieterId,
+  angaben: beispielProjektMitAngaben.bieter[0]?.angaben ?? null,
+};
+
+/** E15: Preisspiegel-Einstellungen mit enger Ausreißer-Schwelle und Bezug Schätzpreis. */
+export const beispielPreisspiegeleinstellungenSetzen: PreisspiegeleinstellungenSetzen = {
+  art: 'PreisspiegeleinstellungenSetzen',
+  einstellungen: {
+    ausreisserSchwelle: '15.00' as Prozent,
+    abcSchwelleA: '80.00' as Prozent,
+    abcSchwelleB: '95.00' as Prozent,
+    abcBezug: 'schaetzpreis',
+  },
+};
+
+/** E15: die Einstellungen mit Büro, einem eigenen Druckprofil und zwei Kostengruppenbezeichnungen (erfundene Texte). */
+export const beispielEinstellungen: Einstellungen = {
+  buero: {
+    name: 'Planungsbüro Beispiel',
+    anschrift: { strasse: 'Lindenweg 2', plz: '12345', ort: 'Musterstadt' },
+    telefon: '01234 5678',
+    email: 'buero@example.org',
+  },
+  druckprofile: [
+    {
+      name: 'Kurz für Bauherr',
+      mitPreisen: true,
+      langtext: { art: 'zeilen', anzahl: 3 },
+      titelsummen: true,
+      schlussblock: true,
+      deckblatt: true,
+      kopfzeile: '{lv}',
+      fusszeile: null,
+      seitenrand: 'eng',
+    },
+  ],
+  kostengruppenbezeichnungen: [
+    { nummer: '300' as Kostengruppennummer, bezeichnung: 'Eigene Bezeichnung A' },
+    { nummer: '330' as Kostengruppennummer, bezeichnung: 'Eigene Bezeichnung B' },
+  ],
+};
+
+/** E15: je Befehl an den Einstellungen ein Beispiel. */
+export const beispieleEinstellungenbefehle: readonly [
+  BueroSetzen,
+  DruckprofilSetzen,
+  DruckprofilEntfernen,
+  KostengruppenbezeichnungenSetzen,
+] = [
+  { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
+  { art: 'DruckprofilSetzen', druckprofil: beispielEinstellungen.druckprofile[0] as Druckprofil },
+  { art: 'DruckprofilEntfernen', name: 'Kurz für Bauherr' },
+  { art: 'KostengruppenbezeichnungenSetzen', bezeichnungen: beispielEinstellungen.kostengruppenbezeichnungen },
+];
+
+/** E15: das ChangeSet von `BueroSetzen` auf leeren Einstellungen. */
+export const beispielChangeSetBueroSetzen: EinstellungenChangeSet = {
+  art: 'einstellungen',
+  einstellungen: {
+    vorher: { buero: null, druckprofile: [], kostengruppenbezeichnungen: [] },
+    nachher: { buero: beispielEinstellungen.buero, druckprofile: [], kostengruppenbezeichnungen: [] },
+  },
+};
+
+/** E15: eine Projektdatei der Schemaversion 7 mit dem Block der Einstellungen (Schema 7 bringt Ticket 139). */
+export const beispielProjektdateiV17a: Projektdatei = {
+  schemaVersion: 7,
+  projekt: beispielProjektMitAngaben,
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [],
+  einstellungen: beispielEinstellungen,
+};

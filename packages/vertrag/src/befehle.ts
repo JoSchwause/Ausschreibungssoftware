@@ -33,8 +33,12 @@ import type {
   AuftragsLeistungsverzeichnis,
   Bauherr,
   Bieter,
+  Bieterangaben,
   Einheit,
   Einheitspreisanteile,
+  Kalkulationsangaben,
+  PreisspiegelEinstellungen,
+  Projektangaben,
   Knoten,
   Kostenermittlung,
   Kostenermittlungseintrag,
@@ -57,6 +61,7 @@ import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
 import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
 import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
+import type { Buero, Druckprofil, Kostengruppenbezeichnung } from './einstellungen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
@@ -134,6 +139,32 @@ export interface BieterLoeschen {
   readonly bieterId: BieterId;
 }
 
+/**
+ * Setzt die Projektangaben (v1.7a, Ticket 127; E10, Glossar „Projektangaben“): Name, Bauherr und die weiteren Angaben in
+ * einem Befehl, ein Undo-Schritt für den Dialog „Projektangaben“. Ersetzt für die App `ProjektStammdatenSetzen` (das gültig
+ * bleibt, damit Protokolle vor v1.7a ihre Bedeutung behalten, und `Projekt.angaben` unverändert lässt). `angaben: null`
+ * entfernt sie (das Feld fehlt danach); `''` in einem Feld legt der Kern als `null` ab, alles `null` als fehlenden Block
+ * (siehe `Projektangaben`). ChangeSet: das ganze Projekt vorher und nachher.
+ */
+export interface ProjektangabenSetzen {
+  readonly art: 'ProjektangabenSetzen';
+  readonly name: string;
+  readonly bauherr: Bauherr;
+  readonly angaben: Projektangaben | null;
+}
+
+/**
+ * Setzt die Bieterangaben (Anschrift, Ansprechperson, E-Mail, Telefon) eines Bieters als ganzen Wert (v1.7a, Ticket 127;
+ * E10); `null` entfernt sie. Normalisierung wie `ProjektangabenSetzen`. Ein Bieter, den das Projekt nicht hat:
+ * `ungueltige-eingabe` (`feld: 'bieterId'`). Der Name bleibt (`BieterUmbenennen`); ein Dialog, der beides ändert, schreibt
+ * beide Befehle als Befehlsfolge (D-12).
+ */
+export interface BieterangabenSetzen {
+  readonly art: 'BieterangabenSetzen';
+  readonly bieterId: BieterId;
+  readonly angaben: Bieterangaben | null;
+}
+
 export type ProjektBefehl =
   | ProjektAnlegen
   | ProjektStammdatenSetzen
@@ -141,7 +172,9 @@ export type ProjektBefehl =
   | ProjektLoeschen
   // v1.7a
   | BieterUmbenennen
-  | BieterLoeschen;
+  | BieterLoeschen
+  | ProjektangabenSetzen
+  | BieterangabenSetzen;
 
 // --- Leistungsverzeichnis: Anlegen und Stammdaten ------------------------------------------------------
 
@@ -531,6 +564,40 @@ export interface VorlageSetzen {
   readonly vorlage: boolean;
 }
 
+/**
+ * Setzt die Preisspiegel-Einstellungen des LV als ganzen Wert; `null` entfernt sie, dann gelten die Standardwerte (v1.7a,
+ * Ticket 127; E15, D-73). ChangeSet: nur der Kopf, keine Summen. Der Kern prüft die Form (siehe `PreisspiegelEinstellungen`).
+ */
+export interface PreisspiegeleinstellungenSetzen {
+  readonly art: 'PreisspiegeleinstellungenSetzen';
+  readonly einstellungen: PreisspiegelEinstellungen | null;
+}
+
+/**
+ * Setzt die Kalkulationsangaben einer Position zusammen mit dem daraus gerechneten EP und den EPA (v1.7a, Ticket 127; E9,
+ * B-19), wie `MengenansatzSetzen` Ansatz und Menge: Die App rechnet `einheitspreis` und `epa` mit `kosten`
+ * (`einzelpreiskalkulationBerechnen`, D-39); der Kern legt alles unausgewertet ab und rechnet nie nach (A3: kein
+ * `kern → kosten`). ChangeSet: die Knotenänderung der Position samt Summen (der EP kann sich ändern).
+ *
+ * - `kalkulation: null` entfernt die Kalkulation (das Feld fehlt danach); EP und EPA werden trotzdem gesetzt (die App gibt die
+ *   Werte mit, die stehen bleiben sollen). Eine Kalkulation ohne Ansatz und ohne Zuschlagssatz ist keine: Der Kern legt dafür
+ *   kein Feld ab wie bei `null` (Normalisierung beim Befehl).
+ * - Lesart (a) wie D-22: `EinheitspreisAendern` und `EinheitspreisanteileSetzen` an einer Position mit Kalkulation entfernen
+ *   sie im selben ChangeSet (siehe `Positionsdaten.kalkulation`).
+ * - Form, die der Kern prüft (`ungueltige-eingabe` mit `feld`): jede `art` eine `EpaArt`, Mengen und Kostensätze kanonisch mit
+ *   3 Stellen oder `null`, Sätze kanonisch mit 2 Stellen; `einheitspreis` und `epa` wie bei ihren Feldbefehlen. Ob EP und EPA
+ *   zur Kalkulation passen, prüft er nicht.
+ * - Fehler wie jeder Feldbefehl (D-71.3): Gliederung oder Hinweistext `knotenart-unzulaessig`, unbekannte Kennung
+ *   `knoten-unbekannt`. Nur im Ausschreibungs-LV (nicht in `AuftragsLvBefehl`).
+ */
+export interface KalkulationSetzen {
+  readonly art: 'KalkulationSetzen';
+  readonly positionId: PositionId;
+  readonly kalkulation: Kalkulationsangaben | null;
+  readonly einheitspreis: Einheitspreis | null;
+  readonly epa: Einheitspreisanteile | null;
+}
+
 /** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
 export interface LeitbeschreibungSetzen {
   readonly art: 'LeitbeschreibungSetzen';
@@ -619,7 +686,10 @@ export type LvBefehl =
   | VorlageSetzen
   | TextquelleSetzen
   // v1.6
-  | BauteileZuordnen;
+  | BauteileZuordnen
+  // v1.7a
+  | KalkulationSetzen
+  | PreisspiegeleinstellungenSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -1163,6 +1233,49 @@ export interface BautagebucheintragLoeschen {
  * Aggregat wie bei jedem anderen (`MangelBefehl`), nicht nach dem ganzen Bautagebuch (D-97.13).
  */
 export type BautagebucheintragBefehl = BautagebucheintragSetzen | BautagebucheintragLoeschen;
+
+// --- Einstellungen (v1.7a, Ticket 127; E10, E15, D-73; Ausführer in `kern`, Ticket 137) -------------------------------
+//
+// Befehle am globalen Aggregat `Einstellungen` (siehe `einstellungen.ts`): nicht im `Befehl` eines Projekts, nicht im
+// Befehlsprotokoll eines Projekts, nicht in dessen Undo-Historie (D-73). Der Ausführer (`EinstellungenBefehlAusfuehren`) prüft
+// die Form (`ungueltige-eingabe` mit `feld`); ChangeSet: `EinstellungenChangeSet` mit den ganzen Einstellungen vorher und
+// nachher.
+
+/** Setzt das Büro als ganzen Wert; `null` entfernt es. Leerer Name: `ungueltige-eingabe` (`feld: 'buero.name'`). */
+export interface BueroSetzen {
+  readonly art: 'BueroSetzen';
+  readonly buero: Buero | null;
+}
+
+/**
+ * Setzt ein eigenes Druckprofil: ersetzt das Profil gleichen Namens an seiner Stelle, sonst kommt es ans Ende. Umbenennen ist
+ * `DruckprofilEntfernen` und `DruckprofilSetzen` hintereinander. Leerer Name oder `langtext.anzahl` keine ganze Zahl ≥ 1:
+ * `ungueltige-eingabe`.
+ */
+export interface DruckprofilSetzen {
+  readonly art: 'DruckprofilSetzen';
+  readonly druckprofil: Druckprofil;
+}
+
+/** Entfernt das eigene Druckprofil dieses Namens; gibt es keines, `ungueltige-eingabe` (`feld: 'name'`). */
+export interface DruckprofilEntfernen {
+  readonly art: 'DruckprofilEntfernen';
+  readonly name: string;
+}
+
+/**
+ * Setzt die Kostengruppenbezeichnungen als ganze Liste (eine eingelesene CSV ersetzt die vorige; `[]` entfernt alle). Der
+ * Ausführer ordnet nach Nummer, prüft die Form der Nummern (wie `KostengruppeSetzen`) und weist doppelte Nummern und leere
+ * Bezeichnungen mit `ungueltige-eingabe` ab (die App fasst eine CSV vorher mit `bezeichnungenLesen` zusammen).
+ */
+export interface KostengruppenbezeichnungenSetzen {
+  readonly art: 'KostengruppenbezeichnungenSetzen';
+  readonly bezeichnungen: readonly Kostengruppenbezeichnung[];
+}
+
+/** Befehle an den Einstellungen (v1.7a; Zustand: `Einstellungen`). Nicht Teil von `Befehl` (D-73). */
+export type EinstellungenBefehl =
+  BueroSetzen | DruckprofilSetzen | DruckprofilEntfernen | KostengruppenbezeichnungenSetzen;
 
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 

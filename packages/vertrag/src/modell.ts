@@ -462,6 +462,55 @@ export interface Positionsdaten {
    *   keine mit.
    */
   readonly bauteile?: readonly Bauteilzuordnung[];
+  /**
+   * Die gespeicherten Eingaben der Einzelpreiskalkulation (v1.7a, Ticket 127; E9, B-19; Glossar „Kalkulationsangaben“). Fehlt:
+   * keine Kalkulation; nie leer im Zustand (ohne Ansatz und ohne Satz ist es keine, siehe `KalkulationSetzen`). Wirkt auf keine
+   * Summe des Kerns: EP und EPA stehen wie bisher in `einheitspreis` und `epa`, die Kalkulation ist nur ihre Herleitung.
+   *
+   * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127):
+   * - Geändert nur über `KalkulationSetzen` (nur im Ausschreibungs-LV), das EP und EPA im selben Befehl mitbringt. Ein reiner
+   *   Preisbefehl (`EinheitspreisAendern`, `EinheitspreisanteileSetzen`) an einer Position mit Kalkulation entfernt sie im
+   *   selben ChangeSet (wie `MengeAendern` den Mengenansatz, D-22 Lesart (a); die Oberfläche fragt vorher). So laufen
+   *   Kalkulation und Preis nie still auseinander.
+   * - Anlege- und Kopierbefehle bringen sie mit (ein Muster-LV trägt Kalkulationsansätze, Glossar „Muster-LV“); der Kern prüft
+   *   die Form wie bei `KalkulationSetzen`. Ein LV-Stand trägt sie.
+   * - Der Zuschlag (`zuschlagErteilen`) und `nachtragUebernehmen` lassen sie weg: Die Preise des Auftrags-LV stammen aus dem
+   *   Angebot, nicht aus der Kalkulation des Schätzpreises. Der GAEB-Export schreibt sie nicht (die EPA tragen das Ergebnis),
+   *   ein GAEB-Import bringt keine mit.
+   */
+  readonly kalkulation?: Kalkulationsangaben;
+}
+
+// --- Einzelpreiskalkulation (v1.7a, E9; D-39) ------------------------------------------------------------------------
+
+/**
+ * Eine Zeile der Einzelpreiskalkulation (Glossar „Kalkulationsansatz“; v1.7a, Ticket 127, E9): aus `kosten` hierher gewandert,
+ * gleich gebaut, weil die Position sie nun trägt (A4); `kosten` rechnet sie (`einzelpreiskalkulationBerechnen`, D-39) und
+ * importiert den Typ ab Ticket 137 von hier. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht (Befund in `kosten`,
+ * keine Sperre, U5); der Kern speichert sie trotzdem.
+ */
+export interface Kalkulationsansatz {
+  readonly art: EpaArt;
+  readonly bezeichnung: string;
+  /** Ansatzmenge je Einheit der Position (z. B. `0.450` h je m²), 3 Stellen; bei `lohn` Lohnstunden. `null`: fehlt. */
+  readonly ansatzmenge: Menge | null;
+  /** Kostensatz je Einheit des Ansatzes (z. B. `48.500` € je h), 3 Stellen wie ein EP. `null`: fehlt. */
+  readonly kostensatz: Einheitspreis | null;
+}
+
+/**
+ * Zuschlagssatz der Kalkulation je Kostenart (Glossar „Zuschlagssatz der Kalkulation“; v1.7a, aus `kosten` gewandert). Eine
+ * fehlende Kostenart rechnet mit 0 %; ein Satz `0.00` und ein fehlender Schlüssel rechnen gleich, der Kern legt ab, was kommt.
+ */
+export type Kalkulationszuschlagssaetze = Readonly<Partial<Record<EpaArt, Prozent>>>;
+
+/**
+ * Kalkulationsangaben einer Position (v1.7a, Ticket 127, E9; Glossar): die Eingaben, aus denen `kosten` EP und EPA rechnet.
+ * `ansaetze` in Anzeigereihenfolge (die Zeilen des Dialogs).
+ */
+export interface Kalkulationsangaben {
+  readonly ansaetze: readonly Kalkulationsansatz[];
+  readonly zuschlagssaetze: Kalkulationszuschlagssaetze;
 }
 
 /**
@@ -512,10 +561,54 @@ export interface Bauherr {
   readonly anschrift: string | null;
 }
 
-/** Bieter eines Projekts, von Angeboten über `BieterId` referenziert. */
+/**
+ * Postanschrift in Teilen (v1.7a, Ticket 127, E10; Glossar „Anschrift“), wie `Auftraggeber` und `Auftragnehmer` sie führen
+ * (GAEB `Street`, `PCode`, `City`): `strasse` mit Hausnummer. Jedes Teil nullbar, nie `''` (der Kern legt `''` als `null` ab).
+ * Eine Anschrift ohne jedes Teil gibt es nicht: Wo sie nullbar ist, legt der Kern dafür `null` ab. Die Anschrift des Bauherrn
+ * bleibt freier Text (`Bauherr.anschrift`).
+ */
+export interface Anschrift {
+  readonly strasse: string | null;
+  readonly plz: string | null;
+  readonly ort: string | null;
+}
+
+/**
+ * Bieterangaben (v1.7a, Ticket 127, E10; Glossar „Bieter“): Kontaktdaten eines Bieters. Jedes Feld nullbar, nie `''`
+ * (Normalisierung im Kern wie bei `Anschrift`); sind alle `null`, fehlt der Block am Bieter (eine Schreibweise für „keine
+ * Angaben“). Der Kern prüft kein Format von E-Mail oder Telefon (U5).
+ */
+export interface Bieterangaben {
+  readonly anschrift: Anschrift | null;
+  readonly ansprechperson: string | null;
+  readonly email: string | null;
+  readonly telefon: string | null;
+}
+
+/**
+ * Bieter eines Projekts, von Angeboten über `BieterId` referenziert.
+ *
+ * v1.7a (Ticket 127, E8, E10): umbenennen (`BieterUmbenennen`), Angaben setzen (`BieterangabenSetzen`), löschen nur ohne
+ * Angebot (`BieterLoeschen`). `BieterAnlegen` darf `angaben` mitbringen (X84/X86 mit Anschrift, Ticket 136); der Kern
+ * normalisiert sie wie bei `BieterangabenSetzen`.
+ */
 export interface Bieter {
   readonly id: BieterId;
   readonly name: string;
+  /** Fehlt: keine Angaben (v1.7a, additiv; Bieter vor v1.7a bleiben gültig). Nie `null`. */
+  readonly angaben?: Bieterangaben;
+}
+
+/**
+ * Projektangaben über Name und Bauherr hinaus (v1.7a, Ticket 127, E10; Glossar „Projektangaben“): Projektnummer, Ort (der
+ * Bauort als freier Text) und Anschrift der Baustelle. Jedes Feld nullbar, nie `''`; sind alle `null`, fehlt der Block am
+ * Projekt (Normalisierung im Kern wie bei `Bieterangaben`). Die Nummer ist freier Text (führende Nullen, Buchstaben), nie
+ * Schlüssel (A7) und nicht eindeutig geprüft.
+ */
+export interface Projektangaben {
+  readonly nummer: string | null;
+  readonly ort: string | null;
+  readonly baustelle: Anschrift | null;
 }
 
 /** Oberste Ebene: Name, Bauherr, Bieter. Die LVs und Angebote verweisen mit `projektId` auf das Projekt. */
@@ -524,6 +617,11 @@ export interface Projekt {
   readonly name: string;
   readonly bauherr: Bauherr;
   readonly bieter: readonly Bieter[];
+  /**
+   * Fehlt: keine weiteren Angaben (v1.7a, Ticket 127, E10; additiv, Projekte vor v1.7a bleiben gültig). Nie `null`. Gesetzt
+   * über `ProjektangabenSetzen`; `ProjektStammdatenSetzen` lässt es unverändert, `ProjektAnlegen` legt ohne an.
+   */
+  readonly angaben?: Projektangaben;
 }
 
 /**
@@ -681,6 +779,32 @@ export interface LvKopf extends LvInhaltKopf {
    * Auftrags-LV. Alternative: `vorlage?: boolean` (Offene Typfrage, Ticket 70).
    */
   readonly vorlage?: true;
+  /**
+   * Einstellungen des Preisspiegels zu diesem LV (v1.7a, Ticket 127, E15, D-73; Glossar „Preisspiegel-Einstellungen“). Fehlt:
+   * die Standardwerte nach D-05 (`PREISSPIEGEL_STANDARD` in `vergabe`: 20 %, 80 %, 95 %, Mittel); nie `null`. Geändert nur über
+   * `PreisspiegeleinstellungenSetzen` (Undo, wandert mit dem LV-Stand). Am `LvKopf` wie `nachtrag` und `vorlage`: nie aus
+   * einem GAEB-Import, nie am Auftrags-LV, und ein LV aus einem LV-Stand (`LeistungsverzeichnisAnlegen`) bringt es nicht mit
+   * (die App setzt es dann im selben Schritt, wenn sie es behalten will). Ändert D-36 (7) für diesen Teil (D-73).
+   */
+  readonly preisspiegel?: PreisspiegelEinstellungen;
+}
+
+/** Bezug der ABC-Klasse im Preisspiegel (v1.7a, aus `vergabe` gewandert): der virtuelle Bieter Mittel oder der Schätzpreis. */
+export type AbcBezug = 'mittel' | 'schaetzpreis';
+
+/**
+ * Preisspiegel-Einstellungen (v1.7a, Ticket 127, E15; Glossar): gleich gebaut wie in `vergabe` (das ab Ticket 138 den Typ von
+ * hier nimmt). Der Kern prüft die Form (`PreisspiegeleinstellungenSetzen`): jeder Satz ein kanonisches `Prozent` von `0.00` bis
+ * `100.00`, `abcSchwelleA` ≤ `abcSchwelleB`, `abcBezug` einer der beiden Werte; sonst `ungueltige-eingabe` mit dem Feld.
+ */
+export interface PreisspiegelEinstellungen {
+  /** Ausreißer, wenn ein EP um mehr als diesen Anteil vom Mittel abweicht (G-26, D-05; Standard `20.00`). */
+  readonly ausreisserSchwelle: Prozent;
+  /** Obergrenze der Klasse A am Anteil der Summe (Standard `80.00`). */
+  readonly abcSchwelleA: Prozent;
+  /** Obergrenze der Klasse B (Standard `95.00`). */
+  readonly abcSchwelleB: Prozent;
+  readonly abcBezug: AbcBezug;
 }
 
 /**

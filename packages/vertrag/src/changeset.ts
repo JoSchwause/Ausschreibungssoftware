@@ -10,6 +10,7 @@ import type {
   BauzeitenplanBefehl,
   Einfuegeort,
   HonorarberechnungBefehl,
+  EinstellungenBefehl,
   KostenermittlungBefehl,
   LvBefehl,
   LvStandBefehl,
@@ -55,6 +56,7 @@ import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from '.
 import type { Bauzeitenplan } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { Einstellungen } from './einstellungen';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -721,6 +723,27 @@ export type BautagebucheintragChangeSetAnwenden = (
 export type BautagebucheintragChangeSetUmkehren = (
   changeSet: BautagebucheintragChangeSet,
 ) => BautagebucheintragChangeSet;
+
+// --- Einstellungen (v1.7a, Ticket 127; E15, D-73) --------------------------------------------------------------------
+
+/**
+ * ChangeSet an den Einstellungen (v1.7a): die ganzen Einstellungen vorher und nachher; umkehrbar durch Tausch. Nicht Teil von
+ * `ChangeSet` (kein Projekt, kein Protokolleintrag, D-73); geschrieben über `EinstellungenRepository.anwenden`, das mit
+ * `konflikt` abweist, wenn `vorher` nicht dem gespeicherten Stand gleicht.
+ */
+export interface EinstellungenChangeSet {
+  readonly art: 'einstellungen';
+  readonly einstellungen: { readonly vorher: Einstellungen; readonly nachher: Einstellungen };
+}
+
+/**
+ * Führt einen Befehl an den Einstellungen aus (v1.7a): rein (A2), prüft die Form (siehe die Befehle). Der Zustand ist immer
+ * gesetzt (anfangs `LEERE_EINSTELLUNGEN`). Liefert `kern` (Ticket 137).
+ */
+export type EinstellungenBefehlAusfuehren = (
+  zustand: Einstellungen,
+  befehl: EinstellungenBefehl,
+) => Ergebnis<EinstellungenChangeSet, Befehlsfehler>;
 
 // --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
 
