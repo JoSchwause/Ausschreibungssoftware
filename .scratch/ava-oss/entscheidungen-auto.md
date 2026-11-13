@@ -730,3 +730,10 @@ Question: 3.1-Dateien (und 3.3) tragen Nachlass je Position oder Gliederung, Pau
 Decision: Nein. Jede solche Angabe wird ein Befund am Knoten (D-129.3), die Summen des Modells weichen dann von der Datei ab, und der Befund sagt das. Keine Umdeutung in Welle 7; die Liste geht als Ergänzung zu §6 „Nach Welle 7“ in den Bericht (zu B-13, G-23, G-28).
 Reason: G-23 (ein Nachlass je LV) und G-28 (ein MwSt-Satz) sind entschieden; eine Umdeutung wäre GAEB-Semantik ohne Beleg. F6/U5 verlangen Befund statt stillem Verwerfen, das ist erfüllt.
 Reversible: yes  Touches: packages/gaeb
+
+## D-81 Nutzungslimit während Stufe 2
+Welle 7 · Tickets 132, 136–139, 141, 142, Review v1.7a · decided by: orchestrator
+Question: Kurz nach dem Start der Stufe 2 brachen alle acht laufenden Agenten mit „weekly limit“ ab (gegen 18:35 UTC); die Arbeit lag in ihren Worktrees.
+Decision: Um 18:46 UTC alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-61, D-65, D-67), nachdem die Sitzung wieder „allowed“ meldete und der Nutzer „continue“ schrieb. Kein Ticket gilt als fehlgeschlagen; der Circuit Breaker zählt nur Fehler der Umsetzung. Trifft der Lauf das Limit erneut, gilt die Kürzungsreihenfolge aus `schnitt-welle-7.md`, und P-Tickets haben Vorrang.
+Reason: Kein Verlust, gleicher Gesamtaufwand; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist.
+Reversible: yes  Touches: Ablauf
