@@ -16,6 +16,7 @@ Herkunft: umfang §3 E8, E10; B-16
 3. `ZuschlagZuruecknehmen` nach D-74: entfernt das Auftrags-LV samt Zuschlagsvermerk; Sperre bei Nachträgen, Aufmaßblättern,
    Rechnungen, Mängeln mit Fehlercode, der Art und Anzahl nennt; die Prüfung bekommt die Verweise als Eingabe (reine Funktion;
    die App/der Speicher liefert sie). Bauzeitenpläne sperren nicht. Ein Rückgängig-Schritt stellt alles wieder her.
+5. **Aus dem Review (D-82, S9):** Statt eines Verteilers mit optionalen `verweise` schmale exportierte Funktionen, die die Verweise verlangen (der generische optionale Parameter bleibt für A8). Die Normalisierung der Bieterangaben ist eine Funktion aus `kern` (Ticket 137 exportiert sie); ist 137 beim Abschluss nicht gemergt, eine lokale Fassung mit Vermerk für die Review-Behebung.
 4. Prüfen, dass `AngebotLoeschen`, `AngebotspositionSetzen`, `AngebotsNachlassSetzen` (setzen und entfernen) für die Bedienung
    taugen; Lücken schließen.
 

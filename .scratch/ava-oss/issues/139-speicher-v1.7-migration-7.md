@@ -20,6 +20,7 @@ Herkunft: umfang §3 E8 (Projektdatei als Kopie, Zuschlag zurücknehmen), E15, E
 4. Speicherung der neuen Befehle aus 137/138 (falls generisch über ChangeSets schon abgedeckt, nur Tests); Zuschlag zurücknehmen
    über den bestehenden `konflikt`-Weg bei Mangelverweisen (v1.6).
 6. **Befund aus 134:** nach einem Neuladen meldet die App einmal `createSyncAccessHandle … another open Access Handle`, weil der alte Speicher-Worker die OPFS-Datei noch hält. Ursache prüfen (Worker beim `pagehide` schließen oder Wiederholung mit Wartezeit), Test.
+7. **Aus dem Review (D-82):** M1 – Tabelle für das Einstellungsprotokoll in Migration 7, `EinstellungenRepository.anwenden(eintrag, changeSet)` in einer Transaktion, `protokoll()`. M2 – ein Stand-ChangeSet mit `lvStand.vorher: null` friert nur bei `LvStandAnlegen` (oder `Wiederholen` davon) ein, sonst `unbekannt`. S1 – Stände nach `angelegt, seq` sortieren, Undo des Löschens legt den Stand an seinen Platz. S2 – Umbenennen (beide Seiten gesetzt, heute abgewiesen in `schreiben.ts:663`) und Wiederherstellen eines Stands mit Tests. S10 – beim Einlesen als Kopie auch die Kennungen in eingefrorenen Ständen umschreiben.
 5. Ältere Projektdateien (Schema 1–6) öffnen weiter (A8): Tests mit den vorhandenen Projektdatei-Fixtures.
 
 ## Acceptance criteria

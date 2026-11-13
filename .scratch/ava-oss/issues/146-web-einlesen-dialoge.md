@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Type: task
 Welle: 7 · Strang: E7 · Paket/Ordner: `apps/web/src/gaeb/`; in `abrechnung/` (X31), `rechnung/` (XRechnung), `bim/` (IFC) nur die Befundanzeige der Einlese-Dialoge
-Blocked by: 136, 131
+Blocked by: 136, 131, 137, 139 (D-82, S7: Bieterangaben werden erst mit Kern und Speicher gehalten)
 Modell: opus
 Priorität: P (`../umfang-welle-7.md` §3: P nie gekürzt, S Soll, K Kann)
 Regeln: U5, N4, L4, L5
