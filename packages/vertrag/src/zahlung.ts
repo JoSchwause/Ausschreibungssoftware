@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Abzüge und Zahlungen einer Rechnung (v1.7b, Ticket 128; A5, D-72): Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen an
 // der Rechnung (gespeichert, Felder in `Rechnung`), dazu der gerechnete Zahlungsstand und seine Befunde (nie gespeichert).
-// Nur Typen und der Satz der Bauabzugsteuer als Konstante; die Rechnung liegt in `abrechnung` (Ticket 143).
+// Nur Typen und der Satz der Bauabzugsteuer als Konstante; gerechnet wird in `abrechnung` (Ticket 143).
 //
 // Die Kette nach D-72 (jeder Schritt auf 2 Stellen gerundet, dann verrechnet; N2, E-07): Leistung → Nachlass → MwSt →
 // Brutto kumuliert → Umlagen → **Vertragsstrafe** → Einbehalt → frühere eingefrorene Zahlbeträge → **Zahlbetrag** (eingefroren,
