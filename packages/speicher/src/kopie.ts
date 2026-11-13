@@ -8,6 +8,7 @@ import type { Projektdatei } from '@tethys/vertrag';
 import { AGGREGATART_NAMEN, AGGREGATARTEN } from './aggregatarten';
 import { abbruch } from './ergebnis';
 import type { Kennungsbedarf, Kennungsquelle, Kennungsvorrat } from './kennungen';
+import { ohne } from './zeilen';
 
 /** Die global geschlüsselten Kennungen der Datei mit ihrer Art, ohne Doppel, in der Reihenfolge der Aggregatarten. */
 function kennungenDerDatei(d: Projektdatei): Map<string, Kennungsquelle> {
@@ -50,8 +51,8 @@ export function alsKopie(d: Projektdatei, vorrat: Kennungsvorrat, name: string):
     return x;
   };
   // Nicht umgeschrieben: Version, Protokoll (entfällt), Modelldateien (Hash), Einstellungen (gehören keinem Projekt).
-  const { schemaVersion, protokoll, modelldateien, einstellungen, ...aggregate } = d;
-  void protokoll;
+  const { schemaVersion, modelldateien, einstellungen } = d;
+  const aggregate = ohne(d, 'schemaVersion', 'protokoll', 'modelldateien', 'einstellungen');
   const kopie = umschreiben(aggregate) as typeof aggregate;
   return {
     ...kopie,

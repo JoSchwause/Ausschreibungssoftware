@@ -26,7 +26,6 @@ import type {
   AuftragsLvUebersicht,
   AuftragsLvZustand,
   Bieter,
-  Bieterangaben,
   Betrag,
   Gliederungssumme,
   Knoten,
@@ -45,7 +44,6 @@ import type {
   PositionId,
   Positionssumme,
   Projekt,
-  Projektangaben,
   ProjektId,
   Protokolleintrag,
   Rechnung,
@@ -81,7 +79,8 @@ import {
   lvId,
   lvKennzeichenAusZeile,
   lvPreisspiegelAusZeile,
-  angabenAusZeile,
+  bieterangabenAusZeile,
+  projektangabenAusZeile,
   maskeAusZeile,
   nachlassAusZeile,
   projektId,
@@ -97,14 +96,14 @@ export function leseProjekt(db: Datenbank, id: ProjektId): Projekt | null {
     .map((z): Bieter => ({
       id: bieterId(z, 'id'),
       name: text(z, 'name'),
-      ...angabenAusZeile<Bieterangaben>(z), // Schema 7 (v1.7a)
+      ...bieterangabenAusZeile(z), // Schema 7 (v1.7a)
     }));
   return {
     id,
     name: text(kopf, 'name'),
     bauherr: { name: text(kopf, 'bauherr_name'), anschrift: textOderNull(kopf, 'bauherr_anschrift') },
     bieter,
-    ...angabenAusZeile<Projektangaben>(kopf), // Schema 7 (v1.7a)
+    ...projektangabenAusZeile(kopf), // Schema 7 (v1.7a)
   };
 }
 

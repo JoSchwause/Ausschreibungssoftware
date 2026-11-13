@@ -12,9 +12,11 @@ import type {
   Bauzeitenplan,
   BauzeitenplanId,
   BauzeitenplanKopf,
+  Bieter,
   Honorarberechnung,
   HonorarberechnungId,
   Kalkulationsangaben,
+  Projekt,
   HonorarberechnungUebersicht,
   Honorarobjekt,
   Mangel,
@@ -139,10 +141,13 @@ export function angabenSpalte(was: string, angaben: object | undefined): SqlWert
   return jsonOderNull(angaben);
 }
 
-/** `angaben` aus der Zeile von Projekt oder Bieter: das Feld, oder gar keines bei `NULL`. */
-export function angabenAusZeile<T>(z: SqlZeile): { angaben?: T } {
-  return optionalesFeld(z, 'angaben', 'angaben') as { angaben?: T };
-}
+/** `angaben` aus der Zeile des Projekts: das Feld, oder gar keines bei `NULL`. */
+export const projektangabenAusZeile = (z: SqlZeile): Pick<Projekt, 'angaben'> =>
+  optionalesFeld(z, 'angaben', 'angaben');
+
+/** `angaben` aus der Zeile eines Bieters: das Feld, oder gar keines bei `NULL`. */
+export const bieterangabenAusZeile = (z: SqlZeile): Pick<Bieter, 'angaben'> =>
+  optionalesFeld(z, 'angaben', 'angaben');
 
 // --- Knoten -----------------------------------------------------------------------------------------------------
 
@@ -245,7 +250,7 @@ export const LV_PREISSPIEGEL_SPALTE = 'preisspiegel';
 export const lvPreisspiegelSpalte = (k: LvKopf): SqlWert => jsonOderNull(k.preisspiegel);
 
 export const lvPreisspiegelAusZeile = (z: SqlZeile): Pick<LvKopf, 'preisspiegel'> =>
-  optionalesFeld(z, LV_PREISSPIEGEL_SPALTE, 'preisspiegel') as Pick<LvKopf, 'preisspiegel'>;
+  optionalesFeld(z, LV_PREISSPIEGEL_SPALTE, 'preisspiegel');
 
 export function lvKennzeichenAusZeile(z: SqlZeile): Pick<LvKopf, 'nachtrag' | 'vorlage'> {
   const nachtrag = jsonSpalte(z, 'nachtrag') as Nachtragsangaben | null;
