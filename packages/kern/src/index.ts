@@ -4,6 +4,7 @@
 
 export { BEFEHLS_HANDLER, ZUSTAENDIGES_TICKET, lvBefehlAusfuehren } from './ausfuehren';
 export { auftragsLvBefehlAusfuehren } from './auftrags-lv';
+export { lvStandBefehlAusfuehren } from './lv-stand';
 export {
   LEERE_SUMMENAENDERUNG,
   LEERER_SUMMENSTAND,
