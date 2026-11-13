@@ -6,9 +6,11 @@
 import { describe, expect, it } from 'vitest';
 import { formatiereBetragDe, formatiereEinheitspreisDe, formatiereMengeDe } from '@tethys/dezimal';
 import type { Betrag, Langtext, LvZustand, Menge, Position } from '@tethys/vertrag';
-import { baueAusgabemodell, erzeugePdf } from './index';
+import { BILDMARKE, baueAusgabemodell, erzeugePdf } from './index';
 import type { PositionZeile } from './index';
-import { alsText, liesPdf } from './pdftext';
+import { BILD_MAX_BREITE, BILD_MAX_HOEHE } from './pdf';
+import { alsText, liesBildgroessen, liesPdf } from './pdftext';
+import { bild, pngBase64 } from './testhilfe/bilder';
 import { schriftenAusDateien } from './schriften-node';
 import { fixtureZustand, mitInhalt, positionenAendern } from './testhilfe/bau';
 import type { FixtureName } from './testhilfe/bau';
@@ -318,6 +320,71 @@ describe('Langtext', () => {
   it('setzt kursiven Text in der eingebetteten Kursivschrift', async () => {
     const roh = new TextDecoder('latin1').decode(await erzeugePdf(mitLangtext(), schriften));
     expect(roh).toMatch(/\/BaseFont\s*\/[A-Z]+\+NotoSans-Italic/);
+  });
+
+  it('druckt Bilder aus dem Langtext statt der Marke, nie größer als die Grenze und nie vergrößert', async () => {
+    const { zustand } = fixtureZustand('winzig');
+    let erste = true;
+    const z = mitInhalt(zustand, (i) =>
+      positionenAendern(
+        i,
+        () => {
+          const jetzt = erste;
+          erste = false;
+          return jetzt;
+        },
+        (p: Position) => ({
+          ...p,
+          langtext: [
+            { art: 'absatz', inhalt: [{ art: 'text', text: 'Vor dem Bild' }] },
+            { art: 'bild', bild: bild(pngBase64(40, 20)) },
+            { art: 'bild', bild: bild(pngBase64(4000, 500), 'image/png', 'bild-2') },
+            { art: 'bild', bild: bild(pngBase64(100, 3000), 'image/png', 'bild-3') },
+          ],
+        }),
+      ),
+    );
+    const bytes = await erzeugePdf(z, schriften);
+    const t = normal(alsText(await liesPdf(bytes)));
+    expect(t).toContain('Vor dem Bild');
+    expect(t).not.toContain(BILDMARKE);
+    const bilder = (await liesBildgroessen(bytes)).flat();
+    // 96 Pixel je Zoll: 40 × 20 Pixel sind 30 × 15 pt; breite und hohe Bilder auf die Grenze verkleinert, Seitenverhältnis bleibt.
+    expect(bilder).toEqual([
+      { breite: 30, hoehe: 15 },
+      { breite: BILD_MAX_BREITE, hoehe: BILD_MAX_BREITE / 8 },
+      { breite: Math.round((BILD_MAX_HOEHE / 30) * 100) / 100, hoehe: BILD_MAX_HOEHE },
+    ]);
+  });
+
+  it('druckt ein PNG mit kaputten Bilddaten als Marke, statt am Bild hängen zu bleiben', async () => {
+    const { zustand } = fixtureZustand('winzig');
+    // Ein PNG mit Alphakanal und kaputten Bilddaten: Der Kopf ist vollständig, erst das Entpacken scheitert.
+    const kaputt = Buffer.from(pngBase64(2, 2), 'base64');
+    kaputt[25] = 6; // Farbtyp RGBA
+    const idat = kaputt.indexOf('IDAT');
+    kaputt.fill(0x41, idat + 4, idat + 10);
+    let erste = true;
+    const z = mitInhalt(zustand, (i) =>
+      positionenAendern(
+        i,
+        () => {
+          const jetzt = erste;
+          erste = false;
+          return jetzt;
+        },
+        (p: Position) => ({
+          ...p,
+          langtext: [
+            { art: 'absatz', inhalt: [{ art: 'text', text: 'Mit kaputtem Bild' }] },
+            { art: 'bild', bild: bild(kaputt.toString('base64')) },
+          ],
+        }),
+      ),
+    );
+    const t = normal(alsText(await liesPdf(await erzeugePdf(z, schriften))));
+    expect(t).toContain('Mit kaputtem Bild');
+    expect(t).toContain(BILDMARKE);
   });
 
   it('druckt Unterbeschreibungen einer Leitbeschreibung', async () => {

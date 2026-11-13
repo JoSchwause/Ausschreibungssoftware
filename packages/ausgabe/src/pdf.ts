@@ -8,7 +8,7 @@ import type { LvZustand } from '@tethys/vertrag';
 import { baueAusgabemodell } from './modell';
 import type { AusgabeZeile, Ausgabemodell, ModellOptionen, PositionZeile } from './modell';
 import { ersetzePlatzhalter } from './platzhalter';
-import type { DruckBlock, DruckLauf } from './langtext';
+import type { DruckBild, DruckBlock, DruckLauf } from './langtext';
 import { SCHRIFT, briefkopf, erzeugungsdatum, pdfBytes } from './pdfmake';
 import type { Schriften } from './schriften';
 
@@ -19,6 +19,11 @@ const SEITENBREITE = 595.28; // A4 in pt
 /** Seitenränder `[links, oben, rechts, unten]` in pt. */
 const RAENDER = { normal: [40, 62, 40, 46], eng: [28, 56, 28, 40] } as const;
 const GRAU = '#555555';
+/** Größte Breite und Höhe eines Bildes aus dem Langtext auf dem Papier in pt (B-22); kleinere Bilder werden nie vergrößert. */
+export const BILD_MAX_BREITE = 300;
+export const BILD_MAX_HOEHE = 220;
+/** Pixel nach pt bei 96 Pixeln je Zoll. */
+const PT_JE_PIXEL = 0.75;
 
 type Zelle =
   string | { text: string; [schluessel: string]: unknown } | { canvas: unknown[]; [k: string]: unknown };
@@ -57,8 +62,18 @@ function bloeckeInhalt(bloecke: readonly DruckBlock[]): Content {
   return knoten.length === 1 ? (knoten[0] as Content) : { stack: knoten };
 }
 
+/** Größe auf dem Papier: natürliche Größe bei 96 dpi, verkleinert auf die Grenze, Seitenverhältnis bleibt. */
+function bildInhalt(b: DruckBild): Content {
+  const breite = b.breite * PT_JE_PIXEL;
+  const hoehe = b.hoehe * PT_JE_PIXEL;
+  const faktor = Math.min(1, BILD_MAX_BREITE / breite, BILD_MAX_HOEHE / hoehe);
+  return { image: b.daten, width: breite * faktor, height: hoehe * faktor, margin: [0, 2, 0, 3] };
+}
+
 function blockInhalt(b: DruckBlock): Content {
   switch (b.art) {
+    case 'bild':
+      return bildInhalt(b);
     case 'absatz':
       return { text: b.laeufe.map(laufInhalt), margin: [0, 0, 0, 2] };
     case 'liste': {

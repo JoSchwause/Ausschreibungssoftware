@@ -16,8 +16,16 @@ export type {
   UnterbeschreibungZeile,
   ZuschlagAngabe,
 } from './modell';
-export { BILDMARKE, LUECKE, bloeckeAlsText, langtextAlsBloecke } from './langtext';
-export type { DruckAbsatz, DruckBlock, DruckLauf, DruckListe, DruckTabelle, DruckZelle } from './langtext';
+export { BILDMARKE, LUECKE, MAX_BILD_BYTES, bloeckeAlsText, langtextAlsBloecke } from './langtext';
+export type {
+  DruckAbsatz,
+  DruckBild,
+  DruckBlock,
+  DruckLauf,
+  DruckListe,
+  DruckTabelle,
+  DruckZelle,
+} from './langtext';
 export {
   DRUCKPROFIL_SCHEMAVERSION,
   STANDARD_DRUCKPROFILE,

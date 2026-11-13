@@ -14,7 +14,6 @@ export type { PlatzhalterWerte } from './platzhalter';
 /** Version des JSON-Formats; wird bei einer inkompatiblen Änderung erhöht. */
 export const DRUCKPROFIL_SCHEMAVERSION = 1;
 
-
 /** Ein Profil mit den Vorgabewerten (entspricht dem Druck ohne Profil). */
 export function neuesDruckprofil(name: string): Druckprofil {
   return {

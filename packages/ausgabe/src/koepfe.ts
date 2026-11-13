@@ -21,7 +21,8 @@ export interface ProjektKopf {
   readonly angaben?: Projektangaben;
 }
 
-const gesetzt = (t: string | null | undefined): t is string => t !== null && t !== undefined && t.trim() !== '';
+const gesetzt = (t: string | null | undefined): t is string =>
+  t !== null && t !== undefined && t.trim() !== '';
 
 /** Teile mit Trennzeichen verbinden; leere Teile fallen weg. */
 export const verbinde = (teile: readonly (string | null | undefined)[], mit = ', '): string =>
