@@ -130,7 +130,7 @@ const HEX = /^[0-9A-Fa-f]+$/;
  * `\S\`, `\P?\`, `\X\hh`, `\X2\…\X0\`, `\X4\…\X0\`; `\N\`, `\F\` und Zeilenumbrüche entfallen. Eine ungültige Anweisung
  * bleibt als Text stehen und ergibt `fehler`.
  */
-export function zeichenketteEntschluesseln(roh: string): {
+function zeichenketteEntschluesseln(roh: string): {
   readonly text: string;
   readonly fehler: string | null;
 } {

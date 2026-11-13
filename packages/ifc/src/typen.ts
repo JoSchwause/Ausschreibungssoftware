@@ -8,7 +8,15 @@
 // `IfcSchema` aus `vertrag`: `IFC4` umfasst `IFC4` und `IFC4X0` samt Zusätzen (`IFC4_ADD2`, `IFC4X0_ADD2`), `IFC2X3` auch mit
 // Zusatz (`IFC2X3_TC1`); IFC 4.1 bis 4.3 (`IFC4X1` …) und alle anderen Schemata liest das Paket nicht.
 
-import type { Befundort, Befundschwere, IfcSchema, Kostengruppennummer, Menge } from '@tethys/vertrag';
+import type {
+  Befundort,
+  Befundschwere,
+  Bauteilmengenart,
+  IfcSchema,
+  Kostengruppennummer,
+  Menge,
+  STRUKTURKNOTENARTEN,
+} from '@tethys/vertrag';
 
 /**
  * GlobalId (Glossar) als Text der Datei. Die Form (22 Zeichen aus `0-9A-Za-z_$`) prüft der Leser und meldet Abweichungen
@@ -49,7 +57,7 @@ export interface StepBauteilmenge {
   /** Name der Menge, wie er im Modell steht, z. B. `NetVolume`. */
   readonly name: string;
   /** Art nach der IFC-Klasse: `IfcQuantityLength` … `IfcQuantityTime`. */
-  readonly art: 'laenge' | 'flaeche' | 'volumen' | 'anzahl' | 'gewicht' | 'zeit';
+  readonly art: Bauteilmengenart;
   /**
    * Wert in der SI-Grundeinheit (m, m², m³, Stück, kg, s): der Text der Datei exakt als Dezimalwert, exakt umgerechnet und
    * erst am Ende kaufmännisch auf 3 Stellen gerundet (G-21). `null` mit Befund, wenn die Einheit oder die Zahl fehlt oder
@@ -62,7 +70,7 @@ export interface StepBauteilmenge {
 export interface StepStrukturknoten {
   readonly globalId: StepGlobalId;
   /** Nach der IFC-Klasse: `IfcProject`, `IfcSite`, `IfcBuilding`, `IfcBuildingStorey`, `IfcSpace`. */
-  readonly art: 'projekt' | 'grundstueck' | 'gebaeude' | 'geschoss' | 'raum';
+  readonly art: (typeof STRUKTURKNOTENARTEN)[number];
   /** `Name` der Datei (bei Räumen oft die Raumnummer). */
   readonly name: string | null;
   /** GlobalId des Elternknotens (`IfcRelAggregates`); `null` beim Projekt und bei einem Knoten ohne Eltern (Befund). */

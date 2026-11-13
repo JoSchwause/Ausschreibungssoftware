@@ -5,7 +5,7 @@
 
 import type { AuftragsLeistungsverzeichnisId, Mangel, Mangelstatus } from '@tethys/vertrag';
 import { istUeberfaellig, stichtagPruefen } from './fristpruefung';
-import { mangelstatus } from './mangelstatus';
+import { istOffenerStatus, mangelstatus } from './mangelstatus';
 
 /** Der Auftragnehmer eines Auftrags-LV, wie die App ihn anzeigt (Glossar „Mängelauswertung“). */
 export interface Auftragnehmerangabe {
@@ -60,7 +60,7 @@ function zaehlen(z: Zaehler, m: Pick<Mangel, 'frist' | 'verlauf'>, stichtag: str
   const status = mangelstatus(m);
   z.anzahl += 1;
   z.jeStatus[status] += 1;
-  if (status === 'offen' || status === 'angezeigt') z.offen += 1;
+  if (istOffenerStatus(status)) z.offen += 1;
   if (istUeberfaellig(m, stichtag)) z.ueberfaellig += 1;
 }
 

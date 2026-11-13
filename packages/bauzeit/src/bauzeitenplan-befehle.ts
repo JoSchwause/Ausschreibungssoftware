@@ -167,7 +167,7 @@ function bezugFehler(v: Vorgang): Nein | null {
   return null;
 }
 
-function istFehler(v: Vorgang): Nein | null {
+function isttermineFehler(v: Vorgang): Nein | null {
   const ist: Isttermine | null = v.ist;
   if (ist === null) return null;
   const fehler = (meldung: string): Nein => formfehler('ist', `Vorgang ${v.id}: ${meldung}`);
@@ -199,7 +199,7 @@ function vorgangFehler(v: Vorgang): Nein | null {
   if (v.fruehesterBeginn !== null && !istDatum(v.fruehesterBeginn)) {
     return formfehler('fruehesterBeginn', `Vorgang ${v.id}: Terminvorgabe ist kein Datum JJJJ-MM-TT.`);
   }
-  return beziehungenFehler(v) ?? bezugFehler(v) ?? istFehler(v);
+  return beziehungenFehler(v) ?? bezugFehler(v) ?? isttermineFehler(v);
 }
 
 /** Jede Anordnungsbeziehung nennt einen Vorgang des Plans (D-97.9: sonst Fehler, kein Befund). */
