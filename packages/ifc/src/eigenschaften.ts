@@ -56,7 +56,7 @@ export class Eigenschaftenleser {
     const { eigene, vomTyp } = this.definitionen.saetze(i);
     const lesen = (saetze: readonly number[]) =>
       saetze
-        .filter((s) => this.l.daten.name(s) === 'IFCPROPERTYSET')
+        .filter((s) => this.l.klasseVon(s) === 'IFCPROPERTYSET')
         .map((s) => ({ pos: s, eintraege: this.satz(s) }));
     return zusammenfuehren(lesen(eigene), lesen(vomTyp));
   }
@@ -76,7 +76,7 @@ export class Eigenschaftenleser {
   }
 
   private eigenschaft(e: number, satz: string | null): Eigenschaft | null {
-    const klasse = this.l.daten.name(e);
+    const klasse = this.l.klasseVon(e);
     const p = this.l.parameter(e);
     if (p === null) return null;
     const name = text(p[0]);
@@ -92,7 +92,7 @@ export class Eigenschaftenleser {
     this.l.melde(
       'warnung',
       'eigenschaft-nicht-gelesen',
-      `${klassenname(klasse)} ${name ?? ''} (#${String(this.l.daten.id(e))}) wird nicht gelesen; gelesen werden Einzelwerte und Aufzählungen mit getypten Werten.`,
+      `${klassenname(klasse)} ${name ?? ''} (#${String(this.l.nummer(e))}) wird nicht gelesen; gelesen werden Einzelwerte und Aufzählungen mit getypten Werten.`,
       this.l.ort(e),
     );
     return null;
