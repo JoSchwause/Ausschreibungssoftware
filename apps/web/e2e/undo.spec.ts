@@ -5,7 +5,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
-import { lvAnlegen, neueZeile, projektAnlegen, summen, zeilen } from './hilfen';
+import { erwarteMeldung, lvAnlegen, neueZeile, projektAnlegen, summen, zeilen } from './hilfen';
 
 const grid = (page: Page) => page.getByRole('treegrid', { name: 'Positionen' });
 
@@ -258,7 +258,7 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
     .getByRole('dialog', { name: 'Projekt löschen' })
     .getByRole('button', { name: 'Endgültig löschen' })
     .click();
-  await expect(page.getByText('Das Projekt hat noch LVs').first()).toBeVisible();
+  await erwarteMeldung(page, 'Das Projekt hat noch LVs');
   await expect(page.getByRole('heading', { level: 1, name: 'Turnhalle' })).toBeVisible();
 
   await page.getByRole('button', { name: 'LV löschen: Dach' }).click();

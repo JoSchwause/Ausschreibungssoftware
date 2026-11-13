@@ -4,6 +4,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import {
+  erwarteMeldung,
   fixture,
   lvAnlegen,
   neueZeile,
@@ -79,11 +80,7 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   const mwst = page.getByRole('textbox', { name: 'MwSt-Satz' });
   await mwst.fill('7');
   await mwst.press('Enter');
-  await expect(
-    page.getByText('Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.');
   expect(await summen(page)).toEqual(vorher);
 
   // Auch eine Änderung im Grid bleibt beim alten Stand.
@@ -91,7 +88,7 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   await menge.focus();
   await page.keyboard.type('5');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Nicht gespeichert', { exact: true }).first()).toBeVisible();
+  await erwarteMeldung(page, 'Nicht gespeichert');
   // Nur der angezeigte Wert; die Zelle trägt dazu die Beschreibung ihres Prüfbefunds (Menge fehlt).
   await expect(menge.locator('.tx-grid__text')).toHaveText('');
   expect(await summen(page)).toEqual(vorher);

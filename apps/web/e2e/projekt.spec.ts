@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import {
+  erwarteMeldung,
   lvAnlegen,
   neueZeile,
   positionTippen,
@@ -110,6 +111,6 @@ test('Projektdatei exportieren und in einem frischen Speicher importieren: gleic
     mimeType: 'application/json',
     buffer: Buffer.from(inhalt),
   });
-  await expect(neu.getByText('Dieses Projekt ist schon vorhanden.', { exact: true })).toBeVisible();
+  await erwarteMeldung(neu, 'Dieses Projekt ist schon vorhanden.');
   await kontext.close();
 });

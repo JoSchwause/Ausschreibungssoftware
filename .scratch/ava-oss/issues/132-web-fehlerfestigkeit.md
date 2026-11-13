@@ -52,5 +52,16 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   Schritt, Einzelheiten aufklappbar) statt der allgemeinen Speicherfehlertexte aus `lv/texte.ts`. Die Meldung zu
   `gesperrt` nennt zusätzlich das private Fenster, weil der Speicher verweigerten Ablagezugriff ebenfalls als `gesperrt`
   meldet.
+- **D-132.5** Hilfe für Meldungen (B-38): `meldung(page, text)` sucht nur unter den Einträgen der Region „Meldungen“ und
+  nimmt bei mehreren passenden die neueste (`.last()` dokumentiert in der Hilfe); `erwarteMeldung(page, text)` wartet
+  auf Sichtbarkeit. Bestand der Meldungsprüfungen mit zwei Sonden ermittelt (nur lokal, nicht eingecheckt): (a) Toasts
+  ganz abgeschaltet → genau die Prüfungen, die eine Meldung erwarten (aufmass:143, bausteine:145, lv:83, lv:94,
+  projekt:113, rechnung:211, sicherung:130, umwege:87, undo:261, x3:346); (b) Ansageknoten dauerhaft sichtbar → nur
+  umwege:87 und sicherung:147 fielen. Alle zehn stehen jetzt auf der Hilfe; sicherung:147 sucht die Erinnerung über
+  ihren Knopf statt jeden `status`. Mit Sonde (b) laufen die betroffenen Specs grün.
+  Beleg (grep, nach der Umstellung): `grep -nE "tx-toast|name: /\^Meldungen/|getByText\([^)]*\)\.first\(\)" apps/web/e2e/*.ts`
+  trifft nur `hilfen.ts` (die Hilfe selbst), `bausteine.spec.ts:159` (Feldmeldung des Zahlfelds im Katalog) und
+  `x3.spec.ts:262` (Feldmeldung im Objektabschnitt); beide sind keine Toasts (Sonde a grün).
+  `nachtrag.spec.ts:170` (in B-38 genannt) ist ein fester Hinweis auf der Preisspiegelseite, kein Toast; unverändert.
 - Offen (nicht in diesem Ticket, P2): `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50` zeigen ebenfalls den
   Rohtext der Ausnahme beim PDF; die Ordner gehören anderen Tickets.
