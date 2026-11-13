@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// GAEB DA XML 3.3/3.2, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13). Rein (A2):
+// GAEB DA XML 3.3/3.2/3.1, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13). Rein (A2):
 // Kennungen bringt der Aufrufer, kein I/O, keine Uhr. Tolerant: Was nicht passt, wird Befund, nichts geht still
 // verloren (Q5). Zuordnung zum LV allein über die Ordnungszahl (A7); die GAEB-`ID` ist kein Schlüssel.
 //
@@ -150,6 +150,7 @@ function gleicheMaske(a: OzMaske, b: OzMaske): boolean {
 }
 
 const ITEM_BEHANDELT: ReadonlySet<string> = new Set([
+  'Qty',
   'UP',
   'IT',
   ...ANTEILE,
@@ -233,6 +234,7 @@ class Angebotsaufbau {
     const oz = teile === null ? null : teile.join(this.trenn);
     const knoten = oz === null ? undefined : this.gliederungen.get(oz);
     this.nachlassMelden(totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id);
+    pauschalsummeMelden(this.l, totals, `der Gliederung ${oz ?? '(ohne OZ)'}`, knoten?.id);
   }
 
   /** `DiscountPcnt`/`DiscountAmt` an Position oder Gliederung: im Angebot nicht abbildbar (G-26, D-10 Nr. 3). */
@@ -329,6 +331,18 @@ class Angebotsaufbau {
 
   private preiszeile(el: XmlElement, p: Position): void {
     this.l.restMelden(el, ITEM_BEHANDELT, 'Item');
+    // Eine Menge in der Angebotszeile ist die des Bieters (z. B. bei „Menge vom Bieter festzulegen“, QtyTBD im LV). Das
+    // Angebot hält nur Preise; Befund an der Position, denn ihr GP weicht dann von der Datei ab (Ticket 129).
+    const qtyEl = kind(el, 'Qty');
+    if (qtyEl)
+      this.l.melde(
+        'warnung',
+        'bietermenge-nicht-abgebildet',
+        `Die Position ${ozVon(p)} trägt eine Menge des Bieters (${wert(qtyEl) ?? ''}). Ein Angebot übernimmt nur Preise; ` +
+          `es gilt die Menge des LV (${p.menge ?? 'ohne Menge'}).`,
+        qtyEl,
+        { knotenId: p.id, feld: 'menge' },
+      );
     for (const sub of kinder(el, 'SubDescr')) this.l.restMelden(sub, new Set(['SubDNo']), 'Item/SubDescr');
     const upEl = kind(el, 'UP');
     const ep = upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null;
@@ -448,10 +462,29 @@ class Angebotsaufbau {
   }
 }
 
-/** `BoQInfo/Totals` des LV: der Nachlass des Angebots (G-26). Beträge sind abgeleitet. */
+const ozVon = (p: Position): string => `${p.ordnungszahl ?? '(ohne OZ)'}${p.ozIndex ?? ''}`;
+
+/**
+ * `TotalLSUM`: eine Pauschalsumme des Bieters für eine Gliederung oder das LV. Das Angebot hält nur Preise je Position;
+ * Befund, denn die Summen rechnen dann aus den Positionen und weichen von der Datei ab (Ticket 129).
+ */
+function pauschalsummeMelden(l: Leser, totals: XmlElement, wo: string, knotenId: string | undefined): void {
+  const el = kind(totals, 'TotalLSUM');
+  if (!el) return;
+  l.melde(
+    'warnung',
+    'pauschalsumme-nicht-abgebildet',
+    `Pauschalsumme ${wert(el) ?? ''} ${wo}: Ein Angebot hält nur Preise je Position; die Summe wird aus den Positionen gerechnet.`,
+    el,
+    knotenId === undefined ? {} : { knotenId },
+  );
+}
+
+/** `BoQInfo/Totals` des LV: der Nachlass des Angebots (G-26). Beträge sind abgeleitet, eine Pauschalsumme ist Befund. */
 function leseAngebotsnachlass(l: Leser, totals: XmlElement | undefined): Nachlass | null {
   if (!totals) return null;
   l.restMelden(totals, TOTALS_BEHANDELT, 'BoQInfo/Totals');
+  pauschalsummeMelden(l, totals, 'des LV', undefined);
   const dp = kind(totals, 'DiscountPcnt');
   const da = kind(totals, 'DiscountAmt');
   if (dp && da)

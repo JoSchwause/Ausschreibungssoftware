@@ -8,9 +8,9 @@ import { elementKinder, textInhalt } from './xml';
 import type { XmlElement } from './xml';
 
 export type Versionsstand =
-  /** 3.3 und 3.2 (Ticket 40): werden gelesen. */
+  /** 3.3, 3.2 (Ticket 40) und 3.1 (Ticket 129): werden gelesen. */
   | 'unterstuetzt'
-  /** 3.1 oder älter: bekannt, aber nicht gelesen (G4). */
+  /** Älter als 3.1: bekannt, aber nicht gelesen. */
   | 'bekannt-nicht-unterstuetzt'
   /** Nicht erkennbar oder neuer als 3.3: tolerant als 3.3 gelesen. */
   | 'unbekannt';
@@ -45,13 +45,24 @@ function namensraumVon(wurzel: XmlElement): string | null {
   return wurzel.attrs.get(attr) ?? null;
 }
 
+/**
+ * Die gelesenen Versionen. 3.1 hat einen gemeinsamen Namensraum für alle Phasen (`NAMENSRAUM_31`), 3.2 und 3.3 einen je
+ * Phase; der Aufbau von LV, Positionen, Texten und Summen ist in den drei Versionen derselbe, der Leser hat dafür keine
+ * eigene Weiche (Ticket 129, geprüft an den amtlichen Musterdateien 3.1).
+ */
+const GELESEN: ReadonlyMap<string, GaebVersion> = new Map([
+  ['3.3', '3.3'],
+  ['3.2', '3.2'],
+  ['3.1', '3.1'],
+]);
+
 function klassifiziere(version: string): Versionsstand {
   const m = /^(\d+)\.(\d+)$/.exec(version);
   if (!m) return 'unbekannt';
+  if (GELESEN.has(version)) return 'unterstuetzt';
   const haupt = Number(m[1]);
   const neben = Number(m[2]);
-  if (haupt === 3 && (neben === 3 || neben === 2)) return 'unterstuetzt';
-  if (haupt < 3 || (haupt === 3 && neben <= 1)) return 'bekannt-nicht-unterstuetzt';
+  if (haupt < 3 || (haupt === 3 && neben < 1)) return 'bekannt-nicht-unterstuetzt';
   return 'unbekannt';
 }
 
@@ -137,8 +148,6 @@ export function erkenne(wurzel: XmlElement, dateiname: string | undefined): Erke
   if (phase !== null && !PHASEN.has(phase)) phase = null;
 
   const stand = versionText === null ? 'unbekannt' : klassifiziere(versionText);
-  let version: GaebVersion | null = null;
-  if (stand === 'unterstuetzt') version = versionText === '3.2' ? '3.2' : '3.3';
-  else if (stand === 'bekannt-nicht-unterstuetzt' && versionText === '3.1') version = versionText;
+  const version = versionText === null ? null : (GELESEN.get(versionText) ?? null);
   return { version, versionText, stand, phase: phase as GaebPhase | null, befunde };
 }
