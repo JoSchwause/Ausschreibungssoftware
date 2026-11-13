@@ -85,6 +85,8 @@ export function testIds(): IdQuelle {
     honorarberechnung: () => neu('honorarberechnung') as ReturnType<IdQuelle['honorarberechnung']>,
     mangel: () => neu('mangel') as ReturnType<IdQuelle['mangel']>,
     bautagebucheintrag: () => neu('bautagebucheintrag') as ReturnType<IdQuelle['bautagebucheintrag']>,
+    // v1.7b: mechanisch angepasst (vertrag v1.7b verlangt die Kennung einer Zahlung, Ticket 128)
+    zahlung: () => neu('zahlung') as ReturnType<IdQuelle['zahlung']>,
   };
 }
 
