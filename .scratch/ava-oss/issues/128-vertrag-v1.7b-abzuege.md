@@ -1,6 +1,6 @@
 # 128: `vertrag` v1.7b: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: F, A5 · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`)
 Blocked by: 127
