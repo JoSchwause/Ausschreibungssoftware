@@ -238,6 +238,30 @@ describe('Einfrieren nur bei LvStandAnlegen (D-82 M2) und die Form von lvStandIn
     expect(stand(kern, 'stand-1')).toEqual({ ...s, angelegt: um(4) });
   });
 
+  it('ein Stand ohne Inhalt entfällt nur als Rückgängig eines LvStandAnlegen; sonst unbekannt (D-82 M2)', async () => {
+    const kern = await mitTypisch();
+    const angelegt = await anlegen(kern, 'stand-1', 'Versand', um(1));
+    const ohneInhalt = umkehren(standAnlegen(lv(kern), 'stand-1', 'Versand'));
+    for (const b of [
+      { art: 'LvStandLoeschen', lvStandId: 'stand-1' as never },
+      { art: 'MengeAendern', positionId: erste.id, menge: '1.000' as never },
+      { art: 'Wiederholen', protokollId: angelegt.id },
+    ] as const)
+      expect(fehlercode((await versuche(kern, b, ohneInhalt)).r), b.art).toBe('unbekannt');
+    // Ein Rückgängig, das auf einen anderen Befehl als LvStandAnlegen verweist, ebenso.
+    const umbenannt = await schreibe(
+      kern,
+      { art: 'LvStandUmbenennen', lvStandId: 'stand-1' as never, name: 'Versand' },
+      umbenennen(stand(kern, 'stand-1'), 'Versand'),
+    );
+    expect(
+      fehlercode((await versuche(kern, { art: 'Rueckgaengig', protokollId: umbenannt.id }, ohneInhalt)).r),
+    ).toBe('unbekannt');
+    expect(wert(kern.lvStaendeAuflisten(LV))).toHaveLength(1);
+    await schreibe(kern, { art: 'Rueckgaengig', protokollId: angelegt.id }, ohneInhalt);
+    expect(wert(kern.lvStaendeAuflisten(LV))).toEqual([]);
+  });
+
   it('lvStandInhalt ohne lvStand, auf der anderen Seite null als lvStand oder mit beiden Seiten: unbekannt', async () => {
     const kern = await mitTypisch();
     await anlegen(kern, 'stand-1', 'Versand', um(1));

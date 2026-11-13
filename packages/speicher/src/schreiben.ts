@@ -475,14 +475,25 @@ export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenst
 // --- Leistungsverzeichnis ------------------------------------------------------------------------------------
 
 /**
- * Woher ein ChangeSet kommt, das `anwenden` schreibt (nicht der Import): der Zeitpunkt des Protokolleintrags und ob sein
- * Befehl einen LV-Stand einfrieren darf. Das darf nur `LvStandAnlegen` und dessen `Wiederholen` (D-82 M2); jede andere
- * Herkunft eines Stands ohne seinen Inhalt (`lvStandInhalt`) ist ein Programmfehler und wird nicht still zu einem neuen Stand.
+ * Woher ein ChangeSet kommt, das `anwenden` schreibt (nicht der Import): Zeitpunkt und Befehlsart des Protokolleintrags, bei
+ * `Rueckgaengig` und `Wiederholen` dazu die Art des ursprünglichen Befehls (`ursprung`, sonst `null`). Daran hängt, was ein
+ * LV-Stand ohne seinen Inhalt (`lvStandInhalt`) bedeuten darf (D-82 M2): einfrieren nur bei `LvStandAnlegen` und dessen
+ * `Wiederholen`, entfernen nur als `Rueckgaengig` eines `LvStandAnlegen`. Alles andere ist ein Programmfehler und wird nicht
+ * still zu einem neuen oder fehlenden Stand.
  */
 export interface Schreibanlass {
   readonly wann: Zeitstempel;
-  readonly standEinfrieren: boolean;
+  readonly befehl: string;
+  readonly ursprung: string | null;
 }
+
+/** Friert der Befehl des Anlasses einen LV-Stand ein? (`LvStandAnlegen` oder dessen `Wiederholen`, D-82 M2) */
+const friertEin = (a: Schreibanlass): boolean =>
+  a.befehl === 'LvStandAnlegen' || (a.befehl === 'Wiederholen' && a.ursprung === 'LvStandAnlegen');
+
+/** Nimmt der Befehl des Anlasses einen eingefrorenen Stand ohne seinen Inhalt zurück? (Rückgängig von `LvStandAnlegen`) */
+const nimmtAnlegenZurueck = (a: Schreibanlass): boolean =>
+  a.befehl === 'Rueckgaengig' && a.ursprung === 'LvStandAnlegen';
 
 /**
  * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `anlass` fehlt nur beim Import;
@@ -739,7 +750,7 @@ function wendeLvStandAn(
       return;
     }
     if (anlass === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
-    if (!anlass.standEinfrieren)
+    if (!friertEin(anlass))
       return abbruch(
         'unbekannt',
         `ChangeSet: Ein LV-Stand ohne seinen Inhalt entsteht nur über LvStandAnlegen oder dessen Wiederholen (${nachher.id}).`,
@@ -757,6 +768,11 @@ function wendeLvStandAn(
     return;
   }
   if (vorher === null) return abbruch('unbekannt', 'ChangeSet: LV-Stand ohne vorher und nachher.');
+  if (inhalt === undefined && (anlass === undefined || !nimmtAnlegenZurueck(anlass)))
+    return abbruch(
+      'unbekannt',
+      `ChangeSet: Ein LV-Stand ohne seinen Inhalt entfällt nur als Rückgängig von LvStandAnlegen (${vorher.id}).`,
+    );
   const gespeichert = gespeicherterStand(db, lvId, vorher);
   if (
     inhalt?.vorher != null &&
