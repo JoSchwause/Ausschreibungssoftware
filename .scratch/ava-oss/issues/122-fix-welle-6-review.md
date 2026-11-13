@@ -1,6 +1,6 @@
 # 122: Behebung des Wellen-Reviews Welle 6
 
-Status: in-progress
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 117
 nur dieses Ticket; 117 schreibt `apps/web/e2e/x1-kern.spec.ts`, `apps/web/e2e/x1-erweitert.spec.ts`,
@@ -99,9 +99,9 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
 
 ## Acceptance criteria
 
-- [ ] Pflichtpunkte 1–15 erledigt oder unter Comments begründet; Budgets aus 15 mit Messwert (grün/rot) im Ticket
-- [ ] E2E: die geänderten Specs und `bim`, `bim-mengen`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb` grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Pflichtpunkte 1–15 erledigt oder unter Comments begründet; Budgets aus 15 mit Messwert (grün/rot) im Ticket
+- [x] E2E: die geänderten Specs und `bim`, `bim-mengen`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
 
@@ -193,4 +193,20 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
   `ModellvergleichSeite.tsx:397` → `darstellung.ts`, `einlesen.ts` → `datumAusUhr`, `MengenAusModell.tsx:145` → `datumDe`,
   Text aus `BauzeitenplanSeite.tsx:396` nach `texte.ts`, Umbenennen von `useBezug`.
 - **20 Pakete, Ermessen (SA, SB)**: nicht erreicht, für Ticket 123 (alle Stichpunkte der Liste bleiben offen).
+
+### Ergebnis (Branch `welle-6/122-fix-review`, Basis `integration/welle-6` mit Ticket 117)
+
+- Alle Pflichtpunkte 1–15 erledigt, je Befund ein Commit; Sollpunkte 17, 18 (geprüft, trifft nicht zu) und Teile von 19
+  erledigt, 16 und 20 sowie der Rest von 19 für 123/124 (siehe „Sollpunkte“). `vertrag` unverändert, Sollwerte in `fixtures/`
+  unverändert (Punkt 12: nur der Schlüssel). Außerhalb der genannten Pakete: `ui-basis` (D-122.6) und die Prüfstandsports von
+  `ui-grid` (`PW_GRID_PORT`, Standard 4180, für parallele Läufe).
+- Neue E2E: `apps/web/e2e/bim-tastatur.spec.ts` (nur Tasten), zwei Tests in `modellvergleich.spec.ts` (Sprung zur Position,
+  alter Stand), `packages/ui-modell/e2e/haus.spec.ts`, D-54-Ladetest in `ui-modell/e2e/leistung.spec.ts`, Fall „Modellbaum
+  10.000 Zeilen“ in `ui-grid/e2e/leistung.spec.ts`; Prüfung des Verweises in `kosten.spec.ts`.
+- Suite 2026-11-13 nach dem letzten Produktcommit: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck &&
+  pnpm test` grün (Vitest 3.976 bestanden, 3 übersprungen wie vorher; Fixture-Selbsttest 53/53).
+- E2E `apps/web` (`CI=1`, Port 5317): `bim`, `bim-mengen`, `bim-tastatur`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb`,
+  `x1-kern`, `x1-erweitert`, `kosten`, `dialog`, `lv` 30/30 grün; nach der letzten Änderung (OZ, `89074b4`) `bim-mengen`,
+  `modellvergleich`, `x1-kern`, `x1-erweitert` nochmals 6/6 grün. `ui-modell` alle 15 grün (D-54-Modell Laden Median 2.822 ms
+  bei Last 3,4); `ui-grid/e2e/leistung.spec.ts` 8/8 grün. Kein Test übersprungen oder gelockert, kein Budget geändert.
 
