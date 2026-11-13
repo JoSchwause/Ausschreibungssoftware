@@ -21,6 +21,7 @@ import type {
 import { baueChangeSet } from './changeset';
 import { nein, ok } from './fehler';
 import { mitMengenansatz } from './mengenansatz';
+import { positionMitKalkulation } from './positionsfelder';
 import { ohneKnoten, indexVon } from './struktur';
 import type { Baumindex } from './struktur';
 import { summenAenderung } from './summen';
@@ -81,7 +82,10 @@ export function einheitspreisAendern(z: LvZustand, b: EinheitspreisAendern): Ant
   }
   const { idx, position } = f.wert;
   if (b.einheitspreis === position.einheitspreis) return ok(baueChangeSet(z, {}));
-  return ok(positionAendern(z, idx, position, { ...position, einheitspreis: b.einheitspreis }));
+  // Lesart (a) (v1.7a, D-127.6): Ein von Hand gesetzter EP entfernt die Kalkulation im selben ChangeSet (wie `MengeAendern`
+  // den Mengenansatz); derselbe EP ändert nichts, auch nicht die Kalkulation.
+  const neu = positionMitKalkulation({ ...position, einheitspreis: b.einheitspreis }, null);
+  return ok(positionAendern(z, idx, position, neu));
 }
 
 function gleicherNachlass(a: Nachlass | null, b: Nachlass | null): boolean {

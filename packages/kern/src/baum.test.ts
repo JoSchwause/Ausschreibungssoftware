@@ -686,10 +686,11 @@ describe('KnotenVerschieben', () => {
 
 describe('Befehle anderer Tickets', () => {
   const z = basis();
-  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9, Ticket 56 den Mengenansatz, Ticket 71 Vertrag v1.4, Ticket 105 Vertrag v1.6): ZUSTAENDIGES_TICKET ist leer bis auf Vertrag v1.7a', () => {
-    // Vertrag v1.7a (Ticket 127), mechanisch: Ticket 137 liefert die Handler und leert die Liste wieder.
-    expect(ZUSTAENDIGES_TICKET).toEqual({ KalkulationSetzen: 'Ticket 137' });
-    expect(lvBefehlAusfuehren(z, { art: 'PreisspiegeleinstellungenSetzen', einstellungen: null }).ok).toBe(true);
+  it('jeder LV-Befehl hat einen Handler (Ticket 42 schließt K9, Ticket 56 den Mengenansatz, Ticket 71 Vertrag v1.4, Ticket 105 Vertrag v1.6, Ticket 137 Vertrag v1.7a): ZUSTAENDIGES_TICKET ist leer', () => {
+    expect(ZUSTAENDIGES_TICKET).toEqual({});
+    expect(lvBefehlAusfuehren(z, { art: 'PreisspiegeleinstellungenSetzen', einstellungen: null }).ok).toBe(
+      true,
+    );
   });
 
   it('die Befehle der Tickets 06 (OZ) und 07 (Summen) sind umgesetzt', () => {

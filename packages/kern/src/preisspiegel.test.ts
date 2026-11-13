@@ -3,12 +3,7 @@
 // Zuerst geschrieben (Q1).
 
 import { describe, expect, it } from 'vitest';
-import type {
-  LvBefehl,
-  LvInhalt,
-  PreisspiegelEinstellungen,
-  Prozent,
-} from '@tethys/vertrag';
+import type { LvBefehl, LvInhalt, PreisspiegelEinstellungen, Prozent } from '@tethys/vertrag';
 import { changeSetUmkehren, lvBefehlAusfuehren } from './index';
 import { KEINE_SUMMEN, LV_ID, anwenden, erwarteOk, lvMit, posKnoten } from './testhilfen';
 
@@ -62,13 +57,20 @@ describe('PreisspiegeleinstellungenSetzen', () => {
   });
 
   it('nur die vier Felder landen im Kopf', () => {
-    const cs = erwarteOk(lvBefehlAusfuehren(zustand, setzen({ ...EIGENE, extra: 1 } as PreisspiegelEinstellungen)));
+    const cs = erwarteOk(
+      lvBefehlAusfuehren(zustand, setzen({ ...EIGENE, extra: 1 } as PreisspiegelEinstellungen)),
+    );
     expect(cs.kopf?.nachher?.preisspiegel).toEqual(EIGENE);
   });
 
   it('Grenzen: 0,00 und 100,00 sind erlaubt, A gleich B auch', () => {
     expect(
-      fehler({ ausreisserSchwelle: p('0.00'), abcSchwelleA: p('100.00'), abcSchwelleB: p('100.00'), abcBezug: 'mittel' }),
+      fehler({
+        ausreisserSchwelle: p('0.00'),
+        abcSchwelleA: p('100.00'),
+        abcSchwelleB: p('100.00'),
+        abcBezug: 'mittel',
+      }),
     ).toBeNull();
   });
 
@@ -109,7 +111,10 @@ describe('PreisspiegeleinstellungenSetzen', () => {
   });
 
   it('unbekannter Bezug oder kein Objekt: ungueltige-eingabe', () => {
-    expect(fehler({ ...EIGENE, abcBezug: 'median' })).toEqual(['ungueltige-eingabe', 'einstellungen.abcBezug']);
+    expect(fehler({ ...EIGENE, abcBezug: 'median' })).toEqual([
+      'ungueltige-eingabe',
+      'einstellungen.abcBezug',
+    ]);
     expect(fehler('20.00')).toEqual(['ungueltige-eingabe', 'einstellungen']);
     expect(fehler([])).toEqual(['ungueltige-eingabe', 'einstellungen']);
   });

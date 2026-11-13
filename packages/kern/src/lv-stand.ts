@@ -77,7 +77,10 @@ export const lvStandBefehlAusfuehren: LvStandBefehlAusfuehren = (stand, befehl) 
     case 'LvStandUmbenennen':
       if (nameFehlt(befehl.name)) return nein('ungueltige-eingabe', NAME_FEHLT, undefined, 'name');
       if (befehl.name === stand.name) return ok(leeresChangeSet(stand));
-      return ok({ ...leeresChangeSet(stand), lvStand: { vorher: kopf, nachher: { ...kopf, name: befehl.name } } });
+      return ok({
+        ...leeresChangeSet(stand),
+        lvStand: { vorher: kopf, nachher: { ...kopf, name: befehl.name } },
+      });
     case 'LvStandLoeschen':
       return ok({
         ...leeresChangeSet(stand),

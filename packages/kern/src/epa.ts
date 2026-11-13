@@ -21,15 +21,18 @@ import type {
 import { baueChangeSet } from './changeset';
 import { befehlsfehler, nein, ok } from './fehler';
 import { gleicherWert } from './merkmal-befehle';
+import { ANTEILE, positionMitKalkulation } from './positionsfelder';
+import type { Anteil } from './positionsfelder';
 import { indexVon, praeorder } from './struktur';
 import { positionAendern, positionFinden } from './summen-befehle';
 import { betragsziel, eigenerGesamtpreis, rechenmenge } from './summenregeln';
 
 type Antwort = Ergebnis<LvChangeSet, Befehlsfehler>;
 
-/** Die sechs Anteile, in Reihenfolge des Vertrags. */
-export const ANTEILE = ['lohn', 'stoffe', 'geraete', 'nachunternehmer', 'sonstiges', 'frei'] as const;
-export type Anteil = (typeof ANTEILE)[number];
+// Die sechs Anteile in Reihenfolge des Vertrags stehen seit Ticket 137 in `positionsfelder.ts` (auch die Form der
+// Kalkulationsangaben fragt sie); hier weitergereicht, damit die Einstiegspunkte bleiben.
+export { ANTEILE } from './positionsfelder';
+export type { Anteil } from './positionsfelder';
 
 export const EPA_ANNAHMEN: {
   readonly status: string;
@@ -40,14 +43,16 @@ export const EPA_ANNAHMEN: {
   status: 'Demo D-37.3, Mensch bestätigt später',
   einheitspreis:
     'Sind Anteile gesetzt (mindestens einer nicht null), wird der EP im selben ChangeSet die Summe der gesetzten Anteile (Skala 3); ' +
-    'epa: null entfernt nur die Anteile, der EP bleibt; Anteile ganz ohne Wert lassen den EP stehen. EinheitspreisAendern lässt Anteile stehen (Abweichung: K8)',
+    'epa: null entfernt nur die Anteile, der EP bleibt; Anteile ganz ohne Wert lassen den EP stehen. EinheitspreisAendern lässt Anteile stehen (Abweichung: K8). ' +
+    'Seit Vertrag v1.7a (D-127.6, Lesart (a)): Ändert der Befehl etwas an einer Position mit Kalkulation, entfällt diese im selben ChangeSet',
   zuschlag:
     'Anteile an einer Zuschlagsposition mit Satz: knotenart-unzulaessig; die Altform (Menge × EP) darf Anteile tragen',
   summen:
     'je Gliederung und LV und je Anteil: Summe von gerundet(Menge × Anteil, 2) über die Positionen mit GP, deren Betrag ins Netto geht (Pauschal ohne Menge: Menge 1)',
 };
 
-function anteileFehler(epa: Einheitspreisanteile, positionId: string): Befehlsfehler | null {
+/** Form der Anteile (je Anteil kanonisch mit 3 Stellen oder `null`, die Bezeichnung Text oder `null`); auch für `KalkulationSetzen`. */
+export function anteileFehler(epa: Einheitspreisanteile, positionId: string): Befehlsfehler | null {
   for (const a of ANTEILE) {
     const w = epa[a];
     if (w === null) continue;
@@ -94,7 +99,8 @@ export function einheitspreisanteileSetzen(z: LvZustand, b: Einheitspreisanteile
     b.epa === null ? position.einheitspreis : (anteilsumme(b.epa) ?? position.einheitspreis);
   if (gleicherWert(position.epa, b.epa) && einheitspreis === position.einheitspreis)
     return ok(baueChangeSet(z, {}));
-  const neu: Position = { ...position, epa: b.epa, einheitspreis };
+  // Lesart (a) (v1.7a, D-127.6): ein reiner Preisbefehl entfernt die Kalkulation (die Oberfläche fragt vorher).
+  const neu: Position = positionMitKalkulation({ ...position, epa: b.epa, einheitspreis }, null);
   return ok(positionAendern(z, idx, position, neu));
 }
 

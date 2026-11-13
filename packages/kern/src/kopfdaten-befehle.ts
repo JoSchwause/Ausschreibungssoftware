@@ -138,7 +138,10 @@ const nachtragsangabenNormal = (n: Nachtragsangaben): Nachtragsangaben => ({
 });
 
 const PREISSPIEGEL_SAETZE = ['ausreisserSchwelle', 'abcSchwelleA', 'abcSchwelleB'] as const;
-const ABC_BEZUEGE: ReadonlySet<unknown> = new Set<PreisspiegelEinstellungen['abcBezug']>(['mittel', 'schaetzpreis']);
+const ABC_BEZUEGE: ReadonlySet<unknown> = new Set<PreisspiegelEinstellungen['abcBezug']>([
+  'mittel',
+  'schaetzpreis',
+]);
 
 /**
  * Form der Preisspiegel-Einstellungen (Vertrag `PreisspiegelEinstellungen`, D-127.7): jeder Satz ein kanonisches `Prozent`
@@ -166,7 +169,10 @@ function preisspiegelFehler(wert: unknown): Formfehler | null {
       meldung: 'Die Grenze der Klasse B ist mindestens die Grenze der Klasse A.',
     };
   if (!ABC_BEZUEGE.has(wert['abcBezug']))
-    return { feld: `${pfad}.abcBezug`, meldung: 'Der Bezug der ABC-Klassen ist „mittel“ oder „schaetzpreis“.' };
+    return {
+      feld: `${pfad}.abcBezug`,
+      meldung: 'Der Bezug der ABC-Klassen ist „mittel“ oder „schaetzpreis“.',
+    };
   return null;
 }
 
