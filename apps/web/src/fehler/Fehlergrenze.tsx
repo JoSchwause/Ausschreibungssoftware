@@ -7,7 +7,7 @@
 import { Button } from '@tethys/ui-basis';
 import { Component, useState } from 'react';
 import type { ErrorInfo, ReactElement, ReactNode } from 'react';
-import { projektdateiSichern, sicherbaresProjekt } from './notfall';
+import { projektdateiSichern, sicherungMoeglich } from './notfall';
 import { texte } from './texte';
 import './fehler.css';
 
@@ -46,7 +46,7 @@ interface FehlerAnzeigeProps {
 
 function FehlerAnzeige({ art, bild, onWeiter }: FehlerAnzeigeProps): ReactElement {
   const [gesichert, setGesichert] = useState<boolean | null>(null);
-  const mitSichern = sicherbaresProjekt() !== null;
+  const mitSichern = sicherungMoeglich();
   const t = art === 'seite' ? texte.seite : texte.band;
   return (
     <div className={`fehler fehler--${art}`} role="alert">

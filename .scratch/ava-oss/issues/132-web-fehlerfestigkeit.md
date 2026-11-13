@@ -43,13 +43,17 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   unterbrechen. Die Chromium-Meldung „ResizeObserver loop …“ wird übergangen.
 - **D-132.2** Wie kommt die Fehlerseite an Speicher und Projekt, obwohl sie über allen Anbietern steht? Entscheidung:
   `SpeicherAnbieter` meldet den offenen Speicher in `fehler/notfall.ts` an und ab; das Projekt kommt aus der Adresse
-  (`…/projekt/<id>…`). Der Download nutzt den Dateinamen der Sicherung (`<Projekt>-<Datum>.tethys.json`). Grund: kein
-  Eingriff in die Seiten oder in `ui/route.ts` (Ticket 131).
+  (`/projekt/<id>…`, ohne die Basis des Builds) oder, da LV-Adressen seit Ticket 131 kein Projekt tragen
+  (`/lv/<id>…`), aus den LV-Listen des Speichers (wie `ui/OrtLader.tsx`). Der Knopf erscheint, sobald der Speicher lebt
+  und die Adresse auf ein Projekt oder LV zeigt; findet sich das Projekt nicht, nennt die Seite den Weg über die
+  Übersicht. Der Download nutzt den Dateinamen der Sicherung (`<Projekt>-<Datum>.tethys.json`). Grund: kein Eingriff in
+  die Seiten, die Hülle oder `ui/route.ts`.
 - **D-132.3** Module-Worker-Erkennung ohne Worker-Start: Der Browser liest die Option `type` beim Umwandeln der
   Argumente; eine absichtlich ungültige Adresse lässt den Aufruf danach scheitern. Grund: die Inhaltsrichtlinie
   (`worker-src 'self'`) verbietet `blob:`/`data:`-Worker, und es entsteht kein Netzverkehr.
 - **D-132.4** Öffnen des Speichers scheitert: eigene Meldungen je Fehlercode in `speicher/texte.ts` (Ursache, nächster
-  Schritt, Einzelheiten aufklappbar) statt der allgemeinen Speicherfehlertexte aus `lv/texte.ts`. Die Meldung zu
+  Schritt, Einzelheiten aufklappbar) statt der allgemeinen Speicherfehlertexte aus `lv/texte.ts`. Begriff wie dort
+  „Speicher des Browsers“ (kein Synonym „Ablage“, L2); geprüft vom Sprachtest aus Ticket 133. Die Meldung zu
   `gesperrt` nennt zusätzlich das private Fenster, weil der Speicher verweigerten Ablagezugriff ebenfalls als `gesperrt`
   meldet.
 - **D-132.5** Hilfe für Meldungen (B-38): `meldung(page, text)` sucht nur unter den Einträgen der Region „Meldungen“ und

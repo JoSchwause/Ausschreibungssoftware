@@ -42,7 +42,7 @@ describe('BrowserHinweis', () => {
     expect(behaelter.textContent).not.toContain(texte.browser.privat);
   });
 
-  it('rät ohne sichere Verbindung zu https und ohne Ablage zum normalen Fenster', () => {
+  it('rät ohne sichere Verbindung zu https und ohne Speicher zum normalen Fenster', () => {
     act(() => {
       wurzel.render(<BrowserHinweis fehlt={['opfs', 'kryptografie']} sicher={false} />);
     });

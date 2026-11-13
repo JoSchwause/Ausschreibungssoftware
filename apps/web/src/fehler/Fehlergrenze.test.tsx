@@ -48,12 +48,25 @@ function zeige(kind: ReactElement): void {
 const knopf = (name: string): HTMLButtonElement | undefined =>
   [...behaelter.querySelectorAll('button')].find((b) => b.textContent === name);
 
+/** Ein Speicher mit den Projekten `p0` (ohne LV) und `p-1` (mit den LV `l7` und `l8`). */
 function speicherMit(name: string, datei: string): Speicher & { exportiert: ProjektId[] } {
   const exportiert: ProjektId[] = [];
+  const lvs: Record<string, readonly { id: string; name: string }[]> = {
+    p0: [],
+    'p-1': [
+      { id: 'l7', name: 'Rohbau' },
+      { id: 'l8', name: 'Dach' },
+    ],
+  };
   const s = {
     exportiert,
     projekte: {
+      auflisten: () =>
+        Promise.resolve({ ok: true, wert: Object.keys(lvs).map((id) => ({ id, name: `Projekt ${id}` })) }),
       laden: (id: ProjektId) => Promise.resolve({ ok: true, wert: { id, name } as unknown as Projekt }),
+    },
+    leistungsverzeichnisse: {
+      auflisten: (projektId: ProjektId) => Promise.resolve({ ok: true, wert: lvs[projektId] ?? [] }),
     },
     projektdateiExportieren: (id: ProjektId) => {
       exportiert.push(id);
@@ -88,7 +101,7 @@ describe('Fehlergrenze', () => {
       wurzel.unmount();
     });
     wurzel = createRoot(behaelter);
-    window.history.replaceState(null, '', '/projekt/p1/lv/l1');
+    window.history.replaceState(null, '', '/projekt/p1');
     zeige(<Wirft />);
     expect(knopf(texte.sichern)).toBeUndefined(); // Projekt offen, aber kein Speicher
 
@@ -118,6 +131,34 @@ describe('Fehlergrenze', () => {
     expect(geladen).toHaveLength(1);
     expect(geladen[0]).toMatch(/^Bürgerhaus-\d{4}-\d{2}-\d{2}\.tethys\.json$/);
     expect(behaelter.textContent).toContain(texte.gesichert);
+  });
+
+  it('findet auf einer LV-Seite das Projekt über das LV und sichert dessen Projektdatei', async () => {
+    const speicher = speicherMit('Bürgerhaus', '{}');
+    speicherMelden(speicher);
+    window.history.replaceState(null, '', '/lv/l8/preisspiegel');
+    const geladen: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      geladen.push(this.download);
+    });
+    zeige(<Wirft />);
+    await act(async () => {
+      knopf(texte.sichern)?.click();
+      await new Promise((fertig) => setTimeout(fertig, 0));
+    });
+    expect(speicher.exportiert).toEqual(['p-1']);
+    expect(geladen).toHaveLength(1);
+  });
+
+  it('meldet, wenn sich zum LV der Adresse kein Projekt findet', async () => {
+    speicherMelden(speicherMit('Bürgerhaus', '{}'));
+    window.history.replaceState(null, '', '/lv/unbekannt');
+    zeige(<Wirft />);
+    await act(async () => {
+      knopf(texte.sichern)?.click();
+      await new Promise((fertig) => setTimeout(fertig, 0));
+    });
+    expect(behaelter.textContent).toContain(texte.sichernFehler);
   });
 
   it('zeigt einen unbehandelten Fehler im Hintergrund als Band über der weiterlaufenden App', () => {

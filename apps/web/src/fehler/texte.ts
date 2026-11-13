@@ -16,7 +16,7 @@ export const texte = {
   sichern: 'Projektdatei sichern',
   gesichert: 'Die Projektdatei wurde heruntergeladen.',
   sichernFehler:
-    'Die Projektdatei ließ sich nicht sichern. Bitte die Seite neu laden und die Projektdatei auf der Projektseite exportieren.',
+    'Die Projektdatei ließ sich nicht sichern. Bitte die Seite neu laden und die Projektdatei in der Übersicht des Projekts sichern.',
   neuLaden: 'Neu laden',
   einzelheiten: 'Einzelheiten',
   ohneMeldung: 'Keine Meldung vorhanden.',
@@ -27,16 +27,16 @@ export const texte = {
     unsicher:
       'Die Seite ist nicht über eine sichere Verbindung geladen; dann fehlen einige Fähigkeiten. Bitte die Adresse mit „https://“ öffnen.',
     privat:
-      'Manche Browser stellen in einem privaten Fenster keine Ablage bereit. In diesem Fall ein normales Fenster verwenden.',
+      'Manche Browser stellen in einem privaten Fenster keinen Speicher bereit. In diesem Fall ein normales Fenster verwenden.',
     geprueft: 'Geprüft: aktuelle Chromium-Browser (Chrome, Edge). Firefox und Safari sind nicht geprüft.',
     faehigkeit: {
-      opfs: 'Ablage für Daten im Browser (Origin Private File System)',
+      opfs: 'Speicher für Daten im Browser (Origin Private File System)',
       worker: 'Hintergrundprozesse (Web Worker)',
       modulWorker: 'Hintergrundprozesse als Module (Module Worker)',
       kryptografie: 'Prüfsummen (Web Crypto)',
       webassembly: 'WebAssembly',
       dateien: 'Dateien lesen und herunterladen (File API)',
-      textkodierung: 'Textkodierung (TextEncoder, TextDecoder)',
+      textkodierung: 'Umwandlung von Text (Encoding API)',
     } satisfies Record<Faehigkeit, string>,
   },
   /** Ersatz für die rohe Ausnahme beim Erzeugen eines PDF (B-26). */

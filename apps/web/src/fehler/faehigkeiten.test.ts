@@ -46,7 +46,7 @@ describe('fehlendeFaehigkeiten (Startprüfung, D-77)', () => {
     expect(fehlendeFaehigkeiten(vollstaendig())).toEqual([]);
   });
 
-  it('meldet fehlendes OPFS (z. B. Browser ohne Ablage im privaten Fenster)', () => {
+  it('meldet fehlendes OPFS (z. B. Browser ohne Speicher im privaten Fenster)', () => {
     expect(fehlendeFaehigkeiten({ ...vollstaendig(), navigator: { storage: {} } })).toEqual(['opfs']);
     expect(fehlendeFaehigkeiten({ ...vollstaendig(), navigator: {} })).toEqual(['opfs']);
   });
