@@ -716,3 +716,10 @@ Question: `apps/web/package.json` trägt `0.0.0`; die Seite „Über“ braucht 
 Decision: `0.7.0` für den Stand nach Welle 7 (0.x bis zur Veröffentlichung, G-59), Build-Stand = kurzer Commit-Hash und Datum über `define` in Vite, ohne `Date.now()` im Fachcode.
 Reason: Lesbar für die Demo, keine Versprechen einer 1.0.
 Reversible: yes  Touches: package.json, apps/web/package.json, apps/web/vite.config
+
+## D-79 Pages-Workflow ohne Warten auf die CI
+Welle 7 · Ticket 134 · decided by: orchestrator
+Question: Soll `pages.yml` erst nach grüner `ci.yml` (`workflow_run`) veröffentlichen?
+Decision: Nein, Veröffentlichung bei jedem Push auf `main` wie gebaut. Nach Q2/P7 kommt nur grün Geprüftes nach `main`; ein zweiter Auslöser verdoppelt die Fehlerquellen. Der Befund „zweiter OPFS-Zugriffsgriff nach Neuladen“ aus der Pfadprobe geht als Punkt 6 an Ticket 139.
+Reason: Einfach und ausreichend für eine Demo; umkehrbar mit einer Zeile.
+Reversible: yes  Touches: .github/workflows/pages.yml, Ticket 139
