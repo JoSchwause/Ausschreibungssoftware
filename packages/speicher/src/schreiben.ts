@@ -196,18 +196,27 @@ function schreibeBieter(db: Datenbank, p: Projekt): void {
   }
 }
 
+/** Kopftabelle eines Aggregats, das an einem Projekt hängt, und sein Name in der Meldung (`AGGREGATARTEN`). */
+export interface AbhaengigeTabelle {
+  readonly tabelle: string;
+  readonly bezeichnung: string;
+}
+
 /**
  * Projekt anlegen, ändern oder löschen. Beim Löschen (v1.1a) gehen die Bieter und das Befehlsprotokoll des Projekts
  * mit: `protokoll.projekt_id` verweist auf das Projekt (seit Schema 1; Schema 2 lässt das so, Ticket 38). Der Eintrag
  * des Löschbefehls selbst wird deshalb nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt,
  * dem er gehört. Das ist die einzige Ausnahme von „ein Eintrag je Befehl“ (D-31.1).
- * LVs, Angebote, Auftrags-LV und (v1.4) Aufmaßblätter, Rechnungen und Kostenermittlungen verhindern das Löschen
- * (`konflikt`).
+ * Jedes Aggregat in `abhaengige` (alle Arten außer dem Projekt, aus `AGGREGATARTEN`) verhindert das Löschen (`konflikt`).
  */
-export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
+export function wendeProjektAn(
+  db: Datenbank,
+  cs: ProjektChangeSet,
+  abhaengige: readonly AbhaengigeTabelle[],
+): void {
   const { vorher, nachher } = cs.projekt;
   if (nachher === null) {
-    loescheProjekt(db, cs);
+    loescheProjekt(db, cs, abhaengige);
     return;
   }
   if (nachher.id !== cs.projektId)
@@ -235,7 +244,7 @@ export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
   schreibeBieter(db, nachher);
 }
 
-function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
+function loescheProjekt(db: Datenbank, cs: ProjektChangeSet, abhaengige: readonly AbhaengigeTabelle[]): void {
   const id = cs.projektId;
   const vorher = cs.projekt.vorher;
   if (vorher === null) return abbruch('unbekannt', 'ChangeSet: Projekt ohne vorher und nachher.');
@@ -243,23 +252,12 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
   const gespeichert = leseProjekt(db, id);
   if (gespeichert === null) return abbruch('nicht-gefunden', `Projekt ${id} ist nicht vorhanden.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
-  abhaengig(
-    db,
-    `Projekt ${id}`,
-    `SELECT 'LV' AS art, id FROM leistungsverzeichnis WHERE projekt_id = ?1
-     UNION ALL SELECT 'Angebot', id FROM angebot WHERE projekt_id = ?1
-     UNION ALL SELECT 'Auftrags-LV', id FROM auftrags_lv WHERE projekt_id = ?1
-     UNION ALL SELECT 'Aufmaßblatt', id FROM aufmass WHERE projekt_id = ?1
-     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Kostenermittlung', id FROM kostenermittlung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bauwerksmodell', id FROM bauwerksmodell WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bauzeitenplan', id FROM bauzeitenplan WHERE projekt_id = ?1
-     UNION ALL SELECT 'Honorarberechnung', id FROM honorarberechnung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Mangel', id FROM mangel WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bautagebucheintrag', id FROM bautagebucheintrag WHERE projekt_id = ?1
-     ORDER BY 1, 2`,
-    id,
+  // Bezeichnung und Tabelle sind Konstanten aus `AGGREGATARTEN`, keine Eingaben.
+  const auswahl = abhaengige.map(
+    (a) => `SELECT '${a.bezeichnung}' AS art, id FROM ${a.tabelle} WHERE projekt_id = ?1`,
   );
+  if (auswahl.length > 0)
+    abhaengig(db, `Projekt ${id}`, `${auswahl.join('\n     UNION ALL ')}\n     ORDER BY 1, 2`, id);
   db.ausfuehren('DELETE FROM protokoll WHERE projekt_id = ?', [id]);
   db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ?', [id]);
   db.ausfuehren('DELETE FROM projekt WHERE id = ?', [id]);
