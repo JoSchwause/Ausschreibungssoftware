@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Zuschlag zurücknehmen (Ticket 138; Vertrag v1.7a, D-127.3, D-127.17, D-74): `ZuschlagZuruecknehmen` führt die Vergabe aus;
-// jeden anderen Befehl am Auftrags-LV reicht `auftragsLvBefehlAusfuehren` unverändert an den Kern weiter. Die App nimmt für
-// Befehle am Auftrags-LV diese Funktion. Rein und deterministisch (A2): Die Verweise zählt die App aus den Listen des
-// Speichers und gibt sie als dritten Parameter mit; die Umkehrung (Undo) ist die des Kerns (`auftragsLvChangeSetUmkehren`).
+// jeden anderen Befehl am Auftrags-LV reicht `auftragsLvBefehlAusfuehren` unverändert an den Kern weiter. Rein und
+// deterministisch (A2): Die Verweise zählt die App aus den Listen des Speichers und gibt sie mit; die Umkehrung (Undo) ist die
+// des Kerns (`auftragsLvChangeSetUmkehren`).
+//
+// Review D-82 (S9): Für das Zurücknehmen ruft die App die schmale Funktion `zuschlagZuruecknehmen`, deren Typ die Verweise
+// verlangt. Der Verteiler behält den optionalen Parameter des Vertragstyps und weist `ZuschlagZuruecknehmen` ohne Verweise zur
+// Laufzeit ab.
 
 import { auftragsLvBefehlAusfuehren as imKern } from '@tethys/kern';
 import type {
@@ -14,6 +18,7 @@ import type {
   Gliederungssumme,
   Positionssumme,
   Verweisanzahl,
+  ZuschlagZuruecknehmen,
 } from '@tethys/vertrag';
 import { verweissperre } from './verweise';
 
@@ -25,20 +30,9 @@ const nachId = <T>(liste: readonly T[], id: (x: T) => string): T[] =>
     return x < y ? -1 : x > y ? 1 : 0;
   });
 
-/**
- * `ZuschlagZuruecknehmen` (D-127.3, D-74): löscht das Auftrags-LV wie `LeistungsverzeichnisLoeschen` das LV. Gesperrt, solange
- * Nachträge, Aufmaßblätter, Rechnungen oder Mängel darauf verweisen (`verweise-vorhanden` mit Art und Anzahl, in dieser
- * Reihenfolge); Angebote zählen nicht, Bauzeitenplan und Kostenkontrolle sperren nicht und werden nicht angefasst.
- *
- * ChangeSet: `kopf.vorher` der ganze Kopf (alles außer den Knoten, damit die Umkehrung ihn exakt wieder anlegt),
- * `kopf.nachher: null`, alle Knoten unter `knoten.entfernt` (wie gespeichert, Eltern vor Kindern), keine neuen Summen,
- * `summen.vorher` mit `gesamt` und den Summen aller Knoten unter `entfernt`. Angebot, LV und Nachtragsangaben bleiben; einen
- * Zuschlagsvermerk gibt es nicht (der Zuschlag ist das Bestehen des Auftrags-LV, D-21).
- */
-function zuschlagZuruecknehmen(
-  z: AuftragsLvZustand,
-  verweise: readonly Verweisanzahl[] | undefined,
-): Ergebnis<AuftragsLvChangeSet, Befehlsfehler> {
+type Antwort = Ergebnis<AuftragsLvChangeSet, Befehlsfehler>;
+
+function zuruecknehmen(z: AuftragsLvZustand, verweise: readonly Verweisanzahl[] | undefined): Antwort {
   const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
   const sperre = verweissperre('ZuschlagZuruecknehmen', 'das Auftrags-LV', verweise, [
     'nachtrag',
@@ -87,8 +81,30 @@ function zuschlagZuruecknehmen(
 }
 
 /**
+ * Nimmt den Zuschlag zurück (D-127.3, D-74; Review D-82, S9): löscht das Auftrags-LV wie `LeistungsverzeichnisLoeschen` das LV.
+ * Die schmale Funktion für die App: Ihr Typ verlangt die Verweise auf das Auftrags-LV (Nachträge, Aufmaßblätter, Rechnungen,
+ * Mängel, gezählt aus den Listen des Speichers). Gesperrt, solange eine davon > 0 ist (`verweise-vorhanden` mit Art und Anzahl,
+ * in dieser Reihenfolge); Angebote zählen nicht, Bauzeitenplan und Kostenkontrolle sperren nicht und werden nicht angefasst.
+ *
+ * ChangeSet: `kopf.vorher` der ganze Kopf (alles außer den Knoten, damit die Umkehrung ihn exakt wieder anlegt),
+ * `kopf.nachher: null`, alle Knoten unter `knoten.entfernt` (wie gespeichert, Eltern vor Kindern), keine neuen Summen,
+ * `summen.vorher` mit `gesamt` und den Summen aller Knoten unter `entfernt`. Angebot, LV und Nachtragsangaben bleiben; einen
+ * Zuschlagsvermerk gibt es nicht (der Zuschlag ist das Bestehen des Auftrags-LV, D-21). Ergebnis wie
+ * `auftragsLvBefehlAusfuehren(zustand, befehl, verweise)`; der Befehl trägt keine Felder und steht in der Signatur wie bei
+ * jedem Ausführer (die App protokolliert ihn).
+ */
+export function zuschlagZuruecknehmen(
+  zustand: AuftragsLvZustand,
+  befehl: ZuschlagZuruecknehmen,
+  verweise: readonly Verweisanzahl[],
+): Antwort {
+  return zuruecknehmen(zustand, verweise);
+}
+
+/**
  * Führt einen Befehl am Auftrags-LV aus (Vertragstyp `AuftragsLvBefehlAusfuehren`). `ZuschlagZuruecknehmen` braucht ein
- * Auftrags-LV (`befehl-nicht-zustaendig` sonst) und die Verweise (`ungueltige-eingabe`, `feld: 'verweise'`, wenn sie fehlen).
+ * Auftrags-LV (`befehl-nicht-zustaendig` sonst) und die Verweise (`ungueltige-eingabe`, `feld: 'verweise'`, wenn sie fehlen;
+ * die App nimmt dafür `zuschlagZuruecknehmen`).
  */
 export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, befehl, verweise) => {
   if (befehl.art !== 'ZuschlagZuruecknehmen') return imKern(zustand, befehl, verweise);
@@ -100,5 +116,5 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
         meldung: `${befehl.art}: kein Auftrags-LV als Zustand übergeben.`,
       },
     };
-  return zuschlagZuruecknehmen(zustand, verweise);
+  return zuruecknehmen(zustand, verweise);
 };

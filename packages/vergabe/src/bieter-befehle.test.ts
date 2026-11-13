@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Bieterbefehle (Ticket 138; Vertrag v1.7a, D-127.4, D-127.17): umbenennen, Angaben setzen, löschen nur ohne Angebot.
-// Alle übrigen Projektbefehle reicht `projektBefehlAusfuehren` an den Kern weiter.
+// Bieterbefehle (Ticket 138; Vertrag v1.7a, D-127.4, D-127.17): umbenennen, Angaben setzen, löschen nur ohne Angebot (schmale
+// Funktion `bieterLoeschen` mit Pflicht-Verweisen, Review D-82 S9). Alle übrigen Projektbefehle reicht `projektBefehlAusfuehren`
+// an den Kern weiter.
 
 import { projektChangeSetAnwenden, projektChangeSetUmkehren } from '@tethys/kern';
 import type {
   BieterId,
+  BieterLoeschen,
   Befehlsfehler,
   Bieterangaben,
   Projekt,
@@ -14,7 +16,7 @@ import type {
   Verweisanzahl,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { projektBefehlAusfuehren } from './index';
+import { bieterLoeschen, projektBefehlAusfuehren } from './index';
 import { erwarteOk, projekt } from './testhilfen';
 
 const b = (id: string): BieterId => id as BieterId;
@@ -189,8 +191,17 @@ describe('BieterangabenSetzen', () => {
   });
 });
 
-describe('BieterLoeschen', () => {
-  const loeschen = (bieterId: string): ProjektBefehl => ({ art: 'BieterLoeschen', bieterId: b(bieterId) });
+describe('BieterLoeschen (schmale Funktion bieterLoeschen, Review D-82 S9)', () => {
+  const loeschen = (bieterId: string): BieterLoeschen => ({ art: 'BieterLoeschen', bieterId: b(bieterId) });
+  const fehlerBeimLoeschen = (
+    zustand: Projekt,
+    bieterId: string,
+    verweise: readonly Verweisanzahl[],
+  ): Befehlsfehler => {
+    const e = bieterLoeschen(zustand, loeschen(bieterId), verweise);
+    if (e.ok) throw new Error('Fehlerwert erwartet');
+    return e.fehler;
+  };
 
   it('ohne Angebot: entfernt den Bieter; Undo stellt ihn an seiner Stelle wieder her', () => {
     const mit: Projekt = {
@@ -201,7 +212,7 @@ describe('BieterLoeschen', () => {
           : x,
       ),
     };
-    const cs = erwarteOk(projektBefehlAusfuehren(mit, loeschen('b-b'), [{ art: 'angebot', anzahl: 0 }]));
+    const cs = erwarteOk(bieterLoeschen(mit, loeschen('b-b'), [{ art: 'angebot', anzahl: 0 }]));
     expect(cs.projekt.vorher).toBe(mit);
     const neu = erwarteUmkehrbar(mit, cs);
     expect(neu.bieter.map((x) => x.id)).toEqual(['b-a', 'b-c']);
@@ -209,22 +220,18 @@ describe('BieterLoeschen', () => {
   });
 
   it('fehlende Art zählt 0; andere Arten liest der Befehl nicht', () => {
-    expect(projektBefehlAusfuehren(proj, loeschen('b-a'), []).ok).toBe(true);
-    expect(projektBefehlAusfuehren(proj, loeschen('b-a'), [{ art: 'nachtrag', anzahl: 3 }]).ok).toBe(true);
+    expect(bieterLoeschen(proj, loeschen('b-a'), []).ok).toBe(true);
+    expect(bieterLoeschen(proj, loeschen('b-a'), [{ art: 'nachtrag', anzahl: 3 }]).ok).toBe(true);
   });
 
   it('mit Angeboten → verweise-vorhanden mit Art und Anzahl (Verweissperre)', () => {
-    const f = fehler(proj, loeschen('b-a'), [
+    const f = fehlerBeimLoeschen(proj, 'b-a', [
       { art: 'rechnung', anzahl: 1 },
       { art: 'angebot', anzahl: 2 },
     ]);
     expect(f.code).toBe('verweise-vorhanden');
     expect(f.verweise).toEqual([{ art: 'angebot', anzahl: 2 }]);
     expect(f.feld).toBeUndefined();
-  });
-
-  it('ohne verweise → ungueltige-eingabe, feld verweise (ohne Bestand nicht prüfbar)', () => {
-    expect(fehler(proj, loeschen('b-a'))).toMatchObject({ code: 'ungueltige-eingabe', feld: 'verweise' });
   });
 
   it('verweise in falscher Form → ungueltige-eingabe, feld verweise', () => {
@@ -240,14 +247,32 @@ describe('BieterLoeschen', () => {
       'keine Liste',
     ];
     for (const v of falsch)
-      expect(fehler(proj, loeschen('b-a'), v as Verweisanzahl[])).toMatchObject({
+      expect(fehlerBeimLoeschen(proj, 'b-a', v as Verweisanzahl[])).toMatchObject({
         code: 'ungueltige-eingabe',
         feld: 'verweise',
       });
   });
 
-  it('unbekannter Bieter → ungueltige-eingabe, feld bieterId; ohne Projekt → nicht zuständig', () => {
-    expect(fehler(proj, loeschen('b-x'), [])).toMatchObject({ code: 'ungueltige-eingabe', feld: 'bieterId' });
+  it('unbekannter Bieter → ungueltige-eingabe, feld bieterId', () => {
+    expect(fehlerBeimLoeschen(proj, 'b-x', [])).toMatchObject({
+      code: 'ungueltige-eingabe',
+      feld: 'bieterId',
+    });
+  });
+
+  it('die Verweise sind im Typ Pflicht; fehlen sie zur Laufzeit (auch im Verteiler) → ungueltige-eingabe, feld verweise', () => {
+    // @ts-expect-error Die schmale Funktion verlangt die Verweise (D-82, S9).
+    const ohne = bieterLoeschen(proj, loeschen('b-a'));
+    expect(ohne).toMatchObject({ ok: false, fehler: { code: 'ungueltige-eingabe', feld: 'verweise' } });
+    expect(fehler(proj, loeschen('b-a'))).toMatchObject({ code: 'ungueltige-eingabe', feld: 'verweise' });
+  });
+
+  it('der Verteiler liefert mit Verweisen dasselbe wie bieterLoeschen; ohne Projekt → nicht zuständig', () => {
+    const faelle: Verweisanzahl[][] = [[], [{ art: 'angebot', anzahl: 1 }]];
+    for (const v of faelle)
+      expect(projektBefehlAusfuehren(proj, loeschen('b-c'), v)).toEqual(
+        bieterLoeschen(proj, loeschen('b-c'), v),
+      );
     expect(fehler(null, loeschen('b-a'), [])).toMatchObject({ code: 'befehl-nicht-zustaendig' });
   });
 });

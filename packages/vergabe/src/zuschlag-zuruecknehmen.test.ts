@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Zuschlag zurücknehmen (Ticket 138; Vertrag v1.7a, D-127.3, D-74): löscht das Auftrags-LV wie `LeistungsverzeichnisLoeschen`,
-// gesperrt durch Nachträge, Aufmaßblätter, Rechnungen und Mängel; ein Rückgängig-Schritt stellt alles wieder her. Alle übrigen
-// Befehle am Auftrags-LV reicht `auftragsLvBefehlAusfuehren` an den Kern weiter.
+// gesperrt durch Nachträge, Aufmaßblätter, Rechnungen und Mängel; ein Rückgängig-Schritt stellt alles wieder her. Die App ruft
+// dafür die schmale Funktion `zuschlagZuruecknehmen` mit Pflicht-Verweisen (Review D-82, S9). Alle übrigen Befehle am Auftrags-LV
+// reicht `auftragsLvBefehlAusfuehren` an den Kern weiter.
 
 import {
   auftragsLvBefehlAusfuehren as imKern,
@@ -16,9 +17,10 @@ import type {
   Kostengruppennummer,
   PositionId,
   Verweisanzahl,
+  ZuschlagZuruecknehmen,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { auftragsLvBefehlAusfuehren, zuschlagErteilen } from './index';
+import { auftragsLvBefehlAusfuehren, zuschlagErteilen, zuschlagZuruecknehmen } from './index';
 import {
   angebot,
   ep,
@@ -51,7 +53,7 @@ const a = angebot(
   [ep('p1', '10.000'), ep('p2', '8.000'), ep('p3', '4.500'), satz('z1', '5.00')],
   prozent('2.00'),
 );
-const zuruecknehmen: AuftragsLvBefehl = { art: 'ZuschlagZuruecknehmen' };
+const zuruecknehmen: ZuschlagZuruecknehmen = { art: 'ZuschlagZuruecknehmen' };
 
 /** Ein Auftrags-LV aus dem Zuschlag, angelegt vom Kern. */
 function auftrag(): AuftragsLvZustand {
@@ -73,13 +75,19 @@ function fehler(
   return e.fehler;
 }
 
+function gesperrt(zustand: AuftragsLvZustand, verweise: readonly Verweisanzahl[]): Befehlsfehler {
+  const e = zuschlagZuruecknehmen(zustand, zuruecknehmen, verweise);
+  if (e.ok) throw new Error('Fehlerwert erwartet');
+  return e.fehler;
+}
+
 const sortiert = <T>(xs: readonly T[], id: (x: T) => string): T[] =>
   [...xs].sort((x, y) => (id(x) < id(y) ? -1 : 1));
 
-describe('ZuschlagZuruecknehmen', () => {
+describe('ZuschlagZuruecknehmen (schmale Funktion zuschlagZuruecknehmen, Review D-82 S9)', () => {
   it('ohne Verweise: Kopf vorher, nachher null; alle Knoten entfernt; alle Summen in summen.vorher', () => {
     const s = auftrag();
-    const cs = erwarteOk(auftragsLvBefehlAusfuehren(s, zuruecknehmen, []));
+    const cs = erwarteOk(zuschlagZuruecknehmen(s, zuruecknehmen, []));
     const { knoten, ...kopf } = s.auftragsLeistungsverzeichnis;
     expect(cs.art).toBe('auftrags-leistungsverzeichnis');
     expect(cs.auftragsLeistungsverzeichnisId).toBe('auftrag-1');
@@ -105,7 +113,7 @@ describe('ZuschlagZuruecknehmen', () => {
 
   it('anwenden löscht das Auftrags-LV; ein Rückgängig-Schritt stellt es samt Summen exakt wieder her', () => {
     const s = auftrag();
-    const cs = erwarteOk(auftragsLvBefehlAusfuehren(s, zuruecknehmen, []));
+    const cs = erwarteOk(zuschlagZuruecknehmen(s, zuruecknehmen, []));
     expect(auftragsLvChangeSetAnwenden(s, cs)).toBeNull();
     const umkehrung = auftragsLvChangeSetUmkehren(cs);
     expect(umkehrung.kopf?.vorher).toBeNull();
@@ -119,11 +127,11 @@ describe('ZuschlagZuruecknehmen', () => {
       { art: 'angebot', anzahl: 3 },
       { art: 'mangel', anzahl: 0 },
     ];
-    expect(auftragsLvBefehlAusfuehren(s, zuruecknehmen, verweise).ok).toBe(true);
+    expect(zuschlagZuruecknehmen(s, zuruecknehmen, verweise).ok).toBe(true);
   });
 
   it('Nachträge, Aufmaßblätter, Rechnungen, Mängel sperren: verweise-vorhanden mit Art und Anzahl in fester Reihenfolge', () => {
-    const f = fehler(auftrag(), zuruecknehmen, [
+    const f = gesperrt(auftrag(), [
       { art: 'mangel', anzahl: 4 },
       { art: 'rechnung', anzahl: 1 },
       { art: 'angebot', anzahl: 2 },
@@ -136,13 +144,29 @@ describe('ZuschlagZuruecknehmen', () => {
       { art: 'rechnung', anzahl: 1 },
       { art: 'mangel', anzahl: 4 },
     ]);
-    expect(fehler(auftrag(), zuruecknehmen, [{ art: 'nachtrag', anzahl: 1 }]).verweise).toEqual([
+    expect(gesperrt(auftrag(), [{ art: 'nachtrag', anzahl: 1 }]).verweise).toEqual([
       { art: 'nachtrag', anzahl: 1 },
     ]);
   });
 
-  it('ohne verweise → ungueltige-eingabe, feld verweise; ohne Auftrags-LV → nicht zuständig', () => {
+  it('die Verweise sind im Typ Pflicht; fehlen sie zur Laufzeit (auch im Verteiler) → ungueltige-eingabe, feld verweise', () => {
+    // @ts-expect-error Die schmale Funktion verlangt die Verweise (D-82, S9).
+    const ohne = zuschlagZuruecknehmen(auftrag(), zuruecknehmen);
+    expect(ohne).toMatchObject({ ok: false, fehler: { code: 'ungueltige-eingabe', feld: 'verweise' } });
     expect(fehler(auftrag(), zuruecknehmen)).toMatchObject({ code: 'ungueltige-eingabe', feld: 'verweise' });
+    expect(gesperrt(auftrag(), [{ art: 'rechnung', anzahl: -2 }])).toMatchObject({
+      code: 'ungueltige-eingabe',
+      feld: 'verweise',
+    });
+  });
+
+  it('der Verteiler liefert mit Verweisen dasselbe wie zuschlagZuruecknehmen; ohne Auftrags-LV → nicht zuständig', () => {
+    const s = auftrag();
+    const faelle: Verweisanzahl[][] = [[], [{ art: 'aufmass', anzahl: 1 }]];
+    for (const v of faelle)
+      expect(auftragsLvBefehlAusfuehren(s, zuruecknehmen, v)).toEqual(
+        zuschlagZuruecknehmen(s, zuruecknehmen, v),
+      );
     expect(fehler(null, zuruecknehmen, [])).toMatchObject({ code: 'befehl-nicht-zustaendig' });
   });
 });
