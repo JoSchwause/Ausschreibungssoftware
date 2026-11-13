@@ -5,6 +5,7 @@
 
 import type {
   Einstellungen,
+  EinstellungenProtokolleintrag,
   Bautagebucheintrag,
   Bauwerksmodell,
   BauwerksmodellUebersicht,
@@ -661,6 +662,19 @@ export function modelldateiGroesse(db: Datenbank, hash: string): number | null {
 export function leseEinstellungen(db: Datenbank): Einstellungen {
   const z = db.zeilen('SELECT inhalt FROM einstellungen WHERE id = 1')[0];
   return z === undefined ? LEERE_EINSTELLUNGEN : (jsonSpalte(z, 'inhalt') as Einstellungen);
+}
+
+/** Das Einstellungsprotokoll in der Reihenfolge des Schreibens, ältester Eintrag zuerst (D-82 M1, D-127.8). */
+export function leseEinstellungsprotokoll(db: Datenbank): EinstellungenProtokolleintrag[] {
+  return db.zeilen('SELECT id, wer, wann, befehl FROM einstellungen_protokoll ORDER BY seq').map(
+    (z) =>
+      ({
+        id: text(z, 'id'),
+        wer: text(z, 'wer'),
+        wann: text(z, 'wann'),
+        befehl: jsonSpalte(z, 'befehl'),
+      }) as EinstellungenProtokolleintrag,
+  );
 }
 
 // --- Protokoll ---------------------------------------------------------------------------------------------------

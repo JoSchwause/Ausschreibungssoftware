@@ -24,11 +24,12 @@ import {
   type PositionId,
   type Projekt,
   type Protokolleintrag,
+  type ProtokollId,
   type Zeitstempel,
 } from '@tethys/vertrag';
 import type { SpeicherKern } from '../kern';
 import { LEERES_SUMMENVORHER } from '../summenvorher';
-import { eintrag, type Schritt } from './fixtures';
+import { eintrag, NUTZER, type Schritt } from './fixtures';
 import { V2_LV, V2_PROJEKT } from './inhalt-v2';
 import { V4_STAND } from './inhalt-v4';
 import { schritteV6 } from './inhalt-v6';
@@ -43,12 +44,6 @@ export const V7_BIETER = 'bieter-3' as BieterId;
 export const V7_STAND = id(701) as LvStandId;
 /** Zeitpunkte der neuen Schritte, nach allen der Version 6 (die tragen `ZEIT`). */
 const um = (n: number): Zeitstempel => `2026-11-13T09:${String(n).padStart(2, '0')}:00.000Z` as Zeitstempel;
-
-/**
- * Der Name des Befehls, der die Preisspiegel-Einstellungen setzt. Der Nachtrag zu `vertrag` v1.7a benennt ihn um (D-82 S5);
- * die Datei entsteht danach neu, bevor Schema 7 veröffentlicht ist.
- */
-const PREISSPIEGEL_BEFEHL: Befehl = { art: 'PreisspiegeleinstellungenSetzen', einstellungen: PREISSPIEGEL };
 
 export async function schritteV7(kern: SpeicherKern): Promise<Schritt[]> {
   const schritte = await schritteV6(kern);
@@ -114,10 +109,14 @@ export async function schritteV7(kern: SpeicherKern): Promise<Schritt[]> {
   );
 
   // Preisspiegel-Einstellungen am LV (nur Kopf, keine Summen) und Kalkulation an einer Position (E9, E15).
-  await schreibe(amLv, PREISSPIEGEL_BEFEHL, {
-    ...kopfAendern(lv(), { preisspiegel: PREISSPIEGEL }, '0.00'),
-    summen: keineSummen,
-  });
+  await schreibe(
+    amLv,
+    { art: 'PreisspiegelEinstellungenSetzen', einstellungen: PREISSPIEGEL },
+    {
+      ...kopfAendern(lv(), { preisspiegel: PREISSPIEGEL }, '0.00'),
+      summen: keineSummen,
+    },
+  );
   const position = lv().leistungsverzeichnis.knoten.find((k): k is Position => k.id === pid(4));
   if (position === undefined) throw new Error('Position fehlt');
   await schreibe(
@@ -165,12 +164,24 @@ export async function schritteV7(kern: SpeicherKern): Promise<Schritt[]> {
   const geloescht = await schreibe(amLv, { art: 'LvStandLoeschen', lvStandId: V7_STAND }, loeschen);
   await schreibe(amLv, { art: 'Rueckgaengig', protokollId: geloescht.eintrag.id }, umkehren(loeschen));
 
-  // Die Einstellungen des Geräts (kein Befehl eines Projekts, nicht im Protokoll des Projekts).
+  // Die Einstellungen des Geräts: kein Befehl eines Projekts, sondern im Einstellungsprotokoll (D-82 M1); die Datei trägt nur
+  // ihren Stand.
   wert(
-    await kern.einstellungenAnwenden({
-      art: 'einstellungen',
-      einstellungen: { vorher: LEERE_EINSTELLUNGEN, nachher: EINSTELLUNGEN },
-    }),
+    await kern.einstellungenAnwenden(
+      {
+        id: 'einstellungen-000001' as ProtokollId,
+        wer: NUTZER,
+        wann: um((minute += 1)),
+        befehl: {
+          art: 'KostengruppenbezeichnungenSetzen',
+          bezeichnungen: EINSTELLUNGEN.kostengruppenbezeichnungen,
+        },
+      },
+      {
+        art: 'einstellungen',
+        einstellungen: { vorher: LEERE_EINSTELLUNGEN, nachher: EINSTELLUNGEN },
+      },
+    ),
   );
   return schritte;
 }

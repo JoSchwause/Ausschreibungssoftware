@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
-import { LEERE_EINSTELLUNGEN, type Position, type Projektdatei } from '@tethys/vertrag';
+import { LEERE_EINSTELLUNGEN, type Position, type Projektdatei, type ProtokollId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import { kanonischesJson } from './kanonisch';
@@ -15,11 +15,12 @@ import { MIGRATIONEN, SCHEMA_VERSION } from './migrationen';
 import { V2_LV, V2_PROJEKT } from './testhilfe/inhalt-v2';
 import { V4_STAND } from './testhilfe/inhalt-v4';
 import { schritteV7, V7_BIETER, V7_STAND } from './testhilfe/inhalt-v7';
+import { NUTZER, ZEIT } from './testhilfe/fixtures';
 import { imProtokoll, neuerKern, wert } from './testhilfe/node';
 import { BIETERANGABEN, EINSTELLUNGEN, KALKULATION, PREISSPIEGEL, PROJEKTANGABEN } from './testhilfe/v17';
 
 const inhalt = readFileSync(new URL('../fixtures/projektdatei-v7.json', import.meta.url), 'utf8');
-const SHA256 = 'a00309b95fdbada8fb70558a99172fb7cc756e85f3d55e74bbaf0e5c410ebcbe';
+const SHA256 = 'c2e767f61df825c8aadd25d7293dea90ae88f465d30e6890c554cda2410da623';
 const sha = (b: Uint8Array | string): string => createHash('sha256').update(b).digest('hex');
 const lese = (n: number): string =>
   readFileSync(new URL(`../fixtures/projektdatei-v${String(n)}.json`, import.meta.url), 'utf8');
@@ -69,24 +70,41 @@ describe('eingefrorene Projektdatei der Schemaversion 7', () => {
     expect(wert(kern.protokoll(V2_PROJEKT))).toEqual(schritte.map((s) => imProtokoll(s.eintrag)));
   });
 
-  it('Import → Export ist byte-gleich (auch der komprimierte Text)', async () => {
+  it('Einlesen mit Übernahme der Einstellungen → Export ist byte-gleich (auch der komprimierte Text)', async () => {
+    const kopf = { id: 'uebernahme-v7' as ProtokollId, wer: NUTZER, wann: ZEIT };
     const { kern } = await neuerKern();
-    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    expect(wert(await kern.projektdateiEinlesen(inhalt, { einstellungsuebernahme: kopf })).projektId).toBe(
+      V2_PROJEKT,
+    );
     const neu = wert(kern.projektdateiExportieren(V2_PROJEKT));
     if (SCHEMA_VERSION === 7) expect(neu === inhalt).toBe(true);
     const zweite = await neuerKern();
-    wert(await zweite.kern.projektdateiImportieren(neu));
+    wert(await zweite.kern.projektdateiEinlesen(neu, { einstellungsuebernahme: kopf }));
     expect(wert(zweite.kern.projektdateiExportieren(V2_PROJEKT)) === neu).toBe(true);
+  });
+
+  it('projektdateiImportieren übernimmt keine Einstellungen: der Export ist die Datei ohne den Block (er gehört zum Gerät)', async () => {
+    const { kern } = await neuerKern();
+    expect(wert(await kern.projektdateiImportieren(inhalt))).toBe(V2_PROJEKT);
+    const ohneBlock = JSON.parse(inhalt) as Record<string, unknown>;
+    Reflect.deleteProperty(ohneBlock, 'einstellungen');
+    if (SCHEMA_VERSION === 7)
+      expect(wert(kern.projektdateiExportieren(V2_PROJEKT)) === kanonischesJson(ohneBlock)).toBe(true);
+    expect(wert(kern.einstellungenLaden())).toEqual(LEERE_EINSTELLUNGEN);
   });
 
   it('Rundlauf: alles aus v1.7a kommt nach dem Einlesen über die Repositories zurück', async () => {
     const { kern } = await neuerKern();
     const s = speicherUeberTransport(direktTransport(kern), null);
     if (s.projektdateiEinlesen === undefined || s.einstellungen === undefined) throw new Error('v1.7a fehlt');
-    const bericht = wert(await s.projektdateiEinlesen(inhalt));
+    const kopf = { id: 'uebernahme-v7' as ProtokollId, wer: NUTZER, wann: ZEIT };
+    const bericht = wert(await s.projektdateiEinlesen(inhalt, { einstellungsuebernahme: kopf }));
     expect(bericht.einstellungen?.belassen).toEqual([]);
     expect(bericht.einstellungen?.uebernommen).toHaveLength(5);
     expect(wert(await s.einstellungen.laden())).toEqual(EINSTELLUNGEN);
+    expect(wert(await s.einstellungen.protokoll()).map((e) => e.befehl.art)).toEqual([
+      'EinstellungenUebernehmen',
+    ]);
     const projekt = wert(await s.projekte.laden(V2_PROJEKT));
     expect(projekt.angaben).toEqual(PROJEKTANGABEN);
     expect(projekt.bieter[0]?.angaben).toEqual(BIETERANGABEN);

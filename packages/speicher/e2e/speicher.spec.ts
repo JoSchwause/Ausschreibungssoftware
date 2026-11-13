@@ -605,8 +605,10 @@ test.describe('Vertrag v1.6 im OPFS (Ticket 106)', () => {
     await start(page);
     await ps(page, 'oeffnen', DB);
     expect(await ps(page, 'importieren', DB, v6)).toEqual({ ok: true });
-    // Die Bytes liegen als BLOB im OPFS, so wie die Datei sie bringt: der Export ist byte-gleich.
-    expect((await ps(page, 'exportieren', DB, projekt)).text === v6).toBe(true);
+    // Die Bytes liegen als BLOB im OPFS, so wie die Datei sie bringt: der Export ist byte-gleich (in der aktuellen Version, seit
+    // Version 7 bis auf die Versionsnummer).
+    const alsAktuell = v6.replace('"schemaVersion": 6', `"schemaVersion": ${String(SCHEMA_VERSION)}`);
+    expect((await ps(page, 'exportieren', DB, projekt)).text === alsAktuell).toBe(true);
     expect(await ps(page, 'modelldateiAblegen', DB, extraText)).toEqual({ ok: true, hash: extra });
     const { struktur, bauteile, ...kopf } = m2;
     const loeschen = await ps(

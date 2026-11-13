@@ -11,6 +11,7 @@ import type {
   BauzeitenplanId,
   ChangeSet,
   EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   HonorarberechnungId,
   MangelId,
   KostenermittlungId,
@@ -162,7 +163,9 @@ export function speicherUeberTransport(
     // v1.7a (Ticket 139): die Einstellungen des Geräts
     einstellungen: {
       laden: () => aufruf('einstellungenLaden'),
-      anwenden: (changeSet: EinstellungenChangeSet) => aufruf('einstellungenAnwenden', changeSet),
+      anwenden: (eintrag: EinstellungenProtokolleintrag, changeSet: EinstellungenChangeSet) =>
+        aufruf('einstellungenAnwenden', eintrag, changeSet),
+      protokoll: () => aufruf('einstellungenProtokoll'),
     },
     anwenden: (eintrag: Protokolleintrag, changeSet: ChangeSet) =>
       senden('anwenden', [eintrag, changeSet]) as Promise<Ergebnis<void, Speicherfehler>>,
@@ -185,11 +188,19 @@ export function speicherUeberTransport(
       optionen?: ProjektdateiEinleseoptionen,
     ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> => {
       const kopie = optionen?.alsKopie;
-      if (kopie === undefined) return aufruf('projektdateiEinlesen', inhalt);
+      // Der Kopf der Übernahme der Einstellungen ist Daten und geht so mit (D-82 M1).
+      const uebernahme =
+        optionen?.einstellungsuebernahme === undefined
+          ? {}
+          : { einstellungsuebernahme: optionen.einstellungsuebernahme };
+      if (kopie === undefined) return aufruf('projektdateiEinlesen', inhalt, uebernahme);
       const bedarf = await aufruf<Kennungsbedarf>('projektdateiKennungsbedarf', inhalt);
       if (!bedarf.ok) return bedarf;
       const kennungen = kennungenZiehen(bedarf.wert, kopie.ids);
-      return aufruf('projektdateiEinlesen', inhalt, { alsKopie: { kennungen, name: kopie.name } });
+      return aufruf('projektdateiEinlesen', inhalt, {
+        ...uebernahme,
+        alsKopie: { kennungen, name: kopie.name },
+      });
     },
     migrationsbefunde: () => aufruf('migrationsbefunde'),
     schliessen: async () => {

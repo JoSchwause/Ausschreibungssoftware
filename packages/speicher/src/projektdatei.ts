@@ -6,6 +6,8 @@ import type {
   AuftragsLeistungsverzeichnisId,
   Ergebnis,
   LeistungsverzeichnisId,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Projektdatei,
   ProjektdateiEinleseergebnis,
   ProjektId,
@@ -14,7 +16,7 @@ import type {
 import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
 import { schreibeAggregateDerDatei } from './aggregatarten';
 import { dekodiereProjektdatei } from './dekoder';
-import { einstellungenUebernehmen } from './einstellungen';
+import { einstellungenUebernehmen, einstellungsbericht } from './einstellungen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { ausBase64, base64, inflateRawHoechstens, sha256Hex } from './komprimierung';
@@ -32,7 +34,12 @@ import {
   leseProtokoll,
 } from './lesen';
 import type { Migration } from './migrationen';
-import { schreibeEinstellungen, schreibeModelldatei, schreibeProtokolleintrag } from './schreiben';
+import {
+  schreibeEinstellungsprotokolleintrag,
+  schreibeModelldatei,
+  schreibeProtokolleintrag,
+  wendeEinstellungenAn,
+} from './schreiben';
 import { pruefeNachtragsbezuege } from './bezuege';
 import type { Datenbank } from './sql';
 import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
@@ -216,18 +223,31 @@ export function leseProjektdatei(
 }
 
 /**
- * Übernimmt den Block `einstellungen` einer geprüften Projektdatei in die gespeicherten Einstellungen, nur wo je Schlüssel nichts
- * gesetzt ist (D-73, D-127.9; `einstellungenUebernehmen`), in der Transaktion des Aufrufers. `null`: Die Datei trägt keinen
- * Block. Geschrieben wird nur, wenn etwas übernommen wurde.
+ * Übernimmt den Block `einstellungen` einer geprüften Projektdatei als protokollierten Befehl `EinstellungenUebernehmen`
+ * (D-73, D-127.9, D-82 M1), in der Transaktion des Aufrufers: nur, was je Schlüssel lokal fehlt; nie überschrieben. `kopf` ist
+ * der Kopf des Eintrags im Einstellungsprotokoll (`ProjektdateiEinleseoptionen.einstellungsuebernahme`). `null`: Die Datei
+ * trägt keinen Block oder der Aufruf keinen Kopf; dann bleiben die Einstellungen unberührt. Geschrieben werden Einstellungen und
+ * Eintrag nur, wenn etwas übernommen wird; der Bericht folgt aus dem ChangeSet.
  */
 export function uebernimmEinstellungenDerDatei(
   db: Datenbank,
   d: Projektdatei,
+  kopf: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'> | undefined,
 ): ProjektdateiEinleseergebnis['einstellungen'] {
-  if (d.einstellungen === undefined) return null;
-  const u = einstellungenUebernehmen(leseEinstellungen(db), d.einstellungen);
-  if (u.uebernommen.length > 0) schreibeEinstellungen(db, u.ergebnis);
-  return { uebernommen: u.uebernommen, belassen: u.belassen };
+  if (d.einstellungen === undefined || kopf === undefined) return null;
+  const befehl = { art: 'EinstellungenUebernehmen', einstellungen: d.einstellungen } as const;
+  const vorher = leseEinstellungen(db);
+  // Die Regel des Ausführers im Kern (Ticket 137); bis zu dessen Merge nach derselben Regel hier (`einstellungenUebernehmen`).
+  const cs: EinstellungenChangeSet = {
+    art: 'einstellungen',
+    einstellungen: { vorher, nachher: einstellungenUebernehmen(vorher, befehl.einstellungen) },
+  };
+  const bericht = einstellungsbericht(d.einstellungen, cs);
+  if (bericht.uebernommen.length > 0) {
+    wendeEinstellungenAn(db, cs);
+    schreibeEinstellungsprotokolleintrag(db, { ...kopf, befehl });
+  }
+  return bericht;
 }
 
 /**

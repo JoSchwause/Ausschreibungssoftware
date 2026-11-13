@@ -46,7 +46,7 @@ const NEUE_BEFEHLE: readonly unknown[] = [
   'LvStandUmbenennen',
   'LvStandLoeschen',
   'KalkulationSetzen',
-  'PreisspiegeleinstellungenSetzen',
+  'PreisspiegelEinstellungenSetzen',
   'ZuschlagZuruecknehmen',
 ];
 

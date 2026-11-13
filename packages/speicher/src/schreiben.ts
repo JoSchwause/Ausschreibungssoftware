@@ -21,6 +21,7 @@
 import type {
   Einstellungen,
   EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Aenderung,
   Aenderungen,
   Angebotsposition,
@@ -1522,8 +1523,18 @@ export function wendeEinstellungenAn(db: Datenbank, cs: EinstellungenChangeSet):
   schreibeEinstellungen(db, nachher);
 }
 
+/** Schreibt einen Eintrag des Einstellungsprotokolls (Schema 7, D-82 M1); in der Transaktion seines ChangeSets. */
+export function schreibeEinstellungsprotokolleintrag(db: Datenbank, e: EinstellungenProtokolleintrag): void {
+  db.ausfuehren('INSERT INTO einstellungen_protokoll (id, wer, wann, befehl) VALUES (?, ?, ?, ?)', [
+    e.id,
+    e.wer,
+    e.wann,
+    kanonischKompakt(e.befehl),
+  ]);
+}
+
 /** Legt die Einstellungen ab (eine Zeile, der ganze Wert als kanonisches JSON; Schema 7). */
-export function schreibeEinstellungen(db: Datenbank, e: Einstellungen): void {
+function schreibeEinstellungen(db: Datenbank, e: Einstellungen): void {
   db.ausfuehren(
     `INSERT INTO einstellungen (id, inhalt) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET inhalt = excluded.inhalt`,
     [kanonischKompakt(e)],

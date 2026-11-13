@@ -6975,7 +6975,7 @@
         "id": "019b7700-0000-7000-8000-000000000001"
       },
       "befehl": {
-        "art": "PreisspiegeleinstellungenSetzen",
+        "art": "PreisspiegelEinstellungenSetzen",
         "einstellungen": {
           "abcBezug": "schaetzpreis",
           "abcSchwelleA": "70.00",

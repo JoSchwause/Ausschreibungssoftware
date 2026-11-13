@@ -180,6 +180,7 @@ describe('Client über Worker-Host', () => {
         // v1.7a (Ticket 139)
         'einstellungenLaden',
         'einstellungenAnwenden',
+        'einstellungenProtokoll',
         'projektdateiEinlesen',
         'projektdateiKennungsbedarf',
       ].sort(),

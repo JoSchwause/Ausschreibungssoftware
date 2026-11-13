@@ -30,6 +30,7 @@ import type {
   ChangeSet,
   Einstellungen,
   EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   KostenermittlungId,
   KostenermittlungUebersicht,
   KostenermittlungZustand,
@@ -62,6 +63,7 @@ import {
   leseAuftragsLv,
   leseBautagebucheintrag,
   leseEinstellungen,
+  leseEinstellungsprotokoll,
   leseBauwerksmodell,
   leseBauzeitenplan,
   leseHonorarberechnung,
@@ -104,6 +106,7 @@ import {
   gibUngenutzteModelldateienFrei,
   schreibeModelldatei,
   schreibeProtokolleintrag,
+  schreibeEinstellungsprotokolleintrag,
   wendeEinstellungenAn,
   type Schreibanlass,
 } from './schreiben';
@@ -116,6 +119,24 @@ import type { Migrationsbefund } from './summenmigration';
  */
 export interface Einleseoptionen {
   readonly alsKopie?: { readonly kennungen: Kennungsvorrat; readonly name: string };
+  /** Wie im Vertrag (D-82 M1): Kopf des Eintrags, unter dem die Übernahme der Einstellungen ins Einstellungsprotokoll geht. */
+  readonly einstellungsuebernahme?: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'>;
+}
+
+/**
+ * `Rueckgaengig` und `Wiederholen` im Einstellungsprotokoll (D-82 M1, wie `pruefeHistorienbezug` beim Projekt): `protokollId`
+ * muss auf einen ursprünglichen Befehl in diesem Protokoll zeigen, nicht auf einen anderen Historienbefehl; sonst `konflikt`.
+ */
+function pruefeEinstellungshistorie(db: Datenbank, e: EinstellungenProtokolleintrag): void {
+  const b = e.befehl;
+  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
+  const z = db.zeilen('SELECT befehl FROM einstellungen_protokoll WHERE id = ?', [b.protokollId])[0];
+  if (z === undefined || istHistorienbefehl(String(z['befehl'])))
+    abbruch(
+      'konflikt',
+      `Konflikt: ${b.art} verweist auf ${b.protokollId}, keinen ursprünglichen Befehl im Einstellungsprotokoll; ` +
+        'es wurde nichts geschrieben.',
+    );
 }
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
@@ -606,19 +627,30 @@ export class SpeicherKern {
   }
 
   /**
-   * `EinstellungenRepository.anwenden`: das ChangeSet in einer Transaktion, `konflikt` bei abweichendem Vorherstand. Läuft in
-   * der Reihe von `anwenden` (ein Schreiber).
+   * `EinstellungenRepository.anwenden` (D-82 M1): Eintrag des Einstellungsprotokolls und ChangeSet in einer Transaktion, genau
+   * ein Eintrag je Befehl (A5, ADR 0009); `konflikt` bei abweichendem Vorherstand oder einem `Rueckgaengig`/`Wiederholen`, das
+   * auf keinen ursprünglichen Eintrag zeigt, und dann nichts geschrieben (Q5). Läuft in der Reihe von `anwenden`.
    */
-  einstellungenAnwenden(changeSet: EinstellungenChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
+  einstellungenAnwenden(
+    eintrag: EinstellungenProtokolleintrag,
+    changeSet: EinstellungenChangeSet,
+  ): Promise<Ergebnis<void, Speicherfehler>> {
     const lauf = this.#reihe.then(() =>
       this.#fange(() => {
         transaktion(this.#db, () => {
+          pruefeEinstellungshistorie(this.#db, eintrag);
           wendeEinstellungenAn(this.#db, changeSet);
+          schreibeEinstellungsprotokolleintrag(this.#db, eintrag);
         });
       }),
     );
     this.#reihe = lauf;
     return lauf;
+  }
+
+  /** `EinstellungenRepository.protokoll` (D-82 M1): das Einstellungsprotokoll, ältester Eintrag zuerst. */
+  einstellungenProtokoll(): Ergebnis<readonly EinstellungenProtokolleintrag[], Speicherfehler> {
+    return this.#fange(() => leseEinstellungsprotokoll(this.#db));
   }
 
   // --- Projektdatei -----------------------------------------------------------------------------------------
@@ -723,7 +755,14 @@ export class SpeicherKern {
           );
         }
         const projektId = schreibeProjektdatei(this.#db, datei.wert, bytes);
-        return { projektId, einstellungen: uebernimmEinstellungenDerDatei(this.#db, datei.wert) };
+        return {
+          projektId,
+          einstellungen: uebernimmEinstellungenDerDatei(
+            this.#db,
+            datei.wert,
+            optionen.einstellungsuebernahme,
+          ),
+        };
       }),
     );
     if (r.ok) this.#befunde.push(...befunde);

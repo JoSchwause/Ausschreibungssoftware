@@ -3,7 +3,7 @@
 // wie der Block einer Projektdatei in die gespeicherten Einstellungen übergeht. Reine Funktionen; geschrieben wird in
 // `schreiben.ts`, gelesen in `lesen.ts`.
 
-import type { Einstellungen, Einstellungsschluessel } from '@tethys/vertrag';
+import type { Einstellungen, EinstellungenChangeSet, Einstellungsschluessel } from '@tethys/vertrag';
 
 /**
  * Was der Vertrag an `Einstellungen` als eindeutig nennt und `speicher` zum Zusammenführen braucht: Druckprofilnamen eindeutig,
@@ -21,48 +21,54 @@ export function einstellungenFormfehler(e: Einstellungen): string | null {
   return null;
 }
 
-/** Was aus dem Block `einstellungen` einer Projektdatei wurde (`ProjektdateiEinleseergebnis.einstellungen`). */
-export interface Einstellungsuebernahme {
-  readonly ergebnis: Einstellungen;
-  readonly uebernommen: readonly Einstellungsschluessel[];
-  readonly belassen: readonly Einstellungsschluessel[];
+/**
+ * Die Einstellungen nach der Übernahme des Blocks `datei` einer Projektdatei, nach der Regel von `EinstellungenUebernehmen`
+ * (D-73, D-127.9): Das Büro nur, wenn lokal keines gesetzt ist; ein Druckprofil nur, wenn lokal keines dieses Namens besteht (es
+ * kommt in der Reihenfolge der Datei ans Ende); eine Kostengruppenbezeichnung nur, wenn lokal keine dieser Nummer besteht (die
+ * Liste bleibt nach Nummer geordnet). Nie wird etwas überschrieben.
+ *
+ * Ausführer dieses Befehls ist der Kern (Ticket 137, `einstellungenBefehlAusfuehren`); bis er gemergt ist, rechnet `speicher`
+ * nach derselben Regel (D-127.9 erlaubt beides). Danach ersetzt der Aufruf des Kerns diese Funktion in
+ * `uebernimmEinstellungenDerDatei` (eine Zeile); der Bericht folgt ohnehin aus dem ChangeSet (`einstellungsbericht`).
+ */
+export function einstellungenUebernehmen(lokal: Einstellungen, datei: Einstellungen): Einstellungen {
+  const druckprofile = [...lokal.druckprofile];
+  for (const p of datei.druckprofile) if (!druckprofile.some((q) => q.name === p.name)) druckprofile.push(p);
+  const kostengruppenbezeichnungen = [...lokal.kostengruppenbezeichnungen];
+  for (const k of datei.kostengruppenbezeichnungen)
+    if (!kostengruppenbezeichnungen.some((q) => q.nummer === k.nummer)) kostengruppenbezeichnungen.push(k);
+  kostengruppenbezeichnungen.sort((a, b) => (a.nummer < b.nummer ? -1 : a.nummer > b.nummer ? 1 : 0));
+  return { buero: lokal.buero ?? datei.buero, druckprofile, kostengruppenbezeichnungen };
 }
 
 /**
- * Füllt die gespeicherten Einstellungen `lokal` aus dem Block `datei` einer Projektdatei, nur wo je Schlüssel nichts gesetzt ist
- * (D-73, D-127.9): das Büro nur, wenn lokal keines gesetzt ist; ein Druckprofil nur, wenn lokal keines dieses Namens besteht
- * (es kommt ans Ende, wie bei `DruckprofilSetzen`); eine Kostengruppenbezeichnung nur, wenn lokal keine dieser Nummer besteht
- * (die Liste bleibt nach Nummer geordnet). Nie wird etwas überschrieben; „belassen“ heißt lokal vorhanden, auch bei gleichem
- * Wert. Beide Listen des Berichts stehen in der Reihenfolge der Datei: Büro, Druckprofile, Kostengruppenbezeichnungen.
+ * Was aus dem Block `datei` wurde, abgelesen am ChangeSet der Übernahme (D-127.9, `ProjektdateiEinleseergebnis`): je Schlüssel
+ * der Datei „belassen“, wenn es ihn vorher lokal schon gab (auch mit gleichem Wert), sonst „übernommen“, wenn er nachher da ist.
+ * Beide Listen in der Reihenfolge der Datei: Büro, Druckprofile, Kostengruppenbezeichnungen.
  */
-export function einstellungenUebernehmen(lokal: Einstellungen, datei: Einstellungen): Einstellungsuebernahme {
+export function einstellungsbericht(
+  datei: Einstellungen,
+  cs: EinstellungenChangeSet,
+): { readonly uebernommen: Einstellungsschluessel[]; readonly belassen: Einstellungsschluessel[] } {
+  const { vorher, nachher } = cs.einstellungen;
   const uebernommen: Einstellungsschluessel[] = [];
   const belassen: Einstellungsschluessel[] = [];
-  let buero = lokal.buero;
-  if (datei.buero !== null) {
-    if (buero === null) {
-      buero = datei.buero;
-      uebernommen.push({ art: 'buero' });
-    } else belassen.push({ art: 'buero' });
-  }
-  const druckprofile = [...lokal.druckprofile];
-  for (const p of datei.druckprofile) {
-    const schluessel: Einstellungsschluessel = { art: 'druckprofil', name: p.name };
-    if (druckprofile.some((q) => q.name === p.name)) belassen.push(schluessel);
-    else {
-      druckprofile.push(p);
-      uebernommen.push(schluessel);
-    }
-  }
-  const kostengruppenbezeichnungen = [...lokal.kostengruppenbezeichnungen];
-  for (const k of datei.kostengruppenbezeichnungen) {
-    const schluessel: Einstellungsschluessel = { art: 'kostengruppenbezeichnung', nummer: k.nummer };
-    if (kostengruppenbezeichnungen.some((q) => q.nummer === k.nummer)) belassen.push(schluessel);
-    else {
-      kostengruppenbezeichnungen.push(k);
-      uebernommen.push(schluessel);
-    }
-  }
-  kostengruppenbezeichnungen.sort((a, b) => (a.nummer < b.nummer ? -1 : a.nummer > b.nummer ? 1 : 0));
-  return { ergebnis: { buero, druckprofile, kostengruppenbezeichnungen }, uebernommen, belassen };
+  const einordnen = (s: Einstellungsschluessel, vorherDa: boolean, nachherDa: boolean): void => {
+    if (vorherDa) belassen.push(s);
+    else if (nachherDa) uebernommen.push(s);
+  };
+  if (datei.buero !== null) einordnen({ art: 'buero' }, vorher.buero !== null, nachher.buero !== null);
+  for (const p of datei.druckprofile)
+    einordnen(
+      { art: 'druckprofil', name: p.name },
+      vorher.druckprofile.some((q) => q.name === p.name),
+      nachher.druckprofile.some((q) => q.name === p.name),
+    );
+  for (const k of datei.kostengruppenbezeichnungen)
+    einordnen(
+      { art: 'kostengruppenbezeichnung', nummer: k.nummer },
+      vorher.kostengruppenbezeichnungen.some((q) => q.nummer === k.nummer),
+      nachher.kostengruppenbezeichnungen.some((q) => q.nummer === k.nummer),
+    );
+  return { uebernommen, belassen };
 }
