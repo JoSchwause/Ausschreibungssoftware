@@ -60,14 +60,14 @@ function useLvWahl(projektId: ProjektId, aktiv: boolean): readonly LvWahl[] {
         for (const lv of lvs.wert)
           liste.push({
             wert: `lv:${lv.id}`,
-            label: lv.name,
+            label: t.bezugLv(lv.name),
             bezug: { art: 'leistungsverzeichnis', id: lv.id, knotenIds: null },
           });
       if (auftraege.ok)
         for (const a of auftraege.wert)
           liste.push({
             wert: `auftrag:${a.id}`,
-            label: a.name,
+            label: t.bezugAuftrag(a.name),
             bezug: {
               art: 'auftrags-leistungsverzeichnis',
               id: a.id,
