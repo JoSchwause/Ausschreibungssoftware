@@ -291,7 +291,7 @@ function BieterangabenDerDatei({
     [t.email, a.email],
   ];
   return (
-    <section aria-label={t.angaben}>
+    <section className="gaeb__bieterangaben">
       <h3 className="gaeb__unterkopf">{t.angaben}</h3>
       <dl className="gaeb__zahlen" data-testid="bieterangaben">
         {zeilen.map(([dt, dd]) =>
