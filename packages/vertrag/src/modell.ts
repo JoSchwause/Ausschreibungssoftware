@@ -471,7 +471,12 @@ export interface Positionsdaten {
    * - Geändert nur über `KalkulationSetzen` (nur im Ausschreibungs-LV), das EP und EPA im selben Befehl mitbringt. Ein reiner
    *   Preisbefehl (`EinheitspreisAendern`, `EinheitspreisanteileSetzen`) an einer Position mit Kalkulation entfernt sie im
    *   selben ChangeSet (wie `MengeAendern` den Mengenansatz, D-22 Lesart (a); die Oberfläche fragt vorher). So laufen
-   *   Kalkulation und Preis nie still auseinander.
+   *   Kalkulation und Preis nie still auseinander. Der Befehl meldet das mit dem Befehlshinweis `kalkulation-entfernt`
+   *   (`knotenId` die Position; v1.7a Nachtrag, Review D-82 S4).
+   * - **Nie an einer Zuschlagsposition** (v1.7a Nachtrag, Review D-82 S3): `KalkulationSetzen` an einer Position mit
+   *   `zuschlag !== null` weist der Kern mit `knotenart-unzulaessig` ab; `PositionsmerkmaleSetzen` mit `zuschlag !== null`
+   *   entfernt eine vorhandene Kalkulation im selben ChangeSet (Hinweis `kalkulation-entfernt`). Ein Anlege- oder Kopierbefehl,
+   *   der eine Zuschlagsposition mit Kalkulation bringt, wird mit `ungueltige-eingabe` (`feld: 'kalkulation'`) abgewiesen.
    * - Anlege- und Kopierbefehle bringen sie mit (ein Muster-LV trägt Kalkulationsansätze, Glossar „Muster-LV“); der Kern prüft
    *   die Form wie bei `KalkulationSetzen`. Ein LV-Stand trägt sie.
    * - Der Zuschlag (`zuschlagErteilen`) und `nachtragUebernehmen` lassen sie weg: Die Preise des Auftrags-LV stammen aus dem
@@ -589,8 +594,10 @@ export interface Bieterangaben {
  * Bieter eines Projekts, von Angeboten über `BieterId` referenziert.
  *
  * v1.7a (Ticket 127, E8, E10): umbenennen (`BieterUmbenennen`), Angaben setzen (`BieterangabenSetzen`), löschen nur ohne
- * Angebot (`BieterLoeschen`). `BieterAnlegen` darf `angaben` mitbringen (X84/X86 mit Anschrift, Ticket 136); der Kern
- * normalisiert sie wie bei `BieterangabenSetzen`.
+ * Angebot (`BieterLoeschen`). `BieterAnlegen` darf `angaben` mitbringen; der Kern normalisiert sie wie bei
+ * `BieterangabenSetzen`. Woher (v1.7a Nachtrag, Review D-82 S7): nur ein X84 bringt Bieterangaben mit (Ticket 136); ein X86
+ * füllt nur `LvInhaltKopf.auftragnehmer`, nie die Angaben eines Bieters. Ein Bieter, den das Projekt schon hat, wird beim
+ * Einlesen nicht überschrieben; trägt die Datei andere Angaben, bietet die App `BieterangabenSetzen` an (Ticket 149).
  */
 export interface Bieter {
   readonly id: BieterId;
@@ -642,8 +649,10 @@ export interface Auftraggeber {
 /**
  * Auftragnehmer (v1.3, Ticket 53 Punkt 6; Glossar „Auftragnehmer“; GAEB `CTR`): der Bieter, der den Zuschlag erhalten
  * hat, mit den Adressfeldern, die die Dateien in `CTR/Address` zeigen (`Name1`, `Street`, `PCode`, `City`). Jedes Feld
- * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt, `DPNo`, `AwardNo` und weitere
- * Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat (Offene Typfrage, Ticket 53).
+ * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt (Telefon, E-Mail, Ansprechperson),
+ * `DPNo`, `AwardNo` und weitere Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts (Offene Typfrage, Ticket 53).
+ * v1.7a Nachtrag (Review D-82 S7): Seit v1.7a trägt der `Bieter` eigene `Bieterangaben`; ein X86 füllt trotzdem **nur** diesen
+ * Auftragnehmer am LV-Kopf, nie die Angaben eines Bieters, und seine Kontaktangaben bleiben ein Befund beim Import.
  */
 export interface Auftragnehmer {
   readonly name: string | null;
@@ -782,9 +791,10 @@ export interface LvKopf extends LvInhaltKopf {
   /**
    * Einstellungen des Preisspiegels zu diesem LV (v1.7a, Ticket 127, E15, D-73; Glossar „Preisspiegel-Einstellungen“). Fehlt:
    * die Standardwerte nach D-05 (`PREISSPIEGEL_STANDARD` in `vergabe`: 20 %, 80 %, 95 %, Mittel); nie `null`. Geändert nur über
-   * `PreisspiegeleinstellungenSetzen` (Undo, wandert mit dem LV-Stand). Am `LvKopf` wie `nachtrag` und `vorlage`: nie aus
-   * einem GAEB-Import, nie am Auftrags-LV, und ein LV aus einem LV-Stand (`LeistungsverzeichnisAnlegen`) bringt es nicht mit
-   * (die App setzt es dann im selben Schritt, wenn sie es behalten will). Ändert D-36 (7) für diesen Teil (D-73).
+   * `PreisspiegelEinstellungenSetzen` (Undo, wandert mit dem LV-Stand). Am `LvKopf` wie `nachtrag` und `vorlage`: nie aus
+   * einem GAEB-Import, nie am Auftrags-LV, und ein LV aus einem LV-Stand (`LeistungsverzeichnisAnlegen`) bringt es nicht von
+   * selbst mit: Trägt der Stand Einstellungen, hängt die App `PreisspiegelEinstellungenSetzen` an die Befehlsfolge „Als neues
+   * LV übernehmen“ (v1.7a Nachtrag, Review D-82 S6; Ticket 150). Ändert D-36 (7) für diesen Teil (D-73).
    */
   readonly preisspiegel?: PreisspiegelEinstellungen;
 }
@@ -794,7 +804,7 @@ export type AbcBezug = 'mittel' | 'schaetzpreis';
 
 /**
  * Preisspiegel-Einstellungen (v1.7a, Ticket 127, E15; Glossar): gleich gebaut wie in `vergabe` (das ab Ticket 138 den Typ von
- * hier nimmt). Der Kern prüft die Form (`PreisspiegeleinstellungenSetzen`): jeder Satz ein kanonisches `Prozent` von `0.00` bis
+ * hier nimmt). Der Kern prüft die Form (`PreisspiegelEinstellungenSetzen`): jeder Satz ein kanonisches `Prozent` von `0.00` bis
  * `100.00`, `abcSchwelleA` ≤ `abcSchwelleB`, `abcBezug` einer der beiden Werte; sonst `ungueltige-eingabe` mit dem Feld.
  */
 export interface PreisspiegelEinstellungen {

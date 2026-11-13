@@ -13,7 +13,7 @@ Der dreistufige Prozess zur Planung, Beauftragung und Abrechnung von Bauleistung
 3. **Abrechnung**: Laufende Mengenermittlung (Aufmaß), Rechnungsprüfung (Abschlags-, Teilschluss-, Schlussrechnung) und Nachtragsmanagement.
 
 ### Projekt
-Die oberste organisatorische Einheit eines Bauvorhabens, der Bauherr, Projektstammdaten, Kostenstrukturen (z. B. nach DIN 276), BIM-Teilmodelle und mehrere Leistungsverzeichnisse (LVs) zugeordnet sind.
+Die oberste organisatorische Einheit eines Bauvorhabens, der Bauherr, Projektangaben, Kostenstrukturen (z. B. nach DIN 276), BIM-Teilmodelle und mehrere Leistungsverzeichnisse (LVs) zugeordnet sind.
 
 ### Projektangaben
 Die Stammdaten eines Projekts, die der Nutzer im Dialog „Projektangaben“ pflegt: Name, Bauherr, **Projektnummer**, **Ort** (der Bauort als freier Text, z. B. „Musterstadt“) und **Anschrift der Baustelle** (vertrag v1.7a). Nummer, Ort und Baustelle sind wahlweise; was fehlt, steht nicht im Projekt. Sie erscheinen in den Köpfen der PDFs. Im Code `Projekt.angaben` (Typ `Projektangaben`: Nummer, Ort, Baustelle; Name und Bauherr stehen wie bisher am `Projekt`), Befehl `ProjektangabenSetzen`.
@@ -117,7 +117,7 @@ Oberbegriff für Los und Titel im LV-Baum. Eine Gliederung hat Ordnungszahl und 
 Die Preise eines Bieters zu den Positionen eines Ausschreibungs-LV. Ein Angebot trägt höchstens einen eigenen Nachlass und verweist auf die Positionen über deren Positionsidentität. Der MwSt-Satz ist der des LV.
 
 ### Bieter
-Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels. Ab vertrag v1.7a trägt ein Bieter wahlweise **Bieterangaben**: Anschrift, Ansprechperson, E-Mail und Telefon; eine X84 oder X86 füllt die Anschrift, wo die Datei sie trägt. Ein Bieter lässt sich umbenennen und, solange er kein Angebot hat, löschen. Im Code `Bieter.angaben` (Typ `Bieterangaben`), Befehle `BieterUmbenennen`, `BieterangabenSetzen`, `BieterLoeschen`.
+Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels. Ab vertrag v1.7a trägt ein Bieter wahlweise **Bieterangaben**: Anschrift, Ansprechperson, E-Mail und Telefon. Ein eingelesenes Angebot (X84) bringt sie mit, wo die Datei sie trägt; einen Bieter, den das Projekt schon hat, überschreibt es nicht (die App bietet dann an, die Angaben zu übernehmen). Eine X86 füllt nur den Auftragnehmer am LV, nie die Angaben eines Bieters. Ein Bieter lässt sich umbenennen und, solange er kein Angebot hat, löschen. Im Code `Bieter.angaben` (Typ `Bieterangaben`), Befehle `BieterUmbenennen`, `BieterangabenSetzen`, `BieterLoeschen`.
 
 ### Auftrags-Leistungsverzeichnis
 Das nach dem Zuschlag aus Ausschreibungs-LV und beauftragtem Angebot entstehende LV mit den Vertragspreisen. Eigenes Aggregat mit den Positions-IDs der Ausschreibung (ADR 0011).
@@ -174,7 +174,7 @@ Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositione
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
 
 ### Auftragnehmer (Kopfdaten)
-Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts und seinen Bieterangaben: Eine X86 füllt nur den Auftragnehmer, Telefon, E-Mail und Ansprechperson daraus bleiben ein Befund beim Einlesen. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
@@ -195,7 +195,7 @@ Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Expo
 Bezeichner und Befehlsnamen im Code folgen dem Glossar, aber ASCII-transliteriert: ä = ae, ö = oe, ü = ue, ß = ss (z. B. `KnotenLoeschen`, `Ausreisser`). Technische Begriffe ohne Fachbezug bleiben englisch.
 
 ### Einstellungen
-Was für alle Projekte eines Geräts gilt und nicht zu einem Projekt gehört (vertrag v1.7a, D-73): das Büro, die eigenen Druckprofile und die Bezeichnungen der Kostengruppen. Ein eigenes Aggregat außerhalb der Undo-Historie und des Befehlsprotokolls eines Projekts; die Projektdatei trägt eine Kopie, damit eine Sicherung eine Datei bleibt. Beim Einlesen ergänzt sie nur Fehlendes und überschreibt nichts. Im Code `Einstellungen`, `EinstellungenRepository`, Befehle `BueroSetzen`, `DruckprofilSetzen`, `DruckprofilEntfernen`, `KostengruppenbezeichnungenSetzen`.
+Was für alle Projekte eines Geräts gilt und nicht zu einem Projekt gehört (vertrag v1.7a, D-73): das Büro, die eigenen Druckprofile und die Bezeichnungen der Kostengruppen. Ein eigenes Aggregat außerhalb der Undo-Historie und des Befehlsprotokolls eines Projekts, mit eigenem **Einstellungsprotokoll** (jeder Befehl an den Einstellungen steht darin, wie jeder Befehl an einem Projekt in dessen Befehlsprotokoll) und eigenem Rückgängig in der Sitzung. Die Projektdatei trägt eine Kopie der Einstellungen (nicht das Einstellungsprotokoll), damit eine Sicherung eine Datei bleibt. Beim Einlesen ergänzt sie nur Fehlendes und überschreibt nichts; diese Übernahme ist selbst ein protokollierter Befehl. Was der Browser vor der Einführung der Einstellungen gemerkt hatte, übernimmt die App einmalig, solange das Einstellungsprotokoll leer ist. Im Code `Einstellungen`, `EinstellungenRepository`, `EinstellungenProtokolleintrag`, Befehle `BueroSetzen`, `DruckprofilSetzen`, `DruckprofilEntfernen`, `KostengruppenbezeichnungenSetzen`, `EinstellungenUebernehmen`.
 
 ### Büro
 Das Planungsbüro, das die App nutzt, als Absender in den Köpfen der PDFs: Name, Anschrift, Telefon und E-Mail. Teil der Einstellungen, einmal für alle Projekte. Im Code `Buero`.
@@ -318,7 +318,7 @@ Die Annahme eines Angebots durch den Auftraggeber (VOB/A § 18), in der App „Z
 Das Auftrags-LV eines erteilten Zuschlags wieder entfernen, etwa nach einem Irrtum; danach lassen sich Angebot, LV und Projekt wieder löschen (vertrag v1.7a, D-74). Gesperrt, solange Nachträge, Aufmaßblätter, Rechnungen oder Mängel auf das Auftrags-LV verweisen (Verweissperre mit Art und Anzahl). Ein Bauzeitenplan und die Kostenkontrolle sperren nicht: Ein Vorgang behält seinen Bezug und zeigt einen Befund, die Auftragswerte der Kostenkontrolle entfallen. Per Rückgängig umkehrbar. Im Code Befehl `ZuschlagZuruecknehmen`.
 
 ### Preisspiegel-Einstellungen
-Ausreißer-Schwelle, die beiden ABC-Schwellen und der Bezug der ABC-Klasse eines Preisspiegels. Sie gehören zum Ausschreibungs-LV, gehen mit dessen LV-Ständen und sind per Rückgängig umkehrbar; fehlen sie, gelten die Standardwerte (20 %, 80 %, 95 %, Bezug Mittel; D-05). Im Code `LvKopf.preisspiegel` (Typ `PreisspiegelEinstellungen`), Befehl `PreisspiegeleinstellungenSetzen`.
+Ausreißer-Schwelle, die beiden ABC-Schwellen und der Bezug der ABC-Klasse eines Preisspiegels. Sie gehören zum Ausschreibungs-LV, gehen mit dessen LV-Ständen und sind per Rückgängig umkehrbar; fehlen sie, gelten die Standardwerte (20 %, 80 %, 95 %, Bezug Mittel; D-05). Ein LV, das aus einem LV-Stand neu entsteht, übernimmt sie nicht von selbst; die App setzt sie dabei mit einem eigenen Befehl. Im Code `LvKopf.preisspiegel` (Typ `PreisspiegelEinstellungen`), Befehl `PreisspiegelEinstellungenSetzen`.
 
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
@@ -430,7 +430,7 @@ Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsa
 Eine Zeile der Einzelpreiskalkulation einer Position: Kostenart (eine Art der Einheitspreisanteile, `EpaArt`), freie Bezeichnung, **Ansatzmenge** je Einheit der Position (z. B. 0,450 h je m², 3 Stellen) und Kostensatz. Die **Einzelkosten** der Zeile sind Ansatzmenge × Kostensatz, ungerundet. Bei der Kostenart Lohn zählt die Ansatzmenge als Lohnstunden. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht und ist ein Befund. Im Code `Kalkulationsansatz`, `ansatzmenge`; die Zeile des Formulars in der App, alle Felder als Text, heißt **Kalkulationszeile** (`Kalkulationszeile`), nie Ansatzzeile (die gehört zum Mengenansatz).
 
 ### Kalkulationsangaben
-Die gespeicherten Eingaben der Einzelpreiskalkulation einer Position im Ausschreibungs-LV (vertrag v1.7a): ihre Kalkulationsansätze und die Zuschlagssätze der Kalkulation je Kostenart. Aus ihnen rechnet die App EP und Einheitspreisanteile; der Befehl trägt beides zusammen, damit Kalkulation und Preis nie auseinanderlaufen. Ein Kopieren nimmt sie mit; der Zuschlag (Auftrags-LV) und ein GAEB-Export nicht. Im Code `Positionsdaten.kalkulation` (Typ `Kalkulationsangaben`), Befehl `KalkulationSetzen`.
+Die gespeicherten Eingaben der Einzelpreiskalkulation einer Position im Ausschreibungs-LV (vertrag v1.7a): ihre Kalkulationsansätze und die Zuschlagssätze der Kalkulation je Kostenart. Aus ihnen rechnet die App EP und Einheitspreisanteile; der Befehl trägt beides zusammen, damit Kalkulation und Preis nie auseinanderlaufen. Ein Kopieren nimmt sie mit; der Zuschlag (Auftrags-LV) und ein GAEB-Export nicht. Ein Preis, der von Hand geändert wird, entfernt sie (mit Hinweis); eine Zuschlagsposition trägt nie Kalkulationsangaben. Im Code `Positionsdaten.kalkulation` (Typ `Kalkulationsangaben`), Befehl `KalkulationSetzen`.
 
 ### Kostensatz
 Kosten je Einheit eines Kalkulationsansatzes (z. B. 48,500 € je Lohnstunde oder je m² Stein), netto, 3 Stellen wie ein EP. Im Code `kostensatz`.

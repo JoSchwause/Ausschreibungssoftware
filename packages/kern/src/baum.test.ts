@@ -690,10 +690,10 @@ describe('Befehle anderer Tickets', () => {
     // Vertrag v1.7a (Ticket 127), mechanisch: Ticket 137 liefert die Handler und leert die Liste wieder.
     expect(ZUSTAENDIGES_TICKET).toEqual({
       KalkulationSetzen: 'Ticket 137',
-      PreisspiegeleinstellungenSetzen: 'Ticket 137',
+      PreisspiegelEinstellungenSetzen: 'Ticket 137',
     });
     expect(
-      lvBefehlAusfuehren(z, { art: 'PreisspiegeleinstellungenSetzen', einstellungen: null }),
+      lvBefehlAusfuehren(z, { art: 'PreisspiegelEinstellungenSetzen', einstellungen: null }),
     ).toMatchObject({
       ok: false,
       fehler: { code: 'befehl-nicht-zustaendig' },
