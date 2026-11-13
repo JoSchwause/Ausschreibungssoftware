@@ -21,7 +21,7 @@ interface Fixture {
     readonly projektbeginn: string;
     readonly projektende: string;
     readonly vorgaenge: readonly {
-      readonly id: string;
+      readonly vorgangId: string;
       readonly art: string;
       readonly termine: VertragsTermine;
     }[];
@@ -59,8 +59,8 @@ describe('Fixture des Tors X2 (fixtures/bauzeit.json, Ticket 112)', () => {
     expect(e).toEqual({
       projektbeginn: soll.projektbeginn,
       projektende: soll.projektende,
-      // Die Fixture nennt den Vorgang `id` (Form aus Ticket 102), der Vertrag `vorgangId` (D-97.10).
-      vorgaenge: soll.vorgaenge.map(({ id, ...rest }) => ({ vorgangId: id, ...rest })),
+      // Die Fixture steht in der Form des Vertrags v1.6 (`vorgangId`, D-97.10; Ticket 122, PB4).
+      vorgaenge: soll.vorgaenge,
       kritischeWege: soll.kritischeWege,
       befunde: soll.befunde,
     });

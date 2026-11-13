@@ -3,22 +3,13 @@
 // Kostengruppe, die der Nutzer vorgibt (nie aus einem Katalog, C1), mal Bezugsgröße ergeben die Einträge einer
 // Kostenschätzung; umgekehrt die Kostenkennwerte einer bestehenden Kostenermittlung (nur Anzeige). Rein (A2).
 
-import {
-  NULL_BETRAG,
-  addiere,
-  dividiere,
-  formatiereDe,
-  multipliziere,
-  runden,
-  vorzeichen,
-} from '@tethys/dezimal';
+import { NULL_BETRAG, addiere, dividiere, multipliziere, runden, vorzeichen } from '@tethys/dezimal';
 import type {
   Betrag,
   KostenermittlungAnlegen,
   KostenermittlungId,
   Kostenermittlungseintrag,
   Kostengruppennummer,
-  Menge,
   ProjektId,
   Pruefbefund,
 } from '@tethys/vertrag';
@@ -39,6 +30,11 @@ export interface Kostenschaetzungsangaben {
   readonly name: string;
   readonly groessen: Pick<Din277Groessen, 'bgf' | 'bri' | 'nrf'>;
   readonly kennwerte: readonly Kennwertansatz[];
+  /**
+   * Der Text der Herleitung eines Betrags für die Bemerkung des Eintrags, etwa „BGF 245,300 m² × 1.250,00 €/m²“. Ihn setzt der
+   * Aufrufer, weil nur der Rand formatiert (N4, Ticket 122); `groesse.wert` ist hier nie `null`.
+   */
+  readonly herleitung: (groesse: Bezugsgroesse, kennwert: Betrag) => string;
 }
 
 /**
@@ -62,17 +58,8 @@ export interface Kostenkennwertzeile {
   readonly jeNrf: Betrag | null;
 }
 
-const EINHEIT: Readonly<Record<Bezugsgroessenart, string>> = { BGF: 'm²', BRI: 'm³', NRF: 'm²' };
-
 function groesseZu(groessen: Kostenschaetzungsangaben['groessen'], art: Bezugsgroessenart): Bezugsgroesse {
   return art === 'BGF' ? groessen.bgf : art === 'BRI' ? groessen.bri : groessen.nrf;
-}
-
-/** Herleitung eines Betrags, etwa „BGF 245,300 m² × 1.250,00 €/m²“; eine Eingabe des Nutzers heißt so. */
-function herleitung(g: Bezugsgroesse, wert: Menge, kennwert: Betrag): string {
-  const e = EINHEIT[g.art];
-  const quelle = g.quelle === 'eingabe' ? ' (Eingabe)' : '';
-  return `${g.art} ${formatiereDe(wert)} ${e}${quelle} × ${formatiereDe(kennwert)} €/${e}`;
 }
 
 /** Kostenschätzung über Kennwerte (Ticket 108 Punkt 5): Betrag = round(Bezugsgröße × Kennwert, 2) je Zeile (N2). */
@@ -90,7 +77,7 @@ export function kostenschaetzungBerechnen(angaben: Kostenschaetzungsangaben): Ko
       continue;
     }
     const betrag = runden(multipliziere(g.wert, k.kennwert), 'betrag');
-    const bemerkung = herleitung(g, g.wert, k.kennwert);
+    const bemerkung = angaben.herleitung(g, k.kennwert);
     const da = je.get(k.kostengruppe);
     if (da === undefined) {
       je.set(k.kostengruppe, { betrag, bemerkungen: [bemerkung] });

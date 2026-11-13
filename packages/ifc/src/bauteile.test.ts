@@ -4,11 +4,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { ifcLesen } from './lesen';
-import type { Bauteil } from './typen';
+import type { StepBauteil } from './typen';
 import { bytes, codes, gid, grundgeruest, ifcText } from './testhilfen';
 
 /** Bauteil mit allen Feldern; nicht genannte Felder sind leer. */
-function bauteil(b: Partial<Bauteil>): Bauteil {
+function bauteil(b: Partial<StepBauteil>): StepBauteil {
   return {
     globalId: '',
     ifcKlasse: '',

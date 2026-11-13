@@ -8,10 +8,13 @@
 // - Picken: Zeigerereignisse auf ein sichtbares Bauteil → Raycast → `onAuswahl` → die Testseite setzt die Auswahl →
 //   die Leinwand zeichnet die Hervorhebung → GPU fertig.
 //
-// Das Modell kommt aus dem eigenen Erzeuger im Prüfstand (`testhilfe/ifc-erzeuger.ts`, `grossesModell`), solange
-// `fixtures/ifc/erzeugen.mjs` (Ticket 99) nicht auf integration/welle-6 liegt.
+// Picken misst mit dem eigenen Erzeuger im Prüfstand (`testhilfe/ifc-erzeuger.ts`, `grossesModell`, Bauteile mit bekannten
+// GlobalIds). Das Laden misst zusätzlich das Modell aus D-54 selbst (Ticket 122, PA1): `fixtures/ifc/erzeugen.mjs` (Ticket 99,
+// 10.000 Bauteile auf 10 Geschossen, etwa 21 MB); der Test erzeugt es in Node und reicht es der Testseite unter
+// `modelle/d54.ifc` (die Vite-Konfiguration darf `fixtures/` nicht importieren, A3).
 
 import { expect, test } from '@playwright/test';
+import { erzeugeModell } from '../../../fixtures/ifc/erzeugen.mjs';
 import { grossesModell } from '../src/testhilfe/ifc-erzeuger';
 
 const ANZAHL = 10_000;
@@ -87,4 +90,33 @@ test('10.000 Bauteile: Laden ≤ 20 s und Picken bis zur Hervorhebung ≤ 200 ms
 
   expect(median(laden)).toBeLessThanOrEqual(LADEN_MS);
   expect(median(picken)).toBeLessThanOrEqual(PICKEN_MS);
+});
+
+test('D-54-Modell aus fixtures/ifc/erzeugen.mjs (10.000 Bauteile): Laden ≤ 20 s (Median)', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(400_000);
+  const bytes = Buffer.from(erzeugeModell({ bauteile: ANZAHL }), 'utf8');
+  await page.route('**/modelle/d54.ifc', (route) =>
+    route.fulfill({ body: bytes, contentType: 'application/octet-stream' }),
+  );
+  const laden: number[] = [];
+  for (let lauf = 0; lauf < LADELAEUFE; lauf++) {
+    await page.goto('/?modell=d54');
+    await page.waitForFunction(() => window.__modell.ereignisse.geladen.length > 0, null, {
+      timeout: 180_000,
+    });
+    const [bericht] = await page.evaluate(() => window.__modell.ereignisse.geladen);
+    expect(bericht?.mitGeometrie).toHaveLength(ANZAHL);
+    expect(await page.evaluate(() => window.__modell.ereignisse.fehler)).toEqual([]);
+    laden.push(bericht?.seitUebergabeMs ?? NaN);
+  }
+  const umgebung = await page.evaluate(() => ({
+    renderer: window.__modell.renderer(),
+    kerne: navigator.hardwareConcurrency,
+  }));
+  const zeile = `D-54-Modell ${String(Math.round(bytes.length / 1e5) / 10)} MB: Laden Median ${String(Math.round(median(laden)))} ms (${gerundet(laden).join(', ')}) | ${umgebung.renderer} | ${String(umgebung.kerne)} Kerne`;
+  console.log(`[Leistung] ${zeile}`);
+  testInfo.annotations.push({ type: 'leistung', description: zeile });
+  expect(median(laden)).toBeLessThanOrEqual(LADEN_MS);
 });

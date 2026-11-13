@@ -7,7 +7,14 @@ import { modellVergleichen } from '@tethys/bim';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type { Bauteilkennzeichen } from '@tethys/ui-modell';
-import type { Bauteil, Bauwerksmodell, IfcGlobalId, Pruefbefund } from '@tethys/vertrag';
+import type {
+  Bauteil,
+  Bauwerksmodell,
+  BauwerksmodellId,
+  BauwerksmodellKopf,
+  IfcGlobalId,
+  Pruefbefund,
+} from '@tethys/vertrag';
 import { texte } from './texte';
 
 export interface Vergleichszusammenfassung {
@@ -117,4 +124,26 @@ export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Ver
     faerbung,
     befunde: v.befunde,
   };
+}
+
+/**
+ * Die früheren Stände eines Modells für die Wahl des alten Stands (Ticket 122, PC-a6; Ticket 116 §1): die Kette der Vorgänger,
+ * der nächste zuerst (die Vorgabe). Ein Ring (gegen die Zusage von `speicher`) oder ein Vorgänger, den die Liste nicht
+ * kennt, beendet die Kette.
+ */
+export function fruehereStaende<T extends Pick<BauwerksmodellKopf, 'id' | 'vorgaengerId'>>(
+  neuId: BauwerksmodellId,
+  modelle: readonly T[],
+): T[] {
+  const nachId = new Map(modelle.map((m) => [m.id, m]));
+  const kette: T[] = [];
+  const gesehen = new Set<BauwerksmodellId>([neuId]);
+  for (let v = nachId.get(neuId)?.vorgaengerId ?? null; v !== null && !gesehen.has(v);) {
+    const m = nachId.get(v);
+    if (m === undefined) break;
+    gesehen.add(v);
+    kette.push(m);
+    v = m.vorgaengerId;
+  }
+  return kette;
 }

@@ -24,6 +24,9 @@ export const texte = {
     ohneStruktur: 'Ohne Strukturknoten',
     ohneName: (art: Strukturknoten['art']): string => `${strukturart[art]} ohne Namen`,
     ohneNameBauteil: 'Bauteil ohne Namen',
+    // Ticket 122 (U3): die Mehrfachauswahl per Tastatur, sichtbar über dem Baum.
+    tasten:
+      'Auswahl im Baum: Klick oder Leertaste wählt die Zeile, Strg+Klick oder Strg+Leertaste nimmt sie dazu oder wieder heraus; Pfeiltasten und Tab bewegen nur den Fokus.',
   },
   liste: {
     titel: (projekt: string): string => `Modelle: ${projekt}`,
@@ -124,6 +127,11 @@ export const texte = {
     quelleEingabe: 'Eingabe',
     fehlt: 'fehlt im Modell',
     eingabe: (art: string, einheit: string): string => `${art} (Eingabe, ${einheit})`,
+    fehlerKostengruppe: 'Kostengruppe dreistellig (100–999)',
+    fehlerKennwert: 'Kennwert in € je Einheit, z. B. 148,30',
+    // Ticket 122 (N4): die Herleitung in der Bemerkung eines Eintrags der Kostenschätzung, formatiert am Rand.
+    herleitung: (art: string, wert: string, einheit: string, eingabe: boolean, kennwert: string): string =>
+      `${art} ${wert} ${einheit}${eingabe ? ' (Eingabe)' : ''} × ${kennwert} €/${einheit}`,
     befunde: 'Befunde der Bezugsgrößen',
     schaetzung: 'Kostenschätzung über Kennwerte …',
     schaetzungTitel: 'Kostenschätzung über Kennwerte',
@@ -192,6 +200,7 @@ export const texte = {
     dieseAusblenden: 'Ausblenden',
     befunde: 'Befunde',
     zurZeile: 'Im Baum zeigen',
+    zurPosition: 'Zur Position', // Ticket 122 (PC-a1)
     dateiFehlt: 'Die Datei des Modells fehlt im Speicher; der Baum steht, die 3D-Ansicht nicht.',
     dreiDFehler: 'Die 3D-Ansicht konnte das Modell nicht zeigen.',
   },

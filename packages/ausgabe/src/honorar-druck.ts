@@ -9,22 +9,23 @@ import type {
   Honorarzone,
   Leistungsbild,
   Objektergebnis,
-  Pruefbefund,
 } from '@tethys/vertrag';
-import { KEINE_ANGABE, druckdatum, euro, prozent } from './bericht';
-import type { BerichtAbschnitt, BerichtBlock, Berichtsmodell } from './bericht';
+import { KEINE_ANGABE, befundZeile, druckdatum, euro, prozent } from './bericht';
+import type { BerichtAbschnitt, BerichtBlock, Befundtext, Berichtsmodell } from './bericht';
 
 export interface HonorarEingabe {
   readonly berechnung: Honorarberechnung;
-  readonly ergebnis: Honorarergebnis;
+  /** Das Ergebnis ohne seine Befunde: Deren Meldungen sind nicht für den Druck formatiert (N4). */
+  readonly ergebnis: Omit<Honorarergebnis, 'befunde'>;
+  /** Die Befunde des Ergebnisses mit den Texten der Seite (Ticket 122, D-122.1); leer: kein Befundabschnitt. */
+  readonly befundtexte: readonly Befundtext[];
   readonly projekt?: string;
   readonly datum?: string;
 }
 
 /** Fester Hinweis (D-56, D-66): Er ist kein Befund und nicht Teil des `Honorarergebnis`. */
 export const DIN276_HINWEIS =
-  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12. ' +
-  'Die Kostenermittlung muss nach dieser Fassung gegliedert sein.';
+  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12.';
 
 const LEISTUNGSBILD: Readonly<Record<Leistungsbild, string>> = {
   gebaeude: 'Gebäude',
@@ -35,9 +36,6 @@ const LEISTUNGSBILD: Readonly<Record<Leistungsbild, string>> = {
   tragwerksplanung: 'Tragwerksplanung',
   'technische-ausruestung': 'Technische Ausrüstung',
 };
-
-const befundText = (b: Pruefbefund): string =>
-  `${b.schwere === 'fehler' ? 'Fehler' : 'Warnung'}: ${b.meldung}`;
 
 function objektAbschnitt(
   nr: number,
@@ -186,12 +184,12 @@ export function baueHonorarModell(e: HonorarEingabe): Berichtsmodell {
         },
       ],
     },
-    ...(r.befunde.length === 0
+    ...(e.befundtexte.length === 0
       ? []
       : [
           {
             ueberschrift: 'Befunde',
-            bloecke: [{ art: 'liste' as const, punkte: r.befunde.map(befundText) }],
+            bloecke: [{ art: 'liste' as const, punkte: e.befundtexte.map(befundZeile) }],
           },
         ]),
     { ueberschrift: 'Hinweise', bloecke: [{ art: 'absatz', text: DIN276_HINWEIS }] },

@@ -28,6 +28,7 @@ import {
   entwurfAusEintrag,
   eintragLesen,
   leererEintrag,
+  koepfeJeTag,
   tageZeilen,
   wetterText,
   type EintragEntwurf,
@@ -137,7 +138,9 @@ function Tagebuch({
   const [bisText, setBisText] = useState('');
   const t = texte.bautagebuch;
 
-  const zeilen = useMemo(() => tageZeilen(eintraege), [eintraege]);
+  // Ticket 122 (A2): die Köpfe je Tag zählt `bauleitung`, für die Liste und den Kopf des gewählten Tages.
+  const koepfe = useMemo(() => koepfeJeTag(eintraege), [eintraege]);
+  const zeilen = useMemo(() => tageZeilen(eintraege, koepfe), [eintraege, koepfe]);
   const gewaehlt = eintraege.find((e) => e.id === aktivId) ?? null;
   const firmen = useMemo(
     () => auftragnehmerNamen(auftragnehmerAngaben(auftraege.map((z) => z.auftragsLeistungsverzeichnis))),
@@ -271,12 +274,7 @@ function Tagebuch({
 
       {gewaehlt === null ? null : (
         <>
-          <h2>
-            {texte.bautagebuch.tag(
-              datumDe(gewaehlt.datum),
-              gewaehlt.arbeitskraefte.reduce((s, a) => s + a.anzahl, 0),
-            )}
-          </h2>
+          <h2>{texte.bautagebuch.tag(datumDe(gewaehlt.datum), koepfe.get(gewaehlt.datum) ?? 0)}</h2>
           <dl data-testid="tagesansicht">
             <dt>{t.wetter}</dt>
             <dd>{wetterText(gewaehlt.wetter)}</dd>

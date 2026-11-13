@@ -172,6 +172,8 @@ const FALLE = [
   { name: 'Vergleich 5.000 Zeilen x 5 Bieter', url: '/vergleich.html?zeilen=5000&bieter=5' },
   // Balkenspalte (Ticket 96): erfundener Bauzeitenplan, Achse 730 Tage zu 16 px (11.680 px breit), 6 Spalten
   { name: 'Bauzeitenplan 1.000 Zeilen, 730 Tage', url: '/bauzeit.html?zeilen=1000&tage=730' },
+  // Modellbaum (Ticket 122, D-54): Baum der Modellseite mit 10.000 Zeilen in 5 Ebenen, 6 Spalten, Mengen mit Tooltip
+  { name: 'Modellbaum 10.000 Zeilen', url: '/modellbaum.html?zeilen=10000' },
 ] as const;
 
 // zwei Geschwindigkeiten: zügiges Lesen (200 Zeilen/s) und ein schneller Wisch (1.000 Zeilen/s)

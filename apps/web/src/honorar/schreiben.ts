@@ -24,6 +24,7 @@ import type {
 } from '@tethys/vertrag';
 import { befehlswegFuer, eintrag, speichern, Sitzung, type Lauf, type Umgebung } from '../lv/befehlsweg';
 import { kostenermittlungenLaden } from '../kosten/schreiben';
+import { STANDARD_MWST } from '../projekt/befehle';
 
 export type HonorarberechnungSitzung = Sitzung<HonorarberechnungZustand | null, HonorarberechnungBefehl>;
 
@@ -91,7 +92,7 @@ export function honorarberechnungNeu(
   name: string,
   objekte: readonly Honorarobjekt[] = [],
   nebenkosten: Nebenkostenangabe | null = null,
-  mwstSatz: Prozent = '19.00' as Prozent,
+  mwstSatz: Prozent = STANDARD_MWST, // Ticket 122: derselbe Standard wie für ein neues LV
 ): HonorarberechnungBefehl {
   return {
     art: 'HonorarberechnungAnlegen',

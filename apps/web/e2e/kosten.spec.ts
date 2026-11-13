@@ -197,6 +197,11 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
   await page.getByRole('link', { name: 'Kosten', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Kosten – Musterhaus' })).toBeVisible();
+  // Ticket 122 (PC-a5): Verweis auf die Kennwerte der Modellseite (nur Verweis, Ticket 115)
+  await expect(page.getByRole('link', { name: 'Kennwerte aus dem Modell' })).toHaveAttribute(
+    'href',
+    /\/projekt\/[^/]+\/modelle$/,
+  );
   await page.getByLabel('Name', { exact: true }).fill('Kostenberechnung');
   await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
   await expect(

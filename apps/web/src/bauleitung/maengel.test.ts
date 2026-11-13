@@ -32,6 +32,7 @@ import {
   namenJeAuftrag,
   positionenNachOz,
   statusBefehle,
+  fristbefundText,
   ueberfaelligeIds,
   verlaufZeilen,
 } from './maengel';
@@ -183,6 +184,24 @@ describe('Ansicht', () => {
       },
     ];
     expect([...ueberfaelligeIds(befunde)]).toEqual(['m3']);
+  });
+
+  it('ein angezeigter Mangel ohne Frist ist ein Befund mit eigenem Text, aber nicht überfällig (Ticket 122, PB6)', () => {
+    const ohneFrist: Pruefbefund = {
+      schwere: 'warnung',
+      quelle: 'fristpruefung',
+      code: 'mangel-angezeigt-ohne-frist',
+      meldung: 'Mangel 4: angezeigt ohne Frist; er kann nicht überfällig werden',
+      ort: { mangelId: 'm4' as MangelId, feld: 'frist' },
+    };
+    expect([...ueberfaelligeIds([ohneFrist])]).toEqual([]);
+    expect(fristbefundText(ohneFrist, mangel(4, { titel: 'Riss' }), '2026-12-01')).toBe(
+      'Mangel 4 – Riss: angezeigt ohne Frist; er kann nicht überfällig werden. Frist setzen.',
+    );
+    const ueber: Pruefbefund = { ...ohneFrist, code: 'mangel-frist-ueberschritten' };
+    expect(fristbefundText(ueber, mangel(3, { titel: 'Tür', frist: '2026-11-25' }), '2026-12-01')).toBe(
+      'Mangel 3 – Tür: Frist 25.11.2026 vor dem Stichtag 01.12.2026 überschritten',
+    );
   });
 });
 

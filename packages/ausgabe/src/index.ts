@@ -50,6 +50,7 @@ export type {
   BerichtSpalte,
   BerichtZeile,
   Berichtsmodell,
+  Befundtext,
 } from './bericht';
 export { erzeugeBerichtPdf } from './bericht-pdf';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';

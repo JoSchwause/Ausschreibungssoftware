@@ -251,7 +251,7 @@ function LvBearbeiten({
   };
 
   /** Sprunglink aus dem Prüf-Panel: Vorfahren aufklappen, dann zur Zelle bzw. in den Positionsdialog. */
-  const pruefSprung = (b: Pruefbefund): void => {
+  const pruefSprung = (b: Pick<Pruefbefund, 'ort'>): void => {
     const s = sprungZu(b, lv.knoten);
     if (s.aufklappen.some((id) => zugeklappt.has(id))) {
       setZugeklappt((alt) => {
@@ -452,7 +452,15 @@ function LvBearbeiten({
         <Angebote zustand={zustand} />
         <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
         <PreisspiegelLink lvId={lv.id} /> {/* Ticket 63 */}
-        <MengenAusModell zustand={zustand} folge={folge} pruefe={pruefe} /> {/* Ticket 115 */}
+        <MengenAusModell
+          zustand={zustand}
+          folge={folge}
+          pruefe={pruefe}
+          zurPosition={(knotenId) => {
+            pruefSprung({ ort: { knotenId, feld: 'menge' } }); // Ticket 122: Sprung zur Menge der Position
+          }}
+        />{' '}
+        {/* Ticket 115 */}
       </div>
       <div className="lv__haupt">
         <div className="lv__grid">

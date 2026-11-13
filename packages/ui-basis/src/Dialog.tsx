@@ -24,7 +24,8 @@ export interface DialogProps {
 
 /**
  * Modaler Dialog auf Radix Dialog: Fokus bleibt im Dialog (Tab), Escape und das Schließen-Kreuz
- * schließen ihn, danach kehrt der Fokus zum Auslöser zurück.
+ * schließen ihn, danach kehrt der Fokus zum Auslöser zurück – außer die App hat ihn beim Schließen schon woandershin
+ * gesetzt, etwa ein Sprung aus dem Dialog zu einer Position (Ticket 122; WAI-ARIA: „unless the workflow moves focus“).
  */
 export function Dialog({
   offen,
@@ -56,7 +57,8 @@ export function Dialog({
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();
-            ausloeser.current?.focus();
+            const jetzt = document.activeElement;
+            if (jetzt === null || jetzt === document.body) ausloeser.current?.focus();
           }}
         >
           <header className="tx-dialog__kopf">

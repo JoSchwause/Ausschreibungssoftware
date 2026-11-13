@@ -84,13 +84,19 @@ export function zonenDes(leistungsbild: Leistungsbild): readonly Honorarzone[] {
   return LEISTUNGSBILDER[leistungsbild].honorartafel.honorarzonen;
 }
 
+/**
+ * Vorgabe der Honorarzone eines neuen Objekts als Stelle in den Zonen des Leistungsbilds: die mittlere Zone III (Stelle 2); hat
+ * das Leistungsbild weniger Zonen (Technische Ausrüstung: I bis III), die höchste vorhandene (Ticket 122).
+ */
+const VORGABE_ZONENSTELLE = 2;
+
 /** Ein neues Objekt: Honorarsatz 0 (§ 7 Abs. 1), anrechenbare Kosten von Hand 0,00, alle Leistungsphasen beauftragt. */
 export function neuesObjekt(bezeichnung: string, leistungsbild: Leistungsbild = 'gebaeude'): Honorarobjekt {
   const zonen = zonenDes(leistungsbild);
   return {
     bezeichnung,
     leistungsbild,
-    honorarzone: zonen[Math.min(2, zonen.length - 1)] ?? 'III',
+    honorarzone: zonen[Math.min(VORGABE_ZONENSTELLE, zonen.length - 1)] ?? 'III',
     honorarsatz: '0.00' as Prozent,
     anrechenbareKosten: { art: 'betrag', betrag: '0.00' as Betrag },
     leistungsphasen: phasenDes(leistungsbild).map((p) => ({ nummer: p.nummer })),

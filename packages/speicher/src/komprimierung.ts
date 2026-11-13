@@ -3,7 +3,7 @@
 // `fflate` (MIT, genau gepinnt) und Base64 (RFC 4648, mit Auffüllung) für die Projektdatei. Kein DOM, nur, was im Worker und
 // unter Node gleich vorhanden ist (`crypto.subtle`, `btoa`, `atob`).
 
-import { deflateSync, inflateSync } from 'fflate';
+import { Inflate, deflateSync, inflateSync } from 'fflate';
 
 const hex = (bytes: ArrayBuffer): string =>
   Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -18,6 +18,36 @@ export const deflateRaw = (bytes: Uint8Array): Uint8Array => deflateSync(bytes, 
 
 /** Entpackt deflate-raw; wirft bei einem Strom, der kein gültiges deflate-raw ist. */
 export const inflateRaw = (bytes: Uint8Array): Uint8Array => inflateSync(bytes);
+
+/** Stücke des komprimierten Stroms beim begrenzten Entpacken: Ein Stück ergibt höchstens etwa das 1.032-Fache (RFC 1951). */
+const STROM_STUECK = 16 * 1024;
+
+/**
+ * Entpackt deflate-raw höchstens bis `hoechstens` Bytes (Ticket 122, SA12): Ergäbe der Strom mehr, bricht es nach dem Stück ab,
+ * das die Grenze überschreitet, und gibt `null` zurück, statt alles zu entpacken (eine fremde Datei kann aus wenigen Kilobyte
+ * Gigabyte machen). Wirft bei einem Strom, der kein gültiges deflate-raw ist, auch einem leeren oder abgeschnittenen.
+ */
+export function inflateRawHoechstens(bytes: Uint8Array, hoechstens: number): Uint8Array | null {
+  if (bytes.length === 0) throw new Error('Leerer Strom ist kein deflate-raw');
+  const teile: Uint8Array[] = [];
+  let laenge = 0;
+  const strom = new Inflate((teil) => {
+    laenge += teil.length;
+    if (laenge <= hoechstens) teile.push(teil);
+  });
+  for (let i = 0; i < bytes.length && laenge <= hoechstens; i += STROM_STUECK) {
+    const ende = Math.min(i + STROM_STUECK, bytes.length);
+    strom.push(bytes.subarray(i, ende), ende === bytes.length);
+  }
+  if (laenge > hoechstens) return null;
+  const roh = new Uint8Array(laenge);
+  let stelle = 0;
+  for (const t of teile) {
+    roh.set(t, stelle);
+    stelle += t.length;
+  }
+  return roh;
+}
 
 /** Stücke für `String.fromCharCode` (Argumentliste) beim Kodieren. */
 const STUECK = 0x8000;

@@ -161,7 +161,11 @@ function Editor({
 
   const ergebnis = useMemo(() => ergebnisBerechnen(b, kostenermittlungen), [b, kostenermittlungen]);
   const ansicht = useMemo(() => ergebnisAnsicht(ergebnis), [ergebnis]);
-  const befunde = useMemo(() => ergebnis.befunde.map(befundAnsicht), [ergebnis]);
+  // Ticket 122: dieselben Texte für Seite und PDF (D-122.1).
+  const befunde = useMemo(
+    () => ergebnis.befunde.map((x) => befundAnsicht(x, { berechnung: b, ergebnis })),
+    [b, ergebnis],
+  );
 
   // Alle Änderungen der Seite laufen nacheinander und lesen den Stand erst, wenn sie an der Reihe sind (kein verlorener Wert,
   // wenn ein Feld verlassen und gleich danach eine Auswahl geändert wird).
@@ -199,7 +203,7 @@ function Editor({
 
   const pdfErzeugen = async (): Promise<void> => {
     try {
-      const bytes = await honorarPdf(b, ergebnis, projektName, datumAusUhr(u.uhr()));
+      const bytes = await honorarPdf(b, ergebnis, befunde, projektName, datumAusUhr(u.uhr()));
       herunterladenBytes(`${dateinameSauber(b.name, 'Honorarberechnung')}.pdf`, bytes, 'application/pdf');
     } catch {
       zeige({ titel: t.pdfFehler, art: 'fehler' });
@@ -365,7 +369,7 @@ function Editor({
           {befunde.map((x, i) => (
             <li key={`${x.code}-${String(i)}`} className={`honorar__befund--${x.schwere}`}>
               {x.schwere === 'fehler' ? t.befundFehler : t.befundWarnung}
-              {x.ort === '' ? '' : ` (${x.ort})`}: {x.text}
+              {x.ort === null ? '' : ` (${x.ort})`}: {x.text}
             </li>
           ))}
         </ul>

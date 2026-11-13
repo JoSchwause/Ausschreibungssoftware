@@ -63,6 +63,13 @@
   min-height: 0;
 }
 
+/* Ticket 122 (U3): Hinweis zur Mehrfachauswahl per Tastatur */
+.bim__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
 .bim__ansicht {
   position: relative;
   min-width: 0;

@@ -5,11 +5,15 @@
 // importieren darf (A3). ChangeSets kommen geklont an, wie über die Worker-Grenze (`postMessage`); das Klonen selbst ist nicht
 // mitgemessen (wie D-94.5). Budgets werden nicht aufgeweicht; die Messwerte stehen im Ticket.
 
+import { changeSetUmkehren, lvBefehlAusfuehren } from '@tethys/kern';
 import type {
+  Bauteilzuordnung,
   BieterId,
   Bauzeitenplan,
   BauzeitenplanChangeSet,
   ChangeSet,
+  IfcGlobalId,
+  LvBefehl,
   Menge,
   Position,
   Protokolleintrag,
@@ -145,6 +149,57 @@ describe('Leistungsbudgets X1 in speicher (D-54)', () => {
         `[speicher/106] MengeAendern auf gross: ohne Modell ${ms(ohne)}; mit 10.000-Bauteile-Modell ${ms(mit)}`,
       );
       expect(median(mit)).toBeLessThan(100);
+    },
+  );
+});
+
+describe('Leistungsbudget BauteileZuordnen über den Speicherweg (D-54; Ticket 122, PA2)', () => {
+  /** Eine GlobalId in Form aus einer Nummer (Basis 36, 22 Zeichen), wie im Budgettest des Kerns. */
+  const gid = (nr: number): IfcGlobalId => nr.toString(36).padStart(22, '0') as IfcGlobalId;
+  const zuordnungen = (start: number, mengenart: string): readonly Bauteilzuordnung[] =>
+    Array.from({ length: 5_000 }, (_, i) => ({ globalId: gid(start + i), mengenart }));
+
+  it(
+    'LV gross: 5.000 Zuordnungen an einer Position samt Undo (ausführen, anwenden, umkehren, anwenden), warm, Median ≤ 100 ms',
+    { timeout: 300_000 },
+    async () => {
+      const { kern } = await projekt(null);
+      const lvId = F.lv.leistungsverzeichnis.id;
+      const aggregat = { art: 'leistungsverzeichnis', id: lvId } as const;
+      const stand = wert(kern.lvLaden(lvId));
+      const ziel = stand.leistungsverzeichnis.knoten.filter((k): k is Position => k.art === 'position')[2500];
+      if (ziel === undefined) throw new Error('Fixture zu klein');
+      const A = zuordnungen(1_000_000, 'NetVolume');
+      const B = zuordnungen(2_000_000, 'NetArea');
+      const gesamt: number[] = [];
+      const zuordnen: number[] = [];
+      const zurueck: number[] = [];
+      for (let i = 0; i < 3 + 12; i++) {
+        const befehl: LvBefehl = { art: 'BauteileZuordnen', positionId: ziel.id, bauteile: i % 2 ? B : A };
+        // ausführen (Kern) und anwenden (Speicher); das Klonen über die Worker-Grenze zählt nicht (wie D-94.5)
+        const t0 = performance.now();
+        const r = lvBefehlAusfuehren(stand, befehl);
+        const t1 = performance.now();
+        if (!r.ok) throw new Error(r.fehler.meldung);
+        const hin = await gemessen(kern, aggregat, befehl, r.wert);
+        // Rückgängig: umkehren (Kern) und anwenden (Speicher)
+        const t2 = performance.now();
+        const u = changeSetUmkehren(r.wert);
+        const t3 = performance.now();
+        const her = await gemessen(kern, aggregat, { art: 'Rueckgaengig', protokollId: hin.id }, u);
+        if (i >= 3) {
+          zuordnen.push(t1 - t0 + hin.ms);
+          zurueck.push(t3 - t2 + her.ms);
+          gesamt.push(t1 - t0 + hin.ms + (t3 - t2) + her.ms);
+        }
+      }
+      const p = wert(kern.lvLaden(lvId)).leistungsverzeichnis.knoten.find((k) => k.id === ziel.id);
+      expect(p?.art === 'position' ? (p.bauteile ?? []) : null).toEqual(ziel.bauteile ?? []);
+      console.info(
+        `[speicher/122] BauteileZuordnen 5.000 an einer Position im LV gross: zuordnen ${ms(zuordnen)}; ` +
+          `Rückgängig ${ms(zurueck)}; samt Undo ${ms(gesamt)}`,
+      );
+      expect(median(gesamt)).toBeLessThanOrEqual(100);
     },
   );
 });

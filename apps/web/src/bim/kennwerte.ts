@@ -8,24 +8,54 @@ import {
   din277Berechnen,
   kostenkennwerteBerechnen,
   kostenschaetzungBerechnen,
+  type Bezugsgroesse,
   type Bezugsgroessenart,
   type Din277Groessen,
   type Kennwertansatz,
   type Kostenkennwertzeile,
   type Kostenschaetzung,
 } from '@tethys/bim';
-import { parseBetragDe, parseMengeDe } from '@tethys/dezimal';
-import { kostenermittlungBerechnen } from '@tethys/kosten';
+import { formatiereBetragDe, formatiereMengeDe, parseBetragDe, parseMengeDe } from '@tethys/dezimal';
+import { kgLesen, kostenermittlungBerechnen } from '@tethys/kosten';
+import { texte } from './texte';
 import type {
   Bauwerksmodell,
+  Betrag,
   Kostenermittlungseintrag,
   KostenermittlungId,
-  Kostengruppennummer,
   Menge,
   ProjektId,
 } from '@tethys/vertrag';
 
 export const BEZUGSGROESSEN: readonly Bezugsgroessenart[] = ['BGF', 'BRI', 'NRF'];
+export const EINHEIT: Readonly<Record<Bezugsgroessenart, string>> = { BGF: 'm²', BRI: 'm³', NRF: 'm²' };
+
+/**
+ * Eine Bezugsgröße für die Leiste „Kennwerte“: Wert mit Einheit und in Klammern die Quelle; fehlt die Größe im Modell, steht
+ * nur „fehlt im Modell“, ohne Quelle (Ticket 122, PC-c3: `bim` meldet auch dann `quelle: 'modell'`).
+ */
+export function groessenText(g: Bezugsgroesse): { readonly wert: string; readonly quelle: string | null } {
+  const t = texte.kennwerte;
+  if (g.wert === null) return { wert: t.fehlt, quelle: null };
+  return {
+    wert: `${formatiereMengeDe(g.wert)} ${EINHEIT[g.art]}`,
+    quelle: `(${g.quelle === 'eingabe' ? t.quelleEingabe : t.quelleModell})`,
+  };
+}
+
+/**
+ * Die Herleitung eines Betrags der Kostenschätzung für die Bemerkung des Eintrags, etwa „BGF 245,300 m² × 1.250,00 €/m²“;
+ * eine Eingabe des Nutzers heißt so. `bim` rechnet, der Rand formatiert (N4, Ticket 122).
+ */
+export function herleitungstext(g: Bezugsgroesse, kennwert: Betrag): string {
+  return texte.kennwerte.herleitung(
+    g.art,
+    g.wert === null ? '–' : formatiereMengeDe(g.wert),
+    EINHEIT[g.art],
+    g.quelle === 'eingabe',
+    formatiereBetragDe(kennwert),
+  );
+}
 
 export interface Groessenlesung {
   readonly groessen: Din277Groessen;
@@ -77,12 +107,12 @@ export function kennwerteLesen(zeilen: readonly Kennwertzeile[]): {
     const kg = z.kostengruppe.trim();
     const kw = z.kennwert.trim();
     if (kg === '' && kw === '') return;
-    const kgOk = /^[1-9]\d{2}$/.test(kg);
-    if (!kgOk) fehler.push({ zeile: i, feld: 'kostengruppe', meldung: 'Kostengruppe dreistellig (100–999)' });
+    // Ticket 122: die Form der Kostengruppe liest `kgLesen` aus `kosten` (eine Regel, kein Cast); Texte in `texte.ts`.
+    const k = kgLesen(kg);
+    if (!k.ok) fehler.push({ zeile: i, feld: 'kostengruppe', meldung: texte.kennwerte.fehlerKostengruppe });
     const r = parseBetragDe(kw);
-    if (!r.ok) fehler.push({ zeile: i, feld: 'kennwert', meldung: 'Kennwert in € je Einheit, z. B. 148,30' });
-    if (kgOk && r.ok)
-      ansaetze.push({ kostengruppe: kg as Kostengruppennummer, bezug: z.bezug, kennwert: r.wert });
+    if (!r.ok) fehler.push({ zeile: i, feld: 'kennwert', meldung: texte.kennwerte.fehlerKennwert });
+    if (k.ok && r.ok) ansaetze.push({ kostengruppe: k.wert, bezug: z.bezug, kennwert: r.wert });
   });
   return { ansaetze: fehler.length > 0 ? [] : ansaetze, fehler };
 }
@@ -104,6 +134,7 @@ export function schaetzungBauen(angaben: {
       name: angaben.name.trim(),
       groessen: angaben.groessen,
       kennwerte: ansaetze,
+      herleitung: herleitungstext,
     }),
     fehler,
   };

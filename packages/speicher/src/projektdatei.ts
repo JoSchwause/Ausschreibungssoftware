@@ -14,7 +14,7 @@ import type {
 import { dekodiereProjektdatei } from './dekoder';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
-import { ausBase64, base64, inflateRaw, sha256Hex } from './komprimierung';
+import { ausBase64, base64, inflateRawHoechstens, sha256Hex } from './komprimierung';
 import {
   aggregateDesProjekts,
   aggregateV16DesProjekts,
@@ -132,12 +132,22 @@ export async function pruefeModelldateienDerDatei(d: Projektdatei): Promise<Read
     const komprimiert = ausBase64(e.inhalt);
     if (komprimiert === null)
       return abbruch('datei-ungueltig', `${pfad}: kein Base64 (RFC 4648, mit Auffüllung)`);
-    let roh: Uint8Array;
+    // Entpackt wird höchstens bis zur Größe, die das Modell nennt (Ticket 122, SA12): eine fremde Datei füllt nie den Speicher.
+    const groesse = (d.bauwerksmodelle ?? []).find((z) => z.bauwerksmodell.datei.hash === e.hash)
+      ?.bauwerksmodell.datei.groesse;
+    if (groesse === undefined)
+      return abbruch('datei-ungueltig', `${pfad}: Kein Bauwerksmodell nennt die Modelldatei ${e.hash}.`);
+    let roh: Uint8Array | null;
     try {
-      roh = inflateRaw(komprimiert);
+      roh = inflateRawHoechstens(komprimiert, groesse);
     } catch {
       return abbruch('datei-ungueltig', `${pfad}: kein deflate-raw (RFC 1951)`);
     }
+    if (roh === null)
+      return abbruch(
+        'datei-ungueltig',
+        `${pfad}: Die entpackten Bytes sind länger als die ${String(groesse)} Bytes, die das Bauwerksmodell nennt.`,
+      );
     if ((await sha256Hex(roh)) !== e.hash)
       abbruch('datei-ungueltig', `${pfad}: Der SHA-256 der entpackten Bytes ist nicht ${e.hash}.`);
     for (const z of d.bauwerksmodelle ?? [])

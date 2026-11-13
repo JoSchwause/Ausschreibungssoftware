@@ -408,7 +408,7 @@ function BefundPanel({
                     }}
                   >
                     <span className="bauzeit__befund-ort">{e.ort ?? b.planweit}</span>
-                    {e.befund.meldung}
+                    {e.text}
                   </button>
                 </li>
               ))}

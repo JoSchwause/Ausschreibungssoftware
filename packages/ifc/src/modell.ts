@@ -6,11 +6,11 @@ import type { Befundort } from '@tethys/vertrag';
 import { istGlobalId } from './globalid';
 import { befund } from './step';
 import type { StepDaten, StepWert } from './step';
-import type { Bauteilmenge, IfcBefund, IfcBefundcode, Strukturknoten } from './typen';
+import type { StepBauteilmenge, IfcBefund, IfcBefundcode, StepStrukturknoten } from './typen';
 import { liste, text, verweis } from './werte';
 
 /** Klassen der Bauwerksstruktur und ihre Art (Ticket 98, Punkt 4). */
-export const STRUKTURARTEN: ReadonlyMap<string, Strukturknoten['art']> = new Map([
+export const STRUKTURARTEN: ReadonlyMap<string, StepStrukturknoten['art']> = new Map([
   ['IFCPROJECT', 'projekt'],
   ['IFCSITE', 'grundstueck'],
   ['IFCBUILDING', 'gebaeude'],
@@ -160,14 +160,14 @@ export function zerlegungLesen(l: Modellleser): ReadonlyMap<number, number> {
 export interface GelesenerKnoten {
   readonly i: number;
   readonly eltern: number | null;
-  readonly knoten: Strukturknoten;
+  readonly knoten: StepStrukturknoten;
 }
 
 /** Strukturknoten in der Reihenfolge der Datei (Ticket 98, Punkt 4). */
 export function strukturLesen(
   l: Modellleser,
   ganzes: ReadonlyMap<number, number>,
-  mengen: (i: number) => Bauteilmenge[],
+  mengen: (i: number) => StepBauteilmenge[],
 ): GelesenerKnoten[] {
   const indizes = [...STRUKTURARTEN.keys()].flatMap((k) => l.daten.klasse(k)).sort((a, b) => a - b);
   const knoten: GelesenerKnoten[] = [];

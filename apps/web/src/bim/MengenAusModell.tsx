@@ -9,6 +9,7 @@ import type {
   BauwerksmodellId,
   BauwerksmodellUebersicht,
   Bauwerksmodell,
+  KnotenId,
   LvBefehl,
   LvZustand,
   Menge,
@@ -30,11 +31,14 @@ export function MengenAusModell({
   zustand,
   folge,
   pruefe,
+  zurPosition,
 }: {
   zustand: LvZustand;
   /** Befehle als ein Undo-Schritt (wie `folge` der LV-Seite). */
   folge: (bs: readonly LvBefehl[]) => Promise<Ausgang<unknown>[]>;
   pruefe: (a: Ausgang<unknown>) => boolean;
+  /** Ticket 122 (PC-a1): Sprung aus einem Befund der Vorschau zur Position im LV (der Dialog schließt). */
+  zurPosition?: (knotenId: KnotenId) => void;
 }): ReactElement {
   const [offen, setOffen] = useState(false);
   return (
@@ -54,6 +58,7 @@ export function MengenAusModell({
           onSchliessen={() => {
             setOffen(false);
           }}
+          {...(zurPosition === undefined ? {} : { zurPosition })}
         />
       ) : null}
     </>
@@ -65,11 +70,13 @@ function MengenDialog({
   folge,
   pruefe,
   onSchliessen,
+  zurPosition,
 }: {
   zustand: LvZustand;
   folge: (bs: readonly LvBefehl[]) => Promise<Ausgang<unknown>[]>;
   pruefe: (a: Ausgang<unknown>) => boolean;
   onSchliessen: () => void;
+  zurPosition?: (knotenId: KnotenId) => void;
 }): ReactElement {
   const u = useUmgebung();
   const { zeige } = useToast();
@@ -186,6 +193,14 @@ function MengenDialog({
             <BefundListe
               befunde={vorschau.zeilen.flatMap((z) => z.befunde)}
               beschriftung={texte.zuordnung.befunde}
+              {...(zurPosition === undefined
+                ? {}
+                : {
+                    onPositionSprung: (k: KnotenId) => {
+                      onSchliessen();
+                      zurPosition(k);
+                    },
+                  })}
             />
           ) : null}
         </>

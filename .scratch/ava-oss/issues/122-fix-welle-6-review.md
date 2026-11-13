@@ -1,6 +1,6 @@
 # 122: Behebung des Wellen-Reviews Welle 6
 
-Status: ready-for-agent
+Status: done-by-agent
 Type: task
 Welle: 6 · Strang: – · Pakete: wie je Befund genannt (benannte Ausnahme von P2: in dieser Phase schreibt außer Ticket 117
 nur dieses Ticket; 117 schreibt `apps/web/e2e/x1-kern.spec.ts`, `apps/web/e2e/x1-erweitert.spec.ts`,
@@ -99,8 +99,114 @@ Sollwerte in `fixtures/` ändern sich nicht (Ausnahme Punkt 12: nur ein Schlüss
 
 ## Acceptance criteria
 
-- [ ] Pflichtpunkte 1–15 erledigt oder unter Comments begründet; Budgets aus 15 mit Messwert (grün/rot) im Ticket
-- [ ] E2E: die geänderten Specs und `bim`, `bim-mengen`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb` grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
+- [x] Pflichtpunkte 1–15 erledigt oder unter Comments begründet; Budgets aus 15 mit Messwert (grün/rot) im Ticket
+- [x] E2E: die geänderten Specs und `bim`, `bim-mengen`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb` grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+### Entscheidungen (Frage, Entscheidung, Grund)
+
+- **D-122.1 Befundtexte im PDF (Punkt 1).** Frage: Gemeinsame Abbildung Code → Text oder Texte der App in der Druckeingabe?
+  Entscheidung: **Die App reicht die fertigen Texte in die Druckeingabe** (`HonorarEingabe.befundtexte`,
+  `BauzeitenplanEingabe.befundtexte` vom Typ `Befundtext { schwere, ort, text }`, wie D-113.2 die Namen); die Druckmodelle lesen
+  `ergebnis.befunde` nicht mehr (Eingabetyp `Omit<…, 'befunde'>`). Die App bildet je Code einen eigenen de-DE-Text für Seite und
+  PDF (`honorar/ansicht.ts` `befundAnsicht`, `bauzeit/ansicht.ts` `befundEintraege`/`befundtexteFuerDruck`), Werte am Rand
+  formatiert, Vorgänge über Nummer und Bezeichnung. Grund: `ausgabe` darf `honorar`/`bauzeit` nicht importieren (A3), die Texte
+  brauchen deren Daten (Grenzen, Tafeln, Vorgänge); `vertrag` bleibt; eine Abbildung in der App hält Seite und PDF gleich. Ein
+  Befund zu einer Liste (Leistungsphasen) oder zu mehreren Beträgen nennt nur das Feld, weil der Befundort laut Vertrag kein
+  Element trägt; das Element steht im Formular daneben. Auch die Seiten zeigten vorher die rohen Meldungen (Feldschlüssel,
+  Kennungen) – sie zeigen jetzt dieselben Texte wie das PDF. Mängel und Bautagebuch geprüft: Ihr Druck gibt keine Meldung aus
+  (Status als Wort wie am Bildschirm, „überfällig“ als Kennzeichen, ganze Zahlen) – keine Änderung nötig.
+- **D-122.2 Mehrfachauswahl per Tastatur (Punkt 2).** Frage: Strg+Leertaste allein reicht nicht: Folgt die Auswahl dem Fokus,
+  ersetzt jeder Pfeil und jedes Tab über eine Zeilengrenze die Auswahl, und der Baum lässt sich nicht verlassen, um „Zuordnen …“
+  zu erreichen. Entscheidung: **Tasten bewegen im Baum nur den Fokus (die Eigenschaften folgen); die Leertaste wählt die aktive
+  Zeile wie ein Klick, Strg/Cmd+Leertaste nimmt sie auf oder heraus wie Strg+Klick.** Klicks unverändert (D-114.4, D-115.1).
+  Hinweis über dem Baum. Kein Eingriff in `ui-grid` nötig (die aktive Zeile meldet `onZeileAktiv` schon). Grund: U3 und E-18
+  („Leertaste wählt die Zeile“); so bleibt die Auswahl beim Verlassen des Baums per Tastatur (Strg+Ende, Tab) erhalten.
+  E2E `apps/web/e2e/bim-tastatur.spec.ts` drückt ab dem Baum nur Tasten.
+- **D-122.3 Kennwert-Vermerk (Punkt 4).** `Kostenschaetzungsangaben.herleitung: (groesse, kennwert) => string` setzt der
+  Aufrufer; `bim` formatiert nicht mehr. Die App (`bim/kennwerte.ts` `herleitungstext`) baut denselben Text wie vorher, darum
+  bleiben `x1-kette.test.ts` und alle Sollwerte unverändert (keine Änderung an 117s Test nötig).
+- **D-122.4 Namen in `ifc` (Punkt 5).** Die Typen der STEP-Ebene heißen `StepGlobalId`, `StepBauteilmenge`,
+  `StepStrukturknoten`, `StepBauteil`, `StepBauwerksmodell`; `IfcSchema` (gleiche Form) kommt aus `vertrag`. Kein Präfix „Roh“,
+  weil „Rohbauteil“ als Rohbau-Teil gelesen würde.
+- **D-122.5 Angezeigt ohne Frist (Punkt 8).** Entscheidung: **Befund statt Fehler** (U5): `fristPruefen` meldet einen
+  angezeigten Mangel ohne `Mangel.frist` (die geltende Frist laut Vertrag) als Warnung `mangel-angezeigt-ohne-frist` (Quelle
+  `fristpruefung`, Ort Mangel und `feld: 'frist'`); der Code steht in der eigenen Liste von `bauleitung` (`Fristbefundcode`),
+  `vertrag` bleibt. „Überfällig“ heißt nur `mangel-frist-ueberschritten` (Kennzeichen in der Liste, PDF). Grund: Der Dialog
+  „Mangel anzeigen“ verlangt eine Frist schon, aber das Bearbeiten kann sie leeren, und Daten aus Dateien sollen nicht
+  unbearbeitbar werden. Für 123: Der Vertragstext zur Quelle `fristpruefung` („ein überfälliger Mangel“) nennt den zweiten Code
+  noch nicht.
+
+- **D-122.6 Sprung aus einem Dialog (Punkt 10).** Frage: Der gemeinsame `Dialog` (`ui-basis`) gab beim Schließen den Fokus an
+  seinen Auslöser zurück und nahm damit jedem Sprung aus dem Dialog („Zur Position“, auch „Im Baum zeigen“ im Zuordnen-Dialog)
+  den Fokus. Entscheidung: **Der Dialog gibt den Fokus nur zurück, wenn nichts anderes ihn hat** (WAI-ARIA: „unless the workflow
+  moves focus“), mit Test in `ui-basis`. Grund: ohne das kein Sprung aus einer Vorschau; eine kleine, allgemeine Regel statt
+  Zeitgebern in der App. `ui-basis` ist im Ticket nicht genannt; außer diesem Ticket schreibt dort in dieser Phase niemand.
+- **D-122.7 Sprungziel einer hängenden Zuordnung (Punkt 10).** Auf der Modellseite fokussiert „Zur Position“ den Eintrag der
+  Position in der Liste „Zuordnungen“ (dort lässt sich das hängende Paar entfernen); in der Vorschau „Mengen aus Modell …“
+  schließt es den Dialog und springt im LV zur Menge der Position (Vorfahren aufgeklappt, über den vorhandenen Sprung der
+  LV-Seite). Grund: Die LV-Seite hat keinen Sprung über die Adresse; die Liste der Zuordnungen ist der Ort, an dem man die
+  hängende Zuordnung behebt.
+- **D-122.8 Frühere Stände (Punkt 11, PC-a6).** „Alle früheren Stände“ ist die Kette der Vorgänger (`vorgaengerId`), der nächste
+  zuerst und vorgewählt; andere Modelle des Projekts gehören nicht dazu. Ein Stand außerhalb der Kette (Adresse von Hand) bleibt
+  wählbar. Der Vorgänger behält die kurze Adresse ohne `<alt>`.
+- **D-122.9 Prüfstand mit dem D-54-Modell (Punkt 15a).** Der Test erzeugt das Modell in Node (`fixtures/ifc/erzeugen.mjs`, in
+  Specs erlaubt) und reicht es der Testseite über `page.route` unter `modelle/d54.ifc`; die Vite-Konfiguration darf `fixtures/`
+  nicht importieren (A3). Picken misst weiter das eigene große Modell des Prüfstands (bekannte GlobalIds).
+
+### Budgets aus Punkt 15 (D-54), gemessen 2026-11-13 auf 4 Kernen, Last etwa 1 (allein, keine anderen Läufe)
+
+| Budget | Messung | Grenze | Ergebnis |
+|---|---|---|---|
+| (a) 3D laden, D-54-Modell (`erzeugen.mjs`, 10.000 Bauteile, 21 MB), Headless-Chromium mit SwiftShader | Median 3.061 ms (3.161, 2.851, 3.061) | 20 s | grün |
+| (a) 3D laden und picken, eigenes 10.000-Bauteile-Modell des Prüfstands (zum Vergleich) | Laden Median 1.426 ms, Picken Median 63 ms | 20 s / 200 ms | grün |
+| (a) `haus-v1.ifc` im Prüfstand (Ticket 100 §6) | 30 Bauteile mit Geometrie, Laden 765 ms, Klick wählt | – | grün |
+| (b) `BauteileZuordnen` 5.000 Zuordnungen samt Undo über den Speicherweg (Kern ausführen + `SpeicherKern.anwenden`, Umkehren + anwenden), LV `gross` | Median 39,6 ms (min 33,8, max 56,8; zuordnen 16,6, Rückgängig 22,7) | 100 ms | grün |
+| (c) Modellbaum 10.000 Zeilen im `VergleichsGrid` (Scrolltest wie die übrigen Grids) | 60 fps im Mittel bei 5.600 und 28.000 px/s, schlechtestes Bild 16,8 ms, kein Bild > 33 ms | wie die Grid-Budgets | grün |
+
+### Stand
+
+- Punkt 1 erledigt (`52cb8fe`), Punkt 2 erledigt (`da0fa55`), Punkt 3 erledigt (`df536b4`), Punkt 4 erledigt (`b9402ce`),
+  Punkt 5 erledigt (`b50d65d`), Punkt 6 erledigt (`b4e7e17`), Punkt 7 erledigt (`7b36e4d`), Punkt 8 erledigt (`1334c09`).
+- Punkt 9 erledigt (`6d8cdc6`), Punkt 10 erledigt (`327436b`), Punkt 11 erledigt (PC-c2 `74c9530`, PC-c3 `03bcbb1`,
+  PC-a6 `b627e5b`), Punkt 12 erledigt (`0e2682b`), Punkt 13 erledigt (`012f29a`), Punkt 14 erledigt (`80d8317`), Punkt 15
+  erledigt (PA1 `cf8e922`, PA2 `c34ffd1`, PC-a4 `c97843c`).
+- `integration/welle-6` mit Ticket 117 gemergt (`e2923a9`). `x1-kette.test.ts` brauchte keine Änderung (D-122.3).
+
+### Sollpunkte
+
+- **16 PC-a2** (Bezug auf LV-Knoten im Vorgangsdialog): nicht erreicht, für Ticket 124.
+- **17 PC-a5**: erledigt (`a28d177`): Verweis „Kennwerte aus dem Modell“ in der Werkzeugleiste der Kostenseite auf die Modelle
+  des Projekts (die Kennwerte stehen je Modell; ein bestimmtes Modell kennt die Kostenseite nicht).
+- **18 PB8**: geprüft, **trifft nicht zu**, keine Änderung. `lage(weg)` ist bis zum Ende des Scrollbereichs gleich dem alten
+  `scrollTop = weg`; danach blieb die alte Messung am Ende stehen (keine neuen Zeilen, weniger Arbeit), die neue kehrt um (neue
+  Zeilen). Die alten Fälle (5.000 und 10.000 Zeilen) erreichen das Ende bei 5.600 px/s nie und bei 28.000 px/s frühestens im
+  letzten Bild; sie messen also dieselbe Arbeit, nie weniger.
+- **19 App, Ermessen (SC)**: erledigt `kgLesen` und Texte in `bim/kennwerte.ts` (`d4f2c02`), „Stück“ ausdrücklich statt
+  `arten.at(-1)` (`d65b7c1`), `STANDARD_MWST` in `honorar/schreiben.ts` (`6a43e38`), benannte Vorgabe der Zone (`0e7af1b`),
+  OZ in Vorschau und Folgen (`89074b4`; Frage :50 gegen :47 beantwortet: **keine** war richtig – die Übernahme ließ den Index
+  weg, der Vergleich setzte ihn mit Leerzeichen; richtig ist die eine OZ der App, `lv/oztext.ts` `ozText`, „02.0070A“).
+  **Nicht umgesetzt:** `MENGENART_STUECK` in `bim/texte.ts` (die Datei liegt im Hauptbündel, `App.tsx`; der Import zöge `bim`
+  hinein – die Konstante gehört nach `vertrag`, Ticket 123); für 123 offen: Zusammenlegen von `folgen.ts` und `uebernahme.ts`,
+  `ModellvergleichSeite.tsx:397` → `darstellung.ts`, `einlesen.ts` → `datumAusUhr`, `MengenAusModell.tsx:145` → `datumDe`,
+  Text aus `BauzeitenplanSeite.tsx:396` nach `texte.ts`, Umbenennen von `useBezug`.
+- **20 Pakete, Ermessen (SA, SB)**: nicht erreicht, für Ticket 123 (alle Stichpunkte der Liste bleiben offen).
+
+### Ergebnis (Branch `welle-6/122-fix-review`, Basis `integration/welle-6` mit Ticket 117)
+
+- Alle Pflichtpunkte 1–15 erledigt, je Befund ein Commit; Sollpunkte 17, 18 (geprüft, trifft nicht zu) und Teile von 19
+  erledigt, 16 und 20 sowie der Rest von 19 für 123/124 (siehe „Sollpunkte“). `vertrag` unverändert, Sollwerte in `fixtures/`
+  unverändert (Punkt 12: nur der Schlüssel). Außerhalb der genannten Pakete: `ui-basis` (D-122.6) und die Prüfstandsports von
+  `ui-grid` (`PW_GRID_PORT`, Standard 4180, für parallele Läufe).
+- Neue E2E: `apps/web/e2e/bim-tastatur.spec.ts` (nur Tasten), zwei Tests in `modellvergleich.spec.ts` (Sprung zur Position,
+  alter Stand), `packages/ui-modell/e2e/haus.spec.ts`, D-54-Ladetest in `ui-modell/e2e/leistung.spec.ts`, Fall „Modellbaum
+  10.000 Zeilen“ in `ui-grid/e2e/leistung.spec.ts`; Prüfung des Verweises in `kosten.spec.ts`.
+- Suite 2026-11-13 nach dem letzten Produktcommit: `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck &&
+  pnpm test` grün (Vitest 3.976 bestanden, 3 übersprungen wie vorher; Fixture-Selbsttest 53/53).
+- E2E `apps/web` (`CI=1`, Port 5317): `bim`, `bim-mengen`, `bim-tastatur`, `modellvergleich`, `x2`, `x3`, `x4`, `gaeb`,
+  `x1-kern`, `x1-erweitert`, `kosten`, `dialog`, `lv` 30/30 grün; nach der letzten Änderung (OZ, `89074b4`) `bim-mengen`,
+  `modellvergleich`, `x1-kern`, `x1-erweitert` nochmals 6/6 grün. `ui-modell` alle 15 grün (D-54-Modell Laden Median 2.822 ms
+  bei Last 3,4); `ui-grid/e2e/leistung.spec.ts` 8/8 grün. Kein Test übersprungen oder gelockert, kein Budget geändert.
+

@@ -3,6 +3,7 @@
 // `BautagebucheintragSetzen` (A5). Ein unlesbares Feld ist ein Feldfehler und kommt nie in einen Befehl. Summen rechnet
 // `bauleitung` (`bautagebuchAuswerten`).
 
+import { bautagebuchAuswerten } from '@tethys/bauleitung';
 import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type { Bautagebucheintrag, BautagebucheintragId, Ergebnis, ProjektId } from '@tethys/vertrag';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
@@ -120,9 +121,16 @@ export function eintragLesen(
   };
 }
 
-/** Summe der Köpfe eines Tages. */
-export const koepfe = (e: Pick<Bautagebucheintrag, 'arbeitskraefte'>): number =>
-  e.arbeitskraefte.reduce((s, a) => s + a.anzahl, 0);
+/** Köpfe je Tag über alle Einträge (Datum → Summe der Arbeitskräfte); gezählt von `bauleitung` (A2, Ticket 122). */
+export function koepfeJeTag(eintraege: readonly Bautagebucheintrag[]): ReadonlyMap<string, number> {
+  const tage = eintraege.map((e) => e.datum).sort();
+  const erster = tage[0];
+  const letzter = tage[tage.length - 1];
+  if (erster === undefined || letzter === undefined) return new Map();
+  return new Map(
+    bautagebuchAuswerten(eintraege, erster, letzter).jeTag.map((t) => [t.datum, t.arbeitskraefte]),
+  );
+}
 
 // --- Liste der Tage im Vergleichsgrid ----------------------------------------------------------------------------------
 
@@ -145,8 +153,11 @@ export function wetterText(w: Bautagebucheintrag['wetter']): string {
 
 const grad = (t: number): string => String(t).replace('-', '−');
 
-/** Eine Zeile je Tag, nach Datum aufsteigend (wie das Repository). */
-export function tageZeilen(eintraege: readonly Bautagebucheintrag[]): VergleichsZeile[] {
+/** Eine Zeile je Tag, nach Datum aufsteigend (wie das Repository); die Köpfe aus `koepfeJeTag`. */
+export function tageZeilen(
+  eintraege: readonly Bautagebucheintrag[],
+  koepfe: ReadonlyMap<string, number> = koepfeJeTag(eintraege),
+): VergleichsZeile[] {
   return [...eintraege]
     .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))
     .map((e) => ({
@@ -158,7 +169,7 @@ export function tageZeilen(eintraege: readonly Bautagebucheintrag[]): Vergleichs
       zellen: {
         datum: { text: datumDe(e.datum) },
         wetter: { text: wetterText(e.wetter) },
-        koepfe: { text: String(koepfe(e)) },
+        koepfe: { text: String(koepfe.get(e.datum) ?? 0) },
         leistungen: { text: e.leistungen ?? '–' },
       },
     }));

@@ -85,7 +85,7 @@ function abbilden(
   for (const [i, globalId] of imModell) if (!ersterTraeger.has(globalId)) ersterTraeger.set(globalId, i);
 
   /** Mengen mit Wert; eine ohne (oder mit einem Wert, der keine `Menge` ist) fällt mit Befund weg, nie 0 (D-53). */
-  const mengen = (i: number, gelesen: readonly Gelesen.Bauteilmenge[]): Bauteilmenge[] => {
+  const mengen = (i: number, gelesen: readonly Gelesen.StepBauteilmenge[]): Bauteilmenge[] => {
     const aus: Bauteilmenge[] = [];
     for (const m of gelesen) {
       if (m.wert !== null && alsMenge(m.wert).ok) {

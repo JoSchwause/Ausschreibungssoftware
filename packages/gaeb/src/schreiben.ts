@@ -922,6 +922,9 @@ class Schreiber {
 
   private position(p: Position, ozEltern: string | null, stellen: number): void {
     if (p.textquelle !== undefined) this.verwirf('Textquelle der Position', p.id);
+    // v1.6 (D-52): Die Zuordnung zu Bauteilen eines Modells hat in GAEB kein Gegenstück (D-66 SOLL 12, Ticket 122).
+    if (p.bauteile !== undefined && p.bauteile.length > 0)
+      this.verwirf('Bauteilzuordnungen der Position', p.id);
     const z = p.zuschlag;
     const altform = z !== null && z.prozentsatz === null && (p.menge !== null || p.einheitspreis !== null);
     if (z !== null && !(altform && this.x86)) {

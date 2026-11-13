@@ -30,6 +30,10 @@ export const texte = {
     nichtGefunden: 'Projekt nicht gefunden',
     zumProjekt: 'Zum Projekt',
     zurKontrolle: 'Kostenkontrolle',
+    // Ticket 122 (PC-a5): nur Verweis auf die Kennwerte der Modellseite (Ticket 115, D-20).
+    zuDenKennwerten: 'Kennwerte aus dem Modell',
+    zuDenKennwertenTitel:
+      'BGF, BRI und NRF, Kostenschätzung über Kennwerte und Kostenkennwerte stehen auf der Seite eines Modells.',
     liste: 'Kostenermittlungen des Projekts',
     leer: 'Noch keine Kostenermittlung. Lege eine an, um Budgets je Kostengruppe zu erfassen.',
     anlegenTitel: 'Kostenermittlung anlegen',

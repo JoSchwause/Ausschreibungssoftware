@@ -21,7 +21,7 @@ import type {
   Wochentag,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { planAnsicht } from './bauzeit/ansicht';
+import { befundtexteFuerDruck, planAnsicht } from './bauzeit/ansicht';
 import { kopfBefehl, leererVorgangsentwurf, planAnlegenBefehl, vorgangSetzenBefehl } from './bauzeit/befehle';
 import { bauzeitenplanSitzung } from './bauzeit/schreiben';
 import { befehlswegFuer, projektSitzung } from './lv/befehlsweg';
@@ -59,7 +59,11 @@ const fx = JSON.parse(readFileSync(new URL('../../../fixtures/bauzeit.json', imp
   readonly sollwerte: {
     readonly projektbeginn: string;
     readonly projektende: string;
-    readonly vorgaenge: readonly { readonly id: string; readonly art: string; readonly termine: FxTermine }[];
+    readonly vorgaenge: readonly {
+      readonly vorgangId: string;
+      readonly art: string;
+      readonly termine: FxTermine;
+    }[];
     readonly kritischeWege: readonly (readonly string[])[];
     readonly befunde: readonly unknown[];
   };
@@ -132,7 +136,9 @@ describe('Tor X2: Bauzeitenplan aus der Fixture über die Wege der App', () => {
     expect(e.projektende).toBe(s.projektende);
     expect(
       e.vorgaenge.map((r) => ({ nummer: nummer.get(r.vorgangId), art: r.art, termine: r.termine })),
-    ).toEqual(s.vorgaenge.map((r) => ({ nummer: nummerVonFx.get(r.id), art: r.art, termine: r.termine })));
+    ).toEqual(
+      s.vorgaenge.map((r) => ({ nummer: nummerVonFx.get(r.vorgangId), art: r.art, termine: r.termine })),
+    );
     expect(e.kritischeWege.map((w) => w.map((id) => nummer.get(id)))).toEqual(
       s.kritischeWege.map((w) => w.map((id) => nummerVonFx.get(id))),
     );
@@ -144,7 +150,12 @@ describe('Tor X2: Bauzeitenplan aus der Fixture über die Wege der App', () => {
       projektende: de(s.projektende),
       kritischerWeg: s.kritischeWege[0]?.map((id) => nummerVonFx.get(id)).join(' → '),
     });
-    const modell = baueBauzeitenplanModell({ plan, ergebnis: e, datum: '2026-11-12' });
+    const modell = baueBauzeitenplanModell({
+      plan,
+      ergebnis: e,
+      befundtexte: befundtexteFuerDruck(plan, e),
+      datum: '2026-11-12',
+    });
     expect(modell.kopf).toContainEqual({ bezeichnung: 'Projektende', wert: de(s.projektende) });
 
     // 6. Rückgängig nimmt den letzten Vorgang zurück, Wiederholen stellt ihn her (gespeichert, U7)

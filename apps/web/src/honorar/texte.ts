@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Deutsche Texte der Honorarseiten (Ticket 119, L1).
 
-import type { Honorarzone, Leistungsbild } from '@tethys/vertrag';
+import type { Honorarobjekt, Honorarzone, Leistungsbild } from '@tethys/vertrag';
 
 /**
  * Fester Hinweis (D-56, D-66): kein Befund, nicht Teil des `Honorarergebnis`. Derselbe Wortlaut wie im PDF
  * (`DIN276_HINWEIS` in `ausgabe`); ein Test hält beide gleich, damit das Hauptbündel `ausgabe` (pdfmake) nicht lädt.
  */
 export const DIN276_HINWEIS =
-  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12. ' +
-  'Die Kostenermittlung muss nach dieser Fassung gegliedert sein.';
+  'Hinweis: § 4 Abs. 1 HOAI verweist für die anrechenbaren Kosten auf DIN 276 in der Fassung DIN 276:2008-12.';
 
 export const LEISTUNGSBILD_TEXT: Readonly<Record<Leistungsbild, string>> = {
   gebaeude: 'Gebäude',
@@ -23,14 +22,77 @@ export const LEISTUNGSBILD_TEXT: Readonly<Record<Leistungsbild, string>> = {
 
 export const ZONEN: readonly Honorarzone[] = ['I', 'II', 'III', 'IV', 'V'];
 
-/** Befunde der Honorarberechnung, die die App mit eigenem Text zeigt (D-110.4); alle anderen zeigen die Meldung der Rechnung. */
-export const BEFUNDTEXT: Readonly<Record<string, string>> = {
+/** Feste Texte der Befunde zur Kostenermittlung (D-110.4). */
+export const BEFUNDTEXT = {
   'kostenermittlung-unbekannt':
     'Die gewählte Kostenermittlung gibt es im Projekt nicht (mehr). Für dieses Objekt entsteht kein Honorar.',
   'kostenberechnung-vorhanden':
     'Das Projekt hat eine Kostenberechnung; nach § 6 Abs. 1 Nr. 2 HOAI ist sie die Grundlage, nicht die Kostenschätzung.',
   'kostenermittlungsstufe-abweichend':
     'Grundlage der anrechenbaren Kosten ist nach § 6 Abs. 1 Nr. 2 HOAI die Kostenberechnung, ohne sie die Kostenschätzung. Die gewählte Kostenermittlung hat eine andere Stufe.',
+} as const;
+
+/** Die Felder, die der Ort eines Befunds nennt (`Befundort.feld`), mit ihrem Namen auf der Seite. */
+export const FELD_TEXT: Readonly<Record<keyof Honorarobjekt | 'nebenkosten' | 'mwstSatz', string>> = {
+  bezeichnung: 'Bezeichnung',
+  leistungsbild: 'Leistungsbild',
+  honorarzone: 'Honorarzone',
+  honorarsatz: 'Honorarsatz',
+  anrechenbareKosten: 'Anrechenbare Kosten',
+  leistungsphasen: 'Leistungsphasen',
+  umbauzuschlagssatz: 'Umbauzuschlag',
+  nebenkosten: 'Nebenkosten',
+  mwstSatz: 'MwSt-Satz',
+};
+
+const KEIN_HONORAR = 'Für dieses Objekt entsteht kein Honorar.';
+const WIE_EINGEGEBEN = 'gerechnet wird wie eingegeben.';
+
+/**
+ * Texte der übrigen Befunde der Honorarberechnung (Ticket 122): Seite und PDF zeigen dieselben (D-122.1). Die Werte setzt
+ * die Seite de-DE ein (N4); `null`: der Wert ist nicht bekannt, der Text kommt ohne ihn aus. Ein Befund zu einer Liste
+ * (Leistungsphasen) oder zu mehreren Beträgen nennt nur das Feld; sein Ort trägt kein Element (Lesart des Vertrags).
+ */
+export const befundTexte = {
+  keineHonorartafel: (leistungsbild: string | null): string =>
+    `Für ${leistungsbild === null ? 'das gewählte Leistungsbild' : `das Leistungsbild ${leistungsbild}`} gibt es keine Honorartafel. ${KEIN_HONORAR}`,
+  herleitungNichtAnwendbar: (leistungsbild: string | null): string =>
+    `Anrechenbare Kosten aus einer Kostenermittlung (§ 33 HOAI) gibt es nur für Gebäude und Innenräume, nicht für ${leistungsbild ?? 'dieses Leistungsbild'}. ${KEIN_HONORAR}`,
+  ausserhalbHonorartafel: (
+    kosten: string | null,
+    tafel: { readonly vorschrift: string; readonly von: string; readonly bis: string } | null,
+  ): string =>
+    `Die anrechenbaren Kosten${kosten === null ? '' : ` von ${kosten}`} liegen außerhalb der Honorartafel${tafel === null ? '' : ` (${tafel.vorschrift} HOAI, ${tafel.von} bis ${tafel.bis})`}. ${KEIN_HONORAR} Die Tafel wird nicht fortgeschrieben.`,
+  honorarzoneUnbekannt: (
+    zone: string | null,
+    tafel: { readonly vorschrift: string; readonly zonen: string } | null,
+  ): string =>
+    `Die Honorartafel${tafel === null ? '' : ` (${tafel.vorschrift} HOAI)`} kennt ${zone === null ? 'die gewählte Honorarzone' : `die Honorarzone ${zone}`} nicht${tafel === null ? '' : `, nur ${tafel.zonen}`}. ${KEIN_HONORAR}`,
+  leistungsphaseUnbekannt: (leistungsbild: string | null): string =>
+    `Eine beauftragte Leistungsphase gibt es ${leistungsbild === null ? 'bei diesem Leistungsbild' : `bei ${leistungsbild}`} nicht; sie zählt nicht.`,
+  leistungsphaseDoppelt: 'Eine Leistungsphase ist mehrfach beauftragt; sie zählt einmal.',
+  anteilAbweichend: (vorschrift: string | null): string =>
+    `Der Anteil einer beauftragten Leistungsphase weicht vom Prozentsatz der HOAI ab${vorschrift === null ? '' : ` (${vorschrift} HOAI)`}; gerechnet wird mit dem eingegebenen Anteil.`,
+  honorarsatzAusserhalb: (satz: string | null): string =>
+    `Der Honorarsatz${satz === null ? '' : ` von ${satz}`} liegt außerhalb von 0 % (Basishonorarsatz) bis 100 % (oberer Honorarsatz); gerechnet wird nach derselben Formel.`,
+  umbauzuschlagUeberGrenze: (
+    satz: string | null,
+    grenze: { readonly satz: string; readonly vorschrift: string } | null,
+  ): string =>
+    `Der Umbauzuschlag${satz === null ? '' : ` von ${satz}`} liegt über ${grenze === null ? 'dem Satz der HOAI für durchschnittlichen Schwierigkeitsgrad' : `${grenze.satz} (${grenze.vorschrift} HOAI)`}; gerechnet wird mit dem eingegebenen Satz.`,
+  negativ: {
+    anrechenbareKosten: `Ein Betrag der anrechenbaren Kosten ist negativ; ${WIE_EINGEGEBEN}`,
+    umbauzuschlag: (satz: string | null): string =>
+      `Der Umbauzuschlag${satz === null ? '' : ` von ${satz}`} ist negativ; ${WIE_EINGEGEBEN}`,
+    nebenkosten: (wert: string | null): string =>
+      `Die Nebenkosten${wert === null ? '' : ` (${wert})`} sind negativ; ${WIE_EINGEGEBEN}`,
+    mwstSatz: (satz: string | null): string =>
+      `Der MwSt-Satz${satz === null ? '' : ` von ${satz}`} ist negativ; ${WIE_EINGEGEBEN}`,
+    sonst: `Ein Wert ist negativ; ${WIE_EINGEGEBEN}`,
+  },
+  mehrereObjekte: (anzahl: number): string =>
+    `${String(anzahl)} Honorarobjekte werden je für sich gerechnet und summiert (§ 11 Abs. 1 HOAI); Zusammenfassung und Wiederholungen nach § 11 Abs. 2 bis 4 sind nicht berücksichtigt.`,
+  unbekannt: 'Die Honorarberechnung meldet einen Befund ohne eigenen Text.',
 };
 
 export const texte = {

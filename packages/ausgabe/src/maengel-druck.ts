@@ -11,7 +11,10 @@ export interface MaengellisteEingabe {
   readonly projekt: string;
   /** Die zu druckenden Mängel (alle oder schon gefiltert); der Druck sortiert nach Nummer. */
   readonly maengel: readonly Mangel[];
-  /** Befunde der Fristprüfung (Quelle `fristpruefung`); andere Befunde ignoriert der Druck. */
+  /**
+   * Befunde der Fristprüfung (Quelle `fristpruefung`); „überfällig“ heißt nur der Code `mangel-frist-ueberschritten`
+   * (Ticket 122: `mangel-angezeigt-ohne-frist` ist kein Überfälligsein). Andere Befunde ignoriert der Druck.
+   */
   readonly befunde: readonly Pruefbefund[];
   /** Name des Auftragnehmers je Auftrags-LV (Der `Mangel` kennt nur die Kennung). */
   readonly auftragnehmer: Readonly<Record<string, string>>;
@@ -48,7 +51,12 @@ const titelMitBeschreibung = (m: Mangel): string =>
 export function baueMaengellisteModell(e: MaengellisteEingabe): Berichtsmodell {
   const ueberfaellig = new Set<string>(
     e.befunde
-      .filter((b) => b.quelle === 'fristpruefung' && b.ort.mangelId !== undefined)
+      .filter(
+        (b) =>
+          b.quelle === 'fristpruefung' &&
+          b.code === 'mangel-frist-ueberschritten' &&
+          b.ort.mangelId !== undefined,
+      )
       .map((b) => b.ort.mangelId as string),
   );
   const zeilen: BerichtZeile[] = [...e.maengel].sort(nachNummer).map((m) => ({

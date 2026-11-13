@@ -5,10 +5,12 @@
 
 import {
   BAUZEIT_ANNAHMEN,
+  KRITISCHE_WEGE_HOECHSTENS,
   balkenlage,
   datumPruefen,
   tagesindex,
   zeitachseBerechnen,
+  type Bauzeitbefundcode,
   type Bauzeitenplanergebnis,
   type Datum,
   type Zeitachse,
@@ -36,6 +38,8 @@ export interface Befundeintrag {
   /** Nummer und Bezeichnung des Vorgangs; `null` bei einem Befund zum Plan. */
   readonly ort: string | null;
   readonly vorgangId: VorgangId | null;
+  /** Der Text für Planseite und PDF (Ticket 122, D-122.1); nie die Meldung der Rechnung. */
+  readonly text: string;
 }
 
 export interface Befundgruppe {
@@ -232,14 +236,10 @@ export function planAnsicht(
       ? texte.plan.keinWeg
       : ergebnis.kritischeWege.map((w) => w.map(name).join(' → ')).join('; ');
 
-  const eintrag = (befund: Pruefbefund): Befundeintrag => {
-    const vid = befund.ort.vorgangId;
-    const v = vid === undefined ? undefined : nachId.get(vid);
-    return { befund, ort: v === undefined ? null : vorgangName(v), vorgangId: v?.id ?? null };
-  };
+  const eintraege = befundEintraege(plan, ergebnis);
   const befunde = (['fehler', 'warnung'] as const).map((schwere) => ({
     schwere,
-    eintraege: ergebnis.befunde.filter((b) => b.schwere === schwere).map(eintrag),
+    eintraege: eintraege.filter((e) => e.befund.schwere === schwere),
   }));
 
   return {
@@ -252,4 +252,108 @@ export function planAnsicht(
     },
     befunde,
   };
+}
+
+/** Der Vorgänger einer Anordnungsbeziehung aus dem Pfad `/vorgaenge[n]/vorgaenger[m]` (D-66, beide ab 1). */
+function vorgaengerAusPfad(
+  plan: Bauzeitenplan,
+  nachId: ReadonlyMap<VorgangId, Vorgang>,
+  pfad: string | undefined,
+): Vorgang | undefined {
+  const m = pfad === undefined ? null : /^\/vorgaenge\[(\d+)\]\/vorgaenger\[(\d+)\]$/.exec(pfad);
+  if (m?.[1] === undefined || m[2] === undefined) return undefined;
+  const beziehung = plan.vorgaenge[Number(m[1]) - 1]?.vorgaenger[Number(m[2]) - 1];
+  return beziehung === undefined ? undefined : nachId.get(beziehung.vorgaengerId);
+}
+
+/** Der Text eines Befunds aus Code und Ort; Vorgänge über Nummer und Bezeichnung (N4, L1: nur formatiert, nichts geprüft). */
+function befundText(
+  befund: Pruefbefund,
+  plan: Bauzeitenplan,
+  nachId: ReadonlyMap<VorgangId, Vorgang>,
+): string {
+  const t = texte.befunde.texte;
+  const v = vorgaengerAusPfad(plan, nachId, befund.ort.pfad);
+  const vorgaenger = v === undefined ? null : vorgangName(v);
+  const code = befund.code as Bauzeitbefundcode;
+  switch (code) {
+    case 'projektbeginn-ungueltig':
+      return t.projektbeginnUngueltig;
+    case 'kalender-ohne-arbeitstage':
+      return t.kalenderOhneArbeitstage;
+    case 'arbeitstag-ungueltig':
+      return t.arbeitstagUngueltig;
+    case 'bundesland-unbekannt':
+      return t.bundeslandUnbekannt(plan.kalender.bundesland);
+    case 'freier-tag-ungueltig':
+      return t.freierTagUngueltig;
+    case 'id-doppelt':
+      return t.idDoppelt;
+    case 'eltern-unbekannt':
+      return t.elternUnbekannt;
+    case 'eltern-zyklus':
+      return t.elternZyklus;
+    case 'dauer-ungueltig':
+      return t.dauerUngueltig;
+    case 'terminvorgabe-ungueltig':
+      return t.terminvorgabeUngueltig;
+    case 'terminvorgabe-an-sammelvorgang':
+      return t.terminvorgabeAnSammelvorgang;
+    case 'ist-ungueltig':
+      return t.istUngueltig;
+    case 'vorgaenger-unbekannt':
+      return t.vorgaengerUnbekannt;
+    case 'anordnungsart-unbekannt':
+      return t.anordnungsartUnbekannt(vorgaenger);
+    case 'abstand-ungueltig':
+      return t.abstandUngueltig(vorgaenger);
+    case 'beziehung-an-sammelvorgang':
+      return t.beziehungAnSammelvorgang(vorgaenger);
+    case 'zyklus':
+      return t.zyklus;
+    case 'vorgaenger-ohne-termine':
+      return t.vorgaengerOhneTermine(vorgaenger);
+    case 'termin-ausserhalb-kalender':
+      return befund.ort.feld === 'projektbeginn'
+        ? t.ausserhalbKalender.projektbeginn
+        : befund.ort.feld === 'fruehesterBeginn'
+          ? t.ausserhalbKalender.terminvorgabe
+          : t.ausserhalbKalender.vorgang;
+    case 'kritische-wege-gekuerzt':
+      return t.kritischeWegeGekuerzt(KRITISCHE_WEGE_HOECHSTENS);
+    default:
+      return t.unbekannt;
+  }
+}
+
+/**
+ * Die Befunde der Terminrechnung für Planseite und PDF (Ticket 122, D-122.1): je Befund der Vorgang als Ort (Sprungziel) und
+ * ein eigener de-DE-Text je Code; die Meldung der Rechnung (Kennungen, kanonische Zahlen) erscheint nie.
+ */
+export function befundEintraege(
+  plan: Bauzeitenplan,
+  ergebnis: Pick<Bauzeitenplanergebnis, 'befunde'>,
+): Befundeintrag[] {
+  const nachId = new Map(plan.vorgaenge.map((v) => [v.id, v]));
+  return ergebnis.befunde.map((befund) => {
+    const vid = befund.ort.vorgangId;
+    const v = vid === undefined ? undefined : nachId.get(vid);
+    return {
+      befund,
+      ort: v === undefined ? null : vorgangName(v),
+      vorgangId: v?.id ?? null,
+      text: befundText(befund, plan, nachId),
+    };
+  });
+}
+
+/** Die Befunde für das PDF in der Reihenfolge der Planseite (Fehler, dann Warnungen), mit denselben Texten. */
+export function befundtexteFuerDruck(
+  plan: Bauzeitenplan,
+  ergebnis: Pick<Bauzeitenplanergebnis, 'befunde'>,
+): { schwere: Befundschwere; ort: string | null; text: string }[] {
+  const eintraege = befundEintraege(plan, ergebnis);
+  return (['fehler', 'warnung'] as const).flatMap((schwere) =>
+    eintraege.filter((e) => e.befund.schwere === schwere).map((e) => ({ schwere, ort: e.ort, text: e.text })),
+  );
 }

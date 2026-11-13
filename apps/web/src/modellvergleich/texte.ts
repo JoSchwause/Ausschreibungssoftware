@@ -11,6 +11,9 @@ export const texte = {
   zurListe: 'Zu den Modellen',
   werkzeuge: 'Werkzeuge des Vergleichs',
   vergleichMit: 'Verglichen mit',
+  // Ticket 122 (PC-a6): ein früherer Stand in der Auswahl des alten Stands.
+  stand: (name: string, eingelesen: string, vorgaenger: boolean): string =>
+    `${name} (eingelesen ${eingelesen}${vorgaenger ? ', Vorgänger' : ''})`,
   zusammenfassung: 'Zusammenfassung',
   anzahl: {
     hinzugefuegt: 'Hinzugefügt',

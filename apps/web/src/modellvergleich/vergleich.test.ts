@@ -2,10 +2,11 @@
 // Ticket 116: die Ansicht des Modellvergleichs aus `haus-v1.ifc` und `haus-v2.ifc` (über `ifc` gelesen wie in der App),
 // gegen die Sollwerte aus `fixtures/typisch-bim.json` (Ticket 99, D-99.8).
 
+import type { BauwerksmodellId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { BIM_SOLL } from '../../e2e/modellvergleich-inhalt';
 import { V1, V2 } from './testhilfen';
-import { vergleichsansicht } from './vergleich';
+import { fruehereStaende, vergleichsansicht } from './vergleich';
 
 const SOLL = BIM_SOLL.erweitert.vergleich;
 
@@ -52,5 +53,25 @@ describe('Vergleichsansicht v1 → v2', () => {
     const leer = vergleichsansicht(V1, V1);
     expect(leer.zeilen).toEqual([]);
     expect(leer.zusammenfassung).toEqual({ hinzugefuegt: 0, entfernt: 0, geaendert: 0, unveraendert: 30 });
+  });
+});
+
+describe('Frühere Stände zur Wahl des alten Stands (Ticket 122, PC-a6)', () => {
+  const m = (id: string, vorgaenger: string | null) => ({
+    id: id as BauwerksmodellId,
+    vorgaengerId: vorgaenger as BauwerksmodellId | null,
+  });
+
+  it('die Kette der Vorgänger, der nächste zuerst; andere Modelle des Projekts gehören nicht dazu', () => {
+    const liste = [m('a', null), m('fremd', null), m('c', 'b'), m('b', 'a')];
+    expect(fruehereStaende('c' as BauwerksmodellId, liste).map((x) => x.id)).toEqual(['b', 'a']);
+    expect(fruehereStaende('a' as BauwerksmodellId, liste)).toEqual([]);
+  });
+
+  it('ein Ring oder ein unbekannter Vorgänger beendet die Kette', () => {
+    expect(fruehereStaende('x' as BauwerksmodellId, [m('x', 'y'), m('y', 'x')]).map((z) => z.id)).toEqual([
+      'y',
+    ]);
+    expect(fruehereStaende('x' as BauwerksmodellId, [m('x', 'weg')])).toEqual([]);
   });
 });

@@ -4,6 +4,7 @@
 // die App mit `mengen` (D-22). Geschrieben wird je Position `MengenansatzSetzen`, alle als **ein** Undo-Schritt
 // (`Sitzung.folge`); nur im Ausschreibungs-LV (D-53).
 
+import { ozText } from '../lv/oztext';
 import { mengenuebernahmeBerechnen, vergleichsfolgenBerechnen } from '@tethys/bim';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { mengenansatzBerechnen } from '@tethys/mengen';
@@ -47,8 +48,8 @@ function positionen(lv: LvZustand): Map<string, Position> {
   return m;
 }
 
-const oz = (p: Position | undefined): string =>
-  p === undefined ? '' : `${p.ordnungszahl ?? ''}${p.ozIndex === null ? '' : ` ${p.ozIndex}`}`;
+/** Die OZ einer Position wie überall in der App, mit Index (`ozText`, Ticket 122). */
+const oz = (p: Position | undefined): string => (p === undefined ? '' : ozText(p));
 
 /** Je Position mit Zuordnungen (Reihenfolge des LV) Menge alt, neu, Differenz und die Menge im LV. */
 export function folgenansicht(lv: LvZustand, alt: Bauwerksmodell, neu: Bauwerksmodell): Folgenansicht {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Pruefbefund } from '@tethys/vertrag';
+import type { KnotenId, Pruefbefund } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { befundliste, befundzusammenfassung, geometriebefunde } from './befunde';
 import { bauteil, gid, knoten, modell } from './testhilfen';
@@ -41,6 +41,20 @@ describe('Befunde des Einlesens und der 3D-Ansicht', () => {
       ['menge-ohne-wert', gid('Y')],
       ['globalid-doppelt', gid('X')],
       ['w', null],
+    ]);
+  });
+
+  it('eine hängende Zuordnung springt zur Position (`ort.knotenId`), ihr Bauteil hat keine Zeile (Ticket 122, PC-a1)', () => {
+    const haengt: Pruefbefund = {
+      code: 'bauteil-fehlt',
+      schwere: 'fehler',
+      quelle: 'modell-pruefung',
+      meldung: 'fehlt',
+      ort: { globalId: gid('Weg'), knotenId: 'pos-1' as KnotenId, feld: 'bauteile' },
+    };
+    expect(befundliste([haengt, b('w', 'warnung', 'X')]).map((x) => [x.globalId, x.knotenId])).toEqual([
+      [gid('Weg'), 'pos-1'],
+      [gid('X'), null],
     ]);
   });
 

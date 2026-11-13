@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { erzeugeModell } from '../../../fixtures/ifc/erzeugen.mjs';
 import { ifcLesen } from './lesen';
-import type { Bauwerksmodell } from './typen';
+import type { StepBauwerksmodell } from './typen';
 import { bytes, fixtureBytes, fixtureJson } from './testhilfen';
 
 interface Sollmenge {
@@ -36,15 +36,15 @@ interface Soll {
 const SOLL = fixtureJson('typisch-bim.json') as Soll;
 
 /** Liest eine Hausdatei; sie hat keinen Befund. */
-function lesen(datei: string): Bauwerksmodell {
+function lesen(datei: string): StepBauwerksmodell {
   const lesung = ifcLesen(fixtureBytes(`ifc/${datei}`));
   expect(lesung.befunde).toEqual([]);
   expect(lesung.modell).not.toBeNull();
-  return lesung.modell as Bauwerksmodell;
+  return lesung.modell as StepBauwerksmodell;
 }
 
 /** Bauteile in der Form der Sollwerte: Geschoss über den Namen des Strukturknotens, Mengen ohne Satz. */
-function inSollform(modell: Bauwerksmodell): Sollbauteil[] {
+function inSollform(modell: StepBauwerksmodell): Sollbauteil[] {
   const knotenname = new Map(modell.struktur.map((k) => [k.globalId, k.name ?? '']));
   return modell.bauteile.map((b) => ({
     globalId: b.globalId,

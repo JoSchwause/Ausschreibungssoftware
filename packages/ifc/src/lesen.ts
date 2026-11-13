@@ -14,7 +14,8 @@ import { Modellleser, strukturLesen, zerlegungLesen } from './modell';
 import type { GelesenerKnoten } from './modell';
 import { befund, datenLesen, kopfLesen, textmodusErmitteln } from './step';
 import type { StepDaten, StepKopf } from './step';
-import type { IfcBefund, IfcBefundcode, IfcKopf, IfcLesung, IfcOptionen, IfcSchema } from './typen';
+import type { IfcSchema } from '@tethys/vertrag';
+import type { IfcBefund, IfcBefundcode, IfcKopf, IfcLesung, IfcOptionen } from './typen';
 import { liste, text, texte } from './werte';
 
 /** Größte Eingabe in Bytes (500 MiB). */

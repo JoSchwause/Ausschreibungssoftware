@@ -59,6 +59,9 @@ export const texte = {
     keineBefunde: 'Keine Frist überschritten.',
     befund: (nummer: number, titel: string, frist: string, stichtag: string): string =>
       `Mangel ${String(nummer)} – ${titel}: Frist ${frist} vor dem Stichtag ${stichtag} überschritten`,
+    // Ticket 122 (PB6): angezeigt ohne Frist, ein Befund statt einer Sperre (U5).
+    befundOhneFrist: (nummer: number, titel: string): string =>
+      `Mangel ${String(nummer)} – ${titel}: angezeigt ohne Frist; er kann nicht überfällig werden. Frist setzen.`,
     zumMangel: 'Zum Mangel',
     verlauf: 'Verlauf',
     verlaufEintrag: (datum: string, status: string, bemerkung: string | null, frist: string | null): string =>

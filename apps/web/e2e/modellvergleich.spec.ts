@@ -173,3 +173,75 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   );
   await expect(folgen.getByRole('button', { name: 'Mengen aktualisieren …' })).toBeEnabled();
 });
+
+test('Hängende Zuordnung: Sprung zur Position auf der Modellseite und in der Vorschau der Mengenübernahme (Ticket 122)', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await aufbau(page);
+  const weg = SOLL.vergleich.entfernt[0];
+  const zuordnung = BIM_SOLL.zuordnungen.find((z) => z.bauteile.some((b) => b.globalId === weg?.globalId));
+  if (weg === undefined || zuordnung === undefined)
+    throw new Error('Fixture ohne entferntes, zugeordnetes Bauteil');
+
+  // Modellseite von v2: Das entfernte Bauteil hängt an seiner Position; ohne Zeile im Baum, aber mit Sprung zur Position.
+  const bereich = page.getByRole('region', { name: 'Zuordnung zu Positionen' });
+  const befund = bereich
+    .getByRole('region', { name: 'Befunde der Zuordnung' })
+    .getByRole('listitem')
+    .filter({ hasText: weg.globalId });
+  await expect(befund).toHaveCount(1);
+  await expect(befund.getByRole('button', { name: 'Im Baum zeigen' })).toHaveCount(0);
+  await befund.getByRole('button', { name: 'Zur Position' }).click();
+  const position = bereich.locator(`[data-position="${zuordnung.positionId}"]`);
+  await expect(position).toBeFocused();
+  await expect(position).toContainText(zuordnung.oz);
+
+  // LV-Seite: „Mengen aus Modell …“ mit v2 zeigt denselben Befund; „Zur Position“ schließt und springt zur Menge.
+  await page.goto(`/lv/${typischNachUebernahme().wurzelId}`);
+  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
+  await dialog.getByRole('combobox', { name: 'Modell', exact: true }).click();
+  await page.getByRole('option', { name: /^haus-v2/ }).click();
+  const vorschauBefund = dialog.getByRole('listitem').filter({ hasText: weg.globalId });
+  await vorschauBefund.getByRole('button', { name: 'Zur Position' }).click();
+  await expect(dialog).toHaveCount(0);
+  const grid = page.getByRole('treegrid', { name: /Positionen/ }).first();
+  await expect(grid.locator('[role="gridcell"]:focus')).toHaveAttribute('data-spalte', 'menge');
+  await expect(grid.locator('[role="row"]', { has: page.locator('[role="gridcell"]:focus') })).toContainText(
+    zuordnung.oz,
+  );
+});
+
+test('Alten Stand wählen: alle früheren Stände, Vorgabe der Vorgänger (Ticket 122)', async ({ page }) => {
+  test.setTimeout(180_000);
+  await aufbau(page);
+  // Ein dritter Stand nach v2: wieder die Datei von v1.
+  await page.getByRole('link', { name: 'Zu den Modellen' }).click();
+  const wahl = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Neuer Stand von haus-v2' }).click();
+  await (await wahl).setFiles(datei('haus-v1'));
+  const dialog = page.getByRole('dialog', { name: 'Modell eingelesen' });
+  await expect(dialog.getByText('Keine Befunde.')).toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole('button', { name: 'Modell öffnen' }).click();
+  await page.getByRole('link', { name: 'Mit Vorgänger vergleichen' }).click();
+
+  // Vorgabe: der Vorgänger v2; zur Wahl stehen v2 und v1.
+  await expect(page.getByRole('heading', { level: 1, name: 'Vergleich: haus-v2 → haus-v1' })).toBeVisible();
+  const auswahl = page.getByRole('combobox', { name: 'Verglichen mit', exact: true });
+  await expect(auswahl).toContainText('haus-v2');
+  await expect(auswahl).toContainText('Vorgänger');
+  await auswahl.click();
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await page.getByRole('option', { name: /^haus-v1/ }).click();
+
+  // Die Adresse nennt den gewählten Stand; v1 und der dritte Stand sind dieselbe Datei: keine Änderung.
+  await expect(page).toHaveURL(/\/vergleich\/[^/]+$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Vergleich: haus-v1 → haus-v1' })).toBeVisible();
+  const zusammenfassung = page.getByRole('region', { name: 'Zusammenfassung' });
+  await expect(zusammenfassung).toContainText('Hinzugefügt0');
+  await expect(zusammenfassung).toContainText('Unverändert30');
+  await expect(page.getByRole('combobox', { name: 'Verglichen mit', exact: true })).not.toContainText(
+    'Vorgänger',
+  );
+});

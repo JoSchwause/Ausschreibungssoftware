@@ -3,10 +3,10 @@
 // Die erwarteten Texte folgen aus den Sollwerten der Fixture (Ticket 112, von Hand hergeleitet), in de-DE geschrieben.
 
 import { readFileSync } from 'node:fs';
-import { BAUZEIT_ANNAHMEN, bauzeitenplanBerechnen } from '@tethys/bauzeit';
-import type { Bauzeitenplan, VorgangId } from '@tethys/vertrag';
+import { BAUZEIT_ANNAHMEN, BAUZEITBEFUNDE, bauzeitenplanBerechnen } from '@tethys/bauzeit';
+import type { Bauzeitenplan, Bundesland, Prozent, Pruefbefund, VorgangId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { planAnsicht } from './ansicht';
+import { befundEintraege, planAnsicht } from './ansicht';
 
 const fx = JSON.parse(
   readFileSync(new URL('../../../../fixtures/bauzeit.json', import.meta.url), 'utf8'),
@@ -138,5 +138,106 @@ describe('Ansicht des Bauzeitenplans', () => {
     ]);
     // ohne Termine: Striche
     expect(zelle(b, id('12'), 'beginn')).toBe('–');
+  });
+});
+
+/** Eine Kennung der App (UUID, A7): Sie gehört nie in einen Befundtext (L1). */
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+/** Eine Zahl in kanonischer Form (`120.00`); Nummern wie `1.2` sind keine Zahl (N4). */
+const KANONISCHE_ZAHL = /(?<![\d.])\d+\.\d{2,3}(?![\d.,])/;
+
+describe('Befundtexte der Terminrechnung für Planseite und PDF (Ticket 122, N4)', () => {
+  const mit = (aendern: (v: Bauzeitenplan['vorgaenge'][number]) => Bauzeitenplan['vorgaenge'][number]) =>
+    plan.vorgaenge.map(aendern);
+  const fehlerhaft: Bauzeitenplan = {
+    ...plan,
+    kalender: { ...plan.kalender, bundesland: 'XX' as Bundesland },
+    vorgaenge: mit((v) => {
+      if (v.id === id('11')) return { ...v, fruehesterBeginn: '2026-11-03' };
+      if (v.id === id('12'))
+        return { ...v, ist: { beginn: null, ende: null, fortschritt: '120.00' as Prozent } };
+      if (v.id === id('13'))
+        return {
+          ...v,
+          vorgaenger: [...v.vorgaenger, { vorgaengerId: id('11'), art: 'ende-anfang', abstand: 0 }],
+        };
+      if (v.id === id('16'))
+        return {
+          ...v,
+          vorgaenger: [
+            ...v.vorgaenger,
+            {
+              vorgaengerId: '019b7a12-b000-7000-8000-0000000000ff' as VorgangId,
+              art: 'ende-anfang',
+              abstand: 0,
+            },
+          ],
+        };
+      if (v.id === id('17')) return { ...v, dauer: 2.5 };
+      if (v.id === id('18'))
+        return { ...v, vorgaenger: [{ vorgaengerId: id('16'), art: 'ende-ende', abstand: 1.5 }] };
+      return v;
+    }),
+  };
+  const ergebnisFehlerhaft = bauzeitenplanBerechnen(fehlerhaft);
+  const eintraege = befundEintraege(fehlerhaft, ergebnisFehlerhaft);
+
+  it('jede Meldung wird ein de-DE-Text: keine Kennung, keine kanonische Zahl; Vorgänge über Nummer und Bezeichnung', () => {
+    const codes = new Set(ergebnisFehlerhaft.befunde.map((b) => b.code));
+    for (const c of [
+      'bundesland-unbekannt',
+      'terminvorgabe-an-sammelvorgang',
+      'ist-ungueltig',
+      'beziehung-an-sammelvorgang',
+      'vorgaenger-unbekannt',
+      'dauer-ungueltig',
+      'abstand-ungueltig',
+    ])
+      expect(codes, c).toContain(c);
+    const meldungen = ergebnisFehlerhaft.befunde.map((b) => b.meldung).join(' ');
+    expect(meldungen).toMatch(UUID);
+    expect(meldungen).toMatch(KANONISCHE_ZAHL);
+    expect(eintraege).toHaveLength(ergebnisFehlerhaft.befunde.length);
+    for (const e of eintraege) {
+      expect(e.text, e.befund.meldung).not.toBe(e.befund.meldung);
+      expect(`${e.ort ?? ''} ${e.text}`, e.befund.meldung).not.toMatch(UUID);
+      expect(`${e.ort ?? ''} ${e.text}`, e.befund.meldung).not.toMatch(KANONISCHE_ZAHL);
+    }
+  });
+
+  it('eine Anordnungsbeziehung nennt ihren Vorgänger mit Nummer und Bezeichnung; das Land steht im Text', () => {
+    const zu = (code: string) => eintraege.find((e) => e.befund.code === code);
+    expect(zu('beziehung-an-sammelvorgang')?.ort).toBe('1.2 Streifenfundamente');
+    expect(zu('beziehung-an-sammelvorgang')?.text).toContain('1 Gründung');
+    expect(zu('vorgaenger-unbekannt')?.ort).toBe('3 Mauerwerk Erdgeschoss');
+    expect(zu('bundesland-unbekannt')?.ort).toBeNull();
+    expect(zu('bundesland-unbekannt')?.text).toContain('„XX“');
+  });
+
+  it('die Planseite zeigt dieselben Einträge (Gruppen je Schwere)', () => {
+    const a = planAnsicht(fehlerhaft, ergebnisFehlerhaft, new Set());
+    expect(
+      a.befunde
+        .flatMap((g) => g.eintraege)
+        .map((e) => e.text)
+        .sort(),
+    ).toEqual(eintraege.map((e) => e.text).sort());
+  });
+
+  it('jeder Code der Rechnung hat einen eigenen Text (die Meldung erscheint nie)', () => {
+    for (const code of Object.keys(BAUZEITBEFUNDE)) {
+      const roh: Pruefbefund = {
+        schwere: 'warnung',
+        quelle: 'terminrechnung',
+        code,
+        meldung: `Meldung ${code} 019b7a12-b000-7000-8000-0000000000ff 12.50`,
+        ort: { vorgangId: id('13'), feld: 'vorgaenger', pfad: '/vorgaenge[3]/vorgaenger[1]' },
+      };
+      const [e] = befundEintraege(plan, { ...ergebnis, befunde: [roh] });
+      expect(e?.text, code).toBeDefined();
+      expect(e?.text, code).not.toContain('Meldung');
+      expect(e?.text, code).not.toMatch(UUID);
+      expect(e?.ort, code).toBe('1.2 Streifenfundamente');
+    }
   });
 });

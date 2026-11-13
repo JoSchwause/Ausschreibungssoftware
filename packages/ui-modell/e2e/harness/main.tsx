@@ -4,8 +4,9 @@
 // Der Prüfzugang `window.__modell` steht nur hier, nie im Paket.
 //
 // Aufruf-Parameter:
-//   modell=klein|gross|kaputt|haus-v1|haus-v2   Standard klein (selbst verfasst, testhilfe/ifc-erzeuger.ts);
-//                                               haus-v1/-v2 aus fixtures/ifc (Ticket 99), sobald vorhanden
+//   modell=klein|gross|kaputt|haus-v1|haus-v2|d54   Standard klein (selbst verfasst, testhilfe/ifc-erzeuger.ts);
+//                                               haus-v1/-v2 aus fixtures/ifc (Ticket 99); d54 reicht der Leistungstest
+//                                               unter modelle/d54.ifc (fixtures/ifc/erzeugen.mjs, Ticket 122)
 //   anzahl=10000                                Bauteile im großen Modell
 //   thema=dark|light
 

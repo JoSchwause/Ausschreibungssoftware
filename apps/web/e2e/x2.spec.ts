@@ -33,7 +33,7 @@ const fx = JSON.parse(readFileSync(new URL('../../../fixtures/bauzeit.json', imp
   readonly sollwerte: {
     readonly projektende: string;
     readonly vorgaenge: readonly {
-      readonly id: string;
+      readonly vorgangId: string;
       readonly termine: { readonly beginn: string; readonly ende: string; readonly gesamtpuffer: number };
     }[];
     readonly kritischeWege: readonly (readonly string[])[];
@@ -114,7 +114,7 @@ async function sollPruefen(page: Page): Promise<void> {
   await expect(page.getByTestId('kritischer-weg')).toHaveText(KRITISCHER_WEG);
   await expect(page.getByTestId('befundzahl')).toHaveText('(0)');
   for (const s of fx.sollwerte.vorgaenge) {
-    const nummer = nachId.get(s.id)?.nummer ?? '';
+    const nummer = nachId.get(s.vorgangId)?.nummer ?? '';
     await expect(zelle(page, nummer, 'beginn')).toHaveText(de(s.termine.beginn));
     await expect(zelle(page, nummer, 'ende')).toHaveText(de(s.termine.ende));
     await expect(zelle(page, nummer, 'puffer')).toHaveText(String(s.termine.gesamtpuffer));

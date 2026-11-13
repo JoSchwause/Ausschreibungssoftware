@@ -2,6 +2,7 @@
 // PDF der Honorarberechnung (Ticket 119, 113): `ausgabe` (pdfmake) wird erst beim Klick per `import()` geladen und kommt nie
 // ins Hauptbündel. Die Schriften kommen über den Export `./schriften/*.woff` des Pakets (S9) wie beim LV-Druck.
 
+import type { Befundtext } from '@tethys/ausgabe';
 import type { Honorarberechnung, Honorarergebnis } from '@tethys/vertrag';
 import fettKursivUrl from '@tethys/ausgabe/schriften/noto-sans-latin-700-italic.woff?url';
 import fettUrl from '@tethys/ausgabe/schriften/noto-sans-latin-700-normal.woff?url';
@@ -14,10 +15,14 @@ async function laden(url: string): Promise<Uint8Array> {
   return new Uint8Array(await r.arrayBuffer());
 }
 
-/** Die Bytes des PDF; `datum` als `JJJJ-MM-TT` aus der Uhr der App (die Ausgabe selbst liest keine Uhr). */
+/**
+ * Die Bytes des PDF; `datum` als `JJJJ-MM-TT` aus der Uhr der App (die Ausgabe selbst liest keine Uhr). `befunde`: die Befunde
+ * mit den Texten der Seite (Ticket 122, D-122.1), damit Seite und PDF dasselbe sagen.
+ */
 export async function honorarPdf(
   berechnung: Honorarberechnung,
   ergebnis: Honorarergebnis,
+  befunde: readonly Befundtext[],
   projekt: string,
   datum: string,
 ): Promise<Uint8Array> {
@@ -29,7 +34,13 @@ export async function honorarPdf(
     laden(fettKursivUrl),
   ]);
   return ausgabe.erzeugeHonorarPdf(
-    { berechnung, ergebnis, projekt, datum },
+    {
+      berechnung,
+      ergebnis,
+      befundtexte: befunde.map(({ schwere, ort, text }) => ({ schwere, ort, text })),
+      projekt,
+      datum,
+    },
     { normal, fett, kursiv, fettKursiv },
   );
 }

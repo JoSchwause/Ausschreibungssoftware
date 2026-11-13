@@ -5,6 +5,7 @@
 // prüft; `speicher` hält sie zusätzlich (`konflikt`). Der Status wechselt nur über Verlaufseinträge nach der Statustabelle
 // (`MANGELSTATUSWECHSEL`). Leere Texte (`''`) werden als `null` gespeichert (D-111.4). Rein (A2).
 
+import { IFC_GLOBALID_MUSTER } from '@tethys/vertrag';
 import type {
   Befehlsfehler,
   Ergebnis,
@@ -25,9 +26,6 @@ type Antwort = Ergebnis<MangelChangeSet, Befehlsfehler>;
 /** Die Angaben eines Mangels, die `MangelangabenSetzen` als ganze Werte setzt. */
 type Mangelangaben = Omit<MangelangabenSetzen, 'art'>;
 
-/** Form einer GlobalId (Zusage der Marke `IfcGlobalId`, D-97.4): 22 Zeichen aus dem IFC-Base64-Alphabet. */
-const GLOBAL_ID = /^[0-9A-Za-z_$]{22}$/;
-
 /** Prüft die Angaben und gibt sie in Speicherform zurück (leere Texte als `null`). */
 function angabenLesen(a: Mangelangaben): Mangelangaben | Abweisung {
   if (typeof a.titel !== 'string' || a.titel.trim() === '')
@@ -43,7 +41,8 @@ function angabenLesen(a: Mangelangaben): Mangelangaben | Abweisung {
     return nein('ungueltige-eingabe', 'Eine Position braucht ein Auftrags-LV', 'positionId');
   if (a.bauteil !== null) {
     const { bauwerksmodellId, globalId } = a.bauteil;
-    if (!GLOBAL_ID.test(globalId) || (bauwerksmodellId !== null && !istKennung(bauwerksmodellId)))
+    // Die Form einer GlobalId steht an genau einer Stelle (`IFC_GLOBALID_MUSTER`, D-66 SOLL 6; Ticket 122).
+    if (!IFC_GLOBALID_MUSTER.test(globalId) || (bauwerksmodellId !== null && !istKennung(bauwerksmodellId)))
       return nein('ungueltige-eingabe', `Kein Bauteil: GlobalId ${JSON.stringify(globalId)}`, 'bauteil');
   }
   if (!istKalendertag(a.festgestellt))

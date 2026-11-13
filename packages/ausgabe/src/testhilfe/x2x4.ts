@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Erfundene Eingaben für die Tests der Ausgaben X2 bis X4 (Ticket 113), nur für Tests. Die Zahlen des Honorarergebnisses
 // entsprechen dem Beispiel in `vertrag` (Golden-Fall 1 aus Ticket 101, mit `honorarBerechnen` gerechnet); sie werden hier
-// nicht neu gerechnet (A2).
+// nicht neu gerechnet (A2). Die Befunde tragen Meldungen in der Form, wie `honorarBerechnen` und `bauzeitenplanBerechnen` sie
+// liefern (kanonische Zahlen mit Dezimalpunkt, Kennungen der Vorgänge und Kostenermittlungen); gedruckt werden dagegen die
+// Befundtexte, die die App für ihre Seite bildet und in die Druckeingabe reicht (Ticket 122, D-122.1).
 
+import type { Befundtext } from '../bericht';
 import type {
   AuftragsLeistungsverzeichnisId,
   Bautagebucheintrag,
@@ -23,6 +26,8 @@ import type {
 } from '@tethys/vertrag';
 
 const projektId = 'p-1' as ProjektId;
+/** Kennungen in der Form der App (UUIDv7, A7), damit ein Test sieht, dass keine im Druck steht. */
+const KOSTENERMITTLUNG_ID = '019b5f2e-8c1a-7d3e-9f40-1a2b3c4d5e6f' as KostenermittlungId;
 const btr = (s: string): Betrag => s as Betrag;
 const pz = (s: string): Prozent => s as Prozent;
 
@@ -141,7 +146,7 @@ export const honorarberechnung: Honorarberechnung = {
       honorarsatz: pz('50.00'),
       anrechenbareKosten: {
         art: 'kostenermittlung',
-        kostenermittlungId: 'k-1' as KostenermittlungId,
+        kostenermittlungId: KOSTENERMITTLUNG_ID,
         technischeAnlagenAnteilig: true,
         weitereKosten: btr('18000.00'),
         mitzuverarbeitendeBausubstanz: btr('10000.00'),
@@ -212,17 +217,38 @@ export const honorarergebnis: Honorarergebnis = {
       schwere: 'warnung',
       quelle: 'honorarberechnung',
       code: 'umbauzuschlag-ueber-grenze',
-      meldung: 'Umbauzuschlag 40,00 % über 33 % (§ 36 Abs. 1).',
+      meldung: 'Umbauzuschlag 40.00 % über 33.00 % (§ 36 Abs. 1)',
       ort: { pfad: '/objekte[1]', feld: 'umbauzuschlagssatz' },
+    },
+    {
+      schwere: 'fehler',
+      quelle: 'honorarberechnung',
+      code: 'kostenermittlung-unbekannt',
+      meldung: `Kostenermittlung ${KOSTENERMITTLUNG_ID} wurde nicht übergeben; kein Honorar`,
+      ort: { pfad: '/objekte[1]', feld: 'anrechenbareKosten' },
     },
   ],
 };
 
+/** Die Befunde des Honorarergebnisses, wie die Honorarseite sie zeigt (Ort und Text fertig formatiert). */
+export const honorarBefundtexte: readonly Befundtext[] = [
+  {
+    schwere: 'warnung',
+    ort: 'Objekt 1, Umbauzuschlag',
+    text: 'Der Umbauzuschlag von 40,00 % liegt über 33,00 % (§ 36 Abs. 1 HOAI); gerechnet wird mit dem eingegebenen Satz.',
+  },
+  {
+    schwere: 'fehler',
+    ort: 'Objekt 1, Anrechenbare Kosten',
+    text: 'Die gewählte Kostenermittlung gibt es im Projekt nicht (mehr). Für dieses Objekt entsteht kein Honorar.',
+  },
+];
+
 const v = (s: string): VorgangId => s as VorgangId;
-export const V_ROHBAU = v('v-rohbau');
-export const V_ERD = v('v-erd');
-export const V_MAUER = v('v-mauer');
-export const V_FERTIG = v('v-fertig');
+export const V_ROHBAU = v('019b5f30-0000-7000-8000-000000000001');
+export const V_ERD = v('019b5f30-0000-7000-8000-000000000002');
+export const V_MAUER = v('019b5f30-0000-7000-8000-000000000003');
+export const V_FERTIG = v('019b5f30-0000-7000-8000-000000000004');
 
 export const bauzeitenplan: Bauzeitenplan = {
   id: 'z-1' as Bauzeitenplan['id'],
@@ -302,9 +328,30 @@ export const bauzeitenergebnis: Bauzeitenplanergebnis = {
     {
       schwere: 'warnung',
       quelle: 'terminrechnung',
+      code: 'ist-ungueltig',
+      meldung: `Vorgang ${V_MAUER}: Fortschritt außerhalb von 0 bis 100 Prozent: 120.00`,
+      ort: { vorgangId: V_MAUER, feld: 'ist' },
+    },
+    {
+      schwere: 'warnung',
+      quelle: 'terminrechnung',
       code: 'beziehung-an-sammelvorgang',
-      meldung: 'Anordnungsbeziehung auf den Sammelvorgang „Rohbau“ wird nicht gerechnet.',
+      meldung: `Anordnungsbeziehung ${V_ROHBAU} → ${V_FERTIG}: an einem Sammelvorgang nicht gerechnet`,
       ort: { vorgangId: V_FERTIG, feld: 'vorgaenger', pfad: '/vorgaenge[4]/vorgaenger[1]' },
     },
   ],
 };
+
+/** Die Befunde der Terminrechnung, wie die Planseite sie zeigt (Ort und Text fertig formatiert). */
+export const bauzeitBefundtexte: readonly Befundtext[] = [
+  {
+    schwere: 'warnung',
+    ort: '1.2 Mauerwerk EG',
+    text: 'Ist-Termine oder Fortschritt sind ungültig; sie verschieben nichts.',
+  },
+  {
+    schwere: 'warnung',
+    ort: 'Rohbau fertig',
+    text: 'Anordnungsbeziehung mit 1 Rohbau: An einem Sammelvorgang wird sie in v1 nicht gerechnet; sie entfällt.',
+  },
+];

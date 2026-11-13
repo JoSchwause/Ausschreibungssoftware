@@ -8,12 +8,12 @@ import type { Definitionen } from './definitionen';
 import type { Einheiten } from './einheiten';
 import { klassenname } from './klassen';
 import type { Modellleser } from './modell';
-import type { Bauteilmenge } from './typen';
+import type { StepBauteilmenge } from './typen';
 import { text, verweis } from './werte';
 import { zahlwert } from './zahlen';
 
 /** Einfache Mengen und ihre Art; IFC 4 hat ein Attribut `Formula` mehr als 2x3, der Wert steht in beiden an vierter Stelle. */
-const MENGENARTEN: ReadonlyMap<string, Bauteilmenge['art']> = new Map([
+const MENGENARTEN: ReadonlyMap<string, StepBauteilmenge['art']> = new Map([
   ['IFCQUANTITYLENGTH', 'laenge'],
   ['IFCQUANTITYAREA', 'flaeche'],
   ['IFCQUANTITYVOLUME', 'volumen'],
@@ -24,9 +24,9 @@ const MENGENARTEN: ReadonlyMap<string, Bauteilmenge['art']> = new Map([
 
 export class Mengenleser {
   /** Gelesene Mengensätze; ein Satz am Typ wird so nur einmal gelesen und gemeldet. */
-  private readonly gelesen = new Map<number, readonly Bauteilmenge[]>();
+  private readonly gelesen = new Map<number, readonly StepBauteilmenge[]>();
   /** Instanz jeder Menge ohne Wert, für den Ort des Befunds, wenn sie bei der Abbildung wegfällt (Ticket 107). */
-  private readonly ohneWert = new Map<Bauteilmenge, number>();
+  private readonly ohneWert = new Map<StepBauteilmenge, number>();
 
   constructor(
     private readonly l: Modellleser,
@@ -35,7 +35,7 @@ export class Mengenleser {
   ) {}
 
   /** Mengen eines Objekts und seines Typs; die Menge am Objekt überschreibt die gleichnamige desselben Satzes am Typ. */
-  mengen(i: number): Bauteilmenge[] {
+  mengen(i: number): StepBauteilmenge[] {
     const { eigene, vomTyp } = this.definitionen.saetze(i);
     const lesen = (saetze: readonly number[]) =>
       saetze
@@ -45,16 +45,16 @@ export class Mengenleser {
   }
 
   /** Index der Instanz einer Menge ohne Wert (`IfcQuantity…`); `undefined` für jede andere Menge. */
-  instanzOhneWert(menge: Bauteilmenge): number | undefined {
+  instanzOhneWert(menge: StepBauteilmenge): number | undefined {
     return this.ohneWert.get(menge);
   }
 
-  private satz(s: number): readonly Bauteilmenge[] {
+  private satz(s: number): readonly StepBauteilmenge[] {
     const fertig = this.gelesen.get(s);
     if (fertig !== undefined) return fertig;
     const p = this.l.parameter(s);
     const satz = text(p?.[2]);
-    const mengen: Bauteilmenge[] = [];
+    const mengen: StepBauteilmenge[] = [];
     for (const q of this.l.ziele(s, p?.[5])) {
       const menge = this.menge(q, satz);
       if (menge === null) continue;
@@ -65,7 +65,7 @@ export class Mengenleser {
     return mengen;
   }
 
-  private menge(q: number, satz: string | null): Bauteilmenge | null {
+  private menge(q: number, satz: string | null): StepBauteilmenge | null {
     const klasse = this.l.daten.name(q);
     const nummer = `#${String(this.l.daten.id(q))}`;
     const art = MENGENARTEN.get(klasse);

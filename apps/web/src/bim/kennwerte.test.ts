@@ -6,7 +6,14 @@ import { readFileSync } from 'node:fs';
 import { kostenermittlungBefehlAusfuehren } from '@tethys/kosten';
 import type { Betrag, KostenermittlungId, Kostengruppennummer, ProjektId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { groessenLesen, kennwerteLesen, kostenkennwerteZeilen, schaetzungBauen } from './kennwerte';
+import {
+  groessenLesen,
+  groessenText,
+  herleitungstext,
+  kennwerteLesen,
+  kostenkennwerteZeilen,
+  schaetzungBauen,
+} from './kennwerte';
 import { bauteil, hausModell, knoten, modell } from './testhilfen';
 
 const fx = JSON.parse(
@@ -43,6 +50,23 @@ describe('groessenLesen', () => {
   });
 });
 
+describe('Anzeige einer Bezugsgröße (Ticket 122, PC-c3)', () => {
+  it('Wert mit Einheit und Quelle; fehlt die Größe im Modell, steht keine Quelle dabei', () => {
+    expect(groessenText({ art: 'BGF', wert: '197.596' as never, quelle: 'modell' })).toEqual({
+      wert: '197,596 m²',
+      quelle: '(aus dem Modell)',
+    });
+    expect(groessenText({ art: 'BRI', wert: '12.000' as never, quelle: 'eingabe' })).toEqual({
+      wert: '12,000 m³',
+      quelle: '(Eingabe)',
+    });
+    expect(groessenText({ art: 'NRF', wert: null, quelle: 'modell' })).toEqual({
+      wert: 'fehlt im Modell',
+      quelle: null,
+    });
+  });
+});
+
 describe('Kostenschätzung über Kennwerte', () => {
   const zeilen = fx.erweitert.kostenschaetzung.kennwerte.map((k) => ({
     kostengruppe: k.nummer,
@@ -68,6 +92,15 @@ describe('Kostenschätzung über Kennwerte', () => {
     );
     expect(r.schaetzung.befehl.kostenermittlung.eintraege[0]?.bemerkung).toBe('BGF 197,596 m² × 148,30 €/m²');
     expect(kostenermittlungBefehlAusfuehren(null, r.schaetzung.befehl).ok).toBe(true);
+  });
+
+  it('die Herleitung formatiert der Rand (Ticket 122, N4): Größe mit Einheit, Kennwert in €, eine Eingabe heißt so', () => {
+    expect(
+      herleitungstext({ art: 'BRI', wert: '780.125' as never, quelle: 'modell' }, '12.35' as Betrag),
+    ).toBe('BRI 780,125 m³ × 12,35 €/m³');
+    expect(
+      herleitungstext({ art: 'NRF', wert: '100.005' as never, quelle: 'eingabe' }, '1250.00' as Betrag),
+    ).toBe('NRF 100,005 m² (Eingabe) × 1.250,00 €/m²');
   });
 
   it('Eingabefehler je Zeile und Feld statt einer Schätzung; leere Zeilen zählen nicht', () => {

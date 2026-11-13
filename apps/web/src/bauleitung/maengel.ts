@@ -4,7 +4,12 @@
 // Fristprüfung, Auswertung) stehen in `bauleitung`, hier wird nur gelesen, gefiltert und formatiert. Kein `Date.now()`:
 // der Stichtag kommt aus der Uhr der App (A2, `datumAusUhr`).
 
-import { mangelstatus, statuswechselZulaessig, type Auftragnehmerangabe } from '@tethys/bauleitung';
+import {
+  mangelstatus,
+  statuswechselZulaessig,
+  type Auftragnehmerangabe,
+  type Fristbefundcode,
+} from '@tethys/bauleitung';
 import type { VergleichsSpalte, VergleichsZelle, VergleichsZeile, KennzeichenText } from '@tethys/ui-grid';
 import {
   IFC_GLOBALID_MUSTER,
@@ -167,9 +172,26 @@ export function ueberfaelligeIds(befunde: readonly Pruefbefund[]): Set<string> {
   const ids = new Set<string>();
   for (const b of befunde) {
     const ort: { mangelId?: string } = b.ort;
-    if (b.quelle === 'fristpruefung' && ort.mangelId !== undefined) ids.add(ort.mangelId);
+    // Ticket 122 (PB6): nur „Frist überschritten“ heißt überfällig; „angezeigt ohne Frist“ ist ein eigener Befund.
+    if (b.quelle === 'fristpruefung' && b.code === UEBERFAELLIG && ort.mangelId !== undefined)
+      ids.add(ort.mangelId);
   }
   return ids;
+}
+
+/** Der Code der Fristprüfung für einen überfälligen Mangel (`Fristbefundcode` in `bauleitung`). */
+const UEBERFAELLIG: Fristbefundcode = 'mangel-frist-ueberschritten';
+
+/** Der Text eines Befunds der Fristprüfung in der Liste der Seite (Ticket 122, PB6): je Code ein eigener, de-DE (N4). */
+export function fristbefundText(
+  b: Pruefbefund,
+  m: Pick<Mangel, 'nummer' | 'titel' | 'frist'>,
+  stichtag: string,
+): string {
+  const t = texte.maengel;
+  return b.code === UEBERFAELLIG
+    ? t.befund(m.nummer, m.titel, datumDe(m.frist ?? ''), datumDe(stichtag))
+    : t.befundOhneFrist(m.nummer, m.titel);
 }
 
 // --- Positionen eines Auftrags-LV --------------------------------------------------------------------------------------

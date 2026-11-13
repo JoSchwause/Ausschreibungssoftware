@@ -6,14 +6,14 @@ import { klassenname } from './klassen';
 import { kostengruppenvorschlaege } from './klassifikation';
 import { STRUKTURARTEN } from './modell';
 import type { Modellleser } from './modell';
-import type { Bauteil } from './typen';
+import type { StepBauteil } from './typen';
 
 /** Was zu einem Objekt außer Klasse, Name und Lage gelesen wird (Mengen, Typ, …), je Index der Instanz. */
 export interface Objektdaten {
-  mengen(i: number): Bauteil['mengen'];
-  eigenschaften(i: number): Bauteil['eigenschaften'];
-  klassifikationen(i: number): Bauteil['klassifikationen'];
-  materialien(i: number): Bauteil['materialien'];
+  mengen(i: number): StepBauteil['mengen'];
+  eigenschaften(i: number): StepBauteil['eigenschaften'];
+  klassifikationen(i: number): StepBauteil['klassifikationen'];
+  materialien(i: number): StepBauteil['materialien'];
   typname(i: number): string | null;
 }
 
@@ -64,7 +64,7 @@ export interface GelesenesBauteil {
   readonly i: number;
   readonly struktur: number | null;
   readonly teilVon: number | null;
-  readonly bauteil: Bauteil;
+  readonly bauteil: StepBauteil;
 }
 
 /** Bauteile in der Reihenfolge der Datei. */
@@ -138,7 +138,7 @@ export function bauteileLesen(
         `${bezeichnung} hat mehrere Kostengruppen-Vorschläge (${vorschlaege.join(', ')}); vorgeschlagen wird ${vorschlaege[0] ?? ''}.`,
         l.ort(i),
       );
-    const bauteil: Bauteil = {
+    const bauteil: StepBauteil = {
       globalId,
       ifcKlasse: klassenname(l.daten.name(i)),
       name: l.name(i),
