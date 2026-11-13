@@ -223,7 +223,7 @@ function pruefeSummen(d: string, g: Gelesen, lvDatei: string = d): void {
       expect(befundAn(p.id) || p.zuschlag !== null, `${ozVon(p)}: Abweichung ohne Befund`).toBe(true);
       // Ohne eigenen GP (keine Menge im LV) zählt die Datei ihren IT, die App nichts; eine entfallende Position zählt
       // die Datei nicht.
-      if (s?.gesamtpreis != null && s.gehtInSummeEin === false) return NULL;
+      if (s !== undefined && s.gesamtpreis !== null && !s.gehtInSummeEin) return NULL;
       return subtrahiere(eigen, entfaellt ? NULL : betrag(it));
     }
     if (e.name !== 'BoQCtgy') return elementKinder(e).reduce((a, k) => addiere(a, pruefe(k)), NULL);
@@ -306,7 +306,7 @@ function angebotGelesen(): Gelesen & { readonly lesung: AngebotLesung } {
   return {
     lesung,
     inhalt,
-    // Was das LV nicht abbildet (die Wahl des Bereichs 1.10.40), meldet schon das Einlesen des LV.
+    // Was das LV nicht abbildet (die Wahl der Gliederung 1.10.40), meldet schon das Einlesen des LV.
     befunde: [...lvLesung.befunde, ...lesung.befunde],
     summen: summenBerechnen({ id: wurzelId, knoten: gedacht, nachlass, mwstSatz: lv.mwstSatz }),
     positionen: gedacht.filter((k): k is Position => k.art === 'position'),
@@ -342,7 +342,10 @@ describe('GAEB DA XML 3.1: Angebot X84', () => {
     const an = (code: string): string[] =>
       g.befunde
         .filter((b) => b.code === code)
-        .map((b) => ozVon(g.inhalt.knoten.find((k) => k.id === b.ort.knotenId) ?? g.positionen[0]!));
+        .map((b) => {
+          const k = g.inhalt.knoten.find((x) => x.id === b.ort.knotenId);
+          return k === undefined ? '(LV)' : ozVon(k);
+        });
     expect(an('bietermenge-nicht-abgebildet')).toEqual(['1.10.30.10', '1.10.40.10', '1.10.40.30']);
     expect(g.befunde.find((b) => b.code === 'bietermenge-nicht-abgebildet')?.meldung).toBe(
       'Die Position 1.10.30.10 trägt eine Menge des Bieters (10.000). Ein Angebot übernimmt nur Preise; es gilt die Menge des LV (ohne Menge).',

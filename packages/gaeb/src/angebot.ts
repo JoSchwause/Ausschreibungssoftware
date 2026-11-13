@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// GAEB DA XML 3.3/3.2, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13). Rein (A2):
+// GAEB DA XML 3.3/3.2/3.1, Phase X84 (Angebotsabgabe) → ein Befehl `AngebotAnlegen` (Ticket 45, E-13). Rein (A2):
 // Kennungen bringt der Aufrufer, kein I/O, keine Uhr. Tolerant: Was nicht passt, wird Befund, nichts geht still
 // verloren (Q5). Zuordnung zum LV allein über die Ordnungszahl (A7); die GAEB-`ID` ist kein Schlüssel.
 //

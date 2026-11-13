@@ -663,7 +663,9 @@ describe('Version und Phase: Reihenfolge Namensraum, GAEBInfo/Version, Award/DP,
     expect(l.inhalt).toBeNull();
     const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
     expect(b?.schwere).toBe('fehler');
-    expect(b?.meldung).toBe('GAEB DA XML 3.0 wird nicht gelesen; gelesen werden die Versionen 3.1, 3.2 und 3.3.');
+    expect(b?.meldung).toBe(
+      'GAEB DA XML 3.0 wird nicht gelesen; gelesen werden die Versionen 3.1, 3.2 und 3.3.',
+    );
   });
 
   it('fremder Namensraum und fremdes Wurzelelement', () => {
@@ -914,15 +916,15 @@ describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereich
     expect(amBereich(l)).toEqual([
       [
         'nachlass-nicht-abgebildet',
-        'Nachlass 10.00 % des Bereichs 1: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.',
+        'Nachlass 10.00 % der Gliederung 1: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.',
       ],
       [
         'pauschalsumme-nicht-abgebildet',
-        'Pauschalsumme 15.00 des Bereichs 1: Eine Pauschalsumme für einen Bereich ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.',
+        'Pauschalsumme 15.00 der Gliederung 1: Eine Pauschalsumme für eine Gliederung ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.',
       ],
       [
         'mwst-satz-abweichend',
-        'Steuersatz 7.00 % des Bereichs 1 weicht vom Satz des LV (19.00 %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.',
+        'Steuersatz 7.00 % der Gliederung 1 weicht vom Satz des LV (19.00 %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.',
       ],
     ]);
   });
@@ -934,37 +936,43 @@ describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereich
         '<Total>15.00</Total><VAT>19.00</VAT>',
       ),
     );
-    expect(amBereich(l).map(([c, m]) => [c, m.slice(0, 31)])).toEqual([
-      ['nachlass-nicht-abgebildet', 'Nachlass 5.00 € des Bereichs 1:'],
+    expect(amBereich(l).map(([c, m]) => [c, m.split(':')[0]])).toEqual([
+      ['nachlass-nicht-abgebildet', 'Nachlass 5.00 € der Gliederung 1'],
     ]);
   });
 
   it('Bereich als Wahl', () => {
     const l = lies(
       x86(
-        bereich('<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>1</ALNBSerNo>', '<Totals><Total>20.00</Total></Totals>'),
+        bereich(
+          '<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>1</ALNBSerNo>',
+          '<Totals><Total>20.00</Total></Totals>',
+        ),
         '<Total>0.00</Total><VAT>19.00</VAT>',
       ),
     );
     expect(amBereich(l)).toEqual([
       [
-        'bereichswahl-nicht-abgebildet',
-        'Der Bereich 1 ist eine Wahl (Gruppe 100, Variante 1). Eine Wahl gibt es nur an einzelnen Positionen; ' +
-          'die Positionen des Bereichs werden ohne Wahl gelesen und gehen in die Summen ein.',
+        'gliederungswahl-nicht-abgebildet',
+        'Die Gliederung 1 ist eine Wahl (Gruppe 100, Variante 1). Eine Wahl gibt es nur an einzelnen Positionen; ' +
+          'die Positionen der Gliederung werden ohne Wahl gelesen und gehen in die Summen ein.',
       ],
     ]);
     expect(codes(l)).not.toContain('nicht-abgebildet');
     const grund = lies(
       x86(
-        bereich('<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>0</ALNBSerNo>', '<Totals><Total>20.00</Total></Totals>'),
+        bereich(
+          '<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>0</ALNBSerNo>',
+          '<Totals><Total>20.00</Total></Totals>',
+        ),
         '<Total>20.00</Total><VAT>19.00</VAT>',
       ),
     );
     expect(amBereich(grund)).toEqual([
       [
-        'bereichswahl-nicht-abgebildet',
-        'Der Bereich 1 ist die Grundausführung einer Wahl (Gruppe 100). Eine Wahl gibt es nur an einzelnen Positionen; ' +
-          'die Positionen des Bereichs werden ohne Wahl gelesen.',
+        'gliederungswahl-nicht-abgebildet',
+        'Die Gliederung 1 ist die Grundausführung einer Wahl (Gruppe 100). Eine Wahl gibt es nur an einzelnen Positionen; ' +
+          'die Positionen der Gliederung werden ohne Wahl gelesen.',
       ],
     ]);
   });

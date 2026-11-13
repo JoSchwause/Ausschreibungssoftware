@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// GAEB DA XML 3.3, Phasen X81 und X83 → `LvInhalt` (Ticket 22). Tolerant lesen: Fehler sind Prüfbefunde, nie ein
-// Abbruch. Rein (A2): Eingabe sind Bytes oder Text, Kennungen kommen aus der `IdQuelle`, kein I/O, keine Uhr.
+// GAEB DA XML 3.3, 3.2 und 3.1, Phasen X81, X83 und X86 → `LvInhalt` (Ticket 22, 40, 129). Tolerant lesen: Fehler
+// sind Prüfbefunde, nie ein Abbruch. Rein (A2): Eingabe sind Bytes oder Text, Kennungen kommen aus der `IdQuelle`,
+// kein I/O, keine Uhr. 3.1 unterscheidet sich nur im Namensraum (`erkennung.ts`), nicht im Aufbau (Ticket 129).
 //
 // Zuordnung GAEB → `vertrag`: siehe Ticket 22, Abschnitt Comments; seit v1.1b (Ticket 32) zusätzlich alle
 // Positionsmerkmale unabhängig (F5), Wahl mit Gruppe und Variante, Zuschlag in allen drei Bezugsformen, Langtext
@@ -543,7 +544,7 @@ const UNTERBESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set([
 ]);
 const BESCHREIBUNG_BEHANDELT: ReadonlySet<string> = new Set(['CompleteText']);
 const KOMPLETTTEXT_BEHANDELT: ReadonlySet<string> = new Set(['DetailTxt', 'OutlineText']);
-/** `ALNBGroupNo`/`ALNBSerNo` meldet `Aufbau.bereichswahl` am Bereich. */
+/** `ALNBGroupNo`/`ALNBSerNo` meldet `Aufbau.gliederungswahl` an der Gliederung. */
 const KATEGORIE_BEHANDELT: ReadonlySet<string> = new Set(['LblTx', 'BoQBody', 'ALNBGroupNo', 'ALNBSerNo']);
 /** X86: `Totals` der Bereiche sind abgeleitete Werte; der Kern rechnet sie neu (Ticket 40). */
 const KATEGORIE_BEHANDELT_X86: ReadonlySet<string> = new Set([...KATEGORIE_BEHANDELT, 'Totals']);
@@ -559,7 +560,7 @@ export type Anteil = EpaArt;
 /** X86: welcher `UPComp<n>` welchem Anteil entspricht (aus den EPA-Bezeichnungen, Index `n - 1`). */
 interface Preisangaben {
   readonly anteile: readonly (Anteil | null)[];
-  /** `BoQInfo/Totals/VAT` des LV, `null`: keiner. Ein Bereich mit anderem Satz ist ein Befund. */
+  /** `BoQInfo/Totals/VAT` des LV, `null`: keiner. Eine Gliederung mit anderem Satz ist ein Befund. */
   readonly mwstSatz: Prozent | null;
 }
 
@@ -729,7 +730,7 @@ class Aufbau {
         el,
       );
       this.l.restMelden(el, KATEGORIE_BEHANDELT, 'BoQCtgy');
-      this.bereichswahl(el, eltern.id, this.oz(teile, ozOk) ?? `„${kurz}“`);
+      this.gliederungswahl(el, eltern.id, this.oz(teile, ozOk) ?? `„${kurz}“`);
       const flach: Ebene = { id: eltern.id, teile, ozOk, tiefe };
       for (const b of kinder(el, 'BoQBody')) this.koerper(b, flach);
       return;
@@ -762,19 +763,19 @@ class Aufbau {
     }
     this.l.restMelden(el, this.preise ? KATEGORIE_BEHANDELT_X86 : KATEGORIE_BEHANDELT, 'BoQCtgy');
     const name = gemeinsam.ordnungszahl ?? `„${kurz}“`;
-    this.bereichswahl(el, id, name);
-    if (this.preise) this.bereichssummen(kind(el, 'Totals'), id, name);
+    this.gliederungswahl(el, id, name);
+    if (this.preise) this.gliederungssummen(kind(el, 'Totals'), id, name);
     const naechste: Ebene = { id, teile, ozOk, tiefe };
     for (const b of kinder(el, 'BoQBody')) this.koerper(b, naechste);
   }
 
   /**
-   * `ALNBGroupNo`/`ALNBSerNo`: der ganze Bereich ist Teil einer Wahl (Variante 0 die Grundausführung, sonst eine
-   * Alternative). Der Vertrag kennt Wahl nur an der Position (F4); die Positionen des Bereichs werden ohne Wahl gelesen
-   * und gehen in die Summen ein. Befund am Bereich, denn bei einer Alternative weichen die Summen dann von der Datei ab
+   * `ALNBGroupNo`/`ALNBSerNo`: die ganze Gliederung ist Teil einer Wahl (Variante 0 die Grundausführung, sonst eine
+   * Alternative). Der Vertrag kennt Wahl nur an der Position (F4); die Positionen der Gliederung werden ohne Wahl gelesen
+   * und gehen in die Summen ein. Befund an der Gliederung, denn bei einer Alternative weichen die Summen dann von der Datei ab
    * (Ticket 129).
    */
-  private bereichswahl(el: XmlElement, id: string, name: string): void {
+  private gliederungswahl(el: XmlElement, id: string, name: string): void {
     const gruppeEl = kind(el, 'ALNBGroupNo');
     const varianteEl = kind(el, 'ALNBSerNo');
     if (!gruppeEl && !varianteEl) return;
@@ -783,11 +784,11 @@ class Aufbau {
     const grund = /^0+$/.test(variante);
     this.l.melde(
       'warnung',
-      'bereichswahl-nicht-abgebildet',
+      'gliederungswahl-nicht-abgebildet',
       (grund
-        ? `Der Bereich ${name} ist die Grundausführung einer Wahl (Gruppe ${gruppe}). `
-        : `Der Bereich ${name} ist eine Wahl (Gruppe ${gruppe}, Variante ${variante}). `) +
-        'Eine Wahl gibt es nur an einzelnen Positionen; die Positionen des Bereichs werden ohne Wahl gelesen' +
+        ? `Die Gliederung ${name} ist die Grundausführung einer Wahl (Gruppe ${gruppe}). `
+        : `Die Gliederung ${name} ist eine Wahl (Gruppe ${gruppe}, Variante ${variante}). `) +
+        'Eine Wahl gibt es nur an einzelnen Positionen; die Positionen der Gliederung werden ohne Wahl gelesen' +
         (grund ? '.' : ' und gehen in die Summen ein.'),
       gruppeEl ?? varianteEl,
       { knotenId: id },
@@ -795,13 +796,13 @@ class Aufbau {
   }
 
   /**
-   * X86, `Totals` eines Bereichs: Die Beträge sind abgeleitet und werden neu gerechnet (Ticket 40). Was dort eine eigene
-   * Angabe ist und der Vertrag nicht kennt, ist ein Befund am Bereich (U5, Q5): ein Nachlass (`DiscountPcnt`,
+   * X86, `Totals` einer Gliederung: Die Beträge sind abgeleitet und werden neu gerechnet (Ticket 40). Was dort eine eigene
+   * Angabe ist und der Vertrag nicht kennt, ist ein Befund an der Gliederung (U5, Q5): ein Nachlass (`DiscountPcnt`,
    * `DiscountAmt`; Nachlass nur am LV, N5), eine Pauschalsumme (`TotalLSUM`) und ein Steuersatz, der von dem des LV
    * abweicht (`VAT`; ein Satz je LV, G-28). Die Summen der App weichen dann um genau diese Angaben von der Datei ab
    * (Ticket 129).
    */
-  private bereichssummen(totals: XmlElement | undefined, id: string, name: string): void {
+  private gliederungssummen(totals: XmlElement | undefined, id: string, name: string): void {
     if (!totals || !this.preise) return;
     const ort = { knotenId: id };
     const pct = kind(totals, 'DiscountPcnt');
@@ -811,7 +812,7 @@ class Aufbau {
       this.l.melde(
         'warnung',
         'nachlass-nicht-abgebildet',
-        `Nachlass ${nachlass} des Bereichs ${name}: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.`,
+        `Nachlass ${nachlass} der Gliederung ${name}: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.`,
         pct ?? amt,
         ort,
       );
@@ -820,7 +821,7 @@ class Aufbau {
       this.l.melde(
         'warnung',
         'pauschalsumme-nicht-abgebildet',
-        `Pauschalsumme ${wert(pauschal) ?? ''} des Bereichs ${name}: Eine Pauschalsumme für einen Bereich ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
+        `Pauschalsumme ${wert(pauschal) ?? ''} der Gliederung ${name}: Eine Pauschalsumme für eine Gliederung ist nicht abbildbar; die Summe wird aus den Positionen gerechnet.`,
         pauschal,
         ort,
       );
@@ -833,7 +834,7 @@ class Aufbau {
         this.l.melde(
           'warnung',
           'mwst-satz-abweichend',
-          `Steuersatz ${satz} % des Bereichs ${name} weicht vom Satz des LV (${lv} %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.`,
+          `Steuersatz ${satz} % der Gliederung ${name} weicht vom Satz des LV (${lv} %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.`,
           vat,
           ort,
         );
@@ -1557,7 +1558,7 @@ export type Vorlauf =
 
 /**
  * Prüft Größe, dekodiert, parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und
- * Phase. Nicht gelesene Versionen (3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer.
+ * Phase. Nicht gelesene Versionen (älter als 3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer.
  */
 export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids: IdQuelle | null): Vorlauf {
   const befunde: Pruefbefund[] = [];
@@ -1627,7 +1628,7 @@ export function vorlauf(eingabe: Uint8Array | string, opt: VorlaufOptionen, ids:
 }
 
 /**
- * Liest eine GAEB-DA-XML-Datei (3.3, 3.2) der Phase X81, X83 oder X86. Wirft nie bei Dateiinhalt: Probleme sind
+ * Liest eine GAEB-DA-XML-Datei (3.3, 3.2, 3.1) der Phase X81, X83 oder X86. Wirft nie bei Dateiinhalt: Probleme sind
  * Befunde; `inhalt` ist `null`, wenn gar keine Struktur zu retten war (zurückgewiesen, unlesbar, andere Version oder
  * Phase). X84 liest `leseAngebot`.
  */
