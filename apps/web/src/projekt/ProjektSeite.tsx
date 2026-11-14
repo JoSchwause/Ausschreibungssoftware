@@ -30,6 +30,7 @@ import { bereichsPfad } from '../ui/navigation';
 import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { texte as uiTexte } from '../ui/texte';
 import { Verweis } from '../ui/Verweis';
+import { projektangabenBefehl, projektFormular, type ProjektFormular } from './angaben'; // Ticket 150
 import { FormDialog } from './FormDialog';
 import { LvAbschnitt, useLoeschMeldung } from './LvAbschnitt';
 import { nachtraegeZu, projektstandLaden, type Projektstand } from './stand';
@@ -167,8 +168,9 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const weg = befehlswegFuer(u);
   // --- Löschen des Projekts (Ticket 48, Punkt 5) ------------------------------------------------------------------
   const [loeschen, setLoeschen] = useState(false);
-  // --- Stammdaten ändern -------------------------------------------------------------------------------------
-  const [stammdaten, setStammdaten] = useState<{ name: string; bauherr: string } | null>(null);
+  // --- Projektangaben (Ticket 150, E10) ----------------------------------------------------------------------
+  const [angaben, setAngaben] = useState<ProjektFormular | null>(null);
+  const [nameFehlt, setNameFehlt] = useState(false);
 
   if (lage.art !== 'da') {
     return (
@@ -184,17 +186,35 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const stand = lage.wert;
   const { projekt, lvs } = stand;
 
-  const stammdatenSpeichern = async (): Promise<void> => {
-    if (stammdaten === null) return;
-    const a = await weg.projekt(projekt).befehl({
-      art: 'ProjektStammdatenSetzen',
-      name: stammdaten.name.trim(),
-      bauherr: { name: stammdaten.bauherr.trim(), anschrift: projekt.bauherr.anschrift },
-    });
+  const angabenSpeichern = async (): Promise<void> => {
+    if (angaben === null) return;
+    if (angaben.name.trim() === '') {
+      setNameFehlt(true);
+      return;
+    }
+    const a = await weg.projekt(projekt).befehl(projektangabenBefehl(projekt, angaben));
     if (!pruefe(a)) return;
-    setStammdaten(null);
+    setAngaben(null);
     neuLaden();
   };
+  const feld = (schluessel: keyof ProjektFormular, label: string): ReactElement => (
+    <Eingabefeld
+      label={label}
+      value={angaben?.[schluessel] ?? ''}
+      onWertChange={(w) => {
+        setAngaben((s) => (s ? { ...s, [schluessel]: w } : s));
+        if (schluessel === 'name') setNameFehlt(false);
+      }}
+      {...(schluessel === 'name' && nameFehlt ? { meldung: texte.projekt.nameFehlt } : {})}
+    />
+  );
+  const pa = projekt.angaben;
+  const baustelle = [
+    pa?.baustelle?.strasse,
+    [pa?.baustelle?.plz, pa?.baustelle?.ort].filter(Boolean).join(' '),
+  ]
+    .filter((x) => x !== undefined && x !== null && x !== '')
+    .join(', ');
 
   const loeschenBestaetigt = async (): Promise<void> => {
     setLoeschen(false);
@@ -219,6 +239,22 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <span className="projekt__leise">
           {texte.projekt.bauherr}: {projekt.bauherr.name}
         </span>
+        {/* Ticket 150: die Projektangaben, soweit gesetzt */}
+        {pa?.nummer ? (
+          <span className="projekt__leise">
+            {texte.projekt.nummer}: {pa.nummer}
+          </span>
+        ) : null}
+        {pa?.ort ? (
+          <span className="projekt__leise">
+            {texte.projekt.ort}: {pa.ort}
+          </span>
+        ) : null}
+        {baustelle !== '' ? (
+          <span className="projekt__leise">
+            {texte.projekt.baustelle}: {baustelle}
+          </span>
+        ) : null}
         <Verweis pfad="/" text={texte.projekt.zurueck} gehe={gehe} className="projekt__zurueck" />
       </div>
       <div className="projekt__werkzeuge" role="group" aria-label={t.werkzeuge}>
@@ -228,10 +264,11 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <div className="projekt__gruppe">
           <Button
             onClick={() => {
-              setStammdaten({ name: projekt.name, bauherr: projekt.bauherr.name });
+              setNameFehlt(false);
+              setAngaben(projektFormular(projekt));
             }}
           >
-            {texte.projekt.umbenennen}
+            {texte.projekt.angabenKnopf}
           </Button>
           <Button onClick={() => void exportieren()}>{texte.projekt.exportieren}</Button>
         </div>
@@ -276,27 +313,23 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
         <p>{htexte.loeschen.projektFrage(projekt.name, lvs.length)}</p>
       </Dialog>
       <FormDialog
-        offen={stammdaten !== null}
-        titel={texte.projekt.umbenennen}
+        offen={angaben !== null}
+        titel={texte.projekt.angabenTitel}
         onSchliessen={() => {
-          setStammdaten(null);
+          setAngaben(null);
         }}
-        onSenden={() => void stammdatenSpeichern()}
+        onSenden={() => void angabenSpeichern()}
       >
-        <Eingabefeld
-          label={texte.anlegen.name}
-          value={stammdaten?.name ?? ''}
-          onWertChange={(w) => {
-            setStammdaten((s) => (s ? { ...s, name: w } : s));
-          }}
-        />
-        <Eingabefeld
-          label={texte.projekt.bauherr}
-          value={stammdaten?.bauherr ?? ''}
-          onWertChange={(w) => {
-            setStammdaten((s) => (s ? { ...s, bauherr: w } : s));
-          }}
-        />
+        {feld('name', texte.anlegen.name)}
+        {feld('bauherr', texte.projekt.bauherr)}
+        {feld('nummer', texte.projekt.nummer)}
+        {feld('ort', texte.projekt.ort)}
+        <fieldset className="projekt__gruppe-felder">
+          <legend>{texte.projekt.baustelle}</legend>
+          {feld('strasse', texte.projekt.strasse)}
+          {feld('plz', texte.projekt.plz)}
+          {feld('baustelleOrt', texte.projekt.baustelleOrt)}
+        </fieldset>
       </FormDialog>
     </div>
   );

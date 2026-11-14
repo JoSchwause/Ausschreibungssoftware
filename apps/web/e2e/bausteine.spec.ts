@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { meldung } from './hilfen';
 
 // Die Katalogseite zeigt jeden Baustein zweimal (Hell- und Dunkel-Rahmen). Die Tests arbeiten im ersten.
 test.beforeEach(async ({ page }) => {
@@ -142,7 +143,7 @@ test('Meldung (Toast) erscheint per Tastatur und lässt sich schließen', async 
   const knopf = hell(page).getByRole('button', { name: 'Hinweis zeigen' });
   await knopf.focus();
   await page.keyboard.press('Enter');
-  const toast = page.getByRole('listitem').filter({ hasText: 'Gespeichert' });
+  const toast = meldung(page, 'Gespeichert');
   await expect(toast).toBeVisible();
   await toast.getByRole('button', { name: 'Meldung schließen' }).click();
   await expect(toast).toHaveCount(0);

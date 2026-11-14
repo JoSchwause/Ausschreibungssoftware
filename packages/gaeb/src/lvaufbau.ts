@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Baum eines LV aus einer Folge von Ereignissen (Gliederung öffnen und schließen, Hinweistext, Position), unabhängig vom
-// Format der Datei (Ticket 144: GAEB 90; für GAEB 2000 in Ticket 145 gedacht). Dieselben Regeln wie der DA-XML-Leser: OZ aus
+// Format der Datei (Ticket 144: GAEB 90; Ticket 145: GAEB 2000). Dieselben Regeln wie der DA-XML-Leser: OZ aus
 // den Teilen mit dem Trennzeichen, doppelte OZ als Befund, Wahl mit Verweis auf die Grundposition derselben Gliederung.
 // Rein (A2): Kennungen aus der `IdQuelle`.
 

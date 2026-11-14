@@ -5,7 +5,7 @@
 // Redo (Ticket 48) schreiben hier.
 
 import { lvBefehlAusfuehren, lvChangeSetAnwenden, projektChangeSetAnwenden } from '@tethys/kern';
-// Ticket 149 (D-138.1): Projektbefehle über `vergabe`, das die Bieterbefehle selbst ausführt und den Rest an den Kern reicht.
+// Ticket 150 (D-138.1): Projektbefehle über `vergabe`; es führt die Bieterbefehle selbst aus und reicht alle übrigen an den Kern.
 import { angebotBefehlAusfuehrer, projektBefehlAusfuehren } from '@tethys/vergabe';
 import type {
   Angebot,

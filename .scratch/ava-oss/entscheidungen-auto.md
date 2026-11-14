@@ -821,3 +821,17 @@ Question: (1) D-128.5: Bauabzugsteuer 0,00, wenn ihre Basis ≤ 0 ist (D-72 sagt
 Decision: (1) Bestätigt: keine negative Steuer, keine Erstattung durch das Finanzamt in v1; steht auf der Seite „Annahmen“ mit D-72. (2) 143 übernimmt `speicher` als zweites Paket (derzeit kein anderer Schreiber dort, P2 bleibt gewahrt): Dekoder für `vertragsstrafe`, `skonto`, `bauabzugsteuer`, `zahlungen`, Prüfung in der Dateimigration (Schema 7 trägt die Felder optional, kein neues Schema), `konflikt` für „Zahlung nur an freigegebener Rechnung“. (3) Bleibt optional bis zur nächsten Vertragsversion (nach der Welle). Der Opus-Review von v1.7b läuft im Wellen-Review mit (die Formen folgen D-72 wörtlich, alles optional).
 Reason: Ein Schreiber, ein Ticket, kein zusätzlicher Agentenplatz; der Tor-Weg (Rechnung mit Skonto) braucht den Speicher.
 Reversible: yes  Touches: packages/abrechnung, speicher, fixtures, Ticket 143
+
+## D-94 Fehlerfestigkeit gemergt; wackeliger Test `bim-tastatur.spec.ts:135` an 155
+Welle 7 · Ticket 132 (Folge 155, 158) · decided by: orchestrator
+Question: 132 ist fertig bis auf „volle Web-E2E zweimal hintereinander grün“: seit dem Merge von 131/133 fällt zeitweise `bim-tastatur.spec.ts:135` (Fokus einer Option im Auswahlfeld), auch ohne die Änderungen aus 132 (2 von 4 mit `--repeat-each 4`). Rohe Fehlertexte beim PDF stehen noch in `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50`.
+Decision: 132 gemergt. Den wackeligen Test und die zwei PDF-Fehlertexte übernimmt 155 (Besitzer von `bim/`, `bauzeit/`, `bauleitung/`): Ursache finden, nicht den Test abschwächen. Das Kriterium „zweimal grün“ prüft das Tor-Ticket 158 auf dem Endstand. `nachtrag.spec.ts:170` prüft einen festen Hinweis, keine Meldung, und bleibt.
+Reason: Der Fehler liegt nicht in 132; ein Schreiber je Ordner.
+Reversible: yes  Touches: apps/web/src/fehler, Ticket 155, 158
+
+## D-95 151, 150, 145 gemergt; Folgen
+Welle 7 · Tickets 145, 150, 151 (Folge 149, 152, 154, 158, 159) · decided by: orchestrator
+Question: Was folgt aus den Berichten von 151 (geführter Nachtrag), 150 (Projektangaben, Einstellungen mit eigenem Undo, Kopie-Import) und 145 (GAEB 2000 gebaut, Quellen in D-145.x)?
+Decision: Alle drei bestätigt. 145: Bedarf, Wahl, Stundenlohn, Pauschal und Zuschlag werden aus GAEB 2000 nicht gelesen (keine freie Quelle, D-145.4), kein MwSt-Satz (D-145.8) – der Bericht nennt das samt den 9 unsicheren Punkten. Merge-Konflikte (132/148 in `umwege.spec.ts`, 132/150 in `projekt.spec.ts` und `ausgabe/LvDrucken.tsx`) hat der Orchestrator gelöst, die betroffenen E2E liefen grün. **An laufende/kommende Tickets:** 149, 152, 154 geben `Einstellungen.buero` und das `Projekt` in ihre PDF-Eingaben (D-141, D-150); 158 schließt im Torweg den Dialog „Projektdatei eingelesen“. **Für 159 gesammelt:** Glossareintrag „GAEB 2000“ (und „GAEB 90“, falls fehlend); Kommentar `apps/web/src/gaeb/gaeb.ts:60`; eine E2E, die eine GAEB-2000-Datei in der App einliest; `kosten/`-Seiten ohne Einstellungs-Undo-Knöpfe (D-150). **Bewusst später (Bericht):** gemeinsamer Positionsdialog mit Lesemodus für `lv/` und `auftrag/`; Auftragnehmer in den Dialogen „X84 einlesen“/„Excel einlesen“ vorbelegen (151).
+Reason: Keine Regel verletzt; Reste sind klein und gebündelt.
+Reversible: yes  Touches: Tickets 149, 152, 154, 158, 159

@@ -3,7 +3,8 @@
 // schreiben nur 3.3 und 3.2 (X81, X83, X86; Ticket 40, G-10); Angebote X84 → `AngebotAnlegen` (Ticket 45; 3.1 seit 129).
 // Seit Ticket 136: Dateiart am Inhalt erkennen (`erkenneGaebDatei`: DA XML, GAEB 90, GAEB 2000, unbekannt), jede Abweisung
 // mit einem Satz, Befunde strukturiert (`GaebBefund`, `BEFUNDTEXTE`), Angaben des Bieters aus der X84. Seit Ticket 144 liest
-// `leseGaeb` auch GAEB 90 (.d81/.d83/.d86) und `leseAngebot` GAEB 90 (.d84), erkannt am Inhalt (`gaeb90.ts`).
+// `leseGaeb` auch GAEB 90 (.d81/.d83/.d86) und `leseAngebot` GAEB 90 (.d84), erkannt am Inhalt (`gaeb90.ts`); seit Ticket 145
+// ebenso GAEB 2000 (.p81/.p83/.p86, Angebot .p84; `gaeb2000.ts`).
 
 export { BEFUNDTEXTE, nichtUebernommeneAngaben, zeileHilft } from './befunde';
 export type { Befundwert, Befundwerte, GaebBefund, GaebBefundcode } from './befunde';

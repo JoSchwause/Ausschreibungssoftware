@@ -2,7 +2,7 @@
 // Gemeinsame Schritte der App-E2E-Tests: nur Tastatur und Schaltflächen (U3, U8), so wie ein Nutzer.
 
 import { readFileSync } from 'node:fs';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export interface FxPosition {
   readonly id: string;
@@ -157,4 +157,24 @@ export function summen(page: Page): Promise<Record<string, string>> {
 /** Wartet, bis alle eingereihten Befehle durch Kern und Speicher sind (Testpfad; die Befehle laufen nacheinander). */
 export async function leerlauf(page: Page): Promise<void> {
   await page.evaluate(() => window.tethysTest?.leerlauf());
+}
+
+/**
+ * B-38: alle sichtbaren Meldungen (Toasts), z. B. um ihre Lage zu prüfen. Die Toast-Region kündigt jede Meldung zusätzlich
+ * für etwa eine Sekunde in einem unsichtbaren Ansageknoten an („Meldung“, Titel und Text, Rolle `status`); eine Suche über
+ * die ganze Seite träfe dann zwei Elemente, und der Test fiele je nach Zeitpunkt. Gesucht wird deshalb nur unter den
+ * Einträgen der Region „Meldungen“.
+ */
+export function meldungen(page: Page): Locator {
+  return page.getByRole('region', { name: /^Meldungen/ }).getByRole('listitem');
+}
+
+/** B-38: die sichtbare Meldung (Toast), die `text` enthält (siehe `meldungen`); bei mehreren passenden die neueste. */
+export function meldung(page: Page, text: string | RegExp): Locator {
+  return meldungen(page).filter({ hasText: text }).last();
+}
+
+/** Wartet, bis eine Meldung (Toast) mit `text` sichtbar ist (B-38, siehe `meldung`). */
+export async function erwarteMeldung(page: Page, text: string | RegExp): Promise<void> {
+  await expect(meldung(page, text)).toBeVisible();
 }

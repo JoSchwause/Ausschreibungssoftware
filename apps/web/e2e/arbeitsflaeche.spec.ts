@@ -7,7 +7,7 @@
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureAlsX83 } from './fixture-inhalt';
-import { gaebEinlesen, neueZeile, projektAnlegen } from './hilfen';
+import { gaebEinlesen, meldungen, neueZeile, projektAnlegen } from './hilfen';
 import { werkzeug, werkzeugleiste } from './werkzeuge';
 
 test.use({ viewport: { width: 1280, height: 800 } });
@@ -98,9 +98,9 @@ async function lvSeitePruefen(page: Page): Promise<void> {
   const felder = await rechteck(page.getByRole('group', { name: 'Nachlass und MwSt' }));
   expect(felder.unten).toBeLessThanOrEqual(800 - 24);
   // Die Meldung zum Einlesen steht noch: Sie überdeckt weder Summenfuß noch Werkzeugleiste noch Nachlass und MwSt.
-  const meldungen = page.locator('.tx-toast');
-  await expect(meldungen.first()).toBeVisible();
-  for (const m of await meldungen.all()) {
+  const alle = meldungen(page);
+  await expect(alle.first()).toBeVisible();
+  for (const m of await alle.all()) {
     const r = await rechteck(m);
     expect(ueberlappen(r, summen)).toBe(false);
     expect(ueberlappen(r, leiste)).toBe(false);
@@ -208,8 +208,7 @@ test('Preisspiegel und Auftrags-LV ohne waagerechten Überlauf; der Gesamtpreis 
   const tabelle = await rechteck(bieter);
   expect(tabelle.rechts).toBeLessThanOrEqual(arbeit.rechts);
   expect(tabelle.unten).toBeLessThanOrEqual(800 - 24);
-  for (const m of await page.locator('.tx-toast').all())
-    expect(ueberlappen(await rechteck(m), tabelle)).toBe(false);
+  for (const m of await meldungen(page).all()) expect(ueberlappen(await rechteck(m), tabelle)).toBe(false);
   const grid = page.getByRole('treegrid', { name: 'Preisspiegel' });
   await expect(grid.getByRole('row', { name: /Netto nach Nachlass/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Summen', exact: true }).click();

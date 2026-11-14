@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Fehlerseite, Fehlerband und Browserhinweis (E13). Steht außerhalb der Hülle und bringt daher eigene Abstände mit. */
+
+.fehler-seite {
+  min-height: 100vh;
+  padding: var(--tx-space-7) var(--tx-space-6);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font-family: var(--tx-font-sans);
+}
+
+.fehler {
+  max-width: 48rem;
+  line-height: var(--tx-line-height);
+}
+
+.fehler h1 {
+  margin: 0 0 var(--tx-space-3);
+  font-size: var(--tx-font-size-xl);
+}
+
+.fehler h2 {
+  margin: 0 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-lg);
+}
+
+.fehler p,
+.fehler ul {
+  margin: 0 0 var(--tx-space-3);
+}
+
+.fehler--band {
+  position: fixed;
+  inset: var(--tx-space-3) var(--tx-space-3) auto auto;
+  z-index: 1000;
+  padding: var(--tx-space-4);
+  border: 1px solid var(--tx-color-danger);
+  border-radius: var(--tx-radius-lg);
+  background: var(--tx-color-danger-subtle);
+  box-shadow: var(--tx-shadow-lg);
+  font-family: var(--tx-font-sans);
+}
+
+.fehler__knoepfe {
+  display: flex;
+  gap: var(--tx-space-2);
+  margin-bottom: var(--tx-space-3);
+}
+
+.fehler__einzelheiten pre {
+  max-height: 16rem;
+  overflow: auto;
+  padding: var(--tx-space-3);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface-sunken);
+  font-family: var(--tx-font-mono);
+  font-size: var(--tx-font-size-sm);
+  white-space: pre-wrap;
+}
+
+.fehler__leise {
+  color: var(--tx-color-text-muted);
+}
