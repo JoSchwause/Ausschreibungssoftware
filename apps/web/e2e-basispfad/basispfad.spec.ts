@@ -15,19 +15,23 @@ test('Der Build mit Basis-Pfad lädt unter dem Pfad, ohne fehlende Dateien', asy
   page.on('pageerror', (e) => konsole.push(e.message));
 
   await page.goto(BASIS);
-  await expect(page).toHaveTitle('Tethys AVA');
+  // Seit der Navigation der Welle 7 nennt der Fenstertitel die Seite („Projekte – Tethys AVA“).
+  await expect(page).toHaveTitle('Projekte – Tethys AVA');
   await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
   // Der Speicher läuft in einem Worker (OPFS): Die Projektliste erscheint erst, wenn er geantwortet hat.
   await expect(page.getByText('Noch keine Projekte.')).toBeVisible();
 
   // Wechsel innerhalb der App behält den Basis-Pfad.
-  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('link', { name: 'LV' }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASIS}lv$`));
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Hauptnavigation' })
+    .getByRole('link', { name: 'Hilfe' })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`${BASIS}hilfe$`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Hilfe' })).toBeVisible();
 
   // Neuladen auf einer Unterseite (bei Pages liefert 404.html die Startseite aus).
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Hilfe' })).toBeVisible();
 
   // Manifest: Start-Adresse und Geltungsbereich folgen dem Basis-Pfad.
   const antwort = await request.get(`${BASIS}manifest.webmanifest`);
