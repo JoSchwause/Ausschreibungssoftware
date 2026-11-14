@@ -297,6 +297,25 @@ export const nachDatum = (zs: readonly Zahlung[]): Zahlung[] =>
   [...zs].sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
 
 /**
+ * Der Stand des Skontos in Worten, nach derselben Regel wie `skontoStandText` im Druck (Ticket 163): „verwirklicht“;
+ * „noch nicht verwirklicht“, solange die Skontofrist läuft (Fristtag eingeschlossen) oder ohne Eingangsdatum noch keine
+ * Frist besteht; „nicht verwirklicht“, wenn `heute` nach dem Fristende liegt oder eine Zahlung nach dem Fristende erfasst
+ * ist. Hier nachgebaut statt aus `@tethys/ausgabe` geholt, weil das Paket pdfmake ins Hauptbündel zöge (D-163.2); ein Test
+ * hält beide Fassungen gleich.
+ */
+export function skontoStand(
+  zs: Pick<Zahlungsstand, 'skontoVerwirklicht' | 'fristende'>,
+  zahlungen: readonly { readonly datum: string }[],
+  heute: Kalenderdatum,
+): string {
+  const z = texte.zahlung;
+  if (zs.skontoVerwirklicht) return z.skontoVerwirklicht;
+  const fristende = zs.fristende;
+  const abgelaufen = fristende !== null && (heute > fristende || zahlungen.some((x) => x.datum > fristende));
+  return abgelaufen ? z.skontoNichtVerwirklicht : z.skontoNochNichtVerwirklicht;
+}
+
+/**
  * Die Zahlungsfreigabe einer Rechnung aus ihrem Zahlungsstand (gerechnet in `abrechnung`, D-128.8). Bezeichnungen wie im
  * Druck: „Bauabzugsteuer 15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“, „Summe der Zahlungen“, „Offen“.
  * Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag. `heute` (Uhr der App) entscheidet, ob ein nicht
@@ -353,12 +372,7 @@ export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand, heute: Kalender
   if (skonto !== undefined)
     geltend.push({
       schluessel: 'skonto',
-      bezeichnung: zs.skontoVerwirklicht
-        ? z.skontoVerwirklicht
-        : // Zweiter Review-Durchgang R2: Solange die Frist läuft (Fristtag eingeschlossen), ist nichts endgültig verfehlt.
-          zs.fristende !== null && heute <= zs.fristende
-          ? z.skontoNochNichtVerwirklicht
-          : z.skontoNichtVerwirklicht,
+      bezeichnung: skontoStand(zs, r.zahlungen ?? [], heute),
       zeichen: '−',
       betrag: zs.verwirklichterSkonto,
     });

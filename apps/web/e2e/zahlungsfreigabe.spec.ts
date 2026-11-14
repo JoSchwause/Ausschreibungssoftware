@@ -169,16 +169,30 @@ const heute = (): string => {
   return `${String(d.getFullYear())}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
 };
 
+/**
+ * Der Stand des Skontos, wie Bildschirm und PDF ihn nach einer Regel nennen (Ticket 163): Ein nicht verwirklichter Skonto
+ * heißt „noch nicht verwirklicht“, solange die Frist läuft (Uhr des Browsers, Fristtag eingeschlossen) und keine Zahlung
+ * nach dem Fristende erfasst ist.
+ */
+const skontoStand = (
+  zs: typeof ZS1,
+  skonto: 'verwirklicht' | 'nicht verwirklicht',
+  zahlungsdaten: readonly string[],
+): string => {
+  const fristende = zs.fristende ?? '';
+  const laeuft = heute() <= fristende && zahlungsdaten.every((d) => d <= fristende);
+  return skonto === 'nicht verwirklicht' && laeuft ? 'noch nicht verwirklicht' : skonto;
+};
+
 /** Die Fälle des Skontos und der geltende Fall wie der Zahlungsstand der Fixture. */
 async function zahlungsstandPruefen(
   page: Page,
   zs: typeof ZS1,
   steuer: boolean,
   skonto: 'verwirklicht' | 'nicht verwirklicht',
+  zahlungsdaten: readonly string[],
 ): Promise<void> {
-  // Zweiter Review-Durchgang R2: Solange die Frist läuft (Uhr des Browsers), heißt es „noch nicht verwirklicht“.
-  const text =
-    skonto === 'nicht verwirklicht' && heute() <= (zs.fristende ?? '') ? 'noch nicht verwirklicht' : skonto;
+  const text = skontoStand(zs, skonto, zahlungsdaten);
   const minus = (b: string): string => (b === '0.00' ? betragDe(b) : `−${betragDe(b)}`);
   await expect(page.getByTestId('fall-mit-zahlbetrag')).toHaveText(betragDe(zs.zahlbetrag));
   await expect(page.getByTestId('fall-mit-skonto')).toHaveText(minus(zs.mitSkonto.skonto));
@@ -246,7 +260,7 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   await frage.getByRole('button', { name: 'Freigeben', exact: true }).click();
   await expect(page.getByTestId('freigabe')).toHaveText(`Freigegeben mit ${betragDe(ZS1.zahlbetrag)} €`);
   await zahlungErfassen(page, Z11.datum, Z11.betrag);
-  await zahlungsstandPruefen(page, ZS1, true, 'verwirklicht');
+  await zahlungsstandPruefen(page, ZS1, true, 'verwirklicht', [Z11.datum]);
   await expect(page.getByRole('row', { name: /^Zahlbetrag \(eingefroren\)/ })).toBeVisible();
   await expect(
     page.getByRole('row', { name: /^Bauabzugsteuer 15,00 % an das Finanzamt/ }).first(),
@@ -333,11 +347,12 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   await expect(page.getByTestId('freigabe')).toHaveText(`Freigegeben mit ${betragDe(ZS2.zahlbetrag)} €`);
   await zahlungErfassen(page, Z21.datum, Z21.betrag);
   await zahlungErfassen(page, Z22.datum, Z22.betrag);
-  await zahlungsstandPruefen(page, ZS2, false, 'nicht verwirklicht');
+  await zahlungsstandPruefen(page, ZS2, false, 'nicht verwirklicht', [Z21.datum, Z22.datum]);
   await ausgabe(aktionen(page), 'Rechnungsprüfung als PDF …');
   const pdf2 = await pdfMitVorschau(page, 'Rechnungsprüfung als PDF', /^Rechnungsprüfung 2 .+\.pdf$/);
   expect(pdf2).toContain(`Vertragsstrafe (${STRAFE.grund})`);
   expect(pdf2).toContain(`−${betragDe(k2.vertragsstrafe)} €`);
+  // Dieselbe Regel wie am Bildschirm: Die Restzahlung liegt nach dem Fristende, also „nicht verwirklicht“ (Ticket 163).
   expect(pdf2).toContain('Skonto (nicht verwirklicht)');
   expect(pdf2).toContain(`Offen ${betragDe(ZS2.offen)} €`);
   await expect(page.getByTestId('zahlungen').getByRole('row')).toHaveText([
@@ -379,7 +394,7 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
 
   // Neuladen: alles gespeichert; die Liste nennt den offenen Betrag je Rechnung.
   await page.reload();
-  await zahlungsstandPruefen(page, ZS2, false, 'nicht verwirklicht');
+  await zahlungsstandPruefen(page, ZS2, false, 'nicht verwirklicht', [Z21.datum, Z22.datum]);
   await page.getByRole('link', { name: 'Zur Rechnungsliste' }).click();
   const liste = page.getByRole('table', { name: 'Rechnungen des Auftrags-LV' });
   await expect(liste.getByTestId('zahlbetrag')).toHaveText([

@@ -35,3 +35,15 @@ Herkunft: Abschlussberichte von 158, 159a, 159b; D-110
 - [ ] Texte für Nutzer nach L4/L5
 
 ## Comments
+
+- **D-163.1 Skonto ohne Eingangsdatum.** Frage: Welcher Stand, wenn es kein Fristende gibt? Bildschirm sagte „nicht
+  verwirklicht“, PDF „noch nicht verwirklicht“. Entscheidung: „noch nicht verwirklicht“ wie im PDF. Grund: Das Datum lässt sich
+  nachtragen (Befund „Skonto ohne Eingangsdatum“ sagt, wo), der Skonto ist also nicht endgültig verfehlt; `packages/ausgabe`
+  gehört nicht zu diesem Ticket (P2).
+- **D-163.2 Eine Regel, zwei Fassungen mit Gleichheitstest.** Frage: Bildschirm ruft `skontoStandText` aus `@tethys/ausgabe`?
+  Entscheidung: Nein; `rechnung/pruefung.ts` hat `skontoStand` mit derselben Regel und den Texten aus `texte.ts`, ein Test in
+  `rechnung/zahlungsfreigabe.test.ts` verlangt für alle Varianten der Fixture und sechs Stichtage denselben Text wie
+  `skontoStandText`. Grund: Der statische Import zieht pdfmake ins Hauptbündel (gemessen: `index-*.js` 938 kB → 1.810 kB);
+  die App lädt `ausgabe` sonst nur nach. Eine einzige Fassung bräuchte einen Unterpfad-Export oder `sideEffects` in
+  `packages/ausgabe` (anderes Paket, Bericht). Folge: AR 2 zeigt am Bildschirm jetzt „nicht verwirklicht“, sobald die
+  Restzahlung nach dem Fristende erfasst ist, gleich wie die Uhr steht (wie das PDF); E2E-Hilfe und Unit-Test nachgezogen.
