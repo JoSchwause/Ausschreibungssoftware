@@ -233,7 +233,7 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
 }
 
 /**
- * Der Torweg. `ausstehend`: auch die Schritte, deren Bedienung noch gebaut wird (Preisspiegel als PDF: 149; Skonto,
+ * Der Torweg. `ausstehend`: auch die Schritte, deren Bedienung noch gebaut wird (Skonto,
  * Zahlung und Zahlungsfreigabe als PDF: 143/152; „Projekt samt Inhalt löschen“: 160/161,
  * D-96). Sind sie gemergt, entfällt der Schalter und der Weg läuft ganz.
  */
@@ -309,16 +309,23 @@ async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promis
     await expect(zeile.getByTestId('brutto')).toHaveText(betragAusCent(s.brutto));
   }
   await ohneUeberlauf(page, 'Preisspiegel');
-  if (ausstehend) {
-    // 149: Preisspiegel als PDF (quer) mit Vorschau im Dialog; die Bietersummen stehen im Text des PDF.
-    const text = await pdfErzeugen(
-      page,
-      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
-      'Preisspiegel als PDF ausgeben',
-    );
-    for (const s of [ANGEBOT_ERSTER, ANGEBOT_ZWEITER]) expect(text).toContain(betragAusCent(s.netto));
-    expect(text).toContain(ZWEITBIETER);
+  // Preisspiegel als PDF: erst die Vorschau, dann herunterladen; der Text nennt Bieter und Summen.
+  const preisspiegelText = await pdfErzeugen(
+    page,
+    () => werkzeug(page, 'Ausgabe', 'Preisspiegel als PDF …'),
+    'Preisspiegel als PDF',
+    'Herunterladen',
+    async (dialog) => {
+      await dialog.getByRole('button', { name: 'Vorschau erzeugen' }).click();
+      await expect(dialog.locator('iframe[title="Vorschau des PDF"]')).toBeVisible({ timeout: 60_000 });
+    },
+  );
+  for (const s of [ANGEBOT_ERSTER, ANGEBOT_ZWEITER]) {
+    expect(preisspiegelText).toContain(betragAusCent(s.netto));
+    expect(preisspiegelText).toContain(betragAusCent(s.brutto));
   }
+  expect(preisspiegelText).toContain(ZWEITBIETER);
+  expect(preisspiegelText).toContain(PROJEKT);
 
   // ── Zuschlag an den Erstplatzierten, ohne Wahl ──────────────────────────────────────────────────────────────────
   await bieter.getByRole('button', { name: `Zuschlag erteilen: ${ERSTBIETER}` }).click();
@@ -617,7 +624,7 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   await torweg(page, browser, false);
 });
 
-// Die Schritte, deren Bedienung noch gebaut wird (Preisspiegel-PDF 149; Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
+// Die Schritte, deren Bedienung noch gebaut wird (Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
 // Projekt samt Inhalt löschen 160/161, D-96). Sobald alle gemergt sind, ersetzt dieser Weg den
 // oberen.
 test.fixme('Tor E: der ganze Weg samt den ausstehenden Schritten', async ({ page, browser }) => {
