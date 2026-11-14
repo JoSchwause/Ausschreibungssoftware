@@ -14,7 +14,9 @@ import type { VergleichsSpalte, VergleichsZelle, VergleichsZeile, KennzeichenTex
 import {
   IFC_GLOBALID_MUSTER,
   type AuftragsLeistungsverzeichnisId,
+  type Bauwerksmodell,
   type BauwerksmodellId,
+  type BauwerksmodellUebersicht,
   type Ergebnis,
   type IdQuelle,
   type IfcGlobalId,
@@ -28,6 +30,7 @@ import {
   type ProjektId,
   type Pruefbefund,
 } from '@tethys/vertrag';
+import { ifcKlassenName } from '../bim/texte';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { ozText } from '../lv/oztext';
 import type { Feldfehlerkarte } from '../ui/feldfehler';
@@ -195,22 +198,67 @@ export function fristbefundText(
     : t.befundOhneFrist(m.nummer, m.titel);
 }
 
-// --- Positionen eines Auftrags-LV --------------------------------------------------------------------------------------
+// --- Auswahl der Position und des Bauteils (Ticket 155: gewählt, nicht getippt) ---------------------------------------
 
-/** Positionen eines Auftrags-LV nach ihrer OZ (mit Index); bei doppelter OZ gilt die erste. */
-export function positionenNachOz(knoten: readonly Knoten[]): Map<string, PositionId> {
-  const m = new Map<string, PositionId>();
-  for (const k of knoten) {
-    if (k.art !== 'position') continue;
-    const oz = ozText(k);
-    if (oz !== '' && !m.has(oz)) m.set(oz, k.id);
-  }
-  return m;
+/** Ein Eintrag einer Auswahlliste des Formulars. */
+export interface Auswahlwert {
+  readonly wert: string;
+  readonly label: string;
 }
 
-export function ozVonPosition(knoten: readonly Knoten[], id: PositionId): string {
-  const k = knoten.find((x) => x.art === 'position' && x.id === id);
-  return k === undefined ? '' : ozText(k);
+/** Die Positionen eines Auftrags-LV als Auswahl: OZ (mit Index) und Kurztext, in der Reihenfolge des LV. */
+export function positionswahl(knoten: readonly Knoten[]): Auswahlwert[] {
+  const liste: Auswahlwert[] = [];
+  for (const k of knoten) {
+    if (k.art !== 'position') continue;
+    const label = [ozText(k), k.kurztext.trim()].filter((x) => x !== '').join(' ');
+    liste.push({ wert: k.id, label: label === '' ? texte.formular.positionOhneOz : label });
+  }
+  return liste;
+}
+
+/**
+ * Die Bauteile eines Bauwerksmodells als Auswahl: Name, Klasse und Strukturknoten (etwa das Geschoss), in der Reihenfolge des
+ * Modells. Jede GlobalId einmal; maßgeblich ist das erste Bauteil (D-66).
+ */
+export function bauteilwahl(modell: Pick<Bauwerksmodell, 'bauteile' | 'struktur'>): Auswahlwert[] {
+  const struktur = new Map(modell.struktur.map((k) => [k.globalId as string, k.name]));
+  const gesehen = new Set<string>();
+  const liste: Auswahlwert[] = [];
+  for (const b of modell.bauteile) {
+    if (gesehen.has(b.globalId)) continue;
+    gesehen.add(b.globalId);
+    const ort = b.strukturGlobalId === null ? null : (struktur.get(b.strukturGlobalId) ?? null);
+    const teile = [b.name?.trim() || texte.formular.bauteilOhneNamen, ifcKlassenName(b.ifcKlasse), ort];
+    liste.push({ wert: b.globalId, label: teile.filter((x) => x !== null && x !== '').join(' · ') });
+  }
+  return liste;
+}
+
+/**
+ * Was eine Auswahl aus einer langen Liste zeigt: die Einträge, deren Text den Suchtext enthält (ohne Groß- und
+ * Kleinschreibung), höchstens `grenze` davon; der gewählte Eintrag bleibt immer in der Liste. `treffer`: alle passenden.
+ */
+export function suchauswahl(
+  optionen: readonly Auswahlwert[],
+  suche: string,
+  wert: string,
+  grenze: number,
+): { readonly optionen: readonly Auswahlwert[]; readonly treffer: number } {
+  const s = suche.trim().toLocaleLowerCase('de-DE');
+  const passend =
+    s === '' ? optionen : optionen.filter((o) => o.label.toLocaleLowerCase('de-DE').includes(s));
+  const gezeigt = passend.slice(0, grenze);
+  const gewaehlt = optionen.find((o) => o.wert === wert);
+  if (gewaehlt !== undefined && !gezeigt.includes(gewaehlt)) gezeigt.push(gewaehlt);
+  return { optionen: gezeigt, treffer: passend.length };
+}
+
+/** Der zuletzt eingelesene Stand des Projekts (Bauteilauswahl „in jedem Modellstand“); `null` ohne Modell. */
+export function neuesterStand(modelle: readonly BauwerksmodellUebersicht[]): BauwerksmodellId | null {
+  let neu: BauwerksmodellUebersicht | null = null;
+  for (const m of modelle) if (neu === null || m.eingelesen > neu.eingelesen) neu = m;
+  return neu?.id ?? null;
 }
 
 // --- Formular --------------------------------------------------------------------------------------------------------
@@ -223,8 +271,8 @@ export interface MangelEntwurf {
   readonly ort: string;
   /** Kennung des Auftrags-LV; `''`: keines. */
   readonly auftragsLvId: string;
-  /** OZ der Position im Auftrags-LV; `''`: keine. */
-  readonly position: string;
+  /** Kennung der Position im Auftrags-LV (aus der Auswahl); `''`: keine. */
+  readonly positionId: string;
   /** Kennung des Modells; `''`: in jedem Modellstand. */
   readonly modellId: string;
   readonly globalId: string;
@@ -242,7 +290,7 @@ export function leererEntwurf(nummer: number, heute: string): MangelEntwurf {
     beschreibung: '',
     ort: '',
     auftragsLvId: '',
-    position: '',
+    positionId: '',
     modellId: '',
     globalId: '',
     festgestellt: datumDe(heute),
@@ -250,14 +298,14 @@ export function leererEntwurf(nummer: number, heute: string): MangelEntwurf {
   };
 }
 
-export function entwurfAusMangel(m: Mangel, ozDerPosition: string): MangelEntwurf {
+export function entwurfAusMangel(m: Mangel): MangelEntwurf {
   return {
     nummer: String(m.nummer),
     titel: m.titel,
     beschreibung: m.beschreibung ?? '',
     ort: m.ort ?? '',
     auftragsLvId: m.auftragsLvId ?? '',
-    position: ozDerPosition,
+    positionId: m.positionId ?? '',
     modellId: m.bauteil?.bauwerksmodellId ?? '',
     globalId: m.bauteil?.globalId ?? '',
     festgestellt: datumDe(m.festgestellt),
@@ -270,13 +318,13 @@ type Angaben = Omit<MangelangabenSetzen, 'art'>;
 const leerZuNull = (t: string): string | null => (t.trim() === '' ? null : t.trim());
 
 /**
- * Liest die Angaben aus dem Entwurf. `positionen`: die Positionen des gewählten Auftrags-LV nach OZ (`null`: es ist keines
- * gewählt oder noch nicht geladen). `ersterEintrag`: Datum des ersten Verlaufseintrags (beim Bearbeiten); die Feststellung
+ * Liest die Angaben aus dem Entwurf. `positionen`: die Kennungen der Positionen des gewählten Auftrags-LV (`null`: es ist
+ * keines gewählt oder noch nicht geladen). `ersterEintrag`: Datum des ersten Verlaufseintrags (beim Bearbeiten); die Feststellung
  * liegt nicht danach.
  */
 export function angabenLesen(
   e: MangelEntwurf,
-  positionen: ReadonlyMap<string, PositionId> | null,
+  positionen: ReadonlySet<string> | null,
   ersterEintrag: string | null,
 ): Ergebnis<Angaben, Feldfehler> {
   const fehler: { -readonly [K in MangelFeld]?: string } = {};
@@ -295,13 +343,10 @@ export function angabenLesen(
   }
   const auftragsLvId = e.auftragsLvId === '' ? null : (e.auftragsLvId as AuftragsLeistungsverzeichnisId);
   let positionId: PositionId | null = null;
-  if (e.position.trim() !== '') {
-    if (auftragsLvId === null) fehler.position = texte.formular.positionOhneAuftrag;
-    else {
-      const id = positionen?.get(e.position.trim());
-      if (id === undefined) fehler.position = texte.formular.positionUnbekannt;
-      else positionId = id;
-    }
+  if (e.positionId !== '') {
+    if (auftragsLvId === null) fehler.positionId = texte.formular.positionOhneAuftrag;
+    else if (positionen?.has(e.positionId) !== true) fehler.positionId = texte.formular.positionUnbekannt;
+    else positionId = e.positionId as PositionId;
   }
   let bauteil: Angaben['bauteil'] = null;
   if (e.globalId.trim() !== '') {
@@ -334,7 +379,7 @@ export function mangelAnlegenBefehl(
   ids: IdQuelle,
   projektId: ProjektId,
   e: MangelEntwurf,
-  positionen: ReadonlyMap<string, PositionId> | null,
+  positionen: ReadonlySet<string> | null,
   vergebeneNummern: readonly number[],
 ): Ergebnis<MangelAnlegen, Feldfehler> {
   const a = angabenLesen(e, positionen, null);
@@ -361,7 +406,7 @@ export function mangelAnlegenBefehl(
 /** Der Befehl `MangelangabenSetzen` aus dem Entwurf; `null`, wenn sich nichts ändert. */
 export function mangelAngabenBefehl(
   e: MangelEntwurf,
-  positionen: ReadonlyMap<string, PositionId> | null,
+  positionen: ReadonlySet<string> | null,
   mangel: Mangel,
 ): Ergebnis<MangelangabenSetzen | null, Feldfehler> {
   const a = angabenLesen(e, positionen, mangel.verlauf[0]?.datum ?? null);

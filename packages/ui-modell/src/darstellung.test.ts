@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { IfcGlobalId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { auswahlBeiKlick, darstellungBerechnen } from './darstellung';
 import type { Darstellungseingaben } from './darstellung';
 import { Bauteilverzeichnis } from './zuordnung';
 
+/** Kurze Kennungen statt echter GlobalIds; die Leinwand vergleicht nur auf Gleichheit. */
+const g = (id: string): IfcGlobalId => id as IfcGlobalId;
+
 // Bauteilindex 0..4; „W“ ist doppelt (Index 1 und 4)
-const verzeichnis = new Bauteilverzeichnis(['A', 'W', 'B', 'C', 'W']);
+const verzeichnis = new Bauteilverzeichnis([g('A'), g('W'), g('B'), g('C'), g('W')]);
 const leer: Darstellungseingaben = { auswahl: [], ausgeblendet: [], isoliert: null, faerbung: new Map() };
 
 describe('darstellungBerechnen', () => {
@@ -16,12 +20,12 @@ describe('darstellungBerechnen', () => {
   });
 
   it('blendet genau die genannten Bauteile aus, bei doppelter GlobalId beide', () => {
-    const d = darstellungBerechnen(verzeichnis, { ...leer, ausgeblendet: ['W', 'C'] });
+    const d = darstellungBerechnen(verzeichnis, { ...leer, ausgeblendet: [g('W'), g('C')] });
     expect(d.sichtbar).toEqual([true, false, true, false, false]);
   });
 
   it('isoliert: nur die genannten Bauteile bleiben sichtbar; eine leere Liste zeigt nichts', () => {
-    expect(darstellungBerechnen(verzeichnis, { ...leer, isoliert: ['B'] }).sichtbar).toEqual([
+    expect(darstellungBerechnen(verzeichnis, { ...leer, isoliert: [g('B')] }).sichtbar).toEqual([
       false,
       false,
       true,
@@ -38,18 +42,22 @@ describe('darstellungBerechnen', () => {
   });
 
   it('ausgeblendet gilt auch innerhalb der Isolierung', () => {
-    const d = darstellungBerechnen(verzeichnis, { ...leer, isoliert: ['A', 'B'], ausgeblendet: ['B'] });
+    const d = darstellungBerechnen(verzeichnis, {
+      ...leer,
+      isoliert: [g('A'), g('B')],
+      ausgeblendet: [g('B')],
+    });
     expect(d.sichtbar).toEqual([true, false, false, false, false]);
   });
 
   it('färbt nach Kennzeichen; die Auswahl geht der Färbung vor', () => {
     const d = darstellungBerechnen(verzeichnis, {
       ...leer,
-      auswahl: ['B'],
+      auswahl: [g('B')],
       faerbung: new Map([
-        ['A', 'hinzugefuegt'],
-        ['B', 'entfernt'],
-        ['W', 'ohne-zuordnung'],
+        [g('A'), 'hinzugefuegt'],
+        [g('B'), 'entfernt'],
+        [g('W'), 'ohne-zuordnung'],
       ]),
     });
     expect(d.farbe).toEqual(['hinzugefuegt', 'ohne-zuordnung', 'auswahl', 'eigen', 'ohne-zuordnung']);
@@ -57,10 +65,10 @@ describe('darstellungBerechnen', () => {
 
   it('übergeht GlobalIds, die das Modell nicht hat', () => {
     const d = darstellungBerechnen(verzeichnis, {
-      auswahl: ['X'],
-      ausgeblendet: ['Y'],
-      isoliert: ['A', 'Z'],
-      faerbung: new Map([['Q', 'geaendert']]),
+      auswahl: [g('X')],
+      ausgeblendet: [g('Y')],
+      isoliert: [g('A'), g('Z')],
+      faerbung: new Map([[g('Q'), 'geaendert']]),
     });
     expect(d.sichtbar).toEqual([true, false, false, false, false]);
     expect(d.farbe).toEqual(['eigen', 'eigen', 'eigen', 'eigen', 'eigen']);
@@ -69,11 +77,11 @@ describe('darstellungBerechnen', () => {
 
 describe('auswahlBeiKlick', () => {
   it('Klick auf ein Bauteil wählt es allein aus', () => {
-    expect(auswahlBeiKlick('A', false)).toEqual({ globalIds: ['A'], hinzufuegen: false });
+    expect(auswahlBeiKlick(g('A'), false)).toEqual({ globalIds: [g('A')], hinzufuegen: false });
   });
 
   it('Strg+Klick auf ein Bauteil ergänzt die Auswahl', () => {
-    expect(auswahlBeiKlick('A', true)).toEqual({ globalIds: ['A'], hinzufuegen: true });
+    expect(auswahlBeiKlick(g('A'), true)).toEqual({ globalIds: [g('A')], hinzufuegen: true });
   });
 
   it('Klick ins Leere hebt die Auswahl auf, Strg+Klick ins Leere ändert nichts', () => {

@@ -42,7 +42,7 @@ import { PositionAnsicht } from './PositionAnsicht'; // Ticket 151
 import { texte } from './texte';
 import { hrefFuer } from '../ui/route';
 import { Verweis } from '../ui/Verweis';
-import { modellePfad } from '../bim/pfad'; // Ticket 115
+import { useAufmassAusModellPfad } from '../bim/aufmassAusModell'; // Ticket 155
 import { texte as bimTexte } from '../bim/texte'; // Ticket 115
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
@@ -148,6 +148,8 @@ function Ansicht({
 }): ReactElement {
   const { auftrag } = stand;
   const kopf = auftrag.auftragsLeistungsverzeichnis;
+  // Ticket 155: „Aufmaß aus Modell“ öffnet den aktuellen Stand mit diesem Auftrags-LV vorgewählt.
+  const ausModellPfad = useAufmassAusModellPfad(kopf.projektId, kopf.id);
   const zustand = useMemo(() => alsLvZustand(auftrag), [auftrag]);
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
@@ -263,7 +265,7 @@ function Ansicht({
             { pfad: aufmassPfad(kopf.projektId, kopf.id), text: abrechnungTexte.liste.aufmass },
             { pfad: sollIstPfad(kopf.projektId, kopf.id), text: abrechnungTexte.liste.sollIst },
             { pfad: rechnungenPfad(kopf.projektId, kopf.id), text: rechnungTexte.liste.link },
-            { pfad: modellePfad(kopf.projektId), text: bimTexte.aufmass.ausAuftrag },
+            { pfad: ausModellPfad, text: bimTexte.aufmass.ausAuftrag },
           ].map((v) => (
             <Werkzeugverweis
               key={v.pfad}

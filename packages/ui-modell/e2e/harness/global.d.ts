@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { IfcGlobalId } from '@tethys/vertrag';
 import type {
   Bauteilkennzeichen,
   Bildschirmpunkt,
@@ -9,10 +10,11 @@ import type {
 
 /** Die Eingaben der Leinwand, wie die Testseite sie als App hält (Färbung als Objekt, damit Playwright sie übergibt). */
 export interface Pruefeingaben {
-  auswahl: string[];
-  ausgeblendet: string[];
-  isoliert: string[] | null;
-  faerbung: Record<string, Bauteilkennzeichen>;
+  // Ticket 155: GlobalIds mit der Marke des Vertrags wie in der Modellansicht (D-140.7).
+  auswahl: IfcGlobalId[];
+  ausgeblendet: IfcGlobalId[];
+  isoliert: IfcGlobalId[] | null;
+  faerbung: Record<IfcGlobalId, Bauteilkennzeichen>;
 }
 
 declare global {

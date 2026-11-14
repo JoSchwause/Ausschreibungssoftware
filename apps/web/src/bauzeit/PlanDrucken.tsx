@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { datumAusUhr } from '../ausgabe/logik';
+import { texte as fehlerTexte } from '../fehler/texte'; // Ticket 155 (D-94)
 import { dateinameSauber } from '../dateiname';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
@@ -71,12 +72,12 @@ export function PlanDrucken({
         zeige({ titel: t.fertig, beschreibung: name, art: 'erfolg' });
         setLage({ art: 'bereit' });
         setOffen(false);
-      } else setLage({ art: 'fehler', meldung: e.data.meldung });
+      } else setLage({ art: 'fehler', meldung: fehlerTexte.pdf }); // Ticket 155 (D-94): kein Rohtext der Ausnahme
     };
-    w.onerror = (e) => {
+    w.onerror = () => {
       if (worker.current !== w) return;
       beenden();
-      setLage({ art: 'fehler', meldung: e.message || t.fehler });
+      setLage({ art: 'fehler', meldung: fehlerTexte.pdf });
     };
     const auftrag: BauzeitenplanEingabe = {
       plan,

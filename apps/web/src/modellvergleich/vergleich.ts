@@ -30,7 +30,7 @@ export interface Vergleichsansicht {
   /** Hinzugefügt (Reihenfolge des neuen Stands), entfernt und geändert (Reihenfolge des alten), D-108.11. */
   readonly zeilen: readonly VergleichsZeile[];
   /** Färbung des **neuen** Stands: hinzugefügt und geändert; entfernte stehen nur in der Liste (Ticket 116 Punkt 2). */
-  readonly faerbung: ReadonlyMap<string, Bauteilkennzeichen>;
+  readonly faerbung: ReadonlyMap<IfcGlobalId, Bauteilkennzeichen>;
   readonly befunde: readonly Pruefbefund[];
 }
 
@@ -88,7 +88,7 @@ function zeile(
 /** Zwei Stände für die Vergleichsseite: `alt` ist der frühere (Standard der Vorgänger), `neu` der gezeigte. */
 export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Vergleichsansicht {
   const v = modellVergleichen(alt, neu);
-  const faerbung = new Map<string, Bauteilkennzeichen>();
+  const faerbung = new Map<IfcGlobalId, Bauteilkennzeichen>();
   const zeilen: VergleichsZeile[] = [];
   for (const b of v.hinzugefuegt) {
     faerbung.set(b.globalId, 'hinzugefuegt');
