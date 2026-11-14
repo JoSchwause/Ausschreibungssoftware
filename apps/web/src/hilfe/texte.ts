@@ -279,7 +279,7 @@ export const texte = {
       knopf: 'GAEB-Datei einlesen …',
       projektname: 'Neues Projekt',
       angelegt: (name: string): string =>
-        `Projekt „${name}“ angelegt. Jetzt die GAEB-Datei wählen; den Namen ändert „Stammdaten ändern“ auf der Projektseite.`,
+        `Projekt „${name}“ angelegt. Jetzt die GAEB-Datei wählen; den Namen ändert „Projektangaben“ auf der Projektseite.`,
       zumProjekt: 'Zum Projekt',
     },
     leer: {

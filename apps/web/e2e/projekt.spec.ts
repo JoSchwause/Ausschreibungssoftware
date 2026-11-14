@@ -5,7 +5,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import {
-  erwarteMeldung,
   lvAnlegen,
   neueZeile,
   positionTippen,
@@ -27,10 +26,10 @@ test('Projekte nach Name; Projekt und LV anlegen, umbenennen und öffnen', async
   const liste = page.getByRole('list', { name: 'Projekte' });
   await expect(liste.getByRole('link')).toHaveText(['Amtsgericht', 'Zeppelinhalle']);
 
-  // Stammdaten ändern (ProjektStammdatenSetzen).
+  // Projektangaben (ProjektangabenSetzen; Ticket 150).
   await liste.getByRole('link', { name: 'Zeppelinhalle' }).click();
-  await page.getByRole('button', { name: 'Stammdaten ändern' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Stammdaten ändern' });
+  await page.getByRole('button', { name: 'Projektangaben …' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Projektangaben' });
   await dialog.getByLabel('Projektname').fill('Bürgerhaus');
   await dialog.getByLabel('Projektname').press('Enter');
   await expect(dialog).toHaveCount(0);
@@ -105,13 +104,18 @@ test('Projektdatei sichern und in einem frischen Speicher einlesen: gleiche Summ
   await neu.getByRole('link', { name: 'Zaun' }).click();
   await expect.poll(() => summen(neu)).toEqual(vorher);
 
-  // Ein zweiter Import desselben Projekts: Meldung statt stiller Überschreibung.
+  // Ein zweiter Import desselben Projekts: Frage nach einer Kopie statt stiller Überschreibung (Ticket 150);
+  // „Abbrechen“ lässt alles, wie es ist.
   await neu.goto('/');
   await neu.getByLabel('Projektdatei einlesen').setInputFiles({
     name: 'Exportprojekt.tethys.json',
     mimeType: 'application/json',
     buffer: Buffer.from(inhalt),
   });
-  await erwarteMeldung(neu, 'Dieses Projekt ist schon vorhanden.');
+  const frage = neu.getByRole('dialog', { name: 'Projekt schon vorhanden' });
+  await expect(frage).toContainText('Das Projekt „Exportprojekt“ ist schon vorhanden.');
+  await frage.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(frage).toBeHidden();
+  await expect(neu.getByRole('list', { name: 'Projekte' }).getByRole('link')).toHaveText(['Exportprojekt']);
   await kontext.close();
 });

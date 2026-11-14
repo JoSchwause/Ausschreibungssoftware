@@ -4,13 +4,9 @@
 // Sitzung beim alten Stand und der Aufrufer bekommt den Grund als Wert. Es gibt keinen anderen Schreibweg; auch Undo und
 // Redo (Ticket 48) schreiben hier.
 
-import {
-  lvBefehlAusfuehren,
-  lvChangeSetAnwenden,
-  projektBefehlAusfuehren,
-  projektChangeSetAnwenden,
-} from '@tethys/kern';
-import { angebotBefehlAusfuehrer } from '@tethys/vergabe';
+import { lvBefehlAusfuehren, lvChangeSetAnwenden, projektChangeSetAnwenden } from '@tethys/kern';
+// Ticket 150 (D-138.1): Projektbefehle über `vergabe`; es führt die Bieterbefehle selbst aus und reicht alle übrigen an den Kern.
+import { angebotBefehlAusfuehrer, projektBefehlAusfuehren } from '@tethys/vergabe';
 import type {
   Angebot,
   AngebotBefehl,

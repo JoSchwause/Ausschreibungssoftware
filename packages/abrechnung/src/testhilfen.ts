@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Hilfen nur für Tests dieses Pakets (nicht über index.ts exportiert): kleine LVs und Auftrags-LVs bauen, die Fixtures
-// `typisch`, `typisch-angebote` und `typisch-abrechnung` (Tor M4, Ticket 85) in Vertragstypen abbilden. LV und Auftrags-LV
+// `typisch`, `typisch-angebote`, `typisch-abrechnung` (Tor M4, Ticket 85) und `typisch-zahlungen` (A5, Ticket 143) in
+// Vertragstypen abbilden. LV und Auftrags-LV
 // legt der Kern an; die Summen im Zustand sind seine. Fixtures werden per Dateizugriff gelesen, nicht importiert (A3).
 //
 // `vergabe` darf dieses Paket nicht importieren (A3), auch nicht in Tests. Das Auftrags-LV aus `typisch` entsteht darum hier
@@ -48,7 +49,10 @@ import type {
   ProjektId,
   Prozent,
   Rechnung,
+  RechnungBefehl,
   TitelId,
+  Zahlungsbefund,
+  Zahlungsstand,
   Zuschlag,
 } from '@tethys/vertrag';
 import { nachtragUebernehmen } from './nachtrag-uebernehmen';
@@ -524,6 +528,42 @@ function fxAngebot(fx: FxAngebot, lv: LvZustand): Angebot {
 }
 
 export const abrechnungsFixture = (): FxAbrechnung => lies('typisch-abrechnung') as FxAbrechnung;
+
+/**
+ * `typisch-zahlungen.json` (Ticket 143, A5): Befehle, Rechnungen in der Form von `Rechnung` (v1.7b; ganze Zahlen als
+ * JSON-Zahl, D-143.1), je Rechnung Abzugskette und `Zahlungsstand`, dazu Varianten.
+ */
+export interface FxZahlungen {
+  basis: { aufmassIdsAr1: string[]; korrigiert: boolean };
+  bauabzugsteuerSatz: string;
+  befehle: Record<
+    'ar1' | 'ar2',
+    {
+      vorFreigabe: RechnungBefehl[];
+      freigabe: RechnungBefehl & { art: 'RechnungFreigeben' };
+      nachFreigabe: RechnungBefehl[];
+    }
+  >;
+  rechnungen: Rechnung[];
+  pruefungen: Record<
+    'ar1' | 'ar2',
+    {
+      rechnungId: string;
+      kette: FxPruefung['kette'] & { vertragsstrafe: string };
+      zahlungsstand: Zahlungsstand;
+      befunde: Zahlungsbefund[];
+    }
+  >;
+  varianten: {
+    name: string;
+    basis: 'ar1' | 'ar2';
+    rechnung: Rechnung;
+    zahlungsstand: Zahlungsstand;
+    befunde: Zahlungsbefund[];
+  }[];
+}
+
+export const zahlungsFixture = (): FxZahlungen => lies('typisch-zahlungen') as FxZahlungen;
 
 /**
  * Das Auftrags-LV des Tors M4 (Ticket 85, D-85.1): `typisch` mit dem Angebot von Bieter B nach D-21 ohne gewählte

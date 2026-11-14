@@ -85,3 +85,24 @@
   margin: 0;
   color: var(--tx-color-text-muted);
 }
+
+/* Ticket 151: Angaben im Positionsdialog „nur lesen“. */
+.auftrag__position {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--tx-space-1) var(--tx-space-4);
+  margin: 0 0 var(--tx-space-3);
+}
+
+.auftrag__position div {
+  display: contents;
+}
+
+.auftrag__position dt {
+  color: var(--tx-color-text-muted);
+}
+
+.auftrag__position dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

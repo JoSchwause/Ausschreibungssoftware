@@ -19,6 +19,7 @@ Herkunft: umfang §3 E11, A5
    solange Zahlungen bestehen.
 5. **Aus 142 (D-89):** Schaltflächenreihen auf `Werkzeuggruppe`/`Werkzeugverweis` aus `ui-basis` umstellen, wo billig; `abrechnung/Verweis.tsx` ist unbenutzt und entfällt.
 6. **Texte wie im PDF (153):** „Bauabzugsteuer 15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“, „Summe der Zahlungen“, „Offen“ – am Bildschirm dieselben Bezeichnungen.
+7. **D-95:** `Einstellungen.buero` und `Projekt` in jede PDF-Eingabe (Köpfe nach D-141).
 4. E2E mit den Sollwerten der Fixture aus 143.
 
 ## Acceptance criteria

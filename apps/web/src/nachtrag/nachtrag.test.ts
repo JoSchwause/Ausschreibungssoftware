@@ -23,7 +23,12 @@ import { describe, expect, it } from 'vitest';
 import { abrechnungsFixture, m4AuftragsLv, m4Nachtrag } from '../../../../packages/abrechnung/src/testhilfen';
 import { appIdQuelle } from '../lv/ids';
 import { ozMaskeLesen } from '../lv/ozmaske';
-import { nachtragAnlegenPlanen, nachtragBeauftragenPlanen, naechsteNachtragsnummer } from './nachtrag';
+import {
+  nachtragAnlegenPlanen,
+  nachtragBeauftragenPlanen,
+  nachtragsfuehrung,
+  naechsteNachtragsnummer,
+} from './nachtrag';
 
 const A = 'auftrag-a' as AuftragsLeistungsverzeichnisId;
 const B = 'auftrag-b' as AuftragsLeistungsverzeichnisId;
@@ -191,5 +196,53 @@ describe('nachtragBeauftragenPlanen', () => {
     const zweit = nachtragBeauftragenPlanen({ ...eingang, auftrag: danach });
     expect(zweit.befehl).toBeNull();
     expect(zweit.fehler).toMatch(/schon übernommen/);
+  });
+});
+
+describe('nachtragsfuehrung (Ticket 151: geführter Nachtrag)', () => {
+  const erledigt = (f: ReturnType<typeof nachtragsfuehrung>) =>
+    f.schritte.filter((s) => s.erledigt).map((s) => s.schritt);
+
+  it('ohne Positionen ist „Leistungen erfassen“ dran, nichts erledigt', () => {
+    const f = nachtragsfuehrung({ status: 'angemeldet', positionen: 0, angebotDesAuftragnehmers: false });
+    expect(f.schritte.map((s) => s.schritt)).toEqual(['erfassen', 'angebot', 'status', 'beauftragen']);
+    expect(f.aktuell).toBe('erfassen');
+    expect(erledigt(f)).toEqual([]);
+  });
+
+  it('mit Positionen und ohne Angebot ist das Angebot des Auftragnehmers dran', () => {
+    const f = nachtragsfuehrung({ status: 'angemeldet', positionen: 2, angebotDesAuftragnehmers: false });
+    expect(f.aktuell).toBe('angebot');
+    expect(erledigt(f)).toEqual(['erfassen']);
+  });
+
+  it('nach dem Einlesen des Angebots schlägt die App den Status „angeboten“ vor', () => {
+    const f = nachtragsfuehrung({ status: 'angemeldet', positionen: 2, angebotDesAuftragnehmers: true });
+    expect(f.aktuell).toBe('status');
+    expect(erledigt(f)).toEqual(['erfassen', 'angebot']);
+  });
+
+  it('mit Status „angeboten“ und Angebot ist „Beauftragen“ der nächste Schritt', () => {
+    const f = nachtragsfuehrung({ status: 'angeboten', positionen: 2, angebotDesAuftragnehmers: true });
+    expect(f.aktuell).toBe('beauftragen');
+    expect(erledigt(f)).toEqual(['erfassen', 'angebot', 'status']);
+  });
+
+  it('„angeboten“ ohne Angebot des Auftragnehmers: erst das Angebot', () => {
+    const f = nachtragsfuehrung({ status: 'angeboten', positionen: 2, angebotDesAuftragnehmers: false });
+    expect(f.aktuell).toBe('angebot');
+    expect(erledigt(f)).toEqual(['erfassen', 'status']);
+  });
+
+  it('beauftragt: alles erledigt, kein Schritt mehr offen', () => {
+    const f = nachtragsfuehrung({ status: 'beauftragt', positionen: 2, angebotDesAuftragnehmers: true });
+    expect(f.aktuell).toBeNull();
+    expect(erledigt(f)).toEqual(['erfassen', 'angebot', 'status', 'beauftragen']);
+  });
+
+  it('abgelehnt: kein Schritt offen', () => {
+    const f = nachtragsfuehrung({ status: 'abgelehnt', positionen: 2, angebotDesAuftragnehmers: true });
+    expect(f.aktuell).toBeNull();
+    expect(erledigt(f)).toEqual(['erfassen', 'angebot']);
   });
 });

@@ -146,6 +146,7 @@ describe('rechnungPruefen: Hand-Beispiel (absoluter Nachlass, Schlussrechnung, Ã
       mwst: '7.03',
       bruttoKumuliert: '44.03',
       umlagen: [{ bezeichnung: 'Bauwesenversicherung', satz: '0.50', betrag: '0.22' }],
+      vertragsstrafe: '0.00', // keine (v1.7b, D-72)
       einbehalt: { art: 'sicherheit', satz: '5.00', betrag: '2.20' },
       fruehere: [],
       fruehereZahlbetraege: '0.00',

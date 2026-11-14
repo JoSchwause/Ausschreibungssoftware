@@ -646,7 +646,7 @@ Entscheidungen D-133.1 bis D-133.9 im Ticket 133.
 | Datei lesen | **einlesen** („Projektdatei einlesen“, „Profil einlesen“, „Excel einlesen“) | „importieren“, „Import“ |
 | Profil schreiben (Druckprofil) | **Profil sichern** | „Profil exportieren“ |
 | Neues Objekt | Verb mit Gegenstand: „Projekt anlegen“, „Rechnung anlegen“, „Nachtrag anlegen“ | „Anlegen“ allein, „Neue Rechnung“ |
-| Projektangaben ändern | „Stammdaten ändern“ (ändert Name und Bauherr) | „Projekt umbenennen“ |
+| Projektangaben ändern | „Projektangaben …“ (Dialog „Projektangaben“: Name, Bauherr, Projektnummer, Ort, Baustelle) | „Projekt umbenennen“, „Stammdaten ändern“ |
 | IFC-Klasse | deutscher Name, Klasse in Klammern: „Fundament (IfcFooting)“; unbekannte Klassen stehen unverändert da | rohe Klasse allein |
 
 Schreibung: Anrede unpersönlich, wo nötig „Sie“, nie „du“ und nie ein Imperativ der 2. Person Singular (L4). „…“ mit

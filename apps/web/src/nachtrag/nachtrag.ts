@@ -28,6 +28,7 @@ import type {
   LvUebersicht,
   LvZustand,
   NachtragsangabenSetzen,
+  Nachtragsstatus,
   NachtragUebernehmen,
 } from '@tethys/vertrag';
 import { bietersummen } from '../gaeb/gaeb';
@@ -210,5 +211,42 @@ export function nachtragBeauftragenPlanen(e: Beauftragungseingang): Beauftragung
     angebotsnetto: bietersummen(e.nachtragsLv, wahl.angebot).netto,
     auftrag: nachher === null ? null : { vorher: e.auftrag.summen.gesamt, nachher: nachher.summen.gesamt },
     warnungen,
+  };
+}
+
+// --- Geführter Nachtrag (Ticket 151, B-18) ----------------------------------------------------------------------------
+
+/** Die Schritte eines Nachtrags bis zur Beauftragung, in dieser Reihenfolge. */
+export type Nachtragsschritt = 'erfassen' | 'angebot' | 'status' | 'beauftragen';
+
+const SCHRITTE: readonly Nachtragsschritt[] = ['erfassen', 'angebot', 'status', 'beauftragen'];
+
+export interface Nachtragsfuehrung {
+  readonly schritte: readonly { readonly schritt: Nachtragsschritt; readonly erledigt: boolean }[];
+  /** Der sichtbare nächste Schritt; `null`: beauftragt oder abgelehnt, nichts mehr zu tun. */
+  readonly aktuell: Nachtragsschritt | null;
+}
+
+/**
+ * Schrittanzeige des Kopfbands (D-151.2): Leistungen erfassen → Angebot des Auftragnehmers einlesen → Status „angeboten“ →
+ * Beauftragen. Der nächste Schritt ist der erste nicht erledigte; nach dem Einlesen des Angebots ist das der Vorschlag
+ * „angeboten“, danach „Beauftragen“. Nichts davon sperrt: Status und „Beauftragen“ bleiben wie bisher wählbar (U5).
+ */
+export function nachtragsfuehrung(stand: {
+  readonly status: Nachtragsstatus;
+  readonly positionen: number;
+  readonly angebotDesAuftragnehmers: boolean;
+}): Nachtragsfuehrung {
+  const beauftragt = stand.status === 'beauftragt';
+  const erledigt: Record<Nachtragsschritt, boolean> = {
+    erfassen: beauftragt || stand.positionen > 0,
+    angebot: beauftragt || stand.angebotDesAuftragnehmers,
+    status: beauftragt || stand.status === 'angeboten',
+    beauftragen: beauftragt,
+  };
+  const offen = stand.status === 'angemeldet' || stand.status === 'angeboten';
+  return {
+    schritte: SCHRITTE.map((schritt) => ({ schritt, erledigt: erledigt[schritt] })),
+    aktuell: offen ? (SCHRITTE.find((s) => !erledigt[s]) ?? null) : null,
   };
 }

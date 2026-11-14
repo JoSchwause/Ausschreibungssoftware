@@ -3,15 +3,17 @@
 // die Befehle aus v1.4). Kopf mit Auftragnehmer und Bezug auf LV und Angebot, Grid schreibgeschützt (Ticket 54) mit seiner
 // Summenzeile, Prüf-Panel nur lesend, Ausgabe als GAEB X86. Summen und Befunde aus dem Kern (N1). Ticket 86: „Nachtrag
 // anlegen“ und die Nachtragsliste mit „Beauftragen“; übernommene Nachtragspositionen stehen im Grid wie die übrigen.
+// Ticket 151: Positionsdialog nur lesen (Langtext sichtbar) und „Excel“ im Menü „Ausgabe“.
 
 import { lvPruefen } from '@tethys/kern';
-import { Werkzeuggruppe, Werkzeugleiste, Werkzeugverweis } from '@tethys/ui-basis';
+import { Button, Werkzeuggruppe, Werkzeugleiste, Werkzeugverweis, useToast } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
   KnotenId,
   LvSpalte,
+  PositionId,
   Pruefbefund,
   ProjektId,
 } from '@tethys/vertrag';
@@ -35,6 +37,8 @@ import { rechnungenPfad } from '../rechnung/pfad'; // Ticket 88
 import { texte as rechnungTexte } from '../rechnung/texte'; // Ticket 88
 import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
+import { AuftragExcel } from './AuftragExcel'; // Ticket 151
+import { PositionAnsicht } from './PositionAnsicht'; // Ticket 151
 import { texte } from './texte';
 import { hrefFuer } from '../ui/route';
 import { Verweis } from '../ui/Verweis';
@@ -156,6 +160,15 @@ function Ansicht({
   const pruefKnopf = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const kgSpalte = useKgSpalteAmAuftrag(auftrag, neuLaden); // Ticket 93: Spalte „KG“, sonst schreibgeschützt
+  // Ticket 151: Positionsdialog nur lesen (Strg+Enter, Doppelklick, „Position anzeigen“).
+  const { zeige } = useToast();
+  const aktiv = useRef<KnotenId | null>(null);
+  const [dialog, setDialog] = useState<PositionId | null>(null);
+  const positionOeffnen = (knotenId: KnotenId | null): void => {
+    const k = knotenId === null ? undefined : kopf.knoten.find((x) => x.id === knotenId);
+    if (k?.art === 'position') setDialog(k.id);
+    else zeige({ titel: texte.position.keinePosition, beschreibung: texte.position.keinePositionText });
+  };
 
   // Prüfung wie auf der LV-Seite, im Leerlauf (U5); nur lesend: Sprünge gehen zur Zeile, nie in einen Dialog.
   const [befunde, setBefunde] = useState<readonly Pruefbefund[] | null>(null);
@@ -232,8 +245,16 @@ function Ansicht({
       {/* Ticket 142: Werkzeugleiste in Gruppen; die Verweise der Abrechnung stehen einheitlich im Menü. */}
       <Werkzeugleiste beschriftung={t.werkzeuge}>
         <HistorieKnoepfe />
+        <Button
+          onClick={() => {
+            positionOeffnen(aktiv.current);
+          }}
+        >
+          {texte.position.knopf}
+        </Button>
         <Werkzeuggruppe titel={t.gruppen.ausgabe}>
           <AuftragAusgeben auftrag={auftrag} />
+          <AuftragExcel auftrag={auftrag} /> {/* Ticket 151 */}
         </Werkzeuggruppe>
         <NachtragAnlegen auftrag={kopf} gehe={gehe} />
         <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
@@ -278,6 +299,12 @@ function Ansicht({
             schreibgeschuetzt
             {...kgSpalte} // Ticket 93
             {...(sprungziel ? { sprungziel } : {})}
+            onAktiveZeileChange={(knotenId) => {
+              aktiv.current = knotenId;
+            }}
+            onZeileOeffnen={(knotenId) => {
+              positionOeffnen(knotenId);
+            }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
                 const neu = new Set(alt);
@@ -299,6 +326,13 @@ function Ansicht({
           zurueck={pruefKnopf}
         />
       </div>
+      <PositionAnsicht
+        auftrag={auftrag}
+        positionId={dialog}
+        onSchliessen={() => {
+          setDialog(null);
+        }}
+      />
     </div>
   );
 }
