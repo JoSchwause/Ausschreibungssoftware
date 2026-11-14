@@ -10,8 +10,8 @@
 // Genannt sind die Feiertage mit Namen im Gesetz. Hessen zählt dort alle Sonntage zu den Feiertagen; Sonntage regeln hier
 // die Arbeitstage des Kalenders, nicht die Feiertagsliste.
 
-import type { Bundesland } from '@tethys/vertrag';
-import type { Datum, Tagnummer } from './datum';
+import type { Bundesland, Kalenderdatum } from '@tethys/vertrag';
+import type { Tagnummer } from './datum';
 import { datumAusTagnummer, tagnummerAusZivil, wochentagVon } from './datum';
 
 export type Feiertagskennung =
@@ -36,7 +36,7 @@ export type Feiertagskennung =
   | 'zweiter-weihnachtstag';
 
 export interface Feiertag {
-  readonly datum: Datum;
+  readonly datum: Kalenderdatum;
   readonly kennung: Feiertagskennung;
   /** Gebräuchlicher Name, z. B. „Tag der Deutschen Einheit“. */
   readonly name: string;
@@ -210,7 +210,7 @@ function ostersonntagTagnummer(jahr: number): Tagnummer {
 }
 
 /** Ostersonntag eines Jahres (1 bis 9999) nach der gregorianischen Osterformel. */
-export function ostersonntag(jahr: number): Datum {
+export function ostersonntag(jahr: number): Kalenderdatum {
   return datumAusTagnummer(ostersonntagTagnummer(jahr));
 }
 

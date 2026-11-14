@@ -45,8 +45,18 @@ export function nimmtEingabe(spalte: LvSpalte, kostengruppeLesen: KostengruppeLe
   return istBearbeitbareSpalte(spalte) && (spalte !== 'kostengruppe' || kostengruppeLesen !== undefined);
 }
 
-export function istBearbeitbar(zeile: LvZeile, spalte: LvSpalte): spalte is BearbeitbareSpalte {
+/**
+ * Ob sich die Zelle an dieser Zeile bearbeiten lässt. `epOhneZuschlag` (Ausnahme „Preise“ im Schreibschutz, SB3): Der EP
+ * einer Zuschlagsposition ist dann nicht bearbeitbar, denn ihr Preis ist ein Satz, kein EP.
+ */
+export function istBearbeitbar(
+  zeile: LvZeile,
+  spalte: LvSpalte,
+  epOhneZuschlag = false,
+): spalte is BearbeitbareSpalte {
   const art = zeile.knoten.art;
+  if (epOhneZuschlag && spalte === 'einheitspreis' && art === 'position' && zeile.knoten.zuschlag !== null)
+    return false;
   switch (spalte) {
     case 'kurztext':
       return art === 'los' || art === 'titel' || art === 'position';

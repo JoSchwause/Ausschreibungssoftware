@@ -199,6 +199,11 @@ describe('Projekt samt Inhalt löschen (Vertrag v1.7c, D-96)', () => {
       ['ein LV fehlt', (p, b) => [p, { ...b, leistungsverzeichnisse: b.leistungsverzeichnisse.slice(1) }]],
       ['ein Mangel fehlt', (p, b) => [p, { ...b, maengel: (b.maengel ?? []).slice(1) }]],
       ['der erste Protokolleintrag fehlt', (p, b) => [p, { ...b, protokoll: b.protokoll.slice(1) }]],
+      // Angehängt sein dürfen nur `Rueckgaengig` und `Wiederholen` (R6): Der letzte Eintrag ist hier `ZahlungErfassen`.
+      [
+        'gespeichert ist ein gewöhnlicher Befehl mehr als im Bestand',
+        (p, b) => [p, { ...b, protokoll: b.protokoll.slice(0, -1) }],
+      ],
       [
         'ein Protokolleintrag zu viel',
         (p, b) => [p, { ...b, protokoll: [...b.protokoll, b.protokoll[0]] } as Projektbestand],

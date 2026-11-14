@@ -106,12 +106,16 @@ function loesche(
   const { protokoll, ...rest } = bestand;
   const abweichung = `Der Bestand im ChangeSet ist nicht der gespeicherte Bestand von Projekt ${id}`;
   if (kanonischKompakt(gespeicherterRest) !== kanonischKompakt(rest)) konflikt(abweichung);
-  // D-104: Das gespeicherte Protokoll muss mit dem des Bestands beginnen; danach angehängte Einträge (Rückgängig und
-  // Wiederholen dieses Löschens) sind erlaubt und gehen mit dem Projekt. Sonst schlüge jedes Wiederholen fehl.
+  // D-104: Das gespeicherte Protokoll muss mit dem des Bestands beginnen; danach angehängt sein dürfen nur Einträge
+  // `Rueckgaengig` und `Wiederholen` (Undo und Wiederholen dieses Löschens), sie gehen mit dem Projekt. Sonst schlüge jedes
+  // Wiederholen fehl. Ein anderer angehängter Befehl hieße: Der Bestand ist veraltet (Review Welle 7, R6).
   if (
     !Array.isArray(protokoll) ||
     protokoll.length > gespeichertesProtokoll.length ||
-    protokoll.some((x, i) => kanonischKompakt(x) !== kanonischKompakt(gespeichertesProtokoll[i]))
+    protokoll.some((x, i) => kanonischKompakt(x) !== kanonischKompakt(gespeichertesProtokoll[i])) ||
+    gespeichertesProtokoll
+      .slice(protokoll.length)
+      .some((e) => e.befehl.art !== 'Rueckgaengig' && e.befehl.art !== 'Wiederholen')
   )
     konflikt(abweichung);
   loescheProjektMitInhalt(db, id);

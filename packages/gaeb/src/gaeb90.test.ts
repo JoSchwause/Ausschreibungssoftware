@@ -547,6 +547,48 @@ describe('.d84: Angebot', () => {
     expect(codes(a.befunde)).not.toContain('gp-abweichend');
   });
 
+  it('ein abweichender Gesamtpreis ist derselbe Befund mit demselben Text wie beim DA-XML-Leser', () => {
+    const a = angebot(
+      datei(
+        satz('00', [11, '84'], [63, '1122PPPPI'], [72, '90']),
+        satz('23', [3, '01000010'], [13, '0000012345'], [25, '000000024000']),
+      ),
+    );
+    const gp = a.befunde.filter((b) => b.code === 'gp-abweichend');
+    expect(gp).toHaveLength(1);
+    expect(gp[0]?.meldung).toBe(
+      'Der Gesamtpreis der Angebotsdatei (240,00 €) weicht von Menge des LV × EP (246,90 €) ab; gerechnet wird mit Menge × EP.',
+    );
+  });
+
+  it('ein EP an einer Zuschlagsposition des LV wird nicht übernommen, der Befund nennt den Preis', () => {
+    const [p1] = positionen(knoten);
+    if (p1 === undefined) throw new Error('keine Position');
+    const zuschlagsLv: Leistungsverzeichnis = {
+      ...LV,
+      knoten: knoten.map((k) =>
+        k.id === p1.id && k.art === 'position'
+          ? { ...k, zuschlag: { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } } }
+          : k,
+      ),
+    };
+    const a = leseAngebot(
+      datei(
+        satz('00', [11, '84'], [63, '1122PPPPI'], [72, '90']),
+        satz('23', [3, '01000010'], [13, '0000012345']),
+      ),
+      {
+        lv: zuschlagsLv,
+        angebotId: 'angebot-1' as AngebotId,
+        bieterId: 'bieter-1' as BieterId,
+        dateiname: 'a.d84',
+      },
+    );
+    const b = a.befunde.find((x) => x.code === 'zuschlag-art-abweichend');
+    expect(b?.meldung).toContain('trägt dort einen Einheitspreis (123,450)');
+    expect(a.befehl?.angebot.positionen[0]).toEqual({ positionId: p1.id, status: 'nicht-angeboten' });
+  });
+
   it('eine Angebotsaufforderung ist kein Angebot; eine andere Maske ist ein Befund', () => {
     expect(codes(angebot(lvDatei, 'lv.d83').befunde)).toContain('phase-nicht-unterstuetzt');
     const a = angebot(

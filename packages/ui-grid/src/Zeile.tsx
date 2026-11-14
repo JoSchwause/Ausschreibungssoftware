@@ -48,6 +48,8 @@ export interface ZeileProps {
    * Grid keine oder nur die Spalte „KG“ (Ticket 93). Stabil halten (Memo).
    */
   readonly bearbeitbareSpalten: ReadonlySet<LvSpalte>;
+  /** Ausnahme „Preise“ im Schreibschutz: der EP einer Zuschlagsposition ist nicht bearbeitbar (`istBearbeitbar`). */
+  readonly epOhneZuschlag: boolean;
   /**
    * Das Grid ist als Ganzes schreibgeschützt (`aria-readonly` am Grid). Eine bearbeitbare Zelle darin (Spalte „KG“,
    * Ticket 93) hebt das für sich mit `aria-readonly="false"` auf.
@@ -80,8 +82,16 @@ function befundeJeSpalte(
 
 function ZeileKomponente(props: ZeileProps): ReactElement {
   const { row, index, versatz, hoehe, tabbar, aktiv, ausgewaehlt, ausgeschnitten, bearbeitung } = props;
-  const { abgelehnt, baumspalte, zahlen, bearbeitbareSpalten, gridSchreibgeschuetzt, editor, eingabearten } =
-    props;
+  const {
+    abgelehnt,
+    baumspalte,
+    zahlen,
+    bearbeitbareSpalten,
+    epOhneZuschlag,
+    gridSchreibgeschuetzt,
+    editor,
+    eingabearten,
+  } = props;
   const zeile = row.original;
   const k = zeile.knoten;
   const zellen = row.getAllCells();
@@ -111,7 +121,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
         const spalte = spaltenIds[si];
         if (spalte === undefined) return null;
         const text = anzeigeText(zeile, spalte, zahlen);
-        const bearbeitbar = bearbeitbareSpalten.has(spalte) && istBearbeitbar(zeile, spalte);
+        const bearbeitbar = bearbeitbareSpalten.has(spalte) && istBearbeitbar(zeile, spalte, epOhneZuschlag);
         const hinweise = befunde.get(spalte) ?? [];
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);

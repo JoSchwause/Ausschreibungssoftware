@@ -222,11 +222,19 @@ Der Grund, aus dem ein Löschen abgewiesen wird, weil noch etwas darauf verweist
 ### GAEB (Gemeinsamer Ausschuss Elektronik im Bauwesen)
 Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000). Das **Herkunftsformat** einer eingelesenen Datei (DA XML mit Version, GAEB 90 oder GAEB 2000) nennt das Leseergebnis zur Information (vertrag v1.7a); im Code `GaebLesung.format` (`GaebFormat`) neben `GaebLesung.version`.
 
-**GAEB 90** (Endungen `.d81` bis `.d86`) ist ein Satzformat: Jede Zeile ist ein **Satz** zu 80 Zeichen, vorn die zweistellige
-**Satzart** (z. B. `21` Position, `25` Kurztext, `26` Langtext), hinten die fortlaufende Satznummer; die Phase steht als
-Datenart im Eröffnungssatz `00`. Die App liest daraus LV (`.d81`, `.d83`, `.d86`) und Angebote (`.d84`), schreibt es nicht und
-zeigt bei jedem Einlesen den festen Hinweis, dass der Leser nicht an Dateien aus anderer Software geprüft ist (D-71). Im Code
-`gaeb90.ts` im Paket `gaeb`.
+### GAEB 90
+Das älteste der drei GAEB-Formate (Endungen `.d81` bis `.d86`), ein Satzformat: Jede Zeile ist ein **Satz** zu 80 Zeichen, vorn
+die zweistellige **Satzart** (z. B. `21` Position, `25` Kurztext, `26` Langtext), hinten die fortlaufende Satznummer; die Phase
+steht als Datenart im Eröffnungssatz `00`. Die App liest daraus LV (`.d81`, `.d83`, `.d86`) und Angebote (`.d84`), schreibt es
+nicht und zeigt bei jedem Einlesen den festen Hinweis, dass der Leser nicht an Dateien aus anderer Software geprüft ist (D-71).
+Im Code `gaeb90.ts` im Paket `gaeb`, Herkunftsformat `gaeb-90`.
+
+### GAEB 2000
+Das Format zwischen GAEB 90 und DA XML (Endungen `.p81` bis `.p86`), ein **Schlüsselwortformat**: Abschnitte stehen zwischen
+`#begin[Name]` und `#end[Name]`, Werte als `[Name]Wert[end]`; die Phase nennt der Wert `[DP]`, die OZ steht ohne Trennzeichen,
+Zahlen mit Dezimalkomma, Texte ab Version 1.1 als RTF. Die App liest daraus LV (`.p81`, `.p83`, `.p86`) und Angebote (`.p84`),
+schreibt es nicht und zeigt wie bei GAEB 90 den festen Hinweis (D-71). Befunde und Zuordnung der Angebotszeilen sind für alle
+drei Formate dieselben. Im Code `gaeb2000.ts` im Paket `gaeb`, Herkunftsformat `gaeb-2000`.
 
 ### GAEB-Austauschphasen (X81 – X89)
 Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
@@ -404,7 +412,13 @@ Betrag, den der Auftraggeber wegen einer Pflichtverletzung des Auftragnehmers (e
 Steuerabzug nach § 48 EStG: Legt der Auftragnehmer keine Freistellungsbescheinigung vor, behält der Auftraggeber 15 % ein und zahlt sie an das Finanzamt statt an den Auftragnehmer. An der Rechnung ein Schalter, Standard aus; der Satz ist eine feste Konstante (D-72). Gerechnet als round((Zahlbetrag − Skonto) × 15 / 100, 2), je für die Auszahlung mit und ohne Skonto, 0,00 bei einer Basis ≤ 0. Sie mindert nur die Auszahlung, nicht den Zahlbetrag. Vereinfachung in v1: Umlagen und Vertragsstrafe zählen nicht zur Basis. Im Code `Rechnung.bauabzugsteuer`, `BAUABZUGSTEUER_SATZ`, Befehl `BauabzugsteuerSetzen`.
 
 ### Auszahlung
-Was der Auftraggeber auf eine Rechnung an den Auftragnehmer überweist: Zahlbetrag − Skonto − Bauabzugsteuer (D-72). Sie wird für zwei Fälle gerechnet und angezeigt: bei Zahlung bis zum Fristende (mit Skonto) und danach (ohne Skonto); ohne Skonto sind beide gleich. Die **geltende** Auszahlung ist die mit Skonto, wenn der Skonto verwirklicht ist, sonst die ohne. Im Code `Auszahlungsszenario`, `Zahlungsstand.auszahlung`.
+Was der Auftraggeber auf eine Rechnung an den Auftragnehmer überweist: Zahlbetrag − Skonto − Bauabzugsteuer (D-72). Sie wird für zwei Auszahlungsszenarien gerechnet und angezeigt: bei Zahlung bis zum Fristende (mit Skonto) und danach (ohne Skonto); ohne Skonto sind beide gleich. Die **geltende** Auszahlung ist die mit Skonto, wenn der Skonto verwirklicht ist, sonst die ohne. Im Code `Zahlungsstand.auszahlung`.
+
+### Auszahlungsszenario
+Die Auszahlung einer Rechnung für einen der beiden Zahlungszeitpunkte (D-72): **mit Skonto** (Zahlung bis zum Fristende) oder **ohne Skonto** (Zahlung danach, Skonto 0,00). Je Auszahlungsszenario stehen Skonto, Bauabzugsteuer (auf Zahlbetrag − Skonto dieses Szenarios) und Auszahlung; das **geltende** ist das mit Skonto, wenn der Skonto verwirklicht ist, sonst das ohne. In Texten für Nutzer heißen die beiden „bei Zahlung bis …“ und „danach“, in Kommentaren auch „die beiden Fälle des Skontos“. Gerechnet, nie gespeichert. Im Code `Auszahlungsszenario`, `Zahlungsstand.mitSkonto`, `Zahlungsstand.ohneSkonto`.
+
+### Zahlungsfreigabe
+Was der Auftraggeber auf eine Rechnung zur Zahlung freigibt, wie es mit der **Freigabe** entsteht (D-72): ab dem eingefrorenen Zahlbetrag beide Auszahlungsszenarien, das geltende bis zum offenen Betrag (Skonto mit seinem Stand, Bauabzugsteuer „an das Finanzamt“, Auszahlung, Summe der Zahlungen, offen) und die Zahlungen nach Datum. Im Druck der Rechnungsprüfung ein eigener Abschnitt nach der Freigabe; vor der Freigabe zeigt er den geprüften Zahlbetrag als Vorschau. Keine eigene Handlung und nicht dasselbe wie die Freigabe (das Einfrieren des Zahlbetrags, siehe Zahlbetrag / Freigabe); Vertragsstrafe, Skonto und Bauabzugsteuer lassen sich darum nur vor der Freigabe ändern, Zahlungen nur danach. Beim Skonto steht „verwirklicht“, „noch nicht verwirklicht“ (keine Zahlung nach dem Fristende erfasst, die Frist kann noch laufen) oder „nicht verwirklicht“ (eine Zahlung nach dem Fristende ist erfasst). Im Code `Zahlungsstand` als Eingabe des Drucks, Überschrift „Zahlungsfreigabe“.
 
 ### Zahlung
 Eine tatsächliche Zahlung des Auftraggebers an den Auftragnehmer auf eine Rechnung, mit Datum und Betrag (D-72). Zahlungen gibt es nur an einer freigegebenen Rechnung; solange eine Rechnung Zahlungen hat, lässt sich ihre Freigabe nicht aufheben (Q5). Die Bauabzugsteuer an das Finanzamt ist keine Zahlung in diesem Sinn. Im Code `Zahlung`, `ZahlungId`, `Rechnung.zahlungen`, Befehle `ZahlungErfassen`, `ZahlungAendern`, `ZahlungLoeschen`.
@@ -654,6 +668,17 @@ Entscheidungen D-133.1 bis D-133.9 im Ticket 133.
 | Neues Objekt | Verb mit Gegenstand: „Projekt anlegen“, „Rechnung anlegen“, „Nachtrag anlegen“ | „Anlegen“ allein, „Neue Rechnung“ |
 | Projektangaben ändern | „Projektangaben …“ (Dialog „Projektangaben“: Name, Bauherr, Projektnummer, Ort, Baustelle) | „Projekt umbenennen“, „Stammdaten ändern“ |
 | IFC-Klasse | deutscher Name, Klasse in Klammern: „Fundament (IfcFooting)“; unbekannte Klassen stehen unverändert da | rohe Klasse allein |
+| Vorschau | zwei Bedeutungen, beide gewollt: **Vorschau** als Kennzeichen eines Moduls (siehe unten) und **Vorschau** eines Dokuments vor dem Sichern oder Drucken (siehe unten); welche gemeint ist, sagt der Ort | – |
+
+### Vorschau (Modul)
+Kennzeichen einer Gruppe der Navigation (G-60): Module, die benutzbar, aber noch nicht so weit geprüft und ausgebaut sind wie die
+Kernkette LV → Vergabe → Abrechnung → Kosten (derzeit Modelle, Bauzeitenplan, Honorar, Mängel und Bautagebuch). Ein Satz auf der
+Seite sagt, was das heißt. Im Code `VORSCHAU`, `istVorschau` (`apps/web/src/ui/navigation.ts`).
+
+### Vorschau (Dokument)
+Die Ansicht eines erzeugten Dokuments (PDF eines Berichts, einer Rechnungsprüfung, eines LV) vor dem Sichern oder Drucken; nichts
+wird dabei geändert. Ebenso heißt die Anzeige eines Ergebnisses, bevor es übernommen wird (etwa die OZ-Maske vor dem Umnummerieren
+oder der geprüfte Zahlbetrag vor der Freigabe). Im Code `PdfMitVorschau` und Namen mit `Vorschau`.
 
 Schreibung: Anrede unpersönlich, wo nötig „Sie“, nie „du“ und nie ein Imperativ der 2. Person Singular (L4). „…“ mit
 Leerzeichen davor und nur auf Schaltflächen, die einen Dialog oder eine Dateiauswahl öffnen. „€“ als einziges

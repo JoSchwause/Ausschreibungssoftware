@@ -32,15 +32,16 @@ import type {
   Zahlenart,
 } from '@tethys/vertrag';
 import { phaseAbweisen } from './abweisung';
-import { Angebotsaufbau } from './angebotsaufbau';
+import { Angebotszuordnung, preiszeileOhneXml } from './angebotszuordnung';
 import { deutsch, text } from './befunde';
 import type { GaebBefund } from './befunde';
 import type { Phasenquelle } from './erkennung';
-import { MAX_STUFEN, OZ_MAX_LAENGE } from './lesen';
+import { MAX_STUFEN, OZ_MAX_LAENGE, STANDARD_MWST_SATZ } from './lesen';
 import { LvAufbau } from './lvaufbau';
 import { textinhalt } from './rtf';
 import type { Inline, Textinhalt } from './rtf';
-import { Zeilenmelder } from './zeilenbefunde';
+import { Zeilenmelder, grundbefunde, zeichensatzAmInhalt } from './zeilenbefunde';
+import type { Zeichensatzbefund } from './zeilenbefunde';
 import { ZEICHENSATZ_NAME, dekodiereMit } from './zeichensatz';
 import type { Zeichensatz } from './zeichensatz';
 
@@ -48,7 +49,7 @@ import type { Zeichensatz } from './zeichensatz';
 export interface Gaeb2000Datei {
   readonly text: string;
   /** Befund zum Zeichensatz (am Inhalt erkannt oder abweichend von der Angabe der Datei); `null`: keiner. */
-  readonly zeichensatz: { readonly meldung: string; readonly name: string } | null;
+  readonly zeichensatz: Zeichensatzbefund | null;
   readonly phase: GaebPhase | null;
   readonly phasenquelle: Phasenquelle | null;
   /** Die Phase, auf die die Dateiendung hinweist (`.p83` → X83), `null`: keine GAEB-Endung. */
@@ -97,7 +98,7 @@ export function bereiteGaeb2000(
     name,
     meldung:
       angabeRoh === null || angabeRoh === ''
-        ? `Die Datei nennt ihren Zeichensatz nicht; am Inhalt erkannt und gelesen als ${name}. Umlaute bitte prüfen.`
+        ? zeichensatzAmInhalt(name).meldung
         : `Die Datei nennt den Zeichensatz „${angabeRoh}“, der Inhalt passt nicht dazu; am Inhalt erkannt und gelesen als ` +
           `${name}. Umlaute bitte prüfen.`,
   });
@@ -642,29 +643,18 @@ function kopfLesen(w: Objekt, m: Zeilenmelder): Kopf {
   };
 }
 
-/** Befunde, die jeder GAEB-2000-Import trägt: der feste Hinweis (D-71), Zeichensatz, Widerspruch zwischen Inhalt und Endung. */
-function grundbefunde(d: Gaeb2000Datei, m: Zeilenmelder): void {
-  m.melde(
-    'warnung',
-    'format-ungeprueft',
-    'Das Lesen von GAEB 2000 ist nach der Formatbeschreibung gebaut und nicht an Dateien aus anderer Software geprüft; bitte ' +
-      'die Summen mit denen des Absenders vergleichen.',
-    null,
-    { werte: { format: text('GAEB 2000') } },
-  );
-  if (d.zeichensatz !== null)
-    m.melde('warnung', 'zeichensatz-erkannt', d.zeichensatz.meldung, null, {
-      werte: { zeichensatz: text(d.zeichensatz.name) },
-    });
-  if (d.phasenquelle === 'inhalt' && d.endungsphase !== null && d.endungsphase !== d.phase)
-    m.melde(
-      'warnung',
-      'phase-endung-widerspruch',
-      `Die Dateiendung weist auf ${d.endungsphase}, die Datei selbst nennt ${d.phase ?? ''}; es gilt die Datei.`,
-      null,
-      { werte: { phase: text(d.phase ?? ''), endung: text(d.endungsphase) } },
-    );
-}
+/** Die Grundbefunde eines GAEB-2000-Imports; die Phase nennt die Datei in `[DP]`. */
+const grundbefunde2000 = (d: Gaeb2000Datei, m: Zeilenmelder): void => {
+  const dp = d.text.search(/\[DP\]/);
+  grundbefunde(m, {
+    format: 'GAEB 2000',
+    zeichensatz: d.zeichensatz,
+    phase: d.phase,
+    phasenquelle: d.phasenquelle,
+    endungsphase: d.endungsphase,
+    phasenzeile: dp < 0 ? null : d.text.slice(0, dp).split('\n').length,
+  });
+};
 
 /** Zerlegt die Datei und prüft die Wurzel; `null` mit Fehlerbefund, wenn nichts zu lesen ist. */
 function wurzelLesen(d: Gaeb2000Datei, m: Zeilenmelder): Objekt | null {
@@ -836,7 +826,7 @@ export function leseGaeb2000Lv(
   opt: Gaeb2000LvOptionen,
 ): { phase: GaebPhase | null; inhalt: LvInhalt | null; befunde: GaebBefund[] } {
   const m = new Zeilenmelder();
-  grundbefunde(d, m);
+  grundbefunde2000(d, m);
   if (d.phase !== null && !LESBARE_PHASEN.has(d.phase)) {
     const a = phaseAbweisen(d.phase, 'lv');
     m.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, null, { werte: a.werte });
@@ -879,7 +869,7 @@ export function leseGaeb2000Lv(
       : { name: kopf.auftragnehmer, strasse: null, plz: null, ort: null };
 
   // Lesart D-145.8: Einen Steuersatz liest der Leser aus GAEB 2000 nicht (`USt` ist nur aus einem Beispiel bekannt).
-  const mwstSatz = opt.standardMwstSatz ?? ('19.00' as Prozent);
+  const mwstSatz = opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
   const satz = { art: 'prozent', wert: mwstSatz } as const;
   m.melde(
     'warnung',
@@ -922,7 +912,7 @@ export function leseGaeb2000Angebot(
   gleicheMaske: (a: OzMaske, b: OzMaske) => boolean,
 ): Gaeb2000AngebotErgebnis {
   const m = new Zeilenmelder();
-  grundbefunde(d, m);
+  grundbefunde2000(d, m);
   const nichts = (): Gaeb2000AngebotErgebnis => ({
     phase: d.phase,
     positionen: null,
@@ -963,7 +953,7 @@ export function leseGaeb2000Angebot(
       'Die OZ-Maske der Angebotsdatei weicht von der des LV ab; zugeordnet wird trotzdem über die Teile der OZ.',
       info?.zeile ?? null,
     );
-  const aufbau = new Angebotsaufbau(m, lv.knoten);
+  const zuordnung = new Angebotszuordnung<number | null>(m, lv.knoten, null);
   const durchlaufe = (o: Objekt): void => {
     for (const k of o.kinder) {
       if (k.art !== 'objekt') continue;
@@ -981,7 +971,7 @@ export function leseGaeb2000Angebot(
         const anzeige = oz.teile === null ? oz.anzeige : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
         const ep = zahl('einheitspreis', werteVon(k, 'EP')[0], m, 'einheitspreis');
         const gb = zahl('betrag', werteVon(k, 'GB')[0], m, 'gesamtpreis');
-        aufbau.preis(oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, ep, gb, k.zeile);
+        preiszeileOhneXml(zuordnung, oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, ep, gb, k.zeile);
       }
     }
   };
@@ -992,7 +982,7 @@ export function leseGaeb2000Angebot(
     m,
   );
   durchlaufe(kopf.lv);
-  const positionen = aufbau.positionen();
+  const positionen = zuordnung.positionen();
   if (kopf.auftraggeber !== null) m.nichtUebernommen(null, 'Angaben zum Auftraggeber');
   return { phase: d.phase, positionen, bietername: kopf.auftragnehmer, befunde: m.ergebnis() };
 }

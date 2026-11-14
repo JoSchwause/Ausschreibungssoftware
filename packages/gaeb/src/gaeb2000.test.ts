@@ -134,6 +134,10 @@ describe('Kopf: GAEBInfo, PrjInfo, Vergabe, AG, AN, LVInfo', () => {
     const l = inhaltVon(datei('83', EINE), 'lv.p81');
     expect(l.phase).toBe('X83');
     expect(codes(l.befunde)).toContain('phase-endung-widerspruch');
+    // Wie bei GAEB 90 hängt der Befund an der Zeile, in der die Datei ihre Phase nennt.
+    const b = l.befunde.find((x) => x.code === 'phase-endung-widerspruch');
+    const zeilen = datei('83', EINE).split('\n');
+    expect(b?.ort.zeile).toBe(zeilen.findIndex((z) => z.includes('[DP]')) + 1);
   });
 
   it('andere Phasen als X81, X83, X86 weist der LV-Leser mit Satz ab', () => {
@@ -545,6 +549,14 @@ describe('.p84: Angebot', () => {
     expect(codes(a.befunde)).toEqual(
       expect.arrayContaining(['format-ungeprueft', 'position-unbekannt', 'position-fehlt-im-angebot']),
     );
+  });
+
+  it('ein abweichender Gesamtpreis ist derselbe Befund mit demselben Text wie beim DA-XML-Leser', () => {
+    const t = datei('84', [...bereich('01', 'A', position('010010', '[EP]12,345[end]', '[GB]120,00[end]'))]);
+    const gp = angebot(t).befunde.filter((b) => b.code === 'gp-abweichend');
+    expect(gp.map((b) => b.meldung)).toEqual([
+      'Der Gesamtpreis der Angebotsdatei (120,00 €) weicht von Menge des LV × EP (123,45 €) ab; gerechnet wird mit Menge × EP.',
+    ]);
   });
 
   it('eine Angebotsaufforderung ist kein Angebot', () => {

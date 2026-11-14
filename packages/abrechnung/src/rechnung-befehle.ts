@@ -38,7 +38,7 @@ import type {
   Zahlung,
   ZahlungId,
 } from '@tethys/vertrag';
-import { datumFehler, istObjekt, kennungFehler, nein, nummerFehler } from './form';
+import { datumFehler, istObjekt, kennungFehler, nein, nummerFehler, prozentKonstante } from './form';
 
 type Antwort = Ergebnis<RechnungChangeSet, Befehlsfehler>;
 type Geprueft<T> = Ergebnis<T, Befehlsfehler>;
@@ -164,7 +164,7 @@ function vertragsstrafePruefen(roh: unknown): Geprueft<Vertragsstrafe> {
   return gut({ betrag: betrag.wert, grund });
 }
 
-const HUNDERT = '100.00' as Prozent;
+const HUNDERT = prozentKonstante('100.00');
 
 function skontoPruefen(roh: unknown): Geprueft<Skonto> {
   if (!istObjekt(roh)) return ungueltig('Der Skonto ist ein Objekt mit Satz und Frist.', 'skonto');

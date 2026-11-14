@@ -499,6 +499,20 @@ der Freigabe), die Rechnungen danach in der Form von `Rechnung` (v1.7b), je Rech
 geschrieben und hergeleitet (`herleitung`); `zahlungen.test.mjs` rechnet sie eigens nach (BigInt, eigener Kalender, ohne
 Pakete). Regeln: D-72 mit den Lesarten D-128.3 bis D-128.8 und D-93.
 
+Belege (C4: Sollwerte aus einer Regel herleitbar und dort belegt):
+
+- **Bauabzugsteuer 15 %:** § 48 Abs. 1 Satz 1 EStG (Steuerabzug von 15 % der Gegenleistung); Gegenleistung ist das Entgelt
+  zuzüglich Umsatzsteuer (§ 48 Abs. 3 EStG), darum auf den Bruttobetrag Zahlbetrag − Skonto. Mit Freistellungsbescheinigung
+  (§ 48b EStG) entfällt der Abzug: der Schalter an der Rechnung (AR 2: aus).
+- **Skonto:** nur, wenn vereinbart (§ 16 Abs. 5 Nr. 2 VOB/B: nicht vereinbarte Skontoabzüge sind unzulässig); Satz und Frist
+  stammen aus der Vereinbarung an der Rechnung, nicht aus der VOB/B.
+- **Fristende:** Der Eingangstag zählt nicht (§ 187 Abs. 1 BGB), die Frist endet mit Ablauf ihres letzten Tages
+  (§ 188 Abs. 1 BGB); eine Zahlung am Fristende ist darum rechtzeitig (AR 1: 13.11.).
+- **Kette:** Abschlagszahlungen nach § 16 Abs. 1 VOB/B, Vertragsstrafe nach § 11 VOB/B, Einbehalt (Sicherheitsleistung) nach
+  § 17 VOB/B.
+- **Lesarten, keine Regel (D-72):** Das Fristende wird nicht auf einen Werktag verschoben (§ 193 BGB bleibt außer Betracht), und
+  Umlagen und Vertragsstrafe zählen nicht zur Basis der Bauabzugsteuer. Die Sollwerte gelten unter diesen Lesarten.
+
 | Schritt | Regel | AR 1 | AR 2 |
 |---|---|---|---|
 | Vertragsstrafe | brutto, kumuliert, nach den Umlagen, vor dem Einbehalt; Basis von Umlage und Einbehalt bleibt Brutto kum. | 0,00 | 1.500,00 |

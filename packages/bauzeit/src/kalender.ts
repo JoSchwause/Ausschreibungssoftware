@@ -2,8 +2,8 @@
 // Arbeitskalender (Ticket 102 Punkt 2, D-57): Arbeitstage der Woche, gesetzliche Feiertage des Landes, freie Tage des Plans.
 // Ein Tag ist ein Arbeitstag, wenn sein Wochentag ein Arbeitstag ist und er weder Feiertag noch freier Tag ist. Rein (A2).
 
-import type { Arbeitskalender, Bundesland, Wochentag } from '@tethys/vertrag';
-import type { Datum, Tagnummer } from './datum';
+import type { Arbeitskalender, Bundesland, Kalenderdatum, Wochentag } from '@tethys/vertrag';
+import type { Tagnummer } from './datum';
 import { tagnummerLesen, wochentagVon, zivilAusTagnummer } from './datum';
 import { LANDESFEIERTAGE, feiertageTagnummern } from './feiertage';
 
@@ -70,7 +70,7 @@ export class Tageskalender {
 }
 
 /** Ist der Tag ein Arbeitstag des Kalenders? Ein ungültiges `datum` (nur per Typumgehung möglich) wirft `RangeError`. */
-export function istArbeitstag(kalender: Arbeitskalender, datum: Datum): boolean {
+export function istArbeitstag(kalender: Arbeitskalender, datum: Kalenderdatum): boolean {
   const tag = tagnummerLesen(datum);
   if (!tag.ok) throw new RangeError(tag.fehler.meldung);
   return new Tageskalender(kalender).istArbeitstag(tag.wert);

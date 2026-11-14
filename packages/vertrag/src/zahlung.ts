@@ -64,8 +64,8 @@ export interface Zahlung {
 export const BAUABZUGSTEUER_SATZ: Prozent = '15.00' as Prozent;
 
 /**
- * Die Auszahlung einer Rechnung in einem der beiden Fälle (v1.7b, D-72; Glossar „Auszahlung“): bei Zahlung bis zum Fristende
- * (mit Skonto) oder danach (ohne Skonto). Gerechnet, nie gespeichert.
+ * Die Auszahlung einer Rechnung in einem der beiden Auszahlungsszenarien (v1.7b, D-72; Glossar „Auszahlungsszenario“ und
+ * „Auszahlung“): bei Zahlung bis zum Fristende (mit Skonto) oder danach (ohne Skonto). Gerechnet, nie gespeichert.
  */
 export interface Auszahlungsszenario {
   /** Mit Skonto: der mögliche Skonto (siehe `Skonto`); ohne Skonto: 0,00. */
@@ -83,7 +83,7 @@ export interface Auszahlungsszenario {
 /**
  * Zahlungsstand einer Rechnung (v1.7b, D-72; Glossar „Offener Betrag / Zahlungsstand“): der Teil der Rechnungsprüfung nach
  * dem Zahlbetrag. `abrechnung` rechnet ihn (Ticket 143, als Feld der `Rechnungspruefung`), `ausgabe` druckt ihn mit der
- * Zahlungsfreigabe (Ticket 153), ohne `abrechnung` zu importieren (A3; wie `Leistungsstand`). Nie gespeichert. Jeder Betrag
+ * Zahlungsfreigabe (Ticket 153; Glossar „Zahlungsfreigabe“), ohne `abrechnung` zu importieren (A3; wie `Leistungsstand`). Nie gespeichert. Jeder Betrag
  * auf 2 Stellen gerundet und dann verrechnet (N2, E-07).
  */
 export interface Zahlungsstand {

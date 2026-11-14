@@ -210,3 +210,12 @@ test('zahlungen: Rechnungen = M4-Rechnungen + Felder aus den Befehlen; Form wie 
   assert.deepEqual(fx.rechnungen.map((r) => r.bauabzugsteuer ?? null), [true, null]);
   assert.deepEqual(fx.rechnungen.map((r) => r.vertragsstrafe?.betrag ?? null), [null, '1500.00']);
 });
+
+test('C4: die Regel nennt ihre Belege (§ 48 EStG, § 16 VOB/B, §§ 187, 188 BGB) und trennt Lesarten davon', () => {
+  const belege = ['§ 48 Abs. 1 Satz 1 EStG', '§ 48 Abs. 3 EStG', '§ 16 Abs. 5 Nr. 2 VOB/B', '§ 187 Abs. 1 BGB', '§ 188 Abs. 1 BGB'];
+  for (const beleg of belege) assert.ok(fx.regel.includes(beleg), beleg);
+  assert.match(fx.regel, /Lesart von D-72/);
+  const readme = readFileSync(join(hier, 'README.md'), 'utf8');
+  const abschnitt = readme.slice(readme.indexOf('## Abzüge und Zahlungen: A5'), readme.indexOf('## Handrechnung `winzig`'));
+  for (const beleg of belege) assert.ok(abschnitt.includes(beleg), beleg);
+});

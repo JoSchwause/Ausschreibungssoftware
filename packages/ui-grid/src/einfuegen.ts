@@ -21,6 +21,7 @@ import type {
   ElternId,
   Einheit,
   Einheitspreis,
+  EinheitspreisAendern,
   GridIdQuelle,
   GridZahlen,
   KnotenId,
@@ -165,6 +166,36 @@ export function planeEinfuegen(
     p.befehl({ art: 'PositionAnlegen', id, ort, daten });
     ort = { art: 'nach', knotenId: id };
   }
+  return p.plan();
+}
+
+export type Einheitspreisplan = Plan<EinheitspreisAendern>;
+
+/**
+ * Eine einzelne Spalte aus der Zwischenablage in die Spalte „EP“ der vorhandenen Zeilen (Ausnahme „Preise“ im
+ * Schreibschutz, SB3), wie `planeKostengruppen`: Zeile für Zeile ab `ab`, je Position, deren EP sich ändert, ein
+ * `EinheitspreisAendern` (leer: `null`); ein unlesbarer Preis verwirft nur seine Zelle. Gliederungen, Hinweistexte,
+ * Zuschlagspositionen (ihr Preis ist ein Satz) und Zeilen hinter der letzten überspringen eine nicht leere Zelle und zählen
+ * sie.
+ */
+export function planeEinheitspreise(
+  matrix: readonly (readonly string[])[],
+  ab: number,
+  zeilen: readonly LvZeile[],
+  zahlen: GridZahlen,
+): Einheitspreisplan {
+  const p = planer<EinheitspreisAendern>();
+  matrix.forEach((zellen, offset) => {
+    const text = zellen[0] ?? '';
+    const k = zeilen[ab + offset]?.knoten;
+    if (k?.art !== 'position' || k.zuschlag !== null) {
+      if (text.trim() !== '') p.ueberspringe();
+      return;
+    }
+    const wert = p.lies(leseEinheitspreis(text, zahlen), k.id, 'einheitspreis', text);
+    if (wert === undefined || wert === k.einheitspreis) return;
+    p.befehl({ art: 'EinheitspreisAendern', positionId: k.id, einheitspreis: wert });
+  });
   return p.plan();
 }
 

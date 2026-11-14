@@ -15,6 +15,7 @@ import type {
   Befundort,
   Befundschwere,
   Isttermine,
+  Kalenderdatum,
   Pruefbefund,
   Prozent,
   Bauzeitenplanergebnis as VertragsBauzeitenplanergebnis,
@@ -24,7 +25,7 @@ import type {
   Vorgangstermine as VertragsVorgangstermine,
 } from '@tethys/vertrag';
 import { HOECHSTWERT_ARBEITSTAGE, KRITISCHE_WEGE_HOECHSTENS } from './annahmen';
-import type { Datum, Tagnummer } from './datum';
+import type { Tagnummer } from './datum';
 import { LETZTER_TAG, datumAusTagnummer, tagnummerLesen } from './datum';
 import type { Kalenderhinweis } from './kalender';
 import { Tageskalender } from './kalender';
@@ -41,10 +42,10 @@ export type Bauzeitenplaneingabe = Pick<Bauzeitenplan, 'projektbeginn' | 'kalend
 
 /** `Vorgangstermine` des Vertrags mit geprüften Daten (D-109.2). */
 export interface Vorgangstermine extends VertragsVorgangstermine {
-  readonly beginn: Datum;
-  readonly ende: Datum;
-  readonly spaetesterBeginn: Datum;
-  readonly spaetestesEnde: Datum;
+  readonly beginn: Kalenderdatum;
+  readonly ende: Kalenderdatum;
+  readonly spaetesterBeginn: Kalenderdatum;
+  readonly spaetestesEnde: Kalenderdatum;
 }
 
 /** `Vorgangsergebnis` des Vertrags mit geprüften Daten (D-109.2). */
@@ -54,8 +55,8 @@ export interface Vorgangsergebnis extends VertragsVorgangsergebnis {
 
 /** `Bauzeitenplanergebnis` des Vertrags mit geprüften Daten (D-109.2). */
 export interface Bauzeitenplanergebnis extends VertragsBauzeitenplanergebnis {
-  readonly projektbeginn: Datum | null;
-  readonly projektende: Datum | null;
+  readonly projektbeginn: Kalenderdatum | null;
+  readonly projektende: Kalenderdatum | null;
   readonly vorgaenge: readonly Vorgangsergebnis[];
 }
 
@@ -568,7 +569,7 @@ export function bauzeitenplanBerechnen(eingabe: Bauzeitenplaneingabe): Bauzeiten
   }
 
   const kritischeWege = kritischeWegeFinden(ordnung, aus, ein, lagen, id, spielraum, befunde);
-  let ende: Datum | null = null;
+  let ende: Kalenderdatum | null = null;
   for (const r of ergebnisse) {
     if (r.termine !== null && (ende === null || r.termine.ende > ende)) ende = r.termine.ende;
   }

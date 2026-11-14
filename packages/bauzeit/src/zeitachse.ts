@@ -4,8 +4,8 @@
 // Vergleichsgrids (Ticket 96: `Zeitleiste`, `Zeitabschnitt`, `Balken` mit Tagesindex, `bisTag` exklusiv). Rein, ohne DOM
 // (A2); die Texte der Abschnitte formatiert die App (N4).
 
-import type { Arbeitskalender, Ergebnis, Vorgangsart } from '@tethys/vertrag';
-import type { Datum, Tagnummer } from './datum';
+import type { Arbeitskalender, Ergebnis, Kalenderdatum, Vorgangsart } from '@tethys/vertrag';
+import type { Tagnummer } from './datum';
 import {
   kalenderwocheVon,
   tagnummerAusZivil,
@@ -35,9 +35,9 @@ export interface Wochenabschnitt {
 
 export interface Zeitachse {
   /** Tag 0 der Achse. */
-  readonly von: Datum;
+  readonly von: Kalenderdatum;
   /** Letzter Tag der Achse (einschließlich). */
-  readonly bis: Datum;
+  readonly bis: Kalenderdatum;
   /** Zahl der Tage, `bis − von + 1` (≥ 1). */
   readonly tage: number;
   readonly monate: readonly Monatsabschnitt[];
@@ -51,7 +51,7 @@ export interface Zeitachsenfehler {
   readonly meldung: string;
 }
 
-function tagnummer(datum: Datum): Tagnummer {
+function tagnummer(datum: Kalenderdatum): Tagnummer {
   const tag = tagnummerLesen(datum);
   if (!tag.ok) throw new RangeError(tag.fehler.meldung);
   return tag.wert;
@@ -59,8 +59,8 @@ function tagnummer(datum: Datum): Tagnummer {
 
 /** Zeitachse von `von` bis `bis` (beide einschließlich) mit den freien Tagen des Kalenders. */
 export function zeitachseBerechnen(
-  von: Datum,
-  bis: Datum,
+  von: Kalenderdatum,
+  bis: Kalenderdatum,
   kalender: Arbeitskalender,
 ): Ergebnis<Zeitachse, Zeitachsenfehler> {
   const anfang = tagnummer(von);
@@ -97,7 +97,7 @@ export function zeitachseBerechnen(
 }
 
 /** Tagesindex eines Datums auf der Achse; vor der Achse negativ, danach ab `tage` (die Balkenspalte schneidet ab). */
-export function tagesindex(achse: Zeitachse, datum: Datum): number {
+export function tagesindex(achse: Zeitachse, datum: Kalenderdatum): number {
   return tagnummer(datum) - tagnummer(achse.von);
 }
 
@@ -111,7 +111,12 @@ export interface Balkenlage {
  * Lage eines Balkens auf der Achse: `bisTag` exklusiv, also Index des Endes + 1, weil das Ende eines Vorgangs sein letzter
  * Arbeitstag ist; beim Meilenstein `bisTag = vonTag` (Ticket 96).
  */
-export function balkenlage(achse: Zeitachse, beginn: Datum, ende: Datum, art: Vorgangsart): Balkenlage {
+export function balkenlage(
+  achse: Zeitachse,
+  beginn: Kalenderdatum,
+  ende: Kalenderdatum,
+  art: Vorgangsart,
+): Balkenlage {
   const vonTag = tagesindex(achse, beginn);
   return { vonTag, bisTag: art === 'meilenstein' ? vonTag : tagesindex(achse, ende) + 1 };
 }

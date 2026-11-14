@@ -75,6 +75,9 @@ export const texte = {
   gridSchreibgeschuetzt: 'Schreibgeschützt: Hier lässt sich nichts ändern.',
   /** Schreibgeschütztes Grid mit bearbeitbarer Spalte „KG“ (Ticket 93, z. B. Auftrags-LV). */
   gridNurKostengruppe: 'Schreibgeschützt: Nur die Spalte KG lässt sich ändern.',
+  /** Schreibgeschütztes Grid mit bearbeitbarer Spalte „EP“ (SB3, z. B. Preise eines Angebots). */
+  gridNurEinheitspreis: 'Schreibgeschützt: Nur die Spalte EP lässt sich ändern.',
+  gridNurEinheitspreisUndKostengruppe: 'Schreibgeschützt: Nur die Spalten EP und KG lassen sich ändern.',
   summen: 'Summen',
   summeNetto: 'Netto',
   summeNachlass: 'Nachlass',
@@ -254,17 +257,19 @@ export function meldungEingefuegt(positionen: number, ungueltig: number, uebersp
   return teile.join(', ') + '.';
 }
 
-/**
- * Ansage nach dem Einfügen einer Spalte in die Spalte „KG“ (Ticket 93), z. B. „2 Kostengruppen geändert, 1 Zelle ungültig
- * (markiert).“
- */
-export function meldungKostengruppen(geaendert: number, ungueltig: number, uebersprungen: number): string {
+/** Ansage nach dem Einfügen einer Spalte in eine Spalte der vorhandenen Zeilen: was geändert, ungültig, übersprungen. */
+function meldungSpalte(
+  geaendert: number,
+  ungueltig: number,
+  uebersprungen: number,
+  wort: { readonly kein: string; readonly eins: string; readonly viele: string; readonly ohne: string },
+): string {
   const teile = [
     geaendert === 0
-      ? 'Keine Kostengruppe geändert'
+      ? `${wort.kein} geändert`
       : geaendert === 1
-        ? '1 Kostengruppe geändert'
-        : `${String(geaendert)} Kostengruppen geändert`,
+        ? `1 ${wort.eins} geändert`
+        : `${String(geaendert)} ${wort.viele} geändert`,
   ];
   if (ungueltig > 0) {
     teile.push(
@@ -274,12 +279,33 @@ export function meldungKostengruppen(geaendert: number, ungueltig: number, ueber
   if (uebersprungen > 0) {
     teile.push(
       uebersprungen === 1
-        ? '1 Zelle ohne Position übersprungen'
-        : `${String(uebersprungen)} Zellen ohne Position übersprungen`,
+        ? `1 Zelle ${wort.ohne} übersprungen`
+        : `${String(uebersprungen)} Zellen ${wort.ohne} übersprungen`,
     );
   }
   return teile.join(', ') + '.';
 }
+
+/**
+ * Ansage nach dem Einfügen einer Spalte in die Spalte „KG“ (Ticket 93), z. B. „2 Kostengruppen geändert, 1 Zelle ungültig
+ * (markiert).“
+ */
+export const meldungKostengruppen = (geaendert: number, ungueltig: number, uebersprungen: number): string =>
+  meldungSpalte(geaendert, ungueltig, uebersprungen, {
+    kein: 'Keine Kostengruppe',
+    eins: 'Kostengruppe',
+    viele: 'Kostengruppen',
+    ohne: 'ohne Position',
+  });
+
+/** Ansage nach dem Einfügen einer Spalte in die Spalte „EP“ (SB3), z. B. „3 Einheitspreise geändert.“ */
+export const meldungEinheitspreise = (geaendert: number, ungueltig: number, uebersprungen: number): string =>
+  meldungSpalte(geaendert, ungueltig, uebersprungen, {
+    kein: 'Kein Einheitspreis',
+    eins: 'Einheitspreis',
+    viele: 'Einheitspreise',
+    ohne: 'ohne Einheitspreis',
+  });
 
 /**
  * Texte der Befehlshinweise (v1.1a, Punkt 10) je `Befehlshinweiscode`. Bewusst keine erschöpfende Tabelle über den

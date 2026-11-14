@@ -6,7 +6,7 @@
 // nach dem Zahlbetrag die Zahlungsfreigabe mit beiden Fällen des Skontos, der Bauabzugsteuer „an das Finanzamt“, der
 // Auszahlung, den Zahlungen und dem offenen Betrag (`Zahlungsstand` aus `vertrag`).
 
-import { formatiereBetragDe, formatiereProzentDe, vorzeichen } from '@tethys/dezimal';
+import { NULL_BETRAG, formatiereBetragDe, formatiereProzentDe, vorzeichen } from '@tethys/dezimal';
 import { BAUABZUGSTEUER_SATZ } from '@tethys/vertrag';
 import type {
   AufmassKopf,
@@ -123,10 +123,29 @@ const abzugWert = (b: Betrag): BerichtWert => ({
 });
 
 /**
+ * Der Stand des Skontos in Worten (Review Welle 7, PA2): „verwirklicht“; „noch nicht verwirklicht“, solange die Skontofrist
+ * läuft; „nicht verwirklicht“ erst, wenn sie abgelaufen ist. Abgelaufen ist sie, wenn der Stichtag (das Druckdatum, die Uhr
+ * gehört der App, A2) nach dem Fristende liegt oder eine Zahlung nach dem Fristende erfasst ist. Ohne Stichtag und ohne
+ * solche Zahlung gilt sie als laufend. Dieselbe Regel für Druck und Bildschirm.
+ */
+export function skontoStandText(
+  zs: Pick<Zahlungsstand, 'skontoVerwirklicht' | 'fristende'>,
+  zahlungen: readonly { readonly datum: string }[],
+  stichtag: string | null,
+): string {
+  if (zs.skontoVerwirklicht) return 'Skonto (verwirklicht)';
+  const fristende = zs.fristende;
+  const abgelaufen =
+    fristende !== null &&
+    ((stichtag !== null && stichtag > fristende) || zahlungen.some((z) => z.datum > fristende));
+  return abgelaufen ? 'Skonto (nicht verwirklicht)' : 'Skonto (noch nicht verwirklicht)';
+}
+
+/**
  * Die Zahlungsfreigabe nach D-72: beide Fälle des Skontos (wenn es ein Fristende gibt), dann der geltende Fall bis zum
  * offenen Betrag und die Zahlungen nach Datum. Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag.
  */
-function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): BerichtBlock[] {
+function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand, stichtag: string | null): BerichtBlock[] {
   const bloecke: BerichtBlock[] = [];
   const steuer = r.bauabzugsteuer === true;
   const skonto = r.skonto;
@@ -183,12 +202,7 @@ function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): BerichtBlock[] {
       ),
       ...(skonto === undefined
         ? []
-        : [
-            abzug(
-              zs.skontoVerwirklicht ? 'Skonto (verwirklicht)' : 'Skonto (nicht verwirklicht)',
-              zs.verwirklichterSkonto,
-            ),
-          ]),
+        : [abzug(skontoStandText(zs, r.zahlungen ?? [], stichtag), zs.verwirklichterSkonto)]),
       ...(steuer ? [abzug(BAUABZUGSTEUER, zs.bauabzugsteuer)] : []),
       betragFeld(AUSZAHLUNG, zs.auszahlung, true),
       abzug('Summe der Zahlungen', zs.summeZahlungen),
@@ -331,7 +345,7 @@ export function baueRechnungspruefungModell(e: RechnungspruefungEingabe): Berich
                   r.vertragsstrafe === undefined
                     ? 'Vertragsstrafe'
                     : `Vertragsstrafe (${r.vertragsstrafe.grund})`,
-                  kette.vertragsstrafe ?? r.vertragsstrafe?.betrag ?? ('0.00' as Betrag),
+                  kette.vertragsstrafe ?? r.vertragsstrafe?.betrag ?? NULL_BETRAG,
                 ),
               ]
             : []),
@@ -424,7 +438,7 @@ export function baueRechnungspruefungModell(e: RechnungspruefungEingabe): Berich
       ? [{ ueberschrift: 'Freigabe', bloecke: [freigabeStand, ...unterschrift] }]
       : [
           { ueberschrift: 'Freigabe', bloecke: [freigabeStand] },
-          { ueberschrift: 'Zahlungsfreigabe', bloecke: zahlungsfreigabe(r, zs) },
+          { ueberschrift: 'Zahlungsfreigabe', bloecke: zahlungsfreigabe(r, zs, e.datum ?? null) },
           { ueberschrift: null, bloecke: unterschrift },
         ];
   const deckblatt = e.druckprofil?.deckblatt ?? true;
