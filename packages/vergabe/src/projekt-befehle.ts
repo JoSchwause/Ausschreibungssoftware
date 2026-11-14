@@ -8,12 +8,16 @@
 // dafür. Der Verteiler behält den optionalen Parameter des Vertragstyps (Aufrufe mit zwei Argumenten bleiben gültig) und weist
 // `BieterLoeschen` ohne Verweise zur Laufzeit ab.
 
-import { projektBefehlAusfuehren as imKern } from '@tethys/kern';
+import {
+  bieterMitAngaben,
+  bieterangabenFehler,
+  bieterangabenNormalisieren,
+  projektBefehlAusfuehren as imKern,
+} from '@tethys/kern';
 import type {
   Befehlsfehler,
   Befehlsfehlercode,
   Bieter,
-  Bieterangaben,
   BieterangabenSetzen,
   BieterId,
   BieterLoeschen,
@@ -24,7 +28,7 @@ import type {
   ProjektChangeSet,
   Verweisanzahl,
 } from '@tethys/vertrag';
-import { bieterangabenFormfehler, bieterangabenNormalisieren, gleicheBieterangaben } from './bieterangaben';
+import { gleicheBieterangaben } from './bieterangaben';
 import { verweissperre } from './verweise';
 
 type Antwort = Ergebnis<ProjektChangeSet, Befehlsfehler>;
@@ -52,14 +56,6 @@ function ersetzt(projekt: Projekt, i: number, neu: Bieter, unveraendert: boolean
   return geaendert(projekt, { ...projekt, bieter: projekt.bieter.map((x, j) => (j === i ? neu : x)) });
 }
 
-/** Der Bieter mit diesen Angaben; `null` lässt das Feld weg (nie `angaben: null`, Vertrag). */
-function mitAngaben(bieter: Bieter, angaben: Bieterangaben | null): Bieter {
-  if (angaben !== null) return { ...bieter, angaben };
-  const kopie: { -readonly [K in keyof Bieter]?: Bieter[K] } = { ...bieter };
-  delete kopie.angaben;
-  return kopie as Bieter;
-}
-
 function umbenennen(zustand: Projekt, befehl: BieterUmbenennen): Antwort {
   const i = stelle(zustand, befehl.bieterId, befehl.art);
   if (typeof i !== 'number') return i;
@@ -71,11 +67,12 @@ function umbenennen(zustand: Projekt, befehl: BieterUmbenennen): Antwort {
 function angabenSetzen(zustand: Projekt, befehl: BieterangabenSetzen): Antwort {
   const i = stelle(zustand, befehl.bieterId, befehl.art);
   if (typeof i !== 'number') return i;
-  const feld = bieterangabenFormfehler(befehl.angaben);
-  if (feld !== null) return nein('ungueltige-eingabe', `${feld}: Form der Bieterangaben stimmt nicht.`, feld);
+  // Form und Normalform aus dem Kern: eine Stelle für die Regel (D-82 S9, D-87).
+  const f = bieterangabenFehler(befehl.angaben, 'angaben');
+  if (f !== null) return nein('ungueltige-eingabe', `${f.feld}: ${f.meldung}`, f.feld);
   const neu = bieterangabenNormalisieren(befehl.angaben);
   const alt = zustand.bieter[i] as Bieter;
-  return ersetzt(zustand, i, mitAngaben(alt, neu), gleicheBieterangaben(alt.angaben ?? null, neu));
+  return ersetzt(zustand, i, bieterMitAngaben(alt, neu), gleicheBieterangaben(alt.angaben ?? null, neu));
 }
 
 function loeschen(

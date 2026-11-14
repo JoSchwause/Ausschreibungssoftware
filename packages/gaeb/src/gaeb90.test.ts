@@ -573,8 +573,16 @@ describe('.d84: Angebot', () => {
       ),
     };
     const a = leseAngebot(
-      datei(satz('00', [11, '84'], [63, '1122PPPPI'], [72, '90']), satz('23', [3, '01000010'], [13, '0000012345'])),
-      { lv: zuschlagsLv, angebotId: 'angebot-1' as AngebotId, bieterId: 'bieter-1' as BieterId, dateiname: 'a.d84' },
+      datei(
+        satz('00', [11, '84'], [63, '1122PPPPI'], [72, '90']),
+        satz('23', [3, '01000010'], [13, '0000012345']),
+      ),
+      {
+        lv: zuschlagsLv,
+        angebotId: 'angebot-1' as AngebotId,
+        bieterId: 'bieter-1' as BieterId,
+        dateiname: 'a.d84',
+      },
     );
     const b = a.befunde.find((x) => x.code === 'zuschlag-art-abweichend');
     expect(b?.meldung).toContain('trägt dort einen Einheitspreis (123,450)');

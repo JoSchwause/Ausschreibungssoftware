@@ -31,6 +31,7 @@ import type {
   PositionId,
   Prozent,
 } from '@tethys/vertrag';
+import { bieterangabenNormalisieren } from '@tethys/kern';
 import { phaseAbweisen } from './abweisung';
 import { Angebotszuordnung, ozVon } from './angebotszuordnung';
 import { deutsch, zahlwert } from './befunde';
@@ -433,7 +434,6 @@ class Angebotsaufbau {
   }
 }
 
-
 /**
  * `TotalLSUM`: eine Pauschalsumme des Bieters für eine Gliederung oder das LV. Das Angebot hält nur Preise je Position;
  * Befund, denn die Summen rechnen dann aus den Positionen und weichen von der Datei ab (Ticket 129).
@@ -509,16 +509,13 @@ function leseBieter(l: Leser, award: XmlElement): Bietervorschlag | null {
   if (ctr) melde(ctr, ['Address'], 'CTR');
   if (adresse) melde(adresse, [...NAMEN, ...ANGABEN_FELDER], 'CTR/Address');
   const feld = (name: (typeof ANGABEN_FELDER)[number]): string | null => wert(kind(adresse, name)) || null;
-  const strasse = feld('Street');
-  const plz = feld('PCode');
-  const ort = feld('City');
-  const angaben: Bieterangaben = {
-    anschrift: strasse === null && plz === null && ort === null ? null : { strasse, plz, ort },
+  // Normalform aus dem Kern (D-127.4, D-87): eine Stelle für „leer ist keine Angabe“.
+  const angaben = bieterangabenNormalisieren({
+    anschrift: { strasse: feld('Street'), plz: feld('PCode'), ort: feld('City') },
     ansprechperson: feld('Contact'),
     email: feld('Email'),
     telefon: feld('Phone'),
-  };
-  const mitAngaben = Object.values(angaben).some((w) => w !== null);
+  });
   const name = NAMEN.map((n) => wert(kind(adresse, n)) ?? '')
     .filter((n) => n !== '')
     .join(' ');
@@ -529,8 +526,8 @@ function leseBieter(l: Leser, award: XmlElement): Bietervorschlag | null {
       'Die Angebotsdatei nennt keinen Namen des Bieters (CTR/Address/Name1…4).',
       ctr ?? award,
     );
-  if (name === '' && !mitAngaben) return null;
-  return { name, ...(mitAngaben ? { angaben } : {}) };
+  if (name === '' && angaben === null) return null;
+  return { name, ...(angaben === null ? {} : { angaben }) };
 }
 
 /**

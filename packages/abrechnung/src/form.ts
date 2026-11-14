@@ -51,7 +51,8 @@ export function nummerFehler(nummer: unknown): string | null {
 const TAGE = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 const schaltjahr = (j: number): boolean => (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0;
 /** Die Zahl der Tage im Monat `m` (1–12) des Jahres `j`; 0 für einen Monat, den es nicht gibt. */
-export const tageImMonat = (j: number, m: number): number => (m === 2 && schaltjahr(j) ? 29 : (TAGE[m - 1] ?? 0));
+export const tageImMonat = (j: number, m: number): number =>
+  m === 2 && schaltjahr(j) ? 29 : (TAGE[m - 1] ?? 0);
 
 /**
  * Ein Datum, wie der Nutzer es eingibt (`AufmassKopf.datum`, `Rechnung.eingang`): `null` oder `JJJJ-MM-TT` (Form nach

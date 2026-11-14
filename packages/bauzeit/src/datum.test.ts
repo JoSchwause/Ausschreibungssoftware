@@ -44,7 +44,11 @@ describe('Benennung (Glossar „Kalenderdatum“, keine Synonyme)', () => {
     const verzeichnis = dirname(fileURLToPath(import.meta.url));
     const nutzer = readdirSync(verzeichnis)
       .filter((f) => f.endsWith('.ts') && f !== 'datum.ts' && f !== 'index.ts')
-      .filter((f) => /(?:[:<|(,]\s*|\bas\s+|\{\s*|,\s*)Datum\b(?![-\wäöü])/.test(readFileSync(join(verzeichnis, f), 'utf8')));
+      .filter((f) =>
+        /(?:[:<|(,]\s*|\bas\s+|\{\s*|,\s*)Datum\b(?![-\wäöü])/.test(
+          readFileSync(join(verzeichnis, f), 'utf8'),
+        ),
+      );
     expect(nutzer).toEqual([]);
   });
 });

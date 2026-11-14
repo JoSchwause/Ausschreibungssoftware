@@ -193,11 +193,7 @@ function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): BerichtBlock[] {
         r.freigabe === null ? 'Zahlbetrag (geprüft, noch nicht freigegeben)' : 'Zahlbetrag (eingefroren)',
         zs.zahlbetrag,
       ),
-      ...(skonto === undefined
-        ? []
-        : [
-            abzug(skontoBezeichnung(r, zs), zs.verwirklichterSkonto),
-          ]),
+      ...(skonto === undefined ? [] : [abzug(skontoBezeichnung(r, zs), zs.verwirklichterSkonto)]),
       ...(steuer ? [abzug(BAUABZUGSTEUER, zs.bauabzugsteuer)] : []),
       betragFeld(AUSZAHLUNG, zs.auszahlung, true),
       abzug('Summe der Zahlungen', zs.summeZahlungen),

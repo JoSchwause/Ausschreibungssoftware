@@ -59,7 +59,6 @@ export interface Gaeb90Datei {
   readonly endungsphase: GaebPhase | null;
 }
 
-
 /** Ein Satz der Datei: Satzart, Zeile (ab 1) und der Satz auf 80 Zeichen aufgefüllt. */
 interface Satz {
   readonly art: string;
@@ -798,7 +797,15 @@ export function leseGaeb90Angebot(
     const anzeige =
       oz.teile === null ? stellen(s, 3, 11).trim() : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
     const preise = preiseAus([s], m);
-    preiszeileOhneXml(zuordnung, oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, preise.ep, preise.gb, s.zeile);
+    preiszeileOhneXml(
+      zuordnung,
+      oz.teile?.join(trenn ?? '') ?? null,
+      oz.index,
+      anzeige,
+      preise.ep,
+      preise.gb,
+      s.zeile,
+    );
   };
   for (const b of rest) for (const s of [b.kopf, ...b.folge]) jeSatz(s);
   const positionen = zuordnung.positionen();

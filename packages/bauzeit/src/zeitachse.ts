@@ -111,7 +111,12 @@ export interface Balkenlage {
  * Lage eines Balkens auf der Achse: `bisTag` exklusiv, also Index des Endes + 1, weil das Ende eines Vorgangs sein letzter
  * Arbeitstag ist; beim Meilenstein `bisTag = vonTag` (Ticket 96).
  */
-export function balkenlage(achse: Zeitachse, beginn: Kalenderdatum, ende: Kalenderdatum, art: Vorgangsart): Balkenlage {
+export function balkenlage(
+  achse: Zeitachse,
+  beginn: Kalenderdatum,
+  ende: Kalenderdatum,
+  art: Vorgangsart,
+): Balkenlage {
   const vonTag = tagesindex(achse, beginn);
   return { vonTag, bisTag: art === 'meilenstein' ? vonTag : tagesindex(achse, ende) + 1 };
 }

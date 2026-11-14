@@ -13,7 +13,13 @@ import type { Befundangaben } from './lesen';
 
 /** Was die Zuordnung von einem Leser braucht; `O` ist der Ort eines Befunds im Format des Lesers. */
 export interface Angebotsmelder<O> {
-  melde(schwere: GaebBefund['schwere'], code: GaebBefundcode, meldung: string, ort: O, angaben?: Befundangaben): void;
+  melde(
+    schwere: GaebBefund['schwere'],
+    code: GaebBefundcode,
+    meldung: string,
+    ort: O,
+    angaben?: Befundangaben,
+  ): void;
   ozBekannt(knotenId: string, oz: string | null): void;
 }
 

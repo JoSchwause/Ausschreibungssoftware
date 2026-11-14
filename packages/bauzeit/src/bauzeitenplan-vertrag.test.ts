@@ -44,7 +44,9 @@ describe('Vertragstypen (v1.6)', () => {
     expectTypeOf<Bauzeitenplan>().toExtend<Bauzeitenplaneingabe>();
     expectTypeOf(bauzeitenplanBerechnen).returns.toExtend<VertragsErgebnis>();
     // Die Daten des Ergebnisses sind geprüfte Daten (D-102.5): die App gibt sie ohne Prüfung an die Zeitachse weiter.
-    expectTypeOf(bauzeitenplanBerechnen).returns.toHaveProperty('projektende').toEqualTypeOf<Kalenderdatum | null>();
+    expectTypeOf(bauzeitenplanBerechnen)
+      .returns.toHaveProperty('projektende')
+      .toEqualTypeOf<Kalenderdatum | null>();
   });
 
   it('Beispiel des Vertrags: Rohbau mit Sammelvorgang, Bezug und Ist-Terminen (Ticket 97, D-63)', () => {
