@@ -13,7 +13,7 @@ import {
   projektAnlegen,
   type FxPosition,
 } from './hilfen';
-import { pruefungEinblenden, werkzeug } from './werkzeuge';
+import { pruefungEinblenden, werkzeug, werkzeugleiste } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -36,6 +36,9 @@ async function lvMitZweiPositionen(page: Page): Promise<void> {
   await positionTippen(page, p('01.0010'));
   await positionTippen(page, p('01.0020'));
   await werkzeug(page, 'LV', 'Umnummerieren');
+  // Das Menü führt den Punkt erst nach dem Schließen aus (`onCloseAutoFocus`), im selben Schritt, der den Fokus auf
+  // „LV“ zurückgibt; erst danach steht der Befehl in der Reihe, auf die `leerlauf` wartet.
+  await expect(werkzeugleiste(page).getByRole('button', { name: 'LV', exact: true })).toBeFocused();
   // Neue Positionen haben ihre OZ schon aus dem Vorschlag (Ticket 48); erst nach allen Befehlen ist der Stand ruhig.
   await leerlauf(page);
   await expect(text(page, 2, 'ordnungszahl')).toHaveText('01.0020');

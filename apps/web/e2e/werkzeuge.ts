@@ -21,6 +21,9 @@ export async function menuepunkt(page: Page, gruppe: string, name: string | RegE
 /** Wählt den Punkt `name` aus dem Menü der Gruppe `gruppe`. */
 export async function werkzeug(page: Page, gruppe: string, name: string | RegExp): Promise<void> {
   await (await menuepunkt(page, gruppe, name)).click();
+  // Das Menü führt den Punkt erst aus, wenn es zu ist (`onCloseAutoFocus` in `Werkzeugleiste`). Wer danach auf das Ende
+  // des Befehls warten will (`leerlauf`), wartet zusätzlich darauf, dass der Fokus zur Gruppe zurückkehrt.
+  await expect(page.getByRole('menu')).toHaveCount(0);
 }
 
 /** Prüft, dass das Menü der Gruppe den Punkt zeigt (z. B. „Angebote (1)“), und schließt es wieder. */
