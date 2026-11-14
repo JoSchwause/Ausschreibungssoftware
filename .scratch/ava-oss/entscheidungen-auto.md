@@ -906,3 +906,10 @@ Decision: Kein Fehlschlag der Umsetzung (wie D-81, D-85, D-91). Nach der Rückse
 Reason: Die Agenten haben früh committet; der Stand in den Worktrees ist vollständig.
 Reversible: ja
 Touches: Ablauf der Welle
+
+## D-106 Merge 152 und 162
+Welle 7 · Ticket 152, 162 · decided by: orchestrator
+Question: 152 (Aufmaß, Rechnung, Zahlungen, Zahlungsfreigabe-PDF) und 162 (Fokus nach Löschen eines Druckprofils) sind done-by-agent. Mergen, und was folgt?
+Decision: Beide gemergt (`7be550f`, `e63b4db`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt die fixme-Schritte für 152 heraus. 159b bekommt `ausgabe/`, `abrechnung/`, `rechnung/` frei und zieht `PdfMitVorschau` samt der drei neuen Druckarten aus 152 nach `ui/`. Der Befund D-162.3 (eine Meldung fängt Escape einer offenen Auswahlliste) geht als kleiner Punkt an 159a (`ui-basis/Toast.tsx`), sonst in den Bericht. Die Budgettests, die unter Last rot waren (`kern`, `speicher`, `vergabe`, `abrechnung/leistung`), werden am Ende auf ruhiger Maschine gemessen; nicht gelockert.
+Reason: Wie D-79 ff.: grün und im Umfang; der zweite Review-Durchgang über 152/161/162 folgt nach dem Merge von 161 (D-103).
+Reversible: yes  Touches: abrechnung/, rechnung/, ausgabe/, Tickets 158, 159
