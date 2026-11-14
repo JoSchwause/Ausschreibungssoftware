@@ -15,7 +15,9 @@ import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { angebotLesen } from '../gaeb/gaeb';
 import { appIdQuelle } from '../lv/ids';
-import { auftragAusgeben } from './ausgabe';
+import { excelRuecklaufLesen } from '@tethys/ausgabe';
+import { alsLvZustand } from './auftrag';
+import { auftragAusgeben, auftragExcel } from './ausgabe';
 import { zuschlagserteilungPlanen } from './zuschlagserteilung';
 
 const wurzel = new URL('../../../../', import.meta.url);
@@ -73,5 +75,30 @@ describe('auftragAusgeben', () => {
     expect(a.xml).toMatch(/<CTR>\s*<Address>\s*<Name1>Bieter A<\/Name1>/);
     expect(a.xml).toContain(`<Total>${sollA?.netto ?? ''}</Total>`);
     expect(a.xml).toContain(`<TotalGross>${sollA?.brutto ?? ''}</TotalGross>`);
+  });
+});
+
+describe('auftragExcel (Ticket 151)', () => {
+  it('Excel des Auftrags-LV mit den Vertragspreisen; Dateiname mit „-Auftrag“', async () => {
+    const auftrag = auftragA();
+    const r = await auftragExcel(auftrag, '2026-11-14');
+    expect(r.dateiname).toBe(
+      `${auftrag.auftragsLeistungsverzeichnis.name.replace(/[^\p{L}\p{N} _-]+/gu, '').trim()}-Auftrag.xlsx`,
+    );
+    // Zurückgelesen stehen die EP des Auftrags-LV in der Datei (nicht leer wie im Blankett für Bieter).
+    const zurueck = excelRuecklaufLesen(r.datei.bytes, alsLvZustand(auftrag));
+    const soll = auftrag.auftragsLeistungsverzeichnis.knoten.flatMap((k) =>
+      k.art === 'position' && k.einheitspreis !== null && k.zuschlag === null
+        ? [[k.id, k.einheitspreis] as const]
+        : [],
+    );
+    expect(soll.length).toBeGreaterThan(0);
+    const ist = new Map(
+      zurueck.positionen.map((p) => [
+        p.positionId as string,
+        p.status === 'angeboten' ? p.einheitspreis : null,
+      ]),
+    );
+    for (const [id, ep] of soll) expect(ist.get(id)).toBe(ep);
   });
 });

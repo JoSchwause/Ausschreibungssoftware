@@ -14,7 +14,13 @@ import { zuschlagserteilungPlanen } from '../auftrag/zuschlagserteilung';
 import { angebotAnlegenPlan, angebotLesen } from '../gaeb/gaeb';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
-import { nachtraegeLaden as laden, nachtragAnlegen, nachtragBeauftragen } from './speichern';
+import {
+  auftragnehmerAngebotAnlegen,
+  auftragnehmerLaden,
+  nachtraegeLaden as laden,
+  nachtragAnlegen,
+  nachtragBeauftragen,
+} from './speichern';
 
 const wurzel = new URL('../../../../', import.meta.url);
 const fx = abrechnungsFixture() as unknown as {
@@ -201,5 +207,58 @@ describe('Nachtrag über den Befehlsweg', () => {
     const l = await nachtraegeLaden(u.speicher, danach.wert);
     expect(l.befunde).toHaveLength(1);
     expect(l.befunde[0]).toMatch(/^Nachtrag N01: .*angeboten/);
+  });
+});
+
+describe('Geführter Nachtrag (Ticket 151): Angebot des Auftragnehmers', () => {
+  it('nennt den Auftragnehmer als Bieter und legt das gelesene Angebot für ihn an, ohne neuen Bieter', async () => {
+    const k = await mitAuftrag();
+    const { u, weg, auftrag, projekt } = k;
+    const a = auftrag.auftragsLeistungsverzeichnis;
+    const r = await nachtragAnlegen(weg, a, 'Gründung');
+    if (!r.ok) throw new Error('anlegen');
+    const geladen = await u.speicher.leistungsverzeichnisse.laden(r.lvId);
+    if (!geladen.ok) throw new Error('Nachtrags-LV');
+    const fxN = m4Nachtrag();
+    const s = weg.lv(projekt.id, geladen.wert);
+    await s.befehl({
+      art: 'KnotenEinfuegen',
+      ort: { art: 'ende', elternId: r.lvId },
+      knoten: fxN.lv.leistungsverzeichnis.knoten,
+    });
+    if (s.zustand === null) throw new Error('Knoten');
+    const ort = { id: r.lvId, projektId: projekt.id, auftragsLvId: a.id };
+
+    const vorher = await auftragnehmerLaden(u.speicher, ort);
+    expect(vorher).toEqual({
+      ok: true,
+      wert: {
+        auftragnehmer: { bieterId: k.bieterId, name: projekt.bieter.find((b) => b.id === k.bieterId)?.name },
+        angebotDesAuftragnehmers: false,
+      },
+    });
+
+    // Wie aus einer Datei gelesen: vorläufige Kennung eines anderen Bieters, die der geführte Weg ersetzt.
+    const gelesen = {
+      ...fxN.angebot,
+      id: u.ids.angebot(),
+      projektId: projekt.id,
+      leistungsverzeichnisId: r.lvId,
+      bieterId: u.ids.bieter(),
+    };
+    const tiefe = weg.historie.tiefe.rueck;
+    const anlage = await auftragnehmerAngebotAnlegen(weg, s.zustand, k.bieterId, gelesen);
+    expect(anlage.ok).toBe(true);
+    expect(weg.historie.tiefe.rueck).toBe(tiefe + 1);
+    const p = await u.speicher.projekte.laden(projekt.id);
+    expect(p.ok && p.wert.bieter.map((b) => b.id)).toEqual(projekt.bieter.map((b) => b.id));
+    const nachher = await auftragnehmerLaden(u.speicher, ort);
+    expect(nachher.ok && nachher.wert.angebotDesAuftragnehmers).toBe(true);
+    const liste = await nachtraegeLaden(u.speicher, auftrag);
+    expect(liste.nachtraege[0]?.angebotsnetto).toBe(fx.nachtrag.angebot.sollwerte.summen.netto);
+
+    await weg.rueckgaengig();
+    const zurueck = await auftragnehmerLaden(u.speicher, ort);
+    expect(zurueck.ok && zurueck.wert.angebotDesAuftragnehmers).toBe(false);
   });
 });

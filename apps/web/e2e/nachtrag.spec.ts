@@ -3,6 +3,9 @@
 // Oberfläche, ohne Wahl) → „Nachtrag anlegen“ auf der Seite des Auftrags-LV → zwei Positionen im Grid → Angebot des
 // Auftragnehmers über den Excel-Rücklauf → Status „angeboten“ → „Beauftragen“ mit Vorschau → das Auftrags-LV zeigt die
 // Gliederung „Nachtrag N01“ und die neue Summe → Rückgängig/Wiederholen → Neuladen.
+// Ticket 151: auf dem geführten Weg. Das Kopfband zeigt die Schritte; „Angebot des Auftragnehmers einlesen“ belegt den
+// Auftragnehmer als Bieter vor (der Dateiname nennt ihn nicht), danach schlägt das Band „angeboten“ vor, dann ist
+// „Beauftragen“ der nächste Schritt. Dazu auf dem Auftrags-LV: Positionsdialog nur lesen mit Langtext und „Excel“.
 //
 // LV `typisch` kommt wie in M3 über den Testpfad (D-64.1). Die Rücklaufdatei entsteht im Test aus dem gespeicherten
 // Nachtrags-LV mit den EP des Nachtragsangebots der Fixture (wie `ausgabe.spec.ts`). Alle erwarteten Zahlen stehen in
@@ -38,6 +41,18 @@ const fx = JSON.parse(readFileSync(new URL('typisch-abrechnung.json', wurzel), '
   };
 };
 const BIETER = fx.zuschlag.bieterName;
+/** Die erste Position von `typisch` mit Langtext (in der Fixture als Klartext). */
+const MIT_LANGTEXT = (
+  JSON.parse(readFileSync(new URL('typisch.json', wurzel), 'utf8')) as {
+    knoten: readonly {
+      id: string;
+      art: string;
+      ordnungszahl?: string;
+      kurztext?: string;
+      langtext?: string;
+    }[];
+  }
+).knoten.find((k) => k.art === 'position' && (k.langtext ?? '') !== '');
 const TITEL = fx.nachtrag.lv.knoten.find((k) => k.art === 'titel');
 const POSITIONEN = fx.nachtrag.lv.knoten.filter((k) => k.art === 'position');
 /** EP des Nachtragsangebots je Kurztext (die Kennungen vergibt die App neu). */
@@ -78,7 +93,24 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   expect(POSITIONEN).toHaveLength(2);
 
   // Zuschlag wie in M3: Projekt, LV `typisch` (Testpfad), X84 von Bieter B über die Oberfläche, Zuschlag ohne Wahl.
-  const inhalt = fixtureInhalt('typisch');
+  // Der Testpfad liest `typisch` ohne Langtexte; die erste Position mit Langtext bekommt ihn als Absatz (Ticket 151).
+  const roh = fixtureInhalt('typisch');
+  const inhalt = {
+    ...roh,
+    knoten: roh.knoten.map((k) =>
+      k.id === MIT_LANGTEXT?.id && k.art === 'position'
+        ? {
+            ...k,
+            langtext: [
+              {
+                art: 'absatz' as const,
+                inhalt: [{ art: 'text' as const, text: MIT_LANGTEXT.langtext ?? '' }],
+              },
+            ],
+          }
+        : k,
+    ),
+  };
   await projektAnlegen(page, 'Musterhaus', 'Bauherr');
   const projektId = decodeURIComponent(new URL(page.url()).pathname.split('/').at(-1) ?? '');
   const r = await page.evaluate(([id, lv]) => window.tethysTest?.lvAnlegen(id as never, lv as never), [
@@ -109,6 +141,45 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
     'Noch kein Nachtrag.',
   );
 
+  // Ticket 151: Positionsdialog nur lesen. Doppelklick öffnet ihn; der Langtext ist zu lesen, nicht zu bearbeiten.
+  const kurztext = MIT_LANGTEXT?.kurztext ?? '';
+  const zelleKurztext = page
+    .locator('[role="treegrid"] [data-spalte="kurztext"]')
+    .filter({ hasText: kurztext })
+    .first();
+  await zelleKurztext.dblclick();
+  const position = page.getByRole('dialog', { name: `${MIT_LANGTEXT?.ordnungszahl ?? ''} ${kurztext}` });
+  const langtext = position.getByRole('textbox', { name: 'Langtext', exact: true });
+  await expect(langtext).toContainText(MIT_LANGTEXT?.langtext ?? '');
+  await expect(langtext).toHaveAttribute('contenteditable', 'false');
+  await expect(position.getByRole('button', { name: 'Übernehmen' })).toHaveCount(0);
+  await expect(position.getByRole('definition').first()).toHaveText(MIT_LANGTEXT?.ordnungszahl ?? '');
+  await position.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(position).toBeHidden();
+  // Per Tastatur: Strg+Enter auf der Zeile, Escape schließt.
+  await zelleKurztext.focus();
+  await page.keyboard.press('Control+Enter');
+  await expect(position).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(position).toBeHidden();
+
+  // Ticket 151: Excel des Auftrags-LV über das Menü „Ausgabe“.
+  await werkzeug(page, 'Ausgabe', 'Excel');
+  const excelAusgabe = page.getByRole('dialog', { name: 'Auftrags-LV als Excel ausgeben' });
+  await expect(excelAusgabe.getByTestId('excel-dateiname')).toHaveText(/-Auftrag\.xlsx$/);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    excelAusgabe.getByRole('button', { name: 'Herunterladen' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/-Auftrag\.xlsx$/);
+  expect(
+    readFileSync(await download.path())
+      .subarray(0, 2)
+      .toString('latin1'),
+  ).toBe('PK');
+  await excelAusgabe.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(excelAusgabe).toBeHidden();
+
   // „Nachtrag anlegen“: Bezeichnung eingeben, danach steht die LV-Seite des Nachtrags mit dem Kopfband offen.
   await page.getByRole('button', { name: 'Nachtrag anlegen' }).click();
   const anlegen = page.getByRole('dialog', { name: 'Nachtrag anlegen' });
@@ -121,6 +192,11 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await expect(band).toContainText(/Nachtrag N01 zu .+ · angemeldet/);
   const nachtragPfad = new URL(page.url()).pathname;
   const nachtragsLvId = nachtragPfad.split('/').at(-1) ?? '';
+  // Ticket 151: Schrittanzeige; der nächste Schritt trägt `aria-current="step"`.
+  const schritte = band.getByRole('list', { name: 'Schritte bis zur Beauftragung' });
+  const naechsterSchritt = schritte.locator('[aria-current="step"]');
+  await expect(schritte.getByRole('listitem')).toHaveCount(4);
+  await expect(naechsterSchritt).toContainText('Leistungen erfassen');
 
   // Zwei Positionen unter einem Titel, wie der Nachtrag N01 der Fixture (ohne Preise: die kommen vom Auftragnehmer).
   await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
@@ -134,8 +210,10 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await expect
     .poll(async () => (await zeilen(page)).map((z) => z[1]))
     .toEqual([TITEL?.kurztext, ...POSITIONEN.map((p) => p.kurztext)]);
+  await expect(naechsterSchritt).toContainText('Angebot des Auftragnehmers');
 
   // Angebot des Auftragnehmers über den Excel-Rücklauf: Datei aus dem gespeicherten Nachtrags-LV mit den EP der Fixture.
+  // Geführt: über das Kopfband; der Dateiname nennt den Bieter nicht, der Auftragnehmer ist trotzdem vorbelegt.
   await page.evaluate(() => window.tethysTest?.leerlauf());
   const datei = await page.evaluate((id) => window.tethysTest?.projektdatei(id as never), projektId);
   const nachtragsLv = (JSON.parse(datei ?? '{}') as Projektdatei).leistungsverzeichnisse.find(
@@ -152,16 +230,28 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
       ),
     },
   };
-  await page.getByLabel('Excel-Datei wählen').setInputFiles({
-    name: `${BIETER}.xlsx`,
+  await expect(band.getByRole('button', { name: 'Angebot des Auftragnehmers einlesen' })).toBeVisible();
+  await band.getByLabel('Angebotsdatei des Auftragnehmers wählen').setInputFiles({
+    name: 'Nachtragsangebot.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     buffer: Buffer.from(lvAlsExcel(mitPreisen, { mitPreisen: true }).bytes),
   });
-  const excel = page.getByRole('dialog', { name: 'Excel-Angebot einlesen' });
+  const excel = page.getByRole('dialog', { name: 'Angebot des Auftragnehmers einlesen' });
   await expect(excel.getByLabel('Bieter')).toHaveValue(BIETER);
+  await expect(excel.getByTestId('anzahl-angeboten')).toHaveText(String(POSITIONEN.length));
   await excel.getByRole('button', { name: 'Übernehmen' }).click();
-  await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await expect(angebote).toBeHidden();
+  await expect(excel).toBeHidden();
+
+  // Nach dem Einlesen schlägt das Band den Status „angeboten“ vor; „beauftragt“ ist in der Statuswahl nicht wählbar.
+  await expect(naechsterSchritt).toContainText('Status „angeboten“');
+  await expect(band.getByTestId('nachtrag-naechster')).toContainText('Vorschlag: Status „angeboten“');
+  await band.getByRole('combobox', { name: 'Status' }).click();
+  await expect(page.getByRole('option', { name: /^beauftragt/ })).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
+  await band.getByRole('button', { name: 'Status „angeboten“ setzen' }).click();
+  await expect(band.getByTestId('nachtrag-status')).toHaveText('angeboten');
+  await expect(naechsterSchritt).toContainText('Beauftragen');
+  await expect(band.getByRole('button', { name: 'Status „angeboten“ setzen' })).toHaveCount(0);
 
   // Der Preisspiegel des Nachtrags-LV vergleicht die Angebote, erteilt aber keinen Zuschlag (D-42, Review P2).
   await page.goto(`${nachtragPfad}/preisspiegel`);
@@ -170,12 +260,7 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   await expect(page.getByRole('button', { name: /^Zuschlag erteilen/ })).toHaveCount(0);
   await expect(page.getByText(/Nachtrag N01 ist ein Nachtrags-LV und bekommt keinen Zuschlag/)).toBeVisible();
   await page.goto(nachtragPfad);
-
-  // Status „angeboten“ über die Statuswahl des Kopfbands; „beauftragt“ ist dort nicht wählbar.
-  await band.getByRole('combobox', { name: 'Status' }).click();
-  await expect(page.getByRole('option', { name: /^beauftragt/ })).toHaveAttribute('aria-disabled', 'true');
-  await page.getByRole('option', { name: 'angeboten', exact: true }).click();
-  await expect(band.getByTestId('nachtrag-status')).toHaveText('angeboten');
+  await expect(naechsterSchritt).toContainText('Beauftragen');
 
   // Beauftragen: Vorschau mit den Zahlen der Fixture, dann zur Seite des Auftrags-LV.
   await band.getByRole('button', { name: 'Beauftragen' }).click();
