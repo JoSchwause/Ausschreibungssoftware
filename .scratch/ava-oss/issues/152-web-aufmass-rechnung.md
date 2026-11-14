@@ -1,6 +1,6 @@
 # 152: App: Aufmaß- und Rechnungsausgaben, Skonto, Zahlungen
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: A2, A3, A5, E11 · Paket/Ordner: `apps/web/src/abrechnung/`, `rechnung/`
 Blocked by: 141, 143, 153
@@ -24,10 +24,10 @@ Herkunft: umfang §3 E11, A5
 
 ## Acceptance criteria
 
-- [ ] E2E für 1–4 gleich den Sollwerten; M4 grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E für 1–4 gleich den Sollwerten; M4 grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -73,3 +73,13 @@ A5), `rechnung/pruefung.ts` (`kettenzeilen` mit Vertragsstrafe, `freigabelage`, 
   E2E; `e2e/rechnung-fixture.ts` liest dazu `typisch-zahlungen.json` (`A5_*`) und die Korrektur (`M4_KORREKTUR`).
 - Beobachtung (Umgebung, kein Fehler der App): Ohne UTF-8-Locale meldet Chromium für Downloads mit Umlaut im Namen
   („Rechnungsprüfung …“, „Aufmaßblatt …“) nur „download“; die E2E prüft den Namen im Dialog, nicht am Download.
+
+Ergebnis (nach dem Merge von `integration/welle-7` bis `b634d6c`, samt 153, 155, 156, 160): `pnpm lint` grün, `pnpm typecheck`
+grün. `pnpm test` (vor dem letzten Merge, der nur `vertrag` v1.7c/`speicher`/`kern` brachte): 4.734 grün, 3 übersprungen, 6 rot,
+alle Leistungsbudgets unter Last (Last 10–12 auf 4 Kernen: `kern` lvPruefen gross und K9, `speicher` Aufmaß und v1.6,
+`vergabe` Preisspiegel, App `abrechnung/leistung.test.ts`); die App-Datei einzeln grün, nichts gelockert. Fixtures
+(`node --test`) 59 grün. Nach dem letzten Merge: Typcheck grün, `rechnung/`, `abrechnung/`, Sprachtest, M4-Kette, `vertrag`
+grün (nur `abrechnung/leistung.test.ts` wieder rot unter Last). E2E: `zahlungsfreigabe` (2, neu), `rechnung`, `aufmass`,
+`m4`, `vergabe` – 11/11 grün. PA3 (Review): `RechnungAnlegen` trägt Vertragsstrafe, Skonto und Bauabzugsteuer nur gesetzt
+(nie `undefined`); getestet in `entwurf.test.ts` („Anlegen nimmt sie nur mit, wenn gesetzt“) und am Weg AR 1 → AR 2 ohne
+Vertragsstrafe in `zahlungsfreigabe.test.ts`.
