@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Einstiegspunkt von @tethys/abrechnung: Nachtrag übernehmen (D-35) und Aufmaßblätter (D-36 (1)) aus Ticket 80; Soll/Ist,
-// Leistungsstand, Rechnungsprüfung und Rechnungsbefehle (D-34, D-35) aus Ticket 81. Rein (A2); importiert nur `vertrag`,
+// Leistungsstand, Rechnungsprüfung und Rechnungsbefehle (D-34, D-35) aus Ticket 81; Abzüge und Zahlungen aus 143. Rein (A2); importiert nur `vertrag`,
 // `dezimal` und `kern` (A3).
 
 export { istAlternative, nachtragsmaske, nachtragUebernehmen } from './nachtrag-uebernehmen';
@@ -29,3 +29,5 @@ export type {
 } from './rechnung-pruefen';
 export { rechnungBefehlAusfuehren } from './rechnung-befehle';
 export { rechnungChangeSetAnwenden, rechnungChangeSetUmkehren } from './rechnung-changeset';
+// Ticket 143 (A5, D-72): Zahlungsstand (Skonto, Bauabzugsteuer, Auszahlung, Zahlungen, offen), Vorschlag der Vertragsstrafe
+export { plusKalendertage, vertragsstrafeVorschlag, zahlungsstandBerechnen } from './zahlungsstand';
