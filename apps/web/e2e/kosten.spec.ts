@@ -283,6 +283,13 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(page.getByRole('status').filter({ hasText: '2 Bezeichnungen gelesen' })).toBeVisible();
   await expect(zelle(g, '390', 'bezeichnung')).toHaveText('Sonstige Maßnahmen');
   await expect(page.getByTestId('bezeichnungen-fehlen')).toHaveCount(0);
+  // Die Bezeichnungen sind eine Einstellung: deren eigenes Rückgängig nimmt sie zurück, Wiederholen bringt sie wieder.
+  await page.getByRole('button', { name: 'Einstellung rückgängig' }).click();
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toBeVisible();
+  await expect(zelle(g, '390', 'bezeichnung')).toHaveText('');
+  await page.getByRole('button', { name: 'Einstellung wiederholen' }).click();
+  await expect(zelle(g, '390', 'bezeichnung')).toHaveText('Sonstige Maßnahmen');
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toHaveCount(0);
   await page.reload();
   await expect(zelle(ermittlung(page), '300', 'summe')).toHaveText(de(BUDGET_300));
   await expect(zelle(ermittlung(page), '340', 'bezeichnung')).toHaveText('Innenwände');

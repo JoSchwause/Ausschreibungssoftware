@@ -43,11 +43,13 @@ Entscheidungen im Demo-Modus (Branch `welle-7/154-kosten`):
 - **D-154.4** Ausgaben (E12) → Gruppe „Ausgabe“ mit „Als PDF“ und „Als Excel“; beide öffnen denselben Dialog mit der
   Vorschau (das Berichtsmodell aus `ausgabe` als Tabelle, also dieselben Zeilen wie PDF und Excel), die gewählte Art ist die
   Hauptschaltfläche. `ausgabe` wird erst beim Öffnen geladen, PDF im Hauptthread wie die Honorarberechnung (eine Zeile je
-  KG). Kopf: Projekt aus dem Speicher, Büro aus `speicher.einstellungen` (fehlt es, kein Absender), Datum von der Uhr der
-  App; **kein Datumsfeld und keine Wahl des Druckprofils** (Standard), weil Druckprofile gerade in 150 umziehen. Dateinamen
+  KG). Kopf: Projekt aus dem Speicher, Büro aus den Einstellungen (150, `useEinstellungen`; fehlt es, kein Absender),
+  Datum von der Uhr der App; **kein Datumsfeld und keine Wahl des Druckprofils** (Standard), weil Druckprofile gerade in 150 umziehen. Dateinamen
   „Kostenermittlung <Name>“ und „Kostenkontrolle <Projekt>“ (`dateinameSauber`).
-- **D-154.5** Bezeichnungen im Druck aus derselben Quelle wie am Bildschirm (`bezeichnungenGemerkt`), damit der Umzug in die
-  Einstellungen (150) ohne Änderung hier wirkt. Die Hinweise der Kostenkontrolle tragen die Sätze der Seite
+- **D-154.5** Bezeichnungen (nach dem Merge von 150, D-95) aus dem aktuellen Stand der Einstellungen (`useEinstellungen`),
+  am Bildschirm und im Druck gleich; geschrieben über den Speicherweg von 150 (`bezeichnungenMerken`). Der Abschnitt zum
+  Einlesen trägt „Einstellung rückgängig/wiederholen“ und Strg+Z/Strg+Y für die Einstellungen (wie der Dialog „Büro“);
+  die E2E prüft Rückgängig und Wiederholen der Bezeichnungen. Die Hinweise der Kostenkontrolle tragen die Sätze der Seite
   (`kontrollbefundText`, nach `kontrolle.ts` verschoben).
 - **D-154.6** B-14 → Abschnitt „Bezeichnungen der Kostengruppen“ als Baustein (`Bezeichnungen.tsx`) jetzt auch auf der Liste
   der Kostenermittlungen (Anker `#bezeichnungen`, Fokus auf die Überschrift), weiter in jeder Kostenermittlung. Solange keine

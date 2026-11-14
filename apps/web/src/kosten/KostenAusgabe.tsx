@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // „Ausgabe“ der Kostenseiten (Ticket 154, E12): „Als PDF“ und „Als Excel“ öffnen denselben Dialog mit der Vorschau des
-// Berichts; heruntergeladen wird erst auf Wunsch. Die gewählte Art ist die Hauptschaltfläche. Projekt und Büro (Absender aus
-// den Einstellungen) lädt der Dialog beim Öffnen, das Datum kommt von der Uhr der App (A2); den Bericht baut die Seite aus
-// ihrem Stand (`bericht`). Steht in einer `Werkzeuggruppe`: Die Schaltflächen werden dort zu Menüpunkten.
+// Berichts; heruntergeladen wird erst auf Wunsch. Die gewählte Art ist die Hauptschaltfläche. Das Projekt lädt der Dialog
+// beim Öffnen, das Büro (Absender, D-141) kommt aus den Einstellungen (Ticket 150), das Datum von der Uhr der App (A2); den
+// Bericht baut die Seite aus ihrem Stand (`bericht`). Steht in einer `Werkzeuggruppe`: Die Schaltflächen werden dort zu Menüpunkten.
 
 import type { Berichtsmodell } from '@tethys/ausgabe';
 import { Button, Dialog, useToast } from '@tethys/ui-basis';
@@ -11,6 +11,7 @@ import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { datumAusUhr } from '../ausgabe/logik';
+import { useEinstellungen } from '../historie/EinstellungenAnbieter';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { BerichtVorschau } from './BerichtVorschau';
 import type { Berichtskopf, Endung } from './berichte';
@@ -46,6 +47,7 @@ export function KostenAusgabe({
 }): ReactElement {
   const u = useUmgebung();
   const { zeige } = useToast();
+  const buero = useEinstellungen().zustand.buero;
   const [lage, setLage] = useState<Lage>({ art: 'zu' });
   const [haupt, setHaupt] = useState<Endung>('pdf');
   const [laeuft, setLaeuft] = useState(false);
@@ -58,10 +60,9 @@ export function KostenAusgabe({
     void (async (): Promise<Lage> => {
       try {
         const p = await u.speicher.projekte.laden(projektId);
-        const e = await u.speicher.einstellungen?.laden();
         const b = bericht({
           projekt: p.ok ? p.wert : null,
-          buero: e?.ok === true ? e.wert.buero : null,
+          buero,
           datum: datumAusUhr(u.uhr()),
           bezeichnungen,
         });
