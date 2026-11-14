@@ -10,11 +10,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { datumAusUhr } from '../ausgabe/logik';
+import { useEinstellungen } from '../historie/EinstellungenAnbieter';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import type { Spaltenwahl } from './ansicht';
 import {
-  bueroLaden,
   dateinamePreisspiegelExcel,
   dateinamePreisspiegelPdf,
   dateinameVergabevorschlag,
@@ -42,21 +42,9 @@ type Lage =
   | { readonly art: 'fehler'; readonly meldung: string }
   | { readonly art: 'vorschau'; readonly bytes: Uint8Array; readonly url: string };
 
-/** Büro beim Öffnen frisch aus den Einstellungen. */
-function useBuero(aktiv: boolean): Buero | null {
-  const u = useUmgebung();
-  const [buero, setBuero] = useState<Buero | null>(null);
-  useEffect(() => {
-    if (!aktiv) return;
-    let lebt = true;
-    void bueroLaden(u.speicher).then((b) => {
-      if (lebt) setBuero(b);
-    });
-    return () => {
-      lebt = false;
-    };
-  }, [u, aktiv]);
-  return buero;
+/** Büro aus den Einstellungen des Geräts (wie der LV-Druck). */
+function useBuero(): Buero | null {
+  return useEinstellungen().zustand.buero;
 }
 
 /**
@@ -84,7 +72,7 @@ function PdfMitVorschau({
   const [datum, setDatum] = useState('');
   const [lage, setLage] = useState<Lage>({ art: 'bereit' });
   const lauf = useRef<Drucklauf | null>(null);
-  const buero = useBuero(offen);
+  const buero = useBuero();
   const gelesen = datumLesen(datum);
 
   const verwerfen = (): void => {
@@ -273,7 +261,7 @@ export function PreisspiegelExcel({ stand, wahl }: { stand: AusgabeStand; wahl: 
   const { zeige } = useToast();
   const [offen, setOffen] = useState(false);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
-  const buero = useBuero(offen);
+  const buero = useBuero();
   const name = dateinamePreisspiegelExcel(stand.lv);
 
   useEffect(() => {

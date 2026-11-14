@@ -5,7 +5,7 @@
 
 import type { PreisspiegelEingabe, VergabevorschlagEingabe } from '@tethys/ausgabe';
 import type { Preisspiegel } from '@tethys/vergabe';
-import type { BieterId, Buero, LvZustand, Projekt, Speicher } from '@tethys/vertrag';
+import type { BieterId, Buero, LvZustand, Projekt } from '@tethys/vertrag';
 import { dateinameSauber } from '../dateiname';
 import type { Spaltenwahl } from './ansicht';
 import type { Druckantwort, Druckauftrag } from './druck-worker';
@@ -56,12 +56,6 @@ const name = (art: string, lv: LvZustand): string =>
 export const dateinamePreisspiegelPdf = (lv: LvZustand): string => `${name('Preisspiegel', lv)}.pdf`;
 export const dateinamePreisspiegelExcel = (lv: LvZustand): string => `${name('Preisspiegel', lv)}.xlsx`;
 export const dateinameVergabevorschlag = (lv: LvZustand): string => `${name('Vergabevorschlag', lv)}.pdf`;
-
-/** Die Büroangaben aus den Einstellungen; ohne Einstellungen im Speicher oder bei einem Lesefehler keine. */
-export async function bueroLaden(speicher: Speicher): Promise<Buero | null> {
-  const e = await speicher.einstellungen?.laden();
-  return e?.ok === true ? e.wert.buero : null;
-}
 
 export interface Drucklauf {
   /** Die Bytes des PDF; `null`, wenn der Lauf abgebrochen wurde. Ein Fehler des Erzeugers wird zur Ablehnung. */

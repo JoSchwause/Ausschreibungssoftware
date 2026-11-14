@@ -210,6 +210,16 @@ test('Preisspiegel: Einstellungen am LV gespeichert; PDF mit Vorschau, Excel und
   page,
 }) => {
   test.setTimeout(120_000);
+  // Das Büro (Absender) gilt für alle Projekte und steht im Kopf der PDFs.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Büro (Absender) …' }).click();
+  const buero = page.getByRole('dialog', { name: 'Büro (Absender)' });
+  await buero.getByLabel('Name des Büros').fill('Planungsbüro Muster');
+  await buero.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByText('Büro gespeichert').first()).toBeVisible();
+  await buero.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(buero).toBeHidden();
+
   const lvId = await mitDreiAngeboten(page);
   await listeSchliessen(page);
   await werkzeug(page, 'Angebote', 'Preisspiegel');
@@ -237,6 +247,8 @@ test('Preisspiegel: Einstellungen am LV gespeichert; PDF mit Vorschau, Excel und
   await pdf.getByRole('button', { name: 'Vorschau erzeugen' }).click();
   await expect(pdf.locator('iframe[title="Vorschau des PDF"]')).toBeVisible({ timeout: 60_000 });
   const text = await pdfAusDownload(page, pdf.getByRole('button', { name: 'Herunterladen' }));
+  expect(text).toContain('Planungsbüro Muster');
+  expect(text).toContain('Musterhaus');
   for (const b of BIETER) {
     expect(text).toContain(b.name);
     expect(text).toContain(betragDe(b.summen.nettoNachNachlass));
@@ -268,6 +280,7 @@ test('Preisspiegel: Einstellungen am LV gespeichert; PDF mit Vorschau, Excel und
   await expect(vorschlag.locator('iframe[title="Vorschau des PDF"]')).toBeVisible({ timeout: 60_000 });
   const vtext = await pdfAusDownload(page, vorschlag.getByRole('button', { name: 'Herunterladen' }));
   expect(vtext).toContain('Wirtschaftlichstes Angebot nach Prüfung.');
+  expect(vtext).toContain('Planungsbüro Muster');
   expect(vtext).toContain(betragDe(A.summen.brutto));
   expect(page.url()).toContain(lvId);
 });
