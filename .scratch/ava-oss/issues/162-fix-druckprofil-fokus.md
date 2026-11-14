@@ -26,3 +26,19 @@ falsche Erwartung hat, ihn mit Begründung anpassen. Zweimal hintereinander grü
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+**Ursache.** `loeschen` (Ticket 150) wartete auf den Befehl `DruckprofilEntfernen` und wechselte erst danach die Auswahl. Unter
+Last öffnete der Test die Profilliste, solange das gelöschte Profil noch gewählt war: Radix setzte den Fokus auf diese Option,
+sie verschwand mit dem gespeicherten Löschen, und der Fokus fiel auf die Liste selbst (`listbox [active]`, keine Option). Die
+Meldung „Profil … gelöscht“ erschien zudem erst nach dem Öffnen der Liste und lag als oberste Ebene über ihr, sodass Escape
+die Meldung statt der Liste geschlossen hätte. Nachgestellt, indem die Nachrichten an den Speicher-Worker 600 ms verzögert
+wurden: alter Stand rot an derselben Stelle, neuer Stand grün über den ganzen Test. Der Test erwartet das Richtige, er bleibt.
+
+- **D-162.1 Auswahl nach dem Löschen.** Frage: welches Profil gilt danach? Entscheidung: das nächste eigene Profil, am Ende der
+  Liste das vorige, ohne weitere eigene Profile „Auftrags-LV mit Preisen“ (`profilNachLoeschen`). Grund: übliche Listenregel
+  (U3), das Ticket nennt „das nächste Profil, sonst Standard“; das vorige statt Standard hält die Auswahl bei eigenen Profilen.
+- **D-162.2 Reihenfolge.** Die Auswahl wechselt sofort beim Bestätigen; schlägt das Speichern fehl, kehrt die vorige Auswahl
+  samt ungespeicherter Änderungen zurück. Bis das Löschen gespeichert ist, sind die Profilfelder gesperrt; danach steht der
+  Fokus auf der Profilauswahl (statt auf der dann gesperrten Schaltfläche „Profil löschen“, die ihn verlor).
+- **D-162.3 Nicht gelöst (anderes Paket).** Eine Meldung (Radix Toast), die erscheint, während eine Auswahlliste offen ist,
+  fängt Escape ab; das gilt in der ganzen App und gehört nach `packages/ui-basis` (Frage an den Orchestrator).
