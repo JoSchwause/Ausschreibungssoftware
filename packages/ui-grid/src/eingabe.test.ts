@@ -479,9 +479,7 @@ describe('Ausnahme „Preise“ im Schreibschutz (SB3): die Spalte „EP“ der 
       ...(position.knoten as Position),
       id: id as PositionId,
       einheitspreis: ep as Einheitspreis | null,
-      zuschlag: zuschlag
-        ? ({ prozentsatz: null, bezug: { art: 'positionen', positionen: [] } })
-        : null,
+      zuschlag: zuschlag ? { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } } : null,
     },
   });
   // Titel, p1 mit 7,450, p2 ohne EP, z1 Zuschlagsposition, p3 mit 1,000
