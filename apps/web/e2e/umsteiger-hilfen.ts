@@ -4,6 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, type Download, type Locator, type Page } from '@playwright/test';
+import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
 
 export const FIXTURES = new URL('../../../fixtures/', import.meta.url);
 export const fixturePfad = (rel: string): string => new URL(rel, FIXTURES).pathname;
@@ -81,6 +82,26 @@ export async function herunterladen(page: Page, ausloeser: () => Promise<void>):
   return download;
 }
 
+/**
+ * Öffnet mit `oeffnen` einen PDF-Dialog (Titel `dialogName`), erzeugt das PDF über „PDF erzeugen“ und gibt seinen Text
+ * zurück (mit pdf.js zurückgelesen, Leerraum zu einem Leerzeichen).
+ */
+export async function pdfErzeugen(
+  page: Page,
+  oeffnen: () => Promise<void>,
+  dialogName: string,
+): Promise<string> {
+  await oeffnen();
+  const dialog = page.getByRole('dialog', { name: dialogName });
+  await expect(dialog).toBeVisible();
+  const d = await herunterladen(page, () => dialog.getByRole('button', { name: 'PDF erzeugen' }).click());
+  expect(d.suggestedFilename()).toMatch(/\.pdf$/);
+  const bytes = await downloadBytes(d);
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('%PDF');
+  await expect(dialog).toBeHidden();
+  return alsText(await liesPdf(new Uint8Array(bytes))).replace(/\s+/g, ' ');
+}
+
 /** Inhalt eines Downloads als Bytes. */
 export async function downloadBytes(d: Download): Promise<Buffer> {
   return readFileSync(await d.path());
@@ -106,7 +127,9 @@ export function betragAusCent(c: bigint): string {
 export function festkomma(wert: string, stellen: number): bigint {
   const [ganz = '0', rest = ''] = wert.trim().split('.');
   const neg = ganz.startsWith('-');
-  const z = BigInt(ganz.replace('-', '') || '0') * 10n ** BigInt(stellen) + BigInt((rest + '0'.repeat(stellen)).slice(0, stellen) || '0');
+  const z =
+    BigInt(ganz.replace('-', '') || '0') * 10n ** BigInt(stellen) +
+    BigInt((rest + '0'.repeat(stellen)).slice(0, stellen) || '0');
   return neg ? -z : z;
 }
 

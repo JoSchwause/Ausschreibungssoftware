@@ -13,10 +13,10 @@
 // nach dem Einlesen.
 
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import type { Einheitspreis, LvZustand, Projektdatei } from '@tethys/vertrag';
 import { lvAlsExcel } from '../../../packages/ausgabe/src/index';
-import { betragDe, eingabeDe, meldungen, neueZeile, summen, tippe, zeilen } from './hilfen';
+import { betragDe, eingabeDe, neueZeile, summen, tippe, zeilen } from './hilfen';
 import {
   ANGEBOT_ERSTER,
   ANGEBOT_ZWEITER,
@@ -36,6 +36,7 @@ import {
   gpCent,
   gridSicht,
   herunterladen,
+  pdfErzeugen,
   leiste,
   ueberLeiste,
   waagerechterUeberlauf,
@@ -83,10 +84,27 @@ const AUFMASS = [
 ] as const;
 const AUFMASS_GP = AUFMASS.reduce((s, a) => s + gpCent(a.summe.replace(',', '.'), a.ep), 0n);
 
+// Abschlagsrechnung 1 über Blatt 1, ohne Nachlass, Umlage und Einbehalt (Kette D-34/D-72):
+//   Leistung 11.500,00 · MwSt 19 % = 2.185,00 · Brutto kum. = Zahlbetrag 13.685,00.
+// Skonto 3,00 % in 14 Kalendertagen ab Eingang 30.10.2026 (der Eingangstag zählt nicht) → Fristende 13.11.2026;
+//   Skonto = gerundet(13.685,00 × 3 %, 2) = 410,55; Auszahlung bei Zahlung bis zum Fristende 13.274,45.
+const RECHNUNG = {
+  eingang: '30.10.2026',
+  nummer: 'AR-01',
+  skontoSatz: '3.00',
+  skontoTage: '14',
+  fristende: '13.11.2026',
+  zahlungAm: '10.11.2026',
+} as const;
+const RECHNUNG_MWST = mwst19(AUFMASS_GP);
+const RECHNUNG_ZAHLBETRAG = AUFMASS_GP + RECHNUNG_MWST;
+const SKONTO = (RECHNUNG_ZAHLBETRAG * 300n + 5000n) / 10000n;
+
 /** `text` als Teil eines regulären Ausdrucks. */
 const muster = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const lvListe = (page: Page): Locator => page.getByRole('list', { name: 'Leistungsverzeichnisse', exact: true });
+const lvListe = (page: Page): Locator =>
+  page.getByRole('list', { name: 'Leistungsverzeichnisse', exact: true });
 const auftragsListe = (page: Page): Locator => page.getByRole('list', { name: 'Auftrags-LVs des Projekts' });
 
 /** Dialog „Angebote“ nach dem Einlesen schließen. */
@@ -106,7 +124,9 @@ async function angebotEinlesen(
   const dialog = page.getByRole('dialog', { name: 'Angebot (X84) einlesen' });
   await expect(dialog.getByLabel('Bieter')).toHaveValue(bieter);
   await dialog.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByRole('dialog', { name: 'Angebote' }).getByRole('row', { name: bieter })).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Angebote' }).getByRole('row', { name: bieter }),
+  ).toBeVisible();
   await angeboteSchliessen(page);
 }
 
@@ -122,6 +142,24 @@ function summenAus(netto: bigint): Record<string, string> {
   };
 }
 
+/** Die sichtbare Schaltfläche; das versteckte Dateifeld daneben trägt dieselbe Beschriftung. */
+const sichtbarerKnopf = (page: Page, text: string): Locator =>
+  page.locator('button').filter({ hasText: new RegExp(`^${muster(text)}$`) });
+
+/**
+ * D-95: Beim Einlesen einer Projektdatei mit Einstellungen erscheint der Dialog „Projektdatei eingelesen“ (übernommene und
+ * belassene Einstellungen); der Weg schließt ihn. Trägt die Datei keine Einstellungen, erscheint er nicht.
+ */
+async function projektdateiEingelesenSchliessen(page: Page): Promise<void> {
+  const bericht = page.getByRole('dialog', { name: 'Projektdatei eingelesen' });
+  const projekt = page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT });
+  await expect(bericht.or(projekt).first()).toBeVisible();
+  if (await bericht.isVisible()) {
+    await bericht.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+    await expect(bericht).toBeHidden();
+  }
+}
+
 const ohneUeberlauf = async (page: Page, wo: string): Promise<void> => {
   expect(await waagerechterUeberlauf(page), `waagerechter Überlauf: ${wo}`).toBeNull();
 };
@@ -133,22 +171,32 @@ const ohneUeberlauf = async (page: Page, wo: string): Promise<void> => {
 async function werteLesen(page: Page): Promise<Record<string, unknown>> {
   const w: Record<string, unknown> = {};
   await expect(page.getByRole('heading', { level: 1, name: PROJEKT })).toBeVisible();
+  // Die Listen laden nach der Überschrift: erst lesen, wenn die Summen stehen.
+  await expect(lvListe(page).getByRole('listitem').first()).toContainText('€');
+  await expect(auftragsListe(page).getByRole('listitem').first()).toContainText('€');
   w['lvs'] = await lvListe(page).getByRole('listitem').allInnerTexts();
   w['auftraege'] = await auftragsListe(page).getByRole('listitem').allInnerTexts();
 
   // Preisspiegel: Bieter, Rang und Summen.
-  await lvListe(page).getByRole('link', { name: `Preisspiegel: ${LV_NAME}` }).click();
+  await lvListe(page)
+    .getByRole('link', { name: `Preisspiegel: ${LV_NAME}` })
+    .click();
   const bieter = page.getByRole('table', { name: 'Bieter des Preisspiegels' });
   await expect(bieter.getByRole('row', { name: ZWEITBIETER })).toBeVisible();
   w['preisspiegel'] = await bieter.getByRole('row').allInnerTexts();
 
   // Auftrags-LV: Summen und Nachträge.
   await leiste(page).getByRole('link', { name: 'Auftrags-LV', exact: true }).click();
-  await page.getByRole('list', { name: 'Auftrags-LVs' }).getByRole('link', { name: LV_NAME, exact: true }).click();
+  await page
+    .getByRole('list', { name: 'Auftrags-LVs' })
+    .getByRole('link', { name: LV_NAME, exact: true })
+    .click();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
   await expect.poll(async () => (await summen(page))['Netto']).not.toBe(undefined);
   w['auftragSummen'] = await summen(page);
-  w['nachtraege'] = await page.getByRole('table', { name: 'Nachträge des Auftrags-LV' }).getByRole('row').allInnerTexts();
+  const nachtraege = page.getByRole('table', { name: 'Nachträge des Auftrags-LV' });
+  await expect(nachtraege.getByTestId('nachtrag-status').first()).toBeVisible();
+  w['nachtraege'] = await nachtraege.getByRole('row').allInnerTexts();
 
   // Soll/Ist aus dem Aufmaß.
   await werkzeug(page, 'Abrechnung', 'Soll/Ist');
@@ -158,13 +206,38 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
   await expect(gesamt.locator('[data-spalte="gpIst"] .tx-grid__text')).not.toHaveText('');
   w['sollIst'] = await gesamt.innerText();
 
+  // Rechnung 1: Abzugskette und Freigabe.
+  await ueberLeiste(page, 'Rechnungen');
+  await page
+    .getByRole('region', { name: `Rechnungen zu ${LV_NAME}` })
+    .getByRole('link', { name: 'Rechnung 1' })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Abschlagsrechnung 1 – / })).toBeVisible();
+  await expect(page.getByTestId('freigabe')).toContainText('Freigegeben');
+  w['rechnung'] = await page.locator('[data-testid^="kette-"]').allInnerTexts();
+  w['freigabe'] = await page.getByTestId('freigabe').innerText();
+
+  // Kostenkontrolle.
+  await ueberLeiste(page, 'Kosten');
+  await page
+    .getByRole('toolbar', { name: 'Werkzeuge der Kostenseite' })
+    .getByRole('link', { name: 'Kostenkontrolle' })
+    .click();
+  const kontrolle = page.getByRole('treegrid', { name: 'Kostenkontrolle' });
+  await expect(kontrolle.getByRole('row', { name: /^Gesamt / })).toBeVisible();
+  w['kostenkontrolle'] = await kontrolle.getByRole('row').allInnerTexts();
+
   await page.getByRole('navigation', { name: 'Pfad' }).getByRole('link', { name: PROJEKT }).click();
   await expect(page.getByRole('heading', { level: 1, name: PROJEKT })).toBeVisible();
   return w;
 }
 
-test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280 × 800', async ({ page }) => {
-  test.setTimeout(300_000);
+/**
+ * Der Torweg. `ausstehend`: auch die Schritte, deren Bedienung noch gebaut wird (Preisspiegel als PDF: 149; Skonto,
+ * Zahlung und Zahlungsfreigabe als PDF: 143/152; Kostenkontrolle als PDF: 154; „Projekt samt Inhalt löschen“: 160/161,
+ * D-96). Sind sie gemergt, entfällt der Schalter und der Weg läuft ganz.
+ */
+async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promise<void> {
   expect(verdoppelnNichtExakt()).toEqual([]);
 
   // ── Erster Start: Begrüßung, Beispielprojekt laden und ansehen ──────────────────────────────────────────────────────
@@ -198,7 +271,11 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   await page.getByLabel('Bauherr').fill(BAUHERR);
   await page.getByRole('button', { name: 'Projekt anlegen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: PROJEKT })).toBeVisible();
-  await dateiWaehlen(page, () => page.getByRole('button', { name: 'GAEB einlesen' }).click(), fixturePfad(BVBS_X83));
+  await dateiWaehlen(
+    page,
+    () => page.getByRole('button', { name: 'GAEB einlesen' }).click(),
+    fixturePfad(BVBS_X83),
+  );
   const gaeb = page.getByRole('dialog', { name: 'GAEB-Datei einlesen' });
   await expect(gaeb.getByTestId('anzahl-positionen')).toHaveText(String(POSITIONEN_X83));
   await gaeb.getByRole('button', { name: 'Übernehmen' }).click();
@@ -232,6 +309,16 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
     await expect(zeile.getByTestId('brutto')).toHaveText(betragAusCent(s.brutto));
   }
   await ohneUeberlauf(page, 'Preisspiegel');
+  if (ausstehend) {
+    // 149: Preisspiegel als PDF (quer) mit Vorschau im Dialog; die Bietersummen stehen im Text des PDF.
+    const text = await pdfErzeugen(
+      page,
+      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
+      'Preisspiegel als PDF ausgeben',
+    );
+    for (const s of [ANGEBOT_ERSTER, ANGEBOT_ZWEITER]) expect(text).toContain(betragAusCent(s.netto));
+    expect(text).toContain(ZWEITBIETER);
+  }
 
   // ── Zuschlag an den Erstplatzierten, ohne Wahl ──────────────────────────────────────────────────────────────────
   await bieter.getByRole('button', { name: `Zuschlag erteilen: ${ERSTBIETER}` }).click();
@@ -248,7 +335,9 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   const anlegen = page.getByRole('dialog', { name: 'Nachtrag anlegen' });
   await anlegen.getByLabel('Bezeichnung').fill(NACHTRAG.bezeichnung);
   await anlegen.getByRole('button', { name: 'Nachtrag anlegen' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: `Nachtrag N01 – ${NACHTRAG.bezeichnung}` })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: `Nachtrag N01 – ${NACHTRAG.bezeichnung}` }),
+  ).toBeVisible();
   const band = page.getByRole('region', { name: 'Nachtrag', exact: true });
   const naechsterSchritt = band
     .getByRole('list', { name: 'Schritte bis zur Beauftragung' })
@@ -274,7 +363,9 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   const nachtragsSeite = page.url();
   const nachtragsLvId = decodeURIComponent(new URL(nachtragsSeite).pathname.split('/').at(-1) ?? '');
   await page.getByRole('navigation', { name: 'Pfad' }).getByRole('link', { name: PROJEKT }).click();
-  const zwischen = await herunterladen(page, () => page.getByRole('button', { name: 'Projektdatei sichern' }).click());
+  const zwischen = await herunterladen(page, () =>
+    page.getByRole('button', { name: 'Projektdatei sichern' }).click(),
+  );
   const datei = JSON.parse(readFileSync(await zwischen.path(), 'utf8')) as Projektdatei;
   const nachtragsLv = datei.leistungsverzeichnisse.find(
     (l) => l.leistungsverzeichnis.id === nachtragsLvId,
@@ -286,18 +377,29 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
     leistungsverzeichnis: {
       ...nachtragsLv.leistungsverzeichnis,
       knoten: nachtragsLv.leistungsverzeichnis.knoten.map((k) =>
-        k.art === 'position' ? { ...k, einheitspreis: (ep.get(k.kurztext) ?? null) as Einheitspreis | null } : k,
+        k.art === 'position'
+          ? { ...k, einheitspreis: (ep.get(k.kurztext) ?? null) as Einheitspreis | null }
+          : k,
       ),
     },
   };
   await ueberLeiste(page, 'Nachträge');
-  await page.getByRole('link', { name: new RegExp(`N01 – ${NACHTRAG.bezeichnung}`) }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: `Nachtrag N01 – ${NACHTRAG.bezeichnung}` })).toBeVisible();
-  await dateiWaehlen(page, () => band.getByRole('button', { name: 'Angebot des Auftragnehmers einlesen' }).click(), {
-    name: 'Nachtragsangebot.xlsx',
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: Buffer.from(lvAlsExcel(mitPreisen, { mitPreisen: true }).bytes),
-  });
+  await page
+    .getByRole('link', { name: new RegExp(`N01 – ${NACHTRAG.bezeichnung}`) })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: `Nachtrag N01 – ${NACHTRAG.bezeichnung}` }),
+  ).toBeVisible();
+  await dateiWaehlen(
+    page,
+    () => band.getByRole('button', { name: 'Angebot des Auftragnehmers einlesen' }).click(),
+    {
+      name: 'Nachtragsangebot.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from(lvAlsExcel(mitPreisen, { mitPreisen: true }).bytes),
+    },
+  );
   const anAngebot = page.getByRole('dialog', { name: 'Angebot des Auftragnehmers einlesen' });
   await expect(anAngebot.getByLabel('Bieter')).toHaveValue(ERSTBIETER);
   await expect(anAngebot.getByTestId('anzahl-angeboten')).toHaveText('2');
@@ -310,7 +412,9 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   await band.getByRole('button', { name: 'Beauftragen' }).click();
   const beauftragen = page.getByRole('dialog', { name: 'Nachtrag N01 beauftragen' });
   await expect(beauftragen.getByTestId('nachtrag-angebot')).toHaveText(`${betragAusCent(NACHTRAG_NETTO)} €`);
-  await expect(beauftragen.getByTestId('nachtrag-nachher')).toHaveText(`${betragAusCent(AUFTRAG_NACH_NACHTRAG)} €`);
+  await expect(beauftragen.getByTestId('nachtrag-nachher')).toHaveText(
+    `${betragAusCent(AUFTRAG_NACH_NACHTRAG)} €`,
+  );
   await beauftragen.getByRole('button', { name: 'Beauftragen', exact: true }).click();
   await expect(beauftragen).toBeHidden();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
@@ -328,7 +432,9 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   await page.keyboard.type('Erdarbeiten und Mauerwerk');
   await neuesBlatt.getByLabel('Datum (TT.MM.JJJJ)').fill('2.11.2026');
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1, name: 'Aufmaßblatt 1 – Erdarbeiten und Mauerwerk' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Aufmaßblatt 1 – Erdarbeiten und Mauerwerk' }),
+  ).toBeVisible();
   const blatt = page.getByRole('treegrid', { name: 'Positionen des Aufmaßblatts' });
   const zeile = (grid: Locator, oz: string): Locator =>
     grid.locator('[role="row"]', {
@@ -360,6 +466,95 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   );
   await ohneUeberlauf(page, 'Soll/Ist');
 
+  // ── Rechnung mit Skonto prüfen und freigeben, Zahlungsfreigabe als PDF ─────────────────────────────────────────────
+  await ueberLeiste(page, 'Rechnungen');
+  await page
+    .getByRole('region', { name: `Rechnungen zu ${LV_NAME}` })
+    .getByRole('link', { name: LV_NAME })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: `Rechnungen – ${LV_NAME}` })).toBeVisible();
+  await page
+    .getByRole('toolbar', { name: 'Werkzeuge der Rechnungen' })
+    .getByRole('button', { name: 'Rechnung anlegen' })
+    .click();
+  const rechnung = page.getByRole('dialog', { name: 'Rechnung 1 anlegen' });
+  await rechnung.getByLabel('Eingangsdatum').fill(RECHNUNG.eingang);
+  await rechnung.getByLabel('Rechnungsnummer des Auftragnehmers').fill(RECHNUNG.nummer);
+  await expect(rechnung.getByRole('checkbox', { name: /^Blatt 1/ })).toBeChecked();
+  await expect(rechnung.getByRole('radio', { name: 'Abschlagsrechnung' })).toBeChecked();
+  if (ausstehend) {
+    // 152: Skonto an der Rechnung (Satz und Frist in Kalendertagen, D-72).
+    await rechnung.getByLabel('Skonto in %').fill(eingabeDe(RECHNUNG.skontoSatz));
+    await rechnung.getByLabel('Skontofrist in Tagen').fill(RECHNUNG.skontoTage);
+  }
+  await rechnung.getByRole('button', { name: 'Speichern' }).click();
+  await expect(rechnung).toBeHidden();
+  await expect(page.getByRole('heading', { level: 1, name: /^Abschlagsrechnung 1 – / })).toBeVisible();
+  for (const [schluessel, c] of [
+    ['leistung', AUFMASS_GP],
+    ['nachlass', 0n],
+    ['nettoNachNachlass', AUFMASS_GP],
+    ['mwst', RECHNUNG_MWST],
+    ['bruttoKumuliert', RECHNUNG_ZAHLBETRAG],
+    ['einbehalt', 0n],
+    ['zahlbetrag', RECHNUNG_ZAHLBETRAG],
+  ] as const)
+    await expect(page.getByTestId(`kette-${schluessel}`), schluessel).toHaveText(betragAusCent(c));
+  if (ausstehend) {
+    // 143/152: beide Szenarien (D-72): bei Zahlung bis zum Fristende mit Skonto, danach ohne.
+    const fristende = page.getByText(`bei Zahlung bis ${RECHNUNG.fristende}`);
+    await expect(fristende).toContainText(betragAusCent(RECHNUNG_ZAHLBETRAG - SKONTO));
+    await expect(page.getByTestId('kette-skonto')).toHaveText(betragAusCent(SKONTO));
+  }
+  await ohneUeberlauf(page, 'Rechnungsprüfung');
+  await page.getByRole('button', { name: 'Freigeben', exact: true }).click();
+  const freigabe = page.getByRole('dialog', { name: 'Rechnung 1 freigeben' });
+  await expect(freigabe).toContainText(`${betragAusCent(RECHNUNG_ZAHLBETRAG)} €`);
+  await freigabe.getByRole('button', { name: 'Freigeben', exact: true }).click();
+  await expect(page.getByTestId('freigabe')).toHaveText(
+    `Freigegeben mit ${betragAusCent(RECHNUNG_ZAHLBETRAG)} €`,
+  );
+  if (ausstehend) {
+    // 152: Zahlungsfreigabe als PDF (Abzugskette Zeile für Zeile, Skonto-Szenarien).
+    const text = await pdfErzeugen(
+      page,
+      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
+      'Rechnungsprüfung als PDF ausgeben',
+    );
+    expect(text).toContain(betragAusCent(RECHNUNG_ZAHLBETRAG));
+    expect(text).toContain(betragAusCent(SKONTO));
+    expect(text).toContain(RECHNUNG.fristende);
+    // Zahlung in der Frist: Skonto verwirklicht, nichts mehr offen.
+    await page.getByRole('button', { name: 'Zahlung erfassen' }).click();
+    const zahlung = page.getByRole('dialog', { name: 'Zahlung erfassen' });
+    await zahlung.getByLabel('Datum').fill(RECHNUNG.zahlungAm);
+    await zahlung.getByLabel('Betrag').fill(betragAusCent(RECHNUNG_ZAHLBETRAG - SKONTO));
+    await zahlung.getByRole('button', { name: 'Speichern' }).click();
+    await expect(page.getByTestId('kette-offen')).toHaveText('0,00');
+  }
+
+  // ── Kostenkontrolle ─────────────────────────────────────────────────────────────────────────────────────────────
+  await ueberLeiste(page, 'Kosten');
+  await page
+    .getByRole('toolbar', { name: 'Werkzeuge der Kostenseite' })
+    .getByRole('link', { name: 'Kostenkontrolle' })
+    .click();
+  const kontrolle = page.getByRole('treegrid', { name: 'Kostenkontrolle' });
+  await expect(kontrolle.getByRole('row', { name: /^Gesamt / })).toContainText(
+    betragAusCent(AUFTRAG_NACH_NACHTRAG),
+  );
+  await expect(kontrolle.getByRole('row', { name: /^Gesamt / })).toContainText(betragAusCent(AUFMASS_GP));
+  await ohneUeberlauf(page, 'Kostenkontrolle');
+  if (ausstehend) {
+    // 154: Kostenkontrolle als PDF.
+    const text = await pdfErzeugen(
+      page,
+      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
+      'Kostenkontrolle als PDF ausgeben',
+    );
+    expect(text).toContain(betragAusCent(AUFTRAG_NACH_NACHTRAG));
+  }
+
   // ── Projektdatei sichern ─────────────────────────────────────────────────────────────────────────────────────────
   await page.getByRole('navigation', { name: 'Pfad' }).getByRole('link', { name: PROJEKT }).click();
   const vorher = await werteLesen(page);
@@ -373,24 +568,53 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   };
   await expect(page.getByRole('contentinfo', { name: 'Statuszeile' })).toContainText('Letzte Sicherung');
 
-  // ── Projekt löschen ─────────────────────────────────────────────────────────────────────────────────────────────
-  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
-  await page
-    .getByRole('dialog', { name: 'Projekt löschen' })
-    .getByRole('button', { name: 'Endgültig löschen' })
-    .click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT })).toHaveCount(0);
+  if (ausstehend) {
+    // ── Projekt löschen (D-96: „Projekt samt Inhalt löschen“, 160/161) ─────────────────────────────────────────────
+    await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
+    const loeschen = page.getByRole('dialog', { name: /^Projekt (samt Inhalt )?löschen/ });
+    // Der Dialog nennt die Anzahl je Art und verweist auf „Projektdatei sichern“.
+    await expect(loeschen).toContainText('Projektdatei sichern');
+    await expect(loeschen).toContainText(/2 Angebote/);
+    await loeschen.getByRole('button', { name: /^Projekt samt Inhalt löschen/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
+    await expect(
+      page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }),
+    ).toHaveCount(0);
 
-  // ── Sicherung einlesen → dieselben Werte ──────────────────────────────────────────────────────────────────────────
-  await dateiWaehlen(page, () => page.getByRole('button', { name: 'Projektdatei einlesen' }).click(), sicherungsDatei);
-  const bericht = page.getByRole('dialog', { name: 'Projektdatei eingelesen' });
-  if (await bericht.isVisible()) {
-    await bericht.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-    await expect(bericht).toBeHidden();
+    // ── Sicherung einlesen → dieselben Werte ────────────────────────────────────────────────────────────────────────
+    await dateiWaehlen(page, () => sichtbarerKnopf(page, 'Projektdatei einlesen').click(), sicherungsDatei);
+    await projektdateiEingelesenSchliessen(page);
+    await page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
+    expect(await werteLesen(page)).toEqual(vorher);
+    return;
   }
-  await page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
-  expect(await werteLesen(page)).toEqual(vorher);
-  void meldungen;
+
+  // Bis „Projekt samt Inhalt löschen“ (D-96) gemergt ist: Ein frisches Gerät (leerer Speicher) liest die Sicherung ein und
+  // muss dieselben Werte zeigen.
+  const kontext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const neu = await kontext.newPage();
+  await neu.goto('/');
+  await expect(neu.getByRole('region', { name: 'Willkommen bei Tethys AVA' })).toBeVisible();
+  await dateiWaehlen(neu, () => sichtbarerKnopf(neu, 'Projektdatei einlesen').click(), sicherungsDatei);
+  await projektdateiEingelesenSchliessen(neu);
+  await neu.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
+  expect(await werteLesen(neu)).toEqual(vorher);
+  await kontext.close();
+}
+
+test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280 × 800', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  await torweg(page, browser, false);
+});
+
+// Die Schritte, deren Bedienung noch gebaut wird (Preisspiegel-PDF 149; Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
+// Kostenkontrolle-PDF 154; Projekt samt Inhalt löschen 160/161, D-96). Sobald alle gemergt sind, ersetzt dieser Weg den
+// oberen.
+test.fixme('Tor E: der ganze Weg samt den ausstehenden Schritten', async ({ page, browser }) => {
+  test.setTimeout(300_000);
+  await torweg(page, browser, true);
 });
