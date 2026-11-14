@@ -1636,7 +1636,8 @@ describe('v1.4 Punkt 10: Rand (Protokoll, Unions, Signaturen, Speicher, Projektd
     // v1.6 (Ticket 97 Punkt 8): dazu fünf Aggregate, siehe dort.
     type Neu16 = 'bauwerksmodell' | 'bauzeitenplan' | 'honorarberechnung' | 'mangel' | 'bautagebucheintrag';
     expectTypeOf<Exclude<AggregatBezug['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
-    expectTypeOf<Exclude<ChangeSet['art'], Neu16>>().toEqualTypeOf<Aggregatarten>();
+    // v1.7c (Ticket 160): dazu `projektbestand`, kein Aggregat, siehe `vertrag-v17c.test.ts`.
+    expectTypeOf<Exclude<ChangeSet['art'], Neu16 | 'projektbestand'>>().toEqualTypeOf<Aggregatarten>();
     expectTypeOf<Extract<AggregatBezug, { art: 'aufmass' }>['id']>().toEqualTypeOf<AufmassId>();
     expectTypeOf<Extract<AggregatBezug, { art: 'rechnung' }>['id']>().toEqualTypeOf<RechnungId>();
     expectTypeOf<

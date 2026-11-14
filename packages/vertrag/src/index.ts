@@ -3,10 +3,11 @@
 // Nur Typen und Konstanten (Nachkommastellen, Massenbefehle, v1.6 das Muster einer GlobalId, v1.7a die Formen und Listen aus
 // Ticket 123 und die leeren Einstellungen, v1.7b der Satz der Bauabzugsteuer); keine Logik, keine Laufzeitabhängigkeit.
 //
-// Vertragsstand: v1.7b (Ticket 128, Welle 7: Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen an der Rechnung, A5, D-72)
-// auf v1.7a (Ticket 127: Bedienung E8, Kalkulationsangaben E9, Stammdaten E10, Einstellungen E15, Herkunftsformat E6,
-// Konstanten aus Ticket 123). Jede Änderung seit v1.6 ist additiv oder optional (A8); die Lesarten stehen an den Typen und als
-// D-127.x und D-128.x in den Tickets.
+// Vertragsstand: v1.7c (Ticket 160, Welle 7: „Projekt samt Inhalt löschen“ mit `Projektbestand` und
+// `ProjektbestandChangeSet`, E8, D-96) auf v1.7b (Ticket 128: Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen an der
+// Rechnung, A5, D-72) auf v1.7a (Ticket 127: Bedienung E8, Kalkulationsangaben E9, Stammdaten E10, Einstellungen E15,
+// Herkunftsformat E6, Konstanten aus Ticket 123). Jede Änderung seit v1.6 ist additiv oder optional (A8); die Lesarten stehen
+// an den Typen und als D-127.x, D-128.x und D-160.x in den Tickets.
 
 export type * from './marken';
 export type * from './zahlen';

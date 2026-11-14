@@ -138,13 +138,19 @@ Ergebnis eines Befehls: die hinzugefügten, geänderten (mit altem und neuem Sta
 Ein Eintrag des Befehlsprotokolls: wer hat wann welchen Befehl ausgeführt. Genau ein Eintrag je Befehl. Bei einem Massenbefehl steht statt des ganzen Befehls seine Befehlskurzfassung (E-13).
 
 ### Massenbefehl
-Befehl, der ein ganzes Aggregat mit langer Liste anlegt (`LeistungsverzeichnisAnlegen`, `AngebotAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`; Konstante `MASSENBEFEHLSARTEN`). Im Protokoll genügen Kopf und Prüfsumme (E-13, ADR 0009).
+Befehl, der ein ganzes Aggregat mit langer Liste anlegt (`LeistungsverzeichnisAnlegen`, `AngebotAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`, `AufmassAnlegen`, `BauwerksmodellAnlegen`; Konstante `MASSENBEFEHLSARTEN`). Im Protokoll genügen Kopf und Prüfsumme (E-13, ADR 0009). Ab vertrag v1.7c zählt auch `ProjektSamtInhaltLoeschen` dazu: Seine lange Liste, der Projektbestand, steht nicht im Befehl, sondern im ChangeSet; der Kopf ist der ganze Befehl.
 
 ### Befehlskurzfassung
 Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der Befehl ohne seine lange Liste) und eine Prüfsumme über den vollständigen Befehl, mit dem Algorithmus als Feld. Im Code `Befehlskurzfassung`, `Massenbefehlskopf`, `Pruefsumme`.
 
 ### Projektdatei
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
+
+### Projektbestand
+Alles, was zu einem Projekt gespeichert ist, außer dem Projekt selbst: LVs samt Papierkorb, LV-Stände, Angebote, Auftrags-LVs, Aufmaßblätter, Rechnungen samt Zahlungen, Kostenermittlungen, Bauwerksmodelle (mit dem Verweis auf ihre Modelldatei), Bauzeitenpläne, Honorarberechnungen, Mängel, Bautagebuch und das Befehlsprotokoll (vertrag v1.7c). Er hat die Form der Projektdatei ohne Schemaversion, Projekt, die Bytes der Modelldateien (die bleiben in der Ablage) und die Einstellungen (die gehören dem Gerät). Im Code `Projektbestand`, im ChangeSet `ProjektbestandChangeSet` (Art `projektbestand`).
+
+### Projekt samt Inhalt löschen
+Löscht ein Projekt mit seinem ganzen Projektbestand in einem Schritt, auch wenn noch LVs, Angebote, ein Auftrags-LV oder andere Aggregate daran hängen (vertrag v1.7c, E8). Die Oberfläche nennt vorher die Anzahl je Art, verweist zuerst auf „Projektdatei sichern“ und verlangt eine ausdrückliche Bestätigung (Q5). Rückgängig legt alles mit denselben Kennungen wieder an. Die Einstellungen bleiben unberührt. „Projekt löschen“ (`ProjektLoeschen`) bleibt daneben bestehen und gelingt nur bei einem Projekt ohne Inhalt. Im Code `ProjektSamtInhaltLoeschen`.
 
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung, E-Rechnung lesen) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe. Beim Lesen einer E-Rechnung (Quelle `erechnung-lesen`, v1.5) ist der Ort der Business Term der EN 16931, zu dem der Befund gehört (z. B. `BT-115`), und das Element in der Datei; Zeile und Spalte nur, wenn die Datei kein lesbares XML ist. Weitere Quellen (v1.6): IFC lesen (`ifc-lesen`, Ort: die Instanz der Datei wie `#123` mit ihrer Zeile), Modellprüfung (`modell-pruefung`, Paket `bim`: das Bauteil über seine GlobalId, die Position über ihre Kennung), Terminrechnung (`terminrechnung`: der Vorgang), Honorarberechnung (`honorarberechnung`: das Honorarobjekt als Pfad `/objekte[n]`, ab 1) und Fristprüfung (`fristpruefung`: der Mangel). Im Code `Pruefbefund`, `Befundquelle`, `Befundort`.

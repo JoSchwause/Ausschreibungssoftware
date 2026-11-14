@@ -4,12 +4,13 @@
 
 import type { AggregatBezug, ChangeSet } from '@tethys/vertrag';
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { AGGREGATARTEN, AGGREGATART_NAMEN, aggregatDes } from './aggregatarten';
+import { AGGREGATARTEN, AGGREGATART_NAMEN, aggregatDes, type AggregatChangeSet } from './aggregatarten';
 import { neuerKern } from './testhilfe/node';
 
 describe('AGGREGATARTEN', () => {
   it('hat genau einen Eintrag je ChangeSet-Art', () => {
-    expectTypeOf<keyof typeof AGGREGATARTEN>().toEqualTypeOf<ChangeSet['art']>();
+    // Vertrag v1.7c (Ticket 160): `projektbestand` ist eine Art eines ChangeSets, aber kein Aggregat.
+    expectTypeOf<keyof typeof AGGREGATARTEN>().toEqualTypeOf<Exclude<ChangeSet['art'], 'projektbestand'>>();
     expectTypeOf<(typeof AGGREGATART_NAMEN)[number]>().toEqualTypeOf<AggregatBezug['art']>();
     expect(new Set(AGGREGATART_NAMEN).size).toBe(AGGREGATART_NAMEN.length);
   });
@@ -46,7 +47,7 @@ describe('AGGREGATARTEN', () => {
       art: 'mangel',
       mangelId: 'm-1',
       mangel: { vorher: null, nachher: null },
-    } as unknown as ChangeSet;
+    } as unknown as AggregatChangeSet;
     expect(aggregatDes(cs)).toEqual({ art: 'mangel', id: 'm-1' });
   });
 });

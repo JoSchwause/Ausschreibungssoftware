@@ -133,6 +133,9 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
     case 'BieterLoeschen':
     case 'BieterangabenSetzen':
       return nein('befehl-nicht-zustaendig', `Befehl ${befehl.art} führt die Vergabe aus, nicht der Kern.`);
+    // Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; Ticket 161 liefert den Ausführer mit Bestand.
+    case 'ProjektSamtInhaltLoeschen':
+      return nein('befehl-nicht-zustaendig', `Befehl ${befehl.art}: noch kein Ausführer (Ticket 161).`);
   }
 };
 
