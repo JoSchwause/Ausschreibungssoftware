@@ -16,6 +16,7 @@ Herkunft: umfang §3 E4, B-09
 2. **Filter** nach Art, Merkmal (Bedarf, Wahl, Stundenlohn, Pauschal) und „ohne Preis“; Filter sichtbar, ein Klick hebt auf.
 3. **Kontextmenü** an Zeile und Zelle (Radix, auch per Umschalt+F10/Menütaste) mit denselben Aktionen wie die Tastatur;
    Kürzelübersicht aus dem Grid heraus aufrufbar (Hilfeseite aus 147).
+5. **Aus 148 (D-148.6):** `ui-grid` bekommt einen Text für den Hinweis `kalkulation-entfernt` (oder filtert ihn ausdrücklich, weil die LV-Seite ihn als Band zeigt).
 4. Kürzel in die Kürzeltabelle (130) aufnehmen.
 
 ## Acceptance criteria

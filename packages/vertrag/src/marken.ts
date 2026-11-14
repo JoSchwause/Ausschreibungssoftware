@@ -63,6 +63,11 @@ export type HonorarberechnungId = string & Marke<'HonorarberechnungId'>;
 export type MangelId = string & Marke<'MangelId'>;
 /** Kennung eines Bautagebucheintrags (v1.6, Ticket 97 Punkt 6; X4, D-57): eigenes Aggregat, eindeutig im Projekt. */
 export type BautagebucheintragId = string & Marke<'BautagebucheintragId'>;
+/**
+ * Kennung einer Zahlung (v1.7b, Ticket 128; D-72): eindeutig in ihrer Rechnung, kein Aggregat (wie `VorgangId`). Zahlung
+ * ändern und löschen verweisen über sie.
+ */
+export type ZahlungId = string & Marke<'ZahlungId'>;
 
 /** Kennung eines Knotens im LV-Baum. Eindeutig innerhalb eines Aggregats (siehe `PositionId`). */
 export type KnotenId = string & Marke<'KnotenId'>;
@@ -174,4 +179,6 @@ export interface IdQuelle {
   mangel(): MangelId;
   /** v1.6: für einen neuen Bautagebucheintrag (`BautagebucheintragSetzen`). */
   bautagebucheintrag(): BautagebucheintragId;
+  /** v1.7b (Ticket 128): für `ZahlungErfassen`. */
+  zahlung(): ZahlungId;
 }

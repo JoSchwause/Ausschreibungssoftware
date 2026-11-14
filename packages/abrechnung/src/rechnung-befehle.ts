@@ -226,5 +226,13 @@ export const rechnungBefehlAusfuehren: RechnungBefehlAusfuehren = (zustand, befe
     }
     case 'RechnungLoeschen':
       return changeSet(r, null);
+    // vertrag v1.7b (Ticket 128): mechanisch ergänzt, die Ausführung folgt mit Ticket 143 (D-72, D-128.x).
+    case 'VertragsstrafeSetzen':
+    case 'SkontoSetzen':
+    case 'BauabzugsteuerSetzen':
+    case 'ZahlungErfassen':
+    case 'ZahlungAendern':
+    case 'ZahlungLoeschen':
+      return nein('befehl-nicht-zustaendig', `${befehl.art}: noch nicht umgesetzt (Ticket 143).`);
   }
 };
