@@ -72,3 +72,8 @@ Entscheidungen im Demo-Modus (Branch `welle-7/158-tor-e`):
   umgangen.
 - Die Umgebung meldet für Downloads mit Umlaut im Namen „download“ als Dateinamen (headless Chromium, mit einem nackten
   `<a download>` gemessen); der Torweg prüft deshalb Inhalt statt Dateiname der PDFs.
+- **D-158.6** Dateinamen der PDFs: Wo der Dialog den Namen zeigt (`pdf-dateiname`), prüft der Torweg ihn dort; am Download
+  prüft er nur den Inhalt (Umlaut-Namen kommen in dieser Umgebung als „download“ an, siehe oben).
+- **Stand nach dem Merge von 152 (und 162):** Rechnung 1 mit Skonto 3,00 % in 14 Tagen: beide Fälle und der Satz „Bei Zahlung
+  bis 13.11.2026: Auszahlung 13.274,45 €, danach: 13.685,00 €.“, Freigabe, Zahlung am 10.11.2026 über 13.274,45 (Skonto
+  verwirklicht, offen 0,00), Rechnungsprüfung mit Zahlungsfreigabe als PDF mit Vorschau. Ausstehend nur noch 161.

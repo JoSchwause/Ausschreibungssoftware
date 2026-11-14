@@ -99,6 +99,12 @@ const RECHNUNG = {
 const RECHNUNG_MWST = mwst19(AUFMASS_GP);
 const RECHNUNG_ZAHLBETRAG = AUFMASS_GP + RECHNUNG_MWST;
 const SKONTO = (RECHNUNG_ZAHLBETRAG * 300n + 5000n) / 10000n;
+const AUSZAHLUNG_MIT_SKONTO = betragAusCent(RECHNUNG_ZAHLBETRAG - SKONTO);
+/** Der Satz zu beiden Fällen, am Bildschirm und im PDF gleich. */
+const SKONTO_SATZ = `Bei Zahlung bis ${RECHNUNG.fristende}: Auszahlung ${AUSZAHLUNG_MIT_SKONTO} €, danach: ${betragAusCent(RECHNUNG_ZAHLBETRAG)} €.`;
+
+/** Die Leiste der Prüfansicht einer Rechnung (Freigeben, Ausgabe). */
+const aktionen = (page: Page): Locator => page.getByRole('toolbar', { name: 'Aktionen der Rechnung' });
 
 /** `text` als Teil eines regulären Ausdrucks. */
 const muster = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -216,6 +222,7 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
   await expect(page.getByTestId('freigabe')).toContainText('Freigegeben');
   w['rechnung'] = await page.locator('[data-testid^="kette-"]').allInnerTexts();
   w['freigabe'] = await page.getByTestId('freigabe').innerText();
+  w['zahlung'] = await page.locator('[data-testid^="zahlung-"], [data-testid^="fall-"]').allInnerTexts();
 
   // Kostenkontrolle.
   await ueberLeiste(page, 'Kosten');
@@ -233,9 +240,8 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
 }
 
 /**
- * Der Torweg. `ausstehend`: auch die Schritte, deren Bedienung noch gebaut wird (Skonto,
- * Zahlung und Zahlungsfreigabe als PDF: 143/152; „Projekt samt Inhalt löschen“: 160/161,
- * D-96). Sind sie gemergt, entfällt der Schalter und der Weg läuft ganz.
+ * Der Torweg. `ausstehend`: auch der Schritt, dessen Bedienung noch gebaut wird („Projekt samt Inhalt löschen“: 161,
+ * D-96). Ist er gemergt, entfällt der Schalter und der Weg läuft ganz.
  */
 async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promise<void> {
   expect(verdoppelnNichtExakt()).toEqual([]);
@@ -489,11 +495,9 @@ async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promis
   await rechnung.getByLabel('Rechnungsnummer des Auftragnehmers').fill(RECHNUNG.nummer);
   await expect(rechnung.getByRole('checkbox', { name: /^Blatt 1/ })).toBeChecked();
   await expect(rechnung.getByRole('radio', { name: 'Abschlagsrechnung' })).toBeChecked();
-  if (ausstehend) {
-    // 152: Skonto an der Rechnung (Satz und Frist in Kalendertagen, D-72).
-    await rechnung.getByLabel('Skonto in %').fill(eingabeDe(RECHNUNG.skontoSatz));
-    await rechnung.getByLabel('Skontofrist in Tagen').fill(RECHNUNG.skontoTage);
-  }
+  // Skonto an der Rechnung: Satz und Frist in Kalendertagen (D-72).
+  await rechnung.getByLabel('Skontosatz').fill(eingabeDe(RECHNUNG.skontoSatz));
+  await rechnung.getByLabel('Skontofrist').fill(RECHNUNG.skontoTage);
   await rechnung.getByRole('button', { name: 'Speichern' }).click();
   await expect(rechnung).toBeHidden();
   await expect(page.getByRole('heading', { level: 1, name: /^Abschlagsrechnung 1 – / })).toBeVisible();
@@ -507,38 +511,58 @@ async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promis
     ['zahlbetrag', RECHNUNG_ZAHLBETRAG],
   ] as const)
     await expect(page.getByTestId(`kette-${schluessel}`), schluessel).toHaveText(betragAusCent(c));
-  if (ausstehend) {
-    // 143/152: beide Szenarien (D-72): bei Zahlung bis zum Fristende mit Skonto, danach ohne.
-    const fristende = page.getByText(`bei Zahlung bis ${RECHNUNG.fristende}`);
-    await expect(fristende).toContainText(betragAusCent(RECHNUNG_ZAHLBETRAG - SKONTO));
-    await expect(page.getByTestId('kette-skonto')).toHaveText(betragAusCent(SKONTO));
-  }
+  // Beide Fälle (D-72): bei Zahlung bis zum Fristende mit Skonto, danach ohne.
+  await expect(page.getByTestId('fall-mit-zahlbetrag')).toHaveText(betragAusCent(RECHNUNG_ZAHLBETRAG));
+  await expect(page.getByTestId('fall-mit-skonto')).toHaveText(`−${betragAusCent(SKONTO)}`);
+  await expect(page.getByTestId('fall-ohne-skonto')).toHaveText('0,00');
+  await expect(page.getByTestId('fall-mit-auszahlung')).toHaveText(AUSZAHLUNG_MIT_SKONTO);
+  await expect(page.getByTestId('fall-ohne-auszahlung')).toHaveText(betragAusCent(RECHNUNG_ZAHLBETRAG));
+  await expect(page.getByTestId('skonto-satz')).toHaveText(SKONTO_SATZ);
+  const erfassen = page.getByRole('button', { name: 'Zahlung erfassen …' });
+  await expect(erfassen).toBeDisabled();
   await ohneUeberlauf(page, 'Rechnungsprüfung');
-  await page.getByRole('button', { name: 'Freigeben', exact: true }).click();
+  await aktionen(page).getByRole('button', { name: 'Freigeben', exact: true }).click();
   const freigabe = page.getByRole('dialog', { name: 'Rechnung 1 freigeben' });
   await expect(freigabe).toContainText(`${betragAusCent(RECHNUNG_ZAHLBETRAG)} €`);
   await freigabe.getByRole('button', { name: 'Freigeben', exact: true }).click();
   await expect(page.getByTestId('freigabe')).toHaveText(
     `Freigegeben mit ${betragAusCent(RECHNUNG_ZAHLBETRAG)} €`,
   );
-  if (ausstehend) {
-    // 152: Zahlungsfreigabe als PDF (Abzugskette Zeile für Zeile, Skonto-Szenarien).
-    const text = await pdfErzeugen(
-      page,
-      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
-      'Rechnungsprüfung als PDF ausgeben',
-    );
-    expect(text).toContain(betragAusCent(RECHNUNG_ZAHLBETRAG));
-    expect(text).toContain(betragAusCent(SKONTO));
-    expect(text).toContain(RECHNUNG.fristende);
-    // Zahlung in der Frist: Skonto verwirklicht, nichts mehr offen.
-    await page.getByRole('button', { name: 'Zahlung erfassen' }).click();
-    const zahlung = page.getByRole('dialog', { name: 'Zahlung erfassen' });
-    await zahlung.getByLabel('Datum').fill(RECHNUNG.zahlungAm);
-    await zahlung.getByLabel('Betrag').fill(betragAusCent(RECHNUNG_ZAHLBETRAG - SKONTO));
-    await zahlung.getByRole('button', { name: 'Speichern' }).click();
-    await expect(page.getByTestId('kette-offen')).toHaveText('0,00');
-  }
+  // Zahlung in der Frist über den Betrag mit Skonto: Skonto verwirklicht, nichts mehr offen.
+  await erfassen.click();
+  const zahlung = page.getByRole('dialog', { name: 'Zahlung erfassen' });
+  await zahlung.getByLabel('Zahlungsdatum').fill(RECHNUNG.zahlungAm);
+  await zahlung.getByLabel('Gezahlter Betrag').fill(AUSZAHLUNG_MIT_SKONTO);
+  await zahlung.getByLabel('Gezahlter Betrag').press('Enter');
+  await expect(zahlung).toBeHidden();
+  const geltend = page.getByRole('table', { name: 'Geltender Fall' });
+  await expect(geltend.getByRole('row', { name: /^Skonto \(verwirklicht\)/ })).toBeVisible();
+  await expect(page.getByTestId('zahlung-skonto')).toHaveText(`−${betragAusCent(SKONTO)}`);
+  await expect(page.getByTestId('zahlung-auszahlung')).toHaveText(AUSZAHLUNG_MIT_SKONTO);
+  await expect(page.getByTestId('zahlung-summeZahlungen')).toHaveText(`−${AUSZAHLUNG_MIT_SKONTO}`);
+  await expect(page.getByTestId('zahlung-offen')).toHaveText('0,00');
+  await ohneUeberlauf(page, 'Rechnungsprüfung mit Zahlung');
+
+  // Rechnungsprüfung mit Zahlungsfreigabe als PDF (Vorschau im Dialog); der Name steht im Dialog (D-158.6).
+  const freigabeText = await pdfErzeugen(
+    page,
+    async () => {
+      await aktionen(page).getByRole('button', { name: 'Ausgabe', exact: true }).click();
+      await page.getByRole('menu').getByRole('menuitem', { name: 'Rechnungsprüfung als PDF …' }).click();
+    },
+    'Rechnungsprüfung als PDF',
+    'Herunterladen',
+    async (dialog) => {
+      await expect(dialog.getByTestId('pdf-dateiname')).toHaveText(/^Rechnungsprüfung 1 .+\.pdf$/);
+      await dialog.getByRole('button', { name: 'Vorschau erzeugen' }).click();
+      await expect(dialog.locator('iframe[title="Vorschau des PDF"]')).toBeVisible({ timeout: 60_000 });
+    },
+  );
+  expect(freigabeText).toContain('Zahlungsfreigabe');
+  expect(freigabeText).toContain(PROJEKT);
+  expect(freigabeText).toContain(SKONTO_SATZ);
+  expect(freigabeText).toContain('Skonto (verwirklicht)');
+  expect(freigabeText).toContain('Offen 0,00 €');
 
   // ── Kostenkontrolle ─────────────────────────────────────────────────────────────────────────────────────────────
   await ueberLeiste(page, 'Kosten');
@@ -624,9 +648,8 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
   await torweg(page, browser, false);
 });
 
-// Die Schritte, deren Bedienung noch gebaut wird (Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
-// Projekt samt Inhalt löschen 160/161, D-96). Sobald alle gemergt sind, ersetzt dieser Weg den
-// oberen.
+// Der ganze Weg mit „Projekt samt Inhalt löschen“ (161, D-96) statt des frischen Geräts. Sobald 161 gemergt ist, ersetzt
+// dieser Weg den oberen.
 test.fixme('Tor E: der ganze Weg samt den ausstehenden Schritten', async ({ page, browser }) => {
   test.setTimeout(300_000);
   await torweg(page, browser, true);
