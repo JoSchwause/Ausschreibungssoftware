@@ -129,6 +129,13 @@ a.tx-button {
   white-space: nowrap;
 }
 
+/* Tor E (158): Die Hinweiszeilen über der Bieterübersicht bestimmen die Breite der Spalte nicht mit; sie brechen auf die Breite
+   der Tabelle um. Sonst zieht die Zeile „… erteilt. Öffnen · Zuschlag zurücknehmen …“ die Spalte über 1280 px hinaus. */
+.preisspiegel__vergabe > .auftrag__vergeben {
+  width: 0;
+  min-width: 100%;
+}
+
 /* Ticket 149: Bieter verwalten, Zuschlag zurücknehmen, Ausgaben mit Vorschau. */
 .vergabe__formular {
   display: grid;
