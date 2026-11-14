@@ -117,9 +117,5 @@ export const texte = {
     schliessen: 'Schließen',
     erfolg: 'Angebot angelegt',
     befunde: 'Befunde der Excel-Datei',
-    befundeKeine: 'Keine Befunde.',
-    gruppeFehler: 'Fehler',
-    gruppeWarnungen: 'Warnungen',
-    ort: (zeile: number) => `Zeile ${String(zeile)}`,
   },
 } as const;

@@ -35,7 +35,8 @@ const senden = (a: PdfAntwort, uebergeben: Transferable[] = []): void => {
 };
 
 /**
- * Die Antwortschleife eines PDF-Workers (`self.onmessage = pdfAuftraegeBedienen(…)`): lädt `ausgabe` und die Schriften, ruft
+ * Die Antwortschleife eines PDF-Workers (`self.onmessage = pdfAuftraegeBedienen(…)`): meldet die Schritte `schriften` und
+ * `setzen` (der LV-Druck zeigt sie an), lädt `ausgabe` und die Schriften, ruft
  * `erzeugen` und schickt die Bytes (übergeben, nicht kopiert) oder den Fehler zurück. Der Worker rechnet nichts (A2); die
  * Eingaben kommen fertig vom Hauptthread.
  */
@@ -45,7 +46,9 @@ export function pdfAuftraegeBedienen<A>(
   return (e) => {
     void (async () => {
       try {
+        senden({ art: 'schritt', schritt: 'schriften' });
         const [ausgabe, schriften] = await Promise.all([import('@tethys/ausgabe'), schriftenLaden()]);
+        senden({ art: 'schritt', schritt: 'setzen' });
         const bytes = await erzeugen(ausgabe, e.data, schriften);
         senden({ art: 'fertig', bytes }, [bytes.buffer]);
       } catch (fehler) {

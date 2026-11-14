@@ -5,9 +5,18 @@
 //
 // Das Grid ist schreibgeschützt (es kennt nur LV-Befehle); bearbeitet wird im Panel (D-87.2): Enter, F2, Strg+Alt+E oder
 // Doppelklick auf eine Position öffnen es. Die Seite fängt Enter und F2 an Positionszeilen vor dem Grid ab.
+// Ticket 152: Werkzeugleiste aus `ui-basis` (D-89); „Ausgabe“ mit dem Aufmaßblatt als PDF (Vorschau) und Excel.
 
 import { aufmassPruefen } from '@tethys/abrechnung';
-import { Button, Dialog, Tastenkuerzel, useToast } from '@tethys/ui-basis';
+import {
+  Button,
+  Dialog,
+  Tastenkuerzel,
+  Werkzeuggruppe,
+  Werkzeugleiste,
+  Werkzeugverweis,
+  useToast,
+} from '@tethys/ui-basis';
 import { VergleichsGrid } from '@tethys/ui-grid';
 import type { Aufmass, AufmassBefehl, AufmassId, AufmassZustand, Menge } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -22,6 +31,8 @@ import { imLeerlauf } from '../lv/pruefung';
 import { MengenansatzPanel, type Mengenziel } from '../mengen/MengenPanel';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { aufmassSitzung, type Abrechnungsstand, type AufmassSitzung } from './aufmass';
+import { BerichtAusgabe } from './Ausgabe';
+import { aufmassblattEingabe, dateinameAufmassblatt } from './berichte';
 import { blattAnsicht, kumuliertBisHier, zeilenBefehl, zeilenZiel } from './blatt';
 import { KopfDialog } from './KopfDialog';
 import { aufmassPfad, sollIstPfad } from './pfad';
@@ -138,6 +149,7 @@ function Blatt({
     },
     [a.knoten],
   );
+  const befundtexte = useMemo(() => befunde.map((b) => texte.befund(b, ozVon)), [befunde, ozVon]);
 
   const senden = async (b: AufmassBefehl): Promise<boolean> => {
     const r = await sitzung.befehl(b);
@@ -196,7 +208,7 @@ function Blatt({
         <Verweis pfad={listePfad} text={texte.zurListe} gehe={gehe} />
         <Verweis pfad={auftragPfad(a.projektId, a.id)} text={texte.zumAuftrag} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.werkzeuge}>
         <HistorieKnoepfe />
         <Button
           onClick={() => {
@@ -214,12 +226,31 @@ function Blatt({
           {texte.kopf.knopf}
         </Button>
         <X31Ausgeben blatt={blatt} auftrag={auftrag} />
-        <Verweis
-          pfad={sollIstPfad(a.projektId, a.id)}
-          text={texte.liste.sollIst}
-          gehe={gehe}
-          className="tx-button tx-button--sekundaer"
-        />
+        <Werkzeuggruppe titel={texte.ausgabe.gruppe}>
+          <BerichtAusgabe
+            projektId={a.projektId}
+            name={texte.ausgabe.aufmassblatt}
+            dateiname={(endung) => dateinameAufmassblatt(auftrag, blatt, endung)}
+            schluessel={JSON.stringify(blatt)}
+            pdf={(kopf) => ({
+              art: 'aufmassblatt',
+              eingabe: aufmassblattEingabe(auftrag, blatt, kopf, befundtexte),
+            })}
+            excel={async (kopf) =>
+              (await import('@tethys/ausgabe')).aufmassblattAlsExcel(
+                aufmassblattEingabe(auftrag, blatt, kopf, befundtexte),
+              )
+            }
+          />
+        </Werkzeuggruppe>
+        <Werkzeugverweis
+          href={sollIstPfad(a.projektId, a.id)}
+          onFolgen={() => {
+            gehe(sollIstPfad(a.projektId, a.id));
+          }}
+        >
+          {texte.liste.sollIst}
+        </Werkzeugverweis>
         <Button
           variante="gefahr"
           onClick={() => {
@@ -228,7 +259,7 @@ function Blatt({
         >
           {t.loeschen}
         </Button>
-      </div>
+      </Werkzeugleiste>
       <p className="abrechnung__hinweis">{t.tastenHinweis}</p>
       <div
         className="lv__grid abrechnung__grid"
