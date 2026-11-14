@@ -4,7 +4,7 @@
 
 import { kopieBauen, lvPruefen } from '@tethys/kern';
 import { Button, Tastenkuerzel, useToast, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
-import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
+import { LvGrid, type LvGridSteuerung, type Sprungziel } from '@tethys/ui-grid';
 import type {
   Befehlshinweis,
   Einfuegeort,
@@ -23,7 +23,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExtern
 import type { KeyboardEvent, ReactElement } from 'react';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
+import { alleZeilenBauen, lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
+import { hilfePfad } from '../hilfe/pfad'; // Ticket 156: Kürzelübersicht aus dem Grid
 import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
@@ -216,6 +217,12 @@ function LvBearbeiten({
     () => lvAnsichtBauen(zustand, zugeklappt, jeKnoten),
     [zustand, zugeklappt, jeKnoten],
   );
+  // Ticket 156: Suchen und Filtern im Grid sehen das ganze LV; gebaut erst, wenn das Grid sie braucht.
+  const alleZeilen = useCallback(
+    () => alleZeilenBauen(zustand, zugeklappt, jeKnoten),
+    [zustand, zugeklappt, jeKnoten],
+  );
+  const grid = useRef<LvGridSteuerung>(null);
 
   /**
    * Hinweise eines angenommenen Befehls: „Kalkulation entfernt“ (D-82 S4) zeigt die Seite selbst mit „Rückgängig“, die
@@ -482,6 +489,14 @@ function LvBearbeiten({
             {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
           </Button>
           <Button onClick={hinweistextAendern}>{texte.werkzeuge.hinweistextAendern}</Button>
+          <Button
+            onClick={() => {
+              grid.current?.suchen(); // Ticket 156
+            }}
+            aria-keyshortcuts="Control+F"
+          >
+            {texte.werkzeuge.suchen} <Tastenkuerzel tasten={texte.werkzeuge.tastenSuchen} />
+          </Button>
           <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
             {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
           </Button>
@@ -570,6 +585,11 @@ function LvBearbeiten({
             spaltenbreitenSchluessel="lv"
             ozMaske={lv.ozMaske}
             hinweise={hinweise}
+            alleZeilen={alleZeilen} // Ticket 156
+            steuerung={grid}
+            onKuerzelhilfe={() => {
+              gehe(hilfePfad('tastenkuerzel'));
+            }}
             {...kgSpalteImLv} // Ticket 93: Spalte „KG“
             {...(sprungziel ? { sprungziel } : {})}
             onBefehl={(b) => {

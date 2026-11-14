@@ -6,7 +6,7 @@
 // offene Rückfrage und eine Statusmeldung.
 
 import { useTable } from '@tanstack/react-table';
-import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   ClipboardEvent,
   FocusEvent,
@@ -20,6 +20,8 @@ import { Button, Dialog } from '@tethys/ui-basis';
 import type { EditorAktionen, Richtung } from './Editor';
 import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
 import { Hinweisleiste } from './Hinweisleiste';
+import { Kontextmenue } from './Kontextmenue';
+import type { Menuepunkt } from './Kontextmenue';
 import { leerePositionsdaten, planeEinfuegen, planeKostengruppen } from './einfuegen';
 import type { Einfuegeanker, UngueltigeZelle } from './einfuegen';
 import { klappAbsicht, useGridKern, useSprung } from './gridKern';
@@ -29,16 +31,32 @@ import type { Zelle } from './navigation';
 import { eingabeart, schreibrechte } from './schreibrechte';
 import type { Eingabeart } from './schreibrechte';
 import { BREITENSCHRITT, geaenderteBreite } from './spaltenbreiten';
+import {
+  KEIN_FILTER,
+  filterAktiv,
+  filterText,
+  gefilterteZeilen,
+  suchtreffer,
+  vorfahrenZugeklappt,
+} from './suche';
+import type { Zeilenfilter } from './suche';
+import { Suchleiste } from './Suchleiste';
 import { STANDARDSPALTEN, features, spaltenDefinitionen } from './tabelle';
 import {
   SPALTENKOPF,
+  SPALTENNAME,
   SPALTENTITEL,
   frageLoeschen,
   meldungBreite,
   meldungEingefuegt,
   meldungKostengruppen,
+  meldungTreffer,
   meldungZeilen,
+  filterStand,
+  menuetexte,
+  suchtexte,
   texte,
+  trefferStand,
 } from './texte';
 import { parseTsv } from './tsv';
 import type { LvGridProps } from './typen';
@@ -90,10 +108,20 @@ function istSpalte(wert: string | undefined, spalten: readonly LvSpalte[]): LvSp
 export function LvGrid(props: LvGridProps): ReactElement {
   const { ansicht, zahlen, onAufklappen, onAuswahlChange, onAktiveZeileChange, onZeileOeffnen, sprungziel } =
     props;
+  const { alleZeilen, onKuerzelhilfe } = props;
   const spalten = props.spalten ?? STANDARDSPALTEN;
   const baumspalte = props.baumspalte ?? 'kurztext';
   const zh = props.zeilenhoehe ?? 28;
-  const zeilen = ansicht.zeilen;
+  // Filter (Ticket 156): Mit Filter zeigt das Grid die passenden Zeilen des ganzen LV samt ihrer Gliederungen, alles offen.
+  // Ohne Filter bleibt es bei `ansicht.zeilen` (dieselbe Liste, kein Mehraufwand im Renderpfad, Q4).
+  const [filter, setFilter] = useState<Zeilenfilter>(KEIN_FILTER);
+  const gefiltert = filterAktiv(filter);
+  const filterung = useMemo(() => {
+    if (!gefiltert) return { zeilen: ansicht.zeilen, gesamt: ansicht.zeilen.length };
+    const alle = alleZeilen?.() ?? ansicht.zeilen;
+    return { zeilen: gefilterteZeilen(alle, filter), gesamt: alle.length };
+  }, [gefiltert, filter, alleZeilen, ansicht.zeilen]);
+  const zeilen = filterung.zeilen;
   // Was sich ändern lässt und wohin die Befehle gehen, samt der Ausnahme „KG“ im Schreibschutz (`schreibrechte`).
   const rechte = schreibrechte(props, spalten);
   const { aenderung, nurLesen, schreibschutzText } = rechte;
@@ -141,8 +169,25 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const bestaetigen = useRef<HTMLButtonElement>(null);
   /** Nur ein Anstoß zum Neuzeichnen, damit eine Fokusanfrage außerhalb eines Ereignisses ausgeführt wird. */
   const [, setFokusRunde] = useState(0);
-  /** Neue Zeile, die nach dem Befehl in den Eigenschaften erscheinen soll und dann den Fokus bekommt. */
-  const wartetAuf = useRef<{ readonly id: string; readonly spalte: LvSpalte } | null>(null);
+  /**
+   * Zeile, die nach einem Befehl (neue Position) oder nach dem Aufklappen (Treffer der Suche) in den Eigenschaften
+   * erscheinen soll und dann aktiv wird, mit Fokus, wenn nicht anders gesagt.
+   */
+  const wartetAuf = useRef<{
+    readonly id: string;
+    readonly spalte: LvSpalte;
+    readonly mitFokus?: boolean;
+  } | null>(null);
+  // Suchen und Kontextmenü (Ticket 156): flüchtiger Bedienzustand wie die übrigen.
+  const [suchOffen, setSuchOffen] = useState(false);
+  const [anfrage, setAnfrage] = useState('');
+  const [suchstand, setSuchstand] = useState<string | null>(null);
+  const sucheingabe = useRef<HTMLInputElement>(null);
+  /** Nach dem Öffnen der Suche den Fokus ins Suchfeld (sobald es steht). */
+  const suchfokus = useRef(false);
+  const [menue, setMenue] = useState<{ readonly x: number; readonly y: number } | null>(null);
+  /** Sofort gesetzt (nicht erst nach dem Rendern): Eine Menütaste löst danach noch das Ereignis `contextmenu` aus. */
+  const menueOffen = useRef(false);
   const anker = useRef<string | null>(null);
   const editorBeendet = useRef(false);
   const nurLesenId = `${useId()}-nur-lesen`;
@@ -506,6 +551,11 @@ export function LvGrid(props: LvGridProps): ReactElement {
       meldeNurLesen();
       return;
     }
+    // Im gefilterten Grid fehlen Geschwister: Ein Schritt „nach oben“ spränge über verborgene Zeilen (Ticket 156).
+    if (gefiltert) {
+      setStatus(suchtexte.verschiebenImFilter);
+      return;
+    }
     const befehl = planeVerschieben(zeilen, obersteKnoten(zeilen, auswahlOderAktiv()), richtung);
     if (!befehl) {
       setStatus(texte.verschiebenNichtMoeglich);
@@ -539,13 +589,113 @@ export function LvGrid(props: LvGridProps): ReactElement {
     setStatus(texte.positionAngelegt);
   };
 
-  // Eine neu angelegte Zeile bekommt den Fokus, sobald sie in den Eigenschaften steht (Strg+Plus).
+  // Eine neu angelegte Zeile bekommt den Fokus, sobald sie in den Eigenschaften steht (Strg+Plus); ein Treffer unter einer
+  // eben aufgeklappten Gliederung wird aktiv (beim Tippen im Suchfeld ohne Fokus, damit weitergetippt werden kann).
   useLayoutEffect(() => {
     const w = wartetAuf.current;
     const zi = w ? indexVonId.get(w.id) : undefined;
     if (!w || zi === undefined) return;
-    aktiviere({ zeile: zi, spalte: Math.max(0, spalten.indexOf(w.spalte)) }, 'ersetzen', true);
+    const mitFokus = w.mitFokus ?? true;
+    aktiviere({ zeile: zi, spalte: Math.max(0, spalten.indexOf(w.spalte)) }, 'ersetzen', mitFokus);
+    if (!mitFokus) virtualizer.scrollToIndex(zi, { align: 'auto' });
   });
+
+  // --- Suchen und Filtern (Ticket 156) ----------------------------------------------------------------------------
+  // Die Treffer entstehen erst im Ereignis (Tippen, Enter, F3), nie beim Rendern; der Suchtext hängt je Knoten im
+  // Zwischenspeicher (`suche.ts`). So bleibt das Budget beim Scrollen unberührt (Q4).
+  /** Wo gesucht wird: im gefilterten Grid die gezeigten Zeilen, sonst das ganze LV (`alleZeilen`) bzw. die Ansicht. */
+  const suchbereich = (): readonly LvZeile[] => (gefiltert ? zeilen : (alleZeilen?.() ?? zeilen));
+  /** Macht einen Treffer zur aktiven Zelle; unter zugeklappten Gliederungen klappt es diese erst auf. */
+  const zeigeTreffer = (id: string, spalte: LvSpalte, mitFokus: boolean): void => {
+    const si = Math.max(0, spalten.indexOf(spalte));
+    const zi = indexVonId.get(id);
+    if (zi !== undefined) {
+      aktiviere({ zeile: zi, spalte: si }, 'ersetzen', mitFokus);
+      if (!mitFokus) virtualizer.scrollToIndex(zi, { align: 'auto' });
+      return;
+    }
+    const zu = vorfahrenZugeklappt(alleZeilen?.() ?? [], id);
+    if (zu.length === 0 || !onAufklappen) {
+      setStatus(texte.zeileNichtSichtbar);
+      return;
+    }
+    for (const g of zu) onAufklappen(g as KnotenId, true);
+    wartetAuf.current = { id, spalte, mitFokus };
+  };
+  /**
+   * Springt zum nächsten (1) oder vorigen (-1) Treffer, von der aktiven Zeile aus; 0: zum ersten Treffer ab der aktiven
+   * Zeile (beim Tippen). Sagt Stand und Feld des Treffers an.
+   */
+  const springeZuTreffer = (richtung: 1 | -1 | 0, text: string, mitFokus: boolean): void => {
+    const bereich = suchbereich();
+    const treffer = suchtreffer(bereich, text);
+    if (treffer.length === 0) {
+      const leer = text.trim() === '';
+      setSuchstand(leer ? null : suchtexte.keineTreffer);
+      setStatus(leer ? '' : suchtexte.keineTreffer);
+      return;
+    }
+    const lage = new Map<string, number>(bereich.map((z, i) => [z.knoten.id, i]));
+    const von = aktiveId === undefined ? -1 : (lage.get(aktiveId) ?? -1);
+    const stelle = (t: { readonly knotenId: string }): number => lage.get(t.knotenId) ?? -1;
+    let nr: number;
+    if (richtung === -1) {
+      nr = treffer.findLastIndex((t) => stelle(t) < von);
+      if (nr < 0) nr = treffer.length - 1;
+    } else {
+      const ab = richtung === 0 ? Math.max(von, 0) : von + 1;
+      nr = treffer.findIndex((t) => stelle(t) >= ab);
+      if (nr < 0) nr = 0;
+    }
+    const t = treffer[nr];
+    if (!t) return;
+    setSuchstand(trefferStand(nr + 1, treffer.length));
+    setStatus(meldungTreffer(nr + 1, treffer.length, suchtexte.ort[t.feld]));
+    const spalte: LvSpalte =
+      t.feld === 'ordnungszahl' && spalten.includes('ordnungszahl')
+        ? 'ordnungszahl'
+        : spalten.includes('kurztext')
+          ? 'kurztext'
+          : (aktivSpalte ?? 'kurztext');
+    zeigeTreffer(t.knotenId, spalte, mitFokus);
+  };
+  const oeffneSuche = (): void => {
+    suchfokus.current = true;
+    setSuchOffen(true);
+    // Schon offen: kein neues Rendern nötig, das Feld steht.
+    sucheingabe.current?.focus();
+    sucheingabe.current?.select();
+  };
+  const schliesseSuche = (): void => {
+    setSuchOffen(false);
+    setSuchstand(null);
+    fokusAnfrage.current = true;
+    setFokusRunde((n) => n + 1);
+  };
+  useLayoutEffect(() => {
+    if (!suchfokus.current || !sucheingabe.current) return;
+    suchfokus.current = false;
+    sucheingabe.current.focus();
+    sucheingabe.current.select();
+  });
+  /** Treffer in Worten an der Leiste; aus F3 im Grid bleibt der Fokus im Grid. */
+  const weiterSuchen = (richtung: 1 | -1, mitFokus: boolean): void => {
+    if (anfrage.trim() === '') {
+      oeffneSuche();
+      return;
+    }
+    springeZuTreffer(richtung, anfrage, mitFokus);
+  };
+  const setzeFilter = (f: Zeilenfilter): void => {
+    setFilter(f);
+    setStatus(filterAktiv(f) ? `${suchtexte.gefiltert}: ${filterText(f)}.` : suchtexte.filterAufgehoben);
+    // Verschwindet die Leiste mit dem Filter (Suche zu), geht der Fokus zurück ins Grid statt ins Leere.
+    if (!filterAktiv(f) && !suchOffen) {
+      fokusAnfrage.current = true;
+      setFokusRunde((n) => n + 1);
+    }
+  };
+  useImperativeHandle(props.steuerung, () => ({ suchen: oeffneSuche }));
 
   // Sprungziel (Prüf-Links): ein neuer Wert von `nr` springt zur Zelle; eine nicht sichtbare Zeile übergeht das Grid.
   useSprung(
@@ -600,6 +750,27 @@ export function LvGrid(props: LvGridProps): ReactElement {
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     if (imEditor(e.target)) return;
+    // Suchen und Kontextmenü (Ticket 156) gehen auch ohne Zelle (leeres oder leer gefiltertes LV).
+    const sonder = kuerzelAktion(e, 'lv');
+    switch (sonder) {
+      case 'suchen':
+        e.preventDefault();
+        oeffneSuche();
+        return;
+      case 'treffer-weiter':
+      case 'treffer-zurueck':
+        e.preventDefault();
+        weiterSuchen(sonder === 'treffer-weiter' ? 1 : -1, true);
+        return;
+      case 'kontextmenue': {
+        e.preventDefault();
+        const r = (e.target as HTMLElement).getBoundingClientRect();
+        oeffneMenue(r.left + 8, zelleVon(e.target) ? r.bottom : r.top + 8);
+        return;
+      }
+      default:
+        break;
+    }
     const zelle = zelleVon(e.target);
     if (!zelle) {
       // Leeres LV: Strg+Plus legt die erste Position an (W-06).
@@ -732,6 +903,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
     if (!z) return;
     wartetAuf.current = null;
     setAktiv({ id: z.knoten.id, spalte: zelle.spalte });
+    // Die rechte Maustaste in der Auswahl lässt sie stehen: Das Kontextmenü wirkt auf alle gewählten Zeilen.
+    if (e.button === 2 && auswahl.has(z.knoten.id)) return;
     if (e.shiftKey) {
       anker.current ??= aktiveId ?? z.knoten.id;
       setzeAuswahl(waehleBereich(anker.current, zelle.zi));
@@ -777,6 +950,23 @@ export function LvGrid(props: LvGridProps): ReactElement {
     if (imEditor(e.target)) return; // im Eingabefeld gilt das übliche Einfügen von Text
     const inhalt = e.clipboardData.getData('text/plain');
     e.preventDefault();
+    fuegeEin(inhalt);
+  };
+
+  /** Einfügen aus dem Kontextmenü: Die Zwischenablage liest das Grid selbst (der Browser fragt danach ggf. nach). */
+  const einfuegenAusMenue = (): void => {
+    const ablage = navigator.clipboard as Clipboard | undefined;
+    if (ablage === undefined || typeof ablage.readText !== 'function') {
+      setStatus(menuetexte.einfuegenGesperrt);
+      return;
+    }
+    ablage.readText().then(fuegeEin, () => {
+      setStatus(menuetexte.einfuegenGesperrt);
+    });
+  };
+
+  /** Strg+V und „Einfügen“ im Kontextmenü: derselbe Weg für den Text der Zwischenablage. */
+  const fuegeEin = (inhalt: string): void => {
     if (!aenderung) {
       // Im schreibgeschützten Grid nur eine Spalte in die Spalte „KG“, wenn die App das zulässt (Ticket 93).
       if (!fuelleKostengruppen(parseTsv(inhalt))) meldeNurLesen();
@@ -842,7 +1032,174 @@ export function LvGrid(props: LvGridProps): ReactElement {
     setStatus(meldungEingefuegt(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
   };
 
+  // --- Kontextmenü (Ticket 156) -------------------------------------------------------------------------------------
+  const oeffneMenue = (x: number, y: number): void => {
+    menueOffen.current = true;
+    setMenue({ x, y });
+  };
+  const onContextMenu = (e: MouseEvent<HTMLDivElement>): void => {
+    if (imEditor(e.target)) return; // im Eingabefeld das Menü des Browsers (Ausschneiden, Rechtschreibung)
+    if (menueOffen.current) {
+      e.preventDefault();
+      return;
+    }
+    const zelle = zelleVon(e.target);
+    // Kopf und Rand: Menü des Browsers; nur im leeren LV gibt es ohne Zelle etwas zu tun (anlegen, einfügen).
+    if ((!zelle || !zeilen[zelle.zi]) && zeilen.length > 0) return;
+    e.preventDefault();
+    oeffneMenue(e.clientX, e.clientY);
+  };
+  const schliesseMenue = (): void => {
+    menueOffen.current = false;
+    setMenue(null);
+  };
+  /** Nach dem Schließen: Fokus auf die aktive Zelle, dann die gewählte Aktion (ein Dialog gibt ihn dorthin zurück). */
+  const nachMenue = (aktion: (() => void) | null): void => {
+    menueOffen.current = false;
+    const sc = scroller.current;
+    const el = sc?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]') ?? sc;
+    el?.focus({ preventScroll: true });
+    aktion?.();
+  };
+  /** Die Punkte des Menüs: dieselben Aktionen wie die Tasten (U3), gesperrt, wo die Taste nur den Schreibschutz ansagt. */
+  const menuepunkte = (): readonly Menuepunkt[] => {
+    const z = aktiveZeile;
+    const spalte = aktivSpalte;
+    const zi = aktivIndex;
+    const punkte: Menuepunkt[] = [];
+    if (z !== undefined && spalte !== undefined) {
+      punkte.push({
+        schluessel: 'bearbeiten',
+        text: menuetexte.bearbeiten,
+        kuerzel: 'bearbeiten',
+        gesperrt: !bearbeitbar(z, spalte),
+        ausfuehren: () => {
+          beginneBearbeitung(zi, spalte);
+        },
+      });
+      if (onZeileOeffnen) {
+        punkte.push({
+          schluessel: 'oeffnen',
+          text: menuetexte.zeileOeffnen,
+          kuerzel: 'zeile-oeffnen',
+          ausfuehren: () => {
+            onZeileOeffnen(z.knoten.id, spalte);
+          },
+        });
+      }
+      punkte.push({
+        schluessel: 'leeren',
+        text: menuetexte.zelleLeeren,
+        kuerzel: 'zelle-leeren',
+        gesperrt: !bearbeitbar(z, spalte),
+        ausfuehren: () => {
+          uebernimmText(zi, spalte, '');
+        },
+      });
+    }
+    const mitZelle = z !== undefined && spalte !== undefined;
+    punkte.push({
+      schluessel: 'anlegen',
+      text: menuetexte.positionAnlegen,
+      kuerzel: 'position-anlegen',
+      gesperrt: !aenderung,
+      trenner: mitZelle,
+      ausfuehren: legePositionAn,
+    });
+    if (mitZelle) {
+      punkte.push(
+        {
+          schluessel: 'ausschneiden',
+          text: menuetexte.ausschneiden,
+          kuerzel: 'ausschneiden',
+          gesperrt: !aenderung,
+          ausfuehren: () => {
+            kopiere(true);
+          },
+        },
+        {
+          schluessel: 'kopieren',
+          text: menuetexte.kopieren,
+          kuerzel: 'kopieren',
+          ausfuehren: () => {
+            kopiere(false);
+          },
+        },
+      );
+    }
+    punkte.push({
+      schluessel: 'einfuegen',
+      text: menuetexte.einfuegen,
+      kuerzel: 'einfuegen',
+      gesperrt: !aenderung && !(spalte !== undefined && bearbeitbareSpalten.has(spalte)),
+      ausfuehren: einfuegenAusMenue,
+    });
+    if (z !== undefined && spalte !== undefined) {
+      punkte.push(
+        {
+          schluessel: 'hoch',
+          text: menuetexte.nachOben,
+          kuerzel: 'nach-oben-verschieben',
+          gesperrt: !aenderung || gefiltert,
+          trenner: true,
+          ausfuehren: () => {
+            verschiebe('hoch');
+          },
+        },
+        {
+          schluessel: 'runter',
+          text: menuetexte.nachUnten,
+          kuerzel: 'nach-unten-verschieben',
+          gesperrt: !aenderung || gefiltert,
+          ausfuehren: () => {
+            verschiebe('runter');
+          },
+        },
+        {
+          schluessel: 'loeschen',
+          text: menuetexte.loeschen,
+          kuerzel: 'loeschen',
+          gesperrt: !aenderung,
+          gefahr: true,
+          ausfuehren: fragLoeschen,
+        },
+      );
+      if (z.hatUnterknoten) {
+        punkte.push({
+          schluessel: 'klappen',
+          text: z.aufgeklappt ? menuetexte.zuklappen : menuetexte.aufklappen,
+          kuerzel: z.aufgeklappt ? 'zuklappen' : 'aufklappen',
+          trenner: true,
+          ausfuehren: () => {
+            klappe(zi, !z.aufgeklappt);
+          },
+        });
+      }
+      punkte.push({
+        schluessel: 'alles',
+        text: menuetexte.allesAuswaehlen,
+        kuerzel: 'alles-auswaehlen',
+        trenner: !z.hatUnterknoten,
+        ausfuehren: () => {
+          setzeAuswahl(new Set(zeilen.map((x) => x.knoten.id)));
+        },
+      });
+    }
+    punkte.push({
+      schluessel: 'suchen',
+      text: menuetexte.suchen,
+      kuerzel: 'suchen',
+      trenner: true,
+      ausfuehren: oeffneSuche,
+    });
+    if (onKuerzelhilfe) {
+      punkte.push({ schluessel: 'kuerzel', text: menuetexte.kuerzel, ausfuehren: onKuerzelhilfe });
+    }
+    return punkte;
+  };
+
   // --- Darstellung ----------------------------------------------------------------------------------------------
+
   const abgelehntJeZeile = useMemo(() => {
     const m = new Map<string, Map<LvSpalte, Abgelehnt>>();
     for (const [key, wert] of abgelehnt) {
@@ -887,6 +1244,26 @@ export function LvGrid(props: LvGridProps): ReactElement {
 
   return (
     <div className="tx-grid tx-grid--lv" ref={wurzel}>
+      <Suchleiste
+        offen={suchOffen}
+        anfrage={anfrage}
+        stand={suchstand}
+        filter={filter}
+        filterStand={filterStand(zeilen.length, filterung.gesamt)}
+        eingabe={sucheingabe}
+        onAnfrage={(text) => {
+          setAnfrage(text);
+          springeZuTreffer(0, text, false);
+        }}
+        onWeiter={() => {
+          weiterSuchen(1, false);
+        }}
+        onZurueck={() => {
+          weiterSuchen(-1, false);
+        }}
+        onSchliessen={schliesseSuche}
+        onFilter={setzeFilter}
+      />
       <div
         ref={scroller}
         className="tx-grid__scroll"
@@ -904,6 +1281,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
         onDoubleClick={onDoubleClick}
         onFocus={onFocus}
         onPaste={onPaste}
+        onContextMenu={onContextMenu}
         style={{
           ['--tx-grid-zeilenhoehe' as string]: `${String(zh)}px`,
           // Raster und Mindestbreite der Kopf- und Datenzeilen (CSS): Ändert sich eine Breite, zeichnen die Zeilen nicht neu.
@@ -916,14 +1294,14 @@ export function LvGrid(props: LvGridProps): ReactElement {
             {kopf.map((h, i) => {
               const spalte = spalten[i];
               if (spalte === undefined) return null;
-              const kurz = SPALTENKOPF[spalte] !== SPALTENTITEL[spalte];
+              const kurz = SPALTENNAME[spalte] !== SPALTENKOPF[spalte];
               return (
                 <div
                   key={h.id}
                   role="columnheader"
                   aria-colindex={i + 1}
-                  aria-label={kurz ? SPALTENTITEL[spalte] : undefined}
-                  title={kurz ? SPALTENTITEL[spalte] : undefined}
+                  aria-label={kurz ? SPALTENNAME[spalte] : undefined}
+                  title={kurz ? SPALTENNAME[spalte] : undefined}
                   className={`tx-grid__kopfzelle tx-grid__kopfzelle--${spalte}`}
                 >
                   <span className="tx-grid__kopftext">{SPALTENKOPF[spalte]}</span>
@@ -979,7 +1357,9 @@ export function LvGrid(props: LvGridProps): ReactElement {
             );
           })}
         </div>
-        {zeilen.length === 0 ? <p className="tx-grid__leer">{texte.leer}</p> : null}
+        {zeilen.length === 0 ? (
+          <p className="tx-grid__leer">{gefiltert ? suchtexte.keineZeileImFilter : texte.leer}</p>
+        ) : null}
       </div>
       {nurLesen ? (
         <span id={nurLesenId} className="tx-grid__nur-sr">
@@ -1007,6 +1387,12 @@ export function LvGrid(props: LvGridProps): ReactElement {
             </Button>
           </>
         }
+      />
+      <Kontextmenue
+        ort={menue}
+        punkte={menue === null ? [] : menuepunkte()}
+        onZu={schliesseMenue}
+        onFokusZurueck={nachMenue}
       />
       <div className="tx-grid__status" role="status" aria-live="polite">
         {status}

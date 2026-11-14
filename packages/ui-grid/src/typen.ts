@@ -15,10 +15,18 @@ import type {
   LvAnsicht,
   LvBefehl,
   LvSpalte,
+  LvZeile,
   OzMaske,
   PositionAnlegen,
 } from '@tethys/vertrag';
+import type { Ref } from 'react';
 import type { SpaltenbreitenSpeicher } from './useSpaltenbreiten';
+
+/** Steuerung des Grids von außen (Ticket 156), z. B. für „Suchen und filtern“ in der Werkzeugleiste der App. */
+export interface LvGridSteuerung {
+  /** Öffnet die Leiste „Suchen und filtern“ und setzt den Fokus ins Suchfeld (wie Strg+F im Grid). */
+  suchen(): void;
+}
 
 /**
  * Lesefunktion der App für die Spalte „KG“ (Ticket 93): getrimmter, nicht leerer Text → Kostengruppennummer oder eine
@@ -93,6 +101,20 @@ interface LvGridGemeinsam {
    * in einer Hinweisleiste an, mit Sprungknopf, wenn ein Hinweis einen Knoten nennt. Sie sperren nie (U5).
    */
   readonly hinweise?: readonly Befehlshinweis[];
+  /**
+   * Alle Zeilen des LV in Anzeigereihenfolge, auch unter zugeklappten Gliederungen, mit `aufgeklappt` wie in der Ansicht
+   * (Ticket 156). Suchen (Strg+F) und Filtern sehen damit das ganze LV; ein Treffer unter zugeklappten Gliederungen klappt
+   * sie über `onAufklappen` auf. Das Grid ruft die Funktion nur beim Suchen und bei aktivem Filter; eine neue Funktion heißt
+   * neue Zeilen (mit jeder neuen `ansicht` eine neue übergeben). Ohne: Suchen und Filtern sehen nur `ansicht.zeilen`.
+   */
+  readonly alleZeilen?: () => readonly LvZeile[];
+  /**
+   * Übersicht der Tastenkürzel (Ticket 156): Mit der Eigenschaft hat das Kontextmenü den Punkt „Tastenkürzel anzeigen“,
+   * z. B. ein Wechsel zur Hilfeseite, deren Tabelle aus `GRID_KUERZEL` entsteht.
+   */
+  readonly onKuerzelhilfe?: () => void;
+  /** Steuerung von außen (Ticket 156). */
+  readonly steuerung?: Ref<LvGridSteuerung>;
   /** Zugänglicher Name des Grids. */
   readonly beschriftung?: string;
   /** Spalte mit Einzug und Auf-/Zuklappknopf; Standard `kurztext`. */

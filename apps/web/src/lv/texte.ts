@@ -41,6 +41,9 @@ export const texte = {
     gliederungOhneDialog: 'Titel werden im Grid bearbeitet',
     gliederungOhneDialogText:
       'OZ und Kurztext eines Titels oder Loses lassen sich direkt in der Zeile ändern.',
+    /** Ticket 156: öffnet im Grid die Leiste „Suchen und filtern“ (wie Strg+F im Grid). */
+    suchen: 'Suchen und filtern',
+    tastenSuchen: ['Strg', 'F'],
     keinHinweistext: 'Kein Hinweistext gewählt',
     keinHinweistextText: 'Bitte zuerst einen Hinweistext im Grid wählen.',
   },

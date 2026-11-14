@@ -15,6 +15,7 @@ export type {
   LvGridBearbeitbar,
   LvGridProps,
   LvGridSchreibgeschuetzt,
+  LvGridSteuerung,
   Sprungziel,
 } from './typen';
 

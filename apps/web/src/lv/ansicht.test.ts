@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { lvAnlegenBefehl, projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
 import { lvPruefen } from '@tethys/kern';
-import { lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
+import { alleZeilenBauen, lvAnsichtBauen, positionenImTeilbaum } from './ansicht';
 import { lvSitzung, projektSitzung, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
 import { ozMaskeLesen } from './ozmaske';
@@ -118,6 +118,24 @@ describe('LV-Ansicht aus dem Zustand', () => {
     ]);
     const zeile = ansicht.zeilen[1];
     expect(zeile?.hatUnterknoten && !zeile.aufgeklappt).toBe(true);
+  });
+
+  it('alle Zeilen (Suchen und Filtern im Grid): auch unter zugeklappten Gliederungen, die bleiben zugeklappt', async () => {
+    const { s, t0101 } = await m1Lv();
+    const zeilen = alleZeilenBauen(lv(s), new Set([t0101]));
+    expect(zeilen.map((z) => [z.tiefe, z.knoten.art === 'hinweis' || z.knoten.ordnungszahl])).toEqual([
+      [0, '01'],
+      [1, '01.01'],
+      [2, '01.01.0010'],
+      [2, '01.01.0020'],
+      [2, '01.01.0030'],
+      [1, '01.02'],
+      [2, '01.02.0010'],
+      [2, '01.02.0020'],
+    ]);
+    expect(zeilen[1]?.hatUnterknoten && !zeilen[1].aufgeklappt).toBe(true);
+    const summe = zeilen[2]?.summe ?? null;
+    expect(summe === null ? null : gridZahlen.formatBetrag(summe)).toBe('1.850,00');
   });
 
   it('die Zeilen tragen die Befunde aus lvPruefen (dieselben wie im Prüf-Panel)', async () => {

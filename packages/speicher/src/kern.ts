@@ -51,7 +51,7 @@ import type {
   Protokolleintrag,
   Speicherfehler,
 } from '@tethys/vertrag';
-import { aggregatDes, wendeAn } from './aggregatarten';
+import { aggregatDes, wendeAn, type AggregatChangeSet } from './aggregatarten';
 import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
@@ -141,7 +141,7 @@ function pruefeEinstellungshistorie(db: Datenbank, e: EinstellungenProtokolleint
 }
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
-function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
+function pruefeBezug(e: Protokolleintrag, cs: AggregatChangeSet): void {
   const erwartet = aggregatDes(cs);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
@@ -164,7 +164,7 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
  * Ausnahme (D-31.1): Ein ChangeSet, das das Projekt anlegt, findet den Eintrag nicht mehr, weil das Löschen des Projekts
  * sein Protokoll mitnahm. Sein Verweis wird nicht geprüft.
  */
-function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet): string | null {
+function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: AggregatChangeSet): string | null {
   const b = e.befehl;
   if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return null;
   if (cs.art === 'projekt' && cs.projekt.vorher === null) return null;
@@ -602,6 +602,9 @@ export class SpeicherKern {
 
   async #anwendenDann(e: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
+    // Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; Ticket 161 schreibt das ChangeSet des Projektbestands.
+    if (changeSet.art === 'projektbestand')
+      return fehler('unbekannt', 'ChangeSet „projektbestand“ wird noch nicht geschrieben (Ticket 161).');
     let eintrag: Protokolleintrag;
     try {
       eintrag = await protokollform(e);

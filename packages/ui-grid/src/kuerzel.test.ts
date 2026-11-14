@@ -51,6 +51,22 @@ describe('kuerzelAktion im LV-Grid', () => {
   });
 });
 
+describe('Suchen und Kontextmenü (Ticket 156)', () => {
+  it('Strg+F sucht, F3 und Umschalt+F3 springen zwischen den Treffern', () => {
+    expect(kuerzelAktion(taste('f', { ctrlKey: true }), 'lv')).toBe('suchen');
+    expect(kuerzelAktion(taste('F', { metaKey: true, shiftKey: true }), 'lv')).toBe('suchen');
+    expect(kuerzelAktion(taste('F3'), 'lv')).toBe('treffer-weiter');
+    expect(kuerzelAktion(taste('F3', { shiftKey: true }), 'lv')).toBe('treffer-zurueck');
+    expect(kuerzelAktion(taste('f', { ctrlKey: true }), 'vergleich')).toBeNull();
+  });
+
+  it('Umschalt+F10 und die Menütaste öffnen das Kontextmenü', () => {
+    expect(kuerzelAktion(taste('F10', { shiftKey: true }), 'lv')).toBe('kontextmenue');
+    expect(kuerzelAktion(taste('ContextMenu'), 'lv')).toBe('kontextmenue');
+    expect(kuerzelAktion(taste('F10'), 'lv')).toBeNull();
+  });
+});
+
 describe('kuerzelAktion im Vergleichsgrid', () => {
   it('kennt nur die Kürzel, die dort gelten', () => {
     expect(kuerzelAktion(taste('c', { ctrlKey: true }), 'vergleich')).toBe('kopieren');

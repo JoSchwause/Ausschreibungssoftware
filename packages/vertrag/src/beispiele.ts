@@ -38,6 +38,7 @@ import type {
   RechnungsfreigabeAufheben,
   TextquelleSetzen,
   VorlageSetzen,
+  ProjektSamtInhaltLoeschen,
 } from './befehle';
 import type {
   AufmassChangeSet,
@@ -48,12 +49,14 @@ import type {
   LvChangeSet,
   OzVorschlag,
   OzVorschlagen,
+  ProjektbestandChangeSet,
   RechnungChangeSet,
 } from './changeset';
 import type {
   AuftragsLvUebersicht,
   KostenermittlungUebersicht,
   LvUebersicht,
+  Projektbestand,
   Projektdatei,
   Protokolleintrag,
 } from './speicher';
@@ -2779,3 +2782,44 @@ export const beispieleV17b: readonly [
   { art: 'ZahlungAendern', zahlung: { ...beispielZahlung, betrag: '45.41' as Betrag } },
   { art: 'ZahlungLoeschen', zahlungId },
 ];
+
+// --- v1.7c (Ticket 160; E8, D-96) -----------------------------------------------------------------------------------
+
+/** E8: Projekt samt Inhalt löschen; der Befehl trägt nichts, der Bestand geht an den Ausführer. */
+export const beispielProjektSamtInhaltLoeschen: ProjektSamtInhaltLoeschen = {
+  art: 'ProjektSamtInhaltLoeschen',
+};
+
+/**
+ * D-96: der Bestand des Projekts aus `beispielProjektdateiV16` mit dem Beispiel-LV und seinem LV-Stand: alle Listen der Datei
+ * ohne Schemaversion, Projekt und Modell-Bytes (die Datei hat keine Einstellungen). Das Modell nennt seine Datei über den Hash.
+ */
+export const beispielProjektbestand: Projektbestand = {
+  leistungsverzeichnisse: [beispielLvStand.zustand],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [beispielMassenprotokollBauwerksmodell],
+  lvStaende: [beispielLvStand],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenberechnungHoai }],
+  bauwerksmodelle: [{ bauwerksmodell: beispielBauwerksmodell }],
+  bauzeitenplaene: [{ bauzeitenplan: beispielBauzeitenplan }],
+  honorarberechnungen: [{ honorarberechnung: beispielHonorarberechnung }],
+  maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
+  bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
+};
+
+/** D-96: das ChangeSet des Löschens: Projekt und Bestand vorher, beide nachher `null`. */
+export const beispielChangeSetProjektSamtInhaltLoeschen: ProjektbestandChangeSet = {
+  art: 'projektbestand',
+  projektId: beispielProjektdateiV16.projekt.id,
+  projekt: { vorher: beispielProjektdateiV16.projekt, nachher: null },
+  bestand: { vorher: beispielProjektbestand, nachher: null },
+};
+
+/** D-96: seine Umkehrung (Undo): beide Seiten getauscht; `speicher` legt alles mit denselben Kennungen zurück. */
+export const beispielChangeSetProjektSamtInhaltLoeschenUmgekehrt: ProjektbestandChangeSet = {
+  art: 'projektbestand',
+  projektId: beispielProjektdateiV16.projekt.id,
+  projekt: { vorher: null, nachher: beispielProjektdateiV16.projekt },
+  bestand: { vorher: null, nachher: beispielProjektbestand },
+};
