@@ -32,7 +32,7 @@ import type {
   Zahlenart,
 } from '@tethys/vertrag';
 import { phaseAbweisen } from './abweisung';
-import { Angebotsaufbau } from './angebotsaufbau';
+import { Angebotszuordnung, preiszeileOhneXml } from './angebotszuordnung';
 import { deutsch, text } from './befunde';
 import type { GaebBefund } from './befunde';
 import type { Phasenquelle } from './erkennung';
@@ -963,7 +963,7 @@ export function leseGaeb2000Angebot(
       'Die OZ-Maske der Angebotsdatei weicht von der des LV ab; zugeordnet wird trotzdem über die Teile der OZ.',
       info?.zeile ?? null,
     );
-  const aufbau = new Angebotsaufbau(m, lv.knoten);
+  const zuordnung = new Angebotszuordnung<number | null>(m, lv.knoten, null);
   const durchlaufe = (o: Objekt): void => {
     for (const k of o.kinder) {
       if (k.art !== 'objekt') continue;
@@ -981,7 +981,7 @@ export function leseGaeb2000Angebot(
         const anzeige = oz.teile === null ? oz.anzeige : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
         const ep = zahl('einheitspreis', werteVon(k, 'EP')[0], m, 'einheitspreis');
         const gb = zahl('betrag', werteVon(k, 'GB')[0], m, 'gesamtpreis');
-        aufbau.preis(oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, ep, gb, k.zeile);
+        preiszeileOhneXml(zuordnung, oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, ep, gb, k.zeile);
       }
     }
   };
@@ -992,7 +992,7 @@ export function leseGaeb2000Angebot(
     m,
   );
   durchlaufe(kopf.lv);
-  const positionen = aufbau.positionen();
+  const positionen = zuordnung.positionen();
   if (kopf.auftraggeber !== null) m.nichtUebernommen(null, 'Angaben zum Auftraggeber');
   return { phase: d.phase, positionen, bietername: kopf.auftragnehmer, befunde: m.ergebnis() };
 }

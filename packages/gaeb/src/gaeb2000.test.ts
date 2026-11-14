@@ -547,6 +547,14 @@ describe('.p84: Angebot', () => {
     );
   });
 
+  it('ein abweichender Gesamtpreis ist derselbe Befund mit demselben Text wie beim DA-XML-Leser', () => {
+    const t = datei('84', [...bereich('01', 'A', position('010010', '[EP]12,345[end]', '[GB]120,00[end]'))]);
+    const gp = angebot(t).befunde.filter((b) => b.code === 'gp-abweichend');
+    expect(gp.map((b) => b.meldung)).toEqual([
+      'Der Gesamtpreis der Angebotsdatei (120,00 €) weicht von Menge des LV × EP (123,45 €) ab; gerechnet wird mit Menge × EP.',
+    ]);
+  });
+
   it('eine Angebotsaufforderung ist kein Angebot', () => {
     const a = angebot(LV_TEXT);
     expect(a.befehl).toBeNull();

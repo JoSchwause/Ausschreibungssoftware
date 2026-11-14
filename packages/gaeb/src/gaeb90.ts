@@ -39,7 +39,7 @@ import { phaseAbweisen } from './abweisung';
 import { deutsch, text } from './befunde';
 import type { GaebBefund } from './befunde';
 import type { Phasenquelle } from './erkennung';
-import { Angebotsaufbau } from './angebotsaufbau';
+import { Angebotszuordnung, preiszeileOhneXml } from './angebotszuordnung';
 import { LvAufbau } from './lvaufbau';
 import type { Wahlangabe } from './lvaufbau';
 import { Zeilenmelder } from './zeilenbefunde';
@@ -804,7 +804,7 @@ export function leseGaeb90Angebot(
       'Die OZ-Maske der Angebotsdatei weicht von der des LV ab; zugeordnet wird trotzdem über die Teile der OZ.',
       null,
     );
-  const aufbau = new Angebotsaufbau(m, lv.knoten);
+  const zuordnung = new Angebotszuordnung<number | null>(m, lv.knoten, null);
   const jeSatz = (s: Satz): void => {
     if (s.art !== '23') {
       if (!IM_ANGEBOT_UEBERGANGEN.has(s.art)) uebrig(s, m);
@@ -814,10 +814,10 @@ export function leseGaeb90Angebot(
     const anzeige =
       oz.teile === null ? stellen(s, 3, 11).trim() : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
     const preise = preiseAus([s], m);
-    aufbau.preis(oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, preise.ep, preise.gb, s.zeile);
+    preiszeileOhneXml(zuordnung, oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, preise.ep, preise.gb, s.zeile);
   };
   for (const b of rest) for (const s of [b.kopf, ...b.folge]) jeSatz(s);
-  const positionen = aufbau.positionen();
+  const positionen = zuordnung.positionen();
   if (kopf.projekt !== null) m.nichtUebernommen(kopf.projekt.zeile, 'Projektbezeichnung');
   if (kopf.auftraggeber !== null) m.nichtUebernommen(null, 'Angaben zum Auftraggeber');
   return { phase: d.phase, positionen, bietername: kopf.bieter, befunde: m.ergebnis() };

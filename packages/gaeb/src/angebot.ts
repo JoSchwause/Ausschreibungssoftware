@@ -9,8 +9,7 @@
 // vor v1.3 in der Datei) bleiben sie unzugeordnet (Befund). Nachlässe je Position oder Gliederung kann das Angebot nicht halten
 // (G-26, D-10 Nr. 3): Fehler `nachlass-nicht-abgebildet`, der Preis bleibt ohne Nachlass.
 
-import { NULL_EINHEITSPREIS, gesamtpreis, vergleiche } from '@tethys/dezimal';
-import { betragsziel } from '@tethys/kern';
+import { NULL_EINHEITSPREIS } from '@tethys/dezimal';
 import type {
   AngebotAnlegen,
   AngebotId,
@@ -33,6 +32,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { phaseAbweisen } from './abweisung';
+import { Angebotszuordnung, ozVon } from './angebotszuordnung';
 import { deutsch, zahlwert } from './befunde';
 import type { GaebBefund } from './befunde';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
@@ -208,12 +208,10 @@ const TOTALS_BEHANDELT: ReadonlySet<string> = new Set([
 ]);
 
 class Angebotsaufbau {
-  /** OZ-Schlüssel (`oz|index`) → Position des LV. */
-  private readonly positionen = new Map<string, Position>();
+  /** Zuordnung der Zeilen zum LV über die OZ, mit ihren Befunden (ein Weg für alle Formate). */
+  private readonly zuordnung: Angebotszuordnung<XmlElement | undefined>;
   /** OZ → Gliederung des LV (für den Ort der Befunde an `Totals`). */
   private readonly gliederungen = new Map<string, Knoten>();
-  /** Gelesene Zeilen je Position des LV; `null`: Zeile vorhanden, aber nicht übernommen. */
-  readonly zeilen = new Map<PositionId, Angebotsposition | null>();
   private epaOhneZuordnung = 0;
   private epaErst: XmlElement | null = null;
   private readonly epaGruende = new Set<string>();
@@ -223,17 +221,12 @@ class Angebotsaufbau {
     private readonly lv: Leistungsverzeichnis,
     private readonly anteile: Anteilsangaben,
   ) {
-    for (const k of lv.knoten) {
-      if (k.art === 'position') {
-        if (k.ordnungszahl === null) continue;
-        l.ozBekannt(k.id, ozVon(k));
-        const s = `${k.ordnungszahl}|${k.ozIndex ?? ''}`;
-        if (!this.positionen.has(s)) this.positionen.set(s, k);
-      } else if ((k.art === 'titel' || k.art === 'los') && k.ordnungszahl !== null) {
+    this.zuordnung = new Angebotszuordnung(l, lv.knoten, undefined);
+    for (const k of lv.knoten)
+      if ((k.art === 'titel' || k.art === 'los') && k.ordnungszahl !== null) {
         l.ozBekannt(k.id, k.ordnungszahl);
         if (!this.gliederungen.has(k.ordnungszahl)) this.gliederungen.set(k.ordnungszahl, k);
       }
-    }
   }
 
   private get trenn(): string {
@@ -319,45 +312,14 @@ class Angebotsaufbau {
     const index = el.attrs.get('RNoIndex') ?? '';
     const oz = eltern === null || t === undefined || t === '' ? null : [...eltern, t].join(this.trenn);
     const anzeige = oz === null ? '(ohne OZ)' : `${oz}${index}`;
-    const p = oz === null ? undefined : this.positionen.get(`${oz}|${index}`);
-    if (!p) {
-      this.l.melde(
-        'fehler',
-        'position-unbekannt',
-        `Die Position ${anzeige} der Angebotsdatei gibt es im LV nicht; die Zeile wird nicht übernommen.`,
-        el,
-        oz === null ? {} : { oz: anzeige },
-      );
-      return;
-    }
-    if (this.zeilen.has(p.id)) {
-      this.l.melde(
-        'fehler',
-        'doppelte-ordnungszahl',
-        `Die Position ${anzeige} steht mehrfach in der Angebotsdatei; nur die erste Zeile wird übernommen.`,
-        el,
-        { knotenId: p.id },
-      );
-      return;
-    }
+    const p = this.zuordnung.position(oz, index, anzeige, el);
+    if (p === null) return;
     const zuschlagszeile = el.name === 'MarkupItem';
     this.ergaenzungen(el);
     this.nachlassMelden(el, `an der Position ${anzeige}`, p.id, anzeige);
-    if (zuschlagszeile !== (p.zuschlag !== null)) {
-      const roh = wert(kind(el, zuschlagszeile ? 'Markup' : 'UP'));
-      const w = roh === null ? null : zahlwert(zuschlagszeile ? 'prozent' : 'einheitspreis', roh);
-      const angabe = `${zuschlagszeile ? 'einen Zuschlagssatz' : 'einen Einheitspreis'}${w === null ? '' : ` (${deutsch(w)})`}`;
-      this.l.melde(
-        'fehler',
-        'zuschlag-art-abweichend',
-        `Die Position ${anzeige} ist im LV ${p.zuschlag === null ? 'keine' : 'eine'} Zuschlagsposition, die Angebotsdatei ` +
-          `trägt dort ${angabe}; die Zeile wird nicht übernommen.`,
-        el,
-        { knotenId: p.id, ...(w === null ? {} : { werte: { wert: w } }) },
-      );
-      this.zeilen.set(p.id, null);
-      return;
-    }
+    const roh = wert(kind(el, zuschlagszeile ? 'Markup' : 'UP'));
+    const w = roh === null ? null : zahlwert(zuschlagszeile ? 'prozent' : 'einheitspreis', roh);
+    if (!this.zuordnung.artPasst(p, anzeige, zuschlagszeile, w, el)) return;
     if (zuschlagszeile) this.zuschlagszeile(el, p);
     else this.preiszeile(el, p);
   }
@@ -384,11 +346,11 @@ class Angebotsaufbau {
     const ep = upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null;
     const epa = this.epa(el, p.id, ep !== null);
     if (ep === null) {
-      this.zeilen.set(p.id, { positionId: p.id, status: 'nicht-angeboten' });
+      this.zuordnung.setze({ positionId: p.id, status: 'nicht-angeboten' });
       return;
     }
     this.pruefeGesamtpreis(el, p, ep);
-    this.zeilen.set(p.id, { positionId: p.id, status: 'angeboten', einheitspreis: ep, epa });
+    this.zuordnung.setze({ positionId: p.id, status: 'angeboten', einheitspreis: ep, epa });
   }
 
   private zuschlagszeile(el: XmlElement, p: Position): void {
@@ -396,14 +358,14 @@ class Angebotsaufbau {
     const markupEl = kind(el, 'Markup');
     const satz: Prozent | null = markupEl ? this.l.zahl('prozent', markupEl, p.id, 'zuschlagssatz') : null;
     if (satz === null) {
-      this.zeilen.set(p.id, { positionId: p.id, status: 'nicht-angeboten' });
+      this.zuordnung.setze({ positionId: p.id, status: 'nicht-angeboten' });
       return;
     }
     // Platzhalter (Vertrag v1.2, D-12 Nr. 7): nie gerechnet; der EP der Datei, falls sie einen nennt.
     const upEl = kind(el, 'UP');
     const ep =
       (upEl ? this.l.zahl('einheitspreis', upEl, p.id, 'einheitspreis') : null) ?? NULL_EINHEITSPREIS;
-    this.zeilen.set(p.id, {
+    this.zuordnung.setze({
       positionId: p.id,
       status: 'angeboten',
       einheitspreis: ep,
@@ -448,25 +410,7 @@ class Angebotsaufbau {
     const itEl = kind(el, 'IT');
     if (!itEl || p.menge === null) return;
     const it = this.l.zahl('betrag', itEl, p.id, 'gesamtpreis');
-    if (it === null) return;
-    // Eine Position, die nicht ins Netto eingeht (Wahl, Bedarf ohne Gesamtbetrag), trägt in der Datei `IT` 0.00 (BVBS
-    // Bauausführung, 001.002.0050); das ist kein abweichender Gesamtpreis (D-45.1). Wohin ein Betrag geht, sagt allein
-    // der Kern (`betragsziel`, D-16): auch eine Wahl ohne Gruppe und Variante ist Wahl (D-37.1).
-    const ohneSumme = betragsziel(p) !== 'netto';
-    if (ohneSumme && vergleiche(it, '0.00' as typeof it) === 0) return;
-    const soll = gesamtpreis(p.menge, ep);
-    if (vergleiche(it, soll) !== 0) {
-      const datei = { art: 'betrag', wert: it } as const;
-      const gerechnet = { art: 'betrag', wert: soll } as const;
-      this.l.melde(
-        'warnung',
-        'gp-abweichend',
-        `Der Gesamtpreis der Angebotsdatei (${deutsch(datei)}) weicht von Menge des LV × EP (${deutsch(gerechnet)}) ab; ` +
-          'gerechnet wird mit Menge × EP.',
-        itEl,
-        { knotenId: p.id, feld: 'gesamtpreis', werte: { datei, gerechnet } },
-      );
-    }
+    if (it !== null) this.zuordnung.gesamtpreisPruefen(p, ep, it, itEl);
   }
 
   abschliessen(): void {
@@ -485,25 +429,10 @@ class Angebotsaufbau {
 
   /** Alle Positionen des LV in LV-Reihenfolge; ohne Zeile in der Datei „nicht angeboten“ mit Warnung. */
   angebotspositionen(): Angebotsposition[] {
-    const ergebnis: Angebotsposition[] = [];
-    for (const k of this.lv.knoten) {
-      if (k.art !== 'position') continue;
-      const z = this.zeilen.get(k.id);
-      if (z === undefined)
-        this.l.melde(
-          'warnung',
-          'position-fehlt-im-angebot',
-          `Die Position ${k.ordnungszahl ?? '(ohne OZ)'}${k.ozIndex ?? ''} des LV fehlt in der Angebotsdatei; sie gilt als nicht angeboten.`,
-          undefined,
-          { knotenId: k.id },
-        );
-      ergebnis.push(z ?? { positionId: k.id, status: 'nicht-angeboten' });
-    }
-    return ergebnis;
+    return this.zuordnung.positionen();
   }
 }
 
-const ozVon = (p: Position): string => `${p.ordnungszahl ?? '(ohne OZ)'}${p.ozIndex ?? ''}`;
 
 /**
  * `TotalLSUM`: eine Pauschalsumme des Bieters für eine Gliederung oder das LV. Das Angebot hält nur Preise je Position;
