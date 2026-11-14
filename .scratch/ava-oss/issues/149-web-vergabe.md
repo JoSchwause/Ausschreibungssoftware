@@ -1,6 +1,6 @@
 # 149: App: Vergabe (Angebote, Bieter, Zuschlag zurücknehmen, Preisspiegel-Ausgaben)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: V, E8, E10, E11 · Paket/Ordner: `apps/web/src/vergabe/`, `apps/web/src/gaeb/Angebote.tsx` und Verwandte
 Blocked by: 137, 138, 139, 141, 142, 146
@@ -26,10 +26,10 @@ Herkunft: umfang §3 E8, E10, E11, E15 (Preisspiegel-Einstellungen am LV), B-15,
 
 ## Acceptance criteria
 
-- [ ] E2E für 1–5 (PDF erzeugt, Seitentext enthält Summen)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E für 1–5 (PDF erzeugt, Seitentext enthält Summen)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -75,3 +75,12 @@ Umsetzung (Agent, Demo-Modus, Branch `welle-7/149-vergabe`). Seams (ohne Mensch 
   wählbar, Begründung frei. Excel ohne Vorschau, die Datei entsteht beim Öffnen.
 - **D-149.8 Einstellungen.** Schwellen A, B und Bezug am LV (Undo); die Spaltenwahl bleibt Sitzung. A über B meldet die App am
   Feld und sendet nichts. „Standardwerte herstellen“ sendet `null`.
+- **D-149.9 Büro (nach D-95).** Das Büro kommt wie beim LV-Druck aus `useEinstellungen()` (150), das Projekt samt
+  Projektangaben unverändert in `PreisspiegelEingabe`/`VergabevorschlagEingabe`; das E2E prüft den Absender im PDF-Text.
+
+Abschluss (nach dem Merge von `integration/welle-7` mit 150, 151, 145): `pnpm lint` und `pnpm typecheck` grün. `pnpm test`:
+4.600 grün, 10 rot, 3 übersprungen; rot sind nur Leistungsbudgets fremder Dateien unter Last 24–29 auf 4 Kernen (`ausgabe`
+Druck gross, `gaeb` 2-MB-Lesen und X86, `kern` K9 und Zuordnungen, `speicher` Aufmaß und v1.6 ×2, `vergabe` Preisspiegel, App
+Aufmaß-Undo); `vergabe/leistung.test.ts` einzeln grün, nichts gelockert. E2E: `m3`, `preisspiegel`, `vergabe` (5 neu), `gaeb`,
+`einstellungen`, `nachtrag` 23/23 grün nach dem letzten Merge; davor zusätzlich `arbeitsflaeche`, `aufmass`, `erster-start`,
+`navigation` (30/30).
