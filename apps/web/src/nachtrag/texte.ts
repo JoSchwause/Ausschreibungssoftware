@@ -71,7 +71,8 @@ export const texte = {
     liest: 'Datei wird gelesen …',
     vorschau: 'Vorschau des Angebots',
     bieter: 'Bieter',
-    bieterHinweis: 'Auftragnehmer des Auftrags-LV. Angebote anderer Bieter über „Angebote“ in der Werkzeugleiste.',
+    bieterHinweis:
+      'Auftragnehmer des Auftrags-LV. Angebote anderer Bieter über „Angebote“ in der Werkzeugleiste.',
     andererName: (name: string) =>
       `Die Datei nennt den Bieter „${name}“; das Angebot wird dem Auftragnehmer zugeordnet.`,
     format: 'Format',
@@ -84,7 +85,8 @@ export const texte = {
     uebernehmen: 'Übernehmen',
     erfolg: 'Angebot des Auftragnehmers eingelesen',
     nichtLesbar: 'Datei nicht lesbar',
-    ohneAuftragnehmer: 'Das Auftrags-LV ist nicht mehr da; ein Angebot des Auftragnehmers lässt sich nicht zuordnen.',
+    ohneAuftragnehmer:
+      'Das Auftrags-LV ist nicht mehr da; ein Angebot des Auftragnehmers lässt sich nicht zuordnen.',
   },
   liste: {
     titel: 'Nachträge',

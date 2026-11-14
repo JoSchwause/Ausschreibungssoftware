@@ -4,7 +4,6 @@
 import type {
   AuftragsLvZustand,
   Betrag,
-  Einheit,
   Einheitspreis,
   Knoten,
   Kostengruppennummer,
@@ -18,7 +17,9 @@ import type {
 import { describe, expect, it } from 'vitest';
 import { positionsangaben } from './position';
 
-const LANGTEXT = [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Beton C25/30 liefern.' }] }] as unknown as Langtext;
+const LANGTEXT = [
+  { art: 'absatz', inhalt: [{ art: 'text', text: 'Beton C25/30 liefern.' }] },
+] as unknown as Langtext;
 
 function position(id: string, p: Partial<Position>): Position {
   return {
@@ -37,7 +38,7 @@ function position(id: string, p: Partial<Position>): Position {
     einheitspreis: null,
     epa: null,
     ...p,
-  } as Position;
+  };
 }
 
 function auftrag(knoten: readonly Knoten[], gp: Record<string, string | null>): AuftragsLvZustand {
@@ -60,7 +61,7 @@ describe('positionsangaben', () => {
       kurztext: 'Fundamentbeton',
       langtext: LANGTEXT,
       menge: '12.500' as Menge,
-      einheit: 'm3' as Einheit,
+      einheit: 'm3',
       einheitspreis: '1234.500' as Einheitspreis,
       merkmale: {
         bedarf: 'ohne-gesamtbetrag',
@@ -68,7 +69,7 @@ describe('positionsangaben', () => {
         stundenlohn: false,
         pauschal: true,
         zuschlagskennzeichen: false,
-      } as Position['merkmale'],
+      },
     });
     const a = positionsangaben(auftrag([p], { p1: '15431.25' }), 'p1' as PositionId);
     expect(a?.titel).toBe('01.0010 Fundamentbeton');

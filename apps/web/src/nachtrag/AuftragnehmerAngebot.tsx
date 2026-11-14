@@ -88,7 +88,9 @@ export function AuftragnehmerAngebot({
   const angeboten = angebot?.positionen.filter((p) => p.status === 'angeboten').length ?? 0;
   // Nur eine X84 nennt den Bieter selbst; bei Excel ist der Name nur der Dateiname.
   const andererName =
-    g?.format === 'x84' && g.vorschau.bieterName !== '' && !gleichNamig(g.vorschau.bieterName, auftragnehmer.name)
+    g?.format === 'x84' &&
+    g.vorschau.bieterName !== '' &&
+    !gleichNamig(g.vorschau.bieterName, auftragnehmer.name)
       ? g.vorschau.bieterName
       : null;
   return (

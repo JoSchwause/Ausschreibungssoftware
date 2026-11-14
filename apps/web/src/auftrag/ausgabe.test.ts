@@ -94,7 +94,10 @@ describe('auftragExcel (Ticket 151)', () => {
     );
     expect(soll.length).toBeGreaterThan(0);
     const ist = new Map(
-      zurueck.positionen.map((p) => [p.positionId as string, p.status === 'angeboten' ? p.einheitspreis : null]),
+      zurueck.positionen.map((p) => [
+        p.positionId as string,
+        p.status === 'angeboten' ? p.einheitspreis : null,
+      ]),
     );
     for (const [id, ep] of soll) expect(ist.get(id)).toBe(ep);
   });
