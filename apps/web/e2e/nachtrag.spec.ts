@@ -14,6 +14,7 @@ import type { Einheitspreis, LvZustand, Projektdatei } from '@tethys/vertrag';
 import { lvAlsExcel } from '../../../packages/ausgabe/src/index';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, eingabeDe, neueZeile, projektAnlegen, summen, tippe, zeilen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 type Summen = Readonly<Record<'netto' | 'nachlass' | 'nettoNachNachlass' | 'mwst' | 'brutto', string>>;
 const wurzel = new URL('../../../fixtures/', import.meta.url);
@@ -95,7 +96,7 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(angebote).toBeHidden();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${BIETER}` })
@@ -122,7 +123,7 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
   const nachtragsLvId = nachtragPfad.split('/').at(-1) ?? '';
 
   // Zwei Positionen unter einem Titel, wie der Nachtrag N01 der Fixture (ohne Preise: die kommen vom Auftragnehmer).
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await tippe(page, TITEL?.kurztext ?? '', 'Enter');
   for (const p of POSITIONEN) {
     await neueZeile(page, () => page.keyboard.press('Control+Alt+KeyP'));

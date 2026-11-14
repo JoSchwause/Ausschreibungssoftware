@@ -41,17 +41,37 @@
   min-height: 0;
 }
 
+/* Nachlass und MwSt in einer Zeile unter dem Grid, Beschriftung links vom Feld (Ticket 142: Platz für die Zeilen). */
 .lv__summenfelder {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--tx-space-5);
-  padding: var(--tx-space-3) 0;
+  align-items: center;
+  gap: var(--tx-space-2) var(--tx-space-6);
+  padding: var(--tx-space-2) 0 0;
   border-top: 1px solid var(--tx-color-border);
 }
 
 .lv__summenfelder .tx-feld {
-  width: 180px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--tx-space-3);
+}
+
+.lv__summenfelder .tx-zahlfeld {
+  width: 150px;
+}
+
+.lv__summenfelder .tx-auswahl {
+  width: 130px;
+}
+
+.lv__summenfelder .tx-feld__hinweis {
+  white-space: nowrap;
+}
+
+.lv__summenfelder > .lv__meldung {
+  margin: 0;
 }
 
 .lv__meldung {
@@ -108,12 +128,11 @@
   background: var(--tx-color-surface-raised);
 }
 
-.lv-pruefung--zu {
-  flex-basis: auto;
-}
-
 .lv-pruefung__kopf {
-  padding: var(--tx-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--tx-space-2);
+  padding: var(--tx-space-1) var(--tx-space-1) var(--tx-space-1) var(--tx-space-3);
   border-bottom: 1px solid var(--tx-color-border);
 }
 
@@ -121,11 +140,31 @@
   font-weight: var(--tx-weight-bold);
 }
 
+.lv-pruefung__schliessen {
+  margin-left: auto;
+}
+
+/* Zahl der Befunde: im Kopf des Panels und auf der Schaltfläche „Prüfung“ der Werkzeugleiste (Ticket 142). */
+.lv-pruefung__anzahl,
 .lv-pruefung__zahl {
-  margin-left: var(--tx-space-2);
   padding: 0 var(--tx-space-3);
   border-radius: var(--tx-radius-md);
   background: var(--tx-color-surface-sunken);
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-pruefknopf {
+  gap: var(--tx-space-2);
+}
+
+.lv-pruefung__zahl[data-schwere='fehler'] {
+  background: var(--tx-color-danger-subtle);
+  color: var(--tx-color-danger);
+}
+
+.lv-pruefung__zahl[data-schwere='warnung'] {
+  background: var(--tx-color-warning-subtle);
+  color: var(--tx-color-warning);
 }
 
 .lv-pruefung__liste {

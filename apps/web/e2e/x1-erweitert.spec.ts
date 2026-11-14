@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { ifcKlassenName } from '../src/bim/texte';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { betragDe, leerlauf, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import {
   BIM,
   baumzelle,
@@ -105,7 +106,7 @@ async function zuschlagWieM3(page: Page): Promise<void> {
     await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
     await expect(liste).toBeHidden();
   }
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   const name = ERSTER?.name ?? '';
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
@@ -208,7 +209,7 @@ test('Tor X1-Erweitert: DIN 277, Kostenschätzung, Zuschlag, Aufmaß aus Auswahl
 
   // --- Aufmaßblatt aus Auswahl „Geschoss EG“ am Auftrags-LV = Sollmengen ---------------------------------------------
   // Ticket 155: „Aufmaß aus Modell“ öffnet den einzigen Stand mit dem Auftrags-LV als „LV für Zuordnung“ vorgewählt
-  await page.getByRole('link', { name: 'Aufmaß aus Modell' }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß aus Modell');
   await expect(page.getByRole('heading', { level: 1, name: 'haus-v1' })).toBeVisible();
   await expect(zuordnung.getByRole('combobox', { name: 'LV für Zuordnung' })).toHaveText(/^Auftrags-LV: /);
   await expect(zuordnung.getByText(zaehlung(ZUGEORDNET))).toBeVisible();

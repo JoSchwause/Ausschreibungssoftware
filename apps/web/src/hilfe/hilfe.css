@@ -1,0 +1,192 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Hilfe, Begrüßung beim ersten Start und Hinweis zu Daten und Sicherung (Ticket 147). Farben nur über Tokens (U4). */
+
+/* ---------- Hilfeseite ---------- */
+
+.hilfe {
+  max-width: 920px;
+}
+
+.hilfe h2 {
+  margin: var(--tx-space-3) 0 var(--tx-space-4);
+  font-size: var(--tx-font-size-lg);
+}
+
+.hilfe h3 {
+  margin: 0 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-md);
+}
+
+.hilfe__abschnitt {
+  margin-bottom: var(--tx-space-5);
+}
+
+.hilfe__schritte,
+.hilfe__kette {
+  margin: 0 0 var(--tx-space-4);
+  padding-left: var(--tx-space-6);
+}
+
+.hilfe__schritte li {
+  margin-bottom: var(--tx-space-4);
+}
+
+.hilfe__schritte li::marker {
+  font-weight: var(--tx-weight-bold);
+}
+
+.hilfe__kette li {
+  margin-bottom: var(--tx-space-2);
+}
+
+.hilfe__tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--tx-space-3);
+}
+
+.hilfe__tabelle th,
+.hilfe__tabelle td {
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.hilfe__tabelle thead th {
+  color: var(--tx-color-text-muted);
+  font-weight: var(--tx-weight-medium);
+}
+
+.hilfe__tabelle th:first-child,
+.hilfe__taste {
+  width: 32%;
+}
+
+.hilfe__taste {
+  font-family: var(--tx-font-mono);
+  font-size: var(--tx-font-size-sm);
+}
+
+.hilfe__angaben {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--tx-space-2) var(--tx-space-5);
+  margin: 0 0 var(--tx-space-4);
+}
+
+.hilfe__angaben dt {
+  color: var(--tx-color-text-muted);
+}
+
+.hilfe__angaben dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.hilfe a {
+  color: var(--tx-color-accent-text);
+}
+
+/* ---------- Begrüßung beim ersten Start ---------- */
+
+.hilfe-start {
+  max-width: 1120px;
+  margin-top: var(--tx-space-5);
+}
+
+.hilfe-start h2 {
+  margin: 0 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-lg);
+}
+
+.hilfe-start h3 {
+  margin: 0 0 var(--tx-space-2);
+  font-size: var(--tx-font-size-md);
+}
+
+.hilfe-start__wege {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tx-space-4);
+  margin: var(--tx-space-4) 0;
+}
+
+.hilfe-start__weg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tx-space-3);
+  min-width: 0;
+  padding: var(--tx-space-5);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-lg);
+  background: var(--tx-color-surface-raised);
+}
+
+.hilfe-start__weg p {
+  margin: 0;
+}
+
+.hilfe-start__aktion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-3);
+  margin-top: auto;
+}
+
+.hilfe-start__weg .projekt__formular {
+  margin-top: auto;
+}
+
+.hilfe-start__weg .projekt__felder {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--tx-space-3);
+}
+
+.hilfe-start__weg .projekt__felder > .tx-button {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+.hilfe-start__leise {
+  color: var(--tx-color-text-muted);
+}
+
+/* ---------- Hinweis zu Daten und Sicherung ---------- */
+
+.hilfe-hinweis {
+  max-width: 960px;
+  margin: var(--tx-space-4) 0;
+  padding: var(--tx-space-4) var(--tx-space-5);
+  border: 1px solid var(--tx-color-border);
+  border-left: 4px solid var(--tx-color-accent);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-accent-subtle);
+}
+
+/* In der Begrüßung so breit wie die drei Wege darüber. */
+.hilfe-start .hilfe-hinweis {
+  max-width: none;
+}
+
+.hilfe-hinweis p {
+  margin: 0 0 var(--tx-space-2);
+}
+
+.hilfe-hinweis__titel {
+  display: block;
+  margin-bottom: var(--tx-space-2);
+}
+
+.hilfe-hinweis__fuss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-4);
+}
+
+.hilfe-hinweis a {
+  color: var(--tx-color-accent-text);
+}

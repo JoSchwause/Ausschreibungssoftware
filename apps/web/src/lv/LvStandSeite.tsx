@@ -3,7 +3,7 @@
 // Nur-Lese-Modus (`schreibgeschuetzt`, Ticket 54/67): kein Editor, kein Befehlsausgang, die Ansage kommt vom Grid. Der
 // Stand lässt sich als neues LV übernehmen (`LeistungsverzeichnisAnlegen`, ein Undo-Schritt).
 
-import { Button } from '@tethys/ui-basis';
+import { Button, Werkzeugleiste } from '@tethys/ui-basis';
 import { LvGrid } from '@tethys/ui-grid';
 import type { LeistungsverzeichnisId, LvStand, LvStandId } from '@tethys/vertrag';
 import { useEffect, useMemo, useState } from 'react';
@@ -103,16 +103,18 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
           {t.zumLv}
         </a>
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={lvTexte.werkzeuge.leiste}>
+      <Werkzeugleiste beschriftung={lvTexte.werkzeuge.leiste}>
         <HistorieKnoepfe />
         <Button onClick={() => void alsNeuesLv()}>{t.alsNeuesLv}</Button>
-      </div>
+      </Werkzeugleiste>
       <div className="lv__haupt">
         <div className="lv__grid">
           <LvGrid
             ansicht={ansicht}
             zahlen={gridZahlen}
             beschriftung={t.grid}
+            spaltenbreitenSchluessel="lv-stand"
+            ozMaske={lv.ozMaske}
             schreibgeschuetzt
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {

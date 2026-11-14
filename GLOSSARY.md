@@ -216,14 +216,22 @@ Der Grund, aus dem ein Löschen abgewiesen wird, weil noch etwas darauf verweist
 ### GAEB (Gemeinsamer Ausschuss Elektronik im Bauwesen)
 Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000). Das **Herkunftsformat** einer eingelesenen Datei (DA XML mit Version, GAEB 90 oder GAEB 2000) nennt das Leseergebnis zur Information (vertrag v1.7a); im Code `GaebLesung.format` (`GaebFormat`) neben `GaebLesung.version`.
 
+**GAEB 90** (Endungen `.d81` bis `.d86`) ist ein Satzformat: Jede Zeile ist ein **Satz** zu 80 Zeichen, vorn die zweistellige
+**Satzart** (z. B. `21` Position, `25` Kurztext, `26` Langtext), hinten die fortlaufende Satznummer; die Phase steht als
+Datenart im Eröffnungssatz `00`. Die App liest daraus LV (`.d81`, `.d83`, `.d86`) und Angebote (`.d84`), schreibt es nicht und
+zeigt bei jedem Einlesen den festen Hinweis, dass der Leser nicht an Dateien aus anderer Software geprüft ist (D-71). Im Code
+`gaeb90.ts` im Paket `gaeb`.
+
 ### GAEB-Austauschphasen (X81 – X89)
 Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
+- **X80**: Universelle LV-Daten (beliebige LV-Daten ohne bestimmte Prozessphase; nach der Fachdokumentation DA XML 3.3 auf gaeb.de, D-86). Wird nicht eingelesen.
 - **X81**: Leistungsbeschreibung (LV-Struktur und Texte ohne Preise, zur Übergabe zwischen Planern).
 - **X82**: Kostenansatz (LV mit geschätzten/geplanten Preisen des Planers).
 - **X83**: Angebotsaufforderung (LV mit Mengen und Texten ohne Preise, Versand an Bieter).
 - **X84**: Angebotsabgabe (Bieter sendet ausgefüllte Einheitspreise zurück an Ausschreibenden).
 - **X85**: Nebenangebot (Abweichendes Angebot eines Bieters).
 - **X86**: Auftragserteilung (Vereinbartes Auftrags-LV mit Vertragspreisen).
+- **X87**: Auftragsbestätigung (der Auftragnehmer bestätigt den Auftrag; Quelle wie X80). Wird nicht eingelesen. X88 nennt die Fachdokumentation 3.3 nicht; die App nennt dort nur die Nummer.
 - **X89**: Rechnungs-/Abrechnungsdaten.
 - **X31**: Mengenermittlungsdaten (Übergabe von Aufmaßen).
 - **Blankett**: Das LV ohne Preise als Vordruck für Bieter (PDF „ohne Preise“ mit Eingabefeldern, Excel für Bieter). Der Bieter trägt EP und, bei Zuschlagspositionen, den Zuschlagssatz ein.

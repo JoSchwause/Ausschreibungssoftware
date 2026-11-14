@@ -3,13 +3,13 @@
 // Server. pdfmake bleibt hinter dem Modell; wer den Renderer tauscht, ändert nur diese Datei. Die Ausgabe ist
 // ungetaggt (kein Strukturbaum); das PDF trägt Sprache und Titel.
 
-import pdfMake from 'pdfmake';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { LvZustand } from '@tethys/vertrag';
 import { baueAusgabemodell } from './modell';
 import type { AusgabeZeile, Ausgabemodell, ModellOptionen, PositionZeile } from './modell';
 import { ersetzePlatzhalter } from './platzhalter';
-import type { DruckBlock, DruckLauf } from './langtext';
+import type { DruckBild, DruckBlock, DruckLauf } from './langtext';
+import { SCHRIFT, briefkopf, erzeugungsdatum, pdfBytes } from './pdfmake';
 import type { Schriften } from './schriften';
 
 // Spaltenbreiten in pt (A4 hoch, 40 pt Rand links/rechts = 515 pt Satzbreite).
@@ -18,8 +18,12 @@ const EINRUECKUNG = 62;
 const SEITENBREITE = 595.28; // A4 in pt
 /** Seitenränder `[links, oben, rechts, unten]` in pt. */
 const RAENDER = { normal: [40, 62, 40, 46], eng: [28, 56, 28, 40] } as const;
-const SCHRIFT = 'NotoSans';
 const GRAU = '#555555';
+/** Größte Breite und Höhe eines Bildes aus dem Langtext auf dem Papier in pt (B-22); kleinere Bilder werden nie vergrößert. */
+export const BILD_MAX_BREITE = 300;
+export const BILD_MAX_HOEHE = 220;
+/** Pixel nach pt bei 96 Pixeln je Zoll. */
+const PT_JE_PIXEL = 0.75;
 
 type Zelle =
   string | { text: string; [schluessel: string]: unknown } | { canvas: unknown[]; [k: string]: unknown };
@@ -58,8 +62,18 @@ function bloeckeInhalt(bloecke: readonly DruckBlock[]): Content {
   return knoten.length === 1 ? (knoten[0] as Content) : { stack: knoten };
 }
 
+/** Größe auf dem Papier: natürliche Größe bei 96 dpi, verkleinert auf die Grenze, Seitenverhältnis bleibt. */
+function bildInhalt(b: DruckBild): Content {
+  const breite = b.breite * PT_JE_PIXEL;
+  const hoehe = b.hoehe * PT_JE_PIXEL;
+  const faktor = Math.min(1, BILD_MAX_BREITE / breite, BILD_MAX_HOEHE / hoehe);
+  return { image: b.daten, width: breite * faktor, height: hoehe * faktor, margin: [0, 2, 0, 3] };
+}
+
 function blockInhalt(b: DruckBlock): Content {
   switch (b.art) {
+    case 'bild':
+      return bildInhalt(b);
     case 'absatz':
       return { text: b.laeufe.map(laufInhalt), margin: [0, 0, 0, 2] };
     case 'liste': {
@@ -246,7 +260,7 @@ function summenKnoten(m: NonNullable<Ausgabemodell['summen']>): Content {
 }
 
 function kopfBlock(m: Ausgabemodell): Content {
-  return {
+  return briefkopf(m.kopf.absender, {
     margin: [0, 0, 0, 10],
     stack: [
       { text: m.kopf.lvName, bold: true, fontSize: 14, margin: [0, 0, 0, 6] },
@@ -258,13 +272,7 @@ function kopfBlock(m: Ausgabemodell): Content {
         margin: [0, 0, 0, 1],
       })),
     ],
-  };
-}
-
-/** Erzeugungsdatum des PDF: aus der Eingabe, sonst fest (keine Uhr, A2), damit gleiche Eingaben gleiche Bytes ergeben. */
-function erzeugungsdatum(datum: string | undefined): Date {
-  const d = datum === undefined ? new Date(0) : new Date(`${datum}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? new Date(0) : d;
+  });
 }
 
 /** Baut die Dokumentdefinition. Titel und der Anfang ihres ersten Kindes stehen in einem unteilbaren Block (nie Titel allein am Seitenende). */
@@ -362,25 +370,10 @@ export interface PdfOptionen extends ModellOptionen {
  * Erzeugt das PDF des LV als Bytes: Kopf, Gliederung mit Positionen und Langtext, Titelsummen, Schlussblöcke, Seitenkopf
  * und -fuß mit „Seite x von y“. `mitPreisen: false` druckt das Blankett für Bieter. Das Datum kommt als Eingabe.
  */
-export async function erzeugePdf(
+export function erzeugePdf(
   zustand: LvZustand,
   schriften: Schriften,
   optionen: PdfOptionen = {},
 ): Promise<Uint8Array> {
-  // Das Dokument braucht weder Netz noch Dateisystem: Zugriffe sperren (pdfmake warnt sonst unter Node, und ein
-  // Bild-/Schrift-URL im Dokument würde nachgeladen). `setLocalAccessPolicy` gibt es nur in der Node-Ausgabe.
-  pdfMake.setUrlAccessPolicy(() => false);
-  const nodeSeitig = pdfMake as { setLocalAccessPolicy?: (f: (pfad: string) => boolean) => void };
-  nodeSeitig.setLocalAccessPolicy?.(() => false);
-  pdfMake.setFonts({
-    [SCHRIFT]: {
-      normal: schriften.normal,
-      bold: schriften.fett,
-      italics: schriften.kursiv ?? schriften.normal,
-      bolditalics: schriften.fettKursiv ?? schriften.fett,
-    },
-  });
-  const modell = baueAusgabemodell(zustand, optionen);
-  const puffer = await pdfMake.createPdf(dokument(modell, optionen)).getBuffer();
-  return new Uint8Array(puffer);
+  return pdfBytes(dokument(baueAusgabemodell(zustand, optionen), optionen), schriften);
 }

@@ -779,3 +779,31 @@ Question: (1) Leerer Name beim Umbenennen eines LV-Stands: Vertragstext sagt „
 Decision: (1) Abweisen wie `LvStandAnlegen`; (2) vorhandene Codes behalten (Tests und Oberfläche bauen darauf). Beide Vertragstexte berichtigt der laufende Vertragsschreiber 128 nebenbei (nur Kommentar). (3) Gesammelt für die Review-Behebung 159: `vergabe` und `gaeb` nutzen `bieterangabenNormalisieren` aus `kern`; `speicher` nutzt den Ausführer `EinstellungenUebernehmen` aus `kern` statt eigener Kopie (`uebernimmEinstellungenDerDatei`); `speicher` und `gaeb` importieren `KOSTENGRUPPENNUMMER_MUSTER` aus `vertrag` statt des Kern-Alias `KOSTENGRUPPE_FORM`; die Ausnahme für `createSyncAccessHandle` in `apps/web/e2e-basispfad/basispfad.spec.ts:14` entfällt (D-139.9).
 Reason: Beides sind Lesarten ohne Wirkung auf Beträge; die Reste sind Einzeiler in fremden Paketen (P2), gebündelt statt verstreut.
 Reversible: yes  Touches: packages/vertrag (Kommentare), Ticket 159
+
+## D-88 Rückfragen aus 141 (Ausgaben der Kernkette)
+Welle 7 · Ticket 141 (Folge 128, 153) · decided by: orchestrator
+Question: (1) ADR 0012 sagt noch „Berichte nur PDF“ und „LV-PDF ohne Bilder“; E11/E12 verlangen Excel für Berichte und Bilder im LV-PDF. (2) „Vergabevorschlag“ fehlt im Glossar (L2). (3) Die Excel-Golden-Datei des LV hat zwei gesperrte Zahlformate mehr (D-141.13).
+Decision: (1) Kein Widerspruch zur Entscheidung der ADR (pdfmake, ungetaggt in v1, Renderer liest nur ein druckfertiges Modell); die Folgen-Abschnitte bekommen einen datierten Nachtrag „Welle 7: Excel für Berichte aus dem `Berichtsmodell`, Bilder aus dem Langtext im LV-PDF (G-61, E11/E12)“. Das schreibt 153 als nächster Schreiber in `ausgabe`. (2) Der Vertragsschreiber 128 trägt „Vergabevorschlag“ ins Glossar ein. (3) Angenommen; die Werte der Zellen bleiben gleich.
+Reason: Der Umfang aus G-61 ist vom Nutzer entschieden; die ADR wird nachgeführt, nicht umgestoßen.
+Reversible: yes  Touches: docs/adr/0012-*, GLOSSARY.md, Tickets 128, 153
+
+## D-89 Prüf-Panel beim Laden zu, auch mit Befunden
+Welle 7 · Ticket 142 (D-142.4) · decided by: orchestrator
+Question: E3 sagt „Prüf-Panel einklappbar, ohne Befunde zu“. Mit offenem Panel passen EP und GP bei 1280 px nicht (`typisch` hat 26 Warnungen, die BVBS-X83 2 Fehler); das Ziel „15 Zeilen samt EP und GP“ wäre nicht erreichbar. Der Umsetzer lässt das Panel beim Laden immer zu, die Schaltfläche „Prüfung“ zeigt die Anzahl, F8 öffnet.
+Decision: Bestätigt. Das messbare Ziel aus E3 geht vor dem Nebensatz; die Anzahl auf der Schaltfläche hält U5 (Probleme sichtbar, Sprung möglich). Die übrigen Seiten mit Schaltflächenreihen (Honorar, Rechnung, Abrechnung, Bauzeit, BIM, Bauleitung, Kosten, Modellvergleich) stellen in ihren Ordner-Tickets auf die `Werkzeuggruppe` um, soweit billig; `abrechnung/Verweis.tsx` ist unbenutzt und entfällt in 152.
+Reason: Tor E Punkt 1 verlangt die Sicht bei 1280×800.
+Reversible: yes  Touches: apps/web/src/lv, Tickets 152, 154, 155
+
+## D-90 Beispielprojekt aus den Fixtures über ein Vite-Plugin
+Welle 7 · Ticket 147 (D-147.2, D-147.4, D-147.8) · decided by: orchestrator
+Question: (1) Die Beispieldaten kommen über ein kleines Plugin in `apps/web/vite.config.ts` in den Build; Produktcode importiert keine Fixture-Datei, die Grenzprüfung `fixtures-nur-in-tests` bleibt unverändert. (2) Der Weg „GAEB-Datei einlesen“ legt vorläufig ein leeres „Neues Projekt“ an. (3) Die Seite „Annahmen“ beschreibt A5 und die Formeln nach dem geplanten Umfang.
+Decision: (1) Bestätigt: Die Regel schützt den Produktcode vor Testdaten-Abhängigkeiten; die Beispieldaten sind bewusst ausgelieferte, selbst verfasste Daten (C4) und kommen über den Build, nicht über einen Import. (2) 146 ersetzt `GaebWeg` in `hilfe/Willkommen.tsx` durch „Einlesen ohne offenes Projekt“ (Projekt erst beim Übernehmen, Name aus der Datei, nichts bleibt beim Abbrechen). (3) Wird A5 oder M4 gekürzt, berichtigt das Tor-Ticket 158 die Seite; der Bericht nennt es.
+Reason: Weg zum Tor E; keine Regel verletzt.
+Reversible: yes  Touches: apps/web/vite.config.ts, apps/web/src/hilfe, Tickets 146, 158
+
+## D-91 Drittes Nutzungslimit (5 Stunden, bis 03:20 UTC)
+Welle 7 · Tickets 128, 132, 144, 146, 148, 150, 151, 155 · decided by: orchestrator
+Question: Gegen 23:30 UTC brachen alle acht laufenden Agenten am 5-Stunden-Limit ab.
+Decision: Um 07:32 UTC alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-81, D-85), nachdem der Nutzer „Continue“ schrieb. Nichts gekürzt. 153 wartet weiter auf 128 (Teil A5); 154 bekommt den nächsten freien Platz.
+Reason: Kein Verlust; die Kürzungsreihenfolge greift erst, wenn Pflichtteile des Tors gefährdet sind.
+Reversible: yes  Touches: Ablauf

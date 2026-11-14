@@ -1,0 +1,4 @@
+fixtures/gaeb-formate/*.d8? -text
+fixtures/gaeb-formate/*.D8? -text
+fixtures/gaeb-formate/*.p8? -text
+fixtures/gaeb-formate/*.P8? -text
