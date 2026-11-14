@@ -162,6 +162,13 @@ async function zahlungErfassen(page: Page, datum: string, betrag: string): Promi
   await expect(dialog).toBeHidden();
 }
 
+/** Das heutige Datum als `JJJJ-MM-TT` in Ortszeit, wie die App es aus ihrer Uhr liest. */
+const heute = (): string => {
+  const d = new Date();
+  const zwei = (n: number): string => String(n).padStart(2, '0');
+  return `${String(d.getFullYear())}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
+};
+
 /** Die Fälle des Skontos und der geltende Fall wie der Zahlungsstand der Fixture. */
 async function zahlungsstandPruefen(
   page: Page,
@@ -169,6 +176,9 @@ async function zahlungsstandPruefen(
   steuer: boolean,
   skonto: 'verwirklicht' | 'nicht verwirklicht',
 ): Promise<void> {
+  // Zweiter Review-Durchgang R2: Solange die Frist läuft (Uhr des Browsers), heißt es „noch nicht verwirklicht“.
+  const text =
+    skonto === 'nicht verwirklicht' && heute() <= (zs.fristende ?? '') ? 'noch nicht verwirklicht' : skonto;
   const minus = (b: string): string => (b === '0.00' ? betragDe(b) : `−${betragDe(b)}`);
   await expect(page.getByTestId('fall-mit-zahlbetrag')).toHaveText(betragDe(zs.zahlbetrag));
   await expect(page.getByTestId('fall-mit-skonto')).toHaveText(minus(zs.mitSkonto.skonto));
@@ -185,7 +195,7 @@ async function zahlungsstandPruefen(
     `Bei Zahlung bis ${datumDe(zs.fristende ?? '')}: Auszahlung ${betragDe(zs.mitSkonto.auszahlung)} €, danach: ${betragDe(zs.ohneSkonto.auszahlung)} €.`,
   );
   const geltend = page.getByRole('table', { name: 'Geltender Fall' });
-  await expect(geltend.getByRole('row', { name: new RegExp(`^Skonto \\(${skonto}\\)`) })).toBeVisible();
+  await expect(geltend.getByRole('row', { name: new RegExp(`^Skonto \\(${text}\\)`) })).toBeVisible();
   await expect(page.getByTestId('zahlung-skonto')).toHaveText(minus(zs.verwirklichterSkonto));
   await expect(page.getByTestId('zahlung-auszahlung')).toHaveText(betragDe(zs.auszahlung));
   await expect(page.getByTestId('zahlung-summeZahlungen')).toHaveText(minus(zs.summeZahlungen));

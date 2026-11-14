@@ -4,7 +4,8 @@
 // unabhängig hergeleitet): AR 1 mit 3 % Skonto und Bauabzugsteuer, Zahlung am Fristende (offen 0,00); AR 2 mit
 // Vertragsstrafe 1.500,00 und 2 % Skonto, Teilzahlung in der Frist und Rest danach (offen 570,67).
 
-import type { Rechnung, RechnungBefehl } from '@tethys/vertrag';
+import { plusKalendertage } from '@tethys/abrechnung';
+import type { Kalenderdatum, Rechnung, RechnungBefehl } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import {
   A5_BEFEHLE,
@@ -24,6 +25,8 @@ import { mitAuftrag, type Auftragsstand } from './testhilfen';
 import { aufmassBefehlSchreiben, aufmassSchreiben, nachtragSchreiben } from './testpfad';
 
 type Stand = Auftragsstand & { s: RechnungenSitzung };
+/** Ein Tag lange nach jeder Skontofrist der Fixture: Der Skonto ist dann endgültig verwirklicht oder nicht. */
+const SPAETER = '2099-12-31' as Kalenderdatum;
 const de = (b: string): string => b.replace('.', ',');
 
 async function m4(): Promise<Stand> {
@@ -88,7 +91,11 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
   it('AR 1: beide Fälle des Skontos, Zahlung am Fristende verwirklicht ihn, offen 0,00', async () => {
     const a = await m4();
     const frei = await ar1Freigegeben(a);
-    const vorZahlung = zahlungsfreigabe(frei, pruefen(frei, await stand(a), a.s.zustand).zahlungsstand);
+    const vorZahlung = zahlungsfreigabe(
+      frei,
+      pruefen(frei, await stand(a), a.s.zustand).zahlungsstand,
+      SPAETER,
+    );
     expect(vorZahlung.faelle?.bis).toBe('2026-11-13');
     expect(vorZahlung.faelle?.zeilen.map((z) => [z.bezeichnung, z.mit, z.ohne])).toEqual([
       ['Zahlbetrag', '8874.40', '8874.40'],
@@ -101,7 +108,7 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
     const ar1 = await senden(a, frei, A5_BEFEHLE.ar1.nachFreigabe);
     const p = pruefen(ar1, await stand(a), a.s.zustand);
     expect(p.zahlungsstand).toEqual(A5_PRUEFUNGEN.ar1.zahlungsstand);
-    const zf = zahlungsfreigabe(ar1, p.zahlungsstand);
+    const zf = zahlungsfreigabe(ar1, p.zahlungsstand, SPAETER);
     expect(zf.geltend.map((z) => [z.bezeichnung, z.betrag])).toEqual([
       ['Zahlbetrag (eingefroren)', '8874.40'],
       ['Skonto (verwirklicht)', '266.23'],
@@ -171,7 +178,7 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
     });
 
     // Vorschau vor der Freigabe: vom geprüften Zahlbetrag aus.
-    expect(zahlungsfreigabe(r, p.zahlungsstand).geltend[0]).toEqual({
+    expect(zahlungsfreigabe(r, p.zahlungsstand, SPAETER).geltend[0]).toEqual({
       schluessel: 'zahlbetrag',
       bezeichnung: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
       betrag: k.zahlbetrag,
@@ -184,14 +191,23 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
     ]);
     const zs = pruefen(ar2, await stand(a), a.s.zustand).zahlungsstand;
     expect(zs).toEqual(A5_PRUEFUNGEN.ar2.zahlungsstand);
-    expect(zahlungsfreigabe(ar2, zs).geltend.map((z) => [z.schluessel, z.betrag])).toEqual([
+    expect(zahlungsfreigabe(ar2, zs, SPAETER).geltend.map((z) => [z.schluessel, z.betrag])).toEqual([
       ['zahlbetrag', '8570.67'],
       ['skonto', '0.00'],
       ['auszahlung', '8570.67'],
       ['summeZahlungen', '8000.00'],
       ['offen', '570.67'],
     ]);
-    expect(zahlungsfreigabe(ar2, zs).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+    expect(zahlungsfreigabe(ar2, zs, SPAETER).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+    // Zweiter Review-Durchgang R2: Solange die Frist läuft, ist der Skonto noch nicht verwirklicht, nicht endgültig verfehlt.
+    const fristende = zs.fristende;
+    if (fristende === null) throw new Error('AR 2 hat ein Fristende');
+    expect(zahlungsfreigabe(ar2, zs, fristende).geltend[1]?.bezeichnung).toBe(
+      'Skonto (noch nicht verwirklicht)',
+    );
+    const tagDanach = plusKalendertage(fristende, 1);
+    if (tagDanach === null) throw new Error('Kalender');
+    expect(zahlungsfreigabe(ar2, zs, tagDanach).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
   });
 });
 
@@ -199,7 +215,7 @@ describe('zahlungsfreigabe: Varianten der Fixture', () => {
   const variante = (name: string) => {
     const v = A5_VARIANTEN.find((x) => x.name === name);
     if (v === undefined) throw new Error(name);
-    return zahlungsfreigabe(v.rechnung, v.zahlungsstand);
+    return zahlungsfreigabe(v.rechnung, v.zahlungsstand, SPAETER);
   };
 
   it('ohne neue Felder: keine Fälle, nur Zahlbetrag, Auszahlung, Summe der Zahlungen, offen', () => {

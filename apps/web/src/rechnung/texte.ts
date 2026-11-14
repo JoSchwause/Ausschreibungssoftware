@@ -204,6 +204,7 @@ export const texte = {
     zahlbetragVorschau: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
     skontoVerwirklicht: 'Skonto (verwirklicht)',
     skontoNichtVerwirklicht: 'Skonto (nicht verwirklicht)',
+    skontoNochNichtVerwirklicht: 'Skonto (noch nicht verwirklicht)',
     summeZahlungen: 'Summe der Zahlungen',
     offen: 'Offen',
     posten: 'Posten',

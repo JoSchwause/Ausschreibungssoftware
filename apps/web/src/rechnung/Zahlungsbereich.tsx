@@ -6,10 +6,20 @@
 
 import { vorzeichen } from '@tethys/dezimal';
 import { Button, Dialog, Eingabefeld, Zahlfeld } from '@tethys/ui-basis';
-import type { Betrag, IdQuelle, Rechnung, RechnungBefehl, Zahlung, Zahlungsstand } from '@tethys/vertrag';
+import type {
+  Betrag,
+  IdQuelle,
+  Kalenderdatum,
+  Rechnung,
+  RechnungBefehl,
+  Zahlung,
+  Zahlungsstand,
+} from '@tethys/vertrag';
 import { useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { datumAusUhr } from '../ausgabe/logik';
 import { datumDe } from '../lv/kopfdaten';
+import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
 import { zahlungsfreigabe } from './pruefung';
 import { texte } from './texte';
@@ -38,7 +48,12 @@ export function Zahlungsbereich({
   befehle: (bs: readonly RechnungBefehl[]) => Promise<boolean>;
 }): ReactElement {
   const hinweisId = useId();
-  const zf = useMemo(() => zahlungsfreigabe(rechnung, zahlungsstand), [rechnung, zahlungsstand]);
+  const u = useUmgebung();
+  const heute = datumAusUhr(u.uhr()) as Kalenderdatum;
+  const zf = useMemo(
+    () => zahlungsfreigabe(rechnung, zahlungsstand, heute),
+    [rechnung, zahlungsstand, heute],
+  );
   const [dialog, setDialog] = useState<Dialoglage>({ art: 'zu' });
   const abbrechen = useRef<HTMLButtonElement>(null);
   const freigegeben = rechnung.freigabe !== null;
