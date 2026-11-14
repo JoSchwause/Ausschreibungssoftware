@@ -13,7 +13,14 @@ import type {
   Prozent,
   TitelId,
 } from '@tethys/vertrag';
-import { KEIN_FILTER, filterAktiv, filterText, gefilterteZeilen, suchtreffer, vorfahrenZugeklappt } from './suche';
+import {
+  KEIN_FILTER,
+  filterAktiv,
+  filterText,
+  gefilterteZeilen,
+  suchtreffer,
+  vorfahrenZugeklappt,
+} from './suche';
 import type { Zeilenfilter } from './suche';
 
 const LV = 'lv';
@@ -81,7 +88,15 @@ function hinweis(id: string, eltern: string, text: string): Knoten {
 }
 
 function zeile(knoten: Knoten, tiefe: number, unter = false, auf = unter): LvZeile {
-  return { knoten, tiefe, hatUnterknoten: unter, aufgeklappt: auf, summe: null, gehtInSummeEin: null, befunde: [] };
+  return {
+    knoten,
+    tiefe,
+    hatUnterknoten: unter,
+    aufgeklappt: auf,
+    summe: null,
+    gehtInSummeEin: null,
+    befunde: [],
+  };
 }
 
 // Ein kleines LV: zwei Titel, darin Positionen und ein Hinweistext; Titel 02 ist zugeklappt (in `alle` trotzdem enthalten).
@@ -91,11 +106,13 @@ const p1 = position('p1', 't1', '01.0010', 'Oberboden abtragen', {
   ep: '4.500',
   langtext: [{ art: 'absatz', inhalt: [{ art: 'text', text: 'Oberboden 30 cm, seitlich lagern.' }] }],
 });
-const p2 = position('p2', 't1', '01.0020', 'Baugrube ausheben', { merkmale: { bedarf: 'ohne-gesamtbetrag' } });
+const p2 = position('p2', 't1', '01.0020', 'Baugrube ausheben', {
+  merkmale: { bedarf: 'ohne-gesamtbetrag' },
+});
 const t2 = titel('t2', LV, '02', 'Mauerarbeiten');
 const p3 = position('p3', 't2', '02.0010', 'Mauerwerk KS', {
   ep: '80.000',
-  merkmale: { wahl: { gruppe: 1, variante: 1 } },
+  merkmale: { wahl: { gruppe: 1, variante: 1, grundpositionId: null } },
 });
 const p4 = position('p4', 't2', '02.0020', 'Zuschlag Höhe', { zuschlagssatz: null });
 const p5 = position('p5', 't2', '02.0030', 'Stundenlohn Maurer', {
@@ -180,14 +197,21 @@ describe('gefilterteZeilen', () => {
     expect(ids(gefilterteZeilen(alle, mit({ art: 'hinweis' })))).toEqual(['t1', 'h1']);
     expect(ids(gefilterteZeilen(alle, mit({ art: 'zuschlagsposition' })))).toEqual(['t2', 'p4']);
     expect(ids(gefilterteZeilen(alle, mit({ art: 'gliederung' })))).toEqual(['t1', 't2']);
-    expect(ids(gefilterteZeilen(alle, mit({ art: 'position' })))).toEqual(['t1', 'p1', 'p2', 't2', 'p3', 'p4', 'p5']);
+    expect(ids(gefilterteZeilen(alle, mit({ art: 'position' })))).toEqual([
+      't1',
+      'p1',
+      'p2',
+      't2',
+      'p3',
+      'p4',
+      'p5',
+    ]);
   });
 
   it('mehrere Angaben gelten zugleich', () => {
-    expect(ids(gefilterteZeilen(alle, mit({ art: 'position', ohnePreis: true, merkmal: 'bedarf' })))).toEqual([
-      't1',
-      'p2',
-    ]);
+    expect(ids(gefilterteZeilen(alle, mit({ art: 'position', ohnePreis: true, merkmal: 'bedarf' })))).toEqual(
+      ['t1', 'p2'],
+    );
     expect(gefilterteZeilen(alle, mit({ art: 'hinweis', ohnePreis: true }))).toEqual([]);
   });
 

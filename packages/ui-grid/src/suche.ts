@@ -5,6 +5,7 @@
 
 import type { Knoten, LvZeile } from '@tethys/vertrag';
 import { hinweisKlartext } from './eingabe';
+import { suchtexte } from './texte';
 
 /** Feld, in dem eine Zeile gefunden wurde; der Text eines Hinweistexts steht in der Spalte „Kurztext“. */
 export type Suchfeld = 'ordnungszahl' | 'kurztext' | 'langtext';
@@ -78,19 +79,13 @@ export interface Zeilenfilter {
 
 export const KEIN_FILTER: Zeilenfilter = { art: null, merkmal: null, ohnePreis: false };
 
-export const ZEILENARTEN: readonly (readonly [Zeilenart, string])[] = [
-  ['position', 'Positionen'],
-  ['zuschlagsposition', 'Zuschlagspositionen'],
-  ['hinweis', 'Hinweistexte'],
-  ['gliederung', 'Titel und Lose'],
-];
-export const MERKMALFILTER: readonly (readonly [Merkmalfilter, string])[] = [
-  ['bedarf', 'Bedarf'],
-  ['wahl', 'Wahl'],
-  ['stundenlohn', 'Stundenlohn'],
-  ['pauschal', 'Pauschal'],
-];
-const OHNE_PREIS = 'ohne Preis';
+/** Die Arten und Merkmale des Filters in der Reihenfolge der Auswahl, mit ihrem Text. */
+export const ZEILENARTEN: readonly (readonly [Zeilenart, string])[] = (
+  ['position', 'zuschlagsposition', 'hinweis', 'gliederung'] as const
+).map((a) => [a, suchtexte.arten[a]] as const);
+export const MERKMALFILTER: readonly (readonly [Merkmalfilter, string])[] = (
+  ['bedarf', 'wahl', 'stundenlohn', 'pauschal'] as const
+).map((m) => [m, suchtexte.merkmale[m]] as const);
 
 export function filterAktiv(f: Zeilenfilter): boolean {
   return f.art !== null || f.merkmal !== null || f.ohnePreis;
@@ -103,7 +98,7 @@ export function filterText(f: Zeilenfilter): string {
   if (art) teile.push(art[1]);
   const merkmal = MERKMALFILTER.find(([m]) => m === f.merkmal);
   if (merkmal) teile.push(merkmal[1]);
-  if (f.ohnePreis) teile.push(OHNE_PREIS);
+  if (f.ohnePreis) teile.push(suchtexte.ohnePreis);
   return teile.join(', ');
 }
 

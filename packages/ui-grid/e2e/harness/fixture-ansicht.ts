@@ -165,11 +165,15 @@ export async function ladeFixture(name: FixtureName, kopien = 1): Promise<Modell
   return { lvId, knoten, gp, titelsumme, gesamt };
 }
 
-/** Sichtbarer, flacher Baum: Kinder eines Knotens stehen nur, wenn er aufgeklappt ist. */
+/**
+ * Sichtbarer, flacher Baum: Kinder eines Knotens stehen nur, wenn er aufgeklappt ist. Mit `alle` stehen alle Knoten darin
+ * (`aufgeklappt` wie gehabt), wie `alleZeilen` des Grids sie erwartet (Ticket 156).
+ */
 export function baueAnsicht(
   modell: Modell,
   aufgeklappt: ReadonlySet<string>,
   befunde: ReadonlyMap<string, readonly Pruefbefund[]> = new Map(),
+  alle = false,
 ): LvAnsicht {
   const kinder = new Map<string, Knoten[]>();
   for (const k of modell.knoten) {
@@ -197,7 +201,7 @@ export function baueAnsicht(
         gehtInSummeEin: k.art === 'position' ? (p?.inSumme ?? null) : null,
         befunde: befunde.get(k.id) ?? [],
       });
-      if (offen && unter.length > 0) besuche(k.id, tiefe + 1);
+      if ((offen || alle) && unter.length > 0) besuche(k.id, tiefe + 1);
     }
   };
   besuche(modell.lvId, 0);
