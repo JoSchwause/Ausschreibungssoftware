@@ -7,7 +7,8 @@
 import { Tabs } from '@tethys/ui-basis';
 import type { ReactElement } from 'react';
 import { useAnker } from '../ui/route';
-import { APP_BUILD, APP_VERSION, bauStandText } from '../version';
+import { APP_BUILD, APP_VERSION } from '../version';
+import { bauStandText } from './stand';
 import { kuerzelGruppen } from './kuerzel';
 import { HILFETEILE, hilfeteilAus, type Hilfeteil } from './pfad';
 import { texte, type Annahmenabschnitt } from './texte';

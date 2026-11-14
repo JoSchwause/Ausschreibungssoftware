@@ -250,6 +250,8 @@ export const texte = {
       'Freie Software für Ausschreibung, Vergabe und Abrechnung im Bauwesen. Sie läuft im Browser; die Daten bleiben auf dem Gerät.',
     version: 'Version',
     stand: 'Stand',
+    standUnbekannt: 'unbekannt',
+    standVom: (commit: string, datum: string): string => `${commit} vom ${datum}`,
     lizenz: 'Lizenz',
     lizenzName: 'GNU Affero General Public License, Version 3 oder später (AGPL-3.0-or-later)',
     lizenzText:
