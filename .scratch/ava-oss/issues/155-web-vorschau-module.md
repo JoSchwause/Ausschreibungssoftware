@@ -84,3 +84,22 @@ Kernen: `kern/k9-leistung`, `kern/lv-pruefung-fixtures`, `kern/summen-leistung`,
 `speicher/v16-leistung` wechselnd rot (Pakete, die dieses Ticket nicht berührt; nicht gelockert). E2E grün: x1-kern,
 x1-erweitert, x2 (2), x3, x4, vorschau (2), bim-mengen, bim, bim-tastatur, modellvergleich (3), kosten; `ui-modell` E2E
 `modellansicht` + `haus` 13/13 (ein erster Lauf `haus` rot unter Last, zweimal wiederholt grün).
+
+Nachtrag (D-94 des Orchestrators):
+
+- **D-155.13 PDF-Fehler.** `bauzeit/PlanDrucken.tsx` und `bauleitung/PdfDialog.tsx` zeigen statt des Rohtexts der Ausnahme den
+  Satz mit nächstem Schritt aus `fehler/texte.ts` (`pdf`), wie der LV-Druck (Ticket 132).
+- **D-155.14 Merge-Rest in `e2e/umwege.spec.ts`.** `integration/welle-7` (Stand `fd4729b`) trug Konfliktmarker (148 gegen 132);
+  aufgelöst als `erwarteMeldung(page, 'Titel werden im Grid bearbeitet')` (Text aus 148, Prüfweg aus 132). umwege 4/4 grün.
+- **D-155.15 `bim-tastatur.spec.ts:135` nicht behoben, Ursache eingegrenzt.** Messung im Browser (Kopie des Tests mit
+  Protokoll, `--repeat-each`, danach entfernt): Die Taste ↓ erreicht die Option und Radix nimmt sie an (`preventDefault`), aber
+  Radix Select verschiebt den Fokus erst in einem `setTimeout`, und in den roten Läufen laufen **weder `setTimeout(0)` noch
+  `requestAnimationFrame`** über mehr als eine Sekunde (danach feuern die aufgestauten Zeitgeber gebündelt). Dabei: keine
+  Long Tasks, kein Neuzeichnen des Dialogs, keine Nachrichten an Worker oder MessageChannel, Seite sichtbar und fokussiert,
+  kein Zeigerereignis, kein Scrollen; auch mit verborgener 3D-Leinwand rot (2 von 5). Der Renderer drosselt also Zeitgeber und
+  Bilder unter Last (Last 22–29 auf 4 Kernen); eine Ursache in der App fand sich nicht. Test unverändert (nicht abgeschwächt).
+  **Offen für den Orchestrator:** auf ruhiger Maschine wiederholen; falls dort rot, die Auswahl in `ui-basis` prüfen (Radix
+  Select fokussiert per Zeitgeber).
+- Endlauf nach dem Merge von 132 (`fd4729b`): typecheck grün, lint der berührten Ordner grün, Prettier und Paketgrenzen grün;
+  E2E (gegen vorgebauten Server, weil der Build unter Last die 120 s des `webServer` überschritt) 16/16 grün: x1-kern,
+  x1-erweitert, x2 (2), x3, x4, vorschau (2), bim-mengen, modellvergleich (3), umwege (4).
