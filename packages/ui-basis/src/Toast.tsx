@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as RadixToast from '@radix-ui/react-toast';
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
@@ -24,6 +24,14 @@ interface ToastKontext {
 
 const Kontext = createContext<ToastKontext | null>(null);
 
+/**
+ * Offene Auswahlliste (Radix Select) oder offenes Menü (Radix DropdownMenu/ContextMenu). Radix gibt Escape der zuletzt
+ * geöffneten Ebene; eine Meldung, die jetzt erschiene, nähme der Liste die Taste weg (D-162.3). Darum wartet sie.
+ */
+const OFFENE_LISTE = '[role="listbox"][data-state="open"], [role="menu"][data-state="open"]';
+const listeOffen = (): boolean =>
+  typeof document !== 'undefined' && document.querySelector(OFFENE_LISTE) !== null;
+
 const ICONS: Record<ToastArt, IconName> = {
   info: 'info',
   erfolg: 'haken',
@@ -39,7 +47,10 @@ export interface ToastAnbieterProps {
   schliessenLabel?: string;
 }
 
-/** Stellt `useToast()` bereit und rendert die Meldungen oben rechts. F8 springt in den Bereich. */
+/**
+ * Stellt `useToast()` bereit und rendert die Meldungen oben rechts. F8 springt in den Bereich. Ist eine Auswahlliste oder ein
+ * Menü offen, erscheint eine Meldung erst, wenn es zu ist (sie nähme ihm sonst die Escape-Taste, D-162.3).
+ */
 export function ToastAnbieter({
   children,
   bereichLabel = 'Meldungen ({hotkey})',
@@ -47,13 +58,39 @@ export function ToastAnbieter({
   schliessenLabel = baustein.toastSchliessen,
 }: ToastAnbieterProps): ReactElement {
   const [eintraege, setEintraege] = useState<ToastEintrag[]>([]);
+  const [wartend, setWartend] = useState<ToastEintrag[]>([]);
   const zaehler = useRef(0);
 
   const zeige = useCallback((inhalt: ToastInhalt) => {
     zaehler.current += 1;
     const id = zaehler.current;
-    setEintraege((alt) => [...alt, { ...inhalt, id }]);
+    if (listeOffen()) setWartend((alt) => [...alt, { ...inhalt, id }]);
+    else setEintraege((alt) => [...alt, { ...inhalt, id }]);
   }, []);
+
+  // Wartende Meldungen erscheinen, sobald keine Liste mehr offen ist (beobachtet nur, solange eine wartet).
+  useEffect(() => {
+    if (wartend.length === 0) return;
+    const freigeben = (): boolean => {
+      if (listeOffen()) return false;
+      setEintraege((alt) => [...alt, ...wartend]);
+      setWartend([]);
+      return true;
+    };
+    if (freigeben()) return;
+    const beobachter = new MutationObserver(() => {
+      if (freigeben()) beobachter.disconnect();
+    });
+    beobachter.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+    return () => {
+      beobachter.disconnect();
+    };
+  }, [wartend]);
   const kontext = useMemo(() => ({ zeige }), [zeige]);
 
   return (
