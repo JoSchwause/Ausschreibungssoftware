@@ -57,6 +57,7 @@ import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { deflateRaw, inflateRaw, sha256Hex } from './komprimierung';
 import { protokollform } from './kurzfassung';
+import { wendeProjektbestandAn } from './projektbestand';
 import {
   leseAngebot,
   leseAufmass,
@@ -602,14 +603,22 @@ export class SpeicherKern {
 
   async #anwendenDann(e: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
-    // Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; Ticket 161 schreibt das ChangeSet des Projektbestands.
-    if (changeSet.art === 'projektbestand')
-      return fehler('unbekannt', 'ChangeSet „projektbestand“ wird noch nicht geschrieben (Ticket 161).');
     let eintrag: Protokolleintrag;
     try {
       eintrag = await protokollform(e);
     } catch (x) {
       return { ok: false, fehler: fehlerAusAusnahme(x) };
+    }
+    // Vertrag v1.7c (Ticket 161, D-96): Projekt samt Inhalt löschen und sein Undo, je in einer Transaktion.
+    if (changeSet.art === 'projektbestand') {
+      const version = this.#migrationen[this.#migrationen.length - 1]?.version ?? 0;
+      return this.#fange(() => {
+        transaktion(this.#db, () => {
+          // Kein `pruefeHistorienbezug`: Der Eintrag des Löschens wird nie gespeichert (D-160.5, D-160.6, wie D-31.1).
+          if (wendeProjektbestandAn(this.#db, eintrag, changeSet, version))
+            schreibeProtokolleintrag(this.#db, eintrag);
+        });
+      });
     }
     return this.#fange(() => {
       transaktion(this.#db, () => {
