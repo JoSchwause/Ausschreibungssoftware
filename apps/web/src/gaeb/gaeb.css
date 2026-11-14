@@ -148,9 +148,34 @@
   gap: var(--tx-space-2) var(--tx-space-4);
 }
 
+/* Angebot bearbeiten (SB3): Das gemeinsame Grid braucht Breite und eine feste Höhe (es füllt sein Elternelement). */
+.tx-dialog:has(.gaeb__angebot) {
+  width: min(960px, calc(100vw - 32px));
+}
+
 .gaeb__preise {
-  max-height: 50vh;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  height: min(50vh, 420px);
+  min-height: 200px;
+}
+
+.gaeb__hinweis {
+  margin: 0;
+  color: var(--tx-color-text-muted);
+}
+
+.gaeb__angebotsfelder,
+.gaeb__zuschlaege {
+  display: grid;
+  gap: var(--tx-space-2);
+}
+
+.gaeb__zuschlag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2) var(--tx-space-4);
 }
 
 .gaeb__tabelle td.gaeb__kurztext {

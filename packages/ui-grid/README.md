@@ -47,8 +47,11 @@ Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` 
 - Höhe: Das Grid füllt die Höhe seines Elternelements (`height: 100%`, als Flex-Element `flex: 1`); nur der Scrollbereich
   schrumpft, Hinweise, Status und Summenfuß bleiben sichtbar.
 
-Was sich ändern lässt und wohin die Befehle gehen, steht in `src/schreibrechte.ts`, samt der einen Ausnahme vom
-Schreibschutz (Spalte „KG“, Ticket 93).
+Was sich ändern lässt und wohin die Befehle gehen, steht in `src/schreibrechte.ts`, samt der beiden Ausnahmen vom
+Schreibschutz: Spalte „KG“ (`kostengruppeLesen` und `onKostengruppen`, Ticket 93) und Spalte „EP“ (`onEinheitspreise`,
+Review Welle 7 SB3, z. B. die Preise eines Angebots auf dem Gerüst des LV statt eines zweiten Grids, U2). Mit der Ausnahme
+„EP“ ist der EP einer Zuschlagsposition gesperrt (ihr Preis ist ein Satz); Eingabe, Entf und das Einfügen einer Spalte gehen
+als `EinheitspreisAendern` hinaus, jede Aktion als eine Folge.
 
 ## Weitere Eigenschaften
 

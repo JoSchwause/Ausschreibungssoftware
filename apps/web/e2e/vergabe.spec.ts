@@ -27,6 +27,17 @@ const A = BIETER.find((b) => b.name === 'Bieter A') as FxBieter;
 const datei = (rel: string): string => new URL(`../../../fixtures/${rel}`, import.meta.url).pathname;
 
 const liste = (page: Page): Locator => page.getByRole('dialog', { name: 'Angebote' });
+/** Die Zelle „EP“ der Position `oz` im Grid „Preise des Angebots“ (gemeinsames Grid, U2). */
+const epZelle = (dialog: Locator, oz: string): Locator =>
+  dialog
+    .getByRole('treegrid', { name: 'Preise des Angebots' })
+    .locator('[role="row"]')
+    .filter({
+      has: dialog
+        .page()
+        .locator('[data-spalte="ordnungszahl"] .tx-grid__text', { hasText: new RegExp(`^${oz}$`) }),
+    })
+    .locator('[data-spalte="einheitspreis"]');
 const angebotszeile = (page: Page, bieter: string): Locator =>
   page
     .getByRole('table', { name: 'Angebote dieses Leistungsverzeichnisses' })
@@ -80,8 +91,12 @@ test('Angebot bearbeiten: Preis berichtigen und Nachlass setzen; Angebot lösche
 
   await liste(page).getByRole('button', { name: 'Angebot bearbeiten: Bieter A' }).click();
   const bearbeiten = page.getByRole('dialog', { name: 'Angebot von „Bieter A“ bearbeiten' });
-  await expect(bearbeiten.getByLabel('Preis 01.0010')).toHaveValue('1.814,850');
-  await bearbeiten.getByLabel('Preis 01.0010').fill('1900');
+  // Die Preise stehen im gemeinsamen Grid (U2): Zelle wählen, tippen, Enter übernimmt.
+  await expect(epZelle(bearbeiten, '01.0010')).toHaveText('1.814,850');
+  await epZelle(bearbeiten, '01.0010').click();
+  await page.keyboard.type('1900');
+  await page.keyboard.press('Enter');
+  await expect(epZelle(bearbeiten, '01.0010')).toHaveText('1.900,000');
   await bearbeiten.getByRole('combobox', { name: 'Nachlass' }).click();
   await page.getByRole('option', { name: 'in %' }).click();
   await bearbeiten.getByLabel('Wert des Nachlasses').fill('5');
@@ -90,13 +105,16 @@ test('Angebot bearbeiten: Preis berichtigen und Nachlass setzen; Angebot lösche
   await expect(angebotszeile(page, 'Bieter A').getByRole('cell').nth(1)).toHaveText('55.566,99');
   await expect(angebotszeile(page, 'Bieter A').getByRole('cell').nth(2)).toHaveText('52.788,64');
 
-  // Eine unlesbare Eingabe wird am Feld gemeldet und nicht gesendet.
+  // Eine unlesbare Eingabe wird an der Zelle gemeldet und nicht übernommen.
   await liste(page).getByRole('button', { name: 'Angebot bearbeiten: Bieter A' }).click();
-  await bearbeiten.getByLabel('Preis 01.0010').fill('viel');
-  await bearbeiten.getByRole('button', { name: 'Änderungen speichern' }).click();
-  await expect(bearbeiten.getByText('Bitte eine Zahl wie 12,50 eingeben.')).toBeVisible();
-  // „nicht angeboten“: 55.481,84 − 1.814,85 = 53.666,99, Nachlass weg.
-  await bearbeiten.getByLabel('nicht angeboten 01.0010').check();
+  await epZelle(bearbeiten, '01.0010').click();
+  await page.keyboard.type('viel');
+  await page.keyboard.press('Enter');
+  await expect(epZelle(bearbeiten, '01.0010')).toHaveAccessibleDescription(/Kein gültiger Einheitspreis/);
+  // „nicht angeboten“: Entf leert den Preis; 55.481,84 − 1.814,85 = 53.666,99, Nachlass weg.
+  await epZelle(bearbeiten, '01.0010').click();
+  await page.keyboard.press('Delete');
+  await expect(epZelle(bearbeiten, '01.0010')).toHaveAccessibleDescription(/Nicht angeboten/);
   await bearbeiten.getByRole('combobox', { name: 'Nachlass' }).click();
   await page.getByRole('option', { name: 'kein Nachlass' }).click();
   await bearbeiten.getByRole('button', { name: 'Änderungen speichern' }).click();
