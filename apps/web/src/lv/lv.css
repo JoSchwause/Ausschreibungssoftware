@@ -400,3 +400,25 @@
   border-radius: var(--tx-radius-sm);
   color: var(--tx-color-text-muted);
 }
+
+/* Dialog „OZ-Maske ändern“: Vorschau und Konflikte als kurze Liste. */
+.lv-ozmaske__liste {
+  max-height: 240px;
+  margin: 0;
+  padding-left: var(--tx-space-5);
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Band über dem Grid nach einem Preisbefehl, der die Kalkulation entfernt hat: Text und „Rückgängig“. */
+.lv__band {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--tx-space-3);
+  margin-bottom: var(--tx-space-2);
+  padding: var(--tx-space-2) var(--tx-space-4);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-warning-subtle);
+  color: var(--tx-color-text);
+}

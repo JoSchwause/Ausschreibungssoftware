@@ -8,6 +8,7 @@ import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
   Befehlshinweis,
   Einfuegeort,
+  Kostenermittlung,
   KnotenId,
   LeistungsverzeichnisId,
   LvBefehl,
@@ -27,10 +28,11 @@ import { Angebote } from '../gaeb/Angebote';
 import { GaebAusgeben } from '../gaeb/GaebAusgeben';
 import { LvDrucken } from '../ausgabe/LvDrucken'; // Ticket 66
 import { VorlageUebernehmen } from '../vorlage/VorlageUebernehmen'; // Ticket 90
-import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { HistorieKnoepfe, useHistorie } from '../historie/HistorieAnbieter';
 import { texte as htexte } from '../historie/texte';
 import { useLvKosten } from '../kosten/useLvKosten'; // Ticket 89
 import { kgSpalteImLv } from '../kosten/kgSpalte'; // Ticket 93
+import { kostenermittlungenLaden } from '../kosten/schreiben';
 import { PreisspiegelLink } from '../vergabe/PreisspiegelLink'; // Ticket 63
 import { useAnsatzFrage } from '../mengen/AnsatzFrage'; // Ticket 65
 import { NachtragKopfband } from '../nachtrag/NachtragKopfband'; // Ticket 86
@@ -39,9 +41,12 @@ import { MengenAusModell } from '../bim/MengenAusModell'; // Ticket 115
 import { texte as mtexte } from '../mengen/texte'; // Ticket 65
 import { befehlswegFuer, type Ausgang, type LvSitzung } from './befehlsweg';
 import { positionOrt, titelOrt, untertitelOrt } from './einfuegeort';
+import { HinweistextDialog, type Hinweistextauftrag } from './HinweistextDialog';
+import { kgAusserhalbBefunde } from './kgHinweis';
 import { merkmaleBefehl, type Merkmalwahl } from './merkmale';
 import { KopfdatenDialog } from './KopfdatenDialog';
 import { MerkmaleDialog } from './MerkmaleDialog';
+import { OzMaskeDialog } from './OzMaskeDialog';
 import { useMeldungen } from './meldungen';
 import { PapierkorbDialog } from './PapierkorbDialog';
 import { PositionsDialog } from './PositionsDialog';
@@ -53,6 +58,9 @@ import { texte } from './texte';
 import { gridZahlen } from './zahlen';
 import '@tethys/ui-grid/grid.css';
 import './lv.css';
+
+/** Hinweis eines Preisbefehls, der die Kalkulation der Position entfernt hat (Vertrag v1.7a, D-82 S4). */
+const KALKULATION_ENTFERNT = 'kalkulation-entfernt';
 
 const LEERE_DATEN: Positionsdaten = {
   ordnungszahl: null,
@@ -161,6 +169,11 @@ function LvBearbeiten({
   const [kopfdaten, setKopfdaten] = useState(false);
   const [papierkorbOffen, setPapierkorbOffen] = useState(false);
   const [staendeOffen, setStaendeOffen] = useState(false);
+  const [hinweistext, setHinweistext] = useState<Hinweistextauftrag | null>(null);
+  const [ozMaskeOffen, setOzMaskeOffen] = useState(false);
+  /** Der Stand nach einem Befehl, der eine Kalkulation entfernt hat; das Band „Kalkulation entfernt“ gilt nur dort. */
+  const [kalkulationEntfernt, setKalkulationEntfernt] = useState<LvZustand | null>(null);
+  const historie = useHistorie();
   // Ticket 142: Das Prüf-Panel ist zu, bis der Nutzer es öffnet (Schaltfläche „Prüfung“ oder F8); so hat das Grid die
   // ganze Breite und zeigt EP und GP bei 1280 px.
   const [panelOffen, setPanelOffen] = useState(false);
@@ -178,14 +191,40 @@ function LvBearbeiten({
       }),
     [zustand],
   );
+  // Hinweis „KG außerhalb der Gliederung“ (D-89.4, D-93.7): Die Kostenermittlungen des Projekts werden beim Öffnen geladen;
+  // der Befund steht an der Zelle „KG“ und im Prüf-Panel, neben denen der LV-Prüfung.
+  const [ermittlungen, setErmittlungen] = useState<readonly Kostenermittlung[]>([]);
+  useEffect(() => {
+    let laeuft = true;
+    void kostenermittlungenLaden(u.speicher, lv.projektId).then((r) => {
+      if (laeuft && r.ok) setErmittlungen(r.wert.map((z) => z.kostenermittlung));
+    });
+    return () => {
+      laeuft = false;
+    };
+  }, [u, lv.projektId]);
+  const kgBefunde = useMemo(() => kgAusserhalbBefunde(lv.knoten, ermittlungen), [lv.knoten, ermittlungen]);
+  const alleBefunde = useMemo(
+    () => (befunde === null ? null : kgBefunde.length === 0 ? befunde : [...befunde, ...kgBefunde]),
+    [befunde, kgBefunde],
+  );
   // Positionen mit Mengenansatz kennzeichnet das Grid selbst, neutral und ohne Befund (Ticket 74, D-65.2).
-  const jeKnoten = useMemo(() => befundeJeKnoten(befunde ?? []), [befunde]);
-  const gruppen = useMemo(() => pruefgruppen(befunde ?? [], lv.knoten), [befunde, lv.knoten]);
+  const jeKnoten = useMemo(() => befundeJeKnoten(alleBefunde ?? []), [alleBefunde]);
+  const gruppen = useMemo(() => pruefgruppen(alleBefunde ?? [], lv.knoten), [alleBefunde, lv.knoten]);
 
   const ansicht = useMemo(
     () => lvAnsichtBauen(zustand, zugeklappt, jeKnoten),
     [zustand, zugeklappt, jeKnoten],
   );
+
+  /**
+   * Hinweise eines angenommenen Befehls: „Kalkulation entfernt“ (D-82 S4) zeigt die Seite selbst mit „Rückgängig“, die
+   * übrigen die Hinweisleiste des Grids.
+   */
+  const hinweiseSetzen = useCallback((neu: readonly Befehlshinweis[], stand: LvZustand | null): void => {
+    setHinweise(neu.filter((h) => h.code !== KALKULATION_ENTFERNT));
+    setKalkulationEntfernt(neu.some((h) => h.code === KALKULATION_ENTFERNT) ? stand : null);
+  }, []);
 
   const senden = useCallback(
     async (befehl: LvBefehl): Promise<boolean> => {
@@ -201,10 +240,10 @@ function LvBearbeiten({
         return false;
       }
       if (!pruefe(a)) return false;
-      setHinweise(a.hinweise);
+      hinweiseSetzen(a.hinweise, a.zustand);
       return true;
     },
-    [sitzung, pruefe, zeige],
+    [sitzung, pruefe, zeige, hinweiseSetzen],
   );
 
   /** Mehrere Befehle aus einer Benutzeraktion: ein Undo-Schritt (Einfügen aus der Zwischenablage). */
@@ -213,9 +252,9 @@ function LvBearbeiten({
       const aus = await sitzung.folge(befehle);
       const neu: Befehlshinweis[] = [];
       for (const a of aus) if (pruefe(a)) neu.push(...a.hinweise);
-      setHinweise(neu);
+      hinweiseSetzen(neu, sitzung.zustand);
     },
-    [sitzung, pruefe],
+    [sitzung, pruefe, hinweiseSetzen],
   );
 
   /** Strg+V nach Strg+C im selben Grid: die Kopie baut der Kern mit neuen Kennungen der App (Ticket 42). */
@@ -239,10 +278,10 @@ function LvBearbeiten({
       const aus = await sitzung.folge(bs);
       const neu: Befehlshinweis[] = [];
       for (const a of aus) if (a.ok) neu.push(...a.hinweise);
-      setHinweise(neu);
+      hinweiseSetzen(neu, sitzung.zustand);
       return aus;
     },
-    [sitzung],
+    [sitzung, hinweiseSetzen],
   );
 
   /** Springt im Grid zur Zelle; `spalte: null` behält die aktive Spalte. */
@@ -287,10 +326,36 @@ function LvBearbeiten({
 
   const kosten = useLvKosten({ lv, aktiv, folge, pruefe }); // Ticket 89: Kostengruppen und EP-Kalkulation
 
-  const dialogOeffnen = (): void => {
-    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+  // „Position bearbeiten“ und „Zeile öffnen“ des Grids (Strg+Enter, Doppelklick auf eine Zelle ohne Eingabe): der Dialog
+  // zur Art der Zeile; ein Titel oder Los hat keinen und wird in der Zeile bearbeitet (B-26: kein Text über Merkmale).
+  const zeileOeffnen = (knotenId: KnotenId | null): void => {
+    const k = knotenId === null ? undefined : lv.knoten.find((x) => x.id === knotenId);
     if (k?.art === 'position') setDialog(k.id);
-    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
+    else if (k?.art === 'hinweis') setHinweistext({ art: 'aendern', hinweis: k });
+    else if (k === undefined)
+      zeige({ titel: texte.werkzeuge.keineZeile, beschreibung: texte.werkzeuge.keinePositionText });
+    else
+      zeige({
+        titel: texte.werkzeuge.gliederungOhneDialog,
+        beschreibung: texte.werkzeuge.gliederungOhneDialogText,
+      });
+  };
+  const dialogOeffnen = (): void => {
+    zeileOeffnen(aktiv.current);
+  };
+  const hinweistextAnlegen = (): void => {
+    setHinweistext({ art: 'anlegen', aktiv: aktiv.current });
+  };
+  const hinweistextAendern = (): void => {
+    const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
+    if (k?.art === 'hinweis') setHinweistext({ art: 'aendern', hinweis: k });
+    else zeige({ titel: texte.werkzeuge.keinHinweistext, beschreibung: texte.werkzeuge.keinHinweistextText });
+  };
+  /** Hinweistext angelegt oder geändert: die aktive Zelle auf seine Zeile. */
+  const hinweistextSenden = async (befehl: LvBefehl): Promise<boolean> => {
+    const ok = await senden(befehl);
+    if (ok && befehl.art === 'HinweistextAnlegen') springe(befehl.id);
+    return ok;
   };
 
   /** Legt einen Knoten an und setzt die aktive Zelle auf seinen Kurztext. */
@@ -355,6 +420,7 @@ function LvBearbeiten({
         titelAnlegen(true);
       },
       KeyP: positionAnlegen,
+      KeyH: hinweistextAnlegen,
       KeyM: merkmaleOeffnen,
       KeyE: mengenPanelOeffnen, // Ticket 65
       ...kosten.tasten, // Ticket 89
@@ -362,13 +428,6 @@ function LvBearbeiten({
     if (aktion === undefined) return;
     e.preventDefault();
     aktion();
-  };
-
-  // „Zeile öffnen“ des Grids (Strg+Enter, Doppelklick auf eine Zelle ohne Eingabe): nur Positionen haben einen Dialog.
-  const zeileOeffnen = (knotenId: KnotenId): void => {
-    const k = lv.knoten.find((x) => x.id === knotenId);
-    if (k?.art === 'position') setDialog(k.id);
-    else zeige({ titel: texte.werkzeuge.keinePosition, beschreibung: texte.werkzeuge.keinePositionText });
   };
 
   const projektPfad = `/projekt/${lv.projektId}`;
@@ -413,12 +472,16 @@ function LvBearbeiten({
           <Button onClick={positionAnlegen} aria-keyshortcuts="Control+Alt+P">
             {texte.werkzeuge.positionAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenPosition} />
           </Button>
+          <Button onClick={hinweistextAnlegen} aria-keyshortcuts="Control+Alt+H">
+            {texte.werkzeuge.hinweistextAnlegen} <Tastenkuerzel tasten={texte.werkzeuge.tastenHinweistext} />
+          </Button>
           <VorlageUebernehmen zustand={zustand} aktiv={aktiv} senden={senden} /> {/* Ticket 90 */}
         </Werkzeuggruppe>
         <Werkzeuggruppe titel={texte.werkzeuge.gruppen.bearbeiten}>
           <Button onClick={dialogOeffnen} aria-keyshortcuts="Control+Enter">
             {texte.dialog.oeffnen} <Tastenkuerzel tasten={texte.dialog.tastenOeffnen} />
           </Button>
+          <Button onClick={hinweistextAendern}>{texte.werkzeuge.hinweistextAendern}</Button>
           <Button onClick={merkmaleOeffnen} aria-keyshortcuts="Control+Alt+M">
             {texte.werkzeuge.merkmale} <Tastenkuerzel tasten={texte.werkzeuge.tastenMerkmale} />
           </Button>
@@ -445,6 +508,13 @@ function LvBearbeiten({
             {texte.kopfdaten.oeffnen}
           </Button>
           <Button onClick={umnummerieren}>{texte.werkzeuge.umnummerieren}</Button>
+          <Button
+            onClick={() => {
+              setOzMaskeOffen(true);
+            }}
+          >
+            {texte.werkzeuge.ozMaske}
+          </Button>
           <Button
             onClick={() => {
               setPapierkorbOffen(true);
@@ -479,6 +549,19 @@ function LvBearbeiten({
       </Werkzeugleiste>
       <div className="lv__haupt">
         <div className="lv__grid">
+          {kalkulationEntfernt !== null && kalkulationEntfernt === zustand ? (
+            <div className="lv__band" role="status">
+              <span>{texte.kalkulation.entfernt}</span>
+              <Button
+                onClick={() => {
+                  setKalkulationEntfernt(null);
+                  void historie.rueckgaengig();
+                }}
+              >
+                {texte.kalkulation.rueckgaengig}
+              </Button>
+            </div>
+          ) : null}
           <LvGrid
             ansicht={ansicht}
             zahlen={gridZahlen}
@@ -575,6 +658,23 @@ function LvBearbeiten({
         }}
         senden={senden}
         gehe={gehe}
+      />
+      <HinweistextDialog
+        lv={lv}
+        auftrag={hinweistext}
+        onSchliessen={() => {
+          setHinweistext(null);
+        }}
+        neueId={() => u.ids.hinweistext()}
+        senden={hinweistextSenden}
+      />
+      <OzMaskeDialog
+        zustand={zustand}
+        offen={ozMaskeOffen}
+        onSchliessen={() => {
+          setOzMaskeOffen(false);
+        }}
+        senden={senden}
       />
       <KopfdatenDialog
         lv={lv}

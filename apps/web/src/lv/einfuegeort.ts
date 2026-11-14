@@ -6,6 +6,8 @@
 // - Position: hinter der aktiven Zeile, wie Strg+Plus im Grid (bei einer Gliederung als erstes Kind).
 // - Titel: auf derselben Ebene wie die Gliederung der aktiven Zeile, am Ende dieser Ebene.
 // - Untertitel: als letztes Kind der Gliederung der aktiven Zeile.
+// - Hinweistext (E8): als Vortext erstes, als Nachtext letztes Kind der Gliederung der aktiven Zeile (ohne Gliederung: des
+//   LV); „hinter der Zeile“ direkt hinter einer Position oder einem Hinweistext, an einer Gliederung wie der Nachtext.
 //
 // „Gliederung der aktiven Zeile“ ist die Zeile selbst, wenn sie eine Gliederung ist, sonst ihr Elternknoten.
 // Ohne aktive Zeile (leeres LV) kommt alles ans Ende der Wurzel.
@@ -32,4 +34,20 @@ export function titelOrt(lv: Leistungsverzeichnis, aktiv: KnotenId | null): Einf
 
 export function untertitelOrt(lv: Leistungsverzeichnis, aktiv: KnotenId | null): Einfuegeort {
   return { art: 'ende', elternId: gliederungDer(lv, aktiv) ?? lv.id };
+}
+
+/** Wohin ein neuer Hinweistext kommt (Dialog „Hinweistext anlegen“). */
+export type Hinweistextlage = 'vortext' | 'nachtext' | 'hinter';
+
+export function hinweistextOrt(
+  lv: Leistungsverzeichnis,
+  aktiv: KnotenId | null,
+  lage: Hinweistextlage,
+): Einfuegeort {
+  const k = aktiv === null ? undefined : lv.knoten.find((x) => x.id === aktiv);
+  if (lage === 'hinter' && k !== undefined && (k.art === 'position' || k.art === 'hinweis')) {
+    return { art: 'nach', knotenId: k.id };
+  }
+  const eltern = gliederungDer(lv, aktiv) ?? lv.id;
+  return lage === 'vortext' ? { art: 'anfang', elternId: eltern } : { art: 'ende', elternId: eltern };
 }
