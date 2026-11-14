@@ -57,13 +57,16 @@ export interface Lesevorschau {
     readonly hinweistexte: number;
   };
   /**
-   * Ohne Inhalt (andere Austauschphase, GAEB 90 oder GAEB 2000, keine GAEB-Datei) gibt es nichts zu übernehmen; die Befunde
-   * bleiben sichtbar, der Satz der Abweisung steht vorn.
+   * Ohne Inhalt (andere Austauschphase, unlesbare oder keine GAEB-Datei) gibt es nichts zu übernehmen; die Befunde bleiben
+   * sichtbar, der Satz der Abweisung steht vorn. GAEB 90 und GAEB 2000 werden gelesen wie GAEB DA XML.
    */
   readonly uebernehmbar: boolean;
 }
 
-/** Liest eine X81, X83 oder X86 (3.3, 3.2, 3.1) mit den Kennungen der App und dem Ersatzwert 19,00 % für die MwSt (E-19). */
+/**
+ * Liest eine X81, X83 oder X86 (GAEB DA XML 3.3, 3.2, 3.1, GAEB 90, GAEB 2000) mit den Kennungen der App und dem
+ * Ersatzwert 19,00 % für die MwSt (E-19).
+ */
 export function lvLesen(bytes: Uint8Array, dateiname: string, ids: IdQuelle): Lesevorschau {
   const l = leseGaeb(bytes, { ids, dateiname, standardMwstSatz: STANDARD_MWST_SATZ });
   const knoten = l.inhalt?.knoten ?? [];

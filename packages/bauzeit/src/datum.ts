@@ -5,13 +5,6 @@
 import { KALENDERDATUM_MUSTER } from '@tethys/vertrag';
 import type { Ergebnis, Kalenderdatum, Wochentag } from '@tethys/vertrag';
 
-/**
- * Früherer Name dieses Pakets für `Kalenderdatum` (Glossar „Kalenderdatum“, L1/L2: kein Synonym). Im Paket wird nur noch
- * `Kalenderdatum` aus dem Vertrag benutzt (ein Test wacht darüber); der Name bleibt allein für die App stehen, bis sie
- * umgestellt ist, dann entfällt er. Neuer Code benutzt `Kalenderdatum`.
- */
-export type Datum = Kalenderdatum;
-
 export type Datumsfehlercode =
   | 'datum-form' // nicht genau `JJJJ-MM-TT` mit Ziffern 0–9
   | 'datum-unmoeglich'; // Jahr 0000, Monat oder Tag gibt es nicht (z. B. 2026-02-29)

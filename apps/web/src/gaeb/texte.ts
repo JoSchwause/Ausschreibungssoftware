@@ -113,7 +113,7 @@ export const texte = {
     erfolg: 'Angebot angelegt',
     liest: 'Die Datei wird gelesen …',
     keinX84: (phase: GaebPhase | null, version: GaebVersion | null) =>
-      `Erwartet wird eine Angebotsabgabe (X84) im Format GAEB DA XML 3.1, 3.2 oder 3.3; ${
+      `Erwartet wird eine Angebotsabgabe (X84) als GAEB DA XML 3.1, 3.2 oder 3.3, GAEB 90 oder GAEB 2000; ${
         phase === null
           ? 'die Austauschphase der Datei ist nicht erkennbar'
           : `die Datei gehört zur Phase ${phase}${version === null ? '' : ` (Version ${version})`}`

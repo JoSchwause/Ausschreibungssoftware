@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Dateimigration 7 (Ticket 139, A8): hebt eine Projektdatei der Version 6 auf 7. Das Schema dazu steht in `migrationen.ts`
-// (`SCHEMA_V7`). Einmal gemergt, wird hier nichts mehr geändert.
+// (`SCHEMA_V7`). Schema 7 gilt als veröffentlicht ab dem Merge nach `main` (D-104); ab dann wird hier nichts mehr geändert,
+// eine weitere Änderung bekommt eine neue Version. Bis dahin durfte es innerhalb der Welle 7 noch wachsen (Ticket 143).
 //
 // Version 7 bringt nur Neues dazu, das fehlen darf (`vertrag` v1.7a): `angaben` an Projekt und Bieter, `preisspiegel` am Kopf
 // des LV, `kalkulation` an der Position, den Block `einstellungen` und die Befehle aus v1.7a. Eine Datei der Version 6 hat

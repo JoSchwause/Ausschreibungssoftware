@@ -2,6 +2,7 @@
 import * as RadixToast from '@radix-ui/react-toast';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { escapeFreigeben, imDialog } from './escape';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { baustein } from './texte';
@@ -105,6 +106,12 @@ export function ToastAnbieter({
               className={`tx-toast tx-toast--${art}`}
               onOpenChange={(offen) => {
                 if (!offen) setEintraege((alt) => alt.filter((x) => x.id !== e.id));
+              }}
+              // Escape im Dialog gehört dem Dialog, nicht der Meldung (Ticket 163): Sie bleibt stehen, der Dialog schließt.
+              onEscapeKeyDown={(ereignis) => {
+                if (!imDialog(ereignis.target)) return;
+                ereignis.preventDefault();
+                escapeFreigeben(ereignis);
               }}
             >
               <span className="tx-toast__icon">

@@ -5,6 +5,7 @@
 // Vertragsstrafe 1.500,00 und 2 % Skonto, Teilzahlung in der Frist und Rest danach (offen 570,67).
 
 import { plusKalendertage } from '@tethys/abrechnung';
+import { skontoStandText } from '@tethys/ausgabe';
 import type { Kalenderdatum, Rechnung, RechnungBefehl } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import {
@@ -202,7 +203,10 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
     // Zweiter Review-Durchgang R2: Solange die Frist läuft, ist der Skonto noch nicht verwirklicht, nicht endgültig verfehlt.
     const fristende = zs.fristende;
     if (fristende === null) throw new Error('AR 2 hat ein Fristende');
-    expect(zahlungsfreigabe(ar2, zs, fristende).geltend[1]?.bezeichnung).toBe(
+    // AR 2 trägt schon die Restzahlung nach dem Fristende: damit ist die Frist vorbei, gleich wie die Uhr steht (Ticket 163).
+    expect(zahlungsfreigabe(ar2, zs, fristende).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+    const nurInDerFrist = { ...ar2, zahlungen: (ar2.zahlungen ?? []).filter((x) => x.datum <= fristende) };
+    expect(zahlungsfreigabe(nurInDerFrist, zs, fristende).geltend[1]?.bezeichnung).toBe(
       'Skonto (noch nicht verwirklicht)',
     );
     const tagDanach = plusKalendertage(fristende, 1);
@@ -246,6 +250,40 @@ describe('zahlungsfreigabe: Varianten der Fixture', () => {
       ['summeZahlungen', '7316.94'],
       ['offen', '226.30'],
     ]);
+  });
+});
+
+describe('Stand des Skontos: Bildschirm und PDF nach einer Regel (Ticket 163)', () => {
+  const variante = (name: string) => {
+    const v = A5_VARIANTEN.find((x) => x.name === name);
+    if (v === undefined) throw new Error(name);
+    return v;
+  };
+  const bildschirm = (name: string, heute: string): string | undefined => {
+    const v = variante(name);
+    return zahlungsfreigabe(v.rechnung, v.zahlungsstand, heute as Kalenderdatum).geltend.find(
+      (z) => z.schluessel === 'skonto',
+    )?.bezeichnung;
+  };
+  const pdf = (name: string, heute: string): string => {
+    const v = variante(name);
+    return skontoStandText(v.zahlungsstand, v.rechnung.zahlungen ?? [], heute);
+  };
+
+  it('eine Zahlung nach dem Fristende beendet die Frist, auch wenn die Uhr der App noch davor steht', () => {
+    // Fristende 2026-11-13, Zahlung am 2026-11-14 erfasst.
+    expect(bildschirm('ar1-zahlung-nach-fristende', '2026-11-13')).toBe('Skonto (nicht verwirklicht)');
+    expect(bildschirm('ar1-zahlung-nach-fristende', '2026-11-01')).toBe('Skonto (nicht verwirklicht)');
+  });
+
+  it('ohne Eingangsdatum ist der Skonto noch nicht endgültig verfehlt: das Datum lässt sich nachtragen (D-163.1)', () => {
+    expect(bildschirm('ar2-ohne-eingang', '2099-12-31')).toBe('Skonto (noch nicht verwirklicht)');
+  });
+
+  it('für dieselben Eingaben derselbe Text auf Bildschirm und im PDF', () => {
+    const tage = ['2026-11-01', '2026-11-12', '2026-11-13', '2026-11-14', '2026-12-31', '2099-12-31'];
+    for (const name of ['ar1-zahlung-nach-fristende', 'ar1-ueberzahlung', 'ar2-ohne-eingang'])
+      for (const heute of tage) expect(bildschirm(name, heute), `${name} ${heute}`).toBe(pdf(name, heute));
   });
 });
 

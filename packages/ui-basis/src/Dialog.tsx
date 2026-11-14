@@ -2,6 +2,7 @@
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useRef } from 'react';
 import type { ReactElement, ReactNode, RefObject } from 'react';
+import { freigegebenesEscapeNehmen } from './escape';
 import { Icon } from './Icon';
 import { baustein } from './texte';
 import { Ablagekontext } from './werkzeugablage';
@@ -57,6 +58,15 @@ export function Dialog({
                 e.preventDefault();
                 ziel.focus();
               }
+            }}
+            // Ticket 163: Escape, das keine Ebene genommen hat (gleich nach dem Öffnen registriert Radix den Dialog erst im
+            // nächsten Durchlauf als oberste Ebene) oder das eine Meldung freigegeben hat, schließt den Dialog. Was eine Ebene
+            // im Dialog genommen hat (Auswahlliste, Menü, Tooltip, innerer Dialog), bleibt bei ihr.
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return;
+              if (e.nativeEvent.defaultPrevented && !freigegebenesEscapeNehmen(e.nativeEvent)) return;
+              e.preventDefault();
+              onOffenChange(false);
             }}
             onCloseAutoFocus={(e) => {
               e.preventDefault();

@@ -21,6 +21,7 @@ import {
   lvAusgeben,
   lvLesen,
 } from './gaeb';
+import { texte } from './texte';
 
 const wurzel = new URL('../../../../', import.meta.url);
 const datei = (pfad: string): Uint8Array => new Uint8Array(readFileSync(new URL(pfad, wurzel)));
@@ -117,6 +118,17 @@ describe('BVBS AVA: X81 und X84 einlesen, Bietersummen mit vergabe', () => {
       nettoNachNachlass: '1421024428.85',
       brutto: '1691019070.33',
     });
+  });
+
+  it('eine X81 statt eines Angebots: die Abweisung nennt alle lesbaren Formate der X84 (PB2)', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, lv } = await projektUndLv(gelesen.inhalt);
+    const falsch = angebotLesen(datei(`${AVA}.X81`), 'ava.X81', lv, u.ids);
+    expect(falsch.uebernehmbar).toBe(false);
+    expect(texte.angebot.keinX84(falsch.phase, falsch.version)).toBe(
+      'Erwartet wird eine Angebotsabgabe (X84) als GAEB DA XML 3.1, 3.2 oder 3.3, GAEB 90 oder GAEB 2000; die Datei gehört zur Phase X81 (Version 3.3).',
+    );
   });
 
   it('ein vorhandener Bieter gleichen Namens wird wiederverwendet, kein neuer angelegt', async () => {
