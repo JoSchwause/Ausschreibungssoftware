@@ -1,6 +1,6 @@
 # 154: App: Kalkulationsansätze speichern, Kostenausgaben, KG-Hinweis
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: C2–C4, E9, E12 · Paket/Ordner: `apps/web/src/kosten/`
 Blocked by: 137, 139, 153
