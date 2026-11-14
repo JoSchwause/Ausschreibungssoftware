@@ -51,7 +51,13 @@ export function useLvKosten({ lv, aktiv, folge, pruefe }: LvKostenEingang): LvKo
   };
   const kalkulationOeffnen = (): void => {
     const k = aktiv.current === null ? undefined : lv.knoten.find((x) => x.id === aktiv.current);
-    if (k?.art === 'position') setKalkulation(k);
+    if (k?.art === 'position' && k.zuschlag !== null)
+      // Eine Zuschlagsposition trägt nie eine Kalkulation (D-82 S3); der Kern wiese den Befehl ab.
+      zeige({
+        titel: texte.kalkulation.zuschlagsposition,
+        beschreibung: texte.kalkulation.zuschlagspositionText,
+      });
+    else if (k?.art === 'position') setKalkulation(k);
     else zeige({ titel: texte.kalkulation.keinePosition, beschreibung: texte.kalkulation.keinePositionText });
   };
   const kgPositionen = useMemo(
