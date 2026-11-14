@@ -3,9 +3,9 @@
 // CSV des Nutzers (Liste der Kostenermittlungen und jede Kostenermittlung) und ein Hinweis mit Verweis dorthin, solange
 // keine Bezeichnungen vorhanden sind. Sie liegen in den Einstellungen (Ticket 150, D-73); gelesen wird deren aktueller Stand,
 // so folgt die Seite auch dem eigenen Rückgängig der Einstellungen, das der Abschnitt mitbringt (D-82 M1). Geschrieben wird
-// über `bezeichnungen.ts`.
+// über `bezeichnungen.ts`; eine Abweisung erscheint als Meldung, eine CSV ohne lesbare Zeile löscht nichts (Q5).
 
-import { Button } from '@tethys/ui-basis';
+import { Button, useToast } from '@tethys/ui-basis';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactElement } from 'react';
 import {
@@ -15,7 +15,8 @@ import {
 } from '../historie/EinstellungenAnbieter';
 import { useAnker } from '../ui/route';
 import { Verweis } from '../ui/Verweis';
-import { bezeichnungenMerken } from './bezeichnungen';
+import { abweisungText } from '../lv/meldungen';
+import { bezeichnungenMerken, type Merkausgang } from './bezeichnungen';
 import { BEZEICHNUNGEN_ANKER } from './pfad';
 import { texte } from './texte';
 
@@ -24,8 +25,8 @@ const t = texte.editor;
 export interface Bezeichnungsstand {
   /** Nummer → Bezeichnung; leer: keine eingelesen. */
   readonly bezeichnungen: ReadonlyMap<string, string>;
-  /** Merkt einen neuen CSV-Text (`null` vergisst ihn). */
-  readonly setzen: (csv: string | null) => void;
+  /** Merkt einen neuen CSV-Text (`null` vergisst ihn); sagt, wie es ausging. */
+  readonly setzen: (csv: string | null) => Promise<Merkausgang>;
 }
 
 export function useBezeichnungen(): Bezeichnungsstand {
@@ -36,9 +37,7 @@ export function useBezeichnungen(): Bezeichnungsstand {
   );
   return {
     bezeichnungen,
-    setzen: (neu) => {
-      bezeichnungenMerken(neu);
-    },
+    setzen: bezeichnungenMerken,
   };
 }
 
@@ -64,6 +63,7 @@ export function BezeichnungenHinweis({
 /** Der Abschnitt „Bezeichnungen der Kostengruppen“; ein Verweis mit dem Anker führt hierher und setzt den Fokus. */
 export function BezeichnungenBereich({ stand }: { stand: Bezeichnungsstand }): ReactElement {
   const [meldung, setMeldung] = useState<string | null>(null);
+  const { zeige } = useToast();
   const anker = useAnker();
   const historie = useEinstellungenHistorie();
   const ueberschrift = useRef<HTMLHeadingElement>(null);
@@ -77,11 +77,24 @@ export function BezeichnungenBereich({ stand }: { stand: Bezeichnungsstand }): R
     const datei = e.target.files?.[0];
     e.target.value = '';
     if (datei === undefined) return;
+    let text: string;
     try {
-      stand.setzen(await datei.text());
-      setMeldung(null);
+      text = await datei.text();
     } catch {
       setMeldung(t.csvFehler);
+      return;
+    }
+    melden(await stand.setzen(text));
+  };
+
+  // Wellen-Review SB2/PB4 (Q5): Eine Abweisung erscheint als Meldung, eine CSV ohne lesbare Zeile löscht nichts.
+  const melden = (a: Merkausgang): void => {
+    if (a.art === 'gemerkt') setMeldung(null);
+    else if (a.art === 'leer') setMeldung(t.csvLeer);
+    else if (a.art === 'ohneEinstellungen') setMeldung(t.csvOhneEinstellungen);
+    else {
+      setMeldung(null);
+      zeige({ ...abweisungText(a.abweisung), art: 'fehler' });
     }
   };
 
@@ -100,8 +113,7 @@ export function BezeichnungenBereich({ stand }: { stand: Bezeichnungsstand }): R
         </label>
         <Button
           onClick={() => {
-            stand.setzen(null);
-            setMeldung(null);
+            void stand.setzen(null).then(melden);
           }}
           disabled={anzahl === 0}
         >

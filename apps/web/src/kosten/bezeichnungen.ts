@@ -7,6 +7,7 @@
 
 import { bezeichnungenLesen } from '@tethys/kosten';
 import { aktuelleEinstellungen, aktuelleEinstellungenSitzung } from '../historie/einstellungen';
+import type { Abweisung } from '../lv/befehlsweg';
 import { bezeichnungenAlsListe } from '../sicherung/browserablage';
 
 /** Schlüssel im Browserspeicher bis Welle 7; nur noch für die einmalige Übernahme gelesen. */
@@ -21,16 +22,28 @@ export function bezeichnungenGemerkt(): string | null {
   return liste.map((k) => `${k.nummer};${feld(k.bezeichnung)}`).join('\n');
 }
 
+/** Wie das Merken ausging (Wellen-Review SB2/PB4, Q5): nichts geht still verloren, nichts gilt still als Erfolg. */
+export type Merkausgang =
+  | { readonly art: 'gemerkt'; readonly anzahl: number }
+  /** Die CSV hatte keine lesbare Zeile; geschrieben wurde nichts, die vorhandenen Bezeichnungen bleiben. */
+  | { readonly art: 'leer' }
+  /** Befehl oder Speicher haben abgewiesen; der Stand ist unverändert. */
+  | { readonly art: 'abgewiesen'; readonly abweisung: Abweisung }
+  /** Die Einstellungen sind nicht geladen. */
+  | { readonly art: 'ohneEinstellungen' };
+
 /**
- * Merkt die Bezeichnungen des CSV-Texts in den Einstellungen (`null` vergisst sie). Geschrieben wird im Hintergrund über die
- * Sitzung der Einstellungen (Rückgängig der Einstellungen). `false`, wenn keine Einstellungen geladen sind.
+ * Merkt die Bezeichnungen des CSV-Texts in den Einstellungen (`null` vergisst sie, wie „Bezeichnungen entfernen“); über die
+ * Sitzung der Einstellungen, ein Schritt in deren Rückgängig. Eine CSV ohne lesbare Zeile löscht nichts.
  */
-export function bezeichnungenMerken(csv: string | null): boolean {
+export async function bezeichnungenMerken(csv: string | null): Promise<Merkausgang> {
   const s = aktuelleEinstellungenSitzung();
-  if (s === null) return false;
-  const bezeichnungen = csv === null ? [] : bezeichnungenAlsListe(bezeichnungenLesen(csv).bezeichnungen);
-  void s.befehl({ art: 'KostengruppenbezeichnungenSetzen', bezeichnungen });
-  return true;
+  if (s === null) return { art: 'ohneEinstellungen' };
+  const gelesen = csv === null ? null : bezeichnungenLesen(csv).bezeichnungen;
+  if (gelesen !== null && gelesen.size === 0) return { art: 'leer' };
+  const bezeichnungen = gelesen === null ? [] : bezeichnungenAlsListe(gelesen);
+  const a = await s.befehl({ art: 'KostengruppenbezeichnungenSetzen', bezeichnungen });
+  return a.ok ? { art: 'gemerkt', anzahl: bezeichnungen.length } : { art: 'abgewiesen', abweisung: a.abweisung };
 }
 
 /** Nummer → Bezeichnung aus dem CSV-Text; die Befunde des Lesens (übergangene Zeilen) sind für die Anzeige ohne Belang. */
