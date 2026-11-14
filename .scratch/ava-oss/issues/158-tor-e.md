@@ -32,3 +32,34 @@ Findet der Test einen Produktfehler: nicht im Test umgehen, sondern dem Orchestr
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+Entscheidungen im Demo-Modus (Branch `welle-7/158-tor-e`):
+
+- **D-158.1** Zweites Angebot zur BVBS-X83? Es gibt nur eine amtliche X84 dieser Reihe. → Das zweite Angebot entsteht im Test
+  aus der amtlichen X84: EP verdoppelt, Bieter „Zweitbieter Bau (erfunden)“, ohne die Beträge der Datei (`IT`, `Totals`). Die
+  Dateien im Repo bleiben unverändert (C4). Sollwerte stehen in der amtlichen Datei (`BoQInfo/Totals`: netto 2.000.000,00,
+  brutto 2.380.000,00); das zweite Angebot ist genau das Doppelte, weil GP beim doppelten EP genau das Doppelte ist – der Test
+  prüft das für jede Position (`verdoppelnNichtExakt`). Die App zeigt beide Summen so (auch den Zuschlag `AllInCat` 10 %).
+- **D-158.2** Angebot des Auftragnehmers zum Nachtrag ohne Testhaken? → Die Übersicht sichert die Projektdatei (Download);
+  aus ihr schreibt der Test mit `lvAlsExcel` das ausgefüllte Excel des Nachtrags-LV (an Stelle der Software des
+  Auftragnehmers) und liest es über „Angebot des Auftragnehmers einlesen“ ein. Preise selbst gewählt, GP nach N2 hergeleitet.
+- **D-158.3** Routenliste „aus der App“: `ueberlauf.spec.ts` folgt ab der Projektliste jedem Verweis der App (Seitenleiste,
+  Krumen, Seiten) und prüft jede Adresse bei 1280 × 800 (Seite und Arbeitsfläche), in der Hilfe jeden Reiter. Vorher legt
+  er über die Oberfläche das Beispielprojekt an und ergänzt Nachtrag, LV-Stand, Kostenermittlung, Honorarberechnung,
+  Bauzeitenplan und einen zweiten Modellstand. Vollständigkeit: Jede Adresse wird mit den Erkennern der App (`*/pfad.ts`,
+  `ui/navigation.ts`, Reihenfolge wie `App.tsx`) einer Seitenart zugeordnet; eine Adresse ohne Art (neue Route) oder eine Art
+  ohne Besuch lässt den Test fallen; die Seitenleiste muss jeden Bereich verlinken. Den LV-Stand verlinkt nur der Dialog
+  „LV-Stände“; seine Adresse kommt aus dem Aufbau dazu. `/katalog` (nur im Test-Build) wird mitgeprüft. Gegenprobe: bei
+  1100 px meldet der Test den Preisspiegel.
+- **D-158.4** Schritte, deren Bedienung noch gebaut wird (Preisspiegel-PDF 149; Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
+  Kostenkontrolle-PDF 154; Projekt samt Inhalt löschen 160/161, D-96), stehen im selben Torweg hinter dem Schalter
+  `ausstehend` und laufen im `test.fixme` „der ganze Weg samt den ausstehenden Schritten“. Bis D-96 gemergt ist, liest ein
+  frisches Gerät (eigener Browser-Kontext) die Sicherung ein und muss dieselben Werte zeigen.
+- **D-158.5** „Dieselben Werte“: `werteLesen` liest über die Oberfläche LV- und Auftragsliste der Übersicht, die Bietertabelle
+  des Preisspiegels, Summen und Nachträge des Auftrags-LV, die Summe Soll/Ist, die Abzugskette und Freigabe von Rechnung 1 und
+  die Kostenkontrolle, vor der Sicherung und nach dem Einlesen.
+- **Befund an den Orchestrator (→ D-96):** „Projekt löschen“ weist ein Projekt mit LV, Angeboten, Auftrags-LV und beauftragtem
+  Nachtrag ab; der Torweg wäre nur über 10+ Schritte von Hand möglich. Entscheidung D-96: eigener Befehl „Projekt samt Inhalt
+  löschen“ (160, 161).
+- Punkt 3 und 4: `packages/gaeb/src/formatvergleich.test.ts` (3.3, 3.1, GAEB 90, GAEB 2000), `apps/web/src/sprache.test.ts`
+  und `apps/web/src/fehler/Fehlergrenze.test.tsx`: 53/53 grün.
