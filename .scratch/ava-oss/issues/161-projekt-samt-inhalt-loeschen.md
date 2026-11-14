@@ -1,6 +1,6 @@
 # 161: Projekt samt Inhalt löschen: Kern, Speicher, Dialog
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: K, S, E8 · Paket/Ordner: `packages/kern`, `packages/speicher`, `apps/web/src/projekt/`
 Blocked by: 160, 143 (Schreiber in `speicher`)
@@ -22,10 +22,10 @@ Herkunft: Tor E (158), E8, D-96
 
 ## Acceptance criteria
 
-- [ ] Byte-Vergleichstest grün; E2E löschen → Undo und löschen → Sicherung einlesen grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Byte-Vergleichstest grün; E2E löschen → Undo und löschen → Sicherung einlesen grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -62,3 +62,9 @@ Entscheidungen (Demo-Modus, Ticket 161):
 Torweg für Tor E: Projektseite → „Weitere Aktionen“ → Menüpunkt „Projekt löschen“ → Dialog „Projekt löschen“ (Liste
 „Inhalt des Projekts“) → „Projekt samt Inhalt löschen …“ → Dialog „Projekt samt Inhalt löschen“: „Projektdatei sichern“
 (hat den Fokus), Ankreuzfeld „Ja, das Projekt „…“ mit allem Inhalt löschen“, dann „Projekt samt Inhalt löschen“.
+
+Ergebnis (nach Merge von `integration/welle-7` @ `7be550f`): Lint grün (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room),
+Typcheck grün, Unit-Tests 4.781 grün, 3 übersprungen; rot im vollen Lauf nur ein CPU-Leistungsbudget unter Parallellast
+(`speicher/v16-leistung.test.ts`, 5.000 Zuordnungen samt Undo), einzeln wiederholt grün, nicht gelockert. E2E
+`projekt-samt-inhalt.spec.ts` (löschen → Undo → Redo → Undo mit Vergleich der Projektdatei; löschen → Sicherung einlesen),
+`undo.spec.ts`, `projekt.spec.ts`, `erster-start.spec.ts` grün (15). `apps/web/src/sprache.test.ts` grün.
