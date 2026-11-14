@@ -884,3 +884,10 @@ Question: (1) D-160.9: Nach Löschen und Undo ist die Projektdatei byte-gleich b
 Decision: (1) Bestätigt; der Pflichttest in 161 vergleicht byte-genau nach Entfernen genau dieses letzten Eintrags und prüft ihn ausdrücklich. (2) Bestätigt: Das Protokoll gehört zum Projekt (ADR 0009) und geht mit ihm; Präzedenz D-31.1. (3) Der Review von v1.7c (und v1.7b, D-93) läuft als eigener Punkt im Wellen-Review gegen alle Verbraucher.
 Reason: Keine Regel verletzt; die Formen sind additiv und folgen D-96.
 Reversible: yes  Touches: packages/vertrag, Ticket 161, Wellen-Review
+
+## D-103 Wellen-Review parallel zu den letzten drei Tickets
+Welle 7 · Wellen-Review · decided by: orchestrator
+Question: Das Wellen-Review (Schritt 6) gehört nach alle Merges; offen sind noch 152 (Aufmaß/Rechnung in der App), 161 (Projekt samt Inhalt löschen) und 162 (Fokus Druckprofil). Warten oder parallel?
+Decision: Review jetzt auf `integration/welle-7` @ `1f00ead` (Fixpunkt `4eefd7d`), einschließlich der Vertragsversionen v1.7b und v1.7c gegen alle Verbraucher (D-93, D-102). 152, 161 und 162 bekommen nach ihrem Merge einen kurzen zweiten Review-Durchgang über ihren Diff. Die Befunde beider Durchgänge gehen in Ticket 159.
+Reason: Wie D-68: spart eine volle Review-Runde Wartezeit; der Großteil des Codes der Welle ist gemergt.
+Reversible: yes  Touches: Ablauf
