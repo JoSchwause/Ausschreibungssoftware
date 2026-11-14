@@ -44,9 +44,12 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
   const datei = useRef<HTMLInputElement>(null);
   // Ticket 150
   const [buero, setBuero] = useState(false);
-  const [kopie, setKopie] = useState<{ inhalt: string; datei: string; name: string; vorschlag: string } | null>(
-    null,
-  );
+  const [kopie, setKopie] = useState<{
+    inhalt: string;
+    datei: string;
+    name: string;
+    vorschlag: string;
+  } | null>(null);
   const [bericht, setBericht] = useState<ProjektdateiEinleseergebnis['einstellungen']>(null);
 
   const laden = useCallback(async () => {

@@ -13,7 +13,11 @@ import type { KeyboardEvent, ReactElement, ReactNode } from 'react';
 import { texte as lvTexte } from '../lv/texte';
 import { browserablageUebernehmen, standardLeseablage } from '../sicherung/browserablage';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
-import { einstellungenFuer, type EinstellungenSitzung, type Einstellungshistorienausgang } from './einstellungen';
+import {
+  einstellungenFuer,
+  type EinstellungenSitzung,
+  type Einstellungshistorienausgang,
+} from './einstellungen';
 import { texte } from './texte';
 
 const t = texte.einstellungen;
@@ -51,7 +55,10 @@ export function EinstellungenAnbieter({ children }: { children: ReactNode }): Re
 }
 
 /** Die Sitzung der Einstellungen und ihr aktueller Stand (zeichnet bei jeder Änderung neu). */
-export function useEinstellungen(): { readonly sitzung: EinstellungenSitzung; readonly zustand: Einstellungen } {
+export function useEinstellungen(): {
+  readonly sitzung: EinstellungenSitzung;
+  readonly zustand: Einstellungen;
+} {
   const s = einstellungenFuer(useUmgebung());
   useSyncExternalStore(s.abonnieren, s.version);
   return { sitzung: s, zustand: s.zustand };
@@ -98,7 +105,8 @@ export function useEinstellungenHistorie(): {
       if (!rueck && !vor) return;
       // In einem Eingabefeld gehören die Tasten dem Feld (Text zurücknehmen).
       const ziel = e.target;
-      if (ziel instanceof Element && ziel.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (ziel instanceof Element && ziel.closest('input, textarea, select, [contenteditable="true"]'))
+        return;
       e.preventDefault();
       e.stopPropagation();
       void (rueck ? rueckgaengig() : wiederholen());

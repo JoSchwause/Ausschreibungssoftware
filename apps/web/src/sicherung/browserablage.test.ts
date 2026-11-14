@@ -44,7 +44,11 @@ describe('Übernahme aus dem Browserspeicher', () => {
       { nummer: '330', bezeichnung: 'Außenwände' },
       { nummer: '340', bezeichnung: 'Innenwände' },
     ]);
-    expect(await protokoll(s)).toEqual(['DruckprofilSetzen', 'DruckprofilSetzen', 'KostengruppenbezeichnungenSetzen']);
+    expect(await protokoll(s)).toEqual([
+      'DruckprofilSetzen',
+      'DruckprofilSetzen',
+      'KostengruppenbezeichnungenSetzen',
+    ]);
     // Die Übernahme ist kein Schritt, den der Nutzer zurücknimmt.
     expect(s.kannRueckgaengig).toBe(false);
     expect(a.m.size).toBe(2);
@@ -52,10 +56,16 @@ describe('Übernahme aus dem Browserspeicher', () => {
 
   it('nur solange das Einstellungsprotokoll leer ist: danach nie wieder, auch wenn die Einstellungen leer sind', async () => {
     const s = await sitzung();
-    await s.befehl({ art: 'BueroSetzen', buero: { name: 'Büro', anschrift: null, telefon: null, email: null } });
+    await s.befehl({
+      art: 'BueroSetzen',
+      buero: { name: 'Büro', anschrift: null, telefon: null, email: null },
+    });
     await s.rueckgaengig();
     const a = ablage({ [PROFILE_SCHLUESSEL]: JSON.stringify([profil('Bieter eng')]) });
-    expect(await browserablageUebernehmen(s, a, werkzeug)).toEqual({ druckprofile: 0, kostengruppenbezeichnungen: 0 });
+    expect(await browserablageUebernehmen(s, a, werkzeug)).toEqual({
+      druckprofile: 0,
+      kostengruppenbezeichnungen: 0,
+    });
     expect(s.zustand.druckprofile).toEqual([]);
   });
 
@@ -66,14 +76,23 @@ describe('Übernahme aus dem Browserspeicher', () => {
       geladen = true;
       return Promise.resolve(ausgabe);
     };
-    expect(await browserablageUebernehmen(s, ablage({}), w)).toEqual({ druckprofile: 0, kostengruppenbezeichnungen: 0 });
-    expect(await browserablageUebernehmen(s, null, w)).toEqual({ druckprofile: 0, kostengruppenbezeichnungen: 0 });
+    expect(await browserablageUebernehmen(s, ablage({}), w)).toEqual({
+      druckprofile: 0,
+      kostengruppenbezeichnungen: 0,
+    });
+    expect(await browserablageUebernehmen(s, null, w)).toEqual({
+      druckprofile: 0,
+      kostengruppenbezeichnungen: 0,
+    });
     const gesperrt = {
       getItem: () => {
         throw new Error('gesperrt');
       },
     };
-    expect(await browserablageUebernehmen(s, gesperrt, w)).toEqual({ druckprofile: 0, kostengruppenbezeichnungen: 0 });
+    expect(await browserablageUebernehmen(s, gesperrt, w)).toEqual({
+      druckprofile: 0,
+      kostengruppenbezeichnungen: 0,
+    });
     expect(geladen).toBe(false);
     expect(await protokoll(s)).toEqual([]);
   });

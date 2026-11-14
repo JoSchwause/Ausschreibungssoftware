@@ -17,7 +17,13 @@ import { texte } from './texte';
 
 const t = texte.buero;
 
-export function BueroDialog({ offen, onSchliessen }: { offen: boolean; onSchliessen: () => void }): ReactElement {
+export function BueroDialog({
+  offen,
+  onSchliessen,
+}: {
+  offen: boolean;
+  onSchliessen: () => void;
+}): ReactElement {
   const formId = useId();
   const { sitzung, zustand } = useEinstellungen();
   const historie = useEinstellungenHistorie();

@@ -159,7 +159,10 @@ export class EinstellungenSitzung {
   }
 
   /** Schreibt Eintrag und ChangeSet; `null` heißt geschrieben. */
-  async #schreibe(e: EinstellungenProtokolleintrag, cs: EinstellungenChangeSet): Promise<Speicherfehler | null> {
+  async #schreibe(
+    e: EinstellungenProtokolleintrag,
+    cs: EinstellungenChangeSet,
+  ): Promise<Speicherfehler | null> {
     const repo = this.umgebung.speicher.einstellungen;
     if (repo === undefined) return OHNE_SPEICHER;
     const r = await repo.anwenden(e, cs);

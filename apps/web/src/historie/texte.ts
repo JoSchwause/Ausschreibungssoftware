@@ -69,6 +69,18 @@ export const texte = {
     alsNeuesLv: 'Als neues LV übernehmen',
     neuerName: (lv: string, stand: string): string => `${lv} (Stand ${stand})`,
     grid: 'Positionen des Stands',
+    // Ticket 150 (E8): umbenennen und löschen
+    umbenennen: 'Umbenennen',
+    umbenennenTitel: 'LV-Stand umbenennen',
+    neuerStandName: 'Neuer Name',
+    loeschen: 'Löschen',
+    loeschenTitel: 'LV-Stand löschen',
+    loeschenFrage: (name: string): string =>
+      `Der LV-Stand „${name}“ wird gelöscht. In dieser Sitzung holt „Rückgängig“ ihn unverändert zurück.`,
+    loeschenBestaetigen: 'Endgültig löschen',
+    abbrechen: 'Abbrechen',
+    speichern: 'Speichern',
+    aktion: (was: string, name: string): string => `${was}: ${name}`,
   },
   loeschen: {
     lvKnopf: 'LV löschen',

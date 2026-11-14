@@ -209,7 +209,10 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     />
   );
   const pa = projekt.angaben;
-  const baustelle = [pa?.baustelle?.strasse, [pa?.baustelle?.plz, pa?.baustelle?.ort].filter(Boolean).join(' ')]
+  const baustelle = [
+    pa?.baustelle?.strasse,
+    [pa?.baustelle?.plz, pa?.baustelle?.ort].filter(Boolean).join(' '),
+  ]
     .filter((x) => x !== undefined && x !== null && x !== '')
     .join(', ');
 

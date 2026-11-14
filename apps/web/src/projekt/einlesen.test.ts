@@ -24,7 +24,9 @@ async function sicherung(): Promise<{ u: Umgebung; s: EinstellungenSitzung; date
     art: 'KostengruppenbezeichnungenSetzen',
     bezeichnungen: [{ nummer: '330' as never, bezeichnung: 'Außenwände' }],
   });
-  const a = await befehlswegFuer(u).projekt(null).befehl(projektAnlegenBefehl(u.ids, 'Schule', 'Stadt'));
+  const a = await befehlswegFuer(u)
+    .projekt(null)
+    .befehl(projektAnlegenBefehl(u.ids, 'Schule', 'Stadt'));
   if (!a.ok || a.zustand === null) throw new Error('Projekt nicht angelegt');
   const r = await u.speicher.projektdateiExportieren(a.zustand.id);
   if (!r.ok) throw new Error(r.fehler.meldung);
