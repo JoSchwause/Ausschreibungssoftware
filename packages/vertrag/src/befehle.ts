@@ -117,6 +117,27 @@ export interface ProjektLoeschen {
 }
 
 /**
+ * Löscht das Projekt **samt Inhalt** (v1.7c, Ticket 160; E8, D-96; Glossar „Projekt samt Inhalt löschen“): das Projekt mit
+ * seinen Bietern, allen Aggregaten, LV-Ständen und seinem Befehlsprotokoll, als ein Befehl und ein Undo-Schritt.
+ * `ProjektLoeschen` und seine `konflikt`-Regel bleiben, wie sie sind. Die Oberfläche fragt ausdrücklich nach, nennt die Anzahl
+ * je Art und verweist zuerst auf „Projektdatei sichern“ (Q5).
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart; D-160.x im Ticket):
+ * - Ausführer: `ProjektSamtInhaltLoeschenAusfuehren` mit dem **Bestand** des Projekts (`Projektbestand`) als Pflichtparameter;
+ *   der allgemeine `ProjektBefehlAusfuehren` hat keinen Bestand und weist den Befehl mit `ungueltige-eingabe`
+ *   (`feld: 'bestand'`) ab. ChangeSet: `ProjektbestandChangeSet` (nicht `ProjektChangeSet`).
+ * - Massenbefehl (`MASSENBEFEHLSARTEN`, E-13): Der Kopf ist der Befehl selbst; der Bestand, die lange Liste dieses Befehls, steht
+ *   im ChangeSet und nie im Protokoll. Im Protokoll steht er mit dem Projekt als Aggregat (`{ art: 'projekt' }`).
+ * - Wie bei `ProjektLoeschen` (D-31.1) geht das Protokoll des Projekts mit, und der Eintrag des Löschens bleibt nicht stehen;
+ *   das Undo legt das Protokoll aus dem Bestand zurück und schreibt danach wie jeder Befehl seinen `Rueckgaengig`-Eintrag.
+ * - Die Einstellungen des Geräts bleiben unberührt; die Bytes der Modelldateien bleiben in der Ablage (`Modelldateiablage`:
+ *   freigegeben erst beim nächsten Öffnen, wenn kein Modell sie mehr nennt, also nie, solange ein Undo-Schritt sie braucht).
+ */
+export interface ProjektSamtInhaltLoeschen {
+  readonly art: 'ProjektSamtInhaltLoeschen';
+}
+
+/**
  * Benennt einen Bieter des Projekts um (v1.7a, Ticket 127; E8). Ein leerer Name ist erlaubt wie bei `BieterAnlegen` (U5).
  * Ein Bieter, den das Projekt nicht hat: `ungueltige-eingabe` (`feld: 'bieterId'`). ChangeSet: das ganze Projekt vorher und
  * nachher (`ProjektChangeSet`), wie jeder Projektbefehl.
@@ -176,7 +197,9 @@ export type ProjektBefehl =
   | BieterUmbenennen
   | BieterLoeschen
   | ProjektangabenSetzen
-  | BieterangabenSetzen;
+  | BieterangabenSetzen
+  // v1.7c (Ticket 160, D-96)
+  | ProjektSamtInhaltLoeschen;
 
 // --- Leistungsverzeichnis: Anlegen und Stammdaten ------------------------------------------------------
 
@@ -1456,6 +1479,10 @@ export type Befehlsart = Befehl['art'];
  *
  * v1.6 (Ticket 97 Punkt 1, D-54): dazu `BauwerksmodellAnlegen` (bis zu 10.000 Bauteile; der Kopf ist das Modell ohne
  * Struktur und Bauteile).
+ *
+ * v1.7c (Ticket 160, D-96): dazu `ProjektSamtInhaltLoeschen`. Seine lange Liste ist der Bestand des Projekts; der steckt nicht
+ * im Befehl, sondern im ChangeSet, darum ist der Kopf der ganze Befehl. Die Liste hält fest, dass der Bestand nie in ein
+ * Protokoll gerät.
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
@@ -1465,6 +1492,8 @@ export const MASSENBEFEHLSARTEN = [
   'AufmassAnlegen',
   // v1.6 (Ticket 97 Punkt 1, D-54): bis zu 10.000 Bauteile; der Kopf ohne Struktur und Bauteile
   'BauwerksmodellAnlegen',
+  // v1.7c (Ticket 160, D-96): der Kopf ist der Befehl selbst
+  'ProjektSamtInhaltLoeschen',
 ] as const;
 
 /** Name eines Massenbefehls. */

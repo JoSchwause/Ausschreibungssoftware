@@ -155,6 +155,7 @@ describe('Punkt 7: Protokoll für Massenbefehle (A5, E-13)', () => {
       'AuftragsLeistungsverzeichnisAnlegen',
       'AufmassAnlegen', // v1.4 (Ticket 70 Punkt 10, D-70.5)
       'BauwerksmodellAnlegen', // v1.6 (Ticket 97 Punkt 1, D-54)
+      'ProjektSamtInhaltLoeschen', // v1.7c (Ticket 160, D-96)
     ]);
     expectTypeOf<Massenbefehlsart>().toEqualTypeOf<(typeof MASSENBEFEHLSARTEN)[number]>();
     expectTypeOf<Massenbefehlsart>().toExtend<Befehl['art']>();
