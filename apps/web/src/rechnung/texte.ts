@@ -104,6 +104,7 @@ export const texte = {
     umlage: (bezeichnung: string, satz: string) => `Umlage ${bezeichnung} (${satz} %)`,
     sicherheit: (satz: string | null) =>
       satz === null ? 'Sicherheitseinbehalt (kein Satz)' : `Sicherheitseinbehalt (${satz} %)`,
+    vertragsstrafe: (grund: string | null) => (grund === null ? 'Vertragsstrafe' : `Vertragsstrafe (${grund})`),
     gewaehrleistung: (satz: string | null) =>
       satz === null ? 'Gewährleistungseinbehalt (kein Satz)' : `Gewährleistungseinbehalt (${satz} %)`,
     frueher: (nummer: number) => `Zahlbetrag Rechnung ${String(nummer)} (freigegeben)`,
@@ -171,12 +172,65 @@ export const texte = {
     aufhebenFrage:
       'Der eingefrorene Zahlbetrag wird verworfen; die Rechnung ist danach wieder offen und änderbar. Rückgängig stellt die Freigabe wieder her.',
     aufhebenBestaetigen: 'Freigabe aufheben',
+    aufhebenZahlungen: (nummer: number, anzahl: number) =>
+      `Zur Rechnung ${String(nummer)} ${anzahl === 1 ? 'ist 1 Zahlung' : `sind ${String(anzahl)} Zahlungen`} erfasst. Zuerst die Zahlungen löschen.`,
     aufhebenGesperrt: (spaeter: readonly number[]) =>
       `Rechnung ${nummern(spaeter)} ist schon freigegeben und zieht diesen Zahlbetrag ab. Zuerst deren Freigabe aufheben.`,
     status: (betrag: string) => `Freigegeben mit ${betrag} €`,
     offen: 'Offen (nicht freigegeben)',
     konflikt:
       'Der Speicher hat die Änderung abgewiesen: Freigaben gehen nur in der Reihenfolge der Rechnungsnummern. Es wurde nichts geändert.',
+  },
+  zahlung: {
+    titel: 'Zahlungsfreigabe',
+    zahlbetrag: 'Zahlbetrag',
+    skonto: (satz: string) => `Skonto (${satz} %)`,
+    bauabzugsteuer: (satz: string) => `Bauabzugsteuer ${satz} % an das Finanzamt`,
+    auszahlung: 'Auszahlung an den Auftragnehmer',
+    zahlbetragEingefroren: 'Zahlbetrag (eingefroren)',
+    zahlbetragVorschau: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
+    skontoVerwirklicht: 'Skonto (verwirklicht)',
+    skontoNichtVerwirklicht: 'Skonto (nicht verwirklicht)',
+    summeZahlungen: 'Summe der Zahlungen',
+    offen: 'Offen',
+    posten: 'Posten',
+    bis: (datum: string) => `Bei Zahlung bis ${datum}`,
+    danach: 'Danach',
+    faelle: 'Beide Fälle des Skontos',
+    geltend: 'Geltender Fall',
+    satz: (datum: string, mit: string, ohne: string) =>
+      `Bei Zahlung bis ${datum}: Auszahlung ${mit} €, danach: ${ohne} €.`,
+    ohneEingang: (satz: string) =>
+      `Skonto ${satz} % vereinbart, aber ohne Eingangsdatum gibt es keine Skontofrist und keinen Skonto.`,
+    hinweis:
+      'Skonto und Bauabzugsteuer mindern nur die Auszahlung, nicht den Zahlbetrag. Der Skonto ist verwirklicht, wenn die Zahlungen bis zum Ende der Skontofrist die Auszahlung mit Skonto erreichen.',
+    vorschau:
+      'Vorschau: Die Rechnung ist noch nicht freigegeben; Zahlungen lassen sich erst nach der Freigabe erfassen.',
+    zahlungen: 'Zahlungen',
+    datum: 'Datum',
+    betrag: 'Betrag',
+    keine: 'Noch keine Zahlung erfasst.',
+    erfassen: 'Zahlung erfassen …',
+    aendern: (datum: string) => `Zahlung vom ${datum} ändern …`,
+    loeschen: (datum: string) => `Zahlung vom ${datum} löschen …`,
+    aendernKurz: 'Ändern …',
+    loeschenKurz: 'Löschen …',
+    aktionen: 'Aktionen',
+    titelNeu: 'Zahlung erfassen',
+    titelAendern: 'Zahlung ändern',
+    datumFeld: 'Zahlungsdatum',
+    betragFeld: 'Gezahlter Betrag',
+    speichern: 'Zahlung speichern',
+    abbrechen: 'Abbrechen',
+    datumFehlt: 'Bitte das Zahlungsdatum angeben (TT.MM.JJJJ).',
+    betragFehlt: 'Bitte den gezahlten Betrag angeben.',
+    betragPositiv: 'Der Betrag muss größer als 0,00 € sein; eine Rückzahlung kennt die Rechnungsprüfung nicht.',
+    loeschenTitel: 'Zahlung löschen',
+    loeschenFrage: (datum: string, betrag: string) =>
+      `Die Zahlung vom ${datum} über ${betrag} € wird gelöscht. In dieser Sitzung holt „Rückgängig“ sie zurück.`,
+    loeschenBestaetigen: 'Zahlung löschen',
+    gespeichert: 'Zahlung gespeichert',
+    geloescht: 'Zahlung gelöscht',
   },
   aktionen: {
     bearbeiten: 'Angaben bearbeiten',
