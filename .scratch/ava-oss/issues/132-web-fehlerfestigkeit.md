@@ -80,3 +80,10 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   Leistungsbudget `leistung.spec.ts:178` unter Lastmittel 31. Die Flake ist vorbestehend: auf `integration/welle-7` ohne
   die Änderungen dieses Tickets fiel der Spec mit `--repeat-each 4` zweimal; keine Seitenfehler (`pageerror`), das
   Fehlerband erschien nicht. Keine Meldungsprüfung fiel in einem der acht Läufe.
+- **Nachtrag** (Merge der Integrationsspitze bis `b805f31`, Tickets 136 bis 153): Konflikte nur in Importzeilen
+  (`aufmass`, `rechnung`, `undo`; beide Seiten behalten). Die neue Lageprüfung der Meldungen in `arbeitsflaeche.spec.ts`
+  (Ticket 142, vorher `.tx-toast`) nutzt jetzt `meldungen(page)` aus `hilfen.ts`; der grep oben trifft weiter nur die
+  drei genannten Stellen. `pnpm lint` und `pnpm typecheck` grün; `pnpm test` mit Lastmittel um 25: alle Prüfungen außer
+  Leistungsbudgets fremder Pakete grün, nacheinander wiederholt bleibt nur `speicher` v16 BauteileZuordnen über dem
+  Budget (bei Lastmittel 18, kleinster Wert 59 ms); nichts gelockert. Volle Web-E2E Läufe 9 und 10 je 99/100; gefallen
+  ist beide Male nur die vorbestehende Flake `bim-tastatur.spec.ts:135`.
