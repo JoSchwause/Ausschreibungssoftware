@@ -59,8 +59,8 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
 - **D-159b.9 PB7** `bauStandText` zieht nach `hilfe/stand.ts` (deutsches Datum, Wörter aus `hilfe/texte.ts`); `version.ts`
   (Wurzel von `src`, kein anderer Schreiber) liefert nur noch die Daten. Test `hilfe/stand.test.ts`.
 - **D-159b.10 SB13** `ui/pfade.ts` erkennt Projekt, LV, LV-Stand und Auftrags-LV; `App.tsx` hat kein eigenes Muster mehr,
-  `auftrag/ziel.ts` baut über `ui/pfade.ts`. Rest (Bericht): `lv/StaendeDialog.tsx` und `projekt/LvAbschnitt.tsx` bauen ihre
-  Adresse noch selbst (`lv/` nur Spec erlaubt, `projekt/` bei 161).
+  `auftrag/ziel.ts`, `lv/StaendeDialog.tsx` und `projekt/LvAbschnitt.tsx` (nach dem Merge von 161 frei) bauen ihre Adressen
+  über `ui/pfade.ts`.
 - **D-159b.11 `ExcelBefunde`** (D-92) über `BefundeBeimEinlesen` (Zahl, Gruppen, Einzelheiten, keine Codes); für die Anzeige
   wird `ExcelBefund` in die Form `Pruefbefund` gebracht (Quelle „Excel“ gibt es nicht; gewählt ist eine Nicht-GAEB-Quelle, die
   nur die Zeilenangabe steuert). Ungenutzte Texte entfernt. E2E in `ausgabe.spec`.
