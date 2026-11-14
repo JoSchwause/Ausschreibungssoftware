@@ -949,3 +949,11 @@ Question: 163 ist done-by-agent. Mergen? Zählt `packages/ui-basis` als „Ordne
 Decision: Gemergt (`103e4e9`), ohne Konflikt. `ui-basis` ist bestätigt: Die Ursache des Wacklers lag dort (eine ältere Meldung bekam Escape, solange Radix seine Schichten nach dem Öffnen eines Dialogs noch nicht neu sortiert hatte); behoben mit Regressionstest, nicht im Test versteckt. Das deckt auch D-162.3 ab. Bildschirm und PDF nutzen zwei Funktionen mit einem Test, der für alle Fixture-Varianten und sechs Daten gleichen Text verlangt (D-163.2); ein Unterpfad-Export von `@tethys/ausgabe` ohne pdfmake im Hauptbündel geht in den Bericht als Folgeticket für die nächste Welle.
 Reason: Gleiche Aussage ist durch den Test gesichert; der Unterpfad wäre eine Paketänderung nach dem Review und verdoppelte sonst das Hauptbündel (938 kB → 1810 kB, gemessen).
 Reversible: yes  Touches: rechnung/, ui-basis, Bericht
+
+## D-112 Pull Request und Merge nach `main` auf Wunsch des Nutzers
+Welle 7 · Abschluss · decided by: user
+Question: Der Skill verbietet im Lauf Push und PR; der Nutzer verlangte nach dem Abschluss „PR and merge to main after e2e and ci is green“.
+Decision: Nach grünem Abschlusslauf (Lint, Typcheck, Tests, alle E2E, XSD, Pfadprobe, REUSE) ist `integration/welle-7` auf den Sitzungsbranch `ccr-6ba19f0a-sxnytm` geschoben und als PR #13 nach `main` geöffnet; gemergt wird, sobald die CI grün ist.
+Reason: Ausdrückliche Anweisung des Nutzers; P7 (Merge nach `main` über einen PR) bleibt gewahrt.
+Reversible: der Merge ja (Revert); die Migration gespeicherter Projekte auf Schema 7 beim Öffnen nicht
+Touches: `main`, Pages-Workflow

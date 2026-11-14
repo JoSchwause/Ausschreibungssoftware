@@ -2,7 +2,8 @@
 
 Stand 2026-11-14. Orchestrator: `/implement-welle 7`. Branch `integration/welle-7` (lokal) ab `4eefd7d` (= `origin/main`, D-76).
 Diff gegen `4eefd7d` ohne `.scratch/` und Lockfile: 660 Dateien, rund 63.200 Zeilen neu und 5.200 entfernt, 511 Commits.
-Schnitt: `schnitt-welle-7.md`, Übersicht `issues/README.md`. Nichts gepusht, kein Pull Request.
+Schnitt: `schnitt-welle-7.md`, Übersicht `issues/README.md`. Auf Wunsch des Nutzers nach dem Abschluss als PR #13
+(Branch `ccr-6ba19f0a-sxnytm`) nach `main`, Merge nach grüner CI (D-112).
 
 ## Was der Lauf umfasste
 
@@ -160,7 +161,7 @@ Welle 7 ist laut G-59 die letzte Welle vor Demo und Probebetrieb. Vorher:
 1. **Mensch:** `entscheidungen-auto.md` D-71 bis D-111 durchsehen (vor allem D-71 bis D-75 und D-96 vom Berater, D-82/D-93/
    D-102 `vertrag` v1.7a–c, D-104/D-109 Review-Umfang, D-108 Kürzung M4); `vertrag` v1.7 annehmen oder ändern; die Annahme zu
    G-27 (A5) bestätigen.
-2. **Merge:** `integration/welle-7` nach `main` (ein Pull Request, P7); danach baut der Pages-Workflow.
+2. **Merge:** PR #13 nach `main` (vom Nutzer nach dem Lauf verlangt, D-112); danach baut der Pages-Workflow.
 3. **Ticket 126:** GitHub Pages einschalten, Handprüfungen (Firefox, Safari, PDFs, HOAI-Tafeln), Sitzung mit dem Büro anhand
    der Seite „Annahmen“ (zugleich das Interview G-02). **Ticket 125:** echte GAEB-90/2000- und Umsteiger-Dateien, damit die
    Leser gegen echte Dateien geprüft werden.

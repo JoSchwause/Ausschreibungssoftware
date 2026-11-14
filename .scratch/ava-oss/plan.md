@@ -259,7 +259,7 @@ Stand 2026-11-09:
     E1–E17 und A5 aus `umfang-welle-7.md`, Tickets 127–163 (123/124 darin aufgegangen), `vertrag` v1.7a, v1.7b (A5) und v1.7c
     (Projekt samt Inhalt löschen), Projektdatei Schema 7, GAEB DA XML 3.1, GAEB 90 und GAEB 2000 lesen, Abzüge und Zahlungen.
     **Tor E „Einführungsreife“ erreicht** (Definition in §4). M4 nach §4 gekürzt (Ticket 157, D-108), dazu die Kann-Teile von E16
-    (D-99). Entscheidungen D-71 bis D-111 in `entscheidungen-auto.md`, Annahme zu G-27 (A5) in `grilling.md`. Nicht gepusht.
+    (D-99). Entscheidungen D-71 bis D-111 in `entscheidungen-auto.md`, Annahme zu G-27 (A5) in `grilling.md`. PR #13 nach `main` (D-112).
     ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.7, Merge nach `main`), Ticket 125 (echte Dateien,
     GAEB 90/2000 nur gegen eigene Fixtures geprüft), Ticket 126 (Pages, Handprüfungen, Sitzung mit dem Büro), Ticket 157, G-57.
     Bericht: `.scratch/ava-oss/welle-7-bericht.md`.
