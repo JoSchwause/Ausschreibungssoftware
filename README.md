@@ -6,8 +6,9 @@ Freie Software für Ausschreibung, Vergabe und Abrechnung (AVA) im Bauwesen: ein
 ## Stand
 
 Version 0.7.0, Stand nach Welle 7 („Einführungsreife“). Die Ausschreibung ist der Kern: Leistungsverzeichnis mit
-Gliederung, Positionsarten, Langtext und Berechnung nach Dezimalarithmetik, GAEB-Austausch (X81, X83, X84, X86; 3.3
-und 3.2), PDF- und Excel-Ausgabe, Preisspiegel und Zuschlag, Auftrags-LV, Nachträge, Aufmaß, Rechnungsprüfung und
+Gliederung, Positionsarten, Langtext und Berechnung nach Dezimalarithmetik, GAEB-Austausch (Einlesen von X81, X83,
+X84 und X86 als GAEB DA XML 3.1, 3.2 und 3.3 sowie als GAEB 90 und GAEB 2000; Ausgabe als GAEB DA XML 3.3 und 3.2), PDF-
+und Excel-Ausgabe, Preisspiegel und Zuschlag, Auftrags-LV, Nachträge, Aufmaß, Rechnungsprüfung und
 Kostenkontrolle. Dazu kommen als Vorschau BIM mit IFC-Modellen, Bauzeitenplan, HOAI-Honorar sowie Mängel und
 Bautagebuch. Alles läuft im Browser, die Daten bleiben auf dem eigenen Gerät (SQLite im Browserspeicher); der
 Austausch geschieht über Dateien. Ein Server ist für spätere Versionen vorgesehen.
@@ -25,7 +26,9 @@ Basis-Pfad `/<repo>/` und veröffentlicht ihn.
 ## Erste Schritte
 
 1. Die Demo im Browser öffnen (aktuelles Chrome oder Edge, Fensterbreite ab 1280 px).
-2. Ein Projekt anlegen (oder das Muster-LV verwenden) und im Leistungsverzeichnis Positionen erfassen.
+2. Die Startseite bietet drei Wege: „Beispielprojekt laden“ (ein fertiges, erfundenes Projekt zum Ausprobieren), mit einer
+   GAEB-Datei beginnen (die App legt dafür ein Projekt an und liest das LV ein) oder ein leeres Projekt anlegen und im
+   Leistungsverzeichnis Positionen erfassen.
 3. Eine Sicherung als Datei ablegen: Die Daten liegen nur im Browser dieses Geräts. Die App erinnert an Sicherungen.
 
 ## Entwicklung

@@ -6,10 +6,20 @@
 
 import { vorzeichen } from '@tethys/dezimal';
 import { Button, Dialog, Eingabefeld, Zahlfeld } from '@tethys/ui-basis';
-import type { Betrag, IdQuelle, Rechnung, RechnungBefehl, Zahlung, Zahlungsstand } from '@tethys/vertrag';
-import { useId, useMemo, useRef, useState } from 'react';
+import type {
+  Betrag,
+  IdQuelle,
+  Kalenderdatum,
+  Rechnung,
+  RechnungBefehl,
+  Zahlung,
+  Zahlungsstand,
+} from '@tethys/vertrag';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { datumAusUhr } from '../ausgabe/logik';
 import { datumDe } from '../lv/kopfdaten';
+import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
 import { zahlungsfreigabe } from './pruefung';
 import { texte } from './texte';
@@ -38,9 +48,32 @@ export function Zahlungsbereich({
   befehle: (bs: readonly RechnungBefehl[]) => Promise<boolean>;
 }): ReactElement {
   const hinweisId = useId();
-  const zf = useMemo(() => zahlungsfreigabe(rechnung, zahlungsstand), [rechnung, zahlungsstand]);
+  const u = useUmgebung();
+  const heute = datumAusUhr(u.uhr()) as Kalenderdatum;
+  const zf = useMemo(
+    () => zahlungsfreigabe(rechnung, zahlungsstand, heute),
+    [rechnung, zahlungsstand, heute],
+  );
   const [dialog, setDialog] = useState<Dialoglage>({ art: 'zu' });
   const abbrechen = useRef<HTMLButtonElement>(null);
+  const tabelle = useRef<HTMLTableElement>(null);
+  const erfassen = useRef<HTMLButtonElement>(null);
+  /**
+   * Nach „Zahlung löschen“: die gelöschte Zahlung und die, deren „Ändern …“ danach den Fokus bekommt (`ziel` `null`:
+   * „Zahlung erfassen …“). Gesetzt wird der Fokus, sobald die gelöschte aus der Liste ist.
+   */
+  const fokusNachLoeschen = useRef<{ readonly geloescht: string; readonly ziel: string | null } | null>(null);
+  useEffect(() => {
+    const f = fokusNachLoeschen.current;
+    if (f === null || zf.zahlungen.some((z) => z.id === f.geloescht)) return;
+    fokusNachLoeschen.current = null;
+    const ziel = f.ziel;
+    const knopf =
+      ziel === null
+        ? erfassen.current
+        : tabelle.current?.querySelector<HTMLButtonElement>(`[data-zahlung-aendern="${CSS.escape(ziel)}"]`);
+    knopf?.focus();
+  }, [zf.zahlungen]);
   const freigegeben = rechnung.freigabe !== null;
 
   return (
@@ -109,7 +142,7 @@ export function Zahlungsbereich({
       {zf.zahlungen.length === 0 ? (
         <p className="rechnung__hinweis">{t.keine}</p>
       ) : (
-        <table className="rechnung__tabelle" aria-label={t.zahlungen} data-testid="zahlungen">
+        <table className="rechnung__tabelle" aria-label={t.zahlungen} data-testid="zahlungen" ref={tabelle}>
           <thead>
             <tr>
               <th scope="col">{t.datum}</th>
@@ -125,7 +158,8 @@ export function Zahlungsbereich({
                 <td>
                   <Button
                     groesse="sm"
-                    aria-label={t.aendern(datumDe(z.datum))}
+                    aria-label={t.aendern(datumDe(z.datum), formatiereBetragDe(z.betrag))}
+                    data-zahlung-aendern={z.id}
                     onClick={() => {
                       setDialog({ art: 'bearbeiten', zahlung: z });
                     }}
@@ -135,7 +169,7 @@ export function Zahlungsbereich({
                   <Button
                     groesse="sm"
                     variante="gefahr"
-                    aria-label={t.loeschen(datumDe(z.datum))}
+                    aria-label={t.loeschen(datumDe(z.datum), formatiereBetragDe(z.betrag))}
                     onClick={() => {
                       setDialog({ art: 'loeschen', zahlung: z });
                     }}
@@ -150,6 +184,7 @@ export function Zahlungsbereich({
       )}
       <div className="lv__werkzeuge">
         <Button
+          ref={erfassen}
           disabled={!freigegeben}
           aria-describedby={freigegeben ? undefined : `${hinweisId}-gesperrt`}
           onClick={() => {
@@ -215,8 +250,13 @@ export function Zahlungsbereich({
               onClick={() => {
                 if (dialog.art !== 'loeschen') return;
                 const id = dialog.zahlung.id;
+                // R3: Der Fokus geht danach auf „Ändern …“ der nächsten Zahlung, sonst auf „Zahlung erfassen …“.
+                const i = zf.zahlungen.findIndex((z) => z.id === id);
+                fokusNachLoeschen.current = { geloescht: id, ziel: zf.zahlungen[i + 1]?.id ?? null };
                 setDialog({ art: 'zu' });
-                void befehle([{ art: 'ZahlungLoeschen', zahlungId: id }]);
+                void befehle([{ art: 'ZahlungLoeschen', zahlungId: id }]).then((ok) => {
+                  if (!ok) fokusNachLoeschen.current = null;
+                });
               }}
             >
               {t.loeschenBestaetigen}

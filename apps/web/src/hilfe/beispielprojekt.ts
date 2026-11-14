@@ -10,9 +10,8 @@
 // die Nachtragsposition; die Rechnung ist Rechnung 1 ohne Freigabe (sie lässt sich so in der App prüfen und freigeben).
 
 import { rechnungBefehlAusfuehren } from '@tethys/abrechnung';
-import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
 import { mengenansatzBerechnen } from '@tethys/mengen';
-import { angebotBefehlAusfuehrer } from '@tethys/vergabe';
+import { angebotBefehlAusfuehrer, auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Auftrags-LV über die Vergabe
 import type {
   Angebot,
   AngebotBefehl,

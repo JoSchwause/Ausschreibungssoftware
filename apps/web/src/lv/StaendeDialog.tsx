@@ -5,12 +5,13 @@
 // `historie/staende.ts` aus.
 
 import { Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
-import type { LeistungsverzeichnisId, LvBefehl, LvStandUebersicht } from '@tethys/vertrag';
+import type { LeistungsverzeichnisId, LvBefehl, LvStandId, LvStandUebersicht } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { ReactElement } from 'react';
 import { lvStandBefehlAnwenden } from '../historie/staende'; // Ticket 150
 import { texte } from '../historie/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { lvStandPfad } from '../ui/pfade';
 import { hrefFuer } from '../ui/route';
 import { befehlswegFuer } from './befehlsweg';
 import { useMeldungen } from './meldungen';
@@ -24,8 +25,9 @@ export function zeitpunktDe(wann: string): string {
   return d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** Seite eines LV-Stands; die Adresse steht in `ui/pfade.ts` (Wellen-Review SB13). */
 export function standPfad(lvId: LeistungsverzeichnisId, standId: string): string {
-  return `/lv/${lvId}/stand/${standId}`;
+  return lvStandPfad(lvId, standId as LvStandId);
 }
 
 export function StaendeDialog(props: {

@@ -1,13 +1,66 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Pfadbaukasten (Ticket 123 Punkt 4, Ticket 131): Adressen der Seiten „Liste je Projekt“ und „ein Gegenstand der Liste“,
 // ihre Erkennung und das Ziel nach Rückgängig/Wiederholen, an einer Stelle statt in jedem Ordner kopiert. Ohne Abhängigkeit
-// auf Fachpakete oder Speicher, damit Hülle, `App.tsx` und Historie es billig importieren.
+// auf Fachpakete oder Speicher, damit Hülle, `App.tsx` und Historie es billig importieren. Seit dem Wellen-Review (SB13) auch
+// Projekt, LV, LV-Stand und Auftrags-LV: `App.tsx` erkennt keine Adresse mehr mit eigenem Muster.
 
-import type { Aenderung, ProjektId } from '@tethys/vertrag';
+import type {
+  Aenderung,
+  AuftragsLeistungsverzeichnisId,
+  LeistungsverzeichnisId,
+  LvStandId,
+  ProjektId,
+} from '@tethys/vertrag';
 
 /** Die Übersichtsseite eines Projekts. */
 export function projektPfad(projektId: ProjektId): string {
   return `/projekt/${projektId}`;
+}
+
+/** Die Teile hinter einem festen Muster, entschlüsselt; `null`, wenn der Pfad nicht passt. */
+function teile(muster: RegExp, pfad: string, anzahl: number): string[] | null {
+  const m = muster.exec(pfad);
+  if (m === null) return null;
+  // Die Muster haben nur Pflichtgruppen: Passt der Pfad, sind alle `anzahl` Teile da.
+  return m.slice(1, anzahl + 1).map((x) => decodeURIComponent(x));
+}
+
+/** Erkennt die Übersichtsseite eines Projekts. */
+export function projektRoute(pfad: string): ProjektId | null {
+  return (teile(/^\/projekt\/([^/]+)$/, pfad, 1)?.[0] ?? null) as ProjektId | null;
+}
+
+/** Die Seite eines Leistungsverzeichnisses. */
+export function lvPfad(id: LeistungsverzeichnisId): string {
+  return `/lv/${id}`;
+}
+
+export function lvRoute(pfad: string): LeistungsverzeichnisId | null {
+  return (teile(/^\/lv\/([^/]+)$/, pfad, 1)?.[0] ?? null) as LeistungsverzeichnisId | null;
+}
+
+/** Ein LV-Stand, schreibgeschützt. */
+export function lvStandPfad(lvId: LeistungsverzeichnisId, standId: LvStandId): string {
+  return `${lvPfad(lvId)}/stand/${standId}`;
+}
+
+export function lvStandRoute(
+  pfad: string,
+): { readonly lvId: LeistungsverzeichnisId; readonly standId: LvStandId } | null {
+  const t = teile(/^\/lv\/([^/]+)\/stand\/([^/]+)$/, pfad, 2);
+  return t === null ? null : { lvId: t[0] as LeistungsverzeichnisId, standId: t[1] as LvStandId };
+}
+
+/** Die Seite eines Auftrags-LV (mit Projekt, D-64.3). */
+export function auftragsLvPfad(projektId: ProjektId, id: AuftragsLeistungsverzeichnisId): string {
+  return `${projektPfad(projektId)}/auftrag/${id}`;
+}
+
+export function auftragsLvRoute(
+  pfad: string,
+): { readonly projektId: ProjektId; readonly id: AuftragsLeistungsverzeichnisId } | null {
+  const t = teile(/^\/projekt\/([^/]+)\/auftrag\/([^/]+)$/, pfad, 2);
+  return t === null ? null : { projektId: t[0] as ProjektId, id: t[1] as AuftragsLeistungsverzeichnisId };
 }
 
 /** Eine Seite einer Liste je Projekt: die Liste selbst oder ein Gegenstand daraus. */

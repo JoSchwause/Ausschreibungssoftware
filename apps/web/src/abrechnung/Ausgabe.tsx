@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { datumAusUhr } from '../ausgabe/logik';
+import { texte as fehlerTexte } from '../fehler/texte';
 import { useEinstellungen } from '../historie/EinstellungenAnbieter';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { PdfMitVorschau } from '../vergabe/Ausgaben';
@@ -70,7 +71,7 @@ type Lage =
   | { readonly art: 'zu' }
   | { readonly art: 'laeuft' }
   | { readonly art: 'da'; readonly bytes: Uint8Array }
-  | { readonly art: 'fehler'; readonly meldung: string };
+  | { readonly art: 'fehler' };
 
 function ExcelAusgabe({
   name,
@@ -90,10 +91,9 @@ function ExcelAusgabe({
       (bytes) => {
         setLage((l) => (l.art === 'laeuft' ? { art: 'da', bytes } : l));
       },
-      (f: unknown) => {
-        setLage((l) =>
-          l.art === 'laeuft' ? { art: 'fehler', meldung: f instanceof Error ? f.message : String(f) } : l,
-        );
+      () => {
+        // Wellen-Review SB1 (B-26): ein Satz mit dem nächsten Schritt, nie der technische Text.
+        setLage((l) => (l.art === 'laeuft' ? { art: 'fehler' } : l));
       },
     );
   };
@@ -139,7 +139,7 @@ function ExcelAusgabe({
         ) : null}
         {lage.art === 'fehler' ? (
           <p role="alert">
-            <strong>{t.fehler}</strong> {lage.meldung}
+            <strong>{t.fehler}</strong> {fehlerTexte.pdf}
           </p>
         ) : null}
       </Dialog>

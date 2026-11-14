@@ -10,7 +10,8 @@ import {
   type NachtragIdQuelle,
   type Nachtragswarnung,
 } from '@tethys/abrechnung';
-import { auftragsLvBefehlAusfuehren, auftragsLvChangeSetAnwenden } from '@tethys/kern';
+import { auftragsLvChangeSetAnwenden } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import type {
   Angebot,
   AngebotId,

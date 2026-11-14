@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Bedienung der LV-Seite (Welle 7, E8 und B-26): Hinweistext anlegen und ändern (Vor- und Nachtext), OZ-Maske ändern mit
 // Vorschau und Liste der Konflikte (abgewiesen ohne Datenverlust), der richtige Text an einem Titel, der Hinweis „KG außerhalb
-// der Gliederung“ an der Zelle und „Kalkulation entfernt“ mit Rückgängig.
+// der Gliederung“ an der Zelle und „Kalkulation entfernt“ mit Rückgängig (die Kalkulation über den echten Dialog, D-98).
 
 import { expect, test, type Page } from '@playwright/test';
-import type { Einheitspreis, LvInhalt, Menge, Position, Prozent } from '@tethys/vertrag';
+import type { LvInhalt } from '@tethys/vertrag';
 import { fixtureInhalt } from './fixture-inhalt';
 import { leerlauf, projektAnlegen, zeilen } from './hilfen';
 import { pruefungEinblenden, werkzeug } from './werkzeuge';
@@ -228,32 +228,22 @@ test('KG außerhalb der Gliederung: Hinweis an der Zelle und im Prüf-Panel, sob
 test('Ein EP von Hand entfernt die Kalkulation: Band „Kalkulation entfernt“, Rückgängig stellt beides her', async ({
   page,
 }) => {
-  const inhalt = fixtureInhalt('typisch');
-  const mitKalkulation: LvInhalt = {
-    ...inhalt,
-    knoten: inhalt.knoten.map((k) =>
-      k.art === 'position' && k.kurztext === 'Bauzaun stellen'
-        ? ({
-            ...k,
-            kalkulation: {
-              ansaetze: [
-                {
-                  art: 'lohn',
-                  bezeichnung: 'Lohn',
-                  ansatzmenge: '0.100' as Menge,
-                  kostensatz: '50.000' as Einheitspreis,
-                },
-              ],
-              zuschlagssaetze: { lohn: '10.00' as Prozent },
-            },
-          } satisfies Position)
-        : k,
-    ),
-  };
-  await lvOeffnen(page, mitKalkulation);
+  await lvOeffnen(page);
   const band = page.locator('.lv__band');
   const ep = zelle(page, 'Bauzaun stellen', 'einheitspreis');
   await expect(ep.locator('.tx-grid__text')).toHaveText('7,450');
+
+  // Die Kalkulation entsteht über den echten Dialog (D-98), nicht über den Testpfad: Lohn 0,1 h × 50,00 € + 10 % = 5,500.
+  await zelle(page, 'Bauzaun stellen', 'kurztext').click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
+  const kalk = page.getByRole('dialog', { name: /^EP kalkulieren/ });
+  await kalk.getByLabel('Ansatzmenge 1').fill('0,1');
+  await kalk.getByLabel('Kostensatz 1 (€)').fill('50');
+  await kalk.getByLabel('Zuschlagssatz Lohn (%)').fill('10');
+  await expect(kalk.getByTestId('kalkulation-ep')).toHaveText('5,500');
+  await kalk.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(kalk).toBeHidden();
+  await expect(ep.locator('.tx-grid__text')).toHaveText('5,500');
   await expect(band).toHaveCount(0);
 
   await ep.focus();
@@ -263,7 +253,7 @@ test('Ein EP von Hand entfernt die Kalkulation: Band „Kalkulation entfernt“,
   await expect(band).toHaveText(/Kalkulation entfernt/);
 
   await band.getByRole('button', { name: 'Rückgängig' }).click();
-  await expect(ep.locator('.tx-grid__text')).toHaveText('7,450');
+  await expect(ep.locator('.tx-grid__text')).toHaveText('5,500');
   await expect(band).toHaveCount(0);
   // Wiederholen bringt den Preis zurück, das Band nicht (es gehört zur Antwort auf den Befehl).
   await page.getByRole('button', { name: /^Wiederholen/ }).click();

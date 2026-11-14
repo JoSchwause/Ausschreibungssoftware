@@ -12,7 +12,7 @@ export const texte = {
     abgewiesen: 'Rückgängig nicht möglich',
     wiederholenAbgewiesen: 'Wiederholen nicht möglich',
     konflikt:
-      'Der gespeicherte Stand passt nicht mehr zu diesem Schritt. Es wurde nichts geändert; der Schritt bleibt im Verlauf.',
+      'Der gespeicherte Stand passt nicht mehr zu diesem Schritt, etwa weil ein gelöschtes Projekt inzwischen aus einer Projektdatei wieder eingelesen wurde. Es wurde nichts geändert; der Schritt bleibt im Verlauf. Bitte den aktuellen Stand prüfen: Ist das Projekt schon wieder da, ist nichts weiter zu tun.',
     teilweise: 'Ein Teil des Schritts wurde geschrieben, der Rest bleibt im Verlauf.',
   },
   // Ticket 150 (D-82 M1): eigenes Rückgängig der Einstellungen, getrennt von dem des Projekts

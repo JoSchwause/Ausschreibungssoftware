@@ -20,6 +20,7 @@ import type { KeyboardEvent, ReactElement } from 'react';
 import { datumAusUhr } from '../ausgabe/logik';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { dateinameSauber } from '../dateiname';
+import { texte as fehlerTexte } from '../fehler/texte';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
@@ -179,7 +180,8 @@ function Editor({
       const bytes = await honorarPdf(b, ergebnis, befunde, projektName, datumAusUhr(u.uhr()));
       herunterladenBytes(`${dateinameSauber(b.name, 'Honorarberechnung')}.pdf`, bytes, 'application/pdf');
     } catch {
-      zeige({ titel: t.pdfFehler, art: 'fehler' });
+      // Wellen-Review SB1: mit dem nächsten Schritt, nie mit dem technischen Text des Workers.
+      zeige({ titel: t.pdfFehler, beschreibung: fehlerTexte.pdf, art: 'fehler' });
     }
   };
 

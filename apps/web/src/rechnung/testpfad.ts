@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 88: Teil des Testpfads (`src/testpfad.ts`, nur im Test-Build): ein Aufmaßblatt anlegen und einen Nachtrag ins
 // Auftrags-LV übernehmen, damit die E2E der Rechnungen nicht von Aufmaß- und Nachtragsseite (Tickets 86, 87) abhängt.
-// Auch hier geht alles als Befehl durch Ausführer (`abrechnung`, `kern`) und Speicher (A5), auf der Kette des
+// Auch hier geht alles als Befehl durch Ausführer (`abrechnung`, `vergabe`) und Speicher (A5), auf der Kette des
 // Befehlswegs; kein Undo-Schritt (diese Seiten sind nicht Teil dieser Tests).
 
 import { aufmassBefehlAusfuehren } from '@tethys/abrechnung';
-import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Auftrags-LV über die Vergabe
 import type {
   Aufmass,
   AufmassBefehl,

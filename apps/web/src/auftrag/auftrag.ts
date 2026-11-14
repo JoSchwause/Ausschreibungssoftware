@@ -4,7 +4,7 @@
 // `speicher.auftragsLeistungsverzeichnisse` (Vertrag v1.4) statt über den Export der Projektdatei (D-64.2), die Umkehrung
 // ist `auftragsLvChangeSetUmkehren` des Kerns (D-64.4 entfällt).
 
-import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import type {
   AuftragsLeistungsverzeichnisAnlegen,
   AuftragsLeistungsverzeichnisId,

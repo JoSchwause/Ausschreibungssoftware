@@ -220,7 +220,7 @@ export const texte = {
       brutto: 'Brutto',
     },
     pdf: 'Als PDF',
-    pdfFehler: 'Das PDF ließ sich nicht erzeugen.',
+    pdfFehler: 'Das PDF konnte nicht erzeugt werden.',
     grid: 'Honorarobjekte',
   },
 };

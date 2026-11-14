@@ -2,7 +2,8 @@
 // Ticket 151 (B-18): „Angebot des Auftragnehmers einlesen“ im Kopfband des Nachtrags-LV. Eine Datei (X84 oder Excel, am
 // Inhalt erkannt), Vorschau mit dem Auftragnehmer als Bieter (vorbelegt, nicht änderbar: Angebote anderer Bieter gehen über
 // „Angebote“) und den Befunden; „Übernehmen“ legt das Angebot für den Auftragnehmer an, ein Undo-Schritt. Gelesen wird mit
-// denselben Lesern wie bei „Angebote“ (X84) und „Excel einlesen“; Befunde sperren nie (U5), nichts wird still verworfen (Q5).
+// denselben Lesern wie bei „Angebote“ (X84 als GAEB DA XML, GAEB 90 oder GAEB 2000) und „Excel einlesen“, die Befunde im selben
+// Baustein; Befunde sperren nie (U5), nichts wird still verworfen (Q5).
 
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { BieterId, LvZustand } from '@tethys/vertrag';
@@ -10,8 +11,9 @@ import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { ExcelBefunde } from '../ausgabe/ExcelBefunde';
 import { excelAngebotLesen, type ExcelVorschau } from '../ausgabe/logik';
-import { Befundliste } from '../gaeb/Befundliste';
-import { DateiNichtLesbar, dateiBytes, naechsterZug } from '../gaeb/datei';
+import { BefundeBeimEinlesen } from '../gaeb/BefundeBeimEinlesen';
+import { abweisungssatz } from '../gaeb/befunde';
+import { DateiNichtLesbar, GAEB_ENDUNGEN, dateiBytes, naechsterZug } from '../gaeb/datei';
 import { angebotLesen, type Angebotsvorschau } from '../gaeb/gaeb';
 import { texte as gtexte } from '../gaeb/texte';
 import { befehlswegFuer } from '../lv/befehlsweg';
@@ -98,7 +100,7 @@ export function AuftragnehmerAngebot({
       <input
         ref={datei}
         type="file"
-        accept=".x84,.X84,.xml,.xlsx"
+        accept={`${GAEB_ENDUNGEN},.xlsx,.XLSX`}
         className="gaeb__datei"
         aria-label={t.datei}
         tabIndex={-1}
@@ -157,10 +159,11 @@ export function AuftragnehmerAngebot({
             {angebot === null ? <p>{t.leer}</p> : null}
             {g.format === 'x84' ? (
               <>
-                {g.vorschau.phase !== 'X84' ? (
+                {g.vorschau.phase !== 'X84' && abweisungssatz(g.vorschau.befunde) === null ? (
                   <p>{gtexte.angebot.keinX84(g.vorschau.phase, g.vorschau.version)}</p>
                 ) : null}
-                <Befundliste befunde={g.vorschau.befunde} />
+                {/* Wellen-Review PB1 (E7): Befunde zusammengefasst wie im Dialog „Angebote“, Einzelheiten aufklappbar. */}
+                <BefundeBeimEinlesen befunde={g.vorschau.befunde} />
               </>
             ) : (
               <ExcelBefunde befunde={g.vorschau.befunde} />

@@ -15,8 +15,8 @@ import { texte as fehlerTexte } from '../fehler/texte'; // Ticket 155 (D-94)
 import { dateinameSauber } from '../dateiname';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { pdfLauf, type PdfLauf } from '../ui/pdf-lauf';
 import { befundtexteFuerDruck } from './ansicht';
-import type { PlanPdfAntwort } from './pdf-worker';
 import { texte } from './texte';
 
 const t = texte.pdf;
@@ -41,12 +41,12 @@ export function PlanDrucken({
   const [offen, setOffen] = useState(false);
   const [datum, setDatum] = useState('');
   const [lage, setLage] = useState<Lage>({ art: 'bereit' });
-  const worker = useRef<Worker | null>(null);
+  const lauf = useRef<PdfLauf | null>(null);
   const gelesen = datumLesen(datum);
 
   const beenden = (): void => {
-    worker.current?.terminate();
-    worker.current = null;
+    lauf.current?.abbrechen();
+    lauf.current = null;
   };
   // Schließt der Nutzer die Seite, läuft kein Worker weiter.
   useEffect(() => beenden, []);
@@ -57,28 +57,10 @@ export function PlanDrucken({
     setOffen(false);
   };
 
-  const erzeugen = (): void => {
+  const erzeugen = async (): Promise<void> => {
     if (!gelesen.ok) return;
     beenden();
     setLage({ art: 'laeuft' });
-    const w = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
-    worker.current = w;
-    const name = dateinamePlanPdf(plan.name);
-    w.onmessage = (e: MessageEvent<PlanPdfAntwort>) => {
-      if (worker.current !== w) return;
-      beenden();
-      if (e.data.art === 'fertig') {
-        herunterladenBytes(name, e.data.bytes, 'application/pdf');
-        zeige({ titel: t.fertig, beschreibung: name, art: 'erfolg' });
-        setLage({ art: 'bereit' });
-        setOffen(false);
-      } else setLage({ art: 'fehler', meldung: fehlerTexte.pdf }); // Ticket 155 (D-94): kein Rohtext der Ausnahme
-    };
-    w.onerror = () => {
-      if (worker.current !== w) return;
-      beenden();
-      setLage({ art: 'fehler', meldung: fehlerTexte.pdf });
-    };
     const auftrag: BauzeitenplanEingabe = {
       plan,
       ergebnis,
@@ -87,7 +69,22 @@ export function PlanDrucken({
       datum: gelesen.wert,
       ...(projekt === null ? {} : { projekt }),
     };
-    w.postMessage(auftrag);
+    const neu = pdfLauf(new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' }), auftrag);
+    lauf.current = neu;
+    const name = dateinamePlanPdf(plan.name);
+    try {
+      const bytes = await neu.ergebnis;
+      if (lauf.current !== neu || bytes === null) return;
+      lauf.current = null;
+      herunterladenBytes(name, bytes, 'application/pdf');
+      zeige({ titel: t.fertig, beschreibung: name, art: 'erfolg' });
+      setLage({ art: 'bereit' });
+      setOffen(false);
+    } catch {
+      if (lauf.current !== neu) return;
+      lauf.current = null;
+      setLage({ art: 'fehler', meldung: fehlerTexte.pdf }); // Ticket 155 (D-94): kein Rohtext der Ausnahme
+    }
   };
 
   const laeuft = lage.art === 'laeuft';
@@ -111,7 +108,7 @@ export function PlanDrucken({
         fuss={
           <>
             <Button onClick={schliessen}>{laeuft ? t.abbrechen : t.schliessen}</Button>
-            <Button variante="primaer" disabled={laeuft || !gelesen.ok} onClick={erzeugen}>
+            <Button variante="primaer" disabled={laeuft || !gelesen.ok} onClick={() => void erzeugen()}>
               {t.erzeugen}
             </Button>
           </>

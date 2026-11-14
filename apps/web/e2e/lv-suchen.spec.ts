@@ -75,3 +75,37 @@ test('Kontextmenü: Umschalt+F10 an einer Zelle, „Tastenkürzel anzeigen“ ö
     'Umschalt+F10 oder Menütaste',
   );
 });
+
+test('Auftrags-LV: die Suche findet auch unter einer zugeklappten Gliederung (D-101)', async ({ page }) => {
+  // Angebot von Bieter A und Zuschlag über die Oberfläche; danach steht die Seite des Auftrags-LV.
+  await page
+    .getByLabel('Angebotsdatei wählen')
+    .setInputFiles(new URL('../../../fixtures/angebote/typisch-bieter-a.x84', import.meta.url).pathname);
+  await page
+    .getByRole('dialog', { name: 'Angebot (X84) einlesen' })
+    .getByRole('button', { name: 'Übernehmen' })
+    .click();
+  const liste = page.getByRole('dialog', { name: 'Angebote' });
+  await expect(liste.getByRole('row', { name: /Bieter A/ })).toBeVisible();
+  await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
+  await page
+    .getByRole('table', { name: 'Bieter des Preisspiegels' })
+    .getByRole('button', { name: 'Zuschlag erteilen: Bieter A' })
+    .click();
+  await page
+    .getByRole('dialog', { name: 'Zuschlag erteilen – Bieter A' })
+    .getByRole('button', { name: 'Zuschlag erteilen', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
+
+  await zelle(page, 'Erd- und Betonarbeiten', 'kurztext').click();
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect(zeile(page, 'Erd- und Betonarbeiten')).toHaveAttribute('aria-expanded', 'false');
+  await expect(zeile(page, 'Fundamente betonieren')).toHaveCount(0);
+  await page.keyboard.press('Control+f');
+  await expect(suchfeld(page)).toBeFocused();
+  await page.keyboard.type('frost');
+  await expect(zelle(page, 'Zuschlag Frosteinbau', 'kurztext')).toHaveClass(/tx-grid__zelle--aktiv/);
+  await expect(zeile(page, 'Erd- und Betonarbeiten')).toHaveAttribute('aria-expanded', 'true');
+});

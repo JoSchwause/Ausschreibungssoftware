@@ -3,7 +3,8 @@
 // der Fixture (`typisch-angebote.json`), nicht aus dem Kern.
 
 import { readFileSync } from 'node:fs';
-import { auftragsLvBefehlAusfuehren, lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
+import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import type {
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,

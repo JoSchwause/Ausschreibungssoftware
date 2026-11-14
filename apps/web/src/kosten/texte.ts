@@ -70,7 +70,12 @@ export const texte = {
     csvEntfernen: 'Bezeichnungen entfernen',
     csvGelesen: (n: number) => `${stueck(n, '1 Bezeichnung', 'Bezeichnungen')} gelesen`,
     csvKeine: 'Keine Bezeichnungen geladen.',
-    csvFehler: 'Die Datei ließ sich nicht lesen.',
+    csvFehler:
+      'Die Datei ließ sich nicht lesen. Bitte eine CSV-Datei mit Nummer und Bezeichnung je Zeile wählen.',
+    csvLeer:
+      'In der Datei stand keine lesbare Zeile (Nummer; Bezeichnung). Die vorhandenen Bezeichnungen bleiben; entfernt werden sie nur mit „Bezeichnungen entfernen“.',
+    csvOhneEinstellungen:
+      'Die Einstellungen sind noch nicht geladen. Bitte die Seite neu laden und erneut versuchen.',
     befunde: 'Hinweise zur Kostenermittlung',
     keineBefunde: 'Keine Hinweise.',
     loeschenTitel: 'Kostenermittlung löschen',
@@ -170,6 +175,8 @@ export const texte = {
     laeuft: 'Datei wird erstellt …',
     fertig: 'Datei erstellt',
     fehler: 'Die Ausgabe ließ sich nicht erstellen.',
+    /** Nächster Schritt, wenn die Vorschau nicht entsteht (Wellen-Review SB1, E13). */
+    vorschauFehler: 'Bitte den Dialog schließen und erneut öffnen. Hilft das nicht, die Seite neu laden.',
   },
   bezeichnungen: {
     fehlen:

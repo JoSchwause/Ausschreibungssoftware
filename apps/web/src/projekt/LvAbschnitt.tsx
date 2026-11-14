@@ -24,10 +24,10 @@ import { FormDialog } from './FormDialog';
 import { LvNetto } from './LvNetto';
 import { auftragZu, type Projektstand } from './stand';
 import { texte } from './texte';
+import { lvPfad } from '../ui/pfade';
 
-export function lvPfad(id: LeistungsverzeichnisId): string {
-  return `/lv/${id}`;
-}
+/** Seite eines LV; die Adresse steht in `ui/pfade.ts` (Wellen-Review SB13). */
+export { lvPfad };
 
 /** Konflikt des Speichers beim Löschen (abhängige Aggregate) als verständliche Meldung, sonst wie überall. */
 export function useLoeschMeldung(): (a: Ausgang<unknown>, konflikt: string) => boolean {

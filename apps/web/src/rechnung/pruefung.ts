@@ -299,9 +299,10 @@ export const nachDatum = (zs: readonly Zahlung[]): Zahlung[] =>
 /**
  * Die Zahlungsfreigabe einer Rechnung aus ihrem Zahlungsstand (gerechnet in `abrechnung`, D-128.8). Bezeichnungen wie im
  * Druck: „Bauabzugsteuer 15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“, „Summe der Zahlungen“, „Offen“.
- * Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag.
+ * Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag. `heute` (Uhr der App) entscheidet, ob ein nicht
+ * verwirklichter Skonto „noch nicht“ (Frist läuft) oder endgültig „nicht verwirklicht“ heißt.
  */
-export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): Zahlungsfreigabe {
+export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand, heute: Kalenderdatum): Zahlungsfreigabe {
   const z = texte.zahlung;
   const steuer = r.bauabzugsteuer === true;
   const steuerText = z.bauabzugsteuer(formatiereProzentDe(BAUABZUGSTEUER_SATZ));
@@ -352,7 +353,12 @@ export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): Zahlungsfreiga
   if (skonto !== undefined)
     geltend.push({
       schluessel: 'skonto',
-      bezeichnung: zs.skontoVerwirklicht ? z.skontoVerwirklicht : z.skontoNichtVerwirklicht,
+      bezeichnung: zs.skontoVerwirklicht
+        ? z.skontoVerwirklicht
+        : // Zweiter Review-Durchgang R2: Solange die Frist läuft (Fristtag eingeschlossen), ist nichts endgültig verfehlt.
+          zs.fristende !== null && heute <= zs.fristende
+          ? z.skontoNochNichtVerwirklicht
+          : z.skontoNichtVerwirklicht,
       zeichen: '−',
       betrag: zs.verwirklichterSkonto,
     });

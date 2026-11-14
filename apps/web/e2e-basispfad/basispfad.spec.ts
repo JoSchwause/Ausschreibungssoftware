@@ -9,26 +9,29 @@ test('Der Build mit Basis-Pfad lädt unter dem Pfad, ohne fehlende Dateien', asy
     if (r.status() >= 400) fehlend.push(`${String(r.status())} ${r.url()}`);
   });
   page.on('console', (m) => {
-    // Beim Neuladen hält der alte Speicher-Worker die OPFS-Datei noch kurz; die App wiederholt den Zugriff und meldet
-    // das einmal in der Konsole. Das hat mit dem Basis-Pfad nichts zu tun und wird hier nicht gezählt.
-    if (m.type() === 'error' && !m.text().includes('createSyncAccessHandle')) konsole.push(m.text());
+    // Ohne Ausnahme (D-104): Seit Ticket 139 prüft der Speicher-Worker die OPFS-Dateien beim Neuladen still vorher.
+    if (m.type() === 'error') konsole.push(m.text());
   });
   page.on('pageerror', (e) => konsole.push(e.message));
 
   await page.goto(BASIS);
-  await expect(page).toHaveTitle('Tethys AVA');
+  // Seit der Navigation der Welle 7 nennt der Fenstertitel die Seite („Projekte – Tethys AVA“).
+  await expect(page).toHaveTitle('Projekte – Tethys AVA');
   await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
   // Der Speicher läuft in einem Worker (OPFS): Die Projektliste erscheint erst, wenn er geantwortet hat.
   await expect(page.getByText('Noch keine Projekte.')).toBeVisible();
 
   // Wechsel innerhalb der App behält den Basis-Pfad.
-  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('link', { name: 'LV' }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASIS}lv$`));
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Hauptnavigation' })
+    .getByRole('link', { name: 'Hilfe' })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`${BASIS}hilfe$`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Hilfe' })).toBeVisible();
 
   // Neuladen auf einer Unterseite (bei Pages liefert 404.html die Startseite aus).
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Leistungsverzeichnis' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Hilfe' })).toBeVisible();
 
   // Manifest: Start-Adresse und Geltungsbereich folgen dem Basis-Pfad.
   const antwort = await request.get(`${BASIS}manifest.webmanifest`);

@@ -139,9 +139,11 @@ test('Excel einlesen: keine Excel-Datei zeigt den Befund und bietet kein Überne
   });
   const dialog = page.getByRole('dialog', { name: 'Excel-Angebot einlesen' });
   await expect(dialog.getByText(/nichts zu übernehmen/)).toBeVisible();
-  await expect(
-    dialog.getByRole('region', { name: 'Befunde der Excel-Datei' }).getByRole('listitem').first(),
-  ).toBeVisible();
+  const befunde = dialog.getByRole('region', { name: 'Befunde der Excel-Datei' });
+  await expect(befunde.getByRole('listitem').first()).toBeVisible();
+  // Wellen-Review (D-92, E7): zusammengefasst wie bei GAEB, kein Befundcode als Lesetext.
+  await expect(befunde.getByTestId('befundzahl')).toHaveText('1 Fehler');
+  await expect(befunde).not.toContainText('datei-unlesbar');
   await expect(dialog.getByRole('button', { name: 'Übernehmen' })).toHaveCount(0);
 });
 

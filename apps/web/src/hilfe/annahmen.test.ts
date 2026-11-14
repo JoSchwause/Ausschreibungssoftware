@@ -47,6 +47,12 @@ describe('Seite „Annahmen“', () => {
     }
   });
 
+  it('Preisspiegel: Ausreißer vergleichen den Einheitspreis (EP), der Bezug der ABC-Klasse lässt sich auf den Schätzpreis umschalten', () => {
+    const t = text('Preisspiegel');
+    expect(t).toMatch(/Ausreißer[^.]*Einheitspreis \(EP\)/);
+    expect(t).toMatch(/ABC[^.]*Schätzpreis/);
+  });
+
   it('Zuschlag: nur das Beauftragte, die gewählte Wahlposition wird zur normalen Position', () => {
     const t = text('Zuschlag');
     expect(t).toContain('nur das Beauftragte');
@@ -88,6 +94,14 @@ describe('Seite „Annahmen“', () => {
     for (const teil of ['eingefroren', '§ 48 EStG', '15 %', 'Aufrechnungen', 'Kalendertagen']) {
       expect(t, teil).toContain(teil);
     }
+  });
+
+  it('Rechnungsprüfung: die Vertragsstrafe ist kumuliert einzutragen und wird aus der vorigen Rechnung vorgeschlagen (D-72)', () => {
+    const t = text('Rechnungsprüfung');
+    expect(t).toMatch(/Vertragsstrafe[^.]*kumuliert/);
+    expect(t).toMatch(/vorige[n]? Rechnung[^.]*vorgeschlagen|vorgeschlagen[^.]*vorige[n]? Rechnung/);
+    const reihe = abschnitte.find((a) => a.titel === 'Rechnungsprüfung')?.kette ?? [];
+    expect(reihe.find((s) => s.startsWith('Vertragsstrafe'))).toContain('kumuliert');
   });
 
   it('Kostenkontrolle: netto, Nachlass als eigene Zeile, eine Kostengruppe je Position', () => {

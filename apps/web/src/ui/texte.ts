@@ -105,4 +105,18 @@ export const texte = {
       zurueck: 'Zur Projektliste',
     },
   },
+  /** Dialog „PDF mit Vorschau“ der Berichte (Preisspiegel, Vergabevorschlag, Abrechnung). */
+  pdfVorschau: {
+    datum: 'Druckdatum (TT.MM.JJJJ)',
+    datumFehler: 'Bitte ein Datum wie 14.11.2026 eingeben.',
+    dateiname: 'Dateiname',
+    vorschauErzeugen: 'Vorschau erzeugen',
+    vorschau: 'Vorschau des PDF',
+    laeuft: 'Das PDF wird erzeugt …',
+    fehler: 'Das PDF konnte nicht erzeugt werden.',
+    herunterladen: 'Herunterladen',
+    abbrechen: 'Abbrechen',
+    schliessen: 'Schließen',
+    gespeichert: 'Datei gespeichert',
+  },
 } as const;
