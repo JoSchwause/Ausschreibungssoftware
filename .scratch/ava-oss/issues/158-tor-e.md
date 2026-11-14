@@ -1,6 +1,6 @@
 # 158: Tor E „Einführungsreife“
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/e2e/umsteiger.spec.ts`, `apps/web/e2e/ueberlauf.spec.ts`, Kettentests
 Blocked by: alle P-Tickets und die nicht gekürzten S-Tickets
@@ -25,10 +25,10 @@ Findet der Test einen Produktfehler: nicht im Test umgehen, sondern dem Orchestr
 
 ## Acceptance criteria
 
-- [ ] Punkte 1–5 belegt (Laufzahlen im Ticket)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Punkte 1–5 belegt (Laufzahlen im Ticket)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -77,3 +77,25 @@ Entscheidungen im Demo-Modus (Branch `welle-7/158-tor-e`):
 - **Stand nach dem Merge von 152 (und 162):** Rechnung 1 mit Skonto 3,00 % in 14 Tagen: beide Fälle und der Satz „Bei Zahlung
   bis 13.11.2026: Auszahlung 13.274,45 €, danach: 13.685,00 €.“, Freigabe, Zahlung am 10.11.2026 über 13.274,45 (Skonto
   verwirklicht, offen 0,00), Rechnungsprüfung mit Zahlungsfreigabe als PDF mit Vorschau. Ausstehend nur noch 161.
+- **Stand nach dem Merge von 161 (D-107):** Der Torweg läuft ganz und ohne `fixme`: „Weitere Aktionen“ → „Projekt löschen“
+  (Inhalt je Art: 2 LVs, 3 Angebote, 1 Auftrags-LV, 1 Aufmaßblatt, 1 Rechnung) → „Projekt samt Inhalt löschen …“ (Fokus auf
+  „Projektdatei sichern“, Bestätigung) → Liste ohne Projekt → Strg+Z holt es zurück, Strg+Y löscht wieder → Sicherung
+  einlesen (Dialog „Projektdatei eingelesen“, falls er erscheint, wird geschlossen) → dieselben Werte. Das frische Gerät als
+  Zwischenlösung ist entfallen.
+- M4 ist gekürzt (D-108); die Seite „Annahmen“ nennt bei der Mengenermittlung schon nur Formel 91 und braucht keine Änderung
+  (D-90 (3)). A5 ist nicht gekürzt.
+
+Ergebnis (Stand `integration/welle-7` bis `58c8fb3`, Branch-Spitze nach diesem Eintrag):
+
+- Punkt 1: `e2e/umsteiger.spec.ts` und Punkt 2: `e2e/ueberlauf.spec.ts` dreimal hintereinander grün (je 2/2, 1,8 min; der
+  Überlauf-Test prüft 36 Adressen, 31 Seitenarten und alle Reiter der Hilfe).
+- Punkt 3: `packages/gaeb/src/formatvergleich.test.ts` (XML 3.3, 3.1, GAEB 90, GAEB 2000) grün. Punkt 4:
+  `apps/web/src/sprache.test.ts` und `apps/web/src/fehler/Fehlergrenze.test.tsx` grün (zusammen mit Punkt 3: 53/53).
+- Punkt 5: frühere Tore M1, M3, M4, X1-kern, X1-erweitert, X2, X3, X4: 9/9 grün (vor 152/161); in der vollen Web-E2E wieder
+  grün.
+- `pnpm lint` (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room) und `pnpm typecheck` grün. `pnpm test`: 4.779 grün,
+  3 übersprungen, 4 rot, nur Leistungsbudgets unter Last (Lastmittel ~10 auf 4 Kernen): `speicher` aufmass-leistung und
+  v16-leistung, `vergabe` leistung, web `abrechnung/leistung`; keine Datei dieses Tickets, nichts gelockert.
+- Volle Web-E2E einmal: 126 grün, 1 rot: `nachtrag.spec.ts:164` (Escape schließt den Positionsdialog „01.0010 Baustelle
+  einrichten“ nicht, `toBeHidden` nach 5 s „visible“). Einzeln mit `--repeat-each 3`: 1 rot, 2 grün, also wackelig; nicht in
+  den Ordnern dieses Tickets, an den Orchestrator gemeldet.
