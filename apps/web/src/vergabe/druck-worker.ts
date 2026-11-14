@@ -4,13 +4,13 @@
 // kommen fertig vom Hauptthread (Preisspiegel aus `vergabe`, Datum aus der Uhr der App: A2); der Worker rechnet nichts.
 
 import type { PreisspiegelEingabe, VergabevorschlagEingabe } from '@tethys/ausgabe';
-import { pdfWorkerBedienen } from '../ui/pdf-worker-basis';
+import { pdfAuftraegeBedienen } from '../ui/pdf-worker-basis';
 
 export type Druckauftrag =
   | { readonly art: 'preisspiegel'; readonly eingabe: PreisspiegelEingabe }
   | { readonly art: 'vergabevorschlag'; readonly eingabe: VergabevorschlagEingabe };
 
-pdfWorkerBedienen<Druckauftrag>((ausgabe, a, schriften) =>
+self.onmessage = pdfAuftraegeBedienen<Druckauftrag>((ausgabe, a, schriften) =>
   a.art === 'preisspiegel'
     ? ausgabe.erzeugePreisspiegelPdf(a.eingabe, schriften)
     : ausgabe.erzeugeVergabevorschlagPdf(a.eingabe, schriften),

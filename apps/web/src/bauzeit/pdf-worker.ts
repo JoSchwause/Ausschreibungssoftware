@@ -4,8 +4,8 @@
 // gerechnet (A2, D-113.8).
 
 import type { BauzeitenplanEingabe } from '@tethys/ausgabe';
-import { pdfWorkerBedienen } from '../ui/pdf-worker-basis';
+import { pdfAuftraegeBedienen } from '../ui/pdf-worker-basis';
 
-pdfWorkerBedienen<BauzeitenplanEingabe>((ausgabe, eingabe, schriften) =>
+self.onmessage = pdfAuftraegeBedienen<BauzeitenplanEingabe>((ausgabe, eingabe, schriften) =>
   ausgabe.erzeugeBauzeitenplanPdf(eingabe, schriften),
 );

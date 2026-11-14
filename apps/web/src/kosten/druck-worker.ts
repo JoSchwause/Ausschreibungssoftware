@@ -4,13 +4,13 @@
 // Eingaben kommen fertig vom Hauptthread (A2); der Worker rechnet nichts.
 
 import type { KostenermittlungEingabe, KostenkontrolleEingabe } from '@tethys/ausgabe';
-import { pdfWorkerBedienen } from '../ui/pdf-worker-basis';
+import { pdfAuftraegeBedienen } from '../ui/pdf-worker-basis';
 
 export type Kostenbericht =
   | { readonly art: 'ermittlung'; readonly eingabe: KostenermittlungEingabe }
   | { readonly art: 'kontrolle'; readonly eingabe: KostenkontrolleEingabe };
 
-pdfWorkerBedienen<Kostenbericht>((ausgabe, b, schriften) =>
+self.onmessage = pdfAuftraegeBedienen<Kostenbericht>((ausgabe, b, schriften) =>
   b.art === 'ermittlung'
     ? ausgabe.erzeugeKostenermittlungPdf(b.eingabe, schriften)
     : ausgabe.erzeugeKostenkontrollePdf(b.eingabe, schriften),

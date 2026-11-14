@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ToastAnbieter } from '@tethys/ui-basis';
-import type {
-  AuftragsLeistungsverzeichnisId, // Ticket 64
-  LeistungsverzeichnisId,
-  LvStandId,
-  ProjektId,
-} from '@tethys/vertrag';
+import type { LeistungsverzeichnisId, ProjektId } from '@tethys/vertrag';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
@@ -43,6 +38,7 @@ import { SicherungsAnbieter } from './sicherung/SicherungsAnbieter'; // Ticket 6
 import { testpfad } from './testpfad';
 import { Huelle } from './ui/Huelle';
 import { festerOrt, projektlistenRoute, type Ort, type Ortskrume } from './ui/navigation';
+import { auftragsLvRoute, lvPfad, lvRoute, lvStandRoute, projektRoute } from './ui/pfade';
 import { Navigationsspeicher, OrtLader } from './ui/OrtLader';
 import { useRoute } from './ui/route';
 import { texte } from './ui/texte';
@@ -71,8 +67,6 @@ interface Seite {
 
 type Gehe = (pfad: string) => void;
 
-const lvPfad = (id: LeistungsverzeichnisId): string => `/lv/${id}`;
-
 /** Ein Ort in einem Projekt mit Bereich der Seitenleiste und Krumen nach „Projekte › Projekt › Bereich“. */
 const imProjekt = (
   projektId: ProjektId,
@@ -99,9 +93,8 @@ const text = (t: string, pfad: string): Ortskrume => ({ teil: { art: 'text', tex
  */
 const REGELN: readonly ((pfad: string, gehe: Gehe) => Seite | null)[] = [
   (pfad, gehe) => {
-    const m = /^\/projekt\/([^/]+)$/.exec(pfad);
-    if (m?.[1] === undefined) return null;
-    const id = decodeURIComponent(m[1]) as ProjektId;
+    const id = projektRoute(pfad);
+    if (id === null) return null;
     return {
       ort: { ...imProjekt(id, 'uebersicht'), seite: texte.seite.uebersicht },
       inhalt: <ProjektSeite key={id} id={id} gehe={gehe} />,
@@ -161,10 +154,9 @@ const REGELN: readonly ((pfad: string, gehe: Gehe) => Seite | null)[] = [
   },
   // Ticket 64: Auftrags-LV eines Projekts
   (pfad, gehe) => {
-    const m = /^\/projekt\/([^/]+)\/auftrag\/([^/]+)$/.exec(pfad);
-    if (m?.[1] === undefined || m[2] === undefined) return null;
-    const projektId = decodeURIComponent(m[1]) as ProjektId;
-    const id = decodeURIComponent(m[2]) as AuftragsLeistungsverzeichnisId;
+    const r = auftragsLvRoute(pfad);
+    if (r === null) return null;
+    const { projektId, id } = r;
     return {
       ort: imProjekt(projektId, 'auftraege', [
         { teil: { art: 'auftragsLv', id }, pfad: auftragPfad(projektId, id) },
@@ -266,10 +258,9 @@ const REGELN: readonly ((pfad: string, gehe: Gehe) => Seite | null)[] = [
         };
   },
   (pfad, gehe) => {
-    const m = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
-    if (m?.[1] === undefined || m[2] === undefined) return null;
-    const lvId = decodeURIComponent(m[1]) as LeistungsverzeichnisId;
-    const standId = decodeURIComponent(m[2]) as LvStandId;
+    const r = lvStandRoute(pfad);
+    if (r === null) return null;
+    const { lvId, standId } = r;
     return {
       ort: imLv(lvId, 'leistungsverzeichnisse', [{ teil: { art: 'lvStand', lvId, id: standId }, pfad }]),
       inhalt: <LvStandSeite key={standId} lvId={lvId} standId={standId} gehe={gehe} />,
@@ -285,9 +276,8 @@ const REGELN: readonly ((pfad: string, gehe: Gehe) => Seite | null)[] = [
     };
   },
   (pfad, gehe) => {
-    const m = /^\/lv\/([^/]+)$/.exec(pfad);
-    if (m?.[1] === undefined) return null;
-    const id = decodeURIComponent(m[1]) as LeistungsverzeichnisId;
+    const id = lvRoute(pfad);
+    if (id === null) return null;
     return { ort: imLv(id, 'leistungsverzeichnisse', []), inhalt: <LvSeite key={id} id={id} gehe={gehe} /> };
   },
   (pfad, gehe) =>

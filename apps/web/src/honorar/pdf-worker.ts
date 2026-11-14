@@ -4,6 +4,8 @@
 // gerechnet hat die App vorher mit `honorar` (A2).
 
 import type { HonorarEingabe } from '@tethys/ausgabe';
-import { pdfWorkerBedienen } from '../ui/pdf-worker-basis';
+import { pdfAuftraegeBedienen } from '../ui/pdf-worker-basis';
 
-pdfWorkerBedienen<HonorarEingabe>((ausgabe, eingabe, schriften) => ausgabe.erzeugeHonorarPdf(eingabe, schriften));
+self.onmessage = pdfAuftraegeBedienen<HonorarEingabe>((ausgabe, eingabe, schriften) =>
+  ausgabe.erzeugeHonorarPdf(eingabe, schriften),
+);

@@ -43,7 +43,9 @@ export async function bezeichnungenMerken(csv: string | null): Promise<Merkausga
   if (gelesen !== null && gelesen.size === 0) return { art: 'leer' };
   const bezeichnungen = gelesen === null ? [] : bezeichnungenAlsListe(gelesen);
   const a = await s.befehl({ art: 'KostengruppenbezeichnungenSetzen', bezeichnungen });
-  return a.ok ? { art: 'gemerkt', anzahl: bezeichnungen.length } : { art: 'abgewiesen', abweisung: a.abweisung };
+  return a.ok
+    ? { art: 'gemerkt', anzahl: bezeichnungen.length }
+    : { art: 'abgewiesen', abweisung: a.abweisung };
 }
 
 /** Nummer → Bezeichnung aus dem CSV-Text; die Befunde des Lesens (übergangene Zeilen) sind für die Anzeige ohne Belang. */

@@ -28,7 +28,7 @@ export interface PdfLauf {
 }
 
 /** Schickt `auftrag` an `worker` und wartet auf das PDF; `beiSchritt` erfährt die Zwischenschritte des Workers. */
-export function pdfLauf<A>(worker: Worker, auftrag: A, beiSchritt?: (schritt: string) => void): PdfLauf {
+export function pdfLauf(worker: Worker, auftrag: unknown, beiSchritt?: (schritt: string) => void): PdfLauf {
   let fertig: (b: Uint8Array | null) => void = () => undefined;
   let vorbei = false;
   const ergebnis = new Promise<Uint8Array | null>((ok, fehler) => {

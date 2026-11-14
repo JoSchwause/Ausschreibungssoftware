@@ -4,14 +4,14 @@
 // Hauptbündel. Die Eingaben kommen fertig vom Hauptthread (Datum, Befunde und Auswahl: A2); der Worker rechnet nichts.
 
 import type { BautagebuchEingabe, MaengelanzeigeEingabe, MaengellisteEingabe } from '@tethys/ausgabe';
-import { pdfWorkerBedienen } from '../ui/pdf-worker-basis';
+import { pdfAuftraegeBedienen } from '../ui/pdf-worker-basis';
 
 export type Druckauftrag =
   | { readonly art: 'maengelliste'; readonly eingabe: MaengellisteEingabe }
   | { readonly art: 'maengelanzeige'; readonly eingabe: MaengelanzeigeEingabe }
   | { readonly art: 'bautagebuch'; readonly eingabe: BautagebuchEingabe };
 
-pdfWorkerBedienen<Druckauftrag>((ausgabe, a, schriften) =>
+self.onmessage = pdfAuftraegeBedienen<Druckauftrag>((ausgabe, a, schriften) =>
   a.art === 'maengelliste'
     ? ausgabe.erzeugeMaengellistePdf(a.eingabe, schriften)
     : a.art === 'maengelanzeige'

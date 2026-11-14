@@ -3,6 +3,7 @@
 // Historie). Ohne Abhängigkeit auf Kern oder Speicher, damit die Hülle sie billig importiert.
 
 import type { Aenderung, AuftragsLeistungsverzeichnisId, AuftragsLvKopf, ProjektId } from '@tethys/vertrag';
+import { auftragsLvPfad } from '../ui/pfade';
 import { preisspiegelPfad } from '../vergabe/pfad';
 
 /**
@@ -10,7 +11,7 @@ import { preisspiegelPfad } from '../vergabe/pfad';
  * Lesezeichen weiter gelten.
  */
 export function auftragPfad(projektId: ProjektId, id: AuftragsLeistungsverzeichnisId): string {
-  return `/projekt/${projektId}/auftrag/${id}`;
+  return auftragsLvPfad(projektId, id); // Wellen-Review SB13: die Adresse steht in `ui/pfade.ts`
 }
 
 type Kopf = Pick<AuftragsLvKopf, 'id' | 'leistungsverzeichnisId'>;
