@@ -877,3 +877,10 @@ Question: 156 löst D-100 (1) mit der zugänglichen Bezeichnung „Ordnungszahl 
 Decision: Beides bestätigt. „Ordnungszahl (OZ)“ nennt Begriff und Kürzel und hält D-130 (Bildschirmleser), D-133 (Sprachregel) und den Test. **Für 159:** `auftrag/AuftragsLvSeite` reicht `alleZeilen` und `onKuerzelhilfe` an das Grid (zwei Zeilen wie `LvStandSeite`), sonst sucht die Auftrags-LV-Seite nur in sichtbaren Zeilen.
 Reason: Keine Regel verletzt; Budgets der 5.000/10.000-Zeilen-Prüfstände blieben unter Last eingehalten.
 Reversible: yes  Touches: packages/ui-grid, apps/web/src/lv, Ticket 159
+
+## D-102 `vertrag` v1.7c gemergt; Byte-Vergleich ohne den Undo-Eintrag
+Welle 7 · Ticket 160 (Folge 161, Wellen-Review) · decided by: orchestrator
+Question: (1) D-160.9: Nach Löschen und Undo ist die Projektdatei byte-gleich bis auf einen `Rueckgaengig`-Eintrag am Ende des Protokolls (A5 verlangt, dass das Undo selbst protokolliert wird). (2) D-160.5: Der Protokolleintrag des Löschens wird nicht gespeichert, wie bei `ProjektLoeschen` (D-31.1). (3) Opus-Review von v1.7c (D-96).
+Decision: (1) Bestätigt; der Pflichttest in 161 vergleicht byte-genau nach Entfernen genau dieses letzten Eintrags und prüft ihn ausdrücklich. (2) Bestätigt: Das Protokoll gehört zum Projekt (ADR 0009) und geht mit ihm; Präzedenz D-31.1. (3) Der Review von v1.7c (und v1.7b, D-93) läuft als eigener Punkt im Wellen-Review gegen alle Verbraucher.
+Reason: Keine Regel verletzt; die Formen sind additiv und folgen D-96.
+Reversible: yes  Touches: packages/vertrag, Ticket 161, Wellen-Review
