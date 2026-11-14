@@ -65,7 +65,8 @@ export function angebotAendern(
         if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
         const vorher: AngebotZustand | null = stand;
         const e = eintrag(u, kopf.projektId, { art: 'angebot', id: angebotId }, befehl);
-        const s = await speichern(u, e, r.wert, () => angebotChangeSetAnwenden(vorher, r.wert));
+        const cs = r.wert;
+        const s = await speichern(u, e, cs, (): AngebotZustand | null => angebotChangeSetAnwenden(vorher, cs));
         if (!s.ok) return s;
         teile.push(s.teil);
         stand = s.zustand;
