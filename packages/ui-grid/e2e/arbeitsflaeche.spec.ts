@@ -53,8 +53,8 @@ test.describe('Inhalt bestimmt die Mindestbreite', () => {
     await expect(b).toHaveText('001.001.0010A');
     expect(await ganzSichtbar(a)).toBe(true);
     expect(await ganzSichtbar(b)).toBe(true);
-    // Der Kopf zeigt die Abkürzung, der zugängliche Name bleibt der volle Titel.
-    await expect(grid(page).getByRole('columnheader', { name: 'Ordnungszahl' })).toHaveText('OZ');
+    // Spaltenkopf „OZ“ als Kopf und als Name (Sprachfestlegung D-133: Spaltenkopf „OZ“, Fließtext „Ordnungszahl“).
+    await expect(grid(page).getByRole('columnheader', { name: 'OZ', exact: true })).toHaveText('OZ');
   });
 
   test('eine achtstellige Menge ist ganz sichtbar, auch nach dem Verschmälern per Tastatur', async ({
