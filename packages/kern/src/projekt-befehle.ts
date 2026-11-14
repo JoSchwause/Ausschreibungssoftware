@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen;
+// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen
+// (seit v1.7c auch ProjektSamtInhaltLoeschen mit eigenem Ausführer, Ticket 161);
 // seit Vertrag v1.7a (Ticket 137, D-127.5) ProjektangabenSetzen und Bieterangaben beim Anlegen (D-127.4). Die Bieterbefehle
 // `BieterUmbenennen`, `BieterangabenSetzen` und `BieterLoeschen` führt die Vergabe aus (D-127.17); sie nimmt Form und
 // Normalform der Bieterangaben von hier (`angaben.ts`, D-82 S9).
@@ -17,7 +18,9 @@ import type {
   Bieter,
   Projekt,
   ProjektBefehlAusfuehren,
+  ProjektbestandChangeSetUmkehren,
   ProjektChangeSet,
+  ProjektSamtInhaltLoeschenAusfuehren,
 } from '@tethys/vertrag';
 import { bieterMitAngaben, bieterangabenFehler, projektangabenFehler, projektangabenNormal } from './angaben';
 import { nein, ok } from './fehler';
@@ -133,9 +136,15 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
     case 'BieterLoeschen':
     case 'BieterangabenSetzen':
       return nein('befehl-nicht-zustaendig', `Befehl ${befehl.art} führt die Vergabe aus, nicht der Kern.`);
-    // Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; Ticket 161 liefert den Ausführer mit Bestand.
+    // Vertrag v1.7c (D-96, D-160.4): Ohne Bestand ist das Löschen nicht umkehrbar; ausgeführt wird es mit
+    // `projektSamtInhaltLoeschenAusfuehren`.
     case 'ProjektSamtInhaltLoeschen':
-      return nein('befehl-nicht-zustaendig', `Befehl ${befehl.art}: noch kein Ausführer (Ticket 161).`);
+      return nein(
+        'ungueltige-eingabe',
+        `${befehl.art} braucht den Bestand des Projekts (projektSamtInhaltLoeschenAusfuehren).`,
+        undefined,
+        'bestand',
+      );
   }
 };
 
@@ -157,3 +166,42 @@ export function projektChangeSetUmkehren(cs: ProjektChangeSet): ProjektChangeSet
     projekt: { vorher: cs.projekt.nachher, nachher: cs.projekt.vorher },
   };
 }
+
+// --- Vertrag v1.7c (Ticket 161; E8, D-96, D-160.4): Projekt samt Inhalt löschen ---------------------------------------------
+
+/** Die Listen, die jeder `Projektbestand` trägt (in der Projektdatei Pflicht); alle übrigen fehlen, wenn sie leer sind. */
+const PFLICHTLISTEN = ['leistungsverzeichnisse', 'angebote', 'auftragsLeistungsverzeichnisse', 'protokoll'] as const;
+
+/**
+ * Führt `ProjektSamtInhaltLoeschen` aus: `projekt` und `bestand` je `{ vorher, nachher: null }`. Der Kern prüft nur die Form des
+ * Bestands (ein Objekt mit den Pflichtlisten); ob er vollständig und der gespeicherte ist, prüft `speicher` (`konflikt`,
+ * D-160.5). Ohne Projekt: `befehl-nicht-zustaendig`.
+ */
+export const projektSamtInhaltLoeschenAusfuehren: ProjektSamtInhaltLoeschenAusfuehren = (
+  zustand,
+  befehl,
+  bestand,
+) => {
+  if (zustand === null)
+    return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+  const b: unknown = bestand;
+  if (typeof b !== 'object' || b === null || Array.isArray(b))
+    return nein('ungueltige-eingabe', 'bestand muss ein Objekt sein.', undefined, 'bestand');
+  const fehlt = PFLICHTLISTEN.find((l) => !Array.isArray((b as Record<string, unknown>)[l]));
+  if (fehlt !== undefined)
+    return nein('ungueltige-eingabe', `bestand.${fehlt} muss eine Liste sein.`, undefined, 'bestand');
+  return ok({
+    art: 'projektbestand',
+    projektId: zustand.id,
+    projekt: { vorher: zustand, nachher: null },
+    bestand: { vorher: bestand, nachher: null },
+  });
+};
+
+/** Die Umkehrung (Undo, D-160.4): `vorher` und `nachher` in `projekt` und `bestand` getauscht. */
+export const projektbestandChangeSetUmkehren: ProjektbestandChangeSetUmkehren = (cs) => ({
+  art: cs.art,
+  projektId: cs.projektId,
+  projekt: { vorher: cs.projekt.nachher, nachher: cs.projekt.vorher },
+  bestand: { vorher: cs.bestand.nachher, nachher: cs.bestand.vorher },
+});
