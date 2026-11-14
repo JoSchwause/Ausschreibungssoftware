@@ -3,9 +3,10 @@
 // Befunde wie beim DA-XML-Leser (`GaebBefund`, Gruppe „Nicht übernommen“, OZ am Knoten), der Ort ist die Zeile der Datei.
 // Rein (A2).
 
-import type { PositionId } from '@tethys/vertrag';
+import type { GaebPhase, PositionId } from '@tethys/vertrag';
 import { anzahl, text } from './befunde';
 import type { GaebBefund, GaebBefundcode } from './befunde';
+import type { Phasenquelle } from './erkennung';
 import type { Befundangaben, Sammelangaben } from './lesen';
 
 /** Höchstzahl einzeln aufgezeichneter Befunde (wie beim DA-XML-Leser). */
@@ -117,4 +118,54 @@ export class Zeilenmelder {
       return b.oz !== undefined || oz === undefined ? b : { ...b, oz };
     });
   }
+}
+
+/** Der Befund zum Zeichensatz einer Datei ohne XML: Name des gelesenen Zeichensatzes und Meldung. */
+export interface Zeichensatzbefund {
+  readonly name: string;
+  readonly meldung: string;
+}
+
+/** Die Datei nennt ihren Zeichensatz nicht; er wurde am Inhalt erkannt (GAEB 90 immer, GAEB 2000 ohne Angabe). */
+export const zeichensatzAmInhalt = (name: string): Zeichensatzbefund => ({
+  name,
+  meldung: `Die Datei nennt ihren Zeichensatz nicht; am Inhalt erkannt und gelesen als ${name}. Umlaute bitte prüfen.`,
+});
+
+/** Was die Grundbefunde einer Datei ohne XML brauchen. */
+export interface Grundangaben {
+  readonly format: 'GAEB 90' | 'GAEB 2000';
+  readonly zeichensatz: Zeichensatzbefund | null;
+  readonly phase: GaebPhase | null;
+  readonly phasenquelle: Phasenquelle | null;
+  readonly endungsphase: GaebPhase | null;
+  /** Die Zeile, in der die Datei ihre Phase nennt; `null`: nicht bekannt. */
+  readonly phasenzeile: number | null;
+}
+
+/**
+ * Befunde, die jeder Import einer Datei ohne XML trägt (GAEB 90 und GAEB 2000 gleich): der feste Hinweis (D-71), der
+ * Zeichensatz und ein Widerspruch zwischen Inhalt und Endung.
+ */
+export function grundbefunde(m: Zeilenmelder, a: Grundangaben): void {
+  m.melde(
+    'warnung',
+    'format-ungeprueft',
+    `Das Lesen von ${a.format} ist nach der Formatbeschreibung gebaut und nicht an Dateien aus anderer Software geprüft; ` +
+      'bitte die Summen mit denen des Absenders vergleichen.',
+    null,
+    { werte: { format: text(a.format) } },
+  );
+  if (a.zeichensatz !== null)
+    m.melde('warnung', 'zeichensatz-erkannt', a.zeichensatz.meldung, null, {
+      werte: { zeichensatz: text(a.zeichensatz.name) },
+    });
+  if (a.phasenquelle === 'inhalt' && a.endungsphase !== null && a.endungsphase !== a.phase)
+    m.melde(
+      'warnung',
+      'phase-endung-widerspruch',
+      `Die Dateiendung weist auf ${a.endungsphase}, die Datei selbst nennt ${a.phase ?? ''}; es gilt die Datei.`,
+      a.phasenzeile,
+      { werte: { phase: text(a.phase ?? ''), endung: text(a.endungsphase) } },
+    );
 }

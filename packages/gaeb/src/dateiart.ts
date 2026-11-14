@@ -41,8 +41,8 @@ export interface GaebDateiart {
 
 /** So viel vom Anfang der Datei sieht die Erkennung an. Die Kopfangaben stehen in jeder bekannten Datei weit davor. */
 const KOPF_ZEICHEN = 64 * 1024;
-/** Satzlänge von GAEB 90. */
-const SATZLAENGE = 80;
+/** Satzlänge von GAEB 90 (Formatbeschreibung); die Erkennung und der Leser nutzen dieselbe Zahl. */
+export const GAEB90_SATZLAENGE = 80;
 
 const UNBEKANNT = { format: null, version: null, phase: null, phasenquelle: null } as const;
 
@@ -102,8 +102,8 @@ function zeilen(kopf: string, abgeschnitten: boolean): string[] {
 function istGaeb90(z: readonly string[]): boolean {
   const erste = z[0] ?? '';
   if (!erste.startsWith('00') && !erste.startsWith('T0')) return false;
-  if (!z.every((s) => s.length <= SATZLAENGE && /^(?:[0-9]{2}|T[0-9])/.test(s))) return false;
-  const voll = z.filter((s) => s.length === SATZLAENGE && /^[0-9]{6}$/.test(s.slice(74))).length;
+  if (!z.every((s) => s.length <= GAEB90_SATZLAENGE && /^(?:[0-9]{2}|T[0-9])/.test(s))) return false;
+  const voll = z.filter((s) => s.length === GAEB90_SATZLAENGE && /^[0-9]{6}$/.test(s.slice(74))).length;
   return voll * 5 >= z.length * 4;
 }
 

@@ -36,13 +36,15 @@ import type {
   Zahlenart,
 } from '@tethys/vertrag';
 import { phaseAbweisen } from './abweisung';
+import { GAEB90_SATZLAENGE } from './dateiart';
+import { STANDARD_MWST_SATZ } from './lesen';
 import { deutsch, text } from './befunde';
 import type { GaebBefund } from './befunde';
 import type { Phasenquelle } from './erkennung';
 import { Angebotszuordnung, preiszeileOhneXml } from './angebotszuordnung';
 import { LvAufbau } from './lvaufbau';
 import type { Wahlangabe } from './lvaufbau';
-import { Zeilenmelder } from './zeilenbefunde';
+import { Zeilenmelder, grundbefunde, zeichensatzAmInhalt } from './zeilenbefunde';
 import { ZEICHENSATZ_NAME } from './zeichensatz';
 import type { Zeichensatz } from './zeichensatz';
 
@@ -57,7 +59,6 @@ export interface Gaeb90Datei {
   readonly endungsphase: GaebPhase | null;
 }
 
-const SATZLAENGE = 80;
 
 /** Ein Satz der Datei: Satzart, Zeile (ab 1) und der Satz auf 80 Zeichen aufgefüllt. */
 interface Satz {
@@ -82,13 +83,13 @@ function saetzeLesen(text: string, m: Zeilenmelder): Satz[] {
   const saetze: Satz[] = [];
   for (const [i, roh] of zeilen.entries()) {
     const zeile = i + 1;
-    if (roh.length !== SATZLAENGE)
+    if (roh.length !== GAEB90_SATZLAENGE)
       m.sammle('satz-laenge', 'satz-laenge', zeile, (n) =>
         n === 1
-          ? `Ein Satz ist nicht genau ${String(SATZLAENGE)} Zeichen lang; er wird aufgefüllt bzw. nach Stelle ${String(SATZLAENGE)} abgeschnitten.`
-          : `${String(n)} Sätze sind nicht genau ${String(SATZLAENGE)} Zeichen lang; sie werden aufgefüllt bzw. nach Stelle ${String(SATZLAENGE)} abgeschnitten.`,
+          ? `Ein Satz ist nicht genau ${String(GAEB90_SATZLAENGE)} Zeichen lang; er wird aufgefüllt bzw. nach Stelle ${String(GAEB90_SATZLAENGE)} abgeschnitten.`
+          : `${String(n)} Sätze sind nicht genau ${String(GAEB90_SATZLAENGE)} Zeichen lang; sie werden aufgefüllt bzw. nach Stelle ${String(GAEB90_SATZLAENGE)} abgeschnitten.`,
       );
-    const s = roh.padEnd(SATZLAENGE, ' ').slice(0, SATZLAENGE);
+    const s = roh.padEnd(GAEB90_SATZLAENGE, ' ').slice(0, GAEB90_SATZLAENGE);
     const nummer = s.slice(74);
     if (!/^[0-9]{6}$/.test(nummer) || Number(nummer) !== zeile)
       m.sammle('satznummer', 'satznummer-abweichend', zeile, (n) =>
@@ -417,34 +418,17 @@ function uebrig(s: Satz, m: Zeilenmelder): void {
     );
 }
 
-/** Befunde, die jeder GAEB-90-Import trägt: der feste Hinweis (D-71), Zeichensatz, Widerspruch zwischen Inhalt und Endung. */
-function grundbefunde(d: Gaeb90Datei, m: Zeilenmelder): void {
-  m.melde(
-    'warnung',
-    'format-ungeprueft',
-    'Das Lesen von GAEB 90 ist nach der Formatbeschreibung gebaut und nicht an Dateien aus anderer Software geprüft; bitte die ' +
-      'Summen mit denen des Absenders vergleichen.',
-    null,
-    { werte: { format: text('GAEB 90') } },
-  );
-  if (d.zeichensatz !== null)
-    m.melde(
-      'warnung',
-      'zeichensatz-erkannt',
-      `Die Datei nennt ihren Zeichensatz nicht; am Inhalt erkannt und gelesen als ${ZEICHENSATZ_NAME[d.zeichensatz]}. ` +
-        'Umlaute bitte prüfen.',
-      null,
-      { werte: { zeichensatz: text(ZEICHENSATZ_NAME[d.zeichensatz]) } },
-    );
-  if (d.phasenquelle === 'inhalt' && d.endungsphase !== null && d.endungsphase !== d.phase)
-    m.melde(
-      'warnung',
-      'phase-endung-widerspruch',
-      `Die Dateiendung weist auf ${d.endungsphase}, die Datei selbst nennt ${d.phase ?? ''}; es gilt die Datei.`,
-      1,
-      { werte: { phase: text(d.phase ?? ''), endung: text(d.endungsphase) } },
-    );
-}
+/** Die Grundbefunde eines GAEB-90-Imports; die Phase steht im Satz 00, der ersten Zeile. */
+const grundbefunde90 = (d: Gaeb90Datei, m: Zeilenmelder): void => {
+  grundbefunde(m, {
+    format: 'GAEB 90',
+    zeichensatz: d.zeichensatz === null ? null : zeichensatzAmInhalt(ZEICHENSATZ_NAME[d.zeichensatz]),
+    phase: d.phase,
+    phasenquelle: d.phasenquelle,
+    endungsphase: d.endungsphase,
+    phasenzeile: 1,
+  });
+};
 
 const leererKopf = (trenn: string | null): Kopf => ({
   bereiche: {
@@ -705,7 +689,7 @@ export function leseGaeb90Lv(
   opt: Gaeb90LvOptionen,
 ): { phase: GaebPhase | null; inhalt: LvInhalt | null; befunde: GaebBefund[] } {
   const m = new Zeilenmelder();
-  grundbefunde(d, m);
+  grundbefunde90(d, m);
   if (d.phase !== null && !LESBARE_PHASEN.has(d.phase)) {
     const a = phaseAbweisen(d.phase, 'lv');
     m.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, null, { werte: a.werte });
@@ -733,7 +717,7 @@ export function leseGaeb90Lv(
     kopf.bieter === null || !x86 ? undefined : { name: kopf.bieter, strasse: null, plz: null, ort: null };
 
   // Lesart D-144.8: einen Steuersatz liest der Leser aus GAEB 90 nicht (seine Stelle ist nur aus Beispielen erschlossen).
-  const mwstSatz = opt.standardMwstSatz ?? ('19.00' as Prozent);
+  const mwstSatz = opt.standardMwstSatz ?? STANDARD_MWST_SATZ;
   const satz = { art: 'prozent', wert: mwstSatz } as const;
   m.melde(
     'warnung',
@@ -789,7 +773,7 @@ export function leseGaeb90Angebot(
   gleicheMaske: (a: OzMaske, b: OzMaske) => boolean,
 ): Gaeb90AngebotErgebnis {
   const m = new Zeilenmelder();
-  grundbefunde(d, m);
+  grundbefunde90(d, m);
   if (d.phase !== 'X84') {
     const a = phaseAbweisen(d.phase, 'angebot');
     m.melde('fehler', 'phase-nicht-unterstuetzt', a.meldung, null, { werte: a.werte });

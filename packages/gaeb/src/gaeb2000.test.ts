@@ -134,6 +134,10 @@ describe('Kopf: GAEBInfo, PrjInfo, Vergabe, AG, AN, LVInfo', () => {
     const l = inhaltVon(datei('83', EINE), 'lv.p81');
     expect(l.phase).toBe('X83');
     expect(codes(l.befunde)).toContain('phase-endung-widerspruch');
+    // Wie bei GAEB 90 hängt der Befund an der Zeile, in der die Datei ihre Phase nennt.
+    const b = l.befunde.find((x) => x.code === 'phase-endung-widerspruch');
+    const zeilen = datei('83', EINE).split('\n');
+    expect(b?.ort.zeile).toBe(zeilen.findIndex((z) => z.includes('[DP]')) + 1);
   });
 
   it('andere Phasen als X81, X83, X86 weist der LV-Leser mit Satz ab', () => {
