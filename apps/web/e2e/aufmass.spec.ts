@@ -222,7 +222,9 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await expect(ein.getByTestId('x31-zusammenfassung')).toHaveText(
     'Die Datei enthält keine Zeile zu einer Position dieses Auftrags-LV; es entsteht kein Blatt.',
   );
-  await expect(ein.getByRole('region', { name: 'Befunde der Datei' })).toContainText('position-unbekannt');
+  await expect(ein.getByRole('region', { name: 'Befunde der Datei' })).toContainText(
+    'Position nicht im Leistungsverzeichnis',
+  );
   await expect(ein.getByRole('button', { name: 'Blatt anlegen' })).toBeDisabled();
   await ein.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(tabelle.locator('tbody tr')).toHaveCount(2);

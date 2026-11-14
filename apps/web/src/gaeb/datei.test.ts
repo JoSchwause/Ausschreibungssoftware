@@ -3,7 +3,7 @@
 // („nicht lesbar“); alles andere ist ein Programmfehler und darf nicht in derselben Meldung verschwinden.
 
 import { describe, expect, it } from 'vitest';
-import { DateiNichtLesbar, dateiBytes } from './datei';
+import { DateiNichtLesbar, GAEB_ENDUNGEN, dateiBytes } from './datei';
 
 const datei = (arrayBuffer: () => Promise<ArrayBuffer>): File => ({ name: 'lv.x83', arrayBuffer }) as File;
 
@@ -18,5 +18,14 @@ describe('dateiBytes', () => {
     const r = dateiBytes(datei(() => Promise.reject(ursache)));
     await expect(r).rejects.toBeInstanceOf(DateiNichtLesbar);
     await expect(r).rejects.toMatchObject({ datei: 'lv.x83', cause: ursache });
+  });
+});
+
+describe('GAEB_ENDUNGEN', () => {
+  it('bietet DA XML, GAEB 90 und GAEB 2000 jeder Phase an, klein und groß', () => {
+    const endungen = GAEB_ENDUNGEN.split(',');
+    for (const e of ['.x81', '.X83', '.x85', '.X89', '.d83', '.D81', '.p84', '.P86', '.x31', '.xml'])
+      expect(endungen).toContain(e);
+    expect(endungen).not.toContain('.ifc');
   });
 });

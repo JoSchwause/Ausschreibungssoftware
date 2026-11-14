@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Type: task
-Welle: 7 · Strang: A5 · Paket/Ordner: `packages/abrechnung`, `fixtures/` (neue Datei `typisch-zahlungen.json` o. ä.)
+Welle: 7 · Strang: A5 · Paket/Ordner: `packages/abrechnung`, `packages/speicher` (nur Rechnungsdekoder, D-93), `fixtures/` (neue Datei `typisch-zahlungen.json` o. ä.)
 Blocked by: 128
 Modell: opus
 Priorität: S (`../umfang-welle-7.md` §3: P nie gekürzt, S Soll, K Kann)
@@ -20,6 +20,7 @@ Herkunft: umfang §3 A5, G-61
 3. **Befehle:** Zahlung erfassen/ändern/löschen (nur bei freigegebener Rechnung), Freigabe aufheben gesperrt bei Zahlungen,
    Vertragsstrafe/Skonto/Bauabzugsteuer setzen; Vorschlag der kumulierten Vertragsstrafe aus der Vorrechnung.
 4. Alte Rechnungen ohne neue Felder ergeben dieselben Zahlen (Goldens M4 unverändert).
+6. **Speicher (D-93):** Rechnungsdekoder und Projektdatei-Prüfung kennen `vertragsstrafe`, `skonto`, `bauabzugsteuer`, `zahlungen` (alle optional, Schema 7 bleibt); `konflikt`, wenn eine Zahlung an einer nicht freigegebenen Rechnung gespeichert würde; Rundweg-Test mit der Fixture.
 5. **Kettentest ohne Oberfläche** (`packages/abrechnung` oder `apps/web/src/a5-kette.test.ts` – nur wenn Ordnerbesitz frei;
    sonst im Paket) mit derselben Fixture. Property-Tests für Rundung und Nichtnegativität des offenen Betrags.
 

@@ -19,7 +19,7 @@ import { abweisungText, useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
-import { BefundListe } from './BefundListe';
+import { BefundeBeimEinlesen } from '../gaeb/BefundeBeimEinlesen';
 import { modellEinlesen } from './einlesen';
 import { IfcArbeiter } from './ifc-arbeiter';
 import { auftragAusAdresse, mitAuftrag, modellPfad } from './pfad';
@@ -294,7 +294,11 @@ export function ModellListeSeite({
         }
       >
         {ergebnis?.art === 'fertig' ? (
-          <BefundListe befunde={ergebnis.befunde} beschriftung={texte.einlesen.befunde} />
+          <BefundeBeimEinlesen
+            befunde={ergebnis.befunde}
+            kurztexte={texte.einlesen.kurztexte}
+            beschriftung={texte.einlesen.befunde}
+          />
         ) : null}
       </Dialog>
 

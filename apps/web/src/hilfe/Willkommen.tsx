@@ -3,22 +3,17 @@
 // laden (aus den Fixtures, über Befehle, `beispielprojekt.ts`), mit einer GAEB-Datei beginnen, ein leeres Projekt anlegen (das
 // Formular der Projektliste). Dazu der Hinweis, wo die Daten liegen und wie man sichert.
 //
-// „GAEB-Datei einlesen“ bis Ticket 146: legt ein Projekt „Neues Projekt“ an und öffnet darin das vorhandene Einlesen
-// (`GaebEinlesen`, Dateiauswahl, Vorschau, „Übernehmen“). Ticket 146 ersetzt das durch das Einlesen ohne offenes Projekt, das
-// das Projekt aus der Datei anlegt (Name aus der Datei, nichts angelegt beim Abbrechen).
+// „GAEB-Datei einlesen“: das Einlesen ohne offenes Projekt (`GaebEinlesen` mit `projekt={null}`). Erst „Übernehmen“ legt das
+// Projekt an (Name aus der Datei, änderbar), zusammen mit dem LV als ein Undo-Schritt; Abbrechen lässt nichts zurück.
 
 import { Button, useToast } from '@tethys/ui-basis';
-import type { Projekt } from '@tethys/vertrag';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { IfcArbeiter } from '../bim/ifc-arbeiter';
 import { GaebEinlesen } from '../gaeb/GaebEinlesen';
-import { befehlswegFuer } from '../lv/befehlsweg';
-import { abweisungText, useMeldungen } from '../lv/meldungen';
-import { projektAnlegenBefehl } from '../projekt/befehle';
+import { abweisungText } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { projektPfad } from '../ui/pfade';
-import { Verweis } from '../ui/Verweis';
 import { beispielprojektAnlegen } from './beispielprojekt';
 import { beispielquelleLaden } from './beispielquelle';
 import { Datenhinweis } from './Datenhinweis';
@@ -78,55 +73,19 @@ function BeispielWeg({ gehe }: { gehe: Gehe }): ReactElement {
 
 function GaebWeg({ gehe }: { gehe: Gehe }): ReactElement {
   const t = texte.start.gaeb;
-  const u = useUmgebung();
-  const { pruefe } = useMeldungen();
   const titel = useId();
-  const [projekt, setProjekt] = useState<Projekt | null>(null);
-  const huelle = useRef<HTMLDivElement>(null);
-
-  // Rückgängig kann das neue Projekt wieder entfernen; dann beginnt der Weg von vorn.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setProjekt(null);
-      }),
-    [u],
-  );
-  // Sobald das Projekt steht, öffnet das vorhandene Einlesen seine Dateiauswahl (noch im Zug des Klicks). Öffnet der
-  // Browser sie nicht, bleibt die Schaltfläche des Einlesens darunter.
-  useEffect(() => {
-    if (projekt !== null) huelle.current?.querySelector<HTMLInputElement>('input[type="file"]')?.click();
-  }, [projekt]);
-
-  const anlegen = async (): Promise<void> => {
-    const a = await befehlswegFuer(u)
-      .projekt(null)
-      .befehl(projektAnlegenBefehl(u.ids, t.projektname, ''));
-    if (pruefe(a) && a.zustand !== null) setProjekt(a.zustand);
-  };
-
   return (
     <section className="hilfe-start__weg" aria-labelledby={titel}>
       <h3 id={titel}>{t.titel}</h3>
       <p>{t.text}</p>
-      {projekt === null ? (
-        <div className="hilfe-start__aktion">
-          <Button onClick={() => void anlegen()}>{t.knopf}</Button>
-        </div>
-      ) : (
-        <>
-          <p role="status">{t.angelegt(projekt.name)}</p>
-          <div className="hilfe-start__aktion" ref={huelle}>
-            <GaebEinlesen
-              projekt={projekt}
-              onAngelegt={() => {
-                gehe(projektPfad(projekt.id));
-              }}
-            />
-            <Verweis pfad={projektPfad(projekt.id)} text={t.zumProjekt} gehe={gehe} />
-          </div>
-        </>
-      )}
+      <div className="hilfe-start__aktion">
+        <GaebEinlesen
+          projekt={null}
+          onAngelegt={(ziel) => {
+            gehe(projektPfad(ziel.projektId));
+          }}
+        />
+      </div>
     </section>
   );
 }

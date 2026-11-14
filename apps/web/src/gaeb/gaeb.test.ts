@@ -133,6 +133,43 @@ describe('BVBS AVA: X81 und X84 einlesen, Bietersummen mit vergabe', () => {
     expect(plan?.angebot.bieterId).toBe(mit.bieter[0]?.id);
   });
 
+  it('ein neuer Bieter bringt die Angaben aus der X84 mit; gespeichert und wieder geladen', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, weg, projekt, lv } = await projektUndLv(gelesen.inhalt);
+    const x84 = angebotLesen(datei(`${AVA}.X84`), 'ava.X84', lv, u.ids);
+    // Abgeschrieben aus `CTR/Address` der Prüfdatei.
+    const angaben = {
+      anschrift: { strasse: 'Auswegstr. 33', plz: '12345', ort: 'Musterstadt' },
+      ansprechperson: 'Klecks',
+      email: 'pinsel@ildfh.de',
+      telefon: '1234 / 11223',
+    };
+    expect(x84.bieterAngaben).toEqual(angaben);
+    // Auch unter einem geänderten Namen gehören die Angaben zum Bieter der Datei.
+    const plan = angebotAnlegenPlan(x84, 'Pinsel und Co KG', projekt, u.ids);
+    expect(plan?.neuerBieter).toEqual({
+      id: expect.any(String) as string,
+      name: 'Pinsel und Co KG',
+      angaben,
+    });
+    if (plan === null) throw new Error('Plan');
+    expect((await weg.angebotAnlegen(projekt, lv, plan.neuerBieter, plan.angebot)).ok).toBe(true);
+    const p = await u.speicher.projekte.laden(projekt.id);
+    expect(p.ok && p.wert.bieter).toEqual([{ id: plan.neuerBieter?.id, name: 'Pinsel und Co KG', angaben }]);
+  });
+
+  it('ein vorhandener Bieter behält seine Angaben (kein Überschreiben)', async () => {
+    const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
+    if (gelesen.inhalt === null) throw new Error('Inhalt');
+    const { u, projekt, lv } = await projektUndLv(gelesen.inhalt);
+    const x84 = angebotLesen(datei(`${AVA}.X84`), 'ava.X84', lv, u.ids);
+    const vorhanden = { id: u.ids.bieter(), name: 'Maler + Lackierer Pinsel und Co KG' };
+    const plan = angebotAnlegenPlan(x84, vorhanden.name, { ...projekt, bieter: [vorhanden] }, u.ids);
+    expect(plan?.neuerBieter).toBeNull();
+    expect(plan?.angebot.bieterId).toBe(vorhanden.id);
+  });
+
   it('Angebot anlegen: Bieter und Angebot sind ein Undo-Schritt', async () => {
     const gelesen = lvLesen(datei(`${AVA}.X81`), 'ava.X81', appIdQuelle());
     if (gelesen.inhalt === null) throw new Error('Inhalt');
