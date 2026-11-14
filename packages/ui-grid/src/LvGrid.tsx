@@ -22,7 +22,7 @@ import { anzeigeText, befehlAusEingabe, istBearbeitbar } from './eingabe';
 import { Hinweisleiste } from './Hinweisleiste';
 import { Kontextmenue } from './Kontextmenue';
 import type { Menuepunkt } from './Kontextmenue';
-import { leerePositionsdaten, planeEinfuegen, planeKostengruppen } from './einfuegen';
+import { leerePositionsdaten, planeEinfuegen, planeEinheitspreise, planeKostengruppen } from './einfuegen';
 import type { Einfuegeanker, UngueltigeZelle } from './einfuegen';
 import { klappAbsicht, useGridKern, useSprung } from './gridKern';
 import { NAVIGATIONSAKTIONEN, kuerzelAktion } from './kuerzel';
@@ -49,6 +49,7 @@ import {
   frageLoeschen,
   meldungBreite,
   meldungEingefuegt,
+  meldungEinheitspreise,
   meldungKostengruppen,
   meldungTreffer,
   meldungZeilen,
@@ -225,8 +226,9 @@ export function LvGrid(props: LvGridProps): ReactElement {
   const aktiveZeile = aktivIndex >= 0 ? zeilen[aktivIndex] : undefined;
 
   /** Ob sich die Zelle bearbeiten lässt (`schreibrechte`). */
+  const epOhneZuschlag = rechte.einheitspreise;
   const bearbeitbar = (z: LvZeile, spalte: LvSpalte): boolean =>
-    bearbeitbareSpalten.has(spalte) && istBearbeitbar(z, spalte);
+    bearbeitbareSpalten.has(spalte) && istBearbeitbar(z, spalte, epOhneZuschlag);
   /** Ansage, wenn im schreibgeschützten Grid etwas geändert werden soll. */
   const meldeNurLesen = (): void => {
     setStatus(schreibschutzText);
@@ -311,6 +313,10 @@ export function LvGrid(props: LvGridProps): ReactElement {
     if (!bearbeitbareSpalten.has(spalte)) {
       if (nurLesen) meldeNurLesen();
       else setStatus(texte.schreibgeschuetzt);
+      return;
+    }
+    if (!istBearbeitbar(z, spalte, epOhneZuschlag)) {
+      setStatus(texte.schreibgeschuetzt);
       return;
     }
     const r = befehlAusEingabe(z, spalte, text, zahlen, kgLeser);
@@ -464,24 +470,31 @@ export function LvGrid(props: LvGridProps): ReactElement {
    * Eine Spalte aus der Zwischenablage in die Spalte „KG“ (Ticket 93, D-93.2): setzt die Kostengruppen der Zeilen ab der
    * aktiven, statt Positionen anzulegen. `false`, wenn der Block nicht so aussieht (dann gilt das übliche Einfügen).
    */
-  const fuelleKostengruppen = (matrix: readonly (readonly string[])[]): boolean => {
-    if (
-      aktivSpalte !== 'kostengruppe' ||
-      kgLeser === undefined ||
-      aktivIndex < 0 ||
-      matrix.length === 0 ||
-      matrix.some((z) => z.length !== 1)
-    ) {
+  /**
+   * Eine einzelne Spalte in die Spalte „KG“ (Ticket 93) oder, mit der Ausnahme „Preise“ im Schreibschutz (SB3), in die
+   * Spalte „EP“ der vorhandenen Zeilen. `false`: Die Zwischenablage passt nicht dazu.
+   */
+  const fuelleSpalte = (matrix: readonly (readonly string[])[]): boolean => {
+    const kg = aktivSpalte === 'kostengruppe' && kgLeser !== undefined;
+    const ep = aktivSpalte === 'einheitspreis' && epOhneZuschlag;
+    if ((!kg && !ep) || aktivIndex < 0 || matrix.length === 0 || matrix.some((z) => z.length !== 1)) {
       return false;
     }
     if (matrix.length === 1) {
-      uebernimmText(aktivIndex, 'kostengruppe', matrix[0]?.[0] ?? '');
+      uebernimmText(aktivIndex, aktivSpalte, matrix[0]?.[0] ?? '');
       return true;
     }
-    const plan = planeKostengruppen(matrix, aktivIndex, zeilen, kgLeser);
+    if (kg) {
+      const plan = planeKostengruppen(matrix, aktivIndex, zeilen, kgLeser);
+      rechte.folge(plan.befehle);
+      markiereUngueltig(plan.ungueltig);
+      setStatus(meldungKostengruppen(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
+      return true;
+    }
+    const plan = planeEinheitspreise(matrix, aktivIndex, zeilen, zahlen);
     rechte.folge(plan.befehle);
     markiereUngueltig(plan.ungueltig);
-    setStatus(meldungKostengruppen(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
+    setStatus(meldungEinheitspreise(plan.befehle.length, plan.ungueltig.length, plan.uebersprungen));
     return true;
   };
 
@@ -874,13 +887,13 @@ export function LvGrid(props: LvGridProps): ReactElement {
         setStatus('');
         return;
       case 'zelle-leeren':
-        if (istBearbeitbar(z, spalte)) {
+        if (istBearbeitbar(z, spalte, epOhneZuschlag)) {
           e.preventDefault();
           uebernimmText(zi, spalte, ''); // schreibgeschützt: nur die Ansage
         }
         return;
       case 'tippen':
-        if (istBearbeitbar(z, spalte)) {
+        if (istBearbeitbar(z, spalte, epOhneZuschlag)) {
           e.preventDefault();
           beginneBearbeitung(zi, spalte, e.key); // schreibgeschützt: nur die Ansage
         }
@@ -968,8 +981,8 @@ export function LvGrid(props: LvGridProps): ReactElement {
   /** Strg+V und „Einfügen“ im Kontextmenü: derselbe Weg für den Text der Zwischenablage. */
   const fuegeEin = (inhalt: string): void => {
     if (!aenderung) {
-      // Im schreibgeschützten Grid nur eine Spalte in die Spalte „KG“, wenn die App das zulässt (Ticket 93).
-      if (!fuelleKostengruppen(parseTsv(inhalt))) meldeNurLesen();
+      // Im schreibgeschützten Grid nur eine Spalte in die Spalte „KG“ oder „EP“, wenn die App das zulässt (Ticket 93, SB3).
+      if (!fuelleSpalte(parseTsv(inhalt))) meldeNurLesen();
       return;
     }
     // Eigener Text (zuletzt vom Grid geschrieben): verlustfrei verschieben bzw. kopieren (Ticket 46, Punkt 2).
@@ -1012,7 +1025,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
       uebernimmText(aktivIndex, aktivSpalte, matrix[0]?.[0] ?? '');
       return;
     }
-    if (!eigen && fuelleKostengruppen(matrix)) return;
+    if (!eigen && fuelleSpalte(matrix)) return;
     // In ein leeres LV (keine aktive Zeile) wird am Ende der Wurzel eingefügt.
     const einfuegeanker: Einfuegeanker = aktiveZeile
       ? { art: 'nach', knotenId: aktiveZeile.knoten.id }
@@ -1350,6 +1363,7 @@ export function LvGrid(props: LvGridProps): ReactElement {
                 baumspalte={baumspalte}
                 zahlen={zahlen}
                 bearbeitbareSpalten={bearbeitbareSpalten}
+                epOhneZuschlag={epOhneZuschlag}
                 gridSchreibgeschuetzt={nurLesen}
                 editor={editorStabil}
                 eingabearten={eingabearten}

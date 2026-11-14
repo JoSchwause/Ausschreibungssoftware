@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Was sich in einem LV-Grid ändern lässt und wohin die Befehle gehen, an einer Stelle (Ticket 130, Ticket 123 Punkt 6).
-// Hier wohnt auch die eine Ausnahme vom Schreibschutz: die Spalte „KG“ (Ticket 93, D-93.1), die sich mit Lesefunktion der
-// App auch im schreibgeschützten Grid bearbeiten lässt, wenn die App einen Ausgang dafür gibt. Das Grid, die Zeilen und
-// der Editor fragen nur diese Rechte und die Eingabeart je Spalte; keiner verzweigt selbst auf die Spalte „KG“.
+// Hier wohnen auch die Ausnahmen vom Schreibschutz: die Spalte „KG“ (Ticket 93, D-93.1), die sich mit Lesefunktion der
+// App auch im schreibgeschützten Grid bearbeiten lässt, wenn die App einen Ausgang dafür gibt, und ebenso die Spalte „EP“
+// (SB3: Preise eines Angebots auf dem Gerüst des LV, ohne zweites Grid, U2). Das Grid, die Zeilen und der Editor fragen nur
+// diese Rechte und die Eingabeart je Spalte; keiner verzweigt selbst auf die Ausnahmen.
 
-import type { KostengruppeSetzen, LvBefehl, LvSpalte } from '@tethys/vertrag';
+import type { EinheitspreisAendern, KostengruppeSetzen, LvBefehl, LvSpalte } from '@tethys/vertrag';
 import { pruefeZahlformatDeDE } from '@tethys/ui-basis';
 import { leseKostengruppe, nimmtEingabe } from './eingabe';
 import { texte } from './texte';
@@ -28,6 +29,8 @@ export interface Schreibrechte {
   readonly schreibschutzText: string;
   /** Lesefunktion der Spalte „KG“, wenn sie hier bearbeitbar ist. */
   readonly kostengruppeLesen: KostengruppeLesen | undefined;
+  /** Ausnahme „Preise“ im Schreibschutz: Die Spalte „EP“ nimmt Eingaben an, an Zuschlagspositionen nicht (`istBearbeitbar`). */
+  readonly einheitspreise: boolean;
   /** Ein Befehl aus einer Zelleingabe. */
   readonly eingabe: (befehl: LvBefehl) => void;
   /** Mehrere Befehle aus einer Benutzeraktion als eine Folge (ein Undo-Schritt); leere Folgen gehen nicht hinaus. */
@@ -44,12 +47,14 @@ export function schreibrechte(props: LvGridProps, spalten: readonly LvSpalte[]):
   const aenderung = props.schreibgeschuetzt === true ? null : props;
   const nurLesen = aenderung === null;
   const kgAusgang = props.schreibgeschuetzt === true ? props.onKostengruppen : undefined;
+  const epAusgang = props.schreibgeschuetzt === true ? props.onEinheitspreise : undefined;
   const kostengruppeLesen = nurLesen && kgAusgang === undefined ? undefined : props.kostengruppeLesen;
-  // Im Schreibschutz nimmt nur die Spalte mit eigenem Ausgang Eingaben an: die Spalte „KG“.
+  // Im Schreibschutz nehmen nur die Spalten mit eigenem Ausgang Eingaben an: „KG“ und „EP“.
+  const mitAusgang = (s: LvSpalte): boolean =>
+    s === 'kostengruppe' || (s === 'einheitspreis' && epAusgang !== undefined);
   const bearbeitbareSpalten = new Set(
-    spalten.filter((s) => nimmtEingabe(s, kostengruppeLesen) && (!nurLesen || s === 'kostengruppe')),
+    spalten.filter((s) => nimmtEingabe(s, kostengruppeLesen) && (!nurLesen || mitAusgang(s))),
   );
-  const nurKg = nurLesen && bearbeitbareSpalten.size > 0;
   const folge = (befehle: readonly LvBefehl[]): void => {
     if (befehle.length === 0) return;
     if (aenderung) {
@@ -59,13 +64,24 @@ export function schreibrechte(props: LvGridProps, spalten: readonly LvSpalte[]):
     }
     const kg = befehle.filter((b): b is KostengruppeSetzen => b.art === 'KostengruppeSetzen');
     if (kg.length > 0) kgAusgang?.(kg);
+    const ep = befehle.filter((b): b is EinheitspreisAendern => b.art === 'EinheitspreisAendern');
+    if (ep.length > 0) epAusgang?.(ep);
   };
   return {
     aenderung,
     nurLesen,
     bearbeitbareSpalten,
-    schreibschutzText: nurKg ? texte.gridNurKostengruppe : texte.gridSchreibgeschuetzt,
+    schreibschutzText: !nurLesen
+      ? texte.gridSchreibgeschuetzt
+      : bearbeitbareSpalten.has('einheitspreis')
+        ? bearbeitbareSpalten.has('kostengruppe')
+          ? texte.gridNurEinheitspreisUndKostengruppe
+          : texte.gridNurEinheitspreis
+        : bearbeitbareSpalten.has('kostengruppe')
+          ? texte.gridNurKostengruppe
+          : texte.gridSchreibgeschuetzt,
     kostengruppeLesen,
+    einheitspreise: nurLesen && bearbeitbareSpalten.has('einheitspreis'),
     eingabe: (befehl) => {
       if (aenderung) aenderung.onBefehl(befehl);
       else folge([befehl]);

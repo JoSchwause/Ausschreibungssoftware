@@ -6,6 +6,7 @@ import type {
   Befehlshinweis,
   BefehlsEmpfaenger,
   Einfuegeort,
+  EinheitspreisAendern,
   Ergebnis,
   GridIdQuelle,
   GridZahlen,
@@ -157,6 +158,8 @@ export interface LvGridBearbeitbar extends LvGridGemeinsam {
   readonly positionenZaehlen?: (knotenIds: readonly KnotenId[]) => number;
   /** Nur im schreibgeschützten Grid: Hier gehen auch die Kostengruppen über `onBefehl` und `onBefehlsfolge`. */
   readonly onKostengruppen?: never;
+  /** Nur im schreibgeschützten Grid: Hier gehen auch die Einheitspreise über `onBefehl` und `onBefehlsfolge`. */
+  readonly onEinheitspreise?: never;
 }
 
 /**
@@ -179,6 +182,14 @@ export interface LvGridSchreibgeschuetzt extends LvGridGemeinsam {
    * auch ein einzelner Befehl.
    */
   readonly onKostengruppen?: (befehle: readonly KostengruppeSetzen[]) => void;
+  /**
+   * Zweite Ausnahme vom Schreibschutz (SB3, U2), z. B. für die Preise eines Angebots auf dem Gerüst des LV: Mit dieser
+   * Eigenschaft lässt sich die Spalte „EP“ an Positionen ohne Zuschlag bearbeiten (Eingabe, Entf, Einfügen einer Spalte);
+   * alles andere bleibt schreibgeschützt. Leeren ist `einheitspreis: null`; was das bedeutet, entscheidet die App. Jede
+   * Aktion kommt als eine Folge, auch ein einzelner Befehl. Das Grid rechnet nichts: Die App zeigt die neuen Preise über
+   * `ansicht`.
+   */
+  readonly onEinheitspreise?: (befehle: readonly EinheitspreisAendern[]) => void;
 }
 
 export type LvGridProps = LvGridBearbeitbar | LvGridSchreibgeschuetzt;
