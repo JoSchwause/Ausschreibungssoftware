@@ -1,6 +1,6 @@
 # 163: Reste aus 158, 159a, 159b
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/src/rechnung/`, `apps/web/src/gaeb/`, `apps/web/src/bauzeit/`, `packages/bauzeit` (nur Alias), `packages/speicher` (nur Dateikopf), `apps/web/e2e/` (nur `zahlungsfreigabe.spec.ts`, `nachtrag.spec.ts`), Ordner der Ursache des Wacklers
 Blocked by: 158, 159a, 159b gemergt
