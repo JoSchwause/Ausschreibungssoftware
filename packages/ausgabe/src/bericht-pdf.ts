@@ -19,6 +19,8 @@ const GRAU = '#555555';
 /** Seitenränder `[links, oben, rechts, unten]` in pt, wie beim LV-Druck „normal“ und „eng“. */
 const RAENDER = { normal: [40, 50, 40, 46], eng: [28, 44, 28, 40] } as const;
 const EINRUECKUNG = 10;
+/** Bis zu so vielen Zeilen wird eine Tabelle nicht über eine Seite hinweg geteilt. */
+const KLEINE_TABELLE = 8;
 
 /** Linien und Abstände der Tabellen: oben und unten kräftiger, zwischen den Zeilen fein, keine senkrechten Linien. */
 const TABELLENLINIEN = {
@@ -207,7 +209,7 @@ function block(b: BerichtBlock): Content {
           };
         }),
       );
-      return {
+      const tabelle: Content = {
         table: {
           headerRows: 1,
           dontBreakRows: true,
@@ -217,6 +219,8 @@ function block(b: BerichtBlock): Content {
         layout: TABELLENLINIEN,
         margin: [0, 2, 0, 6],
       };
+      // Eine kleine Tabelle (etwa die Fälle der Zahlungsfreigabe) bleibt auf einer Seite.
+      return b.zeilen.length <= KLEINE_TABELLE ? { stack: [tabelle], unbreakable: true } : tabelle;
     }
   }
 }
@@ -232,6 +236,10 @@ function abschnitt(a: BerichtAbschnitt, erster: boolean): Content[] {
     margin: [0, erster ? 0 : 8, 0, 3],
     keepWithNext: true,
   } as Content;
+  // `keepWithNext` hält die Überschrift nicht bei einem ungeteilten Block (kleine Tabelle): beide in einen Block.
+  const ersterBlock = a.bloecke[0];
+  if (anfang !== undefined && ersterBlock?.art === 'tabelle' && ersterBlock.zeilen.length <= KLEINE_TABELLE)
+    return [{ stack: [kopf, anfang], unbreakable: true }, ...rest];
   return [kopf, ...(anfang === undefined ? [] : [anfang]), ...rest];
 }
 

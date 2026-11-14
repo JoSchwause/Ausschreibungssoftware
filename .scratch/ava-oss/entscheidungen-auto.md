@@ -856,3 +856,24 @@ Question: 149 begrenzt die Ausreißer-Schwelle auf 100 % (der Kern weist mehr ab
 Decision: Beides bestätigt. 100 % als Obergrenze ist eine Lesart von G-26 (Ausreißer ±%), keine Lockerung eines Tests; eine höhere Schwelle bräuchte eine Vertragsänderung und kommt nur auf Anfrage des Büros. **An 152:** `PdfMitVorschau` aus `vergabe/Ausgaben.tsx` wiederverwenden (Import genügt; Umzug nach `ui/` in 159). **Für 159:** `auftragsLvBefehlAusfuehren` in `auftrag/`, `kosten/`, `nachtrag/`, `hilfe/` aus `@tethys/vergabe` statt `@tethys/kern`; `PdfMitVorschau` nach `ui/` und im LV-PDF nutzen; Druckprofil- und Datumswahl für Preisspiegel-, Vergabevorschlags- und Kostenberichte; `lv-bedienung.spec.ts` lädt die Kalkulation über den echten Dialog statt den Testhaken. **Bericht:** Die Tabelle der Angebotspreise ist nicht virtualisiert (langsam bei 5.000 Positionen).
 Reason: Keine Regel verletzt; Reste sind klein.
 Reversible: yes  Touches: apps/web/src/vergabe, kosten, Tickets 152, 159
+
+## D-99 Vorschau-Module gemergt; Doppelmessung je Position; Kann-Teile gekürzt
+Welle 7 · Ticket 155 (Folge 158, 159, Bericht) · decided by: orchestrator
+Question: 155 hat Punkte 1–5 und 7 erledigt, Punkt 6 (K-Teile: „Mangel aus Bauteil“, „KG im Modell weicht ab“) nach der Kürzungsreihenfolge gestrichen; den Hinweis „schon auf einem anderen Aufmaßblatt gemessen“ gibt es je Position, nicht je Bauteil (dafür bräuchte `Ansatzzeile` eine GlobalId, also `vertrag`); Einzeiler in fremden Ordnern (`kosten/KostenermittlungSeite`, `auftrag/AuftragsLvSeite`, `hilfe/beispielprojekt`, D-155.2); `bim-tastatur.spec.ts:135` bleibt wackelig ohne gefundene Ursache in der App (Radix verschiebt den Fokus in einem `setTimeout`, der unter Last über eine Sekunde nicht lief).
+Decision: Alles bestätigt. Die Einzeiler sind Einhängestellen, keine Fachänderung. Die Kürzung von Punkt 6 und die Doppelmessung je Bauteil (Vertragsänderung) stehen im Bericht unter „nach Welle 7“. Der wackelige Test wird im Abschlusslauf auf ruhiger Maschine geprüft; fällt er dort weiter, untersucht 159 das Auswahlfeld in `ui-basis`. Die Messung des Preisspiegel-Budgets auf ruhiger Maschine gehört in den Abschlusslauf.
+Reason: Kürzungsreihenfolge §4; ohne Last gibt es keinen Befund, der eine Änderung rechtfertigt.
+Reversible: yes  Touches: apps/web/src/{bauzeit,bauleitung,honorar,bim,modellvergleich}, packages/bim, ui-modell, Bericht
+
+## D-100 Prüflauf der Integration: zwei echte Fehler
+Welle 7 · Prüflauf auf `1dbfdca` (Folge 156, 162) · decided by: orchestrator
+Question: Der Prüflauf (Lint, Typen, Unit, Web-E2E, `ui-grid`- und `speicher`-E2E, Last 20–33) fand neben Budget-Messungen unter Last zwei echte Fehler: (1) `packages/ui-grid/e2e/arbeitsflaeche.spec.ts:57` erwartet die zugängliche Bezeichnung „Ordnungszahl“ am Spaltenkopf mit sichtbarem Text „OZ“ (130), 133 machte daraus auch die Bezeichnung „OZ“; (2) `apps/web/e2e/druckprofil.spec.ts:127`: nach dem Löschen eines Profils hält keine Option den Fokus.
+Decision: (1) Sichtbar „OZ“, zugängliche Bezeichnung „Ordnungszahl“ (wie D-130 und im Sinn von D-133: Ordnungszahl ist der Fließtext-Begriff, ein Bildschirmleser liest ihn vor; U8). Behebt 156 als derzeitiger Schreiber in `ui-grid`. (2) Kleines Fix-Ticket 162 (Opus) für `apps/web/src/ausgabe/`, Ursache finden statt Test abschwächen. Budgets: zweite Messung im Abschlusslauf auf ruhiger Maschine; `bim-tastatur.spec.ts:58` wackelte einmal (wie :135, D-99).
+Reason: Q2 verlangt grüne E2E vor dem Tor; beide Fehler kommen aus dem Zusammenspiel zweier gemergter Tickets.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/ausgabe, Ticket 162
+
+## D-101 Suchen, Filtern, Kontextmenü gemergt; Spaltenkopf „Ordnungszahl (OZ)“
+Welle 7 · Ticket 156 (Folge 159) · decided by: orchestrator
+Question: 156 löst D-100 (1) mit der zugänglichen Bezeichnung „Ordnungszahl (OZ)“ statt nur „Ordnungszahl“ (der Sprachtest aus 133 verbietet „Ordnungszahl“ allein als Beschriftung); `ui-grid` bekommt `@radix-ui/react-dropdown-menu` (gleiche Version wie `ui-basis`) für das Kontextmenü.
+Decision: Beides bestätigt. „Ordnungszahl (OZ)“ nennt Begriff und Kürzel und hält D-130 (Bildschirmleser), D-133 (Sprachregel) und den Test. **Für 159:** `auftrag/AuftragsLvSeite` reicht `alleZeilen` und `onKuerzelhilfe` an das Grid (zwei Zeilen wie `LvStandSeite`), sonst sucht die Auftrags-LV-Seite nur in sichtbaren Zeilen.
+Reason: Keine Regel verletzt; Budgets der 5.000/10.000-Zeilen-Prüfstände blieben unter Last eingehalten.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/lv, Ticket 159

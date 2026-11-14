@@ -32,6 +32,10 @@ export type KuerzelAktion =
   | 'loeschen'
   | 'position-anlegen'
   | 'zeile-oeffnen'
+  | 'suchen'
+  | 'treffer-weiter'
+  | 'treffer-zurueck'
+  | 'kontextmenue'
   | 'alles-auswaehlen'
   | 'zeile-auswaehlen'
   | 'tab'
@@ -194,6 +198,43 @@ export const GRID_KUERZEL: readonly Kuerzel[] = [
     bereich: 'Zeilen',
     gilt: 'lv',
     muster: [{ taste: 'Enter', strg: true, alt: false, umschalt: false }],
+  },
+  {
+    aktion: 'suchen',
+    taste: 'Strg+F',
+    beschreibung:
+      'Suchen in Ordnungszahl, Kurztext und Langtext und Filtern nach Art, Merkmal oder fehlendem Preis; Esc schließt die Suche',
+    bereich: 'Navigation',
+    gilt: 'lv',
+    muster: [{ taste: 'f', strg: true, alt: false }],
+  },
+  {
+    aktion: 'treffer-weiter',
+    taste: 'F3 (im Suchfeld auch Enter)',
+    beschreibung: 'Zum nächsten Treffer der Suche',
+    bereich: 'Navigation',
+    gilt: 'lv',
+    muster: [{ taste: 'F3', umschalt: false, strg: false, alt: false }],
+  },
+  {
+    aktion: 'treffer-zurueck',
+    taste: 'Umschalt+F3 (im Suchfeld auch Umschalt+Enter)',
+    beschreibung: 'Zum vorigen Treffer der Suche',
+    bereich: 'Navigation',
+    gilt: 'lv',
+    muster: [{ taste: 'F3', umschalt: true, strg: false, alt: false }],
+  },
+  {
+    aktion: 'kontextmenue',
+    taste: 'Umschalt+F10 oder Menütaste',
+    beschreibung:
+      'Menü der aktiven Zelle mit denselben Aktionen wie die Tasten, dazu die Übersicht der Tastenkürzel; auch mit der rechten Maustaste',
+    bereich: 'Zeilen',
+    gilt: 'lv',
+    muster: [
+      { taste: 'F10', umschalt: true, strg: false, alt: false },
+      { taste: 'ContextMenu', strg: false, alt: false },
+    ],
   },
   {
     aktion: 'alles-auswaehlen',

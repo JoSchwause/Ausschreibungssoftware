@@ -29,12 +29,15 @@
 //   maske=1                 OZ-Maske mit drei Ziffern je Titelstufe, fünfstelliger Position und Index (Ticket 130)
 //   merken=<Schlüssel>      Spaltenbreiten unter diesem Schlüssel merken (localStorage, Ticket 130)
 //   ohnehuelle=1            das Grid direkt als Flex-Element der Seite statt in einer Hülle mit fester Höhe
+//   alle=1                  alleZeilen gesetzt: Suchen und Filtern sehen auch zugeklappte Zeilen (Ticket 156)
+//   hilfe=1                 onKuerzelhilfe gesetzt (Aufrufe zählt window.__harness.kuerzelhilfe)
+//   langtext=1              die 2. Position („Bauzaun stellen“) trägt einen erfundenen Langtext (Ticket 156)
 //   Die aktive Zeile (onAktiveZeileChange) steht immer in window.__harness.aktiveZeilen (jede Meldung).
 
 import '@tethys/ui-basis/tokens.css';
 import '@tethys/ui-basis/bausteine.css';
 import '../../src/grid.css';
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useCallback, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type {
   Befehlshinweis,
@@ -99,7 +102,21 @@ function mitLangenInhalten(knoten: readonly Knoten[]): readonly Knoten[] {
     return k;
   });
 }
-const mitAnsatz0 = params.get('ansatz') === '1' ? mitAnsatz(modell0.knoten) : modell0.knoten;
+/** Ein erfundener Langtext an der 2. Position (Ticket 156), damit die Suche im Langtext etwas findet. */
+function mitLangtext(knoten: readonly Knoten[]): readonly Knoten[] {
+  let n = 0;
+  return knoten.map((k) => {
+    if (k.art !== 'position' || ++n !== 2) return k;
+    return {
+      ...k,
+      langtext: [
+        { art: 'absatz', inhalt: [{ art: 'text', text: 'Mobiler Zaun mit Betonfüßen, Höhe 2 m.' }] },
+      ],
+    };
+  });
+}
+const mitLangtext0 = params.get('langtext') === '1' ? mitLangtext(modell0.knoten) : modell0.knoten;
+const mitAnsatz0 = params.get('ansatz') === '1' ? mitAnsatz(mitLangtext0) : mitLangtext0;
 const mitKg0 = mitKg ? mitKostengruppen(mitAnsatz0) : mitAnsatz0;
 const knoten0 = params.get('breit') === '1' ? mitLangenInhalten(mitKg0) : mitKg0;
 const ozMaske: OzMaske | undefined =
@@ -228,6 +245,10 @@ function Seite() {
 
   const modell = useMemo(() => ({ ...modell0, knoten, gesamt }), [knoten]);
   const ansicht = useMemo(() => baueAnsicht(modell, offen, befunde), [modell, offen, befunde]);
+  const alleZeilen = useCallback(
+    () => baueAnsicht(modell, offen, befunde, true).zeilen,
+    [modell, offen, befunde],
+  );
 
   window.__harness = {
     befehle: window.__harness.befehle,
@@ -248,6 +269,7 @@ function Seite() {
     },
     aktiveZeilen: window.__harness.aktiveZeilen,
     geoeffnet: window.__harness.geoeffnet,
+    kuerzelhilfe: window.__harness.kuerzelhilfe,
   };
   const gemeinsam = {
     ansicht,
@@ -269,6 +291,14 @@ function Seite() {
     onAktiveZeileChange: (id: KnotenId | null) => {
       window.__harness.aktiveZeilen.push(id);
     },
+    ...(params.get('alle') === '1' ? { alleZeilen } : {}),
+    ...(params.get('hilfe') === '1'
+      ? {
+          onKuerzelhilfe: () => {
+            window.__harness.kuerzelhilfe += 1;
+          },
+        }
+      : {}),
     ...(params.get('oeffnen') === '1'
       ? {
           onZeileOeffnen: (knotenId: KnotenId, spalte: LvSpalte) => {
@@ -366,6 +396,7 @@ window.__harness = {
   springe: () => undefined,
   aktiveZeilen: [],
   geoeffnet: [],
+  kuerzelhilfe: 0,
 };
 
 const root = document.getElementById('root');

@@ -15,10 +15,20 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
 };
 
 /**
- * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, nur die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie
- * die OZ selbst (Ticket 130). Der zugängliche Name bleibt der volle Titel.
+ * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie die OZ
+ * selbst (Ticket 130).
  */
 export const SPALTENKOPF: Readonly<Record<LvSpalte, string>> = { ...SPALTENTITEL, ordnungszahl: 'OZ' };
+
+/**
+ * Zugänglicher Name des Spaltenkopfs (und Tooltip), wo er vom sichtbaren Kopf abweicht: Ein Bildschirmleser liest bei der
+ * Spalte „OZ“ den Fließtext-Begriff vor (Ticket 130, Folge 156). Mit Abkürzung dahinter, weil „Ordnungszahl“ allein keine
+ * Beschriftung sein soll (Sprachfestlegung: Spaltenkopf „OZ“).
+ */
+export const SPALTENNAME: Readonly<Record<LvSpalte, string>> = {
+  ...SPALTENKOPF,
+  ordnungszahl: 'Ordnungszahl (OZ)',
+};
 
 /** Ansage nach dem Ändern einer Spaltenbreite per Tastatur, z. B. „Spalte Menge: 140 Pixel breit.“ */
 export function meldungBreite(spalte: string, breite: number | null): string {
@@ -120,6 +130,83 @@ export const texte = {
   markierungen: 'Markierungen',
 } as const;
 
+/** Suchen, Filtern und Kontextmenü (Ticket 156). */
+export const suchtexte = {
+  leiste: 'Suchen und filtern',
+  suchfeld: 'Suchen in Ordnungszahl, Kurztext und Langtext',
+  platzhalter: 'Suchen …',
+  voriger: 'Voriger Treffer',
+  naechster: 'Nächster Treffer',
+  schliessen: 'Suche schließen',
+  keineTreffer: 'Keine Treffer.',
+  art: 'Art',
+  alleArten: 'Alle Arten',
+  merkmal: 'Merkmal',
+  alleMerkmale: 'Alle Merkmale',
+  ohnePreis: 'ohne Preis',
+  gefiltert: 'Gefiltert',
+  filterAufheben: 'Filter aufheben',
+  filterAufgehoben: 'Filter aufgehoben.',
+  keineZeileImFilter: 'Keine Zeile passt zum Filter.',
+  verschiebenImFilter:
+    'Im gefilterten Leistungsverzeichnis lässt sich nicht verschieben. Bitte den Filter aufheben.',
+  /** Arten und Merkmale des Filters, in der Reihenfolge der Auswahl. */
+  arten: {
+    position: 'Positionen',
+    zuschlagsposition: 'Zuschlagspositionen',
+    hinweis: 'Hinweistexte',
+    gliederung: 'Titel und Lose',
+  },
+  merkmale: {
+    bedarf: 'Bedarf',
+    wahl: 'Wahl',
+    stundenlohn: 'Stundenlohn',
+    pauschal: 'Pauschal',
+  },
+  /** Wo der Treffer steht, für die Ansage. */
+  ort: {
+    ordnungszahl: 'in der Ordnungszahl',
+    kurztext: 'im Kurztext',
+    langtext: 'im Langtext',
+  },
+} as const;
+
+/** Anzeige im Suchfeld, z. B. „3 von 12“. */
+export function trefferStand(nr: number, anzahl: number): string {
+  return `${String(nr)} von ${String(anzahl)}`;
+}
+
+/** Ansage nach dem Sprung zu einem Treffer, z. B. „Treffer 3 von 12 im Langtext.“ (`ort` aus `suchtexte.ort`). */
+export function meldungTreffer(nr: number, anzahl: number, ort: string): string {
+  return `Treffer ${String(nr)} von ${String(anzahl)} ${ort}.`;
+}
+
+/** Stand des Filters, z. B. „12 von 340 Zeilen“. */
+export function filterStand(gezeigt: number, gesamt: number): string {
+  return `${String(gezeigt)} von ${String(gesamt)} ${gesamt === 1 ? 'Zeile' : 'Zeilen'}`;
+}
+
+/** Punkte des Kontextmenüs an Zeile und Zelle: dieselben Aktionen wie die Tasten (U3). */
+export const menuetexte = {
+  beschriftung: 'Aktionen der Zelle',
+  bearbeiten: 'Zelle bearbeiten',
+  zeileOeffnen: 'Zeile öffnen',
+  positionAnlegen: 'Position anlegen',
+  ausschneiden: 'Zeilen ausschneiden',
+  kopieren: 'Zeilen kopieren',
+  einfuegen: 'Einfügen',
+  zelleLeeren: 'Zelle leeren',
+  nachOben: 'Nach oben verschieben',
+  nachUnten: 'Nach unten verschieben',
+  loeschen: 'In den Papierkorb legen',
+  aufklappen: 'Gliederung aufklappen',
+  zuklappen: 'Gliederung zuklappen',
+  allesAuswaehlen: 'Alles auswählen',
+  suchen: 'Suchen und filtern',
+  kuerzel: 'Tastenkürzel anzeigen',
+  einfuegenGesperrt: 'Die Zwischenablage lässt sich hier nicht lesen. Bitte Strg+V verwenden.',
+} as const;
+
 /** Ansage nach Strg+C im Vergleichsgrid, z. B. „1 Zelle kopiert.“ oder „3 × 2 Zellen kopiert.“. */
 export function meldungZellenKopiert(zeilen: number, spalten: number): string {
   return zeilen * spalten === 1
@@ -203,6 +290,9 @@ const BEFEHLSHINWEISTEXT: ReadonlyMap<string, string> = new Map([
   ['oz-schritt-ausgewichen', 'Die Ordnungszahlen wurden mit kleinerem Schritt vergeben.'],
   ['netto-nach-nachlass-negativ', 'Das Netto nach Nachlass ist negativ.'],
   ['oz-maske-ungueltig', 'Die OZ-Maske ist ungültig.'],
+  // Ticket 156 (D-148.6): Ein Preisbefehl hat die Kalkulation der Position entfernt. Die LV-Seite zeigt dafür ein eigenes
+  // Band mit „Rückgängig“ und filtert den Hinweis hier heraus; andere Aufrufer bekommen diesen Text.
+  ['kalkulation-entfernt', 'Die Kalkulation der Position wurde entfernt. Rückgängig stellt sie wieder her.'],
 ]);
 
 const BEFEHLSHINWEIS_ALLGEMEIN = 'Der Befehl wurde mit einem Hinweis ausgeführt.';
