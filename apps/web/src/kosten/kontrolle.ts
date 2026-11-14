@@ -5,7 +5,7 @@
 // `abrechnung`; die App reicht ihn als Rechner herein (A3: eine Funktion, kein Import hier), ohne Rechner bleibt die Spalte
 // Abrechnung leer.
 
-import type { Kostenkontrolleingabe } from '@tethys/kosten';
+import type { Kostenkontrollbefund, Kostenkontrolleingabe } from '@tethys/kosten';
 import type {
   Aufmass,
   AuftragsLeistungsverzeichnisId,
@@ -18,6 +18,7 @@ import type {
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { texte } from './texte';
 
 /** Rechnet den Leistungsstand einer Rechnung aus Auftrags-LV und den Aufmaßblättern der Rechnung (`leistungsstandBerechnen`). */
 export type LeistungsstandRechner = (
@@ -64,4 +65,23 @@ export function budgetWaehlen(
 ): KostenermittlungZustand['kostenermittlung'] | null {
   if (id === null) return null;
   return ermittlungen.find((z) => z.kostenermittlung.id === id)?.kostenermittlung ?? null;
+}
+
+/** Ein Hinweis der Kostenkontrolle als deutscher Satz; derselbe Text auf der Seite und im Druck (Ticket 154). */
+export function kontrollbefundText(b: Kostenkontrollbefund): string {
+  const k = texte.kontrolle.befund;
+  switch (b.code) {
+    case 'kostengruppe-ohne-budget':
+      return k['kostengruppe-ohne-budget'](b.nummer ?? '');
+    case 'kostengruppe-groeber-als-budget':
+      return k['kostengruppe-groeber-als-budget'](b.nummer ?? '');
+    case 'leistungsstand-unbekannt':
+      return k['leistungsstand-unbekannt']();
+    case 'leistungsstand-doppelt':
+      return k['leistungsstand-doppelt']();
+    case 'summe-abweichend':
+      return k['summe-abweichend'](
+        b.spalte === 'abrechnung' ? texte.kontrolle.spalteAbrechnung : texte.kontrolle.spalteVergabe,
+      );
+  }
 }

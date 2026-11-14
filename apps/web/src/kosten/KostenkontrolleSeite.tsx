@@ -21,7 +21,7 @@ import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { KENNZEICHEN_TEXTE, kontrolleAnsicht } from './ansicht';
 import { bezeichnungenAusCsv, bezeichnungenGemerkt } from './bezeichnungen';
-import { budgetWaehlen, leistungsstaendeLaden, type Leistungsstaende } from './kontrolle';
+import { budgetWaehlen, kontrollbefundText, leistungsstaendeLaden, type Leistungsstaende } from './kontrolle';
 import { LEISTUNGSSTAND_RECHNER } from './leistungsstand';
 import { kostenPfad } from './pfad';
 import { auftraegeLaden, kostenermittlungenLaden } from './schreiben';
@@ -177,26 +177,10 @@ function Kontrolle({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void
       ) : (
         <ul className="kosten__befunde" aria-label={t.befunde}>
           {kontrolle.befunde.map((b, i) => (
-            <li key={`${b.code}-${String(i)}`}>{befundText(b)}</li>
+            <li key={`${b.code}-${String(i)}`}>{kontrollbefundText(b)}</li>
           ))}
         </ul>
       )}
     </div>
   );
-}
-
-function befundText(b: ReturnType<typeof kostenkontrolleBerechnen>['befunde'][number]): string {
-  const k = texte.kontrolle.befund;
-  switch (b.code) {
-    case 'kostengruppe-ohne-budget':
-      return k['kostengruppe-ohne-budget'](b.nummer ?? '');
-    case 'kostengruppe-groeber-als-budget':
-      return k['kostengruppe-groeber-als-budget'](b.nummer ?? '');
-    case 'leistungsstand-unbekannt':
-      return k['leistungsstand-unbekannt']();
-    case 'leistungsstand-doppelt':
-      return k['leistungsstand-doppelt']();
-    case 'summe-abweichend':
-      return k['summe-abweichend'](b.spalte === 'abrechnung' ? t.spalteAbrechnung : t.spalteVergabe);
-  }
 }
