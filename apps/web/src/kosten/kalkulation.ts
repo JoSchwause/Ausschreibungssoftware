@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // EP-Kalkulation in der App (Ticket 89, C4, Ticket 78): Kalkulationszeilen (Text) → Kalkulationsansätze und Zuschlagssätze
-// der Kalkulation (de-DE-Rand, N4) → `einzelpreiskalkulationBerechnen` → Befehle. Die Ansätze werden nicht gespeichert (D-36 (5)); der
-// Befehlsweg bekommt nur Einheitspreisanteile und EP, als **ein** Undo-Schritt (zwei Befehle über `Sitzung.folge`).
+// der Kalkulation (de-DE-Rand, N4) → `einzelpreiskalkulationBerechnen` → Befehl. Seit Ticket 154 (E9, B-19, D-127.6) trägt
+// die Position die Eingaben: „Übernehmen“ ist **ein** Befehl `KalkulationSetzen` mit Ansätzen, Sätzen, EP und Anteilen (ein
+// Undo-Schritt), und der Dialog öffnet mit den gespeicherten Werten (`formularAusPosition`).
 
+import {
+  formatiereEinheitspreisDe,
+  formatiereMengeDe,
+  formatiereProzentDe,
+} from '@tethys/dezimal';
 import { einzelpreiskalkulationBerechnen } from '@tethys/kosten';
 import type { Einzelpreiskalkulation, Kalkulationsansatz, Kalkulationszuschlagssaetze } from '@tethys/kosten';
 import type {
-  EinheitspreisAendern,
-  EinheitspreisanteileSetzen,
   EpaArt,
   Einheitspreis,
+  Ergebnis,
+  KalkulationSetzen,
+  Kalkulationsangaben,
   Menge,
+  Position,
   PositionId,
   Prozent,
 } from '@tethys/vertrag';
@@ -61,6 +69,8 @@ export type Formfehler =
   | { readonly ort: 'satz'; readonly art: EpaArt; readonly meldung: string };
 
 export interface Kalkulationslauf {
+  /** Die gelesenen Eingaben, wie sie an der Position gespeichert werden; unlesbare Werte fehlen darin (`null`). */
+  readonly angaben: Kalkulationsangaben;
   /** Das Ergebnis der Rechnung; unlesbare Werte zählen darin als fehlend. */
   readonly ergebnis: Einzelpreiskalkulation;
   readonly fehler: readonly Formfehler[];
@@ -111,20 +121,65 @@ export function kalkulationRechnen(
   // Ist `epaBezeichnungen` am LV gesetzt, ist es die einzige Quelle der Beschriftung (D-28): `null` geht weiter.
   const frei =
     lvHatEpaBezeichnungen || form.freiBezeichnung.trim() === '' ? null : form.freiBezeichnung.trim();
-  return { ergebnis: einzelpreiskalkulationBerechnen(ansaetze, saetze, frei), fehler };
+  return {
+    angaben: { ansaetze, zuschlagssaetze: saetze },
+    ergebnis: einzelpreiskalkulationBerechnen(ansaetze, saetze, frei),
+    fehler,
+  };
 }
 
 /**
- * Die Befehle für „Übernehmen“: Anteile und EP, in dieser Reihenfolge, für **einen** Undo-Schritt. `null`, wenn die
- * Kalkulation keinen EP hat (keine Kostenart mit Anteil): dann gibt es nichts zu übernehmen.
+ * Das Formular aus den gespeicherten Kalkulationsangaben der Position (B-19): die Ansätze in ihrer Reihenfolge, die Sätze
+ * je Kostenart, alle Werte de-DE (N4). Die freie Bezeichnung steht in den Anteilen der Position; legt das LV die
+ * Beschriftung selbst fest (D-28), bleibt sie leer. Ohne Kalkulation: das leere Formular.
  */
-export function kalkulationBefehle(
+export function formularAusPosition(position: Position, lvHatEpaBezeichnungen: boolean): Kalkulationsformular {
+  const k = position.kalkulation;
+  if (k === undefined) return LEERES_FORMULAR;
+  const saetze: Partial<Record<EpaArt, string>> = {};
+  for (const art of ARTEN) {
+    const p = k.zuschlagssaetze[art];
+    if (p !== undefined) saetze[art] = formatiereProzentDe(p);
+  }
+  return {
+    zeilen:
+      k.ansaetze.length === 0
+        ? [LEERE_ZEILE]
+        : k.ansaetze.map((a) => ({
+            art: a.art,
+            bezeichnung: a.bezeichnung,
+            ansatzmenge: a.ansatzmenge === null ? '' : formatiereMengeDe(a.ansatzmenge),
+            kostensatz: a.kostensatz === null ? '' : formatiereEinheitspreisDe(a.kostensatz),
+          })),
+    saetze,
+    freiBezeichnung: lvHatEpaBezeichnungen ? '' : (position.epa?.freiBezeichnung ?? ''),
+  };
+}
+
+/**
+ * Der Befehl für „Übernehmen“: Ansätze, Sätze, EP und Anteile in **einem** `KalkulationSetzen` (ein Undo-Schritt). Kein
+ * Befehl, solange ein Feld unlesbar ist (es würde sonst still leer gespeichert, Q5) oder die Kalkulation keinen EP hat.
+ */
+export function kalkulationBefehl(
   positionId: PositionId,
-  ergebnis: Einzelpreiskalkulation,
-): readonly [EinheitspreisanteileSetzen, EinheitspreisAendern] | null {
-  if (ergebnis.einheitspreis === null) return null;
-  return [
-    { art: 'EinheitspreisanteileSetzen', positionId, epa: ergebnis.anteile },
-    { art: 'EinheitspreisAendern', positionId, einheitspreis: ergebnis.einheitspreis },
-  ];
+  lauf: Kalkulationslauf,
+): Ergebnis<KalkulationSetzen, string> {
+  if (lauf.fehler.length > 0) return { ok: false, fehler: texte.kalkulation.fehlerFelder };
+  const { einheitspreis, anteile } = lauf.ergebnis;
+  if (einheitspreis === null) return { ok: false, fehler: texte.kalkulation.nichtsZuUebernehmen };
+  return {
+    ok: true,
+    wert: { art: 'KalkulationSetzen', positionId, kalkulation: lauf.angaben, einheitspreis, epa: anteile },
+  };
+}
+
+/** Entfernt die gespeicherte Kalkulation; EP und Anteile der Position bleiben stehen (D-127.6). */
+export function kalkulationEntfernenBefehl(position: Position): KalkulationSetzen {
+  return {
+    art: 'KalkulationSetzen',
+    positionId: position.id,
+    kalkulation: null,
+    einheitspreis: position.einheitspreis,
+    epa: position.epa,
+  };
 }

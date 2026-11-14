@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // EP kalkulieren (Ticket 89, C4, Ticket 78): Kalkulationsansätze und Zuschlagssätze der Kalkulation je Kostenart. Gerechnet
 // wird in `kosten` (`einzelpreiskalkulationBerechnen`); der Dialog zeigt den Nachweis (Einzelkosten, Kalkulationszuschlag,
-// Anteil) und den EP. „Übernehmen“
-// schreibt Einheitspreisanteile und EP als **ein** Undo-Schritt. Die Ansätze selbst werden nicht gespeichert (D-36 (5)); der Dialog
-// sagt das und beginnt bei jedem Öffnen leer. Unlesbare Werte sind Feldfehler wie in jeder Zelle (U5: nichts wird gesperrt).
+// Anteil) und den EP. Ticket 154 (E9, B-19): „Übernehmen“ speichert Ansätze, Sätze, EP und Anteile an der Position
+// (`KalkulationSetzen`, ein Undo-Schritt), und der Dialog öffnet mit den gespeicherten Werten. „Kalkulation entfernen“ lässt
+// EP und Anteile stehen. Unlesbare Werte sind Feldfehler wie in jeder Zelle (U5: die Eingabe wird nie gesperrt); übernommen
+// wird erst, wenn sie berichtigt sind, damit nichts still leer gespeichert wird (Q5).
 
 import { formatiereEinheitspreisDe, formatiereMengeDe, runden } from '@tethys/dezimal';
 import { Auswahl, Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
@@ -15,7 +16,9 @@ import {
   ARTEN,
   LEERES_FORMULAR,
   LEERE_ZEILE,
-  kalkulationBefehle,
+  formularAusPosition,
+  kalkulationBefehl,
+  kalkulationEntfernenBefehl,
   kalkulationRechnen,
   type Kalkulationszeile,
   type Kalkulationsformular,
@@ -39,13 +42,16 @@ export function KalkulationsDialog({
   /** Schickt die Befehle als eine Aktion (ein Undo-Schritt); `true`, wenn alle angenommen wurden. */
   senden: (befehle: readonly LvBefehl[]) => Promise<boolean>;
 }): ReactElement {
-  const [form, setForm] = useState<Kalkulationsformular>(LEERES_FORMULAR);
+  const [form, setForm] = useState<Kalkulationsformular>(() =>
+    position === null ? LEERES_FORMULAR : formularAusPosition(position, epaBezeichnungenGesetzt),
+  );
   const [meldung, setMeldung] = useState<string | null>(null);
 
-  // Jedes Öffnen beginnt leer: Die Ansätze werden nicht gespeichert.
+  // Jedes Öffnen beginnt mit der gespeicherten Kalkulation der Position (B-19); ohne eine leer.
   useEffect(() => {
-    setForm(LEERES_FORMULAR);
+    if (position !== null) setForm(formularAusPosition(position, epaBezeichnungenGesetzt));
     setMeldung(null);
+    // Nur beim Öffnen und beim Wechsel der Position, nicht bei jeder Änderung an ihr (die Eingaben blieben sonst nicht stehen).
   }, [position?.id]);
 
   const lauf = useMemo(
@@ -64,13 +70,19 @@ export function KalkulationsDialog({
 
   const uebernehmen = async (): Promise<void> => {
     if (position === null) return;
-    const befehle = kalkulationBefehle(position.id, ergebnis);
-    if (befehle === null) {
-      setMeldung(t.nichtsZuUebernehmen);
+    const b = kalkulationBefehl(position.id, lauf);
+    if (!b.ok) {
+      setMeldung(b.fehler);
       return;
     }
-    if (await senden(befehle)) onSchliessen();
+    if (await senden([b.wert])) onSchliessen();
   };
+
+  const entfernen = async (): Promise<void> => {
+    if (position === null) return;
+    if (await senden([kalkulationEntfernenBefehl(position)])) onSchliessen();
+  };
+  const gespeichert = position?.kalkulation !== undefined;
 
   const titel = position === null ? t.titel : `${t.titel}: ${ozText(position)} ${position.kurztext}`.trim();
   return (
@@ -83,6 +95,11 @@ export function KalkulationsDialog({
       beschreibung={position === null ? '' : t.einleitung(`${ozText(position)} ${position.kurztext}`.trim())}
       fuss={
         <>
+          {gespeichert ? (
+            <Button variante="gefahr" onClick={() => void entfernen()}>
+              {t.entfernen}
+            </Button>
+          ) : null}
           <Button onClick={onSchliessen}>{t.abbrechen}</Button>
           <Button variante="primaer" onClick={() => void uebernehmen()}>
             {t.uebernehmen}
@@ -90,8 +107,8 @@ export function KalkulationsDialog({
         </>
       }
     >
-      <p className="kosten__hinweis" data-testid="kalkulation-nicht-gespeichert">
-        {t.nichtGespeichert}
+      <p className="kosten__hinweis" data-testid="kalkulation-gespeichert">
+        {gespeichert ? t.gespeichert : t.speichern}
       </p>
       <h3>{t.ansaetze}</h3>
       <div className="kalkulation__zeilen">

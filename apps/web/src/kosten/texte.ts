@@ -160,8 +160,13 @@ export const texte = {
     keinePositionText: 'Bitte zuerst eine Position im Grid wählen.',
     einleitung: (position: string) =>
       `Einheitspreis der Position ${position} aus Ansätzen und Zuschlagssätzen je Kostenart.`,
-    nichtGespeichert:
-      'Die Ansätze werden nicht gespeichert. Gespeichert werden nur der Einheitspreis und seine Anteile je Kostenart. Beim nächsten Öffnen beginnt die Kalkulation leer.',
+    speichern:
+      'Übernehmen speichert die Ansätze und Zuschlagssätze an der Position, dazu den Einheitspreis und seine Anteile je Kostenart.',
+    gespeichert:
+      'Die gespeicherte Kalkulation der Position. Ein Einheitspreis oder Anteile von Hand entfernen sie; Rückgängig holt sie zurück.',
+    entfernen: 'Kalkulation entfernen',
+    zuschlagsposition: 'Eine Zuschlagsposition wird nicht kalkuliert',
+    zuschlagspositionText: 'Ihr Betrag folgt aus den Bezugspositionen.',
     ansaetze: 'Ansätze',
     zeileHinzu: 'Ansatz hinzufügen',
     zeileEntfernen: (n: number) => `Ansatz ${String(n)} entfernen`,
@@ -185,6 +190,7 @@ export const texte = {
     abbrechen: 'Abbrechen',
     uebernommen: 'EP und Anteile übernommen',
     nichtsZuUebernehmen: 'Es gibt noch keinen Einheitspreis zum Übernehmen.',
+    fehlerFelder: 'Bitte zuerst die markierten Felder berichtigen; übernommen wurde nichts.',
     fehlerMenge: 'Keine gültige Menge. Erwartet wird z. B. 1,5.',
     fehlerKostensatz: 'Kein gültiger Kostensatz. Erwartet wird z. B. 48,50.',
     fehlerSatz: 'Kein gültiger Prozentsatz. Erwartet wird z. B. 12,5.',
