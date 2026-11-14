@@ -9,7 +9,7 @@ export const texte = {
     bezeichnung === '' ? `Nachtrag ${nummer}` : `Nachtrag ${nummer} – ${bezeichnung}`,
   beauftragen: {
     keinAngebot: (auftragnehmer: string | null) =>
-      `Zu diesem Nachtrag liegt kein Angebot des Auftragnehmers${auftragnehmer === null ? '' : ` (${auftragnehmer})`} vor. Das Angebot entsteht wie jedes andere: X84 oder Excel einlesen, Bieter = Auftragnehmer.`,
+      `Zu diesem Nachtrag liegt kein Angebot des Auftragnehmers${auftragnehmer === null ? '' : ` (${auftragnehmer})`} vor. Es wird auf der Seite des Nachtrags-LV mit „Angebot des Auftragnehmers einlesen“ eingelesen.`,
     schonUebernommen:
       'Der Nachtrag ist schon übernommen: Seine Positionen stehen bereits im Auftrags-LV. Rückgängig nimmt eine Übernahme zurück.',
     zuTief: 'Unter der Gliederung „Nachtrag“ hätte das Auftrags-LV mehr als 5 Gliederungsebenen.',
@@ -47,6 +47,44 @@ export const texte = {
     beauftragen: 'Beauftragen',
     istBeauftragt: 'Der Nachtrag ist beauftragt und steht im Auftrags-LV; Rückgängig nimmt das zurück.',
     istAbgelehnt: 'Der Nachtrag ist abgelehnt. Zum Beauftragen erst den Status ändern.',
+    // Ticket 151: Schrittanzeige und Vorschlag
+    schritte: 'Schritte bis zur Beauftragung',
+    schritt: {
+      erfassen: 'Leistungen erfassen',
+      angebot: 'Angebot des Auftragnehmers',
+      status: 'Status „angeboten“',
+      beauftragen: 'Beauftragen',
+    },
+    erledigt: 'erledigt',
+    naechster: 'nächster Schritt',
+    erfassenHinweis: 'Zuerst die Positionen des Nachtrags im Grid erfassen.',
+    angebotHinweis: (auftragnehmer: string) =>
+      `Das Angebot von ${auftragnehmer} als X84 oder Excel-Datei einlesen; es gilt als Angebot des Auftragnehmers.`,
+    vorschlag: 'Das Angebot des Auftragnehmers liegt vor. Vorschlag: Status „angeboten“ setzen.',
+    angebotenSetzen: 'Status „angeboten“ setzen',
+    beauftragenHinweis: 'Nächster Schritt: Beauftragen. Die Positionen kommen ins Auftrags-LV.',
+  },
+  einlesen: {
+    knopf: 'Angebot des Auftragnehmers einlesen',
+    datei: 'Angebotsdatei des Auftragnehmers wählen',
+    titel: 'Angebot des Auftragnehmers einlesen',
+    liest: 'Datei wird gelesen …',
+    vorschau: 'Vorschau des Angebots',
+    bieter: 'Bieter',
+    bieterHinweis: 'Auftragnehmer des Auftrags-LV. Angebote anderer Bieter über „Angebote“ in der Werkzeugleiste.',
+    andererName: (name: string) =>
+      `Die Datei nennt den Bieter „${name}“; das Angebot wird dem Auftragnehmer zugeordnet.`,
+    format: 'Format',
+    formatX84: 'GAEB X84',
+    formatExcel: 'Excel',
+    positionen: 'Positionen',
+    angeboten: 'davon angeboten',
+    leer: 'Die Datei enthält keine angebotenen Positionen zu diesem LV; es gibt nichts zu übernehmen.',
+    schliessen: 'Schließen',
+    uebernehmen: 'Übernehmen',
+    erfolg: 'Angebot des Auftragnehmers eingelesen',
+    nichtLesbar: 'Datei nicht lesbar',
+    ohneAuftragnehmer: 'Das Auftrags-LV ist nicht mehr da; ein Angebot des Auftragnehmers lässt sich nicht zuordnen.',
   },
   liste: {
     titel: 'Nachträge',

@@ -15,6 +15,45 @@
   margin: 0;
 }
 
+/* Ticket 151: Schrittanzeige des geführten Nachtrags, eine Zeile über die volle Breite des Bands. */
+.nachtrag__schritte {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  gap: var(--tx-space-1) var(--tx-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--tx-font-size-sm);
+  color: var(--tx-color-text-muted);
+}
+
+.nachtrag__schritt--erledigt {
+  color: var(--tx-color-success);
+}
+
+.nachtrag__schritt--aktuell {
+  padding: 0 var(--tx-space-2);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-accent-subtle);
+  color: var(--tx-color-accent-text);
+  font-weight: 600;
+}
+
+.nachtrag__naechster {
+  flex: 1 0 100%;
+  font-size: var(--tx-font-size-sm);
+}
+
+.nachtrag__vorlesen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .nachtrag__liste {
   display: flex;
   flex-direction: column;

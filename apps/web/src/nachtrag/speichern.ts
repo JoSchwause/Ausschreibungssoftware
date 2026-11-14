@@ -22,6 +22,7 @@ import type {
   LvZustand,
   Nachtragsstatus,
   Projekt,
+  ProjektId,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
@@ -211,7 +212,7 @@ export function nachtragBeauftragen(
 // --- Geführter Nachtrag (Ticket 151, B-18) --------------------------------------------------------------------------
 
 export interface Auftragnehmerstand {
-  /** Der Bieter des beauftragten Angebots; `null`: kein Nachtrags-LV oder das Auftrags-LV ist nicht (mehr) da. */
+  /** Der Bieter des beauftragten Angebots; `null`: das Auftrags-LV ist nicht (mehr) da. */
   readonly auftragnehmer: { readonly bieterId: BieterId; readonly name: string } | null;
   /** Ob zum Nachtrags-LV schon ein Angebot des Auftragnehmers vorliegt (wie „Beauftragen“ es sucht, D-86.3). */
   readonly angebotDesAuftragnehmers: boolean;
@@ -223,12 +224,14 @@ export interface Auftragnehmerstand {
  */
 export async function auftragnehmerLaden(
   speicher: Speicher,
-  nachtragsLv: LvZustand,
+  lv: {
+    readonly id: LeistungsverzeichnisId;
+    readonly projektId: ProjektId;
+    readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
+  },
 ): Promise<Ergebnis<Auftragnehmerstand, Speicherfehler>> {
-  const lv = nachtragsLv.leistungsverzeichnis;
   const ohne: Auftragnehmerstand = { auftragnehmer: null, angebotDesAuftragnehmers: false };
-  if (lv.nachtrag === undefined) return { ok: true, wert: ohne };
-  const auftrag = await speicher.auftragsLeistungsverzeichnisse.laden(lv.nachtrag.auftragsLvId);
+  const auftrag = await speicher.auftragsLeistungsverzeichnisse.laden(lv.auftragsLvId);
   if (!auftrag.ok) return auftrag.fehler.code === 'nicht-gefunden' ? { ok: true, wert: ohne } : auftrag;
   const kopf = auftrag.wert.auftragsLeistungsverzeichnis;
   const aa = await speicher.angebote.laden(kopf.angebotId);

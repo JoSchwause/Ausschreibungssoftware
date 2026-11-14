@@ -227,8 +227,9 @@ describe('Geführter Nachtrag (Ticket 151): Angebot des Auftragnehmers', () => {
       knoten: fxN.lv.leistungsverzeichnis.knoten,
     });
     if (s.zustand === null) throw new Error('Knoten');
+    const ort = { id: r.lvId, projektId: projekt.id, auftragsLvId: a.id };
 
-    const vorher = await auftragnehmerLaden(u.speicher, s.zustand);
+    const vorher = await auftragnehmerLaden(u.speicher, ort);
     expect(vorher).toEqual({
       ok: true,
       wert: {
@@ -251,13 +252,13 @@ describe('Geführter Nachtrag (Ticket 151): Angebot des Auftragnehmers', () => {
     expect(weg.historie.tiefe.rueck).toBe(tiefe + 1);
     const p = await u.speicher.projekte.laden(projekt.id);
     expect(p.ok && p.wert.bieter.map((b) => b.id)).toEqual(projekt.bieter.map((b) => b.id));
-    const nachher = await auftragnehmerLaden(u.speicher, s.zustand);
+    const nachher = await auftragnehmerLaden(u.speicher, ort);
     expect(nachher.ok && nachher.wert.angebotDesAuftragnehmers).toBe(true);
     const liste = await nachtraegeLaden(u.speicher, auftrag);
     expect(liste.nachtraege[0]?.angebotsnetto).toBe(fx.nachtrag.angebot.sollwerte.summen.netto);
 
     await weg.rueckgaengig();
-    const zurueck = await auftragnehmerLaden(u.speicher, s.zustand);
+    const zurueck = await auftragnehmerLaden(u.speicher, ort);
     expect(zurueck.ok && zurueck.wert.angebotDesAuftragnehmers).toBe(false);
   });
 });
