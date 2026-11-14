@@ -17,14 +17,15 @@ import type {
   Pruefbefund,
   ProjektId,
 } from '@tethys/vertrag';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { aufmassPfad, sollIstPfad } from '../abrechnung/pfad'; // Ticket 87
 import { texte as abrechnungTexte } from '../abrechnung/texte'; // Ticket 87
+import { hilfePfad } from '../hilfe/pfad'; // D-101
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
 import { useKgSpalteAmAuftrag } from '../kosten/kgSpalte'; // Ticket 93
-import { lvAnsichtBauen } from '../lv/ansicht';
+import { alleZeilenBauen, lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { PruefKnopf, PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
 import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from '../lv/pruefung';
@@ -188,6 +189,11 @@ function Ansicht({
     () => lvAnsichtBauen(zustand, zugeklappt, jeKnoten),
     [zustand, zugeklappt, jeKnoten],
   );
+  // D-101: Suchen und Filtern im Grid sehen alle Zeilen, auch die in zugeklappten Gliederungen (wie LV-Seite und LV-Stand).
+  const alleZeilen = useCallback(
+    () => alleZeilenBauen(zustand, zugeklappt, jeKnoten),
+    [zustand, zugeklappt, jeKnoten],
+  );
 
   const springe = (knotenId: KnotenId, spalte: LvSpalte | null): void => {
     sprungNr.current += 1;
@@ -297,6 +303,10 @@ function Ansicht({
             spaltenbreitenSchluessel="auftrags-lv"
             ozMaske={zustand.leistungsverzeichnis.ozMaske}
             schreibgeschuetzt
+            alleZeilen={alleZeilen} // D-101
+            onKuerzelhilfe={() => {
+              gehe(hilfePfad('tastenkuerzel'));
+            }}
             {...kgSpalte} // Ticket 93
             {...(sprungziel ? { sprungziel } : {})}
             onAktiveZeileChange={(knotenId) => {

@@ -9,9 +9,8 @@ test('Der Build mit Basis-Pfad lädt unter dem Pfad, ohne fehlende Dateien', asy
     if (r.status() >= 400) fehlend.push(`${String(r.status())} ${r.url()}`);
   });
   page.on('console', (m) => {
-    // Beim Neuladen hält der alte Speicher-Worker die OPFS-Datei noch kurz; die App wiederholt den Zugriff und meldet
-    // das einmal in der Konsole. Das hat mit dem Basis-Pfad nichts zu tun und wird hier nicht gezählt.
-    if (m.type() === 'error' && !m.text().includes('createSyncAccessHandle')) konsole.push(m.text());
+    // Ohne Ausnahme (D-104): Seit dem Speicher-Pool wartet die App beim Neuladen still auf die OPFS-Datei.
+    if (m.type() === 'error') konsole.push(m.text());
   });
   page.on('pageerror', (e) => konsole.push(e.message));
 

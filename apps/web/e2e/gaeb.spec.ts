@@ -231,3 +231,22 @@ test('X85 wird mit einem Satz abgewiesen; der Dateidialog bietet alle GAEB-Endun
   await expect(dialog.getByRole('button', { name: 'Übernehmen' })).toHaveCount(0);
   await expect(dialog).not.toContainText('phase-nicht-unterstuetzt');
 });
+
+test('GAEB 2000 einlesen (.p83): Vorschau mit Zahlen, Übernehmen legt das LV an (D-95)', async ({ page }) => {
+  await projektAnlegen(page, 'Geräteschuppen', 'Gemeinde');
+  await page.getByLabel('GAEB-Datei wählen').setInputFiles(pfad('fixtures/gaeb-formate/geraeteschuppen.p83'));
+  const dialog = page.getByRole('dialog', { name: 'GAEB-Datei einlesen' });
+  // Zwei Bereiche, neun Positionen (die Zuschlagsposition kennt GAEB 2000 nach den freien Quellen nicht), Vor- und Nachtext.
+  await expect(dialog.getByTestId('anzahl-gliederungen')).toHaveText('2');
+  await expect(dialog.getByTestId('anzahl-positionen')).toHaveText('9');
+  await expect(dialog.getByTestId('anzahl-hinweistexte')).toHaveText('2');
+  const befunde = dialog.getByRole('region', { name: 'Befunde der Datei' });
+  await expect(befunde.getByTestId('abweisung')).toHaveCount(0);
+  await expect(befunde).not.toContainText('Zeile');
+
+  await dialog.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole('list', { name: /Leistungsverzeichnisse/i }).getByRole('link', { name: /Geräteschuppen/ }),
+  ).toBeVisible();
+});
