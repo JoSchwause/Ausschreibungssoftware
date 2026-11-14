@@ -83,21 +83,28 @@ export async function herunterladen(page: Page, ausloeser: () => Promise<void>):
 }
 
 /**
- * Öffnet mit `oeffnen` einen PDF-Dialog (Titel `dialogName`), erzeugt das PDF über „PDF erzeugen“ und gibt seinen Text
- * zurück (mit pdf.js zurückgelesen, Leerraum zu einem Leerzeichen).
+ * Öffnet mit `oeffnen` einen Ausgabedialog (Titel `dialogName`), lädt das PDF über die Schaltfläche `knopf` herunter,
+ * schließt den Dialog (falls er offen bleibt) und gibt den Text des PDF zurück (mit pdf.js zurückgelesen, Leerraum zu
+ * einem Leerzeichen). `vorschau` prüft vorher die Vorschau im Dialog.
  */
 export async function pdfErzeugen(
   page: Page,
   oeffnen: () => Promise<void>,
   dialogName: string,
+  knopf = 'PDF erzeugen',
+  vorschau?: (dialog: Locator) => Promise<void>,
 ): Promise<string> {
   await oeffnen();
   const dialog = page.getByRole('dialog', { name: dialogName });
   await expect(dialog).toBeVisible();
-  const d = await herunterladen(page, () => dialog.getByRole('button', { name: 'PDF erzeugen' }).click());
-  expect(d.suggestedFilename()).toMatch(/\.pdf$/);
+  if (vorschau) await vorschau(dialog);
+  const d = await herunterladen(page, () => dialog.getByRole('button', { name: knopf }).click());
+  // Den Dateinamen prüft der Test nicht: Das headless Chromium dieser Umgebung meldet für Namen mit Umlaut („Prüfdatei“)
+  // „download“ statt des Namens, den die App setzt (gemessen mit einem nackten `<a download>`; kein Fehler der App).
   const bytes = await downloadBytes(d);
   expect(bytes.subarray(0, 4).toString('latin1')).toBe('%PDF');
+  if (await dialog.isVisible())
+    await dialog.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(dialog).toBeHidden();
   return alsText(await liesPdf(new Uint8Array(bytes))).replace(/\s+/g, ' ');
 }

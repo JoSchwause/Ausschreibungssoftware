@@ -234,7 +234,7 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
 
 /**
  * Der Torweg. `ausstehend`: auch die Schritte, deren Bedienung noch gebaut wird (Preisspiegel als PDF: 149; Skonto,
- * Zahlung und Zahlungsfreigabe als PDF: 143/152; Kostenkontrolle als PDF: 154; „Projekt samt Inhalt löschen“: 160/161,
+ * Zahlung und Zahlungsfreigabe als PDF: 143/152; „Projekt samt Inhalt löschen“: 160/161,
  * D-96). Sind sie gemergt, entfällt der Schalter und der Weg läuft ganz.
  */
 async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promise<void> {
@@ -545,15 +545,21 @@ async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promis
   );
   await expect(kontrolle.getByRole('row', { name: /^Gesamt / })).toContainText(betragAusCent(AUFMASS_GP));
   await ohneUeberlauf(page, 'Kostenkontrolle');
-  if (ausstehend) {
-    // 154: Kostenkontrolle als PDF.
-    const text = await pdfErzeugen(
-      page,
-      () => werkzeug(page, 'Ausgabe', 'Als PDF'),
-      'Kostenkontrolle als PDF ausgeben',
-    );
-    expect(text).toContain(betragAusCent(AUFTRAG_NACH_NACHTRAG));
-  }
+  // Kostenkontrolle als PDF, mit Vorschau im Dialog.
+  const kontrollText = await pdfErzeugen(
+    page,
+    () => werkzeug(page, 'Ausgabe', 'Als PDF'),
+    'Kostenkontrolle ausgeben',
+    'PDF herunterladen',
+    async (dialog) => {
+      await expect(dialog.getByTestId('kosten-vorschau').getByRole('row', { name: /^Gesamt/ })).toContainText(
+        betragAusCent(AUFTRAG_NACH_NACHTRAG),
+      );
+    },
+  );
+  expect(kontrollText).toContain('Kostenkontrolle');
+  expect(kontrollText).toContain(betragAusCent(AUFTRAG_NACH_NACHTRAG));
+  expect(kontrollText).toContain(betragAusCent(AUFMASS_GP));
 
   // ── Projektdatei sichern ─────────────────────────────────────────────────────────────────────────────────────────
   await page.getByRole('navigation', { name: 'Pfad' }).getByRole('link', { name: PROJEKT }).click();
@@ -612,7 +618,7 @@ test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280
 });
 
 // Die Schritte, deren Bedienung noch gebaut wird (Preisspiegel-PDF 149; Skonto, Zahlung, Zahlungsfreigabe-PDF 143/152;
-// Kostenkontrolle-PDF 154; Projekt samt Inhalt löschen 160/161, D-96). Sobald alle gemergt sind, ersetzt dieser Weg den
+// Projekt samt Inhalt löschen 160/161, D-96). Sobald alle gemergt sind, ersetzt dieser Weg den
 // oberen.
 test.fixme('Tor E: der ganze Weg samt den ausstehenden Schritten', async ({ page, browser }) => {
   test.setTimeout(300_000);
