@@ -807,3 +807,10 @@ Question: Gegen 23:30 UTC brachen alle acht laufenden Agenten am 5-Stunden-Limit
 Decision: Um 07:32 UTC alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-81, D-85), nachdem der Nutzer „Continue“ schrieb. Nichts gekürzt. 153 wartet weiter auf 128 (Teil A5); 154 bekommt den nächsten freien Platz.
 Reason: Kein Verlust; die Kürzungsreihenfolge greift erst, wenn Pflichtteile des Tors gefährdet sind.
 Reversible: yes  Touches: Ablauf
+
+## D-92 GAEB 90 gelesen; Reste aus 144 und 146 für 159
+Welle 7 · Tickets 144, 146 (Folge 145, 159) · decided by: orchestrator
+Question: 144 liest GAEB 90 aus frei zugänglichen Quellen (6 Quellen, 9 unsichere Punkte im Ticket); Stundenlohn, Pauschal und Zuschlag werden nicht gelesen (keine freie Quelle, D-144.5), kein MwSt-Satz (D-144.8); „X80 Universelle LV-Daten“ und „X87 Auftragsbestätigung“ mit Quelle ins Glossar (D-86). 146 meldet Reste außerhalb seiner Ordner.
+Decision: 144 bestätigt; die unsicheren Punkte und die nicht gelesenen Merkmale nennt der Bericht (zu D-71). Für die Review-Behebung 159 gesammelt: `ausgabe/ExcelBefunde.tsx` zeigt Befundcodes als Text; unbenutzte Texte `start.gaeb.projektname`, `angelegt`, `zumProjekt` in `hilfe/texte.ts`. Der Orchestrator hat `.gitattributes` für die GAEB-90/2000-Fixtures ergänzt (`-text`).
+Reason: Konservativ (Befund statt Raten) nach D-71; Reste sind Einzeiler.
+Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, .gitattributes, Ticket 159
