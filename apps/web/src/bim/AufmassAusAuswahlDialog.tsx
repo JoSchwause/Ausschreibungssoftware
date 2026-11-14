@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // „Aufmaßblatt aus Auswahl …“ (Ticket 115, X1d, D-53): Vorschau je Position des Auftrags-LV mit ausgewählten, zugeordneten
-// Bauteilen, der feste Hinweis aus `bim` und `AufmassAnlegen` (ein Undo-Schritt); danach Sprung zum neuen Blatt.
+// Bauteilen, der feste Hinweis aus `bim` und `AufmassAnlegen` (ein Undo-Schritt); danach Sprung zum neuen Blatt. Seit
+// Ticket 155 nennt die Vorschau je Position die Blätter, auf denen sie schon steht (Gefahr doppelt gemessener Bauteile).
 
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { AufmassKopf, AuftragsLvZustand, Bauwerksmodell, ProjektId } from '@tethys/vertrag';
+import type { Aufmass, AuftragsLvZustand, Bauwerksmodell, ProjektId } from '@tethys/vertrag';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { aufmassSitzung } from '../abrechnung/aufmass';
+import { abrechnungLaden, aufmassSitzung } from '../abrechnung/aufmass';
 import { kopfEingabe } from '../abrechnung/kopf';
 import { blattPfad } from '../abrechnung/pfad';
 import { datumAusUhr } from '../ausgabe/logik';
@@ -43,14 +44,18 @@ export function AufmassAusAuswahlDialog({
   const a = auftrag.auftragsLeistungsverzeichnis;
   const [bezeichnung, setBezeichnung] = useState(t.bezeichnungVorschlag(modell.name));
   const [datum, setDatum] = useState(datumDe(datumAusUhr(u.uhr())));
-  const [vorhanden, setVorhanden] = useState<readonly AufmassKopf[] | null>(null);
-  const vorschau = useMemo(() => aufmassVorschau(a.knoten, modell, auswahl), [a.knoten, modell, auswahl]);
+  // Die vorhandenen Blätter ganz (ihre Zeilen braucht der Hinweis „schon aufgemessen“, Ticket 155).
+  const [vorhanden, setVorhanden] = useState<readonly Aufmass[] | null>(null);
+  const vorschau = useMemo(
+    () => aufmassVorschau(a.knoten, modell, auswahl, vorhanden ?? []),
+    [a.knoten, modell, auswahl, vorhanden],
+  );
   const kopf = kopfEingabe({ bezeichnung, datum });
 
   useEffect(() => {
     let aktiv = true;
-    void u.speicher.aufmasse.auflisten(a.id).then((r) => {
-      if (aktiv) setVorhanden(r.ok ? r.wert : []);
+    void abrechnungLaden(u.speicher, a.id).then((r) => {
+      if (aktiv) setVorhanden(r.ok ? r.wert.blaetter : []);
     });
     return () => {
       aktiv = false;
@@ -122,6 +127,27 @@ export function AufmassAusAuswahlDialog({
       )}
       {vorschau.zeilen.some((z) => z.befunde.length > 0) ? (
         <BefundListe befunde={vorschau.zeilen.flatMap((z) => z.befunde)} beschriftung={texte.seite.befunde} />
+      ) : null}
+      {vorschau.zeilen.some((z) => z.schonAufgemessen.length > 0) ? (
+        <ul className="bim__schon" aria-label={t.schonAufgemessen}>
+          {vorschau.zeilen
+            .filter((z) => z.schonAufgemessen.length > 0)
+            .map((z) => (
+              <li key={z.positionId}>
+                {t.schonAuf(
+                  z.oz,
+                  z.schonAufgemessen
+                    .map((b) =>
+                      t.blatt(
+                        b.nummer,
+                        b.menge === null ? null : `${formatiereMengeDe(b.menge)} ${z.einheit}`.trim(),
+                      ),
+                    )
+                    .join(', '),
+                )}
+              </li>
+            ))}
+        </ul>
       ) : null}
       {vorschau.hinweise.length > 0 ? <p role="note">{t.hinweis}</p> : null}
     </Dialog>

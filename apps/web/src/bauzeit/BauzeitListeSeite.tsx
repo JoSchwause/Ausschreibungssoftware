@@ -5,13 +5,13 @@
 import { STANDARD_ARBEITSTAGE } from '@tethys/bauzeit';
 import { Button } from '@tethys/ui-basis';
 import type { BauzeitenplanUebersicht, Projekt, ProjektId } from '@tethys/vertrag';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { datumDe } from '../lv/kopfdaten';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { planAnlegenBefehl, type Feldfehler, type Kopfentwurf } from './befehle';
 import { KopfFelder } from './KopfFelder';
@@ -20,11 +20,6 @@ import { bauzeitenplaeneAuflisten, bauzeitenplanSitzung } from './schreiben';
 import { texte } from './texte';
 import '../lv/lv.css';
 import './bauzeit.css';
-
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | { art: 'da'; projekt: Projekt; plaene: readonly BauzeitenplanUebersicht[] };
 
 const LEER: Kopfentwurf = {
   name: '',
@@ -43,52 +38,24 @@ export function BauzeitListeSeite({
 }): ReactElement {
   const u = useUmgebung();
   const { pruefe } = useMeldungen();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
   const [entwurf, setEntwurf] = useState<Kopfentwurf>(LEER);
   const [fehler, setFehler] = useState<readonly Feldfehler[]>([]);
   const t = texte.liste;
 
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const p = await u.speicher.projekte.laden(projektId);
-      const b = await bauzeitenplaeneAuflisten(u.speicher, projektId);
-      return p.ok && b.ok ? { art: 'da', projekt: p.wert, plaene: b.wert } : { art: 'fehlt' };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, projektId, lauf]);
-  // Undo und Redo können Pläne anlegen, ändern oder löschen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+  // Undo und Redo können Pläne anlegen, ändern oder löschen: das Gerüst lädt neu.
+  const { lage } = useSeitenladen(
+    async ({
+      speicher,
+    }): Promise<{ projekt: Projekt; plaene: readonly BauzeitenplanUebersicht[] } | null> => {
+      const p = await speicher.projekte.laden(projektId);
+      const b = await bauzeitenplaeneAuflisten(speicher, projektId);
+      return p.ok && b.ok ? { projekt: p.wert, plaene: b.wert } : null;
+    },
+    [projektId],
   );
 
-  if (lage.art === 'laedt') {
-    return (
-      <div className="seite" aria-busy="true">
-        <p>{t.laden}</p>
-      </div>
-    );
-  }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{t.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-        </div>
-      </div>
-    );
-  }
-  const { projekt, plaene } = lage;
+  if (lage.art !== 'da') return <Ladeansicht lage={lage} laden={t.laden} nichtGefunden={t.nichtGefunden} />;
+  const { projekt, plaene } = lage.wert;
 
   const anlegen = async (e: SyntheticEvent): Promise<void> => {
     e.preventDefault();

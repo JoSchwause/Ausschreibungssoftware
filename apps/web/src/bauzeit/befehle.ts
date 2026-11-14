@@ -27,13 +27,11 @@ import type {
 } from '@tethys/vertrag';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
 import { zahlLesen } from '../lv/zahlen';
+import type { Feldfehler } from '../ui/feldfehler';
 import { texte } from './texte';
 
-export interface Feldfehler {
-  /** Name des Felds, bei Beziehungen `beziehung-<i>-vorgaenger` bzw. `beziehung-<i>-abstand` (ab 0). */
-  readonly feld: string;
-  readonly meldung: string;
-}
+/** Feldnamen: die des Formulars, bei Beziehungen `beziehung-<i>-vorgaenger` bzw. `beziehung-<i>-abstand` (ab 0). */
+export type { Feldfehler };
 
 type Gelesen<T> = Ergebnis<T, readonly Feldfehler[]>;
 
@@ -250,6 +248,9 @@ export function vorgangSetzenBefehl(
     else if (vorgaengerOk) vorgaenger.push({ vorgaengerId: vid, art: b.art, abstand: Number(abstand) + 0 });
   });
 
+  // Ticket 155: „ausgewählte Knoten“ braucht mindestens einen (der Ausführer weist eine leere Liste ab).
+  if (e.bezug?.knotenIds?.length === 0) fehler.push({ feld: 'bezugKnoten', meldung: t.knotenFehlen });
+
   const istBeginn = datumOderLeer(e.istBeginn, 'istBeginn', fehler);
   const istEnde = datumOderLeer(e.istEnde, 'istEnde', fehler);
   const fortschritt = fortschrittLesen(e.fortschritt, fehler);
@@ -278,6 +279,31 @@ export function vorgangSetzenBefehl(
       },
     },
   };
+}
+
+/** Richtung beim Verschieben innerhalb einer Ebene. */
+export type Verschieberichtung = 'hoch' | 'runter';
+
+/**
+ * Verschiebt einen Vorgang innerhalb seiner Ebene um einen Platz (D-118.3, Ticket 155): ein `VorgangSetzen` mit dem
+ * unveränderten Vorgang und neuer Lage, also ein Undo-Schritt; Untervorgänge ziehen mit (D-97.9). `null`: Der Vorgang steht
+ * schon am Rand seiner Ebene oder ist unbekannt.
+ */
+export function vorgangVerschiebenBefehl(
+  plan: Bauzeitenplan,
+  id: VorgangId,
+  richtung: Verschieberichtung,
+): VorgangSetzen | null {
+  const vorgang = plan.vorgaenge.find((v) => v.id === id);
+  if (vorgang === undefined) return null;
+  const geschwister = plan.vorgaenge.filter((v) => v.elternId === vorgang.elternId);
+  const i = geschwister.findIndex((v) => v.id === id);
+  if (richtung === 'runter') {
+    const naechstes = geschwister[i + 1];
+    return naechstes === undefined ? null : { art: 'VorgangSetzen', vorgang, nach: naechstes.id };
+  }
+  if (i <= 0) return null;
+  return { art: 'VorgangSetzen', vorgang, nach: geschwister[i - 2]?.id ?? null };
 }
 
 export function vorgangEntfernenBefehl(vorgangId: VorgangId): VorgangEntfernen {

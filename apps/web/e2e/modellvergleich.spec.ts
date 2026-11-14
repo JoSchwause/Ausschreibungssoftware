@@ -5,8 +5,10 @@
 // Prüfzugang `window.tethysModell` geprüft, nie über Pixel (D-58, D-100.3).
 
 import { readFileSync } from 'node:fs';
+import { ifcKlassenName } from '../src/bim/texte';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { betragDe, leerlauf, projektAnlegen, summen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import { BIM_SOLL, typischNachUebernahme } from './modellvergleich-inhalt';
 
 // WebGL 2 in Headless-Chromium ohne GPU: ANGLE auf SwiftShader, wie in `bim.spec.ts` (D-100.11).
@@ -85,19 +87,24 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   expect((await gridZeilen(liste)).map((z) => z.slice(0, 4))).toEqual([
     ...SOLL.vergleich.hinzugefuegt.map((b) => [
       expect.stringContaining('Hinzugefügt'),
-      b.klasse,
+      ifcKlassenName(b.klasse),
       b.name,
       b.geschoss,
     ]),
     ...SOLL.vergleich.entfernt.map((b) => [
       expect.stringContaining('Entfernt'),
-      b.klasse,
+      ifcKlassenName(b.klasse),
       b.name,
       b.geschoss,
     ]),
     ...SOLL.vergleich.geaendert.map((g) => {
       const b = v2.get(g.globalId);
-      return [expect.stringContaining('Geändert'), b?.klasse, b?.name, b?.geschoss];
+      return [
+        expect.stringContaining('Geändert'),
+        b === undefined ? undefined : ifcKlassenName(b.klasse),
+        b?.name,
+        b?.geschoss,
+      ];
     }),
   ]);
   await expect(
@@ -141,7 +148,7 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
   // Mengen aktualisieren: Vorschau mit dem Befund für das entfernte Bauteil, dann ein Undo-Schritt.
   await folgen.getByRole('button', { name: 'Mengen aktualisieren …' }).click();
   const vorschau = page.getByRole('dialog', { name: 'Mengen aktualisieren' });
-  await expect(vorschau).toContainText('Die Vordersätze von 2 Positionen werden aus dem neuen Stand gesetzt');
+  await expect(vorschau).toContainText('Die Mengen von 2 Positionen werden aus dem neuen Stand gesetzt');
   await expect(vorschau).toContainText('Raumteiler Wohnen');
   const tiefe = await page.evaluate(() => window.tethysTest?.historie().rueck ?? 0);
   await vorschau.getByRole('button', { name: 'Übernehmen' }).click();
@@ -158,7 +165,7 @@ test('Vergleich v1 → v2, Folgen für das LV, Mengen aktualisieren als ein Undo
     BIM_SOLL.zuordnungen.map((z) => [z.oz, mengeDe(sollNeu.get(z.oz) ?? '')]),
   );
   await expect(folgen.getByRole('button', { name: 'Mengen aktualisieren …' })).toBeDisabled();
-  await expect(folgen).toContainText('Die Vordersätze des LV entsprechen dem neuen Stand.');
+  await expect(folgen).toContainText('Die Mengen des LV entsprechen dem neuen Stand.');
 
   // Rückgängig: die App zeigt das LV (Ziel einer LV-Änderung), dort wieder das Netto laut v1.
   await page.getByRole('button', { name: /Rückgängig/ }).click();
@@ -199,7 +206,7 @@ test('Hängende Zuordnung: Sprung zur Position auf der Modellseite und in der Vo
 
   // LV-Seite: „Mengen aus Modell …“ mit v2 zeigt denselben Befund; „Zur Position“ schließt und springt zur Menge.
   await page.goto(`/lv/${typischNachUebernahme().wurzelId}`);
-  await page.getByRole('button', { name: 'Mengen aus Modell …' }).click();
+  await werkzeug(page, 'Bearbeiten', 'Mengen aus Modell …');
   const dialog = page.getByRole('dialog', { name: 'Mengen aus dem Modell übernehmen' });
   await dialog.getByRole('combobox', { name: 'Modell', exact: true }).click();
   await page.getByRole('option', { name: /^haus-v2/ }).click();

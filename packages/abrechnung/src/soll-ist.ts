@@ -25,6 +25,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { dokumentreihenfolge } from './baum';
+import { prozentKonstante } from './form';
 import { leistungsstandBerechnen } from './leistungsstand';
 
 /** Einstellungen von Soll/Ist (D-35). */
@@ -90,8 +91,8 @@ const HUNDERT: Dezimal = (() => {
   if (!e.ok) throw new Error('Konstante 100.00 ist kein Dezimalwert');
   return e.wert;
 })();
-const STANDARD_OBEN = '110.00' as Prozent;
-const STANDARD_UNTEN = '90.00' as Prozent;
+const STANDARD_OBEN = prozentKonstante('110.00');
+const STANDARD_UNTEN = prozentKonstante('90.00');
 
 /**
  * Soll/Ist eines Auftrags-LV über die Aufmaßblätter `aufmasse` (alle zählen; Zeilen, die im Leistungsstand nicht zählen,

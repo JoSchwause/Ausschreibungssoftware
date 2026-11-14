@@ -3,26 +3,31 @@
 // die Befehle aus v1.4). Kopf mit Auftragnehmer und Bezug auf LV und Angebot, Grid schreibgeschützt (Ticket 54) mit seiner
 // Summenzeile, Prüf-Panel nur lesend, Ausgabe als GAEB X86. Summen und Befunde aus dem Kern (N1). Ticket 86: „Nachtrag
 // anlegen“ und die Nachtragsliste mit „Beauftragen“; übernommene Nachtragspositionen stehen im Grid wie die übrigen.
+// Ticket 151: Positionsdialog nur lesen (Langtext sichtbar) und „Excel“ im Menü „Ausgabe“.
 
 import { lvPruefen } from '@tethys/kern';
+import { Button, Werkzeuggruppe, Werkzeugleiste, Werkzeugverweis, useToast } from '@tethys/ui-basis';
 import { LvGrid, type Sprungziel } from '@tethys/ui-grid';
 import type {
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
   KnotenId,
   LvSpalte,
+  PositionId,
   Pruefbefund,
   ProjektId,
 } from '@tethys/vertrag';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { AbrechnungVerweise } from '../abrechnung/Verweis'; // Ticket 87
+import { aufmassPfad, sollIstPfad } from '../abrechnung/pfad'; // Ticket 87
+import { texte as abrechnungTexte } from '../abrechnung/texte'; // Ticket 87
+import { hilfePfad } from '../hilfe/pfad'; // D-101
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { KostengruppenAmAuftrag } from '../kosten/KostengruppenAmAuftrag'; // Ticket 89
 import { useKgSpalteAmAuftrag } from '../kosten/kgSpalte'; // Ticket 93
-import { lvAnsichtBauen } from '../lv/ansicht';
+import { alleZeilenBauen, lvAnsichtBauen } from '../lv/ansicht';
 import { befehlswegFuer } from '../lv/befehlsweg';
-import { PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
+import { PruefKnopf, PruefPanel, type PruefPanelSteuerung } from '../lv/PruefPanel';
 import { befundeJeKnoten, imLeerlauf, pruefgruppen, sprungZu } from '../lv/pruefung';
 import { gridZahlen } from '../lv/zahlen';
 import { NachtragAnlegen } from '../nachtrag/NachtragAnlegen';
@@ -33,9 +38,12 @@ import { rechnungenPfad } from '../rechnung/pfad'; // Ticket 88
 import { texte as rechnungTexte } from '../rechnung/texte'; // Ticket 88
 import { alsLvZustand } from './auftrag';
 import { AuftragAusgeben } from './AuftragAusgeben';
+import { AuftragExcel } from './AuftragExcel'; // Ticket 151
+import { PositionAnsicht } from './PositionAnsicht'; // Ticket 151
 import { texte } from './texte';
+import { hrefFuer } from '../ui/route';
 import { Verweis } from '../ui/Verweis';
-import { modellePfad } from '../bim/pfad'; // Ticket 115
+import { useAufmassAusModellPfad } from '../bim/aufmassAusModell'; // Ticket 155
 import { texte as bimTexte } from '../bim/texte'; // Ticket 115
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
@@ -141,13 +149,27 @@ function Ansicht({
 }): ReactElement {
   const { auftrag } = stand;
   const kopf = auftrag.auftragsLeistungsverzeichnis;
+  // Ticket 155: „Aufmaß aus Modell“ öffnet den aktuellen Stand mit diesem Auftrags-LV vorgewählt.
+  const ausModellPfad = useAufmassAusModellPfad(kopf.projektId, kopf.id);
   const zustand = useMemo(() => alsLvZustand(auftrag), [auftrag]);
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const [sprungziel, setSprungziel] = useState<Sprungziel | undefined>(undefined);
   const sprungNr = useRef(0);
-  const [panelOffen, setPanelOffen] = useState(true);
+  // Ticket 142: Das Prüf-Panel ist zu, bis der Nutzer es öffnet; so zeigt das Grid den Gesamtpreis bei 1280 px.
+  const [panelOffen, setPanelOffen] = useState(false);
   const panel = useRef<PruefPanelSteuerung>(null);
+  const pruefKnopf = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const kgSpalte = useKgSpalteAmAuftrag(auftrag, neuLaden); // Ticket 93: Spalte „KG“, sonst schreibgeschützt
+  // Ticket 151: Positionsdialog nur lesen (Strg+Enter, Doppelklick, „Position anzeigen“).
+  const { zeige } = useToast();
+  const aktiv = useRef<KnotenId | null>(null);
+  const [dialog, setDialog] = useState<PositionId | null>(null);
+  const positionOeffnen = (knotenId: KnotenId | null): void => {
+    const k = knotenId === null ? undefined : kopf.knoten.find((x) => x.id === knotenId);
+    if (k?.art === 'position') setDialog(k.id);
+    else zeige({ titel: texte.position.keinePosition, beschreibung: texte.position.keinePositionText });
+  };
 
   // Prüfung wie auf der LV-Seite, im Leerlauf (U5); nur lesend: Sprünge gehen zur Zeile, nie in einen Dialog.
   const [befunde, setBefunde] = useState<readonly Pruefbefund[] | null>(null);
@@ -165,6 +187,11 @@ function Ansicht({
   );
   const ansicht = useMemo(
     () => lvAnsichtBauen(zustand, zugeklappt, jeKnoten),
+    [zustand, zugeklappt, jeKnoten],
+  );
+  // D-101: Suchen und Filtern im Grid sehen alle Zeilen, auch die in zugeklappten Gliederungen (wie LV-Seite und LV-Stand).
+  const alleZeilen = useCallback(
+    () => alleZeilenBauen(zustand, zugeklappt, jeKnoten),
     [zustand, zugeklappt, jeKnoten],
   );
 
@@ -221,28 +248,51 @@ function Ansicht({
           />
         </dd>
       </dl>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
+      {/* Ticket 142: Werkzeugleiste in Gruppen; die Verweise der Abrechnung stehen einheitlich im Menü. */}
+      <Werkzeugleiste beschriftung={t.werkzeuge}>
         <HistorieKnoepfe />
-        <AuftragAusgeben auftrag={auftrag} />
-        <NachtragAnlegen auftrag={kopf} gehe={gehe} />
-        <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
-        {/* Ticket 87–89: Abrechnung */}
-        <AbrechnungVerweise projektId={kopf.projektId} auftragsLvId={kopf.id} gehe={gehe} /> {/* Ticket 87 */}
-        {/* Ticket 88 */}
-        <Verweis pfad={rechnungenPfad(kopf.projektId, kopf.id)} text={rechnungTexte.liste.link} gehe={gehe} />
-        {/* Ticket 115: nach dem Zuschlag Mengen aus dem Modell nur über „Aufmaßblatt aus Auswahl“ (D-53) */}
-        <Verweis pfad={modellePfad(kopf.projektId)} text={bimTexte.aufmass.ausAuftrag} gehe={gehe} />
-        <button
-          type="button"
-          className="tx-button tx-button--sekundaer"
-          aria-keyshortcuts="F8"
+        <Button
           onClick={() => {
-            panel.current?.fokussieren();
+            positionOeffnen(aktiv.current);
           }}
         >
-          {t.pruefung}
-        </button>
-      </div>
+          {texte.position.knopf}
+        </Button>
+        <Werkzeuggruppe titel={t.gruppen.ausgabe}>
+          <AuftragAusgeben auftrag={auftrag} />
+          <AuftragExcel auftrag={auftrag} /> {/* Ticket 151 */}
+        </Werkzeuggruppe>
+        <NachtragAnlegen auftrag={kopf} gehe={gehe} />
+        <KostengruppenAmAuftrag auftrag={auftrag} neuLaden={neuLaden} /> {/* Ticket 89 */}
+        <Werkzeuggruppe titel={t.gruppen.abrechnung}>
+          {/* Ticket 87–89: Abrechnung; Ticket 115: nach dem Zuschlag Mengen aus dem Modell nur über „Aufmaßblatt aus
+              Auswahl“ (D-53) */}
+          {[
+            { pfad: aufmassPfad(kopf.projektId, kopf.id), text: abrechnungTexte.liste.aufmass },
+            { pfad: sollIstPfad(kopf.projektId, kopf.id), text: abrechnungTexte.liste.sollIst },
+            { pfad: rechnungenPfad(kopf.projektId, kopf.id), text: rechnungTexte.liste.link },
+            { pfad: ausModellPfad, text: bimTexte.aufmass.ausAuftrag },
+          ].map((v) => (
+            <Werkzeugverweis
+              key={v.pfad}
+              href={hrefFuer(v.pfad)}
+              onFolgen={() => {
+                gehe(v.pfad);
+              }}
+            >
+              {v.text}
+            </Werkzeugverweis>
+          ))}
+        </Werkzeuggruppe>
+        <PruefKnopf
+          knopf={pruefKnopf}
+          panelId={panelId}
+          gruppen={gruppen}
+          geprueft={befunde !== null}
+          offen={panelOffen}
+          onOffenChange={setPanelOffen}
+        />
+      </Werkzeugleiste>
       <Nachtragsliste auftrag={auftrag} gehe={gehe} onBeauftragt={neuLaden} />
       <div className="lv__haupt">
         <div className="lv__grid">
@@ -250,9 +300,21 @@ function Ansicht({
             ansicht={ansicht}
             zahlen={gridZahlen}
             beschriftung={t.grid}
+            spaltenbreitenSchluessel="auftrags-lv"
+            ozMaske={zustand.leistungsverzeichnis.ozMaske}
             schreibgeschuetzt
+            alleZeilen={alleZeilen} // D-101
+            onKuerzelhilfe={() => {
+              gehe(hilfePfad('tastenkuerzel'));
+            }}
             {...kgSpalte} // Ticket 93
             {...(sprungziel ? { sprungziel } : {})}
+            onAktiveZeileChange={(knotenId) => {
+              aktiv.current = knotenId;
+            }}
+            onZeileOeffnen={(knotenId) => {
+              positionOeffnen(knotenId);
+            }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
                 const neu = new Set(alt);
@@ -265,13 +327,22 @@ function Ansicht({
         </div>
         <PruefPanel
           ref={panel}
+          id={panelId}
           gruppen={gruppen}
           geprueft={befunde !== null}
           offen={panelOffen}
           onOffenChange={setPanelOffen}
           onSprung={pruefSprung}
+          zurueck={pruefKnopf}
         />
       </div>
+      <PositionAnsicht
+        auftrag={auftrag}
+        positionId={dialog}
+        onSchliessen={() => {
+          setDialog(null);
+        }}
+      />
     </div>
   );
 }

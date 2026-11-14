@@ -3,10 +3,11 @@
 // Wochentage im Herbst 2026: 12.11. Donnerstag, 14.11. Samstag, 15.11. Sonntag, 18.11. Mittwoch (Buß- und Bettag).
 
 import { describe, expect, it } from 'vitest';
-import type { Arbeitskalender, Datum } from './index';
+import type { Arbeitskalender } from './index';
+import type { Kalenderdatum } from '@tethys/vertrag';
 import { STANDARD_ARBEITSTAGE, datumPruefen, istArbeitstag } from './index';
 
-function datum(text: string): Datum {
+function datum(text: string): Kalenderdatum {
   const e = datumPruefen(text);
   if (!e.ok) throw new Error(`Testdatum ungültig: ${text}`);
   return e.wert;
@@ -61,6 +62,6 @@ describe('istArbeitstag', () => {
   });
 
   it('ein ungeprüfter Text statt eines Datums ist ein Programmierfehler', () => {
-    expect(() => istArbeitstag(MO_FR, '2026-02-30' as Datum)).toThrow(RangeError);
+    expect(() => istArbeitstag(MO_FR, '2026-02-30' as Kalenderdatum)).toThrow(RangeError);
   });
 });

@@ -1,56 +1,50 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ToastAnbieter } from '@tethys/ui-basis';
-import type {
-  AuftragsLeistungsverzeichnisId, // Ticket 64
-  LeistungsverzeichnisId,
-  LvStandId,
-  ProjektId,
-} from '@tethys/vertrag';
-import { Suspense, lazy } from 'react';
+import type { LeistungsverzeichnisId, ProjektId } from '@tethys/vertrag';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AbrechnungSeite } from './abrechnung/AbrechnungSeite'; // Ticket 87
-import { abrechnungsseite } from './abrechnung/pfad'; // Ticket 87
-import { texte as abrechnungTexte } from './abrechnung/texte'; // Ticket 87
+import { abrechnungsseite, aufmassPfad, blattPfad, sollIstPfad } from './abrechnung/pfad'; // Ticket 87
 import { AuftragsLvSeite } from './auftrag/AuftragsLvSeite'; // Ticket 64
+import { auftragPfad } from './auftrag/ziel';
 import { BautagebuchSeite } from './bauleitung/BautagebuchSeite'; // Ticket 120
 import { MaengelSeite } from './bauleitung/MaengelSeite'; // Ticket 120
 import { bauleitungRoute } from './bauleitung/pfad'; // Ticket 120
-import { texte as bauleitungTexte } from './bauleitung/texte'; // Ticket 120
 import { BauzeitListeSeite } from './bauzeit/BauzeitListeSeite'; // Ticket 118
 import { BauzeitenplanSeite } from './bauzeit/BauzeitenplanSeite'; // Ticket 118
-import { bauzeitRoute } from './bauzeit/pfad'; // Ticket 118
-import { texte as bauzeitTexte } from './bauzeit/texte'; // Ticket 118
+import { bauzeitRoute, bauzeitenplanPfad } from './bauzeit/pfad'; // Ticket 118
 import { ModellListeSeite } from './bim/ModellListeSeite'; // Ticket 114
-import { bimRoute } from './bim/pfad'; // Ticket 114
-import { texte as bimTexte } from './bim/texte'; // Ticket 114
+import { bimRoute, modellPfad } from './bim/pfad'; // Ticket 114
+import { HilfeSeite } from './hilfe/HilfeSeite'; // Ticket 131: Zielseite, Ticket 147 füllt sie
 import { HistorieAnbieter } from './historie/HistorieAnbieter';
 import { HonorarListeSeite } from './honorar/HonorarListeSeite'; // Ticket 119
 import { HonorarSeite } from './honorar/HonorarSeite'; // Ticket 119
-import { honorarRoute } from './honorar/pfad'; // Ticket 119
-import { texte as honorarTexte } from './honorar/texte'; // Ticket 119
+import { honorarRoute, honorarberechnungPfad } from './honorar/pfad'; // Ticket 119
 import { KostenListeSeite } from './kosten/KostenListeSeite'; // Ticket 89
 import { KostenermittlungSeite } from './kosten/KostenermittlungSeite'; // Ticket 89
 import { KostenkontrolleSeite } from './kosten/KostenkontrolleSeite'; // Ticket 89
-import { kostenRoute } from './kosten/pfad'; // Ticket 89
-import { texte as kostenTexte } from './kosten/texte'; // Ticket 89
+import { kontrollePfad, kostenRoute, kostenermittlungPfad } from './kosten/pfad'; // Ticket 89
 import { LvSeite } from './lv/LvSeite';
-import { vergleichRoute } from './modellvergleich/pfad'; // Ticket 116
-import { texte as vergleichTexte } from './modellvergleich/texte'; // Ticket 116
 import { LvStandSeite } from './lv/LvStandSeite';
+import { vergleichPfad, vergleichRoute } from './modellvergleich/pfad'; // Ticket 116
+import { ProjektbereichSeite } from './projekt/ProjektbereichSeite'; // Ticket 131
 import { ProjektSeite } from './projekt/ProjektSeite';
 import { ProjektlisteSeite } from './projekt/ProjektlisteSeite';
-import { rechnungsadresse } from './rechnung/pfad'; // Ticket 88
+import { rechnungPfad, rechnungenPfad, rechnungsadresse } from './rechnung/pfad'; // Ticket 88
 import { RechnungenSeite } from './rechnung/RechnungenSeite'; // Ticket 88
 import { SpeicherAnbieter } from './speicher/SpeicherAnbieter';
 import { AppAktualisierung } from './sicherung/AppAktualisierung'; // Ticket 62
 import { SicherungsAnbieter } from './sicherung/SicherungsAnbieter'; // Ticket 62
 import { testpfad } from './testpfad';
 import { Huelle } from './ui/Huelle';
-import { Platzhalterseite } from './ui/Platzhalterseite';
+import { festerOrt, projektlistenRoute, type Ort, type Ortskrume } from './ui/navigation';
+import { auftragsLvRoute, lvPfad, lvRoute, lvStandRoute, projektRoute } from './ui/pfade';
+import { Navigationsspeicher, OrtLader } from './ui/OrtLader';
 import { useRoute } from './ui/route';
 import { texte } from './ui/texte';
+import { Verweis } from './ui/Verweis';
 import { PreisspiegelSeite } from './vergabe/PreisspiegelSeite'; // Ticket 63
-import { preisspiegelLvId } from './vergabe/pfad';
+import { preisspiegelLvId, preisspiegelPfad } from './vergabe/pfad';
 
 // Die Katalogseite gibt es nur im Dev-Server. Für E2E-Tests wird sie mit VITE_KATALOG=1 in einen
 // Build aufgenommen; ein normaler Produktions-Build enthält sie nicht (Konstante wird zur Bauzeit ersetzt).
@@ -63,225 +57,306 @@ const ModellvergleichSeite = lazy(() =>
   import('./modellvergleich/ModellvergleichSeite').then((m) => ({ default: m.ModellvergleichSeite })),
 );
 
+/** Eine Seite: wo sie liegt (Seitenleiste, Brotkrumen, Titel), ihr Inhalt und ob sie den Speicher braucht. */
+interface Seite {
+  readonly ort: Ort;
+  readonly inhalt: ReactElement;
+  /** `false`: Die Seite erscheint sofort, ohne auf den Speicher zu warten (E-14). */
+  readonly speicher?: false;
+}
+
+type Gehe = (pfad: string) => void;
+
+/** Ein Ort in einem Projekt mit Bereich der Seitenleiste und Krumen nach „Projekte › Projekt › Bereich“. */
+const imProjekt = (
+  projektId: ProjektId,
+  bereich: Ort['bereich'],
+  krumen: readonly Ortskrume[] = [],
+): Ort => ({
+  bereich,
+  projekt: { art: 'id', id: projektId },
+  krumen,
+});
+
+/** Ein Ort unter einem LV; das Projekt findet `OrtLader` über das LV. */
+const imLv = (lvId: LeistungsverzeichnisId, bereich: Ort['bereich'], krumen: readonly Ortskrume[]): Ort => ({
+  bereich,
+  projekt: { art: 'lv', lvId },
+  krumen: [{ teil: { art: 'lv', id: lvId }, pfad: lvPfad(lvId) }, ...krumen],
+});
+
+const text = (t: string, pfad: string): Ortskrume => ({ teil: { art: 'text', text: t }, pfad });
+
 /**
- * Seiten, die den Speicher brauchen: erst nach dem Öffnen (E-14), sonst eine Meldung; mit Rückgängig und Wiederholen
- * (Ticket 48). Alle Seiten stehen an derselben Stelle unter `SpeicherAnbieter`, damit der Speicher und mit ihm der
- * Undo-Stapel der Sitzung jeden Seitenwechsel übersteht.
+ * Die Seiten der App als Regeln: Jede erkennt ihre Adressen und beschreibt Ort und Inhalt; die erste passende gilt. Ticket
+ * 131: eine Tabelle statt verschachtelter Weichen, die Wahl zwischen Liste und Gegenstand trifft je Bereich ein Ausdruck.
  */
-function mitSpeicher(inhalt: ReactElement): ReactElement {
-  return (
-    <SpeicherAnbieter {...testpfad}>
-      <SicherungsAnbieter>
-        {/* Ticket 62 */}
-        <HistorieAnbieter>{inhalt}</HistorieAnbieter>
-      </SicherungsAnbieter>
-    </SpeicherAnbieter>
-  );
-}
-
-/** Seiten ohne Speicher: sofort sichtbar, der Speicher bleibt im Hintergrund offen. */
-function ohneSpeicher(inhalt: ReactElement): ReactElement {
-  return (
-    <SpeicherAnbieter {...testpfad} mussOffen={false}>
-      {inhalt}
-    </SpeicherAnbieter>
-  );
-}
-
-function waehleSeite({ pfad, gehe }: { pfad: string; gehe: (pfad: string) => void }): {
-  titel: string;
-  inhalt: ReactElement;
-} {
-  const projekt = /^\/projekt\/([^/]+)$/.exec(pfad);
-  if (projekt?.[1] !== undefined) {
-    const id = decodeURIComponent(projekt[1]) as ProjektId;
+const REGELN: readonly ((pfad: string, gehe: Gehe) => Seite | null)[] = [
+  (pfad, gehe) => {
+    const id = projektRoute(pfad);
+    if (id === null) return null;
     return {
-      titel: texte.seiten.projekt.titel,
-      inhalt: mitSpeicher(<ProjektSeite key={id} id={id} gehe={gehe} />),
+      ort: { ...imProjekt(id, 'uebersicht'), seite: texte.seite.uebersicht },
+      inhalt: <ProjektSeite key={id} id={id} gehe={gehe} />,
     };
-  }
+  },
+  // Ticket 131: Listen je Projekt für die Seitenleiste (LVs, Vergabe, Auftrags-LVs, Nachträge, Aufmaß, Rechnungen)
+  (pfad, gehe) => {
+    const r = projektlistenRoute(pfad);
+    if (r === null) return null;
+    return {
+      ort: imProjekt(r.projektId, r.art),
+      inhalt: <ProjektbereichSeite key={pfad} art={r.art} projektId={r.projektId} gehe={gehe} />,
+    };
+  },
   // Ticket 87: Aufmaßblätter und Soll/Ist eines Auftrags-LV
-  const abrechnung = abrechnungsseite(pfad);
-  if (abrechnung !== null) {
-    return {
-      titel: abrechnungTexte.seitentitel,
-      inhalt: mitSpeicher(<AbrechnungSeite key={pfad} seite={abrechnung} gehe={gehe} />),
+  (pfad, gehe) => {
+    const a = abrechnungsseite(pfad);
+    if (a === null) return null;
+    const auftrag: Ortskrume = {
+      teil: { art: 'auftragsLv', id: a.auftragsLvId },
+      pfad: aufmassPfad(a.projektId, a.auftragsLvId),
     };
-  }
+    const krumen: readonly Ortskrume[] =
+      a.art === 'blatt'
+        ? [
+            auftrag,
+            {
+              teil: { art: 'aufmass', auftragsLvId: a.auftragsLvId, id: a.aufmassId },
+              pfad: blattPfad(a.projektId, a.auftragsLvId, a.aufmassId),
+            },
+          ]
+        : a.art === 'soll-ist'
+          ? [auftrag, text(texte.seite.sollIst, sollIstPfad(a.projektId, a.auftragsLvId))]
+          : [auftrag];
+    return {
+      ort: imProjekt(a.projektId, 'aufmass', krumen),
+      inhalt: <AbrechnungSeite key={pfad} seite={a} gehe={gehe} />,
+    };
+  },
   // Ticket 88: Rechnungen eines Auftrags-LV (Liste und Prüfansicht); dieselbe Seite, damit der Wechsel nicht neu lädt
-  const rechnungen = rechnungsadresse(pfad);
-  if (rechnungen !== null) {
+  (pfad, gehe) => {
+    const r = rechnungsadresse(pfad);
+    if (r === null) return null;
+    const krumen: Ortskrume[] = [
+      { teil: { art: 'auftragsLv', id: r.auftragsLvId }, pfad: rechnungenPfad(r.projektId, r.auftragsLvId) },
+    ];
+    if (r.rechnungId !== null) {
+      krumen.push({
+        teil: { art: 'rechnung', auftragsLvId: r.auftragsLvId, id: r.rechnungId },
+        pfad: rechnungPfad(r.projektId, r.auftragsLvId, r.rechnungId),
+      });
+    }
     return {
-      titel: texte.seiten.vergabe.titel,
-      inhalt: mitSpeicher(<RechnungenSeite key={rechnungen.auftragsLvId} adresse={rechnungen} gehe={gehe} />),
+      ort: imProjekt(r.projektId, 'rechnungen', krumen),
+      inhalt: <RechnungenSeite key={r.auftragsLvId} adresse={r} gehe={gehe} />,
     };
-  }
+  },
   // Ticket 64: Auftrags-LV eines Projekts
-  const auftrag = /^\/projekt\/([^/]+)\/auftrag\/([^/]+)$/.exec(pfad);
-  if (auftrag?.[1] !== undefined && auftrag[2] !== undefined) {
-    const projektId = decodeURIComponent(auftrag[1]) as ProjektId;
-    const id = decodeURIComponent(auftrag[2]) as AuftragsLeistungsverzeichnisId;
+  (pfad, gehe) => {
+    const r = auftragsLvRoute(pfad);
+    if (r === null) return null;
+    const { projektId, id } = r;
     return {
-      titel: texte.seiten.vergabe.titel,
-      inhalt: mitSpeicher(<AuftragsLvSeite key={id} projektId={projektId} id={id} gehe={gehe} />),
+      ort: imProjekt(projektId, 'auftraege', [
+        { teil: { art: 'auftragsLv', id }, pfad: auftragPfad(projektId, id) },
+      ]),
+      inhalt: <AuftragsLvSeite key={id} projektId={projektId} id={id} gehe={gehe} />,
     };
-  }
+  },
   // Ticket 89: Kostenermittlungen und Kostenkontrolle eines Projekts
-  const kosten = kostenRoute(pfad);
-  if (kosten !== null) {
-    const seite =
-      kosten.art === 'liste' ? (
-        <KostenListeSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
-      ) : kosten.art === 'kontrolle' ? (
-        <KostenkontrolleSeite key={kosten.projektId} projektId={kosten.projektId} gehe={gehe} />
-      ) : (
-        <KostenermittlungSeite key={kosten.id} projektId={kosten.projektId} id={kosten.id} gehe={gehe} />
-      );
-    return { titel: kostenTexte.projekt.kosten, inhalt: mitSpeicher(seite) };
-  }
-  // Ticket 119: Honorarberechnungen eines Projekts (Liste und Berechnung)
-  const honorar = honorarRoute(pfad);
-  if (honorar !== null) {
-    const seite =
-      honorar.art === 'liste' ? (
-        <HonorarListeSeite key={honorar.projektId} projektId={honorar.projektId} gehe={gehe} />
-      ) : (
-        <HonorarSeite key={honorar.id} projektId={honorar.projektId} id={honorar.id} gehe={gehe} />
-      );
-    return { titel: honorarTexte.projekt.honorar, inhalt: mitSpeicher(seite) };
-  }
-  // Ticket 120: Mängel und Bautagebuch eines Projekts
-  const bauleitung = bauleitungRoute(pfad);
-  if (bauleitung !== null) {
-    return bauleitung.art === 'maengel'
-      ? {
-          titel: bauleitungTexte.projekt.maengel,
-          inhalt: mitSpeicher(
-            <MaengelSeite key={`m-${bauleitung.projektId}`} projektId={bauleitung.projektId} gehe={gehe} />,
-          ),
-        }
-      : {
-          titel: bauleitungTexte.projekt.bautagebuch,
-          inhalt: mitSpeicher(
-            <BautagebuchSeite
-              key={`b-${bauleitung.projektId}`}
-              projektId={bauleitung.projektId}
-              gehe={gehe}
-            />,
-          ),
-        };
-  }
-  // Ticket 118: Bauzeitenpläne eines Projekts
-  const bauzeit = bauzeitRoute(pfad);
-  if (bauzeit !== null) {
-    const seite =
-      bauzeit.art === 'liste' ? (
-        <BauzeitListeSeite key={bauzeit.projektId} projektId={bauzeit.projektId} gehe={gehe} />
-      ) : (
-        <BauzeitenplanSeite key={bauzeit.id} projektId={bauzeit.projektId} id={bauzeit.id} gehe={gehe} />
-      );
-    return { titel: bauzeitTexte.projekt.bauzeit, inhalt: mitSpeicher(seite) };
-  }
-  // Ticket 116: Vergleich zweier Modellstände (Standard: der Vorgänger)
-  const vergleich = vergleichRoute(pfad);
-  if (vergleich !== null) {
+  (pfad, gehe) => {
+    const k = kostenRoute(pfad);
+    if (k === null) return null;
+    const p = k.projektId;
+    if (k.art === 'liste') {
+      return { ort: imProjekt(p, 'kosten'), inhalt: <KostenListeSeite key={p} projektId={p} gehe={gehe} /> };
+    }
+    if (k.art === 'kontrolle') {
+      return {
+        ort: imProjekt(p, 'kosten', [text(texte.seite.kostenkontrolle, kontrollePfad(p))]),
+        inhalt: <KostenkontrolleSeite key={p} projektId={p} gehe={gehe} />,
+      };
+    }
     return {
-      titel: vergleichTexte.seitentitel,
-      inhalt: mitSpeicher(
+      ort: imProjekt(p, 'kosten', [
+        { teil: { art: 'kostenermittlung', id: k.id }, pfad: kostenermittlungPfad(p, k.id) },
+      ]),
+      inhalt: <KostenermittlungSeite key={k.id} projektId={p} id={k.id} gehe={gehe} />,
+    };
+  },
+  // Ticket 119: Honorarberechnungen eines Projekts (Liste und Berechnung)
+  (pfad, gehe) => {
+    const h = honorarRoute(pfad);
+    if (h === null) return null;
+    const p = h.projektId;
+    return h.art === 'liste'
+      ? { ort: imProjekt(p, 'honorar'), inhalt: <HonorarListeSeite key={p} projektId={p} gehe={gehe} /> }
+      : {
+          ort: imProjekt(p, 'honorar', [
+            { teil: { art: 'honorarberechnung', id: h.id }, pfad: honorarberechnungPfad(p, h.id) },
+          ]),
+          inhalt: <HonorarSeite key={h.id} projektId={p} id={h.id} gehe={gehe} />,
+        };
+  },
+  // Ticket 120: Mängel und Bautagebuch eines Projekts
+  (pfad, gehe) => {
+    const b = bauleitungRoute(pfad);
+    if (b === null) return null;
+    const p = b.projektId;
+    return b.art === 'maengel'
+      ? { ort: imProjekt(p, 'maengel'), inhalt: <MaengelSeite key={`m-${p}`} projektId={p} gehe={gehe} /> }
+      : {
+          ort: imProjekt(p, 'bautagebuch'),
+          inhalt: <BautagebuchSeite key={`b-${p}`} projektId={p} gehe={gehe} />,
+        };
+  },
+  // Ticket 118: Bauzeitenpläne eines Projekts
+  (pfad, gehe) => {
+    const b = bauzeitRoute(pfad);
+    if (b === null) return null;
+    const p = b.projektId;
+    return b.art === 'liste'
+      ? { ort: imProjekt(p, 'bauzeit'), inhalt: <BauzeitListeSeite key={p} projektId={p} gehe={gehe} /> }
+      : {
+          ort: imProjekt(p, 'bauzeit', [
+            { teil: { art: 'bauzeitenplan', id: b.id }, pfad: bauzeitenplanPfad(p, b.id) },
+          ]),
+          inhalt: <BauzeitenplanSeite key={b.id} projektId={p} id={b.id} gehe={gehe} />,
+        };
+  },
+  // Ticket 116: Vergleich zweier Modellstände (Standard: der Vorgänger)
+  (pfad, gehe) => {
+    const v = vergleichRoute(pfad);
+    if (v === null) return null;
+    return {
+      ort: imProjekt(v.projektId, 'modelle', [
+        { teil: { art: 'modell', id: v.neuId }, pfad: modellPfad(v.projektId, v.neuId) },
+        text(texte.seite.vergleich, vergleichPfad(v.projektId, v.neuId)),
+      ]),
+      inhalt: (
         <Suspense fallback={null}>
-          <ModellvergleichSeite key={pfad} {...vergleich} gehe={gehe} />
-        </Suspense>,
+          <ModellvergleichSeite key={pfad} {...v} gehe={gehe} />
+        </Suspense>
       ),
     };
-  }
+  },
   // Ticket 114: Bauwerksmodelle eines Projekts (Liste) und ein Modell (Baum, 3D, Eigenschaften)
-  const bim = bimRoute(pfad);
-  if (bim !== null) {
-    const seite =
-      bim.art === 'liste' ? (
-        <ModellListeSeite key={bim.projektId} projektId={bim.projektId} gehe={gehe} />
-      ) : (
-        <Suspense fallback={null}>
-          <ModellSeite key={bim.id} projektId={bim.projektId} id={bim.id} gehe={gehe} />
-        </Suspense>
-      );
-    return { titel: bimTexte.liste.modelle, inhalt: mitSpeicher(seite) };
-  }
-  const stand = /^\/lv\/([^/]+)\/stand\/([^/]+)$/.exec(pfad);
-  if (stand?.[1] !== undefined && stand[2] !== undefined) {
-    const lvId = decodeURIComponent(stand[1]) as LeistungsverzeichnisId;
-    const standId = decodeURIComponent(stand[2]) as LvStandId;
-    return {
-      titel: texte.seiten.lv.titel,
-      inhalt: mitSpeicher(<LvStandSeite key={standId} lvId={lvId} standId={standId} gehe={gehe} />),
-    };
-  }
-  // Ticket 63: Preisspiegel eines LV
-  const lvId = preisspiegelLvId(pfad);
-  if (lvId !== null) {
-    return {
-      titel: texte.seiten.vergabe.titel,
-      inhalt: mitSpeicher(<PreisspiegelSeite key={lvId} lvId={lvId} gehe={gehe} />),
-    };
-  }
-  const lv = /^\/lv\/([^/]+)$/.exec(pfad);
-  if (lv?.[1] !== undefined) {
-    const id = decodeURIComponent(lv[1]) as LeistungsverzeichnisId;
-    return { titel: texte.seiten.lv.titel, inhalt: mitSpeicher(<LvSeite key={id} id={id} gehe={gehe} />) };
-  }
-  switch (pfad) {
-    case '/':
-      return { titel: texte.seiten.projekt.titel, inhalt: mitSpeicher(<ProjektlisteSeite gehe={gehe} />) };
-    case '/lv':
-      return {
-        titel: texte.seiten.lv.titel,
-        inhalt: ohneSpeicher(<Platzhalterseite seite={texte.seiten.lv} />),
-      };
-    case '/vergabe':
-      return {
-        titel: texte.seiten.vergabe.titel,
-        inhalt: ohneSpeicher(<Platzhalterseite seite={texte.seiten.vergabe} />),
-      };
-    case '/katalog':
-      if (Katalog) {
-        return {
-          titel: texte.huelle.katalogTitel,
-          inhalt: ohneSpeicher(
+  (pfad, gehe) => {
+    const b = bimRoute(pfad);
+    if (b === null) return null;
+    const p = b.projektId;
+    return b.art === 'liste'
+      ? { ort: imProjekt(p, 'modelle'), inhalt: <ModellListeSeite key={p} projektId={p} gehe={gehe} /> }
+      : {
+          ort: imProjekt(p, 'modelle', [{ teil: { art: 'modell', id: b.id }, pfad: modellPfad(p, b.id) }]),
+          inhalt: (
             <Suspense fallback={null}>
-              <Katalog />
-            </Suspense>,
+              <ModellSeite key={b.id} projektId={p} id={b.id} gehe={gehe} />
+            </Suspense>
           ),
         };
-      }
-      break;
-  }
+  },
+  (pfad, gehe) => {
+    const r = lvStandRoute(pfad);
+    if (r === null) return null;
+    const { lvId, standId } = r;
+    return {
+      ort: imLv(lvId, 'leistungsverzeichnisse', [{ teil: { art: 'lvStand', lvId, id: standId }, pfad }]),
+      inhalt: <LvStandSeite key={standId} lvId={lvId} standId={standId} gehe={gehe} />,
+    };
+  },
+  // Ticket 63: Preisspiegel eines LV
+  (pfad, gehe) => {
+    const lvId = preisspiegelLvId(pfad);
+    if (lvId === null) return null;
+    return {
+      ort: imLv(lvId, 'vergabe', [text(texte.seite.preisspiegel, preisspiegelPfad(lvId))]),
+      inhalt: <PreisspiegelSeite key={lvId} lvId={lvId} gehe={gehe} />,
+    };
+  },
+  (pfad, gehe) => {
+    const id = lvRoute(pfad);
+    if (id === null) return null;
+    return { ort: imLv(id, 'leistungsverzeichnisse', []), inhalt: <LvSeite key={id} id={id} gehe={gehe} /> };
+  },
+  (pfad, gehe) =>
+    pfad === '/'
+      ? {
+          ort: festerOrt('projekte', texte.huelle.eintraege.projekte, '/'),
+          inhalt: <ProjektlisteSeite gehe={gehe} />,
+        }
+      : null,
+  (pfad) =>
+    pfad === '/hilfe'
+      ? {
+          ort: festerOrt('hilfe', texte.huelle.eintraege.hilfe, '/hilfe'),
+          inhalt: <HilfeSeite />,
+          speicher: false,
+        }
+      : null,
+  (pfad) =>
+    pfad === '/katalog' && Katalog
+      ? {
+          ort: festerOrt('katalog', texte.huelle.katalogTitel, '/katalog'),
+          inhalt: (
+            <Suspense fallback={null}>
+              <Katalog />
+            </Suspense>
+          ),
+          speicher: false,
+        }
+      : null,
+];
+
+function unbekannt(pfad: string, gehe: Gehe): Seite {
   return {
-    titel: texte.seiten.unbekannt.titel,
-    inhalt: ohneSpeicher(
+    ort: festerOrt(null, texte.seiten.unbekannt.titel, pfad),
+    inhalt: (
       <div className="seite">
         <h1>{texte.seiten.unbekannt.titel}</h1>
         <p>{texte.seiten.unbekannt.text}</p>
-        <a
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            gehe('/');
-          }}
-        >
-          {texte.seiten.unbekannt.zurueck}
-        </a>
-      </div>,
+        <Verweis pfad="/" text={texte.seiten.unbekannt.zurueck} gehe={gehe} />
+      </div>
     ),
+    speicher: false,
   };
+}
+
+function waehleSeite(pfad: string, gehe: Gehe): Seite {
+  for (const regel of REGELN) {
+    const s = regel(pfad, gehe);
+    if (s !== null) return s;
+  }
+  return unbekannt(pfad, gehe);
 }
 
 export function App(): ReactElement {
   const { pfad, gehe } = useRoute();
-  const { titel, inhalt } = waehleSeite({ pfad, gehe });
+  const [navigation] = useState(() => new Navigationsspeicher());
+  const seite = useMemo(() => waehleSeite(pfad, gehe), [pfad, gehe]);
+  // Alle Seiten stehen an derselben Stelle unter `SpeicherAnbieter`, damit der Speicher und mit ihm der Undo-Stapel der
+  // Sitzung jeden Seitenwechsel übersteht (Ticket 48). Seiten mit Speicher erscheinen erst nach dem Öffnen (E-14).
+  const inhalt =
+    seite.speicher === false ? (
+      <SpeicherAnbieter {...testpfad} mussOffen={false}>
+        {seite.inhalt}
+      </SpeicherAnbieter>
+    ) : (
+      <SpeicherAnbieter {...testpfad}>
+        <SicherungsAnbieter>
+          {/* Ticket 62 */}
+          <HistorieAnbieter>
+            <OrtLader pfad={pfad} ort={seite.ort} speicher={navigation} />
+            {seite.inhalt}
+          </HistorieAnbieter>
+        </SicherungsAnbieter>
+      </SpeicherAnbieter>
+    );
   return (
     <ToastAnbieter>
       <AppAktualisierung /> {/* Ticket 62 */}
-      <Huelle pfad={pfad} gehe={gehe} mitKatalog={MIT_KATALOG} seitenTitel={titel}>
+      <Huelle pfad={pfad} gehe={gehe} mitKatalog={MIT_KATALOG} ort={seite.ort} navigation={navigation}>
         {inhalt}
       </Huelle>
     </ToastAnbieter>

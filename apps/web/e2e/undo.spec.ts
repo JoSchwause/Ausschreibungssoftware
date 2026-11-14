@@ -6,6 +6,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { lvAnlegen, neueZeile, projektAnlegen, summen, zeilen } from './hilfen';
+import { erwartePunkt, werkzeug } from './werkzeuge';
 
 const grid = (page: Page) => page.getByRole('treegrid', { name: 'Positionen' });
 
@@ -53,7 +54,7 @@ test('Eine Mehrzeilen-Aktion ist ein Undo-Schritt; Strg+Z im Zelleditor wirkt au
 }) => {
   await projektAnlegen(page, 'Schule', 'Kreis');
   await lvAnlegen(page, 'Rohbau');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Position anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Position anlegen/));
   await page.keyboard.type('Erste');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await zeilen(page)).length).toBe(1);
@@ -161,7 +162,7 @@ test('Gelöschte Zeilen liegen im Papierkorb und lassen sich wiederherstellen; L
   await expect.poll(async () => (await zeilen(page)).some((z) => z[1] === 'Bauzaun stellen')).toBe(false);
   await expect.poll(async () => (await summen(page))['Netto']).not.toBe(netto);
 
-  await page.getByRole('button', { name: 'Papierkorb (1)' }).click();
+  await werkzeug(page, 'LV', 'Papierkorb (1)');
   const dialog = page.getByRole('dialog', { name: 'Papierkorb' });
   const liste = dialog.getByRole('table', { name: 'Einträge im Papierkorb' });
   await expect(liste.getByRole('row')).toHaveCount(2); // Kopf + ein Eintrag
@@ -179,7 +180,7 @@ test('Gelöschte Zeilen liegen im Papierkorb und lassen sich wiederherstellen; L
   await page.keyboard.press('Control+Delete');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await zeilen(page)).some((z) => z[1] === 'Endreinigung')).toBe(false);
-  await page.getByRole('button', { name: 'Papierkorb (1)' }).click();
+  await werkzeug(page, 'LV', 'Papierkorb (1)');
   await dialog.getByRole('button', { name: 'Papierkorb leeren' }).click();
   await expect(dialog).toContainText('Alle 1 Einträge endgültig entfernen?');
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
@@ -188,17 +189,17 @@ test('Gelöschte Zeilen liegen im Papierkorb und lassen sich wiederherstellen; L
   await dialog.getByRole('button', { name: 'Endgültig entfernen' }).click();
   await expect(dialog.getByText('Der Papierkorb ist leer.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Schließen' }).last().click();
-  await expect(page.getByRole('button', { name: 'Papierkorb (0)' })).toBeVisible();
+  await erwartePunkt(page, 'LV', 'Papierkorb (0)');
   // In der Sitzung holt Rückgängig den Eintrag zurück.
   await page.getByRole('button', { name: /^Rückgängig/ }).click();
-  await expect(page.getByRole('button', { name: 'Papierkorb (1)' })).toBeVisible();
+  await erwartePunkt(page, 'LV', 'Papierkorb (1)');
 });
 
 test('LV-Stand anlegen, neu laden, schreibgeschützt öffnen; Änderungen am LV ändern den Stand nicht', async ({
   page,
 }) => {
   const { lvId } = await typischOeffnen(page);
-  await page.getByRole('button', { name: 'LV-Stände' }).click();
+  await werkzeug(page, 'LV', 'LV-Stände');
   const dialog = page.getByRole('dialog', { name: 'LV-Stände' });
   await dialog.getByLabel('Name des Stands').fill('Versand');
   await dialog.getByLabel('Name des Stands').press('Enter');
@@ -213,7 +214,7 @@ test('LV-Stand anlegen, neu laden, schreibgeschützt öffnen; Änderungen am LV 
 
   await page.reload();
   await expect(grid(page)).toBeVisible();
-  await page.getByRole('button', { name: 'LV-Stände' }).click();
+  await werkzeug(page, 'LV', 'LV-Stände');
   await expect(dialog.getByRole('list', { name: 'LV-Stände' })).toContainText(/Versand.*angelegt/);
   await dialog.getByRole('link', { name: 'Öffnen: Versand' }).click();
   await expect(page).toHaveURL(new RegExp(`/lv/${lvId}/stand/`));
@@ -252,13 +253,16 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
   await frage.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(lvListe).toContainText('Dach');
 
-  // Projekt löschen, solange es ein LV hat: verständliche Meldung, nichts gelöscht.
-  await page.getByRole('button', { name: 'Projekt löschen' }).click();
-  await page
-    .getByRole('dialog', { name: 'Projekt löschen' })
-    .getByRole('button', { name: 'Endgültig löschen' })
-    .click();
-  await expect(page.getByText('Das Projekt hat noch LVs').first()).toBeVisible();
+  // Projekt löschen, solange es ein LV hat: Der Dialog nennt den Inhalt und bietet nur das Löschen samt Inhalt an
+  // (E8, eigener Ablauf in `projekt-samt-inhalt.spec.ts`); Abbrechen löscht nichts.
+  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
+  const projektFrage = page.getByRole('dialog', { name: 'Projekt löschen' });
+  await expect(projektFrage.getByRole('list', { name: 'Inhalt des Projekts' })).toHaveText('1 LV');
+  await expect(projektFrage.getByRole('button', { name: 'Endgültig löschen' })).toHaveCount(0);
+  await expect(projektFrage.getByRole('button', { name: 'Projekt samt Inhalt löschen …' })).toBeVisible();
+  await projektFrage.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(projektFrage).toBeHidden();
   await expect(page.getByRole('heading', { level: 1, name: 'Turnhalle' })).toBeVisible();
 
   await page.getByRole('button', { name: 'LV löschen: Dach' }).click();
@@ -270,7 +274,8 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
   await expect(lvListe).toHaveCount(0);
 
   // Ein leeres Projekt löschen und zurückholen.
-  await page.getByRole('button', { name: 'Projekt löschen' }).click();
+  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
   await page
     .getByRole('dialog', { name: 'Projekt löschen' })
     .getByRole('button', { name: 'Endgültig löschen' })

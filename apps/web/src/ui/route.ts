@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Minimales Routing über die History-API: genug für drei Platzhalterseiten und den Katalog.
-// Ein Router-Paket kommt erst mit echten Fachseiten.
+// Minimales Routing über die History-API; welche Seite zu einer Adresse gehört, steht in `App.tsx`.
 
 import { useCallback, useSyncExternalStore } from 'react';
 
@@ -36,6 +35,27 @@ export function useRoute(): { pfad: string; gehe: (pfad: string) => void } {
     window.dispatchEvent(new Event(EREIGNIS));
   }, []);
   return { pfad, gehe };
+}
+
+function abonniereAnker(cb: () => void): () => void {
+  const ab = abonniere(cb);
+  window.addEventListener('hashchange', cb);
+  return () => {
+    ab();
+    window.removeEventListener('hashchange', cb);
+  };
+}
+
+/**
+ * Ticket 147: der Anker der Adresse (`#annahmen`), auch nach einem Wechsel mit `gehe` innerhalb der App, der den Pfad nicht
+ * ändert (z. B. von einem Reiter der Hilfe zu einem anderen).
+ */
+export function useAnker(): string {
+  return useSyncExternalStore(
+    abonniereAnker,
+    () => window.location.hash,
+    () => '',
+  );
 }
 
 /** Adresse für `href` eines Links (mit Basis), damit „In neuem Tab öffnen“ funktioniert. */

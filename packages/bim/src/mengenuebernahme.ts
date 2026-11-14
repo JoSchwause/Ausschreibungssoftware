@@ -6,6 +6,7 @@
 // gespeicherte Menge rechnet die App mit `mengen` (D-22); `menge` hier ist die Summe der Zeilen zur Anzeige. Rein (A2).
 
 import { NULL_MENGE, addiere } from '@tethys/dezimal';
+import { MENGENART_STUECK } from '@tethys/vertrag';
 import type {
   Ansatzzeile,
   Bauteilzuordnung,
@@ -24,9 +25,6 @@ import { modellIndex } from './form';
 
 /** REB-Formel des freien Rechenansatzes (D-53): Der Ausdruck ist die Zahl selbst. */
 export const FORMEL_FREIER_ANSATZ = 91;
-
-/** Die Mengenart, bei der jedes Bauteil 1 zählt (Glossar „Mengenart“). */
-export const MENGENART_STUECK = 'Stueck';
 
 const EINS = '1.000' as Menge;
 

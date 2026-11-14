@@ -14,11 +14,19 @@
 //  - Abweichung = Vergabe − Budget (D-82.5); die Zeilen unter einer Budgetgruppe haben ihre eigene Abweichung.
 //  - EP-Kalkulation (D-39): Lohn 0,450 × 48,50 = 21,825, +10 % = 24,0075 → 24,008; Stoffe 2,000 × 6,25 = 12,500, +5 % =
 //    13,125; EP = 37,133; GP der Position 01.0020 (Menge 86,500) = 3.212,0045 → 3.212,00 (vorher 644,43).
+//
+// Ticket 154: Die Kalkulation wird an der Position gespeichert und der Dialog öffnet mit ihr (B-19); ein EP von Hand
+// entfernt sie (Band „Kalkulation entfernt“, Rückgängig holt sie zurück). Kostenermittlung und Kostenkontrolle als PDF und
+// Excel mit Vorschau (E12): Zeilen und Beträge wie am Bildschirm. Hinweis und Verweis zum Einlesen der Bezeichnungen, solange
+// keine da sind (B-14).
 
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
+import { excelZeilen } from '../../../packages/ausgabe/src/testhilfe/kernkette';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const wurzel = new URL('../../../fixtures/', import.meta.url);
 const fx = JSON.parse(readFileSync(new URL('typisch-angebote.json', wurzel), 'utf8')) as {
@@ -43,6 +51,8 @@ const text = (c: bigint): string => {
   return `${neg ? '-' : ''}${(a / 100n).toString()}.${(a % 100n).toString().padStart(2, '0')}`;
 };
 const de = (c: bigint): string => betragDe(text(c));
+/** Wie Excel eine Zahl als Text zurückgibt: ohne Nullen am Ende der Nachkommastellen. */
+const excel = (c: bigint): string => text(c).replace(/\.?0+$/, '');
 
 const VERGABE_390 = cent(BIETER_A.titel['01'] ?? '0');
 const VERGABE_340 = cent(BIETER_A.titel['03'] ?? '0');
@@ -70,8 +80,10 @@ function zelle(grid: Locator, nummer: string, spalte: string): Locator {
     .locator(`[data-spalte="${spalte}"] .tx-grid__text`);
 }
 
-async function kgDialogOeffnen(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: /^Kostengruppen/ }).click();
+/** Der Dialog „Kostengruppen zuordnen“: auf der LV-Seite im Menü „Bearbeiten“, am Auftrags-LV eine Schaltfläche. */
+async function kgDialogOeffnen(page: Page, ort: 'lv' | 'auftrag' = 'lv'): Promise<Locator> {
+  if (ort === 'lv') await werkzeug(page, 'Bearbeiten', /^Kostengruppen/);
+  else await page.getByRole('button', { name: /^Kostengruppen/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Kostengruppen zuordnen' });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -95,6 +107,17 @@ const kgZelle = (grid: Locator, kurztext: string): Locator =>
   grid
     .locator('[role="row"]', { has: grid.page().getByText(kurztext, { exact: true }) })
     .locator('[data-spalte="kostengruppe"]');
+/** Bytes eines Downloads, den `klick` auslöst, mit dem vorgeschlagenen Dateinamen. */
+async function herunterladen(
+  page: Page,
+  klick: () => Promise<void>,
+): Promise<{ name: string; bytes: Buffer }> {
+  const [d] = await Promise.all([page.waitForEvent('download'), klick()]);
+  return { name: d.suggestedFilename(), bytes: readFileSync(await d.path()) };
+}
+const pdfText = async (bytes: Buffer): Promise<string> =>
+  alsText(await liesPdf(new Uint8Array(bytes))).replace(/\s+/g, ' ');
+
 const rueckTiefe = (page: Page): Promise<number | undefined> =>
   page.evaluate(() => window.tethysTest?.historie().rueck);
 
@@ -197,13 +220,22 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await page.getByRole('link', { name: 'Zum Projekt' }).click();
   await page.getByRole('link', { name: 'Kosten', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Kosten – Musterhaus' })).toBeVisible();
+  // B-14: Noch keine Bezeichnungen: Hinweis mit Verweis zum Abschnitt, der sie einliest.
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toBeVisible();
+  await page
+    .getByTestId('bezeichnungen-fehlen')
+    .getByRole('link', { name: 'Bezeichnungen einlesen' })
+    .click();
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Bezeichnungen der Kostengruppen' }),
+  ).toBeFocused();
   // Ticket 122 (PC-a5): Verweis auf die Kennwerte der Modellseite (nur Verweis, Ticket 115)
   await expect(page.getByRole('link', { name: 'Kennwerte aus dem Modell' })).toHaveAttribute(
     'href',
     /\/projekt\/[^/]+\/modelle$/,
   );
   await page.getByLabel('Name', { exact: true }).fill('Kostenberechnung');
-  await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  await page.getByRole('button', { name: 'Kostenermittlung anlegen', exact: true }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Kostenermittlung – Kostenberechnung' }),
   ).toBeVisible();
@@ -241,7 +273,8 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await page.getByRole('button', { name: /^Wiederholen/ }).click();
   await expect(zelle(g, 'Gesamt', 'summe')).toHaveText(de(BUDGET_300));
 
-  // Bezeichnungen aus einer CSV des Nutzers: nur eine Einstellung dieses Geräts, nach dem Neuladen noch da.
+  // Bezeichnungen aus einer CSV des Nutzers: eine Einstellung, nach dem Neuladen noch da. Bis dahin der Hinweis (B-14).
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'bezeichnungen.csv',
     mimeType: 'text/csv',
@@ -249,9 +282,44 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   });
   await expect(page.getByRole('status').filter({ hasText: '2 Bezeichnungen gelesen' })).toBeVisible();
   await expect(zelle(g, '390', 'bezeichnung')).toHaveText('Sonstige Maßnahmen');
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toHaveCount(0);
+  // Die Bezeichnungen sind eine Einstellung: deren eigenes Rückgängig nimmt sie zurück, Wiederholen bringt sie wieder.
+  await page.getByRole('button', { name: 'Einstellung rückgängig' }).click();
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toBeVisible();
+  await expect(zelle(g, '390', 'bezeichnung')).toHaveText('');
+  await page.getByRole('button', { name: 'Einstellung wiederholen' }).click();
+  await expect(zelle(g, '390', 'bezeichnung')).toHaveText('Sonstige Maßnahmen');
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toHaveCount(0);
   await page.reload();
   await expect(zelle(ermittlung(page), '300', 'summe')).toHaveText(de(BUDGET_300));
   await expect(zelle(ermittlung(page), '340', 'bezeichnung')).toHaveText('Innenwände');
+
+  // --- E12: Kostenermittlung als PDF und Excel, mit Vorschau ------------------------------------------------------
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
+  let ausgabe = page.getByRole('dialog', { name: 'Kostenermittlung ausgeben – Kostenberechnung' });
+  let vorschau = ausgabe.getByTestId('kosten-vorschau');
+  await expect(vorschau.getByRole('row', { name: /^390 Sonstige Maßnahmen/ })).toContainText('6.000,00');
+  await expect(vorschau.getByRole('row', { name: /^310 / })).toContainText('Reserve');
+  await expect(vorschau.getByRole('row', { name: /Gesamt/ })).toContainText(de(BUDGET_300));
+  await expect(vorschau).toContainText('Musterhaus');
+  await expect(ausgabe.getByTestId('kosten-datei-pdf')).toHaveText('Kostenermittlung Kostenberechnung.pdf');
+  const pdf = await herunterladen(page, () =>
+    ausgabe.getByRole('button', { name: 'PDF herunterladen' }).click(),
+  );
+  expect(pdf.name).toBe('Kostenermittlung Kostenberechnung.pdf');
+  expect(pdf.bytes.subarray(0, 4).toString('latin1')).toBe('%PDF');
+  const ermittlungText = await pdfText(pdf.bytes);
+  expect(ermittlungText).toContain('Sonstige Maßnahmen');
+  expect(ermittlungText).toContain(de(BUDGET_300));
+  const xlsx = await herunterladen(page, () =>
+    ausgabe.getByRole('button', { name: 'Excel herunterladen' }).click(),
+  );
+  expect(xlsx.name).toBe('Kostenermittlung Kostenberechnung.xlsx');
+  const ermittlungZeilen = excelZeilen(new Uint8Array(xlsx.bytes));
+  expect(ermittlungZeilen.find((z) => z[0] === '340')?.slice(0, 2)).toEqual(['340', 'Innenwände']);
+  expect(ermittlungZeilen.find((z) => z[1] === 'Gesamt')).toContain(excel(BUDGET_300));
+  await ausgabe.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(ausgabe).toBeHidden();
 
   // --- Zuschlag: Bieter A, ohne Wahl ----------------------------------------------------------------------------
   await page.goto(`/lv/${inhalt.wurzelId}`);
@@ -264,7 +332,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(liste.getByRole('row', { name: new RegExp(BIETER_A.name) })).toBeVisible();
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(liste).toBeHidden();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${BIETER_A.name}` })
@@ -274,7 +342,7 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
 
   // --- C2 am Auftrags-LV: die Kostengruppe 390 kam mit dem Zuschlag, Titel 03 bekommt 340 ----------------------
-  dialog = await kgDialogOeffnen(page);
+  dialog = await kgDialogOeffnen(page, 'auftrag');
   await expect(kgDerPosition(dialog, '01.0010')).toHaveText('390');
   await expect(kgDerPosition(dialog, '03.0010')).toHaveText('–');
   await dialog.getByLabel('Kostengruppe (dreistellig)').fill('340');
@@ -345,6 +413,32 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(zelle(k, 'Gesamt', 'abrechnung')).toHaveText('–');
   await expect(page.getByText('Noch keine Rechnung: Die Spalte Abrechnung bleibt leer.')).toBeVisible();
   await expect(page.getByText('Keine Hinweise.')).toBeVisible();
+  await expect(page.getByTestId('bezeichnungen-fehlen')).toHaveCount(0);
+
+  // --- E12: Kostenkontrolle als Excel und PDF, mit Vorschau -------------------------------------------------------
+  await werkzeug(page, 'Ausgabe', 'Als Excel');
+  ausgabe = page.getByRole('dialog', { name: 'Kostenkontrolle ausgeben' });
+  vorschau = ausgabe.getByTestId('kosten-vorschau');
+  await expect(vorschau.getByRole('row', { name: /^340 Innenwände/ })).toContainText(de(VERGABE_340));
+  await expect(vorschau.getByRole('row', { name: /^Gesamt/ })).toContainText(de(GESAMT));
+  await expect(vorschau).toContainText('Kostenberechnung (Kostenberechnung)');
+  await expect(ausgabe.getByTestId('kosten-datei-xlsx')).toHaveText('Kostenkontrolle Musterhaus.xlsx');
+  const kontrollXlsx = await herunterladen(page, () =>
+    ausgabe.getByRole('button', { name: 'Excel herunterladen' }).click(),
+  );
+  expect(kontrollXlsx.name).toBe('Kostenkontrolle Musterhaus.xlsx');
+  const kontrollZeilen = excelZeilen(new Uint8Array(kontrollXlsx.bytes));
+  expect(kontrollZeilen.find((z) => z[1] === 'Gesamt')).toContain(excel(GESAMT));
+  expect(kontrollZeilen.find((z) => z[1] === 'Ohne Kostengruppe')).toContain(excel(VERGABE_OHNE));
+  const kontrollPdf = await herunterladen(page, () =>
+    ausgabe.getByRole('button', { name: 'PDF herunterladen' }).click(),
+  );
+  expect(kontrollPdf.name).toBe('Kostenkontrolle Musterhaus.pdf');
+  const kontrollText = await pdfText(kontrollPdf.bytes);
+  expect(kontrollText).toContain('Kostenkontrolle');
+  expect(kontrollText).toContain(de(GESAMT));
+  await ausgabe.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(ausgabe).toBeHidden();
 
   // Ohne Budget bleiben Budget und Abweichung leer, die Vergabe bleibt.
   await page.getByRole('combobox', { name: 'Budget (Kostenermittlung)' }).click();
@@ -363,9 +457,9 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   const ep = zeile.locator('[data-spalte="einheitspreis"] .tx-grid__text');
   await expect(gp).toHaveText(betragDe('644.43')); // 86,500 × 7,450 = 644,425
   await zeile.locator('[data-spalte="kurztext"]').click();
-  await page.getByRole('button', { name: /^Kalkulieren/ }).click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
   const kalk = page.getByRole('dialog', { name: /^EP kalkulieren: 01\.0020/ });
-  await expect(kalk.getByTestId('kalkulation-nicht-gespeichert')).toContainText('nicht gespeichert');
+  await expect(kalk.getByTestId('kalkulation-gespeichert')).toContainText('speichert die Ansätze');
   await kalk.getByLabel('Ansatzmenge 1').fill('0,450');
   await kalk.getByLabel('Kostensatz 1 (€)').fill('48,50');
   await kalk.getByRole('button', { name: 'Ansatz hinzufügen' }).click();
@@ -382,15 +476,54 @@ test('C2–C4: Kostenermittlung, Kostengruppen, Zuschlag, Kostenkontrolle, EP-Ka
   await expect(ep).toHaveText('37,133');
   await expect(gp).toHaveText(betragDe('3212.00'));
 
-  // EP und Anteile sind ein Undo-Schritt: ein Rückgängig stellt beides her, Wiederholen setzt beides.
+  // EP, Anteile und Kalkulation sind ein Undo-Schritt: ein Rückgängig stellt alles her, Wiederholen setzt alles.
   await page.getByRole('button', { name: /^Rückgängig/ }).click();
   await expect(gp).toHaveText(betragDe('644.43'));
   await expect(ep).toHaveText('7,450');
+  await zeile.locator('[data-spalte="kurztext"]').click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
+  let wieder = page.getByRole('dialog', { name: /^EP kalkulieren/ });
+  await expect(wieder.getByLabel('Ansatzmenge 1')).toHaveValue('');
+  await wieder.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(wieder).toBeHidden();
   await page.getByRole('button', { name: /^Wiederholen/ }).click();
   await expect(gp).toHaveText(betragDe('3212.00'));
-  // Die Ansätze wurden nicht gespeichert: Der Dialog beginnt leer.
+
+  // B-19: Die Ansätze sind gespeichert: Der Dialog öffnet mit ihnen und rechnet denselben EP.
   await zeile.locator('[data-spalte="kurztext"]').click();
-  await page.getByRole('button', { name: /^Kalkulieren/ }).click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
+  wieder = page.getByRole('dialog', { name: /^EP kalkulieren/ });
+  await expect(wieder.getByTestId('kalkulation-gespeichert')).toContainText('gespeicherte Kalkulation');
+  await expect(wieder.getByLabel('Ansatzmenge 1')).toHaveValue('0,450');
+  await expect(wieder.getByLabel('Kostensatz 1 (€)')).toHaveValue('48,500');
+  await expect(wieder.getByRole('combobox', { name: 'Kostenart Ansatz 2' })).toHaveText(/Stoffe/);
+  await expect(wieder.getByLabel('Ansatzmenge 2')).toHaveValue('2,000');
+  await expect(wieder.getByLabel('Zuschlagssatz Lohn (%)')).toHaveValue('10,00');
+  await expect(wieder.getByLabel('Zuschlagssatz Stoffe (%)')).toHaveValue('5,00');
+  await expect(wieder.getByTestId('kalkulation-ep')).toHaveText('37,133');
+  await wieder.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(wieder).toBeHidden();
+
+  // Ein EP von Hand entfernt die Kalkulation (Band „Kalkulation entfernt“); Rückgängig holt sie mit dem EP zurück.
+  const band = page.locator('.lv__band');
+  await zeile.locator('[data-spalte="einheitspreis"]').focus();
+  await page.keyboard.type('8');
+  await page.keyboard.press('Enter');
+  await expect(ep).toHaveText('8,000');
+  await expect(band).toHaveText(/Kalkulation entfernt/);
+  await band.getByRole('button', { name: 'Rückgängig' }).click();
+  await expect(ep).toHaveText('37,133');
+  await zeile.locator('[data-spalte="kurztext"]').click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
+  wieder = page.getByRole('dialog', { name: /^EP kalkulieren/ });
+  await expect(wieder.getByLabel('Ansatzmenge 1')).toHaveValue('0,450');
+
+  // „Kalkulation entfernen“ lässt EP und Anteile stehen.
+  await wieder.getByRole('button', { name: 'Kalkulation entfernen' }).click();
+  await expect(wieder).toBeHidden();
+  await expect(ep).toHaveText('37,133');
+  await zeile.locator('[data-spalte="kurztext"]').click();
+  await werkzeug(page, 'Bearbeiten', /^Kalkulieren/);
   await expect(page.getByRole('dialog', { name: /^EP kalkulieren/ }).getByLabel('Ansatzmenge 1')).toHaveValue(
     '',
   );

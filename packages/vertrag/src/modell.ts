@@ -25,6 +25,7 @@ import type {
 } from './marken';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 import type { Bauteilzuordnung } from './bim';
+import type { Skonto, Vertragsstrafe, Zahlung } from './zahlung';
 
 // --- Texte ---------------------------------------------------------------------------------
 
@@ -462,6 +463,60 @@ export interface Positionsdaten {
    *   keine mit.
    */
   readonly bauteile?: readonly Bauteilzuordnung[];
+  /**
+   * Die gespeicherten Eingaben der Einzelpreiskalkulation (v1.7a, Ticket 127; E9, B-19; Glossar „Kalkulationsangaben“). Fehlt:
+   * keine Kalkulation; nie leer im Zustand (ohne Ansatz und ohne Satz ist es keine, siehe `KalkulationSetzen`). Wirkt auf keine
+   * Summe des Kerns: EP und EPA stehen wie bisher in `einheitspreis` und `epa`, die Kalkulation ist nur ihre Herleitung.
+   *
+   * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127):
+   * - Geändert nur über `KalkulationSetzen` (nur im Ausschreibungs-LV), das EP und EPA im selben Befehl mitbringt. Ein reiner
+   *   Preisbefehl (`EinheitspreisAendern`, `EinheitspreisanteileSetzen`) an einer Position mit Kalkulation entfernt sie im
+   *   selben ChangeSet (wie `MengeAendern` den Mengenansatz, D-22 Lesart (a); die Oberfläche fragt vorher). So laufen
+   *   Kalkulation und Preis nie still auseinander. Der Befehl meldet das mit dem Befehlshinweis `kalkulation-entfernt`
+   *   (`knotenId` die Position; v1.7a Nachtrag, Review D-82 S4).
+   * - **Nie an einer Zuschlagsposition** (v1.7a Nachtrag, Review D-82 S3): `KalkulationSetzen` an einer Position mit
+   *   `zuschlag !== null` weist der Kern mit `knotenart-unzulaessig` ab; `PositionsmerkmaleSetzen` mit `zuschlag !== null`
+   *   entfernt eine vorhandene Kalkulation im selben ChangeSet (Hinweis `kalkulation-entfernt`). Ein Anlege- oder Kopierbefehl,
+   *   der eine Zuschlagsposition mit Kalkulation bringt, wird mit `ungueltige-eingabe` (`feld: 'kalkulation'`) abgewiesen.
+   * - Anlege- und Kopierbefehle bringen sie mit (ein Muster-LV trägt Kalkulationsansätze, Glossar „Muster-LV“); der Kern prüft
+   *   die Form wie bei `KalkulationSetzen`. Ein LV-Stand trägt sie.
+   * - Der Zuschlag (`zuschlagErteilen`) und `nachtragUebernehmen` lassen sie weg: Die Preise des Auftrags-LV stammen aus dem
+   *   Angebot, nicht aus der Kalkulation des Schätzpreises. Der GAEB-Export schreibt sie nicht (die EPA tragen das Ergebnis),
+   *   ein GAEB-Import bringt keine mit.
+   */
+  readonly kalkulation?: Kalkulationsangaben;
+}
+
+// --- Einzelpreiskalkulation (v1.7a, E9; D-39) ------------------------------------------------------------------------
+
+/**
+ * Eine Zeile der Einzelpreiskalkulation (Glossar „Kalkulationsansatz“; v1.7a, Ticket 127, E9): aus `kosten` hierher gewandert,
+ * gleich gebaut, weil die Position sie nun trägt (A4); `kosten` rechnet sie (`einzelpreiskalkulationBerechnen`, D-39) und
+ * importiert den Typ ab Ticket 137 von hier. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht (Befund in `kosten`,
+ * keine Sperre, U5); der Kern speichert sie trotzdem.
+ */
+export interface Kalkulationsansatz {
+  readonly art: EpaArt;
+  readonly bezeichnung: string;
+  /** Ansatzmenge je Einheit der Position (z. B. `0.450` h je m²), 3 Stellen; bei `lohn` Lohnstunden. `null`: fehlt. */
+  readonly ansatzmenge: Menge | null;
+  /** Kostensatz je Einheit des Ansatzes (z. B. `48.500` € je h), 3 Stellen wie ein EP. `null`: fehlt. */
+  readonly kostensatz: Einheitspreis | null;
+}
+
+/**
+ * Zuschlagssatz der Kalkulation je Kostenart (Glossar „Zuschlagssatz der Kalkulation“; v1.7a, aus `kosten` gewandert). Eine
+ * fehlende Kostenart rechnet mit 0 %; ein Satz `0.00` und ein fehlender Schlüssel rechnen gleich, der Kern legt ab, was kommt.
+ */
+export type Kalkulationszuschlagssaetze = Readonly<Partial<Record<EpaArt, Prozent>>>;
+
+/**
+ * Kalkulationsangaben einer Position (v1.7a, Ticket 127, E9; Glossar): die Eingaben, aus denen `kosten` EP und EPA rechnet.
+ * `ansaetze` in Anzeigereihenfolge (die Zeilen des Dialogs).
+ */
+export interface Kalkulationsangaben {
+  readonly ansaetze: readonly Kalkulationsansatz[];
+  readonly zuschlagssaetze: Kalkulationszuschlagssaetze;
 }
 
 /**
@@ -512,10 +567,57 @@ export interface Bauherr {
   readonly anschrift: string | null;
 }
 
-/** Bieter eines Projekts, von Angeboten über `BieterId` referenziert. */
+/**
+ * Postanschrift in Teilen (v1.7a, Ticket 127, E10; Glossar „Anschrift“), wie `Auftraggeber` und `Auftragnehmer` sie führen
+ * (GAEB `Street`, `PCode`, `City`): `strasse` mit Hausnummer. Jedes Teil nullbar, nie `''` (der Kern legt `''` als `null` ab).
+ * Eine Anschrift ohne jedes Teil gibt es nicht: Wo sie nullbar ist, legt der Kern dafür `null` ab. Die Anschrift des Bauherrn
+ * bleibt freier Text (`Bauherr.anschrift`).
+ */
+export interface Anschrift {
+  readonly strasse: string | null;
+  readonly plz: string | null;
+  readonly ort: string | null;
+}
+
+/**
+ * Bieterangaben (v1.7a, Ticket 127, E10; Glossar „Bieter“): Kontaktdaten eines Bieters. Jedes Feld nullbar, nie `''`
+ * (Normalisierung im Ausführer wie bei `Anschrift`); sind alle `null`, fehlt der Block am Bieter (eine Schreibweise für „keine
+ * Angaben“). Der Kern prüft kein Format von E-Mail oder Telefon (U5).
+ */
+export interface Bieterangaben {
+  readonly anschrift: Anschrift | null;
+  readonly ansprechperson: string | null;
+  readonly email: string | null;
+  readonly telefon: string | null;
+}
+
+/**
+ * Bieter eines Projekts, von Angeboten über `BieterId` referenziert.
+ *
+ * v1.7a (Ticket 127, E8, E10): umbenennen (`BieterUmbenennen`), Angaben setzen (`BieterangabenSetzen`), löschen nur ohne
+ * Angebot (`BieterLoeschen`). `BieterAnlegen` darf `angaben` mitbringen; der Kern normalisiert sie wie bei
+ * `BieterangabenSetzen`. Woher (v1.7a Nachtrag, Review D-82 S7): nur ein X84 bringt Bieterangaben mit (Ticket 136); ein X86
+ * füllt nur `LvInhaltKopf.auftragnehmer`, nie die Angaben eines Bieters. Ein Bieter, den das Projekt schon hat, wird beim
+ * Einlesen nicht überschrieben; trägt die Datei andere Angaben, bietet die App `BieterangabenSetzen` an (Ticket 149). In die
+ * Gegenrichtung kopiert der Zuschlag Name und Anschrift des bezuschlagten Bieters in den `Auftragnehmer` des Auftrags-LV (D-83).
+ */
 export interface Bieter {
   readonly id: BieterId;
   readonly name: string;
+  /** Fehlt: keine Angaben (v1.7a, additiv; Bieter vor v1.7a bleiben gültig). Nie `null`. */
+  readonly angaben?: Bieterangaben;
+}
+
+/**
+ * Projektangaben über Name und Bauherr hinaus (v1.7a, Ticket 127, E10; Glossar „Projektangaben“): Projektnummer, Ort (der
+ * Bauort als freier Text) und Anschrift der Baustelle. Jedes Feld nullbar, nie `''`; sind alle `null`, fehlt der Block am
+ * Projekt (Normalisierung im Kern wie bei `Bieterangaben`). Die Nummer ist freier Text (führende Nullen, Buchstaben), nie
+ * Schlüssel (A7) und nicht eindeutig geprüft.
+ */
+export interface Projektangaben {
+  readonly nummer: string | null;
+  readonly ort: string | null;
+  readonly baustelle: Anschrift | null;
 }
 
 /** Oberste Ebene: Name, Bauherr, Bieter. Die LVs und Angebote verweisen mit `projektId` auf das Projekt. */
@@ -524,6 +626,11 @@ export interface Projekt {
   readonly name: string;
   readonly bauherr: Bauherr;
   readonly bieter: readonly Bieter[];
+  /**
+   * Fehlt: keine weiteren Angaben (v1.7a, Ticket 127, E10; additiv, Projekte vor v1.7a bleiben gültig). Nie `null`. Gesetzt
+   * über `ProjektangabenSetzen`; `ProjektStammdatenSetzen` lässt es unverändert, `ProjektAnlegen` legt ohne an.
+   */
+  readonly angaben?: Projektangaben;
 }
 
 /**
@@ -544,8 +651,15 @@ export interface Auftraggeber {
 /**
  * Auftragnehmer (v1.3, Ticket 53 Punkt 6; Glossar „Auftragnehmer“; GAEB `CTR`): der Bieter, der den Zuschlag erhalten
  * hat, mit den Adressfeldern, die die Dateien in `CTR/Address` zeigen (`Name1`, `Street`, `PCode`, `City`). Jedes Feld
- * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt, `DPNo`, `AwardNo` und weitere
- * Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat (Offene Typfrage, Ticket 53).
+ * ist nullbar wie beim `Auftraggeber`. Nicht typisiert (Befund beim Import): Kontakt (Telefon, E-Mail, Ansprechperson),
+ * `DPNo`, `AwardNo` und weitere Adressfelder. Nicht gleichgesetzt mit dem `Bieter` des Projekts (Offene Typfrage, Ticket 53).
+ *
+ * v1.7a Nachtrag (Review D-82 S7; D-83): Der `Bieter` trägt seit v1.7a eigene `Bieterangaben`. Woher der Auftragnehmer kommt:
+ * - Zuschlag (`zuschlagErteilen` in `vergabe`, Ticket 138): `name` ist der Name des bezuschlagten Bieters, `strasse`, `plz`,
+ *   `ort` die Teile seiner `Bieterangaben.anschrift` (`null`, wo sie fehlen). Eine Kopie zum Zeitpunkt des Zuschlags: Eine
+ *   spätere Änderung am Bieter ändert das Auftrags-LV nicht.
+ * - X86 (Ticket 136): füllt **nur** diesen Auftragnehmer am LV-Kopf, nie die Angaben eines Bieters; seine Kontaktangaben
+ *   bleiben ein Befund beim Import.
  */
 export interface Auftragnehmer {
   readonly name: string | null;
@@ -591,7 +705,8 @@ export interface LvInhaltKopf {
   readonly vergabeinformationen?: Vergabeinformationen;
   /**
    * Fehlt: keine Angabe (v1.3, Ticket 53 Punkt 6). Gehört zur Auftragserteilung (X86, Auftrags-LV): Der X86-Leser legt
-   * `CTR` hier ab, der Writer schreibt es zurück (Ticket 68). Vorläufige Annahme, Entscheidung offen (enge Lesart): am
+   * `CTR` hier ab, der Writer schreibt es zurück (Ticket 68); der Zuschlag setzt es aus Name und Anschrift des bezuschlagten
+   * Bieters (v1.7a, D-83; siehe `Auftragnehmer`). Vorläufige Annahme, Entscheidung offen (enge Lesart): am
    * gemeinsamen Kopf, weil Leser und Writer mit `LvInhalt` arbeiten; ein Ausschreibungs-LV trägt es nicht (der Typ
    * verbietet es nicht). Alternative: nur am `AuftragsLvKopf` (Offene Typfrage, Ticket 53).
    */
@@ -681,6 +796,33 @@ export interface LvKopf extends LvInhaltKopf {
    * Auftrags-LV. Alternative: `vorlage?: boolean` (Offene Typfrage, Ticket 70).
    */
   readonly vorlage?: true;
+  /**
+   * Einstellungen des Preisspiegels zu diesem LV (v1.7a, Ticket 127, E15, D-73; Glossar „Preisspiegel-Einstellungen“). Fehlt:
+   * die Standardwerte nach D-05 (`PREISSPIEGEL_STANDARD` in `vergabe`: 20 %, 80 %, 95 %, Mittel); nie `null`. Geändert nur über
+   * `PreisspiegelEinstellungenSetzen` (Undo, wandert mit dem LV-Stand). Am `LvKopf` wie `nachtrag` und `vorlage`: nie aus
+   * einem GAEB-Import, nie am Auftrags-LV, und ein LV aus einem LV-Stand (`LeistungsverzeichnisAnlegen`) bringt es nicht von
+   * selbst mit: Trägt der Stand Einstellungen, hängt die App `PreisspiegelEinstellungenSetzen` an die Befehlsfolge „Als neues
+   * LV übernehmen“ (v1.7a Nachtrag, Review D-82 S6; Ticket 150). Ändert D-36 (7) für diesen Teil (D-73).
+   */
+  readonly preisspiegel?: PreisspiegelEinstellungen;
+}
+
+/** Bezug der ABC-Klasse im Preisspiegel (v1.7a, aus `vergabe` gewandert): der virtuelle Bieter Mittel oder der Schätzpreis. */
+export type AbcBezug = 'mittel' | 'schaetzpreis';
+
+/**
+ * Preisspiegel-Einstellungen (v1.7a, Ticket 127, E15; Glossar): gleich gebaut wie in `vergabe` (das ab Ticket 138 den Typ von
+ * hier nimmt). Der Kern prüft die Form (`PreisspiegelEinstellungenSetzen`): jeder Satz ein kanonisches `Prozent` von `0.00` bis
+ * `100.00`, `abcSchwelleA` ≤ `abcSchwelleB`, `abcBezug` einer der beiden Werte; sonst `ungueltige-eingabe` mit dem Feld.
+ */
+export interface PreisspiegelEinstellungen {
+  /** Ausreißer, wenn ein EP um mehr als diesen Anteil vom Mittel abweicht (G-26, D-05; Standard `20.00`). */
+  readonly ausreisserSchwelle: Prozent;
+  /** Obergrenze der Klasse A am Anteil der Summe (Standard `80.00`). */
+  readonly abcSchwelleA: Prozent;
+  /** Obergrenze der Klasse B (Standard `95.00`). */
+  readonly abcSchwelleB: Prozent;
+  readonly abcBezug: AbcBezug;
 }
 
 /**
@@ -863,17 +1005,26 @@ export interface Umlage {
 /**
  * Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (v1.4, Ticket 70 Punkt 7; A3, D-34,
  * D-36 (2); Glossar „Rechnung“). Eigenes Aggregat; Befehle führt `abrechnung` aus (Ticket 81), der Ausführer sieht nur die
- * Rechnung (D-70.3). Gespeichert sind nur Angaben, Abzüge und die Freigabe: Das
- * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, D-34) wird gerechnet, nie gespeichert;
- * eingefroren wird nur der freigegebene Zahlbetrag.
+ * Rechnung (D-70.3). Gespeichert sind nur Angaben, Abzüge, die Freigabe und (v1.7b) Skonto, Bauabzugsteuer und Zahlungen: Das
+ * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Vertragsstrafe → Einbehalt → Zahlbetrag, D-34, D-72; danach der
+ * `Zahlungsstand`) wird gerechnet, nie gespeichert; eingefroren wird nur der freigegebene Zahlbetrag.
  *
- * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändert nur
- * `RechnungsfreigabeAufheben` (Q5); jeden anderen Befehl, auch `RechnungLoeschen`, weist der Ausführer mit
- * `rechnung-freigegeben` ab.
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändern nur
+ * `RechnungsfreigabeAufheben` und (v1.7b) die Zahlungsbefehle `ZahlungErfassen`, `ZahlungAendern`, `ZahlungLoeschen` (Q5);
+ * jeden anderen Befehl, auch `RechnungLoeschen` und die Befehle für Vertragsstrafe, Skonto und Bauabzugsteuer, weist der
+ * Ausführer mit `rechnung-freigegeben` ab (D-128.7).
  *
  * Invariante (D-34 (7), Q5): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.**
  * Nur so ist „Σ frühere Zahlbeträge“ eindeutig; `speicher` hält sie (`konflikt`, siehe `RechnungChangeSet`), auch gegen das
  * Anlegen einer Rechnung unterhalb einer schon freigegebenen.
+ *
+ * Invariante (v1.7b, D-72, Q5): **Eine Rechnung mit Zahlungen ist freigegeben** (`zahlungen` gesetzt ⇒ `freigabe` gesetzt).
+ * Der Ausführer weist Zahlungsbefehle an einer nicht freigegebenen Rechnung ab und `RechnungsfreigabeAufheben` an einer mit
+ * Zahlungen (`zahlungen-vorhanden`); `speicher` hält sie für jedes ChangeSet, auch für ein Undo (`konflikt`).
+ *
+ * v1.7b (Ticket 128, D-72; D-128.2): Die vier neuen Felder stehen am Ende, sind optional, und „fehlt“ ist die einzige
+ * Schreibweise für „keine“ bzw. „aus“ (nie `null`, `false` oder `[]`; wie D-43). Eine Rechnung ohne sie (alle vor v1.7b) wird
+ * genau wie bisher geprüft (A8).
  */
 export interface Rechnung {
   readonly id: RechnungId;
@@ -938,6 +1089,25 @@ export interface Rechnung {
    * Negativ heißt Überzahlung (ein Befund, keine Sperre).
    */
   readonly freigabe: { readonly zahlbetrag: Betrag } | null;
+  /**
+   * v1.7b (D-72; Glossar „Vertragsstrafe“): die bis zu dieser Rechnung geltend gemachte Vertragsstrafe, kumuliert; fehlt:
+   * keine. Gelesen bei `abschlag` und `schluss`. Die App schlägt beim Anlegen die der vorigen Rechnung vor (wie die
+   * Einbehaltssätze); `RechnungAnlegen` trägt sie dann mit. Siehe `Vertragsstrafe`.
+   */
+  readonly vertragsstrafe?: Vertragsstrafe;
+  /** v1.7b (D-72; Glossar „Skonto / Skontofrist“): der vereinbarte Skonto; fehlt: keiner. Siehe `Skonto`. */
+  readonly skonto?: Skonto;
+  /**
+   * v1.7b (D-72; Glossar „Bauabzugsteuer“): Schalter der Bauabzugsteuer; `true`: eingeschaltet, fehlt: aus (der Standard; nie
+   * `false`, wie `LvUebersicht.vorlage`). Den Satz nennt `BAUABZUGSTEUER_SATZ`.
+   */
+  readonly bauabzugsteuer?: true;
+  /**
+   * v1.7b (D-72; Glossar „Zahlung“): die erfassten Zahlungen an den Auftragnehmer, in der Reihenfolge des Erfassens
+   * (`ZahlungAendern` ersetzt eine Zahlung an ihrer Stelle; die Anzeige ordnet nach Datum), jede Kennung höchstens einmal.
+   * Fehlt: keine (die letzte gelöschte Zahlung entfernt das Feld). Nur an einer freigegebenen Rechnung (Invariante oben).
+   */
+  readonly zahlungen?: readonly Zahlung[];
 }
 
 // --- Kostenermittlung (v1.4, C3; D-36 (3)) ------------------------------------------------------------------------

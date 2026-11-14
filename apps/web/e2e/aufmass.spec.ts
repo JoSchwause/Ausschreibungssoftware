@@ -18,7 +18,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
-import { projektAnlegen } from './hilfen';
+import { erwarteMeldung, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const wurzel = new URL('../../../fixtures/', import.meta.url);
 const datei = (rel: string): string => new URL(rel, wurzel).pathname;
@@ -53,7 +54,7 @@ async function auftragAnlegen(page: Page): Promise<void> {
   const liste = page.getByRole('dialog', { name: 'Angebote' });
   await expect(liste.getByRole('row', { name: /Bieter A/ })).toBeVisible();
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: 'Zuschlag erteilen: Bieter A' })
@@ -114,7 +115,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await auftragAnlegen(page);
 
   // Aufmaß: noch kein Blatt; „Neues Aufmaßblatt“ fragt Bezeichnung und Datum und öffnet Blatt 1.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Aufmaß', exact: true }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await expect(page.getByRole('heading', { level: 1, name: /^Aufmaß – / })).toBeVisible();
   await expect(page.getByText('Noch kein Aufmaßblatt.')).toBeVisible();
   await page.getByRole('button', { name: 'Neues Aufmaßblatt' }).click();
@@ -140,7 +141,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await zeile(g, '02.0050A').locator('[data-spalte="kurztext"]').click();
   await page.keyboard.press('Enter');
   await expect(panel(page)).toHaveCount(0);
-  await expect(page.getByText('Zuschlagspositionen werden nicht aufgemessen').first()).toBeVisible();
+  await erwarteMeldung(page, 'Zuschlagspositionen werden nicht aufgemessen');
   // Rückgängig/Wiederholen auf dem Blatt per Tastatur: Strg+Z nimmt die Zeile zurück, Strg+Y bringt sie wieder.
   await zeile(g, '01.0020').locator('[data-spalte="kurztext"]').click();
   await page.keyboard.press('Control+z');
@@ -221,7 +222,9 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await expect(ein.getByTestId('x31-zusammenfassung')).toHaveText(
     'Die Datei enthält keine Zeile zu einer Position dieses Auftrags-LV; es entsteht kein Blatt.',
   );
-  await expect(ein.getByRole('region', { name: 'Befunde der Datei' })).toContainText('position-unbekannt');
+  await expect(ein.getByRole('region', { name: 'Befunde der Datei' })).toContainText(
+    'Position nicht im Leistungsverzeichnis',
+  );
   await expect(ein.getByRole('button', { name: 'Blatt anlegen' })).toBeDisabled();
   await ein.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(tabelle.locator('tbody tr')).toHaveCount(2);
@@ -232,7 +235,7 @@ test('Menge ohne Ansatz, Blattkopf ändern, Zeile entfernen und Blatt löschen, 
 }) => {
   test.setTimeout(120_000);
   await auftragAnlegen(page);
-  await page.getByRole('toolbar').getByRole('link', { name: 'Aufmaß', exact: true }).click();
+  await werkzeug(page, 'Abrechnung', 'Aufmaß');
   await page.getByRole('button', { name: 'Neues Aufmaßblatt' }).click();
   await page.keyboard.press('Enter'); // ohne Bezeichnung und Datum
   await expect(page.getByRole('heading', { level: 1, name: 'Aufmaßblatt 1' })).toBeVisible();

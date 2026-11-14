@@ -6,6 +6,7 @@ import type {
   Befehlshinweis,
   BefehlsEmpfaenger,
   Einfuegeort,
+  EinheitspreisAendern,
   Ergebnis,
   GridIdQuelle,
   GridZahlen,
@@ -15,8 +16,18 @@ import type {
   LvAnsicht,
   LvBefehl,
   LvSpalte,
+  LvZeile,
+  OzMaske,
   PositionAnlegen,
 } from '@tethys/vertrag';
+import type { Ref } from 'react';
+import type { SpaltenbreitenSpeicher } from './useSpaltenbreiten';
+
+/** Steuerung des Grids von außen (Ticket 156), z. B. für „Suchen und filtern“ in der Werkzeugleiste der App. */
+export interface LvGridSteuerung {
+  /** Öffnet die Leiste „Suchen und filtern“ und setzt den Fokus ins Suchfeld (wie Strg+F im Grid). */
+  suchen(): void;
+}
 
 /**
  * Lesefunktion der App für die Spalte „KG“ (Ticket 93): getrimmter, nicht leerer Text → Kostengruppennummer oder eine
@@ -52,6 +63,18 @@ interface LvGridGemeinsam {
    * zeigt die Spalte die Nummer nur an. Im schreibgeschützten Grid wirkt sie nur zusammen mit `onKostengruppen`.
    */
   readonly kostengruppeLesen?: KostengruppeLesen;
+  /**
+   * OZ-Maske des LV (Ticket 130): Die Spalte „Ordnungszahl“ wird so breit wie die breiteste OZ, die die Maske zulässt,
+   * samt Index. Ohne Maske (und für längere, von Hand vergebene OZ) zählt die längste OZ der Zeilen.
+   */
+  readonly ozMaske?: OzMaske;
+  /**
+   * Schlüssel, unter dem das Grid die Spaltenbreiten merkt, die der Nutzer zieht (Ticket 130), z. B. `lv` oder
+   * `auftrags-lv`: je Grid einer. Ohne Schlüssel gelten gezogene Breiten nur, solange das Grid steht.
+   */
+  readonly spaltenbreitenSchluessel?: string;
+  /** Wo die Spaltenbreiten gemerkt werden; Standard `localStorage` (Fehler beim Lesen oder Schreiben werden übergangen). */
+  readonly spaltenbreitenSpeicher?: SpaltenbreitenSpeicher;
   /** Zahlenränder (N4); die App schließt sie an `dezimal` an. */
   readonly zahlen: GridZahlen;
   /** Sprung zu einer Zelle (Prüf-Links). Steht die Zeile nicht in der Ansicht (zugeklappt), tut das Grid nichts. */
@@ -79,6 +102,20 @@ interface LvGridGemeinsam {
    * in einer Hinweisleiste an, mit Sprungknopf, wenn ein Hinweis einen Knoten nennt. Sie sperren nie (U5).
    */
   readonly hinweise?: readonly Befehlshinweis[];
+  /**
+   * Alle Zeilen des LV in Anzeigereihenfolge, auch unter zugeklappten Gliederungen, mit `aufgeklappt` wie in der Ansicht
+   * (Ticket 156). Suchen (Strg+F) und Filtern sehen damit das ganze LV; ein Treffer unter zugeklappten Gliederungen klappt
+   * sie über `onAufklappen` auf. Das Grid ruft die Funktion nur beim Suchen und bei aktivem Filter; eine neue Funktion heißt
+   * neue Zeilen (mit jeder neuen `ansicht` eine neue übergeben). Ohne: Suchen und Filtern sehen nur `ansicht.zeilen`.
+   */
+  readonly alleZeilen?: () => readonly LvZeile[];
+  /**
+   * Übersicht der Tastenkürzel (Ticket 156): Mit der Eigenschaft hat das Kontextmenü den Punkt „Tastenkürzel anzeigen“,
+   * z. B. ein Wechsel zur Hilfeseite, deren Tabelle aus `GRID_KUERZEL` entsteht.
+   */
+  readonly onKuerzelhilfe?: () => void;
+  /** Steuerung von außen (Ticket 156). */
+  readonly steuerung?: Ref<LvGridSteuerung>;
   /** Zugänglicher Name des Grids. */
   readonly beschriftung?: string;
   /** Spalte mit Einzug und Auf-/Zuklappknopf; Standard `kurztext`. */
@@ -121,6 +158,8 @@ export interface LvGridBearbeitbar extends LvGridGemeinsam {
   readonly positionenZaehlen?: (knotenIds: readonly KnotenId[]) => number;
   /** Nur im schreibgeschützten Grid: Hier gehen auch die Kostengruppen über `onBefehl` und `onBefehlsfolge`. */
   readonly onKostengruppen?: never;
+  /** Nur im schreibgeschützten Grid: Hier gehen auch die Einheitspreise über `onBefehl` und `onBefehlsfolge`. */
+  readonly onEinheitspreise?: never;
 }
 
 /**
@@ -143,6 +182,14 @@ export interface LvGridSchreibgeschuetzt extends LvGridGemeinsam {
    * auch ein einzelner Befehl.
    */
   readonly onKostengruppen?: (befehle: readonly KostengruppeSetzen[]) => void;
+  /**
+   * Zweite Ausnahme vom Schreibschutz (SB3, U2), z. B. für die Preise eines Angebots auf dem Gerüst des LV: Mit dieser
+   * Eigenschaft lässt sich die Spalte „EP“ an Positionen ohne Zuschlag bearbeiten (Eingabe, Entf, Einfügen einer Spalte);
+   * alles andere bleibt schreibgeschützt. Leeren ist `einheitspreis: null`; was das bedeutet, entscheidet die App. Jede
+   * Aktion kommt als eine Folge, auch ein einzelner Befehl. Das Grid rechnet nichts: Die App zeigt die neuen Preise über
+   * `ansicht`.
+   */
+  readonly onEinheitspreise?: (befehle: readonly EinheitspreisAendern[]) => void;
 }
 
 export type LvGridProps = LvGridBearbeitbar | LvGridSchreibgeschuetzt;

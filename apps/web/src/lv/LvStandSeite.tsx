@@ -3,20 +3,21 @@
 // Nur-Lese-Modus (`schreibgeschuetzt`, Ticket 54/67): kein Editor, kein Befehlsausgang, die Ansage kommt vom Grid. Der
 // Stand lässt sich als neues LV übernehmen (`LeistungsverzeichnisAnlegen`, ein Undo-Schritt).
 
-import { Button } from '@tethys/ui-basis';
+import { Button, Werkzeugleiste } from '@tethys/ui-basis';
 import { LvGrid } from '@tethys/ui-grid';
 import type { LeistungsverzeichnisId, LvStand, LvStandId } from '@tethys/vertrag';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { standAlsNeuesLv } from '../historie/staende'; // Ticket 150 (D-82 S6)
 import { texte } from '../historie/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { lvAnsichtBauen } from './ansicht';
+import { alleZeilenBauen, lvAnsichtBauen } from './ansicht';
+import { hilfePfad } from '../hilfe/pfad'; // Ticket 156
 import { befehlswegFuer } from './befehlsweg';
 import { useMeldungen } from './meldungen';
 import { zeitpunktDe } from './StaendeDialog';
-import { standAlsLvBefehl } from './stand';
 import { texte as lvTexte } from './texte';
 import { gridZahlen } from './zahlen';
 import '@tethys/ui-grid/grid.css';
@@ -74,13 +75,17 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
   const { pruefe } = useMeldungen();
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const ansicht = useMemo(() => lvAnsichtBauen(stand.zustand, zugeklappt, new Map()), [stand, zugeklappt]);
+  const alleZeilen = useCallback(() => alleZeilenBauen(stand.zustand, zugeklappt), [stand, zugeklappt]); // Ticket 156
   const lv = stand.zustand.leistungsverzeichnis;
   const lvPfad = `/lv/${lv.id}`;
 
   const alsNeuesLv = async (): Promise<void> => {
-    const befehl = standAlsLvBefehl(stand, u.ids);
-    const a = await befehlswegFuer(u).lv(lv.projektId, null).befehl(befehl);
-    if (pruefe(a)) gehe(`/lv/${befehl.id}`);
+    // Ticket 150 (D-82 S6): mit den Preisspiegel-Einstellungen des Stands, ein Undo-Schritt.
+    const befehle = standAlsNeuesLv(stand, u.ids);
+    const [anlegen, ...rest] = await befehlswegFuer(u).lv(lv.projektId, null).folge(befehle);
+    if (anlegen === undefined || !pruefe(anlegen) || anlegen.zustand === null) return;
+    for (const a of rest) pruefe(a);
+    gehe(`/lv/${anlegen.zustand.leistungsverzeichnis.id}`);
   };
 
   return (
@@ -103,17 +108,23 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
           {t.zumLv}
         </a>
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={lvTexte.werkzeuge.leiste}>
+      <Werkzeugleiste beschriftung={lvTexte.werkzeuge.leiste}>
         <HistorieKnoepfe />
         <Button onClick={() => void alsNeuesLv()}>{t.alsNeuesLv}</Button>
-      </div>
+      </Werkzeugleiste>
       <div className="lv__haupt">
         <div className="lv__grid">
           <LvGrid
             ansicht={ansicht}
             zahlen={gridZahlen}
             beschriftung={t.grid}
+            spaltenbreitenSchluessel="lv-stand"
+            ozMaske={lv.ozMaske}
             schreibgeschuetzt
+            alleZeilen={alleZeilen}
+            onKuerzelhilfe={() => {
+              gehe(hilfePfad('tastenkuerzel'));
+            }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
                 const neu = new Set(alt);

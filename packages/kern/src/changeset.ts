@@ -343,6 +343,10 @@ export function changeSetUmkehren(cs: LvChangeSet): LvChangeSet {
     ...(cs.lvStand === undefined
       ? {}
       : { lvStand: { vorher: cs.lvStand.nachher, nachher: cs.lvStand.vorher } }),
+    // v1.7a (D-127.1): der Inhalt eines gelöschten Stands geht mit, damit `speicher` genau diesen Stand wieder ablegt.
+    ...(cs.lvStandInhalt === undefined
+      ? {}
+      : { lvStandInhalt: { vorher: cs.lvStandInhalt.nachher, nachher: cs.lvStandInhalt.vorher } }),
   };
 }
 

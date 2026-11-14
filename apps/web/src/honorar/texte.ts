@@ -97,6 +97,11 @@ export const befundTexte = {
 
 export const texte = {
   projekt: { honorar: 'Honorar' },
+  // Ticket 155: Verweise zwischen Honorar und Kostenermittlung, beide Richtungen
+  verweis: {
+    zumHonorar: (name: string): string => `Zum Honorar „${name}“`,
+    zurKostenermittlung: (name: string): string => `Zur Kostenermittlung „${name}“`,
+  },
   vorgaben: {
     basis: 'Basishonorarsatz',
     viertel: 'Viertelsatz',
@@ -107,7 +112,7 @@ export const texte = {
   fehler: {
     name: 'Der Name fehlt.',
     bezeichnung: 'Die Bezeichnung fehlt.',
-    kostenermittlung: 'Wähle eine Kostenermittlung des Projekts.',
+    kostenermittlung: 'Bitte eine Kostenermittlung des Projekts wählen.',
   },
   seite: {
     titel: (projekt: string) => `Honorar – ${projekt}`,
@@ -115,11 +120,11 @@ export const texte = {
     nichtGefunden: 'Projekt nicht gefunden',
     zumProjekt: 'Zum Projekt',
     liste: 'Honorarberechnungen des Projekts',
-    leer: 'Noch keine Honorarberechnung. Lege eine an, um ein Honorar nach HOAI zu berechnen.',
+    leer: 'Noch keine Honorarberechnung. Für ein Honorar nach HOAI zuerst eine Honorarberechnung anlegen.',
     anlegenTitel: 'Honorarberechnung anlegen',
     name: 'Name',
     nameFehlt: 'Der Name fehlt.',
-    anlegen: 'Anlegen',
+    anlegen: 'Honorarberechnung anlegen',
     werkzeuge: 'Werkzeuge der Honorarseite',
     brutto: (name: string) => `Brutto ${name}`,
   },
@@ -215,7 +220,7 @@ export const texte = {
       brutto: 'Brutto',
     },
     pdf: 'Als PDF',
-    pdfFehler: 'Das PDF ließ sich nicht erzeugen.',
+    pdfFehler: 'Das PDF konnte nicht erzeugt werden.',
     grid: 'Honorarobjekte',
   },
 };

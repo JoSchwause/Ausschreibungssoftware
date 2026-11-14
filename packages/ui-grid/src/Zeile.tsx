@@ -11,6 +11,7 @@ import { Baumeinzug } from './Baumeinzug';
 import { Editor } from './Editor';
 import type { EditorAktionen } from './Editor';
 import { anzeigeText, istBearbeitbar } from './eingabe';
+import type { Eingabeart } from './schreibrechte';
 import { texte } from './texte';
 import type { features } from './tabelle';
 
@@ -32,8 +33,6 @@ export interface ZeileProps {
   readonly index: number;
   readonly versatz: number;
   readonly hoehe: number;
-  readonly vorlage: string;
-  readonly breite: number;
   /** Zelle mit `tabindex="0"` (roving tabindex), sonst `null`. */
   readonly tabbar: LvSpalte | null;
   readonly aktiv: LvSpalte | null;
@@ -49,15 +48,19 @@ export interface ZeileProps {
    * Grid keine oder nur die Spalte „KG“ (Ticket 93). Stabil halten (Memo).
    */
   readonly bearbeitbareSpalten: ReadonlySet<LvSpalte>;
+  /** Ausnahme „Preise“ im Schreibschutz: der EP einer Zuschlagsposition ist nicht bearbeitbar (`istBearbeitbar`). */
+  readonly epOhneZuschlag: boolean;
   /**
    * Das Grid ist als Ganzes schreibgeschützt (`aria-readonly` am Grid). Eine bearbeitbare Zelle darin (Spalte „KG“,
    * Ticket 93) hebt das für sich mit `aria-readonly="false"` auf.
    */
   readonly gridSchreibgeschuetzt: boolean;
   readonly editor: EditorAktionen;
-  /** Hinweis zur Form des Entwurfs in der Spalte „KG“ (Editor); stabil halten. */
-  readonly kgPruefen?: ((text: string) => string | undefined) | undefined;
+  /** Eingabeart je bearbeitbarer Spalte für den Editor (`eingabeart`); stabil halten. */
+  readonly eingabearten: ReadonlyMap<LvSpalte, Eingabeart>;
 }
+
+const KEINE_EINGABEART: Eingabeart = { inputMode: 'text' };
 
 const NUMERISCH: ReadonlySet<LvSpalte> = new Set<LvSpalte>(['menge', 'einheitspreis', 'gesamtpreis']);
 
@@ -78,21 +81,17 @@ function befundeJeSpalte(
 }
 
 function ZeileKomponente(props: ZeileProps): ReactElement {
+  const { row, index, versatz, hoehe, tabbar, aktiv, ausgewaehlt, ausgeschnitten, bearbeitung } = props;
   const {
-    row,
-    index,
-    versatz,
-    hoehe,
-    vorlage,
-    breite,
-    tabbar,
-    aktiv,
-    ausgewaehlt,
-    ausgeschnitten,
-    bearbeitung,
+    abgelehnt,
+    baumspalte,
+    zahlen,
+    bearbeitbareSpalten,
+    epOhneZuschlag,
+    gridSchreibgeschuetzt,
+    editor,
+    eingabearten,
   } = props;
-  const { abgelehnt, baumspalte, zahlen, bearbeitbareSpalten, gridSchreibgeschuetzt, editor, kgPruefen } =
-    props;
   const zeile = row.original;
   const k = zeile.knoten;
   const zellen = row.getAllCells();
@@ -115,17 +114,14 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
       aria-selected={ausgewaehlt}
       style={{
         height: hoehe,
-        width: '100%',
-        minWidth: breite,
         transform: `translateY(${String(versatz)}px)`,
-        gridTemplateColumns: vorlage,
       }}
     >
       {zellen.map((zelle, si) => {
         const spalte = spaltenIds[si];
         if (spalte === undefined) return null;
         const text = anzeigeText(zeile, spalte, zahlen);
-        const bearbeitbar = bearbeitbareSpalten.has(spalte) && istBearbeitbar(zeile, spalte);
+        const bearbeitbar = bearbeitbareSpalten.has(spalte) && istBearbeitbar(zeile, spalte, epOhneZuschlag);
         const hinweise = befunde.get(spalte) ?? [];
         const hatFehler = hinweise.some((b) => b.schwere === 'fehler');
         const a = abgelehnt?.get(spalte);
@@ -178,7 +174,7 @@ function ZeileKomponente(props: ZeileProps): ReactElement {
                 spalte={spalte}
                 entwurf={bearbeitung.entwurf}
                 aktionen={editor}
-                pruefen={spalte === 'kostengruppe' ? kgPruefen : undefined}
+                art={eingabearten.get(spalte) ?? KEINE_EINGABEART}
               />
             ) : (
               <span className="tx-grid__text">{ungueltig ? ungueltig.text : text}</span>

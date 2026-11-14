@@ -9,17 +9,20 @@
 // zeigt den Befund (U5, `nachtragsbefunde`).
 
 import { nachtragsbefunde, type Nachtragsbefund } from '@tethys/abrechnung';
-import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import type {
   Angebot,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvKopf,
   AuftragsLvZustand,
   Betrag,
+  BieterId,
   Ergebnis,
   LeistungsverzeichnisId,
   LvZustand,
   Nachtragsstatus,
+  Projekt,
+  ProjektId,
   Speicher,
   Speicherfehler,
 } from '@tethys/vertrag';
@@ -30,6 +33,7 @@ import {
   lvBefehlAnwenden,
   speichern,
   type Abweisung,
+  type Ausgang,
   type Befehlsweg,
   type LvSitzung,
 } from '../lv/befehlsweg';
@@ -202,6 +206,69 @@ export function nachtragBeauftragen(
     } finally {
       weg.historie.aufnehmen(teile);
     }
+  });
+}
+
+// --- Geführter Nachtrag (Ticket 151, B-18) --------------------------------------------------------------------------
+
+export interface Auftragnehmerstand {
+  /** Der Bieter des beauftragten Angebots; `null`: das Auftrags-LV ist nicht (mehr) da. */
+  readonly auftragnehmer: { readonly bieterId: BieterId; readonly name: string } | null;
+  /** Ob zum Nachtrags-LV schon ein Angebot des Auftragnehmers vorliegt (wie „Beauftragen“ es sucht, D-86.3). */
+  readonly angebotDesAuftragnehmers: boolean;
+}
+
+/**
+ * Für Kopfband und Schrittanzeige: wer der Auftragnehmer ist (Bieter des beauftragten Angebots, Name aus dem Projekt) und ob
+ * sein Angebot zum Nachtrags-LV schon eingelesen ist. Fehlt das Auftrags-LV (Zuschlag zurückgenommen), ist das kein Fehler.
+ */
+export async function auftragnehmerLaden(
+  speicher: Speicher,
+  lv: {
+    readonly id: LeistungsverzeichnisId;
+    readonly projektId: ProjektId;
+    readonly auftragsLvId: AuftragsLeistungsverzeichnisId;
+  },
+): Promise<Ergebnis<Auftragnehmerstand, Speicherfehler>> {
+  const ohne: Auftragnehmerstand = { auftragnehmer: null, angebotDesAuftragnehmers: false };
+  const auftrag = await speicher.auftragsLeistungsverzeichnisse.laden(lv.auftragsLvId);
+  if (!auftrag.ok) return auftrag.fehler.code === 'nicht-gefunden' ? { ok: true, wert: ohne } : auftrag;
+  const kopf = auftrag.wert.auftragsLeistungsverzeichnis;
+  const aa = await speicher.angebote.laden(kopf.angebotId);
+  if (!aa.ok) return aa;
+  const p = await speicher.projekte.laden(lv.projektId);
+  if (!p.ok) return p;
+  const angebote = await angeboteLaden(speicher, lv.id);
+  if (!angebote.ok) return angebote;
+  const bieterId = aa.wert.angebot.bieterId;
+  const name = p.wert.bieter.find((b) => b.id === bieterId)?.name ?? kopf.auftragnehmer?.name ?? bieterId;
+  return {
+    ok: true,
+    wert: {
+      auftragnehmer: { bieterId, name },
+      angebotDesAuftragnehmers: nachtragsangebot(angebote.wert, lv.id, aa.wert.angebot) !== null,
+    },
+  };
+}
+
+/**
+ * „Angebot des Auftragnehmers einlesen“ (D-151.3): das aus X84 oder Excel gelesene Angebot wird dem Auftragnehmer
+ * zugeordnet, ohne einen Bieter anzulegen; ein Undo-Schritt wie jedes Einlesen. Das Projekt wird frisch geladen.
+ */
+export async function auftragnehmerAngebotAnlegen(
+  weg: Befehlsweg,
+  nachtragsLv: LvZustand,
+  bieterId: BieterId,
+  gelesen: Angebot,
+): Promise<Ausgang<Projekt>> {
+  const lv = nachtragsLv.leistungsverzeichnis;
+  const p = await weg.umgebung.speicher.projekte.laden(lv.projektId);
+  if (!p.ok) return speicherfehler(p.fehler);
+  return weg.angebotAnlegen(p.wert, nachtragsLv, null, {
+    ...gelesen,
+    projektId: lv.projektId,
+    leistungsverzeichnisId: lv.id,
+    bieterId,
   });
 }
 

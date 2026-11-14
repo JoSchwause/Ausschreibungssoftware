@@ -1,17 +1,38 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Alle Oberflächentexte der App-Hülle und der Katalogseite (L1, U8): deutsch, in einer Datei,
-// keine Übersetzung in v1. Fachseiten bekommen später eigene Textdateien.
+// Alle Oberflächentexte der App-Hülle, der Navigation und der Katalogseite (L1, U8): deutsch, in einer Datei,
+// keine Übersetzung in v1. Fachseiten haben eigene Textdateien.
 
 export const texte = {
   produkt: 'Tethys AVA',
   huelle: {
     navigation: 'Hauptnavigation',
     arbeitsflaeche: 'Arbeitsfläche',
+    /** Name der Brotkrumen-Navigation in der Kopfzeile. */
+    pfad: 'Pfad',
+    /** Trennzeichen im Fenstertitel: „Seite – Projekt – Tethys AVA“. */
+    titelTrenner: ' – ',
     eintraege: {
-      projekt: 'Projekt',
-      lv: 'LV',
-      vergabe: 'Vergabe',
+      projekte: 'Projekte',
+      hilfe: 'Hilfe',
       katalog: 'Katalog',
+      uebersicht: 'Übersicht',
+      leistungsverzeichnisse: 'Leistungsverzeichnisse',
+      vergabe: 'Vergabe',
+      auftraege: 'Auftrags-LV',
+      nachtraege: 'Nachträge',
+      aufmass: 'Aufmaß',
+      rechnungen: 'Rechnungen',
+      kosten: 'Kosten',
+      modelle: 'Modelle',
+      bauzeit: 'Bauzeitenpläne',
+      honorar: 'Honorar',
+      maengel: 'Mängel',
+      bautagebuch: 'Bautagebuch',
+    },
+    gruppen: {
+      projekt: 'Projekt',
+      auftraege: 'Aufträge',
+      vorschau: 'Vorschau',
     },
     katalogHinweis: 'Entwicklung',
     katalogTitel: 'Bausteinkatalog',
@@ -19,36 +40,83 @@ export const texte = {
       zuDunkel: 'Zum dunklen Modus wechseln',
       zuHell: 'Zum hellen Modus wechseln',
     },
+    // Ticket 147 (B-30): Speicherstatus und letzte Sicherung statt „Bereit“
     status: {
-      bereit: 'Bereit',
+      name: 'Statuszeile',
       modusHell: 'Hell',
       modusDunkel: 'Dunkel',
+      speicher: {
+        dauerhaft: 'Speicher: dauerhaft',
+        nichtDauerhaft: 'Speicher: nicht dauerhaft',
+        unbekannt: 'Speicher: unbekannt',
+      },
+      speicherHinweis: {
+        dauerhaft:
+          'Der Browser hält die Daten dauerhaft und löscht sie nicht von sich aus. Eine Sicherung als Projektdatei schützt trotzdem vor dem Verlust des Geräts.',
+        nichtDauerhaft:
+          'Der Browser darf die Daten bei knappem Speicherplatz löschen. Die Projekte deshalb regelmäßig als Projektdatei sichern.',
+        unbekannt:
+          'Der Browser gibt nicht an, ob er die Daten dauerhaft hält. Die Projekte deshalb regelmäßig als Projektdatei sichern.',
+      },
+      sicherung: (zeit: string): string => `Letzte Sicherung: ${zeit}`,
+      sicherungVon: (zeit: string, projekt: string): string => `Letzte Sicherung: ${zeit} (${projekt})`,
+      nichtGesichert: 'Noch nicht gesichert',
+      keineSicherung: 'Noch keine Sicherung',
     },
     zuSchmal: {
       titel: 'Fenster zu schmal.',
       text: 'Tethys AVA ist für Bildschirme ab 1280 Pixel Breite ausgelegt. Bitte das Fenster vergrößern.',
     },
   },
+  /** Kennzeichen der Module, die noch eine Vorschau sind (G-60). */
+  vorschau: {
+    kennzeichen: 'Vorschau',
+    hinweis: 'Noch nicht für den Einsatz in Projekten geprüft.',
+    honorar: 'Die Tafelwerte sind nicht gegen die amtliche Fassung der HOAI geprüft.',
+  },
+  /** Namen der Gegenstände in den Brotkrumen, solange der Name noch lädt oder fehlt. */
+  gegenstand: {
+    projekt: 'Projekt',
+    lv: 'Leistungsverzeichnis',
+    lvStand: 'LV-Stand',
+    auftragsLv: 'Auftrags-LV',
+    aufmass: 'Aufmaßblatt',
+    aufmassNummer: (nummer: number, bezeichnung: string): string =>
+      bezeichnung === '' ? `Aufmaßblatt ${String(nummer)}` : `Aufmaßblatt ${String(nummer)} – ${bezeichnung}`,
+    rechnung: 'Rechnung',
+    rechnungNummer: (nummer: number): string => `Rechnung ${String(nummer)}`,
+    kostenermittlung: 'Kostenermittlung',
+    modell: 'Modell',
+    bauzeitenplan: 'Bauzeitenplan',
+    honorarberechnung: 'Honorarberechnung',
+  },
+  /** Namen der Seiten unterhalb eines Gegenstands. */
+  seite: {
+    uebersicht: 'Übersicht',
+    preisspiegel: 'Preisspiegel',
+    sollIst: 'Soll/Ist',
+    kostenkontrolle: 'Kostenkontrolle',
+    vergleich: 'Vergleich',
+  },
   seiten: {
-    projekt: {
-      titel: 'Projekt',
-      leer: 'Noch keine Projekte.',
-      hinweis: 'Hier entsteht die Projektübersicht mit Name und Bauherr.',
-    },
-    lv: {
-      titel: 'Leistungsverzeichnis',
-      leer: 'Noch kein Leistungsverzeichnis geöffnet.',
-      hinweis: 'Hier entsteht die Tabelle mit Gliederung und Positionen.',
-    },
-    vergabe: {
-      titel: 'Vergabe',
-      leer: 'Noch keine Angebote erfasst.',
-      hinweis: 'Hier entstehen Angebotserfassung und Preisspiegel.',
-    },
     unbekannt: {
       titel: 'Seite nicht gefunden',
       text: 'Diese Adresse gibt es nicht.',
-      zurueck: 'Zum Projekt',
+      zurueck: 'Zur Projektliste',
     },
+  },
+  /** Dialog „PDF mit Vorschau“ der Berichte (Preisspiegel, Vergabevorschlag, Abrechnung). */
+  pdfVorschau: {
+    datum: 'Druckdatum (TT.MM.JJJJ)',
+    datumFehler: 'Bitte ein Datum wie 14.11.2026 eingeben.',
+    dateiname: 'Dateiname',
+    vorschauErzeugen: 'Vorschau erzeugen',
+    vorschau: 'Vorschau des PDF',
+    laeuft: 'Das PDF wird erzeugt …',
+    fehler: 'Das PDF konnte nicht erzeugt werden.',
+    herunterladen: 'Herunterladen',
+    abbrechen: 'Abbrechen',
+    schliessen: 'Schließen',
+    gespeichert: 'Datei gespeichert',
   },
 } as const;

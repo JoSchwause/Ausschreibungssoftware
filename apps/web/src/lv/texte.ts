@@ -13,6 +13,13 @@ export const texte = {
   },
   werkzeuge: {
     leiste: 'Werkzeuge des Leistungsverzeichnisses',
+    gruppen: {
+      einfuegen: 'Einfügen',
+      bearbeiten: 'Bearbeiten',
+      lv: 'LV',
+      ausgabe: 'Ausgabe',
+      angebote: 'Angebote',
+    },
     titelAnlegen: 'Titel anlegen',
     untertitelAnlegen: 'Untertitel anlegen',
     positionAnlegen: 'Position anlegen',
@@ -24,6 +31,59 @@ export const texte = {
     tastenMerkmale: ['Strg', 'Alt', 'M'],
     keinePosition: 'Merkmale gibt es nur an Positionen',
     keinePositionText: 'Bitte zuerst eine Position im Grid wählen.',
+    hinweistextAnlegen: 'Hinweistext anlegen',
+    hinweistextAendern: 'Hinweistext ändern',
+    tastenHinweistext: ['Strg', 'Alt', 'H'],
+    ozMaske: 'OZ-Maske ändern',
+    /** „Position bearbeiten“ ohne gewählte Zeile. */
+    keineZeile: 'Keine Position gewählt',
+    /** „Position bearbeiten“ an einem Titel oder Los: Sie werden im Grid bearbeitet. */
+    gliederungOhneDialog: 'Titel werden im Grid bearbeitet',
+    gliederungOhneDialogText:
+      'OZ und Kurztext eines Titels oder Loses lassen sich direkt in der Zeile ändern.',
+    /** Ticket 156: öffnet im Grid die Leiste „Suchen und filtern“ (wie Strg+F im Grid). */
+    suchen: 'Suchen und filtern',
+    tastenSuchen: ['Strg', 'F'],
+    keinHinweistext: 'Kein Hinweistext gewählt',
+    keinHinweistextText: 'Bitte zuerst einen Hinweistext im Grid wählen.',
+  },
+  hinweistext: {
+    titelAnlegen: 'Hinweistext anlegen',
+    titelAendern: 'Hinweistext ändern',
+    text: 'Text',
+    lage: 'Lage',
+    vortext: 'Vortext (am Anfang der Gliederung)',
+    nachtext: 'Nachtext (am Ende der Gliederung)',
+    hinter: 'Hinter der gewählten Zeile',
+    gliederung: (name: string) => `Gliederung: ${name}`,
+    obersteEbene: 'Gliederung: oberste Ebene des LV',
+    leer: 'Bitte einen Text eingeben.',
+  },
+  ozMaske: {
+    titel: 'OZ-Maske ändern',
+    feld: 'OZ-Maske',
+    hinweis:
+      'N steht für eine Ziffer, A für ein Zeichen, Punkte trennen die Stufen, [I] am Ende für den Index.',
+    losStufe: 'Oberste Stufe ist das Los',
+    vorschau: 'Vorschau',
+    gleich: 'Die Maske ist unverändert.',
+    bleibt: 'Die Ordnungszahlen bleiben gleich.',
+    neu: (n: number) =>
+      n === 1 ? '1 Ordnungszahl ändert sich:' : `${String(n)} Ordnungszahlen ändern sich:`,
+    weitere: (n: number) => `und ${String(n)} weitere`,
+    konflikt: {
+      'maske-ungueltig': 'Für diese Zeilen hat die neue Maske keine Stufe:',
+      'oz-ueberlauf': 'Für diese Zeilen hat die neue Maske keinen Platz mehr:',
+      'knotenart-unzulaessig':
+        'Mit der Los-Stufe stehen auf der obersten Ebene nur Lose. Dort stehen diese Titel:',
+    } as Readonly<Record<string, string>>,
+    konfliktAllgemein: 'Für diese Zeilen passt die neue Maske nicht:',
+    abgewiesen: 'So lässt sich die Maske nicht übernehmen. Das LV bleibt unverändert.',
+    ohneOz: '(ohne OZ)',
+  },
+  kalkulation: {
+    entfernt: 'Kalkulation entfernt',
+    rueckgaengig: 'Rückgängig',
   },
   merkmale: {
     titel: 'Merkmale',
@@ -46,7 +106,7 @@ export const texte = {
     ganzzahl: 'Erwartet wird eine ganze Zahl ab 0.',
     nichtUebernommen: 'Markierte Felder wurden nicht übernommen.',
     texte: 'Texte',
-    ordnungszahl: 'Ordnungszahl',
+    ordnungszahl: 'OZ',
     kurztext: 'Kurztext',
     langtext: 'Langtext',
     mengeUndPreis: 'Menge und Preis',
@@ -105,6 +165,7 @@ export const texte = {
   pruefung: {
     panel: 'Prüfung des LV',
     titel: 'Prüfung',
+    ausblenden: 'Prüfung ausblenden',
     tasten: ['F8'],
     keineBefunde: 'Keine Befunde.',
     lvWeit: 'LV',
@@ -137,6 +198,9 @@ export const texte = {
     datumUngueltig: 'Kein gültiges Datum. Erwartet wird z. B. 01.12.2026.',
     zeitUngueltig: 'Keine gültige Uhrzeit. Erwartet wird z. B. 10:30.',
     gewaehrleistungUngueltig: 'Dauer als ganze Zahl und Einheit, z. B. 5 und Jahre.',
+  },
+  kgHinweis: {
+    ausserhalb: (nr: string) => `Kostengruppe ${nr} liegt in keiner Kostenermittlung des Projekts.`,
   },
   summen: {
     bereich: 'Nachlass und MwSt',
@@ -188,6 +252,9 @@ export const texte = {
     'rechnung-freigegeben': 'Die Rechnung ist freigegeben. Zuerst die Freigabe aufheben.',
     // v1.6: mechanisch angepasst, Folgeticket 120 (Mängel in der App; Text dort prüfen)
     'statuswechsel-unzulaessig': 'Dieser Statuswechsel ist für den Mangel nicht zulässig.',
+    'verweise-vorhanden': 'Es verweisen noch andere Einträge darauf. Diese bitte zuerst entfernen.',
+    // v1.7b: mechanisch angepasst, Folgeticket 152 (Zahlungen in der App; Text dort prüfen)
+    'zahlungen-vorhanden': 'Zur Rechnung sind Zahlungen erfasst. Zuerst die Zahlungen löschen.',
   } satisfies Record<Befehlsfehlercode, string>,
   speicherfehler: {
     'nicht-gefunden': 'Der Eintrag wurde im Speicher nicht gefunden.',

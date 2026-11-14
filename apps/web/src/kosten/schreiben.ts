@@ -4,7 +4,8 @@
 // über den Kern. Mehrere Befehle einer Benutzeraktion bilden über `Sitzung.folge` einen Undo-Schritt. Lesen über die
 // Repositories von `speicher` (v1.4), nie über die Projektdatei.
 
-import { auftragsLvBefehlAusfuehren, auftragsLvChangeSetAnwenden } from '@tethys/kern';
+import { auftragsLvChangeSetAnwenden } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import { kostenermittlungBefehlAusfuehren, kostenermittlungChangeSetAnwenden } from '@tethys/kosten';
 import type {
   AuftragsLvBefehl,

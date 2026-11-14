@@ -1,0 +1,306 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Ticket 152 (A5, D-72): Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen auf dem Weg der App (Formular, Befehle,
+// Speicher, `rechnungPruefen` aus `abrechnung`) gegen die Sollwerte von `fixtures/typisch-zahlungen.json` (Ticket 143,
+// unabhängig hergeleitet): AR 1 mit 3 % Skonto und Bauabzugsteuer, Zahlung am Fristende (offen 0,00); AR 2 mit
+// Vertragsstrafe 1.500,00 und 2 % Skonto, Teilzahlung in der Frist und Rest danach (offen 570,67).
+
+import { plusKalendertage } from '@tethys/abrechnung';
+import { skontoStandText } from '@tethys/ausgabe';
+import type { Kalenderdatum, Rechnung, RechnungBefehl } from '@tethys/vertrag';
+import { describe, expect, it } from 'vitest';
+import {
+  A5_BEFEHLE,
+  A5_PRUEFUNGEN,
+  A5_RECHNUNGEN,
+  A5_VARIANTEN,
+  M4_KORREKTUR,
+  M4_NACHTRAG_LV,
+  M4_RECHNUNGEN,
+  m4Blatt,
+  m4Nachtragsknoten,
+} from '../../e2e/rechnung-fixture';
+import { entwurfLesen, neuerEntwurf, rechnungAnlegenBefehl, type Rechnungsentwurf } from './entwurf';
+import { befundtext, freigabelage, kettenzeilen, pruefen, zahlungsfreigabe } from './pruefung';
+import { rechnungenSitzung, rechnungsstandLaden, type RechnungenSitzung } from './rechnungen';
+import { mitAuftrag, type Auftragsstand } from './testhilfen';
+import { aufmassBefehlSchreiben, aufmassSchreiben, nachtragSchreiben } from './testpfad';
+
+type Stand = Auftragsstand & { s: RechnungenSitzung };
+/** Ein Tag lange nach jeder Skontofrist der Fixture: Der Skonto ist dann endgültig verwirklicht oder nicht. */
+const SPAETER = '2099-12-31' as Kalenderdatum;
+const de = (b: string): string => b.replace('.', ',');
+
+async function m4(): Promise<Stand> {
+  const a = await mitAuftrag('b');
+  const kopf = a.auftrag.auftragsLeistungsverzeichnis;
+  const n = await nachtragSchreiben(a.u, kopf.id, M4_NACHTRAG_LV, m4Nachtragsknoten(kopf.id));
+  if (!n.ok) throw new Error(`Nachtrag: ${n.fehler}`);
+  const b = await aufmassSchreiben(a.u, m4Blatt(0, kopf.projektId, kopf.id));
+  if (!b.ok) throw new Error(`Blatt 1: ${b.fehler}`);
+  return { ...a, s: rechnungenSitzung(a.weg, kopf.projektId, []) };
+}
+
+async function stand(a: Auftragsstand) {
+  const r = await rechnungsstandLaden(a.u.speicher, a.auftrag.auftragsLeistungsverzeichnis.id);
+  if (!r.ok) throw new Error(r.fehler.meldung);
+  return r.wert;
+}
+
+/** Legt die nächste Rechnung an wie der Prüfer im Formular: Vorschlag, darüber `aenderung`. */
+async function anlegen(a: Stand, aenderung: Partial<Rechnungsentwurf>): Promise<Rechnung> {
+  const st = await stand(a);
+  const w = entwurfLesen({ ...neuerEntwurf(a.s.zustand, st.blaetter), ...aenderung });
+  if (!w.ok) throw new Error(JSON.stringify(w.fehler));
+  const kopf = a.auftrag.auftragsLeistungsverzeichnis;
+  const b = rechnungAnlegenBefehl(a.u.ids.rechnung(), kopf.projektId, kopf.id, a.s.zustand, w.wert);
+  const r = await a.s.befehl({ rechnungId: null, befehl: b });
+  if (!r.ok) throw new Error(JSON.stringify(r.abweisung));
+  return b.rechnung;
+}
+
+async function senden(a: Stand, r: Rechnung, bs: readonly RechnungBefehl[]): Promise<Rechnung> {
+  for (const befehl of bs) {
+    const x = await a.s.befehl({ rechnungId: r.id, befehl });
+    if (!x.ok) throw new Error(JSON.stringify(x.abweisung));
+  }
+  const neu = a.s.zustand.find((x) => x.id === r.id);
+  if (neu === undefined) throw new Error('weg');
+  return neu;
+}
+
+const [fx1, fx2] = A5_RECHNUNGEN;
+if (fx1 === undefined || fx2 === undefined) throw new Error('Fixture');
+const m4ar1 = M4_RECHNUNGEN[0];
+if (m4ar1 === undefined) throw new Error('Fixture');
+const umlagen = m4ar1.umlagen.map((u) => ({ bezeichnung: u.bezeichnung, satz: de(u.satz) }));
+
+/** AR 1 aus dem Formular (Eingang, Umlage, Sicherheitseinbehalt, 3 % / 14 Tage Skonto, Bauabzugsteuer), freigegeben. */
+async function ar1Freigegeben(a: Stand): Promise<Rechnung> {
+  const r = await anlegen(a, {
+    eingang: '30.10.2026',
+    umlagen,
+    sicherheitSatz: de(m4ar1?.sicherheitSatz ?? ''),
+    skontoSatz: '3,00',
+    skontoFrist: '14',
+    bauabzugsteuer: true,
+  });
+  const z = pruefen(r, await stand(a), a.s.zustand).kette.zahlbetrag;
+  return senden(a, r, [{ art: 'RechnungFreigeben', zahlbetrag: z }]);
+}
+
+describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
+  it('AR 1: beide Fälle des Skontos, Zahlung am Fristende verwirklicht ihn, offen 0,00', async () => {
+    const a = await m4();
+    const frei = await ar1Freigegeben(a);
+    const vorZahlung = zahlungsfreigabe(
+      frei,
+      pruefen(frei, await stand(a), a.s.zustand).zahlungsstand,
+      SPAETER,
+    );
+    expect(vorZahlung.faelle?.bis).toBe('2026-11-13');
+    expect(vorZahlung.faelle?.zeilen.map((z) => [z.bezeichnung, z.mit, z.ohne])).toEqual([
+      ['Zahlbetrag', '8874.40', '8874.40'],
+      ['Skonto (3,00 %)', '266.23', '0.00'],
+      ['Bauabzugsteuer 15,00 % an das Finanzamt', '1291.23', '1331.16'],
+      ['Auszahlung an den Auftragnehmer', '7316.94', '7543.24'],
+    ]);
+    expect(vorZahlung.zahlungen).toEqual([]);
+
+    const ar1 = await senden(a, frei, A5_BEFEHLE.ar1.nachFreigabe);
+    const p = pruefen(ar1, await stand(a), a.s.zustand);
+    expect(p.zahlungsstand).toEqual(A5_PRUEFUNGEN.ar1.zahlungsstand);
+    const zf = zahlungsfreigabe(ar1, p.zahlungsstand, SPAETER);
+    expect(zf.geltend.map((z) => [z.bezeichnung, z.betrag])).toEqual([
+      ['Zahlbetrag (eingefroren)', '8874.40'],
+      ['Skonto (verwirklicht)', '266.23'],
+      ['Bauabzugsteuer 15,00 % an das Finanzamt', '1291.23'],
+      ['Auszahlung an den Auftragnehmer', '7316.94'],
+      ['Summe der Zahlungen', '7316.94'],
+      ['Offen', '0.00'],
+    ]);
+    expect(zf.zahlungen.map((z) => [z.datum, z.betrag])).toEqual([['2026-11-13', '7316.94']]);
+    expect(ar1).toMatchObject({ skonto: fx1.skonto, bauabzugsteuer: true, zahlungen: fx1.zahlungen });
+  });
+
+  it('AR 1 mit Zahlung: „Freigabe aufheben“ gesperrt mit Erklärung (Q5, D-128.7)', async () => {
+    const a = await m4();
+    const ar1 = await senden(a, await ar1Freigegeben(a), A5_BEFEHLE.ar1.nachFreigabe);
+    const lage = freigabelage(ar1, a.s.zustand);
+    expect(lage).toMatchObject({ art: 'freigegeben', aufhebbar: false });
+    expect(lage.grund).toBe('Zur Rechnung 1 ist 1 Zahlung erfasst. Zuerst die Zahlungen löschen.');
+  });
+
+  it('AR 2: Vertragsstrafe als Zeile der Kette, Vorschlag aus AR 1, Teilzahlung in der Frist: offen 570,67', async () => {
+    const a = await m4();
+    await senden(a, await ar1Freigegeben(a), A5_BEFEHLE.ar1.nachFreigabe);
+    const kopf = a.auftrag.auftragsLeistungsverzeichnis;
+    const b2 = await aufmassSchreiben(a.u, m4Blatt(1, kopf.projektId, kopf.id));
+    expect(b2.ok).toBe(true);
+    const blatt1 = (await stand(a)).blaetter.find((b) => b.nummer === 1);
+    if (blatt1 === undefined) throw new Error('Blatt 1');
+    expect((await aufmassBefehlSchreiben(a.u, blatt1.id, M4_KORREKTUR)).ok).toBe(true);
+
+    // Vorschlag aus AR 1: Skonto 3 % / 14 Tage und Bauabzugsteuer; keine Vertragsstrafe (AR 1 hatte keine).
+    const st = await stand(a);
+    expect(neuerEntwurf(a.s.zustand, st.blaetter)).toMatchObject({
+      skontoSatz: '3,00',
+      skontoFrist: '14',
+      bauabzugsteuer: true,
+      vertragsstrafeBetrag: '',
+    });
+    const strafe = fx2.vertragsstrafe;
+    if (strafe === undefined) throw new Error('Fixture');
+    const r = await anlegen(a, {
+      eingang: '27.11.2026',
+      vertragsstrafeBetrag: de(strafe.betrag),
+      vertragsstrafeGrund: strafe.grund,
+      skontoSatz: '2,00',
+      skontoFrist: '10',
+      bauabzugsteuer: false,
+    });
+    const p = pruefen(r, await stand(a), a.s.zustand);
+    const k = A5_PRUEFUNGEN.ar2.kette;
+    const zeilen = kettenzeilen(p.kette, r.vertragsstrafe);
+    expect(zeilen.map((z) => [z.schluessel, z.betrag])).toEqual([
+      ['leistung', k.leistung],
+      ['nachlass', k.nachlass],
+      ['nettoNachNachlass', k.nettoNachNachlass],
+      ['mwst', k.mwst],
+      ['bruttoKumuliert', k.bruttoKumuliert],
+      ['umlage-0', k.umlagen[0]?.betrag],
+      ['vertragsstrafe', k.vertragsstrafe],
+      ['einbehalt', k.einbehalt],
+      ['frueher-1', k.fruehereZahlbetraege],
+      ['zahlbetrag', k.zahlbetrag],
+    ]);
+    expect(zeilen.find((z) => z.schluessel === 'vertragsstrafe')).toMatchObject({
+      bezeichnung: `Vertragsstrafe (${strafe.grund})`,
+      zeichen: '−',
+    });
+
+    // Vorschau vor der Freigabe: vom geprüften Zahlbetrag aus.
+    expect(zahlungsfreigabe(r, p.zahlungsstand, SPAETER).geltend[0]).toEqual({
+      schluessel: 'zahlbetrag',
+      bezeichnung: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
+      betrag: k.zahlbetrag,
+      zeichen: '',
+    });
+
+    const ar2 = await senden(a, r, [
+      { art: 'RechnungFreigeben', zahlbetrag: p.kette.zahlbetrag },
+      ...A5_BEFEHLE.ar2.nachFreigabe,
+    ]);
+    const zs = pruefen(ar2, await stand(a), a.s.zustand).zahlungsstand;
+    expect(zs).toEqual(A5_PRUEFUNGEN.ar2.zahlungsstand);
+    expect(zahlungsfreigabe(ar2, zs, SPAETER).geltend.map((z) => [z.schluessel, z.betrag])).toEqual([
+      ['zahlbetrag', '8570.67'],
+      ['skonto', '0.00'],
+      ['auszahlung', '8570.67'],
+      ['summeZahlungen', '8000.00'],
+      ['offen', '570.67'],
+    ]);
+    expect(zahlungsfreigabe(ar2, zs, SPAETER).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+    // Zweiter Review-Durchgang R2: Solange die Frist läuft, ist der Skonto noch nicht verwirklicht, nicht endgültig verfehlt.
+    const fristende = zs.fristende;
+    if (fristende === null) throw new Error('AR 2 hat ein Fristende');
+    // AR 2 trägt schon die Restzahlung nach dem Fristende: damit ist die Frist vorbei, gleich wie die Uhr steht (Ticket 163).
+    expect(zahlungsfreigabe(ar2, zs, fristende).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+    const nurInDerFrist = { ...ar2, zahlungen: (ar2.zahlungen ?? []).filter((x) => x.datum <= fristende) };
+    expect(zahlungsfreigabe(nurInDerFrist, zs, fristende).geltend[1]?.bezeichnung).toBe(
+      'Skonto (noch nicht verwirklicht)',
+    );
+    const tagDanach = plusKalendertage(fristende, 1);
+    if (tagDanach === null) throw new Error('Kalender');
+    expect(zahlungsfreigabe(ar2, zs, tagDanach).geltend[1]?.bezeichnung).toBe('Skonto (nicht verwirklicht)');
+  });
+});
+
+describe('zahlungsfreigabe: Varianten der Fixture', () => {
+  const variante = (name: string) => {
+    const v = A5_VARIANTEN.find((x) => x.name === name);
+    if (v === undefined) throw new Error(name);
+    return zahlungsfreigabe(v.rechnung, v.zahlungsstand, SPAETER);
+  };
+
+  it('ohne neue Felder: keine Fälle, nur Zahlbetrag, Auszahlung, Summe der Zahlungen, offen', () => {
+    const z = variante('ar1-ohne-neue-felder');
+    expect(z.faelle).toBeNull();
+    expect(z.ohneEingang).toBe(false);
+    expect(z.geltend.map((x) => [x.schluessel, x.betrag])).toEqual([
+      ['zahlbetrag', '8874.40'],
+      ['auszahlung', '8874.40'],
+      ['summeZahlungen', '0.00'],
+      ['offen', '8874.40'],
+    ]);
+  });
+
+  it('Skonto ohne Eingangsdatum: keine Fälle, ein Hinweis statt des zweiten Falls', () => {
+    const z = variante('ar2-ohne-eingang');
+    expect(z.faelle).toBeNull();
+    expect(z.ohneEingang).toBe(true);
+  });
+
+  it('Zahlung nach Fristende: Skonto nicht verwirklicht, Steuer des Falls ohne Skonto, offen 226,30', () => {
+    const z = variante('ar1-zahlung-nach-fristende');
+    expect(z.geltend.map((x) => [x.schluessel, x.betrag])).toEqual([
+      ['zahlbetrag', '8874.40'],
+      ['skonto', '0.00'],
+      ['bauabzugsteuer', '1331.16'],
+      ['auszahlung', '7543.24'],
+      ['summeZahlungen', '7316.94'],
+      ['offen', '226.30'],
+    ]);
+  });
+});
+
+describe('Stand des Skontos: Bildschirm und PDF nach einer Regel (Ticket 163)', () => {
+  const variante = (name: string) => {
+    const v = A5_VARIANTEN.find((x) => x.name === name);
+    if (v === undefined) throw new Error(name);
+    return v;
+  };
+  const bildschirm = (name: string, heute: string): string | undefined => {
+    const v = variante(name);
+    return zahlungsfreigabe(v.rechnung, v.zahlungsstand, heute as Kalenderdatum).geltend.find(
+      (z) => z.schluessel === 'skonto',
+    )?.bezeichnung;
+  };
+  const pdf = (name: string, heute: string): string => {
+    const v = variante(name);
+    return skontoStandText(v.zahlungsstand, v.rechnung.zahlungen ?? [], heute);
+  };
+
+  it('eine Zahlung nach dem Fristende beendet die Frist, auch wenn die Uhr der App noch davor steht', () => {
+    // Fristende 2026-11-13, Zahlung am 2026-11-14 erfasst.
+    expect(bildschirm('ar1-zahlung-nach-fristende', '2026-11-13')).toBe('Skonto (nicht verwirklicht)');
+    expect(bildschirm('ar1-zahlung-nach-fristende', '2026-11-01')).toBe('Skonto (nicht verwirklicht)');
+  });
+
+  it('ohne Eingangsdatum ist der Skonto noch nicht endgültig verfehlt: das Datum lässt sich nachtragen (D-163.1)', () => {
+    expect(bildschirm('ar2-ohne-eingang', '2099-12-31')).toBe('Skonto (noch nicht verwirklicht)');
+  });
+
+  it('für dieselben Eingaben derselbe Text auf Bildschirm und im PDF', () => {
+    const tage = ['2026-11-01', '2026-11-12', '2026-11-13', '2026-11-14', '2026-12-31', '2099-12-31'];
+    for (const name of ['ar1-zahlung-nach-fristende', 'ar1-ueberzahlung', 'ar2-ohne-eingang'])
+      for (const heute of tage) expect(bildschirm(name, heute), `${name} ${heute}`).toBe(pdf(name, heute));
+  });
+});
+
+describe('Befunde des Zahlungsstands als Text (U5, D-97)', () => {
+  const bezug = { oz: (id: string) => id, blatt: (id: string) => id };
+  const texte = (name: string): string[] =>
+    (A5_VARIANTEN.find((v) => v.name === name)?.befunde ?? []).map((b) => befundtext(b, bezug));
+
+  it('Überzahlung nennt den negativen offenen Betrag und den nächsten Schritt', () => {
+    expect(texte('ar1-ueberzahlung')).toEqual([
+      'Gezahlt wurde mehr als die Auszahlung an den Auftragnehmer (offen -50,00 €). Bitte die Zahlungen prüfen.',
+    ]);
+  });
+
+  it('Skonto ohne Eingangsdatum sagt, wo das Datum nachzutragen ist', () => {
+    expect(texte('ar2-ohne-eingang')).toEqual([
+      'Skonto vereinbart, aber kein Eingangsdatum: Ohne Skontofrist gibt es keinen Skonto. Das Eingangsdatum lässt sich unter „Angaben bearbeiten“ nachtragen.',
+    ]);
+  });
+});

@@ -6,6 +6,8 @@
 
 import type {
   Ansatzzeile,
+  Aufmass,
+  AufmassId,
   Bauwerksmodell,
   IfcGlobalId,
   Knoten,
@@ -97,4 +99,41 @@ export function aufmassAusAuswahl(
     befunde: positionen.flatMap((p) => p.befunde),
     hinweise: ['bauteil-auf-mehreren-blaettern-nicht-erkennbar'],
   };
+}
+
+/**
+ * Eine Position des Vorschlags, die schon auf einem anderen Blatt steht (Ticket 155, Befund B-32): Ob dort dieselben Bauteile
+ * gemessen sind, ist nicht erkennbar (eine Ansatzzeile trägt keine GlobalId, D-53); sicher ist nur, dass die Position schon
+ * eine Menge hat. Die App zeigt das als Hinweis vor dem Anlegen.
+ */
+export interface Aufmassueberschneidung {
+  readonly positionId: PositionId;
+  /** Die anderen Blätter mit einer Zeile dieser Position, nach Blattnummer. */
+  readonly blaetter: readonly {
+    readonly aufmassId: AufmassId;
+    readonly nummer: number;
+    readonly menge: Menge | null;
+  }[];
+}
+
+/**
+ * Welche Positionen des Vorschlags mit Zeilen (also die, die das neue Blatt aufmisst) schon auf einem der übergebenen
+ * Blätter stehen; erwartet die Blätter desselben Auftrags-LV. Reihenfolge der Positionen wie im Vorschlag.
+ */
+export function aufmassUeberschneidungen(
+  vorschlag: AufmassAusAuswahl,
+  blaetter: readonly Aufmass[],
+): Aufmassueberschneidung[] {
+  const geordnet = [...blaetter].sort((a, b) => a.nummer - b.nummer);
+  const ergebnis: Aufmassueberschneidung[] = [];
+  for (const v of vorschlag.positionen) {
+    if (v.zeilen.length === 0) continue;
+    const treffer = geordnet.flatMap((b) =>
+      b.positionen
+        .filter((z) => z.positionId === v.positionId)
+        .map((z) => ({ aufmassId: b.id, nummer: b.nummer, menge: z.menge })),
+    );
+    if (treffer.length > 0) ergebnis.push({ positionId: v.positionId, blaetter: treffer });
+  }
+  return ergebnis;
 }

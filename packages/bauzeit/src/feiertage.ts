@@ -10,8 +10,8 @@
 // Genannt sind die Feiertage mit Namen im Gesetz. Hessen zählt dort alle Sonntage zu den Feiertagen; Sonntage regeln hier
 // die Arbeitstage des Kalenders, nicht die Feiertagsliste.
 
-import type { Bundesland } from '@tethys/vertrag';
-import type { Datum, Tagnummer } from './datum';
+import type { Bundesland, Kalenderdatum } from '@tethys/vertrag';
+import type { Tagnummer } from './datum';
 import { datumAusTagnummer, tagnummerAusZivil, wochentagVon } from './datum';
 
 export type Feiertagskennung =
@@ -36,18 +36,18 @@ export type Feiertagskennung =
   | 'zweiter-weihnachtstag';
 
 export interface Feiertag {
-  readonly datum: Datum;
+  readonly datum: Kalenderdatum;
   readonly kennung: Feiertagskennung;
   /** Gebräuchlicher Name, z. B. „Tag der Deutschen Einheit“. */
   readonly name: string;
 }
 
-type Lage =
+type Feiertagslage =
   | { readonly art: 'fest'; readonly monat: number; readonly tag: number }
   | { readonly art: 'ostern'; readonly abstand: number } // Tage nach Ostersonntag
   | { readonly art: 'buss-und-bettag' }; // Mittwoch vor dem 23. November
 
-const REGELN: Readonly<Record<Feiertagskennung, { readonly name: string; readonly lage: Lage }>> = {
+const REGELN: Readonly<Record<Feiertagskennung, { readonly name: string; readonly lage: Feiertagslage }>> = {
   neujahr: { name: 'Neujahr', lage: { art: 'fest', monat: 1, tag: 1 } },
   'heilige-drei-koenige': { name: 'Heilige Drei Könige', lage: { art: 'fest', monat: 1, tag: 6 } },
   frauentag: { name: 'Internationaler Frauentag', lage: { art: 'fest', monat: 3, tag: 8 } },
@@ -190,7 +190,7 @@ function jahrPruefen(jahr: number): void {
 }
 
 /** Ostersonntag als Tagnummer (Verfahren von Meeus/Jones/Butcher für den gregorianischen Kalender). */
-export function ostersonntagTagnummer(jahr: number): Tagnummer {
+function ostersonntagTagnummer(jahr: number): Tagnummer {
   jahrPruefen(jahr);
   const a = jahr % 19;
   const b = Math.floor(jahr / 100);
@@ -210,11 +210,11 @@ export function ostersonntagTagnummer(jahr: number): Tagnummer {
 }
 
 /** Ostersonntag eines Jahres (1 bis 9999) nach der gregorianischen Osterformel. */
-export function ostersonntag(jahr: number): Datum {
+export function ostersonntag(jahr: number): Kalenderdatum {
   return datumAusTagnummer(ostersonntagTagnummer(jahr));
 }
 
-function tagnummerDerLage(lage: Lage, jahr: number, ostern: () => Tagnummer): Tagnummer {
+function tagnummerDerLage(lage: Feiertagslage, jahr: number, ostern: () => Tagnummer): Tagnummer {
   switch (lage.art) {
     case 'fest':
       return tagnummerAusZivil(jahr, lage.monat, lage.tag);

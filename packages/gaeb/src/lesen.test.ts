@@ -363,11 +363,13 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
         abnahmeart: null,
         gewaehrleistung: null,
       });
-      const nicht = l.befunde.filter((b) => b.code === 'nicht-abgebildet').map((b) => b.meldung);
-      expect(nicht.some((m) => m.includes('Award/OWN '))).toBe(false);
-      expect(nicht.some((m) => m.includes('Award/AwardInfo '))).toBe(false);
-      expect(nicht.some((m) => m.includes('OWN/DPNo'))).toBe(true);
-      expect(nicht.some((m) => m.includes('AwardInfo/Cur '))).toBe(true);
+      const nicht = l.befunde
+        .filter((b) => b.code === 'nicht-abgebildet')
+        .map((b) => b.werte?.['element']?.wert);
+      expect(nicht).not.toContain('Award/OWN');
+      expect(nicht).not.toContain('Award/AwardInfo');
+      expect(nicht).toContain('OWN/DPNo');
+      expect(nicht).toContain('AwardInfo/Cur');
     });
 
     it('Texterstellung X81: ohne OWN fehlt der Auftraggeber', () => {
@@ -410,19 +412,17 @@ describe('amtliche 3.3-Dateien (X81/X83)', () => {
 // --- Version 3.1, andere Phasen ---------------------------------------------------------------------------
 
 describe('Version 3.1 und andere Phasen', () => {
-  const dateien31 = readdirSync(join(HIER, '..', '..', '..', 'fixtures/extern/gaeb/3.1-musterdateien'));
-  for (const d of dateien31) {
-    it(`3.1 ${d}: kein Absturz, Version 3.1 nicht unterstützt, kein Inhalt`, () => {
-      const l = lies(lesePfad(`fixtures/extern/gaeb/3.1-musterdateien/${d}`), d);
-      expect(l.version).toBe('3.1');
-      expect(l.inhalt).toBeNull();
-      const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
-      expect(b?.schwere).toBe('fehler');
-      expect(b?.meldung).toContain('3.1');
-    });
-  }
+  // Das Lesen der 3.1-Musterdateien prüft `version-31.test.ts` (Ticket 129).
+  it('3.1 X84 (Angebot): Phase nicht in diesem Leser, kein Inhalt', () => {
+    const d = 'Musterdatei_3.1_2008-001.X84';
+    const l = lies(lesePfad(`fixtures/extern/gaeb/3.1-musterdateien/${d}`), d);
+    expect([l.phase, l.version]).toEqual(['X84', '3.1']);
+    expect(l.inhalt).toBeNull();
+    expect(codes(l)).toContain('phase-nicht-unterstuetzt');
+    expect(codes(l)).not.toContain('version-nicht-unterstuetzt');
+  });
 
-  it('3.1-Datei: Phase wird trotzdem aus Award/DP erkannt', () => {
+  it('3.1-Datei ohne Dateiname: Phase aus Award/DP', () => {
     const l = lies(lesePfad('fixtures/extern/gaeb/3.1-musterdateien/Musterdatei_3.1_2008-001.X83'));
     expect(l.phase).toBe('X83');
   });
@@ -650,11 +650,23 @@ describe('Version und Phase: Reihenfolge Namensraum, GAEBInfo/Version, Award/DP,
     expect(codes(l)).not.toContain('version-nicht-unterstuetzt');
   });
 
-  it('3.1 wird erkannt, aber nicht gelesen (G4)', () => {
-    const l = lies(mini(null, '3.1', '83'));
+  it('3.1 wird gelesen wie 3.3, am gemeinsamen Namensraum erkannt (Ticket 129)', () => {
+    const l = lies(mini('http://www.gaeb.de/GAEB_DA_XML/200407', '3.1', '83'));
     expect(l.version).toBe('3.1');
+    expect(l.phase).toBe('X83');
+    expect(positionen(l)).toHaveLength(1);
+    expect(codes(l)).not.toContain('version-nicht-unterstuetzt');
+    expect(codes(l)).not.toContain('namespace-unbekannt');
+  });
+
+  it('älter als 3.1 wird erkannt, aber nicht gelesen; die Meldung nennt die gelesenen Versionen', () => {
+    const l = lies(mini(null, '3.0', '83'));
+    expect(l.version).toBeNull();
     expect(l.inhalt).toBeNull();
-    expect(codes(l)).toContain('version-nicht-unterstuetzt');
+    const b = l.befunde.find((x) => x.code === 'version-nicht-unterstuetzt');
+    expect(b?.schwere).toBe('fehler');
+    // Ticket 136: der Satz sagt auch, was stattdessen geht (abweisung.test.ts).
+    expect(b?.meldung).toContain('Gelesen werden die Versionen 3.1, 3.2 und 3.3');
   });
 
   it('fremder Namensraum und fremdes Wurzelelement', () => {
@@ -871,5 +883,115 @@ describe('v1.3: EPA-Bezeichnungen aus LblUPComp (X81, X83, X86)', () => {
       mitBeschriftung('86', '<NoUPComps>6</NoUPComps><LblUPComp6 Type="Unknown">Wagnis</LblUPComp6>'),
     );
     expect(l.inhalt?.epaBezeichnungen).toEqual([{ nummer: 6, anteil: 'frei', bezeichnung: 'Wagnis' }]);
+  });
+});
+
+// --- Angaben an Bereichen und in Totals, die der Vertrag nicht kennt (Ticket 129) --------------------------------
+
+describe('Bereich als Wahl, Nachlass, Pauschalsumme und Steuersatz eines Bereichs: Befund am Knoten', () => {
+  const bereich = (inhalt: string, totals: string): string =>
+    `<BoQCtgy ID="b" RNoPart="1"><LblTx><p><span>Bereich</span></p></LblTx>${inhalt}<BoQBody><Itemlist>` +
+    `<Item ID="i" RNoPart="0010"><Qty>2.000</Qty><QU>St</QU><UP>10.000</UP><IT>20.00</IT></Item></Itemlist></BoQBody>` +
+    `${totals}</BoQCtgy>`;
+  const x86 = (ctgy: string, lvTotals: string): string =>
+    `<GAEB xmlns="http://www.gaeb.de/GAEB_DA_XML/DA86/3.3"><GAEBInfo><Version>3.3</Version></GAEBInfo><Award><DP>86</DP>` +
+    `<BoQ><BoQInfo><BoQBkdn><Type>BoQLevel</Type><Length>1</Length><Num>Yes</Num></BoQBkdn>` +
+    `<BoQBkdn><Type>Item</Type><Length>4</Length><Num>Yes</Num></BoQBkdn><Totals>${lvTotals}</Totals></BoQInfo>` +
+    `<BoQBody>${ctgy}</BoQBody></BoQ></Award></GAEB>`;
+  const amBereich = (l: GaebLesungErgebnis): [string, string][] => {
+    const titel = knoten(l).find((k) => k.art === 'titel');
+    return l.befunde.filter((b) => b.ort.knotenId === titel?.id).map((b) => [b.code, b.meldung]);
+  };
+
+  it('Nachlass in Prozent, Pauschalsumme und abweichender Steuersatz', () => {
+    const l = lies(
+      x86(
+        bereich(
+          '',
+          '<Totals><Total>20.00</Total><DiscountPcnt>10.00</DiscountPcnt><TotAfterDisc>18.00</TotAfterDisc>' +
+            '<TotalLSUM>15.00</TotalLSUM><VAT>7.00</VAT></Totals>',
+        ),
+        '<Total>15.00</Total><VAT>19.00</VAT>',
+      ),
+    );
+    expect(amBereich(l)).toEqual([
+      [
+        'nachlass-nicht-abgebildet',
+        'Nachlass 10,00 % der Gliederung 1: Ein Nachlass gilt nur für das ganze LV; die Summen werden ohne diesen Nachlass gerechnet.',
+      ],
+      [
+        'pauschalsumme-nicht-abgebildet',
+        'Pauschalsumme 15,00 € der Gliederung 1: Eine Pauschalsumme für eine Gliederung wird nicht übernommen; die Summe wird aus den Positionen gerechnet.',
+      ],
+      [
+        'mwst-satz-abweichend',
+        'Steuersatz 7,00 % der Gliederung 1 weicht vom Satz des LV (19,00 %) ab; ein LV hat genau einen Steuersatz, es gilt der des LV.',
+      ],
+    ]);
+    // Ticket 136: dieselben Werte als Daten, die OZ der Gliederung am Befund.
+    const titel = knoten(l).find((k) => k.art === 'titel');
+    expect(l.befunde.filter((b) => b.ort.knotenId === titel?.id).map((b) => [b.oz, b.werte])).toEqual([
+      ['1', { nachlass: { art: 'prozent', wert: '10.00' } }],
+      ['1', { pauschalsumme: { art: 'betrag', wert: '15.00' } }],
+      ['1', { satz: { art: 'prozent', wert: '7.00' }, satzLv: { art: 'prozent', wert: '19.00' } }],
+    ]);
+  });
+
+  it('Nachlass als Betrag; Steuersatz gleich dem des LV ist kein Befund', () => {
+    const l = lies(
+      x86(
+        bereich('', '<Totals><Total>20.00</Total><DiscountAmt>5.00</DiscountAmt><VAT>19.0</VAT></Totals>'),
+        '<Total>15.00</Total><VAT>19.00</VAT>',
+      ),
+    );
+    expect(amBereich(l).map(([c, m]) => [c, m.split(':')[0]])).toEqual([
+      ['nachlass-nicht-abgebildet', 'Nachlass 5,00 € der Gliederung 1'],
+    ]);
+  });
+
+  it('Bereich als Wahl', () => {
+    const l = lies(
+      x86(
+        bereich(
+          '<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>1</ALNBSerNo>',
+          '<Totals><Total>20.00</Total></Totals>',
+        ),
+        '<Total>0.00</Total><VAT>19.00</VAT>',
+      ),
+    );
+    expect(amBereich(l)).toEqual([
+      [
+        'gliederungswahl-nicht-abgebildet',
+        'Die Gliederung 1 ist eine Wahl (Gruppe 100, Variante 1). Eine Wahl gibt es nur an einzelnen Positionen; ' +
+          'die Positionen der Gliederung werden ohne Wahl gelesen und gehen in die Summen ein.',
+      ],
+    ]);
+    expect(codes(l)).not.toContain('nicht-abgebildet');
+    const grund = lies(
+      x86(
+        bereich(
+          '<ALNBGroupNo>100</ALNBGroupNo><ALNBSerNo>0</ALNBSerNo>',
+          '<Totals><Total>20.00</Total></Totals>',
+        ),
+        '<Total>20.00</Total><VAT>19.00</VAT>',
+      ),
+    );
+    expect(amBereich(grund)).toEqual([
+      [
+        'gliederungswahl-nicht-abgebildet',
+        'Die Gliederung 1 ist die Grundausführung einer Wahl (Gruppe 100). Eine Wahl gibt es nur an einzelnen Positionen; ' +
+          'die Positionen der Gliederung werden ohne Wahl gelesen.',
+      ],
+    ]);
+  });
+
+  it('Pauschalsumme des LV', () => {
+    const l = lies(x86(bereich('', ''), '<Total>20.00</Total><TotalLSUM>18.00</TotalLSUM><VAT>19.00</VAT>'));
+    const b = l.befunde.find((x) => x.code === 'pauschalsumme-nicht-abgebildet');
+    expect(b?.meldung).toBe(
+      'Pauschalsumme 18,00 € des LV: Eine Pauschalsumme wird nicht übernommen; die Summe wird aus den Positionen gerechnet.',
+    );
+    expect(b?.werte).toEqual({ pauschalsumme: { art: 'betrag', wert: '18.00' } });
+    expect(b?.schwere).toBe('warnung');
   });
 });

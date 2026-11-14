@@ -19,6 +19,7 @@ import type {
   Prozent,
 } from '@tethys/vertrag';
 import { zahlLesen } from '../lv/zahlen';
+import type { Feldfehler } from '../ui/feldfehler';
 import { texte } from './texte';
 
 export const LEISTUNGSBILDER_LISTE: readonly Leistungsbild[] = [
@@ -67,10 +68,7 @@ export interface ObjektFormular {
   readonly umbauzuschlagssatz: string;
 }
 
-export interface Feldfehler {
-  readonly feld: string;
-  readonly meldung: string;
-}
+export type { Feldfehler };
 
 const NULL_BETRAG_DE = formatiereBetragDe('0.00' as Betrag);
 

@@ -28,6 +28,9 @@ import type {
   MangelId,
   MangelZustand,
   ChangeSet,
+  Einstellungen,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   KostenermittlungId,
   KostenermittlungUebersicht,
   KostenermittlungZustand,
@@ -42,21 +45,26 @@ import type {
   LvUebersicht,
   LvZustand,
   Projekt,
+  ProjektdateiEinleseergebnis,
   ProjektId,
   Projektuebersicht,
   Protokolleintrag,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { aggregatDes, wendeAn, type AggregatChangeSet } from './aggregatarten';
 import { abbruch, fehler, ok } from './ergebnis';
 import { fange, fehlerAusAusnahme } from './fehler';
 import { kanonischesJson } from './kanonisch';
 import { deflateRaw, inflateRaw, sha256Hex } from './komprimierung';
 import { protokollform } from './kurzfassung';
+import { wendeProjektbestandAn } from './projektbestand';
 import {
   leseAngebot,
   leseAufmass,
   leseAuftragsLv,
   leseBautagebucheintrag,
+  leseEinstellungen,
+  leseEinstellungsprotokoll,
   leseBauwerksmodell,
   leseBauzeitenplan,
   leseHonorarberechnung,
@@ -91,59 +99,50 @@ import {
   leseProjektdatei,
   pruefeModelldateienDerDatei,
   schreibeProjektdatei,
+  uebernimmEinstellungenDerDatei,
 } from './projektdatei';
+import type { Kennungsbedarf, Kennungsvorrat } from './kennungen';
+import { alsKopie, kennungsbedarf } from './kopie';
 import {
   gibUngenutzteModelldateienFrei,
   schreibeModelldatei,
   schreibeProtokolleintrag,
-  wendeAngebotAn,
-  wendeAufmassAn,
-  wendeAuftragsLvAn,
-  wendeBautagebucheintragAn,
-  wendeBauwerksmodellAn,
-  wendeBauzeitenplanAn,
-  wendeHonorarberechnungAn,
-  wendeMangelAn,
-  wendeKostenermittlungAn,
-  wendeLvAn,
-  wendeProjektAn,
-  wendeRechnungAn,
+  schreibeEinstellungsprotokolleintrag,
+  wendeEinstellungenAn,
 } from './schreiben';
-import { transaktion, type Datenbank } from './sql';
+import { transaktion, type Datenbank, type SqlZeile } from './sql';
 import type { Migrationsbefund } from './summenmigration';
 
-/** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
-function aggregatDes(cs: ChangeSet): { art: string; id: string } {
-  switch (cs.art) {
-    case 'projekt':
-      return { art: cs.art, id: cs.projektId };
-    case 'leistungsverzeichnis':
-      return { art: cs.art, id: cs.leistungsverzeichnisId };
-    case 'angebot':
-      return { art: cs.art, id: cs.angebotId };
-    case 'auftrags-leistungsverzeichnis':
-      return { art: cs.art, id: cs.auftragsLeistungsverzeichnisId };
-    case 'aufmass':
-      return { art: cs.art, id: cs.aufmassId };
-    case 'rechnung':
-      return { art: cs.art, id: cs.rechnungId };
-    case 'kostenermittlung':
-      return { art: cs.art, id: cs.kostenermittlungId };
-    case 'bauwerksmodell':
-      return { art: cs.art, id: cs.bauwerksmodellId };
-    case 'bauzeitenplan':
-      return { art: cs.art, id: cs.bauzeitenplanId };
-    case 'honorarberechnung':
-      return { art: cs.art, id: cs.honorarberechnungId };
-    case 'mangel':
-      return { art: cs.art, id: cs.mangelId };
-    case 'bautagebucheintrag':
-      return { art: cs.art, id: cs.bautagebucheintragId };
-  }
+/**
+ * Optionen von `SpeicherKern.projektdateiEinlesen`: wie `ProjektdateiEinleseoptionen` des Vertrags, die Kennungen der Kopie aber
+ * als Daten (`Kennungsvorrat`), weil die `IdQuelle` nicht über die Grenze zum Worker kommt (der Client zieht sie, `client.ts`).
+ */
+export interface Einleseoptionen {
+  readonly alsKopie?: { readonly kennungen: Kennungsvorrat; readonly name: string };
+  /** Wie im Vertrag (D-82 M1): Kopf des Eintrags, unter dem die Übernahme der Einstellungen ins Einstellungsprotokoll geht. */
+  readonly einstellungsuebernahme?: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'>;
+}
+
+/**
+ * `Rueckgaengig` und `Wiederholen` im Einstellungsprotokoll (D-82 M1, wie `pruefeHistorienbezug` beim Projekt): `protokollId`
+ * muss auf einen ursprünglichen Befehl in diesem Protokoll zeigen, nicht auf einen anderen Historienbefehl; sonst `konflikt`.
+ */
+function pruefeEinstellungshistorie(db: Datenbank, e: EinstellungenProtokolleintrag): void {
+  const b = e.befehl;
+  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
+  const z = db.zeilen(`SELECT ${ARTEN_DES_BEFEHLS} FROM einstellungen_protokoll WHERE id = ?`, [
+    b.protokollId,
+  ])[0];
+  if (z === undefined || istHistorienbefehl(z))
+    abbruch(
+      'konflikt',
+      `Konflikt: ${b.art} verweist auf ${b.protokollId}, keinen ursprünglichen Befehl im Einstellungsprotokoll; ` +
+        'es wurde nichts geschrieben.',
+    );
 }
 
 /** Prüft, dass der Protokolleintrag zum ChangeSet passt: gleiches Aggregat, gleiches Projekt. */
-function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
+function pruefeBezug(e: Protokolleintrag, cs: AggregatChangeSet): void {
   const erwartet = aggregatDes(cs);
   if (e.aggregat.art !== erwartet.art || e.aggregat.id !== erwartet.id) {
     abbruch(
@@ -166,19 +165,20 @@ function pruefeBezug(e: Protokolleintrag, cs: ChangeSet): void {
  * Ausnahme (D-31.1): Ein ChangeSet, das das Projekt anlegt, findet den Eintrag nicht mehr, weil das Löschen des Projekts
  * sein Protokoll mitnahm. Sein Verweis wird nicht geprüft.
  */
-function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet): void {
+function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: AggregatChangeSet): string | null {
   const b = e.befehl;
-  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return;
-  if (cs.art === 'projekt' && cs.projekt.vorher === null) return;
-  const z = db.zeilen('SELECT projekt_id, aggregat_art, aggregat_id, befehl FROM protokoll WHERE id = ?', [
-    b.protokollId,
-  ])[0];
+  if (b.art !== 'Rueckgaengig' && b.art !== 'Wiederholen') return null;
+  if (cs.art === 'projekt' && cs.projekt.vorher === null) return null;
+  const z = db.zeilen(
+    `SELECT projekt_id, aggregat_art, aggregat_id, ${ARTEN_DES_BEFEHLS} FROM protokoll WHERE id = ?`,
+    [b.protokollId],
+  )[0];
   const passt =
     z !== undefined &&
     z['projekt_id'] === e.projektId &&
     z['aggregat_art'] === e.aggregat.art &&
     z['aggregat_id'] === e.aggregat.id &&
-    !istHistorienbefehl(String(z['befehl']));
+    !istHistorienbefehl(z);
   if (!passt) {
     abbruch(
       'konflikt',
@@ -186,13 +186,29 @@ function pruefeHistorienbezug(db: Datenbank, e: Protokolleintrag, cs: ChangeSet)
         `${e.aggregat.id} in diesem Projekt; es wurde nichts geschrieben.`,
     );
   }
+  return artDesBefehls(z);
 }
 
-/** Ist der gespeicherte Befehl (JSON) ein `Rueckgaengig` oder `Wiederholen`? */
-function istHistorienbefehl(json: string): boolean {
-  const art = (JSON.parse(json) as { art?: unknown }).art;
-  return art === 'Rueckgaengig' || art === 'Wiederholen';
+/**
+ * Die Art eines gespeicherten Befehls ohne ihn ganz zu lesen (ein Befehl kann groß sein, etwa 5.000 Bauteilzuordnungen): SQLite
+ * liest `art` und bei einer Kurzfassung `kopf.art` aus dem JSON.
+ */
+const ARTEN_DES_BEFEHLS = `json_extract(befehl, '$.art') AS befehlsart, json_extract(befehl, '$.kopf.art') AS kopfart`;
+
+/** Die Art des Befehls einer Zeile mit `ARTEN_DES_BEFEHLS`; bei einer Kurzfassung die des Massenbefehls. */
+function artDesBefehls(z: SqlZeile | undefined): string | null {
+  const art = z?.['befehlsart'] === 'Befehlskurzfassung' ? z['kopfart'] : z?.['befehlsart'];
+  return typeof art === 'string' ? art : null;
 }
+
+/** Ist der gespeicherte Befehl der Zeile (mit `ARTEN_DES_BEFEHLS`) ein `Rueckgaengig` oder `Wiederholen`? */
+function istHistorienbefehl(z: SqlZeile): boolean {
+  return z['befehlsart'] === 'Rueckgaengig' || z['befehlsart'] === 'Wiederholen';
+}
+
+/** Die Art des Befehls eines Eintrags; bei einer Kurzfassung die des Massenbefehls. */
+const befehlsart = (e: Protokolleintrag): string =>
+  e.befehl.art === 'Befehlskurzfassung' ? e.befehl.kopf.art : e.befehl.art;
 
 /**
  * Grenze der exportierten Projektdatei in Zeichen (D-51, D-106.6): 500.000.000, mit Abstand unter der größten Zeichenkette von
@@ -593,54 +609,67 @@ export class SpeicherKern {
     } catch (x) {
       return { ok: false, fehler: fehlerAusAusnahme(x) };
     }
+    // Vertrag v1.7c (Ticket 161, D-96): Projekt samt Inhalt löschen und sein Undo, je in einer Transaktion.
+    if (changeSet.art === 'projektbestand') {
+      const version = this.#migrationen[this.#migrationen.length - 1]?.version ?? 0;
+      return this.#fange(() => {
+        transaktion(this.#db, () => {
+          // Kein `pruefeHistorienbezug`: Der Eintrag des Löschens wird nie gespeichert (D-160.5, D-160.6, wie D-31.1).
+          if (wendeProjektbestandAn(this.#db, eintrag, changeSet, version))
+            schreibeProtokolleintrag(this.#db, eintrag);
+        });
+      });
+    }
     return this.#fange(() => {
       transaktion(this.#db, () => {
         pruefeBezug(eintrag, changeSet);
-        pruefeHistorienbezug(this.#db, eintrag, changeSet);
-        switch (changeSet.art) {
-          case 'projekt':
-            wendeProjektAn(this.#db, changeSet);
-            break;
-          case 'leistungsverzeichnis':
-            wendeLvAn(this.#db, changeSet, eintrag.projektId, eintrag.wann);
-            break;
-          case 'angebot':
-            wendeAngebotAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'auftrags-leistungsverzeichnis':
-            wendeAuftragsLvAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'aufmass':
-            wendeAufmassAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'rechnung':
-            wendeRechnungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'kostenermittlung':
-            wendeKostenermittlungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bauwerksmodell':
-            wendeBauwerksmodellAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bauzeitenplan':
-            wendeBauzeitenplanAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'honorarberechnung':
-            wendeHonorarberechnungAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'mangel':
-            wendeMangelAn(this.#db, changeSet, eintrag.projektId);
-            break;
-          case 'bautagebucheintrag':
-            wendeBautagebucheintragAn(this.#db, changeSet, eintrag.projektId);
-            break;
-        }
+        // Der Anlass des Schreibens (`Schreibanlass`): bei Rückgängig und Wiederholen mit der Art des ursprünglichen Befehls.
+        const ursprung = pruefeHistorienbezug(this.#db, eintrag, changeSet);
+        wendeAn(this.#db, changeSet, eintrag.projektId, {
+          wann: eintrag.wann,
+          befehl: befehlsart(eintrag),
+          ursprung,
+        });
         // Mit dem Projekt ist auch sein Protokoll gelöscht; der Eintrag des Löschbefehls hat kein Projekt mehr, dem er
         // gehören könnte (siehe `wendeProjektAn`, D-31.1).
         const projektGeloescht = changeSet.art === 'projekt' && changeSet.projekt.nachher === null;
         if (!projektGeloescht) schreibeProtokolleintrag(this.#db, eintrag);
       });
     });
+  }
+
+  // --- Einstellungen des Geräts (v1.7a, D-73, D-127.8; `EinstellungenRepository`) ---------------------------------------
+
+  /** `EinstellungenRepository.laden`: ohne gespeicherte Einstellungen `LEERE_EINSTELLUNGEN` (kein `nicht-gefunden`). */
+  einstellungenLaden(): Ergebnis<Einstellungen, Speicherfehler> {
+    return this.#fange(() => leseEinstellungen(this.#db));
+  }
+
+  /**
+   * `EinstellungenRepository.anwenden` (D-82 M1): Eintrag des Einstellungsprotokolls und ChangeSet in einer Transaktion, genau
+   * ein Eintrag je Befehl (A5, ADR 0009); `konflikt` bei abweichendem Vorherstand oder einem `Rueckgaengig`/`Wiederholen`, das
+   * auf keinen ursprünglichen Eintrag zeigt, und dann nichts geschrieben (Q5). Läuft in der Reihe von `anwenden`.
+   */
+  einstellungenAnwenden(
+    eintrag: EinstellungenProtokolleintrag,
+    changeSet: EinstellungenChangeSet,
+  ): Promise<Ergebnis<void, Speicherfehler>> {
+    const lauf = this.#reihe.then(() =>
+      this.#fange(() => {
+        transaktion(this.#db, () => {
+          pruefeEinstellungshistorie(this.#db, eintrag);
+          wendeEinstellungenAn(this.#db, changeSet);
+          schreibeEinstellungsprotokolleintrag(this.#db, eintrag);
+        });
+      }),
+    );
+    this.#reihe = lauf;
+    return lauf;
+  }
+
+  /** `EinstellungenRepository.protokoll` (D-82 M1): das Einstellungsprotokoll, ältester Eintrag zuerst. */
+  einstellungenProtokoll(): Ergebnis<readonly EinstellungenProtokolleintrag[], Speicherfehler> {
+    return this.#fange(() => leseEinstellungsprotokoll(this.#db));
   }
 
   // --- Projektdatei -----------------------------------------------------------------------------------------
@@ -680,20 +709,53 @@ export class SpeicherKern {
   }
 
   /**
-   * Importiert atomar. Existiert das Projekt schon, wird nichts überschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien
-   * prüft der Import vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei
-   * `datei-ungueltig`. Läuft in der Reihe von `anwenden` (ein Schreiber).
+   * Importiert atomar (`Speicher.projektdateiImportieren`): wie `projektdateiEinlesen` ohne Optionen, ohne Bericht. Existiert
+   * das Projekt schon, wird nichts überschrieben (Q5).
    */
-  projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
-    const lauf = this.#reihe.then(() => this.#importierenDann(inhalt));
+  async projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+    const r = await this.projektdateiEinlesen(inhalt);
+    return r.ok ? ok(r.wert.projektId) : r;
+  }
+
+  /**
+   * Wie viele neue Kennungen je Art eine Kopie der Datei braucht (v1.7a, D-127.10). Der Client zieht sie aus der `IdQuelle` der
+   * App und gibt sie `projektdateiEinlesen` mit (Funktionen kommen nicht über die Grenze zum Worker). Liest die Datei wie das
+   * Einlesen selbst (gleiche Fehler), schreibt nichts.
+   */
+  projektdateiKennungsbedarf(inhalt: string): Ergebnis<Kennungsbedarf, Speicherfehler> {
+    if (this.#geschlossen) return GESCHLOSSEN();
+    const datei = leseProjektdatei(inhalt, this.#migrationen);
+    return datei.ok ? this.#fange(() => kennungsbedarf(datei.wert)) : datei;
+  }
+
+  /**
+   * `Speicher.projektdateiEinlesen` (v1.7a, D-127.9, D-127.10): liest atomar ein, wahlweise als Kopie (neue Kennungen aus
+   * `optionen.alsKopie.kennungen`, siehe `kopie.ts`), und übernimmt aus dem Block `einstellungen` nur Fehlendes je Schlüssel. Der
+   * Bericht sagt, was übernommen und was belassen wurde (`null`: die Datei trägt keinen Block). Ohne Kopie und mit vorhandenem
+   * Projekt derselben Kennung: `existiert-bereits`, nichts geschrieben (Q5). v1.6 (D-51): Die Bytes der Modelldateien prüft das
+   * Einlesen vor der Transaktion (SHA-256 über Web Crypto, asynchron); passt einer nicht, ist die ganze Datei `datei-ungueltig`.
+   * Läuft in der Reihe von `anwenden` (ein Schreiber).
+   */
+  projektdateiEinlesen(
+    inhalt: string,
+    optionen: Einleseoptionen = {},
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> {
+    const lauf = this.#reihe.then(() => this.#einlesenDann(inhalt, optionen));
     this.#reihe = lauf;
     return lauf;
   }
 
-  async #importierenDann(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>> {
+  async #einlesenDann(
+    inhalt: string,
+    optionen: Einleseoptionen,
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> {
     if (this.#geschlossen) return GESCHLOSSEN();
     const befunde: Migrationsbefund[] = [];
-    const datei = leseProjektdatei(inhalt, this.#migrationen, befunde);
+    const gelesen = leseProjektdatei(inhalt, this.#migrationen, befunde);
+    if (!gelesen.ok) return gelesen;
+    const kopie = optionen.alsKopie;
+    const datei =
+      kopie === undefined ? gelesen : fange(() => alsKopie(gelesen.wert, kopie.kennungen, kopie.name));
     if (!datei.ok) return datei;
     let bytes: Awaited<ReturnType<typeof pruefeModelldateienDerDatei>>;
     try {
@@ -704,14 +766,22 @@ export class SpeicherKern {
     // Während des Wartens auf die Prüfsummen kann `schliessen` gekommen sein (es läuft nicht in der Reihe).
     if (this.#istGeschlossen()) return GESCHLOSSEN();
     const r = fange(() =>
-      transaktion(this.#db, () => {
+      transaktion(this.#db, (): ProjektdateiEinleseergebnis => {
         if (leseProjekt(this.#db, datei.wert.projekt.id) !== null) {
           abbruch(
             'existiert-bereits',
             `Das Projekt ${datei.wert.projekt.id} existiert bereits; es wird nicht überschrieben.`,
           );
         }
-        return schreibeProjektdatei(this.#db, datei.wert, bytes);
+        const projektId = schreibeProjektdatei(this.#db, datei.wert, bytes);
+        return {
+          projektId,
+          einstellungen: uebernimmEinstellungenDerDatei(
+            this.#db,
+            datei.wert,
+            optionen.einstellungsuebernahme,
+          ),
+        };
       }),
     );
     if (r.ok) this.#befunde.push(...befunde);

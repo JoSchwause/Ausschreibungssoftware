@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Deutsche Texte der Datensicherung und der PWA-Hinweise (L1).
+// Deutsche Texte der Sicherung und der PWA-Hinweise (L1).
 
 export const texte = {
   aktualisierung: {
@@ -9,15 +9,15 @@ export const texte = {
     spaeter: 'Später',
   },
   erinnerung: {
-    bereich: 'Datensicherung',
+    bereich: 'Sicherung',
     text: (name: string, tage: number): string =>
       `Projekt „${name}“: Die letzte Sicherung ist ${String(tage)} Tage her, seitdem gab es Änderungen.`,
     jetztSichern: 'Jetzt sichern',
     jetztSichernFuer: (name: string): string => `Jetzt sichern: ${name}`,
   },
   dialog: {
-    knopf: 'Datensicherung',
-    titel: 'Datensicherung',
+    knopf: 'Sicherung',
+    titel: 'Sicherung',
     beschreibung:
       'Die Projekte liegen nur in diesem Browser. Sichern Sie sie regelmäßig als Projektdatei, am besten in einen Ordner.',
     ordnerTitel: 'Sicherungsordner',
@@ -36,6 +36,6 @@ export const texte = {
     ordnerFehler: 'Sicherung in den Ordner nicht möglich',
     ordnerRecht: 'Der Browser hat den Zugriff auf den Sicherungsordner nicht erlaubt.',
     ordnerWeg: 'Als Datei herunterladen',
-    exportFehler: 'Sicherung nicht möglich',
+    exportFehler: 'Projektdatei nicht gesichert',
   },
 } as const;

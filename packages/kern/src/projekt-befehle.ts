@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen.
+// Projektbefehle (Ticket 30, Punkt 11; ADR 0011): ProjektAnlegen, ProjektStammdatenSetzen, BieterAnlegen, ProjektLoeschen
+// (seit v1.7c auch ProjektSamtInhaltLoeschen mit eigenem Ausführer, Ticket 161);
+// seit Vertrag v1.7a (Ticket 137, D-127.5) ProjektangabenSetzen und Bieterangaben beim Anlegen (D-127.4). Die Bieterbefehle
+// `BieterUmbenennen`, `BieterangabenSetzen` und `BieterLoeschen` führt die Vergabe aus (D-127.17); sie nimmt Form und
+// Normalform der Bieterangaben von hier (`angaben.ts`, D-82 S9).
 // `(Projekt | null, Befehl) → Ergebnis<ProjektChangeSet, Befehlsfehler>`: rein, ohne Uhr und Zufall (A2); alle Kennungen
 // bringt der Befehl mit. Das ChangeSet trägt den ganzen alten und neuen Stand (`projekt.vorher`/`nachher`); damit ist es
 // ohne Vorzustand umkehrbar (`projektChangeSetUmkehren`).
 //
 // Text wird unverändert übernommen (U5): ein leerer Projekt- oder Bietername ist erlaubt, wie `FELD_ANNAHMEN`. Geprüft
-// wird nur die Form (Typ der Felder, nicht leere Kennungen) und die Eindeutigkeit der Bieter-ID.
+// wird nur die Form (Typ der Felder, nicht leere Kennungen) und die Eindeutigkeit der Bieter-ID. Angaben (v1.7a) kommen in
+// die Normalform von `angaben.ts` (`''` → `null`, ganz leer: das Feld fehlt).
 
 import type {
   Bauherr,
@@ -13,9 +18,14 @@ import type {
   Bieter,
   Projekt,
   ProjektBefehlAusfuehren,
+  ProjektbestandChangeSetUmkehren,
   ProjektChangeSet,
+  ProjektSamtInhaltLoeschenAusfuehren,
 } from '@tethys/vertrag';
+import { bieterMitAngaben, bieterangabenFehler, projektangabenFehler, projektangabenNormal } from './angaben';
 import { nein, ok } from './fehler';
+import { gleicherWert } from './merkmal-befehle';
+import { mitFeld } from './struktur';
 
 /** Fehlertext zur Form des Bauherrn oder `null`. */
 function bauherrFehler(b: unknown): string | null {
@@ -48,8 +58,9 @@ const changeSet = (projekt: Projekt, vorher: Projekt | null, nachher: Projekt | 
 
 /**
  * Führt einen Projektbefehl aus. `ProjektAnlegen` braucht `zustand === null`, jeder andere Befehl ein Projekt; sonst
- * `befehl-nicht-zustaendig`. `ProjektStammdatenSetzen` mit denselben Werten liefert `vorher` gleich `nachher` (keine
- * Änderung). `ProjektLoeschen`: `nachher: null`, `vorher` ist der volle Stand samt Bietern; ob noch LVs oder Angebote
+ * `befehl-nicht-zustaendig`. `ProjektStammdatenSetzen` und `ProjektangabenSetzen` mit denselben Werten liefern `vorher`
+ * gleich `nachher` (keine Änderung); `ProjektStammdatenSetzen` lässt die Angaben stehen. `verweise` (v1.7a) liest der Kern
+ * nicht: Kein Projektbefehl des Kerns löscht etwas, auf das verwiesen wird. `ProjektLoeschen`: `nachher: null`, `vorher` ist der volle Stand samt Bietern; ob noch LVs oder Angebote
  * am Projekt hängen, prüft `speicher` (`konflikt`).
  */
 export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl) => {
@@ -81,7 +92,7 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       if (typeof b !== 'object' || b === null) {
         return nein('ungueltige-eingabe', 'bieter muss ein Objekt sein.', undefined, 'bieter');
       }
-      const { id, name } = b as { id?: unknown; name?: unknown };
+      const { id, name, angaben } = b as { id?: unknown; name?: unknown; angaben?: unknown };
       if (!istKennung(id)) {
         return nein(
           'ungueltige-eingabe',
@@ -93,14 +104,47 @@ export const projektBefehlAusfuehren: ProjektBefehlAusfuehren = (zustand, befehl
       if (typeof name !== 'string') {
         return nein('ungueltige-eingabe', 'bieter.name muss ein Text sein.', undefined, 'bieter.name');
       }
+      if (angaben !== undefined) {
+        const a = bieterangabenFehler(angaben, 'bieter.angaben');
+        if (a !== null) return nein('ungueltige-eingabe', a.meldung, undefined, a.feld);
+      }
       if (zustand.bieter.some((x) => x.id === id)) {
         return nein('id-vergeben', `Bieter-ID bereits vergeben: ${String(id)}`, undefined, 'bieter.id');
       }
-      const neu: Bieter = { id: befehl.bieter.id, name: befehl.bieter.name };
+      const neu: Bieter = bieterMitAngaben(
+        { id: befehl.bieter.id, name: befehl.bieter.name },
+        befehl.bieter.angaben ?? null,
+      );
       return ok(changeSet(zustand, zustand, { ...zustand, bieter: [...zustand.bieter, neu] }));
     }
     case 'ProjektLoeschen':
       return ok(changeSet(zustand, zustand, null));
+    case 'ProjektangabenSetzen': {
+      const f = stammdatenFehler(befehl.name, befehl.bauherr);
+      if (f !== null) return { ok: false, fehler: f };
+      const a = projektangabenFehler(befehl.angaben, 'angaben');
+      if (a !== null) return nein('ungueltige-eingabe', a.meldung, undefined, a.feld);
+      const neu = mitFeld(
+        { ...zustand, name: befehl.name, bauherr: befehl.bauherr },
+        'angaben',
+        projektangabenNormal(befehl.angaben),
+      );
+      return ok(changeSet(zustand, zustand, gleicherWert(zustand, neu) ? zustand : neu));
+    }
+    // Die Bieterbefehle führt die Vergabe aus (D-127.17); der Kern weist sie dauerhaft ab.
+    case 'BieterUmbenennen':
+    case 'BieterLoeschen':
+    case 'BieterangabenSetzen':
+      return nein('befehl-nicht-zustaendig', `Befehl ${befehl.art} führt die Vergabe aus, nicht der Kern.`);
+    // Vertrag v1.7c (D-96, D-160.4): Ohne Bestand ist das Löschen nicht umkehrbar; ausgeführt wird es mit
+    // `projektSamtInhaltLoeschenAusfuehren`.
+    case 'ProjektSamtInhaltLoeschen':
+      return nein(
+        'ungueltige-eingabe',
+        `${befehl.art} braucht den Bestand des Projekts (projektSamtInhaltLoeschenAusfuehren).`,
+        undefined,
+        'bestand',
+      );
   }
 };
 
@@ -122,3 +166,47 @@ export function projektChangeSetUmkehren(cs: ProjektChangeSet): ProjektChangeSet
     projekt: { vorher: cs.projekt.nachher, nachher: cs.projekt.vorher },
   };
 }
+
+// --- Vertrag v1.7c (Ticket 161; E8, D-96, D-160.4): Projekt samt Inhalt löschen ---------------------------------------------
+
+/** Die Listen, die jeder `Projektbestand` trägt (in der Projektdatei Pflicht); alle übrigen fehlen, wenn sie leer sind. */
+const PFLICHTLISTEN = [
+  'leistungsverzeichnisse',
+  'angebote',
+  'auftragsLeistungsverzeichnisse',
+  'protokoll',
+] as const;
+
+/**
+ * Führt `ProjektSamtInhaltLoeschen` aus: `projekt` und `bestand` je `{ vorher, nachher: null }`. Der Kern prüft nur die Form des
+ * Bestands (ein Objekt mit den Pflichtlisten); ob er vollständig und der gespeicherte ist, prüft `speicher` (`konflikt`,
+ * D-160.5). Ohne Projekt: `befehl-nicht-zustaendig`.
+ */
+export const projektSamtInhaltLoeschenAusfuehren: ProjektSamtInhaltLoeschenAusfuehren = (
+  zustand,
+  befehl,
+  bestand,
+) => {
+  if (zustand === null)
+    return nein('befehl-nicht-zustaendig', `${befehl.art}: kein Projekt als Zustand übergeben.`);
+  const b: unknown = bestand;
+  if (typeof b !== 'object' || b === null || Array.isArray(b))
+    return nein('ungueltige-eingabe', 'bestand muss ein Objekt sein.', undefined, 'bestand');
+  const fehlt = PFLICHTLISTEN.find((l) => !Array.isArray((b as Record<string, unknown>)[l]));
+  if (fehlt !== undefined)
+    return nein('ungueltige-eingabe', `bestand.${fehlt} muss eine Liste sein.`, undefined, 'bestand');
+  return ok({
+    art: 'projektbestand',
+    projektId: zustand.id,
+    projekt: { vorher: zustand, nachher: null },
+    bestand: { vorher: bestand, nachher: null },
+  });
+};
+
+/** Die Umkehrung (Undo, D-160.4): `vorher` und `nachher` in `projekt` und `bestand` getauscht. */
+export const projektbestandChangeSetUmkehren: ProjektbestandChangeSetUmkehren = (cs) => ({
+  art: cs.art,
+  projektId: cs.projektId,
+  projekt: { vorher: cs.projekt.nachher, nachher: cs.projekt.vorher },
+  bestand: { vorher: cs.bestand.nachher, nachher: cs.bestand.vorher },
+});

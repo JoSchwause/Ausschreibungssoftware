@@ -43,6 +43,9 @@ export function sqliteDatenbank(db: Database): Datenbank {
   };
 }
 
+/** Eine Tabellenzeile: Spalte → Wert (geschrieben nur in `schreiben.ts`, A5). */
+export type Spaltenwerte<S extends string = string> = { readonly [K in S]: SqlWert };
+
 /** Führt `f` in einer Transaktion aus: bei jeder Ausnahme wird zurückgerollt und die Ausnahme weitergereicht. */
 export function transaktion<T>(db: Datenbank, f: () => T): T {
   db.ausfuehren('BEGIN IMMEDIATE');

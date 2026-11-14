@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Texte der Modellseiten (Ticket 114, L1): deutsch, an einer Stelle.
 
+import type { IfcBefundcode } from '@tethys/ifc';
 import type { Strukturknoten } from '@tethys/vertrag';
 
 const strukturart: Record<Strukturknoten['art'], string> = {
@@ -10,6 +11,50 @@ const strukturart: Record<Strukturknoten['art'], string> = {
   geschoss: 'Geschoss',
   raum: 'Raum',
 };
+
+/**
+ * Deutsche Namen der IFC-Klassen (nur Anzeige, Ticket 133): „Fundament (IfcFooting)“. Die Klasse bleibt in Klammern
+ * stehen, weil Planer und Modellprogramme sie so nennen; gespeichert und verglichen wird immer die Klasse selbst.
+ */
+const IFC_KLASSEN: Readonly<Record<string, string>> = {
+  IfcBeam: 'Träger',
+  IfcBuildingElementProxy: 'Allgemeines Bauteil',
+  IfcChimney: 'Schornstein',
+  IfcColumn: 'Stütze',
+  IfcCovering: 'Bekleidung',
+  IfcCurtainWall: 'Vorhangfassade',
+  IfcDoor: 'Tür',
+  IfcFooting: 'Fundament',
+  IfcMember: 'Stab',
+  IfcOpeningElement: 'Öffnung',
+  IfcPile: 'Pfahl',
+  IfcPlate: 'Platte',
+  IfcRailing: 'Geländer',
+  IfcRamp: 'Rampe',
+  IfcRampFlight: 'Rampenlauf',
+  IfcRoof: 'Dach',
+  IfcSlab: 'Decke',
+  IfcStair: 'Treppe',
+  IfcStairFlight: 'Treppenlauf',
+  IfcWall: 'Wand',
+  IfcWallStandardCase: 'Wand (Standardfall)',
+  IfcWindow: 'Fenster',
+  IfcFurnishingElement: 'Einrichtung',
+  IfcDistributionElement: 'Technisches Element',
+  IfcFlowSegment: 'Leitung',
+  IfcFlowTerminal: 'Auslass',
+  IfcSpace: 'Raum',
+  IfcBuildingStorey: 'Geschoss',
+  IfcBuilding: 'Gebäude',
+  IfcSite: 'Grundstück',
+  IfcProject: 'Projekt',
+};
+
+/** Der Anzeigename einer IFC-Klasse: „Fundament (IfcFooting)“; eine unbekannte Klasse steht unverändert da. */
+export function ifcKlassenName(klasse: string): string {
+  const name = IFC_KLASSEN[klasse];
+  return name === undefined ? klasse : `${name} (${klasse})`;
+}
 
 export const texte = {
   strukturart,
@@ -68,16 +113,52 @@ export const texte = {
     workerFehler: 'Die Datei ließ sich nicht lesen.',
     dateiGross: (bytes: number): string =>
       `Die Datei ist ${Math.round(bytes / 1_000_000).toLocaleString('de-DE')} MB groß. Einlesen und Anzeigen können lange dauern und viel Speicher brauchen.`,
+    /** Kurztext je Befund beim Einlesen (ohne Codes, L5); die ausführliche Meldung steht in den Einzelheiten. */
+    kurztexte: {
+      'eingabe-zu-gross': 'Datei zu groß',
+      'keine-ifc-datei': 'Keine IFC-Datei',
+      'schema-nicht-unterstuetzt': 'IFC-Version wird nicht gelesen',
+      'kodierung-utf8': 'Zeichenkodierung UTF-8',
+      'kodierung-latin1': 'Zeichenkodierung Latin-1',
+      'datei-unvollstaendig': 'Datei unvollständig',
+      'step-syntaxfehler': 'Fehler im Aufbau der Datei',
+      'step-zu-tief': 'Zu tief verschachtelt',
+      'instanz-doppelt': 'Eintrag der Datei doppelt',
+      'zeichenkette-ungueltig': 'Text nicht lesbar',
+      'verweis-fehlt': 'Verweis ins Leere',
+      'strukturknoten-ohne-eltern': 'Teil der Bauwerksstruktur ohne Oberbegriff',
+      'bauteil-mehrfach-enthalten': 'Bauteil mehrfach in der Struktur',
+      'bauteil-ohne-strukturknoten': 'Bauteil ohne Platz in der Struktur',
+      'bauteil-ohne-mengen': 'Bauteil ohne Mengen',
+      'projekt-fehlt': 'Projektangabe fehlt',
+      'einheit-fehlt': 'Einheit fehlt',
+      'einheit-ungueltig': 'Einheit ungültig',
+      'einheit-umgerechnet': 'Einheit umgerechnet',
+      'menge-ungueltig': 'Menge ungültig',
+      'menge-nicht-gelesen': 'Menge nicht gelesen',
+      'eigenschaft-nicht-gelesen': 'Eigenschaft nicht gelesen',
+      'klassifikation-nicht-gelesen': 'Klassifikation nicht gelesen',
+      'kostengruppe-mehrdeutig': 'Kostengruppe mehrdeutig',
+      'globalid-ungueltig': 'GlobalId ungültig',
+      'globalid-doppelt': 'GlobalId doppelt',
+      'menge-ohne-wert': 'Menge ohne Wert',
+      'bauteil-ohne-ganzes': 'Bauteil ohne übergeordnetes Bauteil',
+      'verweis-mehrdeutig': 'Verweis mehrdeutig',
+      'strukturknoten-ring': 'Bauwerksstruktur im Kreis',
+      'bauteil-ring': 'Bauteile im Kreis',
+      'datei-gross': 'Große Datei',
+      worker: 'Datei nicht lesbar',
+    } satisfies Record<IfcBefundcode | 'datei-gross' | 'worker', string>,
   },
   // Ticket 115: Zuordnung, Mengen aus dem Modell, Kennwerte, Aufmaßblatt aus Auswahl
   zuordnung: {
     region: 'Zuordnung zu Positionen',
-    bezug: 'LV für Zuordnung',
+    zuordnungsLv: 'LV für Zuordnung',
     lv: (name: string): string => `LV: ${name}`,
     auftrag: (name: string): string => `Auftrags-LV: ${name}`,
     keinLv: 'Das Projekt hat noch kein LV.',
     laedt: 'LV wird geladen …',
-    zuordnen: 'Zuordnen …',
+    zuordnen: 'Bauteile zuordnen …',
     titel: (n: number): string => `${String(n)} ${n === 1 ? 'Bauteil' : 'Bauteile'} zuordnen`,
     suche: 'Position suchen (OZ oder Kurztext)',
     positionen: 'Positionen',
@@ -110,7 +191,7 @@ export const texte = {
     keinModell: 'Das Projekt hat noch kein Modell.',
     laedt: 'Modell wird geladen …',
     vorschau: 'Vorschau der Mengenübernahme',
-    spalten: ['OZ', 'Kurztext', 'Vordersatz bisher', 'Vordersatz neu', 'Ansatzzeilen', 'Befunde'],
+    spalten: ['OZ', 'Kurztext', 'Menge bisher', 'Menge neu', 'Ansatzzeilen', 'Befunde'],
     keinePosition: 'Keine Position dieses LV hat zugeordnete Bauteile.',
     unveraendert: 'unverändert',
     ohneZeile: 'keine Zeile',
@@ -169,6 +250,12 @@ export const texte = {
     anlegen: 'Aufmaßblatt anlegen',
     abbrechen: 'Abbrechen',
     angelegt: (n: number): string => `Aufmaßblatt ${String(n)} angelegt`,
+    // Ticket 155: Position schon auf einem anderen Blatt (Bauteile vielleicht doppelt gemessen)
+    schonAufgemessen: 'Schon aufgemessen',
+    schonAuf: (oz: string, blaetter: string): string =>
+      `${oz} steht schon auf ${blaetter}. Ob dieselben Bauteile darin aufgemessen sind, bitte dort prüfen.`,
+    blatt: (nummer: number, menge: string | null): string =>
+      menge === null ? `Blatt ${String(nummer)}` : `Blatt ${String(nummer)} (${menge})`,
   },
   seite: {
     laden: 'Modell wird geladen …',

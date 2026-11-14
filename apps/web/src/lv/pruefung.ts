@@ -41,6 +41,18 @@ export function pruefgruppen(
   })).filter((g) => g.eintraege.length > 0);
 }
 
+/** Zahl der Befunde und die schwerste Schwere, für die Schaltfläche „Prüfung“ der Werkzeugleiste (Ticket 142). */
+export function pruefstand(gruppen: readonly Pruefgruppe[]): {
+  readonly anzahl: number;
+  readonly schwerste: Befundschwere | null;
+} {
+  return {
+    anzahl: gruppen.reduce((n, g) => n + g.eintraege.length, 0),
+    // Die Gruppen stehen nach Schwere, die schwerste zuerst; leere fehlen.
+    schwerste: gruppen[0]?.schwere ?? null,
+  };
+}
+
 /** Befunde je Knoten (für `LvZeile.befunde`); LV-weite Befunde stehen nur im Panel. */
 export function befundeJeKnoten(
   befunde: readonly Pruefbefund[],

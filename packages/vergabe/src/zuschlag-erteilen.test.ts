@@ -9,12 +9,15 @@ import type {
   AuftragsLeistungsverzeichnisId,
   AuftragsLvChangeSet,
   Bauteilzuordnung,
+  Bieterangaben,
   Einheitspreis,
   Einheitspreisanteile,
   IfcGlobalId,
+  Kalkulationsangaben,
   Knoten,
   LeistungsverzeichnisId,
   LvZustand,
+  Menge,
   PapierkorbeintragId,
   PositionId,
   ProjektId,
@@ -689,5 +692,77 @@ describe('zuschlagErteilen: Bauteilzuordnungen (Ticket 105)', () => {
     const nachher = cs.knoten.hinzugefuegt.filter((k) => k.art === 'position');
     expect(nachher.find((k) => k.id === 'p1')).toMatchObject({ bauteile });
     expect(nachher.find((k) => k.id === 'p2')).not.toHaveProperty('bauteile');
+  });
+});
+
+// Ticket 138 (Vertrag v1.7a, D-127.6): Die Kalkulationsangaben einer Position bleiben im Ausschreibungs-LV; die Preise des
+// Auftrags-LV stammen aus dem Angebot, nicht aus der Kalkulation des Schätzpreises.
+describe('zuschlagErteilen: Kalkulationsangaben (Ticket 138)', () => {
+  it('entfallen im Auftrags-LV; der Kern nimmt den Befehl an', () => {
+    const kalkulation: Kalkulationsangaben = {
+      ansaetze: [
+        {
+          art: 'lohn',
+          bezeichnung: 'Mauern',
+          ansatzmenge: '0.450' as Menge,
+          kostensatz: '48.500' as Einheitspreis,
+        },
+      ],
+      zuschlagssaetze: { lohn: '15.00' as Prozent },
+    };
+    const z = lv('lv-kalk', [
+      titel('t1', 'lv-kalk', 0),
+      { ...position('p1', 't1', 0, '2.000', '25.000'), kalkulation },
+      position('p2', 't1', 1, '3.000'),
+    ]);
+    const a = angebot('angebot-kalk', z, 'bieter-1', [ep('p1', '30.000'), ep('p2', '5.000')]);
+    const { befehl } = erwarteOk(zuschlagErteilen(z, a, projekt(['bieter-1']), OHNE_WAHL, NEUE_ID));
+    const p1 = befehl.auftragsLeistungsverzeichnis.knoten.find((k) => k.id === 'p1');
+    expect(p1).not.toHaveProperty('kalkulation');
+    expect(p1).toMatchObject({ einheitspreis: '30.000' });
+    expect(imKern(befehl).knoten.hinzugefuegt.find((k) => k.id === 'p1')).not.toHaveProperty('kalkulation');
+    // Das Ausschreibungs-LV behält sie.
+    expect(z.leistungsverzeichnis.knoten.find((k) => k.id === 'p1')).toMatchObject({ kalkulation });
+  });
+});
+
+// Ticket 138 (E10): Die Anschrift aus den Bieterangaben wird zur Anschrift des Auftragnehmers; ohne Anschrift bleibt es beim
+// Namen.
+describe('zuschlagErteilen: Auftragnehmer aus den Bieterangaben (Ticket 138)', () => {
+  const z = lv('lv-an', [titel('t1', 'lv-an', 0), position('p1', 't1', 0, '1.000')]);
+  const a = angebot('angebot-an', z, 'bieter-1', [ep('p1', '10.000')]);
+  const mitAngaben = (angaben: Bieterangaben): Projekt => {
+    const p = projekt(['bieter-1']);
+    return { ...p, bieter: p.bieter.map((b) => ({ ...b, angaben })) };
+  };
+
+  it('übernimmt Straße, PLZ und Ort der Anschrift', () => {
+    const p = mitAngaben({
+      anschrift: { strasse: 'Hauptstraße 1', plz: '12345', ort: null },
+      ansprechperson: 'Frau Beispiel',
+      email: null,
+      telefon: null,
+    });
+    const { befehl } = erwarteOk(zuschlagErteilen(z, a, p, OHNE_WAHL, NEUE_ID));
+    expect(befehl.auftragsLeistungsverzeichnis.auftragnehmer).toEqual({
+      name: 'Bieter bieter-1',
+      strasse: 'Hauptstraße 1',
+      plz: '12345',
+      ort: null,
+    });
+    expect(imKern(befehl).kopf?.nachher?.auftragnehmer).toEqual(
+      befehl.auftragsLeistungsverzeichnis.auftragnehmer,
+    );
+  });
+
+  it('Angaben ohne Anschrift: nur der Name', () => {
+    const p = mitAngaben({ anschrift: null, ansprechperson: null, email: 'info@example.org', telefon: null });
+    const { befehl } = erwarteOk(zuschlagErteilen(z, a, p, OHNE_WAHL, NEUE_ID));
+    expect(befehl.auftragsLeistungsverzeichnis.auftragnehmer).toEqual({
+      name: 'Bieter bieter-1',
+      strasse: null,
+      plz: null,
+      ort: null,
+    });
   });
 });

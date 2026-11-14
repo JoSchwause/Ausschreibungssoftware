@@ -11,13 +11,18 @@ import { VergleichsGrid } from '@tethys/ui-grid';
 import { Modellansicht } from '@tethys/ui-modell';
 import type { Ladebericht, ModellansichtRef } from '@tethys/ui-modell';
 import '@tethys/ui-modell/modellansicht.css';
-import type { BauwerksmodellId, BauwerksmodellZustand, ProjektId, Pruefbefund } from '@tethys/vertrag';
+import type {
+  BauwerksmodellId,
+  BauwerksmodellZustand,
+  IfcGlobalId,
+  ProjektId,
+  Pruefbefund,
+} from '@tethys/vertrag';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
-import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import {
   AUSWAHL_START,
@@ -35,7 +40,7 @@ import { BAUM_SPALTEN, globalIdDerZeile, modellbaumBauen, sichtbareZeilen } from
 import { BefundListe } from './BefundListe';
 import { geometriebefunde } from './befunde';
 import { IfcArbeiter } from './ifc-arbeiter';
-import { modellePfad } from './pfad';
+import { auftragAusAdresse, modellePfad } from './pfad';
 import { bauwerksmodellLaden } from './schreiben';
 import {
   ALLES_SICHTBAR,
@@ -49,25 +54,25 @@ import {
 import { vergleichPfad } from '../modellvergleich/pfad'; // Ticket 116
 import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 116
 import { modellTesthaken } from './testhaken';
-import { texte } from './texte';
+import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
-import { useBezug } from './useBezug'; // Ticket 115
+import { auftragSchluessel, useZuordnungsLv } from './zuordnungsLv'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
 import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
 import './bim.css';
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | { art: 'da'; zustand: BauwerksmodellZustand; bytes: Uint8Array | null };
+interface Geladen {
+  zustand: BauwerksmodellZustand;
+  bytes: Uint8Array | null;
+}
 
 type Eigenschaftslage =
   | { art: 'keine' }
   | { art: 'laedt'; globalId: string }
   | { art: 'da'; globalId: string; wert: Objekteigenschaften | null };
 
-const KEINE_FAERBUNG: ReadonlyMap<string, never> = new Map<string, never>();
+const KEINE_FAERBUNG: ReadonlyMap<IfcGlobalId, never> = new Map<IfcGlobalId, never>();
 
 export function ModellSeite({
   projektId,
@@ -78,59 +83,36 @@ export function ModellSeite({
   id: BauwerksmodellId;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const z = await bauwerksmodellLaden(u.speicher, id);
-      if (z === null) return { art: 'fehlt' };
-      const b = await u.speicher.modelldateien.laden(z.bauwerksmodell.datei.hash);
-      return { art: 'da', zustand: z, bytes: b.ok ? b.wert : null };
-    })().then((l) => {
-      if (!aktiv) return;
+  const { lage } = useSeitenladen(
+    async ({ speicher }): Promise<Geladen | null> => {
+      const z = await bauwerksmodellLaden(speicher, id);
+      if (z === null) return null;
+      const b = await speicher.modelldateien.laden(z.bauwerksmodell.datei.hash);
+      return { zustand: z, bytes: b.ok ? b.wert : null };
+    },
+    [id],
+    {
       // Ein Undo/Redo (Umbenennen) lädt neu; dieselben Bytes behalten, damit die 3D-Ansicht nicht neu lädt.
-      setLage((alt) =>
-        l.art === 'da' &&
-        alt.art === 'da' &&
-        alt.zustand.bauwerksmodell.datei.hash === l.zustand.bauwerksmodell.datei.hash
-          ? { ...l, bytes: alt.bytes }
-          : l,
-      );
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, id, lauf]);
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+      alsWert: (neu, alt) =>
+        alt !== null && alt.zustand.bauwerksmodell.datei.hash === neu.zustand.bauwerksmodell.datei.hash
+          ? { ...neu, bytes: alt.bytes }
+          : neu,
+    },
   );
 
-  if (lage.art === 'laedt') {
+  if (lage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
+      <Ladeansicht
+        lage={lage}
+        laden={texte.seite.laden}
+        nichtGefunden={texte.seite.nichtGefunden}
+        zusatz={<Verweis pfad={modellePfad(projektId)} text={texte.seite.zurListe} gehe={gehe} />}
+      />
     );
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{texte.seite.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-          <Verweis pfad={modellePfad(projektId)} text={texte.seite.zurListe} gehe={gehe} />
-        </div>
-      </div>
-    );
-  }
-  return <Arbeitsflaeche projektId={projektId} zustand={lage.zustand} bytes={lage.bytes} gehe={gehe} />;
+  return (
+    <Arbeitsflaeche projektId={projektId} zustand={lage.wert.zustand} bytes={lage.wert.bytes} gehe={gehe} />
+  );
 }
 
 function Arbeitsflaeche({
@@ -154,10 +136,15 @@ function Arbeitsflaeche({
   const [klasse, setKlasse] = useState<string | undefined>(undefined);
   const ansicht = useRef<ModellansichtRef | null>(null);
   // Ticket 115: Bezugs-LV der Zuordnung; die 3D-Ansicht färbt „zugeordnet“/„ohne Zuordnung“ bezogen auf dieses LV.
-  const bezug = useBezug(projektId);
+  // Ticket 155: „Aufmaß aus Modell“ wählt das Auftrags-LV über die Adresse vor.
+  const [vorwahl] = useState(() => {
+    const a = auftragAusAdresse(window.location.search);
+    return a === null ? undefined : auftragSchluessel(a);
+  });
+  const zuordnungsLv = useZuordnungsLv(projektId, vorwahl);
   const faerbung = useMemo(
-    () => (bezug.bezug === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, bezug.knoten)),
-    [bezug.bezug, bezug.knoten, modell],
+    () => (zuordnungsLv.lv === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, zuordnungsLv.knoten)),
+    [zuordnungsLv.lv, zuordnungsLv.knoten, modell],
   );
   // Woher der nächste Wechsel der aktiven Zeile kommt: Ein Klick wählt (Strg/Cmd+Klick ergänzt, Ticket 115), eine Taste bewegt
   // nur den Fokus (Ticket 122, U3: Leertaste und Strg+Leertaste wählen).
@@ -199,7 +186,7 @@ function Arbeitsflaeche({
   }, [fokus, bytes]);
 
   const onAuswahl = useCallback(
-    (ids: readonly string[], art: { readonly hinzufuegen: boolean }) => {
+    (ids: readonly IfcGlobalId[], art: { readonly hinzufuegen: boolean }) => {
       setStand((s) => beiKlick3d(s, baum, ids, art.hinzufuegen));
     },
     [baum],
@@ -211,7 +198,7 @@ function Arbeitsflaeche({
     [modell],
   );
   const zurZeile = useCallback(
-    (globalId: string) => {
+    (globalId: IfcGlobalId) => {
       setStand((s) => beiKlick3d(s, baum, [globalId], false));
     },
     [baum],
@@ -306,7 +293,7 @@ function Arbeitsflaeche({
             wert={klasse}
             optionen={alleKlassen.map((k) => ({
               wert: k.klasse,
-              label: `${k.klasse} (${String(k.anzahl)})`,
+              label: `${ifcKlassenName(k.klasse)}: ${String(k.anzahl)}`,
             }))}
             onWertChange={setKlasse}
           />
@@ -410,7 +397,13 @@ function Arbeitsflaeche({
                 <dt>{texte.seite.globalId}</dt>
                 <dd>{fokus}</dd>
                 <dt>{texte.seite.klasse}</dt>
-                <dd>{fokusBauteil?.ifcKlasse ?? (fokusKnoten ? texte.strukturart[fokusKnoten.art] : '')}</dd>
+                <dd>
+                  {fokusBauteil
+                    ? ifcKlassenName(fokusBauteil.ifcKlasse)
+                    : fokusKnoten
+                      ? texte.strukturart[fokusKnoten.art]
+                      : ''}
+                </dd>
                 {fokusBauteil?.typ ? (
                   <>
                     <dt>{texte.seite.typ}</dt>
@@ -444,7 +437,7 @@ function Arbeitsflaeche({
           projektId={projektId}
           modell={modell}
           auswahl={stand.auswahl}
-          bezug={bezug}
+          zuordnungsLv={zuordnungsLv}
           zurZeile={zurZeile}
           gehe={gehe}
         />

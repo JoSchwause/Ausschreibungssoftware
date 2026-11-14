@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Repository-Schnittstellen für `speicher` (S1), Befehlsprotokoll und Projektdatei. Nur Typen.
 
-import type { Befehl } from './befehle';
+import type { Befehl, EinstellungenBefehl, HistorienBefehl } from './befehle';
 import type {
   AngebotZustand,
   AufmassZustand,
@@ -10,6 +10,7 @@ import type {
   BauwerksmodellZustand,
   BauzeitenplanZustand,
   ChangeSet,
+  EinstellungenChangeSet,
   Ergebnis,
   HonorarberechnungZustand,
   KostenermittlungZustand,
@@ -27,7 +28,9 @@ import type {
   BauwerksmodellId,
   BauzeitenplanId,
   HonorarberechnungId,
+  IdQuelle,
   KostenermittlungId,
+  Kostengruppennummer,
   LeistungsverzeichnisId,
   LvStandId,
   MangelId,
@@ -52,6 +55,7 @@ import type { BauwerksmodellKopf, Modelldatei } from './bim';
 import type { BauzeitenplanKopf } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { Einstellungen } from './einstellungen';
 
 // --- Befehlsprotokoll (ADR 0009) -----------------------------------------------------------------------------
 
@@ -129,6 +133,13 @@ export type Massenbefehlskopf =
       readonly art: 'BauwerksmodellAnlegen';
       /** Das Bauwerksmodell ohne `struktur` und `bauteile` (v1.6, Ticket 97 Punkt 1, D-54). */
       readonly bauwerksmodell: BauwerksmodellKopf;
+    }
+  | {
+      /**
+       * v1.7c (Ticket 160, D-96): der ganze Befehl. Seine lange Liste, der `Projektbestand`, steckt nicht im Befehl, sondern im
+       * ChangeSet (`ProjektbestandChangeSet`).
+       */
+      readonly art: 'ProjektSamtInhaltLoeschen';
     };
 
 /**
@@ -158,6 +169,25 @@ export interface Protokolleintrag {
   readonly wer: NutzerId;
   readonly wann: Zeitstempel;
   readonly befehl: Befehl | Befehlskurzfassung;
+}
+
+/**
+ * Ein Eintrag des **Einstellungsprotokolls** (v1.7a Nachtrag, Review D-82 M1; Glossar „Einstellungen“): wer, was, wann an den
+ * Einstellungen des Geräts. A5 und ADR 0009 gelten ohne Ausnahme: Jeder Befehl an den Einstellungen steht hier, genau ein Eintrag
+ * je Befehl, geschrieben mit seinem ChangeSet in einer Transaktion (`EinstellungenRepository.anwenden`). Ohne Projekt und ohne
+ * Aggregat (es gibt nur eines); ein Nebenbuch wie das Befehlsprotokoll, kein Quellzustand.
+ *
+ * - `befehl`: ein `EinstellungenBefehl`, vollständig (keiner ist ein Massenbefehl), oder ein `Rueckgaengig`/`Wiederholen` des
+ *   eigenen Rückgängig der Einstellungen in der Sitzung; dessen `protokollId` nennt den Eintrag des ursprünglichen Befehls in
+ *   diesem Protokoll (wie beim Projekt, D-12).
+ * - `id` aus der `IdQuelle` (`protokoll()`), `wer` und `wann` vom Aufrufer (A2), wie beim `Protokolleintrag`.
+ * - Das Einstellungsprotokoll steht nicht in der Projektdatei (es gehört zum Gerät, nicht zum Projekt).
+ */
+export interface EinstellungenProtokolleintrag {
+  readonly id: ProtokollId;
+  readonly wer: NutzerId;
+  readonly wann: Zeitstempel;
+  readonly befehl: EinstellungenBefehl | HistorienBefehl;
 }
 
 // --- Fehler ----------------------------------------------------------------------------------------------------
@@ -402,11 +432,102 @@ export interface BautagebuchRepository {
 
 /** LV-Stände eines LV (v1.2, S3; ADR 0006). Nur lesend: angelegt wird ein Stand über `LvStandAnlegen`. */
 export interface LvStandRepository {
-  /** Die Stände des LV in der Reihenfolge des Anlegens (ältester zuerst). */
+  /**
+   * Die Stände des LV nach `angelegt` aufsteigend (ältester zuerst), bei gleichem Zeitpunkt in der Reihenfolge, in der
+   * `speicher` sie abgelegt hat (`seq`). v1.7a Nachtrag (Review D-82, S1): Die Umkehrung von `LvStandLoeschen` legt den Stand mit
+   * seinem `angelegt` zurück; er steht danach wieder an seinem Platz (unter Ständen mit genau demselben `angelegt` hinter
+   * ihnen).
+   */
   auflisten(
     leistungsverzeichnisId: LeistungsverzeichnisId,
   ): Promise<Ergebnis<readonly LvStandUebersicht[], Speicherfehler>>;
   laden(id: LvStandId): Promise<Ergebnis<LvStand, Speicherfehler>>;
+}
+
+/**
+ * Die Einstellungen des Geräts (v1.7a, Ticket 127; E15, D-73; Glossar „Einstellungen“): ein globales Aggregat außerhalb jedes
+ * Projekts und seiner Undo-Historie, mit eigenem Protokoll (v1.7a Nachtrag, Review D-82 M1). Liefert `speicher` mit Ticket 139.
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart):
+ * - `laden` liefert `LEERE_EINSTELLUNGEN`, solange nie etwas geschrieben wurde (kein `nicht-gefunden`).
+ * - `anwenden` schreibt den Eintrag des Einstellungsprotokolls und das ChangeSet in **einer** Transaktion, genau ein Eintrag je
+ *   Befehl (A5, ADR 0009); weicht `vorher` vom gespeicherten Stand ab, `konflikt` und nichts wird geschrieben (Q5). Ein
+ *   `Rueckgaengig`/`Wiederholen` kommt mit dem getauschten bzw. ursprünglichen ChangeSet wie jeder andere Eintrag.
+ * - `protokoll` liefert das Einstellungsprotokoll in der Reihenfolge des Schreibens (ältester zuerst).
+ * - Übernahme aus dem Browserspeicher (`localStorage`, D-73; Review D-82, S8): einmalig durch die App, **nur solange das
+ *   Einstellungsprotokoll leer ist** (`protokoll()` liefert `[]`), als gewöhnliche protokollierte Befehle; danach nie wieder,
+ *   auch wenn die Einstellungen später wieder leer sind. Die alten Schlüssel bleiben stehen.
+ */
+export interface EinstellungenRepository {
+  laden(): Promise<Ergebnis<Einstellungen, Speicherfehler>>;
+  anwenden(
+    eintrag: EinstellungenProtokolleintrag,
+    changeSet: EinstellungenChangeSet,
+  ): Promise<Ergebnis<void, Speicherfehler>>;
+  protokoll(): Promise<Ergebnis<readonly EinstellungenProtokolleintrag[], Speicherfehler>>;
+}
+
+/**
+ * Wie eine Projektdatei eingelesen wird (v1.7a, Ticket 127; E8 „Projektdatei einlesen, wenn das Projekt schon da ist“;
+ * `Speicher.projektdateiEinlesen`). Ohne Optionen wie bisher: ein vorhandenes Projekt derselben Kennung ergibt
+ * `existiert-bereits`.
+ */
+export interface ProjektdateiEinleseoptionen {
+  /**
+   * Als Kopie einlesen: `speicher` vergibt dem Projekt und **jedem Aggregat** der Datei (LV, Angebot, Auftrags-LV, LV-Stand,
+   * Aufmaßblatt, Rechnung, Kostenermittlung, Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel, Bautagebucheintrag)
+   * eine neue Kennung aus `ids` und biegt alle Verweise zwischen ihnen um (`projektId`, `leistungsverzeichnisId`,
+   * `angebotId`, `auftragsLvId`, `aufmassIds`, Nachtragsangaben, Vorgänger eines Modells, Verweise von Honorar, Mangel und
+   * Vorgang). Dazu gehört die Wurzel: `elternId` der Knoten der obersten Ebene (im Baum und im Papierkorb) ist die Kennung des
+   * LV bzw. Auftrags-LV und wird mit ihr umgeschrieben. Kennungen innerhalb eines Aggregats (Knoten, Positionen, Vorgänge,
+   * Bieter, Papierkorbeinträge, Bilder) bleiben: Sie sind nur je Aggregat bzw. Projekt eindeutig (Positionsidentität,
+   * ADR 0011), die Kopie ist also ohne Überschneidung mit dem Original. Das Projekt heißt `name` (die App schlägt
+   * „<Name> (Kopie)“ vor).
+   *
+   * Eingefrorene LV-Stände (v1.7a Nachtrag, Review D-82 S10): Sie bekommen eine neue Kennung und ihr `leistungsverzeichnisId`
+   * die neue des LV; im eingefrorenen Zustand werden dieselben Kennungen umgeschrieben wie im lebenden LV (Kennung des LV,
+   * `projektId`, `nachtrag.auftragsLvId`, die Wurzel als `elternId` in Baum und Papierkorb), sonst nichts. `angelegt` bleibt.
+   *
+   * Lesart (vorläufige Annahme, Entscheidung offen, enge Lesart; D-127): Das Befehlsprotokoll der Datei kommt **nicht** mit:
+   * Seine Befehle nennen die alten Kennungen. Die Kopie beginnt mit leerem Protokoll; die Datei selbst bleibt die Quelle der
+   * Geschichte (die App sagt das im Dialog). Modelldateien (Bytes) sind inhaltsadressiert und werden geteilt, nicht kopiert.
+   * Einstellungen der Datei gelten wie beim gewöhnlichen Einlesen (`einstellungsuebernahme`).
+   */
+  readonly alsKopie?: { readonly ids: IdQuelle; readonly name: string };
+  /**
+   * Kopf des Eintrags im Einstellungsprotokoll, unter dem `speicher` die Übernahme der Einstellungen aus der Datei schreibt
+   * (v1.7a Nachtrag, Review D-82 M1: auch diese Änderung ist ein protokollierter Befehl). Trägt die Datei einen Block
+   * `einstellungen`, schreibt `speicher` in derselben Transaktion wie das Projekt den Befehl `EinstellungenUebernehmen` mit
+   * diesem Block, `id`, `wer` und `wann` von hier und dem ChangeSet nach D-73 (gerechnet mit dem Ausführer des Kerns,
+   * `speicher → kern` ist erlaubt, D-19); übernimmt er nichts, schreibt er keinen Eintrag. Fehlt das Feld, bleiben die
+   * Einstellungen unberührt (das Ergebnis nennt dann `einstellungen: null`).
+   */
+  readonly einstellungsuebernahme?: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'>;
+}
+
+/**
+ * Ein Eintrag der Einstellungen, wie die Übernahme aus einer Projektdatei ihn nennt (v1.7a, D-73): das Büro, ein Druckprofil
+ * (über seinen Namen) oder eine Kostengruppenbezeichnung (über ihre Nummer).
+ */
+export type Einstellungsschluessel =
+  | { readonly art: 'buero' }
+  | { readonly art: 'druckprofil'; readonly name: string }
+  | { readonly art: 'kostengruppenbezeichnung'; readonly nummer: Kostengruppennummer };
+
+/**
+ * Ergebnis von `Speicher.projektdateiEinlesen` (v1.7a): das eingelesene Projekt (bei einer Kopie die neue Kennung) und was
+ * aus dem Block `einstellungen` der Datei wurde. `einstellungen: null`: Die Datei trägt keinen Block (Schema bis 6), oder der
+ * Aufruf nannte keine `einstellungsuebernahme` (dann ist nichts übernommen). Sonst
+ * `uebernommen` (lokal fehlte der Eintrag, er steht nun in den Einstellungen) und `belassen` (lokal gab es ihn schon; der
+ * Wert der Datei wurde nicht übernommen, auch wenn er gleich war), je in der Reihenfolge der Datei: Büro, Druckprofile,
+ * Kostengruppenbezeichnungen. Der Dialog nennt beides (Q5).
+ */
+export interface ProjektdateiEinleseergebnis {
+  readonly projektId: ProjektId;
+  readonly einstellungen: {
+    readonly uebernommen: readonly Einstellungsschluessel[];
+    readonly belassen: readonly Einstellungsschluessel[];
+  } | null;
 }
 
 /** Zustand der Persistenz des Browser-Speichers (Spec §9). */
@@ -453,6 +574,9 @@ export interface Persistenzstatus {
  * - einen Bautagebucheintrag schreibt, dessen Datum im Projekt schon ein anderer trägt.
  * Schwache Verweise prüft `speicher` nicht (Befunde der App): Vorgangsbezug auf ein LV und seine Knoten, `Mangel.positionId`,
  * Bauteilzuordnungen gegen ein Modell.
+ *
+ * v1.7c (Ticket 160, D-96): dazu `ProjektbestandChangeSet` (Projekt samt Inhalt löschen und dessen Undo, je in einer
+ * Transaktion; Formen, `konflikt` und `unbekannt` siehe dort). Bis Ticket 161 `unbekannt`.
  */
 export interface Speicher {
   readonly projekte: ProjektRepository;
@@ -486,13 +610,34 @@ export interface Speicher {
   readonly maengel: MangelRepository;
   /** Das Bautagebuch (v1.6; Pflicht). Bis Ticket 106 `unbekannt`. */
   readonly bautagebuch: BautagebuchRepository;
+  /**
+   * Die Einstellungen des Geräts (v1.7a, Ticket 127, E15, D-73). Optional, damit ein Speicher vor Ticket 139 gültig bleibt
+   * (A8: additiv); fehlt es, liest die App weiter den Browserspeicher. Pflicht spätestens mit der nächsten Vertragsversion
+   * nach Ticket 139.
+   */
+  readonly einstellungen?: EinstellungenRepository;
   anwenden(eintrag: Protokolleintrag, changeSet: ChangeSet): Promise<Ergebnis<void, Speicherfehler>>;
   protokoll(projektId: ProjektId): Promise<Ergebnis<readonly Protokolleintrag[], Speicherfehler>>;
   persistenzstatus(): Promise<Persistenzstatus>;
   /** Exportiert die Projektdatei (JSON, G-56). Byte-stabil: kanonische Schlüsselreihenfolge. */
   projektdateiExportieren(projektId: ProjektId): Promise<Ergebnis<string, Speicherfehler>>;
-  /** Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. */
+  /**
+   * Importiert eine Projektdatei beliebiger älterer Schemaversion (A8). `inhalt` ist der JSON-Text. v1.7a Nachtrag (D-82 M1):
+   * Er übernimmt keine Einstellungen aus der Datei (ohne Protokollkopf ließe sich die Übernahme nicht protokollieren); das tut
+   * `projektdateiEinlesen` mit `einstellungsuebernahme`.
+   */
   projektdateiImportieren(inhalt: string): Promise<Ergebnis<ProjektId, Speicherfehler>>;
+  /**
+   * Liest eine Projektdatei ein wie `projektdateiImportieren`, wahlweise als Kopie, übernimmt mit `einstellungsuebernahme` die
+   * Einstellungen der Datei (protokolliert, D-82 M1) und berichtet, was übernommen und was belassen wurde (v1.7a, Ticket 127;
+   * E8, E15, D-73). Optional, damit ein Speicher vor Ticket 139 gültig bleibt; liefert `speicher` es, nimmt die App es statt
+   * `projektdateiImportieren` (das gültig bleibt). Ohne `alsKopie` ergibt ein vorhandenes Projekt derselben Kennung
+   * `existiert-bereits`.
+   */
+  projektdateiEinlesen?(
+    inhalt: string,
+    optionen?: ProjektdateiEinleseoptionen,
+  ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>>;
   /**
    * Schließt den Speicher und gibt seine Betriebsmittel frei (v1.1a), z. B. die OPFS-Handles des Workers. Danach
    * sind keine weiteren Aufrufe zulässig; ein neuer Speicher wird mit einem neuen Öffnen erzeugt (das Öffnen liegt
@@ -560,4 +705,45 @@ export interface Projektdatei {
   readonly honorarberechnungen?: readonly HonorarberechnungZustand[];
   readonly maengel?: readonly MangelZustand[];
   readonly bautagebuch?: readonly BautagebucheintragZustand[];
+  /**
+   * Kopie der Einstellungen des Geräts beim Export (v1.7a, Ticket 127, E15, D-73; Schema 7, Ticket 139), damit eine Sicherung
+   * eine Datei bleibt. Optional, fehlt = keine (Dateien bis Schema 6; `speicher` lässt den Block weg, wenn die Einstellungen
+   * `LEERE_EINSTELLUNGEN` gleichen). Lesarten (D-73; vorläufige Annahme, Entscheidung offen):
+   * - Das Einlesen füllt nur **Fehlendes je Schlüssel** und überschreibt nie: das Büro nur, wenn lokal keines gesetzt ist; ein
+   *   Druckprofil nur, wenn lokal keines dieses Namens besteht; eine Kostengruppenbezeichnung nur, wenn lokal keine dieser
+   *   Nummer besteht.
+   * - Was übernommen und was belassen wurde, liefert `Speicher.projektdateiEinlesen` (`ProjektdateiEinleseergebnis`); der
+   *   Dialog nennt es (Q5).
+   * - Die Übernahme ist kein Befehl eines Projekts (D-73), aber ein protokollierter Befehl an den Einstellungen
+   *   (`EinstellungenUebernehmen` im Einstellungsprotokoll, v1.7a Nachtrag D-82 M1; siehe
+   *   `ProjektdateiEinleseoptionen.einstellungsuebernahme`). Das Einstellungsprotokoll selbst steht nicht in der Datei.
+   */
+  readonly einstellungen?: Einstellungen;
 }
+
+/**
+ * Projektbestand (v1.7c, Ticket 160; E8, D-96; Glossar „Projektbestand“): alles, was `speicher` zu einem Projekt hält, außer dem
+ * Projekt selbst, in der Form der Projektdatei (Schema 7). Steht im ChangeSet von `ProjektSamtInhaltLoeschen`
+ * (`ProjektbestandChangeSet.bestand`), damit das Undo alles mit denselben Kennungen zurücklegt. Ein abgeleiteter Typ: Was die
+ * Projektdatei künftig dazubekommt, gehört ohne Vertragsänderung auch zum Bestand.
+ *
+ * Geprüft gegen Schema 7 (D-96): Die Projektdatei trägt alle Aggregate des Projekts (LV samt Papierkorb, Angebote, Auftrags-LVs,
+ * Aufmaßblätter, Rechnungen samt Zahlungen, Kostenermittlungen, Bauwerksmodelle, Bauzeitenpläne, Honorarberechnungen, Mängel,
+ * Bautagebuch), die **LV-Stände** (`lvStaende`), das **Befehlsprotokoll** (`protokoll`) und die **Modellverweise** (je
+ * Bauwerksmodell `datei.hash`); nichts fehlt. Ausgelassen sind:
+ * - `schemaVersion`: Der Bestand ist immer in der aktuellen Form (er entsteht aus dem Speicher, nicht aus einer Datei).
+ * - `projekt`: steht daneben im ChangeSet (`ProjektbestandChangeSet.projekt`).
+ * - `modelldateien`: Die Bytes stehen nie in einem ChangeSet oder der Undo-Historie (D-51); sie bleiben in der
+ *   `Modelldateiablage`, die sie erst beim nächsten Öffnen freigibt, wenn kein Modell sie mehr nennt. Das Undo findet sie dort.
+ * - `einstellungen`: gehören dem Gerät, nicht dem Projekt (D-73); das Löschen lässt sie unberührt. Die Aggregate verweisen nicht
+ *   auf Einstellungen (Kostengruppennummern an Knoten und in Kostenermittlungen sind Werte, keine Verweise; ein Druckprofil
+ *   wird beim Drucken gewählt, nie gespeichert).
+ *
+ * Lesarten wie in der Projektdatei: Listen in der Reihenfolge des Exports (die LV-Stände nach `LvStandRepository.auflisten`,
+ * das Protokoll in der Reihenfolge des Schreibens), ein leeres optionales Feld fehlt (nie `[]`). `speicher` vergleicht den
+ * Bestand im Lösch-ChangeSet mit dem gespeicherten (wie D-31.2): Weicht er ab oder fehlt etwas, `konflikt`.
+ */
+export type Projektbestand = Omit<
+  Projektdatei,
+  'schemaVersion' | 'projekt' | 'modelldateien' | 'einstellungen'
+>;

@@ -4,6 +4,10 @@
 .tx-grid {
   display: flex;
   flex-direction: column;
+  /* Füllt die restliche Höhe des Elternelements (Ticket 130): als Flex-Element einer Spalte wie mit fester Höhe. Nur der
+     Scrollbereich schrumpft; Hinweise, Status und Summenfuß behalten ihre Höhe und bleiben sichtbar. */
+  flex: 1 1 auto;
+  box-sizing: border-box;
   height: 100%;
   min-height: 0;
   border: 1px solid var(--tx-color-border-strong);
@@ -44,6 +48,7 @@
 }
 
 .tx-grid__kopfzelle {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 0 var(--tx-space-3);
@@ -60,6 +65,53 @@
 .tx-grid__kopfzelle--einheitspreis,
 .tx-grid__kopfzelle--gesamtpreis {
   justify-content: flex-end;
+}
+
+/* Kopftext des LV-Grids: Ellipse, falls die Spalte schmaler ist als ihr Titel. */
+.tx-grid__kopftext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ziehgriff am rechten Rand jeder Kopfzelle (Ticket 130): Ziehen ändert die Breite, Doppelklick setzt sie zurück. */
+.tx-grid__ziehgriff {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.tx-grid__ziehgriff:hover,
+.tx-grid__ziehgriff:active {
+  box-shadow: inset -2px 0 0 var(--tx-color-accent);
+}
+
+/* LV-Grid: Raster und Mindestbreite aller Zeilen aus zwei Variablen am Scrollbereich (Spaltenbreiten, Ticket 130). */
+.tx-grid--lv .tx-grid__kopfzeile,
+.tx-grid--lv .tx-grid__zeile {
+  grid-template-columns: var(--tx-grid-vorlage);
+  min-width: var(--tx-grid-breite);
+}
+
+.tx-grid--lv .tx-grid__zeile {
+  width: 100%;
+}
+
+.tx-grid--lv .tx-grid__kopf,
+.tx-grid--lv .tx-grid__koerper {
+  min-width: var(--tx-grid-breite);
+}
+
+/* Unter dem Scrollbereich: behalten ihre Höhe, auch wenn wenig Platz ist. */
+.tx-grid > .tx-grid__hinweise,
+.tx-grid > .tx-grid__status,
+.tx-grid > .tx-grid__summen {
+  flex: none;
 }
 
 /* ---------- Körper ---------- */
@@ -775,4 +827,84 @@
 
 .tx-grid__balkenrand--ende {
   right: 0;
+}
+
+/* ---------- Suchen und filtern, Kontextmenü (Ticket 156) ---------- */
+
+/* Über dem Scrollbereich, nur bei offener Suche oder aktivem Filter: Sonst nimmt die Leiste keinen Platz (15 Zeilen bei
+   1280 × 800 bleiben). */
+.tx-grid > .tx-grid__suche {
+  flex: none;
+}
+
+.tx-grid__suche {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  background: var(--tx-color-surface-raised);
+  font-size: var(--tx-font-size-sm);
+}
+
+.tx-grid__suchfeld {
+  width: 16rem;
+  height: var(--tx-control-height-sm);
+  padding: 0 var(--tx-space-2);
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font: inherit;
+}
+
+.tx-grid__suchfeld:focus-visible,
+.tx-grid__filterwahl select:focus-visible,
+.tx-grid__filterwahl input:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: 1px;
+}
+
+.tx-grid__suchstand {
+  min-width: 6rem;
+  color: var(--tx-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__filterwahl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-1);
+}
+
+.tx-grid__filterwahl select {
+  height: var(--tx-control-height-sm);
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font: inherit;
+}
+
+.tx-grid__filterstand {
+  font-weight: 600;
+}
+
+.tx-grid__suche-zu {
+  margin-left: auto;
+}
+
+/* Unsichtbarer Punkt, an dem das Kontextmenü aufgeht (Mauszeiger oder aktive Zelle). */
+.tx-grid__menueanker {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.tx-grid__menuetrenner {
+  height: 1px;
+  margin: var(--tx-space-1) 0;
+  background: var(--tx-color-border);
 }

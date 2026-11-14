@@ -497,6 +497,8 @@ describe('Umnummerieren: Grenzen und Fehler', () => {
     const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: ohneTrenner2 });
     expect(f.code).toBe('oz-ueberlauf');
     expect(f.knotenId).toBe('P99');
+    // Vertrag v1.7a (D-127.14): alle Positionen ohne Platz, in Dokumentreihenfolge.
+    expect(f.knotenIds).toEqual(Array.from({ length: 51 }, (_, i) => `P${String(99 + i)}`));
     expect(z.leistungsverzeichnis.ozMaske).toEqual(vier);
   });
 
@@ -834,6 +836,45 @@ describe('OzMaskeSetzen', () => {
     const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: { ...MASKE_STANDARD, index: null } });
     expect(f.code).toBe('maske-ungueltig');
     expect(f.knotenId).toBe('P1A');
+  });
+
+  // Vertrag v1.7a (D-127.14, Ticket 137 Punkt 6): Der Fehler nennt alle Knoten, die unter der neuen Maske keine OZ bekommen
+  // können, in Dokumentreihenfolge (`knotenIds`); `knotenId` und Code sind die des ersten. Eine Gliederung, die nicht passt,
+  // steht für ihren Teilbaum.
+  it('der Fehler nennt alle Knoten, die nicht zur neuen Maske passen (knotenIds, Dokumentreihenfolge)', () => {
+    const z = z0();
+    const eng: OzMaske = { gliederung: [num(2)], position: num(4), index: alnum(1), trennzeichen: '.' };
+    const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: eng });
+    expect(f.code).toBe('maske-ungueltig');
+    expect(f.knotenId).toBe('T11');
+    // T11 liegt in Stufe 2 (er steht für seinen Teilbaum P111, P112); P12 und P21 passen in Stufe 1. Ein Knoten allein:
+    // kein `knotenIds` (Vertrag: nur, wenn es mehrere sind).
+    expect(f).not.toHaveProperty('knotenIds');
+    const ohne: OzMaske = { gliederung: [], position: num(4), index: null, trennzeichen: null };
+    expect(fehlerVon(z, { art: 'OzMaskeSetzen', maske: ohne }).knotenIds).toEqual(['T1', 'T2']);
+  });
+
+  it('mehrere Positionen mit Index ohne Indexstelle: alle genannt; ein einzelner Knoten ohne knotenIds', () => {
+    const z = mitMaske(MASKE_STANDARD, [
+      titelKnoten('T1', LV_ID, 0),
+      posKnoten('P1', 'T1', 0, '1.000', '1.000'),
+      posKnoten('P1A', 'T1', 1, '1.000', '1.000', { ozIndex: 'A' }),
+      posKnoten('P1B', 'T1', 2, '1.000', '1.000', { ozIndex: 'B' }),
+      titelKnoten('T2', LV_ID, 1),
+      posKnoten('P2', 'T2', 0, '1.000', '1.000'),
+      posKnoten('P2A', 'T2', 1, '1.000', '1.000', { ozIndex: 'A' }),
+    ]);
+    const f = fehlerVon(z, { art: 'OzMaskeSetzen', maske: { ...MASKE_STANDARD, index: null } });
+    expect([f.code, f.knotenId]).toEqual(['maske-ungueltig', 'P1A']);
+    expect(f.knotenIds).toEqual(['P1A', 'P1B', 'P2A']);
+    const eins = mitMaske(MASKE_STANDARD, [
+      titelKnoten('T1', LV_ID, 0),
+      posKnoten('P1', 'T1', 0, '1.000', '1.000'),
+      posKnoten('P1A', 'T1', 1, '1.000', '1.000', { ozIndex: 'A' }),
+    ]);
+    expect(
+      fehlerVon(eins, { art: 'OzMaskeSetzen', maske: { ...MASKE_STANDARD, index: null } }),
+    ).not.toHaveProperty('knotenIds');
   });
 
   it('eine Maske mit einem Titel in einem LV ohne Stufen: abgewiesen, Zustand unverändert', () => {

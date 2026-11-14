@@ -2,7 +2,9 @@
 // Ticket 88, Punkt 2 und 3: die Prüfansicht einer Rechnung als Daten. Gerechnet wird nur in `abrechnung`
 // (`rechnungPruefen`, `freigabeMoeglich`, Ticket 81); hier wird das Ergebnis zu Zeilen der Abzugskette, zum Vergleich
 // gefordert/geprüft (D-44), zu deutschen Befundtexten (U5) und zur Lage der Freigabe (D-34 (7)). Beträge bleiben
-// Dezimalwerte; formatiert wird erst in der Oberfläche (N4), Sätze in den Bezeichnungen schon hier.
+// Dezimalwerte; formatiert wird erst in der Oberfläche (N4), Sätze in den Bezeichnungen schon hier. Ticket 152 (A5, D-72):
+// die Vertragsstrafe als Zeile der Kette und die Zahlungsfreigabe (beide Fälle des Skontos, Bauabzugsteuer, Auszahlung,
+// Zahlungen, offen) mit denselben Bezeichnungen wie der Druck.
 
 import {
   freigabeMoeglich,
@@ -11,13 +13,19 @@ import {
   type Rechnungsbefund,
   type Rechnungspruefung,
 } from '@tethys/abrechnung';
+import { vorzeichen } from '@tethys/dezimal';
+import { BAUABZUGSTEUER_SATZ } from '@tethys/vertrag';
 import type {
   AufmassId,
   Betrag,
+  Kalenderdatum,
   LeistungsverzeichnisId,
   Nachtragsstatus,
   PositionId,
   Rechnung,
+  Vertragsstrafe,
+  Zahlung,
+  Zahlungsstand,
 } from '@tethys/vertrag';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
 import type { Nachtragseintrag } from '../nachtrag/speichern';
@@ -77,8 +85,11 @@ export interface Kettenzeile {
 const satz = (s: Parameters<typeof formatiereProzentDe>[0] | null): string | null =>
   s === null ? null : formatiereProzentDe(s);
 
-/** Die Kette Zeile für Zeile (D-34): Leistung … Zahlbetrag; je Umlage und je früherer Rechnung eine Zeile. */
-export function kettenzeilen(k: Abzugskette): Kettenzeile[] {
+/**
+ * Die Kette Zeile für Zeile (D-34): Leistung … Zahlbetrag; je Umlage und je früherer Rechnung eine Zeile. Die
+ * Vertragsstrafe (D-72) steht zwischen Umlagen und Einbehalt, wenn die Rechnung eine trägt oder die Kette einen Betrag nennt.
+ */
+export function kettenzeilen(k: Abzugskette, vertragsstrafe?: Vertragsstrafe): Kettenzeile[] {
   const zeilen: Kettenzeile[] = [
     { schluessel: 'leistung', bezeichnung: t.leistung, zeichen: '', betrag: k.leistung },
     { schluessel: 'nachlass', bezeichnung: t.nachlass, zeichen: '−', betrag: k.nachlass },
@@ -104,6 +115,13 @@ export function kettenzeilen(k: Abzugskette): Kettenzeile[] {
       betrag: u.betrag,
     });
   });
+  if (vertragsstrafe !== undefined || vorzeichen(k.vertragsstrafe) !== 0)
+    zeilen.push({
+      schluessel: 'vertragsstrafe',
+      bezeichnung: t.vertragsstrafe(vertragsstrafe?.grund ?? null),
+      zeichen: '−',
+      betrag: k.vertragsstrafe,
+    });
   zeilen.push({
     schluessel: 'einbehalt',
     bezeichnung:
@@ -199,6 +217,11 @@ export function befundtext(b: Rechnungsbefund, bezug: Befundbezug): string {
       return x['nachlass-ohne-basis'];
     case 'netto-nach-nachlass-negativ':
       return x['netto-nach-nachlass-negativ'];
+    // Befunde des Zahlungsstands (v1.7b, D-72; Wortlaut geprüft in Ticket 152, D-97).
+    case 'skonto-ohne-eingang':
+      return x['skonto-ohne-eingang'];
+    case 'zahlungen-ueber-auszahlung':
+      return x['zahlungen-ueber-auszahlung'](formatiereBetragDe(b.offen));
   }
 }
 
@@ -221,12 +244,15 @@ export function freigabelage(r: Rechnung, rechnungen: readonly Rechnung[]): Frei
     const spaeter = rechnungen
       .filter((x) => x.auftragsLvId === r.auftragsLvId && x.nummer > r.nummer && x.freigabe !== null)
       .map((x) => x.nummer);
-    return {
-      art: 'freigegeben',
-      zahlbetrag: r.freigabe.zahlbetrag,
-      aufhebbar: spaeter.length === 0,
-      grund: spaeter.length === 0 ? null : texte.freigabe.aufhebenGesperrt(spaeter),
-    };
+    // Q5, D-128.7: Solange Zahlungen bestehen, bleibt die Freigabe (der Ausführer weist sonst mit `zahlungen-vorhanden` ab).
+    const zahlungen = r.zahlungen?.length ?? 0;
+    const grund =
+      spaeter.length > 0
+        ? texte.freigabe.aufhebenGesperrt(spaeter)
+        : zahlungen > 0
+          ? texte.freigabe.aufhebenZahlungen(r.nummer, zahlungen)
+          : null;
+    return { art: 'freigegeben', zahlbetrag: r.freigabe.zahlbetrag, aufhebbar: grund === null, grund };
   }
   const m = freigabeMoeglich(r, rechnungen);
   const offen = m.hindernisse.flatMap((h) => (h.code === 'fruehere-offen' ? h.nummern : []));
@@ -234,5 +260,138 @@ export function freigabelage(r: Rechnung, rechnungen: readonly Rechnung[]): Frei
     art: 'offen',
     moeglich: m.moeglich,
     grund: offen.length === 0 ? null : texte.freigabe.gesperrt(offen),
+  };
+}
+
+/** Eine Zeile der beiden Fälle des Skontos: bei Zahlung bis zum Fristende (`mit`) und danach (`ohne`). */
+export interface Fallzeile {
+  readonly schluessel: 'zahlbetrag' | 'skonto' | 'bauabzugsteuer' | 'auszahlung';
+  readonly bezeichnung: string;
+  readonly zeichen: '' | '−' | '=';
+  readonly mit: Betrag;
+  readonly ohne: Betrag;
+}
+
+/** Eine Zeile des geltenden Falls bis zum offenen Betrag. */
+export interface Freigabezeile {
+  readonly schluessel: 'zahlbetrag' | 'skonto' | 'bauabzugsteuer' | 'auszahlung' | 'summeZahlungen' | 'offen';
+  readonly bezeichnung: string;
+  readonly zeichen: '' | '−' | '=';
+  readonly betrag: Betrag;
+}
+
+/** Die Zahlungsfreigabe als Daten (A5, D-72), gegliedert wie im Druck. */
+export interface Zahlungsfreigabe {
+  /** Beide Fälle, wenn ein Skonto mit Fristende vereinbart ist; sonst `null`. */
+  readonly faelle: { readonly bis: Kalenderdatum; readonly zeilen: readonly Fallzeile[] } | null;
+  /** Skonto vereinbart, aber kein Eingangsdatum: kein Fristende, kein Skonto (Befund `skonto-ohne-eingang`). */
+  readonly ohneEingang: boolean;
+  /** Der geltende Fall: Zahlbetrag, Skonto (falls vereinbart), Bauabzugsteuer (falls an), Auszahlung, Zahlungen, offen. */
+  readonly geltend: readonly Freigabezeile[];
+  /** Die Zahlungen nach Datum (bei gleichem Datum in der Reihenfolge des Erfassens). */
+  readonly zahlungen: readonly Zahlung[];
+}
+
+/** Zahlungen nach Datum; gleiches Datum in der Reihenfolge des Erfassens (stabil). */
+export const nachDatum = (zs: readonly Zahlung[]): Zahlung[] =>
+  [...zs].sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
+
+/**
+ * Der Stand des Skontos in Worten, nach derselben Regel wie `skontoStandText` im Druck (Ticket 163): „verwirklicht“;
+ * „noch nicht verwirklicht“, solange die Skontofrist läuft (Fristtag eingeschlossen) oder ohne Eingangsdatum noch keine
+ * Frist besteht; „nicht verwirklicht“, wenn `heute` nach dem Fristende liegt oder eine Zahlung nach dem Fristende erfasst
+ * ist. Hier nachgebaut statt aus `@tethys/ausgabe` geholt, weil das Paket pdfmake ins Hauptbündel zöge (D-163.2); ein Test
+ * hält beide Fassungen gleich.
+ */
+export function skontoStand(
+  zs: Pick<Zahlungsstand, 'skontoVerwirklicht' | 'fristende'>,
+  zahlungen: readonly { readonly datum: string }[],
+  heute: Kalenderdatum,
+): string {
+  const z = texte.zahlung;
+  if (zs.skontoVerwirklicht) return z.skontoVerwirklicht;
+  const fristende = zs.fristende;
+  const abgelaufen = fristende !== null && (heute > fristende || zahlungen.some((x) => x.datum > fristende));
+  return abgelaufen ? z.skontoNichtVerwirklicht : z.skontoNochNichtVerwirklicht;
+}
+
+/**
+ * Die Zahlungsfreigabe einer Rechnung aus ihrem Zahlungsstand (gerechnet in `abrechnung`, D-128.8). Bezeichnungen wie im
+ * Druck: „Bauabzugsteuer 15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“, „Summe der Zahlungen“, „Offen“.
+ * Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag. `heute` (Uhr der App) entscheidet, ob ein nicht
+ * verwirklichter Skonto „noch nicht“ (Frist läuft) oder endgültig „nicht verwirklicht“ heißt.
+ */
+export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand, heute: Kalenderdatum): Zahlungsfreigabe {
+  const z = texte.zahlung;
+  const steuer = r.bauabzugsteuer === true;
+  const steuerText = z.bauabzugsteuer(formatiereProzentDe(BAUABZUGSTEUER_SATZ));
+  const skonto = r.skonto;
+  let faelle: Zahlungsfreigabe['faelle'] = null;
+  if (skonto !== undefined && zs.fristende !== null) {
+    const zeilen: Fallzeile[] = [
+      {
+        schluessel: 'zahlbetrag',
+        bezeichnung: z.zahlbetrag,
+        zeichen: '',
+        mit: zs.zahlbetrag,
+        ohne: zs.zahlbetrag,
+      },
+      {
+        schluessel: 'skonto',
+        bezeichnung: z.skonto(formatiereProzentDe(skonto.satz)),
+        zeichen: '−',
+        mit: zs.mitSkonto.skonto,
+        ohne: zs.ohneSkonto.skonto,
+      },
+    ];
+    if (steuer)
+      zeilen.push({
+        schluessel: 'bauabzugsteuer',
+        bezeichnung: steuerText,
+        zeichen: '−',
+        mit: zs.mitSkonto.bauabzugsteuer,
+        ohne: zs.ohneSkonto.bauabzugsteuer,
+      });
+    zeilen.push({
+      schluessel: 'auszahlung',
+      bezeichnung: z.auszahlung,
+      zeichen: '=',
+      mit: zs.mitSkonto.auszahlung,
+      ohne: zs.ohneSkonto.auszahlung,
+    });
+    faelle = { bis: zs.fristende, zeilen };
+  }
+  const geltend: Freigabezeile[] = [
+    {
+      schluessel: 'zahlbetrag',
+      bezeichnung: r.freigabe === null ? z.zahlbetragVorschau : z.zahlbetragEingefroren,
+      zeichen: '',
+      betrag: zs.zahlbetrag,
+    },
+  ];
+  if (skonto !== undefined)
+    geltend.push({
+      schluessel: 'skonto',
+      bezeichnung: skontoStand(zs, r.zahlungen ?? [], heute),
+      zeichen: '−',
+      betrag: zs.verwirklichterSkonto,
+    });
+  if (steuer)
+    geltend.push({
+      schluessel: 'bauabzugsteuer',
+      bezeichnung: steuerText,
+      zeichen: '−',
+      betrag: zs.bauabzugsteuer,
+    });
+  geltend.push(
+    { schluessel: 'auszahlung', bezeichnung: z.auszahlung, zeichen: '=', betrag: zs.auszahlung },
+    { schluessel: 'summeZahlungen', bezeichnung: z.summeZahlungen, zeichen: '−', betrag: zs.summeZahlungen },
+    { schluessel: 'offen', bezeichnung: z.offen, zeichen: '=', betrag: zs.offen },
+  );
+  return {
+    faelle,
+    ohneEingang: skonto !== undefined && zs.fristende === null,
+    geltend,
+    zahlungen: nachDatum(r.zahlungen ?? []),
   };
 }

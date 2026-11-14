@@ -1,0 +1,50 @@
+00        83L                                                 11PPPPI0090 000001
+01GerÑteschuppen Bauhof                   13.11.26                        000002
+02Muster-Neubau GerÑteschuppen                                            000003
+03Gemeinde Musterdorf                                                     000004
+08EUR   Euro                                                              000005
+20                                                                        000006
+26   Vorbemerkung zum Leistungsverzeichnis                                000007
+26   Die Zufahrt erfolgt Åber den Wirtschaftsweg.                         000008
+1101       N                                                              000009
+12Erdarbeiten                                                             000010
+21010010   NNN         00000125500m2                                      000011
+25Oberboden abtragen                                                      000012
+26   Oberboden abtragen und seitlich lagern.                              000013
+26   - Dicke bis 30 cm                                                    000014
+26   - Lagerung auf der Baustelle                                         000015
+21010020   NNN         00000048250m3                                      000016
+25Baugrube ausheben                                                       000017
+26   Baugrube ausheben, Boden der Klassen 3 bis 5,                        000018
+26   Aushub seitlich lagern.                                              000019
+21010030   NEN         00000010000h                                       000020
+25Wasserhaltung (Bedarf)                                                  000021
+26   Wasserhaltung mit Tauchpumpe, nur auf Anordnung.                     000022
+21010040   NMN         00000012000m3                                      000023
+25Bodenaustausch (Bedarf mit Gesamtbetrag)                                000024
+26   Nicht tragfÑhigen Boden gegen Kies austauschen.                      000025
+20                                                                        000026
+26   Abfuhr von Boden nach gesonderter Vereinbarung.                      000027
+3101                                                                      000028
+1102       N                                                              000029
+12Rohbau                                                                  000030
+21020010   GNN         00000018400m3                                      000031
+25Streifenfundament C25/30                                                000032
+26   Streifenfundament aus Beton C25/30, unbewehrt.                       000033
+21020020   ANN         00000018400m3                                      000034
+25Streifenfundament C30/37 (Wahl)                                         000035
+26   Wie vor, jedoch Beton C30/37.                                        000036
+21020030   NNN         00000086750m2                                      000037
+25Mauerwerk KS 17,5 cm                                                    000038
+26   Kalksandstein-Mauerwerk, Wanddicke 17,5 cm,                          000039
+26   Mîrtelgruppe IIa.                                                    000040
+26                                                                        000041
+26   AusfÅhrung nach Plan.                                                000042
+21020040   NNN         00000020000h                                       000043
+25Facharbeiter im Stundenlohn                                             000044
+26   Stundenlohnarbeiten, Facharbeiter.                                   000045
+21020050   NNN         00000001000psch                                    000046
+25Baustelleneinrichtung                                                   000047
+26   Baustelle einrichten und rÑumen.                                     000048
+3102                                                                      000049
+99                                                                   00009000050

@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
-import { betragDe, projektAnlegen } from './hilfen';
+import { betragDe, erwarteMeldung, projektAnlegen } from './hilfen';
 
 interface Fx {
   readonly kostenermittlung: {
@@ -105,7 +105,7 @@ test('X3: Honorarberechnung aus der Kostenberechnung mit allen Sollwerten, Undo,
   // --- Kostenberechnung mit den Einträgen der Fixture ---------------------------------------------------------------------
   await page.getByRole('link', { name: 'Kosten', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill(fx.kostenermittlung.name);
-  await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  await page.getByRole('button', { name: 'Kostenermittlung anlegen', exact: true }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: `Kostenermittlung – ${fx.kostenermittlung.name}` }),
   ).toBeVisible();
@@ -124,7 +124,7 @@ test('X3: Honorarberechnung aus der Kostenberechnung mit allen Sollwerten, Undo,
   await expect(page.getByRole('heading', { level: 1, name: 'Honorar – Bürogebäude' })).toBeVisible();
   await expect(page.getByText('Noch keine Honorarberechnung.')).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(fx.honorarberechnung.name);
-  await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  await page.getByRole('button', { name: 'Honorarberechnung anlegen', exact: true }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: `Honorarberechnung – ${fx.honorarberechnung.name}` }),
   ).toBeVisible();
@@ -341,8 +341,5 @@ test('X3: Honorarberechnung aus der Kostenberechnung mit allen Sollwerten, Undo,
     .getByRole('dialog', { name: 'Kostenermittlung löschen' })
     .getByRole('button', { name: 'Löschen' })
     .click();
-  // Genauer Treffer: Die Meldung steht kurz auch im unsichtbaren Ansageknoten der Toast-Region („Meldung …“ davor).
-  await expect(
-    page.getByText('Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.', { exact: true }),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.');
 });

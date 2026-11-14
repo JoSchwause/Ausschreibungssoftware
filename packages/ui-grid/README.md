@@ -13,52 +13,12 @@ Navigation (`src/navigation.ts`) und Baumdarstellung (`src/Baumeinzug.tsx`).
 
 ## Tastenhilfe
 
-Tastatur zuerst (U3, U8). Strg steht auf dem Mac für Cmd.
-
-### Bewegen und Auswählen
-
-| Taste                          | Wirkung                                                          |
-| ------------------------------ | ---------------------------------------------------------------- |
-| Pfeiltasten                    | Zelle wechseln                                                   |
-| Strg+Pfeil                     | an den Rand des Grids in dieser Richtung (Zeile bzw. Spalte)     |
-| Pos1 / Ende                    | erste / letzte Zelle der Zeile                                   |
-| Strg+Pos1 / Strg+Ende          | erste / letzte Zelle des Grids                                   |
-| Bild auf / Bild ab             | eine Seite nach oben / unten                                     |
-| Tab / Umschalt+Tab             | nächste / vorige Zelle; am Anfang und Ende verlässt Tab das Grid |
-| Umschalt+Pfeil, Umschalt+Klick | Zeilenauswahl erweitern                                          |
-| Leertaste, Strg+Klick          | Zeile in die Auswahl aufnehmen oder herausnehmen                 |
-| Strg+A                         | alle Zeilen auswählen                                            |
-| Escape                         | Ausschneiden abbrechen; sonst Auswahl auf die aktive Zeile       |
-
-### Bearbeiten
-
-| Taste                  | Wirkung                                              |
-| ---------------------- | ---------------------------------------------------- |
-| Enter, F2, Doppelklick | Zelle bearbeiten                                     |
-| Strg+Enter             | Zeile öffnen (nur mit `onZeileOeffnen`, Ticket 54)   |
-| Zeichen tippen         | Bearbeiten beginnt mit diesem Zeichen                |
-| Enter / Umschalt+Enter | im Eingabefeld: übernehmen, Zelle darunter / darüber |
-| Tab                    | im Eingabefeld: übernehmen, nächste Zelle            |
-| Escape                 | im Eingabefeld: Eingabe verwerfen                    |
-| Entf                   | Zelle leeren                                         |
-
-### Gliederung
-
-| Taste                    | Wirkung                                      |
-| ------------------------ | -------------------------------------------- |
-| Pfeil rechts / links     | in der Baumspalte: aufklappen / zuklappen    |
-| Alt+Pfeil rechts / links | überall in der Zeile: aufklappen / zuklappen |
-
-### Zeilen (Ticket 46)
-
-| Taste                                    | Wirkung                                                                                                            |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Strg+C                                   | ausgewählte Zeilen (sonst die aktive) als Tabelle (TSV) kopieren, Zahlen in de-DE                                  |
-| Strg+X                                   | wie Strg+C, die Zeilen sind bis zum Einfügen als „ausgeschnitten“ markiert                                         |
-| Strg+V                                   | einfügen hinter der aktiven Zeile, siehe unten                                                                     |
-| Strg+Minus, Strg+Entf                    | Zeilen nach Rückfrage in den Papierkorb legen (Fokus auf der Bestätigung: Enter legt sie hinein, Escape bricht ab) |
-| Alt+Pfeil hoch / runter                  | Zeilen um eine Stelle unter ihren Geschwistern verschieben; am Rand geschieht nichts                               |
-| Strg+Plus (US-Tastatur: Strg+Umschalt+=) | leere Position hinter der aktiven Zeile anlegen und ihren Kurztext fokussieren                                     |
+Tastatur zuerst (U3, U8). Strg steht auf dem Mac für Cmd. Die Kürzel stehen an genau einer Stelle: `GRID_KUERZEL` in
+`src/kuerzel.ts` (Ticket 130), je Eintrag Taste und Beschreibung in Worten, Bereich (Überschrift der Hilfe), Geltung (`alle`
+oder nur `lv`) und die Tastenmuster. Beide Grids binden ihre Tasten daraus (`kuerzelAktion`), die App erzeugt daraus ihre
+Hilfeseite; ein zweites Verzeichnis gibt es nicht, auch nicht hier. Mit der Maus: Doppelklick bearbeitet (oder öffnet eine
+nicht bearbeitbare Zelle), Strg+Klick nimmt eine Zeile in die Auswahl auf, Umschalt+Klick erweitert sie. Im Eingabefeld
+übernehmen Enter, Umschalt+Enter und Tab die Eingabe und gehen weiter, Escape verwirft sie.
 
 „Hinter der aktiven Zeile“ heißt bei einer Gliederung: als erstes Kind (wie überall im Vertrag, `Einfuegeort`).
 
@@ -72,6 +32,26 @@ Strg+V unterscheidet nach dem Text der Zwischenablage:
 
 Mehrere Befehle aus einem Einfügen gehen als eine Folge über `onBefehlsfolge` hinaus (ein Undo-Schritt), sonst einzeln
 über `onBefehl`. Kurze Ansagen („2 Zeilen kopiert.“) stehen in der Live-Region unter dem Grid.
+
+## Spaltenbreiten (Ticket 130)
+
+- Die OZ-Spalte ist so breit wie die breiteste OZ, die `ozMaske` zulässt (samt Index), mindestens wie die längste OZ der
+  Zeilen; ohne Maske zählt nur die längste OZ. Zahlenspalten sind mindestens so breit wie ihr längster formatierter Wert.
+  Gemessen wird über Zeichenzahl und Schriftmaß (`src/spaltenbreiten.ts`), nicht im DOM. OZ und Zahlen werden so nie
+  abgeschnitten; Textspalten kürzen mit Ellipse.
+- Breite ändern: Ziehgriff am rechten Rand jeder Kopfzelle (Doppelklick: Standardbreite) oder Alt+Umschalt+Pfeil
+  rechts/links in einer Zelle der Spalte (Schritt 16 px), Alt+Umschalt+Pos1 zurück zur Standardbreite.
+- `spaltenbreitenSchluessel`: Unter diesem Schlüssel merkt das Grid die gezogenen Breiten, je Grid einer (z. B. `lv`,
+  `auftrags-lv`). `spaltenbreitenSpeicher` (`{ lesen, schreiben }`) ersetzt den Standard `localStorage`
+  (`tethys.grid.spaltenbreiten.<Schlüssel>`, Fehler werden übergangen). Ohne Schlüssel gelten Breiten, solange das Grid steht.
+- Höhe: Das Grid füllt die Höhe seines Elternelements (`height: 100%`, als Flex-Element `flex: 1`); nur der Scrollbereich
+  schrumpft, Hinweise, Status und Summenfuß bleiben sichtbar.
+
+Was sich ändern lässt und wohin die Befehle gehen, steht in `src/schreibrechte.ts`, samt der beiden Ausnahmen vom
+Schreibschutz: Spalte „KG“ (`kostengruppeLesen` und `onKostengruppen`, Ticket 93) und Spalte „EP“ (`onEinheitspreise`,
+Review Welle 7 SB3, z. B. die Preise eines Angebots auf dem Gerüst des LV statt eines zweiten Grids, U2). Mit der Ausnahme
+„EP“ ist der EP einer Zuschlagsposition gesperrt (ihr Preis ist ein Satz); Eingabe, Entf und das Einfügen einer Spalte gehen
+als `EinheitspreisAendern` hinaus, jede Aktion als eine Folge.
 
 ## Weitere Eigenschaften
 
@@ -146,9 +126,8 @@ ohne Hülle und ohne verstecktes Beschreibungselement; `aria-readonly` steht nur
 Versatz als eigenen Stil (Raster, Höhe und Mindestbreite erben sie). `e2e/leistung.spec.ts` prüft die Zahl der Elemente
 je Zelle und misst das Scrollen.
 
-Tastatur: Navigation wie im `LvGrid` (Pfeile, Strg+Pfeil, Pos1/Ende, Strg+Pos1/Ende, Bild auf/ab, Tab, Enter /
-Umschalt+Enter eine Zeile weiter / zurück), Auf-/Zuklappen wie im `LvGrid`. Zellauswahl: Umschalt+Pfeil und
-Umschalt+Klick ziehen ein Rechteck auf, Strg+A wählt alles, Escape hebt die Auswahl auf. Strg+C kopiert das Rechteck
+Tastatur: die Kürzel aus `GRID_KUERZEL`, die für `alle` gelten (Navigation, Auf-/Zuklappen, Auswahl, Strg+C). Zellauswahl:
+Umschalt+Pfeil und Umschalt+Klick ziehen ein Rechteck auf, Strg+A wählt alles, Escape hebt die Auswahl auf. Strg+C kopiert das Rechteck
 (sonst die aktive Zelle) als TSV wie aus Excel: nur die Anzeigetexte, ohne Kennzeichen und Kopf. Änderungsversuche
 (Tippen, F2, Entf, Strg+X/V) ändern nichts und werden in der Live-Region angesagt.
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Befunde einer GAEB-Datei, nach Schwere gruppiert (Ticket 49; Q5: nichts wird still verworfen). Sie sperren nie (U5).
+// Befunde einer GAEB-Ausgabe, nach Schwere gruppiert (Ticket 49; Q5: nichts wird still verworfen). Sie sperren nie (U5).
+// Ohne Code als Lesetext (L5). Die Dialoge des Einlesens nutzen `BefundeBeimEinlesen`.
 
 import type { Pruefbefund } from '@tethys/vertrag';
 import type { ReactElement } from 'react';
@@ -16,7 +17,7 @@ function Gruppe({ titel, befunde }: { titel: string; befunde: readonly Pruefbefu
       <ul>
         {befunde.map((b, i) => (
           <li key={i}>
-            <span className="gaeb__code">{b.code}</span> {b.meldung}
+            {b.meldung}
             {b.ort.zeile === undefined ? '' : ` (${texte.befunde.ort(b.ort.zeile)})`}
           </li>
         ))}

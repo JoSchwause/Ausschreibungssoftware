@@ -213,6 +213,9 @@ export const auftragsLvBefehlAusfuehren: AuftragsLvBefehlAusfuehren = (zustand, 
       return kostengruppeSetzen(zustand, befehl);
     case 'BauteileZuordnen':
       return bauteileZuordnen(zustand, befehl);
+    // Vertrag v1.7a (D-127.17): Den Zuschlag nimmt die Vergabe zurück (mit den Verweisen); der Kern weist ihn ab.
+    case 'ZuschlagZuruecknehmen':
+      return nein('befehl-nicht-zustaendig', `Befehl ${art} führt die Vergabe aus, nicht der Kern.`);
     default:
       return nein('befehl-nicht-zustaendig', `Befehl ${art} gehört nicht zum Auftrags-LV.`);
   }

@@ -1,12 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type {
+  AuftragsLeistungsverzeichnisId,
   BauwerksmodellChangeSet,
   BauwerksmodellId,
   BauwerksmodellKopf,
   ProjektId,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { bimRoute, bimZiel, modellPfad, modellePfad } from './pfad';
+import {
+  aufmassAusModellPfad,
+  auftragAusAdresse,
+  bimRoute,
+  bimZiel,
+  mitAuftrag,
+  modellPfad,
+  modellePfad,
+} from './pfad';
 
 const p = 'p1' as ProjektId;
 const m = 'm1' as BauwerksmodellId;
@@ -62,5 +71,34 @@ describe('bimZiel nach Undo/Redo', () => {
     expect(bimZiel(p, umbenannt, true, '/projekt/p1/modelle/m1')).toBeNull();
     expect(bimZiel(p, umbenannt, true, '/projekt/p1/modelle')).toBeNull();
     expect(bimZiel(p, umbenannt, false, '/projekt/p1')).toBe('/projekt/p1/modelle');
+  });
+});
+
+describe('„Aufmaß aus Modell“ (Ticket 155)', () => {
+  const a = 'a 1' as AuftragsLeistungsverzeichnisId;
+  const stand = (id: string, vorgaengerId: string | null) => ({
+    id: id as BauwerksmodellId,
+    vorgaengerId: vorgaengerId as BauwerksmodellId | null,
+  });
+
+  it('öffnet den einzigen aktuellen Stand mit dem Auftrags-LV vorgewählt', () => {
+    expect(aufmassAusModellPfad(p, a, [stand('m1', null), stand('m2', 'm1')])).toBe(
+      '/projekt/p1/modelle/m2?auftrag=a%201',
+    );
+  });
+
+  it('ohne Modell oder mit mehreren aktuellen Ständen die Liste, das Auftrags-LV geht mit', () => {
+    expect(aufmassAusModellPfad(p, a, [])).toBe('/projekt/p1/modelle?auftrag=a%201');
+    expect(aufmassAusModellPfad(p, a, [stand('m1', null), stand('m2', null)])).toBe(
+      '/projekt/p1/modelle?auftrag=a%201',
+    );
+  });
+
+  it('die Vorwahl steht nur in der Suche; die Seite erkennt den Pfad ohne sie', () => {
+    expect(auftragAusAdresse('?auftrag=a%201')).toBe('a 1');
+    expect(auftragAusAdresse('')).toBeNull();
+    expect(auftragAusAdresse('?auftrag=')).toBeNull();
+    expect(mitAuftrag(modellPfad(p, m), a)).toBe('/projekt/p1/modelle/m1?auftrag=a%201');
+    expect(mitAuftrag(modellPfad(p, m), null)).toBe('/projekt/p1/modelle/m1');
   });
 });

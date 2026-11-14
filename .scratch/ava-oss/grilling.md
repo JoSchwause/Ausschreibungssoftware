@@ -87,6 +87,7 @@ explizit geantwortet), **offen**.
   Annahme für Demo, Mensch bestätigt später: kumulierte Abschlags- und Schlussrechnung mit Abzugskette Leistung → Nachlass →
   MwSt → Umlagen → Sicherheits- bzw. Gewährleistungseinbehalt → eingefrorene frühere Zahlbeträge (D-34 in
   `entscheidungen-auto.md`).
+  Annahme für Demo, Mensch bestätigt später: Erweiterung um Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen (A5, G-61) nach D-72.
 - **G-28** MwSt — *entschieden*. **Antwort:** Ein Satz je LV, kein Satzwechsel in v1. (2026-11-09)
 - **G-29** Lose — *entschieden*. **Antwort:** Im MVP nur gliedernd. Getrennte Vergabe später.
   (2026-11-09)

@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Seite `/lv/<id>/preisspiegel` (Ticket 63): alle Angebote eines LV im Vergleichsgrid (U2). Rechnung nur in `vergabe`
-// (`preisspiegelBerechnen`), Zahlen nur über `dezimal` (A5, N1, N4). Die Einstellungen (G-26) gelten für die Sitzung
-// und werden nicht gespeichert. Ticket 64: „Zuschlag erteilen“ je Bieter in der Bieterübersicht; gibt es zum LV schon
-// ein Auftrags-LV, sind die Knöpfe aus und ein Hinweis nennt den Grund (D-21, Q5).
+// (`preisspiegelBerechnen`), Zahlen nur über `dezimal` (A5, N1, N4). Ticket 64: „Zuschlag erteilen“ je Bieter in der
+// Bieterübersicht; gibt es zum LV schon ein Auftrags-LV, sind die Knöpfe aus und ein Hinweis nennt den Grund (D-21, Q5).
+// Ticket 149: Die Einstellungen (G-26) stehen am LV (D-73, B-29; die Spaltenwahl bleibt Sitzung), der Zuschlag lässt sich
+// zurücknehmen (D-74), Bieter verwalten, Ausgaben als PDF (mit Vorschau) und Excel.
 
-import type { PreisspiegelEinstellungen } from '@tethys/vergabe';
 import { PREISSPIEGEL_STANDARD } from '@tethys/vergabe';
 import { VergleichsGrid, type VergleichsZellort } from '@tethys/ui-grid';
-import { Button } from '@tethys/ui-basis';
+import { Button, Icon, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
 import type {
   AngebotZustand,
   AuftragsLvZustand,
   LeistungsverzeichnisId,
   LvZustand,
+  PreisspiegelEinstellungen,
   Projekt,
 } from '@tethys/vertrag';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
@@ -23,6 +24,7 @@ import { auftragPfad } from '../auftrag/ziel';
 import { ZuschlagserteilungDialog } from '../auftrag/ZuschlagserteilungDialog';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
+import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { Verweis } from '../ui/Verweis';
 import {
@@ -33,13 +35,20 @@ import {
   type Anbieter,
   type Spaltenwahl,
 } from './ansicht';
+import { PreisspiegelExcel, PreisspiegelPdf, Vergabevorschlag } from './Ausgaben';
+import { BieterVerwalten } from './BieterVerwalten';
 import { Bieteruebersicht } from './Bieteruebersicht';
 import { Detailleiste } from './Detailleiste';
 import { Einstellungen } from './Einstellungen';
+import { preisspiegelEinstellungenSetzen } from './schreiben';
 import { texte } from './texte';
+import { ZuschlagZuruecknehmen } from './ZuschlagZuruecknehmen';
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './vergabe.css';
+
+/** Eingeklappter Summenblock: das Grid ohne Summenzeilen. */
+const KEINE_SUMMEN: readonly never[] = [];
 
 interface Stand {
   readonly lv: LvZustand;
@@ -127,24 +136,53 @@ export function PreisspiegelSeite({
       </div>
     );
   }
-  return <Preisspiegel stand={lage.stand} gehe={gehe} />;
+  return (
+    <Preisspiegel
+      stand={lage.stand}
+      gehe={gehe}
+      neuLaden={() => {
+        setLauf((n) => n + 1);
+      }}
+    />
+  );
 }
 
-function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void }): ReactElement {
+function Preisspiegel({
+  stand,
+  gehe,
+  neuLaden,
+}: {
+  stand: Stand;
+  gehe: (pfad: string) => void;
+  neuLaden: () => void;
+}): ReactElement {
   const { lv, anbieter, projekt, auftrag } = stand;
   const kopf = lv.leistungsverzeichnis;
-  const [einstellungen, setEinstellungen] = useState<PreisspiegelEinstellungen>(PREISSPIEGEL_STANDARD);
+  const u = useUmgebung();
+  const { pruefe } = useMeldungen();
+  // Am LV gespeichert (D-73); fehlt der Wert, gelten die Standardwerte nach D-05.
+  const einstellungen = kopf.preisspiegel ?? PREISSPIEGEL_STANDARD;
+  const einstellungenSetzen = (e: PreisspiegelEinstellungen | null): void => {
+    void preisspiegelEinstellungenSetzen(befehlswegFuer(u), lv, e).then((r) => {
+      if (pruefe(r)) neuLaden();
+    });
+  };
   const [wahl, setWahl] = useState<Spaltenwahl>(STANDARD_WAHL);
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const [ort, setOrt] = useState<VergleichsZellort | null>(null);
   const [erteilenAn, setErteilenAn] = useState<Anbieter | null>(null);
   const vergebenId = useId();
+  // Ticket 142: Der Summenblock des Grids ist eingeklappt, bis der Nutzer ihn öffnet; die Summen je Bieter stehen in der
+  // Bieterübersicht. So zeigt das Grid bei 1280×800 Positionen statt nur Summen.
+  const [summenOffen, setSummenOffen] = useState(false);
+  const gridId = useId();
 
   // Die Rechnung nur bei neuem Stand oder neuen Einstellungen; Spalten und Aufklappen bauen nur die Ansicht neu.
   const preisspiegel = useMemo(
     () => preisspiegelRechnen(lv, anbieter, einstellungen),
     [lv, anbieter, einstellungen],
   );
+  const ausgabe = useMemo(() => ({ lv, projekt, preisspiegel }), [lv, projekt, preisspiegel]);
   const eingang = useMemo(
     () => ({ lv, anbieter, preisspiegel, wahl, zugeklappt }),
     [lv, anbieter, preisspiegel, wahl, zugeklappt],
@@ -183,12 +221,32 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
         </h1>
         <Verweis pfad={lvPfad} text={texte.seite.zumLv} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
-      </div>
+        {anbieter.length === 0 ? null : (
+          <Werkzeuggruppe titel={texte.ausgabe.gruppe}>
+            <PreisspiegelPdf stand={ausgabe} wahl={wahl} />
+            <PreisspiegelExcel stand={ausgabe} wahl={wahl} />
+            {kopf.nachtrag === undefined ? <Vergabevorschlag stand={ausgabe} /> : null}
+          </Werkzeuggruppe>
+        )}
+        <BieterVerwalten projektId={projekt.id} onGeaendert={neuLaden} />
+        {anbieter.length === 0 ? null : (
+          <Button
+            aria-expanded={summenOffen}
+            aria-controls={gridId}
+            onClick={() => {
+              setSummenOffen((o) => !o);
+            }}
+          >
+            {texte.seite.summen}
+            <Icon name={summenOffen ? 'pfeilOben' : 'pfeilUnten'} groesse={14} />
+          </Button>
+        )}
+      </Werkzeugleiste>
       <Einstellungen
         einstellungen={einstellungen}
-        onEinstellungen={setEinstellungen}
+        onEinstellungen={einstellungenSetzen}
         wahl={wahl}
         onWahl={setWahl}
       />
@@ -196,12 +254,12 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
         <p>{texte.seite.keineAngebote}</p>
       ) : (
         <>
-          <div className="lv__grid preisspiegel__grid">
+          <div className="lv__grid preisspiegel__grid" id={gridId}>
             <VergleichsGrid
               beschriftung={texte.seite.grid}
               spalten={ansicht.spalten}
               zeilen={ansicht.zeilen}
-              summen={ansicht.summen}
+              summen={summenOffen ? ansicht.summen : KEINE_SUMMEN}
               kennzeichenTexte={ansicht.kennzeichenTexte}
               fixierteSpalten={2}
               baumspalte="kurztext"
@@ -223,7 +281,8 @@ function Preisspiegel({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => v
                     pfad={auftragPfad(projekt.id, auftrag.auftragsLeistungsverzeichnis.id)}
                     text={atexte.knopf.oeffnen}
                     gehe={gehe}
-                  />
+                  />{' '}
+                  <ZuschlagZuruecknehmen auftrag={auftrag} onZurueckgenommen={neuLaden} />
                 </p>
               )}
               <Bieteruebersicht

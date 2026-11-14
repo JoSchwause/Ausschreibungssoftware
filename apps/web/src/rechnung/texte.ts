@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Deutsche Texte der Rechnungen (Ticket 88, L1). Keine Übersetzung in v1.
 
+import type { XRechnungBefundcode } from '@tethys/erechnung';
 import type { Rechnungsart } from '@tethys/vertrag';
 
 const nummern = (xs: readonly number[]): string => xs.map(String).join(', ');
@@ -23,9 +24,14 @@ export const texte = {
     umlageSatz: (i: number) => `Satz der Umlage ${String(i + 1)}`,
     sicherheitSatz: 'Sicherheitseinbehalt',
     gewaehrleistungSatz: 'Gewährleistungseinbehalt',
+    vertragsstrafeBetrag: 'Vertragsstrafe (brutto, kumuliert)',
+    vertragsstrafeGrund: 'Grund der Vertragsstrafe',
+    skontoSatz: 'Skontosatz',
+    skontoFrist: 'Skontofrist',
+    bauabzugsteuer: 'Bauabzugsteuer einbehalten',
   },
   formular: {
-    titelNeu: (nummer: number) => `Neue Rechnung ${String(nummer)}`,
+    titelNeu: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
     titelBearbeiten: (nummer: number) => `Rechnung ${String(nummer)} bearbeiten`,
     angaben: 'Angaben des Auftragnehmers',
     gefordert: 'Gefordert (nur zum Vergleich, nicht geprüft)',
@@ -43,6 +49,22 @@ export const texte = {
     hinweisEinbehalt:
       'Der Sicherheitseinbehalt gilt in Abschlagsrechnungen, der Gewährleistungseinbehalt in der Schlussrechnung.',
     unlesbar: 'Bitte die markierten Felder prüfen; es wurde nichts gespeichert.',
+    a5: 'Vertragsstrafe, Skonto und Bauabzugsteuer',
+    strafeBetragFehlt: 'Bitte einen Betrag angeben oder den Grund leeren.',
+    strafeBetragPositiv:
+      'Die Vertragsstrafe muss größer als 0,00 € sein; ohne Vertragsstrafe beide Felder leeren.',
+    strafeGrundFehlt: 'Bitte einen Grund der Vertragsstrafe angeben.',
+    hinweisStrafe:
+      'Die Vertragsstrafe wird vom Bruttobetrag abgezogen; auf sie fällt keine MwSt an. Sie gilt kumuliert bis zu dieser Rechnung; vorgeschlagen wird die der vorigen Rechnung.',
+    skontoSatzFehlt: 'Bitte einen Skontosatz angeben oder die Frist leeren.',
+    skontoSatzBereich: 'Der Skontosatz muss größer als 0 und kleiner als 100 % sein.',
+    skontoFristFehlt: 'Bitte die Skontofrist in Kalendertagen angeben.',
+    skontoFristBereich: 'Die Skontofrist ist eine ganze Zahl von 1 bis 365 Kalendertagen.',
+    fristHinweis: 'Kalendertage',
+    hinweisSkonto:
+      'Die Frist beginnt am Tag nach dem Eingangsdatum; eine Zahlung am letzten Tag der Frist ist rechtzeitig.',
+    hinweisSteuer: (satz: string) =>
+      `Die Bauabzugsteuer (${satz} %) geht an das Finanzamt und mindert nur die Auszahlung, nicht den Zahlbetrag.`,
     abbrechen: 'Abbrechen',
     speichern: 'Speichern',
   },
@@ -61,7 +83,7 @@ export const texte = {
     offen: 'offen',
     freigegeben: 'freigegeben',
     oeffnen: (nummer: number) => `Rechnung ${String(nummer)} öffnen`,
-    neu: 'Neue Rechnung',
+    neu: 'Rechnung anlegen',
     zumAuftrag: 'Zum Auftrags-LV',
     zurListe: 'Zur Rechnungsliste',
     werkzeuge: 'Werkzeuge der Rechnungen',
@@ -79,11 +101,13 @@ export const texte = {
     leistung: 'Leistung (kumuliert)',
     nachlass: 'Nachlass',
     nettoNachNachlass: 'Netto nach Nachlass',
-    mwst: 'Umsatzsteuer',
+    mwst: 'MwSt',
     bruttoKumuliert: 'Brutto kumuliert',
     umlage: (bezeichnung: string, satz: string) => `Umlage ${bezeichnung} (${satz} %)`,
     sicherheit: (satz: string | null) =>
       satz === null ? 'Sicherheitseinbehalt (kein Satz)' : `Sicherheitseinbehalt (${satz} %)`,
+    vertragsstrafe: (grund: string | null) =>
+      grund === null ? 'Vertragsstrafe' : `Vertragsstrafe (${grund})`,
     gewaehrleistung: (satz: string | null) =>
       satz === null ? 'Gewährleistungseinbehalt (kein Satz)' : `Gewährleistungseinbehalt (${satz} %)`,
     frueher: (nummer: number) => `Zahlbetrag Rechnung ${String(nummer)} (freigegeben)`,
@@ -105,6 +129,16 @@ export const texte = {
     keineBefunde: 'Keine Befunde.',
     leistungsstand: 'Leistungsstand je Position',
     nachtraege: 'Nicht beauftragte Nachträge',
+    aktionen: 'Aktionen der Rechnung',
+    ausgabe: 'Ausgabe',
+    bericht: 'Rechnungsprüfung',
+    skonto: 'Skonto',
+    bauabzugsteuer: 'Bauabzugsteuer',
+    strafeAngabe: (betrag: string, grund: string) => `${betrag} € (${grund})`,
+    skontoAngabe: (satz: string, tage: number) =>
+      `${satz} % bei Zahlung binnen ${String(tage)} ${tage === 1 ? 'Kalendertag' : 'Kalendertagen'} nach Eingang`,
+    steuerAn: (satz: string) => `einbehalten (${satz} %, an das Finanzamt)`,
+    steuerAus: 'nicht einbehalten',
     nachtraegeHinweis:
       'Nur zur Information: Ein Nachtrag geht erst in die Rechnung, wenn er beauftragt und ins Auftrags-LV übernommen ist.',
     nachtragZeile: (nummer: string, status: string, netto: string) =>
@@ -131,6 +165,10 @@ export const texte = {
     'ohne-zuschlagssatz': (oz: string) => `${oz}: Zuschlagsposition ohne Satz; sie zählt 0,00.`,
     'nachlass-ohne-basis': 'Der absolute Nachlass hat keine Basis (Auftrags-LV netto 0,00); er zählt 0,00.',
     'netto-nach-nachlass-negativ': 'Das Netto nach Nachlass ist negativ.',
+    'skonto-ohne-eingang':
+      'Skonto vereinbart, aber kein Eingangsdatum: Ohne Skontofrist gibt es keinen Skonto. Das Eingangsdatum lässt sich unter „Angaben bearbeiten“ nachtragen.',
+    'zahlungen-ueber-auszahlung': (offen: string) =>
+      `Gezahlt wurde mehr als die Auszahlung an den Auftragnehmer (offen ${offen} €). Bitte die Zahlungen prüfen.`,
   },
   freigabe: {
     knopf: 'Freigeben',
@@ -147,12 +185,67 @@ export const texte = {
     aufhebenFrage:
       'Der eingefrorene Zahlbetrag wird verworfen; die Rechnung ist danach wieder offen und änderbar. Rückgängig stellt die Freigabe wieder her.',
     aufhebenBestaetigen: 'Freigabe aufheben',
+    aufhebenZahlungen: (nummer: number, anzahl: number) =>
+      `Zur Rechnung ${String(nummer)} ${anzahl === 1 ? 'ist 1 Zahlung' : `sind ${String(anzahl)} Zahlungen`} erfasst. Zuerst die Zahlungen löschen.`,
     aufhebenGesperrt: (spaeter: readonly number[]) =>
       `Rechnung ${nummern(spaeter)} ist schon freigegeben und zieht diesen Zahlbetrag ab. Zuerst deren Freigabe aufheben.`,
     status: (betrag: string) => `Freigegeben mit ${betrag} €`,
     offen: 'Offen (nicht freigegeben)',
     konflikt:
       'Der Speicher hat die Änderung abgewiesen: Freigaben gehen nur in der Reihenfolge der Rechnungsnummern. Es wurde nichts geändert.',
+  },
+  zahlung: {
+    titel: 'Zahlungsfreigabe',
+    zahlbetrag: 'Zahlbetrag',
+    skonto: (satz: string) => `Skonto (${satz} %)`,
+    bauabzugsteuer: (satz: string) => `Bauabzugsteuer ${satz} % an das Finanzamt`,
+    auszahlung: 'Auszahlung an den Auftragnehmer',
+    zahlbetragEingefroren: 'Zahlbetrag (eingefroren)',
+    zahlbetragVorschau: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
+    skontoVerwirklicht: 'Skonto (verwirklicht)',
+    skontoNichtVerwirklicht: 'Skonto (nicht verwirklicht)',
+    skontoNochNichtVerwirklicht: 'Skonto (noch nicht verwirklicht)',
+    summeZahlungen: 'Summe der Zahlungen',
+    offen: 'Offen',
+    posten: 'Posten',
+    bis: (datum: string) => `Bei Zahlung bis ${datum}`,
+    danach: 'Danach',
+    faelle: 'Beide Fälle des Skontos',
+    geltend: 'Geltender Fall',
+    satz: (datum: string, mit: string, ohne: string) =>
+      `Bei Zahlung bis ${datum}: Auszahlung ${mit} €, danach: ${ohne} €.`,
+    ohneEingang: (satz: string) =>
+      `Skonto ${satz} % vereinbart, aber ohne Eingangsdatum gibt es keine Skontofrist und keinen Skonto.`,
+    hinweis:
+      'Skonto und Bauabzugsteuer mindern nur die Auszahlung, nicht den Zahlbetrag. Der Skonto ist verwirklicht, wenn die Zahlungen bis zum Ende der Skontofrist die Auszahlung mit Skonto erreichen.',
+    vorschau: 'Vorschau: Die Rechnung ist noch nicht freigegeben; gerechnet wird vom geprüften Zahlbetrag.',
+    zahlungen: 'Zahlungen',
+    datum: 'Datum',
+    betrag: 'Betrag',
+    keine: 'Noch keine Zahlung erfasst.',
+    erfassen: 'Zahlung erfassen …',
+    erstFreigeben: 'Zahlungen lassen sich erst nach der Freigabe erfassen.',
+    aendern: (datum: string, betrag: string) => `Zahlung vom ${datum} über ${betrag} € ändern …`,
+    loeschen: (datum: string, betrag: string) => `Zahlung vom ${datum} über ${betrag} € löschen …`,
+    aendernKurz: 'Ändern …',
+    loeschenKurz: 'Löschen …',
+    aktionen: 'Aktionen',
+    titelNeu: 'Zahlung erfassen',
+    titelAendern: 'Zahlung ändern',
+    datumFeld: 'Zahlungsdatum',
+    betragFeld: 'Gezahlter Betrag',
+    speichern: 'Zahlung speichern',
+    abbrechen: 'Abbrechen',
+    datumFehlt: 'Bitte das Zahlungsdatum angeben (TT.MM.JJJJ).',
+    betragFehlt: 'Bitte den gezahlten Betrag angeben.',
+    betragPositiv:
+      'Der Betrag muss größer als 0,00 € sein; eine Rückzahlung kennt die Rechnungsprüfung nicht.',
+    loeschenTitel: 'Zahlung löschen',
+    loeschenFrage: (datum: string, betrag: string) =>
+      `Die Zahlung vom ${datum} über ${betrag} € wird gelöscht. In dieser Sitzung holt „Rückgängig“ sie zurück.`,
+    loeschenBestaetigen: 'Zahlung löschen',
+    gespeichert: 'Zahlung gespeichert',
+    geloescht: 'Zahlung gelöscht',
   },
   aktionen: {
     bearbeiten: 'Angaben bearbeiten',
@@ -178,17 +271,40 @@ export const texte = {
     brutto: 'Brutto (BT-112)',
     zahlbetrag: 'Zahlbetrag (BT-115)',
     befunde: 'Befunde der Datei',
-    keineBefunde: 'Keine Befunde.',
     artWaehlen: 'Als welche Rechnungsart übernehmen?',
     artFehlt: 'Bitte die Rechnungsart wählen.',
     ziel: 'Übernehmen in',
-    neueRechnung: (nummer: number) => `Neue Rechnung ${String(nummer)}`,
+    neueRechnung: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
     vorhandene: (nummer: number) => `Rechnung ${String(nummer)} (offen)`,
     uebernimmt:
       'Übernommen werden Rechnungsnummer, Rechnungsdatum als Eingangsdatum, Art und die geforderten Beträge – ungeprüft, nur zum Vergleich.',
     schliessen: 'Schließen',
     uebernehmen: 'Übernehmen',
     erfolg: 'XRechnung übernommen',
+    /** Kurztext je Befund beim Einlesen (ohne Codes, L5); die ausführliche Meldung steht in den Einzelheiten. */
+    kurztexte: {
+      'eingabe-zu-gross': 'Datei zu groß',
+      'xml-doctype': 'Dokumenttyp-Angabe abgewiesen',
+      'xml-entitaet': 'Unbekanntes Sonderzeichen',
+      'xml-zu-tief': 'Zu tief verschachtelt',
+      'xml-ungueltig': 'Kein lesbares XML',
+      'keine-xrechnung': 'Keine XRechnung',
+      'spezifikation-unbekannt': 'Spezifikation nicht erkannt',
+      'pflichtangabe-fehlt': 'Pflichtangabe fehlt',
+      'datum-ungueltig': 'Datum ungültig',
+      'zahl-ungueltig': 'Zahl nicht lesbar',
+      'betrag-nicht-kanonisch': 'Betrag gerundet',
+      'menge-zu-viele-stellen': 'Menge mit mehr Nachkommastellen',
+      'preis-zu-viele-stellen': 'Preis mit mehr Nachkommastellen',
+      'satz-zu-viele-stellen': 'Steuersatz mit mehr Nachkommastellen',
+      'waehrung-nicht-eur': 'Andere Währung als €',
+      'unterposition-ohne-oberposition': 'Unterposition ohne Oberposition',
+      'summe-positionen-falsch': 'Summe der Positionen stimmt nicht',
+      'netto-falsch': 'Netto stimmt nicht',
+      'brutto-falsch': 'Brutto stimmt nicht',
+      'zahlbetrag-falsch': 'Zahlbetrag stimmt nicht',
+      'umsatzsteuer-falsch': 'MwSt stimmt nicht',
+    } satisfies Record<XRechnungBefundcode, string>,
   },
   meldung: {
     gespeichert: (nummer: number) => `Rechnung ${String(nummer)} gespeichert`,

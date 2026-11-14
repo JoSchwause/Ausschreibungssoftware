@@ -10,6 +10,7 @@
 // normale Dateien lesbar. Ein zweiter Tab bekommt den Fehlercode `gesperrt`.
 
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
+import { pruefePoolFrei, type Ordner } from './opfs-pool';
 import { sqliteDatenbank, type Datenbank } from './sql';
 
 export interface GeoeffneteDatenbank {
@@ -59,10 +60,14 @@ function schreibmodusSetzen(db: { exec(sql: string): unknown }): void {
  * einen Fehlerwert.
  */
 export async function oeffneOpfs(name: string): Promise<GeoeffneteDatenbank> {
+  const verzeichnis = `.tethys-${name}`;
+  // Hält der Worker der vorigen Seite die Dateien noch (Neuladen) oder ein anderer Tab, ist das Öffnen `gesperrt`, bevor SQLite
+  // es versucht und den gescheiterten Zugriff in der Konsole meldet (Ticket 139, Befund aus 134; siehe `opfs-pool.ts`).
+  await pruefePoolFrei((await navigator.storage.getDirectory()) as unknown as Ordner, verzeichnis);
   const sqlite3 = await sqlite3InitModule();
   const pool = await sqlite3.installOpfsSAHPoolVfs({
     name: `tethys-${name}`,
-    directory: `.tethys-${name}`,
+    directory: verzeichnis,
     initialCapacity: POOLGROESSE,
     // Scheitert das Einrichten (meist `gesperrt`: der Worker der vorigen Seite hält die Dateien noch), löscht der VFS
     // sonst sein ganzes Verzeichnis (`removeVfs`). Gibt der alte Worker die Dateien gerade in diesem Moment frei, gehen

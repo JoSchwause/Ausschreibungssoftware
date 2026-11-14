@@ -4,14 +4,20 @@
 import type {
   AngebotId,
   AuftragsLeistungsverzeichnisId,
-  Bauwerksmodell,
   Ergebnis,
   LeistungsverzeichnisId,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Projektdatei,
+  ProjektdateiEinleseergebnis,
   ProjektId,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { einstellungenBefehlAusfuehren } from '@tethys/kern';
+import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
+import { schreibeAggregateDerDatei } from './aggregatarten';
 import { dekodiereProjektdatei } from './dekoder';
+import { einstellungsbericht } from './einstellungen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { ausBase64, base64, inflateRawHoechstens, sha256Hex } from './komprimierung';
@@ -22,6 +28,7 @@ import {
   aggregatIds,
   leseAngebot,
   leseAuftragsLv,
+  leseEinstellungen,
   leseLv,
   leseLvStaendeDesProjekts,
   leseProjekt,
@@ -29,26 +36,14 @@ import {
 } from './lesen';
 import type { Migration } from './migrationen';
 import {
-  schreibeLvStand,
-  schreibeProtokolleintrag,
-  wendeAngebotAn,
-  wendeAufmassAn,
+  schreibeEinstellungsprotokolleintrag,
   schreibeModelldatei,
-  wendeAuftragsLvAn,
-  wendeBautagebucheintragAn,
-  wendeBauwerksmodellAn,
-  wendeBauzeitenplanAn,
-  wendeHonorarberechnungAn,
-  wendeMangelAn,
-  wendeKostenermittlungAn,
-  wendeLvAn,
-  wendeProjektAn,
-  wendeRechnungAn,
+  schreibeProtokolleintrag,
+  wendeEinstellungenAn,
 } from './schreiben';
 import { pruefeNachtragsbezuege } from './bezuege';
 import type { Datenbank } from './sql';
 import { summenDerDateiNeuRechnen, type Migrationsbefund } from './summenmigration';
-import { LEERES_SUMMENVORHER } from './summenvorher';
 
 /** Baut die Projektdatei im Stand der aktuellen Schemaversion. Reihenfolge der Listen: nach Kennung. */
 export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: number): Projektdatei {
@@ -66,6 +61,12 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
   }));
   const liste = <K extends string, T>(name: K, werte: readonly T[]): { [P in K]?: readonly T[] } =>
     (werte.length > 0 ? { [name]: werte } : {}) as { [P in K]?: readonly T[] };
+  // Schema 7 (v1.7a, D-127.9): die Einstellungen des Geräts als Block, außer sie sind leer. Vor Schema 7 gibt es keine.
+  const einstellungen = schemaVersion >= 7 ? leseEinstellungen(db) : LEERE_EINSTELLUNGEN;
+  const ohneEinstellungen =
+    einstellungen.buero === null &&
+    einstellungen.druckprofile.length === 0 &&
+    einstellungen.kostengruppenbezeichnungen.length === 0;
   return {
     schemaVersion,
     projekt,
@@ -110,6 +111,7 @@ export function baueProjektdatei(db: Datenbank, id: ProjektId, schemaVersion: nu
       'bautagebuch',
       v16.bautagebuch.map((bautagebucheintrag) => ({ bautagebucheintrag })),
     ),
+    ...(ohneEinstellungen ? {} : { einstellungen }),
   };
 }
 
@@ -159,24 +161,6 @@ export async function pruefeModelldateienDerDatei(d: Projektdatei): Promise<Read
     ergebnis.set(e.hash, { groesse: roh.length, komprimiert });
   }
   return ergebnis;
-}
-
-/** Die Modelle in einer Reihenfolge, in der jeder Vorgänger vor seinem Nachfolger steht (sonst in der Reihenfolge der Datei). */
-function vorgaengerZuerst(modelle: readonly Bauwerksmodell[]): Bauwerksmodell[] {
-  const geschrieben = new Set<string>();
-  const folge: Bauwerksmodell[] = [];
-  let rest = [...modelle];
-  while (rest.length > 0) {
-    const bereit = rest.filter((m) => m.vorgaengerId === null || geschrieben.has(m.vorgaengerId));
-    // Ein Vorgänger, den es in der Datei nicht gibt (oder ein Ring): Der erste übrige geht trotzdem, sein Anlegen weist ab.
-    const jetzt = bereit.length > 0 ? bereit : rest.slice(0, 1);
-    for (const m of jetzt) {
-      folge.push(m);
-      geschrieben.add(m.id);
-    }
-    rest = rest.filter((m) => !geschrieben.has(m.id));
-  }
-  return folge;
 }
 
 /**
@@ -240,6 +224,33 @@ export function leseProjektdatei(
 }
 
 /**
+ * Übernimmt den Block `einstellungen` einer geprüften Projektdatei als protokollierten Befehl `EinstellungenUebernehmen`
+ * (D-73, D-127.9, D-82 M1), in der Transaktion des Aufrufers: nur, was je Schlüssel lokal fehlt; nie überschrieben. `kopf` ist
+ * der Kopf des Eintrags im Einstellungsprotokoll (`ProjektdateiEinleseoptionen.einstellungsuebernahme`). `null`: Die Datei
+ * trägt keinen Block oder der Aufruf keinen Kopf; dann bleiben die Einstellungen unberührt. Geschrieben werden Einstellungen und
+ * Eintrag nur, wenn etwas übernommen wird; der Bericht folgt aus dem ChangeSet.
+ */
+export function uebernimmEinstellungenDerDatei(
+  db: Datenbank,
+  d: Projektdatei,
+  kopf: Pick<EinstellungenProtokolleintrag, 'id' | 'wer' | 'wann'> | undefined,
+): ProjektdateiEinleseergebnis['einstellungen'] {
+  if (d.einstellungen === undefined || kopf === undefined) return null;
+  const befehl = { art: 'EinstellungenUebernehmen', einstellungen: d.einstellungen } as const;
+  const vorher = leseEinstellungen(db);
+  // Der Ausführer des Kerns (Ticket 137, D-87 (3)); er prüft auch die Form des Blocks.
+  const r = einstellungenBefehlAusfuehren(vorher, befehl);
+  if (!r.ok) return abbruch('datei-ungueltig', `$.einstellungen: ${r.fehler.meldung}`);
+  const cs: EinstellungenChangeSet = r.wert;
+  const bericht = einstellungsbericht(d.einstellungen, cs);
+  if (bericht.uebernommen.length > 0) {
+    wendeEinstellungenAn(db, cs);
+    schreibeEinstellungsprotokolleintrag(db, { ...kopf, befehl });
+  }
+  return bericht;
+}
+
+/**
  * Schreibt eine geprüfte Projektdatei in die Tabellen (innerhalb der Transaktion des Aufrufers). Es werden
  * dieselben Schreibfunktionen wie bei `anwenden` benutzt. Das Protokoll der Datei wird unverändert
  * übernommen; der Import selbst ist kein Befehl und erzeugt keinen Eintrag.
@@ -253,131 +264,7 @@ export function schreibeProjektdatei(
   try {
     // Schema 6 (D-51): zuerst die geprüften Bytes; schon abgelegte bleiben unverändert (gleicher Hash, gleiche Bytes).
     for (const [hash, b] of dateibytes) schreibeModelldatei(db, hash, b.groesse, b.komprimiert);
-    wendeProjektAn(db, { art: 'projekt', projektId, projekt: { vorher: null, nachher: d.projekt } });
-    for (const z of d.leistungsverzeichnisse) {
-      const { knoten, ...kopf } = z.leistungsverzeichnis;
-      wendeLvAn(
-        db,
-        {
-          art: 'leistungsverzeichnis',
-          leistungsverzeichnisId: kopf.id,
-          kopf: { vorher: null, nachher: kopf },
-          knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
-          ...(z.papierkorb === undefined
-            ? {}
-            : { papierkorb: { hinzugefuegt: z.papierkorb, geaendert: [], entfernt: [] } }),
-        },
-        projektId,
-        undefined,
-        false, // Nachtragsangaben: Das Auftrags-LV kommt erst unten (siehe `pruefeNachtragsbezuege`).
-      );
-    }
-    for (const s of d.lvStaende ?? []) schreibeLvStand(db, s);
-    for (const z of d.angebote) {
-      const { positionen, ...kopf } = z.angebot;
-      wendeAngebotAn(
-        db,
-        {
-          art: 'angebot',
-          angebotId: kopf.id,
-          kopf: { vorher: null, nachher: kopf },
-          positionen: { hinzugefuegt: positionen, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
-        },
-        projektId,
-      );
-    }
-    for (const z of d.auftragsLeistungsverzeichnisse) {
-      const { knoten, ...kopf } = z.auftragsLeistungsverzeichnis;
-      wendeAuftragsLvAn(
-        db,
-        {
-          art: 'auftrags-leistungsverzeichnis',
-          auftragsLeistungsverzeichnisId: kopf.id,
-          kopf: { vorher: null, nachher: kopf },
-          knoten: { hinzugefuegt: knoten, geaendert: [], entfernt: [] },
-          summen: { ...z.summen, vorher: LEERES_SUMMENVORHER },
-        },
-        projektId,
-      );
-    }
-    // Schema 5 (v1.4): Blätter vor Rechnungen (`aufmassIds`), Rechnungen nach Nummer (Invariante der Freigaben, D-34 (7):
-    // in der Datei stehen sie nach Kennung).
-    for (const z of d.aufmasse ?? [])
-      wendeAufmassAn(
-        db,
-        { art: 'aufmass', aufmassId: z.aufmass.id, aufmass: { vorher: null, nachher: z.aufmass } },
-        projektId,
-      );
-    const rechnungen = [...(d.rechnungen ?? [])].sort((a, b) => a.rechnung.nummer - b.rechnung.nummer);
-    for (const z of rechnungen)
-      wendeRechnungAn(
-        db,
-        { art: 'rechnung', rechnungId: z.rechnung.id, rechnung: { vorher: null, nachher: z.rechnung } },
-        projektId,
-      );
-    for (const z of d.kostenermittlungen ?? [])
-      wendeKostenermittlungAn(
-        db,
-        {
-          art: 'kostenermittlung',
-          kostenermittlungId: z.kostenermittlung.id,
-          kostenermittlung: { vorher: null, nachher: z.kostenermittlung },
-        },
-        projektId,
-      );
-    // Schema 6 (v1.6): Modelle nach den Bytes und vor den Mängeln, Vorgänger zuerst; Honorarberechnungen nach den
-    // Kostenermittlungen, Mängel nach Auftrags-LV und Modellen (starke Verweise, D-97.6).
-    for (const m of vorgaengerZuerst((d.bauwerksmodelle ?? []).map((z) => z.bauwerksmodell))) {
-      const { struktur, bauteile, ...kopf } = m;
-      wendeBauwerksmodellAn(
-        db,
-        {
-          art: 'bauwerksmodell',
-          bauwerksmodellId: m.id,
-          kopf: { vorher: null, nachher: kopf },
-          inhalt: { vorher: null, nachher: { struktur, bauteile } },
-        },
-        projektId,
-      );
-    }
-    for (const z of d.bauzeitenplaene ?? [])
-      wendeBauzeitenplanAn(
-        db,
-        {
-          art: 'bauzeitenplan',
-          bauzeitenplanId: z.bauzeitenplan.id,
-          bauzeitenplan: { vorher: null, nachher: z.bauzeitenplan },
-        },
-        projektId,
-      );
-    for (const z of d.honorarberechnungen ?? [])
-      wendeHonorarberechnungAn(
-        db,
-        {
-          art: 'honorarberechnung',
-          honorarberechnungId: z.honorarberechnung.id,
-          honorarberechnung: { vorher: null, nachher: z.honorarberechnung },
-        },
-        projektId,
-      );
-    for (const z of d.maengel ?? [])
-      wendeMangelAn(
-        db,
-        { art: 'mangel', mangelId: z.mangel.id, mangel: { vorher: null, nachher: z.mangel } },
-        projektId,
-      );
-    for (const z of d.bautagebuch ?? [])
-      wendeBautagebucheintragAn(
-        db,
-        {
-          art: 'bautagebucheintrag',
-          bautagebucheintragId: z.bautagebucheintrag.id,
-          bautagebucheintrag: { vorher: null, nachher: z.bautagebucheintrag },
-        },
-        projektId,
-      );
+    schreibeAggregateDerDatei(db, d, projektId);
     pruefeNachtragsbezuege(db, projektId);
     for (const e of d.protokoll) schreibeProtokolleintrag(db, e);
   } catch (e) {

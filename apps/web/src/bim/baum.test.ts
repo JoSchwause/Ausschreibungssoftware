@@ -37,7 +37,7 @@ describe('Modellbaum aus haus-v1', () => {
     expect(BAUM_SPALTEN.map((s) => s.kopf)).toEqual(['Name', 'Klasse', 'Typ', 'Länge', 'Fläche', 'Volumen']);
     const sued = zeilen.find((z) => texte(z, 'name') === 'Streifenfundament Süd');
     if (sued === undefined) throw new Error('fehlt');
-    expect(texte(sued, 'klasse')).toBe('IfcFooting');
+    expect(texte(sued, 'klasse')).toBe('Fundament (IfcFooting)');
     expect(texte(sued, 'laenge')).toBe('12,225');
     expect(texte(sued, 'volumen')).toBe('5,868');
     expect(sued.zellen['volumen']?.tooltip).toBe('NetVolume');

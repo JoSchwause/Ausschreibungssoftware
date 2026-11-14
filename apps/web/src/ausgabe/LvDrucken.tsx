@@ -8,6 +8,8 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LvZustand, Projekt } from '@tethys/vertrag';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { texte as fehlerTexte } from '../fehler/texte'; // Ticket 132
+import { useEinstellungen } from '../historie/EinstellungenAnbieter'; // Ticket 150
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { herunterladenBytes } from './datei';
 import { DruckProfilFeld, profilAnfang, type ProfilAnfang } from './DruckProfilFeld'; // Ticket 90
@@ -68,6 +70,10 @@ export function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
   const [lage, setLage] = useState<PdfLage>({ art: 'bereit' });
   const lauf = useRef<PdfLauf | null>(null);
   const projekt = useProjekt(lv.projektId, offen);
+  const einstellungen = useEinstellungen(); // Ticket 150: eigene Profile und Büro aus den Einstellungen
+  const profileRef = useRef(einstellungen.zustand.druckprofile);
+  profileRef.current = einstellungen.zustand.druckprofile;
+  const buero = einstellungen.zustand.buero;
   const gelesen = datumLesen(datum);
   const iso = gelesen.ok ? gelesen.wert : null;
   const gueltig = iso !== null;
@@ -85,7 +91,7 @@ export function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
     let lebt = true;
     void import('@tethys/ausgabe').then((m) => {
       if (!lebt) return;
-      const a = profilAnfang(m);
+      const a = profilAnfang(m, profileRef.current);
       setWerk(m);
       setAnfang(a);
       setArbeit(a.arbeit);
@@ -117,7 +123,17 @@ export function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
       zustand,
       werk.profilAlsOptionen(arbeit, {
         datum: iso,
-        ...(projekt === null ? {} : { projekt: { name: projekt.name, bauherr: projekt.bauherr } }),
+        // Ticket 150 (D-141.6): Projekt mit Projektangaben und das Büro als Absender in den Kopf.
+        ...(projekt === null
+          ? {}
+          : {
+              projekt: {
+                name: projekt.name,
+                bauherr: projekt.bauherr,
+                ...(projekt.angaben === undefined ? {} : { angaben: projekt.angaben }),
+              },
+            }),
+        ...(buero === null ? {} : { buero }),
       }),
       (schritt) => {
         setLage({ art: 'laeuft', schritt });
@@ -137,10 +153,10 @@ export function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
       zeige({ titel: texte.pdf.fertig, beschreibung: name, art: 'erfolg' });
       setOffen(false);
       setLage({ art: 'bereit' });
-    } catch (e) {
+    } catch {
       if (lauf.current !== neu) return;
       lauf.current = null;
-      setLage({ art: 'fehler', meldung: e instanceof Error ? e.message : String(e) });
+      setLage({ art: 'fehler', meldung: fehlerTexte.pdf }); // Ticket 132: kein Rohtext der Ausnahme (B-26)
     }
   };
 

@@ -20,7 +20,7 @@ import type {
 } from '@tethys/vertrag';
 import { idQuelleAttrappe, kostengruppeAttrappe, zahlenAttrappe } from '../e2e/harness/attrappen';
 import { anzeigeText, befehlAusEingabe, hinweisKlartext, istBearbeitbar } from './eingabe';
-import { planeEinfuegen, planeKostengruppen } from './einfuegen';
+import { planeEinfuegen, planeEinheitspreise, planeKostengruppen } from './einfuegen';
 import { parseTsv } from './tsv';
 
 const position: LvZeile = {
@@ -188,7 +188,7 @@ describe('hinweisKlartext', () => {
       { art: 'text', text: 'Ende' },
     ];
     expect(hinweisKlartext(text)).toBe(
-      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff | Menge Kies | 3 t ' +
+      'Vorbemerkung zur Baustelle • Zufahrt • Lager Stoff · Menge Kies · 3 t ' +
         'Fabrikat: … oder gleichwertig Farbe RAL 7016 [Bild] Ende',
     );
   });
@@ -468,6 +468,54 @@ describe('planeKostengruppen (Ticket 93): eine Spalte in die Spalte „KG“ der
     );
     expect(plan.befehle).toEqual([{ art: 'KostengruppeSetzen', positionId: 'p1', kostengruppe: '340' }]);
     // Titel (300), Hinweistext (350), hinter dem Ende (360)
+    expect(plan.uebersprungen).toBe(3);
+  });
+});
+
+describe('Ausnahme „Preise“ im Schreibschutz (SB3): die Spalte „EP“ der vorhandenen Zeilen', () => {
+  const pos = (id: string, ep: string | null, zuschlag = false): LvZeile => ({
+    ...position,
+    knoten: {
+      ...(position.knoten as Position),
+      id: id as PositionId,
+      einheitspreis: ep as Einheitspreis | null,
+      zuschlag: zuschlag ? { prozentsatz: null, bezug: { art: 'positionen', positionen: [] } } : null,
+    },
+  });
+  // Titel, p1 mit 7,450, p2 ohne EP, z1 Zuschlagsposition, p3 mit 1,000
+  const zeilen: readonly LvZeile[] = [
+    titel,
+    pos('p1', '7.450'),
+    pos('p2', null),
+    pos('z1', null, true),
+    pos('p3', '1.000'),
+  ];
+
+  it('istBearbeitbar: mit der Ausnahme ist der EP einer Zuschlagsposition gesperrt, sonst wie bisher', () => {
+    expect(istBearbeitbar(pos('z', null, true), 'einheitspreis', true)).toBe(false);
+    expect(istBearbeitbar(pos('z', null, true), 'einheitspreis')).toBe(true);
+    expect(istBearbeitbar(pos('p', '1.000'), 'einheitspreis', true)).toBe(true);
+    expect(istBearbeitbar(pos('z', null, true), 'kurztext', true)).toBe(true);
+  });
+
+  it('Zeile für Zeile ab der aktiven: ein Befehl je geändertem EP, leer ist null, gleicher Wert ohne Befehl', () => {
+    const plan = planeEinheitspreise(parseTsv('8,5\n12\n\n'), 1, zeilen, zahlenAttrappe);
+    expect(plan.befehle).toEqual([
+      { art: 'EinheitspreisAendern', positionId: 'p1', einheitspreis: '8.500' },
+      { art: 'EinheitspreisAendern', positionId: 'p2', einheitspreis: '12.000' },
+    ]);
+    expect(plan.uebersprungen).toBe(0);
+    const leeren = planeEinheitspreise([[''], ['x']].slice(0, 1), 1, zeilen, zahlenAttrappe);
+    expect(leeren.befehle).toEqual([{ art: 'EinheitspreisAendern', positionId: 'p1', einheitspreis: null }]);
+  });
+
+  it('Gliederung, Zuschlagsposition und Zeilen hinter der letzten überspringen; ein unlesbarer Preis nur seine Zelle', () => {
+    const plan = planeEinheitspreise(parseTsv('5\nviel\n3\n4\n1\n9\n'), 0, zeilen, zahlenAttrappe);
+    expect(plan.befehle).toEqual([{ art: 'EinheitspreisAendern', positionId: 'p2', einheitspreis: '3.000' }]);
+    expect(plan.ungueltig).toEqual([
+      { knotenId: 'p1', spalte: 'einheitspreis', text: 'viel', meldung: expect.any(String) as string },
+    ]);
+    // Titel (5), Zuschlagsposition (4), hinter der letzten Zeile (9); p3 bleibt 1,000 ohne Befehl.
     expect(plan.uebersprungen).toBe(3);
   });
 });

@@ -29,8 +29,8 @@ export const texte = {
       speichern: 'Profil speichern',
       speichernUnter: 'Als neues Profil speichern',
       loeschen: 'Profil löschen',
-      exportieren: 'Profil exportieren',
-      importieren: 'Profil importieren',
+      exportieren: 'Profil sichern',
+      importieren: 'Profil einlesen',
       importDatei: 'Profil-Datei wählen',
       standardHinweis:
         'Standardprofile bleiben unverändert; „Als neues Profil speichern“ legt eine Kopie an.',
@@ -38,13 +38,17 @@ export const texte = {
         'Die Einstellungen weichen vom gewählten Profil ab (gelten für diesen Druck, solange nicht gespeichert).',
       gespeichert: (n: string) => `Profil „${n}“ gespeichert`,
       geloescht: (n: string) => `Profil „${n}“ gelöscht`,
-      importiert: (n: string) => `Profil „${n}“ importiert`,
+      importiert: (n: string) => `Profil „${n}“ eingelesen`,
       umbenannt: (n: string) => `Der Name war vergeben; das Profil heißt jetzt „${n}“.`,
       nichtLesbar: 'Die Datei konnte nicht gelesen werden.',
       befunde: 'Befunde beim Lesen des Profils',
+      loeschenTitel: 'Profil löschen?',
+      loeschenFrage: (n: string) =>
+        `Das Profil „${n}“ wird aus den Einstellungen entfernt. „Einstellung rückgängig“ holt es in dieser Sitzung zurück.`,
+      loeschenBestaetigen: 'Profil löschen',
       zurueckgehalten: 'Nicht verwendete gespeicherte Profile',
       zurueckHinweis:
-        'Diese gespeicherten Einträge erscheinen nicht in der Auswahl. Sie bleiben unverändert gespeichert; nichts wird verworfen.',
+        'Diese Einträge aus dem Browserspeicher einer früheren Fassung wurden nicht in die Einstellungen übernommen. Sie bleiben dort unverändert; nichts wird verworfen.',
       zurueckNichtLesbar: (n: number) =>
         n === 1
           ? '1 Eintrag konnte nicht gelesen werden.'
@@ -113,9 +117,5 @@ export const texte = {
     schliessen: 'Schließen',
     erfolg: 'Angebot angelegt',
     befunde: 'Befunde der Excel-Datei',
-    befundeKeine: 'Keine Befunde.',
-    gruppeFehler: 'Fehler',
-    gruppeWarnungen: 'Warnungen',
-    ort: (zeile: number) => `Zeile ${String(zeile)}`,
   },
 } as const;

@@ -3,6 +3,7 @@
 // folgen allein aus den Ziffern; im Repo steht keine Liste der Gruppen und keine Bezeichnung (G-16, C1). Rein (A2).
 
 // Die Marke `Kostengruppennummer` liegt seit v1.4 in `vertrag` (Ticket 70 Punkt 4); nur {@link kgLesen} erzeugt sie.
+import { KOSTENGRUPPENNUMMER_MUSTER } from '@tethys/vertrag';
 import type { Ergebnis, Kostengruppennummer } from '@tethys/vertrag';
 
 /** Ebene einer Kostengruppe: `X00` ist 1, `XY0` (Y ≠ 0) ist 2, `XYZ` (Z ≠ 0) ist 3. */
@@ -19,9 +20,8 @@ export interface Kostengruppenfehler {
   readonly meldung: string;
 }
 
-// Die Formregel steht auch im Kern (`KOSTENGRUPPE_FORM` in `kern/src/positionsfelder.ts`, von `gaeb` und `speicher`
-// benutzt). `kosten` darf `kern` nicht importieren (A3) und meldet die Fehler feiner (Form, führende Null); ändert sich die
-// Regel, ändern sich beide Stellen.
+// Die Formregel ist die des Vertrags (`KOSTENGRUPPENNUMMER_MUSTER`, v1.7a, D-127.12), dieselbe, die Kern, `speicher` und
+// `gaeb` prüfen. `FORM` dient nur dazu, den Fehler feiner zu melden (drei Ziffern, aber führende Null).
 const FORM = /^[0-9]{3}$/;
 
 /** Prüft die Form einer Kostengruppennummer. Leerraum am Rand wird entfernt (D-55.1). */
@@ -35,7 +35,7 @@ export function kgLesen(text: string): Ergebnis<Kostengruppennummer, Kostengrupp
       fehler: { code: 'nummer-form', meldung: `Keine dreistellige Nummer: ${JSON.stringify(t)}` },
     };
   }
-  if (t.startsWith('0')) {
+  if (!KOSTENGRUPPENNUMMER_MUSTER.test(t)) {
     return { ok: false, fehler: { code: 'nummer-null', meldung: `Nummer unter 100: ${t}` } };
   }
   return { ok: true, wert: t as Kostengruppennummer };

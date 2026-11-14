@@ -7,6 +7,7 @@ import { bautagebuchAuswerten } from '@tethys/bauleitung';
 import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type { Bautagebucheintrag, BautagebucheintragId, Ergebnis, ProjektId } from '@tethys/vertrag';
 import { datumDe, datumLesen } from '../lv/kopfdaten';
+import type { Feldfehlerkarte } from '../ui/feldfehler';
 import { texte } from './texte';
 
 export interface FirmaEntwurf {
@@ -28,7 +29,7 @@ export interface EintragEntwurf {
 }
 
 /** Schlüssel der Feldfehler: die Felder, dazu `firma-<i>` und `anzahl-<i>` je Zeile der Arbeitskräfte. */
-export type Feldfehler = Readonly<Record<string, string>>;
+export type Feldfehler = Feldfehlerkarte;
 
 export function leererEintrag(heute: string, firmen: readonly string[] = []): EintragEntwurf {
   return {

@@ -4,7 +4,7 @@
 export const katalog = {
   titel: 'Bausteinkatalog',
   einleitung:
-    'Jeder bereitgestellte Baustein von @tethys/ui-basis in beiden Modi. Diese Seite gibt es nur im Entwicklungs-Build.',
+    'Jeder bereitgestellte Baustein der Oberflächenbasis in beiden Modi. Diese Seite gibt es nur im Entwicklungs-Build.',
   modi: { hell: 'Hell', dunkel: 'Dunkel' },
   abschnitte: {
     tokens: 'Design-Tokens',
@@ -78,16 +78,16 @@ export const katalog = {
     fehler: 'Fehler zeigen',
     titelInfo: 'Gespeichert',
     beschreibungInfo: 'Alle Änderungen sind lokal gesichert.',
-    titelErfolg: 'Import abgeschlossen',
+    titelErfolg: 'Einlesen abgeschlossen',
     beschreibungErfolg: '120 Positionen übernommen.',
     titelWarnung: 'Prüfung mit Hinweisen',
     beschreibungWarnung: '3 Positionen haben keinen Einheitspreis.',
-    titelFehler: 'Export nicht möglich',
+    titelFehler: 'Sichern nicht möglich',
     beschreibungFehler: 'Die Datei konnte nicht geschrieben werden.',
   },
   validierung: {
     erklaerung:
-      'Tippen Sie beliebigen Text in das Zahlfeld. Das Feld nimmt alles an und zeigt nur einen Hinweis; gesperrt wird nichts (Regel U5).',
+      'Tippen Sie beliebigen Text in das Zahlfeld. Das Feld nimmt alles an und zeigt nur einen Hinweis; gesperrt wird nichts .',
     label: 'Menge (Probe)',
     startWert: '12a,5',
     zuletzt: 'Zuletzt gemeldeter Rohtext:',

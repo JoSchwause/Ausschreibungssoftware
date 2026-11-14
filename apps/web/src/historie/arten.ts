@@ -7,7 +7,12 @@ import { aufmassChangeSetUmkehren, rechnungChangeSetUmkehren } from '@tethys/abr
 import { bautagebucheintragChangeSetUmkehren, mangelChangeSetUmkehren } from '@tethys/bauleitung'; // Ticket 120
 import { bauzeitenplanChangeSetUmkehren } from '@tethys/bauzeit'; // Ticket 118
 import { bauwerksmodellChangeSetUmkehren } from '@tethys/bim'; // Ticket 114
-import { auftragsLvChangeSetUmkehren, changeSetUmkehren, projektChangeSetUmkehren } from '@tethys/kern';
+import {
+  auftragsLvChangeSetUmkehren,
+  changeSetUmkehren,
+  projektbestandChangeSetUmkehren,
+  projektChangeSetUmkehren,
+} from '@tethys/kern';
 import { honorarberechnungChangeSetUmkehren } from '@tethys/honorar'; // Ticket 119
 import { kostenermittlungChangeSetUmkehren } from '@tethys/kosten';
 import { angebotChangeSetUmkehren } from '@tethys/vergabe';
@@ -102,6 +107,17 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
   mangel: { umkehren: mangelChangeSetUmkehren, ziel: mangelZiel }, // Ticket 120
   bautagebucheintrag: { umkehren: bautagebucheintragChangeSetUmkehren, ziel: bautagebuchZiel }, // Ticket 120
+  // Vertrag v1.7c (D-96): Projekt samt Inhalt löschen; das Ziel wie beim Löschen des Projekts allein (Projektliste bzw. Projekt).
+  projektbestand: {
+    umkehren: projektbestandChangeSetUmkehren,
+    ziel: (projektId, cs, rueckwaerts, pfad) =>
+      projektZiel(
+        projektId,
+        { art: 'projekt', projektId: cs.projektId, projekt: cs.projekt },
+        rueckwaerts,
+        pfad,
+      ),
+  },
 };
 
 const art = <A extends Art>(cs: Von<A>): Aggregatart<A> => ARTEN[cs.art];

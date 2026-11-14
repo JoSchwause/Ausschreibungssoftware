@@ -10,6 +10,7 @@ import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
 import { lvZustandAusFixture } from '../../../packages/ausgabe/src/testhilfen';
 import { fixtureInhalt } from './fixture-inhalt';
 import { betragDe, projektAnlegen } from './hilfen';
+import { erwartePunkt, werkzeug } from './werkzeuge';
 
 const projektIdAusUrl = (page: Page): string =>
   decodeURIComponent(new URL(page.url()).pathname.split('/').at(-1) ?? '');
@@ -36,7 +37,7 @@ test('Als PDF: Download <LV-Name>.pdf mit Netto-Summe im Textauszug, Worker, Hau
   page,
 }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await expect(dialog.getByTestId('pdf-dateiname')).toHaveText('Typisch Musterhaus erfunden.pdf');
   // Das Datum ist mit „heute“ vorbelegt (Uhr der App) und im deutschen Format.
@@ -59,7 +60,7 @@ test('Als PDF: Download <LV-Name>.pdf mit Netto-Summe im Textauszug, Worker, Hau
 
 test('Als PDF ohne Preise: Blankett ohne Summen', async ({ page }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await dialog.getByRole('combobox', { name: 'Inhalt' }).click();
   await page.getByRole('option', { name: /ohne Preise/ }).click();
@@ -75,7 +76,7 @@ test('Als PDF ohne Preise: Blankett ohne Summen', async ({ page }) => {
 
 test('Ein ungültiges Datum sperrt „PDF erzeugen“ und sagt es', async ({ page }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await dialog.getByLabel('Datum im Kopf').fill('31.02.2026');
   await expect(dialog.getByText(/gültiges Datum/)).toBeVisible();
@@ -84,7 +85,7 @@ test('Ein ungültiges Datum sperrt „PDF erzeugen“ und sagt es', async ({ pag
 
 test('Excel für Bieter: Download <LV-Name>-Bieter.xlsx', async ({ page }) => {
   await typischOeffnen(page);
-  await page.getByRole('button', { name: 'Excel für Bieter' }).click();
+  await werkzeug(page, 'Ausgabe', 'Excel für Bieter');
   const dialog = page.getByRole('dialog', { name: 'Excel für Bieter ausgeben' });
   await expect(dialog.getByTestId('excel-dateiname')).toHaveText('Typisch Musterhaus erfunden-Bieter.xlsx');
   const [download] = await Promise.all([
@@ -120,13 +121,13 @@ test('Excel einlesen: Vorschau, Übernehmen legt Bieter und Angebot an (Bietersu
     .getByRole('row', { name: /Mustermann Bau GmbH/ });
   await expect(zeile.getByRole('cell').nth(1)).toHaveText(NETTO);
   await liste.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await expect(page.getByRole('button', { name: 'Angebote (1)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (1)');
 
   await page
     .getByRole('button', { name: /Rückgängig/ })
     .first()
     .click();
-  await expect(page.getByRole('button', { name: 'Angebote (0)' })).toBeVisible();
+  await erwartePunkt(page, 'Angebote', 'Angebote (0)');
 });
 
 test('Excel einlesen: keine Excel-Datei zeigt den Befund und bietet kein Übernehmen an', async ({ page }) => {
@@ -138,9 +139,11 @@ test('Excel einlesen: keine Excel-Datei zeigt den Befund und bietet kein Überne
   });
   const dialog = page.getByRole('dialog', { name: 'Excel-Angebot einlesen' });
   await expect(dialog.getByText(/nichts zu übernehmen/)).toBeVisible();
-  await expect(
-    dialog.getByRole('region', { name: 'Befunde der Excel-Datei' }).getByRole('listitem').first(),
-  ).toBeVisible();
+  const befunde = dialog.getByRole('region', { name: 'Befunde der Excel-Datei' });
+  await expect(befunde.getByRole('listitem').first()).toBeVisible();
+  // Wellen-Review (D-92, E7): zusammengefasst wie bei GAEB, kein Befundcode als Lesetext.
+  await expect(befunde.getByTestId('befundzahl')).toHaveText('1 Fehler');
+  await expect(befunde).not.toContainText('datei-unlesbar');
   await expect(dialog.getByRole('button', { name: 'Übernehmen' })).toHaveCount(0);
 });
 
@@ -153,7 +156,7 @@ test('PDF eines großen LV: Fortschritt sichtbar, Abbrechen beendet den Lauf ohn
   page.on('download', () => {
     heruntergeladen = true;
   });
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await dialog.getByRole('button', { name: 'PDF erzeugen' }).click();
   await expect(dialog.getByTestId('pdf-fortschritt')).toBeVisible();
@@ -161,7 +164,7 @@ test('PDF eines großen LV: Fortschritt sichtbar, Abbrechen beendet den Lauf ohn
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(dialog).toBeHidden();
   // Der Hauptthread war frei: Der Dialog lässt sich sofort wieder öffnen, der Lauf von vorhin liefert nichts nach.
-  await page.getByRole('button', { name: 'Als PDF' }).click();
+  await werkzeug(page, 'Ausgabe', 'Als PDF');
   await expect(dialog.getByRole('button', { name: 'PDF erzeugen' })).toBeEnabled();
   await page.waitForTimeout(6000);
   expect(heruntergeladen).toBe(false);

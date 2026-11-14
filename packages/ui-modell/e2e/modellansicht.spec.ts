@@ -69,7 +69,7 @@ test.describe('kleines Modell', () => {
   });
 
   test('Auswahl über die Eingabe hebt die Bauteile in der Farbe der Auswahl hervor', async ({ page }) => {
-    await setzen(page, { auswahl: [WAND_SUED, STUETZE, '0Unbekannt000000000001'] });
+    await setzen(page, { auswahl: [WAND_SUED, STUETZE, globalId('Unbekannt', 1)] });
     const d = await darstellung(page);
     const t = await tokens(page);
     expect([...d.hervorgehoben].sort()).toEqual([WAND_SUED, STUETZE].sort());

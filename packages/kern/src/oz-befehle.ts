@@ -22,7 +22,7 @@ import type {
   Umnummerieren,
 } from '@tethys/vertrag';
 import { baueChangeSet } from './changeset';
-import { nein, ok } from './fehler';
+import { befehlsfehler as fehlerwert, nein, ok } from './fehler';
 import { befehlshinweis } from './hinweise';
 import { ebenenbeitrag, obersteEbeneFehler } from './regeln';
 import { ebenenBis, indexVon, ohneKnoten } from './struktur';
@@ -60,6 +60,10 @@ export interface Vergabe {
  * `praefix` die Teile von dessen OZ. Gibt den ersten Fehler zurück (Knoten nennend) oder `null`: `oz-ueberlauf`, wenn
  * auch Schritt 1 (Position) bzw. die Gliederungsnummer nicht in die Stellen passt; `maske-ungueltig`, wenn die Maske den
  * Knoten nicht fasst (Stufe, Index). Die Rekursion ist durch die Stufenzahl der Maske (höchstens 5) begrenzt.
+ *
+ * Mit `alle` (v1.7a, D-127.14; `OzMaskeSetzen`) bricht die Vergabe beim ersten Fehler nicht ab: Jeder Knoten ohne OZ kommt in
+ * Dokumentreihenfolge in `alle`, und die Funktion liefert `null`. Eine Gliederung ohne OZ steht dann für ihren Teilbaum (er
+ * wird nicht weiter nummeriert); eine Indexposition hinter einer Position ohne OZ hat auch keine.
  */
 export function nummeriere(
   idx: Baumindex,
@@ -68,6 +72,7 @@ export function nummeriere(
   ebene: number,
   praefix: readonly string[],
   aus: Vergabe,
+  alle?: Befehlsfehler[],
 ): Befehlsfehler | null {
   const befehlsfehler = (
     code: 'maske-ungueltig' | 'oz-ueberlauf',
@@ -102,36 +107,52 @@ export function nummeriere(
   let gliederungen = 0;
   let positionen = 0;
   let grundteil: string | null = null;
+  /** Hat die letzte Grundposition keine OZ bekommen (nur mit `alle`)? Dann auch ihre Indexpositionen nicht. */
+  let grundOhneOz = false;
   for (const k of kinder) {
     if (k.art === 'hinweis') continue;
-    if (k.art === 'position') {
-      const f = indexFehler(maske, 'position', k.ozIndex);
-      if (f !== null) return befehlsfehler('maske-ungueltig', `Position ${k.id}: ${f}`, k);
-      if (stellenFuer(maske, 'position', ebene) === null) {
+    const f = k.art === 'position' ? positionVergeben(k) : gliederungVergeben(k);
+    if (f === null) continue;
+    if (alle === undefined) return f;
+    alle.push(f);
+  }
+  return null;
+
+  function positionVergeben(k: Extract<Knoten, { art: 'position' }>): Befehlsfehler | null {
+    const f = indexFehler(maske, 'position', k.ozIndex);
+    if (f !== null) return befehlsfehler('maske-ungueltig', `Position ${k.id}: ${f}`, k);
+    if (stellenFuer(maske, 'position', ebene) === null) {
+      return befehlsfehler(
+        'maske-ungueltig',
+        `Position ${k.id} liegt in Stufe ${String(ebene)}; die Maske hat nur ${String(maske.gliederung.length)} Gliederungsstufen.`,
+        k,
+      );
+    }
+    if (k.ozIndex !== null && grundOhneOz)
+      return befehlsfehler('oz-ueberlauf', `Indexposition ${k.id}: ihre Grundposition hat keine OZ.`, k);
+    let teil: string;
+    if (k.ozIndex !== null && grundteil !== null) {
+      teil = grundteil;
+    } else {
+      positionen++;
+      const neu = positionsTeil(maske.position, positionen, positionsSchritt);
+      if (neu === null) {
+        grundOhneOz = true;
         return befehlsfehler(
-          'maske-ungueltig',
-          `Position ${k.id} liegt in Stufe ${String(ebene)}; die Maske hat nur ${String(maske.gliederung.length)} Gliederungsstufen.`,
+          'oz-ueberlauf',
+          `Position ${k.id} ist die ${String(positionen)}. Position unter ${elternId}; ihre Nummer passt auch mit Schritt 1 nicht in ${String(maske.position.laenge)} Stellen.`,
           k,
         );
       }
-      let teil: string | null;
-      if (k.ozIndex !== null && grundteil !== null) {
-        teil = grundteil;
-      } else {
-        positionen++;
-        teil = positionsTeil(maske.position, positionen, positionsSchritt);
-        if (teil === null) {
-          return befehlsfehler(
-            'oz-ueberlauf',
-            `Position ${k.id} ist die ${String(positionen)}. Position unter ${elternId}; ihre Nummer passt auch mit Schritt 1 nicht in ${String(maske.position.laenge)} Stellen.`,
-            k,
-          );
-        }
-        grundteil = teil;
-      }
-      aus.oz.set(k.id, ozZusammensetzen(maske, [...praefix, teil]));
-      continue;
+      teil = neu;
+      grundteil = neu;
+      grundOhneOz = false;
     }
+    aus.oz.set(k.id, ozZusammensetzen(maske, [...praefix, teil]));
+    return null;
+  }
+
+  function gliederungVergeben(k: Exclude<Knoten, { art: 'position' | 'hinweis' }>): Befehlsfehler | null {
     const stufe = ebene + ebenenbeitrag(k.art);
     const stelle = stellenFuer(maske, 'gliederung', stufe)?.at(-1);
     if (stelle === undefined) {
@@ -152,10 +173,8 @@ export function nummeriere(
     }
     const teile = [...praefix, teil];
     aus.oz.set(k.id, ozZusammensetzen(maske, teile));
-    const f = nummeriere(idx, maske, k.id, stufe, teile, aus);
-    if (f !== null) return f;
+    return nummeriere(idx, maske, k.id, stufe, teile, aus, alle);
   }
-  return null;
 }
 
 /**
@@ -201,10 +220,30 @@ function aenderungen(z: LvZustand, idx: Baumindex, neu: Vergabe, kopf?: LvChange
   );
 }
 
-/** Nummeriert den ganzen Baum unter der Wurzel mit `maske` neu; Fehlerwert oder die neuen OZ. */
-function nummeriereAlles(idx: Baumindex, maske: OzMaske): Ergebnis<Vergabe, Befehlsfehler> {
+/**
+ * Der erste Fehler, dazu alle betroffenen Knoten in der gegebenen (Dokument-)Reihenfolge als `knotenIds`, wenn es mehrere
+ * sind (Vertrag v1.7a, `Befehlsfehler.knotenIds`, D-127.14). `fehler` ist nie leer.
+ */
+function mitKnotenliste(fehler: readonly [Befehlsfehler, ...Befehlsfehler[]]): Befehlsfehler {
+  const ids = fehler.flatMap((f) => (f.knotenId === undefined ? [] : [f.knotenId]));
+  return ids.length > 1 ? { ...fehler[0], knotenIds: ids } : fehler[0];
+}
+
+/**
+ * Nummeriert den ganzen Baum unter der Wurzel mit `maske` neu; Fehlerwert oder die neuen OZ. Mit `alleNennen`
+ * (`OzMaskeSetzen`, D-127.14) nennt der Fehler alle Knoten, die keine OZ bekommen können (`mitKnotenliste`).
+ */
+function nummeriereAlles(
+  idx: Baumindex,
+  maske: OzMaske,
+  alleNennen = false,
+): Ergebnis<Vergabe, Befehlsfehler> {
   const neu: Vergabe = { oz: new Map(), hinweise: [] };
-  const f = nummeriere(idx, maske, idx.lvId, 0, [], neu) ?? doppeltFehler(idx, neu.oz);
+  const alle: Befehlsfehler[] | undefined = alleNennen ? [] : undefined;
+  const erster = nummeriere(idx, maske, idx.lvId, 0, [], neu, alle);
+  const [a, ...rest] = alle ?? [];
+  if (a !== undefined) return { ok: false, fehler: mitKnotenliste([a, ...rest]) };
+  const f = erster ?? doppeltFehler(idx, neu.oz);
   return f === null ? ok(neu) : { ok: false, fehler: f };
 }
 
@@ -264,6 +303,10 @@ export function umnummerieren(z: LvZustand, b: Umnummerieren): Antwort {
  * `OzMaskeSetzen`: setzt die Maske und nummeriert den ganzen Baum neu, in EINEM ChangeSet (Kopf und Knoten). Eine
  * ungültige Maske oder ein Knoten, der unter der neuen Maske keine OZ bekommen kann, ergibt einen Fehlerwert ohne jede
  * Änderung. Dieselbe Maske noch einmal: leeres ChangeSet.
+ *
+ * Vertrag v1.7a (D-127.14, Ticket 137 Punkt 6): Passen mehrere Knoten nicht zur neuen Maske, nennt der Fehler sie alle in
+ * Dokumentreihenfolge (`knotenIds`); Code, Meldung und `knotenId` sind die des ersten (`maske-ungueltig`, `oz-ueberlauf` oder
+ * bei der Los-Stufe `knotenart-unzulaessig`, wie bisher). Eine Gliederung ohne Platz steht für ihren Teilbaum.
  */
 export function ozMaskeSetzen(z: LvZustand, b: OzMaskeSetzen): Antwort {
   const meldung = maskeFehler(b.maske);
@@ -272,17 +315,15 @@ export function ozMaskeSetzen(z: LvZustand, b: OzMaskeSetzen): Antwort {
   if (maskenGleich(lv.ozMaske, b.maske)) return ok(baueChangeSet(z, {}));
   const idx = indexVon(lv.id, lv.knoten);
   if (b.maske.losStufe === true) {
-    // F1, E-08: mit Los-Stufe stehen auf der obersten Ebene nur Lose (`obersteEbeneFehler`).
-    const titel = (idx.kinder.get(lv.id) ?? []).find((k) => k.art === 'titel');
-    if (titel !== undefined) {
-      return nein(
-        'knotenart-unzulaessig',
-        obersteEbeneFehler('titel', [], true) ?? 'Titel auf der Los-Stufe.',
-        titel.id,
-      );
-    }
+    // F1, E-08: mit Los-Stufe stehen auf der obersten Ebene nur Lose (`obersteEbeneFehler`); der Fehler nennt alle Titel
+    // dort (v1.7a, D-127.14).
+    const meldung = obersteEbeneFehler('titel', [], true) ?? 'Titel auf der Los-Stufe.';
+    const [erster, ...weitere] = (idx.kinder.get(lv.id) ?? [])
+      .filter((k) => k.art === 'titel')
+      .map((t) => fehlerwert('knotenart-unzulaessig', meldung, t.id));
+    if (erster !== undefined) return { ok: false, fehler: mitKnotenliste([erster, ...weitere]) };
   }
-  const r = nummeriereAlles(idx, b.maske);
+  const r = nummeriereAlles(idx, b.maske, true);
   if (!r.ok) return r;
   const vorher = ohneKnoten(lv);
   return ok(aenderungen(z, idx, r.wert, { vorher, nachher: { ...vorher, ozMaske: b.maske } }));

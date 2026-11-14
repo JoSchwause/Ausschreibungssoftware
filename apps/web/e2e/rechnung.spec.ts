@@ -12,7 +12,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Aufmass, AuftragsLeistungsverzeichnisId, ProjektId } from '@tethys/vertrag';
 import { fixtureInhalt } from './fixture-inhalt';
-import { betragDe, projektAnlegen } from './hilfen';
+import { betragDe, erwarteMeldung, projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import {
   M4_BIETER,
   M4_NACHTRAG_LV,
@@ -40,7 +41,7 @@ async function blattAnlegen(page: Page, aufmass: Aufmass): Promise<void> {
 async function listeNeuLaden(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'Zum Auftrags-LV' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /^Auftrags-LV – / })).toBeVisible();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Rechnungen' }).click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
 }
 
@@ -75,8 +76,8 @@ async function kettePruefen(page: Page, k: FxKette, frueher: readonly number[]):
 const werkzeuge = (page: Page): Locator => page.getByRole('toolbar', { name: 'Werkzeuge der Rechnungen' });
 
 async function neueRechnung(page: Page, nummer: number, eingang: string, rnr: string): Promise<Locator> {
-  await werkzeuge(page).getByRole('button', { name: 'Neue Rechnung' }).click();
-  const dialog = page.getByRole('dialog', { name: `Neue Rechnung ${String(nummer)}` });
+  await werkzeuge(page).getByRole('button', { name: 'Rechnung anlegen' }).click();
+  const dialog = page.getByRole('dialog', { name: `Rechnung ${String(nummer)} anlegen` });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Eingangsdatum').fill(eingang);
   await dialog.getByLabel('Rechnungsnummer des Auftragnehmers').fill(rnr);
@@ -108,7 +109,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await expect(angebote.getByRole('row', { name: new RegExp(M4_BIETER) })).toBeVisible();
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${M4_BIETER}` })
@@ -130,7 +131,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   await blattAnlegen(page, m4Blatt(0, projektId, auftragsLvId));
 
   // Zur Rechnungsliste über den Link des Auftrags-LV.
-  await page.getByRole('toolbar').getByRole('link', { name: 'Rechnungen' }).click();
+  await werkzeug(page, 'Abrechnung', 'Rechnungen');
   await expect(page.getByRole('heading', { level: 1, name: /^Rechnungen – / })).toBeVisible();
   await expect(page.getByText('Noch keine Rechnung erfasst.')).toBeVisible();
 
@@ -208,11 +209,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
     .getByRole('dialog', { name: 'Rechnung 2 freigeben' })
     .getByRole('button', { name: 'Freigeben' })
     .click();
-  await expect(
-    page
-      .getByRole('region', { name: /^Meldungen/ })
-      .getByText(/Freigaben gehen nur in der Reihenfolge der Rechnungsnummern/),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Freigaben gehen nur in der Reihenfolge der Rechnungsnummern');
   await expect(page.getByTestId('freigabe')).toHaveText('Offen (nicht freigegeben)');
   await page.evaluate(() => {
     window.tethysTest?.speicherFehler(null);
@@ -256,4 +253,6 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   const liste = page.getByRole('table', { name: 'Rechnungen des Auftrags-LV' });
   await expect(liste.getByTestId('zahlbetrag')).toHaveText([betragDe('8874.40'), betragDe('10100.84')]);
   await expect(liste.getByTestId('status')).toHaveText(['freigegeben', 'offen']);
+  // R5: Offen gibt es erst nach der Freigabe; bis dahin steht ein Strich.
+  await expect(liste.getByTestId('offen').nth(1)).toHaveText('–');
 });

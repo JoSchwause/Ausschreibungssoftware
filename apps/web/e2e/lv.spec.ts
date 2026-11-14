@@ -4,6 +4,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import {
+  erwarteMeldung,
   fixture,
   lvAnlegen,
   neueZeile,
@@ -12,6 +13,7 @@ import {
   summen,
   type FxPosition,
 } from './hilfen';
+import { werkzeug } from './werkzeuge';
 
 const typisch = fixture('typisch');
 const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as FxPosition;
@@ -19,11 +21,11 @@ const p = (oz: string) => typisch.knoten.find((k) => k.ordnungszahl === oz) as F
 async function lvMitZweiPositionen(page: Page): Promise<void> {
   await projektAnlegen(page, 'Schule', 'Kreis');
   await lvAnlegen(page, 'Außenanlagen');
-  await neueZeile(page, () => page.getByRole('button', { name: /^Titel anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Titel anlegen/));
   await page.keyboard.type('Wege');
   await page.keyboard.press('Enter');
   // Position über die Schaltfläche (nicht das Tastenkürzel).
-  await neueZeile(page, () => page.getByRole('button', { name: /^Position anlegen/ }).click());
+  await neueZeile(page, () => werkzeug(page, 'Einfügen', /^Position anlegen/));
   await page.keyboard.type(p('01.0050').kurztext);
   await page.keyboard.press('Tab');
   await positionTippen(page, p('01.0060'));
@@ -79,11 +81,7 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   const mwst = page.getByRole('textbox', { name: 'MwSt-Satz' });
   await mwst.fill('7');
   await mwst.press('Enter');
-  await expect(
-    page.getByText('Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Der Speicher des Browsers ist voll. Die Änderung wurde nicht gespeichert.');
   expect(await summen(page)).toEqual(vorher);
 
   // Auch eine Änderung im Grid bleibt beim alten Stand.
@@ -91,7 +89,7 @@ test('Speicher voll: die Anzeige bleibt beim alten Stand und eine Meldung nennt 
   await menge.focus();
   await page.keyboard.type('5');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Nicht gespeichert', { exact: true }).first()).toBeVisible();
+  await erwarteMeldung(page, 'Nicht gespeichert');
   // Nur der angezeigte Wert; die Zelle trägt dazu die Beschreibung ihres Prüfbefunds (Menge fehlt).
   await expect(menge.locator('.tx-grid__text')).toHaveText('');
   expect(await summen(page)).toEqual(vorher);

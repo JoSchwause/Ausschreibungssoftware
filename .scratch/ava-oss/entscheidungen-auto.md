@@ -660,3 +660,300 @@ Question: Ticket 117 verlangte „LV `typisch` per X83 wie M3/M4“; der Umsetze
 Decision: Ja. Der Tickettext war falsch: Eine X83 trägt keine Einheitspreise und keinen Nachlass, das LV-Netto wäre 0,00 und „Vordersatz und LV-Netto = Soll“ (`plan.md` §4, D-58) unerfüllbar. X86 ergibt genau die Summen von `typisch.json`; `plan.md` §4 nennt für X1 kein Format und bleibt. Auch D-117.3 (Zuschlag an A ohne Wahl, sonst fiele 02.0070 aus dem Aufmaßblatt) und D-117.5 (Fenster 1440 × 2000 wie M4) bestätigt.
 Reason: Die Tor-Definition (Zahlen gleich den Sollwerten) geht vor dem Weg im Tickettext; M3/M4 prüfen die Vergabe, X1 die Mengen am bepreisten LV.
 Reversible: yes  Touches: apps/web/e2e/x1-*.spec.ts
+
+## D-71 Ticket 125 ohne Lieferung: eigene Testdateien
+Welle 7 · Tickets 125, 144, 145 · decided by: advisor
+Question: Ticket 125 (echte Testdateien) ist `ready-for-human` geblieben, der Sitzung hängt nichts an. Was tun mit E6 (GAEB 90/2000)?
+Decision: E6 wird gebaut, GAEB 90 fest, GAEB 2000 nur, wenn eine frei zugängliche Formatbeschreibung erreichbar ist (gaeb.de, BVBS, Herstellerhilfen; nur gelesen, eigener Code, keine Normtexte oder fremden Parser, C1); sonst sofort gekürzt (steht ohnehin vor GAEB 90 in §4) und nur die klare Abweisung aus E7. Testdateien von Hand nach Formatbeschreibung, Herkunftsvermerk „nicht aus AVA-Software“, REUSE. Unbekannte Satzarten/Schlüsselwörter sind Befunde; der Zeichensatz von GAEB 90 wird am Inhalt erkannt und als Befund gemeldet. Jeder Import in diesen Formaten zeigt einen festen Hinweis „nicht an Dateien aus anderer Software geprüft, Summen vergleichen“. 125 bleibt `ready-for-human` mit Kommentar; der Bericht nennt beide Formate als ungeprüft.
+Reason: G-61 verlangt beide Formate; ohne echte Dateien prüft der Test nur das eigene Verständnis, daher Hinweis statt Abbruch.
+Reversible: yes  Touches: packages/gaeb, fixtures/gaeb-formate, apps/web/src/gaeb
+
+## D-72 A5: Lage von Vertragsstrafe, Skonto und Bauabzugsteuer in der Abzugskette
+Welle 7 · Tickets 128, 143, 152, 153 · decided by: advisor
+Question: Wo sitzen Skonto, Bauabzugsteuer (§ 48 EStG) und Vertragsstrafe in der Kette D-34, auf welcher Basis, wann ist Skonto verwirklicht?
+Decision: Leistung → Nachlass → MwSt → Brutto kum. → Umlagen → **Vertragsstrafe** (fester Bruttobetrag mit Grund, ohne MwSt-Wirkung, kumuliert geführt, Vorschlag aus der Vorrechnung wie der Einbehalt) → Einbehalt (Basis bleibt Brutto kum.) → frühere eingefrorene Zahlbeträge → **Zahlbetrag** (eingefroren, unverändert D-34) → **Skonto** (möglich = round(Zahlbetrag × Satz, 2), 0 bei Zahlbetrag ≤ 0; Satz und Frist in Kalendertagen an der Rechnung; Frist ab `eingang`, Eingangstag zählt nicht, keine Wochenendverschiebung; ohne `eingang` kein Skonto, Befund) → **Bauabzugsteuer** (Schalter an der Rechnung, Standard aus; Satz 15 als Konstante; round((Zahlbetrag − verwirklichtes Skonto) × 15 %, 2), Ausweis „an das Finanzamt“, mindert nur die Auszahlung) → Auszahlung an AN → Zahlungen → offen. Skonto ist verwirklicht, wenn Σ Zahlungen bis Fristende ≥ Auszahlung im Skontofall; beide Szenarien werden gerechnet und angezeigt („bei Zahlung bis …: …, danach: …“). Offen = Zahlbetrag − verwirklichtes Skonto − Bauabzugsteuer − Σ Zahlungen. Zahlungen nur auf freigegebene Rechnungen; Freigabe aufheben gesperrt, solange Zahlungen bestehen (Q5). Neue Felder per Migration `null`, alte Ergebnisse unverändert (A8).
+Reason: Der eingefrorene Zahlbetrag bleibt die einzige Größe, die Folgerechnungen lesen; Skonto und Steuer sind Erfüllung, keine Kürzung der Forderung.
+Reversible: yes (Risiko: § 48 EStG zählt Aufrechnungen zur Gegenleistung; v1 lässt Umlagen und Vertragsstrafe aus der Basis – auf die Seite „Annahmen“ und als unsicher in den Bericht)  Touches: packages/vertrag, abrechnung, ausgabe, fixtures, apps/web/src/rechnung
+
+## D-73 Einstellungen als globales Aggregat, in der Projektdatei als optionaler Block
+Welle 7 · Tickets 127, 137, 139, 150 · decided by: advisor
+Question: Wo liegen Büroangaben, Druckprofile und KG-Bezeichnungen (bisher `localStorage`) und wie kommen sie in die Sicherung?
+Decision: Ein globales Aggregat `Einstellungen` mit eigenem Repository, außerhalb der Projekt-Undo-Historie. Projektdatei Schema 7 trägt es als optionalen Block; das Einlesen füllt nur Fehlendes je Schlüssel (Büro nur, wenn lokal leer; Druckprofil nur bei fehlender Kennung; KG-Bezeichnung nur bei fehlender Nummer) und der Dialog nennt, was übernommen und was belassen wurde (Q5). `localStorage` wird einmalig übernommen, wenn der Speicher leer ist; die alten Schlüssel bleiben. Preisspiegel-Einstellungen als optionales Feld am LV mit LV-Befehl (Undo, wandert mit dem LV-Stand); fehlend = Standardwerte nach D-05. **Ändert D-36 (7)** („Druckprofile nicht im Vertrag“), gedeckt durch E15.
+Reason: ADR 0001 (ein Nutzer, ein Gerät) und „einmal für alle Projekte“ (E10); getrennte Datei würde die Sicherung zu zwei Dateien machen.
+Reversible: yes  Touches: packages/vertrag, kern, speicher, apps/web
+
+## D-74 Zuschlag zurücknehmen: was sperrt
+Welle 7 · Tickets 127, 138, 149 · decided by: advisor
+Question: Sperren Verweise der Vorschau-Module das Zurücknehmen des Zuschlags?
+Decision: Sperre bei Nachträgen, Aufmaßblättern, Rechnungen **und Mängeln** (v1.6: `speicher` weist das Entfernen eines Auftrags-LV mit Mangelverweis mit `konflikt` ab); die Sperre nennt Art und Anzahl und sagt, wie man sie löst. Bauzeitenplan (schwacher Verweis, v1.6) sperrt nicht und wird nicht aufgeräumt: der Vorgang behält den Bezug, der vorhandene Befund erscheint, Undo stellt alles her; der Bestätigungsdialog nennt die Vorgänge. Kostenkontrolle wird gerechnet, sperrt nicht; der Dialog sagt, dass die Auftragswerte dort entfallen.
+Reason: Ein Mangel heißt, dass gebaut wird; ihn im selben Befehl zu ändern wäre Datenverlust (Q5) und bräche v1.6.
+Reversible: yes  Touches: packages/vertrag, vergabe, speicher, apps/web/src/vergabe
+
+## D-75 M4 streng zuletzt; Formelauswahl
+Welle 7 · Ticket 157 · decided by: advisor
+Question: M4 vorab streichen? Welche Formeln?
+Decision: Nicht vorab streichen (G-61), aber erst starten, wenn alle P- und S-Tickets gemergt sind und das Tor grün ist. Quelle: die amtliche BVBS-Prüfdatei `fixtures/extern/bvbs/3.3-mengenermittlung/*.x31` (Nummer, Name, Parameterlage); Formeln sind Elementargeometrie, Sollwerte selbst hergeleitet (C4), kein REB-Text. Stufe 1: 04, 05, 01, 31; Stufe 2: 02, 03, 07, 13, 30. Nicht: 22/23/25, 08–12, 14, 15, 20, 21, 32, 00. Nur Belegtes umsetzen, sonst Befund „Formel nicht umgesetzt“ mit erhaltener Nummer.
+Reason: Kürzungsreihenfolge (§4) nennt M4 zuerst; eine falsch gelesene Parameterreihenfolge ergäbe still falsche Mengen.
+Reversible: yes  Touches: packages/mengen, gaeb, apps/web/src/mengen
+
+## D-76 Schnitt der Welle 7
+Welle 7 · alle · decided by: orchestrator
+Question: Wie wird `umfang-welle-7.md` §3 in Tickets geschnitten?
+Decision: Tickets 127–159 nach `schnitt-welle-7.md`. App-Tickets werden je Ordner gebündelt (ein Schreiber je Ordner, D-20), nicht je E-Punkt; Ticket 123 und 124 gehen in 127 (Vertragsteil), 131 (Seitengerüst), 135 (`speicher`), 140 (Fachpakete), 155 (Vorschau-Module, samt 124) auf. Integrationsbranch `integration/welle-7` ab `4eefd7d` (= `origin/main`; der lokale Ref `main` ist veraltet, wie D-49).
+Reason: Weniger Übergaben und Konflikte in `apps/web`; die Reihenfolge in §4 (vertrag zuerst, gaeb E5→E7→E6, ausgabe E11→E12, ui-grid E3→E4, E1/E3 vor den Seiten-Tickets) bleibt.
+Reversible: yes  Touches: Ablauf, issues/
+
+## D-77 Browserprüfung ohne Firefox und Safari
+Welle 7 · Ticket 132 · decided by: orchestrator
+Question: E13 verlangt, Firefox und Safari vorher zu messen. In der Sitzung gibt es nur Chromium; `playwright install` ist hier untersagt.
+Decision: Die Startprüfung erkennt Fähigkeiten (OPFS, Worker, Module-Worker, `crypto.subtle`, File-API u. a.), nicht Browsernamen. Die Meldung nennt „geprüft: aktuelle Chromium-Browser (Chrome, Edge)“ und Firefox/Safari als „nicht geprüft“. Die Messung in Firefox und Safari wird Teil der Handprüfungen (Ticket 126) und steht im Bericht als offen.
+Reason: „Nicht raten“ (E13) heißt hier: nur Gemessenes behaupten.
+Reversible: yes  Touches: apps/web/src/fehler, Ticket 126
+
+## D-78 Versionsnummer 0.7.0
+Welle 7 · Ticket 134 · decided by: orchestrator
+Question: `apps/web/package.json` trägt `0.0.0`; die Seite „Über“ braucht eine Version.
+Decision: `0.7.0` für den Stand nach Welle 7 (0.x bis zur Veröffentlichung, G-59), Build-Stand = kurzer Commit-Hash und Datum über `define` in Vite, ohne `Date.now()` im Fachcode.
+Reason: Lesbar für die Demo, keine Versprechen einer 1.0.
+Reversible: yes  Touches: package.json, apps/web/package.json, apps/web/vite.config
+
+## D-79 Pages-Workflow ohne Warten auf die CI
+Welle 7 · Ticket 134 · decided by: orchestrator
+Question: Soll `pages.yml` erst nach grüner `ci.yml` (`workflow_run`) veröffentlichen?
+Decision: Nein, Veröffentlichung bei jedem Push auf `main` wie gebaut. Nach Q2/P7 kommt nur grün Geprüftes nach `main`; ein zweiter Auslöser verdoppelt die Fehlerquellen. Der Befund „zweiter OPFS-Zugriffsgriff nach Neuladen“ aus der Pfadprobe geht als Punkt 6 an Ticket 139.
+Reason: Einfach und ausreichend für eine Demo; umkehrbar mit einer Zeile.
+Reversible: yes  Touches: .github/workflows/pages.yml, Ticket 139
+
+## D-80 GAEB-Inhalte ohne Platz im Vertrag bleiben Befunde
+Welle 7 · Ticket 129 (Folge 136, 144, 145) · decided by: orchestrator
+Question: 3.1-Dateien (und 3.3) tragen Nachlass je Position oder Gliederung, Pauschalen an Gliederung/LV, „entfällt“ (`NotAppl`), Wahl-Gliederungen und abweichende MwSt-Sätze, die `vertrag` nicht hält. Bedeutung ändern (z. B. Positionen einer Wahl-Gliederung als Wahlpositionen lesen)?
+Decision: Nein. Jede solche Angabe wird ein Befund am Knoten (D-129.3), die Summen des Modells weichen dann von der Datei ab, und der Befund sagt das. Keine Umdeutung in Welle 7; die Liste geht als Ergänzung zu §6 „Nach Welle 7“ in den Bericht (zu B-13, G-23, G-28).
+Reason: G-23 (ein Nachlass je LV) und G-28 (ein MwSt-Satz) sind entschieden; eine Umdeutung wäre GAEB-Semantik ohne Beleg. F6/U5 verlangen Befund statt stillem Verwerfen, das ist erfüllt.
+Reversible: yes  Touches: packages/gaeb
+
+## D-81 Nutzungslimit während Stufe 2
+Welle 7 · Tickets 132, 136–139, 141, 142, Review v1.7a · decided by: orchestrator
+Question: Kurz nach dem Start der Stufe 2 brachen alle acht laufenden Agenten mit „weekly limit“ ab (gegen 18:35 UTC); die Arbeit lag in ihren Worktrees.
+Decision: Um 18:46 UTC alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-61, D-65, D-67), nachdem die Sitzung wieder „allowed“ meldete und der Nutzer „continue“ schrieb. Kein Ticket gilt als fehlgeschlagen; der Circuit Breaker zählt nur Fehler der Umsetzung. Trifft der Lauf das Limit erneut, gilt die Kürzungsreihenfolge aus `schnitt-welle-7.md`, und P-Tickets haben Vorrang.
+Reason: Kein Verlust, gleicher Gesamtaufwand; die Reihenfolge entscheidet, was bei einem weiteren Limit fertig ist.
+Reversible: yes  Touches: Ablauf
+
+## D-82 Review von `vertrag` v1.7a: „ja mit Korrekturen“
+Welle 7 · Ticket 127 (Folge: 136–139, 146, 149, 150) · decided by: orchestrator
+Question: Der Opus-Reviewer (statt des Nutzers, P9) urteilt „yes-with-fixes“: 2 MUST, 10 SHOULD, alle additiv oder nur Lesart. Was wird wo behoben?
+Decision: **Nachtrag zu 127** (derselbe Umsetzer, vor dem Merge von 137 und 139): **M1** `Einstellungen` bekommen ein eigenes Protokoll (`EinstellungenProtokolleintrag`, `EinstellungenRepository.anwenden(eintrag, changeSet)` in einer Transaktion, `protokoll()`); die App führt für Einstellungen ein eigenes Sitzungs-Undo (Umkehrung = getauschtes ChangeSet, protokolliert als `Rueckgaengig`). D-73 nimmt die Einstellungen nur aus der Undo-Historie des Projekts, nicht aus dem Protokoll; ADR 0009 und A5 gelten ohne Ausnahme (eine Änderung der ADR wäre Sache des Menschen). **M2** Lesart: ein Stand-ChangeSet mit `lvStand.vorher: null` friert nur bei `LvStandAnlegen` (oder `Wiederholen` davon) das aktuelle LV ein, sonst `unbekannt`; `changeSetUmkehren` tauscht `lvStandInhalt`. Dazu **S1** (Undo legt den Stand an seinen Platz, Ordnung `angelegt, seq`), **S3** (`KalkulationSetzen` an einer Zuschlagsposition → `knotenart-unzulaessig`; Merkmale mit Zuschlag entfernen die Kalkulation im selben ChangeSet), **S4** Hinweiscode `kalkulation-entfernt`, **S5** Umbenennung `PreisspiegeleinstellungenSetzen` → `PreisspiegelEinstellungenSetzen` (bevor ein Protokoll den Namen trägt) und „Projektstammdaten“ → „Projektangaben“ im Glossar, **S6** Glossar: ein LV aus einem Stand übernimmt die Preisspiegel-Einstellungen über einen eigenen Befehl der App (150), **S7** Kommentar `modell.ts:646`, **S8** Lesart: `localStorage` wird nur übernommen, solange das Einstellungsprotokoll leer ist, **S10** Lesart: beim Einlesen als Kopie werden auch die Kennungen in eingefrorenen Ständen umgeschrieben. **Verbraucher:** 137 (M2-Umkehrung mit Eigenschaftstest, S3, S4, Umkehrung der Einstellungs-ChangeSets, Normalisierer der Bieterangaben exportieren), 138 (S9: schmale Funktionen mit Pflicht-`verweise`, Normalisierer aus `kern`), 139 (M1-Tabelle in Migration 7, M2-Prüfung, S1-Sortierung, S2 Umbenennen und Wiederherstellen eines Stands mit Tests, S10), 136 (S7: X84-Angaben in `AngebotLesung.bieter.angaben`, X86 füllt nur `auftragnehmer`, Kontaktangaben bleiben Befund), 146 zusätzlich blockiert durch 137 und 139, 149 (S7: vorhandener Bieter wird nicht überschrieben, die App bietet `BieterangabenSetzen` an), 150 (S6, S8).
+Reason: Wie D-66: alle Befunde eng und additiv; M1 folgt aus ADR 0009 (Stufe 1 der Leiter), der Rest ist Lesart. Die laufenden Umsetzer bekommen ihre Punkte sofort als Nachricht.
+Reversible: yes  Touches: packages/vertrag, GLOSSARY.md, kern, vergabe, speicher, gaeb, Tickets 136–139, 146, 149, 150
+
+## D-83 Zuschlag übernimmt die Bieteranschrift als Auftragnehmer
+Welle 7 · Ticket 138 (D-138.5) · decided by: orchestrator
+Question: Der Zuschlag schreibt jetzt die Angaben des Bieters (Anschrift) in `LvInhaltKopf.auftragnehmer` des Auftrags-LV und lässt die Kalkulation an den Positionen fallen (D-127.6). Bestätigen?
+Decision: Ja. Der Auftragnehmer ist der bezuschlagte Bieter; das X86 trägt so Name und Anschrift, wie es E10 verlangt. Die Kalkulation gehört zur Ausschreibung (D-127.6). Der Glossareintrag „Auftragnehmer“ („hat nur einen Namen“) wird im Vertragsnachtrag zu 127 berichtigt. Der Normalisierer der Bieterangaben liegt vorerst als lokale Kopie in `vergabe` (`bieterangaben.ts`); die Umstellung auf den Export aus `kern` (137) ist eine Zeile und geht in die Review-Behebung (159).
+Reason: Keine Wirkung auf Beträge; schließt B-20 für das Auftrags-LV.
+Reversible: yes  Touches: packages/vergabe, GLOSSARY.md, Ticket 159
+
+## D-84 Übernahme der Einstellungen aus einer Projektdatei ist ein protokollierter Befehl
+Welle 7 · Ticket 127 (Nachtrag, D-127.18) · decided by: orchestrator
+Question: Der Vertragsnachtrag führt `EinstellungenUebernehmen { einstellungen }` ein: Das Einlesen einer Projektdatei ändert die Einstellungen und wird deshalb protokolliert (ADR 0009); `projektdateiEinlesen` schreibt den Eintrag nur mit dem Kopf aus der Option `einstellungsuebernahme`, `projektdateiImportieren` übernimmt keine Einstellungen mehr. Bestätigen?
+Decision: Ja. Folgt aus M1 (D-82): Auch die Übernahme ist eine Änderung der Einstellungen und braucht einen Protokolleintrag; sie füllt nur Fehlendes (D-73). Ausführung in `kern` (137), Schreiben in `speicher` (139), Aufruf in der App (150). Der Vertragsnachtrag ist gemergt; `vertrag` v1.7a gilt damit als geprüft (Opus-Review statt Nutzer, P9), der Nutzer prüft nach der Welle.
+Reason: ADR 0009 ohne Ausnahme; keine Wirkung auf Beträge.
+Reversible: yes  Touches: packages/vertrag, kern, speicher, apps/web/src/projekt
+
+## D-85 Zweites Nutzungslimit (5 Stunden, bis 22:20 UTC)
+Welle 7 · Tickets 128, 132, 136, 137, 139, 141, 142 · decided by: orchestrator
+Question: Gegen 21:30 UTC brachen sieben laufende Agenten am 5-Stunden-Limit ab; 140 war fertig.
+Decision: 140 gemergt; um 22:20 UTC alle sieben aus ihrem gespeicherten Stand fortgesetzt (wie D-81), nachdem der Nutzer „continue“ schrieb. Der freie Platz geht an 147 (P, Weg zum Tor E: Beispielprojekt); 155 (S) folgt beim nächsten freien Platz. Offene Punkte aus 140 (D-140.3, D-140.7: GlobalId-Typ in `ui-modell`, Durchreichung von `MENGENART_STUECK` aus `bim`) gehen an 155, weil sie die App mitändern.
+Reason: Kein Verlust; P-Tickets zuerst, falls das Limit erneut greift.
+Reversible: yes  Touches: Ablauf, Ticket 155
+
+## D-86 Phasen X80, X87, X88 ohne Bedeutung im Glossar
+Welle 7 · Ticket 136 (D-136.3) · decided by: orchestrator
+Question: X80, X87 und X88 werden jetzt abgewiesen; der Satz nennt nur die Phasennummer, weil das Glossar ihre Bedeutung nicht kennt. Bedeutung eintragen?
+Decision: Nicht aus dem Gedächtnis. Ticket 144 darf die Bedeutung aus einer frei zugänglichen Beschreibung (gaeb.de, D-71) übernehmen und dann Glossar und Satz ergänzen; sonst bleibt es bei der Nummer. Die Erkennung von GAEB 90/2000 (D-136.2) prüfen 144/145 gegen die Formatbeschreibung.
+Reason: C1 und D-71: keine Behauptung ohne Quelle; die Abweisung selbst ist richtig.
+Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, Ticket 144
+
+## D-87 Rückfragen aus 137 und 139
+Welle 7 · Tickets 137, 139 (Folge 128, 159) · decided by: orchestrator
+Question: (1) Leerer Name beim Umbenennen eines LV-Stands: Vertragstext sagt „wie bei `LvStandAnlegen`“, Kern weist leere Namen ab (D-137.1). (2) D-127.14 nennt `oz-ungueltig`, der Kern behält die vorhandenen Codes von `OzMaskeSetzen` (D-137.10). (3) Reste außerhalb der Pakete.
+Decision: (1) Abweisen wie `LvStandAnlegen`; (2) vorhandene Codes behalten (Tests und Oberfläche bauen darauf). Beide Vertragstexte berichtigt der laufende Vertragsschreiber 128 nebenbei (nur Kommentar). (3) Gesammelt für die Review-Behebung 159: `vergabe` und `gaeb` nutzen `bieterangabenNormalisieren` aus `kern`; `speicher` nutzt den Ausführer `EinstellungenUebernehmen` aus `kern` statt eigener Kopie (`uebernimmEinstellungenDerDatei`); `speicher` und `gaeb` importieren `KOSTENGRUPPENNUMMER_MUSTER` aus `vertrag` statt des Kern-Alias `KOSTENGRUPPE_FORM`; die Ausnahme für `createSyncAccessHandle` in `apps/web/e2e-basispfad/basispfad.spec.ts:14` entfällt (D-139.9).
+Reason: Beides sind Lesarten ohne Wirkung auf Beträge; die Reste sind Einzeiler in fremden Paketen (P2), gebündelt statt verstreut.
+Reversible: yes  Touches: packages/vertrag (Kommentare), Ticket 159
+
+## D-88 Rückfragen aus 141 (Ausgaben der Kernkette)
+Welle 7 · Ticket 141 (Folge 128, 153) · decided by: orchestrator
+Question: (1) ADR 0012 sagt noch „Berichte nur PDF“ und „LV-PDF ohne Bilder“; E11/E12 verlangen Excel für Berichte und Bilder im LV-PDF. (2) „Vergabevorschlag“ fehlt im Glossar (L2). (3) Die Excel-Golden-Datei des LV hat zwei gesperrte Zahlformate mehr (D-141.13).
+Decision: (1) Kein Widerspruch zur Entscheidung der ADR (pdfmake, ungetaggt in v1, Renderer liest nur ein druckfertiges Modell); die Folgen-Abschnitte bekommen einen datierten Nachtrag „Welle 7: Excel für Berichte aus dem `Berichtsmodell`, Bilder aus dem Langtext im LV-PDF (G-61, E11/E12)“. Das schreibt 153 als nächster Schreiber in `ausgabe`. (2) Der Vertragsschreiber 128 trägt „Vergabevorschlag“ ins Glossar ein. (3) Angenommen; die Werte der Zellen bleiben gleich.
+Reason: Der Umfang aus G-61 ist vom Nutzer entschieden; die ADR wird nachgeführt, nicht umgestoßen.
+Reversible: yes  Touches: docs/adr/0012-*, GLOSSARY.md, Tickets 128, 153
+
+## D-89 Prüf-Panel beim Laden zu, auch mit Befunden
+Welle 7 · Ticket 142 (D-142.4) · decided by: orchestrator
+Question: E3 sagt „Prüf-Panel einklappbar, ohne Befunde zu“. Mit offenem Panel passen EP und GP bei 1280 px nicht (`typisch` hat 26 Warnungen, die BVBS-X83 2 Fehler); das Ziel „15 Zeilen samt EP und GP“ wäre nicht erreichbar. Der Umsetzer lässt das Panel beim Laden immer zu, die Schaltfläche „Prüfung“ zeigt die Anzahl, F8 öffnet.
+Decision: Bestätigt. Das messbare Ziel aus E3 geht vor dem Nebensatz; die Anzahl auf der Schaltfläche hält U5 (Probleme sichtbar, Sprung möglich). Die übrigen Seiten mit Schaltflächenreihen (Honorar, Rechnung, Abrechnung, Bauzeit, BIM, Bauleitung, Kosten, Modellvergleich) stellen in ihren Ordner-Tickets auf die `Werkzeuggruppe` um, soweit billig; `abrechnung/Verweis.tsx` ist unbenutzt und entfällt in 152.
+Reason: Tor E Punkt 1 verlangt die Sicht bei 1280×800.
+Reversible: yes  Touches: apps/web/src/lv, Tickets 152, 154, 155
+
+## D-90 Beispielprojekt aus den Fixtures über ein Vite-Plugin
+Welle 7 · Ticket 147 (D-147.2, D-147.4, D-147.8) · decided by: orchestrator
+Question: (1) Die Beispieldaten kommen über ein kleines Plugin in `apps/web/vite.config.ts` in den Build; Produktcode importiert keine Fixture-Datei, die Grenzprüfung `fixtures-nur-in-tests` bleibt unverändert. (2) Der Weg „GAEB-Datei einlesen“ legt vorläufig ein leeres „Neues Projekt“ an. (3) Die Seite „Annahmen“ beschreibt A5 und die Formeln nach dem geplanten Umfang.
+Decision: (1) Bestätigt: Die Regel schützt den Produktcode vor Testdaten-Abhängigkeiten; die Beispieldaten sind bewusst ausgelieferte, selbst verfasste Daten (C4) und kommen über den Build, nicht über einen Import. (2) 146 ersetzt `GaebWeg` in `hilfe/Willkommen.tsx` durch „Einlesen ohne offenes Projekt“ (Projekt erst beim Übernehmen, Name aus der Datei, nichts bleibt beim Abbrechen). (3) Wird A5 oder M4 gekürzt, berichtigt das Tor-Ticket 158 die Seite; der Bericht nennt es.
+Reason: Weg zum Tor E; keine Regel verletzt.
+Reversible: yes  Touches: apps/web/vite.config.ts, apps/web/src/hilfe, Tickets 146, 158
+
+## D-91 Drittes Nutzungslimit (5 Stunden, bis 03:20 UTC)
+Welle 7 · Tickets 128, 132, 144, 146, 148, 150, 151, 155 · decided by: orchestrator
+Question: Gegen 23:30 UTC brachen alle acht laufenden Agenten am 5-Stunden-Limit ab.
+Decision: Um 07:32 UTC alle acht aus ihrem gespeicherten Stand fortgesetzt (wie D-81, D-85), nachdem der Nutzer „Continue“ schrieb. Nichts gekürzt. 153 wartet weiter auf 128 (Teil A5); 154 bekommt den nächsten freien Platz.
+Reason: Kein Verlust; die Kürzungsreihenfolge greift erst, wenn Pflichtteile des Tors gefährdet sind.
+Reversible: yes  Touches: Ablauf
+
+## D-92 GAEB 90 gelesen; Reste aus 144 und 146 für 159
+Welle 7 · Tickets 144, 146 (Folge 145, 159) · decided by: orchestrator
+Question: 144 liest GAEB 90 aus frei zugänglichen Quellen (6 Quellen, 9 unsichere Punkte im Ticket); Stundenlohn, Pauschal und Zuschlag werden nicht gelesen (keine freie Quelle, D-144.5), kein MwSt-Satz (D-144.8); „X80 Universelle LV-Daten“ und „X87 Auftragsbestätigung“ mit Quelle ins Glossar (D-86). 146 meldet Reste außerhalb seiner Ordner.
+Decision: 144 bestätigt; die unsicheren Punkte und die nicht gelesenen Merkmale nennt der Bericht (zu D-71). Für die Review-Behebung 159 gesammelt: `ausgabe/ExcelBefunde.tsx` zeigt Befundcodes als Text; unbenutzte Texte `start.gaeb.projektname`, `angelegt`, `zumProjekt` in `hilfe/texte.ts`. Der Orchestrator hat `.gitattributes` für die GAEB-90/2000-Fixtures ergänzt (`-text`).
+Reason: Konservativ (Befund statt Raten) nach D-71; Reste sind Einzeiler.
+Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, .gitattributes, Ticket 159
+
+## D-93 `vertrag` v1.7b (A5) gemergt; Speicherteil geht an 143
+Welle 7 · Ticket 128 (Folge 143, 152, 153) · decided by: orchestrator
+Question: (1) D-128.5: Bauabzugsteuer 0,00, wenn ihre Basis ≤ 0 ist (D-72 sagt das nur für Skonto). (2) Der Rechnungsdekoder in `speicher` (139) kennt nur die Schlüssel bis v1.7a und weist Rechnungen mit den neuen Feldern ab; 143 nennt `speicher` nicht. (3) `Speicher.einstellungen` bleibt optional.
+Decision: (1) Bestätigt: keine negative Steuer, keine Erstattung durch das Finanzamt in v1; steht auf der Seite „Annahmen“ mit D-72. (2) 143 übernimmt `speicher` als zweites Paket (derzeit kein anderer Schreiber dort, P2 bleibt gewahrt): Dekoder für `vertragsstrafe`, `skonto`, `bauabzugsteuer`, `zahlungen`, Prüfung in der Dateimigration (Schema 7 trägt die Felder optional, kein neues Schema), `konflikt` für „Zahlung nur an freigegebener Rechnung“. (3) Bleibt optional bis zur nächsten Vertragsversion (nach der Welle). Der Opus-Review von v1.7b läuft im Wellen-Review mit (die Formen folgen D-72 wörtlich, alles optional).
+Reason: Ein Schreiber, ein Ticket, kein zusätzlicher Agentenplatz; der Tor-Weg (Rechnung mit Skonto) braucht den Speicher.
+Reversible: yes  Touches: packages/abrechnung, speicher, fixtures, Ticket 143
+
+## D-94 Fehlerfestigkeit gemergt; wackeliger Test `bim-tastatur.spec.ts:135` an 155
+Welle 7 · Ticket 132 (Folge 155, 158) · decided by: orchestrator
+Question: 132 ist fertig bis auf „volle Web-E2E zweimal hintereinander grün“: seit dem Merge von 131/133 fällt zeitweise `bim-tastatur.spec.ts:135` (Fokus einer Option im Auswahlfeld), auch ohne die Änderungen aus 132 (2 von 4 mit `--repeat-each 4`). Rohe Fehlertexte beim PDF stehen noch in `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50`.
+Decision: 132 gemergt. Den wackeligen Test und die zwei PDF-Fehlertexte übernimmt 155 (Besitzer von `bim/`, `bauzeit/`, `bauleitung/`): Ursache finden, nicht den Test abschwächen. Das Kriterium „zweimal grün“ prüft das Tor-Ticket 158 auf dem Endstand. `nachtrag.spec.ts:170` prüft einen festen Hinweis, keine Meldung, und bleibt.
+Reason: Der Fehler liegt nicht in 132; ein Schreiber je Ordner.
+Reversible: yes  Touches: apps/web/src/fehler, Ticket 155, 158
+
+## D-95 151, 150, 145 gemergt; Folgen
+Welle 7 · Tickets 145, 150, 151 (Folge 149, 152, 154, 158, 159) · decided by: orchestrator
+Question: Was folgt aus den Berichten von 151 (geführter Nachtrag), 150 (Projektangaben, Einstellungen mit eigenem Undo, Kopie-Import) und 145 (GAEB 2000 gebaut, Quellen in D-145.x)?
+Decision: Alle drei bestätigt. 145: Bedarf, Wahl, Stundenlohn, Pauschal und Zuschlag werden aus GAEB 2000 nicht gelesen (keine freie Quelle, D-145.4), kein MwSt-Satz (D-145.8) – der Bericht nennt das samt den 9 unsicheren Punkten. Merge-Konflikte (132/148 in `umwege.spec.ts`, 132/150 in `projekt.spec.ts` und `ausgabe/LvDrucken.tsx`) hat der Orchestrator gelöst, die betroffenen E2E liefen grün. **An laufende/kommende Tickets:** 149, 152, 154 geben `Einstellungen.buero` und das `Projekt` in ihre PDF-Eingaben (D-141, D-150); 158 schließt im Torweg den Dialog „Projektdatei eingelesen“. **Für 159 gesammelt:** Glossareintrag „GAEB 2000“ (und „GAEB 90“, falls fehlend); Kommentar `apps/web/src/gaeb/gaeb.ts:60`; eine E2E, die eine GAEB-2000-Datei in der App einliest; `kosten/`-Seiten ohne Einstellungs-Undo-Knöpfe (D-150). **Bewusst später (Bericht):** gemeinsamer Positionsdialog mit Lesemodus für `lv/` und `auftrag/`; Auftragnehmer in den Dialogen „X84 einlesen“/„Excel einlesen“ vorbelegen (151).
+Reason: Keine Regel verletzt; Reste sind klein und gebündelt.
+Reversible: yes  Touches: Tickets 149, 152, 154, 158, 159
+
+## D-96 „Projekt samt Inhalt löschen“ als eigener Befehl
+Welle 7 · Tor E (158), E8 · decided by: advisor
+Question: `ProjektLoeschen` wird abgewiesen, solange LVs, Angebote oder ein Auftrags-LV bestehen; der Torweg „sichern → Projekt löschen → einlesen“ wäre nur über 10+ Schritte von Hand möglich. E8 verlangt „jedes Projekt wieder löschbar (Q5)“.
+Decision: Neuer additiver Befehl `ProjektSamtInhaltLoeschen { art }` in `ProjektBefehl` (Vertragsnachtrag v1.7c, eigenes Ticket, Opus-Review); `ProjektLoeschen` und seine `konflikt`-Regel bleiben. Eine neue ChangeSet-Art `projektbestand` (`projekt: Aenderung<Projekt>`, `bestand: Aenderung<Projektbestand>`), wobei `Projektbestand` die Struktur der Projektdatei wiederverwendet (prüfen, dass LV-Stände, Protokoll und Modellverweise enthalten sind; sonst ergänzen). `speicher` löscht in einer Transaktion und stellt beim Undo über den Schreibweg von `projektdateiEinlesen` wieder her (gleiche IDs); Modell-Bytes werden erst freigegeben, wenn kein Undo-Schritt sie mehr nennt (wie beim Undo des Modell-Löschens). Der Ausführer bekommt den Bestand als Pflichtparameter (sonst `ungueltige-eingabe`); der Bestätigungsdialog nennt die Anzahl je Art und verweist zuerst auf „Projektdatei sichern“. Protokoll als Massenbefehl (Kopf und Prüfsumme, E-13). Pflichttest: Beispielprojekt → löschen → Undo → byte-gleiche Projektdatei. D-74 ist nicht berührt: dort ging es um stilles Ändern von Mängeln als Nebenwirkung; hier löscht der Nutzer ausdrücklich alles. Reihenfolge: 160 (`vertrag`) → 161 (`kern`, `speicher`, App-Dialog in `projekt/`). Ist die Kette nicht gemergt, wenn die übrigen P-Tickets fertig sind, geht das Tor den Weg von Hand und der Bericht sagt es; das Tor wird nie gekürzt.
+Reason: Tor E und E8 erwarten ein löschbares Projekt; Q5 ist durch Bestätigung, Undo und Sicherungshinweis erfüllt; kein Settled-Text verbietet es.
+Reversible: yes (Risiko: unvollständiges Undo über ~12 Aggregatarten wäre stiller Verlust – deshalb der Byte-Vergleichstest)  Touches: packages/vertrag, kern, speicher, apps/web/src/projekt, apps/web/e2e/umsteiger.spec.ts
+
+## D-97 A5 in `abrechnung` gemergt; Rückfragen aus 143
+Welle 7 · Ticket 143 (Folge 152, 153, 147) · decided by: orchestrator
+Question: (1) Der Typcheck erzwang zwei Fälle und zwei Texte in `apps/web/src/rechnung/` (D-143.10). (2) `dateimigration7.ts` („wird nach dem Merge nicht mehr geändert“) bekam die Prüfung aus D-93 vor dem ersten Merge in eine Veröffentlichung. (3) Basis der Bauabzugsteuer ohne Umlagen und Vertragsstrafe (§ 48 EStG unsicher).
+Decision: (1) Bestätigt als mechanische Folgezeilen; 152 prüft den Wortlaut. (2) Bestätigt: Migration 7 ist noch nicht auf `main`, die Datei gilt erst ab dem Merge der Welle als eingefroren. (3) Steht schon in D-72 als Risiko; die Seite „Annahmen“ (147) nennt es, sonst ergänzt 159 den Satz. Für 153: die Kette trägt jetzt eine Zeile `vertragsstrafe` zwischen Umlagen und Einbehalt (D-143.6). Für 152: `vertragsstrafeVorschlag` füllt neue Rechnungen (D-143.5).
+Reason: Keine Regel verletzt; Sollwerte unabhängig hergeleitet (C4), M4-Goldens unverändert.
+Reversible: yes  Touches: packages/abrechnung, speicher, fixtures, apps/web/src/rechnung
+
+## D-98 Vergabe- und Kostenseiten gemergt; Reste
+Welle 7 · Tickets 149, 154 (Folge 152, 159) · decided by: orchestrator
+Question: 149 begrenzt die Ausreißer-Schwelle auf 100 % (der Kern weist mehr ab, v1.7a; eine Zeile in `preisspiegel.spec.ts` von 200 auf 100), baut eine eigene PDF-Vorschau `PdfMitVorschau`; 154 speichert die Kalkulation, Kostenberichte mit Vorschau.
+Decision: Beides bestätigt. 100 % als Obergrenze ist eine Lesart von G-26 (Ausreißer ±%), keine Lockerung eines Tests; eine höhere Schwelle bräuchte eine Vertragsänderung und kommt nur auf Anfrage des Büros. **An 152:** `PdfMitVorschau` aus `vergabe/Ausgaben.tsx` wiederverwenden (Import genügt; Umzug nach `ui/` in 159). **Für 159:** `auftragsLvBefehlAusfuehren` in `auftrag/`, `kosten/`, `nachtrag/`, `hilfe/` aus `@tethys/vergabe` statt `@tethys/kern`; `PdfMitVorschau` nach `ui/` und im LV-PDF nutzen; Druckprofil- und Datumswahl für Preisspiegel-, Vergabevorschlags- und Kostenberichte; `lv-bedienung.spec.ts` lädt die Kalkulation über den echten Dialog statt den Testhaken. **Bericht:** Die Tabelle der Angebotspreise ist nicht virtualisiert (langsam bei 5.000 Positionen).
+Reason: Keine Regel verletzt; Reste sind klein.
+Reversible: yes  Touches: apps/web/src/vergabe, kosten, Tickets 152, 159
+
+## D-99 Vorschau-Module gemergt; Doppelmessung je Position; Kann-Teile gekürzt
+Welle 7 · Ticket 155 (Folge 158, 159, Bericht) · decided by: orchestrator
+Question: 155 hat Punkte 1–5 und 7 erledigt, Punkt 6 (K-Teile: „Mangel aus Bauteil“, „KG im Modell weicht ab“) nach der Kürzungsreihenfolge gestrichen; den Hinweis „schon auf einem anderen Aufmaßblatt gemessen“ gibt es je Position, nicht je Bauteil (dafür bräuchte `Ansatzzeile` eine GlobalId, also `vertrag`); Einzeiler in fremden Ordnern (`kosten/KostenermittlungSeite`, `auftrag/AuftragsLvSeite`, `hilfe/beispielprojekt`, D-155.2); `bim-tastatur.spec.ts:135` bleibt wackelig ohne gefundene Ursache in der App (Radix verschiebt den Fokus in einem `setTimeout`, der unter Last über eine Sekunde nicht lief).
+Decision: Alles bestätigt. Die Einzeiler sind Einhängestellen, keine Fachänderung. Die Kürzung von Punkt 6 und die Doppelmessung je Bauteil (Vertragsänderung) stehen im Bericht unter „nach Welle 7“. Der wackelige Test wird im Abschlusslauf auf ruhiger Maschine geprüft; fällt er dort weiter, untersucht 159 das Auswahlfeld in `ui-basis`. Die Messung des Preisspiegel-Budgets auf ruhiger Maschine gehört in den Abschlusslauf.
+Reason: Kürzungsreihenfolge §4; ohne Last gibt es keinen Befund, der eine Änderung rechtfertigt.
+Reversible: yes  Touches: apps/web/src/{bauzeit,bauleitung,honorar,bim,modellvergleich}, packages/bim, ui-modell, Bericht
+
+## D-100 Prüflauf der Integration: zwei echte Fehler
+Welle 7 · Prüflauf auf `1dbfdca` (Folge 156, 162) · decided by: orchestrator
+Question: Der Prüflauf (Lint, Typen, Unit, Web-E2E, `ui-grid`- und `speicher`-E2E, Last 20–33) fand neben Budget-Messungen unter Last zwei echte Fehler: (1) `packages/ui-grid/e2e/arbeitsflaeche.spec.ts:57` erwartet die zugängliche Bezeichnung „Ordnungszahl“ am Spaltenkopf mit sichtbarem Text „OZ“ (130), 133 machte daraus auch die Bezeichnung „OZ“; (2) `apps/web/e2e/druckprofil.spec.ts:127`: nach dem Löschen eines Profils hält keine Option den Fokus.
+Decision: (1) Sichtbar „OZ“, zugängliche Bezeichnung „Ordnungszahl“ (wie D-130 und im Sinn von D-133: Ordnungszahl ist der Fließtext-Begriff, ein Bildschirmleser liest ihn vor; U8). Behebt 156 als derzeitiger Schreiber in `ui-grid`. (2) Kleines Fix-Ticket 162 (Opus) für `apps/web/src/ausgabe/`, Ursache finden statt Test abschwächen. Budgets: zweite Messung im Abschlusslauf auf ruhiger Maschine; `bim-tastatur.spec.ts:58` wackelte einmal (wie :135, D-99).
+Reason: Q2 verlangt grüne E2E vor dem Tor; beide Fehler kommen aus dem Zusammenspiel zweier gemergter Tickets.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/ausgabe, Ticket 162
+
+## D-101 Suchen, Filtern, Kontextmenü gemergt; Spaltenkopf „Ordnungszahl (OZ)“
+Welle 7 · Ticket 156 (Folge 159) · decided by: orchestrator
+Question: 156 löst D-100 (1) mit der zugänglichen Bezeichnung „Ordnungszahl (OZ)“ statt nur „Ordnungszahl“ (der Sprachtest aus 133 verbietet „Ordnungszahl“ allein als Beschriftung); `ui-grid` bekommt `@radix-ui/react-dropdown-menu` (gleiche Version wie `ui-basis`) für das Kontextmenü.
+Decision: Beides bestätigt. „Ordnungszahl (OZ)“ nennt Begriff und Kürzel und hält D-130 (Bildschirmleser), D-133 (Sprachregel) und den Test. **Für 159:** `auftrag/AuftragsLvSeite` reicht `alleZeilen` und `onKuerzelhilfe` an das Grid (zwei Zeilen wie `LvStandSeite`), sonst sucht die Auftrags-LV-Seite nur in sichtbaren Zeilen.
+Reason: Keine Regel verletzt; Budgets der 5.000/10.000-Zeilen-Prüfstände blieben unter Last eingehalten.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/lv, Ticket 159
+
+## D-102 `vertrag` v1.7c gemergt; Byte-Vergleich ohne den Undo-Eintrag
+Welle 7 · Ticket 160 (Folge 161, Wellen-Review) · decided by: orchestrator
+Question: (1) D-160.9: Nach Löschen und Undo ist die Projektdatei byte-gleich bis auf einen `Rueckgaengig`-Eintrag am Ende des Protokolls (A5 verlangt, dass das Undo selbst protokolliert wird). (2) D-160.5: Der Protokolleintrag des Löschens wird nicht gespeichert, wie bei `ProjektLoeschen` (D-31.1). (3) Opus-Review von v1.7c (D-96).
+Decision: (1) Bestätigt; der Pflichttest in 161 vergleicht byte-genau nach Entfernen genau dieses letzten Eintrags und prüft ihn ausdrücklich. (2) Bestätigt: Das Protokoll gehört zum Projekt (ADR 0009) und geht mit ihm; Präzedenz D-31.1. (3) Der Review von v1.7c (und v1.7b, D-93) läuft als eigener Punkt im Wellen-Review gegen alle Verbraucher.
+Reason: Keine Regel verletzt; die Formen sind additiv und folgen D-96.
+Reversible: yes  Touches: packages/vertrag, Ticket 161, Wellen-Review
+
+## D-103 Wellen-Review parallel zu den letzten drei Tickets
+Welle 7 · Wellen-Review · decided by: orchestrator
+Question: Das Wellen-Review (Schritt 6) gehört nach alle Merges; offen sind noch 152 (Aufmaß/Rechnung in der App), 161 (Projekt samt Inhalt löschen) und 162 (Fokus Druckprofil). Warten oder parallel?
+Decision: Review jetzt auf `integration/welle-7` @ `1f00ead` (Fixpunkt `4eefd7d`), einschließlich der Vertragsversionen v1.7b und v1.7c gegen alle Verbraucher (D-93, D-102). 152, 161 und 162 bekommen nach ihrem Merge einen kurzen zweiten Review-Durchgang über ihren Diff. Die Befunde beider Durchgänge gehen in Ticket 159.
+Reason: Wie D-68: spart eine volle Review-Runde Wartezeit; der Großteil des Codes der Welle ist gemergt.
+Reversible: yes  Touches: Ablauf
+
+## D-104 Umfang der Review-Behebung Welle 7
+Welle 7 · Wellen-Review (`review-welle-7.md`) · decided by: orchestrator
+Question: Welche Befunde werden in dieser Welle behoben, welche bestätigt, welche gehen in den Bericht?
+Decision: **Sofort an laufende Tickets:** MUST-1/PA1 an 161 (Präfix-Vergleich des Protokolls beim Löschen: das gespeicherte Protokoll muss mit `bestand.vorher.protokoll` beginnen, angehängte Einträge sind erlaubt; Test löschen → Undo → Wiederholen; dazu die Umstellung von `uebernimmEinstellungenDerDatei` auf den Kern-Ausführer); PA3 an 152. **Ticket 159, zwei Umsetzer parallel, ohne die Ordner der laufenden Tickets 152 (`abrechnung/`, `rechnung/`), 161 (`kern`, `speicher`, `projekt/`, `historie/`), 162 (`apps/web/src/ausgabe/`):** 159a Pakete – SA1, SA2+SA8 (ein Weg für die Angebotsbefunde, „Gesamtpreis“), SA3, SA4 + SOLL-2 (Glossar „Auszahlungsszenario“, „Zahlungsfreigabe“, „GAEB 90“, „GAEB 2000“, „Vorschau“ in beiden Bedeutungen (SB11)), SA7, SA9, SA10 (`form.ts` mit `KALENDERDATUM_MUSTER`, Kalender einmal in `abrechnung`), PA2, SB3 (Angebotspreise im gemeinsamen Grid aus `ui-grid`, App-Teil in `gaeb/`), SB4 (Belege § 48 EStG, § 16 VOB/B in Fixture und README), Vertragskommentar zu D-104 (D-160.5/.6), die Reste aus D-87 (`vergabe`/`gaeb` nutzen `bieterangabenNormalisieren`, `KOSTENGRUPPENNUMMER_MUSTER` statt `KOSTENGRUPPE_FORM`); 159b App – SB1/PB3 (deutsche Fehlertexte mit nächstem Schritt in allen PDF-Dialogen und Workern, Texte in `texte.ts`), SB2/PB4 (Fehler sichtbar, leere CSV löscht nichts ohne Rückfrage), SB6+SB7 (Kosten-PDF im Worker, ein Schriftlader und ein Worker-Start für alle PDF-Worker außerhalb der gesperrten Ordner), PB1, PB2, PB5 (Annahmen: Vertragsstrafe kumuliert und vorgeschlagen, ABC-Bezug umschaltbar, Ausreißer über EP), PB6, PB7, SB13 (Pfade aus `ui/pfade.ts`), und die gesammelten Reste aus D-92, D-95, D-98, D-101 (`ExcelBefunde` ohne Codes in `ausgabe/`-App → erst nach 162; unbenutzte Hilfe-Texte; `gaeb.ts:60`; E2E GAEB 2000; `auftragsLvBefehlAusfuehren` aus `@tethys/vergabe`; `PdfMitVorschau` nach `ui/`; `lv-bedienung.spec` über den echten Dialog; `AuftragsLvSeite` mit `alleZeilen`; Ausnahme in `e2e-basispfad/basispfad.spec.ts:14` entfällt). **Bestätigt, keine Änderung:** SB5 (ADR 0012 `accepted` hat der Nutzer mit G-62 verlangt, der Nachtrag folgt G-61), SB14 (D-90), SA5 (die Folgezeilen in fremden Paketen waren vom Typcheck erzwungen und in den Commits markiert, wie in jeder Vertragswelle), SA6 (Schema 7 ist unveröffentlicht; der Dateikopf wird präzisiert: „ab dem Merge nach `main`“), SOLL-1 (bleibt, schadet nicht; das Glossar „Massenbefehl“ nennt den Fall). **Bericht/später:** SA12, SA13 (große Dateien teilen), SB9, SB10, SB12, PA4, SOLL-3, Druckprofil- und Datumswahl der neuen Berichte.
+Reason: Wie D-47/D-69: Pflicht ist, was eine Regel, eine ADR, den Vertrag oder das Ticket verletzt oder Nutzer falsch informiert; Gerüche nur, wo sie schon zu Abweichungen geführt haben (SA2/SA8, SA9) oder billig sind.
+Reversible: yes  Touches: viele Pakete und Ordner, Tickets 152, 159, 161
+
+## D-105 Vierter Halt am Nutzungslimit
+Welle 7 · Ticket 152, 158, 159a, 159b, 161, 162 · decided by: orchestrator
+Question: Alle sechs laufenden Agenten hielten am 5-Stunden-Limit (Rücksetzung 13:40 UTC). Zählt das für den Circuit Breaker, und wie geht es weiter?
+Decision: Kein Fehlschlag der Umsetzung (wie D-81, D-85, D-91). Nach der Rücksetzung wurden alle sechs aus ihrem gespeicherten Stand fortgesetzt; kein neuer Agent, höchstens acht zugleich.
+Reason: Die Agenten haben früh committet; der Stand in den Worktrees ist vollständig.
+Reversible: ja
+Touches: Ablauf der Welle
+
+## D-106 Merge 152 und 162
+Welle 7 · Ticket 152, 162 · decided by: orchestrator
+Question: 152 (Aufmaß, Rechnung, Zahlungen, Zahlungsfreigabe-PDF) und 162 (Fokus nach Löschen eines Druckprofils) sind done-by-agent. Mergen, und was folgt?
+Decision: Beide gemergt (`7be550f`, `e63b4db`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt die fixme-Schritte für 152 heraus. 159b bekommt `ausgabe/`, `abrechnung/`, `rechnung/` frei und zieht `PdfMitVorschau` samt der drei neuen Druckarten aus 152 nach `ui/`. Der Befund D-162.3 (eine Meldung fängt Escape einer offenen Auswahlliste) geht als kleiner Punkt an 159a (`ui-basis/Toast.tsx`), sonst in den Bericht. Die Budgettests, die unter Last rot waren (`kern`, `speicher`, `vergabe`, `abrechnung/leistung`), werden am Ende auf ruhiger Maschine gemessen; nicht gelockert.
+Reason: Wie D-79 ff.: grün und im Umfang; der zweite Review-Durchgang über 152/161/162 folgt nach dem Merge von 161 (D-103).
+Reversible: yes  Touches: abrechnung/, rechnung/, ausgabe/, Tickets 158, 159
+
+## D-107 Merge 161
+Welle 7 · Ticket 161 · decided by: orchestrator
+Question: 161 (Projekt samt Inhalt löschen in `kern`/`speicher`/App, MUST-1 aus dem Review, Einstellungen der Datei über den Kern-Ausführer) ist done-by-agent. Mergen?
+Decision: Gemergt (`d5e0680`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt den letzten fixme-Schritt (Löschen samt Inhalt, Undo, Wiederholen) heraus und fährt das Tor dreimal. Die offene Frage aus D-161.2 (nach Löschen → Undo → Wiederholen → Undo fehlt der erste `Rueckgaengig`-Eintrag, weil er zum gelöschten Protokoll gehörte) geht an den zweiten Review-Durchgang (D-103) und wird dort bestätigt oder als Befund behandelt.
+Reason: Grün und im Umfang; der Tor-Schritt „Projekt löschen“ hängt an diesem Ticket (D-96).
+Reversible: yes  Touches: kern, speicher, projekt/, historie/, Ticket 158
+
+## D-108 M4 (Ticket 157) wird gekürzt
+Welle 7 · Ticket 157 · decided by: orchestrator
+Question: 157 (weitere REB-Formeln, Priorität K) darf erst nach allen P-/S-Tickets und grünem Tor starten (D-75). Jetzt starten oder nach §4 kürzen?
+Decision: Gekürzt, als erster Punkt der Kürzungsreihenfolge (`umfang-welle-7.md` §4: „M4 → …“). Das Ticket bleibt `ready-for-agent` mit Vermerk und geht in die nächste Welle; die vorhandene Formelauswahl und der X31-Rundweg (Nummer bleibt erhalten, Befund „Formel nicht umgesetzt“) bleiben unverändert.
+Reason: Die Welle ist übergelaufen: vier Halte am Nutzungslimit (D-81, D-85, D-91, D-105), das Tor ist noch nicht dreimal grün, die Leistungsbudgets müssen noch auf ruhiger Maschine gemessen werden, und 157 würde `packages/gaeb` zugleich mit 159a schreiben (P2). Das verbleibende Budget gehört dem Tor, der Review-Behebung und dem Abschluss. Kein P- oder S-Teil wird gekürzt.
+Reversible: yes (Ticket unverändert startbereit)  Touches: Ticket 157, Bericht
+
+## D-109 Befunde des zweiten Review-Durchgangs
+Welle 7 · Ticket 152, 161, 162, 159 · decided by: orchestrator
+Question: Der zweite Durchgang (`review-welle-7.md`, Abschnitt „Zweiter Durchgang“) fand R1–R11. Was wird behoben, und bestätigt er D-161.2?
+Decision: D-161.2 bestätigt (Protokoll ist Nebenbuch nach ADR 0009). An 159b: R1, R2 (Bildschirm), R3, R4, R5, R7. An 159a: R6 samt Folge in ADR 0009, und dieselbe Wortwahl für PA2 im PDF („Skonto (noch nicht verwirklicht)“ während der Frist, „nicht verwirklicht“ danach), damit Bildschirm und PDF gleich sprechen. In den Bericht: R8 (Doppelung, nur Drift-Risiko, durch Tests gedeckt), R9 (Leistung bei großen Modellen, nur beim Öffnen des Dialogs), R10, R11.
+Reason: Wie D-104: Pflicht ist, was Nutzer falsch informiert oder eine Regel verletzt (R1 E13/L5, R2 falsche Angabe); billige Soll-Punkte nimmt der zuständige Schreiber mit.
+Reversible: yes  Touches: abrechnung/, rechnung/, historie/, speicher, ADR 0009, Ticket 159
+
+## D-110 Merge 159a, 159b, 158; Reste in Ticket 163
+Welle 7 · Ticket 158, 159, 163 · decided by: orchestrator
+Question: 159a, 159b und 158 (Tor E) sind done-by-agent. Mergen, und wohin mit ihren offenen Punkten?
+Decision: Alle drei gemergt (`fa2a690`, `bd50386`, `5af993b`); einziger Konflikt war die Ticketdatei 159 (beide Teile zusammengeführt). Lint und Typcheck grün. Tor E: `umsteiger.spec.ts` und `ueberlauf.spec.ts` dreimal in Folge grün, ohne fixme. Offene Punkte gehen in **Ticket 163** (ein Opus-Umsetzer): eine gemeinsame Regel für den Skonto-Stand auf Bildschirm und PDF (159a und 159b haben sie je für sich umgesetzt), PB2-Text und Kommentar in `gaeb/`, Alias `Datum` in `bauzeit`, SA6-Dateikopf, Wackler `nachtrag.spec.ts:164` (Escape schließt den Positionsdialog manchmal nicht; Ursache beheben, nicht im Test verstecken). Bestätigt ohne Änderung: D-159a.(SB3) „nicht angeboten“ über den Zellbefund-Pfad (eigene Markierung bräuchte eine Vertragsänderung → Bericht), D-159b.3 (LV-PDF ohne Vorschau, eigener Dialog mit Profil und Abbruch), `vergabe.spec.ts` von 159a mitgeändert (wegen SB3 nötig), `version.ts` von 159b.
+Reason: Pflicht nach D-104/D-109 (gleiche Aussage auf Bildschirm und PDF, Texte nach L5); ein Wackler im Tor-Umfeld darf nicht offen bleiben.
+Reversible: yes  Touches: rechnung/, gaeb/, bauzeit, speicher (Kommentar), e2e, Ticket 163
+Nachtrag zu D-110: Der Merge-Commit `5fa34fd` (zweiter Elternteil `2b21f48`) ist der Merge von **158** (`welle-7/158-tor-e`); seine Nachricht lautet durch ein versehentliches `--amend` des Orchestrators „Merge welle-7/159a-review-pakete …“ und trägt keinen Trailer. Nicht umgeschrieben, weil Ticket 163 schon auf `576df95` aufsetzt.
+
+## D-111 Merge 163
+Welle 7 · Ticket 163 · decided by: orchestrator
+Question: 163 ist done-by-agent. Mergen? Zählt `packages/ui-basis` als „Ordner der Ursache“ (Punkt 5)? Gemeinsame Skonto-Funktion über einen Unterpfad von `@tethys/ausgabe`?
+Decision: Gemergt (`103e4e9`), ohne Konflikt. `ui-basis` ist bestätigt: Die Ursache des Wacklers lag dort (eine ältere Meldung bekam Escape, solange Radix seine Schichten nach dem Öffnen eines Dialogs noch nicht neu sortiert hatte); behoben mit Regressionstest, nicht im Test versteckt. Das deckt auch D-162.3 ab. Bildschirm und PDF nutzen zwei Funktionen mit einem Test, der für alle Fixture-Varianten und sechs Daten gleichen Text verlangt (D-163.2); ein Unterpfad-Export von `@tethys/ausgabe` ohne pdfmake im Hauptbündel geht in den Bericht als Folgeticket für die nächste Welle.
+Reason: Gleiche Aussage ist durch den Test gesichert; der Unterpfad wäre eine Paketänderung nach dem Review und verdoppelte sonst das Hauptbündel (938 kB → 1810 kB, gemessen).
+Reversible: yes  Touches: rechnung/, ui-basis, Bericht
+
+## D-112 Pull Request und Merge nach `main` auf Wunsch des Nutzers
+Welle 7 · Abschluss · decided by: user
+Question: Der Skill verbietet im Lauf Push und PR; der Nutzer verlangte nach dem Abschluss „PR and merge to main after e2e and ci is green“.
+Decision: Nach grünem Abschlusslauf (Lint, Typcheck, Tests, alle E2E, XSD, Pfadprobe, REUSE) ist `integration/welle-7` auf den Sitzungsbranch `ccr-6ba19f0a-sxnytm` geschoben und als PR #13 nach `main` geöffnet; gemergt wird, sobald die CI grün ist.
+Reason: Ausdrückliche Anweisung des Nutzers; P7 (Merge nach `main` über einen PR) bleibt gewahrt.
+Reversible: der Merge ja (Revert); die Migration gespeicherter Projekte auf Schema 7 beim Öffnen nicht
+Touches: `main`, Pages-Workflow

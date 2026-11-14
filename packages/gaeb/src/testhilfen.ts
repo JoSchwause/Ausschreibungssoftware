@@ -47,6 +47,7 @@ import type {
   Zuschlag,
 } from '@tethys/vertrag';
 
+import { summenBerechnen, zuschlagsbasen } from '@tethys/kern';
 import { leseGaeb } from './lesen';
 import { x31Lesen } from './x31';
 import type { ExportPhase, ExportVersion, SchreibOptionen } from './schreiben';
@@ -84,6 +85,8 @@ export function testIds(): IdQuelle {
     honorarberechnung: () => neu('honorarberechnung') as ReturnType<IdQuelle['honorarberechnung']>,
     mangel: () => neu('mangel') as ReturnType<IdQuelle['mangel']>,
     bautagebucheintrag: () => neu('bautagebucheintrag') as ReturnType<IdQuelle['bautagebucheintrag']>,
+    // v1.7b: mechanisch angepasst (vertrag v1.7b verlangt die Kennung einer Zahlung, Ticket 128)
+    zahlung: () => neu('zahlung') as ReturnType<IdQuelle['zahlung']>,
   };
 }
 
@@ -848,6 +851,35 @@ export function amtlichLv(pfad: string): Normiert {
   return normiereKennungen(l.inhalt);
 }
 
+/** Die amtlichen Musterdateien GAEB DA XML 3.1 mit LV (Ticket 129); die X84 ist ein Angebot. */
+export const AMTLICH_31 = [
+  'Musterdatei_3.1_2008-001.X81',
+  'Musterdatei_3.1_2008-001.X83',
+  'Musterdatei_3.1_2008-001.X86',
+  'Musterdatei_3.1_2008-002.X86',
+  'Musterdatei_3.1_2008-003.X86',
+  'Musterdatei_3.1_2008-004.X83',
+  'Musterdatei_3.1_2008-004.X86',
+] as const;
+
+/**
+ * Inhalt einer 3.1-Musterdatei wie `amtlichLv`, dazu die Phase der Datei und für X86 Summen und Zuschlagsbasen vom Kern
+ * (der Writer rechnet nicht).
+ */
+export function amtlich31Lv(datei: (typeof AMTLICH_31)[number]): { n: Normiert; phase: ExportPhase } {
+  const phase = `X${datei.slice(-2)}` as ExportPhase;
+  const l = leseGaeb(lesePfad(`fixtures/extern/gaeb/3.1-musterdateien/${datei}`), {
+    ids: testIds(),
+    dateiname: datei,
+    standardMwstSatz: TEST_MWST,
+  });
+  if (l.inhalt === null) throw new Error(`${datei}: kein Inhalt`);
+  if (phase !== 'X86') return { n: normiereKennungen(l.inhalt), phase };
+  const lv = { ...l.inhalt, id: l.inhalt.wurzelId };
+  const basen = new Map([...zuschlagsbasen(lv)].map(([id, z]) => [id, z.basis] as const));
+  return { n: normiereKennungen(l.inhalt, summenBerechnen(lv), basen), phase };
+}
+
 export interface Exportfall {
   /** Dateiname ohne Verzeichnis, z. B. `typisch-X86-3.3.x86`. */
   readonly datei: string;
@@ -858,7 +890,8 @@ export interface Exportfall {
 
 /**
  * Alle Exporte der XSD-Gegenprüfung: jede Fixture, `reichesLv` und `leereStrukturenLv` × X81/X83/X86 × 3.3/3.2 und die gelesenen Inhalte der amtlichen
- * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern).
+ * Dateien × X81/X83 × 3.3/3.2 (X86 bräuchte Summen vom Kern), dazu die gelesenen 3.1-Musterdateien in ihrer Phase × 3.3/3.2
+ * (Ticket 129, Summen vom Kern).
  */
 export function exportfaelle(): Exportfall[] {
   const faelle: Exportfall[] = [];
@@ -891,6 +924,12 @@ export function exportfaelle(): Exportfall[] {
     const n = amtlichLv(a.pfad);
     for (const phase of ['X81', 'X83'] as const)
       for (const version of versionen) faelle.push(fall(a.name, n, phase, version));
+  }
+  // Ticket 129: die gelesenen 3.1-Musterdateien, in ihrer Phase als 3.3 und 3.2 geschrieben.
+  for (const datei of AMTLICH_31) {
+    const { n, phase } = amtlich31Lv(datei);
+    const name = `gaeb31-${datei.slice('Musterdatei_3.1_'.length, -4)}`;
+    for (const version of versionen) faelle.push(fall(name, n, phase, version));
   }
   return faelle;
 }

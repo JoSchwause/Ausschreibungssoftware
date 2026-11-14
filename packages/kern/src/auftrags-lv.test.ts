@@ -111,6 +111,10 @@ describe('Befehle, die nicht zum Auftrags-LV gehören', () => {
     const e = auftragsLvBefehlAusfuehren(z, fremd);
     expect(!e.ok && e.fehler.code).toBe('befehl-nicht-zustaendig');
     expect(!e.ok && e.fehler.meldung).toContain('LeistungsverzeichnisUmbenennen');
+    // Vertrag v1.7a (D-127.17): den Zuschlag nimmt die Vergabe zurück, nicht der Kern, auch mit Verweisen.
+    const zurueck = auftragsLvBefehlAusfuehren(z, { art: 'ZuschlagZuruecknehmen' }, []);
+    expect(!zurueck.ok && zurueck.fehler.code).toBe('befehl-nicht-zustaendig');
+    expect(!zurueck.ok && zurueck.fehler.meldung).toContain('Vergabe');
   });
 });
 

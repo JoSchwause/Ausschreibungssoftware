@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { IfcGlobalId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { Bauteilverzeichnis, zuordnen } from './zuordnung';
 
-const wand = { expressId: 10, globalId: '0Wand00000000000000001', klasse: 'IFCWALL' };
-const decke = { expressId: 20, globalId: '0Decke0000000000000001', klasse: 'IFCSLAB' };
-const platzhalter = { expressId: 30, globalId: '0Platz0000000000000001', klasse: 'IFCBUILDINGELEMENTPROXY' };
-const oeffnung = { expressId: 40, globalId: '0Oeff00000000000000001', klasse: 'IFCOPENINGELEMENT' };
+const wand = { expressId: 10, globalId: '0Wand00000000000000001' as IfcGlobalId, klasse: 'IFCWALL' };
+const decke = { expressId: 20, globalId: '0Decke0000000000000001' as IfcGlobalId, klasse: 'IFCSLAB' };
+const platzhalter = {
+  expressId: 30,
+  globalId: '0Platz0000000000000001' as IfcGlobalId,
+  klasse: 'IFCBUILDINGELEMENTPROXY',
+};
+const oeffnung = {
+  expressId: 40,
+  globalId: '0Oeff00000000000000001' as IfcGlobalId,
+  klasse: 'IFCOPENINGELEMENT',
+};
 
 describe('zuordnen: expressID der Geometrie → Bauteil mit GlobalId', () => {
   it('nummeriert die Bauteile in der Reihenfolge der Geometrie und meldet Bauteile ohne Geometrie', () => {
@@ -17,10 +26,14 @@ describe('zuordnen: expressID der Geometrie → Bauteil mit GlobalId', () => {
   });
 
   it('zeichnet nur Bauteile: Öffnungen, virtuelle Elemente und Nicht-Elemente (Raum, Grundstück) bleiben weg', () => {
-    const virtuell = { expressId: 50, globalId: '0Virt00000000000000001', klasse: 'IFCVIRTUALELEMENT' };
+    const virtuell = {
+      expressId: 50,
+      globalId: '0Virt00000000000000001' as IfcGlobalId,
+      klasse: 'IFCVIRTUALELEMENT',
+    };
     const oeffnungNorm = {
       expressId: 60,
-      globalId: '0Oeff00000000000000002',
+      globalId: '0Oeff00000000000000002' as IfcGlobalId,
       klasse: 'IfcOpeningStandardCase',
     };
     // 70 ist ein Raum (kein IfcElement, steht nicht in der Elementliste), hat aber Geometrie
@@ -55,18 +68,18 @@ describe('zuordnen: expressID der Geometrie → Bauteil mit GlobalId', () => {
 });
 
 describe('Bauteilverzeichnis: GlobalId ↔ Bauteilindex', () => {
-  const v = new Bauteilverzeichnis(['A', 'B', 'A', 'C']);
+  const v = new Bauteilverzeichnis(['A', 'B', 'A', 'C'] as IfcGlobalId[]);
 
   it('kennt die GlobalId je Index und die Indizes je GlobalId, doppelte eingeschlossen', () => {
     expect(v.anzahl).toBe(4);
     expect(v.globalId(1)).toBe('B');
-    expect(v.indizes('A')).toEqual([0, 2]);
-    expect(v.indizes('C')).toEqual([3]);
+    expect(v.indizes('A' as IfcGlobalId)).toEqual([0, 2]);
+    expect(v.indizes('C' as IfcGlobalId)).toEqual([3]);
   });
 
   it('übergeht unbekannte GlobalIds', () => {
-    expect(v.indizes('X')).toEqual([]);
-    expect(v.enthaelt('X')).toBe(false);
-    expect(v.enthaelt('B')).toBe(true);
+    expect(v.indizes('X' as IfcGlobalId)).toEqual([]);
+    expect(v.enthaelt('X' as IfcGlobalId)).toBe(false);
+    expect(v.enthaelt('B' as IfcGlobalId)).toBe(true);
   });
 });

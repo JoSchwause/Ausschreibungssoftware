@@ -35,11 +35,11 @@ export const texte = {
     zuDenKennwertenTitel:
       'BGF, BRI und NRF, Kostenschätzung über Kennwerte und Kostenkennwerte stehen auf der Seite eines Modells.',
     liste: 'Kostenermittlungen des Projekts',
-    leer: 'Noch keine Kostenermittlung. Lege eine an, um Budgets je Kostengruppe zu erfassen.',
+    leer: 'Noch keine Kostenermittlung. Für Budgets je Kostengruppe zuerst eine Kostenermittlung anlegen.',
     anlegenTitel: 'Kostenermittlung anlegen',
     name: 'Name',
     stufe: 'Stufe',
-    anlegen: 'Anlegen',
+    anlegen: 'Kostenermittlung anlegen',
     werkzeuge: 'Werkzeuge der Kostenseite',
   },
   editor: {
@@ -65,12 +65,17 @@ export const texte = {
     zurueck: 'Zur Liste',
     csvTitel: 'Bezeichnungen der Kostengruppen',
     csvHinweis:
-      'Die Bezeichnungen bringst du selbst mit (CSV: Nummer; Bezeichnung). Sie werden nur auf diesem Gerät als Einstellung gemerkt und stehen nie in der Projektdatei.',
+      'Die Bezeichnungen sind selbst mitzubringen (CSV: Nummer; Bezeichnung). Sie werden als Einstellung gemerkt und gelten für alle Projekte.',
     csvWaehlen: 'CSV mit Bezeichnungen wählen',
     csvEntfernen: 'Bezeichnungen entfernen',
     csvGelesen: (n: number) => `${stueck(n, '1 Bezeichnung', 'Bezeichnungen')} gelesen`,
     csvKeine: 'Keine Bezeichnungen geladen.',
-    csvFehler: 'Die Datei ließ sich nicht lesen.',
+    csvFehler:
+      'Die Datei ließ sich nicht lesen. Bitte eine CSV-Datei mit Nummer und Bezeichnung je Zeile wählen.',
+    csvLeer:
+      'In der Datei stand keine lesbare Zeile (Nummer; Bezeichnung). Die vorhandenen Bezeichnungen bleiben; entfernt werden sie nur mit „Bezeichnungen entfernen“.',
+    csvOhneEinstellungen:
+      'Die Einstellungen sind noch nicht geladen. Bitte die Seite neu laden und erneut versuchen.',
     befunde: 'Hinweise zur Kostenermittlung',
     keineBefunde: 'Keine Hinweise.',
     loeschenTitel: 'Kostenermittlung löschen',
@@ -129,7 +134,7 @@ export const texte = {
     knopf: 'Kostengruppen',
     titel: 'Kostengruppen zuordnen',
     einleitung:
-      'Wähle Positionen und setze dieselbe Kostengruppe für alle in einem Schritt. Eine leere Eingabe entfernt die Zuordnung. Rückgängig nimmt den ganzen Schritt zurück.',
+      'Positionen wählen und dieselbe Kostengruppe für alle in einem Schritt setzen. Eine leere Eingabe entfernt die Zuordnung. Rückgängig nimmt den ganzen Schritt zurück.',
     liste: 'Positionen',
     filter: 'Filter (OZ oder Kurztext)',
     kostengruppe: 'Kostengruppe (dreistellig)',
@@ -153,15 +158,45 @@ export const texte = {
     entfernt: (n: number) => `Kostengruppe von ${stueck(n, '1 Position', 'Positionen')} entfernt`,
     unveraendert: 'Alle gewählten Positionen haben diese Kostengruppe schon.',
   },
+  ausgabe: {
+    gruppe: 'Ausgabe',
+    pdf: 'Als PDF',
+    excel: 'Als Excel',
+    titelErmittlung: (name: string) => `Kostenermittlung ausgeben – ${name}`,
+    titelKontrolle: 'Kostenkontrolle ausgeben',
+    beschreibung: 'Vorschau des Berichts. PDF und Excel enthalten dieselben Zeilen.',
+    laedt: 'Vorschau wird erstellt …',
+    vorschau: 'Vorschau',
+    stand: (datum: string) => `Stand: ${datum}`,
+    dateien: 'Dateien',
+    pdfLaden: 'PDF herunterladen',
+    excelLaden: 'Excel herunterladen',
+    schliessen: 'Schließen',
+    laeuft: 'Datei wird erstellt …',
+    fertig: 'Datei erstellt',
+    fehler: 'Die Ausgabe ließ sich nicht erstellen.',
+    /** Nächster Schritt, wenn die Vorschau nicht entsteht (Wellen-Review SB1, E13). */
+    vorschauFehler: 'Bitte den Dialog schließen und erneut öffnen. Hilft das nicht, die Seite neu laden.',
+  },
+  bezeichnungen: {
+    fehlen:
+      'Noch keine Bezeichnungen der Kostengruppen: Die Spalte Bezeichnung bleibt leer, auch in PDF und Excel. Die Bezeichnungen kommen aus einer eigenen CSV-Datei (Nummer; Bezeichnung).',
+    einlesen: 'Bezeichnungen einlesen',
+  },
   kalkulation: {
     knopf: 'Kalkulieren',
     titel: 'EP kalkulieren',
     keinePosition: 'Keine Position gewählt',
-    keinePositionText: 'Wähle zuerst eine Position im Grid.',
+    keinePositionText: 'Bitte zuerst eine Position im Grid wählen.',
     einleitung: (position: string) =>
       `Einheitspreis der Position ${position} aus Ansätzen und Zuschlagssätzen je Kostenart.`,
-    nichtGespeichert:
-      'Die Ansätze werden nicht gespeichert. Gespeichert werden nur der Einheitspreis und seine Anteile je Kostenart. Beim nächsten Öffnen beginnt die Kalkulation leer.',
+    speichern:
+      'Übernehmen speichert die Ansätze und Zuschlagssätze an der Position, dazu den Einheitspreis und seine Anteile je Kostenart.',
+    gespeichert:
+      'Die gespeicherte Kalkulation der Position. Ein Einheitspreis oder Anteile von Hand entfernen sie; Rückgängig holt sie zurück.',
+    entfernen: 'Kalkulation entfernen',
+    zuschlagsposition: 'Eine Zuschlagsposition wird nicht kalkuliert',
+    zuschlagspositionText: 'Ihr Betrag folgt aus den Bezugspositionen.',
     ansaetze: 'Ansätze',
     zeileHinzu: 'Ansatz hinzufügen',
     zeileEntfernen: (n: number) => `Ansatz ${String(n)} entfernen`,
@@ -185,6 +220,7 @@ export const texte = {
     abbrechen: 'Abbrechen',
     uebernommen: 'EP und Anteile übernommen',
     nichtsZuUebernehmen: 'Es gibt noch keinen Einheitspreis zum Übernehmen.',
+    fehlerFelder: 'Bitte zuerst die markierten Felder berichtigen; übernommen wurde nichts.',
     fehlerMenge: 'Keine gültige Menge. Erwartet wird z. B. 1,5.',
     fehlerKostensatz: 'Kein gültiger Kostensatz. Erwartet wird z. B. 48,50.',
     fehlerSatz: 'Kein gültiger Prozentsatz. Erwartet wird z. B. 12,5.',

@@ -73,6 +73,10 @@ describe('losStufe: true', () => {
     const f = fehler(z, { art: 'OzMaskeSetzen', maske: MIT_LOS });
     expect(f.code).toBe('knotenart-unzulaessig');
     expect(f.knotenId).toBe('T1');
+    expect(f).not.toHaveProperty('knotenIds');
+    // Vertrag v1.7a (D-127.14): mehrere Titel auf der obersten Ebene werden alle genannt.
+    const zwei = lvMitMaske(standardMaske, [titelKnoten('T1', LV_ID, 0), titelKnoten('T2', LV_ID, 1)]);
+    expect(fehler(zwei, { art: 'OzMaskeSetzen', maske: MIT_LOS }).knotenIds).toEqual(['T1', 'T2']);
     const nurLose = wende(lvMitMaske(standardMaske), gliederung('L1', 'los', ende(LV_ID)));
     expect(lvBefehlAusfuehren(nurLose, { art: 'OzMaskeSetzen', maske: MIT_LOS }).ok).toBe(true);
   });

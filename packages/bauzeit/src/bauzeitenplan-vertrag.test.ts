@@ -8,11 +8,12 @@ import { readFileSync } from 'node:fs';
 import type {
   Bauzeitenplan,
   Bauzeitenplanergebnis as VertragsErgebnis,
+  Kalenderdatum,
   Vorgangstermine as VertragsTermine,
 } from '@tethys/vertrag';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { beispielBauzeitenplan, beispielBauzeitenplanergebnis } from '../../vertrag/src/beispiele';
-import type { Bauzeitenplaneingabe, Datum } from './index';
+import type { Bauzeitenplaneingabe } from './index';
 import { bauzeitenplanBerechnen } from './index';
 
 interface Fixture {
@@ -43,7 +44,9 @@ describe('Vertragstypen (v1.6)', () => {
     expectTypeOf<Bauzeitenplan>().toExtend<Bauzeitenplaneingabe>();
     expectTypeOf(bauzeitenplanBerechnen).returns.toExtend<VertragsErgebnis>();
     // Die Daten des Ergebnisses sind geprüfte Daten (D-102.5): die App gibt sie ohne Prüfung an die Zeitachse weiter.
-    expectTypeOf(bauzeitenplanBerechnen).returns.toHaveProperty('projektende').toEqualTypeOf<Datum | null>();
+    expectTypeOf(bauzeitenplanBerechnen)
+      .returns.toHaveProperty('projektende')
+      .toEqualTypeOf<Kalenderdatum | null>();
   });
 
   it('Beispiel des Vertrags: Rohbau mit Sammelvorgang, Bezug und Ist-Terminen (Ticket 97, D-63)', () => {

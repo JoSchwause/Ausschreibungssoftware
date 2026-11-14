@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Kalendertage als Text `JJJJ-MM-TT` (Ticket 102 Punkt 1): proleptischer gregorianischer Kalender, keine Zeitzonen.
 
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { datumPruefen } from './index';
 
@@ -33,5 +36,19 @@ describe('datumPruefen', () => {
     const e = datumPruefen(text);
     expect(e.ok).toBe(false);
     if (!e.ok) expect(e.fehler.code).toBe(code);
+  });
+});
+
+describe('Benennung (Glossar „Kalenderdatum“, keine Synonyme)', () => {
+  it('das Paket führt den alten Namen `Datum` nicht mehr, auch nicht als Alias für die App (Ticket 163)', () => {
+    const verzeichnis = dirname(fileURLToPath(import.meta.url));
+    const nutzer = readdirSync(verzeichnis)
+      .filter((f) => f.endsWith('.ts') && f !== 'datum.test.ts')
+      .filter((f) =>
+        /(?:[:<|(,]\s*|\bas\s+|\btype\s+|\{\s*|,\s*)Datum\b(?![-\wäöü])/.test(
+          readFileSync(join(verzeichnis, f), 'utf8'),
+        ),
+      );
+    expect(nutzer).toEqual([]);
   });
 });

@@ -5,9 +5,8 @@
 // (`Sitzung.folge`); nur im Ausschreibungs-LV (D-53).
 
 import { ozText } from '../lv/oztext';
-import { mengenuebernahmeBerechnen, vergleichsfolgenBerechnen } from '@tethys/bim';
+import { vergleichsfolgenBerechnen } from '@tethys/bim';
 import { formatiereMengeDe } from '@tethys/dezimal';
-import { mengenansatzBerechnen } from '@tethys/mengen';
 import type { VergleichsSpalte, VergleichsZeile } from '@tethys/ui-grid';
 import type {
   Ansatzzeile,
@@ -20,13 +19,11 @@ import type {
   Pruefbefund,
 } from '@tethys/vertrag';
 import type { Ausgang, LvSitzung } from '../lv/befehlsweg';
+import { uebernahmeBefehle, uebernahmeVorschau, type Uebernahmezeile } from '../bim/uebernahme';
 import { texte } from './texte';
+import type { Zeilenkopf } from '../ui/zeilenkopf';
 
-export interface Folgezeile {
-  readonly positionId: PositionId;
-  readonly oz: string;
-  readonly kurztext: string;
-  readonly einheit: string;
+export interface Folgezeile extends Zeilenkopf {
   /** Menge laut altem bzw. neuem Stand (Summe der Zeilen aus `bim`); `null`, wenn keine Zeile entsteht. */
   readonly vorher: Menge | null;
   readonly nachher: Menge | null;
@@ -104,26 +101,23 @@ export function aktualisierungBerechnen(
       .positionen.filter((f) => f.betroffen)
       .map((f) => f.positionId),
   );
-  const p = positionen(lv);
-  const aus: Aktualisierungsposition[] = [];
-  const befehle: MengenansatzSetzen[] = [];
-  for (const u of mengenuebernahmeBerechnen(knoten, neu).positionen) {
-    if (!betroffen.has(u.positionId) || !u.geaendert || u.zeilen.length === 0) continue;
-    const menge = mengenansatzBerechnen(u.zeilen).summe;
-    if (menge === null) continue;
-    const pos = p.get(u.positionId);
-    aus.push({
-      positionId: u.positionId,
-      oz: oz(pos),
-      kurztext: pos?.kurztext ?? '',
-      vorher: u.vorher.menge,
-      nachher: menge,
-      zeilen: u.zeilen,
-      befunde: u.befunde,
-    });
-    befehle.push({ art: 'MengenansatzSetzen', positionId: u.positionId, mengenansatz: u.zeilen, menge });
-  }
-  return { positionen: aus, befehle };
+  // Ticket 155 (123 Rest): derselbe Weg wie „Mengen aus Modell …“ (`bim/uebernahme.ts`), nur die betroffenen Positionen.
+  const zeilen = uebernahmeVorschau(knoten, neu).zeilen.filter(
+    (z): z is Uebernahmezeile & { readonly nachher: Menge } =>
+      betroffen.has(z.positionId) && z.geaendert && z.zeilen.length > 0 && z.nachher !== null,
+  );
+  return {
+    positionen: zeilen.map((z) => ({
+      positionId: z.positionId,
+      oz: z.oz,
+      kurztext: z.kurztext,
+      vorher: z.vorher,
+      nachher: z.nachher,
+      zeilen: z.zeilen,
+      befunde: z.befunde,
+    })),
+    befehle: uebernahmeBefehle({ zeilen }),
+  };
 }
 
 export const FOLGEN_SPALTEN: readonly VergleichsSpalte[] = [

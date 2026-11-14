@@ -40,3 +40,7 @@ der Demo.
 - [ ] Was fehlt, ist unter `## Comments` vermerkt; die Welle nennt dann im Bericht, was ungeprüft blieb
 
 ## Comments
+
+- Welle 7 (2026-11-13, Orchestrator): nichts geliefert, der Sitzung hing nichts an. Die Welle nutzt selbst geschriebene Dateien (D-71); der Bericht nennt GAEB 90/2000, echte LVs und IFC aus Autorenwerkzeugen als ungeprüft.
+
+Orchestrator (Welle 7): Welle 7 lief ohne diese Dateien (D-71); GAEB 90 und GAEB 2000 sind nur gegen eigene Fixtures geprüft. Bleibt `ready-for-human`.

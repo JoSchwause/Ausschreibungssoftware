@@ -10,10 +10,13 @@ import type {
   BauzeitenplanBefehl,
   Einfuegeort,
   HonorarberechnungBefehl,
+  EinstellungenBefehl,
   KostenermittlungBefehl,
   LvBefehl,
+  LvStandBefehl,
   MangelBefehl,
   ProjektBefehl,
+  ProjektSamtInhaltLoeschen,
   RechnungBefehl,
 } from './befehle';
 import type {
@@ -54,6 +57,8 @@ import type { Bauwerksmodell, BauwerksmodellInhalt, BauwerksmodellKopf } from '.
 import type { Bauzeitenplan } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
+import type { Einstellungen } from './einstellungen';
+import type { Projektbestand } from './speicher';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -93,8 +98,8 @@ export type Befehlsfehlercode =
   | 'angebot-unbekannt'
   | 'befehl-nicht-zustaendig' // Befehl passt nicht zum übergebenen Zustand
   /**
-   * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
-   * Der eingefrorene Zahlbetrag ändert sich nie still.
+   * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben` (v1.7b:
+   * und die Zahlungsbefehle). Der eingefrorene Zahlbetrag ändert sich nie still.
    */
   | 'rechnung-freigegeben'
   /**
@@ -102,7 +107,35 @@ export type Befehlsfehlercode =
    * zulässt (etwa von `abgenommen` zurück oder zum selben Status). Ein Statuswechsel ist kein Feldwert, deshalb ein eigener
    * Code wie `rechnung-freigegeben` (D-97.13).
    */
-  | 'statuswechsel-unzulaessig';
+  | 'statuswechsel-unzulaessig'
+  /**
+   * v1.7a (Ticket 127, E8, D-74; Glossar „Verweissperre“): Der Befehl würde etwas löschen, auf das noch andere Aggregate
+   * verweisen (`BieterLoeschen`: Angebote; `ZuschlagZuruecknehmen`: Nachträge, Aufmaßblätter, Rechnungen, Mängel). Art und
+   * Anzahl stehen in `Befehlsfehler.verweise`, damit die Oberfläche sagt, was zuerst zu entfernen ist (Q5).
+   */
+  | 'verweise-vorhanden'
+  /**
+   * v1.7b (Ticket 128, D-72, Q5; Glossar „Zahlung“): `RechnungsfreigabeAufheben` an einer Rechnung mit Zahlungen. Erst die
+   * Zahlungen löschen; so bleibt stehen, auf welchen eingefrorenen Zahlbetrag gezahlt wurde.
+   */
+  | 'zahlungen-vorhanden';
+
+/**
+ * Art eines Verweises, der ein Löschen sperrt (v1.7a, Ticket 127; Glossar „Verweissperre“). `nachtrag` zählt Nachtrags-LVs
+ * (LVs mit `Nachtragsangaben.auftragsLvId`), die übrigen Arten die Aggregate ihres Namens.
+ */
+export type Verweisart = 'angebot' | 'nachtrag' | 'aufmass' | 'rechnung' | 'mangel';
+
+/**
+ * Anzahl der Verweise einer Art (v1.7a). Als Eingabe eines Ausführers (`verweise` bei `ProjektBefehlAusfuehren`,
+ * `AuftragsLvBefehlAusfuehren`) zählt die App sie aus den Listen des Speichers: jede Art höchstens einmal, eine fehlende Art
+ * zählt 0. Im Fehler (`Befehlsfehler.verweise`) stehen nur Arten mit `anzahl` > 0. `anzahl` ist eine ganze Zahl ≥ 0 (eine
+ * Anzahl; N1 gilt nicht).
+ */
+export interface Verweisanzahl {
+  readonly art: Verweisart;
+  readonly anzahl: number;
+}
 
 export interface Befehlsfehler {
   readonly code: Befehlsfehlercode;
@@ -111,6 +144,15 @@ export interface Befehlsfehler {
   readonly knotenId?: KnotenId;
   /** Betroffenes Feld, z. B. `menge`. */
   readonly feld?: string;
+  /** v1.7a: nur beim Code `verweise-vorhanden`: die sperrenden Verweise (Anzahl > 0), nie leer. Fehlt sonst. */
+  readonly verweise?: readonly Verweisanzahl[];
+  /**
+   * v1.7a (Ticket 127, für Ticket 137 Punkt 6): alle betroffenen Knoten, wenn es mehrere sind, in Dokumentreihenfolge, etwa
+   * die Knoten, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`, mit den Codes `maske-ungueltig`, `oz-ueberlauf` oder
+   * `knotenart-unzulaessig` des ersten Knotens; D-87). `knotenId` ist dann der erste davon. Fehlt: höchstens ein Knoten
+   * (`knotenId`); nie leer.
+   */
+  readonly knotenIds?: readonly KnotenId[];
 }
 
 // --- Hinweise aus angenommenen Befehlen (v1.1a, Punkt 10) ------------------------------------------------------
@@ -128,7 +170,14 @@ export type Befehlshinweiscode =
    * v1.2, U5: `LeistungsverzeichnisAnlegen` (GAEB-Import) nahm eine OZ-Maske an, die der Kern beanstandet
    * (`maskePruefen`). Der Befehl wird ausgeführt; der Befund kommt als Hinweis mit (Ticket 30).
    */
-  | 'oz-maske-ungueltig';
+  | 'oz-maske-ungueltig'
+  /**
+   * v1.7a Nachtrag (Review D-82, S4): Der Befehl hat die Kalkulationsangaben einer Position im selben ChangeSet entfernt
+   * (`EinheitspreisAendern` oder `EinheitspreisanteileSetzen` an einer Position mit Kalkulation, Lesart (a); oder
+   * `PositionsmerkmaleSetzen`, das die Position zur Zuschlagsposition macht, S3). `knotenId` ist die Position. Die Oberfläche
+   * fragt vorher; der Hinweis sagt danach, was geschah.
+   */
+  | 'kalkulation-entfernt';
 
 /**
  * Hinweis zu einem angenommenen Befehl. Der Befehl wird trotzdem ausgeführt und liefert sein ChangeSet; ein Hinweis
@@ -245,6 +294,12 @@ export interface LvStand extends LvStandKopf {
 /** LV-Stand ohne den Zustand, für Listen (`LvStandRepository.auflisten`). */
 export type LvStandUebersicht = Omit<LvStand, 'zustand'>;
 
+/**
+ * Was ein LV-Stand über seinen Kopf hinaus trägt (v1.7a, Ticket 127): Zeitpunkt des Anlegens und eingefrorener Zustand. Steht
+ * im ChangeSet von `LvStandLoeschen` (`LvChangeSet.lvStandInhalt`), damit Undo den Stand unverändert wieder ablegt.
+ */
+export type LvStandInhalt = Pick<LvStand, 'angelegt' | 'zustand'>;
+
 // --- ChangeSet -----------------------------------------------------------------------------------------------
 
 /**
@@ -308,8 +363,33 @@ export interface LvChangeSet {
    * Stand des LV in derselben Transaktion ein. `nachher: null` kommt nur als Umkehrung vor: der Stand entfällt.
    * Ein `Wiederholen` danach friert den dann gespeicherten Stand neu ein, mit neuem `angelegt` (D-12). Ein Stand wird
    * nie geändert (beide Seiten gesetzt kommt nicht vor).
+   *
+   * v1.7a (Ticket 127, E8): Beide Seiten gesetzt heißt nun `LvStandUmbenennen` (die Köpfe unterscheiden sich nur im `name`;
+   * der Inhalt des Stands bleibt). `nachher: null` kommt außer als Umkehrung des Anlegens von `LvStandLoeschen`; dann ist
+   * `lvStandInhalt` gesetzt (siehe dort).
    */
   readonly lvStand?: Aenderung<LvStandKopf>;
+  /**
+   * Inhalt eines gelöschten oder wiederhergestellten LV-Stands (v1.7a, Ticket 127, E8). Fehlt außer bei `LvStandLoeschen` und
+   * dessen Umkehrung. Gesetzt nur zusammen mit `lvStand`, und dann ist es auf derselben Seite `null` wie `lvStand`:
+   * - `LvStandLoeschen`: `lvStand: { vorher: Kopf, nachher: null }`, `lvStandInhalt: { vorher: { angelegt, zustand },
+   *   nachher: null }`.
+   * - Dessen Umkehrung (Undo): beides mit `vorher: null`; `speicher` legt **genau diesen** Stand ab (mit seinem `angelegt`,
+   *   also wieder an seinem Platz in `LvStandRepository.auflisten`, Review D-82 S1) und friert nichts neu ein.
+   * - `LvStandAnlegen`, seine Umkehrung und `LvStandUmbenennen` tragen es nie.
+   *
+   * Einfrieren nur auf ausdrücklichen Befehl (v1.7a Nachtrag, Review D-82 M2): Ein ChangeSet mit `lvStand.vorher: null` **ohne**
+   * `lvStandInhalt` friert den gespeicherten Stand des LV nur ein, wenn der Protokolleintrag `LvStandAnlegen` ist oder ein
+   * `Wiederholen`, dessen ursprünglicher Eintrag `LvStandAnlegen` ist (D-12); jedes andere solche ChangeSet weist
+   * `speicher.anwenden` mit `unbekannt` ab. Ebenso entfernt eines mit `lvStand.nachher: null` ohne `lvStandInhalt` einen Stand nur
+   * als `Rueckgaengig` eines `LvStandAnlegen`. Ein ChangeSet, das die Regeln dieses Felds verletzt, weist `speicher.anwenden` mit
+   * `unbekannt` ab und schreibt nichts (wie D-66 beim Bauwerksmodell).
+   *
+   * Umkehrung (Undo ohne Vorzustand): `changeSetUmkehren` des Kerns tauscht `vorher` und `nachher` in `lvStand` **und** in
+   * `lvStandInhalt` (Review D-82 M2; Eigenschaftstest in Ticket 137: Löschen und Undo ergeben einen Stand, der dem
+   * ursprünglichen gleicht, `angelegt` eingeschlossen).
+   */
+  readonly lvStandInhalt?: Aenderung<LvStandInhalt>;
 }
 
 export interface AngebotChangeSet {
@@ -368,6 +448,10 @@ export interface AufmassChangeSet {
  * Auftrags-LV eine freigegebene Rechnung mit größerer Nummer hat (sonst würde eine gelöschte und neu angelegte Rechnung
  * zwischen eingefrorene Zahlbeträge geschoben und doppelt bezahlt). Dazu `konflikt` für eine Kennung in `aufmassIds`, zu
  * der es kein Blatt dieses Auftrags-LV gibt. Umsetzung Ticket 79, Befund der Prüfung Ticket 81.
+ *
+ * v1.7b (D-72, D-128.7): ebenso `konflikt` für ein ChangeSet, dessen `nachher` Zahlungen ohne Freigabe hätte (Invariante an
+ * `Rechnung`), auch ohne Ausführer (Undo von `RechnungFreigeben`, solange Zahlungen bestehen). Ein Zahlungsbefehl ändert nur
+ * `zahlungen`; `freigabe` ist vorher und nachher gleich.
  */
 export interface RechnungChangeSet {
   readonly art: 'rechnung';
@@ -457,6 +541,33 @@ export interface BautagebucheintragChangeSet {
 }
 
 /**
+ * ChangeSet von `ProjektSamtInhaltLoeschen` (v1.7c, Ticket 160; E8, D-96): das Projekt und sein ganzer Bestand (alle Aggregate,
+ * LV-Stände und das Befehlsprotokoll, siehe `Projektbestand`), je vorher und nachher. Kein Aggregat: Im Protokoll steht der
+ * Befehl mit dem Projekt als Aggregat (`AggregatBezug` `{ art: 'projekt' }`).
+ *
+ * Genau zwei Formen (vorläufige Annahme, Entscheidung offen, enge Lesart; D-160.x im Ticket):
+ * - Löschen: `projekt` und `bestand` mit `vorher` gesetzt und `nachher: null`. `speicher` vergleicht beide mit dem gespeicherten
+ *   Stand (Projekt samt Bietern wie bei `ProjektLoeschen`, der Bestand vollständig wie D-31.2; weicht etwas ab oder fehlt
+ *   etwas, `konflikt`) und löscht alles in **einer** Transaktion, das Protokoll des Projekts eingeschlossen; der Eintrag des
+ *   Löschens bleibt nicht stehen (wie D-31.1). Die Einstellungen und die Bytes der Modelldateien bleiben.
+ * - Umkehrung (Undo): beide mit `vorher: null`. `speicher` legt Projekt und Bestand über den Schreibweg des Einlesens einer
+ *   Projektdatei (`projektdateiEinlesen` ohne `alsKopie` und ohne `einstellungsuebernahme`) mit **denselben Kennungen** zurück,
+ *   in einer Transaktion, das Protokoll aus `bestand.nachher.protokoll` eingeschlossen, und schreibt danach den Eintrag des
+ *   `Rueckgaengig` (sein `protokollId` nennt den nicht gespeicherten Eintrag des Löschens; am Projekt erlaubt, D-31.1). Die
+ *   Bytes der Modelldateien nimmt er aus der Ablage; fehlt eine oder besteht das Projekt oder eine Kennung des Bestands schon
+ *   (etwa nach dem Einlesen der Sicherung), `konflikt`, und nichts wird geschrieben.
+ * Jede andere Form (beide Seiten gesetzt, `null` auf verschiedenen Seiten, `projektId` nicht die Kennung des Projekts) weist
+ * `speicher.anwenden` mit `unbekannt` ab und schreibt nichts (wie D-66). Umkehrbar ohne Vorzustand durch Tausch von `vorher` und
+ * `nachher` in `projekt` und `bestand` (`ProjektbestandChangeSetUmkehren`).
+ */
+export interface ProjektbestandChangeSet {
+  readonly art: 'projektbestand';
+  readonly projektId: ProjektId;
+  readonly projekt: Aenderung<Projekt>;
+  readonly bestand: Aenderung<Projektbestand>;
+}
+
+/**
  * Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. v1.6
  * (Ticket 97 Punkt 8): dazu Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel und Bautagebucheintrag; bis Ticket 106
  * weist `speicher` sie mit `unbekannt` ab.
@@ -475,7 +586,9 @@ export type ChangeSet =
   | BauzeitenplanChangeSet
   | HonorarberechnungChangeSet
   | MangelChangeSet
-  | BautagebucheintragChangeSet;
+  | BautagebucheintragChangeSet
+  // v1.7c (Ticket 160, D-96)
+  | ProjektbestandChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -490,15 +603,74 @@ export type AngebotBefehlAusfuehren = (
   befehl: AngebotBefehl,
 ) => Ergebnis<AngebotChangeSet, Befehlsfehler>;
 
+/**
+ * v1.7a (Ticket 127, E8): `verweise` sind die Verweise auf das Ziel eines löschenden Befehls (`BieterLoeschen`: die Angebote
+ * dieses Bieters), Anzahl je Art (siehe `Verweisanzahl`). Nur `BieterLoeschen` liest sie; fehlen sie dort,
+ * `ungueltige-eingabe`. Optional, damit jeder Aufruf mit zwei Argumenten gültig bleibt.
+ *
+ * Zuständigkeit in v1.7a (Schnitt der Welle 7, D-127.17; Review D-82 S9): Die drei Bieterbefehle (`BieterUmbenennen`,
+ * `BieterangabenSetzen`, `BieterLoeschen`) führt `vergabe` aus (Ticket 138), mit schmalen exportierten Funktionen, die
+ * `BieterLoeschen` nur **mit** Verweisen annehmen (Pflichtparameter dort); der optionale Parameter dieses Typs bleibt nur, damit
+ * Aufrufe mit zwei Argumenten gültig bleiben (A8). Die Normalisierung der Bieterangaben ist eine Funktion des Kerns (Ticket 137
+ * exportiert sie, `vergabe` nutzt sie). `ProjektangabenSetzen` und `BieterAnlegen` führt der Kern aus (Ticket 137); die
+ * Bieterbefehle weist er mit `befehl-nicht-zustaendig` ab.
+ *
+ * v1.7c (Ticket 160, D-96): `ProjektSamtInhaltLoeschen` braucht den Bestand und liefert ein anderes ChangeSet; dieser Ausführer
+ * weist ihn mit `ungueltige-eingabe` (`feld: 'bestand'`) ab. Ausgeführt wird er mit `ProjektSamtInhaltLoeschenAusfuehren`.
+ */
 export type ProjektBefehlAusfuehren = (
   zustand: Projekt | null,
   befehl: ProjektBefehl,
+  verweise?: readonly Verweisanzahl[],
 ) => Ergebnis<ProjektChangeSet, Befehlsfehler>;
 
+/**
+ * Führt `ProjektSamtInhaltLoeschen` aus (v1.7c, Ticket 160; E8, D-96): rein (A2). `bestand` ist der gespeicherte Bestand des
+ * Projekts (die App liest ihn aus dem Speicher) und **Pflicht**: Nur mit ihm ist das ChangeSet allein umkehrbar (Q5). Liefert
+ * `kern` (Ticket 161) als schmale exportierte Funktion neben `ProjektBefehlAusfuehren`, das den Befehl ohne Bestand mit
+ * `ungueltige-eingabe` (`feld: 'bestand'`) abweist (wie D-127.17).
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart): `zustand: null` → `befehl-nicht-zustaendig` (wie jeder
+ * Projektbefehl außer `ProjektAnlegen`); `bestand` nicht in der Form eines `Projektbestand` (kein Objekt, Pflichtliste fehlt) →
+ * `ungueltige-eingabe` (`feld: 'bestand'`). Ob der Bestand vollständig und der gespeicherte ist, prüft `speicher` (`konflikt`).
+ * Ein leerer Bestand ist erlaubt (dann löscht der Befehl wie `ProjektLoeschen`, aber mit Protokoll). Ergebnis: `projekt`
+ * `{ vorher: zustand, nachher: null }`, `bestand` `{ vorher: bestand, nachher: null }`.
+ */
+export type ProjektSamtInhaltLoeschenAusfuehren = (
+  zustand: Projekt | null,
+  befehl: ProjektSamtInhaltLoeschen,
+  bestand: Projektbestand,
+) => Ergebnis<ProjektbestandChangeSet, Befehlsfehler>;
+
+/**
+ * Kehrt ein `ProjektbestandChangeSet` um (v1.7c, Ticket 160; Undo, ADR 0006): `vorher` und `nachher` getauscht, in `projekt`
+ * und in `bestand`. Liefert `kern` (Ticket 161).
+ */
+export type ProjektbestandChangeSetUmkehren = (changeSet: ProjektbestandChangeSet) => ProjektbestandChangeSet;
+
+/**
+ * v1.7a (Ticket 127, E8, D-74): `verweise` sind die Verweise des Projekts auf dieses Auftrags-LV (Nachträge, Aufmaßblätter,
+ * Rechnungen, Mängel; siehe `ZuschlagZuruecknehmen`). Nur `ZuschlagZuruecknehmen` liest sie; optional wie bei
+ * `ProjektBefehlAusfuehren`.
+ *
+ * Zuständigkeit in v1.7a (D-127.17; Review D-82 S9): `ZuschlagZuruecknehmen` führt `vergabe` aus (Ticket 138; der Zuschlag
+ * gehört zur Vergabe), mit einer schmalen exportierten Funktion, die die Verweise verlangt (Pflichtparameter dort); der Kern
+ * weist den Befehl mit `befehl-nicht-zustaendig` ab. Die Umkehrung (Undo) ist die des Kerns (`AuftragsLvChangeSetUmkehren`).
+ */
 export type AuftragsLvBefehlAusfuehren = (
   zustand: AuftragsLvZustand | null,
   befehl: AuftragsLvBefehl,
+  verweise?: readonly Verweisanzahl[],
 ) => Ergebnis<AuftragsLvChangeSet, Befehlsfehler>;
+
+/**
+ * Führt einen Befehl an einem gespeicherten LV-Stand aus (v1.7a, Ticket 127, E8): rein (A2). Die App lädt den Stand
+ * (`LvStandRepository.laden`) und schreibt das ChangeSet mit dem LV des Stands als Aggregat. Liefert `kern` (Ticket 137).
+ */
+export type LvStandBefehlAusfuehren = (
+  stand: LvStand,
+  befehl: LvStandBefehl,
+) => Ergebnis<LvChangeSet, Befehlsfehler>;
 
 /**
  * Wendet ein ChangeSet auf einen Zustand an (reine Funktion). `null` als Zustand: das Aggregat entsteht erst
@@ -651,6 +823,35 @@ export type BautagebucheintragChangeSetAnwenden = (
 export type BautagebucheintragChangeSetUmkehren = (
   changeSet: BautagebucheintragChangeSet,
 ) => BautagebucheintragChangeSet;
+
+// --- Einstellungen (v1.7a, Ticket 127; E15, D-73) --------------------------------------------------------------------
+
+/**
+ * ChangeSet an den Einstellungen (v1.7a): die ganzen Einstellungen vorher und nachher; umkehrbar durch Tausch. Nicht Teil von
+ * `ChangeSet` (kein Projekt, D-73); geschrieben über `EinstellungenRepository.anwenden` zusammen mit seinem Eintrag im
+ * Einstellungsprotokoll (Nachtrag Review D-82, M1), das mit `konflikt` abweist, wenn `vorher` nicht dem gespeicherten Stand
+ * gleicht.
+ */
+export interface EinstellungenChangeSet {
+  readonly art: 'einstellungen';
+  readonly einstellungen: { readonly vorher: Einstellungen; readonly nachher: Einstellungen };
+}
+
+/**
+ * Führt einen Befehl an den Einstellungen aus (v1.7a): rein (A2), prüft die Form (siehe die Befehle). Der Zustand ist immer
+ * gesetzt (anfangs `LEERE_EINSTELLUNGEN`). Liefert `kern` (Ticket 137).
+ */
+export type EinstellungenBefehlAusfuehren = (
+  zustand: Einstellungen,
+  befehl: EinstellungenBefehl,
+) => Ergebnis<EinstellungenChangeSet, Befehlsfehler>;
+
+/**
+ * Kehrt ein ChangeSet der Einstellungen um (v1.7a Nachtrag, D-82 M1): `vorher` und `nachher` getauscht. Für das eigene
+ * Rückgängig der Einstellungen in der Sitzung (die App schreibt die Umkehrung mit einem `Rueckgaengig`-Eintrag im
+ * Einstellungsprotokoll, ein Wiederholen das Original mit `Wiederholen`). Liefert `kern` (Ticket 137).
+ */
+export type EinstellungenChangeSetUmkehren = (changeSet: EinstellungenChangeSet) => EinstellungenChangeSet;
 
 // --- OZ-Vorschlag (v1.5, Ticket 95 Punkt 3; K9, F2, D-42.3, D-80.1) -----------------------------------------------
 

@@ -19,8 +19,12 @@
 // kaskadiert, sondern mit `konflikt` abgewiesen.
 
 import type {
+  Einstellungen,
+  EinstellungenChangeSet,
+  EinstellungenProtokolleintrag,
   Aenderung,
   Aenderungen,
+  Angebotsposition,
   AngebotChangeSet,
   Aufmass,
   AufmassChangeSet,
@@ -59,6 +63,7 @@ import {
   leseAufmassText,
   leseAuftragsLvKopf,
   leseBautagebucheintrag,
+  leseEinstellungen,
   leseBauwerksmodellKopf,
   leseBauzeitenplanText,
   leseHonorarberechnung,
@@ -75,26 +80,31 @@ import {
   type AufmassText,
   type BauzeitenplanText,
 } from './lesen';
-import type { Datenbank, SqlWert } from './sql';
+import type { Datenbank, Spaltenwerte, SqlWert } from './sql';
 import { pruefeSummenvorher } from './summenvorher';
+import { einstellungenFormfehler } from './einstellungen';
 import {
-  angebotspositionWerte,
-  aufmassWerte,
-  bautagebucheintragWerte,
-  bauwerksmodellWerte,
-  bauzeitenplanWerte,
-  honorarberechnungWerte,
-  mangelWerte,
+  ANGEBOTSPOSITION_SPALTEN,
+  angebotspositionZeile,
+  aufmassZeile,
+  bautagebucheintragZeile,
+  bauwerksmodellZeile,
+  bauzeitenplanZeile,
+  honorarberechnungZeile,
+  mangelZeile,
   ohne,
   KNOTEN_SPALTEN,
   knotenZuBindung,
   KOPFDATEN_SPALTEN,
   kopfdatenSpalten,
   LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
   lvKennzeichenSpalten,
-  kostenermittlungWerte,
+  lvPreisspiegelSpalte,
+  angabenSpalte,
+  kostenermittlungZeile,
   nachlassSpalten,
-  rechnungWerte,
+  rechnungZeile,
 } from './zeilen';
 import {
   pruefeAufmassAnlegen,
@@ -112,13 +122,54 @@ import {
   pruefeRechnungAnlegen,
   pruefeRechnungLoeschen,
   pruefeRechnungsaufmasse,
+  pruefeZahlungenNurFreigegeben,
 } from './bezuege';
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
 const KOPFDATEN_SETZEN = KOPFDATEN_SPALTEN.map((s) => `${s} = ?`).join(', ');
-/** Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`). */
-const LV_KOPF_SPALTEN: readonly string[] = [...KOPFDATEN_SPALTEN, ...LV_KENNZEICHEN_SPALTEN];
+/**
+ * Am LV dazu Nachtragsangaben und Vorlage (Schema 5, v1.4; Reihenfolge wie `lvKennzeichenSpalten`) und die
+ * Preisspiegel-Einstellungen (Schema 7, v1.7a; `lvPreisspiegelSpalte`).
+ */
+const LV_KOPF_SPALTEN: readonly string[] = [
+  ...KOPFDATEN_SPALTEN,
+  ...LV_KENNZEICHEN_SPALTEN,
+  LV_PREISSPIEGEL_SPALTE,
+];
 const LV_KOPF_SETZEN = LV_KOPF_SPALTEN.map((s) => `${s} = ?`).join(', ');
+
+// --- Zeilen nach Spaltennamen (Ticket 135, SA7) ------------------------------------------------------------------------
+//
+// Eine Zeile ist ein Objekt Spalte → Wert (`zeilen.ts`). INSERT und UPDATE binden jeden Wert über den Namen seiner Spalte;
+// welche Spalten ein UPDATE schreibt, steht als Namen beim Aufrufer, nicht als Stelle in einem Tupel. Tabellen- und
+// Spaltennamen sind Konstanten im Code, nie Eingaben.
+
+/** Die Werte der Spalten `namen`, in ihrer Reihenfolge (Bindungsliste). */
+export function spaltenwerte<S extends string>(zeile: Spaltenwerte<S>, namen: readonly S[]): SqlWert[] {
+  return namen.map((n) => zeile[n]);
+}
+
+/** `INSERT INTO tabelle (…) VALUES (…)` mit allen Spalten der Zeile, in der Reihenfolge ihrer Schlüssel. */
+export function einfuegen(db: Datenbank, tabelle: string, zeile: Spaltenwerte): void {
+  const namen = Object.keys(zeile);
+  db.ausfuehren(
+    `INSERT INTO ${tabelle} (${namen.join(', ')}) VALUES (${namen.map(() => '?').join(', ')})`,
+    Object.values(zeile),
+  );
+}
+
+/** `UPDATE tabelle SET … WHERE id = ?`: nur die Spalten `namen` der Zeile, die Kennung aus ihrer Spalte `id`. */
+export function aendern<S extends string>(
+  db: Datenbank,
+  tabelle: string,
+  zeile: Spaltenwerte<S | 'id'>,
+  namen: readonly S[],
+): void {
+  db.ausfuehren(`UPDATE ${tabelle} SET ${namen.map((n) => `${n} = ?`).join(', ')} WHERE id = ?`, [
+    ...spaltenwerte(zeile, namen),
+    zeile.id,
+  ]);
+}
 
 const gleich = (a: unknown, b: unknown): boolean => kanonischKompakt(a) === kanonischKompakt(b);
 
@@ -181,19 +232,41 @@ function pruefeLoeschSummen(db: Datenbank, aggregatId: string, s: Summenaenderun
 
 // --- Projekt ----------------------------------------------------------------------------------------------------
 
+/**
+ * Schreibt die Bieter des Projekts (Reihenfolge, Name, seit Schema 7 die Angaben). Ein Bieter, der wegfällt, darf kein Angebot
+ * haben (v1.7a, D-127.2: `BieterLoeschen` nur ohne Angebot; ebenso als Undo von `BieterAnlegen`): sonst `konflikt` mit den
+ * Angeboten, bevor etwas geschrieben ist.
+ */
 function schreibeBieter(db: Datenbank, p: Projekt): void {
-  db.stapel(
-    `INSERT INTO bieter (projekt_id, id, name, reihenfolge) VALUES (?, ?, ?, ?)
-     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge`,
-    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i]),
-  );
   const behalten = new Set(p.bieter.map((b) => b.id as string));
-  for (const z of db.zeilen('SELECT id FROM bieter WHERE projekt_id = ?', [p.id])) {
-    const id = z['id'];
-    if (typeof id === 'string' && !behalten.has(id)) {
-      db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
-    }
+  const weg = db
+    .zeilen('SELECT id FROM bieter WHERE projekt_id = ? ORDER BY id', [p.id])
+    .map((z) => String(z['id']))
+    .filter((id) => !behalten.has(id));
+  for (const id of weg) {
+    const angebote = db
+      .zeilen('SELECT id FROM angebot WHERE projekt_id = ? AND bieter_id = ? ORDER BY id', [p.id, id])
+      .map((z) => String(z['id']));
+    if (angebote.length > 0)
+      abbruch(
+        'konflikt',
+        `Konflikt: Bieter ${id} lässt sich nicht entfernen, solange Angebote auf ihn verweisen (${angebote.join(', ')}); ` +
+          'es wurde nichts geschrieben.',
+      );
   }
+  db.stapel(
+    `INSERT INTO bieter (projekt_id, id, name, reihenfolge, angaben) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (projekt_id, id) DO UPDATE SET name = excluded.name, reihenfolge = excluded.reihenfolge,
+       angaben = excluded.angaben`,
+    p.bieter.map((b, i): SqlWert[] => [p.id, b.id, b.name, i, angabenSpalte(`Bieter ${b.id}`, b.angaben)]),
+  );
+  for (const id of weg) db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ? AND id = ?', [p.id, id]);
+}
+
+/** Kopftabelle eines Aggregats, das an einem Projekt hängt, und sein Name in der Meldung (`AGGREGATARTEN`). */
+export interface AbhaengigeTabelle {
+  readonly tabelle: string;
+  readonly bezeichnung: string;
 }
 
 /**
@@ -201,41 +274,41 @@ function schreibeBieter(db: Datenbank, p: Projekt): void {
  * mit: `protokoll.projekt_id` verweist auf das Projekt (seit Schema 1; Schema 2 lässt das so, Ticket 38). Der Eintrag
  * des Löschbefehls selbst wird deshalb nicht geschrieben (`anwenden` überspringt ihn), weil es kein Projekt mehr gibt,
  * dem er gehört. Das ist die einzige Ausnahme von „ein Eintrag je Befehl“ (D-31.1).
- * LVs, Angebote, Auftrags-LV und (v1.4) Aufmaßblätter, Rechnungen und Kostenermittlungen verhindern das Löschen
- * (`konflikt`).
+ * Jedes Aggregat in `abhaengige` (alle Arten außer dem Projekt, aus `AGGREGATARTEN`) verhindert das Löschen (`konflikt`).
  */
-export function wendeProjektAn(db: Datenbank, cs: ProjektChangeSet): void {
+export function wendeProjektAn(
+  db: Datenbank,
+  cs: ProjektChangeSet,
+  abhaengige: readonly AbhaengigeTabelle[],
+): void {
   const { vorher, nachher } = cs.projekt;
   if (nachher === null) {
-    loescheProjekt(db, cs);
+    loescheProjekt(db, cs, abhaengige);
     return;
   }
   if (nachher.id !== cs.projektId)
     return abbruch('unbekannt', 'ChangeSet: projektId und Projekt.id weichen ab.');
   const gespeichert = leseProjekt(db, cs.projektId);
+  const angaben = angabenSpalte(`Projekt ${nachher.id}`, nachher.angaben); // Schema 7 (v1.7a)
   if (vorher === null) {
     if (gespeichert !== null) return konflikt(`Projekt ${cs.projektId} existiert bereits, das ChangeSet`);
-    db.ausfuehren('INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift) VALUES (?, ?, ?, ?)', [
-      nachher.id,
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-    ]);
+    db.ausfuehren(
+      'INSERT INTO projekt (id, name, bauherr_name, bauherr_anschrift, angaben) VALUES (?, ?, ?, ?, ?)',
+      [nachher.id, nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben],
+    );
   } else {
     if (gespeichert === null)
       return abbruch('nicht-gefunden', `Projekt ${cs.projektId} ist nicht vorhanden.`);
     if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
-    db.ausfuehren('UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ? WHERE id = ?', [
-      nachher.name,
-      nachher.bauherr.name,
-      nachher.bauherr.anschrift,
-      nachher.id,
-    ]);
+    db.ausfuehren(
+      'UPDATE projekt SET name = ?, bauherr_name = ?, bauherr_anschrift = ?, angaben = ? WHERE id = ?',
+      [nachher.name, nachher.bauherr.name, nachher.bauherr.anschrift, angaben, nachher.id],
+    );
   }
   schreibeBieter(db, nachher);
 }
 
-function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
+function loescheProjekt(db: Datenbank, cs: ProjektChangeSet, abhaengige: readonly AbhaengigeTabelle[]): void {
   const id = cs.projektId;
   const vorher = cs.projekt.vorher;
   if (vorher === null) return abbruch('unbekannt', 'ChangeSet: Projekt ohne vorher und nachher.');
@@ -243,26 +316,50 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet): void {
   const gespeichert = leseProjekt(db, id);
   if (gespeichert === null) return abbruch('nicht-gefunden', `Projekt ${id} ist nicht vorhanden.`);
   if (!gleich(gespeichert, vorher)) return konflikt('der Vorherstand des Projekts');
-  abhaengig(
-    db,
-    `Projekt ${id}`,
-    `SELECT 'LV' AS art, id FROM leistungsverzeichnis WHERE projekt_id = ?1
-     UNION ALL SELECT 'Angebot', id FROM angebot WHERE projekt_id = ?1
-     UNION ALL SELECT 'Auftrags-LV', id FROM auftrags_lv WHERE projekt_id = ?1
-     UNION ALL SELECT 'Aufmaßblatt', id FROM aufmass WHERE projekt_id = ?1
-     UNION ALL SELECT 'Rechnung', id FROM rechnung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Kostenermittlung', id FROM kostenermittlung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bauwerksmodell', id FROM bauwerksmodell WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bauzeitenplan', id FROM bauzeitenplan WHERE projekt_id = ?1
-     UNION ALL SELECT 'Honorarberechnung', id FROM honorarberechnung WHERE projekt_id = ?1
-     UNION ALL SELECT 'Mangel', id FROM mangel WHERE projekt_id = ?1
-     UNION ALL SELECT 'Bautagebucheintrag', id FROM bautagebucheintrag WHERE projekt_id = ?1
-     ORDER BY 1, 2`,
-    id,
+  // Bezeichnung und Tabelle sind Konstanten aus `AGGREGATARTEN`, keine Eingaben.
+  const auswahl = abhaengige.map(
+    (a) => `SELECT '${a.bezeichnung}' AS art, id FROM ${a.tabelle} WHERE projekt_id = ?1`,
   );
+  if (auswahl.length > 0)
+    abhaengig(db, `Projekt ${id}`, `${auswahl.join('\n     UNION ALL ')}\n     ORDER BY 1, 2`, id);
   db.ausfuehren('DELETE FROM protokoll WHERE projekt_id = ?', [id]);
   db.ausfuehren('DELETE FROM bieter WHERE projekt_id = ?', [id]);
   db.ausfuehren('DELETE FROM projekt WHERE id = ?', [id]);
+}
+
+/**
+ * Löscht ein Projekt samt Inhalt (Vertrag v1.7c, D-160.5; in der Transaktion des Aufrufers): jede Zeile, die dem Projekt gehört,
+ * in der Reihenfolge der Verweise (Verweisende zuerst), das Protokoll eingeschlossen. Geprüft hat der Aufrufer (`projektbestand.ts`).
+ * Einstellungen, ihr Protokoll und die Modell-Bytes bleiben; die Bytes gibt erst das nächste Öffnen frei (D-160.7).
+ */
+export function loescheProjektMitInhalt(db: Datenbank, id: ProjektId): void {
+  const vonProjekt = (tabelle: string): string => `SELECT id FROM ${tabelle} WHERE projekt_id = ?1`;
+  const aggregate = ['leistungsverzeichnis', 'angebot', 'auftrags_lv'].map(vonProjekt).join(' UNION ALL ');
+  for (const sql of [
+    'DELETE FROM protokoll WHERE projekt_id = ?1',
+    'DELETE FROM mangel WHERE projekt_id = ?1',
+    'DELETE FROM bautagebucheintrag WHERE projekt_id = ?1',
+    'DELETE FROM honorarberechnung WHERE projekt_id = ?1',
+    'DELETE FROM bauzeitenplan WHERE projekt_id = ?1',
+    'DELETE FROM rechnung WHERE projekt_id = ?1',
+    'DELETE FROM aufmass WHERE projekt_id = ?1',
+    `DELETE FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id IN (${vonProjekt('bauwerksmodell')})`,
+    'DELETE FROM bauwerksmodell WHERE projekt_id = ?1',
+    'DELETE FROM kostenermittlung WHERE projekt_id = ?1',
+    `DELETE FROM knoten WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_position WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_gliederung WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_gesamt WHERE aggregat_id IN (${aggregate})`,
+    'DELETE FROM auftrags_lv WHERE projekt_id = ?1',
+    `DELETE FROM angebotsposition WHERE angebot_id IN (${vonProjekt('angebot')})`,
+    'DELETE FROM angebot WHERE projekt_id = ?1',
+    `DELETE FROM lv_stand WHERE leistungsverzeichnis_id IN (${vonProjekt('leistungsverzeichnis')})`,
+    `DELETE FROM papierkorb_eintrag WHERE leistungsverzeichnis_id IN (${vonProjekt('leistungsverzeichnis')})`,
+    'DELETE FROM leistungsverzeichnis WHERE projekt_id = ?1',
+    'DELETE FROM bieter WHERE projekt_id = ?1',
+    'DELETE FROM projekt WHERE id = ?1',
+  ])
+    db.ausfuehren(sql, [id]);
 }
 
 // --- Knoten und Summen (LV und Auftrags-LV) --------------------------------------------------------------------
@@ -415,14 +512,35 @@ export function ersetzeSummen(db: Datenbank, aggregatId: string, stand: Summenst
 // --- Leistungsverzeichnis ------------------------------------------------------------------------------------
 
 /**
- * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `wann` ist der Zeitpunkt des
- * Protokolleintrags; ein LV-Stand bekommt ihn als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
+ * Woher ein ChangeSet kommt, das `anwenden` schreibt (nicht der Import): Zeitpunkt und Befehlsart des Protokolleintrags, bei
+ * `Rueckgaengig` und `Wiederholen` dazu die Art des ursprünglichen Befehls (`ursprung`, sonst `null`). Daran hängt, was ein
+ * LV-Stand ohne seinen Inhalt (`lvStandInhalt`) bedeuten darf (D-82 M2): einfrieren nur bei `LvStandAnlegen` und dessen
+ * `Wiederholen`, entfernen nur als `Rueckgaengig` eines `LvStandAnlegen`. Alles andere ist ein Programmfehler und wird nicht
+ * still zu einem neuen oder fehlenden Stand.
+ */
+export interface Schreibanlass {
+  readonly wann: Zeitstempel;
+  readonly befehl: string;
+  readonly ursprung: string | null;
+}
+
+/** Friert der Befehl des Anlasses einen LV-Stand ein? (`LvStandAnlegen` oder dessen `Wiederholen`, D-82 M2) */
+const friertEin = (a: Schreibanlass): boolean =>
+  a.befehl === 'LvStandAnlegen' || (a.befehl === 'Wiederholen' && a.ursprung === 'LvStandAnlegen');
+
+/** Nimmt der Befehl des Anlasses einen eingefrorenen Stand ohne seinen Inhalt zurück? (Rückgängig von `LvStandAnlegen`) */
+const nimmtAnlegenZurueck = (a: Schreibanlass): boolean =>
+  a.befehl === 'Rueckgaengig' && a.ursprung === 'LvStandAnlegen';
+
+/**
+ * ChangeSet am LV: Kopf, Knoten, Summen, Papierkorb und LV-Stand, in dieser Reihenfolge. `anlass` fehlt nur beim Import;
+ * ein eingefrorener LV-Stand bekommt `anlass.wann` als `angelegt` (nur `anwenden` legt Stände über ein ChangeSet an).
  */
 export function wendeLvAn(
   db: Datenbank,
   cs: LvChangeSet,
   projektId: ProjektId,
-  wann?: Zeitstempel,
+  anlass?: Schreibanlass,
   /** v1.4: Verweis der Nachtragsangaben prüfen; der Import prüft alle am Ende (das Auftrags-LV kommt dort später). */
   nachtragPruefen = true,
 ): void {
@@ -444,7 +562,11 @@ export function wendeLvAn(
     if (nachher.projektId !== projektId)
       return abbruch('unbekannt', 'ChangeSet: Kopf.projektId passt nicht zum Protokolleintrag.');
     const [nachlassArt, nachlassWert] = nachlassSpalten(nachher.nachlass);
-    const kopfdaten = [...kopfdatenSpalten(nachher), ...lvKennzeichenSpalten(nachher)];
+    const kopfdaten = [
+      ...kopfdatenSpalten(nachher),
+      ...lvKennzeichenSpalten(nachher),
+      lvPreisspiegelSpalte(nachher),
+    ];
     if (vorher === null) {
       if (gespeichert !== null) return konflikt(`LV ${id} existiert bereits, das ChangeSet`);
       if (leseProjekt(db, nachher.projektId) === null) {
@@ -497,7 +619,7 @@ export function wendeLvAn(
   wendeSummenAn(db, id, cs.summen);
   if (cs.papierkorb !== undefined) wendePapierkorbAn(db, id, cs.papierkorb);
   if (cs.papierkorb !== undefined || cs.knoten.hinzugefuegt.length > 0) pruefePapierkorb(db, id, cs);
-  if (cs.lvStand !== undefined) wendeLvStandAn(db, id, cs.lvStand, wann);
+  wendeLvStandAn(db, id, cs, anlass);
 }
 
 // --- Papierkorb (Schema 3) ---------------------------------------------------------------------------------------
@@ -616,38 +738,111 @@ function imPapierkorb(db: Datenbank, lvId: string, positionId: string): boolean 
 const LV_STAND_SCHREIBEN = `INSERT INTO lv_stand (id, leistungsverzeichnis_id, name, angelegt, zustand) VALUES (?, ?, ?, ?, ?)`;
 
 /**
- * `vorher: null`: friert den gespeicherten Stand des LV ein (nach den übrigen Teilen dieses ChangeSets, in derselben
- * Transaktion), `angelegt` = `wann`. `nachher: null` (nur als Umkehrung): Der Stand muss genau so gespeichert sein
- * und entfällt. Ein Stand wird nie geändert; beide Seiten gesetzt ist ein Programmfehler.
+ * Der LV-Stand eines ChangeSets (`lvStand`, `lvStandInhalt`; v1.2, v1.7a D-127.1). Vier Formen, sonst `unbekannt` und nichts
+ * geschrieben:
+ * - `vorher: null` ohne Inhalt (`LvStandAnlegen` und dessen `Wiederholen`, D-82 M2): friert den gespeicherten Stand des LV ein
+ *   (nach den übrigen Teilen dieses ChangeSets, in derselben Transaktion), `angelegt` = Zeitpunkt des Eintrags.
+ * - `vorher: null` mit Inhalt (Umkehrung von `LvStandLoeschen`): legt genau diesen Stand mit seinem `angelegt` ab, friert
+ *   nichts ein; nach `angelegt` geordnet steht er wieder an seinem Platz (D-82 S1).
+ * - `nachher: null` (Umkehrung des Anlegens; mit Inhalt `LvStandLoeschen`): Der Stand muss genau so gespeichert sein, mit
+ *   Inhalt auch mit diesem `angelegt` und Zustand (sonst `konflikt`), und entfällt.
+ * - beide Seiten (`LvStandUmbenennen`, ohne Inhalt): gleiche Kennung und gleiches LV, nur der Name ändert sich.
  */
 function wendeLvStandAn(
   db: Datenbank,
   lvId: LeistungsverzeichnisId,
-  s: Aenderung<LvStandKopf>,
-  wann: Zeitstempel | undefined,
+  cs: LvChangeSet,
+  anlass: Schreibanlass | undefined,
 ): void {
+  const s = cs.lvStand;
+  const inhalt = cs.lvStandInhalt;
+  if (s === undefined) {
+    if (inhalt !== undefined) abbruch('unbekannt', 'ChangeSet: lvStandInhalt ohne lvStand (Vertrag v1.7a).');
+    return;
+  }
   const { vorher, nachher } = s;
-  if (vorher !== null && nachher !== null)
-    return abbruch('unbekannt', 'ChangeSet: Ein LV-Stand wird nie geändert (ADR 0006).');
+  if (
+    inhalt !== undefined &&
+    ((vorher === null) === (nachher === null) ||
+      (inhalt.vorher === null) !== (vorher === null) ||
+      (inhalt.nachher === null) !== (nachher === null))
+  )
+    return abbruch(
+      'unbekannt',
+      'ChangeSet: lvStandInhalt steht nur beim Löschen eines Stands und seiner Umkehrung, auf derselben Seite wie lvStand.',
+    );
+  if (vorher !== null && nachher !== null) {
+    standUmbenennen(db, lvId, vorher, nachher);
+    return;
+  }
   if (nachher !== null) {
     if (nachher.leistungsverzeichnisId !== lvId)
       return abbruch('unbekannt', 'ChangeSet: Der LV-Stand gehört zu einem anderen LV.');
-    if (wann === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
     if (leseLvStand(db, nachher.id) !== null)
       return konflikt(`LV-Stand ${nachher.id} existiert bereits, das ChangeSet`);
+    if (inhalt?.nachher != null) {
+      if (inhalt.nachher.zustand.leistungsverzeichnis.id !== lvId)
+        return abbruch('unbekannt', 'ChangeSet: Der Zustand des LV-Stands gehört zu einem anderen LV.');
+      schreibeLvStand(db, { ...nachher, ...inhalt.nachher });
+      return;
+    }
+    if (anlass === undefined) return abbruch('unbekannt', 'Ein LV-Stand entsteht nur über anwenden.');
+    if (!friertEin(anlass))
+      return abbruch(
+        'unbekannt',
+        `ChangeSet: Ein LV-Stand ohne seinen Inhalt entsteht nur über LvStandAnlegen oder dessen Wiederholen (${nachher.id}).`,
+      );
     const zustand = leseLv(db, lvId);
     if (zustand === null)
       return abbruch('nicht-gefunden', `Leistungsverzeichnis ${lvId} ist nicht vorhanden.`);
-    db.ausfuehren(LV_STAND_SCHREIBEN, [nachher.id, lvId, nachher.name, wann, kanonischKompakt(zustand)]);
+    db.ausfuehren(LV_STAND_SCHREIBEN, [
+      nachher.id,
+      lvId,
+      nachher.name,
+      anlass.wann,
+      kanonischKompakt(zustand),
+    ]);
     return;
   }
   if (vorher === null) return abbruch('unbekannt', 'ChangeSet: LV-Stand ohne vorher und nachher.');
+  if (inhalt === undefined && (anlass === undefined || !nimmtAnlegenZurueck(anlass)))
+    return abbruch(
+      'unbekannt',
+      `ChangeSet: Ein LV-Stand ohne seinen Inhalt entfällt nur als Rückgängig von LvStandAnlegen (${vorher.id}).`,
+    );
+  const gespeichert = gespeicherterStand(db, lvId, vorher);
+  if (
+    inhalt?.vorher != null &&
+    !gleich({ angelegt: gespeichert.angelegt, zustand: gespeichert.zustand }, inhalt.vorher)
+  )
+    return konflikt(`der Inhalt des LV-Stands ${vorher.id}`);
+  db.ausfuehren('DELETE FROM lv_stand WHERE id = ?', [vorher.id]);
+}
+
+/** Der gespeicherte Stand zum Kopf `vorher`: fehlt er, `nicht-gefunden`; weicht sein Kopf ab, `konflikt`. */
+function gespeicherterStand(db: Datenbank, lvId: LeistungsverzeichnisId, vorher: LvStandKopf): LvStand {
   const gespeichert = leseLvStand(db, vorher.id);
   if (gespeichert === null) return abbruch('nicht-gefunden', `LV-Stand ${vorher.id} ist nicht vorhanden.`);
   const { id, leistungsverzeichnisId, name } = gespeichert;
   if (!gleich({ id, leistungsverzeichnisId, name }, vorher) || leistungsverzeichnisId !== lvId)
     return konflikt(`der LV-Stand ${vorher.id}`);
-  db.ausfuehren('DELETE FROM lv_stand WHERE id = ?', [vorher.id]);
+  return gespeichert;
+}
+
+/** `LvStandUmbenennen` (v1.7a): Kennung und LV bleiben, der Inhalt des Stands bleibt unverändert (ADR 0006). */
+function standUmbenennen(
+  db: Datenbank,
+  lvId: LeistungsverzeichnisId,
+  vorher: LvStandKopf,
+  nachher: LvStandKopf,
+): void {
+  if (nachher.id !== vorher.id || nachher.leistungsverzeichnisId !== vorher.leistungsverzeichnisId)
+    abbruch(
+      'unbekannt',
+      `ChangeSet: Ein LV-Stand wechselt beim Umbenennen weder Kennung noch LV (${vorher.id}).`,
+    );
+  gespeicherterStand(db, lvId, vorher);
+  db.ausfuehren('UPDATE lv_stand SET name = ? WHERE id = ?', [nachher.name, vorher.id]);
 }
 
 /** Schreibt einen LV-Stand aus der Projektdatei unverändert (Import; der Stand ist schon eingefroren). */
@@ -705,7 +900,7 @@ function loescheLv(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
      ORDER BY 1, 2`,
     id,
   );
-  if (cs.lvStand !== undefined)
+  if (cs.lvStand !== undefined || cs.lvStandInhalt !== undefined)
     return abbruch('unbekannt', `ChangeSet: Das Löschen von LV ${id} legt einen Stand an.`);
   // Der Papierkorb geht im ChangeSet mit (`papierkorb.entfernt`, Vertrag `LeistungsverzeichnisLoeschen`); fehlt ein
   // Eintrag darin, ist das ChangeSet unvollständig (`konflikt`), nie still verworfen.
@@ -727,6 +922,12 @@ function loescheLv(db: Datenbank, cs: LvChangeSet, projektId: ProjektId): void {
 }
 
 // --- Angebot ---------------------------------------------------------------------------------------------------
+
+/** Die Spalten einer Angebotsposition nach Namen (`ANGEBOTSPOSITION_SPALTEN`), der Schlüssel am Ende bzw. am Anfang. */
+const ANGEBOTSPOSITION_AENDERN = `UPDATE angebotsposition SET ${ANGEBOTSPOSITION_SPALTEN.map((s) => `${s} = ?`).join(', ')}
+  WHERE angebot_id = ? AND position_id = ?`;
+const ANGEBOTSPOSITION_EINFUEGEN = `INSERT INTO angebotsposition (angebot_id, position_id, ${ANGEBOTSPOSITION_SPALTEN.join(', ')})
+  VALUES (?, ?, ${ANGEBOTSPOSITION_SPALTEN.map(() => '?').join(', ')})`;
 
 function pruefeAngebotsposition(db: Datenbank, lvId: string, positionId: string): void {
   const z = db.zeilen("SELECT 1 AS da FROM knoten WHERE aggregat_id = ? AND id = ? AND art = 'position'", [
@@ -822,15 +1023,15 @@ export function wendeAngebotAn(db: Datenbank, cs: AngebotChangeSet, projektId: P
     'DELETE FROM summe_position WHERE aggregat_id = ? AND position_id = ?',
     p.entfernt.map((e) => schluessel(e.positionId)),
   );
+  const werte = (n: Angebotsposition): SqlWert[] =>
+    spaltenwerte(angebotspositionZeile(n), ANGEBOTSPOSITION_SPALTEN);
   db.stapel(
-    `UPDATE angebotsposition SET status = ?, einheitspreis = ?, epa = ?, zuschlagssatz = ?
-     WHERE angebot_id = ? AND position_id = ?`,
-    p.geaendert.map(({ nachher }): SqlWert[] => [...angebotspositionWerte(nachher), id, nachher.positionId]),
+    ANGEBOTSPOSITION_AENDERN,
+    p.geaendert.map(({ nachher }): SqlWert[] => [...werte(nachher), id, nachher.positionId]),
   );
   db.stapel(
-    `INSERT INTO angebotsposition (angebot_id, position_id, status, einheitspreis, epa, zuschlagssatz)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    p.hinzugefuegt.map((n): SqlWert[] => [id, n.positionId, ...angebotspositionWerte(n)]),
+    ANGEBOTSPOSITION_EINFUEGEN,
+    p.hinzugefuegt.map((n): SqlWert[] => [id, n.positionId, ...werte(n)]),
   );
   wendeSummenAn(db, id, cs.summen);
 }
@@ -1113,11 +1314,7 @@ export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: P
   if (vorher === null) {
     pruefeNummer(nachher.nummer, was);
     pruefeAufmassAnlegen(db, nachher);
-    db.ausfuehren(
-      `INSERT INTO aufmass (id, projekt_id, auftrags_lv_id, nummer, bezeichnung, datum, positionen)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      aufmassWerte(nachher),
-    );
+    einfuegen(db, 'aufmass', aufmassZeile(nachher));
     return;
   }
   // `vorher` ist der gespeicherte Stand (oben geprüft); Nummer und Auftrags-LV bleiben fest.
@@ -1136,6 +1333,7 @@ export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: P
  * Rechnung anlegen, ändern oder löschen (`RechnungChangeSet`). Vor dem Schreiben die Bezüge (Auftrags-LV, Nummer,
  * `aufmassIds`) und die Regeln „keine spätere freigegebene“ beim Anlegen und Löschen, danach die Invariante der Freigaben
  * (D-34 (7)): Sie fängt das Freigeben und das Aufheben der Freigabe außer der Reihe.
+ * v1.7b (D-128.7, D-93): Zahlungen nur an einer freigegebenen Rechnung, sonst `konflikt` (auch für ein Undo).
  */
 export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId: ProjektId): void {
   const id = cs.rechnungId;
@@ -1155,12 +1353,10 @@ export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId:
     pruefeRechnungAnlegen(db, nachher);
   }
   pruefeRechnungsaufmasse(db, nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO rechnung (id, projekt_id, auftrags_lv_id, nummer, angaben) VALUES (?, ?, ?, ?, ?)',
-      rechnungWerte(nachher),
-    );
-  else db.ausfuehren('UPDATE rechnung SET angaben = ? WHERE id = ?', [rechnungWerte(nachher)[4] ?? null, id]);
+  pruefeZahlungenNurFreigegeben(nachher); // v1.7b (D-128.7, D-93)
+  const zeile = rechnungZeile(nachher);
+  if (vorher === null) einfuegen(db, 'rechnung', zeile);
+  else aendern(db, 'rechnung', zeile, ['angaben']); // Auftrags-LV und Nummer bleiben fest (oben geprüft)
   pruefeFreigabereihenfolge(db, nachher.auftragsLvId);
 }
 
@@ -1182,18 +1378,10 @@ export function wendeKostenermittlungAn(
   if (vorher === null) {
     if (leseProjekt(db, projektId) === null)
       abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
-    db.ausfuehren(
-      'INSERT INTO kostenermittlung (id, projekt_id, stufe, name, eintraege) VALUES (?, ?, ?, ?, ?)',
-      kostenermittlungWerte(nachher),
-    );
+    einfuegen(db, 'kostenermittlung', kostenermittlungZeile(nachher));
     return;
   }
-  db.ausfuehren('UPDATE kostenermittlung SET stufe = ?, name = ?, eintraege = ? WHERE id = ?', [
-    nachher.stufe,
-    nachher.name,
-    kanonischKompakt(nachher.eintraege),
-    id,
-  ]);
+  aendern(db, 'kostenermittlung', kostenermittlungZeile(nachher), ['stufe', 'name', 'eintraege']);
 }
 
 // --- Bauwerksmodell (Schema 6, v1.6; D-51, D-54, D-97.3) ------------------------------------------------------------------
@@ -1248,11 +1436,7 @@ export function wendeBauwerksmodellAn(
     if (leseProjekt(db, projektId) === null)
       abbruch('nicht-gefunden', `Projekt ${projektId} ist nicht vorhanden.`);
     pruefeBauwerksmodellAnlegen(db, nachher);
-    db.ausfuehren(
-      `INSERT INTO bauwerksmodell (id, projekt_id, name, datei_hash, datei_name, datei_groesse, schema, vorgaenger_id,
-                                   eingelesen, anzahl_bauteile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      bauwerksmodellWerte(nachher, neu.bauteile.length),
-    );
+    einfuegen(db, 'bauwerksmodell', bauwerksmodellZeile(nachher, neu.bauteile.length));
     db.ausfuehren(
       'INSERT INTO bauwerksmodell_inhalt (bauwerksmodell_id, struktur, bauteile) VALUES (?, ?, ?)',
       [id, kanonischKompakt(neu.struktur), kanonischKompakt(neu.bauteile)],
@@ -1320,19 +1504,15 @@ export function wendeBauzeitenplanAn(db: Datenbank, cs: BauzeitenplanChangeSet, 
   const vorgaenge = zeilentext(nachher.vorgaenge, merkliste);
   if (vorher === null) {
     projektDa(db, projektId);
-    db.ausfuehren(
-      'INSERT INTO bauzeitenplan (id, projekt_id, name, projektbeginn, kalender, vorgaenge) VALUES (?, ?, ?, ?, ?, ?)',
-      bauzeitenplanWerte(nachher, vorgaenge),
-    );
+    einfuegen(db, 'bauzeitenplan', bauzeitenplanZeile(nachher, vorgaenge));
     return;
   }
   // `vorher` ist der gespeicherte Stand (oben geprüft); geschrieben wird nur, was sich ändert.
   if (!gleich(planKopf(vorher), planKopf(nachher)))
-    db.ausfuehren('UPDATE bauzeitenplan SET name = ?, projektbeginn = ?, kalender = ? WHERE id = ?', [
-      nachher.name,
-      nachher.projektbeginn,
-      kanonischKompakt(nachher.kalender),
-      id,
+    aendern(db, 'bauzeitenplan', bauzeitenplanZeile(nachher, vorgaenge), [
+      'name',
+      'projektbeginn',
+      'kalender',
     ]);
   if (vorgaenge !== gespeichert?.vorgaenge)
     db.ausfuehren('UPDATE bauzeitenplan SET vorgaenge = ? WHERE id = ?', [vorgaenge, id]);
@@ -1360,20 +1540,45 @@ export function wendeHonorarberechnungAn(
   }
   if (vorher === null) projektDa(db, projektId);
   pruefeHonorarbezuege(db, nachher);
-  const w = honorarberechnungWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO honorarberechnung (id, projekt_id, name, nebenkosten, mwst_satz, objekte) VALUES (?, ?, ?, ?, ?, ?)',
-      w,
-    );
-  else
-    db.ausfuehren(
-      'UPDATE honorarberechnung SET name = ?, nebenkosten = ?, mwst_satz = ?, objekte = ? WHERE id = ?',
-      [...w.slice(2), id],
-    );
+  const zeile = honorarberechnungZeile(nachher);
+  if (vorher === null) einfuegen(db, 'honorarberechnung', zeile);
+  else aendern(db, 'honorarberechnung', zeile, ['name', 'nebenkosten', 'mwst_satz', 'objekte']);
 }
 
 /** Mangel anlegen, ändern oder löschen; die Nummer bleibt fest (D-97.13), Auftrags-LV und Modell hält `speicher` (D-97.6). */
+/**
+ * Schreibt ein ChangeSet an den Einstellungen des Geräts (v1.7a, D-73, D-127.8): ganz vorher und nachher. Weicht `vorher` vom
+ * gespeicherten Stand ab, `konflikt` (Q5); eine Form, die sich nicht mehr als Projektdatei einlesen ließe (doppelter Name eines
+ * Druckprofils, Kostengruppen ungeordnet oder doppelt), `unbekannt`. Kein Projekt, kein Protokolleintrag eines Projekts.
+ */
+export function wendeEinstellungenAn(db: Datenbank, cs: EinstellungenChangeSet): void {
+  if ((cs as { art?: unknown }).art !== 'einstellungen')
+    abbruch('unbekannt', 'ChangeSet: Die Einstellungen nehmen nur ChangeSets der Art einstellungen an.');
+  const { vorher, nachher } = cs.einstellungen;
+  if (!gleich(leseEinstellungen(db), vorher)) konflikt('der Vorherstand der Einstellungen');
+  const befund = einstellungenFormfehler(nachher);
+  if (befund !== null) abbruch('unbekannt', `ChangeSet: ${befund}`);
+  schreibeEinstellungen(db, nachher);
+}
+
+/** Schreibt einen Eintrag des Einstellungsprotokolls (Schema 7, D-82 M1); in der Transaktion seines ChangeSets. */
+export function schreibeEinstellungsprotokolleintrag(db: Datenbank, e: EinstellungenProtokolleintrag): void {
+  db.ausfuehren('INSERT INTO einstellungen_protokoll (id, wer, wann, befehl) VALUES (?, ?, ?, ?)', [
+    e.id,
+    e.wer,
+    e.wann,
+    kanonischKompakt(e.befehl),
+  ]);
+}
+
+/** Legt die Einstellungen ab (eine Zeile, der ganze Wert als kanonisches JSON; Schema 7). */
+function schreibeEinstellungen(db: Datenbank, e: Einstellungen): void {
+  db.ausfuehren(
+    `INSERT INTO einstellungen (id, inhalt) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET inhalt = excluded.inhalt`,
+    [kanonischKompakt(e)],
+  );
+}
+
 export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: ProjektId): void {
   const id = cs.mangelId;
   const { vorher, nachher } = cs.mangel;
@@ -1387,17 +1592,9 @@ export function wendeMangelAn(db: Datenbank, cs: MangelChangeSet, projektId: Pro
     projektDa(db, projektId);
   }
   pruefeMangel(db, nachher);
-  const w = mangelWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren(
-      'INSERT INTO mangel (id, projekt_id, nummer, auftrags_lv_id, bauwerksmodell_id, angaben) VALUES (?, ?, ?, ?, ?, ?)',
-      w,
-    );
-  else
-    db.ausfuehren('UPDATE mangel SET auftrags_lv_id = ?, bauwerksmodell_id = ?, angaben = ? WHERE id = ?', [
-      ...w.slice(3),
-      id,
-    ]);
+  const zeile = mangelZeile(nachher);
+  if (vorher === null) einfuegen(db, 'mangel', zeile);
+  else aendern(db, 'mangel', zeile, ['auftrags_lv_id', 'bauwerksmodell_id', 'angaben']); // die Nummer bleibt fest
 }
 
 /** Bautagebucheintrag anlegen, ändern oder löschen; je Projekt und Datum höchstens einer (D-57). */
@@ -1422,11 +1619,9 @@ export function wendeBautagebucheintragAn(
   }
   if (vorher === null) projektDa(db, projektId);
   pruefeBautagebucheintrag(db, nachher);
-  const w = bautagebucheintragWerte(nachher);
-  if (vorher === null)
-    db.ausfuehren('INSERT INTO bautagebucheintrag (id, projekt_id, datum, angaben) VALUES (?, ?, ?, ?)', w);
-  else
-    db.ausfuehren('UPDATE bautagebucheintrag SET datum = ?, angaben = ? WHERE id = ?', [...w.slice(2), id]);
+  const zeile = bautagebucheintragZeile(nachher);
+  if (vorher === null) einfuegen(db, 'bautagebucheintrag', zeile);
+  else aendern(db, 'bautagebucheintrag', zeile, ['datum', 'angaben']);
 }
 
 const bauwerksmodellKopfOhneAnzahl = (u: BauwerksmodellUebersicht): BauwerksmodellKopf =>

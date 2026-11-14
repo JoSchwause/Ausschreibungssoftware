@@ -9,7 +9,7 @@
 //   die Ableitung aus den Ziffern trägt (D-24). Andere Ausgaben und andere Katalogarten sind Befund, nichts wird erfunden.
 // - Geschrieben wird ein Katalog `DIN276` mit der neuesten Ausgabe, die das Schema der Version kennt.
 
-import { KOSTENGRUPPE_FORM } from '@tethys/kern';
+import { KOSTENGRUPPENNUMMER_MUSTER } from '@tethys/vertrag';
 import type { Kostengruppennummer, PositionId } from '@tethys/vertrag';
 import type { Leser } from './lesen';
 import { elementKinder, textInhalt } from './xml';
@@ -36,8 +36,8 @@ const LESBAR: ReadonlySet<string> = new Set([
 ]);
 const DIN_276 = 'cost group DIN 276';
 
-/** Form einer Kostengruppennummer (Marke `Kostengruppennummer`): die Formregel des Kerns (`KOSTENGRUPPE_FORM`, S3). */
-export const istKostengruppe = (s: string): s is Kostengruppennummer => KOSTENGRUPPE_FORM.test(s);
+/** Form einer Kostengruppennummer (Marke `Kostengruppennummer`): das Muster des Vertrags (`KOSTENGRUPPENNUMMER_MUSTER`, D-87). */
+export const istKostengruppe = (s: string): s is Kostengruppennummer => KOSTENGRUPPENNUMMER_MUSTER.test(s);
 
 /** Die Kataloge einer Datei: Kennungen der Kostengruppenkataloge und die Art der übrigen. */
 export interface Kataloge {
@@ -68,7 +68,7 @@ export function katalogeLesen(l: Leser, boqInfo: XmlElement | undefined): Katalo
           '2006, 2008 und 2018 der DIN 276. Seine Zuordnungen werden nicht als Kostengruppe übernommen.',
         c,
       );
-    else l.nichtAbgebildet(c, `BoQInfo/Ctlg (${art})`, 'Katalog, den der Vertrag nicht kennt');
+    else l.nichtAbgebildet(c, `BoQInfo/Ctlg (${art})`, 'übernommen werden nur Kostengruppen nach DIN 276');
   }
   return { kostengruppen, andere };
 }
@@ -94,8 +94,8 @@ export function kostengruppeLesen(
         a,
         `${el.name}/CtlgAssign (${art ?? 'ohne Katalog'})`,
         art === undefined
-          ? 'Zuordnung zu einem Katalog, den BoQInfo nicht nennt'
-          : 'Zuordnung zu diesem Katalog',
+          ? 'der Katalog steht nicht im Kopf des Leistungsverzeichnisses'
+          : 'übernommen werden nur Zuordnungen zu Kostengruppen nach DIN 276',
       );
       continue;
     }

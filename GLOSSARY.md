@@ -13,7 +13,13 @@ Der dreistufige Prozess zur Planung, Beauftragung und Abrechnung von Bauleistung
 3. **Abrechnung**: Laufende Mengenermittlung (Aufmaß), Rechnungsprüfung (Abschlags-, Teilschluss-, Schlussrechnung) und Nachtragsmanagement.
 
 ### Projekt
-Die oberste organisatorische Einheit eines Bauvorhabens, der Bauherr, Projektstammdaten, Kostenstrukturen (z. B. nach DIN 276), BIM-Teilmodelle und mehrere Leistungsverzeichnisse (LVs) zugeordnet sind.
+Die oberste organisatorische Einheit eines Bauvorhabens, der Bauherr, Projektangaben, Kostenstrukturen (z. B. nach DIN 276), BIM-Teilmodelle und mehrere Leistungsverzeichnisse (LVs) zugeordnet sind.
+
+### Projektangaben
+Die Stammdaten eines Projekts, die der Nutzer im Dialog „Projektangaben“ pflegt: Name, Bauherr, **Projektnummer**, **Ort** (der Bauort als freier Text, z. B. „Musterstadt“) und **Anschrift der Baustelle** (vertrag v1.7a). Nummer, Ort und Baustelle sind wahlweise; was fehlt, steht nicht im Projekt. Sie erscheinen in den Köpfen der PDFs. Im Code `Projekt.angaben` (Typ `Projektangaben`: Nummer, Ort, Baustelle; Name und Bauherr stehen wie bisher am `Projekt`), Befehl `ProjektangabenSetzen`.
+
+### Anschrift
+Postanschrift aus Straße (mit Hausnummer), Postleitzahl und Ort, jedes Teil wahlweise (wie `Auftraggeber` und `Auftragnehmer` am LV, GAEB `Address`). Eine Anschrift ohne jedes Teil gibt es nicht; dann fehlt sie. Die Anschrift des Bauherrn bleibt ein freier Text (`Bauherr.anschrift`). Im Code `Anschrift`.
 
 ### Leistungsverzeichnis (LV)
 Strukturierte Aufstellung aller zu erbringenden Bauleistungen eines Gewerks oder Fachbereichs. Ein LV gliedert sich hierarchisch in Gliederungsebenen (Lose, Titel/Abschnitte) und Einzelpositionen.
@@ -89,7 +95,7 @@ Nicht-bepreister Textbaustein innerhalb des LVs (ohne Menge, Einheit und Preis),
 Stelle im Langtext, die der Bieter oder der Ausschreibende ausfüllt, mit Kennung und drei Teilen (davor, Stelle, danach; GAEB `TextComplement`). Der Bieter trägt seine Eingabe in X84 zurück (G-32). Im Code `Textergaenzung`. Die Eingabe des Bieters zu einer Textergänzung im Angebot heißt **Bieterergänzung**; das Angebot hält sie noch nicht (Befund beim X84-Import, Offene Typfrage in Ticket 53).
 
 ### Menge, Einheit, Einheitspreis (EP), Gesamtpreis (GP)
-- **Menge (Vordersatz)**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen.
+- **Menge**: Geplante Ausführungsmenge einer Position, mit 3 Nachkommastellen. „Vordersatz“ ist ein Wort der Vorbild-Software und erscheint in der Oberfläche nicht (D-133.2).
 - **Einheit**: Maßeinheit der Position (z. B. `m`, `m²`, `m³`, `St`, `psch`, `h`, `t`, `kg`). Eine leere Eingabe ist keine Einheit: Ein Befehl darf eine leere Zeichenkette tragen, gespeichert wird „keine Einheit“ (`null`); im Zustand steht nie eine leere Einheit (D-06).
 - **Einheitspreis (EP)**: Netto-Preis pro Einheit, mit 3 Nachkommastellen gespeichert (Entscheidung G-21).
 - **Gesamtpreis (GP)**: Produkt aus Menge × EP, kaufmännisch auf 2 Nachkommastellen (Cent) gerundet.
@@ -111,7 +117,7 @@ Oberbegriff für Los und Titel im LV-Baum. Eine Gliederung hat Ordnungszahl und 
 Die Preise eines Bieters zu den Positionen eines Ausschreibungs-LV. Ein Angebot trägt höchstens einen eigenen Nachlass und verweist auf die Positionen über deren Positionsidentität. Der MwSt-Satz ist der des LV.
 
 ### Bieter
-Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels.
+Anbieter, der zu einem Projekt ein oder mehrere Angebote abgibt. Nicht zu verwechseln mit dem **virtuellen Bieter** des Preisspiegels. Ab vertrag v1.7a trägt ein Bieter wahlweise **Bieterangaben**: Anschrift, Ansprechperson, E-Mail und Telefon. Ein eingelesenes Angebot (X84) bringt sie mit, wo die Datei sie trägt; einen Bieter, den das Projekt schon hat, überschreibt es nicht (die App bietet dann an, die Angaben zu übernehmen). Eine X86 füllt nur den Auftragnehmer am LV, nie die Angaben eines Bieters. Ein Bieter lässt sich umbenennen und, solange er kein Angebot hat, löschen. Im Code `Bieter.angaben` (Typ `Bieterangaben`), Befehle `BieterUmbenennen`, `BieterangabenSetzen`, `BieterLoeschen`.
 
 ### Auftrags-Leistungsverzeichnis
 Das nach dem Zuschlag aus Ausschreibungs-LV und beauftragtem Angebot entstehende LV mit den Vertragspreisen. Eigenes Aggregat mit den Positions-IDs der Ausschreibung (ADR 0011).
@@ -132,13 +138,19 @@ Ergebnis eines Befehls: die hinzugefügten, geänderten (mit altem und neuem Sta
 Ein Eintrag des Befehlsprotokolls: wer hat wann welchen Befehl ausgeführt. Genau ein Eintrag je Befehl. Bei einem Massenbefehl steht statt des ganzen Befehls seine Befehlskurzfassung (E-13).
 
 ### Massenbefehl
-Befehl, der ein ganzes Aggregat mit langer Liste anlegt (`LeistungsverzeichnisAnlegen`, `AngebotAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`; Konstante `MASSENBEFEHLSARTEN`). Im Protokoll genügen Kopf und Prüfsumme (E-13, ADR 0009).
+Befehl, der ein ganzes Aggregat mit langer Liste anlegt (`LeistungsverzeichnisAnlegen`, `AngebotAnlegen`, `AuftragsLeistungsverzeichnisAnlegen`, `AufmassAnlegen`, `BauwerksmodellAnlegen`; Konstante `MASSENBEFEHLSARTEN`). Im Protokoll genügen Kopf und Prüfsumme (E-13, ADR 0009). Ab vertrag v1.7c zählt auch `ProjektSamtInhaltLoeschen` dazu: Seine lange Liste, der Projektbestand, steht nicht im Befehl, sondern im ChangeSet; der Kopf ist der ganze Befehl.
 
 ### Befehlskurzfassung
 Das, was das Befehlsprotokoll von einem Massenbefehl aufbewahrt: der Kopf (der Befehl ohne seine lange Liste) und eine Prüfsumme über den vollständigen Befehl, mit dem Algorithmus als Feld. Im Code `Befehlskurzfassung`, `Massenbefehlskopf`, `Pruefsumme`.
 
 ### Projektdatei
 Die JSON-Datei zum Sichern und Austauschen eines Projekts, mit Schemaversion. Ältere Versionen lassen sich weiter öffnen.
+
+### Projektbestand
+Alles, was zu einem Projekt gespeichert ist, außer dem Projekt selbst: LVs samt Papierkorb, LV-Stände, Angebote, Auftrags-LVs, Aufmaßblätter, Rechnungen samt Zahlungen, Kostenermittlungen, Bauwerksmodelle (mit dem Verweis auf ihre Modelldatei), Bauzeitenpläne, Honorarberechnungen, Mängel, Bautagebuch und das Befehlsprotokoll (vertrag v1.7c). Er hat die Form der Projektdatei ohne Schemaversion, Projekt, die Bytes der Modelldateien (die bleiben in der Ablage) und die Einstellungen (die gehören dem Gerät). Im Code `Projektbestand`, im ChangeSet `ProjektbestandChangeSet` (Art `projektbestand`).
+
+### Projekt samt Inhalt löschen
+Löscht ein Projekt mit seinem ganzen Projektbestand in einem Schritt, auch wenn noch LVs, Angebote, ein Auftrags-LV oder andere Aggregate daran hängen (vertrag v1.7c, E8). Die Oberfläche nennt vorher die Anzahl je Art, verweist zuerst auf „Projektdatei sichern“ und verlangt eine ausdrückliche Bestätigung (Q5). Rückgängig legt alles mit denselben Kennungen wieder an. Die Einstellungen bleiben unberührt. „Projekt löschen“ (`ProjektLoeschen`) bleibt daneben bestehen und gelingt nur bei einem Projekt ohne Inhalt. Im Code `ProjektSamtInhaltLoeschen`.
 
 ### Prüfbefund
 Warnung oder Fehler einer Prüfung (GAEB-Lesen, GAEB-Prüfung, LV-Prüfung, E-Rechnung lesen) mit Quelle und Ort. Ein Prüfbefund sperrt nie die Eingabe. Beim Lesen einer E-Rechnung (Quelle `erechnung-lesen`, v1.5) ist der Ort der Business Term der EN 16931, zu dem der Befund gehört (z. B. `BT-115`), und das Element in der Datei; Zeile und Spalte nur, wenn die Datei kein lesbares XML ist. Weitere Quellen (v1.6): IFC lesen (`ifc-lesen`, Ort: die Instanz der Datei wie `#123` mit ihrer Zeile), Modellprüfung (`modell-pruefung`, Paket `bim`: das Bauteil über seine GlobalId, die Position über ihre Kennung), Terminrechnung (`terminrechnung`: der Vorgang), Honorarberechnung (`honorarberechnung`: das Honorarobjekt als Pfad `/objekte[n]`, ab 1) und Fristprüfung (`fristpruefung`: der Mangel). Im Code `Pruefbefund`, `Befundquelle`, `Befundort`.
@@ -150,13 +162,13 @@ Hinweis des Speichers, dass eine Migration die Summen eines Aggregats (LV, Angeb
 Die Prüfung eines Ausschreibungs-LV auf Vollständigkeit und GAEB-Tauglichkeit (fehlende oder doppelte Ordnungszahl, leere Texte, fehlende Einheit oder Menge, zu große Zahlen, Zuschlagspositionen ohne Bezug, negatives Netto nach Nachlass usw.). Sie liefert Prüfbefunde mit der Quelle `lv-pruefung` und sperrt nie die Eingabe. Im Code `lvPruefen`, Regeln in `pruefregeln.ts`.
 
 ### Befehlshinweis
-Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, das Netto nach Nachlass ist negativ, oder ein GAEB-Import brachte eine OZ-Maske mit, die die Prüfung beanstandet). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
+Hinweis zu einem angenommenen Befehl (z. B. die Vergabe der Ordnungszahl wich auf einen kleineren Schritt aus, das Netto nach Nachlass ist negativ, ein GAEB-Import brachte eine OZ-Maske mit, die die Prüfung beanstandet, oder ein Preisbefehl entfernte die Kalkulationsangaben einer Position). Der Befehl wird trotzdem ausgeführt; ein Befehlshinweis ist kein Fehler und kein Prüfbefund, er ist flüchtig und wird nicht gespeichert. Die dauerhafte Fassung ist der Prüfbefund der LV-Prüfung.
 
 ### Papierkorb, Papierkorbeintrag
 Ablage gelöschter Knoten eines LV, aus der sie sich wiederherstellen lassen. Ein Papierkorbeintrag hält die Knoten eines Löschvorgangs samt Unterbäumen und ihrer alten Lage; beim Wiederherstellen behalten sie ihre Kennungen (Positionsidentität). Positionen im Papierkorb gehen in keine Summe ein. Bezüge auf Positionen im Papierkorb bleiben stehen und zählen nichts, bis die Position zurückkommt; erst das endgültige Entfernen löst sie. Endgültig entfernt wird ein Eintrag nur ausdrücklich und nicht, solange ein Angebot auf eine seiner Positionen verweist (Q5). Im Code `Papierkorbeintrag`, `LvZustand.papierkorb`, `KnotenInPapierkorbLegen`.
 
 ### LV-Stand
-Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`.
+Ein benannter, eingefrorener und unveränderlicher Stand eines LV samt Summen (ADR 0006), z. B. vor dem Versand. Ein LV-Stand wird nicht zurück in das bestehende LV geschrieben; ein LV daraus entsteht als neues LV. Im Code `LvStand`, `LvStandAnlegen`. Ab vertrag v1.7a lässt sich ein LV-Stand umbenennen und löschen (`LvStandUmbenennen`, `LvStandLoeschen`); sein Inhalt bleibt dabei unverändert, das Löschen ist per Rückgängig umkehrbar.
 
 ### Rückgängig / Wiederholen (Undo/Redo)
 Nimmt den letzten Befehl der Sitzung zurück bzw. führt einen zurückgenommenen wieder aus. Beides sind selbst Befehle im Befehlsprotokoll; ihr ChangeSet ist die Umkehrung bzw. das Original des ursprünglichen ChangeSets (ADR 0006). Im Code `Rueckgaengig`, `Wiederholen`.
@@ -168,7 +180,7 @@ Der Prozentsatz einer Zuschlagsposition, der auf die Summe ihrer Bezugspositione
 Angaben zum Auftraggeber am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Name, Anschrift, Vergabenummer; E-11). Nicht gleichgesetzt mit dem `Bauherr` des Projekts. Im Code `Auftraggeber`.
 
 ### Auftragnehmer (Kopfdaten)
-Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift, soweit die GAEB-Dateien sie zeigen (GAEB `CTR`, X86). Steht am LV-Kopf; gesetzt beim Auftrags-LV (Zuschlag) oder aus einer X86-Datei; im Ausschreibungs-LV fehlt er. Nicht gleichgesetzt mit dem `Bieter` des Projekts, der nur einen Namen hat. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
+Der Bieter, der den Zuschlag erhalten hat, mit Name und Anschrift (Straße, PLZ, Ort; GAEB `CTR`, X86). Steht am LV-Kopf des Auftrags-LV; im Ausschreibungs-LV fehlt er. Gesetzt beim Zuschlag aus dem Namen und der Anschrift des bezuschlagten Bieters (aus seinen Bieterangaben, D-83): eine Kopie zum Zeitpunkt des Zuschlags, die eine spätere Änderung am Bieter nicht nachzieht. Oder beim Einlesen einer X86-Datei aus deren Angaben. Nicht dasselbe wie der `Bieter` des Projekts: Eine X86 füllt nur den Auftragnehmer, nie die Bieterangaben; Telefon, E-Mail und Ansprechperson aus einer X86 bleiben ein Befund beim Einlesen. Im Code `Auftragnehmer`, `LvInhaltKopf.auftragnehmer`.
 
 ### Vergabeinformationen (Kopfdaten)
 Angaben zum Vergabeverfahren am LV, soweit die amtlichen GAEB-Dateien sie zeigen (Eröffnungstermin, Abgabeort, Ausführungszeitraum, Auftragsnummer und -datum, Abnahmeart, Gewährleistung; E-11). Im Code `Vergabeinformationen`.
@@ -188,21 +200,52 @@ Markierung eines GAEB-Exports, bei dem die eigene Prüfung Fehler fand. Der Expo
 ### Schreibweise im Code
 Bezeichner und Befehlsnamen im Code folgen dem Glossar, aber ASCII-transliteriert: ä = ae, ö = oe, ü = ue, ß = ss (z. B. `KnotenLoeschen`, `Ausreisser`). Technische Begriffe ohne Fachbezug bleiben englisch.
 
+### Einstellungen
+Was für alle Projekte eines Geräts gilt und nicht zu einem Projekt gehört (vertrag v1.7a, D-73): das Büro, die eigenen Druckprofile und die Bezeichnungen der Kostengruppen. Ein eigenes Aggregat außerhalb der Undo-Historie und des Befehlsprotokolls eines Projekts, mit eigenem **Einstellungsprotokoll** (jeder Befehl an den Einstellungen steht darin, wie jeder Befehl an einem Projekt in dessen Befehlsprotokoll) und eigenem Rückgängig in der Sitzung. Die Projektdatei trägt eine Kopie der Einstellungen (nicht das Einstellungsprotokoll), damit eine Sicherung eine Datei bleibt. Beim Einlesen ergänzt sie nur Fehlendes und überschreibt nichts; diese Übernahme ist selbst ein protokollierter Befehl. Was der Browser vor der Einführung der Einstellungen gemerkt hatte, übernimmt die App einmalig, solange das Einstellungsprotokoll leer ist. Im Code `Einstellungen`, `EinstellungenRepository`, `EinstellungenProtokolleintrag`, Befehle `BueroSetzen`, `DruckprofilSetzen`, `DruckprofilEntfernen`, `KostengruppenbezeichnungenSetzen`, `EinstellungenUebernehmen`.
+
+### Büro
+Das Planungsbüro, das die App nutzt, als Absender in den Köpfen der PDFs: Name, Anschrift, Telefon und E-Mail. Teil der Einstellungen, einmal für alle Projekte. Im Code `Buero`.
+
+### Druckprofil
+Eine benannte Auswahl, wie ein LV gedruckt wird (mit oder ohne Preise, Umfang des Langtexts, Titelsummen, Schlussblock, Deckblatt, Kopf- und Fußzeile, Seitenrand). Die mitgelieferten Profile stehen fest in der App; eigene Profile sind Teil der Einstellungen, ihre Kennung ist ihr Name. Im Code `Druckprofil`, `LangtextUmfang`.
+
+### Kalenderdatum
+Ein geprüfter Kalendertag in der Form `JJJJ-MM-TT` (Jahr 0001 bis 9999 im gregorianischen Kalender, ohne Uhrzeit und Zeitzone), wie ihn Bauzeitenplan, Mängel und Bautagebuch führen. Ein Datum aus einer Eingabe ist zunächst ungeprüfter Text; erst die Prüfung macht ein Kalenderdatum daraus. Im Code `Kalenderdatum` (Marke), Muster `KALENDERDATUM_MUSTER` (nur die Form).
+
+### Verweissperre
+Der Grund, aus dem ein Löschen abgewiesen wird, weil noch etwas darauf verweist, mit Art und Anzahl der Verweise (z. B. „2 Aufmaßblätter, 1 Rechnung“), damit die Meldung sagen kann, was zuerst zu entfernen ist (Q5). Betrifft das Löschen eines Bieters (Angebote) und das Zurücknehmen des Zuschlags (Nachträge, Aufmaßblätter, Rechnungen, Mängel). Im Code Fehlercode `verweise-vorhanden` mit `Befehlsfehler.verweise` (`Verweisanzahl`, `Verweisart`).
+
 ---
 
 ## Datenaustausch (GAEB) & BIM
 
 ### GAEB (Gemeinsamer Ausschuss Elektronik im Bauwesen)
-Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000).
+Standardisiertes deutsches Datenaustauschformat für Leistungsverzeichnisse, Angebote, Aufträge und Abrechnungen (aktuell **GAEB DA XML 3.2 / 3.3**, historisch GAEB 90 / GAEB 2000). Das **Herkunftsformat** einer eingelesenen Datei (DA XML mit Version, GAEB 90 oder GAEB 2000) nennt das Leseergebnis zur Information (vertrag v1.7a); im Code `GaebLesung.format` (`GaebFormat`) neben `GaebLesung.version`.
+
+### GAEB 90
+Das älteste der drei GAEB-Formate (Endungen `.d81` bis `.d86`), ein Satzformat: Jede Zeile ist ein **Satz** zu 80 Zeichen, vorn
+die zweistellige **Satzart** (z. B. `21` Position, `25` Kurztext, `26` Langtext), hinten die fortlaufende Satznummer; die Phase
+steht als Datenart im Eröffnungssatz `00`. Die App liest daraus LV (`.d81`, `.d83`, `.d86`) und Angebote (`.d84`), schreibt es
+nicht und zeigt bei jedem Einlesen den festen Hinweis, dass der Leser nicht an Dateien aus anderer Software geprüft ist (D-71).
+Im Code `gaeb90.ts` im Paket `gaeb`, Herkunftsformat `gaeb-90`.
+
+### GAEB 2000
+Das Format zwischen GAEB 90 und DA XML (Endungen `.p81` bis `.p86`), ein **Schlüsselwortformat**: Abschnitte stehen zwischen
+`#begin[Name]` und `#end[Name]`, Werte als `[Name]Wert[end]`; die Phase nennt der Wert `[DP]`, die OZ steht ohne Trennzeichen,
+Zahlen mit Dezimalkomma, Texte ab Version 1.1 als RTF. Die App liest daraus LV (`.p81`, `.p83`, `.p86`) und Angebote (`.p84`),
+schreibt es nicht und zeigt wie bei GAEB 90 den festen Hinweis (D-71). Befunde und Zuordnung der Angebotszeilen sind für alle
+drei Formate dieselben. Im Code `gaeb2000.ts` im Paket `gaeb`, Herkunftsformat `gaeb-2000`.
 
 ### GAEB-Austauschphasen (X81 – X89)
 Die Dateiendung kennzeichnet die Projektphase im Datenaustausch:
+- **X80**: Universelle LV-Daten (beliebige LV-Daten ohne bestimmte Prozessphase; nach der Fachdokumentation DA XML 3.3 auf gaeb.de, D-86). Wird nicht eingelesen.
 - **X81**: Leistungsbeschreibung (LV-Struktur und Texte ohne Preise, zur Übergabe zwischen Planern).
 - **X82**: Kostenansatz (LV mit geschätzten/geplanten Preisen des Planers).
 - **X83**: Angebotsaufforderung (LV mit Mengen und Texten ohne Preise, Versand an Bieter).
 - **X84**: Angebotsabgabe (Bieter sendet ausgefüllte Einheitspreise zurück an Ausschreibenden).
 - **X85**: Nebenangebot (Abweichendes Angebot eines Bieters).
 - **X86**: Auftragserteilung (Vereinbartes Auftrags-LV mit Vertragspreisen).
+- **X87**: Auftragsbestätigung (der Auftragnehmer bestätigt den Auftrag; Quelle wie X80). Wird nicht eingelesen. X88 nennt die Fachdokumentation 3.3 nicht; die App nennt dort nur die Nummer.
 - **X89**: Rechnungs-/Abrechnungsdaten.
 - **X31**: Mengenermittlungsdaten (Übergabe von Aufmaßen).
 - **Blankett**: Das LV ohne Preise als Vordruck für Bieter (PDF „ohne Preise“ mit Eingabefeldern, Excel für Bieter). Der Bieter trägt EP und, bei Zuschlagspositionen, den Zuschlagssatz ein.
@@ -248,10 +291,10 @@ Die Verknüpfung einer Position (im Ausschreibungs-LV oder Auftrags-LV) mit eine
 Welche Menge eine Position von einem zugeordneten Bauteil übernimmt: der Name einer Bauteilmenge, wie er im Modell steht (z. B. `NetVolume`), oder fest `Stueck` (jedes Bauteil zählt 1, in der Oberfläche „Stück“). Nicht die Art einer Bauteilmenge (Länge, Fläche, Volumen, Anzahl, Gewicht, Zeit; im Code `Bauteilmenge.art`). Trägt ein Bauteil denselben Namen in zwei Mengensätzen, ist die Mengenart an ihm mehrdeutig (Befund). Im Code `Bauteilzuordnung.mengenart`.
 
 ### Mengenübernahme
-Der Vordersatz einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
+Die Menge einer Position aus einem gewählten Bauwerksmodell (X1d, D-53): je Bauteilzuordnung der Position, deren Bauteil im Modell steht, eine Ansatzzeile mit REB-Formel 91 und dem Wert der Bauteilmenge mit dem Namen der Mengenart (bei `Stueck` 1), exakt in die Einheit der Position umgerechnet und kaufmännisch auf 3 Stellen, in der Reihenfolge der Zuordnungen; die Menge laut Modell ist die Summe der Zeilen. Wo das nicht geht, steht ein Befund statt einer Zeile, nie 0 (Quelle `modell-pruefung`): Bauteil fehlt im Modell (hängende Zuordnung), Menge fehlt, Mengenart mehrdeutig, GlobalId im Modell mehrfach, Einheit der Position passt nicht zur Art der Menge (m ↔ Länge, m² ↔ Fläche, m³ ↔ Volumen, St ↔ Anzahl oder `Stueck`, kg und t ↔ Gewicht). Geschrieben wird sie nur im Ausschreibungs-LV mit `MengenansatzSetzen` (die gespeicherte Menge rechnet die App mit `mengen`, D-22); im Auftrags-LV führt der Weg über das Aufmaßblatt aus Auswahl. Im Code `mengenuebernahmeBerechnen`, `positionUebernehmen`, `Mengenuebernahme`, `Positionsuebernahme`, `EINHEITSREGELN`, `Modellbefundcode` (Paket `bim`).
 
 ### Aufmaßblatt aus Auswahl
-Ein neues Aufmaßblatt zu einem Auftrags-LV aus einer Auswahl von Bauteilen eines Bauwerksmodells (X1d, D-53): je Position mit mindestens einem zugeordneten, ausgewählten Bauteil eine Aufmaßposition mit den Ansatzzeilen nur der ausgewählten Bauteile (Regeln wie bei der Mengenübernahme), angelegt mit `AufmassAnlegen`. Dasselbe Bauteil auf zwei Blättern ist nicht erkennbar, weil eine Ansatzzeile keine GlobalId trägt. Die Auswahl „Geschoss“ sind alle Bauteile, die im Geschoss oder in einem Strukturknoten darunter (etwa einem Raum) stehen. Im Code `aufmassAusAuswahl`, `AufmassAusAuswahl`, `Aufmassvorschlag`, `Aufmasshinweis`, `bauteileImStrukturknoten` (Paket `bim`).
+Ein neues Aufmaßblatt zu einem Auftrags-LV aus einer Auswahl von Bauteilen eines Bauwerksmodells (X1d, D-53): je Position mit mindestens einem zugeordneten, ausgewählten Bauteil eine Aufmaßposition mit den Ansatzzeilen nur der ausgewählten Bauteile (Regeln wie bei der Mengenübernahme), angelegt mit `AufmassAnlegen`. Dasselbe Bauteil auf zwei Blättern ist nicht erkennbar, weil eine Ansatzzeile keine GlobalId trägt; erkennbar ist eine **Überschneidung**: Eine Position des Vorschlags steht schon auf einem anderen Blatt desselben Auftrags-LV (Hinweis vor dem Anlegen, Ticket 155). Die Auswahl „Geschoss“ sind alle Bauteile, die im Geschoss oder in einem Strukturknoten darunter (etwa einem Raum) stehen. Im Code `aufmassAusAuswahl`, `AufmassAusAuswahl`, `Aufmassvorschlag`, `Aufmasshinweis`, `bauteileImStrukturknoten`, `aufmassUeberschneidungen`, `Aufmassueberschneidung` (Paket `bim`).
 
 ### Bezugsgröße (DIN 277)
 BGF, BRI oder NRF eines Bauwerks als Grundlage von Kostenkennwerten (X1e): aus dem Bauwerksmodell die Summe der Mengen `GrossFloorArea` (BGF) bzw. `GrossVolume` (BRI) aller Geschosse und `NetFloorArea` aller Räume (NRF), je wie gelesen auf 3 Stellen, oder vom Nutzer eingegeben. Jede Bezugsgröße nennt ihre Quelle (`modell` oder `eingabe`); eine Eingabe geht dem Modell vor. Fehlt die Menge an einem Geschoss oder Raum, gibt das Modell keine Größe, sondern einen Befund (kein Ersatz, etwa aus den Räumen). Im Code `Bezugsgroesse`, `Bezugsgroessenart`, `Din277Groessen`, `din277Berechnen` (Paket `bim`).
@@ -293,8 +336,17 @@ Eine Zuschlagsposition, gerechnet mit den Preisen eines Bieters (Ticket 44): sei
 ### Zuschlag (Vergabe)
 Die Annahme eines Angebots durch den Auftraggeber (VOB/A § 18), in der App „Zuschlag erteilen“ aus dem Preisspiegel: Aus Ausschreibungs-LV und beauftragtem Angebot entsteht das Auftrags-LV, höchstens eines je LV (D-21). Nicht zu verwechseln mit der Zuschlagsposition (GAEB `MarkupItem`) und den Begriffen, die zu ihr gehören: Zuschlagssatz, Zuschlagsbasis, Zuschlagsbezug, Zuschlagskennzeichen, Bieterzuschlag. Im Code heißt der Zuschlag der Vergabe „Zuschlagserteilung“: `zuschlagErteilen`, `zuschlagsvorschau` und `Zuschlagswarnung` in `packages/vergabe`, in der App `zuschlagserteilungPlanen`, `zuschlagserteilungSpeichern`, `Zuschlagserteilungsplan`, `ZuschlagserteilungDialog`. Ein Bezeichner, der nur „zuschlag“ heißt (`Positionsdaten.zuschlag`, `Bieterpreis.zuschlag`), meint immer die Zuschlagsposition; der Warncode `zuschlagssatz-fehlt` einer `Zuschlagswarnung` meint den Zuschlagssatz einer Zuschlagsposition im Auftrags-LV.
 
+### Zuschlag zurücknehmen
+Das Auftrags-LV eines erteilten Zuschlags wieder entfernen, etwa nach einem Irrtum; danach lassen sich Angebot, LV und Projekt wieder löschen (vertrag v1.7a, D-74). Gesperrt, solange Nachträge, Aufmaßblätter, Rechnungen oder Mängel auf das Auftrags-LV verweisen (Verweissperre mit Art und Anzahl). Ein Bauzeitenplan und die Kostenkontrolle sperren nicht: Ein Vorgang behält seinen Bezug und zeigt einen Befund, die Auftragswerte der Kostenkontrolle entfallen. Per Rückgängig umkehrbar. Im Code Befehl `ZuschlagZuruecknehmen`.
+
+### Preisspiegel-Einstellungen
+Ausreißer-Schwelle, die beiden ABC-Schwellen und der Bezug der ABC-Klasse eines Preisspiegels. Sie gehören zum Ausschreibungs-LV, gehen mit dessen LV-Ständen und sind per Rückgängig umkehrbar; fehlen sie, gelten die Standardwerte (20 %, 80 %, 95 %, Bezug Mittel; D-05). Ein LV, das aus einem LV-Stand neu entsteht, übernimmt sie nicht von selbst; die App setzt sie dabei mit einem eigenen Befehl. Im Code `LvKopf.preisspiegel` (Typ `PreisspiegelEinstellungen`), Befehl `PreisspiegelEinstellungenSetzen`.
+
 ### Rang
 Reihenfolge der Bieter im Preisspiegel nach Netto nach Nachlass, aufsteigend (Rang 1 ist das günstigste Angebot). Gleiche Werte haben gleichen Rang. Im Code `rang`.
+
+### Vergabevorschlag
+Das Schriftstück, mit dem der Planer dem Auftraggeber vorschlägt, welcher Bieter den Zuschlag erhalten soll (D-88): die Bieter in ihrem Rang mit den geprüften Summen der Angebote und eine frei geschriebene Begründung, dazu Absender (Büro) und Projekt. Es rechnet nichts selbst und ist noch nicht der Zuschlag; die App gibt es als PDF aus. Im Code `VergabevorschlagEingabe`, `erzeugeVergabevorschlagPdf` (Paket `ausgabe`).
 
 ### ABC-Klasse
 Einteilung der Positionen eines Preisspiegels nach ihrem Anteil an der Summe: absteigend nach Gesamtpreis sortiert bilden die Positionen bis zu einer einstellbaren Schwelle (Standard 80 %) die Klasse A, bis zur zweiten Schwelle (Standard 95 %) die Klasse B, der Rest die Klasse C. Bezug ist der GP eines virtuellen Bieters (Standard: Mittel). Im Code `AbcKlasse`.
@@ -312,7 +364,7 @@ Dauerhaftes Nebenbuch aller Befehle am Projekt (wer, was, wann). Es ist kein Que
 Deutsche Norm zur Ermittlung und Gliederung von Projektkosten im Hochbau nach **Kostengruppen (KG 100 bis KG 800)** über die Stufen Kostenrahmen, Kostenschätzung, Kostenberechnung, Kostenanschlag und Kostenfeststellung.
 
 ### Kostengruppe
-Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`.
+Einheit der Kostengliederung, im Repo nur über ihre dreistellige **Kostengruppennummer** (`100` bis `999`) bezeichnet. Die Ebene folgt aus den Ziffern: `X00` ist Ebene 1, `XY0` (Y ≠ 0) Ebene 2 unter `X00`, `XYZ` (Z ≠ 0) Ebene 3 unter `XY0`. Die Bezeichnungen der Norm stehen nicht im Repo; sie importiert der Nutzer als CSV (G-16, D-24). Eine Position trägt höchstens eine Kostengruppe, im Ausschreibungs-LV wie im Auftrags-LV (C2, D-36); im LV-Grid steht sie in der Spalte „KG“ (v1.5). Im Code `Kostengruppennummer` (Marke in `vertrag`), `kgLesen`, `bezeichnungenLesen`, `Positionsdaten.kostengruppe`, Befehl `KostengruppeSetzen`, Grid-Spalte `LvSpalte` `'kostengruppe'`. Ab vertrag v1.7a gehören die eingelesenen Bezeichnungen als **Kostengruppenbezeichnungen** zu den Einstellungen (eine je Nummer) und damit in die Sicherung; die Texte bringt weiter der Nutzer mit. Im Code `Kostengruppenbezeichnung`, Muster der Nummer `KOSTENGRUPPENNUMMER_MUSTER`.
 
 ### Kostengliederung
 Baum der Kostengruppen eines Projekts, allein aus den Nummern gebildet (Elternteil, Vorfahren, Sortierung nach Nummer). Paket `kosten`.
@@ -336,7 +388,7 @@ Eine Zeile eines Aufmaßblatts: die Position des Auftrags-LV, ihr Mengenansatz (
 Befund zu einem Aufmaßblatt gegen sein Auftrags-LV: eine Zeile ohne Position im Auftrags-LV, zu einer Gliederung oder einem Hinweistext, zu einer Zuschlagsposition (wird nicht aufgemessen), zu einer Position ohne Einheitspreis oder ohne Menge, oder ein Blatt eines anderen Auftrags-LV. Ein Aufmaßbefund sperrt nie (U5); Soll/Ist und Rechnung lassen solche Zeilen weg. Im Code `Aufmassbefund`, `aufmassPruefen` (Paket `abrechnung`).
 
 ### Rechnung
-Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
+Eine Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (A3, D-34): Nummer (Reihenfolge, ab 1), Rechnungsart, Eingangsdatum, Rechnungsnummer des Auftragnehmers, geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert: alle bis dahin), Umlagen, Einbehaltssätze und Freigabe; seit v1.7b (D-72) dazu Vertragsstrafe, Skonto, der Schalter der Bauabzugsteuer und die Zahlungen, jeweils nur, wenn es sie gibt. Die Prüfung rechnet die Kette Leistung → Nachlass → MwSt → Umlagen → Vertragsstrafe → Einbehalt → Zahlbetrag, jeden Schritt auf 2 Stellen gerundet, und danach den Zahlungsstand; ihr Ergebnis wird nie gespeichert, nur der freigegebene Zahlbetrag. Umlagen, Vertragsstrafe und Einbehalt heißen zusammen die **Abzüge** der Rechnung. Im Code `Rechnung`.
 
 ### Rechnungsart
 **Abschlagsrechnung** (kumuliert: rechnet die ganze bis dahin aufgemessene Leistung ab und zieht die früheren Zahlbeträge ab) oder **Schlussrechnung** (die letzte; statt des Sicherheitseinbehalts gilt der Gewährleistungseinbehalt, ein absoluter Nachlass zählt voll). Im Code `Rechnungsart` mit `abschlag`, `schluss`.
@@ -348,13 +400,37 @@ Prozentualer Abzug des Auftraggebers vom kumulierten Bruttobetrag einer Rechnung
 Prozentualer Einbehalt vom kumulierten Bruttobetrag einer Rechnung als Sicherheit des Auftraggebers: in Abschlagsrechnungen der **Sicherheitseinbehalt** (Vertragserfüllung), in der Schlussrechnung stattdessen der **Gewährleistungseinbehalt** (Mängelansprüche). Im Code `Rechnung.sicherheitSatz`, `Rechnung.gewaehrleistungSatz`.
 
 ### Zahlbetrag / Freigabe
-**Zahlbetrag**: was der Auftraggeber auf eine Rechnung zahlt, kumuliertes Brutto minus Umlagen, Einbehalt und alle früheren Zahlbeträge; negativ heißt Überzahlung (ein Befund). **Freigabe**: Der Prüfer gibt eine Rechnung mit ihrem Zahlbetrag frei; der Betrag wird dabei eingefroren, damit eine spätere Aufmaßkorrektur eine bezahlte Rechnung nicht still ändert. Freigegeben wird in der Reihenfolge der Rechnungsnummern; eine freigegebene Rechnung ändert sich nur, wenn ihre Freigabe ausdrücklich aufgehoben wird. Im Code `Rechnung.freigabe`, `RechnungFreigeben`, `RechnungsfreigabeAufheben`.
+**Zahlbetrag**: was der Auftraggeber auf eine Rechnung schuldet, kumuliertes Brutto minus Umlagen, Vertragsstrafe, Einbehalt und alle früheren Zahlbeträge; negativ heißt Überzahlung (ein Befund). Skonto und Bauabzugsteuer kommen erst danach und ändern ihn nicht (siehe Auszahlung). **Freigabe**: Der Prüfer gibt eine Rechnung mit ihrem Zahlbetrag frei; der Betrag wird dabei eingefroren, damit eine spätere Aufmaßkorrektur eine bezahlte Rechnung nicht still ändert. Freigegeben wird in der Reihenfolge der Rechnungsnummern; an einer freigegebenen Rechnung lassen sich nur noch Zahlungen erfassen, ändern und löschen, alles andere erst, wenn ihre Freigabe ausdrücklich aufgehoben wird, und das geht nur, solange sie keine Zahlungen hat. Im Code `Rechnung.freigabe`, `RechnungFreigeben`, `RechnungsfreigabeAufheben`.
+
+### Vertragsstrafe
+Betrag, den der Auftraggeber wegen einer Pflichtverletzung des Auftragnehmers (etwa eines überschrittenen Termins) von einer Rechnung abzieht, mit Grund (D-72). Er wird brutto erfasst und ohne Wirkung auf die MwSt abgezogen: nach den Umlagen und vor dem Einbehalt, dessen Basis das Brutto kumuliert bleibt. Wie die Abschlagsrechnung ist er kumuliert: Jede Rechnung trägt die ganze bis dahin geltend gemachte Vertragsstrafe, die App schlägt beim Anlegen die der vorigen Rechnung vor. Sie gehört zu den Abzügen und ändert so den Zahlbetrag. Im Code `Vertragsstrafe`, `Rechnung.vertragsstrafe`, Befehl `VertragsstrafeSetzen`.
+
+### Skonto / Skontofrist
+**Skonto**: Abzug für eine Zahlung innerhalb der **Skontofrist**, an der Rechnung vereinbart als Satz in Prozent und Frist in Kalendertagen (D-72). Die Skontofrist beginnt mit dem Eingangsdatum der Rechnung; der Eingangstag zählt nicht, das **Fristende** ist der letzte Tag der Frist und wird nicht auf einen Werktag verschoben. Der **mögliche Skonto** ist round(Zahlbetrag × Satz / 100, 2), 0,00 bei einem Zahlbetrag ≤ 0; **verwirklicht** ist er, wenn die Zahlungen bis zum Fristende mindestens die Auszahlung mit Skonto erreichen. Ohne Eingangsdatum gibt es keinen Skonto (ein Befund). Skonto kürzt nicht die Forderung: Zahlbetrag und eingefrorene Zahlbeträge bleiben gleich, spätere Rechnungen merken nichts davon. Im Code `Skonto` (`satz`, `fristTage`), `Rechnung.skonto`, Befehl `SkontoSetzen`.
+
+### Bauabzugsteuer
+Steuerabzug nach § 48 EStG: Legt der Auftragnehmer keine Freistellungsbescheinigung vor, behält der Auftraggeber 15 % ein und zahlt sie an das Finanzamt statt an den Auftragnehmer. An der Rechnung ein Schalter, Standard aus; der Satz ist eine feste Konstante (D-72). Gerechnet als round((Zahlbetrag − Skonto) × 15 / 100, 2), je für die Auszahlung mit und ohne Skonto, 0,00 bei einer Basis ≤ 0. Sie mindert nur die Auszahlung, nicht den Zahlbetrag. Vereinfachung in v1: Umlagen und Vertragsstrafe zählen nicht zur Basis. Im Code `Rechnung.bauabzugsteuer`, `BAUABZUGSTEUER_SATZ`, Befehl `BauabzugsteuerSetzen`.
+
+### Auszahlung
+Was der Auftraggeber auf eine Rechnung an den Auftragnehmer überweist: Zahlbetrag − Skonto − Bauabzugsteuer (D-72). Sie wird für zwei Auszahlungsszenarien gerechnet und angezeigt: bei Zahlung bis zum Fristende (mit Skonto) und danach (ohne Skonto); ohne Skonto sind beide gleich. Die **geltende** Auszahlung ist die mit Skonto, wenn der Skonto verwirklicht ist, sonst die ohne. Im Code `Zahlungsstand.auszahlung`.
+
+### Auszahlungsszenario
+Die Auszahlung einer Rechnung für einen der beiden Zahlungszeitpunkte (D-72): **mit Skonto** (Zahlung bis zum Fristende) oder **ohne Skonto** (Zahlung danach, Skonto 0,00). Je Auszahlungsszenario stehen Skonto, Bauabzugsteuer (auf Zahlbetrag − Skonto dieses Szenarios) und Auszahlung; das **geltende** ist das mit Skonto, wenn der Skonto verwirklicht ist, sonst das ohne. In Texten für Nutzer heißen die beiden „bei Zahlung bis …“ und „danach“, in Kommentaren auch „die beiden Fälle des Skontos“. Gerechnet, nie gespeichert. Im Code `Auszahlungsszenario`, `Zahlungsstand.mitSkonto`, `Zahlungsstand.ohneSkonto`.
+
+### Zahlungsfreigabe
+Was der Auftraggeber auf eine Rechnung zur Zahlung freigibt, wie es mit der **Freigabe** entsteht (D-72): ab dem eingefrorenen Zahlbetrag beide Auszahlungsszenarien, das geltende bis zum offenen Betrag (Skonto mit seinem Stand, Bauabzugsteuer „an das Finanzamt“, Auszahlung, Summe der Zahlungen, offen) und die Zahlungen nach Datum. Im Druck der Rechnungsprüfung ein eigener Abschnitt nach der Freigabe; vor der Freigabe zeigt er den geprüften Zahlbetrag als Vorschau. Keine eigene Handlung und nicht dasselbe wie die Freigabe (das Einfrieren des Zahlbetrags, siehe Zahlbetrag / Freigabe); Vertragsstrafe, Skonto und Bauabzugsteuer lassen sich darum nur vor der Freigabe ändern, Zahlungen nur danach. Beim Skonto steht „verwirklicht“, „noch nicht verwirklicht“ (keine Zahlung nach dem Fristende erfasst, die Frist kann noch laufen) oder „nicht verwirklicht“ (eine Zahlung nach dem Fristende ist erfasst). Im Code `Zahlungsstand` als Eingabe des Drucks, Überschrift „Zahlungsfreigabe“.
+
+### Zahlung
+Eine tatsächliche Zahlung des Auftraggebers an den Auftragnehmer auf eine Rechnung, mit Datum und Betrag (D-72). Zahlungen gibt es nur an einer freigegebenen Rechnung; solange eine Rechnung Zahlungen hat, lässt sich ihre Freigabe nicht aufheben (Q5). Die Bauabzugsteuer an das Finanzamt ist keine Zahlung in diesem Sinn. Im Code `Zahlung`, `ZahlungId`, `Rechnung.zahlungen`, Befehle `ZahlungErfassen`, `ZahlungAendern`, `ZahlungLoeschen`.
+
+### Offener Betrag / Zahlungsstand
+**Offener Betrag**: was auf eine Rechnung noch an den Auftragnehmer zu zahlen ist: Zahlbetrag − verwirklichter Skonto − Bauabzugsteuer − Summe der Zahlungen (D-72), also die geltende Auszahlung minus die Zahlungen; negativ heißt, es wurde mehr gezahlt als auszuzahlen war (ein Befund). **Zahlungsstand**: der Teil der Rechnungsprüfung nach dem Zahlbetrag: Fristende, die Auszahlung mit und ohne Skonto, verwirklichter Skonto, Bauabzugsteuer, geltende Auszahlung, Summe der Zahlungen und offener Betrag. Gerechnet, nie gespeichert; Basis ist der eingefrorene Zahlbetrag, sobald die Rechnung freigegeben ist, vorher der geprüfte. Im Code `Zahlungsstand`, `Zahlungsstand.offen`, `Zahlungsbefund`.
 
 ### Leistungsstand
 Die geprüfte Leistung einer Rechnung je Position (kumulierte Aufmaßmenge und Gesamtpreis) mit Leistungssumme, Nachlass und Netto nach Nachlass. Er wird aus Auftrags-LV und Aufmaßblättern gerechnet (Paket `abrechnung`) und von der Kostenkontrolle gelesen (Paket `kosten`); gespeichert wird er nie. Was dabei auffällt (eine Zeile, die nicht zählt, eine aufgemessene Position ohne Einheitspreis, eine Zuschlagsposition ohne Satz, ein negatives Netto nach Nachlass), ist ein **Leistungsbefund**. Im Code `Leistungsstand`, `leistungsstandBerechnen`, `Leistungsbefund`.
 
 ### Rechnungsprüfung / Abzugskette
-Die Prüfung einer Rechnung gegen Auftrags-LV und Aufmaßblätter (D-34): die **Abzugskette** Leistung → Nachlass → Netto nach Nachlass → MwSt → Brutto kumuliert → Umlagen → Einbehalt → frühere Zahlbeträge → Zahlbetrag, jeder Schritt auf 2 Stellen gerundet, dazu der Vergleich mit der Forderung des Auftragnehmers (je Netto, Brutto und Zahlbetrag die **Forderungsdifferenz** = gefordert − geprüft, D-44; nicht die Abweichung der Kostenkontrolle) und **Rechnungsbefunde** (etwa Überzahlung, frühere Rechnung nicht freigegeben, Blatt einer früheren Rechnung fehlt, Schlussrechnung nicht die letzte). Das Ergebnis wird nie gespeichert. Im Code `rechnungPruefen`, `Rechnungspruefung`, `Abzugskette`, `Forderungsvergleich`, `Forderungsdifferenz`, `Rechnungsbefund`, `freigabeMoeglich` (Paket `abrechnung`).
+Die Prüfung einer Rechnung gegen Auftrags-LV und Aufmaßblätter (D-34): die **Abzugskette** Leistung → Nachlass → Netto nach Nachlass → MwSt → Brutto kumuliert → Umlagen → Vertragsstrafe → Einbehalt → frühere Zahlbeträge → Zahlbetrag, jeder Schritt auf 2 Stellen gerundet, danach der Zahlungsstand (Skonto → Bauabzugsteuer → Auszahlung → Zahlungen → offener Betrag, D-72), dazu der Vergleich mit der Forderung des Auftragnehmers (je Netto, Brutto und Zahlbetrag die **Forderungsdifferenz** = gefordert − geprüft, D-44; nicht die Abweichung der Kostenkontrolle) und **Rechnungsbefunde** (etwa Überzahlung, frühere Rechnung nicht freigegeben, Blatt einer früheren Rechnung fehlt, Schlussrechnung nicht die letzte, Skonto ohne Eingangsdatum, mehr gezahlt als auszuzahlen). Das Ergebnis wird nie gespeichert. Im Code `rechnungPruefen`, `Rechnungspruefung`, `Abzugskette`, `Forderungsvergleich`, `Forderungsdifferenz`, `Rechnungsbefund`, `freigabeMoeglich` (Paket `abrechnung`).
 
 ### Soll/Ist
 Vergleich der Menge einer Position im Auftrags-LV (Soll) mit der Summe ihrer Aufmaßblätter (Ist), mit Anteil in Prozent und den Gesamtpreisen beider Seiten, je Gliederung und gesamt summiert. Überschreitet das Ist 110 % der Soll-Menge streng, ist das ein Befund; unter 90 % erst, wenn die Schlussrechnung vorliegt (VOB/B § 2 Abs. 3, D-35; beide Schwellen einstellbar). Im Code `sollIstBerechnen`, `SollIst`, `SollIstBefund` (Paket `abrechnung`).
@@ -401,6 +477,9 @@ Detaillierte Ermittlung eines Einheitspreises über untergeordnete Kalkulationsa
 
 ### Kalkulationsansatz
 Eine Zeile der Einzelpreiskalkulation einer Position: Kostenart (eine Art der Einheitspreisanteile, `EpaArt`), freie Bezeichnung, **Ansatzmenge** je Einheit der Position (z. B. 0,450 h je m², 3 Stellen) und Kostensatz. Die **Einzelkosten** der Zeile sind Ansatzmenge × Kostensatz, ungerundet. Bei der Kostenart Lohn zählt die Ansatzmenge als Lohnstunden. Eine Zeile ohne Ansatzmenge oder ohne Kostensatz zählt nicht und ist ein Befund. Im Code `Kalkulationsansatz`, `ansatzmenge`; die Zeile des Formulars in der App, alle Felder als Text, heißt **Kalkulationszeile** (`Kalkulationszeile`), nie Ansatzzeile (die gehört zum Mengenansatz).
+
+### Kalkulationsangaben
+Die gespeicherten Eingaben der Einzelpreiskalkulation einer Position im Ausschreibungs-LV (vertrag v1.7a): ihre Kalkulationsansätze und die Zuschlagssätze der Kalkulation je Kostenart. Aus ihnen rechnet die App EP und Einheitspreisanteile; der Befehl trägt beides zusammen, damit Kalkulation und Preis nie auseinanderlaufen. Ein Kopieren nimmt sie mit; der Zuschlag (Auftrags-LV) und ein GAEB-Export nicht. Ein Preis, der von Hand geändert wird, entfernt sie (mit Hinweis); eine Zuschlagsposition trägt nie Kalkulationsangaben. Im Code `Positionsdaten.kalkulation` (Typ `Kalkulationsangaben`), Befehl `KalkulationSetzen`.
 
 ### Kostensatz
 Kosten je Einheit eines Kalkulationsansatzes (z. B. 48,500 € je Lohnstunde oder je m² Stein), netto, 3 Stellen wie ein EP. Im Code `kostensatz`.
@@ -569,3 +648,40 @@ Eine beim Auftraggeber eingegangene XRechnung (UBL oder CII), so gelesen, wie si
 - **STLB-Bau / STLB-K / STLK**: Dynamische bzw. katalogbasierte deutsche Standardleistungsbücher für das Bauwesen sowie den Straßen-, Brücken- und Wasserbau.
 - **ÖNORM B 2063 / A 2063**: Österreichische Standards für Leistungsbeschreibungen, Aufmaß und elektronischen AVA-Datenaustausch (`.onlv` / `.onlb`).
 - **SIA 451 & CRB NPK**: Schweizerischer Datenaustauschstandard (**SIA 451**) und **Normpositionen-Katalog (NPK)** der Schweizerischen Zentralstelle für Baurationalisierung (CRB) inklusive Baukostenplan (**BKP / eBKP**).
+
+---
+
+## Sprache der Oberfläche (Ticket 133, L2, L4)
+
+Eine Benennung je Sache in allen Texten der Oberfläche (`texte.ts` in `apps/web/src/*` und `packages/ui-*`). Der Sprachtest
+`apps/web/src/sprache.test.ts` prüft die abgewählten Benennungen, die Anrede und die Schreibung; die Gründe stehen in den
+Entscheidungen D-133.1 bis D-133.9 im Ticket 133.
+
+| Sache | Benennung in der Oberfläche | Nicht mehr |
+|---|---|---|
+| Ordnungszahl | Beschriftung, Spaltenkopf und Feldname **OZ**; im Satz **Ordnungszahl** („Die Ordnungszahl passt nicht zur OZ-Maske.“) | „Ordnungszahl“ als alleinige Beschriftung |
+| Mehrwertsteuer | **MwSt** („MwSt-Satz“, Spalte „MwSt“) | „Umsatzsteuer“ (nur in „Umsatzsteuer (BT-110)“, dem Namen des Feldes der EN 16931) |
+| Geplante Menge einer Position | **Menge** | „Vordersatz“ |
+| Projektdatei schreiben | Die Datei heißt **Projektdatei**, die Handlung **sichern** („Projektdatei sichern“, „Jetzt sichern“); der Dialog und der Bereich heißen **Sicherung** | „Datensicherung“, „Projektdatei exportieren“ |
+| Datei lesen | **einlesen** („Projektdatei einlesen“, „Profil einlesen“, „Excel einlesen“) | „importieren“, „Import“ |
+| Profil schreiben (Druckprofil) | **Profil sichern** | „Profil exportieren“ |
+| Neues Objekt | Verb mit Gegenstand: „Projekt anlegen“, „Rechnung anlegen“, „Nachtrag anlegen“ | „Anlegen“ allein, „Neue Rechnung“ |
+| Projektangaben ändern | „Projektangaben …“ (Dialog „Projektangaben“: Name, Bauherr, Projektnummer, Ort, Baustelle) | „Projekt umbenennen“, „Stammdaten ändern“ |
+| IFC-Klasse | deutscher Name, Klasse in Klammern: „Fundament (IfcFooting)“; unbekannte Klassen stehen unverändert da | rohe Klasse allein |
+| Vorschau | zwei Bedeutungen, beide gewollt: **Vorschau** als Kennzeichen eines Moduls (siehe unten) und **Vorschau** eines Dokuments vor dem Sichern oder Drucken (siehe unten); welche gemeint ist, sagt der Ort | – |
+
+### Vorschau (Modul)
+Kennzeichen einer Gruppe der Navigation (G-60): Module, die benutzbar, aber noch nicht so weit geprüft und ausgebaut sind wie die
+Kernkette LV → Vergabe → Abrechnung → Kosten (derzeit Modelle, Bauzeitenplan, Honorar, Mängel und Bautagebuch). Ein Satz auf der
+Seite sagt, was das heißt. Im Code `VORSCHAU`, `istVorschau` (`apps/web/src/ui/navigation.ts`).
+
+### Vorschau (Dokument)
+Die Ansicht eines erzeugten Dokuments (PDF eines Berichts, einer Rechnungsprüfung, eines LV) vor dem Sichern oder Drucken; nichts
+wird dabei geändert. Ebenso heißt die Anzeige eines Ergebnisses, bevor es übernommen wird (etwa die OZ-Maske vor dem Umnummerieren
+oder der geprüfte Zahlbetrag vor der Freigabe). Im Code `PdfMitVorschau` und Namen mit `Vorschau`.
+
+Schreibung: Anrede unpersönlich, wo nötig „Sie“, nie „du“ und nie ein Imperativ der 2. Person Singular (L4). „…“ mit
+Leerzeichen davor und nur auf Schaltflächen, die einen Dialog oder eine Dateiauswahl öffnen. „€“ als einziges
+Währungszeichen, mit Leerzeichen hinter der Zahl; Beträge in Eingabefeldern tragen „(netto, €)“ im Namen. Ein Trennzeichen:
+Seitentitel „Seite – Projekt“ mit Halbgeviertstrich, Zeilen mit zwei Teilen mit Doppelpunkt, Zellen eines Klartextes mit
+„ · “. Keine Ticketnummern, Regel- oder Entscheidungskennungen und keine Paketnamen in Nutzertexten (L5).

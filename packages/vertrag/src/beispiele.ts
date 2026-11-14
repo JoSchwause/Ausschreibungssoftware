@@ -38,6 +38,7 @@ import type {
   RechnungsfreigabeAufheben,
   TextquelleSetzen,
   VorlageSetzen,
+  ProjektSamtInhaltLoeschen,
 } from './befehle';
 import type {
   AufmassChangeSet,
@@ -48,12 +49,14 @@ import type {
   LvChangeSet,
   OzVorschlag,
   OzVorschlagen,
+  ProjektbestandChangeSet,
   RechnungChangeSet,
 } from './changeset';
 import type {
   AuftragsLvUebersicht,
   KostenermittlungUebersicht,
   LvUebersicht,
+  Projektbestand,
   Projektdatei,
   Protokolleintrag,
 } from './speicher';
@@ -141,6 +144,39 @@ import type {
 } from './marken';
 import type { Gesamtsummen, Leistungsstand } from './summen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
+// v1.7a (Ticket 127)
+import type {
+  BieterangabenSetzen,
+  BieterLoeschen,
+  BieterUmbenennen,
+  BueroSetzen,
+  DruckprofilEntfernen,
+  DruckprofilSetzen,
+  EinstellungenUebernehmen,
+  KalkulationSetzen,
+  KostengruppenbezeichnungenSetzen,
+  LvStandLoeschen,
+  LvStandUmbenennen,
+  PreisspiegelEinstellungenSetzen,
+  ProjektangabenSetzen,
+  ZuschlagZuruecknehmen,
+} from './befehle';
+import type { Befehlshinweis, EinstellungenChangeSet, LvStand } from './changeset';
+import type { Druckprofil, Einstellungen } from './einstellungen';
+import type { BieterId } from './marken';
+import type { Projekt } from './modell';
+import type { EinstellungenProtokolleintrag } from './speicher';
+// v1.7b (Ticket 128)
+import type {
+  BauabzugsteuerSetzen,
+  SkontoSetzen,
+  VertragsstrafeSetzen,
+  ZahlungAendern,
+  ZahlungErfassen,
+  ZahlungLoeschen,
+} from './befehle';
+import type { Kalenderdatum, ZahlungId } from './marken';
+import type { Zahlung, Zahlungsbefund, Zahlungsstand } from './zahlung';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
 const titelId = '019b76e9-0000-7000-8000-000000000002' as TitelId;
@@ -2353,4 +2389,437 @@ export const beispielProjektdateiV16: Projektdatei = {
   honorarberechnungen: [{ honorarberechnung: beispielHonorarberechnung }],
   maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
   bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
+};
+
+// --- v1.7a (Ticket 127) ---------------------------------------------------------------------------------------------
+
+const leereSummen = {
+  positionen: [],
+  gliederungen: [],
+  gesamt: null,
+  vorher: { positionen: [], gliederungen: [], gesamt: null, entfernt: keinGesamt },
+} as const;
+
+/** E8: der Stand aus `beispielLvStandChangeSet`, wie `speicher` ihn eingefroren hat (Zustand: das Beispiel-LV). */
+export const beispielLvStand: LvStand = {
+  id: '019b76e9-0000-7000-8000-000000000080' as LvStandId,
+  leistungsverzeichnisId: lvId,
+  name: 'Stand vor Versand',
+  angelegt: '2026-11-13T09:00:00.000Z' as Zeitstempel,
+  zustand: {
+    leistungsverzeichnis: beispielLv,
+    summen: {
+      positionen: [{ positionId: posId, gesamtpreis: '12.35' as Betrag, gehtInSummeEin: true }],
+      gliederungen: [{ gliederungId: titelId, summe: '12.35' as Betrag }],
+      gesamt: {
+        netto: '12.35' as Betrag,
+        nachlass: '0.00' as Betrag,
+        nettoNachNachlass: '12.35' as Betrag,
+        mwst: '2.35' as Betrag,
+        brutto: '14.70' as Betrag,
+      },
+    },
+  },
+};
+
+const standKopf = {
+  id: beispielLvStand.id,
+  leistungsverzeichnisId: beispielLvStand.leistungsverzeichnisId,
+  name: beispielLvStand.name,
+};
+
+export const beispielLvStandUmbenennen: LvStandUmbenennen = {
+  art: 'LvStandUmbenennen',
+  lvStandId: beispielLvStand.id,
+  name: 'Stand nach Versand',
+};
+
+export const beispielLvStandLoeschen: LvStandLoeschen = {
+  art: 'LvStandLoeschen',
+  lvStandId: beispielLvStand.id,
+};
+
+/** E8: Umbenennen trägt nur die Köpfe (gleiche Kennung, anderer Name); kein Inhalt, keine Knoten, keine Summen. */
+export const beispielChangeSetLvStandUmbenennen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: leereSummen,
+  lvStand: { vorher: standKopf, nachher: { ...standKopf, name: beispielLvStandUmbenennen.name } },
+};
+
+/** E8: Löschen trägt den ganzen Stand (Kopf und Inhalt auf der Seite `vorher`); Undo legt genau ihn wieder ab. */
+export const beispielChangeSetLvStandLoeschen: LvChangeSet = {
+  ...lvRahmen,
+  kopf: null,
+  knoten: { hinzugefuegt: [], geaendert: [], entfernt: [] },
+  summen: leereSummen,
+  lvStand: { vorher: standKopf, nachher: null },
+  lvStandInhalt: {
+    vorher: { angelegt: beispielLvStand.angelegt, zustand: beispielLvStand.zustand },
+    nachher: null,
+  },
+};
+
+const bieterId = '019b76e9-0000-7000-8000-000000000701' as BieterId;
+
+export const beispielBieterUmbenennen: BieterUmbenennen = {
+  art: 'BieterUmbenennen',
+  bieterId,
+  name: 'Muster Bau GmbH',
+};
+
+export const beispielBieterLoeschen: BieterLoeschen = { art: 'BieterLoeschen', bieterId };
+
+export const beispielZuschlagZuruecknehmen: ZuschlagZuruecknehmen = { art: 'ZuschlagZuruecknehmen' };
+
+/** E8 (D-74): Die Sperre beim Zurücknehmen des Zuschlags nennt nur Arten mit Anzahl > 0, in fester Reihenfolge. */
+export const beispielFehlerZuschlagZuruecknehmen: Befehlsfehler = {
+  code: 'verweise-vorhanden',
+  meldung: 'ZuschlagZuruecknehmen: Auf das Auftrags-LV verweisen 2 Aufmaßblätter und 1 Rechnung.',
+  verweise: [
+    { art: 'aufmass', anzahl: 2 },
+    { art: 'rechnung', anzahl: 1 },
+  ],
+};
+
+/** E8: je neuem Befehl ein Beispiel. */
+export const beispieleV17aE8: readonly [
+  LvStandUmbenennen,
+  LvStandLoeschen,
+  BieterUmbenennen,
+  BieterLoeschen,
+  ZuschlagZuruecknehmen,
+] = [
+  beispielLvStandUmbenennen,
+  beispielLvStandLoeschen,
+  beispielBieterUmbenennen,
+  beispielBieterLoeschen,
+  beispielZuschlagZuruecknehmen,
+];
+
+/**
+ * E9: Kalkulation der Beispielposition (Mauerwerk je m²) mit Lohn und Stoffen, Zuschlagssätze für beide. EP und EPA hat die
+ * App mit `kosten` gerechnet (D-39): Lohn 0,450 h × 48,500 = 21,825 × 1,15 = 25,09875 → 25,099; Stoffe 1,000 × 30,000 = 30,000
+ * × 1,10 = 33,000; EP = 58,099.
+ */
+export const beispielKalkulationSetzen: KalkulationSetzen = {
+  art: 'KalkulationSetzen',
+  positionId: posId,
+  kalkulation: {
+    ansaetze: [
+      {
+        art: 'lohn',
+        bezeichnung: 'Mauern',
+        ansatzmenge: '0.450' as Menge,
+        kostensatz: '48.500' as Einheitspreis,
+      },
+      {
+        art: 'stoffe',
+        bezeichnung: 'Stein',
+        ansatzmenge: '1.000' as Menge,
+        kostensatz: '30.000' as Einheitspreis,
+      },
+    ],
+    zuschlagssaetze: { lohn: '15.00' as Prozent, stoffe: '10.00' as Prozent },
+  },
+  einheitspreis: '58.099' as Einheitspreis,
+  epa: {
+    lohn: '25.099' as Einheitspreis,
+    stoffe: '33.000' as Einheitspreis,
+    geraete: null,
+    nachunternehmer: null,
+    sonstiges: null,
+    frei: null,
+    freiBezeichnung: null,
+  },
+};
+
+/** E10: ein Projekt mit Projektangaben und einem Bieter mit Bieterangaben (erfundene Werte). */
+export const beispielProjektMitAngaben: Projekt = {
+  id: beispielLv.projektId,
+  name: 'Neubau Kita',
+  bauherr: { name: 'Gemeinde Musterstadt', anschrift: 'Rathausplatz 1, 12345 Musterstadt' },
+  bieter: [
+    {
+      id: bieterId,
+      name: 'Muster Bau GmbH',
+      angaben: {
+        anschrift: { strasse: 'Hauptstraße 5', plz: '12345', ort: 'Musterstadt' },
+        ansprechperson: 'Frau Beispiel',
+        email: 'angebot@example.org',
+        telefon: null,
+      },
+    },
+  ],
+  angaben: {
+    nummer: '2026-014',
+    ort: 'Musterstadt',
+    baustelle: { strasse: 'Am Anger 3', plz: '12345', ort: 'Musterstadt' },
+  },
+};
+
+export const beispielProjektangabenSetzen: ProjektangabenSetzen = {
+  art: 'ProjektangabenSetzen',
+  name: beispielProjektMitAngaben.name,
+  bauherr: beispielProjektMitAngaben.bauherr,
+  angaben: beispielProjektMitAngaben.angaben ?? null,
+};
+
+export const beispielBieterangabenSetzen: BieterangabenSetzen = {
+  art: 'BieterangabenSetzen',
+  bieterId,
+  angaben: beispielProjektMitAngaben.bieter[0]?.angaben ?? null,
+};
+
+/** E15: Preisspiegel-Einstellungen mit enger Ausreißer-Schwelle und Bezug Schätzpreis. */
+export const beispielPreisspiegelEinstellungenSetzen: PreisspiegelEinstellungenSetzen = {
+  art: 'PreisspiegelEinstellungenSetzen',
+  einstellungen: {
+    ausreisserSchwelle: '15.00' as Prozent,
+    abcSchwelleA: '80.00' as Prozent,
+    abcSchwelleB: '95.00' as Prozent,
+    abcBezug: 'schaetzpreis',
+  },
+};
+
+/** E15: die Einstellungen mit Büro, einem eigenen Druckprofil und zwei Kostengruppenbezeichnungen (erfundene Texte). */
+export const beispielEinstellungen: Einstellungen = {
+  buero: {
+    name: 'Planungsbüro Beispiel',
+    anschrift: { strasse: 'Lindenweg 2', plz: '12345', ort: 'Musterstadt' },
+    telefon: '01234 5678',
+    email: 'buero@example.org',
+  },
+  druckprofile: [
+    {
+      name: 'Kurz für Bauherr',
+      mitPreisen: true,
+      langtext: { art: 'zeilen', anzahl: 3 },
+      titelsummen: true,
+      schlussblock: true,
+      deckblatt: true,
+      kopfzeile: '{lv}',
+      fusszeile: null,
+      seitenrand: 'eng',
+    },
+  ],
+  kostengruppenbezeichnungen: [
+    { nummer: '300' as Kostengruppennummer, bezeichnung: 'Eigene Bezeichnung A' },
+    { nummer: '330' as Kostengruppennummer, bezeichnung: 'Eigene Bezeichnung B' },
+  ],
+};
+
+/** Nachtrag D-82 M1: die Übernahme der Einstellungen einer Projektdatei, mit dem Block der Datei unverändert. */
+export const beispielEinstellungenUebernehmen: EinstellungenUebernehmen = {
+  art: 'EinstellungenUebernehmen',
+  einstellungen: beispielEinstellungen,
+};
+
+/** E15: je Befehl an den Einstellungen ein Beispiel. */
+export const beispieleEinstellungenbefehle: readonly [
+  BueroSetzen,
+  DruckprofilSetzen,
+  DruckprofilEntfernen,
+  KostengruppenbezeichnungenSetzen,
+  EinstellungenUebernehmen,
+] = [
+  { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
+  { art: 'DruckprofilSetzen', druckprofil: beispielEinstellungen.druckprofile[0] as Druckprofil },
+  { art: 'DruckprofilEntfernen', name: 'Kurz für Bauherr' },
+  {
+    art: 'KostengruppenbezeichnungenSetzen',
+    bezeichnungen: beispielEinstellungen.kostengruppenbezeichnungen,
+  },
+  beispielEinstellungenUebernehmen,
+];
+
+/** E15: das ChangeSet von `BueroSetzen` auf leeren Einstellungen. */
+export const beispielChangeSetBueroSetzen: EinstellungenChangeSet = {
+  art: 'einstellungen',
+  einstellungen: {
+    vorher: { buero: null, druckprofile: [], kostengruppenbezeichnungen: [] },
+    nachher: { buero: beispielEinstellungen.buero, druckprofile: [], kostengruppenbezeichnungen: [] },
+  },
+};
+
+/** Nachtrag D-82 M1: die Umkehrung für das Rückgängig der Einstellungen in der Sitzung: das getauschte ChangeSet. */
+export const beispielChangeSetBueroSetzenUmgekehrt: EinstellungenChangeSet = {
+  art: 'einstellungen',
+  einstellungen: {
+    vorher: beispielChangeSetBueroSetzen.einstellungen.nachher,
+    nachher: beispielChangeSetBueroSetzen.einstellungen.vorher,
+  },
+};
+
+/**
+ * Nachtrag D-82 M1: das Einstellungsprotokoll nach „Büro setzen“ und dessen Rückgängig; das `Rueckgaengig` nennt den Eintrag des
+ * ursprünglichen Befehls und wird mit `beispielChangeSetBueroSetzenUmgekehrt` geschrieben.
+ */
+export const beispielEinstellungsprotokoll: readonly [
+  EinstellungenProtokolleintrag,
+  EinstellungenProtokolleintrag,
+] = [
+  {
+    id: '019b76e9-0000-7000-8000-000000000801' as ProtokollId,
+    wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+    wann: '2026-11-13T10:00:00.000Z' as Zeitstempel,
+    befehl: { art: 'BueroSetzen', buero: beispielEinstellungen.buero },
+  },
+  {
+    id: '019b76e9-0000-7000-8000-000000000802' as ProtokollId,
+    wer: '019b76e9-0000-7000-8000-000000000051' as NutzerId,
+    wann: '2026-11-13T10:01:00.000Z' as Zeitstempel,
+    befehl: { art: 'Rueckgaengig', protokollId: '019b76e9-0000-7000-8000-000000000801' as ProtokollId },
+  },
+];
+
+/** Nachtrag D-82 S4: der Hinweis, wenn ein Preisbefehl die Kalkulationsangaben der Position entfernt hat. */
+export const beispielHinweisKalkulationEntfernt: Befehlshinweis = {
+  code: 'kalkulation-entfernt',
+  meldung: 'EinheitspreisAendern: Die Kalkulationsangaben der Position wurden entfernt.',
+  knotenId: posId,
+};
+
+/** E15: eine Projektdatei der Schemaversion 7 mit dem Block der Einstellungen (Schema 7 bringt Ticket 139). */
+export const beispielProjektdateiV17a: Projektdatei = {
+  schemaVersion: 7,
+  projekt: beispielProjektMitAngaben,
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [],
+  einstellungen: beispielEinstellungen,
+};
+
+// --- v1.7b (Ticket 128; A5, D-72) -----------------------------------------------------------------------------------
+
+/**
+ * Vertragsstrafe (D-72): Rechnung 2 mit einer Vertragsstrafe von 1,00 €. Herleitung der Kette (an `beispielRechnung2`):
+ * Brutto kumuliert 59,32; Umlage 0,30; Vertragsstrafe 1,00; Einbehalt round(59,32 × 5 %) = 2,97 (die Basis bleibt das
+ * Brutto kumuliert); frühere Zahlbeträge 53,42; Zahlbetrag 59,32 − 0,30 − 1,00 − 2,97 − 53,42 = 1,63 (ohne Strafe 2,63).
+ */
+export const beispielRechnung2MitVertragsstrafe: Rechnung = {
+  ...beispielRechnung2,
+  vertragsstrafe: { betrag: '1.00' as Betrag, grund: 'Zwischenfrist Rohbau um einen Werktag überschritten' },
+};
+
+const zahlungId = '019b76e9-0000-7000-8000-000000000901' as ZahlungId;
+
+/** Eine Zahlung auf Rechnung 1, einen Tag vor dem Fristende des Skontos: genau die Auszahlung mit Skonto. */
+export const beispielZahlung: Zahlung = {
+  id: zahlungId,
+  datum: '2026-11-18' as Kalenderdatum,
+  betrag: '44.05' as Betrag,
+};
+
+/**
+ * Rechnung 1 (freigegeben, Zahlbetrag 53,42 eingefroren, Eingang 05.11.2026) mit 3 % Skonto in 14 Tagen, eingeschalteter
+ * Bauabzugsteuer und einer Zahlung. Skonto und Bauabzugsteuer wurden vor der Freigabe gesetzt, die Zahlung danach erfasst.
+ */
+export const beispielRechnungMitZahlung: Rechnung = {
+  ...beispielRechnung1,
+  skonto: { satz: '3.00' as Prozent, fristTage: 14 },
+  bauabzugsteuer: true,
+  zahlungen: [beispielZahlung],
+};
+
+/**
+ * Zahlungsstand zu `beispielRechnungMitZahlung` (D-72; jeder Schritt auf 2 Stellen, N2): Fristende 05.11. + 14 Tage =
+ * 19.11.2026 (der Eingangstag zählt nicht). Möglicher Skonto round(53,42 × 3 %) = 1,60 (1,6026). Mit Skonto:
+ * Bauabzugsteuer round((53,42 − 1,60) × 15 %) = round(7,773) = 7,77, Auszahlung 53,42 − 1,60 − 7,77 = 44,05. Ohne Skonto:
+ * Bauabzugsteuer round(53,42 × 15 %) = round(8,013) = 8,01, Auszahlung 45,41. Die Zahlung vom 18.11. (44,05) erreicht die
+ * Auszahlung mit Skonto bis zum Fristende: verwirklicht. Offen 53,42 − 1,60 − 7,77 − 44,05 = 0,00.
+ */
+export const beispielZahlungsstand: Zahlungsstand = {
+  zahlbetrag: '53.42' as Betrag,
+  fristende: '2026-11-19' as Kalenderdatum,
+  mitSkonto: { skonto: '1.60' as Betrag, bauabzugsteuer: '7.77' as Betrag, auszahlung: '44.05' as Betrag },
+  ohneSkonto: { skonto: '0.00' as Betrag, bauabzugsteuer: '8.01' as Betrag, auszahlung: '45.41' as Betrag },
+  skontoVerwirklicht: true,
+  verwirklichterSkonto: '1.60' as Betrag,
+  bauabzugsteuer: '7.77' as Betrag,
+  auszahlung: '44.05' as Betrag,
+  summeZahlungen: '44.05' as Betrag,
+  offen: '0.00' as Betrag,
+};
+
+/** Die Befunde des Zahlungsstands, je einer (das zweite: 0,50 € mehr gezahlt als die geltende Auszahlung). */
+export const beispielZahlungsbefunde: readonly Zahlungsbefund[] = [
+  { code: 'skonto-ohne-eingang' },
+  { code: 'zahlungen-ueber-auszahlung', offen: '-0.50' as Betrag },
+];
+
+/** ChangeSet zu `ZahlungErfassen` an Rechnung 1: die ganze Rechnung, nur `zahlungen` ändert sich, die Freigabe bleibt. */
+export const beispielChangeSetZahlungErfassen: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: beispielRechnung1.id,
+  rechnung: { vorher: beispielRechnung1, nachher: { ...beispielRechnung1, zahlungen: [beispielZahlung] } },
+};
+
+/** Freigabe aufheben an einer Rechnung mit Zahlungen (Q5). */
+export const beispielFehlerFreigabeAufhebenMitZahlungen: Befehlsfehler = {
+  code: 'zahlungen-vorhanden',
+  meldung: 'RechnungsfreigabeAufheben: Zur Rechnung 1 ist 1 Zahlung erfasst.',
+};
+
+/** Je neuem Befehl ein Beispiel (Rechnung 2 vor der Freigabe; Zahlungen an Rechnung 1). */
+export const beispieleV17b: readonly [
+  VertragsstrafeSetzen,
+  SkontoSetzen,
+  BauabzugsteuerSetzen,
+  ZahlungErfassen,
+  ZahlungAendern,
+  ZahlungLoeschen,
+] = [
+  {
+    art: 'VertragsstrafeSetzen',
+    vertragsstrafe: beispielRechnung2MitVertragsstrafe.vertragsstrafe ?? null,
+  },
+  { art: 'SkontoSetzen', skonto: { satz: '3.00' as Prozent, fristTage: 14 } },
+  { art: 'BauabzugsteuerSetzen', bauabzugsteuer: true },
+  { art: 'ZahlungErfassen', zahlung: beispielZahlung },
+  { art: 'ZahlungAendern', zahlung: { ...beispielZahlung, betrag: '45.41' as Betrag } },
+  { art: 'ZahlungLoeschen', zahlungId },
+];
+
+// --- v1.7c (Ticket 160; E8, D-96) -----------------------------------------------------------------------------------
+
+/** E8: Projekt samt Inhalt löschen; der Befehl trägt nichts, der Bestand geht an den Ausführer. */
+export const beispielProjektSamtInhaltLoeschen: ProjektSamtInhaltLoeschen = {
+  art: 'ProjektSamtInhaltLoeschen',
+};
+
+/**
+ * D-96: der Bestand des Projekts aus `beispielProjektdateiV16` mit dem Beispiel-LV und seinem LV-Stand: alle Listen der Datei
+ * ohne Schemaversion, Projekt und Modell-Bytes (die Datei hat keine Einstellungen). Das Modell nennt seine Datei über den Hash.
+ */
+export const beispielProjektbestand: Projektbestand = {
+  leistungsverzeichnisse: [beispielLvStand.zustand],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [beispielMassenprotokollBauwerksmodell],
+  lvStaende: [beispielLvStand],
+  kostenermittlungen: [{ kostenermittlung: beispielKostenberechnungHoai }],
+  bauwerksmodelle: [{ bauwerksmodell: beispielBauwerksmodell }],
+  bauzeitenplaene: [{ bauzeitenplan: beispielBauzeitenplan }],
+  honorarberechnungen: [{ honorarberechnung: beispielHonorarberechnung }],
+  maengel: [{ mangel: beispielMangel1 }, { mangel: beispielMangel2 }],
+  bautagebuch: [{ bautagebucheintrag: beispielBautagebucheintrag }],
+};
+
+/** D-96: das ChangeSet des Löschens: Projekt und Bestand vorher, beide nachher `null`. */
+export const beispielChangeSetProjektSamtInhaltLoeschen: ProjektbestandChangeSet = {
+  art: 'projektbestand',
+  projektId: beispielProjektdateiV16.projekt.id,
+  projekt: { vorher: beispielProjektdateiV16.projekt, nachher: null },
+  bestand: { vorher: beispielProjektbestand, nachher: null },
+};
+
+/** D-96: seine Umkehrung (Undo): beide Seiten getauscht; `speicher` legt alles mit denselben Kennungen zurück. */
+export const beispielChangeSetProjektSamtInhaltLoeschenUmgekehrt: ProjektbestandChangeSet = {
+  art: 'projektbestand',
+  projektId: beispielProjektdateiV16.projekt.id,
+  projekt: { vorher: null, nachher: beispielProjektdateiV16.projekt },
+  bestand: { vorher: null, nachher: beispielProjektbestand },
 };

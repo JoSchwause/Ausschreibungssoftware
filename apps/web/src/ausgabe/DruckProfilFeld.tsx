@@ -2,12 +2,21 @@
 // Ticket 90 (O3): Druckprofil im Druckdialog wählen, ändern, als eigenes Profil ablegen, löschen, als JSON-Datei
 // exportieren und importieren. Die eigenen Profile sind eine Einstellung des Nutzers (D-90.1), nicht des Projekts.
 // Eine Änderung der Felder gilt für den Druck, auch ohne zu speichern; Befunde beim Import sperren nie (U5).
+// Ticket 150 (E15, D-73): Die eigenen Profile stehen in den Einstellungen des Speichers; jede Änderung ist ein Befehl an den
+// Einstellungen mit eigenem Rückgängig (D-82 M1), Löschen fragt vorher (Q5). Der alte Schlüssel des Browserspeichers wird nur
+// noch für die Einträge gelesen, die bei der Übernahme nicht als Profil galten.
 
 import type { Druckprofil, DruckprofilBefund } from '@tethys/ausgabe';
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { DateiNichtLesbar, dateiBytes, herunterladen } from '../gaeb/datei';
+import {
+  EinstellungenKnoepfe,
+  useEinstellungen,
+  useEinstellungenHistorie,
+} from '../historie/EinstellungenAnbieter'; // Ticket 150
+import { useMeldungen } from '../lv/meldungen';
 import { texte } from './texte';
 import {
   PROFILE_SCHLUESSEL,
@@ -16,12 +25,14 @@ import {
   ablageLesen,
   alleProfile,
   dateinameProfil,
+  istStandardName,
   dateinameZurueck,
   profilAendern,
   profilAnlegen,
   profilGleich,
   profilImportieren,
-  profilLoeschen,
+  profilNachLoeschen,
+  standardProfil,
   zurueckAlsDatei,
   zurueckNichtLesbar,
   zeilenLesen,
@@ -47,21 +58,27 @@ function schreiben(schluessel: string, wert: string): void {
 }
 
 export interface ProfilAnfang {
-  readonly eigene: Druckprofil[];
-  /** Gespeicherte Einträge, die nicht gelten; sie bleiben beim Schreiben erhalten (Q5). */
+  /** Einträge im alten Browserspeicher, die nicht als Profil gelten; sie bleiben dort erhalten (Q5). */
   readonly zurueck: readonly Zurueckgehalten[];
   readonly name: string;
   readonly arbeit: Druckprofil;
 }
 
-/** Anfangsstand: die zuletzt gewählte Profilauswahl, sonst „Auftrags-LV mit Preisen“ (= Druck wie bisher). */
-export function profilAnfang(w: Werkzeug): ProfilAnfang {
-  const { eigene, zurueck } = ablageLesen(w, lesen(PROFILE_SCHLUESSEL));
-  const alle = alleProfile(w, eigene);
+/** Die eigenen Profile der Einstellungen; ein Name eines Standardprofils gilt nicht (die App legt keines so an). */
+export const eigeneProfile = (w: Werkzeug, profile: readonly Druckprofil[]): Druckprofil[] =>
+  profile.filter((p) => !istStandardName(w, p.name));
+
+/**
+ * Anfangsstand: die zuletzt gewählte Profilauswahl, sonst „Auftrags-LV mit Preisen“ (= Druck wie bisher). `profile`: die
+ * eigenen Druckprofile der Einstellungen.
+ */
+export function profilAnfang(w: Werkzeug, profile: readonly Druckprofil[]): ProfilAnfang {
+  const { zurueck } = ablageLesen(w, lesen(PROFILE_SCHLUESSEL));
+  const alle = alleProfile(w, eigeneProfile(w, profile));
   const name = lesen(PROFIL_GEWAEHLT_SCHLUESSEL);
   const wahl = alle.find((p) => p.name === name) ?? w.STANDARD_DRUCKPROFILE[2] ?? alle[0];
   if (wahl === undefined) throw new Error('Kein Standardprofil vorhanden.');
-  return { eigene, zurueck, name: wahl.name, arbeit: wahl };
+  return { zurueck, name: wahl.name, arbeit: wahl };
 }
 
 export interface DruckProfilFeldProps {
@@ -80,9 +97,13 @@ export function DruckProfilFeld({
   gesperrt,
 }: DruckProfilFeldProps): ReactElement {
   const { zeige } = useToast();
+  const { pruefe } = useMeldungen();
+  const einstellungen = useEinstellungen();
+  const historie = useEinstellungenHistorie();
   const [zurueck, setZurueck] = useState<readonly Zurueckgehalten[]>(anfang.zurueck);
   const [entfernenFrage, setEntfernenFrage] = useState(false);
-  const [eigene, setEigene] = useState<Druckprofil[]>(anfang.eigene);
+  const [loeschenFrage, setLoeschenFrage] = useState(false);
+  const eigene = eigeneProfile(w, einstellungen.zustand.druckprofile);
   const [gewaehlt, setGewaehlt] = useState(anfang.name);
   const [neuerName, setNeuerName] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
@@ -91,6 +112,15 @@ export function DruckProfilFeld({
     arbeit.langtext.art === 'zeilen' ? String(arbeit.langtext.anzahl) : '3',
   );
   const datei = useRef<HTMLInputElement>(null);
+  // Ticket 162: Solange das Löschen gespeichert wird, warten die Felder; danach steht der Fokus auf der Profilauswahl.
+  const [loeschtGerade, setLoeschtGerade] = useState(false);
+  const [fokusAufAuswahl, setFokusAufAuswahl] = useState(false);
+  const auswahlZeile = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!fokusAufAuswahl || gesperrt || loeschtGerade) return;
+    auswahlZeile.current?.querySelector<HTMLElement>('[role="combobox"]')?.focus();
+    setFokusAufAuswahl(false);
+  }, [fokusAufAuswahl, gesperrt, loeschtGerade]);
 
   const alle = alleProfile(w, eigene);
   const vorlage = alle.find((p) => p.name === gewaehlt);
@@ -98,10 +128,9 @@ export function DruckProfilFeld({
   const geaendert = vorlage !== undefined && !profilGleich(vorlage, arbeit);
   const zeilenOk = arbeit.langtext.art !== 'zeilen' || zeilenLesen(zeilenText) !== null;
 
-  const merke = (neu: Druckprofil[]): void => {
-    setEigene(neu);
-    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(neu, zurueck));
-  };
+  /** Legt ein Profil in den Einstellungen ab (ersetzt eines gleichen Namens); `true`, wenn es gespeichert ist. */
+  const merke = async (druckprofil: Druckprofil): Promise<boolean> =>
+    pruefe(await einstellungen.sitzung.befehl({ art: 'DruckprofilSetzen', druckprofil }));
   const uebernehme = (p: Druckprofil): void => {
     setGewaehlt(p.name);
     schreiben(PROFIL_GEWAEHLT_SCHLUESSEL, p.name);
@@ -119,24 +148,32 @@ export function DruckProfilFeld({
     onArbeit({ ...arbeit, ...teil });
   };
 
-  const speichern = (): void => {
+  // Ein Rückgängig der Einstellungen kann das gewählte Profil entfernen: dann gilt wieder das Standardprofil.
+  const fehlt = vorlage === undefined;
+  useEffect(() => {
+    if (!fehlt) return;
+    uebernehme(standardProfil(w));
+    // Nur, wenn das gewählte Profil verschwindet.
+  }, [fehlt]);
+
+  const speichern = async (): Promise<void> => {
     const r = profilAendern(w, eigene, arbeit);
     if (!r.ok) {
       setFehler(t.fehler[r.fehler]);
       return;
     }
-    merke(r.eigene);
+    if (!(await merke(arbeit))) return;
     setFehler(null);
     zeige({ titel: t.gespeichert(arbeit.name), art: 'erfolg' });
   };
-  const speichernUnter = (): void => {
+  const speichernUnter = async (): Promise<void> => {
     const r = profilAnlegen(w, eigene, { ...arbeit, name: neuerName });
     if (!r.ok) {
       setFehler(t.fehler[r.fehler]);
       return;
     }
     const name = neuerName.trim();
-    merke(r.eigene);
+    if (!(await merke({ ...arbeit, name }))) return;
     uebernehme({ ...arbeit, name });
     setNeuerName('');
     setFehler(null);
@@ -147,17 +184,32 @@ export function DruckProfilFeld({
     herunterladen(dateinameZurueck(), zurueckAlsDatei(zurueck), 'application/json');
   };
   const zurueckEntfernen = (): void => {
-    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(eigene, []));
+    // Nur im alten Browserspeicher; dessen gültige Profile bleiben dort stehen (die alten Schlüssel bleiben, D-73).
+    schreiben(PROFILE_SCHLUESSEL, ablageAlsText(ablageLesen(w, lesen(PROFILE_SCHLUESSEL)).eigene, []));
     setZurueck([]);
     setEntfernenFrage(false);
     zeige({ titel: t.zurueckEntfernt, art: 'erfolg' });
   };
-  const loeschen = (): void => {
+  // Ticket 162 (U3): Die Auswahl wechselt sofort auf das nächste Profil (sonst das Standardprofil), und die Felder warten,
+  // bis das Löschen gespeichert ist. Vorher ließ sich die Liste öffnen, solange das gelöschte Profil noch gewählt war: Es
+  // hielt den Fokus und nahm ihn beim Verschwinden mit; die Meldung danach fing zudem Escape ab.
+  const loeschen = async (): Promise<void> => {
+    setLoeschenFrage(false);
     const name = gewaehlt;
-    merke(profilLoeschen(eigene, name));
-    const standard = w.STANDARD_DRUCKPROFILE[2] ?? w.STANDARD_DRUCKPROFILE[0];
-    if (standard !== undefined) uebernehme(standard);
-    zeige({ titel: t.geloescht(name), art: 'erfolg' });
+    const vorher = arbeit;
+    uebernehme(profilNachLoeschen(w, eigene, name));
+    setLoeschtGerade(true);
+    try {
+      const a = await einstellungen.sitzung.befehl({ art: 'DruckprofilEntfernen', name });
+      if (!pruefe(a)) {
+        uebernehme(vorher);
+        return;
+      }
+      zeige({ titel: t.geloescht(name), art: 'erfolg' });
+    } finally {
+      setLoeschtGerade(false);
+      setFokusAufAuswahl(true);
+    }
   };
   const importieren = async (f: File): Promise<void> => {
     let text: string;
@@ -171,7 +223,7 @@ export function DruckProfilFeld({
     const r = profilImportieren(w, eigene, text);
     setBefunde(r.befunde);
     if (r.profil === null) return;
-    merke(r.eigene);
+    if (!(await merke(r.profil))) return;
     uebernehme(r.profil);
     setFehler(null);
     zeige({
@@ -196,8 +248,9 @@ export function DruckProfilFeld({
   );
 
   return (
-    <fieldset className="gaeb__profil" disabled={gesperrt}>
-      <div className="gaeb__auswahl">
+    // Ticket 150: Strg+Z und Strg+Y gelten hier dem Rückgängig der Einstellungen (D-82 M1).
+    <fieldset className="gaeb__profil" disabled={gesperrt || loeschtGerade} onKeyDown={historie.tasten}>
+      <div className="gaeb__auswahl" ref={auswahlZeile}>
         <Auswahl
           label={t.auswahl}
           optionen={alle.map((p) => ({ wert: p.name, label: p.name }))}
@@ -279,13 +332,18 @@ export function DruckProfilFeld({
       {!istEigen ? <p>{t.standardHinweis}</p> : null}
       <div className="gaeb__auswahl">
         <Eingabefeld label={t.name} value={neuerName} onWertChange={setNeuerName} />
-        <Button disabled={neuerName.trim() === '' || !zeilenOk} onClick={speichernUnter}>
+        <Button disabled={neuerName.trim() === '' || !zeilenOk} onClick={() => void speichernUnter()}>
           {t.speichernUnter}
         </Button>
-        <Button disabled={!istEigen || !geaendert || !zeilenOk} onClick={speichern}>
+        <Button disabled={!istEigen || !geaendert || !zeilenOk} onClick={() => void speichern()}>
           {t.speichern}
         </Button>
-        <Button disabled={!istEigen} onClick={loeschen}>
+        <Button
+          disabled={!istEigen}
+          onClick={() => {
+            setLoeschenFrage(true);
+          }}
+        >
           {t.loeschen}
         </Button>
         <Button
@@ -309,6 +367,7 @@ export function DruckProfilFeld({
           }}
         />
         <Button onClick={() => datei.current?.click()}>{t.importieren}</Button>
+        <EinstellungenKnoepfe historie={historie} />
       </div>
       {fehler !== null ? <p role="alert">{fehler}</p> : null}
       {zurueck.length > 0 ? (
@@ -353,6 +412,26 @@ export function DruckProfilFeld({
             </Button>
             <Button variante="gefahr" onClick={zurueckEntfernen}>
               {t.zurueckEntfernenBestaetigen}
+            </Button>
+          </>
+        }
+      />
+      <Dialog
+        offen={loeschenFrage}
+        onOffenChange={setLoeschenFrage}
+        titel={t.loeschenTitel}
+        beschreibung={t.loeschenFrage(gewaehlt)}
+        fuss={
+          <>
+            <Button
+              onClick={() => {
+                setLoeschenFrage(false);
+              }}
+            >
+              {texte.pdf.abbrechen}
+            </Button>
+            <Button variante="gefahr" onClick={() => void loeschen()}>
+              {t.loeschenBestaetigen}
             </Button>
           </>
         }

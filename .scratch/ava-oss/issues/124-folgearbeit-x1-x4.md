@@ -1,6 +1,6 @@
 # 124: Folgearbeit X1–X4 (Vorgang verschieben, Fortschritt aus dem Leistungsstand, KG-Hinweis an der Zelle)
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Welle: 7 (Vorschlag) · Strang: X2, C2 · Ordner: `apps/web/src/bauzeit/`, `apps/web/src/lv/`, `apps/web/src/kosten/`
 Blocked by: 122
@@ -26,3 +26,9 @@ Herkunft: offene Punkte der Tickets 93 und 118, Bericht Welle 6
 - [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün
 
 ## Comments
+
+- Welle 7 (D-76): aufgeteilt. Punkt 3 → 148; Punkte 1, 2, 4, 5 → 155.
+
+## Answer
+
+Aufgeteilt auf die Tickets 148 und 155 der Welle 7; dort erledigt (Kann-Teile nach §4 gekürzt, siehe 155).

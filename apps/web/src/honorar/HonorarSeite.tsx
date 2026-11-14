@@ -20,10 +20,11 @@ import type { KeyboardEvent, ReactElement } from 'react';
 import { datumAusUhr } from '../ausgabe/logik';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { dateinameSauber } from '../dateiname';
+import { texte as fehlerTexte } from '../fehler/texte';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { befundAnsicht, ergebnisAnsicht } from './ansicht';
 import {
@@ -43,6 +44,7 @@ import {
   type KopfFormular,
   type ObjektFormular,
 } from './formular';
+import { kostenermittlungPfad } from '../kosten/pfad';
 import { honorarPfad } from './pfad';
 import { honorarPdf } from './pdf';
 import {
@@ -60,15 +62,11 @@ import './honorar.css';
 
 const t = texte.editor;
 
-type Laden =
-  | { art: 'laedt' }
-  | { art: 'fehlt' }
-  | {
-      art: 'da';
-      zustand: HonorarberechnungZustand;
-      projektName: string;
-      kostenermittlungen: readonly Kostenermittlung[];
-    };
+interface Geladen {
+  zustand: HonorarberechnungZustand;
+  projektName: string;
+  kostenermittlungen: readonly Kostenermittlung[];
+}
 
 export function HonorarSeite({
   projektId,
@@ -79,58 +77,34 @@ export function HonorarSeite({
   id: HonorarberechnungId;
   gehe: (pfad: string) => void;
 }): ReactElement {
-  const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void (async (): Promise<Laden> => {
-      const h = await u.speicher.honorarberechnungen.laden(id);
-      const p = await u.speicher.projekte.laden(projektId);
-      const k = await kostenermittlungenDesProjekts(u.speicher, projektId);
+  // Undo und Redo können sie ändern oder entfernen: das Gerüst lädt neu.
+  const { lage } = useSeitenladen(
+    async ({ speicher }): Promise<Geladen | null> => {
+      const h = await speicher.honorarberechnungen.laden(id);
+      const p = await speicher.projekte.laden(projektId);
+      const k = await kostenermittlungenDesProjekts(speicher, projektId);
       return h.ok && p.ok && k.ok
-        ? { art: 'da', zustand: h.wert, projektName: p.wert.name, kostenermittlungen: k.wert }
-        : { art: 'fehlt' };
-    })().then((l) => {
-      if (aktiv) setLage(l);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [u, id, projektId, lauf]);
-  // Undo und Redo können sie ändern oder entfernen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+        ? { zustand: h.wert, projektName: p.wert.name, kostenermittlungen: k.wert }
+        : null;
+    },
+    [id, projektId],
   );
 
-  if (lage.art === 'laedt') {
+  if (lage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{texte.seite.laden}</p>
-      </div>
-    );
-  }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{t.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-          <Verweis pfad={honorarPfad(projektId)} text={t.zurueck} gehe={gehe} />
-        </div>
-      </div>
+      <Ladeansicht
+        lage={lage}
+        laden={texte.seite.laden}
+        nichtGefunden={t.nichtGefunden}
+        zusatz={<Verweis pfad={honorarPfad(projektId)} text={t.zurueck} gehe={gehe} />}
+      />
     );
   }
   return (
     <Editor
-      zustand={lage.zustand}
-      projektName={lage.projektName}
-      kostenermittlungen={lage.kostenermittlungen}
+      zustand={lage.wert.zustand}
+      projektName={lage.wert.projektName}
+      kostenermittlungen={lage.wert.kostenermittlungen}
       gehe={gehe}
     />
   );
@@ -206,7 +180,8 @@ function Editor({
       const bytes = await honorarPdf(b, ergebnis, befunde, projektName, datumAusUhr(u.uhr()));
       herunterladenBytes(`${dateinameSauber(b.name, 'Honorarberechnung')}.pdf`, bytes, 'application/pdf');
     } catch {
-      zeige({ titel: t.pdfFehler, art: 'fehler' });
+      // Wellen-Review SB1: mit dem nächsten Schritt, nie mit dem technischen Text des Workers.
+      zeige({ titel: t.pdfFehler, beschreibung: fehlerTexte.pdf, art: 'fehler' });
     }
   };
 
@@ -247,6 +222,7 @@ function Editor({
           nummer={i + 1}
           objekt={o}
           kostenermittlungen={kostenermittlungen}
+          gehe={gehe}
           uebernehmen={(neu) => {
             objektSetzen(i, neu);
           }}
@@ -541,12 +517,14 @@ function ObjektKarte({
   nummer,
   objekt,
   kostenermittlungen,
+  gehe,
   uebernehmen,
   entfernen,
 }: {
   nummer: number;
   objekt: Honorarobjekt;
   kostenermittlungen: readonly Kostenermittlung[];
+  gehe: (pfad: string) => void;
   uebernehmen: (o: Honorarobjekt) => void;
   entfernen: () => void;
 }): ReactElement {
@@ -608,6 +586,7 @@ function ObjektKarte({
   const standard = new Map(phasenDes(f.leistungsbild).map((p) => [p.nummer, p] as const));
   const vorgabe = vorgabeZu(f.honorarsatz);
   const kosten = kostenermittlungen;
+  const gewaehlteErmittlung = kosten.find((k) => k.id === f.kostenermittlungId);
 
   return (
     <section className="honorar__objekt" aria-label={t.objektTitel(nummer, f.bezeichnung)}>
@@ -679,6 +658,14 @@ function ObjektKarte({
                   sofort({ ...f, kostenermittlungId: w });
                 }}
                 optionen={kosten.map((k) => ({ wert: k.id, label: k.name }))}
+              />
+            )}
+            {/* Ticket 155: Verweis Honorar → Kostenermittlung */}
+            {gewaehlteErmittlung === undefined ? null : (
+              <Verweis
+                pfad={kostenermittlungPfad(gewaehlteErmittlung.projektId, gewaehlteErmittlung.id)}
+                text={texte.verweis.zurKostenermittlung(gewaehlteErmittlung.name)}
+                gehe={gehe}
               />
             )}
             {text(t.weitereKosten, 'weitereKosten')}

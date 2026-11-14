@@ -8,6 +8,7 @@
 
 import type {
   AufmassId,
+  BieterId,
   ElternId,
   GliederungId,
   HinweistextId,
@@ -21,6 +22,7 @@ import type {
   ProjektId,
   ProtokollId,
   VorgangId,
+  ZahlungId,
 } from './marken';
 import type {
   Angebot,
@@ -32,8 +34,12 @@ import type {
   AuftragsLeistungsverzeichnis,
   Bauherr,
   Bieter,
+  Bieterangaben,
   Einheit,
   Einheitspreisanteile,
+  Kalkulationsangaben,
+  PreisspiegelEinstellungen,
+  Projektangaben,
   Knoten,
   Kostenermittlung,
   Kostenermittlungseintrag,
@@ -56,7 +62,9 @@ import type { Bauteilzuordnung, Bauwerksmodell } from './bim';
 import type { Arbeitskalender, Bauzeitenplan, Vorgang } from './bauzeit';
 import type { Honorarberechnung, Honorarobjekt, Nebenkostenangabe } from './honorar';
 import type { Bautagebucheintrag, Mangel, Mangelverlaufseintrag } from './bauleitung';
+import type { Buero, Druckprofil, Einstellungen, Kostengruppenbezeichnung } from './einstellungen';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
+import type { Skonto, Vertragsstrafe, Zahlung } from './zahlung';
 
 /** Wo ein Knoten eingefügt oder hingeschoben wird. */
 export type Einfuegeort =
@@ -108,7 +116,93 @@ export interface ProjektLoeschen {
   readonly art: 'ProjektLoeschen';
 }
 
-export type ProjektBefehl = ProjektAnlegen | ProjektStammdatenSetzen | BieterAnlegen | ProjektLoeschen;
+/**
+ * Löscht das Projekt **samt Inhalt** (v1.7c, Ticket 160; E8, D-96; Glossar „Projekt samt Inhalt löschen“): das Projekt mit
+ * seinen Bietern, allen Aggregaten, LV-Ständen und seinem Befehlsprotokoll, als ein Befehl und ein Undo-Schritt.
+ * `ProjektLoeschen` und seine `konflikt`-Regel bleiben, wie sie sind. Die Oberfläche fragt ausdrücklich nach, nennt die Anzahl
+ * je Art und verweist zuerst auf „Projektdatei sichern“ (Q5).
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart; D-160.x im Ticket):
+ * - Ausführer: `ProjektSamtInhaltLoeschenAusfuehren` mit dem **Bestand** des Projekts (`Projektbestand`) als Pflichtparameter;
+ *   der allgemeine `ProjektBefehlAusfuehren` hat keinen Bestand und weist den Befehl mit `ungueltige-eingabe`
+ *   (`feld: 'bestand'`) ab. ChangeSet: `ProjektbestandChangeSet` (nicht `ProjektChangeSet`).
+ * - Massenbefehl (`MASSENBEFEHLSARTEN`, E-13): Der Kopf ist der Befehl selbst; der Bestand, die lange Liste dieses Befehls, steht
+ *   im ChangeSet und nie im Protokoll. Im Protokoll steht er mit dem Projekt als Aggregat (`{ art: 'projekt' }`).
+ * - Wie bei `ProjektLoeschen` (D-31.1) geht das Protokoll des Projekts mit, und der Eintrag des Löschens bleibt nicht stehen;
+ *   das Undo legt das Protokoll aus dem Bestand zurück und schreibt danach wie jeder Befehl seinen `Rueckgaengig`-Eintrag.
+ * - Vergleich beim Löschen (D-104, Präzisierung von D-160.5): Projekt und Aggregate müssen dem `bestand.vorher` gleichen, das
+ *   gespeicherte Protokoll muss nur mit `bestand.vorher.protokoll` **beginnen**; angehängte Einträge sind erlaubt. Sonst
+ *   scheiterte das Wiederholen nach einem Undo immer, denn das Undo hängt seinen `Rueckgaengig`-Eintrag an (D-160.6).
+ * - Die Einstellungen des Geräts bleiben unberührt; die Bytes der Modelldateien bleiben in der Ablage (`Modelldateiablage`:
+ *   freigegeben erst beim nächsten Öffnen, wenn kein Modell sie mehr nennt, also nie, solange ein Undo-Schritt sie braucht).
+ */
+export interface ProjektSamtInhaltLoeschen {
+  readonly art: 'ProjektSamtInhaltLoeschen';
+}
+
+/**
+ * Benennt einen Bieter des Projekts um (v1.7a, Ticket 127; E8). Ein leerer Name ist erlaubt wie bei `BieterAnlegen` (U5).
+ * Ein Bieter, den das Projekt nicht hat: `ungueltige-eingabe` (`feld: 'bieterId'`). ChangeSet: das ganze Projekt vorher und
+ * nachher (`ProjektChangeSet`), wie jeder Projektbefehl.
+ */
+export interface BieterUmbenennen {
+  readonly art: 'BieterUmbenennen';
+  readonly bieterId: BieterId;
+  readonly name: string;
+}
+
+/**
+ * Entfernt einen Bieter aus dem Projekt (v1.7a, Ticket 127; E8), **nur ohne Angebot**. Der Ausführer bekommt die Verweise
+ * auf den Bieter als dritten Parameter (`ProjektBefehlAusfuehren`, `verweise`: die Angebote des Bieters als
+ * `{ art: 'angebot', anzahl }`); ist die Anzahl größer als 0, weist er mit `verweise-vorhanden` ab und nennt sie in
+ * `Befehlsfehler.verweise` (Verweissperre, Q5). Fehlt `verweise`, weist er mit `ungueltige-eingabe` (`feld: 'verweise'`)
+ * ab: Ohne Bestand ist das Löschen nicht prüfbar. `speicher` weist ein ChangeSet, das einen Bieter mit Angebot entfernt, mit
+ * `konflikt` ab (auch als Undo von `BieterAnlegen`). Ein Bieter, den das Projekt nicht hat: `ungueltige-eingabe`
+ * (`feld: 'bieterId'`). Undo stellt ihn an seiner Stelle in `Projekt.bieter` wieder her (ganzes Projekt im ChangeSet).
+ */
+export interface BieterLoeschen {
+  readonly art: 'BieterLoeschen';
+  readonly bieterId: BieterId;
+}
+
+/**
+ * Setzt die Projektangaben (v1.7a, Ticket 127; E10, Glossar „Projektangaben“): Name, Bauherr und die weiteren Angaben in
+ * einem Befehl, ein Undo-Schritt für den Dialog „Projektangaben“. Ersetzt für die App `ProjektStammdatenSetzen` (das gültig
+ * bleibt, damit Protokolle vor v1.7a ihre Bedeutung behalten, und `Projekt.angaben` unverändert lässt). `angaben: null`
+ * entfernt sie (das Feld fehlt danach); `''` in einem Feld legt der Kern als `null` ab, alles `null` als fehlenden Block
+ * (siehe `Projektangaben`). ChangeSet: das ganze Projekt vorher und nachher.
+ */
+export interface ProjektangabenSetzen {
+  readonly art: 'ProjektangabenSetzen';
+  readonly name: string;
+  readonly bauherr: Bauherr;
+  readonly angaben: Projektangaben | null;
+}
+
+/**
+ * Setzt die Bieterangaben (Anschrift, Ansprechperson, E-Mail, Telefon) eines Bieters als ganzen Wert (v1.7a, Ticket 127;
+ * E10); `null` entfernt sie. Normalisierung wie `ProjektangabenSetzen`. Ein Bieter, den das Projekt nicht hat:
+ * `ungueltige-eingabe` (`feld: 'bieterId'`). Der Name bleibt (`BieterUmbenennen`); ein Dialog, der beides ändert, schreibt
+ * beide Befehle als Befehlsfolge (D-12).
+ */
+export interface BieterangabenSetzen {
+  readonly art: 'BieterangabenSetzen';
+  readonly bieterId: BieterId;
+  readonly angaben: Bieterangaben | null;
+}
+
+export type ProjektBefehl =
+  | ProjektAnlegen
+  | ProjektStammdatenSetzen
+  | BieterAnlegen
+  | ProjektLoeschen
+  // v1.7a
+  | BieterUmbenennen
+  | BieterLoeschen
+  | ProjektangabenSetzen
+  | BieterangabenSetzen
+  // v1.7c (Ticket 160, D-96)
+  | ProjektSamtInhaltLoeschen;
 
 // --- Leistungsverzeichnis: Anlegen und Stammdaten ------------------------------------------------------
 
@@ -287,6 +381,38 @@ export interface LvStandAnlegen {
   readonly id: LvStandId;
   readonly name: string;
 }
+
+// --- LV-Stand umbenennen und löschen (v1.7a, Ticket 127; E8) -------------------------------------------------------
+//
+// Ein LV-Stand bleibt im Inhalt unveränderlich; neu ist nur sein Name und dass er entfernt werden kann (sonst ließe sich
+// ein LV mit Ständen nie löschen, D-12). Kein `LvBefehl`: Der Ausführer des LV sieht keine Stände. Eigener Ausführer
+// `LvStandBefehlAusfuehren` (Kern, Ticket 137) mit dem ganzen Stand als Zustand; das ChangeSet ist ein `LvChangeSet` des LV,
+// dem der Stand gehört (`kopf: null`, keine Knoten, leere Summen), im Protokoll mit diesem LV als Aggregat. Eine Kennung,
+// die nicht die des übergebenen Stands ist: `befehl-nicht-zustaendig`.
+
+/**
+ * Benennt einen LV-Stand um. Der Name darf nicht leer sein (Leerraum zählt als leer), wie bei `LvStandAnlegen`: sonst
+ * `ungueltige-eingabe` (`feld: 'name'`; D-87, D-137.1). ChangeSet: `lvStand` mit beiden Köpfen, die sich nur im `name`
+ * unterscheiden; `lvStandInhalt` fehlt.
+ */
+export interface LvStandUmbenennen {
+  readonly art: 'LvStandUmbenennen';
+  readonly lvStandId: LvStandId;
+  readonly name: string;
+}
+
+/**
+ * Löscht einen LV-Stand. Unumkehrbar im Sinne von Q5 (Bestätigung in der Oberfläche); das ChangeSet trägt den ganzen Stand
+ * (`lvStand.vorher` den Kopf, `lvStandInhalt.vorher` Zeitpunkt und Zustand), damit Undo ihn unverändert, mit seinem
+ * `angelegt`, wieder ablegt (siehe `LvChangeSet.lvStandInhalt`). Nichts verweist auf einen Stand; es gibt keine Sperre.
+ */
+export interface LvStandLoeschen {
+  readonly art: 'LvStandLoeschen';
+  readonly lvStandId: LvStandId;
+}
+
+/** Befehle an einem gespeicherten LV-Stand (v1.7a; Zustand: `LvStand`, Ausführer `LvStandBefehlAusfuehren`). */
+export type LvStandBefehl = LvStandUmbenennen | LvStandLoeschen;
 
 // --- Felder ändern (Tickets 07, 21) -----------------------------------------------------------------------
 //
@@ -467,6 +593,47 @@ export interface VorlageSetzen {
   readonly vorlage: boolean;
 }
 
+/**
+ * Setzt die Preisspiegel-Einstellungen des LV als ganzen Wert; `null` entfernt sie, dann gelten die Standardwerte (v1.7a,
+ * Ticket 127; E15, D-73). ChangeSet: nur der Kopf, keine Summen. Der Kern prüft die Form (siehe `PreisspiegelEinstellungen`).
+ * Name wie der Typ des Werts (v1.7a Nachtrag, Review D-82 S5; bis dahin `PreisspiegeleinstellungenSetzen`, das in keinem
+ * Protokoll steht). Ein LV, das aus einem LV-Stand neu entsteht, bekommt die Einstellungen des Stands nur über diesen Befehl,
+ * den die App an die Befehlsfolge hängt (Review D-82 S6, Ticket 150).
+ */
+export interface PreisspiegelEinstellungenSetzen {
+  readonly art: 'PreisspiegelEinstellungenSetzen';
+  readonly einstellungen: PreisspiegelEinstellungen | null;
+}
+
+/**
+ * Setzt die Kalkulationsangaben einer Position zusammen mit dem daraus gerechneten EP und den EPA (v1.7a, Ticket 127; E9,
+ * B-19), wie `MengenansatzSetzen` Ansatz und Menge: Die App rechnet `einheitspreis` und `epa` mit `kosten`
+ * (`einzelpreiskalkulationBerechnen`, D-39); der Kern legt alles unausgewertet ab und rechnet nie nach (A3: kein
+ * `kern → kosten`). ChangeSet: die Knotenänderung der Position samt Summen (der EP kann sich ändern).
+ *
+ * - `kalkulation: null` entfernt die Kalkulation (das Feld fehlt danach); EP und EPA werden trotzdem gesetzt (die App gibt die
+ *   Werte mit, die stehen bleiben sollen). Eine Kalkulation ohne Ansatz und ohne Zuschlagssatz ist keine: Der Kern legt dafür
+ *   kein Feld ab wie bei `null` (Normalisierung beim Befehl).
+ * - Lesart (a) wie D-22: `EinheitspreisAendern` und `EinheitspreisanteileSetzen` an einer Position mit Kalkulation entfernen
+ *   sie im selben ChangeSet (siehe `Positionsdaten.kalkulation`).
+ * - Form, die der Kern prüft (`ungueltige-eingabe` mit `feld`): jede `art` eine `EpaArt`, Mengen und Kostensätze kanonisch mit
+ *   3 Stellen oder `null`, Sätze kanonisch mit 2 Stellen; `einheitspreis` und `epa` wie bei ihren Feldbefehlen. Ob EP und EPA
+ *   zur Kalkulation passen, prüft er nicht.
+ * - Fehler wie jeder Feldbefehl (D-71.3): Gliederung oder Hinweistext `knotenart-unzulaessig`, unbekannte Kennung
+ *   `knoten-unbekannt`. Nur im Ausschreibungs-LV (nicht in `AuftragsLvBefehl`).
+ * - Zuschlagsposition (v1.7a Nachtrag, Review D-82 S3): An einer Position mit `zuschlag !== null` weist der Kern mit
+ *   `knotenart-unzulaessig` ab (`feld: 'kalkulation'`), auch mit `kalkulation: null`: Ihr Betrag folgt aus den Bezugspositionen,
+ *   nicht aus einem kalkulierten EP. Invariante: Eine Zuschlagsposition trägt nie `kalkulation` (siehe
+ *   `Positionsdaten.kalkulation`).
+ */
+export interface KalkulationSetzen {
+  readonly art: 'KalkulationSetzen';
+  readonly positionId: PositionId;
+  readonly kalkulation: Kalkulationsangaben | null;
+  readonly einheitspreis: Einheitspreis | null;
+  readonly epa: Einheitspreisanteile | null;
+}
+
 /** Setzt die Leitbeschreibung einer Position als ganzen Wert; `null` entfernt sie (das Feld fehlt danach). */
 export interface LeitbeschreibungSetzen {
   readonly art: 'LeitbeschreibungSetzen';
@@ -476,7 +643,12 @@ export interface LeitbeschreibungSetzen {
 
 // --- Ordnungszahl (Ticket 06) -----------------------------------------------------------------------------
 
-/** Setzt die Maske; der Kern liefert alle dadurch umnummerierten Knoten im selben ChangeSet. */
+/**
+ * Setzt die Maske; der Kern liefert alle dadurch umnummerierten Knoten im selben ChangeSet. Passen Knoten nicht zur neuen
+ * Maske, bleibt es bei den vorhandenen Codes (`maske-ungueltig`, `oz-ueberlauf`, an der Los-Stufe `knotenart-unzulaessig`;
+ * D-87, D-137.10): Code, Meldung und `knotenId` sind die des ersten Knotens, `Befehlsfehler.knotenIds` nennt alle in
+ * Dokumentreihenfolge, wenn es mehrere sind (D-127.14).
+ */
 export interface OzMaskeSetzen {
   readonly art: 'OzMaskeSetzen';
   readonly maske: OzMaske;
@@ -555,7 +727,10 @@ export type LvBefehl =
   | VorlageSetzen
   | TextquelleSetzen
   // v1.6
-  | BauteileZuordnen;
+  | BauteileZuordnen
+  // v1.7a
+  | KalkulationSetzen
+  | PreisspiegelEinstellungenSetzen;
 
 // --- Angebot ---------------------------------------------------------------------------------------------
 
@@ -658,7 +833,32 @@ export type AuftragsLvBefehl =
   | NachtragUebernehmen
   | KostengruppeSetzen
   // v1.6
-  | BauteileZuordnen;
+  | BauteileZuordnen
+  // v1.7a
+  | ZuschlagZuruecknehmen;
+
+/**
+ * Nimmt den Zuschlag zurück: löscht das Auftrags-LV (v1.7a, Ticket 127; E8, D-74; Glossar „Zuschlag zurücknehmen“). Danach
+ * lassen sich Angebot, LV und Projekt wieder löschen (Q5: kein Projekt bleibt unlöschbar).
+ *
+ * - Sperre (D-74): Der Ausführer bekommt die Verweise auf das Auftrags-LV als dritten Parameter
+ *   (`AuftragsLvBefehlAusfuehren`, `verweise`): Nachtrags-LVs (`Nachtragsangaben.auftragsLvId`), Aufmaßblätter, Rechnungen
+ *   und Mängel (`Mangel.auftragsLvId`), je Art die Anzahl. Ist eine davon größer als 0, weist er mit `verweise-vorhanden` ab
+ *   und nennt alle Arten mit Anzahl > 0 in `Befehlsfehler.verweise` (Reihenfolge: nachtrag, aufmass, rechnung, mangel); die
+ *   App sagt damit, was zuerst zu entfernen ist. Andere Arten (`angebot`) liest er nicht. Fehlt `verweise`:
+ *   `ungueltige-eingabe` (`feld: 'verweise'`). `speicher` hält dieselbe Sperre als `konflikt` (seit v1.4/v1.6), auch für ein
+ *   Undo.
+ * - Bauzeitenplan und Kostenkontrolle sperren nicht und werden nicht angefasst (D-74): Ein Vorgang behält seinen schwachen
+ *   Bezug (Befund der Terminrechnung bzw. der App), Undo stellt alles her.
+ * - ChangeSet wie `LeistungsverzeichnisLoeschen`: `kopf.vorher` der ganze Kopf, `kopf.nachher: null`, alle Knoten unter
+ *   `knoten.entfernt`, alle Summen unter `summen.vorher.entfernt`, `summen.vorher.gesamt` gesetzt. Die Umkehrung legt das
+ *   Auftrags-LV mit derselben Kennung wieder an.
+ * - Angebot, LV und Nachtragsangaben bleiben unverändert; einen Status „Zuschlag erteilt“ gibt es nicht (der Zuschlag ist das
+ *   Bestehen des Auftrags-LV, D-21).
+ */
+export interface ZuschlagZuruecknehmen {
+  readonly art: 'ZuschlagZuruecknehmen';
+}
 
 // --- Aufmaß (v1.4, A2; D-36 (1); Ausführer in `abrechnung`, Ticket 80) ------------------------------------------
 //
@@ -718,14 +918,16 @@ export type AufmassBefehl =
 // Der Ausführer sieht nur die Rechnung (Signatur `RechnungBefehlAusfuehren`, D-70.3) und prüft die Form. Was andere
 // Rechnungen braucht, prüft die App vorher (`freigabeMoeglich`, Ticket 81) und `speicher` als `konflikt` (Q5), die übrigen
 // Regeln `rechnungPruefen` als Befund (U5). ChangeSet aller Befehle: `RechnungChangeSet` mit der ganzen Rechnung vorher
-// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben`; jeden anderen Befehl an ihr
-// weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4).
+// und nachher (D-36 (8)). Eine freigegebene Rechnung ändert nur `RechnungsfreigabeAufheben` und (v1.7b) die Zahlungsbefehle;
+// jeden anderen Befehl an ihr weist der Ausführer mit `rechnung-freigegeben` ab (Q5, D-70.4, D-128.7).
 
 /**
  * Legt eine Rechnung an (Zustand `null`), von Hand oder aus einer XRechnung (Ticket 76: Angaben und geforderte Beträge).
  * `freigabe` ist `null` (sonst `ungueltige-eingabe`): Freigegeben wird nur über `RechnungFreigeben`. Hat das Auftrags-LV
  * schon eine freigegebene Rechnung mit größerer Nummer, weist `speicher` mit `konflikt` ab (Invariante an `Rechnung`).
- * Kein Massenbefehl.
+ * Kein Massenbefehl. v1.7b (D-128.7): Vertragsstrafe, Skonto und Bauabzugsteuer darf die Rechnung mitbringen (die App
+ * schlägt sie aus der vorigen Rechnung vor), Form wie bei ihren Befehlen; `zahlungen` nie (eine neue Rechnung ist nicht
+ * freigegeben): sonst `ungueltige-eingabe` (`feld: 'zahlungen'`).
  */
 export interface RechnungAnlegen {
   readonly art: 'RechnungAnlegen';
@@ -774,7 +976,9 @@ export interface RechnungFreigeben {
  * kann (D-70.4); das Undo von `RechnungFreigeben` erzeugt dasselbe ChangeSet. Nur, solange keine spätere Rechnung (größere
  * Nummer) freigegeben ist, deren eingefrorener Zahlbetrag diesen abzieht (D-34 (7)): sonst `konflikt` in `speicher`, die
  * App bietet es dann nicht an. Unumkehrbar im Sinne von Q5: Die Oberfläche fragt ausdrücklich nach; eine nicht
- * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab.
+ * freigegebene Rechnung weist der Ausführer mit `ungueltige-eingabe` ab. v1.7b (D-72, Q5): Hat die Rechnung Zahlungen, weist
+ * der Ausführer mit `zahlungen-vorhanden` ab (erst die Zahlungen löschen); `speicher` hält dieselbe Regel als `konflikt`,
+ * auch für das Undo von `RechnungFreigeben` (Invariante an `Rechnung`).
  */
 export interface RechnungsfreigabeAufheben {
   readonly art: 'RechnungsfreigabeAufheben';
@@ -789,7 +993,61 @@ export interface RechnungLoeschen {
   readonly art: 'RechnungLoeschen';
 }
 
-/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7). */
+// v1.7b (Ticket 128; A5, D-72; Ausführer in `abrechnung`, Ticket 143): Vertragsstrafe, Skonto und Bauabzugsteuer setzen nur
+// an einer nicht freigegebenen Rechnung (sie gelten für die Zahlungsfreigabe, die mit der Freigabe entsteht; sonst
+// `rechnung-freigegeben`). Zahlungen erfassen, ändern und löschen nur an einer freigegebenen (sonst `ungueltige-eingabe` mit
+// `feld: 'freigabe'`, wie `RechnungsfreigabeAufheben` an einer nicht freigegebenen). Kein Befehl ändert den eingefrorenen
+// Zahlbetrag.
+
+/**
+ * Setzt die Vertragsstrafe als ganzen Wert (siehe `Rechnung.vertragsstrafe`, `Vertragsstrafe`); `null` entfernt sie. Sie
+ * ändert den Zahlbetrag, darum nur vor der Freigabe.
+ */
+export interface VertragsstrafeSetzen {
+  readonly art: 'VertragsstrafeSetzen';
+  readonly vertragsstrafe: Vertragsstrafe | null;
+}
+
+/** Setzt den Skonto als ganzen Wert (Satz und Skontofrist, siehe `Skonto`); `null` entfernt ihn. */
+export interface SkontoSetzen {
+  readonly art: 'SkontoSetzen';
+  readonly skonto: Skonto | null;
+}
+
+/** Schaltet die Bauabzugsteuer ein (`true`) oder aus (`false`: danach fehlt `Rechnung.bauabzugsteuer`). */
+export interface BauabzugsteuerSetzen {
+  readonly art: 'BauabzugsteuerSetzen';
+  readonly bauabzugsteuer: boolean;
+}
+
+/**
+ * Erfasst eine Zahlung am Ende von `Rechnung.zahlungen`; die Kennung kommt aus `IdQuelle.zahlung` (A7). Hat die Rechnung
+ * schon eine Zahlung mit dieser Kennung: `id-vergeben`. Form siehe `Zahlung`.
+ */
+export interface ZahlungErfassen {
+  readonly art: 'ZahlungErfassen';
+  readonly zahlung: Zahlung;
+}
+
+/**
+ * Ersetzt Datum und Betrag der Zahlung mit derselben Kennung, an ihrer Stelle. Keine Zahlung mit dieser Kennung:
+ * `ungueltige-eingabe` (`feld: 'zahlungId'`). Form wie `ZahlungErfassen`.
+ */
+export interface ZahlungAendern {
+  readonly art: 'ZahlungAendern';
+  readonly zahlung: Zahlung;
+}
+
+/**
+ * Löscht eine Zahlung (Q5: Bestätigung, Undo; das ChangeSet trägt die ganze Rechnung). Mit der letzten Zahlung entfällt das
+ * Feld `zahlungen`. Keine Zahlung mit dieser Kennung: `ungueltige-eingabe` (`feld: 'zahlungId'`).
+ */
+export interface ZahlungLoeschen {
+  readonly art: 'ZahlungLoeschen';
+  readonly zahlungId: ZahlungId;
+}
+
+/** Befehle gegen eine Rechnung (Zustand: `RechnungZustand`; v1.4, Ticket 70 Punkt 7; v1.7b, Ticket 128: sechs neue). */
 export type RechnungBefehl =
   | RechnungAnlegen
   | RechnungsangabenSetzen
@@ -797,7 +1055,14 @@ export type RechnungBefehl =
   | RechnungsabzuegeSetzen
   | RechnungFreigeben
   | RechnungsfreigabeAufheben
-  | RechnungLoeschen;
+  | RechnungLoeschen
+  // v1.7b (Ticket 128; A5, D-72)
+  | VertragsstrafeSetzen
+  | SkontoSetzen
+  | BauabzugsteuerSetzen
+  | ZahlungErfassen
+  | ZahlungAendern
+  | ZahlungLoeschen;
 
 // --- Kostenermittlung (v1.4, C3; D-36 (3); Ausführer in `kosten`, Ticket 82) ------------------------------------
 //
@@ -1075,6 +1340,77 @@ export interface BautagebucheintragLoeschen {
  */
 export type BautagebucheintragBefehl = BautagebucheintragSetzen | BautagebucheintragLoeschen;
 
+// --- Einstellungen (v1.7a, Ticket 127; E10, E15, D-73; Ausführer in `kern`, Ticket 137) -------------------------------
+//
+// Befehle am globalen Aggregat `Einstellungen` (siehe `einstellungen.ts`): nicht im `Befehl` eines Projekts, nicht im
+// Befehlsprotokoll und nicht in der Undo-Historie eines Projekts (D-73), sondern im Einstellungsprotokoll
+// (`EinstellungenProtokolleintrag`; Nachtrag Review D-82, M1: A5 und ADR 0009 gelten ohne Ausnahme). Der Ausführer
+// (`EinstellungenBefehlAusfuehren`) prüft die Form (`ungueltige-eingabe` mit `feld`); ChangeSet: `EinstellungenChangeSet` mit
+// den ganzen Einstellungen vorher und nachher.
+
+/** Setzt das Büro als ganzen Wert; `null` entfernt es. Leerer Name: `ungueltige-eingabe` (`feld: 'buero.name'`). */
+export interface BueroSetzen {
+  readonly art: 'BueroSetzen';
+  readonly buero: Buero | null;
+}
+
+/**
+ * Setzt ein eigenes Druckprofil: ersetzt das Profil gleichen Namens an seiner Stelle, sonst kommt es ans Ende. Umbenennen ist
+ * `DruckprofilEntfernen` und `DruckprofilSetzen` hintereinander. Leerer Name oder `langtext.anzahl` keine ganze Zahl ≥ 1:
+ * `ungueltige-eingabe`.
+ */
+export interface DruckprofilSetzen {
+  readonly art: 'DruckprofilSetzen';
+  readonly druckprofil: Druckprofil;
+}
+
+/** Entfernt das eigene Druckprofil dieses Namens; gibt es keines, `ungueltige-eingabe` (`feld: 'name'`). */
+export interface DruckprofilEntfernen {
+  readonly art: 'DruckprofilEntfernen';
+  readonly name: string;
+}
+
+/**
+ * Setzt die Kostengruppenbezeichnungen als ganze Liste (eine eingelesene CSV ersetzt die vorige; `[]` entfernt alle). Der
+ * Ausführer ordnet nach Nummer, prüft die Form der Nummern (wie `KostengruppeSetzen`) und weist doppelte Nummern und leere
+ * Bezeichnungen mit `ungueltige-eingabe` ab (die App fasst eine CSV vorher mit `bezeichnungenLesen` zusammen).
+ */
+export interface KostengruppenbezeichnungenSetzen {
+  readonly art: 'KostengruppenbezeichnungenSetzen';
+  readonly bezeichnungen: readonly Kostengruppenbezeichnung[];
+}
+
+/**
+ * Übernimmt die Einstellungen aus einer Projektdatei nach D-73 (v1.7a Nachtrag, D-82 M1): füllt nur, was lokal fehlt, und
+ * überschreibt nie. `einstellungen` ist der Block der Datei (`Projektdatei.einstellungen`), unverändert.
+ *
+ * - Büro: nur, wenn lokal keines gesetzt ist (`buero: null`).
+ * - Druckprofile: jedes Profil der Datei, dessen Name lokal fehlt, kommt in der Reihenfolge der Datei ans Ende.
+ * - Kostengruppenbezeichnungen: jede Bezeichnung der Datei, deren Nummer lokal fehlt, kommt an ihre Stelle in der Ordnung
+ *   nach Nummer.
+ *
+ * Die Form prüft der Ausführer wie bei den einzelnen Befehlen. Was übernommen und was belassen wurde, folgt aus dem ChangeSet
+ * (vorher und nachher je Schlüssel). Geschrieben wird der Befehl beim Einlesen einer Projektdatei von `speicher`
+ * (`Speicher.projektdateiEinlesen` mit `einstellungsuebernahme`) in derselben Transaktion wie das Projekt; nur, wenn er etwas
+ * übernimmt. Er gehört nicht zum Rückgängig der Einstellungen in der Sitzung: Er überschreibt nichts (Q5).
+ */
+export interface EinstellungenUebernehmen {
+  readonly art: 'EinstellungenUebernehmen';
+  readonly einstellungen: Einstellungen;
+}
+
+/**
+ * Befehle an den Einstellungen (v1.7a; Zustand: `Einstellungen`). Nicht Teil von `Befehl` (D-73); protokolliert im
+ * Einstellungsprotokoll (`EinstellungenProtokolleintrag`, D-82 M1).
+ */
+export type EinstellungenBefehl =
+  | BueroSetzen
+  | DruckprofilSetzen
+  | DruckprofilEntfernen
+  | KostengruppenbezeichnungenSetzen
+  // v1.7a Nachtrag (D-82 M1)
+  | EinstellungenUebernehmen;
+
 // --- Rückgängig und Wiederholen (v1.2, S3; ADR 0006) ---------------------------------------------------------
 
 /**
@@ -1123,7 +1459,9 @@ export type Befehl =
   | BauzeitenplanBefehl
   | HonorarberechnungBefehl
   | MangelBefehl
-  | BautagebucheintragBefehl;
+  | BautagebucheintragBefehl
+  // v1.7a (Ticket 127): im Protokoll mit dem LV des Stands als Aggregat
+  | LvStandBefehl;
 
 /** Name eines Befehls, wie er im Protokoll steht. */
 export type Befehlsart = Befehl['art'];
@@ -1144,6 +1482,10 @@ export type Befehlsart = Befehl['art'];
  *
  * v1.6 (Ticket 97 Punkt 1, D-54): dazu `BauwerksmodellAnlegen` (bis zu 10.000 Bauteile; der Kopf ist das Modell ohne
  * Struktur und Bauteile).
+ *
+ * v1.7c (Ticket 160, D-96): dazu `ProjektSamtInhaltLoeschen`. Seine lange Liste ist der Bestand des Projekts; der steckt nicht
+ * im Befehl, sondern im ChangeSet, darum ist der Kopf der ganze Befehl. Die Liste hält fest, dass der Bestand nie in ein
+ * Protokoll gerät.
  */
 export const MASSENBEFEHLSARTEN = [
   'LeistungsverzeichnisAnlegen',
@@ -1153,6 +1495,8 @@ export const MASSENBEFEHLSARTEN = [
   'AufmassAnlegen',
   // v1.6 (Ticket 97 Punkt 1, D-54): bis zu 10.000 Bauteile; der Kopf ohne Struktur und Bauteile
   'BauwerksmodellAnlegen',
+  // v1.7c (Ticket 160, D-96): der Kopf ist der Befehl selbst
+  'ProjektSamtInhaltLoeschen',
 ] as const;
 
 /** Name eines Massenbefehls. */

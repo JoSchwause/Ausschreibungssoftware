@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Einstiegspunkt von @tethys/gaeb: GAEB DA XML 3.3 und 3.2 lesen (X81, X83, X86; Ticket 22, 32, 40) und schreiben
-// (X81, X83, X86; Ticket 40); Angebote X84 → `AngebotAnlegen` (Ticket 45).
+// Einstiegspunkt von @tethys/gaeb: GAEB DA XML 3.3, 3.2 und 3.1 lesen (X81, X83, X86; Ticket 22, 32, 40, 129),
+// schreiben nur 3.3 und 3.2 (X81, X83, X86; Ticket 40, G-10); Angebote X84 → `AngebotAnlegen` (Ticket 45; 3.1 seit 129).
+// Seit Ticket 136: Dateiart am Inhalt erkennen (`erkenneGaebDatei`: DA XML, GAEB 90, GAEB 2000, unbekannt), jede Abweisung
+// mit einem Satz, Befunde strukturiert (`GaebBefund`, `BEFUNDTEXTE`), Angaben des Bieters aus der X84. Seit Ticket 144 liest
+// `leseGaeb` auch GAEB 90 (.d81/.d83/.d86) und `leseAngebot` GAEB 90 (.d84), erkannt am Inhalt (`gaeb90.ts`); seit Ticket 145
+// ebenso GAEB 2000 (.p81/.p83/.p86, Angebot .p84; `gaeb2000.ts`).
 
+export { BEFUNDTEXTE, nichtUebernommeneAngaben, zeileHilft } from './befunde';
+export type { Befundwert, Befundwerte, GaebBefund, GaebBefundcode } from './befunde';
+export { erkenneGaebDatei } from './dateiart';
+export type { GaebDateiart, Phasenquelle } from './dateiart';
 export { leseGaeb, MAX_STUFEN, OZ_MAX_LAENGE, STANDARD_MAX_BYTES, STANDARD_MWST_SATZ } from './lesen';
 export type { GaebLesungErgebnis, LeseOptionen } from './lesen';
 export { GRENZEN, VERSIONSDATUM, gaebKennung, schreibeGaeb } from './schreiben';
 export type { ExportPhase, ExportVersion, SchreibInhalt, SchreibOptionen } from './schreiben';
 export { leseAngebot } from './angebot';
-export type { AngebotLeseOptionen, AngebotLesung } from './angebot';
+export type { AngebotLeseOptionen, AngebotLesung, Bietervorschlag } from './angebot';
 export { x31Lesen } from './x31';
 export type { X31Aufmass, X31Lesung } from './x31';
 export { aufmassAlsX31 } from './x31-schreiben';

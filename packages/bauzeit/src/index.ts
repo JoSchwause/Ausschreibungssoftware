@@ -4,7 +4,7 @@
 // Vorschlag für den Fortschritt aus dem Leistungsstand. Ein- und Ausgaben sind die Vertragstypen v1.6. Rein (A2);
 // importiert nur `vertrag` und `dezimal` (A3).
 
-export type { Datum, Datumsfehler, Datumsfehlercode } from './datum';
+export type { Datumsfehler, Datumsfehlercode } from './datum';
 export { datumPruefen } from './datum';
 export type { Feiertag, Feiertagskennung, Landesfeiertag } from './feiertage';
 export { BUNDESLAENDER, BUNDESWEITE_FEIERTAGE, LANDESFEIERTAGE, feiertage, ostersonntag } from './feiertage';

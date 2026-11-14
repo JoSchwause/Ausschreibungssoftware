@@ -12,7 +12,6 @@ import {
   zeitachseBerechnen,
   type Bauzeitbefundcode,
   type Bauzeitenplanergebnis,
-  type Datum,
   type Zeitachse,
 } from '@tethys/bauzeit';
 import { formatiereProzentDe } from '@tethys/dezimal';
@@ -20,6 +19,7 @@ import type { Balken, VergleichsSpalte, VergleichsZeile, VergleichsZelle, Zeitle
 import type {
   Bauzeitenplan,
   Befundschwere,
+  Kalenderdatum,
   Pruefbefund,
   Vorgang,
   VorgangId,
@@ -62,22 +62,22 @@ export const vorgangName = (v: Vorgang): string =>
   v.nummer === null ? v.bezeichnung : `${v.nummer} ${v.bezeichnung}`;
 
 /** Datum um `tage` Kalendertage verschoben (nur für den Rand der Achse; gerechnet in UTC, kein Arbeitskalender). */
-function verschoben(datum: Datum, tage: number): Datum {
+function verschoben(datum: Kalenderdatum, tage: number): Kalenderdatum {
   const [j, m, d] = datum.split('-').map(Number) as [number, number, number];
   const x = new Date(Date.UTC(j, m - 1, d + tage));
   const r = datumPruefen(x.toISOString().slice(0, 10));
   return r.ok ? r.wert : datum;
 }
 
-function geprueft(text: string | null | undefined): Datum | null {
+function geprueft(text: string | null | undefined): Kalenderdatum | null {
   if (text === null || text === undefined) return null;
   const r = datumPruefen(text);
   return r.ok ? r.wert : null;
 }
 
 function achseFuer(plan: Bauzeitenplan, ergebnis: Bauzeitenplanergebnis): Zeitachse | null {
-  const daten: Datum[] = [];
-  const dazu = (d: Datum | null): void => {
+  const daten: Kalenderdatum[] = [];
+  const dazu = (d: Kalenderdatum | null): void => {
     if (d !== null) daten.push(d);
   };
   dazu(ergebnis.projektbeginn ?? geprueft(plan.projektbeginn));
@@ -92,8 +92,8 @@ function achseFuer(plan: Bauzeitenplan, ergebnis: Bauzeitenplanergebnis): Zeitac
   }
   if (daten.length === 0) return null;
   const sortiert = [...daten].sort();
-  const erster = sortiert[0] as Datum;
-  const letzter = sortiert.at(-1) as Datum;
+  const erster = sortiert[0] as Kalenderdatum;
+  const letzter = sortiert.at(-1) as Kalenderdatum;
   const von =
     ergebnis.projektbeginn !== null && erster === ergebnis.projektbeginn
       ? erster
@@ -102,7 +102,7 @@ function achseFuer(plan: Bauzeitenplan, ergebnis: Bauzeitenplanergebnis): Zeitac
   return a.ok ? a.wert : null;
 }
 
-function zeitleiste(achse: Zeitachse | null, projektende: Datum | null): Zeitleiste {
+function zeitleiste(achse: Zeitachse | null, projektende: Kalenderdatum | null): Zeitleiste {
   if (achse === null) return { tage: 1, pixelJeTag: PIXEL_JE_TAG, kopf: [] };
   return {
     tage: achse.tage,

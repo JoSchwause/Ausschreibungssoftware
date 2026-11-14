@@ -2,14 +2,8 @@
 // Kalendertage (Ticket 102 Punkt 1): Text `JJJJ-MM-TT`, gerechnet über eine ganze Tageszahl im proleptischen
 // gregorianischen Kalender (Tag 0 = 1970-01-01), nie über `Date`, Uhr oder Zeitzonen. Rein (A2).
 
-import type { Ergebnis, Marke, Wochentag } from '@tethys/vertrag';
-
-/**
- * Geprüfter Kalendertag als Text `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. Nur
- * {@link datumPruefen} und die Rechnung erzeugen ihn. Eingaben tragen Daten als ungeprüften `string`; die Rechnung prüft
- * sie selbst und meldet Ungültiges als Befund (U5).
- */
-export type Datum = string & Marke<'Datum'>;
+import { KALENDERDATUM_MUSTER } from '@tethys/vertrag';
+import type { Ergebnis, Kalenderdatum, Wochentag } from '@tethys/vertrag';
 
 export type Datumsfehlercode =
   | 'datum-form' // nicht genau `JJJJ-MM-TT` mit Ziffern 0–9
@@ -31,12 +25,10 @@ export interface Zivildatum {
   readonly tag: number;
 }
 
-const FORM = /^(\d{4})-(\d{2})-(\d{2})$/;
-
 /** Der letzte darstellbare Tag (9999-12-31) als Tagnummer. */
 export const LETZTER_TAG: Tagnummer = tagnummerAusZivil(9999, 12, 31);
 
-export function istSchaltjahr(jahr: number): boolean {
+function istSchaltjahr(jahr: number): boolean {
   return (jahr % 4 === 0 && jahr % 100 !== 0) || jahr % 400 === 0;
 }
 
@@ -45,25 +37,26 @@ export function tageImMonat(jahr: number, monat: number): number {
   return monat === 4 || monat === 6 || monat === 9 || monat === 11 ? 30 : 31;
 }
 
-/** Prüft Form und Existenz eines Kalendertags. Kein Leerraum, keine Zeitangabe. */
-export function datumPruefen(text: string): Ergebnis<Datum, Datumsfehler> {
+/**
+ * Prüft Form und Existenz eines Kalendertags `JJJJ-MM-TT` (kein Leerraum, keine Zeitangabe), Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. Nur diese
+ * Prüfung und die Rechnung erzeugen ein `Kalenderdatum`; Eingaben tragen Daten als ungeprüften `string`, die Rechnung prüft sie
+ * selbst und meldet Ungültiges als Befund (U5).
+ */
+export function datumPruefen(text: string): Ergebnis<Kalenderdatum, Datumsfehler> {
   const tag = tagnummerLesen(text);
-  if (tag.ok) return { ok: true, wert: text as Datum };
+  if (tag.ok) return { ok: true, wert: text as Kalenderdatum };
   return tag;
 }
 
 /** Liest einen Kalendertag als Tagnummer. */
 export function tagnummerLesen(text: string): Ergebnis<Tagnummer, Datumsfehler> {
-  const m = FORM.exec(text);
-  if (m === null) {
+  if (!KALENDERDATUM_MUSTER.test(text)) {
     return {
       ok: false,
       fehler: { code: 'datum-form', meldung: `Kein Datum JJJJ-MM-TT: ${JSON.stringify(text)}` },
     };
   }
-  const jahr = Number(m[1]);
-  const monat = Number(m[2]);
-  const tag = Number(m[3]);
+  const [jahr = 0, monat = 0, tag = 0] = text.split('-').map(Number);
   if (jahr < 1 || monat < 1 || monat > 12 || tag < 1 || tag > tageImMonat(jahr, monat)) {
     return { ok: false, fehler: { code: 'datum-unmoeglich', meldung: `Diesen Tag gibt es nicht: ${text}` } };
   }
@@ -104,9 +97,9 @@ export function zivilAusTagnummer(nummer: Tagnummer): Zivildatum {
 }
 
 /** Text `JJJJ-MM-TT` einer Tagnummer zwischen 0001-01-01 und 9999-12-31. */
-export function datumAusTagnummer(nummer: Tagnummer): Datum {
+export function datumAusTagnummer(nummer: Tagnummer): Kalenderdatum {
   const { jahr, monat, tag } = zivilAusTagnummer(nummer);
-  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}` as Datum;
+  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}` as Kalenderdatum;
 }
 
 /** ISO-Wochentag einer Tagnummer (1970-01-01 war ein Donnerstag). */

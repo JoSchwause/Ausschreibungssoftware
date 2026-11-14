@@ -5,15 +5,15 @@
 // Termine rechnet `bauzeit` bei jedem Stand neu, gespeichert werden nur die Eingaben (D-57).
 
 import { bauzeitenplanBerechnen } from '@tethys/bauzeit';
-import { Button, Dialog } from '@tethys/ui-basis';
+import { Button, Dialog, Tastenkuerzel } from '@tethys/ui-basis';
 import { VergleichsGrid, type VergleichsSprungziel } from '@tethys/ui-grid';
 import type { BauzeitenplanId, BauzeitenplanZustand, ProjektId, VorgangId } from '@tethys/vertrag';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
-import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Ladeansicht, useSeitenladen } from '../ui/seite';
 import { Verweis } from '../ui/Verweis';
 import { planAnsicht, vorgangName, type Befundgruppe } from './ansicht';
 import {
@@ -23,9 +23,11 @@ import {
   vorgangEntfernenBefehl,
   vorgangEntfernenFrage,
   vorgangSetzenBefehl,
+  vorgangVerschiebenBefehl,
   vorgangsentwurf,
   type Feldfehler,
   type Kopfentwurf,
+  type Verschieberichtung,
   type Vorgangsentwurf,
 } from './befehle';
 import { KopfFelder } from './KopfFelder';
@@ -40,8 +42,10 @@ import './bauzeit.css';
 
 const t = texte.plan;
 
-type Laden =
-  { art: 'laedt' } | { art: 'fehlt' } | { art: 'da'; sitzung: BauzeitenplanSitzung; projekt: string | null };
+interface Geladen {
+  sitzung: BauzeitenplanSitzung;
+  projekt: string | null;
+}
 
 export function BauzeitenplanSeite({
   projektId,
@@ -53,64 +57,42 @@ export function BauzeitenplanSeite({
   gehe: (pfad: string) => void;
 }): ReactElement {
   const u = useUmgebung();
-  const [lage, setLage] = useState<Laden>({ art: 'laedt' });
-  const [lauf, setLauf] = useState(0);
-
-  useEffect(() => {
-    let aktiv = true;
-    void Promise.all([u.speicher.bauzeitenplaene.laden(id), u.speicher.projekte.laden(projektId)]).then(
-      ([r, p]) => {
-        if (!aktiv) return;
-        if (!r.ok) {
-          setLage({ art: 'fehlt' });
-          return;
+  // Undo und Redo können den Plan ändern oder entfernen: das Gerüst lädt neu.
+  const { lage } = useSeitenladen(
+    async ({ speicher }) => {
+      const [r, p] = await Promise.all([
+        speicher.bauzeitenplaene.laden(id),
+        speicher.projekte.laden(projektId),
+      ]);
+      return r.ok ? { zustand: r.wert, projekt: p.ok ? p.wert.name : null } : null;
+    },
+    [id, projektId],
+    {
+      // Dieselbe Sitzung behalten (Undo/Redo schreibt den neuen Stand hinein), damit kein Befehl auf einem alten Stand läuft.
+      alsWert: (neu, alt: Geladen | null): Geladen => {
+        if (alt !== null) {
+          alt.sitzung.setze(neu.zustand);
+          return alt;
         }
-        setLage((alt) => {
-          // Dieselbe Sitzung behalten (Undo/Redo schreibt den neuen Stand hinein), damit kein Befehl auf einem alten Stand läuft.
-          if (alt.art === 'da') {
-            alt.sitzung.setze(r.wert);
-            return alt;
-          }
-          return {
-            art: 'da',
-            sitzung: bauzeitenplanSitzung(u, r.wert.bauzeitenplan.projektId, r.wert),
-            projekt: p.ok ? p.wert.name : null,
-          };
-        });
+        return {
+          sitzung: bauzeitenplanSitzung(u, neu.zustand.bauzeitenplan.projektId, neu.zustand),
+          projekt: neu.projekt,
+        };
       },
-    );
-    return () => {
-      aktiv = false;
-    };
-  }, [u, id, projektId, lauf]);
-  // Undo und Redo können den Plan ändern oder entfernen: neu laden.
-  useEffect(
-    () =>
-      befehlswegFuer(u).beiHistorie(() => {
-        setLauf((n) => n + 1);
-      }),
-    [u],
+    },
   );
 
-  if (lage.art === 'laedt') {
+  if (lage.art !== 'da') {
     return (
-      <div className="seite" aria-busy="true">
-        <p>{t.laden}</p>
-      </div>
+      <Ladeansicht
+        lage={lage}
+        laden={t.laden}
+        nichtGefunden={t.nichtGefunden}
+        zusatz={<Verweis pfad={bauzeitPfad(projektId)} text={t.zurueck} gehe={gehe} />}
+      />
     );
   }
-  if (lage.art === 'fehlt') {
-    return (
-      <div className="seite">
-        <h1>{t.nichtGefunden}</h1>
-        <div className="lv__werkzeuge">
-          <HistorieKnoepfe />
-          <Verweis pfad={bauzeitPfad(projektId)} text={t.zurueck} gehe={gehe} />
-        </div>
-      </div>
-    );
-  }
-  return <Planseite sitzung={lage.sitzung} projekt={lage.projekt} gehe={gehe} />;
+  return <Planseite sitzung={lage.wert.sitzung} projekt={lage.wert.projekt} gehe={gehe} />;
 }
 
 function Planseite({
@@ -194,6 +176,16 @@ function Editor({
     return null;
   };
 
+  // Ticket 155 (D-118.3): innerhalb der Ebene verschieben, ein Undo-Schritt; die Zeile bleibt aktiv.
+  const verschiebbar = (richtung: Verschieberichtung): boolean =>
+    aktiverVorgang !== null && vorgangVerschiebenBefehl(plan, aktiverVorgang.id, richtung) !== null;
+  const verschieben = async (richtung: Verschieberichtung): Promise<void> => {
+    if (aktiverVorgang === null) return;
+    const b = vorgangVerschiebenBefehl(plan, aktiverVorgang.id, richtung);
+    if (b === null) return;
+    if (pruefe(await sitzung.befehl(b))) springe(b.vorgang.id);
+  };
+
   const entfernen = async (vorgangId: VorgangId): Promise<void> => {
     setFrage({ art: 'keine' });
     pruefe(await sitzung.befehl(vorgangEntfernenBefehl(vorgangId)));
@@ -266,6 +258,20 @@ function Editor({
         <Button disabled={aktiverVorgang === null} onClick={entfernenFragen}>
           {t.vorgangEntfernen}
         </Button>
+        <Button
+          disabled={!verschiebbar('hoch')}
+          aria-keyshortcuts="Alt+ArrowUp"
+          onClick={() => void verschieben('hoch')}
+        >
+          {t.nachOben} <Tastenkuerzel tasten={t.tastenNachOben} />
+        </Button>
+        <Button
+          disabled={!verschiebbar('runter')}
+          aria-keyshortcuts="Alt+ArrowDown"
+          onClick={() => void verschieben('runter')}
+        >
+          {t.nachUnten} <Tastenkuerzel tasten={t.tastenNachUnten} />
+        </Button>
         <PlanDrucken plan={plan} ergebnis={ergebnis} projekt={projekt} />
         <Button
           variante="gefahr"
@@ -278,7 +284,17 @@ function Editor({
       </div>
 
       <div className="bauzeit__haupt">
-        <div className="bauzeit__grid">
+        <div
+          className="bauzeit__grid"
+          onKeyDownCapture={(e) => {
+            // Ticket 155 (U3): Alt+↑/↓ verschiebt den aktiven Vorgang wie im LV die Position.
+            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            e.stopPropagation();
+            void verschieben(e.key === 'ArrowUp' ? 'hoch' : 'runter');
+          }}
+        >
           {plan.vorgaenge.length === 0 ? <p>{t.leer}</p> : null}
           <VergleichsGrid
             beschriftung={t.grid}
@@ -393,7 +409,7 @@ function BefundPanel({
         .map((g) => (
           <section key={g.schwere}>
             <h3>
-              {g.schwere === 'fehler' ? 'Fehler' : 'Warnungen'} ({String(g.eintraege.length)})
+              {b.schwere[g.schwere]} ({String(g.eintraege.length)})
             </h3>
             <ul>
               {g.eintraege.map((e, i) => (

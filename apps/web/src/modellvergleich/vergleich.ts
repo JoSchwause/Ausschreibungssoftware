@@ -15,6 +15,7 @@ import type {
   IfcGlobalId,
   Pruefbefund,
 } from '@tethys/vertrag';
+import { ifcKlassenName } from '../bim/texte';
 import { texte } from './texte';
 
 export interface Vergleichszusammenfassung {
@@ -29,7 +30,7 @@ export interface Vergleichsansicht {
   /** Hinzugefügt (Reihenfolge des neuen Stands), entfernt und geändert (Reihenfolge des alten), D-108.11. */
   readonly zeilen: readonly VergleichsZeile[];
   /** Färbung des **neuen** Stands: hinzugefügt und geändert; entfernte stehen nur in der Liste (Ticket 116 Punkt 2). */
-  readonly faerbung: ReadonlyMap<string, Bauteilkennzeichen>;
+  readonly faerbung: ReadonlyMap<IfcGlobalId, Bauteilkennzeichen>;
   readonly befunde: readonly Pruefbefund[];
 }
 
@@ -76,7 +77,7 @@ function zeile(
     aufgeklappt: false,
     zellen: {
       art: { text: art, kennzeichen: [kennzeichen] },
-      klasse: { text: b.ifcKlasse },
+      klasse: { text: ifcKlassenName(b.ifcKlasse) },
       name: { text: name(b) },
       geschoss: { text: geschossname(modell, b.strukturGlobalId) },
       aenderung: { text: aenderung },
@@ -87,7 +88,7 @@ function zeile(
 /** Zwei Stände für die Vergleichsseite: `alt` ist der frühere (Standard der Vorgänger), `neu` der gezeigte. */
 export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Vergleichsansicht {
   const v = modellVergleichen(alt, neu);
-  const faerbung = new Map<string, Bauteilkennzeichen>();
+  const faerbung = new Map<IfcGlobalId, Bauteilkennzeichen>();
   const zeilen: VergleichsZeile[] = [];
   for (const b of v.hinzugefuegt) {
     faerbung.set(b.globalId, 'hinzugefuegt');
@@ -100,7 +101,9 @@ export function vergleichsansicht(alt: Bauwerksmodell, neu: Bauwerksmodell): Ver
     const teile: string[] = [];
     for (const f of g.felder) {
       if (f === 'klasse')
-        teile.push(`${texte.liste.feld.klasse}: ${g.vorher.ifcKlasse} → ${g.nachher.ifcKlasse}`);
+        teile.push(
+          `${texte.liste.feld.klasse}: ${ifcKlassenName(g.vorher.ifcKlasse)} → ${ifcKlassenName(g.nachher.ifcKlasse)}`,
+        );
       else if (f === 'name') teile.push(`${texte.liste.feld.name}: ${name(g.vorher)} → ${name(g.nachher)}`);
       else if (f === 'strukturknoten')
         teile.push(

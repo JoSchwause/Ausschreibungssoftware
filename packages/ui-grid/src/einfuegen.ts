@@ -21,6 +21,7 @@ import type {
   ElternId,
   Einheit,
   Einheitspreis,
+  EinheitspreisAendern,
   GridIdQuelle,
   GridZahlen,
   KnotenId,
@@ -33,7 +34,8 @@ import type {
   PositionId,
   Positionsdaten,
 } from '@tethys/vertrag';
-import { istBearbeitbareSpalte, leseEinheitspreis, leseKostengruppe, leseMenge } from './eingabe';
+import { leseEinheitspreis, leseKostengruppe, leseMenge, nimmtEingabe } from './eingabe';
+import type { Zahlenlesung } from './eingabe';
 import type { KostengruppeLesen } from './typen';
 
 export interface UngueltigeZelle {
@@ -43,10 +45,43 @@ export interface UngueltigeZelle {
   readonly meldung: string;
 }
 
-export interface Einfuegeplan {
-  readonly befehle: readonly LvBefehl[];
+/**
+ * Was ein Einfügen ergibt: die Befehle (eine Folge), die Zellen, deren Text nicht gelesen wurde (markiert, U5), und die
+ * Zahl der übersprungenen Zellen. Gemeinsam für neue Positionen und für das Füllen der Spalte „KG“.
+ */
+export interface Plan<B extends LvBefehl> {
+  readonly befehle: readonly B[];
   readonly ungueltig: readonly UngueltigeZelle[];
   readonly uebersprungen: number;
+}
+
+export type Einfuegeplan = Plan<LvBefehl>;
+
+/** Sammelt einen Plan: Befehle, ungültige Zellen und übersprungene Zellen. */
+function planer<B extends LvBefehl>() {
+  const befehle: B[] = [];
+  const ungueltig: UngueltigeZelle[] = [];
+  let uebersprungen = 0;
+  return {
+    befehl: (b: B): void => {
+      befehle.push(b);
+    },
+    /** Liest eine Zelle; ein Fehler kommt als markierte Zelle in den Plan, der Wert ist dann `undefined`. */
+    lies: <T>(
+      r: Zahlenlesung<T>,
+      knotenId: PositionId,
+      spalte: LvSpalte,
+      text: string,
+    ): T | null | undefined => {
+      if (r.ok) return r.wert;
+      ungueltig.push({ knotenId, spalte, text, meldung: r.meldung });
+      return undefined;
+    },
+    ueberspringe: (): void => {
+      uebersprungen++;
+    },
+    plan: (): Plan<B> => ({ befehle, ungueltig, uebersprungen }),
+  };
 }
 
 export type Einfuegeanker =
@@ -78,9 +113,7 @@ export function planeEinfuegen(
   ids: GridIdQuelle,
   kostengruppeLesen?: KostengruppeLesen,
 ): Einfuegeplan {
-  const befehle: LvBefehl[] = [];
-  const ungueltig: UngueltigeZelle[] = [];
-  let uebersprungen = 0;
+  const p = planer<LvBefehl>();
   let ort: Einfuegeort =
     anker.art === 'nach'
       ? { art: 'nach', knotenId: anker.knotenId }
@@ -95,12 +128,8 @@ export function planeEinfuegen(
     let kostengruppe: Kostengruppennummer | null = null;
     for (const [offset, text] of zeile.entries()) {
       const spalte = spalten[ersteSpalte + offset];
-      if (
-        spalte === undefined ||
-        !istBearbeitbareSpalte(spalte) ||
-        (spalte === 'kostengruppe' && kostengruppeLesen === undefined)
-      ) {
-        uebersprungen++;
+      if (spalte === undefined || !nimmtEingabe(spalte, kostengruppeLesen)) {
+        p.ueberspringe();
         continue;
       }
       switch (spalte) {
@@ -112,25 +141,16 @@ export function planeEinfuegen(
           einheit = t === '' ? null : t;
           break;
         }
-        case 'menge': {
-          const r = leseMenge(text, zahlen);
-          if (r.ok) menge = r.wert;
-          else ungueltig.push({ knotenId: id, spalte, text, meldung: r.meldung });
+        case 'menge':
+          menge = p.lies(leseMenge(text, zahlen), id, spalte, text) ?? null;
           break;
-        }
-        case 'einheitspreis': {
-          const r = leseEinheitspreis(text, zahlen);
-          if (r.ok) einheitspreis = r.wert;
-          else ungueltig.push({ knotenId: id, spalte, text, meldung: r.meldung });
+        case 'einheitspreis':
+          einheitspreis = p.lies(leseEinheitspreis(text, zahlen), id, spalte, text) ?? null;
           break;
-        }
-        case 'kostengruppe': {
+        case 'kostengruppe':
           if (kostengruppeLesen === undefined) break;
-          const r = leseKostengruppe(text, kostengruppeLesen);
-          if (r.ok) kostengruppe = r.wert;
-          else ungueltig.push({ knotenId: id, spalte, text, meldung: r.meldung });
+          kostengruppe = p.lies(leseKostengruppe(text, kostengruppeLesen), id, spalte, text) ?? null;
           break;
-        }
       }
     }
     // Eine Position aus der Zwischenablage hat keine Merkmale; gesetzt werden sie im Positionsdialog. Die Kostengruppe
@@ -143,17 +163,43 @@ export function planeEinfuegen(
       einheitspreis,
       ...(kostengruppe === null ? {} : { kostengruppe }),
     };
-    befehle.push({ art: 'PositionAnlegen', id, ort, daten });
+    p.befehl({ art: 'PositionAnlegen', id, ort, daten });
     ort = { art: 'nach', knotenId: id };
   }
-  return { befehle, ungueltig, uebersprungen };
+  return p.plan();
 }
 
-export interface Kostengruppenplan {
-  readonly befehle: readonly KostengruppeSetzen[];
-  readonly ungueltig: readonly UngueltigeZelle[];
-  readonly uebersprungen: number;
+export type Einheitspreisplan = Plan<EinheitspreisAendern>;
+
+/**
+ * Eine einzelne Spalte aus der Zwischenablage in die Spalte „EP“ der vorhandenen Zeilen (Ausnahme „Preise“ im
+ * Schreibschutz, SB3), wie `planeKostengruppen`: Zeile für Zeile ab `ab`, je Position, deren EP sich ändert, ein
+ * `EinheitspreisAendern` (leer: `null`); ein unlesbarer Preis verwirft nur seine Zelle. Gliederungen, Hinweistexte,
+ * Zuschlagspositionen (ihr Preis ist ein Satz) und Zeilen hinter der letzten überspringen eine nicht leere Zelle und zählen
+ * sie.
+ */
+export function planeEinheitspreise(
+  matrix: readonly (readonly string[])[],
+  ab: number,
+  zeilen: readonly LvZeile[],
+  zahlen: GridZahlen,
+): Einheitspreisplan {
+  const p = planer<EinheitspreisAendern>();
+  matrix.forEach((zellen, offset) => {
+    const text = zellen[0] ?? '';
+    const k = zeilen[ab + offset]?.knoten;
+    if (k?.art !== 'position' || k.zuschlag !== null) {
+      if (text.trim() !== '') p.ueberspringe();
+      return;
+    }
+    const wert = p.lies(leseEinheitspreis(text, zahlen), k.id, 'einheitspreis', text);
+    if (wert === undefined || wert === k.einheitspreis) return;
+    p.befehl({ art: 'EinheitspreisAendern', positionId: k.id, einheitspreis: wert });
+  });
+  return p.plan();
 }
+
+export type Kostengruppenplan = Plan<KostengruppeSetzen>;
 
 /**
  * Eine einzelne Spalte aus der Zwischenablage in die Spalte „KG“ (Ticket 93, D-93.2): Die Werte gehen Zeile für Zeile auf
@@ -169,23 +215,17 @@ export function planeKostengruppen(
   zeilen: readonly LvZeile[],
   lesen: KostengruppeLesen,
 ): Kostengruppenplan {
-  const befehle: KostengruppeSetzen[] = [];
-  const ungueltig: UngueltigeZelle[] = [];
-  let uebersprungen = 0;
+  const p = planer<KostengruppeSetzen>();
   matrix.forEach((zellen, offset) => {
     const text = zellen[0] ?? '';
     const k = zeilen[ab + offset]?.knoten;
     if (k?.art !== 'position') {
-      if (text.trim() !== '') uebersprungen++;
+      if (text.trim() !== '') p.ueberspringe();
       return;
     }
-    const r = leseKostengruppe(text, lesen);
-    if (!r.ok) {
-      ungueltig.push({ knotenId: k.id, spalte: 'kostengruppe', text, meldung: r.meldung });
-      return;
-    }
-    if (r.wert === (k.kostengruppe ?? null)) return;
-    befehle.push({ art: 'KostengruppeSetzen', positionId: k.id, kostengruppe: r.wert });
+    const wert = p.lies(leseKostengruppe(text, lesen), k.id, 'kostengruppe', text);
+    if (wert === undefined || wert === (k.kostengruppe ?? null)) return;
+    p.befehl({ art: 'KostengruppeSetzen', positionId: k.id, kostengruppe: wert });
   });
-  return { befehle, ungueltig, uebersprungen };
+  return p.plan();
 }

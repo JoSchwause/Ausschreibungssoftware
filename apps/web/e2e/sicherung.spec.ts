@@ -2,7 +2,7 @@
 // Ticket 62: App offline (Service Worker im Build), Export-Erinnerung, Sicherungsordner.
 
 import { expect, test, type Page } from '@playwright/test';
-import { projektAnlegen } from './hilfen';
+import { erwarteMeldung, projektAnlegen } from './hilfen';
 
 const TAG_MS = 24 * 60 * 60 * 1000;
 
@@ -101,8 +101,8 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
   const id = projektId(page);
   await page.getByRole('link', { name: 'Zur Projektliste' }).click();
 
-  await page.getByRole('button', { name: 'Datensicherung' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Datensicherung' });
+  await page.getByRole('button', { name: 'Sicherung' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sicherung' });
   await expect(dialog.getByText('Kein Ordner gewählt')).toBeVisible();
   await dialog.getByRole('button', { name: 'Ordner wählen …' }).click();
   await expect(dialog.getByText('Ordner: sicherungsordner-test')).toBeVisible();
@@ -127,7 +127,7 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
     .filter({ hasText: 'Ordnerprojekt' })
     .getByRole('button', { name: 'Jetzt sichern' })
     .click();
-  await expect(page.locator('.tx-toast__beschreibung')).toContainText('in sicherungsordner-test');
+  await erwarteMeldung(page, 'in sicherungsordner-test');
 
   const datei = await page.evaluate(async () => {
     const wurzel = await navigator.storage.getDirectory();
@@ -143,6 +143,10 @@ test('Sicherungsordner: wählen, „Jetzt sichern“ schreibt <Projektname>-<Dat
   expect(datei.namen).toHaveLength(1);
   expect(datei.namen[0]).toMatch(/^Ordnerprojekt-\d{4}-\d{2}-\d{2}\.tethys\.json$/);
   expect(datei.inhalt).toContain('Ordnerprojekt');
-  // Gesichert: keine Erinnerung mehr.
-  await expect(page.getByRole('status').filter({ hasText: 'Ordnerprojekt' })).toHaveCount(0);
+  // Gesichert: keine Erinnerung mehr. Gesucht wird die Erinnerung mit ihrem Knopf, nicht die Ansage der Meldung (B-38).
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Ordnerprojekt', has: page.getByRole('button', { name: 'Jetzt sichern' }) }),
+  ).toHaveCount(0);
 });

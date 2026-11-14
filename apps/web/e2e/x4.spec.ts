@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
 import { projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import { ERSTE_FRIST_MANGEL_2, X4_AUFTRAEGE, datumDeFx, x4Fixture, type X4Auftrag } from './x4-aufbau';
 
 const f = x4Fixture();
@@ -63,7 +64,7 @@ async function auftragErteilen(page: Page, projektId: string, a: X4Auftrag): Pro
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await expect(angebote.getByRole('row', { name: new RegExp(a.bieter) })).toBeVisible();
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: `Zuschlag erteilen: ${a.bieter}` })
