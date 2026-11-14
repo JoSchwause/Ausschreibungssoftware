@@ -2,10 +2,11 @@
 // Seite `/projekt/<id>/kosten/kontrolle` (Ticket 89, C3, D-37): Budget (gewählte Kostenermittlung), Vergabe (Summenstände der
 // Auftrags-LVs), Abrechnung (Leistungsstand der jeweils letzten Rechnung je Auftrags-LV) und Abweichung je Kostengruppe, dazu
 // „Ohne Kostengruppe“, „Nachlass“ und Gesamt. Gerechnet wird nur in `kosten` (`kostenkontrolleBerechnen`); hier wird geladen und
-// angezeigt. Das Budget ist eine Wahl der Sitzung, nichts Gespeichertes (Ticket 82). Hinweise sperren nie (U5).
+// angezeigt. Das Budget ist eine Wahl der Sitzung, nichts Gespeichertes (Ticket 82). Hinweise sperren nie (U5). Ticket 154:
+// „Ausgabe“ mit Vorschau, PDF und Excel (E12), Hinweis zu fehlenden Bezeichnungen (B-14), Werkzeugleiste aus `ui-basis`.
 
 import { kostenkontrolleBerechnen } from '@tethys/kosten';
-import { Auswahl } from '@tethys/ui-basis';
+import { Auswahl, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
 import { VergleichsGrid } from '@tethys/ui-grid';
 import type {
   AuftragsLvZustand,
@@ -20,10 +21,12 @@ import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { KENNZEICHEN_TEXTE, kontrolleAnsicht } from './ansicht';
-import { bezeichnungenAusCsv, bezeichnungenGemerkt } from './bezeichnungen';
-import { budgetWaehlen, leistungsstaendeLaden, type Leistungsstaende } from './kontrolle';
+import { BezeichnungenHinweis, useBezeichnungen } from './Bezeichnungen';
+import { dateinameKostenkontrolle, kostenkontrolleEingabe } from './berichte';
+import { KostenAusgabe } from './KostenAusgabe';
+import { budgetWaehlen, kontrollbefundText, leistungsstaendeLaden, type Leistungsstaende } from './kontrolle';
 import { LEISTUNGSSTAND_RECHNER } from './leistungsstand';
-import { kostenPfad } from './pfad';
+import { bezeichnungenPfad, kostenPfad } from './pfad';
 import { auftraegeLaden, kostenermittlungenLaden } from './schreiben';
 import { texte } from './texte';
 import { Verweis } from '../ui/Verweis';
@@ -114,7 +117,8 @@ function Kontrolle({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void
         : (wahl as KostenermittlungId);
   const budget = budgetWaehlen(ermittlungen, budgetId);
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
-  const bezeichnungen = useMemo(() => bezeichnungenAusCsv(bezeichnungenGemerkt()), []);
+  const bezeichnungsstand = useBezeichnungen();
+  const { bezeichnungen } = bezeichnungsstand;
 
   const kontrolle = useMemo(
     () => kostenkontrolleBerechnen({ budget, auftraege, leistungsstaende }),
@@ -133,8 +137,20 @@ function Kontrolle({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void
         <Verweis pfad={kostenPfad(projekt.id)} text={texte.projekt.kosten} gehe={gehe} />
         <Verweis pfad={`/projekt/${projekt.id}`} text={texte.seite.zumProjekt} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
+        <Werkzeuggruppe titel={texte.ausgabe.gruppe}>
+          <KostenAusgabe
+            projektId={projekt.id}
+            titel={texte.ausgabe.titelKontrolle}
+            dateiname={(endung) => dateinameKostenkontrolle(projekt.name, endung)}
+            bezeichnungen={bezeichnungen}
+            bericht={(kopf) => ({
+              art: 'kontrolle',
+              eingabe: kostenkontrolleEingabe({ kontrolle, budget, auftraege, mitAbrechnung }, kopf),
+            })}
+          />
+        </Werkzeuggruppe>
         <Auswahl
           label={t.budgetWahl}
           wert={budgetId ?? KEIN_BUDGET}
@@ -148,7 +164,8 @@ function Kontrolle({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void
           ]}
           kompakt
         />
-      </div>
+      </Werkzeugleiste>
+      <BezeichnungenHinweis stand={bezeichnungsstand} pfad={bezeichnungenPfad(projekt.id)} gehe={gehe} />
       {auftraege.length === 0 ? <p>{t.keineAuftraege}</p> : null}
       {mitAbrechnung ? <p className="kosten__hinweis">{t.abrechnungHinweis}</p> : <p>{t.keineAbrechnung}</p>}
 
@@ -177,26 +194,10 @@ function Kontrolle({ stand, gehe }: { stand: Stand; gehe: (pfad: string) => void
       ) : (
         <ul className="kosten__befunde" aria-label={t.befunde}>
           {kontrolle.befunde.map((b, i) => (
-            <li key={`${b.code}-${String(i)}`}>{befundText(b)}</li>
+            <li key={`${b.code}-${String(i)}`}>{kontrollbefundText(b)}</li>
           ))}
         </ul>
       )}
     </div>
   );
-}
-
-function befundText(b: ReturnType<typeof kostenkontrolleBerechnen>['befunde'][number]): string {
-  const k = texte.kontrolle.befund;
-  switch (b.code) {
-    case 'kostengruppe-ohne-budget':
-      return k['kostengruppe-ohne-budget'](b.nummer ?? '');
-    case 'kostengruppe-groeber-als-budget':
-      return k['kostengruppe-groeber-als-budget'](b.nummer ?? '');
-    case 'leistungsstand-unbekannt':
-      return k['leistungsstand-unbekannt']();
-    case 'leistungsstand-doppelt':
-      return k['leistungsstand-doppelt']();
-    case 'summe-abweichend':
-      return k['summe-abweichend'](b.spalte === 'abrechnung' ? t.spalteAbrechnung : t.spalteVergabe);
-  }
 }

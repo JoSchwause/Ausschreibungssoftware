@@ -22,7 +22,7 @@ import { Verweis } from '../ui/Verweis';
 import { BefundeBeimEinlesen } from '../gaeb/BefundeBeimEinlesen';
 import { modellEinlesen } from './einlesen';
 import { IfcArbeiter } from './ifc-arbeiter';
-import { modellPfad } from './pfad';
+import { auftragAusAdresse, mitAuftrag, modellPfad } from './pfad';
 import { bauwerksmodellLaden, bauwerksmodellSitzung } from './schreiben';
 import { texte } from './texte';
 import '../lv/lv.css';
@@ -57,6 +57,8 @@ export function ModellListeSeite({
   );
   const datei = useRef<HTMLInputElement>(null);
   const [vorgaenger, setVorgaenger] = useState<BauwerksmodellId | null>(null);
+  // Ticket 155: Kommt die Liste von „Aufmaß aus Modell“, geht das vorgewählte Auftrags-LV an das gewählte Modell weiter.
+  const [vorwahl] = useState(() => auftragAusAdresse(window.location.search));
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [umbenennen, setUmbenennen] = useState<{
     m: BauwerksmodellUebersicht;
@@ -208,7 +210,11 @@ export function ModellListeSeite({
             {modelle.map((m) => (
               <tr key={m.id}>
                 <th scope="row">
-                  <Verweis pfad={modellPfad(projekt.id, m.id)} text={m.name} gehe={gehe} />
+                  <Verweis
+                    pfad={mitAuftrag(modellPfad(projekt.id, m.id), vorwahl)}
+                    text={m.name}
+                    gehe={gehe}
+                  />
                 </th>
                 <td>{m.datei.dateiname}</td>
                 <td>{texte.liste.schema[m.schema]}</td>

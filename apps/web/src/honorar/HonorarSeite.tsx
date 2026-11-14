@@ -43,6 +43,7 @@ import {
   type KopfFormular,
   type ObjektFormular,
 } from './formular';
+import { kostenermittlungPfad } from '../kosten/pfad';
 import { honorarPfad } from './pfad';
 import { honorarPdf } from './pdf';
 import {
@@ -219,6 +220,7 @@ function Editor({
           nummer={i + 1}
           objekt={o}
           kostenermittlungen={kostenermittlungen}
+          gehe={gehe}
           uebernehmen={(neu) => {
             objektSetzen(i, neu);
           }}
@@ -513,12 +515,14 @@ function ObjektKarte({
   nummer,
   objekt,
   kostenermittlungen,
+  gehe,
   uebernehmen,
   entfernen,
 }: {
   nummer: number;
   objekt: Honorarobjekt;
   kostenermittlungen: readonly Kostenermittlung[];
+  gehe: (pfad: string) => void;
   uebernehmen: (o: Honorarobjekt) => void;
   entfernen: () => void;
 }): ReactElement {
@@ -580,6 +584,7 @@ function ObjektKarte({
   const standard = new Map(phasenDes(f.leistungsbild).map((p) => [p.nummer, p] as const));
   const vorgabe = vorgabeZu(f.honorarsatz);
   const kosten = kostenermittlungen;
+  const gewaehlteErmittlung = kosten.find((k) => k.id === f.kostenermittlungId);
 
   return (
     <section className="honorar__objekt" aria-label={t.objektTitel(nummer, f.bezeichnung)}>
@@ -651,6 +656,14 @@ function ObjektKarte({
                   sofort({ ...f, kostenermittlungId: w });
                 }}
                 optionen={kosten.map((k) => ({ wert: k.id, label: k.name }))}
+              />
+            )}
+            {/* Ticket 155: Verweis Honorar → Kostenermittlung */}
+            {gewaehlteErmittlung === undefined ? null : (
+              <Verweis
+                pfad={kostenermittlungPfad(gewaehlteErmittlung.projektId, gewaehlteErmittlung.id)}
+                text={texte.verweis.zurKostenermittlung(gewaehlteErmittlung.name)}
+                gehe={gehe}
               />
             )}
             {text(t.weitereKosten, 'weitereKosten')}

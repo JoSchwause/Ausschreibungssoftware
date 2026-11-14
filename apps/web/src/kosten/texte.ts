@@ -65,7 +65,7 @@ export const texte = {
     zurueck: 'Zur Liste',
     csvTitel: 'Bezeichnungen der Kostengruppen',
     csvHinweis:
-      'Die Bezeichnungen sind selbst mitzubringen (CSV: Nummer; Bezeichnung). Sie werden nur auf diesem Gerät als Einstellung gemerkt und stehen nie in der Projektdatei.',
+      'Die Bezeichnungen sind selbst mitzubringen (CSV: Nummer; Bezeichnung). Sie werden als Einstellung gemerkt und gelten für alle Projekte.',
     csvWaehlen: 'CSV mit Bezeichnungen wählen',
     csvEntfernen: 'Bezeichnungen entfernen',
     csvGelesen: (n: number) => `${stueck(n, '1 Bezeichnung', 'Bezeichnungen')} gelesen`,
@@ -153,6 +153,29 @@ export const texte = {
     entfernt: (n: number) => `Kostengruppe von ${stueck(n, '1 Position', 'Positionen')} entfernt`,
     unveraendert: 'Alle gewählten Positionen haben diese Kostengruppe schon.',
   },
+  ausgabe: {
+    gruppe: 'Ausgabe',
+    pdf: 'Als PDF',
+    excel: 'Als Excel',
+    titelErmittlung: (name: string) => `Kostenermittlung ausgeben – ${name}`,
+    titelKontrolle: 'Kostenkontrolle ausgeben',
+    beschreibung: 'Vorschau des Berichts. PDF und Excel enthalten dieselben Zeilen.',
+    laedt: 'Vorschau wird erstellt …',
+    vorschau: 'Vorschau',
+    stand: (datum: string) => `Stand: ${datum}`,
+    dateien: 'Dateien',
+    pdfLaden: 'PDF herunterladen',
+    excelLaden: 'Excel herunterladen',
+    schliessen: 'Schließen',
+    laeuft: 'Datei wird erstellt …',
+    fertig: 'Datei erstellt',
+    fehler: 'Die Ausgabe ließ sich nicht erstellen.',
+  },
+  bezeichnungen: {
+    fehlen:
+      'Noch keine Bezeichnungen der Kostengruppen: Die Spalte Bezeichnung bleibt leer, auch in PDF und Excel. Die Bezeichnungen kommen aus einer eigenen CSV-Datei (Nummer; Bezeichnung).',
+    einlesen: 'Bezeichnungen einlesen',
+  },
   kalkulation: {
     knopf: 'Kalkulieren',
     titel: 'EP kalkulieren',
@@ -160,8 +183,13 @@ export const texte = {
     keinePositionText: 'Bitte zuerst eine Position im Grid wählen.',
     einleitung: (position: string) =>
       `Einheitspreis der Position ${position} aus Ansätzen und Zuschlagssätzen je Kostenart.`,
-    nichtGespeichert:
-      'Die Ansätze werden nicht gespeichert. Gespeichert werden nur der Einheitspreis und seine Anteile je Kostenart. Beim nächsten Öffnen beginnt die Kalkulation leer.',
+    speichern:
+      'Übernehmen speichert die Ansätze und Zuschlagssätze an der Position, dazu den Einheitspreis und seine Anteile je Kostenart.',
+    gespeichert:
+      'Die gespeicherte Kalkulation der Position. Ein Einheitspreis oder Anteile von Hand entfernen sie; Rückgängig holt sie zurück.',
+    entfernen: 'Kalkulation entfernen',
+    zuschlagsposition: 'Eine Zuschlagsposition wird nicht kalkuliert',
+    zuschlagspositionText: 'Ihr Betrag folgt aus den Bezugspositionen.',
     ansaetze: 'Ansätze',
     zeileHinzu: 'Ansatz hinzufügen',
     zeileEntfernen: (n: number) => `Ansatz ${String(n)} entfernen`,
@@ -185,6 +213,7 @@ export const texte = {
     abbrechen: 'Abbrechen',
     uebernommen: 'EP und Anteile übernommen',
     nichtsZuUebernehmen: 'Es gibt noch keinen Einheitspreis zum Übernehmen.',
+    fehlerFelder: 'Bitte zuerst die markierten Felder berichtigen; übernommen wurde nichts.',
     fehlerMenge: 'Keine gültige Menge. Erwartet wird z. B. 1,5.',
     fehlerKostensatz: 'Kein gültiger Kostensatz. Erwartet wird z. B. 48,50.',
     fehlerSatz: 'Kein gültiger Prozentsatz. Erwartet wird z. B. 12,5.',

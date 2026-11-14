@@ -464,6 +464,9 @@ importers:
       '@tethys/ui-basis':
         specifier: workspace:*
         version: link:../ui-basis
+      '@tethys/vertrag':
+        specifier: workspace:*
+        version: link:../vertrag
       three:
         specifier: 0.186.1
         version: 0.186.1
