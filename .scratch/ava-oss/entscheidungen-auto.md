@@ -913,3 +913,17 @@ Question: 152 (Aufmaß, Rechnung, Zahlungen, Zahlungsfreigabe-PDF) und 162 (Foku
 Decision: Beide gemergt (`7be550f`, `e63b4db`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt die fixme-Schritte für 152 heraus. 159b bekommt `ausgabe/`, `abrechnung/`, `rechnung/` frei und zieht `PdfMitVorschau` samt der drei neuen Druckarten aus 152 nach `ui/`. Der Befund D-162.3 (eine Meldung fängt Escape einer offenen Auswahlliste) geht als kleiner Punkt an 159a (`ui-basis/Toast.tsx`), sonst in den Bericht. Die Budgettests, die unter Last rot waren (`kern`, `speicher`, `vergabe`, `abrechnung/leistung`), werden am Ende auf ruhiger Maschine gemessen; nicht gelockert.
 Reason: Wie D-79 ff.: grün und im Umfang; der zweite Review-Durchgang über 152/161/162 folgt nach dem Merge von 161 (D-103).
 Reversible: yes  Touches: abrechnung/, rechnung/, ausgabe/, Tickets 158, 159
+
+## D-107 Merge 161
+Welle 7 · Ticket 161 · decided by: orchestrator
+Question: 161 (Projekt samt Inhalt löschen in `kern`/`speicher`/App, MUST-1 aus dem Review, Einstellungen der Datei über den Kern-Ausführer) ist done-by-agent. Mergen?
+Decision: Gemergt (`d5e0680`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt den letzten fixme-Schritt (Löschen samt Inhalt, Undo, Wiederholen) heraus und fährt das Tor dreimal. Die offene Frage aus D-161.2 (nach Löschen → Undo → Wiederholen → Undo fehlt der erste `Rueckgaengig`-Eintrag, weil er zum gelöschten Protokoll gehörte) geht an den zweiten Review-Durchgang (D-103) und wird dort bestätigt oder als Befund behandelt.
+Reason: Grün und im Umfang; der Tor-Schritt „Projekt löschen“ hängt an diesem Ticket (D-96).
+Reversible: yes  Touches: kern, speicher, projekt/, historie/, Ticket 158
+
+## D-108 M4 (Ticket 157) wird gekürzt
+Welle 7 · Ticket 157 · decided by: orchestrator
+Question: 157 (weitere REB-Formeln, Priorität K) darf erst nach allen P-/S-Tickets und grünem Tor starten (D-75). Jetzt starten oder nach §4 kürzen?
+Decision: Gekürzt, als erster Punkt der Kürzungsreihenfolge (`umfang-welle-7.md` §4: „M4 → …“). Das Ticket bleibt `ready-for-agent` mit Vermerk und geht in die nächste Welle; die vorhandene Formelauswahl und der X31-Rundweg (Nummer bleibt erhalten, Befund „Formel nicht umgesetzt“) bleiben unverändert.
+Reason: Die Welle ist übergelaufen: vier Halte am Nutzungslimit (D-81, D-85, D-91, D-105), das Tor ist noch nicht dreimal grün, die Leistungsbudgets müssen noch auf ruhiger Maschine gemessen werden, und 157 würde `packages/gaeb` zugleich mit 159a schreiben (P2). Das verbleibende Budget gehört dem Tor, der Review-Behebung und dem Abschluss. Kein P- oder S-Teil wird gekürzt.
+Reversible: yes (Ticket unverändert startbereit)  Touches: Ticket 157, Bericht
