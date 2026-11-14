@@ -17,6 +17,7 @@ import type {
   Angebot,
   Betrag,
   Bieter,
+  Bieterangaben,
   Gesamtsummen,
   GaebPhase,
   GaebVersion,
@@ -55,11 +56,14 @@ export interface Lesevorschau {
     readonly positionen: number;
     readonly hinweistexte: number;
   };
-  /** Ohne Inhalt (z. B. GAEB 3.1, kein XML) gibt es nichts zu übernehmen; die Befunde bleiben sichtbar. */
+  /**
+   * Ohne Inhalt (andere Austauschphase, GAEB 90 oder GAEB 2000, keine GAEB-Datei) gibt es nichts zu übernehmen; die Befunde
+   * bleiben sichtbar, der Satz der Abweisung steht vorn.
+   */
   readonly uebernehmbar: boolean;
 }
 
-/** Liest eine X81/X83 (3.3, 3.2) mit den Kennungen der App und dem Ersatzwert 19,00 % für die MwSt (E-19). */
+/** Liest eine X81, X83 oder X86 (3.3, 3.2, 3.1) mit den Kennungen der App und dem Ersatzwert 19,00 % für die MwSt (E-19). */
 export function lvLesen(bytes: Uint8Array, dateiname: string, ids: IdQuelle): Lesevorschau {
   const l = leseGaeb(bytes, { ids, dateiname, standardMwstSatz: STANDARD_MWST_SATZ });
   const knoten = l.inhalt?.knoten ?? [];
@@ -128,11 +132,13 @@ export interface Angebotsvorschau {
   readonly befunde: readonly Pruefbefund[];
   /** Vorschlag aus der Datei; die Oberfläche lässt ihn ändern. Leer, wenn die Datei keinen nennt. */
   readonly bieterName: string;
+  /** Anschrift und Kontakt des Bieters aus der Datei (`CTR/Address`); fehlt, wenn sie keine trägt. */
+  readonly bieterAngaben?: Bieterangaben;
   readonly angebot: Angebot | null;
   readonly uebernehmbar: boolean;
 }
 
-/** Liest eine X84 gegen dieses LV. Die vorläufigen Kennungen ersetzt `angebotAnlegenPlan`. */
+/** Liest eine X84 (3.3, 3.2, 3.1) gegen dieses LV. Die vorläufigen Kennungen ersetzt `angebotAnlegenPlan`. */
 export function angebotLesen(
   bytes: Uint8Array,
   dateiname: string,
@@ -151,6 +157,7 @@ export function angebotLesen(
     version: l.version,
     befunde: l.befunde,
     bieterName: l.bieter?.name ?? '',
+    ...(l.bieter?.angaben === undefined ? {} : { bieterAngaben: l.bieter.angaben }),
     angebot,
     uebernehmbar: angebot !== null,
   };
@@ -159,13 +166,22 @@ export function angebotLesen(
 const gleichNamig = (a: string, b: string): boolean =>
   a.trim().toLocaleLowerCase('de') === b.trim().toLocaleLowerCase('de');
 
+/** Ob das Projekt einen Bieter dieses Namens hat (Groß-/Kleinschreibung und Ränder egal); er wird wiederverwendet. */
+export function bieterVorhanden(projekt: Projekt, bieterName: string): boolean {
+  return bieterName.trim() !== '' && projekt.bieter.some((b) => gleichNamig(b.name, bieterName));
+}
+
 export interface Angebotsplan {
   /** `null`: Der Bieter ist im Projekt schon da (gleicher Name, Groß-/Kleinschreibung und Ränder egal). */
   readonly neuerBieter: Bieter | null;
   readonly angebot: Angebot;
 }
 
-/** Bieter (nur wenn neu) und Angebot für den Befehlsweg. `null`: nichts zu übernehmen oder kein Name. */
+/**
+ * Bieter (nur wenn neu) und Angebot für den Befehlsweg. `null`: nichts zu übernehmen oder kein Name. Ein neuer Bieter bringt
+ * die Angaben aus der Datei mit (`BieterAnlegen` mit `angaben`), auch unter einem geänderten Namen; ein vorhandener Bieter
+ * wird nicht überschrieben (D-82, S7).
+ */
 export function angebotAnlegenPlan(
   vorschau: Angebotsvorschau,
   bieterName: string,
@@ -175,7 +191,8 @@ export function angebotAnlegenPlan(
   const name = bieterName.trim();
   if (vorschau.angebot === null || name === '') return null;
   const vorhanden = projekt.bieter.find((b) => gleichNamig(b.name, name));
-  const neuerBieter: Bieter | null = vorhanden ? null : { id: vorschau.angebot.bieterId, name };
+  const angaben = vorschau.bieterAngaben === undefined ? {} : { angaben: vorschau.bieterAngaben };
+  const neuerBieter: Bieter | null = vorhanden ? null : { id: vorschau.angebot.bieterId, name, ...angaben };
   const bieterId = vorhanden ? vorhanden.id : (neuerBieter?.id ?? ids.bieter());
   return { neuerBieter, angebot: { ...vorschau.angebot, bieterId } };
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Bauzeitenplan als Tabelle (X2, Ticket 113): Nummer, Vorgang, Dauer, Beginn, Ende, Puffer, kritisch; dazu Projektende und
-// kritischer Weg. Die Termine kommen aus dem `Bauzeitenplanergebnis` (A2: nichts wird hier gerechnet), ohne Balken.
+// kritischer Weg. Die Termine kommen aus dem `Bauzeitenplanergebnis` (A2: kein Termin wird hier gerechnet). Ticket 153 (E12 K):
+// dazu ein Balkenplan; hier wird nur die Lage der Termine auf der Zeitachse bestimmt (Kalendertage, Anteil der Achse).
 
 import type {
   Bauzeitenplan,
@@ -11,7 +12,15 @@ import type {
   Wochentag,
 } from '@tethys/vertrag';
 import { KEINE_ANGABE, befundZeile, datumOderStrich, druckdatum } from './bericht';
-import type { BerichtAbschnitt, BerichtZeile, Befundtext, Berichtsmodell } from './bericht';
+import type {
+  AchsenAbschnitt,
+  BalkenZeile,
+  BerichtAbschnitt,
+  BerichtBlock,
+  BerichtZeile,
+  Befundtext,
+  Berichtsmodell,
+} from './bericht';
 
 export interface BauzeitenplanEingabe {
   readonly plan: Bauzeitenplan;
@@ -47,6 +56,90 @@ function tiefe(v: Vorgang, nachId: ReadonlyMap<VorgangId, Vorgang>): number {
     e = nachId.get(e)?.elternId ?? null;
   }
   return n;
+}
+
+/**
+ * Trenner der Vorgänge im kritischen Weg. Der Pfeil „→“ (U+2192) fehlt im Latin-Teil von Noto Sans und erschien als leeres
+ * Kästchen; „›“ (U+203A) ist enthalten.
+ */
+const WEG_TRENNER = ' › ';
+
+/** Mehr Monate auf der Achse: ein Abschnitt je Jahr, damit die Beschriftung lesbar bleibt. */
+const MAX_MONATE = 14;
+
+/** Tag eines Datums `JJJJ-MM-TT` als fortlaufende Zahl (Tage seit 1970-01-01, UTC; keine Uhr, A2). */
+function tagNummer(iso: string): number {
+  const [j, m, t] = iso.split('-').map(Number);
+  return Date.UTC(j ?? 1970, (m ?? 1) - 1, t ?? 1) / 86_400_000;
+}
+
+/** Erster Tag eines Monats (`monat` 0 bis 11, darf überlaufen) als Tagnummer. */
+const monatsanfang = (jahr: number, monat: number): number => Date.UTC(jahr, monat, 1) / 86_400_000;
+
+/** Die Abschnitte der Achse von `anfang` bis `ende` (Tagnummern, beide eingeschlossen) je Monat oder je Jahr. */
+function achse(anfang: string, anfangTag: number, endeTag: number): AchsenAbschnitt[] {
+  const n = endeTag - anfangTag + 1;
+  const [j0 = 1970, m0 = 1] = anfang.split('-').map(Number);
+  const monate: { text: string; von: number; bis: number }[] = [];
+  const jahre: { text: string; von: number; bis: number }[] = [];
+  for (let i = 0; monatsanfang(j0, m0 - 1 + i) <= endeTag; i++) {
+    const a = Math.max(anfangTag, monatsanfang(j0, m0 - 1 + i));
+    const b = Math.min(endeTag + 1, monatsanfang(j0, m0 + i));
+    const jahr = j0 + Math.floor((m0 - 1 + i) / 12);
+    const monat = ((m0 - 1 + i) % 12) + 1;
+    monate.push({ text: `${String(monat).padStart(2, '0')}.${String(jahr)}`, von: a, bis: b });
+    const letztes = jahre.at(-1);
+    if (letztes?.text === String(jahr)) jahre[jahre.length - 1] = { ...letztes, bis: b };
+    else jahre.push({ text: String(jahr), von: a, bis: b });
+  }
+  return (monate.length > MAX_MONATE ? jahre : monate).map((x) => ({
+    text: x.text,
+    von: (x.von - anfangTag) / n,
+    bis: (x.bis - anfangTag) / n,
+  }));
+}
+
+/** Der Balkenplan: Achse vom Projektbeginn bis zum Projektende (oder weiter, wenn ein Termin darüber hinausgeht). */
+function balkenplan(
+  plan: Bauzeitenplan,
+  ergebnis: BauzeitenplanEingabe['ergebnis'],
+  nachId: ReadonlyMap<VorgangId, Vorgang>,
+): BerichtBlock[] {
+  const termine = ergebnis.vorgaenge.flatMap((r) => (r.termine === null ? [] : [r.termine]));
+  const beginn = ergebnis.projektbeginn ?? plan.projektbeginn;
+  if (ergebnis.projektende === null || termine.length === 0)
+    return [{ art: 'absatz', text: 'Keine Termine berechnet; kein Balkenplan.' }];
+  const anfang = [beginn, ...termine.map((t) => t.beginn)].sort()[0] ?? beginn;
+  const ende = [ergebnis.projektende, ...termine.map((t) => t.ende)].sort().at(-1) ?? ergebnis.projektende;
+  const anfangTag = tagNummer(anfang);
+  const n = tagNummer(ende) - anfangTag + 1;
+  const ergebnisse = new Map(ergebnis.vorgaenge.map((r) => [r.vorgangId, r]));
+  const zeilen = plan.vorgaenge.map((v): BalkenZeile => {
+    const r = ergebnisse.get(v.id);
+    const t = r?.termine ?? null;
+    const stufe = tiefe(v, nachId);
+    const kopf = {
+      name: vorgangName(v),
+      ...(stufe > 0 ? { einrueckung: stufe } : {}),
+      ...(r?.art === 'sammelvorgang' ? { fett: true } : {}),
+    };
+    if (r === undefined || t === null) return { ...kopf, balken: null };
+    const von = (tagNummer(t.beginn) - anfangTag) / n;
+    if (r.art === 'meilenstein') return { ...kopf, balken: { art: 'meilenstein', von, bis: von } };
+    const bis = (tagNummer(t.ende) - anfangTag + 1) / n;
+    const art = r.art === 'sammelvorgang' ? 'sammelvorgang' : t.kritisch ? 'kritisch' : 'vorgang';
+    return { ...kopf, balken: { art, von, bis } };
+  });
+  return [
+    { art: 'balkenplan', achse: achse(anfang, anfangTag, tagNummer(ende)), zeilen },
+    {
+      art: 'absatz',
+      klein: true,
+      text:
+        'Balken in Kalendertagen vom Beginn bis zum Ende der frühen Lage; dunkel: auf dem kritischen Weg, schmal: ' +
+        'Sammelvorgang, Raute: Meilenstein.',
+    },
+  ];
 }
 
 export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell {
@@ -95,6 +188,10 @@ export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell
       ],
     },
     {
+      ueberschrift: 'Balkenplan',
+      bloecke: balkenplan(plan, ergebnis, nachId),
+    },
+    {
       ueberschrift: 'Kritischer Weg',
       bloecke:
         ergebnis.kritischeWege.length === 0
@@ -107,7 +204,7 @@ export function baueBauzeitenplanModell(e: BauzeitenplanEingabe): Berichtsmodell
                     .map((id) =>
                       nachId.get(id) === undefined ? KEINE_ANGABE : vorgangName(nachId.get(id) as Vorgang),
                     )
-                    .join(' → '),
+                    .join(WEG_TRENNER),
                 ),
               },
             ],

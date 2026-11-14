@@ -91,6 +91,32 @@ export interface BerichtZeile {
   readonly kleinerText?: string;
 }
 
+/**
+ * Ein Balken im Balkenplan (Ticket 153): Lage auf der Zeitachse als Anteil von 0 (Achsenanfang) bis 1 (Achsenende). Ein
+ * Meilenstein hat `von` = `bis` und wird als Raute gezeichnet. Kritisch heißt: auf dem kritischen Weg (im Druck dunkel und
+ * in der Tabelle als Text „ja“, nicht nur als Farbe).
+ */
+export interface Balken {
+  readonly art: 'vorgang' | 'kritisch' | 'sammelvorgang' | 'meilenstein';
+  readonly von: number;
+  readonly bis: number;
+}
+
+/** Eine Zeile des Balkenplans: Name links, Balken rechts; `null`: ohne Termine (leere Zeile auf der Achse). */
+export interface BalkenZeile {
+  readonly name: string;
+  readonly einrueckung?: number;
+  readonly fett?: boolean;
+  readonly balken: Balken | null;
+}
+
+/** Ein Abschnitt der Zeitachse (Monat oder Jahr) mit seiner Beschriftung, Lage wie beim `Balken`. */
+export interface AchsenAbschnitt {
+  readonly text: string;
+  readonly von: number;
+  readonly bis: number;
+}
+
 export type BerichtBlock =
   | { readonly art: 'absatz'; readonly text: string; readonly klein?: boolean }
   | {
@@ -102,7 +128,13 @@ export type BerichtBlock =
   | { readonly art: 'felder'; readonly felder: readonly (BerichtFeld & { readonly fett?: boolean })[] }
   /** Bezeichnung links (feste Breite), Text rechts daneben, linksbündig und umbrechend (Freitexte). */
   | { readonly art: 'angaben'; readonly felder: readonly BerichtFeld[] }
-  | { readonly art: 'liste'; readonly punkte: readonly string[] };
+  | { readonly art: 'liste'; readonly punkte: readonly string[] }
+  /** Balkenplan (Gantt): Zeitachse in Abschnitten und je Zeile ein Balken; Excel schreibt nur die Namen. */
+  | {
+      readonly art: 'balkenplan';
+      readonly achse: readonly AchsenAbschnitt[];
+      readonly zeilen: readonly BalkenZeile[];
+    };
 
 export interface BerichtAbschnitt {
   readonly ueberschrift: string | null;

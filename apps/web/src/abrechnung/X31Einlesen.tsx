@@ -7,7 +7,7 @@ import { Button, useToast } from '@tethys/ui-basis';
 import type { Aufmassposition, AuftragsLvZustand } from '@tethys/vertrag';
 import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { Befundliste } from '../gaeb/Befundliste';
+import { BefundeBeimEinlesen } from '../gaeb/BefundeBeimEinlesen';
 import { DateiNichtLesbar, dateiBytes, naechsterZug } from '../gaeb/datei';
 import { KopfDialog } from './KopfDialog';
 import type { Kopfangaben } from './kopf';
@@ -89,7 +89,7 @@ export function X31Einlesen({
                 : t.nichtsZuUebernehmen}
             </p>
             {v.ungerechnet > 0 ? <p>{t.ungerechnet(v.ungerechnet)}</p> : null}
-            <Befundliste befunde={v.befunde} />
+            <BefundeBeimEinlesen befunde={v.befunde} />
           </>
         )}
       </KopfDialog>

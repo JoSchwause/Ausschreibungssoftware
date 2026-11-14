@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GAEB xmlns="http://www.gaeb.de/GAEB_DA_XML/200407">
+  <GAEBInfo>
+    <Version>3.1</Version>
+    <VersDate>2008-05</VersDate>
+    <Date>2026-11-13</Date>
+    <ProgSystem>von Hand nach Formatbeschreibung</ProgSystem>
+  </GAEBInfo>
+  <PrjInfo>
+    <NamePrj>Muster-Neubau Geräteschuppen</NamePrj>
+  </PrjInfo>
+  <Award>
+    <DP>86</DP>
+    <OWN>
+      <Address>
+        <Name1>Gemeinde Musterdorf</Name1>
+      </Address>
+    </OWN>
+    <CTR>
+      <Address>
+        <Name1>Musterbau GmbH</Name1>
+      </Address>
+    </CTR>
+    <BoQ ID="lv">
+      <BoQInfo>
+        <Name>Geräteschuppen Bauhof</Name>
+        <BoQBkdn>
+          <Type>BoQLevel</Type>
+          <Length>2</Length>
+          <Num>Yes</Num>
+        </BoQBkdn>
+        <BoQBkdn>
+          <Type>Item</Type>
+          <Length>4</Length>
+          <Num>Yes</Num>
+        </BoQBkdn>
+        <BoQBkdn>
+          <Type>Index</Type>
+          <Length>1</Length>
+          <Num>No</Num>
+        </BoQBkdn>
+        <Totals>
+          <VAT>19.00</VAT>
+        </Totals>
+      </BoQInfo>
+      <BoQBody>
+        <Remark ID="vortext">
+          <Description>
+            <CompleteText>
+              <DetailTxt><Text><p><span>Vorbemerkung zum Leistungsverzeichnis</span><br/><span>Die Zufahrt erfolgt über den Wirtschaftsweg.</span></p></Text></DetailTxt>
+            </CompleteText>
+          </Description>
+        </Remark>
+        <BoQCtgy ID="t01" RNoPart="01">
+          <LblTx><span>Erdarbeiten</span></LblTx>
+          <BoQBody>
+            <Itemlist>
+              <Item ID="p0110" RNoPart="0010">
+                <Qty>125.500</Qty>
+                <QU>m2</QU>
+                <UP>4.350</UP>
+                <IT>545.93</IT>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span style="font-weight:bold;">Oberboden</span><span> abtragen und seitlich lagern.</span></p><ul><li><span>Dicke bis 30 cm</span></li><li><span>Lagerung auf der Baustelle</span></li></ul></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Oberboden abtragen</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0120" RNoPart="0020">
+                <Qty>48.250</Qty>
+                <QU>m3</QU>
+                <UP>18.900</UP>
+                <IT>911.93</IT>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Baugrube ausheben, Boden der Klassen 3 bis 5,</span><br/><span>Aushub seitlich lagern.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Baugrube ausheben</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0130" RNoPart="0030">
+                <Qty>10.000</Qty>
+                <QU>h</QU>
+                <UP>65.000</UP>
+                <IT>650.00</IT>
+                <Provis>WithoutTotal</Provis>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Wasserhaltung mit Tauchpumpe, nur auf Anordnung.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Wasserhaltung (Bedarf)</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0140" RNoPart="0040">
+                <Qty>12.000</Qty>
+                <QU>m3</QU>
+                <UP>32.500</UP>
+                <IT>390.00</IT>
+                <Provis>WithTotal</Provis>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Nicht tragfähigen Boden gegen Kies austauschen.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Bodenaustausch (Bedarf mit Gesamtbetrag)</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Remark ID="nachtext">
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Abfuhr von Boden nach gesonderter Vereinbarung.</span></p></Text></DetailTxt>
+                  </CompleteText>
+                </Description>
+              </Remark>
+            </Itemlist>
+          </BoQBody>
+        </BoQCtgy>
+        <BoQCtgy ID="t02" RNoPart="02">
+          <LblTx><span>Rohbau</span></LblTx>
+          <BoQBody>
+            <Itemlist>
+              <Item ID="p0210" RNoPart="0010">
+                <Qty>18.400</Qty>
+                <QU>m3</QU>
+                <UP>185.000</UP>
+                <IT>3404.00</IT>
+                <ALNGroupNo>1</ALNGroupNo>
+                <ALNSerNo>0</ALNSerNo>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Streifenfundament aus Beton C25/30, unbewehrt.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Streifenfundament C25/30</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0220" RNoPart="0020">
+                <Qty>18.400</Qty>
+                <QU>m3</QU>
+                <UP>198.500</UP>
+                <IT>3652.40</IT>
+                <ALNGroupNo>1</ALNGroupNo>
+                <ALNSerNo>1</ALNSerNo>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Wie vor, jedoch Beton C30/37.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Streifenfundament C30/37 (Wahl)</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0230" RNoPart="0030">
+                <Qty>86.750</Qty>
+                <QU>m2</QU>
+                <UP>72.150</UP>
+                <IT>6259.01</IT>
+                <MarkupIt>Yes</MarkupIt>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Kalksandstein-Mauerwerk, Wanddicke 17,5 cm,</span><br/><span>Mörtelgruppe IIa.</span></p><p><span>Ausführung nach Plan.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Mauerwerk KS 17,5 cm</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0240" RNoPart="0040">
+                <Qty>20.000</Qty>
+                <QU>h</QU>
+                <UP>58.000</UP>
+                <IT>1160.00</IT>
+                <HourIt>Yes</HourIt>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Stundenlohnarbeiten, Facharbeiter.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Facharbeiter im Stundenlohn</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <Item ID="p0250" RNoPart="0050">
+                <Qty>1.000</Qty>
+                <QU>psch</QU>
+                <UP>2450.000</UP>
+                <IT>2450.00</IT>
+                <LumpSumItem>Yes</LumpSumItem>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Baustelle einrichten und räumen.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Baustelleneinrichtung</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </Item>
+              <MarkupItem ID="p0260" RNoPart="0060">
+                <MarkupType>IdentAsMark</MarkupType>
+                <Markup>5.00</Markup>
+                <ITMarkup>312.95</ITMarkup>
+                <Description>
+                  <CompleteText>
+                    <DetailTxt><Text><p><span>Zuschlag auf die gekennzeichneten Positionen.</span></p></Text></DetailTxt>
+                    <OutlineText><OutlTxt><TextOutlTxt><span>Zuschlag für Erschwernis</span></TextOutlTxt></OutlTxt></OutlineText>
+                  </CompleteText>
+                </Description>
+              </MarkupItem>
+            </Itemlist>
+          </BoQBody>
+        </BoQCtgy>
+      </BoQBody>
+    </BoQ>
+  </Award>
+</GAEB>

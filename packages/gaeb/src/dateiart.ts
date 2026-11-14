@@ -5,8 +5,9 @@
 // (`erkennung.ts`).
 //
 // Merkmale der beiden älteren Formate (eigene Worte, Lesart D-136.2; die Leser kommen später):
-// - GAEB 90: Sätze fester Länge (80 Zeichen je Zeile), jeder beginnt mit der zweistelligen Satzart; der erste Satz ist der
-//   Kopfsatz `00`. Die Phase steht nicht in einer hier gelesenen Stelle: Sie kommt aus der Endung (`.d83` → X83).
+// - GAEB 90: Sätze fester Länge (80 Zeichen je Zeile), jeder beginnt mit der zweistelligen Satzart und endet mit der
+//   Satznummer; der erste Satz ist der Eröffnungssatz `00` oder `T0`. Die Phase (Datenart) steht im Satz `00` in den Stellen
+//   11 und 12, sonst gilt die Endung (`.d83` → X83). Berichtigt nach der Formatbeschreibung in Ticket 144 (D-144.1).
 // - GAEB 2000: Schlüsselwortformat, Abschnitte als `#begin[Name]` … `#end[Name]`, Werte als `[Name]Wert[end]`; die Phase steht
 //   in `[DP]`, sonst gilt die Endung (`.p83` → X83).
 
@@ -14,6 +15,7 @@ import type { GaebFormat, GaebPhase } from '@tethys/vertrag';
 import { PHASEN, erkenneKopf, phaseAusEndung } from './erkennung';
 import type { Kopfangaben, Phasenquelle } from './erkennung';
 import { dekodiereBytes } from './kodierung';
+import { schaetzeZeichensatz } from './zeichensatz';
 
 export type { Phasenquelle } from './erkennung';
 
@@ -52,27 +54,6 @@ const kopfVon = (text: string): string => {
 
 /** Beginnt der Text (nach Leerraum) mit `<`? Dann liest ihn der XML-Weg (DA XML oder ein fremdes XML). */
 export const siehtAusWieXml = (text: string): boolean => /^\s*</.test(kopfVon(text));
-
-/** Umlaute und ß in CP437/850 (ä ö ü Ä Ö Ü ß) und in ISO-8859-1. */
-const DOS_UMLAUTE: ReadonlySet<number> = new Set([0x84, 0x94, 0x81, 0x8e, 0x99, 0x9a, 0xe1]);
-const LATIN_UMLAUTE: ReadonlySet<number> = new Set([0xe4, 0xf6, 0xfc, 0xc4, 0xd6, 0xdc, 0xdf]);
-
-/** Zeichensatz einer Datei ohne Deklaration, am Inhalt geschätzt (GAEB 90 und 2000, D-71). */
-function zeichensatz(bytes: Uint8Array): string {
-  if (!bytes.some((b) => b >= 0x80)) return 'ascii';
-  try {
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return 'utf-8';
-  } catch {
-    let dos = 0;
-    let latin = 0;
-    for (const b of bytes) {
-      if (DOS_UMLAUTE.has(b)) dos += 1;
-      else if (LATIN_UMLAUTE.has(b)) latin += 1;
-    }
-    return dos > latin ? 'cp850' : 'iso-8859-1';
-  }
-}
 
 // --- DA XML ---------------------------------------------------------------------------------------------------
 
@@ -113,12 +94,25 @@ function zeilen(kopf: string, abgeschnitten: boolean): string[] {
   return z;
 }
 
-/** GAEB 90: Kopfsatz `00` vorn, jede Zeile beginnt mit der Satzart, keine länger als 80, fast alle genau 80 Zeichen. */
+/**
+ * GAEB 90 (Lesart D-144.1 nach der Formatbeschreibung, berichtigt D-136.2): Die Datei beginnt mit dem Eröffnungssatz `00` oder
+ * mit `T0` (vertragliche Regelungen davor); jede Zeile beginnt mit der Satzart (zwei Ziffern oder `T` und eine Ziffer), keine
+ * ist länger als 80 Zeichen, und fast alle sind genau 80 Zeichen lang mit der sechsstelligen Satznummer in den Stellen 75 bis 80.
+ */
 function istGaeb90(z: readonly string[]): boolean {
-  if (z.length === 0 || !(z[0] ?? '').startsWith('00')) return false;
-  if (!z.every((s) => s.length <= SATZLAENGE && /^[0-9]{2}/.test(s))) return false;
-  const voll = z.filter((s) => s.length === SATZLAENGE).length;
+  const erste = z[0] ?? '';
+  if (!erste.startsWith('00') && !erste.startsWith('T0')) return false;
+  if (!z.every((s) => s.length <= SATZLAENGE && /^(?:[0-9]{2}|T[0-9])/.test(s))) return false;
+  const voll = z.filter((s) => s.length === SATZLAENGE && /^[0-9]{6}$/.test(s.slice(74))).length;
   return voll * 5 >= z.length * 4;
+}
+
+/** GAEB 90: die Datenart (Phase) in den Stellen 11 und 12 des Eröffnungssatzes `00`, z. B. `83`. */
+function datenart90(z: readonly string[]): GaebPhase | null {
+  const kopf = z.find((s) => s.startsWith('00'));
+  const da = kopf?.slice(10, 12) ?? '';
+  const phase = /^[0-9]{2}$/.test(da) ? `X${da}` : '';
+  return PHASEN.has(phase as GaebPhase) ? (phase as GaebPhase) : null;
 }
 
 /** GAEB 2000: die erste Zeile öffnet einen Abschnitt `#begin[…]`. */
@@ -152,7 +146,7 @@ export function dateiartAusText(
     };
   }
   const geschaetzt =
-    bytes === null ? null : kodierung?.startsWith('utf-16') === true ? kodierung : zeichensatz(bytes);
+    bytes === null ? null : kodierung?.startsWith('utf-16') === true ? kodierung : schaetzeZeichensatz(bytes);
   const z = zeilen(kopf, text.length - (text.charCodeAt(0) === 0xfeff ? 1 : 0) > KOPF_ZEICHEN);
   const endung = phaseAusEndung(dateiname);
   const nachEndung = { phase: endung, phasenquelle: endung === null ? null : ('endung' as const) };
@@ -165,7 +159,11 @@ export function dateiartAusText(
         : nachEndung;
     return { format: 'gaeb-2000', version: null, ...ausInhalt, kodierung: geschaetzt };
   }
-  if (istGaeb90(z)) return { format: 'gaeb-90', version: null, ...nachEndung, kodierung: geschaetzt };
+  if (istGaeb90(z)) {
+    const da = datenart90(z);
+    const phase = da === null ? nachEndung : { phase: da, phasenquelle: 'inhalt' as const };
+    return { format: 'gaeb-90', version: null, ...phase, kodierung: geschaetzt };
+  }
   return { ...UNBEKANNT, kodierung: geschaetzt };
 }
 
