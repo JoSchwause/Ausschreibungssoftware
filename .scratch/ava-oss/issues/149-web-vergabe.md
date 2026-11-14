@@ -1,6 +1,6 @@
 # 149: App: Vergabe (Angebote, Bieter, Zuschlag zurücknehmen, Preisspiegel-Ausgaben)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: V, E8, E10, E11 · Paket/Ordner: `apps/web/src/vergabe/`, `apps/web/src/gaeb/Angebote.tsx` und Verwandte
 Blocked by: 137, 138, 139, 141, 142, 146
