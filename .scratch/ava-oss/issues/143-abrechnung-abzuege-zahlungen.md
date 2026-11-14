@@ -1,6 +1,6 @@
 # 143: `abrechnung`: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen; Fixture und Kettentest
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: A5 · Paket/Ordner: `packages/abrechnung`, `packages/speicher` (nur Rechnungsdekoder, D-93), `fixtures/` (neue Datei `typisch-zahlungen.json` o. ä.)
 Blocked by: 128
@@ -26,10 +26,10 @@ Herkunft: umfang §3 A5, G-61
 
 ## Acceptance criteria
 
-- [ ] Fixture mit Herleitung; Kettentest gleich Soll; M4-Goldens unverändert
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Fixture mit Herleitung; Kettentest gleich Soll; M4-Goldens unverändert
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -81,3 +81,9 @@ Lesarten und Entscheidungen (Demo-Modus; Verbraucher: 152 App, 153 Ausgabe):
   (`vergabe` ist dort nicht importierbar, A3), die Befehle der Fixture so, wie die App sie schickt; Vergabe → Abrechnung bleibt
   der Kettentest von M4 (`apps/web/src/m4-kette.test.ts`, unverändert). Property-Tests: `zahlungsstand-eigenschaften.test.ts`.
 - Weiter unsicher (D-72, auf die Seite „Annahmen“): Basis der Bauabzugsteuer ohne Umlagen und Vertragsstrafe (§ 48 EStG).
+
+Ergebnis (nach Merge von `integration/welle-7` bis 2895109): Lint grün, Typcheck grün. Unit-Tests 4.588 grün, rot nur 11 Zeit-
+budgets bzw. Zeitüberschreitungen unter Parallellast (Last ≈ 20 auf 4 Kernen; `gaeb` Lesen/Schreiben, `kern` K9 und lvPruefen,
+`speicher` Aufmaß- und X1-Budgets, `vergabe` Preisspiegel, App D-45, zwei PDF-Tests in `ausgabe`, die allein grün laufen);
+keines berührt von diesem Ticket, nichts gelockert. Fixtures (`node --test`) 59 grün. E2E `rechnung.spec.ts` und `m4.spec.ts`
+grün. `typisch-abrechnung.json` und die M4-Goldens unverändert.
