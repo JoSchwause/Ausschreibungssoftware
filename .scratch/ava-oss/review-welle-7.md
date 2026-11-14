@@ -106,3 +106,19 @@ Standards: 4 harte Befunde in A (schwerster: SA1, die Suchleiste bindet Tasten a
 (schwerster: SB2/Q5, KG-Bezeichnungen gehen bei einem Schreibfehler still verloren), dazu 9 + 10 Ermessenspunkte.
 Spec: Vertrag „ja mit Korrekturen“ (MUST-1: Wiederholen von „Projekt samt Inhalt löschen“ scheitert), 4 Befunde in A, 7 in B
 (schwerster: PB5, die Seite „Annahmen“ verschweigt, dass die Vertragsstrafe kumuliert geführt wird – Gefahr zu geringer Abzüge).
+
+## Zweiter Durchgang (D-103): 152, 161, 162 (`b634d6c...d5e0680`)
+
+- MUST-1 behoben (`speicher/src/projektbestand.ts:108-116`, Tests in `projektbestand.test.ts`, `samtInhalt.test.ts`, E2E `projekt-samt-inhalt.spec.ts`). PA3 behoben (`rechnung/entwurf.ts:309-311`).
+- D-161.2 (erster `Rueckgaengig`-Eintrag geht nach Löschen → Undo → Wiederholen → Undo verloren): mit ADR 0009 und D-104 vereinbar; das Protokoll ist Nebenbuch, kein Zustand und kein zustandsändernder Befehl geht verloren.
+- R1 MUST: Excel-Dialog der Abrechnung zeigt rohen Ausnahmetext, Meldung ohne nächsten Schritt (`abrechnung/Ausgabe.tsx:95`, `:142`, `abrechnung/texte.ts:112`).
+- R2 MUST: „Skonto (nicht verwirklicht)“ mit −0,00 schon während der laufenden Frist (`rechnung/texte.ts:206`, `rechnung/pruefung.ts:355`); wie PA2 im PDF.
+- R3 SOLL: Fokus nach „Zahlung löschen“ fällt auf `body`; gleiche `aria-label` bei zwei Zahlungen am selben Tag (`Zahlungsbereich.tsx`).
+- R4 SOLL: Text „Bruttobetrag ohne MwSt“ widersprüchlich (`rechnung/texte.ts:57`).
+- R5 SOLL: Spalte „Offen“ zeigt vor der Freigabe einen Betrag (`Rechnungsliste.tsx:65`).
+- R6 SOLL: Präfix-Prüfung nimmt beliebige angehängte Einträge an (`projektbestand.ts:111-115`); ADR 0009 nennt das Verhalten nicht.
+- R7 SOLL: Konflikt nach Undo eines schon wieder eingelesenen Projekts ohne nächsten Schritt (`historie/texte.ts:14`).
+- R8 SOLL: Filter `NICHT_IM_BESTAND` doppelt (`projekt/samtInhalt.ts:25-38`, `speicher/src/projektbestand.ts:31-38`).
+- R9 SOLL: `projektinhaltLesen` exportiert die ganze Projektdatei samt Modellbytes nur zum Zählen.
+- R10 SOLL: `rechnung/entwurf.ts:251` vergleicht Dezimal mit `Number(s) < 100` statt über `@tethys/dezimal`.
+- R11 SOLL: `DruckProfilFeld.tsx:120` sucht die Combobox per `querySelector` statt per Ref.

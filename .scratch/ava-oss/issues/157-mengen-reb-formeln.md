@@ -25,3 +25,5 @@ nicht umgesetzt“ mit erhaltener Nummer im X31-Rundweg. Formelauswahl in der Ap
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+Orchestrator (Welle 7): gekürzt nach `umfang-welle-7.md` §4 (M4 fällt zuerst), siehe D-108. Bleibt `ready-for-agent` für die nächste Welle; die Vorbedingungen (alle P-/S-Tickets gemergt) sind dann erfüllt.
