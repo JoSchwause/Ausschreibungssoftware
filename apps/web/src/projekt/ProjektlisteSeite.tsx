@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Seite `/`: Projekte nach Name, Projekt anlegen, Projektdatei importieren. Jede Änderung geht als Befehl durch Kern
-// und Speicher (A5); der Import ist der Weg der Projektdatei (`projektdateiImportieren`, G-56).
+// und Speicher (A5); der Import ist der Weg der Projektdatei (`projektdateiImportieren`, G-56). Ticket 147: Ist die Liste
+// leer, begrüßt die Seite mit drei Wegen (Beispielprojekt, GAEB-Datei, leeres Projekt mit dem Formular dieser Seite); beim
+// ersten Projekt steht der Hinweis, wo die Daten liegen und wie man sichert.
 
 import { Button, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { ProjektId, Projektuebersicht } from '@tethys/vertrag';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
+import { Datenhinweis } from '../hilfe/Datenhinweis'; // Ticket 147
+import { Willkommen } from '../hilfe/Willkommen'; // Ticket 147
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
@@ -70,6 +74,28 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
     await laden();
   };
 
+  // Ticket 147: dasselbe Formular unter der Liste und, bei leerer Liste, als dritter Weg der Begrüßung (dort ohne Überschrift).
+  const formular = (mitTitel: boolean): ReactElement => (
+    <form className="projekt__formular" onSubmit={(e) => void anlegen(e)} aria-label={texte.anlegen.titel}>
+      {mitTitel ? <h2>{texte.anlegen.titel}</h2> : null}
+      <div className="projekt__felder">
+        <Eingabefeld
+          label={texte.anlegen.name}
+          value={name}
+          onWertChange={(w) => {
+            setName(w);
+            setNameFehlt(false);
+          }}
+          {...(nameFehlt ? { meldung: texte.anlegen.nameFehlt } : {})}
+        />
+        <Eingabefeld label={texte.anlegen.bauherr} value={bauherr} onWertChange={setBauherr} />
+        <Button type="submit" variante="primaer">
+          {texte.anlegen.knopf}
+        </Button>
+      </div>
+    </form>
+  );
+
   return (
     <div className="seite projekt">
       <h1>{texte.liste.titel}</h1>
@@ -77,42 +103,28 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
       {projekte === null ? (
         <p aria-busy="true">{texte.liste.laden}</p>
       ) : projekte.length === 0 ? (
-        <p>{texte.liste.leer}</p>
+        <Willkommen gehe={gehe} leer={texte.liste.leer} formular={formular(false)} />
       ) : (
-        <ul className="projekt__liste" aria-label={texte.liste.tabelle}>
-          {projekte.map((p) => (
-            <li key={p.id}>
-              <a
-                href={hrefFuer(projektPfad(p.id))}
-                onClick={(e) => {
-                  e.preventDefault();
-                  gehe(projektPfad(p.id));
-                }}
-              >
-                {p.name}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="projekt__liste" aria-label={texte.liste.tabelle}>
+            {projekte.map((p) => (
+              <li key={p.id}>
+                <a
+                  href={hrefFuer(projektPfad(p.id))}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    gehe(projektPfad(p.id));
+                  }}
+                >
+                  {p.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+          {projekte.length === 1 ? <Datenhinweis gehe={gehe} ausblendbar /> : null}
+          {formular(true)}
+        </>
       )}
-      <form className="projekt__formular" onSubmit={(e) => void anlegen(e)} aria-label={texte.anlegen.titel}>
-        <h2>{texte.anlegen.titel}</h2>
-        <div className="projekt__felder">
-          <Eingabefeld
-            label={texte.anlegen.name}
-            value={name}
-            onWertChange={(w) => {
-              setName(w);
-              setNameFehlt(false);
-            }}
-            {...(nameFehlt ? { meldung: texte.anlegen.nameFehlt } : {})}
-          />
-          <Eingabefeld label={texte.anlegen.bauherr} value={bauherr} onWertChange={setBauherr} />
-          <Button type="submit" variante="primaer">
-            {texte.anlegen.knopf}
-          </Button>
-        </div>
-      </form>
       <div className="projekt__werkzeuge">
         <HistorieKnoepfe />
         <input
