@@ -4,11 +4,7 @@
 // Befehl ist.
 
 import { createHash } from 'node:crypto';
-import type {
-  Befehlskurzfassung,
-  ProjektbestandChangeSet,
-  ProjektSamtInhaltLoeschen,
-} from '@tethys/vertrag';
+import type { Befehlskurzfassung, ProjektbestandChangeSet, ProjektSamtInhaltLoeschen } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { kanonischesJson } from './kanonisch';
 import { befehlskurzfassung } from './kurzfassung';
@@ -28,7 +24,12 @@ describe('Projekt samt Inhalt löschen (Vertrag v1.7c, bis Ticket 161)', () => {
       projektId: winzig.projekt.id,
       projekt: { vorher: winzig.projekt, nachher: null },
       bestand: {
-        vorher: { leistungsverzeichnisse: [winzig.lv], angebote: [], auftragsLeistungsverzeichnisse: [], protokoll: [] },
+        vorher: {
+          leistungsverzeichnisse: [winzig.lv],
+          angebote: [],
+          auftragsLeistungsverzeichnisse: [],
+          protokoll: [],
+        },
         nachher: null,
       },
     };

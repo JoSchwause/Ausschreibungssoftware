@@ -743,4 +743,7 @@ export interface Projektdatei {
  * das Protokoll in der Reihenfolge des Schreibens), ein leeres optionales Feld fehlt (nie `[]`). `speicher` vergleicht den
  * Bestand im Lösch-ChangeSet mit dem gespeicherten (wie D-31.2): Weicht er ab oder fehlt etwas, `konflikt`.
  */
-export type Projektbestand = Omit<Projektdatei, 'schemaVersion' | 'projekt' | 'modelldateien' | 'einstellungen'>;
+export type Projektbestand = Omit<
+  Projektdatei,
+  'schemaVersion' | 'projekt' | 'modelldateien' | 'einstellungen'
+>;

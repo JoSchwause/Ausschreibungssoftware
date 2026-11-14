@@ -2786,7 +2786,9 @@ export const beispieleV17b: readonly [
 // --- v1.7c (Ticket 160; E8, D-96) -----------------------------------------------------------------------------------
 
 /** E8: Projekt samt Inhalt löschen; der Befehl trägt nichts, der Bestand geht an den Ausführer. */
-export const beispielProjektSamtInhaltLoeschen: ProjektSamtInhaltLoeschen = { art: 'ProjektSamtInhaltLoeschen' };
+export const beispielProjektSamtInhaltLoeschen: ProjektSamtInhaltLoeschen = {
+  art: 'ProjektSamtInhaltLoeschen',
+};
 
 /**
  * D-96: der Bestand des Projekts aus `beispielProjektdateiV16` mit dem Beispiel-LV und seinem LV-Stand: alle Listen der Datei

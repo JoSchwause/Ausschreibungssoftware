@@ -339,7 +339,8 @@ export const AGGREGATART_NAMEN = Object.keys(AGGREGATARTEN) as readonly Art[];
  * Der Eintrag zur Art des ChangeSets, gelesen als Eintrag aller Arten. Die Umwandlung ist die einzige Stelle, an der der Typ
  * nicht folgt: TypeScript verbindet `cs.art` nicht mit dem Typ von `cs`; der Schlüssel der Tabelle ist aber genau `cs.art`.
  */
-const eintragZu = (cs: AggregatChangeSet): Aggregatart<Art> => AGGREGATARTEN[cs.art] as unknown as Aggregatart<Art>;
+const eintragZu = (cs: AggregatChangeSet): Aggregatart<Art> =>
+  AGGREGATARTEN[cs.art] as unknown as Aggregatart<Art>;
 
 /** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
 export function aggregatDes(cs: AggregatChangeSet): { art: Art; id: string } {
