@@ -1,6 +1,6 @@
 # 147: App: Erster Start, Beispielprojekt, Hilfe, Speicherstatus
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E2 · Paket/Ordner: neu `apps/web/src/hilfe/`, `apps/web/src/ui/` (Statuszeile), `projekt/ProjektlisteSeite.tsx`; Beispielprojekt-Daten aus `fixtures/` (nur lesen, über den Build eingebunden)
 Blocked by: 131, 134, 130
@@ -74,3 +74,7 @@ alle Leistungsbudgets unter Last (Lastmittel 16 bis 25 auf 4 Kernen; `kern` lv-p
 aufmass-leistung, `vergabe` leistung, web `abrechnung/leistung`), keine Datei dieses Tickets, nichts gelockert. Fixture-Selbsttest
 53 grün. E2E `erster-start.spec.ts` 4/4 grün; dazu `start`, `huelle`, `projekt`, `sicherung`, `navigation` (14) grün. Nach dem
 Merge von 142 öffnet das E2E die Angebote über das Menü „Angebote“ (`erwartePunkt`).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `3580aac`. Ergebnisse, Testläufe und Entscheidungen (D-147.x) unter `## Comments`.

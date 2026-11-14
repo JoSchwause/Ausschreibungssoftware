@@ -1,6 +1,6 @@
 # 154: App: Kalkulationsansätze speichern, Kostenausgaben, KG-Hinweis
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: C2–C4, E9, E12 · Paket/Ordner: `apps/web/src/kosten/`
 Blocked by: 137, 139, 153
@@ -73,3 +73,7 @@ Ergebnis (nach `git merge integration/welle-7`, Stand `1dbfdca`, samt 150):
 
 Offen für 159/Orchestrator: Druckprofil und Datum sind in den Kostenausgaben nicht wählbar (D-154.4); `lv-bedienung.spec.ts`
 könnte die Kalkulation jetzt über den Dialog statt über den Testpfad laden (fremde Spec, nicht geändert).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `b7db7b2`. Ergebnisse, Testläufe und Entscheidungen (D-154.x) unter `## Comments`.

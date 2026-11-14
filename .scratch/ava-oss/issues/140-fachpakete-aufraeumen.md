@@ -1,6 +1,6 @@
 # 140: Fachpakete aufräumen (Ticket 123, Rest)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `packages/ifc`, `bim`, `bauzeit`, `bauleitung`, `ui-modell`
 Blocked by: 127
@@ -37,3 +37,7 @@ Herkunft: Ticket 123 Punkte 1 (Verbraucher), 3, 5 (Verbraucher), 7 (`bauzeit`), 
 - **D-140.7 `ui-modell` GlobalIds: nicht umgesetzt.** Frage: `IfcGlobalId` statt `string` in `typen.ts` (Eingaben `auswahl`, `faerbung`, `bildschirmpunkt`)? Entscheidung: zurückgestellt. Die Eingaben sind in `apps/web` (`ModellSeite.tsx`, `ModellvergleichSeite.tsx`, `bim/zuordnung.ts`) durchgehend `string`; die Verengung bräche den Typcheck der App, die hier nicht angefasst wird, und brauchte eine neue Abhängigkeit `ui-modell → vertrag` samt Lockfile. Vorschlag: zusammen mit der App-Umstellung in 155 (Typen in `typen.ts`, `darstellung.ts`, `zuordnung.ts`, `geometrie-lesen.ts`, `leinwand.ts`, Tests und `e2e/harness`; Quelle der Marke ist `geometrie-lesen.ts`).
 - **D-140.8 Nicht umgesetzt (offen für 155/Folge):** Re-Exporte der Vertragstypen in `bauzeit/index.ts` („für bestehende Importe“): die Pakettests importieren sie über `./index`; Entfernen verlangt Anpassung von rund 12 Testdateien und ist kein Gewinn. Test-Exporte in `ifc`: nur `zeichenketteEntschluesseln` war ungenutzt exportiert; `ifcLesen`/`eigenschaftenLesen` aus 122/20 werden außerhalb des Pakets genutzt oder sind bereits intern.
 - Lauf: lint, typecheck grün; `pnpm test` 4110 grün, nur Leistungstests unter Last rot (`kern/k9-leistung`, `speicher/aufmass-leistung`, `speicher/v16-leistung`, `vergabe/leistung`, `apps/web/abrechnung/leistung`: Pakete, die dieses Ticket nicht berührt; nicht gelockert). X1–X4-Kettentests 27/27 grün, `ui-modell` E2E 15/15 grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `c3e9255`. Ergebnisse, Testläufe und Entscheidungen (D-140.x) unter `## Comments`.

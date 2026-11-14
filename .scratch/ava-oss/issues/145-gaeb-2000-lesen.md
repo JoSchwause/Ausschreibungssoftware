@@ -1,6 +1,6 @@
 # 145: GAEB 2000 lesen (.p81/.p83/.p84/.p86)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: G4, E6 · Paket/Ordner: `packages/gaeb`, `fixtures/gaeb-formate/`
 Blocked by: 144
@@ -127,3 +127,7 @@ Inhalt; Q3 meldet eine Bereichs-OZ, die nicht zur Tiefe passt, Q5 zwei Werte ohn
 - GAEB-Tests: `gaeb2000.test.ts` 26 (je Schlüsselwort, Texte, Aufbau, Zeichensatz, `.p84`), `formatvergleich.test.ts` 11 (Kettentest
   mit `.p83`/`.p86` und `.p84`), `abweisung.test.ts` angepasst, `gaeb90.test.ts` 30 unverändert grün.
 - E2E `e2e/gaeb.spec.ts` 8/8 grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `99919bb`. Ergebnisse, Testläufe und Entscheidungen (D-145.x) unter `## Comments`. **Nicht gegen echte Dateien geprüft:** GAEB 2000 wie GAEB 90 nur gegen eigene Fixtures (Ticket 125 fehlt); unsichere Punkte in den Comments.

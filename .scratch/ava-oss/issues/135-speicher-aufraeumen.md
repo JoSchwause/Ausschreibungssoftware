@@ -1,6 +1,6 @@
 # 135: `speicher`: eine Tabelle je ChangeSet-Art
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: S · Paket/Ordner: `packages/speicher`
 Blocked by: –
@@ -52,3 +52,7 @@ Herkunft: Ticket 123 Punkt 2 (SA6, SA7) und `dekoder.ts`-Teil von Punkt 1 (nach 
   unter Last (Load 23–36 auf 4 Kernen, bis zu 8 Agenten). Gegenprobe mit den Quellen von `integration/welle-7` unter derselben
   Last: dieselben `speicher`-Budgets rot (Aufmaß Median 151 ms, BauteileZuordnen samt Undo 141 ms); kein Budget gelockert.
   `speicher`-E2E 18/18 grün. Keine Nutzertexte geändert.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `592b571`. Ergebnisse, Testläufe und Entscheidungen (D-135.x) unter `## Comments`.

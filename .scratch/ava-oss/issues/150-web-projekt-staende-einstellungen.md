@@ -1,6 +1,6 @@
 # 150: App: Projektangaben, LV-Stände, Einstellungen, Kopie-Import
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E8, E10, E15 · Paket/Ordner: `apps/web/src/projekt/`, `historie/`, `sicherung/`, `ausgabe/` (Druckprofile), `kosten/bezeichnungen.ts` (nur Speicherweg)
 Blocked by: 137, 139, 147
@@ -83,3 +83,6 @@ gross und Mengenansatz, `speicher` v16-leistung ×2 und aufmass-leistung, `verga
 Datei dieses Tickets, nichts gelockert. E2E: neu `einstellungen.spec.ts` (5), dazu `druckprofil`, `projekt`, `undo`,
 `erster-start`, `kosten`, `ausgabe` – 29/29 grün; vor dem Merge zusätzlich `sicherung`, `start`, `huelle` grün.
 
+## Answer
+
+Gemergt nach `integration/welle-7` mit `3ee47d7`. Ergebnisse, Testläufe und Entscheidungen (D-150.x) unter `## Comments`.

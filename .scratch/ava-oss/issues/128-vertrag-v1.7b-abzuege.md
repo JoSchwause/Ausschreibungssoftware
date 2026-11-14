@@ -1,6 +1,6 @@
 # 128: `vertrag` v1.7b: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: F, A5 · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`)
 Blocked by: 127
@@ -119,3 +119,7 @@ Speicherdruck durch parallele Agenten je Ordner gelaufen, gleiche Regeln), Typch
 CPU-Leistungsbudgets unter Parallellast (Last ≈ 22 auf 4 Kernen; nicht gelockert, keines berührt von diesem Ticket). Fixtures
 (`node --test`) 53 grün. E2E `rechnung.spec.ts` grün. Nebenbei aus D-87 zwei Kommentare im Vertrag berichtigt (Name eines
 LV-Stands nicht leer; Codes von `OzMaskeSetzen`, auch D-127.14), aus D-88 der Glossarbegriff „Vergabevorschlag“.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `cee686c`. Ergebnisse, Testläufe und Entscheidungen (D-128.x) unter `## Comments`.

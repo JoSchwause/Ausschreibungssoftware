@@ -1,6 +1,6 @@
 # 151: App: Auftrags-LV (Langtext, Excel) und geführter Nachtrag
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: A1, E9 · Paket/Ordner: `apps/web/src/auftrag/`, `nachtrag/`
 Blocked by: 142
@@ -68,3 +68,7 @@ Ergebnis (nach `git merge integration/welle-7`, Stand `a99ee9d`):
   Tickets, nichts gelockert.
 - E2E (`--workers=1`): `nachtrag.spec.ts`, `m4.spec.ts` (nach dem Merge), `arbeitsflaeche.spec.ts` (4), `kosten.spec.ts`,
   `m3.spec.ts`, `aufmass.spec.ts` (2), `rechnung.spec.ts` grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `2895109`. Ergebnisse, Testläufe und Entscheidungen (D-151.x) unter `## Comments`.

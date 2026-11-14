@@ -1,6 +1,6 @@
 # 133: Einheitliche Sprache und Sprachtest
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E14 · Paket/Ordner: `apps/web/src/*/texte.ts`, `packages/ui-*/src/texte.ts`, `GLOSSARY.md`, neu `apps/web/src/sprache.test.ts`; Textstellen außerhalb von `texte.ts` nur, wo dort Nutzertext fest steht
 Blocked by: –
@@ -48,3 +48,7 @@ Läuft parallel zu 131 und 132, die in `ui/`, `projekt/` und den Specs arbeiten:
 - D-133.8 „€“, Trennzeichen, Anrede: „€“ nur als Zeichen mit Leerzeichen hinter der Zahl (Test lehnt „EUR“, „Euro“, „5€“ ab); Seitentitel bleiben „Seite – Projekt“ (Halbgeviertstrich), Zellen im Klartext trennt „ · “ statt „ | “. „Sie“-Texte bleiben, wo sie direkt anreden (L4 erlaubt „Sie“); die „du“-Texte und alle Imperative der 2. Person Singular in `kosten`, `honorar`, `bauzeit` sind unpersönlich umformuliert, der Test prüft Pronomen und eine Liste solcher Imperative.
 - D-133.9 IFC-Klassen: Tabelle `IFC_KLASSEN` und `ifcKlassenName` in `apps/web/src/bim/texte.ts` (nur Anzeige: Baum, Eigenschaften, Klassenauswahl, Vergleich); unbekannte Klassen unverändert. Die Auswahl nennt „Wand (IfcWall): 3“ statt „IfcWall (3)“. Regel- und Kennungsreste in Nutzertexten (Paketname im Bausteinkatalog, „(F1)“, „(Regel U5)“) entfernt.
 - Prüfstand: Sprachtest 31/31 grün (auch Test des Tests); volle Unit-Suite grün bis auf 8 Leistungsbudget-Tests unter Last (gaeb, kern, speicher, vergabe, abrechnung; nicht angefasst, nicht gelockert); volle E2E 89/90 grün, bim-tastatur.spec.ts fällt mit 2 Workern unter Last (Fokus in der Auswahl), allein grün (zweimal).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `83ba3c9`. Ergebnisse, Testläufe und Entscheidungen (D-133.x) unter `## Comments`.

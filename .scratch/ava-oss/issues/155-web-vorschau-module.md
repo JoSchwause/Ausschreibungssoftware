@@ -1,6 +1,6 @@
 # 155: App: Vorschau-Module anbinden (E16, Tickets 123/124 Rest)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: X1–X4, E16 · Paket/Ordner: `apps/web/src/bauzeit/`, `bauleitung/`, `honorar/`, `bim/`, `modellvergleich/`, `packages/bim` (Hinweis Doppelmessung)
 Blocked by: 131, 140
@@ -104,3 +104,7 @@ Nachtrag (D-94 des Orchestrators):
 - Endlauf nach dem Merge von 132 (`fd4729b`): typecheck grün, lint der berührten Ordner grün, Prettier und Paketgrenzen grün;
   E2E (gegen vorgebauten Server, weil der Build unter Last die 120 s des `webServer` überschritt) 16/16 grün: x1-kern,
   x1-erweitert, x2 (2), x3, x4, vorschau (2), bim-mengen, modellvergleich (3), umwege (4).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `fd5fcaa`. Ergebnisse, Testläufe und Entscheidungen (D-155.x) unter `## Comments`. Punkt 6 (Kann-Teil) gekürzt nach `umfang-welle-7.md` §4.

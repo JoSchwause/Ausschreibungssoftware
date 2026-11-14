@@ -1,6 +1,6 @@
 # 131: App: Seitengerüst und Navigation
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: U, E1 · Paket/Ordner: `apps/web/src/ui/`, `projekt/`, `App.tsx`; Seitengerüst-Umstellung in `bim/`, `modellvergleich/`, `bauzeit/`, `honorar/`, `bauleitung/` (nur Gerüst, keine Fachänderung)
 Blocked by: –
@@ -79,3 +79,7 @@ beendete einen Prozess wegen Speichermangel) und `navigation.spec` (Fokus kehrte
 Test wartet jetzt darauf); beide einzeln wiederholt grün. Nach dem Merge: lint, typecheck grün; `pnpm test` 4007 grün, 3 rot nur
 unter Last (Budgets `speicher/v16-leistung`, `vergabe/leistung`, `abrechnung/leistung`, Lastmittel 18–26 auf 4 Kernen; keine
 von 131 berührte Datei; nicht gelockert). Nach dem Merge erneut grün: navigation, huelle, start, undo, x2, projekt, m3, bim.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `95822fa`. Ergebnisse, Testläufe und Entscheidungen (D-131.x) unter `## Comments`.

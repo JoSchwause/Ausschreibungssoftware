@@ -1,6 +1,6 @@
 # 144: GAEB 90 lesen (.d81/.d83/.d84/.d86) und Formatvergleich
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: G4, E6 · Paket/Ordner: `packages/gaeb`, neu `fixtures/gaeb-formate/` (+ `fixtures/extern/HERKUNFT.md`, `REUSE.toml` für die neuen Dateien)
 Blocked by: 136
@@ -132,3 +132,7 @@ Nicht erreichbar: die offizielle GAEB-90-Regelung (nicht frei), `gaeb-2000.com/g
   am XML-Weg nur einen Schalter im Vorlauf.
 - GAEB-Tests: `gaeb90.test.ts` 30 (je Satzart), `formatvergleich.test.ts` 8 (Kettentest), `dateiart`, `abweisung` angepasst.
 - E2E `e2e/gaeb.spec.ts` 6/6 grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `d34b2b9`. Ergebnisse, Testläufe und Entscheidungen (D-144.x) unter `## Comments`. **Nicht gegen echte Dateien geprüft:** GAEB 90 ist gegen eigene, aus der Spezifikation abgeleitete Fixtures getestet; echte Dateien aus dem Büro fehlen (Ticket 125), die unsicheren Punkte stehen in den Comments.

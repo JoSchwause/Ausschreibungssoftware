@@ -1,6 +1,6 @@
 # 142: App: Arbeitsfläche und Werkzeugleiste
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: U, E3 · Paket/Ordner: `apps/web/src/lv/`, `auftrag/`, `vergabe/` (Layout), `packages/ui-basis` (Werkzeugleiste, Menü)
 Blocked by: 130, 131
@@ -88,3 +88,7 @@ Folgearbeit (fremde Ordner, P2): `abrechnung/Verweis.tsx` ist ungenutzt (Ticket 
 `lv__werkzeuge` (honorar, rechnung, abrechnung, bauzeit, bim, bauleitung, kosten, modellvergleich) können auf
 `Werkzeugleiste`/`Werkzeuggruppe` umstellen; die Katalogseite kann den Baustein zeigen. Hinweis für Specs: Radix setzt den
 Fokus im Menü nach Pfeiltasten über einen Zeitgeber; Specs warten je Schritt auf den Fokus.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `767ae99`. Ergebnisse, Testläufe und Entscheidungen (D-142.x) unter `## Comments`.

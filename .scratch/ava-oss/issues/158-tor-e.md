@@ -1,6 +1,6 @@
 # 158: Tor E „Einführungsreife“
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/e2e/umsteiger.spec.ts`, `apps/web/e2e/ueberlauf.spec.ts`, Kettentests
 Blocked by: alle P-Tickets und die nicht gekürzten S-Tickets
@@ -99,3 +99,7 @@ Ergebnis (Stand `integration/welle-7` bis `58c8fb3`, Branch-Spitze nach diesem E
 - Volle Web-E2E einmal: 126 grün, 1 rot: `nachtrag.spec.ts:164` (Escape schließt den Positionsdialog „01.0010 Baustelle
   einrichten“ nicht, `toBeHidden` nach 5 s „visible“). Einzeln mit `--repeat-each 3`: 1 rot, 2 grün, also wackelig; nicht in
   den Ordnern dieses Tickets, an den Orchestrator gemeldet.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `5fa34fd`. Ergebnisse, Testläufe und Entscheidungen (D-158.x) unter `## Comments`. **Tor E erreicht:** `umsteiger.spec.ts` und `ueberlauf.spec.ts` dreimal in Folge grün, ohne fixme; Endlauf siehe `welle-7-bericht.md`. Der Merge-Commit trägt durch ein Versehen die Nachricht des 159a-Merges (D-110, Nachtrag).

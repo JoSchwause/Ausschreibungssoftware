@@ -1,6 +1,6 @@
 # 132: App: Fehlergrenze, Browserprüfung, Meldungs-Testhilfe
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E13 · Paket/Ordner: neu `apps/web/src/fehler/`, `apps/web/src/main.tsx`, `apps/web/src/speicher/`, `apps/web/e2e/hilfen.ts` und Meldungsprüfungen in `apps/web/e2e/*.spec.ts`
 Blocked by: –
@@ -87,3 +87,7 @@ Herkunft: umfang §3 E13, B-23, B-24, B-26 (PDF-Rohfehler), B-38
   Leistungsbudgets fremder Pakete grün, nacheinander wiederholt bleibt nur `speicher` v16 BauteileZuordnen über dem
   Budget (bei Lastmittel 18, kleinster Wert 59 ms); nichts gelockert. Volle Web-E2E Läufe 9 und 10 je 99/100; gefallen
   ist beide Male nur die vorbestehende Flake `bim-tastatur.spec.ts:135`.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `fd4729b`. Ergebnisse, Testläufe und Entscheidungen (D-132.x) unter `## Comments`.

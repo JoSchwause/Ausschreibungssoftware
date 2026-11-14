@@ -206,9 +206,9 @@ Schwerpunkt X1 BIM.
 | 120 | X4 | App: Mängel, Bautagebuch, Tor X4 | `apps/web/src/bauleitung/` | resolved |
 | 121 | – | App: Folgearbeit v1.5 | `apps/web/src/projekt/`, `auftrag/`, `ausgabe/` | resolved |
 | 122 | – | Behebung des Wellen-Reviews Welle 6 | wie je Befund | resolved |
-| 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | aufgeteilt auf 127, 131, 135, 140, 155 (Welle 7) |
-| 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | aufgeteilt auf 148, 155 (Welle 7) |
-| 125 | F, G4, X1 | Echte Testdateien für Welle 7 bereitstellen (G-64) | `fixtures/extern/umsteiger/` oder Anhang an die Sitzung | ready-for-human (vor Welle 7) |
+| 123 | – | Aufräumen nach Welle 6 (Vertragskonstanten, Wiederholungen) | `vertrag`, `speicher`, App | resolved (aufgeteilt auf 127, 131, 135, 140, 155) |
+| 124 | X2/C2 | Folgearbeit X1–X4 | `apps/web/src/bauzeit/`, `lv/`, `kosten/` | resolved (aufgeteilt auf 148, 155) |
+| 125 | F, G4, X1 | Echte Testdateien für Welle 7 bereitstellen (G-64) | `fixtures/extern/umsteiger/` oder Anhang an die Sitzung | ready-for-human (Welle 7 lief ohne, D-71) |
 | 126 | E17, alle | GitHub Pages einschalten, Handprüfungen, Sitzung mit dem Büro (G-02, G-59, G-62) | Repo-Einstellungen, gehostete App | ready-for-human |
 
 ## Welle 7
@@ -217,5 +217,45 @@ Umfang, Befunde (B-01 bis B-38), Kürzungsreihenfolge und Tor E: `../umfang-well
 Entscheidungen: `../grilling.md`, Stufe 5 (G-58 bis G-64). Die Tickets der Welle schneidet der Orchestrator ab Nr. 127;
 123 und 124 gehören zur Welle, 125 und 126 sind Aufgaben für den Nutzer.
 
-Schnitt: [`../schnitt-welle-7.md`](../schnitt-welle-7.md) (D-76). Tickets 127–158; 159 ist die Behebung des Wellen-Reviews.
-Stand der einzelnen Tickets: in der Ticketdatei (`Status:`).
+Schnitt: [`../schnitt-welle-7.md`](../schnitt-welle-7.md) (D-76). Tickets 127–158; 159 ist die Behebung des Wellen-Reviews,
+160–163 kamen im Lauf dazu (D-96, D-100, D-110). Bericht: [`../welle-7-bericht.md`](../welle-7-bericht.md).
+
+| Nr | Titel | Paket | Status |
+|---|---|---|---|
+| 127 | `vertrag` v1.7a: Bedienung, Stammdaten, Einstellungen, Konstanten | `packages/vertrag` | resolved |
+| 128 | `vertrag` v1.7b: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen | `packages/vertrag` | resolved |
+| 129 | GAEB DA XML 3.1 lesen (X81, X83, X84, X86) | `packages/gaeb` | resolved |
+| 130 | `ui-grid`: Spaltenbreiten, OZ-Breite, Höhe, Kürzeltabelle | `packages/ui-grid` | resolved |
+| 131 | App: Seitengerüst und Navigation | `apps/web/src/ui/`, `projekt/`, `App.tsx` | resolved |
+| 132 | App: Fehlergrenze, Browserprüfung, Meldungs-Testhilfe | neu `apps/web/src/fehler/`, `apps/web/src/main.tsx` … | resolved |
+| 133 | Einheitliche Sprache und Sprachtest | `apps/web/src/*/texte.ts`, `packages/ui-*/src/texte.ts` … | resolved |
+| 134 | Bereitstellung (GitHub Pages) und Dokumente | `.github/workflows/`, `apps/web/vite.config.*`, `package.json` … | resolved |
+| 135 | `speicher`: eine Tabelle je ChangeSet-Art | `packages/speicher` | resolved |
+| 136 | `gaeb`: Dateiart erkennen, Meldungen, Bieteranschrift | `packages/gaeb` | resolved |
+| 137 | Kern v1.7a: neue Befehle, Kalkulationsansätze, Projektangaben, Einstellungen | `packages/kern` | resolved |
+| 138 | Vergabe v1.7a: Bieter umbenennen und löschen, Zuschlag zurücknehmen, Bieter-Stammdaten | `packages/vergabe` | resolved |
+| 139 | Speicher v1.7: Migration 7, Projektdatei Schema 7, Einstellungen, Einlesen als Kopie | `packages/speicher` | resolved |
+| 140 | Fachpakete aufräumen (Ticket 123, Rest) | `packages/ifc`, `bim`, `bauzeit`, `bauleitung`, `ui-modell` | resolved |
+| 141 | `ausgabe`: Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Bilder, Köpfe | `packages/ausgabe` | resolved |
+| 142 | App: Arbeitsfläche und Werkzeugleiste | `apps/web/src/lv/`, `auftrag/`, `vergabe/` | resolved |
+| 143 | `abrechnung`: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen; Fixture und Kettentest | `packages/abrechnung`, `packages/speicher` | resolved |
+| 144 | GAEB 90 lesen (.d81/.d83/.d84/.d86) und Formatvergleich | `packages/gaeb`, neu `fixtures/gaeb-formate/` | resolved |
+| 145 | GAEB 2000 lesen (.p81/.p83/.p84/.p86) | `packages/gaeb`, `fixtures/gaeb-formate/` | resolved |
+| 146 | App: Einlesen-Dialoge in Nutzersprache | `apps/web/src/gaeb/` | resolved |
+| 147 | App: Erster Start, Beispielprojekt, Hilfe, Speicherstatus | neu `apps/web/src/hilfe/`, `apps/web/src/ui/` | resolved |
+| 148 | App: LV-Bedienung (Hinweistext, OZ-Maske, Texte, KG-Hinweis) | `apps/web/src/lv/` | resolved |
+| 149 | App: Vergabe (Angebote, Bieter, Zuschlag zurücknehmen, Preisspiegel-Ausgaben) | `apps/web/src/vergabe/` … | resolved |
+| 150 | App: Projektangaben, LV-Stände, Einstellungen, Kopie-Import | `apps/web/src/projekt/`, `historie/`, `sicherung/`, `ausgabe/` | resolved |
+| 151 | App: Auftrags-LV (Langtext, Excel) und geführter Nachtrag | `apps/web/src/auftrag/`, `nachtrag/` | resolved |
+| 152 | App: Aufmaß- und Rechnungsausgaben, Skonto, Zahlungen | `apps/web/src/abrechnung/`, `rechnung/` | resolved |
+| 153 | `ausgabe`: Kostenermittlung, Kostenkontrolle, Zahlungsfreigabe mit A5 | `packages/ausgabe` | resolved |
+| 154 | App: Kalkulationsansätze speichern, Kostenausgaben, KG-Hinweis | `apps/web/src/kosten/` | resolved |
+| 155 | App: Vorschau-Module anbinden (E16, Tickets 123/124 Rest) | `apps/web/src/bauzeit/`, `bauleitung/`, `honorar/`, `bim/` … | resolved |
+| 156 | Suchen, Filtern und Kontextmenü im Grid | `packages/ui-grid`, `apps/web/src/lv/` | resolved |
+| 157 | Weitere REB-Formeln (M4) | `packages/mengen`, `packages/gaeb` | ready-for-agent (gekürzt, D-108) |
+| 158 | Tor E „Einführungsreife“ | `apps/web/e2e/umsteiger.spec.ts`, `apps/web/e2e/ueberlauf.spec.ts` … | resolved |
+| 159 | Behebung des Wellen-Reviews Welle 7 | 159a: Pakete | resolved |
+| 160 | `vertrag` v1.7c: Projekt samt Inhalt löschen | `packages/vertrag`, `GLOSSARY.md` | resolved |
+| 161 | Projekt samt Inhalt löschen: Kern, Speicher, Dialog | `packages/kern`, `packages/speicher`, `apps/web/src/projekt/` | resolved |
+| 162 | Fokus nach dem Löschen eines Druckprofils | `apps/web/src/ausgabe/` | resolved |
+| 163 | Reste aus 158, 159a, 159b | `apps/web/src/rechnung/`, `apps/web/src/gaeb/` … | resolved |

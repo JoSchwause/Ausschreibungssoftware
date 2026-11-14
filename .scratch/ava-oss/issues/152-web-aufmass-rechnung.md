@@ -1,6 +1,6 @@
 # 152: App: Aufmaß- und Rechnungsausgaben, Skonto, Zahlungen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: A2, A3, A5, E11 · Paket/Ordner: `apps/web/src/abrechnung/`, `rechnung/`
 Blocked by: 141, 143, 153
@@ -83,3 +83,7 @@ grün (nur `abrechnung/leistung.test.ts` wieder rot unter Last). E2E: `zahlungsf
 `m4`, `vergabe` – 11/11 grün. PA3 (Review): `RechnungAnlegen` trägt Vertragsstrafe, Skonto und Bauabzugsteuer nur gesetzt
 (nie `undefined`); getestet in `entwurf.test.ts` („Anlegen nimmt sie nur mit, wenn gesetzt“) und am Weg AR 1 → AR 2 ohne
 Vertragsstrafe in `zahlungsfreigabe.test.ts`.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `7be550f`. Ergebnisse, Testläufe und Entscheidungen (D-152.x) unter `## Comments`.

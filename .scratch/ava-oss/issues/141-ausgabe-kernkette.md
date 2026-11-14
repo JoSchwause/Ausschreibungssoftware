@@ -1,6 +1,6 @@
 # 141: `ausgabe`: Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Bilder, Köpfe
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: O · Paket/Ordner: `packages/ausgabe`
 Blocked by: 127
@@ -116,3 +116,7 @@ Für die App (149, 152): `Einstellungen.buero` und das `Projekt` (mit `angaben`)
 - ADR 0012: Der Nachtrag sagt „für Berichte gibt es in v1 nur PDF“, die Folgen „Bilder im Langtext druckt v1 nicht“; beides
   ist mit diesem Ticket überholt (Text in `docs/`, nicht in diesem Paket).
 - Glossar (L2): „Vergabevorschlag“ steht noch nicht im `GLOSSARY.md`.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `6c66731`. Ergebnisse, Testläufe und Entscheidungen (D-141.x) unter `## Comments`.

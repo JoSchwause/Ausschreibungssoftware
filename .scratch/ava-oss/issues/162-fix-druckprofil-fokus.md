@@ -1,6 +1,6 @@
 # 162: Fokus nach dem Löschen eines Druckprofils
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: O, E15 · Paket/Ordner: `apps/web/src/ausgabe/` (Druckprofile), `apps/web/e2e/druckprofil.spec.ts` nur falls der Test selbst falsch ist
 Blocked by: –
@@ -46,3 +46,7 @@ wurden: alter Stand rot an derselben Stelle, neuer Stand grün über den ganzen 
 **Prüfung.** `druckprofil.spec.ts` 3× hintereinander grün (9/9), `einstellungen.spec.ts` und `ausgabe.spec.ts` grün (12/12);
 lint, typecheck grün; `pnpm test` 4735 grün, 2 Leistungsbudgets (`speicher/v16-leistung`, `abrechnung/leistung`) nur unter
 paralleler Last rot, allein grün (nicht gelockert).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `e63b4db`. Ergebnisse, Testläufe und Entscheidungen (D-162.x) unter `## Comments`.

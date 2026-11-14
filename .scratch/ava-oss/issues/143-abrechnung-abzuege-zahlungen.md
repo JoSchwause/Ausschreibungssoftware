@@ -1,6 +1,6 @@
 # 143: `abrechnung`: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen; Fixture und Kettentest
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: A5 · Paket/Ordner: `packages/abrechnung`, `packages/speicher` (nur Rechnungsdekoder, D-93), `fixtures/` (neue Datei `typisch-zahlungen.json` o. ä.)
 Blocked by: 128
@@ -87,3 +87,7 @@ budgets bzw. Zeitüberschreitungen unter Parallellast (Last ≈ 20 auf 4 Kernen;
 `speicher` Aufmaß- und X1-Budgets, `vergabe` Preisspiegel, App D-45, zwei PDF-Tests in `ausgabe`, die allein grün laufen);
 keines berührt von diesem Ticket, nichts gelockert. Fixtures (`node --test`) 59 grün. E2E `rechnung.spec.ts` und `m4.spec.ts`
 grün. `typisch-abrechnung.json` und die M4-Goldens unverändert.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `167ed3e`. Ergebnisse, Testläufe und Entscheidungen (D-143.x) unter `## Comments`.

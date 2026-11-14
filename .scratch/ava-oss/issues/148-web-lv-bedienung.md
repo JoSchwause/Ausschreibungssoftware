@@ -1,6 +1,6 @@
 # 148: App: LV-Bedienung (Hinweistext, OZ-Maske, Texte, KG-Hinweis)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: U, E8 · Paket/Ordner: `apps/web/src/lv/`
 Blocked by: 137, 139, 142
@@ -71,3 +71,7 @@ Ergebnis (nach `git merge integration/welle-7`, Stand `f3532af`):
 
 Folgepunkte (fremde Pakete, P2): `ui-grid` hat keinen Text für den Hinweis `kalkulation-entfernt` (die LV-Seite filtert ihn aus
 der Hinweisleiste); die Kalkulation lässt sich in der App noch nicht speichern (Kalkulationsdialog in `kosten/`).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `019c314`. Ergebnisse, Testläufe und Entscheidungen (D-148.x) unter `## Comments`.

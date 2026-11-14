@@ -1,6 +1,6 @@
 # 160: `vertrag` v1.7c: Projekt samt Inhalt löschen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: F, E8 · Paket/Ordner: `packages/vertrag`, `GLOSSARY.md` (mechanische Folgezeilen nur, wo der Typcheck sie erzwingt)
 Blocked by: – (nach 128)
@@ -109,3 +109,7 @@ Ergebnis (nach Merge von `integration/welle-7`): Lint grün (ESLint, Prettier, P
 grün, Unit-Tests 4.700 grün, 3 übersprungen; rot im vollen Lauf nur 9 CPU-Leistungsbudgets unter Parallellast (Last ≈ 15–20 auf
 4 Kernen), alle einzeln wiederholt grün; keines gelockert. E2E `undo.spec.ts` und `projekt.spec.ts` grün (9). Keine Texte für
 Nutzer geändert.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `5afe7eb`. Ergebnisse, Testläufe und Entscheidungen (D-160.x) unter `## Comments`.

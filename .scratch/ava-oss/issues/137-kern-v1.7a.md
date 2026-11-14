@@ -1,6 +1,6 @@
 # 137: Kern v1.7a: neue Befehle, Kalkulationsansätze, Projektangaben, Einstellungen
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: K · Paket/Ordner: `packages/kern` (+ `packages/kosten`, falls die Kalkulationsansätze dort gerechnet werden)
 Blocked by: 127
@@ -100,3 +100,6 @@ Entscheidungen im Demo-Modus (eng gelesen; die Lesarten D-127.1 bis D-127.17 und
   Aufmaß-Undo); einzeln nacheinander laufen alle sieben Budgetdateien grün (D-137.15), nichts gelockert. E2E `kosten`, `lv`,
   `projekt`, `preisspiegel`: 10 von 10 grün.
 
+## Answer
+
+Gemergt nach `integration/welle-7` mit `9a31641`. Ergebnisse, Testläufe und Entscheidungen (D-137.x) unter `## Comments`.

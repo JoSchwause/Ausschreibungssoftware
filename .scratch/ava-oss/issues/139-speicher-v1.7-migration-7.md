@@ -1,6 +1,6 @@
 # 139: Speicher v1.7: Migration 7, Projektdatei Schema 7, Einstellungen, Einlesen als Kopie
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: S · Paket/Ordner: `packages/speicher`
 Blocked by: 127, 135
@@ -100,3 +100,7 @@ Herkunft: umfang §3 E8 (Projektdatei als Kopie, Zuschlag zurücknehmen), E15, E
   `speicher`-Budgetdateien grün (6/6). Kein Budget gelockert. E2E: `speicher` 19/19 grün (neu: keine Konsolenmeldung bei
   `gesperrt`; der Test „Version 6 importieren“ vergleicht den Export nun in der aktuellen Version), `apps/web` `start`, `huelle`,
   `sicherung`, `projekt`, `undo`, `lv` 21/21 grün. Keine Nutzertexte geändert.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `6df195a`. Ergebnisse, Testläufe und Entscheidungen (D-139.x) unter `## Comments`.

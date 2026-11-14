@@ -1,6 +1,6 @@
 # 129: GAEB DA XML 3.1 lesen (X81, X83, X84, X86)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: G4 · Paket/Ordner: `packages/gaeb`
 Blocked by: –
@@ -71,3 +71,7 @@ Leistungsbudgets in `kern`, `speicher` und `apps/web` (nicht angefasst), Lastmit
 waren 4 davon grün; `apps/web/src/abrechnung/leistung.test.ts` „Zeit und Speicher je Schritt“ blieb knapp rot (111 ms statt
 < 100 ms), nicht gelockert. Die Budgets in `gaeb` (2-MB-Datei, `gross` als X86) waren nur im Gesamtlauf rot und einzeln
 grün. XSD-Gegenprüfung 72/72, E2E `gaeb.spec.ts` 6/6.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `7c0b1fa`. Ergebnisse, Testläufe und Entscheidungen (D-129.x) unter `## Comments`.

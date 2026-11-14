@@ -1,6 +1,6 @@
 # 136: `gaeb`: Dateiart erkennen, Meldungen, Bieteranschrift
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: G4, E7, E10 · Paket/Ordner: `packages/gaeb`
 Blocked by: 129, 127
@@ -91,3 +91,7 @@ Prüfläufe (Agent, nach Merge von `integration/welle-7` mit D-82 bis D-84 und T
 grün, `pnpm test` 4165 grün und 6 rot, alle rot nur bei Leistungsbudgets (gaeb 2-MB-Datei, kern K9, speicher X1 zweimal,
 vergabe Preisspiegel, apps/web Aufmaß-Undo) unter Last 23–27 auf 4 Kernen; einzeln wiederholt alle grün (kern K9 im zweiten
 Lauf), nichts gelockert. `node --test fixtures` 53/53. E2E `gaeb.spec.ts` 6/6, `aufmass.spec.ts` 2/2 (X31-Befunde).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `47f99c7`. Ergebnisse, Testläufe und Entscheidungen (D-136.x) unter `## Comments`.

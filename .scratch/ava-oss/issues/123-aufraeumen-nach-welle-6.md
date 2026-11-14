@@ -1,6 +1,6 @@
 # 123: Aufräumen nach Welle 6 (Konstanten im Vertrag, Wiederholungen in Speicher und App)
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Welle: 7 (Vorschlag) · Strang: – · Pakete: `packages/vertrag` (eigenes Teilticket zuerst, A4/P9), `speicher`, `bim`, `ifc`,
 `kern`, `ui-grid`, `bauzeit`, `bauleitung`, `apps/web/src/{bim,modellvergleich,bauzeit,honorar,bauleitung}/`
@@ -41,3 +41,7 @@ Herkunft: `../review-welle-6.md` (Ermessenspunkte, die Vertrag oder viele Dateie
 ## Comments
 
 - Welle 7 (D-76): aufgeteilt. Punkt 1, 5, 8 (`MENGENART_STUECK`), 9 → 127; Punkt 2 → 135; Punkt 3, 7 (`bauzeit`), 8 (Paketteile) → 140; Punkt 4 → 131 (Honorar-PDF im Worker → 155); Punkt 6 → 130; Punkt 7 (`ausgabe`) → 141; Punkt 8 (App-Teile) → 155.
+
+## Answer
+
+Aufgeteilt auf die Tickets 127, 131, 135, 140 und 155 der Welle 7; dort erledigt.

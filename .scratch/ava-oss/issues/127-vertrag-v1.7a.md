@@ -1,6 +1,6 @@
 # 127: `vertrag` v1.7a: Bedienung, Stammdaten, Einstellungen, Konstanten
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: F · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`; mechanische Folgezeilen in Verbrauchern nur, wo der Typcheck es erzwingt)
 Blocked by: –
@@ -213,3 +213,7 @@ gelten unverändert.
 
 Offene Fragen für den Nutzer (P9): (1) `Speicher.einstellungen` wird nach 139 Pflicht (nächste Vertragsversion, etwa 128).
 (2) Lesart (a) für die Kalkulation ändert die Wirkung der EP-Befehle an Positionen mit Kalkulation (es gibt noch keine).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `983dba7`, `9b2e339`. Ergebnisse, Testläufe und Entscheidungen (D-127.x) unter `## Comments`.

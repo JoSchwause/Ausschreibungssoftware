@@ -1,6 +1,6 @@
 # 146: App: Einlesen-Dialoge in Nutzersprache
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E7 · Paket/Ordner: `apps/web/src/gaeb/`; in `abrechnung/` (X31), `rechnung/` (XRechnung), `bim/` (IFC) nur die Befundanzeige der Einlese-Dialoge
 Blocked by: 136, 131, 137, 139 (D-82, S7: Bieterangaben werden erst mit Kern und Speicher gehalten)
@@ -83,3 +83,7 @@ zweimal, vergabe Preisspiegel, apps/web Aufmaß-Undo) unter Last 27–33 auf 4 K
 `apps/web/src/abrechnung/leistung.test.ts` „Zeit und Speicher je Schritt“ (Rückgängig Median 138 ms statt < 100 ms, nicht
 angefasst, wie schon bei 129), nichts gelockert. E2E: `gaeb.spec.ts` 8/8, `erster-start.spec.ts` 4/4, `aufmass.spec.ts` 2/2,
 `bim.spec.ts` 3/3, `rechnung.spec.ts` 1/1.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `a99ee9d`. Ergebnisse, Testläufe und Entscheidungen (D-146.x) unter `## Comments`.

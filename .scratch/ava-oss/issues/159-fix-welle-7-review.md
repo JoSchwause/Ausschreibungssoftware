@@ -1,6 +1,6 @@
 # 159: Behebung des Wellen-Reviews Welle 7
 
-Status: done-by-agent (159a und 159b)
+Status: resolved
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: 159a: Pakete (`gaeb`, `ui-grid`, `bauzeit`, `ausgabe`, `abrechnung`-Paket, `vergabe`, `vertrag` nur Kommentare, `fixtures/`, `GLOSSARY.md`) und App-Ordner `gaeb/` für SB3; 159b: App-Ordner `kosten/`, `vergabe/`, `honorar/`, `bauzeit/`, `bauleitung/`, `nachtrag/`, `hilfe/`, `auftrag/`, `lv/` (nur Spec), `ui/`, `e2e/`, `e2e-basispfad/`, `README.md`. Gesperrt bis zu ihrem Merge: `apps/web/src/abrechnung/`, `rechnung/` (152), `kern`, `speicher`, `projekt/`, `historie/` (161), `apps/web/src/ausgabe/` (162)
 Blocked by: alle Merges außer 152, 161, 162
@@ -152,3 +152,7 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
   Last (Last ~11 auf 4 Kernen): `speicher/aufmass-leistung` (AufmasspositionSetzen/Undo/Redo, Median 87–129 ms gegen 100 ms),
   `speicher/v16-leistung`, `apps/web/abrechnung/leistung`; die beiden letzten allein grün; Code dieser Wege unverändert, nichts
   gelockert. Volle Web-E2E 125/125 grün, ui-grid-E2E 109/109 grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `bd50386` (159a), `fa2a690` (159b`. Ergebnisse, Testläufe und Entscheidungen (D-159.x) unter `## Comments`. Befunde aus beiden Review-Durchgängen nach D-104 und D-109 erledigt oder begründet; Reste in Ticket 163.

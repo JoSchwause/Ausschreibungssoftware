@@ -1,6 +1,6 @@
 # 149: App: Vergabe (Angebote, Bieter, Zuschlag zurücknehmen, Preisspiegel-Ausgaben)
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: V, E8, E10, E11 · Paket/Ordner: `apps/web/src/vergabe/`, `apps/web/src/gaeb/Angebote.tsx` und Verwandte
 Blocked by: 137, 138, 139, 141, 142, 146
@@ -84,3 +84,7 @@ Druck gross, `gaeb` 2-MB-Lesen und X86, `kern` K9 und Zuordnungen, `speicher` Au
 Aufmaß-Undo); `vergabe/leistung.test.ts` einzeln grün, nichts gelockert. E2E: `m3`, `preisspiegel`, `vergabe` (5 neu), `gaeb`,
 `einstellungen`, `nachtrag` 23/23 grün nach dem letzten Merge; davor zusätzlich `arbeitsflaeche`, `aufmass`, `erster-start`,
 `navigation` (30/30).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `59d8e88`. Ergebnisse, Testläufe und Entscheidungen (D-149.x) unter `## Comments`.

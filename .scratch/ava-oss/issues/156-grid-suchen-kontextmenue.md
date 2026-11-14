@@ -1,6 +1,6 @@
 # 156: Suchen, Filtern und Kontextmenü im Grid
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: U, E4 · Paket/Ordner: `packages/ui-grid`, `apps/web/src/lv/`
 Blocked by: 148, 130
@@ -91,3 +91,7 @@ Ergebnis (nach `git merge integration/welle-7`):
   `undo`, `erster-start`, `dialog`: 34/34; nach D-156.11 `lv-suchen`, `arbeitsflaeche`, `lv`, `dialog`, `kosten`: 17/17.
 
 Folgepunkte: D-156.10 (Auftrags-LV, `auftrag/`), D-156.11 (genau „Ordnungszahl“ nur mit Ausnahme im Sprachtest).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `31ef4fc`. Ergebnisse, Testläufe und Entscheidungen (D-156.x) unter `## Comments`.

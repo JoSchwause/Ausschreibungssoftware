@@ -1,6 +1,6 @@
 # 138: Vergabe v1.7a: Bieter umbenennen und löschen, Zuschlag zurücknehmen, Bieter-Stammdaten
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: V · Paket/Ordner: `packages/vergabe`
 Blocked by: 127
@@ -81,3 +81,7 @@ Abschluss (2026-11-13): Lint, Typen grün; `pnpm test` 4114 grün, 3 rot nur unt
 `abrechnung/leistung.test.ts` (106 ms gegen 100 ms); einzeln wiederholt alle drei grün, nicht gelockert, keine Datei aus diesem
 Ticket. E2E `m3.spec.ts` (Zuschlag aus X84) und `preisspiegel.spec.ts` grün (4/4). Texte für Nutzer: keine neuen (die
 `meldung` der Fehler ist Entwicklertext, D-138.2).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `0b931e0`. Ergebnisse, Testläufe und Entscheidungen (D-138.x) unter `## Comments`.

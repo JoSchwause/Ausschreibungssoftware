@@ -1,6 +1,6 @@
 # 163: Reste aus 158, 159a, 159b
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/src/rechnung/`, `apps/web/src/gaeb/`, `apps/web/src/bauzeit/`, `packages/bauzeit` (nur Alias), `packages/speicher` (nur Dateikopf), `apps/web/e2e/` (nur `zahlungsfreigabe.spec.ts`, `nachtrag.spec.ts`), Ordner der Ursache des Wacklers
 Blocked by: 158, 159a, 159b gemergt
@@ -60,3 +60,7 @@ Herkunft: Abschlussberichte von 158, 159a, 159b; D-110
   (`ausgabe/leistung.test.ts` „druckt gross“, 5.038 ms CPU gegen 5.000 ms, Last ~4 auf 4 Kernen, auch allein rot unter dieser
   Last; `ausgabe` unverändert, nicht gelockert). E2E: `zahlungsfreigabe`, `rechnung`, `vergabe`, `umsteiger`, `ueberlauf` 10/10;
   `nachtrag.spec.ts --repeat-each 10` 10/10; volle Web-E2E 129/129 (wegen der Änderung an `Dialog`/`Toast`).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `103e4e9`. Ergebnisse, Testläufe und Entscheidungen (D-163.x) unter `## Comments`. Wackler `nachtrag.spec.ts:164` an der Ursache in `ui-basis` behoben (D-111).

@@ -1,6 +1,6 @@
 # 130: `ui-grid`: Spaltenbreiten, OZ-Breite, Höhe, Kürzeltabelle
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: U · Paket/Ordner: `packages/ui-grid`
 Blocked by: –
@@ -92,3 +92,7 @@ Herkunft: umfang §3 E3 (Grid-Teil), B-07, B-09 (Kürzeltabelle), Ticket 123 Pun
   (alle neuen Eigenschaften sind optional).
 
 Offen für 142: `spaltenbreitenSchluessel` und `ozMaske` an den LV-Grids der App setzen (D-130.6).
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `0718de2`. Ergebnisse, Testläufe und Entscheidungen (D-130.x) unter `## Comments`.

@@ -1,6 +1,6 @@
 # 153: `ausgabe`: Kostenermittlung, Kostenkontrolle, Zahlungsfreigabe mit A5
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: O, E12 · Paket/Ordner: `packages/ausgabe`
 Blocked by: 141, 128
@@ -85,3 +85,7 @@ Herkunft: umfang §3 E12, E11 (A5-Zeilen)
 - E2E `ausgabe.spec.ts` und `x2.spec.ts` (Bauzeitenplan-PDF aus der App): 9 grün (`--workers=1`).
 - Für 152: die Zahlungsfreigabe druckt sich mit `erzeugeRechnungspruefungPdf({ rechnung, auftragsLv, pruefung, … })`, wobei
   `pruefung` das Ergebnis von `rechnungPruefen` ist; die Befunde des Zahlungsstands kommen wie bisher als `befundtexte`.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `250d7ae`, `5f99f74`. Ergebnisse, Testläufe und Entscheidungen (D-153.x) unter `## Comments`.

@@ -1,6 +1,6 @@
 # 161: Projekt samt Inhalt löschen: Kern, Speicher, Dialog
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: K, S, E8 · Paket/Ordner: `packages/kern`, `packages/speicher`, `apps/web/src/projekt/`
 Blocked by: 160, 143 (Schreiber in `speicher`)
@@ -68,3 +68,7 @@ Typcheck grün, Unit-Tests 4.781 grün, 3 übersprungen; rot im vollen Lauf nur 
 (`speicher/v16-leistung.test.ts`, 5.000 Zuordnungen samt Undo), einzeln wiederholt grün, nicht gelockert. E2E
 `projekt-samt-inhalt.spec.ts` (löschen → Undo → Redo → Undo mit Vergleich der Projektdatei; löschen → Sicherung einlesen),
 `undo.spec.ts`, `projekt.spec.ts`, `erster-start.spec.ts` grün (15). `apps/web/src/sprache.test.ts` grün.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `d5e0680`. Ergebnisse, Testläufe und Entscheidungen (D-161.x) unter `## Comments`. MUST-1 aus dem Wellen-Review behoben; D-161.2 im zweiten Durchgang bestätigt (D-109).

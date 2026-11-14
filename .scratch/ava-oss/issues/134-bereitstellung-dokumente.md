@@ -1,6 +1,6 @@
 # 134: Bereitstellung (GitHub Pages) und Dokumente
 
-Status: done-by-agent
+Status: resolved
 Type: task
 Welle: 7 · Strang: E17 · Paket/Ordner: `.github/workflows/`, `apps/web/vite.config.*`, `package.json`, `apps/web/package.json`, `README.md`, `CONTRIBUTING.md`, `docs/adr/0012*`, `okf/` (nicht `okf/research/`), Tickets 02, 18, 24, 26
 Blocked by: –
@@ -41,3 +41,7 @@ Herkunft: umfang §3 E17, B-36, B-37
 - D-134.4 `pages.yml`: Auslöser `push` auf `main` und `workflow_dispatch`; zwei Jobs (bauen, veröffentlichen) mit `upload-pages-artifact@v3` und `deploy-pages@v4`; `404.html` = Kopie von `index.html` für Adressen unterhalb des Basis-Pfads. Der Workflow wartet nicht auf `ci.yml` (Entscheidung offen für den Orchestrator: Tor „CI grün vor Veröffentlichen“ wäre ein `workflow_run`-Auslöser). `actionlint` ist nicht verfügbar; YAML-Parse geprüft.
 - D-134.5 ADR 0012 `accepted` (Grund G-58/G-62, Annahmen gelten für v1) mit Nachtrag Berichtsmodell; ADR 0013 bleibt `proposed`. Tickets 02, 24, 26: `resolved`; 18: `ready-for-human` mit richtiggestelltem Text (Prototyp auf `main`, Interview = Sitzung mit dem Büro, G-59). OKF `overview.md` und `index.md` berichtigt (veraltete „nicht auf main“-Angaben, Welle 7, Timestamp).
 - D-134.6 Prüfstand: `pnpm lint` und `pnpm typecheck` grün; `pnpm test` unter Last (Load 25 bis 30 auf 4 Kernen) 3968 grün, 10 rot, alle Leistungsbudgets (Q4/D-54: gaeb lesen/schreiben, kern Median 16 ms, speicher Aufmaß/Bauteile, vergabe Preisspiegel, web Aufmaß-Undo), keines in Dateien dieses Tickets, nichts gelockert; auf ruhiger Maschine zu wiederholen. E2E `start.spec.ts` und `huelle.spec.ts` (6) grün, Probe `probe:basispfad` mehrfach grün. Beim Neuladen meldet die App einmal `createSyncAccessHandle … another open Access Handle` in der Konsole (alter Speicher-Worker hält die OPFS-Datei kurz); die Probe zählt diese Meldung nicht. Befund für das Speicher-Ticket, nicht für 134.
+
+## Answer
+
+Gemergt nach `integration/welle-7` mit `75cdc9b`. Ergebnisse, Testläufe und Entscheidungen (D-134.x) unter `## Comments`.
