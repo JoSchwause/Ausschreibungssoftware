@@ -1,6 +1,6 @@
 # 155: App: Vorschau-Module anbinden (E16, Tickets 123/124 Rest)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: X1–X4, E16 · Paket/Ordner: `apps/web/src/bauzeit/`, `bauleitung/`, `honorar/`, `bim/`, `modellvergleich/`, `packages/bim` (Hinweis Doppelmessung)
 Blocked by: 131, 140
@@ -26,10 +26,10 @@ Reihenfolge = Priorität (bei Zeitnot von hinten kürzen und im Ticket vermerken
 
 ## Acceptance criteria
 
-- [ ] E2E/Unit für die erledigten Punkte; Tore X1–X4 grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E/Unit für die erledigten Punkte; Tore X1–X4 grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -75,3 +75,12 @@ Entscheidungen im Demo-Modus (Branch `welle-7/155-vorschau`):
   Nichts gelockert; die Messung auf ruhiger Maschine bleibt offen.
 - **D-155.12 Gekürzt (K, Punkt 6):** „Mangel aus Bauteil“ in der Modellansicht und der Befund „KG im Modell weicht ab“ – nach der
   Kürzungsreihenfolge (§4: K-Teile von E16 zuerst); gehen nach §6.
+
+Ergebnis: Punkte 1, 2, 3 (positionsgenau, D-155.7), 4, 7 und 5 (Messung unter Last, D-155.11) erledigt; Punkt 6 (K) gekürzt
+(D-155.12). Neue E2E `apps/web/e2e/vorschau.spec.ts`; `bim-mengen.spec.ts` prüft den Hinweis „schon aufgemessen“. Nach dem Merge
+von `integration/welle-7`: lint, typecheck grün; `pnpm test` 4491 grün, 7 rot nur Leistungsbudgets unter Last (Last 25–29 auf 4
+Kernen: `kern/k9-leistung`, `kern/lv-pruefung-fixtures`, `kern/summen-leistung`, `speicher/aufmass-leistung`,
+`speicher/v16-leistung`, `vergabe/leistung`, `apps/web/abrechnung/leistung`); seriell wiederholt 5 von 6 Dateien grün,
+`speicher/v16-leistung` wechselnd rot (Pakete, die dieses Ticket nicht berührt; nicht gelockert). E2E grün: x1-kern,
+x1-erweitert, x2 (2), x3, x4, vorschau (2), bim-mengen, bim, bim-tastatur, modellvergleich (3), kosten; `ui-modell` E2E
+`modellansicht` + `haus` 13/13 (ein erster Lauf `haus` rot unter Last, zweimal wiederholt grün).

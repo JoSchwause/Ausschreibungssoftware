@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
 import { projektAnlegen } from './hilfen';
+import { werkzeug } from './werkzeuge';
 import { ifcDatei } from './x1-aufbau';
 
 const wurzel = new URL('../../../', import.meta.url);
@@ -45,7 +46,7 @@ async function projektMitAuftrag(page: Page): Promise<{ projektId: string; auftr
   const angebote = page.getByRole('dialog', { name: 'Angebote' });
   await expect(angebote.getByRole('row', { name: /Bieter A/ })).toBeVisible();
   await angebote.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.getByRole('toolbar').getByRole('link', { name: 'Preisspiegel' }).click();
+  await werkzeug(page, 'Angebote', 'Preisspiegel');
   await page
     .getByRole('table', { name: 'Bieter des Preisspiegels' })
     .getByRole('button', { name: 'Zuschlag erteilen: Bieter A' })
