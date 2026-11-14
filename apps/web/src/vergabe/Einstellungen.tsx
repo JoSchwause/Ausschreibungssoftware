@@ -19,12 +19,10 @@ const t = texte.einstellungen;
 function Schwellenfeld({
   label,
   wert,
-  art,
   onWert,
 }: {
   label: string;
   wert: Prozent;
-  art: 'ausreisser' | 'abc';
   /** Gibt eine Meldung zurück, wenn der Wert zusammen mit den übrigen nicht geht (A über B). */
   onWert: (p: Prozent) => string | null;
 }): ReactElement {
@@ -34,7 +32,7 @@ function Schwellenfeld({
     setText(formatiereProzentDe(wert));
   }, [wert]);
   const uebernehmen = (): void => {
-    const r = schwelleLesen(text, art);
+    const r = schwelleLesen(text);
     if (!r.ok) {
       setMeldung(r.fehler);
       return;
@@ -115,19 +113,16 @@ export function Einstellungen({
       <legend>{t.gruppe}</legend>
       <Schwellenfeld
         label={t.ausreisser}
-        art="ausreisser"
         wert={einstellungen.ausreisserSchwelle}
         onWert={(p) => setzen({ ...einstellungen, ausreisserSchwelle: p })}
       />
       <Schwellenfeld
         label={t.abcA}
-        art="abc"
         wert={einstellungen.abcSchwelleA}
         onWert={(p) => setzen({ ...einstellungen, abcSchwelleA: p })}
       />
       <Schwellenfeld
         label={t.abcB}
-        art="abc"
         wert={einstellungen.abcSchwelleB}
         onWert={(p) => setzen({ ...einstellungen, abcSchwelleB: p })}
       />

@@ -12,8 +12,11 @@ const HUNDERT = ((): Prozent => {
   return h.wert;
 })();
 
-/** `abc`: eine Anteilsschwelle, höchstens 100 %; `ausreisser`: eine Abweichung, nach oben offen. */
-export function schwelleLesen(text: string, art: 'ausreisser' | 'abc'): Ergebnis<Prozent, string> {
+/**
+ * Ausreißer-Schwelle (Abweichung vom Mittel) und ABC-Schwellen (Anteile), alle höchstens 100 %: Seit die Einstellungen am LV
+ * stehen (Ticket 149), gilt die Form des Befehls `PreisspiegelEinstellungenSetzen` (jeder Satz 0 bis 100, D-149.1).
+ */
+export function schwelleLesen(text: string): Ergebnis<Prozent, string> {
   const t = texte.einstellungen;
   const r = parseDe('prozent', text);
   if (!r.ok)
@@ -22,6 +25,6 @@ export function schwelleLesen(text: string, art: 'ausreisser' | 'abc'): Ergebnis
       fehler: r.fehler.code === 'zu-viele-nachkommastellen' ? t.zuVieleStellen : t.ungueltig,
     };
   if (vorzeichen(r.wert) < 0) return { ok: false, fehler: t.negativ };
-  if (art === 'abc' && vergleiche(r.wert, HUNDERT) > 0) return { ok: false, fehler: t.ueber100 };
+  if (vergleiche(r.wert, HUNDERT) > 0) return { ok: false, fehler: t.ueber100 };
   return r;
 }
