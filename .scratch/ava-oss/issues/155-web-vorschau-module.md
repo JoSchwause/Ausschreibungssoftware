@@ -100,6 +100,7 @@ Nachtrag (D-94 des Orchestrators):
   Bilder unter Last (Last 22–29 auf 4 Kernen); eine Ursache in der App fand sich nicht. Test unverändert (nicht abgeschwächt).
   **Offen für den Orchestrator:** auf ruhiger Maschine wiederholen; falls dort rot, die Auswahl in `ui-basis` prüfen (Radix
   Select fokussiert per Zeitgeber).
+- Nach erneutem Merge (`30b5c00`): typecheck grün, Unit der berührten Ordner 416/416, E2E x1-kern, x1-erweitert, x2, x3, x4, vorschau, bim-mengen 9/9 grün.
 - Endlauf nach dem Merge von 132 (`fd4729b`): typecheck grün, lint der berührten Ordner grün, Prettier und Paketgrenzen grün;
   E2E (gegen vorgebauten Server, weil der Build unter Last die 120 s des `webServer` überschritt) 16/16 grün: x1-kern,
   x1-erweitert, x2 (2), x3, x4, vorschau (2), bim-mengen, modellvergleich (3), umwege (4).
