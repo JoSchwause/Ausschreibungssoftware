@@ -1802,6 +1802,8 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   AngebotsNachlassSetzen: true,
   AngebotsNachlassEntfernen: true,
   ProjektLoeschen: true,
+  // Vertrag v1.7c (Ticket 160, D-96); mechanische Folgezeile
+  ProjektSamtInhaltLoeschen: true,
   LeistungsverzeichnisLoeschen: true,
   AngebotLoeschen: true,
   AuftragsLeistungsverzeichnisAnlegen: true,
@@ -1904,13 +1906,15 @@ function jsonWert(x: unknown, pfad: string): void {
 const PRUEFSUMMENLAENGE: Record<Pruefsummenalgorithmus, number> = { 'sha-256': 64, 'sha-512': 128 };
 
 /** Die langen Listen, die ein Massenbefehlskopf nicht trägt (E-13), je Befehlsart: Feld und Felder darin. */
-const LANGE_LISTE: Record<Massenbefehlsart, [string, readonly string[]]> = {
+const LANGE_LISTE: Record<Massenbefehlsart, [string, readonly string[]] | null> = {
   LeistungsverzeichnisAnlegen: ['inhalt', ['knoten']],
   AngebotAnlegen: ['angebot', ['positionen']],
   AuftragsLeistungsverzeichnisAnlegen: ['auftragsLeistungsverzeichnis', ['knoten']],
   AufmassAnlegen: ['aufmass', ['positionen']],
   // v1.6 (D-54): das Modell ohne Struktur und Bauteile
   BauwerksmodellAnlegen: ['bauwerksmodell', ['struktur', 'bauteile']],
+  // Vertrag v1.7c (Ticket 160, D-96): ohne Liste im Befehl; der Kopf ist der ganze Befehl (nur `art`)
+  ProjektSamtInhaltLoeschen: null,
 };
 
 /**
@@ -1922,14 +1926,18 @@ function befehlskurzfassung(b: Roh, pfad: string): void {
   objekt(b, pfad, ['art', 'kopf', 'pruefsumme']);
   const kopf = objekt(feld(b, 'kopf'), `${pfad}.kopf`, Object.keys(feld(b, 'kopf') ?? {}));
   const art = aufzaehlung(feld(kopf, 'art'), `${pfad}.kopf.art`, MASSENBEFEHLSARTEN);
-  const [aussen, listen] = LANGE_LISTE[art];
-  const teil = feld(kopf, aussen);
-  if (typeof teil !== 'object' || teil === null || Array.isArray(teil))
-    ungueltig(`${pfad}.kopf.${aussen}`, 'Objekt erwartet');
-  else
-    for (const liste of listen)
-      if (Object.hasOwn(teil, liste))
-        ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
+  const langeListe = LANGE_LISTE[art];
+  if (langeListe === null) objekt(kopf, `${pfad}.kopf`, ['art']);
+  else {
+    const [aussen, listen] = langeListe;
+    const teil = feld(kopf, aussen);
+    if (typeof teil !== 'object' || teil === null || Array.isArray(teil))
+      ungueltig(`${pfad}.kopf.${aussen}`, 'Objekt erwartet');
+    else
+      for (const liste of listen)
+        if (Object.hasOwn(teil, liste))
+          ungueltig(`${pfad}.kopf.${aussen}.${liste}`, 'gehört nicht in den Kopf eines Massenbefehls');
+  }
   const q = `${pfad}.pruefsumme`;
   const ps = objekt(feld(b, 'pruefsumme'), q, ['algorithmus', 'wert']);
   const algorithmus = aufzaehlung(feld(ps, 'algorithmus'), `${q}.algorithmus`, [

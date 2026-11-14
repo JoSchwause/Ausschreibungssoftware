@@ -44,6 +44,8 @@ export function massenbefehlskopf(b: Massenbefehl): Massenbefehlskopf {
       return { art: b.art, aufmass: ohne(b.aufmass, 'positionen') };
     case 'BauwerksmodellAnlegen': // v1.6 (D-54): das Modell ohne Struktur und Bauteile
       return { art: b.art, bauwerksmodell: ohne(ohne(b.bauwerksmodell, 'struktur'), 'bauteile') };
+    case 'ProjektSamtInhaltLoeschen': // Vertrag v1.7c (D-96): ohne Liste, der Kopf ist der ganze Befehl
+      return { art: b.art };
   }
 }
 

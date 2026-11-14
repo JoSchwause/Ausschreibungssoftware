@@ -102,6 +102,16 @@ const ARTEN: { readonly [A in Art]: Aggregatart<A> } = {
   honorarberechnung: { umkehren: honorarberechnungChangeSetUmkehren, ziel: honorarZiel }, // Ticket 119
   mangel: { umkehren: mangelChangeSetUmkehren, ziel: mangelZiel }, // Ticket 120
   bautagebucheintrag: { umkehren: bautagebucheintragChangeSetUmkehren, ziel: bautagebuchZiel }, // Ticket 120
+  // Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile, die Umkehrung nach dem Vertrag (Tausch in Projekt und Bestand).
+  // Ticket 161 setzt die Umkehrung des Kerns und das Ziel (Projektliste bzw. Projekt) ein.
+  projektbestand: {
+    umkehren: (cs) => ({
+      ...cs,
+      projekt: { vorher: cs.projekt.nachher, nachher: cs.projekt.vorher },
+      bestand: { vorher: cs.bestand.nachher, nachher: cs.bestand.vorher },
+    }),
+    ziel: () => null,
+  },
 };
 
 const art = <A extends Art>(cs: Von<A>): Aggregatart<A> => ARTEN[cs.art];

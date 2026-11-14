@@ -8,7 +8,7 @@
 // Aufmaßblätter vor Rechnungen, Kostenermittlungen vor Honorarberechnungen, Auftrags-LV und Modelle vor Mängeln). Dieselbe
 // Reihenfolge nennt der Dekoder als erlaubte Arten im Protokoll.
 
-import type { Bauwerksmodell, ChangeSet, Projektdatei, ProjektId } from '@tethys/vertrag';
+import type { AggregatBezug, Bauwerksmodell, ChangeSet, Projektdatei, ProjektId } from '@tethys/vertrag';
 import type { Kennungsquelle } from './kennungen';
 import type { Datenbank } from './sql';
 import { LEERES_SUMMENVORHER } from './summenvorher';
@@ -30,11 +30,17 @@ import {
   type Schreibanlass,
 } from './schreiben';
 
-/** Die Art eines Aggregats, wie in `ChangeSet` und `AggregatBezug`. */
-export type Art = ChangeSet['art'];
+/**
+ * Die Art eines Aggregats, wie in `ChangeSet` und `AggregatBezug`. Vertrag v1.7c: `projektbestand` ist eine Art eines
+ * ChangeSets, aber kein Aggregat; `anwenden` weist es bis Ticket 161 mit `unbekannt` ab (mechanische Folgezeile, Ticket 160).
+ */
+export type Art = AggregatBezug['art'];
 
 /** Das ChangeSet einer Art. */
 export type ChangeSetDer<A extends Art> = Extract<ChangeSet, { readonly art: A }>;
+
+/** Ein ChangeSet, das genau ein Aggregat betrifft (jede Art außer `projektbestand`). */
+export type AggregatChangeSet = ChangeSetDer<Art>;
 
 /** Was `speicher` über eine Aggregatart weiß. */
 interface Aggregatart<A extends Art> {
@@ -333,15 +339,20 @@ export const AGGREGATART_NAMEN = Object.keys(AGGREGATARTEN) as readonly Art[];
  * Der Eintrag zur Art des ChangeSets, gelesen als Eintrag aller Arten. Die Umwandlung ist die einzige Stelle, an der der Typ
  * nicht folgt: TypeScript verbindet `cs.art` nicht mit dem Typ von `cs`; der Schlüssel der Tabelle ist aber genau `cs.art`.
  */
-const eintragZu = (cs: ChangeSet): Aggregatart<Art> => AGGREGATARTEN[cs.art] as unknown as Aggregatart<Art>;
+const eintragZu = (cs: AggregatChangeSet): Aggregatart<Art> => AGGREGATARTEN[cs.art] as unknown as Aggregatart<Art>;
 
 /** Das Aggregat, auf das ein ChangeSet wirkt (Art und Kennung wie in `AggregatBezug`). */
-export function aggregatDes(cs: ChangeSet): { art: Art; id: string } {
+export function aggregatDes(cs: AggregatChangeSet): { art: Art; id: string } {
   return { art: cs.art, id: eintragZu(cs).kennung(cs) };
 }
 
 /** Schreibt ein ChangeSet über den Eintrag seiner Art (in der Transaktion des Aufrufers). */
-export function wendeAn(db: Datenbank, cs: ChangeSet, projektId: ProjektId, anlass: Schreibanlass): void {
+export function wendeAn(
+  db: Datenbank,
+  cs: AggregatChangeSet,
+  projektId: ProjektId,
+  anlass: Schreibanlass,
+): void {
   eintragZu(cs).anwenden(db, cs, projektId, anlass);
 }
 
