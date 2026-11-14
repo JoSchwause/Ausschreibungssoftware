@@ -25,6 +25,27 @@ export function lvAnsichtBauen(
   zugeklappt: ReadonlySet<string>,
   befunde: ReadonlyMap<string, readonly Pruefbefund[]> = new Map(),
 ): LvAnsicht {
+  return ansichtBauen(zustand, zugeklappt, befunde, false);
+}
+
+/**
+ * Alle Zeilen des LV wie in der Ansicht, auch unter zugeklappten Gliederungen (die selbst zugeklappt bleiben): Damit
+ * suchen und filtern das Grid das ganze LV (`alleZeilen` des Grids, Ticket 156).
+ */
+export function alleZeilenBauen(
+  zustand: LvZustand,
+  zugeklappt: ReadonlySet<string>,
+  befunde: ReadonlyMap<string, readonly Pruefbefund[]> = new Map(),
+): readonly LvZeile[] {
+  return ansichtBauen(zustand, zugeklappt, befunde, true).zeilen;
+}
+
+function ansichtBauen(
+  zustand: LvZustand,
+  zugeklappt: ReadonlySet<string>,
+  befunde: ReadonlyMap<string, readonly Pruefbefund[]>,
+  alle: boolean,
+): LvAnsicht {
   const lv = zustand.leistungsverzeichnis;
   const kinder = kinderJeEltern(lv.knoten);
   const gp = new Map<string, { gesamtpreis: Betrag | null; gehtInSummeEin: boolean }>();
@@ -53,7 +74,7 @@ export function lvAnsichtBauen(
         gehtInSummeEin: knoten.art === 'position' ? (s?.gehtInSummeEin ?? null) : null,
         befunde: befunde.get(knoten.id) ?? KEINE,
       });
-      if (aufgeklappt) besuche(knoten.id, tiefe + 1);
+      if (aufgeklappt || (alle && hatUnterknoten)) besuche(knoten.id, tiefe + 1);
     }
   };
   besuche(lv.id, 0);
