@@ -828,3 +828,10 @@ Question: 132 ist fertig bis auf „volle Web-E2E zweimal hintereinander grün�
 Decision: 132 gemergt. Den wackeligen Test und die zwei PDF-Fehlertexte übernimmt 155 (Besitzer von `bim/`, `bauzeit/`, `bauleitung/`): Ursache finden, nicht den Test abschwächen. Das Kriterium „zweimal grün“ prüft das Tor-Ticket 158 auf dem Endstand. `nachtrag.spec.ts:170` prüft einen festen Hinweis, keine Meldung, und bleibt.
 Reason: Der Fehler liegt nicht in 132; ein Schreiber je Ordner.
 Reversible: yes  Touches: apps/web/src/fehler, Ticket 155, 158
+
+## D-95 151, 150, 145 gemergt; Folgen
+Welle 7 · Tickets 145, 150, 151 (Folge 149, 152, 154, 158, 159) · decided by: orchestrator
+Question: Was folgt aus den Berichten von 151 (geführter Nachtrag), 150 (Projektangaben, Einstellungen mit eigenem Undo, Kopie-Import) und 145 (GAEB 2000 gebaut, Quellen in D-145.x)?
+Decision: Alle drei bestätigt. 145: Bedarf, Wahl, Stundenlohn, Pauschal und Zuschlag werden aus GAEB 2000 nicht gelesen (keine freie Quelle, D-145.4), kein MwSt-Satz (D-145.8) – der Bericht nennt das samt den 9 unsicheren Punkten. Merge-Konflikte (132/148 in `umwege.spec.ts`, 132/150 in `projekt.spec.ts` und `ausgabe/LvDrucken.tsx`) hat der Orchestrator gelöst, die betroffenen E2E liefen grün. **An laufende/kommende Tickets:** 149, 152, 154 geben `Einstellungen.buero` und das `Projekt` in ihre PDF-Eingaben (D-141, D-150); 158 schließt im Torweg den Dialog „Projektdatei eingelesen“. **Für 159 gesammelt:** Glossareintrag „GAEB 2000“ (und „GAEB 90“, falls fehlend); Kommentar `apps/web/src/gaeb/gaeb.ts:60`; eine E2E, die eine GAEB-2000-Datei in der App einliest; `kosten/`-Seiten ohne Einstellungs-Undo-Knöpfe (D-150). **Bewusst später (Bericht):** gemeinsamer Positionsdialog mit Lesemodus für `lv/` und `auftrag/`; Auftragnehmer in den Dialogen „X84 einlesen“/„Excel einlesen“ vorbelegen (151).
+Reason: Keine Regel verletzt; Reste sind klein und gebündelt.
+Reversible: yes  Touches: Tickets 149, 152, 154, 158, 159

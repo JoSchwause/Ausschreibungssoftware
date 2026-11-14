@@ -35,7 +35,9 @@ export type Befundwerte = Readonly<Record<string, Befundwert>>;
  * - Zahlen der Datei (`dezimal-ungueltig`, `dezimalkomma`, `gerundet` …): `wert` (Text: der Wert, wie er in der Datei steht);
  * - zusammengefasste Befunde (`formatierung-verworfen`, `epa-nicht-abgebildet`, `zeile-laenge` …): `anzahl`;
  * - GAEB 90 (Ticket 144): `format-ungeprueft`: `format` (Text); `zeichensatz-erkannt`: `zeichensatz` (Text in Worten);
- *   `satzart-unbekannt`: `satzart` (Text), `anzahl`; `satz-laenge`, `satznummer-abweichend`: `anzahl`.
+ *   `satzart-unbekannt`: `satzart` (Text), `anzahl`; `satz-laenge`, `satznummer-abweichend`: `anzahl`;
+ * - GAEB 2000 (Ticket 145): dieselben, dazu `schluesselwort-unbekannt`: `schluesselwort` (Text), `anzahl`; `dezimalpunkt`:
+ *   `anzahl`. Fehler im Aufbau der Datei tragen die Codes des XML-Lesers (`xml-abschnitt-offen` …) mit `element` (Text).
  *
  * Ein Wert, der sich nicht als Zahl lesen lässt, steht als Text da.
  */
@@ -65,6 +67,7 @@ export const BEFUNDTEXTE = {
   'satz-laenge': 'Satz mit falscher Länge',
   'satznummer-abweichend': 'Satznummern nicht fortlaufend',
   'gliederungsende-abweichend': 'Ende einer Gliederung passt nicht',
+  'schluesselwort-unbekannt': 'Unbekanntes Schlüsselwort nicht übernommen',
   // Aufbau der Datei
   'xml-keine-wurzel': 'Kein lesbarer Inhalt',
   'xml-tag-nicht-geschlossen': 'Abschnitt nicht geschlossen',
@@ -129,6 +132,7 @@ export const BEFUNDTEXTE = {
   'dezimal-ungueltig': 'Zahl nicht lesbar',
   'leerraum-entfernt': 'Leerzeichen in einer Zahl',
   dezimalkomma: 'Dezimalkomma statt Dezimalpunkt',
+  dezimalpunkt: 'Dezimalpunkt statt Dezimalkomma',
   'plus-entfernt': 'Pluszeichen vor einer Zahl',
   'fuehrende-nullen-entfernt': 'Führende Nullen',
   'vorzeichen-null-entfernt': 'Negative Null',

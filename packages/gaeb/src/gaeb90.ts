@@ -32,16 +32,14 @@ import type {
   LvInhalt,
   OzMaske,
   OzStelle,
-  Position,
-  PositionId,
   Prozent,
   Zahlenart,
 } from '@tethys/vertrag';
-import { betragsziel } from '@tethys/kern';
 import { phaseAbweisen } from './abweisung';
 import { deutsch, text } from './befunde';
 import type { GaebBefund } from './befunde';
 import type { Phasenquelle } from './erkennung';
+import { Angebotsaufbau } from './angebotsaufbau';
 import { LvAufbau } from './lvaufbau';
 import type { Wahlangabe } from './lvaufbau';
 import { Zeilenmelder } from './zeilenbefunde';
@@ -780,8 +778,6 @@ const IM_ANGEBOT_UEBERGANGEN: ReadonlySet<string> = new Set([
   '99',
 ]);
 
-const ozVon = (p: Position): string => `${p.ordnungszahl ?? '(ohne OZ)'}${p.ozIndex ?? ''}`;
-
 /**
  * GAEB 90, Phase X84 → Angebotspositionen zum LV (Zuordnung allein über die OZ wie beim DA-XML-Leser). Eine D84 trägt nur
  * Ordnungszahlen und Preise (Satz 23); Sätze der Gliederung und Texte gehören zum LV und werden übergangen. Einen Nachlass und
@@ -808,14 +804,7 @@ export function leseGaeb90Angebot(
       'Die OZ-Maske der Angebotsdatei weicht von der des LV ab; zugeordnet wird trotzdem über die Teile der OZ.',
       null,
     );
-  const imLv = new Map<string, Position>();
-  for (const k of lv.knoten)
-    if (k.art === 'position' && k.ordnungszahl !== null) {
-      m.ozBekannt(k.id, ozVon(k));
-      const s = `${k.ordnungszahl}|${k.ozIndex ?? ''}`;
-      if (!imLv.has(s)) imLv.set(s, k);
-    }
-  const zeilen = new Map<PositionId, Angebotsposition>();
+  const aufbau = new Angebotsaufbau(m, lv.knoten);
   const jeSatz = (s: Satz): void => {
     if (s.art !== '23') {
       if (!IM_ANGEBOT_UEBERGANGEN.has(s.art)) uebrig(s, m);
@@ -824,81 +813,11 @@ export function leseGaeb90Angebot(
     const oz = zerlegeOz(s, kopf.bereiche, m, true);
     const anzeige =
       oz.teile === null ? stellen(s, 3, 11).trim() : `${oz.teile.join(trenn ?? '')}${oz.index ?? ''}`;
-    const p = oz.teile === null ? undefined : imLv.get(`${oz.teile.join(trenn ?? '')}|${oz.index ?? ''}`);
-    if (!p) {
-      m.melde(
-        'fehler',
-        'position-unbekannt',
-        `Die Position ${anzeige} der Angebotsdatei gibt es im LV nicht; die Zeile wird nicht übernommen.`,
-        s.zeile,
-        { oz: anzeige },
-      );
-      return;
-    }
-    if (zeilen.has(p.id)) {
-      m.melde(
-        'fehler',
-        'doppelte-ordnungszahl',
-        `Die Position ${anzeige} steht mehrfach in der Angebotsdatei; nur die erste Zeile wird übernommen.`,
-        s.zeile,
-        { knotenId: p.id },
-      );
-      return;
-    }
     const preise = preiseAus([s], m);
-    if (preise.ep === null) {
-      zeilen.set(p.id, { positionId: p.id, status: 'nicht-angeboten' });
-      return;
-    }
-    if (p.zuschlag !== null) {
-      m.melde(
-        'fehler',
-        'zuschlag-art-abweichend',
-        `Die Position ${anzeige} ist im LV eine Zuschlagsposition, die Angebotsdatei trägt dort einen Einheitspreis; die Zeile ` +
-          'wird nicht übernommen.',
-        s.zeile,
-        { knotenId: p.id },
-      );
-      zeilen.set(p.id, { positionId: p.id, status: 'nicht-angeboten' });
-      return;
-    }
-    if (preise.gb !== null && p.menge !== null) {
-      const soll = gesamtpreis(p.menge, preise.ep);
-      const ohneSumme = betragsziel(p) !== 'netto';
-      if (
-        !(ohneSumme && vergleiche(preise.gb, '0.00' as Betrag) === 0) &&
-        vergleiche(preise.gb, soll) !== 0
-      ) {
-        const datei = { art: 'betrag', wert: preise.gb } as const;
-        const gerechnet = { art: 'betrag', wert: soll } as const;
-        m.melde(
-          'warnung',
-          'gp-abweichend',
-          `Der Gesamtbetrag der Angebotsdatei (${deutsch(datei)}) weicht von Menge des LV × EP (${deutsch(gerechnet)}) ab; ` +
-            'gerechnet wird mit Menge × EP.',
-          s.zeile,
-          { knotenId: p.id, feld: 'gesamtpreis', werte: { datei, gerechnet } },
-        );
-      }
-    }
-    zeilen.set(p.id, { positionId: p.id, status: 'angeboten', einheitspreis: preise.ep, epa: null });
+    aufbau.preis(oz.teile?.join(trenn ?? '') ?? null, oz.index, anzeige, preise.ep, preise.gb, s.zeile);
   };
   for (const b of rest) for (const s of [b.kopf, ...b.folge]) jeSatz(s);
-
-  const positionen: Angebotsposition[] = [];
-  for (const k of lv.knoten) {
-    if (k.art !== 'position') continue;
-    const z = zeilen.get(k.id);
-    if (z === undefined)
-      m.melde(
-        'warnung',
-        'position-fehlt-im-angebot',
-        `Die Position ${ozVon(k)} des LV fehlt in der Angebotsdatei; sie gilt als nicht angeboten.`,
-        null,
-        { knotenId: k.id },
-      );
-    positionen.push(z ?? { positionId: k.id, status: 'nicht-angeboten' });
-  }
+  const positionen = aufbau.positionen();
   if (kopf.projekt !== null) m.nichtUebernommen(kopf.projekt.zeile, 'Projektbezeichnung');
   if (kopf.auftraggeber !== null) m.nichtUebernommen(null, 'Angaben zum Auftraggeber');
   return { phase: d.phase, positionen, bietername: kopf.bieter, befunde: m.ergebnis() };

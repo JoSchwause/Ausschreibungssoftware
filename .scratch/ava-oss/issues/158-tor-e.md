@@ -20,6 +20,7 @@ Herkunft: umfang §4 Tor E
 3. Formatvergleich (Kettentest aus 144/145) läuft; ohne gekürzte Formate.
 4. Sprachtest (133) grün; Fehlergrenze (132) hat einen Test.
 5. Alle früheren Tore grün (M1–M4, X1–X4), kein Budget gelockert; die Tor-E2E dreimal hintereinander grün.
+**D-95:** Beim Einlesen der Sicherung erscheint der Dialog „Projektdatei eingelesen“ (übernommene Einstellungen); der Torweg schließt ihn.
 Findet der Test einen Produktfehler: nicht im Test umgehen, sondern dem Orchestrator melden.
 
 ## Acceptance criteria
