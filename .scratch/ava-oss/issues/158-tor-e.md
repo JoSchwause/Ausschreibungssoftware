@@ -63,3 +63,12 @@ Entscheidungen im Demo-Modus (Branch `welle-7/158-tor-e`):
   löschen“ (160, 161).
 - Punkt 3 und 4: `packages/gaeb/src/formatvergleich.test.ts` (3.3, 3.1, GAEB 90, GAEB 2000), `apps/web/src/sprache.test.ts`
   und `apps/web/src/fehler/Fehlergrenze.test.tsx`: 53/53 grün.
+- **Stand nach dem Merge von 149, 154, 155, 143:** Preisspiegel als PDF (Vorschau, Text mit Bietern und Summen) und
+  Kostenkontrolle als PDF (Vorschau, Text mit Vergabe und Abrechnung) stehen im Torweg. Ausstehend hinter `ausstehend`: 152
+  (Skonto, Zahlung, Zahlungsfreigabe als PDF) und 161 (Projekt samt Inhalt löschen).
+- **Befund an den Orchestrator (149):** Der Preisspiegel mit erteiltem Zuschlag läuft bei 1280 px um 14 px über
+  (`p.auftrag__vergeben` samt „Zuschlag zurücknehmen“ in `.preisspiegel__vergabe { flex: none }`,
+  `apps/web/src/vergabe/PreisspiegelSeite.tsx:278-286`, `vergabe.css:118-125`). Beide Tor-Specs schlagen dort an; nicht im Test
+  umgangen.
+- Die Umgebung meldet für Downloads mit Umlaut im Namen „download“ als Dateinamen (headless Chromium, mit einem nackten
+  `<a download>` gemessen); der Torweg prüft deshalb Inhalt statt Dateiname der PDFs.
