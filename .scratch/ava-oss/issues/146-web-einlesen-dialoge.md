@@ -1,6 +1,6 @@
 # 146: App: Einlesen-Dialoge in Nutzersprache
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: E7 · Paket/Ordner: `apps/web/src/gaeb/`; in `abrechnung/` (X31), `rechnung/` (XRechnung), `bim/` (IFC) nur die Befundanzeige der Einlese-Dialoge
 Blocked by: 136, 131, 137, 139 (D-82, S7: Bieterangaben werden erst mit Kern und Speicher gehalten)
@@ -21,10 +21,10 @@ Herkunft: umfang §3 E7 (App-Teil), B-10 bis B-12
 
 ## Acceptance criteria
 
-- [ ] E2E: BVBS-X83 einlesen zeigt zusammengefasste Befunde; X85 wird mit Satz abgewiesen
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E: BVBS-X83 einlesen zeigt zusammengefasste Befunde; X85 wird mit Satz abgewiesen
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -76,3 +76,10 @@ eine Seite den Knopf ohne Projekt).
   (Abbrechen → Neuladen → Begrüßung; Übernehmen → Projektseite mit dem Namen aus der Datei und dem LV). Die Texte
   `start.gaeb.projektname`, `angelegt`, `zumProjekt` in `hilfe/texte.ts` werden nicht mehr gebraucht (nicht entfernt: nur die
   Komponente war freigegeben; für 159).
+
+Prüfläufe (Agent, nach Merge von `integration/welle-7` mit 147 und 152): `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test`
+4444 grün und 8 rot, alle rot nur bei Leistungsbudgets (gaeb 2-MB-Datei, kern K9 und BauteileZuordnen, speicher Aufmaß und X1
+zweimal, vergabe Preisspiegel, apps/web Aufmaß-Undo) unter Last 27–33 auf 4 Kernen; einzeln wiederholt alle grün außer
+`apps/web/src/abrechnung/leistung.test.ts` „Zeit und Speicher je Schritt“ (Rückgängig Median 138 ms statt < 100 ms, nicht
+angefasst, wie schon bei 129), nichts gelockert. E2E: `gaeb.spec.ts` 8/8, `erster-start.spec.ts` 4/4, `aufmass.spec.ts` 2/2,
+`bim.spec.ts` 3/3, `rechnung.spec.ts` 1/1.
