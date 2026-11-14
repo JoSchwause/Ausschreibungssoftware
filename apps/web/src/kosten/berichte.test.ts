@@ -51,7 +51,9 @@ const zellText = (z: string | BerichtZelle | undefined): string =>
   z === undefined ? '' : typeof z === 'string' ? z : z.werte.map((w) => w.text).join(' ');
 
 function tabelle(m: Berichtsmodell): string[][] {
-  const t = m.abschnitte.flatMap((a) => a.bloecke).find((b): b is Extract<BerichtBlock, { art: 'tabelle' }> => b.art === 'tabelle');
+  const t = m.abschnitte
+    .flatMap((a) => a.bloecke)
+    .find((b): b is Extract<BerichtBlock, { art: 'tabelle' }> => b.art === 'tabelle');
   if (t === undefined) throw new Error('keine Tabelle');
   return t.zeilen.map((z) => z.zellen.map(zellText));
 }
@@ -94,7 +96,14 @@ describe('Kostenkontrolle als Bericht', () => {
       expect.arrayContaining([{ bezeichnung: 'Budget', wert: 'KB Entwurf (Kostenberechnung)' }]),
     );
     const z = tabelle(m);
-    expect(z.find((r) => r[0] === '390')).toEqual(['390', 'Sonstige Maßnahmen', '6.000,00', '0,00', '–', '-6.000,00']);
+    expect(z.find((r) => r[0] === '390')).toEqual([
+      '390',
+      'Sonstige Maßnahmen',
+      '6.000,00',
+      '0,00',
+      '–',
+      '-6.000,00',
+    ]);
     expect(z.at(-1)).toEqual(['', 'Gesamt', '32.000,00', '0,00', '–', '-32.000,00']);
   });
 

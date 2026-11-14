@@ -6,7 +6,15 @@
 //   Stoffe: 2,000 × 6,250        = 12,500; Kalkulationszuschlagssatz 5 %  → 13,125
 //   EP = 24,008 + 13,125 = 37,133
 
-import type { Einheitspreis, LvZustand, Menge, Position, PositionId, Positionsdaten, Projekt } from '@tethys/vertrag';
+import type {
+  Einheitspreis,
+  LvZustand,
+  Menge,
+  Position,
+  PositionId,
+  Positionsdaten,
+  Projekt,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { befehlswegFuer, lvSitzung, projektSitzung, type Befehlsweg, type LvSitzung } from '../lv/befehlsweg';
 import { ozMaskeLesen } from '../lv/ozmaske';

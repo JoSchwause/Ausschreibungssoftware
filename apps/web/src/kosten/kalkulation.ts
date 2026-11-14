@@ -4,11 +4,7 @@
 // die Position die Eingaben: „Übernehmen“ ist **ein** Befehl `KalkulationSetzen` mit Ansätzen, Sätzen, EP und Anteilen (ein
 // Undo-Schritt), und der Dialog öffnet mit den gespeicherten Werten (`formularAusPosition`).
 
-import {
-  formatiereEinheitspreisDe,
-  formatiereMengeDe,
-  formatiereProzentDe,
-} from '@tethys/dezimal';
+import { formatiereEinheitspreisDe, formatiereMengeDe, formatiereProzentDe } from '@tethys/dezimal';
 import { einzelpreiskalkulationBerechnen } from '@tethys/kosten';
 import type { Einzelpreiskalkulation, Kalkulationsansatz, Kalkulationszuschlagssaetze } from '@tethys/kosten';
 import type {
@@ -133,7 +129,10 @@ export function kalkulationRechnen(
  * je Kostenart, alle Werte de-DE (N4). Die freie Bezeichnung steht in den Anteilen der Position; legt das LV die
  * Beschriftung selbst fest (D-28), bleibt sie leer. Ohne Kalkulation: das leere Formular.
  */
-export function formularAusPosition(position: Position, lvHatEpaBezeichnungen: boolean): Kalkulationsformular {
+export function formularAusPosition(
+  position: Position,
+  lvHatEpaBezeichnungen: boolean,
+): Kalkulationsformular {
   const k = position.kalkulation;
   if (k === undefined) return LEERES_FORMULAR;
   const saetze: Partial<Record<EpaArt, string>> = {};

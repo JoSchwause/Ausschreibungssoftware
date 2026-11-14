@@ -30,12 +30,10 @@ export interface Berichtskopf {
 }
 
 const kopfEingabe = (k: Berichtskopf) => ({
-  bezeichnungen: [...k.bezeichnungen].map(
-    ([nummer, bezeichnung]): Kostengruppenbezeichnung => ({
-      nummer: nummer as Kostengruppennummer,
-      bezeichnung,
-    }),
-  ),
+  bezeichnungen: [...k.bezeichnungen].map(([nummer, bezeichnung]): Kostengruppenbezeichnung => ({
+    nummer: nummer as Kostengruppennummer,
+    bezeichnung,
+  })),
   buero: k.buero,
   datum: k.datum,
   ...(k.projekt === null ? {} : { projekt: k.projekt }),
