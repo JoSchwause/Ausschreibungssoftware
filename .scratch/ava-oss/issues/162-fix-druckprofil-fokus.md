@@ -1,6 +1,6 @@
 # 162: Fokus nach dem Löschen eines Druckprofils
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: O, E15 · Paket/Ordner: `apps/web/src/ausgabe/` (Druckprofile), `apps/web/e2e/druckprofil.spec.ts` nur falls der Test selbst falsch ist
 Blocked by: –
@@ -19,10 +19,10 @@ falsche Erwartung hat, ihn mit Begründung anpassen. Zweimal hintereinander grü
 
 ## Acceptance criteria
 
-- [ ] `druckprofil.spec.ts` dreimal hintereinander grün; Ursache im Ticket
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] `druckprofil.spec.ts` dreimal hintereinander grün; Ursache im Ticket
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -42,3 +42,7 @@ wurden: alter Stand rot an derselben Stelle, neuer Stand grün über den ganzen 
   Fokus auf der Profilauswahl (statt auf der dann gesperrten Schaltfläche „Profil löschen“, die ihn verlor).
 - **D-162.3 Nicht gelöst (anderes Paket).** Eine Meldung (Radix Toast), die erscheint, während eine Auswahlliste offen ist,
   fängt Escape ab; das gilt in der ganzen App und gehört nach `packages/ui-basis` (Frage an den Orchestrator).
+
+**Prüfung.** `druckprofil.spec.ts` 3× hintereinander grün (9/9), `einstellungen.spec.ts` und `ausgabe.spec.ts` grün (12/12);
+lint, typecheck grün; `pnpm test` 4735 grün, 2 Leistungsbudgets (`speicher/v16-leistung`, `abrechnung/leistung`) nur unter
+paralleler Last rot, allein grün (nicht gelockert).
