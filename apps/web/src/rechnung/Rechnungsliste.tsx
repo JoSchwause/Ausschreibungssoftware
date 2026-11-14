@@ -63,7 +63,8 @@ export function Rechnungsliste({
               </td>
               <td data-testid="status">{r.freigabe === null ? t.offen : t.freigegeben}</td>
               <td className="rechnung__zahl" data-testid="offen">
-                {formatiereBetragDe(zs.offen)}
+                {/* R5: Offen ist erst nach der Freigabe ein Betrag (Zahlungen gibt es nur auf freigegebene Rechnungen). */}
+                {r.freigabe === null ? '–' : formatiereBetragDe(zs.offen)}
               </td>
             </tr>
           );

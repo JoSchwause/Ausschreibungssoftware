@@ -253,4 +253,6 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
   const liste = page.getByRole('table', { name: 'Rechnungen des Auftrags-LV' });
   await expect(liste.getByTestId('zahlbetrag')).toHaveText([betragDe('8874.40'), betragDe('10100.84')]);
   await expect(liste.getByTestId('status')).toHaveText(['freigegeben', 'offen']);
+  // R5: Offen gibt es erst nach der Freigabe; bis dahin steht ein Strich.
+  await expect(liste.getByTestId('offen').nth(1)).toHaveText('–');
 });

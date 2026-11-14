@@ -347,7 +347,12 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   ]);
 
   // Ändern: die zweite Zahlung auf den Rest; Rückgängig stellt sie wieder her.
-  await page.getByRole('button', { name: `Zahlung vom ${datumDe(Z22.datum)} ändern …` }).click();
+  // R3: Die Beschriftung nennt Datum und Betrag, damit zwei Zahlungen an einem Tag unterscheidbar sind.
+  await page
+    .getByRole('button', {
+      name: `Zahlung vom ${datumDe(Z22.datum)} über ${betragDe(Z22.betrag)} € ändern …`,
+    })
+    .click();
   const aendern = page.getByRole('dialog', { name: 'Zahlung ändern' });
   await expect(aendern.getByLabel('Gezahlter Betrag')).toHaveValue(betragDe(Z22.betrag));
   await aendern.getByLabel('Gezahlter Betrag').fill('3.570,67');
@@ -358,11 +363,17 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   await expect(page.getByTestId('zahlung-offen')).toHaveText(betragDe(ZS2.offen));
 
   // Löschen fragt (Q5); Rückgängig holt die Zahlung zurück.
-  await page.getByRole('button', { name: `Zahlung vom ${datumDe(Z22.datum)} löschen …` }).click();
+  await page
+    .getByRole('button', {
+      name: `Zahlung vom ${datumDe(Z22.datum)} über ${betragDe(Z22.betrag)} € löschen …`,
+    })
+    .click();
   const loeschen = page.getByRole('dialog', { name: 'Zahlung löschen' });
   await expect(loeschen).toContainText(`${betragDe(Z22.betrag)} €`);
   await loeschen.getByRole('button', { name: 'Zahlung löschen' }).click();
   await expect(page.getByTestId('zahlung-summeZahlungen')).toHaveText(`−${betragDe(Z21.betrag)}`);
+  // R3: Der Fokus fällt nicht auf die Seite, sondern auf „Zahlung erfassen …“ (die gelöschte war die letzte der Liste).
+  await expect(page.getByRole('button', { name: 'Zahlung erfassen …' })).toBeFocused();
   await page.getByRole('button', { name: /^Rückgängig/ }).click();
   await expect(page.getByTestId('zahlung-summeZahlungen')).toHaveText(`−${betragDe(ZS2.summeZahlungen)}`);
 
