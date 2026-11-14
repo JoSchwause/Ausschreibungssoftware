@@ -255,6 +255,16 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   expect(pdf).toContain(BUERO);
   expect(pdf).toContain('Musterhaus');
   expect(pdf).toContain(betragDe(ZS1.zahlbetrag));
+  // Die Zahlungsfreigabe mit denselben Bezeichnungen wie am Bildschirm.
+  expect(pdf).toContain('Zahlungsfreigabe');
+  expect(pdf).toContain(
+    `Bei Zahlung bis ${datumDe(ZS1.fristende ?? '')}: Auszahlung ${betragDe(ZS1.mitSkonto.auszahlung)} €, danach: ${betragDe(ZS1.ohneSkonto.auszahlung)} €.`,
+  );
+  expect(pdf).toContain('Bauabzugsteuer 15,00 % an das Finanzamt');
+  expect(pdf).toContain('Auszahlung an den Auftragnehmer');
+  expect(pdf).toContain('Skonto (verwirklicht)');
+  expect(pdf).toContain('Summe der Zahlungen');
+  expect(pdf).toContain(`Offen ${betragDe(ZS1.offen)} €`);
   await ausgabe(aktionen(page), 'Rechnungsprüfung als Excel …');
   const xlsx = await excelLaden(page, 'Rechnungsprüfung als Excel', /^Rechnungsprüfung 1 .+\.xlsx$/);
   expect(xlsx).toContain(BUERO);
@@ -314,6 +324,12 @@ test('Rechnung mit Skonto prüfen und freigeben, Zahlungen, Zahlungsfreigabe als
   await zahlungErfassen(page, Z21.datum, Z21.betrag);
   await zahlungErfassen(page, Z22.datum, Z22.betrag);
   await zahlungsstandPruefen(page, ZS2, false, 'nicht verwirklicht');
+  await ausgabe(aktionen(page), 'Rechnungsprüfung als PDF …');
+  const pdf2 = await pdfMitVorschau(page, 'Rechnungsprüfung als PDF', /^Rechnungsprüfung 2 .+\.pdf$/);
+  expect(pdf2).toContain(`Vertragsstrafe (${STRAFE.grund})`);
+  expect(pdf2).toContain(`−${betragDe(k2.vertragsstrafe)} €`);
+  expect(pdf2).toContain('Skonto (nicht verwirklicht)');
+  expect(pdf2).toContain(`Offen ${betragDe(ZS2.offen)} €`);
   await expect(page.getByTestId('zahlungen').getByRole('row')).toHaveText([
     /Datum/,
     new RegExp(`${datumDe(Z21.datum)}\\s*${betragDe(Z21.betrag)}`),

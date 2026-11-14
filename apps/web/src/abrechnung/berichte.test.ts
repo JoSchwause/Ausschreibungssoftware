@@ -100,6 +100,9 @@ describe('Eingaben der Abrechnungsberichte', () => {
     expect(t).toContain(BUERO.name);
     expect(t).toContain('Musterhaus');
     expect(t).toContain('Ein Befund der Seite.');
+    // Die Zahlungsfreigabe (A5) kommt aus `pruefung.zahlungsstand`; vor der Freigabe als Vorschau.
+    expect(t).toContain('Zahlungsfreigabe');
+    expect(t).toContain('Zahlbetrag (geprüft, noch nicht freigegeben)');
     expect(dateinameRechnungspruefung(a.auftrag, r, 'pdf')).toMatch(/^Rechnungsprüfung 1 .+\.pdf$/);
   });
 });
