@@ -71,7 +71,8 @@ export function plusKalendertage(datum: string, tage: number): Kalenderdatum | n
 /** Ein Fall: Skonto, Bauabzugsteuer (0,00 bei Basis ≤ 0,00 oder ausgeschaltet), Auszahlung. */
 function szenario(zahlbetrag: Betrag, skonto: Betrag, mitSteuer: boolean): Auszahlungsszenario {
   const basis = subtrahiere(zahlbetrag, skonto);
-  const bauabzugsteuer = mitSteuer && vorzeichen(basis) > 0 ? prozentVon(basis, BAUABZUGSTEUER_SATZ) : NULL_BETRAG;
+  const bauabzugsteuer =
+    mitSteuer && vorzeichen(basis) > 0 ? prozentVon(basis, BAUABZUGSTEUER_SATZ) : NULL_BETRAG;
   return { skonto, bauabzugsteuer, auszahlung: subtrahiere(basis, bauabzugsteuer) };
 }
 
@@ -100,11 +101,11 @@ export function zahlungsstandBerechnen(
   const bisFristende = summiereBetraege(
     zahlungen.filter((z) => fristende !== null && z.datum <= fristende).map((z) => z.betrag),
   );
-  const skontoVerwirklicht =
-    vorzeichen(moeglich) > 0 && vergleiche(bisFristende, mitSkonto.auszahlung) >= 0;
+  const skontoVerwirklicht = vorzeichen(moeglich) > 0 && vergleiche(bisFristende, mitSkonto.auszahlung) >= 0;
   const fall = skontoVerwirklicht ? mitSkonto : ohneSkonto;
   const offen = subtrahiere(fall.auszahlung, summeZahlungen);
-  if (zahlungen.length > 0 && vorzeichen(offen) < 0) befunde.push({ code: 'zahlungen-ueber-auszahlung', offen });
+  if (zahlungen.length > 0 && vorzeichen(offen) < 0)
+    befunde.push({ code: 'zahlungen-ueber-auszahlung', offen });
   return {
     zahlungsstand: {
       zahlbetrag,
@@ -134,7 +135,11 @@ export function vertragsstrafeVorschlag(
 ): Vertragsstrafe | null {
   let vorige: Rechnung | undefined;
   for (const r of rechnungen)
-    if (r.auftragsLvId === auftragsLvId && r.nummer < nummer && (vorige === undefined || r.nummer > vorige.nummer))
+    if (
+      r.auftragsLvId === auftragsLvId &&
+      r.nummer < nummer &&
+      (vorige === undefined || r.nummer > vorige.nummer)
+    )
       vorige = r;
   return vorige?.vertragsstrafe ?? null;
 }

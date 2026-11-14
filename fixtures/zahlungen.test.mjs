@@ -118,7 +118,11 @@ test('zahlungen: Kalender ohne Date (Fristende, Monats- und Jahreswechsel, Schal
 });
 
 test('zahlungen: die Ketten bauen auf M4 auf (gleiche Zeilen, dazu die Vertragsstrafe)', () => {
-  const ohneStrafe = ({ vertragsstrafe, ...rest }) => rest;
+  const ohneStrafe = (kette) => {
+    const rest = { ...kette };
+    delete rest.vertragsstrafe;
+    return rest;
+  };
   assert.deepEqual(ohneStrafe(fx.pruefungen.ar1.kette), m4.pruefungen.ar1.kette);
   assert.deepEqual(ohneStrafe(fx.pruefungen.ar2.kette), {
     ...m4.pruefungen.ar2NachKorrektur.kette,

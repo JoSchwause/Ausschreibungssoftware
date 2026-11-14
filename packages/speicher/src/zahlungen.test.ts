@@ -11,7 +11,17 @@ import { direktTransport, speicherUeberTransport } from './client';
 import type { SpeicherKern } from './kern';
 import { neuerKern, wert } from './testhilfe/node';
 import { umkehren } from './testhilfe/umkehrung';
-import { anwenden, aufmass, aufmassCs, AUFTRAG, frei, mitAuftrag, P, rechnung, rechnungCs } from './testhilfe/v14';
+import {
+  anwenden,
+  aufmass,
+  aufmassCs,
+  AUFTRAG,
+  frei,
+  mitAuftrag,
+  P,
+  rechnung,
+  rechnungCs,
+} from './testhilfe/v14';
 
 type A5 = Pick<Rechnung, 'vertragsstrafe' | 'skonto' | 'bauabzugsteuer' | 'zahlungen'>;
 const fx = JSON.parse(

@@ -54,7 +54,10 @@ describe('Kette A5: M4 → Abzüge → Freigabe → Zahlungen (typisch-zahlungen
     { art: 'RechnungAnlegen', rechnung: m4Neu(m4.ar2) },
     ...fx.befehle.ar2.vorFreigabe,
   ]);
-  const ar2Vorschau = rechnungPruefen(ar2Angelegt.rechnung, m4.auftrag, blaetter, [ar1, ar2Angelegt.rechnung]);
+  const ar2Vorschau = rechnungPruefen(ar2Angelegt.rechnung, m4.auftrag, blaetter, [
+    ar1,
+    ar2Angelegt.rechnung,
+  ]);
   const ar2Frei = ausfuehren(ar2Angelegt, [
     { art: 'RechnungFreigeben', zahlbetrag: ar2Vorschau.kette.zahlbetrag },
     ...fx.befehle.ar2.nachFreigabe,

@@ -61,7 +61,12 @@ describe('Vertragsstrafe, Skonto, Bauabzugsteuer setzen (vor der Freigabe)', () 
       { art: 'VertragsstrafeSetzen', vertragsstrafe: strafe },
     );
     expect(z.rechnung).toEqual({ ...ar1Offen, vertragsstrafe: strafe, skonto, bauabzugsteuer: true });
-    expect(Object.keys(z.rechnung).slice(-4)).toEqual(['freigabe', 'vertragsstrafe', 'skonto', 'bauabzugsteuer']);
+    expect(Object.keys(z.rechnung).slice(-4)).toEqual([
+      'freigabe',
+      'vertragsstrafe',
+      'skonto',
+      'bauabzugsteuer',
+    ]);
     const leer = nach(
       z,
       { art: 'BauabzugsteuerSetzen', bauabzugsteuer: false },
@@ -73,7 +78,11 @@ describe('Vertragsstrafe, Skonto, Bauabzugsteuer setzen (vor der Freigabe)', () 
   });
 
   it('andere Befehle lassen die neuen Felder stehen', () => {
-    const z = nach(offen, { art: 'SkontoSetzen', skonto }, { art: 'VertragsstrafeSetzen', vertragsstrafe: strafe });
+    const z = nach(
+      offen,
+      { art: 'SkontoSetzen', skonto },
+      { art: 'VertragsstrafeSetzen', vertragsstrafe: strafe },
+    );
     const d = nach(z, {
       art: 'RechnungsabzuegeSetzen',
       umlagen: [],
@@ -94,7 +103,8 @@ describe('Vertragsstrafe, Skonto, Bauabzugsteuer setzen (vor der Freigabe)', () 
   });
 
   it('Formprüfungen (D-128.3, D-128.4)', () => {
-    const vs = (v: unknown) => fehler(offen, { art: 'VertragsstrafeSetzen', vertragsstrafe: v } as RechnungBefehl);
+    const vs = (v: unknown) =>
+      fehler(offen, { art: 'VertragsstrafeSetzen', vertragsstrafe: v } as RechnungBefehl);
     expect(vs({ betrag: '0.00', grund: 'x' })).toMatchObject(ungueltig('vertragsstrafe.betrag'));
     expect(vs({ betrag: '-1.00', grund: 'x' })).toMatchObject(ungueltig('vertragsstrafe.betrag'));
     expect(vs({ betrag: '1.5', grund: 'x' })).toMatchObject(ungueltig('vertragsstrafe.betrag'));
@@ -126,13 +136,16 @@ describe('RechnungAnlegen mit den neuen Feldern (D-128.7)', () => {
     const { danach } = ausfuehren(null, { art: 'RechnungAnlegen', rechnung: neu });
     expect(danach?.rechnung).toEqual(neu);
     expect(
-      fehler(null, { art: 'RechnungAnlegen', rechnung: { ...m4.ar2, zahlungen: [zahlung(1, '2026-12-01', '1.00')] } }),
+      fehler(null, {
+        art: 'RechnungAnlegen',
+        rechnung: { ...m4.ar2, zahlungen: [zahlung(1, '2026-12-01', '1.00')] },
+      }),
     ).toMatchObject(ungueltig('zahlungen'));
   });
 
   it('„fehlt“ ist die einzige Schreibweise für keine/aus: null, false und [] weist der Ausführer ab', () => {
     const anlegen = (extra: Record<string, unknown>) =>
-      fehler(null, { art: 'RechnungAnlegen', rechnung: { ...m4.ar2, ...extra } as Rechnung });
+      fehler(null, { art: 'RechnungAnlegen', rechnung: { ...m4.ar2, ...extra } });
     expect(anlegen({ vertragsstrafe: null })).toMatchObject(ungueltig('vertragsstrafe'));
     expect(anlegen({ skonto: null })).toMatchObject(ungueltig('skonto'));
     expect(anlegen({ bauabzugsteuer: false })).toMatchObject(ungueltig('bauabzugsteuer'));
@@ -141,8 +154,8 @@ describe('RechnungAnlegen mit den neuen Feldern (D-128.7)', () => {
   });
 
   it('kanonisch: die Felder in Vertragsfolge, egal in welcher Folge sie kommen', () => {
-    const { vertragsstrafe: _v, ...ohne } = { ...m4.ar2, vertragsstrafe: strafe };
-    const verdreht = { bauabzugsteuer: true, skonto, vertragsstrafe: strafe, ...ohne } as Rechnung;
+    // Dieselben Felder, nur die neuen vorn: die Objektfolge kommt aus Protokoll oder Datei, nicht aus dem Typ.
+    const verdreht = { bauabzugsteuer: true, skonto, vertragsstrafe: strafe, ...m4.ar2 } as Rechnung;
     const { danach } = ausfuehren(null, { art: 'RechnungAnlegen', rechnung: verdreht });
     expect(Object.keys(danach?.rechnung ?? {}).slice(-4)).toEqual([
       'freigabe',
@@ -181,7 +194,9 @@ describe('Zahlungen (nur an einer freigegebenen Rechnung, D-128.6, D-128.7)', ()
 
   it('Kennung schon da: id-vergeben; unbekannt beim Ändern und Löschen: ungueltige-eingabe (feld zahlungId)', () => {
     const z = nach(frei, { art: 'ZahlungErfassen', zahlung: z1 });
-    expect(fehler(z, { art: 'ZahlungErfassen', zahlung: { ...z1, betrag: b('1.00') } }).code).toBe('id-vergeben');
+    expect(fehler(z, { art: 'ZahlungErfassen', zahlung: { ...z1, betrag: b('1.00') } }).code).toBe(
+      'id-vergeben',
+    );
     expect(fehler(z, { art: 'ZahlungAendern', zahlung: z2 })).toMatchObject(ungueltig('zahlungId'));
     expect(fehler(z, { art: 'ZahlungLoeschen', zahlungId: z2.id })).toMatchObject(ungueltig('zahlungId'));
     expect(fehler(frei, { art: 'ZahlungLoeschen', zahlungId: z2.id })).toMatchObject(ungueltig('zahlungId'));

@@ -148,7 +148,9 @@ function abzuegePruefen(
 function positivPruefen(wert: unknown, feld: string): Geprueft<Betrag> {
   const e = betragPruefen(wert, feld);
   if (!e.ok) return e;
-  return vorzeichen(e.wert) > 0 ? e : ungueltig(`Der Betrag muss größer als 0,00 sein, nicht ${e.wert}.`, feld);
+  return vorzeichen(e.wert) > 0
+    ? e
+    : ungueltig(`Der Betrag muss größer als 0,00 sein, nicht ${e.wert}.`, feld);
 }
 
 function vertragsstrafePruefen(roh: unknown): Geprueft<Vertragsstrafe> {
@@ -186,7 +188,8 @@ function bauabzugsteuerPruefen(roh: unknown): Geprueft<boolean> {
 }
 
 function zahlungPruefen(roh: unknown): Geprueft<Zahlung> {
-  if (!istObjekt(roh)) return ungueltig('Eine Zahlung ist ein Objekt mit Kennung, Datum und Betrag.', 'zahlung');
+  if (!istObjekt(roh))
+    return ungueltig('Eine Zahlung ist ein Objekt mit Kennung, Datum und Betrag.', 'zahlung');
   const kf = kennungFehler(roh['id'], 'Die Kennung der Zahlung');
   if (kf !== null) return ungueltig(kf, 'zahlung.id');
   const datum = roh['datum'];
@@ -202,7 +205,7 @@ function zahlungPruefen(roh: unknown): Geprueft<Zahlung> {
  * Schreibweise (D-128.2), `zahlungen` gibt es beim Anlegen nie (D-128.7).
  */
 function neueFelderPruefen(
-  r: Record<string, unknown>,
+  r: Rechnung,
 ): Geprueft<Pick<Rechnung, 'vertragsstrafe' | 'skonto' | 'bauabzugsteuer'>> {
   if (Object.hasOwn(r, 'zahlungen'))
     return ungueltig('Eine neue Rechnung ist nicht freigegeben und hat keine Zahlungen.', 'zahlungen');
@@ -274,7 +277,7 @@ function anlegenPruefen(r: Rechnung): Geprueft<Rechnung> {
       'Eine Rechnung wird ohne Freigabe angelegt; freigegeben wird mit RechnungFreigeben.',
       'freigabe',
     );
-  const neu = neueFelderPruefen(r as unknown as Record<string, unknown>);
+  const neu = neueFelderPruefen(r);
   if (!neu.ok) return neu;
   const { vertragsstrafe, skonto, bauabzugsteuer } = neu.wert;
   return gut(

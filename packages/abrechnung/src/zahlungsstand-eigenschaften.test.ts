@@ -30,7 +30,11 @@ const alsCent = (t: string): bigint => {
 const anteil = (cent: bigint, satzHundertstel: bigint): bigint => (cent * satzHundertstel + 5000n) / 10000n;
 
 const tag = fc
-  .tuple(fc.integer({ min: 2024, max: 2030 }), fc.integer({ min: 1, max: 12 }), fc.integer({ min: 1, max: 28 }))
+  .tuple(
+    fc.integer({ min: 2024, max: 2030 }),
+    fc.integer({ min: 1, max: 12 }),
+    fc.integer({ min: 1, max: 28 }),
+  )
   .map(([j, m, t]) => `${String(j)}-${String(m).padStart(2, '0')}-${String(t).padStart(2, '0')}`);
 
 const eingabe = fc.record({
@@ -133,7 +137,9 @@ describe('zahlungsstandBerechnen: Eigenschaften', () => {
       fc.property(eingabe, (e) => {
         const { zahlungsstand: s } = zahlungsstandBerechnen(rechnungAus(e), alsText(e.zahlbetrag) as Betrag);
         const ende = s.fristende;
-        const bis = e.zahlungen.filter((z) => ende !== null && z.datum <= ende).reduce((a, z) => a + z.cent, 0n);
+        const bis = e.zahlungen
+          .filter((z) => ende !== null && z.datum <= ende)
+          .reduce((a, z) => a + z.cent, 0n);
         expect(s.skontoVerwirklicht).toBe(
           alsCent(s.mitSkonto.skonto) > 0n && bis >= alsCent(s.mitSkonto.auszahlung),
         );

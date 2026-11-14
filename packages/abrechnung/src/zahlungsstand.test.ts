@@ -33,8 +33,7 @@ function wieFixture(k: Abzugskette): FxZahlungen['pruefungen']['ar1']['kette'] {
 
 /** AR 1 vor der Korrektur (Blatt 1), AR 2 nach der Korrektur (Blatt 1 korrigiert und Blatt 2), wie die Fixture sagt. */
 const pruefeAr1 = (r: Rechnung) => rechnungPruefen(r, m4.auftrag, [m4.blatt1, m4.blatt2], [r, ar2]);
-const pruefeAr2 = (r: Rechnung) =>
-  rechnungPruefen(r, m4.auftrag, [m4.blatt1Korrigiert, m4.blatt2], [ar1, r]);
+const pruefeAr2 = (r: Rechnung) => rechnungPruefen(r, m4.auftrag, [m4.blatt1Korrigiert, m4.blatt2], [ar1, r]);
 
 describe('rechnungPruefen mit Abzügen und Zahlungen (typisch-zahlungen)', () => {
   it('AR 1: Skonto 3 % und Bauabzugsteuer, Zahlung am Fristende: verwirklicht, offen 0,00', () => {
@@ -94,7 +93,11 @@ describe('zahlungsstandBerechnen: Ränder', () => {
     delete (r as { zahlungen?: unknown }).zahlungen;
     const { zahlungsstand, befunde } = zahlungsstandBerechnen(r, '-20.00' as Betrag);
     expect(zahlungsstand.mitSkonto).toEqual({ skonto: '0.00', bauabzugsteuer: '0.00', auszahlung: '-20.00' });
-    expect(zahlungsstand.ohneSkonto).toEqual({ skonto: '0.00', bauabzugsteuer: '0.00', auszahlung: '-20.00' });
+    expect(zahlungsstand.ohneSkonto).toEqual({
+      skonto: '0.00',
+      bauabzugsteuer: '0.00',
+      auszahlung: '-20.00',
+    });
     expect(zahlungsstand.skontoVerwirklicht).toBe(false);
     expect(zahlungsstand.offen).toBe('-20.00');
     expect(befunde).toEqual([]);

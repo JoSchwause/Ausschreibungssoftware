@@ -1077,7 +1077,8 @@ const RECHNUNG_V17B = ['vertragsstrafe', 'skonto', 'bauabzugsteuer', 'zahlungen'
 
 function positiverBetrag(x: unknown, pfad: string): Betrag {
   const b = dezimal(x, pfad, 'betrag');
-  if (b.startsWith('-') || /^0\.0+$/.test(b)) return ungueltig(pfad, `Betrag muss größer als 0,00 sein: „${b}“`);
+  if (b.startsWith('-') || /^0\.0+$/.test(b))
+    return ungueltig(pfad, `Betrag muss größer als 0,00 sein: „${b}“`);
   return b as Betrag;
 }
 
@@ -1114,7 +1115,8 @@ function rechnungV17b(o: Roh, p: string): Pick<Rechnung, (typeof RECHNUNG_V17B)[
       if (satz.startsWith('-') || /^0\.0+$/.test(satz) || (satz.split('.')[0] ?? '').length > 2)
         ungueltig(`${q}.satz`, `Skontosatz größer 0,00 und kleiner 100,00 erwartet: „${satz}“`);
       const fristTage = ganzAbEins(feld(so, 'fristTage'), `${q}.fristTage`);
-      if (fristTage > 365) ungueltig(`${q}.fristTage`, `Skontofrist höchstens 365 Tage, nicht ${String(fristTage)}`);
+      if (fristTage > 365)
+        ungueltig(`${q}.fristTage`, `Skontofrist höchstens 365 Tage, nicht ${String(fristTage)}`);
       return { satz: satz as Prozent, fristTage };
     }),
     ...optional(o, 'bauabzugsteuer', (v) => nurWahr(v, `${p}.bauabzugsteuer`)),
