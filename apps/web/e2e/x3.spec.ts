@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { alsText, liesPdf } from '../../../packages/ausgabe/src/pdftext';
-import { betragDe, projektAnlegen } from './hilfen';
+import { betragDe, erwarteMeldung, projektAnlegen } from './hilfen';
 
 interface Fx {
   readonly kostenermittlung: {
@@ -341,8 +341,5 @@ test('X3: Honorarberechnung aus der Kostenberechnung mit allen Sollwerten, Undo,
     .getByRole('dialog', { name: 'Kostenermittlung löschen' })
     .getByRole('button', { name: 'Löschen' })
     .click();
-  // Genauer Treffer: Die Meldung steht kurz auch im unsichtbaren Ansageknoten der Toast-Region („Meldung …“ davor).
-  await expect(
-    page.getByText('Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.', { exact: true }),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Der gespeicherte Stand weicht ab. Bitte die Seite neu laden.');
 });

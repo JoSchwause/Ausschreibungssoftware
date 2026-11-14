@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
-import { projektAnlegen } from './hilfen';
+import { erwarteMeldung, projektAnlegen } from './hilfen';
 import { werkzeug } from './werkzeuge';
 
 const wurzel = new URL('../../../fixtures/', import.meta.url);
@@ -141,7 +141,7 @@ test('Aufmaßblatt mit zwei Ansätzen → Soll/Ist mit Befund → Undo/Redo → 
   await zeile(g, '02.0050A').locator('[data-spalte="kurztext"]').click();
   await page.keyboard.press('Enter');
   await expect(panel(page)).toHaveCount(0);
-  await expect(page.getByText('Zuschlagspositionen werden nicht aufgemessen').first()).toBeVisible();
+  await erwarteMeldung(page, 'Zuschlagspositionen werden nicht aufgemessen');
   // Rückgängig/Wiederholen auf dem Blatt per Tastatur: Strg+Z nimmt die Zeile zurück, Strg+Y bringt sie wieder.
   await zeile(g, '01.0020').locator('[data-spalte="kurztext"]').click();
   await page.keyboard.press('Control+z');
