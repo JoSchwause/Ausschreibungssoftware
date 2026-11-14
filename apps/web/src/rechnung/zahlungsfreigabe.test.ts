@@ -178,7 +178,10 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
       zeichen: '',
     });
 
-    const ar2 = await senden(a, r, [{ art: 'RechnungFreigeben', zahlbetrag: p.kette.zahlbetrag }, ...A5_BEFEHLE.ar2.nachFreigabe]);
+    const ar2 = await senden(a, r, [
+      { art: 'RechnungFreigeben', zahlbetrag: p.kette.zahlbetrag },
+      ...A5_BEFEHLE.ar2.nachFreigabe,
+    ]);
     const zs = pruefen(ar2, await stand(a), a.s.zustand).zahlungsstand;
     expect(zs).toEqual(A5_PRUEFUNGEN.ar2.zahlungsstand);
     expect(zahlungsfreigabe(ar2, zs).geltend.map((z) => [z.schluessel, z.betrag])).toEqual([

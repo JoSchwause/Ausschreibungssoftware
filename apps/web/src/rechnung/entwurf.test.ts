@@ -255,7 +255,9 @@ describe('A5 im Formular', () => {
     expect(felder({ vertragsstrafeBetrag: '0,00', vertragsstrafeGrund: 'Verzug' })).toEqual([
       'vertragsstrafeBetrag',
     ]);
-    expect(felder({ vertragsstrafeBetrag: '100', vertragsstrafeGrund: '   ' })).toEqual(['vertragsstrafeGrund']);
+    expect(felder({ vertragsstrafeBetrag: '100', vertragsstrafeGrund: '   ' })).toEqual([
+      'vertragsstrafeGrund',
+    ]);
     expect(felder({ skontoSatz: '3' })).toEqual(['skontoFrist']);
     expect(felder({ skontoFrist: '14' })).toEqual(['skontoSatz']);
     expect(felder({ skontoSatz: '100', skontoFrist: '14' })).toEqual(['skontoSatz']);

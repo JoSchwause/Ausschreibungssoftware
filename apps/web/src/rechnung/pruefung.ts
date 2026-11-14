@@ -309,7 +309,13 @@ export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): Zahlungsfreiga
   let faelle: Zahlungsfreigabe['faelle'] = null;
   if (skonto !== undefined && zs.fristende !== null) {
     const zeilen: Fallzeile[] = [
-      { schluessel: 'zahlbetrag', bezeichnung: z.zahlbetrag, zeichen: '', mit: zs.zahlbetrag, ohne: zs.zahlbetrag },
+      {
+        schluessel: 'zahlbetrag',
+        bezeichnung: z.zahlbetrag,
+        zeichen: '',
+        mit: zs.zahlbetrag,
+        ohne: zs.zahlbetrag,
+      },
       {
         schluessel: 'skonto',
         bezeichnung: z.skonto(formatiereProzentDe(skonto.satz)),
@@ -351,7 +357,12 @@ export function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): Zahlungsfreiga
       betrag: zs.verwirklichterSkonto,
     });
   if (steuer)
-    geltend.push({ schluessel: 'bauabzugsteuer', bezeichnung: steuerText, zeichen: '−', betrag: zs.bauabzugsteuer });
+    geltend.push({
+      schluessel: 'bauabzugsteuer',
+      bezeichnung: steuerText,
+      zeichen: '−',
+      betrag: zs.bauabzugsteuer,
+    });
   geltend.push(
     { schluessel: 'auszahlung', bezeichnung: z.auszahlung, zeichen: '=', betrag: zs.auszahlung },
     { schluessel: 'summeZahlungen', bezeichnung: z.summeZahlungen, zeichen: '−', betrag: zs.summeZahlungen },

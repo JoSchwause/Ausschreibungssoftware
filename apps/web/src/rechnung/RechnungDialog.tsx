@@ -2,12 +2,14 @@
 // Ticket 88: Dialog „Neue Rechnung“ bzw. „Angaben bearbeiten“: Art, Eingang, Rechnungsnummer des Auftragnehmers,
 // geforderte Beträge, die abgerechneten Aufmaßblätter (kumuliert, D-34), Umlagen und Einbehaltssätze. Die Felder nehmen
 // jede Eingabe an; eine Meldung steht am Feld (U5). Speichern schickt die Befehle als einen Undo-Schritt (A5, U7).
+// Ticket 152 (A5, D-72): Vertragsstrafe (Betrag, Grund; Vorschlag aus der vorigen Rechnung), Skonto (Satz, Frist) und der
+// Schalter Bauabzugsteuer.
 
 import { Button, Dialog, Eingabefeld, Zahlfeld, type ZahlPruefer } from '@tethys/ui-basis';
-import type { AufmassKopf, Zahlenart } from '@tethys/vertrag';
+import { BAUABZUGSTEUER_SATZ, type AufmassKopf, type Zahlenart } from '@tethys/vertrag';
 import { useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { zahlLesen } from '../lv/zahlen';
+import { formatiereProzentDe, zahlLesen } from '../lv/zahlen';
 import { entwurfLesen, type Rechnungsentwurf, type Rechnungswerte } from './entwurf';
 import { texte } from './texte';
 
@@ -69,6 +71,13 @@ function Formular({
   const setze = <K extends keyof Rechnungsentwurf>(k: K, w: Rechnungsentwurf[K]): void => {
     setE((alt) => ({ ...alt, [k]: w }));
   };
+  /** Prüfer eines Zahlfelds, der nach dem ersten Speichern auch die Meldung des Formulars zeigt. */
+  const mitMeldung =
+    (feld: string, basis: ZahlPruefer): ZahlPruefer =>
+    (roh) => {
+      const m = gesendet ? fehler.find((x) => x.feld === feld) : undefined;
+      return m === undefined ? basis(roh) : { gueltig: false, meldung: m.meldung };
+    };
 
   const speichern = async (): Promise<void> => {
     setGesendet(true);
@@ -240,6 +249,63 @@ function Formular({
           ))}
         </div>
         <p className="lv-dialog__hinweis">{t.hinweisEinbehalt}</p>
+      </fieldset>
+
+      <fieldset className="lv-dialog__bereich">
+        <legend>{t.a5}</legend>
+        <div className="lv-dialog__zeile">
+          <Zahlfeld
+            label={f.vertragsstrafeBetrag}
+            einheit="€"
+            pruefe={mitMeldung('vertragsstrafeBetrag', BETRAG)}
+            value={e.vertragsstrafeBetrag}
+            onWertChange={(w) => {
+              setze('vertragsstrafeBetrag', w);
+            }}
+          />
+          <Eingabefeld
+            label={f.vertragsstrafeGrund}
+            value={e.vertragsstrafeGrund}
+            onWertChange={(w) => {
+              setze('vertragsstrafeGrund', w);
+            }}
+            {...meldung('vertragsstrafeGrund')}
+          />
+        </div>
+        <p className="lv-dialog__hinweis">{t.hinweisStrafe}</p>
+        <div className="lv-dialog__zeile">
+          <Zahlfeld
+            label={f.skontoSatz}
+            einheit="%"
+            pruefe={mitMeldung('skontoSatz', PROZENT)}
+            value={e.skontoSatz}
+            onWertChange={(w) => {
+              setze('skontoSatz', w);
+            }}
+          />
+          <Eingabefeld
+            label={f.skontoFrist}
+            hinweis={t.fristHinweis}
+            inputMode="numeric"
+            value={e.skontoFrist}
+            onWertChange={(w) => {
+              setze('skontoFrist', w);
+            }}
+            {...meldung('skontoFrist')}
+          />
+        </div>
+        <p className="lv-dialog__hinweis">{t.hinweisSkonto}</p>
+        <label className="rechnung-formular__option">
+          <input
+            type="checkbox"
+            checked={e.bauabzugsteuer}
+            onChange={(x) => {
+              setze('bauabzugsteuer', x.target.checked);
+            }}
+          />
+          {f.bauabzugsteuer}
+        </label>
+        <p className="lv-dialog__hinweis">{t.hinweisSteuer(formatiereProzentDe(BAUABZUGSTEUER_SATZ))}</p>
       </fieldset>
 
       <p className="lv__meldung" role="status">

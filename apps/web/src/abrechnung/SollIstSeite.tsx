@@ -3,9 +3,11 @@
 // Summen je Gliederung und gesamt. Befunde (VOB/B § 2 Abs. 3, D-35) stehen in der Befundspalte mit neutralem Kennzeichen
 // und als Liste, deren Einträge per Tastatur zur Zeile springen (U3). Die Schwellen gelten für die Sitzung, sie werden
 // nicht gespeichert; unter der unteren Schwelle gibt es Befunde erst mit einer Schlussrechnung (`abgeschlossen`).
+// Ticket 152: Werkzeugleiste aus `ui-basis` (D-89); „Ausgabe“ mit Soll/Ist als PDF (Vorschau) und Excel, mit den Schwellen
+// der Seite.
 
 import { formatiereProzentDe } from '@tethys/dezimal';
-import { Eingabefeld } from '@tethys/ui-basis';
+import { Eingabefeld, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
 import { VergleichsGrid, type VergleichsSprungziel } from '@tethys/ui-grid';
 import type { Prozent } from '@tethys/vertrag';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +17,8 @@ import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { zahlLesen } from '../lv/zahlen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import type { Abrechnungsstand } from './aufmass';
+import { BerichtAusgabe } from './Ausgabe';
+import { dateinameSollIst, sollIstEingabe } from './berichte';
 import { aufmassPfad } from './pfad';
 import { STANDARD_OBERSCHWELLE, STANDARD_UNTERSCHWELLE, sollIstAnsicht, sollIstRechnen } from './sollist';
 import { texte } from './texte';
@@ -124,9 +128,26 @@ export function SollIstSeite({
         <Verweis pfad={aufmassPfad(a.projektId, a.id)} text={texte.zurListe} gehe={gehe} />
         <Verweis pfad={auftragPfad(a.projektId, a.id)} text={texte.zumAuftrag} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.werkzeuge}>
         <HistorieKnoepfe />
-      </div>
+        <Werkzeuggruppe titel={texte.ausgabe.gruppe}>
+          <BerichtAusgabe
+            projektId={a.projektId}
+            name={texte.ausgabe.sollIst}
+            dateiname={(endung) => dateinameSollIst(auftrag, endung)}
+            schluessel={`${oben}\u0000${unten}\u0000${String(abgeschlossen)}\u0000${String(stand.blaetter.length)}`}
+            pdf={(kopf) => ({
+              art: 'soll-ist',
+              eingabe: sollIstEingabe(auftrag, sollIst, abgeschlossen, kopf),
+            })}
+            excel={async (kopf) =>
+              (await import('@tethys/ausgabe')).sollIstAlsExcel(
+                sollIstEingabe(auftrag, sollIst, abgeschlossen, kopf),
+              )
+            }
+          />
+        </Werkzeuggruppe>
+      </Werkzeugleiste>
       <fieldset className="abrechnung__einstellungen">
         <legend>{t.einstellungen}</legend>
         <Schwellenfeld label={t.oberSchwelle} wert={oben} onWert={setOben} />
